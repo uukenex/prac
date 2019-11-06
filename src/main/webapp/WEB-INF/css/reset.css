@@ -1,0 +1,114 @@
+@charset "utf-8";
+
+/* reset.css - 브라우저 스타일 초기화, 2012 © yamoo9.com	
+---------------------------------------------------------------- */
+
+/* 모든 요소 공간 0, 서체 크기 100%, 세로정렬 baseline, 배경색 투명 */
+html, body, div, span, applet, object, iframe,
+h1, h2, h3, h4, h5, h6, p, blockquote, pre,
+a, abbr, acronym, address, big, cite, code,
+del, dfn, em, font, img, ins, kbd, q, s, samp,
+small, strike, strong, sub, sup, tt, var,
+b, u, i, center,
+dl, dt, dd, ol, ul, li,
+fieldset, form, label, legend,
+table, caption, tbody, tfoot, thead, tr, th, td {
+	margin: 0;
+	outline: 0;
+	border: 0;
+	padding: 0;
+	font-size: 100%;
+	vertical-align: baseline;
+	background: transparent;
+}
+
+/* HTML5 새 요소 초기화 */
+article, aside, details, figcaption, figure,
+footer, header, hgroup, menu, nav, section { display: block; }
+
+/* 본문 기본 설정, 리스트 블릿 제거, 인용 구문 제거 */
+body { 
+	font: 13px/1.5 "나눔 고딕", "Nanum Gothic", 돋움, Dotum, Sans-Serief; 
+	color: #323232; 
+	}
+	/* 영문 설정 */
+	.lang-en, :lang(en) { font: 12px/1.5 "Helvetica Neue", Helvetica, Verdana, Arial, Sans-Serief; }
+	
+/* 목록 및 인용 */
+ol, ul { list-style: none; }
+blockquote, q { quotes: none; }
+
+/* hr 제거 */
+hr { display: none; }
+
+/* 제목 글꼴 크기 설정 */
+h1, h2, h3, h4, h5, h6 { 
+	font-weight: normal; 
+	color: #111; 
+	}
+	h1 { 
+		font-size: 36px; 
+		line-height: 1; 
+		margin-bottom: 0.5em; 
+	}
+	h2 { 
+		font-size: 24px; 
+		margin-bottom: 0.75em;
+	}
+	h3 { 
+		font-size: 18px; 
+		line-height: 1; 
+		margin-bottom: 1em;
+	}
+	h4 { font-size: 14px; }
+	h5 { margin-bottom: 1.5em; }
+	h5, h6 { font-weight: bold; }
+	
+	h1 img, h2 img, h3 img,
+	h4 img, h5 img, h6 img { margin: 0; }
+
+/* 제목, 단락 상.하 공간 설정 */
+p { margin: 0 0 1.5em; }
+
+/* :active, :focus 가상클래스 아웃라인 설정 제거 */
+:active, :focus { outline: 0; }
+
+/* 하이퍼링크 기본 스타일 재정의 */
+a:link, a:visited { 
+	padding-bottom: .25px; 
+	border-bottom: 1px dotted #7c7c7c; 
+	text-decoration: none;
+	color: #7c7c7c;
+}
+a:hover, a:active {
+	border-bottom-style: solid; 
+	color: #424242;
+}
+
+/* img를 포함한 a요소의 보더, 패딩 초기화 설정 */
+a img {
+	border: 0; 
+	padding: 0;
+}
+
+/* insert, delete */
+ins { text-decoration: none; }
+del { text-decoration: line-through; }
+
+/* 테이블 설정 */
+table {
+	width: 100%;
+	margin: 0 -1px;
+	border-collapse: collapse;
+	border-spacing: 0;
+	table-layout: fixed;
+}
+table, th, td { border: 1px solid #7c7c7c; }
+th, td { 
+	padding: 1em 2em; 
+	text-align: left; 
+}
+caption { 
+	visibility: hidden; 
+	height: 1px;
+}

@@ -1,0 +1,1216 @@
+	@CHARSET "UTF-8";
+	
+	/* Post Script Style Sheet */
+	
+		/* Basic */
+			
+			header.post_major h2 {
+				font-size: 2em;
+				font-family: 'Nanum Brush Script';
+				font-weight: bold;
+			}
+			
+			div.edi_posts h3 {
+				font-size: 1.25em;
+				font-family: 'Nanum Gothic';
+				color: #3d4449;
+				font-weight: 700;
+				line-height: 1.5;
+				margin: 0 0 1em 0;
+			}
+			
+			div.edi_posts p {
+				padding: 0;
+				border: 0;
+				margin: 0 0 2em 0;
+				font-size: 100%;
+				font-family: "Nanum Gothic";
+				vertical-align: baseline;
+			}
+			
+			
+		/* Button Style */
+			
+			.post_button {
+				-moz-appearance: none;
+				-webkit-appearance: none;
+				-ms-appearance: none;
+				appearance: none;
+				-moz-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+				-webkit-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+				-ms-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+				transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+				background-color: transparent;
+				border-radius: 0.375em;
+				border: 0;
+				box-shadow: inset 0 0 0 2px #f56a6a;
+				color: #f56a6a;
+				cursor: pointer;
+				display: inline-block;
+				font-family: "Nanum Brush Script";
+				font-size: 1.5em;
+				font-weight: 700;
+				height: 1.75em;
+				letter-spacing: 0.075em;
+				line-height: 1.75em;
+				padding: 0 1.25em;
+				text-align: center;
+				text-decoration: none;
+				text-transform: uppercase;
+				white-space: nowrap;
+			}
+			
+			a.post_button:HOVER {
+				background-color: #F89A9A;
+				border: 1px solid #646464;
+				color: #646464;
+			}
+			
+			.post_button:ACTIVE {
+				background-color: rgba(245, 106, 106, 0.15);
+			}
+			
+			.post_button:disabled {
+				-moz-pointer-events: none;
+				-webkit-pointer-events: none;
+				-ms-pointer-events: none;
+				pointer-events: none;
+				opacity: 0.25;
+			}
+			
+			input[type="submit"].post_write_button {
+				-moz-appearance: none;
+				-webkit-appearance: none;
+				-ms-appearance: none;
+				appearance: none;
+				-moz-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+				-webkit-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+				-ms-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+				transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+				background-color: #FFFFFF;
+				border-radius: 0.375em;
+				border: 0;
+				box-shadow: inset 0 0 0 2px #f56a6a;
+				color: #f56a6a;
+				cursor: pointer;
+				display: block;
+				font-family: "Nanum Brush Script";
+				font-size: 1.5em;
+				font-weight: 700;
+				float: right;
+				height: 1.75em;
+				letter-spacing: 0.075em;
+				line-height: 1.75em;
+				padding: 0 1.25em;
+				text-align: center;
+				text-decoration: none;
+				text-transform: uppercase;
+				white-space: nowrap;
+				}
+				
+				input[type="submit"].post_write_button:HOVER {
+					background-color: #f56a6a;
+					color: #323232;
+				}
+				
+				.post_write_button_div {
+					text-align: right;
+				}
+			
+			
+	
+		/* Section / Article */
+		
+			header.post_major > :LAST-CHILD {
+				border-bottom: solid 3px #f56a6a;
+				display: inline-block;
+				margin: 0 0 2em 0;
+				padding: 0 0.75em 0.5em 0;
+			}
+	
+	
+		/* Image */
+		
+			.post_image {
+				border-radius: 0.375em;
+				border: 0;
+				display: inline-block;
+				position: relative;
+			}
+			
+			.post_image img {
+				border-radius: 0.375em;
+				display: block;
+				width: 100%;
+				height: 15em;
+			}
+			
+			.post_image.left, .post_image.right {
+				max-width: 40%;
+			}
+			
+			.post_image.left img, .post_image.right img {
+				width: 100%;
+			}
+			
+			.post_image.left {
+				float: left;
+				padding: 0 1.5em 1em 0;
+				top: 0.25em;
+			}
+			
+			.post_image.right {
+				float: right;
+				padding: 0 0 1em 1.5em;
+				top: 0.25em;
+			}
+			
+			.post_image.fit {
+				display: block;
+				margin: 0 0 2em 0;
+				width: 100%;
+			}
+			
+			.post_image.fit img {
+				width: 100%;
+			}
+			
+			a.post_image {
+				overflow: hidden;
+			}
+			
+			a.post_image img {
+				-moz-transition: -moz-transform 0.2s ease;
+				-webkit-transition: -webkit-transform 0.2s ease;
+				-ms-transition: -ms-transform 0.2s ease;
+				transition: transform 0.2s ease;
+			}
+			
+			a.post_image:HOVER img {
+				-moz-transform: scale(1.075);
+				-webkit-transform: scale(1.075);
+				-ms-transform: scale(1.075);
+				transform: scale(1.075);
+			}
+			
+	
+		/* Wrapper */
+			
+			#post_wrapper {
+				display: -moz-flex;
+				display: -webkit-flex;
+				display: -ms-flex;
+				display: flex;
+				-moz-flex-direction: row-reverse;
+				-webkit-flex-direction: row-reverse;
+				-ms-flex-direction: row-reverse;
+				flex-direction: row-reverse;
+				min-height: 100vh;
+			}
+			
+		/* Main */
+		
+			#post_main {
+				-moz-flex-grow: 1;
+				-webkit-flex-grow: 1;
+				-ms-flex-grow: 1;
+				flex-grow: 1;
+				-moz-flex-shrink: 1;
+				-webkit-flex-shrink: 1;
+				-ms-flex-shrink: 1;
+				flex-shrink: 1;
+				width: 100%;
+			}
+			
+			#post_main > .post_inner {
+				padding: 0 6em 0.1em 6em ;
+				margin: 0 auto;
+				max-width: 110em;
+			}
+			
+			#post_main > .post_inner > section {
+				padding: 6em 0 4em 0 ;
+				border-top: solid 2px rgba(210, 215, 217, 0.75);
+			}
+			
+			#post_main > .post_inner > section:first-of-type {
+				border-top: 0 !important;
+			}
+			
+			
+			@media screen and (max-width: 1680px) {
+	
+				#post_main > .post_inner {
+					padding: 0 5em 0.1em 5em ;
+				}
+	
+					#post_main > .post_inner > section {
+						padding: 5em 0 3em 0 ;
+					}
+	
+			}
+	
+			@media screen and (max-width: 1280px) {
+	
+				#post_main > .post_inner {
+					padding: 0 4em 0.1em 4em ;
+				}
+	
+					#post_main > .post_inner > section {
+						padding: 4em 0 2em 0 ;
+					}
+	
+			}
+	
+			@media screen and (max-width: 736px) {
+	
+				#post_main > .post_inner {
+					padding: 0 2em 0.1em 2em ;
+				}
+	
+					#post_main > .post_inner > section {
+						padding: 3em 0 1em 0 ;
+					}
+	
+			}
+			
+			
+			/* Search Bar CSS Style */
+			
+				div.postSearchBar {
+					display: inline-block;
+				}
+				
+				div.postSearchBar select#searchCategory {
+					display: inline;
+					width: 4.5em;
+					height: 2em;
+					padding: 0 1em 0 1em;
+					line-height: 1.9;
+					border: 1px solid #F5696A;
+				}
+			
+			
+		/* Posts Style */
+		
+			.edi_posts {
+				display: -moz-flex;
+				display: -webkit-flex;
+				display: -ms-flex;
+				display: flex;
+				-moz-flex-wrap: wrap;
+				-webkit-flex-wrap: wrap;
+				-ms-flex-wrap: wrap;
+				flex-wrap: wrap;
+				margin: 0 0 2em -6em;
+				width: calc(100% + 6em);
+			}
+			
+			.edi_posts article{
+				-moz-flex-grow: 0;
+				-webkit-flex-grow: 0;
+				-ms-flex-grow: 0;
+				flex-grow: 0;
+				-moz-flex-shrink: 1;
+				-webkit-flex-shrink: 1;
+				-ms-flex-shrink: 1;
+				flex-shrink: 1;
+				margin: 0 0 6em 6em;
+				position: relative;
+				width: calc(33.33333% - 6em);
+			}
+			
+			.edi_posts article:BEFORE {
+				background: rgba(210, 215, 217, 0.75);
+				content: '';
+				display: block;
+				height: calc(100% + 6em);
+				left: -3em;
+				position: absolute;
+				top: 0;
+				width: 1px;
+			}
+			
+			.edi_posts article:AFTER {
+				background: rgba(210, 215, 217, 0.75);
+				bottom: -3em;
+				content: '';
+				display: block;
+				height: 1px;
+				position: absolute;
+				right: 0;
+				width: calc(100% + 6em);
+			}
+			
+			.edi_posts article > :last-child {
+				margin-bottom: 0;
+			}
+			
+			.edi_posts article .post_image {
+				display: block;
+				margin: 0 0 2em 0;
+			}
+			
+			.edi_posts article .post_image img {
+				display: block;
+				width: 100%;
+			}
+	 
+	 		#best_posts_hr {
+	 			border-top: none;
+	 			border-bottom: 3px solid #f56a6a;
+	 			margin-bottom: 2em;
+	 			top: 0;
+	 		}
+	 		
+	 		#best_posts_hr:BEFORE, #best_posts_hr:AFTER {
+	 			width: 0;
+	 			height: 0;
+	 		}
+	 		
+	 		div.edi_posts_body {
+	 			margin-top: 6em;
+	 		}
+			
+			@media screen and (min-width: 1681px) {
+	
+				.edi_posts article:nth-child(3n + 1):before {
+					display: none;
+				}
+	
+				.edi_posts article:nth-child(3n + 1):after {
+					width: 100%;
+				}
+	
+				.edi_posts article:nth-last-child(1), .edi_posts article:nth-last-child(2), .edi_posts article:nth-last-child(3) {
+					margin-bottom: 0;
+				}
+	
+					.edi_posts article:nth-last-child(1):before, .edi_posts article:nth-last-child(2):before, .edi_posts article:nth-last-child(3):before {
+						height: 100%;
+					}
+	
+					.edi_posts article:nth-last-child(1):after, .edi_posts article:nth-last-child(2):after, .edi_posts article:nth-last-child(3):after {
+						display: none;
+					}
+	
+			}
+	
+			@media screen and (max-width: 1680px) {
+	
+				.edi_posts article {
+					width: calc(33.3333% - 6em);
+				}
+	
+					.edi_posts article:nth-last-child(3) {
+						margin-bottom: 6em;
+					}
+	
+			}
+	
+			@media screen and (min-width: 481px) and (max-width: 1680px) {
+	
+				.edi_posts article:nth-child(3n + 1):before {
+					display: none;
+				}
+	
+				.edi_posts article:nth-child(3n + 1):after {
+					width: 100%;
+				}
+	
+				.edi_posts article:nth-last-child(1), .edi_posts article:nth-last-child(2), .edi_posts article:nth-last-child(3) {
+					margin-bottom: 0;
+				}
+	
+					.edi_posts article:nth-last-child(1):before, .edi_posts article:nth-last-child(2):before, .edi_posts article:nth-last-child(3):before {
+						height: 100%;
+					}
+	
+					.edi_posts article:nth-last-child(1):after, .edi_posts article:nth-last-child(2):after, .edi_posts article:nth-last-child(3):after {
+						display: none;
+					}
+	
+			}
+	
+			@media screen and (max-width: 736px) {
+	
+				.edi_posts {
+					margin: 0 0 2em -4.5em;
+					width: calc(100% + 4.5em);
+				}
+	
+					.edi_posts article {
+						margin: 0 0 4.5em 4.5em;
+						width: calc(50% - 4.5em);
+					}
+	
+						.edi_posts article:before {
+							height: calc(100% + 4.5em);
+							left: -2.25em;
+						}
+	
+						.edi_posts article:after {
+							bottom: -2.25em;
+							width: calc(100% + 4.5em);
+						}
+	
+						.edi_posts article:nth-last-child(3) {
+							margin-bottom: 4.5em;
+						}
+	
+			}
+	
+			@media screen and (max-width: 480px) {
+	
+				.edi_posts {
+					margin: 0 0 2em 0;
+					width: 100%;
+				}
+	
+					.edi_posts article {
+						margin: 0 0 4.5em 0;
+						width: 100%;
+					}
+	
+						.edi_posts article:before {
+							display: none;
+						}
+	
+						.edi_posts article:after {
+							width: 100%;
+						}
+	
+						.edi_posts article:last-child {
+							margin-bottom: 0;
+						}
+	
+							.edi_posts article:last-child:after {
+								display: none;
+							}
+	
+			}
+			
+			
+		/* Images */
+			
+			.best_posts_image img {
+				float: left;
+				width: 15em;
+				height: 9em;
+				margin-left: -2em;
+				margin-top: 1em;
+			}
+			
+			
+			
+	/* Post Detail View Style CSS */
+	
+		/* Map route image */
+			
+			.map_image_view {
+				border-right: 2px dashed #f56a6a;
+			}
+			
+			.map_image_view iframe {
+				margin: 0;
+				padding: 0;
+				width: 384px;
+			}
+			
+		/* Map Route Table */	
+		
+		
+			#post_route_table th {
+				vertical-align: middle;
+				font-family: "Nanum Gothic";
+				font-weight: bold;
+				font-size: 2.5em;
+				line-height: 1.2;
+			}
+			
+			#post_route_table th#post_review_title{
+				padding-top: 1em;
+			}
+			
+			#post_route_table td {
+				font-family: "Nanum Gothic";
+				font-size: 0.8em;
+				color: #A0A0A0;
+				text-align: left;
+				vertical-align: middle;
+				line-height: 2.5;
+			}
+			
+			#post_route_table td#detailAddressView {
+				vertical-align: top;
+				text-align: left;
+				padding-top: 2em;
+				padding-left: 2.5em;
+				font-family: "Nanum Gothic";
+				font-size: 1.3em;
+				font-weight: bold;
+				color: #000000;
+				line-height: 2;
+			}
+			
+			td#detailAddressView p {
+				border: 1px solid #f56a6a;
+				border-radius: 10%;
+				padding: 0.5em 1em;
+			}
+			
+			#post_route_table tr td header.post_major >:LAST-CHILD {
+				margin: 0 0 1em 0;
+				padding: 0 0 0 0;
+			}
+			
+			#post_route_table tr td header.post_major h2 {
+				font-size: 3em;
+			}
+			
+			hr#post_divider {
+				margin-top: -3em;
+				border-color: #f56a6a;
+				margin-bottom: 6em;
+			}
+			
+			hr#post_divider:BEFORE, hr#post_divider:AFTER {
+				width: 0;
+				height: 0;
+			}
+			
+			
+		/* Button Style */
+		
+			input[type="button"]#star, td input[type="submit"] {
+				-moz-appearance: none;
+				-webkit-appearance: none;
+				-ms-appearance: none;
+				appearance: none;
+				-moz-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+				-webkit-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+				-ms-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+				transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+				background-color: transparent;
+				border-radius: 0.375em;
+				border: 0;
+				box-shadow: inset 0 0 0 2px #f56a6a;
+				color: #f56a6a;
+				cursor: pointer;
+				display: inline-block;
+				font-family: "Nanum Brush Script";
+				font-size: 1.5em;
+				font-weight: 700;
+				height: 1.75em;
+				letter-spacing: 0.075em;
+				line-height: 1.75em;
+				padding: 0 0.7em;
+				text-align: center;
+				text-decoration: none;
+				text-transform: uppercase;
+				white-space: nowrap;
+				margin-left: 1em;
+			}
+			
+			input[type="button"]#star:HOVER, td input[type="submit"]:HOVER {
+				background-color: #f56a6a;
+				color: #323232;
+			}
+			
+			input[type="button"]#listview {
+				-moz-appearance: none;
+				-webkit-appearance: none;
+				-ms-appearance: none;
+				appearance: none;
+				-moz-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+				-webkit-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+				-ms-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+				transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+				background-color: transparent;
+				border-radius: 0.375em;
+				border: 0;
+				box-shadow: inset 0 0 0 2px #f56a6a;
+				color: #f56a6a;
+				cursor: pointer;
+				display: inline-block;
+				font-family: "Nanum Gothic";
+				font-size: 1.1em;
+				font-weight: 700;
+				float: right;
+				height: 1.75em;
+				letter-spacing: 0.075em;
+				line-height: 0.9em;
+				padding: 0.2em 0.7em;
+				text-align: center;
+				text-decoration: none;
+				text-transform: uppercase;
+				white-space: nowrap;
+				margin-right: 1.5em;
+			}
+			
+			input[type="button"]#listview:HOVER {
+				background-color: #f56a6a;
+				color: #323232;
+			}
+			
+			
+		/* Post Map Route plan style CSS */
+		
+			ul.day_tab {
+				list-style-type: none;
+				margin: 0;
+				padding: 0;
+				overflow: hidden;
+				/* border: 1px solid #F5696A;
+				border-radius: 1.5%; */
+				background-color: #FFFFFF;
+			}
+			
+			ul.day_tab li {
+				float: left;
+			}
+			
+			ul.day_tab li a {
+				display: inline-block;
+				color: #000000;
+				text-align: center;
+				padding: 0 0.7em;
+				text-decoration: none;
+				transition: 0.3s;
+				font-size: 1.5em;
+				font-family: "Nanum Gothic";
+				font-weight: bold;
+				border-right: 1px solid #F5696A;
+			}
+			
+			ul.day_tab li a:HOVER {
+				background-color: #FF9C9C;
+			}
+			
+			ul.day_tab li a:FOCUS, .active {
+				background-color: #F5696A;
+				color: #FFFFFF;
+			}
+			
+			
+				
+			/* Style the tab content */
+				.day_tabContent {
+					display: none;
+					padding: 1.5em 1.5em;
+					border: 1px solid #F5696A;
+					border-radius: 1.5%;
+					/* border-top: none; */
+					font-family: "Nunum Gothic";
+					margin-top: 1em;
+				}
+				
+				.day_tabContent h3{
+					width: 3.5em;
+					font-size: 2em;
+					font-weight: bold;
+					border-bottom: 1px solid #F5696A;
+					padding-bottom: 0.5em;
+				}
+				
+				.day_tabContent p{
+					font-size: 2em;
+					color: #000000;
+				}
+				
+				.topright {
+					float: right;
+					cursor: pointer;
+					font-size: 2em;
+				}
+				
+				.topright:HOVER {
+					color: #FF0000;
+				}
+				
+				
+		/* Post Reply Style CSS */
+		
+			table.post_reply_view, table.post_reply_view th, table.post_reply_view td {
+				padding: 0 0 0 0;
+			}
+			
+			table.post_reply_view th i {
+				font-size: 2em;
+				color: #F5696A;
+			}
+			
+			table.post_reply_view #replyContent {
+				width: 97%;
+				border-radius: 5%;
+				font-family: "Nanum Gothic";
+				font-size: 0.9em;
+				margin-bottom: 1em;
+			}
+			
+			table.post_reply_view #replyContent:FOCUS {
+				border-color: #F5696A;
+			}
+			
+			table.post_reply_view #replyRegist, table.post_reply_view #postButtonStyle1 {
+				-moz-appearance: none;
+				-webkit-appearance: none;
+				-ms-appearance: none;
+				appearance: none;
+				-moz-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+				-webkit-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+				-ms-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+				transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+				background-color: transparent;
+				border-radius: 0.375em;
+				border: 0;
+				box-shadow: inset 0 0 0 2px #f56a6a;
+				color: #f56a6a;
+				cursor: pointer;
+				display: inline-block;
+				font-family: "Nanum Brush Script";
+				font-size: 1.2em;
+				font-weight: 700;
+				height: 1.75em;
+				letter-spacing: 0.075em;
+				line-height: 1.75em;
+				padding: 0 0.7em;
+				text-align: center;
+				text-decoration: none;
+				text-transform: uppercase;
+				white-space: nowrap;
+				margin-left: 1em;
+			}
+			
+			table.post_reply_view #post_reply_content {
+				vertical-align: top;
+				padding-top: 0em;
+				padding-bottom: 0.7em;
+				padding-left: 0.5em;
+				font-size: 1.3em;
+				color: #000000;
+			}
+			
+			table.post_reply_view #replyRegist:HOVER, table.post_reply_view #postButtonStyle1:HOVER {
+				background-color: #f56a6a;
+				color: #323232;
+			}
+			
+			table.post_reply_view #postButtonStyle1 {
+				padding: 0 0.5em;
+				margin-left: 0;
+			}
+			
+			table.post_reply_view tr >:LAST-CHILD {
+				text-align: left;
+			}
+			
+			table.post_reply_view tr th {
+				font-family: "Nanum Gothic";
+				font-size: 1.2em;
+				font-weight: bold;
+			}
+			
+			table.post_reply_view #post_reply_date {
+				font-family: "Nanum Gothic";
+				font-size: 0.8em;
+				color: #888;
+				text-align: left;
+				padding-left: 1em;
+			}
+			
+			
+		/* Post footer part */
+		
+			#posts_paging {
+				text-align: center;
+				font-family: 'Nanum Gothic';
+				font-size: 1.2em;
+				margin-top: 2em;
+			}
+			
+			
+			
+		/* Post Write CSS Style */
+		
+			/* Table */
+		
+				table.post_write_table, table.post_write_table th, table.post_write_table td {
+					padding: 0 0 0 0;
+					margin: 0 0 0 0;
+				}
+			
+				input[type='text']#post_write_title, input[type='text'].post_write_title {
+					font-family: "Nanum Gothic";
+					font-size: 1.3em;
+					width: 98%;
+					padding: 0.2em 0.5em;
+				}
+				
+				table.post_write_table th, table.post_write_table td {
+					vertical-align: middle;
+					padding: 0.4em 0;
+				}
+				
+				table.post_write_table th label{
+					font-family: "Nanum Gothic";
+					font-size: 1.3em;
+					font-weight: bold;
+					line-height: 0;
+					margin-top: 0.6em;
+				}
+				
+				table.post_write_table input[type='text']#routeTitle {
+					width: 57%;
+					font-family: "Nanum Gothic";
+					font-size: 1em;
+					padding: 0.2em 0.5em;
+					display: inline-block;
+					background: none;
+					border: 1px solid #ddd;
+				}
+				
+				table.post_write_table input[type='text']#routeTitleImage {
+					width: 55.5%;
+					font-family: "Nanum Gothic";
+					font-size: 1em;
+					padding: 0.2em 0.5em;
+					display: inline-block;
+					background: none;
+					border: 1px solid #ddd;
+				}
+				
+				table.post_write_table tr.routeTitleTr td{
+					text-align: right;
+				}
+				
+				
+			
+			/* Button Style */
+			
+				table.post_write_table input[type='button'].postButtonStyle2,
+				table.post_write_table input[type='submit'].postButtonStyle2 {
+					-moz-appearance: none;
+					-webkit-appearance: none;
+					-ms-appearance: none;
+					appearance: none;
+					-moz-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+					-webkit-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+					-ms-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+					transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+					background-color: transparent;
+					border-radius: 0.375em;
+					border: 0;
+					box-shadow: inset 0 0 0 2px #f56a6a;
+					color: #f56a6a;
+					cursor: pointer;
+					display: inline-block;
+					font-family: "Nanum Gothic";
+					font-size: 1em;
+					font-weight: 700;
+					float: right;
+					height: 1.75em;
+					letter-spacing: 0.075em;
+					line-height: 1.75em;
+					padding: 0em 0.3em;
+					text-align: right;
+					text-decoration: none;
+					text-transform: uppercase;
+					white-space: nowrap;
+					margin-right: 0.7em;
+					margin-left: 1em;
+				}
+				
+				table.post_write_table input[type='button'].postButtonStyle2:HOVER,
+				table.post_write_table input[type='submit'].postButtonStyle2:HOVER {
+					background-color: #f56a6a;
+					color: #323232;
+				}
+				
+				#rightFixedTab {
+					width: 10em;
+					position: fixed;
+					border: 1px solid #f56a6a;
+					border-radius: 3%;
+					right: 4.5em;
+					top: 17em;
+					padding: 0 0 0 0;
+				}
+				
+				#rightFixedTab i {
+					font-size: 1.5em;
+					color: #f56a6a;
+					padding: 0 0 0 0;
+					margin: 0.7em;
+				}
+				
+				#rightFixedTab input[type='button']#addBtn, #rightFixedTab input[type='button']#subBtn {
+					-moz-appearance: none;
+					-webkit-appearance: none;
+					-ms-appearance: none;
+					appearance: none;
+					-moz-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+					-webkit-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+					-ms-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+					transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+					background-color: transparent;
+					border-radius: 0.375em;
+					border: 0;
+					box-shadow: inset 0 0 0 2px #f56a6a;
+					color: #f56a6a;
+					cursor: pointer;
+					display: inline-block;
+					font-family: "Nanum Gothic";
+					font-size: 1em;
+					font-weight: 700;
+					float: right;
+					height: 1.75em;
+					letter-spacing: 0.075em;
+					line-height: 1.75em;
+					padding: 0em 0.3em;
+					text-align: right;
+					text-decoration: none;
+					text-transform: uppercase;
+					white-space: nowrap;
+					margin-bottom: 0.7em;
+					margin-top: 0.7em;
+					margin-right: 1em;
+				}
+				
+				#rightFixedTab input[type='button']#addBtn:HOVER, #rightFixedTab input[type='button']#subBtn:HOVER {
+					background-color: #f56a6a;
+					color: #323232;
+				}
+				
+				
+			/* Editor Style */
+			
+				table.post_write_table tr.write_days_editor h4 {
+					display: inline-block;
+					font-family: "Nanum Brush Script";
+					font-size: 1.3em;
+					font-weight: bold;
+					float: left;
+					margin-left: 1em;
+					margin-bottom: 0.5em;
+					border-bottom: 1px solid #f56a6a;
+					border-bottom-width: 0.1em;
+				}
+				
+				h3#post_write_mainH3 {
+					display: inline-block;
+					font-family: "Nanum Brush Script";
+					font-size: 2.2em;
+					font-weight: bold;
+					float: left;
+					margin-left: 1em;
+					margin-bottom: 1em;
+					border-bottom: 3px solid #f56a6a;
+				}
+				
+				table.post_write_table tr.write_days_editor div {
+					border-top: 2px dashed #f56a6a;
+					padding-top: 2em;
+					margin-bottom: 2em;
+				}
+				
+				table.post_write_table tr.write_days_editor td >:FIRST-CHILD {
+					border-top: none;
+					padding-top: 2em;
+					margin-bottom: 2em;
+				}
+
+			/* My Route import page CSS Style */
+			
+				div#myroute_import_title {
+					font-family: "Nanum Gothic";
+					font-size: 1em;
+					font-weight: bold;
+					text-align: center;
+				}
+				
+				div#myroute_import_title h1 {
+					display: inline-block;
+					border-bottom: 2px solid #F5696A;
+					padding-bottom: 0.3em;
+					margin-bottom: 1em;
+				}
+				
+				div#myroute_import_title select {
+					height: 3em;
+					border: 1px solid #F5696A;
+					border-radius: 10px;
+					padding: 0.5em 1em;
+				}
+				
+				div#myroute_import_title select option {
+					font-family: "Nanum Gothic";
+					font-size: 1em;
+					text-align: center;
+				}
+				
+				div#myroute_import_title input[type='button'] {
+					-moz-appearance: none;
+					-webkit-appearance: none;
+					-ms-appearance: none;
+					appearance: none;
+					-moz-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+					-webkit-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+					-ms-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+					transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+					background-color: transparent;
+					border-radius: 0.375em;
+					border: 0;
+					box-shadow: inset 0 0 0 2px #f56a6a;
+					color: #f56a6a;
+					cursor: pointer;
+					display: inline-block;
+					font-family: "Nanum Gothic";
+					font-size: 1em;
+					font-weight: 700;
+					height: 1.75em;
+					letter-spacing: 0.075em;
+					line-height: 1.75em;
+					padding: 0em 0.3em;
+					text-align: right;
+					text-decoration: none;
+					text-transform: uppercase;
+					white-space: nowrap;
+					margin-left: 0.5em;
+				}
+				
+				div#myroute_import_title input[type='button']:HOVER {
+					background-color: #f56a6a;
+					color: #323232;
+				}
+				
+				div#myrout_import_title input[type='button']#preview {
+					text-align: right;
+				}
+				
+		/* Post Write Update CSS Style */
+		
+			/* Table */
+			
+				table.post_write_table td label {
+					display: inline-block;
+					margin-right: 1em;
+					font-family: "Nanum Gothic";
+					font-size: 1em;
+					color: #a1a1a1;
+					font-weight: none;
+				}
+				
+				table.post_write_table td#postWriteUpdateInfo {
+					text-align: left;
+					padding-left: 0.8em;
+				}
+				
+				
+				
+		/* Post Map Route plan style CSS */
+		
+			ul.using_tab {
+				list-style-type: none;
+				margin: 0;
+				padding: 0;
+				overflow: hidden;
+				background-color: #FFFFFF;
+				border: 1px solid #F5696A;
+				display: inline-block;
+				margin-top: 2em;
+			}
+			
+			ul.using_tab li {
+				float: left;
+			}
+			
+			ul.using_tab li a {
+				display: inline-block;
+				color: #000000;
+				text-align: center;
+				padding: 0.5em 0.5em;
+				text-decoration: none;
+				transition: 0.3s;
+				font-size: 1.5em;
+				font-family: "Nanum Gothic";
+				font-weight: bold;
+				border-right: 1px solid #F5696A;
+			}
+			
+			ul.using_tab li a:HOVER {
+				background-color: #FF9C9C;
+			}
+			
+			ul.using_tab li a:FOCUS, .active {
+				background-color: #F5696A;
+				color: #FFFFFF;
+			}
+			
+			
+				
+			/* Style the tab content */
+				.using_tabContent {
+					display: none;
+					padding: 1.5em 1.5em;
+					border: 1px solid #F5696A;
+					border-radius: 1.5%;
+					font-family: "Nunum Gothic";
+					margin-top: 1em;
+				}
+				
+				.using_tabContent h3{
+					width: 3.5em;
+					font-size: 2em;
+					font-weight: bold;
+					border-bottom: 1px solid #F5696A;
+					padding-bottom: 0.5em;
+				}
+				
+				.using_tabContent p{
+					font-size: 2em;
+					color: #000000;
+				}
+				
+				.topright {
+					float: right;
+					cursor: pointer;
+					font-size: 2em;
+				}
+				
+				.topright:HOVER {
+					color: #FF0000;
+				}
+				
+				div.how_using_div img {
+					width: 80%;
+					height: auto;
+					margin-left: 1em;
+					margin-top: 1em;
+				}
+				
+				
+			/* Font Style */
+			
+				div.how_using_div h3 {
+					display: inline-block;
+					font-family: "Nanum Gothic";
+					font-size: 2em;
+					font-weight: bold;
+					border-bottom: 2px solid #F5696A;
+					padding-bottom: 0.5em;
+					margin-bottom: 1em;
+				}
+				
+				div.how_using_div h4 {
+					display: inline-block;
+					font-family: "Nanum Gothic";
+					font-size: 1.3em;
+					font-weight: bold;
+					border-top: 1.5px dashed #F5696A;
+					border-bottom: 1.5px dashed #F5696A;
+					padding-top: 0.5em;
+					padding-bottom: 0.5em;
+					margin-top: 1em;
+					margin-bottom: 1em;
+				}

@@ -1,0 +1,184 @@
+@CHARSET "UTF-8";
+@import url("https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,300italic,400,400italic,600");
+@import url("http://fonts.googleapis.com/earlyaccess/nanumbrushscript.css");
+@import url("http://fonts.googleapis.com/earlyaccess/nanumpenscript.css");
+@import url("http://fonts.googleapis.com/earlyaccess/jejugothic.css");
+@import url("http://fonts.googleapis.com/earlyaccess/hanna.css");
+@import url("http://fonts.googleapis.com/earlyaccess/jejuhallasan.css");
+@import url("font-awesome.min.css");
+
+/* Fancy box & 추천 후기 Section과 관련된 CSS */
+
+	/* Type */
+	
+		h1.major, h2.major, h3.major, h4.major, h5.major, h6.major {
+			padding-bottom: 1em;
+			border-bottom: solid 2px rgba(255, 255, 255, 0.125);
+		}
+		
+		h3.major {
+			font-size: 0.9em;
+		}
+		
+		h1.major, h2.major, h3.major, h4.major, h5.major, h6.major {
+			color: #ffffff;
+			font-family: "Jeju Gothic";
+			
+			letter-spacing: 0.1em;
+			margin: 0 0 1em 0;
+			text-transform: uppercase;
+			font-size: 20pt;
+		}
+		
+		#fancyPFont{
+			color: white;
+		}
+
+	/* fancyFeatures */
+
+			.fancyFeatures {
+				display: -moz-flex;
+				display: -webkit-flex;
+				display: -ms-flex;
+				display: flex;
+				-moz-flex-wrap: wrap;
+				-webkit-flex-wrap: wrap;
+				-ms-flex-wrap: wrap;
+				flex-wrap: wrap;
+				margin: 0 0 2em 0;
+			}
+
+			.fancyFeatures article {
+				padding: 1.75em 1.75em 0.1em 1.75em ;
+				background-color: #353849;
+				border-radius: 5px;
+				margin: 1.5em 3em 1.5em 0;
+				width: calc(50% - 1.5em);
+			}
+
+			.fancyFeatures article:nth-child(2n) {
+				margin-right: 0;
+			}
+
+			.fancyFeatures article .fancyImage {
+				border-radius: 5px 5px 0 0;
+				display: block;
+				margin-bottom: 1.75em;
+				margin-left: -1.75em;
+				margin-top: -1.75em;
+				position: relative;
+				width: calc(100% + 3.5em);
+			}
+
+				.fancyFeatures article .fancyImage img {
+					border-radius: 5px 5px 0 0;
+					width: 100%;
+					height: 20em;
+				}
+
+		@media screen and (max-width: 980px) {
+
+			.fancyFeatures article {
+				margin: 1em 2em 1em 0;
+				width: calc(50% - 1em);
+			}
+			
+			.fancyFeatures article .fancyImage {
+				height: calc(20em - 5em);
+			}
+
+		}
+
+		@media screen and (max-width: 736px) {
+
+			.fancyFeatures article {
+				padding: 1.5em 1.5em 0.1em 1.5em ;
+				margin: 0.875em 1.75em 0.875em 0;
+				width: calc(50% - 0.875em - 1px);
+			}
+
+				.fancyFeatures article .fancyImage {
+					margin-bottom: 1.5em;
+					margin-left: -1.5em;
+					margin-top: -1.5em;
+					width: calc(100% + 3em);
+					height: calc(20em - 10em);
+				}
+
+		}
+
+		@media screen and (max-width: 640px) {
+
+			.fancyFeatures {
+				display: block;
+			}
+
+				.fancyFeatures article {
+					width: 100%;
+					margin: 0 0 2em 0 !important;
+				}
+				
+				.fancyFeatures article .fancyImage {
+					height: calc(20em - 13em);
+				}
+
+		}
+		
+	/* Fancy Button */
+	
+		.fancySpecial {
+			color: #FFFFFF;
+		}
+		
+		a.fancySpecial:hover {
+			color: red;
+		}
+	
+		a.fancySpecial:not(.fancyButton) {
+			text-decoration: none;
+			border-bottom: 0;
+			display: block;
+			font-family: Raleway, Helvetica, sans-serif;
+			font-size: 0.8em;
+			font-weight: 700;
+			letter-spacing: 0.1em;
+			margin: 0 0 2em 0;
+			text-transform: uppercase;
+		}
+
+			a.fancySpecial:not(.fancyButton):before {
+				-moz-osx-font-smoothing: grayscale;
+				-webkit-font-smoothing: antialiased;
+				font-family: FontAwesome;
+				font-style: normal;
+				font-weight: normal;
+				text-transform: none !important;
+			}
+
+			a.fancySpecial:not(.fancyButton):before {
+				-moz-transition: background-color 0.2s ease-in-out;
+				-webkit-transition: background-color 0.2s ease-in-out;
+				-ms-transition: background-color 0.2s ease-in-out;
+				transition: background-color 0.2s ease-in-out;
+				border-radius: 100%;
+				border: solid 2px rgba(255, 255, 255, 0.125);
+				content: '\f105';
+				display: inline-block;
+				font-size: 1.25em;
+				height: 2em;
+				line-height: 1.65em;
+				margin-right: 0.85em;
+				text-align: center;
+				text-indent: 0.15em;
+				vertical-align: middle;
+				width: 2em;
+			}
+
+			a.fancySpecial:not(.fancyButton):hover:before {
+				background-color: rgba(255, 255, 255, 0.025);
+			}
+
+			a.fancySpecial:not(.fancyButton):active:before {
+				background-color: rgba(255, 255, 255, 0.075);
+			}
+			

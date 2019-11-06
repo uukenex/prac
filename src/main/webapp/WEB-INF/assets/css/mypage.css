@@ -1,0 +1,637 @@
+@CHARSET "UTF-8";
+
+/* My Page CSS Style */
+
+	/* My Page _ My Post CSS Style */
+	
+		h2.mypage_mypost_title {
+			display: block;
+			font-family: "Nanum Gothic";
+			font-size: 2em;
+			font-weight: bold;
+			color: #3d4449;
+			border-bottom: 2px dashed #F5696A;
+			padding-bottom: 1em;
+			padding-left: 1em;
+		}
+		
+		/* Table */
+		
+			div#mypage_mypost_viewDiv {
+				display: block;
+				width: 95%;
+				border: 1.5px dashed #F5696A;
+				border-radius: 3%;
+				padding-top: 0;
+				margin-top: 3em;
+				margin-left: 2em;
+			}
+		
+			table.mypage_mypost_viewTable th {
+				vertical-align: middle;
+			}
+			
+			table.mypage_mypost_viewTable td {
+				padding-bottom: 0.5em;
+				text-align: left;
+				padding-left: 1.5em;
+			}
+
+			
+			
+		/* Font */
+		
+			b.mypage_mypost_postTitle {
+				font-family: "Nanum Gothic";
+				font-size: 1.5em;
+				font-weight: bold;
+				color: #3d4449;
+				text-align: left;
+			}
+			
+			
+		/* Button Style */
+		
+			table.mypage_mypost_viewTable a.mypage_mypost_buttonStyle1,
+			table.mypage_mypost_viewTable input[type='button'].mypage_mypost_buttonStyle1,
+			table.mypage_mypost_viewTable input[type='submit'].mypage_mypost_buttonStyle1 {
+				-moz-appearance: none;
+				-webkit-appearance: none;
+				-ms-appearance: none;
+				appearance: none;
+				-moz-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+				-webkit-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+				-ms-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+				transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+				background-color: #FFFFFF;
+				border-radius: 0.375em;
+				border: 0;
+				box-shadow: inset 0 0 0 2px #f56a6a;
+				color: #f56a6a;
+				cursor: pointer;
+				display: inline-block;
+				font-family: "Nanum Brush Script";
+				font-size: 1.5em;
+				font-weight: 700;
+				height: 1.75em;
+				letter-spacing: 0.075em;
+				line-height: 1.75em;
+				padding: 0 1.25em;
+				text-align: center;
+				text-decoration: none;
+				text-transform: uppercase;
+				white-space: nowrap;
+				margin-right: 1.7em;
+			}
+			
+			table.mypage_mypost_viewTable a.mypage_mypost_buttonStyle1:HOVER,
+			table.mypage_mypost_viewTable input[type='button'].mypage_mypost_buttonStyle1:HOVER,
+			table.mypage_mypost_viewTable input[type='submit'].mypage_mypost_buttonStyle1:HOVER {
+				background-color: #f56a6a;
+					color: #323232;
+			}
+			
+			
+			
+		/* Check Box Style */
+		
+			input[type="checkbox"] {
+				display: none;
+			}
+			
+			input[type='checkbox'] + label {
+				display: inline-block;
+				cursor: pointer;
+				position: relative;
+				padding-left: 25px;
+				margin-right: 15px;
+				margin-top: 1.8em;
+				font-size: 2em;
+			}
+			
+			input[type='checkbox'] + label:BEFORE {
+				content: "";
+				display: inline-block;
+				
+				width: 1.2em;
+				height: 1.2em;
+				
+				margin-right: 10px;
+				background-color: #FFFFFF;
+				border: 1px solid #F5696A;
+				border-radius: 5px;
+			}
+			
+			input[type='checkbox']:CHECKED + label:BEFORE {
+				content: "\2713";
+				font-size: 1em;
+				font-weight: 800;
+				color: #fff;
+				background-color: #F56A6A;
+				text-align: center;
+				line-height: 1.2em;
+			}
+			
+			
+	/* My Page _ My Plan Style */
+	
+		/* Button */
+		
+			div#choiceButtonDiv {
+				float: right;
+			}
+		
+			input[type='button'].mypage_myplan_buttonStyle2 {
+				-moz-appearance: none;
+				-webkit-appearance: none;
+				-ms-appearance: none;
+				appearance: none;
+				-moz-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+				-webkit-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+				-ms-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+				transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+				background-color: #FFFFFF;
+				border-radius: 0.375em;
+				border: 0;
+				box-shadow: inset 0 0 0 2px #f56a6a;
+				color: #f56a6a;
+				cursor: pointer;
+				display: block;
+				font-family: "Nanum Gothic";
+				font-size: 1em;
+				font-weight: bold;
+				height: 2em;
+				letter-spacing: 0.075em;
+				line-height: 0.3em;
+				padding: 0.5em 1em;
+				text-align: center;
+				text-decoration: none;
+				text-transform: uppercase;
+				white-space: nowrap;
+				margin-right: 1.7em;
+				margin-top: 1em;
+			}
+			
+			input[type='button'].mypage_myplan_buttonStyle2:HOVER {
+				background-color: #f56a6a;
+					color: #323232;
+			}
+			
+			table.mypage_myplan_viewTable a.mypage_mypost_buttonStyle1,
+			table.mypage_myplan_viewTable input[type='button'].mypage_mypost_buttonStyle1,
+			table.mypage_myplan_viewTable input[type='submit'].mypage_mypost_buttonStyle1 {
+				-moz-appearance: none;
+				-webkit-appearance: none;
+				-ms-appearance: none;
+				appearance: none;
+				-moz-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+				-webkit-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+				-ms-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+				transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+				background-color: #FFFFFF;
+				border-radius: 0.375em;
+				border: 0;
+				box-shadow: inset 0 0 0 2px #f56a6a;
+				color: #f56a6a;
+				cursor: pointer;
+				display: inline-block;
+				font-family: "Nanum Brush Script";
+				font-size: 1.5em;
+				font-weight: 700;
+				height: 1.75em;
+				letter-spacing: 0.075em;
+				line-height: 1.75em;
+				padding: 0 1.25em;
+				text-align: center;
+				text-decoration: none;
+				text-transform: uppercase;
+				white-space: nowrap;
+				margin-right: 1.7em;
+			}
+			
+			table.mypage_myplan_viewTable a.mypage_mypost_buttonStyle1:HOVER,
+			table.mypage_myplan_viewTable input[type='button'].mypage_mypost_buttonStyle1:HOVER,
+			table.mypage_myplan_viewTable input[type='submit'].mypage_mypost_buttonStyle1:HOVER {
+				background-color: #f56a6a;
+					color: #323232;
+			}
+			
+			
+		/* Table */
+		
+			div#mypage_myplan_viewDiv {
+				display: block;
+				width: 95%;
+				border: 1.5px dashed #F5696A;
+				border-radius: 3%;
+				padding-top: 0;
+				margin-top: 3em;
+				margin-left: 2em;
+			}
+		
+			table.mypage_myplan_viewTable th {
+				vertical-align: middle;
+			}
+			
+			table.mypage_myplan_viewTable td {
+				padding-bottom: 0.5em;
+				text-align: left;
+				padding-left: 1.5em;
+			}
+			
+			
+			
+	/* Photo Book Style */
+	
+		/* Div */
+		
+			div.shareGrantInfo {
+				text-align: center;
+			}
+			
+			div.shareGrantInfo h1 {
+				font-size: 3.5em;
+				color: #F5696A;
+			}
+			
+			div.shareGrantInfo h2 {
+				font-family: "Nanum Gothic";
+				font-size: 1.5em;
+				line-height: 2em;
+			}
+			
+			div.shareGrantInfo h2 i {
+				color: #F56A6A;
+			}
+			
+			div.shareGrantInfo input[type='button'].labeling1 {
+				-moz-appearance: none;
+				-webkit-appearance: none;
+				-ms-appearance: none;
+				appearance: none;
+				-moz-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+				-webkit-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+				-ms-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+				transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+				background-color: #FFFFFF;
+				border-radius: 0.375em;
+				border: 0;
+				box-shadow: inset 0 0 0 2px #f56a6a;
+				color: #f56a6a;
+				cursor: pointer;
+				display: inline-block;
+				font-family: "Nanum Brush Script";
+				font-size: 1.5em;
+				font-weight: 700;
+				height: 1.75em;
+				letter-spacing: 0.075em;
+				line-height: 1.75em;
+				padding: 0 1.25em;
+				text-align: center;
+				text-decoration: none;
+				text-transform: uppercase;
+				white-space: nowrap;
+				margin-top: 1em;
+			}
+			
+			div.shareGrantInfo input[type='button'].labeling1:HOVER {
+				background-color: #f56a6a;
+					color: #323232;
+			}
+			
+			
+			
+	/* Change Information Users CSS Style */
+	
+		/*First Password Check Form */
+		
+			div.info_input_pass {
+				border: 1px solid #F5696A;
+				border-radius: 10px;
+				margin-top: 12em;
+				margin-bottom: 3em;
+				padding-bottom: 3em;
+				padding-left: 3.5em;
+			}
+			
+			div.info_input_pass form h4 {
+				font-family: "Nanum Gothic";
+				font-size: 1.2em;
+				color: #454545;
+				margin-left: 0.4em;
+			}
+		
+			input[type='password']#passwordCheck {
+				width: 20em;
+				border: 1.2px solid #999;
+			}
+			
+			input[type='submit'].mypage_info_buttonStyle3, input[type='button'].mypage_info_buttonStyle3 {
+				-moz-appearance: none;
+				-webkit-appearance: none;
+				-ms-appearance: none;
+				appearance: none;
+				-moz-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+				-webkit-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+				-ms-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+				transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+				background-color: #FFFFFF;
+				border-radius: 0.375em;
+				border: 0;
+				box-shadow: inset 0 0 0 2px #f56a6a;
+				color: #f56a6a;
+				cursor: pointer;
+				display: inline-block;
+				font-family: "Nanum Brush Script";
+				font-size: 1.5em;
+				font-weight: 700;
+				height: 1.75em;
+				letter-spacing: 0.075em;
+				line-height: 1.75em;
+				padding: 0 1.25em;
+				text-align: center;
+				text-decoration: none;
+				text-transform: uppercase;
+				white-space: nowrap;
+				margin-top: 1em;
+				margin-left: 1.3em;
+			}
+			
+			input[type='submit'].mypage_info_buttonStyle3:HOVER, input[type='button'].mypage_info_buttonStyle3:HOVER {
+				background-color: #f56a6a;
+					color: #323232;
+			}
+			
+			
+			
+	/* User Information Change CSS Style */
+	
+		/* Table */
+		
+			div.info_change_body {
+				border: 1px solid #F5696A;
+				border-radius: 10px;
+				margin-top: 5em;
+				padding-right: 2em;
+				padding-bottom: 1em;
+			}
+			
+			table#info_change_table {
+				border: 2px solid #F5696A;
+			}
+			
+			table#info_change_table th {
+				background-color: rgba(250, 180, 180, 0.5);
+				border-right: 1px dashed #F5696A;
+				border-bottom: 1px dashed #F5696A;
+				font-family: "Nanum Gothic";
+				font-size: 1.3em;
+				font-weight: bold;
+				vertical-align: middle;
+				padding-top: 0.4em;
+			}
+			
+			table#info_change_table td {
+				padding-left: 1em;
+				padding-bottom: 0.5em;
+				padding-right: 1em;
+				font-family: "Nanum Gothic";
+				font-size: 1em;
+			}
+			
+			table#info_change_table td.table_use_underline {
+				border-bottom: 1px dashed #F5696A;
+			}
+			
+			
+		/* Button */
+		
+			input[type='button']#checkNick {
+				-moz-appearance: none;
+					-webkit-appearance: none;
+					-ms-appearance: none;
+					appearance: none;
+					-moz-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+					-webkit-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+					-ms-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+					transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+					background-color: #FFFFFF;
+					border-radius: 0.375em;
+					border: 0;
+					box-shadow: inset 0 0 0 2px #f56a6a;
+					color: #f56a6a;
+					cursor: pointer;
+					display: inline-block;
+					font-family: "Nanum Brush Script";
+					font-size: 1.1em;
+					font-weight: bold;
+					height: 1.75em;
+					letter-spacing: 0.075em;
+					line-height: 1.75em;
+					padding: 0 1.1em;
+					text-align: center;
+					text-decoration: none;
+					text-transform: uppercase;
+					white-space: nowrap;
+					margin-top: 1em;
+					margin-left: 1.3em;
+			}
+			
+			input[type='button']#checkNick:HOVER {
+				background-color: #f56a6a;
+						color: #323232;
+			}
+		
+		
+		/* text & textarea */
+		
+			input[type='text']#changeNick {
+				display: inline-block;
+				width: 79%;
+			}
+			
+			
+	/* Shared Folder View CSS Style */
+	
+		/* Section */
+		
+			section article.shared_folders_view {
+				display: inline-block;
+				width: 35%;
+				border: 1px solid #F5696A;
+				border-radius: 10px;
+				padding: 0.7em 1.5em 1.1em 1.5em;
+				margin-left: 8em;
+				vertical-align: top;
+			}
+			
+			article.shared_folders_view h3.folder_name_title {
+				display: inline-block;
+				font-family: "Nanum Brush Script";
+				font-size: 2.3em;
+				font-weight: bold;
+				color: #565656;
+				border-bottom: 2px solid #F5696A;
+				padding-bottom: 0.3em;
+				margin-bottom: 1em;
+			}
+			
+			article.shared_folders_view a {
+				font-family: "Nanum Gothic";
+				font-size: 1.3em;
+				line-height: 1.8;
+			}
+			
+			article.shared_folders_view a:HOVER {
+				color: #F5696A;
+				text-decoration: underline;
+			}
+			
+			
+		/* Share Choice CSS Style */
+		
+			/* Share Choice new window */
+			
+				div.share_choice_person {
+					margin-bottom: 0.5em;
+				}
+			
+				div.share_choice_person label {
+					font-family: "Nanum Gothic";
+					font-size: 1em;
+					font-weight: bold;
+				}
+			
+				div.share_choice_person input[type='button'].share_person_button{
+					-moz-appearance: none;
+					-webkit-appearance: none;
+					-ms-appearance: none;
+					appearance: none;
+					-moz-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+					-webkit-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+					-ms-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+					transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+					background-color: #FFFFFF;
+					border-radius: 0.375em;
+					border: 0;
+					box-shadow: inset 0 0 0 2px #f56a6a;
+					color: #f56a6a;
+					cursor: pointer;
+					display: inline-block;
+					font-family: "Nanum Brush Script";
+					font-size: 0.9em;
+					font-weight: bold;
+					height: 1.75em;
+					letter-spacing: 0.075em;
+					line-height: 0.5em;
+					padding: 0 1.1em;
+					text-align: center;
+					text-decoration: none;
+					text-transform: uppercase;
+					white-space: nowrap;
+				}
+				
+				div.share_choice_person input[type='button'].share_person_button:HOVER {
+					background-color: #f56a6a;
+							color: #323232;
+				}
+				
+				
+			/* Search For Other users CSS Style */
+			
+				div.search_for_users {
+					font-family: "Nanum Gothic";
+					font-size: 1em;
+					font-weight: bold;
+				}
+				
+				div.search_for_users label {
+					margin-right: 0.5em;
+				}
+				
+				div.search_for_users input[type='text'] {
+					border-radius: 10px;
+					font-family: "Nanum Gothic";
+					font-size: 1em;
+					padding: 0.2em 0.5em;
+				}
+				
+				div.search_for_users input[type='button']#search {
+					-moz-appearance: none;
+					-webkit-appearance: none;
+					-ms-appearance: none;
+					appearance: none;
+					-moz-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+					-webkit-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+					-ms-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+					transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+					background-color: #FFFFFF;
+					border-radius: 0.375em;
+					border: 0;
+					box-shadow: inset 0 0 0 2px #f56a6a;
+					color: #f56a6a;
+					cursor: pointer;
+					display: inline-block;
+					font-family: "Nanum Brush Script";
+					font-size: 1em;
+					font-weight: bold;
+					height: 1.75em;
+					letter-spacing: 0.075em;
+					line-height: 1em;
+					padding: 0 1.1em;
+					text-align: center;
+					text-decoration: none;
+					text-transform: uppercase;
+					white-space: nowrap;
+				}
+				
+				div.search_for_users input[type='button']#search:HOVER {
+					background-color: #f56a6a;
+							color: #323232;
+				}
+				
+				div#search_for_result {
+					font-family: "Nanum Gothic";
+					font-size: 1em;
+					font-weight: bold;
+					border-bottom: 1px dashed #F5696A;
+					padding-bottom: 0.6em;
+					margin-bottom: 0.5em;
+				}
+				
+				
+				output#result input[type='button'].share{
+					-moz-appearance: none;
+					-webkit-appearance: none;
+					-ms-appearance: none;
+					appearance: none;
+					-moz-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+					-webkit-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+					-ms-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+					transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+					background-color: #FFFFFF;
+					border-radius: 0.375em;
+					border: 0;
+					box-shadow: inset 0 0 0 2px #f56a6a;
+					color: #f56a6a;
+					cursor: pointer;
+					display: inline-block;
+					font-family: "Nanum Pen Script";
+					font-size: 0.9em;
+					font-weight: bold;
+					height: 1.75em;
+					letter-spacing: 0.075em;
+					line-height: 1em;
+					padding: 0 1.1em;
+					text-align: center;
+					text-decoration: none;
+					text-transform: uppercase;
+					white-space: nowrap;
+					margin-left: 0.5em;
+					margin-bottom: 1em;
+				}
+				
+				output#result input[type='button'].share:HOVER {
+					background-color: #f56a6a;
+							color: #323232;
+				}

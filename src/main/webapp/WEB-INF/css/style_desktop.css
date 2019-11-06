@@ -1,0 +1,178 @@
+@CHARSET "UTF-8";
+
+/* Header */
+
+#header {
+	position: relative;
+	padding: 3em 0em;
+}
+
+/* Logo */
+#logo {
+	position: absolute;
+	top: 3em;
+	left: 0em;
+}
+
+#logo h1 {
+	float: left;
+}
+
+#logo h1 a{
+	padding: 0.5em 0.25em 0em 0em;
+	text-decoration: none;
+	text-transform: none;
+	font-family: 'Oswald', sans-serif;
+	font-size: 2.5em;
+	font-weight: 200;
+	color: #151278;
+}
+
+#logo span {
+	float: left;
+	padding: 1em 0em 0em 0em;
+	font-family: Georgia, "Times New Roman", Times, serif;
+	font-size: 1em;
+	font-style: italic;
+	color: #4374D9;
+}
+
+/* Menu Bar */
+/* nav1 */
+#nav1 {
+	position: absolute;
+	top: 6em;
+	right: 0;
+}
+
+#nav1 ul {
+	float: right;
+	text-align: center;
+}
+
+#nav1 li {
+	display: inline-block;
+}
+
+#nav1 a {
+	display: block;
+	float: left;
+	margin-right: 0.12em;
+	padding: 0.75em 1.5em;
+	text-decoration: none;
+	text-transform: none;
+	font-family: 'Abel', sans-serif;
+	font-size: 1.25em;
+	color: #17375E;
+}
+
+#nav1 .current_page_item {
+	color: #17375E;
+}
+
+#nav1 .current_page_item a {
+	background: #17375E;
+	color: #FFFFFF;
+	box-shadow: inset 0px -15px 10px 0px rgba(0,0,0,0.25);
+	text-shadow: none;
+	border-radius: 7px;
+}
+
+/* nav2 */
+#nav2 {
+	position: absolute;
+	top: 3em;
+	right: 0;
+}
+
+#nav2 ul {
+	float: right;
+	text-align: center;
+}
+
+#nav2 li {
+	display: inline-block;
+}
+
+#nav2 a {
+	display: inline-block;
+	float: left;
+	height: 2.50em;
+	margin-top: 0em;
+	padding: 0em 1.2em 0em 1.2em;
+	background: #F4E0E0;
+	border-radius: 7px;
+	line-height: 2.60em;
+	text-decoration: none;
+	text-transform: none;
+	font-size: 1em;
+	color: #17375E;
+	font-weight: bold;
+	margin-right: 1.4em;
+}
+
+/* Wrapper */
+#wrapper {
+	overflow: hidden;
+	margin: 5em 0em 3em 0em;
+	position: static;
+}
+
+.homepage #wrapper {
+	margin-top: 0em;
+}
+
+/* Banner */
+#banner {
+	overflow: hidden;
+	margin-top: 3em;
+	margin-left: 0.5em;
+	background: url(css_images/div_bar_copy.png) repeat-x bottom;
+}
+
+#banner .container {
+	margin-bottom: 3em;
+	padding: 1.87em;
+	/* --> 이 부분은 상의 후 container 설정
+	background: url(css_images/div_bar_copy.png) repeat;
+	*/
+}
+
+#banner a img {
+	display: block;
+	width: 100%;
+	height: 500px;
+	float: center;
+}
+
+/* Marketing */
+#marketing {
+	overflow: hidden;
+}
+
+#marketing .divider {
+	margin-bottom: 3em;
+	padding-bottom: 3em;
+	background: url(css_images/div_bar_copy.jpg) repeat-x left bottom;
+}
+
+#marketing .title {
+	padding-bottom: .75em;
+	color: #17375E;
+	font-size: 1.3em;
+	font-weight: bold;
+}
+
+#marketing .subtitle {
+	padding: 0em 0em 2em 0em;
+	font-family: 나눔고딕;
+	color: #17375E;
+	font-size: 1.1em;
+	margin-top: 1.5em;
+}
+
+#marketing a img {
+	display: block;
+	width: 100%;
+	height: 350px;
+}

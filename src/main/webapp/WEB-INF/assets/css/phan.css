@@ -1,0 +1,424 @@
+@CHARSET "UTF-8";
+@import url("https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,300italic,400,400italic,600");
+@import url("http://fonts.googleapis.com/earlyaccess/nanumbrushscript.css");
+@import url("http://fonts.googleapis.com/earlyaccess/nanumpenscript.css");
+@import url("http://fonts.googleapis.com/earlyaccess/jejugothic.css");
+@import url("http://fonts.googleapis.com/earlyaccess/hanna.css");
+@import url("http://fonts.googleapis.com/earlyaccess/jejuhallasan.css");
+@import url("font-awesome.min.css");
+
+/* My Page와 관련된 CSS */
+
+	/* #phanWrapper */
+	
+		#phanWrapper {
+			-moz-transition: opacity 0.45s ease;
+			-webkit-transition: opacity 0.45s ease;
+			-ms-transition: opacity 0.45s ease;
+			transition: opacity 0.45s ease;
+			opacity: 1;
+			position: relative;
+			top: 8em;
+		}
+		
+		#phanWrapper > * > .phanInner {
+			width: 100%;
+			max-width: 68em;
+			margin: 0 auto;
+			padding: 0 2.5em;
+		}
+
+			@media screen and (max-width: 736px) {
+
+				#phanWrapper > * > .phanInner {
+					padding: 0 1.25em;
+				}
+
+			}
+		
+	/* #phanMain */
+	
+		#main {
+			padding: 0em 0 6em 0 ;
+		}
+
+			@media screen and (max-width: 736px) {
+
+				#main {
+					padding: 0em 0 4em 0 ;
+				}
+
+			}
+			
+	/* phan Image */
+	
+		.phanImage {
+			border-radius: 4px;
+			border: 0;
+			display: inline-block;
+			position: relative;
+		}
+
+			.phanImage img {
+				border-radius: 4px;
+				display: block;
+			}
+
+			.phanImage.left, .phanImage.right {
+				max-width: 40%;
+			}
+
+				.phanImage.left img, .phanImage.right img {
+					width: 100%;
+				}
+
+			.phanImage.left {
+				float: left;
+				padding: 0 1.5em 1em 0;
+				top: 0.25em;
+			}
+
+			.phanImage.right {
+				float: right;
+				padding: 0 0 1em 1.5em;
+				top: 0.25em;
+			}
+
+			.phanImage.fit {
+				display: block;
+				margin: 0 0 2em 0;
+				width: 100%;
+			}
+
+				.phanImage.fit img {
+					width: 100%;
+				}
+
+			.phanImage.phanMain {
+				display: block;
+				margin: 0 0 3em 0;
+				width: 100%;
+			}
+
+				.phanImage.phanMain img {
+					width: 100%;
+				}
+
+				@media screen and (max-width: 736px) {
+
+					.phanImage.phanMain {
+						margin: 0 0 2em 0;
+					}
+
+				}
+				
+	/* Tiles */
+	
+		.tiles {
+			display: -moz-flex;
+			display: -webkit-flex;
+			display: -ms-flex;
+			display: flex;
+			-moz-flex-wrap: wrap;
+			-webkit-flex-wrap: wrap;
+			-ms-flex-wrap: wrap;
+			flex-wrap: wrap;
+			postiion: relative;
+			margin: -2.5em 0em 0 -2.5em;
+		}
+
+		.tiles article {
+			-moz-transition: -moz-transform 0.5s ease, opacity 0.5s ease;
+			-webkit-transition: -webkit-transform 0.5s ease, opacity 0.5s ease;
+			-ms-transition: -ms-transform 0.5s ease, opacity 0.5s ease;
+			transition: transform 0.5s ease, opacity 0.5s ease;
+			position: relative;
+			width: calc(33.33333% - 2.5em);
+			margin: 2.5em 0 0 2.5em;
+			margin-left: 9em;
+		}
+
+			.tiles article > .phanImage {
+				-moz-transition: -moz-transform 0.5s ease;
+				-webkit-transition: -webkit-transform 0.5s ease;
+				-ms-transition: -ms-transform 0.5s ease;
+				transition: transform 0.5s ease;
+				position: relative;
+				display: block;
+				width: 100%;
+				border-radius: 4px;
+				overflow: hidden;
+			}
+
+				.tiles article > .phanImage img {
+					display: block;
+					width: 100%;
+				}
+
+				.tiles article > .phanImage:before {
+					-moz-pointer-events: none;
+					-webkit-pointer-events: none;
+					-ms-pointer-events: none;
+					pointer-events: none;
+					-moz-transition: background-color 0.5s ease, opacity 0.5s ease;
+					-webkit-transition: background-color 0.5s ease, opacity 0.5s ease;
+					-ms-transition: background-color 0.5s ease, opacity 0.5s ease;
+					transition: background-color 0.5s ease, opacity 0.5s ease;
+					content: '';
+					display: block;
+					position: absolute;
+					top: 0;
+					left: 0;
+					width: 100%;
+					height: 100%;
+					opacity: 1.0;
+					z-index: 1;
+					opacity: 0.8;
+				}
+
+				.tiles article > .phanImage:after {
+					-moz-pointer-events: none;
+					-webkit-pointer-events: none;
+					-ms-pointer-events: none;
+					pointer-events: none;
+					-moz-transition: opacity 0.5s ease;
+					-webkit-transition: opacity 0.5s ease;
+					-ms-transition: opacity 0.5s ease;
+					transition: opacity 0.5s ease;
+					content: '';
+					display: block;
+					position: absolute;
+					top: 0;
+					left: 0;
+					width: 100%;
+					height: 100%;
+					background-image: url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cstyle%3Eline %7B stroke-width: 0.25px%3B stroke: %23ffffff%3B %7D%3C/style%3E%3Cline x1='0' y1='0' x2='100' y2='100' /%3E%3Cline x1='100' y1='0' x2='0' y2='100' /%3E%3C/svg%3E");
+					background-position: center;
+					background-repeat: no-repeat;
+					background-size: 100% 100%;
+					opacity: 0.25;
+					z-index: 2;
+				}
+
+			.tiles article > a {
+				display: -moz-flex;
+				display: -webkit-flex;
+				display: -ms-flex;
+				display: flex;
+				-moz-flex-direction: column;
+				-webkit-flex-direction: column;
+				-ms-flex-direction: column;
+				flex-direction: column;
+				-moz-align-items: center;
+				-webkit-align-items: center;
+				-ms-align-items: center;
+				align-items: center;
+				-moz-justify-content: center;
+				-webkit-justify-content: center;
+				-ms-justify-content: center;
+				justify-content: center;
+				-moz-transition: background-color 0.5s ease, -moz-transform 0.5s ease;
+				-webkit-transition: background-color 0.5s ease, -webkit-transform 0.5s ease;
+				-ms-transition: background-color 0.5s ease, -ms-transform 0.5s ease;
+				transition: background-color 0.5s ease, transform 0.5s ease;
+				position: absolute;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				padding: 1em;
+				border-radius: 4px;
+				border-bottom: 0;
+				color: #ffffff;
+				text-align: center;
+				text-decoration: none;
+				z-index: 3;
+				font-family: 'Jeju Gothic';
+				text-align: center;
+			}
+
+				.tiles article > a > :last-child {
+					margin: 0;
+				}
+
+				.tiles article > a:hover {
+					color: #ffffff !important;
+				}
+
+				.tiles article > a h2 {
+					margin: 0;
+					font-size: 3em;
+					font-family: 'Nanum Pen Script';
+					font-weight: bold;
+					color: #17375E;
+				}
+
+				.tiles article > a .phanContent {
+					-moz-transition: max-height 0.5s ease, opacity 0.5s ease;
+					-webkit-transition: max-height 0.5s ease, opacity 0.5s ease;
+					-ms-transition: max-height 0.5s ease, opacity 0.5s ease;
+					transition: max-height 0.5s ease, opacity 0.5s ease;
+					width: 100%;
+					max-height: 0;
+					line-height: 1.5;
+					margin-top: 0.35em;
+					opacity: 0;
+				}
+
+					.tiles article > a .phanContent > :last-child {
+						margin-bottom: 0;
+					}
+
+			.tiles article.phanStyle1 > .phanImage:before {
+				background-color: #F7B7C6;
+				opacity: 20%;
+			}
+
+			.tiles article.phanStyle2 > .phanImage:before {
+				background-color: #7ecaf6;
+			}
+
+			.tiles article.phanStyle3 > .phanImage:before {
+				background-color: #7bd0c1;
+			}
+
+			.tiles article.phanStyle4 > .phanImage:before {
+				background-color: #F98377;
+			}
+
+			.tiles article.phanStyle5 > .phanImage:before {
+				background-color: #ae85ca;
+			}
+
+			.tiles article.phanStyle6 > .phanImage:before {
+				background-color: #AFBDEF;
+			}
+
+			body:not(.is-touch) .tiles article:hover > .phanImage {
+				-moz-transform: scale(1.1);
+				-webkit-transform: scale(1.1);
+				-ms-transform: scale(1.1);
+				transform: scale(1.1);
+			}
+
+				body:not(.is-touch) .tiles article:hover > .phanImage:before {
+					background-color: #333333;
+					opacity: 0.35;
+				}
+
+				body:not(.is-touch) .tiles article:hover > .phanImage:after {
+					opacity: 0;
+				}
+
+			body:not(.is-touch) .tiles article:hover .phanContent {
+				max-height: 15em;
+				opacity: 1;
+			}
+
+		* + .tiles {
+			margin-top: 2em;
+		}
+
+		body.is-loading .tiles article {
+			-moz-transform: scale(0.9);
+			-webkit-transform: scale(0.9);
+			-ms-transform: scale(0.9);
+			transform: scale(0.9);
+			opacity: 0;
+		}
+
+		body.is-touch .tiles article .phanContent {
+			max-height: 15em;
+			opacity: 1;
+		}
+
+		@media screen and (max-width: 1280px) {
+
+			.tiles {
+				margin: -1.25em 0 0 -1.25em;
+			}
+
+				.tiles article {
+					width: calc(33.33333% - 1.25em);
+					margin: 5em 0 0 1.25em;
+					margin-left: 8em;
+					
+				}
+
+		}
+
+		@media screen and (max-width: 980px) {
+
+			.tiles {
+				margin: -2.5em 0 0 -2.5em;
+			}
+
+				.tiles article {
+					width: calc(50% - 2.5em);
+					margin: 10em 0 0 2.5em;
+					margin-left: 6em;
+				}
+
+		}
+
+		@media screen and (max-width: 736px) {
+
+			.tiles {
+				margin: -1.25em 0 0 -1.25em;
+			}
+
+				.tiles article {
+					width: calc(50% - 1.25em);
+					margin: 5em 0 0 1.25em;
+					margin-left: 4em;
+				}
+
+					.tiles article:hover > .phanImage {
+						-moz-transform: scale(1.0);
+						-webkit-transform: scale(1.0);
+						-ms-transform: scale(1.0);
+						transform: scale(1.0);
+					}
+
+		}
+
+		@media screen and (max-width: 480px) {
+
+			.tiles {
+				margin: 0;
+			}
+
+				.tiles article {
+					width: 100%;
+					margin: 5em 0 0 0;
+					margin-left: 3em;
+				}
+
+		}
+		
+	/* Header */
+	
+		header .mypageHeader {
+			font-size: 6em;
+			font-family: 'Nanum Pen Script';
+			font-weight: bold;
+			text-align: center;
+			color: #95B3D7;
+		}
+		
+		.phanInner header hr {
+			border: none;
+			border-top: dashed #95B3D7;
+			height: 1px;
+			width: 100%;
+		}
+		
+		hr:before, hr:after {
+    		content: '';
+    		position: absolute;
+    		top: -8px;
+    		display: block;
+    		width: 3px;
+    		height: 21px;
+    		background: #95B3D7;
+}

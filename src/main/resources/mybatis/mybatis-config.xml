@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE configuration
+  PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-config.dtd">
+
+<configuration>
+	<settings>
+        <setting name="cacheEnabled" value="true"/>
+	  	<setting name="callSettersOnNulls" value="true"/>
+	  	<setting name="mapUnderscoreToCamelCase" value="true"/>
+    </settings>
+	
+	<mappers>
+	<mapper resource="mybatis/mapper2.0/UsersMapper.xml" />
+	<mapper resource="mybatis/mapper2.0/CommentsMapper.xml" />
+	<mapper resource="mybatis/mapper2.0/TestMapper.xml" />
+	</mappers>
+
+</configuration>

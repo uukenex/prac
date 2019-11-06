@@ -1,0 +1,108 @@
+@charset "utf-8";
+@import "reset.css";
+@import url(http://fonts.googleapis.com/earlyaccess/nanumpenscript.css);
+@import url(http://fonts.googleapis.com/earlyaccess/jejugothic.css);
+@import url(http://fonts.googleapis.com/earlyaccess/nanumbrushscript.css);
+@import url(http://fonts.googleapis.com/earlyaccess/hanna.css);
+@import url(http://fonts.googleapis.com/earlyaccess/jejuhallasan.css);
+
+
+/* ///////////////////////////////////////// 
+	=기본 스타일
+///////////////////////////////////////// */	
+
+body {
+	background: #eeece7;
+}
+
+h1 {
+	font: 52px/1 'Nanum Pen Script';
+	color: #17375e;
+}
+
+#page-wrap {
+	width: 100%;
+	margin: 30px auto;
+	padding: 3em;
+	background: #fff;
+	-webkit-box-shadow: 0px 0px 2px #62615f inset;
+	-moz-box-shadow: 0px 0px 2px #62615f inset;
+	box-shadow: 0px 0px 2px #62615f inset;
+	-webkit-border-radius: 20px;
+	-khtml-border-radius: 20px;
+	-moz-border-radius: 20px;
+	border-radius: 20px;	
+}
+
+/* ///////////////////////////////////////// 
+	=#navigation
+///////////////////////////////////////// */	
+
+#navigation { 
+	padding: 3px;
+	}
+	#navigation li {
+		float: left;
+		border-right: 1px solid #eee;
+	}
+	#navigation li:last-child {
+		border: 0;
+		}
+		#navigation li a {
+			border: 0;
+			padding: 10px;
+			font: 20px 'Hanna';
+			color: #a49e96;
+		}
+		.no-js #navigation li a:hover,
+		.no-js #navigation li a:focus,
+		.no-js #navigation li.focus a,
+		.lava {
+		-webkit-border-radius: 6px;
+		-khtml-border-radius: 6px;
+		-moz-border-radius: 6px;			
+		border-radius: 6px;
+		-webkit-box-shadow: 0px 0px 2px #69635a;
+		-moz-box-shadow: 0px 0px 2px #69635a;
+		box-shadow: 0px 0px 2px #69635a;
+		background-image: -webkit-gradient(linear, left top, left bottom, from(#887963), to(#0b0a09));
+		background-image: -webkit-linear-gradient(-90deg, #887963, #0b0a09);
+		background-image: -moz-linear-gradient(-90deg, #887963, #0b0a09);
+		background-image: -o-linear-gradient(-90deg, #887963, #0b0a09);
+		background-image: -ms-linear-gradient(-90deg, #887963, #0b0a09);		
+		background-image: linear-gradient(-90deg, #887963, #0b0a09);
+		filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#776a57', endColorstr='#12100e',GradientType=0 ); /* IE6-9 */
+		}
+		
+/* Navigation2 */
+#navigation2 { 
+	padding: 3px;
+	margin-right: 2em;
+	float: right;
+	}
+	#navigation2 li {
+		float: left;
+		border-right: 1px solid #eee;
+	}
+	#navigation2 li:last-child {
+		border: 0;
+		}
+		#navigation2 li a {
+			border: 0;
+			padding: 10px;
+			font: 22px 'Jeju Hallasan';
+			color: #a49e96;
+		}
+
+/* ///////////////////////////////////////// 
+	=Global Classes
+///////////////////////////////////////// */
+
+.clearfix:after {
+	content: "";
+	display: block;
+	clear: both;
+	}
+	.ie6 .clearfix { height: 1px; } /* IE6 */ 
+	.ie7 .clearfix { min-height: 1px; } /* IE7 */
+

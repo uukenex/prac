@@ -1,0 +1,515 @@
+@CHARSET "UTF-8";
+
+/* 세부 My Page에 사용되는 CSS */
+
+	/* Reset */
+		.astralBody {
+			margin: 0;
+			padding: 0;
+			border: 0;
+			font-size: 100%;
+			font: inherit;
+			vertical-align: baseline;
+			
+			line-height: 1;
+		}
+		
+		#astralMain article {
+			display: block;
+		}
+		
+		.astralTable {
+			border-collapse: collapse;
+			border-spacing: 0;
+		}
+		
+	
+	/* Basic */
+		
+		.astralBody {
+			background-image: url("/images/overlay.png"), url("/images/bg.jpg");
+			background-repeat: repeat, no-repeat;
+			background-size: auto, 100% 100%;
+			font-family: 'Source Sans Pro', sans-serif;
+			font-weight: 300;
+			color: #777777;
+		}
+		
+		strong, b, h1, h2 {
+			font-weight: 400;
+			color: #363636;
+		}
+		
+		hr {
+			border: 0;
+			border-top: solid 1px #ddd;
+			padding: 1.5em 0 0 0;
+			margin: 1.75em 0 0 0;
+		}
+		
+	
+	/* Table */
+	
+		.astralTable {
+			width: 100%;
+			position: relative;
+			top: 10em;
+		}
+
+			.astralTable.default tbody tr {
+				border-bottom: solid 1px #f4f4f4;
+			}
+
+			.astralTable.default td {
+				padding: 0.5em 1em 0.5em 1em;
+			}
+
+			.astralTable.default th {
+				text-align: left;
+				font-weight: 400;
+				padding: 0.5em 1em 0.5em 1em;
+			}
+
+			.astralTable.default thead {
+				border-bottom: solid 2px #f4f4f4;
+			}
+			
+			
+	/* Section/Article */
+		section, article {
+			margin-bottom: 3em;
+		}
+
+			section > :last-child, section:last-child, article > :last-child, article:last-child {
+				margin-bottom: 0;
+			}
+
+		.astralHeader > p {
+			color: #aaa;
+		}
+		
+		
+	/* Icons */
+		
+		.astralIcon {
+			position: relative;
+			text-decoration: none;
+		}
+
+			.astralIcon:before {
+				-moz-osx-font-smoothing: grayscale;
+				-webkit-font-smoothing: antialiased;
+				font-family: FontAwesome;
+				font-style: normal;
+				font-weight: normal;
+				text-transform: none !important;
+			}
+
+			.astralIcon > .label {
+				display: none;
+			}
+			
+			
+	/* Nav */
+	
+		#astralNav a {
+			position: relative;
+			display: inline-block;
+			color: #ffffff;
+			width: 1em;
+			height: 1em;
+			line-height: 0.9em;
+		}
+
+			#astralNav a.astralIcon:before {
+				padding-right: 0;
+			}
+			
+			
+	/* Panels */
+	
+		#astralMain {
+			position: relative;
+			overflow: hidden;
+		}
+
+		.astralPanel {
+			position: relative;
+		}
+		
+		
+	/* informChange */
+	
+		#informChange .astralPic {
+			position: relative;
+			display: block;
+		}
+
+			#informChange .astralPic:before {
+				content: '';
+				position: absolute;
+				top: 0;
+				left: 0;
+				background: url("/images/overlay.png");
+				width: 100%;
+				height: 100%;
+				z-index: 1;
+			}
+			
+			
+/* Desktop */
+
+	@media screen and (min-width: 737px){
+		
+		/* Basic */
+			
+			html {
+				min-width: 100%;
+				min-height: 100%;
+			}
+			
+			.astralBody {
+				width: 100%;
+				min-width: 1000px;
+				min-height: 100%;
+				overflow-y: scroll;
+				background-attachment: fixed;
+				font-size: 14pt;
+				line-height: 1.75em;
+			}
+			
+			h1 {
+				font-size: 2.4em;
+				letter-spacing: -0.015em;
+			}
+			
+			
+		/* Section/Article */
+			
+			.astralHeader {
+				margin: 0 0 1.5em 0;
+			}
+
+				.astralHeader > p {
+					margin: 0.5em 0 0 0;
+				}
+				
+				
+		/* #astralWrapper */
+		
+			#astralWrapper {
+				width: 45em;
+				margin: 0 auto;
+				opacity: 0.00001;
+				position: relative;
+				top: 5em;
+			}
+
+				#astralWrapper.tall {
+					padding-bottom: 6em;
+				}
+				
+				
+		/* #astralNav */
+		
+			#astralNav {
+				text-align: center;
+				height: 4.25em;
+				cursor: default;
+			}
+
+				#astralNav a {
+					font-size: 2.5em;
+					margin: 0 0.25em 0 0.25em;
+					opacity: 0.35;
+					outline: 0;
+					-moz-transition: opacity .25s ease-in-out;
+					-webkit-transition: opacity .25s ease-in-out;
+					-ms-transition: opacity .25s ease-in-out;
+					transition: opacity .25s ease-in-out;
+				}
+
+					#astralNav a:before {
+						font-size: 0.8em;
+					}
+
+					#astralNav a:after {
+						content: '';
+						display: block;
+						position: absolute;
+						left: 50%;
+						bottom: -0.75em;
+						margin-left: -0.5em;
+						border-bottom: solid 0em #ffffff;
+						border-left: solid 0.5em transparent;
+						border-right: solid 0.5em transparent;
+						-moz-transition: border-bottom-width .25s ease-in-out;
+						-webkit-transition: border-bottom-width .25s ease-in-out;
+						-ms-transition: border-bottom-width .25s ease-in-out;
+						transition: border-bottom-width .25s ease-in-out;
+					}
+
+					#astralNav a span {
+						display: block;
+						position: absolute;
+						background: #222222;
+						color: #ffffff;
+						top: -2.75em;
+						font-size: 0.3em;
+						height: 2.25em;
+						line-height: 2.25em;
+						left: 50%;
+						opacity: 0;
+						-moz-transition: opacity .25s ease-in-out;
+						-webkit-transition: opacity .25s ease-in-out;
+						-ms-transition: opacity .25s ease-in-out;
+						transition: opacity .25s ease-in-out;
+						width: 5.5em;
+						margin-left: -2.75em;
+					}
+
+						#astralNav a span:after {
+							content: '';
+							display: block;
+							position: absolute;
+							bottom: -0.4em;
+							left: 50%;
+							margin-left: -0.6em;
+							border-top: solid 0.6em #222222;
+							border-left: solid 0.6em transparent;
+							border-right: solid 0.6em transparent;
+						}
+
+					#astralNav a:hover {
+						opacity: 1.0;
+					}
+
+						#astralNav a:hover span {
+							opacity: 1.0;
+						}
+
+					#astralNav a.active {
+						opacity: 1.0;
+					}
+
+						#astralNav a.active:after {
+							border-bottom-width: 0.5em;
+						}
+						
+						
+		/* Panels */
+		
+			#astralMain {
+				width: 45em;
+				background: #ffffff;
+				box-shadow: 0px 1px 0px 0px rgba(0, 0, 0, 0.25);
+			}
+
+			.astralPanel {
+				padding: 3.5em 2.5em 3.5em 2.5em;
+				position: absolute;
+				top: 0;
+				left: 0;
+				width: 45em;
+			}
+			
+			
+		/* #informChange */
+		
+			#informChange {
+				padding: 0;
+				height: 50em;
+			}
+
+				#informChange .astralPic {
+					display: block;
+					position: absolute;
+					right: -1px;
+					top: 0;
+					height: 100%;
+					text-decoration: none;
+				}
+
+					#informChange .astralPic img {
+						position: relative;
+						display: block;
+						height: 100%;
+					}
+
+					#informChange .astralPic .astralArrow {
+						display: block;
+						position: absolute;
+						right: 0;
+						top: 50%;
+						margin-top: -1.375em;
+						width: 2.75em;
+						height: 2.75em;
+						background: #000;
+						background: rgba(0, 0, 0, 0.75);
+						color: #ffffff;
+						text-align: center;
+						line-height: 2.75em;
+						font-size: 1.5em;
+						z-index: 1;
+						-moz-transition: width .15s ease-in-out, padding-right .15s ease-in-out;
+						-webkit-transition: width .15s ease-in-out, padding-right .15s ease-in-out;
+						-ms-transition: width .15s ease-in-out, padding-right .15s ease-in-out;
+						transition: width .15s ease-in-out, padding-right .15s ease-in-out;
+					}
+
+						#informChange .astralPic .astralArrow:before {
+							position: relative;
+							padding-right: 0;
+							top: 0.125em;
+						}
+
+						#informChange .astralPic .astralArrow span {
+							display: block;
+							text-indent: -9999px;
+						}
+
+					#informChange .astralPic:hover .astralArrow {
+						width: 3em;
+						padding-right: 0.25em;
+					}
+
+				#informChange .astralHeader {
+					position: absolute;
+					left: 0;
+					top: 0;
+					width: 100%;
+					height: 100%;
+					margin-left: 2.5em;
+				}
+
+					#informChange .astralHeader > h1 {
+						position: absolute;
+						left: 0;
+						top: 1em;
+						margin: 0;
+					}
+
+					#informChange .astralHeader > p {
+						position: absolute;
+						left: 0;
+						top: 52.5%;
+						font-size: 1.5em;
+						letter-spacing: -0.015em;
+						margin-top: 0;
+					}
+	}
+	
+/* Mobile */
+
+	@media screen and (max-width: 736px) {
+		
+		/* Basic */
+		
+			.astralBody {
+				font-size: 11pt;
+				line-height: 1.75em;
+			}
+			
+			h1, h2 {
+				font-size: 1.75em;
+				letter-spacing: -0.025em;
+			}
+			
+			
+		/* Section/Article */
+			
+			.astralHeader {
+				margin: 0 0 1.5em 0;
+			}
+
+				.astralHeader > p {
+					margin: 0.5em 0 0 0;
+				}
+				
+				
+		/* Table */
+		
+			.astralTable.style1 {
+				overflow-x: scroll; 
+			}
+			
+			
+		/* #astralWrapper */
+		
+			#astralWrapper {
+				padding: 7px;
+			}
+			
+			
+		/* #astralNav */
+		
+			#astralNav {
+				text-align: center;
+				margin: 6px 0 8px 0;
+			}
+
+				#astralNav a {
+					font-size: 2em;
+					opacity: 0.5;
+					outline: 0;
+					width: 1.5em;
+					height: 1.5em;
+					line-height: 1.35em;
+					margin: 0 0.25em 0 0.25em;
+				}
+
+					#astralNav a:active {
+						opacity: 1.0;
+					}
+
+					#astralNav a span {
+						display: none;
+					}
+					
+					
+		/* Panels */
+		
+			#astralMain {
+				background: none;
+			}
+
+			.astralPanel {
+				padding: 15px 15px 15px 15px;
+				margin: 0 0 7px 0;
+				background: #ffffff;
+				box-shadow: 0px 1px 0px 0px rgba(0, 0, 0, 0.25);
+			}
+
+				.astralPanel .astralHeader {
+					padding-top: 1em;
+				}
+				
+				
+		/* informChange */
+		
+			#informChange .astralPic {
+				width: 100%;
+			}
+
+				#informChange .astralPic img {
+					display: block;
+					width: 100%;
+				}
+
+				#informChange .astralPic .astralArrow {
+					display: none;
+				}
+
+			#informChange .astralHeader {
+				text-align: center;
+			}
+
+				#informChange .astralHeader > h1 {
+					font-size: 2.15em;
+					letter-spacing: -0.025em;
+				}
+
+				#informChange .astralHeader > p {
+					font-size: 1.25em;
+				}
+	}

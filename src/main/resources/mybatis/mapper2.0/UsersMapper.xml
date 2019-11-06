@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="my.prac.core.prjuser.dao.UserDAO">
+	<!-- 회원가입을 위한 insert -->
+	<insert id="insert" parameterType="my.prac.core.dto.Users">
+		insert into users
+		values(UPPER(#{userId}),#{userPass},#{userName},
+		#{userEmail},#{userPhone},#{userNick})
+	</insert>
+
+	<!-- 로그인 기능 -->
+	<select id="selectById" resultType="my.prac.core.dto.Users" parameterType="String">
+		select * from users where user_id = UPPER(#{userId})
+	</select>
+
+	<!-- id찾기 기능 이름&Email로 id만 찾음 -->
+	<select id="selectByNameAndEmail" resultType="String" parameterType="Map">
+		select user_id from users where user_name = #{userName}
+		and user_email = #{userEmail}
+	</select>
+
+	<!-- 비번찾기 기능 id&이름&Email로 비번만찾음 -->
+	<select id="selectPass" resultType="String" parameterType="Map">
+		select user_pass from users where
+		user_id =UPPER(#{userId}) and
+		user_name =
+		#{userName} and
+		user_email = #{userEmail}
+	</select>
+
+	<!-- 정보수정 기능 비번/연락처/이메일/닉네임 변경기능 -->
+	<update id="updateUser" parameterType="Map">
+		update users set
+		user_pass=#{userPass}
+		,user_phone=#{userPhone}
+		,user_email=#{userEmail}
+		,user_nick=#{userNick} where user_id=UPPER(#{userId})
+	</update>
+	
+	<!-- 임시비밀번호로 비밀번호 바꿔주기 -->
+	<update id="updatePass" parameterType="Map">
+		update users set
+		user_pass=#{userPass}
+		where user_id=UPPER(#{userId})
+	</update>
+
+	<select id="checkId" parameterType="String" resultType="int">
+		select
+		count(user_id) from users where user_id=UPPER(#{userId})
+	</select>
+	<select id="checkNick" parameterType="String" resultType="int">
+		select
+		count(user_nick) from users where user_nick=#{userNick}
+	</select>
+	<select id="searchNickById" parameterType="String" resultType="String">
+		select user_nick from users where user_id=UPPER(#{userId})
+	</select>
+	
+	<insert id="insertUsertracking" parameterType="Map">
+        insert into TUSERTRACKING ( /* UsersMapper.xml : my.prac.core.prjuser.dao.UserRepo.insertUsertracking */ 
+             USER_ID,
+             IP_ADDR,
+             SESSION_ID,
+             COMMAND,
+             PROGRAM_ID,
+             INSERT_DATE )
+          values (
+             upper(#{userId, jdbcType=VARCHAR}),
+             #{ipAddr, jdbcType=VARCHAR},
+             #{sessionId, jdbcType=VARCHAR},
+             #{command, jdbcType=VARCHAR},
+             '0'||#{programId, jdbcType=VARCHAR},
+             sysdate)
+    </insert>
+
+</mapper>

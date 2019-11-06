@@ -1,0 +1,313 @@
+@CHARSET "UTF-8";
+
+/* Join & Login CSS Style */
+
+	/* Join Style */
+	
+		img {
+			width: 45px;
+			height: 50px;
+		}
+		
+		.inputTextStyle {
+			height: 40px;
+			width: 300px;
+		}
+		
+		fieldset {
+			width: 300px;
+			border: 2px dashed #F5696A;
+		}
+		
+		#logo {
+			width: 20em;
+			height: auto;
+		}
+		
+		#joinButton {
+			width: 300px;
+			height: 2em;
+			-moz-appearance: none;
+			-webkit-appearance: none;
+			-ms-appearance: none;
+			appearance: none;
+			-moz-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+			-webkit-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+			-ms-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+			transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+			background-color: #FFFFFF;
+			border-radius: 0.375em;
+			border: 0;
+			box-shadow: inset 0 0 0 2px #f56a6a;
+			color: #f56a6a;
+			cursor: pointer;
+			display: inline-block;
+			font-family: "Nanum Brush Script";
+			font-size: 1.2em;
+			font-weight: 700;
+			letter-spacing: 0.075em;
+			line-height: 1.75em;
+			padding: 0 1.25em;
+			text-align: center;
+			text-decoration: none;
+			text-transform: uppercase;
+			white-space: nowrap;
+		}
+		
+		#joinButton:HOVER {
+			background-color: #f56a6a;
+					color: #323232;
+		}
+		
+		input[type='button']#checkId, input[type='button']#checkNick {
+			-moz-appearance: none;
+			-webkit-appearance: none;
+			-ms-appearance: none;
+			appearance: none;
+			-moz-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+			-webkit-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+			-ms-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+			transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+			background-color: #FFFFFF;
+			border-radius: 0.375em;
+			border: 0;
+			box-shadow: inset 0 0 0 2px #f56a6a;
+			color: #f56a6a;
+			cursor: pointer;
+			display: inline-block;
+			font-family: "Nanum Brush Script";
+			font-size: 0.9em;
+			font-weight: bold;
+			height: 1.75em;
+			letter-spacing: 0.075em;
+			line-height: 1.3em;
+			padding: 0 1.25em;
+			text-align: center;
+			text-decoration: none;
+			text-transform: uppercase;
+			white-space: nowrap;
+		}
+		
+		input[type='button']#checkId:HOVER, input[type='button']#checkNick:HOVER {
+			background-color: #f56a6a;
+					color: #323232;
+		}
+		
+		
+		
+	/* Login Style */
+	
+		fieldset#login_fieldset {
+			width: 30em;
+		}
+	
+		.button1 {
+			-moz-appearance: none;
+			-webkit-appearance: none;
+			-ms-appearance: none;
+			appearance: none;
+			-moz-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+			-webkit-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+			-ms-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+			transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+			background-color: #FFFFFF;
+			border-radius: 0.375em;
+			border: 0;
+			box-shadow: inset 0 0 0 2px #f56a6a;
+			color: #f56a6a;
+			cursor: pointer;
+			display: inline-block;
+			font-family: "Nanum Brush Script";
+			font-size: 1.5em;
+			font-weight: bold;
+			height: 1.75em;
+			letter-spacing: 0.075em;
+			line-height: 1.3em;
+			padding: 0 1.25em;
+			text-align: center;
+			text-decoration: none;
+			text-transform: uppercase;
+			white-space: nowrap;
+			margin-left: 2.1em;
+		}
+		
+		.button1:HOVER {
+			background-color: #f56a6a;
+					color: #323232;
+		}
+		
+		#banner {
+			overflow: hidden;
+			margin-top: 0em;
+			margin-bottom: 1em;
+		}
+		
+		#findLink a {
+			margin-left: 68px;
+			margin-right: 70px;
+			font-size: 13pt;
+			font-family: 나눔고딕 Georgia;
+		}
+		
+		input[type='text'].inputTextStyle2, input[type='password'].inputTextStyle2 {
+			height: 40px;
+			width: 450px;
+			margin-top: 1em;
+			margin-bottom: 1em;
+			margin-left: .75em;
+			font-size: 12pt;
+			border-radius: 3%;
+		}
+		
+		a#fb-auth img {
+			width: 22em;
+			margin-left: 3.4em;
+		}
+		
+		div#findLink a.login_finder {
+			-moz-appearance: none;
+			-webkit-appearance: none;
+			-ms-appearance: none;
+			appearance: none;
+			-moz-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+			-webkit-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+			-ms-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+			transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+			background-color: #FFFFFF;
+			border-radius: 0.375em;
+			border: 0;
+			box-shadow: inset 0 0 0 2px #f56a6a;
+			color: #f56a6a;
+			cursor: pointer;
+			display: inline-block;
+			font-family: "Nanum Brush Script";
+			font-size: 1em;
+			font-weight: bold;
+			height: 1.75em;
+			letter-spacing: 0.075em;
+			line-height: 1.5em;
+			padding: 0 0.7em;
+			text-align: center;
+			text-decoration: none;
+			text-transform: uppercase;
+			white-space: nowrap;
+			margin: 4em 0 0 4.2em;
+		}
+		
+		div#findLink a.login_finder:HOVER {
+			background-color: #f56a6a;
+					color: #323232;
+		}
+		
+		
+	/* Login Check CSS Style */
+	
+		div.login_check_div img#logo {
+			width: 20em;
+			height: auto;
+			margin-bottom: 2em;
+		}
+	
+		div.login_check_div fieldset#login_fieldset {
+			border: 2px dashed #F5696A;
+		}
+	
+		div.login_check_div input[type='submit'].button1, div.login_check_div input[type='button'].button1 {
+			-moz-appearance: none;
+			-webkit-appearance: none;
+			-ms-appearance: none;
+			appearance: none;
+			-moz-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+			-webkit-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+			-ms-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+			transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+			background-color: #FFFFFF;
+			border-radius: 0.375em;
+			border: 0;
+			box-shadow: inset 0 0 0 2px #f56a6a;
+			color: #f56a6a;
+			cursor: pointer;
+			display: inline-block;
+			font-family: "Nanum Gothic";
+			font-size: 1.5em;
+			font-weight: bold;
+			height: 1.75em;
+			letter-spacing: 0.075em;
+			line-height: 1.3em;
+			padding: 0 1.25em;
+			text-align: center;
+			text-decoration: none;
+			text-transform: uppercase;
+			white-space: nowrap;
+			margin: -10em 1em 0 1em;
+		}
+		
+		div.login_check_div .button1:HOVER, div.login_check_div input[type='button1'].button1:HOVER {
+			background-color: #f56a6a;
+					color: #323232;
+		}
+		
+		div.login_check_div #banner {
+			overflow: hidden;
+			margin-top: 0em;
+			margin-bottom: 0em;
+			padding-top: 2em;
+		}
+		
+		div.login_check_div #findLink a {
+			margin-left: 68px;
+			margin-right: 70px;
+			font-size: 13pt;
+			font-family: "Nanum Gothic";
+		}
+		
+		div.login_check_div input[type='text'].inputTextStyle2, div.login_check_div input[type='password'].inputTextStyle2 {
+			height: 3em;
+			width: 95%;
+			margin-top: 0.2em;
+			margin-bottom: 0em;
+			margin-left: 0.75em;
+			font-size: 12pt;
+			border-radius: 10px;
+		}
+		
+		div.login_check_div a#fb-auth img {
+			width: 22em;
+			margin-left: 3.8em;
+			margin-top: -5em;
+		}
+		
+		div.login_check_div div#findLink a.login_finder {
+			-moz-appearance: none;
+			-webkit-appearance: none;
+			-ms-appearance: none;
+			appearance: none;
+			-moz-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+			-webkit-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+			-ms-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+			transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+			background-color: #FFFFFF;
+			border-radius: 0.375em;
+			border: 0;
+			box-shadow: inset 0 0 0 2px #f56a6a;
+			color: #f56a6a;
+			cursor: pointer;
+			display: inline-block;
+			font-family: "Nanum Gothic";
+			font-size: 1em;
+			font-weight: bold;
+			height: 1.75em;
+			letter-spacing: 0.075em;
+			line-height: 1.5em;
+			padding: 0 0.7em;
+			text-align: center;
+			text-decoration: none;
+			text-transform: uppercase;
+			white-space: nowrap;
+			margin: 2em 0 2em 4.4em;
+		}
+		
+		div.login_check_div div#findLink a.login_finder:HOVER {
+			background-color: #f56a6a;
+					color: #323232;
+		}

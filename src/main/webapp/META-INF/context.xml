@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Context>
+    <!-- Default set of monitored resources -->
+    <WatchedResource>WEB-INF/web.xml</WatchedResource>
+    <!-- Uncomment this to disable session persistence across Tomcat restarts -->
+    <!--
+            <Manager pathname="" />
+            -->
+    <!-- Uncomment this to enable Comet connection tacking (provides events
+                 on session expiration as well as webapp lifecycle) -->
+    <!--
+            <Valve className="org.apache.catalina.valves.CometConnectionManagerValve" />
+            -->
+    <WatchedResource>${catalina.base}/conf/web.xml</WatchedResource>
+    <Resources>
+<!--     	<PreResources className="org.apache.catalina.webresources.DirResourceSet" 
+    				base="c:/Temp/" 
+ 				   	webAppMount="/smarteditor/Temp"></PreResources> -->
+     	<PreResources className="org.apache.catalina.webresources.DirResourceSet" 
+    				base="/img/dev2/Temp/" 
+ 				   	webAppMount="/uploadTemp"></PreResources>
+
+		<PreResources className="org.apache.catalina.webresources.DirResourceSet" 
+    				base="c:/Temp/" 
+ 				   	webAppMount="/photo_upload"></PreResources> 				   	
+ 		<PreResources className="org.apache.catalina.webresources.DirResourceSet" 
+    				base="c:/Temp/" 
+ 				   	webAppMount="/post_main"></PreResources>
+    </Resources>
+</Context>
