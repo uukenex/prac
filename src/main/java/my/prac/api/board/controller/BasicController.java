@@ -22,7 +22,7 @@ public class BasicController {
 	static Logger logger = LoggerFactory.getLogger(BasicController.class);
 
 	@Resource(name = "core.prjboard.CommentService")
-	CommentService cs;
+	CommentService commentService;
 
 	@RequestMapping(value = "/help", method = RequestMethod.GET)
 	public String help(Model model) {
