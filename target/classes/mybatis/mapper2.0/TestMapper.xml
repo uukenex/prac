@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="my.prac.core.prjtest.dao.TestDAO">
+	<insert id="insertUsertracking" parameterType="Map">
+        insert into TUSERTRACKING ( /* UsersMapper.xml : my.prac.core.prjuser.dao.UserRepo.insertUsertracking */ 
+             USER_ID,
+             IP_ADDR,
+             SESSION_ID,
+             COMMAND,
+             PROGRAM_ID,
+             INSERT_DATE )
+          values (
+             upper(#{userId, jdbcType=VARCHAR}),
+             #{ipAddr, jdbcType=VARCHAR},
+             #{sessionId, jdbcType=VARCHAR},
+             #{command, jdbcType=VARCHAR},
+             '0'||#{programId, jdbcType=VARCHAR},
+             sysdate)
+    </insert>
+</mapper>

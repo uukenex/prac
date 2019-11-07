@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+	<!--  서버기동시 쓸데없는 정보를 비노출하기 위함 .. https://www.mkyong.com/logging/how-to-stop-logback-status-info-at-the-start-of-every-log/ -->
+ 	<statusListener class="ch.qos.logback.core.status.NopStatusListener" />
+ 	
+    <!-- appender :: console -->
+    <appender name="console" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{35} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- appender :: info -->
+    <appender name="info-appender" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${catalina.base}/logs/console_logs/info.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${catalina.base}/logs/console_logs/info.%d{yyyy-MM-dd}.log</fileNamePattern>            
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{35} - %msg%n
+            </pattern>
+        </encoder>
+    </appender>  
+    
+    <!-- 로컬서버 기동시 각 인포정보를 나오지 않도록 처리 .... resultsettable,sqlonly 만 나오도록 처리함       https://nakanara.tistory.com/79 -->
+    <logger name="jdbc.audit" additivity="false">
+		<level value="OFF" />
+		<appender-ref ref="console" />
+		<appender-ref ref="rollingFile"/>
+	</logger>
+	<logger name="jdbc.sqltiming" additivity="false">
+		<level value="OFF" />
+		<appender-ref ref="console" />
+		<appender-ref ref="rollingFile"/>
+	</logger>
+	
+	<logger name="jdbc.resultset" additivity="false">
+		<level value="OFF" />
+		<appender-ref ref="console" />
+		<appender-ref ref="rollingFile"/>
+	</logger>
+	
+	<logger name="jdbc.connection" additivity="false">
+		<level value="OFF" />
+		<appender-ref ref="console" />
+		<appender-ref ref="rollingFile"/>
+	</logger>
+	<logger name="ch.qos.logback.classic.LoggerContext[default]" additivity="false">
+		<level value="OFF" />
+		<appender-ref ref="console" />
+		<appender-ref ref="rollingFile"/>
+	</logger>
+	<logger name="org.springframework">
+        <level value="OFF" />
+    </logger>
+	<logger name="jdbc.resultsettable" additivity="false">
+        <level value="off" />
+        <appender-ref ref="console" />
+        <appender-ref ref="sql-appender"/>
+    </logger>
+    
+	<!-- root -->
+    <root level="info">
+        <appender-ref ref="console" />
+        <appender-ref ref="info-appender"/>        
+    </root>
+</configuration>
+
+
+
+
+
+
+
+
+
+    <!-- appender :: sql -->
+    <!-- 
+    <appender name="sql-appender" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${catalina.base}/logs/open-api/sql.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${catalina.base}/logs/open-api/sql.%d{yyyy-MM-dd}.log</fileNamePattern>            
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{35} - %msg%n
+            </pattern>
+        </encoder>
+    </appender>    
+ 	-->
+    <!-- appender :: Request Parameter -->
+    <!-- 
+    <appender name="parameter-appender" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${catalina.base}/logs/open-api/parameter.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${catalina.base}/logs/open-api/parameter.%d{yyyy-MM-dd}.log</fileNamePattern>            
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{5} - %msg%n
+            </pattern>
+        </encoder>
+    </appender>    
+     -->
+    <!-- appender :: 11번가 Log -->
+    <!-- 
+    <appender name="pa11st-appender" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${catalina.base}/logs/open-api/pa11st.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${catalina.base}/logs/open-api/pa11st.%d{yyyy-MM-dd}.log</fileNamePattern>            
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{5} - %msg%n
+            </pattern>
+        </encoder>
+    </appender>
+     -->
+    <!-- appender :: G마켓 Log -->
+    <!-- <appender name="pagmkt-appender" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${catalina.base}/logs/open-api/pagmkt.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${catalina.base}/logs/open-api/pagmkt.%d{yyyy-MM-dd}.log</fileNamePattern>            
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{5} - %msg%n
+            </pattern>
+        </encoder>
+    </appender> -->
+    
+    <!-- appender :: G마켓v2 Log -->
+    <!-- 
+    <appender name="pagmktv2-appender" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${catalina.base}/logs/open-api/pagmktv2.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${catalina.base}/logs/open-api/pagmkt.%d{yyyy-MM-dd}.log</fileNamePattern>            
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{5} - %msg%n
+            </pattern>
+        </encoder>
+    </appender>
+     -->
+    <!-- SQL logger -->
+    
+    <!-- 
+    <logger name="jdbc.resultsettable" additivity="false">
+        <level value="off" />
+        <appender-ref ref="console" />
+        <appender-ref ref="sql-appender"/>
+    </logger>
+    <logger name="jdbc.audit" additivity="false">
+        <level value="warn" />
+        <appender-ref ref="console" />
+        <appender-ref ref="sql-appender"/> 
+    </logger>
+    <logger name="jdbc.resultset" additivity="false">
+        <level value="warn" />
+        <appender-ref ref="console" />
+        <appender-ref ref="sql-appender"/> 
+    </logger>
+    
+    <logger name="jdbc.sqltiming" additivity="false">
+        <level value="off" />
+        <appender-ref ref="console" />
+        <appender-ref ref="sql-appender"/> 
+    </logger>
+    <logger name="jdbc.connection" additivity="false">
+        <level value="warn" />
+        <appender-ref ref="console" />
+        <appender-ref ref="sql-appender"/> 
+    </logger>
+
+    3rdparty Loggers
+    <logger name="org.springframework">
+        <level value="error" />
+    </logger>
+	 -->
+    <!-- Netshopping -->
+     <!-- 
+    <logger name="com.cware" additivity="false">
+        <level value="debug" />
+        <appender-ref ref="console"/>
+        <appender-ref ref="info-appender"/>
+    </logger>    
+ 	-->
+    <!-- 11번가 logger --> 
+    <!-- 
+    <logger name="com.cware.api.pa11st.controller" additivity="false">
+        <level value="info" />
+        <appender-ref ref="console"/>
+        <appender-ref ref="pa11st-appender"/>
+    </logger>
+     -->
+    <!-- G마켓 logger -->
+    <!-- <logger name="com.cware.api.pagmkt.controller" additivity="false">
+        <level value="info" />
+        <appender-ref ref="console"/>
+        <appender-ref ref="pagmkt-appender"/>
+    </logger> -->
+    <!-- G마켓v2 logger -->
+    <!-- 
+    <logger name="com.cware.api.pagmktv2.controller" additivity="false">
+        <level value="info" />
+        <appender-ref ref="console"/>
+        <appender-ref ref="pagmktv2-appender"/>
+    </logger>
+     -->
+    

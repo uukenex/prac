@@ -49,6 +49,11 @@ public class BasicController {
 		return "nonsession/login/login";
 	}
 
+	@RequestMapping("/pop_login")
+	public String popLogin(Model model, HttpSession session, HttpServletRequest request) {
+		return "nonsession/popup/pop_login";
+	}
+
 	@RequestMapping("/help_main")
 	public String helpMain(Model model, HttpSession session, HttpServletRequest request) {
 		return "help/help_main";

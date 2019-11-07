@@ -70,6 +70,40 @@ public class UserController {
 		}
 	}
 
+	@RequestMapping(value = "/pop_loginUser", method = RequestMethod.POST)
+	public String popLoginUser(Model model, HttpServletRequest request, HttpSession session) {
+		String referer = request.getHeader("Referer");
+		String userId = request.getParameter("id").toUpperCase();
+		String userPass = request.getParameter("password");
+		MyHash ht = new MyHash();
+		userPass = ht.testMD5(userPass);
+		Users user = uService.login(userId);
+		String returnUrl = (String) session.getAttribute("returnUrl");
+		if (user != null && user.getUserPass().equals(userPass)) {
+			if (user.getUserId().equals(userId)) {
+				session.setAttribute("Users", user);
+				model.addAttribute("message", "환영합니다. ");
+				model.addAttribute("userId", userId);
+
+				HashMap<String, Object> hashMap = new HashMap<>();
+				hashMap.put("userId", userId);
+				hashMap.put("ipAddr", "0");
+				hashMap.put("sessionId", "0");
+				hashMap.put("command", "0");
+				hashMap.put("programId", "login");
+
+				uService.insertUsertracking(hashMap);
+				System.out.println("returnUrl: " + returnUrl);
+				return "logintest";
+			}
+			model.addAttribute("message", "아이디 혹은 비밀번호를 확인해주세요.");
+			return "nonsession/popup/pop_login";
+		} else {
+			model.addAttribute("message", "아이디 혹은 비밀번호를 확인해주세요.");
+			return "nonsession/popup/pop_login";
+		}
+	}
+
 	@RequestMapping(value = "/directloginUser", method = RequestMethod.POST)
 	public String directloginUser(Model model, HttpServletRequest request, HttpSession session) {
 		String referer = request.getHeader("Referer");
