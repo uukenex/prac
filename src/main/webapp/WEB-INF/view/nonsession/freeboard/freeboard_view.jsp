@@ -67,9 +67,9 @@
 																			pattern="yy-MM-dd HH:mm:ss" var="fmtDate" /> ${fmtDate}
 												</td>
 											</tr>
-												<tr>
+												<tr style="border:1px solid #FFA2A2;" >
 													<td> </td>
-													<td colspan="3" class="boardTitleSort">${comment.commentContent1}</td>
+													<td colspan="3" class="boardTitleSort"  style="padding-bottom: 50px;">${comment.commentContent1}</td>
 												</tr>
 											<tr>
 												<td colspan="4">

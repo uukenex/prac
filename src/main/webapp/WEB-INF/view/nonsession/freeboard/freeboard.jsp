@@ -170,12 +170,12 @@
 		});
 	</script>
 	
-	<script>
+<!-- 	<script>
 		var beforeBoard, nowBoard;
 		beforeBoard = document.getElementById("current");
 		beforeBoard.id = beforeBoard.id.replace("");
 		$(".freeBoard").attr('id', 'current');
-	</script>
+	</script> -->
 	
 </body>
 </html>

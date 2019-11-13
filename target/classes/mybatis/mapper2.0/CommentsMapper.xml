@@ -71,8 +71,7 @@
 		join users u on u.user_id=c.user_id
 		where
 		comment_category=#{commentCategory}
-		and comment_name like
-		#{commentName} order by
+		and comment_name like '%'||	#{commentName} || '%' order by
 		comment_no desc) sub)
 		where
 		rnum between
@@ -89,8 +88,7 @@
 		join users u on u.user_id=c.user_id
 		where
 		comment_category=#{commentCategory}
-		and comment_content1 like
-		#{commentContent} order by
+		and comment_content1 like '%'|| #{commentContent} || '%' order by
 		comment_no desc) sub)
 		where
 		rnum between
@@ -107,7 +105,7 @@
 		join users u on u.user_id = c.user_id
 		where
 		comment_category=#{commentCategory}
-		and user_nick like #{userNick}
+		and user_nick like '%' || #{userNick} || '%'
 		order by
 		comment_no desc) sub)
 		where
