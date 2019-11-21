@@ -18,9 +18,9 @@
     />
     
     <Resources>
-    	<PreResources className="org.apache.catalina.webresources.DirResourceSet" 
+    	<!-- <PreResources className="org.apache.catalina.webresources.DirResourceSet" 
     				base="c:/Temp/"
- 				   	webAppMount="/imgServer"></PreResources>
+ 				   	webAppMount="/imgServer"></PreResources> -->
      	<!-- <PreResources className="org.apache.catalina.webresources.DirResourceSet" 
     				base="/img/dev2/Temp/" 
  				   	webAppMount="/uploadTemp"></PreResources>
