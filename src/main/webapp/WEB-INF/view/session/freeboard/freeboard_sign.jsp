@@ -79,6 +79,13 @@
 
 	
 <script>
+function resize_Image(){
+	 resize_X=event.x;
+	 resize_Y=event.y;
+	 event.srcElement.width=resize_X;
+	 event.srcElement.height=resize_Y;
+	}
+
 $(function(){
     //전역변수선언
     var editor_object = [];

@@ -199,6 +199,14 @@
 
 <script src="http://code.jquery.com/jquery.js"></script>
 	<script>
+	
+	function resize_Image(){
+		 resize_X=event.x;
+		 resize_Y=event.y;
+		 event.srcElement.width=resize_X;
+		 event.srcElement.height=resize_Y;
+		}
+	
 		$("#listview").on("click", function() {
 			location.href = "free?page=1";
 		});
