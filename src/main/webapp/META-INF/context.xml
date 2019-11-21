@@ -14,7 +14,7 @@
     <WatchedResource>${catalina.base}/conf/web.xml</WatchedResource>
     
     <Resources className="org.apache.naming.resources.VirtualDirContext" 
-    		   extraResourcePaths="/imgServer=c:\Temp"
+    		   extraResourcePaths="/imgServer=\img\dev2\Temp"
     />
     
     <Resources>
