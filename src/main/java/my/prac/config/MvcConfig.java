@@ -48,10 +48,10 @@ public class MvcConfig extends WebMvcConfigurerAdapter {
 		// 스마트에디터 사진 다중 업로드
 		registry.addResourceHandler("/photo_upload/**").addResourceLocations("/photo_upload/");
 		registry.addResourceHandler("/validation/**").addResourceLocations("/WEB-INF/validation/");
-		registry.addResourceHandler("/temp/**").addResourceLocations("c:/Temp");
+		// registry.addResourceHandler("/temp/**").addResourceLocations("c:/Temp");
 		// 사진저장실험
 		registry.addResourceHandler("/review/**").addResourceLocations("/review/");
-		registry.addResourceHandler("/imgServer/**").addResourceLocations("/imgServer/");
+		registry.addResourceHandler("/imgServer/**").addResourceLocations("c:/Temp");
 	}
 
 	// 파일업로드를 위한 빈
