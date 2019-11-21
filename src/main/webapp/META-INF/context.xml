@@ -12,9 +12,14 @@
             <Valve className="org.apache.catalina.valves.CometConnectionManagerValve" />
             -->
     <WatchedResource>${catalina.base}/conf/web.xml</WatchedResource>
+    
+    <Resources className="org.apache.naming.resources.VirtualDirContext" 
+    		   extraResourcePaths="/imgServer=c:\Temp"
+    />
+    
     <Resources>
     	<PreResources className="org.apache.catalina.webresources.DirResourceSet" 
-    				base="c:/Temp/" 
+    				base="c:/Temp/"
  				   	webAppMount="/imgServer"></PreResources>
      	<!-- <PreResources className="org.apache.catalina.webresources.DirResourceSet" 
     				base="/img/dev2/Temp/" 
