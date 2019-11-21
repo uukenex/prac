@@ -13,11 +13,14 @@
             -->
     <WatchedResource>${catalina.base}/conf/web.xml</WatchedResource>
     
+    <PreResources className="org.apache.catalina.webresources.DirResourceSet"
+        webAppMount="/imgServer" base="\img\dev2\Temp"/>
+    <!-- 
     <Resources className="org.apache.naming.resources.VirtualDirContext" 
     		   extraResourcePaths="/imgServer=\img\dev2\Temp"
-    />
+    /> -->
     
-    <Resources>
+    <!-- <Resources> -->
     	<!-- <PreResources className="org.apache.catalina.webresources.DirResourceSet" 
     				base="c:/Temp/"
  				   	webAppMount="/imgServer"></PreResources> -->
@@ -31,5 +34,5 @@
  		<PreResources className="org.apache.catalina.webresources.DirResourceSet" 
     				base="c:/Temp/" 
  				   	webAppMount="/post_main"></PreResources> -->
-    </Resources>
+    <!-- </Resources> -->
 </Context>
