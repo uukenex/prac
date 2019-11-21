@@ -13,18 +13,18 @@
             -->
     <WatchedResource>${catalina.base}/conf/web.xml</WatchedResource>
     <Resources>
-<!--     	<PreResources className="org.apache.catalina.webresources.DirResourceSet" 
+    	<PreResources className="org.apache.catalina.webresources.DirResourceSet" 
     				base="c:/Temp/" 
- 				   	webAppMount="/smarteditor/Temp"></PreResources> -->
-     	<PreResources className="org.apache.catalina.webresources.DirResourceSet" 
+ 				   	webAppMount="/imgServer"></PreResources>
+     	<!-- <PreResources className="org.apache.catalina.webresources.DirResourceSet" 
     				base="/img/dev2/Temp/" 
  				   	webAppMount="/uploadTemp"></PreResources>
-
-		<PreResources className="org.apache.catalina.webresources.DirResourceSet" 
+ -->
+		<!-- <PreResources className="org.apache.catalina.webresources.DirResourceSet" 
     				base="c:/Temp/" 
  				   	webAppMount="/photo_upload"></PreResources> 				   	
  		<PreResources className="org.apache.catalina.webresources.DirResourceSet" 
     				base="c:/Temp/" 
- 				   	webAppMount="/post_main"></PreResources>
+ 				   	webAppMount="/post_main"></PreResources> -->
     </Resources>
 </Context>

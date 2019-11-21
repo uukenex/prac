@@ -76,7 +76,7 @@ public class EditorController {
 			sFileInfo += "&bNewLine=true";
 			// img 태그의 title 속성을 원본파일명으로 적용시켜주기 위함
 			sFileInfo += "&sFileName=" + filename;
-			sFileInfo += "&sFileURL=" + "/smarteditor/Temp/" + realFileNm;
+			sFileInfo += "&sFileURL=" + "/imgServer/" + realFileNm;
 			// sFileInfo += "&sFileURL="+"/img/dev2/Temp/"+realFileNm;
 			// 가상경로는 스프링 폴더 내에 만듬
 			logger.info("가상경로 : {}  : 에 파일쓰기", sFileInfo);
