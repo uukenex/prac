@@ -14,7 +14,7 @@
  	<meta name="author" content="Nathan Searles">
   		
 		<!--[if lte IE 8]><script src="assets/js/ie/html5shiv.js"></script><![endif]-->
-		<link rel="stylesheet" href="<%=request.getContextPath() %>/assets/css/main.css?v=20190808_02" />
+		<link rel="stylesheet" href="<%=request.getContextPath() %>/assets/css/main.css?v=<%=System.currentTimeMillis() %>" />
 		<link rel="stylesheet" href="<%=request.getContextPath() %>/assets/css/fancy.css" />
 		<!--[if lte IE 8]><link rel="stylesheet" href="assets/css/ie8.css" /><![endif]-->
 		
@@ -26,7 +26,7 @@
 <body>
 
 	<!-- Drop Menu Header -->
-		<jsp:include page="../layout/dropMenu_header.jsp" />
+	<jsp:include page="../layout/dropMenu_header.jsp" /> 
 	<!-- Menu Bar Header -->
 		<jsp:include page="../layout/menubar_header.jsp" />
 		
@@ -40,7 +40,7 @@
 						
 					<!-- Board body part -->
 						<div class="8u 12u(mobile) important(mobile)">
-							<section class="middle-content">
+							<section class="middle-content" >
 								<form>
 									<div>
 										<section>
@@ -50,10 +50,10 @@
 										<h3 id="boardTitleSytle1">${comment.commentName}</h3>
 										<input type="hidden" name="commentNo" value="${comment.commentNo }" />
 										<hr id="boardTitleHrStyle1">
-										<table style="border:2px solid #FFA2A2">
+										<table style="border:2px solid #1DDB16">
 											<colgroup>
 												<col width="15%" />
-												<col width="25%" />
+												<col width="17%" />
 												<col width="15%" />
 												<col width="*%" />
 											</colgroup>
@@ -62,14 +62,13 @@
 												<input type="hidden" name="userId" value="${comment.userId }" />
 												<td class="boardTitleSort boardFontBold">${comment.userNick}</td>
 												<td>작성일</td>
-												<td class="boardTitleSort boardFontBold">
+												<td class="boardTitleSort boardFontBold2">
 													<fmt:formatDate value="${comment.commentDate}"
-																			pattern="yy-MM-dd HH:mm:ss" var="fmtDate" /> ${fmtDate}
+																			pattern="yyyy-MM-dd HH:mm:ss" var="fmtDate" /> ${fmtDate}
 												</td>
 											</tr>
-												<tr style="border:1px solid #FFA2A2;" >
-													<td> </td>
-													<td colspan="3" class="boardTitleSort"  style="padding-bottom: 50px;">${comment.commentContent1}</td>
+												<tr style="border:1px solid #1DDB16;" >
+													<td colspan="4" class="boardTitleSort"  style="padding-bottom: 50px; height: 150px;">${comment.commentContent1}</td>
 												</tr>
 											<tr>
 												<td colspan="4">
@@ -116,26 +115,25 @@
 									<div>
 										<table class="board_view" border="1">
 												<colgroup>
-													<col width="20%">
-													<col width="5%">
-													<col width="20%">
+													<col width="15%">
+													<col width="17%">
+													<col width="15%">
 													<col width="*%">
-													<col width="10%">
 												</colgroup>
 												
 												
 												<c:forEach var="reply" items="${replys }">
 												<tbody id="replyContentViewTableBody" style="border:2px solid #FFA2A2">
 								            	<tr>
+								            		<td>작성자</td>
 								            		<td class=boardFontBold>${reply.userNick}</td>
-								            		<td>
-								            			<i class="fa fa-ellipsis-v"></i>
-								            		</td>
+								            		<td>작성일</td>
 								            		<td class="boardTitleSort">
 								            			<fmt:formatDate value="${reply.replyDate }"
 														pattern="yy-MM-dd HH:mm:ss" var="fmtDate" /> ${fmtDate}
 													</td>
-													<td colspan="2" class="board_reply_button_view">
+													<%--
+													<td class="board_reply_button_view">
 														<c:choose>
 													 		<c:when test="${reply.userId==Users.userId }">
 																														<input type="hidden" name="replyNo" value="${ reply.replyNo}">
@@ -148,10 +146,11 @@
 															</c:when>
 															</c:choose>
 													</td>
+													 --%>
 								            	</tr>
 												<tr>
-													<td colspan="5" class="boardTitleSort">
-													<pre> ${reply.replyContent1 }</pre> 
+													<td colspan="4" class="boardTitleSort" style="border:1px solid #FFA2A2">
+													<pre style="padding-bottom: 50px;"> ${reply.replyContent1 }</pre> 
 													</td>
 												</tr>
 										</c:forEach>
@@ -199,13 +198,6 @@
 
 <script src="http://code.jquery.com/jquery.js"></script>
 	<script>
-	
-	function resize_Image(){
-		 resize_X=event.x;
-		 resize_Y=event.y;
-		 event.srcElement.width=resize_X;
-		 event.srcElement.height=resize_Y;
-		}
 	
 		$("#listview").on("click", function() {
 			location.href = "free?page=1";

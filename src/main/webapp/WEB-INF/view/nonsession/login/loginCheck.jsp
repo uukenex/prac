@@ -7,14 +7,14 @@
 <html>
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-<link rel="stylesheet" href="<%=request.getContextPath() %>/assets/css/joinstyle.css?v=20190808_01" />
+<link rel="stylesheet" href="<%=request.getContextPath() %>/assets/css/joinstyle.css?v=<%=System.currentTimeMillis() %>" />
 <title>로그인</title>
 </head>
 
 <body>
 
 	<!-- Drop Menu Header -->
-		<jsp:include page="../../nonsession/layout/dropMenu_header.jsp" />
+		 <jsp:include page="../../nonsession/layout/dropMenu_header.jsp" />
 	<!-- Menu Bar Header -->
 		<jsp:include page="../../nonsession/layout/menubar_header.jsp" />
 		
@@ -30,9 +30,6 @@
 						
 							<sform:form modelAttribute="Users">
 								<fieldset id="login_fieldset">
-									<legend align="center">
-										<img id="logo" src="/images/logo.png">
-									</legend>
 									<div>
 										<input type="text" id="id" name="id" placeholder="아이디 입력"
 											class="inputTextStyle2"> <br />
@@ -54,14 +51,14 @@
 									<!-- <a title="페이스북 아이디로 로그인" id="fb-auth" href="javascript:;">
 										<img alt="facebookLogin" src="/images/facebookLogin.png">
 									</a> -->
-									
+									<%--
 									<div id="findLink">
 										<c:url value="/findId" var="findId" />
 										<c:url value="/findPassword" var="findpw" />
 										<a href="${findId }" class="login_finder">아이디 찾기</a>
 										<a href="${findpw }" class="login_finder">비밀번호 찾기</a>
 									</div>
-									
+									 --%>
 									
 								</fieldset>
 							</sform:form>

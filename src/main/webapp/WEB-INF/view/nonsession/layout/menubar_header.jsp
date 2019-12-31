@@ -20,7 +20,7 @@
   			<script src="<%=request.getContextPath() %>/assets/js/jquery.slides.min.js"></script>
   			<!-- End SlidesJS Required -->
   					<!--[if lte IE 8]><script src="assets/js/ie/html5shiv.js"></script><![endif]-->
-		<link rel="stylesheet" href="<%=request.getContextPath() %>/assets/css/main.css?v=20190808_01" />
+		<link rel="stylesheet" href="<%=request.getContextPath() %>/assets/css/main.css?v=<%=System.currentTimeMillis() %>" />
 		<link rel="stylesheet" href="<%=request.getContextPath() %>/assets/css/fancy.css" />
 		<link rel="stylesheet" href="<%=request.getContextPath() %>/assets/css/post_script.css" />
 		<!--[if lte IE 8]><link rel="stylesheet" href="assets/css/ie8.css" /><![endif]-->

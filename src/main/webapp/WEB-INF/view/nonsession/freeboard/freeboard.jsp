@@ -14,7 +14,7 @@
  	<meta name="author" content="Nathan Searles">
   		
 		<!--[if lte IE 8]><script src="assets/js/ie/html5shiv.js"></script><![endif]-->
-		<link rel="stylesheet" href="<%=request.getContextPath() %>/assets/css/main.css?v=20190808_01" />
+		<link rel="stylesheet" href="<%=request.getContextPath() %>/assets/css/main.css?v=<%=System.currentTimeMillis() %>" />
 		<link rel="stylesheet" href="<%=request.getContextPath() %>/assets/css/fancy.css" />
 		<!--[if lte IE 8]><link rel="stylesheet" href="assets/css/ie8.css" /><![endif]-->
 		
@@ -25,9 +25,9 @@
 <body>
 
 	<!-- Drop Menu Header -->
-		<jsp:include page="../layout/dropMenu_header.jsp" />
+	<jsp:include page="../layout/dropMenu_header.jsp" /> 
 	<!-- Menu Bar Header -->
-		<jsp:include page="../layout/menubar_header.jsp" />
+	<jsp:include page="../layout/menubar_header.jsp" />
 		
 	<div id="page-wrapper" class="boardPage-Wrapper">
 		<div id="main">
@@ -62,7 +62,7 @@
 							</ul>
 							
 							<form>
-								<table>
+								<table style="border:2px solid #FFA2A2">
 									<colgroup>
 										<col width="20%" />
 										<col width="*" />
@@ -81,7 +81,7 @@
 									</thead>
 									<tbody>
 									<c:forEach var="comment" items="${comments }">
-										<tr>
+										<tr style="border:1px solid #FFA2A2;">
 											<td>${comment.commentNo }</td>
 											<td id="boardTitle"><a href="freeView?commentNo=${comment.commentNo} ">${comment.commentName }(${comment.replyCnt })</a></td>
 											<td>${comment.userNick}</td>

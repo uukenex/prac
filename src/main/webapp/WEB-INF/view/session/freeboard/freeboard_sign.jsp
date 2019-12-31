@@ -44,7 +44,7 @@
 								<h3>자유 게시판 작성</h3>
 								<form action="/boardWrite" method="post" id="frm">
 								
-									<table class="boardEditorTable">
+									<table class="boardEditorTable" class="8u 12u(moblie) important(moblie)>
 										<colgroup>
 											<col width="10%">
 											<col width="*%">

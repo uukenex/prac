@@ -481,7 +481,7 @@
 	@media screen and (max-width: 1680px) {
 
 		.row > * {
-			padding: 48px 0 0 48px;
+			padding: 200px 0 0 0;
 		}
 
 		.row {
@@ -694,6 +694,7 @@
 	}
 
 	@media screen and (max-width: 1280px) {
+	
 		#nav {
 			display: none;
 		}
@@ -914,7 +915,7 @@
 		.\-1u\28normal\29 {
 			margin-left: 8.33333%;
 		}
-
+		
 	}
 
 	@media screen and (max-width: 960px) {
@@ -2388,6 +2389,7 @@
 				white-space: nowrap;
 				text-indent: 4em;
 				position: relative;
+				display: none;
 			}
 
 				#fancyHeader nav a[href="#fancyMenu"]:before {
@@ -2731,10 +2733,14 @@
 	#main {
 		margin-bottom: 0;
 	}
-
-		#main section:first-of-type {
-			padding-top: 2em;
-		}
+	.middle-content{
+		padding: 0px; 
+	}
+	/*
+	#main section:first-of-type {
+		padding-top: 2em;
+	}
+	*/
 
 /* Footer */
 
@@ -3071,9 +3077,10 @@
 				margin-bottom: 2em;
 			}
 
-				section:last-child, article:last-child {
-					margin-bottom: 0;
-				}
+			section:last-child, article:last-child {
+				margin-bottom: 0;
+    			padding-bottom: 20px;
+			}
 
 			.row > section, .row > article {
 				margin-bottom: 2em;
@@ -3174,7 +3181,7 @@
 				-ms-transition: -ms-transform 0.5s ease;
 				transition: transform 0.5s ease;
 				display: block;
-				height: 44px;
+				height: 20px;
 				left: 0;
 				position: fixed;
 				top: 0;
@@ -3221,16 +3228,16 @@
 				-webkit-backface-visibility: hidden;
 				-ms-backface-visibility: hidden;
 				backface-visibility: hidden;
-				-moz-transform: translateY(-50vh);
-				-webkit-transform: translateY(-50vh);
-				-ms-transform: translateY(-50vh);
-				transform: translateY(-50vh);
+				-moz-transform: translateY(-20vh);
+				-webkit-transform: translateY(-20vh);
+				-ms-transform: translateY(-20vh);
+				transform: translateY(-20vh);
 				-moz-transition: -moz-transform 0.5s ease;
 				-webkit-transition: -webkit-transform 0.5s ease;
 				-ms-transition: -ms-transform 0.5s ease;
 				transition: transform 0.5s ease;
 				display: block;
-				height: 50vh;
+				height: 20vh;
 				left: 0;
 				overflow-y: auto;
 				position: fixed;
@@ -3304,17 +3311,17 @@
 				}
 
 			body.navPanel-visible #page-wrapper {
-				-moz-transform: translateY(50vh);
-				-webkit-transform: translateY(50vh);
-				-ms-transform: translateY(50vh);
-				transform: translateY(50vh);
+				-moz-transform: translateY(20vh);
+				-webkit-transform: translateY(20vh);
+				-ms-transform: translateY(20vh);
+				transform: translateY(20vh);
 			}
 
 			body.navPanel-visible #navButton {
-				-moz-transform: translateY(50vh);
-				-webkit-transform: translateY(50vh);
-				-ms-transform: translateY(50vh);
-				transform: translateY(50vh);
+				-moz-transform: translateY(20vh);
+				-webkit-transform: translateY(20vh);
+				-ms-transform: translateY(20vh);
+				transform: translateY(20vh);
 			}
 
 			body.navPanel-visible #navPanel {
@@ -3625,13 +3632,13 @@
 /* Board�쒙옙 占쎌맄占쎈립 CSS code ---------------------------> */
 
 	/* font-family, font-size */
-	
+		
 		.middle-content h2.board_part_title{
 			display: inline-block;
 			font-family: 'Nanum Pen Script';
 			font-weight: bold;
 			color: #3d4449;
-			margin-top: 1em;
+			margin-top: 0em;
 			border-bottom: 2px solid #f56a6a;
 		}
 		
@@ -3650,11 +3657,11 @@
 		}
 	
 	/* .boardPage-Wrapper */
-		
+		/*
 		.boardPage-Wrapper {
 			position: relative;
 			top: 8em;
-		}
+		}*/
 
 	/* Reusable */
 	
@@ -3697,13 +3704,25 @@
 		
 		#pageNumber {
 			text-align: center;
-			margin-top: 4em;
+			margin-top: 2em;
+			margin-bottom: 2em;
 		}
 		
 		#writeNsearchBar {
 			margin-top: 3em;
 		}
-
+		
+		td, tr, text {
+			word-break:break-all;
+		}
+		pre {
+			word-wrap: break-word;
+			white-space: pre-wrap;
+			white-space: -moz-pre-wrap;
+			white-space: -pre-wrap;
+			white-space: -o-pre-wrap;
+			word-break:break-all;
+		}
 
 /* Button Style */
 		#searchBtn {
@@ -4123,7 +4142,11 @@
 /* Board Editor Style */
 
 	/* Basic */
-		
+	
+		.middle-content{
+			padding: 0px; 
+		}
+	
 		.middle-content h3 {
 			font-family: 'Nanum Gothic';
 			font-weight: bold;
@@ -4739,6 +4762,5 @@
 			display: none;
 		}
 	}
-	
 	
 		
