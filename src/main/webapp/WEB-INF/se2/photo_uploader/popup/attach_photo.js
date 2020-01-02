@@ -41,7 +41,17 @@
 				if(!!oNavigator.safari && oNavigator.version <= 5){
 					bSupportDragAndDropAPI = false;
 				}else{
-					bSupportDragAndDropAPI = true;
+					//bSupportDragAndDropAPI = true;
+
+				     //모바일인경우 드래그앤드랍 지원안하도록 수정 2013.12.10. 추가시작라인
+				     if ( oNavigator.mobile || oNavigator.msafari || oNavigator.mopera || oNavigator.mie)
+				     {
+				      bSupportDragAndDropAPI = false;
+				     } else {
+				      bSupportDragAndDropAPI = true;
+				     }
+				     //추가 끝라인.
+				     //https://m.blog.naver.com/PostView.nhn?blogId=jakalky&logNo=120203372736&proxyReferer=https%3A%2F%2Fwww.google.com%2F
 				}
 			} else {
 				bSupportDragAndDropAPI = false;

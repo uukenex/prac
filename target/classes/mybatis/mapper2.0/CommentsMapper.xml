@@ -65,7 +65,9 @@
 	<!-- 페이지당 리스트를 보여줌(분류별/이름/검색 ) -->
 	<select id="searchCommentByNameOfPage" parameterType="Map" resultType="my.prac.core.dto.Comments">
 		select *
-		from(select sub.*,rownum rnum from
+		from(select sub.*,(SELECT COUNT(1)
+		                  FROM COMMENT_REPLY C
+		                 WHERE REPLY_COMMENT_NO = SUB.COMMENT_NO) AS REPLY_CNT,rownum rnum from
 		(select * from
 		comments c
 		join users u on u.user_id=c.user_id
@@ -82,7 +84,9 @@
 	<select id="searchCommentByContentOfPage" parameterType="Map"
 		resultType="my.prac.core.dto.Comments">
 		select *
-		from(select sub.*,rownum rnum from
+		from(select sub.*,(SELECT COUNT(1)
+		                  FROM COMMENT_REPLY C
+		                 WHERE REPLY_COMMENT_NO = SUB.COMMENT_NO) AS REPLY_CNT,rownum rnum from
 		(select * from
 		comments c
 		join users u on u.user_id=c.user_id
@@ -99,7 +103,9 @@
 	<select id="searchCommentByNickOfPage" parameterType="Map"
 		resultType="my.prac.core.dto.Comments">
 		select *
-		from(select sub.*,rownum rnum from
+		from(select sub.*,(SELECT COUNT(1)
+		                  FROM COMMENT_REPLY C
+		                 WHERE REPLY_COMMENT_NO = SUB.COMMENT_NO) AS REPLY_CNT,rownum rnum from
 		(select * from
 		comments c
 		join users u on u.user_id = c.user_id

@@ -150,9 +150,9 @@
 				var newDate = year+"-"+month+"-"+date;
 				
 				$("tbody")[0].innerHTML+=
-		"<tr>"
+		"<tr style=\"border:1px solid #FFA2A2;\">"
 		+"<td>"+item.commentNo+"</td>"
-		+"<td id='boardTitle'><a href='freeView?commentNo="+item.commentNo+"' >"+item.commentName +" </a></td>"
+		+"<td id='boardTitle'><a href='freeView?commentNo="+item.commentNo+"' >"+item.commentName +"("+item.replyCnt+") </a></td>"
 		+"<td>"+item.userNick+"</td>"
 		+"<td>"+newDate+"</td>"
 		+"<td>"+item.commentCount +"</td>"
