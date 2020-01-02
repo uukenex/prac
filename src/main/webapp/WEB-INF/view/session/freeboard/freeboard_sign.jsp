@@ -3,27 +3,21 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1" />
 	<meta name="description" content="SlidesJS is a simple slideshow plugin for jQuery. Packed with a useful set of features to help novice and advanced developers alike create elegant and user-friendly slideshows.">
  	<meta name="author" content="Nathan Searles">
-  		
-		<!--[if lte IE 8]><script src="assets/js/ie/html5shiv.js"></script><![endif]-->
-		<link rel="stylesheet" href="<%=request.getContextPath()%>/assets/css/main.css?v=1.0" />
-		<link rel="stylesheet" href="<%=request.getContextPath()%>/assets/css/fancy.css?v=1.0" />
-		<!--[if lte IE 8]><link rel="stylesheet" href="assets/css/ie8.css" /><![endif]-->
-		
-		<link rel="stylesheet" href="<%=request.getContextPath()%>/assets/css/font-awesome.min.css?v=1.0">
-
+	<!--[if lte IE 8]><script src="assets/js/ie/html5shiv.js"></script><![endif]-->
+	<link rel="stylesheet" href="<%=request.getContextPath()%>/assets/css/main.css?v=<%=System.currentTimeMillis() %>" />
+	<link rel="stylesheet" href="<%=request.getContextPath()%>/assets/css/fancy.css?v=<%=System.currentTimeMillis() %>" />
+	<!--[if lte IE 8]><link rel="stylesheet" href="assets/css/ie8.css" /><![endif]-->
+	<link rel="stylesheet" href="<%=request.getContextPath()%>/assets/css/font-awesome.min.css?v=1.0">
 <title>자유게시판 글쓰기</title>
-
-<script type="text/javascript" src="//code.jquery.com/jquery-1.11.0.min.js"></script>
-<script type="text/javascript" src="<%=request.getContextPath()%>/se2/js/HuskyEZCreator.js?v=1.0" charset="utf-8"></script>
-
 </head>
 
 <body>
+	<script type="text/javascript" src="//code.jquery.com/jquery-1.11.0.min.js"></script>
+	<script type="text/javascript" src="<%=request.getContextPath()%>/se2/js/HuskyEZCreator.js?v=1.0" charset="utf-8"></script>
 	
 	<!-- Drop Menu Header -->
 		<jsp:include page="../../nonsession/layout/dropMenu_header.jsp" />
@@ -34,29 +28,26 @@
 		<div id="main">
 			<div class="container">
 				<div class="row main-row">
-					
-					<!-- Board Left Menu -->
-						<jsp:include page="../../nonsession/layout/board_left_menu.jsp" />
-						
 					<!-- Board body part -->
-						<div class="8u 12u(moblie) important(moblie)">
+						<div class="8u 12u(mobile) important(mobile)">
 							<section class="middle-content">
 								<h3>자유 게시판 작성</h3>
 								<form action="/boardWrite" method="post" id="frm">
-								
-									<table class="boardEditorTable" class="8u 12u(moblie) important(moblie)>
+									<table class="boardEditorTable" >
 										<colgroup>
 											<col width="10%">
 											<col width="*%">
 										</colgroup>
 										<tr>
-											<th>제목</th>
+											<td>제목</td>
 											<td class="inputTitle"><input type="text"  name="title" id="editorTitleWritter" 
 															placeholder="제목을 입력해주세요"></td>
 										</tr>
 										<tr>
 											<td colspan="2">
-												<textarea name="content" id="content" class="editorContentWritter"></textarea>
+												<textarea name="content" id="content"
+												 rows="9" cols="100" style="width:100%; height:412px; min-width:200px; display:none;"
+												 class="editorContentWritter"></textarea>
 											</td>
 										</tr>
 										<tr>

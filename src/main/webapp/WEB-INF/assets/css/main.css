@@ -703,7 +703,7 @@
 		}
 		
 		.login_check_div {
-			transform: scale(1.5);
+			/* transform: scale(1.5); */
 		}
 		.row > * {
 			padding: 150px 100px 0 0;
@@ -2354,7 +2354,7 @@
 		@media screen and (max-width: 736px) {
 
 			#fancyHeader {
-				height: 2.75em;
+				height: 0;
 				line-height: 2.75em;
 			}
 
@@ -3182,18 +3182,19 @@
 				transition: transform 0.5s ease;
 				display: block;
 				height: 20px;
-				left: 0;
+				left: 200px;
 				position: fixed;
 				top: 0;
-				width: 100%;
+				width: 0;
 				z-index: 10001;
+				y
 			}
 
 				#navButton .toggle {
 					position: absolute;
 					left: 0;
 					top: 0;
-					width: 100%;
+					width: 0;
 					height: 100%;
 					border: 0;
 					outline: 0;
@@ -3212,12 +3213,12 @@
 						text-align: center;
 						display: block;
 						font-size: 14px;
-						width: 80px;
+						width: 100px;
 						height: 30px;
 						line-height: 30px;
-						position: absolute;
-						left: 50%;
-						margin-left: -40px;
+						position: fixed;
+						
+						margin-left: -20px;
 						background: rgba(132, 128, 136, 0.75);
 						border-top: 0;
 						border-radius: 0 0 0.35em 0.35em;
@@ -4161,6 +4162,7 @@
 			margin-top: 3em;
 			background-color: #FFFFFF;
 			border: dotted 1.5px #F5696A;
+			width: 95%;
 		}
 		
 		
@@ -4215,13 +4217,14 @@
 	/* text & textarea */
 	
 		form input[type='text'].editorTitleWritter {
-			width: 95%;
+			width: 90%;
 		}
 		
 		.editorContentWritter {
-			width: 97%;
-			height: 40%;
+			width: 90%;
+			height: 60%;
 			background-color: white;
+			min-width : 600px;
 		}
 		
 	/* Editor Button */
@@ -4763,4 +4766,12 @@
 		}
 	}
 	
+	#pageNumber a{
+		padding: 10px;
+	}
+	
+	img {
+		width: 300px;
+		height: 240px;
+	}
 		

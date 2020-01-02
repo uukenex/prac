@@ -6,8 +6,16 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-<link rel="stylesheet" href="<%=request.getContextPath() %>/assets/css/joinstyle.css?v=<%=System.currentTimeMillis() %>" />
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<meta name="description" content="SlidesJS is a simple slideshow plugin for jQuery. Packed with a useful set of features to help novice and advanced developers alike create elegant and user-friendly slideshows.">
+ 	<meta name="author" content="Nathan Searles">
+	<link rel="stylesheet" href="<%=request.getContextPath() %>/assets/css/joinstyle.css?v=<%=System.currentTimeMillis() %>" />
+	<!--[if lte IE 8]><script src="assets/js/ie/html5shiv.js"></script><![endif]-->
+	<link rel="stylesheet" href="<%=request.getContextPath() %>/assets/css/main.css?v=<%=System.currentTimeMillis() %>" />
+	<link rel="stylesheet" href="<%=request.getContextPath() %>/assets/css/fancy.css" />
+	<!--[if lte IE 8]><link rel="stylesheet" href="assets/css/ie8.css" /><![endif]-->
+	<link rel="stylesheet" href="<%=request.getContextPath()%>/assets/css/font-awesome.min.css">
 <title>로그인</title>
 </head>
 
@@ -25,8 +33,12 @@
 				<div class="container">
 					<div class="row main-row">
 					
-						<div class="4u"></div>
-						<div class="login_check_div">
+						<div class="8u 12u(mobile) important(mobile)">
+							<section class="middle-content">
+								<h2 class="board_part_title">로그인</h2>
+						
+							</section>
+					 	<div class="login_check_div">
 						
 							<sform:form modelAttribute="Users">
 								<fieldset id="login_fieldset">
@@ -46,12 +58,12 @@
 									'width=532, height=475');" class="button1" value="회원가입">
 										<br />
 									</div>
-									
+									<%--
 									<div id="fb-root"></div>
 									<!-- <a title="페이스북 아이디로 로그인" id="fb-auth" href="javascript:;">
 										<img alt="facebookLogin" src="/images/facebookLogin.png">
 									</a> -->
-									<%--
+									
 									<div id="findLink">
 										<c:url value="/findId" var="findId" />
 										<c:url value="/findPassword" var="findpw" />
@@ -62,7 +74,7 @@
 									
 								</fieldset>
 							</sform:form>
-						</div>
+						</div> 
 					</div>
 					
 					<!-- footer -->
@@ -91,6 +103,7 @@
 	</script>
 	
 </body>
+<%--
 	<script language=javascript>
 		window.fbAsyncInit = function() {
 			FB.init({
@@ -194,4 +207,5 @@
 			 } 
 		})
 	</SCRIPT>
+--%>
 </html>

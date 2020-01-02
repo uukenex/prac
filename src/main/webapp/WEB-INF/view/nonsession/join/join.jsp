@@ -6,84 +6,97 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-<link rel="stylesheet" href="<%=request.getContextPath() %>/assets/css/joinstyle.css" />
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<meta name="description" content="SlidesJS is a simple slideshow plugin for jQuery. Packed with a useful set of features to help novice and advanced developers alike create elegant and user-friendly slideshows.">
+ 	<meta name="author" content="Nathan Searles">
+	<link rel="stylesheet" href="<%=request.getContextPath() %>/assets/css/joinstyle.css?v=<%=System.currentTimeMillis() %>" />
+	<!--[if lte IE 8]><script src="assets/js/ie/html5shiv.js"></script><![endif]-->
+	<!-- 
+	<link rel="stylesheet" href="<%=request.getContextPath() %>/assets/css/main.css?v=<%=System.currentTimeMillis() %>" />
+	-->
+	<link rel="stylesheet" href="<%=request.getContextPath() %>/assets/css/fancy.css" />
+	<!--[if lte IE 8]><link rel="stylesheet" href="assets/css/ie8.css" /><![endif]-->
+	<link rel="stylesheet" href="<%=request.getContextPath()%>/assets/css/font-awesome.min.css">
 <title>회원 가입</title>
 </head>
 
 <body>
+
 	<c:url value="/joinOk" var="joinOk"></c:url>
 	<sform:form action="${joinOk}" method="post" modelAttribute="Users"	id="myform">
-		<fieldset>
+		<!-- <fieldset> -->
 			<legend align="center">
 				<!-- <img id="logo" alt="Logo" src="/images/logo.png"> -->
 			</legend>
-			<table cellspacing="15" class="joinFormTable">
+			<table class="joinFormTable" >
+				<colgroup>
+					<col width="15%" />
+					<col width="*%" />
+					<col width="15%" />
+				</colgroup>
 				<tr>
-					<th><label for="id" class="inputLabel"> <img
-							alt="IdIcon"
-							src="<%=request.getContextPath()%>/join_icons/id_size_tag.png">
-					</label></th>
-					<td><input type="text" id="id" name="id" placeholder="아이디 입력"
-						class="inputTextStyle"></td>
-					<td><input type="button" value="중복확인" id="checkId"></td>
+					<td><label for="id" class="inputLabel"> <img alt="IdIcon" src="<%=request.getContextPath()%>/join_icons/id_size_tag.png">
+					</label></td>
+					<td><input type="text" id="id" name="id" placeholder="아이디 입력" class="inputTextStyle"></td>
+					<td><input type="button" class="boardButtonStyle3" value="중복확인" id="checkId"></td>
 				</tr>
 				<tr>
-					<th><label for="password" class="inputLabel"> <img
+					<td><label for="password" class="inputLabel"> <img
 							alt="PasswordIcon"
 							src="<%=request.getContextPath()%>/join_icons/pass_size_tag.png">
-					</label></th>
+					</label></td>
 					<td><input type="password" id="password" name="password"
 						placeholder="비밀번호 입력" class="inputTextStyle"></td>
 				</tr>
 				<tr>
-					<th><label for="passwordCk" class="inputLabel"> <img
+					<td><label for="passwordCk" class="inputLabel"> <img
 							alt="PasswordCkIcon"
 							src="<%=request.getContextPath()%>/join_icons/passCheck_size_tag.png">
-					</label></th>
+					</label></td>
 					<td><input type="password" id="passwordCk" name="passwordCk"
 						placeholder="비밀번호 확인" class="inputTextStyle"></td>
 				</tr>
 				<tr>
-					<th><label for="name" class="inputLabel"> <img
+					<td><label for="name" class="inputLabel"> <img
 							alt="NameIcon"
 							src="<%=request.getContextPath()%>/join_icons/name_size_tag.png">
-					</label></th>
+					</label></td>
 					<td><input type="text" id="name" name="name"
 						placeholder="이름 입력" class="inputTextStyle"></td>
 				</tr>
 				<tr>
-					<th><label for="phone" class="inputLabel"> <img
+					<td><label for="phone" class="inputLabel"> <img
 							alt="PhoneIcon"
 							src="<%=request.getContextPath()%>/join_icons/phone_size_tag.png">
-					</label></th>
+					</label></td>
 					<td><input type="text" id="phone" name="phone"
 						placeholder="전화번호 입력" class="inputTextStyle"></td>
 				</tr>
 				<tr>
-					<th><label for="email" class="inputLabel"> <img
+					<td><label for="email" class="inputLabel"> <img
 							alt="emailIcon"
 							src="<%=request.getContextPath()%>/join_icons/email_size_tag.png">
-					</label></th>
+					</label></td>
 					<td><input type="email" id="email" name="email"
 						placeholder="이메일 입력 " class="inputTextStyle"></td>
 				</tr>
 				<tr>
-					<th><label for="nickname" class="inputLabel"> <img
+					<td><label for="nickname" class="inputLabel"> <img
 							alt="NicknameIcon"
 							src="<%=request.getContextPath()%>/join_icons/nickname_size_tag.png">
-					</label></th>
+					</label></td>
 					<td><input type="text" id="nickname" name="nickname"
 						placeholder="별명 입력" class="inputTextStyle"></td>
-					<td><input type="button" value="중복확인" id="checkNick"></td>
+					<td><input type="button" value="중복확인" id="checkNick" class="boardButtonStyle3"></td>
 				</tr>
 				<tr>
-					<th></th>
-					<td><input type="submit" value="가입하기" id="joinButton">
-					</td>
+					<td></td>
+					<td><input type="submit" value="가입하기" id="joinButton"></td>
+					<td></td>
 				</tr>
 			</table>
-		</fieldset>
+		<!-- </fieldset> -->
 	</sform:form>
 	<script src="http://code.jquery.com/jquery.js"></script>
 	<script src="validation/dist/jquery.validate.min.js"></script>

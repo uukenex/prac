@@ -1,21 +1,30 @@
 @CHARSET "UTF-8";
 
 /* Join & Login CSS Style */
+html, body {
+
+    margin: 0;
+
+    height: 100%;
+
+    overflow: hidden;
+
+}
 
 	/* Join Style */
 	
 		img {
 			width: 45px;
-			height: 50px;
+			height: 40px;
 		}
 		
 		.inputTextStyle {
 			height: 40px;
-			width: 300px;
+			width: 200px;
 		}
 		
 		fieldset {
-			width: 300px;
+			width: 200px;
 			border: 2px dashed #F5696A;
 		}
 		
@@ -25,7 +34,7 @@
 		}
 		
 		#joinButton {
-			width: 300px;
+			width: 200px;
 			height: 2em;
 			-moz-appearance: none;
 			-webkit-appearance: none;
@@ -76,7 +85,7 @@
 			cursor: pointer;
 			display: inline-block;
 			font-family: "Nanum Brush Script";
-			font-size: 0.9em;
+			font-size: 1em;
 			font-weight: bold;
 			height: 1.75em;
 			letter-spacing: 0.075em;
@@ -98,9 +107,24 @@
 	/* Login Style */
 	
 		fieldset#login_fieldset {
-			width: 30em;
+			width: auto;
 		}
-	
+		input.boardButtonStyle2 {
+			margin: 0 0 0 0;
+			padding: 0.3em 0.5em 0.3em 0.5em;
+			font-family: 'Nanum Gothic';
+			font-size: 1em;
+			background: #f0f4f4;
+			color: #6F6F6F;
+			float: right;
+		}
+		.boardButtonStyle3{
+			display: block;
+			padding: 0;
+			line-height: 3em;
+			width: 100%;
+		}
+		
 		.button1 {
 			-moz-appearance: none;
 			-webkit-appearance: none;
@@ -151,7 +175,7 @@
 		
 		input[type='text'].inputTextStyle2, input[type='password'].inputTextStyle2 {
 			height: 40px;
-			width: 450px;
+			width: 300px;
 			margin-top: 1em;
 			margin-bottom: 1em;
 			margin-left: .75em;
@@ -229,12 +253,12 @@
 			cursor: pointer;
 			display: inline-block;
 			font-family: "Nanum Gothic";
-			font-size: 1.5em;
+			font-size: 1em;
 			font-weight: bold;
 			height: 1.75em;
 			letter-spacing: 0.075em;
 			line-height: 1.3em;
-			padding: 0 1.25em;
+			padding: 0;
 			text-align: center;
 			text-decoration: none;
 			text-transform: uppercase;
@@ -310,4 +334,39 @@
 		div.login_check_div div#findLink a.login_finder:HOVER {
 			background-color: #f56a6a;
 					color: #323232;
+		}
+		
+		form input[type="text"],
+		form input[type="email"],
+		form input[type="password"],
+		form select,
+		form textarea {
+			-webkit-appearance: none;
+			display: block;
+			border: 0;
+			background: #fafafa;
+			width: 100%;
+			border-radius: 0.5em;
+			border: solid 1px #E5E5E5;
+			padding: 1em 0 1em 0;
+			-moz-transition: background-color 0.35s ease-in-out, border-color 0.35s ease-in-out;
+			-webkit-transition: background-color 0.35s ease-in-out, border-color 0.35s ease-in-out;
+			-ms-transition: background-color 0.35s ease-in-out, border-color 0.35s ease-in-out;
+			transition: background-color 0.35s ease-in-out, border-color 0.35s ease-in-out;
+		}
+	
+			form input[type="text"]:focus,
+			form input[type="email"]:focus,
+			form input[type="password"]:focus,
+			form select:focus,
+			form textarea:focus {
+				background: #fff;
+				border-color: #df7366;
+			}
+	
+		form input[type="text"],
+		form input[type="email"],
+		form input[type="password"],
+		form select {
+			line-height: 1em;
 		}
