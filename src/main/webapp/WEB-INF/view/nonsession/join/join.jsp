@@ -18,7 +18,7 @@
 	<link rel="stylesheet" href="<%=request.getContextPath() %>/assets/css/fancy.css" />
 	<!--[if lte IE 8]><link rel="stylesheet" href="assets/css/ie8.css" /><![endif]-->
 	<link rel="stylesheet" href="<%=request.getContextPath()%>/assets/css/font-awesome.min.css">
-<title>회원 가입</title>
+<title>회원 가입  ::: TH-HOME</title>
 </head>
 
 <body>
