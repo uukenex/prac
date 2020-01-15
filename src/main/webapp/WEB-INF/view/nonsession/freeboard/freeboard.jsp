@@ -16,7 +16,7 @@
 	<!--[if lte IE 8]><link rel="stylesheet" href="assets/css/ie8.css" /><![endif]-->
 	<link rel="stylesheet" href="<%=request.getContextPath()%>/assets/css/font-awesome.min.css">
 
-<title>자유 게시판</title>
+<title>게시글작성 ::: TH-HOME</title>
 </head>
 <body>
 

@@ -20,7 +20,7 @@
 		
 		<link rel="stylesheet" href="<%=request.getContextPath()%>/assets/css/font-awesome.min.css">
 
-<title>자유 게시판: ${comment.commentName}</title>
+<title>${comment.commentName} ::: TH-HOME</title>
 
 </head>
 <body>

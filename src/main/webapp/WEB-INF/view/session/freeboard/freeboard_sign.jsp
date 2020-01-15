@@ -35,11 +35,11 @@
 								<form action="/boardWrite" method="post" id="frm">
 									<table class="boardEditorTable" >
 										<colgroup>
-											<col width="10%">
+											<col width="5%">
 											<col width="*%">
 										</colgroup>
 										<tr>
-											<td>제목</td>
+											<td></td>
 											<td class="inputTitle"><input type="text"  name="title" id="editorTitleWritter" 
 															placeholder="제목을 입력해주세요"></td>
 										</tr>

@@ -56,6 +56,14 @@
 		<c:url value="/free?page=1" var="free" />
 		<a href="${free }">자유게시판 1페이지</a>
 		<br>
+		
+		<script src="http://code.jquery.com/jquery.js"></script>
+		<script>
+		$(document).on("ready", function() {
+			window.location.href = '/free?page=1';
+		});
+		</script>
+		
 		<%--
 		<c:url value="/post?page=1" var="post" />
 		<a href="${post }">후기게시판 1페이지</a>
