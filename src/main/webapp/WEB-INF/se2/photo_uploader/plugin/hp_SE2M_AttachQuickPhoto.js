@@ -31,14 +31,12 @@ nhn.husky.SE2M_AttachQuickPhoto = jindo.$Class({
 	 * 포토 웹탑 오픈
 	 */
 	$ON_ATTACHPHOTO_OPEN_WINDOW : function(){			
+		
 		if(window.outerWidth  < 640){
 			
-			alert("모바일 사진업로드 미구현입니다.");
-			
-			//var files = e.target.files;
-            //var filesArr = Array.prototype.slice.call(files);
-			//var reader = new FileReader();
-           
+			console.log('성공');
+			document.getElementById('myFile').click();
+			return null;
 			
 			
 		}else{
@@ -53,6 +51,7 @@ nhn.husky.SE2M_AttachQuickPhoto = jindo.$Class({
 			return (!!this.oPopupWindow ? true : false);
 		}
 	},
+	
 	
 	/**
 	 * 서비스별로 팝업에  parameter를 추가하여 URL을 생성하는 함수	 

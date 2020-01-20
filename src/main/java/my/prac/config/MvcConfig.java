@@ -13,7 +13,8 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter
 import org.springframework.web.servlet.view.InternalResourceViewResolver;
 
 @Configuration
-@ComponentScan({ "my.prac.api.user.controller", "my.prac.api.board.controller", "my.prac.api.test.controller" })
+@ComponentScan({ "my.prac.api.user.controller", "my.prac.api.board.controller", "my.prac.api.test.controller",
+		"my.prac.api.games.controller" })
 @EnableWebMvc
 public class MvcConfig extends WebMvcConfigurerAdapter {
 
@@ -50,7 +51,7 @@ public class MvcConfig extends WebMvcConfigurerAdapter {
 		registry.addResourceHandler("/validation/**").addResourceLocations("/WEB-INF/validation/");
 		// registry.addResourceHandler("/temp/**").addResourceLocations("c:/Temp");
 		// 사진저장실험
-		registry.addResourceHandler("/review/**").addResourceLocations("/review/");
+		// registry.addResourceHandler("/review/**").addResourceLocations("/review/");
 		registry.addResourceHandler("/imgServer/**").addResourceLocations("file:///img/dev2/Temp/");
 	}
 

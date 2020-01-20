@@ -24,8 +24,12 @@ public class TestController {
 	@RequestMapping(value = "/transactionTest", method = RequestMethod.GET)
 	public String loginCheck(HttpServletRequest request, HttpSession session) {
 		HashMap<String, Object> hashMap = new HashMap<>();
-		testService.transactionTx(hashMap);
+		try {
+			testService.transactionTx(hashMap);
+		} catch (Exception e) {
 
-		return "";
+		}
+
+		return "redirect:/free?page=1";
 	}
 }

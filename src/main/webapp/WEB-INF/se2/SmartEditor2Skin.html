@@ -791,7 +791,20 @@
 	</div>
 </div>
 <!-- SE2 Markup End -->
-
-
+<div id ="insertDiv" style="display:none" >
+	<form>
+	  파일 추가하기 <input type="file" id="myFile" onchange="uploadChange(this);" />
+	</form>
+	
+</div>
+<script>
+function uploadChange(file) {
+	  var el = file.parentNode.parentNode.getElementsByTagName("*");
+	  for (var i = 0; i < el.length; i++) {
+	    var node = el[i];
+	    console.log(file.value);
+	  }
+	}
+</script>
 </body>
 </html>
