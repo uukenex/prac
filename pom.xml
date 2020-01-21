@@ -9,7 +9,7 @@
    <properties>
 
       <!-- Generic properties -->
-      <java.version>1.7</java.version>
+      <java.version>1.8</java.version>
       <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
       <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
@@ -215,8 +215,8 @@
             <artifactId>maven-compiler-plugin</artifactId>
             <version>3.5.1</version>
             <configuration>
-               <target>1.7</target>
-               <source>1.7</source>
+               <target>1.8</target>
+               <source>1.8</source>
             </configuration>
          </plugin>
          
