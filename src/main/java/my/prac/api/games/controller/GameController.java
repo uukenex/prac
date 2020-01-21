@@ -15,8 +15,11 @@ public class GameController {
 
 	@RequestMapping(value = "/game", method = RequestMethod.GET)
 	public String game1(Model model) {
-		System.setProperty("java.awt.headless", "true");
-		Game game = new Game();
+		try {
+			Game game = new Game();
+		} catch (Exception e) {
+			System.out.println(e.toString());
+		}
 		return "redirect:/free?page=1";
 	}
 }
