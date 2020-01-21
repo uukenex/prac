@@ -15,6 +15,7 @@ public class GameController {
 
 	@RequestMapping(value = "/game", method = RequestMethod.GET)
 	public String game1(Model model) {
+		System.setProperty("java.awt.headless", "true");
 		Game game = new Game();
 		return "redirect:/free?page=1";
 	}
