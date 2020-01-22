@@ -7,19 +7,12 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 
-import my.prac.core.games.Game;
-
 @Controller
 public class GameController {
 	static Logger logger = LoggerFactory.getLogger(GameController.class);
 
-	@RequestMapping(value = "/game", method = RequestMethod.GET)
+	@RequestMapping(value = "/game1", method = RequestMethod.GET)
 	public String game1(Model model) {
-		try {
-			Game game = new Game();
-		} catch (Exception e) {
-			System.out.println(e.toString());
-		}
-		return "redirect:/free?page=1";
+		return "games/game1";
 	}
 }
