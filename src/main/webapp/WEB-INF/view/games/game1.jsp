@@ -3,11 +3,13 @@
 <!DOCTYPE>
 <html>
 <HEAD>
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+
 <TITLE>가메스</TITLE>
+
 <style type="text/css">
 table {
-	width: 500px;
-	height: 500px;
+	padding-right: 15;
 }
 
 table tr td {
@@ -15,13 +17,108 @@ table tr td {
 	border: solid 1px black;
 }
 </style>
+
 </HEAD>
 <BODY onload="onloadFunc()">
 	<script src="http://code.jquery.com/jquery.js"></script>
 	<script language="javascript">
+		
+	
+	
+	
 	
 		function onloadFunc(){
-			$('#focus_here')[0].focus();
+			var windowWidth = $( window ).width();
+			if(windowWidth > 640){
+				windowWidth =640;
+			}
+			$('table').css('width',windowWidth);
+			$('table').css('height',windowWidth);
+			
+			$('#num1')[0].addEventListener('mousedown',function(){
+				if($('#num1')[0].style.background == 'black' ){
+					addGetCnt();
+				}
+				$('#num1')[0].style.background = 'gray';
+			});
+			$('#num1')[0].addEventListener('mouseup',function(){
+				$('#num1')[0].style.background = 'white';
+			}); 
+			
+			
+			$('#num2')[0].addEventListener('mousedown',function(){
+				if($('#num2')[0].style.background == 'black' ){
+					addGetCnt();
+				}
+				$('#num2')[0].style.background = 'gray';
+			});
+			$('#num2')[0].addEventListener('mouseup',function(){
+				$('#num2')[0].style.background = 'white';
+			}); 
+			$('#num3')[0].addEventListener('mousedown',function(){
+				if($('#num3')[0].style.background == 'black' ){
+					addGetCnt();
+				}
+				$('#num3')[0].style.background = 'gray';
+			});
+			$('#num3')[0].addEventListener('mouseup',function(){
+				$('#num3')[0].style.background = 'white';
+			}); 
+			$('#num4')[0].addEventListener('mousedown',function(){
+				if($('#num4')[0].style.background == 'black' ){
+					addGetCnt();
+				}
+				$('#num4')[0].style.background = 'gray';
+			});
+			$('#num4')[0].addEventListener('mouseup',function(){
+				$('#num4')[0].style.background = 'white';
+			}); 
+			$('#num5')[0].addEventListener('mousedown',function(){
+				if($('#num5')[0].style.background == 'black' ){
+					addGetCnt();
+				}
+				$('#num5')[0].style.background = 'gray';
+			});
+			$('#num5')[0].addEventListener('mouseup',function(){
+				$('#num5')[0].style.background = 'white';
+			}); 
+			$('#num6')[0].addEventListener('mousedown',function(){
+				if($('#num6')[0].style.background == 'black' ){
+					addGetCnt();
+				}
+				$('#num6')[0].style.background = 'gray';
+			});
+			$('#num6')[0].addEventListener('mouseup',function(){
+				$('#num6')[0].style.background = 'white';
+			}); 
+			$('#num7')[0].addEventListener('mousedown',function(){
+				if($('#num7')[0].style.background == 'black' ){
+					addGetCnt();
+				}
+				$('#num7')[0].style.background = 'gray';
+			});
+			$('#num7')[0].addEventListener('mouseup',function(){
+				$('#num7')[0].style.background = 'white';
+			}); 
+			$('#num8')[0].addEventListener('mousedown',function(){
+				if($('#num8')[0].style.background == 'black' ){
+					addGetCnt();
+				}
+				$('#num8')[0].style.background = 'gray';
+			});
+			$('#num8')[0].addEventListener('mouseup',function(){
+				$('#num8')[0].style.background = 'white';
+			}); 
+			$('#num9')[0].addEventListener('mousedown',function(){
+				if($('#num9')[0].style.background == 'black' ){
+					addGetCnt();
+				}
+				$('#num9')[0].style.background = 'gray';
+			});
+			$('#num9')[0].addEventListener('mouseup',function(){
+				$('#num9')[0].style.background = 'white';
+			}); 
+			 
 		}
 	
 		var getCnt = 0;
@@ -31,9 +128,19 @@ table tr td {
 			$('#getCnt')[0].value = getCnt;
 		}
 		
+		function clickFunc( arg0 ){
+			switch ( arg0 ) {
+			case 7:
+				if($('#num7')[0].style.background == 'black' ){
+					addGetCnt();
+				}
+				$('#num7')[0].style.background = 'gray';
+				break;
+			}
+		}
+		
 		
 		$(document).keydown(function(e) {
-			alert(e.keyCode);
 			switch (e.keyCode) {
 			case 97:
 				if($('#num1')[0].style.background == 'black' ){
