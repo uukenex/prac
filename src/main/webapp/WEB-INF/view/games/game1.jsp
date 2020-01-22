@@ -16,9 +16,13 @@ table tr td {
 }
 </style>
 </HEAD>
-<BODY>
+<BODY onload="onloadFunc()">
 	<script src="http://code.jquery.com/jquery.js"></script>
 	<script language="javascript">
+	
+		function onloadFunc(){
+			$('#focus_here')[0].focus();
+		}
 	
 		var getCnt = 0;
 	
@@ -29,6 +33,7 @@ table tr td {
 		
 		
 		$(document).keydown(function(e) {
+			alert(e.keyCode);
 			switch (e.keyCode) {
 			case 97:
 				if($('#num1')[0].style.background == 'black' ){
@@ -189,7 +194,7 @@ table tr td {
 			<td colspan="3"><input type="text" readonly="readonly" id="getCnt" value="0"></td>
 		</tr>
 	</table>
-	
+	<input type="tel" hidden="true" id="focus_here">
 
 
 </BODY>
