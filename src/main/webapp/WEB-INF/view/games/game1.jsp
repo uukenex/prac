@@ -3,7 +3,8 @@
 <!DOCTYPE>
 <html>
 <HEAD>
-<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<meta name="viewport"
+	content="width=device-width, initial-scale=1, user-scalable=no" />
 
 <TITLE>가메스</TITLE>
 
@@ -21,177 +22,174 @@ table tr td {
 </HEAD>
 <BODY onload="onloadFunc()">
 	<script src="http://code.jquery.com/jquery.js"></script>
+	<script type="text/javascript" src="http://jsgetip.appspot.com"></script>
 	<script language="javascript">
-		
-	
-	
-	
-	
-		function onloadFunc(){
-			var windowWidth = $( window ).width();
-			if(windowWidth > 640){
-				windowWidth =640;
+		function onloadFunc() {
+			var windowWidth = $(window).width();
+			if (windowWidth > 640) {
+				windowWidth = 640;
 			}
-			$('table').css('width',windowWidth);
-			$('table').css('height',windowWidth);
+			$('table').css('width', windowWidth);
+			$('table').css('height', windowWidth);
+			$('html, body').css({'overflow': 'hidden', 'height': '100%'});
 			
-			$('#num1')[0].addEventListener('mousedown',function(){
-				if($('#num1')[0].style.background == 'black' ){
+			
+			
+			$('#num1')[0].addEventListener('mousedown', function() {
+				if ($('#num1')[0].style.background == 'black') {
 					addGetCnt();
 				}
 				$('#num1')[0].style.background = 'gray';
 			});
-			$('#num1')[0].addEventListener('mouseup',function(){
+			$('#num1')[0].addEventListener('mouseup', function() {
 				$('#num1')[0].style.background = 'white';
-			}); 
-			
-			
-			$('#num2')[0].addEventListener('mousedown',function(){
-				if($('#num2')[0].style.background == 'black' ){
+			});
+
+			$('#num2')[0].addEventListener('mousedown', function() {
+				if ($('#num2')[0].style.background == 'black') {
 					addGetCnt();
 				}
 				$('#num2')[0].style.background = 'gray';
 			});
-			$('#num2')[0].addEventListener('mouseup',function(){
+			$('#num2')[0].addEventListener('mouseup', function() {
 				$('#num2')[0].style.background = 'white';
-			}); 
-			$('#num3')[0].addEventListener('mousedown',function(){
-				if($('#num3')[0].style.background == 'black' ){
+			});
+			$('#num3')[0].addEventListener('mousedown', function() {
+				if ($('#num3')[0].style.background == 'black') {
 					addGetCnt();
 				}
 				$('#num3')[0].style.background = 'gray';
 			});
-			$('#num3')[0].addEventListener('mouseup',function(){
+			$('#num3')[0].addEventListener('mouseup', function() {
 				$('#num3')[0].style.background = 'white';
-			}); 
-			$('#num4')[0].addEventListener('mousedown',function(){
-				if($('#num4')[0].style.background == 'black' ){
+			});
+			$('#num4')[0].addEventListener('mousedown', function() {
+				if ($('#num4')[0].style.background == 'black') {
 					addGetCnt();
 				}
 				$('#num4')[0].style.background = 'gray';
 			});
-			$('#num4')[0].addEventListener('mouseup',function(){
+			$('#num4')[0].addEventListener('mouseup', function() {
 				$('#num4')[0].style.background = 'white';
-			}); 
-			$('#num5')[0].addEventListener('mousedown',function(){
-				if($('#num5')[0].style.background == 'black' ){
+			});
+			$('#num5')[0].addEventListener('mousedown', function() {
+				if ($('#num5')[0].style.background == 'black') {
 					addGetCnt();
 				}
 				$('#num5')[0].style.background = 'gray';
 			});
-			$('#num5')[0].addEventListener('mouseup',function(){
+			$('#num5')[0].addEventListener('mouseup', function() {
 				$('#num5')[0].style.background = 'white';
-			}); 
-			$('#num6')[0].addEventListener('mousedown',function(){
-				if($('#num6')[0].style.background == 'black' ){
+			});
+			$('#num6')[0].addEventListener('mousedown', function() {
+				if ($('#num6')[0].style.background == 'black') {
 					addGetCnt();
 				}
 				$('#num6')[0].style.background = 'gray';
 			});
-			$('#num6')[0].addEventListener('mouseup',function(){
+			$('#num6')[0].addEventListener('mouseup', function() {
 				$('#num6')[0].style.background = 'white';
-			}); 
-			$('#num7')[0].addEventListener('mousedown',function(){
-				if($('#num7')[0].style.background == 'black' ){
+			});
+			$('#num7')[0].addEventListener('mousedown', function() {
+				if ($('#num7')[0].style.background == 'black') {
 					addGetCnt();
 				}
 				$('#num7')[0].style.background = 'gray';
 			});
-			$('#num7')[0].addEventListener('mouseup',function(){
+			$('#num7')[0].addEventListener('mouseup', function() {
 				$('#num7')[0].style.background = 'white';
-			}); 
-			$('#num8')[0].addEventListener('mousedown',function(){
-				if($('#num8')[0].style.background == 'black' ){
+			});
+			$('#num8')[0].addEventListener('mousedown', function() {
+				if ($('#num8')[0].style.background == 'black') {
 					addGetCnt();
 				}
 				$('#num8')[0].style.background = 'gray';
 			});
-			$('#num8')[0].addEventListener('mouseup',function(){
+			$('#num8')[0].addEventListener('mouseup', function() {
 				$('#num8')[0].style.background = 'white';
-			}); 
-			$('#num9')[0].addEventListener('mousedown',function(){
-				if($('#num9')[0].style.background == 'black' ){
+			});
+			$('#num9')[0].addEventListener('mousedown', function() {
+				if ($('#num9')[0].style.background == 'black') {
 					addGetCnt();
 				}
 				$('#num9')[0].style.background = 'gray';
 			});
-			$('#num9')[0].addEventListener('mouseup',function(){
+			$('#num9')[0].addEventListener('mouseup', function() {
 				$('#num9')[0].style.background = 'white';
-			}); 
-			 
+			});
+
 		}
-	
+
 		var getCnt = 0;
-	
-		function addGetCnt(){
+
+		function addGetCnt() {
 			getCnt++;
 			$('#getCnt')[0].value = getCnt;
 		}
-		
-		function clickFunc( arg0 ){
-			switch ( arg0 ) {
+
+		function clickFunc(arg0) {
+			switch (arg0) {
 			case 7:
-				if($('#num7')[0].style.background == 'black' ){
+				if ($('#num7')[0].style.background == 'black') {
 					addGetCnt();
 				}
 				$('#num7')[0].style.background = 'gray';
 				break;
 			}
 		}
-		
-		
+
 		$(document).keydown(function(e) {
 			switch (e.keyCode) {
 			case 97:
-				if($('#num1')[0].style.background == 'black' ){
+				if ($('#num1')[0].style.background == 'black') {
 					addGetCnt();
 				}
 				$('#num1')[0].style.background = 'gray';
 				break;
 			case 98:
-				if($('#num2')[0].style.background == 'black' ){
+				if ($('#num2')[0].style.background == 'black') {
 					addGetCnt();
 				}
 				$('#num2')[0].style.background = 'gray';
 				break;
 			case 99:
-				if($('#num3')[0].style.background == 'black' ){
+				if ($('#num3')[0].style.background == 'black') {
 					addGetCnt();
 				}
 				$('#num3')[0].style.background = 'gray';
 				break;
 			case 100:
-				if($('#num4')[0].style.background == 'black' ){
+				if ($('#num4')[0].style.background == 'black') {
 					addGetCnt();
 				}
 				$('#num4')[0].style.background = 'gray';
 				break;
 			case 101:
-				if($('#num5')[0].style.background == 'black' ){
+				if ($('#num5')[0].style.background == 'black') {
 					addGetCnt();
 				}
 				$('#num5')[0].style.background = 'gray';
 				break;
 			case 102:
-				if($('#num6')[0].style.background == 'black' ){
+				if ($('#num6')[0].style.background == 'black') {
 					addGetCnt();
 				}
 				$('#num6')[0].style.background = 'gray';
 				break;
 			case 103:
-				if($('#num7')[0].style.background == 'black' ){
+				if ($('#num7')[0].style.background == 'black') {
 					addGetCnt();
 				}
 				$('#num7')[0].style.background = 'gray';
 				break;
 			case 104:
-				if($('#num8')[0].style.background == 'black' ){
+				if ($('#num8')[0].style.background == 'black') {
 					addGetCnt();
 				}
 				$('#num8')[0].style.background = 'gray';
 				break;
 			case 105:
-				if($('#num9')[0].style.background == 'black' ){
+				if ($('#num9')[0].style.background == 'black') {
 					addGetCnt();
 				}
 				$('#num9')[0].style.background = 'gray';
@@ -232,50 +230,73 @@ table tr td {
 			}
 		})
 
+	
+		var filter = "win16|win32|win64|mac";
+		var mediaCode = "";
+		if(navigator.platform){
+			if(0 > filter.indexOf(navigator.platform.toLowerCase())){
+				mediaCode ="MOBILE";
+			}else{
+				mediaCode ="PC";
+			}
+		}
 		
-		
-		
-		
+		console.log(ip());
 		
 		var createTime = 1500;
 		var createCnt = 0;
 		var timer = setInterval(timerFunc, createTime);
 		var endCnt = 0;
-		
-		function timerFunc(){
-			
-			var i = getRandomInt(1,9);
+
+		function timerFunc() {
+
+			var i = getRandomInt(1, 9);
 			var cnt = 0; //스크립트 팅김방지
-			while($('#num' + i)[0].style.background == 'black'){
-				i = getRandomInt(1,9);
+			while ($('#num' + i)[0].style.background == 'black') {
+				i = getRandomInt(1, 9);
 				cnt++;
-				if(cnt >= 9){
+				if (cnt >= 9) {
 					break;
 				}
 			}
 			$('#num' + i)[0].style.background = 'black';
 			createCnt++;
-			
-			if(createCnt == 5){
+
+			if (createCnt == 5) {
 				createCnt = 0;
-				createTime = createTime/2;
+				createTime = createTime / 2;
 				clearTimeout(timer);
 				timer = setInterval(timerFunc, createTime);
 			}
-			
-			endCnt=0;
-			for(var j=1;j<=9;j++){
-				if($('#num' + j)[0].style.background == 'black'){
-						endCnt++;
-				}	
+
+			endCnt = 0;
+			for (var j = 1; j <= 9; j++) {
+				if ($('#num' + j)[0].style.background == 'black') {
+					endCnt++;
+				}
 			}
-			if(endCnt==9){
+			if (endCnt == 9) {
 				clearTimeout(timer);
-				alert('종료. 점수확인');
+				//alert('종료. 점수확인');
+				$.ajax({
+					type : "post",
+					url : "/game1/saveGame1Cnt",
+					data : {
+						mediaCode: mediaCode,
+						ip : ip(),
+						cnt : getCnt
+					},
+					success : function(res) {
+						alert("서버 저장 완료");
+					},
+					error : function(request, status, error) {
+						alert(request);
+					}
+				});
 			}
-			
+
 		}
-		
+
 		function getRandomInt(min, max) {
 			return Math.floor(Math.random() * (max - min + 1)) + min;
 		}
@@ -298,7 +319,8 @@ table tr td {
 			<td id="num3">numpad3</td>
 		</tr>
 		<tr>
-			<td colspan="3"><input type="text" readonly="readonly" id="getCnt" value="0"></td>
+			<td colspan="3"><input type="text" readonly="readonly"
+				id="getCnt" value="0"></td>
 		</tr>
 	</table>
 	<input type="tel" hidden="true" id="focus_here">

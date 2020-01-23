@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="my.prac.core.prjgame1.dao.Game1DAO">
+	<insert id="insertGame1Cnt" parameterType="Map">
+        insert into TGAME1_RANK ( /* Game1Mapper.xml : my.prac.core.prjgame1.dao.Game1DAO.insertGame1Cnt */ 
+             USER_ID,
+             IP_ADDR,
+             MEDIA_CODE,
+             CNT,
+             INSERT_DATE )
+          values (
+             null,
+             #{ip, jdbcType=VARCHAR},
+             #{mediaCode, jdbcType=VARCHAR},
+             #{cnt, jdbcType=NUMERIC},
+             sysdate)
+    </insert>
+</mapper>
