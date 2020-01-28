@@ -50,4 +50,10 @@ public class GameController {
 
 		return resultMsg;
 	}
+
+	@RequestMapping(value = "/game2", method = RequestMethod.GET)
+	public String game2(Model model) {
+		return "games/game2";
+	}
+
 }

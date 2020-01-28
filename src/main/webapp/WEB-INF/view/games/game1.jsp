@@ -287,7 +287,7 @@ table tr td {
 						cnt : getCnt
 					},
 					success : function(res) {
-						alert("서버 저장 완료");
+						alert("점수가 저장되었습니다");
 					},
 					error : function(request, status, error) {
 						alert(request);
@@ -323,8 +323,6 @@ table tr td {
 				id="getCnt" value="0"></td>
 		</tr>
 	</table>
-	<input type="tel" hidden="true" id="focus_here">
-
 
 </BODY>
 </HTML>
