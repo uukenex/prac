@@ -39,26 +39,31 @@ table tr td {
 				'overflow' : 'hidden',
 				'height' : '100%'
 			});
-
-			//시작위치 지정
-			$('#11').attr('class', 'position');
-			//$('#char');
-
-			//$('.position').css('background', 'black');
-
 			document.oncontextmenu = function(e) {
 				return false;
 			}
 
-			addEvent($('#00'));
-			addEvent($('#01'));
-			addEvent($('#02'));
-			addEvent($('#10'));
-			addEvent($('#11'));
-			addEvent($('#12'));
-			addEvent($('#20'));
-			addEvent($('#21'));
-			addEvent($('#22'));
+			var cellCnt = 5;
+			var cellField ="";
+			
+			for (var j = 0; j < cellCnt; j++) {
+				cellField += "<tr>";
+		        for (var i = 0; i < cellCnt; i++) {
+		        	cellField += "<td id="+i+j+">"+i+j+"</td>";
+		        }
+		        cellField += "</tr>";
+		      }
+			
+			$('#space')[0].innerHTML = cellField;
+			
+			//시작위치 지정
+			$('#00').attr('class', 'position');
+			
+			for(var i=0 ; i < cellCnt ; i++){
+				for(var j=0 ; j < cellCnt ; j++){
+					addEvent($('#'+i+j));
+				}	
+			}
 		}
 
 		function addEvent(arg0) {
@@ -95,20 +100,36 @@ table tr td {
 		
 		function moveFunc() {
 			
-			if(moveXPos != '0'){
-				moveX();
-				console.log('이동중');
-				clearTimeout(movement);
-				movement = setInterval(moveFunc, 1000);
-			}else if(moveYPos != '0'){
-				moveY();
-				console.log('이동중');
-				clearTimeout(movement);
-				movement = setInterval(moveFunc, 1000);
+			if((String)(new Date().getTime()).substr(-1)%2==1){
+				if(moveXPos != '0'){
+					moveX();
+					clearTimeout(movement);
+					movement = setInterval(moveFunc, 1000);
+				}else if(moveYPos != '0'){
+					moveY();
+					clearTimeout(movement);
+					movement = setInterval(moveFunc, 1000);
+				}else{
+					console.log('이동종료');
+					clearTimeout(movement);
+				}
+				
 			}else{
-				console.log('이동종료');
-				clearTimeout(movement);
+				if(moveYPos != '0'){
+					moveY();
+					clearTimeout(movement);
+					movement = setInterval(moveFunc, 1000);
+				}else if(moveXPos != '0'){
+					moveX();
+					clearTimeout(movement);
+					movement = setInterval(moveFunc, 1000);
+				}else{
+					console.log('이동종료');
+					clearTimeout(movement);
+				}
 			}
+			
+			
 			
 		}
 		
@@ -144,8 +165,8 @@ table tr td {
 		
 	</script>
 
-	<table>
-		<tr>
+	<table id="space">
+		<!-- <tr>
 			<td id="00">00</td>
 			<td id="10">10</td>
 			<td id="20">20</td>
@@ -159,7 +180,7 @@ table tr td {
 			<td id="02">02</td>
 			<td id="12">12</td>
 			<td id="22">22</td>
-		</tr>
+		</tr> -->
 	</table>
 	<!-- <div id="char">0</div> -->
 
