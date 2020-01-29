@@ -18,10 +18,24 @@ table tr td {
 	border: solid 1px black;
 }
 
+.route{
+	background: yellow;
+}
+.destination{
+	background: blue;
+}
+.start {
+	background: red;
+}
 .position {
 	background: black;
 }
 </style>
+<!-- 
+style은 늦게 서술한것으로 덮어씌워짐
+route < destination =start < position
+
+-->
 
 </HEAD>
 <BODY onload="onloadFunc()">
@@ -71,98 +85,163 @@ table tr td {
 				moveEvent(arg0);
 			});
 		}
-
+		var findCurrentCellId = function() {
+			return $('.position')[0].id;
+		}
+		var findRouteCellId = function() {
+			if($('.preRoute')[0]==null){
+				return findCurrentCellId();
+			}else{
+				return $('.preRoute')[0].id;	
+			}
+		}
 		
-		var moveStartPoint;
-		var moveEndPoint;
-		var movement;
-		var moveDistance;
-		var moveXPos;
-		var moveYPos;
+		
+		var moveStartPoint//누른 시점 현재 셀 ID;
+		var moveEndPoint//누른 시점 종료 셀 ID;
+		var movement;//이동하는 timer 변수
+		var moveSpeed = 1*1000;//timer 속도
+		
+		var moveXpos;//x좌표 이동거리
+		var moveYpos;//y좌표 이동거리
+		var moveTotalSize;// x+y 이동거리
+		var moveCurrentSize; //현재까지 이동거리 저장할 변수 
+		var moveIdList;// 게산된 route 저장
+		
 		
 		function moveEvent(arg0) {
 			moveStartPoint = findCurrentCellId();
 			moveEndPoint = arg0[0].id;
-			moveDistance = moveEndPoint - moveStartPoint;
 			
-			moveXPos = moveEndPoint.substr(0,1) - moveStartPoint.substr(0,1);
-			moveYPos = moveEndPoint.substr(1,1) - moveStartPoint.substr(1,1);
-			
-			//console.log('From : ' + moveStartPoint + ', To : ' + moveEndPoint+', distanceX : '+moveXPos+', distanceY : '+moveYPos);
-			
-			clearTimeout(movement);
-			movement = setInterval(moveFunc, 1000);
+			moveXpos = moveEndPoint.substr(0,1) - moveStartPoint.substr(0,1);
+			moveYpos = moveEndPoint.substr(1,1) - moveStartPoint.substr(1,1);
+			moveTotalSize = Math.abs(moveXpos)+Math.abs(moveYpos);
+			moveCurrentSize = 0;
+			moveFind();//route 찾기 밑 초기화 기능
+
+			clearTimeout(movement);//이동 timer 중복실행방지
+			movement = setInterval(moveFunc, moveSpeed);//이동 timer 실행
 		}
 
-		var findCurrentCellId = function() {
-			return $('.position')[0].id;
+		
+		function moveFind(){
+			moveIdList = [];
+			$('.start').removeClass('start');
+			$('.destination').removeClass('destination');
+			$('.route').removeClass('route');
+			
+			$('#'+moveStartPoint).addClass('route');
+			$('#'+moveStartPoint).addClass('start');
+			$('#'+moveEndPoint).addClass('destination');
+			
+			for(var i = 0 ; i < moveTotalSize ; i++){
+				if(getRandomInt(0,1)%2 == 1){
+					if(moveXpos != '0'){
+						moveX();
+					}else if(moveYpos != '0'){
+						moveY();
+					}
+				}else{
+					if(moveYpos != '0'){
+						moveY();
+					}else if(moveXpos != '0'){
+						moveX();
+					}
+				}
+			}
+			$('.preRoute').removeClass('preRoute');
+			
+			//초기셀까지 선택
+			/* 
+			for(var i=0;i<moveTotalSize+1;i++){
+				moveIdList.push($('.route')[i].id);	
+			} 
+			*/
+			
 		}
 		
 		function moveFunc() {
+			var orgId = findCurrentCellId();
 			
-			if((String)(new Date().getTime()).substr(-1)%2==1){
-				if(moveXPos != '0'){
-					moveX();
-					clearTimeout(movement);
-					movement = setInterval(moveFunc, 1000);
-				}else if(moveYPos != '0'){
-					moveY();
-					clearTimeout(movement);
-					movement = setInterval(moveFunc, 1000);
-				}else{
-					console.log('이동종료');
-					clearTimeout(movement);
-				}
-				
-			}else{
-				if(moveYPos != '0'){
-					moveY();
-					clearTimeout(movement);
-					movement = setInterval(moveFunc, 1000);
-				}else if(moveXPos != '0'){
-					moveX();
-					clearTimeout(movement);
-					movement = setInterval(moveFunc, 1000);
-				}else{
-					console.log('이동종료');
-					clearTimeout(movement);
-				}
+			
+			console.log(moveCurrentSize +' / '+moveTotalSize);
+			
+			$('.position').removeClass('position');
+			$('#'+moveIdList[moveCurrentSize]).addClass('position');
+			
+			moveCurrentSize++;
+			if(moveCurrentSize == moveTotalSize){
+				clearTimeout(movement);//지정된 카운트 이동시 타이머 종료
+				return;
 			}
 			
+			/* 
+			if($("#"+(Number(orgId.substr(0,1))+1)+orgId.substr(1,1)).hasClass('route')){
+				console.log('x+1');
+			}else if($("#"+(Number(orgId.substr(0,1))+1)+orgId.substr(1,1)).hasClass('route')){
+				console.log('x-1');
+			}else if($("#"+orgId.substr(0,1)+(Number(orgId.substr(1,1))+1)).hasClass('route')){
+				console.log('y+1');
+			}else if($("#"+orgId.substr(0,1)+(Number(orgId.substr(1,1))-1)).hasClass('route')){
+				console.log('y-1');
+			} */
+			/* 
+			if($('#21').hasClass('route'))
 			
+				if(moveXpos != '0'){
+					moveX();
+					clearTimeout(movement);
+					movement = setInterval(moveFunc, moveSpeed);
+				}else if(moveYpos != '0'){
+					moveY();
+					clearTimeout(movement);
+					movement = setInterval(moveFunc, moveSpeed);
+				}else{
+					console.log('이동종료');
+					clearTimeout(movement);
+				}
+				 */
 			
 		}
 		
 		function moveX(){
-			var orgId = findCurrentCellId();
+			var orgId = findRouteCellId();
 			var targetXpoint;
 			var targetId;
-			if(moveXPos >0){
+			if(moveXpos >0){
 				targetXpoint = Number(orgId.substr(0,1))+1;
 			}else{
 				targetXpoint = Number(orgId.substr(0,1))-1;
 			}
 			targetId = targetXpoint + orgId.substr(1,1);
-			$('#'+orgId).removeAttr('class');
-			$('#'+targetId).attr('class', 'position');
-			moveXPos = moveEndPoint.substr(0,1) - targetId.substr(0,1);
+			$('#'+orgId).removeClass('preRoute');
+			$('#'+targetId).addClass('preRoute');
+			$('#'+targetId).addClass('route');
+			moveIdList.push(targetId);	
+			moveXpos = moveEndPoint.substr(0,1) - targetId.substr(0,1);
 		}
 		function moveY(){
-			var orgId = findCurrentCellId();
+			var orgId = findRouteCellId();
 			var targetYpoint;
 			var targetId;
-			if(moveYPos >0){
+			if(moveYpos >0){
 				targetYpoint = Number(orgId.substr(1,1))+1;
 			}else{
 				targetYpoint = Number(orgId.substr(1,1))-1;
 			}
 			targetId = orgId.substr(0,1) + targetYpoint;
-			$('#'+orgId).removeAttr('class');
-			$('#'+targetId).attr('class', 'position');
-			moveYPos = moveEndPoint.substr(1,1) - targetId.substr(1,1);
+			$('#'+orgId).removeClass('preRoute');
+			$('#'+targetId).addClass('preRoute');
+			$('#'+targetId).addClass('route');
+			moveIdList.push(targetId);
+			moveYpos = moveEndPoint.substr(1,1) - targetId.substr(1,1);
 		}
 		
 		
+		
+		function getRandomInt(min, max) {
+			return Math.floor(Math.random() * (max - min + 1)) + min;
+		}
 	</script>
 
 	<table id="space">
