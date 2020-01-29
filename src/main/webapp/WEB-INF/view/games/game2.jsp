@@ -44,8 +44,8 @@ route < destination =start < position
 	<script language="javascript">
 		function onloadFunc() {
 			var windowWidth = $(window).width();
-			if (windowWidth > 640) {
-				windowWidth = 640;
+			if (windowWidth > 720) {
+				windowWidth = 720;
 			}
 			$('table').css('width', windowWidth);
 			$('table').css('height', windowWidth);
@@ -57,7 +57,7 @@ route < destination =start < position
 				return false;
 			}
 
-			var cellCnt = 5;
+			var cellCnt = 8;
 			var cellField ="";
 			
 			for (var j = 0; j < cellCnt; j++) {
@@ -69,6 +69,8 @@ route < destination =start < position
 		      }
 			
 			$('#space')[0].innerHTML = cellField;
+			$('td').css('width', windowWidth/cellCnt);
+			$('td').css('height', windowWidth/cellCnt);
 			
 			//시작위치 지정
 			$('#00').attr('class', 'position');
@@ -100,7 +102,7 @@ route < destination =start < position
 		var moveStartPoint//누른 시점 현재 셀 ID;
 		var moveEndPoint//누른 시점 종료 셀 ID;
 		var movement;//이동하는 timer 변수
-		var moveSpeed = 1*1000;//timer 속도
+		var moveSpeed = 0.3*1000;//timer 속도
 		
 		var moveXpos;//x좌표 이동거리
 		var moveYpos;//y좌표 이동거리
@@ -117,6 +119,12 @@ route < destination =start < position
 			moveYpos = moveEndPoint.substr(1,1) - moveStartPoint.substr(1,1);
 			moveTotalSize = Math.abs(moveXpos)+Math.abs(moveYpos);
 			moveCurrentSize = 0;
+			
+			if(moveTotalSize ==0){
+				moveClear();
+				return;
+			}
+			
 			moveFind();//route 찾기 밑 초기화 기능
 
 			clearTimeout(movement);//이동 timer 중복실행방지
@@ -171,7 +179,7 @@ route < destination =start < position
 			
 			moveCurrentSize++;
 			if(moveCurrentSize == moveTotalSize){
-				clearTimeout(movement);//지정된 카운트 이동시 타이머 종료
+				moveClear();
 				return;
 			}
 			
@@ -235,6 +243,13 @@ route < destination =start < position
 			$('#'+targetId).addClass('route');
 			moveIdList.push(targetId);
 			moveYpos = moveEndPoint.substr(1,1) - targetId.substr(1,1);
+		}
+		function moveClear(){
+			clearTimeout(movement);
+			moveIdList = [];
+			$('.start').removeClass('start');
+			$('.destination').removeClass('destination');
+			$('.route').removeClass('route');
 		}
 		
 		
