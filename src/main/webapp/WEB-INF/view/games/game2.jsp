@@ -10,12 +10,15 @@
 
 <style type="text/css">
 table {
-	padding-right: 15;
+	margin-top: 15px;
+	margin-right: 15px;
+	border: solid 1px black;
 }
 
 table tr td {
 	text-align: center;
-	border: solid 1px black;
+	/* border: solid 1px black; */
+	background: #FFEEFF;
 }
 
 .route{
@@ -29,6 +32,9 @@ table tr td {
 }
 .position {
 	background: black;
+}
+.rock{
+	background: gray;
 }
 </style>
 <!-- 
@@ -47,7 +53,7 @@ route < destination =start < position
 			if (windowWidth > 720) {
 				windowWidth = 720;
 			}
-			$('table').css('width', windowWidth);
+			$('table').css('width', windowWidth-20);
 			$('table').css('height', windowWidth);
 			$('html, body').css({
 				'overflow' : 'hidden',
@@ -57,13 +63,14 @@ route < destination =start < position
 				return false;
 			}
 
-			var cellCnt = 8;
+			var cellCnt = 10;
 			var cellField ="";
+			var cellRockCnt = 2;
 			
 			for (var j = 0; j < cellCnt; j++) {
 				cellField += "<tr>";
 		        for (var i = 0; i < cellCnt; i++) {
-		        	cellField += "<td id="+i+j+">"+i+j+"</td>";
+		        	cellField += "<td id="+i+j+"></td>";
 		        }
 		        cellField += "</tr>";
 		      }
@@ -74,6 +81,8 @@ route < destination =start < position
 			
 			//시작위치 지정
 			$('#00').attr('class', 'position');
+			$('#33').attr('class', 'rock');
+			
 			
 			for(var i=0 ; i < cellCnt ; i++){
 				for(var j=0 ; j < cellCnt ; j++){
@@ -82,6 +91,11 @@ route < destination =start < position
 			}
 		}
 
+		
+		
+		
+		
+		
 		function addEvent(arg0) {
 			arg0.mousedown(function(e) {
 				moveEvent(arg0);
@@ -102,7 +116,7 @@ route < destination =start < position
 		var moveStartPoint//누른 시점 현재 셀 ID;
 		var moveEndPoint//누른 시점 종료 셀 ID;
 		var movement;//이동하는 timer 변수
-		var moveSpeed = 0.3*1000;//timer 속도
+		var moveSpeed = 0.15*1000;//timer 속도
 		
 		var moveXpos;//x좌표 이동거리
 		var moveYpos;//y좌표 이동거리
@@ -118,6 +132,9 @@ route < destination =start < position
 			moveXpos = moveEndPoint.substr(0,1) - moveStartPoint.substr(0,1);
 			moveYpos = moveEndPoint.substr(1,1) - moveStartPoint.substr(1,1);
 			moveTotalSize = Math.abs(moveXpos)+Math.abs(moveYpos);
+			
+			moveSizeCheck();
+			
 			moveCurrentSize = 0;
 			
 			if(moveTotalSize ==0){
@@ -126,17 +143,18 @@ route < destination =start < position
 			}
 			
 			moveFind();//route 찾기 밑 초기화 기능
-
+			
 			clearTimeout(movement);//이동 timer 중복실행방지
 			movement = setInterval(moveFunc, moveSpeed);//이동 timer 실행
 		}
 
 		
+		function moveSizeCheck(){
+			return;
+		}
+		
 		function moveFind(){
-			moveIdList = [];
-			$('.start').removeClass('start');
-			$('.destination').removeClass('destination');
-			$('.route').removeClass('route');
+			moveClear();//초기화
 			
 			$('#'+moveStartPoint).addClass('route');
 			$('#'+moveStartPoint).addClass('start');
@@ -158,22 +176,28 @@ route < destination =start < position
 				}
 			}
 			$('.preRoute').removeClass('preRoute');
+			moveFindRock();
+		}
+		function moveFindRock(){
+			var rtnValue = true;//정상 루트 찾기 
+						
+			for(var i = 0 ; i < moveTotalSize ; i++){
+				if($('#'+moveIdList[i]).hasClass('rock')){
+					rtnValue = false;//비정상 루트	
+				}
+			}
 			
-			//초기셀까지 선택
-			/* 
-			for(var i=0;i<moveTotalSize+1;i++){
-				moveIdList.push($('.route')[i].id);	
-			} 
-			*/
+			
+			if(!rtnValue){
+				//route 재계산을 위한 거리 재계산
+				moveXpos = moveEndPoint.substr(0,1) - moveStartPoint.substr(0,1);
+				moveYpos = moveEndPoint.substr(1,1) - moveStartPoint.substr(1,1);
+				moveFind();	
+			}
 			
 		}
 		
 		function moveFunc() {
-			var orgId = findCurrentCellId();
-			
-			
-			console.log(moveCurrentSize +' / '+moveTotalSize);
-			
 			$('.position').removeClass('position');
 			$('#'+moveIdList[moveCurrentSize]).addClass('position');
 			
@@ -182,33 +206,6 @@ route < destination =start < position
 				moveClear();
 				return;
 			}
-			
-			/* 
-			if($("#"+(Number(orgId.substr(0,1))+1)+orgId.substr(1,1)).hasClass('route')){
-				console.log('x+1');
-			}else if($("#"+(Number(orgId.substr(0,1))+1)+orgId.substr(1,1)).hasClass('route')){
-				console.log('x-1');
-			}else if($("#"+orgId.substr(0,1)+(Number(orgId.substr(1,1))+1)).hasClass('route')){
-				console.log('y+1');
-			}else if($("#"+orgId.substr(0,1)+(Number(orgId.substr(1,1))-1)).hasClass('route')){
-				console.log('y-1');
-			} */
-			/* 
-			if($('#21').hasClass('route'))
-			
-				if(moveXpos != '0'){
-					moveX();
-					clearTimeout(movement);
-					movement = setInterval(moveFunc, moveSpeed);
-				}else if(moveYpos != '0'){
-					moveY();
-					clearTimeout(movement);
-					movement = setInterval(moveFunc, moveSpeed);
-				}else{
-					console.log('이동종료');
-					clearTimeout(movement);
-				}
-				 */
 			
 		}
 		
@@ -257,26 +254,10 @@ route < destination =start < position
 		function getRandomInt(min, max) {
 			return Math.floor(Math.random() * (max - min + 1)) + min;
 		}
-	</script>
+</script>
 
 	<table id="space">
-		<!-- <tr>
-			<td id="00">00</td>
-			<td id="10">10</td>
-			<td id="20">20</td>
-		</tr>
-		<tr>
-			<td id="01">01</td>
-			<td id="11">11</td>
-			<td id="21">21</td>
-		</tr>
-		<tr>
-			<td id="02">02</td>
-			<td id="12">12</td>
-			<td id="22">22</td>
-		</tr> -->
 	</table>
-	<!-- <div id="char">0</div> -->
 
 </BODY>
 </HTML>
