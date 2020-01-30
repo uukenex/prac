@@ -1,3 +1,4 @@
+<%@page import="org.springframework.web.bind.annotation.ModelAttribute"%>
 <%@ page language="java" contentType="text/html; charset=UTF-8"
 	pageEncoding="UTF-8"%>
 <!DOCTYPE>
@@ -52,6 +53,15 @@ route < destination =start < position
 	<script src="http://code.jquery.com/jquery.js"></script>
 	<script type="text/javascript" src="http://jsgetip.appspot.com"></script>
 	<script language="javascript">
+	<!-- 전역 변수 -->
+	
+		
+		var cellCnt = ${cell};
+		var cellLength = (cellCnt - 1).toString().length; //cellCnt의 자릿수 체크 , substr하기 위함
+		var cellRockCnt = 2; //벽 갯수
+		
+		var moveSpeed = 1 * 1 / cellCnt * 1000;//timer 속도, cellCnt가 변경되어도 끝에서 끝까지 속도는 같음  
+
 		function onloadFunc() {
 			var windowWidth = $(window).width();
 			if (windowWidth > 720) {
@@ -66,15 +76,17 @@ route < destination =start < position
 			document.oncontextmenu = function(e) {
 				return false;
 			}
-
-			var cellCnt = 10;
 			var cellField = "";
-			var cellRockCnt = 2;
 
-			for (var j = 0; j < cellCnt; j++) {
+			var xPoint = 0; //for문 변수로 사용되지만, 자릿수에 맞춰 늘어나야함 
+			var yPoint = 0; //for문 변수로 사용되지만, 자릿수에 맞춰 늘어나야함 
+
+			for (var yPoint = 0; yPoint < cellCnt; yPoint++) {
 				cellField += "<tr>";
-				for (var i = 0; i < cellCnt; i++) {
-					cellField += "<td id="+i+j+"></td>";
+				for (var xPoint = 0; xPoint < cellCnt; xPoint++) {
+
+					cellField += "<td id=" + pad(xPoint, cellLength)
+							+ pad(yPoint, cellLength) + "></td>";
 				}
 				cellField += "</tr>";
 			}
@@ -84,12 +96,18 @@ route < destination =start < position
 			$('td').css('height', windowWidth / cellCnt);
 
 			//시작위치 지정
-			$('#00').attr('class', 'position');
-			$('#33').attr('class', 'rock');
-
-			for (var i = 0; i < cellCnt; i++) {
-				for (var j = 0; j < cellCnt; j++) {
-					addEvent($('#' + i + j));
+			$('#'+pad('0',cellLength)+pad('0',cellLength)).attr('class', 'position');
+			
+			//rock생성 
+			for (var i = 0; i < cellRockCnt ; i++){
+				$('#'+pad(getRandomInt(0, cellCnt),cellLength)+pad(getRandomInt(0, cellCnt),cellLength)).attr('class', 'rock');
+			}
+			
+			//cell생성 
+			for (var yPoint = 0; yPoint < cellCnt; yPoint++) {
+				for (var xPoint = 0; xPoint < cellCnt; xPoint++) {
+					addEvent($('#' + pad(xPoint, cellLength)
+							+ pad(yPoint, cellLength)));
 				}
 			}
 		}
@@ -113,7 +131,6 @@ route < destination =start < position
 		var moveStartPoint//누른 시점 현재 셀 ID;
 		var moveEndPoint//누른 시점 종료 셀 ID;
 		var movement;//이동하는 timer 변수
-		var moveSpeed = 0.15 * 1000;//timer 속도
 
 		var moveOrgXpos;//x가야할 거리 원본
 		var moveOrgYpos;//y가야할 거리 원본
@@ -130,10 +147,10 @@ route < destination =start < position
 			moveStartPoint = findCurrentCellId();
 			moveEndPoint = arg0[0].id;
 
-			moveOrgXpos = moveEndPoint.substr(0, 1)
-					- moveStartPoint.substr(0, 1);
-			moveOrgYpos = moveEndPoint.substr(1, 1)
-					- moveStartPoint.substr(1, 1);
+			moveOrgXpos = moveEndPoint.substr(0, cellLength)
+					- moveStartPoint.substr(0, cellLength);
+			moveOrgYpos = moveEndPoint.substr(cellLength, cellLength)
+					- moveStartPoint.substr(cellLength, cellLength);
 
 			moveXpos = moveOrgXpos;
 			moveYpos = moveOrgYpos;
@@ -171,13 +188,13 @@ route < destination =start < position
 				moveFindRock();
 			} /* else if (moveRockAvoidCnt < 30) {
 
-				moveTotalSize++;
-				moveRockAvoidAddRoute++;
+						moveTotalSize++;
+						moveRockAvoidAddRoute++;
 
-				console.log('추가목숨부여 mvCnt' + moveTotalSize
-						+ ', moveRockAvoidAddRoute' + moveRockAvoidAddRoute);
-				moveFindRock();
-			} */
+						console.log('추가목숨부여 mvCnt' + moveTotalSize
+								+ ', moveRockAvoidAddRoute' + moveRockAvoidAddRoute);
+						moveFindRock();
+					} */
 		}
 
 		function moveFindRock() {
@@ -228,43 +245,49 @@ route < destination =start < position
 			if (getRandomInt(0, 1) % 2 == 1) {
 				if (moveXpos != '0') {
 					if (moveXpos > 0) {
-						targetXpoint = Number(orgId.substr(0, 1)) + 1;
+						targetXpoint = Number(orgId.substr(0, cellLength)) + 1;
 					} else {
-						targetXpoint = Number(orgId.substr(0, 1)) - 1;
+						targetXpoint = Number(orgId.substr(0, cellLength)) - 1;
 					}
-					targetId = targetXpoint + orgId.substr(1, 1);
-					moveXpos = moveEndPoint.substr(0, 1)
-							- targetId.substr(0, 1);
+					targetId = pad(targetXpoint,cellLength)
+							+ orgId.substr(cellLength, cellLength);
+					moveXpos = moveEndPoint.substr(0, cellLength)
+							- targetId.substr(0, cellLength);
 				} else {
 					if (moveYpos > 0) {
-						targetYpoint = Number(orgId.substr(1, 1)) + 1;
+						targetYpoint = Number(orgId.substr(cellLength,
+								cellLength)) + 1;
 					} else {
-						targetYpoint = Number(orgId.substr(1, 1)) - 1;
+						targetYpoint = Number(orgId.substr(cellLength,
+								cellLength)) - 1;
 					}
-					targetId = orgId.substr(0, 1) + targetYpoint;
-					moveYpos = moveEndPoint.substr(1, 1)
-							- targetId.substr(1, 1);
+					targetId = orgId.substr(0, cellLength) + pad(targetYpoint,cellLength);;
+					moveYpos = moveEndPoint.substr(cellLength, cellLength)
+							- targetId.substr(cellLength, cellLength);
 				}
 
 			} else {
 				if (moveYpos != '0') {
 					if (moveYpos > 0) {
-						targetYpoint = Number(orgId.substr(1, 1)) + 1;
+						targetYpoint = Number(orgId.substr(cellLength,
+								cellLength)) + 1;
 					} else {
-						targetYpoint = Number(orgId.substr(1, 1)) - 1;
+						targetYpoint = Number(orgId.substr(cellLength,
+								cellLength)) - 1;
 					}
-					targetId = orgId.substr(0, 1) + targetYpoint;
-					moveYpos = moveEndPoint.substr(1, 1)
-							- targetId.substr(1, 1);
+					targetId = orgId.substr(0, cellLength) + pad(targetYpoint,cellLength);
+					moveYpos = moveEndPoint.substr(cellLength, cellLength)
+							- targetId.substr(cellLength, cellLength);
 				} else {
 					if (moveXpos > 0) {
-						targetXpoint = Number(orgId.substr(0, 1)) + 1;
+						targetXpoint = Number(orgId.substr(0, cellLength)) + 1;
 					} else {
-						targetXpoint = Number(orgId.substr(0, 1)) - 1;
+						targetXpoint = Number(orgId.substr(0, cellLength)) - 1;
 					}
-					targetId = targetXpoint + orgId.substr(1, 1);
-					moveXpos = moveEndPoint.substr(0, 1)
-							- targetId.substr(0, 1);
+					targetId = pad(targetXpoint,cellLength)
+							+ orgId.substr(cellLength, cellLength);
+					moveXpos = moveEndPoint.substr(0, cellLength)
+							- targetId.substr(0, cellLength);
 				}
 
 			}
@@ -286,6 +309,12 @@ route < destination =start < position
 
 		function getRandomInt(min, max) {
 			return Math.floor(Math.random() * (max - min + 1)) + min;
+		}
+		function pad(n, width) {
+			n = n + '';
+			return n.length >= width ? n : new Array(width - n.length + 1)
+					.join('0')
+					+ n;
 		}
 	</script>
 

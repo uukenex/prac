@@ -52,7 +52,14 @@ public class GameController {
 	}
 
 	@RequestMapping(value = "/game2", method = RequestMethod.GET)
-	public String game2(Model model) {
+	public String game2(Model model, @RequestParam(required = false, defaultValue = "10") int cell) {
+		if (cell > 50) {
+			cell = 50;
+		}
+		if (cell < 10) {
+			cell = 10;
+		}
+		model.addAttribute("cell", cell);
 		return "games/game2";
 	}
 
