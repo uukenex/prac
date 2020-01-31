@@ -54,8 +54,6 @@ route < destination =start < position
 	<script type="text/javascript" src="http://jsgetip.appspot.com"></script>
 	<script language="javascript">
 	<!-- 전역 변수 -->
-	
-		
 		var cellCnt = ${cell};
 		var cellLength = (cellCnt - 1).toString().length; //cellCnt의 자릿수 체크 , substr하기 위함
 		var cellRockCnt = 2; //벽 갯수
@@ -84,9 +82,7 @@ route < destination =start < position
 			for (var yPoint = 0; yPoint < cellCnt; yPoint++) {
 				cellField += "<tr>";
 				for (var xPoint = 0; xPoint < cellCnt; xPoint++) {
-
-					cellField += "<td id=" + pad(xPoint, cellLength)
-							+ pad(yPoint, cellLength) + "></td>";
+					cellField += "<td id=" + pad(xPoint, cellLength) + pad(yPoint, cellLength) + "></td>";
 				}
 				cellField += "</tr>";
 			}
@@ -106,8 +102,7 @@ route < destination =start < position
 			//cell생성 
 			for (var yPoint = 0; yPoint < cellCnt; yPoint++) {
 				for (var xPoint = 0; xPoint < cellCnt; xPoint++) {
-					addEvent($('#' + pad(xPoint, cellLength)
-							+ pad(yPoint, cellLength)));
+					addEvent($('#' + pad(xPoint, cellLength)+ pad(yPoint, cellLength)));
 				}
 			}
 		}
@@ -186,15 +181,7 @@ route < destination =start < position
 			$('.preRoute').removeClass('preRoute');
 			if (moveRockAvoidCnt < 20) {//벽 피하기는 20회까지만 재도전
 				moveFindRock();
-			} /* else if (moveRockAvoidCnt < 30) {
-
-						moveTotalSize++;
-						moveRockAvoidAddRoute++;
-
-						console.log('추가목숨부여 mvCnt' + moveTotalSize
-								+ ', moveRockAvoidAddRoute' + moveRockAvoidAddRoute);
-						moveFindRock();
-					} */
+			}
 		}
 
 		function moveFindRock() {
@@ -216,6 +203,7 @@ route < destination =start < position
 			}
 
 		}
+		
 
 		function moveFunc() {
 			$('.position').removeClass('position');
@@ -291,7 +279,14 @@ route < destination =start < position
 				}
 
 			}
-
+			if(moveRockAvoidCnt == 20){
+				if($('#' + targetId).hasClass('rock')){
+					$('.destination').removeClass('destination');
+					$('#' + moveIdList[i-1]).addClass('destination');
+					break;
+				}
+			}
+			
 			$('#' + orgId).removeClass('preRoute');
 			$('#' + targetId).addClass('preRoute');
 			$('#' + targetId).addClass('route');
