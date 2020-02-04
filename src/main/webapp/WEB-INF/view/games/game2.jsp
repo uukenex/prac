@@ -41,6 +41,14 @@ table tr td {
 .rock {
 	background: gray;
 }
+
+.r0 {
+	background: #720000;
+}
+
+.r1 {
+	background: #72FF00;
+}
 </style>
 <!-- 
 style은 늦게 서술한것으로 덮어씌워짐
@@ -132,12 +140,13 @@ route < destination =start < position
 		var moveXpos;//변경가능한 x가야할 거리
 		var moveYpos;//변경가능한 y가야할 거리
 		var moveTotalSize;// x+y 이동거리
+		var moveMaxSize;// x+y 이동거리
 		var moveCurrentSize; //현재까지 이동거리 저장할 변수 
 		var moveIdList;// 게산된 route 저장
 
 		var moveRockAvoidCnt;//rock 피하는 카운트 수
 		var moveRockAvoidAddRoute;//rock을 피하기위한 route 추가
-
+		
 		function moveEvent(arg0) {
 			moveStartPoint = findCurrentCellId();
 			moveEndPoint = arg0[0].id;
@@ -160,8 +169,9 @@ route < destination =start < position
 			}
 
 			moveFind();//route 찾기 밑 초기화 기능
-
-			if (moveRockAvoidCnt >= 20) {
+			moveMaxSize = moveIdList.length;
+			
+			if (moveRockAvoidCnt >= 30) {
 				return;
 			}
 
@@ -179,7 +189,9 @@ route < destination =start < position
 			preRouteAlgorithm(moveTotalSize);
 
 			$('.preRoute').removeClass('preRoute');
-			if (moveRockAvoidCnt < 20) {//벽 피하기는 20회까지만 재도전
+			if (moveRockAvoidCnt < 30) {//벽 피하기는 30회까지만 재도전
+				moveFindRock();
+			}else if (moveRockAvoidCnt == 30) {//벽 피하기는 30회까지만 재도전
 				moveFindRock();
 			}
 		}
@@ -189,6 +201,7 @@ route < destination =start < position
 
 			for (var i = 0; i < moveTotalSize; i++) {
 				if ($('#' + moveIdList[i]).hasClass('rock')) {
+					
 					rtnValue = false;//비정상 루트	
 					moveRockAvoidCnt++;
 				}
@@ -206,6 +219,12 @@ route < destination =start < position
 		
 
 		function moveFunc() {
+			
+			if(moveMaxSize == moveCurrentSize ){
+				moveClear();
+				return;
+			}
+			
 			$('.position').removeClass('position');
 			$('#' + moveIdList[moveCurrentSize]).addClass('position');
 
@@ -220,79 +239,79 @@ route < destination =start < position
 		function preRouteAlgorithm(size) {
 			//지정된 횟수 내 모든 경로를 감지하도록 구현
 			for (var i = 0; i < size; i++) {
-				move();
+				
+				
+				var orgId = findRouteCellId();
+				var targetXpoint;
+				var targetYpoint;
+				var targetId;
+
+				if (getRandomInt(0, 1) % 2 == 1) {
+					if (moveXpos != '0') {
+						if (moveXpos > 0) {
+							targetXpoint = Number(orgId.substr(0, cellLength)) + 1;
+						} else {
+							targetXpoint = Number(orgId.substr(0, cellLength)) - 1;
+						}
+						targetId = pad(targetXpoint,cellLength)
+								+ orgId.substr(cellLength, cellLength);
+						moveXpos = moveEndPoint.substr(0, cellLength)
+								- targetId.substr(0, cellLength);
+					} else {
+						if (moveYpos > 0) {
+							targetYpoint = Number(orgId.substr(cellLength,
+									cellLength)) + 1;
+						} else {
+							targetYpoint = Number(orgId.substr(cellLength,
+									cellLength)) - 1;
+						}
+						targetId = orgId.substr(0, cellLength) + pad(targetYpoint,cellLength);;
+						moveYpos = moveEndPoint.substr(cellLength, cellLength)
+								- targetId.substr(cellLength, cellLength);
+					}
+
+				} else {
+					if (moveYpos != '0') {
+						if (moveYpos > 0) {
+							targetYpoint = Number(orgId.substr(cellLength,
+									cellLength)) + 1;
+						} else {
+							targetYpoint = Number(orgId.substr(cellLength,
+									cellLength)) - 1;
+						}
+						targetId = orgId.substr(0, cellLength) + pad(targetYpoint,cellLength);
+						moveYpos = moveEndPoint.substr(cellLength, cellLength)
+								- targetId.substr(cellLength, cellLength);
+					} else {
+						if (moveXpos > 0) {
+							targetXpoint = Number(orgId.substr(0, cellLength)) + 1;
+						} else {
+							targetXpoint = Number(orgId.substr(0, cellLength)) - 1;
+						}
+						targetId = pad(targetXpoint,cellLength)
+								+ orgId.substr(cellLength, cellLength);
+						moveXpos = moveEndPoint.substr(0, cellLength)
+								- targetId.substr(0, cellLength);
+					}
+
+				}
+				if(moveRockAvoidCnt == 20){
+					if($('#' + targetId).hasClass('rock')){
+						$('.destination').removeClass('destination');
+						$('#' + moveIdList[i-1]).addClass('destination');
+						break;
+					}
+				}
+				
+				$('#' + orgId).removeClass('preRoute');
+				$('#' + targetId).addClass('preRoute');
+				$('#' + targetId).addClass('route');
+				moveIdList.push(targetId);
+				
 			}
 		}
-
-		function move() {
-			var orgId = findRouteCellId();
-			var targetXpoint;
-			var targetYpoint;
-			var targetId;
-
-			if (getRandomInt(0, 1) % 2 == 1) {
-				if (moveXpos != '0') {
-					if (moveXpos > 0) {
-						targetXpoint = Number(orgId.substr(0, cellLength)) + 1;
-					} else {
-						targetXpoint = Number(orgId.substr(0, cellLength)) - 1;
-					}
-					targetId = pad(targetXpoint,cellLength)
-							+ orgId.substr(cellLength, cellLength);
-					moveXpos = moveEndPoint.substr(0, cellLength)
-							- targetId.substr(0, cellLength);
-				} else {
-					if (moveYpos > 0) {
-						targetYpoint = Number(orgId.substr(cellLength,
-								cellLength)) + 1;
-					} else {
-						targetYpoint = Number(orgId.substr(cellLength,
-								cellLength)) - 1;
-					}
-					targetId = orgId.substr(0, cellLength) + pad(targetYpoint,cellLength);;
-					moveYpos = moveEndPoint.substr(cellLength, cellLength)
-							- targetId.substr(cellLength, cellLength);
-				}
-
-			} else {
-				if (moveYpos != '0') {
-					if (moveYpos > 0) {
-						targetYpoint = Number(orgId.substr(cellLength,
-								cellLength)) + 1;
-					} else {
-						targetYpoint = Number(orgId.substr(cellLength,
-								cellLength)) - 1;
-					}
-					targetId = orgId.substr(0, cellLength) + pad(targetYpoint,cellLength);
-					moveYpos = moveEndPoint.substr(cellLength, cellLength)
-							- targetId.substr(cellLength, cellLength);
-				} else {
-					if (moveXpos > 0) {
-						targetXpoint = Number(orgId.substr(0, cellLength)) + 1;
-					} else {
-						targetXpoint = Number(orgId.substr(0, cellLength)) - 1;
-					}
-					targetId = pad(targetXpoint,cellLength)
-							+ orgId.substr(cellLength, cellLength);
-					moveXpos = moveEndPoint.substr(0, cellLength)
-							- targetId.substr(0, cellLength);
-				}
-
-			}
-			if(moveRockAvoidCnt == 20){
-				if($('#' + targetId).hasClass('rock')){
-					$('.destination').removeClass('destination');
-					$('#' + moveIdList[i-1]).addClass('destination');
-					break;
-				}
-			}
-			
-			$('#' + orgId).removeClass('preRoute');
-			$('#' + targetId).addClass('preRoute');
-			$('#' + targetId).addClass('route');
-			moveIdList.push(targetId);
-
-		}
+		
+		
 
 		function moveClear() {
 			clearTimeout(movement);
