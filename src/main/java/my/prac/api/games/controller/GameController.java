@@ -75,4 +75,16 @@ public class GameController {
 		return "games/game2_2";
 	}
 
+	@RequestMapping(value = "/game3", method = RequestMethod.GET)
+	public String game3(Model model, @RequestParam(required = false, defaultValue = "10") int cell) {
+		if (cell > 50) {
+			cell = 50;
+		}
+		if (cell < 10) {
+			cell = 10;
+		}
+		model.addAttribute("cell", cell);
+		return "games/game3";
+	}
+
 }

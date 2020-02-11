@@ -27,7 +27,7 @@ table tr td {
 }
 
 .destination {
-	background: blue;
+	background: #0000FB;
 }
 
 .start {
@@ -62,12 +62,13 @@ route < destination =start < position
 	<script type="text/javascript" src="http://jsgetip.appspot.com"></script>
 	<script language="javascript">
 	<!-- 전역 변수 -->
-		var cellCnt = 4;
+		var cellCnt = 3;
 		var cellLength = (cellCnt - 1).toString().length; //cellCnt의 자릿수 체크 , substr하기 위함
 		var cellRockCnt = 2; //벽 갯수
 		var moveSpeed = 1 * 1 / cellCnt * 1000;//timer 속도, cellCnt가 변경되어도 끝에서 끝까지 속도는 같음  
 
 		var array;
+		var MAX_SIZE = 100;//queue size
 		var isDebug = true;
 		
 		function onloadFunc() {
@@ -76,20 +77,173 @@ route < destination =start < position
 			initRock();//rock 생성
 			initWindow();//윈도우 크기 등 css설정
 			initAddCellEvent();//cell event추가 -> moveFunction 구현
+			//initEndPos(2,2);//imsi EndPos생성
+			//anotherProcess();
 		}
 
 		function moveFunction(arg0) {
 			arg0.mousedown(function(e) {
-				getClickArrayInfo(arg0);
+				getClickArray(arg0);
 			});
 		}
 
-		function getClickArrayInfo(arg0){
+		function getClickArray(arg0){
 			var x = arg0[0].id.substr(0, cellLength);
 			var y = arg0[0].id.substr(cellLength, cellLength);
-			console.log(y+x+' clicked : array val='+array[y][x]);
+			if(isDebug){
+				//console.log(y+x+' clicked : array val='+array[y][x]);
+			}
+			
+			if(array[y][x] == 'r'){
+				//console.log('rock');
+				return;
+			}
+			
+			$('.route').removeClass('route');
+			$('.destination').removeClass('destination');
+			array[y][x] = 'e';
+			$('#'+pad(x,cellLength)+pad(y,cellLength)).attr('class', 'destination');
+			
+			anotherProcess(y,x);
+			
 		}
 		
+		function anotherProcess(arg0,arg1){
+			function Stack() {    
+				//스택의 요소가 저장되는 배열    
+				var dataStore = new Pos;   
+				this.dataStore = [];    
+				//스택의 위치    
+				this.top = -1;    
+				//함수정의    
+				this.push   = push;    
+				this.pop    = pop;
+			}
+			function Pos(x,y) {
+			 	this.x = x;    
+			 	this.y = y;
+			}
+			function Init() {   
+			 	this.top = -1;
+			}
+			
+			//가득 찼을때
+			function Is_full() {
+			 	return(this.top == MAX_SIZE-1);
+			}
+			//비었을 때
+			function Is_empty(){
+			 	return(this.top == -1);
+			}
+			//스택에 요소를 추가
+			function push(element) {
+				if(Is_full()) { 
+				 	console.log("Stack is full"); 
+				} else{
+				 	this.top = this.top +1;
+				 	this.dataStore[this.top] = element;
+				}
+			}
+			//스택 최상층의 요소를 반환한다.
+			function pop() { 
+			 //Stack underflow   
+			 	if(this.top<=-1) {  
+			 		console.log("Stack underflow!!!");
+			 		return; 
+			 	} else {     
+				 	var popped = this.dataStore[this.top];
+				 	//top을 1 감소시킨다.     
+				 	this.top = this.top -1;     
+			 		return popped; 
+			 	}
+			}
+			
+			//동서남북 이동 가능한가 확인 Movable함수
+			function Movable(x,y) {
+				if(x<0||y<0||x>=cellCnt||y>=cellCnt) {
+					return;
+				}
+				if (array[x][y] != 'r' && array[x][y] != '.') {
+					var next = new Pos();    
+					next.x = x;   
+					next.y = y;  
+					stackObj.push(next); 
+				}
+			}
+			//스택 객체 생성
+			var stackObj = new Stack();
+			var here = new Pos();
+			//시작점 탐색
+			for (var i = 0; i < array.length; i++) {
+				for (var j = 0; j < array[i].length; j++) {
+					if (array[i][j] == 's') {  
+						here.x = i;      
+						here.y = j;        
+					}  
+				}
+			}
+			
+			$('#' + here.y+''+ here.x).addClass('start');
+			console.log("시작점:" + "(" + here.x + "," + here.y + ")");
+			 
+			//시작점에서 출구까지 반복문
+			while(array[here.x][here.y] != 'e') {
+				var x = here.x;   
+				var y = here.y;   
+				array[x][y]='.'; 
+				
+				Movable(x + 1, y);  
+				Movable(x, y + 1);
+				Movable(x - 1, y);  
+				Movable(x, y - 1);
+				
+				if(Is_empty()) {     
+					console.log("failed");
+					return;   
+				} else { 
+					here = stackObj.pop();
+					console.log("(" + here.x + "," + here.y + ")");
+					$('#'+here.y+here.x).addClass('route');
+				}
+			}
+			console.log("도착점:"+ "(" + here.x + "," + here.y + ")");
+			console.log("탈출 성공!!!!!!!!");
+			
+			array[here.x][here.y] = 's';
+			clearCell();
+			$('.start').removeClass('start');
+		}
+		
+		function clearCell(){
+			var x;
+			var y;
+			for ( x = 0 ;  x < cellCnt ; x++ ){
+				for ( y = 0 ; y < cellCnt ; y++ ){
+					if( array[y][x]=='r' || array[y][x]=='s' ){
+						continue;
+					}else{
+						array[y][x] = '0';
+					}
+				}
+			}
+			
+			return null;
+		}
+		
+		
+		function getCell(arg0){
+			var x;
+			var y;
+			for ( x = 0 ;  x < cellCnt ; x++ ){
+				for ( y = 0 ; y < cellCnt ; y++ ){
+					if(array[y][x]==arg0){
+						return y+""+x;
+					}
+				}
+			}
+			
+			return null;
+		}
 		
 		function getRandomInt(min, max) {
 			return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -159,15 +313,21 @@ route < destination =start < position
 		function initStartPos(x,y){
 			//시작위치 지정
 			$('#'+pad(x,cellLength)+pad(y,cellLength)).attr('class', 'position');
-			array[x][y] = '3';
+			array[y][x] = 's';
 		}
+		function initEndPos(x,y){
+			//시작위치 지정
+			$('#'+pad(x,cellLength)+pad(y,cellLength)).attr('class', 'destination');
+			array[x][y] = 'e';
+		}
+		
 		function initRock(){
 			var i = 0;
 			while(i < cellRockCnt){
 				var x = pad(getRandomInt(0, cellCnt-1),cellLength);
 				var y = pad(getRandomInt(0, cellCnt-1),cellLength);
 				
-				if(array[x][y] == 3 || array[x][y] == 2){
+				if(array[x][y] == 's' || array[x][y] == 'r'){
 					if(isDebug){
 						console.log(y+x+' started or already rock retry');
 					}
@@ -178,7 +338,7 @@ route < destination =start < position
 				}
 				
 				$('#'+y+x).attr('class', 'rock'); // y가 세로축임 
-				array[x][y] = '2';
+				array[x][y] = 'r';
 				i++;
 			}
 			

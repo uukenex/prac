@@ -287,7 +287,7 @@ table tr td {
 						cnt : getCnt
 					},
 					success : function(res) {
-						alert("점수가 저장되었습니다");
+						alert(getCnt+"점수가 저장되었습니다");
 					},
 					error : function(request, status, error) {
 						alert(request);
