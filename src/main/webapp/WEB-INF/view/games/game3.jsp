@@ -485,11 +485,14 @@
 		<div onclick="rank_info()">
 		<strong>랭크 정보</strong><font id="rank_btn">펼치기</font>
 		</div>
-		
 		<div id="rank_table" class="hide">
-			<c:forEach var="rank" items="${rank}">
-			${rank.MEDIA_CODE} ${rank.CNT} ${rank.USER_ID}
+			<%-- 
+			<c:forEach var="ranks" items="${rank}">
+			${ranks.MEDIA_CODE} ${ranks.CNT} ${rank.USER_ID}
+			</c:forEach>
+			 --%>
 		</div>
+		 
 	</section>
 	
 </BODY>
