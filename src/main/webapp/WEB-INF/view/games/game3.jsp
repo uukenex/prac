@@ -7,59 +7,16 @@
 <meta name="viewport"
 	content="width=device-width, initial-scale=1, user-scalable=no" />
 
-<TITLE>PROJECT2</TITLE>
+<TITLE>따뜻한 가메</TITLE>
 
-<style type="text/css">
-table {
-	margin-top: 15px;
-	margin-right: 15px;
-	border: solid 1px black;
-}
-
-table tr td {
-	text-align: center;
-	/* border: solid 1px black; */
-	background: #FFEEFF;
-	color: #FFFFFF;
-}
-
-.route {
-	background: yellow;
-}
-
-.destination {
-	background: #0000FB;
-}
-
-.start {
-	background: red;
-}
-
-.position {
-	background: black;
-}
-
-.rock {
-	background: gray;
-}
-
-.over {
-	background: #72FF00;
-}
-</style>
-<!-- 
-style은 늦게 서술한것으로 덮어씌워짐
-route < destination =start < position
-
--->
-
+<link rel="stylesheet" href="<%=request.getContextPath() %>/game_set/css/game3.css?v=<%=System.currentTimeMillis() %>" />
 </HEAD>
 <BODY onload="onloadFunc()">
 	<script src="http://code.jquery.com/jquery.js"></script>
 	<script type="text/javascript" src="http://jsgetip.appspot.com"></script>
 	<script language="javascript">
 	<!-- 전역 변수 -->
-		var cellCnt = 4;
+		var cellCnt = ${cell};
 		var cellLength = (cellCnt - 1).toString().length; //cellCnt의 자릿수 체크 , substr하기 위함
 		var cellRockCnt = 2; //벽 갯수
 		var moveSpeed = 1 * 1 / cellCnt * 1000;//timer 속도, cellCnt가 변경되어도 끝에서 끝까지 속도는 같음  
@@ -70,11 +27,11 @@ route < destination =start < position
 		var direct = 'right';//방향 right left up down 의 약자 사용 
 		var x = 0;
 		var y=  0;
-		var tailSize = 1;
+		var gameOverFlag = false;
 		
 		
 		var movement;//timer 변수
-		var moveSpeed = 1*1000; //1초마다 한칸 이동 
+		var moveSpeed = 0.8*1000 * (10 / cellCnt); //0.8초마다 한칸 이동 
 
 		function Queue(){
 	        this.dataStore = [];
@@ -85,6 +42,7 @@ route < destination =start < position
 	        this.last = last;
 	        this.isEmpty = isEmpty;
 	        this.indexOf = indexOf;
+	        this.length = length;
 	    }
 		function push(element){
 	        this.dataStore.push(element);
@@ -120,6 +78,9 @@ route < destination =start < position
 	    	}else{
 	    		return false;	
 	    	}
+	    }
+	    function length(){ 
+	    	return this.dataStore.length;
 	    }
 
 		var q = new Queue();
@@ -183,6 +144,7 @@ route < destination =start < position
 					console.log('끝');
 					clearTimeout(movement);
 					$('#'+id).parent().addClass('over');
+					$('.cell').fadeOut(1500);
 				}
 				
 				if($('#'+id).val()=='2'){//tail
@@ -245,9 +207,9 @@ route < destination =start < position
 			function moveFunc(){
 				point++;
 				//console.log(point);
-				if( point > 100 ){
-					clearTimeout(movement);
-					console.log('100점 도달 종료');
+				if( point > 1000 ){
+					gameOver(4);
+					console.log('1000점 도달 종료');
 				}
 				
 				
@@ -278,14 +240,70 @@ route < destination =start < position
 					clearTimeout(movement);
 					moveSpeed = moveSpeed*0.8;
 					console.log('속도 증가.. 현재 moveSpeed : '+moveSpeed);
-					movement = setInterval(moveFunc, moveSpeed);
+					if(!gameOverFlag){
+						movement = setInterval(moveFunc, moveSpeed);	
+					}
+					
 				}
 
 			}
 			
 			
-			function gameOver(){
+			var filter = "win16|win32|win64|mac";
+			var mediaCode = "";
+			if(navigator.platform){
+				if(0 > filter.indexOf(navigator.platform.toLowerCase())){
+					mediaCode ="MOBILE";
+				}else{
+					mediaCode ="PC";
+				}
+			}
+			
+			
+			function gameOver(arg0){
 				$('#'+x+''+y).val('9').trigger('change');
+				gameOverFlag = true;
+				setTimeout(function(){
+					var cnt = Number(point)*Number(q.length()); 
+
+					var promptVal ;
+					switch(arg0){
+						case 1:
+							promptVal = prompt('벽에 부딪힘..'+cnt+'점 \n이름을 입력해주세요.');
+							break;
+						case 2:
+							promptVal = prompt('장애물에 부딪힘..'+cnt+'점\n이름을 입력해주세요.');
+							break;
+						case 3:
+							promptVal = prompt('꼬리에 부딪힘..'+cnt+'점\n이름을 입력해주세요.');
+							break;
+						case 4:
+							promptVal = prompt('max점수..'+cnt+'점\n이름을 입력해주세요.');
+							break;
+					}
+					
+					
+					$.ajax({
+						type : "post",
+						url : "/game3/saveGame3Cnt",
+						data : {
+							userName : promptVal,						
+							mediaCode: mediaCode,
+							ip : ip(),
+							cnt : cnt
+						},
+						success : function(res) {
+							alert(cnt+"점수가 저장되었습니다");
+							
+						},
+						error : function(request, status, error) {
+							alert(request);
+						}
+					});
+					
+				},3000);
+				
+				
 			}
 			
 			function move(tmp_x,tmp_y){
@@ -293,20 +311,18 @@ route < destination =start < position
 				
 				//벽에 부딪힘
 				if(tmp_x < 0 || tmp_y < 0 || tmp_x >= cellCnt || tmp_y >= cellCnt ){
-					gameOver();
-					alert('벽에 부딪힘..'+point+'점');
+					gameOver(1);
 					return;
 				}
 				//장애물에 부딪히는 경우
 				if($('#'+pad(tmp_x,cellLength)+pad(tmp_y,cellLength)).val()=='r' ){
-					gameOver();
-					alert('장애물에 부딪힘..'+point+'점');
+					gameOver(2);
 					return;
 				}
 				//꼬리에 부딪히는 경우
 				if($('#'+pad(tmp_x,cellLength)+pad(tmp_y,cellLength)).val()=='2' ){
-					gameOver();
-					alert('꼬리에 부딪힘..'+point+'점');
+					gameOver(3);
+					
 					return;
 				}
 				//먹이를 먹는 경우 //이전 지나온 좌표를 0 처리 해줌
@@ -340,7 +356,7 @@ route < destination =start < position
 			$('table').css('width', windowWidth - 20);
 			$('table').css('height', windowWidth);
 			$('html, body').css({
-				'overflow' : 'hidden',
+				//'overflow' : 'hidden',
 				'height' : '100%'
 			});
 			$('td').css('width', windowWidth / cellCnt);
@@ -348,9 +364,20 @@ route < destination =start < position
 			
 			$('td').css('font-size','10px');
 			
+			$('.button').css('width', windowWidth / 5);
+			$('.button').css('height', windowWidth / 5);
+			
 			document.oncontextmenu = function(e) {
 				return false;
 			}
+			
+			jQuery(document).keydown(function(e){
+				if(e.target.nodeName != "INPUT" && e.target.nodeName != "TEXTAREA"){
+					if(e.keyCode === 37 || e.keyCode === 38 || e.keyCode === 39 || e.keyCode === 40){
+						return false;
+					}
+				}
+			});
 		}
 		
 		function initMakeCell(){
@@ -363,7 +390,7 @@ route < destination =start < position
 			for (createY = 0; createY < cellCnt; createY++) {
 				cellField += "<tr>";
 				for (createX = 0; createX < cellCnt; createX++) {
-					cellField += "<td>";
+					cellField += "<td class='cell'>";
 					cellField += "<input type='hidden' id=" + pad(createX, cellLength) + pad(createY, cellLength) + " value='0' />";
 					cellField += "</td>";
 				}
@@ -394,7 +421,7 @@ route < destination =start < position
 				var x = pad(getRandomInt(0, cellCnt-1),cellLength);
 				var y = pad(getRandomInt(0, cellCnt-1),cellLength);
 				var id = x+''+y; 
-				if( q.indexOf(id) || $('#'+id).val() == 'r' || $('#'+id).val() == '2'){
+				if( q.indexOf(id) || $('#'+id).val() == 'r' || $('#'+id).val() == '2'|| $('#'+id).val() == '1'){
 					continue;
 				}
 				
@@ -409,14 +436,9 @@ route < destination =start < position
 				var x = pad(getRandomInt(0, cellCnt-1),cellLength);
 				var y = pad(getRandomInt(0, cellCnt-1),cellLength);
 				
-				if($('#'+pad(x,cellLength)+pad(y,cellLength)).val() == 's' || $('#'+pad(x,cellLength)+pad(y,cellLength)).val() == 'r'){
-					if(isDebug){
-						console.log(x+y+' started or already rock retry');
-					}
+				if($('#'+pad(x,cellLength)+pad(y,cellLength)).val() == 's' || $('#'+pad(x,cellLength)+pad(y,cellLength)).val() == 'r' ||
+					$('#'+pad(x,cellLength)+pad(y,cellLength)).val() == 'e' || $('#'+pad(x,cellLength)+pad(y,cellLength)).val() == '2'){
 					continue;
-				}
-				if(isDebug){
-					console.log(x+y+' rock created');
 				}
 				
 				$('#'+pad(x,cellLength)+pad(y,cellLength)).val('r');
@@ -424,6 +446,17 @@ route < destination =start < position
 			}
 			
 		}
+		
+		function rank_info(){ //직급직무 접기/펼치기
+		    $('#rank_table').toggleClass("hide");
+		    if ($('#rank_btn').text() == "펼치기"){
+		        $('#rank_btn').text("닫기");
+		    }
+		    else {
+		        $('#rank_btn').text("펼치기");
+		    }    
+		}
+		
 	</script>
 
 	<table id="space">
@@ -441,10 +474,23 @@ route < destination =start < position
 	</div> 
 	-->
 	<center>
-		<button id="up">↑</button><br>
-		<button id="left">←</button>
-		<button id="down">↓</button>
-		<button id="right">→</button>
+		<button class='button' id="up">↑</button><br>
+		<button class='button' id="left">←</button>
+		<button class='button' id="down">↓</button>
+		<button class='button' id="right">→</button>
 	</center>
+	
+	
+	<section id='rank'>
+		<div onclick="rank_info()">
+		<strong>랭크 정보</strong><font id="rank_btn">펼치기</font>
+		</div>
+		
+		<div id="rank_table" class="hide">
+			<c:forEach var="rank" items="${rank}">
+			${rank.MEDIA_CODE} ${rank.CNT} ${rank.USER_ID}
+		</div>
+	</section>
+	
 </BODY>
 </HTML>

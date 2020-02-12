@@ -76,15 +76,36 @@ public class GameController {
 	}
 
 	@RequestMapping(value = "/game3", method = RequestMethod.GET)
-	public String game3(Model model, @RequestParam(required = false, defaultValue = "10") int cell) {
+	public String game3(Model model, @RequestParam(required = false, defaultValue = "10") int cell) throws Exception {
 		if (cell > 50) {
 			cell = 50;
 		}
 		if (cell < 10) {
 			cell = 10;
 		}
+
+		model.addAttribute("rank", game1Service.selectGame3Cnt());
 		model.addAttribute("cell", cell);
 		return "games/game3";
+	}
+
+	// 댓글달기 ajax
+	@RequestMapping(value = "/game3/saveGame3Cnt", method = RequestMethod.POST)
+	public @ResponseBody String game3ajax(@RequestParam String userName, @RequestParam String mediaCode,
+			@RequestParam String ip, @RequestParam int cnt) {
+		String resultMsg = "0";
+		HashMap<String, Object> hashMap = new HashMap<>();
+		hashMap.put("userName", userName);
+		hashMap.put("mediaCode", mediaCode);
+		hashMap.put("ip", ip);
+		hashMap.put("cnt", cnt);
+		try {
+			game1Service.saveGame3CntTx(hashMap);
+		} catch (Exception e) {
+			resultMsg = "save ERR";
+		}
+
+		return resultMsg;
 	}
 
 }

@@ -1,0 +1,51 @@
+
+table {
+	margin-top: 15px;
+	margin-right: 15px;
+	border: solid 1px black;
+}
+
+table tr td {
+	text-align: center;
+	/* border: solid 1px black; */
+	background: #FFEEFF;
+	color: #FFFFFF;
+}
+
+.route {
+	background: yellow;
+}
+
+.destination {
+	background: #0000FB;
+}
+
+.start {
+	background: red;
+}
+
+.position {
+	background: black;
+}
+
+.rock {
+	background: gray;
+}
+
+.over {
+	background: #72FF00;
+}
+
+center {
+	padding: 2em;
+}
+
+.hide {
+	display : none;
+}
+
+<!-- 
+style은 늦게 서술한것으로 덮어씌워짐
+route < destination =start < position
+
+-->
