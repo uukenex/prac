@@ -93,27 +93,32 @@
 			initWindow();//윈도우 크기 등 css설정
 			initKeyEvent();
 			initMouseEvent();
-			initTimer();
 		}
 
+		function gameStart(){
+			$('button#start').css('display','none');
+			if(!gameOverFlag) initTimer();	
+		}
+		
+		
 		function initKeyEvent(){
 			$(document).keydown(function(e) {
 				//좌 37 상 38 우 39 하 40
 				switch(e.keyCode){
 					case 37:
-						direct ='left';
+						if(direct != 'right') direct ='left';
 						//$('#'+x+''+y).parent()[0].innerHTML = '←';
 						break;
 					case 38:
-						direct ='up';
+						if(direct != 'down') direct ='up';
 						//$('#'+x+''+y).parent()[0].innerHTML = '↑';
 						break;
 					case 39:
-						direct ='right';
+						if(direct != 'left') direct ='right';
 						//$('#'+x+''+y).parent()[0].innerHTML = '→';
 						break;
 					case 40:
-						direct ='down';
+						if(direct != 'up') direct ='down';
 						//$('#'+x+''+y).parent()[0].innerHTML = '↓';
 						break;
 				}
@@ -122,16 +127,16 @@
 		}
 		function initMouseEvent(){
 			$('#left').click(function(){
-				direct ='left';
+				if(direct != 'right') direct ='left';
 			});
 			$('#up').click(function(){
-				direct ='up';
+				if(direct != 'down') direct ='up';
 			});
 			$('#right').click(function(){
-				direct ='right';
+				if(direct != 'left') direct ='right';
 			});
 			$('#down').click(function(){
-				direct ='down';
+				if(direct != 'up') direct ='down';
 			});
 		}
 		
@@ -270,7 +275,7 @@
 						arg0 = 'testMode';
 					}
 					
-					var promptVal ;
+					var promptVal =null;
 					switch(arg0){
 						case 1:
 							promptVal = prompt('벽에 부딪힘..'+cnt+'점 \n이름을 입력해주세요.');
@@ -289,7 +294,9 @@
 							return;
 					}
 					
-					
+					if(promptVal==null){
+						return;
+					}
 					
 					$.ajax({
 						type : "post",
@@ -372,8 +379,25 @@
 			
 			$('td').css('font-size','10px');
 			
-			$('.button').css('width', windowWidth / 5);
-			$('.button').css('height', windowWidth / 5);
+			$('section_direction').css('width', windowWidth - 20);
+			
+			$('button.direction').css('width', windowWidth / 5);
+			$('button.direction').css('height', windowWidth / 5);
+			
+			$('button#start').css('width', windowWidth / 3);
+			$('button#start').css('height', windowWidth / 3);
+			
+			var rect = $('table#space')[0].getBoundingClientRect();
+			var startBtn_xPoint = (rect.right - rect.left) / 2 + (rect.x - windowWidth / 3 /2 );
+			var startBtn_yPoint = (rect.bottom - rect.top) / 2 + (rect.y - windowWidth / 3 /2 );
+			
+			$('button#start').css('position', 'absolute');
+			$('button#start').css('left',startBtn_xPoint);
+			$('button#start').css('top', startBtn_yPoint);
+			$('button#start').css('display', 'block');
+			$('button#start').css('z-index', 1);
+			
+			
 			
 			document.oncontextmenu = function(e) {
 				return false;
@@ -390,6 +414,9 @@
 		
 		function initMakeCell(){
 			var cellField = "";
+				cellField += "<button id='start' onclick='gameStart();' style='display:none'>start</button>";
+			
+				
 			var cellArr = Array(cellCnt).fill(null).map(() => Array());
 			
 			var createY = 0;
@@ -404,7 +431,7 @@
 				}
 				cellField += "</tr>";
 			}
-
+			
 			$('#space')[0].innerHTML = cellField;
 			
 			if(isDebug){
@@ -467,8 +494,10 @@
 		
 	</script>
 
+	<section id="section_space">
 	<table id="space">
 	</table>
+	</section>
 	<div id="score">
 		
 	</div>
@@ -481,13 +510,17 @@
 		<input type="button" value="restart" id="btn_restart">
 	</div> 
 	-->
-	<center>
-		<button class='button' id="up">↑</button><br>
-		<button class='button' id="left">←</button>
-		<button class='button' id="down">↓</button>
-		<button class='button' id="right">→</button>
-	</center>
+	<section id="section_direction">
+		<button class='direction' id="up">↑</button><br>
+		<button class='direction' id="left">←</button>
+		<button class='direction' id="down">↓</button>
+		<button class='direction' id="right">→</button><br>
+	</section>
 	
+	<section>
+		</br>
+		</br>
+	</section>
 	
 	<section id='rank'>
 		<div onclick="rank_info()">

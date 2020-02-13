@@ -1,11 +1,18 @@
 
+section#section_space{
+	text-align: center;
+	margin:auto;
+	
+}
 table#space {
-	margin-top: 15px;
-	margin-right: 15px;
+	margin:auto;
+	/* margin-top: 15px;
+	margin-right: 15px; */
 	border: solid 1px black;
 }
 
 table#space tr td {
+	
 	text-align: center;
 	background: #FFEEFF;
 	color: #FFFFFF;
@@ -26,6 +33,18 @@ table#space tr td.rock {
 
 table#space tr td.over {
 	background: #72FF00;
+}
+
+section#section_direction{
+	/* 방향지시 박스의 위치 */
+	text-align: center;
+}
+
+button.direction{
+	/* display: inline-block; */
+	margin-top: 15px;
+	margin-right: 15px;
+	border: solid 1px black;
 }
 
 center {
