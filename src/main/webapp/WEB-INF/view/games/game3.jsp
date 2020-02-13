@@ -1,6 +1,6 @@
-<%@page import="org.springframework.web.bind.annotation.ModelAttribute"%>
-<%@ page language="java" contentType="text/html; charset=UTF-8"
-	pageEncoding="UTF-8"%>
+<%@ page import="org.springframework.web.bind.annotation.ModelAttribute"%>
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
 <!DOCTYPE>
 <html>
 <HEAD>
@@ -265,7 +265,11 @@
 				gameOverFlag = true;
 				setTimeout(function(){
 					var cnt = Number(point)*Number(q.length()); 
-
+					
+					if(location.href.indexOf('localhost')>0){
+						arg0 = 'testMode';
+					}
+					
 					var promptVal ;
 					switch(arg0){
 						case 1:
@@ -280,7 +284,11 @@
 						case 4:
 							promptVal = prompt('max점수..'+cnt+'점\n이름을 입력해주세요.');
 							break;
+						default:
+							console.log('testMode');
+							return;
 					}
+					
 					
 					
 					$.ajax({
@@ -486,11 +494,20 @@
 		<strong>랭크 정보</strong><font id="rank_btn">펼치기</font>
 		</div>
 		<div id="rank_table" class="hide">
-			<%-- 
+			<table>
+			<tr>
+				<td><strong>인입</strong></td> 
+				<td><strong>점수</strong></td>
+				<td><strong>ID</strong></td>
+			</tr>
 			<c:forEach var="ranks" items="${rank}">
-			${ranks.MEDIA_CODE} ${ranks.CNT} ${rank.USER_ID}
+			<tr>
+				<td>${ranks.MEDIA_CODE}</td> 
+				<td>${ranks.CNT}	   </td>
+				<td>${ranks.USER_ID}  </td>
+			</tr>
 			</c:forEach>
-			 --%>
+			</table>
 		</div>
 		 
 	</section>

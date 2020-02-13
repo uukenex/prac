@@ -1,38 +1,30 @@
 
-table {
+table#space {
 	margin-top: 15px;
 	margin-right: 15px;
 	border: solid 1px black;
 }
 
-table tr td {
+table#space tr td {
 	text-align: center;
-	/* border: solid 1px black; */
 	background: #FFEEFF;
 	color: #FFFFFF;
 }
 
-.route {
-	background: yellow;
-}
 
-.destination {
+table#space tr td.destination {
 	background: #0000FB;
 }
 
-.start {
-	background: red;
-}
-
-.position {
+table#space tr td.position {
 	background: black;
 }
 
-.rock {
+table#space tr td.rock {
 	background: gray;
 }
 
-.over {
+table#space tr td.over {
 	background: #72FF00;
 }
 
@@ -40,12 +32,16 @@ center {
 	padding: 2em;
 }
 
-.hide {
-	display : none;
+
+table#rank{
+	margin: 0px;
+	padding: 0px;
+	border: solid 1px gray;
+}
+table#rank tr td{
+	text-align: left;
 }
 
-<!-- 
-style은 늦게 서술한것으로 덮어씌워짐
-route < destination =start < position
-
--->
+div#rank_table.hide {
+	display : none;
+}
