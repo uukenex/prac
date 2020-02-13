@@ -28,7 +28,10 @@ table#space tr td.position {
 }
 
 table#space tr td.rock {
-	background: gray;
+	background: #BDBDBD;
+}
+table#space tr td.rockover {
+	background: #720000;
 }
 
 table#space tr td.over {
@@ -45,6 +48,7 @@ button.direction{
 	margin-top: 15px;
 	margin-right: 15px;
 	border: solid 1px black;
+	background: #FFFFCB;
 }
 
 center {

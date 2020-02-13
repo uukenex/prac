@@ -32,74 +32,35 @@
 		
 		var movement;//timer 변수
 		var moveSpeed = 0.8*1000 * (10 / cellCnt); //0.8초마다 한칸 이동 
-
-		function Queue(){
-	        this.dataStore = [];
-	        this.push = push;
-	        this.pop = pop;
-	        this.toString = toString;
-	        this.first = first;
-	        this.last = last;
-	        this.isEmpty = isEmpty;
-	        this.indexOf = indexOf;
-	        this.length = length;
-	    }
-		function push(element){
-	        this.dataStore.push(element);
-	    }
-	    function pop(){
-	        this.dataStore.shift();
-	    }
-
-	    function first(){
-	        return this.dataStore[0];
-	    }
-	    function last(){
-	        return this.dataStore[this.dataStore.length-1];
-	    }
-
-	    function toString(){
-	        var str=""
-	        for(var i = 0; i<this.dataStore.length; i++){
-	            str += this.dataStore[i] + " ";
-	        }
-	        return str;
-	    }
-	    function isEmpty(){
-	        if(this.dataStore.length == 0){
-	            return true;
-	        }else{
-	            return false;
-	        }
-	    }
-	    function indexOf(element){
-	    	if(this.dataStore.indexOf(element) >= 0){
-	    		return true;
-	    	}else{
-	    		return false;	
-	    	}
-	    }
-	    function length(){ 
-	    	return this.dataStore.length;
-	    }
-
-		var q = new Queue();
+		
+		var rockIdList=[]; 
+		var startColor = {r:255, g:  238, b:  255};
+		var endColor = {r:189, g:  189, b:  189};
+		//fade('#'+rockIdList.pop(),'background-color',startColor,endColor,1000);
 		
 		//지렁이 게임 
 		function onloadFunc() {
 			initMakeCell(); //cell table생성
-			initStartPos(x,y);//startPos생성
-			initRock();//rock 생성
 			initWindow();//윈도우 크기 등 css설정
-			initKeyEvent();
-			initMouseEvent();
+			initEvent();//이벤트 설정
 		}
 
+		function initEvent(){
+			initActionEvent();
+			initKeyEvent();
+			initMouseEvent();
+			
+		}
 		function gameStart(){
 			$('button#start').css('display','none');
 			if(!gameOverFlag) initTimer();	
 		}
 		
+		
+		function clickedCursor(direct){
+			$('button.direction').css('background','#FFFFCB'); 
+			$('#'+direct).css('background','#C4B73B');
+		}
 		
 		function initKeyEvent(){
 			$(document).keydown(function(e) {
@@ -107,51 +68,44 @@
 				switch(e.keyCode){
 					case 37:
 						if(direct != 'right') direct ='left';
-						//$('#'+x+''+y).parent()[0].innerHTML = '←';
 						break;
 					case 38:
 						if(direct != 'down') direct ='up';
-						//$('#'+x+''+y).parent()[0].innerHTML = '↑';
 						break;
 					case 39:
 						if(direct != 'left') direct ='right';
-						//$('#'+x+''+y).parent()[0].innerHTML = '→';
 						break;
 					case 40:
 						if(direct != 'up') direct ='down';
-						//$('#'+x+''+y).parent()[0].innerHTML = '↓';
 						break;
 				}
+				clickedCursor(direct);
 			});
 			
 		}
 		function initMouseEvent(){
 			$('#left').click(function(){
 				if(direct != 'right') direct ='left';
+				clickedCursor(direct);
 			});
 			$('#up').click(function(){
 				if(direct != 'down') direct ='up';
+				clickedCursor(direct);
 			});
 			$('#right').click(function(){
 				if(direct != 'left') direct ='right';
+				clickedCursor(direct);
 			});
 			$('#down').click(function(){
 				if(direct != 'up') direct ='down';
+				clickedCursor(direct);
 			});
 		}
-		
 		
 		function addCellEvent(arg_x,arg_y){
 			var id = arg_x+arg_y;
 			
 			$('#'+id).on("change", function() {
-				if($('#'+id).val()=='9'){
-					console.log('끝');
-					clearTimeout(movement);
-					$('#'+id).parent().addClass('over');
-					$('.cell').fadeOut(1500);
-				}
-				
 				if($('#'+id).val()=='2'){//tail
 					
 				}
@@ -174,15 +128,24 @@
 					$('#'+id).parent().addClass('rock');
 				}
 				
-				$('input:hidden').each(function(){
-					if($(this).val()=='r'){
-						$(this).parent().addClass('rock');
-					}
+				if($('#'+id).val()=='9'){
+					clearTimeout(movement);
 					
+					$('input.hidden').each(function(){
+						if($(this).val()=='r'){
+							$(this).parent().addClass('rockover');
+						}
+					});
+					
+					$('#'+id).parent().addClass('over');
+					$('.cell').fadeOut(2500);
+				}
+				
+				$('input.hidden').each(function(){
 					if(!q.indexOf(this.id)){
 						$(this).parent().removeClass('position');
-						if($(this).val()!='e' && $(this).val()!='s' && $(this).val()!='r'){
-							$(this).val('0');	
+						if($(this).val()!='e' && $(this).val()!='s' && $(this).val()!='r' ){
+							$(this).val('0');
 						}
 						
 					}
@@ -190,19 +153,56 @@
 						$(this).parent().addClass('position');
 						$(this).val('2');
 					}
-					
 				});
-				
 			});
 
 		}
 		
+		function initActionEvent(){
+
+			for (var createY = 0; createY < cellCnt; createY++) {
+				for (var createX = 0; createX < cellCnt; createX++) {
+					addCellEvent(pad(createX, cellLength),pad(createY, cellLength));
+				}
+			}
+			
+			
+			
+			/*
+			if(q.first()==this.id){
+				var param=null;
+				if(direct =='left'){
+					param = '←';
+				}else if(direct =='up'){
+					param = '↑';
+				}else if(direct =='right'){
+					param = '→';
+				}else if(direct =='down'){
+					param = '↓';
+				}
+				
+				$(this).parent()[0].innerHTML += param;
+			}else{
+				var html = $(this).parent()[0].innerHTML;
+				html = html.replace('←','');
+				html = html.replace('↑','');
+				html = html.replace('→','');
+				html = html.replace('↓','');
+				$(this).parent()[0].innerHTML = html;
+				
+			}
+			*/
+		}
 		
 		function initTimer(){
 			var point = 0 ;
 			var tailCount = 0;
 			
+			
+			createStartPoint(x,y);//startPos생성
 			createEndPoint();
+			createRock(7);//rock 생성
+			
 			clearTimeout(movement);//이동 timer 중복실행방지
 			movement = setInterval(moveFunc, moveSpeed);//이동 timer 실행
 			
@@ -250,7 +250,11 @@
 					}
 					
 				}
-
+				if(point %20 == 5 ){
+					if(rockIdList.length>0){
+						fade('#'+rockIdList.pop(),'background',endColor,startColor,8000);	
+					}	
+				}
 			}
 			
 			
@@ -272,6 +276,7 @@
 					var cnt = Number(point)*Number(q.length()); 
 					
 					if(location.href.indexOf('localhost')>0){
+						console.log('testMode '+arg0);
 						arg0 = 'testMode';
 					}
 					
@@ -290,7 +295,7 @@
 							promptVal = prompt('max점수..'+cnt+'점\n이름을 입력해주세요.');
 							break;
 						default:
-							console.log('testMode');
+							
 							return;
 					}
 					
@@ -416,9 +421,6 @@
 			var cellField = "";
 				cellField += "<button id='start' onclick='gameStart();' style='display:none'>start</button>";
 			
-				
-			var cellArr = Array(cellCnt).fill(null).map(() => Array());
-			
 			var createY = 0;
 			var createX = 0;
 			
@@ -426,7 +428,7 @@
 				cellField += "<tr>";
 				for (createX = 0; createX < cellCnt; createX++) {
 					cellField += "<td class='cell'>";
-					cellField += "<input type='hidden' id=" + pad(createX, cellLength) + pad(createY, cellLength) + " value='0' />";
+					cellField += "<input class='hidden' type='hidden' id=" + pad(createX, cellLength) + pad(createY, cellLength) + " value='0' />";
 					cellField += "</td>";
 				}
 				cellField += "</tr>";
@@ -434,20 +436,8 @@
 			
 			$('#space')[0].innerHTML = cellField;
 			
-			if(isDebug){
-				console.log(cellArr);	
-			}
-			for (createY = 0; createY < cellCnt; createY++) {
-				for (createX = 0; createX < cellCnt; createX++) {
-					addCellEvent(pad(createX, cellLength),pad(createY, cellLength));
-				}
-			}
-			
-			return cellArr;
-			
 		}
-		function initStartPos(x,y){
-			//시작위치 지정
+		function createStartPoint(x,y){
 			$('#'+pad(x,cellLength)+pad(y,cellLength)).val('s').trigger('change');
 		}
 		function createEndPoint(){
@@ -465,21 +455,23 @@
 			}
 		}
 		
-		function initRock(){
+		function createRock(arg0){
 			var i = 0;
-			while(i < cellRockCnt){
+			
+			while(i < arg0){
 				var x = pad(getRandomInt(0, cellCnt-1),cellLength);
 				var y = pad(getRandomInt(0, cellCnt-1),cellLength);
 				
 				if($('#'+pad(x,cellLength)+pad(y,cellLength)).val() == 's' || $('#'+pad(x,cellLength)+pad(y,cellLength)).val() == 'r' ||
-					$('#'+pad(x,cellLength)+pad(y,cellLength)).val() == 'e' || $('#'+pad(x,cellLength)+pad(y,cellLength)).val() == '2'){
+					$('#'+pad(x,cellLength)+pad(y,cellLength)).val() == 'e' || $('#'+pad(x,cellLength)+pad(y,cellLength)).val() == '2'||
+					pad(x,cellLength) == 0 || pad(x,cellLength) == cellCnt-1 || pad(y,cellLength) == 0 || pad(y,cellLength) == cellCnt-1){
 					continue;
 				}
 				
-				$('#'+pad(x,cellLength)+pad(y,cellLength)).val('r');
+				$('#'+pad(x,cellLength)+pad(y,cellLength)).val('r').trigger('change');
+				rockIdList.push(pad(x,cellLength)+pad(y,cellLength));
 				i++;
 			}
-			
 		}
 		
 		function rank_info(){ //직급직무 접기/펼치기
@@ -491,6 +483,80 @@
 		        $('#rank_btn').text("펼치기");
 		    }    
 		}
+		
+
+		function Queue(){
+	        this.dataStore = [];
+	        this.push = push;
+	        this.pop = pop;
+	        this.toString = toString;
+	        this.first = first;
+	        this.last = last;
+	        this.isEmpty = isEmpty;
+	        this.indexOf = indexOf;
+	        this.length = length;
+	    }
+		function push(element){
+	        this.dataStore.push(element);
+	    }
+	    function pop(){
+	        this.dataStore.shift();
+	    }
+
+	    function first(){
+	        return this.dataStore[0];
+	    }
+	    function last(){
+	        return this.dataStore[this.dataStore.length-1];
+	    }
+
+	    function toString(){
+	        var str=""
+	        for(var i = 0; i<this.dataStore.length; i++){
+	            str += this.dataStore[i] + " ";
+	        }
+	        return str;
+	    }
+	    function isEmpty(){
+	        if(this.dataStore.length == 0){
+	            return true;
+	        }else{
+	            return false;
+	        }
+	    }
+	    function indexOf(element){
+	    	if(this.dataStore.indexOf(element) >= 0){
+	    		return true;
+	    	}else{
+	    		return false;	
+	    	}
+	    }
+	    function length(){ 
+	    	return this.dataStore.length;
+	    }
+
+		var q = new Queue();
+		
+		
+		function lerp(a,b,u) {
+	        return (1-u) * a + u * b;
+	    };
+		//Uncaught ReferenceError: lerp is not defined
+		function fade(element, property, start, end, duration) {
+	      var interval = 10;
+	      var steps = duration/interval;
+	      var step_u = 1.0/steps;
+	      var u = 0.0;
+	      var theInterval = setInterval(function(){
+	        if (u >= 1.0){ clearInterval(theInterval) }
+	        var r = parseInt(lerp(start.r, end.r, u));
+	        var g = parseInt(lerp(start.g, end.g, u));
+	        var b = parseInt(lerp(start.b, end.b, u));
+	        var colorname = 'rgb('+r+','+g+','+b+')';
+	        $(element).parent()[0].style.setProperty(property, colorname);
+	        u += step_u;
+	      }, interval);
+	    };
 		
 	</script>
 
