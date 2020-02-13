@@ -131,11 +131,7 @@
 				if($('#'+id).val()=='9'){
 					clearTimeout(movement);
 					
-					$('input.hidden').each(function(){
-						if($(this).val()=='r'){
-							$(this).parent().addClass('rockover');
-						}
-					});
+					$('.rock').css('background','#720000');
 					
 					$('#'+id).parent().addClass('over');
 					$('.cell').fadeOut(2500);
