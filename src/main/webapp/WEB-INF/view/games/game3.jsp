@@ -31,6 +31,7 @@
 		
 		
 		var movement;//timer 변수
+		var fadeFunc;
 		var moveSpeed = 0.8*1000 * (10 / cellCnt); //0.8초마다 한칸 이동 
 		
 		var rockIdList=[]; 
@@ -130,11 +131,11 @@
 				
 				if($('#'+id).val()=='9'){
 					clearTimeout(movement);
-					
+					clearTimeout(fadeFunc);
 					$('.rock').css('background','#720000');
 					
 					$('#'+id).parent().addClass('over');
-					$('.cell').fadeOut(2500);
+					$('.cell').fadeOut(3000);
 				}
 				
 				$('input.hidden').each(function(){
@@ -317,7 +318,7 @@
 						}
 					});
 					
-				},3000);
+				},4000);
 				
 				
 			}
@@ -543,15 +544,18 @@
 	      var steps = duration/interval;
 	      var step_u = 1.0/steps;
 	      var u = 0.0;
-	      var theInterval = setInterval(function(){
-	        if (u >= 1.0){ clearInterval(theInterval) }
-	        var r = parseInt(lerp(start.r, end.r, u));
-	        var g = parseInt(lerp(start.g, end.g, u));
-	        var b = parseInt(lerp(start.b, end.b, u));
-	        var colorname = 'rgb('+r+','+g+','+b+')';
-	        $(element).parent()[0].style.setProperty(property, colorname);
-	        u += step_u;
-	      }, interval);
+	      if(!gameOverFlag){
+		      fadeFunc = setInterval(function(){
+		        if (u >= 1.0){ clearInterval(fadeFunc) }
+		        var r = parseInt(lerp(start.r, end.r, u));
+		        var g = parseInt(lerp(start.g, end.g, u));
+		        var b = parseInt(lerp(start.b, end.b, u));
+		        var colorname = 'rgb('+r+','+g+','+b+')';
+		        $(element).parent()[0].style.setProperty(property, colorname);
+		        u += step_u;
+		      }, interval);
+	      }
+	      
 	    };
 		
 	</script>
