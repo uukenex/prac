@@ -31,8 +31,13 @@
 		
 		
 		var movement;//timer 변수
-		var fadeFunc;
-		var moveSpeed = 0.8*1000 * (10 / cellCnt); //0.8초마다 한칸 이동 
+		var moveSpeed = 0.8*1000 * (10 / cellCnt); //0.8초마다 한칸 이동
+		
+		var hiding; // rock hide timer
+		var hideSpeed = 0.8*1000 * (10 / cellCnt); // rock hide speed 
+		
+		var twingkling // hidden rock twingkle
+		var twingkleSpeed = 0.8*10000 * (10 / cellCnt);
 		
 		var rockIdList=[]; 
 		var startColor = {r:255, g:  238, b:  255};
@@ -68,16 +73,16 @@
 				//좌 37 상 38 우 39 하 40
 				switch(e.keyCode){
 					case 37:
-						if(direct != 'right') direct ='left';
+						direct ='left';
 						break;
 					case 38:
-						if(direct != 'down') direct ='up';
+						direct ='up';
 						break;
 					case 39:
-						if(direct != 'left') direct ='right';
+						direct ='right';
 						break;
 					case 40:
-						if(direct != 'up') direct ='down';
+						direct ='down';
 						break;
 				}
 				clickedCursor(direct);
@@ -86,19 +91,19 @@
 		}
 		function initMouseEvent(){
 			$('#left').click(function(){
-				if(direct != 'right') direct ='left';
+				direct ='left';
 				clickedCursor(direct);
 			});
 			$('#up').click(function(){
-				if(direct != 'down') direct ='up';
+				direct ='up';
 				clickedCursor(direct);
 			});
 			$('#right').click(function(){
-				if(direct != 'left') direct ='right';
+				direct ='right';
 				clickedCursor(direct);
 			});
 			$('#down').click(function(){
-				if(direct != 'up') direct ='down';
+				direct ='down';
 				clickedCursor(direct);
 			});
 		}
@@ -131,11 +136,14 @@
 				
 				if($('#'+id).val()=='9'){
 					clearTimeout(movement);
-					clearTimeout(fadeFunc);
+					clearTimeout(hiding);
+					clearTimeout(twingkling);
 					$('.rock').css('background','#720000');
 					
 					$('#'+id).parent().addClass('over');
-					$('.cell').fadeOut(3000);
+					if(!localYn()){
+						$('.cell').fadeOut(3000);
+					}
 				}
 				
 				$('input.hidden').each(function(){
@@ -190,6 +198,10 @@
 			}
 			*/
 		}
+
+		function localYn(){
+			return location.href.indexOf('localhost')>0;
+		}
 		
 		function initTimer(){
 			var point = 0 ;
@@ -202,6 +214,7 @@
 			
 			clearTimeout(movement);//이동 timer 중복실행방지
 			movement = setInterval(moveFunc, moveSpeed);//이동 timer 실행
+			twingkling = setInterval(twingkle,twingkleSpeed);//반짝임 timer
 			
 			var tmp_x;
 			var tmp_y;
@@ -249,7 +262,7 @@
 				}
 				if(point %20 == 5 ){
 					if(rockIdList.length>0){
-						fade('#'+rockIdList.pop(),'background',endColor,startColor,8000);	
+						fade('#'+rockIdList.pop(),'background',endColor,startColor,hideSpeed*0.8);
 					}	
 				}
 			}
@@ -272,7 +285,7 @@
 				setTimeout(function(){
 					var cnt = Number(point)*Number(q.length()); 
 					
-					if(location.href.indexOf('localhost')>0){
+					if(localYn){
 						console.log('testMode '+arg0);
 						arg0 = 'testMode';
 					}
@@ -545,8 +558,8 @@
 	      var step_u = 1.0/steps;
 	      var u = 0.0;
 	      if(!gameOverFlag){
-		      fadeFunc = setInterval(function(){
-		        if (u >= 1.0){ clearInterval(fadeFunc) }
+		      hiding = setInterval(function(){
+		        if (u >= 1.0){ clearInterval(hiding) }
 		        var r = parseInt(lerp(start.r, end.r, u));
 		        var g = parseInt(lerp(start.g, end.g, u));
 		        var b = parseInt(lerp(start.b, end.b, u));
@@ -558,6 +571,20 @@
 	      
 	    };
 		
+	    function twingkle(){
+	    		$('.rock').toggleClass("twingkle");
+	    		setTimeout(function(){
+	    			$('.rock').toggleClass("twingkle");	
+	    		},500);
+	    		
+	    		setTimeout(function(){
+	    			$('.rock').toggleClass("twingkle");	
+	    		},1000);
+	    		setTimeout(function(){
+	    			$('.rock').toggleClass("twingkle");	
+	    		},1500);
+	    }
+	    
 	</script>
 
 	<section id="section_space">

@@ -34,8 +34,8 @@ table#space tr td.rockover {
 	background: #720000;
 }
 
-table#space tr td.over {
-	background: #72FF00;
+.twingkle {
+	border: solid 0.5px red;
 }
 
 section#section_direction{
