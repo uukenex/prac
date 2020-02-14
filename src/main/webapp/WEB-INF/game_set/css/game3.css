@@ -30,12 +30,9 @@ table#space tr td.position {
 table#space tr td.rock {
 	background: #BDBDBD;
 }
-table#space tr td.rockover {
-	background: #720000;
-}
 
-.twingkle {
-	border: solid 0.5px red;
+table#space tr td.twingkle {
+	border: dashed 0.1px #720000; 
 }
 
 section#section_direction{

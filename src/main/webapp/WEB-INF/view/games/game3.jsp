@@ -141,7 +141,7 @@
 					$('.rock').css('background','#720000');
 					
 					$('#'+id).parent().addClass('over');
-					if(!localYn()){
+					if(!isLocal){
 						$('.cell').fadeOut(3000);
 					}
 				}
@@ -199,9 +199,7 @@
 			*/
 		}
 
-		function localYn(){
-			return location.href.indexOf('localhost')>0;
-		}
+		var isLocal = location.href.indexOf('localhost')>0 ;
 		
 		function initTimer(){
 			var point = 0 ;
@@ -210,7 +208,7 @@
 			
 			createStartPoint(x,y);//startPos생성
 			createEndPoint();
-			createRock(7);//rock 생성
+			createRock(cellCnt);//rock 생성
 			
 			clearTimeout(movement);//이동 timer 중복실행방지
 			movement = setInterval(moveFunc, moveSpeed);//이동 timer 실행
@@ -285,7 +283,7 @@
 				setTimeout(function(){
 					var cnt = Number(point)*Number(q.length()); 
 					
-					if(localYn){
+					if(isLocal){
 						console.log('testMode '+arg0);
 						arg0 = 'testMode';
 					}
