@@ -16,6 +16,7 @@ table#space tr td {
 	text-align: center;
 	background: #FFEEFF;
 	color: #FFFFFF;
+	border: solid 2px #FFFFFF;
 }
 
 
@@ -32,7 +33,8 @@ table#space tr td.rock {
 }
 
 table#space tr td.twingkle {
-	border: dashed 0.1px #720000; 
+	border: dashed 2px #720000;  
+	/* background: #720000; */
 }
 
 section#section_direction{

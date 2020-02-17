@@ -149,7 +149,7 @@
 				$('input.hidden').each(function(){
 					if(!q.indexOf(this.id)){
 						$(this).parent().removeClass('position');
-						if($(this).val()!='e' && $(this).val()!='s' && $(this).val()!='r' ){
+						if($(this).val()!='e' && $(this).val()!='s' && $(this).val()!='r' && $(this).val()!='0' ){
 							$(this).val('0');
 						}
 						
@@ -378,8 +378,8 @@
 		}
 		function initWindow(){
 			var windowWidth = $(window).width();
-			if (windowWidth > 720) {
-				windowWidth = 720;
+			if (windowWidth > 640) {
+				windowWidth = 640;
 			}
 			$('table').css('width', windowWidth - 20);
 			$('table').css('height', windowWidth);
@@ -570,6 +570,7 @@
 	    };
 		
 	    function twingkle(){
+	    	
 	    		$('.rock').toggleClass("twingkle");
 	    		setTimeout(function(){
 	    			$('.rock').toggleClass("twingkle");	
