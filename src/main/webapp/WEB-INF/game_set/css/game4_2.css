@@ -15,15 +15,13 @@ div {
 #center2 {
   background: black;
 }
-
+#center2_2 {
+  background: blue;
+}
 #point2 {
   background: red;
 }
 
-#reverse{
- width : 200px;
- height: 50px;
- top : 400px;
- left : 50px;	
- position: absolute;
+button{
+ display: inline-block;
 }

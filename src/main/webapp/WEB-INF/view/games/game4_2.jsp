@@ -19,46 +19,73 @@
 
 
 	<script language="javascript">
-		var reverse = false;
+		var is_reverse = false;
+		var is_stoped = false;
+		
+		var rotateVar;
+		
+		var partition = 20;//원형구체 충돌 방지 간격
+		
+		var x = 100 // center
+		var y = 50 // center
+		var r = 50 // radius
+		var a = 0 // angle (from 0 to Math.PI * 2)
 		
 		function init() {
-			var partition = 20;//원형구체 충돌 방지 간격
 			
-			var x = 100 // center
-			var y = 50 // center
-			var r = 50 // radius
-			var a = 0 // angle (from 0 to Math.PI * 2)
+			$('#btn_reverse').on('click',click_reverse);
+			$('#btn_start').on('click',click_start);
+			$('#btn_stop').on('click',click_stop);
 			
-			
-			$('#reverse').on('click',click);
-			
-			rotation(x,y,r,a,1); //1번의 회전시작 
+			//rotation(x,y,r,a,1); //1번의 회전시작 
 			rotation(x,y+r*2+partition,r,a,2);//2번의 회전시작
 			
 		}
 		
 		
-		function click(){
-			reverse==true?reverse = false: reverse = true;
+		function click_reverse(){
+			is_reverse==true?is_reverse = false: is_reverse = true;
+			clearTimeout(rotateVar);
+			rotation(x,y,r,a,2);
+		}
+		function click_start(){
+			clearTimeout(rotateVar);
+			rotation(x,y,r,a,2);
+		}
+		function click_stop(){
+			clearTimeout(rotateVar);
+			
+			var prevX = $('#center2')[0].getBoundingClientRect().x;
+			var prevY = $('#center2')[0].getBoundingClientRect().y;
+			var cursorX = $('#point2')[0].getBoundingClientRect().x;
+			var curosrY = $('#point2')[0].getBoundingClientRect().y;
+			
+			
+			var nextX = prevX - (cursorX-prevX);
+			var nextY = prevY - (curosrY-prevY);
+			document.querySelector('#center2_2').style.left = nextX + "px";
+			document.querySelector('#center2_2').style.top = nextY + "px";
+			
 		}
 		
 		function rotation(argx,argy,argr,arga,divId){
-			function rotate(arga) {
+			
+			var center;
+			var point;
+			var px;
+			var py;
 
-				var px;
-				var py;
-				
-				if(reverse && divId ==2){
-					/*reverse 구현이 이상하게됨 */
-					px = argx - argr * Math.cos(Math.PI-arga);
-					py = argy - argr * Math.sin(Math.PI-arga);
+			rotateVar = setInterval(function() {
+				if(is_reverse){
+					arga = (arga - Math.PI / 360) % (Math.PI * 2);
 				}else{
-					px = argx + argr * Math.cos(arga);
-					py = argy + argr * Math.sin(arga);	
+					arga = (arga + Math.PI / 360) % (Math.PI * 2);	
 				}
-				
-				var center;
-				var point;
+				rotate(arga);
+			}, 5);
+			
+			
+			function rotate(arga) {
 				if(divId == 3){
 					center = '#center3';
 					point = '#point3';
@@ -74,14 +101,19 @@
 				document.querySelector(center).style.top = argy + "px";
 				document.querySelector(point).style.left = px + "px";
 				document.querySelector(point).style.top = py + "px";
+				px = argx + argr * Math.cos(arga);
+				py = argy + argr * Math.sin(arga);	
+				
+				x=argx;
+				y=argy;
+				r=argr;
+				a=arga;
 				
 			}
-
-			setInterval(function() {
-				arga = (arga + Math.PI / 360) % (Math.PI * 2);
-				rotate(arga);
-			}, 5);
 		}
+		
+		
+		
 	</script>
 
 	<div id="center"></div>
@@ -91,8 +123,12 @@
 	<div id="center2"></div>
 	<div id="point2"></div>
 	
+	<div id="center2_2"></div>
+	
 	<div>
-		<input type="button" id="reverse" value="reverse"/>
+		<input type="button" id="btn_reverse" value="reverse"/>
+		<input type="button" id="btn_start" value="start"/>
+		<input type="button" id="btn_stop" value="stop"/>
 	</div>
 </BODY>
 </HTML>
