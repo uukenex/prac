@@ -113,4 +113,16 @@ public class GameController {
 
 		return "games/game4";
 	}
+
+	@RequestMapping(value = "/game4_1", method = RequestMethod.GET)
+	public String game4_1(Model model, @RequestParam(required = false, defaultValue = "10") int cell) throws Exception {
+
+		return "games/game4_1";
+	}
+
+	@RequestMapping(value = "/game4_2", method = RequestMethod.GET)
+	public String game4_2(Model model, @RequestParam(required = false, defaultValue = "10") int cell) throws Exception {
+
+		return "games/game4_2";
+	}
 }

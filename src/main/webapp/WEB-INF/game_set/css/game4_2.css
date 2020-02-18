@@ -1,0 +1,29 @@
+div {
+  position: fixed;
+  width: 10px;
+  height: 10px;
+}
+
+#center {
+  background: black;
+}
+
+#point {
+  background: red;
+}
+
+#center2 {
+  background: black;
+}
+
+#point2 {
+  background: red;
+}
+
+#reverse{
+ width : 200px;
+ height: 50px;
+ top : 400px;
+ left : 50px;	
+ position: absolute;
+}
