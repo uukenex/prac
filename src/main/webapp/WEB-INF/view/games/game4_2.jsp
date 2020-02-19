@@ -46,6 +46,23 @@
 		function click_reverse(){
 			is_reverse==true?is_reverse = false: is_reverse = true;
 			clearTimeout(rotateVar);
+			
+			
+			var prevX = $('#center2')[0].getBoundingClientRect().x;
+			var prevY = $('#center2')[0].getBoundingClientRect().y;
+			var cursorX = $('#point2')[0].getBoundingClientRect().x;
+			var curosrY = $('#point2')[0].getBoundingClientRect().y;
+			
+			
+			var nextX = prevX + 2*(cursorX-prevX);
+			var nextY = prevY + 2*(curosrY-prevY);
+			
+			document.querySelector('#center2_2').style.left = nextX + "px";
+			document.querySelector('#center2_2').style.top = nextY + "px";
+			x= nextX;
+			y= nextY;
+			a = a >= Math.PI?a-Math.PI:a+Math.PI;	
+			
 			rotation(x,y,r,a,2);
 		}
 		function click_start(){
@@ -61,11 +78,14 @@
 			var curosrY = $('#point2')[0].getBoundingClientRect().y;
 			
 			
-			var nextX = prevX - (cursorX-prevX);
-			var nextY = prevY - (curosrY-prevY);
+			var nextX = prevX + 2*(cursorX-prevX);
+			var nextY = prevY + 2*(curosrY-prevY);
+			
 			document.querySelector('#center2_2').style.left = nextX + "px";
 			document.querySelector('#center2_2').style.top = nextY + "px";
-			
+			x= nextX;
+			y= nextY;
+			a = a >= Math.PI?a-Math.PI:a+Math.PI;	
 		}
 		
 		function rotation(argx,argy,argr,arga,divId){
@@ -86,16 +106,8 @@
 			
 			
 			function rotate(arga) {
-				if(divId == 3){
-					center = '#center3';
-					point = '#point3';
-				}else if(divId ==2){
-					center = '#center2';
-					point = '#point2';
-				}else{
-					center = '#center';
-					point = '#point';
-				} 
+				center = '#center2';
+				point = '#point2';
 				
 				document.querySelector(center).style.left = argx + "px";
 				document.querySelector(center).style.top = argy + "px";
@@ -115,11 +127,8 @@
 		
 		
 	</script>
-
 	<div id="center"></div>
 	<div id="point"></div>
-	
-	
 	<div id="center2"></div>
 	<div id="point2"></div>
 	
