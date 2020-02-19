@@ -27,10 +27,41 @@
 					</a>
 				</li> --%>
 				<c:url value="/free?page=1" var="free"/>
+				<c:url value="/game1" var="game1"/>
+				<c:url value="/game2" var="game2"/>
+				<c:url value="/game3" var="game3"/>
+				<c:url value="/game4_2" var="game4"/>
+				
+				
 				<li>
 					<a href="${free }" class="freeBoard">
 						<i class="fa fa-comments-o"></i>
 						자 유 게 시 판
+					</a>
+				</li>
+				
+				<li>
+					<a href="${game1 }">
+						<i class="fa fa-comments-o"></i>
+						Game1
+					</a>
+				</li>
+				<li>
+					<a href="${game2 }">
+						<i class="fa fa-comments-o"></i>
+						Game2
+					</a>
+				</li>
+				<li>
+					<a href="${game3 }" >
+						<i class="fa fa-comments-o"></i>
+						Game3
+					</a>
+				</li>
+				<li>
+					<a href="${game4 }" >
+						<i class="fa fa-comments-o"></i>
+						Game4
 					</a>
 				</li>
 				<!-- <li>

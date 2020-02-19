@@ -14,6 +14,7 @@
 <BODY onload="onloadFunc()">
 	<script src="http://code.jquery.com/jquery.js"></script>
 	<script type="text/javascript" src="http://jsgetip.appspot.com"></script>
+	<script src="<%=request.getContextPath() %>/game_set/js/gameutil.js?v=<%=System.currentTimeMillis() %>"></script>
 	<script language="javascript">
 	<!-- 전역 변수 -->
 		var cellCnt = ${cell};
@@ -199,7 +200,7 @@
 			*/
 		}
 
-		var isLocal = location.href.indexOf('localhost')>0 ;
+		
 		
 		function initTimer(){
 			var point = 0 ;
@@ -266,16 +267,7 @@
 			}
 			
 			
-			var filter = "win16|win32|win64|mac";
-			var mediaCode = "";
-			if(navigator.platform){
-				if(0 > filter.indexOf(navigator.platform.toLowerCase())){
-					mediaCode ="MOBILE";
-				}else{
-					mediaCode ="PC";
-				}
-			}
-			
+			var mediaCode = getMediaCode();
 			
 			function gameOver(arg0){
 				$('#'+x+''+y).val('9').trigger('change');
@@ -367,16 +359,8 @@
 		
 		
 		
-		function getRandomInt(min, max) {
-			return Math.floor(Math.random() * (max - min + 1)) + min;
-		}
-		function pad(n, width) {
-			n = n + '';
-			return n.length >= width ? n : new Array(width - n.length + 1)
-					.join('0')
-					+ n;
-		}
 		function initWindow(){
+
 			var windowWidth = $(window).width();
 			if (windowWidth > 640) {
 				windowWidth = 640;
@@ -389,40 +373,28 @@
 			});
 			$('td').css('width', windowWidth / cellCnt);
 			$('td').css('height', windowWidth / cellCnt);
-			
+
 			$('td').css('font-size','10px');
-			
-			$('section_direction').css('width', windowWidth - 20);
-			
-			$('button.direction').css('width', windowWidth / 5);
-			$('button.direction').css('height', windowWidth / 5);
-			
+
 			$('button#start').css('width', windowWidth / 3);
 			$('button#start').css('height', windowWidth / 3);
-			
-			var rect = $('table#space')[0].getBoundingClientRect();
+
+			var rect = $('#space')[0].getBoundingClientRect();
 			var startBtn_xPoint = (rect.right - rect.left) / 2 + (rect.x - windowWidth / 3 /2 );
 			var startBtn_yPoint = (rect.bottom - rect.top) / 2 + (rect.y - windowWidth / 3 /2 );
-			
+
 			$('button#start').css('position', 'absolute');
 			$('button#start').css('left',startBtn_xPoint);
 			$('button#start').css('top', startBtn_yPoint);
 			$('button#start').css('display', 'block');
 			$('button#start').css('z-index', 1);
 			
+			$('section_direction').css('width', windowWidth - 20);
+			
+			$('button.direction').css('width', windowWidth / 5);
+			$('button.direction').css('height', windowWidth / 5);
 			
 			
-			document.oncontextmenu = function(e) {
-				return false;
-			}
-			
-			jQuery(document).keydown(function(e){
-				if(e.target.nodeName != "INPUT" && e.target.nodeName != "TEXTAREA"){
-					if(e.keyCode === 37 || e.keyCode === 38 || e.keyCode === 39 || e.keyCode === 40){
-						return false;
-					}
-				}
-			});
 		}
 		
 		function initMakeCell(){

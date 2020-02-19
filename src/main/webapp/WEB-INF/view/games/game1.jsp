@@ -21,6 +21,7 @@ table tr td {
 
 </HEAD>
 <BODY onload="onloadFunc()">
+	<script src="<%=request.getContextPath() %>/game_set/js/gameutil.js?v=<%=System.currentTimeMillis() %>"></script>
 	<script src="http://code.jquery.com/jquery.js"></script>
 	<script type="text/javascript" src="http://jsgetip.appspot.com"></script>
 	<script language="javascript">
@@ -231,17 +232,9 @@ table tr td {
 		})
 
 	
-		var filter = "win16|win32|win64|mac";
-		var mediaCode = "";
-		if(navigator.platform){
-			if(0 > filter.indexOf(navigator.platform.toLowerCase())){
-				mediaCode ="MOBILE";
-			}else{
-				mediaCode ="PC";
-			}
-		}
 		
-		console.log(ip());
+		
+		var mediaCode = getMediaCode();
 		
 		var createTime = 1500;
 		var createCnt = 0;
@@ -297,9 +290,7 @@ table tr td {
 
 		}
 
-		function getRandomInt(min, max) {
-			return Math.floor(Math.random() * (max - min + 1)) + min;
-		}
+		
 	</script>
 
 	<table>
