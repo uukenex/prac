@@ -14,6 +14,11 @@
 	href="<%=request.getContextPath()%>/game_set/css/game4_2.css?v=<%=System.currentTimeMillis()%>" />
 </HEAD>
 <BODY onload="init()">
+
+	<c:set var="reverse" value="false" />
+	<c:set var="range" value="50" />
+	<c:set var="speed" value="1" />
+
 	<script src="http://code.jquery.com/jquery.js"></script>
 	<script type="text/javascript" src="http://jsgetip.appspot.com"></script>
 	<script
@@ -25,9 +30,6 @@
 		var rotateVar; //타이머 담을 변수 
 		//var rotateSpeed = 5;
 		var rotate_rate = 1;//배속
-		
-		var cnt = 0;
-		
 		
 		var partition = 20;//원형구체 충돌 방지 간격
 		
@@ -47,6 +49,8 @@
 			//rotation(x,y,r,a,1); //1번의 회전시작 
 			rotation(x,y+r*2+partition,r,a,2);//2번의 회전시작
 			
+			
+			
 		}
 		
 		
@@ -54,7 +58,6 @@
 		function click_speed_control(event){
 			var is_speed_up = event.data.param1;
 			is_speed_up ? rotate_rate<10?rotate_rate+=1:rotate_rate=rotate_rate:rotate_rate>1?rotate_rate-=1:rotate_rate=rotate_rate;
-			$('#speed')[0].innerText=rotate_rate;
 		}
 		function click_r_incdec(event){
 			var is_increase = event.data.param1;
@@ -82,7 +85,6 @@
 				}).then(function(result){
 					if(seq==24){
 						is_dup_speed = false; //마지막 promise가 종료될때 중복플래그를 종료 
-						$('#range')[0].innerText=r;
 					}
 				}) ;
 		}
@@ -91,7 +93,6 @@
 			is_reverse==true?is_reverse = false: is_reverse = true;
 			clearTimeout(rotateVar);
 			
-			$('#is_reverse')[0].innerText=is_reverse;
 			
 			var prevX = $('#center2')[0].getBoundingClientRect().x;
 			var prevY = $('#center2')[0].getBoundingClientRect().y;
@@ -142,12 +143,8 @@
 				py = argy + argr * Math.sin(arga);	
 				
 				var rect = $('#enemy')[0].getBoundingClientRect();
-				
-				
 				if(px > rect.left && px <rect.right && py > rect.top && py < rect.bottom){
 					console.log('detected');
-					cnt++;
-					$('#cnt')[0].innerText=cnt;
 				}
 				
 				x=argx;
@@ -176,21 +173,18 @@
 	<section id="controll">
 		<input type="button" id="btn_reverse" value="reverse" />
 		</br> 
-		reverse : <label id="is_reverse">false</label>
+		reverse : <c:out value="${reverse}" /> 
 		</br>
 		<input type="button" id="btn_increase_r" value="range_up" /> 
 		<input type="button" id="btn_decrease_r" value="range_down" />
 		</br>
-		range : <label id="range">50</label>
+		range : <c:out value="${range}" /> 
 		</br>
 		<input type="button" id="btn_speed_fast" value="speed_up" /> 
 		<input type="button" id="btn_speed_slow" value="speed_down" />
 		</br>
-		speed : <label id="speed">1</label>
+		speed : <c:out value="${speed}" /> 
 		</br> 
-		</br>
-		</br>
-		cnt : <label id="cnt">0</label>
 	</section>
 </BODY>
 </HTML>

@@ -1,27 +1,37 @@
 div {
-  position: fixed;
-  width: 10px;
-  height: 10px;
+	position: absolute;
+	width: 10px;
+	height: 10px;
 }
 
-#center {
-  background: black;
-}
-
-#point {
-  background: red;
+#enemy {
+	top: 500px;
+	left: 500px;
+	background: green;
+	width: 200px;
+	height: 200px;
 }
 
 #center2 {
-  background: black;
-}
-#center2_2 {
-  background: blue;
-}
-#point2 {
-  background: red;
+	background: black;
 }
 
-button{
- display: inline-block;
+#center2_2 {
+	background: blue;
+}
+
+#point2 {
+	background: red;
+}
+
+
+input[type=button] {
+	width: 100px;
+	height: 20px;
+	margin: 10 0 0 0;
+	text-align: left;
+}
+
+section#controll{
+	display: inline;
 }
