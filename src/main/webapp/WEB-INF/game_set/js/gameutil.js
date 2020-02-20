@@ -1,5 +1,9 @@
 
 var isLocal = location.href.indexOf('localhost')>0 ;
+var windowWidth  = $(window).width();
+var windowHeight = $(window).height();
+
+
 
 document.oncontextmenu = function(e) {
 	return false;
@@ -14,6 +18,12 @@ jQuery(document).keydown(function(e){
 });
 
 
+window.addEventListener('resize', windowClear, true);
+
+
+function windowClear(){
+	 $('body').css('display','none');
+}
 
 
 function getRandomInt(min, max) {

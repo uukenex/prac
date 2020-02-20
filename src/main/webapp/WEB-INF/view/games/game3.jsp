@@ -361,7 +361,7 @@
 		
 		function initWindow(){
 
-			var windowWidth = $(window).width();
+			
 			if (windowWidth > 640) {
 				windowWidth = 640;
 			}

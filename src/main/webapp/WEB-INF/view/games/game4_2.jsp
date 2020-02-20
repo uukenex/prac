@@ -143,11 +143,22 @@
 				
 				var rect = $('#enemy')[0].getBoundingClientRect();
 				
+				if(px > windowWidth || px < 0 || py > windowHeight || py < 0){
+					clearTimeout(rotateVar);
+					windowClear();
+					alert(cnt+'점 달성!');
+				}
+				
 				
 				if(px > rect.left && px <rect.right && py > rect.top && py < rect.bottom){
-					console.log('detected');
 					cnt++;
 					$('#cnt')[0].innerText=cnt;
+					$('#enemy').css('left','-200');
+					$('#enemy').css('top','-200');
+					
+					$('#enemy').css('left',getRandomInt(0,windowWidth));
+					$('#enemy').css('top' ,getRandomInt(0,windowHeight));
+					
 				}
 				
 				x=argx;
