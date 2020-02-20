@@ -5,11 +5,9 @@ div {
 }
 
 #enemy {
-	top: 500px;
-	left: 500px;
 	background: green;
-	width: 100px;
-	height: 100px;
+	width: 60px;
+	height: 60px;
 }
 
 #center2 {
@@ -17,6 +15,8 @@ div {
 }
 
 #center2_2 {
+	top : -20px;
+	left : -20px;
 	background: blue;
 }
 
@@ -33,5 +33,7 @@ input[type=button] {
 }
 
 section#controll{
+	position: absolute;
 	display: inline;
+	top : 400px;
 }

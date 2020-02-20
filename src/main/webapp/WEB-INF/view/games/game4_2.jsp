@@ -24,7 +24,7 @@
 		var is_dup_speed = false;
 		var rotateVar; //타이머 담을 변수 
 		//var rotateSpeed = 5;
-		var rotate_rate = 1;//배속
+		var rotate_rate = 2;//배속
 		
 		var cnt = 0;
 		
@@ -44,6 +44,15 @@
 			$('#btn_speed_fast').click({param1: true}, click_speed_control);
 			$('#btn_speed_slow').click({param1: false},click_speed_control);
 			
+			$('#enemy').css('left',getRandomInt(60,windowWidth-60));
+			$('#enemy').css('top', getRandomInt(60,windowHeight-200));
+			
+			$('#controll').css('top',windowHeight-200);
+			
+			
+			$('#is_reverse')[0].innerText=is_reverse;
+			$('#speed')[0].innerText=rotate_rate;
+			$('#range')[0].innerText=r;
 			//rotation(x,y,r,a,1); //1번의 회전시작 
 			rotation(x,y+r*2+partition,r,a,2);//2번의 회전시작
 			
@@ -156,8 +165,8 @@
 					$('#enemy').css('left','-200');
 					$('#enemy').css('top','-200');
 					
-					$('#enemy').css('left',getRandomInt(0,windowWidth));
-					$('#enemy').css('top' ,getRandomInt(0,windowHeight));
+					$('#enemy').css('left',getRandomInt(60,windowWidth-60));
+					$('#enemy').css('top' ,getRandomInt(60,windowHeight-200));
 					
 				}
 				
@@ -192,16 +201,14 @@
 		<input type="button" id="btn_increase_r" value="range_up" /> 
 		<input type="button" id="btn_decrease_r" value="range_down" />
 		</br>
-		range : <label id="range">50</label>
+		range : <label id="range"></label>
 		</br>
 		<input type="button" id="btn_speed_fast" value="speed_up" /> 
 		<input type="button" id="btn_speed_slow" value="speed_down" />
 		</br>
-		speed : <label id="speed">1</label>
+		speed : <label id="speed"></label>
 		</br> 
-		</br>
-		</br>
-		cnt : <label id="cnt">0</label>
+		cnt : <label id="cnt"></label>
 	</section>
 </BODY>
 </HTML>
