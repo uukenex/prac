@@ -125,4 +125,27 @@ public class GameController {
 
 		return "games/game4_2";
 	}
+
+	@RequestMapping(value = "/game4/saveGame4Cnt", method = RequestMethod.POST)
+	public @ResponseBody HashMap<String, Object> game4ajax(@RequestParam String userName,
+			@RequestParam String mediaCode, @RequestParam String ip, @RequestParam int cnt) {
+		HashMap<String, Object> rtnMap = new HashMap<>();
+
+		HashMap<String, Object> hashMap = new HashMap<>();
+		hashMap.put("userName", userName);
+		hashMap.put("mediaCode", mediaCode);
+		hashMap.put("ip", ip);
+		hashMap.put("cnt", cnt);
+		hashMap.put("gameSeq", 4);
+
+		try {
+			game1Service.saveGameCntTx(hashMap);
+			rtnMap.put("RESULT", game1Service.selectGameCnt(hashMap));
+			rtnMap.put("CODE", "");
+		} catch (Exception e) {
+			rtnMap.put("CODE", "ERR");
+		}
+
+		return rtnMap;
+	}
 }

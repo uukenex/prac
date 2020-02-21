@@ -365,8 +365,8 @@
 			if (windowWidth > 640) {
 				windowWidth = 640;
 			}
-			$('table').css('width', windowWidth - 20);
-			$('table').css('height', windowWidth);
+			$('table#space').css('width', windowWidth - 20);
+			$('table#space').css('height', windowWidth);
 			$('html, body').css({
 				//'overflow' : 'hidden',
 				'height' : '100%'
@@ -394,7 +394,7 @@
 			$('button.direction').css('width', windowWidth / 5);
 			$('button.direction').css('height', windowWidth / 5);
 			
-			
+			$('table#rank').css('width', windowWidth - 20);
 		}
 		
 		function initMakeCell(){
@@ -591,7 +591,7 @@
 		<strong>랭크 정보</strong><font id="rank_btn">펼치기</font>
 		</div>
 		<div id="rank_table" class="hide">
-			<table>
+			<table id="rank">
 			<tr>
 				<td><strong>인입</strong></td> 
 				<td><strong>점수</strong></td>

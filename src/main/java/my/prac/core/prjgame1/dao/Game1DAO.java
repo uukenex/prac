@@ -13,4 +13,8 @@ public interface Game1DAO {
 
 	public List<HashMap<String, Object>> selectGame3Cnt();
 
+	public int insertGameCnt(HashMap<String, Object> hashMap);
+
+	public List<HashMap<String, Object>> selectGameCnt(HashMap<String, Object> hashMap);
+
 }

@@ -30,4 +30,14 @@ public class Game1ServiceImpl implements Game1Service {
 		return game1DAO.selectGame3Cnt();
 	}
 
+	@Override
+	public int saveGameCntTx(HashMap<String, Object> hashMap) throws Exception {
+		return game1DAO.insertGameCnt(hashMap);
+	}
+
+	@Override
+	public List<HashMap<String, Object>> selectGameCnt(HashMap<String, Object> hashMap) throws Exception {
+		return game1DAO.selectGameCnt(hashMap);
+	}
+
 }

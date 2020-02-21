@@ -36,7 +36,38 @@
              sysdate,
              '3' )
     </insert>
+    <insert id="insertGameCnt" parameterType="Map">
+        insert into TGAME1_RANK ( /* Game1Mapper.xml : my.prac.core.prjgame1.dao.Game1DAO.insertGameCnt */ 
+             USER_ID,
+             IP_ADDR,
+             MEDIA_CODE,
+             CNT,
+             INSERT_DATE,
+             GAME_NO )
+          values (
+             #{userName, jdbcType=VARCHAR},
+             #{ip, jdbcType=VARCHAR},
+             #{mediaCode, jdbcType=VARCHAR},
+             #{cnt, jdbcType=NUMERIC},
+             sysdate,
+             #{gameSeq, jdbcType=VARCHAR} )
+    </insert>
     
+    <select id="selectGameCnt" resultType="HashMap" parameterType="Map">
+    	SELECT /* Game1Mapper.xml : my.prac.core.prjgame1.dao.Game1DAO.selectGameCnt */
+				 X.MEDIA_CODE
+				,X.CNT
+				,X.USER_ID
+				,ROWNUM
+		  FROM (SELECT GR1.MEDIA_CODE
+					  ,GR1.CNT
+					  ,GR1.USER_ID
+				  FROM TGAME1_RANK GR1
+			     WHERE GR1.GAME_NO = #{gameSeq, jdbcType=VARCHAR}
+			       AND GR1.INSERT_DATE > TRUNC(SYSDATE) - 4
+			  ORDER BY GR1.CNT DESC) X
+		 WHERE ROWNUM &lt;= 10
+    </select>
     <select id="selectGame3Cnt" resultType="HashMap">
     	SELECT /* Game1Mapper.xml : my.prac.core.prjgame1.dao.Game1DAO.selectGame3Cnt */
 				 X.MEDIA_CODE

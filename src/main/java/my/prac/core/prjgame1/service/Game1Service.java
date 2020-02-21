@@ -10,4 +10,8 @@ public interface Game1Service {
 	public int saveGame3CntTx(HashMap<String, Object> hashMap) throws Exception;
 
 	public List<HashMap<String, Object>> selectGame3Cnt() throws Exception;
+
+	public List<HashMap<String, Object>> selectGameCnt(HashMap<String, Object> hashMap) throws Exception;
+
+	public int saveGameCntTx(HashMap<String, Object> hashMap) throws Exception;
 }

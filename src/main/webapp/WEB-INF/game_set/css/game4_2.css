@@ -36,4 +36,10 @@ section#controll{
 	position: absolute;
 	display: inline;
 	top : 400px;
+	font-size: 13px;
+}
+
+strong{
+	font-size: 14px;
+	color: red;
 }

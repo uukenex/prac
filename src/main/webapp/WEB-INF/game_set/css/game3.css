@@ -55,11 +55,6 @@ center {
 }
 
 
-table#rank{
-	margin: 0px;
-	padding: 0px;
-	border: solid 1px gray;
-}
 table#rank tr td{
 	text-align: left;
 }

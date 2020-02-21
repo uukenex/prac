@@ -2,7 +2,7 @@
 var isLocal = location.href.indexOf('localhost')>0 ;
 var windowWidth  = $(window).width();
 var windowHeight = $(window).height();
-
+var mediaCode = getMediaCode();
 
 
 document.oncontextmenu = function(e) {
@@ -22,10 +22,19 @@ window.addEventListener('resize', windowClear, true);
 
 
 function windowClear(){
-	 $('body').css('display','none');
+	if(windowWidth != $(window).width()){
+		$('body').css('display','none');
+	}
 }
 
+function windowFadeOut(){
+	$('body').fadeOut(3000);
+}
+function windowFadeIn(){
+	$('body').fadeIn(3000);
+}
 
+//min 0 , max 3 인 경우 0, 1, 2, 3 이 나올수 있음
 function getRandomInt(min, max) {
 	return Math.floor(Math.random() * (max - min + 1)) + min;
 }
