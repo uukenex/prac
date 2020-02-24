@@ -8,8 +8,13 @@
 <meta name="viewport"
 	content="width=device-width, initial-scale=1, user-scalable=no" />
 
-<TITLE>원형이동 practice</TITLE>
+<TITLE>ROUND WORM GAME</TITLE>
+<%--
+개선사항..
+RANK TABLE CSS
+저장안할시 select 하도록 처리 
 
+ --%>
 <link rel="stylesheet"
 	href="<%=request.getContextPath()%>/game_set/css/game4_2.css?v=<%=System.currentTimeMillis()%>" />
 </HEAD>
@@ -22,13 +27,9 @@
 		var is_reverse = false;
 		var is_dup_speed=false;
 		var rotateVar; //타이머 담을 변수 
-		//var rotateSpeed = 5;
 		var rotate_rate = 2;//배속
 		
 		var cnt = 0;
-		
-		
-		var partition = 20;//원형구체 충돌 방지 간격
 		
 		var x = 200 // center
 		var y = 200 // center
@@ -120,9 +121,9 @@
 			rotateVar = setInterval(function() {
 				for(var rate=0;rate<rotate_rate;rate++){
 					if(is_reverse){
-						a = (a - Math.PI / 360) % (Math.PI * 2);
+						a = (a + Math.PI / 360) % (Math.PI * 2);
 					}else{
-						a = (a + Math.PI / 360) % (Math.PI * 2);	
+						a = (a - Math.PI / 360) % (Math.PI * 2);	
 					}
 				}
 				rotate(a);
@@ -149,8 +150,10 @@
 				if(px > rect.left && px <rect.right && py > rect.top && py < rect.bottom){
 					cnt++;
 					$('#cnt')[0].innerText=cnt;
+					
+					var rd;
 					if(cnt%2==0){
-						var rd = rd_func();
+						rd = rd_func();
 					}
 					if(cnt%4==0){
 						rd_func(rd);
@@ -168,28 +171,28 @@
 				
 				switch(rd){
 					case 0:
-						if(post_process == 1){
+						if(post_process == 0 || post_process == 1){
 							rd_func(post_process);
 							return;
 						}
 						click_r_incdec(true);
 						break;
 					case 1:
-						if(post_process == 0){
+						if(post_process == 0 || post_process == 1){
 							rd_func(post_process);
 							return;
 						}
 						click_r_incdec(false);
 						break;
 					case 2:
-						if(post_process == 3){
+						if(post_process == 2 || post_process == 3){
 							rd_func(post_process);
 							return;
 						}
 						click_speed_control(true);
 						break;
 					case 3:
-						if(post_process == 2){
+						if(post_process == 2 || post_process == 3){
 							rd_func(post_process);
 							return;
 						}
@@ -210,15 +213,8 @@
 		function game_over(){
 			clearTimeout(rotateVar);
 			windowFadeOut();
-			/* alert(cnt+'점 달성!'); */
 			
 			setTimeout(function(){
-				/* 
-				if(isLocal){
-					console.log('testMode '+arg0);
-					arg0 = 'testMode';
-				}
-				 */
 				var promptVal = prompt('벽에 부딪힘..'+cnt+'점 \n이름을 입력해주세요.');
 				
 				if(promptVal==null){
@@ -279,15 +275,9 @@
 	<section id="controll">
 		설명 : 화면 아무곳 클릭시 반대로 회전합니다.</br>
 		회전하는 붉은점으로 초록박스를 먹으면 점수+1!!</br>
-		3점마다 아래 효과 중 발동
+		2점마다 아래 효과 중 랜덤 발동
 		</br>
 		<strong>회전범위 증가/감소, 속도 증가/감소, reverse</strong>
-		<!-- 
-		회전범위 : <label id="range"></label>
-		</br> 
-		현재속도 : <label id="speed"></label>
-		</br> 
-		 -->
 		</br>
 		현재점수 : <label id="cnt"></label>
 		</br>
