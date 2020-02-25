@@ -44,7 +44,7 @@ RANK TABLE CSS
 		function init() {
 			
 			
-			$('#controll').css('top',windowHeight-200);
+			$('#controll').css('top',windowHeight-400);
 			$('body').on('click',click_reverse);
 			
 			$('#sec')[0].innerText = '20';
@@ -330,20 +330,25 @@ RANK TABLE CSS
 	</section>
 
 	<section id="controll">
-		설명 : 화면 아무곳 클릭시 반대로 회전합니다.초록박스를 먹으세요</br>
-		.</br>
+		TIMER <strong><label id="sec"></label> : <label id="milisec"></label></strong>
+		</br>
+		설명 : 화면 아무곳 클릭시 반대로 회전합니다.
+		</br>
+		초록박스에 닿으면 점수획득
+		</br>
+		.
+		</br>
 		2점마다 아래 효과 중 랜덤 발동
 		</br>
 		<strong>회전범위 증가/감소, 속도 증가/감소, reverse</strong>
 		</br>
-		.</br>
+		.
+		</br>
 		현재점수 : <label id="cnt"></label>
 		</br>
 		정방회전 : <label id="is_reverse"></label>
 		</br>
-		timer
-		<label id="sec"></label>
-		<label id="milisec"></label>
+		
 		
 	</section>
 </BODY>
