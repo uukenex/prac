@@ -140,12 +140,28 @@ public class GameController {
 
 		try {
 			game1Service.saveGameCntTx(hashMap);
-			rtnMap.put("RESULT", game1Service.selectGameCnt(hashMap));
-			rtnMap.put("CODE", "");
+			rtnMap.put("CODE", "OK");
 		} catch (Exception e) {
 			rtnMap.put("CODE", "ERR");
 		}
 
 		return rtnMap;
 	}
+
+	@RequestMapping(value = "/game4/selectGame4Cnt", method = RequestMethod.GET)
+	public @ResponseBody HashMap<String, Object> selectGame4Cnt(@RequestParam String gameNo) {
+		HashMap<String, Object> rtnMap = new HashMap<>();
+		HashMap<String, Object> hashMap = new HashMap<>();
+		hashMap.put("gameSeq", 4);
+
+		try {
+			rtnMap.put("RESULT", game1Service.selectGameCnt(hashMap));
+			rtnMap.put("CODE", "OK");
+		} catch (Exception e) {
+			rtnMap.put("CODE", "ERR");
+		}
+
+		return rtnMap;
+	}
+
 }

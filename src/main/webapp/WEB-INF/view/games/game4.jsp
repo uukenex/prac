@@ -26,6 +26,11 @@ RANK TABLE CSS
 	<script language="javascript">
 		var is_reverse = false;
 		var is_dup_speed=false;
+		var is_game_over = false;
+		
+		var is_end_timer_start = false;//20초 게임오버 타이머 시작여부
+		var end_timer;//20초 게임오버타이머  
+		
 		var rotateVar; //타이머 담을 변수 
 		var rotate_rate = 2;//배속
 		
@@ -38,13 +43,19 @@ RANK TABLE CSS
 		
 		function init() {
 			
-			$('body').on('click',click_reverse);
+			
 			$('#controll').css('top',windowHeight-200);
+			$('body').on('click',click_reverse);
+			
+			$('#sec')[0].innerText = '20';
+			$('#milisec')[0].innerText = '00';
 			
 			enemy_create();
 			rotation();
 			
+			
 		}
+		
 		
 		
 		function enemy_destroy(){
@@ -57,6 +68,31 @@ RANK TABLE CSS
 		}
 		
 		function click_reverse(event){
+			if(!is_end_timer_start){
+				var nowTime = Date.now();
+				
+				end_timer = setInterval(function() {
+					 //1ms당 한 번씩 현재시간 timestamp를 불러와 nowTime에 저장
+					var newTime = new Date(Date.now() - nowTime); //(nowTime - stTime)을 new Date()에 넣는다
+					
+					var sec = newTime.getSeconds(); //초
+					var milisec = Math.floor(newTime.getMilliseconds() / 10); //밀리초
+					$('#sec')[0].innerText = addZero(19-sec);
+					$('#milisec')[0].innerText = addZero(99-milisec);
+					
+					if(19-sec < 0){
+						console.log('종료');
+						game_over();
+					}
+					
+				}, 5);
+				
+				is_end_timer_start= true;
+				
+				
+				
+			}
+			
 			is_reverse==true?is_reverse = false: is_reverse = true;
 			clearTimeout(rotateVar);
 			
@@ -211,16 +247,20 @@ RANK TABLE CSS
 		}
 		
 		function game_over(){
+			if(is_game_over){
+				return;
+			} 
+			is_game_over = true;
+			
 			clearTimeout(rotateVar);
+			clearTimeout(end_timer);
 			windowFadeOut();
 			
-			setTimeout(function(){
-				var promptVal = prompt('벽에 부딪힘..'+cnt+'점 \n이름을 입력해주세요.');
-				
-				if(promptVal==null){
-					return;
-				}
-				
+			
+			var promptVal = prompt('게임 종료 ..'+cnt+'점 \n이름을 입력해주세요.');
+			
+			
+			if(promptVal != null){
 				$.ajax({
 					type : "post",
 					url : "/game4/saveGame4Cnt",
@@ -231,10 +271,26 @@ RANK TABLE CSS
 						cnt : cnt
 					},
 					success : function(res) {
-						alert(cnt+"점수가 저장되었습니다");
+						console.log(cnt);
 						console.log(res);
 						
-						var innerHTML = '<table><tr><td>인입</td><td>ID</td><td>점수</td><tr>';
+						alert(cnt+"점수가 저장되었습니다");
+					},
+					error : function(request, status, error) {
+						alert(request);
+					}
+				});
+			}
+			
+			setTimeout(function(){
+				$.ajax({
+					type : "get",
+					url : "/game4/selectGame4Cnt",
+					data : {
+						gameNo : '4'
+					},
+					success : function(res) {
+						var innerHTML = '<table class="rank"><tr><td>인입</td><td>ID</td><td>점수</td><tr>';
 						$(res.RESULT).each(function(idx,item){
 							innerHTML += '<tr><td>'+item.MEDIA_CODE+'</td><td>'+item.USER_ID+'</td><td>'+item.CNT+'</td><tr>';
 							
@@ -245,12 +301,13 @@ RANK TABLE CSS
 						$('body')[0].innerHTML = innerHTML;
 						
 						windowFadeIn();
-						
 					},
 					error : function(request, status, error) {
 						alert(request);
 					}
 				});
+				
+				
 				
 			},4000);
 			
@@ -273,15 +330,21 @@ RANK TABLE CSS
 	</section>
 
 	<section id="controll">
-		설명 : 화면 아무곳 클릭시 반대로 회전합니다.</br>
-		회전하는 붉은점으로 초록박스를 먹으면 점수+1!!</br>
+		설명 : 화면 아무곳 클릭시 반대로 회전합니다.초록박스를 먹으세요</br>
+		.</br>
 		2점마다 아래 효과 중 랜덤 발동
 		</br>
 		<strong>회전범위 증가/감소, 속도 증가/감소, reverse</strong>
 		</br>
+		.</br>
 		현재점수 : <label id="cnt"></label>
 		</br>
 		정방회전 : <label id="is_reverse"></label>
+		</br>
+		timer
+		<label id="sec"></label>
+		<label id="milisec"></label>
+		
 	</section>
 </BODY>
 </HTML>

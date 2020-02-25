@@ -4,6 +4,10 @@ div {
 	height: 10px;
 }
 
+section#section {
+	border: solid 1px red;
+}
+
 #enemy {
 	background: green;
 	width: 60px;
@@ -42,4 +46,21 @@ section#controll{
 strong{
 	font-size: 14px;
 	color: red;
+}
+
+table.rank {
+	margin:auto;
+	/* margin-top: 15px;
+	margin-right: 15px; */
+	border: solid 1px black;
+	width: 100%;
+}
+
+table.rank tr td {
+	
+	text-align: center;
+	background: #FFFFFF;
+	color: #000000;
+	border: solid 2px yellowgreen;
+	text-align: left;
 }
