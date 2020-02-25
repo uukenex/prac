@@ -44,7 +44,7 @@ RANK TABLE CSS
 		function init() {
 			
 			
-			$('#controll').css('top',windowHeight-400);
+			$('#controll').css('top',0);
 			$('body').on('click',click_reverse);
 			
 			$('#sec')[0].innerText = '20';
@@ -68,6 +68,7 @@ RANK TABLE CSS
 		}
 		
 		function click_reverse(event){
+			
 			if(!is_end_timer_start){
 				var nowTime = Date.now();
 				
@@ -81,17 +82,19 @@ RANK TABLE CSS
 					$('#milisec')[0].innerText = addZero(99-milisec);
 					
 					if(19-sec < 0){
-						console.log('종료');
-						game_over();
+						
+						game_over('time is over ..');
 					}
 					
 				}, 5);
 				
 				is_end_timer_start= true;
 				
-				
-				
 			}
+			
+			if(is_game_over){
+				return;
+			} 
 			
 			is_reverse==true?is_reverse = false: is_reverse = true;
 			clearTimeout(rotateVar);
@@ -162,6 +165,9 @@ RANK TABLE CSS
 						a = (a - Math.PI / 360) % (Math.PI * 2);	
 					}
 				}
+				if(is_game_over){
+					return;
+				}
 				rotate(a);
 			}, 5);
 			
@@ -179,7 +185,7 @@ RANK TABLE CSS
 				var rect = $('#enemy')[0].getBoundingClientRect();
 				
 				if(px > windowWidth || px < 0 || py > windowHeight || py < 0){
-					game_over();
+					game_over('벽에 부딪힘..');
 				}
 				
 				
@@ -246,7 +252,7 @@ RANK TABLE CSS
 			}
 		}
 		
-		function game_over(){
+		function game_over(arg0){
 			if(is_game_over){
 				return;
 			} 
@@ -257,7 +263,7 @@ RANK TABLE CSS
 			windowFadeOut();
 			
 			
-			var promptVal = prompt('게임 종료 ..'+cnt+'점 \n이름을 입력해주세요.');
+			var promptVal = prompt(arg0+cnt+'점 \n이름을 입력해주세요.');
 			
 			
 			if(promptVal != null){
@@ -330,8 +336,6 @@ RANK TABLE CSS
 	</section>
 
 	<section id="controll">
-		TIMER <strong><label id="sec"></label> : <label id="milisec"></label></strong>
-		</br>
 		설명 : 화면 아무곳 클릭시 반대로 회전합니다.
 		</br>
 		초록박스에 닿으면 점수획득
@@ -348,7 +352,7 @@ RANK TABLE CSS
 		</br>
 		정방회전 : <label id="is_reverse"></label>
 		</br>
-		
+		TIMER <strong><label id="sec"></label> : <label id="milisec"></label></strong>
 		
 	</section>
 </BODY>
