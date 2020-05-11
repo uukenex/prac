@@ -1,0 +1,87 @@
+p {
+	display: inline-block;
+}
+#output{
+	display: inline-block;
+}
+
+div {
+	position: absolute;
+	width: 10px;
+	height: 10px;
+}
+
+section#section {
+	border: solid 1px red;
+}
+
+#space {
+	width: 400px;
+	height: 400px;
+	border: solid 1px red;
+}
+
+.enemy {
+	background: black;
+	width: 20px;
+	height: 20px;
+	top : 600px;
+	left : 600px;
+}
+
+#char {
+	background: black;
+	width: 37px;
+	height: 63px;
+}
+
+#charimg{
+	width: 75px;
+	height: 127px;
+}
+
+#point2 {
+	background: red;
+}
+
+
+input[type=button] {
+	width: 100px;
+	height: 20px;
+	margin: 10 0 0 0;
+	text-align: left;
+}
+
+section#controll{
+	position: absolute;
+	display: inline;
+	top : 400px;
+	font-size: 13px;
+}
+
+#desc{
+	top : 400px;
+	padding-top: 50px;
+	
+}
+strong{
+	font-size: 14px;
+	color: red;
+}
+
+table.rank {
+	margin:auto;
+	/* margin-top: 15px;
+	margin-right: 15px; */
+	border: solid 1px black;
+	width: 100%;
+}
+
+table.rank tr td {
+	
+	text-align: center;
+	background: #FFFFFF;
+	color: #000000;
+	border: solid 2px yellowgreen;
+	text-align: left;
+}
