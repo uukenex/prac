@@ -39,6 +39,15 @@ section#section {
 	width: 75px;
 	height: 127px;
 }
+#weapon, #weaponimg{
+	width: 60px;
+	height: 63px;
+}
+#weapon_motion, #weapon_motionimg{
+	width: 60px;
+	height: 127px; /*캐릭터 높이만큼 공격 */
+}
+
 
 #point2 {
 	background: red;

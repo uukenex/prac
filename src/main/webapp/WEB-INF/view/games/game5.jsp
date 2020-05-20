@@ -8,7 +8,7 @@
 <meta name="viewport"
 	content="width=device-width, initial-scale=1, user-scalable=no" />
 
-<TITLE>ROUND WORM GAME</TITLE>
+<TITLE>new titles..</TITLE>
 <link rel="stylesheet" href="<%=request.getContextPath()%>/game_set/css/game5.css?v=<%=System.currentTimeMillis()%>" />
 </HEAD>
 <BODY onload="init()">
@@ -17,15 +17,20 @@
 	<script src="<%=request.getContextPath()%>/game_set/js/gameutil.js?v=<%=System.currentTimeMillis()%>"></script>
 	<script language="javascript">
 		
-	var webSocket = new WebSocket("ws://localhost:80/websocket");
+	var webSocket = new WebSocket("ws://http://54.180.82.173:80/websocket");
 
 	var output;
 	
 	var sp_count= 0;
 	
+	var attack = false;
+	var attack_timer ;
+	
 	function init()
     {
-		key_event();
+		$('#weapon').css('transform','rotate(180deg)');
+		
+		//key_event();
         output = document.getElementById("output");
     }
  
@@ -62,7 +67,7 @@
 	
 	$(function(){
 		var keypress = {}, // 어떤 키가 눌려 있는지 저장
-		charx = 0, chary = 0, speed = 1, $char = $('#char');
+		charx = 0, chary = 0, speed = 1, $char = $('#char'), $weapon = $('#weapon'),$weapon_motion = $('#weapon_motion');
 		
 		setInterval(function(){ // 주기적으로 검사
 			
@@ -77,7 +82,17 @@
 			if(keypress['39']) charx += speed; // right
 			if(keypress['40']) chary += speed; // down
 			
+			$weapon.css({top: chary+63-18, left: charx+37*2});
+			$weapon_motion.css({top: chary, left: charx+37*2});
 			$char.css({top: chary, left: charx});
+			
+			if(keypress['83']){
+				$('#weapon').css('display','none');
+				$('#weapon_motion').css('display','block');
+			}else{
+				$('#weapon_motion').css('display','none'); 
+				$('#weapon').css('display','block');
+			}
 		}, 10); // 매 0.01 초마다 실행
 	 
 		$(document).keydown(function(e){ // 어떤 키가 눌렸는지 저장 
@@ -86,22 +101,59 @@
 		$(document).keyup(function(e){ // 눌렸던 키를 해제
 			keypress[e.which.toString()] = false;
 		});
+		
+		
 	});
 	
 	
+	/*
 	function key_event(){
 		$(document).keydown(function(e) {
 			//좌 37 상 38 우 39 하 40
+			//32: space
+			//65: a
+			//66: b
 			switch(e.keyCode){
 				case 32:
 					create_enemy(sp_count,2,400-20-10,getRandomInt(0, 400-20-10));
 					sp_count++;
 					break;
+				case 83:
+					if(!attack){
+						$('#weapon').css('display','none');
+						$('#weapon_motion').css('display','block');
+						attack = true;
+						attack_timer = setInterval(function(){
+							attack = false;
+							clearTimeout(attack_timer);
+						}, 500); 
+					} 
+					break;	
+			}
+		});
+		
+		$(document).keyup(function(e) {
+			//좌 37 상 38 우 39 하 40
+			//32: space
+			//65: a
+			//66: b
+			switch(e.keyCode){
+				case 32:
+					create_enemy(sp_count,2,400-20-10,getRandomInt(0, 400-20-10));
+					sp_count++;
+					break;
+				case 83:
+					if(attack){
+						$('#weapon_motion').css('display','none'); 
+						$('#weapon').css('display','block');
+						attack = false;
+					}
+					break;	
 			}
 		});
 	}
 	
-	
+	*/
 	function create_enemy(sp_count,e_speed,x,y){
 		
 		$('#enemy_field')[0].innerHTML += '<div class="enemy" id="enemy'+sp_count+'"></div>'; 
@@ -128,6 +180,8 @@
 
 	<section id="space">
 		<div id="char"><img id="charimg" src="<%=request.getContextPath()%>/game_set/img/lion.png?v=<%=System.currentTimeMillis()%>"></div>
+		<div id="weapon"><img id="weaponimg" src="<%=request.getContextPath()%>/game_set/img/knife.png?v=<%=System.currentTimeMillis()%>"></div>
+		<div id="weapon_motion" style="display:none" ><img id="weapon_motionimg" src="<%=request.getContextPath()%>/game_set/img/knife_motion.png?v=<%=System.currentTimeMillis()%>"></div>
 		<div id="enemy_field"></div>
 	</section>
 
