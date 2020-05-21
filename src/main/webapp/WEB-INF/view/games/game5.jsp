@@ -21,14 +21,12 @@
 
 	var output;
 	
-	var v_sp_count= 0;
+	var v_sp_count= 3;
 	
 	var flag_char_attack = false;
 	var flag_char_attack_delay = false;
 	
 	var flag_enemy_attack = false;
-	
-	var enemy_move_timer;
 	
 	function init()
     {
@@ -127,13 +125,11 @@
     		for(var i =0 ; i < $('.enemy').length ; i++){
     			e_rect = $('.enemy')[i].getBoundingClientRect();
     			
-    			
-    			//20 : enemy size
     			if(e_rect.left < c_rect.right && e_rect.right > c_rect.left
     	          && e_rect.top < c_rect.bottom && e_rect.bottom > c_rect.top
     			){
     				alert('꽝');
-    				clearTimeout(enemy_move_timer);
+    				clearTimeout(v_sp_count);
     				$('.enemy')[i].remove();
     				keypress = {};
     				$('button.detect').css('background','#FFFFCB'); 
@@ -143,7 +139,7 @@
 	   	          && e_rect.top < c_a_rect.bottom && e_rect.bottom > c_a_rect.top
 	   			){
 	   				console.log('어택');
-	   				clearTimeout(enemy_move_timer);
+	   				clearTimeout(v_sp_count);
 	   				$('.enemy')[i].remove();
 	   			}
     		}
@@ -181,6 +177,7 @@
 	}
 	
 	function f_enemy_create(sp_count,e_speed,x,y){
+		var enemy_move_timer;
 		
 		if(!flag_enemy_attack){
 			flag_enemy_attack = true;
