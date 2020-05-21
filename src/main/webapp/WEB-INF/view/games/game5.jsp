@@ -17,20 +17,31 @@
 	<script src="<%=request.getContextPath()%>/game_set/js/gameutil.js?v=<%=System.currentTimeMillis()%>"></script>
 	<script language="javascript">
 		
-	var webSocket = new WebSocket("ws://http://54.180.82.173:80/websocket");
+	var webSocket = new WebSocket("ws://54.180.82.173:80/websocket");
 
 	var output;
 	
-	var sp_count= 0;
+	var v_sp_count= 0;
 	
 	var attack = false;
 	var attack_timer ;
 	
+	var flag_char_attack = false;
+	var flag_char_attack_delay = false;
+	
+	var flag_enemy_attack = false;
+	
+	
 	function init()
     {
+		$('section_detect').css('width', windowWidth - 20);
+		$('button.detect').css('width', windowWidth / 10);
+		$('button.detect').css('height', windowWidth / 10);
+		$('button.detect').css('background','#FFFFCB'); 
+		$('button#btn_blank').css('display','hidden');
+		
 		$('#weapon').css('transform','rotate(180deg)');
 		
-		//key_event();
         output = document.getElementById("output");
     }
  
@@ -64,7 +75,15 @@
     	webSocket.send(msg);
     }
 	
-	
+	function f_detect(key_number,bool_value){
+		if(bool_value){
+			$('#btn_'+key_number).css('background','#C4B73B');	
+		}else{
+			$('#btn_'+key_number).css('background','#FFFFCB');
+		}
+		
+	}
+    
 	$(function(){
 		var keypress = {}, // 어떤 키가 눌려 있는지 저장
 		charx = 0, chary = 0, speed = 1, $char = $('#char'), $weapon = $('#weapon'),$weapon_motion = $('#weapon_motion');
@@ -76,29 +95,36 @@
 			if(charx > 400-37-18) charx=400-37-18;
 			if(chary > 400-63-31) chary=400-63-31;
 			
-			speed = keypress['65'] ? 3 : 1
+			speed = keypress['65']?3:1
+			if(keypress['83']) f_char_weapon_motion_create();//'s' short attack
+			if(keypress['68']) f_char_weapon_motion_create();//'d' range attack
+			
 			if(keypress['37']) charx -= speed; // left
 			if(keypress['38']) chary -= speed; // up
 			if(keypress['39']) charx += speed; // right
 			if(keypress['40']) chary += speed; // down
 			
+			if(keypress['32']) f_enemy_create(v_sp_count,2,400-20-10,getRandomInt(0, 400-20-10));//'space' enemy create
+			
 			$weapon.css({top: chary+63-18, left: charx+37*2});
 			$weapon_motion.css({top: chary, left: charx+37*2});
 			$char.css({top: chary, left: charx});
 			
-			if(keypress['83']){
-				$('#weapon').css('display','none');
-				$('#weapon_motion').css('display','block');
-			}else{
-				$('#weapon_motion').css('display','none'); 
-				$('#weapon').css('display','block');
-			}
+			
+			
+			
+			
+			
+			
+			
 		}, 10); // 매 0.01 초마다 실행
 	 
 		$(document).keydown(function(e){ // 어떤 키가 눌렸는지 저장 
+			f_detect(e.which.toString(),true);
 			keypress[e.which.toString()] = true;
 		});
 		$(document).keyup(function(e){ // 눌렸던 키를 해제
+			f_detect(e.which.toString(),false);
 			keypress[e.which.toString()] = false;
 		});
 		
@@ -106,68 +132,57 @@
 	});
 	
 	
-	/*
-	function key_event(){
-		$(document).keydown(function(e) {
-			//좌 37 상 38 우 39 하 40
-			//32: space
-			//65: a
-			//66: b
-			switch(e.keyCode){
-				case 32:
-					create_enemy(sp_count,2,400-20-10,getRandomInt(0, 400-20-10));
-					sp_count++;
-					break;
-				case 83:
-					if(!attack){
-						$('#weapon').css('display','none');
-						$('#weapon_motion').css('display','block');
-						attack = true;
-						attack_timer = setInterval(function(){
-							attack = false;
-							clearTimeout(attack_timer);
-						}, 500); 
-					} 
-					break;	
-			}
-		});
+	
+	function f_char_weapon_motion_create(){
+
+		if(!flag_char_attack && !flag_char_attack_delay){
+			flag_char_attack = true;
+			
+			$('#weapon').css('display','none');
+			$('#weapon_motion').css('display','block');
+			
+			//공격은 0.5초 지속, 공격 후 딜레이는 1초 지속
+			//공격 후에 다시 공격을 누를 경우 1초동안 공격하지 말아야함
+			
+			
+			setTimeout(function(){
+				flag_char_attack = false;
+				$('#weapon_motion').css('display','none'); 
+				$('#weapon').css('display','block');
+				flag_char_attack_delay = true;
+				
+			}, 500);
+			
+			setTimeout(function(){
+				flag_char_attack_delay = false;
+			}, 1500);
+			
+		}
 		
-		$(document).keyup(function(e) {
-			//좌 37 상 38 우 39 하 40
-			//32: space
-			//65: a
-			//66: b
-			switch(e.keyCode){
-				case 32:
-					create_enemy(sp_count,2,400-20-10,getRandomInt(0, 400-20-10));
-					sp_count++;
-					break;
-				case 83:
-					if(attack){
-						$('#weapon_motion').css('display','none'); 
-						$('#weapon').css('display','block');
-						attack = false;
-					}
-					break;	
-			}
-		});
 	}
 	
-	*/
-	function create_enemy(sp_count,e_speed,x,y){
+	function f_enemy_create(sp_count,e_speed,x,y){
 		
-		$('#enemy_field')[0].innerHTML += '<div class="enemy" id="enemy'+sp_count+'"></div>'; 
+		var enemy_move_timer;
 		
-		var move_timer = setInterval(function(){
-			enemy_move(sp_count);
-		}, 10); 
-		
+		if(!flag_enemy_attack){
+			flag_enemy_attack = true;
+			$('#enemy_field')[0].innerHTML += '<div class="enemy" id="enemy'+sp_count+'"></div>'; 
+			move_timer = setInterval(function(){
+				enemy_move_timer(sp_count);
+			}, 10); 
+			
+			setTimeout(function() {
+				flag_enemy_attack = false;
+				v_sp_count++;
+			}, 1000);	
+		}
 		
 		function enemy_move(sp_count){
 			x -= e_speed; 
 			$('#enemy'+sp_count).css({top: y, left: x}); 
 			if(x < -30 ){
-				clearTimeout(move_timer);
+				clearTimeout(enemy_move_timer);
 			}
 		}
 		
@@ -185,10 +200,22 @@
 		<div id="enemy_field"></div>
 	</section>
 
-	<section id="desc">
-		방향키: 조작 / A: 달리기 / S: 베기  / D: 미사일 
+	<section id="section_detect">
+		<button class='detect' id="btn_blank"></button>
+		<button class='detect' id="btn_38">↑</button><br>
+		<button class='detect' id="btn_37">←</button>
+		<button class='detect' id="btn_40">↓</button>
+		<button class='detect' id="btn_39">→</button><br>
+		
+		<button class='detect' id="btn_65">A Boost</button>
+		<button class='detect' id="btn_83">S ShortAtk</button>
+		<button class='detect' id="btn_68">D RangeAtk</button>
 	</section>
+	
 	<section id="input"> <input type="text" id="msg" placeholder="메시지 입력"></input><input type="button" id= "submit_msg" value="전송" onclick="sendMsg()"></section> </div>
 	<section id="output"></section>
+	
+	
+	
 </BODY>
 </HTML>
