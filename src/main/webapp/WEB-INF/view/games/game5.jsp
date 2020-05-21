@@ -23,20 +23,18 @@
 	
 	var v_sp_count= 0;
 	
-	var attack = false;
-	var attack_timer ;
-	
 	var flag_char_attack = false;
 	var flag_char_attack_delay = false;
 	
 	var flag_enemy_attack = false;
 	
+	var enemy_move_timer;
 	
 	function init()
     {
-		$('section_detect').css('width', windowWidth - 20);
-		$('button.detect').css('width', windowWidth / 10);
-		$('button.detect').css('height', windowWidth / 10);
+		$('section_detect').css('width', 400 - 10);
+		$('button.detect').css('width', 400 / 10);
+		$('button.detect').css('height', 400 / 10);
 		$('button.detect').css('background','#FFFFCB'); 
 		$('button#btn_blank').css('display','hidden');
 		
@@ -109,14 +107,6 @@
 			$weapon.css({top: chary+63-18, left: charx+37*2});
 			$weapon_motion.css({top: chary, left: charx+37*2});
 			$char.css({top: chary, left: charx});
-			
-			
-			
-			
-			
-			
-			
-			
 		}, 10); // 매 0.01 초마다 실행
 	 
 		$(document).keydown(function(e){ // 어떤 키가 눌렸는지 저장 
@@ -129,8 +119,37 @@
 		});
 		
 		
+		setInterval(function(){
+    		var e_rect;
+    		var c_rect =  $('#charimg')[0].getBoundingClientRect();
+    		var c_a_rect = $('#weapon_motionimg')[0].getBoundingClientRect();
+    		
+    		for(var i =0 ; i < $('.enemy').length ; i++){
+    			e_rect = $('.enemy')[i].getBoundingClientRect();
+    			
+    			
+    			//20 : enemy size
+    			if(e_rect.left < c_rect.right && e_rect.right > c_rect.left
+    	          && e_rect.top < c_rect.bottom && e_rect.bottom > c_rect.top
+    			){
+    				alert('꽝');
+    				clearTimeout(enemy_move_timer);
+    				$('.enemy')[i].remove();
+    				keypress = {};
+    				$('button.detect').css('background','#FFFFCB'); 
+    			}
+    			
+    			if(e_rect.left < c_a_rect.right && e_rect.right > c_a_rect.left
+	   	          && e_rect.top < c_a_rect.bottom && e_rect.bottom > c_a_rect.top
+	   			){
+	   				console.log('어택');
+	   				clearTimeout(enemy_move_timer);
+	   				$('.enemy')[i].remove();
+	   			}
+    		}
+    		
+    	}, 10);	
 	});
-	
 	
 	
 	function f_char_weapon_motion_create(){
@@ -163,13 +182,11 @@
 	
 	function f_enemy_create(sp_count,e_speed,x,y){
 		
-		var enemy_move_timer;
-		
 		if(!flag_enemy_attack){
 			flag_enemy_attack = true;
 			$('#enemy_field')[0].innerHTML += '<div class="enemy" id="enemy'+sp_count+'"></div>'; 
-			move_timer = setInterval(function(){
-				enemy_move_timer(sp_count);
+			enemy_move_timer = setInterval(function(){
+				enemy_move(sp_count);
 			}, 10); 
 			
 			setTimeout(function() {
@@ -183,6 +200,7 @@
 			$('#enemy'+sp_count).css({top: y, left: x}); 
 			if(x < -30 ){
 				clearTimeout(enemy_move_timer);
+				$('#enemy'+sp_count).remove();
 			}
 		}
 		

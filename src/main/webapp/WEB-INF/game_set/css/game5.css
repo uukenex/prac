@@ -29,15 +29,10 @@ section#section {
 	left : 600px;
 }
 
-#char {
-	background: black;
-	width: 37px;
-	height: 63px;
-}
-
-#charimg{
+#char, #charimg{
 	width: 75px;
 	height: 127px;
+	border: 1px dashed;
 }
 #weapon, #weaponimg{
 	width: 60px;
@@ -46,6 +41,7 @@ section#section {
 #weapon_motion, #weapon_motionimg{
 	width: 60px;
 	height: 127px; /*캐릭터 높이만큼 공격 */
+	border: 1px dashed;
 }
 
 
