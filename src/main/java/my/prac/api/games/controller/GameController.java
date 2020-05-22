@@ -169,4 +169,10 @@ public class GameController {
 
 		return "games/game5";
 	}
+
+	@RequestMapping(value = "/ws", method = RequestMethod.GET)
+	public String ws(Model model) throws Exception {
+
+		return "games/ws";
+	}
 }
