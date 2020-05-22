@@ -177,13 +177,15 @@
 				py = y + r * Math.sin(a);	 
 				
 				var rect = $('#enemy')[0].getBoundingClientRect();
+				var c_rect = $('#point2')[0].getBoundingClientRect();
 				
-				if(px > windowWidth || px < 0 || py > windowHeight || py < 0){
+				if(meetWall(c_rect)){
+				//if(px > windowWidth || px < 0 || py > windowHeight || py < 0){
 					game_over('벽에 부딪힘..');
 				}
 				
-				
-				if(px > rect.left && px <rect.right && py > rect.top && py < rect.bottom){
+				if(meetBox(c_rect,rect)){
+				//if(px > rect.left && px <rect.right && py > rect.top && py < rect.bottom){
 					cnt++;
 					$('#cnt')[0].innerText=cnt;
 					
@@ -256,31 +258,33 @@
 			clearTimeout(end_timer);
 			windowFadeOut();
 			
-			
-			var promptVal = prompt(arg0+cnt+'점 \n이름을 입력해주세요.');
-			
-			
-			if(promptVal != null){
-				$.ajax({
-					type : "post",
-					url : "/game4/saveGame4Cnt",
-					data : {
-						userName : promptVal,						
-						mediaCode: mediaCode,
-						ip : ip(),
-						cnt : cnt
-					},
-					success : function(res) {
-						console.log(cnt);
-						console.log(res);
-						
-						alert(cnt+"점수가 저장되었습니다");
-					},
-					error : function(request, status, error) {
-						alert(request);
-					}
-				});
+			if(!isLocal){
+				var promptVal = prompt(arg0+cnt+'점 \n이름을 입력해주세요.');
+				
+				
+				if(promptVal != null){
+					$.ajax({
+						type : "post",
+						url : "/game4/saveGame4Cnt",
+						data : {
+							userName : promptVal,						
+							mediaCode: mediaCode,
+							ip : ip(),
+							cnt : cnt
+						},
+						success : function(res) {
+							console.log(cnt);
+							console.log(res);
+							
+							alert(cnt+"점수가 저장되었습니다");
+						},
+						error : function(request, status, error) {
+							alert(request);
+						}
+					});
+				}
 			}
+			
 			
 			setTimeout(function(){
 				$.ajax({

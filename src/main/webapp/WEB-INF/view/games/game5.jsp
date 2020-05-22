@@ -43,33 +43,35 @@
     }
  
  
-	// 콘솔 텍스트 에리어 오브젝트
-	var messageTextArea = $("#output");
 	// WebSocket 서버와 접속이 되면 호출되는 함수
 	webSocket.onopen = function(message) {
 	// 콘솔 텍스트에 메시지를 출력한다.
-	messageTextArea.value += "Server connect...\n";
+	$("#txtarea")[0].value += "알파카 채팅서버에 접속했습니다!\n";
 	};
 	// WebSocket 서버와 접속이 끊기면 호출되는 함수
 	webSocket.onclose = function(message) {
 	// 콘솔 텍스트에 메시지를 출력한다.
-	messageTextArea.value += "Server Disconnect...\n";
+	$("#txtarea")[0].value += "채팅서버가 종료되었습니다!\n";
 	};
 	// WebSocket 서버와 통신 중에 에러가 발생하면 요청되는 함수
 	webSocket.onerror = function(message) {
 	// 콘솔 텍스트에 메시지를 출력한다.
-	messageTextArea.value += "error...\n";
+	$("#txtarea")[0].value += "에러가 발생하였습니다!\n";
 	};
 	// WebSocket 서버로 부터 메시지가 오면 호출되는 함수
 	webSocket.onmessage = function(message) {
 	// 콘솔 텍스트에 메시지를 출력한다.
-	messageTextArea.value += "Recieve From Server => "+message.data+"\n";
+	$("#txtarea")[0].value += "받은메시지 :"+message.data+"\n";
+	$("#txtarea")[0].scrollTop = $("#txtarea")[0].scrollHeight;
 	};
 
     
     function sendMsg(){
     	var msg = $('#msg').val();
     	webSocket.send(msg);
+    	$("#txtarea")[0].value += "보낸메시지 :"+msg+"\n";
+    	$('#msg').val('');
+    	$("#txtarea")[0].scrollTop = $("#txtarea")[0].scrollHeight;
     }
 	
 	function f_detect(key_number,bool_value){
@@ -227,7 +229,7 @@
 		<button class='detect' id="btn_83">S ShortAtk</button>
 		<button class='detect' id="btn_68">D RangeAtk</button>
 	</section>
-	
+	<section id ="txtbx"><textarea id="txtarea" cols="80" rows="4" autofocus="autofocus" > </textarea> </section>
 	<section id="input"> <input type="text" id="msg" placeholder="메시지 입력"></input><input type="button" id= "submit_msg" value="전송" onclick="sendMsg()"></section> </div>
 	<section id="output"></section>
 	

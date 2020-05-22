@@ -1,5 +1,8 @@
 
 var isLocal = location.href.indexOf('localhost')>0 ;
+var windowWidth_org = $(window).width();
+var windowHeight_org = $(window).height();
+
 var windowWidth  = $(window).width()>=500?500:$(window).width();
 var windowHeight = $(window).height()>=700?700:$(window).height();
 var mediaCode = getMediaCode();
@@ -19,7 +22,6 @@ jQuery(document).keydown(function(e){
 
 
 window.addEventListener('resize', windowClear, true);
-
 
 function windowClear(){
 	if(windowWidth != $(window).width() && !isLocal ){
@@ -61,3 +63,24 @@ function pad(n, width) {
 function addZero(num) {
 	return (num < 10 ? '0'+num : ''+num);
 }
+
+function meetBox(org_rect,target_rect){
+	if(target_rect.left   < org_rect.right 
+	&& target_rect.right  > org_rect.left
+    && target_rect.top    < org_rect.bottom 
+    && target_rect.bottom > org_rect.top ) {
+		return true;
+	}else{
+		return false;
+	}
+}
+
+function meetWall(org_rect){
+	if(org_rect.right > windowWidth_org || org_rect.left < 0 || org_rect.bottom > windowHeight_org || org_rect.top < 0){
+		return true;
+	}else{
+		return false;
+	}
+}
+
+
