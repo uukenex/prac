@@ -21,6 +21,7 @@
 
 	var output;
 	
+	//https://bssow.tistory.com/129 timer int로 조정하기 
 	var v_sp_count= 3;
 	
 	var flag_char_attack = false;

@@ -1,7 +1,7 @@
 
 var isLocal = location.href.indexOf('localhost')>0 ;
-var windowWidth  = $(window).width();
-var windowHeight = $(window).height();
+var windowWidth  = $(window).width()>=500?500:$(window).width();
+var windowHeight = $(window).height()>=700?700:$(window).height();
 var mediaCode = getMediaCode();
 
 
@@ -22,16 +22,16 @@ window.addEventListener('resize', windowClear, true);
 
 
 function windowClear(){
-	if(windowWidth != $(window).width()){
+	if(windowWidth != $(window).width() && !isLocal ){
 		$('body').css('display','none');
 	}
 }
 
 function windowFadeOut(){
-	$('body').fadeOut(3000);
+	$('body').fadeOut(1000);
 }
 function windowFadeIn(){
-	$('body').fadeIn(3000);
+	$('body').fadeIn(500);
 }
 
 //min 0 , max 3 인 경우 0, 1, 2, 3 이 나올수 있음

@@ -9,12 +9,6 @@
 	content="width=device-width, initial-scale=1, user-scalable=no" />
 
 <TITLE>ROUND WORM GAME</TITLE>
-<%--
-개선사항..
-RANK TABLE CSS
-저장안할시 select 하도록 처리 
-
- --%>
 <link rel="stylesheet"
 	href="<%=request.getContextPath()%>/game_set/css/game4_2.css?v=<%=System.currentTimeMillis()%>" />
 </HEAD>
@@ -142,7 +136,7 @@ RANK TABLE CSS
 				return new Promise((resolve, reject) => {
 					setTimeout(()=>{
 						clearTimeout(rotateVar);
-						is_increase?r+=2:r>10?r-=2:r=r;
+						is_increase?r+=2:r>10?r=r-1:r=r;
 						rotation();
 						resolve(seq);
 					}, 15*seq); 
@@ -315,7 +309,7 @@ RANK TABLE CSS
 				
 				
 				
-			},4000);
+			},1500);
 			
 			
 		}
@@ -336,6 +330,8 @@ RANK TABLE CSS
 	</section>
 
 	<section id="controll">
+		v1.01
+		<br/>
 		설명 : 화면 아무곳 클릭시 반대로 회전합니다.
 		</br>
 		초록박스에 닿으면 점수획득
