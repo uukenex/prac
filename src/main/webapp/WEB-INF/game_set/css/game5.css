@@ -14,11 +14,25 @@ div {
 section#section {
 	border: solid 1px red;
 }
+#section_detect {
+	top: 400px;
+	position: absolute;
+}
 
-#space {
+
+.space {
 	width: 400px;
 	height: 400px;
 	border: solid 1px red;
+	position: absolute;
+}
+
+
+.chat {
+	width: 200px;
+	height: 30px;
+	border: solid 1px green;
+	position: absolute;
 }
 
 .enemy {

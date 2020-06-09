@@ -20,11 +20,17 @@
 	
 	//https://bssow.tistory.com/129 timer int로 조정하기 
 	var v_sp_count= 3;
+	var v_chat_count = 0;
 	
 	var flag_char_attack = false;
 	var flag_char_attack_delay = false;
 	
 	var flag_enemy_attack = false;
+	
+	var flag_enter = false;
+	var flag_chat_float = false;
+	
+	var key_press_list = ['65','83','68','37','38','39','40','32'];
 	
 	function init()
     {
@@ -50,10 +56,13 @@
     
 	$(function(){
 		var keypress = {}, // 어떤 키가 눌려 있는지 저장
-		charx = 0, chary = 0, speed = 1, $char = $('#char'), $weapon = $('#weapon'),$weapon_motion = $('#weapon_motion');
+		charx = 0, chary = 0, speed = 1, 
+		$char = $('#char'),
+		$weapon = $('#weapon'),
+		$weapon_motion = $('#weapon_motion');
+		
 		
 		setInterval(function(){ // 주기적으로 검사
-			
 			if(charx < 0) charx=0;
 			if(chary < 0) chary=0;
 			if(charx > 400-37-18) charx=400-37-18;
@@ -73,16 +82,24 @@
 			$weapon.css({top: chary+63-18, left: charx+37*2});
 			$weapon_motion.css({top: chary, left: charx+37*2});
 			$char.css({top: chary, left: charx});
+			
 		}, 10); // 매 0.01 초마다 실행
 	 
 		$(document).keydown(function(e){ // 어떤 키가 눌렸는지 저장 
-			f_detect(e.which.toString(),true);
-			keypress[e.which.toString()] = true;
+			if(e.which.toString()=='13'){
+				f_chatter_box_create(400/2-100, 350);//'enter' chatter box
+			}else if(flag_enter){
+				$('#chat')[0].text += e.which.toString();
+			}else{
+				keypress[e.which.toString()] = true;
+			}
 		});
 		$(document).keyup(function(e){ // 눌렸던 키를 해제
 			f_detect(e.which.toString(),false);
-			keypress[e.which.toString()] = false;
+			keypress[e.which.toString()] = false;	
 		});
+		
+		
 		
 		
 		setInterval(function(){
@@ -90,6 +107,7 @@
     		var c_rect =  $('#charimg')[0].getBoundingClientRect();
     		var c_a_rect = $('#weapon_motionimg')[0].getBoundingClientRect();
     		
+    		//부딪힘판정
     		for(var i =0 ; i < $('.enemy').length ; i++){
     			e_rect = $('.enemy')[i].getBoundingClientRect();
     			
@@ -111,6 +129,16 @@
 	   				$('.enemy')[i].remove();
 	   			}
     		}
+    		
+    		//채팅창 
+    		if(flag_chat_float){
+    			var $chat_float = $('.chat_float');
+				var chat_float_area = $('#charimg')[0].getBoundingClientRect();
+				$chat_float.css({top: chat_float_area.top-30, left: chat_float_area.left-37*2});
+				//$chat_float.css({top: chary-30, left: charx-37*2 });
+			}else{
+				$('.chat_float').remove();
+			}
     		
     	}, 10);	
 	});
@@ -149,7 +177,7 @@
 		
 		if(!flag_enemy_attack){
 			flag_enemy_attack = true;
-			$('#enemy_field')[0].innerHTML += '<div class="enemy" id="enemy'+sp_count+'"></div>'; 
+			$('#enemy_field').append('<div class="enemy" id="enemy'+sp_count+'"></div>'); 
 			enemy_move_timer = setInterval(function(){
 				enemy_move(sp_count);
 			}, 10); 
@@ -171,18 +199,50 @@
 		
 	}
 	
+	function f_chatter_box_create(x,y){
+		var msg;
+		var chat_float_area = $('#charimg')[0].getBoundingClientRect();
+		
+		if(!flag_enter){
+			flag_enter= true;
+			$('#chat_space').append('<input type="text" class="chat" id="chat"></input>');
+			$('#chat').css({top: y, left: x}); 
+			
+			$('#chat')[0].focus();
+			
+		}else{
+			flag_enter= false;
+			msg = $('#chat').val();
+			$('#chat').remove();
+			
+			if(msg != ''){
+				$('#chat_space').append('<input type="text" class="chat chat_float" id="chat_float'+v_chat_count+'" readonly="true"></input>'); 
+				$('#chat_float'+v_chat_count).css({top: chat_float_area.top-30, left: chat_float_area.left-37*2});
+				$('#chat_float'+v_chat_count).val(msg);
+				flag_chat_float = true;
+				
+				setTimeout(function() {
+					flag_chat_float = false;
+					v_sp_count++;
+				}, 2000);
+				v_chat_count++;
+			}
+		}
+	}
 	
 	
 		
 	</script>
 
-	<section id="space">
+	<section id="space" class='space'>
 		<div id="char"><img id="charimg" src="<%=request.getContextPath()%>/game_set/img/lion.png?v=<%=System.currentTimeMillis()%>"></div>
 		<div id="weapon"><img id="weaponimg" src="<%=request.getContextPath()%>/game_set/img/knife.png?v=<%=System.currentTimeMillis()%>"></div>
 		<div id="weapon_motion" style="display:none" ><img id="weapon_motionimg" src="<%=request.getContextPath()%>/game_set/img/knife_motion.png?v=<%=System.currentTimeMillis()%>"></div>
 		<div id="enemy_field"></div>
 	</section>
-
+	<section id="chat_space" class='space'>
+	</section>
+	
 	<section id="section_detect">
 		<button class='detect' id="btn_blank"></button>
 		<button class='detect' id="btn_38">↑</button><br>

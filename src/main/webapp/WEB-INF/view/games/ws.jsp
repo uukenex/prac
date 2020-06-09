@@ -18,10 +18,20 @@
 	<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.1.5/sockjs.min.js"></script>
 	<script language="javascript">
 		
-	//var webSocket = new WebSocket("ws://54.180.82.173:80/websocket2");
+	var webSocket = new WebSocket("ws://localhost:80/websocket3");
 	//var sock = new SockJS("http://54.180.82.173:80/websocket2");
-	var sock = isLocal? new SockJS("http://locahost/websocket2") : new SockJS("http://54.180.82.173/websocket2");
-	
+	//var sock = new SockJS("http://localhost:80/websocket2");
+	/*
+	var socket = io();
+	var system = io.of('http://localhost/websocket3');
+	system.on('connect', function(socket) {
+	   console.log('클라이언트 접속');
+	});
+	system.on('message', function(data){
+	  alert('System Message' + data);
+	});
+	*/
+	/*
 	// 서버로부터 메시지를 받았을 때
 	sock.onopen = function(message) {
 	// 콘솔 텍스트에 메시지를 출력한다.
@@ -40,8 +50,8 @@
 		// 콘솔 텍스트에 메시지를 출력한다.
 		$("#txtarea")[0].value += "에러가 발생하였습니다!\n";
 	};
+	*/
 	
-	/*
 	// WebSocket 서버와 접속이 되면 호출되는 함수
 	webSocket.onopen = function(message) {
 	// 콘솔 텍스트에 메시지를 출력한다.
@@ -64,7 +74,7 @@
 	$("#txtarea")[0].scrollTop = $("#txtarea")[0].scrollHeight;
 	};
 
-    */
+    
 	
 	
     function sendMsg(){

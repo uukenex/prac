@@ -3,15 +3,14 @@ package my.prac.config;
 import java.util.ArrayList;
 import java.util.List;
 
-import javax.websocket.server.ServerEndpoint;
-
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 // WebSocket의 호스트 주소 설정
-@ServerEndpoint("/websocket2")
+@RequestMapping("/websocket2")
 public class WebSocket2Config extends TextWebSocketHandler {
 	// WebSocket으로 브라우저가 접속하면 요청되는 함수
 	// 세션 리스트
