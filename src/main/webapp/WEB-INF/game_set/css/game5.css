@@ -9,6 +9,8 @@ div {
 	position: absolute;
 	width: 10px;
 	height: 10px;
+	display: inline;
+	
 }
 
 section#section {
@@ -41,16 +43,33 @@ section#section {
 	height: 20px;
 	top : 600px;
 	left : 600px;
+	z-index: 9;
 }
 
-#char, #charimg{
+#char_heat {
+	border: 2px dashed;
+	width: 100%;
+	height: 100%;
+	z-index: 2;
+}
+
+#char {
+	width: 55px; /* img width - margin *2 */
+	height: 107px; /* img height - margin *2 */
+	margin: 10px; /*heatbox 판정*/
+}
+
+#charimg{
 	width: 75px;
 	height: 127px;
-	border: 1px dashed;
+	z-index: 0;
+	position: absolute;
+	/* border: 1px dashed; */
 }
 #weapon, #weaponimg{
 	width: 60px;
 	height: 63px;
+	z-index: 0;
 }
 #weapon_motion, #weapon_motionimg{
 	width: 60px;

@@ -8,7 +8,7 @@
 <meta name="viewport"
 	content="width=device-width, initial-scale=1, user-scalable=no" />
 
-<TITLE>new titles..</TITLE>
+<TITLE>라이언칼잡이</TITLE>
 <link rel="stylesheet" href="<%=request.getContextPath()%>/game_set/css/game5.css?v=<%=System.currentTimeMillis()%>" />
 </HEAD>
 <BODY onload="init()">
@@ -19,8 +19,9 @@
 		
 	
 	//https://bssow.tistory.com/129 timer int로 조정하기 
-	var v_sp_count= 3;
-	var v_chat_count = 0;
+	var v_sp_count= 3;//clear timer variable - enemy
+	var v_chat_count = 0; // chat floating box name value
+	var v_chat_timer;//clear timer variable - chat floating box
 	
 	var flag_char_attack = false;
 	var flag_char_attack_delay = false;
@@ -30,7 +31,7 @@
 	var flag_enter = false;
 	var flag_chat_float = false;
 	
-	var key_press_list = ['65','83','68','37','38','39','40','32'];
+	var flag_start_create_enemy = false;
 	
 	function init()
     {
@@ -57,7 +58,8 @@
 	$(function(){
 		var keypress = {}, // 어떤 키가 눌려 있는지 저장
 		charx = 0, chary = 0, speed = 1, 
-		$char = $('#char'),
+		$char = $('#char_heat'),
+		$charimg = $('#charimg'),
 		$weapon = $('#weapon'),
 		$weapon_motion = $('#weapon_motion');
 		
@@ -82,10 +84,12 @@
 			$weapon.css({top: chary+63-18, left: charx+37*2});
 			$weapon_motion.css({top: chary, left: charx+37*2});
 			$char.css({top: chary, left: charx});
+			$charimg.css({top: chary, left: charx});
 			
 		}, 10); // 매 0.01 초마다 실행
 	 
 		$(document).keydown(function(e){ // 어떤 키가 눌렸는지 저장 
+			f_detect(e.which.toString(),true);
 			if(e.which.toString()=='13'){
 				f_chatter_box_create(400/2-100, 350);//'enter' chatter box
 			}else if(flag_enter){
@@ -104,13 +108,28 @@
 		
 		setInterval(function(){
     		var e_rect;
-    		var c_rect =  $('#charimg')[0].getBoundingClientRect();
+    		var c_rect =  $('#char_heat')[0].getBoundingClientRect();
     		var c_a_rect = $('#weapon_motionimg')[0].getBoundingClientRect();
     		
     		//부딪힘판정
     		for(var i =0 ; i < $('.enemy').length ; i++){
     			e_rect = $('.enemy')[i].getBoundingClientRect();
     			
+    			if(meetBox(e_rect,c_rect)){
+    				alert('꽝');
+    				clearTimeout(v_sp_count);
+    				$('.enemy')[i].remove();
+    				keypress = {};
+    				$('button.detect').css('background','#FFFFCB'); 
+    			}
+    			
+    			if(meetBox(e_rect,c_a_rect)){
+    				console.log('어택');
+	   				clearTimeout(v_sp_count);
+	   				$('.enemy')[i].remove();
+    			}
+    			
+    			/*
     			if(e_rect.left < c_rect.right && e_rect.right > c_rect.left
     	          && e_rect.top < c_rect.bottom && e_rect.bottom > c_rect.top
     			){
@@ -120,14 +139,12 @@
     				keypress = {};
     				$('button.detect').css('background','#FFFFCB'); 
     			}
-    			
     			if(e_rect.left < c_a_rect.right && e_rect.right > c_a_rect.left
 	   	          && e_rect.top < c_a_rect.bottom && e_rect.bottom > c_a_rect.top
 	   			){
-	   				console.log('어택');
-	   				clearTimeout(v_sp_count);
-	   				$('.enemy')[i].remove();
+	   				
 	   			}
+    			*/
     		}
     		
     		//채팅창 
@@ -139,6 +156,12 @@
 			}else{
 				$('.chat_float').remove();
 			}
+    		
+    		//자동적생성
+    		if(flag_start_create_enemy){
+				f_enemy_create(v_sp_count,2,400-20-10,getRandomInt(0, 400-20-10));
+			}
+    		
     		
     	}, 10);	
 	});
@@ -185,7 +208,7 @@
 			setTimeout(function() {
 				flag_enemy_attack = false;
 				v_sp_count++;
-			}, 1000);	
+			}, 300);	
 		}
 		
 		function enemy_move(sp_count){
@@ -216,12 +239,22 @@
 			$('#chat').remove();
 			
 			if(msg != ''){
+				
+				if(msg == '시작'){
+					flag_start_create_enemy = true;
+				}else if (msg == '종료'){
+					flag_start_create_enemy = false;
+				}
+				
 				$('#chat_space').append('<input type="text" class="chat chat_float" id="chat_float'+v_chat_count+'" readonly="true"></input>'); 
 				$('#chat_float'+v_chat_count).css({top: chat_float_area.top-30, left: chat_float_area.left-37*2});
 				$('#chat_float'+v_chat_count).val(msg);
+				
 				flag_chat_float = true;
 				
-				setTimeout(function() {
+				clearTimeout(v_chat_timer);
+				
+				v_chat_timer = setTimeout(function() {
 					flag_chat_float = false;
 					v_sp_count++;
 				}, 2000);
@@ -235,7 +268,11 @@
 	</script>
 
 	<section id="space" class='space'>
-		<div id="char"><img id="charimg" src="<%=request.getContextPath()%>/game_set/img/lion.png?v=<%=System.currentTimeMillis()%>"></div>
+		<div id= "char">
+			<div id="char_heat"></div>
+		</div>
+		<img id="charimg" src="<%=request.getContextPath()%>/game_set/img/lion.png?v=<%=System.currentTimeMillis()%>">
+		
 		<div id="weapon"><img id="weaponimg" src="<%=request.getContextPath()%>/game_set/img/knife.png?v=<%=System.currentTimeMillis()%>"></div>
 		<div id="weapon_motion" style="display:none" ><img id="weapon_motionimg" src="<%=request.getContextPath()%>/game_set/img/knife_motion.png?v=<%=System.currentTimeMillis()%>"></div>
 		<div id="enemy_field"></div>
