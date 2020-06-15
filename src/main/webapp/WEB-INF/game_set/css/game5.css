@@ -20,7 +20,9 @@ section#section {
 	top: 400px;
 	position: absolute;
 }
-
+section#description {
+	position: relative;
+}
 
 .space {
 	width: 400px;

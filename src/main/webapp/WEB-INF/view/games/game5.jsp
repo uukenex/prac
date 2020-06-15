@@ -23,15 +23,20 @@
 	var v_chat_count = 0; // chat floating box name value
 	var v_chat_timer;//clear timer variable - chat floating box
 	
-	var flag_char_attack = false;
-	var flag_char_attack_delay = false;
+	var flag_char_attack = false; //근거리 공격
+	var flag_char_range_atk = false; // 원거리 공격중
+	var flag_char_attack_delay = false;//공격 딜레이 
 	
-	var flag_enemy_attack = false;
 	
-	var flag_enter = false;
-	var flag_chat_float = false;
+	var flag_enemy_attack = false; // 적 자동생성 
 	
-	var flag_start_create_enemy = false;
+	var flag_enter = false; //엔터 눌렸는지 여부 검사
+	var flag_chat_float = false;  // 채팅창 떠있는지 검사 
+	
+	var flag_start_create_enemy = false; 
+	
+	var v_score_life = 3;// init life
+	var v_score_hit = 0; //init hit enemy
 	
 	function init()
     {
@@ -39,7 +44,6 @@
 		$('button.detect').css('width', 400 / 10);
 		$('button.detect').css('height', 400 / 10);
 		$('button.detect').css('background','#FFFFCB'); 
-		$('button#btn_blank').css('display','hidden');
 		
 		$('#weapon').css('transform','rotate(180deg)');
 		
@@ -63,6 +67,11 @@
 		$weapon = $('#weapon'),
 		$weapon_motion = $('#weapon_motion');
 		
+		var w_r_rect =  $('#weapon')[0].getBoundingClientRect();
+		var range_atk_x = charx+37*2;
+		var range_atk_y = chary+63-18;
+		var range_atk_x_org = charx+37*2;
+		var range_atk_y_org = chary+63-18;
 		
 		setInterval(function(){ // 주기적으로 검사
 			if(charx < 0) charx=0;
@@ -71,8 +80,8 @@
 			if(chary > 400-63-31) chary=400-63-31;
 			
 			speed = keypress['65']?3:1
-			if(keypress['83']) f_char_weapon_motion_create();//'s' short attack
-			if(keypress['68']) f_char_weapon_motion_create();//'d' range attack
+			if(keypress['83']) f_char_weapon_short_atk_create();//'s' short attack
+			if(keypress['68']) f_char_weapon_range_atk_create();//'d' range attack
 			
 			if(keypress['37']) charx -= speed; // left
 			if(keypress['38']) chary -= speed; // up
@@ -81,8 +90,29 @@
 			
 			if(keypress['32']) f_enemy_create(v_sp_count,2,400-20-10,getRandomInt(0, 400-20-10));//'space' enemy create
 			
-			$weapon.css({top: chary+63-18, left: charx+37*2});
+			
+			range_atk_x_org = charx+37*2;
+			range_atk_y_org = chary+63-18; 
 			$weapon_motion.css({top: chary, left: charx+37*2});
+			
+			if(flag_char_range_atk){
+				range_atk_x = range_atk_x + 5;
+				
+				$weapon.css({top: range_atk_y, left: range_atk_x});
+				$weapon.css('border','dashed 1px black');
+				if(range_atk_x > 400){
+					flag_char_range_atk = false;
+				}
+				
+			}else{
+				$weapon.css({top: chary+63-18, left: charx+37*2});
+				$weapon.css('border','');
+				range_atk_x = range_atk_x_org;
+				range_atk_y = range_atk_y_org;
+			}
+			//$weapon.css({top: chary+63-18, left: charx+37*2});
+			//$weapon_motion.css({top: chary, left: charx+37*2});	
+			
 			$char.css({top: chary, left: charx});
 			$charimg.css({top: chary, left: charx});
 			
@@ -92,6 +122,8 @@
 			f_detect(e.which.toString(),true);
 			if(e.which.toString()=='13'){
 				f_chatter_box_create(400/2-100, 350);//'enter' chatter box
+			}else if(e.which.toString()=='27'){
+				f_enemy_end();
 			}else if(flag_enter){
 				$('#chat')[0].text += e.which.toString();
 			}else{
@@ -110,41 +142,36 @@
     		var e_rect;
     		var c_rect =  $('#char_heat')[0].getBoundingClientRect();
     		var c_a_rect = $('#weapon_motionimg')[0].getBoundingClientRect();
+    		var c_r_a_rect = $('#weapon')[0].getBoundingClientRect();
     		
     		//부딪힘판정
     		for(var i =0 ; i < $('.enemy').length ; i++){
     			e_rect = $('.enemy')[i].getBoundingClientRect();
     			
     			if(meetBox(e_rect,c_rect)){
-    				alert('꽝');
-    				clearTimeout(v_sp_count);
+    				v_score_life -= 1;
+    				if(v_score_life == 0){
+    					flag_start_create_enemy = false;
+    					keypress = [];
+    					alert('종료');
+    				}else if(v_score_life < 0){
+    					v_score_life = 0;
+    				}
+    				
     				$('.enemy')[i].remove();
-    				keypress = {};
     				$('button.detect').css('background','#FFFFCB'); 
+    				
+    				
+    				
     			}
     			
-    			if(meetBox(e_rect,c_a_rect)){
-    				console.log('어택');
+    			if(meetBox(e_rect,c_a_rect) || (flag_char_range_atk && meetBox(e_rect,c_r_a_rect) )){
+    				v_score_hit += 1;
+    				
 	   				clearTimeout(v_sp_count);
 	   				$('.enemy')[i].remove();
     			}
     			
-    			/*
-    			if(e_rect.left < c_rect.right && e_rect.right > c_rect.left
-    	          && e_rect.top < c_rect.bottom && e_rect.bottom > c_rect.top
-    			){
-    				alert('꽝');
-    				clearTimeout(v_sp_count);
-    				$('.enemy')[i].remove();
-    				keypress = {};
-    				$('button.detect').css('background','#FFFFCB'); 
-    			}
-    			if(e_rect.left < c_a_rect.right && e_rect.right > c_a_rect.left
-	   	          && e_rect.top < c_a_rect.bottom && e_rect.bottom > c_a_rect.top
-	   			){
-	   				
-	   			}
-    			*/
     		}
     		
     		//채팅창 
@@ -162,30 +189,48 @@
 				f_enemy_create(v_sp_count,2,400-20-10,getRandomInt(0, 400-20-10));
 			}
     		
+    		//점수변경 감지
+   			$('#score_life')[0].innerText=v_score_life;
+   			$('#score_hit')[0].innerText=v_score_hit;
     		
     	}, 10);	
 	});
 	
 	
-	function f_char_weapon_motion_create(){
+	function f_char_weapon_short_atk_create(){
 
 		if(!flag_char_attack && !flag_char_attack_delay){
 			flag_char_attack = true;
+			flag_char_attack_delay = true;
 			
 			$('#weapon').css('display','none');
 			$('#weapon_motion').css('display','block');
 			
-			//공격은 0.5초 지속, 공격 후 딜레이는 1초 지속
+			//공격은 0.5초 지속, 공격 후 딜레이는 0.5초 지속
 			//공격 후에 다시 공격을 누를 경우 1초동안 공격하지 말아야함
-			
 			
 			setTimeout(function(){
 				flag_char_attack = false;
 				$('#weapon_motion').css('display','none'); 
 				$('#weapon').css('display','block');
-				flag_char_attack_delay = true;
+				
 				
 			}, 500);
+			
+			setTimeout(function(){
+				flag_char_attack_delay = false;
+			}, 500+500);
+			
+		}
+		
+	}
+	
+	function f_char_weapon_range_atk_create(){
+		
+		if(!flag_char_range_atk && !flag_char_attack_delay){
+			flag_char_range_atk = true;
+			
+			flag_char_attack_delay = true;
 			
 			setTimeout(function(){
 				flag_char_attack_delay = false;
@@ -198,9 +243,12 @@
 	function f_enemy_create(sp_count,e_speed,x,y){
 		var enemy_move_timer;
 		
+		
+		
 		if(!flag_enemy_attack){
 			flag_enemy_attack = true;
 			$('#enemy_field').append('<div class="enemy" id="enemy'+sp_count+'"></div>'); 
+			
 			enemy_move_timer = setInterval(function(){
 				enemy_move(sp_count);
 			}, 10); 
@@ -218,6 +266,16 @@
 				clearTimeout(enemy_move_timer);
 				$('#enemy'+sp_count).remove();
 			}
+		}
+		
+	}
+	
+	function f_enemy_end(){
+		if(flag_enter){
+			flag_enter= false;
+			$('#chat').remove();
+		}else{
+			flag_start_create_enemy = false;	
 		}
 		
 	}
@@ -242,6 +300,8 @@
 				
 				if(msg == '시작'){
 					flag_start_create_enemy = true;
+					v_score_life = 3;
+		   			v_score_hit = 0;
 				}else if (msg == '종료'){
 					flag_start_create_enemy = false;
 				}
@@ -281,17 +341,24 @@
 	</section>
 	
 	<section id="section_detect">
-		<button class='detect' id="btn_blank"></button>
+		<button class='detect' id="btn_27">esc</button>
 		<button class='detect' id="btn_38">↑</button><br>
 		<button class='detect' id="btn_37">←</button>
 		<button class='detect' id="btn_40">↓</button>
-		<button class='detect' id="btn_39">→</button><br>
+		<button class='detect' id="btn_39">→</button>
+		<button class='detect' id="btn_13">ENTER</button><br>
 		
 		<button class='detect' id="btn_65">A Boost</button>
 		<button class='detect' id="btn_83">S ShortAtk</button>
 		<button class='detect' id="btn_68">D RangeAtk</button>
 	</section>
 	
+	<section id="description">
+		총 처치 수 : <label id="score_hit"></label>
+		</br>
+		남은 생명 : <label id="score_life"></label>
+		</br>
+	</section>
 	
 	
 </BODY>
