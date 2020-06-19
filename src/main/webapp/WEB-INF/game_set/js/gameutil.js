@@ -1,5 +1,5 @@
 
-var isLocal = location.href.indexOf('localhost')>0 ;
+var isLocal = location.href.indexOf('localhost') > 0 && !(location.href.indexOf('test') > 0);
 var windowWidth_org = $(window).width();
 var windowHeight_org = $(window).height();
 
@@ -7,6 +7,7 @@ var windowWidth  = $(window).width()>=500?500:$(window).width();
 var windowHeight = $(window).height()>=700?700:$(window).height();
 var mediaCode = getMediaCode();
 
+var flag_common_game_over = false;
 
 document.oncontextmenu = function(e) {
 	return false;
@@ -81,6 +82,82 @@ function meetWall(org_rect){
 	}else{
 		return false;
 	}
+}
+
+
+function common_game_over(arg_game_no, arg_cnt, arg_reason){
+	var selectUrl = "/gameUtil/selectGameCnt";
+	var insertUrl = "/gameUtil/insertGameCnt";
+	
+	if(flag_common_game_over){
+		return;
+	} 
+	flag_common_game_over = true;
+	
+	
+	windowFadeOut();
+	
+	if(!isLocal){
+		var promptVal = prompt(arg_reason+arg_cnt+'점 \n이름을 입력해주세요.');
+		
+		
+		if(promptVal != null){
+			$.ajax({
+				type : "post",
+				url : insertUrl,
+				data : {
+					userName : promptVal,						
+					mediaCode: mediaCode,
+					ip : ip(),
+					cnt : arg_cnt,
+					gameNo : arg_game_no
+				},
+				success : function(res) {
+					console.log(arg_cnt);
+					console.log(res);
+					if(res.CODE=='OK'){
+						alert(arg_cnt+"점수가 저장되었습니다");
+					}else{
+						alert("오류 발생");
+					}
+					
+				},
+				error : function(request, status, error) {
+					alert(request);
+				}
+			});
+		}
+	}
+	
+	
+	setTimeout(function(){
+		$.ajax({
+			type : "get",
+			url : selectUrl,
+			data : {
+				gameNo : arg_game_no
+			},
+			success : function(res) {
+				var innerHTML = '<table class="rank"><tr><td>인입</td><td>ID</td><td>점수</td><tr>';
+				$(res.RESULT).each(function(idx,item){
+					innerHTML += '<tr><td>'+item.MEDIA_CODE+'</td><td>'+item.USER_ID+'</td><td>'+item.CNT+'</td><tr>';
+				});
+				innerHTML += '</table>';
+				
+				$('body')[0].innerHTML = innerHTML;
+				
+				windowFadeIn();
+			},
+			error : function(request, status, error) {
+				alert(request);
+			}
+		});
+		
+		
+		
+	},1500);
+	
+	
 }
 
 

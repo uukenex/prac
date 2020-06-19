@@ -175,4 +175,43 @@ public class GameController {
 
 		return "games/ws";
 	}
+
+	@RequestMapping(value = "/gameUtil/insertGameCnt", method = RequestMethod.POST)
+	public @ResponseBody HashMap<String, Object> gameUtil_insertGameCnt(@RequestParam String userName,
+			@RequestParam String mediaCode, @RequestParam String ip, @RequestParam int cnt,
+			@RequestParam String gameNo) {
+		HashMap<String, Object> rtnMap = new HashMap<>();
+
+		HashMap<String, Object> hashMap = new HashMap<>();
+		hashMap.put("userName", userName);
+		hashMap.put("mediaCode", mediaCode);
+		hashMap.put("ip", ip);
+		hashMap.put("cnt", cnt);
+		hashMap.put("gameSeq", gameNo);
+
+		try {
+			game1Service.saveGameCntTx(hashMap);
+			rtnMap.put("CODE", "OK");
+		} catch (Exception e) {
+			rtnMap.put("CODE", "ERR");
+		}
+
+		return rtnMap;
+	}
+
+	@RequestMapping(value = "/gameUtil/selectGameCnt", method = RequestMethod.GET)
+	public @ResponseBody HashMap<String, Object> gameUtil_selectGameCnt(@RequestParam String gameNo) {
+		HashMap<String, Object> rtnMap = new HashMap<>();
+		HashMap<String, Object> hashMap = new HashMap<>();
+		hashMap.put("gameSeq", gameNo);
+
+		try {
+			rtnMap.put("RESULT", game1Service.selectGameCnt(hashMap));
+			rtnMap.put("CODE", "OK");
+		} catch (Exception e) {
+			rtnMap.put("CODE", "ERR");
+		}
+
+		return rtnMap;
+	}
 }

@@ -20,6 +20,9 @@ section#section {
 	top: 400px;
 	position: absolute;
 }
+#section_detect table {
+	display: inline-block;
+}
 section#description {
 	position: relative;
 }
@@ -124,4 +127,15 @@ table.rank tr td {
 	color: #000000;
 	border: solid 2px yellowgreen;
 	text-align: left;
+}
+
+#score_max{
+	color: red;
+}
+
+
+#foo{
+    z-index: -1;
+    position: relative;
+    width: 100px;
 }

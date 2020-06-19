@@ -14,6 +14,7 @@
 <BODY onload="init()">
 	<script src="http://code.jquery.com/jquery.js"></script>
 	<script type="text/javascript" src="http://jsgetip.appspot.com"></script>
+	<script type="text/javascript" src="http://bernii.github.io/gauge.js/dist/gauge.min.js"></script>
 	<script src="<%=request.getContextPath()%>/game_set/js/gameutil.js?v=<%=System.currentTimeMillis()%>"></script>
 	<script language="javascript">
 		
@@ -35,8 +36,15 @@
 	
 	var flag_start_create_enemy = false; 
 	
-	var v_score_life = 3;// init life
+	var v_score_life = 0;// init life
 	var v_score_hit = 0; //init hit enemy
+	var v_score_max = 0; //init hit enemy
+	
+	
+	var main_interval; //게임종료시 종료할 interval 선언
+	var sub_interval; //게임종료시 종료할 interval 선언
+	var g_interval; //gauge interval
+	var v_gauge=0; //gauge 변수
 	
 	function init()
     {
@@ -45,6 +53,7 @@
 		$('button.detect').css('height', 400 / 10);
 		$('button.detect').css('background','#FFFFCB'); 
 		
+		$('button.longBtn').css('width', '100%');
 		$('#weapon').css('transform','rotate(180deg)');
 		
         output = document.getElementById("output");
@@ -73,7 +82,7 @@
 		var range_atk_x_org = charx+37*2;
 		var range_atk_y_org = chary+63-18;
 		
-		setInterval(function(){ // 주기적으로 검사
+		main_sub_interval = setInterval(function(){ // 주기적으로 검사
 			if(charx < 0) charx=0;
 			if(chary < 0) chary=0;
 			if(charx > 400-37-18) charx=400-37-18;
@@ -138,7 +147,7 @@
 		
 		
 		
-		setInterval(function(){
+		sub_interval = setInterval(function(){
     		var e_rect;
     		var c_rect =  $('#char_heat')[0].getBoundingClientRect();
     		var c_a_rect = $('#weapon_motionimg')[0].getBoundingClientRect();
@@ -153,7 +162,10 @@
     				if(v_score_life == 0){
     					flag_start_create_enemy = false;
     					keypress = [];
-    					alert('종료');
+    					
+    					if(v_score_max < v_score_hit){
+    						v_score_max = v_score_hit;	
+    					}
     				}else if(v_score_life < 0){
     					v_score_life = 0;
     				}
@@ -192,8 +204,35 @@
     		//점수변경 감지
    			$('#score_life')[0].innerText=v_score_life;
    			$('#score_hit')[0].innerText=v_score_hit;
+   			$('#score_max')[0].innerText=v_score_max;
+   			
     		
     	}, 10);	
+		
+		
+		
+		//examples.... => https://bernii.github.io/gauge.js/ 
+		var opts = {
+				  lines: 1,
+				  angle: 0,
+				  lineWidth: 0.3,
+				  pointer: {
+				    length: 0,
+				    strokeWidth: 0,
+				    color: '#ccc'
+				  },
+				  limitMax: 'false', 
+				  percentColors: [[0.20, "#720000" ], [0.50, "#EBEB3A"], [1, "#5ACF40"]],
+				  strokeColor: '#E0E0E0',
+				  generateGradient: false
+				};
+		var target = document.getElementById('foo');
+		var gauge = new Gauge(target).setOptions(opts);
+		gauge.maxValue = 150;
+		gauge.animationSpeed = 1;
+		gauge.set(v_gauge);
+
+		g_interval = setInterval(function(){v_gauge+=1; gauge.set(v_gauge)}, 10);
 	});
 	
 	
@@ -202,6 +241,7 @@
 		if(!flag_char_attack && !flag_char_attack_delay){
 			flag_char_attack = true;
 			flag_char_attack_delay = true;
+			v_gauge = 50;
 			
 			$('#weapon').css('display','none');
 			$('#weapon_motion').css('display','block');
@@ -231,6 +271,7 @@
 			flag_char_range_atk = true;
 			
 			flag_char_attack_delay = true;
+			v_gauge = 0;
 			
 			setTimeout(function(){
 				flag_char_attack_delay = false;
@@ -304,6 +345,12 @@
 		   			v_score_hit = 0;
 				}else if (msg == '종료'){
 					flag_start_create_enemy = false;
+				}else if (msg =='저장'){
+					//common_game_over(arg_game_no, arg_cnt, arg_reason);
+					clearInterval( main_interval );
+					clearInterval( sub_interval );
+					clearInterval( g_interval );
+					common_game_over(5, v_score_max, "");
 				}
 				
 				$('#chat_space').append('<input type="text" class="chat chat_float" id="chat_float'+v_chat_count+'" readonly="true"></input>'); 
@@ -324,6 +371,8 @@
 	}
 	
 	
+	
+	
 		
 	</script>
 
@@ -341,19 +390,51 @@
 	</section>
 	
 	<section id="section_detect">
-		<button class='detect' id="btn_27">esc</button>
-		<button class='detect' id="btn_38">↑</button><br>
-		<button class='detect' id="btn_37">←</button>
-		<button class='detect' id="btn_40">↓</button>
-		<button class='detect' id="btn_39">→</button>
-		<button class='detect' id="btn_13">ENTER</button><br>
+	<br>
+		<table>
+			<tr>
+				<td>
+					<button class='detect' id="btn_27">esc</button>
+				</td>
+				<td>
+					<button class='detect' id="btn_38">↑</button>
+				</td>
+			</tr>
+
+			<tr>
+				<td><button class='detect' id="btn_37">←</button></td>
+				<td><button class='detect' id="btn_40">↓</button></td>
+				<td><button class='detect' id="btn_39">→</button></td>
+			</tr>
+
+		</table>
+
+		<table>
+			<tr>
+				<td>
+					<button class='detect' id="btn_65">A Boost</button>
+				</td>
+				<td>
+					<button class='detect' id="btn_83">S ShortAtk</button>
+				</td>
+				<td>
+					<button class='detect' id="btn_68">D RangeAtk</button>
+				</td>
+			</tr>
+
+			<tr>
+				<td colspan="3"><button class='detect longBtn' id="btn_13">ENTER</button></td>
+			</tr>
+		</table>
 		
-		<button class='detect' id="btn_65">A Boost</button>
-		<button class='detect' id="btn_83">S ShortAtk</button>
-		<button class='detect' id="btn_68">D RangeAtk</button>
+		
 	</section>
 	
 	<section id="description">
+	    <canvas id="foo"></canvas>
+	    </br>
+		처치 기록 : <label id="score_max"></label>
+		</br>
 		총 처치 수 : <label id="score_hit"></label>
 		</br>
 		남은 생명 : <label id="score_life"></label>
