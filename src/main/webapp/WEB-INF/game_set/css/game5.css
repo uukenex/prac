@@ -51,6 +51,15 @@ section#description {
 	z-index: 9;
 }
 
+.boss {
+	background: black;
+	width: 40px;
+	height: 300px;
+	top : 200px;
+	left : 600px;
+	z-index: 9;
+}
+
 #char_heat {
 	border: 2px dashed;
 	width: 100%;

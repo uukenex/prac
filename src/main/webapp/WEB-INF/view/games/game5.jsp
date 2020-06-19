@@ -29,7 +29,8 @@
 	var flag_char_attack_delay = false;//공격 딜레이 
 	
 	
-	var flag_enemy_attack = false; // 적 자동생성 
+	var flag_enemy_attack = false; // 적 자동생성
+	var flag_boss_attack = false;//보스 존재여부 
 	
 	var flag_enter = false; //엔터 눌렸는지 여부 검사
 	var flag_chat_float = false;  // 채팅창 떠있는지 검사 
@@ -97,7 +98,7 @@
 			if(keypress['39']) charx += speed; // right
 			if(keypress['40']) chary += speed; // down
 			
-			if(keypress['32']) f_enemy_create(v_sp_count,2,400-20-10,getRandomInt(0, 400-20-10));//'space' enemy create
+			if(keypress['32']) f_boss_create(v_sp_count,2,400-20-10,50);//'space' enemy create
 			
 			
 			range_atk_x_org = charx+37*2;
@@ -153,6 +154,9 @@
     		var c_a_rect = $('#weapon_motionimg')[0].getBoundingClientRect();
     		var c_r_a_rect = $('#weapon')[0].getBoundingClientRect();
     		
+    		var e_b_rect;
+    		
+    		
     		//부딪힘판정
     		for(var i =0 ; i < $('.enemy').length ; i++){
     			e_rect = $('.enemy')[i].getBoundingClientRect();
@@ -173,17 +177,23 @@
     				$('.enemy')[i].remove();
     				$('button.detect').css('background','#FFFFCB'); 
     				
-    				
-    				
     			}
     			
     			if(meetBox(e_rect,c_a_rect) || (flag_char_range_atk && meetBox(e_rect,c_r_a_rect) )){
     				v_score_hit += 1;
-    				
-	   				clearTimeout(v_sp_count);
 	   				$('.enemy')[i].remove();
     			}
     			
+    		}
+    		
+    		for(var i =0 ; i < $('.boss').length ; i++){
+    			e_b_rect = $('.boss')[i].getBoundingClientRect();
+    			
+    			if(meetBox(e_b_rect,c_a_rect) || (flag_char_range_atk && meetBox(e_b_rect,c_r_a_rect) )){
+    				v_score_hit += 1;
+	   				$('.boss')[i].remove();
+	   				flag_boss_attack = false;
+    			}
     		}
     		
     		//채팅창 
@@ -306,6 +316,34 @@
 			if(x < -30 ){
 				clearTimeout(enemy_move_timer);
 				$('#enemy'+sp_count).remove();
+			}
+		}
+		
+	}
+	
+	function f_boss_create(sp_count,e_speed,x,y){
+		var boss_move_timer;
+		
+		if(!flag_boss_attack){
+			flag_boss_attack = true;
+			$('#enemy_field').append('<div class="boss" id="boss'+sp_count+'"></div>'); 
+			
+			boss_move_timer = setInterval(function(){
+				boss_move(sp_count);
+			}, 10); 
+			
+			setTimeout(function() {
+				v_sp_count++;
+			}, 300);	
+		}
+		
+		
+		function boss_move(sp_count){
+			x -= e_speed; 
+			$('#boss'+sp_count).css({top: y, left: x}); 
+			if(x < 300 ){
+				clearTimeout(boss_move_timer);
+				//$('#boss'+sp_count).remove();
 			}
 		}
 		
