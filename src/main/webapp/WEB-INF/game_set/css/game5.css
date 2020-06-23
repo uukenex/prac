@@ -53,11 +53,17 @@ section#description {
 
 .boss {
 	background: black;
-	width: 40px;
+	width: 95px;
 	height: 300px;
 	top : 200px;
 	left : 600px;
 	z-index: 9;
+	margin: 1px;
+}
+
+.twingkle {
+	border: dashed 1px #720000;  
+	margin: 0px;
 }
 
 #char_heat {

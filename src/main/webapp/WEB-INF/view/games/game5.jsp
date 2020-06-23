@@ -18,19 +18,22 @@
 	<script src="<%=request.getContextPath()%>/game_set/js/gameutil.js?v=<%=System.currentTimeMillis()%>"></script>
 	<script language="javascript">
 		
-	
+	var db_game_no = 5;
 	//https://bssow.tistory.com/129 timer int로 조정하기 
 	var v_sp_count= 3;//clear timer variable - enemy
 	var v_chat_count = 0; // chat floating box name value
 	var v_chat_timer;//clear timer variable - chat floating box
 	
-	var flag_char_attack = false; //근거리 공격
+	var flag_char_short_attack = false; //근거리 공격
 	var flag_char_range_atk = false; // 원거리 공격중
 	var flag_char_attack_delay = false;//공격 딜레이 
-	
+	var flag_char_hit_delay = false; //피격 딜레이
 	
 	var flag_enemy_attack = false; // 적 자동생성
 	var flag_boss_attack = false;//보스 존재여부 
+	var v_boss_ragne_energy = 3;//보스 원거리 방어 수치
+	var v_boss_short_energy = 3;//보스 근거리 방어 수치 
+	var flag_boss_hit_delay = false;//보스 피격 딜레이  
 	
 	var flag_enter = false; //엔터 눌렸는지 여부 검사
 	var flag_chat_float = false;  // 채팅창 떠있는지 검사 
@@ -98,7 +101,7 @@
 			if(keypress['39']) charx += speed; // right
 			if(keypress['40']) chary += speed; // down
 			
-			if(keypress['32']) f_boss_create(v_sp_count,2,400-20-10,50);//'space' enemy create
+			//if(keypress['32']) f_boss_create(v_sp_count,2,400-20-10,50);//'space' enemy create
 			
 			
 			range_atk_x_org = charx+37*2;
@@ -189,11 +192,39 @@
     		for(var i =0 ; i < $('.boss').length ; i++){
     			e_b_rect = $('.boss')[i].getBoundingClientRect();
     			
-    			if(meetBox(e_b_rect,c_a_rect) || (flag_char_range_atk && meetBox(e_b_rect,c_r_a_rect) )){
-    				v_score_hit += 1;
-	   				$('.boss')[i].remove();
-	   				flag_boss_attack = false;
+    			//근거리 공격 판정 
+    			if(meetBox(e_b_rect,c_a_rect) && !flag_boss_hit_delay){
+    				if(v_boss_short_energy > 0){
+        				v_boss_short_energy -= 1;	
+        			}
+    				flag_boss_hit_delay = true;
+    				f_twingkling('boss');
+    				setTimeout(function(){
+    					flag_boss_hit_delay = false;
+    				}, 3000);
+    				
     			}
+    			
+    			//원거리 공격 판정
+    			if((flag_char_range_atk && meetBox(e_b_rect,c_r_a_rect) && !flag_boss_hit_delay)){
+    				if(v_boss_ragne_energy > 0){
+        				v_boss_ragne_energy -= 1;	
+        			}
+    				flag_boss_hit_delay = true;
+    				f_twingkling('boss');
+    				setTimeout(function(){
+    					flag_boss_hit_delay = false;
+    				}, 3000);
+    			}
+    			
+    			//보스 kill action
+    			if(v_boss_ragne_energy == 0 && v_boss_short_energy == 0){
+    				v_score_hit += 50;
+	   				flag_boss_attack = false;
+	   				
+	    			f_boss_hidden();
+    			} 
+    			
     		}
     		
     		//채팅창 
@@ -210,12 +241,21 @@
     		if(flag_start_create_enemy){
 				f_enemy_create(v_sp_count,2,400-20-10,getRandomInt(0, 400-20-10));
 			}
+    		//보스 생성
+    		if(v_score_hit == 30){
+    			f_boss_create(v_sp_count,2,400-20-10,50);
+   			}
+    		
     		
     		//점수변경 감지
    			$('#score_life')[0].innerText=v_score_life;
    			$('#score_hit')[0].innerText=v_score_hit;
    			$('#score_max')[0].innerText=v_score_max;
    			
+   			if(flag_boss_attack){
+	   			$('#boss_short_energy')[0].innerText= v_boss_short_energy;
+	   			$('#boss_range_energy')[0].innerText= v_boss_ragne_energy;
+   			}
     		
     	}, 10);	
 		
@@ -248,8 +288,8 @@
 	
 	function f_char_weapon_short_atk_create(){
 
-		if(!flag_char_attack && !flag_char_attack_delay){
-			flag_char_attack = true;
+		if(!flag_char_short_attack && !flag_char_attack_delay){
+			flag_char_short_attack = true;
 			flag_char_attack_delay = true;
 			v_gauge = 50;
 			
@@ -260,7 +300,7 @@
 			//공격 후에 다시 공격을 누를 경우 1초동안 공격하지 말아야함
 			
 			setTimeout(function(){
-				flag_char_attack = false;
+				flag_char_short_attack = false;
 				$('#weapon_motion').css('display','none'); 
 				$('#weapon').css('display','block');
 				
@@ -326,7 +366,18 @@
 		
 		if(!flag_boss_attack){
 			flag_boss_attack = true;
-			$('#enemy_field').append('<div class="boss" id="boss'+sp_count+'"></div>'); 
+			
+			$('#boss_short_energy_text')[0].hidden=false;
+			$('#boss_range_energy_text')[0].hidden=false;
+			$('#boss_short_energy')[0].hidden=false;
+			$('#boss_range_energy')[0].hidden=false;
+			
+			v_boss_short_energy = 3;
+			v_boss_range_energy = 3;
+			
+			$('#enemy_field').append(
+			'<div class="boss" id="boss'+sp_count+'"><img id="bossimg" src="<%=request.getContextPath()%>/game_set/img/apeech.png?v=<%=System.currentTimeMillis()%>"></div>'
+			); 
 			
 			boss_move_timer = setInterval(function(){
 				boss_move(sp_count);
@@ -353,9 +404,9 @@
 		if(flag_enter){
 			flag_enter= false;
 			$('#chat').remove();
-		}else{
+		}/* else{
 			flag_start_create_enemy = false;	
-		}
+		} */
 		
 	}
 	
@@ -381,14 +432,16 @@
 					flag_start_create_enemy = true;
 					v_score_life = 3;
 		   			v_score_hit = 0;
-				}else if (msg == '종료'){
+		   			
+		   			f_boss_hidden();
+				}else if (msg =='저장' || msg == '종료'){
 					flag_start_create_enemy = false;
-				}else if (msg =='저장'){
-					//common_game_over(arg_game_no, arg_cnt, arg_reason);
+					f_boss_hidden();
+					
 					clearInterval( main_interval );
 					clearInterval( sub_interval );
 					clearInterval( g_interval );
-					common_game_over(5, v_score_max, "");
+					common_game_over(db_game_no, v_score_max, "");
 				}
 				
 				$('#chat_space').append('<input type="text" class="chat chat_float" id="chat_float'+v_chat_count+'" readonly="true"></input>'); 
@@ -408,8 +461,36 @@
 		}
 	}
 	
+	function f_twingkling(classname){
+    	
+			$('.'+classname).toggleClass("twingkle");
+			setTimeout(function(){
+				$('.'+classname).toggleClass("twingkle");	
+			},500);
+			
+			setTimeout(function(){
+				$('.'+classname).toggleClass("twingkle");	
+			},1000);
+			setTimeout(function(){
+				$('.'+classname).toggleClass("twingkle");	
+			},1500);
+			setTimeout(function(){
+				$('.'+classname).toggleClass("twingkle");	
+			},2000);
+			setTimeout(function(){
+				$('.'+classname).toggleClass("twingkle");	
+			},2500);
+	}
 	
-	
+	function f_boss_hidden(){
+		flag_boss_attack = false;
+		$('.boss')[0].remove();
+			
+		$('#boss_short_energy_text')[0].hidden=true;
+		$('#boss_range_energy_text')[0].hidden=true;
+		$('#boss_short_energy')[0].hidden=true;
+		$('#boss_range_energy')[0].hidden=true;
+	}
 	
 		
 	</script>
@@ -477,6 +558,12 @@
 		</br>
 		남은 생명 : <label id="score_life"></label>
 		</br>
+		<label id="boss_short_energy_text" hidden="true">보스-근거리보호</label><label id="boss_short_energy" hidden="true"></label>
+		</br>
+		<label id="boss_range_energy_text" hidden="true">보스-원거리보호</label><label id="boss_range_energy" hidden="true"></label>
+		</br>
+		
+		
 	</section>
 	
 	
