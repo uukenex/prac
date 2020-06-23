@@ -31,7 +31,7 @@
 				<c:url value="/game2" var="game2"/>
 				<c:url value="/game3" var="game3"/>
 				<c:url value="/game4" var="game4"/>
-				<c:url value="/game4" var="game5"/>
+				<c:url value="/game5" var="game5"/>
 				
 				
 				<li>

@@ -23,6 +23,10 @@ section#section {
 #section_detect table {
 	display: inline-block;
 }
+.detect{
+	font-size: 10px;	
+}
+
 section#description {
 	position: relative;
 }
