@@ -31,10 +31,15 @@
 		var flag_char_attack_delay = false;//공격 딜레이 
 		var flag_char_hit_delay = false; //피격 딜레이
 		
-		var flag_enemy_attack = false; // 적 자동생성
+		var flag_enemy_create = false; // 적 자동생성
+		var flag_enemy_create2 = false; // 적 자동생성
 		var flag_boss_attack = false;//보스 존재여부 
 		var v_boss_range_energy = 3;//보스 원거리 방어 수치
 		var v_boss_short_energy = 3;//보스 근거리 방어 수치 
+		var v_boss_range_energy_max = 3;//보스 원거리 방어 수치
+		var v_boss_short_energy_max = 2;//보스 근거리 방어 수치 
+		
+		var flag_boss_end = false; //보스 잡았는지 여부 
 		var flag_boss_hit_delay = false;//보스 피격 딜레이  
 		
 		var flag_enter = false; //엔터 눌렸는지 여부 검사
@@ -62,19 +67,7 @@
 		$('button.longBtn').css('width', '100%');
 		$('#weapon').css('transform','rotate(180deg)');
 		
-        output = document.getElementById("output");
-        
-        
-        
-
-    	function f_detect(key_number,bool_value){
-    		if(bool_value){
-    			$('#btn_'+key_number).css('background','#C4B73B');	
-    		}else{
-    			$('#btn_'+key_number).css('background','#FFFFCB');
-    		}
-    		
-    	}
+		
         
     	$(function(){
     		var keypress = {}, // 어떤 키가 눌려 있는지 저장
@@ -120,14 +113,14 @@
     				range_atk_x = range_atk_x + 5;
     				
     				$weapon.css({top: range_atk_y, left: range_atk_x});
-    				$weapon.css('border','dashed 1px black');
+    				/* $weapon.css('border','dashed 1px black'); */
     				if(range_atk_x > 400){
     					flag_char_range_atk = false;
     				}
     				
     			}else{
     				$weapon.css({top: chary+63-18, left: charx+37*2});
-    				$weapon.css('border','');
+    				/* $weapon.css('border',''); */
     				range_atk_x = range_atk_x_org;
     				range_atk_y = range_atk_y_org;
     			}
@@ -137,51 +130,54 @@
     			
     		}, 10); // 매 0.01 초마다 실행
     	 
-    		$(document).keydown(function(e){ // 어떤 키가 눌렸는지 저장 
-    			var key = e.which.toString();
     		
-    			f_detect(key,true);
-    			if(key=='13'){
-    				f_chatter_box_create(400/2-100, 350);//'enter' chatter box
-    			}else if(key=='27'){
-    				f_enemy_end();
-    			}else if(flag_enter){
-    				$('#chat')[0].text += key;
-    			}else{
-    				keypress[key] = true;
-    			}
-    		});
-    		$(document).keyup(function(e){ // 눌렸던 키를 해제
-    			var key = e.which.toString();
-    		
-    			f_detect(key,false);
-    			keypress[key] = false;	
-    		});
-    		
-    		$(document).mousedown(function(e){
-    			var key = e.target.id.substr(4,2);
-    			
-    			if(key=='13'){
-    				f_chatter_box_create(400/2-100, 350);//'enter' chatter box
-    			}else if(key=='27'){
-    				f_enemy_end();
-    			}else if(flag_enter){
-    				$('#chat')[0].text += key;
-    			}else{
-    				keypress[key] = true;
-    			}
-    		});
-    		$(document).mouseup(function(e){
-    			var key = e.target.id.substr(4,2);
+    		//window Event
+        	$(document).keydown(function(e){ // 어떤 키가 눌렸는지 저장 
+        		var key = e.which.toString();
+        	
+        		f_detect(key,true);
+        		if(key=='13'){
+        			f_chatter_box_create(400/2-100, 350);//'enter' chatter box
+        		}else if(key=='27'){
+        			f_enemy_end();
+        		}else if(flag_enter){
+        			$('#chat')[0].text += key;
+        		}else{
+        			keypress[key] = true;
+        		}
+        	});
+        	$(document).keyup(function(e){ // 눌렸던 키를 해제
+        		var key = e.which.toString();
+        	
+        		f_detect(key,false);
+        		keypress[key] = false;	
+        	});
+        	
+        	$(document).mousedown(function(e){
+        		var key = e.target.id.substr(4,2);
+        		
+        		if(key=='13'){
+        			f_chatter_box_create(400/2-100, 350);//'enter' chatter box
+        		}else if(key=='27'){
+        			f_enemy_end();
+        		}else if(flag_enter){
+        			$('#chat')[0].text += key;
+        		}else{
+        			keypress[key] = true;
+        		}
+        	});
+        	$(document).mouseup(function(e){
+        		var key = e.target.id.substr(4,2);
 
-    			keypress[key] = false;
-    		});
-    		
-    		$(document).mouseout(function(e){
-    			var key = e.target.id.substr(4,2);
+        		keypress[key] = false;
+        	});
+        	
+        	$(document).mouseout(function(e){
+        		var key = e.target.id.substr(4,2);
 
-    			keypress[key] = false;
-    		});
+        		keypress[key] = false;
+        	});
+        	
     		
     		
     		sub_interval = setInterval(function(){
@@ -204,16 +200,9 @@
         				f_twingkling('char',4);
         				setTimeout(function(){
         					flag_char_hit_delay = false;
-        				}, 2000);
+        				}, 400*3);
         				
-        				if(v_score_life == 0){
-        					flag_start_create_enemy = false;
-        					keypress = [];
-        					
-        					if(v_score_max < v_score_hit){
-        						v_score_max = v_score_hit;	
-        					}
-        				}else if(v_score_life < 0){
+        				if(v_score_life < 0){
         					v_score_life = 0;
         				}
         				
@@ -242,8 +231,8 @@
         				f_twingkling('boss',6);
         				setTimeout(function(){
         					flag_boss_hit_delay = false;
-        				}, 3000);
-        				
+        				}, 400*5);
+        				//딜레이 계산식 400 * (twingkle-1)
         			}
         			
         			//원거리 공격 판정
@@ -255,24 +244,22 @@
         				f_twingkling('boss',6);
         				setTimeout(function(){
         					flag_boss_hit_delay = false;
-        				}, 3000);
+        				}, 400*5);
+        				//딜레이 계산식 400 * (twingkle-1)
         			}
         			
         			//보스 kill action
        				if(v_boss_range_energy == 0 && v_boss_short_energy == 0){
-	           				v_score_hit += 50;
-	       	    			f_boss_hidden();
+       					if(flag_start_create_enemy){
+       						v_score_hit += 50;	
+       						flag_boss_end = true;
+       					}	
+       	    			f_boss_hidden();
         			}
         			
         			//보스 충돌시 사망
        				if(meetBox(e_b_rect,c_rect)){
         				v_score_life = 0;
-       					flag_start_create_enemy = false;
-       					keypress = [];
-       					
-       					if(v_score_max < v_score_hit){
-       						v_score_max = v_score_hit;	
-       					}
         			}
         		}
         		
@@ -294,7 +281,10 @@
         		if(v_score_hit == 30){
         			f_boss_create(v_sp_count,2,400-20-10,50);
        			}
-        		
+        		//보스 처치 후 적생성 추가 
+        		if(flag_start_create_enemy && flag_boss_end){
+					f_enemy_create2(v_sp_count,3,400-20-10,getRandomInt(0, 400-20-10));
+       			}
         		
         		//점수변경 감지
        			$('#score_life')[0].innerText=v_score_life;
@@ -306,6 +296,17 @@
     	   			$('#boss_range_energy')[0].innerText= v_boss_range_energy;
        			}
         		
+       			//사망 감지
+       			if(v_score_life==0 && flag_start_create_enemy ){
+       				flag_start_create_enemy = false;
+   					keypress = [];
+   					
+   					if(v_score_max < v_score_hit){
+   						v_score_max = v_score_hit;	
+   					}
+   					
+   					f_game_over();
+       			}
         	}, 10);	
     		
     		
@@ -388,8 +389,8 @@
     		
     		
     		
-    		if(!flag_enemy_attack){
-    			flag_enemy_attack = true;
+    		if(!flag_enemy_create){
+    			flag_enemy_create = true;
     			$('#enemy_field').append('<div class="enemy" id="enemy'+sp_count+'"></div>'); 
     			
     			enemy_move_timer = setInterval(function(){
@@ -397,7 +398,36 @@
     			}, 10); 
     			
     			setTimeout(function() {
-    				flag_enemy_attack = false;
+    				flag_enemy_create = false;
+    				v_sp_count++;
+    			}, 300);	
+    		}
+    		
+    		function enemy_move(sp_count){
+    			x -= e_speed; 
+    			$('#enemy'+sp_count).css({top: y, left: x}); 
+    			if(x < -30 ){
+    				clearTimeout(enemy_move_timer);
+    				$('#enemy'+sp_count).remove();
+    			}
+    		}
+    		
+    	}
+    	function f_enemy_create2(sp_count,e_speed,x,y){
+    		var enemy_move_timer;
+    		
+    		
+    		
+    		if(!flag_enemy_create2){
+    			flag_enemy_create2 = true;
+    			$('#enemy_field').append('<div class="enemy" id="enemy'+sp_count+'"></div>'); 
+    			
+    			enemy_move_timer = setInterval(function(){
+    				enemy_move(sp_count);
+    			}, 10); 
+    			
+    			setTimeout(function() {
+    				flag_enemy_create2 = false;
     				v_sp_count++;
     			}, 300);	
     		}
@@ -427,8 +457,8 @@
     			$('#boss_short_energy')[0].hidden=false;
     			$('#boss_range_energy')[0].hidden=false;
     			
-    			v_boss_short_energy = 3;
-    			v_boss_range_energy = 3;
+    			v_boss_short_energy = v_boss_short_energy_max;
+    			v_boss_range_energy = v_boss_range_energy_max;
     			
     			$('#enemy_field').append(
     			'<div class="boss" id="boss'+sp_count+'"><img id="bossimg" src="<%=request.getContextPath()%>/game_set/img/apeech.png?v=<%=System.currentTimeMillis()%>"></div>'
@@ -545,14 +575,6 @@
     		   			v_score_hit = 0;
     		   			
     		   			f_boss_hidden();
-    				}else if (msg =='저장' || msg == '종료'){
-    					flag_start_create_enemy = false;
-    					f_boss_hidden();
-    					
-    					clearInterval( main_interval );
-    					clearInterval( sub_interval );
-    					clearInterval( g_interval );
-    					common_game_over(db_game_no, v_score_max, "");
     				}
     				
     				$('#chat_space').append('<input type="text" class="chat chat_float" id="chat_float'+v_chat_count+'" readonly="true"></input>'); 
@@ -572,12 +594,22 @@
     		}
     	}
     	
+
+		function f_detect(key_number,bool_value){
+    		if(bool_value){
+    			$('#btn_'+key_number).css('background','#C4B73B');	
+    		}else{
+    			$('#btn_'+key_number).css('background','#FFFFCB');
+    		}
+    	}
+
+    	
     	function f_twingkling(classname,cnt){
     		
         	for(var retry=0;retry<cnt;retry++){
         		setTimeout(function(){
        				$('.'+classname).toggleClass("twingkle");	
-       			},500*retry);
+       			},400*retry);
         	}
         	//피격 반짝임
     		//짝수번에 맞게 호출해야함 
@@ -594,8 +626,25 @@
     			$('#boss_range_energy')[0].hidden=true;	
     		}
     	}
+    	
+    	function f_game_over(){
+    		flag_start_create_enemy = false;
+    		f_boss_hidden();
+    		
+    		clearInterval( main_interval );
+    		clearInterval( sub_interval );
+    		clearInterval( g_interval );
+    		common_game_over(db_game_no, v_score_max, "");
+    	}
     }
  
+	
+	
+	
+	
+	
+	
+	
 	
 		
 	</script>
