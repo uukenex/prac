@@ -77,7 +77,7 @@
     		$weapon = $('#weapon'),
     		$weapon_motion = $('#weapon_motion');
     		
-    		var w_r_rect =  $('#weapon')[0].getBoundingClientRect();
+    		//var w_r_rect =  $('#weapon')[0].getBoundingClientRect();
     		var range_atk_x = charx+37*2;
     		var range_atk_y = chary+63-18;
     		var range_atk_x_org = charx+37*2;
@@ -138,11 +138,11 @@
         		f_detect(key,true);
         		if(key=='13'){
         			f_chatter_box_create(400/2-100, 350);//'enter' chatter box
-        		}else if(key=='27'){
+        		} else if(key=='27'){
         			f_enemy_end();
-        		}else if(flag_enter){
+        		} else if(flag_enter){
         			$('#chat')[0].text += key;
-        		}else{
+        		} else{
         			keypress[key] = true;
         		}
         	});
@@ -158,11 +158,11 @@
         		
         		if(key=='13'){
         			f_chatter_box_create(400/2-100, 350);//'enter' chatter box
-        		}else if(key=='27'){
+        		} else if(key=='27'){
         			f_enemy_end();
-        		}else if(flag_enter){
+        		} else if(flag_enter){
         			$('#chat')[0].text += key;
-        		}else{
+        		} else{
         			keypress[key] = true;
         		}
         	});
@@ -177,6 +177,63 @@
 
         		keypress[key] = false;
         	});
+        	
+        	
+        	var char_touch_point_x;
+        	var char_touch_point_y;
+        	var move_touch_point_x_before;
+        	var move_touch_point_y_before;
+        	var move_touch_point_x_after;
+        	var move_touch_point_y_after;
+        	var move_calc_x;
+        	var move_calc_y;
+        	var move_direct;
+        	
+            document.addEventListener("touchstart",function(e){  
+      		
+      		
+      		move_touch_point_x_before = e.targetTouches[0].pageX;
+      		move_touch_point_y_before = e.targetTouches[0].pageY; 
+      		
+            });  
+      
+            document.addEventListener("touchmove",function(e){  
+            	/* 
+            	char_touch_point_x = $('#charimg')[0].getBoundingClientRect().top;
+            	char_touch_point_y = $('#charimg')[0].getBoundingClientRect().left;
+            	 */
+                move_touch_point_x_after = e.targetTouches[0].pageX;
+          		move_touch_point_y_after = e.targetTouches[0].pageY;
+          		
+          		move_calc_x = move_touch_point_x_after-move_touch_point_x_before;
+          		move_calc_y = move_touch_point_y_after-move_touch_point_y_before;
+          		console.log(move_calc_x+' , '+move_calc_y);
+          		
+          		/* 
+          		if(move_calc_x < 0) keypress['37'] = true;
+          		if(move_calc_y < 0) keypress['38'] = true;
+          		if(move_calc_x > 0) keypress['39'] = true;
+          		if(move_calc_y > 0) keypress['40'] = true; */
+          		//charx = charx+()/1000;
+          		//chary = chary+(move_touch_point_y_after-move_touch_point_y_before)/1000;
+          		
+          		//move_touch_point_x_after = move_touch_point_x_before;
+          		//move_touch_point_y_after = move_touch_point_y_before;
+          		
+            });  
+      
+            document.addEventListener("touchend",function(e){
+            	//console.log('touchend');
+            	/* 
+            	if(move_calc_x < 0) keypress['37'] = false;
+          		if(move_calc_y < 0) keypress['38'] = false;
+          		if(move_calc_x > 0) keypress['39'] = false;
+          		if(move_calc_y > 0) keypress['40'] = false;
+ */      
+            });  
+
+
+        	
         	
     		
     		
@@ -560,7 +617,16 @@
     			$('#chat_space').append('<input type="text" class="chat" id="chat"></input>');
     			$('#chat').css({top: y, left: x}); 
     			
-    			$('#chat')[0].focus();
+    			setTimeout(function(){ 
+    				
+    				
+    				$("#chat").focus();
+    				
+    				//$("#chat").focus(); 
+    			}, 1);
+
+    			//$('#chat')[0].focus();
+    			//console.log($('#chat')[0]);
     			
     		}else{
     			flag_enter= false;

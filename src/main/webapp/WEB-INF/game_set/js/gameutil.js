@@ -100,8 +100,9 @@ function common_game_over(arg_game_no, arg_cnt, arg_reason){
 	if(!isLocal){
 		var promptVal = prompt(arg_reason+arg_cnt+'점 \n이름을 입력해주세요.');
 		
-		
-		if(promptVal != null){
+		if(promptVal ==null || promptVal== undefined || promptVal===null ){
+			alert('결과화면으로 이동합니다');
+		}else{
 			$.ajax({
 				type : "post",
 				url : insertUrl,
@@ -127,6 +128,7 @@ function common_game_over(arg_game_no, arg_cnt, arg_reason){
 				}
 			});
 		}
+		
 	}
 	
 	
