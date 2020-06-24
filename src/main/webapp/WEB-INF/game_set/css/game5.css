@@ -61,20 +61,23 @@ section#description {
 	height: 300px;
 	top : 200px;
 	left : 600px;
-	z-index: 9;
-	margin: 1px;
+	z-index: 2;
+	/* margin: 1px; */
 }
 
 .twingkle {
-	border: dashed 1px #720000;  
-	margin: 0px;
+	/* border: dashed 1px #720000; */
+	/* margin: 0px; */
+	/* border만큼의 magin*/  
+	opacity :0.7;
+	
 }
 
 #char_heat {
-	border: 2px dashed;
+	/* border: 2px dashed; */
 	width: 100%;
 	height: 100%;
-	z-index: 2;
+	z-index: 3;
 }
 
 #char {
@@ -91,6 +94,7 @@ section#description {
 	/* border: 1px dashed; */
 }
 #weapon, #weaponimg{
+	position : inherit;
 	width: 60px;
 	height: 63px;
 	z-index: 0;
@@ -153,7 +157,7 @@ table.rank tr td {
 }
 
 
-#foo{
+#sp_gauge{
     z-index: -1;
     position: relative;
     width: 100px;

@@ -33,7 +33,7 @@
 		
 		var flag_enemy_attack = false; // 적 자동생성
 		var flag_boss_attack = false;//보스 존재여부 
-		var v_boss_ragne_energy = 3;//보스 원거리 방어 수치
+		var v_boss_range_energy = 3;//보스 원거리 방어 수치
 		var v_boss_short_energy = 3;//보스 근거리 방어 수치 
 		var flag_boss_hit_delay = false;//보스 피격 딜레이  
 		
@@ -50,7 +50,8 @@
 		var main_interval; //게임종료시 종료할 interval 선언
 		var sub_interval; //게임종료시 종료할 interval 선언
 		var g_interval; //gauge interval
-		var v_gauge=0; //gauge 변수
+		var v_gauge=100; //gauge 변수
+		var v_gauge_max_value = 100; //gauge max변수
 		
 		
 		$('section_detect').css('width', 400 - 10);
@@ -104,7 +105,11 @@
     			if(keypress['39']) charx += speed; // right
     			if(keypress['40']) chary += speed; // down
     			
-    			//if(keypress['32']) f_boss_create(v_sp_count,2,400-20-10,50);//'space' enemy create
+    			if(keypress['32']){
+    				if(!flag_start_create_enemy){
+    					f_boss_create(v_sp_count,2,400-20-10,50);//'space' enemy create
+    				}
+    			}
     			
     			
     			range_atk_x_org = charx+37*2;
@@ -126,8 +131,6 @@
     				range_atk_x = range_atk_x_org;
     				range_atk_y = range_atk_y_org;
     			}
-    			//$weapon.css({top: chary+63-18, left: charx+37*2});
-    			//$weapon_motion.css({top: chary, left: charx+37*2});	
     			
     			$char.css({top: chary, left: charx});
     			$charimg.css({top: chary, left: charx});
@@ -181,26 +184,6 @@
     		});
     		
     		
-    		/* function initMouseEvent(){
-    			$('#left').click(function(){
-    				direct ='left';
-    				clickedCursor(direct);
-    			});
-    			$('#up').click(function(){
-    				direct ='up';
-    				clickedCursor(direct);
-    			});
-    			$('#right').click(function(){
-    				direct ='right';
-    				clickedCursor(direct);
-    			});
-    			$('#down').click(function(){
-    				direct ='down';
-    				clickedCursor(direct);
-    			});
-    		}
-    		 */
-    		
     		sub_interval = setInterval(function(){
         		var e_rect;
         		var c_rect =  $('#char_heat')[0].getBoundingClientRect();
@@ -214,8 +197,15 @@
         		for(var i =0 ; i < $('.enemy').length ; i++){
         			e_rect = $('.enemy')[i].getBoundingClientRect();
         			
-        			if(meetBox(e_rect,c_rect)){
+        			if(meetBox(e_rect,c_rect) && !flag_char_hit_delay){
         				v_score_life -= 1;
+        				
+        				flag_char_hit_delay = true;
+        				f_twingkling('char',4);
+        				setTimeout(function(){
+        					flag_char_hit_delay = false;
+        				}, 2000);
+        				
         				if(v_score_life == 0){
         					flag_start_create_enemy = false;
         					keypress = [];
@@ -232,6 +222,7 @@
         				
         			}
         			
+        			//근거리 공격 또는 원거리 공격 판정
         			if(meetBox(e_rect,c_a_rect) || (flag_char_range_atk && meetBox(e_rect,c_r_a_rect) )){
         				v_score_hit += 1;
     	   				$('.enemy')[i].remove();
@@ -248,7 +239,7 @@
             				v_boss_short_energy -= 1;	
             			}
         				flag_boss_hit_delay = true;
-        				f_twingkling('boss');
+        				f_twingkling('boss',6);
         				setTimeout(function(){
         					flag_boss_hit_delay = false;
         				}, 3000);
@@ -257,24 +248,32 @@
         			
         			//원거리 공격 판정
         			if((flag_char_range_atk && meetBox(e_b_rect,c_r_a_rect) && !flag_boss_hit_delay)){
-        				if(v_boss_ragne_energy > 0){
-            				v_boss_ragne_energy -= 1;	
+        				if(v_boss_range_energy > 0){
+            				v_boss_range_energy -= 1;	
             			}
         				flag_boss_hit_delay = true;
-        				f_twingkling('boss');
+        				f_twingkling('boss',6);
         				setTimeout(function(){
         					flag_boss_hit_delay = false;
         				}, 3000);
         			}
         			
         			//보스 kill action
-        			if(v_boss_ragne_energy == 0 && v_boss_short_energy == 0){
-        				v_score_hit += 50;
-    	   				flag_boss_attack = false;
-    	   				
-    	    			f_boss_hidden();
-        			} 
+       				if(v_boss_range_energy == 0 && v_boss_short_energy == 0){
+	           				v_score_hit += 50;
+	       	    			f_boss_hidden();
+        			}
         			
+        			//보스 충돌시 사망
+       				if(meetBox(e_b_rect,c_rect)){
+        				v_score_life = 0;
+       					flag_start_create_enemy = false;
+       					keypress = [];
+       					
+       					if(v_score_max < v_score_hit){
+       						v_score_max = v_score_hit;	
+       					}
+        			}
         		}
         		
         		//채팅창 
@@ -304,7 +303,7 @@
        			
        			if(flag_boss_attack){
     	   			$('#boss_short_energy')[0].innerText= v_boss_short_energy;
-    	   			$('#boss_range_energy')[0].innerText= v_boss_ragne_energy;
+    	   			$('#boss_range_energy')[0].innerText= v_boss_range_energy;
        			}
         		
         	}, 10);	
@@ -326,13 +325,13 @@
     				  strokeColor: '#E0E0E0',
     				  generateGradient: false
     				};
-    		var target = document.getElementById('foo');
+    		var target = document.getElementById('sp_gauge');
     		var gauge = new Gauge(target).setOptions(opts);
-    		gauge.maxValue = 150;
+    		gauge.maxValue = v_gauge_max_value;
     		gauge.animationSpeed = 1;
     		gauge.set(v_gauge);
 
-    		g_interval = setInterval(function(){v_gauge+=1; gauge.set(v_gauge)}, 10);
+    		g_interval = setInterval(function(){v_gauge+=1; gauge.set(v_gauge); gauge.maxValue = v_gauge_max_value}, 10);
     	});
     	
     	
@@ -341,7 +340,9 @@
     		if(!flag_char_short_attack && !flag_char_attack_delay){
     			flag_char_short_attack = true;
     			flag_char_attack_delay = true;
-    			v_gauge = 50;
+    			//v_gauge = 50;
+    			v_gauge_max_value = 100;
+    			v_gauge = 0;
     			
     			$('#weapon').css('display','none');
     			$('#weapon_motion').css('display','block');
@@ -371,6 +372,7 @@
     			flag_char_range_atk = true;
     			
     			flag_char_attack_delay = true;
+    			v_gauge_max_value = 150;
     			v_gauge = 0;
     			
     			setTimeout(function(){
@@ -413,6 +415,9 @@
     	
     	function f_boss_create(sp_count,e_speed,x,y){
     		var boss_move_timer;
+    		var boss_move_timer1;
+    		var boss_move_timer2;
+    		var boss_move_timer3;
     		
     		if(!flag_boss_attack){
     			flag_boss_attack = true;
@@ -429,9 +434,30 @@
     			'<div class="boss" id="boss'+sp_count+'"><img id="bossimg" src="<%=request.getContextPath()%>/game_set/img/apeech.png?v=<%=System.currentTimeMillis()%>"></div>'
     			); 
     			
-    			boss_move_timer = setInterval(function(){
-    				boss_move(sp_count);
-    			}, 10); 
+    			setTimeout(function() {
+    				boss_move_timer = setInterval(function(){
+    				boss_move(sp_count,0);
+    				},10);
+    			}, 6000*0);
+    			
+    			setTimeout(function() {
+    				boss_move_timer1 = setInterval(function(){
+    				boss_move(sp_count,1);
+    				},10);
+    			}, 6000*1);
+    			
+    			setTimeout(function() {
+    				boss_move_timer2 = setInterval(function(){
+    				boss_move(sp_count,2);
+    				},10);
+    			}, 6000*2);
+    			
+    			setTimeout(function() {
+    				boss_move_timer3 = setInterval(function(){
+    				boss_move(sp_count,3);
+    				},10);
+    			}, 6000*3);
+    			
     			
     			setTimeout(function() {
     				v_sp_count++;
@@ -439,12 +465,47 @@
     		}
     		
     		
-    		function boss_move(sp_count){
-    			x -= e_speed; 
+    		function boss_move(sp_count,phase){
+    			var phase_no_value;
+    			var t_boss_move;
+    			var v_reverse=false;
+    			
+    			if(phase == 0){
+    				phase_no_value = 300;//초기위치
+    				x -= e_speed; 
+    				t_boss_move = boss_move_timer;
+    				v_reverse=false;
+    			}else if(phase == 1){
+    				phase_no_value = 150;//x- 방향으로 150까지만 이동
+    				x -= e_speed; 
+    				t_boss_move = boss_move_timer1;
+    				v_reverse=false;
+    			}else if(phase == 2){
+    				phase_no_value = 300;//x+ 방향으로 300까지만 이동
+    				x += e_speed; 
+    				t_boss_move = boss_move_timer2;
+    				v_reverse=true;
+    			}else if(phase == 3){
+    				phase_no_value = -100;//x- 방향으로 -100까지 이동
+    				x -= e_speed; 
+    				t_boss_move = boss_move_timer3;
+    				v_reverse=false;
+    			}
+    			
+    			
     			$('#boss'+sp_count).css({top: y, left: x}); 
-    			if(x < 300 ){
-    				clearTimeout(boss_move_timer);
-    				//$('#boss'+sp_count).remove();
+    			if(v_reverse){
+    				if(x > phase_no_value ){
+        				clearTimeout(t_boss_move);
+        			}
+    			}else{
+    				if(x < phase_no_value ){
+        				clearTimeout(t_boss_move);
+        			}
+    			}
+    			
+    			if(x < -95){
+    				f_boss_hidden();
     			}
     		}
     		
@@ -511,25 +572,15 @@
     		}
     	}
     	
-    	function f_twingkling(classname){
-        	
-    			$('.'+classname).toggleClass("twingkle");
-    			setTimeout(function(){
-    				$('.'+classname).toggleClass("twingkle");	
-    			},500);
-    			
-    			setTimeout(function(){
-    				$('.'+classname).toggleClass("twingkle");	
-    			},1000);
-    			setTimeout(function(){
-    				$('.'+classname).toggleClass("twingkle");	
-    			},1500);
-    			setTimeout(function(){
-    				$('.'+classname).toggleClass("twingkle");	
-    			},2000);
-    			setTimeout(function(){
-    				$('.'+classname).toggleClass("twingkle");	
-    			},2500);
+    	function f_twingkling(classname,cnt){
+    		
+        	for(var retry=0;retry<cnt;retry++){
+        		setTimeout(function(){
+       				$('.'+classname).toggleClass("twingkle");	
+       			},500*retry);
+        	}
+        	//피격 반짝임
+    		//짝수번에 맞게 호출해야함 
     	}
     	
     	function f_boss_hidden(){
@@ -553,7 +604,7 @@
 		<div id= "char">
 			<div id="char_heat"></div>
 		</div>
-		<img id="charimg" src="<%=request.getContextPath()%>/game_set/img/lion.png?v=<%=System.currentTimeMillis()%>">
+		<img class='char' id="charimg" src="<%=request.getContextPath()%>/game_set/img/lion.png?v=<%=System.currentTimeMillis()%>">
 		
 		<div id="weapon"><img id="weaponimg" src="<%=request.getContextPath()%>/game_set/img/knife.png?v=<%=System.currentTimeMillis()%>"></div>
 		<div id="weapon_motion" style="display:none" ><img id="weapon_motionimg" src="<%=request.getContextPath()%>/game_set/img/knife_motion.png?v=<%=System.currentTimeMillis()%>"></div>
@@ -602,7 +653,7 @@
 	</section>
 	
 	<section id="description">
-	    <canvas id="foo"></canvas>
+	    <canvas id="sp_gauge"></canvas>
 	    </br>
 		처치 기록 : <label id="score_max"></label>
 		</br>
