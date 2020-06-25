@@ -176,6 +176,12 @@ public class GameController {
 		return "games/ws";
 	}
 
+	@RequestMapping(value = "/game/rank", method = RequestMethod.GET)
+	public String gameRank(Model model) throws Exception {
+
+		return "games/rank";
+	}
+
 	@RequestMapping(value = "/gameUtil/insertGameCnt", method = RequestMethod.POST)
 	public @ResponseBody HashMap<String, Object> gameUtil_insertGameCnt(@RequestParam String userName,
 			@RequestParam String mediaCode, @RequestParam String ip, @RequestParam int cnt,

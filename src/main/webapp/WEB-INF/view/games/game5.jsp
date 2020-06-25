@@ -189,26 +189,63 @@
         	var move_calc_y;
         	var move_direct;
         	
-            document.addEventListener("touchstart",function(e){  
+        	var base = {x:0, y:0};
+        	
+        	var pointerEventToXY = function(e){
+         	     var out = {x:0, y:0};
+         	     var calc = {x:0, y:0};
+         	     
+         	     if(e.type == 'touchstart' ){
+         	    	var touch = e.originalEvent.touches[0] || e.originalEvent.changedTouches[0];
+         	    	base.x = touch.pageX;
+         	    	base.y = touch.pageY;
+         	    	calc.x = base.x;
+           	     	calc.y = base.y;
+         	     }
+         	     if(e.type == 'touchmove' ){
+         	        var touch = e.originalEvent.touches[0] || e.originalEvent.changedTouches[0];
+         	        out.x = touch.pageX;
+         	        out.y = touch.pageY;
+         	        
+         	       	calc.x = out.x - base.x;
+           	     	calc.y = out.y - base.y;
+         	     } 
+         	     
+         	     
+         	     return calc;
+         	    };
+
+  	       	$(document).on('touchstart touchmove', function(e){
+  	      	  console.log(pointerEventToXY(e)); // will return obj ..kind of {x:20,y:40}
+  	      	})
+        	
+            //document.addEventListener("touchstart",function(e){  
       		
-      		
+      		/* 
       		move_touch_point_x_before = e.targetTouches[0].pageX;
       		move_touch_point_y_before = e.targetTouches[0].pageY; 
-      		
-            });  
-      
+      		 */
+            //});  
+      /* 
             document.addEventListener("touchmove",function(e){  
+            	var out = {x:0, y:0};
+            	var touch = e.originalEvent.touches[0] || e.originalEvent.changedTouches[0];
+       	        out.x = touch.pageX;
+       	        out.y = touch.pageY;
+       	        
+       	        console.log(out); */
             	/* 
             	char_touch_point_x = $('#charimg')[0].getBoundingClientRect().top;
             	char_touch_point_y = $('#charimg')[0].getBoundingClientRect().left;
             	 */
+            	/*  
                 move_touch_point_x_after = e.targetTouches[0].pageX;
           		move_touch_point_y_after = e.targetTouches[0].pageY;
           		
           		move_calc_x = move_touch_point_x_after-move_touch_point_x_before;
           		move_calc_y = move_touch_point_y_after-move_touch_point_y_before;
           		console.log(move_calc_x+' , '+move_calc_y);
-          		
+          		 */
           		/* 
           		if(move_calc_x < 0) keypress['37'] = true;
           		if(move_calc_y < 0) keypress['38'] = true;
@@ -220,9 +257,9 @@
           		//move_touch_point_x_after = move_touch_point_x_before;
           		//move_touch_point_y_after = move_touch_point_y_before;
           		
-            });  
+          //  });  
       
-            document.addEventListener("touchend",function(e){
+          // document.addEventListener("touchend",function(e){
             	//console.log('touchend');
             	/* 
             	if(move_calc_x < 0) keypress['37'] = false;
@@ -230,7 +267,7 @@
           		if(move_calc_x > 0) keypress['39'] = false;
           		if(move_calc_y > 0) keypress['40'] = false;
  */      
-            });  
+          //  });  
 
 
         	

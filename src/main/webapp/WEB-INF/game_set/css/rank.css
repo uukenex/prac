@@ -1,0 +1,26 @@
+
+table {
+	border: 2px solid #FFA2A2;
+}
+
+tr {
+	border:1px solid #FFA2A2;
+}
+/* 
+table.rank {
+	margin:auto;
+	margin-top: 15px;
+	margin-right: 15px;
+	border: solid 1px black;
+	width: 100%;
+}
+
+table.rank tr td {
+	
+	text-align: center;
+	background: #FFFFFF;
+	color: #000000;
+	border: solid 2px yellowgreen;
+	text-align: left;
+}
+ */

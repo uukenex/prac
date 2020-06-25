@@ -7,7 +7,7 @@
 <meta name="viewport"
 	content="width=device-width, initial-scale=1, user-scalable=no" />
 
-<TITLE>따뜻한 가메</TITLE>
+<TITLE>지렁이게임</TITLE>
 
 <link rel="stylesheet" href="<%=request.getContextPath() %>/game_set/css/game3.css?v=<%=System.currentTimeMillis() %>" />
 </HEAD>

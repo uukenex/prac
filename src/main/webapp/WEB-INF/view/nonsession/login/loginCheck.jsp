@@ -32,7 +32,9 @@
 			<div id="main">
 				<div class="container">
 					<div class="row main-row">
-					
+						<!-- Board Left Menu -->
+						<jsp:include page="../layout/board_left_menu.jsp"></jsp:include>
+						
 						<div class="8u 12u(mobile) important(mobile)">
 							<section class="middle-content">
 								<h2 class="board_part_title">로그인</h2>

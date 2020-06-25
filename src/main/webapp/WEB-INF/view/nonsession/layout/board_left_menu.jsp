@@ -32,7 +32,7 @@
 				<c:url value="/game3" var="game3"/>
 				<c:url value="/game4" var="game4"/>
 				<c:url value="/game5" var="game5"/>
-				
+				<c:url value="/game/rank" var="rank"/>
 				
 				<li>
 					<a href="${free }" class="freeBoard">
@@ -69,6 +69,12 @@
 					<a href="${game5 }" >
 						<i class="fa fa-comments-o"></i>
 						Game5
+					</a>
+				</li>
+				<li>
+					<a href="${rank }" >
+						<i class="fa fa-comments-o"></i>
+						RANK
 					</a>
 				</li>
 				<!-- <li>
