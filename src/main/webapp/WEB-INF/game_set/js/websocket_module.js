@@ -5,7 +5,7 @@
 	if(isLocal){
 		webSocket = new WebSocket('ws://localhost:80/WebSocket4');
 	}else{
-		webSocket = new WebSocket('ws://http://54.180.82.173/WebSocket4');
+		webSocket = new WebSocket('ws://54.180.82.173/WebSocket4');
 	}
 	
 	var textarea = document.getElementById("messageWindow");
