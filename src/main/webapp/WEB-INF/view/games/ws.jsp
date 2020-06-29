@@ -9,91 +9,49 @@
 	content="width=device-width, initial-scale=1, user-scalable=no" />
 
 <TITLE>new titles..</TITLE>
-<link rel="stylesheet" href="<%=request.getContextPath()%>/game_set/css/game5.css?v=<%=System.currentTimeMillis()%>" />
 </HEAD>
 <BODY>
 	<script src="http://code.jquery.com/jquery.js"></script>
-	<script type="text/javascript" src="http://jsgetip.appspot.com"></script>
 	<script src="<%=request.getContextPath()%>/game_set/js/gameutil.js?v=<%=System.currentTimeMillis()%>"></script>
-	<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.1.5/sockjs.min.js"></script>
-	<script language="javascript">
-		
-	var webSocket = new WebSocket("ws://localhost:80/websocket3");
-	//var sock = new SockJS("http://54.180.82.173:80/websocket2");
-	//var sock = new SockJS("http://localhost:80/websocket2");
-	/*
-	var socket = io();
-	var system = io.of('http://localhost/websocket3');
-	system.on('connect', function(socket) {
-	   console.log('클라이언트 접속');
-	});
-	system.on('message', function(data){
-	  alert('System Message' + data);
-	});
-	*/
-	/*
-	// 서버로부터 메시지를 받았을 때
-	sock.onopen = function(message) {
-	// 콘솔 텍스트에 메시지를 출력한다.
-	$("#txtarea")[0].value += "알파카 채팅서버에 접속했습니다!\n";
-	};
+	<script src="<%=request.getContextPath()%>/game_set/js/websocket_module.js?v=<%=System.currentTimeMillis()%>"></script>
 	
-	sock.onmessage = function(msg) {
-		$("#txtarea")[0].value += "받은메시지 :"+msg.data+"\n";
-		$("#txtarea")[0].scrollTop = $("#txtarea")[0].scrollHeight;
-	};
-	// 서버와 연결을 끊었을 때
-	sock.onclose = function(evt) {
-		$("#txtarea")[0].value += "채팅서버가 종료되었습니다!\n";
-	};
-	sock.onerror = function(message) {
-		// 콘솔 텍스트에 메시지를 출력한다.
-		$("#txtarea")[0].value += "에러가 발생하였습니다!\n";
-	};
-	*/
-	
-	// WebSocket 서버와 접속이 되면 호출되는 함수
-	webSocket.onopen = function(message) {
-	// 콘솔 텍스트에 메시지를 출력한다.
-	$("#txtarea")[0].value += "알파카 채팅서버에 접속했습니다!\n";
-	};
-	// WebSocket 서버와 접속이 끊기면 호출되는 함수
-	webSocket.onclose = function(message) {
-	// 콘솔 텍스트에 메시지를 출력한다.
-	$("#txtarea")[0].value += "채팅서버가 종료되었습니다!\n";
-	};
-	// WebSocket 서버와 통신 중에 에러가 발생하면 요청되는 함수
-	webSocket.onerror = function(message) {
-	// 콘솔 텍스트에 메시지를 출력한다.
-	$("#txtarea")[0].value += "에러가 발생하였습니다!\n";
-	};
-	// WebSocket 서버로 부터 메시지가 오면 호출되는 함수
-	webSocket.onmessage = function(message) {
-	// 콘솔 텍스트에 메시지를 출력한다.
-	$("#txtarea")[0].value += "받은메시지 :"+message.data+"\n";
-	$("#txtarea")[0].scrollTop = $("#txtarea")[0].scrollHeight;
-	};
-
-    
-	
-	
-    function sendMsg(){
-    	var msg = $('#msg').val();
-    	sock.send(msg);
-    	$("#txtarea")[0].value += "보낸메시지 :"+msg+"\n";
-    	$('#msg').val('');
-    	$("#txtarea")[0].scrollTop = $("#txtarea")[0].scrollHeight;
+	<script>
+	function enterkey() {
+        if (window.event.keyCode == 13) {
+        	var msg = $('#inputMessage').val();
+        	if(msg != ''){
+        		send('inputMessage',msg);
+                $('#inputMessage').val('');	
+                $("#messageWindow")[0].scrollTop = $("#messageWindow")[0].scrollHeight;
+        	}
+        }
     }
 	
+	function clickSend() {
+		var msg = $('#inputMessage').val();
+    	if(msg != ''){
+			send('inputMessage',$('#inputMessage').val());
+			$('#inputMessage').val('');
+			$("#messageWindow")[0].scrollTop = $("#messageWindow")[0].scrollHeight;
+    	}
+	}
 	
-		
 	</script>
-
-	<section id ="txtbx"><textarea id="txtarea" cols="80" rows="4" > </textarea> </section>
-	<section id="input"> <input type="text" id="msg" placeholder="메시지 입력"></input><input type="button" id= "submit_msg" value="전송" onclick="sendMsg()"></section> </div>
-	<section id="output"></section>
 	
-	
-	
+	<c:if test="${(login.id ne '') and !(empty login.id)}">
+        <input type="hidden" value='${login.id }' id='chat_id' />
+    </c:if>
+    <c:if test="${(login.id eq '') or (empty login.id)}">
+        <input type="hidden" value='<%=session.getId().substring(0, 6)%>'
+            id='chat_id' />
+    </c:if>
+    <!--     채팅창 -->
+    <div id="_chatbox" style="display: inline;">
+        <fieldset>
+            <textarea id="messageWindow" cols="60" rows="4" readonly="true"></textarea>
+            <br /> <input id="inputMessage" type="text" onkeyup="enterkey()" />
+            <input type="submit" value="send" onclick="clickSend()" />
+        </fieldset>
+    </div>
 </BODY>
 </HTML>

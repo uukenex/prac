@@ -125,6 +125,13 @@ section#controll{
 	font-size: 13px;
 }
 
+section#chattings{
+	position: absolute;
+	display: inline;
+	top : 550px;
+	font-size: 13px;
+}
+
 #desc{
 	top : 400px;
 	padding-top: 50px;
