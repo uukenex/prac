@@ -673,7 +673,6 @@
     			
     			if(msg != ''){
     				send('#chat',msg);
-    				$("#messageWindow")[0].scrollTop = $("#messageWindow")[0].scrollHeight;
     				if(msg == '시작'){
     					flag_start_create_enemy = true;
     					v_score_life = 3;
@@ -833,7 +832,7 @@
 	    <!--     채팅창 -->
 	    <div id="_chatbox" style="display: inline;">
 	        <fieldset>
-	            <textarea id="messageWindow" cols="60" rows="4" readonly="true"></textarea>
+	            <textarea id="messageWindow" cols="60" rows="6" readonly="true"></textarea>
 	        </fieldset>
 	    </div>
     </section>

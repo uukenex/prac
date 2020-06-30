@@ -3229,16 +3229,16 @@
 				-webkit-backface-visibility: hidden;
 				-ms-backface-visibility: hidden;
 				backface-visibility: hidden;
-				-moz-transform: translateY(-20vh);
-				-webkit-transform: translateY(-20vh);
-				-ms-transform: translateY(-20vh);
-				transform: translateY(-20vh);
+				-moz-transform: translateY(-30vh);
+				-webkit-transform: translateY(-30vh);
+				-ms-transform: translateY(-30vh);
+				transform: translateY(-30vh);
 				-moz-transition: -moz-transform 0.5s ease;
 				-webkit-transition: -webkit-transform 0.5s ease;
 				-ms-transition: -ms-transform 0.5s ease;
 				transition: transform 0.5s ease;
 				display: block;
-				height: 20vh;
+				height: 30vh;
 				left: 0;
 				overflow-y: auto;
 				position: fixed;
@@ -3668,8 +3668,8 @@
 	
 		ul.link-list li {
 			border-top: solid 1px #ced0b7;
-			padding: 0.75em 0 0 2em;
-			margin: 1.5em 0 1.5em 0;
+			padding: 1em 0 0 2em;
+			/* margin: 1.5em 0 1.5em 0; */
 			
 		}
 		
@@ -3786,7 +3786,7 @@
 				letter-spacing: 0.075em;
 				line-height: 0.9em;
 				padding: 0.2em 0.7em;
-				text-align: right;
+				text-align: center;
 				text-decoration: none;
 				text-transform: uppercase;
 				white-space: nowrap;

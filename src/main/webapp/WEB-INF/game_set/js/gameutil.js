@@ -1,5 +1,6 @@
 
 var isLocal = location.href.indexOf('localhost') > 0 && !(location.href.indexOf('test') > 0);
+var isOnlyChat = location.href.indexOf('ws') > 0 ;
 var windowWidth_org = $(window).width();
 var windowHeight_org = $(window).height();
 
@@ -25,7 +26,7 @@ jQuery(document).keydown(function(e){
 window.addEventListener('resize', windowClear, true);
 
 function windowClear(){
-	if(windowWidth != $(window).width() && !isLocal ){
+	if(windowWidth != $(window).width() && !isLocal && !isOnlyChat ){
 		$('body').css('display','none');
 	}
 }

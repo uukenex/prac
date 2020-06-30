@@ -64,7 +64,7 @@
 					  ,GR1.USER_ID
 				  FROM TGAME1_RANK GR1
 			     WHERE GR1.GAME_NO = #{gameSeq, jdbcType=VARCHAR}
-			       AND GR1.INSERT_DATE > TRUNC(SYSDATE) - 4
+			       <!-- AND GR1.INSERT_DATE > TRUNC(SYSDATE) - 4 -->
 			  ORDER BY GR1.CNT DESC) X
 		 WHERE ROWNUM &lt;= 10
     </select>

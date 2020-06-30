@@ -17,24 +17,42 @@ public class WebSocket4 {
 
 	@OnMessage
 	public void onMessage(String message, Session session) throws IOException {
-		System.out.println(message);
 		synchronized (clients) {
 			for (Session client : clients) {
-				if (!client.equals(session)) {
-					client.getBasicRemote().sendText(message);
-				}
+				// if (!client.equals(session)) {
+				client.getBasicRemote().sendText(message);
+				// }
 			}
 		}
 	}
 
 	@OnOpen
 	public void onOpen(Session session) {
-		System.out.println(session);
 		clients.add(session);
+		for (Session client : clients) {
+			// if (!client.equals(session)) {
+			try {
+				client.getBasicRemote().sendText("누군가가 입장했습니다.");
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			// }
+		}
 	}
 
 	@OnClose
 	public void onClose(Session session) {
 		clients.remove(session);
+		for (Session client : clients) {
+			// if (!client.equals(session)) {
+			try {
+				client.getBasicRemote().sendText("누군가가 떠났습니다.");
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			// }
+		}
 	}
 }
