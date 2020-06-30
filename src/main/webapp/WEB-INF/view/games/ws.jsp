@@ -44,14 +44,7 @@
 	}
 	
 	</script>
-	<%-- 
-	<c:if test="${(login.id ne '') and !(empty login.id)}">
-        <input type="hidden" value='${login.id }' id='chat_id' />
-    </c:if>
-    <c:if test="${(login.id eq '') or (empty login.id)}">
-        <input type="hidden" value='<%=session.getId().substring(0, 6)%>'
-            id='chat_id' />
-    </c:if> --%>
+	
     <input type="hidden" value='' id='chat_id' />
     <!--     채팅창 -->
     <div id="_chatbox" style="display: inline;">
