@@ -29,30 +29,22 @@ public class WebSocket4 {
 	@OnOpen
 	public void onOpen(Session session) {
 		clients.add(session);
-		for (Session client : clients) {
-			// if (!client.equals(session)) {
-			try {
-				client.getBasicRemote().sendText("누군가가 입장했습니다.");
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-			// }
-		}
+		/*
+		 * for (Session client : clients) { // if (!client.equals(session)) {
+		 * try { client.getBasicRemote().sendText("누군가가 입장했습니다."); } catch
+		 * (IOException e) { // TODO Auto-generated catch block
+		 * e.printStackTrace(); } // } }
+		 */
 	}
 
 	@OnClose
 	public void onClose(Session session) {
 		clients.remove(session);
-		for (Session client : clients) {
-			// if (!client.equals(session)) {
-			try {
-				client.getBasicRemote().sendText("누군가가 떠났습니다.");
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-			// }
-		}
+		/*
+		 * for (Session client : clients) { // if (!client.equals(session)) {
+		 * try { client.getBasicRemote().sendText("누군가가 떠났습니다."); } catch
+		 * (IOException e) { // TODO Auto-generated catch block
+		 * e.printStackTrace(); } // } }
+		 */
 	}
 }

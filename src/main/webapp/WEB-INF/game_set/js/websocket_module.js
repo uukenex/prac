@@ -1,10 +1,10 @@
 
 	
-	window.onload = function () {
+	/*window.onload = function () {
         if (window.Notification) {
             Notification.requestPermission();
         }
-    }
+    }*/
 	
 	//Websocket :: https://j3rmy.tistory.com/3
 	var webSocket;
@@ -20,7 +20,7 @@
 	
 	
 
-	var notifications = new Array();
+	/*var notifications = new Array();
 	
 	//notification :: https://ko.coder.work/so/javascript/542330
     function calculate(newMsg) {
@@ -41,7 +41,7 @@
     		}
 	    }
         
-    }
+    }*/
 
     
     
@@ -63,13 +63,14 @@
         	$("#messageWindow").html(orgMsg + newMsg + "\n");
         	$("#messageWindow")[0].scrollTop = $("#messageWindow")[0].scrollHeight;
         	
-        	if(newMsg.indexOf($("#chat_id").val())!=0){
+        	/*if(newMsg.indexOf($("#chat_id").val())!=0){
         		calculate(newMsg);
-        	}
+        	}*/
         		
         } 
     }
     function onOpen(event) {
+    	webSocket.send($("#chat_id").val() + " 님 입장");
     }
     function onError(event) {
         alert(event.data);
