@@ -22,9 +22,9 @@
 	
 	
 	<!-- Drop Menu Header -->
-	<jsp:include page="../nonsession/layout/dropMenu_header.jsp" /> 
+	<jsp:include page="../../nonsession/layout/dropMenu_header.jsp" /> 
 	<!-- Menu Bar Header -->
-	<jsp:include page="../nonsession/layout/menubar_header.jsp" />
+	<jsp:include page="../../nonsession/layout/menubar_header.jsp" />
 		
 	<div id="page-wrapper" class="boardPage-Wrapper">
 		<div id="main">
@@ -32,7 +32,7 @@
 				<div class="row main-row">
 				
 					<!-- Board Left Menu -->
-						<jsp:include page="../nonsession/layout/board_left_menu.jsp" />
+						<jsp:include page="../../nonsession/layout/board_left_menu.jsp" />
 						
 					<!-- Board body part -->
 						<div class="8u 12u(mobile) important(mobile)">
@@ -40,13 +40,33 @@
 								<form>
 									<div>
 										<section id='rank_form' class='rank'>
-											<select id='game_no_select' onchange="select_action()">
+											<ul>
+											<li>
+												<label for="select1"><input type="radio" id="select1" name='game_no_select' value="1" onchange="select_action()"  checked="checked" >GAME1</label>
+											</li>
+											<li>
+												<label for="select2"><input type="radio" id="select2" name='game_no_select' value="2" onchange="select_action()"   >GAME2</label>
+											</li>
+											<li>	
+												<label for="select3"><input type="radio" id="select3" name='game_no_select' value="3" onchange="select_action()"   >GAME3</label>
+											</li>
+											<li>	
+												<label for="select4"><input type="radio" id="select4" name='game_no_select' value="4" onchange="select_action()"   >GAME4</label>
+											</li>
+											<li>	
+												<label for="select5"><input type="radio" id="select5" name='game_no_select' value="5" onchange="select_action()"   >GAME5</label>
+											</li>
+											</ul>
+											
+											
+											
+											<!-- <select id='game_no_select' onchange="select_action()">
 											<option value="1">Game1</option>
 											<option value="2">Game2</option>
 											<option value="3">Game3</option>
 											<option value="4">Game4</option>
 											<option value="5">Game5</option>
-											</select>
+											</select> -->
 										</section>
 										<section id='rank_info' class='rank'>
 										
@@ -74,7 +94,9 @@
 	}
 	 
 	function select_action(){
-		arg_game_no = $("#game_no_select").val();
+		//arg_game_no = $("#game_no_select").val();
+		arg_game_no = $('input[name="game_no_select"]:checked').val();
+		
 		$.ajax({
 			type : "get",
 			url : selectUrl,
@@ -82,9 +104,9 @@
 				gameNo : arg_game_no
 			},
 			success : function(res) {
-				var innerHTML = '<table class="rank" style="border:2px solid #FFA2A2"><thead id="board_table_thead"><tr><td><strong>순위</strong></td><td><strong>인입</strong></td><td>ID</td><td><strong>점수</strong></td><tr></thead>';
+				var innerHTML = '<table class="rank" style="border:2px solid #FFA2A2"><thead id="board_table_thead"><tr><td><strong>순위</strong></td><td><strong>인입</strong></td><td>닉네임</td><td>MSG</td><td><strong>점수</strong></td><tr></thead>';
 				$(res.RESULT).each(function(idx,item){
-					innerHTML += '<tr style="border:2px solid #FFA2A2"><td>'+item.ROWNUM+'</td><td>'+item.MEDIA_CODE+'</td><td>'+item.USER_ID+'</td><td>'+item.CNT+'</td><tr>';
+					innerHTML += '<tr style="border:2px solid #FFA2A2"><td>'+item.ROWNUM+'</td><td>'+item.MEDIA_CODE+'</td><td>'+item.USER_NICK+'</td><td>'+item.MSG+'</td><td>'+item.CNT+'</td><tr>';
 				});
 				innerHTML += '</table>';
 				

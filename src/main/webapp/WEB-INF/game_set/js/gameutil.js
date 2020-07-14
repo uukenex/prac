@@ -10,6 +10,15 @@ var mediaCode = getMediaCode();
 
 var flag_common_game_over = false;
 
+if(!isLocal){
+
+	if(location.href.indexOf('game1') > 0 || location.href.indexOf('game2') > 0
+	|| location.href.indexOf('game3') > 0 || location.href.indexOf('game4') > 0 ){
+		alert('유지보수중인 항목입니다.');
+		history.back();
+	}
+}
+
 document.oncontextmenu = function(e) {
 	return false;
 }
@@ -86,7 +95,7 @@ function meetWall(org_rect){
 }
 
 
-function common_game_over(arg_game_no, arg_cnt, arg_reason){
+function common_game_over(arg_game_no, arg_cnt, arg_reason,arg_userId){
 	var selectUrl = "/gameUtil/selectGameCnt";
 	var insertUrl = "/gameUtil/insertGameCnt";
 	
@@ -99,7 +108,7 @@ function common_game_over(arg_game_no, arg_cnt, arg_reason){
 	windowFadeOut();
 	
 	if(!isLocal){
-		var promptVal = prompt(arg_reason+arg_cnt+'점 \n이름을 입력해주세요.');
+		var promptVal = prompt(arg_reason+arg_cnt+'점 \n코멘트를 입력해주세요.');
 		
 		if(promptVal ==null || promptVal== undefined || promptVal===null ){
 			alert('결과화면으로 이동합니다');
@@ -108,7 +117,8 @@ function common_game_over(arg_game_no, arg_cnt, arg_reason){
 				type : "post",
 				url : insertUrl,
 				data : {
-					userName : promptVal,						
+					msg : promptVal,
+					userName : arg_userId,
 					mediaCode: mediaCode,
 					ip : ip(),
 					cnt : arg_cnt,
@@ -122,14 +132,12 @@ function common_game_over(arg_game_no, arg_cnt, arg_reason){
 					}else{
 						alert("오류 발생");
 					}
-					
 				},
 				error : function(request, status, error) {
 					alert(request);
 				}
 			});
 		}
-		
 	}
 	
 	
@@ -141,26 +149,18 @@ function common_game_over(arg_game_no, arg_cnt, arg_reason){
 				gameNo : arg_game_no
 			},
 			success : function(res) {
-				var innerHTML = '<table class="rank"><tr><td>인입</td><td>ID</td><td>점수</td><tr>';
+				var innerHTML = '<table class="rank" style="border:2px solid #FFA2A2"><thead id="board_table_thead"><tr><td><strong>순위</strong></td><td><strong>인입</strong></td><td>ID</td><td>MSG</td><td><strong>점수</strong></td><tr></thead>';
 				$(res.RESULT).each(function(idx,item){
-					innerHTML += '<tr><td>'+item.MEDIA_CODE+'</td><td>'+item.USER_ID+'</td><td>'+item.CNT+'</td><tr>';
+					innerHTML += '<tr style="border:2px solid #FFA2A2"><td>'+item.ROWNUM+'</td><td>'+item.MEDIA_CODE+'</td><td>'+item.USER_NICK+'</td><td>'+item.MSG+'</td><td>'+item.CNT+'</td><tr>';
 				});
 				innerHTML += '</table>';
-				
 				$('body')[0].innerHTML = innerHTML;
-				
 				windowFadeIn();
 			},
 			error : function(request, status, error) {
 				alert(request);
 			}
 		});
-		
-		
-		
 	},1500);
-	
-	
 }
-
 

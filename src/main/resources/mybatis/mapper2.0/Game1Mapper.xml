@@ -43,27 +43,33 @@
              MEDIA_CODE,
              CNT,
              INSERT_DATE,
-             GAME_NO )
+             GAME_NO,
+             MSG )
           values (
              #{userName, jdbcType=VARCHAR},
              #{ip, jdbcType=VARCHAR},
              #{mediaCode, jdbcType=VARCHAR},
              #{cnt, jdbcType=NUMERIC},
              sysdate,
-             #{gameSeq, jdbcType=VARCHAR} )
+             #{gameSeq, jdbcType=VARCHAR},
+             #{msg, jdbcType=VARCHAR} )
     </insert>
     
     <select id="selectGameCnt" resultType="HashMap" parameterType="Map">
     	SELECT /* Game1Mapper.xml : my.prac.core.prjgame1.dao.Game1DAO.selectGameCnt */
 				 X.MEDIA_CODE
 				,X.CNT
-				,X.USER_ID
+				,X.USER_NICK
+				,X.MSG
 				,ROWNUM
 		  FROM (SELECT GR1.MEDIA_CODE
 					  ,GR1.CNT
-					  ,GR1.USER_ID
+					  ,US.USER_NICK
+					  ,GR1.MSG
 				  FROM TGAME1_RANK GR1
-			     WHERE GR1.GAME_NO = #{gameSeq, jdbcType=VARCHAR}
+					  ,USERS       US
+			     WHERE GR1.GAME_NO   = #{gameSeq, jdbcType=VARCHAR}
+ 				   AND US.USER_ID(+) = GR1.USER_ID
 			       <!-- AND GR1.INSERT_DATE > TRUNC(SYSDATE) - 4 -->
 			  ORDER BY GR1.CNT DESC) X
 		 WHERE ROWNUM &lt;= 10

@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.List;
 
 import javax.annotation.Resource;
+import javax.servlet.http.HttpSession;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
+import my.prac.core.dto.Users;
 import my.prac.core.prjgame1.service.Game1Service;
 
 @Controller
@@ -22,9 +24,9 @@ public class GameController {
 	@Resource(name = "core.prjgame1.Game1Service")
 	Game1Service game1Service;
 
-	@RequestMapping(value = "/game1", method = RequestMethod.GET)
+	@RequestMapping(value = "/session/game1", method = RequestMethod.GET)
 	public String game1(Model model) {
-		return "games/game1";
+		return "session/games/game1";
 	}
 
 	@RequestMapping(value = "/game1Rank", method = RequestMethod.GET)
@@ -51,7 +53,7 @@ public class GameController {
 		return resultMsg;
 	}
 
-	@RequestMapping(value = "/game2", method = RequestMethod.GET)
+	@RequestMapping(value = "/session/game2", method = RequestMethod.GET)
 	public String game2(Model model, @RequestParam(required = false, defaultValue = "10") int cell) {
 		if (cell > 50) {
 			cell = 50;
@@ -60,7 +62,7 @@ public class GameController {
 			cell = 10;
 		}
 		model.addAttribute("cell", cell);
-		return "games/game2";
+		return "session/games/game2";
 	}
 
 	@RequestMapping(value = "/game2_2", method = RequestMethod.GET)
@@ -72,10 +74,10 @@ public class GameController {
 			cell = 10;
 		}
 		model.addAttribute("cell", cell);
-		return "games/game2_2";
+		return "session/games/game2_2";
 	}
 
-	@RequestMapping(value = "/game3", method = RequestMethod.GET)
+	@RequestMapping(value = "/session/game3", method = RequestMethod.GET)
 	public String game3(Model model, @RequestParam(required = false, defaultValue = "10") int cell) throws Exception {
 		if (cell > 50) {
 			cell = 50;
@@ -86,7 +88,7 @@ public class GameController {
 
 		model.addAttribute("rank", game1Service.selectGame3Cnt());
 		model.addAttribute("cell", cell);
-		return "games/game3";
+		return "session/games/game3";
 	}
 
 	// 댓글달기 ajax
@@ -108,22 +110,22 @@ public class GameController {
 		return resultMsg;
 	}
 
-	@RequestMapping(value = "/game4", method = RequestMethod.GET)
+	@RequestMapping(value = "/session/game4", method = RequestMethod.GET)
 	public String game4(Model model, @RequestParam(required = false, defaultValue = "10") int cell) throws Exception {
 
-		return "games/game4";
+		return "session/games/game4";
 	}
 
-	@RequestMapping(value = "/game4_1", method = RequestMethod.GET)
+	@RequestMapping(value = "/session/game4_1", method = RequestMethod.GET)
 	public String game4_1(Model model, @RequestParam(required = false, defaultValue = "10") int cell) throws Exception {
 
-		return "games/game4_1";
+		return "session/games/game4_1";
 	}
 
-	@RequestMapping(value = "/game4_2", method = RequestMethod.GET)
+	@RequestMapping(value = "/session/game4_2", method = RequestMethod.GET)
 	public String game4_2(Model model, @RequestParam(required = false, defaultValue = "10") int cell) throws Exception {
 
-		return "games/game4_2";
+		return "session/games/game4_2";
 	}
 
 	@RequestMapping(value = "/game4/saveGame4Cnt", method = RequestMethod.POST)
@@ -164,32 +166,38 @@ public class GameController {
 		return rtnMap;
 	}
 
-	@RequestMapping(value = "/game5", method = RequestMethod.GET)
-	public String game5(Model model, @RequestParam(required = false, defaultValue = "10") int cell) throws Exception {
+	@RequestMapping(value = "/session/game5", method = RequestMethod.GET)
+	public String game5(HttpSession session, Model model, @RequestParam(required = false, defaultValue = "10") int cell)
+			throws Exception {
 
-		return "games/game5";
+		Users user = (Users) session.getAttribute("Users");
+		model.addAttribute("userId", user.getUserId());
+		model.addAttribute("userNick", user.getUserNick());
+
+		return "session/games/game5";
 	}
 
-	@RequestMapping(value = "/ws", method = RequestMethod.GET)
+	@RequestMapping(value = "/session/ws", method = RequestMethod.GET)
 	public String ws(Model model) throws Exception {
 
-		return "games/ws";
+		return "session/games/ws";
 	}
 
 	@RequestMapping(value = "/game/rank", method = RequestMethod.GET)
 	public String gameRank(Model model) throws Exception {
 
-		return "games/rank";
+		return "session/games/rank";
 	}
 
 	@RequestMapping(value = "/gameUtil/insertGameCnt", method = RequestMethod.POST)
-	public @ResponseBody HashMap<String, Object> gameUtil_insertGameCnt(@RequestParam String userName,
-			@RequestParam String mediaCode, @RequestParam String ip, @RequestParam int cnt,
-			@RequestParam String gameNo) {
+	public @ResponseBody HashMap<String, Object> gameUtil_insertGameCnt(@RequestParam String msg,
+			@RequestParam String userName, @RequestParam String mediaCode, @RequestParam String ip,
+			@RequestParam int cnt, @RequestParam String gameNo) {
 		HashMap<String, Object> rtnMap = new HashMap<>();
 
 		HashMap<String, Object> hashMap = new HashMap<>();
 		hashMap.put("userName", userName);
+		hashMap.put("msg", msg);
 		hashMap.put("mediaCode", mediaCode);
 		hashMap.put("ip", ip);
 		hashMap.put("cnt", cnt);

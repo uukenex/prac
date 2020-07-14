@@ -416,8 +416,12 @@
        			}
         		
         		//라이프생성
-        		if(v_score_hit == 25 || v_score_life == 1){
+        		if(v_score_life == 1){
         			f_life_create(v_sp_count,3,400-20-10,getRandomInt(0, 400-20-10));
+       			}
+        		//라이프생성
+        		if(v_score_hit == 100){
+        			f_life_create2(v_sp_count,3,400-20-10,getRandomInt(0, 400-20-10));
        			}
         		
         		//점수변경 감지
@@ -528,6 +532,7 @@
     			$('#enemy_field').append('<div class="enemy" id="enemy'+sp_count+'"></div>'); 
     			
     			enemy_move_timer = setInterval(function(){
+    				$('#enemy'+sp_count).css('display','block');
     				enemy_move(sp_count);
     			}, 10); 
     			
@@ -700,9 +705,32 @@
     				$('#life'+sp_count).remove();
     			}
     		}
+    	}
+    	function f_life_create2(sp_count,e_speed,x,y){
+    		var life_move_timer2;
     		
+    		if(!flag_life_attack2){
+    			flag_life_attack2 = true;
+    			$('#enemy_field').append('<div class="life" id="life'+sp_count+'"></div>'); 
+    			
+    			life_move_timer2 = setInterval(function(){
+    				life_move2(sp_count);
+    			}, 10); 
+    			
+    			setTimeout(function() {
+    				//flag_life_attack = false;
+    				v_sp_count++;
+    			}, 300);	
+    		}
     		
-    		
+    		function life_move2(sp_count){
+    			x -= e_speed; 
+    			$('#life'+sp_count).css({top: y, left: x}); 
+    			if(x < -30 ){
+    				clearTimeout(life_move_timer2);
+    				$('#life'+sp_count).remove();
+    			}
+    		}
     	}
     	
     	function f_enemy_end(){
@@ -807,7 +835,7 @@
     		clearInterval( main_interval );
     		clearInterval( sub_interval );
     		clearInterval( g_interval );
-    		common_game_over(db_game_no, v_score_max, "");
+    		common_game_over(db_game_no, v_score_max, "",'${userId }');
     	}
     }
  
@@ -891,10 +919,10 @@
 		
 	</section>
 	<section id="chattings">
-		<c:if test="${(login.id ne '') and !(empty login.id)}">
-	        <input type="hidden" value='${login.id }' id='chat_id' />
+		<c:if test="${(userId ne '') and !(empty userId)}">
+	        <input type="hidden" value='${userNick}' id='chat_id' />
 	    </c:if>
-	    <c:if test="${(login.id eq '') or (empty login.id)}">
+	    <c:if test="${(userId eq '') or (empty userId)}">
 	        <input type="hidden" value='<%=session.getId().substring(0, 6)%>'
 	            id='chat_id' />
 	    </c:if>
