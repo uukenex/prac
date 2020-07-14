@@ -16,6 +16,7 @@
 	<script type="text/javascript" src="http://jsgetip.appspot.com"></script>
 	<script type="text/javascript" src="http://bernii.github.io/gauge.js/dist/gauge.min.js"></script>
 	<script src="<%=request.getContextPath()%>/game_set/js/gameutil.js?v=<%=System.currentTimeMillis()%>"></script>
+	<script src="<%=request.getContextPath()%>/game_set/js/websocket_module.js?v=<%=System.currentTimeMillis()%>"></script>
 	<script language="javascript">
 	
 	function init()
@@ -34,6 +35,8 @@
 		var flag_enemy_create = false; // 적 자동생성
 		var flag_enemy_create2 = false; // 적 자동생성
 		var flag_boss_attack = false;//보스 존재여부 
+		var flag_life_attack = false;//라이프 생성여부
+		
 		var v_boss_range_energy = 3;//보스 원거리 방어 수치
 		var v_boss_short_energy = 3;//보스 근거리 방어 수치 
 		var v_boss_range_energy_max = 3;//보스 원거리 방어 수치
@@ -283,7 +286,7 @@
         		var e_b_rect;
         		
         		
-        		//부딪힘판정
+        		//enemy action
         		for(var i =0 ; i < $('.enemy').length ; i++){
         			e_rect = $('.enemy')[i].getBoundingClientRect();
         			
@@ -357,6 +360,38 @@
         			}
         		}
         		
+        		//life action
+        		for(var i =0 ; i < $('.life').length ; i++){
+        			l_rect = $('.life')[i].getBoundingClientRect();
+        			
+        			if(meetBox(l_rect,c_rect) && !flag_char_hit_delay){
+        				v_score_life += 1;
+        				
+        				flag_char_hit_delay = true;
+        				f_twingkling('char',4);
+        				setTimeout(function(){
+        					flag_char_hit_delay = false;
+        				}, 400*3);
+        				
+        				$('.life')[i].remove();
+        				$('button.detect').css('background','#FFFFCB'); 
+        				
+        			}
+        			
+        			//근거리 공격 또는 원거리 공격 판정
+        			if(meetBox(l_rect,c_a_rect) || (flag_char_range_atk && meetBox(l_rect,c_r_a_rect) )){
+        				v_score_life -= 1;
+        				flag_char_hit_delay = true;
+        				f_twingkling('char',4);
+        				setTimeout(function(){
+        					flag_char_hit_delay = false;
+        				}, 400*3);
+        				
+    	   				$('.life')[i].remove();
+        			}
+        			
+        		}
+        		
         		//채팅창 
         		if(flag_chat_float){
         			var $chat_float = $('.chat_float');
@@ -378,6 +413,11 @@
         		//보스 처치 후 적생성 추가 
         		if(flag_start_create_enemy && flag_boss_end){
 					f_enemy_create2(v_sp_count,3,400-20-10,getRandomInt(0, 400-20-10));
+       			}
+        		
+        		//라이프생성
+        		if(v_score_hit == 25 || v_score_life == 1){
+        			f_life_create(v_sp_count,3,400-20-10,getRandomInt(0, 400-20-10));
        			}
         		
         		//점수변경 감지
@@ -635,6 +675,36 @@
     		
     	}
     	
+    	function f_life_create(sp_count,e_speed,x,y){
+    		var life_move_timer;
+    		
+    		if(!flag_life_attack){
+    			flag_life_attack = true;
+    			$('#enemy_field').append('<div class="life" id="life'+sp_count+'"></div>'); 
+    			
+    			life_move_timer = setInterval(function(){
+    				life_move(sp_count);
+    			}, 10); 
+    			
+    			setTimeout(function() {
+    				//flag_life_attack = false;
+    				v_sp_count++;
+    			}, 300);	
+    		}
+    		
+    		function life_move(sp_count){
+    			x -= e_speed; 
+    			$('#life'+sp_count).css({top: y, left: x}); 
+    			if(x < -30 ){
+    				clearTimeout(life_move_timer);
+    				$('#life'+sp_count).remove();
+    			}
+    		}
+    		
+    		
+    		
+    	}
+    	
     	function f_enemy_end(){
     		if(flag_enter){
     			flag_enter= false;
@@ -835,6 +905,5 @@
 	        </fieldset>
 	    </div>
     </section>
-    <script src="<%=request.getContextPath()%>/game_set/js/websocket_module.js?v=<%=System.currentTimeMillis()%>"></script>
 </BODY>
 </HTML>

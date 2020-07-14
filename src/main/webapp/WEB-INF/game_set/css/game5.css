@@ -55,6 +55,15 @@ section#description {
 	z-index: 9;
 }
 
+.life {
+	background: red;
+	width: 20px;
+	height: 20px;
+	top : 600px;
+	left : 600px;
+	z-index: 9;
+}
+
 .boss {
 	background: black;
 	width: 95px;
