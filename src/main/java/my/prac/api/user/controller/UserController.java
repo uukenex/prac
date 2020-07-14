@@ -33,6 +33,9 @@ public class UserController {
 	@RequestMapping(value = "/loginCheck", method = RequestMethod.GET)
 	public String loginCheck(Model model, HttpServletRequest request, HttpSession session) {
 		session.setAttribute("returnUrl", request.getHeader("Referer"));
+		if (request.getHeader("Referer") == null) {
+			return "redirect:/free?page=1";
+		}
 		return "nonsession/login/loginCheck";
 	}
 

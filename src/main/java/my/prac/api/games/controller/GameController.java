@@ -171,9 +171,10 @@ public class GameController {
 			throws Exception {
 
 		Users user = (Users) session.getAttribute("Users");
-		model.addAttribute("userId", user.getUserId());
-		model.addAttribute("userNick", user.getUserNick());
-
+		if (user != null) {
+			model.addAttribute("userId", user.getUserId());
+			model.addAttribute("userNick", user.getUserNick());
+		}
 		return "session/games/game5";
 	}
 
