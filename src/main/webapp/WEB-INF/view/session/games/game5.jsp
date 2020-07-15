@@ -36,6 +36,7 @@
 		var flag_enemy_create2 = false; // 적 자동생성
 		var flag_boss_attack = false;//보스 존재여부 
 		var flag_life_attack = false;//라이프 생성여부
+		var flag_life_attack2= flase;//100점라이프
 		
 		var v_boss_range_energy = 3;//보스 원거리 방어 수치
 		var v_boss_short_energy = 3;//보스 근거리 방어 수치 
@@ -562,6 +563,7 @@
     			$('#enemy_field').append('<div class="enemy" id="enemy'+sp_count+'"></div>'); 
     			
     			enemy_move_timer = setInterval(function(){
+    				$('#enemy'+sp_count).css('display','block');
     				enemy_move(sp_count);
     			}, 10); 
     			
@@ -605,25 +607,26 @@
     			
     			setTimeout(function() {
     				boss_move_timer = setInterval(function(){
-    				boss_move(sp_count,0);
+    					$('#boss'+sp_count).css('display','block');
+    					boss_move(sp_count,0);
     				},10);
     			}, 6000*0);
     			
     			setTimeout(function() {
     				boss_move_timer1 = setInterval(function(){
-    				boss_move(sp_count,1);
+    					boss_move(sp_count,1);
     				},10);
     			}, 6000*1);
     			
     			setTimeout(function() {
     				boss_move_timer2 = setInterval(function(){
-    				boss_move(sp_count,2);
+    					boss_move(sp_count,2);
     				},10);
     			}, 6000*2);
     			
     			setTimeout(function() {
     				boss_move_timer3 = setInterval(function(){
-    				boss_move(sp_count,3);
+    					boss_move(sp_count,3);
     				},10);
     			}, 6000*3);
     			
@@ -680,7 +683,7 @@
     		
     	}
     	
-    	function f_life_create(sp_count,e_speed,x,y){
+    	function f_life_create(sp_count, e_speed, x, y){
     		var life_move_timer;
     		
     		if(!flag_life_attack){
@@ -706,6 +709,8 @@
     			}
     		}
     	}
+    	
+    	
     	function f_life_create2(sp_count,e_speed,x,y){
     		var life_move_timer2;
     		

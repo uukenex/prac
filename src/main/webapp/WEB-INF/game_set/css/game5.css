@@ -66,6 +66,7 @@ section#description {
 }
 
 .boss {
+	display: none;
 	background: black;
 	width: 95px;
 	height: 300px;
