@@ -36,7 +36,7 @@
 		var flag_enemy_create2 = false; // 적 자동생성
 		var flag_boss_attack = false;//보스 존재여부 
 		var flag_life_attack = false;//라이프 생성여부
-		var flag_life_attack2= flase;//100점라이프
+		var flag_life_attack2= false;//100점라이프
 		
 		var v_boss_range_energy = 3;//보스 원거리 방어 수치
 		var v_boss_short_energy = 3;//보스 근거리 방어 수치 
