@@ -10,6 +10,8 @@ var mediaCode = getMediaCode();
 
 var flag_common_game_over = false;
 
+var dbDate = new Date().toISOString().slice(0, 19).replace('T', ' ');
+
 if(!isLocal){
 
 	if(location.href.indexOf('game1') > 0 || location.href.indexOf('game2') > 0
@@ -105,62 +107,89 @@ function common_game_over(arg_game_no, arg_cnt, arg_reason,arg_userId){
 	flag_common_game_over = true;
 	
 	
+	//선 저장 후
+	if(!isLocal){
+		$.ajax({
+			type : "post",
+			url : insertUrl,
+			data : {
+				msg : ' ',
+				userName : arg_userId,
+				mediaCode: mediaCode,
+				ip : ip(),
+				cnt : arg_cnt,
+				gameNo : arg_game_no,
+				dbDate : dbDate,
+				flag : 'I'
+			},
+			success : function(res) {
+				
+			},
+			error : function(request, status, error) {
+				alert(request);
+			}
+		});	
+	}
+	
+	//화면가리기
 	windowFadeOut();
 	
-	if(!isLocal){
-		var promptVal = prompt(arg_reason+arg_cnt+'점 \n코멘트를 입력해주세요.');
+	
+	setTimeout(function(){
+		if(!isLocal){
+
+			var promptVal = prompt(arg_reason+arg_cnt+'점 \n코멘트를 입력해주세요.');
+			
+			if(promptVal ==null || promptVal== undefined || promptVal===null ){
+				alert('결과화면으로 이동합니다');
+			}else{
+				$.ajax({
+					type : "post",
+					url : insertUrl,
+					data : {
+						msg : promptVal,
+						userName : arg_userId,
+						mediaCode: mediaCode,
+						ip : ip(),
+						cnt : arg_cnt,
+						gameNo : arg_game_no,
+						dbDate : dbDate,
+						flag : 'U'
+					},
+					success : function(res) {
+						
+					},
+					error : function(request, status, error) {
+						alert(request);
+					}
+				});
+			}
+		}
 		
-		if(promptVal ==null || promptVal== undefined || promptVal===null ){
-			alert('결과화면으로 이동합니다');
-		}else{
+		
+		setTimeout(function(){
 			$.ajax({
-				type : "post",
-				url : insertUrl,
+				type : "get",
+				url : selectUrl,
 				data : {
-					msg : promptVal,
-					userName : arg_userId,
-					mediaCode: mediaCode,
-					ip : ip(),
-					cnt : arg_cnt,
 					gameNo : arg_game_no
 				},
 				success : function(res) {
-					console.log(arg_cnt);
-					console.log(res);
-					if(res.CODE=='OK'){
-						alert(arg_cnt+"점수가 저장되었습니다");
-					}else{
-						alert("오류 발생");
-					}
+					var innerHTML = '<table class="rank" style="border:2px solid #FFA2A2"><thead id="board_table_thead"><tr><td><strong>순위</strong></td><td><strong>인입</strong></td><td>ID</td><td>MSG</td><td><strong>점수</strong></td><tr></thead>';
+					$(res.RESULT).each(function(idx,item){
+						innerHTML += '<tr style="border:2px solid #FFA2A2"><td>'+item.ROWNUM+'</td><td>'+item.MEDIA_CODE+'</td><td>'+item.USER_NICK+'</td><td>'+item.MSG+'</td><td>'+item.CNT+'</td><tr>';
+					});
+					innerHTML += '</table>';
+					$('body')[0].innerHTML = innerHTML;
+					windowFadeIn();
 				},
 				error : function(request, status, error) {
 					alert(request);
 				}
 			});
-		}
-	}
-	
-	
-	setTimeout(function(){
-		$.ajax({
-			type : "get",
-			url : selectUrl,
-			data : {
-				gameNo : arg_game_no
-			},
-			success : function(res) {
-				var innerHTML = '<table class="rank" style="border:2px solid #FFA2A2"><thead id="board_table_thead"><tr><td><strong>순위</strong></td><td><strong>인입</strong></td><td>ID</td><td>MSG</td><td><strong>점수</strong></td><tr></thead>';
-				$(res.RESULT).each(function(idx,item){
-					innerHTML += '<tr style="border:2px solid #FFA2A2"><td>'+item.ROWNUM+'</td><td>'+item.MEDIA_CODE+'</td><td>'+item.USER_NICK+'</td><td>'+item.MSG+'</td><td>'+item.CNT+'</td><tr>';
-				});
-				innerHTML += '</table>';
-				$('body')[0].innerHTML = innerHTML;
-				windowFadeIn();
-			},
-			error : function(request, status, error) {
-				alert(request);
-			}
-		});
+		},1500);
 	},1500);
+	//코멘트 update
+	
 }
 

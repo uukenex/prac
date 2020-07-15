@@ -193,7 +193,8 @@ public class GameController {
 	@RequestMapping(value = "/gameUtil/insertGameCnt", method = RequestMethod.POST)
 	public @ResponseBody HashMap<String, Object> gameUtil_insertGameCnt(@RequestParam String msg,
 			@RequestParam String userName, @RequestParam String mediaCode, @RequestParam String ip,
-			@RequestParam int cnt, @RequestParam String gameNo) {
+			@RequestParam int cnt, @RequestParam String gameNo, @RequestParam String dbDate,
+			@RequestParam String flag) {
 		HashMap<String, Object> rtnMap = new HashMap<>();
 
 		HashMap<String, Object> hashMap = new HashMap<>();
@@ -203,6 +204,8 @@ public class GameController {
 		hashMap.put("ip", ip);
 		hashMap.put("cnt", cnt);
 		hashMap.put("gameSeq", gameNo);
+		hashMap.put("dbDate", dbDate);
+		hashMap.put("flag", flag);
 
 		try {
 			game1Service.saveGameCntTx(hashMap);

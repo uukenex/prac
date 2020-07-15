@@ -32,7 +32,12 @@ public class Game1ServiceImpl implements Game1Service {
 
 	@Override
 	public int saveGameCntTx(HashMap<String, Object> hashMap) throws Exception {
-		return game1DAO.insertGameCnt(hashMap);
+		if (hashMap.get("flag").toString().equals("I")) {
+			return game1DAO.insertGameCnt(hashMap);
+		} else {
+			return game1DAO.updateGameCnt(hashMap);
+		}
+
 	}
 
 	@Override
