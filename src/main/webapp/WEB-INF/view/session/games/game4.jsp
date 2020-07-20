@@ -18,6 +18,8 @@
 	<script
 		src="<%=request.getContextPath()%>/game_set/js/gameutil.js?v=<%=System.currentTimeMillis()%>"></script>
 	<script language="javascript">
+		var db_game_no = 4;
+	
 		var is_reverse = false;
 		var is_dup_speed=false;
 		var is_game_over = false;
@@ -256,6 +258,10 @@
 			
 			clearTimeout(rotateVar);
 			clearTimeout(end_timer);
+			
+			common_game_over(db_game_no, cnt, arg0,'${userId }');
+			
+			/* 
 			windowFadeOut();
 			
 			if(!isLocal){
@@ -314,7 +320,7 @@
 				
 				
 			},1500);
-			
+			 */
 			
 		}
 		

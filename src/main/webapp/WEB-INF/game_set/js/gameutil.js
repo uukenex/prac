@@ -13,12 +13,12 @@ var flag_common_game_over = false;
 var dbDate = new Date().toISOString().slice(0, 19).replace('T', ' ');
 
 if(!isLocal){
-
+/*
 	if(location.href.indexOf('game1') > 0 || location.href.indexOf('game2') > 0
 	|| location.href.indexOf('game3') > 0 || location.href.indexOf('game4') > 0 ){
-		alert('유지보수중인 항목입니다.');
-		history.back();
-	}
+		//alert('유지보수중인 항목입니다.');
+		//history.back();
+	}*/
 }
 
 document.oncontextmenu = function(e) {

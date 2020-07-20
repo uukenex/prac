@@ -17,6 +17,8 @@
 	<script src="<%=request.getContextPath() %>/game_set/js/gameutil.js?v=<%=System.currentTimeMillis() %>"></script>
 	<script language="javascript">
 	<!-- 전역 변수 -->
+		var db_game_no = 3;
+	
 		var cellCnt = ${cell};
 		var cellLength = (cellCnt - 1).toString().length; //cellCnt의 자릿수 체크 , substr하기 위함
 		var cellRockCnt = 2; //벽 갯수
@@ -270,56 +272,31 @@
 			var mediaCode = getMediaCode();
 			
 			function gameOver(arg0){
+				var msg = '';
 				$('#'+x+''+y).val('9').trigger('change');
 				gameOverFlag = true;
 				setTimeout(function(){
 					var cnt = Number(point)*Number(q.length()); 
 					
-					if(isLocal){
-						console.log('testMode '+arg0);
-						arg0 = 'testMode';
-					}
-					
-					var promptVal =null;
 					switch(arg0){
 						case 1:
-							promptVal = prompt('벽에 부딪힘..'+cnt+'점 \n이름을 입력해주세요.');
+							msg ='벽에 부딪힘..';
 							break;
 						case 2:
-							promptVal = prompt('장애물에 부딪힘..'+cnt+'점\n이름을 입력해주세요.');
+							msg = '장애물에 부딪힘..';
 							break;
 						case 3:
-							promptVal = prompt('꼬리에 부딪힘..'+cnt+'점\n이름을 입력해주세요.');
+							msg = '꼬리에 부딪힘..';
 							break;
 						case 4:
-							promptVal = prompt('max점수..'+cnt+'점\n이름을 입력해주세요.');
+							msg = 'max점수..';
 							break;
 						default:
 							
 							return;
 					}
 					
-					if(promptVal==null){
-						return;
-					}
-					
-					$.ajax({
-						type : "post",
-						url : "/game3/saveGame3Cnt",
-						data : {
-							userName : promptVal,						
-							mediaCode: mediaCode,
-							ip : ip(),
-							cnt : cnt
-						},
-						success : function(res) {
-							alert(cnt+"점수가 저장되었습니다");
-							
-						},
-						error : function(request, status, error) {
-							alert(request);
-						}
-					});
+					common_game_over(db_game_no, cnt, msg,'${userId }');
 					
 				},4000);
 				

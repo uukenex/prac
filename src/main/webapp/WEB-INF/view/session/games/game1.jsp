@@ -18,14 +18,18 @@ table tr td {
 	border: solid 1px black;
 }
 </style>
-
 </HEAD>
 <BODY onload="onloadFunc()">
-	<script src="<%=request.getContextPath() %>/game_set/js/gameutil.js?v=<%=System.currentTimeMillis() %>"></script>
 	<script src="http://code.jquery.com/jquery.js"></script>
+	<script src="<%=request.getContextPath()%>/game_set/js/gameutil.js?v=<%=System.currentTimeMillis()%>"></script>
 	<script type="text/javascript" src="http://jsgetip.appspot.com"></script>
+	
 	<script language="javascript">
+	
+	var db_game_no = 1;
+	
 		function onloadFunc() {
+			
 			var windowWidth = $(window).width();
 			if (windowWidth > 640) {
 				windowWidth = 640;
@@ -271,21 +275,9 @@ table tr td {
 			if (endCnt == 9) {
 				clearTimeout(timer);
 				//alert('종료. 점수확인');
-				$.ajax({
-					type : "post",
-					url : "/game1/saveGame1Cnt",
-					data : {
-						mediaCode: mediaCode,
-						ip : ip(),
-						cnt : getCnt
-					},
-					success : function(res) {
-						alert(getCnt+"점수가 저장되었습니다");
-					},
-					error : function(request, status, error) {
-						alert(request);
-					}
-				});
+				
+				common_game_over(db_game_no, getCnt, "",'${userId }');
+				
 			}
 
 		}

@@ -182,6 +182,7 @@
         		keypress[key] = false;
         	});
         	
+        	/* 터치 액션 .. 개발 진행중
         	
         	var char_touch_point_x;
         	var char_touch_point_y;
@@ -223,55 +224,8 @@
   	      	  console.log(pointerEventToXY(e)); // will return obj ..kind of {x:20,y:40}
   	      	})
         	
-            //document.addEventListener("touchstart",function(e){  
-      		
-      		/* 
-      		move_touch_point_x_before = e.targetTouches[0].pageX;
-      		move_touch_point_y_before = e.targetTouches[0].pageY; 
-      		 */
-            //});  
-      /* 
-            document.addEventListener("touchmove",function(e){  
-            	var out = {x:0, y:0};
-            	var touch = e.originalEvent.touches[0] || e.originalEvent.changedTouches[0];
-       	        out.x = touch.pageX;
-       	        out.y = touch.pageY;
-       	        
-       	        console.log(out); */
-            	/* 
-            	char_touch_point_x = $('#charimg')[0].getBoundingClientRect().top;
-            	char_touch_point_y = $('#charimg')[0].getBoundingClientRect().left;
-            	 */
-            	/*  
-                move_touch_point_x_after = e.targetTouches[0].pageX;
-          		move_touch_point_y_after = e.targetTouches[0].pageY;
-          		
-          		move_calc_x = move_touch_point_x_after-move_touch_point_x_before;
-          		move_calc_y = move_touch_point_y_after-move_touch_point_y_before;
-          		console.log(move_calc_x+' , '+move_calc_y);
-          		 */
-          		/* 
-          		if(move_calc_x < 0) keypress['37'] = true;
-          		if(move_calc_y < 0) keypress['38'] = true;
-          		if(move_calc_x > 0) keypress['39'] = true;
-          		if(move_calc_y > 0) keypress['40'] = true; */
-          		//charx = charx+()/1000;
-          		//chary = chary+(move_touch_point_y_after-move_touch_point_y_before)/1000;
-          		
-          		//move_touch_point_x_after = move_touch_point_x_before;
-          		//move_touch_point_y_after = move_touch_point_y_before;
-          		
-          //  });  
-      
-          // document.addEventListener("touchend",function(e){
-            	//console.log('touchend');
-            	/* 
-            	if(move_calc_x < 0) keypress['37'] = false;
-          		if(move_calc_y < 0) keypress['38'] = false;
-          		if(move_calc_x > 0) keypress['39'] = false;
-          		if(move_calc_y > 0) keypress['40'] = false;
- */      
-          //  });  
+  	      	
+  	      	 */
 
 
         	
