@@ -180,3 +180,10 @@ table.rank tr td {
     position: relative;
     width: 100px;
 }
+
+.char_chat{
+	background: black;
+	width: 20px;
+	height: 20px;
+	
+}

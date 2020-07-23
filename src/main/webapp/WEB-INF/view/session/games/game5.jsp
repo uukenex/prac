@@ -87,7 +87,7 @@
     		var range_atk_x_org = charx+37*2;
     		var range_atk_y_org = chary+63-18;
     		
-    		main_sub_interval = setInterval(function(){ // 주기적으로 검사
+    		main_interval = setInterval(function(){ // 주기적으로 검사
     			if(charx < 0) charx=0;
     			if(chary < 0) chary=0;
     			if(charx > 400-37-18) charx=400-37-18;
