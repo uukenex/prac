@@ -130,7 +130,7 @@
     			if(msg != ''){
     				send('#chat',msg, chat_float_area.left , chat_float_area.top );
     				
-    				
+    				 
     				/* 
     				$('#chat_space').append('<input type="text" class="chat chat_float" id="chat_float'+v_chat_count+'" readonly="true"></input>'); 
     				$('#chat_float'+v_chat_count).css({top: chat_float_area.top-30, left: chat_float_area.left-37*2});
