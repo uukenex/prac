@@ -27,12 +27,15 @@
 		var db_game_no = 6;
 		
 		var v_chat_timer;//clear timer variable - chat floating box
+		var v_sp_count = 0;
 		
 		var flag_enter = false; //엔터 눌렸는지 여부 검사
 		var flag_chat_float = false;  // 채팅창 떠있는지 검사 
+		var flag_bullet_create = false; //공격 (space)
 		
 		var main_interval ;
-		var sub_interval;
+		
+		var last_key;
 		
     	$(function(){
     		var keypress = {}, // 어떤 키가 눌려 있는지 저장
@@ -68,26 +71,21 @@
     				send('#chat','', charx , chary );
     			}
     			
-    			
-    			
     			$charimg.css({top: chary, left: charx});
     			
     			
     		}, 10); // 매 0.01 초마다 실행
-    	 
-    		sub_interval = setInterval(function(){
-        		//채팅창 
-        		
-        		/* if(flag_chat_float){
-        			var $chat_float = $('.chat_float');
-    				var chat_float_area = $('#char_${userNick}')[0].getBoundingClientRect();
-    				$chat_float.css({top: chat_float_area.top-30, left: chat_float_area.left-37*2});
-    			}else{
-    				$('.chat_float').remove();
-    			} */
-        		
-        	}, 10);	
     		
+			sub_interval = setInterval(function(){ // 주기적으로 검사
+				$charimg.text(last_key);
+			
+				if(keypress['32']){
+    				f_bullet_create(v_sp_count,4,charx,chary,last_key);
+    			}
+    			
+				
+    			
+    		}, 10); // 매 0.01 초마다 실행
     		
     		//window Event
         	$(document).keydown(function(e){ // 어떤 키가 눌렸는지 저장 
@@ -99,11 +97,17 @@
         			$('#chat')[0].text += key;
         		} else{
         			keypress[key] = true;
+        			if(key == '37' || key =='38' ||key =='39'||key=='40'){
+        				last_key = key;	
+        			}
         		}
         	});
         	$(document).keyup(function(e){ // 눌렸던 키를 해제
         		var key = e.which.toString();
         		keypress[key] = false;	
+        		if(key == '37' || key =='38' ||key =='39'||key=='40'){
+    				last_key = key;	
+    			}
         	});
     		
     		
@@ -121,7 +125,7 @@
     			setTimeout(function(){ 
     				$("#chat").focus();
     			}, 1);
-    			
+    			 
     		}else{
     			flag_enter= false;
     			msg = $('#chat').val();
@@ -129,25 +133,57 @@
     			
     			if(msg != ''){
     				send('#chat',msg, chat_float_area.left , chat_float_area.top );
-    				
     				 
-    				/* 
-    				$('#chat_space').append('<input type="text" class="chat chat_float" id="chat_float'+v_chat_count+'" readonly="true"></input>'); 
-    				$('#chat_float'+v_chat_count).css({top: chat_float_area.top-30, left: chat_float_area.left-37*2});
-    				$('#chat_float'+v_chat_count).val(msg);
-    				 */
-    				 /* 
-    				flag_chat_float = true;
-    				
-    				clearTimeout(v_chat_timer);
-    				
-    				v_chat_timer = setTimeout(function() {
-    					flag_chat_float = false;
-    				}, 2000);
-    				v_chat_count++; */
     			}
     		}
     	}
+    	
+    	
+    	
+    	function f_bullet_create(sp_count,e_speed,x,y,l_key){
+    		var bullet_move_timer;
+    		
+    		if(!flag_bullet_create){
+    			flag_bullet_create = true;
+    			$('#bullet_field').append('<div class="bullet" id="bullet_${userNick}'+sp_count+'"></div>'); 
+    			
+    			bullet_move_timer = setInterval(function(){
+    				
+    				bullet_move(sp_count,l_key);
+    			}, 10); 
+    			
+    			setTimeout(function() {
+    				flag_bullet_create = false;
+    				v_sp_count++;
+    			}, 300);	
+    		}
+    		
+    		function bullet_move(sp_count,lkey){
+    			switch(lkey){
+    				case '37'://left
+    					x -= e_speed; 
+    					break;
+    				case '38'://up
+    					y -= e_speed; 
+    					break;
+    				case '39'://right
+    					x += e_speed; 
+    					break;
+    				case '40'://down
+    					y += e_speed; 
+    					break;
+    			}
+    			$('#bullet'+sp_count).css('display','block');
+    			
+    			$('#bullet_${userNick}'+sp_count).css({top: y, left: x}); 
+    			if(x < -30 || x > 430 || y < -30 || y > 430 ){
+    				clearTimeout(bullet_move_timer);
+    				$('#bullet_${userNick}'+sp_count).remove();
+    			}
+    		}
+    		
+    	}
+    	
     }
  
 	
@@ -156,7 +192,7 @@
 	</script>
 
 	<section id="space" class='space'>
-		<%-- <div id='char_${userNick}' class="char_chat"></div> --%>
+		<div id="bullet_field"></div>
 	</section>
 	
 	

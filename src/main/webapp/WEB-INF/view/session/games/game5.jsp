@@ -16,7 +16,6 @@
 	<script type="text/javascript" src="http://jsgetip.appspot.com"></script>
 	<script type="text/javascript" src="http://bernii.github.io/gauge.js/dist/gauge.min.js"></script>
 	<script src="<%=request.getContextPath()%>/game_set/js/gameutil.js?v=<%=System.currentTimeMillis()%>"></script>
-	<script src="<%=request.getContextPath()%>/game_set/js/websocket_module.js?v=<%=System.currentTimeMillis()%>"></script>
 	<script language="javascript">
 	
 	function init()
@@ -728,7 +727,6 @@
     			$('#chat').remove();
     			
     			if(msg != ''){
-    				send('#chat',msg);
     				if(msg == '시작'){
     					flag_start_create_enemy = true;
     					v_score_life = 3;
@@ -885,12 +883,6 @@
 	        <input type="hidden" value='<%=session.getId().substring(0, 6)%>'
 	            id='chat_id' />
 	    </c:if>
-	    <!--     채팅창 -->
-	    <div id="_chatbox" style="display: inline;">
-	        <fieldset>
-	            <textarea id="messageWindow" cols="60" rows="6" readonly="true"></textarea>
-	        </fieldset>
-	    </div>
-    </section>
+	</section>
 </BODY>
 </HTML>

@@ -182,8 +182,16 @@ table.rank tr td {
 }
 
 .char_chat{
-	background: black;
+	border: 1px solid black;
+	background: white;
 	width: 20px;
 	height: 20px;
 	
+}
+
+.bullet {
+	background: red;
+	width: 5px;
+	height: 5px;
+	display: hidden;
 }
