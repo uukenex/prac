@@ -39,7 +39,7 @@ public class WebSocket4 {
 
 		for (Session client : clients) {
 			try {
-				client.getBasicRemote().sendText("|||누군가가 입장헸습니다., 현재 " + clients.size() + "명");
+				client.getBasicRemote().sendText("0|누군가가 입장헸습니다. 현재 " + clients.size() + "명");
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
@@ -53,7 +53,7 @@ public class WebSocket4 {
 
 		for (Session client : clients) {
 			try {
-				client.getBasicRemote().sendText("|||누군가가 퇴장했습니다. 현재 " + clients.size() + "명");
+				client.getBasicRemote().sendText("0|누군가가 퇴장했습니다. 현재 " + clients.size() + "명");
 			} catch (IOException e) {
 				e.printStackTrace();
 			}

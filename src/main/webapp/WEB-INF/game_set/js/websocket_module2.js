@@ -1,5 +1,6 @@
 	var webSocket;
 	var v_chat_count=0;
+	var v_sp_count = 0;
 	
 	if(isLocal){
 		webSocket = new WebSocket('ws://localhost:80/WebSocket4');
@@ -7,12 +8,13 @@
 		webSocket = new WebSocket('ws://54.180.82.173/WebSocket4');
 	}
 	
+	/*
     webSocket.onerror = function(event) {
         onError(event)
     };
     webSocket.onopen = function(event) {
         onOpen(event)
-    };
+    };*/
     webSocket.onmessage = function(event) {
         onMessage(event)
     };
@@ -22,35 +24,114 @@
         var orgMsg = $("#messageWindow").html();
         
         var fulldata = newMsg.split('|')
-        var targetName = fulldata[0];
-        var targetX = fulldata[1];
-        var targetY = fulldata[2];
-        var targetMsg = fulldata[3];
         
+        var msg_gb = fulldata[0];
         
-        if(!targetName == ""){
-        	var newChar = "char_"+targetName;
-            
-            if( $('#'+newChar).length == 0 ){
-            	$('#space').append('<div id='+newChar+' class="char_chat"></div>');
-            }else{
-            	$('#'+newChar).css({top: targetY, left: targetX});
-            }
-            
-        }
+        /**msg gb
+         * 0 : 시스템메시지
+         * 1 : 채팅
+         * 2 : 이동
+         * 3 : 공격
+         * */
         
-        if (!targetMsg == "" ) {
-        	$("#messageWindow").html(orgMsg +targetName + " : "+ targetMsg + "\n");
-        	$("#messageWindow")[0].scrollTop = $("#messageWindow")[0].scrollHeight;
-        	
-        	if(!(newMsg.indexOf('|||') == 0)){
-
-            	var chatbox_create_yn = true;
+        switch(msg_gb){
+        	case '0': //시스템메시지
+        		//메시지박스 출력
+                $("#messageWindow").html(orgMsg +fulldata[1] + "\n");
+            	$("#messageWindow")[0].scrollTop = $("#messageWindow")[0].scrollHeight;
+        		break;
+        		
+        	case '1': //채팅
+        		var targetName = fulldata[1];
+                var targetX = fulldata[2];
+                var targetY = fulldata[3];
+                var targetMsg = fulldata.slice(4).join('');;
+                
+                var chatbox_create_yn = true;
             	$('#chat_space').append('<input type="text" class="chat chat_float" id="chat_float'+v_chat_count+'" readonly="true"></input>'); 
             	chatterbox_timer_function(v_chat_count,targetName,targetX,targetY,targetMsg);
             	
-            }
-        } 
+            	//메시지박스 출력
+                $("#messageWindow").html(orgMsg +targetName + " : "+ targetMsg + "\n");
+            	$("#messageWindow")[0].scrollTop = $("#messageWindow")[0].scrollHeight;
+        		break;
+        		
+        	case '2': //이동
+        		var targetName = fulldata[1];
+                var targetX = fulldata[2];
+                var targetY = fulldata[3];
+                
+            	var newChar = "char_"+targetName;
+                
+                if( $('#'+newChar).length == 0 ){
+                	$('#space').append('<div id='+newChar+' class="char_chat"></div>');
+                }else{
+                	$('#'+newChar).css({top: targetY, left: targetX});
+                }
+                    
+        		break;
+        		
+        	case '3':
+        		var direction = fulldata[4];
+                var startX = Number(fulldata[2]);
+                var startY = Number(fulldata[3]);
+                var b_speed = 3;
+        		
+                create_socket_bullet(v_sp_count,b_speed,startX,startY,direction)
+                v_sp_count++;
+    			 
+    			
+    			
+    			
+    			function create_socket_bullet(sp_count,speed,bul_x,bul_y,l_key){
+    				var bullet_move_timer;
+        			
+    				$('#bullet_field').append('<div class="bullet" id="bullet_'+$('#chat_id').val()+sp_count+'"></div>');
+    				
+        			bullet_move_timer = setInterval(function(){
+        				$('#bullet_'+$('#chat_id').val()+sp_count).css('display','block');
+        				bullet_move(sp_count, direction);
+        			}, 10); 
+        			
+        			function bullet_move(inner_sp_count,lkey){
+            			switch(lkey){
+            				case '37'://left
+            					bul_x -= speed; 
+            					break;
+            				case '38'://up
+            					bul_y -= speed; 
+            					break;
+            				case '39'://right
+            					bul_x += speed; 
+            					break;
+            				case '40'://down
+            					bul_y += speed; 
+            					break;
+            			}
+            			
+            			$('#bullet_'+$('#chat_id').val()+inner_sp_count).css({top: bul_y, left: bul_x}); 
+            			if(bul_x < -30 || bul_x > 430 || bul_y < -30 || bul_y > 430 ){
+            				clearTimeout(bullet_move_timer);
+            				$('#bullet_'+$('#chat_id').val()+inner_sp_count).remove();
+            			}
+            		}
+    			}
+    			
+    			
+                
+        		break;
+        		
+        }
+    }
+    
+    
+    
+    function clientMsg(f_data){
+    	
+    }
+    
+    function allMsg(f_data){
+    	
     }
     
     
@@ -66,30 +147,24 @@
 			if(createYn){
 				chat_float_area = $('#'+newChar)[0].getBoundingClientRect();
 				$('#chat_float'+v_chat_count_values).css({top: chat_float_area.top, left: chat_float_area.left});
+				$('#chat_float'+v_chat_count_values).css('display','block');
 			}
     	},10);
     		
 		
 		
 		chat_timer = setTimeout(function() {
-			$('.chat_float').remove();
+			$('#chat_float'+v_chat_count_values).remove();
 			createYn = false;
-		}, 2000);
+		}, 3000);
 		v_chat_count++;
 		
     }
     
-    
-    function onOpen(event) {
-    	webSocket.send($("#chat_id").val() + " 님 입장");
-    }
-    function onError(event) {
-        alert(event.data);
-    }
-    function send(chatbox_id, msg, x, y) {
+    function send(msg_gb, msg, x, y) {
     	
     	var sendVal;
-    	sendVal = $("#chat_id").val() + '|' + x + '|' + y + '|' + msg;
+    	sendVal = msg_gb+"|"+$("#chat_id").val() + '|' + x + '|' + y + '|' + msg;
     	webSocket.send(sendVal);
     	
     }

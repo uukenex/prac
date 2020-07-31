@@ -21,9 +21,24 @@
 	<script src="<%=request.getContextPath()%>/game_set/js/gameutil.js?v=<%=System.currentTimeMillis()%>"></script>
 	<script src="<%=request.getContextPath()%>/game_set/js/websocket_module2.js?v=<%=System.currentTimeMillis()%>"></script>
 	<script language="javascript">
-	//TESTCOMMIT
+	
+	<c:if test="${(testMode == true)}">
+		//TESTMODE
+		function testMode(){
+			var id = prompt('사용할 닉네임입력');
+			if(id ==null || id== undefined || id===null ){
+				alert('다시입력해주세요');
+				location.reload();
+			}
+			$('#chat_id').val(id);
+		}
+	</c:if>
+	
 	function init()
     {
+		<c:if test="${(testMode == true)}">
+			testMode();
+		</c:if>
 		var db_game_no = 6;
 		
 		var v_chat_timer;//clear timer variable - chat floating box
@@ -40,12 +55,13 @@
     	$(function(){
     		var keypress = {}, // 어떤 키가 눌려 있는지 저장
     		charx = 0, chary = 0, speed = 2, 
-    		$charimg = $('#char_${userNick}');
+    		//$charimg = $('#char_${userNick}');
+    		$charimg = $('#char_'+$('#chat_id').val());
     		
     		main_interval = setInterval(function(){ // 주기적으로 검사
     			
     			if($charimg.length==0){
-    				$charimg = $('#char_${userNick}');	
+    				$charimg = $('#char_'+$('#chat_id').val());	
     			}
     		
     			
@@ -56,19 +72,19 @@
     			
     			if(keypress['37']) {
     				charx -= speed; // left
-    				send('#chat','', charx , chary );
+    				send('2','', charx , chary );
     			}
     			if(keypress['38']) {
     				chary -= speed; // up
-    				send('#chat','', charx , chary );
+    				send('2','', charx , chary );
     			}
     			if(keypress['39']) {
     				charx += speed; // right
-    				send('#chat','', charx , chary );
+    				send('2','', charx , chary );
     			}
     			if(keypress['40']) {
     				chary += speed; // down
-    				send('#chat','', charx , chary );
+    				send('2','', charx , chary );
     			}
     			
     			$charimg.css({top: chary, left: charx});
@@ -82,12 +98,8 @@
 				if(keypress['32']){
     				f_bullet_create(v_sp_count,4,charx,chary,last_key);
     			}
-    			
-				
-    			
     		}, 10); // 매 0.01 초마다 실행
     		
-    		//window Event
         	$(document).keydown(function(e){ // 어떤 키가 눌렸는지 저장 
         		var key = e.which.toString();
         	
@@ -106,7 +118,7 @@
         		var key = e.which.toString();
         		keypress[key] = false;	
         		if(key == '37' || key =='38' ||key =='39'||key=='40'){
-    				last_key = key;	
+    			//	last_key = key;	
     			}
         	});
     		
@@ -115,7 +127,7 @@
     	
     	function f_chatter_box_create(x,y){
     		var msg;
-    		var chat_float_area = $('#char_${userNick}')[0].getBoundingClientRect();
+    		var chat_float_area = $('#char_'+$('#chat_id').val())[0].getBoundingClientRect();
     		
     		if(!flag_enter){
     			flag_enter= true;
@@ -132,32 +144,39 @@
     			$('#chat').remove();
     			
     			if(msg != ''){
-    				send('#chat',msg, chat_float_area.left , chat_float_area.top );
+    				//send('1','#chat',msg, chat_float_area.left , chat_float_area.top );
+    				send('1', msg, chat_float_area.left , chat_float_area.top );
     				 
     			}
     		}
     	}
     	
-    	
-    	
     	function f_bullet_create(sp_count,e_speed,x,y,l_key){
     		var bullet_move_timer;
     		
-    		if(!flag_bullet_create){
-    			flag_bullet_create = true;
-    			$('#bullet_field').append('<div class="bullet" id="bullet_${userNick}'+sp_count+'"></div>'); 
-    			
-    			bullet_move_timer = setInterval(function(){
-    				$('#bullet_${userNick}'+sp_count).css('display','block');
-    				bullet_move(sp_count,l_key);
-    			}, 10); 
-    			
-    			setTimeout(function() {
-    				flag_bullet_create = false;
-    				v_sp_count++;
-    			}, 300);	
+    		if(!l_key){
+    			return;
     		}
     		
+    		if(!flag_bullet_create){
+    			flag_bullet_create = true;
+    			
+    			send('3',l_key, x, y)
+    			
+    			/* 
+    			$('#bullet_field').append('<div class="bullet" id="bullet_'+$('#chat_id').val()+sp_count+'"></div>'); 
+    			
+    			bullet_move_timer = setInterval(function(){
+    				$('#bullet_'+$('#chat_id').val()+sp_count).css('display','block');
+    				bullet_move(sp_count,l_key);
+    			}, 10); 
+    			 */
+    			setTimeout(function() {
+    				flag_bullet_create = false;
+    				//v_sp_count++;
+    			}, 300);	
+    		}
+    		/* 
     		function bullet_move(sp_count,lkey){
     			switch(lkey){
     				case '37'://left
@@ -174,13 +193,13 @@
     					break;
     			}
     			
-    			$('#bullet_${userNick}'+sp_count).css({top: y, left: x}); 
+    			$('#bullet_'+$('#chat_id').val()+sp_count).css({top: y, left: x}); 
     			if(x < -30 || x > 430 || y < -30 || y > 430 ){
     				clearTimeout(bullet_move_timer);
-    				$('#bullet_${userNick}'+sp_count).remove();
+    				$('#bullet_'+$('#chat_id').val()+sp_count).remove();
     			}
     		}
-    		
+    		 */
     	}
     	
     }

@@ -195,3 +195,7 @@ table.rank tr td {
 	height: 5px;
 	display: none;
 }
+
+.chat_float{
+	display: none;
+}
