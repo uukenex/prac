@@ -9,7 +9,7 @@
 	content="width=device-width, initial-scale=1, user-scalable=no" />
 
 <TITLE>chat-chat</TITLE>
-<link rel="stylesheet" href="<%=request.getContextPath()%>/game_set/css/game5.css?v=<%=System.currentTimeMillis()%>" />
+<link rel="stylesheet" href="<%=request.getContextPath()%>/game_set/css/game6.css?v=<%=System.currentTimeMillis()%>" />
 </HEAD>
 <BODY onload="init()">
 	<c:if test="${(userId ne '') and !(empty userId)}">
@@ -21,7 +21,7 @@
 	<script src="<%=request.getContextPath()%>/game_set/js/gameutil.js?v=<%=System.currentTimeMillis()%>"></script>
 	<script src="<%=request.getContextPath()%>/game_set/js/websocket_module2.js?v=<%=System.currentTimeMillis()%>"></script>
 	<script language="javascript">
-	
+	//TESTCOMMIT
 	function init()
     {
 		var db_game_no = 6;
@@ -148,7 +148,7 @@
     			$('#bullet_field').append('<div class="bullet" id="bullet_${userNick}'+sp_count+'"></div>'); 
     			
     			bullet_move_timer = setInterval(function(){
-    				
+    				$('#bullet_${userNick}'+sp_count).css('display','block');
     				bullet_move(sp_count,l_key);
     			}, 10); 
     			
@@ -173,7 +173,6 @@
     					y += e_speed; 
     					break;
     			}
-    			$('#bullet'+sp_count).css('display','block');
     			
     			$('#bullet_${userNick}'+sp_count).css({top: y, left: x}); 
     			if(x < -30 || x > 430 || y < -30 || y > 430 ){
