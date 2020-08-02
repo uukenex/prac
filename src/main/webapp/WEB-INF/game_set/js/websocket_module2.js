@@ -28,20 +28,20 @@
         var msg_gb = fulldata[0];
         
         /**msg gb
-         * 0 : 시스템메시지
-         * 1 : 채팅
-         * 2 : 이동
-         * 3 : 공격
+         * 00 : 시스템메시지
+         * 01 : 채팅
+         * 02 : 이동
+         * 03 : 공격
          * */
         
         switch(msg_gb){
-        	case '0': //시스템메시지
+        	case '00': //시스템메시지
         		//메시지박스 출력
                 $("#messageWindow").html(orgMsg +fulldata[1] + "\n");
             	$("#messageWindow")[0].scrollTop = $("#messageWindow")[0].scrollHeight;
         		break;
         		
-        	case '1': //채팅
+        	case '01': //채팅
         		var targetName = fulldata[1];
                 var targetX = fulldata[2];
                 var targetY = fulldata[3];
@@ -56,7 +56,7 @@
             	$("#messageWindow")[0].scrollTop = $("#messageWindow")[0].scrollHeight;
         		break;
         		
-        	case '2': //이동
+        	case '02': //이동
         		var targetName = fulldata[1];
                 var targetX = fulldata[2];
                 var targetY = fulldata[3];
@@ -71,7 +71,7 @@
                     
         		break;
         		
-        	case '3':
+        	case '03':
         		var direction = fulldata[4];
                 var startX = Number(fulldata[2]);
                 var startY = Number(fulldata[3]);

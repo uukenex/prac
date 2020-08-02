@@ -12,10 +12,9 @@
 <link rel="stylesheet" href="<%=request.getContextPath()%>/game_set/css/game6.css?v=<%=System.currentTimeMillis()%>" />
 </HEAD>
 <BODY onload="init()">
-	<c:if test="${(userId ne '') and !(empty userId)}">
-		<input type="hidden" value='${userNick}' id='chat_id' />
-	</c:if>
 
+	<input type="hidden" value='${userNick}' id='chat_id' />
+	
 	<script src="http://code.jquery.com/jquery.js"></script>
 	<script type="text/javascript" src="http://jsgetip.appspot.com"></script>
 	<script src="<%=request.getContextPath()%>/game_set/js/gameutil.js?v=<%=System.currentTimeMillis()%>"></script>
@@ -72,19 +71,19 @@
     			
     			if(keypress['37']) {
     				charx -= speed; // left
-    				send('2','', charx , chary );
+    				send('02','', charx , chary );
     			}
     			if(keypress['38']) {
     				chary -= speed; // up
-    				send('2','', charx , chary );
+    				send('02','', charx , chary );
     			}
     			if(keypress['39']) {
     				charx += speed; // right
-    				send('2','', charx , chary );
+    				send('02','', charx , chary );
     			}
     			if(keypress['40']) {
     				chary += speed; // down
-    				send('2','', charx , chary );
+    				send('02','', charx , chary );
     			}
     			
     			$charimg.css({top: chary, left: charx});
@@ -118,10 +117,8 @@
         		var key = e.which.toString();
         		keypress[key] = false;	
         		if(key == '37' || key =='38' ||key =='39'||key=='40'){
-    			//	last_key = key;	
     			}
         	});
-    		
     		
     	});
     	
@@ -144,8 +141,7 @@
     			$('#chat').remove();
     			
     			if(msg != ''){
-    				//send('1','#chat',msg, chat_float_area.left , chat_float_area.top );
-    				send('1', msg, chat_float_area.left , chat_float_area.top );
+    				send('01', msg, chat_float_area.left , chat_float_area.top );
     				 
     			}
     		}
@@ -161,47 +157,12 @@
     		if(!flag_bullet_create){
     			flag_bullet_create = true;
     			
-    			send('3',l_key, x, y)
-    			
-    			/* 
-    			$('#bullet_field').append('<div class="bullet" id="bullet_'+$('#chat_id').val()+sp_count+'"></div>'); 
-    			
-    			bullet_move_timer = setInterval(function(){
-    				$('#bullet_'+$('#chat_id').val()+sp_count).css('display','block');
-    				bullet_move(sp_count,l_key);
-    			}, 10); 
-    			 */
+    			send('03',l_key, x, y)
     			setTimeout(function() {
     				flag_bullet_create = false;
-    				//v_sp_count++;
     			}, 300);	
     		}
-    		/* 
-    		function bullet_move(sp_count,lkey){
-    			switch(lkey){
-    				case '37'://left
-    					x -= e_speed; 
-    					break;
-    				case '38'://up
-    					y -= e_speed; 
-    					break;
-    				case '39'://right
-    					x += e_speed; 
-    					break;
-    				case '40'://down
-    					y += e_speed; 
-    					break;
-    			}
-    			
-    			$('#bullet_'+$('#chat_id').val()+sp_count).css({top: y, left: x}); 
-    			if(x < -30 || x > 430 || y < -30 || y > 430 ){
-    				clearTimeout(bullet_move_timer);
-    				$('#bullet_'+$('#chat_id').val()+sp_count).remove();
-    			}
-    		}
-    		 */
     	}
-    	
     }
  
 	
