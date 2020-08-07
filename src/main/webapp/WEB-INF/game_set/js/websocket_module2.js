@@ -39,6 +39,8 @@
         		//메시지박스 출력
                 $("#messageWindow").html(orgMsg +fulldata[1] + "\n");
             	$("#messageWindow")[0].scrollTop = $("#messageWindow")[0].scrollHeight;
+            	$('.char_chat').remove();
+            	
         		break;
         		
         	case '01': //채팅
@@ -64,7 +66,7 @@
             	var newChar = "char_"+targetName;
                 
                 if( $('#'+newChar).length == 0 ){
-                	$('#space').append('<div id='+newChar+' class="char_chat"></div>');
+                	$('#space').append('<div id='+newChar+' class="char_chat '+targetName+'"></div>');
                 }else{
                 	$('#'+newChar).css({top: targetY, left: targetX});
                 }
@@ -72,9 +74,10 @@
         		break;
         		
         	case '03':
-        		var direction = fulldata[4];
+        		var targetName = fulldata[1];
                 var startX = Number(fulldata[2]);
                 var startY = Number(fulldata[3]);
+                var direction = fulldata[4];
                 var b_speed = 3;
         		
                 create_socket_bullet(v_sp_count,b_speed,startX,startY,direction)
@@ -86,10 +89,10 @@
     			function create_socket_bullet(sp_count,speed,bul_x,bul_y,l_key){
     				var bullet_move_timer;
         			
-    				$('#bullet_field').append('<div class="bullet" id="bullet_'+$('#chat_id').val()+sp_count+'"></div>');
+    				$('#bullet_field').append('<div class="bullet '+targetName+'" id="bullet_'+targetName+sp_count+'"></div>');
     				
         			bullet_move_timer = setInterval(function(){
-        				$('#bullet_'+$('#chat_id').val()+sp_count).css('display','block');
+        				$('#bullet_'+targetName+sp_count).css('display','block');
         				bullet_move(sp_count, direction);
         			}, 10); 
         			
@@ -109,10 +112,10 @@
             					break;
             			}
             			
-            			$('#bullet_'+$('#chat_id').val()+inner_sp_count).css({top: bul_y, left: bul_x}); 
+            			$('#bullet_'+targetName+inner_sp_count).css({top: bul_y, left: bul_x}); 
             			if(bul_x < -30 || bul_x > 430 || bul_y < -30 || bul_y > 430 ){
             				clearTimeout(bullet_move_timer);
-            				$('#bullet_'+$('#chat_id').val()+inner_sp_count).remove();
+            				$('#bullet_'+targetName+inner_sp_count).remove();
             			}
             		}
     			}
@@ -122,16 +125,6 @@
         		break;
         		
         }
-    }
-    
-    
-    
-    function clientMsg(f_data){
-    	
-    }
-    
-    function allMsg(f_data){
-    	
     }
     
     
