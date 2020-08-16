@@ -97,6 +97,24 @@
 				if(keypress['32']){
     				f_bullet_create(v_sp_count,4,charx,chary,last_key);
     			}
+				
+				//피격판정
+        		for(var i =0 ; i < $('.bullet').length ; i++){
+        			var b_class = $('.bullet')[i];
+        			var b_rect = b_class.getBoundingClientRect();
+					for(var j =0 ; j < $('.char_chat').length ; j++){
+						var t_class =  $('.char_chat')[j];
+						var t_rect =  t_class.getBoundingClientRect();
+						
+						if(meetBox(b_rect,t_rect)){
+	        				if(b_class.classList[1] == t_class.classList[1]){
+	            				continue;
+	            			}
+	        				$('.bullet')[i].remove();
+	        			}
+					}        			
+        		}
+				
     		}, 10); // 매 0.01 초마다 실행
     		
         	$(document).keydown(function(e){ // 어떤 키가 눌렸는지 저장 
