@@ -118,6 +118,19 @@ public class GamePageController {
 		model.addAttribute("testMode", "true");
 		return "session/games/game6";
 	}
+	
+	@RequestMapping(value = "/game7", method = RequestMethod.GET)
+	public String game7noSession(HttpSession session, Model model, @RequestParam(required = false, defaultValue = "10") int cell)
+			throws Exception {
+
+		Users user = (Users) session.getAttribute("Users");
+		if (user != null) {
+			model.addAttribute("userId", user.getUserId());
+			model.addAttribute("userNick", user.getUserNick());
+		}
+		model.addAttribute("testMode", "true");
+		return "session/games/game7";
+	}
 
 	/******************** Main games end *********************/
 
