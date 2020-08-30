@@ -9,7 +9,7 @@
 	content="width=device-width, initial-scale=1, user-scalable=no" />
 
 <TITLE>chat-chat</TITLE>
-<link rel="stylesheet" href="<%=request.getContextPath()%>/game_set/css/game6.css?v=<%=System.currentTimeMillis()%>" />
+<%-- <link rel="stylesheet" href="<%=request.getContextPath()%>/game_set/css/game6.css?v=<%=System.currentTimeMillis()%>" /> --%>
 </HEAD>
 <BODY onload="init()">
 
@@ -30,10 +30,25 @@
 	function init()
     {
 		initMakeCell();
-		initMakeCellColor();
+		initWindow();
     }	
 	
+	function mapChange(mapNo){
+		if(mapNo==0){
+			map = mapArr0;
+		}else{
+			map = mapArr1;
+		}
+		
+		map_1D_size = map.length; //A one-dimensional array size
+		map_2D_size = map.length*map.length; //A two-dimensional array size
+		map_1D_digit_point = (map.length - 1).toString().length;//D_POINT
+		
+		initMakeCell();
+	}
+	
 	function initMakeCell(){
+		$('#memories > tbody').remove();
 		$('#memories').append("<tbody>");
 		for (var x = 0; x < map_1D_size; x++) {
 			$('#memories > tbody:last').append("<tr>");
@@ -43,28 +58,27 @@
 			$('#memories > tbody:last').append("</tr>");
 		}
 		$('#memories').append("</tbody>");
+		
+		$('td').css('width', windowWidth / map_1D_size);
+		$('td').css('height', windowWidth / map_1D_size);
 	}
 		
+	//css only process
+	/* 
 	function initMakeCellColor(){
 		//https://dololak.tistory.com/364
-		//$('#memories > tbody > tr > td')[i].dataset.value;
-		for(var i=0;i<map_2D_size;i++){
-			switch($('#memories > tbody > tr > td')[i].dataset['value']){
-				case '0': 
-					$('#memories > tbody > tr > td')[i].classList.add('m');
-					break;
-				case '1': 
-					$('#memories > tbody > tr > td')[i].classList.add('s');
-					break;
-				case '4': 
-					$('#memories > tbody > tr > td')[i].classList.add('r');
-					break;
-				case '9': 
-					$('#memories > tbody > tr > td')[i].classList.add('e');
-					break;
-			}
-		}
 		
+		//$('#memories > tbody > tr > td')[i].dataset.value;
+		//$('#memories > tbody > tr > td')[i].dataset['value']
+		//$('#memories > tbody > tr > td')[i].classList.add('m')
+		
+	}
+	 */
+	function initWindow(){
+
+	
+		$('#space').append("<input type='button' value='map0' onclick='mapChange(0)'>");
+		$('#space').append("<input type='button' value='map1' onclick='mapChange(1)'>");
 	}
 	
 	</script>
@@ -81,6 +95,23 @@
 	table tr td {
 		text-align: center;
 		border: solid 1px black;
+		width: 30px;
+		height: 30px;
+	}
+		
+	/* css data-value control 
+	https://css-tricks.com/almanac/selectors/a/attribute */
+	#memories > tbody > tr > td[data-value="0"] {
+		background: white;
+	}
+	#memories > tbody > tr > td[data-value="1"] {
+		background: red;
+	}
+	#memories > tbody > tr > td[data-value="4"] {
+		background: gray;
+	}
+	#memories > tbody > tr > td[data-value="9"] {
+		background: blue;
 	}
 	</style>
 </BODY>
