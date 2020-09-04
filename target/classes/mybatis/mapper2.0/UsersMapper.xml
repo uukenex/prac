@@ -69,10 +69,10 @@
              INSERT_DATE )
           values (
              upper(#{userId, jdbcType=VARCHAR}),
-             #{ipAddr, jdbcType=VARCHAR},
-             #{sessionId, jdbcType=VARCHAR},
-             #{command, jdbcType=VARCHAR},
-             '0'||#{programId, jdbcType=VARCHAR},
+             null,
+             null,
+             null,
+             #{programId, jdbcType=VARCHAR},
              sysdate)
     </insert>
 

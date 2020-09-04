@@ -62,6 +62,8 @@
 		$('td').css('width', windowWidth / map_1D_size);
 		$('td').css('height', windowWidth / map_1D_size);
 	}
+	
+	
 		
 	//css only process
 	/* 
@@ -80,7 +82,8 @@
 		$('#space').append("<input type='button' value='map0' onclick='mapChange(0)'>");
 		$('#space').append("<input type='button' value='map1' onclick='mapChange(1)'>");
 	}
-	
+	 
+	 
 	</script>
 
 	<section id="space" class='space'>
