@@ -9,7 +9,7 @@ import my.prac.core.dto.CommentReply;
 import my.prac.core.dto.Comments;
 
 @Repository("core.prjboard.CommentDAO")
-public interface CommentDAO {
+public interface CommentDAO{
 	// 단일 게시글 보기
 	public Comments selectComment(int commentNo);
 

@@ -4,7 +4,6 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Random;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
@@ -21,7 +20,6 @@ import org.springframework.web.bind.annotation.ResponseBody;
 
 import my.prac.core.dto.Users;
 import my.prac.core.prjuser.service.UserService;
-import my.prac.core.util.SendMailUtil;
 
 @Controller
 public class UserController {
@@ -209,46 +207,6 @@ public class UserController {
 			msg = "검색 결과가 없습니다.";
 		} else {
 			msg = "검색결과는 다음과 같습니다." + result + "";
-		}
-		model.addAttribute("message", msg);
-		return "nonsession/join/joinok";
-	}
-
-	// 비번찾기
-	@RequestMapping(value = "/findPassword", method = RequestMethod.GET)
-	public String findPassword(Model model) {
-		return "nonsession/login/pw_find";
-	}
-
-	@RequestMapping("/searchPass")
-	public String searchPass(Model model, @RequestParam String id, @RequestParam String name,
-			@RequestParam String email) {
-		String msg = null;
-		String result = uService.SearchPass(id, name, email);
-		StringBuffer buffer = new StringBuffer();
-		Random random = new Random();
-
-		String chars[] = "A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z,a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,0,1,2,3,4,5,6,7,8,9"
-				.split(",");
-
-		for (int i = 0; i < 8; i++) {
-			buffer.append(chars[random.nextInt(chars.length)]);
-		}
-
-		if (result == null) {
-			msg = "검색 결과가 없습니다.";
-		} else {
-			SendMailUtil sendpass = new SendMailUtil();
-			sendpass.email_Password(email, buffer.toString());
-
-			// 패스워드를 업데이트 시켜줌
-			MyHash ht = new MyHash();
-			result = ht.testMD5(buffer.toString());
-
-			int passwordUpdate = uService.updatePass(id, result);
-			logger.trace("passwordUpdate:{}", passwordUpdate);
-
-			msg = "메일로 비밀번호가 전송되었습니다.";
 		}
 		model.addAttribute("message", msg);
 		return "nonsession/join/joinok";
