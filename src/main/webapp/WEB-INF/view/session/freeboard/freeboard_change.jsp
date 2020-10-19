@@ -76,7 +76,7 @@
 										<tr>
 											<td colspan="4">
 												<textarea name="content" id="content" class="editorContentWritter">
-													${comment.commentContent1 }
+													${comment.commentContent }
 												</textarea>
 											</td>
 										</tr>

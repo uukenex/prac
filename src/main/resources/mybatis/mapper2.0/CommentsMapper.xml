@@ -7,54 +7,50 @@
 
 	<select id="selectNo" resultType="int">
 		select max(comment_no) from
-		comments
+		TCOMMENT
 	</select>
 
 	<!-- 단일 게시글 보기 -->
 	<select id="selectComment" parameterType="int" resultType="my.prac.core.dto.Comments">
 		select * from
-		comments c
-		join users u on u.user_id=c.user_id
+		TCOMMENT c
+		join Tuser u on u.user_id=c.user_id
 		where comment_no= #{commentNo}
 	</select>
 
 	<!-- 게시글 쓰기(공지사항:관리자) 분류별 필요 -->
-	<insert id="insertComment" parameterType="Map" useGeneratedKeys="true"
-		keyProperty="commentNo" keyColumn="commentNo">
-		<selectKey resultType="integer" keyProperty="commentNo"
-			order="BEFORE">
-			select max(comment_No)+1 from comments
-		</selectKey>
-		insert into comments (comment_category,comment_name,
-		comment_content1,comment_date,comment_count,user_id) values
-		(#{commentCategory}
+	<insert id="insertComment" parameterType="Map">
+		
+		insert into TCOMMENT (comment_no,comment_category,comment_name,
+		comment_content,comment_date,comment_count,user_id) values
+		((select max(comment_No)+1 from TCOMMENT),#{commentCategory}
 		,#{commentName},#{commentContent},sysdate,0,UPPER(#{userId}))
 	</insert>
 
 	<!-- 게시글 수정 -->
 	<update id="updateComment" parameterType="Map">
-		update comments set
+		update TCOMMENT set
 		comment_name=#{commentName},
-		comment_content1=#{commentContent}
+		comment_content=#{commentContent}
 		where
 		comment_no=#{commentNo}
 	</update>
 	<!-- 게시글 삭제 -->
 	<delete id="deleteComment" parameterType="int">
-		delete from comments where
+		delete from TCOMMENT where
 		comment_no=#{commentNo}
 	</delete>
 	<!-- 페이지당 리스트를 보여줌(분류별로 해야할듯) -->
 	<select id="getCommentByPage" parameterType="Map" resultType="my.prac.core.dto.Comments">
-		SELECT /* prjboard.CommentsMapper.getCommentByPage */
+		SELECT /* prjboard.TCOMMENTMapper.getCommentByPage */
 			   *
 		  FROM (SELECT SUB.*,
 		               (SELECT COUNT(1)
-		                  FROM COMMENT_REPLY C
+		                  FROM TCOMMENT_REPLY C
 		                 WHERE REPLY_COMMENT_NO = SUB.COMMENT_NO) AS REPLY_CNT,
 		               ROWNUM RNUM
 		          FROM (SELECT C.*,U.USER_NICK
-		                  FROM COMMENTS C,USERS U
+		                  FROM TCOMMENT C,TUSER U
 		                 WHERE C.USER_ID = U.USER_ID 
 		                   AND C.COMMENT_CATEGORY = #{commentCategory}  
 		                 ORDER BY C.COMMENT_NO DESC) SUB)
@@ -66,11 +62,11 @@
 	<select id="searchCommentByNameOfPage" parameterType="Map" resultType="my.prac.core.dto.Comments">
 		select *
 		from(select sub.*,(SELECT COUNT(1)
-		                  FROM COMMENT_REPLY C
+		                  FROM TCOMMENT_REPLY C
 		                 WHERE REPLY_COMMENT_NO = SUB.COMMENT_NO) AS REPLY_CNT,rownum rnum from
 		(select * from
-		comments c
-		join users u on u.user_id=c.user_id
+		TCOMMENT c
+		join Tuser u on u.user_id=c.user_id
 		where
 		comment_category=#{commentCategory}
 		and comment_name like '%'||	#{commentName} || '%' order by
@@ -85,14 +81,14 @@
 		resultType="my.prac.core.dto.Comments">
 		select *
 		from(select sub.*,(SELECT COUNT(1)
-		                  FROM COMMENT_REPLY C
+		                  FROM TCOMMENT_REPLY C
 		                 WHERE REPLY_COMMENT_NO = SUB.COMMENT_NO) AS REPLY_CNT,rownum rnum from
 		(select * from
-		comments c
-		join users u on u.user_id=c.user_id
+		TCOMMENT c
+		join Tuser u on u.user_id=c.user_id
 		where
 		comment_category=#{commentCategory}
-		and comment_content1 like '%'|| #{commentContent} || '%' order by
+		and comment_content like '%'|| #{commentContent} || '%' order by
 		comment_no desc) sub)
 		where
 		rnum between
@@ -104,11 +100,11 @@
 		resultType="my.prac.core.dto.Comments">
 		select *
 		from(select sub.*,(SELECT COUNT(1)
-		                  FROM COMMENT_REPLY C
+		                  FROM TCOMMENT_REPLY C
 		                 WHERE REPLY_COMMENT_NO = SUB.COMMENT_NO) AS REPLY_CNT,rownum rnum from
 		(select * from
-		comments c
-		join users u on u.user_id = c.user_id
+		TCOMMENT c
+		join Tuser u on u.user_id = c.user_id
 		where
 		comment_category=#{commentCategory}
 		and user_nick like '%' || #{userNick} || '%'
@@ -120,10 +116,10 @@
 	</select>
 	<!-- 조회수 1을 증가시킴 -->
 	<update id="updateCommentCount" parameterType="int">
-		update comments set
+		update TCOMMENT set
 		comment_count=
 		(select comment_count from
-		comments where
+		TCOMMENT where
 		comment_no=#{commentNo})+1
 		where comment_no = #{commentNo}
 	</update>
@@ -134,7 +130,7 @@
 		sub.*,rownum
 		rnum from
 		(select (substr(comment_name,1,9)||'...') as
-		comment_name, comment_no from comments where comment_category ='공지사항'
+		comment_name, comment_no from TCOMMENT where comment_category ='공지사항'
 		order by
 		comment_no desc)
 		sub)
@@ -148,7 +144,7 @@
 		sub.*,rownum
 		rnum from
 		(select (substr(comment_name,1,9)||'...') as
-		comment_name, (comment_no) as comment_no from comments where
+		comment_name, (comment_no) as comment_no from TCOMMENT where
 		comment_category ='자유게시판'
 		order by
 		comment_no desc)
@@ -158,20 +154,20 @@
 	</select>
 
 	<select id="pageCount" resultType="int" parameterType="String">
-		select count(*) from comments where comment_category=#{commentCategory}
+		select count(*) from TCOMMENT where comment_category=#{commentCategory}
 	</select>
 
 
 	<!--특정 게시글번호로 되어있는 댓글목록 조회 list -->
 	<select id="selectReplyList" parameterType="int" resultType="my.prac.core.dto.CommentReply">
 		select * from
-		comment_reply c
-		join users u on u.user_id=c.user_id 
+		TCOMMENT_REPLY c
+		join Tuser u on u.user_id=c.user_id 
 		where reply_comment_no=#{replyCommentNo} order by reply_no 
 	</select>
 	<!-- 댓글 달기 기능 -->
 	<insert id="insertReply" parameterType="Map">
-		insert into comment_reply (reply_content1,reply_date
+		insert into TCOMMENT_REPLY (reply_content,reply_date
 		,reply_comment_no,user_id)
 		values(
 		#{replyContent},sysdate,
@@ -179,13 +175,13 @@
 	</insert>
 	<!-- 댓글 삭제 기능 -->
 	<delete id="deleteReply" parameterType="int">
-		delete from comment_reply where
+		delete from TCOMMENT_REPLY where
 		reply_no=#{replyNo}
 	</delete>
 
 	<!--특정 게시글 번호로 되어있는 댓글삭제 -->
 	<delete id="deleteReplyByCommentNo" parameterType="int">
-		delete from comment_reply where 
+		delete from TCOMMENT_REPLY where 
 		reply_comment_no=#{replyCommentNo}
 	</delete>
 

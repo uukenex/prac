@@ -19,9 +19,6 @@ public class CommentReply implements Serializable {
 
 	/** 댓글_내용. */
 	private String replyContent;
-	/** 댓글_내용. */
-	private String replyContent1;
-
 	/** 댓글_날짜. */
 	private Date replyDate;
 
@@ -47,14 +44,6 @@ public class CommentReply implements Serializable {
 
 	public void setReplyContent(String replyContent) {
 		this.replyContent = replyContent;
-	}
-
-	public String getReplyContent1() {
-		return replyContent1;
-	}
-
-	public void setReplyContent1(String replyContent1) {
-		this.replyContent1 = replyContent1;
 	}
 
 	public Date getReplyDate() {

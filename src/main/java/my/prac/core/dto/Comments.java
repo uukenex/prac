@@ -25,8 +25,6 @@ public class Comments implements Serializable {
 
 	/** 게시글_내용. */
 	private String commentContent;
-	/** 게시글_내용. */
-	private String commentContent1;
 
 	/** 게시글_날짜. */
 	private Date commentDate;
@@ -79,14 +77,6 @@ public class Comments implements Serializable {
 
 	public void setCommentContent(String commentContent) {
 		this.commentContent = commentContent;
-	}
-
-	public String getCommentContent1() {
-		return commentContent1;
-	}
-
-	public void setCommentContent1(String commentContent1) {
-		this.commentContent1 = commentContent1;
 	}
 
 	public Date getCommentDate() {

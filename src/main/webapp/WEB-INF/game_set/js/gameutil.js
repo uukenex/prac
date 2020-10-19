@@ -1,6 +1,6 @@
 
 var isLocal = location.href.indexOf('localhost') > 0 && !(location.href.indexOf('test') > 0);
-var isOnlyChat = location.href.indexOf('ws') > 0 ;
+var isOnlyChat = location.href.indexOf('ws') > 0 || location.href.indexOf('game6')  ;
 var windowWidth_org = $(window).width();
 var windowHeight_org = $(window).height();
 

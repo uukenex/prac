@@ -68,7 +68,7 @@
 												</td>
 											</tr>
 												<tr style="border:1px solid #1DDB16;" >
-													<td colspan="4" class="boardTitleSort"  style="padding-bottom: 50px; height: 150px;">${comment.commentContent1}</td>
+													<td colspan="4" class="boardTitleSort"  style="padding-bottom: 50px; height: 150px;">${comment.commentContent}</td>
 												</tr>
 											<tr>
 												<td colspan="4">

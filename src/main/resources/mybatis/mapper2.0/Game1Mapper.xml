@@ -5,7 +5,7 @@
 
 <mapper namespace="my.prac.core.prjgame1.dao.Game1DAO">
 	<insert id="insertGame1Cnt" parameterType="Map">
-        insert into TGAME1_RANK ( /* Game1Mapper.xml : my.prac.core.prjgame1.dao.Game1DAO.insertGame1Cnt */ 
+        insert into TGAME_RANK ( /* Game1Mapper.xml : my.prac.core.prjgame1.dao.Game1DAO.insertGame1Cnt */ 
              USER_ID,
              IP_ADDR,
              MEDIA_CODE,
@@ -21,7 +21,7 @@
              '1' )
     </insert>
     <insert id="insertGame3Cnt" parameterType="Map">
-        insert into TGAME1_RANK ( /* Game1Mapper.xml : my.prac.core.prjgame1.dao.Game1DAO.insertGame3Cnt */ 
+        insert into TGAME_RANK ( /* Game1Mapper.xml : my.prac.core.prjgame1.dao.Game1DAO.insertGame3Cnt */ 
              USER_ID,
              IP_ADDR,
              MEDIA_CODE,
@@ -37,7 +37,7 @@
              '3' )
     </insert>
     <insert id="insertGameCnt" parameterType="Map">
-        insert into TGAME1_RANK ( /* Game1Mapper.xml : my.prac.core.prjgame1.dao.Game1DAO.insertGameCnt */ 
+        insert into TGAME_RANK ( /* Game1Mapper.xml : my.prac.core.prjgame1.dao.Game1DAO.insertGameCnt */ 
              USER_ID,
              IP_ADDR,
              MEDIA_CODE,
@@ -55,7 +55,7 @@
              #{msg, jdbcType=VARCHAR} )
     </insert>
     <update id="updateGameCnt" parameterType="Map">
-        update TGAME1_RANK /* Game1Mapper.xml : my.prac.core.prjgame1.dao.Game1DAO.updateGameCnt */
+        update TGAME_RANK /* Game1Mapper.xml : my.prac.core.prjgame1.dao.Game1DAO.updateGameCnt */
            set MSG = #{msg, jdbcType=VARCHAR}
          where USER_ID =  #{userName, jdbcType=VARCHAR}
            and IP_ADDR =  #{ip, jdbcType=VARCHAR}
@@ -76,7 +76,7 @@
 					  ,GR1.CNT
 					  ,US.USER_NICK
 					  ,GR1.MSG
-				  FROM TGAME1_RANK GR1
+				  FROM TGAME_RANK GR1
 					  ,USERS       US
 			     WHERE GR1.GAME_NO   = #{gameSeq, jdbcType=VARCHAR}
  				   AND US.USER_ID(+) = GR1.USER_ID
@@ -93,7 +93,7 @@
 		  FROM (SELECT GR1.MEDIA_CODE
 				    ,GR1.CNT
 				    ,GR1.USER_ID
-				FROM TGAME1_RANK GR1
+				FROM TGAME_RANK GR1
 			    WHERE GR1.GAME_NO = '3'
 			      AND GR1.INSERT_DATE > TRUNC(SYSDATE) - 4
 			    ORDER BY GR1.CNT DESC) X

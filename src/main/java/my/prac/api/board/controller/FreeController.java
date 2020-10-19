@@ -60,7 +60,7 @@ public class FreeController {
 		cs.count(commentNo);
 		List<CommentReply> r = cs.selectReplyList(commentNo);
 		Comments c = cs.selectComment(commentNo);
-		c.setCommentContent1(c.getCommentContent1().replace("{imgUrl}", "http://13.209.8.226"));
+		c.setCommentContent(c.getCommentContent().replace("{imgUrl}", "http://dev-apc.com"));
 		model.addAttribute("comment", c);
 		model.addAttribute("replys", r);
 		return "nonsession/freeboard/freeboard_view";

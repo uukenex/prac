@@ -68,7 +68,7 @@
 											</tr>
 											<tr>
 												<td> </td>
-												<td colspan="3" class="boardTitleSort noticeContentView">${comment.commentContent1}</td>
+												<td colspan="3" class="boardTitleSort noticeContentView">${comment.commentContent}</td>
 											</tr>
 											<tr>
 												<td colspan="4">
