@@ -134,34 +134,6 @@ public class GamePageController {
 
 	/******************** Main games end *********************/
 
-	@RequestMapping(value = "/game1Rank", method = RequestMethod.GET)
-	public List<HashMap<String, Object>> game1Rank(Model model) {
-		List<HashMap<String, Object>> rankList = null;
-		return rankList;
-	}
-
-	@RequestMapping(value = "/game2_2", method = RequestMethod.GET)
-	public String game2_2(Model model, @RequestParam(required = false, defaultValue = "10") int cell) {
-		if (cell > 50) {
-			cell = 50;
-		}
-		if (cell < 10) {
-			cell = 10;
-		}
-		model.addAttribute("cell", cell);
-		return "session/games/game2_2";
-	}
-
-	@RequestMapping(value = "/session/game4_1", method = RequestMethod.GET)
-	public String game4_1(Model model, @RequestParam(required = false, defaultValue = "10") int cell) throws Exception {
-		return "session/games/game4_1";
-	}
-
-	@RequestMapping(value = "/session/game4_2", method = RequestMethod.GET)
-	public String game4_2(Model model, @RequestParam(required = false, defaultValue = "10") int cell) throws Exception {
-		return "session/games/game4_2";
-	}
-
 	@RequestMapping(value = "/session/ws", method = RequestMethod.GET)
 	public String ws(Model model) throws Exception {
 		return "session/games/ws";

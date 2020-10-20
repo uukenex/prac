@@ -1,13 +1,14 @@
 	var webSocket;
+	
 	var v_chat_count=0;
 	var v_sp_count = 0;
 	
+	var webSocketUrl = 'ws://dev-apc.com/WebSocket4';
 	if(isLocal){
-		webSocket = new WebSocket('ws://localhost:80/WebSocket4');
-	}else{
-		webSocket = new WebSocket('ws://54.180.82.173/WebSocket4');
+		webSocketUrl = 'ws://localhost/WebSocket4'; 
 	}
 	
+	webSocket = new WebSocket(webSocketUrl);
 	/*
     webSocket.onerror = function(event) {
         onError(event)

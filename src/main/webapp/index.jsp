@@ -8,10 +8,12 @@
 <html>
 	<head>
 		<meta charset="utf-8">
-		<title>Welcome</title>
-
+		<title>now loading....</title>
 	</head> 
 	<body>
+		<div id="div_load_image" style="position:absolute; top:50%; left:50%;width:0px;height:0px; z-index:9999; background:#f0f0f0; filter:alpha(opacity=50); opacity:alpha*0.5; margin:auto; padding:0; text-align:center">
+	      <img src="<%=request.getContextPath()%>/game_set/img/loading.gif?v=<%=System.currentTimeMillis()%>" style="width:100px; height:100px;">
+	    </div>
 		<%--
 		<c:url value="/hello" var="messageUrl" />
 		<a class="fbx" href="/images/pics02.jpg">Click to enter</a>
@@ -50,13 +52,14 @@
 		<a href="${findIdsuc }">Enter FindIDSuc Form</a>
 		<br>
 		--%>
+		<%-- 
 		<c:url value="/notice?page=1" var="notice" />
 		<a href="${notice }">공지사항 1페이지</a>
 		<br>
 		<c:url value="/free?page=1" var="free" />
 		<a href="${free }">자유게시판 1페이지</a>
 		<br>
-		
+		 --%>
 		<script src="http://code.jquery.com/jquery.js"></script>
 		<script>
 		$(document).on("ready", function() {

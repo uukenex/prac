@@ -160,16 +160,6 @@ public class FreeController {
 		return "OK";
 	}
 
-	// 댓글 삭제
-	/*
-	 * @RequestMapping(value = "/replyDelete", method = RequestMethod.POST)
-	 * public String replyDelete(Model model, HttpServletRequest request,
-	 * HttpSession session) { String replyNo = request.getParameter("replyNo");
-	 * String commentNo = request.getParameter("commentNo"); int result =
-	 * commentService.deleteReply(Integer.parseInt(replyNo)); if (result == 1) {
-	 * session.setAttribute("message", "정상 삭제 완료"); } return
-	 * "redirect:/freeView?commentNo=" + commentNo; }
-	 */
 	// 검색기능(자유게시판) ajax 카테고리와 검색키워드를 받아옴
 	@RequestMapping(value = "/search", method = RequestMethod.POST)
 	public @ResponseBody List<Comments> ajaxsearch(@RequestParam String category, @RequestParam String keyword,

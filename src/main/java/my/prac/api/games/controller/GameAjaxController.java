@@ -20,32 +20,18 @@ public class GameAjaxController {
 	@Resource(name = "core.prjgame1.Game1Service")
 	Game1Service game1Service;
 
-	// 댓글달기 ajax
-	@RequestMapping(value = "/game1/saveGame1Cnt", method = RequestMethod.POST)
-	public @ResponseBody String ajaxreply(@RequestParam String mediaCode, @RequestParam String ip,
-			@RequestParam int cnt) {
-		String resultMsg = "0";
-		HashMap<String, Object> hashMap = new HashMap<>();
-		hashMap.put("mediaCode", mediaCode);
-		hashMap.put("ip", ip);
-		hashMap.put("cnt", cnt);
-		try {
-			game1Service.saveGame1CntTx(hashMap);
-		} catch (Exception e) {
-			resultMsg = "save ERR";
-		}
-
-		return resultMsg;
-	}
-
 	@RequestMapping(value = "/gameUtil/insertGameCnt", method = RequestMethod.POST)
 	public @ResponseBody HashMap<String, Object> gameUtil_insertGameCnt(@RequestParam String msg,
-			@RequestParam String userName, @RequestParam String mediaCode, @RequestParam String ip,
-			@RequestParam int cnt, @RequestParam String gameNo, @RequestParam String dbDate,
-			@RequestParam String flag) {
+																		@RequestParam String userName, 
+																		@RequestParam String mediaCode, 
+																		@RequestParam String ip,
+																		@RequestParam int cnt, 
+																		@RequestParam String gameNo, 
+																		@RequestParam String dbDate,
+																		@RequestParam String flag){
 		HashMap<String, Object> rtnMap = new HashMap<>();
-
 		HashMap<String, Object> hashMap = new HashMap<>();
+		
 		hashMap.put("userName", userName);
 		hashMap.put("msg", msg);
 		hashMap.put("mediaCode", mediaCode);

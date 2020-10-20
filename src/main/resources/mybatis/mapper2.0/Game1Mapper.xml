@@ -77,7 +77,7 @@
 					  ,US.USER_NICK
 					  ,GR1.MSG
 				  FROM TGAME_RANK GR1
-					  ,USERS       US
+					  ,TUSER       US
 			     WHERE GR1.GAME_NO   = #{gameSeq, jdbcType=VARCHAR}
  				   AND US.USER_ID(+) = GR1.USER_ID
 			       <!-- AND GR1.INSERT_DATE > TRUNC(SYSDATE) - 4 -->
