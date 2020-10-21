@@ -15,7 +15,8 @@
 	<link rel="stylesheet" href="<%=request.getContextPath() %>/assets/css/fancy.css" />
 	<!--[if lte IE 8]><link rel="stylesheet" href="assets/css/ie8.css" /><![endif]-->
 	<link rel="stylesheet" href="<%=request.getContextPath()%>/assets/css/font-awesome.min.css">
-
+	
+	<script src="<%=request.getContextPath()%>/game_set/js/comutil.js?v=<%=System.currentTimeMillis()%>"></script>
 <title>게시글작성 ::: TH-HOME</title>
 </head>
 <body>
@@ -137,12 +138,13 @@
 				$("tbody")[0].innerHTML="";
 				$(res).each(function(idx,item){
 				//item이 comment객체(user정보도 포함)
-				console.log(item);
-				console.log(item.commentDate);
 				var date=new Date(item.commentDate);
 				var year = date.getFullYear().toString();
 				var month = (date.getMonth()+1).toString();
 				var date = date.getDate().toString();
+				if(month<10){
+					month="0"+month;
+				}
 				if(date<10){
 					date="0"+date;
 				}
@@ -158,6 +160,9 @@
 		+"<td>"+item.commentCount +"</td>"
 		+"</tr>"
 				});
+				
+				$('#pageNumber').css('display','none');
+				
 			},
 			error:function(xhr,status,error){
 				alert(error);

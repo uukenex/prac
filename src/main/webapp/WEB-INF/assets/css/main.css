@@ -2358,27 +2358,27 @@
 				line-height: 2.75em;
 			}
 
-				#fancyHeader nav {
-					top: 0;
-					right: 0;
-					height: inherit;
-					line-height: inherit;
-				}
+			#fancyHeader nav {
+				top: 0;
+				right: 0;
+				height: inherit;
+				line-height: inherit;
+			}
 
-					#fancyHeader nav a {
-						height: inherit;
-						line-height: inherit;
-					}
+			#fancyHeader nav a {
+				height: inherit;
+				line-height: inherit;
+			}
 
-						#fancyHeader nav a[href="#fancyMenu"] {
-							box-shadow: none;
-							padding: 0 1em;
-							border-radius: 0;
-						}
+			#fancyHeader nav a[href="#fancyMenu"] {
+				box-shadow: none;
+				padding: 0 1em;
+				border-radius: 0;
+			}
 
-							#fancyHeader nav a[href="#fancyMenu"]:hover, #fancyHeader nav a[href="#fancyMenu"]:active {
-								background-color: inherit;
-							}
+			#fancyHeader nav a[href="#fancyMenu"]:hover, #fancyHeader nav a[href="#fancyMenu"]:active {
+				background-color: inherit;
+			}
 
 		}
 
@@ -2392,16 +2392,20 @@
 				display: none;
 			}
 
-				#fancyHeader nav a[href="#fancyMenu"]:before {
-					width: inherit;
-					position: absolute;
-					top: 0;
-					left: 0;
-					text-indent: 0;
-					text-align: right;
-					margin-left: 0;
-					padding-right: 1.25em;
-				}
+			#fancyHeader nav a[href="#fancyMenu"]:before {
+				width: inherit;
+				position: absolute;
+				top: 0;
+				left: 0;
+				text-indent: 0;
+				text-align: right;
+				margin-left: 0;
+				padding-right: 1.25em;
+			}
+			.boardSection {
+   				display: none;
+   			}
+			
 
 		}
 		
@@ -2526,9 +2530,16 @@
 				overflow-x: hidden;
 			}
 
-				#fancyMenu .fancyInner .close {
-					background-size: 1.5em 1.5em;
-				}
+			#fancyMenu .fancyInner .close {
+				background-size: 1.5em 1.5em;
+			}
+			
+			.boardSection {
+   				display: none;
+   			}
+   			#fancyHeader {
+   				display: none;
+   			}
 
 		}
 

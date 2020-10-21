@@ -150,7 +150,7 @@
 								            	</tr>
 												<tr>
 													<td colspan="4" class="boardTitleSort" style="border:1px solid #FFA2A2">
-													<pre style="padding-bottom: 50px;"> ${reply.replyContent1 }</pre> 
+													<pre style="padding-bottom: 50px;"> ${reply.replyContent }</pre> 
 													</td>
 												</tr>
 										</c:forEach>
