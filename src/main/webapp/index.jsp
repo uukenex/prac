@@ -11,9 +11,32 @@
 		<title>now loading....</title>
 	</head> 
 	<body>
-		<div id="div_load_image" style="position:absolute; top:50%; left:50%;width:0px;height:0px; z-index:9999; background:#f0f0f0; filter:alpha(opacity=50); opacity:alpha*0.5; margin:auto; padding:0; text-align:center">
-	      <img src="<%=request.getContextPath()%>/game_set/img/loading.gif?v=<%=System.currentTimeMillis()%>" style="width:100px; height:100px;">
+		<script src="http://code.jquery.com/jquery.js"></script>
+		<script src="<%=request.getContextPath()%>/game_set/js/comutil.js?v=<%=System.currentTimeMillis()%>"></script>
+		<div id="div_load_image">
+	      <img id="load_image" src="<%=request.getContextPath()%>/game_set/img/loading.gif?v=<%=System.currentTimeMillis()%>">
 	    </div>
+		<script>
+		$('#load_image').css('width',resizeWindowHeight/3);
+		$('#load_image').css('height',resizeWindowHeight/3);
+		$(document).on("ready", function() {
+			window.location.href = '/free?page=1';
+		});
+		</script>
+		<style>
+			#div_load_image {
+				position:absolute;
+				width:100%;
+				height:70%; 
+				z-index:9999; 
+				background:#FFFFFF; 
+				padding:0px; 
+				text-align:center;
+				margin-top: 15%;
+				left: 0px;
+			}
+			
+		</style>
 		<%--
 		<c:url value="/hello" var="messageUrl" />
 		<a class="fbx" href="/images/pics02.jpg">Click to enter</a>
@@ -60,13 +83,6 @@
 		<a href="${free }">자유게시판 1페이지</a>
 		<br>
 		 --%>
-		<script src="http://code.jquery.com/jquery.js"></script>
-		<script>
-		$(document).on("ready", function() {
-			window.location.href = '/free?page=1';
-		});
-		</script>
-		
 		<%--
 		<c:url value="/post?page=1" var="post" />
 		<a href="${post }">후기게시판 1페이지</a>

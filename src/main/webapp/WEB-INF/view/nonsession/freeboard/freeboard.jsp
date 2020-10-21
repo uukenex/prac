@@ -25,6 +25,8 @@
 	<jsp:include page="../layout/menubar_header.jsp" />
 	
 	<!-- jqeury 이후 호출 -->
+	<script src="<%=request.getContextPath()%>/game_set/js/comutil.js?v=<%=System.currentTimeMillis()%>"></script>
+	
 	<div id="page-wrapper" class="boardPage-Wrapper">
 		<div id="main">
 			<div class="container">
@@ -36,7 +38,7 @@
 					<!-- Board Body part -->
 					<div class="8u 12u(mobile) important(mobile)">
 						<section class="middle-content">
-							<h2 class="board_part_title">자유 게시판</h2>
+							<h2 class="board_part_title" onclick="alert( 'Width x Height : '+resizeWindowWidth + ' x '+resizeWindowHeight );">자유 게시판</h2>
 							<%-- <h3>현재 접속 Nick : "${Users.userNick }"</h3> --%>
 							
 							<ul id="writeNsearchBar">
@@ -176,7 +178,6 @@
 		beforeBoard.id = beforeBoard.id.replace("");
 		$(".freeBoard").attr('id', 'current');
 	</script> -->
-	<script src="<%=request.getContextPath()%>/game_set/js/comutil.js?v=<%=System.currentTimeMillis()%>"></script>
 </body>
 </html>
 
