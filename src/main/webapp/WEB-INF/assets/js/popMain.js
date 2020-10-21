@@ -108,7 +108,6 @@
 					.on('click', 'a', function(event) {
 						
 						var href = $(this).attr('href');
-						console.log(href);
 						event.preventDefault();
 						event.stopPropagation();
 
@@ -127,7 +126,6 @@
 
 					event.stopPropagation();
 					event.preventDefault();
-console.log($fancyMenu);
 					// Toggle.
 						$fancyMenu._toggle();
 

@@ -15,8 +15,6 @@
 	<link rel="stylesheet" href="<%=request.getContextPath() %>/assets/css/fancy.css" />
 	<!--[if lte IE 8]><link rel="stylesheet" href="assets/css/ie8.css" /><![endif]-->
 	<link rel="stylesheet" href="<%=request.getContextPath()%>/assets/css/font-awesome.min.css">
-	
-	<script src="<%=request.getContextPath()%>/game_set/js/comutil.js?v=<%=System.currentTimeMillis()%>"></script>
 <title>게시글작성 ::: TH-HOME</title>
 </head>
 <body>
@@ -25,7 +23,8 @@
 	<jsp:include page="../layout/dropMenu_header.jsp" /> 
 	<!-- Menu Bar Header -->
 	<jsp:include page="../layout/menubar_header.jsp" />
-		
+	
+	<!-- jqeury 이후 호출 -->
 	<div id="page-wrapper" class="boardPage-Wrapper">
 		<div id="main">
 			<div class="container">
@@ -177,7 +176,7 @@
 		beforeBoard.id = beforeBoard.id.replace("");
 		$(".freeBoard").attr('id', 'current');
 	</script> -->
-	
+	<script src="<%=request.getContextPath()%>/game_set/js/comutil.js?v=<%=System.currentTimeMillis()%>"></script>
 </body>
 </html>
 
