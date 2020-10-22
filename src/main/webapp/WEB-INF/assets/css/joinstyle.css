@@ -258,7 +258,7 @@ html, body {
 			height: 1.75em;
 			letter-spacing: 0.075em;
 			line-height: 1.3em;
-			padding: 0;
+			padding: 0px 10px;
 			text-align: center;
 			text-decoration: none;
 			text-transform: uppercase;

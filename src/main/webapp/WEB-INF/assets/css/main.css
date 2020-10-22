@@ -706,7 +706,7 @@
 			/* transform: scale(1.5); */
 		}
 		.row > * {
-			padding: 150px 100px 0 0;
+			padding: 150px 0 0 0;
 		}
 
 		.row {
@@ -3679,7 +3679,8 @@
 	
 		ul.link-list li {
 			border-top: solid 1px #ced0b7;
-			padding: 1em 0 0 2em;
+			padding: 10px 0px 0px 0px;
+			/* padding: 1em 0 0 2em; */
 			/* margin: 1.5em 0 1.5em 0; */
 			
 		}
@@ -4794,3 +4795,8 @@
 	    border: solid 1px transparent;		
 	}
 	
+	@media screen and (min-width: 960px) and (max-width:1280px) {
+		section > :last-child, section:last-child, article > :last-child, article:last-child {
+			margin-left: 20px;
+		}
+	}

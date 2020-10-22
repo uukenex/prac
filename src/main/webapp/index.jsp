@@ -32,7 +32,7 @@
 				background:#FFFFFF; 
 				padding:0px; 
 				text-align:center;
-				margin-top: 15%;
+				margin-top: 30%;
 				left: 0px;
 			}
 			
