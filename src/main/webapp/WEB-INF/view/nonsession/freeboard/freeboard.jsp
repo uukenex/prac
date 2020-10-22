@@ -15,7 +15,7 @@
 	<link rel="stylesheet" href="<%=request.getContextPath() %>/assets/css/fancy.css" />
 	<!--[if lte IE 8]><link rel="stylesheet" href="assets/css/ie8.css" /><![endif]-->
 	<link rel="stylesheet" href="<%=request.getContextPath()%>/assets/css/font-awesome.min.css">
-<title>게시글작성 ::: TH-HOME</title>
+<title>자유게시판 ::: DEV-APC</title>
 </head>
 <body>
 
@@ -38,7 +38,7 @@
 					<!-- Board Body part -->
 					<div class="8u 12u(mobile) important(mobile)">
 						<section class="middle-content">
-							<h2 class="board_part_title" onclick="alert( 'Width x Height : '+resizeWindowWidth + ' x '+resizeWindowHeight );">자유 게시판</h2>
+							<h2 class="board_part_title" onclick="alert( 'Width x Height : '+resizeWindowWidth + ' x '+resizeWindowHeight );">자유게시판</h2>
 							<%-- <h3>현재 접속 Nick : "${Users.userNick }"</h3> --%>
 							
 							<ul id="writeNsearchBar">

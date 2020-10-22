@@ -61,25 +61,12 @@
 			<li><a href="<%=request.getContextPath() %>/logout">로그아웃</a></li>
 		</c:if>
 		
-		<%-- 
-		<li><a href="<%=request.getContextPath() %>/mapMain">일정 만들기</a></li>
-		
-		<li><a href="<%=request.getContextPath() %>/post?page=1">여행 후기</a></li>
-		
-		<li><a href="<%=request.getContextPath() %>/session/myPhoto?userId=${Users.userId }&folderName">포토북</a></li>
-		 --%>
-		
-		<%-- <c:url value="/notice?page=1" var="notice" />
-		<c:url value="/qna?page=1" var="qna" /> --%>
 		<c:url value="/free?page=1" var="free" />
 		<c:url value="/game/rank"   var="rank" />
 		<li class="dropMenuLi"><a href="${notice }">게시판</a>
 			<ul>
-				<%-- <li><a href="<%=request.getContextPath() %>${notice }">공지사항</a></li> --%>
-				<%-- <li><a href="<%=request.getContextPath() %>${qna }">Q & A</a></li> --%>
 				<li><a href="<%=request.getContextPath() %>${free }">자유 게시판</a></li>
 				<li><a href="<%=request.getContextPath() %>${rank }">랭크 게시판</a></li>
-				<%-- <li><a href="<%=request.getContextPath() %>/help_main" class="howuseBoard">사이트 이용방법</a></li> --%>
 			</ul></li>
 	</ul>
 </nav>

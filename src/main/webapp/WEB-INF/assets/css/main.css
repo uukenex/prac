@@ -694,14 +694,6 @@
 	}
 
 	@media screen and (max-width: 1280px) {
-	
-		#nav {
-			display: none;
-		}
-		.moba {
-			display: none;
-		}
-		
 		.login_check_div {
 			/* transform: scale(1.5); */
 		}
@@ -920,9 +912,9 @@
 
 	@media screen and (max-width: 960px) {
 
-		.row > * {
+/* 		.row > * {
 			padding: 32px 0 0 32px;
-		}
+		} */
 
 		.row {
 			margin: -32px 0 -1px -32px;
@@ -1135,10 +1127,10 @@
 
 	@media screen and (max-width: 840px) {
 
-		.row > * {
+/* 		.row > * {
 			padding: 32px 0 0 32px;
 		}
-
+ */
 		.row {
 			margin: -32px 0 -1px -32px;
 		}
@@ -1734,6 +1726,7 @@
 
 		section > :last-child, section:last-child, article > :last-child, article:last-child {
 			margin-bottom: 0;
+			margin-left: 20px;
 		}
 
 		section.special > header, section.special > footer, article.special > header, article.special > footer {
@@ -3625,7 +3618,7 @@
     		}
 
     	/* For smaller displays like laptops */
-    		@media (min-width: 768px) and (max-width: 979px) {
+    		@media (min-width: 736px) and (max-width: 979px) {
       			.sliderContainer {
         			width: 724px
       			}
@@ -4761,15 +4754,8 @@
 						color: #323232;
 		}
 		
-	@media screen and (max-width: 768px) {
-		#nav {
-			display: none;
-		}
-		.moba {
-			display: none;
-		}
-	}	
-	@media screen and (max-width: 1280px) {
+	
+	@media screen and (max-width: 736px) {
 		#nav {
 			display: none;
 		}

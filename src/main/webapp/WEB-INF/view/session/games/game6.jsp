@@ -31,6 +31,7 @@
 			}
 			$('#chat_id').val(id);
 		}
+		
 	</c:if>
 	
 	function init()
@@ -50,6 +51,13 @@
 		var main_interval ;
 		
 		var last_key;
+		
+		
+		var v_atk_count = 0;
+		var v_hit_count = 0;
+		
+		
+		onConnect();
 		
     	$(function(){
     		var keypress = {}, // 어떤 키가 눌려 있는지 저장
@@ -92,7 +100,7 @@
     		}, 10); // 매 0.01 초마다 실행
     		
 			sub_interval = setInterval(function(){ // 주기적으로 검사
-				$charimg.text(last_key);
+				$charimg.text(v_atk_count + '/' + v_hit_count);
 			
 				if(keypress['32']){
     				f_bullet_create(v_sp_count,4,charx,chary,last_key);
@@ -107,10 +115,20 @@
 						var t_rect =  t_class.getBoundingClientRect();
 						
 						if(meetBox(b_rect,t_rect)){
+							//본인 총알에 안맞는처리							
 	        				if(b_class.classList[1] == t_class.classList[1]){
 	            				continue;
 	            			}
 	        				$('.bullet')[i].remove();
+	        				//target(맞은사람)이 본인일때 점수차감 
+	        				if(t_class.classList[1]==$('#chat_id').val()){
+	        					v_hit_count--;
+	        				}
+	        				//bullet(총주인)이 본인일때 점수획득 
+	        				else if(b_class.classList[1]==$('#chat_id').val()){
+	        					v_atk_count++;
+	        				}
+	        					
 	        			}
 					}        			
         		}
@@ -195,7 +213,8 @@
 	
 	<section id="chat_space" class='space'>
 	</section>
-	
+	<section id="chat_user_list" class='half'>
+	</section>
 	<section id="chattings">
 	    <div id="_chatbox" style="display: inline;">
 	        <fieldset>

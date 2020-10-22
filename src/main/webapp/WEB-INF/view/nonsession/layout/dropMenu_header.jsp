@@ -21,21 +21,12 @@
 		<div class="fancyInner">
 			<h2>Menu</h2>
 			<ul class="links">
-				<%-- <c:url value="/mainpage" var="mainpage" />
-				<li><a href="${mainpage }">Home</a></li> --%>
 				<c:url value="/login" var="login" />
 				<c:if test="${!empty Users.userId }">
 				<li><a href="/logout">Log OUT</a></li>
-				<%-- <c:url value="/session/mypageMain" var="mypageMain" /> --%>
-				<%-- <li><a href="${mypageMain }">My Page</a></li> --%>
-				<%-- <li><a href="/session/myPhoto?userId=${Users.userId }&folderName">Photo Book</a></li> --%>
 				</c:if>
 				<c:if test="${empty Users.userId}">
-				<!-- <li><a href="#" onclick="window.open('/pop_login', 'win1', 'width=532, height=475');" onkeypress="this.onclick()">Log In</a></li> -->
 				<li><a href="/loginCheck">Log In</a></li>
-				<%-- <c:url value="/session/mypageMain" var="mypageMain" /> --%>
-				
-				<!-- <li><a href="#">Photo Book</a></li> -->
 				<c:url value="/join" var="join" />
 				<li>
 					<a href="#" onclick="window.open('/join', 'win1', 'width=560, height=680');" onkeypress="this.onclick()">

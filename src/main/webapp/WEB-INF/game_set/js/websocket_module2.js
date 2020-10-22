@@ -3,24 +3,20 @@
 	var v_chat_count=0;
 	var v_sp_count = 0;
 	
-	var webSocketUrl = 'ws://dev-apc.com/WebSocket4';
-	if(isLocal){
-		webSocketUrl = 'ws://localhost/WebSocket4'; 
+	function onConnect(){
+		var webSocketUrl = 'ws://dev-apc.com/WebSocket4';
+		if(isLocal){
+			webSocketUrl = 'ws://localhost/WebSocket4?userNick='+$('#chat_id').val(); 
+		}
+		webSocket = new WebSocket(webSocketUrl);
+		
+	    webSocket.onmessage = function(event) {
+	        onMessage(event)
+	    };
 	}
-	
-	webSocket = new WebSocket(webSocketUrl);
-	/*
-    webSocket.onerror = function(event) {
-        onError(event)
-    };
-    webSocket.onopen = function(event) {
-        onOpen(event)
-    };*/
-    webSocket.onmessage = function(event) {
-        onMessage(event)
-    };
     
-    function onMessage(event) {
+    
+	function onMessage(event) {
         var newMsg = event.data;
         var orgMsg = $("#messageWindow").html();
         
@@ -36,6 +32,16 @@
          * */
         
         switch(msg_gb){
+            case '09': //채팅유저리스트
+            	var userdata = fulldata[1].substring(1,fulldata[1].length-1);
+            	var userlist = userdata.split(', ');
+            	$('#chat_user_list').text('');
+            	for(var i =0 ; i < userlist.length ; i++){
+            		$('#chat_user_list').append(userlist[i]+'</br>');
+            	}
+            	
+            	
+            	break;
         	case '00': //시스템메시지
         		//메시지박스 출력
                 $("#messageWindow").html(orgMsg +fulldata[1] + "\n");
@@ -162,4 +168,3 @@
     	webSocket.send(sendVal);
     	
     }
-    

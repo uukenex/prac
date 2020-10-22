@@ -10,7 +10,6 @@ div {
 	width: 10px;
 	height: 10px;
 	display: inline;
-	
 }
 
 section#section {
@@ -36,8 +35,15 @@ section#description {
 	height: 400px;
 	border: solid 1px red;
 	position: absolute;
+	font-size: 11px;
 }
-
+.half {
+	left: 420px;
+	width: 100px;
+	height: 400px;
+	border: solid 1px blue;
+	position: absolute;
+}
 
 .chat {
 	width: 200px;

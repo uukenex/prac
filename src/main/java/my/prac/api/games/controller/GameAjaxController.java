@@ -1,6 +1,8 @@
 package my.prac.api.games.controller;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
 import javax.annotation.Resource;
 
@@ -65,5 +67,15 @@ public class GameAjaxController {
 		}
 
 		return rtnMap;
+	}
+	
+	@RequestMapping(value = "/gameUtil/game6userList", method = RequestMethod.GET)
+	public @ResponseBody List<String> gameUtil_game6userList(@RequestParam String gameNo) {
+		List<String> list = new ArrayList<>();
+		list.add("THJEON");
+		list.add("THJEON2");
+		list.remove("THJEON");
+		
+		return list;
 	}
 }
