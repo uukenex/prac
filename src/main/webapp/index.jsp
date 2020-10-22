@@ -9,6 +9,11 @@
 	<head>
 		<meta charset="utf-8">
 		<title>now loading....</title>
+		<!-- <meta property="og:url" content="링크걸 주소(ex : http://www.naver.com)"> -->
+		<meta property="og:title" content="알파카 연구소">  
+		<meta property="og:type" content="website">
+		<meta property="og:image" content="<%=request.getContextPath()%>/game_set/img/paimon.jpg?v=<%=System.currentTimeMillis()%>">
+		<meta property="og:description" content="알파카 연구소 메인페이지로 이동합니다.">
 	</head> 
 	<body>
 		<script src="http://code.jquery.com/jquery.js"></script>
