@@ -4,7 +4,7 @@
 	var v_sp_count = 0;
 	
 	function onConnect(){
-		var webSocketUrl = 'ws://dev-apc.com/WebSocket4';
+		var webSocketUrl = 'ws://dev-apc.com/WebSocket4?userNick='+$('#chat_id').val(); 
 		if(isLocal){
 			webSocketUrl = 'ws://localhost/WebSocket4?userNick='+$('#chat_id').val(); 
 		}
