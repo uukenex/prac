@@ -30,32 +30,7 @@ public class WebSocket4{
 	public void onOpen(Session session) throws Exception {
 		clients.add(session);
 		String userNick = session.getRequestParameterMap().get("userNick").toString();
-		System.out.println(userNick);
-		
-		String originalStr = userNick; // 테스트
-
-		String [] charSet = {"utf-8","euc-kr","ksc5601","iso-8859-1","x-windows-949"};
-
-		  
-
-		for (int i=0; i<charSet.length; i++) {
-
-		 for (int j=0; j<charSet.length; j++) {
-
-		  try {
-
-		   System.out.println("[" + charSet[i] +"," + charSet[j] +"] = " + new String(originalStr.getBytes(charSet[i]), charSet[j]));
-
-		  } catch (Exception e) {
-
-		   e.printStackTrace();
-
-		  }
-
-		 }
-
-		}
-		
+		userNick = new String(userNick.getBytes("iso-8859-1"), "utf-8");
 		socketutils.addValue(userNick);
 		
 		for (Session client : clients) {
@@ -73,7 +48,7 @@ public class WebSocket4{
 	public void onClose(Session session) throws Exception {
 		clients.remove(session);
 		String userNick = session.getRequestParameterMap().get("userNick").toString();
-		System.out.println(userNick);
+		userNick = new String(userNick.getBytes("iso-8859-1"), "utf-8");
 		socketutils.delValue(userNick);
 		
 		for (Session client : clients) {
@@ -87,3 +62,18 @@ public class WebSocket4{
 		}
 	}
 }
+
+
+/*
+	//한글인코딩테스트 https://chirow.tistory.com/404
+		String [] charSet = {"utf-8","euc-kr","ksc5601","iso-8859-1","x-windows-949"};
+		for (int i=0; i<charSet.length; i++) {
+		 for (int j=0; j<charSet.length; j++) {
+		  try {
+		   System.out.println("[" + charSet[i] +"," + charSet[j] +"] = " + );
+		  } catch (Exception e) {
+		   e.printStackTrace();
+		  }
+		 }
+		}
+ * */
