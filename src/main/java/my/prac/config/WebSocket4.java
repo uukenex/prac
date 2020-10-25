@@ -31,6 +31,31 @@ public class WebSocket4{
 		clients.add(session);
 		String userNick = session.getRequestParameterMap().get("userNick").toString();
 		System.out.println(userNick);
+		
+		String originalStr = userNick; // 테스트
+
+		String [] charSet = {"utf-8","euc-kr","ksc5601","iso-8859-1","x-windows-949"};
+
+		  
+
+		for (int i=0; i<charSet.length; i++) {
+
+		 for (int j=0; j<charSet.length; j++) {
+
+		  try {
+
+		   System.out.println("[" + charSet[i] +"," + charSet[j] +"] = " + new String(originalStr.getBytes(charSet[i]), charSet[j]));
+
+		  } catch (Exception e) {
+
+		   e.printStackTrace();
+
+		  }
+
+		 }
+
+		}
+		
 		socketutils.addValue(userNick);
 		
 		for (Session client : clients) {
