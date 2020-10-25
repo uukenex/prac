@@ -52,11 +52,6 @@
 		
 		var last_key;
 		
-		
-		var v_atk_count = 0;
-		var v_hit_count = 0;
-		
-		
 		onConnect();
 		
     	$(function(){
@@ -100,7 +95,7 @@
     		}, 10); // 매 0.01 초마다 실행
     		
 			sub_interval = setInterval(function(){ // 주기적으로 검사
-				$charimg.text(v_atk_count + '/' + v_hit_count);
+				//$charimg.text(v_atk_count + '/' + v_hit_count);
 			
 				if(keypress['32']){
     				f_bullet_create(v_sp_count,4,charx,chary,last_key);
@@ -122,11 +117,13 @@
 	        				$('.bullet')[i].remove();
 	        				//target(맞은사람)이 본인일때 점수차감 
 	        				if(t_class.classList[1]==$('#chat_id').val()){
-	        					v_hit_count--;
+	        					//v_hit_count--;
+	        					f_minus_count();
 	        				}
 	        				//bullet(총주인)이 본인일때 점수획득 
 	        				else if(b_class.classList[1]==$('#chat_id').val()){
-	        					v_atk_count++;
+	        					//v_atk_count++;
+	        					f_plus_count();
 	        				}
 	        					
 	        			}
@@ -157,6 +154,13 @@
         	});
     		
     	});
+    	
+    	function f_plus_count(){
+    		send('05','PLUS');
+    	}
+		function f_minus_count(){
+    		send('05','MINUS');
+    	}
     	
     	function f_chatter_box_create(x,y){
     		var msg;

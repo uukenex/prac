@@ -29,11 +29,13 @@ public class WebSocket4{
 	@OnOpen
 	public void onOpen(Session session) throws Exception {
 		clients.add(session);
-		socketutils.addValue(session.getRequestParameterMap().get("userNick").toString());
+		String userNick = session.getRequestParameterMap().get("userNick").toString();
+		System.out.println(userNick);
+		socketutils.addValue(userNick);
 		
 		for (Session client : clients) {
 			try {
-				client.getBasicRemote().sendText("00|누군가가 입장헸습니다. 현재 " + clients.size() + "명");
+				client.getBasicRemote().sendText("00|"+userNick+" 입장. 현재 " + clients.size() + "명");
 				client.getBasicRemote().sendText("09|"+socketutils.viewValue());
 			} catch (IOException e) {
 				continue;
@@ -45,11 +47,14 @@ public class WebSocket4{
 	@OnClose
 	public void onClose(Session session) throws Exception {
 		clients.remove(session);
-		socketutils.delValue(session.getRequestParameterMap().get("userNick").toString());
+		String userNick = session.getRequestParameterMap().get("userNick").toString();
+		System.out.println(userNick);
+		socketutils.delValue(userNick);
 		
 		for (Session client : clients) {
 			try {
-				client.getBasicRemote().sendText("00|누군가가 퇴장했습니다. 현재 " + clients.size() + "명");
+				client.getBasicRemote().sendText("00|"+userNick+" 퇴장. 현재 " + clients.size() + "명");
+				client.getBasicRemote().sendText("08|"+userNick);
 				client.getBasicRemote().sendText("09|"+socketutils.viewValue());
 			} catch (IOException e) {
 				continue;

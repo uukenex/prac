@@ -2,6 +2,8 @@
 	
 	var v_chat_count=0;
 	var v_sp_count = 0;
+	var v_atk_count = 0;
+	var v_hit_count = 0;
 	
 	function onConnect(){
 		var webSocketUrl = 'ws://dev-apc.com/WebSocket4?userNick='+$('#chat_id').val(); 
@@ -32,24 +34,11 @@
          * */
         
         switch(msg_gb){
-            case '09': //채팅유저리스트
-            	var userdata = fulldata[1].substring(1,fulldata[1].length-1);
-            	var userlist = userdata.split(', ');
-            	$('#chat_user_list').text('');
-            	for(var i =0 ; i < userlist.length ; i++){
-            		$('#chat_user_list').append(userlist[i]+'</br>');
-            	}
-            	
-            	
-            	break;
         	case '00': //시스템메시지
         		//메시지박스 출력
                 $("#messageWindow").html(orgMsg +fulldata[1] + "\n");
             	$("#messageWindow")[0].scrollTop = $("#messageWindow")[0].scrollHeight;
-            	$('.char_chat').remove();
-            	
         		break;
-        		
         	case '01': //채팅
         		var targetName = fulldata[1];
                 var targetX = fulldata[2];
@@ -77,9 +66,7 @@
                 }else{
                 	$('#'+newChar).css({top: targetY, left: targetX});
                 }
-                    
         		break;
-        		
         	case '03':
         		var targetName = fulldata[1];
                 var startX = Number(fulldata[2]);
@@ -89,9 +76,6 @@
         		
                 create_socket_bullet(v_sp_count,b_speed,startX,startY,direction)
                 v_sp_count++;
-    			 
-    			
-    			
     			
     			function create_socket_bullet(sp_count,speed,bul_x,bul_y,l_key){
     				var bullet_move_timer;
@@ -126,11 +110,47 @@
             			}
             		}
     			}
-    			
-    			
-                
         		break;
+        	case '05': //점수처리
+        		var targetName = fulldata[1];
+                var action = fulldata[4];
+                
+                var newChar = "char_"+targetName;
+                
+                var prevVal = $('#'+newChar).text().split('/');
+                var newVal0 = 0;
+                var newVal1 = 0;
+                
+                if(prevVal!=''){
+                	var newVal0 = Number(prevVal[0]);
+                    var newVal1 = Number(prevVal[1]);
+                }
+                
+                if(action == 'PLUS'){
+                	newVal0++;
+                }else if(action == 'MINUS') {
+                	newVal1--;
+                }
+                
+        		$('#'+newChar).text( newVal0 + '/' + newVal1);
         		
+        		break;
+        	case '07': //입장처리 
+            	break;
+            case '08': //퇴장처리
+            	//userdata는 socketutils에서 가져와서 앞뒤 []가 붙어서 지워주는처리..
+            	var userdata = fulldata[1].substring(1,fulldata[1].length-1);
+            	var newChar = "char_"+userdata;
+            	$('#'+newChar).remove();
+            	break;
+            case '09': //채팅유저리스트
+            	//userdata는 socketutils에서 가져와서 앞뒤 []가 붙어서 지워주는처리..
+            	var userdata = fulldata[1].substring(1,fulldata[1].length-1);
+            	var userlist = userdata.split(', ');
+            	$('#chat_user_list').text('');
+            	for(var i =0 ; i < userlist.length ; i++){
+            		$('#chat_user_list').append(userlist[i]+'</br>');
+            	}	
         }
     }
     
