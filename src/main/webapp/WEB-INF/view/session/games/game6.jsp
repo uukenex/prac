@@ -26,10 +26,13 @@
 		function testMode(){
 			var id = prompt('사용할 닉네임입력');
 			if(id ==null || id== undefined || id===null ){
-				alert('다시입력해주세요');
-				location.reload();
+				alert('비정상 접근입니다.');
+				$('#chat_space').append('<input type="text" class="chat" id="chat" value="비정상접근상태"></input>');
+				//location.href = "free?page=1";
+			}else{
+				$('#chat_id').val(id);	
 			}
-			$('#chat_id').val(id);
+			
 		}
 		
 	</c:if>
@@ -52,7 +55,10 @@
 		
 		var last_key;
 		
-		onConnect();
+		if($('#chat_id').val() !='' ){
+			onConnect();
+		}
+		
 		
     	$(function(){
     		var keypress = {}, // 어떤 키가 눌려 있는지 저장
