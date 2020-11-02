@@ -15,6 +15,7 @@
 	<mapper resource="mybatis/mapper2.0/CommentsMapper.xml" />
 	<mapper resource="mybatis/mapper2.0/TestMapper.xml" />
 	<mapper resource="mybatis/mapper2.0/Game1Mapper.xml" />
+	<mapper resource="mybatis/mapper2.0/SystemMapper.xml" />
 	</mappers>
 
 </configuration>

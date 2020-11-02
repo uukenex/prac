@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="my.prac.core.prjsystem.dao.SystemDAO">
+	<resultMap id="codeResultMap" type="my.prac.core.dto.Code" >
+	  <result column="CODE_LGROUP" property="codeLgroup" jdbcType="VARCHAR" />
+	  <result column="CODE_MGROUP" property="codeMgroup" jdbcType="VARCHAR" />
+	  <result column="CODE_NAME" property="codeName" jdbcType="VARCHAR" />
+	  <result column="CODE_SNAME" property="codeSname" jdbcType="VARCHAR" />
+	  <result column="CODE_GROUP" property="codeGroup" jdbcType="VARCHAR" />
+	  <result column="REMARK" property="remark" jdbcType="VARCHAR"/>
+	  <result column="REMARK1" property="remark1" jdbcType="VARCHAR" />
+	  <result column="REMARK2" property="remark2" jdbcType="VARCHAR" />
+	  <result column="USE_YN" property="useYn" jdbcType="VARCHAR" />
+	  <result column="CONTENT" property="content" jdbcType="VARCHAR" />
+	</resultMap>
+
+	<select id="selectCodeList" parameterType="hashMap" resultMap="codeResultMap">
+    	select /* SystemMapper.xml : my.prac.core.prjsystem.dao.SystemDAO.selectCodeList */ 
+    	       CODE_LGROUP
+    	     , CODE_MGROUP
+    	     , CODE_NAME
+    	     , CODE_SNAME
+    	     , CODE_GROUP
+    	     , REMARK
+    	     , REMARK1
+    	     , REMARK2
+    	     , USE_YN
+    	     , CONTENT
+    	     , INSERT_DATE
+    	     , INSERT_ID
+    	     , MODIFY_DATE
+    	     , MODIFY_ID
+		  from TCODE
+	  order by CODE_LGROUP
+	         , CODE_MGROUP
+	</select>
+	
+	<resultMap id="configResultMap" type="my.prac.core.dto.Config" >
+	  <result column="ITEM" property="item" jdbcType="VARCHAR" />
+	  <result column="VAL" property="val" jdbcType="VARCHAR" />
+	  <result column="CONTENT" property="content" jdbcType="VARCHAR" />
+	</resultMap>
+	<select id="selectConfigList" parameterType="hashMap" resultMap="configResultMap">
+		SELECT /* SystemMapper.xml : my.prac.core.prjsystem.dao.SystemDAO.selectConfigList */
+		       ITEM ,
+		       VAL ,
+		       CONTENT ,
+		       INSERT_DATE ,
+		       INSERT_ID
+		  FROM TCONFIG
+	</select>
+</mapper>

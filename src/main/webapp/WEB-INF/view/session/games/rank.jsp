@@ -85,6 +85,14 @@
 <script src="http://code.jquery.com/jquery.js"></script>
 	<script>
 	
+	
+	<c:forEach var="code_" items="${code}">
+		console.log('${code_.codeLgroup} ${code_.codeMgroup} ${code_.codeName}');
+	</c:forEach>
+	<c:forEach var="config_" items="${config}">
+		console.log('${config_.item} ${config_.val}');
+	</c:forEach>
+	
 	var selectUrl = "/gameUtil/selectGameCnt";
 	var arg_game_no;
 	

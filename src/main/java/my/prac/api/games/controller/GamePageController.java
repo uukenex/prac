@@ -1,19 +1,18 @@
 package my.prac.api.games.controller;
 
-import java.util.HashMap;
-import java.util.List;
-
 import javax.annotation.Resource;
 import javax.servlet.http.HttpSession;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import my.prac.api.system.controller.SystemController;
 import my.prac.core.dto.Users;
 import my.prac.core.prjgame1.service.Game1Service;
 
@@ -22,6 +21,9 @@ public class GamePageController {
 	static Logger logger = LoggerFactory.getLogger(GamePageController.class);
 	@Resource(name = "core.prjgame1.Game1Service")
 	Game1Service game1Service;
+
+	@Autowired
+	SystemController systemController;
 
 	/******************** Main games *********************/
 
@@ -105,10 +107,10 @@ public class GamePageController {
 		}
 		return "session/games/game6";
 	}
-	
+
 	@RequestMapping(value = "/game6", method = RequestMethod.GET)
-	public String game6noSession(HttpSession session, Model model, @RequestParam(required = false, defaultValue = "10") int cell)
-			throws Exception {
+	public String game6noSession(HttpSession session, Model model,
+			@RequestParam(required = false, defaultValue = "10") int cell) throws Exception {
 
 		Users user = (Users) session.getAttribute("Users");
 		if (user != null) {
@@ -118,10 +120,10 @@ public class GamePageController {
 		model.addAttribute("testMode", "true");
 		return "session/games/game6";
 	}
-	
+
 	@RequestMapping(value = "/game7", method = RequestMethod.GET)
-	public String game7noSession(HttpSession session, Model model, @RequestParam(required = false, defaultValue = "10") int cell)
-			throws Exception {
+	public String game7noSession(HttpSession session, Model model,
+			@RequestParam(required = false, defaultValue = "10") int cell) throws Exception {
 
 		Users user = (Users) session.getAttribute("Users");
 		if (user != null) {
@@ -141,6 +143,8 @@ public class GamePageController {
 
 	@RequestMapping(value = "/game/rank", method = RequestMethod.GET)
 	public String gameRank(Model model) throws Exception {
+		model.addAttribute("code", systemController.getCodeList());
+		model.addAttribute("config", systemController.getConfigList());
 		return "session/games/rank";
 	}
 
