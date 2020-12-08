@@ -96,6 +96,18 @@ public class GamePageController {
 		return "session/games/game5";
 	}
 
+	@RequestMapping(value = "/game5_1", method = RequestMethod.GET)
+	public String game5_1(HttpSession session, Model model,
+			@RequestParam(required = false, defaultValue = "10") int cell) throws Exception {
+
+		Users user = (Users) session.getAttribute("Users");
+		if (user != null) {
+			model.addAttribute("userId", user.getUserId());
+			model.addAttribute("userNick", user.getUserNick());
+		}
+		return "session/games/game5_1";
+	}
+
 	@RequestMapping(value = "/session/game6", method = RequestMethod.GET)
 	public String game6(HttpSession session, Model model, @RequestParam(required = false, defaultValue = "10") int cell)
 			throws Exception {
@@ -145,6 +157,18 @@ public class GamePageController {
 		}
 		model.addAttribute("testMode", "true");
 		return "session/games/game7";
+	}
+
+	@RequestMapping(value = "/game8", method = RequestMethod.GET)
+	public String game8noSession(HttpSession session, Model model) throws Exception {
+
+		Users user = (Users) session.getAttribute("Users");
+		if (user != null) {
+			model.addAttribute("userId", user.getUserId());
+			model.addAttribute("userNick", user.getUserNick());
+		}
+		model.addAttribute("testMode", "true");
+		return "session/games/game8";
 	}
 
 	/******************** Main games end *********************/
