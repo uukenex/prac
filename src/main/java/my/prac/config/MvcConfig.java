@@ -56,6 +56,7 @@ public class MvcConfig extends WebMvcConfigurerAdapter {
 		registry.addResourceHandler("/imgServer/**").addResourceLocations("file:///img/dev2/Temp/");
 
 		registry.addResourceHandler("/game_set/**").addResourceLocations("/WEB-INF/game_set/");
+		registry.addResourceHandler("/robots.txt").addResourceLocations("robots.txt");
 	}
 
 	// 파일업로드를 위한 빈
