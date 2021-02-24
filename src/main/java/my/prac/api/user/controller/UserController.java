@@ -38,7 +38,7 @@ public class UserController {
 	}
 
 	@RequestMapping(value = "/loginUser", method = RequestMethod.POST)
-	public String loginUser(Model model, HttpServletRequest request, HttpSession session) {
+	public String loginUser(Model model, HttpServletRequest request, HttpSession session) throws Exception {
 		String referer = request.getHeader("Referer");
 		String userId = request.getParameter("id").toUpperCase();
 		String userPass = request.getParameter("password");
@@ -72,7 +72,7 @@ public class UserController {
 	}
 
 	@RequestMapping(value = "/pop_loginUser", method = RequestMethod.POST)
-	public String popLoginUser(Model model, HttpServletRequest request, HttpSession session) {
+	public String popLoginUser(Model model, HttpServletRequest request, HttpSession session) throws Exception {
 		String referer = request.getHeader("Referer");
 		String userId = request.getParameter("id").toUpperCase();
 		String userPass = request.getParameter("password");
@@ -106,7 +106,7 @@ public class UserController {
 	}
 
 	@RequestMapping(value = "/directloginUser", method = RequestMethod.POST)
-	public String directloginUser(Model model, HttpServletRequest request, HttpSession session) {
+	public String directloginUser(Model model, HttpServletRequest request, HttpSession session) throws Exception {
 		String referer = request.getHeader("Referer");
 		String userId = request.getParameter("id").toUpperCase();
 		String userPass = request.getParameter("password");

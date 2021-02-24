@@ -36,4 +36,6 @@ public interface UserDAO {
 	public int updatePass(HashMap<String, Object> hashMap);
 
 	public int insertUsertracking(HashMap<String, Object> hashMap);
+
+	public int updateLastLoginDate(HashMap<String, Object> hashMap);
 }

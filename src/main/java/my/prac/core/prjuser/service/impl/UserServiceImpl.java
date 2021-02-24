@@ -75,8 +75,21 @@ public class UserServiceImpl implements UserService {
 	}
 
 	@Override
-	public int insertUsertracking(HashMap<String, Object> hashMap) {
-		return urepo.insertUsertracking(hashMap);
+	public int insertUsertracking(HashMap<String, Object> hashMap) throws Exception {
+
+		int rtnCode = 1;
+
+		rtnCode = urepo.updateLastLoginDate(hashMap);
+		if (rtnCode != 1) {
+			throw new Exception("updateLastLoginDate");
+		}
+
+		rtnCode = urepo.insertUsertracking(hashMap);
+		if (rtnCode != 1) {
+			throw new Exception("insertUsertracking");
+		}
+
+		return rtnCode;
 	}
 
 	@Override

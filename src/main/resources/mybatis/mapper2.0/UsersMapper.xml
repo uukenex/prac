@@ -76,4 +76,9 @@
              sysdate)
     </insert>
 
+	<update id="updateLastLoginDate" parameterType="Map">
+        update TUSER  /* UsersMapper.xml : updateLastLoginDate */ 
+               last_login_date = sysdate 
+         where user_id = #{userId, jdbcType=VARCHAR}
+    </update>
 </mapper>

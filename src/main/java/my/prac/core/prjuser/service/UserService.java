@@ -32,5 +32,5 @@ public interface UserService {
 
 	public int updatePass(String userId, String userPass);
 
-	public int insertUsertracking(HashMap<String, Object> hashMap);
+	public int insertUsertracking(HashMap<String, Object> hashMap) throws Exception;
 }
