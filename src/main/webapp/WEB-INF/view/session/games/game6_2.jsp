@@ -15,7 +15,7 @@
 
 	<input type="hidden" value='${userNick}' id='chat_id' />
 	
-	<script src="http://code.jquery.com/jquery.js"></script>
+	<script src="<%=request.getContextPath() %>/assets/js/jquery.min.js"></script>
 	<script src="<%=request.getContextPath()%>/game_set/js/gameutil.js?v=<%=System.currentTimeMillis()%>"></script>
 	<%-- <script src="<%=request.getContextPath()%>/game_set/js/websocket_module2.js?v=<%=System.currentTimeMillis()%>"></script> --%>
 	<script src="<%=request.getContextPath()%>/game_set/map/game6_map0.js?v=<%=System.currentTimeMillis()%>"></script>

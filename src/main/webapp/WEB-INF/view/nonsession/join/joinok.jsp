@@ -13,7 +13,7 @@
 
 	<h2>잠시후 창이 닫힙니다.</h2>
 
-	<script src="http://code.jquery.com/jquery.js"></script>
+	<script src="<%=request.getContextPath() %>/assets/js/jquery.min.js"></script>
 	<script>
 		$(document).on("ready", function() {
 			alert("${message }");

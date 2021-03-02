@@ -62,7 +62,7 @@ route < destination =start < position
 
 </HEAD>
 <BODY onload="onloadFunc()">
-	<script src="http://code.jquery.com/jquery.js"></script>
+	<script src="<%=request.getContextPath() %>/assets/js/jquery.min.js"></script>
 	<script type="text/javascript" src="http://jsgetip.appspot.com"></script>
 	<script language="javascript">
 	<!-- 전역 변수 -->

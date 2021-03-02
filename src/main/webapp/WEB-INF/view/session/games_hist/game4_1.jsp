@@ -14,7 +14,7 @@
 	href="<%=request.getContextPath()%>/game_set/css/game4_1.css?v=<%=System.currentTimeMillis()%>" />
 </HEAD>
 <BODY onload="onloadFunc()">
-	<script src="http://code.jquery.com/jquery.js"></script>
+	<script src="<%=request.getContextPath() %>/assets/js/jquery.min.js"></script>
 	<script type="text/javascript" src="http://jsgetip.appspot.com"></script>
 
 

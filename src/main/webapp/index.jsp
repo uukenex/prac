@@ -16,7 +16,7 @@
 		<meta property="og:description" content="알파카 연구소 메인페이지로 이동합니다.">
 	</head> 
 	<body>
-		<script src="http://code.jquery.com/jquery.js"></script>
+		<script src="<%=request.getContextPath() %>/assets/js/jquery.min.js"></script>
 		<script src="<%=request.getContextPath()%>/game_set/js/comutil.js?v=<%=System.currentTimeMillis()%>"></script>
 		<div id="div_load_image">
 	      <img id="load_image" src="<%=request.getContextPath()%>/game_set/img/loading.gif?v=<%=System.currentTimeMillis()%>">

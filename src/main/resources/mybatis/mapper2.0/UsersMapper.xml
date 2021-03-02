@@ -6,9 +6,21 @@
 <mapper namespace="my.prac.core.prjuser.dao.UserDAO">
 	<!-- 회원가입을 위한 insert -->
 	<insert id="insert" parameterType="my.prac.core.dto.Users">
-		insert into Tuser
-		values(UPPER(#{userId}),#{userPass},#{userName},
-		#{userEmail},#{userPhone},#{userNick})
+		INSERT INTO TUSER
+					(USER_ID
+				    ,USER_PASS
+					,USER_NAME
+					,USER_EMAIL
+					,USER_PHONE
+					,USER_NICK
+					,INSERT_DATE)
+		     VALUES (UPPER(#{userId})
+				    ,#{userPass}
+				    ,#{userName}
+				    ,#{userEmail}
+				    ,#{userPhone}
+				    ,#{userNick}
+				    ,sysdate)
 	</insert>
 
 	<!-- 로그인 기능 -->
@@ -78,7 +90,7 @@
 
 	<update id="updateLastLoginDate" parameterType="Map">
         update TUSER  /* UsersMapper.xml : updateLastLoginDate */ 
-               last_login_date = sysdate 
+           set last_login_date = sysdate 
          where user_id = #{userId, jdbcType=VARCHAR}
     </update>
 </mapper>

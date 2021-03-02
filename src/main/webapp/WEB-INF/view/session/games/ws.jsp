@@ -11,7 +11,7 @@
 <TITLE>new titles..</TITLE>
 </HEAD>
 <BODY>
-	<script src="http://code.jquery.com/jquery.js"></script>
+	<script src="<%=request.getContextPath() %>/assets/js/jquery.min.js"></script>
 	<script src="<%=request.getContextPath()%>/game_set/js/gameutil.js?v=<%=System.currentTimeMillis()%>"></script>
 	<script src="<%=request.getContextPath()%>/game_set/js/websocket_module.js?v=<%=System.currentTimeMillis()%>"></script>
 	

@@ -82,7 +82,7 @@
 	</div>
 
 
-<script src="http://code.jquery.com/jquery.js"></script>
+<script src="<%=request.getContextPath() %>/assets/js/jquery.min.js"></script>
 	<script>
 	
 	

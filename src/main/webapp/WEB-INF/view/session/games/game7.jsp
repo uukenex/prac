@@ -13,7 +13,7 @@
 </HEAD>
 <BODY>
 <%-- 
-	<script src="http://code.jquery.com/jquery.js"></script>
+	<script src="<%=request.getContextPath() %>/assets/js/jquery.min.js"></script>
 	<script type="text/javascript" src="http://jsgetip.appspot.com"></script>
 	<script type="text/javascript" src="http://bernii.github.io/gauge.js/dist/gauge.min.js"></script>
 	<script src="<%=request.getContextPath()%>/game_set/js/gameutil.js?v=<%=System.currentTimeMillis()%>"></script> 
