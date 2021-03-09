@@ -25,7 +25,8 @@
 
 	<servlet>
 		<servlet-name>dispatcherServlet</servlet-name>
-		<servlet-class>org.springframework.web.servlet.DispatcherServlet</servlet-class>
+		<!-- <servlet-class>org.springframework.web.servlet.DispatcherServlet</servlet-class> -->
+		 <servlet-class>my.prac.config.DispatcherServletEx</servlet-class>
 
 		<init-param>
 			<param-name>contextClass</param-name>

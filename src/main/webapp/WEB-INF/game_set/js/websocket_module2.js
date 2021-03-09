@@ -36,7 +36,7 @@
         switch(msg_gb){
         	case '00': //시스템메시지
         		//메시지박스 출력
-                $("#messageWindow").html(orgMsg +fulldata[1] + "\n");
+                $("#messageWindow").html(orgMsg +nowTime()+"-"+fulldata[1] + "\n");
             	$("#messageWindow")[0].scrollTop = $("#messageWindow")[0].scrollHeight;
         		break;
         	case '01': //채팅
@@ -50,7 +50,7 @@
             	chatterbox_timer_function(v_chat_count,targetName,targetX,targetY,targetMsg);
             	
             	//메시지박스 출력
-                $("#messageWindow").html(orgMsg +targetName + " : "+ targetMsg + "\n");
+                $("#messageWindow").html(orgMsg +nowTime()+"-"+targetName + " : "+ targetMsg + "\n");
             	$("#messageWindow")[0].scrollTop = $("#messageWindow")[0].scrollHeight;
         		break;
         		
@@ -188,3 +188,28 @@
     	webSocket.send(sendVal);
     	
     }
+    
+    
+    
+
+    function nowTime(){
+    	var tmpYear  =new Date().getFullYear().toString();
+        var tmpMonth =datePad( new Date().getMonth()+1, 2);
+        var tmpDay   =datePad( new Date().getDate(), 2);
+        var tmpHourr =datePad( new Date().getHours(), 2);
+        var tmpMin   =datePad( new Date().getMinutes(), 2);
+        var tmpSec   =datePad( new Date().getSeconds(), 2);
+        var nowDay   =tmpYear+tmpMonth+tmpDay+tmpHourr+tmpMin+tmpSec;
+        var nowTime  =tmpHourr+":"+tmpMin+":"+tmpSec;
+    	return nowTime;
+    }
+    
+    function datePad(number, length){
+    	var str = number.toString();
+    	while(str.length < length){
+    		str = '0' + str;
+    	}
+    	return str;
+    }
+
+
