@@ -24,7 +24,6 @@ public class WebSocket5 {
 			synchronized (clients) {
 				for (Session client : clients) {
 					client.getBasicRemote().sendText(message);
-					System.out.println("send : " + socketutils2.viewValue() + "/" + client.getId() + " : " + message);
 				}
 			}
 		} catch (Exception e) {

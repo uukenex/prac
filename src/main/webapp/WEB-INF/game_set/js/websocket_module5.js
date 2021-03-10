@@ -143,7 +143,7 @@
                 var newChar = "char_"+userdata;
                 
                 if( $('#'+newChar).length == 0 ){
-                	$('#space').append('<div id='+newChar+' class="char_chat '+targetName+'"></div>');
+                	$('#space').append('<div id='+newChar+' class="char_chat '+userdata+'"></div>');
                 }
                 
                 //입장시에는 자신의 위치를 send하여 좌표를 갱신

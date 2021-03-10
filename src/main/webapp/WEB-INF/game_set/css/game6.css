@@ -45,6 +45,15 @@ section#description {
 	position: absolute;
 	font-size: 11px;
 }
+.half_next {
+	left: 420px;
+	top: 420px;
+	width: 100px;
+	height: 300px;
+	border: solid 1px white;
+	position: absolute;
+	font-size: 11px;
+}
 
 .chat {
 	width: 200px;
@@ -205,4 +214,26 @@ table.rank tr td {
 
 .chat_float{
 	display: none;
+}
+
+table tr td {
+	text-align: center;
+	border: solid 1px white;
+	width: 30px;
+	height: 30px;
+}
+	
+/* css data-value control 
+https://css-tricks.com/almanac/selectors/a/attribute */
+#memories > tbody > tr > td[data-value="0"] {
+	background: white;
+}
+#memories > tbody > tr > td[data-value="1"] {
+	background: red;
+}
+#memories > tbody > tr > td[data-value="4"] {
+	background: gray;
+}
+#memories > tbody > tr > td[data-value="9"] {
+	background: blue;
 }

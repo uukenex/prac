@@ -19,6 +19,7 @@
 	<script type="text/javascript" src="http://jsgetip.appspot.com"></script>
 	<script src="<%=request.getContextPath()%>/game_set/js/gameutil.js?v=<%=System.currentTimeMillis()%>"></script>
 	<script src="<%=request.getContextPath()%>/game_set/js/websocket_module5.js?v=<%=System.currentTimeMillis()%>"></script>
+	<script src="<%=request.getContextPath()%>/game_set/map/game6_1_map0.js?v=<%=System.currentTimeMillis()%>"></script>
 	<script language="javascript">
 	
 	<c:if test="${(testMode == true)}">
@@ -36,6 +37,16 @@
 		}
 		
 	</c:if>
+	
+	var map = mapArr0;
+	var map_1D_size = map.length; //A one-dimensional array size
+	var map_2D_size = map.length*map.length; //A two-dimensional array size
+	var map_1D_digit_point = (map.length - 1).toString().length;//D_POINT
+	
+	var map_x_size = 400;
+	var map_y_size = 400;
+	
+	
 	
 	function init()
     {
@@ -55,9 +66,15 @@
 		
 		var last_key;
 		
+		
 		if($('#chat_id').val() !='' ){
 			onConnect();
 		}
+		
+		
+		initMakeCell();
+		initWindow();
+		
 		
 		
     	$(function(){
@@ -75,8 +92,8 @@
     			
     			if(charx < 0) charx=0;
     			if(chary < 0) chary=0;
-    			if(charx > 400-37-18) charx=400-37-18;
-    			if(chary > 400-63-31) chary=400-63-31;
+    			if(charx > map_x_size-20) charx=map_x_size-20;
+    			if(chary > map_y_size-20) chary=map_y_size-20;
     			
     			if(keypress['37']) {
     				charx -= speed; // left
@@ -142,7 +159,7 @@
         		var key = e.which.toString();
         	
         		if(key=='13'){
-        			f_chatter_box_create(400/2-100, 350);//'enter' chatter box
+        			f_chatter_box_create(map_x_size/2-100, 350);//'enter' chatter box
         		} else if(flag_enter){
         			$('#chat')[0].text += key;
         		} else{
@@ -209,15 +226,49 @@
     			}, 300);	
     		}
     	}
+    	
     }
  
+	function initMakeCell(){
+		$('#memories > tbody').remove();
+		$('#memories').append("<tbody>");
+		for (var x = 0; x < map_1D_size; x++) {
+			$('#memories > tbody:last').append("<tr>");
+			for (var y = 0; y < map_1D_size; y++) {
+				$('#memories > tbody:last > tr:last').append("<td class='cell' data-value="+map[x][y]+" />");
+			}
+			$('#memories > tbody:last').append("</tr>");
+		}
+		$('#memories').append("</tbody>");
+		
+		$('td').css('width', map_x_size / map_1D_size);
+		$('td').css('height', map_y_size / map_1D_size);
+	}
 	
+	function initWindow(){
+		$('#testPanel').append("<input type='button' value='map0' onclick='mapChange(0)'>");
+		$('#testPanel').append("<input type='button' value='map1' onclick='mapChange(1)'>");
+	}
 	
+	function mapChange(mapNo){
+		if(mapNo==0){
+			map = mapArr0;
+		}else{
+			map = mapArr1;
+		}
+		
+		map_1D_size = map.length; //A one-dimensional array size
+		map_2D_size = map.length*map.length; //A two-dimensional array size
+		map_1D_digit_point = (map.length - 1).toString().length;//D_POINT
+		
+		initMakeCell();
+	}
 		
 	</script>
 
 	<section id="space" class='space'>
 		<div id="bullet_field"></div>
+		<table id="memories"></table>
 	</section>
 	
 	
@@ -232,5 +283,6 @@
 	        </fieldset>
 	    </div>
     </section>
+    <section id="testPanel" class='half_next'></section>
 </BODY>
 </HTML>
