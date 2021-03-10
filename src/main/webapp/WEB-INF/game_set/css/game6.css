@@ -43,6 +43,7 @@ section#description {
 	height: 400px;
 	border: solid 1px blue;
 	position: absolute;
+	font-size: 11px;
 }
 
 .chat {

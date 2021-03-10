@@ -18,7 +18,7 @@
 	<script src="<%=request.getContextPath() %>/assets/js/jquery.min.js"></script>
 	<script type="text/javascript" src="http://jsgetip.appspot.com"></script>
 	<script src="<%=request.getContextPath()%>/game_set/js/gameutil.js?v=<%=System.currentTimeMillis()%>"></script>
-	<script src="<%=request.getContextPath()%>/game_set/js/websocket_module2.js?v=<%=System.currentTimeMillis()%>"></script>
+	<script src="<%=request.getContextPath()%>/game_set/js/websocket_module5.js?v=<%=System.currentTimeMillis()%>"></script>
 	<script language="javascript">
 	
 	<c:if test="${(testMode == true)}">
@@ -75,8 +75,8 @@
     			
     			if(charx < 0) charx=0;
     			if(chary < 0) chary=0;
-    			if(charx > 400-18) charx=400-18;
-    			if(chary > 400-31) chary=400-31;
+    			if(charx > 400-37-18) charx=400-37-18;
+    			if(chary > 400-63-31) chary=400-63-31;
     			
     			if(keypress['37']) {
     				charx -= speed; // left
