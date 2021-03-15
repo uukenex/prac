@@ -7,8 +7,11 @@
 <HEAD>
 <meta name="viewport"
 	content="width=device-width, initial-scale=1, user-scalable=no" />
-
-<TITLE>chat-chat</TITLE>
+<meta property="og:title" content="알파카 연구소 채팅방">  
+<meta property="og:type"  content="website">
+<meta property="og:image" content="<%=request.getContextPath()%>/game_set/img/paimon.jpg?v=<%=System.currentTimeMillis()%>">
+<meta property="og:description" content="알파카 연구소 채팅방">
+<TITLE>알파카연구소 채팅방</TITLE>
 <link rel="stylesheet" href="<%=request.getContextPath()%>/game_set/css/game6.css?v=<%=System.currentTimeMillis()%>" />
 </HEAD>
 <BODY onload="init()">
@@ -31,6 +34,7 @@
 				$('#chat_space').append('<input type="text" class="chat" id="chat" value="비정상접근상태"></input>');
 				//location.href = "free?page=1";
 			}else{
+				id = id.replaceAll('[','').replaceAll(']','')
 				$('#chat_id').val(id);	
 			}
 			
@@ -80,6 +84,7 @@
     	$(function(){
     		var keypress = {}, // 어떤 키가 눌려 있는지 저장
     		charx = 0, chary = 0, speed = 2, 
+    		charx_org =0,chary_org=0,
     		//$charimg = $('#char_${userNick}');
     		$charimg = $('#char_'+$('#chat_id').val());
     		
@@ -96,22 +101,52 @@
     			if(chary > map_y_size-20) chary=map_y_size-20;
     			
     			if(keypress['37']) {
-    				charx -= speed; // left
-    				send('02','', charx , chary );
+    				
+    				if(!moveable_on_rock()){
+    					//벽 불가처리 
+    					charx += speed; // left
+    				}else{
+    					charx -= speed; // left
+        				send('02','', charx , chary );	
+    				}
+    				
     			}
     			if(keypress['38']) {
-    				chary -= speed; // up
-    				send('02','', charx , chary );
+    				if(!moveable_on_rock()){
+    					//벽 불가처리 
+    					chary += speed; // up
+    				}else{
+    					chary -= speed; // up
+       					send('02','', charx , chary );	
+    				}
+    				
+    					
     			}
     			if(keypress['39']) {
-    				charx += speed; // right
-    				send('02','', charx , chary );
+    				if(!moveable_on_rock()){
+    					//벽 불가처리 
+    					charx -= speed; // 
+    				}else{
+    					charx += speed; // right
+        				send('02','', charx , chary );	
+    				}
+    				
+    				
     			}
     			if(keypress['40']) {
-    				chary += speed; // down
-    				send('02','', charx , chary );
+    				if(!moveable_on_rock()){
+    					//벽 불가처리 
+    					chary -= speed;
+    				}else{
+    					chary += speed; // down
+        				send('02','', charx , chary );	
+    				}
+    				
     			}
     			
+    			charx_org = charx;
+				chary_org = chary;
+				
     			$charimg.css({top: chary, left: charx});
     			
     			
@@ -153,6 +188,8 @@
 					}        			
         		}
 				
+        		
+				
     		}, 10); // 매 0.01 초마다 실행
     		
         	$(document).keydown(function(e){ // 어떤 키가 눌렸는지 저장 
@@ -163,7 +200,7 @@
         		} else if(flag_enter){
         			$('#chat')[0].text += key;
         		} else{
-        			keypress[key] = true;
+       				keypress[key] = true;	
         			if(key == '37' || key =='38' ||key =='39'||key=='40'){
         				last_key = key;	
         			}
@@ -184,7 +221,73 @@
 		function f_minus_count(){
     		send('05','MINUS');
     	}
-    	
+		
+		//지나갈수있는 경우 true
+    	function moveable_on_rock(arg){
+    		//벽에 닿을때 처리
+    		for(var i =0 ; i < $('#memories > tbody > tr > td').length ; i++){
+    			var rock_value = $('#memories > tbody > tr > td')[i].dataset.value;
+    			var rock_rect = $('#memories > tbody > tr > td')[i].getBoundingClientRect();
+    			
+    			var char_rect_org = $('#char_'+$('#chat_id').val())[0];
+    			if(char_rect_org == null){
+    				continue;
+    			}
+    			var char_rect = char_rect_org.getBoundingClientRect();
+    			var rtnValue= true;
+    			
+    			//rock_rect.left   -= 5;
+    			//rock_rect.right  += 5;
+    			//rock_rect.top    -= 5;
+    			//rock_rect.bottom += 5;
+    			
+    			if(rock_value == '4' && meetBox(char_rect,rock_rect)){
+    				
+    				//미리계산 
+        			switch(arg){
+    					case '37': //left
+    						char_rect.left -= 1;
+    						break;
+    					case '38': //up
+    						char_rect.top -= 1;
+    						break;
+    					case '39': //right
+    						char_rect.left += 1;
+    						break;
+    					case '40': //down
+    						char_rect.top += 1;
+    						break;
+    			
+    				}
+    				
+    				rtnValue = meetBoxPre(char_rect,rock_rect);
+    				
+    				
+    				switch(arg){
+	    	    		case '37': //left
+	    					char_rect.left += 1;
+	    					break;
+	    				case '38': //up
+	    					char_rect.top += 1;
+	    					break;
+	    				case '39': //right
+	    					char_rect.left -= 1;
+	    					break;
+	    				case '40': //down
+	    					char_rect.top -= 1;
+	    					break;
+	    		
+	    			}
+    				
+    				return !rtnValue;
+    			}
+    		}
+    		
+    		
+    		return true;
+    	}
+		
+		
     	function f_chatter_box_create(x,y){
     		var msg;
     		var chat_float_area = $('#char_'+$('#chat_id').val())[0].getBoundingClientRect();
@@ -243,11 +346,21 @@
 		
 		$('td').css('width', map_x_size / map_1D_size);
 		$('td').css('height', map_y_size / map_1D_size);
+		
 	}
 	
 	function initWindow(){
 		$('#testPanel').append("<input type='button' value='map0' onclick='mapChange(0)'>");
 		$('#testPanel').append("<input type='button' value='map1' onclick='mapChange(1)'>");
+	}
+	
+	function chkNowCell(){
+		var meRect = $('#char_'+$('#chat_id').val())[0].getBoundingClientRect();
+        var leftValue = $('#char_'+$('#chat_id').val()).css('left');
+        var topValue = $('#char_'+$('#chat_id').val()).css('top');
+        
+        
+        
 	}
 	
 	function mapChange(mapNo){

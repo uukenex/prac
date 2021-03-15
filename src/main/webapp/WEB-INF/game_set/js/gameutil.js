@@ -20,6 +20,18 @@ if(!isLocal){
 		//history.back();
 	}*/
 }
+//휠방지
+$(document).on("mousewheel.disableScroll DOMMouseScroll.disableScroll touchmove.disableScroll", function(e) {
+	e.preventDefault(); return; 
+	}
+); 
+$(document).on("keydown.disableScroll", function(e) {
+	var eventKeyArray = [32, 33, 34, 35, 36, 37, 38, 39, 40];
+	for (var i = 0; i < eventKeyArray.length; i++) {
+		if (e.keyCode === eventKeyArray [i]) { e.preventDefault(); return; } 
+		} 
+	}
+);
 
 document.oncontextmenu = function(e) {
 	return false;
@@ -78,15 +90,44 @@ function addZero(num) {
 }
 
 function meetBox(org_rect,target_rect){
-	if(target_rect.left   < org_rect.right 
-	&& target_rect.right  > org_rect.left
-    && target_rect.top    < org_rect.bottom 
-    && target_rect.bottom > org_rect.top ) {
+	if(target_rect.left   <= org_rect.right 
+	&& target_rect.right  >= org_rect.left
+    && target_rect.top    <= org_rect.bottom 
+    && target_rect.bottom >= org_rect.top ) {
 		return true;
 	}else{
 		return false;
 	}
 }
+
+function meetBoxPre(org_rect,target_rect){
+	if(target_rect.left   < org_rect.right + 1
+	&& target_rect.right  > org_rect.left - 1
+    && target_rect.top    < org_rect.bottom + 1
+    && target_rect.bottom > org_rect.top - 1 ) {
+		return true;
+	}else{
+		return false;
+	}
+}
+
+function NotMovable(target_rect_left,target_rect_right,target_rect_top,target_rect_bottom, org_rect){
+	if(target_rect_left < org_rect.right){
+		return true;
+	} 
+	if(target_rect_right > org_rect.left){
+		return true;
+	}
+	if(target_rect_top < org_rect.bottom ){
+		return true;
+	}
+	if( target_rect_bottom > org_rect.top ){
+		return true;
+	}
+	
+	return false;
+}
+
 
 function meetWall(org_rect){
 	if(org_rect.right > windowWidth_org || org_rect.left < 0 || org_rect.bottom > windowHeight_org || org_rect.top < 0){
@@ -192,4 +233,6 @@ function common_game_over(arg_game_no, arg_cnt, arg_reason,arg_userId){
 	//코멘트 update
 	
 }
+
+
 
