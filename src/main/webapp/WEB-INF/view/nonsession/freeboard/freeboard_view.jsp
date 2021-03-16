@@ -45,6 +45,9 @@
 									<div>
 										<section>
 											<input type="button" value="목록" id="listview" class="boardButtonStyle2">
+											<c:if test="${comment.userId==Users.userId }">
+											<input type="submit" value="수정하기" formaction="/session/freeUpdate" formmethod="post">
+											</c:if>
 										</section>
 										<hr id="boardTitleHrStyle1">
 										<h3 id="boardTitleSytle1">${comment.commentName}</h3>

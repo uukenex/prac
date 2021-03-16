@@ -46,7 +46,8 @@
 										<tr>
 											<td colspan="2">
 												<textarea name="content" id="content"
-												 rows="9" cols="100" style="width:100%; height:412px; min-width:200px; display:none;"
+												 rows="9" cols="100" style="width:100%; 
+												 height:412px; min-width:200px; display:none;"
 												 class="editorContentWritter"></textarea>
 											</td>
 										</tr>

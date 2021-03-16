@@ -46,44 +46,33 @@
 						<div class="8u 12u(moblie) important(moblie)">
 							<section class="middle-content">
 								<h3>${comment.commentName} 수정</h3>
-								<input type="hidden" name="commentNo" value="${comment.commentNo }" />
 								<form action="/freeUpdate" method="post" id="frm">
-									<table class="boardUpdateTable">
+									<table class="boardEditorTable">
 										<colgroup>
-											<col width="15%">
-											<col width="15%">
-											<col width="15%">
+											<col width="5%">
 											<col width="*%">
 										</colgroup>
-										<tr id="boardUpdateCheck">
-											<input type="hidden" name="commentNo" value="${comment.commentNo }" />
-											<th scope="row">작성자</th>
-						                    <td>
-						                        <input type="hidden" id="IDX" name="IDX" value="">
-						                        ${comment.users.userNick}
-						                    </td>
-						                    <th scope="row">작성일</th>
-						                    <td><fmt:formatDate value="${comment.commentDate}"
-												pattern="yy-MM-dd hh:mm:ss" var="fmtDate" /> ${fmtDate}</td>
-										</tr>
 										<tr>
-											<th>제목</th>
-											<td colspan="3">
-												<input type="text" name="title" id="editorTitleWritter"
+											<td></td>
+											<input type="hidden" name="commentNo" value="${comment.commentNo }" />
+											<td class="inputTitle"><input type="text" name="title" id="editorTitleWritter"
 														value="${comment.commentName}">
 											</td>
 										</tr>
 										<tr>
-											<td colspan="4">
-												<textarea name="content" id="content" class="editorContentWritter">
+											<td colspan="2">
+												<textarea name="content" id="content" 
+												 rows="9" cols="100" style="width:100%; 
+												 height:412px; min-width:200px; display:none;"
+												 class="editorContentWritter">
 													${comment.commentContent }
 												</textarea>
 											</td>
 										</tr>
 										<tr>
-											<td colspan="4">
-												<input type="button" name="Submit2" class="editorButtonStyle1" value="취소" onclick="history.back();">
+											<td colspan="2" class="editorButtonTd">
 												<input type="button" id="savebutton" class="editorButtonStyle1" value="완료" />
+												<input type="button" name="Submit2" class="editorButtonStyle1" value="취소" onclick="history.back();">
 											</td>
 										</tr>
 									</table>
@@ -91,6 +80,7 @@
 							</section>
 						</div>
 				</div>
+				<!-- footer -->
 			</div>
 		</div>
 	</div>
@@ -108,9 +98,9 @@ $(function(){
             // 툴바 사용 여부 (true:사용/ false:사용하지 않음)
             bUseToolbar : true,             
             // 입력창 크기 조절바 사용 여부 (true:사용/ false:사용하지 않음)
-            bUseVerticalResizer : true,     
+            bUseVerticalResizer : false,     
             // 모드 탭(Editor | HTML | TEXT) 사용 여부 (true:사용/ false:사용하지 않음)
-            bUseModeChanger : true, 
+            bUseModeChanger : false, 
         }
     });
      
@@ -120,9 +110,12 @@ $(function(){
         editor_object.getById["content"].exec("UPDATE_CONTENTS_FIELD", []);
          
         // 이부분에 에디터 validation 검증
-         
-        //폼 submit
-        $("#frm").submit();
+        if($("#editorTitleWritter").val()==""){
+       	 alert("제목을 입력해주세요.");
+        }else{
+     	  //폼 submit
+    	   $("#frm").submit();
+      	}
     })
 })
 </script>

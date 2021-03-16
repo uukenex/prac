@@ -119,10 +119,12 @@ public class FreeController {
 
 	// 공지 수정하기
 	@RequestMapping(value = "/freeUpdate", method = RequestMethod.POST)
-	public String commentUpdate(Model model, HttpServletRequest request) {
+	public String commentUpdate(Model model, HttpServletRequest request, HttpSession session) {
+
 		String commentNo = request.getParameter("commentNo");
 		String commentName = request.getParameter("title");
 		String commentContent = request.getParameter("content");
+
 		try {
 			commentService.updateComment(Integer.parseInt(commentNo), commentName, commentContent);
 		} catch (Exception e) {
