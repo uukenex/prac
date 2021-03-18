@@ -39,6 +39,16 @@ public class Comments implements Serializable {
 
 	private String replyCnt;
 
+	private String shareYn;
+
+	public String getShareYn() {
+		return shareYn;
+	}
+
+	public void setShareYn(String shareYn) {
+		this.shareYn = shareYn;
+	}
+
 	public String getReplyCnt() {
 		return replyCnt;
 	}

@@ -19,78 +19,63 @@
 				<c:url value="/session/game3" var="game3"/>
 				<c:url value="/session/game4" var="game4"/>
 				<c:url value="/session/game5" var="game5"/>
-				<c:url value="/session/game6" var="game6"/>
+				<c:url value="/ws5" var="ws5"/>
 				<c:url value="/game7" var="game7"/>
 				<c:url value="/game/rank" var="rank"/>
 				
 				<li>
 					<a href="${free }" class="freeBoard">
 						<i class="fa fa-comments-o"></i>
-						커뮤니티
+						free board
 					</a>
 				</li>
 				
 				<li>
 					<a href="${game1 }">
 						<i class="fa fa-gamepad"></i>
-						Game1(pc/mobile)
-						</br>
-						피아노게임
+						PIANO(pc/mobile)
 					</a>
 				</li>
 				<li>
 					<a href="${game2 }">
 						<i class="fa fa-gamepad"></i>
-						Game2(none game)
-						</br>
-						경로찾기알고리즘
+						find path(none game)
 					</a>
 				</li>
 				<li>
 					<a href="${game3 }" >
 						<i class="fa fa-gamepad"></i>
-						Game3(pc/mobile)
-						</br>
-						벽피하는지렁이게임
+						worm tail(pc/mobile)
 					</a>
 				</li>
 				<li>
 					<a href="${game4 }" >
 						<i class="fa fa-gamepad"></i>
-						Game4(pc/mobile)
-						</br>
-						회전하는지렁이게임
+						round worm(pc/mobile)
 					</a>
 				</li>
 				<li>
 					<a href="${game5 }" >
 						<i class="fa fa-gamepad"></i>
-						Game5(pc only)
-						</br>
-						생존왕라이언
-					</a>
-				</li>
-				<li>
-					<a href="${game6 }" >
-						<i class="fa fa-gamepad"></i>
-						Game6(pc only)
-						</br>
-						채팅불릿
+						lion ninja(pc only)
 					</a>
 				</li>
 				<li>
 					<a href="${game7 }" >
 						<i class="fa fa-gamepad"></i>
-						Game7(dev ing...)
-						</br>
+						dev ing
+					</a>
+				</li>
+				<li>
+					<a href="${ws5 }" >
+						<i class="fa fa-gamepad"></i>
+						chat(pc only)
 					</a>
 				</li>
 				<li>
 					<a href="${rank }" >
 						<i class="fa fa-comments-o"></i>
 						RANK
-						</br>
-						순위보기 
 					</a>
 				</li>
 			</ul>

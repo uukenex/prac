@@ -48,6 +48,9 @@
 											<c:if test="${comment.userId==Users.userId }">
 											<input type="submit" value="수정하기" formaction="/session/freeUpdate" formmethod="post">
 											</c:if>
+											<c:if test="${comment.shareYn == '1' and (Users.userId == 'SUHWANYUN' or Users.userId == 'THJEON') }">
+											<input type="submit" value="수정하기Master" formaction="/session/freeUpdate" formmethod="post">
+											</c:if>
 										</section>
 										<hr id="boardTitleHrStyle1">
 										<h3 id="boardTitleSytle1">${comment.commentName}</h3>
