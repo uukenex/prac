@@ -61,12 +61,14 @@
 			<li><a href="<%=request.getContextPath() %>/logout">로그아웃</a></li>
 		</c:if>
 		
-		<c:url value="/free?page=1" var="free" />
+		<c:url value="/free"        var="free" />
+		<c:url value="/share"       var="share" />
 		<c:url value="/game/rank"   var="rank" />
 		<li class="dropMenuLi"><a href="${notice }">게시판</a>
 			<ul>
-				<li><a href="<%=request.getContextPath() %>${free }">자유 게시판</a></li>
-				<li><a href="<%=request.getContextPath() %>${rank }">랭크 게시판</a></li>
+				<li><a href="<%=request.getContextPath() %>${free }" >자유게시판</a></li>
+				<li><a href="<%=request.getContextPath() %>${share }">공유게시판</a></li>
+				<li><a href="<%=request.getContextPath() %>${rank }" >랭크게시판</a></li>
 			</ul></li>
 	</ul>
 </nav>

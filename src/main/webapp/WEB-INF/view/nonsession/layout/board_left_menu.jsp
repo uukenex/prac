@@ -13,8 +13,8 @@
 			<h2>Menu</h2>
 			<ul class="link-list">
 				
-				<c:url value="/free?page=1" var="free"/>
-				<c:url value="/share?page=1" var="share"/>
+				<c:url value="/free" var="free"/>
+				<c:url value="/share" var="share"/>
 				<c:url value="/session/game1" var="game1"/>
 				<c:url value="/session/game2" var="game2"/>
 				<c:url value="/session/game3" var="game3"/>
@@ -69,7 +69,7 @@
 				<li>
 					<a href="${game7 }" >
 						<i class="fa fa-gamepad"></i>
-						dev ing
+						phaser3
 					</a>
 				</li>
 				<li>

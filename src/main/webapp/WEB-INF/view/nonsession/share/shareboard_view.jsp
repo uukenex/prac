@@ -94,7 +94,19 @@
 				alert("${message}");
 	<%session.removeAttribute("message");%>
 		}
+			
+			
+			
 		});
+		
+		var img = document.getElementsByTagName('img'); 
+		for (var x = 0; x < img.length; x++) {
+			img.item(x).onclick=function() {
+				window.open(this.src)
+			}; 
+		}
+
+		
 	</script>
 	
 	<script>

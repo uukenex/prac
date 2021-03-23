@@ -37,10 +37,14 @@ public class FreeController {
 
 	// 자유게시판 리스트 보기
 	@RequestMapping(value = "/free", method = RequestMethod.GET)
-	public String free(Model model, @RequestParam int page, HttpSession session) {
+	public String free(Model model, @RequestParam(required = false, defaultValue = "0") int page, HttpSession session) {
 		List<Comments> comment = null;
 		int freePageCount = 0;
 		int totalPage = 0;
+
+		if (page == 0) {
+			page = 1;
+		}
 		try {
 			comment = commentService.freeListByPage(page);
 			freePageCount = commentService.freePageCount();
