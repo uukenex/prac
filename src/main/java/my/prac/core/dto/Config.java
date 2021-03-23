@@ -1,8 +1,6 @@
 package my.prac.core.dto;
 
-import java.io.Serializable;
-
-public class Config implements Serializable {
+public class Config extends AbstractModel {
 	private static final long serialVersionUID = 1L;
 
 	private String item;

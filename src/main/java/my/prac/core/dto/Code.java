@@ -1,8 +1,6 @@
 package my.prac.core.dto;
 
-import java.io.Serializable;
-
-public class Code implements Serializable {
+public class Code extends AbstractModel {
 	private static final long serialVersionUID = 1L;
 
 	private String codeLgroup;

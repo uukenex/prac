@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="my.prac.core.prjshare.dao.ShareDAO">
+
+	<select id="selectShareListByPage" parameterType="int" resultType="my.prac.core.dto.Shareboard">
+		SELECT /* ShareMapper.selectShareListByPage */
+			   X.SHARE_NO,
+			   X.SHARE_NAME,
+			   X.SHARE_CONTENT,
+			   X.VERSION,
+			   X.MODIFY_ID,
+			   X.MODIFY_DATE,
+			   X.USER_NICK,
+			   X.RNUM
+		  FROM (SELECT SUB.*
+				     , ROWNUM RNUM
+				  FROM (SELECT C.*
+						      ,U.USER_NICK
+						  FROM TSHAREBOARD C
+							  ,TUSER    U
+						 WHERE C.MODIFY_ID = U.USER_ID
+						 ORDER BY C.SHARE_NO DESC) SUB) X
+		 WHERE RNUM BETWEEN #{page} * 10 - 9 AND #{page} * 10
+	</select>
+	
+	<select id="selectSharePageCount" resultType="int" parameterType="String">
+		SELECT /* ShareMapper.selectSharePageCount */ 
+		       COUNT(*)
+		  FROM TSHAREBOARD
+	</select>
+
+	<select id="selectShare" parameterType="hashMap" resultType="my.prac.core.dto.Shareboard">
+		SELECT /* ShareMapper.selectShare */
+		       SHARE_NO
+			 , SHARE_NAME
+			 , SHARE_CONTENT
+			 , VERSION
+			 , MODIFY_ID
+			 , MODIFY_DATE
+			 , U.USER_NICK
+		  FROM TSHAREBOARD SB,TUSER U
+		 WHERE SB.SHARE_NO = #{shareNo, jdbcType=NUMERIC}
+		   AND SB.MODIFY_ID = U.USER_ID
+	</select> 
+	
+	<select id="selectMaxShareNo" parameterType="my.prac.core.dto.Shareboard" resultType="int">
+		SELECT /* ShareMapper.selectShare */
+		       MAX(SHARE_NO)
+		  FROM TSHAREBOARD SB,TUSER U
+		 WHERE SB.INSERT_ID = U.USER_ID
+	</select> 
+
+	<select id="selectShareHist" parameterType="hashMap" resultType="my.prac.core.dto.Shareboard">
+		SELECT /* ShareMapper.selectShareHist */
+		       SHARE_NO
+			 , SHARE_NAME
+			 , SHARE_CONTENT
+			 , VERSION
+			 , MODIFY_ID
+			 , MODIFY_DATE
+		  FROM TSHAREBOARD_HIST A
+		 WHERE A.SHARE_NO = #{shareNo, jdbcType=NUMERIC}
+		   AND A.VERSION = #{version, jdbcType=NUMERIC}
+	</select> 
+
+	<insert id="insertShare" parameterType="my.prac.core.dto.Shareboard">
+        INSERT INTO TSHAREBOARD /* ShareMapper.xml : insertShare */ 
+					 (SHARE_NO
+					 ,SHARE_NAME
+					 ,SHARE_CONTENT
+					 ,VERSION
+					 ,INSERT_ID
+					 ,MODIFY_ID)
+				VALUES
+					 ((SELECT MAX(SHARE_NO)+1 FROM TSHAREBOARD)
+					 ,#{shareName, jdbcType=VARCHAR}
+					 ,#{shareContent, jdbcType=VARCHAR}
+					 ,1
+					 ,UPPER(#{insertId, jdbcType=VARCHAR})
+					 ,UPPER(#{modifyId, jdbcType=VARCHAR}))
+    </insert>
+    
+    <update id="updateShare" parameterType="my.prac.core.dto.Shareboard">
+        UPDATE TSHAREBOARD /* ShareMapper.xml : updateShare */ 
+		   SET SHARE_NAME = #{shareName, jdbcType=VARCHAR}
+		     , SHARE_CONTENT = #{shareContent, jdbcType=VARCHAR}
+		     , VERSION = VERSION+1
+			 , INSERT_ID = UPPER(#{insertId, jdbcType=VARCHAR}) 
+			 , MODIFY_ID = UPPER(#{modifyId, jdbcType=VARCHAR})
+		 WHERE SHARE_NO = #{shareNo, jdbcType=NUMERIC} 			 
+    </update>
+    
+    <insert id="insertShareHist" parameterType="my.prac.core.dto.Shareboard">
+        INSERT INTO TSHAREBOARD_HIST /* ShareMapper.xml : insertShareHist */ 
+					 (SHARE_NO
+					 ,SHARE_NAME
+					 ,SHARE_CONTENT
+					 ,VERSION
+					 ,INSERT_ID
+					 ,MODIFY_ID)
+				VALUES
+					 (#{shareNo, jdbcType=NUMERIC}
+					 ,#{shareName, jdbcType=VARCHAR}
+					 ,#{shareContent, jdbcType=VARCHAR}
+					 ,(SELECT MAX(VERSION) FROM TSHAREBOARD WHERE SHARE_NO = #{shareNo, jdbcType=NUMERIC})
+					 ,UPPER(#{modifyId, jdbcType=VARCHAR})
+					 ,UPPER(#{modifyId, jdbcType=VARCHAR}))
+    </insert>
+    
+</mapper>

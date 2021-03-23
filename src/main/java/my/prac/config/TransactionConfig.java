@@ -29,7 +29,7 @@ public class TransactionConfig {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(TransactionConfig.class);
 
-	private static final int TX_METHOD_TIMEOUT = 3;
+	private static final int TX_METHOD_TIMEOUT = 30;
 
 	private static final String AOP_POINTCUT_EXPRESSION = "execution(* my.prac..service.impl.*ServiceImpl.*Tx(..))";
 

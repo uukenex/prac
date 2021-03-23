@@ -14,6 +14,7 @@
 			<ul class="link-list">
 				
 				<c:url value="/free?page=1" var="free"/>
+				<c:url value="/share?page=1" var="share"/>
 				<c:url value="/session/game1" var="game1"/>
 				<c:url value="/session/game2" var="game2"/>
 				<c:url value="/session/game3" var="game3"/>
@@ -29,7 +30,12 @@
 						free board
 					</a>
 				</li>
-				
+				<li>
+					<a href="${share }" class="freeBoard">
+						<i class="fa fa-comments-o"></i>
+						share board
+					</a>
+				</li>
 				<li>
 					<a href="${game1 }">
 						<i class="fa fa-gamepad"></i>
