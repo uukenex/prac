@@ -25,7 +25,7 @@
 		$('#load_image').css('width',resizeWindowHeight/3);
 		$('#load_image').css('height',resizeWindowHeight/3);
 		$(document).on("ready", function() {
-			window.location.href = '/free?page=1';
+			window.location.href = '/free';
 		});
 		</script>
 		<style>

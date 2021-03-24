@@ -74,7 +74,10 @@
 		<error-code>404</error-code>
 		<location>/WEB-INF/view/error_page/404.jsp</location>
 	</error-page>
-	
+	<error-page>
+		<error-code>405</error-code>
+		<location>/WEB-INF/view/error_page/405.jsp</location>
+	</error-page>
 	<welcome-file-list>
 		<!-- 아래 jsp를 사용하려면 request.getAttribute의 값이 필요함.... -->
         <!-- <welcome-file>/WEB-INF/view/nonsession/freeboard/freeboard.jsp</welcome-file> -->
