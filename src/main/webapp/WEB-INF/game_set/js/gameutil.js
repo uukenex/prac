@@ -20,19 +20,20 @@ if(!isLocal){
 		//history.back();
 	}*/
 }
-//휠방지
-$(document).on("mousewheel.disableScroll DOMMouseScroll.disableScroll touchmove.disableScroll", function(e) {
-	e.preventDefault(); return; 
-	}
-); 
-$(document).on("keydown.disableScroll", function(e) {
-	var eventKeyArray = [32, 33, 34, 35, 36, 37, 38, 39, 40];
-	for (var i = 0; i < eventKeyArray.length; i++) {
-		if (e.keyCode === eventKeyArray [i]) { e.preventDefault(); return; } 
-		} 
-	}
-);
 
+
+
+/*
+$(document).on("keydown.disableScroll", function(e) {
+	var eventKeyArray = [32 ,33, 34, 35, 36, 37, 38, 39, 40]; //32사용시 채팅 스페이스안됨 
+	for (var i = 0; i < eventKeyArray.length; i++) {
+		if (e.keyCode === eventKeyArray [i]) { 
+			e.preventDefault();
+			return; 
+		} 
+	} 
+});
+*/
 document.oncontextmenu = function(e) {
 	return false;
 }
@@ -45,7 +46,7 @@ jQuery(document).keydown(function(e){
 	}
 });
 
-
+window.onscroll = function () { window.scrollTo(0, 0); };
 window.addEventListener('resize', windowClear, true);
 
 function windowClear(){
