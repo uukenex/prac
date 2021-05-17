@@ -27,7 +27,7 @@ public class GamePageController {
 
 	/******************** Main games *********************/
 
-	@RequestMapping(value = "/session/game1", method = RequestMethod.GET)
+	@RequestMapping(value = "/game1", method = RequestMethod.GET)
 	public String game1(HttpSession session, Model model) {
 		Users user = (Users) session.getAttribute("Users");
 		if (user != null) {
@@ -37,7 +37,7 @@ public class GamePageController {
 		return "session/games/game1";
 	}
 
-	@RequestMapping(value = "/session/game2", method = RequestMethod.GET)
+	@RequestMapping(value = "/game2", method = RequestMethod.GET)
 	public String game2(HttpSession session, Model model,
 			@RequestParam(required = false, defaultValue = "10") int cell) {
 		if (cell > 50) {
@@ -55,7 +55,7 @@ public class GamePageController {
 		return "session/games/game2";
 	}
 
-	@RequestMapping(value = "/session/game3", method = RequestMethod.GET)
+	@RequestMapping(value = "/game3", method = RequestMethod.GET)
 	public String game3(HttpSession session, Model model, @RequestParam(required = false, defaultValue = "10") int cell)
 			throws Exception {
 		if (cell > 50) {
@@ -73,7 +73,7 @@ public class GamePageController {
 		return "session/games/game3";
 	}
 
-	@RequestMapping(value = "/session/game4", method = RequestMethod.GET)
+	@RequestMapping(value = "/game4", method = RequestMethod.GET)
 	public String game4(HttpSession session, Model model, @RequestParam(required = false, defaultValue = "10") int cell)
 			throws Exception {
 		Users user = (Users) session.getAttribute("Users");
@@ -84,7 +84,7 @@ public class GamePageController {
 		return "session/games/game4";
 	}
 
-	@RequestMapping(value = "/session/game5", method = RequestMethod.GET)
+	@RequestMapping(value = "/game5", method = RequestMethod.GET)
 	public String game5(HttpSession session, Model model, @RequestParam(required = false, defaultValue = "10") int cell)
 			throws Exception {
 
@@ -108,7 +108,7 @@ public class GamePageController {
 		return "session/games/game5_1";
 	}
 
-	@RequestMapping(value = "/session/game6", method = RequestMethod.GET)
+	@RequestMapping(value = "/game6", method = RequestMethod.GET)
 	public String game6(HttpSession session, Model model, @RequestParam(required = false, defaultValue = "10") int cell)
 			throws Exception {
 
@@ -117,19 +117,6 @@ public class GamePageController {
 			model.addAttribute("userId", user.getUserId());
 			model.addAttribute("userNick", user.getUserNick());
 		}
-		return "session/games/game6";
-	}
-
-	@RequestMapping(value = "/game6", method = RequestMethod.GET)
-	public String game6noSession(HttpSession session, Model model,
-			@RequestParam(required = false, defaultValue = "10") int cell) throws Exception {
-
-		Users user = (Users) session.getAttribute("Users");
-		if (user != null) {
-			model.addAttribute("userId", user.getUserId());
-			model.addAttribute("userNick", user.getUserNick());
-		}
-		model.addAttribute("testMode", "true");
 		return "session/games/game6";
 	}
 
@@ -191,7 +178,7 @@ public class GamePageController {
 		return "session/games/ws";
 	}
 
-	@RequestMapping(value = "/game/rank", method = RequestMethod.GET)
+	@RequestMapping(value = "/rank", method = RequestMethod.GET)
 	public String gameRank(Model model) throws Exception {
 		model.addAttribute("code", systemController.getCodeList());
 		model.addAttribute("config", systemController.getConfigList());

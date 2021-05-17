@@ -15,14 +15,14 @@
 				
 				<c:url value="/free" var="free"/>
 				<c:url value="/share" var="share"/>
-				<c:url value="/session/game1" var="game1"/>
-				<c:url value="/session/game2" var="game2"/>
-				<c:url value="/session/game3" var="game3"/>
-				<c:url value="/session/game4" var="game4"/>
-				<c:url value="/session/game5" var="game5"/>
+				<c:url value="/game1" var="game1"/>
+				<c:url value="/game2" var="game2"/>
+				<c:url value="/game3" var="game3"/>
+				<c:url value="/game4" var="game4"/>
+				<c:url value="/game5" var="game5"/>
 				<c:url value="/ws5" var="ws5"/>
 				<c:url value="/game7" var="game7"/>
-				<c:url value="/game/rank" var="rank"/>
+				<c:url value="/rank" var="rank"/>
 				
 				<li>
 					<a href="${free }" class="freeBoard">

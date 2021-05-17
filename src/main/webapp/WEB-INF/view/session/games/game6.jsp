@@ -1,3 +1,4 @@
+<!-- 미사용 -->
 <%@ page import="org.springframework.web.bind.annotation.ModelAttribute"%>
 <%@ page language="java" contentType="text/html; charset=UTF-8"
 	pageEncoding="UTF-8"%>
@@ -144,7 +145,7 @@
         		if(key=='13'){
         			f_chatter_box_create(400/2-100, 350);//'enter' chatter box
         		} else if(flag_enter){
-        			$('#chat')[0].text += key;
+        			//$('#chat')[0].text += key;
         		} else{
         			keypress[key] = true;
         			if(key == '37' || key =='38' ||key =='39'||key=='40'){

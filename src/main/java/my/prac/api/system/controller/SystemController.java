@@ -2,7 +2,6 @@ package my.prac.api.system.controller;
 
 import java.util.List;
 
-import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 import javax.servlet.http.HttpSession;
 
@@ -27,14 +26,14 @@ public class SystemController {
 	private List<Code> codeList = null;
 	private List<Config> configList = null;
 
-	@PostConstruct
-	public void codeSettings() throws Exception {
-
-		codeList = systemService.selectCodeList(null);
-		configList = systemService.selectConfigList(null);
-
-	}
-
+	/*
+	 * @PostConstruct public void codeSettings() throws Exception {
+	 * 
+	 * codeList = systemService.selectCodeList(null); configList =
+	 * systemService.selectConfigList(null);
+	 * 
+	 * }
+	 */
 	@RequestMapping(value = "/code_refresh", method = RequestMethod.GET)
 	public String refresh(HttpSession session, Model model) throws Exception {
 		codeList = systemService.selectCodeList(null);
