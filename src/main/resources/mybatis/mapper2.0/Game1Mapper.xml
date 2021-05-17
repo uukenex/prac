@@ -57,8 +57,9 @@
     <update id="updateGameCnt" parameterType="Map">
         update TGAME_RANK /* Game1Mapper.xml : my.prac.core.prjgame1.dao.Game1DAO.updateGameCnt */
            set MSG = #{msg, jdbcType=VARCHAR}
-         where USER_ID =  #{userName, jdbcType=VARCHAR}
-           and IP_ADDR =  #{ip, jdbcType=VARCHAR}
+         where <!-- USER_ID =  #{userName, jdbcType=VARCHAR}
+           and  -->
+               IP_ADDR =  #{ip, jdbcType=VARCHAR}
            and MEDIA_CODE = #{mediaCode, jdbcType=VARCHAR}
            and CNT = #{cnt, jdbcType=NUMERIC}
            and GAME_NO = #{gameSeq, jdbcType=VARCHAR}
