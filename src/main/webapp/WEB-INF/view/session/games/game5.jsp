@@ -263,7 +263,7 @@
         			}
         			
         			//근거리 공격 또는 원거리 공격 판정
-        			if(meetBox(e_rect,c_a_rect) || (flag_char_range_atk && meetBox(e_rect,c_r_a_rect) )){
+        			if((flag_char_short_attack && meetBox(e_rect,c_a_rect)) || (flag_char_range_atk && meetBox(e_rect,c_r_a_rect) )){
         				v_score_hit += 1;
     	   				$('.enemy')[i].remove();
         			}
@@ -318,7 +318,7 @@
         		for(var i =0 ; i < $('.life').length ; i++){
         			l_rect = $('.life')[i].getBoundingClientRect();
         			
-        			if(meetBox(l_rect,c_rect) && !flag_char_hit_delay){
+        			if(meetBox(l_rect,c_rect)){
         				v_score_life += 1;
         				
         				flag_char_hit_delay = true;

@@ -23,7 +23,7 @@
 	<script src="<%=request.getContextPath()%>/game_set/map/game6_1_map0.js?v=<%=System.currentTimeMillis()%>"></script>
 	<script language="javascript">
 	
-	var db_game_no = 7;
+	var db_game_no = 6;
 	var map = mapArr0;
 	var map_1D_size = map.length; //A one-dimensional array size
 	var map_2D_size = map.length*map.length; //A two-dimensional array size
