@@ -74,6 +74,7 @@ public class ShareController {
 			share.setShareContent(share.getShareContent().replace("{imgUrl}", "http://dev-apc.com"));
 		} catch (Exception e) {
 			log.info("shareService.selectShare DB none Connect");
+			e.printStackTrace();
 		}
 
 		model.addAttribute("share", share);
