@@ -90,6 +90,7 @@
 		     , VERSION = VERSION+1
 			 , INSERT_ID = UPPER(#{insertId, jdbcType=VARCHAR}) 
 			 , MODIFY_ID = UPPER(#{modifyId, jdbcType=VARCHAR})
+			 , MODIFY_DATE = SYSDATE
 		 WHERE SHARE_NO = #{shareNo, jdbcType=NUMERIC} 			 
     </update>
     

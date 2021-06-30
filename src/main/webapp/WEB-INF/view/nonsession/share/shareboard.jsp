@@ -65,8 +65,7 @@
 										<col width="20%" />
 										<col width="*" />
 										<col width="15%" />
-										<col width="20%" />
-										<col width="15%" />
+										<col width="35%" />
 									</colgroup>
 									<thead id="board_table_thead">
 									<tr>
@@ -83,7 +82,7 @@
 											<td id="boardTitle"><a href="shareView?shareNo=${share.shareNo} ">${share.shareName }</a></td>
 											<td>${share.userNick}</td>
 											<td><fmt:formatDate value="${share.modifyDate }"
-													pattern="yy-MM-dd" var="fmtDate" /> ${fmtDate }</td>
+													pattern="yyyy-MM-dd HH:mm:ss" var="fmtDate" /> ${fmtDate }</td>
 										</tr>
 									</c:forEach>
 									

@@ -52,7 +52,19 @@
 											<input type="submit" value="수정하기" formaction="/s/shareUpdate" formmethod="post">
 										</section>
 										<hr id="boardTitleHrStyle1">
-										<h3 id="boardTitleSytle1">${share.shareName}</h3>
+										<h3 id="boardTitleSytle1">${share.shareName} ver.${share.version}</h3>
+										<h4>
+										<c:if test="${share.version > 5}">
+										과거버전보기
+										<select id="selectVersion" onChange="location.href='shareView?shareNo=${share.shareNo}&version='+this.value">
+											<option value="${share.version}  ">${share.version}  </option>
+											<option value="${share.version-1}">${share.version-1}</option>
+											<option value="${share.version-2}">${share.version-2}</option>
+											<option value="${share.version-3}">${share.version-3}</option>
+											<option value="${share.version-4}">${share.version-4}</option>
+										</select>
+										</c:if>
+										</h4>
 										<input type="hidden" name="shareNo" value="${share.shareNo }" />
 										<hr id="boardTitleHrStyle1">
 										<table style="border:2px solid #1DDB16">
