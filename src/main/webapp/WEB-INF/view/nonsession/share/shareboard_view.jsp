@@ -45,7 +45,7 @@
 									<div>
 										<section>
 											<input type="button" value="목록" id="listview" class="boardButtonStyle2">
-											<input type="submit" value="수정하기" formaction="/shareUpdate" formmethod="post">
+											<input type="submit" value="수정하기" formaction="/s/shareUpdate" formmethod="post">
 										</section>
 										<hr id="boardTitleHrStyle1">
 										<h3 id="boardTitleSytle1">${share.shareName}</h3>

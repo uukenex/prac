@@ -109,7 +109,7 @@ public class ShareController {
 		return "redirect:/shareView?shareNo=" + newShareNo;
 	}
 
-	@RequestMapping(value = "/session/shareUpdate", method = RequestMethod.POST)
+	@RequestMapping(value = "/s/shareUpdate", method = RequestMethod.POST)
 	public String noticeUpdate(Model model, HttpServletRequest request) {
 		String shareNo = request.getParameter("shareNo");
 		Shareboard share = null;
