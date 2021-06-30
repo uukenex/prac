@@ -128,8 +128,13 @@ public class ShareController {
 		String shareNo = request.getParameter("shareNo");
 		String shareName = request.getParameter("title");
 		String shareContent = request.getParameter("content");
-		Users u = (Users) session.getAttribute("Users");
-		String userId = u.getUserId();
+		String userId;
+		try {
+			Users u = (Users) session.getAttribute("Users");
+			userId = u.getUserId();
+		} catch (Exception e) {
+			userId = "999999";
+		}
 
 		Shareboard share = new Shareboard();
 		share.setShareNo(Integer.parseInt(shareNo));
