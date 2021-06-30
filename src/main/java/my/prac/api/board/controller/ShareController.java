@@ -71,7 +71,9 @@ public class ShareController {
 				shareMap.put("version", version);
 				share = shareService.selectShareHist(shareMap);
 			}
-			share.setShareContent(share.getShareContent().replace("{imgUrl}", "http://dev-apc.com"));
+			share.setShareContent(share.getShareContent().replaceAll("{imgUrl}", "http://dev-apc.com"));
+			share.setShareContent(share.getShareContent().replaceAll("？", ""));
+
 		} catch (Exception e) {
 			log.info("shareService.selectShare DB none Connect");
 			e.printStackTrace();

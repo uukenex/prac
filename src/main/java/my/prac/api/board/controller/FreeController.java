@@ -73,7 +73,8 @@ public class FreeController {
 			commentService.count(commentNo);
 			reply = commentService.selectReplyList(commentNo);
 			comment = commentService.selectComment(commentNo);
-			comment.setCommentContent(comment.getCommentContent().replace("{imgUrl}", "http://dev-apc.com"));
+			comment.setCommentContent(comment.getCommentContent().replaceAll("{imgUrl}", "http://dev-apc.com"));
+			comment.setCommentContent(comment.getCommentContent().replaceAll("？", ""));
 		} catch (Exception e) {
 			log.info("commentService.selectReplyList DB none Connect");
 			log.info("commentService.selectComment DB none Connect");
