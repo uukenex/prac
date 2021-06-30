@@ -12,6 +12,10 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1" />
 	<meta name="description" content="SlidesJS is a simple slideshow plugin for jQuery. Packed with a useful set of features to help novice and advanced developers alike create elegant and user-friendly slideshows.">
  	<meta name="author" content="Nathan Searles">
+ 	<meta property="og:title" content="알파카 연구소">  
+	<meta property="og:type" content="website">
+	<meta property="og:image" content="<%=request.getContextPath()%>/game_set/img/paimon.jpg?v=<%=System.currentTimeMillis()%>">
+	<meta property="og:description" content="알파카 연구소 - 공유게시판">
   		
 		<!--[if lte IE 8]><script src="assets/js/ie/html5shiv.js"></script><![endif]-->
 		<link rel="stylesheet" href="<%=request.getContextPath() %>/assets/css/main.css?v=<%=System.currentTimeMillis() %>" />
