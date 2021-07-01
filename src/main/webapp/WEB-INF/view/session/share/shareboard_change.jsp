@@ -94,7 +94,7 @@ $(function(){
     nhn.husky.EZCreator.createInIFrame({
         oAppRef: editor_object,
         elPlaceHolder: "content",
-        sSkinURI: "/se2/SmartEditor2Skin.html", 
+        sSkinURI: "/se2/SmartEditor2Skin.html?v=3", 
         htParams : {
             // 툴바 사용 여부 (true:사용/ false:사용하지 않음)
             bUseToolbar : true,             
@@ -113,12 +113,30 @@ $(function(){
         // 이부분에 에디터 validation 검증
         if($("#editorTitleWritter").val()==""){
        	 alert("제목을 입력해주세요.");
-        }else{
-     	  //폼 submit
-    	   $("#frm").submit();
-      	}
-    })
-})
+        }
+        
+        $.ajax({
+			type:"post",
+			url:"/shareVersionCheck",
+			data:{
+				shareNo:${share.shareNo},
+				version:${share.version}
+			},
+			success:function(res){
+				if(res==1){//버전정보 일치시 
+					$("#frm").submit();
+				} else if(res==-1){
+					alert('서버연결오류');
+				} else{
+					alert('버전정보가 다릅니다.');
+				}
+			},
+			error:function(request,status,error){
+				alert(request.responseText);
+			}
+        });//ajax종료부
+    });//click action종료부
+});
 </script>
 
 <!-- <script>

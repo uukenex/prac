@@ -14,6 +14,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 
 import my.prac.core.dto.Shareboard;
 import my.prac.core.dto.Users;
@@ -152,6 +153,24 @@ public class ShareController {
 			log.info("shareService.updateShare DB none Connect");
 		}
 		return "redirect:/shareView?shareNo=" + shareNo;
+	}
+	
+	// 댓글달기 ajax
+	@RequestMapping(value = "/shareVersionCheck", method = RequestMethod.POST)
+	public @ResponseBody int shareVersionCheck(
+			@RequestParam int shareNo, 
+			@RequestParam int version, 
+			HttpSession session) {
+		int res = 0;
+		try {
+			//버전정보 일치시 1로 업데이트 해야함..현재는 모두 업데이트가능으로 
+			res=1;
+		} catch (Exception e) {
+			log.info("ShareService.shareVersionCheck DB none Connect");
+			res=-1;
+		}
+
+		return res;
 	}
 
 }
