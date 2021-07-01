@@ -12135,6 +12135,10 @@ nhn.husky.SE2M_Hyperlink = jindo.$Class({
 		if (sWWWURL){
 			sResult = '<a href="http://'+sWWWURL+'">'+sURL+'</a>';
 		} else {
+			if(sHTTPURL == '' && sURL == ''){
+				sHTTPURL = sAll;
+				sURL	 = sAll;
+			}
 			sResult = '<a href="'+sHTTPURL+'">'+sURL+'</a>';
 		}
 		
