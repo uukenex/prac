@@ -300,7 +300,10 @@
 		var img = document.getElementsByTagName('img'); 
 		for (var x = 0; x < img.length; x++) {
 			img.item(x).onclick=function() {
-				window.open(this.src)
+				var img = new Image;
+				img.src = this.src;
+				var w = window.open("",'_blank','width=880,height=510');
+				w.document.write(img.outerHTML);
 			}; 
 		}
 	</script>
