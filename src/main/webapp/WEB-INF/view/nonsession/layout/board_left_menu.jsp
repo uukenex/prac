@@ -7,10 +7,14 @@
 <!-- d -->
 
 	<div class="3u 12u(mobile)">
-	
+	<script>
+	function toggleGameMenu(){
+		$('.hidable').toggleClass('hide');
+	}
+	</script>
 		<!-- Left Board Menu -->
 		<section class="boardSection">
-			<h2>Menu</h2>
+			<h2 onclick="toggleGameMenu();">MenuToggle</h2>
 			<ul class="link-list">
 				
 				<c:url value="/free" var="free"/>
@@ -36,37 +40,37 @@
 						share board
 					</a>
 				</li>
-				<li>
+				<li class='hidable hide'>
 					<a href="${game1 }">
 						<i class="fa fa-gamepad"></i>
 						PIANO(pc/mobile)
 					</a>
 				</li>
-				<li>
+				<li class='hidable hide'>
 					<a href="${game2 }">
 						<i class="fa fa-gamepad"></i>
 						find path(none game)
 					</a>
 				</li>
-				<li>
+				<li class='hidable hide'>
 					<a href="${game3 }" >
 						<i class="fa fa-gamepad"></i>
 						worm tail(pc/mobile)
 					</a>
 				</li>
-				<li>
+				<li class='hidable hide'>
 					<a href="${game4 }" >
 						<i class="fa fa-gamepad"></i>
 						round worm(pc/mobile)
 					</a>
 				</li>
-				<li>
+				<li class='hidable hide'>
 					<a href="${game5 }" >
 						<i class="fa fa-gamepad"></i>
 						lion ninja(pc only)
 					</a>
 				</li>
-				<li>
+				<li class='hidable hide'>
 					<a href="${game7 }" >
 						<i class="fa fa-gamepad"></i>
 						phaser3
@@ -78,7 +82,7 @@
 						chat(pc only)
 					</a>
 				</li>
-				<li>
+				<li class='hidable hide'>
 					<a href="${rank }" >
 						<i class="fa fa-comments-o"></i>
 						RANK

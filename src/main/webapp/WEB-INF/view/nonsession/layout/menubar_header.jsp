@@ -63,7 +63,7 @@
 		
 		<c:url value="/free"        var="free" />
 		<c:url value="/share"       var="share" />
-		<c:url value="/game/rank"   var="rank" />
+		<c:url value="/rank"   var="rank" />
 		<li class="dropMenuLi"><a href="${notice }">게시판</a>
 			<ul>
 				<li><a href="<%=request.getContextPath() %>${free }" >자유게시판</a></li>
