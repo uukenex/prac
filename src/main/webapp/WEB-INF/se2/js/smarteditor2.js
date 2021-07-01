@@ -12527,7 +12527,7 @@ nhn.husky.SE2M_Hyperlink = jindo.$Class({
 				elTmpDiv.appendChild(a[i].cloneNode(true));
 
 				// IE에서 innerHTML를 이용 해 직접 텍스트 노드 값을 할당 할 경우 줄바꿈등이 깨질 수 있어, 텍스트 노드로 만들어서 이를 바로 append 시켜줌
-				elTmpDiv.innerHTML = (sTmpStr+elTmpDiv.innerHTML).replace(/(&nbsp|\s)?(((?!http:\/\/)www\.(?:(?!\&nbsp;|\s|"|').)+)|(http:\/\/(?:(?!&nbsp;|\s|"|').)+))/ig, this._generateAutoLink);
+				elTmpDiv.innerHTML = (sTmpStr+elTmpDiv.innerHTML).replace(/(&nbsp|\s)?(((?!http:\/\/)www\.(?:(?!\&nbsp;|\s|"|').)+)|(http:\/\/(?:(?!&nbsp;|\s|"|').)+))|(&nbsp|\s)?(((?!https:\/\/)www\.(?:(?!\&nbsp;|\s|"|').)+)|(https:\/\/(?:(?!&nbsp;|\s|"|').)+))/ig, this._generateAutoLink);
 
 				// innerHTML 내에 텍스트가 있을 경우 insert 시에 주변 텍스트 노드와 합쳐지는 현상이 있어 div로 위치를 먼저 잡고 하나씩 삽입
 				a[i].parentNode.insertBefore(elTmpDiv, a[i]);
