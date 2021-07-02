@@ -143,7 +143,6 @@ public class ShareController {
 			userId = u.getUserId();
 		} catch (Exception e) {
 			userId = "999999";
-			System.out.println(request.getParameter("ip"));
 		}
 
 		Shareboard share = new Shareboard();
