@@ -53,20 +53,24 @@
 										</section>
 										<hr id="boardTitleHrStyle1">
 										<h3 id="boardTitleSytle1">${share.shareName} ver.${share.version}</h3>
-										<h4>
-										<c:if test="${share.version > 5}">
-										과거버전보기
-										<select id="selectVersion" onChange="location.href='shareView?shareNo=${share.shareNo}&version='+this.value">
-											<option value="${share.version}  ">${share.version}  </option>
-											<option value="${share.version-1}">${share.version-1}</option>
-											<option value="${share.version-2}">${share.version-2}</option>
-											<option value="${share.version-3}">${share.version-3}</option>
-											<option value="${share.version-4}">${share.version-4}</option>
-										</select>
-										</c:if>
-										</h4>
 										<input type="hidden" name="shareNo" value="${share.shareNo }" />
+										
 										<hr id="boardTitleHrStyle1">
+										
+										<section class="inline">
+											<c:if test="${share.version > 5}">
+											
+											<select id="selectVersion"  onChange="location.href='shareView?shareNo=${share.shareNo}&version='+this.value">
+												<option value="0">과거버전으로
+												<c:forEach var="version" items="${shareHist}">
+													<option value="${version}  ">과거버전 ${version}  </option>
+												</c:forEach>
+											</select>
+											<input type="button" class="boardButtonStyle2" onclick="location.href='shareView?shareNo=${share.shareNo}&version=0';"
+											value="최신버전으로" />
+											</c:if>
+										</section>
+										
 										<table style="border:2px solid #1DDB16">
 											<colgroup>
 												<col width="15%" />
@@ -76,7 +80,13 @@
 											</colgroup>
 											<tr>
 												<td>수정자</td>
-												<td class="boardTitleSort boardFontBold">${share.userNick}</td>
+												<c:if test="${share.modifyId == '999999'}"> 
+													<td class="boardTitleSort boardFontBold">${share.userNick} (${share.ipAddr})</td>
+												</c:if>
+												<c:if test="${share.modifyId != '999999'}">
+													<td class="boardTitleSort boardFontBold">${share.userNick}</td> 
+												</c:if>
+												
 												<td>최근수정일</td>
 												<td class="boardTitleSort boardFontBold2">
 													<fmt:formatDate value="${share.modifyDate}"

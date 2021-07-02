@@ -54,8 +54,10 @@
 										</colgroup>
 										<tr>
 											<td></td>
+											
 											<input type="hidden" name="shareNo" value="${share.shareNo }" />
 											<input type="hidden" name="version" value="${share.version }" />
+											<input type="hidden" id="ip" name="ipAddr"/>
 											<td class="inputTitle"><input type="text" name="title" id="editorTitleWritter"
 														value="${share.shareName }">
 											</td>
@@ -85,8 +87,12 @@
 			</div>
 		</div>
 	</div>
-	
+
+<script type="text/javascript" src="http://jsgetip.appspot.com"></script>	
 <script>
+var ip = ip();
+$('#ip').val(ip);
+
 $(function(){
     //전역변수선언
     var editor_object = [];
@@ -104,7 +110,7 @@ $(function(){
             bUseModeChanger : false, 
         }
     });
-     
+    
     //전송버튼 클릭이벤트
     $("#savebutton").click(function(){
         //id가 content인 textarea에 에디터에서 대입
@@ -128,7 +134,7 @@ $(function(){
 				} else if(res==-1){
 					alert('서버연결오류');
 				} else{
-					alert('버전정보가 다릅니다.');
+					alert('버전정보가 다릅니다. \n전페이지로 이동 후 재작성해주세요.');
 				}
 			},
 			error:function(request,status,error){

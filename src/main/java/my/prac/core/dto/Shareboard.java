@@ -9,6 +9,7 @@ public class Shareboard extends AbstractModel {
 	String shareName;
 	String shareContent;
 	int version;
+	String ipAddr;
 
 	/** VO */
 	String userNick;
@@ -51,5 +52,14 @@ public class Shareboard extends AbstractModel {
 
 	public void setVersion(int version) {
 		this.version = version;
+	}
+	
+
+	public String getIpAddr() {
+		return ipAddr;
+	}
+
+	public void setIpAddr(String ipAddr) {
+		this.ipAddr = ipAddr;
 	}
 }

@@ -24,5 +24,8 @@ public interface ShareService {
 
 	// 게시글 수정
 	public int updateShareTx(Shareboard share);
+	// 게시글수정시 버전체크
+	public int selectVersionCheck(HashMap<String, Object> paramMap);
 
+	public List<Integer> selectShareHistList(int shareNo);
 }

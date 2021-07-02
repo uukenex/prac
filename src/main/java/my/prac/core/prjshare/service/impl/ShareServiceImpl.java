@@ -61,5 +61,15 @@ public class ShareServiceImpl implements ShareService {
 
 		return rtn;
 	}
+	
+	@Override
+	public int selectVersionCheck(HashMap<String, Object> paramMap) {
+		return shareDAO.selectVersionCheck(paramMap);
+	}
+	
+	@Override
+	public List<Integer> selectShareHistList(int shareNo) {
+		return shareDAO.selectShareHistList(shareNo);
+	}
 
 }

@@ -26,4 +26,7 @@ public interface ShareDAO {
 
 	public Shareboard selectShareHist(HashMap<String, Object> shareMap);
 
+	public int selectVersionCheck(HashMap<String, Object> paramMap);
+	
+	public List<Integer> selectShareHistList(int shareNo); 
 }

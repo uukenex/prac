@@ -32,7 +32,7 @@ public class ShareController {
 	ShareService shareService;
 
 	@RequestMapping(value = "/share", method = RequestMethod.GET)
-	public String free(Model model, @RequestParam(required = false, defaultValue = "0") int page, HttpSession session) {
+	public String share(Model model, @RequestParam(required = false, defaultValue = "0") int page, HttpSession session) {
 		List<Shareboard> shares = null;
 		int sharePageCount = 0;
 		int totalPage = 0;
@@ -60,17 +60,20 @@ public class ShareController {
 	}
 
 	@RequestMapping(value = "/shareView", method = RequestMethod.GET)
-	public String noticeView(Model model, @RequestParam int shareNo,
+	public String shareView(Model model, @RequestParam int shareNo,
 			@RequestParam(required = false, defaultValue = "0") int version) {
 		Shareboard share = null;
+		List<Integer> shareHist =null;
 		try {
 			if (version == 0) {
 				share = shareService.selectShare(shareNo);
+				shareHist = shareService.selectShareHistList(shareNo);
 			} else {
 				HashMap<String, Object> shareMap = new HashMap<>();
 				shareMap.put("shareNo", shareNo);
 				shareMap.put("version", version);
 				share = shareService.selectShareHist(shareMap);
+				shareHist = shareService.selectShareHistList(shareNo);
 			}
 			//share.setShareContent(share.getShareContent().replaceAll("{imgUrl}", "http://dev-apc.com"));
 			share.setShareContent(share.getShareContent().replaceAll("？", ""));
@@ -81,6 +84,7 @@ public class ShareController {
 		}
 
 		model.addAttribute("share", share);
+		model.addAttribute("shareHist", shareHist);
 		return "nonsession/share/shareboard_view";
 	}
 
@@ -132,12 +136,14 @@ public class ShareController {
 		String shareNo = request.getParameter("shareNo");
 		String shareName = request.getParameter("title");
 		String shareContent = request.getParameter("content");
+		String ipAddr = request.getParameter("ipAddr");
 		String userId;
 		try {
 			Users u = (Users) session.getAttribute("Users");
 			userId = u.getUserId();
 		} catch (Exception e) {
 			userId = "999999";
+			System.out.println(request.getParameter("ip"));
 		}
 
 		Shareboard share = new Shareboard();
@@ -146,6 +152,7 @@ public class ShareController {
 		share.setShareContent(shareContent);
 		share.setInsertId(userId);
 		share.setModifyId(userId);
+		share.setIpAddr(ipAddr);
 
 		try {
 			shareService.updateShareTx(share);
@@ -161,10 +168,14 @@ public class ShareController {
 			@RequestParam int shareNo, 
 			@RequestParam int version, 
 			HttpSession session) {
+		HashMap<String,Object> paramMap = new HashMap<>();
+		paramMap.put("shareNo", shareNo);
+		paramMap.put("version", version);
 		int res = 0;
+		
 		try {
 			//버전정보 일치시 1로 업데이트 해야함..현재는 모두 업데이트가능으로 
-			res=1;
+			res= shareService.selectVersionCheck(paramMap);
 		} catch (Exception e) {
 			log.info("ShareService.shareVersionCheck DB none Connect");
 			res=-1;

@@ -28,7 +28,7 @@
 	
 	<select id="selectSharePageCount" resultType="int" parameterType="String">
 		SELECT /* ShareMapper.selectSharePageCount */ 
-		       COUNT(*)
+		       COUNT(1)
 		  FROM TSHAREBOARD
 	</select>
 
@@ -41,6 +41,7 @@
 			 , MODIFY_ID
 			 , MODIFY_DATE
 			 , U.USER_NICK
+			 , SB.IP_ADDR
 		  FROM TSHAREBOARD SB,TUSER U
 		 WHERE SB.SHARE_NO = #{shareNo, jdbcType=NUMERIC}
 		   AND SB.MODIFY_ID = U.USER_ID
@@ -61,9 +62,12 @@
 			 , VERSION
 			 , MODIFY_ID
 			 , MODIFY_DATE
-		  FROM TSHAREBOARD_HIST A
-		 WHERE A.SHARE_NO = #{shareNo, jdbcType=NUMERIC}
-		   AND A.VERSION = #{version, jdbcType=NUMERIC}
+			 , U.USER_NICK
+			 , SB.IP_ADDR
+		  FROM TSHAREBOARD_HIST SB,TUSER U
+		 WHERE SB.SHARE_NO = #{shareNo, jdbcType=NUMERIC}
+		   AND SB.VERSION = #{version, jdbcType=NUMERIC}
+		   AND SB.INSERT_ID = U.USER_ID
 	</select> 
 
 	<insert id="insertShare" parameterType="my.prac.core.dto.Shareboard">
@@ -91,6 +95,7 @@
 			 , INSERT_ID = UPPER(#{insertId, jdbcType=VARCHAR}) 
 			 , MODIFY_ID = UPPER(#{modifyId, jdbcType=VARCHAR})
 			 , MODIFY_DATE = SYSDATE
+			 , IP_ADDR = #{ipAddr, jdbcType=VARCHAR}
 		 WHERE SHARE_NO = #{shareNo, jdbcType=NUMERIC} 			 
     </update>
     
@@ -101,14 +106,34 @@
 					 ,SHARE_CONTENT
 					 ,VERSION
 					 ,INSERT_ID
-					 ,MODIFY_ID)
+					 ,MODIFY_ID
+					 ,IP_ADDR)
 				VALUES
 					 (#{shareNo, jdbcType=NUMERIC}
 					 ,#{shareName, jdbcType=VARCHAR}
 					 ,#{shareContent, jdbcType=VARCHAR}
 					 ,(SELECT MAX(VERSION) FROM TSHAREBOARD WHERE SHARE_NO = #{shareNo, jdbcType=NUMERIC})
 					 ,UPPER(#{modifyId, jdbcType=VARCHAR})
-					 ,UPPER(#{modifyId, jdbcType=VARCHAR}))
+					 ,UPPER(#{modifyId, jdbcType=VARCHAR})
+					 ,#{ipAddr, jdbcType=VARCHAR})
     </insert>
+    
+    <select id="selectVersionCheck" parameterType="HashMap" resultType="int">
+    	SELECT /* ShareMapper.xml : selectVesionCheck */ 
+    		   COUNT(1)
+		  FROM TSHAREBOARD SB
+		 WHERE SB.SHARE_NO = #{shareNo, jdbcType=NUMERIC}
+		   AND SB.VERSION =  #{version, jdbcType=NUMERIC}
+    </select>
+    
+    <select id="selectShareHistList" parameterType="HashMap" resultType="int">
+    	SELECT /* ShareMapper.xml : selectShareHist */ 
+		       SBH.VERSION AS HIST_VER
+		  FROM TSHAREBOARD SB,TSHAREBOARD_HIST SBH
+		 WHERE SB.SHARE_NO = SBH.SHARE_NO
+		   AND SB.SHARE_NO = #{shareNo, jdbcType=NUMERIC}
+		   AND ROWNUM &lt; 5
+		 ORDER BY SBH.VERSION DESC
+    </select>
     
 </mapper>

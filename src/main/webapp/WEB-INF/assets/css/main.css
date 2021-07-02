@@ -1721,7 +1721,7 @@
 /* Sections/Article */
 
 	section, article {
-		margin-bottom: 3em;
+		margin-bottom: 1em;
 	}
 
 		section > :last-child, section:last-child, article > :last-child, article:last-child {
@@ -4789,4 +4789,17 @@
 	
 	.hide {
 		display: none;
+	}
+	
+	.inline{
+		display: inline-flex;
+	}
+	
+	div section select {
+		font-size: 13px;
+	}
+	
+	section.inline > input {
+		width: 100%;
+		font-size: 13px;
 	}
