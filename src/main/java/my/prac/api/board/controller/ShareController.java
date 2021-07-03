@@ -103,6 +103,7 @@ public class ShareController {
 
 		Shareboard share = new Shareboard();
 		share.setShareName(shareName);
+		shareContent = shareContent.replaceAll("？","");
 		share.setShareContent(shareContent);
 		share.setInsertId(userId);
 		share.setModifyId(userId);
@@ -148,6 +149,7 @@ public class ShareController {
 		Shareboard share = new Shareboard();
 		share.setShareNo(Integer.parseInt(shareNo));
 		share.setShareName(shareName);
+		shareContent = shareContent.replaceAll("？","");
 		share.setShareContent(shareContent);
 		share.setInsertId(userId);
 		share.setModifyId(userId);
