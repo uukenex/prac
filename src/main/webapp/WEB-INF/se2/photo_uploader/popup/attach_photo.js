@@ -48,7 +48,7 @@
 				     {
 				      bSupportDragAndDropAPI = false;
 				     } else {
-				      bSupportDragAndDropAPI = true;
+				      bSupportDragAndDropAPI = false;
 				     }
 				     //추가 끝라인.
 				     //https://m.blog.naver.com/PostView.nhn?blogId=jakalky&logNo=120203372736&proxyReferer=https%3A%2F%2Fwww.google.com%2F
@@ -487,7 +487,7 @@
  	 */
  	function callFileUploader (){
  		oFileUploader = new jindo.FileUploader(jindo.$("uploadInputBox"),{
- 			sUrl  :'/photoUpload',	//샘플 URL입니다.
+ 			sUrl  :'/file_uploader',	//샘플 URL입니다.
  	        sCallback : '/se2/photo_uploader/popup/callback.html',	//업로드 이후에 iframe이 redirect될 콜백페이지의 주소
  	    	sFiletype : "*.jpg;*.png;*.bmp;*.gif",						//허용할 파일의 형식. ex) "*", "*.*", "*.jpg", 구분자(;)	
  	    	sMsgNotAllowedExt : 'JPG, GIF, PNG, BMP 확장자만 가능합니다',	//허용할 파일의 형식이 아닌경우에 띄워주는 경고창의 문구

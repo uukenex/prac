@@ -14,7 +14,7 @@
 	</script>
 		<!-- Left Board Menu -->
 		<section class="boardSection">
-			<h2 onclick="toggleGameMenu();">MenuToggle</h2>
+			<h2 onclick="toggleGameMenu();">Menu..</h2>
 			<ul class="link-list">
 				
 				<c:url value="/free" var="free"/>
@@ -31,13 +31,13 @@
 				<li>
 					<a href="${free }" class="freeBoard">
 						<i class="fa fa-comments-o"></i>
-						free board
+						자유게시판
 					</a>
 				</li>
 				<li>
 					<a href="${share }" class="freeBoard">
 						<i class="fa fa-comments-o"></i>
-						share board
+						공유게시판
 					</a>
 				</li>
 				<li class='hidable hide'>
@@ -79,15 +79,17 @@
 				<li>
 					<a href="${ws5 }" >
 						<i class="fa fa-gamepad"></i>
-						chat(pc only)
+						실시간채팅
 					</a>
 				</li>
+				<%-- 
 				<li class='hidable hide'>
 					<a href="${rank }" >
 						<i class="fa fa-comments-o"></i>
 						RANK
 					</a>
 				</li>
+				 --%>
 			</ul>
 		</section>
 	</div>

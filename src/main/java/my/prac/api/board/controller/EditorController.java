@@ -89,5 +89,13 @@ public class EditorController {
 			e.printStackTrace();
 		}
 	}
+	
+	@RequestMapping("/file_uploader")
+	public String nomalPhotoUpload(HttpServletRequest request, HttpServletResponse response) {
+		//not HTML5
+		//System.out.println("not HTML5");
+		//출처: https://hellogk.tistory.com/63 [IT Code Storage]
+		return "common/se2_file_uploader";
+	}
 
 }

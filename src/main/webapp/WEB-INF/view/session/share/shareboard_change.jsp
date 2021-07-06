@@ -25,6 +25,8 @@
 
 <script type="text/javascript" src="//code.jquery.com/jquery-1.11.0.min.js"></script>
 <script type="text/javascript" src="<%=request.getContextPath()%>/se2/js/HuskyEZCreator.js?v=1.0" charset="utf-8"></script>
+<!-- jqeury 이후 호출 -->
+<script src="<%=request.getContextPath()%>/game_set/js/comutil.js?v=<%=System.currentTimeMillis()%>"></script>
 </head>
 
 <body>
@@ -40,10 +42,10 @@
 				<div class="row main-row">
 					
 					<!-- Board Left Menu -->
-						<jsp:include page="../../nonsession/layout/board_left_menu.jsp" />
+						<%-- <jsp:include page="../../nonsession/layout/board_left_menu.jsp" /> --%>
 						
 					<!-- Board body part -->
-						<div class="8u 12u(moblie) important(moblie)">
+						<div class="10u -1u 12u(mobile) important(moblie)">
 							<section class="middle-content">
 								<h3>${share.shareName} 수정</h3>
 								<form action="/shareUpdate" method="post" id="frm">
@@ -100,7 +102,7 @@ $(function(){
     nhn.husky.EZCreator.createInIFrame({
         oAppRef: editor_object,
         elPlaceHolder: "content",
-        sSkinURI: "/se2/SmartEditor2Skin.html?v=3", 
+        sSkinURI: "/se2/SmartEditor2Skin.html?v=6", 
         htParams : {
             // 툴바 사용 여부 (true:사용/ false:사용하지 않음)
             bUseToolbar : true,             

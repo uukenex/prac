@@ -268,7 +268,7 @@
 	}
 
 	.row > * {
-		padding: 48px 0 0 48px;
+		padding: 200px 0 0 0;
 	}
 
 	.row {
@@ -1354,11 +1354,11 @@
 		}
 		
 		.row > * {
-			padding: 20px 0 0 20px;
+			padding: 20px 0 0 0;
 		}
 
 		.row {
-			margin: -20px 0 -1px -20px;
+			margin: 30px 0 -1px -20px;
 		}
 
 		.row.uniform > * {
@@ -1726,7 +1726,7 @@
 
 		section > :last-child, section:last-child, article > :last-child, article:last-child {
 			margin-bottom: 0;
-			margin-left: 20px;
+			/* margin-left: 20px; */
 		}
 
 		section.special > header, section.special > footer, article.special > header, article.special > footer {
@@ -3648,7 +3648,7 @@
 		}
 		
 		.boardSection h2 {
-			display: inline-block;
+			/* display: inline-block; */
 			font-size: 2em;
 			font-weight: bold;
 			font-family: 'Nanum Gothic';
@@ -3656,8 +3656,8 @@
 			margin-top: 0.5em;
 			margin-bottom: 1em;
 			margin-left: 1em;
-			text-align: center;
-			border-bottom: 2px solid #f56a6a;
+			text-align: right;
+			/* border-bottom: 2px solid #f56a6a; */
 			padding-bottom: 0.2em;
 		}
 	
@@ -3671,8 +3671,9 @@
 	/* Reusable */
 		
 		ul.link-list li {
-			border-top: solid 1px #ced0b7;
+			border-top: solid 0px #ced0b7;
 			padding: 10px 0px 0px 0px;
+		    text-align: right;
 			/* padding: 1em 0 0 2em; */
 			/* margin: 1.5em 0 1.5em 0; */
 			
@@ -4163,11 +4164,11 @@
 	
 	/* Table */
 		table.boardEditorTable {
-			margin: 1em 1em;
+			/* margin: 1em 1em; */
 			margin-top: 3em;
 			background-color: #FFFFFF;
 			border: dotted 1.5px #F5696A;
-			width: 95%;
+			width: 100%;
 		}
 		
 		
