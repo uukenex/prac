@@ -23,7 +23,12 @@ function resize_event(arg){
 //	maxImgWidth = Math.round(resizeWindowWidth*0.85);
 //	maxImgHeight = Math.round(resizeWindowHeight*0.85);
 	
+	var se2_board_width = $('.se2_img').parent().css('width').replace('px','');
 	
-	$('.se2_img').css('width',Math.round($('.se2_img').parent().css('width').replace('px','')*0.9))
-	$('.se2_img').css('height',Math.round($('.se2_img').parent().css('width').replace('px','')*0.9))
+	if(resizeWindowWidth < se2_board_width ){
+		se2_board_width = resizeWindowWidth;
+	}
+	
+	$('.se2_img').css('width',Math.round( se2_board_width * 0.9) )
+	$('.se2_img').css('height',Math.round( se2_board_width * 0.9) )
 }
