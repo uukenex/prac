@@ -294,10 +294,7 @@
 		
 		
 		$(document).on("ready", function() {
-			if ("${message}" != null && "${message}" != ("")) {
-				alert("${message}");
-	<%session.removeAttribute("message");%>
-		}
+			resize_event();
 		});
 		
 		var img = document.getElementsByTagName('img'); 
