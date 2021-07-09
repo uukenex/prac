@@ -24,6 +24,6 @@ function resize_event(arg){
 //	maxImgHeight = Math.round(resizeWindowHeight*0.85);
 	
 	
-	$('.se2_img').css('width',Math.round($('.board_img').parent().css('width').replace('px','')*0.9))
-	$('.se2_img').css('height',Math.round($('.board_img').parent().css('width').replace('px','')*0.9))
+	$('.se2_img').css('width',Math.round($('.se2_img').parent().css('width').replace('px','')*0.9))
+	$('.se2_img').css('height',Math.round($('.se2_img').parent().css('width').replace('px','')*0.9))
 }

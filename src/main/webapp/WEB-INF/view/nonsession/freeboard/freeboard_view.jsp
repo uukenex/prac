@@ -28,8 +28,11 @@
 	<!-- Drop Menu Header -->
 	<jsp:include page="../layout/dropMenu_header.jsp" /> 
 	<!-- Menu Bar Header -->
-		<jsp:include page="../layout/menubar_header.jsp" />
-		
+	<jsp:include page="../layout/menubar_header.jsp" />
+	
+	<!-- jqeury 이후 호출 -->
+	<script src="<%=request.getContextPath()%>/game_set/js/comutil.js?v=<%=System.currentTimeMillis()%>"></script>
+	
 	<div id="page-wrapper" class="boardPage-Wrapper">
 		<div id="main">
 			<div class="container">
