@@ -90,6 +90,26 @@ function addZero(num) {
 	return (num < 10 ? '0'+num : ''+num);
 }
 
+function fun_dPoing(integered_number){
+	var DPoint = integered_number.toString().length;
+	var DPos = 1;
+	switch(DPoint){
+		case 1:
+			DPos = 1;
+			break;
+		case 2:
+			DPos = 10;
+			break;
+		case 3:
+			DPos = 100;
+			break;
+		case 4:
+			DPos = 1000;
+			break;
+	}
+	return DPos;
+}
+
 function meetBox(org_rect,target_rect){
 	if(target_rect.left   <= org_rect.right 
 	&& target_rect.right  >= org_rect.left
