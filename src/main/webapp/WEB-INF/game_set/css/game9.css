@@ -1,6 +1,31 @@
 div {
 	display: inline-block;
 }
+section {
+	width:100%;
+	max-width: 1200px;
+	margin: 0 auto;
+}
+
+div.label {
+	display: flex;
+}
+
+div > a > img {
+	width:100%;
+	max-width: 120px;
+}
+
+div > a > input {
+	width:100%;
+	max-width: 120px;
+}
+
+div > p {
+	white-space: normal;
+	width:100%;
+	max-width: 120px;
+}
 
 section#section {
 	border: solid 1px red;
@@ -20,5 +45,5 @@ section#chattings{
 }
 
 img {
-	position: relative;
+	display: block;
 }

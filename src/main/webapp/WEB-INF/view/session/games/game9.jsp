@@ -22,8 +22,7 @@
 	
 	function init()
     {
-		
-    }
+   	}
 	
 	function advCalc(wp){
 		//강화 계수표 참조
@@ -62,16 +61,43 @@
 	
 	<section id="space" class='space'>
 		<div>
-			<img src="<%=request.getContextPath()%>/game_set/img/item_1.png?v=<%=System.currentTimeMillis()%>">
-			<input type="button" value="일반강화" onclick="advUp(wp1);">
+			<a href="#" onclick="advUp(wp1);"><img src="<%=request.getContextPath()%>/game_set/img/item_1.png?v=<%=System.currentTimeMillis()%>">
+			<input type="button" value="일반강화">
+			</a>
+			<p id="wp1-desc">
+			<script>
+			var txt = wp1.wp_name+'</br>';
+			    txt+= wp1.wp_desc+'</br>';
+			    txt+= '기본데미지:'+wp1.wp_org_damage+'</br>';
+			$('#wp1-desc').html(txt);
+			</script> 
+			</p>
 		</div>
 		<div>
-			<img src="<%=request.getContextPath()%>/game_set/img/item_2.png?v=<%=System.currentTimeMillis()%>">
-			<input type="button" value="매직강화" onclick="advUp(wp2);">
+			<a href="#" onclick="advUp(wp2);"><img src="<%=request.getContextPath()%>/game_set/img/item_2.png?v=<%=System.currentTimeMillis()%>">
+			<input type="button" value="매직강화">
+			</a>
+			<p id="wp2-desc">
+			<script>
+			var txt = wp2.wp_name+'</br>';
+			    txt+= wp2.wp_desc+'</br>';
+			    txt+= '기본데미지:'+wp2.wp_org_damage+'</br>';
+			$('#wp2-desc').html(txt);
+			</script> 
+			</p>
 		</div>
 		<div>
-			<img src="<%=request.getContextPath()%>/game_set/img/item_3.png?v=<%=System.currentTimeMillis()%>">
-			<input type="button" value="전설강화" onclick="advUp(wp3);">
+			<a href="#" onclick="advUp(wp3);"><img src="<%=request.getContextPath()%>/game_set/img/item_3.png?v=<%=System.currentTimeMillis()%>">
+			<input type="button" value="전설강화">
+			</a>
+			<p id="wp3-desc">
+			<script>
+			var txt = wp3.wp_name+'</br>';
+			    txt+= wp3.wp_desc+'</br>';
+			    txt+= '기본데미지:'+wp3.wp_org_damage+'</br>';
+			$('#wp3-desc').html(txt);
+			</script> 
+			</p>
 		</div>
 	</section>
 	<section id="chattings">
