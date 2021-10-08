@@ -21,10 +21,28 @@
 	
 	function init()
     {
-		
-		console.log(
-			weapons.getWpVal('wb001')		
-		);
+		// html 페이지에서 'rel=tooltip'이 사용된 곳에 마우스를 가져가면 
+	    $('a[rel=tooltip]').mouseover(function(e) 
+	    {
+	         var tip = $(this).attr('title');         
+	 
+	        // 브라우져에서 제공하는 기본 툴 팁을 끈다
+	        $(this).attr('title','');
+	         
+	        // css와 연동하기 위해 html 태그를 추가해줌
+	        $(this).append('<div id="tooltip"><div class="tipBody">'
+	                      + weapons.toString(this.id) + '</div></div>');               
+	    }).mousemove(function(e) 
+	   {
+	         //마우스가 움직일 때 툴 팁이 따라 다니도록 위치값 업데이트
+	        $('#tooltip').css('top', e.pageY + 10 );
+	        $('#tooltip').css('left', e.pageX + 10 );
+	    }).mouseout(function() 
+	    {
+	        //위에서 껐던 브라우져에서 제공하는 기본 툴 팁을 복원
+	        $(this).attr('title',$('.tipBody').html());
+	        $(this).children('div#tooltip').remove();
+	    });
    	}
 	
 	function advCalc(wp){
@@ -66,7 +84,7 @@
 		var aft_adv_no = wp.wp_adv_no;
 		var aft_damage = wp.wp_add_damage;
 		
-		var msg = wp.wp_name +' +'+ aft_adv_no + res + '...강화확률 : '+ advRate + '% ,\n'
+		var msg = wp.wp_name +' +'+ (bef_adv_no+1) + res + '...강화확률 : '+ advRate + '% ,\n'
 			msg+=          bef_adv_no+'강, 데미지: ' +org_damage+' ( + '+ bef_damage +' )' ;
 		    msg+= ' => ' + aft_adv_no+'강, 데미지: ' +org_damage+' ( + '+ aft_damage +' )\n';
 		
@@ -77,34 +95,19 @@
 	
 	<section id="space" class='space'>
 		<div>
-			<a href="#" onclick="advUp(wp1);"><img src="<%=request.getContextPath()%>/game_set/img/item_1.png?v=<%=System.currentTimeMillis()%>">
+			<a href="#" id="wp10" rel="tooltip" onclick="advUp(weapons[this.id]);"><img src="<%=request.getContextPath()%>/game_set/img/item_1.png?v=<%=System.currentTimeMillis()%>">
 			<input type="button" value="일반강화">
 			</a>
-			<p id="wp1-desc">
-			<script>
-			
-			</script> 
-			</p>
 		</div>
 		<div>
-			<a href="#" onclick="advUp(wp2);"><img src="<%=request.getContextPath()%>/game_set/img/item_2.png?v=<%=System.currentTimeMillis()%>">
-			<input type="button" value="매직강화">
+			<a href="#" id="wp20" rel="tooltip" onclick="advUp(weapons[this.id]);"><img src="<%=request.getContextPath()%>/game_set/img/item_2.png?v=<%=System.currentTimeMillis()%>">
+			<input type="button" value="희귀강화">
 			</a>
-			<p id="wp2-desc">
-			<script>
-			
-			</script> 
-			</p>
 		</div>
 		<div>
-			<a href="#" onclick="advUp(wp3);"><img src="<%=request.getContextPath()%>/game_set/img/item_3.png?v=<%=System.currentTimeMillis()%>">
+			<a href="#" id="wp50" rel="tooltip" onclick="advUp(weapons[this.id]);"><img src="<%=request.getContextPath()%>/game_set/img/item_3.png?v=<%=System.currentTimeMillis()%>">
 			<input type="button" value="전설강화">
 			</a>
-			<p id="wp3-desc">
-			<script>
-			
-			</script> 
-			</p>
 		</div>
 	</section>
 	<section id="chattings">
