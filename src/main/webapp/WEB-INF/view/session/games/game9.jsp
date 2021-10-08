@@ -14,7 +14,6 @@
 
 	
 	<script src="<%=request.getContextPath() %>/assets/js/jquery.min.js"></script>
-	<script type="text/javascript" src="http://jsgetip.appspot.com"></script>
 	<script src="<%=request.getContextPath()%>/game_set/js/gameutil.js?v=<%=System.currentTimeMillis()%>"></script>
 	<script src="<%=request.getContextPath()%>/game_set/js/game_enhance.js?v=<%=System.currentTimeMillis()%>"></script>
 	<script src="<%=request.getContextPath()%>/game_set/js/game_items.js?v=<%=System.currentTimeMillis()%>"></script>
@@ -22,6 +21,10 @@
 	
 	function init()
     {
+		
+		console.log(
+			weapons.getWpVal('wb001')		
+		);
    	}
 	
 	function advCalc(wp){
@@ -36,6 +39,7 @@
 	
 	
 	function advUp(wp){
+		var res;
 		if(wp.wp_adv_no > 14){
 			alert('15단계까지 구현되었습니다..!!');
 			return;
@@ -45,13 +49,25 @@
 		var bef_adv_no = wp.wp_adv_no;
 		var bef_damage = wp.wp_add_damage;
 		
-		wp.wp_adv_no++;
+		var advRate =advance_rate.getAdvRateVal(wp.wp_adv_no); 
+		
+		//1, 100을 포함한 수 중 랜덤
+		//10강화시 80 <= 30 (31~100::70퍼센트로 실패)
+		if(getRandomInt(1,100) <= advRate){
+			wp.wp_adv_no++;	
+			res=' 강화에 성공하였습니다.';
+		}else{
+			wp.wp_adv_no--;
+			res=' 강화에 실패하였습니다.';
+		}
+		
 		wp.wp_add_damage = advCalc(wp);
 		
 		var aft_adv_no = wp.wp_adv_no;
 		var aft_damage = wp.wp_add_damage;
 		
-		var msg =          bef_adv_no+'강, 데미지: ' +org_damage+' ( + '+ bef_damage +' )' ;
+		var msg = wp.wp_name +' +'+ aft_adv_no + res + '...강화확률 : '+ advRate + '% ,\n'
+			msg+=          bef_adv_no+'강, 데미지: ' +org_damage+' ( + '+ bef_damage +' )' ;
 		    msg+= ' => ' + aft_adv_no+'강, 데미지: ' +org_damage+' ( + '+ aft_damage +' )\n';
 		
 		$('#res_field').val( $('#res_field').val() + msg );
@@ -66,10 +82,7 @@
 			</a>
 			<p id="wp1-desc">
 			<script>
-			var txt = wp1.wp_name+'</br>';
-			    txt+= wp1.wp_desc+'</br>';
-			    txt+= '기본데미지:'+wp1.wp_org_damage+'</br>';
-			$('#wp1-desc').html(txt);
+			
 			</script> 
 			</p>
 		</div>
@@ -79,10 +92,7 @@
 			</a>
 			<p id="wp2-desc">
 			<script>
-			var txt = wp2.wp_name+'</br>';
-			    txt+= wp2.wp_desc+'</br>';
-			    txt+= '기본데미지:'+wp2.wp_org_damage+'</br>';
-			$('#wp2-desc').html(txt);
+			
 			</script> 
 			</p>
 		</div>
@@ -92,10 +102,7 @@
 			</a>
 			<p id="wp3-desc">
 			<script>
-			var txt = wp3.wp_name+'</br>';
-			    txt+= wp3.wp_desc+'</br>';
-			    txt+= '기본데미지:'+wp3.wp_org_damage+'</br>';
-			$('#wp3-desc').html(txt);
+			
 			</script> 
 			</p>
 		</div>
