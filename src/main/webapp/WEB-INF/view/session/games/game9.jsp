@@ -19,6 +19,9 @@
 	<script src="<%=request.getContextPath()%>/game_set/js/game_items.js?v=<%=System.currentTimeMillis()%>"></script>
 	<script language="javascript">
 	
+	var autoyn = false;
+	var autocnt= 0;
+	var v_auto_timer;
 	function init()
     {
 		// html 페이지에서 'rel=tooltip'이 사용된 곳에 마우스를 가져가면 
@@ -43,6 +46,13 @@
 	        $(this).attr('title',$('.tipBody').html());
 	        $(this).children('div#tooltip').remove();
 	    });
+		
+		
+		if(windowWidth < 340){
+			$('#chattings').css('display','none');	
+		}
+	    
+		
 		
 	    $('#wp10').append('<img src="<%=request.getContextPath()%>/game_set/img/'+weapons["wp10"].wp_img+'?v=<%=System.currentTimeMillis()%>"></img>');
 	    $('#wp10').append('<input type="button" value="+0">');
@@ -70,6 +80,40 @@
 		
 	}
 	
+	
+	function autoAdvUp(){
+		
+		var max_adv_no = 14;
+		
+		if(autoyn){
+			autoyn = false;
+			$('#wp_auto').val('자동강화시작');
+			clearTimeout(v_auto_timer);
+			return;
+		}else{
+			autoyn = true;
+			$('#wp_auto').val('자동강화중지');
+		}
+		
+		console.log('자동강화시작');
+		autocnt = 0;
+		
+		v_auto_timer = setInterval(function() {
+			advUp(wp50,'wp50');
+			autocnt++;
+			
+			console.log('카운트: '+autocnt+'    , 현재강화수치:'+wp50.wp_adv_no+'..');
+			
+			if(wp50.wp_adv_no >= max_adv_no){
+				clearTimeout(v_auto_timer);
+				autoyn = false;
+				$('#wp_auto').val('자동강화시작');
+				alert(autocnt+'회 실행하여 목표에 도달하였습니다.');
+				return;
+			}
+		}, 100);
+		
+	}
 	
 	function advUp(wp,tag_id){
 		var res;
@@ -107,6 +151,14 @@
 		$('#' + tag_id + '> input').val('+' + aft_adv_no + '.다음확률: ' + aft_adv_rate+'%');
 		$('#res_field').val( $('#res_field').val() + msg );
 		$("#res_field")[0].scrollTop = $("#res_field")[0].scrollHeight;
+		
+        $('.tipBody')[0].innerHTML = weapons.toString(tag_id);
+        
+        if(wp.wp_adv_no >= 15){
+	        var promptVal = prompt('축하드립니다. 15강화 달성자의 이름입력:');
+			alert(promptVal+'바보');
+        }
+		
 	}
 	</script>
 	
@@ -130,6 +182,9 @@
 		<div>
 			<a href="#" id="wp50" rel="tooltip" onclick="advUp(weapons[this.id],id);">
 			</a>
+		</div>
+		<div>
+			<input type='button' id="wp_auto" value= '자동강화' onclick="autoAdvUp();" />
 		</div>
 	</section>
 	<section id="chattings">
