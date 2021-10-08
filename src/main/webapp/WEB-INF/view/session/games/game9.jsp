@@ -43,6 +43,21 @@
 	        $(this).attr('title',$('.tipBody').html());
 	        $(this).children('div#tooltip').remove();
 	    });
+		
+	    $('#wp10').append('<img src="<%=request.getContextPath()%>/game_set/img/'+weapons["wp10"].wp_img+'?v=<%=System.currentTimeMillis()%>"></img>');
+	    $('#wp10').append('<input type="button" value="+0">');
+	    
+	    $('#wp20').append('<img src="<%=request.getContextPath()%>/game_set/img/'+weapons["wp20"].wp_img+'?v=<%=System.currentTimeMillis()%>"></img>');
+	    $('#wp20').append('<input type="button" value="+0">');
+	    
+	    $('#wp30').append('<img src="<%=request.getContextPath()%>/game_set/img/'+weapons["wp30"].wp_img+'?v=<%=System.currentTimeMillis()%>"></img>');
+	    $('#wp30').append('<input type="button" value="+0">');
+	    
+	    $('#wp40').append('<img src="<%=request.getContextPath()%>/game_set/img/'+weapons["wp40"].wp_img+'?v=<%=System.currentTimeMillis()%>"></img>');
+	    $('#wp40').append('<input type="button" value="+0">');
+	    
+	    $('#wp50').append('<img src="<%=request.getContextPath()%>/game_set/img/'+weapons["wp50"].wp_img+'?v=<%=System.currentTimeMillis()%>"></img>');
+	    $('#wp50').append('<input type="button" value="+0">');
    	}
 	
 	function advCalc(wp){
@@ -56,7 +71,7 @@
 	}
 	
 	
-	function advUp(wp){
+	function advUp(wp,tag_id){
 		var res;
 		if(wp.wp_adv_no > 14){
 			alert('15단계까지 구현되었습니다..!!');
@@ -67,11 +82,11 @@
 		var bef_adv_no = wp.wp_adv_no;
 		var bef_damage = wp.wp_add_damage;
 		
-		var advRate =advance_rate.getAdvRateVal(wp.wp_adv_no); 
+		var adv_rate =advance_rate.getAdvRateVal(wp.wp_adv_no); 
 		
 		//1, 100을 포함한 수 중 랜덤
 		//10강화시 80 <= 30 (31~100::70퍼센트로 실패)
-		if(getRandomInt(1,100) <= advRate){
+		if(getRandomInt(1,100) <= adv_rate){
 			wp.wp_adv_no++;	
 			res=' 강화에 성공하였습니다.';
 		}else{
@@ -83,11 +98,13 @@
 		
 		var aft_adv_no = wp.wp_adv_no;
 		var aft_damage = wp.wp_add_damage;
+		var aft_adv_rate =advance_rate.getAdvRateVal(wp.wp_adv_no+1);
 		
-		var msg = wp.wp_name +' +'+ (bef_adv_no+1) + res + '...강화확률 : '+ advRate + '% ,\n'
+		var msg = wp.wp_name +' +'+ (bef_adv_no+1) + res + '\n'
 			msg+=          bef_adv_no+'강, 데미지: ' +org_damage+' ( + '+ bef_damage +' )' ;
-		    msg+= ' => ' + aft_adv_no+'강, 데미지: ' +org_damage+' ( + '+ aft_damage +' )\n';
+		    msg+= ' => ' + aft_adv_no+'강, 데미지: ' +org_damage+' ( + '+ aft_damage +' )\n\n';
 		
+		$('#' + tag_id + '> input').val('+' + aft_adv_no + '.다음확률: ' + aft_adv_rate+'%');
 		$('#res_field').val( $('#res_field').val() + msg );
 		$("#res_field")[0].scrollTop = $("#res_field")[0].scrollHeight;
 	}
@@ -95,24 +112,29 @@
 	
 	<section id="space" class='space'>
 		<div>
-			<a href="#" id="wp10" rel="tooltip" onclick="advUp(weapons[this.id]);"><img src="<%=request.getContextPath()%>/game_set/img/item_1.png?v=<%=System.currentTimeMillis()%>">
-			<input type="button" value="일반강화">
+			<a href="#" id="wp10" rel="tooltip" onclick="advUp(weapons[this.id],id);">
 			</a>
 		</div>
 		<div>
-			<a href="#" id="wp20" rel="tooltip" onclick="advUp(weapons[this.id]);"><img src="<%=request.getContextPath()%>/game_set/img/item_2.png?v=<%=System.currentTimeMillis()%>">
-			<input type="button" value="희귀강화">
+			<a href="#" id="wp20" rel="tooltip" onclick="advUp(weapons[this.id],id);">
 			</a>
 		</div>
 		<div>
-			<a href="#" id="wp50" rel="tooltip" onclick="advUp(weapons[this.id]);"><img src="<%=request.getContextPath()%>/game_set/img/item_3.png?v=<%=System.currentTimeMillis()%>">
-			<input type="button" value="전설강화">
+			<a href="#" id="wp30" rel="tooltip" onclick="advUp(weapons[this.id],id);">
+			</a>
+		</div>
+		<div>
+			<a href="#" id="wp40" rel="tooltip" onclick="advUp(weapons[this.id],id);">
+			</a>
+		</div>
+		<div>
+			<a href="#" id="wp50" rel="tooltip" onclick="advUp(weapons[this.id],id);">
 			</a>
 		</div>
 	</section>
 	<section id="chattings">
 		<div  style="display: inline;">
-			<textarea id="res_field" cols="60" rows="10"></textarea>
+			<textarea id="res_field" cols="60" rows="20" readonly="true" ></textarea>
 		</div>		
 	</section>
 </BODY>

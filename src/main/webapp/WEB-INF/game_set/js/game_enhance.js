@@ -39,6 +39,8 @@ var advance_rate = {
 		'12':'20',
 		'13':'20',
 		'14':'15',
+		'15':'0',
+		'16':'0',
 		getAdvRateVal : function(n){
 			return this[n];
 		}

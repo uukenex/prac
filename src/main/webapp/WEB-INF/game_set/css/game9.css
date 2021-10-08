@@ -19,12 +19,7 @@ div > a > img {
 div > a > input {
 	width:100%;
 	max-width: 120px;
-}
-
-div > p {
-	white-space: normal;
-	width:100%;
-	max-width: 120px;
+	font-size: 8px;
 }
 
 section#section {
@@ -33,12 +28,18 @@ section#section {
 section#chattings{
 	position: absolute;
 	display: inline;
-	top : 420px;
+	top : 260px;
 	font-size: 13px;
+	width:700px;
 }
+
+#res_field {
+	width:700px;
+}
+
 .space {
-	width: 400px;
-	height: 400px;
+	width: 700px;
+	height: 230px;
 	border: solid 1px red;
 	position: absolute;
 	font-size: 11px;
