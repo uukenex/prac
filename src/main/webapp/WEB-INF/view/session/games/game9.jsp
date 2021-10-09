@@ -196,7 +196,8 @@
 		var bef_adv_no = wp.wp_adv_no;
 		var bef_damage = wp.wp_add_damage;
 		
-		var adv_rate =advance_rate.getAdvRateVal(wp.wp_adv_no); 
+		var bef_adv_rate = advance_rate.getAdvRateVal(wp.wp_adv_no);
+		var adv_rate =bef_adv_rate; 
 		
 		//1, 100을 포함한 수 중 랜덤
 		//10강화시 80 <= 30 (31~100::70퍼센트로 실패)
@@ -218,9 +219,9 @@
 			msg+=          bef_adv_no+'강, 데미지: ' +org_damage+' ( + '+ bef_damage +' )' ;
 		    msg+= ' => ' + aft_adv_no+'강, 데미지: ' +org_damage+' ( + '+ aft_damage +' )\n\n';
 		
-		$('#' + tag_id + '> input').val('+' + aft_adv_no + '.다음확률: ' + aft_adv_rate+'%');
+		$('#' + tag_id + '> input').val('+' + aft_adv_no + '.이번확률: ' + bef_adv_rate + '%');
 		
-		$('#res_field').val( $('#res_field').val() + '자동.. cnt: '+autocnt +' 회차 실행 중...');
+		$('#res_field').val( $('#res_field').val() + '(축복미적용)자동.. cnt: '+autocnt +' 회차 실행 중...');
 		$('#res_field').val( $('#res_field').val() + msg );
 		$("#res_field")[0].scrollTop = $("#res_field")[0].scrollHeight;
 		
@@ -252,7 +253,8 @@
 		var bef_adv_no = wp.wp_adv_no;
 		var bef_damage = wp.wp_add_damage;
 		
-		var adv_rate =advance_rate.getAdvRateVal(wp.wp_adv_no); 
+		var bef_adv_rate = advance_rate.getAdvRateVal(wp.wp_adv_no);
+		var adv_rate =bef_adv_rate; 
 		
 		if(bless1yn){
 			adv_rate = Number(adv_rate) + 5;
@@ -300,7 +302,7 @@
 					msg+=          bef_adv_no+'강, 데미지: ' +org_damage+' ( + '+ bef_damage +' )' ;
 				    msg+= ' => ' + aft_adv_no+'강, 데미지: ' +org_damage+' ( + '+ aft_damage +' )\n\n';
 				
-				$('#' + tag_id + '> input').val('+' + aft_adv_no + '.다음확률: ' + aft_adv_rate+'%');
+				$('#' + tag_id + '> input').val('+' + aft_adv_no + '.이번확률: ' + bef_adv_rate + '%');
 				
 				$('#res_field').val( $('#res_field').val() + msg );
 				$("#res_field")[0].scrollTop = $("#res_field")[0].scrollHeight;
