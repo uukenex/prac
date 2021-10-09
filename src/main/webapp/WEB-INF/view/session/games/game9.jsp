@@ -22,6 +22,9 @@
 	var autoyn = false;
 	var autocnt= 0;
 	var v_auto_timer;
+	
+	var able_click =true;
+	
 	function init()
     {
 		// html 페이지에서 'rel=tooltip'이 사용된 곳에 마우스를 가져가면 
@@ -52,8 +55,14 @@
 			$('#chattings').css('display','none');	
 		}
 	    
+		var wp_list = ['wp10','wp20','wp30','wp40','wp50'];
 		
-		
+		wp_list.forEach(function(wp_one,idx){
+				$('#'+wp_one).append('<img id="img_'+wp_one+'" src="<%=request.getContextPath()%>/game_set/img/'+weapons[wp_one].wp_img+'?v=<%=System.currentTimeMillis()%>"></img>');
+			    $('#'+wp_one).append('<input type="button" value="+0">');	
+			}
+		);
+		<%--
 	    $('#wp10').append('<img src="<%=request.getContextPath()%>/game_set/img/'+weapons["wp10"].wp_img+'?v=<%=System.currentTimeMillis()%>"></img>');
 	    $('#wp10').append('<input type="button" value="+0">');
 	    
@@ -68,6 +77,7 @@
 	    
 	    $('#wp50').append('<img src="<%=request.getContextPath()%>/game_set/img/'+weapons["wp50"].wp_img+'?v=<%=System.currentTimeMillis()%>"></img>');
 	    $('#wp50').append('<input type="button" value="+0">');
+	    --%>
    	}
 	
 	function advCalc(wp){
@@ -84,6 +94,11 @@
 	function autoAdvUp(){
 		
 		var max_adv_no = 14;
+		if(!able_click){
+			$('#res_field').val( $('#res_field').val() + '강화 실행 중 !!! \n' );
+			$("#res_field")[0].scrollTop = $("#res_field")[0].scrollHeight;
+			return;
+		}
 		
 		if(autoyn){
 			autoyn = false;
@@ -95,14 +110,11 @@
 			$('#wp_auto').val('자동강화중지');
 		}
 		
-		console.log('자동강화시작');
 		autocnt = 0;
 		
 		v_auto_timer = setInterval(function() {
-			advUp(wp50,'wp50');
+			advUp_auto(wp50,'wp50');
 			autocnt++;
-			
-			console.log('카운트: '+autocnt+'    , 현재강화수치:'+wp50.wp_adv_no+'..');
 			
 			if(wp50.wp_adv_no >= max_adv_no){
 				clearTimeout(v_auto_timer);
@@ -115,12 +127,14 @@
 		
 	}
 	
-	function advUp(wp,tag_id){
+	function advUp_auto(wp,tag_id){
+
 		var res;
 		if(wp.wp_adv_no > 14){
 			alert('15단계까지 구현되었습니다..!!');
 			return;
 		}
+		
 		var org_damage = wp.wp_org_damage;
 		
 		var bef_adv_no = wp.wp_adv_no;
@@ -149,15 +163,102 @@
 		    msg+= ' => ' + aft_adv_no+'강, 데미지: ' +org_damage+' ( + '+ aft_damage +' )\n\n';
 		
 		$('#' + tag_id + '> input').val('+' + aft_adv_no + '.다음확률: ' + aft_adv_rate+'%');
+		
+		$('#res_field').val( $('#res_field').val() + '자동.. cnt: '+autocnt +' 회차 실행 중...');
 		$('#res_field').val( $('#res_field').val() + msg );
 		$("#res_field")[0].scrollTop = $("#res_field")[0].scrollHeight;
 		
-        $('.tipBody')[0].innerHTML = weapons.toString(tag_id);
+		if($('.tipBody')[0]){
+			$('.tipBody')[0].innerHTML = weapons.toString(tag_id);	
+		}
         
         if(wp.wp_adv_no >= 15){
 	        var promptVal = prompt('축하드립니다. 15강화 달성자의 이름입력:');
 			alert(promptVal+'바보');
         }
+		
+	}
+	
+	function advUp(wp,tag_id){
+		var res;
+		if(wp.wp_adv_no > 14){
+			alert('15단계까지 구현되었습니다..!!');
+			return;
+		}
+		if(autoyn){
+			$('#res_field').val( $('#res_field').val() + '자동강화 중 사용 불가 !!! \n' );
+			$("#res_field")[0].scrollTop = $("#res_field")[0].scrollHeight;
+			return;
+		}
+		
+		var org_damage = wp.wp_org_damage;
+		
+		var bef_adv_no = wp.wp_adv_no;
+		var bef_damage = wp.wp_add_damage;
+		
+		var adv_rate =advance_rate.getAdvRateVal(wp.wp_adv_no); 
+		
+		
+		var enhance_flag = 1;
+		if(able_click){
+			able_click = false;	
+			
+			//1, 100을 포함한 수 중 랜덤
+			//10강화시 80 <= 30 (31~100::70퍼센트로 실패)
+			if(getRandomInt(1,100) <= adv_rate){
+				enhance_flag = 1;
+				$('#img_'+tag_id)[0].src='<%=request.getContextPath()%>/game_set/img/enhance_fast_1.gif?v=<%=System.currentTimeMillis()%>';
+			}else{
+				enhance_flag = 2;
+				$('#img_'+tag_id)[0].src='<%=request.getContextPath()%>/game_set/img/enhance_fast_2.gif?v=<%=System.currentTimeMillis()%>';
+			}
+			
+			
+			
+			setTimeout(function(){
+				able_click = true;
+				$('#img_'+tag_id)[0].src='<%=request.getContextPath()%>/game_set/img/'+weapons[tag_id].wp_img+'?v=<%=System.currentTimeMillis()%>';
+				if(enhance_flag == 1){
+					wp.wp_adv_no++;	
+					res=' 강화에 성공하였습니다.';
+				}else{
+					wp.wp_adv_no--;
+					res=' 강화에 실패하였습니다.';
+				}
+				
+				wp.wp_add_damage = advCalc(wp);
+				
+				var aft_adv_no = wp.wp_adv_no;
+				var aft_damage = wp.wp_add_damage;
+				var aft_adv_rate =advance_rate.getAdvRateVal(wp.wp_adv_no+1);
+				
+				var msg = wp.wp_name +' +'+ (bef_adv_no+1) + res + '\n'
+					msg+=          bef_adv_no+'강, 데미지: ' +org_damage+' ( + '+ bef_damage +' )' ;
+				    msg+= ' => ' + aft_adv_no+'강, 데미지: ' +org_damage+' ( + '+ aft_damage +' )\n\n';
+				
+				$('#' + tag_id + '> input').val('+' + aft_adv_no + '.다음확률: ' + aft_adv_rate+'%');
+				
+				$('#res_field').val( $('#res_field').val() + msg );
+				$("#res_field")[0].scrollTop = $("#res_field")[0].scrollHeight;
+				
+				if($('.tipBody')[0]){
+					$('.tipBody')[0].innerHTML = weapons.toString(tag_id);	
+				}
+		        
+		        
+		        if(wp.wp_adv_no >= 15){
+			        var promptVal = prompt('축하드립니다. 15강화 달성자의 이름입력:');
+					alert(promptVal+'바보');
+		        }
+				
+				
+			}, 2000);
+		}else{
+			$('#res_field').val( $('#res_field').val() + '강화쿨타임..\n' );
+			$("#res_field")[0].scrollTop = $("#res_field")[0].scrollHeight;
+			return;
+		}
+		
 		
 	}
 	</script>
