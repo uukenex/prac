@@ -19,14 +19,21 @@
 	<script src="<%=request.getContextPath()%>/game_set/js/game_items.js?v=<%=System.currentTimeMillis()%>"></script>
 	<script language="javascript">
 	
-	var autoyn = false;
+	var autoyn = false; //자동강화 사용여부
 	var autocnt= 0;
 	var v_auto_timer;
 	
 	var able_click =true;
 	
+	var bless1yn =false; //축복1 적용여부
+	var bless2yn =false; //축복2 적용여부
+	var v_bless_timer;//적용여부 반짝임 타이머
+	
 	function init()
     {
+		$('#res_field').val( $('#res_field').val() + '강화기 시뮬레이터.. \n자동강화는 축복영향 없음..\n확률공개..ing\n' );
+		$("#res_field")[0].scrollTop = $("#res_field")[0].scrollHeight;
+		
 		// html 페이지에서 'rel=tooltip'이 사용된 곳에 마우스를 가져가면 
 	    $('a[rel=tooltip]').mouseover(function(e) 
 	    {
@@ -62,22 +69,6 @@
 			    $('#'+wp_one).append('<input type="button" value="+0">');	
 			}
 		);
-		<%--
-	    $('#wp10').append('<img src="<%=request.getContextPath()%>/game_set/img/'+weapons["wp10"].wp_img+'?v=<%=System.currentTimeMillis()%>"></img>');
-	    $('#wp10').append('<input type="button" value="+0">');
-	    
-	    $('#wp20').append('<img src="<%=request.getContextPath()%>/game_set/img/'+weapons["wp20"].wp_img+'?v=<%=System.currentTimeMillis()%>"></img>');
-	    $('#wp20').append('<input type="button" value="+0">');
-	    
-	    $('#wp30').append('<img src="<%=request.getContextPath()%>/game_set/img/'+weapons["wp30"].wp_img+'?v=<%=System.currentTimeMillis()%>"></img>');
-	    $('#wp30').append('<input type="button" value="+0">');
-	    
-	    $('#wp40').append('<img src="<%=request.getContextPath()%>/game_set/img/'+weapons["wp40"].wp_img+'?v=<%=System.currentTimeMillis()%>"></img>');
-	    $('#wp40').append('<input type="button" value="+0">');
-	    
-	    $('#wp50').append('<img src="<%=request.getContextPath()%>/game_set/img/'+weapons["wp50"].wp_img+'?v=<%=System.currentTimeMillis()%>"></img>');
-	    $('#wp50').append('<input type="button" value="+0">');
-	    --%>
    	}
 	
 	function advCalc(wp){
@@ -90,6 +81,71 @@
 		
 	}
 	
+	function f_twingkling(classname,cnt){
+		
+    	for(var retry=0;retry<cnt;retry++){
+    		setTimeout(function(){
+   				$('.'+classname).toggleClass("twingkle");	
+   			},400*retry);
+    	}
+    	//피격 반짝임
+		//짝수번에 맞게 호출해야함 
+	}
+	
+	
+	function bless_1(){
+		if(!able_click){
+			$('#res_field').val( $('#res_field').val() + '강화 실행 중 !!! \n' );
+			$("#res_field")[0].scrollTop = $("#res_field")[0].scrollHeight;
+			return;
+		}
+		
+		if(!bless1yn){
+			clearTimeout(v_bless_timer);
+			
+			bless1yn = true;
+			bless2yn = false;
+			$('#wp_bless_1').text('+5%적용중');
+			$('#wp_bless_2').text('축복2단계');
+			
+			f_twingkling('wp_bless_1',2);
+			v_bless_timer = setInterval(function() {
+				f_twingkling('wp_bless_1',2);
+			}, 1600);
+			
+		}else{
+			clearTimeout(v_bless_timer);
+			bless1yn = false;
+			$('#wp_bless_1').text('축복1단계');
+		}
+		
+	}
+	
+	function bless_2(){
+		if(!able_click){
+			$('#res_field').val( $('#res_field').val() + '강화 실행 중 !!! \n' );
+			$("#res_field")[0].scrollTop = $("#res_field")[0].scrollHeight;
+			return;
+		}
+		
+		if(!bless2yn){
+			clearTimeout(v_bless_timer);
+			bless1yn = false;
+			bless2yn = true;
+			$('#wp_bless_2').text('+15%적용중');
+			$('#wp_bless_1').text('축복1단계');
+			
+			f_twingkling('wp_bless_2',2);
+			v_bless_timer = setInterval(function() {
+				f_twingkling('wp_bless_2',2);
+			}, 1600);
+			
+		}else{
+			clearTimeout(v_bless_timer);
+			bless2yn = false;
+			$('#wp_bless_2').text('축복2단계');
+		}
+	}
 	
 	function autoAdvUp(){
 		
@@ -102,19 +158,19 @@
 		
 		if(autoyn){
 			autoyn = false;
-			$('#wp_auto').val('자동강화시작');
+			$('#wp_auto').text('자동강화시작');
 			clearTimeout(v_auto_timer);
 			return;
 		}else{
 			autoyn = true;
-			$('#wp_auto').val('자동강화중지');
+			$('#wp_auto').text('자동강화중지');
 		}
 		
 		autocnt = 0;
 		
 		v_auto_timer = setInterval(function() {
-			advUp_auto(wp50,'wp50');
 			autocnt++;
+			advUp_auto(wp50,'wp50');
 			
 			if(wp50.wp_adv_no >= max_adv_no){
 				clearTimeout(v_auto_timer);
@@ -198,6 +254,13 @@
 		
 		var adv_rate =advance_rate.getAdvRateVal(wp.wp_adv_no); 
 		
+		if(bless1yn){
+			adv_rate = Number(adv_rate) + 5;
+		}
+		if(bless2yn){
+			adv_rate = Number(adv_rate) + 15;	
+		}
+		
 		
 		var enhance_flag = 1;
 		if(able_click){
@@ -205,7 +268,8 @@
 			
 			//1, 100을 포함한 수 중 랜덤
 			//10강화시 80 <= 30 (31~100::70퍼센트로 실패)
-			if(getRandomInt(1,100) <= adv_rate){
+			var random_value = getRandomInt(1,100);
+			if(random_value <= adv_rate){
 				enhance_flag = 1;
 				$('#img_'+tag_id)[0].src='<%=request.getContextPath()%>/game_set/img/enhance_fast_1.gif?v=<%=System.currentTimeMillis()%>';
 			}else{
@@ -220,10 +284,10 @@
 				$('#img_'+tag_id)[0].src='<%=request.getContextPath()%>/game_set/img/'+weapons[tag_id].wp_img+'?v=<%=System.currentTimeMillis()%>';
 				if(enhance_flag == 1){
 					wp.wp_adv_no++;	
-					res=' 강화에 성공하였습니다.';
+					res=' 강화에 성공하였습니다. 확률공개: '+random_value +' <= '+ adv_rate;
 				}else{
 					wp.wp_adv_no--;
-					res=' 강화에 실패하였습니다.';
+					res=' 강화에 실패하였습니다. 확률공개: '+random_value +' <= '+ adv_rate;
 				}
 				
 				wp.wp_add_damage = advCalc(wp);
@@ -285,7 +349,9 @@
 			</a>
 		</div>
 		<div>
-			<input type='button' id="wp_auto" value= '자동강화' onclick="autoAdvUp();" />
+			<button id="wp_auto" onclick="autoAdvUp();">자동강화시작</button>
+			<button id="wp_bless_1" class='wp_bless_1' onclick="bless_1();">축복1단계</button>
+			<button id="wp_bless_2" class='wp_bless_2' onclick="bless_2();">축복2단계</button>
 		</div>
 	</section>
 	<section id="chattings">

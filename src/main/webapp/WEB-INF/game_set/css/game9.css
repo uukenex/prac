@@ -25,15 +25,77 @@ div > a > input {
 	min-width: 108px;
 	max-width: 108px;
 	font-size: 8px;
+	border: 2px #000000;
+	
+}
+/* 
+div > button {
+	width:100%;
+	min-width: 108px;
+	max-width: 108px;
+	font-size: 9px;
+	border: 2px #000000;
+	margin: 4px 0px;
+	
+} */
+@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+KR&display=swap");
+
+div > button {
+  /* 생략 */
+  margin: 2px;
+  padding: 0.5rem 1rem;
+
+  font-family: "Noto Sans KR", sans-serif;
+  font-size: 1rem;
+  font-weight: 400;
+  text-align: center;
+  text-decoration: none;
+
+  display: inline-block;
+  width: auto;
+  min-width: 108px;
+  border: none;
+  border-radius: 0px;
 }
 
+div > button.twingkle {
+	/* 생략 */
+  margin: 0px;
+  padding: 0.5rem 1rem;
+
+  font-family: "Noto Sans KR", sans-serif;
+  font-size: 1rem;
+  font-weight: 400;
+  text-align: center;
+  text-decoration: none;
+
+  display: inline-block;
+  width: auto;
+  min-width: 108px;
+
+  border: dashed 2px #720000;  
+  border-radius: 4px;
+}
+/* 
+div > button.twingkle {
+	width:100%;
+	min-width: 108px;
+	max-width: 108px;
+	font-size: 9px;
+	border: dashed 1px #720000;
+	margin: 0px;
+	border만큼의 magin  
+	margin: 0px;
+	border: dashed 2px #720000;  
+}
+ */
 section#section {
 	border: solid 1px red;
 }
 section#chattings{
 	position: absolute;
 	display: inline;
-	top : 260px;
+	top : 285px;
 	font-size: 13px;
 	max-width:700px;
 	width: 100%;
@@ -68,3 +130,4 @@ img {
     background-color: black;
     padding: 8px;
 }
+
