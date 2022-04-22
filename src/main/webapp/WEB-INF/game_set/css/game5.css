@@ -65,6 +65,15 @@ section#description {
 	z-index: 9;
 }
 
+.item {
+	background: green;
+	width: 20px;
+	height: 20px;
+	top : 600px;
+	left : 600px;
+	z-index: 9;
+}
+
 .boss {
 	display: none;
 	background: black;
@@ -104,12 +113,22 @@ section#description {
 	position: absolute;
 	/* border: 1px dashed; */
 }
-#weapon, #weaponimg{
+#weapon, .weapon, .weapon_size{
+	position : inherit;
+	width: 20px;
+	height: 63px;
+	z-index: 0;
+}
+
+.weapon_range, #weaponimg {
+	display: none;
 	position : inherit;
 	width: 60px;
 	height: 63px;
 	z-index: 0;
+	transform: rotate(180deg);
 }
+
 #weapon_motion, #weapon_motionimg{
 	width: 60px;
 	height: 127px; /*캐릭터 높이만큼 공격 */
@@ -194,4 +213,10 @@ table.rank tr td {
 	width: 5px;
 	height: 5px;
 	display: none;
+}
+
+#bomb1, #bomb1_img {
+	width: 400px;
+	height: 400px;
+	z-index: -9;
 }

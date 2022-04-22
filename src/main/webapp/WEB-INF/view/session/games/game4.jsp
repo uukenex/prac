@@ -14,7 +14,6 @@
 </HEAD>
 <BODY onload="init()">
 	<script src="<%=request.getContextPath() %>/assets/js/jquery.min.js"></script>
-	<script type="text/javascript" src="http://jsgetip.appspot.com"></script>
 	<script
 		src="<%=request.getContextPath()%>/game_set/js/gameutil.js?v=<%=System.currentTimeMillis()%>"></script>
 	<script language="javascript">

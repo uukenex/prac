@@ -111,6 +111,12 @@ function fun_dPoing(integered_number){
 }
 
 function meetBox(org_rect,target_rect){
+	if(target_rect.left == 0 && target_rect.top == 0
+	 &&org_rect.left ==0 && org_rect.top ==0){
+		return false;
+	}
+		
+	
 	if(target_rect.left   <= org_rect.right 
 	&& target_rect.right  >= org_rect.left
     && target_rect.top    <= org_rect.bottom 
@@ -178,7 +184,7 @@ function common_game_over(arg_game_no, arg_cnt, arg_reason,arg_userId){
 				msg : ' ',
 				userName : arg_userId,
 				mediaCode: mediaCode,
-				ip : ip(),
+				ip : '0.0.0.0', //IP호출 파라메터 오류 
 				cnt : arg_cnt,
 				gameNo : arg_game_no,
 				dbDate : dbDate,
@@ -212,7 +218,7 @@ function common_game_over(arg_game_no, arg_cnt, arg_reason,arg_userId){
 						msg : promptVal,
 						userName : arg_userId,
 						mediaCode: mediaCode,
-						ip : ip(),
+						ip : '0.0.0.0',
 						cnt : arg_cnt,
 						gameNo : arg_game_no,
 						dbDate : dbDate,
