@@ -79,8 +79,20 @@
 		//$('#weapon').css('transform','rotate(180deg)');
 		//$('.weapon_range').css('transform','rotate(180deg)');
 		
-		
+		$('#change_char').on('click',function(){change_charater();});
+		$('#starting').on('click',function(){start_game();});
         
+		
+		//imsi
+    	function change_charater(){
+    		$('#charimg')[0].src='/game_set/img/chunsik.png';
+    	}
+    	function start_game(){
+    		flag_start_create_enemy = true;
+    		v_score_life = 3;
+    		v_score_hit = 0;
+    	}
+		
     	$(function(){
     		var keypress = {}, // 어떤 키가 눌려 있는지 저장
     		charx = 0, chary = 0, speed = 1, 
@@ -108,33 +120,10 @@
     			if(keypress['39']) charx += speed; // right
     			if(keypress['40']) chary += speed; // down
     			
-    			if(keypress['32']){
-    				if(!flag_start_create_enemy){
-    					f_boss_create(v_sp_count,2,400-20-10,50);//'space' enemy create
-    				}
-    			}
-    			
-    			
+    			   			
     			 
     			$weapon_motion.css({top: chary, left: charx+37*2});
     			
-    			/*
-    			range_atk_x_org = charx+37*2;
-    			range_atk_y_org = chary+63-18;
-    			if(flag_char_range_atk){
-    				range_atk_x = range_atk_x + 12;
-    				
-    				$weapon.css({top: range_atk_y, left: range_atk_x});
-    				if(range_atk_x > 400){
-    					flag_char_range_atk = false;
-    				}
-    				
-    			}else{
-    				$weapon.css({top: chary+63-18, left: charx+37*2});
-    				range_atk_x = range_atk_x_org;
-    				range_atk_y = range_atk_y_org;
-    			}
-    			*/
     			$char.css({top: chary, left: charx});
     			$charimg.css({top: chary, left: charx});
     			
@@ -178,66 +167,14 @@
         	});
         	$(document).mouseup(function(e){
         		var key = e.target.id.substr(4,2);
-
         		keypress[key] = false;
         	});
         	
         	$(document).mouseout(function(e){
         		var key = e.target.id.substr(4,2);
-
         		keypress[key] = false;
         	});
         	
-        	/* 터치 액션 .. 개발 진행중
-        	
-        	var char_touch_point_x;
-        	var char_touch_point_y;
-        	var move_touch_point_x_before;
-        	var move_touch_point_y_before;
-        	var move_touch_point_x_after;
-        	var move_touch_point_y_after;
-        	var move_calc_x;
-        	var move_calc_y;
-        	var move_direct;
-        	
-        	var base = {x:0, y:0};
-        	
-        	var pointerEventToXY = function(e){
-         	     var out = {x:0, y:0};
-         	     var calc = {x:0, y:0};
-         	     
-         	     if(e.type == 'touchstart' ){
-         	    	var touch = e.originalEvent.touches[0] || e.originalEvent.changedTouches[0];
-         	    	base.x = touch.pageX;
-         	    	base.y = touch.pageY;
-         	    	calc.x = base.x;
-           	     	calc.y = base.y;
-         	     }
-         	     if(e.type == 'touchmove' ){
-         	        var touch = e.originalEvent.touches[0] || e.originalEvent.changedTouches[0];
-         	        out.x = touch.pageX;
-         	        out.y = touch.pageY;
-         	        
-         	       	calc.x = out.x - base.x;
-           	     	calc.y = out.y - base.y;
-         	     } 
-         	     
-         	     
-         	     return calc;
-         	    };
-
-  	       	$(document).on('touchstart touchmove', function(e){
-  	      	  console.log(pointerEventToXY(e)); // will return obj ..kind of {x:20,y:40}
-  	      	})
-        	
-  	      	
-  	      	 */
-
-
-        	
-        	
-    		
-    		
     		sub_interval = setInterval(function(){
         		var e_rect;
         		var c_rect =  $('#char_heat')[0].getBoundingClientRect();
@@ -293,23 +230,20 @@
 	               				if(v_boss_range_energy > 0){
 	                   				v_boss_range_energy -= 1;	
 	                   			}
-	               				flag_boss_hit_delay = true;
+	               				//flag_boss_hit_delay = true;
 	               				f_twingkling('boss',6);
 	               				setTimeout(function(){
-	               					flag_boss_hit_delay = false;
+	               					//flag_boss_hit_delay = false;
 	               				}, 40*5);
 	               				//딜레이 계산식 400 * (twingkle-1)
                				}
                			}
            			}
            			
-           			
            			//보스 kill action
-          				if(v_boss_range_energy == 0 && v_boss_short_energy == 0){
-          					if(flag_start_create_enemy){
-          						v_score_hit += 50;	
-          						flag_boss_end = true;
-          					}	
+          			if(v_boss_range_energy <= 0 && v_boss_short_energy <= 0){
+       						v_score_hit += 50;	
+       						flag_boss_end = true;
           	    			f_boss_hidden();
            			}
            			
@@ -325,16 +259,7 @@
         			
         			if(meetBox(l_rect,c_rect)){
         				v_score_life += 1;
-        				
-        				flag_char_hit_delay = true;
-        				f_twingkling('char',4);
-        				setTimeout(function(){
-        					flag_char_hit_delay = false;
-        				}, 400*3);
-        				
         				$('.life')[i].remove();
-        				$('button.detect').css('background','#FFFFCB'); 
-        				
         			}
         			
         			/** 라이프 공격시 라이프 깎이던 로직 제거  
@@ -388,43 +313,43 @@
         		}
         		
         		if(press_d){
-        			f_char_weapon_range_atk_create(v_sp_count,4,charx,chary,flag_item_mode);
+        			f_char_weapon_range_atk_create(v_sp_count,6,charx,chary,flag_item_mode);
         			press_d = false;
         		}
         		
         		//자동적생성
         		if(flag_start_create_enemy){
-    				f_enemy_create(v_sp_count,2,400-20-10,getRandomInt(0, 400-20-10));
+    				f_enemy_create(v_sp_count++,2,400-20-10,getRandomInt(0, 400-20-10));
     			}
         		//보스 생성
-        		if(v_score_hit == 30){
-        			f_boss_create(v_sp_count,2,400-20-10,50);
+        		if(v_score_hit >= 30 && !flag_boss_attack ){
+        			f_boss_create(v_sp_count++,2,400-20-10,50);
        			}
         		//보스 처치 후 적생성 추가 
         		if(flag_start_create_enemy && flag_boss_end){
-					f_enemy_create2(v_sp_count,3,400-20-10,getRandomInt(0, 400-20-10));
+        			f_enemy_create2(v_sp_count++,4,400-20-10,getRandomInt(0, 400-20-10));
        			}
         		
         		//라이프생성
-        		if(v_score_life == 1){
+        		if(v_score_life == 1 && !flag_life_attack){
         			//flag_life_attack=false;
-        			f_life_create(v_sp_count,3,400-20-10,getRandomInt(0, 400-20-10));
+        			f_life_create(v_sp_count++,3,400-20-10,getRandomInt(0, 400-20-10));
        			}
         		//라이프생성
-        		if(v_score_hit == 100){
+        		if(v_score_hit == 100 && !flag_life_attack2){
         			//flag_life_attack=false;
-        			f_life_create2(v_sp_count,3,400-20-10,getRandomInt(0, 400-20-10));
+        			f_life_create2(v_sp_count++,3,400-20-10,getRandomInt(0, 400-20-10));
        			}
         		
         		//아이템생성
-        		if(v_score_hit == 1){
+        		if(v_score_hit >= 10 && !flag_item_attack2){
         			//flag_item_attack=false;
-        			f_item_create(v_sp_count,1,400-20-10,getRandomInt(0, 400-20-10));
+        			f_item_create(v_sp_count++,1,400-20-10,getRandomInt(0, 400-20-10));
        			}
         		//아이템생성
-        		if(v_score_hit == 50){
+        		if(v_score_hit >= 50 && !flag_item_attack2){
         			//flag_item_attack=false;
-        			f_item_create2(v_sp_count,3,400-20-10,getRandomInt(0, 400-20-10));
+        			f_item_create2(v_sp_count++,3,400-20-10,getRandomInt(0, 400-20-10));
        			}
         		
         		
@@ -539,7 +464,7 @@
 	    			
 	    			setTimeout(function() {
 	    				flag_char_range_atk = false;
-	    			}, 200);	
+	    			}, 400);	
 	    		}
 	    		
 	    		function range_atk_move(sp_count){
@@ -578,7 +503,7 @@
 	    			
 	    			setTimeout(function() {
 	    				flag_char_range_atk = false;
-	    			}, 200);	
+	    			}, 400);	
 	    		}
 	    		
 	    		function range_atk_move_up(sp_count){
@@ -634,7 +559,7 @@
 	    			
 	    			setTimeout(function() {
 	    				flag_char_range_atk = false;
-	    			}, 200);	
+	    			}, 400);	
 	    		}
 	    		
 	    		function range_atk_move_up(sp_count){
@@ -710,7 +635,6 @@
     			
     			setTimeout(function() {
     				flag_enemy_create2 = false;
-    				v_sp_count++;
     			}, 200);	
     		}
     		
@@ -773,7 +697,6 @@
     			
     			
     			setTimeout(function() {
-    				v_sp_count++;
     			}, 200);	
     		}
     		
@@ -827,7 +750,6 @@
     		var item_move_timer;
     		
     		if(!flag_item_attack){
-    			v_sp_count++;
     			flag_item_attack = true;
     			$('#enemy_field').append('<div class="item" id="item'+sp_count+'"></div>'); 
     			
@@ -853,7 +775,6 @@
     		var item_move_timer;
     		
     		if(!flag_item_attack2){
-    			v_sp_count++;
     			flag_item_attack2 = true;
     			$('#enemy_field').append('<div class="item" id="item'+sp_count+'"></div>'); 
     			
@@ -951,10 +872,7 @@
     			$('#chat').css({top: y, left: x}); 
     			
     			setTimeout(function(){ 
-    				
-    				
     				$("#chat").focus();
-    				
     			}, 1);
 
     		}else{
@@ -1011,13 +929,13 @@
     	
     	function f_boss_hidden(){
     		if(flag_boss_attack){
-    			flag_boss_attack = false;
-    			$('.boss')[0].remove();
-    				
-    			$('#boss_short_energy_text')[0].hidden=true;
-    			$('#boss_range_energy_text')[0].hidden=true;
-    			$('#boss_short_energy')[0].hidden=true;
-    			$('#boss_range_energy')[0].hidden=true;	
+    			if($('.boss')[0] != null){
+    				$('.boss')[0].remove();	
+    				$('#boss_short_energy_text')[0].hidden=true;
+        			$('#boss_range_energy_text')[0].hidden=true;
+        			$('#boss_short_energy')[0].hidden=true;
+        			$('#boss_range_energy')[0].hidden=true;
+    			}
     		}
     	}
     	
@@ -1034,10 +952,7 @@
  
 	
 	
-	
-	
-	
-	
+		
 	
 	
 		
@@ -1089,9 +1004,15 @@
 				<td><button class='detect' id="btn_40">↓</button></td>
 				<td><button class='detect' id="btn_39">→</button></td>
 			</tr>
-
 		</table>
-		
+		<table>
+			<tr>
+				<td colspan="3"><button id="change_char">change character</button></td>
+			</tr>
+			<tr>
+				<td colspan="3"><button id="starting">start game</button></td>
+			</tr>
+		</table>
 	</section>
 	
 	<section id="description">
