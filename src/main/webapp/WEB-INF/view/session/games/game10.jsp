@@ -22,8 +22,6 @@
 		var db_game_no = 10;
 		//https://bssow.tistory.com/129 timer int로 조정하기 
 		var v_sp_count= 3;//clear timer variable - enemy
-		var v_chat_count = 0; // chat floating box name value
-		var v_chat_timer;//clear timer variable - chat floating box
 		
 		var flag_start_create_range_atk = false;
 		
@@ -42,16 +40,11 @@
 		var flag_item_attack2 = false; 
 		var flag_item_mode = 1; //어택 줄기수  
 		
-		var v_boss_range_energy = 45;//보스 원거리 방어 수치
-		var v_boss_short_energy = 1;//보스 근거리 방어 수치 
-		var v_boss_range_energy_max = 45;//보스 원거리 방어 수치
-		var v_boss_short_energy_max = 1;//보스 근거리 방어 수치 
+		var v_boss_tot_energy 	  = 45;
+		var v_boss_tot_energy_max = 45;
 		
 		var flag_boss_end = false; //보스 잡았는지 여부 
 		var flag_boss_hit_delay = false;//보스 피격 딜레이  
-		
-		var flag_enter = false; //엔터 눌렸는지 여부 검사
-		var flag_chat_float = false;  // 채팅창 떠있는지 검사 
 		
 		var flag_start_create_enemy = false; 
 		
@@ -68,7 +61,7 @@
 		
 		var press_s = false;
 		var press_d = false;
-		
+		var auto_press_d = false;
 		
 		$('section_detect').css('width', 400 - 10);
 		$('button.detect').css('width', 400 / 10);
@@ -81,6 +74,7 @@
 		
 		$('#change_char').on('click',function(){change_charater();});
 		$('#starting').on('click',function(){start_game();});
+		$('#auto_missile').on('click',function(){auto_missile();});
         
 		
 		//imsi
@@ -92,6 +86,13 @@
     		v_score_life = 3;
     		v_score_hit = 0;
     	}
+    	function auto_missile(){
+    		if(auto_press_d){
+    			auto_press_d = false;
+    		}else{
+    			auto_press_d = true;
+    		}
+    	}
 		
     	$(function(){
     		var keypress = {}, // 어떤 키가 눌려 있는지 저장
@@ -101,7 +102,6 @@
     		$weapon = $('#weapon'),
     		$weapon_motion = $('#weapon_motion');
     		
-    		//var w_r_rect =  $('#weapon')[0].getBoundingClientRect();
     		var range_atk_x = charx+37*2;
     		var range_atk_y = chary+63-18;
     		
@@ -111,7 +111,7 @@
     			if(charx > 400-37-18) charx=400-37-18;
     			if(chary > 400-63-31) chary=400-63-31;
     			
-    			speed = keypress['65']?3:1
+    			speed = keypress['65']?3:1 // 'a' booster
     			if(keypress['83']) press_s=true;//'s' direct attack
     			if(keypress['68']) press_d=true;//'d' range attack
     			
@@ -129,51 +129,29 @@
     			
     		}, 10); // 매 0.01 초마다 실행
     	 
-    		
-    		//window Event
-        	$(document).keydown(function(e){ // 어떤 키가 눌렸는지 저장 
-        		var key = e.which.toString();
-        	
-        		f_detect(key,true);
-        		if(key=='13'){
-        			f_chatter_box_create(400/2-100, 350);//'enter' chatter box
-        		} else if(key=='27'){
-        			f_enemy_end();
-        		} else if(flag_enter){
-        			$('#chat')[0].text += key;
-        		} else{
-        			keypress[key] = true;
+        	$(document).on('keydown mousedown touchstart', function (e) {
+				
+        		if(e.type == 'keydown'){
+        			var key = e.which.toString();
+        		}else{
+        			var key = e.target.id.substr(4,2);
         		}
-        	});
-        	$(document).keyup(function(e){ // 눌렸던 키를 해제
-        		var key = e.which.toString();
-        	
-        		f_detect(key,false);
-        		keypress[key] = false;	
-        	});
-        	
-        	$(document).mousedown(function(e){
-        		var key = e.target.id.substr(4,2);
         		
-        		if(key=='13'){
-        			f_chatter_box_create(400/2-100, 350);//'enter' chatter box
-        		} else if(key=='27'){
-        			f_enemy_end();
-        		} else if(flag_enter){
-        			$('#chat')[0].text += key;
-        		} else{
-        			keypress[key] = true;
-        		}
+        		f_detect(key,true);
+        		keypress[key] = true;
+        		
         	});
-        	$(document).mouseup(function(e){
-        		var key = e.target.id.substr(4,2);
+        	
+        	$(document).on('keyup mouseup mouseout touchend touchcancel', function (e) {
+        		if(e.type == 'keyup'){
+        			var key = e.which.toString();
+        		}else{
+        			var key = e.target.id.substr(4,2);
+        		}
+        		f_detect(key,false);
         		keypress[key] = false;
         	});
         	
-        	$(document).mouseout(function(e){
-        		var key = e.target.id.substr(4,2);
-        		keypress[key] = false;
-        	});
         	
     		sub_interval = setInterval(function(){
         		var e_rect;
@@ -227,8 +205,8 @@
                			if( meetBox(e_b_rect,c_r_a_rect)){
                				$('.weapon_range')[j].remove();
                				if(!flag_boss_hit_delay){
-	               				if(v_boss_range_energy > 0){
-	                   				v_boss_range_energy -= 1;	
+	               				if(v_boss_tot_energy > 0){
+	               					v_boss_tot_energy -= 1;	
 	                   			}
 	               				//flag_boss_hit_delay = true;
 	               				f_twingkling('boss',6);
@@ -241,7 +219,7 @@
            			}
            			
            			//보스 kill action
-          			if(v_boss_range_energy <= 0 && v_boss_short_energy <= 0){
+          			if(v_boss_tot_energy <= 0){
        						v_score_hit += 50;	
        						flag_boss_end = true;
           	    			f_boss_hidden();
@@ -297,21 +275,14 @@
         			}
         		}
         		
-        		//채팅창 
-        		if(flag_chat_float){
-        			var $chat_float = $('.chat_float');
-    				var chat_float_area = $('#charimg')[0].getBoundingClientRect();
-    				$chat_float.css({top: chat_float_area.top-30, left: chat_float_area.left-37*2});
-    				//$chat_float.css({top: chary-30, left: charx-37*2 });
-    			}else{
-    				$('.chat_float').remove();
-    			}
-        		
         		if(press_s){
         			f_char_weapon_direct_atk_create();
         			press_s = false;
         		}
         		
+        		if(auto_press_d){
+        			f_char_weapon_range_atk_create(v_sp_count,6,charx,chary,flag_item_mode);
+        		}
         		if(press_d){
         			f_char_weapon_range_atk_create(v_sp_count,6,charx,chary,flag_item_mode);
         			press_d = false;
@@ -359,8 +330,7 @@
        			$('#score_max')[0].innerText=v_score_max;
        			
        			if(flag_boss_attack){
-    	   			$('#boss_short_energy')[0].innerText= v_boss_short_energy;
-    	   			$('#boss_range_energy')[0].innerText= v_boss_range_energy;
+    	   			$('#boss_tot_energy')[0].innerText= v_boss_tot_energy;
        			}
         		
        			//사망 감지
@@ -431,7 +401,8 @@
     				flag_char_attack_delay = false;
     			}, v_gauge_max_value*10 );
     			
-    			v_boss_short_energy -=1;
+    			//v_boss_tot_energy -= 10;
+    			//폭탄 보스 데미지x
     			f_char_weapon_direct_all_destory_enemy();
     		}
     		
@@ -508,7 +479,7 @@
 	    		
 	    		function range_atk_move_up(sp_count){
 	    			x_up += r_speed; 
-	    			$('#weaponimg'+sp_count).css({top: y_up-40, left: x_up}); 
+	    			$('#weaponimg'+sp_count).css({top: y_up-30, left: x_up}); 
 	    			if(x_up > 400 ){
 	    				clearTimeout(range_atk_move_timer1);
 	    				$('#weaponimg'+sp_count).remove();
@@ -516,7 +487,7 @@
 	    		}
 	    		function range_atk_move_down(sp_count){
 	    			x_down += r_speed; 
-	    			$('#weaponimg'+sp_count).css({top: y_down+40, left: x_down}); 
+	    			$('#weaponimg'+sp_count).css({top: y_down+30, left: x_down}); 
 	    			if(x_down > 400 ){
 	    				clearTimeout(range_atk_move_timer2);
 	    				$('#weaponimg'+sp_count).remove();
@@ -564,7 +535,7 @@
 	    		
 	    		function range_atk_move_up(sp_count){
 	    			x_up += r_speed; 
-	    			$('#weaponimg'+sp_count).css({top: y_up-40, left: x_up}); 
+	    			$('#weaponimg'+sp_count).css({top: y_up-35, left: x_up}); 
 	    			if(x_up > 400 ){
 	    				clearTimeout(range_atk_move_timer1);
 	    				$('#weaponimg'+sp_count).remove();
@@ -580,7 +551,7 @@
 	    		}
 	    		function range_atk_move_down(sp_count){
 	    			x_down += r_speed; 
-	    			$('#weaponimg'+sp_count).css({top: y_down+40, left: x_down}); 
+	    			$('#weaponimg'+sp_count).css({top: y_down+35, left: x_down}); 
 	    			if(x_down > 400 ){
 	    				clearTimeout(range_atk_move_timer3);
 	    				$('#weaponimg'+sp_count).remove();
@@ -658,13 +629,10 @@
     		if(!flag_boss_attack){
     			flag_boss_attack = true;
     			
-    			$('#boss_short_energy_text')[0].hidden=false;
-    			$('#boss_range_energy_text')[0].hidden=false;
-    			$('#boss_short_energy')[0].hidden=false;
-    			$('#boss_range_energy')[0].hidden=false;
+    			$('#boss_tot_energy_text')[0].hidden=false;
+    			$('#boss_tot_energy')[0].hidden=false;
     			
-    			v_boss_short_energy = v_boss_short_energy_max;
-    			v_boss_range_energy = v_boss_range_energy_max;
+    			v_boss_tot_energy = v_boss_tot_energy_max;
     			
     			$('#enemy_field').append(
     			'<div class="boss" id="boss'+sp_count+'"><img id="bossimg" src="<%=request.getContextPath()%>/game_set/img/apeech.png?v=<%=System.currentTimeMillis()%>"></div>'
@@ -707,17 +675,17 @@
     			var v_reverse=false;
     			
     			if(phase == 0){
-    				phase_no_value = 300;//초기위치
+    				phase_no_value = 250;//초기위치
     				x -= e_speed; 
     				t_boss_move = boss_move_timer;
     				v_reverse=false;
     			}else if(phase == 1){
-    				phase_no_value = 150;//x- 방향으로 150까지만 이동
+    				phase_no_value = 120;//x- 방향으로 120까지만 이동
     				x -= e_speed; 
     				t_boss_move = boss_move_timer1;
     				v_reverse=false;
     			}else if(phase == 2){
-    				phase_no_value = 300;//x+ 방향으로 300까지만 이동
+    				phase_no_value = 250;//x+ 방향으로 300까지만 이동
     				x += e_speed; 
     				t_boss_move = boss_move_timer2;
     				v_reverse=true;
@@ -851,61 +819,6 @@
     			}
     		}
     	}
-    	
-    	function f_enemy_end(){
-    		if(flag_enter){
-    			flag_enter= false;
-    			$('#chat').remove();
-    		}/* else{
-    			flag_start_create_enemy = false;	
-    		} */
-    		
-    	}
-    	
-    	function f_chatter_box_create(x,y){
-    		var msg;
-    		var chat_float_area = $('#charimg')[0].getBoundingClientRect();
-    		
-    		if(!flag_enter){
-    			flag_enter= true;
-    			$('#chat_space').append('<input type="text" class="chat" id="chat"></input>');
-    			$('#chat').css({top: y, left: x}); 
-    			
-    			setTimeout(function(){ 
-    				$("#chat").focus();
-    			}, 1);
-
-    		}else{
-    			flag_enter= false;
-    			msg = $('#chat').val();
-    			$('#chat').remove();
-    			
-    			if(msg != ''){
-    				if(msg == '시작'){
-    					flag_start_create_enemy = true;
-    					v_score_life = 3;
-    		   			v_score_hit = 0;
-    		   			
-    		   			f_boss_hidden();
-    				}
-    				
-    				$('#chat_space').append('<input type="text" class="chat chat_float" id="chat_float'+v_chat_count+'" readonly="true"></input>'); 
-    				$('#chat_float'+v_chat_count).css({top: chat_float_area.top-30, left: chat_float_area.left-37*2});
-    				$('#chat_float'+v_chat_count).val(msg);
-    				
-    				flag_chat_float = true;
-    				
-    				clearTimeout(v_chat_timer);
-    				
-    				v_chat_timer = setTimeout(function() {
-    					flag_chat_float = false;
-    					v_sp_count++;
-    				}, 2000);
-    				v_chat_count++;
-    			}
-    		}
-    	}
-    	
 
 		function f_detect(key_number,bool_value){
     		if(bool_value){
@@ -931,10 +844,8 @@
     		if(flag_boss_attack){
     			if($('.boss')[0] != null){
     				$('.boss')[0].remove();	
-    				$('#boss_short_energy_text')[0].hidden=true;
-        			$('#boss_range_energy_text')[0].hidden=true;
-        			$('#boss_short_energy')[0].hidden=true;
-        			$('#boss_range_energy')[0].hidden=true;
+    				$('#boss_tot_energy_text')[0].hidden=true;
+        			$('#boss_tot_energy')[0].hidden=true;
     			}
     		}
     	}
@@ -967,35 +878,17 @@
 		<div id="weapon_motion" style="display:none" ><img id="weapon_motionimg" src="<%=request.getContextPath()%>/game_set/img/knife_motion.png?v=<%=System.currentTimeMillis()%>"></div>
 		<div id="enemy_field"></div>
 	</section>
-	<section id="chat_space" class='space'>
-	</section>
 	
 	<section id="section_detect">
 	<br>
 		<table>
 			<tr>
 				<td>
-					<button class='detect' id="btn_65">A Boost</button>
-				</td>
-				<td>
-					<button class='detect' id="btn_83">S Bomb</button>
-				</td>
-				<td>
-					<button class='detect' id="btn_68">D Range Atk</button>
-				</td>
-			</tr>
-
-			<tr>
-				<td colspan="3"><button class='detect longBtn' id="btn_13">ENTER</button></td>
-			</tr>
-		</table>
-		<table>
-			<tr>
-				<td>
-					<button class='detect' id="btn_27">ESC</button>
 				</td>
 				<td>
 					<button class='detect' id="btn_38">↑</button>
+				</td>
+				<td>
 				</td>
 			</tr>
 
@@ -1007,10 +900,14 @@
 		</table>
 		<table>
 			<tr>
-				<td colspan="3"><button id="change_char">change character</button></td>
+				<td><button class='detect' id="btn_65">A Boost</button></td>
+				<td><button class='detect' id="btn_83">S Bomb</button></td>
+				<td><button class='detect' id="btn_68">D Range Atk</button></td>
 			</tr>
 			<tr>
-				<td colspan="3"><button id="starting">start game</button></td>
+				<td><button class='detect' id="change_char">춘식</button></td>
+				<td><button class='detect' id="starting">시작</button></td>
+				<td><button class='detect' id="auto_missile">AUTO</button></td>
 			</tr>
 		</table>
 	</section>
@@ -1024,21 +921,10 @@
 		</br>
 		남은 생명 : <label id="score_life"></label>
 		</br>
-		<label id="boss_short_energy_text" hidden="true">보스-폭탄보호</label><label id="boss_short_energy" hidden="true"></label>
-		</br>
-		<label id="boss_range_energy_text" hidden="true">보스-원거리보호</label><label id="boss_range_energy" hidden="true"></label>
+		<label id="boss_tot_energy_text" hidden="true">보스-체력</label><label id="boss_tot_energy" hidden="true"></label>
 		</br>
 		
 		
-	</section>
-	<section id="chattings">
-		<c:if test="${(userId ne '') and !(empty userId)}">
-	        <input type="hidden" value='${userNick}' id='chat_id' />
-	    </c:if>
-	    <c:if test="${(userId eq '') or (empty userId)}">
-	        <input type="hidden" value='<%=session.getId().substring(0, 6)%>'
-	            id='chat_id' />
-	    </c:if>
 	</section>
 </BODY>
 </HTML>
