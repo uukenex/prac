@@ -32,7 +32,8 @@ public class ShareController {
 	ShareService shareService;
 
 	@RequestMapping(value = "/share", method = RequestMethod.GET)
-	public String share(Model model, @RequestParam(required = false, defaultValue = "0") int page, HttpSession session) {
+	public String share(Model model, @RequestParam(required = false, defaultValue = "0") int page,
+			HttpSession session) {
 		List<Shareboard> shares = null;
 		int sharePageCount = 0;
 		int totalPage = 0;
@@ -63,7 +64,7 @@ public class ShareController {
 	public String shareView(Model model, @RequestParam int shareNo,
 			@RequestParam(required = false, defaultValue = "0") int version) {
 		Shareboard share = null;
-		List<Integer> shareHist =null;
+		List<Integer> shareHist = null;
 		try {
 			if (version == 0) {
 				share = shareService.selectShare(shareNo);
@@ -75,7 +76,8 @@ public class ShareController {
 				share = shareService.selectShareHist(shareMap);
 				shareHist = shareService.selectShareHistList(shareNo);
 			}
-			//share.setShareContent(share.getShareContent().replaceAll("{imgUrl}", "http://dev-apc.com"));
+			// share.setShareContent(share.getShareContent().replaceAll("{imgUrl}",
+			// "http://dev-apc.com"));
 			share.setShareContent(share.getShareContent().replaceAll("？", ""));
 
 		} catch (Exception e) {
@@ -103,7 +105,7 @@ public class ShareController {
 
 		Shareboard share = new Shareboard();
 		share.setShareName(shareName);
-		shareContent = shareContent.replaceAll("？","");
+		shareContent = shareContent.replaceAll("？", "");
 		share.setShareContent(shareContent);
 		share.setInsertId(userId);
 		share.setModifyId(userId);
@@ -137,7 +139,7 @@ public class ShareController {
 		String shareNo = request.getParameter("shareNo");
 		String shareName = request.getParameter("title");
 		String shareContent = request.getParameter("content");
-		String ipAddr = request.getParameter("ipAddr");
+		String ipAddr = request.getRemoteAddr();
 		String userId;
 		try {
 			Users u = (Users) session.getAttribute("Users");
@@ -149,7 +151,7 @@ public class ShareController {
 		Shareboard share = new Shareboard();
 		share.setShareNo(Integer.parseInt(shareNo));
 		share.setShareName(shareName);
-		shareContent = shareContent.replaceAll("？","");
+		shareContent = shareContent.replaceAll("？", "");
 		share.setShareContent(shareContent);
 		share.setInsertId(userId);
 		share.setModifyId(userId);
@@ -162,24 +164,22 @@ public class ShareController {
 		}
 		return "redirect:/shareView?shareNo=" + shareNo;
 	}
-	
+
 	// 댓글달기 ajax
 	@RequestMapping(value = "/shareVersionCheck", method = RequestMethod.POST)
-	public @ResponseBody int shareVersionCheck(
-			@RequestParam int shareNo, 
-			@RequestParam int version, 
+	public @ResponseBody int shareVersionCheck(@RequestParam int shareNo, @RequestParam int version,
 			HttpSession session) {
-		HashMap<String,Object> paramMap = new HashMap<>();
+		HashMap<String, Object> paramMap = new HashMap<>();
 		paramMap.put("shareNo", shareNo);
 		paramMap.put("version", version);
 		int res = 0;
-		
+
 		try {
-			//버전정보 일치시 1로 업데이트 해야함..현재는 모두 업데이트가능으로 
-			res= shareService.selectVersionCheck(paramMap);
+			// 버전정보 일치시 1로 업데이트 해야함..현재는 모두 업데이트가능으로
+			res = shareService.selectVersionCheck(paramMap);
 		} catch (Exception e) {
 			log.info("ShareService.shareVersionCheck DB none Connect");
-			res=-1;
+			res = -1;
 		}
 
 		return res;

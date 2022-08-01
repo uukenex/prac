@@ -59,7 +59,6 @@
 											
 											<input type="hidden" name="shareNo" value="${share.shareNo }" />
 											<input type="hidden" name="version" value="${share.version }" />
-											<input type="hidden" id="ip" name="ipAddr"/>
 											<td class="inputTitle"><input type="text" name="title" id="editorTitleWritter"
 														value="${share.shareName }">
 											</td>
@@ -90,10 +89,7 @@
 		</div>
 	</div>
 
-<script type="text/javascript" src="http://jsgetip.appspot.com"></script>	
 <script>
-var ip = ip();
-$('#ip').val(ip);
 
 $(function(){
     //전역변수선언
