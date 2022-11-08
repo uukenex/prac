@@ -28,8 +28,22 @@ function resize_event(arg){
 		se2_board_width = resizeWindowWidth;
 		$('img').css('width',Math.round( se2_board_width * 0.9) );
 		$('img').css('height',Math.round( se2_board_width * 0.9) );
+		//console.log(se2_board_width);
 	}else{
-		$('img').css('width',Math.round( resizeWindowWidth * 0.9) );
-		$('img').css('height',Math.round( resizeWindowWidth * 0.9) );
+		if(resizeWindowWidth > 1800){
+			$('img').css('width',Math.round( resizeWindowWidth * 0.3) );
+			$('img').css('height',Math.round( resizeWindowWidth * 0.3) );
+		}else if(resizeWindowWidth > 1500){
+			$('img').css('width',Math.round( resizeWindowWidth * 0.4) );
+			$('img').css('height',Math.round( resizeWindowWidth * 0.4) );
+		}else if(resizeWindowWidth > 800){
+			$('img').css('width',Math.round( resizeWindowWidth * 0.5) );
+			$('img').css('height',Math.round( resizeWindowWidth * 0.5) );
+		}else{
+			$('img').css('width',Math.round( resizeWindowWidth * 0.7) );
+			$('img').css('height',Math.round( resizeWindowWidth * 0.7) );
+		}
+		
+		//console.log(resizeWindowWidth);
 	}
 }
