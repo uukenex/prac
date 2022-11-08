@@ -215,7 +215,7 @@
 		var aft_damage = wp.wp_add_damage;
 		var aft_adv_rate =advance_rate.getAdvRateVal(wp.wp_adv_no+1);
 		
-		var msg = wp.wp_name +' +'+ (bef_adv_no+1) + res + '\n'
+		var msg = wp.wp_name_kr +' +'+ (bef_adv_no+1) + res + '\n'
 			msg+=          bef_adv_no+'강, 데미지: ' +org_damage+' ( + '+ bef_damage +' )' ;
 		    msg+= ' => ' + aft_adv_no+'강, 데미지: ' +org_damage+' ( + '+ aft_damage +' )\n\n';
 		
@@ -298,7 +298,7 @@
 				var aft_damage = wp.wp_add_damage;
 				var aft_adv_rate =advance_rate.getAdvRateVal(wp.wp_adv_no+1);
 				
-				var msg = wp.wp_name +' +'+ (bef_adv_no+1) + res + '\n'
+				var msg = wp.wp_name_kr +' +'+ (bef_adv_no+1) + res + '\n'
 					msg+=          bef_adv_no+'강, 데미지: ' +org_damage+' ( + '+ bef_damage +' )' ;
 				    msg+= ' => ' + aft_adv_no+'강, 데미지: ' +org_damage+' ( + '+ aft_damage +' )\n\n';
 				

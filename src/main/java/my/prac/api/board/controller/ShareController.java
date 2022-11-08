@@ -126,6 +126,7 @@ public class ShareController {
 		Shareboard share = null;
 		try {
 			share = shareService.selectShare(Integer.parseInt(shareNo));
+			share.setShareContent(share.getShareContent().replaceAll("？", ""));
 		} catch (Exception e) {
 			log.info("shareService.selectShare DB none Connect");
 		}

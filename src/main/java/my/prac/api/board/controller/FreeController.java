@@ -115,6 +115,7 @@ public class FreeController {
 		Comments comment = null;
 		try {
 			comment = commentService.selectComment(Integer.parseInt(commentNo));
+			comment.setCommentContent(comment.getCommentContent().replaceAll("？", ""));
 		} catch (Exception e) {
 			log.info("commentService.selectComment DB none Connect");
 		}
