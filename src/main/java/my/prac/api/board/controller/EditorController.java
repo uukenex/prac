@@ -2,10 +2,14 @@ package my.prac.api.board.controller;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 import java.util.UUID;
 
 import javax.servlet.http.HttpServletRequest;
@@ -15,6 +19,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.multipart.MultipartHttpServletRequest;
 
 import my.prac.core.dto.Editor;
 
@@ -151,4 +158,110 @@ public class EditorController {
 		return "common/se2_callback";
 	}
 
+	@RequestMapping("/base64imgUpload")
+	public @ResponseBody String[] base64imgUploadAjax(HttpServletRequest request, HttpServletResponse response) {
+		
+		String realFileNm = "";
+		String rlFileNm ="";
+		String filePath = "/img/dev2" + File.separator + "Temp" + File.separator;
+		
+		List<String> retFileNames = new ArrayList<>();
+		
+		// 넘어온 request를 multipartRequest 로 캐스팅 한 후
+		MultipartHttpServletRequest multipartRequest = (MultipartHttpServletRequest) request;
+		// getFileNames를 통해 구하고자 하는 파일 이름들 을 구하면 Iterator 형태로 넘어온 file들의 이름들이 리턴된다.  
+		Iterator fileNameIter = multipartRequest.getFileNames(); 
+		
+		try {
+		  // Iterator 형태로 추출된 파일들의 이름을 키값으로 하여, while문을 돌면서 넘어온 파일들의 정보를 추출한다.
+			while (fileNameIter.hasNext()) {
+			   String key = (String)fileNameIter.next();
+			   MultipartFile newFile = multipartRequest.getFile(key);
+			// 파일 업로드 로직 부분
+			   System.out.println(newFile);
+			   System.out.println(newFile.getName());
+			   
+			   
+			   SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMddHHmmss");
+			   String today = formatter.format(new java.util.Date());
+			   realFileNm = today + UUID.randomUUID().toString() + ".png";
+			   rlFileNm = filePath + realFileNm;
+			   
+			   InputStream is = newFile.getInputStream();
+			
+			   File file = new File(rlFileNm);
+			   OutputStream os = new FileOutputStream(rlFileNm);
+			   int numRead;
+			   byte b[] = new byte[(int) newFile.getSize()];
+			   while ((numRead = is.read(b, 0, b.length)) != -1) {
+				   os.write(b, 0, numRead);
+			   }
+			   if (is != null) {
+				   is.close();
+			   }
+			   os.flush();
+			   os.close();
+			   retFileNames.add(realFileNm);
+			   
+			}
+		}
+		  
+		catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		/*  
+		
+		try {
+			// 파일정보
+			String sFileInfo = "";
+			// 파일명을 받는다 - 일반 원본파일명
+			String filename = request.getHeader("file-name");
+			// 파일 확장자
+			String filename_ext = filename.substring(filename.lastIndexOf(".") + 1);
+			// 확장자를소문자로 변경
+			filename_ext = filename_ext.toLowerCase();
+			// 파일 기본경로
+			String dftFilePath = request.getSession().getServletContext().getRealPath("/");
+			// 파일 기본경로 _ 상세경로
+			// String filePath = dftFilePath + "smarteditor" +
+			// File.separator+"Temp" + File.separator;
+			String filePath = "/img/dev2" + File.separator + "Temp" + File.separator;
+			logger.info("상세 파일경로 : {}", filePath);
+			
+			// logger.trace("상세 파일경로 : {}",filePath);
+			File file = new File(filePath);
+			if (!file.exists()) {
+				logger.info("상세 파일경로생성 : {}", file);
+				file.mkdirs();
+			}
+			
+			SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMddHHmmss");
+			String today = formatter.format(new java.util.Date());
+			realFileNm = today + UUID.randomUUID().toString() + filename.substring(filename.lastIndexOf("."));
+			rlFileNm = filePath + realFileNm;
+			///////////////// 서버에 파일쓰기 /////////////////
+			InputStream is = request.getInputStream();
+			File newFile = new File(rlFileNm);
+			OutputStream os = new FileOutputStream(rlFileNm);
+			int numRead;
+			byte b[] = new byte[Integer.parseInt(request.getHeader("file-size"))];
+			while ((numRead = is.read(b, 0, b.length)) != -1) {
+				os.write(b, 0, numRead);
+			}
+			if (is != null) {
+				is.close();
+			}
+			os.flush();
+			os.close();
+		}catch (Exception e) {
+			e.printStackTrace();
+		}
+		*/
+		String retFiles[] = new String[retFileNames.size()];
+		for(int k = 0 ; k < retFileNames.size() ; k++) {
+			retFiles[k] = retFileNames.get(k);
+		}
+		return retFiles;
+	}
 }

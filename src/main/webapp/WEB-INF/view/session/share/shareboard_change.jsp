@@ -127,7 +127,8 @@ $(function(){
 				version:${share.version}
 			},
 			success:function(res){
-				if(res==1){//버전정보 일치시 
+				if(res==1){//버전정보 일치시
+					$("#content").val(base64toFile($("#content").val()));
 					$("#frm").submit();
 				} else if(res==-1){
 					alert('서버연결오류');
@@ -140,6 +141,73 @@ $(function(){
 			}
         });//ajax종료부
     });//click action종료부
+    
+    
+    function base64toFile(content) {
+
+        // 스마트 에디터에서 content 값이 "~~"와 같은 text 타입으로 넘어온다.
+        let div = document.createElement("div");
+        div.innerHTML = content;
+        var base64Images = div.querySelectorAll("img"); // img 태그 추출
+        
+        let imgFiles = [];
+        for(let i = 0; i<base64Images.length; i++) {
+        	let src = base64Images[i].src;
+            
+            // base 64 image일 경우 javascript File 객체로 변환
+            if(src.startsWith("data:")) {
+                let arr = src.split(',');
+                let mime = arr[0].match(/:(.*?);/)[1];
+                let bstr = atob(arr[1]);
+                let n = bstr.length;
+                let u8arr = new Uint8Array(n);
+                
+                while(n--) {
+                	u8arr[n] = bstr.charCodeAt(n);
+                }
+                
+                let imgFile = new File([u8arr], "image", {type: mime});
+                imgFiles.push(imgFile)
+            }
+        }
+        
+        let fdata = new FormData();
+        let index = 0;
+        imgFiles.forEach(e => {
+        	fdata.append("file"+index, imgFiles[index])
+            index++;
+        })
+        fdata.append("length", imgFiles.length)
+
+        $.ajax({
+        	url: "/base64imgUpload"
+            , data: fdata
+            , method: "POST"
+            , enctype: "multipart/form-data; charset=utf-8"
+            , processData: false
+            , contentType: false
+            , cache: false
+            , async: false
+            , success: function(data) {
+            	if(data) {
+                	let resultFiles = data;
+                	console.log(resultFiles);
+                	console.log(base64Images);
+                    for(let i = 0; i<resultFiles.length; i++) {
+                    	content = content.replace(base64Images[i].src, "/imgServer/"+resultFiles[i]);
+                    }
+                } else {
+                	alert('이미지 업로드 실패');
+                }
+            }, error: function(data) {
+            	alert('이미지 업로드 실패');
+            }
+        })
+
+        return content;
+    }
+    
+    
 });
 </script>
 
