@@ -81,7 +81,7 @@ var weapons = {
 		},
 		toString : function(Str){
 			var full_text = "";
-				full_text+= this[Str].wp_name+' ( + '+this[Str].wp_adv_no+' )'+'</br>';
+				full_text+= this[Str].wp_name_kr+' ( + '+this[Str].wp_adv_no+' )'+'</br>';
 				full_text+= this[Str].wp_desc+'</br>';
 				full_text+= ""+'</br>';
 				full_text+= "데미지 "+this[Str].wp_org_damage+' ( + '+this[Str].wp_add_damage+' )'+'</br>';
