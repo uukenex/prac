@@ -147,17 +147,17 @@ $(function(){
                 }
                 
                 let imgFile = new File([u8arr], "image", {type: mime});
-                imgFiles.push(imgFile)
+                imgFiles.push(imgFile);
             } 
        	}
         
         let fdata = new FormData();
         let index = 0;
         imgFiles.forEach(e => {
-        	fdata.append("file"+index, imgFiles[index])
+        	fdata.append("file"+index, imgFiles[index]);
             index++;
         })
-        fdata.append("length", imgFiles.length)
+        fdata.append("length", imgFiles.length);
 
         $.ajax({
         	url: "/base64imgUpload"
@@ -172,7 +172,7 @@ $(function(){
             	if(data) {
                 	let resultFiles = data;
                     for(let i = 0; i<resultFiles.length; i++) {
-                    	replaceAll(con,base64Images[i].src, "/imgServer/"+resultFiles[i]);
+                    	content = replaceAll(content,base64Images[i].src, "/imgServer/"+resultFiles[i]);
                     	//content = content.replace(base64Images[i].src, "/imgServer/"+resultFiles[i]);
                     }
                 } else {
