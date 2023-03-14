@@ -150,13 +150,15 @@ $(function(){
         div.innerHTML = content;
         var base64Images = div.querySelectorAll("img"); // img 태그 추출
         
+        var set = new Set();
+        base64Images.forEach( v=> set.add(v.src));
+        
         let imgFiles = [];
-        for(let i = 0; i<base64Images.length; i++) {
-        	let src = base64Images[i].src;
-            
-            // base 64 image일 경우 javascript File 객체로 변환
-            if(src.startsWith("data:")) {
-                let arr = src.split(',');
+
+        for (const value of set) {
+        	if(value.startsWith("data:")) {
+                let arr = value.split(',');
+                console.log(arr);
                 let mime = arr[0].match(/:(.*?);/)[1];
                 let bstr = atob(arr[1]);
                 let n = bstr.length;
@@ -167,17 +169,17 @@ $(function(){
                 }
                 
                 let imgFile = new File([u8arr], "image", {type: mime});
-                imgFiles.push(imgFile)
-            }
-        }
+                imgFiles.push(imgFile);
+            } 
+       	}
         
         let fdata = new FormData();
         let index = 0;
         imgFiles.forEach(e => {
-        	fdata.append("file"+index, imgFiles[index])
+        	fdata.append("file"+index, imgFiles[index]);
             index++;
         })
-        fdata.append("length", imgFiles.length)
+        fdata.append("length", imgFiles.length);
 
         $.ajax({
         	url: "/base64imgUpload"
@@ -194,7 +196,7 @@ $(function(){
                 	console.log(resultFiles);
                 	console.log(base64Images);
                     for(let i = 0; i<resultFiles.length; i++) {
-                    	content = content.replace(base64Images[i].src, "/imgServer/"+resultFiles[i]);
+                    	content = replaceAll(content,base64Images[i].src, "/imgServer/"+resultFiles[i]);
                     }
                 } else {
                 	alert('이미지 업로드 실패');
@@ -206,6 +208,10 @@ $(function(){
 
         return content;
     }
+    
+    function replaceAll(str, searchStr, replaceStr) {
+   	   return str.split(searchStr).join(replaceStr);
+   	}
     
     
 });
