@@ -135,7 +135,8 @@ $(function(){
         
         for (const value of set) {
         	if(value.startsWith("data:")) {
-                let arr = src.split(',');
+                let arr = value.split(',');
+                console.log(arr);
                 let mime = arr[0].match(/:(.*?);/)[1];
                 let bstr = atob(arr[1]);
                 let n = bstr.length;
