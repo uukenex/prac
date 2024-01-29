@@ -283,11 +283,12 @@
 				</configuration>
 			</plugin>
 			<!-- 개발시는 이걸 살려야함 local eclipse-->
+			<!--
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-war-plugin</artifactId>
 				<version>3.3.1</version>
-			</plugin>
+			</plugin> -->
 		</plugins>
 	</build>
 </project>
