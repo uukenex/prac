@@ -291,7 +291,7 @@
 	</section>
 
 	<section id="controll">
-		v1.01
+		v1.02
 		<br/>
 		설명 : 화면 아무곳 클릭시 반대로 회전합니다.
 		</br>
