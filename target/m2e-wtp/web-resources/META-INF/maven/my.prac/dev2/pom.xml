@@ -1,39 +1,30 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-   xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-   <modelVersion>4.0.0</modelVersion>
-   <groupId>my.prac</groupId>
-   <artifactId>dev2</artifactId>
-   <version>0.0.1-SNAPSHOT</version>
-   <packaging>war</packaging>
-
-   <properties>
-
-      <!-- Generic properties -->
-      <java.version>1.8</java.version>
-      <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-      <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-
-      <!-- Web -->
-      <jsp.version>2.2</jsp.version>
-      <jstl.version>1.2</jstl.version>
-      <servlet.version>2.5</servlet.version>
-
-
-      <!-- Spring -->
-      <spring-framework.version>4.3.2.RELEASE</spring-framework.version>
-
-      <!-- Hibernate / JPA -->
-      <hibernate.version>4.2.1.Final</hibernate.version>
-
-      <!-- Logging -->
-      <logback.version>1.0.13</logback.version>
-      <slf4j.version>1.7.5</slf4j.version>
-
-      <!-- Test -->
-      <junit.version>4.12</junit.version>
-
-   </properties>
-<!-- 
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<groupId>my.prac</groupId>
+	<artifactId>dev2</artifactId>
+	<version>0.0.1-SNAPSHOT</version>
+	<packaging>war</packaging>
+	<properties>
+		<!-- Generic properties -->
+		<java.version>1.8</java.version>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+		<!-- Web -->
+		<jsp.version>2.2</jsp.version>
+		<jstl.version>1.2</jstl.version>
+		<servlet.version>2.5</servlet.version>
+		<!-- Spring -->
+		<spring-framework.version>4.3.2.RELEASE</spring-framework.version>
+		<!-- Hibernate / JPA -->
+		<hibernate.version>4.2.1.Final</hibernate.version>
+		<!-- Logging -->
+		<logback.version>1.0.13</logback.version>
+		<slf4j.version>1.7.5</slf4j.version>
+		<!-- Test -->
+		<junit.version>4.12</junit.version>
+	</properties>
+	<!-- 
 	<repositories>
 		<repository>
 			<id>codelds</id>
@@ -41,129 +32,145 @@
 		</repository>
 	</repositories>
  -->
-   <dependencies>
-
-      <!-- Spring MVC -->
-      <dependency>
-         <groupId>org.springframework</groupId>
-         <artifactId>spring-webmvc</artifactId>
-         <version>${spring-framework.version}</version>
-      </dependency>
-
-      <!-- Other Web dependencies -->
-      <dependency>
-         <groupId>javax.servlet</groupId>
-         <artifactId>jstl</artifactId>
-         <version>${jstl.version}</version>
-      </dependency>
-      
-      <dependency>
-         <groupId>javax.servlet</groupId>
-         <artifactId>servlet-api</artifactId>
-         <version>${servlet.version}</version>
-         <scope>provided</scope>
-      </dependency>
-      <dependency>
-         <groupId>javax.servlet.jsp</groupId>
-         <artifactId>jsp-api</artifactId>
-         <version>${jsp.version}</version>
-         <scope>provided</scope>
-      </dependency>
-
-      <!-- Spring and Transactions -->
-      <dependency>
-         <groupId>org.springframework</groupId>
-         <artifactId>spring-tx</artifactId>
-         <version>${spring-framework.version}</version>
-      </dependency>
-      <dependency>
-         <groupId>ch.qos.logback</groupId>
-         <artifactId>logback-classic</artifactId>
-         <version>1.1.2</version>
-      </dependency>
+	<dependencies>
+		<!-- Spring MVC -->
 		<dependency>
-            <groupId>org.lazyluke</groupId>
-            <artifactId>log4jdbc-remix</artifactId>
-            <version>0.2.7</version>
-        </dependency>
-      <!-- Hibernate -->
-      <dependency>
-         <groupId>org.hibernate</groupId>
-         <artifactId>hibernate-entitymanager</artifactId>
-         <version>${hibernate.version}</version>
-      </dependency>
-
-
-      <!-- Test Artifacts -->
-      <dependency>
-         <groupId>org.springframework</groupId>
-         <artifactId>spring-test</artifactId>
-         <version>${spring-framework.version}</version>
-         <scope>test</scope>
-      </dependency>
-      <dependency>
-         <groupId>junit</groupId>
-         <artifactId>junit</artifactId>
-         <version>${junit.version}</version>
-         <scope>test</scope>
-      </dependency>
-      <dependency>
-         <groupId>org.apache.commons</groupId>
-         <artifactId>commons-dbcp2</artifactId>
-         <version>2.1.1</version>
-      </dependency>
-      <dependency>
-         <groupId>org.springframework</groupId>
-         <artifactId>spring-jdbc</artifactId>
-         <version>${spring-framework.version}</version>
-      </dependency>
-      <dependency>
-         <groupId>org.mybatis</groupId>
-         <artifactId>mybatis</artifactId>
-         <version>3.4.1</version>
-      </dependency>
-      <dependency>
-         <groupId>org.mybatis</groupId>
-         <artifactId>mybatis-spring</artifactId>
-         <version>1.3.0</version>
-      </dependency>
-      <!-- 
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-webmvc</artifactId>
+			<version>${spring-framework.version}</version>
+		</dependency>
+		<!-- Other Web dependencies -->
+		<dependency>
+			<groupId>javax.servlet</groupId>
+			<artifactId>jstl</artifactId>
+			<version>${jstl.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>javax.servlet</groupId>
+			<artifactId>servlet-api</artifactId>
+			<version>${servlet.version}</version>
+			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>javax.servlet.jsp</groupId>
+			<artifactId>jsp-api</artifactId>
+			<version>${jsp.version}</version>
+			<scope>provided</scope>
+		</dependency>
+		<!-- Spring and Transactions -->
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-tx</artifactId>
+			<version>${spring-framework.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>ch.qos.logback</groupId>
+			<artifactId>logback-classic</artifactId>
+			<version>1.1.2</version>
+		</dependency>
+		<dependency>
+			<groupId>org.lazyluke</groupId>
+			<artifactId>log4jdbc-remix</artifactId>
+			<version>0.2.7</version>
+		</dependency>
+		<!-- Hibernate -->
+		<dependency>
+			<groupId>org.hibernate</groupId>
+			<artifactId>hibernate-entitymanager</artifactId>
+			<version>${hibernate.version}</version>
+		</dependency>
+		<!-- Test Artifacts -->
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-test</artifactId>
+			<version>${spring-framework.version}</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>junit</groupId>
+			<artifactId>junit</artifactId>
+			<version>${junit.version}</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-dbcp2</artifactId>
+			<version>2.1.1</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-jdbc</artifactId>
+			<version>${spring-framework.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.mybatis</groupId>
+			<artifactId>mybatis</artifactId>
+			<version>3.4.1</version>
+		</dependency>
+		<dependency>
+			<groupId>org.mybatis</groupId>
+			<artifactId>mybatis-spring</artifactId>
+			<version>1.3.0</version>
+		</dependency>
+		<!-- 
       <dependency>
          <groupId>com.hynnet</groupId>
          <artifactId>oracle-driver-ojdbc6</artifactId>
          <version>12.1.0.1</version>
       </dependency> 
        -->
-      <!-- https://mvnrepository.com/artifact/com.oracle/ojdbc6 -->
-      <!-- 
+		<!-- https://mvnrepository.com/artifact/com.oracle/ojdbc6 -->
+		<!-- 
        <dependency> 
 	        <groupId>com.oracle</groupId> 
 	        <artifactId>ojdbc6</artifactId> 
 	        <version>11.2.0.3</version> 
 	  </dependency>
        -->
+		<!-- https://mvnrepository.com/artifact/com.oracle.database.jdbc/ojdbc8 -->
+		<dependency>
+			<groupId>com.oracle.database.jdbc</groupId>
+			<artifactId>ojdbc8</artifactId>
+			<version>23.3.0.23.09</version>
+		</dependency>
+		<!--
       <dependency> 
 	        <groupId>my</groupId> 
 	        <artifactId>ojdbc6</artifactId> 
 	        <version>1.0</version> 
 	        <scope>system</scope> 
 	        <systemPath>${basedir}/lib/ojdbc6.jar</systemPath>
-	  </dependency>
+	  </dependency>-->
+		<!-- https://mvnrepository.com/artifact/commons-io/commons-io -->
+		<dependency>
+			<groupId>commons-io</groupId>
+			<artifactId>commons-io</artifactId>
+			<version>2.10.0</version>
+		</dependency>
+		<!--
 	  <dependency> 
 	        <groupId>my</groupId> 
 	        <artifactId>commons-io-2.10.0</artifactId> 
 	        <version>1.0</version> 
 	        <scope>system</scope> 
 	        <systemPath>${basedir}/lib/commons-io-2.10.0.jar</systemPath>
-	  </dependency>
+	  </dependency>-->
+		<!-- https://mvnrepository.com/artifact/commons-fileupload/commons-fileupload -->
+		<dependency>
+			<groupId>commons-fileupload</groupId>
+			<artifactId>commons-fileupload</artifactId>
+			<version>1.4</version>
+		</dependency>
+		<!--
+	  
 	  <dependency> 
 	        <groupId>my</groupId> 
 	        <artifactId>commons-fileupload-1.4</artifactId> 
 	        <version>1.0</version> 
 	        <scope>system</scope> 
 	        <systemPath>${basedir}/lib/commons-fileupload-1.4.jar</systemPath>
-	  </dependency>
-       <!-- 
+	  </dependency>-->
+		<!-- 
       <dependency> 
 	        <groupId>com.hynnet</groupId> 
 	        <artifactId>oracle-driver-ojdbc</artifactId> 
@@ -172,94 +179,104 @@
 	        <systemPath>${basedir}/lib/oracle-driver-ojdbc-12.1.0.2.jar</systemPath>
 	  </dependency>
        -->
-      <dependency>
-         <groupId>commons-fileupload</groupId>
-         <artifactId>commons-fileupload</artifactId>
-         <version>1.3.2</version>
-      </dependency>
-      <!-- <dependency>
+		<dependency>
+			<groupId>commons-fileupload</groupId>
+			<artifactId>commons-fileupload</artifactId>
+			<version>1.3.2</version>
+		</dependency>
+		<!-- <dependency>
          <groupId>org.apache.tomcat</groupId>
          <artifactId>tomcat-catalina</artifactId>
          <version>9.0.0.M10</version>
          <scope>provided</scope>
       </dependency> -->
-      <!-- <dependency>
+		<!-- <dependency>
          <groupId>commons-digester</groupId>
          <artifactId>commons-digester</artifactId>
          <version>2.1</version>
       </dependency> -->
-      <dependency>
-         <groupId>com.fasterxml.jackson.core</groupId>
-         <artifactId>jackson-core</artifactId>
-         <version>2.8.3</version>
-      </dependency>
-      <dependency>
-         <groupId>com.fasterxml.jackson.core</groupId>
-         <artifactId>jackson-annotations</artifactId>
-         <version>2.8.3</version>
-      </dependency>
-      <dependency>
-         <groupId>com.fasterxml.jackson.core</groupId>
-         <artifactId>jackson-databind</artifactId>
-         <version>2.8.3</version>
-      </dependency>
-      <!-- https://mvnrepository.com/artifact/com.googlecode.json-simple/json-simple -->
-      <dependency>
-         <groupId>com.googlecode.json-simple</groupId>
-         <artifactId>json-simple</artifactId>
-         <version>1.1.1</version>
-      </dependency>
-      <!-- Java Mail API -->
-      <dependency>
-      	<groupId>javax.mail</groupId>
-      	<artifactId>mail</artifactId>
-      	<version>1.4.3</version>
-      </dependency>
-      <!-- spring aop를 이용한 transaction -->
-      <dependency>
-	   <groupId>org.aspectj</groupId>
-	   <artifactId>aspectjweaver</artifactId>
-	   <version>1.8.1</version>
-	  </dependency> 
-		  <!-- https://mvnrepository.com/artifact/javax.websocket/javax.websocket-api -->
-	  <dependency>
-	    <groupId>javax.websocket</groupId>
-	    <artifactId>javax.websocket-api</artifactId>
-	    <version>1.1</version>
-	    <scope>provided</scope>
-	  </dependency>
-	  <dependency>
-		    <groupId>org.springframework</groupId>
-		    <artifactId>spring-websocket</artifactId>
-		    <version>5.2.6.RELEASE</version>
-	  </dependency>
-      <dependency>
-        <groupId>io.socket</groupId>
-        <artifactId>socket.io-client</artifactId>
-        <version>1.0.0</version>
-      </dependency>
-   </dependencies>
-   <build>
-      <plugins>
-         <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-compiler-plugin</artifactId>
-            <version>3.5.1</version>
-            <configuration>
-               <target>1.8</target>
-               <source>1.8</source>
-            </configuration>
-         </plugin>
-         
-         <!-- Tomcat plugin for embedded tomcat -->
-		<plugin>
-			<groupId>org.codehaus.mojo</groupId>
-			<artifactId>tomcat-maven-plugin</artifactId>
+		<dependency>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-core</artifactId>
+			<version>2.8.3</version>
+		</dependency>
+		<dependency>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-annotations</artifactId>
+			<version>2.8.3</version>
+		</dependency>
+		<dependency>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-databind</artifactId>
+			<version>2.8.3</version>
+		</dependency>
+		<!-- https://mvnrepository.com/artifact/com.googlecode.json-simple/json-simple -->
+		<dependency>
+			<groupId>com.googlecode.json-simple</groupId>
+			<artifactId>json-simple</artifactId>
+			<version>1.1.1</version>
+		</dependency>
+		<!-- Java Mail API -->
+		<dependency>
+			<groupId>javax.mail</groupId>
+			<artifactId>mail</artifactId>
+			<version>1.4.3</version>
+		</dependency>
+		<!-- spring aop를 이용한 transaction -->
+		<dependency>
+			<groupId>org.aspectj</groupId>
+			<artifactId>aspectjweaver</artifactId>
+			<version>1.8.1</version>
+		</dependency>
+		<!-- https://mvnrepository.com/artifact/javax.websocket/javax.websocket-api -->
+		<dependency>
+			<groupId>javax.websocket</groupId>
+			<artifactId>javax.websocket-api</artifactId>
 			<version>1.1</version>
-			<configuration>
-				<path>/${project.build.finalName}</path>
-			</configuration>
-		</plugin>
-      </plugins>
-   </build>
+			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-websocket</artifactId>
+			<version>5.2.6.RELEASE</version>
+		</dependency>
+		<dependency>
+			<groupId>io.socket</groupId>
+			<artifactId>socket.io-client</artifactId>
+			<version>1.0.0</version>
+		</dependency>
+		<!-- https://mvnrepository.com/artifact/org.jsoup/jsoup -->
+		<dependency>
+			<groupId>org.jsoup</groupId>
+			<artifactId>jsoup</artifactId>
+			<version>1.17.2</version>
+		</dependency>
+	</dependencies>
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<version>3.5.1</version>
+				<configuration>
+					<target>1.8</target>
+					<source>1.8</source>
+				</configuration>
+			</plugin>
+			<!-- Tomcat plugin for embedded tomcat -->
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>tomcat-maven-plugin</artifactId>
+				<version>1.1</version>
+				<configuration>
+					<path>/${project.build.finalName}</path>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-war-plugin</artifactId>
+				<version>3.3.2</version>
+			</plugin>
+		</plugins>
+	</build>
 </project>

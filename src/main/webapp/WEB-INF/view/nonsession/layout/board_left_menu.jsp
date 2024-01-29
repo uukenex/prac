@@ -23,7 +23,8 @@
 				<c:url value="/game2" var="game2"/>
 				<c:url value="/game3" var="game3"/>
 				<c:url value="/game4" var="game4"/>
-				<c:url value="/game5" var="game5"/>
+				<c:url value="/game9" var="game9"/>
+				<c:url value="/game10" var="game10"/>
 				<c:url value="/ws5" var="ws5"/>
 				<c:url value="/game7" var="game7"/>
 				<c:url value="/rank" var="rank"/>
@@ -65,9 +66,15 @@
 					</a>
 				</li>
 				<li class='hidable hide'>
-					<a href="${game5 }" >
+					<a href="${game10 }" >
 						<i class="fa fa-gamepad"></i>
 						lion ninja(pc only)
+					</a>
+				</li>
+				<li class='hidable hide'>
+					<a href="${game9 }" >
+						<i class="fa fa-gamepad"></i>
+						강화기
 					</a>
 				</li>
 				<li class='hidable hide'>

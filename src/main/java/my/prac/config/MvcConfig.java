@@ -15,7 +15,7 @@ import org.springframework.web.servlet.view.InternalResourceViewResolver;
 @Configuration
 // 페이지호출에 대한 scan
 @ComponentScan({ "my.prac.api.user.controller", "my.prac.api.board.controller", "my.prac.api.test.controller",
-		"my.prac.api.games.controller", "my.prac.api.system.controller" })
+		"my.prac.api.games.controller", "my.prac.api.system.controller","my.prac.api.loa.controller" })
 @EnableWebMvc
 public class MvcConfig extends WebMvcConfigurerAdapter {
 
