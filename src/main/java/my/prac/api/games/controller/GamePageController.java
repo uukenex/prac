@@ -81,7 +81,7 @@ public class GamePageController {
 			model.addAttribute("userId", user.getUserId());
 			model.addAttribute("userNick", user.getUserNick());
 		}
-		return "session/games/game4";
+		return "session/games/game4t";
 	}
 
 	@RequestMapping(value = "/game5", method = RequestMethod.GET)
