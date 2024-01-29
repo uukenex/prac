@@ -21,6 +21,7 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSession;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
+import javax.servlet.http.HttpServletRequest;
 
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -47,14 +48,13 @@ public class LoaChatController {
 	final String lostArkAPIurl = "https://developer-lostark.game.onstove.com";
 
 	@RequestMapping(value = "/loa/chat", method = RequestMethod.GET)
-	public @ResponseBody String chatApplication(
+	public @ResponseBody Map<String,Object> chatApplication(
 			@RequestParam(required = true) String action,
 			@RequestParam(required = true) String param) {
 		HashMap<String, Object> rtnMap = new HashMap<>();
-		List<Map<String, Object>> returnList = new ArrayList<Map<String, Object>>();
+		
 		try {
 			System.out.println(action+" "+param);
-			
 			switch(action) {
 				case "equip":
 					return equipmentSearch(param);
@@ -69,9 +69,9 @@ public class LoaChatController {
 			rtnMap.put("CODE", "ERR");
 		}
 
-		return "";
+		return rtnMap;
 	}
-	String equipmentSearch(String userId) throws Exception{
+	Map<String,Object> equipmentSearch(String userId) throws Exception{
 		HashMap<String, Object> rtnMap = new HashMap<>();
 		
 		userId = URLEncoder.encode(userId, "UTF-8");
@@ -116,10 +116,13 @@ public class LoaChatController {
 			
 		}
 		
-		return equipOne;
+		rtnMap.put("data", equipOne);
+		return rtnMap;
 	}
 	
-	String weatherSearch(String area) throws Exception{
+	Map<String,Object> weatherSearch(String area) throws Exception{
+		HashMap<String, Object> rtnMap = new HashMap<>();
+		
 		String retMsg = "";
 		try {
 			setSSL();
@@ -141,7 +144,8 @@ public class LoaChatController {
 			e.printStackTrace();
 			retMsg ="불러올 수 없는 지역이거나 지원되지 않는 지역입니다.";
 		}
-		return retMsg;
+		rtnMap.put("data", retMsg);
+		return rtnMap;
 	}
 
 	public void setSSL() throws NoSuchAlgorithmException, KeyManagementException {
