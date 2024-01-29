@@ -31,10 +31,10 @@
 		
 		var cnt = 0;
 		
-		var x = 200 // center
-		var y = 200 // center
-		var r = 50 // radius
-		var a = 0 // angle (from 0 to Math.PI * 2)
+		var x = 200; // center
+		var y = 200; // center
+		var r = 50;// radius
+		var a = 0; // angle (from 0 to Math.PI * 2)
 		
 		function init() {
 			
