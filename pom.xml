@@ -256,6 +256,11 @@
 			<artifactId>maven-war-plugin</artifactId>
 			<version>3.3.2</version>
 		</dependency>
+		<dependency>
+			<groupId>com.oracle.ojdbc</groupId>
+			<artifactId>orai18n</artifactId>
+			<version>19.3.0.0</version>
+		</dependency>
 	</dependencies>
 	<build>
 		<plugins>
@@ -277,6 +282,14 @@
 					<path>/${project.build.finalName}</path>
 				</configuration>
 			</plugin>
+			<!-- 개발시는 이걸 살려야함 local eclipse-->
+			<!--
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-war-plugin</artifactId>
+				<version>3.3.1</version>
+			</plugin>
+			-->
 		</plugins>
 	</build>
 </project>
