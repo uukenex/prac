@@ -56,8 +56,10 @@ public class LoaChatController {
 		try {
 			System.out.println(action+" "+param);
 			switch(action) {
-				case "equip":
+				case "equipment":
 					return equipmentSearch(param);
+				case "calendar":
+					return calendarSearch(param);
 				case "weather":
 					return weatherSearch(param);
 			}
@@ -71,6 +73,57 @@ public class LoaChatController {
 
 		return rtnMap;
 	}
+	
+	Map<String,Object> calendarSearch(String userId) throws Exception{
+HashMap<String, Object> rtnMap = new HashMap<>();
+		
+		userId = URLEncoder.encode(userId, "UTF-8");
+		//+는 %2B로 치환한다 
+		String param = lostArkAPIurl + "/gamecontents/calendar";
+		URL url = new URL(param);
+
+		HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+		// POST 요청을 위해 기본값이 false인 setDoOutput을 true로
+
+		conn.setRequestMethod("GET");
+		conn.setRequestProperty("Accept", "application/json");
+		conn.setRequestProperty("Authorization", lostArkKey);
+
+		// 결과 코드가 200이라면 성공
+		int responseCode = conn.getResponseCode();
+		System.out.println("### getAccessToken responseCode : " + responseCode);
+
+		// 서버로부터 데이터 읽어오기
+		StringBuilder sb = new StringBuilder();
+		try (BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream(), "utf-8"))) {
+			String line;
+			while ((line = br.readLine()) != null) {
+				sb.append(line).append("\n");
+			}
+		}
+		
+		System.out.println(sb.toString());
+		List<Map<String, Object>> mapList = new ObjectMapper().readValue(sb.toString(), new TypeReference<List<Map<String, Object>>>() {
+		});
+		 
+		
+		
+		//System.out.println(rtnMap);
+		/*
+		 * List<Map<String,Object>> armoryEquipment = (List<Map<String,Object>>)
+		 * rtnMap.get("ArmoryEquipment");
+		 * 
+		 * String equipOne = ""; for(Map<String,Object> equip: armoryEquipment){
+		 * System.out.println("==================="); System.out.println(equip);
+		 * equipOne=equip.toString();
+		 * 
+		 * }
+		 */
+		
+		rtnMap.put("data", mapList);
+		return rtnMap;
+	}
+	
 	Map<String,Object> equipmentSearch(String userId) throws Exception{
 		HashMap<String, Object> rtnMap = new HashMap<>();
 		
