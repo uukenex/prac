@@ -60,6 +60,8 @@ public class LoaChatController {
 				return equipmentSearch(param);
 			case "calendar":
 				return calendarSearch(param);
+			case "ship":
+				return shipSearch(param);
 			case "weather":
 				return weatherSearch(param);
 			}
@@ -73,6 +75,62 @@ public class LoaChatController {
 		return rtnMap;
 	}
 
+	Map<String, Object> shipSearch(String userId) throws Exception {
+		HashMap<String, Object> rtnMap = new HashMap<>();
+		String retMsg="오늘의 항협";
+		String retMsg1="";
+		String retMsg2="";
+		String retMsg3="";
+		
+		int cnt = 0; 
+		userId = URLEncoder.encode(userId, "UTF-8");
+		// +는 %2B로 치환한다
+		String paramUrl = lostArkAPIurl + "/gamecontents/calendar";
+		
+		String returnData = connect_process(paramUrl);
+		List<Map<String, Object>> data_list = new ObjectMapper().readValue(returnData, new TypeReference<List<Map<String, Object>>>() {
+		});
+		
+		for(Map<String,Object> data_sub_list : data_list) {
+			if(data_sub_list.get("CategoryName").equals("항해")) {
+				if(data_sub_list.get("StartTimes")!=null) {
+					List<String> start_time_list = (List<String>)data_sub_list.get("StartTimes");
+					for(String time : start_time_list) {
+						if(time.equals(StringToDate()+"T19:30:00")) {
+							retMsg1 = retMsg1 +data_sub_list.get("ContentsName").toString()+", ";
+						}
+						if(time.equals(StringToDate()+"T21:30:00")) {
+							retMsg2 = retMsg2 +data_sub_list.get("ContentsName").toString()+", ";
+						}
+						if(time.equals(StringToDate()+"T23:30:00")) {
+							retMsg3 = retMsg3 +data_sub_list.get("ContentsName").toString()+", ";
+						}
+					}
+				}
+			}
+		}
+		
+		retMsg1 = "<br>(오후 7:30)"+ retMsg1;
+		retMsg2 = "<br>(오후 9:30)"+ retMsg2;
+		retMsg3 = "<br>(오후11:30)"+ retMsg3;
+		
+		retMsg = retMsg+retMsg1+retMsg2+retMsg3;
+		rtnMap.put("data", retMsg);
+		
+		// System.out.println(rtnMap);
+		/*
+		 * List<Map<String,Object>> armoryEquipment = (List<Map<String,Object>>)
+		 * rtnMap.get("ArmoryEquipment");
+		 * 
+		 * String equipOne = ""; for(Map<String,Object> equip: armoryEquipment){
+		 * System.out.println("==================="); System.out.println(equip);
+		 * equipOne=equip.toString();
+		 * 
+		 * }
+		 */
+		
+		return rtnMap;
+	}
 	Map<String, Object> calendarSearch(String userId) throws Exception {
 		HashMap<String, Object> rtnMap = new HashMap<>();
 		String retMsg="오늘의 모험 섬";
