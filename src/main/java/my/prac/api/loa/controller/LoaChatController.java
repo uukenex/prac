@@ -135,11 +135,11 @@ public class LoaChatController {
 			String v2 = doc.select(".weather_info ._today .summary_list .sort:eq(1) .desc").text();// 습도
 			String v3 = doc.select(".weather_info ._today .summary_list .sort:eq(2) .desc").text();// 풍속
 			retMsg += "오늘날씨 : " + weather;
-			retMsg += " / 현재온도 : " + cur_temp;
-			retMsg += " / 체감온도 : " + v1;
-			retMsg += " / 습도 : " + v2;
-			retMsg += " / 풍속 : " + v3;
-			retMsg += "\n현재 " + area + "의 온도는 " + cur_temp + " 이며 어제보다 " + diff_temp;
+			retMsg += " </br> 현재온도 : " + cur_temp;
+			retMsg += " </br> 체감온도 : " + v1;
+			retMsg += " </br> 습도 : " + v2;
+			retMsg += " </br> 풍속 : " + v3;
+			retMsg += "</br>현재 " + area + "의 온도는 " + cur_temp + " 이며 어제보다 " + diff_temp;
 		} catch (Exception e) {
 			e.printStackTrace();
 			retMsg ="불러올 수 없는 지역이거나 지원되지 않는 지역입니다.";
