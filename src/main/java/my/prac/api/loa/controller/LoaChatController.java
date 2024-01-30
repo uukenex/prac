@@ -135,10 +135,10 @@ public class LoaChatController {
 			String v2 = doc.select(".weather_info ._today .summary_list .sort:eq(1) .desc").text();// 습도
 			String v3 = doc.select(".weather_info ._today .summary_list .sort:eq(2) .desc").text();// 풍속
 			retMsg += "오늘날씨 : " + weather;
-			retMsg += " </br> 현재온도 : " + cur_temp;
-			retMsg += " </br> 체감온도 : " + v1;
-			retMsg += " </br> 습도 : " + v2;
-			retMsg += " </br> 풍속 : " + v3;
+			retMsg += " </br>현재온도 : " + cur_temp;
+			retMsg += " </br>체감온도 : " + v1;
+			retMsg += " </br>습도 : " + v2;
+			retMsg += " </br>풍속 : " + v3;
 			retMsg += "</br>현재 " + area + "의 온도는 " + cur_temp + " 이며 어제보다 " + diff_temp;
 		} catch (Exception e) {
 			e.printStackTrace();
