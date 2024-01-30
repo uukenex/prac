@@ -75,7 +75,11 @@ public class LoaChatController {
 
 	Map<String, Object> calendarSearch(String userId) throws Exception {
 		HashMap<String, Object> rtnMap = new HashMap<>();
-		String retMsg="오늘의 모험섬";
+		String retMsg="오늘의 모험 섬";
+		String retMsg1="";
+		String retMsg2="";
+		
+		int cnt = 0; 
 		userId = URLEncoder.encode(userId, "UTF-8");
 		// +는 %2B로 치환한다
 		String paramUrl = lostArkAPIurl + "/gamecontents/calendar";
@@ -96,25 +100,63 @@ public class LoaChatController {
 					if(rewardItem.get("StartTimes")!=null) {
 						List<String> start_time_list = (List<String>)rewardItem.get("StartTimes");
 						for(String time : start_time_list) {
-							if(time.equals(StringToDate()+"T11:00:00")) {
-								retMsg = retMsg + "</br>";
-								
+							//if(time.equals("2024-01-28"+"T09:00:00")) {
+							if(time.equals(StringToDate()+"T09:00:00")) {
 								switch(rewardItem.get("Name").toString()) {
 									case "전설 ~ 고급 카드 팩 III":
-										retMsg = retMsg + data_sub_list.get("Location").toString()+" : ";
-										retMsg+="카드";
+										retMsg1 = retMsg1 + "</br>";
+										retMsg1 = retMsg1 + data_sub_list.get("Location").toString()+" : ";
+										retMsg1+="카드";
+										cnt++;
 										break;
 									case "실링":
-										retMsg = retMsg + data_sub_list.get("Location").toString()+" : ";
-										retMsg+="실링";
+										retMsg1 = retMsg1 + "</br>";
+										retMsg1 = retMsg1 + data_sub_list.get("Location").toString()+" : ";
+										retMsg1+="실링";
+										cnt++;
 										break;
 									case "대양의 주화 상자":
-										retMsg = retMsg + data_sub_list.get("Location").toString()+" : ";
-										retMsg+="주화";
+										retMsg1 = retMsg1 + "</br>";
+										retMsg1 = retMsg1 + data_sub_list.get("Location").toString()+" : ";
+										retMsg1+="주화";
+										cnt++;
 										break;
 									case "골드":
-										retMsg = retMsg + data_sub_list.get("Location").toString()+" : ";
-										retMsg+="골드";
+										retMsg1 = retMsg1 + "</br>";
+										retMsg1 = retMsg1 + data_sub_list.get("Location").toString()+" : ";
+										retMsg1+="골드";
+										cnt++;
+										break;
+									default:
+										continue;
+								}
+							}
+							//if(time.equals("2024-01-28"+"T19:00:00")) {
+							if(time.equals(StringToDate()+"T19:00:00")) {
+								switch(rewardItem.get("Name").toString()) {
+									case "전설 ~ 고급 카드 팩 III":
+										retMsg2 = retMsg2 + "</br>";
+										retMsg2 = retMsg2 + data_sub_list.get("Location").toString()+" : ";
+										retMsg2+="카드";
+										cnt++;
+										break;
+									case "실링":
+										retMsg2 = retMsg2 + "</br>";
+										retMsg2 = retMsg2 + data_sub_list.get("Location").toString()+" : ";
+										retMsg2+="실링";
+										cnt++;
+										break;
+									case "대양의 주화 상자":
+										retMsg2 = retMsg2 + "</br>";
+										retMsg2 = retMsg2 + data_sub_list.get("Location").toString()+" : ";
+										retMsg2+="주화";
+										cnt++;
+										break;
+									case "골드":
+										retMsg2 = retMsg2 + "</br>";
+										retMsg2 = retMsg2 + data_sub_list.get("Location").toString()+" : ";
+										retMsg2+="골드";
+										cnt++;
 										break;
 									default:
 										continue;
@@ -128,7 +170,13 @@ public class LoaChatController {
 			}
 			
 		}
-		System.out.println(retMsg);
+		
+		if(cnt>=6) {
+			retMsg1 = "(오전)<br>"+ retMsg1;
+			retMsg2 = "(오후)<br>"+ retMsg2;
+		}
+		
+		retMsg = retMsg+retMsg1+retMsg2;
 		rtnMap.put("data", retMsg);
 		
 		// System.out.println(rtnMap);
