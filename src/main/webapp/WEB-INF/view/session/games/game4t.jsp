@@ -78,7 +78,7 @@
 					
 					if(bonus_flag){
 						var sec1 = dateTime.getSeconds();
-						nowTime = dateTime.setSeconds(dateTime.getSeconds()+2);
+						nowTime = dateTime.setSeconds(dateTime.getSeconds()+1);
 						bonus_flag = false;
 					}
 					
@@ -89,7 +89,7 @@
 					var min = newTime.getMinutes();
 					var sec = newTime.getSeconds(); //초
 					
-					if(sec > 20){
+					if(sec > 19){
 						console.log(sec);
 						sec = 0;
 					}
