@@ -27,7 +27,7 @@
 		var end_timer;//20초 게임오버타이머  
 		
 		var rotateVar; //타이머 담을 변수 
-		var rotate_rate = 3;//배속
+		var rotate_rate = 2;//배속
 		
 		var cnt = 0;
 		
@@ -36,7 +36,8 @@
 		var r = 50;// radius
 		var a = 0; // angle (from 0 to Math.PI * 2)
 		
-		var up_bonus_flag = false;
+		var bonus_flag = false;
+		
 		
 		function init() {
 			
@@ -64,41 +65,45 @@
 			$('#enemy').css('top', getRandomInt(60,windowHeight-60));
 		}
 		
-		var nowTime = Date.now();
-		var newTime = new Date(Date.now() - nowTime); 
-		function timer_start(){
-			
-			
-			var sec;
-			var milisec ;
-			end_timer = setInterval(function() {
-				newTime = new Date(Date.now() - nowTime);
-				sec = newTime.getSeconds(); //초
-				if(up_bonus_flag){
-					clearTimeout(end_timer);
-					sec++;
-					up_bonus_flag = false;
-					setTimeout(function(){
-						timer_start();
-       				}, 1500);
-					
-				}
-				milisec = Math.floor(newTime.getMilliseconds() / 10); //밀리초
-				$('#sec')[0].innerText     = addZero(19-sec);
-				$('#milisec')[0].innerText = addZero(99-milisec);
-				
-				if(19-sec < 0){
-					game_over('time is over ..');
-				}
-				
-			}, 5);
-		}
-		
-		
+		var dateTime;
+		var nowTime;
 		function click_reverse(event){
 			
 			if(!is_end_timer_start){
-				timer_start();
+				dateTime = new Date(); 
+				//처음에 저장했던시간
+				nowTime = dateTime.getTime();
+				
+				end_timer = setInterval(function() {
+					
+					if(bonus_flag){
+						var sec1 = dateTime.getSeconds();
+						nowTime = dateTime.setSeconds(dateTime.getSeconds()+2);
+						bonus_flag = false;
+					}
+					
+					 //1ms당 한 번씩 현재시간 timestamp를 불러와 nowTime에 저장
+					 //현재시간이 더 크다 에서 마이너스처리 
+					var newTime = new Date(Date.now() - nowTime); //(nowTime - stTime)을 new Date()에 넣는다
+					
+					var min = newTime.getMinutes();
+					var sec = newTime.getSeconds(); //초
+					
+					if(sec > 20){
+						console.log(sec);
+						sec = 0;
+					}
+					
+					var milisec = Math.floor(newTime.getMilliseconds() / 10); //밀리초
+					$('#sec')[0].innerText = addZero(19-sec);
+					$('#milisec')[0].innerText = addZero(99-milisec);
+					
+					if(19-sec < 0){
+						game_over('time is over ..');
+					}
+					
+				}, 5);
+				
 				is_end_timer_start= true;
 				
 			}
@@ -132,7 +137,7 @@
 		
 		function click_speed_control(event){
 			var is_speed_up = event;
-			is_speed_up ? rotate_rate<10?rotate_rate+=2:rotate_rate=rotate_rate:rotate_rate>1?rotate_rate-=1:rotate_rate=rotate_rate;
+			is_speed_up ? rotate_rate<10?rotate_rate+=1:rotate_rate=rotate_rate:rotate_rate>1?rotate_rate-=1:rotate_rate=rotate_rate;
 		}
 		function click_r_incdec(event){
 			var is_increase = event;
@@ -197,13 +202,14 @@
 				var c_rect = $('#point2')[0].getBoundingClientRect();
 				
 				if(meetWall(c_rect)){
+				//if(px > windowWidth || px < 0 || py > windowHeight || py < 0){
 					game_over('벽에 부딪힘..');
 				}
 				
 				if(meetBox(c_rect,rect)){
+				//if(px > rect.left && px <rect.right && py > rect.top && py < rect.bottom){
 					cnt++;
 					$('#cnt')[0].innerText=cnt;
-					up_bonus_flag = true;
 					
 					var rd;
 					if(cnt%2==0){
@@ -214,6 +220,8 @@
 					}
 					
 					enemy_destroy();
+					bonus_flag =true;
+					
 					enemy_create();
 					
 				}
@@ -291,7 +299,7 @@
 	</section>
 
 	<section id="controll">
-		v1.02
+		v1.01
 		<br/>
 		설명 : 화면 아무곳 클릭시 반대로 회전합니다.
 		</br>
