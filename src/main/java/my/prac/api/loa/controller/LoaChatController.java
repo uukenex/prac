@@ -51,24 +51,18 @@ public class LoaChatController {
 	final String lostArkAPIurl = "https://developer-lostark.game.onstove.com";
 
 	@RequestMapping(value = "/loa/chat", method = RequestMethod.GET)
-	public @ResponseBody Map<String, Object> chatApplication(@RequestParam(required = true) String action,
-			@RequestParam(required = true) String param) {
+	public @ResponseBody Map<String, Object> chatApplication(
+			@RequestParam(required = true)  String param0,
+			@RequestParam(required = false) String param1) {
 		
 
 		try {
-			System.out.println(action + " " + param);
-			switch (action) {
-			case "default":
-				String val = autoResponse(param);
-				if(val!=null&&!val.equals("")) {
-					HashMap<String, Object> rtnMap = new HashMap<>();
-					rtnMap.put("data", val);
-					return rtnMap;
-				}
-				break;
-			default:
-				break;
-								
+			System.out.println(param0 + " " + param1);
+			String val = autoResponse(param0,param1);
+			if(val!=null&&!val.equals("")) {
+				HashMap<String, Object> rtnMap = new HashMap<>();
+				rtnMap.put("data", val);
+				return rtnMap;
 			}
 
 		} catch (Exception e) {
@@ -79,10 +73,10 @@ public class LoaChatController {
 	}
 
 	
-	String autoResponse(String param) throws Exception {
+	String autoResponse(String param0,String param1) throws Exception {
 		String val="";
 
-		switch (param) {
+		switch (param0) {
 			case "/비실":
 			case "/비실이":
 				val="아니거든요";
@@ -115,17 +109,23 @@ public class LoaChatController {
 				val = calendarSearch();
 				break;
 			case "/장비":
-				val = equipmentSearch(param);
+				if(!param1.equals("")) {
+					val = equipmentSearch(param1);
+				}
 				break;
 			case "/항협":
+			case "/항해":
+			case "/항해협동":
 				val = shipSearch();
 				break;
 			case "/날씨":
-				val = weatherSearch(param);
+				if(!param1.equals("")) {
+					val = weatherSearch(param1);
+				}
 				break;
 			
 			default:
-				System.out.println(param);
+				//System.out.println(param1);
 				break;
 			
 		}
