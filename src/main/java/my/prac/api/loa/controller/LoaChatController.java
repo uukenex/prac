@@ -109,7 +109,7 @@ public class LoaChatController {
 				val = calendarSearch();
 				break;
 			case "/장비":
-				if(!param1.equals("")) {
+				if(param1!=null && !param1.equals("")) {
 					val = equipmentSearch(param1);
 				}
 				break;
@@ -119,7 +119,7 @@ public class LoaChatController {
 				val = shipSearch();
 				break;
 			case "/날씨":
-				if(!param1.equals("")) {
+				if(param1!=null && !param1.equals("")) {
 					val = weatherSearch(param1);
 				}
 				break;
