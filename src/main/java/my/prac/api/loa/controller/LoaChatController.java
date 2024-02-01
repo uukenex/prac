@@ -38,11 +38,13 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import my.prac.core.util.PropsUtil;
+
 @Controller
 public class LoaChatController {
 	static Logger logger = LoggerFactory.getLogger(LoaChatController.class);
 
-	final String lostArkKey = "bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsIng1dCI6IktYMk40TkRDSTJ5NTA5NWpjTWk5TllqY2lyZyIsImtpZCI6IktYMk40TkRDSTJ5NTA5NWpjTWk5TllqY2lyZyJ9.eyJpc3MiOiJodHRwczovL2x1ZHkuZ2FtZS5vbnN0b3ZlLmNvbSIsImF1ZCI6Imh0dHBzOi8vbHVkeS5nYW1lLm9uc3RvdmUuY29tL3Jlc291cmNlcyIsImNsaWVudF9pZCI6IjEwMDAwMDAwMDA0NDgzODUifQ.Os0TiNgS7azA9ZoR60IXzHsNmZDt5Dqan1PvSel2BQhXtsrUe9OPZWyDoLtQqsAoIQPPsbb5tMGwL59vCF7S9YLdUdZm0OKs9RH3NeBs_Z7uMqCMejS5B0iS5MqqtEuDG-y23bxZfSvUcj1-THGgq4ACg9titnaJ_TBQYwq8g-ihruAE9kk9N80IoBtBzfz_F9htclZPphQ3TjztFi1zbMxT0URta1Y-TuGCq7ZC62h9mr2lVN4beunb8qN4CokCA4FDWmGY9DaWwL6C-mBYR9JJLQAJRgsusqErhZPKhXSzf56cSsrDisu_jn0PX-FWsmkOWM4HyohHdXDeW9tMDQ";
+	final String lostArkKey = "bearer "+PropsUtil.getProperty("keys","loaKey");
 
 	// final String lostArkAPIurl =
 	// "https://developer-lostark.game.onstove.com/armories/characters/일어난다람쥐/equipment";
