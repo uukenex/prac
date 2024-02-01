@@ -77,25 +77,17 @@
 				end_timer = setInterval(function() {
 					
 					if(bonus_flag){
-						var sec1 = dateTime.getSeconds();
 						nowTime = dateTime.setSeconds(dateTime.getSeconds()+1);
 						bonus_flag = false;
 					}
 					
-					 //1ms당 한 번씩 현재시간 timestamp를 불러와 nowTime에 저장
-					 //현재시간이 더 크다 에서 마이너스처리 
-					var newTime = new Date(Date.now() - nowTime); //(nowTime - stTime)을 new Date()에 넣는다
+					newTime = new Date(Date.now() - nowTime); //(nowTime - stTime)을 new Date()에 넣는다
 					
-					var min = newTime.getMinutes();
-					var sec = newTime.getSeconds(); //초
-					
-					if(bonus_flag){
-						if(sec > 19){
-							sec = 0;
-						}
+					if(newTime < 0){
+						newTime = new Date(0);
 					}
 					
-					
+					var sec = newTime.getSeconds(); //초
 					var milisec = Math.floor(newTime.getMilliseconds() / 10); //밀리초
 					$('#sec')[0].innerText = addZero(19-sec);
 					$('#milisec')[0].innerText = addZero(99-milisec);
@@ -208,7 +200,7 @@
 					game_over('벽에 부딪힘..');
 				}
 				
-				if(meetBox(c_rect,rect)){
+				if(meetBox(c_rect,rect)&&is_end_timer_start){
 				//if(px > rect.left && px <rect.right && py > rect.top && py < rect.bottom){
 					cnt++;
 					$('#cnt')[0].innerText=cnt;
