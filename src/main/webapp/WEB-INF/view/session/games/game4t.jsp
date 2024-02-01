@@ -89,10 +89,12 @@
 					var min = newTime.getMinutes();
 					var sec = newTime.getSeconds(); //초
 					
-					if(sec > 19){
-						console.log(sec);
-						sec = 0;
+					if(bonus_flag){
+						if(sec > 19){
+							sec = 0;
+						}
 					}
+					
 					
 					var milisec = Math.floor(newTime.getMilliseconds() / 10); //밀리초
 					$('#sec')[0].innerText = addZero(19-sec);
