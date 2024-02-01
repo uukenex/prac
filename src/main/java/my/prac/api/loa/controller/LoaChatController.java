@@ -58,14 +58,6 @@ public class LoaChatController {
 		try {
 			System.out.println(action + " " + param);
 			switch (action) {
-			case "equipment":
-				return equipmentSearch(param);
-			case "calendar":
-				return calendarSearch(param);
-			case "ship":
-				return shipSearch(param);
-			case "weather":
-				return weatherSearch(param);
 			case "default":
 				String val = autoResponse(param);
 				if(val!=null&&!val.equals("")) {
@@ -87,7 +79,7 @@ public class LoaChatController {
 	}
 
 	
-	String autoResponse(String param) {
+	String autoResponse(String param) throws Exception {
 		String val="";
 
 		switch (param) {
@@ -117,6 +109,21 @@ public class LoaChatController {
 			case "/수령님":
 				val="네 나랑꽃님";
 				break;
+				
+				
+			case "/모험섬":
+				val = calendarSearch();
+				break;
+			case "/장비":
+				val = equipmentSearch(param);
+				break;
+			case "/항협":
+				val = shipSearch();
+				break;
+			case "/날씨":
+				val = weatherSearch(param);
+				break;
+			
 			default:
 				System.out.println(param);
 				break;
@@ -126,16 +133,12 @@ public class LoaChatController {
 		return val;
 	}
 	
-	Map<String, Object> shipSearch(String userId) throws Exception {
-		HashMap<String, Object> rtnMap = new HashMap<>();
+	String shipSearch() throws Exception {
 		String retMsg="오늘의 항협";
 		String retMsg1="";
 		String retMsg2="";
 		String retMsg3="";
 		
-		int cnt = 0; 
-		userId = URLEncoder.encode(userId, "UTF-8");
-		// +는 %2B로 치환한다
 		String paramUrl = lostArkAPIurl + "/gamecontents/calendar";
 		
 		String returnData = connect_process(paramUrl);
@@ -166,30 +169,15 @@ public class LoaChatController {
 		retMsg3 = "<br>(오후11:30)"+ retMsg3;
 		
 		retMsg = retMsg+retMsg1+retMsg2+retMsg3;
-		rtnMap.put("data", retMsg);
 		
-		// System.out.println(rtnMap);
-		/*
-		 * List<Map<String,Object>> armoryEquipment = (List<Map<String,Object>>)
-		 * rtnMap.get("ArmoryEquipment");
-		 * 
-		 * String equipOne = ""; for(Map<String,Object> equip: armoryEquipment){
-		 * System.out.println("==================="); System.out.println(equip);
-		 * equipOne=equip.toString();
-		 * 
-		 * }
-		 */
-		
-		return rtnMap;
+		return retMsg;
 	}
-	Map<String, Object> calendarSearch(String userId) throws Exception {
-		HashMap<String, Object> rtnMap = new HashMap<>();
+	String calendarSearch() throws Exception {
 		String retMsg="오늘의 모험 섬";
 		String retMsg1="";
 		String retMsg2="";
 		
 		int cnt = 0; 
-		userId = URLEncoder.encode(userId, "UTF-8");
 		// +는 %2B로 치환한다
 		String paramUrl = lostArkAPIurl + "/gamecontents/calendar";
 		
@@ -286,25 +274,11 @@ public class LoaChatController {
 		}
 		
 		retMsg = retMsg+retMsg1+retMsg2;
-		rtnMap.put("data", retMsg);
-		
-		// System.out.println(rtnMap);
-		/*
-		 * List<Map<String,Object>> armoryEquipment = (List<Map<String,Object>>)
-		 * rtnMap.get("ArmoryEquipment");
-		 * 
-		 * String equipOne = ""; for(Map<String,Object> equip: armoryEquipment){
-		 * System.out.println("==================="); System.out.println(equip);
-		 * equipOne=equip.toString();
-		 * 
-		 * }
-		 */
 
-		return rtnMap;
+		return retMsg;
 	}
 
-	Map<String, Object> equipmentSearch(String userId) throws Exception {
-		HashMap<String, Object> rtnMap = new HashMap<>();
+	String equipmentSearch(String userId) throws Exception {
 		String retMsg="";
 		userId = URLEncoder.encode(userId, "UTF-8");
 		// +는 %2B로 치환한다
@@ -325,8 +299,7 @@ public class LoaChatController {
 		 * 
 		 * }
 		 */
-		rtnMap.put("data", map);
-		return rtnMap;
+		return retMsg;
 	}
 
 	
@@ -360,7 +333,7 @@ public class LoaChatController {
 	
 	
 	
-	Map<String, Object> weatherSearch(String area) throws Exception {
+	String weatherSearch(String area) throws Exception {
 		HashMap<String, Object> rtnMap = new HashMap<>();
 
 		String retMsg = "";
@@ -385,7 +358,7 @@ public class LoaChatController {
 			retMsg = "불러올 수 없는 지역이거나 지원되지 않는 지역입니다.";
 		}
 		rtnMap.put("data", retMsg);
-		return rtnMap;
+		return retMsg;
 	}
 	
 	public void setSSL() throws NoSuchAlgorithmException, KeyManagementException {
