@@ -72,6 +72,9 @@ public class LoaChatController {
 					rtnMap.put("data", val);
 					return rtnMap;
 				}
+				break;
+			default:
+				break;
 								
 			}
 
