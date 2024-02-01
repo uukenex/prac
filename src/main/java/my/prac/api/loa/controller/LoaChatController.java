@@ -53,7 +53,7 @@ public class LoaChatController {
 	@RequestMapping(value = "/loa/chat", method = RequestMethod.GET)
 	public @ResponseBody Map<String, Object> chatApplication(@RequestParam(required = true) String action,
 			@RequestParam(required = true) String param) {
-		HashMap<String, Object> rtnMap = new HashMap<>();
+		
 
 		try {
 			System.out.println(action + " " + param);
@@ -69,6 +69,7 @@ public class LoaChatController {
 			case "default":
 				String val = autoResponse(param);
 				if(val!=null&&!val.equals("")) {
+					HashMap<String, Object> rtnMap = new HashMap<>();
 					rtnMap.put("data", val);
 					return rtnMap;
 				}
@@ -80,7 +81,6 @@ public class LoaChatController {
 
 		} catch (Exception e) {
 			e.printStackTrace();
-			rtnMap.put("data", "ERR");
 		}
 
 		return null;
