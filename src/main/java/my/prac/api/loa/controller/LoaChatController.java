@@ -66,17 +66,63 @@ public class LoaChatController {
 				return shipSearch(param);
 			case "weather":
 				return weatherSearch(param);
+			case "default":
+				String val = autoResponse(param);
+				if(val!=null&&!val.equals("")) {
+					rtnMap.put("data", val);
+					return rtnMap;
+				}
+								
 			}
-			rtnMap.put("CODE", "OK");
 
 		} catch (Exception e) {
 			e.printStackTrace();
-			rtnMap.put("CODE", "ERR");
+			rtnMap.put("data", "ERR");
 		}
 
-		return rtnMap;
+		return null;
 	}
 
+	
+	String autoResponse(String param) {
+		String val="";
+
+		switch (param) {
+			case "/비실":
+			case "/비실이":
+				val="아니거든요";
+				break;
+			case "/돔돔":
+			case "/돔돔쨩":
+				val="비실이 아냐";
+				break;
+			case "/두목":
+				val="용인피주먹";
+				break;
+			case "/우고":
+				val="도굴단장";
+				break;
+			case "/도굴단장":
+				val="우고";
+				break;
+			case "/퇴근":
+				val="쥰내 신나는 텍스트";
+				break;
+			case "/나랑꽃":
+				val="네 수령님";
+				break;
+			case "/수령님":
+				val="네 나랑꽃님";
+				break;
+			default:
+				System.out.println(param);
+				break;
+			
+		}
+		
+		return val;
+	}
+	
 	Map<String, Object> shipSearch(String userId) throws Exception {
 		HashMap<String, Object> rtnMap = new HashMap<>();
 		String retMsg="오늘의 항협";
