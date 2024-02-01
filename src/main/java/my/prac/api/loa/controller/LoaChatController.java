@@ -214,25 +214,25 @@ public class LoaChatController {
 								switch(rewardItem.get("Name").toString()) {
 									case "전설 ~ 고급 카드 팩 III":
 										retMsg1 = retMsg1 + "</br>";
-										retMsg1 = retMsg1 + data_sub_list.get("Location").toString()+" : ";
+										retMsg1 = retMsg1 + data_sub_list.get("ContentsName").toString()+" : ";
 										retMsg1+="카드";
 										cnt++;
 										break;
 									case "실링":
 										retMsg1 = retMsg1 + "</br>";
-										retMsg1 = retMsg1 + data_sub_list.get("Location").toString()+" : ";
+										retMsg1 = retMsg1 + data_sub_list.get("ContentsName").toString()+" : ";
 										retMsg1+="실링";
 										cnt++;
 										break;
 									case "대양의 주화 상자":
 										retMsg1 = retMsg1 + "</br>";
-										retMsg1 = retMsg1 + data_sub_list.get("Location").toString()+" : ";
+										retMsg1 = retMsg1 + data_sub_list.get("ContentsName").toString()+" : ";
 										retMsg1+="주화";
 										cnt++;
 										break;
 									case "골드":
 										retMsg1 = retMsg1 + "</br>";
-										retMsg1 = retMsg1 + data_sub_list.get("Location").toString()+" : ";
+										retMsg1 = retMsg1 + data_sub_list.get("ContentsName").toString()+" : ";
 										retMsg1+="골드";
 										cnt++;
 										break;
@@ -245,25 +245,25 @@ public class LoaChatController {
 								switch(rewardItem.get("Name").toString()) {
 									case "전설 ~ 고급 카드 팩 III":
 										retMsg2 = retMsg2 + "</br>";
-										retMsg2 = retMsg2 + data_sub_list.get("Location").toString()+" : ";
+										retMsg2 = retMsg2 + data_sub_list.get("ContentsName").toString()+" : ";
 										retMsg2+="카드";
 										cnt++;
 										break;
 									case "실링":
 										retMsg2 = retMsg2 + "</br>";
-										retMsg2 = retMsg2 + data_sub_list.get("Location").toString()+" : ";
+										retMsg2 = retMsg2 + data_sub_list.get("ContentsName").toString()+" : ";
 										retMsg2+="실링";
 										cnt++;
 										break;
 									case "대양의 주화 상자":
 										retMsg2 = retMsg2 + "</br>";
-										retMsg2 = retMsg2 + data_sub_list.get("Location").toString()+" : ";
+										retMsg2 = retMsg2 + data_sub_list.get("ContentsName").toString()+" : ";
 										retMsg2+="주화";
 										cnt++;
 										break;
 									case "골드":
 										retMsg2 = retMsg2 + "</br>";
-										retMsg2 = retMsg2 + data_sub_list.get("Location").toString()+" : ";
+										retMsg2 = retMsg2 + data_sub_list.get("ContentsName").toString()+" : ";
 										retMsg2+="골드";
 										cnt++;
 										break;
