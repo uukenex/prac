@@ -243,11 +243,7 @@ public class LoaChatController {
 		});
 		
 		for(Map<String,Object> data_sub_list : data_list) {
-			
 			if(data_sub_list.get("CategoryName").equals("모험 섬")) {
-				
-				
-				
 				List<Map<String, Object>> rewardItemsList = (List<Map<String, Object>>)data_sub_list.get("RewardItems");
 				for(Map<String, Object> rewardItem : rewardItemsList) {
 					
@@ -278,7 +274,7 @@ public class LoaChatController {
 									case "골드":
 										retMsg1 = retMsg1 + "</br>";
 										retMsg1 = retMsg1 + data_sub_list.get("ContentsName").toString()+" : ";
-										retMsg1+="골드";
+										retMsg1+="♣골드♣";
 										cnt++;
 										break;
 									default:
@@ -309,7 +305,7 @@ public class LoaChatController {
 									case "골드":
 										retMsg2 = retMsg2 + "</br>";
 										retMsg2 = retMsg2 + data_sub_list.get("ContentsName").toString()+" : ";
-										retMsg2+="골드";
+										retMsg2+="♣골드♣";
 										cnt++;
 										break;
 									default:
@@ -326,8 +322,8 @@ public class LoaChatController {
 		}
 		
 		if(cnt>=6) {
-			retMsg1 = "☆(오전)</br>"+ retMsg1;
-			retMsg2 = "★(오후)</br>"+ retMsg2;
+			retMsg1 = "</br>☆(오전)"+ retMsg1;
+			retMsg2 = "</br>★(오후)"+ retMsg2;
 		}
 		
 		retMsg = retMsg+retMsg1+retMsg2;
@@ -866,6 +862,7 @@ public class LoaChatController {
 		HashMap<String, Object> rtnMap = new HashMap<>();
 
 		String retMsg = "";
+		String errMsg = "불러올 수 없는 지역이거나 지원되지 않는 지역입니다.</br> ↪ex)00시00구00동 (띄어쓰기없이)";
 		try {
 			setSSL();
 			String WeatherURL = "https://m.search.naver.com/search.naver?&query=날씨+" + area;
@@ -876,6 +873,12 @@ public class LoaChatController {
 			String v1 = doc.select(".weather_info ._today .summary_list .sort:eq(0) .desc").text();// 체감
 			String v2 = doc.select(".weather_info ._today .summary_list .sort:eq(1) .desc").text();// 습도
 			String v3 = doc.select(".weather_info ._today .summary_list .sort:eq(2) .desc").text();// 풍속
+			
+			
+			if(cur_temp.equals("")) {
+				return errMsg;
+			}
+			
 			retMsg += "오늘날씨 : " + weather;
 			retMsg += "</br>↪현재온도 : " + cur_temp;
 			retMsg += "</br>↪체감온도 : " + v1;
@@ -884,7 +887,7 @@ public class LoaChatController {
 			retMsg += "</br>↪현재 " + area + "의 온도는 " + cur_temp + " 이며 어제보다 " + diff_temp;
 		} catch (Exception e) {
 			e.printStackTrace();
-			retMsg = "불러올 수 없는 지역이거나 지원되지 않는 지역입니다.";
+			retMsg = errMsg;
 		}
 		rtnMap.put("data", retMsg);
 		return retMsg;
