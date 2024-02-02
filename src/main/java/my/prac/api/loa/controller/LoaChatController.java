@@ -362,7 +362,7 @@ public class LoaChatController {
 
 					totLmit = Jsoup.parse((String) element_008_value3.get("contentStr")).text().replaceAll("[^0-9]", "");
 					
-					resEquip = resEquip + "</br>"+equip.get("Type").toString() + Jsoup.parse((String) element_008_value1.get("topStr")).text();
+					resEquip = resEquip + "</br>"+"["+equip.get("Type").toString()+"]" + Jsoup.parse((String) element_008_value1.get("topStr")).text()+" * ";
 					
 					
 					element_009 = (HashMap<String, Object>) tooltip.get("Element_009");
@@ -419,8 +419,15 @@ public class LoaChatController {
 		resEquip=resEquip.replaceAll("\\(질서\\)", "");
 		resEquip=resEquip.replaceAll("Lv.", "");
 		resEquip=resEquip.replaceAll("  ", " ");
+		resEquip=resEquip.replaceAll("회피의 달인", "회달");
+		resEquip=resEquip.replaceAll("탈출의 달인", "탈달");
+		resEquip=resEquip.replaceAll("최대생명력", "최생");
+		resEquip=resEquip.replaceAll("무기공격력", "무공");
+		//resEquip=resEquip.replaceAll("공격력", "공");
 		
-		resMsg = resMsg + "</br>초월합 " + totLmit + " 엘릭서합 (" + elixerField + ")"+ totElixir;
+		
+		resMsg = resMsg + "</br>"+"초월합 : " + totLmit + " 엘릭서합 : " + totElixir + "(" + elixerField+")";
+		resMsg = resMsg + "</br>";
 		resMsg = resMsg +  resEquip;
 		
 		return resMsg;
@@ -586,11 +593,11 @@ public class LoaChatController {
 			
 		}
 		
-		
-		
-		resMsg = resMsg + "</br>"+"평균itemLv : "+ String.format("%.2f", (avgLv/6)) + "(무기"+enforceLv+"강,무품"+weaponQualityValue+")"; 
+		resMsg = resMsg + "</br>"+"평균ItemLV : "+ String.format("%.2f", (avgLv/6));
+		resMsg = resMsg + " ↪무기"+enforceLv+"강,무품"+weaponQualityValue+")"; 
 		resMsg = resMsg + "</br>"+"세트 : "+setField;
-		resMsg = resMsg + "</br>"+"초월합: " + totLmit +"엘릭서합: " + totElixir + "(" + elixerField+")";
+		resMsg = resMsg + "</br>"+"초월합 : " + totLmit + "엘릭서합: " + totElixir + "(" + elixerField+")";
+		
 		//resMsg = resMsg + "</br>"+"무기품질:" + weaponQualityValue ;
 		//resMsg = resMsg + "</br>"+"평균방어구품질:"+ String.format("%.2f", (armorQualityValue/5));
 				
