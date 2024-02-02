@@ -374,14 +374,52 @@ public class LoaChatController {
 					
 					element_009_value3 = (HashMap<String, Object>) element_009_value2.get("Element_000");
 					elixerFind = Jsoup.parse((String) element_009_value3.get("contentStr").toString().split("<br>")[0]).text();
-					resEquip = resEquip+ " " + elixerFind;
+					elixerFind=elixerFind.replaceAll("\\[초월\\]", "");
+					elixerFind=elixerFind.replaceAll("\\[공용\\]", "");
+					elixerFind=elixerFind.replaceAll("\\[하의\\]", "");
+					elixerFind=elixerFind.replaceAll("\\[장갑\\]", "");
+					elixerFind=elixerFind.replaceAll("\\[어깨\\]", "");
+					elixerFind=elixerFind.replaceAll("\\[투구\\]", "");
+					elixerFind=elixerFind.replaceAll("\\[상의\\]", "");
+					elixerFind=elixerFind.replaceAll("\\(혼돈\\)", "");
+					elixerFind=elixerFind.replaceAll("\\(질서\\)", "");
+					elixerFind=elixerFind.replaceAll("Lv.", "");
+					elixerFind=elixerFind.replaceAll("회피의 달인", "회달");
+					elixerFind=elixerFind.replaceAll("탈출의 달인", "탈달");
+					elixerFind=elixerFind.replaceAll("생명의 축복", "생축");
+					elixerFind=elixerFind.replaceAll("자원의 축복", "자축");
+					elixerFind=elixerFind.replaceAll("최대생명력", "최생");
+					elixerFind=elixerFind.replaceAll("무기공격력", "무공");
+					resEquip = resEquip+ elixerFind;
 					totElixir += Integer.parseInt(elixerFind.replaceAll("[^1-5]", ""));
+					
+					for(String elixer:elixerList) {
+						if(elixerFind.indexOf(elixer) >= 0) {
+							equipElixerList.add(elixer);
+						}
+					}
+					
 					
 					element_009_value3 = (HashMap<String, Object>) element_009_value2.get("Element_001");
 					elixerFind = Jsoup.parse((String) element_009_value3.get("contentStr").toString().split("<br>")[0]).text();
-					resEquip = resEquip+ " " + elixerFind;
+					elixerFind=elixerFind.replaceAll("\\[초월\\]", "");
+					elixerFind=elixerFind.replaceAll("\\[공용\\]", "");
+					elixerFind=elixerFind.replaceAll("\\[하의\\]", "");
+					elixerFind=elixerFind.replaceAll("\\[장갑\\]", "");
+					elixerFind=elixerFind.replaceAll("\\[어깨\\]", "");
+					elixerFind=elixerFind.replaceAll("\\[투구\\]", "");
+					elixerFind=elixerFind.replaceAll("\\[상의\\]", "");
+					elixerFind=elixerFind.replaceAll("\\(혼돈\\)", "");
+					elixerFind=elixerFind.replaceAll("\\(질서\\)", "");
+					elixerFind=elixerFind.replaceAll("Lv.", "");
+					elixerFind=elixerFind.replaceAll("회피의 달인", "회달");
+					elixerFind=elixerFind.replaceAll("탈출의 달인", "탈달");
+					elixerFind=elixerFind.replaceAll("생명의 축복", "생축");
+					elixerFind=elixerFind.replaceAll("자원의 축복", "자축");
+					elixerFind=elixerFind.replaceAll("최대생명력", "최생");
+					elixerFind=elixerFind.replaceAll("무기공격력", "무공");
+					resEquip = resEquip+ elixerFind;
 					totElixir += Integer.parseInt(elixerFind.replaceAll("[^1-5]", ""));
-					
 					
 					for(String elixer:elixerList) {
 						if(elixerFind.indexOf(elixer) >= 0) {
@@ -399,30 +437,18 @@ public class LoaChatController {
 		String elixerField="";
 		int cnt =0 ;
 		for(String elixer:elixerList) {
-			cnt = Collections.frequency(equipElixerList, elixer);
+			cnt += Collections.frequency(equipElixerList, elixer);
+			System.out.println(cnt);
 			if(cnt > 1) { // 회심2 를 회심으로 표기 
 				elixerField = elixerField + elixer;
+				break;
 			}else {
 				continue;
 			}
 			
 		}
 		
-		resEquip=resEquip.replaceAll("\\[초월\\]", "");
-		resEquip=resEquip.replaceAll("\\[공용\\]", "");
-		resEquip=resEquip.replaceAll("\\[하의\\]", "");
-		resEquip=resEquip.replaceAll("\\[장갑\\]", "");
-		resEquip=resEquip.replaceAll("\\[어깨\\]", "");
-		resEquip=resEquip.replaceAll("\\[투구\\]", "");
-		resEquip=resEquip.replaceAll("\\[상의\\]", "");
-		resEquip=resEquip.replaceAll("\\(혼돈\\)", "");
-		resEquip=resEquip.replaceAll("\\(질서\\)", "");
-		resEquip=resEquip.replaceAll("Lv.", "");
 		resEquip=resEquip.replaceAll("  ", " ");
-		resEquip=resEquip.replaceAll("회피의 달인", "회달");
-		resEquip=resEquip.replaceAll("탈출의 달인", "탈달");
-		resEquip=resEquip.replaceAll("최대생명력", "최생");
-		resEquip=resEquip.replaceAll("무기공격력", "무공");
 		//resEquip=resEquip.replaceAll("공격력", "공");
 		
 		
@@ -547,14 +573,17 @@ public class LoaChatController {
 					
 					element_009_value3 = (HashMap<String, Object>) element_009_value2.get("Element_000");
 					elixerFind = Jsoup.parse((String) element_009_value3.get("contentStr").toString().split("<br>")[0]).text();
-					//resEquip = resEquip+ " " + elixerFind;
 					totElixir += Integer.parseInt(elixerFind.replaceAll("[^1-5]", ""));
+					
+					for(String elixer:elixerList) {
+						if(elixerFind.indexOf(elixer) >= 0) {
+							equipElixerList.add(elixer);
+						}
+					}
 					
 					element_009_value3 = (HashMap<String, Object>) element_009_value2.get("Element_001");
 					elixerFind = Jsoup.parse((String) element_009_value3.get("contentStr").toString().split("<br>")[0]).text();
-					//resEquip = resEquip+ " " + elixerFind;
 					totElixir += Integer.parseInt(elixerFind.replaceAll("[^1-5]", ""));
-					
 					
 					for(String elixer:elixerList) {
 						if(elixerFind.indexOf(elixer) >= 0) {
@@ -573,21 +602,23 @@ public class LoaChatController {
 		
 		String setField="";
 		String elixerField="";
-		
+		int cnt0=0;
 		for(String set:setList) {
-			int cnt = Collections.frequency(equipSetList, set);
-			if(cnt > 0) {
-				setField = setField+cnt+set;
+			cnt0 += Collections.frequency(equipSetList, set);
+			if(cnt0 > 0) {
+				setField = setField+cnt0+set;
+				break;
 			}else {
 				continue;
 			}
 			
 		}
-		int cnt;
+		int cnt1=0;
 		for(String elixer:elixerList) {
-			cnt = Collections.frequency(equipElixerList, elixer);
-			if(cnt > 1) { // 회심2 를 회심으로 표기 
+			cnt1 += Collections.frequency(equipElixerList, elixer);
+			if(cnt1 > 1) { // 회심2 를 회심으로 표기 
 				elixerField = elixerField + elixer;
+				break;
 			}else {
 				continue;
 			}
@@ -595,7 +626,7 @@ public class LoaChatController {
 		}
 		
 		resMsg = resMsg + "</br>"+"ItemLV : "+ String.format("%.2f", (avgLv/6));
-		resMsg = resMsg + "</br>  ↪무기"+enforceLv+"강,무품"+weaponQualityValue+")"; 
+		resMsg = resMsg + "</br> ↪무기"+enforceLv+"강, 무품"+weaponQualityValue+""; 
 		resMsg = resMsg + "</br>"+"세트 : "+setField;
 		resMsg = resMsg + "</br>"+"초월합 : " + totLmit + "엘릭서합: " + totElixir + "(" + elixerField+")";
 		
