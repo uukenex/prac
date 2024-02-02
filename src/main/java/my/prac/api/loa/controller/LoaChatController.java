@@ -85,6 +85,10 @@ public class LoaChatController {
 			case "/돔돔쨩":
 				val="비실이 아냐";
 				break;
+				
+			case "/택티컬모코코":
+				val="사라진 길드원입니다";
+				break;	
 			case "/두목":
 				val="용인피주먹";
 				break;
@@ -110,7 +114,12 @@ public class LoaChatController {
 				break;
 			case "/장비":
 				if(param1!=null && !param1.equals("")) {
-					val = equipmentSearch(param1);
+					try {
+						val = equipmentSearch(param1);
+					}catch (Exception e) {
+						val = "ID오류이거나 엘릭서/초월이 모두있어야 검색가능합니다";
+					}
+					
 				}
 				break;
 			case "/항협":
@@ -280,26 +289,153 @@ public class LoaChatController {
 
 	String equipmentSearch(String userId) throws Exception {
 		String retMsg="";
+		String ordUserId=userId;
 		userId = URLEncoder.encode(userId, "UTF-8");
 		// +는 %2B로 치환한다
 		String paramUrl = lostArkAPIurl + "/armories/characters/" + userId + "?filters=equipment";
 
 		String returnData = connect_process(paramUrl);
 		
-		Map<String, Object> map = new ObjectMapper().readValue(returnData, new TypeReference<Map<String, Object>>() {
+		HashMap<String, Object> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<Map<String, Object>>() {
 		});
-		
-		// System.out.println(rtnMap);
 
-		//List<Map<String, Object>> armoryEquipment = (List<Map<String, Object>>) map_list.get("ArmoryEquipment");
-		/*
-		 * String equipOne = ""; for (Map<String, Object> equip : armoryEquipment) {
-		 * System.out.println("==================="); System.out.println(equip);
-		 * equipOne = equip.toString();
-		 * 
-		 * }
-		 */
-		return retMsg;
+		List<Map<String, Object>> armoryEquipment = (List<Map<String, Object>>) rtnMap.get("ArmoryEquipment");
+
+		String resMsg = ordUserId+" 장비정보";
+		String resMsg1 = "";
+		String resMsg2 = "";
+
+		String resEquip = "";
+		//String resLimit = "";
+		//String resElixir = "";
+		
+		String totLmit ="";
+		int totElixir =0;
+		String mainElixir="";
+		
+		String setEquips = "";
+		
+		
+		for (Map<String, Object> equip : armoryEquipment) {
+			switch (equip.get("Type").toString()) {
+			case "무기":
+			case "투구":
+			case "상의":
+			case "하의":
+			case "장갑":
+			case "어깨":
+				//String resMsg = "";
+				// System.out.println(equip.get("Type"));
+				// System.out.println(equip);
+				HashMap<String, Object> tooltip = new ObjectMapper().readValue((String) equip.get("Tooltip"),
+						new TypeReference<Map<String, Object>>() {
+						});
+				// System.out.println(equip.get("Tooltip"));
+
+				// System.out.println("======000 강화수치");
+				// System.out.println(tooltip.get("Element_000"));
+				HashMap<String, Object> element_000 = (HashMap<String, Object>) tooltip.get("Element_000");
+				resEquip = resEquip +"</br>"+ Jsoup.parse((String) element_000.get("value")).text();
+				// System.out.println(Jsoup.parse((String)element_000.get("value")).text());
+				// extractedText is now "test"
+
+				// System.out.println("======001 qualityValue(품질)");
+				HashMap<String, Object> element_001 = (HashMap<String, Object>) tooltip.get("Element_001");
+				HashMap<String, Object> element_001_value = (HashMap<String, Object>) element_001.get("value");
+				// System.out.println(element_001_value.get("qualityValue"));
+				// System.out.println(Jsoup.parse((String)element_001_value.get("leftStr0")).text());
+
+				resEquip = resEquip + "(품:" + element_001_value.get("qualityValue") + ")";
+				// resMsg = resMsg+
+				// Jsoup.parse((String)element_001_value.get("leftStr0")).text();
+
+				HashMap<String, Object> element_008;
+				HashMap<String, Object> element_008_value;
+				HashMap<String, Object> element_008_value1;
+				HashMap<String, Object> element_008_value2;
+				HashMap<String, Object> element_008_value3;
+				HashMap<String, Object> element_009;
+				HashMap<String, Object> element_009_value;
+				HashMap<String, Object> element_009_value1;
+				HashMap<String, Object> element_009_value2;
+				HashMap<String, Object> element_009_value3;
+				HashMap<String, Object> element_011;
+				HashMap<String, Object> element_011_value;
+				switch (equip.get("Type").toString()) {
+				case "무기":
+					// 세트
+					// System.out.println("======009 (무기) 세트 ");
+					//element_008 = (HashMap<String, Object>) tooltip.get("Element_008");
+					//element_008_value = (HashMap<String, Object>) element_008.get("value");
+					// System.out.println(element_008_value.get("Element_001"));
+					//resMsg = resMsg + element_008_value.get("Element_001");
+					break;
+				case "투구":
+				case "상의":
+				case "하의":
+				case "장갑":
+				case "어깨":
+					// 세트
+					// System.out.println("======011 (방어구) 세트(악몽)");
+					element_011 = (HashMap<String, Object>) tooltip.get("Element_011");
+					element_011_value = (HashMap<String, Object>) element_011.get("value");
+					// System.out.println(Jsoup.parse((String)element_011_value.get("Element_001")).text());
+					//System.out.println(element_011_value);
+					//resMsg = resMsg + Jsoup.parse((String) element_011_value.get("Element_001")).text();
+					// 초월
+					// System.out.println("======008 (방어구) 초월");
+					element_008 = (HashMap<String, Object>) tooltip.get("Element_008");
+					element_008_value = (HashMap<String, Object>) element_008.get("value");
+					element_008_value1 = (HashMap<String, Object>) element_008_value.get("Element_000");
+					element_008_value2 = (HashMap<String, Object>) element_008_value1.get("contentStr");
+					element_008_value3 = (HashMap<String, Object>) element_008_value2.get("Element_001");
+					// System.out.println(element_008_value3.get("contentStr"));
+
+					totLmit = Jsoup.parse((String) element_008_value3.get("contentStr")).text().replaceAll("[^0-9]", "");
+					
+					// System.out.println(Jsoup.parse((String)element_008_value1.get("topStr")).text());
+					resEquip = resEquip + "</br>" + Jsoup.parse((String) element_008_value1.get("topStr")).text();
+					// System.out.println(Jsoup.parse((String)element_008_value3.get("contentStr")).text());
+
+					// "Element_001"
+					// "contentStr"
+
+					// System.out.println(element_008_value);
+					// 엘릭서
+					// System.out.println("======009 (방어구) 엘릭서");
+					
+					
+					element_009 = (HashMap<String, Object>) tooltip.get("Element_009");
+					element_009_value = (HashMap<String, Object>) element_009.get("value");
+					element_009_value1 = (HashMap<String, Object>) element_009_value.get("Element_000");
+					element_009_value2 = (HashMap<String, Object>) element_009_value1.get("contentStr");
+
+					element_009_value3 = (HashMap<String, Object>) element_009_value2.get("Element_000");
+					// System.out.println(Jsoup.parse((String)element_009_value3.get("contentStr")).text());
+					resEquip = resEquip+ " " + Jsoup.parse((String) element_009_value3.get("contentStr").toString().split("<br>")[0]).text();
+					totElixir += Integer.parseInt(Jsoup.parse((String) element_009_value3.get("contentStr").toString().split("<br>")[0]).text().replaceAll("[^1-5]", ""));
+					
+					element_009_value3 = (HashMap<String, Object>) element_009_value2.get("Element_001");
+					// System.out.println(Jsoup.parse((String)element_009_value3.get("contentStr")).text());
+					resEquip = resEquip+ " "+ Jsoup.parse((String) element_009_value3.get("contentStr").toString().split("<br>")[0]).text();
+					totElixir += Integer.parseInt(Jsoup.parse((String) element_009_value3.get("contentStr").toString().split("<br>")[0]).text().replaceAll("[^1-5]", ""));
+					
+					break;
+					
+				}
+				default:
+				continue;
+			}
+		}
+		resMsg = resMsg + "</br>초월: " + totLmit + " 엘릭서: " + totElixir;
+		resMsg = resMsg +  resEquip;
+		
+		//System.out.println(resMsg);
+		
+		
+		
+		
+		return resMsg;
 	}
 
 	
