@@ -76,11 +76,31 @@ public class LoaChatController {
 	
 	String autoResponse(String param0,String param1) throws Exception {
 		String val="";
-
+		int randNum;
 		switch (param0) {
 			case "/비실":
 			case "/비실이":
-				val="아니거든요";
+				randNum = (int) (Math.random() * 10);
+				System.out.println(randNum);
+				switch(randNum) {
+				case 0:
+				case 1:
+					val="안넣어두대!";
+					break;
+				case 2:
+				case 3:
+				case 4:
+				case 5:
+					val="아니거든요";
+					break;
+				case 6:
+				case 7:
+				case 8:
+				case 9:
+					val="아닌데";
+					break;
+				}
+				
 				break;
 			case "/돔돔":
 			case "/돔돔쨩":
