@@ -55,8 +55,9 @@ public class LoaApiUtils {
 		return sb.toString();
 	}
 	
-	public static String filterTextForElixir(String txt) {
-		txt=txt.replaceAll(" ", "");
+	public static String filterText(String txt) {
+		txt=txt.replaceAll("  ", " ");
+		txt=txt.replaceAll("\\[초월\\]", "");
 		txt=txt.replaceAll("\\[공용\\]", "");
 		txt=txt.replaceAll("\\[하의\\]", "");
 		txt=txt.replaceAll("\\[장갑\\]", "");
@@ -66,13 +67,15 @@ public class LoaApiUtils {
 		txt=txt.replaceAll("\\(혼돈\\)", "");
 		txt=txt.replaceAll("\\(질서\\)", "");
 		txt=txt.replaceAll("Lv.", "");
-		txt=txt.replaceAll("회피의달인", "회달");
-		txt=txt.replaceAll("탈출의달인", "탈달");
-		txt=txt.replaceAll("폭발물달인", "폭달");
-		txt=txt.replaceAll("생명의축복", "생축");
-		txt=txt.replaceAll("자원의축복", "자축");
-		txt=txt.replaceAll("최대생명력", "최생");
-		txt=txt.replaceAll("무기공격력", "무공");
+		txt=txt.replaceAll("회피의 달인", "회달");
+		txt=txt.replaceAll("탈출의 달인", "탈달");
+		txt=txt.replaceAll("폭발물 달인", "폭달");
+		txt=txt.replaceAll("생명의 축복", "생축");
+		txt=txt.replaceAll("자원의 축복", "자축");
+		txt=txt.replaceAll("최대 생명력", "최생");
+		txt=txt.replaceAll("무기 공격력", "무공");
+		txt=txt.replaceAll("보스 피해" , "보피");
+		txt=txt.replaceAll("치명타 피해", "치피");
 		return txt;
 	}
 	

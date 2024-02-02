@@ -38,13 +38,13 @@ public class LoaApiParser {
 		return elixirList;
 	}
 	
-	/** 초월 파싱 
+	/** 초월 파싱 (장비검색)
 	 * element에 초월에 해당하는 element를 넣어주면 된다. 
 	 * 성공시 초월합(String)
 	 * 실패시 E0002
 	 * */
 	
-	public static String parseLimitForEquip(HashMap<String, Object> element) throws Exception {
+	public static String parseLimit(HashMap<String, Object> element) throws Exception {
 		HashMap<String, Object> element_008;
 		HashMap<String, Object> element_008_value;
 		HashMap<String, Object> element_008_value1;
@@ -65,7 +65,10 @@ public class LoaApiParser {
 		
 	}
 
-	
+	/** 엘릭서 파싱 (장비검색) 
+	 * element에 엘릭서에 해당하는 element를 넣어주면 된다.
+	 * 성공시 엘릭서합(int), equipElixirList 장비된 엘릭서 List add
+	 * */
 	public static int parseElixirForEquip(List<String> equipElixirList, HashMap<String, Object> element) throws Exception {
 		int totElixir =0;
 		
@@ -80,31 +83,81 @@ public class LoaApiParser {
 		element_009_value1 = (HashMap<String, Object>) element_009_value.get("Element_000");
 		element_009_value2 = (HashMap<String, Object>) element_009_value1.get("contentStr");
 
-		String elixerFind;
+		String elixirFind;
 		
 		element_009_value3 = (HashMap<String, Object>) element_009_value2.get("Element_000");
-		elixerFind = Jsoup.parse((String) element_009_value3.get("contentStr").toString().split("<br>")[0]).text();
-		elixerFind = LoaApiUtils.filterTextForElixir(elixerFind);
-		totElixir += Integer.parseInt(elixerFind.replaceAll("[^1-5]", ""));
+		elixirFind = Jsoup.parse((String) element_009_value3.get("contentStr").toString().split("<br>")[0]).text();
+		elixirFind = LoaApiUtils.filterText(elixirFind);
+		totElixir += Integer.parseInt(elixirFind.replaceAll("[^1-5]", ""));
 		
 		for(String elixir:elixirList) {
-			if(elixerFind.indexOf(elixir) >= 0) {
+			if(elixirFind.indexOf(elixir) >= 0) {
 				equipElixirList.add(elixir);
 			}
 		}
 		
 		element_009_value3 = (HashMap<String, Object>) element_009_value2.get("Element_001");
-		elixerFind = Jsoup.parse((String) element_009_value3.get("contentStr").toString().split("<br>")[0]).text();
-		elixerFind = LoaApiUtils.filterTextForElixir(elixerFind);
-		totElixir += Integer.parseInt(elixerFind.replaceAll("[^1-5]", ""));
+		elixirFind = Jsoup.parse((String) element_009_value3.get("contentStr").toString().split("<br>")[0]).text();
+		elixirFind = LoaApiUtils.filterText(elixirFind);
+		totElixir += Integer.parseInt(elixirFind.replaceAll("[^1-5]", ""));
 		
 		for(String elixir:elixirList) {
-			if(elixerFind.indexOf(elixir) >= 0) {
+			if(elixirFind.indexOf(elixir) >= 0) {
 				equipElixirList.add(elixir);
 			}
 		}
 		
 		return totElixir;
 	}
+	
+	/** 초월 파싱 (초월검색)
+	 * element에 초월에 해당하는 element를 넣어주면 된다. 
+	 * 성공시 초월상세텍스트(String)
+	 * */
+	public static String parseLimitForLimit(HashMap<String, Object> element) throws Exception {
+		HashMap<String, Object> element_008;
+		HashMap<String, Object> element_008_value;
+		HashMap<String, Object> element_008_value1;
+		
+		element_008 = element;
+		element_008_value = (HashMap<String, Object>) element_008.get("value");
+		element_008_value1 = (HashMap<String, Object>) element_008_value.get("Element_000");
+		return Jsoup.parse((String) element_008_value1.get("topStr")).text();
+		
+	}
+	
+	/** 엘릭서 파싱 (초월검색)
+	 * element에 초월에 해당하는 element를 넣어주면 된다.
+	 * 성공시 엘릭서상세텍스트(String) 
+	 * */
+	public static String parseElixirForLimit(List<String> equipElixirList, HashMap<String, Object> element) throws Exception {
+		String rtnTxt="";
+		
+		HashMap<String, Object> element_009;
+		HashMap<String, Object> element_009_value;
+		HashMap<String, Object> element_009_value1;
+		HashMap<String, Object> element_009_value2;
+		HashMap<String, Object> element_009_value3;
+		
+		element_009 = element;
+		element_009_value = (HashMap<String, Object>) element_009.get("value");
+		element_009_value1 = (HashMap<String, Object>) element_009_value.get("Element_000");
+		element_009_value2 = (HashMap<String, Object>) element_009_value1.get("contentStr");
+
+		String elixirFind;
+		
+		element_009_value3 = (HashMap<String, Object>) element_009_value2.get("Element_000");
+		elixirFind = Jsoup.parse((String) element_009_value3.get("contentStr").toString().split("<br>")[0]).text();
+		elixirFind = LoaApiUtils.filterText(elixirFind);
+		rtnTxt = rtnTxt+ elixirFind+" ";
+		
+		element_009_value3 = (HashMap<String, Object>) element_009_value2.get("Element_001");
+		elixirFind = Jsoup.parse((String) element_009_value3.get("contentStr").toString().split("<br>")[0]).text();
+		elixirFind = LoaApiUtils.filterText(elixirFind);
+		rtnTxt = rtnTxt+ elixirFind+" ";
+		
+		return rtnTxt;
+	}
+	
 
 }
