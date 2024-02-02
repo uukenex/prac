@@ -362,7 +362,7 @@ public class LoaChatController {
 
 					totLmit = Jsoup.parse((String) element_008_value3.get("contentStr")).text().replaceAll("[^0-9]", "");
 					
-					resEquip = resEquip + "</br>" + Jsoup.parse((String) element_008_value1.get("topStr")).text();
+					resEquip = resEquip + "</br>"+equip.get("Type").toString() + Jsoup.parse((String) element_008_value1.get("topStr")).text();
 					
 					
 					element_009 = (HashMap<String, Object>) tooltip.get("Element_009");
@@ -408,7 +408,19 @@ public class LoaChatController {
 			
 		}
 		
-		resMsg = resMsg + "</br>초월: " + totLmit + " 엘릭서: (" + elixerField + ")"+ totElixir;
+		resEquip=resEquip.replaceAll("\\[초월\\]", "");
+		resEquip=resEquip.replaceAll("\\[공용\\]", "");
+		resEquip=resEquip.replaceAll("\\[하의\\]", "");
+		resEquip=resEquip.replaceAll("\\[장갑\\]", "");
+		resEquip=resEquip.replaceAll("\\[어깨\\]", "");
+		resEquip=resEquip.replaceAll("\\[투구\\]", "");
+		resEquip=resEquip.replaceAll("\\[상의\\]", "");
+		resEquip=resEquip.replaceAll("\\(혼돈\\)", "");
+		resEquip=resEquip.replaceAll("\\(질서\\)", "");
+		resEquip=resEquip.replaceAll("Lv.", "");
+		resEquip=resEquip.replaceAll("  ", " ");
+		
+		resMsg = resMsg + "</br>초월합 " + totLmit + " 엘릭서합 (" + elixerField + ")"+ totElixir;
 		resMsg = resMsg +  resEquip;
 		
 		return resMsg;
@@ -436,24 +448,16 @@ public class LoaChatController {
 		
 		String weaponQualityValue="";
 		double armorQualityValue=0;
-		String setNam="";
 		
 		double tmpLv=0;
 		double avgLv=0;
 		
 		
 		String resMsg = ordUserId+" 장비정보";
-		String resMsg1 = "";
-		String resMsg2 = "";
 
-		String resEquip = "";
 		String enforceLv="";
 		String totLmit ="";
 		int totElixir =0;
-		String mainElixir="";
-		
-		String setEquips = "";
-		
 		
 		for (Map<String, Object> equip : armoryEquipment) {
 			switch (equip.get("Type").toString()) {
@@ -473,16 +477,15 @@ public class LoaChatController {
 				
 				
 				String setFind = Jsoup.parse((String) element_000.get("value")).text();
-				enforceLv = setFind.replaceAll("[^0-9]", "");
+				if(equip.get("Type").toString().equals("무기")) {
+					enforceLv = setFind.replaceAll("[^0-9]", "");
+				}
 				
 				for(String set:setList) {
 					if(setFind.indexOf(set) >= 0) {
 						equipSetList.add(set);
 					}
 				}
-				
-				
-				
 				
 				HashMap<String, Object> element_001 = (HashMap<String, Object>) tooltip.get("Element_001");
 				HashMap<String, Object> element_001_value = (HashMap<String, Object>) element_001.get("value");
@@ -585,11 +588,12 @@ public class LoaChatController {
 		
 		
 		
-		resMsg = resMsg + "</br>아이템레벨: "+ String.format("%.2f", (avgLv/6)) + " (무기"+enforceLv+"강)" + "세트 : "+setField;
-		resMsg = resMsg + "</br>엘릭서: " + totElixir + "(" + elixerField+")";
-		resMsg = resMsg + "</br>초월: " + totLmit;
-		resMsg = resMsg + "</br>무품: " + weaponQualityValue + " 방품: "+ String.format("%.2f", (armorQualityValue/5));
-		//resMsg = resMsg +  resEquip;
+		resMsg = resMsg + "</br>"+"평균itemLv : "+ String.format("%.2f", (avgLv/6)) + "(무기"+enforceLv+"강,무품"+weaponQualityValue+")"; 
+		resMsg = resMsg + "</br>"+"세트 : "+setField;
+		resMsg = resMsg + "</br>"+"초월합: " + totLmit +"엘릭서합: " + totElixir + "(" + elixerField+")";
+		//resMsg = resMsg + "</br>"+"무기품질:" + weaponQualityValue ;
+		//resMsg = resMsg + "</br>"+"평균방어구품질:"+ String.format("%.2f", (armorQualityValue/5));
+				
 		
 		return resMsg;
 	}
