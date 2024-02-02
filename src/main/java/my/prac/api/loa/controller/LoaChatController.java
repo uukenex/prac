@@ -119,6 +119,7 @@ public class LoaChatController {
 						val = equipmentSearch(param1);
 					}catch (Exception e) {
 						val = "ID오류이거나 엘릭서/초월이 모두있어야 검색가능합니다";
+						e.printStackTrace();
 					}
 					
 				}
@@ -129,6 +130,7 @@ public class LoaChatController {
 						val = limitSearch(param1);
 					}catch (Exception e) {
 						val = "ID오류이거나 엘릭서/초월이 모두있어야 검색가능합니다";
+						e.printStackTrace();
 					}
 					
 				}
@@ -488,9 +490,12 @@ public class LoaChatController {
 		
 		String resMsg = ordUserId+" 장비정보";
 
-		String enforceLv="";
+		String enhanceLv="";
+		String newEnhanceLv="";
 		String totLmit ="";
 		int totElixir =0;
+
+		boolean newEnhanceYn=false;
 		
 		for (Map<String, Object> equip : armoryEquipment) {
 			switch (equip.get("Type").toString()) {
@@ -511,7 +516,7 @@ public class LoaChatController {
 				
 				String setFind = Jsoup.parse((String) element_000.get("value")).text();
 				if(equip.get("Type").toString().equals("무기")) {
-					enforceLv = setFind.replaceAll("[^0-9]", "");
+					enhanceLv = setFind.replaceAll("[^0-9]", "");
 				}
 				
 				for(String set:setList) {
@@ -523,6 +528,7 @@ public class LoaChatController {
 				HashMap<String, Object> element_001 = (HashMap<String, Object>) tooltip.get("Element_001");
 				HashMap<String, Object> element_001_value = (HashMap<String, Object>) element_001.get("value");
 
+				HashMap<String, Object> element_005;
 				HashMap<String, Object> element_008;
 				HashMap<String, Object> element_008_value;
 				HashMap<String, Object> element_008_value1;
@@ -533,6 +539,11 @@ public class LoaChatController {
 				HashMap<String, Object> element_009_value1;
 				HashMap<String, Object> element_009_value2;
 				HashMap<String, Object> element_009_value3;
+				HashMap<String, Object> element_010;
+				HashMap<String, Object> element_010_value;
+				HashMap<String, Object> element_010_value1;
+				HashMap<String, Object> element_010_value2;
+				HashMap<String, Object> element_010_value3;
 				switch (equip.get("Type").toString()) {
 				case "무기":
 					/* 무기품질 */
@@ -551,46 +562,102 @@ public class LoaChatController {
 					/* 아이템레벨 */
 					tmpLv = Integer.parseInt(Jsoup.parse((String) element_001_value.get("leftStr2")).text().replaceAll("[^0-9]|[0-9]\\)$", ""));
 					avgLv = avgLv  + tmpLv;
-					/*008 : 초월*/
-					/** 초월 로직 시작*/
-					element_008 = (HashMap<String, Object>) tooltip.get("Element_008");
-					element_008_value = (HashMap<String, Object>) element_008.get("value");
-					element_008_value1 = (HashMap<String, Object>) element_008_value.get("Element_000");
-					element_008_value2 = (HashMap<String, Object>) element_008_value1.get("contentStr");
-					element_008_value3 = (HashMap<String, Object>) element_008_value2.get("Element_001");
-
-					totLmit = Jsoup.parse((String) element_008_value3.get("contentStr")).text().replaceAll("[^0-9]", "");
 					
-					/** 초월 로직 끝*/
-					/*009: 엘릭서*/
-					/** 엘릭서 로직 시작*/
-					element_009 = (HashMap<String, Object>) tooltip.get("Element_009");
-					element_009_value = (HashMap<String, Object>) element_009.get("value");
-					element_009_value1 = (HashMap<String, Object>) element_009_value.get("Element_000");
-					element_009_value2 = (HashMap<String, Object>) element_009_value1.get("contentStr");
-
-					String elixerFind;
-					
-					element_009_value3 = (HashMap<String, Object>) element_009_value2.get("Element_000");
-					elixerFind = Jsoup.parse((String) element_009_value3.get("contentStr").toString().split("<br>")[0]).text();
-					totElixir += Integer.parseInt(elixerFind.replaceAll("[^1-5]", ""));
-					
-					for(String elixer:elixerList) {
-						if(elixerFind.indexOf(elixer) >= 0) {
-							equipElixerList.add(elixer);
-						}
+					/* 상급제련 */
+					element_005 = (HashMap<String, Object>) tooltip.get("Element_005");
+					if(element_005.toString().indexOf("상급 재련")>=0) {
+						newEnhanceYn = true;
 					}
 					
-					element_009_value3 = (HashMap<String, Object>) element_009_value2.get("Element_001");
-					elixerFind = Jsoup.parse((String) element_009_value3.get("contentStr").toString().split("<br>")[0]).text();
-					totElixir += Integer.parseInt(elixerFind.replaceAll("[^1-5]", ""));
-					
-					for(String elixer:elixerList) {
-						if(elixerFind.indexOf(elixer) >= 0) {
-							equipElixerList.add(elixer);
+					if(newEnhanceYn) {
+						newEnhanceYn=false;
+						newEnhanceLv = Jsoup.parse((String) element_005.get("value")).text().replaceAll("[^0-9]", "");
+						/*009 : 초월*/
+						/** 초월 로직 시작*/
+						element_009 = (HashMap<String, Object>) tooltip.get("Element_009");
+						element_009_value = (HashMap<String, Object>) element_009.get("value");
+						element_009_value1 = (HashMap<String, Object>) element_009_value.get("Element_000");
+						element_009_value2 = (HashMap<String, Object>) element_009_value1.get("contentStr");
+						element_009_value3 = (HashMap<String, Object>) element_009_value2.get("Element_001");
+
+						totLmit = Jsoup.parse((String) element_009_value3.get("contentStr")).text().replaceAll("[^0-9]", "");
+						
+						/** 초월 로직 끝*/
+						/*009: 엘릭서*/
+						/** 엘릭서 로직 시작*/
+						element_010 = (HashMap<String, Object>) tooltip.get("Element_010");
+						element_010_value = (HashMap<String, Object>) element_010.get("value");
+						element_010_value1 = (HashMap<String, Object>) element_010_value.get("Element_000");
+						element_010_value2 = (HashMap<String, Object>) element_010_value1.get("contentStr");
+
+						String elixerFind;
+						
+						element_010_value3 = (HashMap<String, Object>) element_010_value2.get("Element_000");
+						elixerFind = Jsoup.parse((String) element_010_value3.get("contentStr").toString().split("<br>")[0]).text();
+						totElixir += Integer.parseInt(elixerFind.replaceAll("[^1-5]", ""));
+						
+						for(String elixer:elixerList) {
+							if(elixerFind.indexOf(elixer) >= 0) {
+								equipElixerList.add(elixer);
+							}
 						}
+						
+						element_010_value3 = (HashMap<String, Object>) element_010_value2.get("Element_001");
+						elixerFind = Jsoup.parse((String) element_010_value3.get("contentStr").toString().split("<br>")[0]).text();
+						totElixir += Integer.parseInt(elixerFind.replaceAll("[^1-5]", ""));
+						
+						for(String elixer:elixerList) {
+							if(elixerFind.indexOf(elixer) >= 0) {
+								equipElixerList.add(elixer);
+							}
+						}
+						/** 엘릭서 로직 끝 */
+						
+					}else {
+						/*008 : 초월*/
+						/** 초월 로직 시작*/
+						element_008 = (HashMap<String, Object>) tooltip.get("Element_008");
+						element_008_value = (HashMap<String, Object>) element_008.get("value");
+						element_008_value1 = (HashMap<String, Object>) element_008_value.get("Element_000");
+						element_008_value2 = (HashMap<String, Object>) element_008_value1.get("contentStr");
+						element_008_value3 = (HashMap<String, Object>) element_008_value2.get("Element_001");
+
+						totLmit = Jsoup.parse((String) element_008_value3.get("contentStr")).text().replaceAll("[^0-9]", "");
+						
+						/** 초월 로직 끝*/
+						/*009: 엘릭서*/
+						/** 엘릭서 로직 시작*/
+						element_009 = (HashMap<String, Object>) tooltip.get("Element_009");
+						element_009_value = (HashMap<String, Object>) element_009.get("value");
+						element_009_value1 = (HashMap<String, Object>) element_009_value.get("Element_000");
+						element_009_value2 = (HashMap<String, Object>) element_009_value1.get("contentStr");
+
+						String elixerFind;
+						
+						element_009_value3 = (HashMap<String, Object>) element_009_value2.get("Element_000");
+						elixerFind = Jsoup.parse((String) element_009_value3.get("contentStr").toString().split("<br>")[0]).text();
+						totElixir += Integer.parseInt(elixerFind.replaceAll("[^1-5]", ""));
+						
+						for(String elixer:elixerList) {
+							if(elixerFind.indexOf(elixer) >= 0) {
+								equipElixerList.add(elixer);
+							}
+						}
+						
+						element_009_value3 = (HashMap<String, Object>) element_009_value2.get("Element_001");
+						elixerFind = Jsoup.parse((String) element_009_value3.get("contentStr").toString().split("<br>")[0]).text();
+						totElixir += Integer.parseInt(elixerFind.replaceAll("[^1-5]", ""));
+						
+						for(String elixer:elixerList) {
+							if(elixerFind.indexOf(elixer) >= 0) {
+								equipElixerList.add(elixer);
+							}
+						}
+						/** 엘릭서 로직 끝 */
 					}
-					/** 엘릭서 로직 끝 */
+					
+					
+					
 					
 					break;
 					
@@ -626,7 +693,7 @@ public class LoaChatController {
 		}
 		
 		resMsg = resMsg + "</br>"+"ItemLV : "+ String.format("%.2f", (avgLv/6));
-		resMsg = resMsg + "</br> ↪무기"+enforceLv+"강, 무품"+weaponQualityValue+""; 
+		resMsg = resMsg + "</br> ↪무기"+enhanceLv+"강, 무품"+weaponQualityValue+""; 
 		resMsg = resMsg + "</br>"+"세트 : "+setField;
 		resMsg = resMsg + "</br>"+"초월합 : " + totLmit + "엘릭서합: " + totElixir + "(" + elixerField+")";
 		
