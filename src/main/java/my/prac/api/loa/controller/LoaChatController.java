@@ -594,7 +594,7 @@ public class LoaChatController {
 		}
 		
 		resMsg = resMsg + "</br>"+"평균ItemLV : "+ String.format("%.2f", (avgLv/6));
-		resMsg = resMsg + " ↪무기"+enforceLv+"강,무품"+weaponQualityValue+")"; 
+		resMsg = resMsg + "</br>  ↪무기"+enforceLv+"강,무품"+weaponQualityValue+")"; 
 		resMsg = resMsg + "</br>"+"세트 : "+setField;
 		resMsg = resMsg + "</br>"+"초월합 : " + totLmit + "엘릭서합: " + totElixir + "(" + elixerField+")";
 		
