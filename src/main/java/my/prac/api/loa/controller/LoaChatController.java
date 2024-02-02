@@ -118,10 +118,27 @@ public class LoaChatController {
 					try {
 						val = equipmentSearch(param1);
 					}catch (Exception e) {
-						val = "ID오류이거나 엘릭서/초월이 모두있어야 검색가능합니다";
-						e.printStackTrace();
+						if(e != null && e.getMessage()!=null) {
+							switch(e.getMessage()) {
+							case "E0001":
+								val = "레벨이 1610 보다 낮습니다";
+								break;
+							case "E0002":
+								val = "초월 검색 오류";
+								break;
+							case "E0003":
+								val = "캐릭터명 검색 오류";
+								break;
+							default:
+								val = "ID오류이거나 엘릭서/초월이 모두있어야 검색가능합니다";
+								e.printStackTrace();
+								break;
+							}
+						}else {
+							val = "ID오류이거나 엘릭서/초월이 모두있어야 검색가능합니다";
+							e.printStackTrace();
+						}
 					}
-					
 				}
 				break;
 			case "/초월":
@@ -129,8 +146,26 @@ public class LoaChatController {
 					try {
 						val = limitSearch(param1);
 					}catch (Exception e) {
-						val = "ID오류이거나 엘릭서/초월이 모두있어야 검색가능합니다";
-						e.printStackTrace();
+						if(e != null && e.getMessage()!=null) {
+							switch(e.getMessage()) {
+							case "E0001":
+								val = "레벨이 1610 보다 낮습니다";
+								break;
+							case "E0002":
+								val = "초월 검색 오류";
+								break;
+							case "E0003":
+								val = "캐릭터명 검색 오류";
+								break;
+							default:
+								val = "ID오류이거나 엘릭서/초월이 모두있어야 검색가능합니다";
+								e.printStackTrace();
+								break;
+							}
+						}else {
+							val = "ID오류이거나 엘릭서/초월이 모두있어야 검색가능합니다";
+							e.printStackTrace();
+						}
 					}
 					
 				}
@@ -291,8 +326,8 @@ public class LoaChatController {
 		}
 		
 		if(cnt>=6) {
-			retMsg1 = "(오전)<br>"+ retMsg1;
-			retMsg2 = "(오후)<br>"+ retMsg2;
+			retMsg1 = "☆(오전)</br>"+ retMsg1;
+			retMsg2 = "★(오후)</br>"+ retMsg2;
 		}
 		
 		retMsg = retMsg+retMsg1+retMsg2;
@@ -302,7 +337,6 @@ public class LoaChatController {
 
 	
 	String limitSearch(String userId) throws Exception {
-		String retMsg="";
 		String ordUserId=userId;
 		userId = URLEncoder.encode(userId, "UTF-8");
 		// +는 %2B로 치환한다
@@ -313,8 +347,13 @@ public class LoaChatController {
 		HashMap<String, Object> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<Map<String, Object>>() {
 		});
 
-		List<Map<String, Object>> armoryEquipment = (List<Map<String, Object>>) rtnMap.get("ArmoryEquipment");
-
+		List<Map<String, Object>> armoryEquipment;
+		try {
+			armoryEquipment = (List<Map<String, Object>>) rtnMap.get("ArmoryEquipment");
+		}catch(Exception e){
+			throw new Exception("E0003");
+		}
+		
 		String [] elixerList = {"강맹","달인","신념","회심","선각자","선봉대","행운","진군","칼날방패"};
 		List<String> equipElixerList = new ArrayList<>();
 		
@@ -376,6 +415,9 @@ public class LoaChatController {
 						newEnhanceYn=false;
 						
 						element_009 = (HashMap<String, Object>) tooltip.get("Element_009");
+						if(element_009.toString().indexOf("초월") < 0) {
+							throw new Exception("E0002");
+						}
 						element_009_value = (HashMap<String, Object>) element_009.get("value");
 						element_009_value1 = (HashMap<String, Object>) element_009_value.get("Element_000");
 						element_009_value2 = (HashMap<String, Object>) element_009_value1.get("contentStr");
@@ -421,6 +463,9 @@ public class LoaChatController {
 						
 					}else {
 						element_008 = (HashMap<String, Object>) tooltip.get("Element_008");
+						if(element_008.toString().indexOf("초월") < 0) {
+							throw new Exception("E0002");
+						}
 						element_008_value = (HashMap<String, Object>) element_008.get("value");
 						element_008_value1 = (HashMap<String, Object>) element_008_value.get("Element_000");
 						element_008_value2 = (HashMap<String, Object>) element_008_value1.get("contentStr");
@@ -524,7 +569,6 @@ public class LoaChatController {
 	
 	
 	String equipmentSearch(String userId) throws Exception {
-		String retMsg="";
 		String ordUserId=userId;
 		userId = URLEncoder.encode(userId, "UTF-8");
 		// +는 %2B로 치환한다
@@ -535,8 +579,12 @@ public class LoaChatController {
 		HashMap<String, Object> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<Map<String, Object>>() {
 		});
 
-		List<Map<String, Object>> armoryEquipment = (List<Map<String, Object>>) rtnMap.get("ArmoryEquipment");
-
+		List<Map<String, Object>> armoryEquipment;
+		try {
+			armoryEquipment = (List<Map<String, Object>>) rtnMap.get("ArmoryEquipment");
+		}catch(Exception e){
+			throw new Exception("E0003");
+		}
 		String [] setList = {"악몽","환각","지배","사멸","갈망","배신","파괴","구원","매혹"};
 		String [] elixerList = {"강맹","달인","신념","회심","선각자","선봉대","행운","진군","칼날방패"};
 		
@@ -554,6 +602,7 @@ public class LoaChatController {
 
 		String enhanceLv="";
 		String newEnhanceLv="";
+		String newEnhanceInfo="";
 		String totLmit ="";
 		int totElixir =0;
 
@@ -612,7 +661,17 @@ public class LoaChatController {
 					weaponQualityValue = element_001_value.get("qualityValue").toString();
 					/* 아이템레벨 */
 					tmpLv = Integer.parseInt(Jsoup.parse((String) element_001_value.get("leftStr2")).text().replaceAll("[^0-9]|[0-9]\\)$", ""));
+					if(tmpLv < 1610) {
+						throw new Exception("E0001");
+					}
 					avgLv = avgLv+tmpLv;
+					
+					element_005 = (HashMap<String, Object>) tooltip.get("Element_005");
+					if(element_005.toString().indexOf("상급 재련")>=0) {
+						newEnhanceInfo = Jsoup.parse((String) element_005.get("value")).text();
+						newEnhanceInfo = filterTextForElixer(newEnhanceInfo);
+					}
+					
 					break;
 				case "투구":
 				case "상의":
@@ -637,6 +696,9 @@ public class LoaChatController {
 						/*009 : 초월*/
 						/** 초월 로직 시작*/
 						element_009 = (HashMap<String, Object>) tooltip.get("Element_009");
+						if(element_009.toString().indexOf("초월") < 0) {
+							throw new Exception("E0002");
+						}
 						element_009_value = (HashMap<String, Object>) element_009.get("value");
 						element_009_value1 = (HashMap<String, Object>) element_009_value.get("Element_000");
 						element_009_value2 = (HashMap<String, Object>) element_009_value1.get("contentStr");
@@ -656,6 +718,7 @@ public class LoaChatController {
 						
 						element_010_value3 = (HashMap<String, Object>) element_010_value2.get("Element_000");
 						elixerFind = Jsoup.parse((String) element_010_value3.get("contentStr").toString().split("<br>")[0]).text();
+						elixerFind = filterTextForElixer(elixerFind);
 						totElixir += Integer.parseInt(elixerFind.replaceAll("[^1-5]", ""));
 						
 						for(String elixer:elixerList) {
@@ -666,6 +729,7 @@ public class LoaChatController {
 						
 						element_010_value3 = (HashMap<String, Object>) element_010_value2.get("Element_001");
 						elixerFind = Jsoup.parse((String) element_010_value3.get("contentStr").toString().split("<br>")[0]).text();
+						elixerFind = filterTextForElixer(elixerFind);
 						totElixir += Integer.parseInt(elixerFind.replaceAll("[^1-5]", ""));
 						
 						for(String elixer:elixerList) {
@@ -679,6 +743,9 @@ public class LoaChatController {
 						/*008 : 초월*/
 						/** 초월 로직 시작*/
 						element_008 = (HashMap<String, Object>) tooltip.get("Element_008");
+						if(element_008.toString().indexOf("초월") < 0) {
+							throw new Exception("E0002");
+						}
 						element_008_value = (HashMap<String, Object>) element_008.get("value");
 						element_008_value1 = (HashMap<String, Object>) element_008_value.get("Element_000");
 						element_008_value2 = (HashMap<String, Object>) element_008_value1.get("contentStr");
@@ -753,7 +820,12 @@ public class LoaChatController {
 		}
 		
 		resMsg = resMsg + "</br>"+"ItemLV : "+ String.format("%.2f", (avgLv/6));
-		resMsg = resMsg + "</br>"+"↪무기"+enhanceLv+"강, 무품"+weaponQualityValue+""; 
+		resMsg = resMsg + "</br>"+"↪무기"+enhanceLv+", 무품"+weaponQualityValue+""; 
+		
+		if(!newEnhanceInfo.equals("")) {
+			resMsg = resMsg + "</br>"+"↪무기"+newEnhanceInfo; 
+		}
+		
 		resMsg = resMsg + "</br>"+"↪세트 : "+setField;
 		resMsg = resMsg + "</br>"+"↪초월합 : " + totLmit + "엘릭서합: " + totElixir + "(" + elixerField+")";
 		return resMsg;
