@@ -397,9 +397,9 @@ public class LoaChatController {
 		}
 		
 		String elixerField="";
-		
+		int cnt =0 ;
 		for(String elixer:elixerList) {
-			int cnt = Collections.frequency(equipElixerList, elixer);
+			cnt = Collections.frequency(equipElixerList, elixer);
 			if(cnt > 1) { // 회심2 를 회심으로 표기 
 				elixerField = elixerField + elixer;
 			}else {
@@ -583,8 +583,9 @@ public class LoaChatController {
 			}
 			
 		}
+		int cnt;
 		for(String elixer:elixerList) {
-			int cnt = Collections.frequency(equipElixerList, elixer);
+			cnt = Collections.frequency(equipElixerList, elixer);
 			if(cnt > 1) { // 회심2 를 회심으로 표기 
 				elixerField = elixerField + elixer;
 			}else {
@@ -593,7 +594,7 @@ public class LoaChatController {
 			
 		}
 		
-		resMsg = resMsg + "</br>"+"평균ItemLV : "+ String.format("%.2f", (avgLv/6));
+		resMsg = resMsg + "</br>"+"ItemLV : "+ String.format("%.2f", (avgLv/6));
 		resMsg = resMsg + "</br>  ↪무기"+enforceLv+"강,무품"+weaponQualityValue+")"; 
 		resMsg = resMsg + "</br>"+"세트 : "+setField;
 		resMsg = resMsg + "</br>"+"초월합 : " + totLmit + "엘릭서합: " + totElixir + "(" + elixerField+")";
