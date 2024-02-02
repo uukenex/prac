@@ -301,6 +301,12 @@ public class LoaChatController {
 
 		List<Map<String, Object>> armoryEquipment = (List<Map<String, Object>>) rtnMap.get("ArmoryEquipment");
 
+		String [] setList = {"악몽","환각","지배","사멸","갈망","배신"};
+		String [] elixerList = {"신념","회심","선각자","선봉대"};
+		String weaponQualityValue;
+		int armorQualityValue;
+		String setName;
+		
 		String resMsg = ordUserId+" 장비정보";
 		String resMsg1 = "";
 		String resMsg2 = "";
@@ -335,7 +341,21 @@ public class LoaChatController {
 				// System.out.println("======000 강화수치");
 				// System.out.println(tooltip.get("Element_000"));
 				HashMap<String, Object> element_000 = (HashMap<String, Object>) tooltip.get("Element_000");
-				resEquip = resEquip +"</br>"+ Jsoup.parse((String) element_000.get("value")).text();
+				String setFind = Jsoup.parse((String) element_000.get("value")).text();
+				String enforceLv = setFind.replaceAll("[^0-9]", "");
+				
+				for(String set:setList) {
+					if(setFind.indexOf(set) >= 0) {
+						System.out.println(set);
+					}
+				}
+				if(equip.get("Type").toString().equals("무기")) {
+					System.out.println("무기("+enforceLv+"강)");
+				}
+				
+				
+				
+				
 				// System.out.println(Jsoup.parse((String)element_000.get("value")).text());
 				// extractedText is now "test"
 
@@ -345,7 +365,7 @@ public class LoaChatController {
 				// System.out.println(element_001_value.get("qualityValue"));
 				// System.out.println(Jsoup.parse((String)element_001_value.get("leftStr0")).text());
 
-				resEquip = resEquip + "(품:" + element_001_value.get("qualityValue") + ")";
+				//resEquip = resEquip + "(품:" + element_001_value.get("qualityValue") + ")";
 				// resMsg = resMsg+
 				// Jsoup.parse((String)element_001_value.get("leftStr0")).text();
 
@@ -363,6 +383,7 @@ public class LoaChatController {
 				HashMap<String, Object> element_011_value;
 				switch (equip.get("Type").toString()) {
 				case "무기":
+					weaponQualityValue = element_001_value.get("qualityValue").toString();
 					// 세트
 					// System.out.println("======009 (무기) 세트 ");
 					//element_008 = (HashMap<String, Object>) tooltip.get("Element_008");
@@ -375,10 +396,11 @@ public class LoaChatController {
 				case "하의":
 				case "장갑":
 				case "어깨":
+					armorQualityValue = Integer.parseInt(element_001_value.get("qualityValue").toString());
 					// 세트
 					// System.out.println("======011 (방어구) 세트(악몽)");
-					element_011 = (HashMap<String, Object>) tooltip.get("Element_011");
-					element_011_value = (HashMap<String, Object>) element_011.get("value");
+					//element_011 = (HashMap<String, Object>) tooltip.get("Element_011");
+					//element_011_value = (HashMap<String, Object>) element_011.get("value");
 					// System.out.println(Jsoup.parse((String)element_011_value.get("Element_001")).text());
 					//System.out.println(element_011_value);
 					//resMsg = resMsg + Jsoup.parse((String) element_011_value.get("Element_001")).text();
@@ -411,15 +433,21 @@ public class LoaChatController {
 					element_009_value2 = (HashMap<String, Object>) element_009_value1.get("contentStr");
 
 					element_009_value3 = (HashMap<String, Object>) element_009_value2.get("Element_000");
-					// System.out.println(Jsoup.parse((String)element_009_value3.get("contentStr")).text());
-					resEquip = resEquip+ " " + Jsoup.parse((String) element_009_value3.get("contentStr").toString().split("<br>")[0]).text();
-					totElixir += Integer.parseInt(Jsoup.parse((String) element_009_value3.get("contentStr").toString().split("<br>")[0]).text().replaceAll("[^1-5]", ""));
+					elixerFind = Jsoup.parse((String) element_009_value3.get("contentStr").toString().split("<br>")[0]).text();
+					resEquip = resEquip+ " " + elixerFind;
+					totElixir += Integer.parseInt(elixerFind.replaceAll("[^1-5]", ""));
 					
 					element_009_value3 = (HashMap<String, Object>) element_009_value2.get("Element_001");
-					// System.out.println(Jsoup.parse((String)element_009_value3.get("contentStr")).text());
-					resEquip = resEquip+ " "+ Jsoup.parse((String) element_009_value3.get("contentStr").toString().split("<br>")[0]).text();
-					totElixir += Integer.parseInt(Jsoup.parse((String) element_009_value3.get("contentStr").toString().split("<br>")[0]).text().replaceAll("[^1-5]", ""));
+					elixerFind = Jsoup.parse((String) element_009_value3.get("contentStr").toString().split("<br>")[0]).text();
+					resEquip = resEquip+ " " + elixerFind;
+					totElixir += Integer.parseInt(elixerFind.replaceAll("[^1-5]", ""));
 					
+					
+					for(String elixer:elixerList) {
+						if(elixerFind.indexOf(elixer) >= 0) {
+							System.out.println(elixer);
+						}
+					}
 					break;
 					
 				}
