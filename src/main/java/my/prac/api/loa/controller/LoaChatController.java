@@ -434,12 +434,12 @@ public class LoaChatController {
 						element_010_value3 = (HashMap<String, Object>) element_010_value2.get("Element_000");
 						elixerFind = Jsoup.parse((String) element_010_value3.get("contentStr").toString().split("<br>")[0]).text();
 						elixerFind = filterTextForElixer(elixerFind);
-						resEquip = resEquip+ elixerFind;
+						resEquip = resEquip+ elixerFind+" ";
 						totElixir += Integer.parseInt(elixerFind.replaceAll("[^1-5]", ""));
 						
 						for(String elixer:elixerList) {
 							if(elixerFind.indexOf(elixer) >= 0) {
-								equipElixerList.add(elixer);
+								equipElixerList.add(elixerFind);
 							}
 						}
 						
@@ -447,12 +447,12 @@ public class LoaChatController {
 						element_010_value3 = (HashMap<String, Object>) element_010_value2.get("Element_001");
 						elixerFind = Jsoup.parse((String) element_010_value3.get("contentStr").toString().split("<br>")[0]).text();
 						elixerFind = filterTextForElixer(elixerFind);
-						resEquip = resEquip+ elixerFind;
+						resEquip = resEquip+ elixerFind+" ";
 						totElixir += Integer.parseInt(elixerFind.replaceAll("[^1-5]", ""));
 						
 						for(String elixer:elixerList) {
 							if(elixerFind.indexOf(elixer) >= 0) {
-								equipElixerList.add(elixer);
+								equipElixerList.add(elixerFind);
 							}
 						}
 						
@@ -487,7 +487,7 @@ public class LoaChatController {
 						
 						for(String elixer:elixerList) {
 							if(elixerFind.indexOf(elixer) >= 0) {
-								equipElixerList.add(elixer);
+								equipElixerList.add(elixerFind);
 							}
 						}
 						
@@ -501,7 +501,7 @@ public class LoaChatController {
 						
 						for(String elixer:elixerList) {
 							if(elixerFind.indexOf(elixer) >= 0) {
-								equipElixerList.add(elixer);
+								equipElixerList.add(elixerFind);
 							}
 						}
 					}
@@ -719,7 +719,7 @@ public class LoaChatController {
 						
 						for(String elixer:elixerList) {
 							if(elixerFind.indexOf(elixer) >= 0) {
-								equipElixerList.add(elixer);
+								equipElixerList.add(elixerFind);
 							}
 						}
 						
@@ -730,7 +730,7 @@ public class LoaChatController {
 						
 						for(String elixer:elixerList) {
 							if(elixerFind.indexOf(elixer) >= 0) {
-								equipElixerList.add(elixer);
+								equipElixerList.add(elixerFind);
 							}
 						}
 						/** 엘릭서 로직 끝 */
@@ -765,7 +765,7 @@ public class LoaChatController {
 						
 						for(String elixer:elixerList) {
 							if(elixerFind.indexOf(elixer) >= 0) {
-								equipElixerList.add(elixer);
+								equipElixerList.add(elixerFind);
 							}
 						}
 						
@@ -775,15 +775,11 @@ public class LoaChatController {
 						
 						for(String elixer:elixerList) {
 							if(elixerFind.indexOf(elixer) >= 0) {
-								equipElixerList.add(elixer);
+								equipElixerList.add(elixerFind);
 							}
 						}
 						/** 엘릭서 로직 끝 */
 					}
-					
-					
-					
-					
 					break;
 					
 				}
@@ -816,14 +812,14 @@ public class LoaChatController {
 		}
 		
 		resMsg = resMsg + "</br>"+"ItemLV : "+ String.format("%.2f", (avgLv/6));
-		resMsg = resMsg + "</br>"+"↪무기"+enhanceLv+", 무품"+weaponQualityValue+""; 
+		resMsg = resMsg + "</br>"+"↪무기 : "+enhanceLv+"강, 무품 : "+weaponQualityValue+""; 
 		
 		if(!newEnhanceInfo.equals("")) {
-			resMsg = resMsg + "</br>"+"↪무기"+newEnhanceInfo; 
+			resMsg = resMsg + "</br>"+"↪무기 "+newEnhanceInfo; 
 		}
 		
 		resMsg = resMsg + "</br>"+"↪세트 : "+setField;
-		resMsg = resMsg + "</br>"+"↪초월합 : " + totLmit + "엘릭서합: " + totElixir + "(" + elixerField+")";
+		resMsg = resMsg + "</br>"+"↪초월합 : " + totLmit + " 엘릭서합: " + totElixir + "(" + elixerField+")";
 		return resMsg;
 	}
 
