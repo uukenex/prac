@@ -13,6 +13,7 @@ import java.security.cert.X509Certificate;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -122,6 +123,16 @@ public class LoaChatController {
 					
 				}
 				break;
+			case "/초월":
+				if(param1!=null && !param1.equals("")) {
+					try {
+						val = limitSearch(param1);
+					}catch (Exception e) {
+						val = "ID오류이거나 엘릭서/초월이 모두있어야 검색가능합니다";
+					}
+					
+				}
+				break;	
 			case "/항협":
 			case "/항해":
 			case "/항해협동":
@@ -287,6 +298,122 @@ public class LoaChatController {
 		return retMsg;
 	}
 
+	
+	String limitSearch(String userId) throws Exception {
+		String retMsg="";
+		String ordUserId=userId;
+		userId = URLEncoder.encode(userId, "UTF-8");
+		// +는 %2B로 치환한다
+		String paramUrl = lostArkAPIurl + "/armories/characters/" + userId + "?filters=equipment";
+
+		String returnData = connect_process(paramUrl);
+		
+		HashMap<String, Object> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<Map<String, Object>>() {
+		});
+
+		List<Map<String, Object>> armoryEquipment = (List<Map<String, Object>>) rtnMap.get("ArmoryEquipment");
+
+		String [] elixerList = {"강맹","달인","신념","회심","선각자","선봉대","행운","진군","칼날방패"};
+		List<String> equipElixerList = new ArrayList<>();
+		
+		String resMsg = ordUserId+" 초월정보";
+
+		String resEquip = "";
+		String totLmit ="";
+		int totElixir =0;
+		
+		
+		for (Map<String, Object> equip : armoryEquipment) {
+			switch (equip.get("Type").toString()) {
+			case "무기":
+			case "투구":
+			case "상의":
+			case "하의":
+			case "장갑":
+			case "어깨":
+				HashMap<String, Object> tooltip = new ObjectMapper().readValue((String) equip.get("Tooltip"),
+						new TypeReference<Map<String, Object>>() {
+						});
+				
+
+				HashMap<String, Object> element_008;
+				HashMap<String, Object> element_008_value;
+				HashMap<String, Object> element_008_value1;
+				HashMap<String, Object> element_008_value2;
+				HashMap<String, Object> element_008_value3;
+				HashMap<String, Object> element_009;
+				HashMap<String, Object> element_009_value;
+				HashMap<String, Object> element_009_value1;
+				HashMap<String, Object> element_009_value2;
+				HashMap<String, Object> element_009_value3;
+				switch (equip.get("Type").toString()) {
+				case "무기":
+					break;
+				case "투구":
+				case "상의":
+				case "하의":
+				case "장갑":
+				case "어깨":
+					element_008 = (HashMap<String, Object>) tooltip.get("Element_008");
+					element_008_value = (HashMap<String, Object>) element_008.get("value");
+					element_008_value1 = (HashMap<String, Object>) element_008_value.get("Element_000");
+					element_008_value2 = (HashMap<String, Object>) element_008_value1.get("contentStr");
+					element_008_value3 = (HashMap<String, Object>) element_008_value2.get("Element_001");
+
+					totLmit = Jsoup.parse((String) element_008_value3.get("contentStr")).text().replaceAll("[^0-9]", "");
+					
+					resEquip = resEquip + "</br>" + Jsoup.parse((String) element_008_value1.get("topStr")).text();
+					
+					
+					element_009 = (HashMap<String, Object>) tooltip.get("Element_009");
+					element_009_value = (HashMap<String, Object>) element_009.get("value");
+					element_009_value1 = (HashMap<String, Object>) element_009_value.get("Element_000");
+					element_009_value2 = (HashMap<String, Object>) element_009_value1.get("contentStr");
+
+					String elixerFind;
+					
+					element_009_value3 = (HashMap<String, Object>) element_009_value2.get("Element_000");
+					elixerFind = Jsoup.parse((String) element_009_value3.get("contentStr").toString().split("<br>")[0]).text();
+					resEquip = resEquip+ " " + elixerFind;
+					totElixir += Integer.parseInt(elixerFind.replaceAll("[^1-5]", ""));
+					
+					element_009_value3 = (HashMap<String, Object>) element_009_value2.get("Element_001");
+					elixerFind = Jsoup.parse((String) element_009_value3.get("contentStr").toString().split("<br>")[0]).text();
+					resEquip = resEquip+ " " + elixerFind;
+					totElixir += Integer.parseInt(elixerFind.replaceAll("[^1-5]", ""));
+					
+					
+					for(String elixer:elixerList) {
+						if(elixerFind.indexOf(elixer) >= 0) {
+							equipElixerList.add(elixer);
+						}
+					}
+					break;
+					
+				}
+				default:
+				continue;
+			}
+		}
+		
+		String elixerField="";
+		
+		for(String elixer:elixerList) {
+			int cnt = Collections.frequency(equipElixerList, elixer);
+			if(cnt > 1) { // 회심2 를 회심으로 표기 
+				elixerField = elixerField + elixer;
+			}else {
+				continue;
+			}
+			
+		}
+		
+		resMsg = resMsg + "</br>초월: " + totLmit + " 엘릭서: (" + elixerField + ")"+ totElixir;
+		resMsg = resMsg +  resEquip;
+		
+		return resMsg;
+	}
+	
 	String equipmentSearch(String userId) throws Exception {
 		String retMsg="";
 		String ordUserId=userId;
@@ -301,20 +428,26 @@ public class LoaChatController {
 
 		List<Map<String, Object>> armoryEquipment = (List<Map<String, Object>>) rtnMap.get("ArmoryEquipment");
 
-		String [] setList = {"악몽","환각","지배","사멸","갈망","배신"};
-		String [] elixerList = {"신념","회심","선각자","선봉대"};
-		String weaponQualityValue;
-		int armorQualityValue;
-		String setName;
+		String [] setList = {"악몽","환각","지배","사멸","갈망","배신","파괴","구원","매혹"};
+		String [] elixerList = {"강맹","달인","신념","회심","선각자","선봉대","행운","진군","칼날방패"};
+		
+		List<String> equipSetList = new ArrayList<>();
+		List<String> equipElixerList = new ArrayList<>();
+		
+		String weaponQualityValue="";
+		double armorQualityValue=0;
+		String setNam="";
+		
+		double tmpLv=0;
+		double avgLv=0;
+		
 		
 		String resMsg = ordUserId+" 장비정보";
 		String resMsg1 = "";
 		String resMsg2 = "";
 
 		String resEquip = "";
-		//String resLimit = "";
-		//String resElixir = "";
-		
+		String enforceLv="";
 		String totLmit ="";
 		int totElixir =0;
 		String mainElixir="";
@@ -330,44 +463,29 @@ public class LoaChatController {
 			case "하의":
 			case "장갑":
 			case "어깨":
-				//String resMsg = "";
-				// System.out.println(equip.get("Type"));
-				// System.out.println(equip);
 				HashMap<String, Object> tooltip = new ObjectMapper().readValue((String) equip.get("Tooltip"),
 						new TypeReference<Map<String, Object>>() {
 						});
-				// System.out.println(equip.get("Tooltip"));
-
-				// System.out.println("======000 강화수치");
-				// System.out.println(tooltip.get("Element_000"));
+				
+				
 				HashMap<String, Object> element_000 = (HashMap<String, Object>) tooltip.get("Element_000");
+				
+				
+				
 				String setFind = Jsoup.parse((String) element_000.get("value")).text();
-				String enforceLv = setFind.replaceAll("[^0-9]", "");
+				enforceLv = setFind.replaceAll("[^0-9]", "");
 				
 				for(String set:setList) {
 					if(setFind.indexOf(set) >= 0) {
-						System.out.println(set);
+						equipSetList.add(set);
 					}
 				}
-				if(equip.get("Type").toString().equals("무기")) {
-					System.out.println("무기("+enforceLv+"강)");
-				}
 				
 				
 				
 				
-				// System.out.println(Jsoup.parse((String)element_000.get("value")).text());
-				// extractedText is now "test"
-
-				// System.out.println("======001 qualityValue(품질)");
 				HashMap<String, Object> element_001 = (HashMap<String, Object>) tooltip.get("Element_001");
 				HashMap<String, Object> element_001_value = (HashMap<String, Object>) element_001.get("value");
-				// System.out.println(element_001_value.get("qualityValue"));
-				// System.out.println(Jsoup.parse((String)element_001_value.get("leftStr0")).text());
-
-				//resEquip = resEquip + "(품:" + element_001_value.get("qualityValue") + ")";
-				// resMsg = resMsg+
-				// Jsoup.parse((String)element_001_value.get("leftStr0")).text();
 
 				HashMap<String, Object> element_008;
 				HashMap<String, Object> element_008_value;
@@ -379,75 +497,62 @@ public class LoaChatController {
 				HashMap<String, Object> element_009_value1;
 				HashMap<String, Object> element_009_value2;
 				HashMap<String, Object> element_009_value3;
-				HashMap<String, Object> element_011;
-				HashMap<String, Object> element_011_value;
 				switch (equip.get("Type").toString()) {
 				case "무기":
+					/* 무기품질 */
 					weaponQualityValue = element_001_value.get("qualityValue").toString();
-					// 세트
-					// System.out.println("======009 (무기) 세트 ");
-					//element_008 = (HashMap<String, Object>) tooltip.get("Element_008");
-					//element_008_value = (HashMap<String, Object>) element_008.get("value");
-					// System.out.println(element_008_value.get("Element_001"));
-					//resMsg = resMsg + element_008_value.get("Element_001");
+					/* 아이템레벨 */
+					tmpLv = Integer.parseInt(Jsoup.parse((String) element_001_value.get("leftStr2")).text().replaceAll("[^0-9]|[0-9]\\)$", ""));
+					avgLv = avgLv+tmpLv;
 					break;
 				case "투구":
 				case "상의":
 				case "하의":
 				case "장갑":
 				case "어깨":
-					armorQualityValue = Integer.parseInt(element_001_value.get("qualityValue").toString());
-					// 세트
-					// System.out.println("======011 (방어구) 세트(악몽)");
-					//element_011 = (HashMap<String, Object>) tooltip.get("Element_011");
-					//element_011_value = (HashMap<String, Object>) element_011.get("value");
-					// System.out.println(Jsoup.parse((String)element_011_value.get("Element_001")).text());
-					//System.out.println(element_011_value);
-					//resMsg = resMsg + Jsoup.parse((String) element_011_value.get("Element_001")).text();
-					// 초월
-					// System.out.println("======008 (방어구) 초월");
+					/* 방어구품질 */
+					armorQualityValue = armorQualityValue + Integer.parseInt(element_001_value.get("qualityValue").toString());
+					/* 아이템레벨 */
+					tmpLv = Integer.parseInt(Jsoup.parse((String) element_001_value.get("leftStr2")).text().replaceAll("[^0-9]|[0-9]\\)$", ""));
+					avgLv = avgLv  + tmpLv;
+					/*008 : 초월*/
+					/** 초월 로직 시작*/
 					element_008 = (HashMap<String, Object>) tooltip.get("Element_008");
 					element_008_value = (HashMap<String, Object>) element_008.get("value");
 					element_008_value1 = (HashMap<String, Object>) element_008_value.get("Element_000");
 					element_008_value2 = (HashMap<String, Object>) element_008_value1.get("contentStr");
 					element_008_value3 = (HashMap<String, Object>) element_008_value2.get("Element_001");
-					// System.out.println(element_008_value3.get("contentStr"));
 
 					totLmit = Jsoup.parse((String) element_008_value3.get("contentStr")).text().replaceAll("[^0-9]", "");
 					
-					// System.out.println(Jsoup.parse((String)element_008_value1.get("topStr")).text());
-					resEquip = resEquip + "</br>" + Jsoup.parse((String) element_008_value1.get("topStr")).text();
-					// System.out.println(Jsoup.parse((String)element_008_value3.get("contentStr")).text());
-
-					// "Element_001"
-					// "contentStr"
-
-					// System.out.println(element_008_value);
-					// 엘릭서
-					// System.out.println("======009 (방어구) 엘릭서");
-					
-					
+					/** 초월 로직 끝*/
+					/*009: 엘릭서*/
+					/** 엘릭서 로직 시작*/
 					element_009 = (HashMap<String, Object>) tooltip.get("Element_009");
 					element_009_value = (HashMap<String, Object>) element_009.get("value");
 					element_009_value1 = (HashMap<String, Object>) element_009_value.get("Element_000");
 					element_009_value2 = (HashMap<String, Object>) element_009_value1.get("contentStr");
 
+					String elixerFind;
+					
 					element_009_value3 = (HashMap<String, Object>) element_009_value2.get("Element_000");
 					elixerFind = Jsoup.parse((String) element_009_value3.get("contentStr").toString().split("<br>")[0]).text();
-					resEquip = resEquip+ " " + elixerFind;
+					//resEquip = resEquip+ " " + elixerFind;
 					totElixir += Integer.parseInt(elixerFind.replaceAll("[^1-5]", ""));
 					
 					element_009_value3 = (HashMap<String, Object>) element_009_value2.get("Element_001");
 					elixerFind = Jsoup.parse((String) element_009_value3.get("contentStr").toString().split("<br>")[0]).text();
-					resEquip = resEquip+ " " + elixerFind;
+					//resEquip = resEquip+ " " + elixerFind;
 					totElixir += Integer.parseInt(elixerFind.replaceAll("[^1-5]", ""));
 					
 					
 					for(String elixer:elixerList) {
 						if(elixerFind.indexOf(elixer) >= 0) {
-							System.out.println(elixer);
+							equipElixerList.add(elixer);
 						}
 					}
+					/** 엘릭서 로직 끝 */
+					
 					break;
 					
 				}
@@ -455,13 +560,36 @@ public class LoaChatController {
 				continue;
 			}
 		}
-		resMsg = resMsg + "</br>초월: " + totLmit + " 엘릭서: " + totElixir;
-		resMsg = resMsg +  resEquip;
 		
-		//System.out.println(resMsg);
+		String setField="";
+		String elixerField="";
+		
+		for(String set:setList) {
+			int cnt = Collections.frequency(equipSetList, set);
+			if(cnt > 0) {
+				setField = setField+cnt+set;
+			}else {
+				continue;
+			}
+			
+		}
+		for(String elixer:elixerList) {
+			int cnt = Collections.frequency(equipElixerList, elixer);
+			if(cnt > 1) { // 회심2 를 회심으로 표기 
+				elixerField = elixerField + elixer;
+			}else {
+				continue;
+			}
+			
+		}
 		
 		
 		
+		resMsg = resMsg + "</br>아이템레벨: "+ String.format("%.2f", (avgLv/6)) + " (무기"+enforceLv+"강)" + "세트 : "+setField;
+		resMsg = resMsg + "</br>엘릭서: " + totElixir + "(" + elixerField+")";
+		resMsg = resMsg + "</br>초월: " + totLmit;
+		resMsg = resMsg + "</br>무품: " + weaponQualityValue + " 방품: "+ String.format("%.2f", (armorQualityValue/5));
+		//resMsg = resMsg +  resEquip;
 		
 		return resMsg;
 	}
