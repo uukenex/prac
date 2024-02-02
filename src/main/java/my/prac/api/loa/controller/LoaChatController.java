@@ -428,8 +428,8 @@ public class LoaChatController {
 
 						totLmit = Jsoup.parse((String) element_008_value3.get("contentStr")).text().replaceAll("[^0-9]", "");
 						
-						resEquip = resEquip + "</br>"+"["+equip.get("Type").toString()+"]" + Jsoup.parse((String) element_008_value1.get("topStr")).text()+" * ";
-						
+						resEquip = resEquip + "</br>"+"["+equip.get("Type").toString()+"]" + Jsoup.parse((String) element_008_value1.get("topStr")).text()+" ◈ ";
+						resEquip = resEquip.replaceAll("\\[초월\\]", "");
 						
 						element_009 = (HashMap<String, Object>) tooltip.get("Element_009");
 						element_009_value = (HashMap<String, Object>) element_009.get("value");
@@ -731,12 +731,12 @@ public class LoaChatController {
 		
 		String setField="";
 		String elixerField="";
-		int cnt0=0;
+		
 		for(String set:setList) {
+			int cnt0=0;
 			cnt0 += Collections.frequency(equipSetList, set);
 			if(cnt0 > 0) {
 				setField = setField+cnt0+set;
-				break;
 			}
 			
 		}
