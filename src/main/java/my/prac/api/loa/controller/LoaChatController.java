@@ -324,6 +324,8 @@ public class LoaChatController {
 		String totLmit ="";
 		int totElixir =0;
 		
+		boolean newEnhanceYn=false;
+		
 		
 		for (Map<String, Object> equip : armoryEquipment) {
 			switch (equip.get("Type").toString()) {
@@ -338,6 +340,7 @@ public class LoaChatController {
 						});
 				
 
+				HashMap<String, Object> element_005;
 				HashMap<String, Object> element_008;
 				HashMap<String, Object> element_008_value;
 				HashMap<String, Object> element_008_value1;
@@ -348,6 +351,11 @@ public class LoaChatController {
 				HashMap<String, Object> element_009_value1;
 				HashMap<String, Object> element_009_value2;
 				HashMap<String, Object> element_009_value3;
+				HashMap<String, Object> element_010;
+				HashMap<String, Object> element_010_value;
+				HashMap<String, Object> element_010_value1;
+				HashMap<String, Object> element_010_value2;
+				HashMap<String, Object> element_010_value3;
 				switch (equip.get("Type").toString()) {
 				case "무기":
 					break;
@@ -356,78 +364,168 @@ public class LoaChatController {
 				case "하의":
 				case "장갑":
 				case "어깨":
-					element_008 = (HashMap<String, Object>) tooltip.get("Element_008");
-					element_008_value = (HashMap<String, Object>) element_008.get("value");
-					element_008_value1 = (HashMap<String, Object>) element_008_value.get("Element_000");
-					element_008_value2 = (HashMap<String, Object>) element_008_value1.get("contentStr");
-					element_008_value3 = (HashMap<String, Object>) element_008_value2.get("Element_001");
+					
+					/* 상급제련 */
+					element_005 = (HashMap<String, Object>) tooltip.get("Element_005");
+					if(element_005.toString().indexOf("상급 재련")>=0) {
+						newEnhanceYn = true;
+					}
+					
+					
+					if(newEnhanceYn) {
+						newEnhanceYn=false;
+						
+						element_009 = (HashMap<String, Object>) tooltip.get("Element_009");
+						element_009_value = (HashMap<String, Object>) element_009.get("value");
+						element_009_value1 = (HashMap<String, Object>) element_009_value.get("Element_000");
+						element_009_value2 = (HashMap<String, Object>) element_009_value1.get("contentStr");
+						element_009_value3 = (HashMap<String, Object>) element_009_value2.get("Element_001");
 
-					totLmit = Jsoup.parse((String) element_008_value3.get("contentStr")).text().replaceAll("[^0-9]", "");
-					
-					resEquip = resEquip + "</br>"+"["+equip.get("Type").toString()+"]" + Jsoup.parse((String) element_008_value1.get("topStr")).text()+" * ";
-					
-					
-					element_009 = (HashMap<String, Object>) tooltip.get("Element_009");
-					element_009_value = (HashMap<String, Object>) element_009.get("value");
-					element_009_value1 = (HashMap<String, Object>) element_009_value.get("Element_000");
-					element_009_value2 = (HashMap<String, Object>) element_009_value1.get("contentStr");
+						totLmit = Jsoup.parse((String) element_009_value3.get("contentStr")).text().replaceAll("[^0-9]", "");
+						
+						resEquip = resEquip + "</br>"+"["+equip.get("Type").toString()+"]" + Jsoup.parse((String) element_009_value1.get("topStr")).text()+" * ";
+						
+						
+						element_010 = (HashMap<String, Object>) tooltip.get("Element_010");
+						element_010_value = (HashMap<String, Object>) element_010.get("value");
+						element_010_value1 = (HashMap<String, Object>) element_010_value.get("Element_000");
+						element_010_value2 = (HashMap<String, Object>) element_010_value1.get("contentStr");
 
-					String elixerFind;
-					
-					element_009_value3 = (HashMap<String, Object>) element_009_value2.get("Element_000");
-					elixerFind = Jsoup.parse((String) element_009_value3.get("contentStr").toString().split("<br>")[0]).text();
-					elixerFind=elixerFind.replaceAll("\\[초월\\]", "");
-					elixerFind=elixerFind.replaceAll("\\[공용\\]", "");
-					elixerFind=elixerFind.replaceAll("\\[하의\\]", "");
-					elixerFind=elixerFind.replaceAll("\\[장갑\\]", "");
-					elixerFind=elixerFind.replaceAll("\\[어깨\\]", "");
-					elixerFind=elixerFind.replaceAll("\\[투구\\]", "");
-					elixerFind=elixerFind.replaceAll("\\[상의\\]", "");
-					elixerFind=elixerFind.replaceAll("\\(혼돈\\)", "");
-					elixerFind=elixerFind.replaceAll("\\(질서\\)", "");
-					elixerFind=elixerFind.replaceAll("Lv.", "");
-					elixerFind=elixerFind.replaceAll("회피의 달인", "회달");
-					elixerFind=elixerFind.replaceAll("탈출의 달인", "탈달");
-					elixerFind=elixerFind.replaceAll("생명의 축복", "생축");
-					elixerFind=elixerFind.replaceAll("자원의 축복", "자축");
-					elixerFind=elixerFind.replaceAll("최대생명력", "최생");
-					elixerFind=elixerFind.replaceAll("무기공격력", "무공");
-					resEquip = resEquip+ elixerFind;
-					totElixir += Integer.parseInt(elixerFind.replaceAll("[^1-5]", ""));
-					
-					for(String elixer:elixerList) {
-						if(elixerFind.indexOf(elixer) >= 0) {
-							equipElixerList.add(elixer);
+						String elixerFind;
+						
+						element_010_value3 = (HashMap<String, Object>) element_010_value2.get("Element_000");
+						elixerFind = Jsoup.parse((String) element_010_value3.get("contentStr").toString().split("<br>")[0]).text();
+						elixerFind=elixerFind.replaceAll("\\[초월\\]", "");
+						elixerFind=elixerFind.replaceAll("\\[공용\\]", "");
+						elixerFind=elixerFind.replaceAll("\\[하의\\]", "");
+						elixerFind=elixerFind.replaceAll("\\[장갑\\]", "");
+						elixerFind=elixerFind.replaceAll("\\[어깨\\]", "");
+						elixerFind=elixerFind.replaceAll("\\[투구\\]", "");
+						elixerFind=elixerFind.replaceAll("\\[상의\\]", "");
+						elixerFind=elixerFind.replaceAll("\\(혼돈\\)", "");
+						elixerFind=elixerFind.replaceAll("\\(질서\\)", "");
+						elixerFind=elixerFind.replaceAll("Lv.", "");
+						elixerFind=elixerFind.replaceAll("회피의 달인", "회달");
+						elixerFind=elixerFind.replaceAll("탈출의 달인", "탈달");
+						elixerFind=elixerFind.replaceAll("생명의 축복", "생축");
+						elixerFind=elixerFind.replaceAll("자원의 축복", "자축");
+						elixerFind=elixerFind.replaceAll("최대생명력", "최생");
+						elixerFind=elixerFind.replaceAll("무기공격력", "무공");
+						resEquip = resEquip+ elixerFind;
+						totElixir += Integer.parseInt(elixerFind.replaceAll("[^1-5]", ""));
+						
+						for(String elixer:elixerList) {
+							if(elixerFind.indexOf(elixer) >= 0) {
+								equipElixerList.add(elixer);
+							}
+						}
+						
+						
+						element_010_value3 = (HashMap<String, Object>) element_010_value2.get("Element_001");
+						elixerFind = Jsoup.parse((String) element_010_value3.get("contentStr").toString().split("<br>")[0]).text();
+						elixerFind=elixerFind.replaceAll("\\[초월\\]", "");
+						elixerFind=elixerFind.replaceAll("\\[공용\\]", "");
+						elixerFind=elixerFind.replaceAll("\\[하의\\]", "");
+						elixerFind=elixerFind.replaceAll("\\[장갑\\]", "");
+						elixerFind=elixerFind.replaceAll("\\[어깨\\]", "");
+						elixerFind=elixerFind.replaceAll("\\[투구\\]", "");
+						elixerFind=elixerFind.replaceAll("\\[상의\\]", "");
+						elixerFind=elixerFind.replaceAll("\\(혼돈\\)", "");
+						elixerFind=elixerFind.replaceAll("\\(질서\\)", "");
+						elixerFind=elixerFind.replaceAll("Lv.", "");
+						elixerFind=elixerFind.replaceAll("회피의 달인", "회달");
+						elixerFind=elixerFind.replaceAll("탈출의 달인", "탈달");
+						elixerFind=elixerFind.replaceAll("생명의 축복", "생축");
+						elixerFind=elixerFind.replaceAll("자원의 축복", "자축");
+						elixerFind=elixerFind.replaceAll("최대생명력", "최생");
+						elixerFind=elixerFind.replaceAll("무기공격력", "무공");
+						resEquip = resEquip+ elixerFind;
+						totElixir += Integer.parseInt(elixerFind.replaceAll("[^1-5]", ""));
+						
+						for(String elixer:elixerList) {
+							if(elixerFind.indexOf(elixer) >= 0) {
+								equipElixerList.add(elixer);
+							}
+						}
+						
+						
+					}else {
+						element_008 = (HashMap<String, Object>) tooltip.get("Element_008");
+						element_008_value = (HashMap<String, Object>) element_008.get("value");
+						element_008_value1 = (HashMap<String, Object>) element_008_value.get("Element_000");
+						element_008_value2 = (HashMap<String, Object>) element_008_value1.get("contentStr");
+						element_008_value3 = (HashMap<String, Object>) element_008_value2.get("Element_001");
+
+						totLmit = Jsoup.parse((String) element_008_value3.get("contentStr")).text().replaceAll("[^0-9]", "");
+						
+						resEquip = resEquip + "</br>"+"["+equip.get("Type").toString()+"]" + Jsoup.parse((String) element_008_value1.get("topStr")).text()+" * ";
+						
+						
+						element_009 = (HashMap<String, Object>) tooltip.get("Element_009");
+						element_009_value = (HashMap<String, Object>) element_009.get("value");
+						element_009_value1 = (HashMap<String, Object>) element_009_value.get("Element_000");
+						element_009_value2 = (HashMap<String, Object>) element_009_value1.get("contentStr");
+
+						String elixerFind;
+						
+						element_009_value3 = (HashMap<String, Object>) element_009_value2.get("Element_000");
+						elixerFind = Jsoup.parse((String) element_009_value3.get("contentStr").toString().split("<br>")[0]).text();
+						elixerFind=elixerFind.replaceAll("\\[초월\\]", "");
+						elixerFind=elixerFind.replaceAll("\\[공용\\]", "");
+						elixerFind=elixerFind.replaceAll("\\[하의\\]", "");
+						elixerFind=elixerFind.replaceAll("\\[장갑\\]", "");
+						elixerFind=elixerFind.replaceAll("\\[어깨\\]", "");
+						elixerFind=elixerFind.replaceAll("\\[투구\\]", "");
+						elixerFind=elixerFind.replaceAll("\\[상의\\]", "");
+						elixerFind=elixerFind.replaceAll("\\(혼돈\\)", "");
+						elixerFind=elixerFind.replaceAll("\\(질서\\)", "");
+						elixerFind=elixerFind.replaceAll("Lv.", "");
+						elixerFind=elixerFind.replaceAll("회피의 달인", "회달");
+						elixerFind=elixerFind.replaceAll("탈출의 달인", "탈달");
+						elixerFind=elixerFind.replaceAll("생명의 축복", "생축");
+						elixerFind=elixerFind.replaceAll("자원의 축복", "자축");
+						elixerFind=elixerFind.replaceAll("최대생명력", "최생");
+						elixerFind=elixerFind.replaceAll("무기공격력", "무공");
+						resEquip = resEquip+ elixerFind;
+						totElixir += Integer.parseInt(elixerFind.replaceAll("[^1-5]", ""));
+						
+						for(String elixer:elixerList) {
+							if(elixerFind.indexOf(elixer) >= 0) {
+								equipElixerList.add(elixer);
+							}
+						}
+						
+						
+						element_009_value3 = (HashMap<String, Object>) element_009_value2.get("Element_001");
+						elixerFind = Jsoup.parse((String) element_009_value3.get("contentStr").toString().split("<br>")[0]).text();
+						elixerFind=elixerFind.replaceAll("\\[초월\\]", "");
+						elixerFind=elixerFind.replaceAll("\\[공용\\]", "");
+						elixerFind=elixerFind.replaceAll("\\[하의\\]", "");
+						elixerFind=elixerFind.replaceAll("\\[장갑\\]", "");
+						elixerFind=elixerFind.replaceAll("\\[어깨\\]", "");
+						elixerFind=elixerFind.replaceAll("\\[투구\\]", "");
+						elixerFind=elixerFind.replaceAll("\\[상의\\]", "");
+						elixerFind=elixerFind.replaceAll("\\(혼돈\\)", "");
+						elixerFind=elixerFind.replaceAll("\\(질서\\)", "");
+						elixerFind=elixerFind.replaceAll("Lv.", "");
+						elixerFind=elixerFind.replaceAll("회피의 달인", "회달");
+						elixerFind=elixerFind.replaceAll("탈출의 달인", "탈달");
+						elixerFind=elixerFind.replaceAll("생명의 축복", "생축");
+						elixerFind=elixerFind.replaceAll("자원의 축복", "자축");
+						elixerFind=elixerFind.replaceAll("최대생명력", "최생");
+						elixerFind=elixerFind.replaceAll("무기공격력", "무공");
+						resEquip = resEquip+ elixerFind;
+						totElixir += Integer.parseInt(elixerFind.replaceAll("[^1-5]", ""));
+						
+						for(String elixer:elixerList) {
+							if(elixerFind.indexOf(elixer) >= 0) {
+								equipElixerList.add(elixer);
+							}
 						}
 					}
 					
 					
-					element_009_value3 = (HashMap<String, Object>) element_009_value2.get("Element_001");
-					elixerFind = Jsoup.parse((String) element_009_value3.get("contentStr").toString().split("<br>")[0]).text();
-					elixerFind=elixerFind.replaceAll("\\[초월\\]", "");
-					elixerFind=elixerFind.replaceAll("\\[공용\\]", "");
-					elixerFind=elixerFind.replaceAll("\\[하의\\]", "");
-					elixerFind=elixerFind.replaceAll("\\[장갑\\]", "");
-					elixerFind=elixerFind.replaceAll("\\[어깨\\]", "");
-					elixerFind=elixerFind.replaceAll("\\[투구\\]", "");
-					elixerFind=elixerFind.replaceAll("\\[상의\\]", "");
-					elixerFind=elixerFind.replaceAll("\\(혼돈\\)", "");
-					elixerFind=elixerFind.replaceAll("\\(질서\\)", "");
-					elixerFind=elixerFind.replaceAll("Lv.", "");
-					elixerFind=elixerFind.replaceAll("회피의 달인", "회달");
-					elixerFind=elixerFind.replaceAll("탈출의 달인", "탈달");
-					elixerFind=elixerFind.replaceAll("생명의 축복", "생축");
-					elixerFind=elixerFind.replaceAll("자원의 축복", "자축");
-					elixerFind=elixerFind.replaceAll("최대생명력", "최생");
-					elixerFind=elixerFind.replaceAll("무기공격력", "무공");
-					resEquip = resEquip+ elixerFind;
-					totElixir += Integer.parseInt(elixerFind.replaceAll("[^1-5]", ""));
 					
-					for(String elixer:elixerList) {
-						if(elixerFind.indexOf(elixer) >= 0) {
-							equipElixerList.add(elixer);
-						}
-					}
 					break;
 					
 				}
@@ -440,7 +538,7 @@ public class LoaChatController {
 		int cnt =0 ;
 		for(String elixer:elixerList) {
 			cnt += Collections.frequency(equipElixerList, elixer);
-			System.out.println(cnt);
+			//System.out.println(cnt);
 			if(cnt > 1) { // 회심2 를 회심으로 표기 
 				elixerField = elixerField + elixer;
 				break;
