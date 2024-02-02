@@ -439,7 +439,7 @@ public class LoaChatController {
 						
 						for(String elixer:elixerList) {
 							if(elixerFind.indexOf(elixer) >= 0) {
-								equipElixerList.add(elixerFind);
+								equipElixerList.add(elixer);
 							}
 						}
 						
@@ -452,7 +452,7 @@ public class LoaChatController {
 						
 						for(String elixer:elixerList) {
 							if(elixerFind.indexOf(elixer) >= 0) {
-								equipElixerList.add(elixerFind);
+								equipElixerList.add(elixer);
 							}
 						}
 						
@@ -487,7 +487,7 @@ public class LoaChatController {
 						
 						for(String elixer:elixerList) {
 							if(elixerFind.indexOf(elixer) >= 0) {
-								equipElixerList.add(elixerFind);
+								equipElixerList.add(elixer);
 							}
 						}
 						
@@ -501,7 +501,7 @@ public class LoaChatController {
 						
 						for(String elixer:elixerList) {
 							if(elixerFind.indexOf(elixer) >= 0) {
-								equipElixerList.add(elixerFind);
+								equipElixerList.add(elixer);
 							}
 						}
 					}
@@ -719,7 +719,7 @@ public class LoaChatController {
 						
 						for(String elixer:elixerList) {
 							if(elixerFind.indexOf(elixer) >= 0) {
-								equipElixerList.add(elixerFind);
+								equipElixerList.add(elixer);
 							}
 						}
 						
@@ -730,7 +730,7 @@ public class LoaChatController {
 						
 						for(String elixer:elixerList) {
 							if(elixerFind.indexOf(elixer) >= 0) {
-								equipElixerList.add(elixerFind);
+								equipElixerList.add(elixer);
 							}
 						}
 						/** 엘릭서 로직 끝 */
@@ -761,21 +761,23 @@ public class LoaChatController {
 						
 						element_009_value3 = (HashMap<String, Object>) element_009_value2.get("Element_000");
 						elixerFind = Jsoup.parse((String) element_009_value3.get("contentStr").toString().split("<br>")[0]).text();
+						elixerFind = filterTextForElixer(elixerFind);
 						totElixir += Integer.parseInt(elixerFind.replaceAll("[^1-5]", ""));
 						
 						for(String elixer:elixerList) {
 							if(elixerFind.indexOf(elixer) >= 0) {
-								equipElixerList.add(elixerFind);
+								equipElixerList.add(elixer);
 							}
 						}
 						
 						element_009_value3 = (HashMap<String, Object>) element_009_value2.get("Element_001");
 						elixerFind = Jsoup.parse((String) element_009_value3.get("contentStr").toString().split("<br>")[0]).text();
+						elixerFind = filterTextForElixer(elixerFind);
 						totElixir += Integer.parseInt(elixerFind.replaceAll("[^1-5]", ""));
 						
 						for(String elixer:elixerList) {
 							if(elixerFind.indexOf(elixer) >= 0) {
-								equipElixerList.add(elixerFind);
+								equipElixerList.add(elixer);
 							}
 						}
 						/** 엘릭서 로직 끝 */
