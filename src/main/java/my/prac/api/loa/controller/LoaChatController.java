@@ -383,8 +383,8 @@ public class LoaChatController {
 
 						totLmit = Jsoup.parse((String) element_009_value3.get("contentStr")).text().replaceAll("[^0-9]", "");
 						
-						resEquip = resEquip + "</br>"+"["+equip.get("Type").toString()+"]" + Jsoup.parse((String) element_009_value1.get("topStr")).text()+" * ";
-						
+						resEquip = resEquip + "</br>"+"["+equip.get("Type").toString()+"]" + Jsoup.parse((String) element_009_value1.get("topStr")).text()+" ◈ ";
+						resEquip = resEquip.replaceAll("\\[초월\\]", "");
 						
 						element_010 = (HashMap<String, Object>) tooltip.get("Element_010");
 						element_010_value = (HashMap<String, Object>) element_010.get("value");
@@ -395,22 +395,7 @@ public class LoaChatController {
 						
 						element_010_value3 = (HashMap<String, Object>) element_010_value2.get("Element_000");
 						elixerFind = Jsoup.parse((String) element_010_value3.get("contentStr").toString().split("<br>")[0]).text();
-						elixerFind=elixerFind.replaceAll("\\[초월\\]", "");
-						elixerFind=elixerFind.replaceAll("\\[공용\\]", "");
-						elixerFind=elixerFind.replaceAll("\\[하의\\]", "");
-						elixerFind=elixerFind.replaceAll("\\[장갑\\]", "");
-						elixerFind=elixerFind.replaceAll("\\[어깨\\]", "");
-						elixerFind=elixerFind.replaceAll("\\[투구\\]", "");
-						elixerFind=elixerFind.replaceAll("\\[상의\\]", "");
-						elixerFind=elixerFind.replaceAll("\\(혼돈\\)", "");
-						elixerFind=elixerFind.replaceAll("\\(질서\\)", "");
-						elixerFind=elixerFind.replaceAll("Lv.", "");
-						elixerFind=elixerFind.replaceAll("회피의 달인", "회달");
-						elixerFind=elixerFind.replaceAll("탈출의 달인", "탈달");
-						elixerFind=elixerFind.replaceAll("생명의 축복", "생축");
-						elixerFind=elixerFind.replaceAll("자원의 축복", "자축");
-						elixerFind=elixerFind.replaceAll("최대생명력", "최생");
-						elixerFind=elixerFind.replaceAll("무기공격력", "무공");
+						elixerFind = filterTextForElixer(elixerFind);
 						resEquip = resEquip+ elixerFind;
 						totElixir += Integer.parseInt(elixerFind.replaceAll("[^1-5]", ""));
 						
@@ -423,22 +408,7 @@ public class LoaChatController {
 						
 						element_010_value3 = (HashMap<String, Object>) element_010_value2.get("Element_001");
 						elixerFind = Jsoup.parse((String) element_010_value3.get("contentStr").toString().split("<br>")[0]).text();
-						elixerFind=elixerFind.replaceAll("\\[초월\\]", "");
-						elixerFind=elixerFind.replaceAll("\\[공용\\]", "");
-						elixerFind=elixerFind.replaceAll("\\[하의\\]", "");
-						elixerFind=elixerFind.replaceAll("\\[장갑\\]", "");
-						elixerFind=elixerFind.replaceAll("\\[어깨\\]", "");
-						elixerFind=elixerFind.replaceAll("\\[투구\\]", "");
-						elixerFind=elixerFind.replaceAll("\\[상의\\]", "");
-						elixerFind=elixerFind.replaceAll("\\(혼돈\\)", "");
-						elixerFind=elixerFind.replaceAll("\\(질서\\)", "");
-						elixerFind=elixerFind.replaceAll("Lv.", "");
-						elixerFind=elixerFind.replaceAll("회피의 달인", "회달");
-						elixerFind=elixerFind.replaceAll("탈출의 달인", "탈달");
-						elixerFind=elixerFind.replaceAll("생명의 축복", "생축");
-						elixerFind=elixerFind.replaceAll("자원의 축복", "자축");
-						elixerFind=elixerFind.replaceAll("최대생명력", "최생");
-						elixerFind=elixerFind.replaceAll("무기공격력", "무공");
+						elixerFind = filterTextForElixer(elixerFind);
 						resEquip = resEquip+ elixerFind;
 						totElixir += Integer.parseInt(elixerFind.replaceAll("[^1-5]", ""));
 						
@@ -470,23 +440,8 @@ public class LoaChatController {
 						
 						element_009_value3 = (HashMap<String, Object>) element_009_value2.get("Element_000");
 						elixerFind = Jsoup.parse((String) element_009_value3.get("contentStr").toString().split("<br>")[0]).text();
-						elixerFind=elixerFind.replaceAll("\\[초월\\]", "");
-						elixerFind=elixerFind.replaceAll("\\[공용\\]", "");
-						elixerFind=elixerFind.replaceAll("\\[하의\\]", "");
-						elixerFind=elixerFind.replaceAll("\\[장갑\\]", "");
-						elixerFind=elixerFind.replaceAll("\\[어깨\\]", "");
-						elixerFind=elixerFind.replaceAll("\\[투구\\]", "");
-						elixerFind=elixerFind.replaceAll("\\[상의\\]", "");
-						elixerFind=elixerFind.replaceAll("\\(혼돈\\)", "");
-						elixerFind=elixerFind.replaceAll("\\(질서\\)", "");
-						elixerFind=elixerFind.replaceAll("Lv.", "");
-						elixerFind=elixerFind.replaceAll("회피의 달인", "회달");
-						elixerFind=elixerFind.replaceAll("탈출의 달인", "탈달");
-						elixerFind=elixerFind.replaceAll("생명의 축복", "생축");
-						elixerFind=elixerFind.replaceAll("자원의 축복", "자축");
-						elixerFind=elixerFind.replaceAll("최대생명력", "최생");
-						elixerFind=elixerFind.replaceAll("무기공격력", "무공");
-						resEquip = resEquip+ elixerFind;
+						elixerFind = filterTextForElixer(elixerFind);
+						resEquip = resEquip+ elixerFind+" ";
 						totElixir += Integer.parseInt(elixerFind.replaceAll("[^1-5]", ""));
 						
 						for(String elixer:elixerList) {
@@ -498,23 +453,9 @@ public class LoaChatController {
 						
 						element_009_value3 = (HashMap<String, Object>) element_009_value2.get("Element_001");
 						elixerFind = Jsoup.parse((String) element_009_value3.get("contentStr").toString().split("<br>")[0]).text();
-						elixerFind=elixerFind.replaceAll("\\[초월\\]", "");
-						elixerFind=elixerFind.replaceAll("\\[공용\\]", "");
-						elixerFind=elixerFind.replaceAll("\\[하의\\]", "");
-						elixerFind=elixerFind.replaceAll("\\[장갑\\]", "");
-						elixerFind=elixerFind.replaceAll("\\[어깨\\]", "");
-						elixerFind=elixerFind.replaceAll("\\[투구\\]", "");
-						elixerFind=elixerFind.replaceAll("\\[상의\\]", "");
-						elixerFind=elixerFind.replaceAll("\\(혼돈\\)", "");
-						elixerFind=elixerFind.replaceAll("\\(질서\\)", "");
-						elixerFind=elixerFind.replaceAll("Lv.", "");
-						elixerFind=elixerFind.replaceAll("회피의 달인", "회달");
-						elixerFind=elixerFind.replaceAll("탈출의 달인", "탈달");
-						elixerFind=elixerFind.replaceAll("생명의 축복", "생축");
-						elixerFind=elixerFind.replaceAll("자원의 축복", "자축");
-						elixerFind=elixerFind.replaceAll("최대생명력", "최생");
-						elixerFind=elixerFind.replaceAll("무기공격력", "무공");
-						resEquip = resEquip+ elixerFind;
+						elixerFind = filterTextForElixer(elixerFind);
+						
+						resEquip = resEquip+ elixerFind+" ";
 						totElixir += Integer.parseInt(elixerFind.replaceAll("[^1-5]", ""));
 						
 						for(String elixer:elixerList) {
@@ -558,6 +499,29 @@ public class LoaChatController {
 		
 		return resMsg;
 	}
+	
+	String filterTextForElixer(String txt) {
+		txt=txt.replaceAll(" ", "");
+		txt=txt.replaceAll("\\[공용\\]", "");
+		txt=txt.replaceAll("\\[하의\\]", "");
+		txt=txt.replaceAll("\\[장갑\\]", "");
+		txt=txt.replaceAll("\\[어깨\\]", "");
+		txt=txt.replaceAll("\\[투구\\]", "");
+		txt=txt.replaceAll("\\[상의\\]", "");
+		txt=txt.replaceAll("\\(혼돈\\)", "");
+		txt=txt.replaceAll("\\(질서\\)", "");
+		txt=txt.replaceAll("Lv.", "");
+		txt=txt.replaceAll("회피의달인", "회달");
+		txt=txt.replaceAll("탈출의달인", "탈달");
+		txt=txt.replaceAll("폭발물달인", "폭달");
+		txt=txt.replaceAll("생명의축복", "생축");
+		txt=txt.replaceAll("자원의축복", "자축");
+		txt=txt.replaceAll("최대생명력", "최생");
+		txt=txt.replaceAll("무기공격력", "무공");
+		return txt;
+	}
+	
+	
 	
 	String equipmentSearch(String userId) throws Exception {
 		String retMsg="";
@@ -773,8 +737,6 @@ public class LoaChatController {
 			if(cnt0 > 0) {
 				setField = setField+cnt0+set;
 				break;
-			}else {
-				continue;
 			}
 			
 		}
@@ -791,14 +753,9 @@ public class LoaChatController {
 		}
 		
 		resMsg = resMsg + "</br>"+"ItemLV : "+ String.format("%.2f", (avgLv/6));
-		resMsg = resMsg + "</br> ↪무기"+enhanceLv+"강, 무품"+weaponQualityValue+""; 
-		resMsg = resMsg + "</br>"+"세트 : "+setField;
-		resMsg = resMsg + "</br>"+"초월합 : " + totLmit + "엘릭서합: " + totElixir + "(" + elixerField+")";
-		
-		//resMsg = resMsg + "</br>"+"무기품질:" + weaponQualityValue ;
-		//resMsg = resMsg + "</br>"+"평균방어구품질:"+ String.format("%.2f", (armorQualityValue/5));
-				
-		
+		resMsg = resMsg + "</br>"+"↪무기"+enhanceLv+"강, 무품"+weaponQualityValue+""; 
+		resMsg = resMsg + "</br>"+"↪세트 : "+setField;
+		resMsg = resMsg + "</br>"+"↪초월합 : " + totLmit + "엘릭서합: " + totElixir + "(" + elixerField+")";
 		return resMsg;
 	}
 
@@ -848,11 +805,11 @@ public class LoaChatController {
 			String v2 = doc.select(".weather_info ._today .summary_list .sort:eq(1) .desc").text();// 습도
 			String v3 = doc.select(".weather_info ._today .summary_list .sort:eq(2) .desc").text();// 풍속
 			retMsg += "오늘날씨 : " + weather;
-			retMsg += "</br>현재온도 : " + cur_temp;
-			retMsg += "</br>체감온도 : " + v1;
-			retMsg += "</br>습도 : " + v2;
-			retMsg += "</br>풍속 : " + v3;
-			retMsg += "</br>현재 " + area + "의 온도는 " + cur_temp + " 이며 어제보다 " + diff_temp;
+			retMsg += "</br>↪현재온도 : " + cur_temp;
+			retMsg += "</br>↪체감온도 : " + v1;
+			retMsg += "</br>↪습도 : " + v2;
+			retMsg += "</br>↪풍속 : " + v3;
+			retMsg += "</br>↪현재 " + area + "의 온도는 " + cur_temp + " 이며 어제보다 " + diff_temp;
 		} catch (Exception e) {
 			e.printStackTrace();
 			retMsg = "불러올 수 없는 지역이거나 지원되지 않는 지역입니다.";
