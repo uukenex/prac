@@ -126,8 +126,9 @@ public class LoaChatController {
 				if(param1!=null && !param1.equals("")) {
 					try {
 						val = equipmentSearch(param1);
+						//val = tttt(param1);
 					}catch (Exception e) {
-						errorCodeMng(e);
+						val = errorCodeMng(e);
 					}
 				}
 				break;
@@ -136,7 +137,7 @@ public class LoaChatController {
 					try {
 						val = limitSearch(param1);
 					}catch (Exception e) {
-						errorCodeMng(e);
+						val = errorCodeMng(e);
 					}
 					
 				}
@@ -320,6 +321,40 @@ public class LoaChatController {
 	}
 
 	
+	String tttt(String userId) throws Exception {
+		String ordUserId=userId;
+		userId = URLEncoder.encode(userId, "UTF-8");
+		// +는 %2B로 치환한다
+		String paramUrl = lostArkAPIurl + "/armories/characters/" + userId + "?filters=equipment";
+		String returnData = LoaApiUtils.connect_process(paramUrl);
+		HashMap<String, Object> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<Map<String, Object>>() {});
+
+		List<Map<String, Object>> armoryEquipment;
+		try {
+			armoryEquipment = (List<Map<String, Object>>) rtnMap.get("ArmoryEquipment");
+		}catch(Exception e){
+			throw new Exception("E0003");
+		}
+		
+		
+		for (Map<String, Object> equip : armoryEquipment) {
+			switch (equip.get("Type").toString()) {
+			case "무기":
+			case "투구":
+			case "상의":
+			case "하의":
+			case "장갑":
+			case "어깨":
+				HashMap<String, Object> tooltip = new ObjectMapper().readValue((String) equip.get("Tooltip"),new TypeReference<Map<String, Object>>() {});
+				HashMap<String, Object> maps = LoaApiParser.findElement(tooltip);
+				System.out.println(maps);
+			}
+		}
+		
+		return "";
+	}
+	
+	
 	String limitSearch(String userId) throws Exception {
 		String ordUserId=userId;
 		userId = URLEncoder.encode(userId, "UTF-8");
@@ -344,68 +379,28 @@ public class LoaChatController {
 		String totLmit ="";
 		int totElixir =0;
 		
-		boolean newEnhanceYn=false;
-		
 		for (Map<String, Object> equip : armoryEquipment) {
 			switch (equip.get("Type").toString()) {
-			case "무기":
 			case "투구":
 			case "상의":
 			case "하의":
 			case "장갑":
 			case "어깨":
 				HashMap<String, Object> tooltip = new ObjectMapper().readValue((String) equip.get("Tooltip"),new TypeReference<Map<String, Object>>() {});
-				HashMap<String, Object> element_005;
-				HashMap<String, Object> element_008;
-				HashMap<String, Object> element_009;
-				switch (equip.get("Type").toString()) {
-				case "무기":
-					break;
-				case "투구":
-				case "상의":
-				case "하의":
-				case "장갑":
-				case "어깨":
-					
-					/* 상급제련 */
-					element_005 = (HashMap<String, Object>) tooltip.get("Element_005");
-					if(element_005.toString().indexOf("상급 재련")>=0) {
-						newEnhanceYn = true;
-					}
-					
-					
-					if(newEnhanceYn) {
-						newEnhanceYn=false;
-						
-						/** 초월 로직 시작*/
-						element_008 = (HashMap<String, Object>) tooltip.get("Element_009");
-						totLmit = LoaApiParser.parseLimit(element_008);
-						resEquip = resEquip + "</br>"+"["+equip.get("Type").toString()+"]" + LoaApiParser.parseLimitForLimit(element_008)+" ◈ ";
-						resEquip = LoaApiUtils.filterText(resEquip);
-						/** 초월 로직 끝*/
-						
-						/** 엘릭서 로직 시작*/
-						element_009 = (HashMap<String, Object>) tooltip.get("Element_010");
-						totElixir +=LoaApiParser.parseElixirForEquip(equipElixirList,element_009);
-						resEquip  +=LoaApiParser.parseElixirForLimit(equipElixirList,element_009);
-						/** 엘릭서 로직 끝 */
-					}else {
-						/*008 : 초월*/
-						/** 초월 로직 시작*/
-						element_008 = (HashMap<String, Object>) tooltip.get("Element_008");
-						totLmit = LoaApiParser.parseLimit(element_008);
-						resEquip = resEquip + "</br>"+"["+equip.get("Type").toString()+"]" + LoaApiParser.parseLimitForLimit(element_008)+" ◈ ";
-						resEquip = LoaApiUtils.filterText(resEquip);
-						/** 초월 로직 끝*/
-						/*009: 엘릭서*/
-						/** 엘릭서 로직 시작*/
-						element_009 = (HashMap<String, Object>) tooltip.get("Element_009");
-						totElixir +=LoaApiParser.parseElixirForEquip(equipElixirList,element_009);
-						resEquip  +=LoaApiParser.parseElixirForLimit(equipElixirList,element_009);
-						/** 엘릭서 로직 끝 */
-					}
-					break;
-				}
+				HashMap<String, Object> maps = LoaApiParser.findElement(tooltip);
+				HashMap<String, Object> limit_element = (HashMap<String, Object>)maps.get("limit_element");
+				HashMap<String, Object> elixir_element = (HashMap<String, Object>)maps.get("elixir_element");
+				
+				//초월 정보 출력
+				totLmit = LoaApiParser.parseLimit(limit_element);
+				resEquip = resEquip + "</br>"+equip.get("Type").toString()+"▶" + LoaApiParser.parseLimitForLimit(limit_element)+" ◈ ";
+				resEquip = LoaApiUtils.filterText(resEquip);
+
+				//엘릭서 정보 출력 
+				totElixir +=LoaApiParser.parseElixirForEquip(equipElixirList,elixir_element);
+				resEquip  +=LoaApiParser.parseElixirForLimit(equipElixirList,elixir_element);
+				
+				break;
 				default:
 				continue;
 			}
@@ -461,25 +456,25 @@ public class LoaChatController {
 		String resMsg = ordUserId+" 장비정보";
 
 		String enhanceLv="";
-		String newEnhanceLv="";
 		String newEnhanceInfo="";
 		String totLmit ="";
 		int totElixir =0;
 
-		boolean newEnhanceYn=false;
-		
 		for (Map<String, Object> equip : armoryEquipment) {
+			HashMap<String, Object> tooltip = new ObjectMapper().readValue((String) equip.get("Tooltip"),new TypeReference<Map<String, Object>>() {});
+			HashMap<String, Object> maps = LoaApiParser.findElement(tooltip);
+			HashMap<String, Object> weapon_element = (HashMap<String, Object>)maps.get("weapon_element");
+			HashMap<String, Object> item_level_element = (HashMap<String, Object>)maps.get("item_level_element");
+			HashMap<String, Object> item_level_element_dt = new HashMap<>();
+			HashMap<String, Object> new_refine_element = (HashMap<String, Object>)maps.get("new_refine_element");
+			HashMap<String, Object> limit_element = (HashMap<String, Object>)maps.get("limit_element");
+			HashMap<String, Object> elixir_element = (HashMap<String, Object>)maps.get("elixir_element");
+			
+			
+			//악세들은 레벨파싱에서 에러가남 
 			switch (equip.get("Type").toString()) {
-			case "무기":
-			case "투구":
-			case "상의":
-			case "하의":
-			case "장갑":
-			case "어깨":
-				HashMap<String, Object> tooltip = new ObjectMapper().readValue((String) equip.get("Tooltip"),new TypeReference<Map<String, Object>>() {});
-				HashMap<String, Object> element_000 = (HashMap<String, Object>) tooltip.get("Element_000");
-				
-				String setFind = Jsoup.parse((String) element_000.get("value")).text();
+			case "무기":case "투구": case "상의": case "하의": case "장갑": case "어깨":
+				String setFind = Jsoup.parse((String) weapon_element.get("value")).text();
 				if(equip.get("Type").toString().equals("무기")) {
 					enhanceLv = setFind.replaceAll("[^0-9]", "");
 				}
@@ -490,71 +485,40 @@ public class LoaChatController {
 					}
 				}
 				
-				HashMap<String, Object> element_001 = (HashMap<String, Object>) tooltip.get("Element_001");
-				HashMap<String, Object> element_001_value = (HashMap<String, Object>) element_001.get("value");
-				HashMap<String, Object> element_005;
-				switch (equip.get("Type").toString()) {
-				case "무기":
-					/* 무기품질 */
-					weaponQualityValue = element_001_value.get("qualityValue").toString();
-					/* 아이템레벨 */
-					tmpLv = Integer.parseInt(Jsoup.parse((String) element_001_value.get("leftStr2")).text().replaceAll("[^0-9]|[0-9]\\)$", ""));
-					if(tmpLv < 1610) {
-						throw new Exception("E0001");
-					}
-					avgLv = avgLv+tmpLv;
-					
-					element_005 = (HashMap<String, Object>) tooltip.get("Element_005");
-					if(element_005.toString().indexOf("상급 재련")>=0) {
-						newEnhanceInfo = Jsoup.parse((String) element_005.get("value")).text();
-						newEnhanceInfo = LoaApiUtils.filterText(newEnhanceInfo);
-					}
-					
-					break;
-				case "투구":
-				case "상의":
-				case "하의":
-				case "장갑":
-				case "어깨":
-					/* 방어구품질 */
-					armorQualityValue = armorQualityValue + Integer.parseInt(element_001_value.get("qualityValue").toString());
-					/* 아이템레벨 */
-					tmpLv = Integer.parseInt(Jsoup.parse((String) element_001_value.get("leftStr2")).text().replaceAll("[^0-9]|[0-9]\\)$", ""));
-					avgLv = avgLv  + tmpLv;
-					
-					/* 상급제련 */
-					element_005 = (HashMap<String, Object>) tooltip.get("Element_005");
-					if(element_005.toString().indexOf("상급 재련")>=0) {
-						newEnhanceYn = true;
-					}
-					
-					if(newEnhanceYn) {
-						newEnhanceYn=false;
-						newEnhanceLv = Jsoup.parse((String) element_005.get("value")).text().replaceAll("[^0-9]", "");
-						/*009 : 초월*/
-						/** 초월 로직 시작*/
-						totLmit = LoaApiParser.parseLimit((HashMap<String, Object>) tooltip.get("Element_009"));
-						/** 초월 로직 끝*/
-						/*009: 엘릭서*/
-						/** 엘릭서 로직 시작*/
-						totElixir +=LoaApiParser.parseElixirForEquip(equipElixirList,(HashMap<String, Object>) tooltip.get("Element_010"));
-						/** 엘릭서 로직 끝 */
-						
-					}else {
-						/*008 : 초월*/
-						/** 초월 로직 시작*/
-						totLmit = LoaApiParser.parseLimit((HashMap<String, Object>) tooltip.get("Element_008"));
-						/** 초월 로직 끝*/
-						/*009: 엘릭서*/
-						/** 엘릭서 로직 시작*/
-						totElixir +=LoaApiParser.parseElixirForEquip(equipElixirList,(HashMap<String, Object>) tooltip.get("Element_009"));
-						/** 엘릭서 로직 끝 */
-					}
-					break;
-					
+				item_level_element_dt = (HashMap<String, Object>) item_level_element.get("value");
+				
+				/* 아이템레벨 */
+				tmpLv = Integer.parseInt(Jsoup.parse((String) item_level_element_dt.get("leftStr2")).text().replaceAll("[^0-9]|[0-9]\\)$", ""));
+				avgLv = avgLv+tmpLv;
+				
+				/* 아이템레벨 */
+				if(tmpLv < 1610) {
+					throw new Exception("E0001");
 				}
-				default:
-				continue;
+			}
+			
+			
+			
+			switch (equip.get("Type").toString()) {
+			case "무기":
+				/* 무기품질 */
+				weaponQualityValue = item_level_element_dt.get("qualityValue").toString();
+				if(new_refine_element.size()>0) {
+					newEnhanceInfo = Jsoup.parse((String) new_refine_element.get("value")).text();
+					newEnhanceInfo = LoaApiUtils.filterText(newEnhanceInfo);
+				}
+				
+				break;
+			case "투구": case "상의": case "하의": case "장갑": case "어깨":
+				/* 방어구품질 */
+				//armorQualityValue = armorQualityValue + Integer.parseInt(item_level_element_dt.get("qualityValue").toString());
+				//초월
+				totLmit = LoaApiParser.parseLimit(limit_element);
+				//엘릭서
+				totElixir +=LoaApiParser.parseElixirForEquip(equipElixirList, elixir_element);
+				break;
+			default:
+			continue;
 			}
 		}
 		
@@ -581,7 +545,7 @@ public class LoaChatController {
 			
 		}
 		
-		resMsg = resMsg + "</br>"+"ItemLV : "+ String.format("%.2f", (avgLv/6));
+		resMsg = resMsg + "</br>"+"ItemLv : "+ String.format("%.2f", (avgLv/6));
 		resMsg = resMsg + "</br>"+"↪무기 : "+enhanceLv+"강, 무품 : "+weaponQualityValue+""; 
 		
 		if(!newEnhanceInfo.equals("")) {

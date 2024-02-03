@@ -159,5 +159,74 @@ public class LoaApiParser {
 		return rtnTxt;
 	}
 	
+	
+	public static HashMap<String, Object> findElement(HashMap<String, Object> tooltip) {
+		
+		HashMap<String, Object> elements[] = new HashMap[13]; 
+		elements[0] = (HashMap<String, Object>) tooltip.get("Element_000"); 
+		elements[1] = (HashMap<String, Object>) tooltip.get("Element_001"); 
+		elements[2] = (HashMap<String, Object>) tooltip.get("Element_002"); 
+		elements[3] = (HashMap<String, Object>) tooltip.get("Element_003"); 
+		elements[4] = (HashMap<String, Object>) tooltip.get("Element_004"); 
+		elements[5] = (HashMap<String, Object>) tooltip.get("Element_005"); 
+		elements[6] = (HashMap<String, Object>) tooltip.get("Element_006"); 
+		elements[7] = (HashMap<String, Object>) tooltip.get("Element_007"); 
+		elements[8] = (HashMap<String, Object>) tooltip.get("Element_008"); 
+		elements[9] = (HashMap<String, Object>) tooltip.get("Element_009"); 
+		elements[10] = (HashMap<String, Object>) tooltip.get("Element_010"); 
+		elements[11] = (HashMap<String, Object>) tooltip.get("Element_011"); 
+		elements[12] = (HashMap<String, Object>) tooltip.get("Element_012"); 
+		
+		HashMap<String, Object> weapon_element = elements[0];
+		HashMap<String, Object> item_level_element = new HashMap<>();
+		HashMap<String, Object> new_refine_element = new HashMap<>();
+		HashMap<String, Object> limit_element = new HashMap<>();
+		HashMap<String, Object> elixir_element = new HashMap<>();
+		
+		for(HashMap<String, Object> searchHs : elements) {
+			item_level_element = findElementDt(searchHs,"아이템 레벨");
+			if(item_level_element.size()>0) {
+				break;
+			}
+		}
+		for(HashMap<String, Object> searchHs : elements) {
+			new_refine_element = findElementDt(searchHs,"상급 재련");
+			if(new_refine_element.size()>0) {
+				break;
+			}
+		}
+		for(HashMap<String, Object> searchHs : elements) {
+			limit_element = findElementDt(searchHs,"초월");
+			if(limit_element.size()>0) {
+				break;
+			}
+		}
+		for(HashMap<String, Object> searchHs : elements) {
+			elixir_element = findElementDt(searchHs,"엘릭서 효과");
+			if(elixir_element.size()>0) {
+				break;
+			}
+		}
+		
+		HashMap<String,Object> freshMap = new HashMap<>();
+		freshMap.put("weapon_element", weapon_element);
+		freshMap.put("item_level_element", item_level_element);
+		freshMap.put("new_refine_element", new_refine_element);
+		freshMap.put("limit_element", limit_element);
+		freshMap.put("elixir_element", elixir_element);
+		return freshMap;
+	}
+	
+	public static HashMap<String, Object> findElementDt(HashMap<String, Object> element,String keyword) {
+		HashMap<String, Object> findElement = new HashMap<>();
+		try {
+			if(element.toString().indexOf(keyword)>=0) {
+				findElement = element;
+			}
+		}catch(Exception e) {
+		}
+		
+		return findElement;
+	}
 
 }
