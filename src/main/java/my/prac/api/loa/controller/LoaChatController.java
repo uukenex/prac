@@ -126,7 +126,6 @@ public class LoaChatController {
 				if(param1!=null && !param1.equals("")) {
 					try {
 						val = equipmentSearch(param1);
-						//val = tttt(param1);
 					}catch (Exception e) {
 						val = errorCodeMng(e);
 					}
@@ -320,41 +319,6 @@ public class LoaChatController {
 		return retMsg;
 	}
 
-	
-	String tttt(String userId) throws Exception {
-		String ordUserId=userId;
-		userId = URLEncoder.encode(userId, "UTF-8");
-		// +는 %2B로 치환한다
-		String paramUrl = lostArkAPIurl + "/armories/characters/" + userId + "?filters=equipment";
-		String returnData = LoaApiUtils.connect_process(paramUrl);
-		HashMap<String, Object> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<Map<String, Object>>() {});
-
-		List<Map<String, Object>> armoryEquipment;
-		try {
-			armoryEquipment = (List<Map<String, Object>>) rtnMap.get("ArmoryEquipment");
-		}catch(Exception e){
-			throw new Exception("E0003");
-		}
-		
-		
-		for (Map<String, Object> equip : armoryEquipment) {
-			switch (equip.get("Type").toString()) {
-			case "무기":
-			case "투구":
-			case "상의":
-			case "하의":
-			case "장갑":
-			case "어깨":
-				HashMap<String, Object> tooltip = new ObjectMapper().readValue((String) equip.get("Tooltip"),new TypeReference<Map<String, Object>>() {});
-				HashMap<String, Object> maps = LoaApiParser.findElement(tooltip);
-				System.out.println(maps);
-			}
-		}
-		
-		return "";
-	}
-	
-	
 	String limitSearch(String userId) throws Exception {
 		String ordUserId=userId;
 		userId = URLEncoder.encode(userId, "UTF-8");
