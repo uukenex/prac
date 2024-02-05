@@ -111,6 +111,8 @@ public class LoaChatController {
 				if(param1!=null && !param1.equals("")) {
 					try {
 						val = equipmentSearch(param1);
+						val += gemSearch(param1);
+						val += engraveSearch(param1);
 					}catch (Exception e) {
 						val = errorCodeMng(e);
 					}
@@ -133,12 +135,6 @@ public class LoaChatController {
 				if(param1!=null && !param1.equals("")) {
 					val = weatherSearch(param1);
 				}
-				break;
-			case "/젬": 
-				val = gemSearch(param1);
-				break;
-			case "/각인": 
-				val = engraveSearch(param1);
 				break;
 			default:
 				break;
