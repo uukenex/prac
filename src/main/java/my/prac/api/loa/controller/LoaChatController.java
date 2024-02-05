@@ -134,7 +134,12 @@ public class LoaChatController {
 					val = weatherSearch(param1);
 				}
 				break;
-			
+			case "/젬": 
+				val = gemSearch(param1);
+				break;
+			case "/각인": 
+				val = engraveSearch(param1);
+				break;
 			default:
 				break;
 			
@@ -506,6 +511,77 @@ public class LoaChatController {
 		resMsg = resMsg + "</br>"+"↪악세평균품질 : "+avgQuality/5;
 		resMsg = resMsg + "</br>"+"↪세트 : "+setField;
 		resMsg = resMsg + "</br>"+"↪초월합 : " + totLmit + " 엘릭서합: " + totElixir + "(" + elixerField+")";
+		return resMsg;
+	}
+	
+	String engraveSearch(String userId) throws Exception {
+		String ordUserId=userId;
+		userId = URLEncoder.encode(userId, "UTF-8");
+		// +는 %2B로 치환한다
+		String paramUrl = lostArkAPIurl + "/armories/characters/" + userId + "/engravings";
+		String returnData = LoaApiUtils.connect_process(paramUrl);
+		HashMap<String, Object> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<Map<String, Object>>() {});
+
+
+		String resMsg="";
+		List<Map<String, Object>> engraves;
+		
+		try {
+			engraves = (List<Map<String, Object>>) rtnMap.get("Effects");
+		}catch(Exception e){
+			throw new Exception("E0003");
+		}
+		
+		List<String> engraveList = new ArrayList<>();
+		
+		for (Map<String, Object> engrave : engraves) {
+			int len = engrave.get("Name").toString().length();
+			String tmpEng = engrave.get("Name").toString().substring(0,1)+engrave.get("Name").toString().substring(len-1,len);
+			engraveList.add(tmpEng);
+		}
+		resMsg = resMsg + "</br>각인 : "+ engraveList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
+		
+		return resMsg;
+	}
+	
+	String gemSearch(String userId) throws Exception {
+		String ordUserId=userId;
+		userId = URLEncoder.encode(userId, "UTF-8");
+		// +는 %2B로 치환한다
+		String paramUrl = lostArkAPIurl + "/armories/characters/" + userId + "/gems";
+		String returnData = LoaApiUtils.connect_process(paramUrl);
+		HashMap<String, Object> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<Map<String, Object>>() {});
+
+
+		String[] gemList = {"멸화","홍염"};
+		List<Integer> equipGemDealList = new ArrayList<>();
+		List<Integer> equipGemCoolList = new ArrayList<>();
+		
+		List<Map<String, Object>> gems;
+		try {
+			gems = (List<Map<String, Object>>) rtnMap.get("Gems");
+		}catch(Exception e){
+			throw new Exception("E0003");
+		}
+		String resMsg = "";
+		for (Map<String, Object> gem : gems) {
+			String gemName = Jsoup.parse((String) gem.get("Name")).text();
+			for(String equipGem : gemList) {
+				if( gemName.indexOf(equipGem)>=0 ) {
+					if(equipGem.equals(gemList[0])) {
+						equipGemDealList.add((int)gem.get("Level"));
+					}else if(equipGem.equals(gemList[1])) {
+						equipGemCoolList.add((int)gem.get("Level"));
+					}
+				}
+			}
+		}
+		
+		Collections.sort(equipGemDealList,Collections.reverseOrder());
+		Collections.sort(equipGemCoolList,Collections.reverseOrder());
+		resMsg = resMsg + "</br>"+gemList[0]+" : "+ equipGemDealList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
+		resMsg = resMsg + "</br>"+gemList[1]+" : "+ equipGemCoolList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
+		
 		return resMsg;
 	}
 
