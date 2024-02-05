@@ -128,6 +128,17 @@ public class LoaChatController {
 					
 				}
 				break;	
+			case "/내실":
+				if(param1!=null && !param1.equals("")) {
+					try {
+						val = collectionSearch(param1);
+					}catch (Exception e) {
+						val = errorCodeMng(e);
+					}
+					
+				}
+				break;		
+				
 			case "/항협": case "/항해": case "/항해협동":
 				val = shipSearch();
 				break;
@@ -581,7 +592,32 @@ public class LoaChatController {
 		return resMsg;
 	}
 
-	
+	String collectionSearch(String userId) throws Exception {
+		String ordUserId=userId;
+		userId = URLEncoder.encode(userId, "UTF-8");
+		// +는 %2B로 치환한다
+		String paramUrl = lostArkAPIurl + "/armories/characters/" + userId + "/collectibles";
+		String returnData = LoaApiUtils.connect_process(paramUrl);
+		
+		String resMsg=ordUserId+" 내실 정보";
+		double point=0;
+		double maxPoint=0;
+		String type="";
+		
+		List<HashMap<String, Object>> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<List<Map<String, Object>>>() {});
+		for(HashMap<String,Object> rtn : rtnMap) {
+			System.out.println(rtn);
+			
+			type = rtn.get("Type").toString();
+			point = Double.parseDouble(rtn.get("Point").toString());
+			maxPoint =  Double.parseDouble(rtn.get("MaxPoint").toString()); 
+			
+			resMsg +="\n["+Math.round((point/maxPoint)*100)+"%]"+type + " ("+Math.round(point)+"/"+Math.round(maxPoint)+")";
+			
+		}
+		
+		return resMsg;
+	}
 	
 	
 	
