@@ -612,7 +612,7 @@ public class LoaChatController {
 			point = Double.parseDouble(rtn.get("Point").toString());
 			maxPoint =  Double.parseDouble(rtn.get("MaxPoint").toString()); 
 			
-			resMsg +="\n["+Math.round((point/maxPoint)*100)+"%]"+type + " ("+Math.round(point)+"/"+Math.round(maxPoint)+")";
+			resMsg +="</br>↪["+Math.round((point/maxPoint)*100)+"%]"+type + " ("+Math.round(point)+"/"+Math.round(maxPoint)+")";
 			
 		}
 		
