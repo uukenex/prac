@@ -535,7 +535,7 @@ public class LoaChatController {
 			String tmpEng = engrave.get("Name").toString().substring(0,1)+engrave.get("Name").toString().substring(len-1,len);
 			engraveList.add(tmpEng);
 		}
-		resMsg = resMsg + "</br>각인 : "+ engraveList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
+		resMsg = resMsg + "</br>↪각인 : "+ engraveList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
 		
 		return resMsg;
 	}
@@ -575,8 +575,8 @@ public class LoaChatController {
 		
 		Collections.sort(equipGemDealList,Collections.reverseOrder());
 		Collections.sort(equipGemCoolList,Collections.reverseOrder());
-		resMsg = resMsg + "</br>"+gemList[0]+" : "+ equipGemDealList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
-		resMsg = resMsg + "</br>"+gemList[1]+" : "+ equipGemCoolList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
+		resMsg = resMsg + "</br>↪"+gemList[0]+" : "+ equipGemDealList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
+		resMsg = resMsg + "</br>↪"+gemList[1]+" : "+ equipGemCoolList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
 		
 		return resMsg;
 	}
