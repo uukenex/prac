@@ -197,24 +197,25 @@ public class LoaChatController {
 					List<String> start_time_list = (List<String>)data_sub_list.get("StartTimes");
 					for(String time : start_time_list) {
 						if(time.equals(LoaApiUtils.StringToDate()+"T19:30:00")) {
-							retMsg1 = retMsg1 +data_sub_list.get("ContentsName").toString()+", ";
+							retMsg1 = retMsg1 +data_sub_list.get("ContentsName").toString()+" ";
 						}
 						if(time.equals(LoaApiUtils.StringToDate()+"T21:30:00")) {
-							retMsg2 = retMsg2 +data_sub_list.get("ContentsName").toString()+", ";
+							retMsg2 = retMsg2 +data_sub_list.get("ContentsName").toString()+" ";
 						}
 						if(time.equals(LoaApiUtils.StringToDate()+"T23:30:00")) {
-							retMsg3 = retMsg3 +data_sub_list.get("ContentsName").toString()+", ";
+							retMsg3 = retMsg3 +data_sub_list.get("ContentsName").toString()+" ";
 						}
 					}
 				}
 			}
 		}
 		
-		retMsg1 = "<br>(오후 7:30)"+ retMsg1;
-		retMsg2 = "<br>(오후 9:30)"+ retMsg2;
-		retMsg3 = "<br>(오후11:30)"+ retMsg3;
+		retMsg1 = "<br>(19:30)"+ retMsg1;
+		retMsg2 = "<br>(21:30)"+ retMsg2;
+		retMsg3 = "<br>(23:30)"+ retMsg3;
 		
 		retMsg = retMsg+retMsg1+retMsg2+retMsg3;
+		retMsg = retMsg.replaceAll("항해 협동 : ", "");
 		
 		return retMsg;
 	}
