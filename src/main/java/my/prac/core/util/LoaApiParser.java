@@ -178,14 +178,14 @@ public class LoaApiParser {
 		elements[12] = (HashMap<String, Object>) tooltip.get("Element_012"); 
 		
 		HashMap<String, Object> weapon_element = elements[0];
-		HashMap<String, Object> item_level_element = new HashMap<>();
+		HashMap<String, Object> quality_element = new HashMap<>();
 		HashMap<String, Object> new_refine_element = new HashMap<>();
 		HashMap<String, Object> limit_element = new HashMap<>();
 		HashMap<String, Object> elixir_element = new HashMap<>();
 		
 		for(HashMap<String, Object> searchHs : elements) {
-			item_level_element = findElementDt(searchHs,"아이템 레벨");
-			if(item_level_element.size()>0) {
+			quality_element = findElementDt(searchHs,"qualityValue");
+			if(quality_element.size()>0) {
 				break;
 			}
 		}
@@ -210,7 +210,7 @@ public class LoaApiParser {
 		
 		HashMap<String,Object> freshMap = new HashMap<>();
 		freshMap.put("weapon_element", weapon_element);
-		freshMap.put("item_level_element", item_level_element);
+		freshMap.put("quality_element", quality_element);
 		freshMap.put("new_refine_element", new_refine_element);
 		freshMap.put("limit_element", limit_element);
 		freshMap.put("elixir_element", elixir_element);

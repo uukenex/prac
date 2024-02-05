@@ -1,36 +1,21 @@
 package my.prac.api.loa.controller;
 
 import java.net.URLEncoder;
-import java.security.KeyManagementException;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
-import java.security.cert.CertificateException;
-import java.security.cert.X509Certificate;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import javax.net.ssl.HostnameVerifier;
-import javax.net.ssl.HttpsURLConnection;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLSession;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
+import java.util.logging.Logger;
 
 import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.w3c.dom.Document;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -410,12 +395,14 @@ public class LoaChatController {
 		List<String> equipSetList = new ArrayList<>();
 		List<String> equipElixirList = new ArrayList<>();
 		
-		String weaponQualityValue="";
+		int weaponQualityValue=0;
 		double armorQualityValue=0;
 		
 		double tmpLv=0;
 		double avgLv=0;
 		
+		double tmpQuality=0;
+		double avgQuality=0;
 		
 		String resMsg = ordUserId+" 장비정보";
 
@@ -428,8 +415,7 @@ public class LoaChatController {
 			HashMap<String, Object> tooltip = new ObjectMapper().readValue((String) equip.get("Tooltip"),new TypeReference<Map<String, Object>>() {});
 			HashMap<String, Object> maps = LoaApiParser.findElement(tooltip);
 			HashMap<String, Object> weapon_element = (HashMap<String, Object>)maps.get("weapon_element");
-			HashMap<String, Object> item_level_element = (HashMap<String, Object>)maps.get("item_level_element");
-			HashMap<String, Object> item_level_element_dt = new HashMap<>();
+			HashMap<String, Object> quality_element = (HashMap<String, Object>)maps.get("quality_element");
 			HashMap<String, Object> new_refine_element = (HashMap<String, Object>)maps.get("new_refine_element");
 			HashMap<String, Object> limit_element = (HashMap<String, Object>)maps.get("limit_element");
 			HashMap<String, Object> elixir_element = (HashMap<String, Object>)maps.get("elixir_element");
@@ -449,10 +435,8 @@ public class LoaChatController {
 					}
 				}
 				
-				item_level_element_dt = (HashMap<String, Object>) item_level_element.get("value");
-				
 				/* 아이템레벨 */
-				tmpLv = Integer.parseInt(Jsoup.parse((String) item_level_element_dt.get("leftStr2")).text().replaceAll("[^0-9]|[0-9]\\)$", ""));
+				tmpLv = Integer.parseInt(Jsoup.parse((String) ((HashMap<String, Object>) quality_element.get("value")).get("leftStr2")).text().replaceAll("[^0-9]|[0-9]\\)$", ""));
 				avgLv = avgLv+tmpLv;
 				
 				/* 아이템레벨 */
@@ -466,7 +450,7 @@ public class LoaChatController {
 			switch (equip.get("Type").toString()) {
 			case "무기":
 				/* 무기품질 */
-				weaponQualityValue = item_level_element_dt.get("qualityValue").toString();
+				weaponQualityValue = (int)((HashMap<String, Object>) quality_element.get("value")).get("qualityValue");
 				if(new_refine_element.size()>0) {
 					newEnhanceInfo = Jsoup.parse((String) new_refine_element.get("value")).text();
 					newEnhanceInfo = LoaApiUtils.filterText(newEnhanceInfo);
@@ -480,6 +464,10 @@ public class LoaChatController {
 				totLmit = LoaApiParser.parseLimit(limit_element);
 				//엘릭서
 				totElixir +=LoaApiParser.parseElixirForEquip(equipElixirList, elixir_element);
+				break;
+			case "반지":case "귀걸이": case "목걸이":
+				tmpQuality =(int)((HashMap<String, Object>) quality_element.get("value")).get("qualityValue");
+				avgQuality += tmpQuality;
 				break;
 			default:
 			continue;
@@ -515,7 +503,7 @@ public class LoaChatController {
 		if(!newEnhanceInfo.equals("")) {
 			resMsg = resMsg + "</br>"+"↪무기 "+newEnhanceInfo; 
 		}
-		
+		resMsg = resMsg + "</br>"+"↪악세평균품질 : "+avgQuality/5;
 		resMsg = resMsg + "</br>"+"↪세트 : "+setField;
 		resMsg = resMsg + "</br>"+"↪초월합 : " + totLmit + " 엘릭서합: " + totElixir + "(" + elixerField+")";
 		return resMsg;
@@ -537,10 +525,18 @@ public class LoaChatController {
 			String cur_temp = doc.select(".weather_info ._today .temperature_text strong").text();
 			String weather = doc.select(".weather_info ._today .before_slash").text();
 			String diff_temp = doc.select(".weather_info ._today .temperature_info .temperature").text();// 어제와 온도차이
+			
+			String v1_text = doc.select(".weather_info ._today .summary_list .sort:eq(0) .term").text();
+			String v2_text = doc.select(".weather_info ._today .summary_list .sort:eq(1) .term").text();
+			String v3_text = doc.select(".weather_info ._today .summary_list .sort:eq(2) .term").text();
+			String v4_text = doc.select(".weather_info ._today .summary_list .sort:eq(3) .term").text();
+			
 			String v1 = doc.select(".weather_info ._today .summary_list .sort:eq(0) .desc").text();// 체감
 			String v2 = doc.select(".weather_info ._today .summary_list .sort:eq(1) .desc").text();// 습도
 			String v3 = doc.select(".weather_info ._today .summary_list .sort:eq(2) .desc").text();// 풍속
+			String v4 = doc.select(".weather_info ._today .summary_list .sort:eq(3) .desc").text();// 
 			
+			//v 체감 강수 습도 북동풍 
 			
 			if(cur_temp.equals("")) {
 				return errMsg;
@@ -548,9 +544,12 @@ public class LoaChatController {
 			
 			retMsg += "오늘날씨 : " + weather;
 			retMsg += "</br>↪현재온도 : " + cur_temp;
-			retMsg += "</br>↪체감온도 : " + v1;
-			retMsg += "</br>↪습도 : " + v2;
-			retMsg += "</br>↪풍속 : " + v3;
+			retMsg += "</br>↪"+v1_text+" : " + v1;
+			retMsg += "</br>↪"+v2_text+" : " + v2;
+			retMsg += "</br>↪"+v3_text+" : " + v3;
+			if(v4!=null && !v4.equals("")) {
+				retMsg += "</br>↪"+v4_text+" : " + v4;
+			}
 			retMsg += "</br>↪현재 " + area + "의 온도는 " + cur_temp + " 이며 어제보다 " + diff_temp;
 		} catch (Exception e) {
 			e.printStackTrace();
