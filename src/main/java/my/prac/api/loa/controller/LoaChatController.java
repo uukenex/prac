@@ -77,6 +77,9 @@ public class LoaChatController {
 			case "/퇴근":
 				val = "쥰내 신나는 텍스트";
 				break;
+			case "/도륙이냥":
+				val = "카단은 최고 미남입니다";
+				break;	
 
 			}
 		}else if(roomName.equals("내 갈길 간다")) {
