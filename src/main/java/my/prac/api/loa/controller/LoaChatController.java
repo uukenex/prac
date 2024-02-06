@@ -610,6 +610,7 @@ public class LoaChatController {
 			System.out.println(rtn);
 			
 			type = rtn.get("Type").toString();
+			type = type.replaceAll(" 씨앗", "");
 			point = Double.parseDouble(rtn.get("Point").toString());
 			maxPoint =  Double.parseDouble(rtn.get("MaxPoint").toString()); 
 			
