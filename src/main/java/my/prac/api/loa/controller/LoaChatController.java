@@ -129,17 +129,20 @@ public class LoaChatController {
 			case "/단어추가":
 				
 				try {
-					if (fulltxt.indexOf("=") >= 0) {
+					if (fulltxt.indexOf("=") < 0) {
+						val = "단어등록 실패!, =을 포함해주세요";
+					}else if (fulltxt.indexOf(">") >= 0 || fulltxt.indexOf("<") >= 0) {
+						val = "단어등록 실패!, 특수문자 안되요!";
+					}else {
 						String[] txtList;
 						fulltxt = fulltxt.substring(param0.length()).trim();
 						txtList = fulltxt.split("=");
 						reqMap.put("req", txtList[0]);
 						reqMap.put("res", txtList[1]);
+						
 						botService.insertBotWordSaveTx(reqMap);
 						val = "단어등록 완료!";
-					} else {
-						val = "단어등록 실패!, =을 포함해주세요";
-					}
+					} 
 				} catch (Exception e) {
 					val = "단어등록 실패!";
 				}
