@@ -16,7 +16,7 @@ public class BotServiceImpl implements BotService {
 	@Resource(name = "core.prjbot.BotDAO")
 	BotDAO botDAO;
 	
-	public void insertBotWordSave(HashMap<String, Object> hashMap) {
+	public void insertBotWordSaveTx(HashMap<String, Object> hashMap) throws Exception{
 		if(botDAO.insertBotWordSave(hashMap)< 1) {
 			throw new Exception("저장 실패");
 		}

@@ -27,7 +27,7 @@
 		SELECT RES
 		  FROM (SELECT *
 				FROM TBOT_WORD_SAVE A
-			    WHERE A.REQ = #{req, jdbcType=VARCHAR}
+			    WHERE A.REQ = '/'||#{param0, jdbcType=VARCHAR}
 				 AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 			     AND A.LIMIT_YN = '0'
 			    ORDER BY DBMS_RANDOM.VALUE)
@@ -36,7 +36,7 @@
 	
 	<select id="selectBotWordSaveAll" parameterType="hashMap" resultType="String" >
 		/* bot.xml selectBotWordSaveAll */
-		SELECT A.REQ || ' : ' || A.RES
+		SELECT '/'||A.REQ || ' : ' || A.RES
 		  FROM TBOT_WORD_SAVE A
 		 WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 		   AND A.LIMIT_YN = '0'

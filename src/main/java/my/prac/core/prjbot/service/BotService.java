@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.List;
 
 public interface BotService {
-	public void insertBotWordSaveTx(HashMap<String, Object> hashMap);
+	public void insertBotWordSaveTx(HashMap<String, Object> hashMap)  throws Exception;
 
 	public String selectBotWordSaveOne(HashMap<String, Object> hashMap);
 	

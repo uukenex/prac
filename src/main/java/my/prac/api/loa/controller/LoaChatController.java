@@ -6,6 +6,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import javax.annotation.Resource;
+
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.slf4j.Logger;
@@ -19,6 +21,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import my.prac.core.prjbot.service.BotService;
 import my.prac.core.util.LoaApiParser;
 import my.prac.core.util.LoaApiUtils;
 
@@ -27,6 +30,9 @@ import my.prac.core.util.LoaApiUtils;
 public class LoaChatController {
 	static Logger logger = LoggerFactory.getLogger(LoaChatController.class);
 
+	@Resource(name = "core.prjbot.BotService")
+	BotService botService;
+	
 	// final String lostArkAPIurl =
 	// "https://developer-lostark.game.onstove.com/armories/characters/일어난다람쥐/equipment";
 	final String lostArkAPIurl = "https://developer-lostark.game.onstove.com";
@@ -35,12 +41,19 @@ public class LoaChatController {
 	public @ResponseBody Map<String, Object> chatApplication(
 			@RequestParam(required = true)  String param0,
 			@RequestParam(required = false) String param1,
-			@RequestParam(required = true) String room) {
+			@RequestParam(required = false) String param2,
+			@RequestParam(required = true) String room,
+			@RequestParam(required = true) String sender
+			) {
 		
 
 		try {
-			System.out.println(param0 + " " + param1);
-			String val = autoResponse(param0,param1,room);
+			System.out.println(param0 + " " + param1+ " " + param2+ " " + room+ " " + sender);
+			String val = autoResponse(param0,param1,param2,room,sender);
+			if(sender.equals("람쥐봇")) {
+				return null;
+			}
+			
 			if(val!=null&&!val.equals("")) {
 				HashMap<String, Object> rtnMap = new HashMap<>();
 				rtnMap.put("data", val);
@@ -55,9 +68,16 @@ public class LoaChatController {
 	}
 
 	//roomName은 https://cafe.naver.com/msgbot/2067 수정본 참조
-	String autoResponse(String param0,String param1,String roomName) throws Exception {
+	String autoResponse(String param0,String param1,String param2,String roomName,String sender) throws Exception {
 		String val="";
 		int randNum;
+		HashMap<String,Object> reqMap = new HashMap<>();
+		reqMap.put("param0", param0);
+		reqMap.put("req", param1);
+		reqMap.put("res", param2);
+		reqMap.put("roomName", roomName);
+		reqMap.put("userName", sender);
+		
 		
 		if(roomName.equals("로아냥떼")) {
 			switch (param0) {
@@ -103,6 +123,27 @@ public class LoaChatController {
 			case "/돔돔": case "/돔돔쨩":
 				val = "비실이 아냐";
 				break;
+			}
+		}else if(roomName.equals("test123")) {
+			switch (param0) {
+				case "/단어등록":
+					try {
+						botService.insertBotWordSaveTx(reqMap);
+						val ="단어등록 완료!";
+					}catch (Exception e) {
+						val = "단어등록 실패!";
+					}
+					
+					break;
+				case "/단어조회":
+					List<String> wordList = botService.selectBotWordSaveAll(reqMap);
+					for(String word : wordList) {
+						val = "</br>"+val+word;
+					}
+					break;
+				default:
+					val = botService.selectBotWordSaveOne(reqMap);
+					break;
 			}
 		}
 		
