@@ -126,15 +126,21 @@ public class LoaChatController {
 				break;
 				
 			case "/단어등록":
-				try {
-					botService.insertBotWordSaveTx(reqMap);
-					val = "단어등록 완료!";
-				}catch (Exception e) {
-					val = "단어등록 실패!";
+			case "/단어추가":
+				if(param1 == null || param1.trim().equals("") || param1.equals("undefined")
+				 ||param2 == null || param2.trim().equals("") || param2.equals("undefined")) {
+					val="";
+				}else {
+					try {
+						botService.insertBotWordSaveTx(reqMap);
+						val = "단어등록 완료!";
+					}catch (Exception e) {
+						val = "단어등록 실패!";
+					}
 				}
-				
 				break;
 			case "/단어목록":
+			case "/단어조회":
 				List<String> wordList = botService.selectBotWordSaveAll(reqMap);
 				val = "단어목록:";
 				for(String word : wordList) {
