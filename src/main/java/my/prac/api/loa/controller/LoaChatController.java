@@ -79,73 +79,6 @@ public class LoaChatController {
 		reqMap.put("userName", sender);
 		
 		
-		if(roomName.equals("로아냥떼")) {
-			switch (param0) {
-
-			case "/택티컬모코코":
-				val = "사라진 길드원입니다";
-				break;
-			case "/두목":
-				val = "용인피주먹";
-				break;
-			case "/우고":
-				val = "도굴단장";
-				break;
-			case "/도굴단장":
-				val = "우고";
-				break;
-			case "/퇴근":
-				val = "쥰내 신나는 텍스트";
-				break;
-			case "/도륙이냥":
-				val = "카단은 최고 미남입니다";
-				break;	
-
-			}
-		}else if(roomName.equals("내 갈길 간다")) {
-			switch (param0) {
-			
-			case "/비실": case "/비실이":
-				randNum = (int) (Math.random() * 10);
-				switch (randNum) {
-				case 0: case 1:
-					val = "안넣어두대!";
-					break;
-				case 2: case 3:	case 4:	case 5:
-					val = "아니거든요";
-					break;
-				case 6:	case 7:	case 8:	case 9:
-					val = "아닌데";
-					break;
-				}
-
-				break;
-			case "/돔돔": case "/돔돔쨩":
-				val = "비실이 아냐";
-				break;
-			}
-		}else if(roomName.equals("test123")) {
-			switch (param0) {
-				case "/단어등록":
-					try {
-						botService.insertBotWordSaveTx(reqMap);
-						val ="단어등록 완료!";
-					}catch (Exception e) {
-						val = "단어등록 실패!";
-					}
-					
-					break;
-				case "/단어조회":
-					List<String> wordList = botService.selectBotWordSaveAll(reqMap);
-					for(String word : wordList) {
-						val = "</br>"+val+word;
-					}
-					break;
-				default:
-					val = botService.selectBotWordSaveOne(reqMap);
-					break;
-			}
-		}
 		
 		switch (param0) {
 			case "/모험섬":
@@ -191,9 +124,26 @@ public class LoaChatController {
 					val = weatherSearch(param1);
 				}
 				break;
-			default:
+				
+			case "/단어등록":
+				try {
+					botService.insertBotWordSaveTx(reqMap);
+					val ="단어등록 완료!";
+				}catch (Exception e) {
+					val = "단어등록 실패!";
+				}
+				
 				break;
-			
+			case "/단어목록":
+				List<String> wordList = botService.selectBotWordSaveAll(reqMap);
+				val = "단어목록:";
+				for(String word : wordList) {
+					val = "</br>"+val+word;
+				}
+				break;
+			default:
+				val = botService.selectBotWordSaveOne(reqMap);
+				break;
 		}
 		
 		return val;
