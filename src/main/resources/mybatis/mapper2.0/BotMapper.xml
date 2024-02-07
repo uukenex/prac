@@ -14,7 +14,7 @@
 			 ,INSERT_DATE
 			 ,LIMIT_YN)
 		VALUES
-			 (#{req, jdbcType=VARCHAR}
+			 ('/'||#{req, jdbcType=VARCHAR}
 			 ,#{res, jdbcType=VARCHAR}
 			 ,#{roomName, jdbcType=VARCHAR}
 			 ,#{userName, jdbcType=VARCHAR}

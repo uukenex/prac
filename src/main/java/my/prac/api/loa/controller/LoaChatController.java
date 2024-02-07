@@ -128,7 +128,7 @@ public class LoaChatController {
 			case "/단어등록":
 				try {
 					botService.insertBotWordSaveTx(reqMap);
-					val ="단어등록 완료!";
+					val = "단어등록 완료!";
 				}catch (Exception e) {
 					val = "단어등록 실패!";
 				}
@@ -138,7 +138,7 @@ public class LoaChatController {
 				List<String> wordList = botService.selectBotWordSaveAll(reqMap);
 				val = "단어목록:";
 				for(String word : wordList) {
-					val = "</br>"+val+word;
+					val = val + "</br>" + word;
 				}
 				break;
 			default:
