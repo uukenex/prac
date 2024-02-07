@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="my.prac.core.prjbot.dao.BotDAO">
+	<insert id="insertBotWordSave" parameterType="hashMap">
+		/* bot.xml insertBotWordSave */
+		INSERT INTO TBOT_WORD_SAVE
+			 (REQ
+			 ,RES
+			 ,ROOM_NAME
+			 ,USER_NAME
+			 ,INSERT_DATE
+			 ,LIMIT_YN)
+		VALUES
+			 (#{req, jdbcType=VARCHAR}
+			 ,#{res, jdbcType=VARCHAR}
+			 ,#{roomName, jdbcType=VARCHAR}
+			 ,#{userName, jdbcType=VARCHAR}
+			 ,SYSDATE
+			 ,'0')
+    </insert>
+    
+    <select id="selectBotWordSaveOne" parameterType="hashMap" resultType="String" >
+		/* bot.xml selectBotWordSaveOne */
+		SELECT RES
+		  FROM (SELECT *
+				FROM TBOT_WORD_SAVE A
+			    WHERE A.REQ = #{req, jdbcType=VARCHAR}
+				 AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+			     AND A.LIMIT_YN = '0'
+			    ORDER BY DBMS_RANDOM.VALUE)
+		 WHERE ROWNUM = 1
+	</select>
+	
+	<select id="selectBotWordSaveAll" parameterType="hashMap" resultType="String" >
+		/* bot.xml selectBotWordSaveAll */
+		SELECT A.REQ || ' : ' || A.RES
+		  FROM TBOT_WORD_SAVE A
+		 WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+		   AND A.LIMIT_YN = '0'
+		 ORDER BY REQ
+	</select>
+	
+</mapper>
