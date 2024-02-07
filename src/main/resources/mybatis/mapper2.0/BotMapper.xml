@@ -13,13 +13,17 @@
 			 ,USER_NAME
 			 ,INSERT_DATE
 			 ,LIMIT_YN)
-		VALUES
-			 ('/'||#{req, jdbcType=VARCHAR}
-			 ,#{res, jdbcType=VARCHAR}
-			 ,#{roomName, jdbcType=VARCHAR}
-			 ,#{userName, jdbcType=VARCHAR}
-			 ,SYSDATE
-			 ,'0')
+		SELECT '/'||#{req, jdbcType=VARCHAR}
+			  ,#{res, jdbcType=VARCHAR}
+			  ,#{roomName, jdbcType=VARCHAR}
+			  ,#{userName, jdbcType=VARCHAR}
+			  ,SYSDATE
+			  ,'0'
+		  FROM DUAL
+		 WHERE NOT EXISTS (SELECT * 
+		 					 FROM TBOT_WORD_SAVE C 
+		 					WHERE C.REQ = '/'||#{req, jdbcType=VARCHAR}
+		 					  AND C.LIMIT_YN = '1')
     </insert>
     
     <select id="selectBotWordSaveOne" parameterType="hashMap" resultType="String" >
