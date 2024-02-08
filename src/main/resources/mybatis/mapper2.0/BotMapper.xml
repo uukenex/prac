@@ -47,4 +47,16 @@
 		 ORDER BY REQ
 	</select>
 	
+	<delete id="deleteBotWordSave" parameterType="hashMap">
+		/* bot.xml deleteBotWordSave */
+		DELETE FROM TBOT_WORD_SAVE A
+		 WHERE A.REQ = '/'||#{req, jdbcType=VARCHAR}
+		   AND A.RES = #{res, jdbcType=VARCHAR}
+		  <if test="manager != 'Y'">		
+		   AND A.USER_NAME = #{userName, jdbcType=VARCHAR}
+		  </if>
+		   AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+		   AND A.LIMIT_YN = '0'
+	</delete>
+	
 </mapper>

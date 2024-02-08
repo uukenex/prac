@@ -78,6 +78,13 @@ public class LoaChatController {
 		reqMap.put("roomName", roomName);
 		reqMap.put("userName", sender);
 		
+		if(sender.equals("전태환")) {
+			reqMap.put("manager", "Y");
+		}else if(sender.equals("일어난다람쥐/카단")) {
+			reqMap.put("manager", "Y");
+		}else {
+			reqMap.put("manager", "N");
+		}
 		
 		
 		switch (param0) {
@@ -145,6 +152,27 @@ public class LoaChatController {
 					} 
 				} catch (Exception e) {
 					val = "단어등록 실패!";
+				}
+				break;
+			case "/단어제거":
+			case "/단어삭제":
+				try {
+					if (fulltxt.indexOf("=") < 0) {
+						val = "단어삭제 실패!, =을 포함해주세요";
+					}else if (fulltxt.indexOf(">") >= 0 || fulltxt.indexOf("<") >= 0) {
+						val = "단어삭제 실패!, 특수문자 안되요!";
+					}else {
+						String[] txtList;
+						fulltxt = fulltxt.substring(param0.length()).trim();
+						txtList = fulltxt.split("=");
+						reqMap.put("req", txtList[0]);
+						reqMap.put("res", txtList[1]);
+						
+						botService.deleteBotWordSaveTx(reqMap);
+						val = "단어삭제 완료!";
+					} 
+				} catch (Exception e) {
+					val = "단어삭제 실패!";
 				}
 				break;
 			case "/단어목록":

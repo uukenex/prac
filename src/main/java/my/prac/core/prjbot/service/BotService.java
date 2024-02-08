@@ -9,6 +9,8 @@ public interface BotService {
 	public String selectBotWordSaveOne(HashMap<String, Object> hashMap);
 	
 	public List<String> selectBotWordSaveAll(HashMap<String, Object> hashMap);
+	
+	public void deleteBotWordSaveTx(HashMap<String, Object> hashMap)  throws Exception;
 }
 
 	
