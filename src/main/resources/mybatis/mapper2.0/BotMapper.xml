@@ -52,7 +52,7 @@
 		DELETE FROM TBOT_WORD_SAVE A
 		 WHERE A.REQ = '/'||#{req, jdbcType=VARCHAR}
 		   AND A.RES = #{res, jdbcType=VARCHAR}
-		  <if test="manager != 'Y'">		
+		  <if test="manager != '1'">		
 		   AND A.USER_NAME = #{userName, jdbcType=VARCHAR}
 		  </if>
 		   AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
