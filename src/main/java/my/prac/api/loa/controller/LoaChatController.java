@@ -79,11 +79,11 @@ public class LoaChatController {
 		reqMap.put("userName", sender);
 		
 		if(sender.equals("전태환")) {
-			reqMap.put("manager", "Y");
+			reqMap.put("manager", "1");
 		}else if(sender.equals("일어난다람쥐/카단")) {
-			reqMap.put("manager", "Y");
+			reqMap.put("manager", "1");
 		}else {
-			reqMap.put("manager", "N");
+			reqMap.put("manager", "0");
 		}
 		
 		
