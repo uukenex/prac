@@ -13,6 +13,7 @@ public interface BotDAO {
 	
 	public List<String> selectBotWordSaveAll(HashMap<String, Object> hashMap);
 
+	public int deleteBotWordSaveMaster(HashMap<String, Object> hashMap);
 	public int deleteBotWordSave(HashMap<String, Object> hashMap);
 	
 

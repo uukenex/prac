@@ -29,7 +29,11 @@ public class BotServiceImpl implements BotService {
 	public List<String> selectBotWordSaveAll(HashMap<String, Object> hashMap){
 		return botDAO.selectBotWordSaveAll(hashMap);
 	}
-
+	public void deleteBotWordSaveMasterTx(HashMap<String, Object> hashMap) throws Exception{
+		if(botDAO.deleteBotWordSaveMaster(hashMap)< 1) {
+			throw new Exception("저장 실패");
+		}
+	}
 	public void deleteBotWordSaveTx(HashMap<String, Object> hashMap) throws Exception{
 		if(botDAO.deleteBotWordSave(hashMap)< 1) {
 			throw new Exception("저장 실패");

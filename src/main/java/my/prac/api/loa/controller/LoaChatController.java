@@ -78,15 +78,6 @@ public class LoaChatController {
 		reqMap.put("roomName", roomName);
 		reqMap.put("userName", sender);
 		
-		if(sender.equals("전태환")) {
-			reqMap.put("manager", "1");
-		}else if(sender.equals("일어난다람쥐/카단")) {
-			reqMap.put("manager", "1");
-		}else {
-			reqMap.put("manager", "0");
-		}
-		
-		
 		switch (param0) {
 			case "/모험섬":
 				val = calendarSearch();
@@ -168,7 +159,21 @@ public class LoaChatController {
 						reqMap.put("req", txtList[0]);
 						reqMap.put("res", txtList[1]);
 						
-						botService.deleteBotWordSaveTx(reqMap);
+						boolean master_flag =false;
+						if(sender.equals("전태환")) {
+							master_flag = true;
+						}else if(sender.equals("일어난다람쥐/카단")) {
+							master_flag = true;
+						}else {
+							master_flag = false;
+						}
+						
+						if(master_flag) {
+							botService.deleteBotWordSaveMasterTx(reqMap);
+						}else {
+							botService.deleteBotWordSaveTx(reqMap);
+						}
+						
 						val = "단어삭제 완료!";
 					} 
 				} catch (Exception e) {

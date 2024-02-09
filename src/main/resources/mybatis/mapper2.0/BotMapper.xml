@@ -47,14 +47,20 @@
 		 ORDER BY REQ
 	</select>
 	
+	<delete id="deleteBotWordSaveMaster" parameterType="hashMap">
+		/* bot.xml deleteBotWordSaveMaster */
+		DELETE FROM TBOT_WORD_SAVE A
+		 WHERE A.REQ = '/'||#{req, jdbcType=VARCHAR}
+		   AND A.RES = #{res, jdbcType=VARCHAR}
+		   AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+		   AND A.LIMIT_YN = '0'
+	</delete>
 	<delete id="deleteBotWordSave" parameterType="hashMap">
 		/* bot.xml deleteBotWordSave */
 		DELETE FROM TBOT_WORD_SAVE A
 		 WHERE A.REQ = '/'||#{req, jdbcType=VARCHAR}
 		   AND A.RES = #{res, jdbcType=VARCHAR}
-		  <if test="manager != '1'">		
 		   AND A.USER_NAME = #{userName, jdbcType=VARCHAR}
-		  </if>
 		   AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 		   AND A.LIMIT_YN = '0'
 	</delete>
