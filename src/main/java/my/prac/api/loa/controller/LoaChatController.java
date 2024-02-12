@@ -348,7 +348,7 @@ public class LoaChatController {
 			}
 		}
 		
-		if(cnt>=6) {
+		if(cnt>=4) {
 			retMsg1 = "</br>☆(오전)"+ retMsg1;
 			retMsg2 = "</br>★(오후)"+ retMsg2;
 		}
