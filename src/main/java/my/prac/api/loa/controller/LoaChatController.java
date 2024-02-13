@@ -100,6 +100,7 @@ public class LoaChatController {
 				val = list;
 				break;
 			case "/줘":
+				param0=param0.substring(1);
 				val = "imgwww.dev-apc.com"+URLEncoder.encode(param0, "UTF-8");
 				break;
 			case "/모험섬":

@@ -23,30 +23,7 @@
 	</head> 
 	<body>
 		<div id="div_load_image">
-	      <img id="load_image" src="<%=request.getContextPath()%>/img_loa/<%=request.getAttribute("imgval")%>.png">
+	      <img id="load_image" style="width='100%' height='100%'" src="<%=request.getContextPath()%>/img_loa/<%=request.getAttribute("imgval")%>.png">
 	    </div>
-	    <script src="<%=request.getContextPath() %>/assets/js/jquery.min.js"></script>
-		<script>
-		$('#load_image').css('width','100%');
-		$('#load_image').css('height','100%');
-		$(document).on("ready", function() {
-			//window.location.href = '/free';
-		});
-		</script>
-		<style>
-			#div_load_image {
-				position:absolute;
-				width:100%;
-				height:70%; 
-				z-index:9999; 
-				background:#FFFFFF; 
-				padding:0px; 
-				text-align:center;
-				margin-top: 0%;
-				left: 0px;
-			}
-			
-		</style>
-		
 	</body>
 </html>
