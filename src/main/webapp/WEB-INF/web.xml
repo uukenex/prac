@@ -50,6 +50,14 @@
 	</servlet-mapping>
 
 	<filter>
+		<filter-name>urlFilter</filter-name>
+		<filter-class>my.prac.core.util.urlFilter</filter-class>
+	</filter>
+	<filter-mapping>
+		<filter-name>urlFilter</filter-name>
+		<url-pattern>/*</url-pattern>
+	</filter-mapping>
+	<filter>
 		<filter-name>encodingFilter</filter-name>
 		<filter-class>org.springframework.web.filter.CharacterEncodingFilter</filter-class>
 		<init-param>
@@ -77,6 +85,10 @@
 	<error-page>
 		<error-code>405</error-code>
 		<location>/WEB-INF/view/error_page/405.jsp</location>
+	</error-page>
+	<error-page>
+		<error-code>600</error-code>
+		<location>/WEB-INF/view/error_page/600empty.jsp</location>
 	</error-page>
 	<welcome-file-list>
 		<!-- 아래 jsp를 사용하려면 request.getAttribute의 값이 필요함.... -->

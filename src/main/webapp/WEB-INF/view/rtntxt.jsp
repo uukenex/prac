@@ -14,7 +14,7 @@
 <html>
 	<head>
 		<meta charset="utf-8">
-		<title>now loading....</title>
+		<title><%=request.getParameter("param0")%></title>
 		<!-- <meta property="og:url" content="링크걸 주소(ex : http://www.naver.com)"> -->
 		<meta property="og:title" content="<%=request.getParameter("param0")%>">  
 		<meta property="og:type" content="website">
