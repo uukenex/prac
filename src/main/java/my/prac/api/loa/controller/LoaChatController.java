@@ -103,7 +103,7 @@ public class LoaChatController {
 				
 				Random random2 = new Random();
 				param0=param0.substring(1);
-				val = "imgwww.dev-apc.com/"+URLEncoder.encode(param0, "UTF-8")+"v="+random2.nextInt(100);
+				val = "imgwww.dev-apc.com/"+URLEncoder.encode(param0, "UTF-8")+"?v="+random2.nextInt(100);
 				break;
 			case "/모험섬":
 				val = calendarSearch();
