@@ -132,6 +132,9 @@ public class LoaChatController {
 			list += "</br>/단어등록 /단어추가";
 			list += "</br>/단어조회 /단어목록";
 			list += "</br>/단어삭제 /단어제거";
+			list += "</br>/이모티콘 /이모티콘리스트";
+			list += "</br>/임티 /임티리스트";
+			list += "</br>/명령어 /명령어리스트";
 			val = list;
 			break;
 		case "/모험섬":
