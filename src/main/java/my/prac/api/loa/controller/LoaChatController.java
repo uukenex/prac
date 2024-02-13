@@ -1,4 +1,5 @@
 package my.prac.api.loa.controller;
+import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -84,183 +85,224 @@ public class LoaChatController {
 		reqMap.put("roomName", roomName);
 		reqMap.put("userName", sender);
 		
-		Random imgrand = new Random();
-		
-		switch (param0) {
-			case "/명령어":
-				String list = "명렁어리스트";
-				list +="</br>/모험섬";
-				list +="</br>/장비";
-				list +="</br>/초월";
-				list +="</br>/내실";
-				list +="</br>/항협 /항해 /항해협동";
-				list +="</br>/날씨";
-				list +="</br>/저메추";
-				list +="</br>/단어등록 /단어추가";
-				list +="</br>/단어조회 /단어목록";
-				list +="</br>/단어삭제 /단어제거";
-				val = list;
-				break;
-			case "[힝잉잉로아콘":
-			case "[힝잉잉":
-			case "[힝":
-			case "[힝구":
-				val = "imgwww.dev-apc.com/"+URLEncoder.encode("힝잉잉", "UTF-8")+"?v="+imgrand.nextInt(100);
-				break;	
-			case "[빠직":
-			case "[빠":
-			case "[빠직로아콘":
-				val = "imgwww.dev-apc.com/"+URLEncoder.encode("빠직", "UTF-8")+"?v="+imgrand.nextInt(100);
-				break;	
-			case "[줘":
-			case "[해줘":
-			case "[해줘로아콘":
-				val = "imgwww.dev-apc.com/"+URLEncoder.encode("줘", "UTF-8")+"?v="+imgrand.nextInt(100);
-				break;
-			case "[택모":
-			case "[택티컬모코코":
-				val = "imgwww.dev-apc.com/"+URLEncoder.encode("택모", "UTF-8")+"?v="+imgrand.nextInt(100);
-				break;
-			case "[츄릅콩":
-			case "[츄":
-			case "[츄릅":
-				val = "imgwww.dev-apc.com/"+URLEncoder.encode("츄릅콩", "UTF-8")+"?v="+imgrand.nextInt(100);
-				break;
-			case "[추천":
-			case "[추":
-			case "[추천이요":
-				val = "imgwww.dev-apc.com/"+URLEncoder.encode("추천이요", "UTF-8")+"?v="+imgrand.nextInt(100);
-				break;
-			case "[호":
-			case "[호에엥":
-				val = "imgwww.dev-apc.com/"+URLEncoder.encode("호에엥", "UTF-8")+"?v="+imgrand.nextInt(100);
-				break;
-			case "/모험섬":
-				val = calendarSearch();
-				break;
-			case "/장비":
-				if(param1!=null && !param1.equals("")) {
-					try {
-						val = equipmentSearch(param1);
-						val += gemSearch(param1);
-						val += engraveSearch(param1);
-					}catch (Exception e) {
-						val = errorCodeMng(e);
-					}
-				}
-				break;
-			case "/초월":
-				if(param1!=null && !param1.equals("")) {
-					try {
-						val = limitSearch(param1);
-					}catch (Exception e) {
-						val = errorCodeMng(e);
-					}
-					
-				}
-				break;	
-			case "/내실":
-				if(param1!=null && !param1.equals("")) {
-					try {
-						val = collectionSearch(param1);
-					}catch (Exception e) {
-						val = errorCodeMng(e);
-					}
-					
-				}
-				break;		
-				
-			case "/항협": case "/항해": case "/항해협동":
-				val = shipSearch();
-				break;
-			case "/날씨":
-				if(param1!=null && !param1.equals("")) {
-					val = weatherSearch(param1);
-				}
-				break;
-			case "/저메추":
-				String [] menu_list= {"피자","탕수육","치킨","샐러드","마라탕"
-						,"양꼬치","삼겹살","설렁탕","김치찌개","된장찌개","삼치튀김"
-						,"참치마요","회","육회비빔밥","냉면","카레","돈까스","제육볶음","오징어볶음"
-						,"떡볶이","굶기","초밥","햄버거","짜장면","빵","파스타","닭발","쭈꾸미","낙지덮밥"
-						,"라면","짜계치","스팸과 흰밥","간장계란밥","간장게장","참치회","죽","흰밥","감자탕"};
-				Random random = new Random();
-				val = menu_list[random.nextInt(menu_list.length)];
-				
-				break;	
-			case "/단어등록":
-			case "/단어추가":
-				
-				try {
-					if (fulltxt.indexOf("=") < 0) {
-						val = "단어등록 실패!, =을 포함해주세요";
-					}else if (fulltxt.indexOf(">") >= 0 || fulltxt.indexOf("<") >= 0) {
-						val = "단어등록 실패!, 특수문자 안되요!";
-					}else {
-						String[] txtList;
-						fulltxt = fulltxt.substring(param0.length()).trim();
-						txtList = fulltxt.split("=");
-						reqMap.put("req", txtList[0]);
-						reqMap.put("res", txtList[1]);
-						
-						botService.insertBotWordSaveTx(reqMap);
-						val = "단어등록 완료!";
-					} 
-				} catch (Exception e) {
-					val = "단어등록 실패!";
-				}
-				break;
-			case "/단어제거":
-			case "/단어삭제":
-				try {
-					if (fulltxt.indexOf("=") < 0) {
-						val = "단어삭제 실패!, =을 포함해주세요";
-					}else if (fulltxt.indexOf(">") >= 0 || fulltxt.indexOf("<") >= 0) {
-						val = "단어삭제 실패!, 특수문자 안되요!";
-					}else {
-						String[] txtList;
-						fulltxt = fulltxt.substring(param0.length()).trim();
-						txtList = fulltxt.split("=");
-						reqMap.put("req", txtList[0]);
-						reqMap.put("res", txtList[1]);
-						
-						boolean master_flag =false;
-						if(sender.equals("전태환")) {
-							master_flag = true;
-						}else if(sender.equals("일어난다람쥐/카단")) {
-							master_flag = true;
-						}else {
-							master_flag = false;
-						}
-						
-						if(master_flag) {
-							botService.deleteBotWordSaveMasterTx(reqMap);
-						}else {
-							botService.deleteBotWordSaveTx(reqMap);
-						}
-						
-						val = "단어삭제 완료!";
-					} 
-				} catch (Exception e) {
-					val = "단어삭제 실패!";
-				}
-				break;
-			case "/단어목록":
-			case "/단어조회":
-				List<String> wordList = botService.selectBotWordSaveAll(reqMap);
-				val = "단어목록:";
-				for(String word : wordList) {
-					val = val + "</br>" + word;
-				}
-				break;
-			default:
-				val = botService.selectBotWordSaveOne(reqMap);
-				break;
+		if(param0.startsWith("[")) {
+			return emotionMsg(param0);
+		}else if(param0.startsWith("/")) {
+			return commandMsg(param0,param1,param2,roomName,sender,fulltxt);
 		}
-		
 		return val;
 	}
-	
+
+	String commandMsg(String param0, String param1, String param2, String roomName, String sender, String fulltxt)
+			throws Exception {
+		String val = "";
+		String list;
+		HashMap<String, Object> reqMap = new HashMap<>();
+		reqMap.put("param0", param0);
+		reqMap.put("roomName", roomName);
+		reqMap.put("userName", sender);
+
+		switch (param0) {
+		case "/이모티콘":
+		case "/이모티콘리스트":
+		case "/임티":
+		case "/임티리스트":
+			//===를 치환할 예정
+			list = "이모티콘리스트===";
+			list += "</br>[호에엥";
+			list += "</br>[해줘";
+			list += "</br>[츄릅";
+			list += "</br>[추천이요";
+			list += "</br>[빠직";
+			list += "</br>[힝잉잉";
+			list += "</br>[hidden";
+			val = list;
+			break;
+		case "/명령어":
+		case "/명령어리스트":
+			//===를 치환할 예정
+			list = "명렁어리스트===";
+			list += "</br>/모험섬";
+			list += "</br>/장비";
+			list += "</br>/초월";
+			list += "</br>/내실";
+			list += "</br>/항협 /항해 /항해협동";
+			list += "</br>/날씨";
+			list += "</br>/저메추";
+			list += "</br>/단어등록 /단어추가";
+			list += "</br>/단어조회 /단어목록";
+			list += "</br>/단어삭제 /단어제거";
+			val = list;
+			break;
+		case "/모험섬":
+			val = calendarSearch();
+			break;
+		case "/장비":
+			if (param1 != null && !param1.equals("")) {
+				try {
+					val = equipmentSearch(param1);
+					val += gemSearch(param1);
+					val += engraveSearch(param1);
+				} catch (Exception e) {
+					val = errorCodeMng(e);
+				}
+			}
+			break;
+		case "/초월":
+			if (param1 != null && !param1.equals("")) {
+				try {
+					val = limitSearch(param1);
+				} catch (Exception e) {
+					val = errorCodeMng(e);
+				}
+
+			}
+			break;
+		case "/내실":
+			if (param1 != null && !param1.equals("")) {
+				try {
+					val = collectionSearch(param1);
+				} catch (Exception e) {
+					val = errorCodeMng(e);
+				}
+
+			}
+			break;
+
+		case "/항협":
+		case "/항해":
+		case "/항해협동":
+			val = shipSearch();
+			break;
+		case "/날씨":
+			if (param1 != null && !param1.equals("")) {
+				val = weatherSearch(param1);
+			}
+			break;
+		case "/저메추":
+			String[] menu_list = { "피자", "탕수육", "치킨", "샐러드", "마라탕", "양꼬치", "삼겹살", "설렁탕", "김치찌개", "된장찌개", "삼치튀김", "참치마요",
+					"회", "육회비빔밥", "냉면", "카레", "돈까스", "제육볶음", "오징어볶음", "떡볶이", "굶기", "초밥", "햄버거", "짜장면", "빵", "파스타", "닭발",
+					"쭈꾸미", "낙지덮밥", "라면", "짜계치", "스팸과 흰밥", "간장계란밥", "간장게장", "참치회", "죽", "흰밥", "감자탕" };
+			Random random = new Random();
+			val = menu_list[random.nextInt(menu_list.length)];
+
+			break;
+		case "/단어등록":
+		case "/단어추가":
+
+			try {
+				if (fulltxt.indexOf("=") < 0) {
+					val = "단어등록 실패!, =을 포함해주세요";
+				} else if (fulltxt.indexOf(">") >= 0 || fulltxt.indexOf("<") >= 0) {
+					val = "단어등록 실패!, 특수문자 안되요!";
+				} else {
+					String[] txtList;
+					fulltxt = fulltxt.substring(param0.length()).trim();
+					txtList = fulltxt.split("=");
+					reqMap.put("req", txtList[0]);
+					reqMap.put("res", txtList[1]);
+
+					botService.insertBotWordSaveTx(reqMap);
+					val = "단어등록 완료!";
+				}
+			} catch (Exception e) {
+				val = "단어등록 실패!";
+			}
+			break;
+		case "/단어제거":
+		case "/단어삭제":
+			try {
+				if (fulltxt.indexOf("=") < 0) {
+					val = "단어삭제 실패!, =을 포함해주세요";
+				} else if (fulltxt.indexOf(">") >= 0 || fulltxt.indexOf("<") >= 0) {
+					val = "단어삭제 실패!, 특수문자 안되요!";
+				} else {
+					String[] txtList;
+					fulltxt = fulltxt.substring(param0.length()).trim();
+					txtList = fulltxt.split("=");
+					reqMap.put("req", txtList[0]);
+					reqMap.put("res", txtList[1]);
+
+					boolean master_flag = false;
+					if (sender.equals("전태환")) {
+						master_flag = true;
+					} else if (sender.equals("일어난다람쥐/카단")) {
+						master_flag = true;
+					} else {
+						master_flag = false;
+					}
+
+					if (master_flag) {
+						botService.deleteBotWordSaveMasterTx(reqMap);
+					} else {
+						botService.deleteBotWordSaveTx(reqMap);
+					}
+
+					val = "단어삭제 완료!";
+				}
+			} catch (Exception e) {
+				val = "단어삭제 실패!";
+			}
+			break;
+		case "/단어목록":
+		case "/단어조회":
+			List<String> wordList = botService.selectBotWordSaveAll(reqMap);
+			//===를 치환할 예정
+			val = "단어목록:===";
+			for (String word : wordList) {
+				val = val + "</br>" + word;
+			}
+			break;
+		default:
+			val = botService.selectBotWordSaveOne(reqMap);
+			break;
+		}
+
+		return val;
+	}
+	String emotionMsg(String param0) throws Exception {
+		Random imgrand = new Random();
+		String val = "";
+		switch (param0) {
+		case "[힝잉잉로아콘":
+		case "[힝잉잉":
+		case "[힝":
+		case "[힝구":
+			val = "imgwww.dev-apc.com/" + URLEncoder.encode("힝잉잉", "UTF-8") + "?v=" + imgrand.nextInt(100);
+			break;
+		case "[빠직":
+		case "[빠":
+		case "[빠직로아콘":
+			val = "imgwww.dev-apc.com/" + URLEncoder.encode("빠직", "UTF-8") + "?v=" + imgrand.nextInt(100);
+			break;
+		case "[줘":
+		case "[해줘":
+		case "[해줘로아콘":
+			val = "imgwww.dev-apc.com/" + URLEncoder.encode("줘", "UTF-8") + "?v=" + imgrand.nextInt(100);
+			break;
+		case "[택모":
+		case "[택티컬모코코":
+			val = "imgwww.dev-apc.com/" + URLEncoder.encode("택모", "UTF-8") + "?v=" + imgrand.nextInt(100);
+			break;
+		case "[츄릅콩":
+		case "[츄":
+		case "[츄릅":
+			val = "imgwww.dev-apc.com/" + URLEncoder.encode("츄릅콩", "UTF-8") + "?v=" + imgrand.nextInt(100);
+			break;
+		case "[추천":
+		case "[추":
+		case "[추천이요":
+			val = "imgwww.dev-apc.com/" + URLEncoder.encode("추천이요", "UTF-8") + "?v=" + imgrand.nextInt(100);
+			break;
+		case "[호":
+		case "[호에엥":
+			val = "imgwww.dev-apc.com/" + URLEncoder.encode("호에엥", "UTF-8") + "?v=" + imgrand.nextInt(100);
+			break;
+
+		}
+		return val;
+	}
+
 	String errorCodeMng(Exception e) {
 		String val="";
 		if(e != null && e.getMessage()!=null) {
@@ -644,7 +686,7 @@ public class LoaChatController {
 			engraves = (List<Map<String, Object>>) rtnMap.get("Effects");
 		}catch(Exception e){
 			//throw new Exception("E0003");
-			return "</br>각인정보 없음";
+			return "</br>↪각인정보 없음";
 		}
 		
 		List<String> engraveList = new ArrayList<>();
@@ -678,7 +720,7 @@ public class LoaChatController {
 		}catch(Exception e){
 			//throw new Exception("E0003");
 			
-			return "</br>보석 : 정보 없음";
+			return "</br>↪보석 : 정보 없음";
 		}
 		String resMsg = "";
 		for (Map<String, Object> gem : gems) {
