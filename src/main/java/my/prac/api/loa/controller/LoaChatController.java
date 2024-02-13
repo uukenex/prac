@@ -118,6 +118,7 @@ public class LoaChatController {
 				val = "imgwww.dev-apc.com/"+URLEncoder.encode("줘", "UTF-8")+"?v="+imgrand.nextInt(100);
 				break;
 			case "[택모":
+			case "[택티컬모코코":
 				val = "imgwww.dev-apc.com/"+URLEncoder.encode("택모", "UTF-8")+"?v="+imgrand.nextInt(100);
 				break;
 			case "[츄릅콩":
