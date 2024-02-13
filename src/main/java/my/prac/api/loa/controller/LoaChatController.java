@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 
 import javax.annotation.Resource;
 
@@ -122,7 +123,16 @@ public class LoaChatController {
 					val = weatherSearch(param1);
 				}
 				break;
+			case "/저메추":
+				String [] menu_list= {"피자","탕수육","치킨","샐러드","마라탕"
+						,"양꼬치","삼겹살","설렁탕","김치찌개","된장찌개"
+						,"참치마요","회","육회","냉면","카레","돈까스","제육볶음","오징어볶음"
+						,"떡볶이","굶기","초밥","햄버거","짜장면","빵","파스타","닭발","쭈꾸미","낙지덮밥"
+						,"라면","짜계치","스팸과 흰밥","간장계란밥","간장게장","참치회"};
+				Random random = new Random();
+				val = menu_list[random.nextInt(menu_list.length)];
 				
+				break;	
 			case "/단어등록":
 			case "/단어추가":
 				
