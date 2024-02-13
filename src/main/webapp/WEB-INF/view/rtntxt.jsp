@@ -16,10 +16,10 @@
 		<meta charset="utf-8">
 		<title>now loading....</title>
 		<!-- <meta property="og:url" content="링크걸 주소(ex : http://www.naver.com)"> -->
-		<meta property="og:title" content="알파카 연구소">  
+		<meta property="og:title" content="<%=request.getParameter("param0")%>">  
 		<meta property="og:type" content="website">
-		<meta property="og:image" content="<%=request.getContextPath()%>/game_set/img/paimon.jpg?v=<%=System.currentTimeMillis()%>">
-		<meta property="og:description" content="알파카 연구소 메인페이지로 이동합니다.">
+		<meta property="og:image" content="<%=request.getContextPath()%>/img_loa/<%=request.getParameter("param0")%>?v=<%=System.currentTimeMillis()%>">
+		<meta property="og:description" content="">
 	</head> 
 	<body>
 		<script src="<%=request.getContextPath() %>/assets/js/jquery.min.js"></script>
