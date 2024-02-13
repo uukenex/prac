@@ -101,14 +101,20 @@ public class LoaChatController {
 				list +="</br>/단어삭제 /단어제거";
 				val = list;
 				break;
-			case "/힝잉잉":
-			case "/힝":
-			case "/힝구":
+			case "[힝잉잉로아콘":
+			case "[힝잉잉":
+			case "[힝":
+			case "[힝구":
 				val = "imgwww.dev-apc.com/"+URLEncoder.encode("힝잉잉", "UTF-8")+"?v="+imgrand.nextInt(100);
 				break;	
-			case "/줘":
-			case "/해줘":
-			case "/해줘로아콘":
+			case "[빠직":
+			case "[빠":
+			case "[빠직로아콘":
+				val = "imgwww.dev-apc.com/"+URLEncoder.encode("빠직", "UTF-8")+"?v="+imgrand.nextInt(100);
+				break;	
+			case "[줘":
+			case "[해줘":
+			case "[해줘로아콘":
 				val = "imgwww.dev-apc.com/"+URLEncoder.encode("줘", "UTF-8")+"?v="+imgrand.nextInt(100);
 				break;
 			case "/모험섬":
