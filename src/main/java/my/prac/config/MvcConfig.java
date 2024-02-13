@@ -45,6 +45,7 @@ public class MvcConfig extends WebMvcConfigurerAdapter {
 		registry.addResourceHandler("/js/**").addResourceLocations("/WEB-INF/js/");
 		registry.addResourceHandler("/images/**").addResourceLocations("/WEB-INF/images/");
 		registry.addResourceHandler("/img/**").addResourceLocations("/WEB-INF/img/");
+		registry.addResourceHandler("/img_loa/**").addResourceLocations("/WEB-INF/img_loa/");
 		// 네이버 스마트에디터
 		registry.addResourceHandler("/se2/**").addResourceLocations("/WEB-INF/se2/");
 		// 스마트에디터 사진 다중 업로드

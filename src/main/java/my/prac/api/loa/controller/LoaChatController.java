@@ -69,6 +69,12 @@ public class LoaChatController {
 
 		return null;
 	}
+	
+	@RequestMapping(value = "/loa/imgs", method = RequestMethod.GET)
+	public String imgReturn(@RequestParam(required = true) String param0) {
+		return "rtntxt";
+	}
+	
 
 	//roomName은 https://cafe.naver.com/msgbot/2067 수정본 참조
 	String autoResponse(String param0,String param1,String param2,String roomName,String sender,String fulltxt) throws Exception {
@@ -92,6 +98,10 @@ public class LoaChatController {
 				list +="</br>/단어등록 /단어추가";
 				list +="</br>/단어조회 /단어목록";
 				list +="</br>/단어삭제 /단어제거";
+				val = list;
+				break;
+			case "/줘":
+				val = "http://dev-apc.com/loa/imgs?param0=" + param0;
 				break;
 			case "/모험섬":
 				val = calendarSearch();
