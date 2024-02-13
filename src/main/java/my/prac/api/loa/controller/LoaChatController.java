@@ -14,6 +14,8 @@ import org.jsoup.nodes.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -67,9 +69,10 @@ public class LoaChatController {
 		return null;
 	}
 	
-	@RequestMapping(value = "/loa/imgs", method = RequestMethod.GET)
-	public String imgReturn(@RequestParam(required = true) String param0) {
-		return "rtntxt";
+	@RequestMapping(value = "/loa/imgs/{imgvalues}", method = RequestMethod.GET)
+	public String imgReturn(@PathVariable String imgvalues, Model model) {
+		model.addAttribute("imgval",imgvalues);
+		return "rtnimgs";
 	}
 	
 

@@ -41,37 +41,20 @@ public class urlFilter implements Filter {
         HttpServletResponse httpServletResponse = (HttpServletResponse) response;
 
 
-        System.out.println("========");
-        System.out.println(request.getServerName());
+        
         try {
         	
         	
         	switch(request.getServerName()) {
-        		//일반서버일땐 이미지경로 차단
-	        	case "http://dev-apc.com":
-	        	case "dev-apc.com":
-	        		System.out.println(request.getRemoteHost()+httpServletRequest.getServletPath());
-	        		if(httpServletRequest.getServletPath().indexOf("/loa/imgs")>=0) {
-	        			System.out.println("일반서버에서 이미지 접근 ");
-	        			httpServletResponse.sendError(600);
-	        		}
-        		break;
         		//이미지 서버일땐 이미지 경로로만 접근
 	        	case "http://imgwww.dev-apc.com":
 	        	case "imgwww.dev-apc.com":
 	        		System.out.println(request.getRemoteHost()+httpServletRequest.getServletPath());
-	    			if(httpServletRequest.getServletPath().indexOf("/loa/imgs") < 0) {
-	    				System.out.println("이미지서버에서 일반 접근 ");
+	    			if(httpServletRequest.getServletPath().indexOf("/loa/imgs") < 0
+	    					 && httpServletRequest.getServletPath().indexOf("/img_loa/") < 0) {
 	        			httpServletResponse.sendError(600);
 	    			}
 				break;
-        		
-        		case "0:0:0:0:0:0:0:1":
-        			if(httpServletRequest.getServletPath().indexOf("/loa/imgs")>=0) {
-        				System.out.println("여기에걸렸습니다 ");
-            			httpServletResponse.sendError(600);
-        			}
-    			break;
     			
         	}
         	
