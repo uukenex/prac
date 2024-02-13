@@ -53,9 +53,6 @@ public class LoaChatController {
 			System.out.println(param0 + " " + param1+ " " + param2+ " " + room+ " " + sender);
 			System.out.println("fulltxt: "+fulltxt);
 			String val = autoResponse(param0,param1,param2,room,sender,fulltxt);
-			if(sender.equals("람쥐봇")) {
-				return null;
-			}
 			
 			if(val!=null&&!val.equals("")) {
 				HashMap<String, Object> rtnMap = new HashMap<>();
@@ -79,7 +76,6 @@ public class LoaChatController {
 	//roomName은 https://cafe.naver.com/msgbot/2067 수정본 참조
 	String autoResponse(String param0,String param1,String param2,String roomName,String sender,String fulltxt) throws Exception {
 		String val="";
-		int randNum;
 		HashMap<String,Object> reqMap = new HashMap<>();
 		reqMap.put("param0", param0);
 		reqMap.put("roomName", roomName);
