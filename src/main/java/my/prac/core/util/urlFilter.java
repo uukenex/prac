@@ -39,19 +39,16 @@ public class urlFilter implements Filter {
 
         HttpServletRequest httpServletRequest = (HttpServletRequest) request;
         HttpServletResponse httpServletResponse = (HttpServletResponse) response;
-
-
-        
         try {
-        	
-        	
         	switch(request.getServerName()) {
         		//이미지 서버일땐 이미지 경로로만 접근
 	        	case "http://imgwww.dev-apc.com":
 	        	case "imgwww.dev-apc.com":
-	        		System.out.println(request.getRemoteHost()+httpServletRequest.getServletPath());
-	    			if(httpServletRequest.getServletPath().indexOf("/loa/imgs") < 0
-	    			 && httpServletRequest.getServletPath().indexOf("/img_loa/") < 0) {
+	    			if(httpServletRequest.getServletPath().indexOf("/index") >= 0
+	    			 || httpServletRequest.getServletPath().indexOf("/free") >= 0
+	    			 || httpServletRequest.getServletPath().indexOf("/share") >= 0
+	    			 || httpServletRequest.getServletPath().indexOf("/game") >= 0
+	    			) {
 	        			httpServletResponse.sendError(600);
 	    			}
 				break;

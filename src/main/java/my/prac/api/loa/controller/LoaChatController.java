@@ -684,7 +684,6 @@ public class LoaChatController {
 		
 		List<HashMap<String, Object>> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<List<Map<String, Object>>>() {});
 		for(HashMap<String,Object> rtn : rtnMap) {
-			System.out.println(rtn);
 			
 			type = rtn.get("Type").toString();
 			type = type.replaceAll(" 씨앗", "");
