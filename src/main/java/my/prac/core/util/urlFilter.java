@@ -1,7 +1,6 @@
 package my.prac.core.util;
 
 import java.io.IOException;
-import java.net.InetAddress;
 
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
@@ -11,6 +10,8 @@ import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+
+import org.springframework.web.util.UrlPathHelper;
 
 /**
  * <pre>
@@ -38,11 +39,14 @@ public class urlFilter implements Filter {
 
         HttpServletRequest httpServletRequest = (HttpServletRequest) request;
         HttpServletResponse httpServletResponse = (HttpServletResponse) response;
-        System.out.println("=========================");
-        String hostName = InetAddress.getLocalHost().getHostName();
-        System.out.println(hostName);
+
+
+        System.out.println("========");
+        System.out.println(request.getServerName());
         try {
-        	switch(hostName) {
+        	
+        	
+        	switch(request.getServerName()) {
         		//일반서버일땐 이미지경로 차단
 	        	case "http://dev-apc.com":
 	        	case "dev-apc.com":
@@ -68,6 +72,7 @@ public class urlFilter implements Filter {
             			httpServletResponse.sendError(600);
         			}
     			break;
+    			
         	}
         	
             chain.doFilter( request, response );
