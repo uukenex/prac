@@ -80,6 +80,19 @@ public class LoaChatController {
 		reqMap.put("userName", sender);
 		
 		switch (param0) {
+			case "/명령어":
+				String list = "명렁어리스트";
+				list +="</br>/모험섬";
+				list +="</br>/장비";
+				list +="</br>/초월";
+				list +="</br>/내실";
+				list +="</br>/항협 /항해 /항해협동";
+				list +="</br>/날씨";
+				list +="</br>/저메추";
+				list +="</br>/단어등록 /단어추가";
+				list +="</br>/단어조회 /단어목록";
+				list +="</br>/단어삭제 /단어제거";
+				break;
 			case "/모험섬":
 				val = calendarSearch();
 				break;
@@ -125,10 +138,10 @@ public class LoaChatController {
 				break;
 			case "/저메추":
 				String [] menu_list= {"피자","탕수육","치킨","샐러드","마라탕"
-						,"양꼬치","삼겹살","설렁탕","김치찌개","된장찌개"
-						,"참치마요","회","육회","냉면","카레","돈까스","제육볶음","오징어볶음"
+						,"양꼬치","삼겹살","설렁탕","김치찌개","된장찌개","삼치튀김"
+						,"참치마요","회","육회비빔밥","냉면","카레","돈까스","제육볶음","오징어볶음"
 						,"떡볶이","굶기","초밥","햄버거","짜장면","빵","파스타","닭발","쭈꾸미","낙지덮밥"
-						,"라면","짜계치","스팸과 흰밥","간장계란밥","간장게장","참치회"};
+						,"라면","짜계치","스팸과 흰밥","간장계란밥","간장게장","참치회","죽","흰밥","감자탕"};
 				Random random = new Random();
 				val = menu_list[random.nextInt(menu_list.length)];
 				
