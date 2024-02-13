@@ -51,7 +51,7 @@ public class urlFilter implements Filter {
 	        	case "imgwww.dev-apc.com":
 	        		System.out.println(request.getRemoteHost()+httpServletRequest.getServletPath());
 	    			if(httpServletRequest.getServletPath().indexOf("/loa/imgs") < 0
-	    					 && httpServletRequest.getServletPath().indexOf("/img_loa/") < 0) {
+	    			 && httpServletRequest.getServletPath().indexOf("/img_loa/") < 0) {
 	        			httpServletResponse.sendError(600);
 	    			}
 				break;

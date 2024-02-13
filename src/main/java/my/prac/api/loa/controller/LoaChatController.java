@@ -69,7 +69,7 @@ public class LoaChatController {
 		return null;
 	}
 	
-	@RequestMapping(value = "/loa/imgs/{imgvalues}", method = RequestMethod.GET)
+	@RequestMapping(value = "/{imgvalues}", method = RequestMethod.GET)
 	public String imgReturn(@PathVariable String imgvalues, Model model) {
 		model.addAttribute("imgval",imgvalues);
 		return "rtnimgs";
@@ -100,7 +100,7 @@ public class LoaChatController {
 				val = list;
 				break;
 			case "/줘":
-				val = "http://imgwww.dev-apc.com/loa/imgs?param0=줘.png";
+				val = "http://imgwww.dev-apc.com/줘";
 				break;
 			case "/모험섬":
 				val = calendarSearch();

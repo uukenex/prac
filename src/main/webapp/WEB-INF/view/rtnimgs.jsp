@@ -27,8 +27,8 @@
 	    </div>
 	    <script src="<%=request.getContextPath() %>/assets/js/jquery.min.js"></script>
 		<script>
-		$('#load_image').css('width','300px');
-		$('#load_image').css('height','300px');
+		$('#load_image').css('width','100%');
+		$('#load_image').css('height','100%');
 		$(document).on("ready", function() {
 			//window.location.href = '/free';
 		});
