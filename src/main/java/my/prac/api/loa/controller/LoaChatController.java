@@ -117,6 +117,21 @@ public class LoaChatController {
 			case "[해줘로아콘":
 				val = "imgwww.dev-apc.com/"+URLEncoder.encode("줘", "UTF-8")+"?v="+imgrand.nextInt(100);
 				break;
+			case "[택모":
+				val = "imgwww.dev-apc.com/"+URLEncoder.encode("택모", "UTF-8")+"?v="+imgrand.nextInt(100);
+				break;
+			case "[츄릅콩":
+			case "[츄":
+			case "[츄릅":
+				val = "imgwww.dev-apc.com/"+URLEncoder.encode("츄릅콩", "UTF-8")+"?v="+imgrand.nextInt(100);
+			case "[추천":
+			case "[추":
+			case "[추천이요":
+				val = "imgwww.dev-apc.com/"+URLEncoder.encode("추천이요", "UTF-8")+"?v="+imgrand.nextInt(100);
+			case "[호":
+			case "[호에엥":
+				val = "imgwww.dev-apc.com/"+URLEncoder.encode("호에엥", "UTF-8")+"?v="+imgrand.nextInt(100);
+				break;
 			case "/모험섬":
 				val = calendarSearch();
 				break;
