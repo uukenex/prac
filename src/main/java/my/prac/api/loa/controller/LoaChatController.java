@@ -84,6 +84,8 @@ public class LoaChatController {
 		reqMap.put("roomName", roomName);
 		reqMap.put("userName", sender);
 		
+		Random imgrand = new Random();
+		
 		switch (param0) {
 			case "/명령어":
 				String list = "명렁어리스트";
@@ -99,11 +101,15 @@ public class LoaChatController {
 				list +="</br>/단어삭제 /단어제거";
 				val = list;
 				break;
+			case "/힝잉잉":
+			case "/힝":
+			case "/힝구":
+				val = "imgwww.dev-apc.com/"+URLEncoder.encode("힝잉잉", "UTF-8")+"?v="+imgrand.nextInt(100);
+				break;	
 			case "/줘":
-				
-				Random random2 = new Random();
-				param0=param0.substring(1);
-				val = "imgwww.dev-apc.com/"+URLEncoder.encode(param0, "UTF-8")+"?v="+random2.nextInt(100);
+			case "/해줘":
+			case "/해줘로아콘":
+				val = "imgwww.dev-apc.com/"+URLEncoder.encode("줘", "UTF-8")+"?v="+imgrand.nextInt(100);
 				break;
 			case "/모험섬":
 				val = calendarSearch();
