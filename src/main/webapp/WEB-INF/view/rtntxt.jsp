@@ -18,7 +18,7 @@
 		<!-- <meta property="og:url" content="링크걸 주소(ex : http://www.naver.com)"> -->
 		<meta property="og:title" content="<%=request.getParameter("param0")%>">  
 		<meta property="og:type" content="website">
-		<meta property="og:image" content="http://imgwww.dev-apc.com<%=request.getContextPath()%>/img_loa/<%=request.getParameter("param0")%>%>">
+		<meta property="og:image" content="http://imgwww.dev-apc.com<%=request.getContextPath()%>/img_loa/<%=request.getParameter("param0")%>">
 		<meta property="og:description" content="     ">
 	</head> 
 	<body>

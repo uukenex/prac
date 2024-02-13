@@ -1,6 +1,7 @@
 package my.prac.core.util;
 
 import java.io.IOException;
+import java.net.InetAddress;
 
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
@@ -38,9 +39,10 @@ public class urlFilter implements Filter {
         HttpServletRequest httpServletRequest = (HttpServletRequest) request;
         HttpServletResponse httpServletResponse = (HttpServletResponse) response;
         System.out.println("=========================");
-        System.out.println(request.getRemoteHost()+httpServletRequest.getServletPath());
+        String hostName = InetAddress.getLocalHost().getHostName();
+        System.out.println(hostName);
         try {
-        	switch(request.getRemoteHost()) {
+        	switch(hostName) {
         		//일반서버일땐 이미지경로 차단
 	        	case "http://dev-apc.com":
 	        	case "dev-apc.com":
