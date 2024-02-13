@@ -37,6 +37,8 @@ public class urlFilter implements Filter {
 
         HttpServletRequest httpServletRequest = (HttpServletRequest) request;
         HttpServletResponse httpServletResponse = (HttpServletResponse) response;
+        System.out.println("=========================");
+        System.out.println(request.getRemoteHost()+httpServletRequest.getServletPath());
         try {
         	switch(request.getRemoteHost()) {
         		//일반서버일땐 이미지경로 차단
