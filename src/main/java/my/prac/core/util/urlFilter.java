@@ -42,6 +42,7 @@ public class urlFilter implements Filter {
         		//일반서버일땐 이미지경로 차단
 	        	case "http://dev-apc.com":
 	        	case "dev-apc.com":
+	        		System.out.println(request.getRemoteHost()+httpServletRequest.getServletPath());
 	        		if(httpServletRequest.getServletPath().indexOf("/loa/imgs")>=0) {
 	        			System.out.println("일반서버에서 이미지 접근 ");
 	        			httpServletResponse.sendError(600);
@@ -50,6 +51,7 @@ public class urlFilter implements Filter {
         		//이미지 서버일땐 이미지 경로로만 접근
 	        	case "http://imgwww.dev-apc.com":
 	        	case "imgwww.dev-apc.com":
+	        		System.out.println(request.getRemoteHost()+httpServletRequest.getServletPath());
 	    			if(httpServletRequest.getServletPath().indexOf("/loa/imgs") < 0) {
 	    				System.out.println("이미지서버에서 일반 접근 ");
 	        			httpServletResponse.sendError(600);

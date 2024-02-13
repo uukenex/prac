@@ -101,7 +101,7 @@ public class LoaChatController {
 				val = list;
 				break;
 			case "/줘":
-				val = "http://dev-apc.com/loa/imgs?param0=줘.png";
+				val = "http://imgwww.dev-apc.com/loa/imgs?param0=줘.png";
 				break;
 			case "/모험섬":
 				val = calendarSearch();
