@@ -284,7 +284,7 @@ public class LoaChatController {
 		    //줘와 랜드키를 db에 저장한다
 		    System.out.println("status -> " + ImageUtils.nioCopy(orgFilePath, outFilePath));
 		    
-			val = "imgwww.dev-apc.com/w"+randKey;
+			val = "imgwww.dev-apc.com/w/"+randKey;
 			break;
 		
 		case "[힝잉잉로아콘":
