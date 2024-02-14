@@ -39,4 +39,13 @@ public class BotServiceImpl implements BotService {
 			throw new Exception("저장 실패");
 		}
 	}
+	public String selectBotImgSaveOne(String param) {
+		return botDAO.selectBotImgSaveOne(param);
+	}
+	
+	public void insertBotImgSaveOneTx(HashMap<String, Object> hashMap)  throws Exception{
+		if(botDAO.insertBotImgSaveOne(hashMap)< 1) {
+			throw new Exception("저장 실패");
+		}
+	}
 }

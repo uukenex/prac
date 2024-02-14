@@ -65,4 +65,21 @@
 		   AND A.LIMIT_YN = '0'
 	</delete>
 	
+	<select id="selectBotImgSaveOne" parameterType="String" resultType="String" >
+		/* bot.xml selectBotImgSaveOne */
+		SELECT RES
+		  FROM TBOT_IMG_SAVE A
+	     WHERE A.REQ = #{param, jdbcType=VARCHAR}
+	</select>
+	
+	<insert id="insertBotImgSaveOne" parameterType="hashMap">
+		/* bot.xml insertBotImgSaveOne */
+		INSERT INTO TBOT_IMG_SAVE
+			 (REQ
+			 ,RES
+			 )
+		SELECT #{asis, jdbcType=VARCHAR}
+			  ,#{tobe, jdbcType=VARCHAR}
+		  FROM DUAL
+    </insert>
 </mapper>

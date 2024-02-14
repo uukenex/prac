@@ -71,13 +71,6 @@ public class LoaChatController {
 		return null;
 	}
 	
-	@RequestMapping(value = "/{imgvalues}", method = RequestMethod.GET)
-	public String imgReturn(@PathVariable String imgvalues, Model model) {
-		model.addAttribute("imgval",imgvalues);
-		return "rtnimgs";
-	}
-	
-	
 	@RequestMapping(value = "/i/{imgvalues}", method = RequestMethod.GET)
 	public String wimgReturn(@PathVariable String imgvalues, Model model) {
 		model.addAttribute("imgval",imgvalues);
@@ -270,60 +263,69 @@ public class LoaChatController {
 
 		return val;
 	}
-	String emotionMsg(String param0) throws Exception {
-		Random imgrand = new Random();
-		String val = "";
-		String randKey="MA9pAQ";
-		String filePath="";
-		
-		switch (param0) {
-		case "[test":
-			
-			String orgFilePath = filePath + "/img/img_loa/"   +"줘.png";
-		    String outFilePath = filePath + "/img/img_loa_cp/"+randKey+".png";
 
-		    //줘와 랜드키를 db에 저장한다
-		    System.out.println("status -> " + ImageUtils.nioCopy(orgFilePath, outFilePath));
-		    
-			val = "imgwww.dev-apc.com/i/"+randKey;
-			break;
-		
+	String emotionMsg(String param0) throws Exception {
+		String val = "";
+		String randKey = "";
+		boolean imgcp=false;
+		switch (param0) {
+
 		case "[힝잉잉로아콘":
 		case "[힝잉잉":
 		case "[힝":
 		case "[힝구":
-			val = "imgwww.dev-apc.com/" + URLEncoder.encode("힝잉잉", "UTF-8") + "?v=" + imgrand.nextInt(100);
+			param0 = "힝잉잉";
 			break;
 		case "[빠직":
 		case "[빠":
 		case "[빠직로아콘":
-			val = "imgwww.dev-apc.com/" + URLEncoder.encode("빠직", "UTF-8") + "?v=" + imgrand.nextInt(100);
+			param0 = "빠직";
 			break;
 		case "[줘":
 		case "[해줘":
 		case "[해줘로아콘":
-			val = "imgwww.dev-apc.com/" + URLEncoder.encode("줘", "UTF-8") + "?v=" + imgrand.nextInt(100);
+			param0 = "줘";
 			break;
 		case "[택모":
 		case "[택티컬모코코":
-			val = "imgwww.dev-apc.com/" + URLEncoder.encode("택모", "UTF-8") + "?v=" + imgrand.nextInt(100);
+			param0 = "택모";// param0에는 원본이미지 파일명 기입
 			break;
 		case "[츄릅콩":
 		case "[츄":
 		case "[츄릅":
-			val = "imgwww.dev-apc.com/" + URLEncoder.encode("츄릅콩", "UTF-8") + "?v=" + imgrand.nextInt(100);
+			param0 = "츄릅콩";
 			break;
 		case "[추천":
 		case "[추":
 		case "[추천이요":
-			val = "imgwww.dev-apc.com/" + URLEncoder.encode("추천이요", "UTF-8") + "?v=" + imgrand.nextInt(100);
+			param0 = "추천이요";
 			break;
 		case "[호":
 		case "[호에엥":
-			val = "imgwww.dev-apc.com/" + URLEncoder.encode("호에엥", "UTF-8") + "?v=" + imgrand.nextInt(100);
+			param0 = "호에엥";
 			break;
-
+		default:
+			return val;
 		}
+		randKey = botService.selectBotImgSaveOne(param0);
+		if (randKey == null || randKey.equals("")) {
+			randKey = ImageUtils.RandomAlphaNum();
+			String orgFilePath = "/img/img_loa/"    + param0  + ".png";
+			String outFilePath = "/img/img_loa_cp/" + randKey + ".png";
+			imgcp = ImageUtils.nioCopy(orgFilePath, outFilePath);
+			if(imgcp) {
+				HashMap<String,Object> hs = new HashMap<>();
+				hs.put("asis", param0);
+				hs.put("tobe", randKey);
+				botService.insertBotImgSaveOneTx(hs);
+			}else {
+				System.out.println("이미지 저장 실패로 인한 리턴값없음");
+				return val;
+			}
+		}
+
+		val = "imgwww.dev-apc.com/i/" + randKey;
+
 		return val;
 	}
 

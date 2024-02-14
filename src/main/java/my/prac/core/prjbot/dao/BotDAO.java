@@ -16,5 +16,6 @@ public interface BotDAO {
 	public int deleteBotWordSaveMaster(HashMap<String, Object> hashMap);
 	public int deleteBotWordSave(HashMap<String, Object> hashMap);
 	
-
+	public String selectBotImgSaveOne(String param);
+	public int insertBotImgSaveOne(HashMap<String, Object> hashMap);
 }

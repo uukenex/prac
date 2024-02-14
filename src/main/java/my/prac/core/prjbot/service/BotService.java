@@ -12,6 +12,9 @@ public interface BotService {
 	
 	public void deleteBotWordSaveMasterTx(HashMap<String, Object> hashMap)  throws Exception;
 	public void deleteBotWordSaveTx(HashMap<String, Object> hashMap)  throws Exception;
+	
+	public String selectBotImgSaveOne(String param);
+	public void insertBotImgSaveOneTx(HashMap<String, Object> hashMap)  throws Exception;
 }
 
 	
