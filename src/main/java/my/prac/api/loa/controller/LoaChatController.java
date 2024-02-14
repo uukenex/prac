@@ -77,12 +77,13 @@ public class LoaChatController {
 		return "rtnimgs";
 	}
 	
-	@RequestMapping(value = "/w/{imgvalues}", method = RequestMethod.GET)
+	
+	@RequestMapping(value = "/i/{imgvalues}", method = RequestMethod.GET)
 	public String wimgReturn(@PathVariable String imgvalues, Model model) {
 		model.addAttribute("imgval",imgvalues);
 		return "rtnimgs2";
 	}
-
+	
 	//roomName은 https://cafe.naver.com/msgbot/2067 수정본 참조
 	String autoResponse(String param0,String param1,String param2,String roomName,String sender,String fulltxt) throws Exception {
 		String val="";
@@ -279,12 +280,12 @@ public class LoaChatController {
 		case "[test":
 			
 			String orgFilePath = filePath + "/img/img_loa/"   +"줘.png";
-		    String outFilePath = filePath + "/img/img_loa_cp/"+randKey;
+		    String outFilePath = filePath + "/img/img_loa_cp/"+randKey+".png";
 
 		    //줘와 랜드키를 db에 저장한다
 		    System.out.println("status -> " + ImageUtils.nioCopy(orgFilePath, outFilePath));
 		    
-			val = "imgwww.dev-apc.com/w/"+randKey;
+			val = "imgwww.dev-apc.com/i/"+randKey;
 			break;
 		
 		case "[힝잉잉로아콘":
