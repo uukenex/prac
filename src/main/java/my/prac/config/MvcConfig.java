@@ -55,6 +55,7 @@ public class MvcConfig extends WebMvcConfigurerAdapter {
 		// 사진저장실험
 		// registry.addResourceHandler("/review/**").addResourceLocations("/review/");
 		registry.addResourceHandler("/imgServer/**").addResourceLocations("file:///img/dev2/Temp/");
+		registry.addResourceHandler("/w/**").addResourceLocations("file:///img/img_loa_cp/");
 
 		registry.addResourceHandler("/game_set/**").addResourceLocations("/WEB-INF/game_set/");
 		registry.addResourceHandler("/robots.txt").addResourceLocations("robots.txt");

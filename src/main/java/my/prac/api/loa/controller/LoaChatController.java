@@ -28,6 +28,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import my.prac.core.prjbot.service.BotService;
 import my.prac.core.util.LoaApiParser;
 import my.prac.core.util.LoaApiUtils;
+import my.prac.core.util.ImageUtils;
 
 
 @Controller
@@ -46,9 +47,9 @@ public class LoaChatController {
 			@RequestParam(required = true)  String param0,
 			@RequestParam(required = false) String param1,
 			@RequestParam(required = false) String param2,
-			@RequestParam(required = true) String room,
-			@RequestParam(required = true) String sender,
-			@RequestParam(required = true) String fulltxt
+			@RequestParam(required = false) String room,
+			@RequestParam(required = false) String sender,
+			@RequestParam(required = false) String fulltxt
 			) {
 		
 
@@ -76,6 +77,11 @@ public class LoaChatController {
 		return "rtnimgs";
 	}
 	
+	@RequestMapping(value = "/w/{imgvalues}", method = RequestMethod.GET)
+	public String wimgReturn(@PathVariable String imgvalues, Model model) {
+		model.addAttribute("imgval",imgvalues);
+		return "rtnimgs2";
+	}
 
 	//roomName은 https://cafe.naver.com/msgbot/2067 수정본 참조
 	String autoResponse(String param0,String param1,String param2,String roomName,String sender,String fulltxt) throws Exception {
@@ -266,7 +272,21 @@ public class LoaChatController {
 	String emotionMsg(String param0) throws Exception {
 		Random imgrand = new Random();
 		String val = "";
+		String randKey="MA9pAQ";
+		String filePath="";
+		
 		switch (param0) {
+		case "[test":
+			
+			String orgFilePath = filePath + "/img/img_loa/"   +"줘.png";
+		    String outFilePath = filePath + "/img/img_loa_cp/"+randKey;
+
+		    //줘와 랜드키를 db에 저장한다
+		    System.out.println("status -> " + ImageUtils.nioCopy(orgFilePath, outFilePath));
+		    
+			val = "imgwww.dev-apc.com/w"+randKey;
+			break;
+		
 		case "[힝잉잉로아콘":
 		case "[힝잉잉":
 		case "[힝":
