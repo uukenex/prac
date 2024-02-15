@@ -269,7 +269,7 @@ public class LoaChatController {
 		String randKey = "";
 		boolean imgcp=false;
 		
-		param0=BotService.selectBotImgMch(param0);
+		param0=botService.selectBotImgMch(param0);
 		if(param0 ==null || param0.equals("")) {
 			return val;
 		}
