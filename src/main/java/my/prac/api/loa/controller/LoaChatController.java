@@ -268,32 +268,12 @@ public class LoaChatController {
 		String val = "";
 		String randKey = "";
 		boolean imgcp=false;
-		switch (param0) {
-
-		case "[힝잉잉로아콘": case "[힝잉잉": case "[힝": case "[힝구":
-			param0 = "힝잉잉";
-			break;
-		case "[빠직": case "[빠": case "[빠직로아콘":
-			param0 = "빠직";
-			break;
-		case "[줘": case "[해줘": case "[해줘로아콘":
-			param0 = "줘";
-			break;
-		case "[택모": case "[택티컬모코코": case "[택시": case "[택배":
-			param0 = "택모";// param0에는 원본이미지 파일명 기입
-			break;
-		case "[츄릅콩": case "[츄": case "[츄릅":
-			param0 = "츄릅콩";
-			break;
-		case "[추천": case "[추": case "[추천이요":
-			param0 = "추천이요";
-			break;
-		case "[호": case "[호에엥": 
-			param0 = "호에엥";
-			break;
-		default:
+		
+		param0=BotService.selectBotImgMch(param0);
+		if(param0 ==null || param0.equals("")) {
 			return val;
 		}
+		
 		randKey = botService.selectBotImgSaveOne(param0);
 		if (randKey == null || randKey.equals("")) {
 			randKey = ImageUtils.RandomAlphaNum();

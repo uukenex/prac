@@ -60,7 +60,13 @@
 		DELETE FROM TBOT_WORD_SAVE A
 		 WHERE A.REQ = '/'||#{req, jdbcType=VARCHAR}
 		   AND A.RES = #{res, jdbcType=VARCHAR}
-		   AND A.USER_NAME = #{userName, jdbcType=VARCHAR}
+		   AND (A.USER_NAME = #{userName, jdbcType=VARCHAR}
+		        OR 
+		        A.USER_NAME IN (SELECT B.NAME_A
+								  FROM TBOT_NAME_MCH B
+								 WHERE B.NAME_B = #{userName, jdbcType=VARCHAR}
+								)
+				)
 		   AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 		   AND A.LIMIT_YN = '0'
 	</delete>
@@ -82,4 +88,11 @@
 			  ,#{tobe, jdbcType=VARCHAR}
 		  FROM DUAL
     </insert>
+    
+    <select id="selectBotImgMch" parameterType="String" resultType="String" >
+		/* bot.xml selectBotImgMch */
+		SELECT A.OUT_PRM
+		  FROM TBOT_IMG_MCH A
+		 WHERE A.IN_PRM = #{param0, jdbcType=VARCHAR}
+	</select>
 </mapper>
