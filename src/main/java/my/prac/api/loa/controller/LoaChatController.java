@@ -528,9 +528,9 @@ public class LoaChatController {
 		resMsg = resMsg + "</br>";
 		
 		if(totLimit.equals("")) {
-			resMsg = resMsg + "초월 : 없음";
+			resMsg = resMsg + "↪초월 : 없음";
 		}else {
-			resMsg = resMsg + "초월합 : " + totLimit;
+			resMsg = resMsg + "↪초월합 : " + totLimit;
 		}
 		if(totElixir==0) {
 			resMsg = resMsg + " 엘릭서 : 없음";
@@ -677,9 +677,9 @@ public class LoaChatController {
 		resMsg = resMsg + "</br>";
 		
 		if(totLimit.equals("")) {
-			resMsg = resMsg + "초월 : 없음";
+			resMsg = resMsg + "↪초월 : 없음";
 		}else {
-			resMsg = resMsg + "초월합 : " + totLimit;
+			resMsg = resMsg + "↪초월합 : " + totLimit;
 		}
 		if(totElixir==0) {
 			resMsg = resMsg + " 엘릭서 : 없음";
