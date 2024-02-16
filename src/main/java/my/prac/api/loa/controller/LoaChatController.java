@@ -479,7 +479,7 @@ public class LoaChatController {
 		String resMsg = ordUserId+" 초월정보";
 
 		String resEquip = "";
-		String totLmit ="";
+		String totLimit ="";
 		int totElixir =0;
 		
 		for (Map<String, Object> equip : armoryEquipment) {
@@ -495,7 +495,7 @@ public class LoaChatController {
 				HashMap<String, Object> elixir_element = (HashMap<String, Object>)maps.get("elixir_element");
 				
 				//초월 정보 출력
-				totLmit = LoaApiParser.parseLimit(limit_element);
+				totLimit = LoaApiParser.parseLimit(limit_element);
 				resEquip = resEquip + "</br>"+equip.get("Type").toString()+"▶" + LoaApiParser.parseLimitForLimit(limit_element)+" ◈ ";
 				resEquip = LoaApiUtils.filterText(resEquip);
 
@@ -523,7 +523,21 @@ public class LoaChatController {
 		}
 		resEquip=resEquip.replaceAll("  ", " ");
 		
-		resMsg = resMsg + "</br>"+"초월합 : " + totLmit + " 엘릭서합 : " + totElixir + "(" + elixirField+")";
+		
+		
+		resMsg = resMsg + "</br>";
+		
+		if(totLimit.equals("")) {
+			resMsg = resMsg + "초월 : 없음";
+		}else {
+			resMsg = resMsg + "초월합 : " + totLimit;
+		}
+		if(totElixir==0) {
+			resMsg = resMsg + " 엘릭서 : 없음";
+		}else {
+			resMsg = resMsg +" 엘릭서합 : " + totElixir + "(" + elixirField+")";
+		}
+		//resMsg = resMsg +"초월합 : " + totLimit + " 엘릭서합 : " + totElixir + "(" + elixirField+")";
 		resMsg = resMsg + "</br>";
 		resMsg = resMsg +  resEquip;
 		
@@ -562,7 +576,7 @@ public class LoaChatController {
 
 		String enhanceLv="";
 		String newEnhanceInfo="";
-		String totLmit ="";
+		String totLimit ="";
 		int totElixir =0;
 
 		for (Map<String, Object> equip : armoryEquipment) {
@@ -594,9 +608,9 @@ public class LoaChatController {
 				avgLv = avgLv+tmpLv;
 				
 				/* 아이템레벨 */
-				if(tmpLv < 1610) {
-					throw new Exception("E0001");
-				}
+				//if(tmpLv < 1610) {
+				//	throw new Exception("E0001");
+				//}
 			}
 			
 			
@@ -615,7 +629,7 @@ public class LoaChatController {
 				/* 방어구품질 */
 				//armorQualityValue = armorQualityValue + Integer.parseInt(item_level_element_dt.get("qualityValue").toString());
 				//초월
-				totLmit = LoaApiParser.parseLimit(limit_element);
+				totLimit = LoaApiParser.parseLimit(limit_element);
 				//엘릭서
 				totElixir +=LoaApiParser.parseElixirForEquip(equipElixirList, elixir_element);
 				break;
@@ -629,7 +643,7 @@ public class LoaChatController {
 		}
 		
 		String setField="";
-		String elixerField="";
+		String elixirField="";
 		
 		for(String set:LoaApiParser.getSetList()) {
 			int cnt0=0;
@@ -643,7 +657,7 @@ public class LoaChatController {
 		for(String elixer: LoaApiParser.getElixirList()) {
 			cnt1 += Collections.frequency(equipElixirList, elixer);
 			if(cnt1 > 1) { // 회심2 를 회심으로 표기 
-				elixerField = elixerField + elixer;
+				elixirField = elixirField + elixer;
 				break;
 			}else {
 				continue;
@@ -659,7 +673,20 @@ public class LoaChatController {
 		}
 		resMsg = resMsg + "</br>"+"↪악세평균품질 : "+avgQuality/5;
 		resMsg = resMsg + "</br>"+"↪세트 : "+setField;
-		resMsg = resMsg + "</br>"+"↪초월합 : " + totLmit + " 엘릭서합: " + totElixir + "(" + elixerField+")";
+		
+		resMsg = resMsg + "</br>";
+		
+		if(totLimit.equals("")) {
+			resMsg = resMsg + "초월 : 없음";
+		}else {
+			resMsg = resMsg + "초월합 : " + totLimit;
+		}
+		if(totElixir==0) {
+			resMsg = resMsg + " 엘릭서 : 없음";
+		}else {
+			resMsg = resMsg +" 엘릭서합 : " + totElixir + "(" + elixirField+")";
+		}
+		
 		return resMsg;
 	}
 	

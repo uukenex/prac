@@ -54,7 +54,7 @@ public class LoaApiParser {
 		element_008 = element;
 		if(element_008.toString().indexOf("초월") < 0) {
 			//초월이 되지 않음
-			throw new Exception("E0002");
+			return "";
 		}
 		element_008_value = (HashMap<String, Object>) element_008.get("value");
 		element_008_value1 = (HashMap<String, Object>) element_008_value.get("Element_000");
@@ -79,6 +79,10 @@ public class LoaApiParser {
 		HashMap<String, Object> element_009_value3;
 		
 		element_009 = element;
+		if(element_009.toString().indexOf("지혜의 엘릭서") < 0) {
+			//엘릭서 되지 않음
+			return 0;
+		}
 		element_009_value = (HashMap<String, Object>) element_009.get("value");
 		element_009_value1 = (HashMap<String, Object>) element_009_value.get("Element_000");
 		element_009_value2 = (HashMap<String, Object>) element_009_value1.get("contentStr");
@@ -120,6 +124,10 @@ public class LoaApiParser {
 		HashMap<String, Object> element_008_value1;
 		
 		element_008 = element;
+		if(element_008.toString().indexOf("초월") < 0) {
+			//초월이 되지 않음
+			return "";
+		}
 		element_008_value = (HashMap<String, Object>) element_008.get("value");
 		element_008_value1 = (HashMap<String, Object>) element_008_value.get("Element_000");
 		return Jsoup.parse((String) element_008_value1.get("topStr")).text();
@@ -140,6 +148,12 @@ public class LoaApiParser {
 		HashMap<String, Object> element_009_value3;
 		
 		element_009 = element;
+		
+		if(element_009.toString().indexOf("지혜의 엘릭서") < 0) {
+			//엘릭서 되지 않음
+			return "";
+		}
+		
 		element_009_value = (HashMap<String, Object>) element_009.get("value");
 		element_009_value1 = (HashMap<String, Object>) element_009_value.get("Element_000");
 		element_009_value2 = (HashMap<String, Object>) element_009_value1.get("contentStr");

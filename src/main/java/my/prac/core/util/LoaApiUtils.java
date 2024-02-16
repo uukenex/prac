@@ -77,6 +77,16 @@ public class LoaApiUtils {
 			txt=txt.replaceAll("무기 공격력", "무공");
 			txt=txt.replaceAll("보스 피해" , "보피");
 			txt=txt.replaceAll("치명타 피해", "치피");
+			txt=txt.replaceAll("공격력", "공격");
+			txt=txt.replaceAll("무력화", "무력");
+			txt=txt.replaceAll("보호막 강화", "보호강화");
+			txt=txt.replaceAll("아군 강화", "아군강화");
+			txt=txt.replaceAll("회복 강화", "회복강화");
+			txt=txt.replaceAll("추가 피해", "추피");
+			txt=txt.replaceAll("아이덴티티 획득", "아덴");
+			txt=txt.replaceAll("받는 피해 감소", "받피감");
+			txt=txt.replaceAll("물리 방어력", "물방");
+			
 		}catch(Exception e) {
 			txt="";
 		}
