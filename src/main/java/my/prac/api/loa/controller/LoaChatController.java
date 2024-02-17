@@ -364,7 +364,13 @@ public class LoaChatController {
 		String retMsg="오늘의 모험 섬";
 		String retMsg1="";
 		String retMsg2="";
+		String retMsg3="";
 		
+		List<String> ret1Arr = new ArrayList<>();
+		List<String> ret2Arr = new ArrayList<>();
+		String today = LoaApiUtils.StringToDate();
+		//String today = "2024-02-16";
+				
 		int cnt = 0; 
 		String paramUrl = lostArkAPIurl + "/gamecontents/calendar";
 		
@@ -373,87 +379,135 @@ public class LoaChatController {
 		});
 		
 		for(Map<String,Object> data_sub_list : data_list) {
+			if(!data_sub_list.get("CategoryName").equals("모험 섬")) {
+				continue;
+			}
+			
 			if(data_sub_list.get("CategoryName").equals("모험 섬")) {
+				data_sub_list.remove("CategoryName");
+				data_sub_list.remove("ContentsIcon");
+				data_sub_list.remove("MinItemLevel");
+				data_sub_list.remove("Location");
+				
+				String times = Jsoup.parse((String) data_sub_list.get("StartTimes").toString()).text();
+				if(times.indexOf(today) < 0) {
+					continue;
+				}
+				
 				List<Map<String, Object>> rewardItemsList = (List<Map<String, Object>>)data_sub_list.get("RewardItems");
 				for(Map<String, Object> rewardItem : rewardItemsList) {
+					rewardItem.remove("Icon");
+					rewardItem.remove("Location");
+					rewardItem.remove("Grade");
+					
 					
 					if(rewardItem.get("StartTimes")!=null) {
 						List<String> start_time_list = (List<String>)rewardItem.get("StartTimes");
 						for(String time : start_time_list) {
-							//if(time.equals("2024-01-28"+"T09:00:00")) {
-							if(time.equals(LoaApiUtils.StringToDate()+"T09:00:00")) {
+							if(time.equals(today+"T09:00:00")) {
 								switch(rewardItem.get("Name").toString()) {
 									case "전설 ~ 고급 카드 팩 III":
 										retMsg1 = retMsg1 + "</br>";
 										retMsg1 = retMsg1 + data_sub_list.get("ContentsName").toString()+" : ";
 										retMsg1+="카드";
+										ret1Arr.add(data_sub_list.get("ContentsName").toString());
 										cnt++;
 										break;
 									case "실링":
 										retMsg1 = retMsg1 + "</br>";
 										retMsg1 = retMsg1 + data_sub_list.get("ContentsName").toString()+" : ";
 										retMsg1+="실링";
+										ret1Arr.add(data_sub_list.get("ContentsName").toString());
 										cnt++;
 										break;
 									case "대양의 주화 상자":
 										retMsg1 = retMsg1 + "</br>";
 										retMsg1 = retMsg1 + data_sub_list.get("ContentsName").toString()+" : ";
 										retMsg1+="주화";
+										ret1Arr.add(data_sub_list.get("ContentsName").toString());
 										cnt++;
 										break;
 									case "골드":
 										retMsg1 = retMsg1 + "</br>";
 										retMsg1 = retMsg1 + data_sub_list.get("ContentsName").toString()+" : ";
 										retMsg1+="♣골드♣";
+										ret1Arr.add(data_sub_list.get("ContentsName").toString());
 										cnt++;
 										break;
 									default:
 										continue;
 								}
 							}
-							//if(time.equals("2024-01-28"+"T19:00:00")) {
-							if(time.equals(LoaApiUtils.StringToDate()+"T19:00:00")) {
+							else if(time.equals(today+"T19:00:00")) {
 								switch(rewardItem.get("Name").toString()) {
 									case "전설 ~ 고급 카드 팩 III":
 										retMsg2 = retMsg2 + "</br>";
 										retMsg2 = retMsg2 + data_sub_list.get("ContentsName").toString()+" : ";
 										retMsg2+="카드";
+										ret1Arr.add(data_sub_list.get("ContentsName").toString());
 										cnt++;
 										break;
 									case "실링":
 										retMsg2 = retMsg2 + "</br>";
 										retMsg2 = retMsg2 + data_sub_list.get("ContentsName").toString()+" : ";
 										retMsg2+="실링";
+										ret1Arr.add(data_sub_list.get("ContentsName").toString());
 										cnt++;
 										break;
 									case "대양의 주화 상자":
 										retMsg2 = retMsg2 + "</br>";
 										retMsg2 = retMsg2 + data_sub_list.get("ContentsName").toString()+" : ";
 										retMsg2+="주화";
+										ret1Arr.add(data_sub_list.get("ContentsName").toString());
 										cnt++;
 										break;
 									case "골드":
 										retMsg2 = retMsg2 + "</br>";
 										retMsg2 = retMsg2 + data_sub_list.get("ContentsName").toString()+" : ";
 										retMsg2+="♣골드♣";
+										ret1Arr.add(data_sub_list.get("ContentsName").toString());
 										cnt++;
 										break;
 									default:
 										continue;
 								}
 							}
+							
 						}
 					}
+					
 				}
+				
+				ret2Arr.add(data_sub_list.get("ContentsName").toString());
+				
 			}
 		}
+		
+		for(String not_found : ret1Arr) {
+			ret2Arr.remove(not_found);
+		}
+		
 		
 		if(cnt>=4) {
 			retMsg1 = "</br>☆(오전)"+ retMsg1;
 			retMsg2 = "</br>★(오후)"+ retMsg2;
+			if(cnt < 6 ) {
+				
+				for(String not_found : ret2Arr) {
+					retMsg3 += not_found+" ";
+				}
+				/*
+				for(String not_found : retArr) {
+					System.out.println(not_found);
+					retMsg3 += not_found;
+				}
+				*/
+				retMsg3 = "</br></br>§API정보없음 : "+ retMsg3;
+			}
+			
 		}
 		
-		retMsg = retMsg+retMsg1+retMsg2;
+		retMsg = retMsg+retMsg1+retMsg2+retMsg3;
 
 		return retMsg;
 	}
