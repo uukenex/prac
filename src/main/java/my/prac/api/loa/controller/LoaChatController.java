@@ -103,21 +103,6 @@ public class LoaChatController {
 		reqMap.put("userName", sender);
 
 		switch (param0) {
-		case "/이모티콘":
-		case "/이모티콘리스트":
-		case "/임티":
-		case "/임티리스트":
-			//===를 치환할 예정
-			list = "이모티콘리스트===";
-			list += "</br>[호에엥";
-			list += "</br>[해줘";
-			list += "</br>[츄릅";
-			list += "</br>[추천이요";
-			list += "</br>[빠직";
-			list += "</br>[힝잉잉";
-			list += "</br>[hidden";
-			val = list;
-			break;
 		case "/명령어":
 		case "/명령어리스트":
 			//===를 치환할 예정
