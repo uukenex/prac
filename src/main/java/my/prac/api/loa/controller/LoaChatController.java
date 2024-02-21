@@ -262,12 +262,12 @@ public class LoaChatController {
 			for (String word : wordList) {
 				val = val + "</br>" + word;
 			}
-			val = "</br></br>이모티콘목록:";
+			val = val+"</br></br>이모티콘목록:";
 			for (String word : imgList) {
 				val = val + "</br>" + word;
 			}
 			
-			val = "</br></br>명령어목록:";
+			val = val+"</br></br>명령어목록:";
 			for (String word : limitWordList) {
 				val = val + "</br>" + word;
 			}
