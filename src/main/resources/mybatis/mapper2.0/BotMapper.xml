@@ -44,7 +44,7 @@
 		  FROM (
 			   SELECT '1' AS ORD
 					  ,RES
-				 FROM (SELECT A.REQ || ' => ' || LISTAGG(A.RES, ', ') WITHIN GROUP(ORDER BY A.RES) AS RES
+				 FROM (SELECT A.REQ || ' → ' || LISTAGG(A.RES, ', ') WITHIN GROUP(ORDER BY A.RES) AS RES
 					     FROM TBOT_WORD_SAVE A
 					    WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 						  AND A.LIMIT_YN = '0'
@@ -52,7 +52,7 @@
 					    ORDER BY REQ)
 			   UNION
 			   SELECT '2'
-					  ,LISTAGG(B.IN_PRM, ', ') WITHIN GROUP(ORDER BY B.IN_PRM) || ' => ' || B.OUT_PRM
+					  ,LISTAGG(B.IN_PRM, ', ') WITHIN GROUP(ORDER BY B.IN_PRM) || ' → ' || B.OUT_PRM
 				 FROM TBOT_IMG_MCH B
 			    GROUP BY B.OUT_PRM)
 		 ORDER BY ORD
