@@ -38,6 +38,20 @@
 		 WHERE ROWNUM = 1
 	</select>
 	
+	<select id="selectBotLimitWordSaveAll" parameterType="hashMap" resultType="String" >
+		 /* bot.xml selectBotLimitWordSaveAll */
+		SELECT RES
+		  FROM (SELECT '3' AS ORD
+				    ,RES
+				FROM (SELECT LISTAGG(A.REQ, ', ') WITHIN GROUP(ORDER BY A.REQ) || ' → ' || A.RES AS RES
+					   FROM TBOT_WORD_SAVE A
+					  WHERE A.LIMIT_YN = '1'
+					  GROUP BY A.RES
+					  ORDER BY REQ))
+		 ORDER BY ORD
+		 
+	</select>
+	
 	<select id="selectBotWordSaveAll" parameterType="hashMap" resultType="String" >
 		 /* bot.xml selectBotWordSaveAll */
 		SELECT RES
@@ -50,9 +64,16 @@
 						  AND A.LIMIT_YN = '0'
 					    GROUP BY A.REQ
 					    ORDER BY REQ)
-			   UNION
-			   SELECT '2'
-					  ,LISTAGG(B.IN_PRM, ', ') WITHIN GROUP(ORDER BY B.IN_PRM) || ' → ' || B.OUT_PRM
+			   )
+		 ORDER BY ORD
+		 
+	</select>
+	
+	<select id="selectBotImgSaveAll" parameterType="hashMap" resultType="String" >
+		 /* bot.xml selectBotImgSaveAll */
+		SELECT RES
+		  FROM (SELECT '2' AS ORD
+					  ,LISTAGG(B.IN_PRM, ', ') WITHIN GROUP(ORDER BY B.IN_PRM) || ' → ' || B.OUT_PRM AS RES
 				 FROM TBOT_IMG_MCH B
 			    GROUP BY B.OUT_PRM)
 		 ORDER BY ORD

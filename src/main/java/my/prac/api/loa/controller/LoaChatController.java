@@ -255,11 +255,23 @@ public class LoaChatController {
 		case "/단어목록":
 		case "/단어조회":
 			List<String> wordList = botService.selectBotWordSaveAll(reqMap);
+			List<String> imgList = botService.selectBotImgSaveAll(reqMap);
+			List<String> limitWordList = botService.selectBotLimitWordSaveAll(reqMap);
 			//===를 치환할 예정
 			val = "단어목록:===";
 			for (String word : wordList) {
 				val = val + "</br>" + word;
 			}
+			val = "</br></br>이모티콘목록:";
+			for (String word : imgList) {
+				val = val + "</br>" + word;
+			}
+			
+			val = "</br></br>명령어목록:";
+			for (String word : limitWordList) {
+				val = val + "</br>" + word;
+			}
+			
 			break;
 		default:
 			val = botService.selectBotWordSaveOne(reqMap);
