@@ -42,6 +42,8 @@ public class LoaChatController {
 	// "https://developer-lostark.game.onstove.com/armories/characters/일어난다람쥐/equipment";
 	final String lostArkAPIurl = "https://developer-lostark.game.onstove.com";
 
+	final String enterStr= "♬";
+	
 	@RequestMapping(value = "/loa/chat", method = RequestMethod.GET)
 	public @ResponseBody Map<String, Object> chatApplication(
 			@RequestParam(required = true)  String param0,
@@ -103,6 +105,24 @@ public class LoaChatController {
 		reqMap.put("userName", sender);
 
 		switch (param0) {
+		case "/테스트명령어":
+			//===를 치환할 예정
+			list = "명렁어리스트===";
+			list += enterStr+"/모험섬";
+			list += enterStr+"/장비";
+			list += enterStr+"초월";
+			list += enterStr+"내실";
+			list += enterStr+"항협 /항해 /항해협동";
+			list += enterStr+"날씨";
+			list += enterStr+"저메추";
+			list += enterStr+"단어등록 /단어추가";
+			list += enterStr+"단어조회 /단어목록";
+			list += enterStr+"단어삭제 /단어제거";
+			list += enterStr+"이모티콘 /이모티콘리스트";
+			list += enterStr+"임티 /임티리스트";
+			list += enterStr+"명령어 /명령어리스트";
+			val = list;
+			break;
 		case "/명령어":
 		case "/명령어리스트":
 			//===를 치환할 예정
