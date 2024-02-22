@@ -872,17 +872,17 @@ public class LoaChatController {
 			
 			
 			//t : 시간별 날씨 
-			String t1_text="";
-			String t2_text="";
-			String t1_val="";
-			String t2_val="";
+			String time_text="";
 			
 			try {
-				t1_text = doc.select(".weather_graph_box ._hourly_weather ._li:eq(0) .time" ).text();
-				t1_val  = doc.select(".weather_graph_box ._hourly_weather ._li:eq(0) .blind").text();
+				for(int i=0;i<8;i++) {
+					time_text += enterStr;
+					time_text += doc.select(".weather_graph_box ._hourly_weather ._li:eq("+i+") .time" )[0].text();
+					time_text += " : ";
+					time_text += doc.select(".weather_graph_box ._hourly_weather ._li:eq("+i+") .blind")[0].text();
+				}
 				
-				t2_text = doc.select(".weather_graph_box ._hourly_weather ._li:eq(1) .time" ).text();
-				t2_val  = doc.select(".weather_graph_box ._hourly_weather ._li:eq(1) .blind").text();
+				
 			}catch(Exception e) {
 				
 			}
@@ -912,12 +912,8 @@ public class LoaChatController {
 				retMsg += enterStr+m2_text+" : "+m2_val;
 			}
 			
-			retMsg += enterStr;
-			if(t1_val!=null && !t1_val.equals("")) {
-				retMsg += enterStr+t1_text+" : "+t1_val;
-			}
-			if(t2_val!=null && !t2_val.equals("")) {
-				retMsg += enterStr+t2_text+" : "+t2_val;
+			if(time_text!=null && !time_text.equals("")) {
+				retMsg += time_text;
 			}
 			
 			
