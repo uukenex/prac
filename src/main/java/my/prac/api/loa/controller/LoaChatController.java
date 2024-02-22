@@ -852,6 +852,45 @@ public class LoaChatController {
 			
 			//v 체감 강수 습도 북동풍 
 			
+			
+			//m : 미세먼지 
+			String m1_text="";
+			String m2_text="";
+			String m1_val="";
+			String m2_val="";
+			
+			try {
+				m1_text = doc.select(".weather_info .today_chart_list .level2:eq(0) .title").text();
+				m1_val  = doc.select(".weather_info .today_chart_list .level2:eq(0) .txt"  ).text();
+				
+				m2_text = doc.select(".weather_info .today_chart_list .level2:eq(1) .title").text();
+				m2_val  = doc.select(".weather_info .today_chart_list .level2:eq(1) .txt"  ).text();
+			}catch(Exception e) {
+				
+			}
+			
+			
+			
+			//t : 시간별 날씨 
+			String t1_text="";
+			String t2_text="";
+			String t1_val="";
+			String t2_val="";
+			
+			try {
+				t1_text = doc.select(".weather_graph_box ._hourly_weather' ._li:eq(0) .time" ).text();
+				t1_val  = doc.select(".weather_graph_box ._hourly_weather' ._li:eq(0) .blind").text();
+				
+				t2_text = doc.select(".weather_graph_box ._hourly_weather' ._li:eq(1) .time" ).text();
+				t2_val  = doc.select(".weather_graph_box ._hourly_weather' ._li:eq(1) .blind").text();
+			}catch(Exception e) {
+				
+			}
+			
+			
+			
+			
+			
 			if(cur_temp.equals("")) {
 				return errMsg;
 			}
@@ -859,12 +898,29 @@ public class LoaChatController {
 			retMsg += "오늘날씨 : " + weather;
 			retMsg += enterStr+"현재온도 : " + cur_temp;
 			retMsg += enterStr+""+v1_text+" : " + v1;
-			retMsg += enterStr+""+v2_text+" : " + v2;
-			retMsg += enterStr+""+v3_text+" : " + v3;
+			retMsg += " / "+v2_text+" : " + v2;
+			retMsg += " / "+v3_text+" : " + v3;
 			if(v4!=null && !v4.equals("")) {
-				retMsg += enterStr+"§"+v4_text+" : " + v4;
+				retMsg += " / "+v4_text+" : " + v4;
 			}
 			retMsg += enterStr+"현재 " + area + "의 온도는 " + cur_temp + " 이며 어제보다 " + diff_temp;
+			retMsg += enterStr;
+			if(m1_val!=null && !m1_val.equals("")) {
+				retMsg += enterStr+m1_text+" : "+m1_val;
+			}
+			if(m2_val!=null && !m2_val.equals("")) {
+				retMsg += enterStr+m2_text+" : "+m2_val;
+			}
+			
+			retMsg += enterStr;
+			if(t1_val!=null && !t1_val.equals("")) {
+				retMsg += enterStr+t1_text+" : "+t1_val;
+			}
+			if(t2_val!=null && !t2_val.equals("")) {
+				retMsg += enterStr+t2_text+" : "+t2_val;
+			}
+			
+			
 		} catch (Exception e) {
 			e.printStackTrace();
 			retMsg = errMsg;
