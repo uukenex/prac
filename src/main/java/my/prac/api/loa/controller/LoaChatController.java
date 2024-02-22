@@ -860,11 +860,11 @@ public class LoaChatController {
 			String m2_val="";
 			
 			try {
-				m1_text = doc.select(".weather_info .today_chart_list .level2:eq(0) .title").text();
-				m1_val  = doc.select(".weather_info .today_chart_list .level2:eq(0) .txt"  ).text();
+				m1_text = doc.select(".weather_info:not(.type_tomorrow) .today_chart_list .level2:eq(0) .title").text();
+				m1_val  = doc.select(".weather_info:not(.type_tomorrow) .today_chart_list .level2:eq(0) .txt"  ).text();
 				
-				m2_text = doc.select(".weather_info .today_chart_list .level2:eq(1) .title").text();
-				m2_val  = doc.select(".weather_info .today_chart_list .level2:eq(1) .txt"  ).text();
+				m2_text = doc.select(".weather_info:not(.type_tomorrow) .today_chart_list .level2:eq(1) .title").text();
+				m2_val  = doc.select(".weather_info:not(.type_tomorrow) .today_chart_list .level2:eq(1) .txt"  ).text();
 			}catch(Exception e) {
 				
 			}
@@ -878,11 +878,11 @@ public class LoaChatController {
 			String t2_val="";
 			
 			try {
-				t1_text = doc.select(".weather_graph_box ._hourly_weather' ._li:eq(0) .time" ).text();
-				t1_val  = doc.select(".weather_graph_box ._hourly_weather' ._li:eq(0) .blind").text();
+				t1_text = doc.select(".weather_graph_box ._hourly_weather ._li:eq(0) .time" ).text();
+				t1_val  = doc.select(".weather_graph_box ._hourly_weather ._li:eq(0) .blind").text();
 				
-				t2_text = doc.select(".weather_graph_box ._hourly_weather' ._li:eq(1) .time" ).text();
-				t2_val  = doc.select(".weather_graph_box ._hourly_weather' ._li:eq(1) .blind").text();
+				t2_text = doc.select(".weather_graph_box ._hourly_weather ._li:eq(1) .time" ).text();
+				t2_val  = doc.select(".weather_graph_box ._hourly_weather ._li:eq(1) .blind").text();
 			}catch(Exception e) {
 				
 			}
