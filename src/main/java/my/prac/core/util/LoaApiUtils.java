@@ -40,8 +40,8 @@ public class LoaApiUtils {
 		conn.setRequestProperty("Authorization", lostArkKey);
 
 		// 결과 코드가 200이라면 성공
-		int responseCode = conn.getResponseCode();
-		System.out.println("### getAccessToken responseCode : " + responseCode);
+		//int responseCode = conn.getResponseCode();
+		//System.out.println("### getAccessToken responseCode : " + responseCode);
 
 		// 서버로부터 데이터 읽어오기
 		StringBuilder sb = new StringBuilder();

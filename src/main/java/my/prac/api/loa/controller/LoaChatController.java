@@ -105,43 +105,6 @@ public class LoaChatController {
 		reqMap.put("userName", sender);
 
 		switch (param0) {
-		case "/테스트명령어":
-			//===를 치환할 예정
-			list = "명렁어리스트===";
-			list += enterStr+"/모험섬";
-			list += enterStr+"/장비";
-			list += enterStr+"초월";
-			list += enterStr+"내실";
-			list += enterStr+"항협 /항해 /항해협동";
-			list += enterStr+"날씨";
-			list += enterStr+"저메추";
-			list += enterStr+"단어등록 /단어추가";
-			list += enterStr+"단어조회 /단어목록";
-			list += enterStr+"단어삭제 /단어제거";
-			list += enterStr+"이모티콘 /이모티콘리스트";
-			list += enterStr+"임티 /임티리스트";
-			list += enterStr+"명령어 /명령어리스트";
-			val = list;
-			break;
-		case "/명령어":
-		case "/명령어리스트":
-			//===를 치환할 예정
-			list = "명렁어리스트===";
-			list += "</br>/모험섬";
-			list += "</br>/장비";
-			list += "</br>/초월";
-			list += "</br>/내실";
-			list += "</br>/항협 /항해 /항해협동";
-			list += "</br>/날씨";
-			list += "</br>/저메추";
-			list += "</br>/단어등록 /단어추가";
-			list += "</br>/단어조회 /단어목록";
-			list += "</br>/단어삭제 /단어제거";
-			list += "</br>/이모티콘 /이모티콘리스트";
-			list += "</br>/임티 /임티리스트";
-			list += "</br>/명령어 /명령어리스트";
-			val = list;
-			break;
 		case "/모험섬":
 			val = calendarSearch();
 			break;
@@ -260,16 +223,16 @@ public class LoaChatController {
 			//===를 치환할 예정
 			val = "단어목록:===";
 			for (String word : wordList) {
-				val = val + "</br>" + word;
+				val = val + enterStr + word;
 			}
-			val = val+"</br></br>이모티콘목록:";
+			val = val+enterStr+enterStr+"이모티콘목록:";
 			for (String word : imgList) {
-				val = val + "</br>" + word;
+				val = val + enterStr + word;
 			}
 			
-			val = val+"</br></br>명령어목록:";
+			val = val+enterStr+enterStr+"명령어목록:";
 			for (String word : limitWordList) {
-				val = val + "</br>" + word;
+				val = val + enterStr + word;
 			}
 			
 			break;
@@ -424,28 +387,28 @@ public class LoaChatController {
 							if(time.equals(today+"T09:00:00")) {
 								switch(rewardItem.get("Name").toString()) {
 									case "전설 ~ 고급 카드 팩 III":
-										retMsg1 = retMsg1 + "</br>";
+										retMsg1 = retMsg1 + enterStr;
 										retMsg1 = retMsg1 + data_sub_list.get("ContentsName").toString()+" : ";
 										retMsg1+="카드";
 										ret1Arr.add(data_sub_list.get("ContentsName").toString());
 										cnt++;
 										break;
 									case "실링":
-										retMsg1 = retMsg1 + "</br>";
+										retMsg1 = retMsg1 + enterStr;
 										retMsg1 = retMsg1 + data_sub_list.get("ContentsName").toString()+" : ";
 										retMsg1+="실링";
 										ret1Arr.add(data_sub_list.get("ContentsName").toString());
 										cnt++;
 										break;
 									case "대양의 주화 상자":
-										retMsg1 = retMsg1 + "</br>";
+										retMsg1 = retMsg1 + enterStr;
 										retMsg1 = retMsg1 + data_sub_list.get("ContentsName").toString()+" : ";
 										retMsg1+="주화";
 										ret1Arr.add(data_sub_list.get("ContentsName").toString());
 										cnt++;
 										break;
 									case "골드":
-										retMsg1 = retMsg1 + "</br>";
+										retMsg1 = retMsg1 + enterStr;
 										retMsg1 = retMsg1 + data_sub_list.get("ContentsName").toString()+" : ";
 										retMsg1+="♣골드♣";
 										ret1Arr.add(data_sub_list.get("ContentsName").toString());
@@ -458,28 +421,28 @@ public class LoaChatController {
 							else if(time.equals(today+"T19:00:00")) {
 								switch(rewardItem.get("Name").toString()) {
 									case "전설 ~ 고급 카드 팩 III":
-										retMsg2 = retMsg2 + "</br>";
+										retMsg2 = retMsg2 + enterStr;
 										retMsg2 = retMsg2 + data_sub_list.get("ContentsName").toString()+" : ";
 										retMsg2+="카드";
 										ret1Arr.add(data_sub_list.get("ContentsName").toString());
 										cnt++;
 										break;
 									case "실링":
-										retMsg2 = retMsg2 + "</br>";
+										retMsg2 = retMsg2 + enterStr;
 										retMsg2 = retMsg2 + data_sub_list.get("ContentsName").toString()+" : ";
 										retMsg2+="실링";
 										ret1Arr.add(data_sub_list.get("ContentsName").toString());
 										cnt++;
 										break;
 									case "대양의 주화 상자":
-										retMsg2 = retMsg2 + "</br>";
+										retMsg2 = retMsg2 + enterStr;
 										retMsg2 = retMsg2 + data_sub_list.get("ContentsName").toString()+" : ";
 										retMsg2+="주화";
 										ret1Arr.add(data_sub_list.get("ContentsName").toString());
 										cnt++;
 										break;
 									case "골드":
-										retMsg2 = retMsg2 + "</br>";
+										retMsg2 = retMsg2 + enterStr;
 										retMsg2 = retMsg2 + data_sub_list.get("ContentsName").toString()+" : ";
 										retMsg2+="♣골드♣";
 										ret1Arr.add(data_sub_list.get("ContentsName").toString());
@@ -506,8 +469,8 @@ public class LoaChatController {
 		
 		
 		if(cnt>=4) {
-			retMsg1 = "</br>☆(오전)"+ retMsg1;
-			retMsg2 = "</br>★(오후)"+ retMsg2;
+			retMsg1 = enterStr+"☆(오전)"+ retMsg1;
+			retMsg2 = enterStr+"★(오후)"+ retMsg2;
 			if(cnt < 6 ) {
 				
 				for(String not_found : ret2Arr) {
@@ -519,7 +482,7 @@ public class LoaChatController {
 					retMsg3 += not_found;
 				}
 				*/
-				retMsg3 = "</br></br>§API정보없음 : "+ retMsg3;
+				retMsg3 = enterStr+enterStr+"§API정보없음 : "+ retMsg3;
 			}
 			
 		}
@@ -567,7 +530,7 @@ public class LoaChatController {
 				
 				//초월 정보 출력
 				totLimit = LoaApiParser.parseLimit(limit_element);
-				resEquip = resEquip + "</br>"+equip.get("Type").toString()+"▶" + LoaApiParser.parseLimitForLimit(limit_element)+" ◈ ";
+				resEquip = resEquip + enterStr +equip.get("Type").toString()+"→" + LoaApiParser.parseLimitForLimit(limit_element)+"◈";
 				resEquip = LoaApiUtils.filterText(resEquip);
 
 				//엘릭서 정보 출력 
@@ -596,12 +559,12 @@ public class LoaChatController {
 		
 		
 		
-		resMsg = resMsg + "</br>";
+		resMsg = resMsg + enterStr;
 		
 		if(totLimit.equals("")) {
-			resMsg = resMsg + "↪초월 : 없음";
+			resMsg = resMsg + "§초월 : 없음";
 		}else {
-			resMsg = resMsg + "↪초월합 : " + totLimit;
+			resMsg = resMsg + "§초월합 : " + totLimit;
 		}
 		if(totElixir==0) {
 			resMsg = resMsg + " 엘릭서 : 없음";
@@ -609,8 +572,8 @@ public class LoaChatController {
 			resMsg = resMsg +" 엘릭서합 : " + totElixir + "(" + elixirField+")";
 		}
 		//resMsg = resMsg +"초월합 : " + totLimit + " 엘릭서합 : " + totElixir + "(" + elixirField+")";
-		resMsg = resMsg + "</br>";
-		resMsg = resMsg +  resEquip;
+		resMsg = resMsg + enterStr;
+		resMsg = resMsg + resEquip;
 		
 		return resMsg;
 	}
@@ -736,21 +699,21 @@ public class LoaChatController {
 			
 		}
 		
-		resMsg = resMsg + "</br>"+"ItemLv : "+ String.format("%.2f", (avgLv/6));
-		resMsg = resMsg + "</br>"+"↪무기 : "+enhanceLv+"강, 무품 : "+weaponQualityValue+""; 
+		resMsg = resMsg + enterStr+"ItemLv : "+ String.format("%.2f", (avgLv/6));
+		resMsg = resMsg + enterStr+"§무기 : "+enhanceLv+"강, 무품 : "+weaponQualityValue+""; 
 		
 		if(!newEnhanceInfo.equals("")) {
-			resMsg = resMsg + "</br>"+"↪무기 "+newEnhanceInfo; 
+			resMsg = resMsg + enterStr+"§무기 "+newEnhanceInfo; 
 		}
-		resMsg = resMsg + "</br>"+"↪악세평균품질 : "+avgQuality/5;
-		resMsg = resMsg + "</br>"+"↪세트 : "+setField;
+		resMsg = resMsg + enterStr+"§악세평균품질 : "+avgQuality/5;
+		resMsg = resMsg + enterStr+"§세트 : "+setField;
 		
-		resMsg = resMsg + "</br>";
+		resMsg = resMsg + enterStr;
 		
 		if(totLimit.equals("")) {
-			resMsg = resMsg + "↪초월 : 없음";
+			resMsg = resMsg + "§초월 : 없음";
 		}else {
-			resMsg = resMsg + "↪초월합 : " + totLimit;
+			resMsg = resMsg + "§초월합 : " + totLimit;
 		}
 		if(totElixir==0) {
 			resMsg = resMsg + " 엘릭서 : 없음";
@@ -777,7 +740,7 @@ public class LoaChatController {
 			engraves = (List<Map<String, Object>>) rtnMap.get("Effects");
 		}catch(Exception e){
 			//throw new Exception("E0003");
-			return "</br>↪각인정보 없음";
+			return enterStr+"§각인정보 없음";
 		}
 		
 		List<String> engraveList = new ArrayList<>();
@@ -787,7 +750,7 @@ public class LoaChatController {
 			String tmpEng = engrave.get("Name").toString().substring(0,1)+engrave.get("Name").toString().substring(len-1,len);
 			engraveList.add(tmpEng);
 		}
-		resMsg = resMsg + "</br>↪각인 : "+ engraveList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
+		resMsg = resMsg + enterStr+"§각인 : "+ engraveList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
 		
 		return resMsg;
 	}
@@ -811,7 +774,7 @@ public class LoaChatController {
 		}catch(Exception e){
 			//throw new Exception("E0003");
 			
-			return "</br>↪보석 : 정보 없음";
+			return enterStr+"§보석 : 정보 없음";
 		}
 		String resMsg = "";
 		for (Map<String, Object> gem : gems) {
@@ -829,8 +792,8 @@ public class LoaChatController {
 		
 		Collections.sort(equipGemDealList,Collections.reverseOrder());
 		Collections.sort(equipGemCoolList,Collections.reverseOrder());
-		resMsg = resMsg + "</br>↪"+gemList[0]+" : "+ equipGemDealList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
-		resMsg = resMsg + "</br>↪"+gemList[1]+" : "+ equipGemCoolList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
+		resMsg = resMsg + enterStr+"§"+gemList[0]+" : "+ equipGemDealList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
+		resMsg = resMsg + enterStr+"§"+gemList[1]+" : "+ equipGemCoolList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
 		
 		return resMsg;
 	}
@@ -855,7 +818,7 @@ public class LoaChatController {
 			point = Double.parseDouble(rtn.get("Point").toString());
 			maxPoint =  Double.parseDouble(rtn.get("MaxPoint").toString()); 
 			
-			resMsg +="</br>↪["+Math.round((point/maxPoint)*100)+"%]"+type + " ("+Math.round(point)+"/"+Math.round(maxPoint)+")";
+			resMsg +=enterStr+"§["+Math.round((point/maxPoint)*100)+"%]"+type + " ("+Math.round(point)+"/"+Math.round(maxPoint)+")";
 			
 		}
 		
@@ -868,7 +831,7 @@ public class LoaChatController {
 		HashMap<String, Object> rtnMap = new HashMap<>();
 
 		String retMsg = "";
-		String errMsg = "불러올 수 없는 지역이거나 지원되지 않는 지역입니다.</br> ↪ex)00시00구00동 (띄어쓰기없이)";
+		String errMsg = "불러올 수 없는 지역이거나 지원되지 않는 지역입니다."+enterStr+"ex)00시00구00동 (띄어쓰기없이)";
 		try {
 			LoaApiUtils.setSSL();
 			String WeatherURL = "https://m.search.naver.com/search.naver?&query=날씨+" + area;
@@ -894,14 +857,14 @@ public class LoaChatController {
 			}
 			
 			retMsg += "오늘날씨 : " + weather;
-			retMsg += "</br>↪현재온도 : " + cur_temp;
-			retMsg += "</br>↪"+v1_text+" : " + v1;
-			retMsg += "</br>↪"+v2_text+" : " + v2;
-			retMsg += "</br>↪"+v3_text+" : " + v3;
+			retMsg += enterStr+"현재온도 : " + cur_temp;
+			retMsg += enterStr+""+v1_text+" : " + v1;
+			retMsg += enterStr+""+v2_text+" : " + v2;
+			retMsg += enterStr+""+v3_text+" : " + v3;
 			if(v4!=null && !v4.equals("")) {
-				retMsg += "</br>↪"+v4_text+" : " + v4;
+				retMsg += enterStr+"§"+v4_text+" : " + v4;
 			}
-			retMsg += "</br>↪현재 " + area + "의 온도는 " + cur_temp + " 이며 어제보다 " + diff_temp;
+			retMsg += enterStr+"현재 " + area + "의 온도는 " + cur_temp + " 이며 어제보다 " + diff_temp;
 		} catch (Exception e) {
 			e.printStackTrace();
 			retMsg = errMsg;
