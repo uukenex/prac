@@ -877,9 +877,9 @@ public class LoaChatController {
 			try {
 				for(int i=0;i<8;i++) {
 					time_text += enterStr;
-					time_text += doc.select(".weather_graph_box ._hourly_weather ._li:eq("+i+") .time" )[0].text();
+					time_text += doc.select(".flicking-camera > div:first-child .weather_graph_box ._hourly_weather ._li:eq("+i+") .time" ).text();
 					time_text += " : ";
-					time_text += doc.select(".weather_graph_box ._hourly_weather ._li:eq("+i+") .blind")[0].text();
+					time_text += doc.select(".flicking-camera > div:first-child .weather_graph_box ._hourly_weather ._li:eq("+i+") .blind").text();
 				}
 				
 				
