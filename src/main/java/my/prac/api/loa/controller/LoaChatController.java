@@ -331,9 +331,9 @@ public class LoaChatController {
 			}
 		}
 		
-		retMsg1 = "<br>(19:30)"+ retMsg1;
-		retMsg2 = "<br>(21:30)"+ retMsg2;
-		retMsg3 = "<br>(23:30)"+ retMsg3;
+		retMsg1 = enterStr+"[19:30] "+ retMsg1;
+		retMsg2 = enterStr+"[21:30] "+ retMsg2;
+		retMsg3 = enterStr+"[23:30] "+ retMsg3;
 		
 		retMsg = retMsg+retMsg1+retMsg2+retMsg3;
 		retMsg = retMsg.replaceAll("항해 협동 : ", "");
@@ -913,7 +913,7 @@ public class LoaChatController {
 			}
 			
 			if(time_text!=null && !time_text.equals("")) {
-				retMsg += time_text;
+				retMsg += enterStr+time_text;
 			}
 			
 			
