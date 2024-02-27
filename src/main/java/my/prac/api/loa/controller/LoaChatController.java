@@ -911,7 +911,9 @@ public class LoaChatController {
 					time_text += " : ";
 					
 					tmp_weather = doc.select(".flicking-camera > div:first-child .weather_graph_box ._hourly_weather ._li:eq("+i+") .blind").text();
-					tmp_weather = StringUtils.rightPad("맑음", 4, " ");
+
+					tmp_weather.replaceAll("구름많음", "구름");
+					//tmp_weather = StringUtils.rightPad("맑음", 4, " ");
 					time_text += tmp_weather;
 					time_text += ".";
 					
