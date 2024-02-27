@@ -940,7 +940,7 @@ public class LoaChatController {
 			}
 			
 			if(time_text!=null && !time_text.equals("")) {
-				retMsg += enterStr+time_text;
+				retMsg += time_text;
 			}
 			
 			
