@@ -909,9 +909,9 @@ public class LoaChatController {
 					time_text += " : ";
 					time_text += doc.select(".flicking-camera > div:first-child .weather_graph_box ._hourly_weather ._li:eq("+i+") .blind").text();
 					time_text += " ";
-					time_text += doc.select(".flicking-camera > div:first-child .weather_graph_box ._hourly_weather ._li:eq("+i+4+") .time" ).text();
+					time_text += doc.select(".flicking-camera > div:first-child .weather_graph_box ._hourly_weather ._li:eq("+(i+4)+") .time" ).text();
 					time_text += " : ";
-					time_text += doc.select(".flicking-camera > div:first-child .weather_graph_box ._hourly_weather ._li:eq("+i+4+") .blind").text();
+					time_text += doc.select(".flicking-camera > div:first-child .weather_graph_box ._hourly_weather ._li:eq("+(i+4)+") .blind").text();
 					//tmp_weather = StringUtils.rightPad("맑음", 4, " ");
 					
 				}
