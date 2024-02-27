@@ -903,17 +903,16 @@ public class LoaChatController {
 			String time_text="";
 			String tmp_weather="";
 			try {
-				for(int i=0;i<8;i++) {
-					if(i%2==0) {
-						time_text += enterStr;	
-					}
+				for(int i=0;i<4;i++) {
+					time_text += enterStr;	
 					time_text += doc.select(".flicking-camera > div:first-child .weather_graph_box ._hourly_weather ._li:eq("+i+") .time" ).text();
 					time_text += " : ";
-					
 					time_text += doc.select(".flicking-camera > div:first-child .weather_graph_box ._hourly_weather ._li:eq("+i+") .blind").text();
-
-					//tmp_weather = StringUtils.rightPad("맑음", 4, " ");
 					time_text += " ";
+					time_text += doc.select(".flicking-camera > div:first-child .weather_graph_box ._hourly_weather ._li:eq("+i+4+") .time" ).text();
+					time_text += " : ";
+					time_text += doc.select(".flicking-camera > div:first-child .weather_graph_box ._hourly_weather ._li:eq("+i+4+") .blind").text();
+					//tmp_weather = StringUtils.rightPad("맑음", 4, " ");
 					
 				}
 				time_text = time_text.replaceAll("내일", "00시");
