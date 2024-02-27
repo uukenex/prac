@@ -119,14 +119,13 @@ public class LoaChatController {
 				}
 			}
 			break;
-		case "/초월":
+		case "/초월": case "/엘릭서":
 			if (param1 != null && !param1.equals("")) {
 				try {
 					val = limitSearch(param1);
 				} catch (Exception e) {
 					val = errorCodeMng(e);
 				}
-
 			}
 			break;
 		case "/내실":
@@ -136,13 +135,10 @@ public class LoaChatController {
 				} catch (Exception e) {
 					val = errorCodeMng(e);
 				}
-
 			}
 			break;
 
-		case "/항협":
-		case "/항해":
-		case "/항해협동":
+		case "/항협": case "/항해": case "/항해협동":
 			val = shipSearch();
 			break;
 		case "/날씨":
@@ -158,8 +154,7 @@ public class LoaChatController {
 			val = menu_list[random.nextInt(menu_list.length)];
 
 			break;
-		case "/단어등록":
-		case "/단어추가":
+		case "/단어등록": case "/단어추가":
 
 			try {
 				if (fulltxt.indexOf("=") < 0) {
@@ -180,8 +175,7 @@ public class LoaChatController {
 				val = "단어등록 실패!";
 			}
 			break;
-		case "/단어제거":
-		case "/단어삭제":
+		case "/단어제거": case "/단어삭제":
 			try {
 				if (fulltxt.indexOf("=") < 0) {
 					val = "단어삭제 실패!, =을 포함해주세요";
@@ -215,8 +209,7 @@ public class LoaChatController {
 				val = "단어삭제 실패!";
 			}
 			break;
-		case "/단어목록":
-		case "/단어조회":
+		case "/단어목록": case "/단어조회":
 			List<String> wordList = botService.selectBotWordSaveAll(reqMap);
 			List<String> imgList = botService.selectBotImgSaveAll(reqMap);
 			List<String> limitWordList = botService.selectBotLimitWordSaveAll(reqMap);
