@@ -74,8 +74,9 @@
 		SELECT RES
 		  FROM (SELECT '2' AS ORD
 					  ,LISTAGG(B.IN_PRM, ', ') WITHIN GROUP(ORDER BY B.IN_PRM) || ' → ' || B.OUT_PRM AS RES
-				 FROM TBOT_IMG_MCH B
-			    GROUP BY B.OUT_PRM)
+				  FROM TBOT_IMG_MCH B
+				 WHERE (B.ROOM_NAME IS NULL OR B.ROOM_NAME = #{roomName, jdbcType=VARCHAR})
+			     GROUP BY B.OUT_PRM)
 		 ORDER BY ORD
 		 
 	</select>
@@ -122,10 +123,11 @@
 		  FROM DUAL
     </insert>
     
-    <select id="selectBotImgMch" parameterType="String" resultType="String" >
+    <select id="selectBotImgMch" parameterType="hashMap" resultType="String" >
 		/* bot.xml selectBotImgMch */
 		SELECT A.OUT_PRM
 		  FROM TBOT_IMG_MCH A
 		 WHERE A.IN_PRM = #{param0, jdbcType=VARCHAR}
+		   AND (A.ROOM_NAME IS NULL OR A.ROOM_NAME = #{roomName, jdbcType=VARCHAR})
 	</select>
 </mapper>

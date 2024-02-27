@@ -88,7 +88,7 @@ public class LoaChatController {
 		reqMap.put("userName", sender);
 		
 		if(param0.startsWith("[")) {
-			return emotionMsg(param0);
+			return emotionMsg(param0,roomName);
 		}else if(param0.startsWith("/")) {
 			return commandMsg(param0,param1,param2,roomName,sender,fulltxt);
 		}
@@ -237,12 +237,17 @@ public class LoaChatController {
 		return val;
 	}
 
-	String emotionMsg(String param0) throws Exception {
+	String emotionMsg(String param0,String roomName) throws Exception {
 		String val = "";
 		String randKey = "";
 		boolean imgcp=false;
 		
-		param0=botService.selectBotImgMch(param0);
+		//selectBotImgMch param0 , roomName selectBotImgSaveAll
+		HashMap<String,Object> reqMap = new HashMap<>();
+		reqMap.put("param0", param0);
+		reqMap.put("roomName", roomName);
+		
+		param0=botService.selectBotImgMch(reqMap);
 		if(param0 ==null || param0.equals("")) {
 			return val;
 		}

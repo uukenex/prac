@@ -18,7 +18,7 @@ public interface BotService {
 	public String selectBotImgSaveOne(String param);
 	public void insertBotImgSaveOneTx(HashMap<String, Object> hashMap)  throws Exception;
 	
-	public String selectBotImgMch(String param);
+	public String selectBotImgMch(HashMap<String, Object> hashMap);
 }
 
 	
