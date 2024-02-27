@@ -345,16 +345,19 @@ public class LoaChatController {
 	
 	String checkGoldList() throws Exception {
 		String msg = "";
-
-		msg += enterStr + "에키드나[하드] 1관문 6,000G";
-		msg += enterStr + "에키드나[하드] 2관문 12,500G";
-		msg += enterStr + "에키드나[노말] 1관문 5,000G ";
-		msg += enterStr + "에키드나[노말] 2관문 9,500G";
-		msg += enterStr + "카멘[하드] 4관문 21,000G";
-		msg += enterStr + "카멘[하드] 1~3관문 20,000G";
-		msg += enterStr + "카멘[노말] 1~3관문 13,000G";
-		msg += enterStr + "혼돈의 상아탑[하드] 1~4관문 14,500G";
-		msg += enterStr + "혼돈의 상아탑[일반] 1~4관문 9,000G";
+		msg += "골드획득정보..";
+		msg += enterStr;
+		msg += enterStr + "하키드나 1관문  6,000G";
+		msg += enterStr + "하키드나 2관문 12,500G";
+		msg += enterStr + "노키드나 1관문  5,000G ";
+		msg += enterStr + "노키드나 2관문  9,500G";
+		msg += enterStr;
+		msg += enterStr + "하멘 4관문   21,000G";
+		msg += enterStr + "하멘 1~3관문 20,000G";
+		msg += enterStr + "노멘 1~3관문 13,000G";
+		msg += enterStr;
+		msg += enterStr + "상하탑 1~4관문 14,500G";
+		msg += enterStr + "상노탑 1~4관문  9,000G";
 
 		return msg;
 	}
@@ -900,13 +903,14 @@ public class LoaChatController {
 			
 			try {
 				for(int i=0;i<8;i++) {
+					if(i%2==0) {
+						time_text += enterStr;	
+					}
 					time_text += doc.select(".flicking-camera > div:first-child .weather_graph_box ._hourly_weather ._li:eq("+i+") .time" ).text();
 					time_text += " : ";
 					time_text += doc.select(".flicking-camera > div:first-child .weather_graph_box ._hourly_weather ._li:eq("+i+") .blind").text();
 					time_text += ".";
-					if(i%2==0) {
-						time_text += enterStr;	
-					}
+					
 				}
 			}catch(Exception e) {
 			}
