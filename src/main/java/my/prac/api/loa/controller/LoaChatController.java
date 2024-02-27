@@ -105,6 +105,10 @@ public class LoaChatController {
 		reqMap.put("userName", sender);
 
 		switch (param0) {
+		case "/골드":
+		case "/ㄱㄷ":
+			val = checkGoldList();
+			break;
 		case "/모험섬":
 			val = calendarSearch();
 			break;
@@ -338,6 +342,23 @@ public class LoaChatController {
 		
 		return retMsg;
 	}
+	
+	String checkGoldList() throws Exception {
+		String msg = "";
+
+		msg += enterStr + "에키드나[하드] 1관문 6,000G";
+		msg += enterStr + "에키드나[하드] 2관문 12,500G";
+		msg += enterStr + "에키드나[노말] 1관문 5,000G ";
+		msg += enterStr + "에키드나[노말] 2관문 9,500G";
+		msg += enterStr + "카멘[하드] 4관문 21,000G";
+		msg += enterStr + "카멘[하드] 1~3관문 20,000G";
+		msg += enterStr + "카멘[노말] 1~3관문 13,000G";
+		msg += enterStr + "혼돈의 상아탑[하드] 1~4관문 14,500G";
+		msg += enterStr + "혼돈의 상아탑[일반] 1~4관문 9,000G";
+
+		return msg;
+	}
+	
 	String calendarSearch() throws Exception {
 		String retMsg="오늘의 모험 섬";
 		String retMsg1="";
@@ -860,6 +881,7 @@ public class LoaChatController {
 						mise_text += " : ";
 						mise_text += doc.select(".weather_info:not(.type_tomorrow) .today_chart_list .level2:eq("+i+") .txt").text();
 						mise_text += ".";
+						mise_text += enterStr;
 					}catch(Exception e) {
 						continue;
 					}
@@ -878,23 +900,17 @@ public class LoaChatController {
 			
 			try {
 				for(int i=0;i<8;i++) {
-					if(i==0 || i==4) {
-						time_text += enterStr;	
-					}
 					time_text += doc.select(".flicking-camera > div:first-child .weather_graph_box ._hourly_weather ._li:eq("+i+") .time" ).text();
 					time_text += " : ";
 					time_text += doc.select(".flicking-camera > div:first-child .weather_graph_box ._hourly_weather ._li:eq("+i+") .blind").text();
+					time_text += ".";
+					if(i%2==0) {
+						time_text += enterStr;	
+					}
 				}
-				
-				
 			}catch(Exception e) {
-				
 			}
-			
-			
-			
-			
-			
+
 			if(cur_temp.equals("")) {
 				return errMsg;
 			}
@@ -902,10 +918,10 @@ public class LoaChatController {
 			retMsg += "오늘날씨 : " + weather;
 			retMsg += enterStr+"현재온도 : " + cur_temp;
 			retMsg += enterStr+""+v1_text+" : " + v1;
-			retMsg += " / "+v2_text+" : " + v2;
-			retMsg += " / "+v3_text+" : " + v3;
+			retMsg += enterStr+v2_text+" : " + v2;
+			retMsg += enterStr+v3_text+" : " + v3;
 			if(v4!=null && !v4.equals("")) {
-				retMsg += " / "+v4_text+" : " + v4;
+				retMsg += enterStr+v4_text+" : " + v4;
 			}
 			retMsg += enterStr+"현재 " + area + "의 온도는 " + cur_temp + " 이며 어제보다 " + diff_temp;
 			retMsg += enterStr;
