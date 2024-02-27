@@ -852,17 +852,21 @@ public class LoaChatController {
 			
 			
 			//m : 미세먼지 
-			String m1_text="";
-			String m2_text="";
-			String m1_val="";
-			String m2_val="";
-			
+			String mise_text="";
 			try {
-				m1_text = doc.select(".weather_info:not(.type_tomorrow) .today_chart_list .level2:eq(0) .title").text();
-				m1_val  = doc.select(".weather_info:not(.type_tomorrow) .today_chart_list .level2:eq(0) .txt"  ).text();
+				for(int i=0;i<3;i++) {
+					try {
+						mise_text += doc.select(".weather_info:not(.type_tomorrow) .today_chart_list .level2:eq("+i+") .title").text();
+						mise_text += " : ";
+						mise_text += doc.select(".weather_info:not(.type_tomorrow) .today_chart_list .level2:eq("+i+") .txt").text();
+						mise_text += ".";
+					}catch(Exception e) {
+						continue;
+					}
+					
+				}
 				
-				m2_text = doc.select(".weather_info:not(.type_tomorrow) .today_chart_list .level2:eq(1) .title").text();
-				m2_val  = doc.select(".weather_info:not(.type_tomorrow) .today_chart_list .level2:eq(1) .txt"  ).text();
+				
 			}catch(Exception e) {
 				
 			}
@@ -874,7 +878,9 @@ public class LoaChatController {
 			
 			try {
 				for(int i=0;i<8;i++) {
-					time_text += enterStr;
+					if(i==0 || i==4) {
+						time_text += enterStr;	
+					}
 					time_text += doc.select(".flicking-camera > div:first-child .weather_graph_box ._hourly_weather ._li:eq("+i+") .time" ).text();
 					time_text += " : ";
 					time_text += doc.select(".flicking-camera > div:first-child .weather_graph_box ._hourly_weather ._li:eq("+i+") .blind").text();
@@ -903,11 +909,9 @@ public class LoaChatController {
 			}
 			retMsg += enterStr+"현재 " + area + "의 온도는 " + cur_temp + " 이며 어제보다 " + diff_temp;
 			retMsg += enterStr;
-			if(m1_val!=null && !m1_val.equals("")) {
-				retMsg += enterStr+m1_text+" : "+m1_val;
-			}
-			if(m2_val!=null && !m2_val.equals("")) {
-				retMsg += enterStr+m2_text+" : "+m2_val;
+			
+			if(mise_text!=null && !mise_text.equals("")) {
+				retMsg += enterStr+mise_text;
 			}
 			
 			if(time_text!=null && !time_text.equals("")) {
