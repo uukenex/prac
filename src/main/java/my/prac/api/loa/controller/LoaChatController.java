@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.apache.commons.lang3.StringUtils;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -880,9 +881,9 @@ public class LoaChatController {
 			try {
 				for(int i=0;i<3;i++) {
 					try {
-						mise_text += doc.select(".weather_info:not(.type_tomorrow) .today_chart_list .level2:eq("+i+") .title").text();
+						mise_text += doc.select(".weather_info:not(.type_tomorrow) .today_chart_list .item_today:eq("+i+") .title").text();
 						mise_text += " : ";
-						mise_text += doc.select(".weather_info:not(.type_tomorrow) .today_chart_list .level2:eq("+i+") .txt").text();
+						mise_text += doc.select(".weather_info:not(.type_tomorrow) .today_chart_list .item_today:eq("+i+") .txt").text();
 						mise_text += ".";
 						mise_text += enterStr;
 					}catch(Exception e) {
@@ -900,7 +901,7 @@ public class LoaChatController {
 			
 			//t : 시간별 날씨 
 			String time_text="";
-			
+			String tmp_weather="";
 			try {
 				for(int i=0;i<8;i++) {
 					if(i%2==0) {
@@ -908,10 +909,14 @@ public class LoaChatController {
 					}
 					time_text += doc.select(".flicking-camera > div:first-child .weather_graph_box ._hourly_weather ._li:eq("+i+") .time" ).text();
 					time_text += " : ";
-					time_text += doc.select(".flicking-camera > div:first-child .weather_graph_box ._hourly_weather ._li:eq("+i+") .blind").text();
+					
+					tmp_weather = doc.select(".flicking-camera > div:first-child .weather_graph_box ._hourly_weather ._li:eq("+i+") .blind").text();
+					tmp_weather = StringUtils.rightPad("맑음", 4, " ");
+					time_text += tmp_weather;
 					time_text += ".";
 					
 				}
+				time_text.replaceAll("내일", "00시");
 			}catch(Exception e) {
 			}
 
