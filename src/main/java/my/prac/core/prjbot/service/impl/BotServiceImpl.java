@@ -36,6 +36,10 @@ public class BotServiceImpl implements BotService {
 		return botDAO.selectBotImgSaveAll(hashMap);
 	}
 	
+	public int selectBotWordSaveMasterCnt(HashMap<String, Object> hashMap) throws Exception{
+		return botDAO.selectBotWordSaveMasterCnt(hashMap);
+	}
+	
 	public void deleteBotWordSaveMasterTx(HashMap<String, Object> hashMap) throws Exception{
 		if(botDAO.deleteBotWordSaveMaster(hashMap)< 1) {
 			throw new Exception("저장 실패");

@@ -81,6 +81,14 @@
 		 
 	</select>
 	
+	<select  id="selectBotWordSaveMasterCnt" parameterType="hashMap" resultType="int" >
+		SELECT COUNT(1) 
+		  FROM TBOT_WORD_SAVE_MASTER A
+		 WHERE A.USER_NAME = #{userName, jdbcType=VARCHAR}
+		   AND NVL(A.ROOM_NAME, #{roomName, jdbcType=VARCHAR}) = #{roomName, jdbcType=VARCHAR}
+		
+	</select>
+	
 	<delete id="deleteBotWordSaveMaster" parameterType="hashMap">
 		/* bot.xml deleteBotWordSaveMaster */
 		DELETE FROM TBOT_WORD_SAVE A

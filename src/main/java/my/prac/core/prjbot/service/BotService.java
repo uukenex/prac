@@ -12,6 +12,7 @@ public interface BotService {
 	public List<String> selectBotWordSaveAll(HashMap<String, Object> hashMap);
 	public List<String> selectBotImgSaveAll(HashMap<String, Object> hashMap);	
 	
+	public int selectBotWordSaveMasterCnt(HashMap<String, Object> hashMap)  throws Exception;
 	public void deleteBotWordSaveMasterTx(HashMap<String, Object> hashMap)  throws Exception;
 	public void deleteBotWordSaveTx(HashMap<String, Object> hashMap)  throws Exception;
 	
