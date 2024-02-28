@@ -203,16 +203,9 @@ public class LoaChatController {
 					reqMap.put("req", txtList[0]);
 					reqMap.put("res", txtList[1]);
 
-					boolean master_flag = false;
-					if (sender.equals("전태환")) {
-						master_flag = true;
-					} else if (sender.equals("일어난다람쥐/카단")) {
-						master_flag = true;
-					} else {
-						master_flag = false;
-					}
+					int masterYn = botService.selectBotWordSaveMasterCnt(reqMap);
 
-					if (master_flag) {
+					if (masterYn > 0) {
 						botService.deleteBotWordSaveMasterTx(reqMap);
 					} else {
 						botService.deleteBotWordSaveTx(reqMap);
