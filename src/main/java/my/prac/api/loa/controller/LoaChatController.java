@@ -347,18 +347,34 @@ public class LoaChatController {
 	String checkGoldList() throws Exception {
 		String msg = "";
 		msg += "골드획득정보..";
+		msg += enterStr + "하키드나 18,500G";
+		msg += enterStr + "노키드나 14,500G";
+		msg += enterStr + "하멘 1~3관문 20,000G";
+		msg += enterStr + "카멘 하12노3 관문 16,500G";
+		msg += enterStr + "노멘 1~3관문 13,000G";
+		msg += enterStr + "하칸 10,000G";
+		msg += enterStr + "노칸  7,500G";
+		msg += enterStr + "상하탑 14,500G";
+		msg += enterStr + "상노탑  9,000G";
+		msg += enterStr + "하양겔  6,500G";
+		msg += enterStr + "노양겔  4,500G";
+		msg += enterStr;
+		msg += "관문별 상세보기..▼ ===";
 		msg += enterStr;
 		msg += enterStr + "하키드나 1관문  6,000G";
 		msg += enterStr + "하키드나 2관문 12,500G";
 		msg += enterStr + "노키드나 1관문  5,000G ";
 		msg += enterStr + "노키드나 2관문  9,500G";
 		msg += enterStr;
-		msg += enterStr + "하멘 4관문   21,000G";
-		msg += enterStr + "하멘 1~3관문 20,000G";
-		msg += enterStr + "노멘 1~3관문 13,000G";
+		msg += enterStr + "하멘 1관문  5,000G";
+		msg += enterStr + "하멘 2관문  6,000G";
+		msg += enterStr + "하멘 3관문  9,000G";
+		msg += enterStr + "하멘 4관문 21,000G";
 		msg += enterStr;
-		msg += enterStr + "상하탑 1~4관문 14,500G";
-		msg += enterStr + "상노탑 1~4관문  9,000G";
+		msg += enterStr + "노멘 1관문  3,500G";
+		msg += enterStr + "노멘 2관문  4,000G";
+		msg += enterStr + "노멘 3관문  5,500G";
+		msg += enterStr;
 
 		return msg;
 	}
