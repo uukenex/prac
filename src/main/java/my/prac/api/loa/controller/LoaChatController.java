@@ -44,6 +44,7 @@ public class LoaChatController {
 	final String lostArkAPIurl = "https://developer-lostark.game.onstove.com";
 
 	final String enterStr= "♬";
+	final String allSeeStr = "===";
 	
 	@RequestMapping(value = "/loa/chat", method = RequestMethod.GET)
 	public @ResponseBody Map<String, Object> chatApplication(
@@ -106,6 +107,15 @@ public class LoaChatController {
 		reqMap.put("userName", sender);
 
 		switch (param0) {
+		case "/테스트":
+			val +="더보기 기능테스트";
+			val += allSeeStr;
+			val += "메롱1";
+			val += allSeeStr;
+			val += "메롱2";
+			val += allSeeStr;
+			val += "메롱3";
+			break;
 		case "/골드":
 		case "/ㄱㄷ":
 			val = checkGoldList();
@@ -218,8 +228,7 @@ public class LoaChatController {
 			List<String> wordList = botService.selectBotWordSaveAll(reqMap);
 			List<String> imgList = botService.selectBotImgSaveAll(reqMap);
 			List<String> limitWordList = botService.selectBotLimitWordSaveAll(reqMap);
-			//===를 치환할 예정
-			val = "단어목록:===";
+			val = "단어목록: "+allSeeStr;
 			for (String word : wordList) {
 				val = val + enterStr + word;
 			}
@@ -348,22 +357,23 @@ public class LoaChatController {
 		String msg = "";
 		msg += "골드획득정보..";
 		msg += enterStr;
-		msg += enterStr + "==카제로스 레이드==";
-		msg += enterStr + "에키드나 [하 18,500G/노 14,500G]";
+		msg += enterStr + "◆카제로스 레이드◆";
+		msg += enterStr + "에키드나[하 18,500G/노 14,500G]";
 		msg += enterStr;
-		msg += enterStr + "==군단장 레이드==";
+		msg += enterStr + "◆군단장 레이드◆";
 		msg += enterStr + "카멘 1-3[하 20,000G/노 13,000G]";
-		msg += enterStr + "카멘 하12노3 [16,500G]";
+		msg += enterStr + "카멘 1-2[하 11,000G/노 7,500G]";
 		msg += enterStr + "일리아칸 [하 10,000G/노 7,500G]";
 		msg += enterStr + "아브렐슈드 1-4 [하 9,000G/노 7,000G]";
 		msg += enterStr + "아브렐슈드 1-3 [하 6,000G/노 4,500G]";
-		msg += enterStr + "아브렐슈드 하12노3 [5500G]";
+		msg += enterStr + "아브렐슈드 하12노3 [5,500G]";
 		msg += enterStr;
-		msg += enterStr + "==어비스 던전==";
+		msg += enterStr + "◆어비스 던전◆";
 		msg += enterStr + "상아탑 [하 14,500G/노 9,000G]";
 		msg += enterStr + "카양겔 [하 6,500G/노 4,500G]";
 		msg += enterStr;
-		msg += "관문별 상세보기..▼ ===";
+		msg += enterStr + "관문별 상세보기..▼ ";
+		msg += enterStr + allSeeStr;
 		msg += enterStr;
 		msg += enterStr + "하키드나 1관문  6,000G";
 		msg += enterStr + "하키드나 2관문 12,500G";
