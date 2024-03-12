@@ -121,9 +121,11 @@ public class LoaChatController {
 			val = checkGoldList();
 			break;
 		case "/모험섬":
+		case "/ㅁㅎㅅ":	
 			val = calendarSearch();
 			break;
 		case "/장비":
+		case "/ㅈㅂ":
 			if (param1 != null && !param1.equals("")) {
 				try {
 					val = equipmentSearch(param1);
@@ -152,7 +154,16 @@ public class LoaChatController {
 				}
 			}
 			break;
-
+		case "/부캐":
+		case "/ㅂㅋ":
+			if (param1 != null && !param1.equals("")) {
+				try {
+					val = subCharacterSearch(param1);
+				} catch (Exception e) {
+					val = errorCodeMng(e);
+				}
+			}
+			break;	
 		case "/항협": case "/항해": case "/항해협동":
 			val = shipSearch();
 			break;
@@ -869,6 +880,36 @@ public class LoaChatController {
 			
 		}
 		
+		return resMsg;
+	}
+	
+	String subCharacterSearch(String userId) throws Exception {
+		String ordUserId=userId;
+		userId = URLEncoder.encode(userId, "UTF-8");
+		// +는 %2B로 치환한다
+		String paramUrl = lostArkAPIurl + "/characters/" + userId + "/siblings";
+		String returnData = LoaApiUtils.connect_process(paramUrl);
+		
+		String resMsg=ordUserId+" 부캐 정보";
+		
+		List<HashMap<String, Object>> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<List<Map<String, Object>>>() {});
+		
+		for(HashMap<String,Object> charList : rtnMap) {
+			switch(charList.get("ServerName").toString()) {
+				case "카단":
+					if(Double.parseDouble(charList.get("ItemMaxLevel").toString().replaceAll(",", "")) <= 1415) {
+						continue;
+					}
+					
+					resMsg += "[" + charList.get("CharacterClassName").toString() + "]";
+					resMsg += charList.get("CharacterName").toString();
+					resMsg += "("+charList.get("ItemMaxLevel").toString()+")";
+					resMsg += enterStr;
+					break;
+				default:
+					break;
+			}
+		}
 		return resMsg;
 	}
 	

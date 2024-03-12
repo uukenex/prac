@@ -52,7 +52,7 @@ public class LoaApiParser {
 		HashMap<String, Object> element_008_value3;
 		
 		element_008 = element;
-		if(element_008.toString().indexOf("초월") < 0) {
+		if(element_008.toString().indexOf("[초월]") < 0) {
 			//초월이 되지 않음
 			return "";
 		}
@@ -124,7 +124,7 @@ public class LoaApiParser {
 		HashMap<String, Object> element_008_value1;
 		
 		element_008 = element;
-		if(element_008.toString().indexOf("초월") < 0) {
+		if(element_008.toString().indexOf("[초월]") < 0) {
 			//초월이 되지 않음
 			return "";
 		}
@@ -210,7 +210,7 @@ public class LoaApiParser {
 			}
 		}
 		for(HashMap<String, Object> searchHs : elements) {
-			limit_element = findElementDt(searchHs,"초월");
+			limit_element = findElementDt(searchHs,"[초월]");
 			if(limit_element.size()>0) {
 				break;
 			}
