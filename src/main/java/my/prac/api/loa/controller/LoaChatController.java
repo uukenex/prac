@@ -905,7 +905,7 @@ public class LoaChatController {
 				case "카단":
 					resMsg += "[" + LoaApiUtils.shortClassName(charList.get("CharacterClassName").toString()) + "] ";
 					resMsg += charList.get("CharacterName").toString();
-					resMsg += " ("+charList.get("ItemMaxLevel").toString()+")";
+					resMsg += " ("+charList.get("ItemMaxLevel").toString().replaceAll(",", "")+")";
 					resMsg += enterStr;
 					break;
 				default:
