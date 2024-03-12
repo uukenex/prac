@@ -2,11 +2,14 @@ package my.prac.api.loa.controller;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
 
 import javax.annotation.Resource;
 
@@ -890,20 +893,21 @@ public class LoaChatController {
 		String paramUrl = lostArkAPIurl + "/characters/" + userId + "/siblings";
 		String returnData = LoaApiUtils.connect_process(paramUrl);
 		
-		String resMsg=ordUserId+" 부캐 정보";
+		String resMsg=ordUserId+" 부캐 정보" + enterStr;
 		
 		List<HashMap<String, Object>> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<List<Map<String, Object>>>() {});
 		
-		for(HashMap<String,Object> charList : rtnMap) {
+		List<HashMap<String, Object>> sortedList = rtnMap.stream()
+				.filter(x->  Double.parseDouble(x.get("ItemMaxLevel").toString().replaceAll(",", "")) >= 1415)
+				.sorted(Comparator.comparingDouble(x-> Double.parseDouble(x.get("ItemMaxLevel").toString().replaceAll(",", ""))))
+				.collect(toReversedList());
+		
+		for(HashMap<String,Object> charList : sortedList) {
 			switch(charList.get("ServerName").toString()) {
 				case "카단":
-					if(Double.parseDouble(charList.get("ItemMaxLevel").toString().replaceAll(",", "")) <= 1415) {
-						continue;
-					}
-					
-					resMsg += "[" + charList.get("CharacterClassName").toString() + "]";
+					resMsg += "[" + LoaApiUtils.shortClassName(charList.get("CharacterClassName").toString()) + "] ";
 					resMsg += charList.get("CharacterName").toString();
-					resMsg += "("+charList.get("ItemMaxLevel").toString()+")";
+					resMsg += " ("+charList.get("ItemMaxLevel").toString()+")";
 					resMsg += enterStr;
 					break;
 				default:
@@ -913,6 +917,12 @@ public class LoaChatController {
 		return resMsg;
 	}
 	
+	private static <T> Collector<T, ?, List<T>> toReversedList() {
+	    return Collectors.collectingAndThen(Collectors.toList(), list -> {
+	        Collections.reverse(list);
+	        return list;
+	    });
+	}
 	
 	
 	String weatherSearch(String area) throws Exception {

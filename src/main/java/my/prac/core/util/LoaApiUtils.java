@@ -55,6 +55,34 @@ public class LoaApiUtils {
 		return sb.toString();
 	}
 	
+	public static String shortClassName(String txt) {
+		try {
+			txt=txt.replaceAll("기상술사", "기　상");
+			txt=txt.replaceAll("배틀마스터", "배　마");
+			txt=txt.replaceAll("브레이커", "브　커");
+			txt=txt.replaceAll("소울이터", "소　울");
+			txt=txt.replaceAll("호크아이", "호　크");
+			txt=txt.replaceAll("스트라이커", "스　커");
+			txt=txt.replaceAll("소서리스", "소　서");
+			txt=txt.replaceAll("건슬링어", "건　슬");
+			txt=txt.replaceAll("블레이드", "블　레");
+			txt=txt.replaceAll("블래스터", "블　래");
+			txt=txt.replaceAll("인파이터", "인　파");
+			txt=txt.replaceAll("슬레이어", "슬　레");
+			txt=txt.replaceAll("디스트로이어", "디　트");
+			txt=txt.replaceAll("홀리나이트", "홀　나");
+			txt=txt.replaceAll("스카우터", "스　카");
+			txt=txt.replaceAll("데빌헌터", "데　헌");
+			txt=txt.replaceAll("아르카나", "알　카");
+			txt=txt.replaceAll("바드", "바　드");
+			txt=txt.replaceAll("리퍼", "리　퍼");
+			
+		}catch(Exception e) {
+			txt="";
+		}
+		return txt;
+	}
+	
 	public static String filterText(String txt) {
 		try {
 			txt=txt.replaceAll("  ", " ");
