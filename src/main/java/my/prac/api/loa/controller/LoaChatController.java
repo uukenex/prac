@@ -902,7 +902,7 @@ public class LoaChatController {
 		
 		String mainServer = sortedList.get(0).get("ServerName").toString();
 		
-		resMsg += "[" + mainServer + "] 서버";
+		resMsg += mainServer;
 		resMsg += enterStr;
 		
 		int charCnt = 0;
