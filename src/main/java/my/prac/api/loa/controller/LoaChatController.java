@@ -377,7 +377,7 @@ public class LoaChatController {
 		msg += enterStr + "상아탑 [하 14,500G/노 9,000G]";
 		msg += enterStr + "카양겔 [하 6,500G/노 4,500G]";
 		msg += enterStr;
-		msg += enterStr + "관문별 상세보기..▼ ";
+		msg += enterStr + "관문별 더보기..▼ ";
 		msg += enterStr + allSeeStr;
 		msg += enterStr;
 		msg += enterStr + "하키드나 1관문  6,000G";
@@ -900,18 +900,26 @@ public class LoaChatController {
 				.sorted(Comparator.comparingDouble(x-> Double.parseDouble(x.get("ItemMaxLevel").toString().replaceAll(",", ""))))
 				.collect(toReversedList());
 		
+		String mainServer = sortedList.get(0).get("ServerName").toString();
+		
+		resMsg += "[" + mainServer + "] 서버";
+		
+		int charCnt = 0;
 		for(HashMap<String,Object> charList : sortedList) {
-			switch(charList.get("ServerName").toString()) {
-				case "카단":
-					resMsg += "[" + LoaApiUtils.shortClassName(charList.get("CharacterClassName").toString()) + "] ";
-					resMsg += charList.get("CharacterName").toString();
-					resMsg += " ("+charList.get("ItemMaxLevel").toString().replaceAll(",", "")+")";
-					resMsg += enterStr;
-					break;
-				default:
-					break;
+			if(mainServer.equals(charList.get("ServerName").toString())) {
+				charCnt++;
+				resMsg += "[" + LoaApiUtils.shortClassName(charList.get("CharacterClassName").toString()) + "] ";
+				resMsg += charList.get("CharacterName").toString();
+				resMsg += " ("+charList.get("ItemMaxLevel").toString().replaceAll(",", "")+")";
+				resMsg += enterStr;
+				
+				if(charCnt ==6) {
+					resMsg += enterStr + "6캐릭 이상 더보기..▼ ";
+					resMsg += enterStr + allSeeStr ;
+				}
 			}
 		}
+		
 		return resMsg;
 	}
 	
