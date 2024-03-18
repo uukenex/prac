@@ -105,7 +105,7 @@ public class LoaApiUtils {
 	        }
 	    }
 			
-		return jsonStr;;
+		return jsonStr;
 	}
 	
 	public static String shortClassName(String txt) {
