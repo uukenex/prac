@@ -1023,18 +1023,13 @@ public class LoaChatController {
 	}
 	
 	String marketSearch() throws Exception {
-		String paramUrl = lostArkAPIurl + "/markets/items";
+		String paramUrl = lostArkAPIurl + "/markets/items/";
 		
 		JSONObject json = new JSONObject();
 		
-		json.put("Sort", "GRADE");
 		json.put("CategoryCode", "50000");
-		json.put("CharacterClass", "기상술사");
-		json.put("itemTier", "null");
-		json.put("itemGrade", "null");
 		json.put("itemName", "태양");
-		json.put("pageNo", 0);
-		json.put("SortCondition", "ASC");
+		
 		
 		String returnData = LoaApiUtils.connect_process_post(paramUrl,json.toString());
 		

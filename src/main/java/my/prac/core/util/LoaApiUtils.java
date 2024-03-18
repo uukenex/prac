@@ -1,9 +1,12 @@
 package my.prac.core.util;
 
 import java.io.BufferedReader;
+import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
@@ -11,16 +14,9 @@ import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Date;
-import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.net.URLEncoder;
-import java.util.*;
 
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
@@ -28,6 +24,9 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSession;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
+
+import org.json.JSONObject;
+import org.json.simple.parser.JSONParser;
 
 public class LoaApiUtils {
 
@@ -64,6 +63,9 @@ public class LoaApiUtils {
 		Map<String, Object> resultMap = new HashMap<String, Object>();
 		BufferedReader in = null;
 		String jsonStr = "";
+		String responseData = "";	
+		BufferedReader br = null;
+		StringBuffer sb = null;
 		
 		try {
 			URL url = new URL(paramUrl);
@@ -76,16 +78,24 @@ public class LoaApiUtils {
 		    conn.setRequestProperty("Accept", "application/json");
 		    conn.setRequestProperty("Authorization", lostArkKey);
 		    conn.setDoOutput(true);
-		    conn.getOutputStream().write(jsonBody.getBytes());
-		    in = new BufferedReader(new InputStreamReader(conn.getInputStream(), "UTF-8"));
-		 
-		    String inputLine;
-		    StringBuffer response = new StringBuffer();
-		    while((inputLine = in.readLine()) != null) { // response 출력
-		    	response.append(inputLine);
-		    }
 
-			jsonStr = response.toString();
+		    try (OutputStream os = conn.getOutputStream()){
+				byte request_data[] = jsonBody.getBytes("utf-8");
+				os.write(request_data);
+				os.close();
+			}
+			catch(Exception e) {
+				e.printStackTrace();
+			}
+		    
+		    conn.connect();
+			
+			br = new BufferedReader(new InputStreamReader(conn.getInputStream(), "UTF-8"));	
+			sb = new StringBuffer();	       
+			while ((responseData = br.readLine()) != null) {
+				sb.append(responseData); 
+			}
+	 
 		} catch (Exception e) {
 			throw e;
 		} finally {
@@ -94,7 +104,7 @@ public class LoaApiUtils {
 	        }
 	    }
 			
-		return jsonStr;
+		return sb.toString(); 
 	}
 	
 	public static String shortClassName(String txt) {
