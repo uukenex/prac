@@ -108,15 +108,6 @@ public class LoaChatController {
 		reqMap.put("userName", sender);
 
 		switch (param0) {
-		case "/테스트":
-			val +="더보기 기능테스트";
-			val += allSeeStr;
-			val += "메롱1";
-			val += allSeeStr;
-			val += "메롱2";
-			val += allSeeStr;
-			val += "메롱3";
-			break;
 		case "/골드":
 		case "/ㄱㄷ":
 			val = checkGoldList();
@@ -138,6 +129,7 @@ public class LoaChatController {
 			}
 			break;
 		case "/초월": case "/엘릭서":
+		case "/ㅊㅇ": case "/ㅇㄹㅅ":
 			if (param1 != null && !param1.equals("")) {
 				try {
 					val = limitSearch(param1);
@@ -147,9 +139,20 @@ public class LoaChatController {
 			}
 			break;
 		case "/내실":
+		case "/ㄴㅅ":
 			if (param1 != null && !param1.equals("")) {
 				try {
 					val = collectionSearch(param1);
+				} catch (Exception e) {
+					val = errorCodeMng(e);
+				}
+			}
+			break;
+		case "/ㄱㅁㅈ":
+		case "/경매장":
+			if (param1 != null && !param1.equals("")) {
+				try {
+					val = marketSearch();
 				} catch (Exception e) {
 					val = errorCodeMng(e);
 				}
@@ -916,9 +919,37 @@ public class LoaChatController {
 				
 				if(charCnt ==6) {
 					resMsg += enterStr + "6캐릭 이상 더보기..▼ ";
-					resMsg += enterStr + allSeeStr ;
+					resMsg += allSeeStr ;
 				}
 			}
+		}
+		
+		return resMsg;
+	}
+	
+	String marketSearch() throws Exception {
+		String paramUrl = lostArkAPIurl + "/markets/items/";
+		HashMap<String,Object> param = new HashMap<>();
+		
+		param.put("Sort", "GRADE");
+		param.put("CategoryCode", "50002");
+		param.put("CharacterClass", "기상술사");
+		param.put("itemTier", null);
+		param.put("itemGrade", null);
+		param.put("itemName", "태양");
+		param.put("pageNo", 0);
+		param.put("SortCondition", "ASC");
+		String returnData = LoaApiUtils.connect_process_post(paramUrl,param);
+		
+		String resMsg="테스트 경매장 검색";
+		resMsg += enterStr + "아이템명/최저가";
+		
+		HashMap<String, Object> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<Map<String, Object>>() {});
+
+		List<HashMap<String, Object>> itemMap = (List<HashMap<String, Object>>) rtnMap.get("Items");
+		
+		for (HashMap<String, Object>  item : itemMap) {
+			resMsg += enterStr + item.get("Name") +" / "+ item.get("CurrentMinPrice") ;
 		}
 		
 		return resMsg;

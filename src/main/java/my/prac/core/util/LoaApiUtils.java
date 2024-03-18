@@ -15,6 +15,12 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.net.URLEncoder;
+import java.util.*;
 
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
@@ -28,8 +34,6 @@ public class LoaApiUtils {
 	final static String lostArkKey = "bearer "+PropsUtil.getProperty("keys","loaKey");
 	
 	public static String connect_process(String paramUrl) throws Exception {
-		List<Map<String, Object>>rtnMap = new ArrayList<>();
-		
 		URL url = new URL(paramUrl);
 
 		HttpURLConnection conn = (HttpURLConnection) url.openConnection();
@@ -53,6 +57,55 @@ public class LoaApiUtils {
 		}
 
 		return sb.toString();
+	}
+	
+	public static String connect_process_post(String paramUrl, Map<String, Object> param) throws Exception { 
+		
+		Map<String, Object> resultMap = new HashMap<String, Object>();
+		BufferedReader in = null;
+		String jsonStr = "";
+		
+		try {
+			URL url = new URL(paramUrl);
+			
+			// Map에 담아온 데이터 셋팅해주기
+			StringBuilder postData = new StringBuilder();
+			for(Map.Entry<String, Object> params: param.entrySet()) {
+				if(postData.length() != 0) postData.append("&");
+				postData.append(URLEncoder.encode(params.getKey(), "UTF-8"));
+				postData.append("=");
+				postData.append(URLEncoder.encode(String.valueOf(params.getValue()), "UTF-8"));
+					
+			}
+			byte[] postDataBytes = postData.toString().getBytes("UTF-8");
+			
+		    HttpURLConnection conn = (HttpURLConnection)url.openConnection();
+		    conn.setRequestMethod("POST");
+		    conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+		    conn.setRequestProperty("Content-Length", String.valueOf(postDataBytes.length));
+		    conn.setRequestProperty("Accept", "application/json");
+		    conn.setRequestProperty("Authorization", lostArkKey);
+		    conn.setDoOutput(true);
+		    conn.getOutputStream().write(postDataBytes);
+		 
+		    in = new BufferedReader(new InputStreamReader(conn.getInputStream(), "UTF-8"));
+		 
+		    String inputLine;
+		    StringBuffer response = new StringBuffer();
+		    while((inputLine = in.readLine()) != null) { // response 출력
+		    	response.append(inputLine);
+		    }
+
+			jsonStr = response.toString();
+		} catch (Exception e) {
+			throw e;
+		} finally {
+	    	if ( in != null ){
+	        	in.close();
+	        }
+	    }
+			
+		return jsonStr;;
 	}
 	
 	public static String shortClassName(String txt) {
