@@ -129,7 +129,6 @@ public class LoaApiUtils {
 		try {
 			txt=txt.replaceAll("  ", " ");
 			txt=txt.replaceAll("\\[상급 재련\\] ", "");
-			txt=txt.replaceAll("단계", "");
 			txt=txt.replaceAll("\\[초월\\]", "");
 			txt=txt.replaceAll("\\[공용\\]", "");
 			txt=txt.replaceAll("\\[하의\\]", "");

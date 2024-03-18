@@ -117,6 +117,17 @@ public class LoaChatController {
 		case "/ㅁㅎㅅ":	
 			val = calendarSearch();
 			break;
+		case "/방어구":
+		case "/ㅂㅇㄱ":
+			if (param1 != null && !param1.equals("")) {
+				try {
+					val = equipmentDtSearch(param1);
+				} catch (Exception e) {
+					val = errorCodeMng(e);
+				}
+			}
+			break;
+			
 		case "/장비":
 		case "/ㅈㅂ":
 			if (param1 != null && !param1.equals("")) {
@@ -713,6 +724,7 @@ public class LoaChatController {
 				if(new_refine_element.size()>0) {
 					newEnhanceInfo = Jsoup.parse((String) new_refine_element.get("value")).text();
 					newEnhanceInfo = LoaApiUtils.filterText(newEnhanceInfo);
+					newEnhanceInfo = newEnhanceInfo.replace("단계", "");
 				}
 				
 				break;
@@ -782,6 +794,92 @@ public class LoaChatController {
 		
 		return resMsg;
 	}
+	
+	
+	String equipmentDtSearch(String userId) throws Exception {
+		String ordUserId=userId;
+		userId = URLEncoder.encode(userId, "UTF-8");
+		// +는 %2B로 치환한다
+		String paramUrl = lostArkAPIurl + "/armories/characters/" + userId + "?filters=equipment";
+		String returnData = LoaApiUtils.connect_process(paramUrl);
+		HashMap<String, Object> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<Map<String, Object>>() {});
+
+		List<Map<String, Object>> armoryEquipment;
+		try {
+			armoryEquipment = (List<Map<String, Object>>) rtnMap.get("ArmoryEquipment");
+		}catch(Exception e){
+			throw new Exception("E0003");
+		}
+		
+		String resMsg = ordUserId+" 방어구 정보"+enterStr;
+		List<String> list_f1 = new ArrayList<>();
+		List<String> list_f2 = new ArrayList<>();
+		List<String> list_f3= new ArrayList<>();
+		
+		for (Map<String, Object> equip : armoryEquipment) {
+			switch (equip.get("Type").toString()) {
+			case "투구":
+			case "상의":
+			case "하의":
+			case "장갑":
+			case "어깨":
+				HashMap<String, Object> tooltip = new ObjectMapper().readValue((String) equip.get("Tooltip"),new TypeReference<Map<String, Object>>() {});
+				HashMap<String, Object> maps = LoaApiParser.findElement(tooltip);
+				HashMap<String, Object> weapon_element = (HashMap<String, Object>)maps.get("weapon_element");
+				HashMap<String, Object> quality_element = (HashMap<String, Object>)maps.get("quality_element");
+				HashMap<String, Object> new_refine_element = (HashMap<String, Object>)maps.get("new_refine_element");
+				HashMap<String, Object> limit_element = (HashMap<String, Object>)maps.get("limit_element");
+				HashMap<String, Object> elixir_element = (HashMap<String, Object>)maps.get("elixir_element");
+				
+				String resField1 = equip.get("Type").toString();//렙
+				resField1 += " ("+Jsoup.parse((String) ((HashMap<String, Object>) quality_element.get("value")).get("leftStr2")).text().replaceAll("[^0-9]|[0-9]\\)$", "")+")";
+				resField1 += " "+Jsoup.parse((String) weapon_element.get("value")).text().replaceAll("[^0-9]", "")+"강";
+				if(new_refine_element.size()>0) {
+					String newEnhanceInfo="";
+					newEnhanceInfo = Jsoup.parse((String) new_refine_element.get("value")).text();
+					newEnhanceInfo = LoaApiUtils.filterText(newEnhanceInfo);
+					newEnhanceInfo = newEnhanceInfo.replace("단계", "");
+					resField1 += "[+"+newEnhanceInfo+"]";
+				}
+				resField1 += " 품:"+(int)((HashMap<String, Object>) quality_element.get("value")).get("qualityValue");
+				list_f1.add(resField1);
+				
+				String resField2 = equip.get("Type").toString();//초
+				resField2 += LoaApiParser.parseLimitForLimit(limit_element);
+				resField2 = LoaApiUtils.filterText(resField2);
+				list_f2.add(resField2);
+				
+				String resField3 = equip.get("Type").toString();//엘
+				resField3 += LoaApiParser.parseElixirForLimit(null,elixir_element);
+				list_f3.add(resField3);
+				break;
+				default:
+				continue;
+			}
+		}
+		
+		resMsg += "기본정보"+enterStr;
+		for(String res : list_f1) {
+			resMsg += res+enterStr;
+		}
+		resMsg += enterStr;
+		resMsg += "더보기"+allSeeStr;
+		
+		resMsg += "초월정보"+enterStr;
+		for(String res : list_f2) {
+			resMsg += res+enterStr;
+		}
+		resMsg += enterStr;
+		resMsg += "엘릭서정보"+enterStr;
+		for(String res : list_f3) {
+			resMsg += res+enterStr;
+		}
+		
+		return resMsg;
+	}
+	
+	
+	
 	
 	String engraveSearch(String userId) throws Exception {
 		String ordUserId=userId;
