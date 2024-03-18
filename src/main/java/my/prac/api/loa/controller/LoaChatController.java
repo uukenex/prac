@@ -12,6 +12,7 @@ import java.util.stream.Collectors;
 
 import javax.annotation.Resource;
 
+import org.json.JSONObject;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.slf4j.Logger;
@@ -922,18 +923,20 @@ public class LoaChatController {
 	}
 	
 	String marketSearch() throws Exception {
-		String paramUrl = lostArkAPIurl + "/markets/items/";
-		HashMap<String,Object> param = new HashMap<>();
+		String paramUrl = lostArkAPIurl + "/markets/items";
 		
-		param.put("Sort", "GRADE");
-		param.put("CategoryCode", "50002");
-		param.put("CharacterClass", "기상술사");
-		param.put("itemTier", null);
-		param.put("itemGrade", null);
-		param.put("itemName", "태양");
-		param.put("pageNo", 0);
-		param.put("SortCondition", "ASC");
-		String returnData = LoaApiUtils.connect_process_post(paramUrl,param);
+		JSONObject json = new JSONObject();
+		
+		json.put("Sort", "GRADE");
+		json.put("CategoryCode", "50000");
+		json.put("CharacterClass", "기상술사");
+		json.put("itemTier", "null");
+		json.put("itemGrade", "null");
+		json.put("itemName", "태양");
+		json.put("pageNo", 0);
+		json.put("SortCondition", "ASC");
+		
+		String returnData = LoaApiUtils.connect_process_post(paramUrl,json.toString());
 		
 		String resMsg="테스트 경매장 검색";
 		resMsg += enterStr + "아이템명/최저가";

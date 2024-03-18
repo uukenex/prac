@@ -59,7 +59,7 @@ public class LoaApiUtils {
 		return sb.toString();
 	}
 	
-	public static String connect_process_post(String paramUrl, Map<String, Object> param) throws Exception { 
+	public static String connect_process_post(String paramUrl, String jsonBody) throws Exception { 
 		
 		Map<String, Object> resultMap = new HashMap<String, Object>();
 		BufferedReader in = null;
@@ -68,26 +68,15 @@ public class LoaApiUtils {
 		try {
 			URL url = new URL(paramUrl);
 			
-			// Map에 담아온 데이터 셋팅해주기
-			StringBuilder postData = new StringBuilder();
-			for(Map.Entry<String, Object> params: param.entrySet()) {
-				if(postData.length() != 0) postData.append("&");
-				postData.append(URLEncoder.encode(params.getKey(), "UTF-8"));
-				postData.append("=");
-				postData.append(URLEncoder.encode(String.valueOf(params.getValue()), "UTF-8"));
-					
-			}
-			byte[] postDataBytes = postData.toString().getBytes("UTF-8");
+			
 			
 		    HttpURLConnection conn = (HttpURLConnection)url.openConnection();
 		    conn.setRequestMethod("POST");
-		    conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
-		    conn.setRequestProperty("Content-Length", String.valueOf(postDataBytes.length));
+		    conn.setRequestProperty("Content-Type", "application/json");
 		    conn.setRequestProperty("Accept", "application/json");
 		    conn.setRequestProperty("Authorization", lostArkKey);
 		    conn.setDoOutput(true);
-		    conn.getOutputStream().write(postDataBytes);
-		 
+		    conn.getOutputStream().write(jsonBody.getBytes());
 		    in = new BufferedReader(new InputStreamReader(conn.getInputStream(), "UTF-8"));
 		 
 		    String inputLine;
