@@ -757,11 +757,13 @@ public class LoaChatController {
 		}
 		
 		resMsg = resMsg + enterStr+"ItemLv : "+ String.format("%.2f", (avgLv/6));
-		resMsg = resMsg + enterStr+"§무기 : "+enhanceLv+"강, 무품 : "+weaponQualityValue+""; 
-		
+		resMsg = resMsg + enterStr+"§무기 : "+enhanceLv+"강";
 		if(!newEnhanceInfo.equals("")) {
-			resMsg = resMsg + enterStr+"§무기 "+newEnhanceInfo; 
+			resMsg = resMsg +"[+"+newEnhanceInfo+"]"; 
 		}
+		resMsg = resMsg + " 무품 : "+weaponQualityValue+""; 
+		
+		
 		resMsg = resMsg + enterStr+"§악세평균품질 : "+avgQuality/5;
 		resMsg = resMsg + enterStr+"§세트 : "+setField;
 		
