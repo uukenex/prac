@@ -150,13 +150,7 @@ public class LoaChatController {
 			break;
 		case "/ㄱㅁㅈ":
 		case "/경매장":
-			if (param1 != null && !param1.equals("")) {
-				try {
-					val = marketSearch();
-				} catch (Exception e) {
-					val = errorCodeMng(e);
-				}
-			}
+			val = marketSearch();
 			break;
 		case "/부캐":
 		case "/ㅂㅋ":
