@@ -802,8 +802,8 @@ public class LoaChatController {
 			resMsg = resMsg +" 엘릭서합 : " + totElixir + "(" + elixirField+")";
 		}
 		
-		resMsg += gemSearch(userId);
-		resMsg += engraveSearch(userId);
+		resMsg += gemSearch(ordUserId);
+		resMsg += engraveSearch(ordUserId);
 		
 		resMsg += enterStr+enterStr;
 		resMsg += "방어구 상세정보 더보기..▼"+allSeeStr;
@@ -918,7 +918,7 @@ public class LoaChatController {
 			engraves = (List<Map<String, Object>>) rtnMap.get("Effects");
 		}catch(Exception e){
 			//throw new Exception("E0003");
-			return enterStr+"§각인정보 없음";
+			return enterStr+"§각인 : 정보 없음";
 		}
 		
 		List<String> engraveList = new ArrayList<>();
