@@ -761,7 +761,7 @@ public class LoaChatController {
 				resField3 += LoaApiParser.parseElixirForLimit(null,elixir_element);
 				
 				switch(equip.get("Type").toString()) {
-					case "투규":
+					case "투구":
 						sb1.append(resField1);
 						sb1.append(resField2);
 						sb1.append(resField3);
@@ -854,7 +854,7 @@ public class LoaChatController {
 		
 		resMsg += enterStr+enterStr;
 		resMsg += "방어구 상세정보 더보기..▼"+allSeeStr;
-		resMsg += "방어구 / 초월 / 엘릭서";
+		resMsg += "방어구 / 초월 / 엘릭서"+enterStr;
 		resMsg += sb1+enterStr;
 		resMsg += sb2+enterStr;
 		resMsg += sb3+enterStr;
@@ -1162,7 +1162,7 @@ public class LoaChatController {
 
 		try {
 
-			String paramUrl = lostArkAPIurl + "/auction/items";
+			String paramUrl = lostArkAPIurl + "/auctions/items";
 
 			String returnData = LoaApiUtils.connect_process_post(paramUrl, json.toString());
 			HashMap<String, Object> rtnMap = new ObjectMapper().readValue(returnData,
