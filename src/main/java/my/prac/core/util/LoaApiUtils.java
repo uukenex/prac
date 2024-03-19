@@ -140,7 +140,10 @@ public class LoaApiUtils {
 			txt=txt.replaceAll("명예의 파편 주머니", "명파");
 			txt=txt.replaceAll("정제된 ", "정");
 			txt=txt.replaceAll("파괴강석", "파강");
+			txt=txt.replaceAll("태양의 ", "");
 			txt=txt.replaceAll("찬란한 명예의 돌파석", "찬명돌");
+			txt=txt.replaceAll("10레벨 멸화의 보석", "10멸");
+			txt=txt.replaceAll("10레벨 홍염의 보석", "10홍");
 			
 		}catch(Exception e) {
 			txt="";
