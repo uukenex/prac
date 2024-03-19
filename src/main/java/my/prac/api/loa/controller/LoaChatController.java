@@ -800,8 +800,8 @@ public class LoaChatController {
 		resMsg += gemSearch(userId);
 		resMsg += engraveSearch(userId);
 		
-		resMsg += enterStr;
-		resMsg += "방어구 상세정보 더보기"+allSeeStr;
+		resMsg += enterStr+enterStr;
+		resMsg += "방어구 상세정보 더보기..▼"+allSeeStr;
 		
 		for(String res : list_f1) {
 			resMsg += res+enterStr;
