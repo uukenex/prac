@@ -1167,23 +1167,24 @@ public class LoaChatController {
 					int p2 = Integer.valueOf(itemMap.get(1).get("CurrentMinPrice").toString());
 					int flag=0;
 					
-					if(p2*5 > p1) {
-						flag=1;
-					}else if(p2*5 <p1) {
-						flag=2;
+					if(p1*5 > p2) {
+						flag=1;//p2가 더 효율
+					}else if(p1*5 <p2) {
+						flag=2;//p1이 더 효율 
 					}
 					
 					switch(flag) {
 						case 0://동일
-							str += i2+"/"+i1 +" - "+p2+"/"+p1+ "G" + enterStr;
+							str += i1+"/"+i2 +" - "+p1+"/"+p2 + "G" + enterStr; 
 							break;
-						case 1://p1 더 효율
-							str += i2+"/★"+i1 +" - "+p2+"/★"+p1+ "G" + enterStr;
+						case 1://p2 더 효율
+							str += i1+"/★"+i2 +" - "+p1+"/★"+p2 + "G" + enterStr;
 							break;
-						case 2://p2 더 효율
-							str += "★"+i2+"/"+i1 +" - ★"+p2+"/"+p1+ "G" + enterStr;
+						case 2://p1 더 효율
+							str += "★"+i1+"/"+i2 +" - ★"+p1+"/"+p2 + "G" + enterStr;
 							break;
 					}
+					
 					break;
 				case 2:
 				case 4:
