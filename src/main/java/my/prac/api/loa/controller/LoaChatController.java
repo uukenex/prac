@@ -117,16 +117,6 @@ public class LoaChatController {
 		case "/ㅁㅎㅅ":	
 			val = calendarSearch();
 			break;
-		case "/방어구":
-		case "/ㅂㅇㄱ":
-			if (param1 != null && !param1.equals("")) {
-				try {
-					val = equipmentDtSearch(param1);
-				} catch (Exception e) {
-					val = errorCodeMng(e);
-				}
-			}
-			break;
 			
 		case "/장비":
 		case "/ㅈㅂ":
@@ -680,6 +670,8 @@ public class LoaChatController {
 		String newEnhanceInfo="";
 		String totLimit ="";
 		int totElixir =0;
+		
+		List<String> list_f1 = new ArrayList<>();
 
 		for (Map<String, Object> equip : armoryEquipment) {
 			HashMap<String, Object> tooltip = new ObjectMapper().readValue((String) equip.get("Tooltip"),new TypeReference<Map<String, Object>>() {});
@@ -729,6 +721,20 @@ public class LoaChatController {
 				
 				break;
 			case "투구": case "상의": case "하의": case "장갑": case "어깨":
+				
+				String resField1 = equip.get("Type").toString();//렙
+				resField1 += " ("+Jsoup.parse((String) ((HashMap<String, Object>) quality_element.get("value")).get("leftStr2")).text().replaceAll("[^0-9]|[0-9]\\)$", "")+")";
+				resField1 += " "+Jsoup.parse((String) weapon_element.get("value")).text().replaceAll("[^0-9]", "")+"강";
+				if(new_refine_element.size()>0) {
+					String newEnhanceInfo2="";
+					newEnhanceInfo2 = Jsoup.parse((String) new_refine_element.get("value")).text();
+					newEnhanceInfo2 = LoaApiUtils.filterText(newEnhanceInfo2);
+					newEnhanceInfo2 = newEnhanceInfo2.replace("단계", "");
+					resField1 += "[+"+newEnhanceInfo2+"]";
+				}
+				resField1 += " 품:"+(int)((HashMap<String, Object>) quality_element.get("value")).get("qualityValue");
+				list_f1.add(resField1);
+				
 				/* 방어구품질 */
 				//armorQualityValue = armorQualityValue + Integer.parseInt(item_level_element_dt.get("qualityValue").toString());
 				//초월
@@ -790,6 +796,13 @@ public class LoaChatController {
 			resMsg = resMsg + " 엘릭서 : 없음";
 		}else {
 			resMsg = resMsg +" 엘릭서합 : " + totElixir + "(" + elixirField+")";
+		}
+		
+		resMsg +=enterStr;
+		resMsg +="방어구 상세정보 더보기"+allSeeStr;
+		
+		for(String res : list_f1) {
+			resMsg += res+enterStr;
 		}
 		
 		return resMsg;
