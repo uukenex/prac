@@ -1058,7 +1058,7 @@ public class LoaChatController {
 		
 		
 		JSONObject json ;
-		String resMsg= "아이템명/최저가";
+		String resMsg= "[아이템명]-[걍메징최저가]";
 		
 		json = new JSONObject();
 		json.put("CategoryCode", "50000");
@@ -1075,13 +1075,39 @@ public class LoaChatController {
 		json.put("itemName", "파괴강석");
 		resMsg += marketSearchDt(json);
 		
+		json.put("itemName", "최상급");
+		resMsg += marketSearchDt(json);
 		
+		/* 집가서 해볼것
+		json.put("itemName", "10레벨 멸");
+		resMsg += auctionSearchDt(json);
+		
+		json.put("itemName", "10레벨 홍");
+		resMsg += auctionSearchDt(json);
+		*/
+		
+		resMsg = LoaApiUtils.filterTextForMarket(resMsg);
 		return resMsg;
 	}
 	
 	String marketSearchDt(JSONObject json) throws Exception {
 		String str="";
 		String paramUrl = lostArkAPIurl + "/markets/items";
+		
+		String returnData = LoaApiUtils.connect_process_post(paramUrl,json.toString());
+		HashMap<String, Object>  rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<Map<String, Object>>() {});
+		List<HashMap<String, Object>> itemMap = (List<HashMap<String, Object>>) rtnMap.get("Items");
+		
+		for (HashMap<String, Object>  item : itemMap) {
+			str += enterStr + item.get("Name") +" - "+ item.get("CurrentMinPrice")+"G" ;
+		}
+		
+		
+		return str;
+	}
+	String auctionSearchDt(JSONObject json) throws Exception {
+		String str="";
+		String paramUrl = lostArkAPIurl + "/auction/items";
 		
 		String returnData = LoaApiUtils.connect_process_post(paramUrl,json.toString());
 		HashMap<String, Object>  rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<Map<String, Object>>() {});

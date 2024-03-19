@@ -134,6 +134,20 @@ public class LoaApiUtils {
 		}
 		return txt;
 	}
+	public static String filterTextForMarket(String txt) {
+		try {
+			txt=txt.replaceAll("최상급 오레하 융화 재료", "최상레하");
+			txt=txt.replaceAll("명예의 파편 주머니", "명파");
+			txt=txt.replaceAll("정제된 ", "정");
+			txt=txt.replaceAll("파괴강석", "파강");
+			txt=txt.replaceAll("찬란한 명예의 돌파석", "찬명돌");
+			
+		}catch(Exception e) {
+			txt="";
+		}
+	
+		return txt;
+	}
 	
 	public static String filterText(String txt) {
 		try {
