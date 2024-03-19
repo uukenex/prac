@@ -686,7 +686,11 @@ public class LoaChatController {
 		String totLimit ="";
 		int totElixir =0;
 		
-		List<String> list_f1 = new ArrayList<>();
+		StringBuilder sb1 = new StringBuilder();
+		StringBuilder sb2 = new StringBuilder();
+		StringBuilder sb3 = new StringBuilder();
+		StringBuilder sb4 = new StringBuilder();
+		StringBuilder sb5 = new StringBuilder();
 
 		for (Map<String, Object> equip : armoryEquipment) {
 			HashMap<String, Object> tooltip = new ObjectMapper().readValue((String) equip.get("Tooltip"),new TypeReference<Map<String, Object>>() {});
@@ -736,9 +740,7 @@ public class LoaChatController {
 				
 				break;
 			case "투구": case "상의": case "하의": case "장갑": case "어깨":
-				
 				String resField1 = equip.get("Type").toString();//렙
-				resField1 += " ("+Jsoup.parse((String) ((HashMap<String, Object>) quality_element.get("value")).get("leftStr2")).text().replaceAll("[^0-9]|[0-9]\\)$", "")+")";
 				resField1 += " "+Jsoup.parse((String) weapon_element.get("value")).text().replaceAll("[^0-9]", "")+"강";
 				if(new_refine_element.size()>0) {
 					String newEnhanceInfo2="";
@@ -748,10 +750,44 @@ public class LoaChatController {
 					resField1 += "[+"+newEnhanceInfo2+"]";
 				}
 				resField1 += " 품:"+(int)((HashMap<String, Object>) quality_element.get("value")).get("qualityValue");
-				list_f1.add(resField1);
 				
-				/* 방어구품질 */
-				//armorQualityValue = armorQualityValue + Integer.parseInt(item_level_element_dt.get("qualityValue").toString());
+				
+				String resField2 = "";//초
+				resField2 += LoaApiParser.parseLimitForLimit(limit_element);
+				resField2 = LoaApiUtils.filterText(resField2);
+				
+				
+				String resField3 = "";//엘
+				resField3 += LoaApiParser.parseElixirForLimit(null,elixir_element);
+				
+				switch(equip.get("Type").toString()) {
+					case "투규":
+						sb1.append(resField1);
+						sb1.append(resField2);
+						sb1.append(resField3);
+						break;
+					case "어깨":
+						sb2.append(resField1);
+						sb2.append(resField2);
+						sb2.append(resField3);
+						break;
+					case "상의":
+						sb3.append(resField1);
+						sb3.append(resField2);
+						sb3.append(resField3);
+						break;
+					case "하의":
+						sb4.append(resField1);
+						sb4.append(resField2);
+						sb4.append(resField3);
+						break;
+					case "장갑":
+						sb5.append(resField1);
+						sb5.append(resField2);
+						sb5.append(resField3);
+						break;
+				}
+				
 				//초월
 				totLimit = LoaApiParser.parseLimit(limit_element);
 				//엘릭서
@@ -818,11 +854,12 @@ public class LoaChatController {
 		
 		resMsg += enterStr+enterStr;
 		resMsg += "방어구 상세정보 더보기..▼"+allSeeStr;
-		
-		for(String res : list_f1) {
-			resMsg += res+enterStr;
-		}
-		
+		resMsg += "방어구 / 초월 / 엘릭서";
+		resMsg += sb1+enterStr;
+		resMsg += sb2+enterStr;
+		resMsg += sb3+enterStr;
+		resMsg += sb4+enterStr;
+		resMsg += sb5+enterStr;
 		
 		return resMsg;
 	}
@@ -1135,9 +1172,10 @@ public class LoaChatController {
 			HashMap<String, Object> item = itemMap.get(0);
 			HashMap<String, Object> auctionInfo = (HashMap<String, Object>) item.get("AuctionInfo");
 			
-			str += enterStr + item.get("Name") + " - " + auctionInfo.get("BuyPrice");
+			str += enterStr + item.get("Name") + " - " + auctionInfo.get("BuyPrice") + "G";
 
 		} catch (Exception e) {
+			e.printStackTrace();
 			str = "";
 		}
 
