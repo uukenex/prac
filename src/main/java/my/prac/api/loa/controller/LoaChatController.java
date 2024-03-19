@@ -231,19 +231,24 @@ public class LoaChatController {
 			List<String> wordList = botService.selectBotWordSaveAll(reqMap);
 			List<String> imgList = botService.selectBotImgSaveAll(reqMap);
 			List<String> limitWordList = botService.selectBotLimitWordSaveAll(reqMap);
-			val = "단어목록: "+allSeeStr;
-			for (String word : wordList) {
-				val = val + enterStr + word;
-			}
-			val = val+enterStr+enterStr+"이모티콘목록:";
-			for (String word : imgList) {
-				val = val + enterStr + word;
+			
+			
+			val = "주요명령어목록: "+enterStr;
+			
+			for (String word : limitWordList) {
+				val += enterStr + word;
 			}
 			
-			val = val+enterStr+enterStr+"명령어목록:";
-			for (String word : limitWordList) {
-				val = val + enterStr + word;
+			val += enterStr + "단어 더보기..▼ "+ allSeeStr;
+			
+			for (String word : wordList) {
+				val += enterStr + word;
 			}
+			val += enterStr+enterStr+"이모티콘목록:";
+			for (String word : imgList) {
+				val += enterStr + word;
+			}
+			
 			
 			break;
 		default:
