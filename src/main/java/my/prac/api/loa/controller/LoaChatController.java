@@ -1095,25 +1095,25 @@ public class LoaChatController {
 		
 		
 		JSONObject json ;
-		String resMsg= "[아이템명]-[실시간최저가]";
+		String resMsg= "[아이템명]-[실시간최저가]"+enterStr;
 		
 		json = new JSONObject();
 		json.put("CategoryCode", "50000");
 		
 		json.put("itemName", "태양");
-		resMsg += marketSearchDt(json);
+		resMsg += marketSearchDt(json,0);
 		
 		json.put("itemName", "명예의 파편");
-		resMsg += marketSearchDt(json);
+		resMsg += marketSearchDt(json,1);
 		
 		json.put("itemName", "찬란");
-		resMsg += marketSearchDt(json);
+		resMsg += marketSearchDt(json,2);
 		
 		json.put("itemName", "파괴강석");
-		resMsg += marketSearchDt(json);
+		resMsg += marketSearchDt(json,3);
 		
 		json.put("itemName", "최상급");
-		resMsg += marketSearchDt(json);
+		resMsg += marketSearchDt(json,4);
 		
 		
 		//여기부턴 거래소
@@ -1133,7 +1133,7 @@ public class LoaChatController {
 		return resMsg;
 	}
 	
-	String marketSearchDt(JSONObject json) throws Exception {
+	String marketSearchDt(JSONObject json,int numbering) throws Exception {
 		String str = "";
 
 		try {
@@ -1146,9 +1146,55 @@ public class LoaChatController {
 					});
 			List<HashMap<String, Object>> itemMap = (List<HashMap<String, Object>>) rtnMap.get("Items");
 
-			for (HashMap<String, Object> item : itemMap) {
-				str += enterStr + item.get("Name") + " - " + item.get("CurrentMinPrice") + "G";
+			String price ="";
+			switch(numbering){
+				case 0:
+					for (HashMap<String, Object> item : itemMap) {
+						price += item.get("CurrentMinPrice")+" ";
+					}
+					str += "숨결 - "+price.trim().replace(" ", "/")+ "G" + enterStr;
+					break;
+				case 1:
+					for (HashMap<String, Object> item : itemMap) {
+						price += item.get("CurrentMinPrice")+" ";
+					}
+					str += "명파 - "+price.trim().replace(" ", "/")+ "G" + enterStr;
+					break;
+				case 3:
+					String i1 = itemMap.get(0).get("Name").toString();
+					String i2 = itemMap.get(1).get("Name").toString();
+					int p1 = Integer.valueOf(itemMap.get(0).get("CurrentMinPrice").toString());
+					int p2 = Integer.valueOf(itemMap.get(1).get("CurrentMinPrice").toString());
+					int flag=0;
+					
+					if(p2*5 > p1) {
+						flag=1;
+					}else if(p2*5 <p1) {
+						flag=2;
+					}
+					
+					switch(flag) {
+						case 0://동일
+							str += i2+"/"+i1 +" - "+p2+"/"+p1+ "G" + enterStr;
+							break;
+						case 1://p1 더 효율
+							str += i2+"/★"+i1 +" - "+p2+"/★"+p1+ "G" + enterStr;
+							break;
+						case 2://p2 더 효율
+							str += "★"+i2+"/"+i1 +" - ★"+p2+"/"+p1+ "G" + enterStr;
+							break;
+					}
+					break;
+				case 2:
+				case 4:
+					for (HashMap<String, Object> item : itemMap) {
+						str += item.get("Name") + " - " + item.get("CurrentMinPrice") + "G" + enterStr;
+					}
+					break;
+				
 			}
+			
+			
 
 		} catch (Exception e) {
 			str = "";
