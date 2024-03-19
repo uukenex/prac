@@ -153,6 +153,10 @@ public class LoaChatController {
 		case "/경매장":
 			val = marketSearch();
 			break;
+		case "/레이드":
+		case "/ㄹㅇㄷ":
+			val = "";
+			break;	
 		case "/부캐":
 		case "/ㅂㅋ":
 			if (param1 != null && !param1.equals("")) {
@@ -227,7 +231,7 @@ public class LoaChatController {
 				val = "단어삭제 실패!";
 			}
 			break;
-		case "/단어목록": case "/단어조회":
+		case "/단어목록": case "/단어조회": case "/단어":
 			List<String> wordList = botService.selectBotWordSaveAll(reqMap);
 			List<String> imgList = botService.selectBotImgSaveAll(reqMap);
 			
@@ -237,23 +241,23 @@ public class LoaChatController {
 			List<String> limitWordList2 = botService.selectBotLimitWordSaveAll(reqMap);
 			
 			
-			val = "주요명령어목록: "+enterStr;
+			val = "주요명령(초성가능): "+enterStr;
 			
 			for (String word : limitWordList2) {
 				val += enterStr + word;
 			}
 			
-			val += enterStr + enterStr + "단어 더보기..▼ "+ allSeeStr;
+			val += enterStr + enterStr + "명령 더보기..▼ "+ allSeeStr;
 			for (String word : limitWordList) {
-				val += enterStr + word;
+				val += word + enterStr;
 			}
-			val += enterStr+enterStr+"단어목록:";
+			val += enterStr + "단어목록:" + enterStr;
 			for (String word : wordList) {
-				val += enterStr + word;
+				val += word + enterStr;
 			}
-			val += enterStr+enterStr+"이모티콘목록:";
+			val += enterStr + "이모티콘목록:" + enterStr;
 			for (String word : imgList) {
-				val += enterStr + word;
+				val += word + enterStr;
 			}
 			
 			
