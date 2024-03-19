@@ -230,17 +230,24 @@ public class LoaChatController {
 		case "/단어목록": case "/단어조회":
 			List<String> wordList = botService.selectBotWordSaveAll(reqMap);
 			List<String> imgList = botService.selectBotImgSaveAll(reqMap);
+			
+			reqMap.put("limitYn", "1");
 			List<String> limitWordList = botService.selectBotLimitWordSaveAll(reqMap);
+			reqMap.put("limitYn", "2");
+			List<String> limitWordList2 = botService.selectBotLimitWordSaveAll(reqMap);
 			
 			
 			val = "주요명령어목록: "+enterStr;
 			
-			for (String word : limitWordList) {
+			for (String word : limitWordList2) {
 				val += enterStr + word;
 			}
 			
-			val += enterStr + "단어 더보기..▼ "+ allSeeStr;
-			
+			val += enterStr + enterStr + "단어 더보기..▼ "+ allSeeStr;
+			for (String word : limitWordList) {
+				val += enterStr + word;
+			}
+			val += enterStr+enterStr+"단어목록:";
 			for (String word : wordList) {
 				val += enterStr + word;
 			}

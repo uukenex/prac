@@ -23,7 +23,7 @@
 		 WHERE NOT EXISTS (SELECT * 
 		 					 FROM TBOT_WORD_SAVE C 
 		 					WHERE C.REQ = '/'||#{req, jdbcType=VARCHAR}
-		 					  AND C.LIMIT_YN = '1')
+		 					  AND C.LIMIT_YN IN ('1','2'))
     </insert>
     
     <select id="selectBotWordSaveOne" parameterType="hashMap" resultType="String" >
@@ -45,7 +45,7 @@
 				    ,RES
 				FROM (SELECT LISTAGG(A.REQ, ', ') WITHIN GROUP(ORDER BY A.REQ) || ' → ' || A.RES AS RES
 					   FROM TBOT_WORD_SAVE A
-					  WHERE A.LIMIT_YN = '1'
+					  WHERE A.LIMIT_YN = #{limitYn, jdbcType=VARCHAR}
 					  GROUP BY A.RES
 					  ORDER BY REQ))
 		 ORDER BY ORD
