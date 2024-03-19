@@ -1055,28 +1055,44 @@ public class LoaChatController {
 	}
 	
 	String marketSearch() throws Exception {
-		String paramUrl = lostArkAPIurl + "/markets/items/";
 		
-		JSONObject json = new JSONObject();
 		
+		JSONObject json ;
+		String resMsg= "아이템명/최저가";
+		
+		json = new JSONObject();
 		json.put("CategoryCode", "50000");
-		json.put("itemName", "태양");
 		
+		json.put("itemName", "태양");
+		resMsg += marketSearchDt(json);
+		
+		json.put("itemName", "명예의 파편");
+		resMsg += marketSearchDt(json);
+		
+		json.put("itemName", "찬란");
+		resMsg += marketSearchDt(json);
+		
+		json.put("itemName", "파괴강석");
+		resMsg += marketSearchDt(json);
+		
+		
+		return resMsg;
+	}
+	
+	String marketSearchDt(JSONObject json) throws Exception {
+		String str="";
+		String paramUrl = lostArkAPIurl + "/markets/items";
 		
 		String returnData = LoaApiUtils.connect_process_post(paramUrl,json.toString());
-		
-		String resMsg="테스트 경매장 검색";
-		resMsg += enterStr + "아이템명/최저가";
-		
-		HashMap<String, Object> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<Map<String, Object>>() {});
-
+		HashMap<String, Object>  rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<Map<String, Object>>() {});
 		List<HashMap<String, Object>> itemMap = (List<HashMap<String, Object>>) rtnMap.get("Items");
 		
 		for (HashMap<String, Object>  item : itemMap) {
-			resMsg += enterStr + item.get("Name") +" / "+ item.get("CurrentMinPrice") ;
+			str += enterStr + item.get("Name") +" / "+ item.get("CurrentMinPrice") ;
 		}
 		
-		return resMsg;
+		
+		return str;
 	}
 	
 	private static <T> Collector<T, ?, List<T>> toReversedList() {
