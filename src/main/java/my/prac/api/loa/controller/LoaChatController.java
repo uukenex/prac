@@ -122,11 +122,7 @@ public class LoaChatController {
 		case "/ㅈㅂ":
 			if (param1 != null && !param1.equals("")) {
 				try {
-					val = "";
-					val += equipmentSearch(param1);
-					val += gemSearch(param1);
-					val += engraveSearch(param1);
-					
+					val = equipmentSearch(param1);
 					
 				} catch (Exception e) {
 					val = errorCodeMng(e);
@@ -800,15 +796,17 @@ public class LoaChatController {
 		}else {
 			resMsg = resMsg +" 엘릭서합 : " + totElixir + "(" + elixirField+")";
 		}
-		/*
 		
-		resMsg +=enterStr;
-		resMsg +="방어구 상세정보 더보기"+allSeeStr;
+		resMsg += gemSearch(userId);
+		resMsg += engraveSearch(userId);
+		
+		resMsg += enterStr;
+		resMsg += "방어구 상세정보 더보기"+allSeeStr;
 		
 		for(String res : list_f1) {
 			resMsg += res+enterStr;
 		}
-		*/
+		
 		
 		return resMsg;
 	}
