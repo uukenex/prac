@@ -908,14 +908,15 @@ public class LoaChatController {
 			}
 			
 			charInfo = new HashMap<>();
-			double avgLv = Double.parseDouble(armoryProfile.get("ItemMaxLevel").toString());
+			String avgLv = armoryProfile.get("ItemMaxLevel").toString();
 			String className = armoryProfile.get("CharacterClassName").toString();
 			
 			charInfo.put("id",ordUserId);
 			charInfo.put("lv", avgLv);
 			charInfo.put("class", className);
 			
-			if(avgLv < 1635) {
+			Double lv = Double.parseDouble(avgLv.replaceAll(",", ""));
+			if(lv < 1635) {
 				notEnoughList.add(charInfo);
 			}else if(className.equals("바드")
 				  || className.equals("도화가")
@@ -956,8 +957,6 @@ public class LoaChatController {
 		}
 		resMsg += "※참여불가:1635↓※"+enterStr;
 		for(HashMap<String,Object> hs :notEnoughList) {
-			resMsg += "[" + LoaApiUtils.shortClassName(hs.get("CharacterClassName").toString()) + "] ";
-			resMsg += "("+hs.get("lv")+")";
 			resMsg += hs.get("id");
 			resMsg += enterStr;
 		}
