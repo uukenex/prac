@@ -138,4 +138,21 @@
 		 WHERE A.IN_PRM = #{param0, jdbcType=VARCHAR}
 		   AND (A.ROOM_NAME IS NULL OR A.ROOM_NAME = #{roomName, jdbcType=VARCHAR})
 	</select>
+	
+	<select id="selectBotRaidSaveAll" parameterType="hashMap" resultType="String" >
+		 /* bot.xml selectBotRaidSaveAll */
+		SELECT A.CHAR_NAME
+		  FROM TBOT_RAID_SAVE A
+		 WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+	</select>
+	<insert id="insertBotRaidSaveOne" parameterType="hashMap">
+		/* bot.xml insertBotRaidSaveOne */
+		INSERT INTO TBOT_RAID_SAVE
+			 (ROOM_NAME
+			 ,CHAR_NAME
+			 )
+		SELECT #{roomName, jdbcType=VARCHAR}
+			  ,#{param1, jdbcType=VARCHAR}
+		  FROM DUAL
+    </insert>
 </mapper>
