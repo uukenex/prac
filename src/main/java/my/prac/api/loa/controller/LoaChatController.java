@@ -105,6 +105,7 @@ public class LoaChatController {
 		String list;
 		HashMap<String, Object> reqMap = new HashMap<>();
 		reqMap.put("param0", param0);
+		reqMap.put("param1", param1);
 		reqMap.put("roomName", roomName);
 		reqMap.put("userName", sender);
 
@@ -155,7 +156,16 @@ public class LoaChatController {
 			break;
 		case "/레이드":
 		case "/ㄹㅇㄷ":
-			val = "";
+			if (param1 != null && !param1.equals("")) {
+				try {
+					raidAdd(reqMap);
+					val = raidSearch(reqMap);
+				} catch (Exception e) {
+					val = errorCodeMng(e);
+				}
+			}else {
+				val = raidSearch(reqMap);
+			}
 			break;	
 		case "/부캐":
 		case "/ㅂㅋ":
@@ -312,7 +322,7 @@ public class LoaChatController {
 		if(e != null && e.getMessage()!=null) {
 			switch(e.getMessage()) {
 			case "E0001":
-				val = "레벨이 1610 보다 낮습니다";
+				val = "레벨이 1630 보다 낮습니다";
 				break;
 			case "E0002":
 				val = "초월 검색 오류";
@@ -656,11 +666,18 @@ public class LoaChatController {
 		String ordUserId=userId;
 		userId = URLEncoder.encode(userId, "UTF-8");
 		// +는 %2B로 치환한다
-		String paramUrl = lostArkAPIurl + "/armories/characters/" + userId + "?filters=equipment";
+		String paramUrl = lostArkAPIurl + "/armories/characters/" + userId + "?filters=equipment+profile";
 		String returnData = LoaApiUtils.connect_process(paramUrl);
 		HashMap<String, Object> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<Map<String, Object>>() {});
 
 		List<Map<String, Object>> armoryEquipment;
+		Map<String, Object> armoryProfile;
+		
+		try {
+			armoryProfile = (Map<String, Object>) rtnMap.get("ArmoryProfile");
+		}catch(Exception e){
+			throw new Exception("E0003");
+		}
 		try {
 			armoryEquipment = (List<Map<String, Object>>) rtnMap.get("ArmoryEquipment");
 		}catch(Exception e){
@@ -672,9 +689,6 @@ public class LoaChatController {
 		
 		int weaponQualityValue=0;
 		double armorQualityValue=0;
-		
-		double tmpLv=0;
-		double avgLv=0;
 		
 		double tmpQuality=0;
 		double avgQuality=0;
@@ -691,6 +705,9 @@ public class LoaChatController {
 		StringBuilder sb3 = new StringBuilder();
 		StringBuilder sb4 = new StringBuilder();
 		StringBuilder sb5 = new StringBuilder();
+		
+		String avgLv = armoryProfile.get("ItemMaxLevel").toString();
+		String className = armoryProfile.get("CharacterClassName").toString();
 
 		for (Map<String, Object> equip : armoryEquipment) {
 			HashMap<String, Object> tooltip = new ObjectMapper().readValue((String) equip.get("Tooltip"),new TypeReference<Map<String, Object>>() {});
@@ -717,8 +734,8 @@ public class LoaChatController {
 				}
 				
 				/* 아이템레벨 */
-				tmpLv = Integer.parseInt(Jsoup.parse((String) ((HashMap<String, Object>) quality_element.get("value")).get("leftStr2")).text().replaceAll("[^0-9]|[0-9]\\)$", ""));
-				avgLv = avgLv+tmpLv;
+				//tmpLv = Integer.parseInt(Jsoup.parse((String) ((HashMap<String, Object>) quality_element.get("value")).get("leftStr2")).text().replaceAll("[^0-9]|[0-9]\\)$", ""));
+				//avgLv = avgLv+tmpLv;
 				
 				/* 아이템레벨 */
 				//if(tmpLv < 1610) {
@@ -825,7 +842,7 @@ public class LoaChatController {
 			
 		}
 		
-		resMsg = resMsg + enterStr+"ItemLv : "+ String.format("%.2f", (avgLv/6));
+		resMsg = resMsg + enterStr+ avgLv+"Lv "+className;
 		resMsg = resMsg + enterStr+"§무기 : "+enhanceLv+"강";
 		if(!newEnhanceInfo.equals("")) {
 			resMsg = resMsg +"[+"+newEnhanceInfo+"]"; 
@@ -864,87 +881,91 @@ public class LoaChatController {
 		return resMsg;
 	}
 	
-	
-	String equipmentDtSearch(String userId) throws Exception {
-		String ordUserId=userId;
-		userId = URLEncoder.encode(userId, "UTF-8");
-		// +는 %2B로 치환한다
-		String paramUrl = lostArkAPIurl + "/armories/characters/" + userId + "?filters=equipment";
-		String returnData = LoaApiUtils.connect_process(paramUrl);
-		HashMap<String, Object> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<Map<String, Object>>() {});
+	String raidSearch(HashMap<String,Object> reqMap) throws Exception {
+		
+		List<String> charList = botService.selectBotRaidSaveAll(reqMap);
+		
+		List<HashMap<String,Object>> attackerList = new ArrayList<>();
+		List<HashMap<String,Object>> supporterList = new ArrayList<>();
+		List<HashMap<String,Object>> notEnoughList = new ArrayList<>();
+		
+		HashMap<String,Object> charInfo; 
+		
+		int count = 0;
+		for(String userId:charList) {
+			String ordUserId=userId;
+			userId = URLEncoder.encode(userId, "UTF-8");
+			// +는 %2B로 치환한다
+			String paramUrl = lostArkAPIurl + "/armories/characters/" + userId + "?filters=profile";
+			String returnData = LoaApiUtils.connect_process(paramUrl);
+			HashMap<String, Object> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<Map<String, Object>>() {});
 
-		List<Map<String, Object>> armoryEquipment;
-		try {
-			armoryEquipment = (List<Map<String, Object>>) rtnMap.get("ArmoryEquipment");
-		}catch(Exception e){
-			throw new Exception("E0003");
-		}
-		
-		String resMsg = ordUserId+" 방어구 정보"+enterStr;
-		List<String> list_f1 = new ArrayList<>();
-		List<String> list_f2 = new ArrayList<>();
-		List<String> list_f3= new ArrayList<>();
-		
-		for (Map<String, Object> equip : armoryEquipment) {
-			switch (equip.get("Type").toString()) {
-			case "투구":
-			case "상의":
-			case "하의":
-			case "장갑":
-			case "어깨":
-				HashMap<String, Object> tooltip = new ObjectMapper().readValue((String) equip.get("Tooltip"),new TypeReference<Map<String, Object>>() {});
-				HashMap<String, Object> maps = LoaApiParser.findElement(tooltip);
-				HashMap<String, Object> weapon_element = (HashMap<String, Object>)maps.get("weapon_element");
-				HashMap<String, Object> quality_element = (HashMap<String, Object>)maps.get("quality_element");
-				HashMap<String, Object> new_refine_element = (HashMap<String, Object>)maps.get("new_refine_element");
-				HashMap<String, Object> limit_element = (HashMap<String, Object>)maps.get("limit_element");
-				HashMap<String, Object> elixir_element = (HashMap<String, Object>)maps.get("elixir_element");
-				
-				String resField1 = equip.get("Type").toString();//렙
-				resField1 += " ("+Jsoup.parse((String) ((HashMap<String, Object>) quality_element.get("value")).get("leftStr2")).text().replaceAll("[^0-9]|[0-9]\\)$", "")+")";
-				resField1 += " "+Jsoup.parse((String) weapon_element.get("value")).text().replaceAll("[^0-9]", "")+"강";
-				if(new_refine_element.size()>0) {
-					String newEnhanceInfo="";
-					newEnhanceInfo = Jsoup.parse((String) new_refine_element.get("value")).text();
-					newEnhanceInfo = LoaApiUtils.filterText(newEnhanceInfo);
-					newEnhanceInfo = newEnhanceInfo.replace("단계", "");
-					resField1 += "[+"+newEnhanceInfo+"]";
-				}
-				resField1 += " 품:"+(int)((HashMap<String, Object>) quality_element.get("value")).get("qualityValue");
-				list_f1.add(resField1);
-				
-				String resField2 = equip.get("Type").toString();//초
-				resField2 += LoaApiParser.parseLimitForLimit(limit_element);
-				resField2 = LoaApiUtils.filterText(resField2);
-				list_f2.add(resField2);
-				
-				String resField3 = equip.get("Type").toString();//엘
-				resField3 += LoaApiParser.parseElixirForLimit(null,elixir_element);
-				list_f3.add(resField3);
-				break;
-				default:
-				continue;
+			Map<String, Object> armoryProfile;
+			try {
+				armoryProfile = (Map<String, Object>) rtnMap.get("ArmoryProfile");
+			}catch(Exception e){
+				throw new Exception("E0003");
+			}
+			
+			charInfo = new HashMap<>();
+			double avgLv = Double.parseDouble(armoryProfile.get("ItemMaxLevel").toString());
+			String className = armoryProfile.get("CharacterClassName").toString();
+			
+			charInfo.put("id",ordUserId);
+			charInfo.put("lv", avgLv);
+			charInfo.put("class", className);
+			
+			if(avgLv < 1635) {
+				notEnoughList.add(charInfo);
+			}else if(className.equals("바드")
+				  || className.equals("도화가")
+				  || className.equals("홀리나이트")) {
+				supporterList.add(charInfo);
+				count++;
+			}else {
+				attackerList.add(charInfo);
+				count++;
 			}
 		}
 		
-		resMsg += "기본정보"+enterStr;
-		for(String res : list_f1) {
-			resMsg += res+enterStr;
-		}
-		resMsg += enterStr;
-		resMsg += "더보기"+allSeeStr;
 		
-		resMsg += "초월정보"+enterStr;
-		for(String res : list_f2) {
-			resMsg += res+enterStr;
+		List<HashMap<String, Object>> sortedList1 = attackerList.stream()
+				.sorted(Comparator.comparingDouble(x-> Double.parseDouble(x.get("lv").toString().replaceAll(",", ""))))
+				.collect(toReversedList());
+		List<HashMap<String, Object>> sortedList2 = supporterList.stream()
+				.sorted(Comparator.comparingDouble(x-> Double.parseDouble(x.get("lv").toString().replaceAll(",", ""))))
+				.collect(toReversedList());
+		
+		
+		
+		String resMsg =reqMap.get("roomName")+" 베히모스 레이드접수판 "+count+"/16"+enterStr;
+		
+		resMsg += "※딜러※"+enterStr;
+		for(HashMap<String,Object> hs :sortedList1) {
+			resMsg += "[" + LoaApiUtils.shortClassName(hs.get("CharacterClassName").toString()) + "] ";
+			resMsg += "("+hs.get("lv")+")";
+			resMsg += hs.get("id");
+			resMsg += enterStr;
 		}
-		resMsg += enterStr;
-		resMsg += "엘릭서정보"+enterStr;
-		for(String res : list_f3) {
-			resMsg += res+enterStr;
+		resMsg += "※서포터※"+enterStr;
+		for(HashMap<String,Object> hs :sortedList2) {
+			resMsg += "[" + LoaApiUtils.shortClassName(hs.get("CharacterClassName").toString()) + "] ";
+			resMsg += "("+hs.get("lv")+")";
+			resMsg += hs.get("id");
+			resMsg += enterStr;
+		}
+		resMsg += "※참여불가:1635↓※"+enterStr;
+		for(HashMap<String,Object> hs :notEnoughList) {
+			resMsg += "[" + LoaApiUtils.shortClassName(hs.get("CharacterClassName").toString()) + "] ";
+			resMsg += "("+hs.get("lv")+")";
+			resMsg += hs.get("id");
+			resMsg += enterStr;
 		}
 		
 		return resMsg;
+	}
+	void raidAdd(HashMap<String,Object> reqMap) throws Exception {
+		botService.insertBotRaidSaveTx(reqMap);
 	}
 	
 	
@@ -1219,7 +1240,7 @@ public class LoaChatController {
 			HashMap<String, Object> item = itemMap.get(0);
 			HashMap<String, Object> auctionInfo = (HashMap<String, Object>) item.get("AuctionInfo");
 			
-			str += enterStr + item.get("Name") + " - " + auctionInfo.get("BuyPrice") + "G";
+			str += item.get("Name") + " - " + auctionInfo.get("BuyPrice") + "G" + enterStr;
 
 		} catch (Exception e) {
 			e.printStackTrace();

@@ -20,6 +20,10 @@ public interface BotService {
 	public void insertBotImgSaveOneTx(HashMap<String, Object> hashMap)  throws Exception;
 	
 	public String selectBotImgMch(HashMap<String, Object> hashMap);
+	
+	
+	public List<String> selectBotRaidSaveAll(HashMap<String, Object> hashMap);
+	public void insertBotRaidSaveTx(HashMap<String, Object> hashMap)  throws Exception;
 }
 
 	

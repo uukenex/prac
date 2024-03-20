@@ -23,4 +23,7 @@ public interface BotDAO {
 	public int insertBotImgSaveOne(HashMap<String, Object> hashMap);
 	
 	public String selectBotImgMch(HashMap<String, Object> hashMap);
+	
+	public List<String> selectBotRaidSaveAll(HashMap<String, Object> hashMap);
+	public int insertBotRaidSaveOne(HashMap<String, Object> hashMap);
 }

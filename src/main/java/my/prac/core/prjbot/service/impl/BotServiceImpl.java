@@ -62,4 +62,13 @@ public class BotServiceImpl implements BotService {
 	public String selectBotImgMch(HashMap<String, Object> hashMap) {
 		return botDAO.selectBotImgMch(hashMap);
 	}
+	
+	public List<String> selectBotRaidSaveAll(HashMap<String, Object> hashMap){
+		return botDAO.selectBotRaidSaveAll(hashMap);
+	}
+	public void insertBotRaidSaveTx(HashMap<String, Object> hashMap) throws Exception{
+		if(botDAO.insertBotRaidSaveOne(hashMap)< 1) {
+			throw new Exception("저장 실패");
+		}
+	}
 }
