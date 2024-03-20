@@ -904,7 +904,7 @@ public class LoaChatController {
 			try {
 				armoryProfile = (Map<String, Object>) rtnMap.get("ArmoryProfile");
 			}catch(Exception e){
-				throw new Exception("E0003");
+				continue;
 			}
 			
 			charInfo = new HashMap<>();
