@@ -780,27 +780,37 @@ public class LoaChatController {
 				switch(equip.get("Type").toString()) {
 					case "투구":
 						sb1.append(resField1);
+						sb1.append("/");
 						sb1.append(resField2);
+						sb1.append("/");
 						sb1.append(resField3);
 						break;
 					case "어깨":
 						sb2.append(resField1);
+						sb2.append("/");
 						sb2.append(resField2);
+						sb2.append("/");
 						sb2.append(resField3);
 						break;
 					case "상의":
 						sb3.append(resField1);
+						sb3.append("/");
 						sb3.append(resField2);
+						sb3.append("/");
 						sb3.append(resField3);
 						break;
 					case "하의":
 						sb4.append(resField1);
+						sb4.append("/");
 						sb4.append(resField2);
+						sb4.append("/");
 						sb4.append(resField3);
 						break;
 					case "장갑":
 						sb5.append(resField1);
+						sb5.append("/");
 						sb5.append(resField2);
+						sb5.append("/");
 						sb5.append(resField3);
 						break;
 				}
@@ -943,14 +953,14 @@ public class LoaChatController {
 		
 		resMsg += "※딜러※"+enterStr;
 		for(HashMap<String,Object> hs :sortedList1) {
-			resMsg += "[" + LoaApiUtils.shortClassName(hs.get("CharacterClassName").toString()) + "] ";
+			resMsg += "[" + LoaApiUtils.shortClassName(hs.get("class").toString()) + "] ";
 			resMsg += "("+hs.get("lv")+")";
 			resMsg += hs.get("id");
 			resMsg += enterStr;
 		}
 		resMsg += "※서포터※"+enterStr;
 		for(HashMap<String,Object> hs :sortedList2) {
-			resMsg += "[" + LoaApiUtils.shortClassName(hs.get("CharacterClassName").toString()) + "] ";
+			resMsg += "[" + LoaApiUtils.shortClassName(hs.get("class").toString()) + "] ";
 			resMsg += "("+hs.get("lv")+")";
 			resMsg += hs.get("id");
 			resMsg += enterStr;
