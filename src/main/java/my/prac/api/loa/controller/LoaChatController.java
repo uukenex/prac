@@ -864,7 +864,7 @@ public class LoaChatController {
 			
 		}
 		
-		resMsg += avgLv + "Lv " + className + enterStr;
+		resMsg += " "+avgLv + "Lv " + className + enterStr;
 		resMsg += "§무기 : "+enhanceLv+"강";
 		if(!newEnhanceInfo.equals("")) {
 			resMsg +="[+"+newEnhanceInfo+"]"; 
