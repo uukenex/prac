@@ -700,11 +700,18 @@ public class LoaChatController {
 		String totLimit ="";
 		int totElixir =0;
 		
+		/*
 		StringBuilder sb1 = new StringBuilder();
 		StringBuilder sb2 = new StringBuilder();
 		StringBuilder sb3 = new StringBuilder();
 		StringBuilder sb4 = new StringBuilder();
 		StringBuilder sb5 = new StringBuilder();
+		*/
+		
+		String resField1 = "";
+		String resField2 = "";
+		String resField3 = "";
+		
 		
 		String avgLv = armoryProfile.get("ItemMaxLevel").toString();
 		String className = armoryProfile.get("CharacterClassName").toString();
@@ -757,7 +764,7 @@ public class LoaChatController {
 				
 				break;
 			case "투구": case "상의": case "하의": case "장갑": case "어깨":
-				String resField1 = equip.get("Type").toString();//렙
+				resField1 += equip.get("Type").toString();//렙
 				resField1 += " "+Jsoup.parse((String) weapon_element.get("value")).text().replaceAll("[^0-9]", "")+"강";
 				if(new_refine_element.size()>0) {
 					String newEnhanceInfo2="";
@@ -766,17 +773,18 @@ public class LoaChatController {
 					newEnhanceInfo2 = newEnhanceInfo2.replace("단계", "");
 					resField1 += "[+"+newEnhanceInfo2+"]";
 				}
-				resField1 += " 품:"+(int)((HashMap<String, Object>) quality_element.get("value")).get("qualityValue");
+				resField1 += "\t품:"+(int)((HashMap<String, Object>) quality_element.get("value")).get("qualityValue");
 				
 				
-				String resField2 = "";//초
+				resField2 += "";//초
 				resField2 += LoaApiParser.parseLimitForLimit(limit_element);
 				resField2 = LoaApiUtils.filterText(resField2);
 				
 				
-				String resField3 = "";//엘
+				resField3 += "";//엘
 				resField3 += LoaApiParser.parseElixirForLimit(null,elixir_element);
 				
+				/*
 				switch(equip.get("Type").toString()) {
 					case "투구":
 						sb1.append(resField1);
@@ -814,6 +822,7 @@ public class LoaChatController {
 						sb5.append(resField3);
 						break;
 				}
+				*/
 				
 				//초월
 				totLimit = LoaApiParser.parseLimit(limit_element);
@@ -852,28 +861,24 @@ public class LoaChatController {
 			
 		}
 		
-		resMsg = resMsg + enterStr+ avgLv+"Lv "+className;
-		resMsg = resMsg + enterStr+"§무기 : "+enhanceLv+"강";
+		resMsg += avgLv + "Lv " + className + enterStr;
+		resMsg += "§무기 : "+enhanceLv+"강";
 		if(!newEnhanceInfo.equals("")) {
-			resMsg = resMsg +"[+"+newEnhanceInfo+"]"; 
+			resMsg +="[+"+newEnhanceInfo+"]"; 
 		}
-		resMsg = resMsg + " 무품 : "+weaponQualityValue+""; 
-		
-		
-		resMsg = resMsg + enterStr+"§악세평균품질 : "+avgQuality/5;
-		resMsg = resMsg + enterStr+"§세트 : "+setField;
-		
-		resMsg = resMsg + enterStr;
+		resMsg +=" 무품 : "+weaponQualityValue + enterStr; 
+		resMsg += "§악세평균품질 : "+avgQuality/5 + enterStr;
+		resMsg += "§세트 : "+setField + enterStr;
 		
 		if(totLimit.equals("")) {
-			resMsg = resMsg + "§초월 : 없음";
+			resMsg += "§초월 : 없음";
 		}else {
-			resMsg = resMsg + "§초월합 : " + totLimit;
+			resMsg += "§초월합 : " + totLimit;
 		}
 		if(totElixir==0) {
-			resMsg = resMsg + " 엘릭서 : 없음";
+			resMsg += " 엘릭서 : 없음";
 		}else {
-			resMsg = resMsg +" 엘릭서합 : " + totElixir + "(" + elixirField+")";
+			resMsg += " 엘릭서합 : " + totElixir + "(" + elixirField+")";
 		}
 		
 		resMsg += gemSearch(ordUserId);
@@ -881,13 +886,35 @@ public class LoaChatController {
 		
 		resMsg += enterStr+enterStr;
 		resMsg += "방어구 상세정보 더보기..▼"+allSeeStr;
-		resMsg += "방어구 / 초월 / 엘릭서"+enterStr;
+		//resMsg += "방어구 / 초월 / 엘릭서"+enterStr;
+		
+		resMsg += "§세트 : "+setField + enterStr;
+		resMsg += resField1 + enterStr;
+		
+		
+		if(totLimit.equals("")) {
+			resMsg += "§초월 : 없음" + enterStr;
+		}else {
+			resMsg += "§초월합 : " + totLimit + enterStr;
+			resMsg += resField2 + enterStr;
+		}
+		
+		if(totElixir==0) {
+			resMsg += "§엘릭서 : 없음" + enterStr;;
+		}else {
+			resMsg += "§엘릭서합 : " + totElixir + "(" + elixirField+")" + enterStr;;
+			resMsg += resField3 + enterStr;
+		}
+		
+		
+		
+		/*
 		resMsg += sb1+enterStr;
 		resMsg += sb2+enterStr;
 		resMsg += sb3+enterStr;
 		resMsg += sb4+enterStr;
 		resMsg += sb5+enterStr;
-		
+		*/
 		return resMsg;
 	}
 	
@@ -1107,8 +1134,8 @@ public class LoaChatController {
 			if(mainServer.equals(charList.get("ServerName").toString())) {
 				charCnt++;
 				resMsg += "[" + LoaApiUtils.shortClassName(charList.get("CharacterClassName").toString()) + "] ";
+				resMsg += "("+charList.get("ItemMaxLevel").toString().replaceAll(",", "")+") ";
 				resMsg += charList.get("CharacterName").toString();
-				resMsg += " ("+charList.get("ItemMaxLevel").toString().replaceAll(",", "")+")";
 				resMsg += enterStr;
 				
 				if(charCnt ==6) {
