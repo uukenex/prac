@@ -31,9 +31,9 @@ public class LoaApiParser {
 	static String [] setList = {"악몽","환각","지배","사멸","갈망","배신","파괴","구원","매혹"};
 	static String [] elixirList = {"강맹","달인","신념","회심","선각자","선봉대","행운","진군","칼날방패"};
 
-	final String enterStr= "♬";
-	final String tabStr= "◐";
-	final String allSeeStr = "===";
+	final static String enterStr= "♬";
+	final static String tabStr= "◐";
+	final static String allSeeStr = "===";
 	
 	public static String[] getSetList() {
 		return setList;
