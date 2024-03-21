@@ -694,7 +694,7 @@ public class LoaChatController {
 		double tmpQuality=0;
 		double avgQuality=0;
 		
-		String resMsg = ordUserId+" 장비정보";
+		String resMsg = ordUserId;
 
 		String enhanceLv="";
 		String newEnhanceInfo="";
@@ -777,13 +777,13 @@ public class LoaChatController {
 				resField1 += tabStr+"품:"+(int)((HashMap<String, Object>) quality_element.get("value")).get("qualityValue");
 				resField1 += enterStr;
 				
-				resField2 += "";//초
+				resField2 += equip.get("Type").toString();//초
 				resField2 += LoaApiParser.parseLimitForLimit(limit_element);
 				resField2 = LoaApiUtils.filterText(resField2);
 				resField2 += enterStr;
 				
 				
-				resField3 += "";//엘
+				resField3 += equip.get("Type").toString();//엘
 				resField3 += LoaApiParser.parseElixirForLimit(null,elixir_element);
 				resField3 += enterStr;
 				
