@@ -46,6 +46,7 @@ public class LoaChatController {
 	final String lostArkAPIurl = "https://developer-lostark.game.onstove.com";
 
 	final String enterStr= "♬";
+	final String tabStr= "◐";
 	final String allSeeStr = "===";
 	
 	@RequestMapping(value = "/loa/chat", method = RequestMethod.GET)
@@ -773,16 +774,18 @@ public class LoaChatController {
 					newEnhanceInfo2 = newEnhanceInfo2.replace("단계", "");
 					resField1 += "[+"+newEnhanceInfo2+"]";
 				}
-				resField1 += "\t품:"+(int)((HashMap<String, Object>) quality_element.get("value")).get("qualityValue");
-				
+				resField1 += tabStr+"품:"+(int)((HashMap<String, Object>) quality_element.get("value")).get("qualityValue");
+				resField1 += enterStr;
 				
 				resField2 += "";//초
 				resField2 += LoaApiParser.parseLimitForLimit(limit_element);
 				resField2 = LoaApiUtils.filterText(resField2);
+				resField2 += enterStr;
 				
 				
 				resField3 += "";//엘
 				resField3 += LoaApiParser.parseElixirForLimit(null,elixir_element);
+				resField3 += enterStr;
 				
 				/*
 				switch(equip.get("Type").toString()) {
