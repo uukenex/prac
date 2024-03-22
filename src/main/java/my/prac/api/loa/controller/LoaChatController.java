@@ -12,6 +12,7 @@ import java.util.stream.Collectors;
 
 import javax.annotation.Resource;
 
+import org.apache.commons.lang3.StringUtils;
 import org.json.JSONObject;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -765,25 +766,28 @@ public class LoaChatController {
 				
 				break;
 			case "투구": case "상의": case "하의": case "장갑": case "어깨":
-				resField1 += equip.get("Type").toString();//렙
+				resField1 += equip.get("Type").toString()+"→";//렙
 				resField1 += " "+Jsoup.parse((String) weapon_element.get("value")).text().replaceAll("[^0-9]", "")+"강";
 				if(new_refine_element.size()>0) {
 					String newEnhanceInfo2="";
 					newEnhanceInfo2 = Jsoup.parse((String) new_refine_element.get("value")).text();
 					newEnhanceInfo2 = LoaApiUtils.filterText(newEnhanceInfo2);
 					newEnhanceInfo2 = newEnhanceInfo2.replace("단계", "");
+					newEnhanceInfo2 = StringUtils.leftPad( newEnhanceInfo2, 2, " ");
 					resField1 += "[+"+newEnhanceInfo2+"]";
+				}else {
+					resField1 += "     ";
 				}
-				resField1 += tabStr+"품:"+(int)((HashMap<String, Object>) quality_element.get("value")).get("qualityValue");
+				resField1 += " 품:"+(int)((HashMap<String, Object>) quality_element.get("value")).get("qualityValue");
 				resField1 += enterStr;
 				
-				resField2 += equip.get("Type").toString();//초
+				resField2 += equip.get("Type").toString()+"→";//초
 				resField2 += LoaApiParser.parseLimitForLimit(limit_element);
 				resField2 = LoaApiUtils.filterText(resField2);
 				resField2 += enterStr;
 				
 				
-				resField3 += equip.get("Type").toString();//엘
+				resField3 += equip.get("Type").toString()+"→";//엘
 				resField3 += LoaApiParser.parseElixirForLimit(null,elixir_element);
 				resField3 += enterStr;
 				

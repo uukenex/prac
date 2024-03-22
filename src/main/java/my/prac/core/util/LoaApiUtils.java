@@ -163,8 +163,8 @@ public class LoaApiUtils {
 			txt=txt.replaceAll("\\[어깨\\]", "");
 			txt=txt.replaceAll("\\[투구\\]", "");
 			txt=txt.replaceAll("\\[상의\\]", "");
-			txt=txt.replaceAll("\\(혼돈\\)", "");
-			txt=txt.replaceAll("\\(질서\\)", "");
+			txt=txt.replaceAll(" \\(혼돈\\)", "");
+			txt=txt.replaceAll(" \\(질서\\)", "");
 			txt=txt.replaceAll("Lv.", "");
 			txt=txt.replaceAll("회피의 달인", "회달");
 			txt=txt.replaceAll("탈출의 달인", "탈달");

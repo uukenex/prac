@@ -24,6 +24,7 @@ import javax.net.ssl.SSLSession;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 
+import org.apache.commons.lang3.StringUtils;
 import org.jsoup.Jsoup;
 
 public class LoaApiParser {
@@ -167,12 +168,12 @@ public class LoaApiParser {
 		element_009_value3 = (HashMap<String, Object>) element_009_value2.get("Element_000");
 		elixirFind = Jsoup.parse((String) element_009_value3.get("contentStr").toString().split("<br>")[0]).text();
 		elixirFind = LoaApiUtils.filterText(elixirFind);
-		rtnTxt += elixirFind+tabStr;
+		rtnTxt += StringUtils.leftPad( elixirFind, 7, " ")+" ";
 		
 		element_009_value3 = (HashMap<String, Object>) element_009_value2.get("Element_001");
 		elixirFind = Jsoup.parse((String) element_009_value3.get("contentStr").toString().split("<br>")[0]).text();
 		elixirFind = LoaApiUtils.filterText(elixirFind);
-		rtnTxt += elixirFind+"";
+		rtnTxt += StringUtils.leftPad( elixirFind, 7, " ")+"";
 		
 		return rtnTxt;
 	}
