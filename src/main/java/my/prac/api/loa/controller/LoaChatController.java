@@ -777,10 +777,7 @@ public class LoaChatController {
 					newEnhanceInfo2 = StringUtils.leftPad( newEnhanceInfo2, 2, " ");
 					resField1 += "[+"+newEnhanceInfo2+"]";
 				}else {
-					for(int i=0;i<5;i++) {
-						resField1 += spaceStr;
-					}
-					
+					resField1 += "　 　";
 				}
 				resField1 += " 품:"+(int)((HashMap<String, Object>) quality_element.get("value")).get("qualityValue");
 				resField1 += enterStr;
