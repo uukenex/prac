@@ -47,6 +47,7 @@ public class LoaChatController {
 	final String lostArkAPIurl = "https://developer-lostark.game.onstove.com";
 
 	final String enterStr= "♬";
+	final String spaceStr= "`";
 	final String tabStr= "◐";
 	final String allSeeStr = "===";
 	
@@ -615,7 +616,7 @@ public class LoaChatController {
 				
 				//초월 정보 출력
 				totLimit = LoaApiParser.parseLimit(limit_element);
-				resEquip = resEquip + enterStr +equip.get("Type").toString()+"→" + LoaApiParser.parseLimitForLimit(limit_element)+"◈";
+				resEquip = resEquip + enterStr +equip.get("Type").toString()+" :" + LoaApiParser.parseLimitForLimit(limit_element)+"◈";
 				resEquip = LoaApiUtils.filterText(resEquip);
 
 				//엘릭서 정보 출력 
@@ -766,7 +767,7 @@ public class LoaChatController {
 				
 				break;
 			case "투구": case "상의": case "하의": case "장갑": case "어깨":
-				resField1 += equip.get("Type").toString()+"→";//렙
+				resField1 += equip.get("Type").toString()+" :";//렙
 				resField1 += " "+Jsoup.parse((String) weapon_element.get("value")).text().replaceAll("[^0-9]", "")+"강";
 				if(new_refine_element.size()>0) {
 					String newEnhanceInfo2="";
@@ -776,18 +777,21 @@ public class LoaChatController {
 					newEnhanceInfo2 = StringUtils.leftPad( newEnhanceInfo2, 2, " ");
 					resField1 += "[+"+newEnhanceInfo2+"]";
 				}else {
-					resField1 += "     ";
+					for(int i=0;i<5;i++) {
+						resField1 += spaceStr;
+					}
+					
 				}
 				resField1 += " 품:"+(int)((HashMap<String, Object>) quality_element.get("value")).get("qualityValue");
 				resField1 += enterStr;
 				
-				resField2 += equip.get("Type").toString()+"→";//초
+				resField2 += equip.get("Type").toString()+" :";//초
 				resField2 += LoaApiParser.parseLimitForLimit(limit_element);
 				resField2 = LoaApiUtils.filterText(resField2);
 				resField2 += enterStr;
 				
 				
-				resField3 += equip.get("Type").toString()+"→";//엘
+				resField3 += equip.get("Type").toString()+" :";//엘
 				resField3 += LoaApiParser.parseElixirForLimit(null,elixir_element);
 				resField3 += enterStr;
 				
