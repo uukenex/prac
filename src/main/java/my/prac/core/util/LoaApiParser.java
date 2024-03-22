@@ -168,12 +168,12 @@ public class LoaApiParser {
 		element_009_value3 = (HashMap<String, Object>) element_009_value2.get("Element_000");
 		elixirFind = Jsoup.parse((String) element_009_value3.get("contentStr").toString().split("<br>")[0]).text();
 		elixirFind = LoaApiUtils.filterText(elixirFind);
-		rtnTxt += StringUtils.leftPad( elixirFind, 7, "　")+" ";
+		rtnTxt += StringUtils.leftPad( elixirFind, 8, "　")+"　";
 		
 		element_009_value3 = (HashMap<String, Object>) element_009_value2.get("Element_001");
 		elixirFind = Jsoup.parse((String) element_009_value3.get("contentStr").toString().split("<br>")[0]).text();
 		elixirFind = LoaApiUtils.filterText(elixirFind);
-		rtnTxt += StringUtils.leftPad( elixirFind, 7, "　")+"";
+		rtnTxt += StringUtils.leftPad( elixirFind, 8, "　")+"";
 		
 		return rtnTxt;
 	}
