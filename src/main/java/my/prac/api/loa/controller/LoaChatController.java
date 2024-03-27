@@ -388,9 +388,7 @@ public class LoaChatController {
 	String checkGoldList() throws Exception {
 		String msg = "";
 		msg += "골드획득정보..";
-		msg += enterStr;
-		msg += enterStr + "베히모스 1관문 7,500G";
-		msg += enterStr;
+		msg += enterStr + "베히모스 22,000G";
 		msg += enterStr + "에키드나[하 18,500G/노 14,500G]";
 		msg += enterStr;
 		msg += enterStr + "카멘 1-3[하 20,000G/노 13,000G]";
@@ -403,6 +401,10 @@ public class LoaChatController {
 		msg += enterStr + "상아탑 [하 14,500G/노 9,000G]";
 		msg += enterStr + "관문별 더보기..▼ "+ allSeeStr;
 		msg += enterStr + "카양겔 [하 6,500G/노 4,500G]";
+		
+		msg += enterStr + "베히모스 1관문  7,500G";
+		msg += enterStr + "베히모스 1관문  14,500G";
+		msg += enterStr;
 		msg += enterStr + "하키드나 1관문  6,000G";
 		msg += enterStr + "하키드나 2관문 12,500G";
 		msg += enterStr;
@@ -599,20 +601,26 @@ public class LoaChatController {
 		int totElixir =0;
 		
 		for (Map<String, Object> equip : armoryEquipment) {
+			HashMap<String, Object> tooltip = new ObjectMapper().readValue((String) equip.get("Tooltip"),new TypeReference<Map<String, Object>>() {});
+			HashMap<String, Object> maps = LoaApiParser.findElement(tooltip);
+			HashMap<String, Object> limit_element = (HashMap<String, Object>)maps.get("limit_element");
+			HashMap<String, Object> elixir_element = (HashMap<String, Object>)maps.get("elixir_element");
+			
 			switch (equip.get("Type").toString()) {
+			case "무기":
+				totLimit = LoaApiParser.parseLimit(limit_element);
+				
+				resEquip += enterStr +equip.get("Type").toString()+" :" + LoaApiParser.parseLimitForLimit(limit_element)+"◈";
+				resEquip = LoaApiUtils.filterText(resEquip);
+				break;
+			
 			case "투구":
 			case "상의":
 			case "하의":
 			case "장갑":
 			case "어깨":
-				HashMap<String, Object> tooltip = new ObjectMapper().readValue((String) equip.get("Tooltip"),new TypeReference<Map<String, Object>>() {});
-				HashMap<String, Object> maps = LoaApiParser.findElement(tooltip);
-				HashMap<String, Object> limit_element = (HashMap<String, Object>)maps.get("limit_element");
-				HashMap<String, Object> elixir_element = (HashMap<String, Object>)maps.get("elixir_element");
-				
 				//초월 정보 출력
-				totLimit = LoaApiParser.parseLimit(limit_element);
-				resEquip = resEquip + enterStr +equip.get("Type").toString()+" :" + LoaApiParser.parseLimitForLimit(limit_element)+"◈";
+				resEquip += enterStr +equip.get("Type").toString()+" :" + LoaApiParser.parseLimitForLimit(limit_element)+"◈";
 				resEquip = LoaApiUtils.filterText(resEquip);
 
 				//엘릭서 정보 출력 
@@ -760,6 +768,10 @@ public class LoaChatController {
 					newEnhanceInfo = LoaApiUtils.filterText(newEnhanceInfo);
 					newEnhanceInfo = newEnhanceInfo.replace("단계", "");
 				}
+				resField2 += equip.get("Type").toString()+" :";//초
+				resField2 += LoaApiParser.parseLimitForLimit(limit_element);
+				resField2 = LoaApiUtils.filterText(resField2);
+				resField2 += enterStr;
 				
 				break;
 			case "투구": case "상의": case "하의": case "장갑": case "어깨":
