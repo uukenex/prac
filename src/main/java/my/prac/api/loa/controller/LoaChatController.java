@@ -388,7 +388,7 @@ public class LoaChatController {
 	String checkGoldList() throws Exception {
 		String msg = "";
 		msg += "골드획득정보..";
-		msg += enterStr + "베히모스 22,000G";
+		msg += enterStr + "베히모스 21,500G";
 		msg += enterStr + "에키드나[하 18,500G/노 14,500G]";
 		msg += enterStr;
 		msg += enterStr + "카멘 1-3[하 20,000G/노 13,000G]";
@@ -402,7 +402,7 @@ public class LoaChatController {
 		msg += enterStr + "관문별 더보기..▼ "+ allSeeStr;
 		msg += enterStr + "카양겔 [하 6,500G/노 4,500G]";
 		
-		msg += enterStr + "베히모스 1관문  7,500G";
+		msg += enterStr + "베히모스 1관문  7,000G";
 		msg += enterStr + "베히모스 1관문  14,500G";
 		msg += enterStr;
 		msg += enterStr + "하키드나 1관문  6,000G";
