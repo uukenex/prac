@@ -143,7 +143,7 @@ public class LoaApiParser {
 	 * element에 초월에 해당하는 element를 넣어주면 된다.
 	 * 성공시 엘릭서상세텍스트(String) 
 	 * */
-	public static String parseElixirForLimit(List<String> equipElixirList, HashMap<String, Object> element) throws Exception {
+	public static String parseElixirForLimit(List<String> equipElixirList, HashMap<String, Object> element, int flag) throws Exception {
 		String rtnTxt="";
 		
 		HashMap<String, Object> element_009;
@@ -168,12 +168,22 @@ public class LoaApiParser {
 		element_009_value3 = (HashMap<String, Object>) element_009_value2.get("Element_000");
 		elixirFind = Jsoup.parse((String) element_009_value3.get("contentStr").toString().split("<br>")[0]).text();
 		elixirFind = LoaApiUtils.filterText(elixirFind);
-		rtnTxt += StringUtils.leftPad( elixirFind, 8, "　")+"　";
+		if(flag ==1) {//초월검색인 경우
+			rtnTxt += elixirFind+" ";
+		}else {
+			rtnTxt += StringUtils.leftPad( elixirFind, 8, "　")+"　";
+		}
+		
 		
 		element_009_value3 = (HashMap<String, Object>) element_009_value2.get("Element_001");
 		elixirFind = Jsoup.parse((String) element_009_value3.get("contentStr").toString().split("<br>")[0]).text();
 		elixirFind = LoaApiUtils.filterText(elixirFind);
-		rtnTxt += StringUtils.leftPad( elixirFind, 8, "　")+"";
+		if(flag ==1) {//초월검색인 경우 
+			rtnTxt += elixirFind+" ";
+		}else {
+			rtnTxt += StringUtils.leftPad( elixirFind, 8, "　")+"";
+		}
+		
 		
 		return rtnTxt;
 	}

@@ -389,24 +389,20 @@ public class LoaChatController {
 		String msg = "";
 		msg += "골드획득정보..";
 		msg += enterStr;
-		msg += enterStr + "◆카제로스 레이드◆";
+		msg += enterStr + "베히모스 1관문 7,500G";
+		msg += enterStr;
 		msg += enterStr + "에키드나[하 18,500G/노 14,500G]";
 		msg += enterStr;
-		msg += enterStr + "◆군단장 레이드◆";
 		msg += enterStr + "카멘 1-3[하 20,000G/노 13,000G]";
 		msg += enterStr + "카멘 1-2[하 11,000G/노 7,500G]";
 		msg += enterStr + "일리아칸 [하 10,000G/노 7,500G]";
-		msg += enterStr + "아브렐슈드 1-4 [하 9,000G/노 7,000G]";
-		msg += enterStr + "아브렐슈드 1-3 [하 6,000G/노 4,500G]";
-		msg += enterStr + "아브렐슈드 하12노3 [5,500G]";
+		msg += enterStr + "아브 1-4 [하 9,000G/노 7,000G]";
+		msg += enterStr + "아브 1-3 [하 6,000G/노 4,500G]";
+		msg += enterStr + "아브 하12노3 [5,500G]";
 		msg += enterStr;
-		msg += enterStr + "◆어비스 던전◆";
 		msg += enterStr + "상아탑 [하 14,500G/노 9,000G]";
+		msg += enterStr + "관문별 더보기..▼ "+ allSeeStr;
 		msg += enterStr + "카양겔 [하 6,500G/노 4,500G]";
-		msg += enterStr;
-		msg += enterStr + "관문별 더보기..▼ ";
-		msg += enterStr + allSeeStr;
-		msg += enterStr;
 		msg += enterStr + "하키드나 1관문  6,000G";
 		msg += enterStr + "하키드나 2관문 12,500G";
 		msg += enterStr;
@@ -621,7 +617,7 @@ public class LoaChatController {
 
 				//엘릭서 정보 출력 
 				totElixir +=LoaApiParser.parseElixirForEquip(equipElixirList,elixir_element);
-				resEquip  +=LoaApiParser.parseElixirForLimit(equipElixirList,elixir_element);
+				resEquip  +=LoaApiParser.parseElixirForLimit(equipElixirList,elixir_element,1);
 				
 				break;
 				default:
@@ -789,7 +785,7 @@ public class LoaChatController {
 				
 				
 				resField3 += equip.get("Type").toString()+" :";//엘
-				resField3 += LoaApiParser.parseElixirForLimit(null,elixir_element);
+				resField3 += LoaApiParser.parseElixirForLimit(null,elixir_element,0);
 				resField3 += enterStr;
 				
 				/*
