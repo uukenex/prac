@@ -1336,14 +1336,11 @@ public class LoaChatController {
 			//v 체감 강수 습도 북동풍 
 			
 			
-			//m : 미세먼지 
 			String ondo_text="";
 			try {
-				ondo_text += " ";
 				ondo_text += doc.select(".weekly_forecast_area .today .lowest").text();
 				ondo_text += " ";
 				ondo_text += doc.select(".weekly_forecast_area .today .highest").text();
-				ondo_text += enterStr;
 			}catch(Exception e) {
 			}
 			
@@ -1378,7 +1375,7 @@ public class LoaChatController {
 					tmp_weather = StringUtils.leftPad(tmp_weather, 2, "　");
 					time_text +=tmp_weather;
 					
-					time_text += " ";
+					time_text += "　　";
 					time_text += doc.select(".flicking-camera > div:first-child .weather_graph_box ._hourly_weather ._li:eq("+(i+4)+") .time" ).text();
 					time_text += " : ";
 					tmp_weather = doc.select(".flicking-camera > div:first-child .weather_graph_box ._hourly_weather ._li:eq("+(i+4)+") .blind").text();
