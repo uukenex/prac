@@ -1381,9 +1381,10 @@ public class LoaChatController {
 					time_text += " ";
 					time_text += doc.select(".flicking-camera > div:first-child .weather_graph_box ._hourly_weather ._li:eq("+(i+4)+") .time" ).text();
 					time_text += " : ";
-					tmp_weather += doc.select(".flicking-camera > div:first-child .weather_graph_box ._hourly_weather ._li:eq("+(i+4)+") .blind").text();
+					tmp_weather = doc.select(".flicking-camera > div:first-child .weather_graph_box ._hourly_weather ._li:eq("+(i+4)+") .blind").text();
 					tmp_weather = StringUtils.leftPad(tmp_weather, 2, "　");
 					time_text +=tmp_weather;
+					time_text +=enterStr;
 					
 				}
 				
