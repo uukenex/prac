@@ -1337,6 +1337,17 @@ public class LoaChatController {
 			
 			
 			//m : 미세먼지 
+			String ondo_text="";
+			try {
+				ondo_text += " ";
+				ondo_text += doc.select(".weekly_forecast_area .today .lowest").text();
+				ondo_text += " ";
+				ondo_text += doc.select(".weekly_forecast_area .today .highest").text();
+				ondo_text += enterStr;
+			}catch(Exception e) {
+			}
+			
+			//m : 미세먼지 
 			String mise_text="";
 			try {
 				for(int i=0;i<3;i++) {
@@ -1344,17 +1355,12 @@ public class LoaChatController {
 						mise_text += doc.select(".weather_info:not(.type_tomorrow) .today_chart_list .item_today:eq("+i+") .title").text();
 						mise_text += " : ";
 						mise_text += doc.select(".weather_info:not(.type_tomorrow) .today_chart_list .item_today:eq("+i+") .txt").text();
-						mise_text += ".";
 						mise_text += enterStr;
 					}catch(Exception e) {
 						continue;
 					}
-					
 				}
-				
-				
 			}catch(Exception e) {
-				
 			}
 			
 			
@@ -1372,7 +1378,7 @@ public class LoaChatController {
 					time_text += doc.select(".flicking-camera > div:first-child .weather_graph_box ._hourly_weather ._li:eq("+(i+4)+") .time" ).text();
 					time_text += " : ";
 					time_text += doc.select(".flicking-camera > div:first-child .weather_graph_box ._hourly_weather ._li:eq("+(i+4)+") .blind").text();
-					//tmp_weather = StringUtils.rightPad("맑음", 4, " ");
+					time_text = StringUtils.rightPad("맑음", 2, "　");
 					
 				}
 				time_text = time_text.replaceAll("내일", "00시");
@@ -1394,6 +1400,10 @@ public class LoaChatController {
 			}
 			retMsg += enterStr+"현재 " + area + "의 온도는 " + cur_temp + " 이며 어제보다 " + diff_temp;
 			retMsg += enterStr;
+			
+			if(ondo_text!=null && !ondo_text.equals("")) {
+				retMsg += enterStr+ondo_text;
+			}
 			
 			if(mise_text!=null && !mise_text.equals("")) {
 				retMsg += enterStr+mise_text;
