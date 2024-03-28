@@ -1370,17 +1370,18 @@ public class LoaChatController {
 			String tmp_weather="";
 			try {
 				for(int i=0;i<4;i++) {
-					time_text += enterStr;	
-					time_text += doc.select(".flicking-camera > div:first-child .weather_graph_box ._hourly_weather ._li:eq("+i+") .time" ).text();
-					time_text += " : ";
-					time_text += doc.select(".flicking-camera > div:first-child .weather_graph_box ._hourly_weather ._li:eq("+i+") .blind").text();
-					time_text += " ";
-					time_text += doc.select(".flicking-camera > div:first-child .weather_graph_box ._hourly_weather ._li:eq("+(i+4)+") .time" ).text();
-					time_text += " : ";
-					time_text += doc.select(".flicking-camera > div:first-child .weather_graph_box ._hourly_weather ._li:eq("+(i+4)+") .blind").text();
-					time_text = StringUtils.rightPad(time_text, 2, "　");
+					tmp_weather = "";	
+					tmp_weather += doc.select(".flicking-camera > div:first-child .weather_graph_box ._hourly_weather ._li:eq("+i+") .time" ).text();
+					tmp_weather += " : ";
+					tmp_weather += doc.select(".flicking-camera > div:first-child .weather_graph_box ._hourly_weather ._li:eq("+i+") .blind").text();
+					tmp_weather += " ";
+					tmp_weather += doc.select(".flicking-camera > div:first-child .weather_graph_box ._hourly_weather ._li:eq("+(i+4)+") .time" ).text();
+					tmp_weather += " : ";
+					tmp_weather += doc.select(".flicking-camera > div:first-child .weather_graph_box ._hourly_weather ._li:eq("+(i+4)+") .blind").text();
+					tmp_weather = StringUtils.rightPad(time_text, 2, "　");
 					
 				}
+				time_text+=enterStr +tmp_weather;
 				time_text = time_text.replaceAll("내일", "00시");
 				time_text = time_text.replaceAll("많음", "");
 			}catch(Exception e) {
