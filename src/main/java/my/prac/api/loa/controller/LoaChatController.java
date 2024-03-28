@@ -1378,7 +1378,7 @@ public class LoaChatController {
 					time_text += doc.select(".flicking-camera > div:first-child .weather_graph_box ._hourly_weather ._li:eq("+(i+4)+") .time" ).text();
 					time_text += " : ";
 					time_text += doc.select(".flicking-camera > div:first-child .weather_graph_box ._hourly_weather ._li:eq("+(i+4)+") .blind").text();
-					time_text = StringUtils.rightPad("맑음", 2, "　");
+					time_text = StringUtils.rightPad(time_text, 2, "　");
 					
 				}
 				time_text = time_text.replaceAll("내일", "00시");
