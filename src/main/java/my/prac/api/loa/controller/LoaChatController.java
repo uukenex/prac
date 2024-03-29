@@ -608,10 +608,12 @@ public class LoaChatController {
 			
 			switch (equip.get("Type").toString()) {
 			case "무기":
-				totLimit = LoaApiParser.parseLimit(limit_element);
 				
-				resEquip += enterStr +equip.get("Type").toString()+" :" + LoaApiParser.parseLimitForLimit(limit_element)+"◈";
-				resEquip = LoaApiUtils.filterText(resEquip);
+				String tmpWeaponLimit = LoaApiParser.parseLimitForLimit(limit_element);
+				if(!tmpWeaponLimit.equals("")) {
+					resEquip += enterStr +equip.get("Type").toString()+" :" + tmpWeaponLimit;
+					resEquip = LoaApiUtils.filterText(resEquip);
+				}
 				break;
 			
 			case "투구":
@@ -619,6 +621,13 @@ public class LoaChatController {
 			case "하의":
 			case "장갑":
 			case "어깨":
+				//초월합계는 장비에서가져옴 
+				String tmpLimit = LoaApiParser.parseLimit(limit_element);
+				if(!tmpLimit.equals("")) {
+					totLimit = tmpLimit;
+				}
+				 
+				
 				//초월 정보 출력
 				resEquip += enterStr +equip.get("Type").toString()+" :" + LoaApiParser.parseLimitForLimit(limit_element)+"◈";
 				resEquip = LoaApiUtils.filterText(resEquip);
@@ -741,6 +750,8 @@ public class LoaChatController {
 					enhanceLv = setFind.replaceAll("[^0-9]", "");
 				}
 				
+				
+				
 				for(String set:LoaApiParser.getSetList()) {
 					if(setFind.indexOf(set) >= 0) {
 						equipSetList.add(set);
@@ -768,10 +779,14 @@ public class LoaChatController {
 					newEnhanceInfo = LoaApiUtils.filterText(newEnhanceInfo);
 					newEnhanceInfo = newEnhanceInfo.replace("단계", "");
 				}
-				resField2 += equip.get("Type").toString()+" :";//초
-				resField2 += LoaApiParser.parseLimitForLimit(limit_element);
-				resField2 = LoaApiUtils.filterText(resField2);
-				resField2 += enterStr;
+				
+				String tmpWeaponLimit = LoaApiParser.parseLimitForLimit(limit_element);
+				if(!tmpWeaponLimit.equals("")) {
+					resField2 += equip.get("Type").toString()+" :";//초
+					resField2 += tmpWeaponLimit;
+					resField2 = LoaApiUtils.filterText(resField2);
+					resField2 += enterStr;
+				}
 				
 				break;
 			case "투구": case "상의": case "하의": case "장갑": case "어깨":
@@ -800,48 +815,12 @@ public class LoaChatController {
 				resField3 += LoaApiParser.parseElixirForLimit(null,elixir_element,0);
 				resField3 += enterStr;
 				
-				/*
-				switch(equip.get("Type").toString()) {
-					case "투구":
-						sb1.append(resField1);
-						sb1.append("/");
-						sb1.append(resField2);
-						sb1.append("/");
-						sb1.append(resField3);
-						break;
-					case "어깨":
-						sb2.append(resField1);
-						sb2.append("/");
-						sb2.append(resField2);
-						sb2.append("/");
-						sb2.append(resField3);
-						break;
-					case "상의":
-						sb3.append(resField1);
-						sb3.append("/");
-						sb3.append(resField2);
-						sb3.append("/");
-						sb3.append(resField3);
-						break;
-					case "하의":
-						sb4.append(resField1);
-						sb4.append("/");
-						sb4.append(resField2);
-						sb4.append("/");
-						sb4.append(resField3);
-						break;
-					case "장갑":
-						sb5.append(resField1);
-						sb5.append("/");
-						sb5.append(resField2);
-						sb5.append("/");
-						sb5.append(resField3);
-						break;
-				}
-				*/
-				
 				//초월
-				totLimit = LoaApiParser.parseLimit(limit_element);
+				//초월합계는 장비에서가져옴 
+				String tmpLimit = LoaApiParser.parseLimit(limit_element);
+				if(!tmpLimit.equals("")) {
+					totLimit = tmpLimit;
+				}
 				//엘릭서
 				totElixir +=LoaApiParser.parseElixirForEquip(equipElixirList, elixir_element);
 				break;
