@@ -161,13 +161,13 @@ public class LoaChatController {
 		case "/ㄹㅇㄷ":
 			if (param1 != null && !param1.equals("")) {
 				try {
-					raidAdd(reqMap);
-					val = raidSearch(reqMap);
+					//raidAdd(reqMap);
+					//val = raidSearch(reqMap);
 				} catch (Exception e) {
-					val = errorCodeMng(e);
+					//val = errorCodeMng(e);
 				}
 			}else {
-				val = raidSearch(reqMap);
+				//val = raidSearch(reqMap);
 			}
 			break;	
 		case "/부캐":
