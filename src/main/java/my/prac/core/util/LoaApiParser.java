@@ -284,6 +284,10 @@ public class LoaApiParser {
 	public static String findBraceletOptionsDt(String param) {
 		String msg = "";
 		
+		if(param==null || param.equals("")) {
+			return "";
+		}
+		
 		for(int i=0;i<braceletList.length;i++) {
 			msg = "["+braceletList[i]+"]";
 			if(param.indexOf(msg) >= 0) {
