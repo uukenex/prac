@@ -290,7 +290,7 @@ public class LoaApiParser {
 				switch(msg) {
 					case "[망치]":
 						if( param.indexOf("피해량이 12%") >= 0 ) {
-							return "∇"+"∇"+msg + "상" + enterStr;
+							return "∇"+msg + "상" + enterStr;
 						}else if( param.indexOf("피해량이 10%") >= 0 ) {
 							return "∇"+msg + "중" + enterStr;
 						}else if( param.indexOf("피해량이 8%") >= 0 ) {
