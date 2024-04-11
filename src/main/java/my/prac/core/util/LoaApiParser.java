@@ -211,6 +211,7 @@ public class LoaApiParser {
 		HashMap<String, Object> new_refine_element = new HashMap<>();
 		HashMap<String, Object> limit_element = new HashMap<>();
 		HashMap<String, Object> elixir_element = new HashMap<>();
+		HashMap<String, Object> bracelet_element = new HashMap<>();
 		
 		for(HashMap<String, Object> searchHs : elements) {
 			quality_element = findElementDt(searchHs,"qualityValue");
@@ -236,6 +237,12 @@ public class LoaApiParser {
 				break;
 			}
 		}
+		for(HashMap<String, Object> searchHs : elements) {
+			bracelet_element = findElementDt(searchHs,"팔찌 효과");
+			if(bracelet_element.size()>0) {
+				break;
+			}
+		}
 		
 		HashMap<String,Object> freshMap = new HashMap<>();
 		freshMap.put("weapon_element", weapon_element);
@@ -243,6 +250,7 @@ public class LoaApiParser {
 		freshMap.put("new_refine_element", new_refine_element);
 		freshMap.put("limit_element", limit_element);
 		freshMap.put("elixir_element", elixir_element);
+		freshMap.put("bracelet_element", bracelet_element);
 		return freshMap;
 	}
 	

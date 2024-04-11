@@ -169,7 +169,17 @@ public class LoaChatController {
 			}else {
 				//val = raidSearch(reqMap);
 			}
-			break;	
+			break;
+		case "/악세":
+		case "/ㅇㅅ":
+			if (param1 != null && !param1.equals("")) {
+				try {
+					val = accessorySearch(param1);
+				} catch (Exception e) {
+					val = errorCodeMng(e);
+				}
+			}
+			break;		
 		case "/부캐":
 		case "/ㅂㅋ":
 			if (param1 != null && !param1.equals("")) {
@@ -912,6 +922,65 @@ public class LoaChatController {
 		*/
 		return resMsg;
 	}
+	
+	String accessorySearch(String userId) throws Exception {
+		String ordUserId=userId;
+		userId = URLEncoder.encode(userId, "UTF-8");
+		// +는 %2B로 치환한다
+		String paramUrl = lostArkAPIurl + "/armories/characters/" + userId + "?filters=equipment%2Bprofiles";
+		String returnData = LoaApiUtils.connect_process(paramUrl);
+		HashMap<String, Object> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<Map<String, Object>>() {});
+
+		List<Map<String, Object>> armoryEquipment;
+		Map<String, Object> armoryProfile;
+		
+		try {
+			armoryProfile = (Map<String, Object>) rtnMap.get("ArmoryProfile");
+		}catch(Exception e){
+			throw new Exception("E0003");
+		}
+		try {
+			armoryEquipment = (List<Map<String, Object>>) rtnMap.get("ArmoryEquipment");
+		}catch(Exception e){
+			throw new Exception("E0003");
+		}
+		
+		String resMsg = ordUserId+ " 악세정보";
+
+
+		for (Map<String, Object> equip : armoryEquipment) {
+			HashMap<String, Object> tooltip = new ObjectMapper().readValue((String) equip.get("Tooltip"),new TypeReference<Map<String, Object>>() {});
+			HashMap<String, Object> maps = LoaApiParser.findElement(tooltip);
+			HashMap<String, Object> weapon_element = (HashMap<String, Object>)maps.get("weapon_element");
+			HashMap<String, Object> quality_element = (HashMap<String, Object>)maps.get("quality_element");
+			HashMap<String, Object> new_refine_element = (HashMap<String, Object>)maps.get("new_refine_element");
+			HashMap<String, Object> limit_element = (HashMap<String, Object>)maps.get("limit_element");
+			HashMap<String, Object> elixir_element = (HashMap<String, Object>)maps.get("elixir_element");
+			HashMap<String, Object> bracelet_element = (HashMap<String, Object>)maps.get("bracelet_element");
+			
+			
+			//악세들은 레벨파싱에서 에러가남 
+			switch (equip.get("Type").toString()) {
+			
+			case "반지":case "귀걸이": case "목걸이":
+				break;
+			case "팔찌":
+				HashMap<String, Object> bracelet =  (HashMap<String, Object>) bracelet_element.get("value");
+				
+				String braceletDt = Jsoup.parse(bracelet.get("Element_001").toString().replace("<BR>", enterStr)).text();
+				
+				resMsg += enterStr;
+				resMsg += "팔찌 정보"+enterStr;
+				resMsg += braceletDt;
+				break;
+			default:
+			continue;
+			}
+		}
+
+		return resMsg;
+	}
+	
 	
 	String raidSearch(HashMap<String,Object> reqMap) throws Exception {
 		
