@@ -945,7 +945,7 @@ public class LoaChatController {
 			throw new Exception("E0003");
 		}
 		
-		String resMsg = ordUserId+ " 악세정보";
+		String resMsg = ordUserId+ " 악세정보"+enterStr;
 
 
 		for (Map<String, Object> equip : armoryEquipment) {
@@ -965,12 +965,12 @@ public class LoaChatController {
 			case "반지":case "귀걸이": case "목걸이":
 				break;
 			case "팔찌":
-				HashMap<String, Object> bracelet =  (HashMap<String, Object>) bracelet_element.get("value");
-				
-				String braceletDt = Jsoup.parse(bracelet.get("Element_001").toString().replace("<BR>", enterStr)).text();
-				
-				resMsg += enterStr;
 				resMsg += "팔찌 정보"+enterStr;
+				HashMap<String, Object> bracelet =  (HashMap<String, Object>) bracelet_element.get("value");
+				resMsg += LoaApiParser.findBraceletOptions(bracelet.get("Element_001").toString());
+				
+				resMsg += "상세 더보기"+allSeeStr;
+				String braceletDt = Jsoup.parse(bracelet.get("Element_001").toString().replace("<BR>", enterStr)).text();
 				resMsg += braceletDt;
 				break;
 			default:

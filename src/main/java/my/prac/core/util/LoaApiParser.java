@@ -31,6 +31,8 @@ public class LoaApiParser {
 
 	static String [] setList = {"악몽","환각","지배","사멸","갈망","배신","파괴","구원","매혹"};
 	static String [] elixirList = {"강맹","달인","신념","회심","선각자","선봉대","행운","진군","칼날방패"};
+	static String[] braceletList = { "정밀", "멸시", "습격", "우월", "응원", "약점노출", "비수", "냉정", "열정", "기습", "결투", "깨달음", "속공",
+			"순환", "마나회수", "쐐기", "망치" };
 
 	final static String enterStr= "♬";
 	final static String tabStr= "◐";
@@ -266,4 +268,158 @@ public class LoaApiParser {
 		return findElement;
 	}
 
+	public static String findBraceletOptions(String param) {
+		String res ="";
+		String[] arr = param.split("<img");
+		
+		for(String a : arr) {
+			a = "<img"+a;
+			String b = Jsoup.parse(a.replace("<BR>", enterStr)).text();
+			res += findBraceletOptionsDt( b );
+		}
+		return res;
+		
+	}
+	
+	public static String findBraceletOptionsDt(String param) {
+		String msg = "";
+		
+		for(int i=0;i<braceletList.length;i++) {
+			msg = "["+braceletList[i]+"]";
+			if(param.indexOf(msg) >= 0) {
+				switch(msg) {
+					case "[망치]":
+						if( param.indexOf("피해량이 12%") >= 0 ) {
+							return msg + "상" + enterStr;
+						}else if( param.indexOf("피해량이 10%") >= 0 ) {
+							return msg + "중" + enterStr;
+						}else if( param.indexOf("피해량이 8%") >= 0 ) {
+							return msg + "하" + enterStr;
+						}
+					break;
+					
+					case "[쐐기]":
+						if( param.indexOf("피해가 0.5%") >= 0 ) {
+							return msg + "상" + enterStr;
+						}else if( param.indexOf("피해가 0.45%") >= 0 ) {
+							return msg + "중" + enterStr;
+						}else if( param.indexOf("피해가 0.35%") >= 0 ) {
+							return msg + "하" + enterStr;
+						}
+					break;
+					
+					case "[마나회수]":
+						if( param.indexOf("200") >= 0 ) {
+							return msg + "상" + enterStr;
+						}else if( param.indexOf("175") >= 0 ) {
+							return msg + "중" + enterStr;
+						}else if( param.indexOf("150") >= 0 ) {
+							return msg + "하" + enterStr;
+						}
+					break;
+					
+					case "[순환]":
+						if( param.indexOf("스킬 피해 4%") >= 0 ) {
+							return msg + "상" + enterStr;
+						}else if( param.indexOf("스킬 피해 3.5%") >= 0 ) {
+							return msg + "중" + enterStr;
+						}else if( param.indexOf("스킬 피해 3%") >= 0 ) {
+							return msg + "하" + enterStr;
+						}
+					break;	
+					
+					case "[속공]":
+						if( param.indexOf("15%") >= 0 ) {
+							return msg + "상" + enterStr;
+						}else if( param.indexOf("12%") >= 0 ) {
+							return msg + "중" + enterStr;
+						}else if( param.indexOf("10%") >= 0 ) {
+							return msg + "하" + enterStr;
+						}	
+					break;
+					
+					case "[깨달음]":
+						if( param.indexOf("6%") >= 0 ) {
+							return msg + "상" + enterStr;
+						}else if( param.indexOf("5%") >= 0 ) {
+							return msg + "중" + enterStr;
+						}else if( param.indexOf("4%") >= 0 ) {
+							return msg + "하" + enterStr;
+						}	
+					break;
+					
+					case "[냉정]":
+					case "[열정]":
+					case "[기습]":
+					case "[결투]":
+						if( param.indexOf("4%") >= 0 ) {
+							return msg + "상" + enterStr;
+						}else if( param.indexOf("3.5%") >= 0 ) {
+							return msg + "중" + enterStr;
+						}else if( param.indexOf("3%") >= 0 ) {
+							return msg + "하" + enterStr;
+						}	
+					break;
+					
+					case "[약점노출]":
+					case "[비수]":
+						if( param.indexOf("2.5%") >= 0 ) {
+							return msg + "상" + enterStr;
+						}else if( param.indexOf("2.1%") >= 0 ) {
+							return msg + "중" + enterStr;
+						}else if( param.indexOf("1.8%") >= 0 ) {
+							return msg + "하" + enterStr;
+						}	
+					break;
+					
+					case "[응원]":
+						if( param.indexOf("1.3%") >= 0 ) {
+							return msg + "상" + enterStr;
+						}else if( param.indexOf("1.1%") >= 0 ) {
+							return msg + "중" + enterStr;
+						}else if( param.indexOf("0.9%") >= 0 ) {
+							return msg + "하" + enterStr;
+						}	
+					break;
+					
+					case "[우월]":
+						if( param.indexOf("3%") >= 0 ) {
+							return msg + "상" + enterStr;
+						}else if( param.indexOf("2.5%") >= 0 ) {
+							return msg + "중" + enterStr;
+						}else if( param.indexOf("2%") >= 0 ) {
+							return msg + "하" + enterStr;
+						}	
+					break;
+					
+					case "[습격]":
+						if( param.indexOf("10%") >= 0 ) {
+							return msg + "상" + enterStr;
+						}else if( param.indexOf("8%") >= 0 ) {
+							return msg + "중" + enterStr;
+						}else if( param.indexOf("6%") >= 0 ) {
+							return msg + "하" + enterStr;
+						}	
+					break;
+					
+					case "[정밀]":
+					case "[멸시]":
+						if( param.indexOf("5%") >= 0 ) {
+							return msg + "상" + enterStr;
+						}else if( param.indexOf("4%") >= 0 ) {
+							return msg + "중" + enterStr;
+						}else if( param.indexOf("3%") >= 0 ) {
+							return msg + "하" + enterStr;
+						}	
+					break;
+					
+					default:
+					break;
+				}
+			}
+		}
+		
+		return param;
+	}
+	
 }
