@@ -32,7 +32,7 @@ public class LoaApiParser {
 	static String [] setList = {"악몽","환각","지배","사멸","갈망","배신","파괴","구원","매혹"};
 	static String [] elixirList = {"강맹","달인","신념","회심","선각자","선봉대","행운","진군","칼날방패"};
 	static String[] braceletList = { "정밀", "멸시", "습격", "우월", "응원", "약점 노출", "비수", "냉정", "열정", "기습", "결투", "깨달음", "속공",
-			"순환", "마나회수", "쐐기", "망치" };
+			"순환", "마나회수", "쐐기", "망치", "상처악화", "보상", "수확", "강타", "돌진", "타격", "오뚝이" };
 
 	final static String enterStr= "♬";
 	final static String tabStr= "◐";
@@ -407,6 +407,58 @@ public class LoaApiParser {
 						if( param.indexOf("5%") >= 0 ) {
 							return "∇"+msg + "상" + enterStr;
 						}else if( param.indexOf("4%") >= 0 ) {
+							return "∇"+msg + "중" + enterStr;
+						}else if( param.indexOf("3%") >= 0 ) {
+							return "∇"+msg + "하" + enterStr;
+						}	
+					break;
+					
+					case "[오뚝이]":
+					case "[타격]":
+						if( param.indexOf("200") >= 0 ) {
+							return "∇"+msg + "상" + enterStr;
+						}else if( param.indexOf("160") >= 0 ) {
+							return "∇"+msg + "중" + enterStr;
+						}else if( param.indexOf("130") >= 0 ) {
+							return "∇"+msg + "하" + enterStr;
+						}	
+					break;
+					
+					case "[돌진]":
+					case "[강타]":
+						if( param.indexOf("100") >= 0 ) {
+							return "∇"+msg + "상" + enterStr;
+						}else if( param.indexOf("80") >= 0 ) {
+							return "∇"+msg + "중" + enterStr;
+						}else if( param.indexOf("65") >= 0 ) {
+							return "∇"+msg + "하" + enterStr;
+						}	
+					break;
+					
+					case "[수확]":
+						if( param.indexOf("250") >= 0 ) {
+							return "∇"+msg + "상" + enterStr;
+						}else if( param.indexOf("220") >= 0 ) {
+							return "∇"+msg + "중" + enterStr;
+						}else if( param.indexOf("190") >= 0 ) {
+							return "∇"+msg + "하" + enterStr;
+						}	
+					break;
+					
+					case "[보상]":
+						if( param.indexOf("7") >= 0 ) {
+							return "∇"+msg + "상" + enterStr;
+						}else if( param.indexOf("6") >= 0 ) {
+							return "∇"+msg + "중" + enterStr;
+						}else if( param.indexOf("5") >= 0 ) {
+							return "∇"+msg + "하" + enterStr;
+						}	
+					break;
+					
+					case "[상처악화]":
+						if( param.indexOf("7%") >= 0 ) {
+							return "∇"+msg + "상" + enterStr;
+						}else if( param.indexOf("5%") >= 0 ) {
 							return "∇"+msg + "중" + enterStr;
 						}else if( param.indexOf("3%") >= 0 ) {
 							return "∇"+msg + "하" + enterStr;
