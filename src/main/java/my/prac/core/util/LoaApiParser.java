@@ -31,8 +31,8 @@ public class LoaApiParser {
 
 	static String [] setList = {"악몽","환각","지배","사멸","갈망","배신","파괴","구원","매혹"};
 	static String [] elixirList = {"강맹","달인","신념","회심","선각자","선봉대","행운","진군","칼날방패"};
-	static String[] braceletList = { "정밀", "멸시", "습격", "우월", "응원", "약점 노출", "비수", "냉정", "열정", "기습", "결투", "깨달음", "속공",
-			"순환", "마나회수", "쐐기", "망치", "상처악화", "보상", "수확", "강타", "돌진", "타격", "오뚝이" };
+	static String [] braceletList = { "정밀", "멸시", "습격", "우월", "응원", "약점 노출", "비수", "냉정", "열정", "기습", "결투", "깨달음", "속공",
+			"순환", "마나회수", "쐐기", "망치", "상처악화", "보상", "수확", "강타", "돌진", "타격", "오뚝이", "응급처치", "긴급수혈", "반전", "앵콜", "적립", "투자" };
 
 	final static String enterStr= "♬";
 	final static String tabStr= "◐";
@@ -284,191 +284,218 @@ public class LoaApiParser {
 	public static String findBraceletOptionsDt(String param) {
 		String msg = "";
 		
+		String high_msg   ="";
+		String middle_msg ="";
+		String low_msg 	  ="";
+
 		if(param==null || param.equals("")) {
 			return "";
 		}
 		
 		for(int i=0;i<braceletList.length;i++) {
 			msg = "["+braceletList[i]+"]";
+			
+			high_msg   = "∇"+msg + " 상" + enterStr;
+			middle_msg = "∇"+msg + " 중" + enterStr;
+			low_msg    = "∇"+msg + " 하" + enterStr;
+			
 			if(param.indexOf(msg) >= 0) {
 				switch(msg) {
 					case "[망치]":
-						if( param.indexOf("피해량이 12%") >= 0 ) {
-							return "∇"+msg + "상" + enterStr;
-						}else if( param.indexOf("피해량이 10%") >= 0 ) {
-							return "∇"+msg + "중" + enterStr;
-						}else if( param.indexOf("피해량이 8%") >= 0 ) {
-							return "∇"+msg + "하" + enterStr;
+						if( param.indexOf("12%") >= 0 ) {
+							return high_msg;
+						}else if( param.indexOf("10%") >= 0 ) {
+							return middle_msg;
+						}else {
+							return low_msg;
 						}
-					break;
 					
 					case "[쐐기]":
-						if( param.indexOf("피해가 0.5%") >= 0 ) {
-							return "∇"+msg + "상" + enterStr;
-						}else if( param.indexOf("피해가 0.45%") >= 0 ) {
-							return "∇"+msg + "중" + enterStr;
-						}else if( param.indexOf("피해가 0.35%") >= 0 ) {
-							return "∇"+msg + "하" + enterStr;
+						if( param.indexOf("0.5%") >= 0 ) {
+							return high_msg;
+						}else if( param.indexOf("0.45%") >= 0 ) {
+							return middle_msg;
+						}else {
+							return low_msg;
 						}
-					break;
 					
 					case "[마나회수]":
 						if( param.indexOf("200") >= 0 ) {
-							return "∇"+msg + "상" + enterStr;
+							return high_msg;
 						}else if( param.indexOf("175") >= 0 ) {
-							return "∇"+msg + "중" + enterStr;
-						}else if( param.indexOf("150") >= 0 ) {
-							return "∇"+msg + "하" + enterStr;
+							return middle_msg;
+						}else {
+							return low_msg;
 						}
-					break;
-					
-					case "[순환]":
-						if( param.indexOf("스킬 피해 4%") >= 0 ) {
-							return "∇"+msg + "상" + enterStr;
-						}else if( param.indexOf("스킬 피해 3.5%") >= 0 ) {
-							return "∇"+msg + "중" + enterStr;
-						}else if( param.indexOf("스킬 피해 3%") >= 0 ) {
-							return "∇"+msg + "하" + enterStr;
-						}
-					break;	
 					
 					case "[속공]":
 						if( param.indexOf("15%") >= 0 ) {
-							return "∇"+msg + "상" + enterStr;
+							return high_msg;
 						}else if( param.indexOf("12%") >= 0 ) {
-							return "∇"+msg + "중" + enterStr;
-						}else if( param.indexOf("10%") >= 0 ) {
-							return "∇"+msg + "하" + enterStr;
+							return middle_msg;
+						}else {
+							return low_msg;
 						}	
-					break;
 					
 					case "[깨달음]":
 						if( param.indexOf("6%") >= 0 ) {
-							return "∇"+msg + "상" + enterStr;
+							return high_msg;
 						}else if( param.indexOf("5%") >= 0 ) {
-							return "∇"+msg + "중" + enterStr;
-						}else if( param.indexOf("4%") >= 0 ) {
-							return "∇"+msg + "하" + enterStr;
+							return middle_msg;
+						}else {
+							return low_msg;
 						}	
-					break;
 					
 					case "[냉정]":
 					case "[열정]":
 					case "[기습]":
 					case "[결투]":
+					case "[순환]":
 						if( param.indexOf("4%") >= 0 ) {
-							return "∇"+msg + "상" + enterStr;
+							return high_msg;
 						}else if( param.indexOf("3.5%") >= 0 ) {
-							return "∇"+msg + "중" + enterStr;
-						}else if( param.indexOf("3%") >= 0 ) {
-							return "∇"+msg + "하" + enterStr;
+							return middle_msg;
+						}else {
+							return low_msg;
 						}	
-					break;
 					
 					case "[약점 노출]":
 					case "[비수]":
 						if( param.indexOf("2.5%") >= 0 ) {
-							return "∇"+msg + "상" + enterStr;
+							return high_msg;
 						}else if( param.indexOf("2.1%") >= 0 ) {
-							return "∇"+msg + "중" + enterStr;
-						}else if( param.indexOf("1.8%") >= 0 ) {
-							return "∇"+msg + "하" + enterStr;
+							return middle_msg;
+						}else {
+							return low_msg;
 						}	
-					break;
 					
 					case "[응원]":
 						if( param.indexOf("1.3%") >= 0 ) {
-							return "∇"+msg + "상" + enterStr;
+							return high_msg;
 						}else if( param.indexOf("1.1%") >= 0 ) {
-							return "∇"+msg + "중" + enterStr;
-						}else if( param.indexOf("0.9%") >= 0 ) {
-							return "∇"+msg + "하" + enterStr;
+							return middle_msg;
+						}else {
+							return low_msg;
 						}	
-					break;
 					
 					case "[우월]":
 						if( param.indexOf("3%") >= 0 ) {
-							return "∇"+msg + "상" + enterStr;
+							return high_msg;
 						}else if( param.indexOf("2.5%") >= 0 ) {
-							return "∇"+msg + "중" + enterStr;
-						}else if( param.indexOf("2%") >= 0 ) {
-							return "∇"+msg + "하" + enterStr;
+							return middle_msg;
+						}else {
+							return low_msg;
 						}	
-					break;
 					
 					case "[습격]":
 						if( param.indexOf("10%") >= 0 ) {
-							return "∇"+msg + "상" + enterStr;
+							return high_msg;
 						}else if( param.indexOf("8%") >= 0 ) {
-							return "∇"+msg + "중" + enterStr;
-						}else if( param.indexOf("6%") >= 0 ) {
-							return "∇"+msg + "하" + enterStr;
+							return middle_msg;
+						}else {
+							return low_msg;
 						}	
-					break;
 					
 					case "[정밀]":
 					case "[멸시]":
 						if( param.indexOf("5%") >= 0 ) {
-							return "∇"+msg + "상" + enterStr;
+							return high_msg;
 						}else if( param.indexOf("4%") >= 0 ) {
-							return "∇"+msg + "중" + enterStr;
-						}else if( param.indexOf("3%") >= 0 ) {
-							return "∇"+msg + "하" + enterStr;
+							return middle_msg;
+						}else {
+							return low_msg;
 						}	
-					break;
 					
 					case "[오뚝이]":
 					case "[타격]":
 						if( param.indexOf("200") >= 0 ) {
-							return "∇"+msg + "상" + enterStr;
+							return high_msg;
 						}else if( param.indexOf("160") >= 0 ) {
-							return "∇"+msg + "중" + enterStr;
-						}else if( param.indexOf("130") >= 0 ) {
-							return "∇"+msg + "하" + enterStr;
+							return middle_msg;
+						}else {
+							return low_msg;
 						}	
-					break;
 					
 					case "[돌진]":
 					case "[강타]":
 						if( param.indexOf("100") >= 0 ) {
-							return "∇"+msg + "상" + enterStr;
+							return high_msg;
 						}else if( param.indexOf("80") >= 0 ) {
-							return "∇"+msg + "중" + enterStr;
-						}else if( param.indexOf("65") >= 0 ) {
-							return "∇"+msg + "하" + enterStr;
+							return middle_msg;
+						}else {
+							return low_msg;
 						}	
-					break;
 					
 					case "[수확]":
 						if( param.indexOf("250") >= 0 ) {
-							return "∇"+msg + "상" + enterStr;
+							return high_msg;
 						}else if( param.indexOf("220") >= 0 ) {
-							return "∇"+msg + "중" + enterStr;
-						}else if( param.indexOf("190") >= 0 ) {
-							return "∇"+msg + "하" + enterStr;
+							return middle_msg;
+						}else {
+							return low_msg;
 						}	
-					break;
 					
 					case "[보상]":
 						if( param.indexOf("7") >= 0 ) {
-							return "∇"+msg + "상" + enterStr;
+							return high_msg;
 						}else if( param.indexOf("6") >= 0 ) {
-							return "∇"+msg + "중" + enterStr;
-						}else if( param.indexOf("5") >= 0 ) {
-							return "∇"+msg + "하" + enterStr;
+							return middle_msg;
+						}else {
+							return low_msg;
 						}	
-					break;
 					
 					case "[상처악화]":
 						if( param.indexOf("7%") >= 0 ) {
-							return "∇"+msg + "상" + enterStr;
+							return high_msg;
 						}else if( param.indexOf("5%") >= 0 ) {
-							return "∇"+msg + "중" + enterStr;
-						}else if( param.indexOf("3%") >= 0 ) {
-							return "∇"+msg + "하" + enterStr;
+							return middle_msg;
+						}else { 
+							return low_msg; 
+						}
+					case "[응급처치]":
+						if( param.indexOf("8000") >= 0 ) {
+							return high_msg;
+						}else if( param.indexOf("6500") >= 0 ) {
+							return middle_msg;
+						}else {
+							return low_msg;
 						}	
-					break;
+					case "[긴급수혈]":
+						if( param.indexOf("16000") >= 0 ) {
+							return high_msg;
+						}else if( param.indexOf("13000") >= 0 ) {
+							return middle_msg;
+						}else {
+							return low_msg;
+						}	
 					
+					case "[반전]":
+					case "[앵콜]":	
+						if( param.indexOf("25%") >= 0 ) {
+							return high_msg;
+						}else if( param.indexOf("20%") >= 0 ) {
+							return middle_msg;
+						}else {
+							return low_msg;
+						}
+					
+					case "[적립]":
+						if( param.indexOf("50%") >= 0 ) {
+							return high_msg;
+						}else if( param.indexOf("40") >= 0 ) {
+							return middle_msg;
+						}else {
+							return low_msg;
+						}
+						
+					case "[투자]":
+						if( param.indexOf("3000") >= 0 ) {
+							return high_msg;
+						}else if( param.indexOf("2200") >= 0 ) {
+							return middle_msg;
+						}else {
+							return low_msg;
+						}
 					default:
 					break;
 				}
