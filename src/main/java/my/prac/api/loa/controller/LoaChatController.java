@@ -957,11 +957,34 @@ public class LoaChatController {
 			HashMap<String, Object> limit_element = (HashMap<String, Object>)maps.get("limit_element");
 			HashMap<String, Object> elixir_element = (HashMap<String, Object>)maps.get("elixir_element");
 			HashMap<String, Object> bracelet_element = (HashMap<String, Object>)maps.get("bracelet_element");
+			HashMap<String, Object> stone_element = (HashMap<String, Object>)maps.get("stone_element");
 			
-			
-			//악세들은 레벨파싱에서 에러가남 
 			switch (equip.get("Type").toString()) {
-			
+			case "어빌리티 스톤":
+				HashMap<String, Object> stone_val = (HashMap<String, Object>) stone_element.get("value");
+				HashMap<String, Object> stone_option = (HashMap<String, Object>) stone_val.get("Element_000");
+				HashMap<String, Object> stone_option0 = (HashMap<String, Object>) stone_option.get("contentStr");
+				HashMap<String, Object> stone_option1 = (HashMap<String, Object>) stone_option0.get("Element_000");
+				HashMap<String, Object> stone_option2 = (HashMap<String, Object>) stone_option0.get("Element_001");
+				
+				resMsg += equip.get("Name");
+				resMsg += enterStr;
+				String stone_option1_str = Jsoup.parse(stone_option1.get("contentStr").toString()).text();
+				String stone_option2_str = Jsoup.parse(stone_option2.get("contentStr").toString()).text();
+				
+				int len = 0;
+				
+				stone_option1_str = stone_option1_str.replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
+				len = stone_option1_str.length();
+				stone_option1_str = stone_option1_str.substring(0,1)+stone_option1_str.substring(len-1,len);
+
+				stone_option2_str = stone_option2_str.replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
+				len = stone_option2_str.length();
+				stone_option2_str = stone_option2_str.substring(0,1)+stone_option2_str.substring(len-1,len);
+				
+				resMsg += stone_option1_str + " " + stone_option2_str +enterStr;
+				resMsg += enterStr;
+				break;
 			case "반지":case "귀걸이": case "목걸이":
 				break;
 			case "팔찌":
