@@ -965,11 +965,13 @@ public class LoaChatController {
 			case "반지":case "귀걸이": case "목걸이":
 				break;
 			case "팔찌":
+				resMsg += enterStr;
 				resMsg += "팔찌 정보"+enterStr;
 				HashMap<String, Object> bracelet =  (HashMap<String, Object>) bracelet_element.get("value");
 				resMsg += LoaApiParser.findBraceletOptions(bracelet.get("Element_001").toString());
 				
-				resMsg += "상세 더보기"+allSeeStr;
+				resMsg += enterStr;
+				resMsg += "상세 더보기..▼"+allSeeStr;
 				String braceletDt = Jsoup.parse(bracelet.get("Element_001").toString().replace("<BR>", enterStr)).text();
 				resMsg += braceletDt;
 				break;
