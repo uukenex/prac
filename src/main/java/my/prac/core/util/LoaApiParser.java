@@ -247,7 +247,7 @@ public class LoaApiParser {
 			}
 		}
 		for(HashMap<String, Object> searchHs : elements) {
-			stone_element = findElementDt(searchHs,"팔찌 효과");
+			stone_element = findElementDt(searchHs,"무작위 각인 효과");
 			if(stone_element.size()>0) {
 				break;
 			}
