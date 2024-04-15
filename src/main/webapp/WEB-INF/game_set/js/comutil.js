@@ -26,8 +26,13 @@ function resize_event(arg){
 	
 	if(resizeWindowWidth < se2_board_width ){
 		se2_board_width = resizeWindowWidth;
+		/*
 		$('img').css('width',Math.round( se2_board_width * 0.9) );
 		$('img').css('height',Math.round( se2_board_width * 0.9) );
+		*/
+		$('img').css('width','100%');
+		$('img').css('height','100%');
+		$('img').css('object-fit','contain');
 		//console.log(se2_board_width);
 	}else{
 		if(resizeWindowWidth > 1800){
