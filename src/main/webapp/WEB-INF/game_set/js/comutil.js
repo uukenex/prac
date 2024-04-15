@@ -38,15 +38,19 @@ function resize_event(arg){
 		if(resizeWindowWidth > 1800){
 			$('img').css('width',Math.round( resizeWindowWidth * 0.3) );
 			$('img').css('height',Math.round( resizeWindowWidth * 0.3) );
+			$('img').css('object-fit','contain');
 		}else if(resizeWindowWidth > 1500){
 			$('img').css('width',Math.round( resizeWindowWidth * 0.4) );
 			$('img').css('height',Math.round( resizeWindowWidth * 0.4) );
+			$('img').css('object-fit','contain');
 		}else if(resizeWindowWidth > 800){
 			$('img').css('width',Math.round( resizeWindowWidth * 0.5) );
 			$('img').css('height',Math.round( resizeWindowWidth * 0.5) );
+			$('img').css('object-fit','contain');
 		}else{
 			$('img').css('width',Math.round( resizeWindowWidth * 0.7) );
 			$('img').css('height',Math.round( resizeWindowWidth * 0.7) );
+			$('img').css('object-fit','contain');
 		}
 		
 		//console.log(resizeWindowWidth);
