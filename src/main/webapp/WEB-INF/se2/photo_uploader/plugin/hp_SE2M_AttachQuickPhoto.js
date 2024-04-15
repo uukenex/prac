@@ -117,7 +117,7 @@ nhn.husky.SE2M_AttachQuickPhoto = jindo.$Class({
 		var maxImgHeight = Math.round(maxImgWidth*0.9 );
 		
 		// id와 class는 썸네일과 연관이 많습니다. 수정시 썸네일 영역도 Test
-		var sTag = '<img class="se2_img" src="{=sOriginalImageURL}" title="{=sName}" style="width:'+maxImgWidth+'px; height:'+maxImgHeight+'px;">';
+		var sTag = '<img class="se2_img" src="{=sOriginalImageURL}" title="{=sName}" style="width:100%; height:100%;object-fit: contain;">';
 		if(htPhotoInfo.bNewLine){
 			sTag += '<br style="clear:both;"><br>';
 		}
