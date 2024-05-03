@@ -448,7 +448,7 @@ public class LoaChatController {
 			retMsg="오늘의 모험 섬";
 			today = LoaApiUtils.StringToDate();
 		}else {
-			retMsg="내일의 모험 섬";
+			retMsg= enterStr + enterStr + "내일의 모험 섬";
 			today = LoaApiUtils.StringTommorowDate();
 		}
 		
