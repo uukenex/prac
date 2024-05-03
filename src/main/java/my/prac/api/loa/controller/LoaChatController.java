@@ -463,6 +463,10 @@ public class LoaChatController {
 				data_sub_list.remove("MinItemLevel");
 				data_sub_list.remove("Location");
 				
+				if(data_sub_list.get("StartTimes")==null) {
+					continue;
+				}
+				
 				String times = Jsoup.parse((String) data_sub_list.get("StartTimes").toString()).text();
 				if(times.indexOf(today) < 0) {
 					continue;
