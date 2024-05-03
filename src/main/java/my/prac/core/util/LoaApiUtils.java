@@ -1,12 +1,10 @@
 package my.prac.core.util;
 
 import java.io.BufferedReader;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
@@ -14,6 +12,8 @@ import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -24,9 +24,6 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSession;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
-
-import org.json.JSONObject;
-import org.json.simple.parser.JSONParser;
 
 public class LoaApiUtils {
 
@@ -219,6 +216,13 @@ public class LoaApiUtils {
 		DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
         String dateTime = dateFormat.format(new Date());
         
+        return dateTime;
+	}
+	
+	public static String StringTommorowDate() {
+		LocalDate now = LocalDate.now();
+		now = now.plusDays(1);
+		String dateTime = now.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
         return dateTime;
 	}
 }

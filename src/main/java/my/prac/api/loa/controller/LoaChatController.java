@@ -119,7 +119,8 @@ public class LoaChatController {
 			break;
 		case "/모험섬":
 		case "/ㅁㅎㅅ":	
-			val = calendarSearch();
+			val  = calendarSearch(0);
+			val += calendarSearch(1);
 			break;
 			
 		case "/장비":
@@ -190,10 +191,10 @@ public class LoaChatController {
 				}
 			}
 			break;	
-		case "/항협": case "/항해": case "/항해협동":
+		case "/항협": case "/항해": case "/항해협동": case "/ㅎㅎ":
 			val = shipSearch();
 			break;
-		case "/날씨":
+		case "/날씨": case "/ㄴㅆ":
 			if (param1 != null && !param1.equals("")) {
 				val = weatherSearch(param1);
 			}
@@ -254,7 +255,7 @@ public class LoaChatController {
 				val = "단어삭제 실패!";
 			}
 			break;
-		case "/단어목록": case "/단어조회": case "/단어":
+		case "/단어목록": case "/단어조회": case "/단어": case "/ㄷㅇ":
 			List<String> wordList = botService.selectBotWordSaveAll(reqMap);
 			List<String> imgList = botService.selectBotImgSaveAll(reqMap);
 			
@@ -434,16 +435,23 @@ public class LoaChatController {
 		return msg;
 	}
 	
-	String calendarSearch() throws Exception {
-		String retMsg="오늘의 모험 섬";
+	String calendarSearch(int type) throws Exception {
+		List<String> ret1Arr = new ArrayList<>();
+		List<String> ret2Arr = new ArrayList<>();
+		String today = "";
+		String retMsg="";
 		String retMsg1="";
 		String retMsg2="";
 		String retMsg3="";
 		
-		List<String> ret1Arr = new ArrayList<>();
-		List<String> ret2Arr = new ArrayList<>();
-		String today = LoaApiUtils.StringToDate();
-		//String today = "2024-02-16";
+		if(type==0) {
+			retMsg="오늘의 모험 섬";
+			today = LoaApiUtils.StringToDate();
+		}else {
+			retMsg="내일의 모험 섬";
+			today = LoaApiUtils.StringTommorowDate();
+		}
+		
 				
 		int cnt = 0; 
 		String paramUrl = lostArkAPIurl + "/gamecontents/calendar";
