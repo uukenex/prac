@@ -194,6 +194,9 @@ public class LoaChatController {
 		case "/항협": case "/항해": case "/항해협동": case "/ㅎㅎ":
 			val = shipSearch();
 			break;
+		case "/섬마": case "/가방":
+			val = openBox(param1,param2);
+			break;
 		case "/날씨": case "/ㄴㅆ":
 			if (param1 != null && !param1.equals("")) {
 				val = weatherSearch(param1);
@@ -451,6 +454,8 @@ public class LoaChatController {
 			retMsg= enterStr + enterStr + "내일의 모험 섬";
 			today = LoaApiUtils.StringTommorowDate();
 		}
+		
+		retMsg += " ("+today+")";
 		
 				
 		int cnt = 0; 
@@ -1509,6 +1514,87 @@ public class LoaChatController {
 		}
 		rtnMap.put("data", retMsg);
 		return retMsg;
+	}
+	
+	
+	public String openBox(String str1,String str2) throws Exception {
+		String resMsg="";
+		
+		int i =0; 
+		int j =0;
+		
+		try {
+			i = Integer.parseInt(str1);
+			j = Integer.parseInt(str1);
+		}catch(Exception e) {
+			return "오류"; 
+		}
+		
+		int totJ=j; //최초 전체수량
+		
+		if(i==0 || i>j || i>2000 || j> 2000) {
+			return "오류";
+		}
+		
+		resMsg +=i+"개씩 개봉 전체:"+totJ+" 섬마확률 0.5%/금화5%/은화94.5%"+enterStr;
+		
+		int tot_count = totJ/i; //전체회차
+		int nmg = totJ%i; //나머지
+		
+		if(tot_count>10) {
+			resMsg +=allSeeStr;
+		}
+		
+		for(int count=0;count<tot_count;count++) {
+			String findItem="";
+			j = j-i;
+			resMsg +=count+1+"회차 남은수량: "+j+"/"+totJ+enterStr;
+			for(int rd =0;rd<i;rd++) {
+				findItem += openBox2();
+			}
+			int item3 = countChar(findItem, '3');
+			int item2 = countChar(findItem, '2');
+			int item1 = countChar(findItem, '1');
+			
+			StringBuilder sb = new StringBuilder();
+			if(item3>0) {
+				sb.append(" 은화 "+item3);
+			}
+			if(item2>0) {
+				sb.append(" 금화 "+item2);
+			}
+			if(item1>0) {
+				sb.append(" 섬마 "+item1);
+			}
+			resMsg +=sb+enterStr;
+			if(item1>0) {
+				break;
+			}
+		}
+		return resMsg;
+	}
+	
+	public int openBox2() {
+		Random random = new Random();
+		int rs = random.nextInt(1000)+1;
+		if(rs>995) {
+			return 1;//달성
+		}else if(rs>945) {
+			return 2;//금화
+		}else {
+			return 3;//은화
+		}
+		
+	}
+
+	public int countChar(String str, char ch) {
+		int count = 0;
+		for (int i = 0; i < str.length(); i++) {
+			if (str.charAt(i) == ch) {
+				count++;
+			}
+		}
+		return count;
 	}
 	
 	
