@@ -194,7 +194,7 @@ public class LoaChatController {
 		case "/항협": case "/항해": case "/항해협동": case "/ㅎㅎ":
 			val = shipSearch();
 			break;
-		case "/섬마": case "/가방":
+		case "/섬마": case "/가방": case "/ㄱㅂ": case "/ㅅㅁ":
 			val = openBox(param1,param2);
 			break;
 		case "/날씨": case "/ㄴㅆ":
@@ -1525,7 +1525,7 @@ public class LoaChatController {
 		
 		try {
 			i = Integer.parseInt(str1);
-			j = Integer.parseInt(str1);
+			j = Integer.parseInt(str2);
 		}catch(Exception e) {
 			return "오류"; 
 		}
