@@ -1199,6 +1199,13 @@ public class LoaChatController {
 		double maxPoint=0;
 		String type="";
 		
+		double totPoint=0;
+		double totMaxPoint=0;
+
+		double percent = 100.0/9.0;
+		double eachPercent =0.0;
+		double totEachPercent =0.0;
+		
 		List<HashMap<String, Object>> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<List<Map<String, Object>>>() {});
 		for(HashMap<String,Object> rtn : rtnMap) {
 			
@@ -1207,9 +1214,17 @@ public class LoaChatController {
 			point = Double.parseDouble(rtn.get("Point").toString());
 			maxPoint =  Double.parseDouble(rtn.get("MaxPoint").toString()); 
 			
-			resMsg +=enterStr+"§["+Math.round((point/maxPoint)*100)+"%]"+type + " ("+Math.round(point)+"/"+Math.round(maxPoint)+")";
+			eachPercent = percent/maxPoint * point;
+			totPoint +=point;
+			totMaxPoint +=maxPoint;
+			totEachPercent += eachPercent;
+			
+			resMsg +=enterStr+"["+Math.round((point/maxPoint)*100)+"%]"+type + " ("+Math.round(point)+"/"+Math.round(maxPoint)+")";
 			
 		}
+		resMsg +=enterStr;
+		resMsg +=enterStr+"로아와점수 : "+(int)totPoint+" / "+(int)totMaxPoint ;
+		resMsg +=enterStr+"일로아점수 : "+ String.format("%.3f", totEachPercent);	
 		
 		return resMsg;
 	}
