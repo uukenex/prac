@@ -1551,19 +1551,19 @@ public class LoaChatController {
 			return "오류";
 		}
 		
-		resMsg +=i+"개씩 개봉 전체:"+totJ+" 섬마확률 0.5%/금화5%/은화94.5%"+enterStr;
+		resMsg +=i+"개씩 개봉 전체:"+totJ+" 섬마0.3%/금화5%/은화94.7%"+enterStr;
 		
 		int tot_count = totJ/i; //전체회차
 		int nmg = totJ%i; //나머지
 		
-		if(tot_count>10) {
+		if(tot_count>17) {
 			resMsg +=allSeeStr;
 		}
 		
 		for(int count=0;count<tot_count;count++) {
 			String findItem="";
 			j = j-i;
-			resMsg +=count+1+"회차 남은수량: "+j+"/"+totJ+enterStr;
+			resMsg +=count+1+"회차 남은수량: "+j+"/"+totJ;
 			for(int rd =0;rd<i;rd++) {
 				findItem += openBox2();
 			}
@@ -1592,9 +1592,9 @@ public class LoaChatController {
 	public int openBox2() {
 		Random random = new Random();
 		int rs = random.nextInt(1000)+1;
-		if(rs>995) {
+		if(rs>997) {
 			return 1;//달성
-		}else if(rs>945) {
+		}else if(rs>947) {
 			return 2;//금화
 		}else {
 			return 3;//은화
