@@ -128,6 +128,7 @@ public class ChatGPTUtils {
 			}
 	 
 		} catch (Exception e) {
+			System.out.println(e);
 			throw e;
 		} finally {
 	    	if ( in != null ){
