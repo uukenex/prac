@@ -121,6 +121,8 @@ public class ChatGPTUtils {
 		    
 		    conn.connect();
 			
+		    System.out.println(json.toString());
+		    System.out.println(conn);
 			br = new BufferedReader(new InputStreamReader(conn.getInputStream(), "UTF-8"));	
 			sb = new StringBuffer();	       
 			while ((responseData = br.readLine()) != null) {
