@@ -1,20 +1,22 @@
 package my.prac.core.util;
 
 import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Map;
 import java.util.List;
+import java.util.Map;
 
 import org.json.JSONObject;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.RestTemplate;
 
 public class ChatGPTUtils {
 
-	final static String openaiKey = "bearer "+PropsUtil.getProperty("keys","openaiKey");
+	final static String openaiKey = "Bearer "+PropsUtil.getProperty("keys","openaiKey");
 	final static String openaiUrl = "https://api.openai.com/v1/chat/completions";
 
 	/**
@@ -71,15 +73,7 @@ public class ChatGPTUtils {
 	
 	public static String chatgpt_message_post(String chatMsg) throws Exception { 
 		
-		Map<String, Object> resultMap = new HashMap<String, Object>();
 		BufferedReader in = null;
-		String jsonStr = "";
-		String responseData = "";	
-		BufferedReader br = null;
-		StringBuffer sb = null;
-		
-		
-		JSONObject json ;
 		List<HashMap<String,String>> messageList = new ArrayList<>();
 		
 		HashMap<String,String> hs = new HashMap<>();
@@ -92,43 +86,26 @@ public class ChatGPTUtils {
 		hs2.put("content", chatMsg);
 		messageList.add(hs2);
 		
-		json = new JSONObject();
-		json.put("model", "gpt-3.5-turbo");
-		json.put("messages", messageList);
-		json.put("temperature", "1");
-		json.put("max_tokens", "250");
+		Map<String, Object> requestBody = new HashMap<>();
+	    requestBody.put("messages", messageList);
+	    requestBody.put("model","gpt-3.5-turbo");
+	    requestBody.put("temperature", 1);
+	    requestBody.put("max_tokens", 250);
+		
 		
 		try {
-			URL url = new URL(openaiUrl);
+			HttpHeaders headers = new HttpHeaders();
+		    headers.setContentType(MediaType.APPLICATION_JSON);
+		    headers.set("Authorization", openaiKey );
 			
-			
-			
-		    HttpURLConnection conn = (HttpURLConnection)url.openConnection();
-		    conn.setRequestMethod("POST");
-		    conn.setRequestProperty("Content-Type", "application/json");
-		    conn.setRequestProperty("Accept", "application/json");
-		    conn.setRequestProperty("Authorization", openaiKey);
-		    conn.setDoOutput(true);
+			HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(requestBody, headers);
 
-		    try (OutputStream os = conn.getOutputStream()){
-				byte request_data[] = json.toString().getBytes("utf-8");
-				os.write(request_data);
-				os.close();
-			}
-			catch(Exception e) {
-				e.printStackTrace();
-			}
-		    
-		    conn.connect();
+		    RestTemplate restTemplate = new RestTemplate();
+		    ResponseEntity<Map> response = restTemplate.postForEntity(openaiUrl, requestEntity, Map.class);
+		    Map<String, Object> responseBody = response.getBody();
+
+		    return responseBody.toString();
 			
-		    System.out.println(json.toString());
-		    System.out.println(conn);
-			br = new BufferedReader(new InputStreamReader(conn.getInputStream(), "UTF-8"));	
-			sb = new StringBuffer();	       
-			while ((responseData = br.readLine()) != null) {
-				sb.append(responseData); 
-			}
-	 
 		} catch (Exception e) {
 			System.out.println(e);
 			throw e;
@@ -138,7 +115,6 @@ public class ChatGPTUtils {
 	        }
 	    }
 			
-		return sb.toString(); 
 	}
 	
 	

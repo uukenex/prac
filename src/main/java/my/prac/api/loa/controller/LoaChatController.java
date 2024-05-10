@@ -13,7 +13,9 @@ import java.util.stream.Collectors;
 import javax.annotation.Resource;
 
 import org.apache.commons.lang3.StringUtils;
+import org.json.JSONArray;
 import org.json.JSONObject;
+import org.json.simple.parser.JSONParser;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.slf4j.Logger;
@@ -213,7 +215,7 @@ public class LoaChatController {
 			break;
 		case "/챗":
 			fulltxt = fulltxt.substring(param0.length()).trim();
-			chatGptSearch(fulltxt);
+			val = chatGptSearch(fulltxt);
 			break;
 		case "/단어등록": case "/단어추가":
 
@@ -1624,12 +1626,11 @@ public class LoaChatController {
 		try {
 			String returnData = ChatGPTUtils.chatgpt_message_post(reqMsg);
 			
-			Map<String, Object> data_list = new ObjectMapper().readValue(returnData,new TypeReference<Map<String, Object>>() {});
-
-			System.out.println(data_list);
-			List<Map<String, Object>> choices = (List<Map<String, Object>>) data_list.get("choices");
-			Map<String, Object> message = (Map<String, Object>) choices.get(0).get("message");
-			content = message.get("content").toString();
+			JSONObject jsonObject = new JSONObject(returnData);
+            JSONArray choicesArray = jsonObject.getJSONArray("choices");
+            JSONObject choiceObject = choicesArray.getJSONObject(0);
+            JSONObject messageObject = choiceObject.getJSONObject("message");
+            content = messageObject.getString("content");
 		} catch (Exception e) {
 			e.printStackTrace();
 			content = "오류입니다.";
