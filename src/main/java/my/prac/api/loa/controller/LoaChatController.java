@@ -1624,13 +1624,18 @@ public class LoaChatController {
 	public String chatGptSearch(String reqMsg) throws Exception {
 		String content ="";
 		try {
-			String returnData = ChatGPTUtils.chatgpt_message_post(reqMsg);
-			
-			JSONObject jsonObject = new JSONObject(returnData);
+			String returnData = ChatGPTUtils.chatgpt_message_post2(reqMsg);
+			// JSON 문자열을 JsonObject로 파싱
+            JSONObject jsonObject = new JSONObject(returnData);
+
+            // choices 배열에서 첫 번째 객체를 가져옴
             JSONArray choicesArray = jsonObject.getJSONArray("choices");
             JSONObject choiceObject = choicesArray.getJSONObject(0);
+
+            // message 객체에서 content 값을 추출
             JSONObject messageObject = choiceObject.getJSONObject("message");
             content = messageObject.getString("content");
+
 		} catch (Exception e) {
 			e.printStackTrace();
 			content = "오류입니다.";
