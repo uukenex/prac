@@ -30,6 +30,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import my.prac.core.prjbot.service.BotService;
+import my.prac.core.util.ChatGPTUtils;
 import my.prac.core.util.ImageUtils;
 import my.prac.core.util.LoaApiParser;
 import my.prac.core.util.LoaApiUtils;
@@ -209,6 +210,10 @@ public class LoaChatController {
 			Random random = new Random();
 			val = menu_list[random.nextInt(menu_list.length)];
 
+			break;
+		case "/챗":
+			fulltxt = fulltxt.substring(param0.length()).trim();
+			chatGptSearch(fulltxt);
 			break;
 		case "/단어등록": case "/단어추가":
 
@@ -1613,4 +1618,23 @@ public class LoaChatController {
 	}
 	
 	
+	
+	public String chatGptSearch(String reqMsg) throws Exception {
+		String content ="";
+		try {
+			String returnData = ChatGPTUtils.chatgpt_message_post(reqMsg);
+			
+			Map<String, Object> data_list = new ObjectMapper().readValue(returnData,new TypeReference<Map<String, Object>>() {});
+
+			System.out.println(data_list);
+			List<Map<String, Object>> choices = (List<Map<String, Object>>) data_list.get("choices");
+			Map<String, Object> message = (Map<String, Object>) choices.get(0).get("message");
+			content = message.get("content").toString();
+		} catch (Exception e) {
+			e.printStackTrace();
+			content = "오류입니다.";
+		}
+
+		return content;
+	}
 }
