@@ -140,7 +140,7 @@ public class ChatGPTUtils {
 		        "    \"messages\": [\n" +
 		        "        {\n" +
 		        "            \"role\": \"system\",\n" +
-		        "            \"content\": \"200자 이내로 대답해줘\"\n" +
+		        "            \"content\": \"200자 이내로 대답해줘. 간략하게 10초이내에 대답해줘.\"\n" +
 		        "        },\n" +
 		        "        {\n" +
 		        "            \"role\": \"user\",\n" +
