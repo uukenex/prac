@@ -140,7 +140,7 @@ public class ChatGPTUtils {
 		        "    \"messages\": [\n" +
 		        "        {\n" +
 		        "            \"role\": \"system\",\n" +
-		        "            \"content\": \"200자 이내로 대답해줘. 간략하게 10초이내에 대답해줘.\"\n" +
+		        "            \"content\": \"400자 내외로 대답해줘. 10초이내에 대답해줘.\"\n" +
 		        "        },\n" +
 		        "        {\n" +
 		        "            \"role\": \"user\",\n" +
@@ -148,7 +148,7 @@ public class ChatGPTUtils {
 		        "        }\n" +
 		        "    ],\n" +
 		        "    \"temperature\": 1,\n" +
-		        "    \"max_tokens\": 250\n" +
+		        "    \"max_tokens\": 450\n" +
 		        "}";
 		
 		StringEntity entity = new StringEntity(json, ContentType.APPLICATION_JSON);
