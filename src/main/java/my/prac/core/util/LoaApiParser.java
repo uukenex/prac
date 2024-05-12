@@ -94,30 +94,38 @@ public class LoaApiParser {
 		element_009_value1 = (HashMap<String, Object>) element_009_value.get("Element_000");
 		element_009_value2 = (HashMap<String, Object>) element_009_value1.get("contentStr");
 
-		String elixirFind;
+		String elixirFind ="";
 		
-		element_009_value3 = (HashMap<String, Object>) element_009_value2.get("Element_000");
-		elixirFind = Jsoup.parse((String) element_009_value3.get("contentStr").toString().split("<br>")[0]).text();
-		elixirFind = LoaApiUtils.filterText(elixirFind);
-		totElixir += Integer.parseInt(elixirFind.replaceAll("[^1-5]", ""));
-		
-		for(String elixir:elixirList) {
-			if(elixirFind.indexOf(elixir) >= 0) {
-				equipElixirList.add(elixir);
+		try {
+			element_009_value3 = (HashMap<String, Object>) element_009_value2.get("Element_000");
+			elixirFind = Jsoup.parse((String) element_009_value3.get("contentStr").toString().split("<br>")[0]).text();
+			elixirFind = LoaApiUtils.filterText(elixirFind);
+			totElixir += Integer.parseInt(elixirFind.replaceAll("[^1-5]", ""));
+			
+			for(String elixir:elixirList) {
+				if(elixirFind.indexOf(elixir) >= 0) {
+					equipElixirList.add(elixir);
+				}
 			}
+			
+		}catch(Exception e) {
+			
 		}
 		
-		element_009_value3 = (HashMap<String, Object>) element_009_value2.get("Element_001");
-		elixirFind = Jsoup.parse((String) element_009_value3.get("contentStr").toString().split("<br>")[0]).text();
-		elixirFind = LoaApiUtils.filterText(elixirFind);
-		totElixir += Integer.parseInt(elixirFind.replaceAll("[^1-5]", ""));
-		
-		for(String elixir:elixirList) {
-			if(elixirFind.indexOf(elixir) >= 0) {
-				equipElixirList.add(elixir);
+		try {
+			element_009_value3 = (HashMap<String, Object>) element_009_value2.get("Element_001");
+			elixirFind = Jsoup.parse((String) element_009_value3.get("contentStr").toString().split("<br>")[0]).text();
+			elixirFind = LoaApiUtils.filterText(elixirFind);
+			totElixir += Integer.parseInt(elixirFind.replaceAll("[^1-5]", ""));
+			
+			for(String elixir:elixirList) {
+				if(elixirFind.indexOf(elixir) >= 0) {
+					equipElixirList.add(elixir);
+				}
 			}
+		}catch(Exception e) {
+			
 		}
-		
 		return totElixir;
 	}
 	
@@ -166,24 +174,31 @@ public class LoaApiParser {
 		element_009_value2 = (HashMap<String, Object>) element_009_value1.get("contentStr");
 
 		String elixirFind;
-		
-		element_009_value3 = (HashMap<String, Object>) element_009_value2.get("Element_000");
-		elixirFind = Jsoup.parse((String) element_009_value3.get("contentStr").toString().split("<br>")[0]).text();
-		elixirFind = LoaApiUtils.filterText(elixirFind);
-		if(flag ==1) {//초월검색인 경우
-			rtnTxt += elixirFind+" ";
-		}else {
-			rtnTxt += StringUtils.leftPad( elixirFind, 8, "　")+"　";
+		try {
+
+			element_009_value3 = (HashMap<String, Object>) element_009_value2.get("Element_000");
+			elixirFind = Jsoup.parse((String) element_009_value3.get("contentStr").toString().split("<br>")[0]).text();
+			elixirFind = LoaApiUtils.filterText(elixirFind);
+			if(flag ==1) {//초월검색인 경우
+				rtnTxt += elixirFind+" ";
+			}else {
+				rtnTxt += StringUtils.leftPad( elixirFind, 8, "　")+"　";
+			}
+		}catch(Exception e) {
+			
 		}
 		
-		
-		element_009_value3 = (HashMap<String, Object>) element_009_value2.get("Element_001");
-		elixirFind = Jsoup.parse((String) element_009_value3.get("contentStr").toString().split("<br>")[0]).text();
-		elixirFind = LoaApiUtils.filterText(elixirFind);
-		if(flag ==1) {//초월검색인 경우 
-			rtnTxt += elixirFind+" ";
-		}else {
-			rtnTxt += StringUtils.leftPad( elixirFind, 8, "　")+"";
+		try {
+			element_009_value3 = (HashMap<String, Object>) element_009_value2.get("Element_001");
+			elixirFind = Jsoup.parse((String) element_009_value3.get("contentStr").toString().split("<br>")[0]).text();
+			elixirFind = LoaApiUtils.filterText(elixirFind);
+			if(flag ==1) {//초월검색인 경우 
+				rtnTxt += elixirFind+" ";
+			}else {
+				rtnTxt += StringUtils.leftPad( elixirFind, 8, "　")+"";
+			}
+		}catch(Exception e) {
+			
 		}
 		
 		
