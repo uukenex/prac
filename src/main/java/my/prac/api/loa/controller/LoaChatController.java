@@ -1644,7 +1644,7 @@ public class LoaChatController {
             JSONObject messageObject = choiceObject.getJSONObject("message");
             content = messageObject.getString("content");
 
-            content.replaceAll("\n", enterStr);
+            content = content.replaceAll("\n", enterStr);
             
 		} catch (Exception e) {
 			e.printStackTrace();
