@@ -215,7 +215,7 @@ public class LoaChatController {
 			break;
 		case "/챗":
 			fulltxt = fulltxt.substring(param0.length()).trim();
-			val = chatGptSearch(fulltxt);
+			val = chatGptSearch(fulltxt,sender);
 			break;
 		case "/단어등록": case "/단어추가":
 
@@ -1621,8 +1621,16 @@ public class LoaChatController {
 	
 	
 	
-	public String chatGptSearch(String reqMsg) throws Exception {
+	public String chatGptSearch(String reqMsg,String userName) throws Exception {
 		String content ="";
+		
+		int cnt = 0;
+		//cnt = botService.select오늘얼마썻는지체크로직(userName);
+		
+		if(cnt>3) {
+			content ="오늘 3회 모두 사용했습니다.";
+		}
+		
 		try {
 			String returnData = ChatGPTUtils.chatgpt_message_post2(reqMsg);
 			// JSON 문자열을 JsonObject로 파싱
@@ -1636,10 +1644,14 @@ public class LoaChatController {
             JSONObject messageObject = choiceObject.getJSONObject("message");
             content = messageObject.getString("content");
 
+            content.replaceAll("\n", enterStr);
+            
 		} catch (Exception e) {
 			e.printStackTrace();
 			content = "오류입니다.";
 		}
+		
+		// botService.save db에 저장 로직 (reqMsg,content)
 
 		return content;
 	}
