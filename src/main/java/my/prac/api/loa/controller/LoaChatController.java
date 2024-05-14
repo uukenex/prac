@@ -678,19 +678,23 @@ public class LoaChatController {
 		
 		String elixirField="";
 		int cnt =0 ;
-		for(String elixir:elixirList) {
-			cnt += Collections.frequency(equipElixirList, elixir);
-			if(cnt > 1) { // 회심2 를 회심으로 표기 
-				elixirField = elixirField + elixir;
-				break;
-			}else {
-				continue;
+		
+		if(equipElixirList.size()==2) {
+			if(equipElixirList.get(0).equals(equipElixirList.get(1))) {
+				for(String elixer: LoaApiParser.getElixirList()) {
+					cnt += Collections.frequency(equipElixirList, elixer);
+					if(cnt > 1) { // 회심2 를 회심으로 표기 
+						elixirField = elixirField + elixer;
+						break;
+					}else {
+						continue;
+					}
+					
+				}
 			}
-			
 		}
+		
 		resEquip=resEquip.replaceAll("  ", " ");
-		
-		
 		
 		resMsg = resMsg + enterStr;
 		
@@ -750,14 +754,6 @@ public class LoaChatController {
 		String totLimit ="";
 		int totElixir =0;
 		
-		/*
-		StringBuilder sb1 = new StringBuilder();
-		StringBuilder sb2 = new StringBuilder();
-		StringBuilder sb3 = new StringBuilder();
-		StringBuilder sb4 = new StringBuilder();
-		StringBuilder sb5 = new StringBuilder();
-		*/
-		
 		String resField1 = "";
 		String resField2 = "";
 		String resField3 = "";
@@ -791,15 +787,6 @@ public class LoaChatController {
 						equipSetList.add(set);
 					}
 				}
-				
-				/* 아이템레벨 */
-				//tmpLv = Integer.parseInt(Jsoup.parse((String) ((HashMap<String, Object>) quality_element.get("value")).get("leftStr2")).text().replaceAll("[^0-9]|[0-9]\\)$", ""));
-				//avgLv = avgLv+tmpLv;
-				
-				/* 아이템레벨 */
-				//if(tmpLv < 1610) {
-				//	throw new Exception("E0001");
-				//}
 			}
 			
 			
@@ -879,16 +866,22 @@ public class LoaChatController {
 			
 		}
 		int cnt1=0;
-		for(String elixer: LoaApiParser.getElixirList()) {
-			cnt1 += Collections.frequency(equipElixirList, elixer);
-			if(cnt1 > 1) { // 회심2 를 회심으로 표기 
-				elixirField = elixirField + elixer;
-				break;
-			}else {
-				continue;
+		
+		if(equipElixirList.size()==2) {
+			if(equipElixirList.get(0).equals(equipElixirList.get(1))) {
+				for(String elixer: LoaApiParser.getElixirList()) {
+					cnt1 += Collections.frequency(equipElixirList, elixer);
+					if(cnt1 > 1) { // 회심2 를 회심으로 표기 
+						elixirField = elixirField + elixer;
+						break;
+					}else {
+						continue;
+					}
+					
+				}
 			}
-			
 		}
+		
 		
 		resMsg += " "+avgLv + "Lv " + className + enterStr;
 		resMsg += "§무기 : "+enhanceLv+"강";
