@@ -27,6 +27,16 @@ public class GamePageController {
 
 	/******************** Main games *********************/
 
+	@RequestMapping(value = "/game11", method = RequestMethod.GET)
+	public String game11(HttpSession session, Model model) {
+		Users user = (Users) session.getAttribute("Users");
+		if (user != null) {
+			model.addAttribute("userId", user.getUserId());
+			model.addAttribute("userNick", user.getUserNick());
+		}
+		return "session/games/game11";
+	}
+	
 	@RequestMapping(value = "/game1", method = RequestMethod.GET)
 	public String game1(HttpSession session, Model model) {
 		Users user = (Users) session.getAttribute("Users");
