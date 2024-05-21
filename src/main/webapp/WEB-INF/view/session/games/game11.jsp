@@ -298,7 +298,7 @@
        			}
         		//보스 처치 후 적생성 추가 
         		if(flag_start_create_enemy && flag_boss_end){
-        			f_enemy_create2(v_sp_count++,4,400-20-10,getRandomInt(0, 400-20-10));
+        			f_enemy_create2(v_sp_count++,6,400-20-10,getRandomInt(0, 400-20-10));
        			}
         		
         		//라이프생성
@@ -599,7 +599,7 @@
     		function enemy_move(sp_count){
     			x -= e_speed;
     			
-    			if(flag_boss_end){
+    			if(flag_boss_end || sp_count%2 ==0){
     				y += y_speed;
     			}
     			
@@ -635,7 +635,7 @@
     			
     			setTimeout(function() {
     				flag_enemy_create2 = false;
-    			}, 200);	
+    			}, 600);	
     		}
     		
     		function enemy_move(sp_count){
