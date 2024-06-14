@@ -1307,6 +1307,12 @@ public class LoaChatController {
 		json.put("itemName", "10레벨 홍");
 		resMsg += auctionSearchDt(json);
 		
+		json.put("itemName", "9레벨 멸");
+		resMsg += auctionSearchDt(json);
+		
+		json.put("itemName", "9레벨 홍");
+		resMsg += auctionSearchDt(json);
+		
 		resMsg = LoaApiUtils.filterTextForMarket(resMsg);
 		return resMsg;
 	}
