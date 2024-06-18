@@ -458,8 +458,21 @@ public class LoaChatController {
 			retMsg="오늘의 모험 섬";
 			today = LoaApiUtils.StringToDate();
 		}else {
-			retMsg= enterStr + enterStr + "내일의 모험 섬";
-			today = LoaApiUtils.StringTommorowDate();
+			
+			LocalDate now = LocalDate.now();
+			
+			DayOfWeek dayOfWeek = now.getDayOfWeek();
+			System.out.println(dayOfWeek.getValue());
+			
+			//화요일인 경우 
+			if(dayOfWeek.getValue()==2) {
+				//화요일인 경우 내일것 미표시 
+			}else {
+				retMsg= enterStr + enterStr + "내일의 모험 섬";
+				today = LoaApiUtils.StringTommorowDate();
+			}
+			
+			
 		}
 		
 		retMsg += " ("+today+")";
