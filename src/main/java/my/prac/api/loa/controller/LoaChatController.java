@@ -144,13 +144,13 @@ public class LoaChatController {
 						val  = "정보없음" ;
 					}else {
 						val  = calendarSearch(0);
-						val += "내일의 모험섬 더보기..▼"+allSeeStr;
+						val += enterStr+"내일의 모험섬 더보기..▼"+allSeeStr;
 						val += calendarSearch(1);
 					}
 					break;
 				default:
 					val  = calendarSearch(0);
-					val += "내일의 모험섬 더보기..▼"+allSeeStr;
+					val += enterStr+"내일의 모험섬 더보기..▼"+allSeeStr;
 					val += calendarSearch(1);
 					break;
 			}
