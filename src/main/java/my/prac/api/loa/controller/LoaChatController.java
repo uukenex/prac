@@ -121,9 +121,37 @@ public class LoaChatController {
 			val = checkGoldList();
 			break;
 		case "/모험섬":
-		case "/ㅁㅎㅅ":	
-			val  = calendarSearch(0);
-			val += calendarSearch(1);
+		case "/ㅁㅎㅅ":
+			LocalDate now = LocalDate.now();
+			DayOfWeek dayOfWeek = now.getDayOfWeek();
+			
+			LocalTime time = LocalTime.now();
+			DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH");
+			String nowTime = time.format(formatter);
+			
+			switch(dayOfWeek.getValue()) {
+				case 2:
+					//화요일엔 다음날 정보 없음
+					val  = calendarSearch(0);
+					break;
+				case 3:
+					//수요일 오전엔 정보 없음
+					if( Integer.parseInt(nowTime) <= 6) {
+						val  = "정보없음" ;
+					}else {
+						val  = calendarSearch(0);
+						val += "내일의 모험섬 더보기..▼"+allSeeStr;
+						val += calendarSearch(1);
+					}
+					break;
+				default:
+					val  = calendarSearch(0);
+					val += "내일의 모험섬 더보기..▼"+allSeeStr;
+					val += calendarSearch(1);
+					break;
+			}
+			
+			
 			break;
 			
 		case "/장비":
@@ -458,21 +486,8 @@ public class LoaChatController {
 			retMsg="오늘의 모험 섬";
 			today = LoaApiUtils.StringToDate();
 		}else {
-			
-			LocalDate now = LocalDate.now();
-			
-			DayOfWeek dayOfWeek = now.getDayOfWeek();
-			System.out.println(dayOfWeek.getValue());
-			
-			//화요일인 경우 
-			if(dayOfWeek.getValue()==2) {
-				//화요일인 경우 내일것 미표시 
-			}else {
-				retMsg= enterStr + enterStr + "내일의 모험 섬";
-				today = LoaApiUtils.StringTommorowDate();
-			}
-			
-			
+			retMsg= enterStr + enterStr + "내일의 모험 섬";
+			today = LoaApiUtils.StringTommorowDate();
 		}
 		
 		retMsg += " ("+today+")";
@@ -613,7 +628,7 @@ public class LoaChatController {
 					retMsg3 += not_found;
 				}
 				*/
-				retMsg3 = enterStr+enterStr+"§API정보없음 : "+ retMsg3;
+				retMsg3 = enterStr+"§API정보없음 : "+ retMsg3;
 			}
 			
 		}
