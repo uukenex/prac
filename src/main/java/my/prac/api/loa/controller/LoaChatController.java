@@ -120,12 +120,10 @@ public class LoaChatController {
 		reqMap.put("userName", sender);
 
 		switch (param0) {
-		case "/골드":
-		case "/ㄱㄷ":
+		case "/골드": case "/ㄱㄷ": case "/클골": case "/ㅋㄱ":
 			val = checkGoldList();
 			break;
-		case "/모험섬":
-		case "/ㅁㅎㅅ":
+		case "/모험섬": case "/ㅁㅎㅅ":
 			LocalDate now = LocalDate.now();
 			DayOfWeek dayOfWeek = now.getDayOfWeek();
 			
@@ -443,35 +441,27 @@ public class LoaChatController {
 		msg += "골드획득정보..";
 		msg += enterStr + "베히모스 21,500G";
 		msg += enterStr + "에키드나[하 18,500G/노 14,500G]";
-		msg += enterStr;
 		msg += enterStr + "카멘 1-3[하 20,000G/노 13,000G]";
-		msg += enterStr + "카멘 1-2[하 11,000G/노 7,500G]";
-		msg += enterStr + "일리아칸 [하 10,000G/노 7,500G]";
-		msg += enterStr + "아브 1-4 [하 9,000G/노 7,000G]";
-		msg += enterStr + "아브 1-3 [하 6,000G/노 4,500G]";
-		msg += enterStr + "아브 하12노3 [5,500G]";
+		msg += enterStr + "상아탑 [하 13,000G/노 6,500G]";
+		msg += enterStr + "일리아칸 [하 7,500G/노 5,400G]";
+		msg += enterStr + "카양겔 [하 4,800G/노 3,600G]";
+		msg += enterStr + "아브 1-3 [하 3,600G/노 3,000G]";
+		msg += enterStr + "아브 4 [하 2,600G/노 1,600G]";
+		msg += enterStr ;
+		msg += enterStr + "시즌2 이력 더보기..▼ "+ allSeeStr;
 		msg += enterStr;
 		msg += enterStr + "상아탑 [하 14,500G/노 9,000G]";
-		msg += enterStr + "관문별 더보기..▼ "+ allSeeStr;
+		msg += enterStr + "일리아칸 [하 10,000G/노 7,500G]";
 		msg += enterStr + "카양겔 [하 6,500G/노 4,500G]";
-		
-		msg += enterStr + "베히모스 1관문  7,000G";
-		msg += enterStr + "베히모스 1관문  14,500G";
+		msg += enterStr + "아브 1-3 [하 6,000G/노 4,500G]";
+		msg += enterStr + "아브 4 [하 3,000G/노 2,500G]";
 		msg += enterStr;
-		msg += enterStr + "하키드나 1관문  6,000G";
-		msg += enterStr + "하키드나 2관문 12,500G";
-		msg += enterStr;
-		msg += enterStr + "노키드나 1관문  5,000G ";
-		msg += enterStr + "노키드나 2관문  9,500G";
-		msg += enterStr;
-		msg += enterStr + "하멘 1관문  5,000G";
-		msg += enterStr + "하멘 2관문  6,000G";
-		msg += enterStr + "하멘 3관문  9,000G";
-		msg += enterStr + "하멘 4관문 21,000G";
-		msg += enterStr;
-		msg += enterStr + "노멘 1관문  3,500G";
-		msg += enterStr + "노멘 2관문  4,000G";
-		msg += enterStr + "노멘 3관문  5,500G";
+		msg += enterStr + "시즌2->시즌3 차액분 ";
+		msg += enterStr + "상아탑 [하 -1,500G/노 -2,500G]";
+		msg += enterStr + "일리아칸 [하 2,500G/노 -2,100G]";
+		msg += enterStr + "카양겔 [하 -1,700G/노 -900G]";
+		msg += enterStr + "아브 1-3 [하 -2,400G/노 -1,500G]";
+		msg += enterStr + "아브 4 [하 -400G/노 -900G]";
 		msg += enterStr;
 
 		return msg;
