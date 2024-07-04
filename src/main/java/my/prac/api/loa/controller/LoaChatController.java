@@ -1386,7 +1386,7 @@ public class LoaChatController {
 			}
 			
 			charCnt++;
-			resMsg += subCharName+ gemCntSearch(subCharName) + enterStr;
+			resMsg += subCharName+ gemInfo + enterStr;
 			
 			if(charCnt ==4) {
 				resMsg += enterStr + "3캐릭 이상 더보기..▼ ";
@@ -1395,7 +1395,7 @@ public class LoaChatController {
 		}
 		
 		resMsg += enterStr;
-		resMsg += "7레벨 이상 보석이 있는 캐릭터만 표기" + enterStr;
+		resMsg += "7레벨 이상 보석↑ 캐릭터 표기" + enterStr;
 		return resMsg;
 	}
 	
