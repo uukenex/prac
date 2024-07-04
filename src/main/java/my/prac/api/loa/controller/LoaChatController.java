@@ -224,6 +224,16 @@ public class LoaChatController {
 				}
 			}
 			break;	
+		case "/보석":
+		case "/ㅂㅅ":
+			if (param1 != null && !param1.equals("")) {
+				try {
+					val = subCharacterGemSearch(param1);
+				} catch (Exception e) {
+					val = errorCodeMng(e);
+				}
+			}
+			break;		
 		case "/항협": case "/항해": case "/항해협동": case "/ㅎㅎ":
 			val = shipSearch();
 			break;
@@ -1208,6 +1218,60 @@ public class LoaChatController {
 		
 		return resMsg;
 	}
+	
+	String gemCntSearch(String userId) throws Exception {
+		String ordUserId=userId;
+		userId = URLEncoder.encode(userId, "UTF-8");
+		// +는 %2B로 치환한다
+		String paramUrl = lostArkAPIurl + "/armories/characters/" + userId + "/gems";
+		String returnData = LoaApiUtils.connect_process(paramUrl);
+		HashMap<String, Object> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<Map<String, Object>>() {});
+
+
+		String[] gemList = {"멸화","홍염"};
+		List<Integer> equipGemDealList = new ArrayList<>();
+		List<Integer> equipGemCoolList = new ArrayList<>();
+		
+		List<Map<String, Object>> gems;
+		try {
+			gems = (List<Map<String, Object>>) rtnMap.get("Gems");
+		}catch(Exception e){
+			//throw new Exception("E0003");
+			
+			return "";
+		}
+		String resMsg = "";
+		int cnt = 0;
+		for (Map<String, Object> gem : gems) {
+			String gemName = Jsoup.parse((String) gem.get("Name")).text();
+			for(String equipGem : gemList) {
+				int gemLv = (int)gem.get("Level");
+				if(gemLv < 7) {
+					continue;
+				}
+				
+				if( gemName.indexOf(equipGem)>=0 ) {
+					cnt++;
+					if(equipGem.equals(gemList[0])) {
+						equipGemDealList.add(gemLv);
+					}else if(equipGem.equals(gemList[1])) {
+						equipGemCoolList.add(gemLv);
+					}
+				}
+			}
+		}
+
+		if(cnt==0) {
+			return "";
+		}
+		
+		Collections.sort(equipGemDealList,Collections.reverseOrder());
+		Collections.sort(equipGemCoolList,Collections.reverseOrder());
+		resMsg = resMsg + enterStr+"§"+gemList[0]+" : "+ equipGemDealList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
+		resMsg = resMsg + enterStr+"§"+gemList[1]+" : "+ equipGemCoolList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
+		
+		return resMsg;
+	}
 
 	String collectionSearch(String userId) throws Exception {
 		String ordUserId=userId;
@@ -1288,6 +1352,50 @@ public class LoaChatController {
 			}
 		}
 		
+		return resMsg;
+	}
+	String subCharacterGemSearch(String userId) throws Exception {
+		String ordUserId=userId;
+		userId = URLEncoder.encode(userId, "UTF-8");
+		// +는 %2B로 치환한다
+		String paramUrl = lostArkAPIurl + "/characters/" + userId + "/siblings";
+		String returnData = LoaApiUtils.connect_process(paramUrl);
+		
+		String resMsg=ordUserId+" 부캐 보석 정보" + enterStr;
+		
+		List<HashMap<String, Object>> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<List<Map<String, Object>>>() {});
+		
+		List<HashMap<String, Object>> sortedList = rtnMap.stream()
+				.filter(x->  Double.parseDouble(x.get("ItemMaxLevel").toString().replaceAll(",", "")) >= 1415)
+				.sorted(Comparator.comparingDouble(x-> Double.parseDouble(x.get("ItemMaxLevel").toString().replaceAll(",", ""))))
+				.collect(toReversedList());
+		
+		List<String> subCharList = new ArrayList<>();
+		
+		resMsg += enterStr;
+		
+		for(HashMap<String,Object> charList : sortedList) {
+			subCharList.add(charList.get("CharacterName").toString());
+		}
+		int charCnt = 0;
+		for(String subCharName : subCharList) {
+			
+			String gemInfo = gemCntSearch(subCharName);
+			if(gemInfo.equals("")) {
+				continue;
+			}
+			
+			charCnt++;
+			resMsg += subCharName+ gemCntSearch(subCharName) + enterStr;
+			
+			if(charCnt ==4) {
+				resMsg += enterStr + "3캐릭 이상 더보기..▼ ";
+				resMsg += allSeeStr ;
+			}
+		}
+		
+		resMsg += enterStr;
+		resMsg += "7레벨 이상 보석이 있는 캐릭터만 표기" + enterStr;
 		return resMsg;
 	}
 	

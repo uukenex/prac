@@ -16,7 +16,6 @@ import javax.servlet.http.HttpSession;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -25,14 +24,13 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.example.dto.Users;
-import com.example.service.PhotoBookService;
+import my.prac.core.dto.Users;
 
 @Controller
 public class PhotoBookController {
 	static Logger logger = LoggerFactory.getLogger(PhotoBookController.class);
-	@Autowired
-	PhotoBookService ps;
+	//@Autowired
+	//PhotoBookService ps;
 
 	// 포토북 페이지로 들어감
 	@RequestMapping(value = "/session/myPhoto", method = RequestMethod.GET)
@@ -47,8 +45,10 @@ public class PhotoBookController {
 		}
 		model.addAttribute("folderName", folderName);
 
+		
+		List<String> shareFolderList = null;
 		// path와 로그인아이디로 공유폴더리스트를 받아옴
-		List<String> shareFolderList = ps.selectFolderName(userId, users.getUserId());
+		//shareFolderList = ps.selectFolderName(userId, users.getUserId());
 
 		model.addAttribute("shareFolder", shareFolderList);
 		return "session/photobook/photo_sign";
@@ -86,9 +86,9 @@ public class PhotoBookController {
 		name = name.replace(" ", "").replace(".", "");
 		File dir = new File(UPLOAD_DIR + userId + "/" + name + "/");
 		boolean result = false;
-		int insertResult;
+		int insertResult=0;
 		if (!dir.isDirectory()) {
-			insertResult = ps.insertFolderName(userId, name);
+			//insertResult = ps.insertFolderName(userId, name);
 			if (insertResult == 1)// 디렉토리가 없으면 생성
 				result = dir.mkdirs();
 		}
