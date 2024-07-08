@@ -144,12 +144,14 @@ public class LoaChatController {
 						val  = calendarSearch(0);
 						val += enterStr+"내일의 모험섬 더보기..▼"+allSeeStr;
 						val += calendarSearch(1);
+						val += tossAccount();
 					}
 					break;
 				default:
 					val  = calendarSearch(0);
 					val += enterStr+"내일의 모험섬 더보기..▼"+allSeeStr;
 					val += calendarSearch(1);
+					val += tossAccount();
 					break;
 			}
 			
@@ -161,6 +163,7 @@ public class LoaChatController {
 			if (param1 != null && !param1.equals("")) {
 				try {
 					val = equipmentSearch(param1);
+					val+= tossAccount();
 					
 				} catch (Exception e) {
 					val = errorCodeMng(e);
@@ -229,6 +232,7 @@ public class LoaChatController {
 			if (param1 != null && !param1.equals("")) {
 				try {
 					val = subCharacterGemSearch(param1);
+					val+= tossAccount();
 				} catch (Exception e) {
 					val = errorCodeMng(e);
 				}
@@ -334,6 +338,7 @@ public class LoaChatController {
 				val += word + enterStr;
 			}
 			
+			val += tossAccount();
 			
 			break;
 		default:
@@ -1816,5 +1821,12 @@ public class LoaChatController {
 		// botService.save db에 저장 로직 (reqMsg,content)
 
 		return content;
+	}
+	
+	public String tossAccount() {
+		String ment = "";
+		ment += enterStr+"람쥐봇 후원하기(토스)";
+		ment += enterStr+"https://toss.me/daramzz";
+		return ment; 
 	}
 }
