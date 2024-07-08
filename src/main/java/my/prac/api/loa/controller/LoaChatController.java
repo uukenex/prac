@@ -232,7 +232,6 @@ public class LoaChatController {
 			if (param1 != null && !param1.equals("")) {
 				try {
 					val = subCharacterGemSearch(param1);
-					val+= tossAccount();
 				} catch (Exception e) {
 					val = errorCodeMng(e);
 				}
