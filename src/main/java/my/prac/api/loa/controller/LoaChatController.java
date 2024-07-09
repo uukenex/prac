@@ -162,7 +162,8 @@ public class LoaChatController {
 		case "/ㅈㅂ":
 			if (param1 != null && !param1.equals("")) {
 				try {
-					val = equipmentSearch(param1);
+					val = supporters(param1);
+					val+= equipmentSearch(param1);
 					val+= tossAccount();
 					
 				} catch (Exception e) {
@@ -1826,6 +1827,17 @@ public class LoaChatController {
 		String ment = "";
 		ment += enterStr+"람쥐봇 후원하기(토스)";
 		ment += enterStr+"https://toss.me/daramzz";
+		return ment; 
+	}
+	
+	public String supporters(String userId) {
+		String ment = "";
+		
+		switch(userId) {
+			case "챙석봉":
+				ment+="⭐";
+				break;
+		}
 		return ment; 
 	}
 }
