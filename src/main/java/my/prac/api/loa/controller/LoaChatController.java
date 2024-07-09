@@ -1833,10 +1833,9 @@ public class LoaChatController {
 	public String supporters(String userId) {
 		String ment = "";
 		
-		switch(userId) {
-			case "챙석봉":
-				ment+="⭐";
-				break;
+		int suppertersYn = botService.selectSupporters(userId);
+		if(suppertersYn > 0) {
+			ment+="⭐";
 		}
 		return ment; 
 	}

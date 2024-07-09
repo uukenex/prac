@@ -24,6 +24,8 @@ public interface BotService {
 	
 	public List<String> selectBotRaidSaveAll(HashMap<String, Object> hashMap);
 	public void insertBotRaidSaveTx(HashMap<String, Object> hashMap)  throws Exception;
+	
+	public int selectSupporters(String userId);
 }
 
 	

@@ -71,4 +71,8 @@ public class BotServiceImpl implements BotService {
 			throw new Exception("저장 실패");
 		}
 	}
+	
+	public int selectSupporters(String userId) {
+		return botDAO.selectSupporters(userId);
+	}
 }

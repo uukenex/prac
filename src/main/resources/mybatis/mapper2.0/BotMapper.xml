@@ -155,4 +155,10 @@
 			  ,#{param1, jdbcType=VARCHAR}
 		  FROM DUAL
     </insert>
+    <select id="selectSupporters" parameterType="String" resultType="int" >
+		 /* bot.xml selectSupporters */
+		SELECT COUNT(1)
+		  FROM TBOT_SUPPORTERS A
+		 WHERE A.USER_ID = #{param1, jdbcType=VARCHAR}
+	</select>
 </mapper>
