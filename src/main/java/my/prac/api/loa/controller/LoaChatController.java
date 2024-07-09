@@ -175,7 +175,8 @@ public class LoaChatController {
 		case "/ㅊㅇ": case "/ㅇㄹㅅ":
 			if (param1 != null && !param1.equals("")) {
 				try {
-					val = limitSearch(param1);
+					val = supporters(param1);
+					val+= limitSearch(param1);
 				} catch (Exception e) {
 					val = errorCodeMng(e);
 				}
@@ -185,7 +186,8 @@ public class LoaChatController {
 		case "/ㄴㅅ":
 			if (param1 != null && !param1.equals("")) {
 				try {
-					val = collectionSearch(param1);
+					val = supporters(param1);
+					val+= collectionSearch(param1);
 				} catch (Exception e) {
 					val = errorCodeMng(e);
 				}
@@ -212,7 +214,8 @@ public class LoaChatController {
 		case "/ㅇㅅ":
 			if (param1 != null && !param1.equals("")) {
 				try {
-					val = accessorySearch(param1);
+					val = supporters(param1);
+					val+= accessorySearch(param1);
 				} catch (Exception e) {
 					val = errorCodeMng(e);
 				}
@@ -222,7 +225,8 @@ public class LoaChatController {
 		case "/ㅂㅋ":
 			if (param1 != null && !param1.equals("")) {
 				try {
-					val = subCharacterSearch(param1);
+					val = supporters(param1);
+					val+= subCharacterSearch(param1);
 				} catch (Exception e) {
 					val = errorCodeMng(e);
 				}
@@ -232,7 +236,8 @@ public class LoaChatController {
 		case "/ㅂㅅ":
 			if (param1 != null && !param1.equals("")) {
 				try {
-					val = subCharacterGemSearch(param1);
+					val = supporters(param1);
+					val+= subCharacterGemSearch(param1);
 				} catch (Exception e) {
 					val = errorCodeMng(e);
 				}
