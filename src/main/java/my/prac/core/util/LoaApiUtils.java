@@ -139,10 +139,19 @@ public class LoaApiUtils {
 			txt=txt.replaceAll("파괴강석", "파강");
 			txt=txt.replaceAll("태양의 ", "");
 			txt=txt.replaceAll("찬란한 명예의 돌파석", "찬명돌");
-			txt=txt.replaceAll("10레벨 멸화의 보석", "10멸");
-			txt=txt.replaceAll("10레벨 홍염의 보석", "10홍");
-			txt=txt.replaceAll("9레벨 멸화의 보석", "9멸");
-			txt=txt.replaceAll("9레벨 홍염의 보석", "9홍");
+			txt=txt.replaceAll("10레벨 멸화의 보석", "3TD 10멸");
+			txt=txt.replaceAll("10레벨 홍염의 보석", "3TC 10홍");
+			txt=txt.replaceAll("9레벨 멸화의 보석", "3TD 9멸");
+			txt=txt.replaceAll("9레벨 홍염의 보석", "3TC 9홍");
+			
+			txt=txt.replaceAll("10레벨 겁화의 보석", "4TD 10겁");
+			txt=txt.replaceAll("10레벨 작열의 보석", "4TC 10작");
+			txt=txt.replaceAll("9레벨 겁화의 보석", "4TD 9겁");
+			txt=txt.replaceAll("9레벨 작열의 보석", "4TC 9작");
+			txt=txt.replaceAll("8레벨 겁화의 보석", "4TD 8겁");
+			txt=txt.replaceAll("8레벨 작열의 보석", "4TC 8작");
+			txt=txt.replaceAll("7레벨 겁화의 보석", "4TD 7겁");
+			txt=txt.replaceAll("7레벨 작열의 보석", "4TC 7작");
 			
 		}catch(Exception e) {
 			txt="";
