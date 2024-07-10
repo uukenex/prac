@@ -1486,6 +1486,32 @@ public class LoaChatController {
 		json.put("itemName", "9레벨 홍");
 		resMsg += auctionSearchDt(json);
 		
+		json.put("itemName", "10레벨 겁");
+		resMsg += auctionSearchDt(json);
+		
+		json.put("itemName", "10레벨 작");
+		resMsg += auctionSearchDt(json);
+		
+		
+		json.put("itemName", "9레벨 겁");
+		resMsg += auctionSearchDt(json);
+		
+		json.put("itemName", "9레벨 작");
+		resMsg += auctionSearchDt(json);
+		
+		
+		json.put("itemName", "8레벨 겁");
+		resMsg += auctionSearchDt(json);
+		
+		json.put("itemName", "8레벨 작");
+		resMsg += auctionSearchDt(json);
+		
+		json.put("itemName", "7레벨 겁");
+		resMsg += auctionSearchDt(json);
+		
+		json.put("itemName", "7레벨 작");
+		resMsg += auctionSearchDt(json);
+		
 		resMsg = LoaApiUtils.filterTextForMarket(resMsg);
 		return resMsg;
 	}
