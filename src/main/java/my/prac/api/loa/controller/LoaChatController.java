@@ -1213,6 +1213,13 @@ public class LoaChatController {
 			
 			return enterStr+"§보석 : 정보 없음";
 		}
+		if(gems == null) {
+			return enterStr+"§보석 : 정보 없음";
+		}
+		if(gems.equals("null")) {
+			return enterStr+"§보석 : 정보 없음";
+		}
+		
 		String resMsg = "";
 		for (Map<String, Object> gem : gems) {
 			String gemName = Jsoup.parse((String) gem.get("Name")).text();
