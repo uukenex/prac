@@ -250,7 +250,7 @@ public class LoaApiParser {
 			}
 		}
 		for(HashMap<String, Object> searchHs : elements) {
-			elixir_element = findElementDt(searchHs,"엘릭서 효과");
+			elixir_element = findElementDt(searchHs,"엘릭서");
 			if(elixir_element.size()>0) {
 				break;
 			}

@@ -803,7 +803,12 @@ public class LoaChatController {
 		
 		String avgLv = armoryProfile.get("ItemMaxLevel").toString();
 		String className = armoryProfile.get("CharacterClassName").toString();
+		
 
+		HashMap<String,Object> arkPassive= (HashMap<String, Object>) armoryProfile.get("ArkPassive");
+		String isArkPassive = arkPassive.get("IsArkPassive").toString();
+		List<HashMap<String,Object>> arkPassivePt = (List<HashMap<String, Object>>) arkPassive.get("Points");
+		
 		for (Map<String, Object> equip : armoryEquipment) {
 			HashMap<String, Object> tooltip = new ObjectMapper().readValue((String) equip.get("Tooltip"),new TypeReference<Map<String, Object>>() {});
 			HashMap<String, Object> maps = LoaApiParser.findElement(tooltip);
@@ -933,6 +938,16 @@ public class LoaChatController {
 		resMsg +=" 무품 : "+weaponQualityValue + enterStr; 
 		resMsg += "§악세평균품질 : "+avgQuality/5 + enterStr;
 		resMsg += "§세트 : "+setField + enterStr;
+		
+		if(isArkPassive.equals("true")) {
+			resMsg +="♩AP-사용 : Y"+enterStr;;	
+		}else {
+			resMsg +="♩AP-사용 : N"+enterStr;;
+		}
+		
+		for(HashMap<String,Object> pt:arkPassivePt) {
+			resMsg +="♩AP-"+pt.get("Name")+" : " +pt.get("Value")+enterStr;
+		}
 		
 		if(totLimit.equals("")) {
 			resMsg += "§초월 : 없음";
