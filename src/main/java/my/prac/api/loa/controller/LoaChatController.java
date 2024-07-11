@@ -1512,7 +1512,7 @@ public class LoaChatController {
 			resMsg += enterStr;
 			
 			json.put("CategoryCode", "210000");
-			json.put("Sort", "CURRENT_MIN_RPCIE");
+			json.put("Sort", "BUY_PRICE");
 			json.put("SortCondition", "ASC");
 			
 			resMsg +=enterStr;
@@ -1546,7 +1546,7 @@ public class LoaChatController {
 			resMsg += enterStr;
 			
 			json.put("CategoryCode", "210000");
-			json.put("Sort", "CURRENT_MIN_RPCIE");
+			json.put("Sort", "BUY_PRICE");
 			json.put("SortCondition", "ASC");
 			
 
@@ -1572,7 +1572,7 @@ public class LoaChatController {
 			
 		}else if(tier==40000) {
 			json.put("CategoryCode", "40000");
-			json.put("Sort", "CURRENT_MIN_RPCIE");
+			json.put("Sort", "CURRENT_MIN_PRICE");
 			json.put("SortCondition", "DESC");
 			json.put("ItemGrade", "유물");
 			
