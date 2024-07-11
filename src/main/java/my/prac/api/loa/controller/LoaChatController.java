@@ -1692,7 +1692,7 @@ public class LoaChatController {
 					for (HashMap<String, Object> item : itemMap) {
 						price += item.get("CurrentMinPrice")+" ";
 					}
-					str += "명파 - "+price.trim().replace(" ", "/")+ "G" + enterStr;
+					str += "파편주머니 - "+price.trim().replace(" ", "/")+ "G" + enterStr;
 					break;
 				case 3:
 					String i1 = itemMap.get(0).get("Name").toString();
