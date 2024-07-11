@@ -468,20 +468,15 @@ public class LoaChatController {
 		msg += enterStr + "아브 1-3 [하 3,600G/노 3,000G]";
 		msg += enterStr + "아브 4 [하 2,600G/노 1,600G]";
 		msg += enterStr ;
-		msg += enterStr + "시즌2 이력 더보기..▼ "+ allSeeStr;
+		msg += enterStr + "싱글모드..▼ "+ allSeeStr;
 		msg += enterStr;
-		msg += enterStr + "상아탑 [하 14,500G/노 9,000G]";
-		msg += enterStr + "일리아칸 [하 10,000G/노 7,500G]";
-		msg += enterStr + "카양겔 [하 6,500G/노 4,500G]";
-		msg += enterStr + "아브 1-3 [하 6,000G/노 4,500G]";
-		msg += enterStr + "아브 4 [하 3,000G/노 2,500G]";
-		msg += enterStr;
-		msg += enterStr + "시즌2->시즌3 차액분 ";
-		msg += enterStr + "상아탑 [하 -1,500G/노 -2,500G]";
-		msg += enterStr + "일리아칸 [하 -2,500G/노 -2,100G]";
-		msg += enterStr + "카양겔 [하 -1,700G/노 -900G]";
-		msg += enterStr + "아브 1-3 [하 -2,400G/노 -1,500G]";
-		msg += enterStr + "아브 4 [하 -400G/노 -900G]";
+		msg += enterStr + "발탄 600G";
+		msg += enterStr + "비아키스 800G";
+		msg += enterStr + "쿠크 1,400G";
+		msg += enterStr + "아브 1,700G(+900G)";
+		msg += enterStr + "카양겔 1,700G";
+		msg += enterStr + "일리아칸 2,800G";
+		msg += enterStr + "상아탑 3,500G";
 		msg += enterStr;
 
 		return msg;
