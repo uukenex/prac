@@ -483,7 +483,6 @@ public class LoaChatController {
 		msg += enterStr + "아브 1-4 [하 5,600G/노 4,600G]";
 		msg += enterStr ;
 		msg += enterStr + "싱글모드..▼ "+ allSeeStr;
-		msg += enterStr;
 		msg += enterStr + "발탄 600G";
 		msg += enterStr + "비아키스 800G";
 		msg += enterStr + "쿠크 1,400G";
@@ -1515,7 +1514,6 @@ public class LoaChatController {
 			json.put("Sort", "BUY_PRICE");
 			json.put("SortCondition", "ASC");
 			
-			resMsg +=enterStr;
 			resMsg +="[3티어]"+enterStr;
 			json.put("itemName", "10레벨 멸");
 			resMsg += auctionSearchDt(json);
@@ -1548,8 +1546,6 @@ public class LoaChatController {
 			json.put("CategoryCode", "210000");
 			json.put("Sort", "BUY_PRICE");
 			json.put("SortCondition", "ASC");
-			
-
 			
 			resMsg +="[4티어]"+enterStr;
 			json.put("itemName", "10레벨 겁");
