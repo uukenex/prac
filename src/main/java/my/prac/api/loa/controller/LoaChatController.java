@@ -1482,6 +1482,9 @@ public class LoaChatController {
 		json = new JSONObject();
 		json.put("CategoryCode", "50000");
 		
+		
+		resMsg +="[3티어]"+enterStr;
+		
 		json.put("itemName", "태양");
 		resMsg += marketSearchDt(json,0);
 		
@@ -1497,6 +1500,19 @@ public class LoaChatController {
 		json.put("itemName", "최상급");
 		resMsg += marketSearchDt(json,4);
 		
+		resMsg +="[4티어]"+enterStr;
+		
+		json.put("itemName", "운명의 파편 주머니");
+		resMsg += marketSearchDt(json,1);
+		
+		json.put("itemName", "운명의 돌파석");
+		resMsg += marketSearchDt(json,2);
+		
+		json.put("itemName", "용암");
+		resMsg += marketSearchDt(json,2);
+		
+		json.put("itemName", "빙하");
+		resMsg += marketSearchDt(json,2);
 		
 		//여기부턴 거래소
 		resMsg += enterStr;
@@ -1505,42 +1521,36 @@ public class LoaChatController {
 		json.put("Sort", "BUY_PRICE");
 		json.put("SortCondition", "ASC");
 		
-		json.put("itemName", "10레벨 멸");
-		resMsg += auctionSearchDt(json);
 		
-		json.put("itemName", "10레벨 홍");
-		resMsg += auctionSearchDt(json);
-		
-		json.put("itemName", "9레벨 멸");
-		resMsg += auctionSearchDt(json);
-		
-		json.put("itemName", "9레벨 홍");
-		resMsg += auctionSearchDt(json);
-		
+		resMsg +="[4티어]"+enterStr;
 		json.put("itemName", "10레벨 겁");
+		resMsg += auctionSearchDt(json);
+		json.put("itemName", "9레벨 겁");
+		resMsg += auctionSearchDt(json);
+		json.put("itemName", "8레벨 겁");
+		resMsg += auctionSearchDt(json);
+		json.put("itemName", "7레벨 겁");
 		resMsg += auctionSearchDt(json);
 		
 		json.put("itemName", "10레벨 작");
 		resMsg += auctionSearchDt(json);
-		
-		
-		json.put("itemName", "9레벨 겁");
-		resMsg += auctionSearchDt(json);
-		
 		json.put("itemName", "9레벨 작");
 		resMsg += auctionSearchDt(json);
-		
-		
-		json.put("itemName", "8레벨 겁");
-		resMsg += auctionSearchDt(json);
-		
 		json.put("itemName", "8레벨 작");
 		resMsg += auctionSearchDt(json);
-		
-		json.put("itemName", "7레벨 겁");
+		json.put("itemName", "7레벨 작");
 		resMsg += auctionSearchDt(json);
 		
-		json.put("itemName", "7레벨 작");
+		resMsg +=enterStr;
+		resMsg +="[3티어]"+enterStr;
+		json.put("itemName", "10레벨 멸");
+		resMsg += auctionSearchDt(json);
+		json.put("itemName", "9레벨 멸");
+		resMsg += auctionSearchDt(json);
+		
+		json.put("itemName", "10레벨 홍");
+		resMsg += auctionSearchDt(json);
+		json.put("itemName", "9레벨 홍");
 		resMsg += auctionSearchDt(json);
 		
 		resMsg = LoaApiUtils.filterTextForMarket(resMsg);
