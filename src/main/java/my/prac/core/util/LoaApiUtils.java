@@ -193,6 +193,7 @@ public class LoaApiUtils {
 			txt=txt.replaceAll("받는 피해 감소", "받피감");
 			txt=txt.replaceAll("물리 방어력", "물방");
 			txt=txt.replaceAll("물약 중독", "물약중독");
+			txt=txt.replaceAll("슬롯 효과", "");
 			
 		}catch(Exception e) {
 			txt="";

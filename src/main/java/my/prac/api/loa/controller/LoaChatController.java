@@ -940,9 +940,9 @@ public class LoaChatController {
 		resMsg += "§세트 : "+setField + enterStr;
 		
 		if(isArkPassive.equals("true")) {
-			resMsg +="♩AP-사용 : Y"+enterStr;;	
+			resMsg +="♩AP-사용 : Y"+enterStr;
 		}else {
-			resMsg +="♩AP-사용 : N"+enterStr;;
+			resMsg +="♩AP-사용 : N"+enterStr;
 		}
 		
 		for(HashMap<String,Object> pt:arkPassivePt) {
@@ -965,8 +965,11 @@ public class LoaChatController {
 			tier = 4;
 		}
 		resMsg += gemSearch(ordUserId, tier);
-		resMsg += engraveSearch(ordUserId);
-		
+		if(isArkPassive.equals("true")) {
+			resMsg +="♩AP-각인 : 미구현"+enterStr;	
+		}else {
+			resMsg += engraveSearch(ordUserId);
+		}
 		resMsg += enterStr+enterStr;
 		resMsg += "방어구 상세정보 더보기..▼"+allSeeStr;
 		//resMsg += "방어구 / 초월 / 엘릭서"+enterStr;
