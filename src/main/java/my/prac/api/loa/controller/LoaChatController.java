@@ -197,6 +197,20 @@ public class LoaChatController {
 		case "/경매장":
 			val = marketSearch();
 			break;
+		case "/ㄱㅁㅈ3":
+		case "/경매장3":
+			val = marketSearch(3);
+			break;
+		case "/ㄱㅁㅈ4":
+		case "/경매장4":
+			val = marketSearch(4);
+			break;
+		case "/ㄱㅁㅈㅇㅁ":
+		case "/ㄱㅁㅈ유물":
+		case "/경매장유물":
+			val = marketSearch(40000);
+			break;
+			
 		case "/레이드":
 		case "/ㄹㅇㄷ":
 			if (param1 != null && !param1.equals("")) {
@@ -1465,6 +1479,111 @@ public class LoaChatController {
 			
 		}
 		
+		return resMsg;
+	}
+	
+	String marketSearch(int tier) throws Exception {
+		JSONObject json ;
+		String resMsg= "[아이템명]-[실시간최저가]"+enterStr;
+		
+		json = new JSONObject();
+		
+		
+		if(tier==3) {
+			json.put("CategoryCode", "50000");
+			resMsg +="[3티어]"+enterStr;
+			
+			json.put("itemName", "태양");
+			resMsg += marketSearchDt(json,0);
+			
+			json.put("itemName", "명예의 파편");
+			resMsg += marketSearchDt(json,1);
+			
+			json.put("itemName", "찬란");
+			resMsg += marketSearchDt(json,2);
+			
+			json.put("itemName", "파괴강석");
+			resMsg += marketSearchDt(json,3);
+			
+			json.put("itemName", "최상급");
+			resMsg += marketSearchDt(json,4);
+			
+			//여기부턴 거래소
+			resMsg += enterStr;
+			
+			json.put("CategoryCode", "210000");
+			json.put("Sort", "CURRENT_MIN_RPCIE");
+			json.put("SortCondition", "ASC");
+			
+			resMsg +=enterStr;
+			resMsg +="[3티어]"+enterStr;
+			json.put("itemName", "10레벨 멸");
+			resMsg += auctionSearchDt(json);
+			json.put("itemName", "9레벨 멸");
+			resMsg += auctionSearchDt(json);
+			
+			json.put("itemName", "10레벨 홍");
+			resMsg += auctionSearchDt(json);
+			json.put("itemName", "9레벨 홍");
+			resMsg += auctionSearchDt(json);
+		}else if(tier==4) {
+			json.put("CategoryCode", "50000");
+			resMsg +="[4티어]"+enterStr;
+			
+			json.put("itemName", "운명의 파편 주머니");
+			resMsg += marketSearchDt(json,1);
+			
+			json.put("itemName", "운명의 돌파석");
+			resMsg += marketSearchDt(json,2);
+			
+			json.put("itemName", "용암");
+			resMsg += marketSearchDt(json,2);
+			
+			json.put("itemName", "빙하");
+			resMsg += marketSearchDt(json,2);
+			
+			//여기부턴 거래소
+			resMsg += enterStr;
+			
+			json.put("CategoryCode", "210000");
+			json.put("Sort", "CURRENT_MIN_RPCIE");
+			json.put("SortCondition", "ASC");
+			
+
+			
+			resMsg +="[4티어]"+enterStr;
+			json.put("itemName", "10레벨 겁");
+			resMsg += auctionSearchDt(json);
+			json.put("itemName", "9레벨 겁");
+			resMsg += auctionSearchDt(json);
+			json.put("itemName", "8레벨 겁");
+			resMsg += auctionSearchDt(json);
+			json.put("itemName", "7레벨 겁");
+			resMsg += auctionSearchDt(json);
+			
+			json.put("itemName", "10레벨 작");
+			resMsg += auctionSearchDt(json);
+			json.put("itemName", "9레벨 작");
+			resMsg += auctionSearchDt(json);
+			json.put("itemName", "8레벨 작");
+			resMsg += auctionSearchDt(json);
+			json.put("itemName", "7레벨 작");
+			resMsg += auctionSearchDt(json);
+			
+		}else if(tier==40000) {
+			json.put("CategoryCode", "40000");
+			json.put("Sort", "CURRENT_MIN_RPCIE");
+			json.put("SortCondition", "DESC");
+			json.put("ItemGrade", "유물");
+			
+			resMsg +="[유물]"+enterStr;
+			
+			resMsg += marketSearchDt(json,2);
+		}else {
+			return "경매장/경매장3/경매장4/경매장유물 만 사용가능";
+		}
+		
+		resMsg = LoaApiUtils.filterTextForMarket(resMsg);
 		return resMsg;
 	}
 	
