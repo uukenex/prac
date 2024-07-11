@@ -1528,17 +1528,23 @@ public class LoaChatController {
 			json.put("CategoryCode", "50000");
 			resMsg +="[4티어]"+enterStr;
 			
+			json.put("itemName", "용암");
+			resMsg += marketSearchDt(json,2);
+			
+			json.put("itemName", "빙하");
+			resMsg += marketSearchDt(json,2);
+			
 			json.put("itemName", "운명의 파편 주머니");
 			resMsg += marketSearchDt(json,1);
 			
 			json.put("itemName", "운명의 돌파석");
 			resMsg += marketSearchDt(json,2);
 			
-			json.put("itemName", "용암");
+			json.put("itemName", "운명의 파괴석");
 			resMsg += marketSearchDt(json,2);
 			
-			json.put("itemName", "빙하");
-			resMsg += marketSearchDt(json,2);
+			json.put("itemName", "아비도스");
+			resMsg += marketSearchDt(json,4);
 			
 			//여기부턴 거래소
 			resMsg += enterStr;
