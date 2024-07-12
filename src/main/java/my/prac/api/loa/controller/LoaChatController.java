@@ -1306,6 +1306,12 @@ public class LoaChatController {
 			
 			return "";
 		}
+		if(gems == null) {
+			return "";
+		}
+		if(gems.equals("null")) {
+			return "";
+		}
 		String resMsg = "";
 		int cnt = 0;
 		for (Map<String, Object> gem : gems) {
