@@ -1387,7 +1387,7 @@ public class LoaChatController {
 			totMaxPoint +=maxPoint;
 			totEachPercent += eachPercent;
 			
-			resMsg +=enterStr+"["+Math.round((point/maxPoint)*100)+"%]"+type + " ("+Math.round(point)+"/"+Math.round(maxPoint)+")";
+			resMsg +=enterStr+"["+Math.floor((point/maxPoint)*100)+"%]"+type + " ("+Math.round(point)+"/"+Math.round(maxPoint)+")";
 			
 		}
 		resMsg +=enterStr;
