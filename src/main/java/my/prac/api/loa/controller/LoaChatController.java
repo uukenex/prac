@@ -18,6 +18,7 @@ import javax.annotation.Resource;
 
 import org.apache.commons.lang3.StringUtils;
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.jsoup.Jsoup;
@@ -1452,8 +1453,6 @@ public class LoaChatController {
 				.sorted(Comparator.comparingDouble(x-> Double.parseDouble(x.get("ItemMaxLevel").toString().replaceAll(",", ""))))
 				.collect(toReversedList());
 		
-		List<String> subCharList = new ArrayList<>();
-		
 		resMsg += enterStr;
 		
 		int charCnt = 0;
@@ -1487,6 +1486,120 @@ public class LoaChatController {
 		return resMsg;
 	}
 	
+	
+	
+	String marketTier4Search() throws Exception {
+		String resMsg = "";
+		JSONObject json ;
+		json = new JSONObject();
+
+		json.put("CategoryCode", "50000");
+		resMsg +="[4티어]"+enterStr;
+		
+		json.put("itemName", "용암");
+		resMsg += marketDtSearch(json,2);
+		
+		json.put("itemName", "빙하");
+		resMsg += marketDtSearch(json,2);
+		
+		json.put("itemName", "운명의 파편 주머니");
+		resMsg += marketDtSearch(json,1);
+		
+		json.put("itemName", "운명의 돌파석");
+		resMsg += marketDtSearch(json,2);
+		
+		json.put("itemName", "운명의 파괴석");
+		resMsg += marketDtSearch(json,2);
+		
+		json.put("itemName", "아비도스");
+		resMsg += marketDtSearch(json,4);
+		
+		//여기부턴 거래소
+		resMsg += enterStr;
+		
+		json.put("CategoryCode", "210000");
+		json.put("Sort", "BUY_PRICE");
+		json.put("SortCondition", "ASC");
+		
+		resMsg += "10겁/작 -";
+		json.put("itemName", "10레벨 겁");
+		resMsg += auctionSearchDt(json,false,false);
+		resMsg += "/";
+		json.put("itemName", "10레벨 작");
+		resMsg += auctionSearchDt(json,false,true);
+		
+		resMsg += spaceStr+"9겁/작 -";
+		json.put("itemName", "9레벨 겁");
+		resMsg += auctionSearchDt(json,false,false);
+		resMsg += "/";
+		json.put("itemName", "9레벨 작");
+		resMsg += auctionSearchDt(json,false,true);
+
+		resMsg += spaceStr+"8겁/작 -";
+		json.put("itemName", "8레벨 겁");
+		resMsg += auctionSearchDt(json,false,false);
+		resMsg += "/";
+		json.put("itemName", "8레벨 작");
+		resMsg += auctionSearchDt(json,false,true);
+
+		resMsg += spaceStr+"7겁/작 -";
+		json.put("itemName", "7레벨 겁");
+		resMsg += auctionSearchDt(json,false,false);
+		resMsg += "/";
+		json.put("itemName", "7레벨 작");
+		resMsg += auctionSearchDt(json,false,true);
+		
+		return resMsg;
+	}
+	String marketTier3Search() throws Exception {
+		String resMsg = "";
+		JSONObject json ;
+		json = new JSONObject();
+
+		json.put("CategoryCode", "50000");
+		resMsg +="[3티어]"+enterStr;
+		
+		json.put("itemName", "태양");
+		resMsg += marketDtSearch(json,0);
+		
+		json.put("itemName", "명예의 파편");
+		resMsg += marketDtSearch(json,1);
+		
+		json.put("itemName", "찬란");
+		resMsg += marketDtSearch(json,2);
+		
+		json.put("itemName", "파괴강석");
+		resMsg += marketDtSearch(json,3);
+		
+		json.put("itemName", "최상급");
+		resMsg += marketDtSearch(json,4);
+		
+		//여기부턴 거래소
+		resMsg += enterStr;
+		
+		json.put("CategoryCode", "210000");
+		json.put("Sort", "BUY_PRICE");
+		json.put("SortCondition", "ASC");
+		
+		resMsg += "10멸/홍 -";
+		json.put("itemName", "10레벨 멸");
+		resMsg += auctionSearchDt(json,false,false);
+		resMsg += "/";
+		json.put("itemName", "10레벨 홍");
+		resMsg += auctionSearchDt(json,false,true);
+		
+		
+		resMsg += spaceStr+"9멸/홍 -";
+		json.put("itemName", "9레벨 멸");
+		resMsg += auctionSearchDt(json,false,false);
+		resMsg += "/";
+		json.put("itemName", "9레벨 홍");
+		resMsg += auctionSearchDt(json,false,true);
+	
+		
+		return resMsg;
+	}
+	
 	String marketSearch(int tier) throws Exception {
 		JSONObject json ;
 		String resMsg= "[아이템명]-[실시간최저가]"+enterStr;
@@ -1495,89 +1608,9 @@ public class LoaChatController {
 		
 		
 		if(tier==3) {
-			json.put("CategoryCode", "50000");
-			resMsg +="[3티어]"+enterStr;
-			
-			json.put("itemName", "태양");
-			resMsg += marketSearchDt(json,0);
-			
-			json.put("itemName", "명예의 파편");
-			resMsg += marketSearchDt(json,1);
-			
-			json.put("itemName", "찬란");
-			resMsg += marketSearchDt(json,2);
-			
-			json.put("itemName", "파괴강석");
-			resMsg += marketSearchDt(json,3);
-			
-			json.put("itemName", "최상급");
-			resMsg += marketSearchDt(json,4);
-			
-			//여기부턴 거래소
-			resMsg += enterStr;
-			
-			json.put("CategoryCode", "210000");
-			json.put("Sort", "BUY_PRICE");
-			json.put("SortCondition", "ASC");
-			
-			resMsg +="[3티어]"+enterStr;
-			json.put("itemName", "10레벨 멸");
-			resMsg += auctionSearchDt(json);
-			json.put("itemName", "9레벨 멸");
-			resMsg += auctionSearchDt(json);
-			
-			json.put("itemName", "10레벨 홍");
-			resMsg += auctionSearchDt(json);
-			json.put("itemName", "9레벨 홍");
-			resMsg += auctionSearchDt(json);
+			resMsg += marketTier3Search();
 		}else if(tier==4) {
-			json.put("CategoryCode", "50000");
-			resMsg +="[4티어]"+enterStr;
-			
-			json.put("itemName", "용암");
-			resMsg += marketSearchDt(json,2);
-			
-			json.put("itemName", "빙하");
-			resMsg += marketSearchDt(json,2);
-			
-			json.put("itemName", "운명의 파편 주머니");
-			resMsg += marketSearchDt(json,1);
-			
-			json.put("itemName", "운명의 돌파석");
-			resMsg += marketSearchDt(json,2);
-			
-			json.put("itemName", "운명의 파괴석");
-			resMsg += marketSearchDt(json,2);
-			
-			json.put("itemName", "아비도스");
-			resMsg += marketSearchDt(json,4);
-			
-			//여기부턴 거래소
-			resMsg += enterStr;
-			
-			json.put("CategoryCode", "210000");
-			json.put("Sort", "BUY_PRICE");
-			json.put("SortCondition", "ASC");
-			
-			resMsg +="[4티어]"+enterStr;
-			json.put("itemName", "10레벨 겁");
-			resMsg += auctionSearchDt(json);
-			json.put("itemName", "9레벨 겁");
-			resMsg += auctionSearchDt(json);
-			json.put("itemName", "8레벨 겁");
-			resMsg += auctionSearchDt(json);
-			json.put("itemName", "7레벨 겁");
-			resMsg += auctionSearchDt(json);
-			
-			json.put("itemName", "10레벨 작");
-			resMsg += auctionSearchDt(json);
-			json.put("itemName", "9레벨 작");
-			resMsg += auctionSearchDt(json);
-			json.put("itemName", "8레벨 작");
-			resMsg += auctionSearchDt(json);
-			json.put("itemName", "7레벨 작");
-			resMsg += auctionSearchDt(json);
-			
+			resMsg += marketTier4Search();
 		}else if(tier==40000) {
 			json.put("CategoryCode", "40000");
 			json.put("Sort", "CURRENT_MIN_PRICE");
@@ -1586,7 +1619,7 @@ public class LoaChatController {
 			
 			resMsg +="[유물]"+enterStr;
 			
-			resMsg += marketSearchDt(json,2);
+			resMsg += marketDtSearch(json,2);
 		}else {
 			return "경매장/경매장3/경매장4/경매장유물 만 사용가능";
 		}
@@ -1597,89 +1630,17 @@ public class LoaChatController {
 	
 	String marketSearch() throws Exception {
 		
-		
-		JSONObject json ;
 		String resMsg= "[아이템명]-[실시간최저가]"+enterStr;
 		
-		json = new JSONObject();
-		json.put("CategoryCode", "50000");
-		
-		
-		resMsg +="[3티어]"+enterStr;
-		
-		json.put("itemName", "태양");
-		resMsg += marketSearchDt(json,0);
-		
-		json.put("itemName", "명예의 파편");
-		resMsg += marketSearchDt(json,1);
-		
-		json.put("itemName", "찬란");
-		resMsg += marketSearchDt(json,2);
-		
-		json.put("itemName", "파괴강석");
-		resMsg += marketSearchDt(json,3);
-		
-		json.put("itemName", "최상급");
-		resMsg += marketSearchDt(json,4);
-		
-		resMsg +="[4티어]"+enterStr;
-		
-		json.put("itemName", "운명의 파편 주머니");
-		resMsg += marketSearchDt(json,1);
-		
-		json.put("itemName", "운명의 돌파석");
-		resMsg += marketSearchDt(json,2);
-		
-		json.put("itemName", "용암");
-		resMsg += marketSearchDt(json,2);
-		
-		json.put("itemName", "빙하");
-		resMsg += marketSearchDt(json,2);
-		
-		//여기부턴 거래소
-		resMsg += enterStr;
-		
-		json.put("CategoryCode", "210000");
-		json.put("Sort", "BUY_PRICE");
-		json.put("SortCondition", "ASC");
-		
-		
-		resMsg +="[4티어]"+enterStr;
-		json.put("itemName", "10레벨 겁");
-		resMsg += auctionSearchDt(json);
-		json.put("itemName", "9레벨 겁");
-		resMsg += auctionSearchDt(json);
-		json.put("itemName", "8레벨 겁");
-		resMsg += auctionSearchDt(json);
-		json.put("itemName", "7레벨 겁");
-		resMsg += auctionSearchDt(json);
-		
-		json.put("itemName", "10레벨 작");
-		resMsg += auctionSearchDt(json);
-		json.put("itemName", "9레벨 작");
-		resMsg += auctionSearchDt(json);
-		json.put("itemName", "8레벨 작");
-		resMsg += auctionSearchDt(json);
-		json.put("itemName", "7레벨 작");
-		resMsg += auctionSearchDt(json);
-		
+		resMsg +=marketTier4Search();
 		resMsg +=enterStr;
-		resMsg +="[3티어]"+enterStr;
-		json.put("itemName", "10레벨 멸");
-		resMsg += auctionSearchDt(json);
-		json.put("itemName", "9레벨 멸");
-		resMsg += auctionSearchDt(json);
-		
-		json.put("itemName", "10레벨 홍");
-		resMsg += auctionSearchDt(json);
-		json.put("itemName", "9레벨 홍");
-		resMsg += auctionSearchDt(json);
+		resMsg +=marketTier3Search();
 		
 		resMsg = LoaApiUtils.filterTextForMarket(resMsg);
 		return resMsg;
 	}
 	
-	String marketSearchDt(JSONObject json,int numbering) throws Exception {
+	String marketDtSearch(JSONObject json,int numbering) throws Exception {
 		String str = "";
 
 		try {
@@ -1750,7 +1711,7 @@ public class LoaChatController {
 		return str;
 	}
 
-	String auctionSearchDt(JSONObject json) throws Exception {
+	String auctionSearchDt(JSONObject json,boolean nameDefaultYn,boolean enterYn) throws Exception {
 		String str = "";
 
 		try {
@@ -1765,7 +1726,23 @@ public class LoaChatController {
 			HashMap<String, Object> item = itemMap.get(0);
 			HashMap<String, Object> auctionInfo = (HashMap<String, Object>) item.get("AuctionInfo");
 			
-			str += item.get("Name") + " - " + auctionInfo.get("BuyPrice") + "G" + enterStr;
+			String buyPrice = auctionInfo.get("BuyPrice").toString();
+			if(Integer.parseInt(buyPrice)>10000) {
+				String tmpPrice1 = buyPrice.substring(0,				  buyPrice.length()-4);
+				String tmpPrice2 = buyPrice.substring(buyPrice.length()-4,buyPrice.length()-3);
+				
+				buyPrice = tmpPrice1 + "."+tmpPrice2+"만";
+			}
+			
+			if(nameDefaultYn) {
+				str += item.get("Name") + " - " ;
+			}
+			
+			str += buyPrice + "G";
+			
+			if(enterYn) {
+				str +=enterStr;
+			}
 
 		} catch (Exception e) {
 			e.printStackTrace();
