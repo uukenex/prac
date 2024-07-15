@@ -201,7 +201,6 @@ public class LoaChatController {
 			val  = marketSearch();
 			val += enterStr+"유물각인서 순위 더보기..▼"+allSeeStr;
 			val += marketSearch(40000);
-			val += enterStr;
 			val += tossAccount();
 			break;
 		case "/ㄱㅁㅈ3":
@@ -982,7 +981,7 @@ public class LoaChatController {
 			resMsg += engraveSearch(ordUserId);
 		}
 		resMsg += enterStr+enterStr;
-		resMsg += "방어구 상세 및 아크패시브 더보기..▼"+allSeeStr;
+		resMsg += "상세 및 아크패시브 더보기..▼"+allSeeStr;
 		//resMsg += "방어구 / 초월 / 엘릭서"+enterStr;
 		
 		resMsg += "§세트 : "+setField + enterStr;
@@ -997,22 +996,21 @@ public class LoaChatController {
 		}
 		
 		if(totElixir==0) {
-			resMsg += "§엘릭서 : 없음" + enterStr;;
+			resMsg += "§엘릭서 : 없음" + enterStr;
 		}else {
 			resMsg += "§엘릭서합 : " + totElixir + "(" + elixirField+")" + enterStr;;
 			resMsg += resField3 + enterStr;
 		}
 		
 		if(isArkPassive.equals("true")) {
-			resMsg +="♩AP-사용 : Y"+enterStr;
+			resMsg +="§아크패시브 : 활성화"+enterStr;
 		}else {
-			resMsg +="♩AP-사용 : N"+enterStr;
+			resMsg +="§아크패시브 : 비활성화"+enterStr;
 		}
 		
 		for(HashMap<String,Object> pt:arkPassivePt) {
-			resMsg +="♩AP-"+pt.get("Name")+" : " +pt.get("Value")+enterStr;
+			resMsg +=pt.get("Name")+" : " +pt.get("Value")+enterStr;
 		}
-		resMsg += enterStr;
 		return resMsg;
 	}
 	
