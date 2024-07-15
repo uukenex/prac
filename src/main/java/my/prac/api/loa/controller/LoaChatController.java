@@ -143,15 +143,17 @@ public class LoaChatController {
 						val  = "정보없음" ;
 					}else {
 						val  = calendarSearch(0);
-						val += enterStr+"내일의 모험섬 더보기..▼"+allSeeStr;
+						val += enterStr + enterStr+"내일의 모험섬 더보기..▼"+allSeeStr;
 						val += calendarSearch(1);
+						val += enterStr;
 						val += tossAccount();
 					}
 					break;
 				default:
 					val  = calendarSearch(0);
-					val += enterStr+"내일의 모험섬 더보기..▼"+allSeeStr;
+					val += enterStr + enterStr+"내일의 모험섬 더보기..▼"+allSeeStr;
 					val += calendarSearch(1);
+					val += enterStr;
 					val += tossAccount();
 					break;
 			}
@@ -196,7 +198,11 @@ public class LoaChatController {
 			break;
 		case "/ㄱㅁㅈ":
 		case "/경매장":
-			val = marketSearch();
+			val  = marketSearch();
+			val += enterStr+"유물각인서 순위 더보기..▼"+allSeeStr;
+			val += marketSearch(40000);
+			val += enterStr;
+			val += tossAccount();
 			break;
 		case "/ㄱㅁㅈ3":
 		case "/경매장3":
@@ -506,10 +512,10 @@ public class LoaChatController {
 		String retMsg3="";
 		
 		if(type==0) {
-			retMsg="오늘의 모험 섬";
+			retMsg= "오늘의 모험 섬";
 			today = LoaApiUtils.StringToDate();
 		}else {
-			retMsg= enterStr + enterStr + "내일의 모험 섬";
+			retMsg= "내일의 모험 섬";
 			today = LoaApiUtils.StringTommorowDate();
 		}
 		
@@ -954,16 +960,6 @@ public class LoaChatController {
 		resMsg += "§악세평균품질 : "+avgQuality/5 + enterStr;
 		resMsg += "§세트 : "+setField + enterStr;
 		
-		if(isArkPassive.equals("true")) {
-			resMsg +="♩AP-사용 : Y"+enterStr;
-		}else {
-			resMsg +="♩AP-사용 : N"+enterStr;
-		}
-		
-		for(HashMap<String,Object> pt:arkPassivePt) {
-			resMsg +="♩AP-"+pt.get("Name")+" : " +pt.get("Value")+enterStr;
-		}
-		
 		if(totLimit.equals("")) {
 			resMsg += "§초월 : 없음";
 		}else {
@@ -986,7 +982,7 @@ public class LoaChatController {
 			resMsg += engraveSearch(ordUserId);
 		}
 		resMsg += enterStr+enterStr;
-		resMsg += "방어구 상세정보 더보기..▼"+allSeeStr;
+		resMsg += "방어구 상세 및 아크패시브 더보기..▼"+allSeeStr;
 		//resMsg += "방어구 / 초월 / 엘릭서"+enterStr;
 		
 		resMsg += "§세트 : "+setField + enterStr;
@@ -1007,15 +1003,16 @@ public class LoaChatController {
 			resMsg += resField3 + enterStr;
 		}
 		
+		if(isArkPassive.equals("true")) {
+			resMsg +="♩AP-사용 : Y"+enterStr;
+		}else {
+			resMsg +="♩AP-사용 : N"+enterStr;
+		}
 		
-		
-		/*
-		resMsg += sb1+enterStr;
-		resMsg += sb2+enterStr;
-		resMsg += sb3+enterStr;
-		resMsg += sb4+enterStr;
-		resMsg += sb5+enterStr;
-		*/
+		for(HashMap<String,Object> pt:arkPassivePt) {
+			resMsg +="♩AP-"+pt.get("Name")+" : " +pt.get("Value")+enterStr;
+		}
+		resMsg += enterStr;
 		return resMsg;
 	}
 	
@@ -1324,14 +1321,23 @@ public class LoaChatController {
 				}
 				
 				if( gemName.indexOf(equipGem)>=0 ) {
-					cnt++;
 					if(equipGem.equals(gemList[0])) {
+						if(gemLv < 8) {
+							continue;
+						}
+						cnt++;
 						equipGemT3DealList.add(gemLv);
 					}else if(equipGem.equals(gemList[1])) {
+						if(gemLv < 8) {
+							continue;
+						}
+						cnt++;
 						equipGemT3CoolList.add(gemLv);
 					}else if(equipGem.equals(gemList[2])) {
+						cnt++;
 						equipGemT4DealList.add(gemLv);
 					}else if(equipGem.equals(gemList[3])) {
+						cnt++;
 						equipGemT4CoolList.add(gemLv);
 					}
 				}
@@ -1443,7 +1449,7 @@ public class LoaChatController {
 		String returnData = LoaApiUtils.connect_process(paramUrl);
 		
 		String resMsg=ordUserId+" 부캐 보석 정보" + enterStr;
-		resMsg += "7보석↑ 캐릭터 표기" + enterStr;
+		resMsg += "4T 7보석↑,3T 8보석 표기" + enterStr;
 		
 		List<HashMap<String, Object>> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<List<Map<String, Object>>>() {});
 		
