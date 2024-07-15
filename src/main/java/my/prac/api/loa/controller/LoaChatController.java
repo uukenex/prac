@@ -162,6 +162,7 @@ public class LoaChatController {
 			break;
 			
 		case "/장비":
+		case "/정보":
 		case "/ㅈㅂ":
 			if (param1 != null && !param1.equals("")) {
 				try {
@@ -1002,14 +1003,16 @@ public class LoaChatController {
 			resMsg += resField3 + enterStr;
 		}
 		
-		if(isArkPassive.equals("true")) {
-			resMsg +="§아크패시브 : 활성화"+enterStr;
-		}else {
-			resMsg +="§아크패시브 : 비활성화"+enterStr;
-		}
-		
-		for(HashMap<String,Object> pt:arkPassivePt) {
-			resMsg +=pt.get("Name")+" : " +pt.get("Value")+enterStr;
+		if(Double.parseDouble(avgLv.replaceAll(",", "")) >= 1600) {
+			if(isArkPassive.equals("true")) {
+				resMsg +="§아크패시브 : 활성화"+enterStr;
+			}else {
+				resMsg +="§아크패시브 : 비활성화"+enterStr;
+			}
+			
+			for(HashMap<String,Object> pt:arkPassivePt) {
+				resMsg +=pt.get("Name")+" : " +pt.get("Value")+enterStr;
+			}
 		}
 		return resMsg;
 	}
@@ -1447,7 +1450,7 @@ public class LoaChatController {
 		String returnData = LoaApiUtils.connect_process(paramUrl);
 		
 		String resMsg=ordUserId+" 부캐 보석 정보" + enterStr;
-		resMsg += "4T 7보석↑,3T 8보석 표기" + enterStr;
+		resMsg += "4T 7보석↑,3T 8보석↑ 표기" + enterStr;
 		
 		List<HashMap<String, Object>> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<List<Map<String, Object>>>() {});
 		
