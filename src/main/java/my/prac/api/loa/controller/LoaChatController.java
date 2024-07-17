@@ -977,9 +977,10 @@ public class LoaChatController {
 		}
 		resMsg += gemSearch(ordUserId, tier);
 		if(isArkPassive.equals("true")) {
-			resMsg +="♩AP-각인 : 미구현"+enterStr;	
+			resMsg += engraveSearch(ordUserId,true,true);	
 		}else {
-			resMsg += engraveSearch(ordUserId);
+			//id,arkPassive,simpleMode
+			resMsg += engraveSearch(ordUserId,false,true);
 		}
 		resMsg += enterStr+enterStr;
 		resMsg += "상세 및 아크패시브 더보기..▼"+allSeeStr;
@@ -1013,6 +1014,8 @@ public class LoaChatController {
 			for(HashMap<String,Object> pt:arkPassivePt) {
 				resMsg +=pt.get("Name")+" : " +pt.get("Value")+enterStr;
 			}
+			
+			resMsg += engraveSearch(ordUserId,true,false);
 		}
 		return resMsg;
 	}
@@ -1190,7 +1193,7 @@ public class LoaChatController {
 	
 	
 	
-	String engraveSearch(String userId) throws Exception {
+	String engraveSearch(String userId,boolean arkPassiveYn,boolean simpleYn) throws Exception {
 		String ordUserId=userId;
 		userId = URLEncoder.encode(userId, "UTF-8");
 		// +는 %2B로 치환한다
@@ -1203,7 +1206,12 @@ public class LoaChatController {
 		List<Map<String, Object>> engraves;
 		
 		try {
-			engraves = (List<Map<String, Object>>) rtnMap.get("Effects");
+			if(arkPassiveYn) {
+				engraves = (List<Map<String, Object>>) rtnMap.get("ArkPassiveEffects");
+			}else {
+				engraves = (List<Map<String, Object>>) rtnMap.get("Effects");
+			}
+			
 		}catch(Exception e){
 			//throw new Exception("E0003");
 			return enterStr+"§각인 : 정보 없음";
@@ -1211,13 +1219,24 @@ public class LoaChatController {
 		
 		List<String> engraveList = new ArrayList<>();
 		
-		for (Map<String, Object> engrave : engraves) {
-			int len = engrave.get("Name").toString().length();
-			String tmpEng = engrave.get("Name").toString().substring(0,1)+engrave.get("Name").toString().substring(len-1,len);
-			engraveList.add(tmpEng);
+		if(simpleYn) {
+			for (Map<String, Object> engrave : engraves) {
+				int len = engrave.get("Name").toString().length();
+				String tmpEng = engrave.get("Name").toString().substring(0,1);
+				engraveList.add(tmpEng);
+			}
+			resMsg = resMsg + enterStr+"§각인 : "+ engraveList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
+		}else {
+			String passiveEffect="";
+			for (Map<String, Object> engrave : engraves) {
+				passiveEffect +=engrave.get("Grade")+" Lv"+engrave.get("Level")+" "+engrave.get("Name");
+				if(engrave.get("AbilityStoneLevel")!=null) {
+					passiveEffect +="(돌 +"+engrave.get("AbilityStoneLevel")+")" ;
+				}
+				passiveEffect +=enterStr;
+			}
+			resMsg = resMsg + enterStr+"§아크패시브-각인"+enterStr +passiveEffect;
 		}
-		resMsg = resMsg + enterStr+"§각인 : "+ engraveList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
-		
 		return resMsg;
 	}
 	
