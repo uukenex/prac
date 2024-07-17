@@ -1015,7 +1015,9 @@ public class LoaChatController {
 				resMsg +=pt.get("Name")+" : " +pt.get("Value")+enterStr;
 			}
 			
-			resMsg += engraveSearch(ordUserId,true,false);
+			if(isArkPassive.equals("true")) {
+				resMsg += engraveSearch(ordUserId,true,false);
+			}
 		}
 		return resMsg;
 	}
