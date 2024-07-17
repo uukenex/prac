@@ -31,7 +31,7 @@ public class LoaApiParser {
 
 	static String [] setList = {"악몽","환각","지배","사멸","갈망","배신","파괴","구원","매혹"};
 	static String [] elixirList = {"강맹","달인","신념","회심","선각자","선봉대","행운","진군","칼날방패"};
-	static String [] braceletList = { "정밀", "멸시", "습격", "우월", "응원", "약점 노출", "비수", "냉정", "열정", "기습", "결투", "깨달음", "속공",
+	static String [] braceletList = { "정밀", "멸시", "습격", "우월", "응원", "약점 노출", "비수", "냉정", "열정", "기습", "결투", "깨달음", "속공","분개",
 			"순환", "마나회수", "쐐기", "망치", "상처악화", "보상", "수확", "강타", "돌진", "타격", "오뚝이", "응급처치", "긴급수혈", "반전", "앵콜", "적립", "투자" };
 
 	final static String enterStr= "♬";
@@ -324,6 +324,14 @@ public class LoaApiParser {
 			
 			if(param.indexOf(msg) >= 0) {
 				switch(msg) {
+					case "[분개]":
+						if( param.indexOf("23%") >= 0 ) {
+							return high_msg;
+						}else if( param.indexOf("20%") >= 0 ) {
+							return middle_msg;
+						}else {
+							return low_msg;
+						}
 					case "[망치]":
 						if( param.indexOf("12%") >= 0 ) {
 							return high_msg;
