@@ -1101,7 +1101,8 @@ public class LoaChatController {
 						resMsg += " 품:"+(int)((HashMap<String, Object>) quality_element.get("value")).get("qualityValue");
 						resMsg += " ("+((HashMap<String, Object>) ark_passive_point_element.get("value")).get("Element_001")+")";
 						resMsg += enterStr;
-						resMsg += " "+Jsoup.parse((String) ((HashMap<String, Object>) grinding_element.get("value")).get("Element_001")).text();
+						resMsg += LoaApiParser.findBraceletOptions(((HashMap<String, Object>) grinding_element.get("value")).get("Element_001").toString());
+						//resMsg += " "+Jsoup.parse((String) ((HashMap<String, Object>) grinding_element.get("value")).get("Element_001")).text();
 						resMsg += enterStr;
 						break;
 				}
