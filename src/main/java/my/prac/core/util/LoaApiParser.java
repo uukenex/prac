@@ -230,7 +230,13 @@ public class LoaApiParser {
 		HashMap<String, Object> elixir_element = new HashMap<>();
 		HashMap<String, Object> bracelet_element = new HashMap<>();
 		HashMap<String, Object> stone_element = new HashMap<>();
-		
+		//연마
+		HashMap<String, Object> grinding_element = new HashMap<>();
+		//깨달음
+		HashMap<String, Object> ark_passive_point_element = new HashMap<>();
+		//3티어 효과
+		HashMap<String, Object> tier3_stats = new HashMap<>();
+
 		for(HashMap<String, Object> searchHs : elements) {
 			quality_element = findElementDt(searchHs,"qualityValue");
 			if(quality_element.size()>0) {
@@ -267,7 +273,25 @@ public class LoaApiParser {
 				break;
 			}
 		}
+		for (HashMap<String, Object> searchHs : elements) {
+			grinding_element = findElementDt(searchHs, "연마 효과");
+			if (grinding_element.size() > 0) {
+				break;
+			}
+		}
+		for (HashMap<String, Object> searchHs : elements) {
+			ark_passive_point_element = findElementDt(searchHs, "아크 패시브 포인트 효과");
+			if (ark_passive_point_element.size() > 0) {
+				break;
+			}
+		}
 		
+		for (HashMap<String, Object> searchHs : elements) {
+			tier3_stats = findElementDt(searchHs, "추가 효과");
+			if (tier3_stats.size() > 0) {
+				break;
+			}
+		}
 		HashMap<String,Object> freshMap = new HashMap<>();
 		freshMap.put("weapon_element", weapon_element);
 		freshMap.put("quality_element", quality_element);
@@ -276,6 +300,9 @@ public class LoaApiParser {
 		freshMap.put("elixir_element", elixir_element);
 		freshMap.put("bracelet_element", bracelet_element);
 		freshMap.put("stone_element", stone_element);
+		freshMap.put("grinding_element", grinding_element);
+		freshMap.put("ark_passive_point_element", ark_passive_point_element);
+		freshMap.put("tier3_stats", tier3_stats);
 		return freshMap;
 	}
 	

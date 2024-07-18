@@ -1057,6 +1057,9 @@ public class LoaChatController {
 			HashMap<String, Object> elixir_element = (HashMap<String, Object>)maps.get("elixir_element");
 			HashMap<String, Object> bracelet_element = (HashMap<String, Object>)maps.get("bracelet_element");
 			HashMap<String, Object> stone_element = (HashMap<String, Object>)maps.get("stone_element");
+			HashMap<String, Object> grinding_element = (HashMap<String, Object>)maps.get("grinding_element");
+			HashMap<String, Object> ark_passive_point_element = (HashMap<String, Object>)maps.get("ark_passive_point_element");
+			HashMap<String, Object> tier3_stats = (HashMap<String, Object>)maps.get("tier3_stats");
 			
 			switch (equip.get("Type").toString()) {
 			case "어빌리티 스톤":
@@ -1085,6 +1088,23 @@ public class LoaChatController {
 				resMsg += enterStr;
 				break;
 			case "반지":case "귀걸이": case "목걸이":
+				switch(Jsoup.parse((String) ((HashMap<String, Object>) quality_element.get("value")).get("leftStr2")).text()) {
+					case "아이템 티어 3":
+						resMsg += Jsoup.parse((String) ((HashMap<String, Object>) quality_element.get("value")).get("leftStr0")).text();
+						resMsg += " 품:"+(int)((HashMap<String, Object>) quality_element.get("value")).get("qualityValue");
+						resMsg += enterStr;
+						resMsg += " "+Jsoup.parse((String)((HashMap<String, Object>) tier3_stats.get("value")).get("Element_001")).text();
+						resMsg += enterStr;
+						break;
+					case "아이템 티어 4":
+						resMsg += Jsoup.parse((String) ((HashMap<String, Object>) quality_element.get("value")).get("leftStr0")).text();
+						resMsg += " 품:"+(int)((HashMap<String, Object>) quality_element.get("value")).get("qualityValue");
+						resMsg += " ("+((HashMap<String, Object>) ark_passive_point_element.get("value")).get("Element_001")+")";
+						resMsg += enterStr;
+						resMsg += " "+Jsoup.parse((String) ((HashMap<String, Object>) grinding_element.get("value")).get("Element_001")).text();
+						resMsg += enterStr;
+						break;
+				}
 				break;
 			case "팔찌":
 				resMsg += enterStr;
