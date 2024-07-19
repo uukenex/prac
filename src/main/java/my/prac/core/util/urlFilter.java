@@ -55,7 +55,13 @@ public class urlFilter implements Filter {
 				
 	        	case "http://dev-apc.com":
 	        	case "dev-apc.com":
-	    			httpServletResponse.sendError(600);
+	        		if(httpServletRequest.getServletPath().indexOf("/loa") >= 0
+	    			 || httpServletRequest.getServletPath().indexOf("/i") >= 0
+	    			) {
+	    			}else {
+	    				
+	    				httpServletResponse.sendError(600);
+	    			}
 				break;
 				
 	        	case "http://game.dev-apc.com":
