@@ -29,6 +29,8 @@
 	var bless2yn =false; //축복2 적용여부
 	var v_bless_timer;//적용여부 반짝임 타이머
 	
+	var fail_correction =0;//장기백 시스템 
+	
 	function init()
     {
 		$('#res_field').val( $('#res_field').val() + '강화기 시뮬레이터.. \n자동강화는 축복영향 없음..\n확률공개..ing\n' );
@@ -75,7 +77,7 @@
 		//강화 계수표 참조
 		var DPos = fun_dPoing(wp.wp_org_damage);
 		
-		wp.wp_add_damage = wp.wp_org_damage * advance.getAdvVal(wp.wp_adv_no);
+		wp.wp_add_damage = wp.wp_org_damage * advance_loa.getAdvVal(wp.wp_adv_no);
 		
 		return Math.floor(wp.wp_add_damage);
 		
@@ -149,7 +151,7 @@
 	
 	function autoAdvUp(){
 		
-		var max_adv_no = 14;
+		var max_adv_no = 22;
 		if(!able_click){
 			$('#res_field').val( $('#res_field').val() + '강화 실행 중 !!! \n' );
 			$("#res_field")[0].scrollTop = $("#res_field")[0].scrollHeight;
@@ -182,7 +184,7 @@
 			if(wp50.wp_adv_no >= max_adv_no){
 				autoyn = false;
 				$('#wp_auto').text('자동강화시작');
-				alert(autocnt+'회 실행하여 목표에 도달하였습니다.');
+				alert(autocnt+'회 실행하여 목표에 도달하였습니다.\n25강화까지 전설무기를 강화해보세요');
 				clearTimeout(v_auto_timer);
 				return;
 			}
@@ -196,8 +198,8 @@
 	function advUp_auto(wp,tag_id){
 
 		var res;
-		if(wp.wp_adv_no > 14){
-			alert('15단계까지 구현되었습니다..!!');
+		if(wp.wp_adv_no > 24){
+			alert('25단계까지 구현되었습니다..!!');
 			return;
 		}
 		
@@ -209,14 +211,24 @@
 		var bef_adv_rate = advance_rate.getAdvRateVal(wp.wp_adv_no);
 		var adv_rate =bef_adv_rate; 
 		
-		//1, 100을 포함한 수 중 랜덤
-		//10강화시 80 <= 30 (31~100::70퍼센트로 실패)
-		if(getRandomInt(1,100) <= adv_rate){
+		
+		if(fail_correction >= 100){
 			wp.wp_adv_no++;	
-			res=' 강화에 성공하였습니다.';
+			fail_correction = 0;
+			res=' 강화에 성공하였습니다.'+"\n장인의기운: 초기화";
 		}else{
-			//wp.wp_adv_no--;
-			res=' 강화에 실패하였습니다.';
+			//1, 100을 포함한 수 중 랜덤
+			//10강화시 80 <= 30 (31~100::70퍼센트로 실패)
+			if(getRandomInt(1,100) <= adv_rate){
+				wp.wp_adv_no++;	
+				fail_correction = 0;
+				res=' 강화에 성공하였습니다.'+"\n장인의기운: 초기화";
+			}else{
+				//wp.wp_adv_no--;
+				fail_correction += advance_correction.getAdvVal(wp.wp_adv_no);
+				res=' 강화에 실패하였습니다.'+"\n장인의기운: "+fail_correction;
+			}
+			
 		}
 		
 		wp.wp_add_damage = advCalc(wp);
@@ -226,8 +238,8 @@
 		var aft_adv_rate =advance_rate.getAdvRateVal(wp.wp_adv_no+1);
 		
 		var msg = wp.wp_name_kr +' +'+ (bef_adv_no+1) + res + '\n'
-			msg+=          bef_adv_no+'강, 데미지: ' +org_damage+' ( + '+ bef_damage +' )' ;
-		    msg+= ' => ' + aft_adv_no+'강, 데미지: ' +org_damage+' ( + '+ aft_damage +' )\n\n';
+			msg+=          bef_adv_no+'강, 데미지: ' +org_damage+'(+'+ bef_damage +')' ;
+		    msg+= ' => ' + aft_adv_no+'강, 데미지: ' +org_damage+'(+'+ aft_damage +')\n\n';
 		
 		$('#' + tag_id + '> input').val('+' + aft_adv_no + '.이번확률: ' + bef_adv_rate + '%');
 		console.log(aft_adv_no+' '+bef_adv_rate);
@@ -244,8 +256,8 @@
 	
 	function advUp(wp,tag_id){
 		var res;
-		if(wp.wp_adv_no > 14){
-			alert('15단계까지 구현되었습니다..!!');
+		if(wp.wp_adv_no > 24){
+			alert('25단계까지 구현되었습니다..!!');
 			return;
 		}
 		if(autoyn){
@@ -277,25 +289,32 @@
 			//1, 100을 포함한 수 중 랜덤
 			//10강화시 80 <= 30 (31~100::70퍼센트로 실패)
 			var random_value = getRandomInt(1,100);
-			if(random_value <= adv_rate){
+			
+			if(fail_correction >= 100){
 				enhance_flag = 1;
 				$('#img_'+tag_id)[0].src='<%=request.getContextPath()%>/game_set/img/enhance_fast_1.gif?v=<%=System.currentTimeMillis()%>';
 			}else{
-				enhance_flag = 2;
-				$('#img_'+tag_id)[0].src='<%=request.getContextPath()%>/game_set/img/enhance_fast_2.gif?v=<%=System.currentTimeMillis()%>';
+				if(random_value <= adv_rate){
+					enhance_flag = 1;
+					$('#img_'+tag_id)[0].src='<%=request.getContextPath()%>/game_set/img/enhance_fast_1.gif?v=<%=System.currentTimeMillis()%>';
+				}else{
+					enhance_flag = 2;
+					$('#img_'+tag_id)[0].src='<%=request.getContextPath()%>/game_set/img/enhance_fast_2.gif?v=<%=System.currentTimeMillis()%>';
+				}
 			}
-			
-			
 			
 			setTimeout(function(){
 				able_click = true;
 				$('#img_'+tag_id)[0].src='<%=request.getContextPath()%>/game_set/img/'+weapons[tag_id].wp_img+'?v=<%=System.currentTimeMillis()%>';
 				if(enhance_flag == 1){
 					wp.wp_adv_no++;	
-					res=' 강화에 성공하였습니다. 확률공개: '+random_value +' <= '+ adv_rate;
+					fail_correction = 0;
+					res=' 강화에 성공하였습니다.\n확률공개: '+random_value +' <= '+ adv_rate+"\n장인의기운: 초기화";
 				}else{
 					//wp.wp_adv_no--;
-					res=' 강화에 실패하였습니다. 확률공개: '+random_value +' <= '+ adv_rate;
+					fail_correction += advance_correction.getAdvVal(wp.wp_adv_no);
+					res=' 강화에 실패하였습니다.\n확률공개: '+random_value +' <= '+ adv_rate+"\n장인의기운: "+fail_correction;
+					
 				}
 				
 				wp.wp_add_damage = advCalc(wp);
@@ -305,8 +324,8 @@
 				var aft_adv_rate =advance_rate.getAdvRateVal(wp.wp_adv_no+1);
 				
 				var msg = wp.wp_name_kr +' +'+ (bef_adv_no+1) + res + '\n'
-					msg+=          bef_adv_no+'강, 데미지: ' +org_damage+' ( + '+ bef_damage +' )' ;
-				    msg+= ' => ' + aft_adv_no+'강, 데미지: ' +org_damage+' ( + '+ aft_damage +' )\n\n';
+					msg+=          bef_adv_no+'강, 데미지: ' +org_damage+'(+'+ bef_damage +')' ;
+				    msg+= ' => ' + aft_adv_no+'강, 데미지: ' +org_damage+'(+'+ aft_damage +')\n\n';
 				
 				$('#' + tag_id + '> input').val('+' + aft_adv_no + '.이번확률: ' + bef_adv_rate + '%');
 				
@@ -318,9 +337,9 @@
 				}
 		        
 		        
-		        if(wp.wp_adv_no >= 15){
-			        var promptVal = prompt('축하드립니다. 15강화 달성자의 이름입력:');
-					alert(promptVal+'바보');
+		        if(wp.wp_adv_no >= 25){
+			        var promptVal = prompt('축하드립니다. 25강화 달성자의 이름입력:');
+					alert(promptVal+' 바보');
 		        }
 				
 				
