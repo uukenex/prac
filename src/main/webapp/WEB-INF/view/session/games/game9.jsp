@@ -60,9 +60,11 @@
 	    });
 		
 		
-		if(windowWidth < 340){
-			$('#chattings').css('display','none');	
-		}
+		//if(windowWidth < 340){
+			//$('#chattings').css('display','none');	
+			$('#res_field').css('max-width',windowWidth*0.9);
+			//$('#chattings').css('display','block');
+		//}
 	    
 		var wp_list = ['wp10','wp20','wp30','wp40','wp50'];
 		
@@ -375,16 +377,15 @@
 			<a href="#" id="wp50" rel="tooltip" onclick="advUp(weapons[this.id],id);">
 			</a>
 		</div>
+		<div  style="display: block;"></div>
 		<div>
 			<button id="wp_auto" onclick="autoAdvUp();">자동강화시작</button>
 			<button id="wp_bless_1" class='wp_bless_1' onclick="bless_1();">축복1단계</button>
 			<button id="wp_bless_2" class='wp_bless_2' onclick="bless_2();">축복2단계</button>
 		</div>
-	</section>
-	<section id="chattings">
-		<div  style="display: inline;">
+		<div  style="display: block;">
 			<textarea id="res_field" cols="60" rows="20" readonly="true" ></textarea>
-		</div>		
+		</div>	
 	</section>
 </BODY>
 </HTML>
