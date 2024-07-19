@@ -168,20 +168,30 @@
 		
 		autocnt = 0;
 		
+		if(wp50.wp_adv_no == max_adv_no){
+			$('#wp_auto').text('자동강화시작');
+			alert('자동강화는 여기까지..');
+			autoyn = false;
+			return;
+		}
+		
 		v_auto_timer = setInterval(function() {
 			autocnt++;
 			advUp_auto(wp50,'wp50');
 			
 			if(wp50.wp_adv_no >= max_adv_no){
-				clearTimeout(v_auto_timer);
 				autoyn = false;
-				$('#wp_auto').val('자동강화시작');
+				$('#wp_auto').text('자동강화시작');
 				alert(autocnt+'회 실행하여 목표에 도달하였습니다.');
+				clearTimeout(v_auto_timer);
 				return;
 			}
-		}, 100);
+		}, 200);
 		
 	}
+	
+	
+	
 	
 	function advUp_auto(wp,tag_id){
 
@@ -205,7 +215,7 @@
 			wp.wp_adv_no++;	
 			res=' 강화에 성공하였습니다.';
 		}else{
-			wp.wp_adv_no--;
+			//wp.wp_adv_no--;
 			res=' 강화에 실패하였습니다.';
 		}
 		
@@ -220,6 +230,7 @@
 		    msg+= ' => ' + aft_adv_no+'강, 데미지: ' +org_damage+' ( + '+ aft_damage +' )\n\n';
 		
 		$('#' + tag_id + '> input').val('+' + aft_adv_no + '.이번확률: ' + bef_adv_rate + '%');
+		console.log(aft_adv_no+' '+bef_adv_rate);
 		
 		$('#res_field').val( $('#res_field').val() + '(축복미적용)자동.. cnt: '+autocnt +' 회차 실행 중...');
 		$('#res_field').val( $('#res_field').val() + msg );
@@ -228,13 +239,8 @@
 		if($('.tipBody')[0]){
 			$('.tipBody')[0].innerHTML = weapons.toString(tag_id);	
 		}
-        
-        if(wp.wp_adv_no >= 15){
-	        var promptVal = prompt('축하드립니다. 15강화 달성자의 이름입력:');
-			alert(promptVal+'바보');
-        }
-		
 	}
+	
 	
 	function advUp(wp,tag_id){
 		var res;
@@ -288,7 +294,7 @@
 					wp.wp_adv_no++;	
 					res=' 강화에 성공하였습니다. 확률공개: '+random_value +' <= '+ adv_rate;
 				}else{
-					wp.wp_adv_no--;
+					//wp.wp_adv_no--;
 					res=' 강화에 실패하였습니다. 확률공개: '+random_value +' <= '+ adv_rate;
 				}
 				
