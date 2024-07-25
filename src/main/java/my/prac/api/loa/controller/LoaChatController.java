@@ -127,10 +127,10 @@ public class LoaChatController {
 
 		switch (param0) {
 		case "/골드": case "/ㄱㄷ": case "/클골": case "/ㅋㄱ":
-			val = "http://imgwww.dev-apc.com/i2/lvGold1680";
+			val  = checkGoldList();
 			val += enterStr;
 			val += enterStr;
-			val += checkGoldList();
+			val += "http://imgwww.dev-apc.com/i2/lvGold1680";
 			break;
 		case "/모험섬": case "/ㅁㅎㅅ":
 			LocalDate now = LocalDate.now();
