@@ -14,12 +14,12 @@
 <html>
 	<head>
 		<meta charset="utf-8">
-		<title>이모티콘</title>
+		<title>..</title>
 		<!-- <meta property="og:url" content="링크걸 주소(ex : http://www.naver.com)"> -->
-		<meta property="og:title" content="이모티콘">  
+		<meta property="og:title" content="">  
 		<meta property="og:type" content="website">
 		<meta property="og:image" content="<%=request.getContextPath()%>/img_loa/<%=request.getAttribute("imgval")%>.png">
-		<meta property="og:description" content=" 이미지 ">
+		<meta property="og:description" content="..">
 	</head> 
 	<body>
 		<div id="div_load_image">

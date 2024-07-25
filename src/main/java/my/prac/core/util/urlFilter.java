@@ -57,6 +57,7 @@ public class urlFilter implements Filter {
 	        	case "dev-apc.com":
 	        		if(httpServletRequest.getServletPath().indexOf("/loa") >= 0
 	    			 || httpServletRequest.getServletPath().indexOf("/i") >= 0
+	    			 || httpServletRequest.getServletPath().indexOf("/i2") >= 0
 	    			) {
 	    			}else {
 	    				

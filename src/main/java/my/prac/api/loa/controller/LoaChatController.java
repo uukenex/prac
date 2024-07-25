@@ -127,7 +127,7 @@ public class LoaChatController {
 
 		switch (param0) {
 		case "/골드": case "/ㄱㄷ": case "/클골": case "/ㅋㄱ":
-			val = "imgwww.dev-apc.com/i2/lvGold";
+			val = "imgwww.dev-apc.com/i2/lvGold"+enterStr;
 			val += checkGoldList();
 			break;
 		case "/모험섬": case "/ㅁㅎㅅ":
