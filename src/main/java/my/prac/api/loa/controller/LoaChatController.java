@@ -130,7 +130,7 @@ public class LoaChatController {
 			val  = checkGoldList();
 			val += enterStr;
 			val += enterStr;
-			val += "http://imgwww.dev-apc.com/i2/lvGold1680";
+			val += "http://imgwww.dev-apc.com/i2/lvGold202407";
 			break;
 		case "/모험섬": case "/ㅁㅎㅅ":
 			LocalDate now = LocalDate.now();
