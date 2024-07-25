@@ -127,7 +127,9 @@ public class LoaChatController {
 
 		switch (param0) {
 		case "/골드": case "/ㄱㄷ": case "/클골": case "/ㅋㄱ":
-			val = "imgwww.dev-apc.com/i2/lvGold"+enterStr;
+			val = "http://imgwww.dev-apc.com/i2/lvGold1680";
+			val += enterStr;
+			val += enterStr;
 			val += checkGoldList();
 			break;
 		case "/모험섬": case "/ㅁㅎㅅ":
@@ -496,6 +498,7 @@ public class LoaChatController {
 		msg += enterStr + "아브 1-3 [하 3,600G/노 3,000G]";
 		msg += enterStr + "아브 1-4 [하 5,600G/노 4,600G]";
 		msg += enterStr ;
+		/*
 		msg += enterStr + "싱글모드..▼ "+ allSeeStr;
 		msg += enterStr + "발탄 600G";
 		msg += enterStr + "비아키스 800G";
@@ -505,7 +508,7 @@ public class LoaChatController {
 		msg += enterStr + "일리아칸 2,800G";
 		msg += enterStr + "상아탑 3,500G";
 		msg += enterStr;
-
+		 */
 		return msg;
 	}
 	
