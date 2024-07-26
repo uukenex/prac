@@ -6,7 +6,7 @@
 	var v_hit_count = 0;
 	
 	function onConnect(){
-		var webSocketUrl = 'ws://dev-apc.com/WebSocket4?userNick='+$('#chat_id').val(); 
+		var webSocketUrl = 'ws://game.dev-apc.com/WebSocket4?userNick='+$('#chat_id').val(); 
 		if(isLocal){
 			webSocketUrl = 'ws://localhost/WebSocket4?userNick='+$('#chat_id').val(); 
 		}

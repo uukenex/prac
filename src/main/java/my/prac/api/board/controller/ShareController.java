@@ -76,8 +76,6 @@ public class ShareController {
 				share = shareService.selectShareHist(shareMap);
 				shareHist = shareService.selectShareHistList(shareNo);
 			}
-			// share.setShareContent(share.getShareContent().replaceAll("{imgUrl}",
-			// "http://dev-apc.com"));
 			share.setShareContent(share.getShareContent().replaceAll("？", ""));
 
 		} catch (Exception e) {

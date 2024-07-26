@@ -130,7 +130,7 @@ public class LoaChatController {
 			val  = checkGoldList();
 			val += enterStr;
 			val += enterStr;
-			val += "http://imgwww.dev-apc.com/i2/lvGold202407";
+			val += "http://rgb-tns.dev-apc.com/i2/lvGold202407";
 			break;
 		case "/모험섬": case "/ㅁㅎㅅ":
 			LocalDate now = LocalDate.now();
@@ -415,7 +415,7 @@ public class LoaChatController {
 			}
 		}
 
-		val = "imgwww.dev-apc.com/i/" + randKey;
+		val = "rgb-tns.dev-apc.com/i/" + randKey;
 
 		return val;
 	}
