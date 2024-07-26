@@ -848,6 +848,7 @@ public class LoaChatController {
 			HashMap<String, Object> new_refine_element = (HashMap<String, Object>)maps.get("new_refine_element");
 			HashMap<String, Object> limit_element = (HashMap<String, Object>)maps.get("limit_element");
 			HashMap<String, Object> elixir_element = (HashMap<String, Object>)maps.get("elixir_element");
+			HashMap<String, Object> ark_passive_point_element = (HashMap<String, Object>)maps.get("ark_passive_point_element");
 			
 			
 			//악세들은 레벨파싱에서 에러가남 
@@ -902,6 +903,9 @@ public class LoaChatController {
 					resField1 += "　 　";
 				}
 				resField1 += " 품:"+(int)((HashMap<String, Object>) quality_element.get("value")).get("qualityValue");
+				if(Jsoup.parse((String) ((HashMap<String, Object>) quality_element.get("value")).get("leftStr2")).text().indexOf("티어 4")>0) {
+					resField1 += " ("+((HashMap<String, Object>) ark_passive_point_element.get("value")).get("Element_001")+")";
+				}
 				resField1 += enterStr;
 				
 				resField2 += equip.get("Type").toString()+" :";//초
@@ -1369,7 +1373,7 @@ public class LoaChatController {
 			String gemName = Jsoup.parse((String) gem.get("Name")).text();
 			for(String equipGem : gemList) {
 				int gemLv = (int)gem.get("Level");
-				if(gemLv < 7) {
+				if(gemLv < 5) {
 					continue;
 				}
 				
@@ -1502,7 +1506,7 @@ public class LoaChatController {
 		String returnData = LoaApiUtils.connect_process(paramUrl);
 		
 		String resMsg=ordUserId+" 부캐 보석 정보" + enterStr;
-		resMsg += "4T 7보석↑,3T 8보석↑ 표기" + enterStr;
+		resMsg += "4T 5보석↑,3T 8보석↑ 표기" + enterStr;
 		
 		List<HashMap<String, Object>> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<List<Map<String, Object>>>() {});
 		
