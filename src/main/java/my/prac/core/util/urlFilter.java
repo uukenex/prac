@@ -85,7 +85,12 @@ public class urlFilter implements Filter {
         	}
         	
             chain.doFilter( request, response );
-        } finally {
+        }
+        catch(Exception e) {
+        	httpServletResponse.sendError(600);
+        	chain.doFilter( request, response );
+        }
+        finally {
 
         }
 
