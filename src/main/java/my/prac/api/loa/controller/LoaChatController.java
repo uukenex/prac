@@ -1084,8 +1084,8 @@ public class LoaChatController {
 				HashMap<String, Object> stone_option1 = (HashMap<String, Object>) stone_option0.get("Element_000");
 				HashMap<String, Object> stone_option2 = (HashMap<String, Object>) stone_option0.get("Element_001");
 				
-				resMsg += enterStr;
 				resMsg += equip.get("Name");
+				resMsg += enterStr;
 				String stone_option1_str = Jsoup.parse(stone_option1.get("contentStr").toString()).text();
 				String stone_option2_str = Jsoup.parse(stone_option2.get("contentStr").toString()).text();
 				
@@ -1100,7 +1100,6 @@ public class LoaChatController {
 				stone_option2_str = stone_option2_str.substring(0,1)+stone_option2_str.substring(len-1,len);
 				
 				resMsg += stone_option1_str + " " + stone_option2_str +enterStr;
-				resMsg += enterStr;
 				break;
 			case "반지":case "귀걸이": case "목걸이":
 				switch(Jsoup.parse((String) ((HashMap<String, Object>) quality_element.get("value")).get("leftStr2")).text()) {
@@ -1124,7 +1123,6 @@ public class LoaChatController {
 				}
 				break;
 			case "팔찌":
-				resMsg += enterStr;
 				resMsg += "팔찌 정보"+enterStr;
 				HashMap<String, Object> bracelet =  (HashMap<String, Object>) bracelet_element.get("value");
 				resMsg += LoaApiParser.findBraceletOptions(0,bracelet.get("Element_001").toString());
