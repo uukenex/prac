@@ -1,28 +1,7 @@
 package my.prac.core.util;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.security.KeyManagementException;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
-import java.security.cert.CertificateException;
-import java.security.cert.X509Certificate;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-
-import javax.net.ssl.HostnameVerifier;
-import javax.net.ssl.HttpsURLConnection;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLSession;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
 
 import org.apache.commons.lang3.StringUtils;
 import org.jsoup.Jsoup;
@@ -34,6 +13,9 @@ public class LoaApiParser {
 	static String [] braceletList = { "정밀", "멸시", "습격", "우월", "응원", "약점 노출", "비수", "냉정", "열정", "기습", "결투", "깨달음", "속공","분개",
 			"순환", "마나회수", "쐐기", "망치", "상처악화", "보상", "수확", "강타", "돌진", "타격", "오뚝이", "응급처치", "긴급수혈", "반전", "앵콜", "적립", "투자" };
 
+	static String [] tier4GrindOptList = {"공격력","무기 공격력","최대 생명력","최대 마나","상태이상","전투 중","적에게","추가","세레나데","낙인력","파티원",
+			"아군 공격력","아군 피해량","치명타 적중","치명타 피해"}; 
+	
 	final static String enterStr= "♬";
 	final static String tabStr= "◐";
 	final static String allSeeStr = "===";
@@ -350,207 +332,212 @@ public class LoaApiParser {
 			return "";
 		}
 		
-		if(param.indexOf(msg) == 0) {
-			switch(msg) {
-				case "공격력":
-					msg = LoaApiUtils.tier4accesorry(msg);
-					if(param.indexOf("%")>0) {
-						high_msg   = "∇"+" (상)"+msg + "%"  + enterStr;
-						middle_msg = "∇"+" (중)"+msg + "%"  + enterStr;
-						low_msg    = "∇"+" (하)"+msg + "%"  + enterStr;
-					}else {
-						high_msg   = "∇"+" (상)"+msg + "+"  + enterStr;
-						middle_msg = "∇"+" (중)"+msg + "+"  + enterStr;
-						low_msg    = "∇"+" (하)"+msg + "+"  + enterStr;
-					}
-					
-					if( param.indexOf("390") >= 0 || param.indexOf("1.55%")>=0) {
-						return high_msg;
-					}else if( param.indexOf("195") >= 0 || param.indexOf("0.95%")>=0) {
-						return middle_msg;
-					}else {
-						return low_msg;
-					}
-				case "무기 공격력":
-					msg = LoaApiUtils.tier4accesorry(msg);
-					if(param.indexOf("%")>0) {
-						high_msg   = "∇"+" (상)"+msg + "%"  + enterStr;
-						middle_msg = "∇"+" (중)"+msg + "%"  + enterStr;
-						low_msg    = "∇"+" (하)"+msg + "%"  + enterStr;
-					}else {
-						high_msg   = "∇"+" (상)"+msg + "+"  + enterStr;
-						middle_msg = "∇"+" (중)"+msg + "+"  + enterStr;
-						low_msg    = "∇"+" (하)"+msg + "+"  + enterStr;
-					}
-					if( param.indexOf("960") >= 0 || param.indexOf("3.00%")>=0) {
-						return high_msg;
-					}else if( param.indexOf("480") >= 0 || param.indexOf("1.80%")>=0) {
-						return middle_msg;
-					}else {
-						return low_msg;
-					}
-				case "최대 생명력":
-					msg = LoaApiUtils.tier4accesorry(msg);
-					high_msg   = "∇"+" (상)"+msg + enterStr;
-					middle_msg = "∇"+" (중)"+msg + enterStr;
-					low_msg    = "∇"+" (하)"+msg + enterStr;
-					if( param.indexOf("6500") >= 0) {
-						return high_msg;
-					}else if( param.indexOf("3250") >= 0) {
-						return middle_msg;
-					}else {
-						return low_msg;
-					}
-				case "최대 마나":
-					msg = LoaApiUtils.tier4accesorry(msg);
-					high_msg   = "∇"+" (상)"+msg + enterStr;
-					middle_msg = "∇"+" (중)"+msg + enterStr;
-					low_msg    = "∇"+" (하)"+msg + enterStr;
-					if( param.indexOf("30") >= 0) {
-						return high_msg;
-					}else if( param.indexOf("15") >= 0) {
-						return middle_msg;
-					}else {
-						return low_msg;
-					}
-				case "상태이상":
-					msg = LoaApiUtils.tier4accesorry(msg);
-					high_msg   = "∇"+" (상)"+msg + enterStr;
-					middle_msg = "∇"+" (중)"+msg + enterStr;
-					low_msg    = "∇"+" (하)"+msg + enterStr;
-					if( param.indexOf("1.00") >= 0) {
-						return high_msg;
-					}else if( param.indexOf("0.50") >= 0) {
-						return middle_msg;
-					}else {
-						return low_msg;
-					}
-				case "전투 중":
-					msg = LoaApiUtils.tier4accesorry(msg);
-					high_msg   = "∇"+" (상)"+msg + enterStr;
-					middle_msg = "∇"+" (중)"+msg + enterStr;
-					low_msg    = "∇"+" (하)"+msg + enterStr;
-					if( param.indexOf("50") >= 0) {
-						return high_msg;
-					}else if( param.indexOf("25") >= 0) {
-						return middle_msg;
-					}else {
-						return low_msg;
-					}
-				case "적에게":
-					msg = LoaApiUtils.tier4accesorry(msg);
-					high_msg   = "∇"+" (상)"+msg + enterStr;
-					middle_msg = "∇"+" (중)"+msg + enterStr;
-					low_msg    = "∇"+" (하)"+msg + enterStr;
-					if( param.indexOf("2.00") >= 0) {
-						return high_msg;
-					}else if( param.indexOf("1.20") >= 0) {
-						return middle_msg;
-					}else {
-						return low_msg;
-					}
-				case "추가":
-					msg = LoaApiUtils.tier4accesorry(msg);
-					high_msg   = "∇"+" (상)"+msg + enterStr;
-					middle_msg = "∇"+" (중)"+msg + enterStr;
-					low_msg    = "∇"+" (하)"+msg + enterStr;
-					if( param.indexOf("2.60") >= 0) {
-						return high_msg;
-					}else if( param.indexOf("1.60") >= 0) {
-						return middle_msg;
-					}else {
-						return low_msg;
-					}
-				case "세레나데":
-					msg = LoaApiUtils.tier4accesorry(msg);
-					high_msg   = "∇"+" (상)"+msg + enterStr;
-					middle_msg = "∇"+" (중)"+msg + enterStr;
-					low_msg    = "∇"+" (하)"+msg + enterStr;
-					if( param.indexOf("6.00") >= 0) {
-						return high_msg;
-					}else if( param.indexOf("3.60") >= 0) {
-						return middle_msg;
-					}else {
-						return low_msg;
-					}
-				case "낙인력":
-					msg = LoaApiUtils.tier4accesorry(msg);
-					high_msg   = "∇"+" (상)"+msg + enterStr;
-					middle_msg = "∇"+" (중)"+msg + enterStr;
-					low_msg    = "∇"+" (하)"+msg + enterStr;
-					if( param.indexOf("8.00") >= 0) {
-						return high_msg;
-					}else if( param.indexOf("4.80") >= 0) {
-						return middle_msg;
-					}else {
-						return low_msg;
-					}
-				case "파티원":
-					msg = LoaApiUtils.tier4accesorry(msg);
-					high_msg   = "∇"+" (상)"+msg + enterStr;
-					middle_msg = "∇"+" (중)"+msg + enterStr;
-					low_msg    = "∇"+" (하)"+msg + enterStr;
-					if( param.indexOf("3.50") >= 0) {
-						return high_msg;
-					}else if( param.indexOf("2.10") >= 0) {
-						return middle_msg;
-					}else {
-						return low_msg;
-					}
-				case "아군 공격력":
-					msg = LoaApiUtils.tier4accesorry(msg);
-					high_msg   = "∇"+" (상)"+msg + enterStr;
-					middle_msg = "∇"+" (중)"+msg + enterStr;
-					low_msg    = "∇"+" (하)"+msg + enterStr;
-					if( param.indexOf("5.00") >= 0) {
-						return high_msg;
-					}else if( param.indexOf("3.00") >= 0) {
-						return middle_msg;
-					}else {
-						return low_msg;
-					}
-				case "아군 피해량":
-					msg = LoaApiUtils.tier4accesorry(msg);
-					high_msg   = "∇"+" (상)"+msg + enterStr;
-					middle_msg = "∇"+" (중)"+msg + enterStr;
-					low_msg    = "∇"+" (하)"+msg + enterStr;
-					if( param.indexOf("7.50") >= 0) {
-						return high_msg;
-					}else if( param.indexOf("4.50") >= 0) {
-						return middle_msg;
-					}else {
-						return low_msg;
-					}
-				case "치명타 적중":
-					msg = LoaApiUtils.tier4accesorry(msg);
-					high_msg   = "∇"+" (상)"+msg + enterStr;
-					middle_msg = "∇"+" (중)"+msg + enterStr;
-					low_msg    = "∇"+" (하)"+msg + enterStr;
-					if( param.indexOf("1.55") >= 0) {
-						return high_msg;
-					}else if( param.indexOf("0.95") >= 0) {
-						return middle_msg;
-					}else {
-						return low_msg;
-					}
-				case "치명타 피해":
-					msg = LoaApiUtils.tier4accesorry(msg);
-					high_msg   = "∇"+" (상)"+msg + enterStr;
-					middle_msg = "∇"+" (중)"+msg + enterStr;
-					low_msg    = "∇"+" (하)"+msg + enterStr;
-					if( param.indexOf("4.00") >= 0) {
-						return high_msg;
-					}else if( param.indexOf("2.40") >= 0) {
-						return middle_msg;
-					}else {
-						return low_msg;
-					}
-				default:
-					msg = LoaApiUtils.tier4accesorry(msg);
-				break;
+		for(int i=0;i<tier4GrindOptList.length;i++) {
+			msg = tier4GrindOptList[i];
+			
+			if(param.indexOf(msg) == 0) {
+				switch(msg) {
+					case "공격력":
+						msg = LoaApiUtils.tier4accesorry(msg);
+						if(param.indexOf("%")>0) {
+							high_msg   = "∇"+" (상)"+msg + "%"  + enterStr;
+							middle_msg = "∇"+" (중)"+msg + "%"  + enterStr;
+							low_msg    = "∇"+" (하)"+msg + "%"  + enterStr;
+						}else {
+							high_msg   = "∇"+" (상)"+msg + "+"  + enterStr;
+							middle_msg = "∇"+" (중)"+msg + "+"  + enterStr;
+							low_msg    = "∇"+" (하)"+msg + "+"  + enterStr;
+						}
+						
+						if( param.indexOf("390") >= 0 || param.indexOf("1.55%")>=0) {
+							return high_msg;
+						}else if( param.indexOf("195") >= 0 || param.indexOf("0.95%")>=0) {
+							return middle_msg;
+						}else {
+							return low_msg;
+						}
+					case "무기 공격력":
+						msg = LoaApiUtils.tier4accesorry(msg);
+						if(param.indexOf("%")>0) {
+							high_msg   = "∇"+" (상)"+msg + "%"  + enterStr;
+							middle_msg = "∇"+" (중)"+msg + "%"  + enterStr;
+							low_msg    = "∇"+" (하)"+msg + "%"  + enterStr;
+						}else {
+							high_msg   = "∇"+" (상)"+msg + "+"  + enterStr;
+							middle_msg = "∇"+" (중)"+msg + "+"  + enterStr;
+							low_msg    = "∇"+" (하)"+msg + "+"  + enterStr;
+						}
+						if( param.indexOf("960") >= 0 || param.indexOf("3.00%")>=0) {
+							return high_msg;
+						}else if( param.indexOf("480") >= 0 || param.indexOf("1.80%")>=0) {
+							return middle_msg;
+						}else {
+							return low_msg;
+						}
+					case "최대 생명력":
+						msg = LoaApiUtils.tier4accesorry(msg);
+						high_msg   = "∇"+" (상)"+msg + enterStr;
+						middle_msg = "∇"+" (중)"+msg + enterStr;
+						low_msg    = "∇"+" (하)"+msg + enterStr;
+						if( param.indexOf("6500") >= 0) {
+							return high_msg;
+						}else if( param.indexOf("3250") >= 0) {
+							return middle_msg;
+						}else {
+							return low_msg;
+						}
+					case "최대 마나":
+						msg = LoaApiUtils.tier4accesorry(msg);
+						high_msg   = "∇"+" (상)"+msg + enterStr;
+						middle_msg = "∇"+" (중)"+msg + enterStr;
+						low_msg    = "∇"+" (하)"+msg + enterStr;
+						if( param.indexOf("30") >= 0) {
+							return high_msg;
+						}else if( param.indexOf("15") >= 0) {
+							return middle_msg;
+						}else {
+							return low_msg;
+						}
+					case "상태이상":
+						msg = LoaApiUtils.tier4accesorry(msg);
+						high_msg   = "∇"+" (상)"+msg + enterStr;
+						middle_msg = "∇"+" (중)"+msg + enterStr;
+						low_msg    = "∇"+" (하)"+msg + enterStr;
+						if( param.indexOf("1.00") >= 0) {
+							return high_msg;
+						}else if( param.indexOf("0.50") >= 0) {
+							return middle_msg;
+						}else {
+							return low_msg;
+						}
+					case "전투 중":
+						msg = LoaApiUtils.tier4accesorry(msg);
+						high_msg   = "∇"+" (상)"+msg + enterStr;
+						middle_msg = "∇"+" (중)"+msg + enterStr;
+						low_msg    = "∇"+" (하)"+msg + enterStr;
+						if( param.indexOf("50") >= 0) {
+							return high_msg;
+						}else if( param.indexOf("25") >= 0) {
+							return middle_msg;
+						}else {
+							return low_msg;
+						}
+					case "적에게":
+						msg = LoaApiUtils.tier4accesorry(msg);
+						high_msg   = "∇"+" (상)"+msg + enterStr;
+						middle_msg = "∇"+" (중)"+msg + enterStr;
+						low_msg    = "∇"+" (하)"+msg + enterStr;
+						if( param.indexOf("2.00") >= 0) {
+							return high_msg;
+						}else if( param.indexOf("1.20") >= 0) {
+							return middle_msg;
+						}else {
+							return low_msg;
+						}
+					case "추가":
+						msg = LoaApiUtils.tier4accesorry(msg);
+						high_msg   = "∇"+" (상)"+msg + enterStr;
+						middle_msg = "∇"+" (중)"+msg + enterStr;
+						low_msg    = "∇"+" (하)"+msg + enterStr;
+						if( param.indexOf("2.60") >= 0) {
+							return high_msg;
+						}else if( param.indexOf("1.60") >= 0) {
+							return middle_msg;
+						}else {
+							return low_msg;
+						}
+					case "세레나데":
+						msg = LoaApiUtils.tier4accesorry(msg);
+						high_msg   = "∇"+" (상)"+msg + enterStr;
+						middle_msg = "∇"+" (중)"+msg + enterStr;
+						low_msg    = "∇"+" (하)"+msg + enterStr;
+						if( param.indexOf("6.00") >= 0) {
+							return high_msg;
+						}else if( param.indexOf("3.60") >= 0) {
+							return middle_msg;
+						}else {
+							return low_msg;
+						}
+					case "낙인력":
+						msg = LoaApiUtils.tier4accesorry(msg);
+						high_msg   = "∇"+" (상)"+msg + enterStr;
+						middle_msg = "∇"+" (중)"+msg + enterStr;
+						low_msg    = "∇"+" (하)"+msg + enterStr;
+						if( param.indexOf("8.00") >= 0) {
+							return high_msg;
+						}else if( param.indexOf("4.80") >= 0) {
+							return middle_msg;
+						}else {
+							return low_msg;
+						}
+					case "파티원":
+						msg = LoaApiUtils.tier4accesorry(msg);
+						high_msg   = "∇"+" (상)"+msg + enterStr;
+						middle_msg = "∇"+" (중)"+msg + enterStr;
+						low_msg    = "∇"+" (하)"+msg + enterStr;
+						if( param.indexOf("3.50") >= 0) {
+							return high_msg;
+						}else if( param.indexOf("2.10") >= 0) {
+							return middle_msg;
+						}else {
+							return low_msg;
+						}
+					case "아군 공격력":
+						msg = LoaApiUtils.tier4accesorry(msg);
+						high_msg   = "∇"+" (상)"+msg + enterStr;
+						middle_msg = "∇"+" (중)"+msg + enterStr;
+						low_msg    = "∇"+" (하)"+msg + enterStr;
+						if( param.indexOf("5.00") >= 0) {
+							return high_msg;
+						}else if( param.indexOf("3.00") >= 0) {
+							return middle_msg;
+						}else {
+							return low_msg;
+						}
+					case "아군 피해량":
+						msg = LoaApiUtils.tier4accesorry(msg);
+						high_msg   = "∇"+" (상)"+msg + enterStr;
+						middle_msg = "∇"+" (중)"+msg + enterStr;
+						low_msg    = "∇"+" (하)"+msg + enterStr;
+						if( param.indexOf("7.50") >= 0) {
+							return high_msg;
+						}else if( param.indexOf("4.50") >= 0) {
+							return middle_msg;
+						}else {
+							return low_msg;
+						}
+					case "치명타 적중":
+						msg = LoaApiUtils.tier4accesorry(msg);
+						high_msg   = "∇"+" (상)"+msg + enterStr;
+						middle_msg = "∇"+" (중)"+msg + enterStr;
+						low_msg    = "∇"+" (하)"+msg + enterStr;
+						if( param.indexOf("1.55") >= 0) {
+							return high_msg;
+						}else if( param.indexOf("0.95") >= 0) {
+							return middle_msg;
+						}else {
+							return low_msg;
+						}
+					case "치명타 피해":
+						msg = LoaApiUtils.tier4accesorry(msg);
+						high_msg   = "∇"+" (상)"+msg + enterStr;
+						middle_msg = "∇"+" (중)"+msg + enterStr;
+						low_msg    = "∇"+" (하)"+msg + enterStr;
+						if( param.indexOf("4.00") >= 0) {
+							return high_msg;
+						}else if( param.indexOf("2.40") >= 0) {
+							return middle_msg;
+						}else {
+							return low_msg;
+						}
+					default:
+						msg = LoaApiUtils.tier4accesorry(msg);
+					break;
+				}
 			}
 		}
-		return "∇"+msg;
+		
+		return "∇"+param;
 		
 	}
 	public static String findBraceletOptionsDt(String param) {
