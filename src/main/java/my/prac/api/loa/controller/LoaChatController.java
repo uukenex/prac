@@ -1025,8 +1025,23 @@ public class LoaChatController {
 				resMsg +="§아크패시브 : 비활성화"+enterStr;
 			}
 			
+			//진화120 깨달음 95가 max
 			for(HashMap<String,Object> pt:arkPassivePt) {
-				resMsg +=pt.get("Name")+" : " +pt.get("Value")+enterStr;
+				resMsg +=pt.get("Name")+" : " +pt.get("Value"); 
+				
+				switch(pt.get("Name").toString()) {
+					case "진화":
+						resMsg +=" / 120";
+						break;
+					case "깨달음":
+						resMsg +=" / 95";
+						break;
+					case "도약":
+						resMsg +=" / ?";
+						break;
+				}
+				
+				resMsg +=enterStr;
 			}
 			
 			if(isArkPassive.equals("true")) {
