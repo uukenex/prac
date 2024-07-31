@@ -1059,7 +1059,8 @@ public class LoaChatController {
 		}
 		
 		String resMsg = ordUserId+ " 악세정보"+enterStr;
-
+		String resMsg2="";
+		boolean resMsg2Ok=false;
 
 		for (Map<String, Object> equip : armoryEquipment) {
 			HashMap<String, Object> tooltip = new ObjectMapper().readValue((String) equip.get("Tooltip"),new TypeReference<Map<String, Object>>() {});
@@ -1083,8 +1084,8 @@ public class LoaChatController {
 				HashMap<String, Object> stone_option1 = (HashMap<String, Object>) stone_option0.get("Element_000");
 				HashMap<String, Object> stone_option2 = (HashMap<String, Object>) stone_option0.get("Element_001");
 				
-				resMsg += equip.get("Name");
 				resMsg += enterStr;
+				resMsg += equip.get("Name");
 				String stone_option1_str = Jsoup.parse(stone_option1.get("contentStr").toString()).text();
 				String stone_option2_str = Jsoup.parse(stone_option2.get("contentStr").toString()).text();
 				
@@ -1115,9 +1116,10 @@ public class LoaChatController {
 						resMsg += " 품:"+(int)((HashMap<String, Object>) quality_element.get("value")).get("qualityValue");
 						resMsg += " ("+((HashMap<String, Object>) ark_passive_point_element.get("value")).get("Element_001")+")";
 						resMsg += enterStr;
-						resMsg += LoaApiParser.findBraceletOptions(((HashMap<String, Object>) grinding_element.get("value")).get("Element_001").toString());
+						resMsg += LoaApiParser.findBraceletOptions(1,((HashMap<String, Object>) grinding_element.get("value")).get("Element_001").toString());
 						//resMsg += " "+Jsoup.parse((String) ((HashMap<String, Object>) grinding_element.get("value")).get("Element_001")).text();
 						resMsg += enterStr;
+						resMsg2Ok = true;
 						break;
 				}
 				break;
@@ -1125,18 +1127,43 @@ public class LoaChatController {
 				resMsg += enterStr;
 				resMsg += "팔찌 정보"+enterStr;
 				HashMap<String, Object> bracelet =  (HashMap<String, Object>) bracelet_element.get("value");
-				resMsg += LoaApiParser.findBraceletOptions(bracelet.get("Element_001").toString());
+				resMsg += LoaApiParser.findBraceletOptions(0,bracelet.get("Element_001").toString());
 				
 				resMsg += enterStr;
-				resMsg += "상세 더보기..▼"+allSeeStr;
-				String braceletDt = Jsoup.parse(bracelet.get("Element_001").toString().replace("<BR>", enterStr)).text();
-				resMsg += braceletDt;
+				//resMsg += "상세 더보기..▼"+allSeeStr;
+				//String braceletDt = Jsoup.parse(bracelet.get("Element_001").toString().replace("<BR>", enterStr)).text();
+				//resMsg += braceletDt;
 				break;
 			default:
 			continue;
 			}
 		}
 
+		if(resMsg2Ok) {
+			resMsg2 ="상/중/하" + enterStr;
+			resMsg2 +="공+ 390/195/80" + enterStr;
+			resMsg2 +="공% 1.55/0.95/0.40" + enterStr;
+			resMsg2 +="무공+ 960/480/495" + enterStr;
+			resMsg2 +="무공% 3.00/1.80/0.80" + enterStr;
+			resMsg2 +="최생 6500/3250/1300" + enterStr;
+			resMsg2 +="마나 30/15/6" + enterStr;
+			resMsg2 +="CC 1.00/0.50/0.20" + enterStr;
+			resMsg2 +="생회 50/25/10" + enterStr;
+			resMsg2 +="피해 2.00/1.20/0.55" + enterStr;
+			resMsg2 +="추피 2.60/1.60/0.70" + enterStr;
+			resMsg2 +="폿아덴 6.00/3.60/1.60" + enterStr;
+			resMsg2 +="낙인력 8.00/4.80/2.15" + enterStr;
+			resMsg2 +="회복강화 3.50/2.10/0.95" + enterStr;
+			resMsg2 +="보호강화 3.50/2.10/0.95" + enterStr;
+			resMsg2 +="아군공격강화 5.00/3.00/1.35" + enterStr;
+			resMsg2 +="아군피해강화 7.50/4.50/2.00" + enterStr;
+			resMsg2 +="치적 1.55/0.95/0.40" + enterStr;
+			resMsg2 +="치피 4.00/2.40/1.10" + enterStr;
+			
+			resMsg += "상세 더보기..▼"+allSeeStr;
+			resMsg +=resMsg2;
+			
+		}
 		return resMsg;
 	}
 	
