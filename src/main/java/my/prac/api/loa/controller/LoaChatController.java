@@ -848,7 +848,11 @@ public class LoaChatController {
 		String characterLevel = armoryProfile.get("CharacterLevel").toString();
 		String expeditionLevel = armoryProfile.get("ExpeditionLevel").toString();
 		String className = armoryProfile.get("CharacterClassName").toString();
-		String title = armoryProfile.get("Title").toString();
+		
+		String title = "";
+		if(armoryProfile.get("Title")!=null) {
+			title=armoryProfile.get("Title").toString();
+		}
 
 		//공/생
 		String atk ="";
