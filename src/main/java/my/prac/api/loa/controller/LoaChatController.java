@@ -1481,7 +1481,7 @@ public class LoaChatController {
 		double totPoint=0;
 		double totMaxPoint=0;
 
-		double percent = 100.0/9.0;
+		double percent = 100.0/10.0;
 		double eachPercent =0.0;
 		double totEachPercent =0.0;
 		
