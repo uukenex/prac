@@ -161,4 +161,27 @@
 		  FROM TBOT_SUPPORTERS A
 		 WHERE A.USER_ID = #{param1, jdbcType=VARCHAR}
 	</select>
+	
+	
+	<select id="selectBotImgCharSave" parameterType="String" resultType="String" >
+		/* bot.xml selectBotImgSaveOne */
+		SELECT RES
+		  FROM TBOT_IMG_CHAR_SAVE A
+	     WHERE A.REQ = #{req, jdbcType=VARCHAR}
+	       AND ROWNUM = 1
+	</select>
+	
+	<insert id="insertBotImgCharSave" parameterType="hashMap">
+		/* bot.xml insertBotImgSaveOne */
+		INSERT INTO TBOT_IMG_CHAR_SAVE
+			 (CHAR_NAME
+			 ,REQ
+			 ,RES
+			 )
+		SELECT #{char_name, jdbcType=VARCHAR}
+		      ,#{req, jdbcType=VARCHAR}
+			  ,#{res, jdbcType=VARCHAR}
+		  FROM DUAL
+    </insert>
+	
 </mapper>

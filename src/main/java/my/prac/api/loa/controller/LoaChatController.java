@@ -1,5 +1,12 @@
 package my.prac.api.loa.controller;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.net.URL;
 import java.net.URLEncoder;
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -9,18 +16,13 @@ import java.util.Map;
 import java.util.Random;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
-import java.time.DayOfWeek;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
 
 import javax.annotation.Resource;
+import javax.imageio.ImageIO;
 
 import org.apache.commons.lang3.StringUtils;
 import org.json.JSONArray;
-import org.json.JSONException;
 import org.json.JSONObject;
-import org.json.simple.parser.JSONParser;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.slf4j.Logger;
@@ -97,6 +99,11 @@ public class LoaChatController {
 	public String wimgReturn(@PathVariable String imgvalues, Model model) {
 		model.addAttribute("imgval",imgvalues);
 		return "rtnimgs2";
+	}
+	@RequestMapping(value = "/i3/{imgvalues}", method = RequestMethod.GET)
+	public String cimgReturn(@PathVariable String imgvalues, Model model) {
+		model.addAttribute("imgval",imgvalues);
+		return "rtnimgs3";
 	}
 	
 	//roomName은 https://cafe.naver.com/msgbot/2067 수정본 참조
@@ -1263,7 +1270,7 @@ public class LoaChatController {
 			totLimit="0";
 		}
 		
-		resMsg += characterImage + enterStr;
+		resMsg += charImgSearch(ordUserId,characterImage) + enterStr;
 		resMsg += title+" "+ ordUserId + enterStr;
 		resMsg += "레벨/직업"+"　　　"+itemMaxLevel+" / "+className+enterStr;
 		resMsg += "전투/원대"+"　　　"+characterLevel+"　/　"+expeditionLevel+enterStr;
@@ -2399,8 +2406,8 @@ public class LoaChatController {
 	
 	public String tossAccount() {
 		String ment = "";
-		ment += enterStr+"람쥐봇 후원하기(토스)";
-		ment += enterStr+"https://toss.me/daramzz";
+		//ment += enterStr+"람쥐봇 후원하기(카카오페이)";
+		//ment += enterStr+"https://toss.me/daramzz";
 		return ment; 
 	}
 	
@@ -2412,5 +2419,45 @@ public class LoaChatController {
 			ment+="⭐";
 		}
 		return ment; 
+	}
+	
+	public String charImgSearch(String ordUserId,String imgUrl) {
+		String val = "";
+		String randKey = "";
+		
+		HashMap<String,Object> reqMap = new HashMap<>();
+		
+		reqMap.put("req", imgUrl);
+		
+		randKey = botService.selectBotImgMch(reqMap);
+		if(randKey ==null || randKey.equals("")) {
+			return val;
+		}
+		
+		if (randKey == null || randKey.equals("")) {
+			randKey = ImageUtils.RandomAlphaNum();
+			String outFilePath = "/img/img_loa_cr/" + randKey + ".png";
+			
+			try {
+				URL url = new URL(imgUrl);
+				
+				BufferedImage image = ImageIO.read(url);
+				File file = new File(outFilePath);
+
+				ImageIO.write(image, "png", file);
+				
+				HashMap<String,Object> hs = new HashMap<>();
+				hs.put("char_name", ordUserId);
+				hs.put("req", imgUrl);
+				hs.put("res", randKey);
+				botService.insertBotImgCharSaveTx(hs);
+			}catch(Exception e) {
+				System.out.println("이미지 다운로드 실패.. "+imgUrl);
+				return val;
+			}
+		}
+
+		val = "rgb-tns.dev-apc.com/i3/" + randKey;
+		return val;
 	}
 }
