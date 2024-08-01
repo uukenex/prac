@@ -822,6 +822,8 @@ public class LoaChatController {
 		String resField2 = "";
 		String resField3 = "";
 		
+		String characterImage = armoryProfile.get("CharacterImage").toString();
+		
 		//템/전/원
 		String itemMaxLevel = armoryProfile.get("ItemMaxLevel").toString();
 		String characterLevel = armoryProfile.get("CharacterLevel").toString();
@@ -980,7 +982,8 @@ public class LoaChatController {
 			totLimit="0";
 		}
 		
-		resMsg += title+" "+ordUserId+enterStr;
+		resMsg += characterImage + enterStr;
+		resMsg += title+" "+ ordUserId + enterStr;
 		resMsg += "레벨/직업"+"　　　"+itemMaxLevel+" / "+className+enterStr;
 		resMsg += "전투/원대"+"　　　"+characterLevel+"　/　"+expeditionLevel+enterStr;
 		resMsg += "엘릭/초월"+"　　　"+totElixir+"(" + elixirField+")"+" / "+totLimit+enterStr;
@@ -1371,16 +1374,18 @@ public class LoaChatController {
 		Collections.sort(equipGemT3CoolList,Collections.reverseOrder());
 		Collections.sort(equipGemT4DealList,Collections.reverseOrder());
 		Collections.sort(equipGemT4CoolList,Collections.reverseOrder());
-		resMsg += "멸/홍"+"";
-		resMsg += StringUtils.leftPad( equipGemT3DealList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ",""), 6, "　");
-		resMsg += " / ";
-		resMsg += StringUtils.leftPad( equipGemT3CoolList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ",""), 6, "　");
+		resMsg += "멸/홍"+"　　";
+		
+		String tmpMsg1 = equipGemT3DealList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
+		String tmpMsg2 = equipGemT3CoolList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
+		resMsg += StringUtils.leftPad( tmpMsg1+"/"+tmpMsg2, 8, "　" );
 		resMsg += enterStr;
 		if(tier ==4) {
+			
 			resMsg += "겁/작"+"　　";
-			resMsg += StringUtils.leftPad( equipGemT4DealList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ",""), 6, "　");
-			resMsg += " / ";
-			resMsg += StringUtils.leftPad( equipGemT4CoolList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ",""), 6, "　");
+			String tmpMsg3 = equipGemT4DealList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
+			String tmpMsg4 = equipGemT4CoolList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
+			resMsg += StringUtils.leftPad( tmpMsg3+"/"+tmpMsg4, 8, "　" );
 			resMsg += enterStr;
 		}
 		return resMsg;
