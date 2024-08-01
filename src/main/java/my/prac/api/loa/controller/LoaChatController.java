@@ -816,7 +816,7 @@ public class LoaChatController {
 		
 		
 		
-		String resMsg = ordUserId;
+		String resMsg = "";
 
 		String resField1 = "";
 		String resField2 = "";
@@ -981,11 +981,11 @@ public class LoaChatController {
 		}
 		
 		resMsg += title+" "+ordUserId+enterStr;
-		resMsg += "Lv/직업"+tabStr+itemMaxLevel+"/"+className+enterStr;
-		resMsg += "전투/원대"+tabStr+characterLevel+"/"+expeditionLevel+enterStr;
-		resMsg += "엘릭/초월"+tabStr+totElixir+"(" + elixirField+")"+"/"+totLimit+enterStr;
-		resMsg += "공격/최생"+tabStr+atk+"/"+life+enterStr;
-		resMsg += "진화/깨달/도약"+tabStr+arkpoint1+"/"+arkpoint2+"/"+arkpoint3+enterStr;
+		resMsg += "Lv/직업"+"　　　"+itemMaxLevel+"/"+className+enterStr;
+		resMsg += "전투/원대"+"　　　"+characterLevel+"/"+expeditionLevel+enterStr;
+		resMsg += "엘릭/초월"+"　　　"+totElixir+"(" + elixirField+")"+"/"+totLimit+enterStr;
+		resMsg += "공격/최생"+"　　　"+atk+"/"+life+enterStr;
+		resMsg += "진화/깨달/도약"+"　　"+arkpoint1+"/"+arkpoint2+"/"+arkpoint3+enterStr;
 		
 		int tier = 3;
 		if(Double.parseDouble(itemMaxLevel.replaceAll(",", ""))>=1640) {
@@ -998,7 +998,7 @@ public class LoaChatController {
 			//id,arkPassive,simpleMode
 			resMsg += engraveSearch(ordUserId,false,true);
 		}
-		resMsg += enterStr+enterStr;
+		resMsg += enterStr;
 		resMsg += "상세 더보기..▼"+allSeeStr;
 		//resMsg += "방어구 / 초월 / 엘릭서"+enterStr;
 		
@@ -1293,7 +1293,7 @@ public class LoaChatController {
 			
 		}catch(Exception e){
 			//throw new Exception("E0003");
-			return enterStr+"§각인 : 정보 없음";
+			return enterStr+"각인 : 정보 없음";
 		}
 		
 		List<String> engraveList = new ArrayList<>();
@@ -1304,7 +1304,7 @@ public class LoaChatController {
 				String tmpEng = engrave.get("Name").toString().substring(0,1);
 				engraveList.add(tmpEng);
 			}
-			resMsg = resMsg + enterStr+"§각인 : "+ engraveList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
+			resMsg = resMsg + "각인"+"　　　"+ engraveList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","")+enterStr;
 		}else {
 			String passiveEffect="";
 			for (Map<String, Object> engrave : engraves) {
@@ -1371,13 +1371,13 @@ public class LoaChatController {
 		Collections.sort(equipGemT3CoolList,Collections.reverseOrder());
 		Collections.sort(equipGemT4DealList,Collections.reverseOrder());
 		Collections.sort(equipGemT4CoolList,Collections.reverseOrder());
-		resMsg += "멸/홍"+tabStr;
+		resMsg += "멸/홍"+"　　";
 		resMsg += equipGemT3DealList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
 		resMsg += "/";
 		resMsg += equipGemT3CoolList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
 		resMsg += enterStr;
 		if(tier ==4) {
-			resMsg += "겁/작"+tabStr;
+			resMsg += "겁/작"+"　　";
 			resMsg += equipGemT4DealList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
 			resMsg += "/";
 			resMsg += equipGemT4CoolList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
