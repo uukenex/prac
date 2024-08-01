@@ -1371,16 +1371,16 @@ public class LoaChatController {
 		Collections.sort(equipGemT3CoolList,Collections.reverseOrder());
 		Collections.sort(equipGemT4DealList,Collections.reverseOrder());
 		Collections.sort(equipGemT4CoolList,Collections.reverseOrder());
-		resMsg += "멸/홍"+"　　";
-		resMsg += StringUtils.leftPad( equipGemT3DealList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ",""), 8, "　");
+		resMsg += "멸/홍"+"";
+		resMsg += StringUtils.leftPad( equipGemT3DealList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ",""), 6, "　");
 		resMsg += " / ";
-		resMsg += StringUtils.leftPad( equipGemT3CoolList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ",""), 8, "　");
+		resMsg += StringUtils.leftPad( equipGemT3CoolList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ",""), 6, "　");
 		resMsg += enterStr;
 		if(tier ==4) {
 			resMsg += "겁/작"+"　　";
-			resMsg += StringUtils.leftPad( equipGemT4DealList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ",""), 8, "　");
+			resMsg += StringUtils.leftPad( equipGemT4DealList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ",""), 6, "　");
 			resMsg += " / ";
-			resMsg += StringUtils.leftPad( equipGemT4CoolList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ",""), 8, "　");
+			resMsg += StringUtils.leftPad( equipGemT4CoolList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ",""), 6, "　");
 			resMsg += enterStr;
 		}
 		return resMsg;
