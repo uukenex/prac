@@ -814,28 +814,41 @@ public class LoaChatController {
 		List<String> equipSetList = new ArrayList<>();
 		List<String> equipElixirList = new ArrayList<>();
 		
-		int weaponQualityValue=0;
-		double armorQualityValue=0;
 		
-		double tmpQuality=0;
-		double avgQuality=0;
 		
 		String resMsg = ordUserId;
 
-		String enhanceLv="";
-		String newEnhanceInfo="";
-		String totLimit ="";
-		int totElixir =0;
-		
 		String resField1 = "";
 		String resField2 = "";
 		String resField3 = "";
 		
-		
-		String avgLv = armoryProfile.get("ItemMaxLevel").toString();
+		//템/전/원
+		String itemMaxLevel = armoryProfile.get("ItemMaxLevel").toString();
+		String characterLevel = armoryProfile.get("CharacterLevel").toString();
+		String expeditionLevel = armoryProfile.get("ExpeditionLevel").toString();
 		String className = armoryProfile.get("CharacterClassName").toString();
-		
+		String title = armoryProfile.get("Title").toString();
 
+		//공/생
+		String atk ="";
+		String life="";
+		List<HashMap<String,Object>> stats = (List<HashMap<String, Object>>) armoryProfile.get("Stats");
+		for(HashMap<String,Object> stat :stats) {
+			switch(stat.get("Type").toString()) {
+				case "최대 생명력":
+					life = stat.get("Value").toString();
+					break;
+				case "공격력":
+					atk = stat.get("Value").toString();
+					break;
+			}
+			 
+		}
+		
+		//엘/초
+		String totLimit ="";
+		int totElixir =0;
+		
 		HashMap<String,Object> arkPassive= (HashMap<String, Object>) armoryProfile.get("ArkPassive");
 		String isArkPassive = arkPassive.get("IsArkPassive").toString();
 		List<HashMap<String,Object>> arkPassivePt = (List<HashMap<String, Object>>) arkPassive.get("Points");
@@ -854,42 +867,20 @@ public class LoaChatController {
 			//악세들은 레벨파싱에서 에러가남 
 			switch (equip.get("Type").toString()) {
 			case "무기":case "투구": case "상의": case "하의": case "장갑": case "어깨":
+				
+			}
+			
+			switch (equip.get("Type").toString()) {
+			case "무기":
+			case "투구": case "상의": case "하의": case "장갑": case "어깨":
+				
 				String setFind = Jsoup.parse((String) weapon_element.get("value")).text();
-				if(equip.get("Type").toString().equals("무기")) {
-					enhanceLv = setFind.replaceAll("[^0-9]", "");
-				}
-				
-				
-				
 				for(String set:LoaApiParser.getSetList()) {
 					if(setFind.indexOf(set) >= 0) {
 						equipSetList.add(set);
 					}
 				}
-			}
-			
-			
-			
-			switch (equip.get("Type").toString()) {
-			case "무기":
-				/* 무기품질 */
-				weaponQualityValue = (int)((HashMap<String, Object>) quality_element.get("value")).get("qualityValue");
-				if(new_refine_element.size()>0) {
-					newEnhanceInfo = Jsoup.parse((String) new_refine_element.get("value")).text();
-					newEnhanceInfo = LoaApiUtils.filterText(newEnhanceInfo);
-					newEnhanceInfo = newEnhanceInfo.replace("단계", "");
-				}
 				
-				String tmpWeaponLimit = LoaApiParser.parseLimitForLimit(limit_element);
-				if(!tmpWeaponLimit.equals("")) {
-					resField2 += equip.get("Type").toString()+" :";//초
-					resField2 += tmpWeaponLimit;
-					resField2 = LoaApiUtils.filterText(resField2);
-					resField2 += enterStr;
-				}
-				
-				break;
-			case "투구": case "상의": case "하의": case "장갑": case "어깨":
 				resField1 += equip.get("Type").toString()+" :";//렙
 				resField1 += " "+Jsoup.parse((String) weapon_element.get("value")).text().replaceAll("[^0-9]", "")+"강";
 				if(new_refine_element.size()>0) {
@@ -903,8 +894,11 @@ public class LoaChatController {
 					resField1 += "　 　";
 				}
 				resField1 += " 품:"+(int)((HashMap<String, Object>) quality_element.get("value")).get("qualityValue");
-				if(Jsoup.parse((String) ((HashMap<String, Object>) quality_element.get("value")).get("leftStr2")).text().indexOf("티어 4")>0) {
-					resField1 += " ("+((HashMap<String, Object>) ark_passive_point_element.get("value")).get("Element_001")+")";
+				
+				if(!equip.get("Type").toString().equals("무기")) {
+					if(Jsoup.parse((String) ((HashMap<String, Object>) quality_element.get("value")).get("leftStr2")).text().indexOf("티어 4")>0) {
+						resField1 += " ("+((HashMap<String, Object>) ark_passive_point_element.get("value")).get("Element_001")+")";
+					}
 				}
 				resField1 += enterStr;
 				
@@ -913,10 +907,11 @@ public class LoaChatController {
 				resField2 = LoaApiUtils.filterText(resField2);
 				resField2 += enterStr;
 				
-				
-				resField3 += equip.get("Type").toString()+" :";//엘
-				resField3 += LoaApiParser.parseElixirForLimit(null,elixir_element,0);
-				resField3 += enterStr;
+				if(!equip.get("Type").toString().equals("무기")) {
+					resField3 += equip.get("Type").toString()+" :";//엘
+					resField3 += LoaApiParser.parseElixirForLimit(null,elixir_element,0);
+					resField3 += enterStr;
+				}
 				
 				//초월
 				//초월합계는 장비에서가져옴 
@@ -928,8 +923,8 @@ public class LoaChatController {
 				totElixir +=LoaApiParser.parseElixirForEquip(equipElixirList, elixir_element);
 				break;
 			case "반지":case "귀걸이": case "목걸이":
-				tmpQuality =(int)((HashMap<String, Object>) quality_element.get("value")).get("qualityValue");
-				avgQuality += tmpQuality;
+				//tmpQuality =(int)((HashMap<String, Object>) quality_element.get("value")).get("qualityValue");
+				//avgQuality += tmpQuality;
 				break;
 			default:
 			continue;
@@ -964,29 +959,36 @@ public class LoaChatController {
 			}
 		}
 		
-		
-		resMsg += " "+avgLv + "Lv " + className + enterStr;
-		resMsg += "§무기 : "+enhanceLv+"강";
-		if(!newEnhanceInfo.equals("")) {
-			resMsg +="[+"+newEnhanceInfo+"]"; 
+		String arkpoint1="";
+		String arkpoint2="";
+		String arkpoint3="";
+		for(HashMap<String,Object> pt:arkPassivePt) {
+			switch(pt.get("Name").toString()) {
+			case "진화":
+				arkpoint1=pt.get("Value").toString();
+				break;
+			case "깨달음":
+				arkpoint2=pt.get("Value").toString();
+				break;
+			case "도약":
+				arkpoint3=pt.get("Value").toString();
+				break;
+			}
 		}
-		resMsg +=" 무품 : "+weaponQualityValue + enterStr; 
-		resMsg += "§악세평균품질 : "+avgQuality/5 + enterStr;
-		resMsg += "§세트 : "+setField + enterStr;
 		
 		if(totLimit.equals("")) {
-			resMsg += "§초월 : 없음";
-		}else {
-			resMsg += "§초월합 : " + totLimit;
-		}
-		if(totElixir==0) {
-			resMsg += " 엘릭서 : 없음";
-		}else {
-			resMsg += " 엘릭서합 : " + totElixir + "(" + elixirField+")";
+			totLimit="0";
 		}
 		
+		resMsg += title+" "+ordUserId+enterStr;
+		resMsg += "Lv/직업"+tabStr+itemMaxLevel+"/"+className+enterStr;
+		resMsg += "전투/원대"+tabStr+characterLevel+"/"+expeditionLevel+enterStr;
+		resMsg += "엘릭/초월"+tabStr+totElixir+"(" + elixirField+")"+"/"+totLimit+enterStr;
+		resMsg += "공격/최생"+tabStr+atk+"/"+life+enterStr;
+		resMsg += "진화/깨달/도약"+tabStr+arkpoint1+"/"+arkpoint2+"/"+arkpoint3+enterStr;
+		
 		int tier = 3;
-		if(Double.parseDouble(avgLv.replaceAll(",", ""))>=1640) {
+		if(Double.parseDouble(itemMaxLevel.replaceAll(",", ""))>=1640) {
 			tier = 4;
 		}
 		resMsg += gemSearch(ordUserId, tier);
@@ -997,7 +999,7 @@ public class LoaChatController {
 			resMsg += engraveSearch(ordUserId,false,true);
 		}
 		resMsg += enterStr+enterStr;
-		resMsg += "상세 및 아크패시브 더보기..▼"+allSeeStr;
+		resMsg += "상세 더보기..▼"+allSeeStr;
 		//resMsg += "방어구 / 초월 / 엘릭서"+enterStr;
 		
 		resMsg += "§세트 : "+setField + enterStr;
@@ -1018,11 +1020,11 @@ public class LoaChatController {
 			resMsg += resField3 + enterStr;
 		}
 		
-		if(Double.parseDouble(avgLv.replaceAll(",", "")) >= 1600) {
+		if(Double.parseDouble(itemMaxLevel.replaceAll(",", "")) >= 1600) {
 			if(isArkPassive.equals("true")) {
-				resMsg +="§아크패시브 : 활성화"+enterStr;
+				resMsg +="§아크패시브 : 사용"+enterStr;
 			}else {
-				resMsg +="§아크패시브 : 비활성화"+enterStr;
+				resMsg +="§아크패시브 : 미사용"+enterStr;
 			}
 			
 			//진화120 깨달음 95가 max
@@ -1369,11 +1371,17 @@ public class LoaChatController {
 		Collections.sort(equipGemT3CoolList,Collections.reverseOrder());
 		Collections.sort(equipGemT4DealList,Collections.reverseOrder());
 		Collections.sort(equipGemT4CoolList,Collections.reverseOrder());
-		resMsg = resMsg + enterStr+"§"+gemList[0]+" : "+ equipGemT3DealList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
-		resMsg = resMsg + enterStr+"§"+gemList[1]+" : "+ equipGemT3CoolList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
+		resMsg += "멸/홍"+tabStr;
+		resMsg += equipGemT3DealList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
+		resMsg += "/";
+		resMsg += equipGemT3CoolList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
+		resMsg += enterStr;
 		if(tier ==4) {
-			resMsg = resMsg + enterStr+"§"+gemList[2]+" : "+ equipGemT4DealList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
-			resMsg = resMsg + enterStr+"§"+gemList[3]+" : "+ equipGemT4CoolList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
+			resMsg += "겁/작"+tabStr;
+			resMsg += equipGemT4DealList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
+			resMsg += "/";
+			resMsg += equipGemT4CoolList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
+			resMsg += enterStr;
 		}
 		return resMsg;
 	}
