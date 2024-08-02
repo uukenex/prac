@@ -1651,13 +1651,13 @@ public class LoaChatController {
 		try {
 			gems = (List<Map<String, Object>>) rtnMap.get("Gems");
 		}catch(Exception e){
-			return "멸/홍"+"　　"+enterStr;
+			return "멸/홍"+" "+enterStr;
 		}
 		if(gems == null) {
-			return "멸/홍"+"　　"+enterStr;
+			return "멸/홍"+" "+enterStr;
 		}
 		if(gems.equals("null")) {
-			return "멸/홍"+"　　"+enterStr;
+			return "멸/홍"+" "+enterStr;
 		}
 		
 		String resMsg = "";
@@ -1682,7 +1682,7 @@ public class LoaChatController {
 		Collections.sort(equipGemT3CoolList,Collections.reverseOrder());
 		Collections.sort(equipGemT4DealList,Collections.reverseOrder());
 		Collections.sort(equipGemT4CoolList,Collections.reverseOrder());
-		resMsg += "멸/홍"+"　　";
+		resMsg += "멸/홍"+" ";
 		
 		String tmpMsg1 = equipGemT3DealList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
 		String tmpMsg2 = equipGemT3CoolList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
@@ -1691,11 +1691,11 @@ public class LoaChatController {
 		resMsg += " / ";
 		resMsg += StringUtils.leftPad( tmpMsg2, 4, "　" );
 		*/
-		resMsg += StringUtils.center(tmpMsg1+" / "+tmpMsg2,7,"　"); 
+		resMsg += StringUtils.center(tmpMsg1+" / "+tmpMsg2,9,"　"); 
 		resMsg += enterStr;
 		if(tier ==4) {
 			
-			resMsg += "겁/작"+"　　";
+			resMsg += "겁/작"+" ";
 			String tmpMsg3 = equipGemT4DealList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
 			String tmpMsg4 = equipGemT4CoolList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
 			/*
@@ -1703,7 +1703,7 @@ public class LoaChatController {
 			resMsg += " / ";
 			resMsg += StringUtils.leftPad( tmpMsg4, 4, "　" );
 			*/
-			resMsg += StringUtils.center(tmpMsg3+" / "+tmpMsg4,7,"　");
+			resMsg += StringUtils.center(tmpMsg3+" / "+tmpMsg4,9,"　");
 			resMsg += enterStr;
 		}
 		return resMsg;
