@@ -1291,7 +1291,7 @@ public class LoaChatController {
 		}
 		
 		resMsg += charImgSearch(ordUserId,title,className,characterImage) + enterStr;
-		resMsg += "레벨"    +"　　　　"+itemMaxLevel+enterStr;
+		resMsg += "레벨"    +"　　　　　"+itemMaxLevel+enterStr;
 		resMsg += "전투/원대"+"　　　"+characterLevel+"　/　"+expeditionLevel+enterStr;
 		resMsg += "엘릭/초월"+"　　　"+totElixir+"(" + elixirField+")"+" / "+totLimit+enterStr;
 		resMsg += "공격/최생"+"　　　"+atk+" / "+life+enterStr;
@@ -1651,15 +1651,13 @@ public class LoaChatController {
 		try {
 			gems = (List<Map<String, Object>>) rtnMap.get("Gems");
 		}catch(Exception e){
-			//throw new Exception("E0003");
-			
-			return enterStr+"§보석 : 정보 없음";
+			return "멸/홍"+"　　"+enterStr;
 		}
 		if(gems == null) {
-			return enterStr+"§보석 : 정보 없음";
+			return "멸/홍"+"　　"+enterStr;
 		}
 		if(gems.equals("null")) {
-			return enterStr+"§보석 : 정보 없음";
+			return "멸/홍"+"　　"+enterStr;
 		}
 		
 		String resMsg = "";
@@ -1688,18 +1686,24 @@ public class LoaChatController {
 		
 		String tmpMsg1 = equipGemT3DealList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
 		String tmpMsg2 = equipGemT3CoolList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
+		/*
 		resMsg += StringUtils.leftPad( tmpMsg1, 3, "　" );
 		resMsg += " / ";
 		resMsg += StringUtils.leftPad( tmpMsg2, 4, "　" );
+		*/
+		resMsg += StringUtils.center(tmpMsg1+" / "+tmpMsg2,7,"　"); 
 		resMsg += enterStr;
 		if(tier ==4) {
 			
 			resMsg += "겁/작"+"　　";
 			String tmpMsg3 = equipGemT4DealList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
 			String tmpMsg4 = equipGemT4CoolList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
+			/*
 			resMsg += StringUtils.leftPad( tmpMsg3, 3, "　" );
 			resMsg += " / ";
 			resMsg += StringUtils.leftPad( tmpMsg4, 4, "　" );
+			*/
+			resMsg += StringUtils.center(tmpMsg3+" / "+tmpMsg4,7,"　");
 			resMsg += enterStr;
 		}
 		return resMsg;
