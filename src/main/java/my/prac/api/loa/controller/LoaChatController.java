@@ -1691,7 +1691,7 @@ public class LoaChatController {
 		resMsg += " / ";
 		resMsg += StringUtils.leftPad( tmpMsg2, 4, "　" );
 		*/
-		resMsg += StringUtils.center(tmpMsg1+" / "+tmpMsg2,9,"　"); 
+		resMsg += StringUtils.center(tmpMsg1+" / "+tmpMsg2,15,"　"); 
 		resMsg += enterStr;
 		if(tier ==4) {
 			
@@ -1703,7 +1703,7 @@ public class LoaChatController {
 			resMsg += " / ";
 			resMsg += StringUtils.leftPad( tmpMsg4, 4, "　" );
 			*/
-			resMsg += StringUtils.center(tmpMsg3+" / "+tmpMsg4,9,"　");
+			resMsg += StringUtils.center(tmpMsg3+" / "+tmpMsg4,15,"　");
 			resMsg += enterStr;
 		}
 		return resMsg;
