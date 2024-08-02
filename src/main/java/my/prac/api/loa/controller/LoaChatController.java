@@ -102,6 +102,10 @@ public class LoaChatController {
 	}
 	@RequestMapping(value = "/i3/{imgvalues}", method = RequestMethod.GET)
 	public String cimgReturn(@PathVariable String imgvalues, Model model) {
+		HashMap<String,String> info = botService.selectBotImgCharSaveI3(imgvalues);
+		model.addAttribute("title",info.get("TITLE"));
+		//info = 직업+이름 
+		model.addAttribute("char_info",info.get("CLASS_NAME")+" "+info.get("CHAR_NAME"));
 		model.addAttribute("imgval",imgvalues);
 		return "rtnimgs3";
 	}
@@ -1278,7 +1282,7 @@ public class LoaChatController {
 			totLimit="0";
 		}
 		
-		resMsg += charImgSearch(ordUserId,characterImage) + enterStr;
+		resMsg += charImgSearch(ordUserId,title,className,characterImage) + enterStr;
 		resMsg += title+" "+ ordUserId + enterStr;
 		resMsg += "레벨/직업"+"　　　"+itemMaxLevel+" / "+className+enterStr;
 		resMsg += "전투/원대"+"　　　"+characterLevel+"　/　"+expeditionLevel+enterStr;
@@ -2429,7 +2433,7 @@ public class LoaChatController {
 		return ment; 
 	}
 	
-	public String charImgSearch(String ordUserId,String imgUrl) {
+	public String charImgSearch(String ordUserId,String title,String className,String imgUrl) {
 		String val = "";
 		String randKey = "";
 		
@@ -2451,6 +2455,8 @@ public class LoaChatController {
 				hs.put("char_name", ordUserId);
 				hs.put("req", imgUrl);
 				hs.put("res", randKey);
+				hs.put("title", title);
+				hs.put("class_name", className);
 				botService.insertBotImgCharSaveTx(hs);
 			}catch(Exception e) {
 				System.out.println("이미지 다운로드 실패.. "+imgUrl);

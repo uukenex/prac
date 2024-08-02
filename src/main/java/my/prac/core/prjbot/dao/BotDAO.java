@@ -25,6 +25,7 @@ public interface BotDAO {
 	public String selectBotImgMch(HashMap<String, Object> hashMap);
 	
 	public String selectBotImgCharSave(String req);
+	public HashMap<String,String> selectBotImgCharSaveI3(String res);
 	public int insertBotImgCharSave(HashMap<String, Object> hashMap);
 	
 	public List<String> selectBotRaidSaveAll(HashMap<String, Object> hashMap);

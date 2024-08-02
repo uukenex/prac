@@ -177,11 +177,23 @@
 			 (CHAR_NAME
 			 ,REQ
 			 ,RES
+			 ,TITLE
+			 ,CLASS_NAME
 			 )
 		SELECT #{char_name, jdbcType=VARCHAR}
 		      ,#{req, jdbcType=VARCHAR}
 			  ,#{res, jdbcType=VARCHAR}
+			  ,#{title, jdbcType=VARCHAR}
+			  ,#{class_name, jdbcType=VARCHAR}
 		  FROM DUAL
     </insert>
+    
+    <select id="selectBotImgCharSaveI3" parameterType="String" resultType="hashMap" >
+		/* bot.xml selectBotImgCharSaveI3 */
+		SELECT TITLE,CHAR_NAME,CLASS_NAME
+		  FROM TBOT_IMG_CHAR_SAVE A
+	     WHERE A.RES = #{res, jdbcType=VARCHAR}
+	       AND ROWNUM = 1
+	</select>
 	
 </mapper>

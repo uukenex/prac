@@ -65,6 +65,9 @@ public class BotServiceImpl implements BotService {
 	public String selectBotImgCharSave(String req) {
 		return botDAO.selectBotImgCharSave(req);
 	}
+	public HashMap<String,String> selectBotImgCharSaveI3(String res){
+		return botDAO.selectBotImgCharSaveI3(res);
+	}
 	
 	public void insertBotImgCharSaveTx(HashMap<String, Object> hashMap) throws Exception{
 		if(botDAO.insertBotImgCharSave(hashMap)< 1) {

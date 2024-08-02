@@ -15,11 +15,10 @@
 	<head>
 		<meta charset="utf-8">
 		<title></title>
-		<!-- <meta property="og:url" content="링크걸 주소(ex : http://www.naver.com)"> -->
-		<meta property="og:title" content="id">  
+		<meta property="og:title" content="<%=request.getAttribute("char_info")%>">  
 		<meta property="og:type" content="website">
 		<meta property="og:image" content="/c/<%=request.getAttribute("imgval")%>.png">
-		<meta property="og:description" content="칭호">
+		<meta property="og:description" content="<%=request.getAttribute("title")%>">
 	</head> 
 	<body>
 		<div id="div_load_image">

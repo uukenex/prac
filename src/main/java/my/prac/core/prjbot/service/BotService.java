@@ -22,6 +22,7 @@ public interface BotService {
 	public String selectBotImgMch(HashMap<String, Object> hashMap);
 	
 	public String selectBotImgCharSave(String req);
+	public HashMap<String,String> selectBotImgCharSaveI3(String res);
 	public void insertBotImgCharSaveTx(HashMap<String, Object> hashMap)  throws Exception;
 	
 	
