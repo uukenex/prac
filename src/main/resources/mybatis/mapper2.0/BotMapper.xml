@@ -164,7 +164,7 @@
 	
 	
 	<select id="selectBotImgCharSave" parameterType="String" resultType="String" >
-		/* bot.xml selectBotImgSaveOne */
+		/* bot.xml selectBotImgCharSave */
 		SELECT RES
 		  FROM TBOT_IMG_CHAR_SAVE A
 	     WHERE A.REQ = #{req, jdbcType=VARCHAR}
@@ -172,7 +172,7 @@
 	</select>
 	
 	<insert id="insertBotImgCharSave" parameterType="hashMap">
-		/* bot.xml insertBotImgSaveOne */
+		/* bot.xml insertBotImgCharSave */
 		INSERT INTO TBOT_IMG_CHAR_SAVE
 			 (CHAR_NAME
 			 ,REQ

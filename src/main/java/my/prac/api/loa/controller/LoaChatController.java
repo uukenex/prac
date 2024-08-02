@@ -1121,7 +1121,11 @@ public class LoaChatController {
 		String characterLevel = armoryProfile.get("CharacterLevel").toString();
 		String expeditionLevel = armoryProfile.get("ExpeditionLevel").toString();
 		String className = armoryProfile.get("CharacterClassName").toString();
-		String title = armoryProfile.get("Title").toString();
+
+		String title = "";
+		if(armoryProfile.get("Title")!=null) {
+			title=armoryProfile.get("Title").toString();
+		}
 
 		//공/생
 		String atk ="";
@@ -1674,7 +1678,7 @@ public class LoaChatController {
 		String tmpMsg1 = equipGemT3DealList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
 		String tmpMsg2 = equipGemT3CoolList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
 		resMsg += StringUtils.leftPad( tmpMsg1, 4, "　" );
-		resMsg += "/";
+		resMsg += " / ";
 		resMsg += StringUtils.leftPad( tmpMsg2, 4, "　" );
 		resMsg += enterStr;
 		if(tier ==4) {
@@ -1683,7 +1687,7 @@ public class LoaChatController {
 			String tmpMsg3 = equipGemT4DealList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
 			String tmpMsg4 = equipGemT4CoolList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
 			resMsg += StringUtils.leftPad( tmpMsg3, 4, "　" );
-			resMsg += "/";
+			resMsg += " / ";
 			resMsg += StringUtils.leftPad( tmpMsg4, 4, "　" );
 			resMsg += enterStr;
 		}
@@ -2429,14 +2433,7 @@ public class LoaChatController {
 		String val = "";
 		String randKey = "";
 		
-		HashMap<String,Object> reqMap = new HashMap<>();
-		
-		reqMap.put("req", imgUrl);
-		
-		randKey = botService.selectBotImgMch(reqMap);
-		if(randKey ==null || randKey.equals("")) {
-			return val;
-		}
+		randKey = botService.selectBotImgCharSave(imgUrl);
 		
 		if (randKey == null || randKey.equals("")) {
 			randKey = ImageUtils.RandomAlphaNum();
