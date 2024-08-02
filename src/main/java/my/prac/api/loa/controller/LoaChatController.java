@@ -103,9 +103,17 @@ public class LoaChatController {
 	@RequestMapping(value = "/i3/{imgvalues}", method = RequestMethod.GET)
 	public String cimgReturn(@PathVariable String imgvalues, Model model) {
 		HashMap<String,String> info = botService.selectBotImgCharSaveI3(imgvalues);
-		model.addAttribute("title",info.get("CLASS_NAME"));
+		model.addAttribute("class_name",info.get("CLASS_NAME"));
 		//info = 직업+이름 
-		model.addAttribute("char_info",info.get("TITLE")+" "+info.get("CHAR_NAME"));
+		String title = info.get("TITLE");
+		String char_name = info.get("CHAR_NAME");
+		if(title == null || title.equals("null")) {
+			title = "";
+		}else {
+			title += " ";
+		}
+		String char_info = title + char_name; 
+		model.addAttribute("char_info",char_info);
 		model.addAttribute("imgval",imgvalues);
 		return "rtnimgs3";
 	}

@@ -18,7 +18,7 @@
 		<meta property="og:title" content="<%=request.getAttribute("char_info")%>">  
 		<meta property="og:type" content="website">
 		<meta property="og:image" content="/c/<%=request.getAttribute("imgval")%>.png">
-		<meta property="og:description" content="<%=request.getAttribute("title")%>">
+		<meta property="og:description" content="<%=request.getAttribute("class_name")%>">
 	</head> 
 	<body>
 		<div id="div_load_image">
