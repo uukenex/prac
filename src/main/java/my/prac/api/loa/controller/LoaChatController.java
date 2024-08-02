@@ -103,9 +103,9 @@ public class LoaChatController {
 	@RequestMapping(value = "/i3/{imgvalues}", method = RequestMethod.GET)
 	public String cimgReturn(@PathVariable String imgvalues, Model model) {
 		HashMap<String,String> info = botService.selectBotImgCharSaveI3(imgvalues);
-		model.addAttribute("title",info.get("TITLE"));
+		model.addAttribute("title",info.get("CLASS_NAME"));
 		//info = 직업+이름 
-		model.addAttribute("char_info",info.get("CLASS_NAME")+" "+info.get("CHAR_NAME"));
+		model.addAttribute("char_info",info.get("TITLE")+" "+info.get("CHAR_NAME"));
 		model.addAttribute("imgval",imgvalues);
 		return "rtnimgs3";
 	}
@@ -1283,8 +1283,7 @@ public class LoaChatController {
 		}
 		
 		resMsg += charImgSearch(ordUserId,title,className,characterImage) + enterStr;
-		resMsg += title+" "+ ordUserId + enterStr;
-		resMsg += "레벨/직업"+"　　　"+itemMaxLevel+" / "+className+enterStr;
+		resMsg += "레벨"    +"　　　　"+itemMaxLevel+enterStr;
 		resMsg += "전투/원대"+"　　　"+characterLevel+"　/　"+expeditionLevel+enterStr;
 		resMsg += "엘릭/초월"+"　　　"+totElixir+"(" + elixirField+")"+" / "+totLimit+enterStr;
 		resMsg += "공격/최생"+"　　　"+atk+" / "+life+enterStr;
@@ -1681,7 +1680,7 @@ public class LoaChatController {
 		
 		String tmpMsg1 = equipGemT3DealList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
 		String tmpMsg2 = equipGemT3CoolList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
-		resMsg += StringUtils.leftPad( tmpMsg1, 4, "　" );
+		resMsg += StringUtils.leftPad( tmpMsg1, 3, "　" );
 		resMsg += " / ";
 		resMsg += StringUtils.leftPad( tmpMsg2, 4, "　" );
 		resMsg += enterStr;
@@ -1690,7 +1689,7 @@ public class LoaChatController {
 			resMsg += "겁/작"+"　　";
 			String tmpMsg3 = equipGemT4DealList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
 			String tmpMsg4 = equipGemT4CoolList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
-			resMsg += StringUtils.leftPad( tmpMsg3, 4, "　" );
+			resMsg += StringUtils.leftPad( tmpMsg3, 3, "　" );
 			resMsg += " / ";
 			resMsg += StringUtils.leftPad( tmpMsg4, 4, "　" );
 			resMsg += enterStr;
