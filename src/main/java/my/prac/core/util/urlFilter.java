@@ -42,8 +42,6 @@ public class urlFilter implements Filter {
         try {
         	switch(request.getServerName()) {
         		//이미지 서버일땐 이미지 경로로만 접근
-	        	case "http://imgwww.dev-apc.com":
-	        	case "imgwww.dev-apc.com":
 	        	case "http://rgb-tns.dev-apc.com":
 	        	case "rgb-tns.dev-apc.com":
 	    			if(httpServletRequest.getServletPath().indexOf("/index") >= 0
@@ -55,8 +53,6 @@ public class urlFilter implements Filter {
 	    			}
 				break;
 				
-	        	case "http://dev-apc.com":
-	        	case "dev-apc.com":
 	        	case "http://prod-api.dev-apc.com":
 	        	case "prod-api.dev-apc.com":
 	        		if(httpServletRequest.getServletPath().indexOf("/loa") >= 0) 
