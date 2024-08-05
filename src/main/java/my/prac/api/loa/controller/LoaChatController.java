@@ -1294,11 +1294,12 @@ public class LoaChatController {
 		}
 		
 		resMsg += charImgSearch(ordUserId,title,className,characterImage) + enterStr;
-		resMsg += "레벨"    +"　　　　"+itemMaxLevel+enterStr;
+		resMsg += "레벨"    +"　　　 　"+itemMaxLevel+enterStr;
 		resMsg += "전투/원대"+"　　"+characterLevel+"　/　"+expeditionLevel+enterStr;
 		resMsg += "엘릭/초월"+"　　"+totElixir+"(" + elixirField+")"+" / "+totLimit+enterStr;
 		resMsg += "공격/최생"+"　　"+atk+" / "+life+enterStr;
-		resMsg += "진/깨/도"+"　 　"+arkpoint1+" / "+arkpoint2+" / "+arkpoint3+enterStr;
+		//resMsg += "진/깨/도"+"　 　"+arkpoint1+" / "+arkpoint2+" / "+arkpoint3+enterStr;
+		resMsg += "아크패시브"+"　　"+"진화:"+arkpoint1+"/"+"깨달음:"+arkpoint2+"/"+"도약:"+arkpoint3+enterStr;
 		
 		int tier = 3;
 		if(Double.parseDouble(itemMaxLevel.replaceAll(",", ""))>=1640) {
@@ -1668,14 +1669,22 @@ public class LoaChatController {
 			String gemName = Jsoup.parse((String) gem.get("Name")).text();
 			for(String equipGem : gemList) {
 				if( gemName.indexOf(equipGem)>=0 ) {
-					if(equipGem.equals(gemList[0])) {
-						equipGemT3DealList.add((int)gem.get("Level"));
-					}else if(equipGem.equals(gemList[1])) {
-						equipGemT3CoolList.add((int)gem.get("Level"));
-					}else if(equipGem.equals(gemList[2])) {
-						equipGemT4DealList.add((int)gem.get("Level"));
-					}else if(equipGem.equals(gemList[3])) {
-						equipGemT4CoolList.add((int)gem.get("Level"));
+					if(tier ==3) {
+						if(equipGem.equals(gemList[0])) {
+							equipGemT3DealList.add((int)gem.get("Level"));
+						}else if(equipGem.equals(gemList[1])) {
+							equipGemT3CoolList.add((int)gem.get("Level"));
+						}
+					}else if(tier==4){
+						if(equipGem.equals(gemList[0])) {
+							equipGemT4DealList.add((int)gem.get("Level")-2);
+						}else if(equipGem.equals(gemList[1])) {
+							equipGemT4CoolList.add((int)gem.get("Level")-2);
+						}else if(equipGem.equals(gemList[2])) {
+							equipGemT4DealList.add((int)gem.get("Level"));
+						}else if(equipGem.equals(gemList[3])) {
+							equipGemT4CoolList.add((int)gem.get("Level"));
+						}
 					}
 				}
 			}
@@ -1685,27 +1694,16 @@ public class LoaChatController {
 		Collections.sort(equipGemT3CoolList,Collections.reverseOrder());
 		Collections.sort(equipGemT4DealList,Collections.reverseOrder());
 		Collections.sort(equipGemT4CoolList,Collections.reverseOrder());
-		resMsg += "멸/홍 "+" ";
-		
-		String tmpMsg1 = equipGemT3DealList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
-		String tmpMsg2 = equipGemT3CoolList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
-		/*
-		resMsg += StringUtils.leftPad( tmpMsg1, 3, "　" );
-		resMsg += " / ";
-		resMsg += StringUtils.leftPad( tmpMsg2, 4, "　" );
-		*/
-		resMsg += StringUtils.center(tmpMsg1+" / "+tmpMsg2,36,spaceStr); 
-		resMsg += enterStr;
-		if(tier ==4) {
-			
-			resMsg += "겁/작 "+" ";
+		resMsg += "멸/홍(3T) "+" ";
+		if(tier ==3) {
+			String tmpMsg1 = equipGemT3DealList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
+			String tmpMsg2 = equipGemT3CoolList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
+			resMsg += StringUtils.center(tmpMsg1+" / "+tmpMsg2,36,spaceStr); 
+			resMsg += enterStr;
+		}else if(tier ==4) {
+			resMsg += "겁/작(4T) "+" ";
 			String tmpMsg3 = equipGemT4DealList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
 			String tmpMsg4 = equipGemT4CoolList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
-			/*
-			resMsg += StringUtils.leftPad( tmpMsg3, 3, "　" );
-			resMsg += " / ";
-			resMsg += StringUtils.leftPad( tmpMsg4, 4, "　" );
-			*/
 			resMsg += StringUtils.center(tmpMsg3+" / "+tmpMsg4,36,spaceStr);
 			resMsg += enterStr;
 		}
