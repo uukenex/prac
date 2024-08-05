@@ -1298,7 +1298,7 @@ public class LoaChatController {
 		resMsg += "전투/원대"+"　　"+characterLevel+"　/　"+expeditionLevel+enterStr;
 		resMsg += "엘릭/초월"+"　　"+totElixir+"(" + elixirField+")"+" / "+totLimit+enterStr;
 		resMsg += "공격/최생"+"　　"+atk+" / "+life+enterStr;
-		resMsg += "진/깨/도"+"　"+arkpoint1+" / "+arkpoint2+" / "+arkpoint3+enterStr;
+		resMsg += "진/깨/도"+"　 　"+arkpoint1+" / "+arkpoint2+" / "+arkpoint3+enterStr;
 		
 		int tier = 3;
 		if(Double.parseDouble(itemMaxLevel.replaceAll(",", ""))>=1640) {
