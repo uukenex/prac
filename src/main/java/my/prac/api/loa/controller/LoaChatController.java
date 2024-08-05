@@ -148,6 +148,10 @@ public class LoaChatController {
 		reqMap.put("userName", sender);
 
 		switch (param0) {
+
+		case "/ㄱㄷ2":
+			val += "http://rgb-tns.dev-apc.com/i2/202407gold";
+			break;
 		case "/골드": case "/ㄱㄷ": case "/클골": case "/ㅋㄱ":
 			val  = checkGoldList();
 			val += enterStr;
