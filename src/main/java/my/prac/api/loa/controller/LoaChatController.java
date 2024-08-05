@@ -1299,7 +1299,7 @@ public class LoaChatController {
 		resMsg += "엘릭/초월"+"　　"+totElixir+"(" + elixirField+")"+" / "+totLimit+enterStr;
 		resMsg += "공격/최생"+"　　"+atk+" / "+life+enterStr;
 		//resMsg += "진/깨/도"+"　 　"+arkpoint1+" / "+arkpoint2+" / "+arkpoint3+enterStr;
-		resMsg += "아크패시브"+"　　"+"진화:"+arkpoint1+"/"+"깨달음:"+arkpoint2+"/"+"도약:"+arkpoint3+enterStr;
+		resMsg += "아크패시브"+"　 "+"진:"+arkpoint1+" / "+"깨:"+arkpoint2+" / "+"도:"+arkpoint3+enterStr;
 		
 		int tier = 3;
 		if(Double.parseDouble(itemMaxLevel.replaceAll(",", ""))>=1640) {
@@ -1694,8 +1694,8 @@ public class LoaChatController {
 		Collections.sort(equipGemT3CoolList,Collections.reverseOrder());
 		Collections.sort(equipGemT4DealList,Collections.reverseOrder());
 		Collections.sort(equipGemT4CoolList,Collections.reverseOrder());
-		resMsg += "멸/홍(3T) "+" ";
 		if(tier ==3) {
+			resMsg += "멸/홍(3T) "+" ";
 			String tmpMsg1 = equipGemT3DealList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
 			String tmpMsg2 = equipGemT3CoolList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
 			resMsg += StringUtils.center(tmpMsg1+" / "+tmpMsg2,36,spaceStr); 
