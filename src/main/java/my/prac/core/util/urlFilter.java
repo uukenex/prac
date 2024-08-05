@@ -41,6 +41,12 @@ public class urlFilter implements Filter {
         HttpServletResponse httpServletResponse = (HttpServletResponse) response;
         try {
         	switch(request.getServerName()) {
+        		case "http://dev-apc.com":
+        		case "dev-apc.com":
+        			httpServletResponse.sendError(600);
+        		break;
+        	
+        	
         		//이미지 서버일땐 이미지 경로로만 접근
 	        	case "http://rgb-tns.dev-apc.com":
 	        	case "rgb-tns.dev-apc.com":
