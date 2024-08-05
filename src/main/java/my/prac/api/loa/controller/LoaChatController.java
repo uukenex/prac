@@ -1695,16 +1695,16 @@ public class LoaChatController {
 		Collections.sort(equipGemT4DealList,Collections.reverseOrder());
 		Collections.sort(equipGemT4CoolList,Collections.reverseOrder());
 		if(tier ==3) {
-			resMsg += "멸/홍(3T) "+" ";
+			resMsg += "멸/홍(3T)"+" ";
 			String tmpMsg1 = equipGemT3DealList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
 			String tmpMsg2 = equipGemT3CoolList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
-			resMsg += StringUtils.center(tmpMsg1+" / "+tmpMsg2,36,spaceStr); 
+			resMsg += StringUtils.center(tmpMsg1+" / "+tmpMsg2,29,spaceStr); 
 			resMsg += enterStr;
 		}else if(tier ==4) {
-			resMsg += "겁/작(4T) "+" ";
+			resMsg += "겁/작(4T)"+" ";
 			String tmpMsg3 = equipGemT4DealList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
 			String tmpMsg4 = equipGemT4CoolList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
-			resMsg += StringUtils.center(tmpMsg3+" / "+tmpMsg4,36,spaceStr);
+			resMsg += StringUtils.center(tmpMsg3+" / "+tmpMsg4,29,spaceStr);
 			resMsg += enterStr;
 		}
 		return resMsg;
