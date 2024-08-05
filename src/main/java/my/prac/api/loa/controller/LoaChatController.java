@@ -150,7 +150,7 @@ public class LoaChatController {
 		switch (param0) {
 
 		case "/ㄱㄷ2":
-			val += "http://rgb-tns.dev-apc.com/i2/202407gold2";
+			val += "http://rgb-tns.dev-apc.com/i2/202407gold3";
 			break;
 		case "/골드": case "/ㄱㄷ": case "/클골": case "/ㅋㄱ":
 			val  = checkGoldList();
