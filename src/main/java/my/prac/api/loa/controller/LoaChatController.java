@@ -1168,6 +1168,10 @@ public class LoaChatController {
 		String totLimit ="";
 		int totElixir =0;
 		
+		String abillityStoneMsg = "";
+		String accessoryMsg = "";
+		String braceletMsg = "";
+		
 		HashMap<String,Object> arkPassive= (HashMap<String, Object>) armoryProfile.get("ArkPassive");
 		String isArkPassive = arkPassive.get("IsArkPassive").toString();
 		List<HashMap<String,Object>> arkPassivePt = (List<HashMap<String, Object>>) arkPassive.get("Points");
@@ -1181,13 +1185,10 @@ public class LoaChatController {
 			HashMap<String, Object> limit_element = (HashMap<String, Object>)maps.get("limit_element");
 			HashMap<String, Object> elixir_element = (HashMap<String, Object>)maps.get("elixir_element");
 			HashMap<String, Object> ark_passive_point_element = (HashMap<String, Object>)maps.get("ark_passive_point_element");
-			
-			
-			//악세들은 레벨파싱에서 에러가남 
-			switch (equip.get("Type").toString()) {
-			case "무기":case "투구": case "상의": case "하의": case "장갑": case "어깨":
-				
-			}
+			HashMap<String, Object> bracelet_element = (HashMap<String, Object>)maps.get("bracelet_element");
+			HashMap<String, Object> stone_element = (HashMap<String, Object>)maps.get("stone_element");
+			HashMap<String, Object> grinding_element = (HashMap<String, Object>)maps.get("grinding_element");
+			HashMap<String, Object> tier3_stats = (HashMap<String, Object>)maps.get("tier3_stats");
 			
 			switch (equip.get("Type").toString()) {
 			case "무기":
@@ -1241,10 +1242,56 @@ public class LoaChatController {
 				//엘릭서
 				totElixir +=LoaApiParser.parseElixirForEquip(equipElixirList, elixir_element);
 				break;
-			case "반지":case "귀걸이": case "목걸이":
-				//tmpQuality =(int)((HashMap<String, Object>) quality_element.get("value")).get("qualityValue");
-				//avgQuality += tmpQuality;
+			case "어빌리티 스톤":
+				HashMap<String, Object> stone_val = (HashMap<String, Object>) stone_element.get("value");
+				HashMap<String, Object> stone_option = (HashMap<String, Object>) stone_val.get("Element_000");
+				HashMap<String, Object> stone_option0 = (HashMap<String, Object>) stone_option.get("contentStr");
+				HashMap<String, Object> stone_option1 = (HashMap<String, Object>) stone_option0.get("Element_000");
+				HashMap<String, Object> stone_option2 = (HashMap<String, Object>) stone_option0.get("Element_001");
+				
+				abillityStoneMsg += equip.get("Name");
+				abillityStoneMsg += enterStr;
+				String stone_option1_str = Jsoup.parse(stone_option1.get("contentStr").toString()).text();
+				String stone_option2_str = Jsoup.parse(stone_option2.get("contentStr").toString()).text();
+				
+				int len = 0;
+				
+				stone_option1_str = stone_option1_str.replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
+				len = stone_option1_str.length();
+				stone_option1_str = stone_option1_str.substring(0,1)+stone_option1_str.substring(len-1,len);
+
+				stone_option2_str = stone_option2_str.replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
+				len = stone_option2_str.length();
+				stone_option2_str = stone_option2_str.substring(0,1)+stone_option2_str.substring(len-1,len);
+				
+				abillityStoneMsg += stone_option1_str + " " + stone_option2_str +enterStr;
 				break;
+			case "반지":case "귀걸이": case "목걸이":
+				switch(Jsoup.parse((String) ((HashMap<String, Object>) quality_element.get("value")).get("leftStr2")).text()) {
+					case "아이템 티어 3":
+						accessoryMsg += Jsoup.parse((String) ((HashMap<String, Object>) quality_element.get("value")).get("leftStr0")).text();
+						accessoryMsg += " 품:"+(int)((HashMap<String, Object>) quality_element.get("value")).get("qualityValue");
+						accessoryMsg += enterStr;
+						accessoryMsg += " "+Jsoup.parse((String)((HashMap<String, Object>) tier3_stats.get("value")).get("Element_001")).text();
+						accessoryMsg += enterStr;
+						break;
+					case "아이템 티어 4":
+						accessoryMsg += Jsoup.parse((String) ((HashMap<String, Object>) quality_element.get("value")).get("leftStr0")).text();
+						accessoryMsg += " 품:"+(int)((HashMap<String, Object>) quality_element.get("value")).get("qualityValue");
+						accessoryMsg += " ("+((HashMap<String, Object>) ark_passive_point_element.get("value")).get("Element_001")+")";
+						accessoryMsg += enterStr;
+						accessoryMsg += LoaApiParser.findBraceletOptions(1,((HashMap<String, Object>) grinding_element.get("value")).get("Element_001").toString());
+						accessoryMsg += enterStr;
+						break;
+				}
+				break;
+			case "팔찌":
+				braceletMsg += "팔찌 정보"+enterStr;
+				HashMap<String, Object> bracelet =  (HashMap<String, Object>) bracelet_element.get("value");
+				braceletMsg += LoaApiParser.findBraceletOptions(0,bracelet.get("Element_001").toString());
+				
+				braceletMsg += enterStr;
+				break;	
 			default:
 			continue;
 			}
@@ -1299,18 +1346,22 @@ public class LoaChatController {
 			totLimit="0";
 		}
 		
+		
+		int tier = 3;
+		if(Double.parseDouble(itemMaxLevel.replaceAll(",", ""))>=1640) {
+			tier = 4;
+		}
 		resMsg += charImgSearch(ordUserId,title,className,characterImage) + anotherMsgStr;
 		resMsg += "레벨"    +"　　　 　"+itemMaxLevel+enterStr;
 		resMsg += "전투/원대"+"　　"+characterLevel+"　/　"+expeditionLevel+enterStr;
 		resMsg += "엘릭/초월"+"　　"+totElixir+"(" + elixirField+")"+" / "+totLimit+enterStr;
 		resMsg += "공격/최생"+"　　"+atk+" / "+life+enterStr;
 		//resMsg += "진/깨/도"+"　 　"+arkpoint1+" / "+arkpoint2+" / "+arkpoint3+enterStr;
-		resMsg += "아크패시브"+"　 "+"진:"+arkpoint1+" / "+"깨:"+arkpoint2+" / "+"도:"+arkpoint3+enterStr;
 		
-		int tier = 3;
-		if(Double.parseDouble(itemMaxLevel.replaceAll(",", ""))>=1640) {
-			tier = 4;
+		if(tier ==4) {
+			resMsg += "아크패시브"+"　 "+"진:"+arkpoint1+" / "+"깨:"+arkpoint2+" / "+"도:"+arkpoint3+enterStr;
 		}
+		
 		resMsg += gemSearch(ordUserId, tier);
 		if(isArkPassive.equals("true")) {
 			resMsg += engraveSearch(ordUserId,true,true);	
@@ -1318,9 +1369,9 @@ public class LoaChatController {
 			//id,arkPassive,simpleMode
 			resMsg += engraveSearch(ordUserId,false,true);
 		}
-		/*
+		
 		resMsg += enterStr;
-		resMsg += "상세 더보기..▼"+allSeeStr;
+		resMsg += "더보기..▼"+allSeeStr;
 		//resMsg += "방어구 / 초월 / 엘릭서"+enterStr;
 		
 		resMsg += "§세트 : "+setField + enterStr;
@@ -1370,8 +1421,13 @@ public class LoaChatController {
 			if(isArkPassive.equals("true")) {
 				resMsg += engraveSearch(ordUserId,true,false);
 			}
+			
+			resMsg +=enterStr;
+			resMsg +=abillityStoneMsg;
+			resMsg +=accessoryMsg;
+			resMsg +=braceletMsg;
 		}
-		*/
+		
 		return resMsg;
 	
 	}
