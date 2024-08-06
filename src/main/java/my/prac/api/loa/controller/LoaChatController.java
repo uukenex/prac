@@ -89,18 +89,18 @@ public class LoaChatController {
 
 		return null;
 	}
-	@RequestMapping(value = "/i2/{imgvalues}", method = RequestMethod.GET)
+	@RequestMapping(value = "/in/{imgvalues}", method = RequestMethod.GET)
 	public String innerimgReturn(@PathVariable String imgvalues, Model model) {
 		model.addAttribute("imgval",imgvalues);
-		return "rtnimgs";
+		return "rtnimgs_innerfile";
 	}
 	
-	@RequestMapping(value = "/i/{imgvalues}", method = RequestMethod.GET)
+	@RequestMapping(value = "/im/{imgvalues}", method = RequestMethod.GET)
 	public String wimgReturn(@PathVariable String imgvalues, Model model) {
 		model.addAttribute("imgval",imgvalues);
-		return "rtnimgs2";
+		return "rtnimgs_emotion";
 	}
-	@RequestMapping(value = "/i3/{imgvalues}", method = RequestMethod.GET)
+	@RequestMapping(value = "/ic/{imgvalues}", method = RequestMethod.GET)
 	public String cimgReturn(@PathVariable String imgvalues, Model model) {
 		HashMap<String,String> info = botService.selectBotImgCharSaveI3(imgvalues);
 		
@@ -118,7 +118,7 @@ public class LoaChatController {
 		String char_info = supporters(char_name) + title + char_name; 
 		model.addAttribute("char_info",char_info);
 		model.addAttribute("imgval",imgvalues);
-		return "rtnimgs3";
+		return "rtnimgs_charinfo";
 	}
 	
 	//roomName은 https://cafe.naver.com/msgbot/2067 수정본 참조
@@ -150,13 +150,13 @@ public class LoaChatController {
 		switch (param0) {
 
 		case "/ㄱㄷ2":
-			val += "http://rgb-tns.dev-apc.com/i2/202407gold5";
+			val += "http://rgb-tns.dev-apc.com/in/202407gold5";
 			break;
 		case "/골드": case "/ㄱㄷ": case "/클골": case "/ㅋㄱ":
 			val  = checkGoldList();
 			val += enterStr;
 			val += enterStr;
-			val += "http://rgb-tns.dev-apc.com/i2/lvGold202407";
+			val += "http://rgb-tns.dev-apc.com/in/lvGold202407";
 			break;
 		case "/모험섬": case "/ㅁㅎㅅ":
 			LocalDate now = LocalDate.now();
@@ -453,7 +453,7 @@ public class LoaChatController {
 			}
 		}
 
-		val = "rgb-tns.dev-apc.com/i/" + randKey;
+		val = "rgb-tns.dev-apc.com/im/" + randKey;
 
 		return val;
 	}
@@ -1504,6 +1504,31 @@ public class LoaChatController {
 	}
 	
 	
+	public String charImgSearchAPI(String userId) throws Exception {
+
+		String ordUserId=userId;
+		userId = URLEncoder.encode(userId, "UTF-8");
+		// +는 %2B로 치환한다
+		String paramUrl = lostArkAPIurl + "/armories/characters/" + userId + "/profiles";
+		String returnData = LoaApiUtils.connect_process(paramUrl);
+		HashMap<String, Object> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<Map<String, Object>>() {});
+		
+		Map<String, Object> armoryProfile;
+		try {
+			armoryProfile = (Map<String, Object>) rtnMap.get("ArmoryProfile");
+		}catch(Exception e){
+			return "";
+		}
+		String characterImage = armoryProfile.get("CharacterImage").toString();
+		String className = armoryProfile.get("CharacterClassName").toString();
+		String title = "";
+		
+		if(armoryProfile.get("Title")!=null) {
+			title=armoryProfile.get("Title").toString();
+		}
+		
+		return charImgSearch(ordUserId, title, className, characterImage);
+	}
 	String raidSearch(HashMap<String,Object> reqMap) throws Exception {
 		
 		List<String> charList = botService.selectBotRaidSaveAll(reqMap);
@@ -1519,7 +1544,7 @@ public class LoaChatController {
 			String ordUserId=userId;
 			userId = URLEncoder.encode(userId, "UTF-8");
 			// +는 %2B로 치환한다
-			String paramUrl = lostArkAPIurl + "/armories/characters/" + userId + "?filters=profiles";
+			String paramUrl = lostArkAPIurl + "/armories/characters/" + userId + "/profiles";
 			String returnData = LoaApiUtils.connect_process(paramUrl);
 			HashMap<String, Object> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<Map<String, Object>>() {});
 
@@ -2480,7 +2505,7 @@ public class LoaChatController {
 			}
 		}
 
-		val = "rgb-tns.dev-apc.com/i3/" + randKey;
+		val = "rgb-tns.dev-apc.com/ic/" + randKey;
 		return val;
 	}
 }
