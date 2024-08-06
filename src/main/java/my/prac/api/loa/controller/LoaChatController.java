@@ -149,14 +149,15 @@ public class LoaChatController {
 
 		switch (param0) {
 
+		//이미지 명은 6글자로 통일할것
 		case "/ㄱㄷ2":
-			val += "http://rgb-tns.dev-apc.com/in/202407gold5";
+			val += "http://rgb-tns.dev-apc.com/in/202407";
 			break;
 		case "/골드": case "/ㄱㄷ": case "/클골": case "/ㅋㄱ":
 			val  = checkGoldList();
 			val += enterStr;
 			val += enterStr;
-			val += "http://rgb-tns.dev-apc.com/in/lvGold202407";
+			val += "http://rgb-tns.dev-apc.com/in/lvGold";
 			break;
 		case "/모험섬": case "/ㅁㅎㅅ":
 			LocalDate now = LocalDate.now();
