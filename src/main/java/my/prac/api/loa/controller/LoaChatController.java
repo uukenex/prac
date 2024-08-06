@@ -60,6 +60,7 @@ public class LoaChatController {
 	final String spaceStr= "`";
 	final String tabStr= "◐";
 	final String allSeeStr = "===";
+	final String anotherMsgStr = "®";
 	
 	@RequestMapping(value = "/loa/chat", method = RequestMethod.GET)
 	public @ResponseBody Map<String, Object> chatApplication(
@@ -1298,7 +1299,7 @@ public class LoaChatController {
 			totLimit="0";
 		}
 		
-		resMsg += charImgSearch(ordUserId,title,className,characterImage) + enterStr;
+		resMsg += charImgSearch(ordUserId,title,className,characterImage) + anotherMsgStr;
 		resMsg += "레벨"    +"　　　 　"+itemMaxLevel+enterStr;
 		resMsg += "전투/원대"+"　　"+characterLevel+"　/　"+expeditionLevel+enterStr;
 		resMsg += "엘릭/초월"+"　　"+totElixir+"(" + elixirField+")"+" / "+totLimit+enterStr;
