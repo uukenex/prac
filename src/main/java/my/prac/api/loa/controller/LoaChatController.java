@@ -149,8 +149,6 @@ public class LoaChatController {
 		reqMap.put("userName", sender);
 
 		switch (param0) {
-
-		//이미지 명은 6글자로 통일할것
 		case "/ㄱㄷ2":
 			val += "http://rgb-tns.dev-apc.com/in/202407";
 			break;
@@ -738,7 +736,6 @@ public class LoaChatController {
 			throw new Exception("E0003");
 		}
 		
-		String [] elixirList = LoaApiParser.getElixirList();
 		List<String> equipElixirList = new ArrayList<>();
 		
 		String resMsg = ordUserId+" 초월정보";
@@ -861,8 +858,6 @@ public class LoaChatController {
 		String resField1 = "";
 		String resField2 = "";
 		String resField3 = "";
-		
-		String characterImage = armoryProfile.get("CharacterImage").toString();
 		
 		//템/전/원
 		String itemMaxLevel = armoryProfile.get("ItemMaxLevel").toString();
