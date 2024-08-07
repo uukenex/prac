@@ -1242,6 +1242,9 @@ public class LoaChatController {
 				break;
 			case "어빌리티 스톤":
 				HashMap<String, Object> stone_val = (HashMap<String, Object>) stone_element.get("value");
+				if(stone_val == null || stone_val.size() ==0 ) {
+					continue;
+				}
 				HashMap<String, Object> stone_option = (HashMap<String, Object>) stone_val.get("Element_000");
 				HashMap<String, Object> stone_option0 = (HashMap<String, Object>) stone_option.get("contentStr");
 				HashMap<String, Object> stone_option1 = (HashMap<String, Object>) stone_option0.get("Element_000");
