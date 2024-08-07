@@ -1282,7 +1282,6 @@ public class LoaChatController {
 						accessoryMsg += enterStr;
 						break;
 				}
-				accessoryMsg += enterStr;
 				break;
 			case "팔찌":
 				braceletMsg += "팔찌 정보"+enterStr;
@@ -1370,12 +1369,15 @@ public class LoaChatController {
 		}
 		
 		resMsg += enterStr;
-		resMsg += "더보기..▼"+allSeeStr;
+		resMsg += "상세 더보기..▼"+allSeeStr;
 		//resMsg += "방어구 / 초월 / 엘릭서"+enterStr;
 		
 		resMsg += "§세트 : "+setField + enterStr;
 		resMsg += resField1 + enterStr;
 		
+		resMsg +=abillityStoneMsg+ enterStr;
+		resMsg +=accessoryMsg + enterStr;
+		resMsg +=braceletMsg + enterStr;
 		
 		if(totLimit.equals("")) {
 			resMsg += "§초월 : 없음" + enterStr;
@@ -1420,11 +1422,6 @@ public class LoaChatController {
 			if(isArkPassive.equals("true")) {
 				resMsg += engraveSearch(ordUserId,true,false);
 			}
-			
-			resMsg +=enterStr;
-			resMsg +=abillityStoneMsg;
-			resMsg +=accessoryMsg;
-			resMsg +=braceletMsg;
 		}
 		
 		return resMsg;
