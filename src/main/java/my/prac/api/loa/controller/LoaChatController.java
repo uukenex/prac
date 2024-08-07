@@ -194,7 +194,7 @@ public class LoaChatController {
 			
 			
 			break;
-			
+			/*
 		case "/장비":
 		case "/정보":
 		case "/ㅈㅂ":
@@ -209,11 +209,14 @@ public class LoaChatController {
 				}
 			}
 			break;
-		case "/ㅈㅂ2":
+			*/
+		case "/장비":
+		case "/정보":
+		case "/ㅈㅂ":
 			if (param1 != null && !param1.equals("")) {
 				try {
 					//val = supporters(param1);
-					val = tmpEquipSearch(param1);
+					val = newEquipSearch(param1);
 					//val+= tossAccount();
 					
 				} catch (Exception e) {
@@ -1096,7 +1099,7 @@ public class LoaChatController {
 		return resMsg;
 	}
 	
-	String tmpEquipSearch(String userId) throws Exception{
+	String newEquipSearch(String userId) throws Exception{
 
 		String ordUserId=userId;
 		userId = URLEncoder.encode(userId, "UTF-8");
@@ -1259,7 +1262,7 @@ public class LoaChatController {
 				len = stone_option2_str.length();
 				stone_option2_str = stone_option2_str.substring(0,1)+stone_option2_str.substring(len-1,len);
 				
-				abillityStoneMsg += stone_option1_str + " " + stone_option2_str +enterStr;
+				abillityStoneMsg += stone_option1_str + " " + stone_option2_str +enterStr+enterStr;
 				break;
 			case "반지":case "귀걸이": case "목걸이":
 				switch(Jsoup.parse((String) ((HashMap<String, Object>) quality_element.get("value")).get("leftStr2")).text()) {
@@ -1276,7 +1279,6 @@ public class LoaChatController {
 						accessoryMsg += " ("+((HashMap<String, Object>) ark_passive_point_element.get("value")).get("Element_001")+")";
 						accessoryMsg += enterStr;
 						accessoryMsg += LoaApiParser.findBraceletOptions(1,((HashMap<String, Object>) grinding_element.get("value")).get("Element_001").toString());
-						accessoryMsg += enterStr;
 						break;
 				}
 				break;
