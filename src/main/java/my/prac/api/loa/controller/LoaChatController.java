@@ -1279,8 +1279,10 @@ public class LoaChatController {
 						accessoryMsg += " ("+((HashMap<String, Object>) ark_passive_point_element.get("value")).get("Element_001")+")";
 						accessoryMsg += enterStr;
 						accessoryMsg += LoaApiParser.findBraceletOptions(1,((HashMap<String, Object>) grinding_element.get("value")).get("Element_001").toString());
+						accessoryMsg += enterStr;
 						break;
 				}
+				accessoryMsg += enterStr;
 				break;
 			case "팔찌":
 				braceletMsg += "팔찌 정보"+enterStr;
