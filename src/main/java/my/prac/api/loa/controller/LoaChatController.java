@@ -1262,7 +1262,7 @@ public class LoaChatController {
 				len = stone_option2_str.length();
 				stone_option2_str = stone_option2_str.substring(0,1)+stone_option2_str.substring(len-1,len);
 				
-				abillityStoneMsg += stone_option1_str + " " + stone_option2_str +enterStr+enterStr;
+				abillityStoneMsg += stone_option1_str + " " + stone_option2_str +enterStr;
 				break;
 			case "반지":case "귀걸이": case "목걸이":
 				switch(Jsoup.parse((String) ((HashMap<String, Object>) quality_element.get("value")).get("leftStr2")).text()) {
