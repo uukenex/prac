@@ -1785,13 +1785,13 @@ public class LoaChatController {
 		Collections.sort(equipGemT4DealList,Collections.reverseOrder());
 		Collections.sort(equipGemT4CoolList,Collections.reverseOrder());
 		if(tier ==3) {
-			resMsg += "멸/홍(3T)"+" ";
+			resMsg += "멸/홍(3T)"+"";
 			String tmpMsg1 = equipGemT3DealList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
 			String tmpMsg2 = equipGemT3CoolList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
 			resMsg += StringUtils.center(tmpMsg1+" / "+tmpMsg2,29,spaceStr); 
 			resMsg += enterStr;
 		}else if(tier ==4) {
-			resMsg += "겁/작(4T)"+" ";
+			resMsg += "겁/작(4T)"+"";
 			String tmpMsg3 = equipGemT4DealList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
 			String tmpMsg4 = equipGemT4CoolList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
 			resMsg += StringUtils.center(tmpMsg3+" / "+tmpMsg4,29,spaceStr);
@@ -2013,29 +2013,35 @@ public class LoaChatController {
 	
 	
 	String marketTier4accessorySearch() throws Exception {
-		String resMsg = "고대 3연마악세 최저가";
+		String resMsg = "4티어 악세 최저가";
 		JSONObject json = new JSONObject();
 		JSONArray options = new JSONArray();
 		JSONObject json2 = new JSONObject();
-		
-		//여기부턴 거래소
-		resMsg += enterStr;
-		
 		//200000 : 장신구전체
 		//200010 : 목걸이
 		//200020 : 귀걸이
 		//200030 : 반지
 		//200040 : 팔찌 
+		//FirstOption 8:아크패시브
+		//SecondOption 1 깨달음, 2 도약
+		//깨포 고대3 목:13 반:12 귀:12
+		//깨포 고대2 목:9 반:8 귀:8
+		//깨포 고대1 목:6 반:5 귀:5
+		//깨포 고대0 목:4 반:3 귀:3
+		//깨포 유물3 목:8~10 반:7~9 귀:7~9
+		
+		resMsg += enterStr;
+		resMsg += "[고대 3연마](75+150+225)"+enterStr;
 		
 		json.put("CategoryCode", "200010");
 		json.put("Sort", "BUY_PRICE");
 		json.put("SortCondition", "ASC");
+		json.put("ItemGrade", "고대");
 		
-		//FirstOption 8:아크패시브
-		//SecondOption 1 깨달음, 2 도약
 		json2.put("FirstOption",8);
 		json2.put("SecondOption",1);
 		json2.put("MinValue",13);
+		json2.put("MaxValue",13);
 		options.put(json2);
 		
 		json.put("EtcOptions",options);
@@ -2046,6 +2052,7 @@ public class LoaChatController {
 		json2.put("FirstOption",8);
 		json2.put("SecondOption",1);
 		json2.put("MinValue",12);
+		json2.put("MaxValue",12);
 		options.put(json2);
 		json.put("EtcOptions",options);
 		
@@ -2054,8 +2061,116 @@ public class LoaChatController {
 		resMsg += auctionSearchDt(json,false,true);
 		
 		json.put("CategoryCode", "200030");
-		resMsg +="반지 ";
+		resMsg +="반지　 ";
 		resMsg += auctionSearchDt(json,false,true);
+		
+		
+		
+		
+		resMsg += "[고대 2연마](75+150)"+enterStr;
+		
+		json.put("CategoryCode", "200010");
+		json.put("Sort", "BUY_PRICE");
+		json.put("SortCondition", "ASC");
+		json.put("ItemGrade", "고대");
+		
+		json2.put("FirstOption",8);
+		json2.put("SecondOption",1);
+		json2.put("MinValue",9);
+		json2.put("MaxValue",9);
+		options.put(json2);
+		
+		json.put("EtcOptions",options);
+		resMsg +="목걸이 ";
+		resMsg += auctionSearchDt(json,false,true);
+		
+		options = new JSONArray();
+		json2.put("FirstOption",8);
+		json2.put("SecondOption",1);
+		json2.put("MinValue",8);
+		json2.put("MaxValue",8);
+		options.put(json2);
+		json.put("EtcOptions",options);
+		
+		json.put("CategoryCode", "200020");
+		resMsg +="귀걸이 ";
+		resMsg += auctionSearchDt(json,false,true);
+		
+		json.put("CategoryCode", "200030");
+		resMsg +="반지　 ";
+		resMsg += auctionSearchDt(json,false,true);
+		
+		
+		resMsg += "[고대 1연마](75)"+enterStr;
+		
+		json.put("CategoryCode", "200010");
+		json.put("Sort", "BUY_PRICE");
+		json.put("SortCondition", "ASC");
+		json.put("ItemGrade", "고대");
+		
+		json2.put("FirstOption",8);
+		json2.put("SecondOption",1);
+		json2.put("MinValue",6);
+		json2.put("MaxValue",6);
+		options.put(json2);
+		
+		json.put("EtcOptions",options);
+		resMsg +="목걸이 ";
+		resMsg += auctionSearchDt(json,false,true);
+		
+		options = new JSONArray();
+		json2.put("FirstOption",8);
+		json2.put("SecondOption",1);
+		json2.put("MinValue",5);
+		json2.put("MaxValue",5);
+		options.put(json2);
+		json.put("EtcOptions",options);
+		
+		json.put("CategoryCode", "200020");
+		resMsg +="귀걸이 ";
+		resMsg += auctionSearchDt(json,false,true);
+		
+		json.put("CategoryCode", "200030");
+		resMsg +="반지　 ";
+		resMsg += auctionSearchDt(json,false,true);
+		
+		
+		resMsg += "[유물 3연마](60->24)"+enterStr;
+		
+		json.put("CategoryCode", "200010");
+		json.put("Sort", "BUY_PRICE");
+		json.put("SortCondition", "ASC");
+		json.put("ItemGrade", "유물");
+		
+		json2.put("FirstOption",8);
+		json2.put("SecondOption",1);
+		json2.put("MinValue",8);
+		json2.put("MaxValue",10);
+		options.put(json2);
+		
+		json.put("EtcOptions",options);
+		resMsg +="목걸이 ";
+		resMsg += auctionSearchDt(json,false,true);
+		
+		options = new JSONArray();
+		json2.put("FirstOption",8);
+		json2.put("SecondOption",1);
+		json2.put("MinValue",7);
+		json2.put("MaxValue",9);
+		options.put(json2);
+		json.put("EtcOptions",options);
+		
+		json.put("CategoryCode", "200020");
+		resMsg +="귀걸이 ";
+		resMsg += auctionSearchDt(json,false,true);
+		
+		json.put("CategoryCode", "200030");
+		resMsg +="반지　 ";
+		resMsg += auctionSearchDt(json,false,true);
+		
+		
+		
+		
 		
 		return resMsg;
 	}
