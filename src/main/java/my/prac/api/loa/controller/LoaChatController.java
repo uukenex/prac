@@ -262,6 +262,7 @@ public class LoaChatController {
 			val = marketSearch(4);
 			break;
 		case "/ㄱㅁㅈㅇㅅ":
+		case "/경매장악세":
 			val = marketTier4accessorySearch();
 			break;
 		case "/ㄱㅁㅈㅇㅁ":
@@ -2045,6 +2046,7 @@ public class LoaChatController {
 		json2.put("FirstOption",8);
 		json2.put("SecondOption",1);
 		json2.put("MinValue",12);
+		options.put(json2);
 		json.put("EtcOptions",options);
 		
 		json.put("CategoryCode", "200020");
