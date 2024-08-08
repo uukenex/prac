@@ -261,6 +261,9 @@ public class LoaChatController {
 		case "/경매장4":
 			val = marketSearch(4);
 			break;
+		case "/ㄱㅁㅈㅇㅅ":
+			val = marketTier4accessorySearch();
+			break;
 		case "/ㄱㅁㅈㅇㅁ":
 		case "/ㄱㅁㅈ유물":
 		case "/경매장유물":
@@ -2008,6 +2011,52 @@ public class LoaChatController {
 	
 	
 	
+	String marketTier4accessorySearch() throws Exception {
+		String resMsg = "고대 3연마악세 최저가";
+		JSONObject json = new JSONObject();
+		JSONArray options = new JSONArray();
+		JSONObject json2 = new JSONObject();
+		
+		//여기부턴 거래소
+		resMsg += enterStr;
+		
+		//200000 : 장신구전체
+		//200010 : 목걸이
+		//200020 : 귀걸이
+		//200030 : 반지
+		//200040 : 팔찌 
+		
+		json.put("CategoryCode", "200010");
+		json.put("Sort", "BUY_PRICE");
+		json.put("SortCondition", "ASC");
+		
+		//FirstOption 8:아크패시브
+		//SecondOption 1 깨달음, 2 도약
+		json2.put("FirstOption",8);
+		json2.put("SecondOption",1);
+		json2.put("MinValue",13);
+		options.put(json2);
+		
+		json.put("EtcOptions",options);
+		resMsg +="목걸이";
+		resMsg += auctionSearchDt(json,false,true);
+		
+		options = new JSONArray();
+		json2.put("FirstOption",8);
+		json2.put("SecondOption",1);
+		json2.put("MinValue",12);
+		json.put("EtcOptions",options);
+		
+		json.put("CategoryCode", "200020");
+		resMsg +="귀걸이";
+		resMsg += auctionSearchDt(json,false,true);
+		
+		json.put("CategoryCode", "200030");
+		resMsg +="반지";
+		resMsg += auctionSearchDt(json,false,true);
+		
+		return resMsg;
+	}
 	String marketTier4Search() throws Exception {
 		String resMsg = "";
 		JSONObject json ;
