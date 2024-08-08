@@ -2039,7 +2039,7 @@ public class LoaChatController {
 		options.put(json2);
 		
 		json.put("EtcOptions",options);
-		resMsg +="목걸이";
+		resMsg +="목걸이 ";
 		resMsg += auctionSearchDt(json,false,true);
 		
 		options = new JSONArray();
@@ -2050,11 +2050,11 @@ public class LoaChatController {
 		json.put("EtcOptions",options);
 		
 		json.put("CategoryCode", "200020");
-		resMsg +="귀걸이";
+		resMsg +="귀걸이 ";
 		resMsg += auctionSearchDt(json,false,true);
 		
 		json.put("CategoryCode", "200030");
-		resMsg +="반지";
+		resMsg +="반지 ";
 		resMsg += auctionSearchDt(json,false,true);
 		
 		return resMsg;
