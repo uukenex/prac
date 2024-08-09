@@ -345,7 +345,8 @@ public class LoaChatController {
 			try {
 				if (fulltxt.indexOf("=") < 0) {
 					val = "단어등록 실패!, =을 포함해주세요";
-				} else if (fulltxt.indexOf(">") >= 0 || fulltxt.indexOf("<") >= 0) {
+				} else if (fulltxt.indexOf(">") >= 0 || fulltxt.indexOf("<") >= 0 || fulltxt.indexOf(enterStr) >= 0 || fulltxt.indexOf(spaceStr) >= 0
+						|| fulltxt.indexOf(tabStr) >= 0 || fulltxt.indexOf(allSeeStr) >= 0|| fulltxt.indexOf(anotherMsgStr) >= 0) {
 					val = "단어등록 실패!, 특수문자 안되요!";
 				} else {
 					String[] txtList;
@@ -365,7 +366,8 @@ public class LoaChatController {
 			try {
 				if (fulltxt.indexOf("=") < 0) {
 					val = "단어삭제 실패!, =을 포함해주세요";
-				} else if (fulltxt.indexOf(">") >= 0 || fulltxt.indexOf("<") >= 0) {
+				} else if (fulltxt.indexOf(">") >= 0 || fulltxt.indexOf("<") >= 0 || fulltxt.indexOf(enterStr) >= 0 || fulltxt.indexOf(spaceStr) >= 0
+						|| fulltxt.indexOf(tabStr) >= 0 || fulltxt.indexOf(allSeeStr) >= 0|| fulltxt.indexOf(anotherMsgStr) >= 0) {
 					val = "단어삭제 실패!, 특수문자 안되요!";
 				} else {
 					String[] txtList;
@@ -389,6 +391,7 @@ public class LoaChatController {
 			}
 			break;
 		case "/단어목록": case "/단어조회": case "/단어": case "/ㄷㅇ":
+		case "/명령어": case "/람쥐봇":
 			List<String> wordList = botService.selectBotWordSaveAll(reqMap);
 			List<String> imgList = botService.selectBotImgSaveAll(reqMap);
 			
@@ -2307,7 +2310,7 @@ public class LoaChatController {
 			
 			resMsg += marketDtSearch(json,2);
 		}else {
-			return "경매장/경매장3/경매장4/경매장유물 만 사용가능";
+			return "";
 		}
 		
 		resMsg = LoaApiUtils.filterTextForMarket(resMsg);
@@ -2682,8 +2685,8 @@ public class LoaChatController {
 	
 	public String tossAccount() {
 		String ment = "";
-		//ment += enterStr+"람쥐봇 후원하기(카카오페이)";
-		//ment += enterStr+"https://toss.me/daramzz";
+		ment += enterStr+"람쥐봇 개발자 대화하기(오픈채팅)";
+		ment += enterStr+"https://open.kakao.com/o/sC6s7lkb";
 		return ment; 
 	}
 	
