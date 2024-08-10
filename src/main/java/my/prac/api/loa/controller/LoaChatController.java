@@ -149,14 +149,14 @@ public class LoaChatController {
 		reqMap.put("userName", sender);
 
 		switch (param0) {
-		case "/ㄱㄷ2":
+		/*case "/ㄱㄷ2":
 			val += "http://rgb-tns.dev-apc.com/in/202407";
-			break;
+			break;*/
 		case "/골드": case "/ㄱㄷ": case "/클골": case "/ㅋㄱ":
 			val  = checkGoldList();
 			val += enterStr;
 			val += enterStr;
-			val += "http://rgb-tns.dev-apc.com/in/lvGold";
+			val += "http://rgb-tns.dev-apc.com/in/202407";
 			break;
 		case "/모험섬": case "/ㅁㅎㅅ":
 			LocalDate now = LocalDate.now();
