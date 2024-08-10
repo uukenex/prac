@@ -10,7 +10,7 @@ public class LoaApiParser {
 
 	static String [] setList = {"악몽","환각","지배","사멸","갈망","배신","파괴","구원","매혹"};
 	static String [] elixirList = {"강맹","달인","신념","회심","선각자","선봉대","행운","진군","칼날방패"};
-	static String [] braceletList = { "정밀", "멸시", "습격", "우월", "응원", "약점 노출", "비수", "냉정", "열정", "기습", "결투", "깨달음", "속공","분개",
+	static String [] braceletList = { "정밀", "멸시", "습격", "우월", "응원", "약점 노출", "비수", "냉정", "열정", "기습", "결투", "깨달음", "속공","분개","반격",
 			"순환", "마나회수", "쐐기", "망치", "상처악화", "보상", "수확", "강타", "돌진", "타격", "오뚝이", "응급처치", "긴급수혈", "반전", "앵콜", "적립", "투자" };
 
 	static String [] tier4GrindOptList = {"공격력","무기 공격력","최대 생명력","최대 마나","상태이상","전투 중","적에게","추가","세레나데","낙인력","파티원",
@@ -736,7 +736,15 @@ public class LoaApiParser {
 						}else {
 							return low_msg;
 						}	
-					
+					case "[반격]":
+					case "[투자]":
+						if( param.indexOf("2200") >= 0 ) {
+							return high_msg;
+						}else if( param.indexOf("1600") >= 0 ) {
+							return middle_msg;
+						}else {
+							return low_msg;
+						}	
 					case "[반전]":
 					case "[앵콜]":	
 						if( param.indexOf("25%") >= 0 ) {
@@ -756,14 +764,7 @@ public class LoaApiParser {
 							return low_msg;
 						}
 						
-					case "[투자]":
-						if( param.indexOf("3000") >= 0 ) {
-							return high_msg;
-						}else if( param.indexOf("2200") >= 0 ) {
-							return middle_msg;
-						}else {
-							return low_msg;
-						}
+					
 					default:
 					break;
 				}
