@@ -97,6 +97,13 @@
 		   AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 		   AND A.LIMIT_YN = '0'
 	</delete>
+	<delete id="deleteBotWordSaveAllDeleteMaster" parameterType="hashMap">
+		/* bot.xml deleteBotWordSaveAllDeleteMaster */
+		DELETE FROM TBOT_WORD_SAVE A
+		 WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+		   AND A.LIMIT_YN = '0'
+	</delete>
+	
 	<delete id="deleteBotWordSave" parameterType="hashMap">
 		/* bot.xml deleteBotWordSave */
 		DELETE FROM TBOT_WORD_SAVE A
@@ -196,4 +203,20 @@
 	       AND ROWNUM = 1
 	</select>
 	
+	
+	<insert id="insertBotWordHis" parameterType="String">
+		/* bot.xml insertBotWordHis */
+		INSERT INTO TBOT_WORD_HIS
+			 (REQ
+			 ,RES
+			 ,ROOM_NAME
+			 ,USER_NAME
+			 ,INSERT_DATE)
+		VALUES
+			 (#{req, jdbcType=VARCHAR}
+			 ,#{res, jdbcType=VARCHAR}
+			 ,#{roomName, jdbcType=VARCHAR}
+			 ,#{userName, jdbcType=VARCHAR}
+			 ,sysdate)
+	</insert>
 </mapper>

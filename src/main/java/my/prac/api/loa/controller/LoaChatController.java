@@ -148,6 +148,7 @@ public class LoaChatController {
 		reqMap.put("roomName", roomName);
 		reqMap.put("userName", sender);
 
+		int masterYn =0;
 		switch (param0) {
 		/*case "/ㄱㄷ2":
 			val += "http://rgb-tns.dev-apc.com/in/202407";
@@ -196,22 +197,7 @@ public class LoaChatController {
 			
 			
 			break;
-			/*
-		case "/장비":
-		case "/정보":
-		case "/ㅈㅂ":
-			if (param1 != null && !param1.equals("")) {
-				try {
-					val = supporters(param1);
-					val+= equipmentSearch(param1);
-					val+= tossAccount();
-					
-				} catch (Exception e) {
-					val = errorCodeMng(e);
-				}
-			}
-			break;
-			*/
+			
 		case "/장비":
 		case "/정보":
 		case "/ㅈㅂ":
@@ -273,19 +259,6 @@ public class LoaChatController {
 			val = marketSearch(40000);
 			break;
 			
-		case "/레이드":
-		case "/ㄹㅇㄷ":
-			if (param1 != null && !param1.equals("")) {
-				try {
-					//raidAdd(reqMap);
-					//val = raidSearch(reqMap);
-				} catch (Exception e) {
-					//val = errorCodeMng(e);
-				}
-			}else {
-				//val = raidSearch(reqMap);
-			}
-			break;
 		case "/악세":
 		case "/ㅇㅅ":
 			if (param1 != null && !param1.equals("")) {
@@ -364,6 +337,13 @@ public class LoaChatController {
 				val = "단어등록 실패!";
 			}
 			break;
+		case "/단어초기화":
+			masterYn = botService.selectBotWordSaveMasterCnt(reqMap);
+			if (masterYn > 0) {
+				botService.deleteBotWordSaveAllDeleteMasterTx(reqMap);
+				val = "단어초기화 완료!";
+			} 
+			break;
 		case "/단어제거": case "/단어삭제":
 			try {
 				if (fulltxt.indexOf("=") < 0) {
@@ -378,7 +358,7 @@ public class LoaChatController {
 					reqMap.put("req", txtList[0]);
 					reqMap.put("res", txtList[1]);
 
-					int masterYn = botService.selectBotWordSaveMasterCnt(reqMap);
+					masterYn = botService.selectBotWordSaveMasterCnt(reqMap);
 
 					if (masterYn > 0) {
 						botService.deleteBotWordSaveMasterTx(reqMap);
@@ -429,6 +409,14 @@ public class LoaChatController {
 			val = botService.selectBotWordSaveOne(reqMap);
 			break;
 		}
+		try {
+			reqMap.put("req", fulltxt);
+			reqMap.put("res", val);
+			botService.insertBotWordHisTx(reqMap);	
+		}catch(Exception e){
+			System.out.println("로그저장실패 테스트");
+		}
+		
 
 		return val;
 	}

@@ -14,6 +14,7 @@ public interface BotService {
 	
 	public int selectBotWordSaveMasterCnt(HashMap<String, Object> hashMap)  throws Exception;
 	public void deleteBotWordSaveMasterTx(HashMap<String, Object> hashMap)  throws Exception;
+	public void deleteBotWordSaveAllDeleteMasterTx(HashMap<String, Object> hashMap)  throws Exception;
 	public void deleteBotWordSaveTx(HashMap<String, Object> hashMap)  throws Exception;
 	
 	public String selectBotImgSaveOne(String param);
@@ -30,6 +31,8 @@ public interface BotService {
 	public void insertBotRaidSaveTx(HashMap<String, Object> hashMap)  throws Exception;
 	
 	public int selectSupporters(String userId);
+	
+	public int insertBotWordHisTx(HashMap<String, Object> hashMap);
 }
 
 	
