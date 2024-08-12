@@ -141,18 +141,19 @@ public class LoaChatController {
 	String commandMsg(String param0, String param1, String param2, String roomName, String sender, String fulltxt)
 			throws Exception {
 		String val = "";
-		String list;
 		HashMap<String, Object> reqMap = new HashMap<>();
 		reqMap.put("param0", param0);
 		reqMap.put("param1", param1);
 		reqMap.put("roomName", roomName);
 		reqMap.put("userName", sender);
 
+		String org_fulltxt = fulltxt;
 		int masterYn =0;
+		if(fulltxt.length()>90) {
+			val = "너무길어요!";
+		}
+		
 		switch (param0) {
-		/*case "/ㄱㄷ2":
-			val += "http://rgb-tns.dev-apc.com/in/202407";
-			break;*/
 		case "/ㄹㅇ":
 			break;
 		case "/골드": case "/ㄱㄷ": case "/클골": case "/ㅋㄱ":
@@ -410,7 +411,7 @@ public class LoaChatController {
 			break;
 		}
 		try {
-			reqMap.put("req", fulltxt);
+			reqMap.put("req", org_fulltxt);
 			reqMap.put("res", val);
 			botService.insertBotWordHisTx(reqMap);	
 		}catch(Exception e){

@@ -47,7 +47,8 @@
 					   FROM TBOT_WORD_SAVE A
 					  WHERE A.LIMIT_YN = #{limitYn, jdbcType=VARCHAR}
 					  GROUP BY A.RES
-					  ORDER BY REQ))
+					  )
+				  )
 		 ORDER BY ORD
 		 
 	</select>
@@ -63,7 +64,7 @@
 					    WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 						  AND A.LIMIT_YN = '0'
 					    GROUP BY A.REQ
-					    ORDER BY REQ)
+					    )
 			   )
 		 ORDER BY ORD
 		 
