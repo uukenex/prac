@@ -152,6 +152,8 @@ public class LoaChatController {
 		/*case "/ㄱㄷ2":
 			val += "http://rgb-tns.dev-apc.com/in/202407";
 			break;*/
+		case "/ㄹㅇ":
+			break;
 		case "/골드": case "/ㄱㄷ": case "/클골": case "/ㅋㄱ":
 			val  = checkGoldList();
 			val += enterStr;
