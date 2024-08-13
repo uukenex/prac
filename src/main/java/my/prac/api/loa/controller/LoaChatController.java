@@ -146,15 +146,21 @@ public class LoaChatController {
 		reqMap.put("param1", param1);
 		reqMap.put("roomName", roomName);
 		reqMap.put("userName", sender);
-
+		
 		String org_fulltxt = fulltxt;
+		
 		int masterYn =0;
+		boolean passYn=false;
 		if(fulltxt.length()>90) {
 			val = "너무길어요!";
 		}
 		
 		switch (param0) {
 		case "/ㄹㅇ":
+		case "/주급":
+		case "/ㅈㄱ":
+		case "/보상":
+			passYn = true;
 			break;
 		case "/골드": case "/ㄱㄷ": case "/클골": case "/ㅋㄱ":
 			val  = checkGoldList();
@@ -328,8 +334,8 @@ public class LoaChatController {
 					String[] txtList;
 					fulltxt = fulltxt.substring(param0.length()).trim();
 					txtList = fulltxt.split("=");
-					reqMap.put("req", txtList[0]);
-					reqMap.put("res", txtList[1]);
+					reqMap.put("req", txtList[0].trim());
+					reqMap.put("res", txtList[1].trim());
 
 					botService.insertBotWordSaveTx(reqMap);
 					val = "단어등록 완료!";
@@ -411,9 +417,12 @@ public class LoaChatController {
 			break;
 		}
 		try {
-			reqMap.put("req", org_fulltxt);
-			reqMap.put("res", val);
-			botService.insertBotWordHisTx(reqMap);	
+			if(!passYn) {
+				reqMap.put("req", org_fulltxt);
+				reqMap.put("res", val);
+				botService.insertBotWordHisTx(reqMap);
+			}
+				
 		}catch(Exception e){
 			System.out.println("로그저장실패 테스트");
 		}
