@@ -13,7 +13,7 @@ public class LoaApiParser {
 	static String [] braceletList = { "정밀", "멸시", "습격", "우월", "응원", "약점 노출", "비수", "냉정", "열정", "기습", "결투", "깨달음", "속공","분개","반격",
 			"순환", "마나회수", "쐐기", "망치", "상처악화", "보상", "수확", "강타", "돌진", "타격", "오뚝이", "응급처치", "긴급수혈", "반전", "앵콜", "적립", "투자" };
 
-	static String [] tier4GrindOptList = {"공격력","무기 공격력","최대 생명력","최대 마나","상태이상","전투 중","적에게","추가","세레나데","낙인력","파티원",
+	static String [] tier4GrindOptList = {"공격력","무기 공격력","최대 생명력","최대 마나","상태이상","전투 중","적에게","추가","세레나데","낙인력","파티원 보호막","파티원 회복",
 			"아군 공격력","아군 피해량","치명타 적중","치명타 피해"}; 
 	
 	final static String enterStr= "♬";
@@ -471,7 +471,8 @@ public class LoaApiParser {
 						}else {
 							return low_msg;
 						}
-					case "파티원":
+					case "파티원 보호막":
+					case "파티원 회복":
 						msg = LoaApiUtils.tier4accesorry(msg);
 						high_msg   = "∇"+" (상)"+msg + spaceStr;
 						middle_msg = "∇"+" (중)"+msg + spaceStr;
