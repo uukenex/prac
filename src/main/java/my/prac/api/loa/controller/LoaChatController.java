@@ -1481,6 +1481,9 @@ public class LoaChatController {
 			switch (equip.get("Type").toString()) {
 			case "어빌리티 스톤":
 				HashMap<String, Object> stone_val = (HashMap<String, Object>) stone_element.get("value");
+				if(stone_val == null || stone_val.size() ==0 ) {
+					continue;
+				}
 				HashMap<String, Object> stone_option = (HashMap<String, Object>) stone_val.get("Element_000");
 				HashMap<String, Object> stone_option0 = (HashMap<String, Object>) stone_option.get("contentStr");
 				HashMap<String, Object> stone_option1 = (HashMap<String, Object>) stone_option0.get("Element_000");
@@ -2305,10 +2308,20 @@ public class LoaChatController {
 			json.put("Sort", "CURRENT_MIN_PRICE");
 			json.put("SortCondition", "DESC");
 			json.put("ItemGrade", "유물");
+			json.put("PageNo", "1");
 			
 			resMsg +="[유물]"+enterStr;
 			
 			resMsg += marketDtSearch(json,2);
+			
+			json.put("PageNo", "2");
+			resMsg += marketDtSearch(json,2);
+			
+			json.put("PageNo", "3");
+			resMsg += marketDtSearch(json,2);
+			
+			//json.put("Page", "1");
+			//resMsg += marketDtSearch(json,2);
 		}else {
 			return "";
 		}
@@ -2333,7 +2346,6 @@ public class LoaChatController {
 		String str = "";
 
 		try {
-
 			String paramUrl = lostArkAPIurl + "/markets/items";
 
 			String returnData = LoaApiUtils.connect_process_post(paramUrl, json.toString());
