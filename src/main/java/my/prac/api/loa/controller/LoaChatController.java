@@ -1140,7 +1140,11 @@ public class LoaChatController {
 		String resField2 = "";
 		String resField3 = "";
 		
-		String characterImage = armoryProfile.get("CharacterImage").toString();
+		
+		String characterImage ="";
+		if(armoryProfile.get("CharacterImage") != null) {
+			characterImage = armoryProfile.get("CharacterImage").toString();
+		}
 		
 		//템/전/원
 		String itemMaxLevel = armoryProfile.get("ItemMaxLevel").toString();
@@ -1359,7 +1363,9 @@ public class LoaChatController {
 		if(Double.parseDouble(itemMaxLevel.replaceAll(",", ""))>=1640) {
 			tier = 4;
 		}
-		resMsg += charImgSearch(ordUserId,title,className,characterImage) + anotherMsgStr;
+		if(!characterImage.equals("")) {
+			resMsg += charImgSearch(ordUserId,title,className,characterImage) + anotherMsgStr;
+		}
 		resMsg += "레벨"    +"　　　 　"+itemMaxLevel+enterStr;
 		resMsg += "전투/원대"+"　　"+characterLevel+"　/　"+expeditionLevel+enterStr;
 		resMsg += "엘릭/초월"+"　　"+totElixir+"(" + elixirField+")"+" / "+totLimit+enterStr;
