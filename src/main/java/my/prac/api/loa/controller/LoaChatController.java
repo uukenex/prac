@@ -2460,13 +2460,23 @@ public class LoaChatController {
 	String marketTier4Search() throws Exception {
 		String resMsg = "";
 		JSONObject json ;
+		String first_value ="";
 		json = new JSONObject();
 
 		json.put("CategoryCode", "50000");
 		resMsg +="[4티어]"+enterStr;
 		
 		json.put("itemName", "용암");
-		resMsg += marketDtSearch(json,2);
+		try {
+			first_value = marketDtSearch(json,2);
+			resMsg += first_value;
+		}catch( Exception e ) {
+			resMsg ="경매장 오류";
+		}
+		
+		if(first_value.equals("")) {
+			return "경매장 오류";
+		}
 		
 		json.put("itemName", "빙하");
 		resMsg += marketDtSearch(json,2);
