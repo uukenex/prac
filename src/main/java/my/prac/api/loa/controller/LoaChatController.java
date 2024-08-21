@@ -151,293 +151,298 @@ public class LoaChatController {
 		
 		int masterYn =0;
 		boolean passYn=false;
-		if(fulltxt.length()>90) {
-			val = "너무길어요!";
-		}
 		
-		switch (param0) {
-		case "/ㄹㅇ":
-		case "/주급":
-		case "/ㅈㄱ":
-		case "/보상":
-			passYn = true;
-			break;
-		case "/골드": case "/ㄱㄷ": case "/클골": case "/ㅋㄱ":
-			val  = checkGoldList();
-			val += enterStr;
-			val += enterStr;
-			val += "http://rgb-tns.dev-apc.com/in/202407";
-			break;
-		case "/모험섬": case "/ㅁㅎㅅ":
-			LocalDate now = LocalDate.now();
-			DayOfWeek dayOfWeek = now.getDayOfWeek();
+		try {
+			if(fulltxt.length()>90) {
+				val = "너무길어요!";
+				return val;
+			}
 			
-			LocalTime time = LocalTime.now();
-			DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH");
-			String nowTime = time.format(formatter);
-			
-			switch(dayOfWeek.getValue()) {
-				case 2:
-					//화요일엔 다음날 정보 없음
-					val  = calendarSearch(0);
-					break;
-				case 3:
-					//수요일 오전엔 정보 없음
-					if( Integer.parseInt(nowTime) <= 6) {
-						val  = "정보없음" ;
-					}else {
+			switch (param0) {
+			case "/ㄹㅇ":
+			case "/주급":
+			case "/ㅈㄱ":
+			case "/보상":
+				passYn = true;
+				break;
+			case "/골드": case "/ㄱㄷ": case "/클골": case "/ㅋㄱ":
+				val  = checkGoldList();
+				val += enterStr;
+				val += enterStr;
+				val += "http://rgb-tns.dev-apc.com/in/202407";
+				break;
+			case "/모험섬": case "/ㅁㅎㅅ":
+				LocalDate now = LocalDate.now();
+				DayOfWeek dayOfWeek = now.getDayOfWeek();
+				
+				LocalTime time = LocalTime.now();
+				DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH");
+				String nowTime = time.format(formatter);
+				
+				switch(dayOfWeek.getValue()) {
+					case 2:
+						//화요일엔 다음날 정보 없음
+						val  = calendarSearch(0);
+						break;
+					case 3:
+						//수요일 오전엔 정보 없음
+						if( Integer.parseInt(nowTime) <= 6) {
+							val  = "정보없음" ;
+						}else {
+							val  = calendarSearch(0);
+							val += enterStr + enterStr+"내일의 모험섬 더보기..▼"+allSeeStr;
+							val += calendarSearch(1);
+							val += enterStr;
+							val += tossAccount();
+						}
+						break;
+					default:
 						val  = calendarSearch(0);
 						val += enterStr + enterStr+"내일의 모험섬 더보기..▼"+allSeeStr;
 						val += calendarSearch(1);
 						val += enterStr;
 						val += tossAccount();
+						break;
+				}
+				
+				
+				break;
+				
+			case "/장비":
+			case "/정보":
+			case "/ㅈㅂ":
+				if (param1 != null && !param1.equals("")) {
+					try {
+						//val = supporters(param1);
+						val = newEquipSearch(param1);
+						//val+= tossAccount();
+						
+					} catch (Exception e) {
+						val = errorCodeMng(e);
 					}
-					break;
-				default:
-					val  = calendarSearch(0);
-					val += enterStr + enterStr+"내일의 모험섬 더보기..▼"+allSeeStr;
-					val += calendarSearch(1);
-					val += enterStr;
-					val += tossAccount();
-					break;
-			}
-			
-			
-			break;
-			
-		case "/장비":
-		case "/정보":
-		case "/ㅈㅂ":
-			if (param1 != null && !param1.equals("")) {
-				try {
-					//val = supporters(param1);
-					val = newEquipSearch(param1);
-					//val+= tossAccount();
-					
-				} catch (Exception e) {
-					val = errorCodeMng(e);
 				}
-			}
-			break;
-		case "/ㅈㅂ2":
-			if (param1 != null && !param1.equals("")) {
-				try {
-					//val = supporters(param1);
-					val = newnewEquipSearch(param1);
-					//val+= tossAccount();
-					
-				} catch (Exception e) {
-					val = errorCodeMng(e);
+				break;
+			case "/ㅈㅂ2":
+				if (param1 != null && !param1.equals("")) {
+					try {
+						//val = supporters(param1);
+						val = newnewEquipSearch(param1);
+						//val+= tossAccount();
+						
+					} catch (Exception e) {
+						val = errorCodeMng(e);
+					}
 				}
-			}
-			break;
-		case "/초월": case "/엘릭서":
-		case "/ㅊㅇ": case "/ㅇㄹㅅ":
-			if (param1 != null && !param1.equals("")) {
-				try {
-					val = supporters(param1);
-					val+= limitSearch(param1);
-				} catch (Exception e) {
-					val = errorCodeMng(e);
+				break;
+			case "/초월": case "/엘릭서":
+			case "/ㅊㅇ": case "/ㅇㄹㅅ":
+				if (param1 != null && !param1.equals("")) {
+					try {
+						val = supporters(param1);
+						val+= limitSearch(param1);
+					} catch (Exception e) {
+						val = errorCodeMng(e);
+					}
 				}
-			}
-			break;
-		case "/내실":
-		case "/ㄴㅅ":
-			if (param1 != null && !param1.equals("")) {
-				try {
-					val = supporters(param1);
-					val+= collectionSearch(param1);
-				} catch (Exception e) {
-					val = errorCodeMng(e);
+				break;
+			case "/내실":
+			case "/ㄴㅅ":
+				if (param1 != null && !param1.equals("")) {
+					try {
+						val = supporters(param1);
+						val+= collectionSearch(param1);
+					} catch (Exception e) {
+						val = errorCodeMng(e);
+					}
 				}
-			}
-			break;
-		case "/ㄱㅁㅈ":
-		case "/경매장":
-			val  = marketSearch();
-			val += enterStr+"유물각인서 순위 더보기..▼"+allSeeStr;
-			val += marketSearch(40000);
-			val += tossAccount();
-			break;
-		case "/ㄱㅁㅈ3":
-		case "/경매장3":
-			val = marketSearch(3);
-			break;
-		case "/ㄱㅁㅈ4":
-		case "/경매장4":
-			val = marketSearch(4);
-			break;
-		case "/ㄱㅁㅈㅇㅅ":
-		case "/경매장악세":
-			val = marketTier4accessorySearch();
-			break;
-		case "/ㄱㅁㅈㅇㅁ":
-		case "/ㄱㅁㅈ유물":
-		case "/경매장유물":
-			val = marketSearch(40000);
-			break;
-			
-		case "/악세":
-		case "/ㅇㅅ":
-			if (param1 != null && !param1.equals("")) {
-				try {
-					val = supporters(param1);
-					val+= accessorySearch(param1);
-				} catch (Exception e) {
-					val = errorCodeMng(e);
+				break;
+			case "/ㄱㅁㅈ":
+			case "/경매장":
+				val  = marketSearch();
+				val += enterStr+"유물각인서 순위 더보기..▼"+allSeeStr;
+				val += marketSearch(40000);
+				val += tossAccount();
+				break;
+			case "/ㄱㅁㅈ3":
+			case "/경매장3":
+				val = marketSearch(3);
+				break;
+			case "/ㄱㅁㅈ4":
+			case "/경매장4":
+				val = marketSearch(4);
+				break;
+			case "/ㄱㅁㅈㅇㅅ":
+			case "/경매장악세":
+				val = marketTier4accessorySearch();
+				break;
+			case "/ㄱㅁㅈㅇㅁ":
+			case "/ㄱㅁㅈ유물":
+			case "/경매장유물":
+				val = marketSearch(40000);
+				break;
+				
+			case "/악세":
+			case "/ㅇㅅ":
+				if (param1 != null && !param1.equals("")) {
+					try {
+						val = supporters(param1);
+						val+= accessorySearch(param1);
+					} catch (Exception e) {
+						val = errorCodeMng(e);
+					}
 				}
-			}
-			break;		
-		case "/부캐":
-		case "/ㅂㅋ":
-			if (param1 != null && !param1.equals("")) {
-				try {
-					val = supporters(param1);
-					val+= subCharacterSearch(param1);
-				} catch (Exception e) {
-					val = errorCodeMng(e);
+				break;		
+			case "/부캐":
+			case "/ㅂㅋ":
+				if (param1 != null && !param1.equals("")) {
+					try {
+						val = supporters(param1);
+						val+= subCharacterSearch(param1);
+					} catch (Exception e) {
+						val = errorCodeMng(e);
+					}
 				}
-			}
-			break;	
-		case "/보석":
-		case "/ㅂㅅ":
-			if (param1 != null && !param1.equals("")) {
-				try {
-					val = supporters(param1);
-					val+= subCharacterGemSearch(param1);
-				} catch (Exception e) {
-					val = errorCodeMng(e);
+				break;	
+			case "/보석":
+			case "/ㅂㅅ":
+				if (param1 != null && !param1.equals("")) {
+					try {
+						val = supporters(param1);
+						val+= subCharacterGemSearch(param1);
+					} catch (Exception e) {
+						val = errorCodeMng(e);
+					}
 				}
-			}
-			break;		
-		case "/항협": case "/항해": case "/항해협동": case "/ㅎㅎ":
-			val = shipSearch();
-			break;
-		case "/섬마": case "/가방": case "/ㄱㅂ": case "/ㅅㅁ":
-			val = openBox(param1,param2);
-			break;
-		case "/날씨": case "/ㄴㅆ":
-			if (param1 != null && !param1.equals("")) {
-				val = weatherSearch(param1);
-			}
-			break;
-		case "/저메추":
-			String[] menu_list = { "피자", "탕수육", "치킨", "샐러드", "마라탕", "양꼬치", "삼겹살", "설렁탕", "김치찌개", "된장찌개", "삼치튀김", "참치마요",
-					"회", "육회비빔밥", "냉면", "카레", "돈까스", "제육볶음", "오징어볶음", "떡볶이", "굶기", "초밥", "햄버거", "짜장면", "빵", "파스타", "닭발",
-					"쭈꾸미", "낙지덮밥", "라면", "짜계치", "스팸과 흰밥", "간장계란밥", "간장게장", "참치회", "죽", "흰밥", "감자탕" };
-			Random random = new Random();
-			val = menu_list[random.nextInt(menu_list.length)];
+				break;		
+			case "/항협": case "/항해": case "/항해협동": case "/ㅎㅎ":
+				val = shipSearch();
+				break;
+			case "/섬마": case "/가방": case "/ㄱㅂ": case "/ㅅㅁ":
+				val = openBox(param1,param2);
+				break;
+			case "/날씨": case "/ㄴㅆ":
+				if (param1 != null && !param1.equals("")) {
+					val = weatherSearch(param1);
+				}
+				break;
+			case "/저메추":
+				String[] menu_list = { "피자", "탕수육", "치킨", "샐러드", "마라탕", "양꼬치", "삼겹살", "설렁탕", "김치찌개", "된장찌개", "삼치튀김", "참치마요",
+						"회", "육회비빔밥", "냉면", "카레", "돈까스", "제육볶음", "오징어볶음", "떡볶이", "굶기", "초밥", "햄버거", "짜장면", "빵", "파스타", "닭발",
+						"쭈꾸미", "낙지덮밥", "라면", "짜계치", "스팸과 흰밥", "간장계란밥", "간장게장", "참치회", "죽", "흰밥", "감자탕" };
+				Random random = new Random();
+				val = menu_list[random.nextInt(menu_list.length)];
 
-			break;
-		case "/챗":
-			fulltxt = fulltxt.substring(param0.length()).trim();
-			val = chatGptSearch(fulltxt,sender);
-			break;
-		case "/단어등록": case "/단어추가":
+				break;
+			case "/챗":
+				fulltxt = fulltxt.substring(param0.length()).trim();
+				val = chatGptSearch(fulltxt,sender);
+				break;
+			case "/단어등록": case "/단어추가":
 
-			try {
-				if (fulltxt.indexOf("=") < 0) {
-					val = "단어등록 실패!, =을 포함해주세요";
-				} else if (fulltxt.indexOf(">") >= 0 || fulltxt.indexOf("<") >= 0 || fulltxt.indexOf(enterStr) >= 0 || fulltxt.indexOf(spaceStr) >= 0
-						|| fulltxt.indexOf(tabStr) >= 0 || fulltxt.indexOf(allSeeStr) >= 0|| fulltxt.indexOf(anotherMsgStr) >= 0) {
-					val = "단어등록 실패!, 특수문자 안되요!";
-				} else {
-					String[] txtList;
-					fulltxt = fulltxt.substring(param0.length()).trim();
-					txtList = fulltxt.split("=");
-					reqMap.put("req", txtList[0].trim());
-					reqMap.put("res", txtList[1].trim());
-
-					botService.insertBotWordSaveTx(reqMap);
-					val = "단어등록 완료!";
-				}
-			} catch (Exception e) {
-				val = "단어등록 실패!";
-			}
-			break;
-		case "/단어초기화":
-			masterYn = botService.selectBotWordSaveMasterCnt(reqMap);
-			if (masterYn > 0) {
-				botService.deleteBotWordSaveAllDeleteMasterTx(reqMap);
-				val = "단어초기화 완료!";
-			} 
-			break;
-		case "/단어제거": case "/단어삭제":
-			try {
-				if (fulltxt.indexOf("=") < 0) {
-					val = "단어삭제 실패!, =을 포함해주세요";
-				} else if (fulltxt.indexOf(">") >= 0 || fulltxt.indexOf("<") >= 0 || fulltxt.indexOf(enterStr) >= 0 || fulltxt.indexOf(spaceStr) >= 0
-						|| fulltxt.indexOf(tabStr) >= 0 || fulltxt.indexOf(allSeeStr) >= 0|| fulltxt.indexOf(anotherMsgStr) >= 0) {
-					val = "단어삭제 실패!, 특수문자 안되요!";
-				} else {
-					String[] txtList;
-					fulltxt = fulltxt.substring(param0.length()).trim();
-					txtList = fulltxt.split("=");
-					reqMap.put("req", txtList[0]);
-					reqMap.put("res", txtList[1]);
-
-					masterYn = botService.selectBotWordSaveMasterCnt(reqMap);
-
-					if (masterYn > 0) {
-						botService.deleteBotWordSaveMasterTx(reqMap);
+				try {
+					if (fulltxt.indexOf("=") < 0) {
+						val = "단어등록 실패!, =을 포함해주세요";
+					} else if (fulltxt.indexOf(">") >= 0 || fulltxt.indexOf("<") >= 0 || fulltxt.indexOf(enterStr) >= 0 || fulltxt.indexOf(spaceStr) >= 0
+							|| fulltxt.indexOf(tabStr) >= 0 || fulltxt.indexOf(allSeeStr) >= 0|| fulltxt.indexOf(anotherMsgStr) >= 0) {
+						val = "단어등록 실패!, 특수문자 안되요!";
 					} else {
-						botService.deleteBotWordSaveTx(reqMap);
-					}
+						String[] txtList;
+						fulltxt = fulltxt.substring(param0.length()).trim();
+						txtList = fulltxt.split("=");
+						reqMap.put("req", txtList[0].trim());
+						reqMap.put("res", txtList[1].trim());
 
-					val = "단어삭제 완료!";
+						botService.insertBotWordSaveTx(reqMap);
+						val = "단어등록 완료!";
+					}
+				} catch (Exception e) {
+					val = "단어등록 실패!";
 				}
-			} catch (Exception e) {
-				val = "단어삭제 실패!";
+				break;
+			case "/단어초기화":
+				masterYn = botService.selectBotWordSaveMasterCnt(reqMap);
+				if (masterYn > 0) {
+					botService.deleteBotWordSaveAllDeleteMasterTx(reqMap);
+					val = "단어초기화 완료!";
+				} 
+				break;
+			case "/단어제거": case "/단어삭제":
+				try {
+					if (fulltxt.indexOf("=") < 0) {
+						val = "단어삭제 실패!, =을 포함해주세요";
+					} else if (fulltxt.indexOf(">") >= 0 || fulltxt.indexOf("<") >= 0 || fulltxt.indexOf(enterStr) >= 0 || fulltxt.indexOf(spaceStr) >= 0
+							|| fulltxt.indexOf(tabStr) >= 0 || fulltxt.indexOf(allSeeStr) >= 0|| fulltxt.indexOf(anotherMsgStr) >= 0) {
+						val = "단어삭제 실패!, 특수문자 안되요!";
+					} else {
+						String[] txtList;
+						fulltxt = fulltxt.substring(param0.length()).trim();
+						txtList = fulltxt.split("=");
+						reqMap.put("req", txtList[0]);
+						reqMap.put("res", txtList[1]);
+
+						masterYn = botService.selectBotWordSaveMasterCnt(reqMap);
+
+						if (masterYn > 0) {
+							botService.deleteBotWordSaveMasterTx(reqMap);
+						} else {
+							botService.deleteBotWordSaveTx(reqMap);
+						}
+
+						val = "단어삭제 완료!";
+					}
+				} catch (Exception e) {
+					val = "단어삭제 실패!";
+				}
+				break;
+			case "/단어목록": case "/단어조회": case "/단어": case "/ㄷㅇ":
+			case "/명령어": case "/람쥐봇":
+				List<String> wordList = botService.selectBotWordSaveAll(reqMap);
+				List<String> imgList = botService.selectBotImgSaveAll(reqMap);
+				
+				reqMap.put("limitYn", "1");
+				List<String> limitWordList = botService.selectBotLimitWordSaveAll(reqMap);
+				reqMap.put("limitYn", "2");
+				List<String> limitWordList2 = botService.selectBotLimitWordSaveAll(reqMap);
+				
+				
+				val = "주요명령(초성가능): "+enterStr;
+				
+				for (String word : limitWordList2) {
+					val += enterStr + word;
+				}
+				
+				val += enterStr + enterStr + "명령 더보기..▼ "+ allSeeStr;
+				for (String word : limitWordList) {
+					val += word + enterStr;
+				}
+				val += enterStr + "단어목록:" + enterStr;
+				for (String word : wordList) {
+					val += word + enterStr;
+				}
+				val += enterStr + "이모티콘목록:" + enterStr;
+				for (String word : imgList) {
+					val += word + enterStr;
+				}
+				
+				val += tossAccount();
+				
+				break;
+			default:
+				val = botService.selectBotWordSaveOne(reqMap);
+				break;
 			}
-			break;
-		case "/단어목록": case "/단어조회": case "/단어": case "/ㄷㅇ":
-		case "/명령어": case "/람쥐봇":
-			List<String> wordList = botService.selectBotWordSaveAll(reqMap);
-			List<String> imgList = botService.selectBotImgSaveAll(reqMap);
 			
-			reqMap.put("limitYn", "1");
-			List<String> limitWordList = botService.selectBotLimitWordSaveAll(reqMap);
-			reqMap.put("limitYn", "2");
-			List<String> limitWordList2 = botService.selectBotLimitWordSaveAll(reqMap);
-			
-			
-			val = "주요명령(초성가능): "+enterStr;
-			
-			for (String word : limitWordList2) {
-				val += enterStr + word;
-			}
-			
-			val += enterStr + enterStr + "명령 더보기..▼ "+ allSeeStr;
-			for (String word : limitWordList) {
-				val += word + enterStr;
-			}
-			val += enterStr + "단어목록:" + enterStr;
-			for (String word : wordList) {
-				val += word + enterStr;
-			}
-			val += enterStr + "이모티콘목록:" + enterStr;
-			for (String word : imgList) {
-				val += word + enterStr;
-			}
-			
-			val += tossAccount();
-			
-			break;
-		default:
-			val = botService.selectBotWordSaveOne(reqMap);
-			break;
-		}
-		try {
+		}catch(Exception e){
+			System.out.println("로그저장실패 테스트");
+		}finally {
 			if(!passYn) {
 				reqMap.put("req", org_fulltxt);
 				reqMap.put("res", val);
 				botService.insertBotWordHisTx(reqMap);
 			}
 				
-		}catch(Exception e){
-			System.out.println("로그저장실패 테스트");
 		}
+		
 		
 
 		return val;

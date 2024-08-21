@@ -28,6 +28,7 @@ import javax.net.ssl.X509TrustManager;
 public class LoaApiUtils {
 
 	final static String lostArkKey = "bearer "+PropsUtil.getProperty("keys","loaKey");
+	final static int TIMEOUT_VALUE = 2500;//2.5초
 	
 	public static String connect_process(String paramUrl) throws Exception {
 		URL url = new URL(paramUrl);
@@ -38,7 +39,9 @@ public class LoaApiUtils {
 		conn.setRequestMethod("GET");
 		conn.setRequestProperty("Accept", "application/json");
 		conn.setRequestProperty("Authorization", lostArkKey);
-
+		conn.setConnectTimeout(TIMEOUT_VALUE);
+		conn.setReadTimeout(TIMEOUT_VALUE);
+		
 		// 결과 코드가 200이라면 성공
 		//int responseCode = conn.getResponseCode();
 		//System.out.println("### getAccessToken responseCode : " + responseCode);
@@ -74,6 +77,8 @@ public class LoaApiUtils {
 		    conn.setRequestProperty("Content-Type", "application/json");
 		    conn.setRequestProperty("Accept", "application/json");
 		    conn.setRequestProperty("Authorization", lostArkKey);
+		    conn.setConnectTimeout(TIMEOUT_VALUE);
+			conn.setReadTimeout(TIMEOUT_VALUE);
 		    conn.setDoOutput(true);
 
 		    try (OutputStream os = conn.getOutputStream()){
@@ -165,8 +170,12 @@ public class LoaApiUtils {
 	}
 	public static String tier4accesorry(String txt) {
 		try {
-			txt=txt.replaceAll("공격력", "공");
+			txt=txt.replaceAll("치명타 적중","치적");
+			txt=txt.replaceAll("치명타 피해","치피");
+			txt=txt.replaceAll("아군 공격력","아공강");
+			txt=txt.replaceAll("아군 피해량","아피강");
 			txt=txt.replaceAll("무기 공격력", "무공");
+			txt=txt.replaceAll("공격력", "공");
 			txt=txt.replaceAll("최대 생명력","최생");
 			txt=txt.replaceAll("최대 마나","마나");
 			txt=txt.replaceAll("상태이상","CC");
@@ -175,10 +184,6 @@ public class LoaApiUtils {
 			txt=txt.replaceAll("추가", "추피");
 			txt=txt.replaceAll("세레나데", "폿아덴");
 			txt=txt.replaceAll("파티원","");
-			txt=txt.replaceAll("아군 공격력 강화","아군공격강화");
-			txt=txt.replaceAll("아군 피해량 강화","아군피해강화");
-			txt=txt.replaceAll("치명타 적중률","치적");
-			txt=txt.replaceAll("치명타 피해","치피");
 			
 		}catch(Exception e) {
 			txt="";

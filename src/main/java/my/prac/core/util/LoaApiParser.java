@@ -341,13 +341,13 @@ public class LoaApiParser {
 					case "공격력":
 						msg = LoaApiUtils.tier4accesorry(msg);
 						if(param.indexOf("%")>0) {
-							high_msg   = "∇"+" (상)"+msg + "%"  + spaceStr;
-							middle_msg = "∇"+" (중)"+msg + "%"  + spaceStr;
-							low_msg    = "∇"+" (하)"+msg + "%"  + spaceStr;
+							high_msg   = "∇"+" (상)"+msg + "퍼"  + spaceStr;
+							middle_msg = "∇"+" (중)"+msg + "퍼"  + spaceStr;
+							low_msg    = "∇"+" (하)"+msg + "퍼"  + spaceStr;
 						}else {
-							high_msg   = "∇"+" (상)"+msg + "+"  + spaceStr;
-							middle_msg = "∇"+" (중)"+msg + "+"  + spaceStr;
-							low_msg    = "∇"+" (하)"+msg + "+"  + spaceStr;
+							high_msg   = "∇"+" (상)"+msg + ""  + spaceStr;
+							middle_msg = "∇"+" (중)"+msg + ""  + spaceStr;
+							low_msg    = "∇"+" (하)"+msg + ""  + spaceStr;
 						}
 						
 						if( param.indexOf("390") >= 0 || param.indexOf("1.55%")>=0) {
@@ -360,13 +360,13 @@ public class LoaApiParser {
 					case "무기 공격력":
 						msg = LoaApiUtils.tier4accesorry(msg);
 						if(param.indexOf("%")>0) {
-							high_msg   = "∇"+" (상)"+msg + "%"  + spaceStr;
-							middle_msg = "∇"+" (중)"+msg + "%"  + spaceStr;
-							low_msg    = "∇"+" (하)"+msg + "%"  + spaceStr;
+							high_msg   = "∇"+" (상)"+msg + "퍼"  + spaceStr;
+							middle_msg = "∇"+" (중)"+msg + "퍼"  + spaceStr;
+							low_msg    = "∇"+" (하)"+msg + "퍼"  + spaceStr;
 						}else {
-							high_msg   = "∇"+" (상)"+msg + "+"  + spaceStr;
-							middle_msg = "∇"+" (중)"+msg + "+"  + spaceStr;
-							low_msg    = "∇"+" (하)"+msg + "+"  + spaceStr;
+							high_msg   = "∇"+" (상)"+msg + ""  + spaceStr;
+							middle_msg = "∇"+" (중)"+msg + ""  + spaceStr;
+							low_msg    = "∇"+" (하)"+msg + ""  + spaceStr;
 						}
 						if( param.indexOf("960") >= 0 || param.indexOf("3.00%")>=0) {
 							return high_msg;
