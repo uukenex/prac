@@ -501,6 +501,9 @@ public class LoaChatController {
 			case "E0003":
 				val = "캐릭터명 검색 오류";
 				break;
+			case "E0004":
+				val = "API사이트 연결 오류";
+				break;
 			default:
 				val = "ID오류이거나 엘릭서/초월이 모두있어야 검색가능합니다";
 				//e.printStackTrace();
@@ -861,7 +864,12 @@ public class LoaChatController {
 		userId = URLEncoder.encode(userId, "UTF-8");
 		// +는 %2B로 치환한다
 		String paramUrl = lostArkAPIurl + "/armories/characters/" + userId;// + "?filters=equipment%2Bprofiles";
-		String returnData = LoaApiUtils.connect_process(paramUrl);
+		String returnData;
+		try {
+			returnData = LoaApiUtils.connect_process(paramUrl);
+		}catch(Exception e){
+			throw new Exception("E0004");
+		}
 		HashMap<String, Object> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<Map<String, Object>>() {});
 
 		List<Map<String, Object>> armoryEquipment;
@@ -1199,7 +1207,13 @@ public class LoaChatController {
 		userId = URLEncoder.encode(userId, "UTF-8");
 		// +는 %2B로 치환한다
 		String paramUrl = lostArkAPIurl + "/armories/characters/" + userId;// + "?filters=equipment%2Bprofiles";
-		String returnData = LoaApiUtils.connect_process(paramUrl);
+		String returnData;
+		try {
+			returnData = LoaApiUtils.connect_process(paramUrl);
+		}catch(Exception e){
+			throw new Exception("E0004");
+		}
+		
 		HashMap<String, Object> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<Map<String, Object>>() {});
 
 		List<Map<String, Object>> armoryEquipment;
@@ -2641,7 +2655,15 @@ public class LoaChatController {
 		try {
 			String paramUrl = lostArkAPIurl + "/markets/items";
 
-			String returnData = LoaApiUtils.connect_process_post(paramUrl, json.toString());
+			//String returnData = LoaApiUtils.connect_process_post(paramUrl, json.toString());
+			
+			String returnData;
+			try {
+				returnData = LoaApiUtils.connect_process_post(paramUrl, json.toString());
+			}catch(Exception e){
+				throw new Exception("E0004");
+			}
+			
 			HashMap<String, Object> rtnMap = new ObjectMapper().readValue(returnData,
 					new TypeReference<Map<String, Object>>() {
 					});
@@ -2712,7 +2734,14 @@ public class LoaChatController {
 
 			String paramUrl = lostArkAPIurl + "/auctions/items";
 
-			String returnData = LoaApiUtils.connect_process_post(paramUrl, json.toString());
+			//String returnData = LoaApiUtils.connect_process_post(paramUrl, json.toString());
+			String returnData;
+			try {
+				returnData = LoaApiUtils.connect_process_post(paramUrl, json.toString());
+			}catch(Exception e){
+				throw new Exception("E0004");
+			}
+			
 			HashMap<String, Object> rtnMap = new ObjectMapper().readValue(returnData,
 					new TypeReference<Map<String, Object>>() {
 					});
