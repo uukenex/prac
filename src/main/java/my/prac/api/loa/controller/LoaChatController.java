@@ -215,7 +215,7 @@ public class LoaChatController {
 				if (param1 != null && !param1.equals("")) {
 					try {
 						//val = supporters(param1);
-						val = newEquipSearch(param1);
+						val = newnewEquipSearch(param1);
 						//val+= tossAccount();
 						
 					} catch (Exception e) {
