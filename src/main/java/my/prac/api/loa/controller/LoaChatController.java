@@ -1553,8 +1553,6 @@ public class LoaChatController {
 				resMsg += newEngraveSearch(armoryEngraving,ordUserId,true,false);
 			}
 		}
-		resMsg +=anotherMsgStr;
-		resMsg +=newAccessorySearch(rtnMap,ordUserId);
 		
 		return resMsg;
 	}
