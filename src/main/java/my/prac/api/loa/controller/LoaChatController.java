@@ -219,6 +219,7 @@ public class LoaChatController {
 						//val+= tossAccount();
 						
 					} catch (Exception e) {
+						e.printStackTrace();
 						val = errorCodeMng(e);
 					}
 				}
@@ -231,6 +232,7 @@ public class LoaChatController {
 						//val+= tossAccount();
 						
 					} catch (Exception e) {
+						e.printStackTrace();
 						val = errorCodeMng(e);
 					}
 				}
@@ -1208,6 +1210,7 @@ public class LoaChatController {
 		try {
 			armoryProfile = (Map<String, Object>) rtnMap.get("ArmoryProfile");
 		}catch(Exception e){
+			System.out.println("ArmoryProfile");
 			throw new Exception("E0003");
 		}
 		try {
