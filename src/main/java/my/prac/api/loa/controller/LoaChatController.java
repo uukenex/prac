@@ -2467,12 +2467,8 @@ public class LoaChatController {
 		resMsg +="[4티어]"+enterStr;
 		
 		json.put("itemName", "용암");
-		try {
-			first_value = marketDtSearch(json,2);
-			resMsg += first_value;
-		}catch( Exception e ) {
-			resMsg ="경매장 오류";
-		}
+		first_value = marketDtSearch(json,2);
+		resMsg += first_value;
 		
 		if(first_value.equals("")) {
 			return "경매장 오류";
