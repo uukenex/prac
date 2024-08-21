@@ -85,7 +85,8 @@ public class LoaChatController {
 			}
 
 		} catch (Exception e) {
-			e.printStackTrace();
+			//e.printStackTrace();
+			System.out.println(e.getMessage());
 		}
 
 		return null;
@@ -500,12 +501,12 @@ public class LoaChatController {
 				break;
 			default:
 				val = "ID오류이거나 엘릭서/초월이 모두있어야 검색가능합니다";
-				e.printStackTrace();
+				//e.printStackTrace();
 				break;
 			}
 		}else {
 			val = "ID오류이거나 엘릭서/초월이 모두있어야 검색가능합니다";
-			e.printStackTrace();
+			//e.printStackTrace();
 		}
 		return val;
 	}
@@ -2329,7 +2330,13 @@ public class LoaChatController {
 		
 		json.put("EtcOptions",options);
 		resMsg +="목걸이 ";
-		resMsg += auctionSearchDt(json,false,true);
+		String first_value = auctionSearchDt(json,false,true);
+		resMsg += first_value;
+		
+		if(first_value.equals("")) {
+			return "경매장 오류";
+		}
+		
 		
 		options = new JSONArray();
 		json2.put("FirstOption",8);
@@ -2535,7 +2542,12 @@ public class LoaChatController {
 		resMsg +="[3티어]"+enterStr;
 		
 		json.put("itemName", "태양");
-		resMsg += marketDtSearch(json,0);
+		String first_value = marketDtSearch(json,0);
+		resMsg += first_value;
+		
+		if(first_value.equals("")) {
+			return "경매장 오류";
+		}
 		
 		json.put("itemName", "명예의 파편");
 		resMsg += marketDtSearch(json,1);
@@ -2600,11 +2612,6 @@ public class LoaChatController {
 			json.put("PageNo", "2");
 			resMsg += marketDtSearch(json,2);
 			
-			json.put("PageNo", "3");
-			resMsg += marketDtSearch(json,2);
-			
-			//json.put("Page", "1");
-			//resMsg += marketDtSearch(json,2);
 		}else {
 			return "";
 		}
@@ -2729,7 +2736,8 @@ public class LoaChatController {
 			}
 
 		} catch (Exception e) {
-			e.printStackTrace();
+			//e.printStackTrace();
+			System.out.println(e.getMessage());
 			str = "";
 		}
 
@@ -2853,7 +2861,8 @@ public class LoaChatController {
 			
 			
 		} catch (Exception e) {
-			e.printStackTrace();
+			//e.printStackTrace();
+			System.out.println(e.getMessage());
 			retMsg = errMsg;
 		}
 		rtnMap.put("data", retMsg);
@@ -2969,7 +2978,8 @@ public class LoaChatController {
             content = content.replaceAll("\n", enterStr);
             
 		} catch (Exception e) {
-			e.printStackTrace();
+			//e.printStackTrace();
+			System.out.println(e.getMessage());
 			content = "오류입니다.";
 		}
 		
