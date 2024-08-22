@@ -903,7 +903,7 @@ public class LoaChatController {
 		}
 		
 		
-		return "§초월합 : " + totLimit + " 엘릭서합 : " + totElixir;
+		return "초월합 : " + totLimit + " 엘릭서합 : " + totElixir;
 	}
 	
 	String newnewEquipSearch(String userId) throws Exception{
@@ -1594,13 +1594,13 @@ public class LoaChatController {
 		try {
 			gems = (List<Map<String, Object>>) rtnMap.get("Gems");
 		}catch(Exception e){
-			return "§멸/홍"+" "+enterStr;
+			return "멸/홍"+" "+enterStr;
 		}
 		if(gems == null) {
-			return "§멸/홍"+" "+enterStr;
+			return "멸/홍"+" "+enterStr;
 		}
 		if(gems.equals("null")) {
-			return "§멸/홍"+" "+enterStr;
+			return "멸/홍"+" "+enterStr;
 		}
 		
 		String resMsg = "";
@@ -1634,13 +1634,13 @@ public class LoaChatController {
 		Collections.sort(equipGemT4DealList,Collections.reverseOrder());
 		Collections.sort(equipGemT4CoolList,Collections.reverseOrder());
 		if(tier ==3) {
-			resMsg += "§멸/홍(3T)"+"";
+			resMsg += "멸/홍"+"";
 			String tmpMsg1 = equipGemT3DealList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
 			String tmpMsg2 = equipGemT3CoolList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
 			resMsg += StringUtils.center(tmpMsg1+" / "+tmpMsg2,29,spaceStr); 
 			resMsg += enterStr;
 		}else if(tier ==4) {
-			resMsg += "§겁/작(4T)"+"";
+			resMsg += "겁/작"+"";
 			String tmpMsg3 = equipGemT4DealList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
 			String tmpMsg4 = equipGemT4CoolList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
 			resMsg += StringUtils.center(tmpMsg3+" / "+tmpMsg4,29,spaceStr);
