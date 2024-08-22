@@ -308,13 +308,13 @@ public class LoaApiParser {
 		if(inputcase==0) {
 			for(String a : arr) {
 				a = "<img"+a;
-				String b = Jsoup.parse(a.replace("<BR>", enterStr)).text();
+				String b = Jsoup.parse(a.replace("<BR>", spaceStr)).text();
 				res += findBraceletOptionsDt( b );
 			}
 		}else {
 			for(String a : arr) {
 				a = "<img"+a;
-				String b = Jsoup.parse(a.replace("<BR>", enterStr)).text();
+				String b = Jsoup.parse(a.replace("<BR>", spaceStr)).text();
 				res += newFindTier4AccesorryOptionsDt( b );
 			}
 		}
