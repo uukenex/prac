@@ -170,20 +170,21 @@ public class LoaApiUtils {
 	}
 	public static String tier4accesorry(String txt) {
 		try {
-			txt=txt.replaceAll("치명타 적중","치적");
+			txt=txt.replaceAll("치명타 적중률","치적");
 			txt=txt.replaceAll("치명타 피해","치피");
-			txt=txt.replaceAll("아군 공격력","아공강");
-			txt=txt.replaceAll("아군 피해량","아피강");
+			txt=txt.replaceAll("아군 공격력 강화 효과","아공강");
+			txt=txt.replaceAll("아군 피해량 강화 효과","아피강");
 			txt=txt.replaceAll("무기 공격력", "무공");
 			txt=txt.replaceAll("공격력", "공");
 			txt=txt.replaceAll("최대 생명력","최생");
 			txt=txt.replaceAll("최대 마나","마나");
-			txt=txt.replaceAll("상태이상","CC");
-			txt=txt.replaceAll("전투 중","생회");
-			txt=txt.replaceAll("적에게", "피해");
-			txt=txt.replaceAll("추가", "추피");
-			txt=txt.replaceAll("세레나데", "폿아덴");
-			txt=txt.replaceAll("파티원","");
+			txt=txt.replaceAll("상태이상 공격 지속시간","CC");
+			txt=txt.replaceAll("전투 중 생명력 회복량","생회");
+			txt=txt.replaceAll("적에게 주는 피해", "피증");
+			txt=txt.replaceAll("추가 피해", "추피");
+			txt=txt.replaceAll("세레나데, 신앙, 조화 게이지 획득량", "폿아덴");
+			txt=txt.replaceAll("파티원 회복 효과","파티회복");
+			txt=txt.replaceAll("파티원 보호막 효과","파티보호");
 			
 		}catch(Exception e) {
 			txt="";
