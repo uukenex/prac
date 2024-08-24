@@ -271,7 +271,10 @@ public class LoaChatController {
 			case "/경매장유물":
 				val = marketSearch(40000);
 				break;
-				
+			case "/경매장전설":
+			case "/ㄱㅁㅈㅈㅅ":
+				val = marketSearch(400002);
+				break;	
 			case "/악세":
 			case "/ㅇㅅ":
 				if (param1 != null && !param1.equals("")) {
@@ -2215,6 +2218,20 @@ public class LoaChatController {
 			json.put("PageNo", "1");
 			
 			resMsg +="[유물]"+enterStr;
+			
+			resMsg += marketDtSearch(json,2);
+			
+			json.put("PageNo", "2");
+			resMsg += marketDtSearch(json,2);
+			
+		}else if(tier==400002) {
+			json.put("CategoryCode", "40000");
+			json.put("Sort", "CURRENT_MIN_PRICE");
+			json.put("SortCondition", "DESC");
+			json.put("ItemGrade", "전설");
+			json.put("PageNo", "1");
+			
+			resMsg +="[전설]"+enterStr;
 			
 			resMsg += marketDtSearch(json,2);
 			
