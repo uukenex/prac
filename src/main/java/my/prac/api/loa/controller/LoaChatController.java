@@ -1237,6 +1237,10 @@ public class LoaChatController {
 				resMsg +="§아크패시브 : 미사용"+enterStr;
 			}
 			
+			if(isArkPassive.equals("true")) {
+				resMsg += newEngraveSearch(armoryEngraving,ordUserId,true,false);
+				resMsg +=enterStr;
+			}
 			//진화120 깨달음 95가 max
 			for(HashMap<String,Object> pt:arkPassivePt) {
 				resMsg +=pt.get("Name")+" : " +pt.get("Value"); 
@@ -1255,11 +1259,6 @@ public class LoaChatController {
 				
 				resMsg +=enterStr;
 			}
-			
-			if(isArkPassive.equals("true")) {
-				resMsg += newEngraveSearch(armoryEngraving,ordUserId,true,false);
-			}
-			
 			if(isArkPassive.equals("true")) {
 				List<HashMap<String,Object>> arkPassiveEffects = (List<HashMap<String, Object>>) arkPassive.get("Effects");
 				for(HashMap<String, Object> effect : arkPassiveEffects) {
