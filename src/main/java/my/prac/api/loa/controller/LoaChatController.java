@@ -1259,6 +1259,13 @@ public class LoaChatController {
 			if(isArkPassive.equals("true")) {
 				resMsg += newEngraveSearch(armoryEngraving,ordUserId,true,false);
 			}
+			
+			if(isArkPassive.equals("true")) {
+				List<HashMap<String,Object>> arkPassiveEffects = (List<HashMap<String, Object>>) arkPassive.get("Effects");
+				for(HashMap<String, Object> effect : arkPassiveEffects) {
+					resMsg += Jsoup.parse((String) effect.get("Description")).text() + enterStr;
+				}
+			}
 		}
 		
 		return resMsg;
