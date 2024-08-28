@@ -1242,6 +1242,7 @@ public class LoaChatController {
 				resMsg +=enterStr;
 			}
 			//진화120 깨달음 95가 max
+			resMsg +="§아크패시브 : 포인트"+enterStr;
 			for(HashMap<String,Object> pt:arkPassivePt) {
 				resMsg +=pt.get("Name")+" : " +pt.get("Value"); 
 				
@@ -1257,6 +1258,7 @@ public class LoaChatController {
 						break;
 				}
 				
+				resMsg +=enterStr;
 				resMsg +=enterStr;
 			}
 			if(isArkPassive.equals("true")) {
