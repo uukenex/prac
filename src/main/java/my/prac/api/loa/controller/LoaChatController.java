@@ -1002,7 +1002,7 @@ public class LoaChatController {
 		String accessoryMsg = "";
 		String braceletMsg = "";
 		
-		HashMap<String,Object> arkPassive= (HashMap<String, Object>) armoryProfile.get("ArkPassive");
+		HashMap<String,Object> arkPassive= (HashMap<String, Object>) rtnMap.get("ArkPassive");
 		String isArkPassive = arkPassive.get("IsArkPassive").toString();
 		List<HashMap<String,Object>> arkPassivePt = (List<HashMap<String, Object>>) arkPassive.get("Points");
 		
