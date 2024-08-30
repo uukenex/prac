@@ -249,10 +249,7 @@ public class LoaChatController {
 				break;
 			case "/ㄱㅁㅈ":
 			case "/경매장":
-				val  = marketSearch();
-				val += enterStr+"유물각인서 순위 더보기..▼"+allSeeStr;
-				val += marketSearch(40000);
-				val += tossAccount();
+				val  = newMarketSearch();
 				break;
 			case "/ㄱㅁㅈ3":
 			case "/경매장3":
@@ -2084,6 +2081,82 @@ public class LoaChatController {
 		
 		return resMsg;
 	}
+	String newMarketSearch() throws Exception {
+		String resMsg = "";
+		JSONObject json ;
+		String first_value ="";
+		json = new JSONObject();
+
+		json.put("CategoryCode", "50000");
+		resMsg += "[4T/3T]최저가비교"+enterStr;
+		
+		resMsg += "운돌/찬명돌 - ";
+		json.put("itemName", "운명의 돌파석");
+		first_value = marketDtSearch(json,2,false,false);
+		resMsg += first_value;
+		if(first_value.equals("")) {
+			return "경매장 오류";
+		}
+		
+		resMsg += "/";
+		json.put("itemName", "찬란");
+		resMsg += marketDtSearch(json,2,false,true);
+		
+		resMsg += "운파/정파강 - ";
+		json.put("itemName", "운명의 파괴석");
+		resMsg += marketDtSearch(json,2,false,false);
+		resMsg += "/";
+		json.put("itemName", "정제된 파괴강석");
+		resMsg += marketDtSearch(json,2,false,true);
+		
+		resMsg += "아비도스/최상레하 - ";
+		json.put("itemName", "아비도스");
+		resMsg += marketDtSearch(json,4,false,false);
+		resMsg += "/";
+		json.put("itemName", "최상급");
+		resMsg += marketDtSearch(json,4,false,true);
+		
+		//여기부턴 거래소
+		resMsg += enterStr;
+		json = new JSONObject();
+		json.put("CategoryCode", "210000");
+		json.put("Sort", "BUY_PRICE");
+		json.put("SortCondition", "ASC");
+		
+		resMsg += enterStr;
+		resMsg += "10멸/홍 - ";
+		json.put("itemName", "10레벨 멸");
+		resMsg += auctionSearchDt(json,false,false);
+		resMsg += "/";
+		json.put("itemName", "10레벨 홍");
+		resMsg += auctionSearchDt(json,false,true);
+		resMsg += spaceStr+"8겁/작 - ";
+		json.put("itemName", "8레벨 겁");
+		resMsg += auctionSearchDt(json,false,false);
+		resMsg += "/";
+		json.put("itemName", "8레벨 작");
+		resMsg += auctionSearchDt(json,false,true);
+		
+		resMsg += spaceStr+"9멸/홍 - ";
+		json.put("itemName", "9레벨 멸");
+		resMsg += auctionSearchDt(json,false,false);
+		resMsg += "/";
+		json.put("itemName", "9레벨 홍");
+		resMsg += auctionSearchDt(json,false,true);
+		resMsg += spaceStr+"7겁/작 - ";
+		json.put("itemName", "7레벨 겁");
+		resMsg += auctionSearchDt(json,false,false);
+		resMsg += "/";
+		json.put("itemName", "7레벨 작");
+		resMsg += auctionSearchDt(json,false,true);
+		
+		resMsg += enterStr;
+		
+		resMsg += "추가명령어: 경매장4/경매장3/경매장악세/경매장전설/경매장유물";
+		
+		return resMsg;
+	}
+	
 	String marketTier4Search() throws Exception {
 		String resMsg = "";
 		JSONObject json ;
@@ -2094,7 +2167,7 @@ public class LoaChatController {
 		resMsg +="[4티어]"+enterStr;
 		
 		json.put("itemName", "용암");
-		first_value = marketDtSearch(json,2);
+		first_value = marketDtSearch(json,2,true,true);
 		resMsg += first_value;
 		
 		if(first_value.equals("")) {
@@ -2102,19 +2175,19 @@ public class LoaChatController {
 		}
 		
 		json.put("itemName", "빙하");
-		resMsg += marketDtSearch(json,2);
+		resMsg += marketDtSearch(json,2,true,true);
 		
 		json.put("itemName", "운명의 파편 주머니");
-		resMsg += marketDtSearch(json,1);
+		resMsg += marketDtSearch(json,1,true,true);
 		
 		json.put("itemName", "운명의 돌파석");
-		resMsg += marketDtSearch(json,2);
+		resMsg += marketDtSearch(json,2,true,true);
 		
 		json.put("itemName", "운명의 파괴석");
-		resMsg += marketDtSearch(json,2);
+		resMsg += marketDtSearch(json,2,true,true);
 		
 		json.put("itemName", "아비도스");
-		resMsg += marketDtSearch(json,4);
+		resMsg += marketDtSearch(json,4,true,true);
 		
 		//여기부턴 거래소
 		resMsg += enterStr;
@@ -2162,7 +2235,7 @@ public class LoaChatController {
 		resMsg +="[3티어]"+enterStr;
 		
 		json.put("itemName", "태양");
-		String first_value = marketDtSearch(json,0);
+		String first_value = marketDtSearch(json,0,true,true);
 		resMsg += first_value;
 		
 		if(first_value.equals("")) {
@@ -2170,16 +2243,16 @@ public class LoaChatController {
 		}
 		
 		json.put("itemName", "명예의 파편");
-		resMsg += marketDtSearch(json,1);
+		resMsg += marketDtSearch(json,1,true,true);
 		
 		json.put("itemName", "찬란");
-		resMsg += marketDtSearch(json,2);
+		resMsg += marketDtSearch(json,2,true,true);
 		
 		json.put("itemName", "파괴강석");
-		resMsg += marketDtSearch(json,3);
+		resMsg += marketDtSearch(json,3,true,true);
 		
 		json.put("itemName", "최상급");
-		resMsg += marketDtSearch(json,4);
+		resMsg += marketDtSearch(json,4,true,true);
 		
 		//여기부턴 거래소
 		resMsg += enterStr;
@@ -2227,10 +2300,10 @@ public class LoaChatController {
 			
 			resMsg +="[유물]"+enterStr;
 			
-			resMsg += marketDtSearch(json,2);
+			resMsg += marketDtSearch(json,2,true,true);
 			
 			json.put("PageNo", "2");
-			resMsg += marketDtSearch(json,2);
+			resMsg += marketDtSearch(json,2,true,true);
 			
 		}else if(tier==400002) {
 			json.put("CategoryCode", "40000");
@@ -2241,10 +2314,10 @@ public class LoaChatController {
 			
 			resMsg +="[전설]"+enterStr;
 			
-			resMsg += marketDtSearch(json,2);
+			resMsg += marketDtSearch(json,2,true,true);
 			
 			json.put("PageNo", "2");
-			resMsg += marketDtSearch(json,2);
+			resMsg += marketDtSearch(json,2,true,true);
 			
 		}else {
 			return "";
@@ -2266,7 +2339,7 @@ public class LoaChatController {
 		return resMsg;
 	}
 	
-	String marketDtSearch(JSONObject json,int numbering) throws Exception {
+	String marketDtSearch(JSONObject json,int numbering,boolean nameDefaultYn,boolean enterYn) throws Exception {
 		String str = "";
 
 		try {
@@ -2329,8 +2402,20 @@ public class LoaChatController {
 				case 2:
 				case 4:
 					for (HashMap<String, Object> item : itemMap) {
-						str += item.get("Name") + " - " + item.get("CurrentMinPrice") + "G" + enterStr;
+
+						if(nameDefaultYn) {
+							str += item.get("Name") + " - " ;
+						}
+						
+						str += item.get("CurrentMinPrice") + "G";
+						
+						if(enterYn) {
+							str +=enterStr;
+						}
+						
 					}
+					
+					
 					break;
 				
 			}
