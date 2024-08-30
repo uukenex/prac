@@ -2089,7 +2089,7 @@ public class LoaChatController {
 
 		json.put("CategoryCode", "50000");
 		resMsg += "[4T/3T]최저가비교"+enterStr;
-		
+		resMsg += "§돌파석"+enterStr;
 		resMsg += "운돌/찬명돌 - ";
 		json.put("itemName", "운명의 돌파석");
 		first_value = marketDtSearch(json,2,false,false);
@@ -2102,6 +2102,7 @@ public class LoaChatController {
 		json.put("itemName", "찬란");
 		resMsg += marketDtSearch(json,2,false,true);
 		
+		resMsg += "§파괴석"+enterStr;
 		resMsg += "운파/정파강 - ";
 		json.put("itemName", "운명의 파괴석");
 		resMsg += marketDtSearch(json,2,false,false);
@@ -2109,6 +2110,15 @@ public class LoaChatController {
 		json.put("itemName", "정제된 파괴강석");
 		resMsg += marketDtSearch(json,2,false,true);
 		
+		resMsg += "§수호석"+enterStr;
+		resMsg += "운수/정수강 - ";
+		json.put("itemName", "운명의 수호석");
+		resMsg += marketDtSearch(json,2,false,false);
+		resMsg += "/";
+		json.put("itemName", "정제된 수호강석");
+		resMsg += marketDtSearch(json,2,false,true);
+		
+		resMsg += "§융화재료"+enterStr;
 		resMsg += "아비도스/최상레하 - ";
 		json.put("itemName", "아비도스");
 		resMsg += marketDtSearch(json,4,false,false);
@@ -2135,7 +2145,7 @@ public class LoaChatController {
 		resMsg += "/";
 		json.put("itemName", "8레벨 작");
 		resMsg += auctionSearchDt(json,false,true);
-		
+		resMsg += enterStr;
 		resMsg += spaceStr+"9멸/홍 - ";
 		json.put("itemName", "9레벨 멸");
 		resMsg += auctionSearchDt(json,false,false);
