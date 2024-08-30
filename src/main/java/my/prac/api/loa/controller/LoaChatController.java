@@ -1191,7 +1191,7 @@ public class LoaChatController {
 		//resMsg += "진/깨/도"+"　 　"+arkpoint1+" / "+arkpoint2+" / "+arkpoint3+enterStr;
 		
 		if(tier ==4) {
-			resMsg += "아크패시브"+"　 "+"진:"+arkpoint1+" / "+"깨:"+arkpoint2+" / "+"도:"+arkpoint3+enterStr;
+			resMsg += "아크패시브"+"　 "+"진:"+arkpoint1+" /"+"깨:"+arkpoint2+" /"+"도:"+arkpoint3+enterStr;
 		}
 		
 		resMsg += newGemSearch(armoryGem,ordUserId, tier);
@@ -1251,14 +1251,13 @@ public class LoaChatController {
 						resMsg +=" / 95";
 						break;
 					case "도약":
-						resMsg +=" / ?";
+						resMsg +=" / 40";
 						break;
 				}
-				
-				resMsg +=enterStr;
 				resMsg +=enterStr;
 			}
 			if(isArkPassive.equals("true")) {
+				resMsg +=enterStr;
 				List<HashMap<String,Object>> arkPassiveEffects = (List<HashMap<String, Object>>) arkPassive.get("Effects");
 				for(HashMap<String, Object> effect : arkPassiveEffects) {
 					resMsg += Jsoup.parse((String) effect.get("Description")).text() + enterStr;
@@ -2089,7 +2088,7 @@ public class LoaChatController {
 
 		json.put("CategoryCode", "50000");
 		resMsg += "[4T/3T]최저가비교"+enterStr;
-		resMsg += "§돌파석"+enterStr;
+		resMsg += "§ 돌파석"+enterStr;
 		resMsg += "운돌/찬명돌 - ";
 		json.put("itemName", "운명의 돌파석");
 		first_value = marketDtSearch(json,2,false,false);
@@ -2102,7 +2101,7 @@ public class LoaChatController {
 		json.put("itemName", "찬란");
 		resMsg += marketDtSearch(json,2,false,true);
 		
-		resMsg += "§파괴석"+enterStr;
+		resMsg += "§ 파괴석 & 수호석"+enterStr;
 		resMsg += "운파/정파강 - ";
 		json.put("itemName", "운명의 파괴석");
 		resMsg += marketDtSearch(json,2,false,false);
@@ -2110,7 +2109,6 @@ public class LoaChatController {
 		json.put("itemName", "정제된 파괴강석");
 		resMsg += marketDtSearch(json,2,false,true);
 		
-		resMsg += "§수호석"+enterStr;
 		resMsg += "운수/정수강 - ";
 		json.put("itemName", "운명의 수호석");
 		resMsg += marketDtSearch(json,2,false,false);
@@ -2118,7 +2116,9 @@ public class LoaChatController {
 		json.put("itemName", "정제된 수호강석");
 		resMsg += marketDtSearch(json,2,false,true);
 		
-		resMsg += "§융화재료"+enterStr;
+		resMsg += enterStr;
+		
+		resMsg += "§ 융화재료"+enterStr;
 		resMsg += "아비도스/최상레하 - ";
 		json.put("itemName", "아비도스");
 		resMsg += marketDtSearch(json,4,false,false);
@@ -2132,7 +2132,7 @@ public class LoaChatController {
 		json.put("CategoryCode", "210000");
 		json.put("Sort", "BUY_PRICE");
 		json.put("SortCondition", "ASC");
-		
+		resMsg += "§ 보석"+enterStr;
 		resMsg += "10멸/홍 - ";
 		json.put("itemName", "10레벨 멸");
 		resMsg += auctionSearchDt(json,false,false);
@@ -2145,7 +2145,9 @@ public class LoaChatController {
 		resMsg += "/";
 		json.put("itemName", "8레벨 작");
 		resMsg += auctionSearchDt(json,false,true);
+		
 		resMsg += enterStr;
+		
 		resMsg += spaceStr+"9멸/홍 - ";
 		json.put("itemName", "9레벨 멸");
 		resMsg += auctionSearchDt(json,false,false);
@@ -2162,7 +2164,7 @@ public class LoaChatController {
 		resMsg += enterStr;
 		
 		
-		resMsg += "추가 명령어(초성가능)"+enterStr;
+		resMsg += "§ 추가 명령어(초성가능)"+enterStr;
 		resMsg += "티어별　 조회: 경매장4/경매장3"+enterStr;
 		resMsg += "각인서　 조회: 경매장전설/경매장유물"+enterStr;
 		resMsg += "연마악세 조회: 경매장악세"+enterStr;
