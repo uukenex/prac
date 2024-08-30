@@ -2123,7 +2123,6 @@ public class LoaChatController {
 		json.put("Sort", "BUY_PRICE");
 		json.put("SortCondition", "ASC");
 		
-		resMsg += enterStr;
 		resMsg += "10멸/홍 - ";
 		json.put("itemName", "10레벨 멸");
 		resMsg += auctionSearchDt(json,false,false);
@@ -2152,7 +2151,11 @@ public class LoaChatController {
 		
 		resMsg += enterStr;
 		
-		resMsg += "추가명령어: 경매장4/경매장3/경매장악세/경매장전설/경매장유물";
+		
+		resMsg += "추가 명령어(초성가능)"+enterStr;
+		resMsg += "티어별 경매조회: 경매장4/경매장3"+enterStr;
+		resMsg += "각인서 조회: 경매장전설/경매장유물"+enterStr;
+		resMsg += "연마악세 조회: 경매장악세"+enterStr;
 		
 		return resMsg;
 	}
