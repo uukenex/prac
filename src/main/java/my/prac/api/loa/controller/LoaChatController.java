@@ -320,13 +320,21 @@ public class LoaChatController {
 			case "/항협": case "/항해": case "/항해협동": case "/ㅎㅎ":
 				val = shipSearch();
 				break;
-			case "/섬마": case "/가방": case "/ㄱㅂ": case "/ㅅㅁ":
+			case "/가방": case "/ㄱㅂ":
 				val = openBox(param1,param2);
 				break;
 			case "/날씨": case "/ㄴㅆ":
 				if (param1 != null && !param1.equals("")) {
 					val = weatherSearch(param1);
 				}
+				break;
+			case "/점메추":
+				String[] menu_list2 = {"칼국수","샐러드","고구마","굶기","점심회식-부장님은 짜장면드신데","콩국수","된장찌개","순대국","스테이크덮밥",
+						"오징어덮밥","떡볶이","편의점도시락","콩나물불고기","라면","햄버거","부대찌개","돈까스","제육덮밥","닭갈비","닭도리탕","김치돈까스나베",
+						"쌀국수","김치","물"};
+				Random random2 = new Random();
+				val = menu_list2[random2.nextInt(menu_list2.length)];
+				
 				break;
 			case "/저메추":
 				String[] menu_list = { "피자", "탕수육", "치킨", "샐러드", "마라탕", "양꼬치", "삼겹살", "설렁탕", "김치찌개", "된장찌개", "삼치튀김", "참치마요",
