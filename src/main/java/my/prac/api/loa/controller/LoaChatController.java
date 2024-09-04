@@ -306,8 +306,8 @@ public class LoaChatController {
 				}
 				break;	
 				
-			case "/보석":
-			case "/ㅂㅅ":
+			case "/부캐보석":
+			case "/ㅂㅋㅂㅅ":
 				if (param1 != null && !param1.equals("")) {
 					try {
 						val = supporters(param1);
