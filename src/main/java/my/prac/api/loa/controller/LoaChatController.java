@@ -249,6 +249,9 @@ public class LoaChatController {
 				break;
 			case "/ㄱㅁㅈ":
 			case "/경매장":
+				
+				val  = newMarketSearch();
+				
 				switch(param1) {
 					case "유물":
 					case "ㅇㅁ":
@@ -268,8 +271,6 @@ public class LoaChatController {
 					case "3":
 						val = marketSearch(3);
 						break;
-					default:
-						val  = newMarketSearch();
 				}
 				
 				
