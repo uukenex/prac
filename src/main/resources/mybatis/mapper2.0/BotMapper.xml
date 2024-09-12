@@ -43,13 +43,14 @@
 		SELECT RES
 		  FROM (SELECT '3' AS ORD
 				    ,RES
-				FROM (SELECT LISTAGG(A.REQ, ', ') WITHIN GROUP(ORDER BY A.REQ) || ' → ' || A.RES AS RES
+				    ,SORT
+				FROM (SELECT LISTAGG(A.REQ, ', ') WITHIN GROUP(ORDER BY A.REQ) || ' → ' || A.RES AS RES,SORT
 					   FROM TBOT_WORD_SAVE A
 					  WHERE A.LIMIT_YN = #{limitYn, jdbcType=VARCHAR}
-					  GROUP BY A.RES
+					  GROUP BY A.RES,SORT
 					  )
 				  )
-		 ORDER BY ORD
+		 ORDER BY ORD,SORT DESC
 		 
 	</select>
 	
