@@ -249,7 +249,30 @@ public class LoaChatController {
 				break;
 			case "/ㄱㅁㅈ":
 			case "/경매장":
-				val  = newMarketSearch();
+				switch(param1) {
+					case "유물":
+					case "ㅇㅁ":
+						val = marketSearch(40000);
+						break;
+					case "전설":
+					case "ㅈㅅ":
+						val = marketSearch(400002);
+						break;
+					case "악세":
+					case "ㅇㅅ":
+						val = marketTier4accessorySearch();
+						break;
+					case "4":
+						val = marketSearch(4);
+						break;
+					case "3":
+						val = marketSearch(3);
+						break;
+					default:
+						val  = newMarketSearch();
+				}
+				
+				
 				break;
 			case "/ㄱㅁㅈ3":
 			case "/경매장3":
@@ -2299,7 +2322,19 @@ public class LoaChatController {
 		json.put("itemName", "9레벨 홍");
 		resMsg += auctionSearchDt(json,false,true);
 	
+		resMsg += spaceStr+"8멸/홍 -";
+		json.put("itemName", "8레벨 멸");
+		resMsg += auctionSearchDt(json,false,false);
+		resMsg += "/";
+		json.put("itemName", "8레벨 홍");
+		resMsg += auctionSearchDt(json,false,true);
 		
+		resMsg += spaceStr+"7멸/홍 -";
+		json.put("itemName", "7레벨 멸");
+		resMsg += auctionSearchDt(json,false,false);
+		resMsg += "/";
+		json.put("itemName", "7레벨 홍");
+		resMsg += auctionSearchDt(json,false,true);
 		return resMsg;
 	}
 	
