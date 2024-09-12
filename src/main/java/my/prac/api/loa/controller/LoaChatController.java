@@ -469,6 +469,7 @@ public class LoaChatController {
 			}
 			
 		}catch(Exception e){
+			e.printStackTrace();
 			System.out.println("로그저장실패 테스트");
 		}finally {
 			if(!passYn) {
