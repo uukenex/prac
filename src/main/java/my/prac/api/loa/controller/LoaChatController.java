@@ -249,6 +249,9 @@ public class LoaChatController {
 				break;
 			case "/ㄱㅁㅈ":
 			case "/경매장":
+				if(param1==null || param1.equals("")) {
+					val  = newMarketSearch();
+				}
 				switch(param1) {
 					case "유물":
 					case "ㅇㅁ":
@@ -268,12 +271,10 @@ public class LoaChatController {
 					case "3":
 						val = marketSearch(3);
 						break;
+					default:
+						val  = newMarketSearch();
+						break;
 				}
-				
-				if(val.equals("")) {
-					val  = newMarketSearch();
-				}
-				
 				
 				break;
 			case "/ㄱㅁㅈ3":
