@@ -268,12 +268,10 @@ public class LoaChatController {
 					case "3":
 						val = marketSearch(3);
 						break;
-					case "":
-						val  = newMarketSearch();
-						break;
-					default:
-						val  = newMarketSearch();
-						break;
+				}
+				
+				if(val.equals("")) {
+					val  = newMarketSearch();
 				}
 				
 				
