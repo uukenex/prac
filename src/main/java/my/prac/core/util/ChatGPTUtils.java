@@ -136,7 +136,7 @@ public class ChatGPTUtils {
 		
 
 		String json = "{\n" +
-		        "    \"model\": \"gpt-3.5-turbo\",\n" +
+		        "    \"model\": \"gpt-4o\",\n" +
 		        "    \"messages\": [\n" +
 		        "        {\n" +
 		        "            \"role\": \"system\",\n" +

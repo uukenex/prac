@@ -164,6 +164,8 @@ public class LoaChatController {
 			case "/주급":
 			case "/ㅈㄱ":
 			case "/보상":
+			case "/비싼전각":
+			case "/비싼유각":
 				passYn = true;
 				break;
 			case "/골드": case "/ㄱㄷ": case "/클골": case "/ㅋㄱ":
