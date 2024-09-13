@@ -1636,13 +1636,13 @@ public class LoaChatController {
 		try {
 			gems = (List<Map<String, Object>>) rtnMap.get("Gems");
 		}catch(Exception e){
-			return "멸/홍"+" "+enterStr;
+			return enterStr;
 		}
 		if(gems == null) {
-			return "멸/홍"+" "+enterStr;
+			return enterStr;
 		}
 		if(gems.equals("null")) {
-			return "멸/홍"+" "+enterStr;
+			return enterStr;
 		}
 		
 		String resMsg = "";
@@ -1762,11 +1762,20 @@ public class LoaChatController {
 		Collections.sort(equipGemT3CoolList,Collections.reverseOrder());
 		Collections.sort(equipGemT4DealList,Collections.reverseOrder());
 		Collections.sort(equipGemT4CoolList,Collections.reverseOrder());
-		resMsg = resMsg + enterStr+"§"+gemList[0]+" : "+ equipGemT3DealList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
-		resMsg = resMsg + enterStr+"§"+gemList[1]+" : "+ equipGemT3CoolList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
-		if(tier ==4) {
-			resMsg = resMsg + enterStr+"§"+gemList[2]+" : "+ equipGemT4DealList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
-			resMsg = resMsg + enterStr+"§"+gemList[3]+" : "+ equipGemT4CoolList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
+		
+		if(equipGemT3DealList.size()+equipGemT3CoolList.size() > 0) {
+			resMsg += "멸/홍"+"";
+			String tmpMsg1 = equipGemT3DealList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
+			String tmpMsg2 = equipGemT3CoolList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
+			resMsg += StringUtils.center(tmpMsg1+" / "+tmpMsg2,29,spaceStr); 
+			resMsg += enterStr;
+		}
+		if(equipGemT4DealList.size()+equipGemT4CoolList.size() > 0) {
+			resMsg += "겁/작"+"";
+			String tmpMsg3 = equipGemT4DealList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
+			String tmpMsg4 = equipGemT4CoolList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
+			resMsg += StringUtils.center(tmpMsg3+" / "+tmpMsg4,29,spaceStr);
+			resMsg += enterStr;
 		}
 		return resMsg;
 	}
@@ -1824,7 +1833,7 @@ public class LoaChatController {
 		List<HashMap<String, Object>> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<List<Map<String, Object>>>() {});
 		
 		List<HashMap<String, Object>> sortedList = rtnMap.stream()
-				.filter(x->  Double.parseDouble(x.get("ItemMaxLevel").toString().replaceAll(",", "")) >= 1415)
+				.filter(x->  Double.parseDouble(x.get("ItemMaxLevel").toString().replaceAll(",", "")) >= 1540)
 				.sorted(Comparator.comparingDouble(x-> Double.parseDouble(x.get("ItemMaxLevel").toString().replaceAll(",", ""))))
 				.collect(toReversedList());
 		
@@ -1859,12 +1868,12 @@ public class LoaChatController {
 		String returnData = LoaApiUtils.connect_process(paramUrl);
 		
 		String resMsg=ordUserId+" 부캐 정보" + enterStr;
-		resMsg += "1600이상, 보석4티어기준"+enterStr;
+		resMsg += "1540이상, 4T 5보석↑,3T 8보석↑ 표기"+enterStr;
 		
 		List<HashMap<String, Object>> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<List<Map<String, Object>>>() {});
 		
 		List<HashMap<String, Object>> sortedList = rtnMap.stream()
-				.filter(x->  Double.parseDouble(x.get("ItemMaxLevel").toString().replaceAll(",", "")) >= 1600)
+				.filter(x->  Double.parseDouble(x.get("ItemMaxLevel").toString().replaceAll(",", "")) >= 1540)
 				.sorted(Comparator.comparingDouble(x-> Double.parseDouble(x.get("ItemMaxLevel").toString().replaceAll(",", ""))))
 				.collect(toReversedList());
 		
@@ -1883,7 +1892,7 @@ public class LoaChatController {
 				resMsg += enterStr;
 				resMsg += miniLimitSearch(charList.get("CharacterName").toString());
 				resMsg += enterStr;
-				resMsg += miniGemSearch(charList.get("CharacterName").toString(),4);//얘는 엔터포함됨
+				resMsg += gemCntSearch(charList.get("CharacterName").toString(),4);//얘는 엔터포함됨
 				resMsg += enterStr;
 				if(charCnt ==3) {
 					resMsg += enterStr + "3캐릭 이상 더보기..▼ ";
@@ -1908,7 +1917,7 @@ public class LoaChatController {
 		List<HashMap<String, Object>> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<List<Map<String, Object>>>() {});
 		
 		List<HashMap<String, Object>> sortedList = rtnMap.stream()
-				.filter(x->  Double.parseDouble(x.get("ItemMaxLevel").toString().replaceAll(",", "")) >= 1415)
+				.filter(x->  Double.parseDouble(x.get("ItemMaxLevel").toString().replaceAll(",", "")) >= 1540)
 				.sorted(Comparator.comparingDouble(x-> Double.parseDouble(x.get("ItemMaxLevel").toString().replaceAll(",", ""))))
 				.collect(toReversedList());
 		
