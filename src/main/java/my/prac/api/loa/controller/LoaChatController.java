@@ -331,18 +331,6 @@ public class LoaChatController {
 					}
 				}
 				break;	
-				
-			case "/부캐보석":
-			case "/ㅂㅋㅂㅅ":
-				if (param1 != null && !param1.equals("")) {
-					try {
-						val = supporters(param1);
-						val+= subCharacterGemSearch(param1);
-					} catch (Exception e) {
-						val = errorCodeMng(e);
-					}
-				}
-				break;		
 			case "/항협": case "/항해": case "/항해협동": case "/ㅎㅎ":
 				val = shipSearch();
 				break;
@@ -1691,7 +1679,7 @@ public class LoaChatController {
 		return resMsg;
 	}
 	
-	String gemCntSearch(String userId,int tier) throws Exception {
+	String miniGemCntSearch(String userId) throws Exception {
 		String ordUserId=userId;
 		userId = URLEncoder.encode(userId, "UTF-8");
 		// +는 %2B로 치환한다
@@ -1867,8 +1855,8 @@ public class LoaChatController {
 		String paramUrl = lostArkAPIurl + "/characters/" + userId + "/siblings";
 		String returnData = LoaApiUtils.connect_process(paramUrl);
 		
-		String resMsg=ordUserId+" 부캐 정보" + enterStr;
-		resMsg += "1540이상, 4T 5보석↑,3T 8보석↑ 표기"+enterStr;
+		String resMsg=ordUserId+" 1540이상 부캐 정보" + enterStr;
+		resMsg += "4T 5보석↑,3T 8보석↑ 표기"+enterStr;
 		
 		List<HashMap<String, Object>> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<List<Map<String, Object>>>() {});
 		
@@ -1892,10 +1880,9 @@ public class LoaChatController {
 				resMsg += enterStr;
 				resMsg += miniLimitSearch(charList.get("CharacterName").toString());
 				resMsg += enterStr;
-				resMsg += gemCntSearch(charList.get("CharacterName").toString(),4);//얘는 엔터포함됨
-				resMsg += enterStr;
-				if(charCnt ==3) {
-					resMsg += enterStr + "3캐릭 이상 더보기..▼ ";
+				resMsg += miniGemCntSearch(charList.get("CharacterName").toString());//얘는 엔터포함됨
+				if(charCnt ==6) {
+					resMsg += enterStr + "6캐릭 이상 더보기..▼ ";
 					resMsg += allSeeStr ;
 				}
 			}
@@ -1904,58 +1891,6 @@ public class LoaChatController {
 		
 		return resMsg;
 	}
-	String subCharacterGemSearch(String userId) throws Exception {
-		String ordUserId=userId;
-		userId = URLEncoder.encode(userId, "UTF-8");
-		// +는 %2B로 치환한다
-		String paramUrl = lostArkAPIurl + "/characters/" + userId + "/siblings";
-		String returnData = LoaApiUtils.connect_process(paramUrl);
-		
-		String resMsg=ordUserId+" 부캐 보석 정보" + enterStr;
-		resMsg += "4T 5보석↑,3T 8보석↑ 표기" + enterStr;
-		
-		List<HashMap<String, Object>> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<List<Map<String, Object>>>() {});
-		
-		List<HashMap<String, Object>> sortedList = rtnMap.stream()
-				.filter(x->  Double.parseDouble(x.get("ItemMaxLevel").toString().replaceAll(",", "")) >= 1540)
-				.sorted(Comparator.comparingDouble(x-> Double.parseDouble(x.get("ItemMaxLevel").toString().replaceAll(",", ""))))
-				.collect(toReversedList());
-		
-		resMsg += enterStr;
-		
-		int charCnt = 0;
-		
-		for(HashMap<String,Object> charList : sortedList) {
-			String subCharName = charList.get("CharacterName").toString();
-			Double lv = Double.parseDouble(charList.get("ItemMaxLevel").toString().replaceAll(",", ""));
-			int tier =3;
-			if(lv >=1640 ) {
-				tier = 4;
-			}
-			String gemInfo = gemCntSearch(subCharName,tier);
-			
-			
-			if(gemInfo.equals("")) {
-				continue;
-			}
-			
-			charCnt++;
-			resMsg += "[" + LoaApiUtils.shortClassName(charList.get("CharacterClassName").toString()) + "] ";
-			resMsg += "("+lv+") ";
-			resMsg += subCharName + gemInfo + enterStr;
-			
-			if(charCnt ==3) {
-				resMsg += enterStr + "3캐릭 이상 더보기..▼ ";
-				resMsg += allSeeStr ;
-			}
-			
-		}
-		
-		return resMsg;
-	}
-	
-	
-	
 	String marketTier4accessorySearch() throws Exception {
 		String resMsg = "4티어 악세 최저가";
 		JSONObject json = new JSONObject();
