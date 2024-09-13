@@ -1881,8 +1881,8 @@ public class LoaChatController {
 				resMsg += miniLimitSearch(charList.get("CharacterName").toString());
 				resMsg += enterStr;
 				resMsg += miniGemCntSearch(charList.get("CharacterName").toString());//얘는 엔터포함됨
-				if(charCnt ==6) {
-					resMsg += enterStr + "6캐릭 이상 더보기..▼ ";
+				if(charCnt ==4) {
+					resMsg += enterStr + "4캐릭 이상 더보기..▼ ";
 					resMsg += allSeeStr ;
 				}
 			}
