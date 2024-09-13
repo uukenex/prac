@@ -314,23 +314,12 @@ public class LoaChatController {
 				if (param1 != null && !param1.equals("")) {
 					try {
 						val = supporters(param1);
-						val+= subCharacterSearch(param1);
-					} catch (Exception e) {
-						val = errorCodeMng(e);
-					}
-				}
-				break;
-			case "/부캐정보":
-			case "/ㅂㅋㅈㅂ":
-				if (param1 != null && !param1.equals("")) {
-					try {
-						val = supporters(param1);
 						val+= subCharacterInfoSearch(param1);
 					} catch (Exception e) {
 						val = errorCodeMng(e);
 					}
 				}
-				break;	
+				break;
 			case "/항협": case "/항해": case "/항해협동": case "/ㅎㅎ":
 				val = shipSearch();
 				break;
@@ -1809,45 +1798,6 @@ public class LoaChatController {
 		return resMsg;
 	}
 	
-	String subCharacterSearch(String userId) throws Exception {
-		String ordUserId=userId;
-		userId = URLEncoder.encode(userId, "UTF-8");
-		// +는 %2B로 치환한다
-		String paramUrl = lostArkAPIurl + "/characters/" + userId + "/siblings";
-		String returnData = LoaApiUtils.connect_process(paramUrl);
-		
-		String resMsg=ordUserId+" 부캐 정보" + enterStr;
-		
-		List<HashMap<String, Object>> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<List<Map<String, Object>>>() {});
-		
-		List<HashMap<String, Object>> sortedList = rtnMap.stream()
-				.filter(x->  Double.parseDouble(x.get("ItemMaxLevel").toString().replaceAll(",", "")) >= 1540)
-				.sorted(Comparator.comparingDouble(x-> Double.parseDouble(x.get("ItemMaxLevel").toString().replaceAll(",", ""))))
-				.collect(toReversedList());
-		
-		String mainServer = sortedList.get(0).get("ServerName").toString();
-		
-		resMsg += mainServer;
-		resMsg += enterStr;
-		
-		int charCnt = 0;
-		for(HashMap<String,Object> charList : sortedList) {
-			if(mainServer.equals(charList.get("ServerName").toString())) {
-				charCnt++;
-				resMsg += "[" + LoaApiUtils.shortClassName(charList.get("CharacterClassName").toString()) + "] ";
-				resMsg += "("+charList.get("ItemMaxLevel").toString().replaceAll(",", "")+") ";
-				resMsg += charList.get("CharacterName").toString();
-				resMsg += enterStr;
-				
-				if(charCnt ==6) {
-					resMsg += enterStr + "6캐릭 이상 더보기..▼ ";
-					resMsg += allSeeStr ;
-				}
-			}
-		}
-		
-		return resMsg;
-	}
 	String subCharacterInfoSearch(String userId) throws Exception {
 		String ordUserId=userId;
 		userId = URLEncoder.encode(userId, "UTF-8");
