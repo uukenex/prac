@@ -1901,45 +1901,11 @@ public class LoaChatController {
 		resMsg +="반지　 ";
 		resMsg += auctionSearchDt(json,false,true);
 		
-		
-		
-		
-		resMsg += "[고대 2연마](75+150)"+enterStr;
-		
-		json.put("CategoryCode", "200010");
-		json.put("Sort", "BUY_PRICE");
-		json.put("SortCondition", "ASC");
-		json.put("ItemGrade", "고대");
-		
-		json2.put("FirstOption",8);
-		json2.put("SecondOption",1);
-		json2.put("MinValue",9);
-		json2.put("MaxValue",9);
-		options.put(json2);
-		
-		json.put("EtcOptions",options);
-		resMsg +="목걸이 ";
-		resMsg += auctionSearchDt(json,false,true);
-		
-		options = new JSONArray();
-		json2.put("FirstOption",8);
-		json2.put("SecondOption",1);
-		json2.put("MinValue",8);
-		json2.put("MaxValue",8);
-		options.put(json2);
-		json.put("EtcOptions",options);
-		
-		json.put("CategoryCode", "200020");
-		resMsg +="귀걸이 ";
-		resMsg += auctionSearchDt(json,false,true);
-		
-		json.put("CategoryCode", "200030");
-		resMsg +="반지　 ";
-		resMsg += auctionSearchDt(json,false,true);
-		
+		//options 
+		//FirstOption 7:연마효과
+		//SecondOption 44 낙인력(8.00 상) 51아공강5.00% 아피강7.50% 
 		
 		resMsg += "[고대 1연마](75)"+enterStr;
-		
 		json.put("CategoryCode", "200010");
 		json.put("Sort", "BUY_PRICE");
 		json.put("SortCondition", "ASC");
