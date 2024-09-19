@@ -168,6 +168,26 @@ public class LoaChatController {
 			case "/비싼유각":
 				passYn = true;
 				break;
+			case "/분배금": case "/ㅂㅂㄱ":
+				if (param1 != null && !param1.equals("")) {
+					int int_parama1=0;
+					try {
+						int_parama1 = Integer.parseInt(param1);
+						
+						try {
+							val  = checkDividend(int_parama1,8);
+							val += checkDividend(int_parama1,16);
+							val += checkDividend(int_parama1,4);
+						} catch (Exception e) {
+							val = errorCodeMng(e);
+						}
+					} catch (Exception e) {
+						val = "숫자를 넣어주세요!";
+					}
+					
+				}
+				val += enterStr;
+				break;
 			case "/골드": case "/ㄱㄷ": case "/클골": case "/ㅋㄱ":
 				val  = checkGoldList();
 				val += enterStr;
@@ -568,6 +588,25 @@ public class LoaChatController {
 		retMsg = retMsg.replaceAll("항해 협동 : ", "");
 		
 		return retMsg;
+	}
+	
+	String checkDividend(int gold,int person) throws Exception {
+		String msg = "";
+		int susuro = (int) Math.floor(gold*0.05);
+		int dividend = (int) Math.floor(gold/(person-1));
+		int dividend1 = (int)Math.floor( (gold-susuro)*((double)(person-1)/(double)person) );
+		int dividend2 = (int)Math.floor(dividend1/1.1);
+		//int dividend3 = (int)Math.floor(dividend2/1.1);
+		
+		msg += gold +" 분배금 ("+ person +"인)"+enterStr;
+		msg += "수수료: -"  +susuro+"G"+enterStr;
+		msg += "분배금: "  +dividend+"G"+enterStr;
+		//msg += "손익분기점: -"+dividend1+"G"+enterStr;
+		msg += "입찰적정가: "+dividend2+"G"+enterStr;
+		//msg += "그냥줘: -"   +dividend3+"G"+enterStr;
+		msg += enterStr;
+		
+		return msg;
 	}
 	
 	String checkGoldList() throws Exception {
@@ -1978,7 +2017,7 @@ public class LoaChatController {
 			
 			json.put("EtcOptions",options);
 			
-			resMsg +="1연마 고대 목걸이(낙인력 상)";
+			resMsg +="1연마 고대 목걸이(낙인력 상) ";
 			resMsg += auctionSearchDt(json,false,true);
 			break;
 		case "치적":
@@ -2002,7 +2041,7 @@ public class LoaChatController {
 			
 			json.put("EtcOptions",options);
 			
-			resMsg +="1연마 고대 반지(치적 상)";
+			resMsg +="1연마 고대 반지(치적 상) ";
 			resMsg += auctionSearchDt(json,false,true);
 			break;
 		case "치피":
@@ -2026,7 +2065,7 @@ public class LoaChatController {
 			
 			json.put("EtcOptions",options);
 			
-			resMsg +="1연마 고대 반지(치피 상)";
+			resMsg +="1연마 고대 반지(치피 상) ";
 			resMsg += auctionSearchDt(json,false,true);
 			break;
 		}
