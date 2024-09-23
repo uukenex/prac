@@ -2,6 +2,7 @@ package my.prac.api.loa.controller;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.net.URL;
+import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -926,8 +927,11 @@ public class LoaChatController {
 		String returnData = LoaApiUtils.connect_process(paramUrl);
 		HashMap<String, Object> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<Map<String, Object>>() {});
 
+		
+		if(rtnMap ==null) return "";
 		List<Map<String, Object>> armoryEquipment;
 		try {
+			
 			armoryEquipment = (List<Map<String, Object>>) rtnMap.get("ArmoryEquipment");
 		}catch(Exception e){
 			e.printStackTrace();
