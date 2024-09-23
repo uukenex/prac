@@ -2953,6 +2953,6 @@ public class LoaChatController {
 		rtnMsg += ("최종점수 : " + numbers[0]+numbers[1] + "점")+enterStr;
 		
 	
-		return "";
+		return rtnMsg;
 	}
 }
