@@ -249,7 +249,6 @@ public class LoaChatController {
 						//val+= tossAccount();
 						
 					} catch (Exception e) {
-						e.printStackTrace();
 						val = errorCodeMng(e);
 					}
 				}
@@ -931,7 +930,9 @@ public class LoaChatController {
 		try {
 			armoryEquipment = (List<Map<String, Object>>) rtnMap.get("ArmoryEquipment");
 		}catch(Exception e){
+			e.printStackTrace();
 			throw new Exception("E0003");
+			
 		}
 		
 		List<String> equipElixirList = new ArrayList<>();
