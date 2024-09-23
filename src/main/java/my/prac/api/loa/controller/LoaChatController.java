@@ -924,7 +924,7 @@ public class LoaChatController {
 		// +는 %2B로 치환한다
 		String paramUrl = lostArkAPIurl + "/armories/characters/" + userId + "/equipment";
 		String returnData = LoaApiUtils.connect_process(paramUrl);
-		HashMap<String, Object> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<Map<String, Object>>() {});
+		List<Map<String, Object>> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<List<Map<String, Object>>>() {});
 
 		List<Map<String, Object>> armoryEquipment;
 		try {
