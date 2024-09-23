@@ -1018,7 +1018,7 @@ public class LoaChatController {
 			for(Map<String,Object> avatar:armoryAvatars) {
 				avatarsText += avatar.get("Type")+" : "+avatar.get("Name")+enterStr;
 			}
-			 
+			avatarsText += enterStr;
 		}catch(Exception e){
 			avatarsText ="";
 		}
