@@ -819,7 +819,7 @@ public class LoaChatController {
 		String ordUserId=userId;
 		userId = URLEncoder.encode(userId, "UTF-8");
 		// +는 %2B로 치환한다
-		String paramUrl = lostArkAPIurl + "/armories/characters/" + userId + "/equipment";
+		String paramUrl = lostArkAPIurl + "/armories/characters/" + userId + "?filters=equipment";
 		String returnData = LoaApiUtils.connect_process(paramUrl);
 		HashMap<String, Object> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<Map<String, Object>>() {});
 
@@ -922,7 +922,7 @@ public class LoaChatController {
 		String ordUserId=userId;
 		userId = URLEncoder.encode(userId, "UTF-8");
 		// +는 %2B로 치환한다
-		String paramUrl = lostArkAPIurl + "/armories/characters/" + userId + "/equipment";
+		String paramUrl = lostArkAPIurl + "/armories/characters/" + userId + "?filters=equipment";
 		String returnData = LoaApiUtils.connect_process(paramUrl);
 		HashMap<String, Object> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<Map<String, Object>>() {});
 
