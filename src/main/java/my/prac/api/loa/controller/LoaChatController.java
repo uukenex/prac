@@ -922,15 +922,14 @@ public class LoaChatController {
 		String ordUserId=userId;
 		userId = URLEncoder.encode(userId, "UTF-8");
 		// +는 %2B로 치환한다
-		String paramUrl = lostArkAPIurl + "/armories/characters/" + userId + "/equipment";
+		String paramUrl = lostArkAPIurl + "/armories/characters/" + userId + "?filters=equipment";
 		String returnData = LoaApiUtils.connect_process(paramUrl);
-		List<Map<String, Object>> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<List<Map<String, Object>>>() {});
+		HashMap<String, Object> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<Map<String, Object>>() {});
 
 		List<Map<String, Object>> armoryEquipment;
 		try {
-			armoryEquipment = (List<Map<String, Object>>) rtnMap;
+			armoryEquipment = (List<Map<String, Object>>) rtnMap.get("ArmoryEquipment");
 		}catch(Exception e){
-			System.out.println(userId);
 			e.printStackTrace();
 			throw new Exception("E0003");
 			
