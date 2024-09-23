@@ -922,13 +922,13 @@ public class LoaChatController {
 		String ordUserId=userId;
 		userId = URLEncoder.encode(userId, "UTF-8");
 		// +는 %2B로 치환한다
-		String paramUrl = lostArkAPIurl + "/armories/characters/" + userId + "?filters=equipment";
+		String paramUrl = lostArkAPIurl + "/armories/characters/" + userId + "/equipment";
 		String returnData = LoaApiUtils.connect_process(paramUrl);
 		HashMap<String, Object> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<Map<String, Object>>() {});
 
 		List<Map<String, Object>> armoryEquipment;
 		try {
-			armoryEquipment = (List<Map<String, Object>>) rtnMap.get("ArmoryEquipment");
+			armoryEquipment = (List<Map<String, Object>>) rtnMap;
 		}catch(Exception e){
 			e.printStackTrace();
 			throw new Exception("E0003");
