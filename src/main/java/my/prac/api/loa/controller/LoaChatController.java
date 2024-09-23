@@ -346,6 +346,7 @@ public class LoaChatController {
 						val = supporters(param1);
 						val+= subCharacterInfoSearch(param1);
 					} catch (Exception e) {
+						e.printStackTrace();
 						val = errorCodeMng(e);
 					}
 				}
