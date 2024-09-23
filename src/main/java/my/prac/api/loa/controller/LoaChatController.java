@@ -930,6 +930,7 @@ public class LoaChatController {
 		try {
 			armoryEquipment = (List<Map<String, Object>>) rtnMap;
 		}catch(Exception e){
+			System.out.println(userId);
 			e.printStackTrace();
 			throw new Exception("E0003");
 			
