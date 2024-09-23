@@ -168,6 +168,14 @@ public class LoaChatController {
 			case "/비싼유각":
 				passYn = true;
 				break;
+			case "/궁합": case "/ㄱㅎ":
+				try {
+					val = loveTest(param1,param2);
+				}catch(Exception e) {
+					val = "/궁합 이름1 이름2 형태로 입력해주세요.(한글만)";
+				}
+				
+				break;
 			case "/분배금": case "/ㅂㅂㄱ":
 				if (param1 != null && !param1.equals("")) {
 					int int_parama1=0;
@@ -2846,5 +2854,105 @@ public class LoaChatController {
 
 		val = "rgb-tns.dev-apc.com/ic/" + randKey;
 		return val;
+	}
+	
+	static final String[] CHO = {"2","4","2","3","6","5","4"
+			,"4","8","2","4","1","3","6","4","3","4","4","3"};
+	
+	static final String[] JOONG = {"2","3","3","4","2","3","3","4","2","4"
+			,"5","3","3","2","4","5","3","3","1","2","1"};
+	
+	static final String[] JONG = {"0","2","4","4","2","5","5","3","5","7","9","9"
+			,"7","9","9","8","4","4","6","2","4","1","3","4","3","4","4","3"};
+	
+	String loveTest(String str1,String str2) throws Exception {
+		
+		String rtnMsg ="";
+		
+		String nam1 = str1;
+		String nam2 = str2;
+		
+		char[] nameArray1 = nam1.toCharArray();
+		char[] nameArray2 = nam2.toCharArray();
+		
+		if(nameArray2.length>nameArray1.length) {
+			char[] tmpArray = nameArray1;
+			nameArray1 = nameArray2;
+			nameArray2 = tmpArray;
+		}
+		int maxLength = Math.max(nameArray1.length, nameArray2.length);
+		
+		StringBuilder s = new StringBuilder();
+		for(int i=0;i<maxLength;i++) {
+			if(i<nameArray1.length) {
+				char c = nameArray1[i];
+				
+				int choIndex = (c-44032)/588;
+				int joongIndex = ((c-44032)%588) /28;
+				int jongIndex = (c-44032)%28;
+				
+				int choStroke = Integer.parseInt(CHO[choIndex]);
+				int joongStroke = Integer.parseInt(JOONG[joongIndex]);
+				int jongStroke = Integer.parseInt(JONG[jongIndex]);
+				
+				int totalStroke = choStroke+joongStroke+jongStroke;
+				s.append(totalStroke).append(" ");
+				
+				rtnMsg += (c+" ");
+			}
+			
+			if(i<nameArray2.length) {
+				char c = nameArray2[i];
+				
+				int choIndex = (c-44032)/588;
+				int joongIndex = ((c-44032)%588) /28;
+				int jongIndex = (c-44032)%28;
+				
+				int choStroke = Integer.parseInt(CHO[choIndex]);
+				int joongStroke = Integer.parseInt(JOONG[joongIndex]);
+				int jongStroke = Integer.parseInt(JONG[jongIndex]);
+				
+				int totalStroke = choStroke+joongStroke+jongStroke;
+				s.append(totalStroke).append(" ");
+				
+				rtnMsg += (c+" ");
+			}
+		}
+		
+		rtnMsg += enterStr;
+		
+		rtnMsg += s.toString().trim()+enterStr;
+		String[] strokes = s.toString().trim().split(" ");
+		
+		int[] numbers = new int[strokes.length];
+		for(int i=0;i<strokes.length;i++) {
+			numbers[i] = Integer.parseInt(strokes[i]);
+		}
+		
+		int newCnt = 0;
+		
+		while (numbers.length>2) {
+			
+			int[] newNumbers = new int[numbers.length-1];
+			newCnt++;
+			for (int i=1;i<numbers.length;i++) {
+				int mark = (numbers[i-1]+numbers[i]);
+				int remain = mark%10;
+				newNumbers[i-1] = remain;
+				if(i==1) {
+					for(int j=0 ; j<newCnt ; j++) {
+						rtnMsg += spaceStr;	
+					}
+				}
+				rtnMsg += remain + " ";
+			}
+			rtnMsg += enterStr;
+			numbers = newNumbers;
+		}
+	
+		rtnMsg += ("최종점수 : " + numbers[0]+numbers[1] + "점")+enterStr;
+		
+	
+		return "";
 	}
 }
