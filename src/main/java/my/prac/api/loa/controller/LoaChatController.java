@@ -928,7 +928,7 @@ public class LoaChatController {
 		HashMap<String, Object> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<Map<String, Object>>() {});
 
 		
-		if(rtnMap ==null) return "";
+		if(rtnMap ==null) return "초월합 : 엘릭서합 : 0" ;
 		List<Map<String, Object>> armoryEquipment;
 		try {
 			
