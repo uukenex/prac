@@ -985,6 +985,10 @@ public class LoaChatController {
 		Map<String, Object> armoryProfile;
 		Map<String, Object> armoryEngraving;
 		Map<String, Object> armoryGem;
+		List<Map<String, Object>> armoryAvatars;
+		
+		
+		String avatarsText="";
 		
 		try {
 			armoryProfile = (Map<String, Object>) rtnMap.get("ArmoryProfile");
@@ -1006,6 +1010,17 @@ public class LoaChatController {
 			armoryGem = (Map<String, Object>) rtnMap.get("ArmoryGem");
 		}catch(Exception e){
 			throw new Exception("E0003");
+		}
+		
+		try {
+			armoryAvatars = (List<Map<String, Object>>) rtnMap.get("ArmoryAvatars");
+			avatarsText +="아바타 정보"+enterStr;
+			for(Map<String,Object> avatar:armoryAvatars) {
+				avatarsText += avatar.get("Type")+" : "+avatar.get("Name")+enterStr;
+			}
+			 
+		}catch(Exception e){
+			avatarsText ="";
 		}
 		
 		List<String> equipSetList = new ArrayList<>();
@@ -1287,6 +1302,9 @@ public class LoaChatController {
 			resMsg += "§엘릭서합 : " + totElixir + "(" + elixirField+")" + enterStr;;
 			resMsg += resField3 + enterStr;
 		}
+		
+		//아바타 정보 
+		resMsg +=avatarsText;
 		
 		if(Double.parseDouble(itemMaxLevel.replaceAll(",", "")) >= 1600) {
 			if(isArkPassive.equals("true")) {
@@ -1914,6 +1932,9 @@ public class LoaChatController {
 		resMsg +=searchAuctionParse("고대3연마");
 		resMsg +=searchAuctionParse("유물3연마");
 		resMsg += enterStr;
+		resMsg += "[고대 3연마]"+enterStr;
+		resMsg +=searchAuctionParse("고대3낙인력");
+		resMsg += enterStr;
 		resMsg += "[고대 1연마]"+enterStr;
 		resMsg +=searchAuctionParse("고대1낙인력");
 		resMsg +=searchAuctionParse("고대1치적");
@@ -2007,6 +2028,30 @@ public class LoaChatController {
 			
 			json.put("CategoryCode", "200030");
 			resMsg +="반지　 ";
+			resMsg += auctionSearchDt(json,false,true);
+			break;
+		case "고대3낙인력":
+			//resMsg += "[고대 1연마]낙인력 목걸이"+enterStr;
+			json.put("CategoryCode", "200010");
+			json.put("Sort", "BUY_PRICE");
+			json.put("SortCondition", "ASC");
+			json.put("ItemGrade", "고대");
+			
+			json2.put("FirstOption",8);
+			json2.put("SecondOption",1);
+			json2.put("MinValue",13);
+			json2.put("MaxValue",13);
+			options.put(json2);
+			
+			json3.put("FirstOption",7);
+			json3.put("SecondOption",44);
+			json3.put("MinValue",3);
+			json3.put("MaxValue",3);
+			options.put(json3);
+			
+			json.put("EtcOptions",options);
+			
+			resMsg +="목걸이(낙인력 상) ";
 			resMsg += auctionSearchDt(json,false,true);
 			break;
 		case "고대1낙인력":
