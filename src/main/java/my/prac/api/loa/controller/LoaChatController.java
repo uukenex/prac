@@ -548,8 +548,8 @@ public class LoaChatController {
 				val = "API사이트 연결 오류";
 				break;
 			default:
-				val = "ID오류이거나 엘릭서/초월이 모두있어야 검색가능합니다";
-				//e.printStackTrace();
+				val = "확인되지않은 에러발생..개발자가 모니터링중이므로 조금만기다려주세요";
+				e.printStackTrace();
 				break;
 			}
 		}else {
