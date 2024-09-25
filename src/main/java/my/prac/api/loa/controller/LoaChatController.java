@@ -1129,7 +1129,12 @@ public class LoaChatController {
 				
 				if(!equip.get("Type").toString().equals("무기")) {
 					if(Jsoup.parse((String) ((HashMap<String, Object>) quality_element.get("value")).get("leftStr2")).text().indexOf("티어 4")>0) {
-						resField1 += " ("+((HashMap<String, Object>) ark_passive_point_element.get("value")).get("Element_001")+")";
+						try {
+							resField1 += " ("+((HashMap<String, Object>) ark_passive_point_element.get("value")).get("Element_001")+")";
+						}catch (Exception e) {
+							System.out.println("ark_passive_point_element:: "+ark_passive_point_element);
+						}
+						
 					}
 				}
 				resField1 += enterStr;
