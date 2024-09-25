@@ -999,22 +999,25 @@ public class LoaChatController {
 		try {
 			armoryProfile = (Map<String, Object>) rtnMap.get("ArmoryProfile");
 		}catch(Exception e){
-			System.out.println("ArmoryProfile");
+			System.out.println(userId+" ArmoryProfile");
 			throw new Exception("E0003");
 		}
 		try {
 			armoryEquipment = (List<Map<String, Object>>) rtnMap.get("ArmoryEquipment");
 		}catch(Exception e){
+			System.out.println(userId+" armoryEquipment");
 			throw new Exception("E0003");
 		}
 		try {
 			armoryEngraving = (Map<String, Object>) rtnMap.get("ArmoryEngraving");
 		}catch(Exception e){
+			System.out.println(userId+" ArmoryEngraving");
 			throw new Exception("E0003");
 		}
 		try {
 			armoryGem = (Map<String, Object>) rtnMap.get("ArmoryGem");
 		}catch(Exception e){
+			System.out.println(userId+" ArmoryGem");
 			throw new Exception("E0003");
 		}
 		
