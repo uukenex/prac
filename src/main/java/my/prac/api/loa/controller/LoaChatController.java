@@ -201,7 +201,7 @@ public class LoaChatController {
 				val  = checkGoldList();
 				val += enterStr;
 				val += enterStr;
-				val += "http://rgb-tns.dev-apc.com/in/202407";
+				val += "http://rgb-tns.dev-apc.com/in/202409";
 				break;
 			case "/모험섬": case "/ㅁㅎㅅ":
 				LocalDate now = LocalDate.now();
@@ -621,15 +621,14 @@ public class LoaChatController {
 	String checkGoldList() throws Exception {
 		String msg = "";
 		msg += "시즌3 골드획득정보..";
+		msg += enterStr + "2막아브 [하 30,500G/노 25,000G]";
 		msg += enterStr + "에기르 [하 27,500G/노 23,000G]";
 		msg += enterStr + "베히모스 21,500G";
 		msg += enterStr + "에키드나[하 18,500G/노 14,500G]";
 		msg += enterStr + "카멘 1-3[하 20,000G/노 13,000G]";
+		msg += enterStr + "카멘 4[하 21,000G]";
 		msg += enterStr + "상아탑 [하 13,000G/노 6,500G]";
 		msg += enterStr + "일리아칸 [하 8,500G/노 5,400G]";
-		msg += enterStr + "카양겔 [하 4,800G/노 3,600G]";
-		msg += enterStr + "아브 1-3 [하 3,600G/노 3,000G]";
-		msg += enterStr + "아브 1-4 [하 5,600G/노 4,600G]";
 		msg += enterStr ;
 		/*
 		msg += enterStr + "싱글모드..▼ "+ allSeeStr;
