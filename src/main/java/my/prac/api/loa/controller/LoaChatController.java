@@ -1945,14 +1945,14 @@ public class LoaChatController {
 		//SecondOption 44 낙인력 51아공강 52아피강 41추피 49치적 50치피 
 		resMsg += enterStr;
 		resMsg +=searchAuctionParse("고대3연마");
-		resMsg +=searchAuctionParse("유물3연마");
+		//resMsg +=searchAuctionParse("유물3연마");
 		resMsg += enterStr;
 		
 		resMsg += "[고대 3연마]"+enterStr;
 		resMsg +=searchAuctionParse("고대3낙인력");
 		resMsg +=searchAuctionParse("고대3공퍼");
-		resMsg +=searchAuctionParse("고대3치적");
 		resMsg +=searchAuctionParse("고대3공퍼중");
+		resMsg +=searchAuctionParse("고대3치적");
 		resMsg +=searchAuctionParse("고대3치적중");
 		resMsg += enterStr;
 		
@@ -1962,7 +1962,7 @@ public class LoaChatController {
 		resMsg +=searchAuctionParse("고대1치피");
 		resMsg += enterStr;
 		
-		resMsg += "[유물 3연마]"+enterStr;
+		resMsg += "[유물 3연마](깨달음7~9)"+enterStr;
 		resMsg +=searchAuctionParse("유물3아공강");
 		resMsg +=searchAuctionParse("유물3치적");
 		
@@ -1979,7 +1979,7 @@ public class LoaChatController {
 		
 		switch(ment) {
 		case "고대3연마":
-			resMsg += "[고대 3연마](75+150+225)"+enterStr;
+			resMsg += "[고대 3연마 잡옵]"+enterStr;
 			
 			json.put("CategoryCode", "200010");
 			json.put("Sort", "BUY_PRICE");
