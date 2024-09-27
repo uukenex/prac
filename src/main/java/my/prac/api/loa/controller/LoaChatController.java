@@ -2579,7 +2579,6 @@ public class LoaChatController {
 	}
 	
 	String engraveBook(String str_list) throws Exception{
-		str_list = LoaApiUtils.filterTextForEngrave(str_list);
 		String[] arr = str_list.split(enterStr);
 		
 		String res1 = enterStr;
@@ -2587,6 +2586,7 @@ public class LoaChatController {
 		String res3 = enterStr;
 		
 		for(String str:arr) {
+			str = LoaApiUtils.filterTextForEngrave(str);
 			if(str.indexOf("[D]") >= 0) {
 				res1 += str+enterStr;
 			}else if(str.indexOf("[S]") >= 0) {
