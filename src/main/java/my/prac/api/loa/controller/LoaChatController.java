@@ -1330,7 +1330,7 @@ public class LoaChatController {
 				resMsg += newEngraveSearch(armoryEngraving,ordUserId,true,false);
 				resMsg +=enterStr;
 			}
-			//진화120 깨달음 95가 max
+			//
 			resMsg +="§아크패시브 : 포인트"+enterStr;
 			for(HashMap<String,Object> pt:arkPassivePt) {
 				resMsg +=pt.get("Name")+" : " +pt.get("Value"); 
@@ -1340,10 +1340,10 @@ public class LoaChatController {
 						resMsg +=" / 120";
 						break;
 					case "깨달음":
-						resMsg +=" / 95";
+						resMsg +=" / 101";
 						break;
 					case "도약":
-						resMsg +=" / 40";
+						resMsg +=" / 70";
 						break;
 				}
 				resMsg +=enterStr;
