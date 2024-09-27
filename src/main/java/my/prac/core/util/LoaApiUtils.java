@@ -171,16 +171,28 @@ public class LoaApiUtils {
 	}
 	public static String filterTextForEngrave(String txt) {
 		try {
-			switch(txt) {
-				case "아드레날린": case "원한": case "예리한 둔기":
-					txt ="[D]"+txt;
-					break;
-				case "구슬동자": case "전문의": case "마나의 흐름":
-					txt ="[S]"+txt;
-					break;
-				default:
-					txt ="[]"+txt;
-					break;
+			if(
+				txt.indexOf("아드레날린")>0
+			 || txt.indexOf("예리한 둔기")>0
+			 || txt.indexOf("원한")>0
+			 || txt.indexOf("")>0
+			 || txt.indexOf("")>0
+			 || txt.indexOf("")>0
+					
+					
+			) {
+				txt ="[D]"+txt;
+			}else if(
+				txt.indexOf("구슬동자")>0
+			 || txt.indexOf("전문의")>0
+			 || txt.indexOf("마나의 흐름")>0
+			 || txt.indexOf("")>0
+			 || txt.indexOf("")>0
+			 || txt.indexOf("")>0
+			 
+			){
+				txt ="[S]"+txt;
+			}else {
 			}
 			
 		}catch(Exception e) {
