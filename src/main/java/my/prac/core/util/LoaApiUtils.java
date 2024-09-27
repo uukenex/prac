@@ -161,6 +161,27 @@ public class LoaApiUtils {
 			
 			txt=txt.replaceAll("용암", "[무기]용암");
 			txt=txt.replaceAll("빙하", "[방어구]빙하");
+			txt=txt.replaceAll(" 각인서", "");
+			
+		}catch(Exception e) {
+			txt="";
+		}
+	
+		return txt;
+	}
+	public static String filterTextForEngrave(String txt) {
+		try {
+			switch(txt) {
+				case "아드레날린": case "원한": case "예리한 둔기":
+					txt ="[D]"+txt;
+					break;
+				case "구슬동자": case "전문의": case "마나의 흐름":
+					txt ="[S]"+txt;
+					break;
+				default:
+					txt ="[]"+txt;
+					break;
+			}
 			
 		}catch(Exception e) {
 			txt="";

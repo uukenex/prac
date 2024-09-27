@@ -324,6 +324,10 @@ public class LoaChatController {
 			case "/경매장유물":
 				val = marketSearch(40000);
 				break;
+			case "/ㄱㅁㅈㅇㅁ2":
+				val = marketSearch(40000);
+				val = engraveBook(val);
+				break;
 			case "/경매장전설":
 			case "/ㄱㅁㅈㅈㅅ":
 				val = marketSearch(400002);
@@ -2572,6 +2576,26 @@ public class LoaChatController {
 		
 		resMsg = LoaApiUtils.filterTextForMarket(resMsg);
 		return resMsg;
+	}
+	
+	String engraveBook(String str_list) throws Exception{
+		str_list = LoaApiUtils.filterTextForEngrave(str_list);
+		String[] arr = str_list.split(enterStr);
+		
+		String res1 = enterStr;
+		String res2 = enterStr;
+		String res3 = enterStr;
+		
+		for(String str:arr) {
+			if(str.indexOf("[D]") >= 0) {
+				res1 += str+enterStr;
+			}else if(str.indexOf("[S]") >= 0) {
+				res2 += str+enterStr;
+			}else {
+				res3 += str+enterStr;
+			}
+		}
+		return res1+res2+res3;
 	}
 	
 	String marketSearch() throws Exception {
