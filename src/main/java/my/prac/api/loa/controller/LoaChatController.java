@@ -1947,16 +1947,21 @@ public class LoaChatController {
 		resMsg +=searchAuctionParse("고대3연마");
 		resMsg +=searchAuctionParse("유물3연마");
 		resMsg += enterStr;
+		
 		resMsg += "[고대 3연마]"+enterStr;
 		resMsg +=searchAuctionParse("고대3낙인력");
 		resMsg +=searchAuctionParse("고대3공퍼");
 		resMsg +=searchAuctionParse("고대3치적");
+		resMsg +=searchAuctionParse("고대3공퍼중");
+		resMsg +=searchAuctionParse("고대3치적중");
 		resMsg += enterStr;
+		
 		resMsg += "[고대 1연마]"+enterStr;
 		resMsg +=searchAuctionParse("고대1낙인력");
 		resMsg +=searchAuctionParse("고대1치적");
 		resMsg +=searchAuctionParse("고대1치피");
 		resMsg += enterStr;
+		
 		resMsg += "[유물 3연마]"+enterStr;
 		resMsg +=searchAuctionParse("유물3아공강");
 		resMsg +=searchAuctionParse("유물3치적");
@@ -2095,6 +2100,31 @@ public class LoaChatController {
 			resMsg +="목걸이(공% 상) ";
 			resMsg += auctionSearchDt(json,false,true);
 			break;
+		case "고대3공퍼중":
+			//resMsg += "[고대 1연마]낙인력 목걸이"+enterStr;
+			json.put("CategoryCode", "200020");//20귀걸이
+			json.put("Sort", "BUY_PRICE");
+			json.put("SortCondition", "ASC");
+			json.put("ItemGrade", "고대");
+			
+			json2.put("FirstOption",8);
+			json2.put("SecondOption",1);
+			json2.put("MinValue",12);
+			json2.put("MaxValue",12);
+			options.put(json2);
+			
+			json3.put("FirstOption",7);
+			json3.put("SecondOption",45);//45 공퍼
+			json3.put("MinValue",2);
+			json3.put("MaxValue",2);
+			options.put(json3);
+			
+			json.put("EtcOptions",options);
+			
+			resMsg +="목걸이(공% 중) ";
+			resMsg += auctionSearchDt(json,false,true);
+			break;
+			
 		case "고대3치적":
 			//resMsg += "[고대 1연마]낙인력 목걸이"+enterStr;
 			json.put("CategoryCode", "200030");//30반지
@@ -2116,7 +2146,32 @@ public class LoaChatController {
 			
 			json.put("EtcOptions",options);
 			
-			resMsg +="반지(치적% 상) ";
+			resMsg +="반지(치적 상) ";
+			resMsg += auctionSearchDt(json,false,true);
+			break;
+		
+		case "고대3치적중":
+			//resMsg += "[고대 1연마]낙인력 목걸이"+enterStr;
+			json.put("CategoryCode", "200030");//30반지
+			json.put("Sort", "BUY_PRICE");
+			json.put("SortCondition", "ASC");
+			json.put("ItemGrade", "고대");
+			
+			json2.put("FirstOption",8);
+			json2.put("SecondOption",1);
+			json2.put("MinValue",12);
+			json2.put("MaxValue",12);
+			options.put(json2);
+			
+			json3.put("FirstOption",7);
+			json3.put("SecondOption",49);
+			json3.put("MinValue",2);
+			json3.put("MaxValue",2);
+			options.put(json3);
+			
+			json.put("EtcOptions",options);
+			
+			resMsg +="반지(치적 중) ";
 			resMsg += auctionSearchDt(json,false,true);
 			break;
 		case "고대1낙인력":
