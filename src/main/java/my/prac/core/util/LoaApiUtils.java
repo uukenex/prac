@@ -172,28 +172,36 @@ public class LoaApiUtils {
 	public static String filterTextForEngrave(String txt) {
 		try {
 			if(
-				txt.indexOf("아드레날린")>0
-			 || txt.indexOf("예리한 둔기")>0
-			 || txt.indexOf("원한")>0
-			 || txt.indexOf("")>0
-			 || txt.indexOf("")>0
-			 || txt.indexOf("")>0
+				txt.indexOf("아드레날린")>=0
+			 || txt.indexOf("예리한 둔기")>=0
+			 || txt.indexOf("원한")>=0
+			 || txt.indexOf("돌격대장")>=0
+			 || txt.indexOf("질량 증가")>=0
+			 || txt.indexOf("슈퍼 차지")>=0
+			 || txt.indexOf("마나 효율 증가")>=0
+			 || txt.indexOf("정밀 단도")>=0
+			 || txt.indexOf("저주받은 인형")>=0
+			 || txt.indexOf("타격의 대가")>=0
+			 || txt.indexOf("기습의 대가")>=0
+			 || txt.indexOf("속전속결")>=0
+			 || txt.indexOf("안정된 상태")>=0
+			 || txt.indexOf("에테르 포식자")>=0
+			 || txt.indexOf("바리케이드")>=0
 					
 					
 			) {
 				txt ="[D]"+txt;
 			}else if(
-				txt.indexOf("구슬동자")>0
-			 || txt.indexOf("전문의")>0
-			 || txt.indexOf("마나의 흐름")>0
-			 || txt.indexOf("")>0
-			 || txt.indexOf("")>0
-			 || txt.indexOf("")>0
+				txt.indexOf("구슬동자")>=0
+			 || txt.indexOf("전문의")>=0
+			 || txt.indexOf("마나의 흐름")>=0
+			 || txt.indexOf("각성")>=0
+			 //|| txt.indexOf("")>=0
 			 
 			){
 				txt ="[S]"+txt;
 			}else {
-				
+				txt ="[G]"+txt;
 			}
 			
 		}catch(Exception e) {
