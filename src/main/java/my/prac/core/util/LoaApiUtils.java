@@ -187,6 +187,8 @@ public class LoaApiUtils {
 			 || txt.indexOf("안정된 상태")>=0
 			 || txt.indexOf("에테르 포식자")>=0
 			 || txt.indexOf("바리케이드")>=0
+			 || txt.indexOf("결투의 대가")>=0
+			 || txt.indexOf("달인의 저력")>=0
 					
 					
 			) {
@@ -196,6 +198,10 @@ public class LoaApiUtils {
 			 || txt.indexOf("전문의")>=0
 			 || txt.indexOf("마나의 흐름")>=0
 			 || txt.indexOf("각성")>=0
+			 || txt.indexOf("중갑 착용")>=0
+			 || txt.indexOf("최대 마나 증가")>=0
+			 || txt.indexOf("정기 흡수")>=0
+			 || txt.indexOf("급소 타격")>=0
 			 //|| txt.indexOf("")>=0
 			 
 			){

@@ -322,7 +322,8 @@ public class LoaChatController {
 			case "/ㄱㅁㅈㅇㅁ":
 			case "/ㄱㅁㅈ유물":
 			case "/경매장유물":
-				val = marketSearch(40000);
+				val ="[유물각인서 시세조회]";
+				val += marketEngrave();
 				break;
 			case "/ㄱㅁㅈㅇㅁ2":
 				val = marketSearch(40000);
@@ -1502,8 +1503,8 @@ public class LoaChatController {
 			HashMap<String, Object> tier3_stats = (HashMap<String, Object>)maps.get("tier3_stats");
 			
 			switch (equip.get("Type").toString()) {
-			case "어빌리티 스톤":
-				/*
+			/*case "어빌리티 스톤":
+				
 				HashMap<String, Object> stone_val = (HashMap<String, Object>) stone_element.get("value");
 				if(stone_val == null || stone_val.size() ==0 ) {
 					continue;
@@ -1895,7 +1896,7 @@ public class LoaChatController {
 		resMsg += "4T 5보석↑,3T 8보석↑ 표기"+enterStr;
 		
 		List<HashMap<String, Object>> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<List<Map<String, Object>>>() {});
-		
+		if(rtnMap.isEmpty()) return "";
 		List<HashMap<String, Object>> sortedList = rtnMap.stream()
 				.filter(x->  Double.parseDouble(x.get("ItemMaxLevel").toString().replaceAll(",", "")) >= 1540)
 				.sorted(Comparator.comparingDouble(x-> Double.parseDouble(x.get("ItemMaxLevel").toString().replaceAll(",", ""))))
@@ -2575,6 +2576,30 @@ public class LoaChatController {
 		}
 		
 		resMsg = LoaApiUtils.filterTextForMarket(resMsg);
+		return resMsg;
+	}
+	//"[유물각인서 시세조회]"
+	String marketEngrave() throws Exception{
+		JSONObject json ;
+		String resMsg= "";
+		
+		json = new JSONObject();
+		
+		json.put("CategoryCode", "40000");
+		json.put("Sort", "CURRENT_MIN_PRICE");
+		json.put("SortCondition", "DESC");
+		json.put("ItemGrade", "유물");
+		
+		json.put("PageNo", "1");
+		resMsg += marketDtSearch(json,2,true,true);
+		
+		json.put("PageNo", "2");
+		resMsg += marketDtSearch(json,2,true,true);
+		
+		json.put("PageNo", "3");
+		resMsg += marketDtSearch(json,2,true,true);
+		
+		resMsg = engraveBook(resMsg);
 		return resMsg;
 	}
 	
