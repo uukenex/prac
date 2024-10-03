@@ -2102,7 +2102,7 @@ public class LoaChatController {
 			
 			json.put("EtcOptions",options);
 			
-			resMsg +="목걸이(공% 상) ";
+			resMsg +="귀걸이(공% 상) ";
 			resMsg += auctionSearchDt(json,false,true);
 			break;
 		case "고대3공퍼중":
@@ -2126,7 +2126,7 @@ public class LoaChatController {
 			
 			json.put("EtcOptions",options);
 			
-			resMsg +="목걸이(공% 중) ";
+			resMsg +="귀걸이(공% 중) ";
 			resMsg += auctionSearchDt(json,false,true);
 			break;
 			
