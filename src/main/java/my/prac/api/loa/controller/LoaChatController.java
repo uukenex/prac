@@ -2132,7 +2132,7 @@ public class LoaChatController {
 		
 		
 		resMsg += "최고레벨: " + maxCharLv + enterStr;
-		int lv = Integer.parseInt(maxCharLv);
+		Double lv = Double.parseDouble(maxCharLv);
 		if(lv>=1680) {
 			gradeCnt += 100;
 		}
