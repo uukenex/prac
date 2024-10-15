@@ -2136,23 +2136,23 @@ public class LoaChatController {
 		resMsg += "무기 : " ;
 		if(cntWeaponLv25>0) {
 			resMsg += "25:"+cntWeaponLv25+" ";
-			gradeCnt += 100;
+			gradeCnt += 1000;
 		}
 		if(cntWeaponLv24>0) {
 			resMsg += "24:"+cntWeaponLv24+" ";
-			gradeCnt += 1000;
+			gradeCnt += 800;
 		}
 		if(cntWeaponLv23>0) {
 			resMsg += "23:"+cntWeaponLv23+" ";
-			gradeCnt += 1000;
+			gradeCnt += 600;
 		}
 		if(cntWeaponLv22>0) {
 			resMsg += "22:"+cntWeaponLv22+" ";
-			gradeCnt += 1000;
+			gradeCnt += 400;
 		}
 		if(cntWeaponLv21>0) {
 			resMsg += "21:"+cntWeaponLv21+" ";
-			gradeCnt += 1000;
+			gradeCnt += 200;
 		}
 		if(cntWeaponLv20>0) {
 			resMsg += "20:"+cntWeaponLv20+" ";
