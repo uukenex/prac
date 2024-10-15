@@ -2217,13 +2217,16 @@ public class LoaChatController {
 		if(gradeCnt>0) {
 			grade="모코코";
 		}
-		if(gradeCnt>100) {
-			grade="중급자";
-		}
 		if(gradeCnt>200) {
-			grade="고인물";
+			grade="모코코와 중급자 사이 어딘가";
 		}
 		if(gradeCnt>300) {
+			grade="중급자";
+		}
+		if(gradeCnt>500) {
+			grade="고인물";
+		}
+		if(gradeCnt>1000) {
 			grade="슈퍼고인물";
 		}
 		
