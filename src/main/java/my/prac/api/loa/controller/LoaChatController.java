@@ -2132,7 +2132,25 @@ public class LoaChatController {
 		
 		
 		resMsg += "최고레벨: " + maxCharLv + enterStr;
+		int lv = Integer.parseInt(maxCharLv);
+		if(lv>=1680) {
+			gradeCnt += 100;
+		}
+		if(lv>=1690) {
+			gradeCnt += 100;
+		}
+		if(lv>=1700) {
+			gradeCnt += 300;
+		}
+		if(lv>=1710) {
+			gradeCnt += 300;
+		}
+		
 		resMsg += "1680이상캐릭터수 : " +cntCharLv1680+ enterStr;
+		if(cntCharLv1680>0) {
+			gradeCnt += 300*cntCharLv1680;
+		}
+		
 		resMsg += "무기 : " ;
 		if(cntWeaponLv25>0) {
 			resMsg += "25:"+cntWeaponLv25+" ";
@@ -2220,13 +2238,13 @@ public class LoaChatController {
 		if(gradeCnt>200) {
 			grade="모코코와 중급자 사이 어딘가";
 		}
-		if(gradeCnt>300) {
+		if(gradeCnt>500) {
 			grade="중급자";
 		}
-		if(gradeCnt>500) {
+		if(gradeCnt>800) {
 			grade="고인물";
 		}
-		if(gradeCnt>1000) {
+		if(gradeCnt>1500) {
 			grade="슈퍼고인물";
 		}
 		
