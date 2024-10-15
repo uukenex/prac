@@ -1890,6 +1890,8 @@ public class LoaChatController {
 	}
 	
 	List<Map<String, Object>> totalEngraveSearch(String userId) throws Exception {
+		String ordUserId=userId;
+		userId = URLEncoder.encode(userId, "UTF-8");
 		String resMsg="";
 		String paramUrl = lostArkAPIurl + "/armories/characters/" + userId + "/engravings";
 		String returnData = LoaApiUtils.connect_process(paramUrl);
@@ -2050,6 +2052,7 @@ public class LoaChatController {
 		int cntEngrave2 =0;
 		int cntEngrave1 =0;
 		
+		int gradeCnt =0;
 		String grade ="모코코";
 		
 		List<Integer> weaponList = new ArrayList<>();
@@ -2066,8 +2069,16 @@ public class LoaChatController {
 				weaponList.add(totalEquipmentSearch(charName));
 			}
 			
-			gemList.addAll(totalGemCntSearch(charName));
-			engraveList.addAll(totalEngraveSearch(charName));
+			List<Integer> charGem = totalGemCntSearch(charName);
+			if(charGem !=null) {
+				gemList.addAll(charGem);
+			}
+			
+			
+			List<Map<String,Object>> charEngrave = totalEngraveSearch(charName);
+			if(charEngrave !=null) {
+				engraveList.addAll(charEngrave);
+			}
 			
 		}
 		
@@ -2125,66 +2136,97 @@ public class LoaChatController {
 		resMsg += "무기 : " ;
 		if(cntWeaponLv25>0) {
 			resMsg += "25:"+cntWeaponLv25+" ";
-			grade="고인물";
+			gradeCnt += 100;
 		}
 		if(cntWeaponLv24>0) {
 			resMsg += "24:"+cntWeaponLv24+" ";
-			grade="고인물";
+			gradeCnt += 1000;
 		}
 		if(cntWeaponLv23>0) {
 			resMsg += "23:"+cntWeaponLv23+" ";
-			grade="고인물";
+			gradeCnt += 1000;
 		}
 		if(cntWeaponLv22>0) {
 			resMsg += "22:"+cntWeaponLv22+" ";
-			grade="고인물";
+			gradeCnt += 1000;
 		}
 		if(cntWeaponLv21>0) {
 			resMsg += "21:"+cntWeaponLv21+" ";
-			grade="고인물";
+			gradeCnt += 1000;
 		}
 		if(cntWeaponLv20>0) {
 			resMsg += "20:"+cntWeaponLv20+" ";
+			gradeCnt += 50;
 		}
+		
+		if(cntWeaponLv25 == 0 && cntWeaponLv24 ==0 && cntWeaponLv23 ==0 && cntWeaponLv22 ==0 && cntWeaponLv21 ==0 && cntWeaponLv20 ==0 ) {
+			resMsg += "강화 낮음";
+		}
+		
 		resMsg += enterStr;
-		resMsg += "보석(갯수): ";
+		resMsg += "보석: ";
 		if(cntGem10>0) {
 			resMsg += "10겁:"+cntGem10+" ";
-			grade="고인물";
+			gradeCnt += 1000;
 		}
 		if(cntGem9>0) {
 			resMsg += "9겁:"+cntGem9+" ";
-			grade="고인물";
+			gradeCnt += 1000;
 		}
 		if(cntGem8>0) {
 			resMsg += "8겁:"+cntGem8+" ";
-			if(cntGem8 > 10) {
-				grade="고인물";
-			}
+			gradeCnt += 20*cntGem8;
 		}
 		if(cntGem7>0) {
 			resMsg += "7겁:"+cntGem7+" ";
+			gradeCnt += 7*cntGem7;
 		}
+		
+		if(cntGem10 == 0 && cntGem9 ==0 && cntGem8 ==0 && cntGem7 ==0 ) {
+			resMsg += "장착 보석 없음!";
+		}
+		
 		resMsg += enterStr;
 		resMsg += "각인 : " ;
 		if(cntEngrave4>0) {
 			resMsg += "유각4:"+cntEngrave4+" ";
-			if(cntEngrave4 > 6) {
-				grade="고인물";
-			}
+			gradeCnt += 20*cntEngrave4;
 		}
 		if(cntEngrave3>0) {
 			resMsg += "유각3:"+cntEngrave3+" ";
+			gradeCnt += 15*cntEngrave3;
 		}
 		if(cntEngrave2>0) {
 			resMsg += "유각2:"+cntEngrave2+" ";
+			gradeCnt += 10*cntEngrave2;
 		}
 		if(cntEngrave1>0) {
 			resMsg += "유각1:"+cntEngrave1+" ";
+			gradeCnt += 5*cntEngrave1;
+		}
+		if(cntEngrave4 == 0 && cntEngrave3 ==0 && cntEngrave2 ==0 && cntEngrave1 ==0 ) {
+			resMsg += "장착 유각 없음!";
 		}
 		
 		
+		
 		resMsg += enterStr;
+		resMsg += enterStr;
+		resMsg +="환산점수 "+gradeCnt +"점";
+		
+		if(gradeCnt>0) {
+			grade="모코코";
+		}
+		if(gradeCnt>100) {
+			grade="중급자";
+		}
+		if(gradeCnt>200) {
+			grade="고인물";
+		}
+		if(gradeCnt>300) {
+			grade="슈퍼고인물";
+		}
+		
 		resMsg += enterStr;
 		resMsg += "당신은 "+grade+" !!";
 		
