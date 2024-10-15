@@ -2062,7 +2062,7 @@ public class LoaChatController {
 		String charName = "";
 		for(HashMap<String,Object> charList : sortedList) {
 			charName = charList.get("CharacterName").toString();
-			if(Double.parseDouble(charList.get("ItemMaxLevel").toString().replaceAll(",", "")) >= 1540){
+			if(Double.parseDouble(charList.get("ItemMaxLevel").toString().replaceAll(",", "")) >= 1680){
 				cntCharLv1680++;
 			}
 			if(Double.parseDouble(charList.get("ItemMaxLevel").toString().replaceAll(",", "")) >= 1680){
