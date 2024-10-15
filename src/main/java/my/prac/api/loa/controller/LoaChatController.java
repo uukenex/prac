@@ -2167,19 +2167,19 @@ public class LoaChatController {
 		resMsg += "보석: ";
 		if(cntGem10>0) {
 			resMsg += "10겁:"+cntGem10+" ";
-			gradeCnt += 1000;
+			gradeCnt += 600;
 		}
 		if(cntGem9>0) {
 			resMsg += "9겁:"+cntGem9+" ";
-			gradeCnt += 1000;
+			gradeCnt += 200;
 		}
 		if(cntGem8>0) {
 			resMsg += "8겁:"+cntGem8+" ";
-			gradeCnt += 20*cntGem8;
+			gradeCnt += 66*cntGem8;
 		}
 		if(cntGem7>0) {
 			resMsg += "7겁:"+cntGem7+" ";
-			gradeCnt += 7*cntGem7;
+			gradeCnt += 22*cntGem7;
 		}
 		
 		if(cntGem10 == 0 && cntGem9 ==0 && cntGem8 ==0 && cntGem7 ==0 ) {
