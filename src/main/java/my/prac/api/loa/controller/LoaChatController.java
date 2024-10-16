@@ -360,8 +360,11 @@ public class LoaChatController {
 			case "/ㅈㅌㄹ":
 				if (param1 != null && !param1.equals("")) {
 					try {
+						//val = "v0.3으로 패치중입니다.";
+						
 						val = supporters(param1);
 						val+= sumTotalPowerSearch(param1);
+						
 					} catch (Exception e) {
 						e.printStackTrace();
 						val = errorCodeMng(e);
@@ -2026,7 +2029,7 @@ public class LoaChatController {
 		String paramUrl = lostArkAPIurl + "/characters/" + userId + "/siblings";
 		String returnData = LoaApiUtils.connect_process(paramUrl);
 		
-		String resMsg=ordUserId+" 전투력 정보" + enterStr;
+		String resMsg=ordUserId+" 계정 전투력 정보 v0.3" + enterStr;
 		
 		List<HashMap<String, Object>> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<List<Map<String, Object>>>() {});
 		if(rtnMap.isEmpty()) return "";
@@ -2043,6 +2046,7 @@ public class LoaChatController {
 		int cntWeaponLv22 =0;
 		int cntWeaponLv21 =0;
 		int cntWeaponLv20 =0;
+		int cntEsther = 0;
 		int cntGem7 =0;
 		int cntGem8 =0;
 		int cntGem9 =0;
@@ -2086,23 +2090,40 @@ public class LoaChatController {
 			switch(weapon) {
 			case 25:
 				cntWeaponLv25++;
+				gradeCnt += 300;
 				break;
 			case 24:
 				cntWeaponLv24++;
+				gradeCnt += 270;
 				break;
 			case 23:
 				cntWeaponLv23++;
+				gradeCnt += 240;
 				break;
 			case 22:
 				cntWeaponLv22++;
+				gradeCnt += 210;
 				break;
 			case 21:
 				cntWeaponLv21++;
+				gradeCnt += 180;
 				break;
 			case 20:
 				cntWeaponLv20++;
+				gradeCnt += 150;
+				break;
+			case 9:
+				gradeCnt += 3000;
+			case 8:
+				gradeCnt += 2320;
+			case 7:
+				gradeCnt += 1576;
+			case 6:
+				gradeCnt += 1327;
+				cntEsther++;
 				break;
 			}
+			
 		}
 		
 		//Collections.sort(gemList,Collections.reverseOrder());
@@ -2115,6 +2136,8 @@ public class LoaChatController {
 		
 		for (Map<String, Object> engrave : engraveList) {
 			if(engrave.get("Grade").equals("유물")) {
+				gradeCnt +=LoaApiUtils.totalGoldForEngrave(engrave.get("Name").toString(),engrave.get("Level").toString());
+				
 				switch(engrave.get("Level").toString()) {
 					case "4": cntEngrave4++;
 					break;
@@ -2126,6 +2149,8 @@ public class LoaChatController {
 					break;
 				}
 			}
+			
+			
 		}
 		
 		
@@ -2134,47 +2159,44 @@ public class LoaChatController {
 		resMsg += "최고레벨: " + maxCharLv + enterStr;
 		Double lv = Double.parseDouble(maxCharLv);
 		if(lv>=1680) {
-			gradeCnt += 100;
+			gradeCnt += 200;
 		}
 		if(lv>=1690) {
-			gradeCnt += 100;
+			gradeCnt += 200;
 		}
 		if(lv>=1700) {
 			gradeCnt += 300;
 		}
 		if(lv>=1710) {
-			gradeCnt += 300;
+			gradeCnt += 350;
 		}
 		
 		resMsg += "1680이상캐릭터수 : " +cntCharLv1680+ enterStr;
 		if(cntCharLv1680>0) {
-			gradeCnt += 300*cntCharLv1680;
+			gradeCnt += 200*(cntCharLv1680-1);
 		}
 		
 		resMsg += "무기 : " ;
 		if(cntWeaponLv25>0) {
 			resMsg += "25:"+cntWeaponLv25+" ";
-			gradeCnt += 1000;
 		}
 		if(cntWeaponLv24>0) {
 			resMsg += "24:"+cntWeaponLv24+" ";
-			gradeCnt += 800;
 		}
 		if(cntWeaponLv23>0) {
 			resMsg += "23:"+cntWeaponLv23+" ";
-			gradeCnt += 600;
 		}
 		if(cntWeaponLv22>0) {
 			resMsg += "22:"+cntWeaponLv22+" ";
-			gradeCnt += 400;
 		}
 		if(cntWeaponLv21>0) {
 			resMsg += "21:"+cntWeaponLv21+" ";
-			gradeCnt += 200;
 		}
 		if(cntWeaponLv20>0) {
 			resMsg += "20:"+cntWeaponLv20+" ";
-			gradeCnt += 50;
+		}
+		if(cntEsther>0) {
+			resMsg += "E:"+cntEsther+" ";
 		}
 		
 		if(cntWeaponLv25 == 0 && cntWeaponLv24 ==0 && cntWeaponLv23 ==0 && cntWeaponLv22 ==0 && cntWeaponLv21 ==0 && cntWeaponLv20 ==0 ) {
@@ -2185,19 +2207,19 @@ public class LoaChatController {
 		resMsg += "보석: ";
 		if(cntGem10>0) {
 			resMsg += "10겁:"+cntGem10+" ";
-			gradeCnt += 600;
+			gradeCnt += 230;//270 ~ 170 사이 적정가 6멸5홍기준 
 		}
 		if(cntGem9>0) {
 			resMsg += "9겁:"+cntGem9+" ";
-			gradeCnt += 200;
+			gradeCnt += 90;
 		}
 		if(cntGem8>0) {
 			resMsg += "8겁:"+cntGem8+" ";
-			gradeCnt += 66*cntGem8;
+			gradeCnt += 30*cntGem8;
 		}
 		if(cntGem7>0) {
 			resMsg += "7겁:"+cntGem7+" ";
-			gradeCnt += 22*cntGem7;
+			gradeCnt += 10*cntGem7;
 		}
 		
 		if(cntGem10 == 0 && cntGem9 ==0 && cntGem8 ==0 && cntGem7 ==0 ) {
@@ -2208,19 +2230,15 @@ public class LoaChatController {
 		resMsg += "각인 : " ;
 		if(cntEngrave4>0) {
 			resMsg += "유각4:"+cntEngrave4+" ";
-			gradeCnt += 20*cntEngrave4;
 		}
 		if(cntEngrave3>0) {
 			resMsg += "유각3:"+cntEngrave3+" ";
-			gradeCnt += 15*cntEngrave3;
 		}
 		if(cntEngrave2>0) {
 			resMsg += "유각2:"+cntEngrave2+" ";
-			gradeCnt += 10*cntEngrave2;
 		}
 		if(cntEngrave1>0) {
 			resMsg += "유각1:"+cntEngrave1+" ";
-			gradeCnt += 5*cntEngrave1;
 		}
 		if(cntEngrave4 == 0 && cntEngrave3 ==0 && cntEngrave2 ==0 && cntEngrave1 ==0 ) {
 			resMsg += "장착 유각 없음!";
@@ -2230,7 +2248,7 @@ public class LoaChatController {
 		
 		resMsg += enterStr;
 		resMsg += enterStr;
-		resMsg +="환산점수 "+gradeCnt +"점";
+		resMsg +="환산 비용: "+gradeCnt +"만 골드";
 		
 		if(gradeCnt>0) {
 			grade="모코코";
@@ -2241,15 +2259,19 @@ public class LoaChatController {
 		if(gradeCnt>500) {
 			grade="중급자";
 		}
-		if(gradeCnt>800) {
+		if(gradeCnt>1000) {
 			grade="고인물";
 		}
-		if(gradeCnt>1500) {
+		if(gradeCnt>2000) {
 			grade="슈퍼고인물";
+		}
+		if(gradeCnt>3000) {
+			grade="일반인이 아님";
 		}
 		
 		resMsg += enterStr;
-		resMsg += "당신은 "+grade+" !!";
+		resMsg += "당신은 "+grade+" !!"+enterStr;
+		resMsg += "(추후악세 추가 예정)";
 		
 		
 		
@@ -2346,6 +2368,9 @@ public class LoaChatController {
 		resMsg +=searchAuctionParse("유물3아공강");
 		resMsg +=searchAuctionParse("유물3치적");
 		
+		resMsg += "[고대 3연마](요청분)"+enterStr;
+		resMsg +=searchAuctionParse("고대3아공아피");
+		resMsg +=searchAuctionParse("고대3아공아피최생");
 		
 		return resMsg;
 	}
@@ -2356,8 +2381,76 @@ public class LoaChatController {
 		JSONArray options = new JSONArray();
 		JSONObject json2 = new JSONObject();
 		JSONObject json3 = new JSONObject();
+		JSONObject json4 = new JSONObject();
+		JSONObject json5 = new JSONObject();
 		
 		switch(ment) {
+		case "고대3아공아피":
+			json.put("CategoryCode", "200030");//30반지
+			json.put("Sort", "BUY_PRICE");
+			json.put("SortCondition", "ASC");
+			json.put("ItemGrade", "고대");
+			
+			json2.put("FirstOption",8);
+			json2.put("SecondOption",1);
+			json2.put("MinValue",12);
+			json2.put("MaxValue",12);
+			options.put(json2);
+			
+			json3.put("FirstOption",7);
+			json3.put("SecondOption",51);
+			json3.put("MinValue",3);
+			json3.put("MaxValue",3);
+			options.put(json3);
+			
+			json4.put("FirstOption",7);
+			json4.put("SecondOption",52);
+			json4.put("MinValue",3);
+			json4.put("MaxValue",3);
+			options.put(json4);
+			
+			json.put("EtcOptions",options);
+			
+			resMsg +="반지(아공상아피상) ";
+			resMsg += auctionSearchDt(json,false,false);
+			resMsg += enterStr;
+			break;
+		case "고대3아공아피최생":
+			json.put("CategoryCode", "200030");//30반지
+			json.put("Sort", "BUY_PRICE");
+			json.put("SortCondition", "ASC");
+			json.put("ItemGrade", "고대");
+			
+			json2.put("FirstOption",8);
+			json2.put("SecondOption",1);
+			json2.put("MinValue",12);
+			json2.put("MaxValue",12);
+			options.put(json2);
+			
+			json3.put("FirstOption",7);
+			json3.put("SecondOption",51);
+			json3.put("MinValue",3);
+			json3.put("MaxValue",3);
+			options.put(json3);
+			
+			json4.put("FirstOption",7);
+			json4.put("SecondOption",52);
+			json4.put("MinValue",3);
+			json4.put("MaxValue",3);
+			options.put(json4);
+			
+			json5.put("FirstOption",7);
+			json5.put("SecondOption",55);
+			json5.put("MinValue",2);
+			json5.put("MaxValue",2);
+			options.put(json5);
+			
+			json.put("EtcOptions",options);
+			
+			resMsg +="반지(아공상아피상최생중) ";
+			resMsg += auctionSearchDt(json,false,false);
+			resMsg += enterStr;
+			break;
 		case "고대3연마":
 			resMsg += "[고대 3연마 잡옵]"+enterStr;
 			
@@ -2374,9 +2467,9 @@ public class LoaChatController {
 			
 			json.put("EtcOptions",options);
 			resMsg +="목걸이 ";
-			String first_value = auctionSearchDt(json,false,true);
+			String first_value = auctionSearchDt(json,false,false);
 			resMsg += first_value;
-			
+			resMsg += enterStr;
 			if(first_value.equals("")) {
 				return "경매장 오류";
 			}
@@ -2392,11 +2485,12 @@ public class LoaChatController {
 			
 			json.put("CategoryCode", "200020");
 			resMsg +="귀걸이 ";
-			resMsg += auctionSearchDt(json,false,true);
-			
+			resMsg += auctionSearchDt(json,false,false);
+			resMsg += enterStr;
 			json.put("CategoryCode", "200030");
 			resMsg +="반지　 ";
-			resMsg += auctionSearchDt(json,false,true);
+			resMsg += auctionSearchDt(json,false,false);
+			resMsg += enterStr;
 			break;
 		case "유물3연마":
 			resMsg += "[유물 3연마](60->24)"+enterStr;
@@ -2414,7 +2508,8 @@ public class LoaChatController {
 			
 			json.put("EtcOptions",options);
 			resMsg +="목걸이 ";
-			resMsg += auctionSearchDt(json,false,true);
+			resMsg += auctionSearchDt(json,false,false);
+			resMsg += enterStr;
 			
 			options = new JSONArray();
 			json2.put("FirstOption",8);
@@ -2426,11 +2521,13 @@ public class LoaChatController {
 			
 			json.put("CategoryCode", "200020");
 			resMsg +="귀걸이 ";
-			resMsg += auctionSearchDt(json,false,true);
+			resMsg += auctionSearchDt(json,false,false);
+			resMsg += enterStr;
 			
 			json.put("CategoryCode", "200030");
 			resMsg +="반지　 ";
-			resMsg += auctionSearchDt(json,false,true);
+			resMsg += auctionSearchDt(json,false,false);
+			resMsg += enterStr;
 			break;
 		case "고대3낙인력":
 			//resMsg += "[고대 1연마]낙인력 목걸이"+enterStr;
@@ -2454,7 +2551,8 @@ public class LoaChatController {
 			json.put("EtcOptions",options);
 			
 			resMsg +="목걸이(낙인력 상) ";
-			resMsg += auctionSearchDt(json,false,true);
+			resMsg += auctionSearchDt(json,false,false);
+			resMsg += enterStr;
 			break;
 		case "고대3공퍼":
 			//resMsg += "[고대 1연마]낙인력 목걸이"+enterStr;
@@ -2478,7 +2576,8 @@ public class LoaChatController {
 			json.put("EtcOptions",options);
 			
 			resMsg +="귀걸이(공% 상) ";
-			resMsg += auctionSearchDt(json,false,true);
+			resMsg += auctionSearchDt(json,false,false);
+			resMsg += enterStr;
 			break;
 		case "고대3공퍼중":
 			//resMsg += "[고대 1연마]낙인력 목걸이"+enterStr;
@@ -2502,7 +2601,8 @@ public class LoaChatController {
 			json.put("EtcOptions",options);
 			
 			resMsg +="귀걸이(공% 중) ";
-			resMsg += auctionSearchDt(json,false,true);
+			resMsg += auctionSearchDt(json,false,false);
+			resMsg += enterStr;
 			break;
 			
 		case "고대3치적":
@@ -2527,7 +2627,8 @@ public class LoaChatController {
 			json.put("EtcOptions",options);
 			
 			resMsg +="반지(치적 상) ";
-			resMsg += auctionSearchDt(json,false,true);
+			resMsg += auctionSearchDt(json,false,false);
+			resMsg += enterStr;
 			break;
 		
 		case "고대3치적중":
@@ -2552,7 +2653,8 @@ public class LoaChatController {
 			json.put("EtcOptions",options);
 			
 			resMsg +="반지(치적 중) ";
-			resMsg += auctionSearchDt(json,false,true);
+			resMsg += auctionSearchDt(json,false,false);
+			resMsg += enterStr;
 			break;
 		case "고대1낙인력":
 			//resMsg += "[고대 1연마]낙인력 목걸이"+enterStr;
@@ -2576,7 +2678,8 @@ public class LoaChatController {
 			json.put("EtcOptions",options);
 			
 			resMsg +="목걸이(낙인력 상) ";
-			resMsg += auctionSearchDt(json,false,true);
+			resMsg += auctionSearchDt(json,false,false);
+			resMsg += enterStr;
 			break;
 		case "고대1치적":
 			//resMsg += "[고대 1연마](75)"+enterStr;
@@ -2600,7 +2703,8 @@ public class LoaChatController {
 			json.put("EtcOptions",options);
 			
 			resMsg +="반지(치적 상) ";
-			resMsg += auctionSearchDt(json,false,true);
+			resMsg += auctionSearchDt(json,false,false);
+			resMsg += enterStr;
 			break;
 		case "고대1치피":
 			//resMsg += "[고대 1연마](75)"+enterStr;
@@ -2624,7 +2728,8 @@ public class LoaChatController {
 			json.put("EtcOptions",options);
 			
 			resMsg +="반지(치피 상) ";
-			resMsg += auctionSearchDt(json,false,true);
+			resMsg += auctionSearchDt(json,false,false);
+			resMsg += enterStr;
 			break;
 		case "유물3아공강":
 			json.put("CategoryCode", "200030");
@@ -2647,7 +2752,8 @@ public class LoaChatController {
 			json.put("EtcOptions",options);
 			
 			resMsg +="반지(아공강 상) ";
-			resMsg += auctionSearchDt(json,false,true);
+			resMsg += auctionSearchDt(json,false,false);
+			resMsg += enterStr;
 			break;
 		case "유물3치적":
 			json.put("CategoryCode", "200030");
@@ -2670,7 +2776,8 @@ public class LoaChatController {
 			json.put("EtcOptions",options);
 			
 			resMsg +="반지(치적 상) ";
-			resMsg += auctionSearchDt(json,false,true);
+			resMsg += auctionSearchDt(json,false,false);
+			resMsg += enterStr;
 			break;
 		case "유물3":
 			break;

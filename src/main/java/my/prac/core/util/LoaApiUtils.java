@@ -169,6 +169,94 @@ public class LoaApiUtils {
 	
 		return txt;
 	}
+	public static int totalGoldForEngrave(String name,String lv) {
+		int gold = 0;
+		if(lv.equals("0")) {
+			return 0;
+		}
+		switch(name) {
+			case "아드레날린":
+				gold = 23;
+				break;
+			case "원한":
+				gold = 17;
+				break;
+			case "예리한 둔기":
+				gold = 14;
+				break;
+			case "저주받은 인형":
+				gold = 12;
+				break;
+			case "돌격대장":
+				gold = 12;
+				break;
+			case "타격의 대가":
+				gold = 8;
+				break;
+			case "기습의 대가":
+				gold = 8;
+				break;
+			case "질량 증가":
+				gold = 7;
+				break;
+			case "슈퍼 차지":
+				gold = 4;
+				break;
+			case "결투의 대가":
+				gold = 4;
+				break;
+			case "속전속결":
+				gold = 3;
+				break;
+			case "바리케이드":
+				gold = 3;
+				break;
+			case "안정된 상태":
+				gold = 3;
+				break;
+			case "마나 효율 증가":
+				gold = 2;
+				break;
+			case "정밀 단도":
+				gold = 2;
+				break;
+			case "에테르 포식자":
+				gold = 1;
+				break;
+			case "마나의 흐름":
+				gold = 5;
+				break;
+			case "구슬 동자":
+				gold = 3;
+				break;
+			case "전문의":
+				gold = 3;
+				break;
+			case "각성":
+				gold = 2;
+				break;
+			case "중갑 착용":
+				gold = 1;
+				break;
+		}
+		
+		switch(lv) {
+			case "4":
+				gold = gold*20;
+				break;
+			case "3":
+				gold = gold*15;
+				break;
+			case "2":
+				gold = gold*10;
+				break;
+			case "1":
+				gold = gold*5;
+				break;
+		}
+		return gold;
+		
+	}
 	public static String filterTextForEngrave(String txt) {
 		try {
 			if(
@@ -209,6 +297,8 @@ public class LoaApiUtils {
 			}else {
 				txt ="[G]"+txt;
 			}
+			
+			txt.replaceAll(" 각인서","");
 			
 		}catch(Exception e) {
 			txt="";
