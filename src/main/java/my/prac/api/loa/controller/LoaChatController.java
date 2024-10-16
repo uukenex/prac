@@ -1892,7 +1892,7 @@ public class LoaChatController {
 		return weaponLv;
 	}
 	
-	List<String> totalAccessorySearch(String userId) throws Exception {
+	List<String> totalAccessorySearch(String userId,String className) throws Exception {
 		String ordUserId=userId;
 		userId = URLEncoder.encode(userId, "UTF-8");
 		// +는 %2B로 치환한다
@@ -1923,7 +1923,18 @@ public class LoaChatController {
 				switch(Jsoup.parse((String) ((HashMap<String, Object>) quality_element.get("value")).get("leftStr2")).text()) {
 					case "아이템 티어 4":
 						if(Jsoup.parse((String) ((HashMap<String, Object>) quality_element.get("value")).get("leftStr0")).text().indexOf("고대")>=0 ) {
-							g1.add(LoaApiParser.findBraceletOptions(2,((HashMap<String, Object>) grinding_element.get("value")).get("Element_001").toString()));
+							
+							switch (className) {
+							case "바드":
+							case "도화가":
+							case "홀리나이트":
+								g1.add(LoaApiParser.findBraceletOptions(3,((HashMap<String, Object>) grinding_element.get("value")).get("Element_001").toString()));
+								break;
+							default:
+								g1.add(LoaApiParser.findBraceletOptions(2,((HashMap<String, Object>) grinding_element.get("value")).get("Element_001").toString()));
+								break;
+							}
+
 						}
 						break;
 				}
@@ -2140,7 +2151,7 @@ public class LoaChatController {
 				engraveList.addAll(charEngrave);
 			}
 			
-			List<String> acceossory = totalAccessorySearch(charName);
+			List<String> acceossory = totalAccessorySearch(charName,charList.get("CharacterClassName").toString());
 			if(acceossory !=null) {
 				accessoryList.addAll(acceossory);
 			}

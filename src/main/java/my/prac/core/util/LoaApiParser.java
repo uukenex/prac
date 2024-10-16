@@ -317,17 +317,23 @@ public class LoaApiParser {
 				String b = Jsoup.parse(a.replace("<BR>", spaceStr)).text();
 				res += newFindTier4AccesorryOptionsDt( b );
 			}
+		}else if(inputcase==2){
+			for(String a : arr) {
+				a = "<img"+a;
+				String b = Jsoup.parse(a.replace("<BR>", spaceStr)).text();
+				res += newFindTier4AccesorryOptionsForTotal( b ,"D");
+			}
 		}else {
 			for(String a : arr) {
 				a = "<img"+a;
 				String b = Jsoup.parse(a.replace("<BR>", spaceStr)).text();
-				res += newFindTier4AccesorryOptionsForTotal( b );
+				res += newFindTier4AccesorryOptionsForTotal( b ,"S");
 			}
 		}
 		return res;
 		
 	}
-	public static String newFindTier4AccesorryOptionsForTotal(String param) {
+	public static String newFindTier4AccesorryOptionsForTotal(String param,String position) {
 		if(param==null || param.equals("")) {
 			return "";
 		}
@@ -338,79 +344,93 @@ public class LoaApiParser {
 		String middle_msg = "중";
 		String low_msg    = "하";
 
-		if (msg.indexOf("공") == 0) {
-			if (param.indexOf("1.55%") >= 0) {
-				return high_msg;
-			} else if (param.indexOf("0.95%") >= 0) {
-				return middle_msg;
-			} else if(param.indexOf("0.40%")>= 0){
-				return low_msg;
+		if(position.equals("D")) {
+			if (msg.indexOf("공") == 0) {
+				if (param.indexOf("1.55%") >= 0) {
+					return high_msg;
+				} else if (param.indexOf("0.95%") >= 0) {
+					return middle_msg;
+				} else if(param.indexOf("0.40%")>= 0){
+					return low_msg;
+				}
+			} else if (msg.indexOf("무공") == 0) {
+				if (param.indexOf("3.00%") >= 0) {
+					return high_msg;
+				} else if (param.indexOf("1.80%") >= 0) {
+					return middle_msg;
+				}  else if(param.indexOf("0.80%")>= 0){
+					return low_msg;
+				}
+			} else if (msg.indexOf("피증") == 0) {
+				if (param.indexOf("2.00") >= 0) {
+					return high_msg;
+				} else if (param.indexOf("1.20") >= 0) {
+					return middle_msg;
+				} else {
+					return low_msg;
+				}
+			} else if (msg.indexOf("추피") == 0) {
+				if (param.indexOf("2.60") >= 0) {
+					return high_msg;
+				} else if (param.indexOf("1.60") >= 0) {
+					return middle_msg;
+				} else {
+					return low_msg;
+				}
+			} else if (msg.indexOf("치적") == 0) {
+				if (param.indexOf("1.55") >= 0) {
+					return high_msg;
+				} else if (param.indexOf("0.95") >= 0) {
+					return middle_msg;
+				} else {
+					return low_msg;
+				}
+			} else if (msg.indexOf("치피") == 0) {
+				if (param.indexOf("4.00") >= 0) {
+					return high_msg;
+				} else if (param.indexOf("2.40") >= 0) {
+					return middle_msg;
+				} else {
+					return low_msg;
+				}
 			}
-		} else if (msg.indexOf("무공") == 0) {
-			if (param.indexOf("3.00%") >= 0) {
-				return high_msg;
-			} else if (param.indexOf("1.80%") >= 0) {
-				return middle_msg;
-			}  else if(param.indexOf("0.80%")>= 0){
-				return low_msg;
-			}
-		} else if (msg.indexOf("피증") == 0) {
-			if (param.indexOf("2.00") >= 0) {
-				return high_msg;
-			} else if (param.indexOf("1.20") >= 0) {
-				return middle_msg;
-			} else {
-				return low_msg;
-			}
-		} else if (msg.indexOf("추피") == 0) {
-			if (param.indexOf("2.60") >= 0) {
-				return high_msg;
-			} else if (param.indexOf("1.60") >= 0) {
-				return middle_msg;
-			} else {
-				return low_msg;
-			}
-		} else if (msg.indexOf("낙인력") == 0) {
-			if (param.indexOf("8.00") >= 0) {
-				return high_msg;
-			} else if (param.indexOf("4.80") >= 0) {
-				return middle_msg;
-			} else {
-				return low_msg;
-			}
-		}  else if (msg.indexOf("아공강") == 0) {
-			if (param.indexOf("5.00") >= 0) {
-				return high_msg;
-			} else if (param.indexOf("3.00") >= 0) {
-				return middle_msg;
-			} else {
-				return low_msg;
-			}
-		} else if (msg.indexOf("아피강") == 0) {
-			if (param.indexOf("7.50") >= 0) {
-				return high_msg;
-			} else if (param.indexOf("4.50") >= 0) {
-				return middle_msg;
-			} else {
-				return low_msg;
-			}
-		} else if (msg.indexOf("치적") == 0) {
-			if (param.indexOf("1.55") >= 0) {
-				return high_msg;
-			} else if (param.indexOf("0.95") >= 0) {
-				return middle_msg;
-			} else {
-				return low_msg;
-			}
-		} else if (msg.indexOf("치피") == 0) {
-			if (param.indexOf("4.00") >= 0) {
-				return high_msg;
-			} else if (param.indexOf("2.40") >= 0) {
-				return middle_msg;
-			} else {
-				return low_msg;
+		}else {
+			if (msg.indexOf("무공") == 0) {
+				if (param.indexOf("3.00%") >= 0) {
+					return high_msg;
+				} else if (param.indexOf("1.80%") >= 0) {
+					return middle_msg;
+				} else if (param.indexOf("0.80%") >= 0) {
+					return low_msg;
+				}
+			} else if (msg.indexOf("낙인력") == 0) {
+				if (param.indexOf("8.00") >= 0) {
+					return high_msg;
+				} else if (param.indexOf("4.80") >= 0) {
+					return middle_msg;
+				} else {
+					return low_msg;
+				}
+			} else if (msg.indexOf("아공강") == 0) {
+				if (param.indexOf("5.00") >= 0) {
+					return high_msg;
+				} else if (param.indexOf("3.00") >= 0) {
+					return middle_msg;
+				} else {
+					return low_msg;
+				}
+			} else if (msg.indexOf("아피강") == 0) {
+				if (param.indexOf("7.50") >= 0) {
+					return high_msg;
+				} else if (param.indexOf("4.50") >= 0) {
+					return middle_msg;
+				} else {
+					return low_msg;
+				}
 			}
 		}
+		
+		
 		
 		return "";
 	}
