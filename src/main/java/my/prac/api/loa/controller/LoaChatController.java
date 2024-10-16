@@ -2090,23 +2090,23 @@ public class LoaChatController {
 			switch(weapon) {
 			case 25:
 				cntWeaponLv25++;
-				gradeCnt += 300;
+				gradeCnt += 200+190+180+170+160+150;
 				break;
 			case 24:
 				cntWeaponLv24++;
-				gradeCnt += 270;
+				gradeCnt += 190+180+170+160+150;
 				break;
 			case 23:
 				cntWeaponLv23++;
-				gradeCnt += 240;
+				gradeCnt += 180+170+160+150;
 				break;
 			case 22:
 				cntWeaponLv22++;
-				gradeCnt += 210;
+				gradeCnt += 170+160+150;
 				break;
 			case 21:
 				cntWeaponLv21++;
-				gradeCnt += 180;
+				gradeCnt += 160+150;
 				break;
 			case 20:
 				cntWeaponLv20++;
