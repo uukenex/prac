@@ -2360,7 +2360,7 @@ public class LoaChatController {
 			resMsg += "상하:"+g1sh+" ";
 		}
 		if(g1s>0) {
-			resMsg += "상:"+g1s+" ";
+			resMsg += "상단일:"+g1s+" ";
 		}
 		
 		if(g1jj>0) {
@@ -2370,7 +2370,7 @@ public class LoaChatController {
 			resMsg += "중하:"+g1jh+" ";
 		}
 		if(g1j>0) {
-			resMsg += "중:"+g1j+" ";
+			resMsg += "중단일:"+g1j+" ";
 		}
 		
 		if(g1ss == 0 && g1sj ==0 && g1sh ==0 && g1s ==0 
@@ -2417,8 +2417,8 @@ public class LoaChatController {
 		
 		resMsg += enterStr;
 		resMsg += "당신은 "+grade+" !!"+enterStr;
-		resMsg += "(추후악세 추가 예정)"+enterStr;
-		resMsg += "계산식 보기"+allSeeStr;
+		resMsg += enterStr;
+		resMsg += "약간의 상세 더보기"+allSeeStr;
 		
 		resMsg += "레벨 "+gradeCnt_lv+enterStr;
 		resMsg += "부캐 "+gradeCnt_subChar+enterStr;
