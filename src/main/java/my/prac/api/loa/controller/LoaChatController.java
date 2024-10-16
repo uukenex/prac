@@ -2193,9 +2193,15 @@ public class LoaChatController {
 		cntGem8 = Collections.frequency(gemList, 8);
 		cntGem7 = Collections.frequency(gemList, 7);
 		
-		
+		List<String> engrave_hash_chk = new ArrayList<>();
 		for (Map<String, Object> engrave : engraveList) {
 			if(engrave.get("Grade").equals("유물")) {
+				
+				if(engrave_hash_chk.contains(engrave.get("Name").toString())) {
+					continue;
+				}
+				engrave_hash_chk.add(engrave.get("Name").toString());
+				
 				gradeCnt_engrave +=LoaApiUtils.totalGoldForEngrave(engrave.get("Name").toString(),engrave.get("Level").toString());
 				
 				switch(engrave.get("Level").toString()) {
