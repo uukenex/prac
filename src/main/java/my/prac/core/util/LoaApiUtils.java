@@ -298,7 +298,7 @@ public class LoaApiUtils {
 				txt ="[G]"+txt;
 			}
 			
-			txt.replaceAll(" 각인서","");
+			txt = txt.replaceAll(" 각인서","");
 			
 		}catch(Exception e) {
 			txt="";
