@@ -311,15 +311,108 @@ public class LoaApiParser {
 				String b = Jsoup.parse(a.replace("<BR>", spaceStr)).text();
 				res += findBraceletOptionsDt( b );
 			}
-		}else {
+		}else if(inputcase==1) {
 			for(String a : arr) {
 				a = "<img"+a;
 				String b = Jsoup.parse(a.replace("<BR>", spaceStr)).text();
 				res += newFindTier4AccesorryOptionsDt( b );
 			}
+		}else {
+			for(String a : arr) {
+				a = "<img"+a;
+				String b = Jsoup.parse(a.replace("<BR>", spaceStr)).text();
+				res += newFindTier4AccesorryOptionsForTotal( b );
+			}
 		}
 		return res;
 		
+	}
+	public static String newFindTier4AccesorryOptionsForTotal(String param) {
+		if(param==null || param.equals("")) {
+			return "";
+		}
+		
+		String msg = LoaApiUtils.tier4accesorry(param);
+		
+		String high_msg   = "상";
+		String middle_msg = "중";
+		String low_msg    = "하";
+
+		if (msg.indexOf("공") == 0) {
+			if (param.indexOf("1.55%") >= 0) {
+				return high_msg;
+			} else if (param.indexOf("0.95%") >= 0) {
+				return middle_msg;
+			} else if(param.indexOf("0.40%")>= 0){
+				return low_msg;
+			}
+		} else if (msg.indexOf("무공") == 0) {
+			if (param.indexOf("3.00%") >= 0) {
+				return high_msg;
+			} else if (param.indexOf("1.80%") >= 0) {
+				return middle_msg;
+			}  else if(param.indexOf("0.80%")>= 0){
+				return low_msg;
+			}
+		} else if (msg.indexOf("피증") == 0) {
+			if (param.indexOf("2.00") >= 0) {
+				return high_msg;
+			} else if (param.indexOf("1.20") >= 0) {
+				return middle_msg;
+			} else {
+				return low_msg;
+			}
+		} else if (msg.indexOf("추피") == 0) {
+			if (param.indexOf("2.60") >= 0) {
+				return high_msg;
+			} else if (param.indexOf("1.60") >= 0) {
+				return middle_msg;
+			} else {
+				return low_msg;
+			}
+		} else if (msg.indexOf("낙인력") == 0) {
+			if (param.indexOf("8.00") >= 0) {
+				return high_msg;
+			} else if (param.indexOf("4.80") >= 0) {
+				return middle_msg;
+			} else {
+				return low_msg;
+			}
+		}  else if (msg.indexOf("아공강") == 0) {
+			if (param.indexOf("5.00") >= 0) {
+				return high_msg;
+			} else if (param.indexOf("3.00") >= 0) {
+				return middle_msg;
+			} else {
+				return low_msg;
+			}
+		} else if (msg.indexOf("아피강") == 0) {
+			if (param.indexOf("7.50") >= 0) {
+				return high_msg;
+			} else if (param.indexOf("4.50") >= 0) {
+				return middle_msg;
+			} else {
+				return low_msg;
+			}
+		} else if (msg.indexOf("치적") == 0) {
+			if (param.indexOf("1.55") >= 0) {
+				return high_msg;
+			} else if (param.indexOf("0.95") >= 0) {
+				return middle_msg;
+			} else {
+				return low_msg;
+			}
+		} else if (msg.indexOf("치피") == 0) {
+			if (param.indexOf("4.00") >= 0) {
+				return high_msg;
+			} else if (param.indexOf("2.40") >= 0) {
+				return middle_msg;
+			} else {
+				return low_msg;
+			}
+		}
+		
+		return "";
 	}
 	
 	public static String newFindTier4AccesorryOptionsDt(String param) {

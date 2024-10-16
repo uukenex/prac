@@ -1892,6 +1892,53 @@ public class LoaChatController {
 		return weaponLv;
 	}
 	
+	List<String> totalAccessorySearch(String userId) throws Exception {
+		String ordUserId=userId;
+		userId = URLEncoder.encode(userId, "UTF-8");
+		// +는 %2B로 치환한다
+		String paramUrl = lostArkAPIurl + "/armories/characters/" + userId + "?filters=equipment";
+		String returnData = LoaApiUtils.connect_process(paramUrl);
+		HashMap<String, Object> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<Map<String, Object>>() {});
+
+		List<Map<String, Object>> armoryEquipment=null;
+		
+		try {
+			armoryEquipment = (List<Map<String, Object>>) rtnMap.get("ArmoryEquipment");
+		}catch(Exception e){
+		}
+		
+		String resMsg ="";
+
+		List<String> g1 = new ArrayList<>();
+		
+		for (Map<String, Object> equip : armoryEquipment) {
+			HashMap<String, Object> tooltip = new ObjectMapper().readValue((String) equip.get("Tooltip"),new TypeReference<Map<String, Object>>() {});
+			HashMap<String, Object> maps = LoaApiParser.findElement(tooltip);
+			HashMap<String, Object> quality_element = (HashMap<String, Object>)maps.get("quality_element");
+			HashMap<String, Object> grinding_element = (HashMap<String, Object>)maps.get("grinding_element");
+			
+			switch (equip.get("Type").toString()) {
+			
+			case "반지":case "귀걸이": case "목걸이":
+				switch(Jsoup.parse((String) ((HashMap<String, Object>) quality_element.get("value")).get("leftStr2")).text()) {
+					case "아이템 티어 4":
+						if(Jsoup.parse((String) ((HashMap<String, Object>) quality_element.get("value")).get("leftStr0")).text().indexOf("고대")>=0 ) {
+							g1.add(LoaApiParser.findBraceletOptions(2,((HashMap<String, Object>) grinding_element.get("value")).get("Element_001").toString()));
+						}
+						break;
+				}
+				break;
+			
+			default:
+			continue;
+			}
+		}
+		
+		Map<String,Object> m = new HashMap<>();
+		
+		return g1;
+	}
+	
 	List<Map<String, Object>> totalEngraveSearch(String userId) throws Exception {
 		String ordUserId=userId;
 		userId = URLEncoder.encode(userId, "UTF-8");
@@ -2029,7 +2076,7 @@ public class LoaChatController {
 		String paramUrl = lostArkAPIurl + "/characters/" + userId + "/siblings";
 		String returnData = LoaApiUtils.connect_process(paramUrl);
 		
-		String resMsg=ordUserId+" 계정 전투력 정보 v0.3" + enterStr;
+		String resMsg=ordUserId+" 계정 전투력 정보 v0.4" + enterStr;
 		
 		List<HashMap<String, Object>> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<List<Map<String, Object>>>() {});
 		if(rtnMap.isEmpty()) return "";
@@ -2057,11 +2104,20 @@ public class LoaChatController {
 		int cntEngrave1 =0;
 		
 		int gradeCnt =0;
+		
+		int gradeCnt_lv=0;
+		int gradeCnt_subChar=0;
+		int gradeCnt_weapon=0;
+		int gradeCnt_gem=0;
+		int gradeCnt_engrave=0;
+		int gradeCnt_accessory=0;
+		
 		String grade ="모코코";
 		
 		List<Integer> weaponList = new ArrayList<>();
 		ArrayList<Integer> gemList = new ArrayList<>();
 		List<Map<String,Object>> engraveList = new ArrayList<>();
+		List<String> accessoryList = new ArrayList<>();
 		
 		String charName = "";
 		for(HashMap<String,Object> charList : sortedList) {
@@ -2084,42 +2140,46 @@ public class LoaChatController {
 				engraveList.addAll(charEngrave);
 			}
 			
+			List<String> acceossory = totalAccessorySearch(charName);
+			if(acceossory !=null) {
+				accessoryList.addAll(acceossory);
+			}
 		}
 		
 		for(int weapon: weaponList) {
 			switch(weapon) {
 			case 25:
 				cntWeaponLv25++;
-				gradeCnt += 200+190+180+170+160+150;
+				gradeCnt_weapon += 200+190+180+170+160+150;
 				break;
 			case 24:
 				cntWeaponLv24++;
-				gradeCnt += 190+180+170+160+150;
+				gradeCnt_weapon += 190+180+170+160+150;
 				break;
 			case 23:
 				cntWeaponLv23++;
-				gradeCnt += 180+170+160+150;
+				gradeCnt_weapon += 180+170+160+150;
 				break;
 			case 22:
 				cntWeaponLv22++;
-				gradeCnt += 170+160+150;
+				gradeCnt_weapon += 170+160+150;
 				break;
 			case 21:
 				cntWeaponLv21++;
-				gradeCnt += 160+150;
+				gradeCnt_weapon += 160+150;
 				break;
 			case 20:
 				cntWeaponLv20++;
-				gradeCnt += 150;
+				gradeCnt_weapon += 150;
 				break;
 			case 9:
-				gradeCnt += 3000;
+				gradeCnt_weapon += 3000;
 			case 8:
-				gradeCnt += 2320;
+				gradeCnt_weapon += 2320;
 			case 7:
-				gradeCnt += 1576;
+				gradeCnt_weapon += 1576;
 			case 6:
-				gradeCnt += 1327;
+				gradeCnt_weapon += 1327;
 				cntEsther++;
 				break;
 			}
@@ -2136,7 +2196,7 @@ public class LoaChatController {
 		
 		for (Map<String, Object> engrave : engraveList) {
 			if(engrave.get("Grade").equals("유물")) {
-				gradeCnt +=LoaApiUtils.totalGoldForEngrave(engrave.get("Name").toString(),engrave.get("Level").toString());
+				gradeCnt_engrave +=LoaApiUtils.totalGoldForEngrave(engrave.get("Name").toString(),engrave.get("Level").toString());
 				
 				switch(engrave.get("Level").toString()) {
 					case "4": cntEngrave4++;
@@ -2159,21 +2219,21 @@ public class LoaChatController {
 		resMsg += "최고레벨: " + maxCharLv + enterStr;
 		Double lv = Double.parseDouble(maxCharLv);
 		if(lv>=1680) {
-			gradeCnt += 200;
+			gradeCnt_lv += 200;
 		}
 		if(lv>=1690) {
-			gradeCnt += 200;
+			gradeCnt_lv += 200;
 		}
 		if(lv>=1700) {
-			gradeCnt += 300;
+			gradeCnt_lv += 300;
 		}
 		if(lv>=1710) {
-			gradeCnt += 350;
+			gradeCnt_lv += 350;
 		}
 		
 		resMsg += "1680이상캐릭터수 : " +cntCharLv1680+ enterStr;
 		if(cntCharLv1680>0) {
-			gradeCnt += 200*(cntCharLv1680-1);
+			gradeCnt_subChar += 200*(cntCharLv1680-1);
 		}
 		
 		resMsg += "무기 : " ;
@@ -2199,7 +2259,9 @@ public class LoaChatController {
 			resMsg += "E:"+cntEsther+" ";
 		}
 		
-		if(cntWeaponLv25 == 0 && cntWeaponLv24 ==0 && cntWeaponLv23 ==0 && cntWeaponLv22 ==0 && cntWeaponLv21 ==0 && cntWeaponLv20 ==0 ) {
+		if(cntWeaponLv25 == 0 && cntWeaponLv24 ==0 && cntWeaponLv23 ==0 
+		&& cntWeaponLv22 == 0 && cntWeaponLv21 ==0 && cntWeaponLv20 ==0
+		&& cntEsther ==0) {
 			resMsg += "강화 낮음";
 		}
 		
@@ -2207,19 +2269,19 @@ public class LoaChatController {
 		resMsg += "보석: ";
 		if(cntGem10>0) {
 			resMsg += "10겁:"+cntGem10+" ";
-			gradeCnt += 230;//270 ~ 170 사이 적정가 6멸5홍기준 
+			gradeCnt_gem += 230;//270 ~ 170 사이 적정가 6멸5홍기준 
 		}
 		if(cntGem9>0) {
 			resMsg += "9겁:"+cntGem9+" ";
-			gradeCnt += 90;
+			gradeCnt_gem += 90;
 		}
 		if(cntGem8>0) {
 			resMsg += "8겁:"+cntGem8+" ";
-			gradeCnt += 30*cntGem8;
+			gradeCnt_gem += 30*cntGem8;
 		}
 		if(cntGem7>0) {
 			resMsg += "7겁:"+cntGem7+" ";
-			gradeCnt += 10*cntGem7;
+			gradeCnt_gem += 10*cntGem7;
 		}
 		
 		if(cntGem10 == 0 && cntGem9 ==0 && cntGem8 ==0 && cntGem7 ==0 ) {
@@ -2244,11 +2306,95 @@ public class LoaChatController {
 			resMsg += "장착 유각 없음!";
 		}
 		
+		resMsg += enterStr;
 		
+		int g1ss = 0;
+		int g1sj = 0;
+		int g1sh = 0;
+		int g1s = 0;
+		int g1jj =0;
+		int g1jh =0;
+		int g1j =0;
+		
+		for(String g1: accessoryList) {
+			switch(g1) {
+				case "상상":
+					g1ss++;
+					gradeCnt_accessory += 150;
+					break;
+				case "상중":
+					g1sj++;
+					gradeCnt_accessory += 80;
+					break;
+				case "상하":
+					g1sh++;
+					gradeCnt_accessory += 40;
+					break;
+				case "상":
+					g1s++;
+					gradeCnt_accessory += 25;
+					break;
+				case "중중":
+					g1jj++;
+					gradeCnt_accessory += 20;
+					break;
+				case "중하":
+					g1jh++;
+					gradeCnt_accessory += 15;
+					break;
+				case "중":
+					g1j++;
+					gradeCnt_accessory += 10;
+					break;
+			}
+		}
+		
+		resMsg += "악세 : " ;
+		if(g1ss>0) {
+			resMsg += "상상:"+g1ss+" ";
+		}
+		if(g1sj>0) {
+			resMsg += "상중:"+g1sj+" ";
+		}
+		if(g1sh>0) {
+			resMsg += "상하:"+g1sh+" ";
+		}
+		if(g1s>0) {
+			resMsg += "상:"+g1s+" ";
+		}
+		
+		if(g1jj>0) {
+			resMsg += "중중:"+g1jj+" ";
+		}
+		if(g1jh>0) {
+			resMsg += "중하:"+g1jh+" ";
+		}
+		if(g1j>0) {
+			resMsg += "중:"+g1j+" ";
+		}
+		
+		if(g1ss == 0 && g1sj ==0 && g1sh ==0 && g1s ==0 
+				     &&g1jj == 0 && g1jh ==0 && g1j ==0) {
+			resMsg += "특옵 없음!";
+		}
 		
 		resMsg += enterStr;
 		resMsg += enterStr;
+		
+		
+		
+		
+		
+		
+		
+		gradeCnt=gradeCnt_lv
+				+gradeCnt_subChar
+				+gradeCnt_weapon
+				+gradeCnt_gem
+				+gradeCnt_engrave
+				+gradeCnt_accessory; 
 		resMsg +="환산 비용: "+gradeCnt +"만 골드";
+		
 		
 		if(gradeCnt>0) {
 			grade="모코코";
@@ -2271,7 +2417,17 @@ public class LoaChatController {
 		
 		resMsg += enterStr;
 		resMsg += "당신은 "+grade+" !!"+enterStr;
-		resMsg += "(추후악세 추가 예정)";
+		resMsg += "(추후악세 추가 예정)"+enterStr;
+		resMsg += "계산식 보기"+allSeeStr;
+		
+		resMsg += "레벨 "+gradeCnt_lv+enterStr;
+		resMsg += "부캐 "+gradeCnt_subChar+enterStr;
+		resMsg += "무기 "+gradeCnt_weapon+enterStr;
+		resMsg += "보석 "+gradeCnt_gem+enterStr;
+		resMsg += "각인 "+gradeCnt_engrave+enterStr;
+		resMsg += "악세 "+gradeCnt_accessory+enterStr;
+		resMsg += enterStr;
+		resMsg += "http://rgb-tns.dev-apc.com/in/totalGold1";
 		
 		
 		
