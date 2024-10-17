@@ -1859,13 +1859,13 @@ public class LoaChatController {
 		return resMsg;
 	}
 	
-	int totalEquipmentSearch(String userId) throws Exception {
-		String ordUserId=userId;
-		userId = URLEncoder.encode(userId, "UTF-8");
+	int totalEquipmentSearch(Map<String,Object> rtnMap,String userId) throws Exception {
+		//String ordUserId=userId;
+		//userId = URLEncoder.encode(userId, "UTF-8");
 		// +는 %2B로 치환한다
-		String paramUrl = lostArkAPIurl + "/armories/characters/" + userId + "?filters=equipment";
-		String returnData = LoaApiUtils.connect_process(paramUrl);
-		HashMap<String, Object> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<Map<String, Object>>() {});
+		//String paramUrl = lostArkAPIurl + "/armories/characters/" + userId + "?filters=equipment";
+		//String returnData = LoaApiUtils.connect_process(paramUrl);
+		//HashMap<String, Object> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<Map<String, Object>>() {});
 
 		List<Map<String, Object>> armoryEquipment = null;
 		try {
@@ -1892,13 +1892,13 @@ public class LoaChatController {
 		return weaponLv;
 	}
 	
-	List<String> totalAccessorySearch(String userId,String className) throws Exception {
-		String ordUserId=userId;
-		userId = URLEncoder.encode(userId, "UTF-8");
+	List<String> totalAccessorySearch(Map<String,Object> rtnMap,String userId,String className) throws Exception {
+		//String ordUserId=userId;
+		//userId = URLEncoder.encode(userId, "UTF-8");
 		// +는 %2B로 치환한다
-		String paramUrl = lostArkAPIurl + "/armories/characters/" + userId + "?filters=equipment";
-		String returnData = LoaApiUtils.connect_process(paramUrl);
-		HashMap<String, Object> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<Map<String, Object>>() {});
+		//String paramUrl = lostArkAPIurl + "/armories/characters/" + userId + "?filters=equipment";
+		//String returnData = LoaApiUtils.connect_process(paramUrl);
+		//HashMap<String, Object> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<Map<String, Object>>() {});
 
 		List<Map<String, Object>> armoryEquipment=null;
 		
@@ -1950,13 +1950,13 @@ public class LoaChatController {
 		return g1;
 	}
 	
-	List<Map<String, Object>> totalEngraveSearch(String userId) throws Exception {
-		String ordUserId=userId;
-		userId = URLEncoder.encode(userId, "UTF-8");
-		String resMsg="";
-		String paramUrl = lostArkAPIurl + "/armories/characters/" + userId + "/engravings";
-		String returnData = LoaApiUtils.connect_process(paramUrl);
-		HashMap<String, Object> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<Map<String, Object>>() {});
+	List<Map<String, Object>> totalEngraveSearch(Map<String,Object> rtnMap,String userId) throws Exception {
+		//String ordUserId=userId;
+		//userId = URLEncoder.encode(userId, "UTF-8");
+		//String resMsg="";
+		//String paramUrl = lostArkAPIurl + "/armories/characters/" + userId + "/engravings";
+		//String returnData = LoaApiUtils.connect_process(paramUrl);
+		//HashMap<String, Object> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<Map<String, Object>>() {});
 		
 		List<Map<String, Object>> engraves;
 		
@@ -1975,13 +1975,13 @@ public class LoaChatController {
 	}
 	
 	
-	List<Integer> totalGemCntSearch(String userId) throws Exception {
-		String ordUserId=userId;
-		userId = URLEncoder.encode(userId, "UTF-8");
+	List<Integer> totalGemCntSearch(Map<String,Object> rtnMap,String userId) throws Exception {
+		//String ordUserId=userId;
+		//userId = URLEncoder.encode(userId, "UTF-8");
 		// +는 %2B로 치환한다
-		String paramUrl = lostArkAPIurl + "/armories/characters/" + userId + "/gems";
-		String returnData = LoaApiUtils.connect_process(paramUrl);
-		HashMap<String, Object> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<Map<String, Object>>() {});
+		//String paramUrl = lostArkAPIurl + "/armories/characters/" + userId + "/gems";
+		//String returnData = LoaApiUtils.connect_process(paramUrl);
+		//HashMap<String, Object> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<Map<String, Object>>() {});
 
 
 		String[] gemList = {"멸화","홍염","겁화","작열"};
@@ -2080,6 +2080,23 @@ public class LoaChatController {
 		return resMsg;
 	}
 	
+	HashMap<String, Object> sumTotalPowerSearch2(String userId) throws Exception {
+		String ordUserId=userId;
+		userId = URLEncoder.encode(userId, "UTF-8");
+		// +는 %2B로 치환한다
+		String paramUrl = lostArkAPIurl + "/armories/characters/" + userId;// + "?filters=equipment%2Bprofiles";
+		String returnData;
+		try {
+			returnData = LoaApiUtils.connect_process(paramUrl);
+		}catch(Exception e){
+			throw new Exception("E0004");
+		}
+		
+		HashMap<String, Object> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<Map<String, Object>>() {});
+
+		return rtnMap;
+	}
+	
 	String sumTotalPowerSearch(String userId) throws Exception {
 		String ordUserId=userId;
 		userId = URLEncoder.encode(userId, "UTF-8");
@@ -2131,27 +2148,61 @@ public class LoaChatController {
 		List<String> accessoryList = new ArrayList<>();
 		
 		String charName = "";
+		String charClassName ="";
+		Double charLv=0.0;
+		HashMap<String,Object> resMap =new HashMap<>();
 		for(HashMap<String,Object> charList : sortedList) {
 			charName = charList.get("CharacterName").toString();
-			if(Double.parseDouble(charList.get("ItemMaxLevel").toString().replaceAll(",", "")) >= 1680){
-				cntCharLv1680++;
-			}
-			if(Double.parseDouble(charList.get("ItemMaxLevel").toString().replaceAll(",", "")) >= 1680){
-				weaponList.add(totalEquipmentSearch(charName));
+			charLv =Double.parseDouble(charList.get("ItemMaxLevel").toString().replaceAll(",", "")); 
+			charClassName = charList.get("CharacterClassName").toString();
+			
+			if(charLv < 1540) {
+				continue;
 			}
 			
-			List<Integer> charGem = totalGemCntSearch(charName);
+			if(charLv >= 1680){
+				cntCharLv1680++;
+			}
+			
+			
+			
+			resMap = sumTotalPowerSearch2(charName);
+			List<Map<String, Object>> armoryEquipment;
+			Map<String, Object> armoryProfile = new HashMap<>();
+			Map<String, Object> armoryEngraving = new HashMap<>();
+			Map<String, Object> armoryGem = new HashMap<>();
+			
+			try {
+				armoryEquipment = (List<Map<String, Object>>) resMap.get("ArmoryEquipment");
+			}catch(Exception e){
+			}
+			try {
+				armoryEngraving = (Map<String, Object>) resMap.get("ArmoryEngraving");
+			}catch(Exception e){
+			}
+			try {
+				armoryGem = (Map<String, Object>) resMap.get("ArmoryGem");
+			}catch(Exception e){
+			}
+			
+			
+			
+			if(charLv >= 1680){
+				weaponList.add(totalEquipmentSearch(resMap,charName));
+			}
+			
+			List<Integer> charGem = totalGemCntSearch(armoryGem,charName);
 			if(charGem !=null) {
 				gemList.addAll(charGem);
 			}
 			
 			
-			List<Map<String,Object>> charEngrave = totalEngraveSearch(charName);
+			List<Map<String,Object>> charEngrave = totalEngraveSearch(armoryEngraving,charName);
 			if(charEngrave !=null) {
 				engraveList.addAll(charEngrave);
 			}
 			
-			List<String> acceossory = totalAccessorySearch(charName,charList.get("CharacterClassName").toString());
+			List<String> acceossory = totalAccessorySearch(resMap,charName,charClassName);
 			if(acceossory !=null) {
 				accessoryList.addAll(acceossory);
 			}
