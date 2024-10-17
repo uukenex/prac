@@ -62,7 +62,7 @@ public class LoaChatController {
 	final String tabStr= "◐";
 	final String allSeeStr = "===";
 	final String anotherMsgStr = "®";
-	final String listSeparatorStr = "㉾";
+	final String listSeparatorStr = "㈜";
 	
 	@RequestMapping(value = "/loa/chat", method = RequestMethod.GET)
 	public @ResponseBody Map<String, Object> chatApplication(
