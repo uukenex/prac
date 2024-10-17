@@ -35,5 +35,7 @@ public interface BotDAO {
 	public int selectSupporters(String userId);
 	
 	public int insertBotWordHis(HashMap<String, Object> hashMap);
+	
+	public List<String> selectRoomList(HashMap<String, Object> hashMap);
 }
 

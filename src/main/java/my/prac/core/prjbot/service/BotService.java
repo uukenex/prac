@@ -33,6 +33,7 @@ public interface BotService {
 	public int selectSupporters(String userId);
 	
 	public int insertBotWordHisTx(HashMap<String, Object> hashMap);
+	public List<String> selectRoomList(HashMap<String, Object> hashMap);
 }
 
 	

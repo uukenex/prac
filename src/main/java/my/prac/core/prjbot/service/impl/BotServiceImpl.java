@@ -98,4 +98,8 @@ public class BotServiceImpl implements BotService {
 	public int insertBotWordHisTx(HashMap<String, Object> hashMap) {
 		return botDAO.insertBotWordHis(hashMap);
 	}
+	
+	public List<String> selectRoomList(HashMap<String, Object> hashMap){
+		return botDAO.selectRoomList(hashMap);
+	}
 }

@@ -62,6 +62,7 @@ public class LoaChatController {
 	final String tabStr= "◐";
 	final String allSeeStr = "===";
 	final String anotherMsgStr = "®";
+	final String listSeparatorStr = "㉾";
 	
 	@RequestMapping(value = "/loa/chat", method = RequestMethod.GET)
 	public @ResponseBody Map<String, Object> chatApplication(
@@ -402,13 +403,23 @@ public class LoaChatController {
 				fulltxt = fulltxt.substring(param0.length()).trim();
 				val = chatGptSearch(fulltxt,sender);
 				break;
+			case "/공지":
+				List<String> list =botService.selectRoomList(reqMap);
+				
+				String tmp_val ="";
+				for(String s : list) {
+					tmp_val += s+listSeparatorStr;
+				}
+				
+				val = tmp_val;
+				break;
 			case "/단어등록": case "/단어추가":
 
 				try {
 					if (fulltxt.indexOf("=") < 0) {
 						val = "단어등록 실패!, =을 포함해주세요";
 					} else if (fulltxt.indexOf(">") >= 0 || fulltxt.indexOf("<") >= 0 || fulltxt.indexOf(enterStr) >= 0 || fulltxt.indexOf(spaceStr) >= 0
-							|| fulltxt.indexOf(tabStr) >= 0 || fulltxt.indexOf(allSeeStr) >= 0|| fulltxt.indexOf(anotherMsgStr) >= 0) {
+							|| fulltxt.indexOf(tabStr) >= 0 || fulltxt.indexOf(allSeeStr) >= 0|| fulltxt.indexOf(anotherMsgStr) >= 0 || fulltxt.indexOf(listSeparatorStr)>=0) {
 						val = "단어등록 실패!, 특수문자 안되요!";
 					} else {
 						String[] txtList;
@@ -436,7 +447,7 @@ public class LoaChatController {
 					if (fulltxt.indexOf("=") < 0) {
 						val = "단어삭제 실패!, =을 포함해주세요";
 					} else if (fulltxt.indexOf(">") >= 0 || fulltxt.indexOf("<") >= 0 || fulltxt.indexOf(enterStr) >= 0 || fulltxt.indexOf(spaceStr) >= 0
-							|| fulltxt.indexOf(tabStr) >= 0 || fulltxt.indexOf(allSeeStr) >= 0|| fulltxt.indexOf(anotherMsgStr) >= 0) {
+							|| fulltxt.indexOf(tabStr) >= 0 || fulltxt.indexOf(allSeeStr) >= 0|| fulltxt.indexOf(anotherMsgStr) >= 0 || fulltxt.indexOf(listSeparatorStr)>=0) {
 						val = "단어삭제 실패!, 특수문자 안되요!";
 					} else {
 						String[] txtList;
