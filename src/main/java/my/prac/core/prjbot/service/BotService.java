@@ -34,6 +34,8 @@ public interface BotService {
 	
 	public int insertBotWordHisTx(HashMap<String, Object> hashMap);
 	public List<String> selectRoomList(HashMap<String, Object> hashMap);
+	
+	public List<HashMap<String,Object>> selectMarketCondition(HashMap<String, Object> hashMap);
 }
 
 	

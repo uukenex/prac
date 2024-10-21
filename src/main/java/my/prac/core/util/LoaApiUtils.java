@@ -257,6 +257,48 @@ public class LoaApiUtils {
 		return gold;
 		
 	}
+	public static Boolean marketConditionYn(String txt) {
+		try {
+			if(
+				txt.indexOf("아드")>=0
+			 || txt.indexOf("예리")>=0
+			 || txt.indexOf("원한")>=0
+			 || txt.indexOf("돌격")>=0
+			 || txt.indexOf("질량")>=0
+			 || txt.indexOf("슈퍼")>=0
+			 || txt.indexOf("마나")>=0
+			 || txt.indexOf("정밀")>=0
+			 || txt.indexOf("저주")>=0
+			 || txt.indexOf("타격")>=0
+			 || txt.indexOf("기습")>=0
+			 || txt.indexOf("속전")>=0
+			 || txt.indexOf("안정")>=0
+			 || txt.indexOf("에테")>=0
+			 || txt.indexOf("바리")>=0
+			 || txt.indexOf("결투")>=0
+			 || txt.indexOf("달인")>=0
+			 || txt.indexOf("구슬")>=0
+			 || txt.indexOf("전문")>=0
+			 || txt.indexOf("마나")>=0
+			 || txt.indexOf("각성")>=0
+			 || txt.indexOf("중갑")>=0
+			 || txt.indexOf("최대")>=0
+			 || txt.indexOf("정기")>=0
+			 || txt.indexOf("급소")>=0
+			 
+			){
+				return true;
+			}else {
+				return false;
+			}
+			
+			
+		}catch(Exception e) {
+			return false;
+		}
+	
+	}
+	
 	public static String filterTextForEngrave(String txt) {
 		try {
 			if(
