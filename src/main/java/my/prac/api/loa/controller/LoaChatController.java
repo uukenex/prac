@@ -182,14 +182,13 @@ public class LoaChatController {
 				if (param1 != null && !param1.equals("")) {
 					
 					if(!LoaApiUtils.marketConditionYn(param1)) {
-						return "축약어는 불가합니다. ex)최대 마나 증가=>최대 로 검색";
+						return "현재 각인서만 검색 가능. ex)최대 마나 증가=>최대 로 검색";
 					}
 					fulltxt = fulltxt.substring(param0.length()).trim();
 					reqMap.put("param1", fulltxt);
 					String tmpVal ="";
 					try {
 						//val = supporters(param1);
-						val +=param1+" 시세 조회"+enterStr;
 						List<HashMap<String,Object>> list = botService.selectMarketCondition(reqMap);
 						for(HashMap<String,Object> hs:list) {
 							tmpVal += hs.get("DT")+" : "+hs.get("SISE")+enterStr;
