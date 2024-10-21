@@ -631,7 +631,7 @@ public class LoaChatController {
 				val = "캐릭터명 검색 오류";
 				break;
 			case "E0004":
-				val = "API사이트 연결 오류";
+				val = "API사이트 연결 오류(로아사이트오류)";
 				break;
 			default:
 				val = "확인되지않은 에러발생..개발자가 모니터링중이므로 조금만기다려주세요1";
@@ -1004,17 +1004,30 @@ public class LoaChatController {
 		
 		return resMsg;
 	}
-	String miniLimitSearch(String userId) throws Exception {
-		String ordUserId=userId;
+	String miniLimitSearch(Map<String,Object> rtnMap,String userId) throws Exception {
+		/*String ordUserId=userId;
 		userId = URLEncoder.encode(userId, "UTF-8");
 		// +는 %2B로 치환한다
 		String paramUrl = lostArkAPIurl + "/armories/characters/" + userId + "?filters=equipment";
-		String returnData = LoaApiUtils.connect_process(paramUrl);
-		HashMap<String, Object> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<Map<String, Object>>() {});
+		String returnData ="";
+		try {
+			returnData = LoaApiUtils.connect_process(paramUrl);	
+		}catch(Exception e) {
+			throw new Exception("E0004");
+		}*/
+		
+		List<Map<String, Object>> armoryEquipment = null;
+		try {
+			armoryEquipment = (List<Map<String, Object>>) rtnMap.get("ArmoryEquipment");
+		}catch(Exception e){
+		}
+		
+		
+		//HashMap<String, Object> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<Map<String, Object>>() {});
 
 		
 		if(rtnMap ==null) return "초월합 : 엘릭서합 : 0" ;
-		List<Map<String, Object>> armoryEquipment;
+		/*List<Map<String, Object>> armoryEquipment;
 		try {
 			
 			armoryEquipment = (List<Map<String, Object>>) rtnMap.get("ArmoryEquipment");
@@ -1022,7 +1035,7 @@ public class LoaChatController {
 			e.printStackTrace();
 			throw new Exception("E0003");
 			
-		}
+		}*/
 		
 		List<String> equipElixirList = new ArrayList<>();
 		
@@ -1836,14 +1849,27 @@ public class LoaChatController {
 		return resMsg;
 	}
 	
-	String miniGemCntSearch(String userId) throws Exception {
-		String ordUserId=userId;
+	String miniGemCntSearch(Map<String,Object> rtnMap,String userId) throws Exception {
+		/*String ordUserId=userId;
 		userId = URLEncoder.encode(userId, "UTF-8");
 		// +는 %2B로 치환한다
 		String paramUrl = lostArkAPIurl + "/armories/characters/" + userId + "/gems";
-		String returnData = LoaApiUtils.connect_process(paramUrl);
+		String returnData ="";
+		try {
+			returnData = LoaApiUtils.connect_process(paramUrl);	
+		}catch(Exception e) {
+			throw new Exception("E0004");
+		}
 		HashMap<String, Object> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<Map<String, Object>>() {});
-
+		 */
+		List<Map<String, Object>> gems;
+		try {
+			gems = (List<Map<String, Object>>) rtnMap.get("Gems");
+		}catch(Exception e){
+			//throw new Exception("E0003");
+			
+			return null;
+		}
 
 		String[] gemList = {"멸화","홍염","겁화","작열"};
 		List<Integer> equipGemT3DealList = new ArrayList<>();
@@ -1851,7 +1877,7 @@ public class LoaChatController {
 		List<Integer> equipGemT4DealList = new ArrayList<>();
 		List<Integer> equipGemT4CoolList = new ArrayList<>();
 		
-		List<Map<String, Object>> gems;
+		//List<Map<String, Object>> gems;
 		try {
 			gems = (List<Map<String, Object>>) rtnMap.get("Gems");
 		}catch(Exception e){
@@ -2580,7 +2606,16 @@ public class LoaChatController {
 		userId = URLEncoder.encode(userId, "UTF-8");
 		// +는 %2B로 치환한다
 		String paramUrl = lostArkAPIurl + "/characters/" + userId + "/siblings";
-		String returnData = LoaApiUtils.connect_process(paramUrl);
+		String returnData ="";
+		try {
+			returnData = LoaApiUtils.connect_process(paramUrl);	
+		}catch(Exception e) {
+			e.printStackTrace();
+			throw new Exception("E0004");
+		}
+		
+		
+		
 		
 		String resMsg=ordUserId+" 1540이상 부캐 정보" + enterStr;
 		resMsg += "4T 5보석↑,3T 8보석↑ 표기"+enterStr;
@@ -2597,6 +2632,9 @@ public class LoaChatController {
 		resMsg += mainServer;
 		resMsg += enterStr;
 		
+		
+		HashMap<String,Object> resMap =new HashMap<>();
+		
 		int charCnt = 0;
 		for(HashMap<String,Object> charList : sortedList) {
 			if(mainServer.equals(charList.get("ServerName").toString())) {
@@ -2605,9 +2643,31 @@ public class LoaChatController {
 				resMsg += "("+charList.get("ItemMaxLevel").toString().replaceAll(",", "")+") ";
 				resMsg += charList.get("CharacterName").toString();
 				resMsg += enterStr;
-				resMsg += miniLimitSearch(charList.get("CharacterName").toString());
+				System.out.println(userId+" : "+charCnt);
+				resMap = sumTotalPowerSearch2(charList.get("CharacterName").toString());
+				List<Map<String, Object>> armoryEquipment;
+				Map<String, Object> armoryProfile = new HashMap<>();
+				Map<String, Object> armoryEngraving = new HashMap<>();
+				Map<String, Object> armoryGem = new HashMap<>();
+				
+				try {
+					armoryEquipment = (List<Map<String, Object>>) resMap.get("ArmoryEquipment");
+				}catch(Exception e){
+				}
+				try {
+					armoryEngraving = (Map<String, Object>) resMap.get("ArmoryEngraving");
+				}catch(Exception e){
+				}
+				try {
+					armoryGem = (Map<String, Object>) resMap.get("ArmoryGem");
+				}catch(Exception e){
+				}
+				
+				
+				
+				resMsg += miniLimitSearch(resMap,charList.get("CharacterName").toString());
 				resMsg += enterStr;
-				resMsg += miniGemCntSearch(charList.get("CharacterName").toString());//얘는 엔터포함됨
+				resMsg += miniGemCntSearch(armoryGem,charList.get("CharacterName").toString());//얘는 엔터포함됨
 				if(charCnt ==4) {
 					resMsg += enterStr + "4캐릭 이상 더보기..▼ ";
 					resMsg += allSeeStr ;
