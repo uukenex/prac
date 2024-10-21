@@ -184,7 +184,8 @@ public class LoaChatController {
 					if(!LoaApiUtils.marketConditionYn(param1)) {
 						return "축약어는 불가합니다. ex)최대 마나 증가=>최대 로 검색";
 					}
-					
+					fulltxt = fulltxt.substring(param0.length()).trim();
+					reqMap.put("param1", fulltxt);
 					String tmpVal ="";
 					try {
 						//val = supporters(param1);
