@@ -226,7 +226,7 @@ public class LoaApiUtils {
 			case "마나의 흐름":
 				gold = 5;
 				break;
-			case "구슬 동자":
+			case "구슬동자":
 				gold = 3;
 				break;
 			case "전문의":
