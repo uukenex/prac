@@ -239,22 +239,35 @@
 		/* bot.xml selectMarketCondition */
 		SELECT XX.DT
 			  ,MIN(XX.GOLD) || '~' || MAX(XX.GOLD) AS SISE
-		  FROM (SELECT 
-					    X.DT
-					   ,TO_NUMBER(SUBSTR(X.MSG, INSTR(X.MSG, '-') + 2, INSTR(SUBSTR(X.MSG, INSTR(X.MSG, '-') + 2), 'G') - 1)) AS GOLD
-				  FROM (SELECT TO_CHAR(A.INSERT_DATE, 'yyyy/mm/dd') AS DT
-						      ,SUBSTR(TO_CHAR(A.RES), INSTR(TO_CHAR(A.RES), #{param1, jdbcType=VARCHAR}), INSTR(SUBSTR(TO_CHAR(A.RES), INSTR(TO_CHAR(A.RES), #{param1, jdbcType=VARCHAR}), 30), '♬')) AS MSG
-					 
-					      FROM TBOT_WORD_HIS A
-					     WHERE RES IS NOT NULL
-					       AND (A.REQ LIKE '/ㄱㅁㅈ%' OR A.REQ LIKE '/경매장%' )
-					       AND A.RES LIKE '%'|| #{param1, jdbcType=VARCHAR}||'%'
-					       AND TO_CHAR(SYSDATE, 'dd') BETWEEN TO_CHAR(A.INSERT_DATE, 'dd') - 3 AND TO_CHAR(A.INSERT_DATE, 'dd') + 3
+		  FROM (SELECT X.DT
+				     ,TO_NUMBER(SUBSTR(X.MSG, INSTR(X.MSG, '-') + 2, INSTR(SUBSTR(X.MSG, INSTR(X.MSG, '-') + 2), 'G') - 1)) AS GOLD
+				FROM (SELECT AA.MON || '월 ' || AA.WEEK_OF_MONTH || '주차' AS DT
+						   ,SUBSTR(TO_CHAR(B.RES), INSTR(TO_CHAR(B.RES), #{param1, jdbcType=VARCHAR}), INSTR(SUBSTR(TO_CHAR(B.RES), INSTR(TO_CHAR(B.RES), #{param1, jdbcType=VARCHAR}), 30), '♬')) AS MSG
+					   FROM (WITH ISO AS (SELECT TO_CHAR(WEEK_START, 'YYYY-MM-DD') WEEK_START
+											   ,TO_CHAR(WEEK_END, 'YYYY-MM-DD') WEEK_END
+											   ,TO_CHAR(WEEK_START, 'MM') MON
+											   ,TO_CHAR(WEEK_START, 'W') WEEK_OF_MONTH
+									    FROM (SELECT TRUNC(START_DT + LEVEL, 'D') WEEK_START
+												    ,TRUNC(START_DT + LEVEL, 'D') + 6 WEEK_END
+											  FROM (SELECT TO_DATE('20240801', 'YYYYMMDD') - 1 START_DT
+													      ,TO_DATE('20251231', 'YYYYMMDD') END_DT
+													FROM DUAL)
+											CONNECT BY LEVEL &lt;= END_DT - START_DT)
+									   GROUP BY WEEK_START
+											 ,WEEK_END
+									   ORDER BY WEEK_START)
+							    SELECT A.*
+								 FROM ISO A) AA, TBOT_WORD_HIS B
+								WHERE RES IS NOT NULL
+								  AND (B.REQ LIKE '/ㄱㅁㅈ%' OR B.REQ LIKE '/경매장%')
+								  AND B.RES LIKE '%' || #{param1, jdbcType=VARCHAR} || '%'
+								  AND B.INSERT_DATE BETWEEN AA.WEEK_START AND AA.WEEK_END
+								  AND B.INSERT_DATE > SYSDATE - 60
 					 ) X) XX
 		 GROUP BY XX.DT
-		 UNION
-		SELECT TO_CHAR(sysdate, 'yyyy/mm/dd') AS DT
-			  ,SUBSTR(TO_CHAR(A.RES), INSTR(TO_CHAR(A.RES), #{param1, jdbcType=VARCHAR}), INSTR(SUBSTR(TO_CHAR(A.RES), INSTR(TO_CHAR(A.RES), #{param1, jdbcType=VARCHAR}), 30), ' - ')) AS MSG
+		UNION
+		SELECT '　' DT
+			 ,SUBSTR(TO_CHAR(A.RES), INSTR(TO_CHAR(A.RES), #{param1, jdbcType=VARCHAR}), INSTR(SUBSTR(TO_CHAR(A.RES), INSTR(TO_CHAR(A.RES), #{param1, jdbcType=VARCHAR}), 30), ' - ')) AS MSG
 		
 		  FROM TBOT_WORD_HIS A
 		 WHERE RES IS NOT NULL
@@ -262,8 +275,6 @@
 		   AND A.RES LIKE '%' || #{param1, jdbcType=VARCHAR} || '%'
 		   AND TO_CHAR(SYSDATE, 'dd') BETWEEN TO_CHAR(A.INSERT_DATE, 'dd') - 3 AND TO_CHAR(A.INSERT_DATE, 'dd') + 3
 		   AND ROWNUM = 1
-		 
-		 
 		 ORDER BY 1 DESC
 		
 	</select>
