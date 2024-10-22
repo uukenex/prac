@@ -142,10 +142,13 @@
     
     <select id="selectBotImgMch" parameterType="hashMap" resultType="String" >
 		/* bot.xml selectBotImgMch */
-		SELECT A.OUT_PRM
-		  FROM TBOT_IMG_MCH A
-		 WHERE A.IN_PRM = #{param0, jdbcType=VARCHAR}
-		   AND (A.ROOM_NAME IS NULL OR A.ROOM_NAME = #{roomName, jdbcType=VARCHAR})
+		SELECT OUT_PRM
+		  FROM (SELECT A.OUT_PRM
+				FROM TBOT_IMG_MCH A
+			    WHERE A.IN_PRM = #{param0, jdbcType=VARCHAR}
+			      AND (A.ROOM_NAME IS NULL OR A.ROOM_NAME = #{roomName, jdbcType=VARCHAR})
+			    ORDER BY DBMS_RANDOM.VALUE)
+		 WHERE ROWNUM = 1   
 	</select>
 	
 	<select id="selectBotRaidSaveAll" parameterType="hashMap" resultType="String" >

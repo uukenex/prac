@@ -2741,7 +2741,11 @@ public class LoaChatController {
 		//FirstOption 7:연마효과
 		//SecondOption 44 낙인력 51아공강 52아피강 41추피 49치적 50치피 
 		resMsg += enterStr;
-		resMsg +=searchAuctionParse("고대3연마");
+		String msg = searchAuctionParse("고대3연마");
+		if(msg.indexOf("경매장 오류")>=0) {
+			return "경매장 통신이 원할하지않습니다.(로아사이트오류)";
+		}
+		resMsg += msg;
 		//resMsg +=searchAuctionParse("유물3연마");
 		resMsg += enterStr;
 		
@@ -2762,6 +2766,7 @@ public class LoaChatController {
 		resMsg += "[유물 3연마](깨달음7~9)"+enterStr;
 		resMsg +=searchAuctionParse("유물3아공강");
 		resMsg +=searchAuctionParse("유물3치적");
+		resMsg += enterStr;
 		
 		resMsg += "[고대 3연마](요청분)"+enterStr;
 		resMsg +=searchAuctionParse("고대3아공아피");
