@@ -213,13 +213,15 @@
 			 ,RES
 			 ,ROOM_NAME
 			 ,USER_NAME
-			 ,INSERT_DATE)
+			 ,INSERT_DATE
+			 ,ISSUE_YN)
 		VALUES
 			 (#{req, jdbcType=VARCHAR}
 			 ,#{res, jdbcType=VARCHAR}
 			 ,#{roomName, jdbcType=VARCHAR}
 			 ,#{userName, jdbcType=VARCHAR}
-			 ,sysdate)
+			 ,sysdate
+			 ,#{issue_yn, jdbcType=VARCHAR})
 	</insert>
 	
 	<select id="selectRoomList" resultType="String" parameterType="hashMap">

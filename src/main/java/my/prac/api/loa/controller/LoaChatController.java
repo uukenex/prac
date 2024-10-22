@@ -200,7 +200,7 @@ public class LoaChatController {
 						val += tmpVal;
 						
 					} catch (Exception e) {
-						val = errorCodeMng(e);
+						val = errorCodeMng(e,reqMap);
 					}
 				}
 				break;
@@ -215,7 +215,7 @@ public class LoaChatController {
 							val += checkDividend(int_parama1,16);
 							val += checkDividend(int_parama1,4);
 						} catch (Exception e) {
-							val = errorCodeMng(e);
+							val = errorCodeMng(e,reqMap);
 						}
 					} catch (Exception e) {
 						val = "숫자를 넣어주세요!";
@@ -277,7 +277,7 @@ public class LoaChatController {
 						//val+= tossAccount();
 						
 					} catch (Exception e) {
-						val = errorCodeMng(e);
+						val = errorCodeMng(e,reqMap);
 					}
 				}
 				break;
@@ -289,7 +289,7 @@ public class LoaChatController {
 						val = supporters(param1);
 						val+= limitSearch(param1);
 					} catch (Exception e) {
-						val = errorCodeMng(e);
+						val = errorCodeMng(e,reqMap);
 					}
 				}
 				break;
@@ -300,7 +300,7 @@ public class LoaChatController {
 						val = supporters(param1);
 						val+= collectionSearch(param1);
 					} catch (Exception e) {
-						val = errorCodeMng(e);
+						val = errorCodeMng(e,reqMap);
 					}
 				}
 				break;
@@ -367,7 +367,7 @@ public class LoaChatController {
 						val = supporters(param1);
 						val+= accessorySearch(param1);
 					} catch (Exception e) {
-						val = errorCodeMng(e);
+						val = errorCodeMng(e,reqMap);
 					}
 				}
 				break;		
@@ -379,7 +379,7 @@ public class LoaChatController {
 						val+= subCharacterInfoSearch(param1);
 					} catch (Exception e) {
 						e.printStackTrace();
-						val = errorCodeMng(e);
+						val = errorCodeMng(e,reqMap);
 					}
 				}
 				break;
@@ -394,7 +394,7 @@ public class LoaChatController {
 						
 					} catch (Exception e) {
 						e.printStackTrace();
-						val = errorCodeMng(e);
+						val = errorCodeMng(e,reqMap);
 					}
 				}
 				break;
@@ -617,7 +617,7 @@ public class LoaChatController {
 		return val;
 	}
 
-	String errorCodeMng(Exception e) {
+	String errorCodeMng(Exception e,HashMap<String, Object> map) {
 		String val="";
 		if(e != null && e.getMessage()!=null) {
 			switch(e.getMessage()) {
@@ -642,6 +642,7 @@ public class LoaChatController {
 			val = "확인되지않은 에러발생..개발자가 모니터링중이므로 조금만기다려주세요2";
 			e.printStackTrace();
 		}
+		map.put("issue_yn", 1);
 		return val;
 	}
 	
