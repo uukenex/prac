@@ -149,7 +149,7 @@ public class LoaChatController {
 		reqMap.put("param1", param1);
 		reqMap.put("roomName", roomName);
 		reqMap.put("userName", sender);
-		
+		reqMap.put("fulltxt", fulltxt);
 		String org_fulltxt = fulltxt;
 		
 		int masterYn =0;
@@ -278,6 +278,12 @@ public class LoaChatController {
 						
 					} catch (Exception e) {
 						val = errorCodeMng(e,reqMap);
+						HashMap<String,Object> hs = botService.selectIssueCase(reqMap);
+						if(hs !=null && hs.size()>0) {
+							val+= enterStr+hs.get("INSERT_DATE")+ "에 최종조회된 내용 불러오기입니다.";
+							val+= anotherMsgStr;
+							val+= hs.get("RES");
+						}
 					}
 				}
 				break;
@@ -290,6 +296,12 @@ public class LoaChatController {
 						val+= limitSearch(param1);
 					} catch (Exception e) {
 						val = errorCodeMng(e,reqMap);
+						HashMap<String,Object> hs = botService.selectIssueCase(reqMap);
+						if(hs !=null && hs.size()>0) {
+							val+= enterStr+hs.get("INSERT_DATE")+ "에 최종조회된 내용 불러오기입니다.";
+							val+= anotherMsgStr;
+							val+= hs.get("RES");
+						}
 					}
 				}
 				break;
@@ -301,6 +313,12 @@ public class LoaChatController {
 						val+= collectionSearch(param1);
 					} catch (Exception e) {
 						val = errorCodeMng(e,reqMap);
+						HashMap<String,Object> hs = botService.selectIssueCase(reqMap);
+						if(hs !=null && hs.size()>0) {
+							val+= enterStr+hs.get("INSERT_DATE")+ "에 최종조회된 내용 불러오기입니다.";
+							val+= anotherMsgStr;
+							val+= hs.get("RES");
+						}
 					}
 				}
 				break;
@@ -368,6 +386,12 @@ public class LoaChatController {
 						val+= accessorySearch(param1);
 					} catch (Exception e) {
 						val = errorCodeMng(e,reqMap);
+						HashMap<String,Object> hs = botService.selectIssueCase(reqMap);
+						if(hs !=null && hs.size()>0) {
+							val+= enterStr+hs.get("INSERT_DATE")+ "에 최종조회된 내용 불러오기입니다.";
+							val+= anotherMsgStr;
+							val+= hs.get("RES");
+						}
 					}
 				}
 				break;		
@@ -380,6 +404,13 @@ public class LoaChatController {
 					} catch (Exception e) {
 						e.printStackTrace();
 						val = errorCodeMng(e,reqMap);
+						
+						HashMap<String,Object> hs = botService.selectIssueCase(reqMap);
+						if(hs !=null && hs.size()>0) {
+							val+= enterStr+hs.get("INSERT_DATE")+ "에 최종조회된 내용 불러오기입니다.";
+							val+= anotherMsgStr;
+							val+= hs.get("RES");
+						}
 					}
 				}
 				break;
@@ -642,7 +673,7 @@ public class LoaChatController {
 			val = "확인되지않은 에러발생..개발자가 모니터링중이므로 조금만기다려주세요2";
 			e.printStackTrace();
 		}
-		map.put("issue_yn", 1);
+		map.put("issue_yn", "1");
 		return val;
 	}
 	

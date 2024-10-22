@@ -36,6 +36,7 @@ public interface BotService {
 	public List<String> selectRoomList(HashMap<String, Object> hashMap);
 	
 	public List<HashMap<String,Object>> selectMarketCondition(HashMap<String, Object> hashMap);
+	public HashMap<String,Object> selectIssueCase(HashMap<String, Object> hashMap);
 }
 
 	

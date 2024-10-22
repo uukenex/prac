@@ -106,4 +106,7 @@ public class BotServiceImpl implements BotService {
 	public List<HashMap<String,Object>> selectMarketCondition(HashMap<String, Object> hashMap){
 		return botDAO.selectMarketCondition(hashMap);
 	}
+	public HashMap<String,Object> selectIssueCase(HashMap<String, Object> hashMap){
+		return botDAO.selectIssueCase(hashMap);
+	}
 }

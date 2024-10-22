@@ -315,4 +315,18 @@
 		
 	</select>
 	
+	<select id="selectIssueCase" resultType="hashMap" parameterType="hashMap">
+		SELECT TO_CHAR(A.RES) AS RES
+			  ,TO_CHAR(A.INSERT_DATE,'YYYY/MM/DD HH24:MI:SS') AS INSERT_DATE
+		  FROM TBOT_WORD_HIS A
+		 WHERE RES IS NOT NULL
+		   AND TRIM(A.REQ) LIKE #{fulltxt, jdbcType=VARCHAR}
+		   AND A.ISSUE_YN IS NULL
+		   AND A.INSERT_DATE = (SELECT MAX(B.INSERT_DATE)
+							 FROM TBOT_WORD_HIS B
+							WHERE TRIM(B.REQ) = TRIM(A.REQ)
+							  AND B.ISSUE_YN IS NULL)
+		
+	</select>
+	
 </mapper>
