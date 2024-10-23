@@ -2771,6 +2771,7 @@ public class LoaChatController {
 		resMsg += "[고대 3연마](요청분)"+enterStr;
 		resMsg +=searchAuctionParse("고대3아공아피");
 		resMsg +=searchAuctionParse("고대3아공아피최생");
+		resMsg +=searchAuctionParse("고대3치피공플");
 		
 		return resMsg;
 	}
@@ -2785,6 +2786,36 @@ public class LoaChatController {
 		JSONObject json5 = new JSONObject();
 		
 		switch(ment) {
+		case "고대3치피공플":
+			json.put("CategoryCode", "200030");//30반지
+			json.put("Sort", "BUY_PRICE");
+			json.put("SortCondition", "ASC");
+			json.put("ItemGrade", "고대");
+			
+			json2.put("FirstOption",8);
+			json2.put("SecondOption",1);
+			json2.put("MinValue",12);
+			json2.put("MaxValue",12);
+			options.put(json2);
+			
+			json3.put("FirstOption",7);
+			json3.put("SecondOption",50);
+			json3.put("MinValue",3);
+			json3.put("MaxValue",3);
+			options.put(json3);
+			
+			json4.put("FirstOption",7);
+			json4.put("SecondOption",53);
+			json4.put("MinValue",3);
+			json4.put("MaxValue",3);
+			options.put(json4);
+			
+			json.put("EtcOptions",options);
+			
+			resMsg +="반지(치피상공플상) ";
+			resMsg += auctionSearchDt(json,false,false);
+			resMsg += enterStr;
+			break;
 		case "고대3아공아피":
 			json.put("CategoryCode", "200030");//30반지
 			json.put("Sort", "BUY_PRICE");
