@@ -1606,9 +1606,16 @@ public class LoaChatController {
 		userId = URLEncoder.encode(userId, "UTF-8");
 		// +는 %2B로 치환한다
 		String paramUrl = lostArkAPIurl + "/armories/characters/" + userId + "?filters=equipment%2Bprofiles";
-		String returnData = LoaApiUtils.connect_process(paramUrl);
+		
+		String returnData ="";
+		try {
+			returnData = LoaApiUtils.connect_process(paramUrl);	
+		}catch(Exception e) {
+			e.printStackTrace();
+			throw new Exception("E0004");
+		}
 		HashMap<String, Object> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<Map<String, Object>>() {});
-
+		
 		List<Map<String, Object>> armoryEquipment;
 		Map<String, Object> armoryProfile;
 		
