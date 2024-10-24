@@ -258,9 +258,9 @@
 										    ,TO_CHAR(WEEK_START, 'W') WEEK_OF_MONTH
 										FROM (SELECT TRUNC(START_DT + LEVEL, 'D') WEEK_START
 												  ,TRUNC(START_DT + LEVEL, 'D') + 6 WEEK_END
-											   FROM (SELECT TO_DATE('20240801', 'YYYYMMDD') - 1 START_DT
-														,TO_DATE('20251231', 'YYYYMMDD') END_DT
-													 FROM DUAL)
+											   FROM (SELECT TRUNC(SYSDATE)-60 START_DT,
+													        TRUNC(SYSDATE) END_DT
+												       FROM DUAL)
 											 CONNECT BY LEVEL &lt;= END_DT - START_DT)
 									    GROUP BY WEEK_START
 											  ,WEEK_END
@@ -288,7 +288,7 @@
 												  ,TO_CHAR(WEEK_START, 'W') WEEK_OF_MONTH
 											   FROM (SELECT TRUNC(START_DT + LEVEL, 'D') WEEK_START
 														   ,TRUNC(START_DT + LEVEL, 'D') + 6 WEEK_END
-													   FROM (SELECT TRUNC(SYSDATE)-60 START_DT
+													   FROM (SELECT TRUNC(SYSDATE)-60 START_DT,
 															        TRUNC(SYSDATE) END_DT
 														       FROM DUAL)
 												    CONNECT BY LEVEL &lt;= END_DT - START_DT)
