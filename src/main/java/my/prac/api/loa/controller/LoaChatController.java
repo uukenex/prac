@@ -114,14 +114,17 @@ public class LoaChatController {
 		//info = 직업+이름 
 		String title = info.get("TITLE");
 		String char_name = info.get("CHAR_NAME");
-		
-		
+		String starYn = info.get("STAR_YN");
+		String star="";
+		if(starYn!=null && starYn.equals("1")) {
+			star+="⭐";
+		}
 		if(title == null || title.equals("null")) {
 			title = "";
 		}else {
 			title += " ";
 		}
-		String char_info = supporters(char_name) + title + char_name; 
+		String char_info = star + title + char_name; 
 		model.addAttribute("char_info",char_info);
 		model.addAttribute("imgval",imgvalues);
 		return "rtnimgs_charinfo";
@@ -675,12 +678,12 @@ public class LoaChatController {
 				val = "API사이트 연결 오류(로아사이트오류)";
 				break;
 			default:
-				val = "확인되지않은 에러발생..개발자가 모니터링중이므로 조금만기다려주세요1";
+				val = "확인되지않은 에러발생..지속시 개발자 개인톡문의부탁드려요!";
 				e.printStackTrace();
 				break;
 			}
 		}else {
-			val = "확인되지않은 에러발생..개발자가 모니터링중이므로 조금만기다려주세요2";
+			val = "확인되지않은 에러발생...지속시 개발자 개인톡문의부탁드려요!";
 			e.printStackTrace();
 		}
 		map.put("issue_yn", "1");
@@ -3972,6 +3975,12 @@ public class LoaChatController {
 				hs.put("res", randKey);
 				hs.put("title", title);
 				hs.put("class_name", className);
+				
+				String star = supporters(ordUserId);
+				if(star != null && star.length()>0) {
+					hs.put("star_yn", "1");	
+				}
+				
 				botService.insertBotImgCharSaveTx(hs);
 			}catch(Exception e) {
 				System.out.println("이미지 다운로드 실패.. "+imgUrl);
