@@ -2516,16 +2516,16 @@ public class LoaChatController {
 				
 				switch(engrave.get("Level").toString()) {
 					case "4": cntEngrave4++;
-					engrave_ment+=engrave.get("Name").toString()+" "+engrave.get("Level").toString()+":"+tmpgold+enterStr;
+					engrave_ment+=" :"+engrave.get("Name").toString()+" "+engrave.get("Level").toString()+":"+tmpgold+enterStr;
 					break;
 					case "3": cntEngrave3++;
-					engrave_ment+=engrave.get("Name").toString()+" "+engrave.get("Level").toString()+":"+tmpgold+enterStr;
+					engrave_ment+=" :"+engrave.get("Name").toString()+" "+engrave.get("Level").toString()+":"+tmpgold+enterStr;
 					break;
 					case "2": cntEngrave2++;
-					engrave_ment+=engrave.get("Name").toString()+" "+engrave.get("Level").toString()+":"+tmpgold+enterStr;
+					engrave_ment+=" :"+engrave.get("Name").toString()+" "+engrave.get("Level").toString()+":"+tmpgold+enterStr;
 					break;
 					case "1": cntEngrave1++;
-					engrave_ment+=engrave.get("Name").toString()+" "+engrave.get("Level").toString()+":"+tmpgold+enterStr;
+					engrave_ment+=" :"+engrave.get("Name").toString()+" "+engrave.get("Level").toString()+":"+tmpgold+enterStr;
 					break;
 				}
 			}
