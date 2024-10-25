@@ -257,6 +257,50 @@ public class LoaApiUtils {
 		return gold;
 		
 	}
+	
+	public static String switchWord(String txt) {
+		if(txt.indexOf("예둔")>=0) {
+			txt="예리";
+		}else if(txt.indexOf("돌대")>=0) {
+			txt="돌격";
+		}else if(txt.indexOf("질증")>=0) {
+			txt="질량";
+		}else if(txt.indexOf("슈차")>=0) {
+			txt="슈퍼";
+		}else if(txt.indexOf("마흐")>=0) {
+			txt="마나의";
+		}else if(txt.indexOf("정단")>=0) {
+			txt="정밀";
+		}else if(txt.indexOf("저받")>=0) {
+			txt="저주";
+		}else if(txt.indexOf("타대")>=0) {
+			txt="타격";
+		}else if(txt.indexOf("기대")>=0) {
+			txt="기습";
+		}else if(txt.indexOf("속속")>=0) {
+			txt="속전";
+		}else if(txt.indexOf("안상")>=0) {
+			txt="안정";
+		}else if(txt.indexOf("에포")>=0) {
+			txt="에테";
+		}else if(txt.indexOf("결대")>=0) {
+			txt="결투";
+		}else if(txt.indexOf("달저")>=0) {
+			txt="달인";
+		}else if(txt.indexOf("구동")>=0) {
+			txt="구슬";
+		}else if(txt.indexOf("마효")>=0) {
+			txt="마나 효율";
+		}else if(txt.indexOf("최마")>=0) {
+			txt="최대 마나";
+		}else if(txt.indexOf("정흡")>=0) {
+			txt="정기";
+		}else if(txt.indexOf("급타")>=0) {
+			txt="급소";
+		}
+		return txt;
+	}
+	
 	public static Boolean marketConditionYn(String txt) {
 		try {
 			if(

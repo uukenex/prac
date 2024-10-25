@@ -185,7 +185,7 @@ public class LoaChatController {
 				break;
 			case "/시세":
 				if (param1 != null && !param1.equals("")) {
-					
+					param1 =LoaApiUtils.switchWord(param1);
 					if(!LoaApiUtils.marketConditionYn(param1)) {
 						return "현재 각인서만 검색 가능. ex)최대 마나 증가=>최대 로 검색";
 					}
@@ -2501,6 +2501,7 @@ public class LoaChatController {
 		cntGem7 = Collections.frequency(gemList, 7);
 		
 		List<String> engrave_hash_chk = new ArrayList<>();
+		String engrave_ment="";
 		for (Map<String, Object> engrave : engraveList) {
 			if(engrave.get("Grade").equals("유물")) {
 				
@@ -2509,8 +2510,9 @@ public class LoaChatController {
 				}
 				engrave_hash_chk.add(engrave.get("Name").toString());
 				
-				gradeCnt_engrave +=LoaApiUtils.totalGoldForEngrave(engrave.get("Name").toString(),engrave.get("Level").toString());
-				
+				int tmpgold = LoaApiUtils.totalGoldForEngrave(engrave.get("Name").toString(),engrave.get("Level").toString());
+				gradeCnt_engrave +=tmpgold;
+				engrave_ment+=engrave.get("Name").toString()+" "+engrave.get("Level").toString()+":"+tmpgold+enterStr;
 				switch(engrave.get("Level").toString()) {
 					case "4": cntEngrave4++;
 					break;
@@ -2603,6 +2605,7 @@ public class LoaChatController {
 		
 		resMsg += enterStr;
 		resMsg += "각인 : " ;
+		/*
 		if(cntEngrave4>0) {
 			resMsg += "유각4:"+cntEngrave4+" ";
 		}
@@ -2615,8 +2618,11 @@ public class LoaChatController {
 		if(cntEngrave1>0) {
 			resMsg += "유각1:"+cntEngrave1+" ";
 		}
+		*/
 		if(cntEngrave4 == 0 && cntEngrave3 ==0 && cntEngrave2 ==0 && cntEngrave1 ==0 ) {
 			resMsg += "장착 유각 없음!";
+		}else {
+			resMsg += engrave_ment;
 		}
 		
 		resMsg += enterStr;
