@@ -185,6 +185,7 @@ public class LoaChatController {
 				break;
 			case "/시세":
 				if (param1 != null && !param1.equals("")) {
+					fulltxt = fulltxt.replace(param1, LoaApiUtils.switchWord(param1));
 					param1 =LoaApiUtils.switchWord(param1);
 					if(!LoaApiUtils.marketConditionYn(param1)) {
 						return "현재 각인서만 검색 가능. ex)최대 마나 증가=>최대 로 검색";
@@ -2605,7 +2606,7 @@ public class LoaChatController {
 		
 		resMsg += enterStr;
 		resMsg += "각인 : " ;
-		/*
+		
 		if(cntEngrave4>0) {
 			resMsg += "유각4:"+cntEngrave4+" ";
 		}
@@ -2618,11 +2619,9 @@ public class LoaChatController {
 		if(cntEngrave1>0) {
 			resMsg += "유각1:"+cntEngrave1+" ";
 		}
-		*/
+		
 		if(cntEngrave4 == 0 && cntEngrave3 ==0 && cntEngrave2 ==0 && cntEngrave1 ==0 ) {
 			resMsg += "장착 유각 없음!";
-		}else {
-			resMsg += engrave_ment;
 		}
 		
 		resMsg += enterStr;
@@ -2743,8 +2742,9 @@ public class LoaChatController {
 		resMsg += "부캐 "+gradeCnt_subChar+enterStr;
 		resMsg += "무기 "+gradeCnt_weapon+enterStr;
 		resMsg += "보석 "+gradeCnt_gem+enterStr;
-		resMsg += "각인 "+gradeCnt_engrave+enterStr;
 		resMsg += "악세 "+gradeCnt_accessory+enterStr;
+		resMsg += "각인 "+engrave_ment+enterStr;
+		
 		resMsg += enterStr;
 		resMsg += "http://rgb-tns.dev-apc.com/in/totalGold1";
 		
@@ -4057,6 +4057,7 @@ public class LoaChatController {
 	}
 	public String tossAccount2() {
 		String ment = "";
+		ment += enterStr;
 		ment += enterStr+"[개발자 후원하기]";
 		ment += enterStr+"후원금은 서버비 및 개발자 콜라비용에 보탬이 됩니다.";
 		ment += enterStr+"감사의 의미로 마크를 달아드리니 꼭 닉네임을 알려주세요.";
