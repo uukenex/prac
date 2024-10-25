@@ -699,7 +699,7 @@ public class LoaChatController {
 				}
 				
 				val += tossAccount2();
-				
+				passYn=true;
 				break;
 			default:
 				val = botService.selectBotWordSaveOne(reqMap);
