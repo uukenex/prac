@@ -276,6 +276,11 @@ public class LoaChatController {
 			case "/정보":
 			case "/ㅈㅂ":
 				if (param1 != null && !param1.equals("")) {
+					param0="/ㅈㅂ";
+					param1 = param1.trim();
+					fulltxt = param0+" "+param1;
+					org_fulltxt = fulltxt;
+					reqMap.put("fulltxt", fulltxt);
 					try {
 						//val = supporters(param1);
 						val = newnewEquipSearch(param1);
@@ -296,6 +301,11 @@ public class LoaChatController {
 			case "/초월": case "/엘릭서":
 			case "/ㅊㅇ": case "/ㅇㄹㅅ":
 				if (param1 != null && !param1.equals("")) {
+					param0="/ㅊㅇ";
+					param1 = param1.trim();
+					fulltxt = param0+" "+param1;
+					org_fulltxt = fulltxt;
+					reqMap.put("fulltxt", fulltxt);
 					try {
 						val = supporters(param1);
 						val+= limitSearch(param1);
@@ -313,6 +323,11 @@ public class LoaChatController {
 			case "/내실":
 			case "/ㄴㅅ":
 				if (param1 != null && !param1.equals("")) {
+					param0="/ㄴㅅ";
+					param1 = param1.trim();
+					fulltxt = param0+" "+param1;
+					org_fulltxt = fulltxt;
+					reqMap.put("fulltxt", fulltxt);
 					try {
 						val = supporters(param1);
 						val+= collectionSearch(param1);
@@ -330,62 +345,133 @@ public class LoaChatController {
 			case "/ㄱㅁㅈ":
 			case "/경매장":
 				if(param1==null || param1.equals("")) {
+					param0="/ㄱㅁㅈ";
+					org_fulltxt = param0;
 					val  = newMarketSearch();
 				}
 				switch(param1) {
 					case "유물":
 					case "ㅇㅁ":
-						val = marketSearch(40000);
+						param0="/ㄱㅁㅈㅇㅁ";
+						org_fulltxt = param0;
+						try {
+							val ="[유물각인서 시세조회]";
+							val += marketEngrave();
+						}catch(Exception e) {
+							val = errorCodeMng(e,reqMap);
+						}
 						break;
 					case "전설":
 					case "ㅈㅅ":
-						val = marketSearch(400002);
+						param0="/ㄱㅁㅈㅈㅅ";
+						org_fulltxt = param0;
+						try {
+							val = marketSearch(400002);
+						}catch(Exception e) {
+							val = errorCodeMng(e,reqMap);
+						}
+						
 						break;
 					case "악세":
 					case "ㅇㅅ":
-						val = marketTier4accessorySearch();
+						param0="/ㄱㅁㅈㅇㅅ";
+						org_fulltxt = param0;
+						try {
+							val = marketTier4accessorySearch();
+						}catch(Exception e) {
+							val = errorCodeMng(e,reqMap);
+						}
 						break;
 					case "4":
-						val = marketSearch(4);
+						param0="/ㄱㅁㅈ4";
+						org_fulltxt = param0;
+						try {
+							val = marketSearch(4);
+						}catch(Exception e) {
+							val = errorCodeMng(e,reqMap);
+						}
 						break;
 					case "3":
-						val = marketSearch(3);
+						param0="/ㄱㅁㅈ3";
+						org_fulltxt = param0;
+						try {
+							val = marketSearch(3);
+						}catch(Exception e) {
+							val = errorCodeMng(e,reqMap);
+						}
 						break;
 					default:
-						val  = newMarketSearch();
+						param0="/ㄱㅁㅈ";
+						org_fulltxt = param0;
+						try {
+							val  = newMarketSearch();
+						}catch(Exception e) {
+							val = errorCodeMng(e,reqMap);
+						}
 						break;
 				}
 				
 				break;
 			case "/ㄱㅁㅈ3":
 			case "/경매장3":
-				val = marketSearch(3);
+				param0="/ㄱㅁㅈ3";
+				org_fulltxt = param0;
+				try {
+					val = marketSearch(3);
+				}catch(Exception e) {
+					val = errorCodeMng(e,reqMap);
+				}
 				break;
 			case "/ㄱㅁㅈ4":
 			case "/경매장4":
-				val = marketSearch(4);
+				param0="/ㄱㅁㅈ4";
+				org_fulltxt = param0;
+				try {
+					val = marketSearch(4);
+				}catch(Exception e) {
+					val = errorCodeMng(e,reqMap);
+				}
 				break;
 			case "/ㄱㅁㅈㅇㅅ":
 			case "/경매장악세":
-				val = marketTier4accessorySearch();
+				param0="/ㄱㅁㅈㅇㅅ";
+				org_fulltxt = param0;
+				try{
+					val = marketTier4accessorySearch();
+				}catch(Exception e) {
+					val = errorCodeMng(e,reqMap);
+				}
 				break;
 			case "/ㄱㅁㅈㅇㅁ":
 			case "/ㄱㅁㅈ유물":
 			case "/경매장유물":
-				val ="[유물각인서 시세조회]";
-				val += marketEngrave();
-				break;
-			case "/ㄱㅁㅈㅇㅁ2":
-				val = marketSearch(40000);
-				val = engraveBook(val);
+				param0="/ㄱㅁㅈㅇㅁ";
+				org_fulltxt = param0;
+				try{
+					val ="[유물각인서 시세조회]";
+					val += marketEngrave();
+				}catch(Exception e) {
+					val = errorCodeMng(e,reqMap);
+				}
 				break;
 			case "/경매장전설":
 			case "/ㄱㅁㅈㅈㅅ":
-				val = marketSearch(400002);
+				param0="/ㄱㅁㅈㅈㅅ";
+				org_fulltxt = param0;
+				try{
+					val = marketSearch(400002);
+				}catch(Exception e) {
+					val = errorCodeMng(e,reqMap);
+				}
 				break;	
 			case "/악세":
 			case "/ㅇㅅ":
 				if (param1 != null && !param1.equals("")) {
+					param0="/ㅇㅅ";
+					param1 = param1.trim();
+					fulltxt = param0+" "+param1;
+					org_fulltxt = fulltxt;
+					reqMap.put("fulltxt", fulltxt);
 					try {
 						val = supporters(param1);
 						val+= accessorySearch(param1);
@@ -403,6 +489,11 @@ public class LoaChatController {
 			case "/부캐":
 			case "/ㅂㅋ":
 				if (param1 != null && !param1.equals("")) {
+					param0="/ㅂㅋ";
+					param1 = param1.trim();
+					fulltxt = param0+" "+param1;
+					org_fulltxt = fulltxt;
+					reqMap.put("fulltxt", fulltxt);
 					try {
 						val = supporters(param1);
 						val+= subCharacterInfoSearch(param1);
@@ -421,6 +512,11 @@ public class LoaChatController {
 				break;
 			case "/전투력":
 			case "/ㅈㅌㄹ":
+				param0="/ㅈㅌㄹ";
+				param1 = param1.trim();
+				fulltxt = param0+" "+param1;
+				org_fulltxt = fulltxt;
+				reqMap.put("fulltxt", fulltxt);
 				if (param1 != null && !param1.equals("")) {
 					try {
 						//val = "v0.3으로 패치중입니다.";
@@ -448,7 +544,7 @@ public class LoaChatController {
 			case "/점메추":
 				String[] menu_list2 = {"칼국수","샐러드","고구마","굶기","점심회식-부장님은 짜장면드신데","콩국수","된장찌개","순대국","스테이크덮밥",
 						"오징어덮밥","떡볶이","편의점도시락","콩나물불고기","라면","햄버거","부대찌개","돈까스","제육덮밥","닭갈비","닭도리탕","김치돈까스나베",
-						"쌀국수","김치","물"};
+						"쌀국수", "김치", "물", "수제비", "카레", "떡국", "라멘","텐동","유린기"};
 				Random random2 = new Random();
 				val = menu_list2[random2.nextInt(menu_list2.length)];
 				
@@ -456,7 +552,9 @@ public class LoaChatController {
 			case "/저메추":
 				String[] menu_list = { "피자", "탕수육", "치킨", "샐러드", "마라탕", "양꼬치", "삼겹살", "설렁탕", "김치찌개", "된장찌개", "삼치튀김", "참치마요",
 						"회", "육회비빔밥", "냉면", "카레", "돈까스", "제육볶음", "오징어볶음", "떡볶이", "굶기", "초밥", "햄버거", "짜장면", "빵", "파스타", "닭발",
-						"쭈꾸미", "낙지덮밥", "라면", "짜계치", "스팸과 흰밥", "간장계란밥", "간장게장", "참치회", "죽", "흰밥", "감자탕" };
+						"쭈꾸미", "낙지덮밥", "라면", "짜계치", "스팸과 흰밥", "간장계란밥", "간장게장", "참치회", "죽", "흰밥", "감자탕", "육전", "짬뽕", "순두부찌개",
+						"지코바 양념치킨 모짜치즈 추가","닭가슴살", "단백질 음료", "바나나", "포케", "요아정", "홍콩반점 짜장밥", "호두과자", "라멘", "곱창.막창.대창", "소주", 
+						"텐동", "유린기", "물회", "이베리코"};
 				Random random = new Random();
 				val = menu_list[random.nextInt(menu_list.length)];
 
@@ -570,7 +668,7 @@ public class LoaChatController {
 				}
 				break;
 			case "/단어목록": case "/단어조회": case "/단어": case "/ㄷㅇ":
-			case "/명령어": case "/람쥐봇":
+			case "/명령어": case "/람쥐봇": case "/ㄹㅈㅂ":
 				List<String> wordList = botService.selectBotWordSaveAll(reqMap);
 				List<String> imgList = botService.selectBotImgSaveAll(reqMap);
 				
@@ -3461,7 +3559,6 @@ public class LoaChatController {
 		
 		json = new JSONObject();
 		
-		
 		if(tier==3) {
 			resMsg += marketTier3Search();
 		}else if(tier==4) {
@@ -3499,6 +3596,9 @@ public class LoaChatController {
 		}
 		
 		resMsg = LoaApiUtils.filterTextForMarket(resMsg);
+	
+		
+		
 		return resMsg;
 	}
 	//"[유물각인서 시세조회]"
@@ -3561,23 +3661,23 @@ public class LoaChatController {
 	String marketDtSearch(JSONObject json,int numbering,boolean nameDefaultYn,boolean enterYn) throws Exception {
 		String str = "";
 
-		try {
-			String paramUrl = lostArkAPIurl + "/markets/items";
+		String paramUrl = lostArkAPIurl + "/markets/items";
 
-			//String returnData = LoaApiUtils.connect_process_post(paramUrl, json.toString());
-			
-			String returnData;
-			try {
-				returnData = LoaApiUtils.connect_process_post(paramUrl, json.toString());
-			}catch(Exception e){
-				throw new Exception("E0004");
-			}
-			
+		//String returnData = LoaApiUtils.connect_process_post(paramUrl, json.toString());
+		
+		String returnData;
+		try {
+			returnData = LoaApiUtils.connect_process_post(paramUrl, json.toString());
+		}catch(Exception e){
+			throw new Exception("E0004");
+		}
+		
+		try {
 			HashMap<String, Object> rtnMap = new ObjectMapper().readValue(returnData,
 					new TypeReference<Map<String, Object>>() {
 					});
 			List<HashMap<String, Object>> itemMap = (List<HashMap<String, Object>>) rtnMap.get("Items");
-
+	
 			String price ="";
 			switch(numbering){
 				case 0:
@@ -3621,7 +3721,7 @@ public class LoaChatController {
 				case 2:
 				case 4:
 					for (HashMap<String, Object> item : itemMap) {
-
+	
 						if(nameDefaultYn) {
 							str += item.get("Name") + " - " ;
 						}
@@ -3639,11 +3739,13 @@ public class LoaChatController {
 				
 			}
 			
-			
-
-		} catch (Exception e) {
-			str = "";
+		}catch(Exception e){
+			if(enterYn) {
+				str +=enterStr;
+			}
 		}
+
+		
 
 		return str;
 	}
