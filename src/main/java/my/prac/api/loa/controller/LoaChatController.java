@@ -2747,7 +2747,8 @@ public class LoaChatController {
 		resMsg += "무기 "+gradeCnt_weapon+enterStr;
 		resMsg += "보석 "+gradeCnt_gem+enterStr;
 		resMsg += "악세 "+gradeCnt_accessory+enterStr;
-		resMsg += "각인 "+enterStr+engrave_ment+enterStr;
+		resMsg += "각인합 "+gradeCnt_engrave+enterStr;
+		resMsg += "각인상세"+enterStr + engrave_ment+enterStr;
 		
 		resMsg += "가격표:"+enterStr;
 		resMsg += "http://rgb-tns.dev-apc.com/in/totalGold1";
