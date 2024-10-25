@@ -2350,7 +2350,7 @@ public class LoaChatController {
 		String paramUrl = lostArkAPIurl + "/characters/" + userId + "/siblings";
 		String returnData = LoaApiUtils.connect_process(paramUrl);
 		
-		String resMsg=ordUserId+" 계정 전투력 정보 v0.4" + enterStr;
+		String resMsg=ordUserId+" 계정 전투력 정보 v0.5" + enterStr;
 		
 		List<HashMap<String, Object>> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<List<Map<String, Object>>>() {});
 		if(rtnMap.isEmpty()) return "";
@@ -2749,7 +2749,7 @@ public class LoaChatController {
 		resMsg += "악세 "+gradeCnt_accessory+enterStr;
 		resMsg += "각인 "+enterStr+engrave_ment+enterStr;
 		
-		resMsg += enterStr;
+		resMsg += "가격표:"+enterStr;
 		resMsg += "http://rgb-tns.dev-apc.com/in/totalGold1";
 		
 		
