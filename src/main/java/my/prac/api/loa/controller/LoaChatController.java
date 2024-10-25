@@ -188,7 +188,7 @@ public class LoaChatController {
 					fulltxt = fulltxt.replace(param1, LoaApiUtils.switchWord(param1));
 					param1 =LoaApiUtils.switchWord(param1);
 					if(!LoaApiUtils.marketConditionYn(param1)) {
-						return "현재 각인서만 검색 가능. ex)최대 마나 증가=>최대 로 검색";
+						return "각인서만 검색 가능";
 					}
 					fulltxt = fulltxt.substring(param0.length()).trim();
 					reqMap.put("param1", fulltxt);
@@ -2513,15 +2513,19 @@ public class LoaChatController {
 				
 				int tmpgold = LoaApiUtils.totalGoldForEngrave(engrave.get("Name").toString(),engrave.get("Level").toString());
 				gradeCnt_engrave +=tmpgold;
-				engrave_ment+=engrave.get("Name").toString()+" "+engrave.get("Level").toString()+":"+tmpgold+enterStr;
+				
 				switch(engrave.get("Level").toString()) {
 					case "4": cntEngrave4++;
+					engrave_ment+=engrave.get("Name").toString()+" "+engrave.get("Level").toString()+":"+tmpgold+enterStr;
 					break;
 					case "3": cntEngrave3++;
+					engrave_ment+=engrave.get("Name").toString()+" "+engrave.get("Level").toString()+":"+tmpgold+enterStr;
 					break;
 					case "2": cntEngrave2++;
+					engrave_ment+=engrave.get("Name").toString()+" "+engrave.get("Level").toString()+":"+tmpgold+enterStr;
 					break;
 					case "1": cntEngrave1++;
+					engrave_ment+=engrave.get("Name").toString()+" "+engrave.get("Level").toString()+":"+tmpgold+enterStr;
 					break;
 				}
 			}
@@ -2743,7 +2747,7 @@ public class LoaChatController {
 		resMsg += "무기 "+gradeCnt_weapon+enterStr;
 		resMsg += "보석 "+gradeCnt_gem+enterStr;
 		resMsg += "악세 "+gradeCnt_accessory+enterStr;
-		resMsg += "각인 "+engrave_ment+enterStr;
+		resMsg += "각인 "+enterStr+engrave_ment+enterStr;
 		
 		resMsg += enterStr;
 		resMsg += "http://rgb-tns.dev-apc.com/in/totalGold1";
@@ -3417,8 +3421,8 @@ public class LoaChatController {
 		
 		
 		resMsg += "§ 추가 명령어(초성가능)"+enterStr;
-		resMsg += "티어별　 조회: 경매장4/경매장3"+enterStr;
-		resMsg += "각인서　 조회: 경매장전설/경매장유물"+enterStr;
+		resMsg += "티어별 조회: 경매장4/경매장3"+enterStr;
+		resMsg += "각인서 조회: 경매장전설/경매장유물"+enterStr;
 		resMsg += "연마악세 조회: 경매장악세"+enterStr;
 		
 		return resMsg;
