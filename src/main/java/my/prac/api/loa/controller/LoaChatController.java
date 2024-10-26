@@ -2481,7 +2481,7 @@ public class LoaChatController {
 				gradeCnt_weapon += 150;
 				break;
 			case 9:
-				gradeCnt_weapon += 3000;
+				gradeCnt_weapon += 3225;
 			case 8:
 				gradeCnt_weapon += 2320;
 			case 7:
@@ -2542,13 +2542,13 @@ public class LoaChatController {
 			gradeCnt_lv += 200;
 		}
 		if(lv>=1690) {
-			gradeCnt_lv += 200;
+			gradeCnt_lv += 70;
 		}
 		if(lv>=1700) {
-			gradeCnt_lv += 300;
+			gradeCnt_lv += 100;
 		}
 		if(lv>=1710) {
-			gradeCnt_lv += 350;
+			gradeCnt_lv += 130;
 		}
 		
 		resMsg += "1680이상캐릭터수 : " +cntCharLv1680+ enterStr;
@@ -2755,7 +2755,7 @@ public class LoaChatController {
 		
 		resMsg += "가격표:"+enterStr;
 		resMsg += "v0.6 악세 상하 중하 미포함 버그 수정"+enterStr;
-		resMsg += "http://rgb-tns.dev-apc.com/in/totalGold1";
+		resMsg += "http://rgb-tns.dev-apc.com/in/totalGold2";
 		
 		
 		
