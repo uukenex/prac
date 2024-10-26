@@ -2350,7 +2350,7 @@ public class LoaChatController {
 		String paramUrl = lostArkAPIurl + "/characters/" + userId + "/siblings";
 		String returnData = LoaApiUtils.connect_process(paramUrl);
 		
-		String resMsg=ordUserId+" 계정 전투력 정보 v0.5" + enterStr;
+		String resMsg=ordUserId+" 계정 전투력 정보 v0.6" + enterStr;
 		
 		List<HashMap<String, Object>> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<List<Map<String, Object>>>() {});
 		if(rtnMap.isEmpty()) return "";
@@ -2637,40 +2637,43 @@ public class LoaChatController {
 		int g1jj =0;
 		int g1jh =0;
 		int g1j =0;
-		
-		for(String g1: accessoryList) {
-			switch(g1) {
-				case "상상":
-					g1ss++;
-					gradeCnt_accessory += 150;
-					break;
-				case "상중":
-					g1sj++;
-					gradeCnt_accessory += 80;
-					break;
-				case "상하":
-					g1sh++;
-					gradeCnt_accessory += 40;
-					break;
-				case "상":
-					g1s++;
-					gradeCnt_accessory += 25;
-					break;
-				case "중중":
-					g1jj++;
-					gradeCnt_accessory += 20;
-					break;
-				case "중하":
-					g1jh++;
-					gradeCnt_accessory += 15;
-					break;
-				case "중":
-					g1j++;
-					gradeCnt_accessory += 10;
-					break;
+
+		for (String g1 : accessoryList) {
+			switch (g1) {
+			case "상상":
+				g1ss++;
+				gradeCnt_accessory += 150;
+				break;
+			case "상중":
+			case "중상":
+				g1sj++;
+				gradeCnt_accessory += 80;
+				break;
+			case "상하":
+			case "하상":
+				g1sh++;
+				gradeCnt_accessory += 40;
+				break;
+			case "상":
+				g1s++;
+				gradeCnt_accessory += 25;
+				break;
+			case "중중":
+				g1jj++;
+				gradeCnt_accessory += 20;
+				break;
+			case "중하":
+			case "하중":
+				g1jh++;
+				gradeCnt_accessory += 15;
+				break;
+			case "중":
+				g1j++;
+				gradeCnt_accessory += 10;
+				break;
 			}
 		}
-		
+
 		resMsg += "악세 : " ;
 		if(g1ss>0) {
 			resMsg += "상상:"+g1ss+" ";
@@ -2751,6 +2754,7 @@ public class LoaChatController {
 		resMsg += "각인상세"+enterStr + engrave_ment+enterStr;
 		
 		resMsg += "가격표:"+enterStr;
+		resMsg += "v0.6 악세 상하 중하 미포함 버그 수정"+enterStr;
 		resMsg += "http://rgb-tns.dev-apc.com/in/totalGold1";
 		
 		
