@@ -2335,6 +2335,7 @@ public class LoaChatController {
 		try {
 			returnData = LoaApiUtils.connect_process(paramUrl);
 		}catch(Exception e){
+			System.out.println(userId+" sumTotalPowerSearch2 "+e.getMessage());
 			throw new Exception("E0004");
 		}
 		
