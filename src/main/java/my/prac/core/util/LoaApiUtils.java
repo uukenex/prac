@@ -28,11 +28,21 @@ import javax.net.ssl.X509TrustManager;
 
 public class LoaApiUtils {
 
-	final static String lostArkKey = "bearer " + PropsUtil.getProperty("keys", "loaKey");
-	final static String lostArkKey2 = "bearer " + PropsUtil.getProperty("keys", "loaKey2");
+	final static String lostArkKey_m1 = "bearer " + PropsUtil.getProperty("keys", "loaKey_m1");
+	final static String lostArkKey_m2 = "bearer " + PropsUtil.getProperty("keys", "loaKey_m2");
+	final static String lostArkKey_m3 = "bearer " + PropsUtil.getProperty("keys", "loaKey_m2");
+	final static String lostArkKey_m4 = "bearer " + PropsUtil.getProperty("keys", "loaKey_m2");
+	final static String lostArkKey_m5 = "bearer " + PropsUtil.getProperty("keys", "loaKey_m2");
+	final static String lostArkKey_s1 = "bearer " + PropsUtil.getProperty("keys", "loaKey_s1");
+	final static String lostArkKey_s2 = "bearer " + PropsUtil.getProperty("keys", "loaKey_s1");
+	final static String lostArkKey_s3 = "bearer " + PropsUtil.getProperty("keys", "loaKey_s1");
+	final static String lostArkKey_s4 = "bearer " + PropsUtil.getProperty("keys", "loaKey_s1");
+	final static String lostArkKey_s5 = "bearer " + PropsUtil.getProperty("keys", "loaKey_s1");
 	final static int TIMEOUT_VALUE = 3000;// 3초
 
-	final static String[] key_list = { lostArkKey, lostArkKey2 };
+	final static String[] key_list = { lostArkKey_m1, lostArkKey_m2, lostArkKey_m3, lostArkKey_m4, lostArkKey_m5,
+									   lostArkKey_s1, lostArkKey_s2, lostArkKey_s3, lostArkKey_s4, lostArkKey_s5 
+									 };
 
 	public static String connect_process(String paramUrl) throws Exception {
 		URL url = new URL(paramUrl);
