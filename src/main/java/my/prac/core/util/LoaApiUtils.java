@@ -17,6 +17,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Random;
 
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
@@ -27,9 +28,12 @@ import javax.net.ssl.X509TrustManager;
 
 public class LoaApiUtils {
 
-	final static String lostArkKey = "bearer "+PropsUtil.getProperty("keys","loaKey");
-	final static int TIMEOUT_VALUE = 2500;//2.5초
-	
+	final static String lostArkKey = "bearer " + PropsUtil.getProperty("keys", "loaKey");
+	final static String lostArkKey2 = "bearer " + PropsUtil.getProperty("keys", "loaKey2");
+	final static int TIMEOUT_VALUE = 3000;// 3초
+
+	final static String[] key_list = { lostArkKey, lostArkKey2 };
+
 	public static String connect_process(String paramUrl) throws Exception {
 		URL url = new URL(paramUrl);
 
@@ -38,7 +42,11 @@ public class LoaApiUtils {
 
 		conn.setRequestMethod("GET");
 		conn.setRequestProperty("Accept", "application/json");
-		conn.setRequestProperty("Authorization", lostArkKey);
+		
+		Random rd = new Random();
+		String key = key_list[rd.nextInt(key_list.length)];
+		
+		conn.setRequestProperty("Authorization", key);
 		conn.setConnectTimeout(TIMEOUT_VALUE);
 		conn.setReadTimeout(TIMEOUT_VALUE);
 		
@@ -76,7 +84,11 @@ public class LoaApiUtils {
 		    conn.setRequestMethod("POST");
 		    conn.setRequestProperty("Content-Type", "application/json");
 		    conn.setRequestProperty("Accept", "application/json");
-		    conn.setRequestProperty("Authorization", lostArkKey);
+		    
+		    Random rd = new Random();
+			String key = key_list[rd.nextInt(key_list.length)];
+			
+		    conn.setRequestProperty("Authorization", key);
 		    conn.setConnectTimeout(TIMEOUT_VALUE);
 			conn.setReadTimeout(TIMEOUT_VALUE);
 		    conn.setDoOutput(true);
