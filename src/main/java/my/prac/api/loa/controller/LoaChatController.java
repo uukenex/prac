@@ -349,6 +349,7 @@ public class LoaChatController {
 					param0="/ㄱㅁㅈ";
 					org_fulltxt = param0;
 					val  = newMarketSearch();
+					return val;
 				}
 				switch(param1) {
 					case "유물":
@@ -2865,13 +2866,7 @@ public class LoaChatController {
 		//깨포 유물3 목:8~10 반:7~9 귀:7~9
 		//FirstOption 7:연마효과
 		//SecondOption 44 낙인력 51아공강 52아피강 41추피 49치적 50치피 
-		resMsg += enterStr;
-		String msg = searchAuctionParse("고대3연마");
-		if(msg.indexOf("경매장 오류")>=0) {
-			return "경매장 통신이 원할하지않습니다.(로아사이트오류)";
-		}
-		resMsg += msg;
-		//resMsg +=searchAuctionParse("유물3연마");
+		resMsg += searchAuctionParse("고대3연마");
 		resMsg += enterStr;
 		
 		resMsg += "[고대 3연마]"+enterStr;
