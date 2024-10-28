@@ -4066,8 +4066,9 @@ public class LoaChatController {
 		ment += enterStr;
 		ment += enterStr+"[개발자 후원하기]";
 		ment += enterStr+"후원금은 서버비 및 개발자 콜라비용에 보탬이 됩니다.";
-		ment += enterStr+"감사의 의미로 마크를 달아드리니 꼭 닉네임을 알려주세요.";
 		ment += enterStr+"토스뱅크 1000-4571-3008 ㅈㅌㅎ";
+		//ment += enterStr+"[감사하신 분들]";
+		//ment += enterStr+"챙석봉, 리퍼고냥이, 블루미안";
 		return ment; 
 	}
 	
