@@ -2819,21 +2819,15 @@ public class LoaChatController {
 				Map<String, Object> armoryGem = new HashMap<>();
 				
 				try {
-					armoryEquipment = (List<Map<String, Object>>) resMap.get("ArmoryEquipment");
-				}catch(Exception e){
-				}
-				try {
-					armoryEngraving = (Map<String, Object>) resMap.get("ArmoryEngraving");
-				}catch(Exception e){
-				}
-				try {
 					armoryGem = (Map<String, Object>) resMap.get("ArmoryGem");
 				}catch(Exception e){
 				}
 				
 				
+				if(Double.parseDouble(charList.get("ItemMaxLevel").toString().replaceAll(",", "")) >= 1600) {
+					resMsg += miniLimitSearch(resMap,charList.get("CharacterName").toString());
+				}
 				
-				resMsg += miniLimitSearch(resMap,charList.get("CharacterName").toString());
 				resMsg += enterStr;
 				resMsg += miniGemCntSearch(armoryGem,charList.get("CharacterName").toString());//얘는 엔터포함됨
 				if(charCnt ==4) {
