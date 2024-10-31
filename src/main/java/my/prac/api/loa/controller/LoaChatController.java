@@ -257,16 +257,12 @@ public class LoaChatController {
 							val  = calendarSearch(0);
 							val += enterStr + enterStr+"내일의 모험섬 더보기..▼"+allSeeStr;
 							val += calendarSearch(1);
-							val += enterStr;
-							val += tossAccount();
 						}
 						break;
 					default:
 						val  = calendarSearch(0);
 						val += enterStr + enterStr+"내일의 모험섬 더보기..▼"+allSeeStr;
 						val += calendarSearch(1);
-						val += enterStr;
-						val += tossAccount();
 						break;
 				}
 				
@@ -4059,8 +4055,16 @@ public class LoaChatController {
 		ment += enterStr+"[개발자 후원하기]";
 		ment += enterStr+"후원금은 서버비 및 개발자 콜라비용에 보탬이 됩니다.";
 		ment += enterStr+"토스뱅크 1000-4571-3008 ㅈㅌㅎ";
-		//ment += enterStr+"[람쥐봇 운영에 도움을 주신분들]";
-		//ment += enterStr+"챙석봉, 리퍼고냥이, 블루미안, 친칠라솜꼬리토끼";
+		ment += enterStr;
+		/*
+		ment += enterStr+"[개발자 오픈채팅]";
+		ment += enterStr+"아이디어나 개선점 피드백 감사합니다.";
+		ment += enterStr+"https://open.kakao.com/o/sC6s7lkb";
+		ment += enterStr;
+		ment += enterStr+"[람쥐봇 운영에 도움을 주신분들]";
+		ment += enterStr+"챙석봉, 리퍼고냥이, 블루미안, 친칠라솜꼬리토끼";
+		ment += enterStr;
+		*/
 		return ment; 
 	}
 	
