@@ -2811,11 +2811,9 @@ public class LoaChatController {
 				resMsg += "("+charList.get("ItemMaxLevel").toString().replaceAll(",", "")+") ";
 				resMsg += charList.get("CharacterName").toString();
 				resMsg += enterStr;
-				System.out.println(userId+" : "+charCnt);
+				System.out.println(ordUserId+" : "+charCnt + " / "+ sortedList.size());
 				resMap = sumTotalPowerSearch2(charList.get("CharacterName").toString());
-				List<Map<String, Object>> armoryEquipment;
-				Map<String, Object> armoryProfile = new HashMap<>();
-				Map<String, Object> armoryEngraving = new HashMap<>();
+				
 				Map<String, Object> armoryGem = new HashMap<>();
 				
 				try {
@@ -2826,9 +2824,9 @@ public class LoaChatController {
 				
 				if(Double.parseDouble(charList.get("ItemMaxLevel").toString().replaceAll(",", "")) >= 1600) {
 					resMsg += miniLimitSearch(resMap,charList.get("CharacterName").toString());
+					resMsg += enterStr;
 				}
 				
-				resMsg += enterStr;
 				resMsg += miniGemCntSearch(armoryGem,charList.get("CharacterName").toString());//얘는 엔터포함됨
 				if(charCnt ==4) {
 					resMsg += enterStr + "4캐릭 이상 더보기..▼ ";
@@ -4061,7 +4059,7 @@ public class LoaChatController {
 		ment += enterStr+"[개발자 후원하기]";
 		ment += enterStr+"후원금은 서버비 및 개발자 콜라비용에 보탬이 됩니다.";
 		ment += enterStr+"토스뱅크 1000-4571-3008 ㅈㅌㅎ";
-		//ment += enterStr+"[감사하신 분들]";
+		//ment += enterStr+"[람쥐봇 운영에 도움을 주신분들]";
 		//ment += enterStr+"챙석봉, 리퍼고냥이, 블루미안, 친칠라솜꼬리토끼";
 		return ment; 
 	}
