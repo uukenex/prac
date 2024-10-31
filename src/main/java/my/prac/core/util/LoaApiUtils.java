@@ -38,7 +38,7 @@ public class LoaApiUtils {
 	final static String lostArkKey_s3 = "bearer " + PropsUtil.getProperty("keys", "loaKey_s1");
 	final static String lostArkKey_s4 = "bearer " + PropsUtil.getProperty("keys", "loaKey_s1");
 	final static String lostArkKey_s5 = "bearer " + PropsUtil.getProperty("keys", "loaKey_s1");
-	final static int TIMEOUT_VALUE = 3000;// 3초
+	final static int TIMEOUT_VALUE = 6000;// 6초
 
 	final static String[] key_list = { lostArkKey_m1, lostArkKey_m2, lostArkKey_m3, lostArkKey_m4, lostArkKey_m5,
 									   lostArkKey_s1, lostArkKey_s2, lostArkKey_s3, lostArkKey_s4, lostArkKey_s5 
