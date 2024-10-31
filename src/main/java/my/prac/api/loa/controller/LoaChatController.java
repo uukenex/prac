@@ -292,7 +292,7 @@ public class LoaChatController {
 						HashMap<String,Object> hs = botService.selectIssueCase(reqMap);
 						if(hs !=null && hs.size()>0) {
 							val+= enterStr+hs.get("INSERT_DATE")+ "에 최종조회된 내용 불러오기입니다.";
-							val+= anotherMsgStr;
+							val+= enterStr;
 							val+= hs.get("RES");
 						}
 					}
