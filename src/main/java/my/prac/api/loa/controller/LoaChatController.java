@@ -2949,21 +2949,25 @@ public class LoaChatController {
 	
 	String newSearchAcce() throws Exception {
 	    StringBuilder resMsg = new StringBuilder("4티어 악세 최저가").append(enterStr);
+	    resMsg.append("$부위별(연마단계)").append(enterStr);
+	    
+	    resMsg.append("§목걸이").append(enterStr)
+	    	  .append("(3)").append(getAccessoryDetails("고대3", "낙인상", "목걸이")).append(enterStr)
+	    	  .append("(1)").append(getAccessoryDetails("고대1", "낙인상", "목걸이")).append(enterStr)
+	    	  .append(enterStr);
+	    
+	    resMsg.append("§귀걸이").append(enterStr)	  
+	    	  .append("(3)").append(getAccessoryDetails("고대3", "공퍼상", "귀걸이")).append(enterStr)
+	    	  .append(enterStr);
+	    
+	    resMsg.append("§반지").append(enterStr)	  
+		      .append("(3)").append(getAccessoryDetails("고대3", "치적상", "반지")).append(enterStr)
+		      .append("(3)").append(getAccessoryDetails("고대3", "치피상공플상", "반지")).append(enterStr)
+		      .append("(3)").append(getAccessoryDetails("고대3", "아공상아피상최생중", "반지")).append(enterStr)
+		      .append("(1)").append(getAccessoryDetails("고대1", "치적상", "반지")).append(enterStr)
+		      .append("(1)").append(getAccessoryDetails("고대1", "치피상", "반지")).append(enterStr)
+		      .append(enterStr);
 
-	    // 고대 3연마
-	    resMsg.append("[고대 3연마]").append(enterStr)
-	    	  .append("[목]").append(getAccessoryDetails("고대3", "낙인상", "목걸이")).append(enterStr)
-	    	  .append("[귀]").append(getAccessoryDetails("고대3", "공퍼상", "귀걸이")).append(enterStr)
-	    	  .append("[반]").append(getAccessoryDetails("고대3", "치적상", "반지")).append(enterStr)
-	    	  .append("[반]").append(getAccessoryDetails("고대3", "아공상아피상최생중", "반지")).append(enterStr)
-	          .append(enterStr);
-
-	    // 고대 1연마
-	    resMsg.append("[고대 1연마]").append(enterStr)
-	          .append("[목]").append(getAccessoryDetails("고대1", "낙인상", "목걸이")).append(enterStr)
-	          .append("[반]").append(getAccessoryDetails("고대1", "치적상", "반지")).append(enterStr)
-	          .append("[반]").append(getAccessoryDetails("고대1", "치피상", "반지")).append(enterStr)
-	          .append(enterStr);
 
 
 	    return resMsg.toString();
@@ -3002,6 +3006,10 @@ public class LoaChatController {
 		                   .put(createOption(7, 51, 3))
 		                   .put(createOption(7, 52, 3))
 		                   .put(createOption(7, 55, 2));
+		        } else if (itemType.equals("치피상공플상")) {
+		            options.put(createOption(8, 1, 12))
+	                   .put(createOption(7, 50, 3))
+	                   .put(createOption(7, 53, 3));
 		        }
 	    		break;
 	    	case "고대1":
