@@ -2949,7 +2949,7 @@ public class LoaChatController {
 	
 	String newSearchAcce() throws Exception {
 	    StringBuilder resMsg = new StringBuilder("4티어 악세 최저가").append(enterStr);
-	    resMsg.append("$부위별(연마단계)").append(enterStr);
+	    resMsg.append("(연마단계)").append(enterStr);
 	    
 	    resMsg.append("§목걸이").append(enterStr)
 	    	  .append("(3)").append(getAccessoryDetails("고대3", "낙인상", "목걸이")).append(enterStr)
