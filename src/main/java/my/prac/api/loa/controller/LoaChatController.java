@@ -3042,7 +3042,7 @@ public class LoaChatController {
 	
 	
 	String marketTier4accessorySearch() throws Exception {
-		String resMsg = "4티어 악세 최저가";
+		String resMsg = "4티어 악세 최저가"+enterStr;
 		JSONObject json = new JSONObject();
 		JSONArray options = new JSONArray();
 		JSONObject json2 = new JSONObject();
