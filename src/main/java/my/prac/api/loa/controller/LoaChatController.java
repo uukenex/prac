@@ -2948,27 +2948,23 @@ public class LoaChatController {
 		*/
 	
 	String newSearchAcce() throws Exception {
-	    StringBuilder resMsg = new StringBuilder("4티어 악세 최저가").append(spaceStr);
+	    StringBuilder resMsg = new StringBuilder("4티어 악세 최저가").append(enterStr);
 
 	    // 고대 3연마
-	    resMsg.append("[고대 3연마]").append(spaceStr)
-	    	  .append("[목]").append(getAccessoryDetails("고대3", "낙인상", "목걸이")).append(spaceStr)
-	    	  .append("[귀]").append(getAccessoryDetails("고대3", "공퍼상", "귀걸이")).append(spaceStr)
-	    	  .append("[반]").append(getAccessoryDetails("고대3", "치적상", "반지")).append(spaceStr)
-	    	  .append("[반]").append(getAccessoryDetails("고대3", "아공상아피상최생중", "반지")).append(spaceStr)
-	          .append(spaceStr);
+	    resMsg.append("[고대 3연마]").append(enterStr)
+	    	  .append("[목]").append(getAccessoryDetails("고대3", "낙인상", "목걸이")).append(enterStr)
+	    	  .append("[귀]").append(getAccessoryDetails("고대3", "공퍼상", "귀걸이")).append(enterStr)
+	    	  .append("[반]").append(getAccessoryDetails("고대3", "치적상", "반지")).append(enterStr)
+	    	  .append("[반]").append(getAccessoryDetails("고대3", "아공상아피상최생중", "반지")).append(enterStr)
+	          .append(enterStr);
 
 	    // 고대 1연마
-	    resMsg.append("[고대 1연마]").append(spaceStr)
-	          .append("[목]").append(getAccessoryDetails("고대1", "낙인상", "목걸이")).append(spaceStr)
-	          .append("[반]").append(getAccessoryDetails("고대1", "치적상", "반지")).append(spaceStr)
-	          .append("[반]").append(getAccessoryDetails("고대1", "치피상", "반지")).append(spaceStr)
-	          .append(spaceStr);
+	    resMsg.append("[고대 1연마]").append(enterStr)
+	          .append("[목]").append(getAccessoryDetails("고대1", "낙인상", "목걸이")).append(enterStr)
+	          .append("[반]").append(getAccessoryDetails("고대1", "치적상", "반지")).append(enterStr)
+	          .append("[반]").append(getAccessoryDetails("고대1", "치피상", "반지")).append(enterStr)
+	          .append(enterStr);
 
-	    // 유물 3연마
-	    resMsg.append("[유물 3연마]").append(spaceStr)
-	    	  .append("[반]").append(getAccessoryDetails("유물3", "아공상", "반지")).append(spaceStr)
-	          .append("[반]").append(getAccessoryDetails("유물3", "치적상", "반지")).append(spaceStr);
 
 	    return resMsg.toString();
 	}
@@ -2976,7 +2972,9 @@ public class LoaChatController {
 	String getAccessoryDetails(String itemGrade, String itemType, String category) throws Exception {
 	    JSONObject json = new JSONObject();
 	    JSONArray options = new JSONArray();
-	    json.put("Sort", "BUY_PRICE").put("SortCondition", "ASC").put("ItemGrade", itemGrade.equals("고대") ? "고대" : "유물");
+	    json.put("Sort", "BUY_PRICE")
+	        .put("SortCondition", "ASC")
+	        .put("ItemGrade", "고대");
 
 	    // 카테고리 코드 설정
 	    String categoryCode;
@@ -3017,15 +3015,6 @@ public class LoaChatController {
 	 	            options.put(createOption(8, 1, 5))
 	 	                   .put(createOption(7, 50, 3));
 	 	        }
-	    		break;
-	    	case "유물3":
-	    		if (itemType.equals("아공상")) {
-		            options.put(createOption(8, 1, 9))
-		                   .put(createOption(7, 51, 3));
-		        } else if (itemType.equals("치적상")) {
-		            options.put(createOption(8, 1, 9))
-		                   .put(createOption(7, 49, 3));
-		        }
 	    		break;
 	    }
 
