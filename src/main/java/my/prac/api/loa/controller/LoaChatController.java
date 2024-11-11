@@ -496,7 +496,31 @@ public class LoaChatController {
 					reqMap.put("fulltxt", fulltxt);
 					try {
 						val = supporters(param1);
-						val+= subCharacterInfoSearch(param1);
+						val+= subCharacterInfoSearch1(param1);
+					} catch (Exception e) {
+						e.printStackTrace();
+						val = errorCodeMng(e,reqMap);
+						
+						HashMap<String,Object> hs = botService.selectIssueCase(reqMap);
+						if(hs !=null && hs.size()>0) {
+							val+= enterStr+hs.get("INSERT_DATE")+ "에 최종조회된 내용 불러오기입니다.";
+							val+= anotherMsgStr;
+							val+= hs.get("RES");
+						}
+					}
+				}
+				break;
+			case "/부캐2":
+			case "/ㅂㅋ2":
+				if (param1 != null && !param1.equals("")) {
+					param0="/ㅂㅋ2";
+					param1 = param1.trim();
+					fulltxt = param0+" "+param1;
+					org_fulltxt = fulltxt;
+					reqMap.put("fulltxt", fulltxt);
+					try {
+						val = supporters(param1);
+						val+= subCharacterInfoSearch2(param1);
 					} catch (Exception e) {
 						e.printStackTrace();
 						val = errorCodeMng(e,reqMap);
@@ -2767,7 +2791,57 @@ public class LoaChatController {
 		return resMsg;
 	}
 	
-	String subCharacterInfoSearch(String userId) throws Exception {
+	String subCharacterInfoSearch1(String userId) throws Exception {
+		String ordUserId=userId;
+		userId = URLEncoder.encode(userId, "UTF-8");
+		// +는 %2B로 치환한다
+		String paramUrl = lostArkAPIurl + "/characters/" + userId + "/siblings";
+		String returnData ="";
+		try {
+			returnData = LoaApiUtils.connect_process(paramUrl);	
+		}catch(Exception e) {
+			e.printStackTrace();
+			throw new Exception("E0004");
+		}
+		
+		
+		
+		
+		String resMsg=ordUserId+" 부캐 정보" + enterStr;
+		resMsg += "§부캐 보석&엘초: /부캐2 로 변경됨!"+enterStr;
+		
+		List<HashMap<String, Object>> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<List<Map<String, Object>>>() {});
+		if(rtnMap.isEmpty()) return "";
+		List<HashMap<String, Object>> sortedList = rtnMap.stream()
+				.filter(x->  Double.parseDouble(x.get("ItemMaxLevel").toString().replaceAll(",", "")) >= 0)
+				.sorted(Comparator.comparingDouble(x-> Double.parseDouble(x.get("ItemMaxLevel").toString().replaceAll(",", ""))))
+				.collect(toReversedList());
+		
+		String mainServer = sortedList.get(0).get("ServerName").toString();
+		
+		resMsg += mainServer;
+		resMsg += enterStr;
+		
+		
+		HashMap<String,Object> resMap =new HashMap<>();
+		
+		int charCnt = 0;
+		for(HashMap<String,Object> charList : sortedList) {
+			if(mainServer.equals(charList.get("ServerName").toString())) {
+				charCnt++;
+				resMsg += "[" + LoaApiUtils.shortClassName(charList.get("CharacterClassName").toString()) + "]";
+				resMsg += "("+charList.get("ItemMaxLevel").toString().replaceAll(",", "")+")";
+				resMsg += charList.get("CharacterName").toString();
+				resMsg += enterStr;
+				
+			}
+			
+		}
+		
+		return resMsg;
+	}
+	
+	String subCharacterInfoSearch2(String userId) throws Exception {
 		String ordUserId=userId;
 		userId = URLEncoder.encode(userId, "UTF-8");
 		// +는 %2B로 치환한다
@@ -2805,8 +2879,8 @@ public class LoaChatController {
 		for(HashMap<String,Object> charList : sortedList) {
 			if(mainServer.equals(charList.get("ServerName").toString())) {
 				charCnt++;
-				resMsg += "[" + LoaApiUtils.shortClassName(charList.get("CharacterClassName").toString()) + "] ";
-				resMsg += "("+charList.get("ItemMaxLevel").toString().replaceAll(",", "")+") ";
+				resMsg += "[" + LoaApiUtils.shortClassName(charList.get("CharacterClassName").toString()) + "]";
+				resMsg += "("+charList.get("ItemMaxLevel").toString().replaceAll(",", "")+")";
 				resMsg += charList.get("CharacterName").toString();
 				resMsg += enterStr;
 				System.out.println(ordUserId+" : "+charCnt + " / "+ sortedList.size());
