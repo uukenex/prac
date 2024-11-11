@@ -376,7 +376,7 @@ public class LoaChatController {
 						param0="/ㄱㅁㅈㅇㅅ";
 						org_fulltxt = param0;
 						try {
-							val = marketTier4accessorySearch();
+							val = newSearchAcce();
 						}catch(Exception e) {
 							val = errorCodeMng(e,reqMap);
 						}
@@ -436,20 +436,12 @@ public class LoaChatController {
 				param0="/ㄱㅁㅈㅇㅅ";
 				org_fulltxt = param0;
 				try{
-					val = marketTier4accessorySearch();
-				}catch(Exception e) {
-					val = errorCodeMng(e,reqMap);
-				}
-				break;
-			case "/ㄱㅁㅈㅇㅅ2":
-				param0="/ㄱㅁㅈㅇㅅ2";
-				org_fulltxt = param0;
-				try{
 					val = newSearchAcce();
 				}catch(Exception e) {
 					val = errorCodeMng(e,reqMap);
 				}
 				break;
+			
 			case "/ㄱㅁㅈㅇㅁ":
 			case "/ㄱㅁㅈ유물":
 			case "/경매장유물":
@@ -2962,8 +2954,10 @@ public class LoaChatController {
 	    
 	    resMsg.append("§반지").append(enterStr)	  
 		      .append("(3)").append(getAccessoryDetails("고대3", "치적상", "반지")).append(enterStr)
+		      .append("(3)").append(getAccessoryDetails("고대3", "치피상", "반지")).append(enterStr)
+		      .append("(3)").append(getAccessoryDetails("고대3", "치적중치피중", "반지")).append(enterStr)
 		      .append("(3)").append(getAccessoryDetails("고대3", "치피상공플상", "반지")).append(enterStr)
-		      .append("(3)").append(getAccessoryDetails("고대3", "아공상아피상최생중", "반지")).append(enterStr)
+		      //.append("(3)").append(getAccessoryDetails("고대3", "아공상아피상최생중", "반지")).append(enterStr)
 		      .append("(1)").append(getAccessoryDetails("고대1", "치적상", "반지")).append(enterStr)
 		      .append("(1)").append(getAccessoryDetails("고대1", "치피상", "반지")).append(enterStr)
 		      .append(enterStr);
@@ -3001,6 +2995,13 @@ public class LoaChatController {
 		        } else if (itemType.equals("치적상")) {
 		            options.put(createOption(8, 1, 12))
 		                   .put(createOption(7, 49, 3));
+		        } else if (itemType.equals("치피상")) {
+		            options.put(createOption(8, 1, 12))
+	                   	   .put(createOption(7, 50, 3));
+		        } else if (itemType.equals("치적중치피중")) {
+		            options.put(createOption(8, 1, 12))
+                	   	   .put(createOption(7, 49, 2))
+                	   	   .put(createOption(7, 50, 2));
 		        } else if (itemType.equals("아공상아피상최생중")) {
 		            options.put(createOption(8, 1, 12))
 		                   .put(createOption(7, 51, 3))
@@ -3040,7 +3041,7 @@ public class LoaChatController {
 
 	
 	
-	
+	/*
 	String marketTier4accessorySearch() throws Exception {
 		String resMsg = "4티어 악세 최저가"+enterStr;
 		JSONObject json = new JSONObject();
@@ -3074,7 +3075,8 @@ public class LoaChatController {
 		
 		return resMsg;
 	}
-	
+	*/
+	/*
 	String searchAuctionParse(String ment) throws Exception{
 		String resMsg = "";
 		JSONObject json = new JSONObject();
@@ -3429,6 +3431,7 @@ public class LoaChatController {
 		
 		return resMsg;
 	}
+	*/
 	
 	String newMarketSearch() throws Exception {
 		String resMsg = "";
