@@ -38,7 +38,7 @@ public class LoaApiUtils {
 	final static String lostArkKey_s3 = "bearer " + PropsUtil.getProperty("keys", "loaKey_s1");
 	final static String lostArkKey_s4 = "bearer " + PropsUtil.getProperty("keys", "loaKey_s1");
 	final static String lostArkKey_s5 = "bearer " + PropsUtil.getProperty("keys", "loaKey_s1");
-	final static int TIMEOUT_VALUE = 6000;// 6초
+	final static int TIMEOUT_VALUE = 10000;// 10초
 
 	final static String[] key_list = { lostArkKey_m1, lostArkKey_m2, lostArkKey_m3, lostArkKey_m4, lostArkKey_m5,
 									   lostArkKey_s1, lostArkKey_s2, lostArkKey_s3, lostArkKey_s4, lostArkKey_s5 
@@ -198,28 +198,28 @@ public class LoaApiUtils {
 		}
 		switch(name) {
 			case "아드레날린":
-				gold = 24.5;
+				gold = 28;
 				break;
 			case "원한":
-				gold = 18.5;
+				gold = 22;
 				break;
 			case "예리한 둔기":
-				gold = 14;
+				gold = 17;
 				break;
 			case "저주받은 인형":
-				gold = 13.5;
+				gold = 14.5;
 				break;
 			case "돌격대장":
-				gold = 13.5;
+				gold = 16;
 				break;
 			case "타격의 대가":
 				gold = 8.5;
 				break;
 			case "기습의 대가":
-				gold = 8.5;
+				gold = 9.5;
 				break;
 			case "질량 증가":
-				gold = 7.5;
+				gold = 8;
 				break;
 			case "슈퍼 차지":
 				gold = 5;
@@ -231,25 +231,25 @@ public class LoaApiUtils {
 				gold = 3.5;
 				break;
 			case "바리케이드":
-				gold = 3;
+				gold = 2.5;
 				break;
 			case "안정된 상태":
-				gold = 3;
+				gold = 2.5;
 				break;
 			case "마나 효율 증가":
-				gold = 3;
+				gold = 2.5;
 				break;
 			case "정밀 단도":
-				gold = 1;
-				break;
-			case "에테르 포식자":
 				gold = 0.5;
 				break;
+			case "에테르 포식자":
+				gold = 0.1;
+				break;
 			case "마나의 흐름":
-				gold = 5.5;
+				gold = 6;
 				break;
 			case "구슬동자":
-				gold = 4;
+				gold = 3;
 				break;
 			case "전문의":
 				gold = 3;
@@ -258,7 +258,7 @@ public class LoaApiUtils {
 				gold = 2;
 				break;
 			case "중갑 착용":
-				gold = 1;
+				gold = 0.5;
 				break;
 			case "급소 타격":
 				gold = 0.5;
@@ -314,9 +314,9 @@ public class LoaApiUtils {
 			txt="달인";
 		}else if(txt.indexOf("구동")>=0) {
 			txt="구슬";
-		}else if(txt.indexOf("마효")>=0) {
+		}else if(txt.indexOf("마효")>=0 || txt.indexOf("마나효")>=0) {
 			txt="마나 효율";
-		}else if(txt.indexOf("최마")>=0) {
+		}else if(txt.indexOf("최마")>=0 || txt.indexOf("최대마나")>=0) {
 			txt="최대 마나";
 		}else if(txt.indexOf("정흡")>=0) {
 			txt="정기";

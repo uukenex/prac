@@ -2438,15 +2438,9 @@ public class LoaChatController {
 			
 			
 			resMap = sumTotalPowerSearch2(charName);
-			List<Map<String, Object>> armoryEquipment;
-			Map<String, Object> armoryProfile = new HashMap<>();
 			Map<String, Object> armoryEngraving = new HashMap<>();
 			Map<String, Object> armoryGem = new HashMap<>();
 			
-			try {
-				armoryEquipment = (List<Map<String, Object>>) resMap.get("ArmoryEquipment");
-			}catch(Exception e){
-			}
 			try {
 				armoryEngraving = (Map<String, Object>) resMap.get("ArmoryEngraving");
 			}catch(Exception e){
