@@ -874,10 +874,10 @@ public class LoaChatController {
 	String checkGoldList() throws Exception {
 		String msg = "";
 		msg += "시즌3 골드획득정보..";
-		msg += enterStr + "2막아브 [하 30,500G/노 25,000G]";
-		msg += enterStr + "에기르 [하 27,500G/노 23,000G]";
+		msg += enterStr + "2막 [하 30,500G/노 25,000G]";
+		msg += enterStr + "1막 [하 27,500G/노 23,000G]";
+		msg += enterStr + "서막 [하 18,500G/노 14,500G]";
 		msg += enterStr + "베히모스 21,500G";
-		msg += enterStr + "에키드나[하 18,500G/노 14,500G]";
 		msg += enterStr + "카멘 1-3[하 20,000G/노 13,000G]";
 		msg += enterStr + "카멘 4[하 21,000G]";
 		msg += enterStr + "상아탑 [하 13,000G/노 6,500G]";
