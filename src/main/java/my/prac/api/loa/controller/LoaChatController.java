@@ -174,7 +174,15 @@ public class LoaChatController {
 			case "/보상":
 			case "/비싼전각":
 			case "/비싼유각":
+			case "/전각":
+			case "/유각":
 				passYn = true;
+				break;
+			case "/주사위": case "/ㅈㅅㅇ":
+				val = "데굴데굴 <"+sender + "> 님의 주사위: "+jsw()+enterStr+"(0~100)";
+				break;
+			case "/로또": case "/ㄹㄸ":
+				val = lotto();
 				break;
 			case "/궁합": case "/ㄱㅎ":
 				try {
@@ -746,6 +754,41 @@ public class LoaChatController {
 		return val;
 	}
 
+	String jsw() throws Exception {
+		String val ="";
+		
+		
+		Random random = new Random(); // 랜덤객체
+		int number = random.nextInt(100)+1;
+		val = String.valueOf(number);
+		return val;
+	}
+	
+	String lotto() throws Exception {
+		String val ="";
+		
+		Random random = new Random(); // 랜덤객체
+		int[] lottoNumber = new int[6];
+		
+		for(int i = 0; i < 6; i++) {
+			int number = random.nextInt(45) + 1;
+			for(int j = 0; j < i; j++) {
+				if(lottoNumber[j] == number) {
+					number = random.nextInt(45) + 1;
+					j = -1;
+				}
+			}
+			lottoNumber[i] = number;
+		}
+		
+		
+		for(int number : lottoNumber) {
+			val += number + " ";
+		}
+		
+		return val;
+	}
+	
 	String emotionMsg(String param0,String roomName) throws Exception {
 		String val = "";
 		String randKey = "";
