@@ -179,7 +179,7 @@ public class LoaChatController {
 				passYn = true;
 				break;
 			case "/주사위": case "/ㅈㅅㅇ":
-				val = "데굴데굴 <"+sender + "> 님의 주사위: "+jsw()+enterStr+"(0~100)";
+				val = "데굴데굴 『"+sender + "』 님의 주사위: "+jsw()+enterStr+"(0~100)";
 				break;
 			case "/로또": case "/ㄹㄸ":
 				val = lotto();
