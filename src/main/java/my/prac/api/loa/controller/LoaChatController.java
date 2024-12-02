@@ -179,7 +179,24 @@ public class LoaChatController {
 				passYn = true;
 				break;
 			case "/주사위": case "/ㅈㅅㅇ":
-				val = "데굴데굴 『"+sender + "』 님의 주사위: "+jsw()+enterStr+"(0~100)";
+				
+				Random random = new Random(); // 랜덤객체
+				int number = random.nextInt(101);
+				String prefix="";
+				if(number>=99) {
+					prefix="굴리기전부터 운명적입니다. 행운의 신이 함께합니다.";
+				}else if(number>=85) {
+					prefix="행운이 쌓인채로 굴러갑니다.";
+				}else if(number>=50) {
+					prefix="데굴데굴..";
+				}else if(number>=10) {
+					prefix="또르르륵..";
+				}else {
+					prefix="콰쾅.. 이런! 주사위가 바닥으로 떨어졌군요.";
+				}
+				
+				val = prefix+enterStr+"『"+sender + "』 님의 주사위: "+number+" (0~100)";
+				
 				break;
 			case "/로또": case "/ㄹㄸ":
 				val = lotto();
@@ -587,8 +604,8 @@ public class LoaChatController {
 						"쭈꾸미", "낙지덮밥", "라면", "짜계치", "스팸과 흰밥", "간장계란밥", "간장게장", "참치회", "죽", "흰밥", "감자탕", "육전", "짬뽕", "순두부찌개",
 						"지코바 양념치킨 모짜치즈 추가","닭가슴살", "단백질 음료", "바나나", "포케", "요아정", "홍콩반점 짜장밥", "호두과자", "라멘", "곱창.막창.대창", "소주", 
 						"텐동", "유린기", "물회", "이베리코", "핫초코", "핫식스", "귤", "생강차", "부추전/파전"};
-				Random random = new Random();
-				val = menu_list[random.nextInt(menu_list.length)];
+				Random random3 = new Random();
+				val = menu_list[random3.nextInt(menu_list.length)];
 
 				break;
 			case "/챗":
@@ -758,9 +775,7 @@ public class LoaChatController {
 		String val ="";
 		
 		
-		Random random = new Random(); // 랜덤객체
-		int number = random.nextInt(100)+1;
-		val = String.valueOf(number);
+		
 		return val;
 	}
 	
@@ -1526,17 +1541,17 @@ public class LoaChatController {
 			}
 		}
 		
-		String setField="";
+		//String setField="";
 		String elixirField="";
 		
-		for(String set:LoaApiParser.getSetList()) {
+		/*for(String set:LoaApiParser.getSetList()) {
 			int cnt0=0;
 			cnt0 += Collections.frequency(equipSetList, set);
 			if(cnt0 > 0) {
 				setField = setField+cnt0+set;
 			}
 			
-		}
+		}*/
 		int cnt1=0;
 		
 		if(equipElixirList.size()==2) {
@@ -1605,7 +1620,7 @@ public class LoaChatController {
 		resMsg += "상세 더보기..▼"+allSeeStr;
 		//resMsg += "방어구 / 초월 / 엘릭서"+enterStr;
 		
-		resMsg += "§세트 : "+setField + enterStr;
+		//resMsg += "§세트 : "+setField + enterStr;
 		resMsg += resField1 + enterStr;
 		
 		resMsg +=abillityStoneMsg+ enterStr;
