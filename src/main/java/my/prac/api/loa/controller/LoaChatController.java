@@ -209,7 +209,7 @@ public class LoaChatController {
 				}
 				
 				break;
-			case "/시세":
+			case "/시세": case "/ㅅㅅ":
 				if (param1 != null && !param1.equals("")) {
 					fulltxt = fulltxt.replace(param1, LoaApiUtils.switchWord(param1));
 					param1 =LoaApiUtils.switchWord(param1);
@@ -2381,12 +2381,13 @@ public class LoaChatController {
 		
 		double totPoint=0;
 		double totMaxPoint=0;
-
-		double percent = 100.0/10.0;
-		double eachPercent =0.0;
-		double totEachPercent =0.0;
 		
 		List<HashMap<String, Object>> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<List<Map<String, Object>>>() {});
+		
+		double eachPercent =0.0;
+		double totEachPercent =0.0;
+		double percent = 100.0/rtnMap.size();
+		
 		for(HashMap<String,Object> rtn : rtnMap) {
 			
 			type = rtn.get("Type").toString();
