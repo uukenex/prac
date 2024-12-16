@@ -2875,7 +2875,7 @@ public class LoaChatController {
 		resMsg += mainServer;
 		resMsg += enterStr;
 		
-		
+		String resMsg2="";
 		HashMap<String,Object> resMap =new HashMap<>();
 		
 		int charCnt = 0;
@@ -2887,9 +2887,18 @@ public class LoaChatController {
 				resMsg += charList.get("CharacterName").toString();
 				resMsg += enterStr;
 				
+			}else {
+				
+				resMsg2 += charList.get("ServerName").toString() + enterStr;
+				resMsg2 += "[" + LoaApiUtils.shortClassName(charList.get("CharacterClassName").toString()) + "]";
+				resMsg2 += "("+charList.get("ItemMaxLevel").toString().replaceAll(",", "")+")";
+				resMsg2 += charList.get("CharacterName").toString();
+				resMsg2 += enterStr;
+				
 			}
 			
 		}
+		resMsg = resMsg + allSeeStr + resMsg2;
 		
 		return resMsg;
 	}
