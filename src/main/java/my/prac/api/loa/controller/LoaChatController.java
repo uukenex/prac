@@ -933,23 +933,44 @@ public class LoaChatController {
 		String msg = "";
 		msg += "시즌3 골드획득정보(new)..";
 		//msg += enterStr + "종막[ "+enterStr+"[하 0G/노 0G]";
-		msg += enterStr + "3막[1700/1680]"+enterStr+" [하 0G/노 0G]";
-		msg += enterStr + "2막[1690/1670]"+enterStr+" [하 30,500G/노 25,000G]";
-		msg += enterStr + "1막[1680/1660]"+enterStr+" [하 27,500G/노 23,000G]";
-		msg += enterStr + "서막[1640/1620]"+enterStr+" [하 18,500G/노 14,500G]";
-		msg += enterStr + "베히모스[1640]"+enterStr+" 18,500G";
-
+		msg += enterStr + "카제로스 레이드";
+		msg += enterStr + "3막-모르둠[1700/1680]"+enterStr+"✓[0G/0G]";
+		msg += enterStr + "2막-아브렐슈드[1690/1670]"+enterStr+"✓[30,500G/25,000G]";
+		msg += enterStr + "1막-에기르[1680/1660]"+enterStr+"✓[27,500G/23,000G]";
+		msg += enterStr + "서막-에키드나[1640/1620]"+enterStr+"✓[18,500G/14,500G]";
+		
+		
+		msg += enterStr ;
+		msg += enterStr + "에픽 레이드";
+		msg += enterStr + "베히모스[1640]"+enterStr+"✓18,500G";
+		/*
+		msg += enterStr + "강습 레이드";
+		msg += enterStr + "8인[1640]"+enterStr+"✓18,500G";
+		msg += enterStr + "4인[1640]"+enterStr+"✓18,500G";
+		 */
 		msg += allSeeStr ;
-		msg += enterStr + "카멘 1-3[하 15,500G/노 10,000G]";
-		msg += enterStr + "카멘 4[하 8,000G]";
-		msg += enterStr + "상아탑 [하 10,500G/노 6,500G]";
-		msg += enterStr + "일리아칸 [하 8,500G/노 5,400G]";
-		msg += enterStr + "카양겔 [하 4,800G/노 3,600G]";
-		msg += enterStr + "아브렐슈드1-3 [하 3,600G/노 3,000G]";
-		msg += enterStr + "아브렐슈드4 [하 2,000G/노 1,600G]";
-		msg += enterStr + "쿠크세이튼 3,000G";
-		msg += enterStr + "비아키스 [하 2,400G/노 1,600G]";
-		msg += enterStr + "발탄 [하 1,800G/노 1,200G]";
+		msg += enterStr + "군단장레이드";
+		msg += enterStr + "어둠-카멘[1630/1610]";
+		msg += enterStr + "✓1-3[하 15,500G/노 10,000G]";
+		msg += enterStr + "✓4[하 8,000G]";
+		msg += enterStr + "질병-일리아칸[1600/1580]";
+		msg += enterStr + "✓4[하 8,500G/노 5,400G]";
+		msg += enterStr + "몽환-아브렐슈드[1540-1560/1490-1520]";
+		msg += enterStr + "✓1-3[하 3,600G/노 3,000G]";
+		msg += enterStr + "✓4 [하 2,000G/노 1,600G]";
+		msg += enterStr + "광기-쿠크세이튼[1475]";
+		msg += enterStr + "✓3,000G";
+		msg += enterStr + "욕망-비아키스[1460/1445]";
+		msg += enterStr + "✓[하 2,400G/노 1,600G]";
+		msg += enterStr + "마수-발탄[1430/1415]";
+		msg += enterStr + "✓[하 1,800G/노 1,200G]";
+		
+		msg += enterStr;
+		msg += enterStr + "어비스던전";
+		msg += enterStr + "혼돈의 상아탑[1620/1600]";
+		msg += enterStr + "✓[하 10,500G/노 6,500G]";
+		msg += enterStr + "카양겔[1580/1540]";
+		msg += enterStr + "✓[하 4,800G/노 3,600G]";
 		
 		/*
 		msg += enterStr + "싱글모드..▼ "+ allSeeStr;
