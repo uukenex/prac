@@ -14,6 +14,7 @@ public interface BotDAO {
 	public List<String> selectBotLimitWordSaveAll(HashMap<String, Object> hashMap);
 	public List<String> selectBotWordSaveAll(HashMap<String, Object> hashMap);
 	public List<String> selectBotImgSaveAll(HashMap<String, Object> hashMap);
+	public List<String> selectBotWordReplaceAll(HashMap<String, Object> hashMap);
 
 	public int selectBotWordSaveMasterCnt(HashMap<String, Object> hashMap);
 	public int deleteBotWordSaveMaster(HashMap<String, Object> hashMap);
@@ -42,5 +43,6 @@ public interface BotDAO {
 
 	public HashMap<String,Object> selectIssueCase(HashMap<String, Object> hashMap);
 	
+	public String selectBotWordReplace(HashMap<String,Object> map);
 }
 

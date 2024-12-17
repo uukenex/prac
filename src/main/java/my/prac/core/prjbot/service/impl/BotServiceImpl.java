@@ -35,6 +35,9 @@ public class BotServiceImpl implements BotService {
 	public List<String> selectBotImgSaveAll(HashMap<String, Object> hashMap){
 		return botDAO.selectBotImgSaveAll(hashMap);
 	}
+	public List<String> selectBotWordReplaceAll(HashMap<String, Object> hashMap){
+		return botDAO.selectBotWordReplaceAll(hashMap);
+	}
 	
 	public int selectBotWordSaveMasterCnt(HashMap<String, Object> hashMap) throws Exception{
 		return botDAO.selectBotWordSaveMasterCnt(hashMap);
@@ -108,5 +111,8 @@ public class BotServiceImpl implements BotService {
 	}
 	public HashMap<String,Object> selectIssueCase(HashMap<String, Object> hashMap){
 		return botDAO.selectIssueCase(hashMap);
+	}
+	public String selectBotWordReplace(HashMap<String,Object> map){
+		return botDAO.selectBotWordReplace(map);
 	}
 }

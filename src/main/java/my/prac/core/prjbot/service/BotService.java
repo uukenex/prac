@@ -11,6 +11,7 @@ public interface BotService {
 	public List<String> selectBotLimitWordSaveAll(HashMap<String, Object> hashMap);
 	public List<String> selectBotWordSaveAll(HashMap<String, Object> hashMap);
 	public List<String> selectBotImgSaveAll(HashMap<String, Object> hashMap);	
+	public List<String> selectBotWordReplaceAll(HashMap<String, Object> hashMap);
 	
 	public int selectBotWordSaveMasterCnt(HashMap<String, Object> hashMap)  throws Exception;
 	public void deleteBotWordSaveMasterTx(HashMap<String, Object> hashMap)  throws Exception;
@@ -37,6 +38,8 @@ public interface BotService {
 	
 	public List<HashMap<String,Object>> selectMarketCondition(HashMap<String, Object> hashMap);
 	public HashMap<String,Object> selectIssueCase(HashMap<String, Object> hashMap);
+	
+	public String selectBotWordReplace(HashMap<String,Object> map);
 }
 
 	

@@ -79,7 +79,19 @@
 				  FROM TBOT_IMG_MCH B
 				 WHERE (B.ROOM_NAME IS NULL OR B.ROOM_NAME = #{roomName, jdbcType=VARCHAR})
 			     GROUP BY B.OUT_PRM)
-		 ORDER BY ORD
+		 ORDER BY ORD,RES
+		 
+	</select>
+	
+	<select id="selectBotWordReplaceAll" parameterType="hashMap" resultType="String" >
+		 /* bot.xml selectBotWordReplaceAll */
+		SELECT RES
+		  FROM (SELECT '4' AS ORD
+				      ,LISTAGG(B.REQ, ', ') WITHIN GROUP(ORDER BY B.REQ) || ' → ' || B.RES AS RES
+				  FROM TBOT_WORD_REPLACE B
+			     WHERE (B.ROOM_NAME IS NULL OR B.ROOM_NAME = #{roomName, jdbcType=VARCHAR})
+			     GROUP BY B.RES)
+		 ORDER BY ORD, RES
 		 
 	</select>
 	
@@ -305,6 +317,15 @@
 							WHERE TRIM(B.REQ) = TRIM(A.REQ)
 							  AND B.ISSUE_YN IS NULL)
 		
+	</select>
+	
+	<select id="selectBotWordReplace" resultType="String" parameterType="hashMap">
+		SELECT A.RES
+		  FROM TBOT_WORD_REPLACE A
+		 WHERE RES IS NOT NULL
+		   AND A.REQ = #{param1, jdbcType=VARCHAR}
+		   AND (A.ROOM_NAME IS NULL OR A.ROOM_NAME = #{roomName, jdbcType=VARCHAR})
+		   AND ROWNUM = 1
 	</select>
 	
 </mapper>

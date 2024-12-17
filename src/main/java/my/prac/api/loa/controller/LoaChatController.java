@@ -160,6 +160,7 @@ public class LoaChatController {
 		
 		int masterYn =0;
 		boolean passYn=false;
+		String replace_param="";
 		
 		try {
 			if(fulltxt.length()>90) {
@@ -301,6 +302,12 @@ public class LoaChatController {
 				if (param1 != null && !param1.equals("")) {
 					param0="/ㅈㅂ";
 					param1 = param1.trim();
+					
+					replace_param = botService.selectBotWordReplace(reqMap);
+					if(replace_param!=null && !replace_param.equals("")) {
+						param1 = replace_param;
+					}
+					
 					fulltxt = param0+" "+param1;
 					org_fulltxt = fulltxt;
 					reqMap.put("fulltxt", fulltxt);
@@ -326,6 +333,12 @@ public class LoaChatController {
 				if (param1 != null && !param1.equals("")) {
 					param0="/ㅊㅇ";
 					param1 = param1.trim();
+					
+					replace_param = botService.selectBotWordReplace(reqMap);
+					if(replace_param!=null && !replace_param.equals("")) {
+						param1 = replace_param;
+					}
+					
 					fulltxt = param0+" "+param1;
 					org_fulltxt = fulltxt;
 					reqMap.put("fulltxt", fulltxt);
@@ -348,6 +361,12 @@ public class LoaChatController {
 				if (param1 != null && !param1.equals("")) {
 					param0="/ㄴㅅ";
 					param1 = param1.trim();
+					
+					replace_param = botService.selectBotWordReplace(reqMap);
+					if(replace_param!=null && !replace_param.equals("")) {
+						param1 = replace_param;
+					}
+					
 					fulltxt = param0+" "+param1;
 					org_fulltxt = fulltxt;
 					reqMap.put("fulltxt", fulltxt);
@@ -364,6 +383,154 @@ public class LoaChatController {
 						}
 					}
 				}
+				break;
+			
+			case "/악세":
+			case "/ㅇㅅ":
+				if (param1 != null && !param1.equals("")) {
+					param0="/ㅇㅅ";
+					param1 = param1.trim();
+					
+					replace_param = botService.selectBotWordReplace(reqMap);
+					if(replace_param!=null && !replace_param.equals("")) {
+						param1 = replace_param;
+					}
+					
+					fulltxt = param0+" "+param1;
+					org_fulltxt = fulltxt;
+					reqMap.put("fulltxt", fulltxt);
+					try {
+						val = supporters(param1);
+						val+= accessorySearch(param1);
+					} catch (Exception e) {
+						val = errorCodeMng(e,reqMap);
+						HashMap<String,Object> hs = botService.selectIssueCase(reqMap);
+						if(hs !=null && hs.size()>0) {
+							val+= enterStr+hs.get("INSERT_DATE")+ "에 최종조회된 내용 불러오기입니다.";
+							val+= anotherMsgStr;
+							val+= hs.get("RES");
+						}
+					}
+				}
+				break;		
+			case "/부캐":
+			case "/ㅂㅋ":
+				if (param1 != null && !param1.equals("")) {
+					param0="/ㅂㅋ";
+					param1 = param1.trim();
+					
+					replace_param = botService.selectBotWordReplace(reqMap);
+					if(replace_param!=null && !replace_param.equals("")) {
+						param1 = replace_param;
+					}
+					
+					fulltxt = param0+" "+param1;
+					org_fulltxt = fulltxt;
+					reqMap.put("fulltxt", fulltxt);
+					try {
+						val = supporters(param1);
+						val+= subCharacterInfoSearch1(param1);
+					} catch (Exception e) {
+						e.printStackTrace();
+						val = errorCodeMng(e,reqMap);
+						
+						HashMap<String,Object> hs = botService.selectIssueCase(reqMap);
+						if(hs !=null && hs.size()>0) {
+							val+= enterStr+hs.get("INSERT_DATE")+ "에 최종조회된 내용 불러오기입니다.";
+							val+= anotherMsgStr;
+							val+= hs.get("RES");
+						}
+					}
+				}
+				break;
+			case "/부캐2":
+			case "/ㅂㅋ2":
+				if (param1 != null && !param1.equals("")) {
+					param0="/ㅂㅋ2";
+					param1 = param1.trim();
+					
+					replace_param = botService.selectBotWordReplace(reqMap);
+					if(replace_param!=null && !replace_param.equals("")) {
+						param1 = replace_param;
+					}
+					
+					fulltxt = param0+" "+param1;
+					org_fulltxt = fulltxt;
+					reqMap.put("fulltxt", fulltxt);
+					try {
+						val = supporters(param1);
+						val+= subCharacterInfoSearch2(param1);
+					} catch (Exception e) {
+						e.printStackTrace();
+						val = errorCodeMng(e,reqMap);
+						
+						HashMap<String,Object> hs = botService.selectIssueCase(reqMap);
+						if(hs !=null && hs.size()>0) {
+							val+= enterStr+hs.get("INSERT_DATE")+ "에 최종조회된 내용 불러오기입니다.";
+							val+= anotherMsgStr;
+							val+= hs.get("RES");
+						}
+					}
+				}
+				break;
+			case "/전투력":
+			case "/ㅈㅌㄹ":
+				param0="/ㅈㅌㄹ";
+				param1 = param1.trim();
+				
+				replace_param = botService.selectBotWordReplace(reqMap);
+				if(replace_param!=null && !replace_param.equals("")) {
+					param1 = replace_param;
+				}
+				
+				fulltxt = param0+" "+param1;
+				org_fulltxt = fulltxt;
+				reqMap.put("fulltxt", fulltxt);
+				if (param1 != null && !param1.equals("")) {
+					try {
+						//val = "v0.3으로 패치중입니다.";
+						
+						val = supporters(param1);
+						val+= sumTotalPowerSearch(param1);
+						val+= tossAccount2();
+					} catch (Exception e) {
+						e.printStackTrace();
+						val = errorCodeMng(e,reqMap);
+					}
+				}
+				break;
+			case "/항협": case "/항해": case "/항해협동": case "/ㅎㅎ":
+				val = shipSearch();
+				break;
+			case "/가방": case "/ㄱㅂ":
+				val = openBox(param1,param2);
+				break;
+			case "/날씨": case "/ㄴㅆ":
+				if (param1 != null && !param1.equals("")) {
+					val = weatherSearch(param1);
+				}
+				break;
+			case "/점메추":
+				String[] menu_list2 = {"칼국수","샐러드","고구마","굶기","점심회식-부장님은 짜장면드신데","콩국수","된장찌개","순대국","스테이크덮밥",
+						"오징어덮밥","떡볶이","편의점도시락","콩나물불고기","라면","햄버거","부대찌개","돈까스","제육덮밥","닭갈비","닭도리탕","김치돈까스나베",
+						"쌀국수", "김치", "물", "수제비", "카레", "떡국", "라멘","텐동","유린기"};
+				Random random2 = new Random();
+				val = menu_list2[random2.nextInt(menu_list2.length)];
+				
+				break;
+			case "/저메추":
+				String[] menu_list = { "피자", "탕수육", "치킨", "샐러드", "마라탕", "양꼬치", "삼겹살", "설렁탕", "김치찌개", "된장찌개", "삼치튀김", "참치마요",
+						"회", "육회비빔밥", "냉면", "카레", "돈까스", "제육볶음", "오징어볶음", "떡볶이", "굶기", "초밥", "햄버거", "짜장면", "빵", "파스타", "닭발",
+						"쭈꾸미", "낙지덮밥", "라면", "짜계치", "스팸과 흰밥", "간장계란밥", "간장게장", "참치회", "죽", "흰밥", "감자탕", "육전", "짬뽕", "순두부찌개",
+						"지코바 양념치킨 모짜치즈 추가","닭가슴살", "단백질 음료", "바나나", "포케", "요아정", "홍콩반점 짜장밥", "호두과자", "라멘", "곱창.막창.대창", "소주", 
+						"텐동", "유린기", "물회", "이베리코", "핫초코", "핫식스", "귤", "생강차", "부추전/파전"};
+				Random random3 = new Random();
+				val = menu_list[random3.nextInt(menu_list.length)];
+
+				break;
+			case "/챗":
+				fulltxt = fulltxt.substring(param0.length()).trim();
+				val = chatGptSearch(fulltxt,sender);
 				break;
 			case "/ㄱㅁㅈ":
 			case "/경매장":
@@ -488,130 +655,8 @@ public class LoaChatController {
 				}catch(Exception e) {
 					val = errorCodeMng(e,reqMap);
 				}
-				break;	
-			case "/악세":
-			case "/ㅇㅅ":
-				if (param1 != null && !param1.equals("")) {
-					param0="/ㅇㅅ";
-					param1 = param1.trim();
-					fulltxt = param0+" "+param1;
-					org_fulltxt = fulltxt;
-					reqMap.put("fulltxt", fulltxt);
-					try {
-						val = supporters(param1);
-						val+= accessorySearch(param1);
-					} catch (Exception e) {
-						val = errorCodeMng(e,reqMap);
-						HashMap<String,Object> hs = botService.selectIssueCase(reqMap);
-						if(hs !=null && hs.size()>0) {
-							val+= enterStr+hs.get("INSERT_DATE")+ "에 최종조회된 내용 불러오기입니다.";
-							val+= anotherMsgStr;
-							val+= hs.get("RES");
-						}
-					}
-				}
 				break;		
-			case "/부캐":
-			case "/ㅂㅋ":
-				if (param1 != null && !param1.equals("")) {
-					param0="/ㅂㅋ";
-					param1 = param1.trim();
-					fulltxt = param0+" "+param1;
-					org_fulltxt = fulltxt;
-					reqMap.put("fulltxt", fulltxt);
-					try {
-						val = supporters(param1);
-						val+= subCharacterInfoSearch1(param1);
-					} catch (Exception e) {
-						e.printStackTrace();
-						val = errorCodeMng(e,reqMap);
-						
-						HashMap<String,Object> hs = botService.selectIssueCase(reqMap);
-						if(hs !=null && hs.size()>0) {
-							val+= enterStr+hs.get("INSERT_DATE")+ "에 최종조회된 내용 불러오기입니다.";
-							val+= anotherMsgStr;
-							val+= hs.get("RES");
-						}
-					}
-				}
-				break;
-			case "/부캐2":
-			case "/ㅂㅋ2":
-				if (param1 != null && !param1.equals("")) {
-					param0="/ㅂㅋ2";
-					param1 = param1.trim();
-					fulltxt = param0+" "+param1;
-					org_fulltxt = fulltxt;
-					reqMap.put("fulltxt", fulltxt);
-					try {
-						val = supporters(param1);
-						val+= subCharacterInfoSearch2(param1);
-					} catch (Exception e) {
-						e.printStackTrace();
-						val = errorCodeMng(e,reqMap);
-						
-						HashMap<String,Object> hs = botService.selectIssueCase(reqMap);
-						if(hs !=null && hs.size()>0) {
-							val+= enterStr+hs.get("INSERT_DATE")+ "에 최종조회된 내용 불러오기입니다.";
-							val+= anotherMsgStr;
-							val+= hs.get("RES");
-						}
-					}
-				}
-				break;
-			case "/전투력":
-			case "/ㅈㅌㄹ":
-				param0="/ㅈㅌㄹ";
-				param1 = param1.trim();
-				fulltxt = param0+" "+param1;
-				org_fulltxt = fulltxt;
-				reqMap.put("fulltxt", fulltxt);
-				if (param1 != null && !param1.equals("")) {
-					try {
-						//val = "v0.3으로 패치중입니다.";
-						
-						val = supporters(param1);
-						val+= sumTotalPowerSearch(param1);
-						val+= tossAccount2();
-					} catch (Exception e) {
-						e.printStackTrace();
-						val = errorCodeMng(e,reqMap);
-					}
-				}
-				break;
-			case "/항협": case "/항해": case "/항해협동": case "/ㅎㅎ":
-				val = shipSearch();
-				break;
-			case "/가방": case "/ㄱㅂ":
-				val = openBox(param1,param2);
-				break;
-			case "/날씨": case "/ㄴㅆ":
-				if (param1 != null && !param1.equals("")) {
-					val = weatherSearch(param1);
-				}
-				break;
-			case "/점메추":
-				String[] menu_list2 = {"칼국수","샐러드","고구마","굶기","점심회식-부장님은 짜장면드신데","콩국수","된장찌개","순대국","스테이크덮밥",
-						"오징어덮밥","떡볶이","편의점도시락","콩나물불고기","라면","햄버거","부대찌개","돈까스","제육덮밥","닭갈비","닭도리탕","김치돈까스나베",
-						"쌀국수", "김치", "물", "수제비", "카레", "떡국", "라멘","텐동","유린기"};
-				Random random2 = new Random();
-				val = menu_list2[random2.nextInt(menu_list2.length)];
 				
-				break;
-			case "/저메추":
-				String[] menu_list = { "피자", "탕수육", "치킨", "샐러드", "마라탕", "양꼬치", "삼겹살", "설렁탕", "김치찌개", "된장찌개", "삼치튀김", "참치마요",
-						"회", "육회비빔밥", "냉면", "카레", "돈까스", "제육볶음", "오징어볶음", "떡볶이", "굶기", "초밥", "햄버거", "짜장면", "빵", "파스타", "닭발",
-						"쭈꾸미", "낙지덮밥", "라면", "짜계치", "스팸과 흰밥", "간장계란밥", "간장게장", "참치회", "죽", "흰밥", "감자탕", "육전", "짬뽕", "순두부찌개",
-						"지코바 양념치킨 모짜치즈 추가","닭가슴살", "단백질 음료", "바나나", "포케", "요아정", "홍콩반점 짜장밥", "호두과자", "라멘", "곱창.막창.대창", "소주", 
-						"텐동", "유린기", "물회", "이베리코", "핫초코", "핫식스", "귤", "생강차", "부추전/파전"};
-				Random random3 = new Random();
-				val = menu_list[random3.nextInt(menu_list.length)];
-
-				break;
-			case "/챗":
-				fulltxt = fulltxt.substring(param0.length()).trim();
-				val = chatGptSearch(fulltxt,sender);
-				break;
 			case "/공지":
 				List<String> list =botService.selectRoomList(reqMap);
 				
@@ -726,6 +771,8 @@ public class LoaChatController {
 				reqMap.put("limitYn", "2");
 				List<String> limitWordList2 = botService.selectBotLimitWordSaveAll(reqMap);
 				
+				List<String> replaceList = botService.selectBotWordReplaceAll(reqMap);
+				
 				
 				val = "주요명령(초성가능): "+enterStr;
 				
@@ -743,6 +790,11 @@ public class LoaChatController {
 				}
 				val += enterStr + "이모티콘목록:" + enterStr;
 				for (String word : imgList) {
+					val += word + enterStr;
+				}
+				
+				val += enterStr + "별명목록:" + enterStr;
+				for (String word : replaceList) {
 					val += word + enterStr;
 				}
 				
@@ -947,11 +999,12 @@ public class LoaChatController {
 		msg += enterStr + "8인[1640]"+enterStr+"✓18,500G";
 		msg += enterStr + "4인[1640]"+enterStr+"✓18,500G";
 		 */
-		msg += allSeeStr ;
 		msg += enterStr + "⭐군단장 레이드⭐";
 		msg += enterStr + "✓어둠-카멘";
 		msg += enterStr + " ↳ 1-3[노 10,000G/하 15,500G]";
 		msg += enterStr + " ↳ 4[하 8,000G]";
+
+		msg += allSeeStr ;
 		msg += enterStr + "✓질병-일리아칸";
 		msg += enterStr + " ↳ 4[노 5,400G/하 8,500G]";
 		msg += enterStr + "✓몽환-아브렐슈드";
