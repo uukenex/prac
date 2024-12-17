@@ -21,6 +21,11 @@ public class BotServiceImpl implements BotService {
 			throw new Exception("저장 실패");
 		}
 	}
+	public void insertBotWordReplaceTx(HashMap<String, Object> hashMap) throws Exception{
+		if(botDAO.insertBotWordReplace(hashMap)< 1) {
+			throw new Exception("저장 실패");
+		}
+	}
 
 	public String selectBotWordSaveOne(HashMap<String, Object> hashMap) {
 		return botDAO.selectBotWordSaveOne(hashMap);
@@ -55,6 +60,16 @@ public class BotServiceImpl implements BotService {
 	}
 	public void deleteBotWordSaveTx(HashMap<String, Object> hashMap) throws Exception{
 		if(botDAO.deleteBotWordSave(hashMap)< 1) {
+			throw new Exception("저장 실패");
+		}
+	}
+	public void deleteBotWordReplaceMasterTx(HashMap<String, Object> hashMap) throws Exception{
+		if(botDAO.deleteBotWordReplaceMaster(hashMap)< 1) {
+			throw new Exception("저장 실패");
+		}
+	}
+	public void deleteBotWordReplaceTx(HashMap<String, Object> hashMap) throws Exception{
+		if(botDAO.deleteBotWordReplace(hashMap)< 1) {
 			throw new Exception("저장 실패");
 		}
 	}

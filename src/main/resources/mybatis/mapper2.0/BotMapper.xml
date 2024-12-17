@@ -134,6 +134,32 @@
 		   AND A.LIMIT_YN = '0'
 	</delete>
 	
+	
+	<delete id="deleteBotWordReplaceMaster" parameterType="hashMap">
+		/* bot.xml deleteBotWordReplaceMaster */
+		DELETE FROM TBOT_WORD_REPLACE A
+		 WHERE A.REQ = #{req, jdbcType=VARCHAR}
+		   AND A.RES = #{res, jdbcType=VARCHAR}
+		   AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+	</delete>
+	<delete id="deleteBotWordReplace" parameterType="hashMap">
+		/* bot.xml deleteBotWordReplace */
+		DELETE FROM TBOT_WORD_REPLACE A
+		 WHERE A.REQ = #{req, jdbcType=VARCHAR}
+		   AND A.RES = #{res, jdbcType=VARCHAR}
+		   AND (A.USER_NAME = #{userName, jdbcType=VARCHAR}
+		        OR 
+		        A.USER_NAME IN (SELECT B.NAME_A
+								  FROM TBOT_NAME_MCH B
+								 WHERE B.NAME_B = #{userName, jdbcType=VARCHAR}
+								)
+				)
+		   AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+	</delete>
+	
+	
+	
+	
 	<select id="selectBotImgSaveOne" parameterType="String" resultType="String" >
 		/* bot.xml selectBotImgSaveOne */
 		SELECT RES
@@ -327,5 +353,21 @@
 		   AND (A.ROOM_NAME IS NULL OR A.ROOM_NAME = #{roomName, jdbcType=VARCHAR})
 		   AND ROWNUM = 1
 	</select>
+	
+	<insert id="insertBotWordReplace" parameterType="hashMap">
+		/* bot.xml insertBotWordReplace */
+		INSERT INTO TBOT_WORD_REPLACE
+			 (REQ
+			 ,RES
+			 ,ROOM_NAME
+			 ,USER_NAME
+			 ,INSERT_DATE)
+		SELECT #{req, jdbcType=VARCHAR}
+			  ,#{res, jdbcType=VARCHAR}
+			  ,#{roomName, jdbcType=VARCHAR}
+			  ,#{userName, jdbcType=VARCHAR}
+			  ,SYSDATE
+		  FROM DUAL
+    </insert>
 	
 </mapper>

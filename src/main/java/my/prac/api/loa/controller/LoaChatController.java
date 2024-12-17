@@ -696,6 +696,64 @@ public class LoaChatController {
 				
 				val = tmp_val;
 				break;
+			case "/별명등록": case "/별명추가":
+
+				try {
+					if (fulltxt.indexOf("=") < 0) {
+						val = "별명등록 실패!, =을 포함해주세요";
+					} else {
+
+						for (String str : unable_save_list) {
+							if (fulltxt.indexOf(str) >= 0) {
+								val = "별명등록 실패!, 특수문자 안되요!";
+								return val;
+							}
+						}
+
+						String[] txtList;
+						fulltxt = fulltxt.substring(param0.length()).trim();
+						txtList = fulltxt.split("=");
+						reqMap.put("req", txtList[0].trim());
+						reqMap.put("res", txtList[1].trim());
+
+						botService.insertBotWordReplaceTx(reqMap);
+						val = "별명등록 완료!";
+					}
+				} catch (Exception e) {
+					val = "별명등록 실패!";
+				}
+				break;
+			case "/별명제거": case "/별명삭제":
+				try {
+					if (fulltxt.indexOf("=") < 0) {
+						val = "별명삭제 실패!, =을 포함해주세요";
+					} else {
+						for (String str : unable_save_list) {
+							if (fulltxt.indexOf(str) >= 0) {
+								val = "별명등록 실패!, 특수문자 안되요!";
+								return val;
+							}
+						}
+						String[] txtList;
+						fulltxt = fulltxt.substring(param0.length()).trim();
+						txtList = fulltxt.split("=");
+						reqMap.put("req", txtList[0]);
+						reqMap.put("res", txtList[1]);
+
+						masterYn = botService.selectBotWordSaveMasterCnt(reqMap);
+
+						if (masterYn > 0) {
+							botService.deleteBotWordReplaceMasterTx(reqMap);
+						} else {
+							botService.deleteBotWordReplaceTx(reqMap);
+						}
+
+						val = "별명삭제 완료!";
+					}
+				} catch (Exception e) {
+					val = "별명삭제 실패!";
+				}
+				break;	
 			case "/단어등록": case "/단어추가":
 
 				try {

@@ -5,6 +5,7 @@ import java.util.List;
 
 public interface BotService {
 	public void insertBotWordSaveTx(HashMap<String, Object> hashMap)  throws Exception;
+	public void insertBotWordReplaceTx(HashMap<String, Object> hashMap)  throws Exception;
 
 	public String selectBotWordSaveOne(HashMap<String, Object> hashMap);
 	
@@ -17,6 +18,10 @@ public interface BotService {
 	public void deleteBotWordSaveMasterTx(HashMap<String, Object> hashMap)  throws Exception;
 	public void deleteBotWordSaveAllDeleteMasterTx(HashMap<String, Object> hashMap)  throws Exception;
 	public void deleteBotWordSaveTx(HashMap<String, Object> hashMap)  throws Exception;
+	
+	public void deleteBotWordReplaceMasterTx(HashMap<String, Object> hashMap)  throws Exception;
+	public void deleteBotWordReplaceTx(HashMap<String, Object> hashMap)  throws Exception;
+	
 	
 	public String selectBotImgSaveOne(String param);
 	public void insertBotImgSaveOneTx(HashMap<String, Object> hashMap)  throws Exception;

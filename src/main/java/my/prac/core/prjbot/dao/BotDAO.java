@@ -8,6 +8,7 @@ import org.springframework.stereotype.Repository;
 @Repository("core.prjbot.BotDAO")
 public interface BotDAO {
 	public int insertBotWordSave(HashMap<String, Object> hashMap);
+	public int insertBotWordReplace(HashMap<String, Object> hashMap);
 
 	public String selectBotWordSaveOne(HashMap<String, Object> hashMap);
 	
@@ -20,6 +21,9 @@ public interface BotDAO {
 	public int deleteBotWordSaveMaster(HashMap<String, Object> hashMap);
 	public int deleteBotWordSaveAllDeleteMaster(HashMap<String, Object> hashMap);
 	public int deleteBotWordSave(HashMap<String, Object> hashMap);
+	
+	public int deleteBotWordReplaceMaster(HashMap<String, Object> hashMap);
+	public int deleteBotWordReplace(HashMap<String, Object> hashMap);
 	
 	public String selectBotImgSaveOne(String param);
 	public int insertBotImgSaveOne(HashMap<String, Object> hashMap);
