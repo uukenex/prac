@@ -2575,7 +2575,7 @@ public class LoaChatController {
 		String paramUrl = lostArkAPIurl + "/characters/" + userId + "/siblings";
 		String returnData = LoaApiUtils.connect_process(paramUrl);
 		
-		String resMsg=ordUserId+" 계정 전투력 정보 v0.6" + enterStr;
+		String resMsg=ordUserId+enterStr+"계정 전투력 정보 v0.7" + enterStr;
 		
 		List<HashMap<String, Object>> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<List<Map<String, Object>>>() {});
 		if(rtnMap.isEmpty()) return "";
@@ -2769,6 +2769,12 @@ public class LoaChatController {
 		if(lv>=1710) {
 			gradeCnt_lv += 130;
 		}
+		if(lv>=1720) {
+			gradeCnt_lv += 160;
+		}
+		if(lv>=1730) {
+			gradeCnt_lv += 190;
+		}
 		
 		resMsg += "1680이상캐릭터수 : " +cntCharLv1680+ enterStr;
 		if(cntCharLv1680>0) {
@@ -2808,19 +2814,19 @@ public class LoaChatController {
 		resMsg += "보석: ";
 		if(cntGem10>0) {
 			resMsg += "10겁:"+cntGem10+" ";
-			gradeCnt_gem += 230;//270 ~ 170 사이 적정가 6멸5홍기준 
+			gradeCnt_gem += 260;//270 ~ 170 사이 적정가 6멸5홍기준 
 		}
 		if(cntGem9>0) {
 			resMsg += "9겁:"+cntGem9+" ";
-			gradeCnt_gem += 90;
+			gradeCnt_gem += 93;
 		}
 		if(cntGem8>0) {
 			resMsg += "8겁:"+cntGem8+" ";
-			gradeCnt_gem += 30*cntGem8;
+			gradeCnt_gem += 32*cntGem8;
 		}
 		if(cntGem7>0) {
 			resMsg += "7겁:"+cntGem7+" ";
-			gradeCnt_gem += 10*cntGem7;
+			gradeCnt_gem += 11*cntGem7;
 		}
 		
 		if(cntGem10 == 0 && cntGem9 ==0 && cntGem8 ==0 && cntGem7 ==0 ) {
@@ -2973,8 +2979,8 @@ public class LoaChatController {
 		resMsg += "각인상세"+enterStr + engrave_ment+enterStr;
 		
 		resMsg += "가격표:"+enterStr;
-		resMsg += "v0.6 악세 상하 중하 미포함 버그 수정"+enterStr;
-		resMsg += "http://rgb-tns.dev-apc.com/in/totalGold2";
+		resMsg += "v0.7 악세 상하 중하 미포함 버그 수정"+enterStr;
+		resMsg += "http://rgb-tns.dev-apc.com/in/totalGold3";
 		
 		
 		
