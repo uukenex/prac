@@ -2949,19 +2949,19 @@ public class LoaChatController {
 		if(gradeCnt>0) {
 			grade="모코코";
 		}
-		if(gradeCnt>200) {
+		if(gradeCnt>500) {
 			grade="모코코와 중급자 사이 어딘가";
 		}
-		if(gradeCnt>500) {
+		if(gradeCnt>1000) {
 			grade="중급자";
 		}
-		if(gradeCnt>1000) {
+		if(gradeCnt>2000) {
 			grade="고인물";
 		}
-		if(gradeCnt>2000) {
+		if(gradeCnt>4000) {
 			grade="슈퍼고인물";
 		}
-		if(gradeCnt>3000) {
+		if(gradeCnt>6000) {
 			grade="일반인이 아님";
 		}
 		
