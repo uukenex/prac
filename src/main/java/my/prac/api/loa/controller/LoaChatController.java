@@ -318,6 +318,8 @@ public class LoaChatController {
 						
 					} catch (Exception e) {
 						val = errorCodeMng(e,reqMap);
+						val+=enterStr+param1+" 으로 조회됨";
+						
 						HashMap<String,Object> hs = botService.selectIssueCase(reqMap);
 						if(hs !=null && hs.size()>0) {
 							val+= enterStr+hs.get("INSERT_DATE")+ "에 최종조회된 내용 불러오기입니다.";
@@ -347,6 +349,8 @@ public class LoaChatController {
 						val+= limitSearch(param1);
 					} catch (Exception e) {
 						val = errorCodeMng(e,reqMap);
+						val+=enterStr+param1+" 으로 조회됨";
+						
 						HashMap<String,Object> hs = botService.selectIssueCase(reqMap);
 						if(hs !=null && hs.size()>0) {
 							val+= enterStr+hs.get("INSERT_DATE")+ "에 최종조회된 내용 불러오기입니다.";
@@ -375,6 +379,8 @@ public class LoaChatController {
 						val+= collectionSearch(param1);
 					} catch (Exception e) {
 						val = errorCodeMng(e,reqMap);
+						val+=enterStr+param1+" 으로 조회됨";
+						
 						HashMap<String,Object> hs = botService.selectIssueCase(reqMap);
 						if(hs !=null && hs.size()>0) {
 							val+= enterStr+hs.get("INSERT_DATE")+ "에 최종조회된 내용 불러오기입니다.";
@@ -404,6 +410,8 @@ public class LoaChatController {
 						val+= accessorySearch(param1);
 					} catch (Exception e) {
 						val = errorCodeMng(e,reqMap);
+						val+=enterStr+param1+" 으로 조회됨";
+						
 						HashMap<String,Object> hs = botService.selectIssueCase(reqMap);
 						if(hs !=null && hs.size()>0) {
 							val+= enterStr+hs.get("INSERT_DATE")+ "에 최종조회된 내용 불러오기입니다.";
@@ -433,6 +441,7 @@ public class LoaChatController {
 					} catch (Exception e) {
 						e.printStackTrace();
 						val = errorCodeMng(e,reqMap);
+						val+=enterStr+param1+" 으로 조회됨";
 						
 						HashMap<String,Object> hs = botService.selectIssueCase(reqMap);
 						if(hs !=null && hs.size()>0) {
@@ -463,6 +472,7 @@ public class LoaChatController {
 					} catch (Exception e) {
 						e.printStackTrace();
 						val = errorCodeMng(e,reqMap);
+						val+=enterStr+param1+" 으로 조회됨";
 						
 						HashMap<String,Object> hs = botService.selectIssueCase(reqMap);
 						if(hs !=null && hs.size()>0) {
@@ -496,6 +506,7 @@ public class LoaChatController {
 					} catch (Exception e) {
 						e.printStackTrace();
 						val = errorCodeMng(e,reqMap);
+						val+=enterStr+param1+" 으로 조회됨";
 					}
 				}
 				break;
