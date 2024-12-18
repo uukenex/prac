@@ -1654,11 +1654,13 @@ public class LoaChatController {
 			case "반지":case "귀걸이": case "목걸이":
 				switch(Jsoup.parse((String) ((HashMap<String, Object>) quality_element.get("value")).get("leftStr2")).text()) {
 					case "아이템 티어 3":
+						/*
 						accessoryMsg += Jsoup.parse((String) ((HashMap<String, Object>) quality_element.get("value")).get("leftStr0")).text();
 						accessoryMsg += " 품:"+(int)((HashMap<String, Object>) quality_element.get("value")).get("qualityValue");
 						accessoryMsg += enterStr;
 						accessoryMsg += " "+Jsoup.parse((String)((HashMap<String, Object>) tier3_stats.get("value")).get("Element_001")).text();
 						accessoryMsg += enterStr;
+						*/
 						break;
 					case "아이템 티어 4":
 						accessoryMsg += Jsoup.parse((String) ((HashMap<String, Object>) quality_element.get("value")).get("leftStr0")).text();
