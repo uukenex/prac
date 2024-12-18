@@ -696,6 +696,16 @@ public class LoaChatController {
 				
 				val = tmp_val;
 				break;
+			case "/별명":
+				
+				List<String> replaceList2 = botService.selectBotWordReplaceAll(reqMap);
+				
+				val += enterStr + "별명목록:" + enterStr;
+				for (String word : replaceList2) {
+					val += word + enterStr;
+				}
+				
+				break;
 			case "/별명등록": case "/별명추가":
 
 				try {
