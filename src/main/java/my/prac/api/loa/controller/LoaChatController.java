@@ -1804,19 +1804,19 @@ public class LoaChatController {
 			
 			switch(acceStr.length()) {
 				case 1:
-					acceMainMsg="악세 　　　　";
+					acceMainMsg="악세 　　　　　";
 					break;
 				case 2:
-					acceMainMsg="악세 　　　";
+					acceMainMsg="악세 　　　　";
 					break;
 				case 3:
-					acceMainMsg="악세 　　";
+					acceMainMsg="악세 　　　";
 					break;
 				case 4:
-					acceMainMsg="악세 　";
+					acceMainMsg="악세 　　";
 					break;
 				case 5:
-					acceMainMsg="악세 ";
+					acceMainMsg="악세 　";
 					break;
 			}
 			acceMainMsg += acceMsg;
