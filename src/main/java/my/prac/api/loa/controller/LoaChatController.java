@@ -1491,7 +1491,6 @@ public class LoaChatController {
 		Map<String, Object> armoryGem;
 		List<Map<String, Object>> armoryAvatars;
 		
-		
 		String avatarsText="";
 		
 		try {
@@ -1529,6 +1528,9 @@ public class LoaChatController {
 		}catch(Exception e){
 			avatarsText ="";
 		}
+		
+		
+		
 		
 		List<String> equipSetList = new ArrayList<>();
 		List<String> equipElixirList = new ArrayList<>();
@@ -1717,6 +1719,90 @@ public class LoaChatController {
 			}
 		}
 		
+		List<String> acceossory;
+		List<String> accessoryList = new ArrayList<>();
+		try {
+			acceossory = totalAccessorySearch(rtnMap,userId,className);
+			if(acceossory !=null) {
+				accessoryList.addAll(acceossory);
+			}
+			
+			
+		} catch(Exception e) {
+			accessoryList = null;
+		}
+		
+		int g1ss = 0;
+		int g1sj = 0;
+		int g1sh = 0;
+		int g1s = 0;
+		int g1jj =0;
+		int g1jh =0;
+		int g1j =0;
+		String acceMsg ="";
+		if(accessoryList !=null) {
+			for (String g1 : accessoryList) {
+				switch (g1) {
+				case "상상":
+					g1ss++;
+					break;
+				case "상중":
+				case "중상":
+					g1sj++;
+					break;
+				case "상하":
+				case "하상":
+					g1sh++;
+					break;
+				case "상":
+					g1s++;
+					break;
+				case "중중":
+					g1jj++;
+					break;
+				case "중하":
+				case "하중":
+					g1jh++;
+					break;
+				case "중":
+					g1j++;
+					break;
+				}
+			}			
+			
+			acceMsg += "악세 : " ;
+			if(g1ss>0) {
+				acceMsg += "상상:"+g1ss+" ";
+			}
+			if(g1sj>0) {
+				acceMsg += "상중:"+g1sj+" ";
+			}
+			if(g1sh>0) {
+				acceMsg += "상하:"+g1sh+" ";
+			}
+			if(g1s>0) {
+				acceMsg += "상단일:"+g1s+" ";
+			}
+			
+			if(g1jj>0) {
+				acceMsg += "중중:"+g1jj+" ";
+			}
+			if(g1jh>0) {
+				acceMsg += "중하:"+g1jh+" ";
+			}
+			if(g1j>0) {
+				acceMsg += "중단일:"+g1j+" ";
+			}
+			
+			if(g1ss == 0 && g1sj ==0 && g1sh ==0 && g1s ==0 
+					     &&g1jj == 0 && g1jh ==0 && g1j ==0) {
+				acceMsg += "특옵 없음!";
+			}
+			
+		}
+		
+		
+		
 		//String setField="";
 		String elixirField="";
 		
@@ -1792,6 +1878,9 @@ public class LoaChatController {
 			resMsg += newEngraveSearch(armoryEngraving,ordUserId,false,true);
 		}
 		
+		
+		resMsg +=acceMsg;
+		resMsg += enterStr;
 		resMsg += enterStr;
 		resMsg += "상세 더보기..▼"+allSeeStr;
 		//resMsg += "방어구 / 초월 / 엘릭서"+enterStr;
@@ -2098,9 +2187,10 @@ public class LoaChatController {
 			for (Map<String, Object> engrave : engraves) {
 				int len = engrave.get("Name").toString().length();
 				String tmpEng = engrave.get("Name").toString().substring(0,1);
-				engraveList.add(tmpEng);
+				String gradeLv = engrave.get("Grade").toString().substring(0,1)+engrave.get("Level");
+				engraveList.add(gradeLv+" "+tmpEng);
 			}
-			resMsg = resMsg + "각인"+"　　　　"+ engraveList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","")+enterStr;
+			resMsg = resMsg + "각인"+" "+ engraveList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","")+enterStr;
 		}else {
 			String passiveEffect="";
 			for (Map<String, Object> engrave : engraves) {
@@ -2423,9 +2513,9 @@ public class LoaChatController {
 				case "반지":case "귀걸이": case "목걸이":
 					switch(Jsoup.parse((String) ((HashMap<String, Object>) quality_element.get("value")).get("leftStr2")).text()) {
 						case "아이템 티어 4":
-							if(Jsoup.parse((String) ((HashMap<String, Object>) quality_element.get("value")).get("leftStr0")).text().indexOf("고대")>=0 ) {
-								
-								switch (className) {
+							
+							//고대 유물 둘다 되도록수정 
+							switch (className) {
 								case "바드":
 								case "도화가":
 								case "홀리나이트":
@@ -2434,9 +2524,13 @@ public class LoaChatController {
 								default:
 									g1.add(LoaApiParser.findBraceletOptions(2,((HashMap<String, Object>) grinding_element.get("value")).get("Element_001").toString()));
 									break;
-								}
-
 							}
+							/*
+							if(Jsoup.parse((String) ((HashMap<String, Object>) quality_element.get("value")).get("leftStr0")).text().indexOf("고대")>=0 ) {
+								
+
+							}*/
+							
 							break;
 					}
 					break;
