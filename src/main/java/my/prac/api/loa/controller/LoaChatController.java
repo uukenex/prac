@@ -1104,6 +1104,17 @@ public class LoaChatController {
 		msg += enterStr + "✓카양겔";
 		msg += enterStr + " ↳ [노 3,600G/하 4,800G]";
 		
+		msg += enterStr;
+		msg += enterStr + "⭐싱글 모드⭐";
+		msg += enterStr + "✓에키드나 [11,600G]";
+		msg += enterStr + "✓카멘 [8,000G]";
+		msg += enterStr + "✓상아탑 [5,200G]";
+		msg += enterStr + "✓일리아칸 [4,320G]";
+		msg += enterStr + "✓카양겔 [2,880G]";
+		msg += enterStr + "✓아브렐슈드 [3,680G]";
+		msg += enterStr + "✓쿠크세이튼 [2,400G]";
+		msg += enterStr + "✓비아키스 [1,280G]";
+		msg += enterStr + "✓발탄 [960G]";
 		/*
 		msg += enterStr + "싱글모드..▼ "+ allSeeStr;
 		msg += enterStr + "발탄 600G";
