@@ -1739,7 +1739,9 @@ public class LoaChatController {
 		int g1jj =0;
 		int g1jh =0;
 		int g1j =0;
+		String acceMainMsg="";
 		String acceMsg ="";
+		String acceStr =""; 
 		if(accessoryList !=null) {
 			for (String g1 : accessoryList) {
 				switch (g1) {
@@ -1770,34 +1772,54 @@ public class LoaChatController {
 				}
 			}			
 			
-			acceMsg += "악세 　　" ;
 			if(g1ss>0) {
 				acceMsg += "상상:"+g1ss+" ";
+				acceStr+=String.valueOf(g1ss);
 			}
 			if(g1sj>0) {
 				acceMsg += "상중:"+g1sj+" ";
+				acceStr+=String.valueOf(g1sj);
 			}
 			if(g1sh>0) {
 				acceMsg += "상하:"+g1sh+" ";
+				acceStr+=String.valueOf(g1sh);
 			}
 			if(g1s>0) {
 				acceMsg += "상단:"+g1s+" ";
+				acceStr+=String.valueOf(g1s);
 			}
 			
 			if(g1jj>0) {
 				acceMsg += "중중:"+g1jj+" ";
+				acceStr+=String.valueOf(g1jj);
 			}
 			if(g1jh>0) {
 				acceMsg += "중하:"+g1jh+" ";
+				acceStr+=String.valueOf(g1jh);
 			}
 			if(g1j>0) {
 				acceMsg += "중단:"+g1j+" ";
+				acceStr+=String.valueOf(g1j);
 			}
 			
-			if(g1ss == 0 && g1sj ==0 && g1sh ==0 && g1s ==0 
-					     &&g1jj == 0 && g1jh ==0 && g1j ==0) {
-				acceMsg += "특옵 없음!";
+			switch(acceStr.length()) {
+				case 1:
+					acceMainMsg="악세 　　　　";
+					break;
+				case 2:
+					acceMainMsg="악세 　　　";
+					break;
+				case 3:
+					acceMainMsg="악세 　　";
+					break;
+				case 4:
+					acceMainMsg="악세 　";
+					break;
+				case 5:
+					acceMainMsg="악세 ";
+					break;
 			}
+			acceMainMsg += acceMsg;
 			
 		}
 		
@@ -1879,7 +1901,7 @@ public class LoaChatController {
 		}
 		
 		
-		resMsg +=acceMsg;
+		resMsg += acceMainMsg;
 		resMsg += enterStr;
 		resMsg += enterStr;
 		resMsg += "상세 더보기..▼"+allSeeStr;
@@ -2191,7 +2213,7 @@ public class LoaChatController {
 				//engraveList.add(gradeLv+" "+tmpEng);
 				engraveList.add(tmpEng+engrave.get("Level"));
 			}
-			resMsg = resMsg + "각인"+" "+ engraveList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","")+enterStr;
+			resMsg = resMsg + "각인"+"　　　　"+ engraveList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","")+enterStr;
 		}else {
 			String passiveEffect="";
 			for (Map<String, Object> engrave : engraves) {
