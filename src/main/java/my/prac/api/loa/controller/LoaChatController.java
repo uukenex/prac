@@ -1770,7 +1770,7 @@ public class LoaChatController {
 				}
 			}			
 			
-			acceMsg += "악세 : " ;
+			acceMsg += "악세 　　" ;
 			if(g1ss>0) {
 				acceMsg += "상상:"+g1ss+" ";
 			}
@@ -1781,7 +1781,7 @@ public class LoaChatController {
 				acceMsg += "상하:"+g1sh+" ";
 			}
 			if(g1s>0) {
-				acceMsg += "상단일:"+g1s+" ";
+				acceMsg += "상단:"+g1s+" ";
 			}
 			
 			if(g1jj>0) {
@@ -1791,7 +1791,7 @@ public class LoaChatController {
 				acceMsg += "중하:"+g1jh+" ";
 			}
 			if(g1j>0) {
-				acceMsg += "중단일:"+g1j+" ";
+				acceMsg += "중단:"+g1j+" ";
 			}
 			
 			if(g1ss == 0 && g1sj ==0 && g1sh ==0 && g1s ==0 
@@ -2187,8 +2187,9 @@ public class LoaChatController {
 			for (Map<String, Object> engrave : engraves) {
 				int len = engrave.get("Name").toString().length();
 				String tmpEng = engrave.get("Name").toString().substring(0,1);
-				String gradeLv = engrave.get("Grade").toString().substring(0,1)+engrave.get("Level");
-				engraveList.add(gradeLv+" "+tmpEng);
+				//String gradeLv = engrave.get("Grade").toString().substring(0,1)+engrave.get("Level");
+				//engraveList.add(gradeLv+" "+tmpEng);
+				engraveList.add(tmpEng+engrave.get("Level"));
 			}
 			resMsg = resMsg + "각인"+" "+ engraveList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","")+enterStr;
 		}else {
