@@ -1362,9 +1362,9 @@ public class LoaChatController {
 			*/
 			
 			if(realLv == dbLv) {
-				System.out.println("검색해온값이 DB와 동일함");
+				//System.out.println("검색해온값이 DB와 동일함");
 			}else if(realLv > dbLv) {
-				System.out.println("DB값보다 실시간이 큼");
+				//System.out.println("DB값보다 실시간이 큼");
 				botService.updateBotLoaEngraveTx(refreshDataMap);
 				updateCnt++;
 			}
@@ -1372,7 +1372,13 @@ public class LoaChatController {
 			
 		}
 		
-		//select
+		if(updateCnt>0) {
+			DBcharEngrave = botService.selectBotLoaEngrave(ordUserId);
+		}
+		
+		for (String key : DBcharEngrave.keySet()) {
+            Object value = DBcharEngrave.get(key);
+        }
 		
 		return updateCnt+"업데이트완료.";
 	}
