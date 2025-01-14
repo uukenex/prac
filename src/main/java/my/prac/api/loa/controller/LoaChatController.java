@@ -1349,19 +1349,6 @@ public class LoaChatController {
 		
 		String mainCharName = sortedList.get(0).get("CharacterName").toString();
 		
-		userId = URLEncoder.encode(userId, "UTF-8");
-		//String resMsg="";
-		String paramUrl = lostArkAPIurl + "/armories/characters/" + userId + "/engravings";
-		String returnData = LoaApiUtils.connect_process(paramUrl);
-		HashMap<String, Object> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<Map<String, Object>>() {});
-		
-		List<Map<String, Object>> engraves;
-		
-		try {
-			engraves = (List<Map<String, Object>>) rtnMap.get("ArkPassiveEffects");
-		}catch(Exception e){
-			return "";
-		}
 		
 		//select
 		int charEngraveCnt = botService.selectBotLoaEngraveCnt(mainCharName);
@@ -1373,21 +1360,31 @@ public class LoaChatController {
 		
 		HashMap<String,Object> DBcharEngrave = botService.selectBotLoaEngrave(mainCharName);
 		
-		//몇개 업데이트 되었는지 확인 insert or update
 		int updateCnt = 0;
 		
-		
+		for(HashMap<String,Object> charList : sortedList) {
+			userId = URLEncoder.encode(charList.get("CharacterName").toString(), "UTF-8");
+			//String resMsg="";
+			String paramUrl = lostArkAPIurl + "/armories/characters/" + userId + "/engravings";
+			String returnData = LoaApiUtils.connect_process(paramUrl);
+			HashMap<String, Object> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<Map<String, Object>>() {});
+			
+			List<Map<String, Object>> engraves;
+			
+			try {
+				engraves = (List<Map<String, Object>>) rtnMap.get("ArkPassiveEffects");
+			}catch(Exception e){
+				System.out.println(e.getMessage());
+				continue;
+			}
+			
 			for (Map<String, Object> engrave : engraves) {
-				
-				
-				
 				//	passiveEffect +=engrave.get("Grade")+" Lv"+engrave.get("Level")+" "+engrave.get("Name");
 				HashMap<String,Object> refreshDataMap = LoaApiParser.engraveSelector(engrave.get("Name").toString(), engrave.get("Grade").toString(), engrave.get("Level").toString());
 				refreshDataMap.put("userId",mainCharName);
 				/**
 				 * refreshDataMap = [{ colName:ENG01, realLv:16 }, { colName:ENG02, realLv:16 } ... ]
 				 *  */
-				
 				
 				try {//db에 저장하지 않는 각인이 있음. 패스패스 43개중 23개만 띄우고있음
 				
@@ -1410,14 +1407,14 @@ public class LoaChatController {
 					}
 				
 				}catch(Exception e) {
+					System.out.println(e.getMessage());
 			    	continue;
 			    }
 				
 				
 			}
-		
-		
-		
+			
+		}
 		
 		if(updateCnt>0) {
 			DBcharEngrave = botService.selectBotLoaEngrave(mainCharName);
@@ -1443,7 +1440,7 @@ public class LoaChatController {
 		String rtnMsg ="";
 		
 		if(!ordUserId.equals(mainCharName)){
-			rtnMsg += ordUserId+" 로 조회하였지만, 메인캐릭터 "+mainCharName+"로 통합됨"+enterStr;
+			rtnMsg += ordUserId+" 로 조회하였지만,"+enterStr+" 계정내 전체캐릭터정보가 메인캐릭터 "+mainCharName+"로 통합됨"+enterStr;
 		}
 		
 		rtnMsg += mainCharName+" "+updateCnt+" 업데이트완료." + enterStr + msg;
