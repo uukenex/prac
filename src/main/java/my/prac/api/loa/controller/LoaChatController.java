@@ -1346,7 +1346,7 @@ public class LoaChatController {
 		for (Map<String, Object> engrave : engraves) {
 			//	passiveEffect +=engrave.get("Grade")+" Lv"+engrave.get("Level")+" "+engrave.get("Name");
 			HashMap<String,Object> refreshDataMap = LoaApiParser.engraveSelector(engrave.get("Name").toString(), engrave.get("Grade").toString(), engrave.get("Level").toString());
-			
+			refreshDataMap.put("userId",userId);
 			/**
 			 * refreshDataMap = [{ colName:ENG01, realLv:16 }, { colName:ENG02, realLv:16 } ... ]
 			 *  */
