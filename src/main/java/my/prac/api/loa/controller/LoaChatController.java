@@ -1348,9 +1348,9 @@ public class LoaChatController {
 			HashMap<String,Object> refreshDataMap = LoaApiParser.engraveSelector(engrave.get("Name").toString(), engrave.get("Grade").toString(), engrave.get("Level").toString());
 			
 			//DB에 있는 레벨
-			int dbLv = Integer.parseInt((String) charEngrave.get(engrave.get("Name").toString()));
+			int dbLv = Integer.parseInt((String) charEngrave.get(refreshDataMap.get("colName").toString()));
 			//새로 불러온 각인 레벨
-			int refreshLv = Integer.parseInt((String) refreshDataMap.get(engrave.get("Name").toString()));
+			int refreshLv = Integer.parseInt((String) refreshDataMap.get("colName".toString()));
 			
 			if(refreshLv > dbLv) {
 				botService.updateBotLoaEngraveTx(refreshDataMap);
@@ -1362,7 +1362,7 @@ public class LoaChatController {
 		
 		//select
 		
-		return "";
+		return updateCnt+"업데이트완료.";
 	}
 	
 	String limitSearch(String userId) throws Exception {
