@@ -1360,7 +1360,7 @@ public class LoaChatController {
 		try {
 			engraves = (List<Map<String, Object>>) rtnMap.get("ArkPassiveEffects");
 		}catch(Exception e){
-			return null;
+			return "";
 		}
 		
 		//select
