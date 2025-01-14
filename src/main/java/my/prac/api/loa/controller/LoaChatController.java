@@ -3588,41 +3588,41 @@ public class LoaChatController {
 	    	case "고대3":
 	    		if (itemType.equals("낙인상")) {
 		            options.put(createOption(8, 1, 13))
-		            	   .put(createOption(7, 44, 12));
+		            	   .put(createOption(7, 44, 3));
 		        } else if (itemType.equals("공퍼상")) {
 		            options.put(createOption(8, 1, 12))
-		            	   .put(createOption(7, 45, 12));
+		            	   .put(createOption(7, 45, 3));
 		        } else if (itemType.equals("치적상")) {
 		            options.put(createOption(8, 1, 12))
-		                   .put(createOption(7, 49, 12));
+		                   .put(createOption(7, 49, 3));
 		        } else if (itemType.equals("치피상")) {
 		            options.put(createOption(8, 1, 12))
-	                   	   .put(createOption(7, 50, 12));
+	                   	   .put(createOption(7, 50, 3));
 		        } else if (itemType.equals("치적중치피중")) {
 		            options.put(createOption(8, 1, 12))
                 	   	   .put(createOption(7, 49, 2))
-                	   	   .put(createOption(7, 50, 11));
+                	   	   .put(createOption(7, 50, 2));
 		        } else if (itemType.equals("아공상아피상최생중")) {
 		            options.put(createOption(8, 1, 12))
-		                   .put(createOption(7, 51, 12))
-		                   .put(createOption(7, 52, 12))
-		                   .put(createOption(7, 55, 11));
+		                   .put(createOption(7, 51, 3))
+		                   .put(createOption(7, 52, 3))
+		                   .put(createOption(7, 55, 2));
 		        } else if (itemType.equals("치피상공플상")) {
 		            options.put(createOption(8, 1, 12))
-	                   .put(createOption(7, 50, 12))
-	                   .put(createOption(7, 53, 12));
+	                   .put(createOption(7, 50, 3))
+	                   .put(createOption(7, 53, 3));
 		        }
 	    		break;
 	    	case "고대1":
 	    		 if (itemType.equals("낙인상")) {
 	 	            options.put(createOption(8, 1, 6))
-	 	                   .put(createOption(7, 44, 12));
+	 	                   .put(createOption(7, 44, 3));
 	 	        } else if (itemType.equals("치적상")) {
 	 	            options.put(createOption(8, 1, 5))
-	 	                   .put(createOption(7, 49, 12));
+	 	                   .put(createOption(7, 49, 3));
 	 	        } else if (itemType.equals("치피상")) {
 	 	            options.put(createOption(8, 1, 5))
-	 	                   .put(createOption(7, 50, 12));
+	 	                   .put(createOption(7, 50, 3));
 	 	        }
 	    		break;
 	    }
