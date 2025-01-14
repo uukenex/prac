@@ -1097,6 +1097,9 @@ public class LoaApiParser {
 			case "급소 타격":
 				colName = "ENG22";
 				break;
+			case "선수필승":
+				colName = "ENG23";
+				break;
 			default:
 				break;
 		}
@@ -1148,6 +1151,146 @@ public class LoaApiParser {
 		engMap.put("realLv", realLv);
 		
 		return engMap;
+	}
+	
+	public static HashMap<String,Object> engraveSelectorReverse(String colName,String realLv) {
+		
+		String key = "";
+		String value="";
+		switch(colName) {
+			case "ENG01":
+				key = "아드레날린";
+				break;
+			case "ENG02":
+				key = "원한";
+				break;
+			case "ENG03":
+				key = "예리한 둔기";
+				break;
+			case "ENG04":
+				key = "저주받은 인형";
+				break;
+			case "ENG05":
+				key = "돌격대장";
+				break;
+			case "ENG06":
+				key = "타격의 대가";
+				break;
+			case "ENG07":
+				key = "기습의 대가";
+				break;
+			case "ENG08":
+				key = "질량 증가";
+				break;
+			case "ENG09":
+				key = "슈퍼 차지";
+				break;
+			case "ENG10":
+				key = "결투의 대가";
+				break;
+			case "ENG11":
+				key = "속전속결";
+				break;
+			case "ENG12":
+				key = "바리케이드";
+				break;
+			case "ENG13":
+				key = "마나 효율 증가";
+				break;
+			case "ENG14":
+				key = "정밀 단도";
+				break;
+			case "ENG15":
+				key = "에테르 포식자";
+				break;
+			case "ENG16":
+				key = "안정된 상태";
+				break;
+			case "ENG17":
+				key = "마나의 흐름";
+				break;
+			case "ENG18":
+				key = "구슬동자";
+				break;
+			case "ENG19":
+				key = "전문의";
+				break;
+			case "ENG20":
+				key = "각성";
+				break;
+			case "ENG21":
+				key = "중갑 착용";
+				break;
+			case "ENG22":
+				key = "급소 타격";
+				break;
+			case "ENG23":
+				key = "선수필승";
+				break;
+			default:
+				break;
+		}
+		
+		/** ex) 
+		 * 유물4 = 19
+		 * 유물3 = 18
+		 * 유물2 = 17
+		 * 유물1 = 16
+		 * 유물0 = 15
+		 * 
+		 * 전설4 = 14
+		 * 전설3 = 13
+		 * 전설2 = 12
+		 * 전설1 = 11
+		 * 전설0 = 10
+		 */
+		switch(realLv) {
+			case "19":
+				value="유물 4레벨";
+				break;
+			case "18":
+				value="유물 3레벨";
+				break;
+			case "17":
+				value="유물 2레벨";
+				break;
+			case "16":
+				value="유물 1레벨";
+				break;
+			case "15":
+				value="유물 0레벨";//전설4
+				break;
+				
+			case "13":
+				value="전설 3레벨";
+				break;
+			case "12":
+				value="전설 2레벨";
+				break;
+			case "11":
+				value="전설 1레벨";
+				break;
+			case "10":
+				value="전설 0레벨";//영웅4
+				break;
+			case "8":
+				value="영웅 3레벨";
+				break;
+			case "7":
+				value="영웅 2레벨";
+				break;
+			case "6":
+				value="영웅 1레벨";
+				break;
+			case "5":
+				value="영웅 0레벨";
+				break;
+		}
+		HashMap<String,Object> engReverseMap=new HashMap<>();
+		engReverseMap.put("key", key);
+		engReverseMap.put("value", value);
+		
+		return engReverseMap;
 	}
 	
 }

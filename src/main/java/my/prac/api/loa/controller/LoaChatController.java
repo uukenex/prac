@@ -510,7 +510,19 @@ public class LoaChatController {
 					}
 				}
 				break;
-			case "/각인테스트":
+			case "/각인": case "/ㄱㅇ":
+				
+				param0="/ㄱㅇ";
+				param1 = param1.trim();
+				
+				replace_param = botService.selectBotWordReplace(reqMap);
+				if(replace_param!=null && !replace_param.equals("")) {
+					param1 = replace_param;
+				}
+				
+				fulltxt = param0+" "+param1;
+				org_fulltxt = fulltxt;
+				reqMap.put("fulltxt", fulltxt);
 				if (param1 != null && !param1.equals("")) {
 					try {
 						val+= engraveSaveSearch(param1);
@@ -520,6 +532,7 @@ public class LoaChatController {
 						val+=enterStr+param1+" 으로 조회됨";
 					}
 				}
+				
 				break;
 			case "/항협": case "/항해": case "/항해협동": case "/ㅎㅎ":
 				val = shipSearch();
@@ -1329,8 +1342,6 @@ public class LoaChatController {
 			return null;
 		}
 		
-		List<String> engraveList = new ArrayList<>();
-		
 		//select
 		int charEngraveCnt = botService.selectBotLoaEngraveCnt(ordUserId);
 		
@@ -1343,44 +1354,72 @@ public class LoaChatController {
 		
 		//몇개 업데이트 되었는지 확인 insert or update
 		int updateCnt = 0;
-		for (Map<String, Object> engrave : engraves) {
-			//	passiveEffect +=engrave.get("Grade")+" Lv"+engrave.get("Level")+" "+engrave.get("Name");
-			HashMap<String,Object> refreshDataMap = LoaApiParser.engraveSelector(engrave.get("Name").toString(), engrave.get("Grade").toString(), engrave.get("Level").toString());
-			refreshDataMap.put("userId",ordUserId);
-			/**
-			 * refreshDataMap = [{ colName:ENG01, realLv:16 }, { colName:ENG02, realLv:16 } ... ]
-			 *  */
-			
-			String colName = refreshDataMap.get("colName").toString();
-			int realLv = Integer.parseInt(refreshDataMap.get("realLv").toString());
-			int dbLv   = Integer.parseInt(DBcharEngrave.get(colName).toString());
-			/*
-			charEngrave.get("ENG01") =>16
-			==>colName = ENG01
-			
-			realLv => 16
-			*/
-			
-			if(realLv == dbLv) {
-				//System.out.println("검색해온값이 DB와 동일함");
-			}else if(realLv > dbLv) {
-				//System.out.println("DB값보다 실시간이 큼");
-				botService.updateBotLoaEngraveTx(refreshDataMap);
-				updateCnt++;
+		
+		
+			for (Map<String, Object> engrave : engraves) {
+				
+				
+				
+				//	passiveEffect +=engrave.get("Grade")+" Lv"+engrave.get("Level")+" "+engrave.get("Name");
+				HashMap<String,Object> refreshDataMap = LoaApiParser.engraveSelector(engrave.get("Name").toString(), engrave.get("Grade").toString(), engrave.get("Level").toString());
+				refreshDataMap.put("userId",ordUserId);
+				/**
+				 * refreshDataMap = [{ colName:ENG01, realLv:16 }, { colName:ENG02, realLv:16 } ... ]
+				 *  */
+				
+				
+				try {//db에 저장하지 않는 각인이 있음. 패스패스 43개중 23개만 띄우고있음
+				
+					String colName = refreshDataMap.get("colName").toString();
+					int realLv = Integer.parseInt(refreshDataMap.get("realLv").toString());
+					int dbLv   = Integer.parseInt(DBcharEngrave.get(colName).toString());
+					/*
+					charEngrave.get("ENG01") =>16
+					==>colName = ENG01
+					
+					realLv => 16
+					*/
+					
+					if(realLv == dbLv) {
+						//System.out.println("검색해온값이 DB와 동일함");
+					}else if(realLv > dbLv) {
+						//System.out.println("DB값보다 실시간이 큼");
+						botService.updateBotLoaEngraveTx(refreshDataMap);
+						updateCnt++;
+					}
+				
+				}catch(Exception e) {
+			    	continue;
+			    }
+				
+				
 			}
-			
-			
-		}
+		
+		
+		
 		
 		if(updateCnt>0) {
 			DBcharEngrave = botService.selectBotLoaEngrave(ordUserId);
 		}
 		
+		String msg ="";
 		for (String key : DBcharEngrave.keySet()) {
             Object value = DBcharEngrave.get(key);
+            try {
+            //userId, modify_date는 여기서 걸러져서 catch됨 
+            	if(Integer.parseInt(value.toString()) == 0) {
+                	continue;
+                }
+                HashMap<String,Object> engReverseMap = LoaApiParser.engraveSelectorReverse(key,value.toString());
+                msg+= engReverseMap.get("key")+" : "+engReverseMap.get("value") + enterStr;
+            	
+            }catch(Exception e) {
+            	continue;
+            }
+            
         }
 		
-		return updateCnt+"업데이트완료.";
+		return updateCnt+" 업데이트완료." + enterStr + msg;
 	}
 	
 	String limitSearch(String userId) throws Exception {
