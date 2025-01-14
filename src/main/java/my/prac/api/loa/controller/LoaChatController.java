@@ -1339,7 +1339,7 @@ public class LoaChatController {
 			botService.insertBotLoaEngraveBaseTx(ordUserId);
 		}
 		
-		HashMap<String,Object> charEngrave = botService.selectBotLoaEngrave(ordUserId);
+		HashMap<String,Object> DBcharEngrave = botService.selectBotLoaEngrave(ordUserId);
 		
 		//몇개 업데이트 되었는지 확인 insert or update
 		int updateCnt = 0;
@@ -1347,12 +1347,24 @@ public class LoaChatController {
 			//	passiveEffect +=engrave.get("Grade")+" Lv"+engrave.get("Level")+" "+engrave.get("Name");
 			HashMap<String,Object> refreshDataMap = LoaApiParser.engraveSelector(engrave.get("Name").toString(), engrave.get("Grade").toString(), engrave.get("Level").toString());
 			
-			//DB에 있는 레벨
-			int dbLv = Integer.parseInt((String) charEngrave.get(refreshDataMap.get("colName").toString()));
-			//새로 불러온 각인 레벨
-			int refreshLv = Integer.parseInt((String) refreshDataMap.get("colName".toString()));
+			/**
+			 * refreshDataMap = [{ colName:ENG01, realLv:16 }, { colName:ENG02, realLv:16 } ... ]
+			 *  */
 			
-			if(refreshLv > dbLv) {
+			String colName = refreshDataMap.get("colName").toString();
+			int realLv = Integer.parseInt(refreshDataMap.get("realLv").toString());
+			int dbLv   = Integer.parseInt(DBcharEngrave.get(colName).toString());
+			/*
+			charEngrave.get("ENG01") =>16
+			==>colName = ENG01
+			
+			realLv => 16
+			*/
+			
+			if(realLv == dbLv) {
+				System.out.println("검색해온값이 DB와 동일함");
+			}else if(realLv > dbLv) {
+				System.out.println("DB값보다 실시간이 큼");
 				botService.updateBotLoaEngraveTx(refreshDataMap);
 				updateCnt++;
 			}
