@@ -3569,7 +3569,7 @@ public class LoaChatController {
 	    JSONArray options = new JSONArray();
 	    json.put("Sort", "BUY_PRICE")
 	        .put("SortCondition", "ASC")
-	        .put("Tier", 4)
+	        .put("ItemTier", 4)
 	        .put("ItemGrade", "고대");
 
 	    // 카테고리 코드 설정
