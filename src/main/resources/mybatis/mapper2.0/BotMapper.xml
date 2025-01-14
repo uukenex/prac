@@ -388,7 +388,7 @@
 		/* bot.xml insertBotWordReplace */
 		INSERT INTO TBOT_LOA_ENGRAVE
 			 (CHAR_NAME
-			 ,INSERT_DATE)
+			 ,MODIFY_DATE)
 		SELECT #{userId, jdbcType=VARCHAR}
 			  ,SYSDATE
 		  FROM DUAL
