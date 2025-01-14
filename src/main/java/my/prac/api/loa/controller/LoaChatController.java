@@ -1345,7 +1345,6 @@ public class LoaChatController {
 		List<HashMap<String, Object>> sortedList = rtnMap2.stream()
 				.filter(x->  Double.parseDouble(x.get("ItemMaxLevel").toString().replaceAll(",", "")) >= 0)
 				.sorted(Comparator.comparingDouble(x-> Double.parseDouble(x.get("ItemMaxLevel").toString().replaceAll(",", ""))))
-				.limit(10)
 				.collect(toReversedList());
 		
 		String mainCharName = sortedList.get(0).get("CharacterName").toString();
