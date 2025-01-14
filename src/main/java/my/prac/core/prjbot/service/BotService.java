@@ -45,6 +45,12 @@ public interface BotService {
 	public HashMap<String,Object> selectIssueCase(HashMap<String, Object> hashMap);
 	
 	public String selectBotWordReplace(HashMap<String,Object> map);
+	
+	public int selectBotLoaEngraveCnt(String userId);
+	public HashMap<String,Object> selectBotLoaEngrave(String userId);
+	public void insertBotLoaEngraveBaseTx(String userId) throws Exception;
+	public void updateBotLoaEngraveTx(HashMap<String,Object> map) throws Exception;
+	
 }
 
 	

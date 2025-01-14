@@ -346,6 +346,7 @@
 	</select>
 	
 	<select id="selectBotWordReplace" resultType="String" parameterType="hashMap">
+		/* bot.xml selectBotWordReplace */
 		SELECT A.RES
 		  FROM TBOT_WORD_REPLACE A
 		 WHERE RES IS NOT NULL
@@ -369,5 +370,35 @@
 			  ,SYSDATE
 		  FROM DUAL
     </insert>
+    
+    <select id="selectBotLoaEngraveCnt" resultType="HashMap" parameterType="String">
+		/* bot.xml selectBotLoaEngraveCnt */
+		SELECT COUNT(1)
+		  FROM TBOT_LOA_ENGRAVE A
+		 WHERE A.CHAR_NAME = #{param1, jdbcType=VARCHAR}
+	</select>
+    <select id="selectBotLoaEngrave" resultType="HashMap" parameterType="String">
+		/* bot.xml selectBotLoaEngrave */
+		SELECT *
+		  FROM TBOT_LOA_ENGRAVE A
+		 WHERE A.CHAR_NAME = #{param1, jdbcType=VARCHAR}
+	</select>
 	
+	<insert id="insertBotLoaEngraveBase" parameterType="String">
+		/* bot.xml insertBotWordReplace */
+		INSERT INTO TBOT_LOA_ENGRAVE
+			 (CHAR_NAME
+			 ,INSERT_DATE)
+		SELECT #{userId, jdbcType=VARCHAR}
+			  ,SYSDATE
+		  FROM DUAL
+    </insert>
+    
+    <update id="updateBotLoaEngrave" parameterType="HashMap">
+		/* bot.xml insertBotWordReplace */
+		 UPDATE TBOT_LOA_ENGRAVE A
+    	    SET ${colName} =  #{realLv, jdbcType=NUMERIC}
+    	      , MODIFY_DATE = SYSDATE
+    	  WHERE A.CHAR_NAME = #{userId, jdbcType=VARCHAR}
+    </update>
 </mapper>

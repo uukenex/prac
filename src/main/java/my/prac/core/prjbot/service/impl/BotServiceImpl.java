@@ -130,4 +130,26 @@ public class BotServiceImpl implements BotService {
 	public String selectBotWordReplace(HashMap<String,Object> map){
 		return botDAO.selectBotWordReplace(map);
 	}
+	
+	public int selectBotLoaEngraveCnt(String userId) {
+		return botDAO.selectBotLoaEngraveCnt(userId);
+	}
+	
+	public HashMap<String,Object> selectBotLoaEngrave(String userId) {
+		return botDAO.selectBotLoaEngrave(userId);
+	}
+	
+	public void insertBotLoaEngraveBaseTx(String userId) throws Exception {
+		if(botDAO.insertBotLoaEngraveBase(userId)< 1) {
+			throw new Exception("저장 실패");
+		}
+	}
+	
+	public void updateBotLoaEngraveTx(HashMap<String,Object> map) throws Exception {
+		if(botDAO.updateBotLoaEngrave(map)< 1) {
+			throw new Exception("저장 실패");
+		}
+	}
+	
+	
 }

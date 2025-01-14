@@ -510,6 +510,17 @@ public class LoaChatController {
 					}
 				}
 				break;
+			case "/각인테스트":
+				if (param1 != null && !param1.equals("")) {
+					try {
+						val+= engraveSaveSearch(param1);
+					} catch (Exception e) {
+						e.printStackTrace();
+						val = errorCodeMng(e,reqMap);
+						val+=enterStr+param1+" 으로 조회됨";
+					}
+				}
+				break;
 			case "/항협": case "/항해": case "/항해협동": case "/ㅎㅎ":
 				val = shipSearch();
 				break;
@@ -1300,6 +1311,58 @@ public class LoaChatController {
 		return retMsg;
 	}
 
+	String engraveSaveSearch(String userId) throws Exception {
+		String ordUserId=userId;
+		userId = URLEncoder.encode(userId, "UTF-8");
+		//String resMsg="";
+		String paramUrl = lostArkAPIurl + "/armories/characters/" + userId + "/engravings";
+		String returnData = LoaApiUtils.connect_process(paramUrl);
+		HashMap<String, Object> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<Map<String, Object>>() {});
+		
+		List<Map<String, Object>> engraves;
+		
+		try {
+			engraves = (List<Map<String, Object>>) rtnMap.get("ArkPassiveEffects");
+		}catch(Exception e){
+			return null;
+		}
+		
+		List<String> engraveList = new ArrayList<>();
+		
+		//select
+		int charEngraveCnt = botService.selectBotLoaEngraveCnt(ordUserId);
+		
+		if(charEngraveCnt == 0) {
+			//insert Logic
+			botService.insertBotLoaEngraveBaseTx(ordUserId);
+		}
+		
+		HashMap<String,Object> charEngrave = botService.selectBotLoaEngrave(ordUserId);
+		
+		//몇개 업데이트 되었는지 확인 insert or update
+		int updateCnt = 0;
+		for (Map<String, Object> engrave : engraves) {
+			//	passiveEffect +=engrave.get("Grade")+" Lv"+engrave.get("Level")+" "+engrave.get("Name");
+			HashMap<String,Object> refreshDataMap = LoaApiParser.engraveSelector(engrave.get("Name").toString(), engrave.get("Grade").toString(), engrave.get("Level").toString());
+			
+			//DB에 있는 레벨
+			int dbLv = Integer.parseInt((String) charEngrave.get(engrave.get("Name").toString()));
+			//새로 불러온 각인 레벨
+			int refreshLv = Integer.parseInt((String) refreshDataMap.get(engrave.get("Name").toString()));
+			
+			if(refreshLv > dbLv) {
+				botService.updateBotLoaEngraveTx(refreshDataMap);
+				updateCnt++;
+			}
+			
+			
+		}
+		
+		//select
+		
+		return "";
+	}
+	
 	String limitSearch(String userId) throws Exception {
 		String ordUserId=userId;
 		userId = URLEncoder.encode(userId, "UTF-8");
@@ -3506,6 +3569,7 @@ public class LoaChatController {
 	    JSONArray options = new JSONArray();
 	    json.put("Sort", "BUY_PRICE")
 	        .put("SortCondition", "ASC")
+	        .put("Tier", 4)
 	        .put("ItemGrade", "고대");
 
 	    // 카테고리 코드 설정

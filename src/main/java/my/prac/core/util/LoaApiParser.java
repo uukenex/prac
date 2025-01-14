@@ -1025,4 +1025,129 @@ public class LoaApiParser {
 	}
 	
 	
+	public static HashMap<String,Object> engraveSelector(String name,String grade,String lv) {
+		
+		String colName="";
+		int realLv=0;
+		
+		switch(name) {
+			case "아드레날린":
+				colName = "ENG01";
+				break;
+			case "원한":
+				colName = "ENG02";
+				break;
+			case "예리한 둔기":
+				colName = "ENG03";
+				break;
+			case "저주받은 인형":
+				colName = "ENG04";
+				break;
+			case "돌격대장":
+				colName = "ENG05";
+				break;
+			case "타격의 대가":
+				colName = "ENG06";
+				break;
+			case "기습의 대가":
+				colName = "ENG07";
+				break;
+			case "질량 증가":
+				colName = "ENG08";
+				break;
+			case "슈퍼 차지":
+				colName = "ENG09";
+				break;
+			case "결투의 대가":
+				colName = "ENG10";
+				break;
+			case "속전속결":
+				colName = "ENG11";
+				break;
+			case "바리케이드":
+				colName = "ENG12";
+				break;
+			case "마나 효율 증가":
+				colName = "ENG13";
+				break;
+			case "정밀 단도":
+				colName = "ENG14";
+				break;
+			case "에테르 포식자":
+				colName = "ENG15";
+				break;
+			case "안정된 상태":
+				colName = "ENG16";
+				break;
+			case "마나의 흐름":
+				colName = "ENG17";
+				break;
+			case "구슬동자":
+				colName = "ENG18";
+				break;
+			case "전문의":
+				colName = "ENG19";
+				break;
+			case "각성":
+				colName = "ENG20";
+				break;
+			case "중갑 착용":
+				colName = "ENG21";
+				break;
+			case "급소 타격":
+				colName = "ENG22";
+				break;
+			default:
+				break;
+		}
+		
+		/** ex) 
+		 * 유물4 = 19
+		 * 유물3 = 18
+		 * 유물2 = 17
+		 * 유물1 = 16
+		 * 유물0 = 15
+		 * 
+		 * 전설4 = 14
+		 * 전설3 = 13
+		 * 전설2 = 12
+		 * 전설1 = 11
+		 * 전설0 = 10
+		 */
+		switch(grade) {
+			case "유물":
+				realLv=15;
+				break;
+			case "전설":
+				realLv=10;
+				break;
+			case "영웅":
+				realLv=5;
+				break;
+		}
+		
+		switch(lv) {
+			case "0":
+				break;
+			case "1":
+				realLv = realLv+1;
+				break;
+			case "2":
+				realLv = realLv+2;
+				break;
+			case "3":
+				realLv = realLv+3;
+				break;
+			case "4":
+				realLv = realLv+4;
+				break;
+		}
+		
+		HashMap<String,Object> engMap = new HashMap<>();
+		engMap.put("colName", colName);
+		engMap.put("realLv", realLv);
+		
+		return engMap;
+	}
+	
 }

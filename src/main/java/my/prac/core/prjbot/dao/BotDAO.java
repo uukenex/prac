@@ -48,5 +48,13 @@ public interface BotDAO {
 	public HashMap<String,Object> selectIssueCase(HashMap<String, Object> hashMap);
 	
 	public String selectBotWordReplace(HashMap<String,Object> map);
+	
+	public int selectBotLoaEngraveCnt(String userId);
+	
+	public HashMap<String,Object> selectBotLoaEngrave(String userId);
+	
+	public int insertBotLoaEngraveBase(String userId);
+	
+	public int updateBotLoaEngrave(HashMap<String,Object> map);
 }
 
