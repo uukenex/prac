@@ -585,6 +585,7 @@ public class LoaChatController {
 						}
 						
 						break;
+						/*
 					case "악세":
 					case "ㅇㅅ":
 						param0="/ㄱㅁㅈㅇㅅ";
@@ -594,7 +595,7 @@ public class LoaChatController {
 						}catch(Exception e) {
 							val = errorCodeMng(e,reqMap);
 						}
-						break;
+						break;*/
 					case "4":
 						param0="/ㄱㅁㅈ4";
 						org_fulltxt = param0;
@@ -645,6 +646,7 @@ public class LoaChatController {
 					val = errorCodeMng(e,reqMap);
 				}
 				break;
+				/*
 			case "/ㄱㅁㅈㅇㅅ":
 			case "/경매장악세":
 				param0="/ㄱㅁㅈㅇㅅ";
@@ -655,7 +657,7 @@ public class LoaChatController {
 					val = errorCodeMng(e,reqMap);
 				}
 				break;
-			
+			*/
 			
 			case "/ㄱㅁㅈㅇㅁ":
 			case "/ㄱㅁㅈ유물":
@@ -3588,41 +3590,41 @@ public class LoaChatController {
 	    	case "고대3":
 	    		if (itemType.equals("낙인상")) {
 		            options.put(createOption(8, 1, 13))
-		            	   .put(createOption(7, 44, 3));
+		            	   .put(createOption(7, 44, 12));
 		        } else if (itemType.equals("공퍼상")) {
 		            options.put(createOption(8, 1, 12))
-		            	   .put(createOption(7, 45, 3));
+		            	   .put(createOption(7, 45, 12));
 		        } else if (itemType.equals("치적상")) {
 		            options.put(createOption(8, 1, 12))
-		                   .put(createOption(7, 49, 3));
+		                   .put(createOption(7, 49, 12));
 		        } else if (itemType.equals("치피상")) {
 		            options.put(createOption(8, 1, 12))
-	                   	   .put(createOption(7, 50, 3));
+	                   	   .put(createOption(7, 50, 12));
 		        } else if (itemType.equals("치적중치피중")) {
 		            options.put(createOption(8, 1, 12))
-                	   	   .put(createOption(7, 49, 2))
-                	   	   .put(createOption(7, 50, 2));
+                	   	   .put(createOption(7, 49, 11))
+                	   	   .put(createOption(7, 50, 11));
 		        } else if (itemType.equals("아공상아피상최생중")) {
 		            options.put(createOption(8, 1, 12))
-		                   .put(createOption(7, 51, 3))
-		                   .put(createOption(7, 52, 3))
-		                   .put(createOption(7, 55, 2));
+		                   .put(createOption(7, 51, 12))
+		                   .put(createOption(7, 52, 12))
+		                   .put(createOption(7, 55, 12));
 		        } else if (itemType.equals("치피상공플상")) {
 		            options.put(createOption(8, 1, 12))
-	                   .put(createOption(7, 50, 3))
-	                   .put(createOption(7, 53, 3));
+	                   .put(createOption(7, 50, 12))
+	                   .put(createOption(7, 53, 12));
 		        }
 	    		break;
 	    	case "고대1":
 	    		 if (itemType.equals("낙인상")) {
 	 	            options.put(createOption(8, 1, 6))
-	 	                   .put(createOption(7, 44, 3));
+	 	                   .put(createOption(7, 44, 12));
 	 	        } else if (itemType.equals("치적상")) {
 	 	            options.put(createOption(8, 1, 5))
-	 	                   .put(createOption(7, 49, 3));
+	 	                   .put(createOption(7, 49, 12));
 	 	        } else if (itemType.equals("치피상")) {
 	 	            options.put(createOption(8, 1, 5))
-	 	                   .put(createOption(7, 50, 3));
+	 	                   .put(createOption(7, 50, 12));
 	 	        }
 	    		break;
 	    }
