@@ -1345,6 +1345,7 @@ public class LoaChatController {
 		List<HashMap<String, Object>> sortedList = rtnMap2.stream()
 				.filter(x->  Double.parseDouble(x.get("ItemMaxLevel").toString().replaceAll(",", "")) >= 0)
 				.sorted(Comparator.comparingDouble(x-> Double.parseDouble(x.get("ItemMaxLevel").toString().replaceAll(",", ""))))
+				.limit(10)
 				.collect(toReversedList());
 		
 		String mainCharName = sortedList.get(0).get("CharacterName").toString();
@@ -1421,6 +1422,9 @@ public class LoaChatController {
 		}
 		
 		String msg ="";
+		int msgcnt=0;
+		List<HashMap<String, Object>> dbList = new ArrayList<>();
+		
 		for (String key : DBcharEngrave.keySet()) {
             Object value = DBcharEngrave.get(key);
             try {
@@ -1429,13 +1433,25 @@ public class LoaChatController {
                 	continue;
                 }
                 HashMap<String,Object> engReverseMap = LoaApiParser.engraveSelectorReverse(key,value.toString());
-                msg+= engReverseMap.get("key")+" : "+engReverseMap.get("value") + enterStr;
-            	
+                dbList.add(engReverseMap);
+                
             }catch(Exception e) {
             	continue;
             }
             
         }
+		
+		dbList = dbList.stream().sorted(Comparator.comparing(x-> x.get("value").toString())).collect(toReversedList());
+		
+		for(HashMap<String,Object> hs : dbList) {
+			msg+= hs.get("key")+" : "+hs.get("value") + enterStr;
+            
+            msgcnt++;
+            if(msgcnt==5) {
+            	msg+=allSeeStr;
+            }
+		}
+		
 		
 		String rtnMsg ="";
 		
