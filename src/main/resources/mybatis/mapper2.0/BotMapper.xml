@@ -371,7 +371,7 @@
 		  FROM DUAL
     </insert>
     
-    <select id="selectBotLoaEngraveCnt" resultType="HashMap" parameterType="String">
+    <select id="selectBotLoaEngraveCnt" resultType="int" parameterType="String">
 		/* bot.xml selectBotLoaEngraveCnt */
 		SELECT COUNT(1)
 		  FROM TBOT_LOA_ENGRAVE A
