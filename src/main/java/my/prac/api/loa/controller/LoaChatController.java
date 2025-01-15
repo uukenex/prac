@@ -1362,6 +1362,9 @@ public class LoaChatController {
 		
 		int updateCnt = 0;
 		int charCnt = 0;
+		
+		List<HashMap<String,Object>> updateDBList = new ArrayList<>();
+		
 		for(HashMap<String,Object> charList : sortedList) {
 			if(charCnt>7) {
 				//캐릭은 7개까지만 각인검색을 함
@@ -1408,8 +1411,11 @@ public class LoaChatController {
 						//System.out.println("검색해온값이 DB와 동일함");
 					}else if(realLv > dbLv) {
 						//System.out.println("DB값보다 실시간이 큼");
-						botService.updateBotLoaEngraveTx(refreshDataMap);
-						updateCnt++;
+						if(!updateDBList.contains(refreshDataMap)) {
+							updateDBList.add(refreshDataMap);
+							botService.updateBotLoaEngraveTx(refreshDataMap);
+							updateCnt++;
+						}
 					}
 				
 				}catch(Exception e) {
