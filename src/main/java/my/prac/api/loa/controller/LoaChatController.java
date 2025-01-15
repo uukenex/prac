@@ -2,7 +2,6 @@ package my.prac.api.loa.controller;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.net.URL;
-import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -1391,9 +1390,7 @@ public class LoaChatController {
 				//	passiveEffect +=engrave.get("Grade")+" Lv"+engrave.get("Level")+" "+engrave.get("Name");
 				HashMap<String,Object> refreshDataMap = LoaApiParser.engraveSelector(engrave.get("Name").toString(), engrave.get("Grade").toString(), engrave.get("Level").toString());
 				refreshDataMap.put("userId",mainCharName);
-				/**
-				 * refreshDataMap = [{ colName:ENG01, realLv:16 }, { colName:ENG02, realLv:16 } ... ]
-				 *  */
+				  //refreshDataMap = [{ colName:ENG01, realLv:16 }, { colName:ENG02, realLv:16 } ... ]
 				
 				try {//db에 저장하지 않는 각인이 있음. 패스패스 43개중 23개만 띄우고있음
 				
@@ -1456,7 +1453,8 @@ public class LoaChatController {
             
         }
 		
-		dbList = dbList.stream().sorted(Comparator.comparing(x-> x.get("value").toString())).collect(toReversedList());
+		dbList = dbList.stream().sorted(Comparator.comparingInt(x-> Integer.parseInt(x.get("value").toString()))
+									    ).collect(toReversedList());
 		
 		for(HashMap<String,Object> hs : dbList) {
 			HashMap<String,Object> engReverseMap = LoaApiParser.engraveSelectorReverse(hs.get("key").toString(),hs.get("value").toString());
