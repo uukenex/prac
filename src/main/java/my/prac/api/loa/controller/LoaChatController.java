@@ -1361,8 +1361,14 @@ public class LoaChatController {
 		HashMap<String,Object> DBcharEngrave = botService.selectBotLoaEngrave(mainCharName);
 		
 		int updateCnt = 0;
-		
+		int charCnt = 0;
 		for(HashMap<String,Object> charList : sortedList) {
+			if(charCnt>7) {
+				//캐릭은 7개까지만 각인검색을 함
+				continue;
+			}
+			charCnt++;
+
 			userId = URLEncoder.encode(charList.get("CharacterName").toString(), "UTF-8");
 			//String resMsg="";
 			String paramUrl = lostArkAPIurl + "/armories/characters/" + userId + "/engravings";
@@ -1431,8 +1437,12 @@ public class LoaChatController {
             	if(Integer.parseInt(value.toString()) == 0) {
                 	continue;
                 }
-                HashMap<String,Object> engReverseMap = LoaApiParser.engraveSelectorReverse(key,value.toString());
-                dbList.add(engReverseMap);
+            	HashMap<String,Object> engReverseOldMap = new HashMap<>();
+            	engReverseOldMap.put("key", key);
+            	engReverseOldMap.put("value", value);
+            	
+                //HashMap<String,Object> engReverseMap = LoaApiParser.engraveSelectorReverse(key,value.toString());
+                dbList.add(engReverseOldMap);
                 
             }catch(Exception e) {
             	continue;
@@ -1443,7 +1453,9 @@ public class LoaChatController {
 		dbList = dbList.stream().sorted(Comparator.comparing(x-> x.get("value").toString())).collect(toReversedList());
 		
 		for(HashMap<String,Object> hs : dbList) {
-			msg+= hs.get("key")+" : "+hs.get("value") + enterStr;
+			HashMap<String,Object> engReverseMap = LoaApiParser.engraveSelectorReverse(hs.get("key").toString(),hs.get("value").toString());
+			
+			msg+= engReverseMap.get("key")+" : "+engReverseMap.get("value") + enterStr;
             
             msgcnt++;
             if(msgcnt==5) {
