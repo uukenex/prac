@@ -285,52 +285,57 @@ public class LoaApiUtils {
 	
 	public static String switchWord(String txt) {
 		if(txt.indexOf("예둔")>=0 || txt.indexOf("예리")>=0) {
-			txt="예리한둔기";
+			txt="예리한 둔기";
 		}else if(txt.indexOf("돌대")>=0 || txt.indexOf("돌격")>=0) {
 			txt="돌격대장";
 		}else if(txt.indexOf("질증")>=0 || txt.indexOf("질량")>=0) {
-			txt="질량증가";
+			txt="질량 증가";
 		}else if(txt.indexOf("슈차")>=0 || txt.indexOf("슈퍼")>=0) {
-			txt="슈퍼차지";
+			txt="슈퍼 차지";
 		}else if(txt.indexOf("마흐")>=0 || txt.indexOf("마나의")>=0) {
-			txt="마나의흐름";
+			txt="마나의 흐름";
 		}else if(txt.indexOf("정단")>=0 || txt.indexOf("정밀")>=0) {
-			txt="정밀단도";
+			txt="정밀 단도";
 		}else if(txt.indexOf("저받")>=0 || txt.indexOf("저주")>=0) {
-			txt="저주받은인형";
+			txt="저주받은 인형";
 		}else if(txt.indexOf("타대")>=0 || txt.indexOf("타격")>=0) {
-			txt="타격의대가";
+			txt="타격의 대가";
 		}else if(txt.indexOf("기대")>=0 || txt.indexOf("기습")>=0) {
-			txt="기습의대가";
+			txt="기습의 대가";
 		}else if(txt.indexOf("속속")>=0 || txt.indexOf("속전")>=0) {
 			txt="속전속결";
 		}else if(txt.indexOf("안상")>=0 || txt.indexOf("안정")>=0) {
-			txt="안정된상태";
+			txt="안정된 상태";
 		}else if(txt.indexOf("에포")>=0 || txt.indexOf("에테")>=0) {
-			txt="에테르포식자";
+			txt="에테르 포식자";
 		}else if(txt.indexOf("결대")>=0 || txt.indexOf("결투")>=0) {
-			txt="결투의대가";
+			txt="결투의 대가";
 		}else if(txt.indexOf("달저")>=0 || txt.indexOf("달인")>=0) {
-			txt="달인의저력";
+			txt="달인의 저력";
 		}else if(txt.indexOf("구동")>=0 || txt.indexOf("구슬")>=0) {
 			txt="구슬동자";
 		}else if(txt.indexOf("마효")>=0 || txt.indexOf("마나효")>=0 || txt.indexOf("마나 효")>=0) {
-			txt="마나효율증가";
+			txt="마나 효율 증가";
 		}else if(txt.indexOf("최마")>=0 || txt.indexOf("최대마나")>=0 || txt.indexOf("최대 마나")>=0) {
-			txt="최대마나증가";
+			txt="최대 마나 증가";
 		}else if(txt.indexOf("정흡")>=0 || txt.indexOf("정기")>=0) {
-			txt="정기흡수";
+			txt="정기 흡수";
 		}else if(txt.indexOf("급타")>=0 || txt.indexOf("급소")>=0) {
-			txt="급소타격";
+			txt="급소 타격";
 		}else if(txt.indexOf("추진")>=0) {
 			txt="추진력";
 		}else if(txt.indexOf("폭발")>=0 || txt.indexOf("폭전")>=0) {
-			txt="폭발물전문가";
+			txt="폭발물 전문가";
 		}else if(txt.indexOf("선수")>=0 || txt.indexOf("선필")>=0) {
 			txt="선수필승";
 		}else if(txt.indexOf("승부")>=0) {
 			txt="승부사";
+		}else if(txt.indexOf("시선")>=0 || txt.indexOf("시집")>=0) {
+			txt="시선 집중";
+		}else if(txt.indexOf("중갑")>=0 || txt.indexOf("중착")>=0) {
+			txt="중갑 착용";
 		}
+		
 		
 		return txt;
 	}
@@ -367,6 +372,8 @@ public class LoaApiUtils {
 			 || txt.indexOf("폭발")>=0
 			 || txt.indexOf("선수")>=0
 			 || txt.indexOf("승부")>=0
+			 || txt.indexOf("시선")>=0
+			 || txt.indexOf("중갑")>=0
 			 
 			){
 				return true;
