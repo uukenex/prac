@@ -284,45 +284,54 @@ public class LoaApiUtils {
 	}
 	
 	public static String switchWord(String txt) {
-		if(txt.indexOf("예둔")>=0) {
+		if(txt.indexOf("예둔")>=0 || txt.indexOf("예리")>=0) {
 			txt="예리";
-		}else if(txt.indexOf("돌대")>=0) {
+		}else if(txt.indexOf("돌대")>=0 || txt.indexOf("돌격")>=0) {
 			txt="돌격";
-		}else if(txt.indexOf("질증")>=0) {
+		}else if(txt.indexOf("질증")>=0 || txt.indexOf("질량")>=0) {
 			txt="질량";
-		}else if(txt.indexOf("슈차")>=0) {
+		}else if(txt.indexOf("슈차")>=0 || txt.indexOf("슈퍼")>=0) {
 			txt="슈퍼";
-		}else if(txt.indexOf("마흐")>=0) {
+		}else if(txt.indexOf("마흐")>=0 || txt.indexOf("마나의")>=0) {
 			txt="마나의";
-		}else if(txt.indexOf("정단")>=0) {
+		}else if(txt.indexOf("정단")>=0 || txt.indexOf("정밀")>=0) {
 			txt="정밀";
-		}else if(txt.indexOf("저받")>=0) {
+		}else if(txt.indexOf("저받")>=0 || txt.indexOf("저주")>=0) {
 			txt="저주";
-		}else if(txt.indexOf("타대")>=0) {
+		}else if(txt.indexOf("타대")>=0 || txt.indexOf("타격")>=0) {
 			txt="타격";
-		}else if(txt.indexOf("기대")>=0) {
+		}else if(txt.indexOf("기대")>=0 || txt.indexOf("기습")>=0) {
 			txt="기습";
-		}else if(txt.indexOf("속속")>=0) {
+		}else if(txt.indexOf("속속")>=0 || txt.indexOf("속전")>=0) {
 			txt="속전";
-		}else if(txt.indexOf("안상")>=0) {
+		}else if(txt.indexOf("안상")>=0 || txt.indexOf("안정")>=0) {
 			txt="안정";
-		}else if(txt.indexOf("에포")>=0) {
+		}else if(txt.indexOf("에포")>=0 || txt.indexOf("에테")>=0) {
 			txt="에테";
-		}else if(txt.indexOf("결대")>=0) {
+		}else if(txt.indexOf("결대")>=0 || txt.indexOf("결투")>=0) {
 			txt="결투";
-		}else if(txt.indexOf("달저")>=0) {
+		}else if(txt.indexOf("달저")>=0 || txt.indexOf("달인")>=0) {
 			txt="달인";
-		}else if(txt.indexOf("구동")>=0) {
+		}else if(txt.indexOf("구동")>=0 || txt.indexOf("구슬")>=0) {
 			txt="구슬";
-		}else if(txt.indexOf("마효")>=0 || txt.indexOf("마나효")>=0) {
+		}else if(txt.indexOf("마효")>=0 || txt.indexOf("마나효")>=0 || txt.indexOf("마나 효")>=0) {
 			txt="마나 효율";
-		}else if(txt.indexOf("최마")>=0 || txt.indexOf("최대마나")>=0) {
+		}else if(txt.indexOf("최마")>=0 || txt.indexOf("최대마나")>=0 || txt.indexOf("최대 마나")>=0) {
 			txt="최대 마나";
-		}else if(txt.indexOf("정흡")>=0) {
+		}else if(txt.indexOf("정흡")>=0 || txt.indexOf("정기")>=0) {
 			txt="정기";
-		}else if(txt.indexOf("급타")>=0) {
+		}else if(txt.indexOf("급타")>=0 || txt.indexOf("급소")>=0) {
 			txt="급소";
+		}else if(txt.indexOf("추진")>=0) {
+			txt="추진";
+		}else if(txt.indexOf("폭발")>=0 || txt.indexOf("폭전")>=0) {
+			txt="폭발";
+		}else if(txt.indexOf("선수")>=0 || txt.indexOf("선필")>=0) {
+			txt="선수";
+		}else if(txt.indexOf("승부")>=0) {
+			txt="승부";
 		}
+		
 		return txt;
 	}
 	
@@ -354,6 +363,10 @@ public class LoaApiUtils {
 			 || txt.indexOf("최대")>=0
 			 || txt.indexOf("정기")>=0
 			 || txt.indexOf("급소")>=0
+			 || txt.indexOf("추진")>=0
+			 || txt.indexOf("폭발")>=0
+			 || txt.indexOf("선수")>=0
+			 || txt.indexOf("승부")>=0
 			 
 			){
 				return true;
