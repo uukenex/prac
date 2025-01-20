@@ -228,7 +228,7 @@ public class LoaChatController {
 						if(tmpVal.equals("")) {
 							return "시세 검색결과가 없습니다.";
 						}
-						
+						val +=param1+" 시세"+enterStr;
 						val += tmpVal;
 						
 					} catch (Exception e) {

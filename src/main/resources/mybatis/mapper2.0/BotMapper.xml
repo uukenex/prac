@@ -283,13 +283,16 @@
 	<select id="selectMarketCondition" resultType="hashMap" parameterType="hashMap">
 		/* bot.xml selectMarketCondition */
 		SELECT XX.DT
-			 ,MIN(XX.GOLD) || '~' || MAX(XX.GOLD) AS SISE
+			 , MIN(XX.GOLD) || '~' || MAX(XX.GOLD) AS SISE
+			 , MAX(XX.INSERT_DATE)
 		  FROM (SELECT X.DT
-				    ,TO_NUMBER(SUBSTR(X.MSG, INSTR(X.MSG, '-') + 2, INSTR(SUBSTR(X.MSG, INSTR(X.MSG, '-') + 2), 'G') - 1)) AS GOLD
+				     , TO_NUMBER(SUBSTR(X.MSG, INSTR(X.MSG, '-') + 2, INSTR(SUBSTR(X.MSG, INSTR(X.MSG, '-') + 2), 'G') - 1)) AS GOLD
+				     , X.INSERT_DATE
 				FROM (
 					 
 					 SELECT AA.MON || '월 ' || AA.WEEK_OF_MONTH || '주차' AS DT
-						   ,SUBSTR(TO_CHAR(B.RES), INSTR(TO_CHAR(B.RES), #{param1, jdbcType=VARCHAR}), INSTR(SUBSTR(TO_CHAR(B.RES), INSTR(TO_CHAR(B.RES), #{param1, jdbcType=VARCHAR}), 30), '♬')) AS MSG
+						  , SUBSTR(TO_CHAR(B.RES), INSTR(TO_CHAR(B.RES), #{param1, jdbcType=VARCHAR}), INSTR(SUBSTR(TO_CHAR(B.RES), INSTR(TO_CHAR(B.RES), #{param1, jdbcType=VARCHAR}), 30), '♬')) AS MSG
+						  , B.INSERT_DATE
 					   FROM TDATE AA, TBOT_WORD_HIS B
 					  WHERE RES IS NOT NULL
 					    AND (B.REQ LIKE '/ㄱㅁㅈ%' OR B.REQ LIKE '/경매장%')
@@ -317,17 +320,7 @@
 					 WHERE X2.DT = XX.DT
 					 GROUP BY DT)
 		 GROUP BY DT
-		UNION
-		SELECT '　' DT
-			 ,SUBSTR(TO_CHAR(A.RES), INSTR(TO_CHAR(A.RES), #{param1, jdbcType=VARCHAR}), INSTR(SUBSTR(TO_CHAR(A.RES), INSTR(TO_CHAR(A.RES), #{param1, jdbcType=VARCHAR}), 30), ' - ')) AS MSG
-		
-		  FROM TBOT_WORD_HIS A
-		 WHERE RES IS NOT NULL
-		   AND (A.REQ LIKE '/ㄱㅁㅈ%' OR A.REQ LIKE '/경매장%')
-		   AND A.RES LIKE '%' || #{param1, jdbcType=VARCHAR} || '%'
-		   AND TO_CHAR(SYSDATE, 'dd') BETWEEN TO_CHAR(A.INSERT_DATE, 'dd') - 3 AND TO_CHAR(A.INSERT_DATE, 'dd') + 3
-		   AND ROWNUM = 1
-		 ORDER BY 1 DESC
+		 ORDER BY 3 DESC
 		
 	</select>
 	
