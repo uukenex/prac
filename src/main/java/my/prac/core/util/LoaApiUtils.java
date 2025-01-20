@@ -286,6 +286,8 @@ public class LoaApiUtils {
 	public static String switchWord(String txt) {
 		if(txt.indexOf("예둔")>=0 || txt.indexOf("예리")>=0) {
 			txt="예리한 둔기";
+		}else if(txt.indexOf("아드")>=0) {
+			txt="아드레날린";
 		}else if(txt.indexOf("돌대")>=0 || txt.indexOf("돌격")>=0) {
 			txt="돌격대장";
 		}else if(txt.indexOf("질증")>=0 || txt.indexOf("질량")>=0) {
