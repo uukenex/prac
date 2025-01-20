@@ -2209,13 +2209,14 @@ public class LoaChatController {
 				break;
 			case "반지":case "귀걸이": case "목걸이":
 				switch(Jsoup.parse((String) ((HashMap<String, Object>) quality_element.get("value")).get("leftStr2")).text()) {
-					case "아이템 티어 3":
+					/*case "아이템 티어 3":
 						resMsg += Jsoup.parse((String) ((HashMap<String, Object>) quality_element.get("value")).get("leftStr0")).text();
 						resMsg += " 품:"+(int)((HashMap<String, Object>) quality_element.get("value")).get("qualityValue");
 						resMsg += enterStr;
 						resMsg += " "+Jsoup.parse((String)((HashMap<String, Object>) tier3_stats.get("value")).get("Element_001")).text();
 						resMsg += enterStr;
 						break;
+					*/
 					case "아이템 티어 4":
 						resMsg += Jsoup.parse((String) ((HashMap<String, Object>) quality_element.get("value")).get("leftStr0")).text();
 						resMsg += " 품:"+(int)((HashMap<String, Object>) quality_element.get("value")).get("qualityValue");
@@ -2326,6 +2327,7 @@ public class LoaChatController {
 				*/
 			case "반지":case "귀걸이": case "목걸이":
 				switch(Jsoup.parse((String) ((HashMap<String, Object>) quality_element.get("value")).get("leftStr2")).text()) {
+				/*
 					case "아이템 티어 3":
 						resMsg += Jsoup.parse((String) ((HashMap<String, Object>) quality_element.get("value")).get("leftStr0")).text();
 						resMsg += " 품:"+(int)((HashMap<String, Object>) quality_element.get("value")).get("qualityValue");
@@ -2333,6 +2335,7 @@ public class LoaChatController {
 						resMsg += " "+Jsoup.parse((String)((HashMap<String, Object>) tier3_stats.get("value")).get("Element_001")).text();
 						resMsg += enterStr;
 						break;
+				*/
 					case "아이템 티어 4":
 						resMsg += Jsoup.parse((String) ((HashMap<String, Object>) quality_element.get("value")).get("leftStr0")).text();
 						resMsg += " 품:"+(int)((HashMap<String, Object>) quality_element.get("value")).get("qualityValue");
