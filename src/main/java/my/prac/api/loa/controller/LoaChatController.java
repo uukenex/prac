@@ -3120,6 +3120,7 @@ public class LoaChatController {
 					//System.out.println("검색해온값이 DB와 동일함");
 				}else if(realLv > dbLv) {
 					//System.out.println("DB값보다 실시간이 큼");
+					refreshDataMap.put("userId",mainCharName);
 					botService.updateBotLoaEngraveTx(refreshDataMap);
 					updateYn = true;
 				}
