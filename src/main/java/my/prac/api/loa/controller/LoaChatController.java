@@ -3163,7 +3163,7 @@ public class LoaChatController {
 			//hs key/value : ENG01/19
 			//engReverseMap key/value : 아드레날린/유물 4레벨
 			int tmpgold = LoaApiUtils.totalGoldForEngrave(engReverseMap.get("key").toString(),hs.get("value").toString());
-			engrave_ment += "-"+engReverseMap.get("key")+" - "+engReverseMap.get("value") +"  [ "+ tmpgold+" gold]" + enterStr;
+			engrave_ment += "-"+engReverseMap.get("key")+" - "+engReverseMap.get("value") +"  [ "+ tmpgold+" 만Gold ]" + enterStr;
 			gradeCnt_engrave += tmpgold;
 		}
 		
