@@ -280,6 +280,7 @@ public class LoaApiUtils {
 				break;
 			default:
 				gold = 0;
+				break;
 		}
 		return (int)gold;
 		
