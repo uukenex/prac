@@ -3162,6 +3162,12 @@ public class LoaChatController {
 			HashMap<String,Object> engReverseMap = LoaApiParser.engraveSelectorReverse(hs.get("key").toString(),hs.get("value").toString());
 			//hs key/value : ENG01/19
 			//engReverseMap key/value : 아드레날린/유물 4레벨
+			
+			//16 = 1레벨 17 2레벨 18 3레벨 19 4레벨
+			if(Integer.parseInt(hs.get("value").toString()) < 16) {
+				continue;
+			}
+			
 			int tmpgold = LoaApiUtils.totalGoldForEngrave(engReverseMap.get("key").toString(),hs.get("value").toString());
 			engrave_ment += "-"+engReverseMap.get("key")+" - "+engReverseMap.get("value") +"  [ "+ tmpgold+" 만Gold ]" + enterStr;
 			gradeCnt_engrave += tmpgold;
