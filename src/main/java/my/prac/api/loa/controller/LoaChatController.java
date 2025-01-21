@@ -2954,10 +2954,6 @@ public class LoaChatController {
 		int cntGem8 =0;
 		int cntGem9 =0;
 		int cntGem10 =0;
-		int cntEngrave4 =0;
-		int cntEngrave3 =0;
-		int cntEngrave2 =0;
-		int cntEngrave1 =0;
 		
 		int gradeCnt =0;
 		
@@ -3164,7 +3160,7 @@ public class LoaChatController {
 		for(HashMap<String,Object> hs : dbList) {
 			HashMap<String,Object> engReverseMap = LoaApiParser.engraveSelectorReverse(hs.get("key").toString(),hs.get("value").toString());
 			int tmpgold = LoaApiUtils.totalGoldForEngrave(engReverseMap.get("key").toString(),engReverseMap.get("value").toString());
-			engrave_ment += engReverseMap.get("key")+" : "+engReverseMap.get("value") +" : "+ tmpgold + enterStr;
+			engrave_ment += engReverseMap.get("key")+" - "+engReverseMap.get("value") +"  [ "+ tmpgold+" gold]" + enterStr;
 			gradeCnt_engrave += tmpgold;
 		}
 		
@@ -3245,26 +3241,6 @@ public class LoaChatController {
 		
 		if(cntGem10 == 0 && cntGem9 ==0 && cntGem8 ==0 && cntGem7 ==0 ) {
 			resMsg += "장착 보석 없음!";
-		}
-		
-		resMsg += enterStr;
-		resMsg += "각인 : " ;
-		
-		if(cntEngrave4>0) {
-			resMsg += "유각4:"+cntEngrave4+" ";
-		}
-		if(cntEngrave3>0) {
-			resMsg += "유각3:"+cntEngrave3+" ";
-		}
-		if(cntEngrave2>0) {
-			resMsg += "유각2:"+cntEngrave2+" ";
-		}
-		if(cntEngrave1>0) {
-			resMsg += "유각1:"+cntEngrave1+" ";
-		}
-		
-		if(cntEngrave4 == 0 && cntEngrave3 ==0 && cntEngrave2 ==0 && cntEngrave1 ==0 ) {
-			resMsg += "장착 유각 없음!";
 		}
 		
 		resMsg += enterStr;

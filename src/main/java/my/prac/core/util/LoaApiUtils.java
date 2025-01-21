@@ -278,6 +278,8 @@ public class LoaApiUtils {
 			case "16":
 				gold = gold*5;
 				break;
+			default:
+				gold = 0;
 		}
 		return (int)gold;
 		
