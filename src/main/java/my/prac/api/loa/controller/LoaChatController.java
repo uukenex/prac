@@ -3159,8 +3159,8 @@ public class LoaChatController {
 		String engrave_ment="";
 		for(HashMap<String,Object> hs : dbList) {
 			HashMap<String,Object> engReverseMap = LoaApiParser.engraveSelectorReverse(hs.get("key").toString(),hs.get("value").toString());
-			int tmpgold = LoaApiUtils.totalGoldForEngrave(engReverseMap.get("key").toString(),engReverseMap.get("value").toString());
-			engrave_ment += engReverseMap.get("key")+" - "+engReverseMap.get("value") +"  [ "+ tmpgold+" gold]" + enterStr;
+			int tmpgold = LoaApiUtils.totalGoldForEngrave(engReverseMap.get("key").toString(),hs.get("value").toString());
+			engrave_ment += "-"+engReverseMap.get("key")+" - "+engReverseMap.get("value") +"  [ "+ tmpgold+" gold]" + enterStr;
 			gradeCnt_engrave += tmpgold;
 		}
 		
