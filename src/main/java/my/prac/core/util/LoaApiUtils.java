@@ -266,16 +266,16 @@ public class LoaApiUtils {
 		}
 		
 		switch(lv) {
-			case "4":
+			case "19":
 				gold = gold*20;
 				break;
-			case "3":
+			case "18":
 				gold = gold*15;
 				break;
-			case "2":
+			case "17":
 				gold = gold*10;
 				break;
-			case "1":
+			case "16":
 				gold = gold*5;
 				break;
 		}

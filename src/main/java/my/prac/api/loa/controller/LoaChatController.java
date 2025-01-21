@@ -2778,28 +2778,26 @@ public class LoaChatController {
 		return g1;
 	}
 	
-	List<Map<String, Object>> totalEngraveSearch(Map<String,Object> rtnMap,String userId) throws Exception {
-		//String ordUserId=userId;
-		//userId = URLEncoder.encode(userId, "UTF-8");
-		//String resMsg="";
-		//String paramUrl = lostArkAPIurl + "/armories/characters/" + userId + "/engravings";
-		//String returnData = LoaApiUtils.connect_process(paramUrl);
-		//HashMap<String, Object> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<Map<String, Object>>() {});
-		
+	List<Map<String, Object>> totalEngraveSearch(List<Map<String,Object>> rtnList,String mainCharName) throws Exception {
 		List<Map<String, Object>> engraves;
+		List<Map<String, Object>> refreshDataList = new ArrayList<>();;
 		
 		try {
-			engraves = (List<Map<String, Object>>) rtnMap.get("ArkPassiveEffects");
+			engraves = rtnList;
 		}catch(Exception e){
+			System.out.println(e.getMessage());
 			return null;
 		}
 		
-		List<String> engraveList = new ArrayList<>();
-		//for (Map<String, Object> engrave : engraves) {
-		//	passiveEffect +=engrave.get("Grade")+" Lv"+engrave.get("Level")+" "+engrave.get("Name");
-		//}
 		
-		return engraves;
+		for (Map<String, Object> engrave : engraves) {
+			HashMap<String,Object> refreshDataMap = LoaApiParser.engraveSelector(engrave.get("Name").toString(), engrave.get("Grade").toString(), engrave.get("Level").toString());
+			if(!refreshDataList.contains(refreshDataMap)) {
+				refreshDataList.add(refreshDataMap);
+			}
+		}
+		
+		return refreshDataList;
 	}
 	
 	
@@ -2934,7 +2932,7 @@ public class LoaChatController {
 		String paramUrl = lostArkAPIurl + "/characters/" + userId + "/siblings";
 		String returnData = LoaApiUtils.connect_process(paramUrl);
 		
-		String resMsg=ordUserId+enterStr+"계정 전투력 정보 v0.8" + enterStr;
+		String resMsg=ordUserId+enterStr+"계정 전투력 정보 v0.9" + enterStr;
 		
 		List<HashMap<String, Object>> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<List<Map<String, Object>>>() {});
 		if(rtnMap.isEmpty()) return "";
@@ -2978,10 +2976,14 @@ public class LoaChatController {
 		List<String> accessoryList1 = new ArrayList<>();
 		List<String> accessoryList2 = new ArrayList<>();
 		
+		String mainCharName = sortedList.get(0).get("CharacterName").toString();
 		String charName = "";
 		String charClassName ="";
 		Double charLv=0.0;
 		HashMap<String,Object> resMap =new HashMap<>();
+		
+		List<HashMap<String,Object>> refreshEngraveList = new ArrayList<>();
+		
 		for(HashMap<String,Object> charList : sortedList) {
 			charName = charList.get("CharacterName").toString();
 			charLv =Double.parseDouble(charList.get("ItemMaxLevel").toString().replaceAll(",", "")); 
@@ -3000,6 +3002,7 @@ public class LoaChatController {
 			resMap = sumTotalPowerSearch2(charName);
 			Map<String, Object> armoryEngraving = new HashMap<>();
 			Map<String, Object> armoryGem = new HashMap<>();
+			List<Map<String,Object>> armoryEngraves = new ArrayList<>();
 			
 			try {
 				armoryEngraving = (Map<String, Object>) resMap.get("ArmoryEngraving");
@@ -3007,6 +3010,18 @@ public class LoaChatController {
 			}
 			try {
 				armoryGem = (Map<String, Object>) resMap.get("ArmoryGem");
+			}catch(Exception e){
+			}
+			try {
+				armoryEngraves = (List<Map<String, Object>>) armoryEngraving.get("ArkPassiveEffects");
+				
+				for (Map<String, Object> engrave : armoryEngraves) {
+					HashMap<String,Object> refreshDataMap = LoaApiParser.engraveSelector(engrave.get("Name").toString(), engrave.get("Grade").toString(), engrave.get("Level").toString());
+					if(!refreshEngraveList.contains(refreshDataMap)) {
+						refreshEngraveList.add(refreshDataMap);
+					}
+				}
+				
 			}catch(Exception e){
 			}
 			
@@ -3021,8 +3036,7 @@ public class LoaChatController {
 				gemList.addAll(charGem);
 			}
 			
-			
-			List<Map<String,Object>> charEngrave = totalEngraveSearch(armoryEngraving,charName);
+			List<Map<String,Object>> charEngrave = totalEngraveSearch(armoryEngraves,mainCharName);
 			if(charEngrave !=null) {
 				engraveList.addAll(charEngrave);
 			}
@@ -3086,39 +3100,73 @@ public class LoaChatController {
 		cntGem8 = Collections.frequency(gemList, 8);
 		cntGem7 = Collections.frequency(gemList, 7);
 		
-		List<String> engrave_hash_chk = new ArrayList<>();
-		String engrave_ment="";
-		for (Map<String, Object> engrave : engraveList) {
-			if(engrave.get("Grade").equals("유물")) {
-				
-				if(engrave_hash_chk.contains(engrave.get("Name").toString())) {
-					continue;
+		
+		//각인 전체조회 로직start
+		int charEngraveCnt = botService.selectBotLoaEngraveCnt(mainCharName);
+		
+		if(charEngraveCnt == 0) {
+			//insert Logic
+			botService.insertBotLoaEngraveBaseTx(mainCharName);
+		}
+		HashMap<String,Object> DBcharEngrave = botService.selectBotLoaEngrave(mainCharName);
+		
+		boolean updateYn = false;
+		//각인 새로운 정보를 담고있는 list: refreshEngraveList-refreshDataMap 들이 담김
+		//refreshDataMap = [{ colName:ENG01, realLv:16 }, { colName:ENG02, realLv:16 } ... ]
+		for (HashMap<String, Object> refreshDataMap : refreshEngraveList) {
+			
+			try {
+				String colName = refreshDataMap.get("colName").toString();
+				int realLv = Integer.parseInt(refreshDataMap.get("realLv").toString());
+				int dbLv   = Integer.parseInt(DBcharEngrave.get(colName).toString());
+			
+				if(realLv == dbLv) {
+					//System.out.println("검색해온값이 DB와 동일함");
+				}else if(realLv > dbLv) {
+					//System.out.println("DB값보다 실시간이 큼");
+					botService.updateBotLoaEngraveTx(refreshDataMap);
+					updateYn = true;
 				}
-				engrave_hash_chk.add(engrave.get("Name").toString());
-				
-				int tmpgold = LoaApiUtils.totalGoldForEngrave(engrave.get("Name").toString(),engrave.get("Level").toString());
-				gradeCnt_engrave +=tmpgold;
-				
-				switch(engrave.get("Level").toString()) {
-					case "4": cntEngrave4++;
-					engrave_ment+=" :"+engrave.get("Name").toString()+" "+engrave.get("Level").toString()+":"+tmpgold+enterStr;
-					break;
-					case "3": cntEngrave3++;
-					engrave_ment+=" :"+engrave.get("Name").toString()+" "+engrave.get("Level").toString()+":"+tmpgold+enterStr;
-					break;
-					case "2": cntEngrave2++;
-					engrave_ment+=" :"+engrave.get("Name").toString()+" "+engrave.get("Level").toString()+":"+tmpgold+enterStr;
-					break;
-					case "1": cntEngrave1++;
-					engrave_ment+=" :"+engrave.get("Name").toString()+" "+engrave.get("Level").toString()+":"+tmpgold+enterStr;
-					break;
-				}
+			}catch(Exception e) {
+				continue;
 			}
-			
-			
 		}
 		
+		if(updateYn) {
+			DBcharEngrave = botService.selectBotLoaEngrave(mainCharName);
+		}
 		
+		List<HashMap<String, Object>> dbList = new ArrayList<>();
+		
+		for (String key : DBcharEngrave.keySet()) {
+            Object value = DBcharEngrave.get(key);
+            try {
+            //userId, modify_date는 여기서 걸러져서 catch됨 
+            	if(Integer.parseInt(value.toString()) == 0) {
+                	continue;
+                }
+            	HashMap<String,Object> engReverseOldMap = new HashMap<>();
+            	engReverseOldMap.put("key", key);
+            	engReverseOldMap.put("value", value);
+            	
+                dbList.add(engReverseOldMap);
+                
+            }catch(Exception e) {
+            	continue;
+            }
+            
+        }
+		
+		dbList = dbList.stream().sorted(Comparator.comparingInt(x-> Integer.parseInt(x.get("value").toString()))
+			    ).collect(toReversedList());
+		
+		String engrave_ment="";
+		for(HashMap<String,Object> hs : dbList) {
+			HashMap<String,Object> engReverseMap = LoaApiParser.engraveSelectorReverse(hs.get("key").toString(),hs.get("value").toString());
+			int tmpgold = LoaApiUtils.totalGoldForEngrave(engReverseMap.get("key").toString(),engReverseMap.get("value").toString());
+			engrave_ment += engReverseMap.get("key")+" : "+engReverseMap.get("value") +" : "+ tmpgold + enterStr;
+			gradeCnt_engrave += tmpgold;
+		}
 		
 		
 		resMsg += "최고레벨: " + maxCharLv + enterStr;
