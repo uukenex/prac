@@ -509,30 +509,6 @@ public class LoaChatController {
 					}
 				}
 				break;
-			case "/각인": case "/ㄱㅇ":
-				
-				param0="/ㄱㅇ";
-				param1 = param1.trim();
-				
-				replace_param = botService.selectBotWordReplace(reqMap);
-				if(replace_param!=null && !replace_param.equals("")) {
-					param1 = replace_param;
-				}
-				
-				fulltxt = param0+" "+param1;
-				org_fulltxt = fulltxt;
-				reqMap.put("fulltxt", fulltxt);
-				if (param1 != null && !param1.equals("")) {
-					try {
-						val+= engraveSaveSearch(param1);
-					} catch (Exception e) {
-						e.printStackTrace();
-						val = errorCodeMng(e,reqMap);
-						val+=enterStr+param1+" 으로 조회됨";
-					}
-				}
-				
-				break;
 			case "/항협": case "/항해": case "/항해협동": case "/ㅎㅎ":
 				val = shipSearch();
 				break;
@@ -597,17 +573,17 @@ public class LoaChatController {
 						}
 						
 						break;
-						/*
+						
 					case "악세":
 					case "ㅇㅅ":
 						param0="/ㄱㅁㅈㅇㅅ";
 						org_fulltxt = param0;
 						try {
-							val = newSearchAcce();
+							val = "악세검색 오류가 있어 당분간 조회불가합니다.";//newSearchAcce();
 						}catch(Exception e) {
 							val = errorCodeMng(e,reqMap);
 						}
-						break;*/
+						break;
 					case "4":
 						param0="/ㄱㅁㅈ4";
 						org_fulltxt = param0;
@@ -658,18 +634,19 @@ public class LoaChatController {
 					val = errorCodeMng(e,reqMap);
 				}
 				break;
-				/*
+				
 			case "/ㄱㅁㅈㅇㅅ":
 			case "/경매장악세":
 				param0="/ㄱㅁㅈㅇㅅ";
 				org_fulltxt = param0;
 				try{
-					val = newSearchAcce();
+					val = "악세검색 오류가 있어 당분간 조회불가합니다.";
+					//val = newSearchAcce();
 				}catch(Exception e) {
 					val = errorCodeMng(e,reqMap);
 				}
 				break;
-			*/
+			
 			
 			case "/ㄱㅁㅈㅇㅁ":
 			case "/ㄱㅁㅈ유물":
@@ -1325,159 +1302,6 @@ public class LoaChatController {
 		return retMsg;
 	}
 
-	String engraveSaveSearch(String userId) throws Exception {
-		String ordUserId=userId;
-		userId = URLEncoder.encode(userId, "UTF-8");
-		// +는 %2B로 치환한다
-		String paramUrl2 = lostArkAPIurl + "/characters/" + userId + "/siblings";
-		String returnData2 ="";
-		try {
-			returnData2 = LoaApiUtils.connect_process(paramUrl2);	
-		}catch(Exception e) {
-			e.printStackTrace();
-			throw new Exception("E0004");
-		}
-		
-		
-		List<HashMap<String, Object>> rtnMap2 = new ObjectMapper().readValue(returnData2,new TypeReference<List<Map<String, Object>>>() {});
-		if(rtnMap2.isEmpty()) return "";
-		List<HashMap<String, Object>> sortedList = rtnMap2.stream()
-				.filter(x->  Double.parseDouble(x.get("ItemMaxLevel").toString().replaceAll(",", "")) >= 0)
-				.sorted(Comparator.comparingDouble(x-> Double.parseDouble(x.get("ItemMaxLevel").toString().replaceAll(",", ""))))
-				.collect(toReversedList());
-		
-		String mainCharName = sortedList.get(0).get("CharacterName").toString();
-		
-		
-		//select
-		int charEngraveCnt = botService.selectBotLoaEngraveCnt(mainCharName);
-		
-		if(charEngraveCnt == 0) {
-			//insert Logic
-			botService.insertBotLoaEngraveBaseTx(mainCharName);
-		}
-		
-		HashMap<String,Object> DBcharEngrave = botService.selectBotLoaEngrave(mainCharName);
-		
-		int updateCnt = 0;
-		int charCnt = 0;
-		
-		List<HashMap<String,Object>> updateDBList = new ArrayList<>();
-		
-		for(HashMap<String,Object> charList : sortedList) {
-			if(charCnt>7) {
-				//캐릭은 7개까지만 각인검색을 함
-				continue;
-			}
-			charCnt++;
-
-			userId = URLEncoder.encode(charList.get("CharacterName").toString(), "UTF-8");
-			//String resMsg="";
-			String paramUrl = lostArkAPIurl + "/armories/characters/" + userId + "/engravings";
-			String returnData = LoaApiUtils.connect_process(paramUrl);
-			HashMap<String, Object> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<Map<String, Object>>() {});
-			
-			List<Map<String, Object>> engraves;
-			
-			try {
-				engraves = (List<Map<String, Object>>) rtnMap.get("ArkPassiveEffects");
-			}catch(Exception e){
-				System.out.println(e.getMessage());
-				continue;
-			}
-			
-			for (Map<String, Object> engrave : engraves) {
-				//	passiveEffect +=engrave.get("Grade")+" Lv"+engrave.get("Level")+" "+engrave.get("Name");
-				HashMap<String,Object> refreshDataMap = LoaApiParser.engraveSelector(engrave.get("Name").toString(), engrave.get("Grade").toString(), engrave.get("Level").toString());
-				refreshDataMap.put("userId",mainCharName);
-				  //refreshDataMap = [{ colName:ENG01, realLv:16 }, { colName:ENG02, realLv:16 } ... ]
-				
-				try {//db에 저장하지 않는 각인이 있음. 패스패스 43개중 23개만 띄우고있음
-				
-					String colName = refreshDataMap.get("colName").toString();
-					int realLv = Integer.parseInt(refreshDataMap.get("realLv").toString());
-					int dbLv   = Integer.parseInt(DBcharEngrave.get(colName).toString());
-					/*
-					charEngrave.get("ENG01") =>16
-					==>colName = ENG01
-					
-					realLv => 16
-					*/
-					
-					if(realLv == dbLv) {
-						//System.out.println("검색해온값이 DB와 동일함");
-					}else if(realLv > dbLv) {
-						//System.out.println("DB값보다 실시간이 큼");
-						if(!updateDBList.contains(refreshDataMap)) {
-							updateDBList.add(refreshDataMap);
-							botService.updateBotLoaEngraveTx(refreshDataMap);
-							updateCnt++;
-						}
-					}
-				
-				}catch(Exception e) {
-					System.out.println(e.getMessage());
-			    	continue;
-			    }
-				
-				
-			}
-			
-		}
-		
-		if(updateCnt>0) {
-			DBcharEngrave = botService.selectBotLoaEngrave(mainCharName);
-		}
-		
-		String msg ="";
-		int msgcnt=0;
-		List<HashMap<String, Object>> dbList = new ArrayList<>();
-		
-		for (String key : DBcharEngrave.keySet()) {
-            Object value = DBcharEngrave.get(key);
-            try {
-            //userId, modify_date는 여기서 걸러져서 catch됨 
-            	if(Integer.parseInt(value.toString()) == 0) {
-                	continue;
-                }
-            	HashMap<String,Object> engReverseOldMap = new HashMap<>();
-            	engReverseOldMap.put("key", key);
-            	engReverseOldMap.put("value", value);
-            	
-                //HashMap<String,Object> engReverseMap = LoaApiParser.engraveSelectorReverse(key,value.toString());
-                dbList.add(engReverseOldMap);
-                
-            }catch(Exception e) {
-            	continue;
-            }
-            
-        }
-		
-		dbList = dbList.stream().sorted(Comparator.comparingInt(x-> Integer.parseInt(x.get("value").toString()))
-									    ).collect(toReversedList());
-		
-		for(HashMap<String,Object> hs : dbList) {
-			HashMap<String,Object> engReverseMap = LoaApiParser.engraveSelectorReverse(hs.get("key").toString(),hs.get("value").toString());
-			
-			msg+= engReverseMap.get("key")+" : "+engReverseMap.get("value") + enterStr;
-            
-            msgcnt++;
-            if(msgcnt==5) {
-            	msg+=allSeeStr;
-            }
-		}
-		
-		
-		String rtnMsg ="";
-		
-		if(!ordUserId.equals(mainCharName)){
-			rtnMsg += ordUserId+" 로 조회하였지만,"+enterStr+" 계정내 전체캐릭터정보가 메인캐릭터 "+mainCharName+"로 통합됨"+enterStr;
-		}
-		
-		rtnMsg += mainCharName+" "+updateCnt+" 업데이트완료." + enterStr + msg;
-		return rtnMsg;
-	}
-	
 	String limitSearch(String userId) throws Exception {
 		String ordUserId=userId;
 		userId = URLEncoder.encode(userId, "UTF-8");
@@ -2770,7 +2594,6 @@ public class LoaChatController {
 				}
 			}
 		}catch(Exception e) {
-			e.printStackTrace();
 			return null;
 		}
 		
@@ -2981,7 +2804,13 @@ public class LoaChatController {
 		
 		List<HashMap<String,Object>> refreshEngraveList = new ArrayList<>();
 		
+		int charCnt =0;
 		for(HashMap<String,Object> charList : sortedList) {
+			
+			if(charCnt>8) {
+				break;
+			}
+			
 			charName = charList.get("CharacterName").toString();
 			charLv =Double.parseDouble(charList.get("ItemMaxLevel").toString().replaceAll(",", "")); 
 			charClassName = charList.get("CharacterClassName").toString();
@@ -3048,6 +2877,8 @@ public class LoaChatController {
 			if(acceossory2 !=null) {
 				accessoryList2.addAll(acceossory2);
 			}
+			
+			charCnt++;
 		}
 		
 		for(int weapon: weaponList) {
