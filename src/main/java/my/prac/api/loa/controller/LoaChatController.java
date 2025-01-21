@@ -2784,18 +2784,19 @@ public class LoaChatController {
 		
 		try {
 			engraves = rtnList;
+		
+			for (Map<String, Object> engrave : engraves) {
+				HashMap<String,Object> refreshDataMap = LoaApiParser.engraveSelector(engrave.get("Name").toString(), engrave.get("Grade").toString(), engrave.get("Level").toString());
+				if(!refreshDataList.contains(refreshDataMap)) {
+					refreshDataList.add(refreshDataMap);
+				}
+			}
+			
 		}catch(Exception e){
 			System.out.println(e.getMessage());
 			return null;
 		}
 		
-		
-		for (Map<String, Object> engrave : engraves) {
-			HashMap<String,Object> refreshDataMap = LoaApiParser.engraveSelector(engrave.get("Name").toString(), engrave.get("Grade").toString(), engrave.get("Level").toString());
-			if(!refreshDataList.contains(refreshDataMap)) {
-				refreshDataList.add(refreshDataMap);
-			}
-		}
 		
 		return refreshDataList;
 	}
