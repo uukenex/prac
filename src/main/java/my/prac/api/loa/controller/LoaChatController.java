@@ -562,6 +562,7 @@ public class LoaChatController {
 							val = errorCodeMng(e,reqMap);
 						}
 						break;
+						/*
 					case "전설":
 					case "ㅈㅅ":
 						param0="/ㄱㅁㅈㅈㅅ";
@@ -573,7 +574,8 @@ public class LoaChatController {
 						}
 						
 						break;
-						
+						*/
+						/*
 					case "악세":
 					case "ㅇㅅ":
 						param0="/ㄱㅁㅈㅇㅅ";
@@ -584,6 +586,7 @@ public class LoaChatController {
 							val = errorCodeMng(e,reqMap);
 						}
 						break;
+						*/
 					case "4":
 						param0="/ㄱㅁㅈ4";
 						org_fulltxt = param0;
@@ -660,6 +663,7 @@ public class LoaChatController {
 					val = errorCodeMng(e,reqMap);
 				}
 				break;
+				/*
 			case "/경매장전설":
 			case "/ㄱㅁㅈㅈㅅ":
 				param0="/ㄱㅁㅈㅈㅅ";
@@ -670,7 +674,7 @@ public class LoaChatController {
 					val = errorCodeMng(e,reqMap);
 				}
 				break;		
-				
+				*/
 			case "/공지":
 				List<String> list =botService.selectRoomList(reqMap);
 				
@@ -1076,6 +1080,7 @@ public class LoaChatController {
 		msg += enterStr ;
 		msg += enterStr + "⭐에픽 레이드⭐";
 		msg += enterStr + "✓베히모스"+enterStr+" ↳ 18,500G";
+		msg += enterStr ;
 		/*
 		msg += enterStr + "강습 레이드";
 		msg += enterStr + "8인[1640]"+enterStr+"✓18,500G";
@@ -4102,8 +4107,8 @@ public class LoaChatController {
 		
 		resMsg += "§ 추가 명령어(초성가능)"+enterStr;
 		resMsg += "티어별 조회: 경매장4/경매장3"+enterStr;
-		resMsg += "각인서 조회: 경매장전설/경매장유물"+enterStr;
-		resMsg += "연마악세 조회: 경매장악세"+enterStr;
+		resMsg += "각인서 조회: 경매장유물"+enterStr;
+		//resMsg += "연마악세 조회: 경매장악세"+enterStr;
 		
 		return resMsg;
 	}
