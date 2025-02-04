@@ -2808,9 +2808,6 @@ public class LoaChatController {
 		String ordUserId=userId;
 		userId = URLEncoder.encode(userId, "UTF-8");
 		// +는 %2B로 치환한다
-		String paramUrl = lostArkAPIurl + "/characters/" + userId + "/siblings";
-		String returnData = LoaApiUtils.connect_process(paramUrl);
-		
 		String resMsg=ordUserId+enterStr+"캐릭터 전투력 정보 v0.9" + enterStr;
 		
 		int cntCharLv1680 =0;
@@ -2848,6 +2845,7 @@ public class LoaChatController {
 		
 		String charName = "";
 		String charClassName ="";
+		
 		HashMap<String,Object> resMap =new HashMap<>();
 		
 		List<HashMap<String,Object>> refreshEngraveList = new ArrayList<>();
@@ -2873,8 +2871,7 @@ public class LoaChatController {
 		}catch(Exception e){
 		}
 		
-		
-		
+		charClassName = armoryProfile.get("CharacterClassName").toString();
 		
 		weaponList.add(totalEquipmentSearch(resMap,charName));
 		
@@ -2979,9 +2976,8 @@ public class LoaChatController {
 			
 			
 		}
-		
 		String charLv = armoryProfile.get("ItemMaxLevel").toString().replaceAll(",", "");
-		resMsg += "최고레벨: " + charLv + enterStr;
+		resMsg += charLv+"Lv" + enterStr;
 		Double lv = Double.parseDouble(charLv);
 		if(lv>=1680) {
 			gradeCnt_lv += 200;
@@ -3000,11 +2996,6 @@ public class LoaChatController {
 		}
 		if(lv>=1730) {
 			gradeCnt_lv += 190;
-		}
-		
-		resMsg += "1680이상캐릭터수 : " +cntCharLv1680+ enterStr;
-		if(cntCharLv1680>0) {
-			gradeCnt_subChar += 200*(cntCharLv1680-1);
 		}
 		
 		resMsg += "무기 : " ;
