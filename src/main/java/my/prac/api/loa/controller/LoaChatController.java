@@ -1654,8 +1654,8 @@ public class LoaChatController {
 					String newEnhanceInfo2="";
 					newEnhanceInfo2 = Jsoup.parse((String) new_refine_element.get("value")).text();
 					newEnhanceInfo2 = LoaApiUtils.filterText(newEnhanceInfo2);
-					newEnhanceInfo2 = newEnhanceInfo2.replaceAll("30단계 - 기본 효과 \\+2% ", "");
-					newEnhanceInfo2 = newEnhanceInfo2.replaceAll("40단계 - 기본 효과 \\+3% ", "");
+					newEnhanceInfo2 = newEnhanceInfo2.replaceAll(" 30단계 - 기본 효과 \\+2%", "");
+					newEnhanceInfo2 = newEnhanceInfo2.replaceAll(" 40단계 - 기본 효과 \\+3%", "");
 					newEnhanceInfo2 = newEnhanceInfo2.replace("단계", "");
 					newEnhanceInfo2 = StringUtils.leftPad( newEnhanceInfo2, 2, " ");
 					resField1 += "[+"+newEnhanceInfo2+"]";
