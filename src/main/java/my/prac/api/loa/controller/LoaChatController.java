@@ -255,6 +255,7 @@ public class LoaChatController {
 					
 				}
 				val += enterStr;
+				passYn=true;
 				break;
 			case "/골드": case "/ㄱㄷ": case "/클골": case "/ㅋㄱ":
 				val  = checkGoldList();
@@ -526,7 +527,7 @@ public class LoaChatController {
 						"쌀국수", "김치", "물", "수제비", "카레", "떡국", "라멘","텐동","유린기"};
 				Random random2 = new Random();
 				val = menu_list2[random2.nextInt(menu_list2.length)];
-				
+				passYn=true;
 				break;
 			case "/저메추":
 				String[] menu_list = { "피자", "탕수육", "치킨", "샐러드", "마라탕", "양꼬치", "삼겹살", "설렁탕", "김치찌개", "된장찌개", "삼치튀김", "참치마요",
@@ -536,7 +537,7 @@ public class LoaChatController {
 						"텐동", "유린기", "물회", "이베리코", "핫초코", "핫식스", "귤", "생강차", "부추전/파전"};
 				Random random3 = new Random();
 				val = menu_list[random3.nextInt(menu_list.length)];
-
+				passYn=true;
 				break;
 			case "/챗":
 				fulltxt = fulltxt.substring(param0.length()).trim();
@@ -637,7 +638,7 @@ public class LoaChatController {
 					val = errorCodeMng(e,reqMap);
 				}
 				break;
-				
+				/*
 			case "/ㄱㅁㅈㅇㅅ":
 			case "/경매장악세":
 				param0="/ㄱㅁㅈㅇㅅ";
@@ -649,7 +650,7 @@ public class LoaChatController {
 					val = errorCodeMng(e,reqMap);
 				}
 				break;
-			
+			*/
 			
 			case "/ㄱㅁㅈㅇㅁ":
 			case "/ㄱㅁㅈ유물":
@@ -1626,6 +1627,8 @@ public class LoaChatController {
 					String newEnhanceInfo2="";
 					newEnhanceInfo2 = Jsoup.parse((String) new_refine_element.get("value")).text();
 					newEnhanceInfo2 = LoaApiUtils.filterText(newEnhanceInfo2);
+					newEnhanceInfo2 = newEnhanceInfo2.replaceAll("30단계 - 기본 효과 \\+2%", "");
+					newEnhanceInfo2 = newEnhanceInfo2.replaceAll("40단계 - 기본 효과 \\+3%", "");
 					newEnhanceInfo2 = newEnhanceInfo2.replace("단계", "");
 					newEnhanceInfo2 = StringUtils.leftPad( newEnhanceInfo2, 2, " ");
 					resField1 += "[+"+newEnhanceInfo2+"]";
@@ -2761,7 +2764,7 @@ public class LoaChatController {
 		String paramUrl = lostArkAPIurl + "/characters/" + userId + "/siblings";
 		String returnData = LoaApiUtils.connect_process(paramUrl);
 		
-		String resMsg=ordUserId+enterStr+"계정 전투력 정보 v0.9" + enterStr;
+		String resMsg=ordUserId+enterStr+"원정대 전투력 정보 v0.9" + enterStr;
 		
 		List<HashMap<String, Object>> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<List<Map<String, Object>>>() {});
 		if(rtnMap.isEmpty()) return "";
@@ -4106,8 +4109,9 @@ public class LoaChatController {
 		
 		
 		resMsg += "§ 추가 명령어(초성가능)"+enterStr;
-		resMsg += "티어별 조회: 경매장4/경매장3"+enterStr;
-		resMsg += "각인서 조회: 경매장유물"+enterStr;
+		resMsg += "티어별조회:/경매장4 /경매장3"+enterStr;
+		resMsg += "각인서조회:/경매장유물"+enterStr;
+		resMsg += "시세 조회:/시세 각인명"+enterStr;
 		//resMsg += "연마악세 조회: 경매장악세"+enterStr;
 		
 		return resMsg;
