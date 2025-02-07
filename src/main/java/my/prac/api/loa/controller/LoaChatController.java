@@ -1099,7 +1099,7 @@ public class LoaChatController {
 		String msg = "";
 		//msg += enterStr + "종막[ "+enterStr+"[하 0G/노 0G]";
 		msg += enterStr + "⭐카제로스 레이드⭐";
-		msg += enterStr + "✓3막-모르둠"+enterStr+" ↳ [노 28,000G/하 34,000G]";
+		msg += enterStr + "✓3막-모르둠"+enterStr+" ↳ [노 28,000G/하 38,000G]";
 		msg += enterStr + "✓2막-아브렐슈드"+enterStr+" ↳ [노 25,000G/하 30,500G]";
 		msg += enterStr + "✓1막-에기르"+enterStr+" ↳ [노 23,000G/하 27,500G]";
 		msg += enterStr + "✓서막-에키드나"+enterStr+" ↳ [노 14,500G/하 18,500G]";
