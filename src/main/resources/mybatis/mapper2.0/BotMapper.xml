@@ -183,7 +183,7 @@
 		SELECT OUT_PRM
 		  FROM (SELECT A.OUT_PRM
 				FROM TBOT_IMG_MCH A
-			    WHERE A.IN_PRM = #{param0, jdbcType=VARCHAR}
+			    WHERE A.IN_PRM LIKE #{param0, jdbcType=VARCHAR}||'%'
 			      AND (A.ROOM_NAME IS NULL OR A.ROOM_NAME = #{roomName, jdbcType=VARCHAR})
 			    ORDER BY DBMS_RANDOM.VALUE)
 		 WHERE ROWNUM = 1   
