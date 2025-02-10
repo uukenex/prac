@@ -3853,9 +3853,13 @@ public class LoaChatController {
 		}
 		
 		
+		String resMsg="";
+		if(limitLv > 50) {
+			resMsg=ordUserId+" 부캐 정보 "+limitLv+"↑" + enterStr;
+		}else {
+			resMsg=ordUserId+" 부캐 정보" + enterStr;
+		}
 		
-		
-		String resMsg=ordUserId+" 부캐 정보" + enterStr;
 		resMsg += "§부캐 보석&엘초: /부캐2 로 변경됨!"+enterStr;
 		
 		List<HashMap<String, Object>> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<List<Map<String, Object>>>() {});
@@ -3883,7 +3887,7 @@ public class LoaChatController {
 				resMsg += enterStr;
 				
 			}else {
-				
+				charCnt++;
 				resMsg2 += charList.get("ServerName").toString() + enterStr;
 				resMsg2 += "[" + LoaApiUtils.shortClassName(charList.get("CharacterClassName").toString()) + "]";
 				resMsg2 += "("+charList.get("ItemMaxLevel").toString().replaceAll(",", "")+")";
@@ -3893,7 +3897,12 @@ public class LoaChatController {
 			}
 			
 		}
-		resMsg = resMsg + allSeeStr + resMsg2;
+		if(charCnt>6) {
+			resMsg = resMsg + allSeeStr + resMsg2;
+		}else {
+			resMsg = resMsg + resMsg2;
+		}
+		
 		
 		return resMsg;
 	}
