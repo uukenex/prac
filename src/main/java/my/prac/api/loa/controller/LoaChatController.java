@@ -437,7 +437,7 @@ public class LoaChatController {
 						param1 = replace_param;
 					}
 					
-					fulltxt = param0+" "+param1;
+					fulltxt = param0+" "+param1+" "+param2;
 					org_fulltxt = fulltxt;
 					reqMap.put("fulltxt", fulltxt);
 					
