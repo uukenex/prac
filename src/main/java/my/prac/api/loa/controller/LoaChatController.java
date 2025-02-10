@@ -156,6 +156,7 @@ public class LoaChatController {
 		HashMap<String, Object> reqMap = new HashMap<>();
 		reqMap.put("param0", param0);
 		reqMap.put("param1", param1);
+		reqMap.put("param2", param2);
 		reqMap.put("roomName", roomName);
 		reqMap.put("userName", sender);
 		reqMap.put("fulltxt", fulltxt);
@@ -439,9 +440,16 @@ public class LoaChatController {
 					fulltxt = param0+" "+param1;
 					org_fulltxt = fulltxt;
 					reqMap.put("fulltxt", fulltxt);
+					
+					int limitLv =50;
+					try {
+						limitLv = Integer.parseInt(param2);
+					}catch(Exception e) {
+						limitLv = 50;
+					}
 					try {
 						val = supporters(param1);
-						val+= subCharacterInfoSearch1(param1);
+						val+= subCharacterInfoSearch1(param1,limitLv);
 					} catch (Exception e) {
 						e.printStackTrace();
 						val = errorCodeMng(e,reqMap);
@@ -3831,7 +3839,7 @@ public class LoaChatController {
 	
 	
 	
-	String subCharacterInfoSearch1(String userId) throws Exception {
+	String subCharacterInfoSearch1(String userId,int limitLv) throws Exception {
 		String ordUserId=userId;
 		userId = URLEncoder.encode(userId, "UTF-8");
 		// +는 %2B로 치환한다
@@ -3853,7 +3861,7 @@ public class LoaChatController {
 		List<HashMap<String, Object>> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<List<Map<String, Object>>>() {});
 		if(rtnMap.isEmpty()) return "";
 		List<HashMap<String, Object>> sortedList = rtnMap.stream()
-				.filter(x->  Double.parseDouble(x.get("ItemMaxLevel").toString().replaceAll(",", "")) >= 0)
+				.filter(x->  Double.parseDouble(x.get("ItemMaxLevel").toString().replaceAll(",", "")) >= limitLv)
 				.sorted(Comparator.comparingDouble(x-> Double.parseDouble(x.get("ItemMaxLevel").toString().replaceAll(",", ""))))
 				.collect(toReversedList());
 		
