@@ -28,6 +28,7 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -50,6 +51,9 @@ import my.prac.core.util.LoaApiUtils;
 public class LoaChatController {
 	static Logger logger = LoggerFactory.getLogger(LoaChatController.class);
 
+	@Autowired
+	LoaChatSubController sub;
+	
 	@Resource(name = "core.prjbot.BotService")
 	BotService botService;
 	
@@ -536,6 +540,48 @@ public class LoaChatController {
 						val+=enterStr+param1+" 으로 조회됨";
 					}
 				}
+				break;
+			case "/ㅈㅌㄹ21":
+				param0="/ㅈㅌㄹ21";
+				param1 = param1.trim();
+				
+				fulltxt = param0+" "+param1;
+				org_fulltxt = fulltxt;
+				reqMap.put("fulltxt", fulltxt);
+				if (param1 != null && !param1.equals("")) {
+					try {
+						//val = "v0.3으로 패치중입니다.";
+						
+						val = supporters(param1);
+						val+= sub.sumTotalPowerSearch(param1);
+					} catch (Exception e) {
+						e.printStackTrace();
+						val = errorCodeMng(e,reqMap);
+						val+=enterStr+param1+" 으로 조회됨";
+					}
+				}
+				passYn=true;
+				break;
+			case "/ㅈㅌㄹ22":
+				param0="/ㅈㅌㄹ22";
+				param1 = param1.trim();
+				
+				fulltxt = param0+" "+param1;
+				org_fulltxt = fulltxt;
+				reqMap.put("fulltxt", fulltxt);
+				if (param1 != null && !param1.equals("")) {
+					try {
+						//val = "v0.3으로 패치중입니다.";
+						
+						val = supporters(param1);
+						val+= sub.sumTotalPowerSearchByMainChar(param1);
+					} catch (Exception e) {
+						e.printStackTrace();
+						val = errorCodeMng(e,reqMap);
+						val+=enterStr+param1+" 으로 조회됨";
+					}
+				}
+				passYn=true;
 				break;
 			case "/항협": case "/항해": case "/항해협동": case "/ㅎㅎ":
 				val = shipSearch();
