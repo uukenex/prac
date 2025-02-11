@@ -142,6 +142,10 @@ public class LoaChatController {
 		reqMap.put("roomName", roomName);
 		reqMap.put("userName", sender);
 		
+		if(param2!=null && param2.equals("undefined")) {
+			param2 = "";
+		}
+		
 		if(param0.startsWith("[")) {
 			return emotionMsg(param0,roomName);
 		}else if(param0.startsWith("/")) {
