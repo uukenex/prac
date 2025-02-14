@@ -3346,7 +3346,7 @@ public class LoaChatController {
 		resMsg += "http://rgb-tns.dev-apc.com/in/totalGold3";
 		
 		//resMsg += miniGemCntSearch(charList.get("CharacterName").toString());//얘는 엔터포함됨
-		if(gradeCnt_gem !=0) {
+		if(gradeCnt_gem ==0) {
 			gradeCnt=0;
 		}
 		saveMap.put("score", gradeCnt);
@@ -3887,7 +3887,7 @@ public class LoaChatController {
 		resMsg += "http://rgb-tns.dev-apc.com/in/totalGold3";
 		
 		
-		if(gradeCnt_gem !=0) {
+		if(gradeCnt_gem ==0) {
 			gradeCnt=0;
 		}
 		saveMap.put("score", gradeCnt);
