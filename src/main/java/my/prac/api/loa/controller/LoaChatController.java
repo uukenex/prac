@@ -533,7 +533,6 @@ public class LoaChatController {
 				try {
 					
 					if(!saveMap.get("score").toString().equals("0")) {
-						saveMap.put("roomName", roomName);
 						saveMap.put("targetGb", "1");
 						botService.upsertBotPowerRankTx(saveMap);
 					}
@@ -572,8 +571,7 @@ public class LoaChatController {
 
 				try {
 					if(!saveMap.get("score").toString().equals("0")) {
-						saveMap.put("roomName", roomName);
-						saveMap.put("targetGb", "1");
+						saveMap.put("targetGb", "2");
 						botService.upsertBotPowerRankTx(saveMap);
 					}
 				}catch(Exception e) {
@@ -582,7 +580,28 @@ public class LoaChatController {
 				break;
 			case "/랭킹": case "/ㄹㅋ":
 				List<HashMap<String,Object>> hs;
+
+				String guildName ="";
+				switch (roomName) {
+					case "로아냥떼":
+						guildName = "냥떼목장";
+						break;
+					case "카단 포핑":
+						guildName = "포핑";
+						break;
+					case "test123":
+					case "test":
+						guildName = "냥떼목장";
+						break;
+					default:
+						guildName = "";
+						break;
+				}
 				
+				if(guildName.equals("")) {
+					break;
+				}
+				reqMap.put("roomName", guildName);
 				reqMap.put("targetGb", "1");
 				hs = botService.selectRoomBotPowerRank(reqMap);
 				val +=roomName+" 원정대 전투력 랭킹"+enterStr;
@@ -2951,6 +2970,7 @@ public class LoaChatController {
 		
 		String charName = "";
 		String charClassName ="";
+		String guildName="";
 		
 		HashMap<String,Object> resMap =new HashMap<>();
 		
@@ -2978,6 +2998,11 @@ public class LoaChatController {
 		}
 		
 		charClassName = armoryProfile.get("CharacterClassName").toString();
+		try {
+			guildName = armoryProfile.get("GuildName").toString();
+		}catch(Exception e){
+			
+		}
 		
 		weaponList.add(totalEquipmentSearch(resMap,charName));
 		
@@ -3351,7 +3376,8 @@ public class LoaChatController {
 		}
 		saveMap.put("score", gradeCnt);
 		saveMap.put("charName", charName);
-		saveMap.put("mainCharName", charName);
+		saveMap.put("roomName", guildName);
+		saveMap.put("mainCharName", "");
 		
 		return resMsg;
 	}
@@ -3404,9 +3430,16 @@ public class LoaChatController {
 		List<String> accessoryList2 = new ArrayList<>();
 		
 		String mainCharName = sortedList.get(0).get("CharacterName").toString();
+		String guildName ="";
+		try {
+			guildName = sortedList.get(0).get("GuildName").toString();
+		}catch(Exception e){
+			
+		}
 		String charName = "";
 		String charClassName ="";
 		Double charLv=0.0;
+		
 		HashMap<String,Object> resMap =new HashMap<>();
 		
 		List<HashMap<String,Object>> refreshEngraveList = new ArrayList<>();
@@ -3893,6 +3926,7 @@ public class LoaChatController {
 		saveMap.put("score", gradeCnt);
 		saveMap.put("charName", charName);
 		saveMap.put("mainCharName", mainCharName);
+		saveMap.put("roomName", guildName);
 		
 		//resMsg += miniGemCntSearch(charList.get("CharacterName").toString());//얘는 엔터포함됨
 		
