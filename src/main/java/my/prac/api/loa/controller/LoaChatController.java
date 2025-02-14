@@ -170,6 +170,8 @@ public class LoaChatController {
 		boolean passYn=false;
 		String replace_param="";
 		
+		HashMap<String,Object> saveMap = new HashMap<>();
+		
 		try {
 			if(fulltxt.length()>90) {
 				val = "너무길어요!";
@@ -517,14 +519,28 @@ public class LoaChatController {
 						//val = "v0.3으로 패치중입니다.";
 						
 						val = supporters(param1);
-						val+= sumTotalPowerSearch(param1);
+						val+= sumTotalPowerSearch(param1,saveMap);
 						val+= tossAccount2();
+						
+						
 					} catch (Exception e) {
 						e.printStackTrace();
 						val = errorCodeMng(e,reqMap);
 						val+=enterStr+param1+" 으로 조회됨";
 					}
 				}
+				
+				try {
+					
+					if(!saveMap.get("score").toString().equals("0")) {
+						saveMap.put("roomName", roomName);
+						saveMap.put("targetGb", "1");
+						botService.upsertBotPowerRankTx(saveMap);
+					}
+				}catch(Exception e) {
+					System.out.println("전투력 저장만안됨");
+				}
+				
 				break;
 			case "/전투력2":
 			case "/ㅈㅌㄹ2":
@@ -544,7 +560,7 @@ public class LoaChatController {
 						//val = "v0.3으로 패치중입니다.";
 						
 						val = supporters(param1);
-						val+= sumTotalPowerSearchByMainChar(param1);
+						val+= sumTotalPowerSearchByMainChar(param1,saveMap);
 						val+= tossAccount2();
 					} catch (Exception e) {
 						e.printStackTrace();
@@ -552,6 +568,38 @@ public class LoaChatController {
 						val+=enterStr+param1+" 으로 조회됨";
 					}
 				}
+				
+
+				try {
+					if(!saveMap.get("score").toString().equals("0")) {
+						saveMap.put("roomName", roomName);
+						saveMap.put("targetGb", "1");
+						botService.upsertBotPowerRankTx(saveMap);
+					}
+				}catch(Exception e) {
+					System.out.println("전투력 저장만안됨");
+				}
+				break;
+			case "/랭킹": case "/ㄹㅋ":
+				List<HashMap<String,Object>> hs;
+				
+				reqMap.put("targetGb", "1");
+				hs = botService.selectRoomBotPowerRank(reqMap);
+				val +=roomName+" 원정대 전투력 랭킹"+enterStr;
+				
+				for(HashMap<String,Object> hm : hs) {
+					val += hm.get("MAIN_CHAR_NAME")+ " : "+hm.get("SCORE")+enterStr ;
+				}
+				
+				val +=enterStr;
+				reqMap.put("targetGb", "2");
+				hs = botService.selectRoomBotPowerRank(reqMap);
+				val +=roomName+" 캐릭터 전투력 랭킹"+enterStr;
+				
+				for(HashMap<String,Object> hm : hs) {
+					val += hm.get("MAIN_CHAR_NAME")+ " : "+hm.get("SCORE")+enterStr ;
+				}
+				
 				break;
 			case "/ㅈㅌㄹ21":
 				param0="/ㅈㅌㄹ21";
@@ -2861,7 +2909,7 @@ public class LoaChatController {
 	}
 	
 	
-	String sumTotalPowerSearchByMainChar(String userId) throws Exception {
+	String sumTotalPowerSearchByMainChar(String userId,HashMap<String,Object> saveMap) throws Exception {
 
 		String ordUserId=userId;
 		userId = URLEncoder.encode(userId, "UTF-8");
@@ -3298,11 +3346,17 @@ public class LoaChatController {
 		resMsg += "http://rgb-tns.dev-apc.com/in/totalGold3";
 		
 		//resMsg += miniGemCntSearch(charList.get("CharacterName").toString());//얘는 엔터포함됨
+		if(gradeCnt_gem !=0) {
+			gradeCnt=0;
+		}
+		saveMap.put("score", gradeCnt);
+		saveMap.put("charName", charName);
+		saveMap.put("mainCharName", charName);
 		
 		return resMsg;
 	}
 	
-	String sumTotalPowerSearch(String userId) throws Exception {
+	String sumTotalPowerSearch(String userId,HashMap<String,Object> saveMap) throws Exception {
 		String ordUserId=userId;
 		userId = URLEncoder.encode(userId, "UTF-8");
 		// +는 %2B로 치환한다
@@ -3833,8 +3887,12 @@ public class LoaChatController {
 		resMsg += "http://rgb-tns.dev-apc.com/in/totalGold3";
 		
 		
-		
-		
+		if(gradeCnt_gem !=0) {
+			gradeCnt=0;
+		}
+		saveMap.put("score", gradeCnt);
+		saveMap.put("charName", charName);
+		saveMap.put("mainCharName", mainCharName);
 		
 		//resMsg += miniGemCntSearch(charList.get("CharacterName").toString());//얘는 엔터포함됨
 		

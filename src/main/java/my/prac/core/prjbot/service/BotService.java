@@ -51,6 +51,10 @@ public interface BotService {
 	public void insertBotLoaEngraveBaseTx(String userId) throws Exception;
 	public void updateBotLoaEngraveTx(HashMap<String,Object> map) throws Exception;
 	
+	
+	
+	public void upsertBotPowerRankTx(HashMap<String,Object> map)  throws Exception;
+	public List<HashMap<String,Object>> selectRoomBotPowerRank(HashMap<String,Object> map);
 }
 
 	

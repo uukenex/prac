@@ -151,5 +151,23 @@ public class BotServiceImpl implements BotService {
 		}
 	}
 	
+	public void upsertBotPowerRankTx(HashMap<String,Object> map) throws Exception{
+		int cnt = botDAO.selectCountBotPowerRank(map);
+		
+		if(cnt==0) {
+			if(botDAO.insertBotPowerRank(map) < 1) {
+				throw new Exception("저장 실패");
+			}
+		}else {
+			if(botDAO.updateBotPowerRank(map) < 1) {
+				throw new Exception("저장 실패");
+			}
+		}
+		
+	}
+	public List<HashMap<String,Object>> selectRoomBotPowerRank(HashMap<String,Object> map){
+		return botDAO.selectRoomBotPowerRank(map);
+	}
+	
 	
 }
