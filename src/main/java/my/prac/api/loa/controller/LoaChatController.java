@@ -3429,16 +3429,11 @@ public class LoaChatController {
 		List<String> accessoryList2 = new ArrayList<>();
 		
 		String mainCharName = sortedList.get(0).get("CharacterName").toString();
-		String guildName ="";
-		try {
-			guildName = sortedList.get(0).get("GuildName").toString();
-			System.out.println(guildName+" 길드 "+mainCharName);
-		}catch(Exception e){
-			System.out.println("길드네임 조회불가~!!");
-		}
+		
 		String charName = "";
 		String charClassName ="";
 		Double charLv=0.0;
+		String guildName ="";
 		
 		HashMap<String,Object> resMap =new HashMap<>();
 		
@@ -3464,12 +3459,17 @@ public class LoaChatController {
 			}
 			
 			
-			
 			resMap = sumTotalPowerSearch2(charName);
 			Map<String, Object> armoryEngraving = new HashMap<>();
 			Map<String, Object> armoryGem = new HashMap<>();
 			List<Map<String,Object>> armoryEngraves = new ArrayList<>();
 			
+			
+			Map<String, Object> armoryProfile = new HashMap<>();
+			try {
+				armoryProfile = (Map<String, Object>) resMap.get("ArmoryProfile");
+			}catch(Exception e){
+			}
 			try {
 				armoryEngraving = (Map<String, Object>) resMap.get("ArmoryEngraving");
 			}catch(Exception e){
@@ -3516,6 +3516,17 @@ public class LoaChatController {
 			List<String> acceossory2 = totalAccessorySearch(resMap,charName,charClassName,2);
 			if(acceossory2 !=null) {
 				accessoryList2.addAll(acceossory2);
+			}
+			
+			
+			if(charCnt ==0) {
+				try {
+					guildName = armoryProfile.get("GuildName").toString();
+					System.out.println(guildName+" 길드 "+mainCharName);
+				}catch(Exception e){
+					System.out.println("길드네임 조회불가~!!");
+				}
+				
 			}
 			
 			charCnt++;
