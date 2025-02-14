@@ -607,7 +607,7 @@ public class LoaChatController {
 				val +=roomName+" 원정대 전투력 랭킹"+enterStr;
 				
 				for(HashMap<String,Object> hm : hs) {
-					val += hm.get("MAIN_CHAR_NAME")+ " : "+hm.get("SCORE")+enterStr ;
+					val += hm.get("CHAR_NAME")+ " : "+hm.get("SCORE")+enterStr ;
 				}
 				
 				val +=enterStr;
@@ -616,7 +616,7 @@ public class LoaChatController {
 				val +=roomName+" 캐릭터 전투력 랭킹"+enterStr;
 				
 				for(HashMap<String,Object> hm : hs) {
-					val += hm.get("MAIN_CHAR_NAME")+ " : "+hm.get("SCORE")+enterStr ;
+					val += hm.get("CHAR_NAME")+ " : "+hm.get("SCORE")+enterStr ;
 				}
 				
 				break;
