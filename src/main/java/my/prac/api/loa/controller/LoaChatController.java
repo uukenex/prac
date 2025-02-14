@@ -601,7 +601,7 @@ public class LoaChatController {
 				if(guildName.equals("")) {
 					break;
 				}
-				reqMap.put("roomName", guildName);
+				reqMap.put("guildName", guildName);
 				reqMap.put("targetGb", "1");
 				hs = botService.selectRoomBotPowerRank(reqMap);
 				val +=roomName+" 원정대 전투력 랭킹"+enterStr;
@@ -3376,8 +3376,7 @@ public class LoaChatController {
 		}
 		saveMap.put("score", gradeCnt);
 		saveMap.put("charName", charName);
-		saveMap.put("roomName", guildName);
-		saveMap.put("mainCharName", "");
+		saveMap.put("guildName", guildName);
 		
 		return resMsg;
 	}
@@ -3924,9 +3923,8 @@ public class LoaChatController {
 			gradeCnt=0;
 		}
 		saveMap.put("score", gradeCnt);
-		saveMap.put("charName", charName);
-		saveMap.put("mainCharName", mainCharName);
-		saveMap.put("roomName", guildName);
+		saveMap.put("charName", mainCharName);
+		saveMap.put("guildName", guildName);
 		
 		//resMsg += miniGemCntSearch(charList.get("CharacterName").toString());//얘는 엔터포함됨
 		

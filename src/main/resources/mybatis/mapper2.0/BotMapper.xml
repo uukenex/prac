@@ -397,16 +397,14 @@
     
     <insert id="insertBotPowerRank" parameterType="HashMap">
 		INSERT INTO TBOT_POWER_RANK
-			  (MAIN_CHAR_NAME
-			  ,CHAR_NAME
-			  ,ROOM_NAME
+			  (CHAR_NAME
+			  ,GUILD_NAME
 			  ,SCORE
 		      ,TARGET_GB
 			  ,MODIFY_DATE)
 		VALUES
-			 (#{mainCharName, jdbcType=VARCHAR}
-			 ,#{charName, jdbcType=VARCHAR}
-			 ,#{roomName, jdbcType=VARCHAR}
+			 (#{charName, jdbcType=VARCHAR}
+			 ,#{guildName, jdbcType=VARCHAR}
 			 ,#{score, jdbcType=NUMERIC}
 		     ,#{targetGb, jdbcType=VARCHAR}
 			 ,SYSDATE)
@@ -417,28 +415,26 @@
 		UPDATE TBOT_POWER_RANK
 		   SET SCORE = #{score, jdbcType=NUMERIC}
 			  ,MODIFY_DATE = SYSDATE
-		 WHERE MAIN_CHAR_NAME = #{mainCharName, jdbcType=VARCHAR}
-		   AND CHAR_NAME = #{charName, jdbcType=VARCHAR}
-		   AND ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+		 WHERE CHAR_NAME = #{charName, jdbcType=VARCHAR}
+		   AND GUILD_NAME = #{guildName, jdbcType=VARCHAR}
 		   AND TARGET_GB = #{targetGb, jdbcType=VARCHAR}
 	</update>
 	
 	<select id="selectCountBotPowerRank" resultType="int" parameterType="HashMap">
 		SELECT COUNT(1)
 		  FROM TBOT_POWER_RANK A
-		 WHERE A.MAIN_CHAR_NAME = #{mainCharName, jdbcType=VARCHAR}
-		   AND A.CHAR_NAME = #{charName, jdbcType=VARCHAR}
-		   AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+		 WHERE A.CHAR_NAME = #{charName, jdbcType=VARCHAR}
+		   AND A.GUILD_NAME = #{guildName, jdbcType=VARCHAR}
 		   AND A.TARGET_GB = #{targetGb, jdbcType=VARCHAR}
 	</select>
 	
 	<select id="selectRoomBotPowerRank" resultType="HashMap" parameterType="HashMap">
 	        SELECT A.ROOM_NAME
-			      ,A.MAIN_CHAR_NAME
+			      ,A.CHAR_NAME
 			      ,A.SCORE
 			      ,A.TARGET_GB
 			  FROM TBOT_POWER_RANK A
-		     WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+		     WHERE A.GUILD_NAME = #{guildName, jdbcType=VARCHAR}
 			   AND A.TARGET_GB = #{targetGb, jdbcType=VARCHAR}
 		  ORDER BY A.TARGET_GB
 			      ,A.SCORE DESC 
