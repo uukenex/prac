@@ -3375,7 +3375,7 @@ public class LoaChatController {
 			gradeCnt=0;
 		}
 		saveMap.put("score", gradeCnt);
-		saveMap.put("charName", charName);
+		saveMap.put("charName", ordUserId);
 		saveMap.put("guildName", guildName);
 		
 		return resMsg;
@@ -3432,8 +3432,9 @@ public class LoaChatController {
 		String guildName ="";
 		try {
 			guildName = sortedList.get(0).get("GuildName").toString();
+			System.out.println(guildName+" 길드 "+mainCharName);
 		}catch(Exception e){
-			
+			System.out.println("길드네임 조회불가~!!");
 		}
 		String charName = "";
 		String charClassName ="";
