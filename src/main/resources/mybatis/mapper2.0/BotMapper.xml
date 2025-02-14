@@ -429,7 +429,7 @@
 	</select>
 	
 	<select id="selectRoomBotPowerRank" resultType="HashMap" parameterType="HashMap">
-	        SELECT A.ROOM_NAME
+	        SELECT A.GUILD_NAME
 			      ,A.CHAR_NAME
 			      ,A.SCORE
 			      ,A.TARGET_GB
