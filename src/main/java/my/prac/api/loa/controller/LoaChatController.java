@@ -2075,6 +2075,7 @@ public class LoaChatController {
 		
 		try {
 			sub.sumTotalPowerSearchByMainChar(rtnMap,saveMap);
+			saveMap.put("charName", ordUserId);
 			resMsg += "람쥐포인트 : "+ saveMap.get("score");
 			if(!saveMap.get("score").toString().equals("0")) {
 				saveMap.put("targetGb", "2");
