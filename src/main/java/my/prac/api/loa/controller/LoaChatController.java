@@ -631,7 +631,7 @@ public class LoaChatController {
 					if(starYn!=null && starYn.equals("1")) {
 						star+="⭐";
 					}else {
-						star+=" ";
+						star+="　";
 					}
 					val += star +hm.get("CHAR_NAME")+ " : "+hm.get("SCORE")+enterStr ;
 				}
