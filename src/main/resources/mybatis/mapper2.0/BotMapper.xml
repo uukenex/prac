@@ -429,14 +429,18 @@
 	</select>
 	
 	<select id="selectRoomBotPowerRank" resultType="HashMap" parameterType="HashMap">
-	        SELECT A.GUILD_NAME
-			      ,A.CHAR_NAME
+	        SELECT DECODE(A.CHAR_NAME,B.USER_ID, '⭐') || A.CHAR_NAME 
+	        	  ,A.GUILD_NAME
 			      ,A.SCORE
 			      ,A.TARGET_GB
-			  FROM TBOT_POWER_RANK A
+			  FROM TBOT_POWER_RANK A,
+			    (SELECT S.USER_ID
+				   FROM TBOT_SUPPORTERS S
+				  WHERE S.USER_ID IS NOT NULL
+				  GROUP BY S.USER_ID) B
 		     WHERE A.GUILD_NAME = #{guildName, jdbcType=VARCHAR}
 			   AND A.TARGET_GB = #{targetGb, jdbcType=VARCHAR}
-			   
+			   AND A.CHAR_NAME = B.USER_ID(+)
 			   <if test="targetGb == '1' || targetGb == 1 ">
 				   AND A.SCORE >= 1000
 			   </if>
