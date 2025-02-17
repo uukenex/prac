@@ -37,12 +37,7 @@ public class LoaChatSubController {
 	final String anotherMsgStr = "®";
 	final String listSeparatorStr = "㈜";
 	
-	String sumTotalPowerSearchByMainChar(String userId) throws Exception {
-		String ordUserId=userId;
-		userId = URLEncoder.encode(userId, "UTF-8");
-		// +는 %2B로 치환한다
-		String resMsg=ordUserId+enterStr+"캐릭터 전투력 정보 v0.9" + enterStr;
-		
+	void sumTotalPowerSearchByMainChar(HashMap<String, Object> rtnMap,HashMap<String,Object> saveMap) throws Exception {
 		int cntCharLv1680 =0;
 		int gradeCnt =0;
 		int gradeCnt_lv=0;
@@ -62,6 +57,7 @@ public class LoaChatSubController {
 		
 		String charName = "";
 		String charClassName ="";
+		String guildName="";
 		
 		HashMap<String,Object> resMap =new HashMap<>();
 		
@@ -69,7 +65,7 @@ public class LoaChatSubController {
 		
 		int charCnt =0;
 		
-		resMap = sumTotalPowerSearch2(ordUserId);
+		resMap = rtnMap;
 		Map<String, Object> armoryProfile = new HashMap<>();
 		Map<String, Object> armoryEngraving = new HashMap<>();
 		Map<String, Object> armoryGem = new HashMap<>();
@@ -89,7 +85,11 @@ public class LoaChatSubController {
 		}
 		
 		charClassName = armoryProfile.get("CharacterClassName").toString();
-		
+		try {
+			guildName = armoryProfile.get("GuildName").toString();
+		}catch(Exception e){
+			
+		}
 		weaponList.add(totalEquipmentSearch(resMap,charName));
 		
 		List<Integer> charGem = totalGemCntSearch(armoryGem,charName);
@@ -113,12 +113,13 @@ public class LoaChatSubController {
 		}
 		
 		String maxCharLv = armoryProfile.get("ItemMaxLevel").toString().replaceAll(",", "");
+		/*
 		resMsg += maxCharLv+"Lv" + enterStr;
 		resMsg += msgOfWeapon(weaponList);
 		resMsg += msgOfGem(gemList);
 		resMsg += msgOfAccessory(accessoryList1, 1);
 		resMsg += msgOfAccessory(accessoryList2, 2);
-		
+		*/
 		gradeCnt_lv += calcOfMaxLv(maxCharLv);
 		gradeCnt_weapon += calcOfWeapon(weaponList);
 		gradeCnt_gem += calcOfGem(gemList);
@@ -132,9 +133,9 @@ public class LoaChatSubController {
 				+gradeCnt_gem
 				+gradeCnt_engrave
 				+gradeCnt_accessory; 
-		resMsg +="환산 비용: "+gradeCnt +"만 골드";
+		//resMsg +="환산 비용: "+gradeCnt +"만 골드";
 		
-		
+		/*
 		if(gradeCnt>0) {
 			grade="모코코";
 		}
@@ -153,7 +154,8 @@ public class LoaChatSubController {
 		if(gradeCnt>2000) {
 			grade="모코코6";
 		}
-		
+		*/
+		/*
 		resMsg += enterStr;
 		resMsg += "당신은 "+grade+" !!"+enterStr;
 		resMsg += enterStr;
@@ -170,10 +172,15 @@ public class LoaChatSubController {
 		resMsg += "가격표:"+enterStr;
 		resMsg += "v0.7 악세 상하 중하 미포함 버그 수정"+enterStr;
 		resMsg += "http://rgb-tns.dev-apc.com/in/totalGold3";
-		
+		*/
 		//resMsg += miniGemCntSearch(charList.get("CharacterName").toString());//얘는 엔터포함됨
-		
-		return resMsg;
+		if(gradeCnt_gem ==0) {
+			gradeCnt=0;
+		}
+		saveMap.put("score", gradeCnt);
+		//saveMap.put("charName", ordUserId);
+		saveMap.put("guildName", guildName);
+		//return resMsg;
 	
 		
 	}

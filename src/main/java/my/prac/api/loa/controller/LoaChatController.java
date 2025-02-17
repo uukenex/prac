@@ -604,7 +604,7 @@ public class LoaChatController {
 				reqMap.put("guildName", guildName);
 				reqMap.put("targetGb", "1");
 				hs = botService.selectRoomBotPowerRank(reqMap);
-				val +=roomName+" 원정대 전투력 랭킹"+enterStr;
+				val +=roomName+" 원정대 전투력 랭킹 1000↑"+enterStr;
 				
 				for(HashMap<String,Object> hm : hs) {
 					val += hm.get("CHAR_NAME")+ " : "+hm.get("SCORE")+enterStr ;
@@ -613,7 +613,7 @@ public class LoaChatController {
 				val +=enterStr;
 				reqMap.put("targetGb", "2");
 				hs = botService.selectRoomBotPowerRank(reqMap);
-				val +=roomName+" 캐릭터 전투력 랭킹"+enterStr;
+				val +=roomName+" 캐릭터 전투력 랭킹 500↑"+enterStr;
 				
 				for(HashMap<String,Object> hm : hs) {
 					val += hm.get("CHAR_NAME")+ " : "+hm.get("SCORE")+enterStr ;
@@ -641,6 +641,7 @@ public class LoaChatController {
 				}
 				passYn=true;
 				break;
+				/*
 			case "/ㅈㅌㄹ22":
 				param0="/ㅈㅌㄹ22";
 				param1 = param1.trim();
@@ -662,6 +663,7 @@ public class LoaChatController {
 				}
 				passYn=true;
 				break;
+				*/
 			case "/항협": case "/항해": case "/항해협동": case "/ㅎㅎ":
 				val = shipSearch();
 				break;
@@ -2066,6 +2068,24 @@ public class LoaChatController {
 		resMsg += acceMainMsg;
 		resMsg += enterStr;
 		resMsg += enterStr;
+		
+		
+		/*전투력 들어갈곳*/
+		HashMap<String,Object> saveMap = new HashMap<>();
+		
+		try {
+			sub.sumTotalPowerSearchByMainChar(rtnMap,saveMap);
+			resMsg += "람쥐포인트 : "+ saveMap.get("score");
+			if(!saveMap.get("score").toString().equals("0")) {
+				saveMap.put("targetGb", "2");
+				botService.upsertBotPowerRankTx(saveMap);
+			}
+		}catch(Exception e) {
+			System.out.println("전투력 저장만안됨");
+		}
+		
+		resMsg += enterStr;
+		
 		resMsg += "상세 더보기..▼"+allSeeStr;
 		//resMsg += "방어구 / 초월 / 엘릭서"+enterStr;
 		
