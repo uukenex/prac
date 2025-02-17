@@ -437,10 +437,10 @@
 		     WHERE A.GUILD_NAME = #{guildName, jdbcType=VARCHAR}
 			   AND A.TARGET_GB = #{targetGb, jdbcType=VARCHAR}
 			   
-			   <if test="targetGb == '1'">
+			   <if test="targetGb == '1' || targetGb == 1 ">
 				   AND A.SCORE >= 1000
 			   </if>
-			   <if test="targetGb == '2'">
+			   <if test="targetGb == '2' || targetGb == 2 ">
 				   AND A.SCORE >= 500
 			   </if>
 			   
