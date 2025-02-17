@@ -429,6 +429,8 @@
 	</select>
 	
 	<select id="selectRoomBotPowerRank" resultType="HashMap" parameterType="HashMap">
+      SELECT B.*
+  		FROM (
 	        SELECT DECODE(A.CHAR_NAME,B.USER_ID, '1','0') AS STAR_YN
 	        	  ,A.CHAR_NAME
 	        	  ,A.GUILD_NAME
@@ -449,8 +451,9 @@
 				   AND A.SCORE >= 500
 			   </if>
 			   
-		  ORDER BY A.TARGET_GB
-			      ,A.SCORE DESC 
+		  ORDER BY A.SCORE DESC) B
+ 	WHERE ROWNUM &lt;= 10
+		   
 	</select>
 	
 </mapper>

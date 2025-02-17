@@ -604,7 +604,7 @@ public class LoaChatController {
 				reqMap.put("guildName", guildName);
 				reqMap.put("targetGb", "1");
 				hs = botService.selectRoomBotPowerRank(reqMap);
-				val +=roomName+" 원정대 전투력 랭킹 1000↑"+enterStr;
+				val +=roomName+" 원정대 RP TOP10 1000↑"+enterStr;
 				
 				
 				for(HashMap<String,Object> hm : hs) {
@@ -622,7 +622,7 @@ public class LoaChatController {
 				val +=enterStr;
 				reqMap.put("targetGb", "2");
 				hs = botService.selectRoomBotPowerRank(reqMap);
-				val +=roomName+" 캐릭터 전투력 랭킹 500↑"+enterStr;
+				val +=roomName+" 캐릭터 RP TOP10 500↑"+enterStr;
 				
 				for(HashMap<String,Object> hm : hs) {
 					String starYn="";
@@ -2093,7 +2093,7 @@ public class LoaChatController {
 		try {
 			sub.sumTotalPowerSearchByMainChar(rtnMap,saveMap);
 			saveMap.put("charName", ordUserId);
-			resMsg += "람쥐포인트 : "+ saveMap.get("score");
+			resMsg += "람쥐포인트(RP,(구) 전투력) : "+ saveMap.get("score");
 			if(!saveMap.get("score").toString().equals("0")) {
 				saveMap.put("targetGb", "2");
 				botService.upsertBotPowerRankTx(saveMap);
