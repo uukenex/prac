@@ -606,8 +606,17 @@ public class LoaChatController {
 				hs = botService.selectRoomBotPowerRank(reqMap);
 				val +=roomName+" 원정대 전투력 랭킹 1000↑"+enterStr;
 				
+				
 				for(HashMap<String,Object> hm : hs) {
-					val += hm.get("CHAR_NAME")+ " : "+hm.get("SCORE")+enterStr ;
+					String starYn="";
+					String star="";
+					starYn = hm.get("STAR_YN").toString();
+					if(starYn!=null && starYn.equals("1")) {
+						star+="⭐";
+					}else {
+						star+=" ";
+					}
+					val += star +hm.get("CHAR_NAME")+ " : "+hm.get("SCORE")+enterStr ;
 				}
 				
 				val +=enterStr;
@@ -616,7 +625,15 @@ public class LoaChatController {
 				val +=roomName+" 캐릭터 전투력 랭킹 500↑"+enterStr;
 				
 				for(HashMap<String,Object> hm : hs) {
-					val += hm.get("CHAR_NAME")+ " : "+hm.get("SCORE")+enterStr ;
+					String starYn="";
+					String star="";
+					starYn = hm.get("STAR_YN").toString();
+					if(starYn!=null && starYn.equals("1")) {
+						star+="⭐";
+					}else {
+						star+=" ";
+					}
+					val += star +hm.get("CHAR_NAME")+ " : "+hm.get("SCORE")+enterStr ;
 				}
 				
 				break;

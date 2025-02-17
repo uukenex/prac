@@ -429,7 +429,8 @@
 	</select>
 	
 	<select id="selectRoomBotPowerRank" resultType="HashMap" parameterType="HashMap">
-	        SELECT DECODE(A.CHAR_NAME,B.USER_ID, '⭐') || A.CHAR_NAME 
+	        SELECT DECODE(A.CHAR_NAME,B.USER_ID, '1','0') AS STAR_YN
+	        	  ,A.CHAR_NAME
 	        	  ,A.GUILD_NAME
 			      ,A.SCORE
 			      ,A.TARGET_GB
