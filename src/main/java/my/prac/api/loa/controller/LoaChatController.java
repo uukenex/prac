@@ -147,7 +147,7 @@ public class LoaChatController {
 		}
 		
 		if(param0.startsWith("[")) {
-			return emotionMsg(param0,roomName);
+			return emotionMsg(param0,roomName,sender);
 		}else if(param0.startsWith("/")) {
 			return commandMsg(param0,param1,param2,roomName,sender,fulltxt);
 		}
@@ -1162,13 +1162,15 @@ public class LoaChatController {
 		return val;
 	}
 	
-	String emotionMsg(String param0,String roomName) throws Exception {
+	String emotionMsg(String param0,String roomName,String sender) throws Exception {
 		String val = "";
 		String randKey = "";
 		boolean imgcp=false;
 		
 		//selectBotImgMch param0 , roomName selectBotImgSaveAll
 		HashMap<String,Object> reqMap = new HashMap<>();
+		HashMap<String,Object> pointMap = new HashMap<>();
+		
 		reqMap.put("param0", param0);
 		reqMap.put("roomName", roomName);
 		
@@ -1196,6 +1198,12 @@ public class LoaChatController {
 
 		val = "rgb-tns.dev-apc.com/im/" + randKey;
 
+		pointMap.put("roomName", roomName);
+		pointMap.put("userName", sender);
+		pointMap.put("cmd", param0);
+		pointMap.put("score", 1);
+		botService.insertBotPointRankTx(pointMap);
+		
 		return val;
 	}
 
