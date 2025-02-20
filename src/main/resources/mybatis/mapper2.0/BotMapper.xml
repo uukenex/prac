@@ -401,12 +401,15 @@
 			  ,GUILD_NAME
 			  ,SCORE
 		      ,TARGET_GB
+		      ,LV
+		      ,CLASS_GB
 			  ,MODIFY_DATE)
 		VALUES
 			 (upper(#{charName, jdbcType=VARCHAR})
 			 ,#{guildName, jdbcType=VARCHAR}
 			 ,#{score, jdbcType=NUMERIC}
 		     ,#{targetGb, jdbcType=VARCHAR}
+		     ,#{lv, jdbcType=NUMERIC}
 			 ,SYSDATE)
 		
 	</insert>
@@ -414,6 +417,7 @@
 	<update id="updateBotPowerRank" parameterType="HashMap">
 		UPDATE TBOT_POWER_RANK
 		   SET SCORE = #{score, jdbcType=NUMERIC}
+		      ,LV = #{lv, jdbcType=NUMERIC}
 			  ,MODIFY_DATE = SYSDATE
 		 WHERE upper(CHAR_NAME) = upper(#{charName, jdbcType=VARCHAR})
 		   AND GUILD_NAME = #{guildName, jdbcType=VARCHAR}
@@ -436,6 +440,8 @@
 	        	  ,A.GUILD_NAME
 			      ,A.SCORE
 			      ,A.TARGET_GB
+			      ,A.LV
+			      ,A.CLASS_GB
 			  FROM TBOT_POWER_RANK A,
 			    (SELECT S.USER_ID
 				   FROM TBOT_SUPPORTERS S
@@ -456,5 +462,22 @@
  	WHERE ROWNUM &lt;= 10
 		   
 	</select>
+	
+	<insert id="insertBotPointRank" parameterType="HashMap">
+		INSERT INTO TBOT_POINT_RANK
+			  (USER_NAME
+			  ,ROOM_NAME
+			  ,SCORE
+			  ,INSERT_DATE
+			  ,CMD)
+		 VALUES
+			  (#{userName, jdbcType=VARCHAR}
+			  ,#{roomName, jdbcType=VARCHAR}
+			  ,#{score, jdbcType=NUMERIC}
+			  ,SYSDATE
+			  ,#{cmd, jdbcType=VARCHAR})
+		
+	</insert>
+	
 	
 </mapper>

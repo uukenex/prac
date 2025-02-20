@@ -171,6 +171,8 @@ public class LoaChatController {
 		String replace_param="";
 		
 		HashMap<String,Object> saveMap = new HashMap<>();
+		HashMap<String,Object> pointMap = new HashMap<>();
+		int point = 0;
 		
 		try {
 			if(fulltxt.length()>90) {
@@ -187,6 +189,10 @@ public class LoaChatController {
 			case "/비싼유각":
 			case "/전각":
 			case "/유각":
+			case "/상단일":
+			case "/중단일":
+			case "/상상":
+			case "/중중":
 				passYn = true;
 				break;
 			case "/주사위": case "/ㅈㅅㅇ":
@@ -196,14 +202,19 @@ public class LoaChatController {
 				String prefix="";
 				if(number>=99) {
 					prefix="굴리기전부터 운명적입니다. 행운의 신이 함께합니다.";
+					point =+100;
 				}else if(number>=85) {
 					prefix="행운이 쌓인채로 굴러갑니다.";
+					point =+2;
 				}else if(number>=50) {
 					prefix="데굴데굴..";
+					point =+1;
 				}else if(number>=10) {
 					prefix="또르르륵..";
+					point =+0;
 				}else {
 					prefix="콰쾅.. 이런! 주사위가 바닥으로 떨어졌군요.";
+					point =+0;
 				}
 				
 				val = prefix+enterStr+"『"+sender + "』 님의 주사위: "+number+" (0~100)";
@@ -211,10 +222,12 @@ public class LoaChatController {
 				break;
 			case "/로또": case "/ㄹㄸ":
 				val = lotto();
+				point =+1;
 				break;
 			case "/궁합": case "/ㄱㅎ":
 				try {
 					val = loveTest(param1,param2);
+					point =+1;
 				}catch(Exception e) {
 					val = "/궁합 이름1 이름2 형태로 입력해주세요.(한글만)";
 				}
@@ -246,6 +259,7 @@ public class LoaChatController {
 						val = errorCodeMng(e,reqMap);
 					}
 				}
+				point =+2;
 				break;
 			case "/분배금": case "/ㅂㅂㄱ":
 				if (param1 != null && !param1.equals("")) {
@@ -266,6 +280,7 @@ public class LoaChatController {
 					
 				}
 				val += enterStr;
+				point =+1;
 				passYn=true;
 				break;
 			case "/골드": case "/ㄱㄷ": case "/클골": case "/ㅋㄱ":
@@ -273,6 +288,7 @@ public class LoaChatController {
 				//val += enterStr;
 				//val += enterStr;
 				//val += "http://rgb-tns.dev-apc.com/in/202409";
+				point =+1;
 				break;
 			case "/모험섬": case "/ㅁㅎㅅ":
 				LocalDate now = LocalDate.now();
@@ -304,7 +320,7 @@ public class LoaChatController {
 						break;
 				}
 				
-				
+				point =+3;
 				break;
 				
 			case "/장비":
@@ -339,6 +355,7 @@ public class LoaChatController {
 						}
 					}
 				}
+				point =+2;
 				break;
 			
 			case "/초월": case "/엘릭서":
@@ -370,6 +387,7 @@ public class LoaChatController {
 						}
 					}
 				}
+				point =+1;
 				break;
 			case "/내실":
 			case "/ㄴㅅ":
@@ -400,6 +418,7 @@ public class LoaChatController {
 						}
 					}
 				}
+				point =+1;
 				break;
 			
 			case "/악세":
@@ -431,6 +450,7 @@ public class LoaChatController {
 						}
 					}
 				}
+				point =+1;
 				break;		
 			case "/부캐":
 			case "/ㅂㅋ":
@@ -469,6 +489,7 @@ public class LoaChatController {
 						}
 					}
 				}
+				point =+1;
 				break;
 			case "/부캐2":
 			case "/ㅂㅋ2":
@@ -500,6 +521,7 @@ public class LoaChatController {
 						}
 					}
 				}
+				point =+2;
 				break;
 			case "/전투력":
 			case "/ㅈㅌㄹ":
@@ -539,7 +561,7 @@ public class LoaChatController {
 				}catch(Exception e) {
 					System.out.println("전투력 저장만안됨");
 				}
-				
+				point =+2;
 				break;
 			case "/전투력2":
 			case "/ㅈㅌㄹ2":
@@ -577,6 +599,7 @@ public class LoaChatController {
 				}catch(Exception e) {
 					System.out.println("전투력 저장만안됨");
 				}
+				point =+2;
 				break;
 			case "/랭킹": case "/ㄹㅋ":
 				List<HashMap<String,Object>> hs;
@@ -639,7 +662,7 @@ public class LoaChatController {
 				val +=enterStr;
 				val +="원정대 점수 갱신: /전투력"+enterStr;
 				val +="캐릭터 점수 갱신: /정보"+enterStr;
-				
+				point =+1;
 				break;
 			case "/ㅈㅌㄹ21":
 				param0="/ㅈㅌㄹ21";
@@ -687,14 +710,17 @@ public class LoaChatController {
 				*/
 			case "/항협": case "/항해": case "/항해협동": case "/ㅎㅎ":
 				val = shipSearch();
+				point =+1;
 				break;
 			case "/가방": case "/ㄱㅂ":
 				val = openBox(param1,param2);
+				point =+1;
 				break;
 			case "/날씨": case "/ㄴㅆ":
 				if (param1 != null && !param1.equals("")) {
 					val = weatherSearch(param1);
 				}
+				point =+1;
 				break;
 			case "/점메추":
 				String[] menu_list2 = {"칼국수","샐러드","고구마","굶기","점심회식-부장님은 짜장면드신데","콩국수","된장찌개","순대국","스테이크덮밥",
@@ -703,6 +729,7 @@ public class LoaChatController {
 				Random random2 = new Random();
 				val = menu_list2[random2.nextInt(menu_list2.length)];
 				passYn=true;
+				point =+1;
 				break;
 			case "/저메추":
 				String[] menu_list = { "피자", "탕수육", "치킨", "샐러드", "마라탕", "양꼬치", "삼겹살", "설렁탕", "김치찌개", "된장찌개", "삼치튀김", "참치마요",
@@ -713,10 +740,12 @@ public class LoaChatController {
 				Random random3 = new Random();
 				val = menu_list[random3.nextInt(menu_list.length)];
 				passYn=true;
+				point =+1;
 				break;
 			case "/챗":
 				fulltxt = fulltxt.substring(param0.length()).trim();
 				val = chatGptSearch(fulltxt,sender);
+				point =+1;
 				break;
 			case "/ㄱㅁㅈ":
 			case "/경매장":
@@ -791,7 +820,7 @@ public class LoaChatController {
 						}
 						break;
 				}
-				
+				point =+1;
 				break;
 			case "/ㄱㅁㅈ3":
 			case "/경매장3":
@@ -802,6 +831,7 @@ public class LoaChatController {
 				}catch(Exception e) {
 					val = errorCodeMng(e,reqMap);
 				}
+				point =+1;
 				break;
 			case "/ㄱㅁㅈ4":
 			case "/경매장4":
@@ -812,6 +842,7 @@ public class LoaChatController {
 				}catch(Exception e) {
 					val = errorCodeMng(e,reqMap);
 				}
+				point =+1;
 				break;
 				/*
 			case "/ㄱㅁㅈㅇㅅ":
@@ -838,6 +869,7 @@ public class LoaChatController {
 				}catch(Exception e) {
 					val = errorCodeMng(e,reqMap);
 				}
+				point =+1;
 				break;
 				/*
 			case "/경매장전설":
@@ -1065,6 +1097,10 @@ public class LoaChatController {
 				break;
 			default:
 				val = botService.selectBotWordSaveOne(reqMap);
+				
+				if(val != null && !val.equals("") ) {
+					point =+1;
+				}
 				break;
 			}
 			
@@ -1076,6 +1112,14 @@ public class LoaChatController {
 				reqMap.put("req", org_fulltxt);
 				reqMap.put("res", val);
 				botService.insertBotWordHisTx(reqMap);
+			}
+			
+			if(point > 0) {
+				pointMap.put("roomName", roomName);
+				pointMap.put("userName", sender);
+				pointMap.put("cmd", fulltxt);
+				pointMap.put("score", point);
+				botService.insertBotPointRankTx(pointMap);
 			}
 				
 		}
@@ -2099,6 +2143,7 @@ public class LoaChatController {
 			saveMap.put("charName", ordUserId);
 			resMsg += "캐릭터전투력 : "+ saveMap.get("score");
 			if(!saveMap.get("score").toString().equals("0")) {
+				saveMap.put("lv", itemMaxLevel);
 				saveMap.put("targetGb", "2");
 				botService.upsertBotPowerRankTx(saveMap);
 			}
@@ -5617,4 +5662,7 @@ public class LoaChatController {
 	
 		return rtnMsg;
 	}
+	
+	
+	
 }
