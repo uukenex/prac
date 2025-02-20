@@ -2143,7 +2143,7 @@ public class LoaChatController {
 			saveMap.put("charName", ordUserId);
 			resMsg += "캐릭터전투력 : "+ saveMap.get("score");
 			if(!saveMap.get("score").toString().equals("0")) {
-				saveMap.put("lv", itemMaxLevel);
+				saveMap.put("lv", Double.parseDouble(itemMaxLevel.replaceAll(",", "")));
 				saveMap.put("targetGb", "2");
 				botService.upsertBotPowerRankTx(saveMap);
 			}
