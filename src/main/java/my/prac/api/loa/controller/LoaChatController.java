@@ -2153,6 +2153,18 @@ public class LoaChatController {
 			if(!saveMap.get("score").toString().equals("0")) {
 				saveMap.put("lv", Double.parseDouble(itemMaxLevel.replaceAll(",", "")));
 				saveMap.put("targetGb", "2");
+				switch (className) {
+					case "바드":
+					case "도화가":
+					case "홀리나이트":
+						saveMap.put("classGb","S");
+						break;
+					default:
+						saveMap.put("classGb","D");
+						break;
+				}
+				
+				
 				botService.upsertBotPowerRankTx(saveMap);
 			}
 		}catch(Exception e) {

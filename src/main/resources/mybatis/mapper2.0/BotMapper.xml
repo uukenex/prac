@@ -410,6 +410,7 @@
 			 ,#{score, jdbcType=NUMERIC}
 		     ,#{targetGb, jdbcType=VARCHAR}
 		     ,#{lv, jdbcType=NUMERIC}
+		     ,#{classGb, jdbcType=NUMERIC}
 			 ,SYSDATE)
 		
 	</insert>
