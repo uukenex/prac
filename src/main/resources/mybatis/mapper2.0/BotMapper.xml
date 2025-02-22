@@ -419,9 +419,9 @@
 		UPDATE TBOT_POWER_RANK
 		   SET SCORE = #{score, jdbcType=NUMERIC}
 		      ,LV = #{lv, jdbcType=NUMERIC}
+		      ,GUILD_NAME = #{guildName, jdbcType=VARCHAR}
 			  ,MODIFY_DATE = SYSDATE
 		 WHERE upper(CHAR_NAME) = upper(#{charName, jdbcType=VARCHAR})
-		   AND GUILD_NAME = #{guildName, jdbcType=VARCHAR}
 		   AND TARGET_GB = #{targetGb, jdbcType=VARCHAR}
 	</update>
 	
@@ -429,7 +429,6 @@
 		SELECT COUNT(1)
 		  FROM TBOT_POWER_RANK A
 		 WHERE upper(A.CHAR_NAME) = upper(#{charName, jdbcType=VARCHAR})
-		   AND A.GUILD_NAME = #{guildName, jdbcType=VARCHAR}
 		   AND A.TARGET_GB = #{targetGb, jdbcType=VARCHAR}
 	</select>
 	
