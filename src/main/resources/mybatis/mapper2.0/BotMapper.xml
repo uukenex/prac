@@ -421,6 +421,7 @@
 		      ,LV = #{lv, jdbcType=NUMERIC}
 		      ,GUILD_NAME = #{guildName, jdbcType=VARCHAR}
 			  ,MODIFY_DATE = SYSDATE
+			  ,CLASS_GB = #{classGb, jdbcType=NUMERIC}
 		 WHERE upper(CHAR_NAME) = upper(#{charName, jdbcType=VARCHAR})
 		   AND TARGET_GB = #{targetGb, jdbcType=VARCHAR}
 	</update>
