@@ -3445,19 +3445,19 @@ public class LoaChatController {
 			grade="모코코";
 		}
 		if(gradeCnt>300) {
-			grade="모코코2";
+			grade="초급자";
 		}
 		if(gradeCnt>500) {
-			grade="모코코3";
+			grade="중급자";
 		}
 		if(gradeCnt>1000) {
-			grade="모코코4";
+			grade="상급자";
 		}
 		if(gradeCnt>1500) {
-			grade="모코코5";
+			grade="고인물";
 		}
 		if(gradeCnt>2000) {
-			grade="모코코6";
+			grade="슈퍼고인물";
 		}
 		
 		resMsg += enterStr;

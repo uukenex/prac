@@ -266,16 +266,18 @@ public class LoaApiUtils {
 		}
 		
 		switch(lv) {
-			case "19":
+		//ㅈㅌㄹ 전체정보일땐 19 18 17 16 
+		//ㅈㅌㄹ2 개인정보일땐 4 3 2 1
+			case "19": case "4":
 				gold = gold*20;
 				break;
-			case "18":
+			case "18": case "3":
 				gold = gold*15;
-				break;
-			case "17":
+				break; 
+			case "17": case "2":
 				gold = gold*10;
 				break;
-			case "16":
+			case "16": case "1":
 				gold = gold*5;
 				break;
 			default:
