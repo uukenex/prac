@@ -541,7 +541,7 @@ public class LoaChatController {
 						//val = "v0.3으로 패치중입니다.";
 						
 						val = supporters(param1);
-						val+= sumTotalPowerSearch(param1,saveMap);
+						val+= sub.sumTotalPowerSearch(param1,saveMap);
 						val+= tossAccount2();
 						
 						
@@ -676,7 +676,7 @@ public class LoaChatController {
 						//val = "v0.3으로 패치중입니다.";
 						
 						val = supporters(param1);
-						val+= sub.sumTotalPowerSearch(param1);
+						//val+= sub.sumTotalPowerSearch(param1);
 					} catch (Exception e) {
 						e.printStackTrace();
 						val = errorCodeMng(e,reqMap);

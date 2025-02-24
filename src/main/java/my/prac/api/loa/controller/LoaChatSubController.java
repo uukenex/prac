@@ -185,7 +185,7 @@ public class LoaChatSubController {
 		
 	}
 	
-	String sumTotalPowerSearch(String userId) throws Exception {
+	String sumTotalPowerSearch(String userId,HashMap<String,Object> saveMap) throws Exception {
 
 		String ordUserId=userId;
 		userId = URLEncoder.encode(userId, "UTF-8");
@@ -223,6 +223,7 @@ public class LoaChatSubController {
 		String charName = "";
 		String charClassName ="";
 		Double charLv=0.0;
+		String guildName ="";
 		HashMap<String,Object> resMap =new HashMap<>();
 		
 		List<HashMap<String,Object>> refreshEngraveList = new ArrayList<>();
@@ -252,7 +253,12 @@ public class LoaChatSubController {
 			Map<String, Object> armoryEngraving = new HashMap<>();
 			Map<String, Object> armoryGem = new HashMap<>();
 			List<Map<String,Object>> armoryEngraves = new ArrayList<>();
+			Map<String, Object> armoryProfile = new HashMap<>();
 			
+			try {
+				armoryProfile = (Map<String, Object>) resMap.get("ArmoryProfile");
+			}catch(Exception e){
+			}
 			try {
 				armoryEngraving = (Map<String, Object>) resMap.get("ArmoryEngraving");
 			}catch(Exception e){
@@ -301,6 +307,15 @@ public class LoaChatSubController {
 				accessoryList2.addAll(acceossory2);
 			}
 			
+			if(charCnt ==0) {
+				try {
+					guildName = armoryProfile.get("GuildName").toString();
+					System.out.println(guildName+" 길드 "+mainCharName);
+				}catch(Exception e){
+					System.out.println("길드네임 조회불가~!!");
+				}
+				
+			}
 			charCnt++;
 		}
 		
@@ -364,6 +379,13 @@ public class LoaChatSubController {
 		resMsg += "가격표:"+enterStr;
 		resMsg += "v0.7 악세 상하 중하 미포함 버그 수정"+enterStr;
 		resMsg += "http://rgb-tns.dev-apc.com/in/totalGold3";
+		
+		if(gradeCnt_gem ==0) {
+			gradeCnt=0;
+		}
+		saveMap.put("score", gradeCnt);
+		saveMap.put("charName", mainCharName);
+		saveMap.put("guildName", guildName);
 		
 		return resMsg;
 	
@@ -785,8 +807,8 @@ public class LoaChatSubController {
 		return gradeCnt_lv;
     }
 	String msgOfLv(List<Integer> lvList) {
-		String resMsg="";
-		lvList = lvList.stream().sorted().collect(Collectors.toList());
+		String resMsg="레벨: ";
+		lvList = lvList.stream().sorted().collect(toReversedList());
 		for(int lv:lvList) {
 			resMsg +=lv+" ";
     	}
@@ -873,23 +895,27 @@ public class LoaChatSubController {
 		int cntGem9 = Collections.frequency(gemList, 9);
 		int cntGem8 = Collections.frequency(gemList, 8);
 		int cntGem7 = Collections.frequency(gemList, 7);
+		int cntGem6 = Collections.frequency(gemList, 6);
 		
 		
-		resMsg += "보석: ";
+		resMsg += "보석(겁작): ";
 		if(cntGem10>0) {
-			resMsg += "10겁:"+cntGem10+" ";
+			resMsg += "10:"+cntGem10+" ";
 		}
 		if(cntGem9>0) {
-			resMsg += "9겁:"+cntGem9+" ";
+			resMsg += "9:"+cntGem9+" ";
 		}
 		if(cntGem8>0) {
-			resMsg += "8겁:"+cntGem8+" ";
+			resMsg += "8:"+cntGem8+" ";
 		}
 		if(cntGem7>0) {
-			resMsg += "7겁:"+cntGem7+" ";
+			resMsg += "7:"+cntGem7+" ";
+		}
+		if(cntGem6>0) {
+			resMsg += "6:"+cntGem6+" ";
 		}
 		
-		if(cntGem10 == 0 && cntGem9 ==0 && cntGem8 ==0 && cntGem7 ==0 ) {
+		if(cntGem10 == 0 && cntGem9 ==0 && cntGem8 ==0 && cntGem7 ==0 && cntGem6 ==0 ) {
 			resMsg += "장착 보석 없음!";
 		}
 		
@@ -903,6 +929,7 @@ public class LoaChatSubController {
 		int cntGem9 = Collections.frequency(gemList, 9);
 		int cntGem8 = Collections.frequency(gemList, 8);
 		int cntGem7 = Collections.frequency(gemList, 7);
+		int cntGem6 = Collections.frequency(gemList, 6);
 		
 		if(cntGem10>0) {
 			gradeCnt_gem += 260;//270 ~ 170 사이 적정가 6멸5홍기준 
@@ -915,6 +942,9 @@ public class LoaChatSubController {
 		}
 		if(cntGem7>0) {
 			gradeCnt_gem += 11*cntGem7;
+		}
+		if(cntGem6>0) {
+			gradeCnt_gem += 3*cntGem6;
 		}
 		
 		return gradeCnt_gem;
