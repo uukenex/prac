@@ -38,7 +38,6 @@ public class LoaChatSubController {
 	final String listSeparatorStr = "㈜";
 	
 	void sumTotalPowerSearchByMainChar(HashMap<String, Object> rtnMap,HashMap<String,Object> saveMap) throws Exception {
-		int cntCharLv1680 =0;
 		int gradeCnt =0;
 		int gradeCnt_lv=0;
 		int gradeCnt_subChar=0;
@@ -133,29 +132,23 @@ public class LoaChatSubController {
 				+gradeCnt_gem
 				+gradeCnt_engrave
 				+gradeCnt_accessory; 
-		//resMsg +="환산 비용: "+gradeCnt +"만 골드";
 		
-		/*
+		String resMsg="";
+		resMsg +="환산 비용: "+gradeCnt +"만 골드";
+		
 		if(gradeCnt>0) {
 			grade="모코코";
 		}
-		if(gradeCnt>300) {
-			grade="모코코2";
+		if(gradeCnt>400) {
+			grade="중급자";
 		}
-		if(gradeCnt>500) {
-			grade="모코코3";
+		if(gradeCnt>900) {
+			grade="고인물";
 		}
-		if(gradeCnt>1000) {
-			grade="모코코4";
+		if(gradeCnt>1800) {
+			grade="일반인이 아님";
 		}
-		if(gradeCnt>1500) {
-			grade="모코코5";
-		}
-		if(gradeCnt>2000) {
-			grade="모코코6";
-		}
-		*/
-		/*
+		
 		resMsg += enterStr;
 		resMsg += "당신은 "+grade+" !!"+enterStr;
 		resMsg += enterStr;
@@ -170,18 +163,18 @@ public class LoaChatSubController {
 		resMsg += "각인상세"+enterStr + msgOfEngrave(charEngrave)+enterStr;
 		
 		resMsg += "가격표:"+enterStr;
-		resMsg += "v0.7 악세 상하 중하 미포함 버그 수정"+enterStr;
-		resMsg += "http://rgb-tns.dev-apc.com/in/totalGold3";
-		*/
-		//resMsg += miniGemCntSearch(charList.get("CharacterName").toString());//얘는 엔터포함됨
+		resMsg += "http://rgb-tns.dev-apc.com/in/totalGold4";
+		/*
+		resMsg += miniGemCntSearch(charList.get("CharacterName").toString());//얘는 엔터포함됨
 		if(gradeCnt_gem ==0) {
 			gradeCnt=0;
 		}
+		*/
 		saveMap.put("score", gradeCnt);
 		//saveMap.put("charName", ordUserId);
 		saveMap.put("guildName", guildName);
-		//return resMsg;
-	
+		
+		saveMap.put("resMsg", resMsg);
 		
 	}
 	
@@ -377,8 +370,7 @@ public class LoaChatSubController {
 		resMsg += "각인상세"+enterStr + msgOfTotEngrave(engraveUpd)+enterStr;
 		
 		resMsg += "가격표:"+enterStr;
-		resMsg += "v0.7 악세 상하 중하 미포함 버그 수정"+enterStr;
-		resMsg += "http://rgb-tns.dev-apc.com/in/totalGold3";
+		resMsg += "http://rgb-tns.dev-apc.com/in/totalGold4";
 		
 		if(gradeCnt_gem ==0) {
 			gradeCnt=0;
@@ -610,25 +602,25 @@ public class LoaChatSubController {
 			for (String g : accessoryList) {
 				switch (g) {
 				case "상상":
-					gradeCnt_accessory += 150;
+					gradeCnt_accessory += 388;
 					break;
 				case "상중":
 				case "중상":
-					gradeCnt_accessory += 80;
+					gradeCnt_accessory += 203;
 					break;
 				case "상하":
 				case "하상":
-					gradeCnt_accessory += 40;
+					gradeCnt_accessory += 77;
 					break;
 				case "상":
-					gradeCnt_accessory += 25;
+					gradeCnt_accessory += 51;
 					break;
 				case "중중":
-					gradeCnt_accessory += 20;
+					gradeCnt_accessory += 25;
 					break;
 				case "중하":
 				case "하중":
-					gradeCnt_accessory += 15;
+					gradeCnt_accessory += 16;
 					break;
 				case "중":
 					gradeCnt_accessory += 10;
@@ -935,7 +927,7 @@ public class LoaChatSubController {
 			gradeCnt_gem += 260;//270 ~ 170 사이 적정가 6멸5홍기준 
 		}
 		if(cntGem9>0) {
-			gradeCnt_gem += 93;
+			gradeCnt_gem += 94;
 		}
 		if(cntGem8>0) {
 			gradeCnt_gem += 32*cntGem8;
