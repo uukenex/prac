@@ -193,7 +193,7 @@ public class LoaChatSubController {
 		String paramUrl = lostArkAPIurl + "/characters/" + userId + "/siblings";
 		String returnData = LoaApiUtils.connect_process(paramUrl);
 		
-		String resMsg=ordUserId+enterStr+"원정대 전투력 정보 v0.9" + enterStr;
+		String resMsg=ordUserId+enterStr+"원정대 전투력 정보 v1.0" + enterStr;
 		
 		List<HashMap<String, Object>> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<List<Map<String, Object>>>() {});
 		if(rtnMap.isEmpty()) return "";
@@ -203,11 +203,8 @@ public class LoaChatSubController {
 				.collect(toReversedList());
 		
 		String maxCharLv =sortedList.get(0).get("ItemMaxLevel").toString().replaceAll(",", "");
-		int cntCharLv1680 =0;
-		
 		int gradeCnt =0;
 		int gradeCnt_lv=0;
-		int gradeCnt_subChar=0;
 		int gradeCnt_weapon=0;
 		int gradeCnt_gem=0;
 		int gradeCnt_engrave=0;
@@ -215,6 +212,7 @@ public class LoaChatSubController {
 		
 		String grade ="모코코";
 		
+		List<Integer> lvList = new ArrayList<>();
 		List<Integer> weaponList = new ArrayList<>();
 		ArrayList<Integer> gemList = new ArrayList<>();
 		List<Map<String,Object>> engraveList = new ArrayList<>();
@@ -240,12 +238,12 @@ public class LoaChatSubController {
 			charLv =Double.parseDouble(charList.get("ItemMaxLevel").toString().replaceAll(",", "")); 
 			charClassName = charList.get("CharacterClassName").toString();
 			
-			if(charLv < 1540) {
+			if(charLv < 1640) {
 				continue;
 			}
 			
 			if(charLv >= 1680){
-				cntCharLv1680++;
+				lvList.add((int) Math.floor(charLv));
 			}
 			
 			
@@ -310,27 +308,21 @@ public class LoaChatSubController {
 		List<HashMap<String, Object>> engraveUpd = updOfTotEngrave(mainCharName);
 		
 		gradeCnt_engrave += calcOfTotEngrave(engraveUpd);
-		gradeCnt_lv += calcOfMaxLv(maxCharLv);
-		if(cntCharLv1680>0) {
-			gradeCnt_subChar += 200*(cntCharLv1680-1);
-		}
+		gradeCnt_lv += calcOfLv(lvList);
 		gradeCnt_weapon += calcOfWeapon(weaponList);
 		gradeCnt_gem += calcOfGem(gemList);		
 		//1고대 2유물
 		gradeCnt_accessory += calcOfAccessory(accessoryList1, 1);
 		gradeCnt_accessory += calcOfAccessory(accessoryList2, 2);
 		
-		resMsg += "최고레벨: " + maxCharLv + enterStr;
-		resMsg += "1680이상캐릭터수 : " +cntCharLv1680+ enterStr;
-		resMsg += msgOfWeapon(weaponList);
-		resMsg += msgOfGem(gemList);
-		resMsg += msgOfAccessory(accessoryList1, 1);
-		resMsg += msgOfAccessory(accessoryList2, 2);
-		resMsg += enterStr;
+		resMsg += msgOfLv(lvList)+enterStr;
+		resMsg += msgOfWeapon(weaponList)+enterStr;
+		resMsg += msgOfGem(gemList)+enterStr;
+		resMsg += msgOfAccessory(accessoryList1, 1)+enterStr;
+		resMsg += msgOfAccessory(accessoryList2, 2)+enterStr;
 		resMsg += enterStr;
 		
 		gradeCnt=gradeCnt_lv
-				+gradeCnt_subChar
 				+gradeCnt_weapon
 				+gradeCnt_gem
 				+gradeCnt_engrave
@@ -363,7 +355,6 @@ public class LoaChatSubController {
 		resMsg += "약간의 상세 더보기"+allSeeStr;
 		
 		resMsg += "레벨 "+gradeCnt_lv+enterStr;
-		resMsg += "부캐 "+gradeCnt_subChar+enterStr;
 		resMsg += "무기 "+gradeCnt_weapon+enterStr;
 		resMsg += "보석 "+gradeCnt_gem+enterStr;
 		resMsg += "악세 "+gradeCnt_accessory+enterStr;
@@ -766,7 +757,42 @@ public class LoaChatSubController {
 		
 		return gradeCnt_weapon;
 	}
-
+    int calcOfLv(List<Integer> lvList) {
+    	int gradeCnt_lv=0;
+    	
+    	for(int lv:lvList) {
+    		if(lv>=1680) {
+    			gradeCnt_lv += 200;
+    		}
+    		if(lv>=1690) {
+    			gradeCnt_lv += 70;
+    		}
+    		if(lv>=1700) {
+    			gradeCnt_lv += 100;
+    		}
+    		if(lv>=1710) {
+    			gradeCnt_lv += 130;
+    		}
+    		if(lv>=1720) {
+    			gradeCnt_lv += 160;
+    		}
+    		if(lv>=1730) {
+    			gradeCnt_lv += 190;
+    		}
+    	}
+    	
+		
+		return gradeCnt_lv;
+    }
+	String msgOfLv(List<Integer> lvList) {
+		String resMsg="";
+		lvList = lvList.stream().sorted().collect(Collectors.toList());
+		for(int lv:lvList) {
+			resMsg +=lv+" ";
+    	}
+		return resMsg;
+	}
+	
 	String msgOfWeapon(List<Integer> weaponList) {
 		String resMsg="";
 		

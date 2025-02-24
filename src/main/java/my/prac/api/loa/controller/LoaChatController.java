@@ -3495,7 +3495,7 @@ public class LoaChatController {
 		String paramUrl = lostArkAPIurl + "/characters/" + userId + "/siblings";
 		String returnData = LoaApiUtils.connect_process(paramUrl);
 		
-		String resMsg=ordUserId+enterStr+"원정대 전투력 정보 v0.9" + enterStr;
+		String resMsg=ordUserId+enterStr+"원정대 전투력 정보 v1.0" + enterStr;
 		
 		List<HashMap<String, Object>> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<List<Map<String, Object>>>() {});
 		if(rtnMap.isEmpty()) return "";
@@ -3557,7 +3557,7 @@ public class LoaChatController {
 			charLv =Double.parseDouble(charList.get("ItemMaxLevel").toString().replaceAll(",", "")); 
 			charClassName = charList.get("CharacterClassName").toString();
 			
-			if(charLv < 1540) {
+			if(charLv < 1640) {
 				continue;
 			}
 			
