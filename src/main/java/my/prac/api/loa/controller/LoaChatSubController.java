@@ -313,7 +313,7 @@ public class LoaChatSubController {
 		}
 		
 		
-		List<HashMap<String, Object>> engraveUpd = updOfTotEngrave(mainCharName);
+		List<HashMap<String, Object>> engraveUpd = updOfTotEngrave(refreshEngraveList,mainCharName);
 		
 		gradeCnt_engrave += calcOfTotEngrave(engraveUpd);
 		gradeCnt_lv += calcOfLv(lvList);
@@ -968,8 +968,7 @@ public class LoaChatSubController {
 	}
 	
 	
-	List<HashMap<String, Object>> updOfTotEngrave(String mainCharName) throws Exception  {
-		List<HashMap<String, Object>> refreshEngraveList = new ArrayList<>();
+	List<HashMap<String, Object>> updOfTotEngrave(List<HashMap<String, Object>> refreshEngraveList,String mainCharName) throws Exception  {
 		// 각인 전체조회 로직start
 		int charEngraveCnt = botService.selectBotLoaEngraveCnt(mainCharName);
 
