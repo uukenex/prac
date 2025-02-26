@@ -587,6 +587,9 @@ public class LoaChatController {
 						sub.sumTotalPowerSearchByMainChar(charMap,saveMap);
 						val+= saveMap.get("resMsg");
 						
+						val+= enterStr;
+						val+= enterStr;
+						val+= "/정보 와 동기화 되어있습니다. 해당 명령어는 상세내역만을 보여줍니다.";
 						if(val!=null && !val.equals("")) {
 							//val+= tossAccount2();
 						}
