@@ -341,7 +341,7 @@ public class LoaChatController {
 					try {
 						//val = supporters(param1);
 						val = newnewEquipSearch(param1);
-						val+= tossAccount2();
+						//val+= tossAccount2();
 						
 					} catch (Exception e) {
 						val = errorCodeMng(e,reqMap);
@@ -582,12 +582,13 @@ public class LoaChatController {
 				if (param1 != null && !param1.equals("")) {
 					try {
 						val = supporters(param1);
+						val += param1+" 캐릭터 전투력 상세";
 						HashMap<String,Object> charMap = sub.sumTotalPowerSearch2(param1);
 						sub.sumTotalPowerSearchByMainChar(charMap,saveMap);
 						val+= saveMap.get("resMsg");
 						
 						if(val!=null && !val.equals("")) {
-							val+= tossAccount2();
+							//val+= tossAccount2();
 						}
 					} catch (Exception e) {
 						e.printStackTrace();
@@ -1054,6 +1055,7 @@ public class LoaChatController {
 					val += word + enterStr;
 				}
 				
+				val += tossAccount();
 				val += tossAccount2();
 				passYn=true;
 				break;
