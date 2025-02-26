@@ -582,7 +582,7 @@ public class LoaChatController {
 				if (param1 != null && !param1.equals("")) {
 					try {
 						val = supporters(param1);
-						val += param1+" 캐릭터 전투력 상세";
+						val += param1+" 캐릭터 전투력 상세"+enterStr;
 						HashMap<String,Object> charMap = sub.sumTotalPowerSearch2(param1);
 						sub.sumTotalPowerSearchByMainChar(charMap,saveMap);
 						val+= saveMap.get("resMsg");
