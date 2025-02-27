@@ -459,6 +459,11 @@
 				   AND A.SCORE >= 500
 			   </if>
 			   
+			   <if test="classGb != null and classGb != '' ">
+				   AND A.CLASS_GB = #{classGb, jdbcType=VARCHAR}
+			   </if>
+			   
+			   
 		  ORDER BY A.SCORE DESC) B
  	WHERE ROWNUM &lt;= 10
 		   

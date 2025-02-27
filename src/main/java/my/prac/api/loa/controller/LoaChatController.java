@@ -674,6 +674,68 @@ public class LoaChatController {
 				val +="캐릭터 점수 갱신: /정보"+enterStr;
 				point =+1;
 				break;
+			case "/랭킹2": case "/ㄹㅋ2":
+				List<HashMap<String,Object>> hs2;
+
+				String guildName2 ="";
+				switch (roomName) {
+					case "로아냥떼":
+						guildName = "냥떼목장";
+						break;
+					case "카단 포핑":
+						guildName = "포핑";
+						break;
+					case "test123":
+					case "test":
+						guildName = "냥떼목장";
+						break;
+					default:
+						guildName = "";
+						break;
+				}
+				
+				if(guildName.equals("")) {
+					break;
+				}
+				reqMap.put("guildName", guildName);
+				reqMap.put("targetGb", "2");
+				reqMap.put("classGb", "D");
+				hs = botService.selectRoomBotPowerRank(reqMap);
+				val +=roomName+" 캐릭터(딜러) TOP10"+enterStr;
+				
+				
+				for(HashMap<String,Object> hm : hs) {
+					String starYn="";
+					String star="";
+					starYn = hm.get("STAR_YN").toString();
+					if(starYn!=null && starYn.equals("1")) {
+						star+="⭐";
+					}else {
+						star+="　";
+					}
+					val += star +hm.get("CHAR_NAME")+ " : "+hm.get("SCORE")+enterStr ;
+				}
+				
+				val +=enterStr;
+				reqMap.put("classGb", "S");
+				hs = botService.selectRoomBotPowerRank(reqMap);
+				val +=roomName+" 캐릭터(서폿) TOP10"+enterStr;
+				
+				for(HashMap<String,Object> hm : hs) {
+					String starYn="";
+					String star="";
+					starYn = hm.get("STAR_YN").toString();
+					if(starYn!=null && starYn.equals("1")) {
+						star+="⭐";
+					}else {
+						star+="　";
+					}
+					val += star +hm.get("CHAR_NAME")+ " : "+hm.get("SCORE")+enterStr ;
+				}
+				
+				val +=enterStr;
+				point =+1;
+				break;
 			case "/항협": case "/항해": case "/항해협동": case "/ㅎㅎ":
 				val = shipSearch();
 				point =+1;
