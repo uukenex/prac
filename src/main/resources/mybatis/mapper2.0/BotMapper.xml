@@ -485,5 +485,17 @@
 		
 	</insert>
 	
+	<select id="selectBotPointRank" parameterType="HashMap" resultType="HashMap">
+			SELECT B.*
+			  FROM (SELECT A.USER_NAME AS USER_NAME
+					      ,SUM(A.SCORE) AS SCORE
+					  FROM TBOT_POINT_RANK A
+				     WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+					   AND A.INSERT_DATE > SYSDATE - 7
+				     GROUP BY A.USER_NAME
+				     ORDER BY SUM(A.SCORE) DESC) B
+			 WHERE ROWNUM &lt;= 10
+	</select>
+	
 	
 </mapper>

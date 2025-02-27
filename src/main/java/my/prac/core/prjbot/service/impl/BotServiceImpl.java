@@ -174,4 +174,8 @@ public class BotServiceImpl implements BotService {
 			throw new Exception("저장 실패");
 		}
 	}
+	
+	public List<HashMap<String,Object>> selectBotPointRank(HashMap<String,Object> map){
+		return botDAO.selectBotPointRank(map);
+	}
 }

@@ -736,6 +736,19 @@ public class LoaChatController {
 				val +=enterStr;
 				point =+1;
 				break;
+			case "/포인트": case "/ㅍㅇㅌ":
+				
+				List<HashMap<String,Object>> point_map = botService.selectBotPointRank(reqMap);
+				
+				val +=roomName+" 람쥐포인트 TOP10"+enterStr;
+				
+				for(HashMap<String,Object> hm : point_map) {
+					val += hm.get("USER_NAME")+ " : "+hm.get("SCORE")+enterStr ;
+				}
+				
+				val +=enterStr;
+				val +="람쥐포인트 : 람쥐봇 사용빈도에 따라 증가!";
+				break;
 			case "/항협": case "/항해": case "/항해협동": case "/ㅎㅎ":
 				val = shipSearch();
 				point =+1;
