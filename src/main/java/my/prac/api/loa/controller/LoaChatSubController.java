@@ -171,7 +171,7 @@ public class LoaChatSubController {
 		}
 		*/
 		saveMap.put("score", gradeCnt);
-		//saveMap.put("charName", ordUserId);
+		saveMap.put("charName", charName);
 		saveMap.put("guildName", guildName);
 		
 		saveMap.put("resMsg", resMsg);
