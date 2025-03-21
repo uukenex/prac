@@ -209,7 +209,7 @@
 		 /* bot.xml selectSupporters */
 		SELECT COUNT(1)
 		  FROM TBOT_SUPPORTERS A
-		 WHERE A.USER_ID = #{param1, jdbcType=VARCHAR}
+		 WHERE upper(A.USER_ID) = upper(#{param1, jdbcType=VARCHAR})
 	</select>
 	
 	
