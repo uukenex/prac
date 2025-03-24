@@ -4523,7 +4523,7 @@ public class LoaChatController {
 		String ment = "";
 		ment += enterStr;
 		ment += enterStr+"[람쥐봇 운영에 도움주신분들]";
-		ment += enterStr+"챙석봉 리퍼고냥이 블루미안 친칠라솜꼬리토끼 꼰강선 동탄미시김토끼 루아요 호데레 키데레";
+		ment += enterStr+"챙석봉 리퍼고냥이 블루미안 친칠라솜꼬리토끼 꼰강선 동탄미시김토끼 루아요 호데레 키데레 NutBox 키리레이나";
 		ment += enterStr;
 		ment += enterStr+"[개발자 후원하기]";
 		ment += enterStr+"후원금은 서버비 및 개발자 콜라비용에 보탬이 됩니다.";
