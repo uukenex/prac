@@ -1343,25 +1343,23 @@ public class LoaChatController {
 		msg += enterStr + "⭐카제로스 레이드⭐";
 		msg += enterStr + "✓3막-모르둠"+enterStr+" ↳ [노 28,000G/하 38,000G]";
 		msg += enterStr + "✓2막-아브렐슈드"+enterStr+" ↳ [노 25,000G/하 30,500G]";
-		msg += enterStr + "✓1막-에기르"+enterStr+" ↳ [노 23,000G/하 27,500G]";
-		msg += enterStr + "✓서막-에키드나"+enterStr+" ↳ [노 14,500G/하 18,500G]";
+		msg += enterStr + "✓1막-에기르"+enterStr+" ↳ [노 18,000G/하 27,500G]";
+		msg += enterStr + "✓서막-에키드나"+enterStr+" ↳ [노 9,500G/하 11,000G]";
 		
 		
 		msg += enterStr ;
 		msg += enterStr + "⭐에픽 레이드⭐";
-		msg += enterStr + "✓베히모스"+enterStr+" ↳ 18,500G";
+		msg += enterStr + "✓베히모스 [ 11,000G ]";
+		
 		msg += enterStr ;
-		/*
-		msg += enterStr + "강습 레이드";
-		msg += enterStr + "8인[1640]"+enterStr+"✓18,500G";
-		msg += enterStr + "4인[1640]"+enterStr+"✓18,500G";
-		 */
+		msg += enterStr + "⭐강습 레이드⭐";
+		msg += enterStr + "✓림레이크" + enterStr + " ↳ [노 10,000G/하 18,000G]";
+		
+		msg += allSeeStr ;
 		msg += enterStr + "⭐군단장 레이드⭐";
 		msg += enterStr + "✓어둠-카멘";
-		msg += enterStr + " ↳ 1-3[노 10,000G/하 15,500G]";
-		msg += enterStr + " ↳ 4[하 8,000G]";
-
-		msg += allSeeStr ;
+		msg += enterStr + " ↳ 1-3[노 8,000G/하 10,000G]";
+		msg += enterStr + " ↳ 4[하 5,500G]";
 		msg += enterStr + "✓질병-일리아칸";
 		msg += enterStr + " ↳ 4[노 5,400G/하 8,500G]";
 		msg += enterStr + "✓몽환-아브렐슈드";
@@ -1377,14 +1375,14 @@ public class LoaChatController {
 		msg += enterStr;
 		msg += enterStr + "⭐어비스 던전⭐";
 		msg += enterStr + "✓혼돈의 상아탑";
-		msg += enterStr + " ↳ [노 6,500G/하 10,500G]";
+		msg += enterStr + " ↳ [노 6,500G/하 9,000G]";
 		msg += enterStr + "✓카양겔";
 		msg += enterStr + " ↳ [노 3,600G/하 4,800G]";
 		
 		msg += enterStr;
-		msg += enterStr + "⭐싱글 모드⭐";
-		msg += enterStr + "✓에키드나 [11,600G]";
-		msg += enterStr + "✓카멘 [8,000G]";
+		msg += enterStr + "⭐싱글 모드[노말*0.8]⭐";
+		msg += enterStr + "✓에키드나 [7,600G]";
+		msg += enterStr + "✓카멘 [6,400G]";
 		msg += enterStr + "✓상아탑 [5,200G]";
 		msg += enterStr + "✓일리아칸 [4,320G]";
 		msg += enterStr + "✓카양겔 [2,880G]";
