@@ -1346,14 +1346,14 @@ public class LoaChatController {
 		msg += enterStr + "✓1막-에기르"+enterStr+" ↳ [노 18,000G/하 27,500G]";
 		msg += enterStr + "✓서막-에키드나"+enterStr+" ↳ [노 9,500G/하 11,000G]";
 		
+		msg += enterStr ;
+		msg += enterStr + "⭐강습 레이드⭐";
+		msg += enterStr + "✓림레이크" + enterStr + " ↳ [노 10,000G/하 18,000G]";
 		
 		msg += enterStr ;
 		msg += enterStr + "⭐에픽 레이드⭐";
 		msg += enterStr + "✓베히모스 [ 11,000G ]";
 		
-		msg += enterStr ;
-		msg += enterStr + "⭐강습 레이드⭐";
-		msg += enterStr + "✓림레이크" + enterStr + " ↳ [노 10,000G/하 18,000G]";
 		
 		msg += allSeeStr ;
 		msg += enterStr + "⭐군단장 레이드⭐";
