@@ -1603,13 +1603,35 @@ public class LoaChatController {
 			HashMap<String, Object> maps = LoaApiParser.findElement(tooltip);
 			HashMap<String, Object> limit_element = (HashMap<String, Object>)maps.get("limit_element");
 			HashMap<String, Object> elixir_element = (HashMap<String, Object>)maps.get("elixir_element");
+			HashMap<String, Object> new_refine_element = (HashMap<String, Object>)maps.get("new_refine_element");
 			
 			switch (equip.get("Type").toString()) {
 			case "무기":
 				
 				String tmpWeaponLimit = LoaApiParser.parseLimitForLimit(limit_element);
 				if(!tmpWeaponLimit.equals("")) {
-					resEquip += enterStr +equip.get("Type").toString()+" :" + tmpWeaponLimit;
+					
+					resEquip += enterStr +equip.get("Type").toString();
+					
+					if(new_refine_element.size()>0) {
+						String newEnhanceInfo2="";
+						newEnhanceInfo2 = Jsoup.parse((String) new_refine_element.get("value")).text();
+						newEnhanceInfo2 = LoaApiUtils.filterText(newEnhanceInfo2);
+						newEnhanceInfo2 = newEnhanceInfo2.replaceAll(" 30단계 - 기본 효과 \\+2%", "");
+						newEnhanceInfo2 = newEnhanceInfo2.replaceAll(" 40단계 - 기본 효과 \\+3%", "");
+						newEnhanceInfo2 = newEnhanceInfo2.replace("단계", "");
+						newEnhanceInfo2 = StringUtils.leftPad( newEnhanceInfo2, 2, " ");
+						resEquip += "[+"+newEnhanceInfo2+"]";
+					}else {
+						resEquip += "　 　";
+					}
+					
+					resEquip += " :" + tmpWeaponLimit;
+					
+					
+					
+					
+					
 					resEquip = LoaApiUtils.filterText(resEquip);
 				}
 				break;
@@ -1625,9 +1647,22 @@ public class LoaChatController {
 					totLimit = tmpLimit;
 				}
 				 
+				resEquip += enterStr +equip.get("Type").toString();
 				
+				if(new_refine_element.size()>0) {
+					String newEnhanceInfo2="";
+					newEnhanceInfo2 = Jsoup.parse((String) new_refine_element.get("value")).text();
+					newEnhanceInfo2 = LoaApiUtils.filterText(newEnhanceInfo2);
+					newEnhanceInfo2 = newEnhanceInfo2.replaceAll(" 30단계 - 기본 효과 \\+2%", "");
+					newEnhanceInfo2 = newEnhanceInfo2.replaceAll(" 40단계 - 기본 효과 \\+3%", "");
+					newEnhanceInfo2 = newEnhanceInfo2.replace("단계", "");
+					newEnhanceInfo2 = StringUtils.leftPad( newEnhanceInfo2, 2, " ");
+					resEquip += "[+"+newEnhanceInfo2+"]";
+				}else {
+					resEquip += "　 　";
+				}
 				//초월 정보 출력
-				resEquip += enterStr +equip.get("Type").toString()+" :" + LoaApiParser.parseLimitForLimit(limit_element)+"◈";
+				resEquip += " :" + LoaApiParser.parseLimitForLimit(limit_element)+"◈";
 				resEquip = LoaApiUtils.filterText(resEquip);
 
 				//엘릭서 정보 출력 
