@@ -1623,7 +1623,7 @@ public class LoaChatController {
 						newEnhanceInfo2 = StringUtils.leftPad( newEnhanceInfo2, 2, " ");
 						resEquip += "[+"+newEnhanceInfo2+"]";
 					}else {
-						resEquip += "　 　";
+						resEquip += "[+ 0]";
 					}
 					
 					resEquip += " :" + tmpWeaponLimit;
@@ -1659,7 +1659,7 @@ public class LoaChatController {
 					newEnhanceInfo2 = StringUtils.leftPad( newEnhanceInfo2, 2, " ");
 					resEquip += "[+"+newEnhanceInfo2+"]";
 				}else {
-					resEquip += "　 　";
+					resEquip += "[+ 0]";
 				}
 				//초월 정보 출력
 				resEquip += " :" + LoaApiParser.parseLimitForLimit(limit_element)+enterStr;
@@ -1667,7 +1667,7 @@ public class LoaChatController {
 
 				//엘릭서 정보 출력 
 				totElixir +=LoaApiParser.parseElixirForEquip(equipElixirList,elixir_element);
-				resEquip  +="◈"+LoaApiParser.parseElixirForLimit(equipElixirList,elixir_element,1);
+				resEquip  +="　　◈　　"+LoaApiParser.parseElixirForLimit(equipElixirList,elixir_element,1);
 				
 				break;
 				default:
@@ -1935,7 +1935,7 @@ public class LoaChatController {
 					newEnhanceInfo2 = StringUtils.leftPad( newEnhanceInfo2, 2, " ");
 					resField1 += "[+"+newEnhanceInfo2+"]";
 				}else {
-					resField1 += "　 　";
+					resField1 += "[+ 0]";
 				}
 				resField1 += " 품:"+(int)((HashMap<String, Object>) quality_element.get("value")).get("qualityValue");
 				
@@ -2020,10 +2020,22 @@ public class LoaChatController {
 				}
 				break;
 			case "팔찌":
-				braceletMsg += "팔찌 정보"+enterStr;
+				braceletMsg += "팔찌 정보 ";
 				HashMap<String, Object> bracelet =  (HashMap<String, Object>) bracelet_element.get("value");
-				braceletMsg += LoaApiParser.findBraceletOptions(0,bracelet.get("Element_001").toString());
-				
+				switch(Jsoup.parse((String) ((HashMap<String, Object>) quality_element.get("value")).get("leftStr2")).text()) {
+					case "아이템 티어 3":
+						braceletMsg += LoaApiParser.findBraceletOptions(0,bracelet.get("Element_001").toString());
+						break;
+					case "아이템 티어 4":
+						if(Jsoup.parse((String) ((HashMap<String, Object>) quality_element.get("value")).get("leftStr0")).text().indexOf("고대")>=0 ) {
+							//고대팔찌 우선적용 
+							braceletMsg += LoaApiParser.findBraceletOptions(4,bracelet.get("Element_001").toString());
+						}else {
+							braceletMsg += LoaApiParser.findBraceletOptions(0,bracelet.get("Element_001").toString());
+						}
+						
+						break;
+				}
 				braceletMsg += enterStr;
 				break;	
 			default:
