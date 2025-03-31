@@ -2515,7 +2515,7 @@ public class LoaChatController {
 				}
 				break;
 			case "팔찌":
-				resMsg += "팔찌 정보"+enterStr;
+				resMsg += "팔찌 정보 ";
 				HashMap<String, Object> bracelet =  (HashMap<String, Object>) bracelet_element.get("value");
 				switch(Jsoup.parse((String) ((HashMap<String, Object>) quality_element.get("value")).get("leftStr2")).text()) {
 					case "아이템 티어 3":
