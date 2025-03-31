@@ -2522,7 +2522,13 @@ public class LoaChatController {
 						resMsg += LoaApiParser.findBraceletOptions(0,bracelet.get("Element_001").toString());
 						break;
 					case "아이템 티어 4":
-						resMsg += LoaApiParser.findBraceletOptions(4,bracelet.get("Element_001").toString());
+						if(Jsoup.parse((String) ((HashMap<String, Object>) quality_element.get("value")).get("leftStr0")).text().indexOf("고대")>=0 ) {
+							//고대팔찌 우선적용 
+							resMsg += LoaApiParser.findBraceletOptions(4,bracelet.get("Element_001").toString());
+						}else {
+							resMsg += LoaApiParser.findBraceletOptions(0,bracelet.get("Element_001").toString());
+						}
+						
 						break;
 				}
 				
