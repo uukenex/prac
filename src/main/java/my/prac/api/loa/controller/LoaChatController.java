@@ -1662,12 +1662,12 @@ public class LoaChatController {
 					resEquip += "　 　";
 				}
 				//초월 정보 출력
-				resEquip += " :" + LoaApiParser.parseLimitForLimit(limit_element)+"◈";
+				resEquip += " :" + LoaApiParser.parseLimitForLimit(limit_element)+enterStr;
 				resEquip = LoaApiUtils.filterText(resEquip);
 
 				//엘릭서 정보 출력 
 				totElixir +=LoaApiParser.parseElixirForEquip(equipElixirList,elixir_element);
-				resEquip  +=LoaApiParser.parseElixirForLimit(equipElixirList,elixir_element,1);
+				resEquip  +="◈"+LoaApiParser.parseElixirForLimit(equipElixirList,elixir_element,1);
 				
 				break;
 				default:
@@ -2517,7 +2517,14 @@ public class LoaChatController {
 			case "팔찌":
 				resMsg += "팔찌 정보"+enterStr;
 				HashMap<String, Object> bracelet =  (HashMap<String, Object>) bracelet_element.get("value");
-				resMsg += LoaApiParser.findBraceletOptions(0,bracelet.get("Element_001").toString());
+				switch(Jsoup.parse((String) ((HashMap<String, Object>) quality_element.get("value")).get("leftStr2")).text()) {
+					case "아이템 티어 3":
+						resMsg += LoaApiParser.findBraceletOptions(0,bracelet.get("Element_001").toString());
+						break;
+					case "아이템 티어 4":
+						resMsg += LoaApiParser.findBraceletOptions(4,bracelet.get("Element_001").toString());
+						break;
+				}
 				
 				resMsg += enterStr;
 				//resMsg += "상세 더보기..▼"+allSeeStr;

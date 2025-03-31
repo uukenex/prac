@@ -323,6 +323,13 @@ public class LoaApiParser {
 				String b = Jsoup.parse(a.replace("<BR>", spaceStr)).text();
 				res += newFindTier4AccesorryOptionsForTotal( b ,"D");
 			}
+		}else if(inputcase==4){
+			//4티어 팔찌 
+			for(String a : arr) {
+				a = "<img"+a;
+				String b = Jsoup.parse(a.replace("<BR>", enterStr)).text();
+				res += findBracelet4OptionsDt(b );
+			}
 		}else {
 			for(String a : arr) {
 				a = "<img"+a;
@@ -333,6 +340,26 @@ public class LoaApiParser {
 		return res;
 		
 	}
+	
+	public static String findBracelet4OptionsDt(String param) {
+		if(param==null || param.equals("")) {
+			return "";
+		}
+
+		switch (param) {
+		case "아군 피해량 강화 효과 +7.50%":
+			return "∇(중)아피강";
+		case "몬스터에게 공격 적중 시 8초 동안 대상의 치명타 피해 저항을 3.6% 감소시킨다.`해당 효과는 한 파티 당 하나만 적용된다.`아군 공격력 강화 효과가 2% 증가한다.":
+			return "∇(하)치피저 이중";
+		case "파티 효과로 보호 효과(보호막, 생명력 회복, 받는 피해 감소)가 적용된 대상이 5초 동안 적에게 주는 피해가 0.9% 증가한다.`해당 효과는 한 파티 당 하나만 적용되며, 지속 시간이 없는 보호 효과에는 적용되지 않는다.`아군 공격력 강화 효과가 2% 증가한다.":
+			return "∇(하)응원 이중";
+		default:
+			break;
+		}
+		
+		return "∇"+param;
+	}
+	
 	public static String newFindTier4AccesorryOptionsForTotal(String param,String position) {
 		if(param==null || param.equals("")) {
 			return "";
