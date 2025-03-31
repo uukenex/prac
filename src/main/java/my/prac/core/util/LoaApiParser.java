@@ -347,82 +347,139 @@ public class LoaApiParser {
 		}
 
 		switch (param) {
+		case "이동기 및 기상기 재사용 대기 시간이 8% 감소한다.":
+			return "▽(하)이동기&기상기 쿨감";
+		case "이동기 및 기상기 재사용 대기 시간이 10% 감소한다.":
+			return "▽(중)이동기&기상기 쿨감";
+		case "이동기 및 기상기 재사용 대기 시간이 12% 감소한다.":
+			return "▽(상)이동기&기상기 쿨감";
+			
 		case "공격 및 이동 속도가 4% 증가한다.":
-			return "∇(하)공이속";
+			return "▽(하)공이속";
 		case "공격 및 이동 속도가 5% 증가한다.":
-			return "∇(중)공이속";
+			return "▽(중)공이속";
 		case "공격 및 이동 속도가 6% 증가한다.":
-			return "∇(상)공이속";
+			return "▽(상)공이속";
 		
 		case "치명타 적중률이 3.4% 증가한다.공격이 치명타로 적중 시 적에게 주는 피해가 1.5% 증가한다.":
-			return "∇(하)치적 이중";
+			return "▼(하)치적 이중";
 		case "치명타 적중률이 4.2% 증가한다.공격이 치명타로 적중 시 적에게 주는 피해가 1.5% 증가한다.":
-			return "∇(중)치적 이중";
+			return "▼(중)치적 이중";
 		case "치명타 적중률이 5% 증가한다.공격이 치명타로 적중 시 적에게 주는 피해가 1.5% 증가한다.":
-			return "∇(상)치적 이중";
+			return "▼(상)치적 이중";
 			
 		case "치명타 피해가 6.8% 증가한다.공격이 치명타로 적중 시 적에게 주는 피해가 1.5% 증가한다.":
-			return "∇(하)치피 이중";
+			return "▼(하)치피 이중";
 		case "치명타 피해가 8.4% 증가한다.공격이 치명타로 적중 시 적에게 주는 피해가 1.5% 증가한다.":
-			return "∇(중)치피 이중";
+			return "▼(중)치피 이중";
 		case "치명타 피해가 10% 증가한다.공격이 치명타로 적중 시 적에게 주는 피해가 1.5% 증가한다.":
-			return "∇(상)치피 이중";
+			return "▼(상)치피 이중";
 			
 		
 		case "아군 공격력 강화 효과 +4.00%":
-			return "∇(하)아공강";
+			return "▽(하)아공강";
 		case "아군 공격력 강화 효과 +5.00%":
-			return "∇(중)아공강";
+			return "▽(중)아공강";
 		case "아군 공격력 강화 효과 +6.00%":
-			return "∇(상)아공강";
+			return "▽(상)아공강";
 			
 		case "아군 피해량 강화 효과 +6.00%":
-			return "∇(하)아피강";
+			return "▽(하)아피강";
 		case "아군 피해량 강화 효과 +7.50%":
-			return "∇(중)아피강";
+			return "▽(중)아피강";
 		case "아군 피해량 강화 효과 +9.00%":
-			return "∇(상)아피강";
+			return "▽(상)아피강";
 			
 		case "파티 효과로 보호 효과(보호막, 생명력 회복, 받는 피해 감소)가 적용된 대상이 5초 동안 적에게 주는 피해가 0.9% 증가한다.해당 효과는 한 파티 당 하나만 적용되며, 지속 시간이 없는 보호 효과에는 적용되지 않는다.아군 공격력 강화 효과가 2% 증가한다.":
-			return "∇(하)응원 이중";
+			return "▼(하)응원 이중";
 		case "파티 효과로 보호 효과(보호막, 생명력 회복, 받는 피해 감소)가 적용된 대상이 5초 동안 적에게 주는 피해가 1.1% 증가한다.해당 효과는 한 파티 당 하나만 적용되며, 지속 시간이 없는 보호 효과에는 적용되지 않는다.아군 공격력 강화 효과가 2.5% 증가한다.":
-			return "∇(중)응원 이중";
-		case "파티 효과로 보호 효과(보호막, 생명력 회복, 받는 피해 감소)가 적용된 대상이 5초 동안 적에게 주는 피해가 1.3% 증가한다.해당 효과는 한 파티 당 하나만 적용되며, 지속 시간이 없는 보호 효과에는 적용되지 않는다.아군 공격력 강화 효과가 3.0% 증가한다.":
-			return "∇(상)응원 이중";
+			return "▼(중)응원 이중";
+		case "파티 효과로 보호 효과(보호막, 생명력 회복, 받는 피해 감소)가 적용된 대상이 5초 동안 적에게 주는 피해가 1.3% 증가한다.해당 효과는 한 파티 당 하나만 적용되며, 지속 시간이 없는 보호 효과에는 적용되지 않는다.아군 공격력 강화 효과가 3% 증가한다.":
+			return "▼(상)응원 이중";
 			
 		case "몬스터에게 공격 적중 시 8초 동안 대상의 치명타 피해 저항을 3.6% 감소시킨다.해당 효과는 한 파티 당 하나만 적용된다.아군 공격력 강화 효과가 2% 증가한다.":
-			return "∇(하)치피저 이중";
+			return "▼(하)치피저 이중";
 		case "몬스터에게 공격 적중 시 8초 동안 대상의 치명타 피해 저항을 4.2% 감소시킨다.해당 효과는 한 파티 당 하나만 적용된다.아군 공격력 강화 효과가 2.5% 증가한다.":
-			return "∇(중)치피저 이중";
-		case "몬스터에게 공격 적중 시 8초 동안 대상의 치명타 피해 저항을 4.8% 감소시킨다.해당 효과는 한 파티 당 하나만 적용된다.아군 공격력 강화 효과가 3.0% 증가한다.":
-			return "∇(상)치피저 이중";
+			return "▼(중)치피저 이중";
+		case "몬스터에게 공격 적중 시 8초 동안 대상의 치명타 피해 저항을 4.8% 감소시킨다.해당 효과는 한 파티 당 하나만 적용된다.아군 공격력 강화 효과가 3% 증가한다.":
+			return "▼(상)치피저 이중";
+			
+		case "몬스터에게 공격 적중 시 8초 동안 대상의 치명타 저항을 1.8% 감소시킨다.해당 효과는 한 파티 당 하나만 적용된다.`아군 공격력 강화 효과가 2% 증가한다.":
+			return "▼(하)치저 이중";
+		case "몬스터에게 공격 적중 시 8초 동안 대상의 치명타 저항을 2.1% 감소시킨다.해당 효과는 한 파티 당 하나만 적용된다.`아군 공격력 강화 효과가 2.5% 증가한다.":
+			return "▼(중)치저 이중";
+		case "몬스터에게 공격 적중 시 8초 동안 대상의 치명타 저항을 2.5% 감소시킨다.해당 효과는 한 파티 당 하나만 적용된다.`아군 공격력 강화 효과가 3% 증가한다.":
+			return "▼(상)치저 이중";
+			
+		case "몬스터에게 공격 적중 시 8초 동안 대상의 방어력을 1.8% 감소시킨다.해당 효과는 한 파티 당 하나만 적용된다.`아군 공격력 강화 효과가 2% 증가한다.":
+			return "▼(하)방깎 이중";
+		case "몬스터에게 공격 적중 시 8초 동안 대상의 방어력을 2.1% 감소시킨다.해당 효과는 한 파티 당 하나만 적용된다.`아군 공격력 강화 효과가 2.5% 증가한다.":
+			return "▼(중)방깎 이중";
+		case "몬스터에게 공격 적중 시 8초 동안 대상의 방어력을 2.5% 감소시킨다.해당 효과는 한 파티 당 하나만 적용된다.`아군 공격력 강화 효과가 3% 증가한다.":
+			return "▼(상)방깎 이중";
 			
 		
 		case "방향성 공격이 아닌 스킬이 적에게 주는 피해가 3.0% 증가한다.각성기는 적용되지 않는다.":
-			return "∇(상)타대";
+			return "▽(상)타대";
 		case "방향성 공격이 아닌 스킬이 적에게 주는 피해가 2.5% 증가한다.각성기는 적용되지 않는다.":
-			return "∇(중)타대";
+			return "▽(중)타대";
 		case "방향성 공격이 아닌 스킬이 적에게 주는 피해가 2.0% 증가한다.각성기는 적용되지 않는다.":
-			return "∇(하)타대";
+			return "▽(하)타대";
 			
 		case "무기 공격력이 7200 증가한다.자신의 생명력이 50% 이상일 경우 적에게 공격 적중 시 5초 동안 무기 공격력이 2000 증가한다.":
-			return "∇(하)무공 안상 이중";
+			return "▼(하)무공 안상 이중";
 		case "무기 공격력이 8100 증가한다.자신의 생명력이 50% 이상일 경우 적에게 공격 적중 시 5초 동안 무기 공격력이 2200 증가한다.":
-			return "∇(중)무공 안상 이중";
+			return "▼(중)무공 안상 이중";
 		case "무기 공격력이 9000 증가한다.자신의 생명력이 50% 이상일 경우 적에게 공격 적중 시 5초 동안 무기 공격력이 2400 증가한다.":
-			return "∇(상)무공 안상 이중";
+			return "▼(상)무공 안상 이중";
 			
 		case "무기 공격력이 6900 증가한다.공격 적중 시 30초 마다 120초 동안 무기 공격력이 130 증가한다. (최대 30중첩)":
-			return "∇(하)무공 에포 이중";
+			return "▼(하)무공 에포 이중";
 		case "무기 공격력이 7800 증가한다.공격 적중 시 30초 마다 120초 동안 무기 공격력이 140 증가한다. (최대 30중첩)":
-			return "∇(중)무공 에포 이중";
+			return "▼(중)무공 에포 이중";
 		case "무기 공격력이 8700 증가한다.공격 적중 시 30초 마다 120초 동안 무기 공격력이 150 증가한다. (최대 30중첩)":
-			return "∇(상)무공 에포 이중";
+			return "▼(상)무공 에포 이중";
+			
+		case "공격 적중 시 매 초마다 10초 동안 무기 공격력이 1160, 공격 및 이동 속도가 1% 증가한다. (최대 6중첩)":
+			return "▼(하)무공 공이속 이중";
+		case "공격 적중 시 매 초마다 10초 동안 무기 공격력이 1320, 공격 및 이동 속도가 1% 증가한다. (최대 6중첩)":
+			return "▼(중)무공 공이속 이중";
+		case "공격 적중 시 매 초마다 10초 동안 무기 공격력이 1480, 공격 및 이동 속도가 1% 증가한다. (최대 6중첩)":
+			return "▼(상)무공 공이속 이중";
+			
+		case "적에게 주는 피해가 2% 증가한다.":
+			return "▽(하)적주피";
+		case "적에게 주는 피해가 2.5% 증가한다.":
+			return "▽(중)적주피";
+		case "적에게 주는 피해가 3% 증가한다.":
+			return "▽(상)적주피";
+			
+		case "무기 공격력 +7200":
+			return "▽(하)무공";
+		case "무기 공격력 +8100":
+			return "▽(중)무공";
+		case "무기 공격력 +9000":
+			return "▽(상)무공";
+			
+		case "백어택 스킬이 적에게 주는 피해가 2.5% 증가한다.":
+			return "▽(하)기습";
+		case "백어택 스킬이 적에게 주는 피해가 3% 증가한다.":
+			return "▽(중)기습";
+		case "백어택 스킬이 적에게 주는 피해가 3.5% 증가한다.":
+			return "▽(상)기습";
+			
+		case "추가 피해가 2.5% 증가한다.악마 및 대악마 계열 피해량이 2.5% 증가한다.":
+			return "▼(하)추피 이중";
+		case "추가 피해가 3% 증가한다.악마 및 대악마 계열 피해량이 2.5% 증가한다.":
+			return "▼(중)추피 이중";
+		case "추가 피해가 3.5% 증가한다.악마 및 대악마 계열 피해량이 2.5% 증가한다.":
+			return "▼(상)추피 이중";
+			
 		default:
 			break;
 		}
 		
-		return "∇"+param;
+		return "▽"+param;
 	}
 	
 	public static String newFindTier4AccesorryOptionsForTotal(String param,String position) {
@@ -534,9 +591,9 @@ public class LoaApiParser {
 		
 		String msg = LoaApiUtils.tier4accesorry(param);
 		
-		String high_msg   = "∇"+"(상)"+msg + ""  + enterStr;
-		String middle_msg = "∇"+"(중)"+msg + ""  + enterStr;
-		String low_msg    = "∇"+"(하)"+msg + ""  + enterStr;
+		String high_msg   = "▽"+"(상)"+msg + ""  + enterStr;
+		String middle_msg = "▽"+"(중)"+msg + ""  + enterStr;
+		String low_msg    = "▽"+"(하)"+msg + ""  + enterStr;
 
 		if (msg.indexOf("공") == 0) {
 			if (param.indexOf("390") >= 0 || param.indexOf("1.55%") >= 0) {
@@ -660,7 +717,7 @@ public class LoaApiParser {
 			}
 		}
 		
-		return "∇"+msg+enterStr;
+		return "▽"+msg+enterStr;
 	}
 	
 	public static String findTier4AccesorryOptionsDt(String param) {
@@ -682,13 +739,13 @@ public class LoaApiParser {
 					case "공격력":
 						msg = LoaApiUtils.tier4accesorry(msg);
 						if(param.indexOf("%")>0) {
-							high_msg   = "∇"+"(상)"+msg + "%"  + enterStr;
-							middle_msg = "∇"+"(중)"+msg + "%"  + enterStr;
-							low_msg    = "∇"+"(하)"+msg + "%"  + enterStr;
+							high_msg   = "▼"+"(상)"+msg + "%"  + enterStr;
+							middle_msg = "▼"+"(중)"+msg + "%"  + enterStr;
+							low_msg    = "▼"+"(하)"+msg + "%"  + enterStr;
 						}else {
-							high_msg   = "∇"+"(상)"+msg + ""  + enterStr;
-							middle_msg = "∇"+"(중)"+msg + ""  + enterStr;
-							low_msg    = "∇"+"(하)"+msg + ""  + enterStr;
+							high_msg   = "▽"+"(상)"+msg + ""  + enterStr;
+							middle_msg = "▽"+"(중)"+msg + ""  + enterStr;
+							low_msg    = "▽"+"(하)"+msg + ""  + enterStr;
 						}
 						
 						if( param.indexOf("390") >= 0 || param.indexOf("1.55%")>=0) {
@@ -701,13 +758,13 @@ public class LoaApiParser {
 					case "무기 공격력":
 						msg = LoaApiUtils.tier4accesorry(msg);
 						if(param.indexOf("%")>0) {
-							high_msg   = "∇"+"(상)"+msg + "%"  + enterStr;
-							middle_msg = "∇"+"(중)"+msg + "%"  + enterStr;
-							low_msg    = "∇"+"(하)"+msg + "%"  + enterStr;
+							high_msg   = "▼"+"(상)"+msg + "%"  + enterStr;
+							middle_msg = "▼"+"(중)"+msg + "%"  + enterStr;
+							low_msg    = "▼"+"(하)"+msg + "%"  + enterStr;
 						}else {
-							high_msg   = "∇"+"(상)"+msg + ""  + enterStr;
-							middle_msg = "∇"+"(중)"+msg + ""  + enterStr;
-							low_msg    = "∇"+"(하)"+msg + ""  + enterStr;
+							high_msg   = "▽"+"(상)"+msg + ""  + enterStr;
+							middle_msg = "▽"+"(중)"+msg + ""  + enterStr;
+							low_msg    = "▽"+"(하)"+msg + ""  + enterStr;
 						}
 						if( param.indexOf("960") >= 0 || param.indexOf("3.00%")>=0) {
 							return high_msg;
@@ -718,9 +775,9 @@ public class LoaApiParser {
 						}
 					case "최대 생명력":
 						msg = LoaApiUtils.tier4accesorry(msg);
-						high_msg   = "∇"+"(상)"+msg + enterStr;
-						middle_msg = "∇"+"(중)"+msg + enterStr;
-						low_msg    = "∇"+"(하)"+msg + enterStr;
+						high_msg   = "▽"+"(상)"+msg + enterStr;
+						middle_msg = "▽"+"(중)"+msg + enterStr;
+						low_msg    = "▽"+"(하)"+msg + enterStr;
 						if( param.indexOf("6500") >= 0) {
 							return high_msg;
 						}else if( param.indexOf("3250") >= 0) {
@@ -730,9 +787,9 @@ public class LoaApiParser {
 						}
 					case "최대 마나":
 						msg = LoaApiUtils.tier4accesorry(msg);
-						high_msg   = "∇"+"(상)"+msg + enterStr;
-						middle_msg = "∇"+"(중)"+msg + enterStr;
-						low_msg    = "∇"+"(하)"+msg + enterStr;
+						high_msg   = "▽"+"(상)"+msg + enterStr;
+						middle_msg = "▽"+"(중)"+msg + enterStr;
+						low_msg    = "▽"+"(하)"+msg + enterStr;
 						if( param.indexOf("30") >= 0) {
 							return high_msg;
 						}else if( param.indexOf("15") >= 0) {
@@ -742,9 +799,9 @@ public class LoaApiParser {
 						}
 					case "상태이상":
 						msg = LoaApiUtils.tier4accesorry(msg);
-						high_msg   = "∇"+"(상)"+msg + enterStr;
-						middle_msg = "∇"+"(중)"+msg + enterStr;
-						low_msg    = "∇"+"(하)"+msg + enterStr;
+						high_msg   = "▽"+"(상)"+msg + enterStr;
+						middle_msg = "▽"+"(중)"+msg + enterStr;
+						low_msg    = "▽"+"(하)"+msg + enterStr;
 						if( param.indexOf("1.00") >= 0) {
 							return high_msg;
 						}else if( param.indexOf("0.50") >= 0) {
@@ -754,9 +811,9 @@ public class LoaApiParser {
 						}
 					case "전투 중":
 						msg = LoaApiUtils.tier4accesorry(msg);
-						high_msg   = "∇"+"(상)"+msg + enterStr;
-						middle_msg = "∇"+"(중)"+msg + enterStr;
-						low_msg    = "∇"+"(하)"+msg + enterStr;
+						high_msg   = "▽"+"(상)"+msg + enterStr;
+						middle_msg = "▽"+"(중)"+msg + enterStr;
+						low_msg    = "▽"+"(하)"+msg + enterStr;
 						if( param.indexOf("50") >= 0) {
 							return high_msg;
 						}else if( param.indexOf("25") >= 0) {
@@ -766,9 +823,9 @@ public class LoaApiParser {
 						}
 					case "적에게":
 						msg = LoaApiUtils.tier4accesorry(msg);
-						high_msg   = "∇"+"(상)"+msg + enterStr;
-						middle_msg = "∇"+"(중)"+msg + enterStr;
-						low_msg    = "∇"+"(하)"+msg + enterStr;
+						high_msg   = "▼"+"(상)"+msg + enterStr;
+						middle_msg = "▼"+"(중)"+msg + enterStr;
+						low_msg    = "▼"+"(하)"+msg + enterStr;
 						if( param.indexOf("2.00") >= 0) {
 							return high_msg;
 						}else if( param.indexOf("1.20") >= 0) {
@@ -778,9 +835,9 @@ public class LoaApiParser {
 						}
 					case "추가":
 						msg = LoaApiUtils.tier4accesorry(msg);
-						high_msg   = "∇"+"(상)"+msg + enterStr;
-						middle_msg = "∇"+"(중)"+msg + enterStr;
-						low_msg    = "∇"+"(하)"+msg + enterStr;
+						high_msg   = "▼"+"(상)"+msg + enterStr;
+						middle_msg = "▼"+"(중)"+msg + enterStr;
+						low_msg    = "▼"+"(하)"+msg + enterStr;
 						if( param.indexOf("2.60") >= 0) {
 							return high_msg;
 						}else if( param.indexOf("1.60") >= 0) {
@@ -790,9 +847,9 @@ public class LoaApiParser {
 						}
 					case "세레나데":
 						msg = LoaApiUtils.tier4accesorry(msg);
-						high_msg   = "∇"+"(상)"+msg + enterStr;
-						middle_msg = "∇"+"(중)"+msg + enterStr;
-						low_msg    = "∇"+"(하)"+msg + enterStr;
+						high_msg   = "▽"+"(상)"+msg + enterStr;
+						middle_msg = "▽"+"(중)"+msg + enterStr;
+						low_msg    = "▽"+"(하)"+msg + enterStr;
 						if( param.indexOf("6.00") >= 0) {
 							return high_msg;
 						}else if( param.indexOf("3.60") >= 0) {
@@ -802,9 +859,9 @@ public class LoaApiParser {
 						}
 					case "낙인력":
 						msg = LoaApiUtils.tier4accesorry(msg);
-						high_msg   = "∇"+"(상)"+msg + enterStr;
-						middle_msg = "∇"+"(중)"+msg + enterStr;
-						low_msg    = "∇"+"(하)"+msg + enterStr;
+						high_msg   = "▼"+"(상)"+msg + enterStr;
+						middle_msg = "▼"+"(중)"+msg + enterStr;
+						low_msg    = "▼"+"(하)"+msg + enterStr;
 						if( param.indexOf("8.00") >= 0) {
 							return high_msg;
 						}else if( param.indexOf("4.80") >= 0) {
@@ -815,9 +872,9 @@ public class LoaApiParser {
 					case "파티원 보호막":
 					case "파티원 회복":
 						msg = LoaApiUtils.tier4accesorry(msg);
-						high_msg   = "∇"+"(상)"+msg + enterStr;
-						middle_msg = "∇"+"(중)"+msg + enterStr;
-						low_msg    = "∇"+"(하)"+msg + enterStr;
+						high_msg   = "▽"+"(상)"+msg + enterStr;
+						middle_msg = "▽"+"(중)"+msg + enterStr;
+						low_msg    = "▽"+"(하)"+msg + enterStr;
 						if( param.indexOf("3.50") >= 0) {
 							return high_msg;
 						}else if( param.indexOf("2.10") >= 0) {
@@ -827,9 +884,9 @@ public class LoaApiParser {
 						}
 					case "아군 공격력":
 						msg = LoaApiUtils.tier4accesorry(msg);
-						high_msg   = "∇"+"(상)"+msg + enterStr;
-						middle_msg = "∇"+"(중)"+msg + enterStr;
-						low_msg    = "∇"+"(하)"+msg + enterStr;
+						high_msg   = "▼"+"(상)"+msg + enterStr;
+						middle_msg = "▼"+"(중)"+msg + enterStr;
+						low_msg    = "▼"+"(하)"+msg + enterStr;
 						if( param.indexOf("5.00") >= 0) {
 							return high_msg;
 						}else if( param.indexOf("3.00") >= 0) {
@@ -839,9 +896,9 @@ public class LoaApiParser {
 						}
 					case "아군 피해량":
 						msg = LoaApiUtils.tier4accesorry(msg);
-						high_msg   = "∇"+"(상)"+msg + enterStr;
-						middle_msg = "∇"+"(중)"+msg + enterStr;
-						low_msg    = "∇"+"(하)"+msg + enterStr;
+						high_msg   = "▼"+"(상)"+msg + enterStr;
+						middle_msg = "▼"+"(중)"+msg + enterStr;
+						low_msg    = "▼"+"(하)"+msg + enterStr;
 						if( param.indexOf("7.50") >= 0) {
 							return high_msg;
 						}else if( param.indexOf("4.50") >= 0) {
@@ -851,9 +908,9 @@ public class LoaApiParser {
 						}
 					case "치명타 적중":
 						msg = LoaApiUtils.tier4accesorry(msg);
-						high_msg   = "∇"+"(상)"+msg + enterStr;
-						middle_msg = "∇"+"(중)"+msg + enterStr;
-						low_msg    = "∇"+"(하)"+msg + enterStr;
+						high_msg   = "▼"+"(상)"+msg + enterStr;
+						middle_msg = "▼"+"(중)"+msg + enterStr;
+						low_msg    = "▼"+"(하)"+msg + enterStr;
 						if( param.indexOf("1.55") >= 0) {
 							return high_msg;
 						}else if( param.indexOf("0.95") >= 0) {
@@ -863,9 +920,9 @@ public class LoaApiParser {
 						}
 					case "치명타 피해":
 						msg = LoaApiUtils.tier4accesorry(msg);
-						high_msg   = "∇"+"(상)"+msg + enterStr;
-						middle_msg = "∇"+"(중)"+msg + enterStr;
-						low_msg    = "∇"+"(하)"+msg + enterStr;
+						high_msg   = "▼"+"(상)"+msg + enterStr;
+						middle_msg = "▼"+"(중)"+msg + enterStr;
+						low_msg    = "▼"+"(하)"+msg + enterStr;
 						if( param.indexOf("4.00") >= 0) {
 							return high_msg;
 						}else if( param.indexOf("2.40") >= 0) {
@@ -880,7 +937,7 @@ public class LoaApiParser {
 			}
 		}
 		
-		return "∇"+param;
+		return "▽"+param;
 		
 	}
 	public static String findBraceletOptionsDt(String param) {
@@ -897,9 +954,9 @@ public class LoaApiParser {
 		for(int i=0;i<braceletList.length;i++) {
 			msg = "["+braceletList[i]+"]";
 			
-			high_msg   = "∇"+"(상)"+msg  + enterStr;
-			middle_msg = "∇"+"(중)"+msg  + enterStr;
-			low_msg    = "∇"+"(하)"+msg  + enterStr;
+			high_msg   = "▽"+"(상)"+msg  + enterStr;
+			middle_msg = "▽"+"(중)"+msg  + enterStr;
+			low_msg    = "▽"+"(하)"+msg  + enterStr;
 			
 			if(param.indexOf(msg) >= 0) {
 				switch(msg) {
@@ -1113,7 +1170,7 @@ public class LoaApiParser {
 			}
 		}
 		
-		return "∇"+param;
+		return "▽"+param;
 	}
 	
 	
