@@ -1667,7 +1667,7 @@ public class LoaChatController {
 
 				//엘릭서 정보 출력 
 				totElixir +=LoaApiParser.parseElixirForEquip(equipElixirList,elixir_element);
-				resEquip  +="　　◈　　"+LoaApiParser.parseElixirForLimit(equipElixirList,elixir_element,1);
+				resEquip  +="　　　　◈"+LoaApiParser.parseElixirForLimit(equipElixirList,elixir_element,1);
 				
 				break;
 				default:
