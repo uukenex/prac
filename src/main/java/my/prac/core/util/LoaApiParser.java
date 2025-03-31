@@ -594,23 +594,40 @@ public class LoaApiParser {
 		String high_msg   = "▽"+"(상)"+msg + ""  + enterStr;
 		String middle_msg = "▽"+"(중)"+msg + ""  + enterStr;
 		String low_msg    = "▽"+"(하)"+msg + ""  + enterStr;
+		
+		String high_msg_new   = "▼"+"(상)"+msg + ""  + enterStr;
+		String middle_msg_new = "▼"+"(중)"+msg + ""  + enterStr;
+		String low_msg_new    = "▼"+"(하)"+msg + ""  + enterStr;
 
 		if (msg.indexOf("공") == 0) {
-			if (param.indexOf("390") >= 0 || param.indexOf("1.55%") >= 0) {
+			if ( param.indexOf("1.55%") >= 0) {
+				return high_msg_new;
+			} else if (param.indexOf("0.95%") >= 0) {
+				return middle_msg_new;
+			} else if (param.indexOf("0.40%") >= 0) {
+				return low_msg_new;
+			} else if (param.indexOf("390") >= 0 ) {
 				return high_msg;
-			} else if (param.indexOf("195") >= 0 || param.indexOf("0.95%") >= 0) {
+			} else if (param.indexOf("195") >= 0 ) {
 				return middle_msg;
-			} else {
+			} else{
 				return low_msg;
 			}
 		} else if (msg.indexOf("무공") == 0) {
-			if (param.indexOf("960") >= 0 || param.indexOf("3.00%") >= 0) {
+			if ( param.indexOf("3.00%") >= 0) {
+				return high_msg_new;
+			} else if (param.indexOf("1.80%") >= 0) {
+				return middle_msg_new;
+			} else if (param.indexOf("0.80%") >= 0) {
+				return low_msg_new;
+			} else if (param.indexOf("960") >= 0 ) {
 				return high_msg;
-			} else if (param.indexOf("480") >= 0 || param.indexOf("1.80%") >= 0) {
+			} else if (param.indexOf("480") >= 0 ) {
 				return middle_msg;
-			} else {
+			} else{
 				return low_msg;
 			}
+			
 		} else if (msg.indexOf("최생") == 0) {
 			if (param.indexOf("6500") >= 0) {
 				return high_msg;
@@ -720,6 +737,7 @@ public class LoaApiParser {
 		return "▽"+msg+enterStr;
 	}
 	
+	@Deprecated
 	public static String findTier4AccesorryOptionsDt(String param) {
 		String msg = "";
 		
