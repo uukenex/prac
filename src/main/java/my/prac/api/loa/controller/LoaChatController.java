@@ -2001,20 +2001,23 @@ public class LoaChatController {
 			case "반지":case "귀걸이": case "목걸이":
 				switch(Jsoup.parse((String) ((HashMap<String, Object>) quality_element.get("value")).get("leftStr2")).text()) {
 					case "아이템 티어 3":
-						/*
-						accessoryMsg += Jsoup.parse((String) ((HashMap<String, Object>) quality_element.get("value")).get("leftStr0")).text();
-						accessoryMsg += " 품:"+(int)((HashMap<String, Object>) quality_element.get("value")).get("qualityValue");
-						accessoryMsg += enterStr;
-						accessoryMsg += " "+Jsoup.parse((String)((HashMap<String, Object>) tier3_stats.get("value")).get("Element_001")).text();
-						accessoryMsg += enterStr;
-						*/
 						break;
 					case "아이템 티어 4":
 						accessoryMsg += Jsoup.parse((String) ((HashMap<String, Object>) quality_element.get("value")).get("leftStr0")).text();
 						accessoryMsg += " 품:"+(int)((HashMap<String, Object>) quality_element.get("value")).get("qualityValue");
 						accessoryMsg += " ("+((HashMap<String, Object>) ark_passive_point_element.get("value")).get("Element_001")+")";
 						accessoryMsg += enterStr;
-						accessoryMsg += LoaApiParser.findBraceletOptions(1,((HashMap<String, Object>) grinding_element.get("value")).get("Element_001").toString());
+						
+						switch (className) {
+							case "바드":
+							case "도화가":
+							case "홀리나이트":
+								accessoryMsg += LoaApiParser.findBraceletOptions("S",1,((HashMap<String, Object>) grinding_element.get("value")).get("Element_001").toString());
+								break;
+							default:
+								accessoryMsg += LoaApiParser.findBraceletOptions("D",1,((HashMap<String, Object>) grinding_element.get("value")).get("Element_001").toString());
+						}
+						
 						accessoryMsg += enterStr;
 						break;
 				}
@@ -2024,14 +2027,23 @@ public class LoaChatController {
 				HashMap<String, Object> bracelet =  (HashMap<String, Object>) bracelet_element.get("value");
 				switch(Jsoup.parse((String) ((HashMap<String, Object>) quality_element.get("value")).get("leftStr2")).text()) {
 					case "아이템 티어 3":
-						braceletMsg += LoaApiParser.findBraceletOptions(0,bracelet.get("Element_001").toString());
+						braceletMsg += LoaApiParser.findBraceletOptions("",0,bracelet.get("Element_001").toString());
 						break;
 					case "아이템 티어 4":
 						if(Jsoup.parse((String) ((HashMap<String, Object>) quality_element.get("value")).get("leftStr0")).text().indexOf("고대")>=0 ) {
 							//고대팔찌 우선적용 
-							braceletMsg += LoaApiParser.findBraceletOptions(4,bracelet.get("Element_001").toString());
+							switch (className) {
+								case "바드":
+								case "도화가":
+								case "홀리나이트":
+									braceletMsg += LoaApiParser.findBraceletOptions("S",5,bracelet.get("Element_001").toString());
+									break;
+								default:
+									braceletMsg += LoaApiParser.findBraceletOptions("D",4,bracelet.get("Element_001").toString());
+							}
+							
 						}else {
-							braceletMsg += LoaApiParser.findBraceletOptions(0,bracelet.get("Element_001").toString());
+							braceletMsg += LoaApiParser.findBraceletOptions("",0,bracelet.get("Element_001").toString());
 						}
 						
 						break;
@@ -2328,104 +2340,6 @@ public class LoaChatController {
 		return resMsg;
 	}
 	
-	String newAccessorySearch(Map<String,Object> rtnMap,String userId) throws Exception {
-		String ordUserId=userId;
-		
-		List<Map<String, Object>> armoryEquipment;
-		
-		try {
-			armoryEquipment = (List<Map<String, Object>>) rtnMap.get("ArmoryEquipment");
-		}catch(Exception e){
-			throw new Exception("E0003");
-		}
-		
-		String resMsg = ordUserId+ " 악세정보"+enterStr;
-		String resMsg2="";
-		boolean resMsg2Ok=false;
-
-		for (Map<String, Object> equip : armoryEquipment) {
-			HashMap<String, Object> tooltip = new ObjectMapper().readValue((String) equip.get("Tooltip"),new TypeReference<Map<String, Object>>() {});
-			HashMap<String, Object> maps = LoaApiParser.findElement(tooltip);
-			HashMap<String, Object> weapon_element = (HashMap<String, Object>)maps.get("weapon_element");
-			HashMap<String, Object> quality_element = (HashMap<String, Object>)maps.get("quality_element");
-			HashMap<String, Object> new_refine_element = (HashMap<String, Object>)maps.get("new_refine_element");
-			HashMap<String, Object> limit_element = (HashMap<String, Object>)maps.get("limit_element");
-			HashMap<String, Object> elixir_element = (HashMap<String, Object>)maps.get("elixir_element");
-			HashMap<String, Object> bracelet_element = (HashMap<String, Object>)maps.get("bracelet_element");
-			HashMap<String, Object> stone_element = (HashMap<String, Object>)maps.get("stone_element");
-			HashMap<String, Object> grinding_element = (HashMap<String, Object>)maps.get("grinding_element");
-			HashMap<String, Object> ark_passive_point_element = (HashMap<String, Object>)maps.get("ark_passive_point_element");
-			HashMap<String, Object> tier3_stats = (HashMap<String, Object>)maps.get("tier3_stats");
-			
-			switch (equip.get("Type").toString()) {
-			case "어빌리티 스톤":
-				HashMap<String, Object> stone_val = (HashMap<String, Object>) stone_element.get("value");
-				if(stone_val == null || stone_val.size() ==0 ) {
-					continue;
-				}
-				HashMap<String, Object> stone_option = (HashMap<String, Object>) stone_val.get("Element_000");
-				HashMap<String, Object> stone_option0 = (HashMap<String, Object>) stone_option.get("contentStr");
-				HashMap<String, Object> stone_option1 = (HashMap<String, Object>) stone_option0.get("Element_000");
-				HashMap<String, Object> stone_option2 = (HashMap<String, Object>) stone_option0.get("Element_001");
-				
-				resMsg += equip.get("Name");
-				resMsg += enterStr;
-				String stone_option1_str = Jsoup.parse(stone_option1.get("contentStr").toString()).text();
-				String stone_option2_str = Jsoup.parse(stone_option2.get("contentStr").toString()).text();
-				
-				int len = 0;
-				
-				stone_option1_str = stone_option1_str.replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
-				len = stone_option1_str.length();
-				stone_option1_str = stone_option1_str.substring(0,1)+stone_option1_str.substring(len-1,len);
-
-				stone_option2_str = stone_option2_str.replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
-				len = stone_option2_str.length();
-				stone_option2_str = stone_option2_str.substring(0,1)+stone_option2_str.substring(len-1,len);
-				
-				resMsg += stone_option1_str + " " + stone_option2_str +enterStr;
-				break;
-			case "반지":case "귀걸이": case "목걸이":
-				switch(Jsoup.parse((String) ((HashMap<String, Object>) quality_element.get("value")).get("leftStr2")).text()) {
-					/*case "아이템 티어 3":
-						resMsg += Jsoup.parse((String) ((HashMap<String, Object>) quality_element.get("value")).get("leftStr0")).text();
-						resMsg += " 품:"+(int)((HashMap<String, Object>) quality_element.get("value")).get("qualityValue");
-						resMsg += enterStr;
-						resMsg += " "+Jsoup.parse((String)((HashMap<String, Object>) tier3_stats.get("value")).get("Element_001")).text();
-						resMsg += enterStr;
-						break;
-					*/
-					case "아이템 티어 4":
-						resMsg += Jsoup.parse((String) ((HashMap<String, Object>) quality_element.get("value")).get("leftStr0")).text();
-						resMsg += " 품:"+(int)((HashMap<String, Object>) quality_element.get("value")).get("qualityValue");
-						resMsg += " ("+((HashMap<String, Object>) ark_passive_point_element.get("value")).get("Element_001")+")";
-						resMsg += enterStr;
-						resMsg += LoaApiParser.findBraceletOptions(1,((HashMap<String, Object>) grinding_element.get("value")).get("Element_001").toString());
-						//resMsg += " "+Jsoup.parse((String) ((HashMap<String, Object>) grinding_element.get("value")).get("Element_001")).text();
-						resMsg += enterStr;
-						resMsg2Ok = true;
-						break;
-				}
-				break;
-			case "팔찌":
-				resMsg += "팔찌 정보"+enterStr;
-				HashMap<String, Object> bracelet =  (HashMap<String, Object>) bracelet_element.get("value");
-				resMsg += LoaApiParser.findBraceletOptions(0,bracelet.get("Element_001").toString());
-				
-				resMsg += enterStr;
-				//resMsg += "상세 더보기..▼"+allSeeStr;
-				//String braceletDt = Jsoup.parse(bracelet.get("Element_001").toString().replace("<BR>", enterStr)).text();
-				//resMsg += braceletDt;
-				break;
-			default:
-			continue;
-			}
-		}
-
-		return resMsg;
-	}
-	
-	
 	String accessorySearch(String userId) throws Exception {
 		String ordUserId=userId;
 		userId = URLEncoder.encode(userId, "UTF-8");
@@ -2455,6 +2369,9 @@ public class LoaChatController {
 			throw new Exception("E0003");
 		}
 		
+		
+		
+		String className = armoryProfile.get("CharacterClassName").toString();
 		String resMsg = ordUserId+ " 악세정보"+enterStr;
 		String resMsg2="";
 		boolean resMsg2Ok=false;
@@ -2474,53 +2391,26 @@ public class LoaChatController {
 			HashMap<String, Object> tier3_stats = (HashMap<String, Object>)maps.get("tier3_stats");
 			
 			switch (equip.get("Type").toString()) {
-			/*case "어빌리티 스톤":
-				
-				HashMap<String, Object> stone_val = (HashMap<String, Object>) stone_element.get("value");
-				if(stone_val == null || stone_val.size() ==0 ) {
-					continue;
-				}
-				HashMap<String, Object> stone_option = (HashMap<String, Object>) stone_val.get("Element_000");
-				HashMap<String, Object> stone_option0 = (HashMap<String, Object>) stone_option.get("contentStr");
-				HashMap<String, Object> stone_option1 = (HashMap<String, Object>) stone_option0.get("Element_000");
-				HashMap<String, Object> stone_option2 = (HashMap<String, Object>) stone_option0.get("Element_001");
-				
-				resMsg += equip.get("Name");
-				resMsg += enterStr;
-				String stone_option1_str = Jsoup.parse(stone_option1.get("contentStr").toString()).text();
-				String stone_option2_str = Jsoup.parse(stone_option2.get("contentStr").toString()).text();
-				
-				int len = 0;
-				
-				stone_option1_str = stone_option1_str.replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
-				len = stone_option1_str.length();
-				stone_option1_str = stone_option1_str.substring(0,1)+stone_option1_str.substring(len-1,len);
-
-				stone_option2_str = stone_option2_str.replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
-				len = stone_option2_str.length();
-				stone_option2_str = stone_option2_str.substring(0,1)+stone_option2_str.substring(len-1,len);
-				
-				resMsg += stone_option1_str + " " + stone_option2_str +enterStr;
-				break;
-				*/
+			
 			case "반지":case "귀걸이": case "목걸이":
 				switch(Jsoup.parse((String) ((HashMap<String, Object>) quality_element.get("value")).get("leftStr2")).text()) {
-				/*
-					case "아이템 티어 3":
-						resMsg += Jsoup.parse((String) ((HashMap<String, Object>) quality_element.get("value")).get("leftStr0")).text();
-						resMsg += " 품:"+(int)((HashMap<String, Object>) quality_element.get("value")).get("qualityValue");
-						resMsg += enterStr;
-						resMsg += " "+Jsoup.parse((String)((HashMap<String, Object>) tier3_stats.get("value")).get("Element_001")).text();
-						resMsg += enterStr;
-						break;
-				*/
+				
 					case "아이템 티어 4":
 						resMsg += Jsoup.parse((String) ((HashMap<String, Object>) quality_element.get("value")).get("leftStr0")).text();
 						resMsg += " 품:"+(int)((HashMap<String, Object>) quality_element.get("value")).get("qualityValue");
 						resMsg += " ("+((HashMap<String, Object>) ark_passive_point_element.get("value")).get("Element_001")+")";
 						resMsg += enterStr;
-						resMsg += LoaApiParser.findBraceletOptions(1,((HashMap<String, Object>) grinding_element.get("value")).get("Element_001").toString());
-						//resMsg += " "+Jsoup.parse((String) ((HashMap<String, Object>) grinding_element.get("value")).get("Element_001")).text();
+						
+						switch (className) {
+							case "바드":
+							case "도화가":
+							case "홀리나이트":
+								resMsg += LoaApiParser.findBraceletOptions("S",1,((HashMap<String, Object>) grinding_element.get("value")).get("Element_001").toString());
+								break;
+							default:
+								resMsg += LoaApiParser.findBraceletOptions("D",1,((HashMap<String, Object>) grinding_element.get("value")).get("Element_001").toString());
+						}
+						
 						resMsg += enterStr;
 						resMsg2Ok = true;
 						break;
@@ -2531,24 +2421,30 @@ public class LoaChatController {
 				HashMap<String, Object> bracelet =  (HashMap<String, Object>) bracelet_element.get("value");
 				switch(Jsoup.parse((String) ((HashMap<String, Object>) quality_element.get("value")).get("leftStr2")).text()) {
 					case "아이템 티어 3":
-						resMsg += LoaApiParser.findBraceletOptions(0,bracelet.get("Element_001").toString());
+						resMsg += LoaApiParser.findBraceletOptions("",0,bracelet.get("Element_001").toString());
 						break;
 					case "아이템 티어 4":
 						if(Jsoup.parse((String) ((HashMap<String, Object>) quality_element.get("value")).get("leftStr0")).text().indexOf("고대")>=0 ) {
 							//고대팔찌 우선적용 
-							resMsg += LoaApiParser.findBraceletOptions(4,bracelet.get("Element_001").toString());
+							switch (className) {
+								case "바드":
+								case "도화가":
+								case "홀리나이트":
+									resMsg += LoaApiParser.findBraceletOptions("S",5,bracelet.get("Element_001").toString());
+									break;
+								default:
+									resMsg += LoaApiParser.findBraceletOptions("D",4,bracelet.get("Element_001").toString());
+							}
+							
 						}else {
-							resMsg += LoaApiParser.findBraceletOptions(0,bracelet.get("Element_001").toString());
+							resMsg += LoaApiParser.findBraceletOptions("",0,bracelet.get("Element_001").toString());
 						}
 						
 						break;
 				}
-				
 				resMsg += enterStr;
-				//resMsg += "상세 더보기..▼"+allSeeStr;
-				//String braceletDt = Jsoup.parse(bracelet.get("Element_001").toString().replace("<BR>", enterStr)).text();
-				//resMsg += braceletDt;
-				break;
+				break;	
+				
 			default:
 			continue;
 			}
@@ -2917,10 +2813,10 @@ public class LoaChatController {
 										case "바드":
 										case "도화가":
 										case "홀리나이트":
-											g1.add(LoaApiParser.findBraceletOptions(3,((HashMap<String, Object>) grinding_element.get("value")).get("Element_001").toString()));
+											g1.add(LoaApiParser.findBraceletOptions("S",3,((HashMap<String, Object>) grinding_element.get("value")).get("Element_001").toString()));
 											break;
 										default:
-											g1.add(LoaApiParser.findBraceletOptions(2,((HashMap<String, Object>) grinding_element.get("value")).get("Element_001").toString()));
+											g1.add(LoaApiParser.findBraceletOptions("D",2,((HashMap<String, Object>) grinding_element.get("value")).get("Element_001").toString()));
 											break;
 									}
 								}
@@ -2930,10 +2826,10 @@ public class LoaChatController {
 										case "바드":
 										case "도화가":
 										case "홀리나이트":
-											g1.add(LoaApiParser.findBraceletOptions(3,((HashMap<String, Object>) grinding_element.get("value")).get("Element_001").toString()));
+											g1.add(LoaApiParser.findBraceletOptions("S",3,((HashMap<String, Object>) grinding_element.get("value")).get("Element_001").toString()));
 											break;
 										default:
-											g1.add(LoaApiParser.findBraceletOptions(2,((HashMap<String, Object>) grinding_element.get("value")).get("Element_001").toString()));
+											g1.add(LoaApiParser.findBraceletOptions("D",2,((HashMap<String, Object>) grinding_element.get("value")).get("Element_001").toString()));
 											break;
 									}
 								}
@@ -2943,10 +2839,10 @@ public class LoaChatController {
 								case "바드":
 								case "도화가":
 								case "홀리나이트":
-									g1.add(LoaApiParser.findBraceletOptions(3,((HashMap<String, Object>) grinding_element.get("value")).get("Element_001").toString()));
+									g1.add(LoaApiParser.findBraceletOptions("S",3,((HashMap<String, Object>) grinding_element.get("value")).get("Element_001").toString()));
 									break;
 								default:
-									g1.add(LoaApiParser.findBraceletOptions(2,((HashMap<String, Object>) grinding_element.get("value")).get("Element_001").toString()));
+									g1.add(LoaApiParser.findBraceletOptions("D",2,((HashMap<String, Object>) grinding_element.get("value")).get("Element_001").toString()));
 									break;
 							}
 							}

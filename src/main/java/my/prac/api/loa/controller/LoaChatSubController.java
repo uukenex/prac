@@ -536,10 +536,10 @@ public class LoaChatSubController {
 										case "바드":
 										case "도화가":
 										case "홀리나이트":
-											g1.add(LoaApiParser.findBraceletOptions(3,((HashMap<String, Object>) grinding_element.get("value")).get("Element_001").toString()));
+											g1.add(LoaApiParser.findBraceletOptions("S",3,((HashMap<String, Object>) grinding_element.get("value")).get("Element_001").toString()));
 											break;
 										default:
-											g1.add(LoaApiParser.findBraceletOptions(2,((HashMap<String, Object>) grinding_element.get("value")).get("Element_001").toString()));
+											g1.add(LoaApiParser.findBraceletOptions("D",2,((HashMap<String, Object>) grinding_element.get("value")).get("Element_001").toString()));
 											break;
 									}
 								}
@@ -549,10 +549,10 @@ public class LoaChatSubController {
 										case "바드":
 										case "도화가":
 										case "홀리나이트":
-											g1.add(LoaApiParser.findBraceletOptions(3,((HashMap<String, Object>) grinding_element.get("value")).get("Element_001").toString()));
+											g1.add(LoaApiParser.findBraceletOptions("S",3,((HashMap<String, Object>) grinding_element.get("value")).get("Element_001").toString()));
 											break;
 										default:
-											g1.add(LoaApiParser.findBraceletOptions(2,((HashMap<String, Object>) grinding_element.get("value")).get("Element_001").toString()));
+											g1.add(LoaApiParser.findBraceletOptions("D",2,((HashMap<String, Object>) grinding_element.get("value")).get("Element_001").toString()));
 											break;
 									}
 								}
@@ -562,10 +562,10 @@ public class LoaChatSubController {
 								case "바드":
 								case "도화가":
 								case "홀리나이트":
-									g1.add(LoaApiParser.findBraceletOptions(3,((HashMap<String, Object>) grinding_element.get("value")).get("Element_001").toString()));
+									g1.add(LoaApiParser.findBraceletOptions("S",3,((HashMap<String, Object>) grinding_element.get("value")).get("Element_001").toString()));
 									break;
 								default:
-									g1.add(LoaApiParser.findBraceletOptions(2,((HashMap<String, Object>) grinding_element.get("value")).get("Element_001").toString()));
+									g1.add(LoaApiParser.findBraceletOptions("D",2,((HashMap<String, Object>) grinding_element.get("value")).get("Element_001").toString()));
 									break;
 							}
 							}

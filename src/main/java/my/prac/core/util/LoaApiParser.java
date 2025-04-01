@@ -301,7 +301,7 @@ public class LoaApiParser {
 		return findElement;
 	}
 
-	public static String findBraceletOptions(int inputcase,String param) {
+	public static String findBraceletOptions(String position,int inputcase,String param) {
 		String res ="";
 		String[] arr = param.split("<img");
 		
@@ -315,33 +315,40 @@ public class LoaApiParser {
 			for(String a : arr) {
 				a = "<img"+a;
 				String b = Jsoup.parse(a.replace("<BR>", spaceStr)).text();
-				res += newFindTier4AccesorryOptionsDt( b );
+				res += newFindTier4AccesorryOptionsDt( b,position );
 			}
 		}else if(inputcase==2){
 			for(String a : arr) {
 				a = "<img"+a;
 				String b = Jsoup.parse(a.replace("<BR>", spaceStr)).text();
-				res += newFindTier4AccesorryOptionsForTotal( b ,"D");
+				res += newFindTier4AccesorryOptionsForTotal( b ,position);
 			}
 		}else if(inputcase==4){
 			//4티어 팔찌 
 			for(String a : arr) {
 				a = "<img"+a;
 				String b = Jsoup.parse(a.replace("<BR>", "")).text();
-				res += findBracelet4OptionsDt(b )+enterStr;
+				res += findBracelet4OptionsDt(b,position )+enterStr;
+			}
+		}else if(inputcase==5){
+			//4티어 팔찌 
+			for(String a : arr) {
+				a = "<img"+a;
+				String b = Jsoup.parse(a.replace("<BR>", "")).text();
+				res += findBracelet4OptionsDt(b,position )+enterStr;
 			}
 		}else {
 			for(String a : arr) {
 				a = "<img"+a;
 				String b = Jsoup.parse(a.replace("<BR>", spaceStr)).text();
-				res += newFindTier4AccesorryOptionsForTotal( b ,"S");
+				res += newFindTier4AccesorryOptionsForTotal( b ,position);
 			}
 		}
 		return res;
 		
 	}
 	
-	public static String findBracelet4OptionsDt(String param) {
+	public static String findBracelet4OptionsDt(String param,String position) {
 		if(param==null || param.equals("")) {
 			return "";
 		}
@@ -584,7 +591,7 @@ public class LoaApiParser {
 		return "";
 	}
 	
-	public static String newFindTier4AccesorryOptionsDt(String param) {
+	public static String newFindTier4AccesorryOptionsDt(String param, String position) {
 		if(param==null || param.equals("")) {
 			return "";
 		}
@@ -598,14 +605,27 @@ public class LoaApiParser {
 		String high_msg_new   = "▼"+"(상)"+msg + ""  + enterStr;
 		String middle_msg_new = "▼"+"(중)"+msg + ""  + enterStr;
 		String low_msg_new    = "▼"+"(하)"+msg + ""  + enterStr;
-
+		
+		
 		if (msg.indexOf("공") == 0) {
 			if ( param.indexOf("1.55%") >= 0) {
-				return high_msg_new;
+				if(position.equals("D")) {
+					return high_msg_new;
+				}else {
+					return high_msg;
+				}
 			} else if (param.indexOf("0.95%") >= 0) {
-				return middle_msg_new;
+				if(position.equals("D")) {
+					return middle_msg_new;
+				}else {
+					return middle_msg;
+				}
 			} else if (param.indexOf("0.40%") >= 0) {
-				return low_msg_new;
+				if(position.equals("D")) {
+					return low_msg_new;
+				}else {
+					return low_msg;
+				}
 			} else if (param.indexOf("390") >= 0 ) {
 				return high_msg;
 			} else if (param.indexOf("195") >= 0 ) {
@@ -662,19 +682,43 @@ public class LoaApiParser {
 			}
 		} else if (msg.indexOf("피증") == 0) {
 			if (param.indexOf("2.00") >= 0) {
-				return high_msg_new;
+				if(position.equals("D")) {
+					return high_msg_new;
+				}else {
+					return high_msg;
+				}
 			} else if (param.indexOf("1.20") >= 0) {
-				return middle_msg_new;
+				if(position.equals("D")) {
+					return middle_msg_new;
+				}else {
+					return middle_msg;
+				}
 			} else {
-				return low_msg_new;
+				if(position.equals("D")) {
+					return low_msg_new;
+				}else {
+					return low_msg;
+				}
 			}
 		} else if (msg.indexOf("추피") == 0) {
 			if (param.indexOf("2.60") >= 0) {
-				return high_msg_new;
+				if(position.equals("D")) {
+					return high_msg_new;
+				}else {
+					return high_msg;
+				}
 			} else if (param.indexOf("1.60") >= 0) {
-				return middle_msg_new;
+				if(position.equals("D")) {
+					return middle_msg_new;
+				}else {
+					return middle_msg;
+				}
 			} else {
-				return low_msg_new;
+				if(position.equals("D")) {
+					return low_msg_new;
+				}else {
+					return low_msg;
+				}
 			}
 		} else if (msg.indexOf("폿아덴") == 0) {
 			if (param.indexOf("6.00") >= 0) {
@@ -686,11 +730,23 @@ public class LoaApiParser {
 			}
 		} else if (msg.indexOf("낙인력") == 0) {
 			if (param.indexOf("8.00") >= 0) {
-				return high_msg_new;
+				if(position.equals("S")) {
+					return high_msg_new;
+				}else {
+					return high_msg;
+				}
 			} else if (param.indexOf("4.80") >= 0) {
-				return middle_msg_new;
+				if(position.equals("S")) {
+					return middle_msg_new;
+				}else {
+					return middle_msg;
+				}
 			} else {
-				return low_msg_new;
+				if(position.equals("S")) {
+					return low_msg_new;
+				}else {
+					return low_msg;
+				}
 			}
 		} else if (msg.indexOf("파티") == 0) {
 			if (param.indexOf("3.50") >= 0) {
@@ -702,35 +758,83 @@ public class LoaApiParser {
 			}
 		} else if (msg.indexOf("아공강") == 0) {
 			if (param.indexOf("5.00") >= 0) {
-				return high_msg_new;
+				if(position.equals("S")) {
+					return high_msg_new;
+				}else {
+					return high_msg;
+				}
 			} else if (param.indexOf("3.00") >= 0) {
-				return middle_msg_new;
+				if(position.equals("S")) {
+					return middle_msg_new;
+				}else {
+					return middle_msg;
+				}
 			} else {
-				return low_msg_new;
+				if(position.equals("S")) {
+					return low_msg_new;
+				}else {
+					return low_msg;
+				}
 			}
 		} else if (msg.indexOf("아피강") == 0) {
 			if (param.indexOf("7.50") >= 0) {
-				return high_msg_new;
+				if(position.equals("S")) {
+					return high_msg_new;
+				}else {
+					return high_msg;
+				}
 			} else if (param.indexOf("4.50") >= 0) {
-				return middle_msg_new;
+				if(position.equals("S")) {
+					return middle_msg_new;
+				}else {
+					return middle_msg;
+				}
 			} else {
-				return low_msg_new;
+				if(position.equals("S")) {
+					return low_msg_new;
+				}else {
+					return low_msg;
+				}
 			}
 		} else if (msg.indexOf("치적") == 0) {
 			if (param.indexOf("1.55") >= 0) {
-				return high_msg_new;
+				if(position.equals("D")) {
+					return high_msg_new;
+				}else {
+					return high_msg;
+				}
 			} else if (param.indexOf("0.95") >= 0) {
-				return middle_msg_new;
+				if(position.equals("D")) {
+					return middle_msg_new;
+				}else {
+					return middle_msg;
+				}
 			} else {
-				return low_msg_new;
+				if(position.equals("D")) {
+					return low_msg_new;
+				}else {
+					return low_msg;
+				}
 			}
 		} else if (msg.indexOf("치피") == 0) {
 			if (param.indexOf("4.00") >= 0) {
-				return high_msg_new;
+				if(position.equals("D")) {
+					return high_msg_new;
+				}else {
+					return high_msg;
+				}
 			} else if (param.indexOf("2.40") >= 0) {
-				return middle_msg_new;
+				if(position.equals("D")) {
+					return middle_msg_new;
+				}else {
+					return middle_msg;
+				}
 			} else {
-				return low_msg_new;
+				if(position.equals("D")) {
+					return low_msg_new;
+				}else {
+					return low_msg;
+				}
 			}
 		}
 		
