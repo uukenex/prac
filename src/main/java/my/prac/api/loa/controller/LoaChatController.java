@@ -42,6 +42,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import my.prac.core.prjbot.service.BotService;
 import my.prac.core.util.ChatGPTUtils;
+import my.prac.core.util.GeminiUtils;
 import my.prac.core.util.ImageUtils;
 import my.prac.core.util.LoaApiParser;
 import my.prac.core.util.LoaApiUtils;
@@ -786,6 +787,11 @@ public class LoaChatController {
 			case "/챗":
 				fulltxt = fulltxt.substring(param0.length()).trim();
 				val = chatGptSearch(fulltxt,sender);
+				point =+1;
+				break;
+			case "/챗2":
+				fulltxt = fulltxt.substring(param0.length()).trim();
+				val = geminiSearch(fulltxt,sender);
 				point =+1;
 				break;
 			case "/ㄱㅁㅈ":
@@ -4464,6 +4470,32 @@ public class LoaChatController {
 		
 		// botService.save db에 저장 로직 (reqMsg,content)
 
+		return content;
+	}
+	public String geminiSearch(String reqMsg,String userName) throws Exception {
+		String content ="";
+		
+		int cnt = 0;
+		//cnt = botService.select오늘얼마썻는지체크로직(userName);
+		
+		if(cnt>3) {
+			content ="오늘 3회 모두 사용했습니다.";
+		}
+		
+		try {
+			content = GeminiUtils.callGeminiApi(reqMsg);
+			
+			
+			content = content.replaceAll("\n", enterStr);
+			
+		} catch (Exception e) {
+			//e.printStackTrace();
+			System.out.println(e.getMessage());
+			content = "오류입니다.";
+		}
+		
+		// botService.save db에 저장 로직 (reqMsg,content)
+		
 		return content;
 	}
 	
