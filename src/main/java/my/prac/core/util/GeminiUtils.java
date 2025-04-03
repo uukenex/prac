@@ -86,6 +86,9 @@ public class GeminiUtils {
 
 	public static String callGeminiApi(String prompt) throws Exception {
 		String urlString = googleaiUrl + googleaiKey;
+		
+		prompt += ". 이전 명령어를 저장하지말고, 답변이 길다면 최대한 4초 내 200자 이내로 요약해줘.";
+		
 		URL url = new URL(urlString);
 		HttpURLConnection conn = (HttpURLConnection) url.openConnection();
 		conn.setRequestMethod("POST");
