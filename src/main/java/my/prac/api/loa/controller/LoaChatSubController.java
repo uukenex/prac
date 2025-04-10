@@ -119,7 +119,7 @@ public class LoaChatSubController {
 		resMsg += msgOfAccessory(accessoryList1, 1);
 		resMsg += msgOfAccessory(accessoryList2, 2);
 		*/
-		gradeCnt_lv += calcOfMaxLv(maxCharLv);
+		gradeCnt_lv += calcOfLv(maxCharLv);
 		gradeCnt_weapon += calcOfWeapon(weaponList);
 		gradeCnt_gem += calcOfGem(gemList);
 		gradeCnt_accessory += calcOfAccessory(accessoryList1, 1);//고대
@@ -771,33 +771,7 @@ public class LoaChatSubController {
 		
 		return gradeCnt_weapon;
 	}
-    int calcOfLv(List<Integer> lvList) {
-    	int gradeCnt_lv=0;
-    	
-    	for(int lv:lvList) {
-    		if(lv>=1680) {
-    			gradeCnt_lv += 200;
-    		}
-    		if(lv>=1690) {
-    			gradeCnt_lv += 70;
-    		}
-    		if(lv>=1700) {
-    			gradeCnt_lv += 100;
-    		}
-    		if(lv>=1710) {
-    			gradeCnt_lv += 130;
-    		}
-    		if(lv>=1720) {
-    			gradeCnt_lv += 160;
-    		}
-    		if(lv>=1730) {
-    			gradeCnt_lv += 190;
-    		}
-    	}
-    	
-		
-		return gradeCnt_lv;
-    }
+    
 	String msgOfLv(List<Integer> lvList) {
 		String resMsg="레벨: ";
 		lvList = lvList.stream().sorted().collect(toReversedList());
@@ -941,8 +915,46 @@ public class LoaChatSubController {
 		
 		return gradeCnt_gem;
 	}
-	
-	int calcOfMaxLv(String maxCharLv) {
+	int calcOfLv(List<Integer> lvList) {
+    	int gradeCnt_lv=0;
+    	
+    	for(int lv:lvList) {
+    		if(lv>=1680) {
+    			gradeCnt_lv += 200;
+    		}
+    		if(lv>=1690) {
+    			gradeCnt_lv += 70;
+    		}
+    		if(lv>=1700) {
+    			gradeCnt_lv += 100;
+    		}
+    		if(lv>=1710) {
+    			gradeCnt_lv += 130;
+    		}
+    		if(lv>=1720) {
+    			gradeCnt_lv += 160;
+    		}
+    		if(lv>=1730) {
+    			gradeCnt_lv += 190;
+    		}
+    		if(lv>=1740) {
+    			gradeCnt_lv += 220;
+    		}
+    		if(lv>=1750) {
+    			gradeCnt_lv += 250;
+    		}
+    		if(lv>=1760) {
+    			gradeCnt_lv += 280;
+    		}
+    		if(lv>=1770) {
+    			gradeCnt_lv += 310;
+    		}
+    	}
+    	
+		
+		return gradeCnt_lv;
+    }
+	int calcOfLv(String maxCharLv) {
 		int gradeCnt_lv=0;
 		Double lv = Double.parseDouble(maxCharLv);
 		if(lv>=1680) {
@@ -962,6 +974,18 @@ public class LoaChatSubController {
 		}
 		if(lv>=1730) {
 			gradeCnt_lv += 190;
+		}
+		if(lv>=1740) {
+			gradeCnt_lv += 220;
+		}
+		if(lv>=1750) {
+			gradeCnt_lv += 250;
+		}
+		if(lv>=1760) {
+			gradeCnt_lv += 280;
+		}
+		if(lv>=1770) {
+			gradeCnt_lv += 310;
 		}
 		
 		return gradeCnt_lv;
