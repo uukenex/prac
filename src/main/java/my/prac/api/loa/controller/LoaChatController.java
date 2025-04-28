@@ -176,7 +176,7 @@ public class LoaChatController {
 		int point = 0;
 		
 		try {
-			if(fulltxt.length()>90) {
+			if(fulltxt.length()>300) {
 				val = "너무길어요!";
 				return val;
 			}
