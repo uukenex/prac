@@ -71,7 +71,7 @@ public class LoaChatController {
 	
 	final String[] unable_save_list = {enterStr,spaceStr,tabStr,allSeeStr,anotherMsgStr,listSeparatorStr,"\\"};
 	
-	@RequestMapping(value = "/loa/cron/{value}", method = RequestMethod.GET)
+	@RequestMapping(value = "/loa/cron/{param0}", method = RequestMethod.GET)
 	public void cronManager(@PathVariable String param0) {
 		String val = "";
 		HashMap<String, Object> reqMap = new HashMap<>();
@@ -82,8 +82,8 @@ public class LoaChatController {
 		String org_fulltxt = param0;
 		
 		switch(param0) {
-		case "/ㄱㅁㅈㅇㅁ":
-			org_fulltxt = param0;
+		case "c1":
+			org_fulltxt = "/ㄱㅁㅈㅇㅁ";
 			try {
 				val ="[유물각인서 시세조회]";
 				val += marketEngrave();
