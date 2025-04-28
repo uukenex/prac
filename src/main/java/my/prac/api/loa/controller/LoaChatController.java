@@ -71,6 +71,44 @@ public class LoaChatController {
 	
 	final String[] unable_save_list = {enterStr,spaceStr,tabStr,allSeeStr,anotherMsgStr,listSeparatorStr,"\\"};
 	
+	@RequestMapping(value = "/cron/{value}", method = RequestMethod.GET)
+	public void cronManager(@PathVariable String param0) {
+		String val = "";
+		HashMap<String, Object> reqMap = new HashMap<>();
+		reqMap.put("param0", param0);
+		reqMap.put("roomName", "cron");
+		reqMap.put("userName", "cron");
+		reqMap.put("fulltxt", param0);
+		String org_fulltxt = param0;
+		
+		switch(param0) {
+		case "/ㄱㅁㅈㅇㅁ":
+			org_fulltxt = param0;
+			try {
+				val ="[유물각인서 시세조회]";
+				val += marketEngrave();
+				
+				
+			}catch(Exception e) {
+				//val = errorCodeMng(e,reqMap);
+			}
+			break;
+		}
+		
+		try {
+			if(val!="") {
+				reqMap.put("req", org_fulltxt);
+				reqMap.put("res", val);
+				botService.insertBotWordHisTx(reqMap);
+			}
+		}catch(Exception e) {
+			
+		}
+		
+		
+		
+	}
+	
 	@RequestMapping(value = "/loa/chat", method = RequestMethod.GET)
 	public @ResponseBody Map<String, Object> chatApplication(
 			@RequestParam(required = true)  String param0,
