@@ -71,7 +71,7 @@ public class LoaChatController {
 	
 	final String[] unable_save_list = {enterStr,spaceStr,tabStr,allSeeStr,anotherMsgStr,listSeparatorStr,"\\"};
 	
-	@RequestMapping(value = "/cron/{value}", method = RequestMethod.GET)
+	@RequestMapping(value = "/loa/cron/{value}", method = RequestMethod.GET)
 	public void cronManager(@PathVariable String param0) {
 		String val = "";
 		HashMap<String, Object> reqMap = new HashMap<>();
