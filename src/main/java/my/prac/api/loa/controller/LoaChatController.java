@@ -4461,6 +4461,7 @@ public class LoaChatController {
             content = messageObject.getString("content");
 
             content = content.replaceAll("\n", enterStr);
+            content = cutByBytesAndInsertMarker(content, 150, allSeeStr);
             
 		} catch (Exception e) {
 			//e.printStackTrace();
@@ -4484,9 +4485,8 @@ public class LoaChatController {
 		
 		try {
 			content = GeminiUtils.callGeminiApi(reqMsg);
-			
-			
 			content = content.replaceAll("\n", enterStr);
+			content = cutByBytesAndInsertMarker(content, 150, allSeeStr);
 			
 		} catch (Exception e) {
 			//e.printStackTrace();
@@ -4497,6 +4497,33 @@ public class LoaChatController {
 		// botService.save db에 저장 로직 (reqMsg,content)
 		
 		return content;
+	}
+	
+	public static String cutByBytesAndInsertMarker(String text, int maxBytes, String marker) throws Exception {
+	    byte[] bytes = text.getBytes("UTF-8");
+	    if (bytes.length <= maxBytes) {
+	        return text;
+	    }
+
+	    int bytesCount = 0;
+	    int cutIndex = 0;
+
+	    for (int i = 0; i < text.length(); i++) {
+	        char c = text.charAt(i);
+	        int charBytes = String.valueOf(c).getBytes("UTF-8").length;
+	        
+	        if (bytesCount + charBytes > maxBytes) {
+	            break;
+	        }
+	        bytesCount += charBytes;
+	        cutIndex = i + 1;
+	    }
+
+	    // 앞쪽은 잘라내고, marker 추가하고, 뒷내용도 이어붙임
+	    String front = text.substring(0, cutIndex);
+	    String back = text.substring(cutIndex);
+
+	    return front + marker + back;
 	}
 	
 	public String tossAccount() {
