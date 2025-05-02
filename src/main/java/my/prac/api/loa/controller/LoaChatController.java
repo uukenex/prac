@@ -93,6 +93,17 @@ public class LoaChatController {
 		case "c1":
 			org_fulltxt = "/ㄱㅁㅈㅇㅁ";
 			try {
+				market.search_c1();
+			} catch (Exception e1) {
+				e1.printStackTrace();
+			}
+			try {
+				market.search_c2();
+			} catch (Exception e1) {
+				e1.printStackTrace();
+			}
+			
+			try {
 				val ="[유물각인서 시세조회]";
 				val += marketEngrave();
 				
@@ -102,12 +113,6 @@ public class LoaChatController {
 			}
 			break;
 		case "test":
-			//val ="[유물각인서 시세조회]";
-			try {
-				market.search_c1();
-			} catch (Exception e1) {
-				e1.printStackTrace();
-			}
 			break;
 		}
 		

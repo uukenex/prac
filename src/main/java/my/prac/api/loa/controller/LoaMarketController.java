@@ -31,11 +31,8 @@ public class LoaMarketController {
 	final String listSeparatorStr = "㈜";
 	
 	//"[유물각인서 시세조회]"
-	String search_c1() throws Exception{
-		JSONObject json ;
-		String resMsg= "";
-		
-		json = new JSONObject();
+	void search_c1() throws Exception{
+		JSONObject json = new JSONObject();
 		
 		json.put("CategoryCode", "40000");
 		json.put("Sort", "CURRENT_MIN_PRICE");
@@ -43,16 +40,41 @@ public class LoaMarketController {
 		json.put("ItemGrade", "유물");
 		
 		json.put("PageNo", "1");
-		resMsg += search_c1_save(json);
+		search_c1_save(json);
 		
 		json.put("PageNo", "2");
-		resMsg += search_c1_save(json);
+		search_c1_save(json);
 		
 		json.put("PageNo", "3");
-		resMsg += search_c1_save(json);
+		search_c1_save(json);
 		
-		resMsg = engraveBook(resMsg);
-		return resMsg;
+	}
+	
+	//보석조회
+	void search_c2() throws Exception{
+		JSONObject json ;
+		json = new JSONObject();
+		
+		json.put("CategoryCode", "210000");
+		json.put("Sort", "BUY_PRICE");
+		json.put("SortCondition", "ASC");
+		
+		json.put("itemName", "10레벨 겁");
+		search_c2_save(json);
+		json.put("itemName", "10레벨 작");
+		search_c2_save(json);
+		json.put("itemName", "9레벨 겁");
+		search_c2_save(json);
+		json.put("itemName", "9레벨 작");
+		search_c2_save(json);
+		json.put("itemName", "8레벨 겁");
+		search_c2_save(json);
+		json.put("itemName", "8레벨 작");
+		search_c2_save(json);
+		json.put("itemName", "7레벨 겁");
+		search_c2_save(json);
+		json.put("itemName", "7레벨 작");
+		search_c2_save(json);
 	}
 	
 	String search_c1_save(JSONObject json) throws Exception {
@@ -90,23 +112,36 @@ public class LoaMarketController {
 		return str;
 	}
 	
-	String engraveBook(String str_list) throws Exception{
-		String[] arr = str_list.split(enterStr);
-		
-		String res1 = enterStr;
-		String res2 = enterStr;
-		String res3 = enterStr;
-		
-		for(String str:arr) {
-			str = LoaApiUtils.filterTextForEngrave(str);
-			if(str.indexOf("[D]") >= 0) {
-				res1 += str+enterStr;
-			}else if(str.indexOf("[S]") >= 0) {
-				res2 += str+enterStr;
-			}else {
-				res3 += str+enterStr;
+	
+	String search_c2_save(JSONObject json) throws Exception {
+		String str = "";
+
+		try {
+
+			String paramUrl = lostArkAPIurl + "/auctions/items";
+			String returnData;
+			try {
+				returnData = LoaApiUtils.connect_process_post(paramUrl, json.toString());
+			}catch(Exception e){
+				throw new Exception("E0004");
 			}
+			
+			HashMap<String, Object> rtnMap = new ObjectMapper().readValue(returnData,
+					new TypeReference<Map<String, Object>>() {
+					});
+			List<HashMap<String, Object>> itemMap = (List<HashMap<String, Object>>) rtnMap.get("Items");
+			HashMap<String, Object> item = itemMap.get(0);
+			HashMap<String, Object> auctionInfo = (HashMap<String, Object>) item.get("AuctionInfo");
+			auctionInfo.put("item_name", item.get("Name"));
+			//Name, BuyPrice
+			botService.insertAuctionItemOne(auctionInfo);
+			
+		} catch (Exception e) {
+			str = "";
 		}
-		return res1+res2+res3;
+
+		return str;
 	}
+
+	
 }

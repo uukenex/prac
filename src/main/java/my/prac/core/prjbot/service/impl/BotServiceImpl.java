@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 
 import my.prac.core.prjbot.dao.BotDAO;
 import my.prac.core.prjbot.service.BotService;
+import my.prac.core.util.LoaApiUtils;
 
 @Service("core.prjbot.BotService")
 public class BotServiceImpl implements BotService {
@@ -204,11 +205,38 @@ public class BotServiceImpl implements BotService {
             data.put("insert_d", insertD);
             data.put("insert_h", insertH);
             data.put("insert_w", insertW);
+            data.put("item_name", LoaApiUtils.filterTextForEngrave(data.get("Name").toString()));
         }
         
-        if(botDAO.insertMarketItems(rawDataList) < 1) {
+        if(botDAO.insertMarketItemList(rawDataList) < 1) {
 			throw new Exception("저장 실패");
 		}
 
     }
+	
+	public void insertAuctionItemOne(HashMap<String, Object> rawDataOne) throws Exception{
+		LocalDateTime now = LocalDateTime.now();
+
+        // insert_d: 05월 02일
+        String insertD = now.format(DateTimeFormatter.ofPattern("MM월 dd일"));
+
+        // insert_h: 02일 14시
+        String insertH = now.format(DateTimeFormatter.ofPattern("MM월 dd일 HH시"));
+
+        // insert_w: 2025년 05월 1주차 (한글 주차 포맷)
+        WeekFields weekFields = WeekFields.of(Locale.KOREA);
+        int weekOfMonth = now.get(weekFields.weekOfMonth());
+        int month = now.getMonthValue();
+        int year = now.getYear();
+        String insertW = String.format("%d년 %02d월 %d주차", year, month, weekOfMonth);
+
+        rawDataOne.put("insert_d", insertD);
+    	rawDataOne.put("insert_h", insertH);
+    	rawDataOne.put("insert_w", insertW);
+    	
+        if(botDAO.insertAuctionItemOne(rawDataOne) < 1) {
+			throw new Exception("저장 실패");
+		}
+	}
+	
 }

@@ -498,18 +498,29 @@
 			 WHERE ROWNUM &lt;= 10
 	</select>
 	
-	<insert id="insertMarketItems" parameterType="java.util.List">
+	<insert id="insertMarketItemList" parameterType="List">
 	    INSERT INTO T_MARKET_ITEM_PRICE
 	    (item_name, insert_d, insert_h, insert_w, price)
 	    <foreach collection="list" item="item" separator="UNION ALL">
 	        SELECT
-	            #{item.Name, jdbcType=VARCHAR},
+	            #{item.item_name, jdbcType=VARCHAR},
 	            #{item.insert_d, jdbcType=VARCHAR},
 	            #{item.insert_h, jdbcType=VARCHAR},
 	            #{item.insert_w, jdbcType=VARCHAR},
 	            #{item.CurrentMinPrice, jdbcType=NUMERIC}
 	        FROM DUAL
 	    </foreach>
+	</insert>
+	<insert id="insertMarketItems" parameterType="HashMap">
+	    INSERT INTO T_MARKET_ITEM_PRICE
+	    (item_name, insert_d, insert_h, insert_w, price)
+	        SELECT
+	            #{item_name, jdbcType=VARCHAR},
+	            #{insert_d, jdbcType=VARCHAR},
+	            #{insert_h, jdbcType=VARCHAR},
+	            #{insert_w, jdbcType=VARCHAR},
+	            #{Price, jdbcType=NUMERIC}
+	        FROM DUAL
 	</insert>
 	
 </mapper>

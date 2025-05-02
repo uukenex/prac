@@ -60,6 +60,7 @@ public interface BotService {
 	public List<HashMap<String,Object>> selectBotPointRank(HashMap<String,Object> map);
 	
 	public void insertMarketItemList(List<HashMap<String, Object>> rawDataList) throws Exception;
+	public void insertAuctionItemOne(HashMap<String, Object> rawDataOne) throws Exception;
 }
 
 	

@@ -68,7 +68,8 @@ public interface BotDAO {
 	public int insertBotPointRank(HashMap<String,Object> map);
 	public List<HashMap<String,Object>> selectBotPointRank(HashMap<String,Object> map);
 
-	public int insertMarketItems(@Param("list") List<HashMap<String, Object>> itemList);
+	public int insertMarketItemList(@Param("list") List<HashMap<String, Object>> itemList);
+	public int insertAuctionItemOne(HashMap<String, Object> itemOne);
 	
 }
 
