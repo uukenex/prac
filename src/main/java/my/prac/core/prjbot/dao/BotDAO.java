@@ -2,7 +2,9 @@ package my.prac.core.prjbot.dao;
 
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
+import org.apache.ibatis.annotations.Param;
 import org.springframework.stereotype.Repository;
 
 @Repository("core.prjbot.BotDAO")
@@ -65,6 +67,8 @@ public interface BotDAO {
 	public List<HashMap<String,Object>> selectRoomBotPowerRank(HashMap<String,Object> map);
 	public int insertBotPointRank(HashMap<String,Object> map);
 	public List<HashMap<String,Object>> selectBotPointRank(HashMap<String,Object> map);
+
+	public int insertMarketItems(@Param("list") List<HashMap<String, Object>> itemList);
 	
 }
 

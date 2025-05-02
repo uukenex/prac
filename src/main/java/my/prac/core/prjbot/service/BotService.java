@@ -2,6 +2,7 @@ package my.prac.core.prjbot.service;
 
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public interface BotService {
 	public void insertBotWordSaveTx(HashMap<String, Object> hashMap)  throws Exception;
@@ -57,6 +58,8 @@ public interface BotService {
 	public List<HashMap<String,Object>> selectRoomBotPowerRank(HashMap<String,Object> map);
 	public void insertBotPointRankTx(HashMap<String,Object> map)  throws Exception;
 	public List<HashMap<String,Object>> selectBotPointRank(HashMap<String,Object> map);
+	
+	public void insertMarketItemList(List<HashMap<String, Object>> rawDataList) throws Exception;
 }
 
 	

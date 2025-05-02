@@ -5,6 +5,7 @@ import java.net.URL;
 import java.net.URLEncoder;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -54,6 +55,8 @@ public class LoaChatController {
 
 	@Autowired
 	LoaChatSubController sub;
+	@Autowired
+	LoaMarketController market;
 	
 	@Resource(name = "core.prjbot.BotService")
 	BotService botService;
@@ -81,6 +84,11 @@ public class LoaChatController {
 		reqMap.put("fulltxt", param0);
 		String org_fulltxt = param0;
 		
+		//패치날엔 스킵 
+		if (shouldSkip()) {
+            return;
+        }
+		
 		switch(param0) {
 		case "c1":
 			org_fulltxt = "/ㄱㅁㅈㅇㅁ";
@@ -93,7 +101,17 @@ public class LoaChatController {
 				//val = errorCodeMng(e,reqMap);
 			}
 			break;
+		case "test":
+			//val ="[유물각인서 시세조회]";
+			try {
+				market.search_c1();
+			} catch (Exception e1) {
+				e1.printStackTrace();
+			}
+			break;
 		}
+		
+		
 		
 		try {
 			if(val!="") {
@@ -108,6 +126,31 @@ public class LoaChatController {
 		
 		
 	}
+	
+	
+	public static boolean shouldSkip() {
+        // 현재 날짜와 시간 가져오기
+        LocalDateTime now = LocalDateTime.now();
+        
+        // 현재 요일과 시간
+        DayOfWeek dayOfWeek = now.getDayOfWeek();
+        LocalTime time = now.toLocalTime();
+
+        // 스킵할 요일과 시간대 설정
+        DayOfWeek skipDay = DayOfWeek.WEDNESDAY; // 수요일
+        LocalTime skipStart = LocalTime.of(3, 0); // 03:00
+        LocalTime skipEnd = LocalTime.of(10, 0);  // 10:00
+
+        // 요일이 수요일이면서 시간대가 03:00~10:00 사이인지 체크
+        if (dayOfWeek == skipDay) {
+            if (!time.isBefore(skipStart) && time.isBefore(skipEnd)) {
+                return true; // 스킵!
+            }
+        }
+
+        return false; // 스킵 안 함
+    }
+	
 	
 	@RequestMapping(value = "/loa/chat", method = RequestMethod.GET)
 	public @ResponseBody Map<String, Object> chatApplication(
@@ -281,7 +324,17 @@ public class LoaChatController {
 					}
 					fulltxt = fulltxt.substring(param0.length()).trim();
 					reqMap.put("param1", fulltxt);
+					reqMap.put("param2", param2);
+					reqMap.put("fulltxt", fulltxt+" "+param2);
 					String tmpVal ="";
+					
+					int limitDay =7;
+					try {
+						limitDay = Integer.parseInt(param2);
+					}catch(Exception e) {
+						limitDay = 7;
+					}
+					
 					try {
 						//val = supporters(param1);
 						List<HashMap<String,Object>> list = botService.selectMarketCondition(reqMap);

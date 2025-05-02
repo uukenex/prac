@@ -1,7 +1,12 @@
 package my.prac.core.prjbot.service.impl;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.WeekFields;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 import javax.annotation.Resource;
 
@@ -178,4 +183,32 @@ public class BotServiceImpl implements BotService {
 	public List<HashMap<String,Object>> selectBotPointRank(HashMap<String,Object> map){
 		return botDAO.selectBotPointRank(map);
 	}
+	
+	public void insertMarketItemList(List<HashMap<String, Object>> rawDataList) throws Exception {
+		LocalDateTime now = LocalDateTime.now();
+
+        // insert_d: 05월 02일
+        String insertD = now.format(DateTimeFormatter.ofPattern("MM월 dd일"));
+
+        // insert_h: 02일 14시
+        String insertH = now.format(DateTimeFormatter.ofPattern("MM월 dd일 HH시"));
+
+        // insert_w: 2025년 05월 1주차 (한글 주차 포맷)
+        WeekFields weekFields = WeekFields.of(Locale.KOREA);
+        int weekOfMonth = now.get(weekFields.weekOfMonth());
+        int month = now.getMonthValue();
+        int year = now.getYear();
+        String insertW = String.format("%d년 %02d월 %d주차", year, month, weekOfMonth);
+
+        for (Map<String, Object> data : rawDataList) {
+            data.put("insert_d", insertD);
+            data.put("insert_h", insertH);
+            data.put("insert_w", insertW);
+        }
+        
+        if(botDAO.insertMarketItems(rawDataList) < 1) {
+			throw new Exception("저장 실패");
+		}
+
+    }
 }
