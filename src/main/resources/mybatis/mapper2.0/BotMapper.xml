@@ -532,7 +532,7 @@
 		             , CASE #{param2, jdbcType=VARCHAR}
 		                 WHEN 'HOUR' THEN TO_CHAR(INSERT_DATE, 'DD"일" HH24"시"')
 		                 WHEN 'DAY'  THEN TO_CHAR(INSERT_DATE, 'MM"월" DD"일"')
-		                 WHEN 'WEEK' THEN TO_CHAR(INSERT_DATE, 'YYYYMM') || '월 ' || TO_CHAR(INSERT_DATE, 'W') || '주차'
+		                 WHEN 'WEEK' THEN TO_CHAR(INSERT_DATE, 'MM') || '월 ' || TO_CHAR(INSERT_DATE, 'W') || '주차'
 		               END AS BASE
 		             , ITEM_NAME
 		             , INSERT_DATE

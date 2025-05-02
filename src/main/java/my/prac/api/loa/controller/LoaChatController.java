@@ -367,9 +367,9 @@ public class LoaChatController {
 					}
 				}
 				val+=enterStr;
-				val+="/시세2 아드 1:주차별"+enterStr;
-				val+="/시세2 어드 2:일별"+enterStr;
-				val+="/시세2 아드 3:시간별"+enterStr;
+				val+="/시세2 이름 1:주차별"+enterStr;
+				val+="/시세2 이름 2:일별"+enterStr;
+				val+="/시세2 이름 3:시간별"+enterStr;
 				break;
 			case "/시세": case "/ㅅㅅ":
 				if (param1 != null && !param1.equals("")) {
