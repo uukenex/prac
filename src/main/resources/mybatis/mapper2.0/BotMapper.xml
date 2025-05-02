@@ -511,7 +511,7 @@
 	        FROM DUAL
 	    </foreach>
 	</insert>
-	<insert id="insertMarketItems" parameterType="HashMap">
+	<insert id="insertAuctionItemOne" parameterType="HashMap">
 	    INSERT INTO T_MARKET_ITEM_PRICE
 	    (item_name, insert_d, insert_h, insert_w, price)
 	        SELECT
