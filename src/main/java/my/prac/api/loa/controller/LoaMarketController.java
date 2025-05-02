@@ -137,6 +137,7 @@ public class LoaMarketController {
 			botService.insertAuctionItemOne(auctionInfo);
 			
 		} catch (Exception e) {
+			e.printStackTrace();
 			str = "";
 		}
 

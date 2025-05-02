@@ -113,6 +113,11 @@ public class LoaChatController {
 			}
 			break;
 		case "test":
+			try {
+				market.search_c2();
+			} catch (Exception e1) {
+				e1.printStackTrace();
+			}
 			break;
 		}
 		

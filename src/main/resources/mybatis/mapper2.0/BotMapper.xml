@@ -519,7 +519,7 @@
 	            #{insert_d, jdbcType=VARCHAR},
 	            #{insert_h, jdbcType=VARCHAR},
 	            #{insert_w, jdbcType=VARCHAR},
-	            #{Price, jdbcType=NUMERIC}
+	            #{BuyPrice, jdbcType=NUMERIC}
 	        FROM DUAL
 	</insert>
 	
