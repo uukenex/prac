@@ -330,6 +330,9 @@ public class LoaChatController {
 				param1 =LoaApiUtils.switchWord(param1);
 				
 				try {
+					if(param2==null || param2.equals("")) {
+						param2 ="WEEK";
+					}
 					switch(param2) {
 					case "1":
 						param2 ="WEEK";
