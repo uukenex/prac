@@ -71,5 +71,6 @@ public interface BotDAO {
 	public int insertMarketItemList(@Param("list") List<HashMap<String, Object>> itemList);
 	public int insertAuctionItemOne(HashMap<String, Object> itemOne);
 	
+	public List<HashMap<String,Object>> selectMarketItemPriceInfo(HashMap<String,Object> map);
 }
 

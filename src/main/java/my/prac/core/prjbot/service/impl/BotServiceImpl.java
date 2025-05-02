@@ -239,4 +239,8 @@ public class BotServiceImpl implements BotService {
 		}
 	}
 	
+	public List<HashMap<String,Object>> selectMarketItemPriceInfo(HashMap<String,Object> map){
+		return botDAO.selectMarketItemPriceInfo(map);
+	}
+	
 }

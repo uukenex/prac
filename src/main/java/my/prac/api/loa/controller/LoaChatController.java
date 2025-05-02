@@ -325,6 +325,49 @@ public class LoaChatController {
 				}
 				
 				break;
+			case "/시세2": case "/ㅅㅅ2":
+				fulltxt = fulltxt.replace(param1, LoaApiUtils.switchWord(param1));
+				param1 =LoaApiUtils.switchWord(param1);
+				
+				try {
+					switch(param2) {
+					case "1":
+						param2 ="WEEK";
+						break;
+					case "2":
+						param2 ="DAY";
+						break;
+					case "3":
+						param2 ="HOUR";
+						break;
+					}
+						
+				} catch (Exception e) {
+					param2 ="WEEK";
+				}
+				reqMap.put("param1",param1);
+				reqMap.put("param2",param2);
+				
+				
+				List<HashMap<String,Object>> list2 = botService.selectMarketItemPriceInfo(reqMap);
+				val = param1+enterStr;
+				if(list2 == null || list2.size()==0) {
+					val +="결과가 없습니다";
+				}
+				
+				int count=0;
+				for(HashMap<String,Object> hs:list2) {
+					val += hs.get("BASE")+" : "+hs.get("MIN_PRICE")+" ~ "+hs.get("MAX_PRICE") +enterStr;
+					count++;
+					if(count > 12) {
+						break;
+					}
+				}
+				val+=enterStr;
+				val+="/시세2 아드 1:주차별"+enterStr;
+				val+="/시세2 어드 2:일별"+enterStr;
+				val+="/시세2 아드 3:시간별"+enterStr;
+				break;
 			case "/시세": case "/ㅅㅅ":
 				if (param1 != null && !param1.equals("")) {
 					fulltxt = fulltxt.replace(param1, LoaApiUtils.switchWord(param1));
@@ -337,13 +380,6 @@ public class LoaChatController {
 					reqMap.put("param2", param2);
 					reqMap.put("fulltxt", fulltxt+" "+param2);
 					String tmpVal ="";
-					
-					int limitDay =7;
-					try {
-						limitDay = Integer.parseInt(param2);
-					}catch(Exception e) {
-						limitDay = 7;
-					}
 					
 					try {
 						//val = supporters(param1);

@@ -522,5 +522,27 @@
 	            #{BuyPrice, jdbcType=NUMERIC}
 	        FROM DUAL
 	</insert>
+	<select id="selectMarketItemPriceInfo" parameterType="HashMap" resultType="HashMap">
+		/* selectMarketItemPriceInfo */
+		SELECT BASE
+		     , MIN(PRICE) AS MIN_PRICE
+		     , MAX(PRICE) AS MAX_PRICE
+		  FROM (
+		        SELECT PRICE
+		             , CASE #{param2, jdbcType=VARCHAR}
+		                 WHEN 'HOUR' THEN TO_CHAR(INSERT_DATE, 'YYYY"년" MM"월" DD"일" HH24"시"')
+		                 WHEN 'DAY'  THEN TO_CHAR(INSERT_DATE, 'YYYY"년" MM"월" DD"일"')
+		                 WHEN 'WEEK' THEN TO_CHAR(INSERT_DATE, 'YYYYMM') || '월 ' || TO_CHAR(INSERT_DATE, 'W') || '주차'
+		               END AS BASE
+		             , ITEM_NAME
+		             , INSERT_DATE
+		          FROM T_MARKET_ITEM_PRICE
+		         WHERE ITEM_NAME LIKE '%' || #{param1, jdbcType=VARCHAR} || '%'
+		           AND INSERT_DATE > SYSDATE - 60
+		       )
+		GROUP BY BASE
+		ORDER BY MAX(INSERT_DATE) DESC
+		
+	</select>
 	
 </mapper>

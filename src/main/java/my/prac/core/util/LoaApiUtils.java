@@ -345,6 +345,25 @@ public class LoaApiUtils {
 			txt="중갑 착용";
 		}
 		
+		else if(txt.indexOf("10겁")>=0) {
+			txt="10레벨 겁화의 보석";
+		}else if(txt.indexOf("9겁")>=0) {
+			txt="9레벨 겁화의 보석";
+		}else if(txt.indexOf("8겁")>=0) {
+			txt="8레벨 겁화의 보석";
+		}else if(txt.indexOf("7겁")>=0) {
+			txt="7레벨 겁화의 보석";
+		}else if(txt.indexOf("10작")>=0) {
+			txt="10레벨 작열의 보석";
+		}else if(txt.indexOf("9작")>=0) {
+			txt="9레벨 작열의 보석";
+		}else if(txt.indexOf("8작")>=0) {
+			txt="8레벨 작열의 보석";
+		}else if(txt.indexOf("7작")>=0) {
+			txt="7레벨 작열의 보석";
+		}
+		
+		
 		
 		return txt;
 	}
