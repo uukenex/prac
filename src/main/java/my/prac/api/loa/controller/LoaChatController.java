@@ -104,8 +104,8 @@ public class LoaChatController {
 			}
 			
 			try {
-				val ="[유물각인서 시세조회]";
-				val += marketEngrave();
+				//val ="[유물각인서 시세조회]";
+				//val += marketEngrave();
 				
 				
 			}catch(Exception e) {
@@ -325,7 +325,10 @@ public class LoaChatController {
 				}
 				
 				break;
+			case "/시세": case "/ㅅㅅ":
+			case "/시세1": case "/ㅅㅅ1":
 			case "/시세2": case "/ㅅㅅ2":
+			case "/시세3": case "/ㅅㅅ3":
 				fulltxt = fulltxt.replace(param1, LoaApiUtils.switchWord(param1));
 				param1 =LoaApiUtils.switchWord(param1);
 				
@@ -333,14 +336,19 @@ public class LoaChatController {
 					if(param2==null || param2.equals("")) {
 						param2 ="WEEK";
 					}
-					switch(param2) {
-					case "1":
+					switch(param0) {
+					case "/시세":
+					case "/ㅅㅅ":
+					case "/시세1":
+					case "/ㅅㅅ1":
 						param2 ="WEEK";
 						break;
-					case "2":
+					case "/시세2":
+					case "/ㅅㅅ2":
 						param2 ="DAY";
 						break;
-					case "3":
+					case "/시세3":
+					case "/ㅅㅅ3":
 						param2 ="HOUR";
 						break;
 					}
@@ -367,41 +375,11 @@ public class LoaChatController {
 					}
 				}
 				val+=enterStr;
-				val+="/시세2 이름 1:주차별"+enterStr;
-				val+="/시세2 이름 2:일별"+enterStr;
-				val+="/시세2 이름 3:시간별"+enterStr;
+				val+="/시세1 이름:주차별"+enterStr;
+				val+="/시세2 이름:일별"+enterStr;
+				val+="/시세3 이름:시간별"+enterStr;
 				break;
-			case "/시세": case "/ㅅㅅ":
-				if (param1 != null && !param1.equals("")) {
-					fulltxt = fulltxt.replace(param1, LoaApiUtils.switchWord(param1));
-					param1 =LoaApiUtils.switchWord(param1);
-					if(!LoaApiUtils.marketConditionYn(param1)) {
-						return "각인서만 검색 가능";
-					}
-					fulltxt = fulltxt.substring(param0.length()).trim();
-					reqMap.put("param1", fulltxt);
-					reqMap.put("param2", param2);
-					reqMap.put("fulltxt", fulltxt+" "+param2);
-					String tmpVal ="";
-					
-					try {
-						//val = supporters(param1);
-						List<HashMap<String,Object>> list = botService.selectMarketCondition(reqMap);
-						for(HashMap<String,Object> hs:list) {
-							tmpVal += hs.get("DT")+" : "+hs.get("SISE")+enterStr;
-						}
-						if(tmpVal.equals("")) {
-							return "시세 검색결과가 없습니다.";
-						}
-						val +=param1+" 시세"+enterStr;
-						val += tmpVal;
-						
-					} catch (Exception e) {
-						val = errorCodeMng(e,reqMap);
-					}
-				}
-				point =+2;
-				break;
+			
 			case "/분배금": case "/ㅂㅂㄱ":
 				if (param1 != null && !param1.equals("")) {
 					int int_parama1=0;
