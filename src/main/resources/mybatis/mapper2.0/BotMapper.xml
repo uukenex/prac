@@ -527,12 +527,20 @@
 		                 WHEN 'HOUR' THEN TO_CHAR(INSERT_DATE, 'DD"일" HH24"시"')
 		                 WHEN 'DAY'  THEN TO_CHAR(INSERT_DATE, 'MM"월" DD"일"')
 		                 WHEN 'WEEK' THEN TO_CHAR(INSERT_DATE, 'MM') || '월 ' || TO_CHAR(INSERT_DATE, 'W') || '주차'
+		                 WHEN 'MONTH' THEN TO_CHAR(INSERT_DATE, 'YYYY') || '년 ' || TO_CHAR(INSERT_DATE, 'MM') || '월'
 		               END AS BASE
 		             , ITEM_NAME
 		             , INSERT_DATE
 		          FROM T_MARKET_ITEM_PRICE
 		         WHERE ITEM_NAME LIKE '%' || #{param1, jdbcType=VARCHAR} || '%'
-		           AND INSERT_DATE > SYSDATE - 60
+		           AND INSERT_DATE > SYSDATE - 365
+		           AND INSERT_DATE > 
+		               CASE #{param2, jdbcType=VARCHAR}
+		                 WHEN 'HOUR' THEN SYSDATE - INTERVAL '8' HOUR  
+		                 WHEN 'DAY'  THEN SYSDATE - INTERVAL '8' DAY  
+		                 WHEN 'WEEK' THEN ADD_MONTHS(SYSDATE, -2)
+		                 WHEN 'MONTH' THEN ADD_MONTHS(SYSDATE, -12)   
+		               END
 		       )
 		GROUP BY BASE
 		ORDER BY MAX(INSERT_DATE) DESC

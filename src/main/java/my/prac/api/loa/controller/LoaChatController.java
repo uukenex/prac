@@ -329,6 +329,7 @@ public class LoaChatController {
 			case "/시세1": case "/ㅅㅅ1":
 			case "/시세2": case "/ㅅㅅ2":
 			case "/시세3": case "/ㅅㅅ3":
+			case "/시세4": case "/ㅅㅅ4":
 				fulltxt = fulltxt.replace(param1, LoaApiUtils.switchWord(param1));
 				param1 =LoaApiUtils.switchWord(param1);
 				
@@ -351,6 +352,10 @@ public class LoaChatController {
 					case "/ㅅㅅ3":
 						param2 ="HOUR";
 						break;
+					case "/시세4":
+					case "/ㅅㅅ4":
+						param2 ="MONTH";
+						break;	
 					}
 						
 				} catch (Exception e) {
@@ -375,9 +380,10 @@ public class LoaChatController {
 					}
 				}
 				val+=enterStr;
-				val+="/시세1 이름:주차별"+enterStr;
-				val+="/시세2 이름:일별"+enterStr;
-				val+="/시세3 이름:시간별"+enterStr;
+				val+="/시세1 이름 : 주차별"+enterStr;
+				val+="/시세2 이름 : 일별"+enterStr;
+				val+="/시세3 이름 : 시간별"+enterStr;
+				val+="/시세4 이름 : 월별"+enterStr;
 				break;
 			
 			case "/분배금": case "/ㅂㅂㄱ":
