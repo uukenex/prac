@@ -364,6 +364,9 @@ public class LoaChatController {
 				reqMap.put("param1",param1);
 				reqMap.put("param2",param2);
 				
+				if(param1 == null || param1.length()==0) {
+					val +="각인서 또는 보석(7~10) 입력가능";
+				}
 				
 				List<HashMap<String,Object>> list2 = botService.selectMarketItemPriceInfo(reqMap);
 				val = param1+enterStr;
