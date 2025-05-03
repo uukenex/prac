@@ -752,6 +752,7 @@ public class LoaChatController {
 						break;
 					case "미움받을용기 수다방":
 						guildName = "미움받을용기";
+						break;
 					case "test123":
 					case "test":
 						guildName = "냥떼목장";
@@ -817,6 +818,7 @@ public class LoaChatController {
 						break;
 					case "미움받을용기 수다방":
 						guildName = "미움받을용기";
+						break;
 					case "test123":
 					case "test":
 						guildName = "냥떼목장";
