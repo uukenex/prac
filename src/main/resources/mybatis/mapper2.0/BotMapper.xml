@@ -500,25 +500,19 @@
 	
 	<insert id="insertMarketItemList" parameterType="List">
 	    INSERT INTO T_MARKET_ITEM_PRICE
-	    (item_name, insert_d, insert_h, insert_w, price)
+	    (item_name, price)
 	    <foreach collection="list" item="item" separator="UNION ALL">
 	        SELECT
 	            #{item.item_name, jdbcType=VARCHAR},
-	            #{item.insert_d, jdbcType=VARCHAR},
-	            #{item.insert_h, jdbcType=VARCHAR},
-	            #{item.insert_w, jdbcType=VARCHAR},
 	            #{item.CurrentMinPrice, jdbcType=NUMERIC}
 	        FROM DUAL
 	    </foreach>
 	</insert>
 	<insert id="insertAuctionItemOne" parameterType="HashMap">
 	    INSERT INTO T_MARKET_ITEM_PRICE
-	    (item_name, insert_d, insert_h, insert_w, price)
+	    (item_name, price)
 	        SELECT
 	            #{item_name, jdbcType=VARCHAR},
-	            #{insert_d, jdbcType=VARCHAR},
-	            #{insert_h, jdbcType=VARCHAR},
-	            #{insert_w, jdbcType=VARCHAR},
 	            #{BuyPrice, jdbcType=NUMERIC}
 	        FROM DUAL
 	</insert>
