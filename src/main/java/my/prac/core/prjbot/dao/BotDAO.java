@@ -14,6 +14,7 @@ public interface BotDAO {
 
 	public String selectBotWordSaveOne(HashMap<String, Object> hashMap);
 	
+	public String selectBotManual(HashMap<String, Object> hashMap);
 	public List<String> selectBotLimitWordSaveAll(HashMap<String, Object> hashMap);
 	public List<String> selectBotWordSaveAll(HashMap<String, Object> hashMap);
 	public List<String> selectBotImgSaveAll(HashMap<String, Object> hashMap);

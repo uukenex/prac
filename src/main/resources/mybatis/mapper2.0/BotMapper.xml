@@ -38,6 +38,12 @@
 		 WHERE ROWNUM = 1
 	</select>
 	
+	<select id="selectBotManual" parameterType="hashMap" resultType="String" >
+		 /* bot.xml selectBotManual */
+		SELECT A.TEXT
+		  FROM TBOT_MANUAL A
+	</select>
+	
 	<select id="selectBotLimitWordSaveAll" parameterType="hashMap" resultType="String" >
 		 /* bot.xml selectBotLimitWordSaveAll */
 		SELECT RES

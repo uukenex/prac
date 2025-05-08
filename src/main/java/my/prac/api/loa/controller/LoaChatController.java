@@ -1193,45 +1193,54 @@ public class LoaChatController {
 					val = "단어삭제 실패!";
 				}
 				break;
-			case "/단어목록": case "/단어조회": case "/단어": case "/ㄷㅇ":
 			case "/명령어": case "/람쥐봇": case "/ㄹㅈㅂ":
+				val = botService.selectBotManual(reqMap);
+				passYn=true;
+				break;
+			case "/단어목록": case "/단어조회": case "/단어": case "/ㄷㅇ":
+			
 				List<String> wordList = botService.selectBotWordSaveAll(reqMap);
-				List<String> imgList = botService.selectBotImgSaveAll(reqMap);
+				//List<String> imgList = botService.selectBotImgSaveAll(reqMap);
 				
-				reqMap.put("limitYn", "1");
-				List<String> limitWordList = botService.selectBotLimitWordSaveAll(reqMap);
-				reqMap.put("limitYn", "2");
-				List<String> limitWordList2 = botService.selectBotLimitWordSaveAll(reqMap);
+				//reqMap.put("limitYn", "1");
+				//List<String> limitWordList = botService.selectBotLimitWordSaveAll(reqMap);
+				//reqMap.put("limitYn", "2");
+				//List<String> limitWordList2 = botService.selectBotLimitWordSaveAll(reqMap);
 				
-				List<String> replaceList = botService.selectBotWordReplaceAll(reqMap);
+				//List<String> replaceList = botService.selectBotWordReplaceAll(reqMap);
 				
-				
+				/*
 				val = "주요명령(초성가능): "+enterStr;
 				
 				for (String word : limitWordList2) {
 					val += enterStr + word;
-				}
-				
+				}*/
+				/*
 				val += enterStr + enterStr + "명령 더보기..▼ "+ allSeeStr;
 				for (String word : limitWordList) {
 					val += word + enterStr;
 				}
+				*/
 				val += enterStr + "단어목록:" + enterStr;
 				for (String word : wordList) {
 					val += word + enterStr;
 				}
+				/*
 				val += enterStr + "이모티콘목록:" + enterStr;
 				for (String word : imgList) {
 					val += word + enterStr;
 				}
-				
+				*/
+				/*
 				val += enterStr + "별명목록:" + enterStr;
 				for (String word : replaceList) {
 					val += word + enterStr;
 				}
-				
+				*/
+				/*
 				val += tossAccount();
 				val += tossAccount2();
+				*/
 				passYn=true;
 				break;
 			default:

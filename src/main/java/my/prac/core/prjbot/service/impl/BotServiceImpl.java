@@ -37,6 +37,9 @@ public class BotServiceImpl implements BotService {
 		return botDAO.selectBotWordSaveOne(hashMap);
 	}
 	
+	public String selectBotManual(HashMap<String, Object> hashMap){
+		return botDAO.selectBotManual(hashMap);
+	}
 	public List<String> selectBotLimitWordSaveAll(HashMap<String, Object> hashMap){
 		return botDAO.selectBotLimitWordSaveAll(hashMap);
 	}
