@@ -45,8 +45,8 @@ public class LoaMarketController {
 		json.put("PageNo", "2");
 		search_c1_save(json);
 		
-		json.put("PageNo", "3");
-		search_c1_save(json);
+		//json.put("PageNo", "3");
+		//search_c1_save(json);
 		
 	}
 	

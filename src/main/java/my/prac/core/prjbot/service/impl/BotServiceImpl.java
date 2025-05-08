@@ -175,14 +175,26 @@ public class BotServiceImpl implements BotService {
 		return botDAO.selectRoomBotPowerRank(map);
 	}
 	
-	public void insertBotPointRankTx(HashMap<String,Object> map)  throws Exception{
+	public int insertBotPointRankTx(HashMap<String,Object> map)  throws Exception{
 		if(botDAO.insertBotPointRank(map) < 1) {
 			throw new Exception("저장 실패");
 		}
+		
+		List<HashMap<String,Object>> ls = botDAO.selectBotPointRankNewScore(map);
+		int new_score = -999;
+		try {
+			new_score = Integer.parseInt(ls.get(0).get("SCORE").toString());
+		}catch(Exception e) {
+			throw new Exception("저장완료 후 재조회 실패");
+		}
+		return new_score;
 	}
 	
 	public List<HashMap<String,Object>> selectBotPointRank(HashMap<String,Object> map){
 		return botDAO.selectBotPointRank(map);
+	}
+	public List<HashMap<String,Object>> selectBotPointRankAll(HashMap<String,Object> map){
+		return botDAO.selectBotPointRankAll(map);
 	}
 	
 	public void insertMarketItemList(List<HashMap<String, Object>> rawDataList) throws Exception {

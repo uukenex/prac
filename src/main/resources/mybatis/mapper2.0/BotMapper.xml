@@ -486,16 +486,42 @@
 		
 	</insert>
 	
+	<select id="selectBotPointRankAll" parameterType="HashMap" resultType="HashMap">
+			SELECT B.*
+			  FROM (SELECT A.USER_NAME AS USER_NAME
+					      ,SUM(A.SCORE) AS SCORE
+					  FROM TBOT_POINT_RANK A
+				     WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+				     GROUP BY A.USER_NAME
+				     ORDER BY SUM(A.SCORE) DESC) B
+			 WHERE ROWNUM &lt;= 10
+	</select>
+	
 	<select id="selectBotPointRank" parameterType="HashMap" resultType="HashMap">
 			SELECT B.*
 			  FROM (SELECT A.USER_NAME AS USER_NAME
 					      ,SUM(A.SCORE) AS SCORE
 					  FROM TBOT_POINT_RANK A
 				     WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
-					   AND A.INSERT_DATE > SYSDATE - 7
+					   <!--AND A.INSERT_DATE > SYSDATE - 7-->
+					   <if test="cmd != null and cmd != '' ">
+						   AND CMD = #{cmd, jdbcType=VARCHAR}
+						   AND INSERT_DATE BETWEEN TRUNC(SYSDATE) AND TRUNC(SYSDATE)+1 
+					   </if>
+						   AND upper(A.USER_NAME) = upper(#{userName, jdbcType=VARCHAR})						   
 				     GROUP BY A.USER_NAME
 				     ORDER BY SUM(A.SCORE) DESC) B
-			 WHERE ROWNUM &lt;= 10
+	</select>
+	
+	<select id="selectBotPointRankNewScore" parameterType="HashMap" resultType="HashMap">
+			SELECT B.*
+			  FROM (SELECT A.USER_NAME AS USER_NAME
+					      ,SUM(A.SCORE) AS SCORE
+					  FROM TBOT_POINT_RANK A
+				     WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+						   AND upper(A.USER_NAME) = upper(#{userName, jdbcType=VARCHAR})						   
+				     GROUP BY A.USER_NAME
+				     ORDER BY SUM(A.SCORE) DESC) B
 	</select>
 	
 	<insert id="insertMarketItemList" parameterType="List">
