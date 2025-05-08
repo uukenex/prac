@@ -67,6 +67,7 @@ public interface BotDAO {
 	public List<HashMap<String,Object>> selectRoomBotPowerRank(HashMap<String,Object> map);
 	public int insertBotPointRank(HashMap<String,Object> map);
 	public List<HashMap<String,Object>> selectBotPointRankAll(HashMap<String,Object> map);
+	public List<HashMap<String,Object>> selectBotPointRankToday(HashMap<String,Object> map);
 	public List<HashMap<String,Object>> selectBotPointRank(HashMap<String,Object> map);
 	public List<HashMap<String,Object>> selectBotPointRankNewScore(HashMap<String,Object> map);
 

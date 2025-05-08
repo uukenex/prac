@@ -289,7 +289,10 @@ public class LoaChatController {
 			case "/중중":
 				passYn = true;
 				break;
-			case "/ㅊㅊ": case "/cc": case "/CC":
+			case "/ㅊㅅㅂ": case "/출석부": 
+				val = play.attendanceToday(reqMap);
+				break;
+			case "/ㅊㅊ": case "/cc": case "/CC": case "/출첵":
 				val = play.attendance(reqMap);
 				break;
 			case "/주사위": case "/ㅈㅅㅇ":

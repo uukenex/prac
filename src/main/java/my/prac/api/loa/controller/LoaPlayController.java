@@ -37,6 +37,19 @@ public class LoaPlayController {
 		
 	}
 	
+	String attendanceToday(HashMap<String,Object> map) {
+		String msg="";
+		List<HashMap<String,Object>> point_map = botService.selectBotPointRankToday(map);
+		
+		msg +=map.get("roomName")+" 출석명단"+enterStr;
+		
+		for(HashMap<String,Object> hm : point_map) {
+			msg += hm.get("USER_NAME")+enterStr ;
+		}
+		
+		
+		return msg;
+	}
 	String attendance(HashMap<String,Object> map) {
 		map.put("cmd", "attendance");
 		if(!dailyCheck(map)) {

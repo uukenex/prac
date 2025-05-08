@@ -190,6 +190,9 @@ public class BotServiceImpl implements BotService {
 		return new_score;
 	}
 	
+	public List<HashMap<String,Object>> selectBotPointRankToday(HashMap<String,Object> map){
+		return botDAO.selectBotPointRankToday(map);
+	}
 	public List<HashMap<String,Object>> selectBotPointRank(HashMap<String,Object> map){
 		return botDAO.selectBotPointRank(map);
 	}
