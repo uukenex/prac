@@ -370,7 +370,7 @@ public class LoaChatSubController {
 		resMsg += "각인상세"+enterStr + msgOfTotEngrave(engraveUpd)+enterStr;
 		
 		resMsg += "가격표:"+enterStr;
-		resMsg += "http://rgb-tns.dev-apc.com/in/totalGold4";
+		resMsg += "http://rgb-tns.dev-apc.com/in/totalGold5";
 		
 		if(gradeCnt_gem ==0) {
 			gradeCnt=0;

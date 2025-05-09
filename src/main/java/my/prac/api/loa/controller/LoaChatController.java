@@ -646,7 +646,7 @@ public class LoaChatController {
 						val = supporters(param1);
 						val+= sub.sumTotalPowerSearch(param1,saveMap);
 						if(val!=null && !val.equals("")) {
-							val+= tossAccount2();
+							//val+= tossAccount2();
 						}
 						
 						
@@ -741,7 +741,7 @@ public class LoaChatController {
 				reqMap.put("guildName", guildName);
 				reqMap.put("targetGb", "1");
 				hs = botService.selectRoomBotPowerRank(reqMap);
-				val +=roomName+" 원정대 TOP10 1000↑"+enterStr;
+				val +=roomName+" 원정대 TOP10 (v1.1)"+enterStr;
 				
 				
 				for(HashMap<String,Object> hm : hs) {
@@ -759,7 +759,7 @@ public class LoaChatController {
 				val +=enterStr;
 				reqMap.put("targetGb", "2");
 				hs = botService.selectRoomBotPowerRank(reqMap);
-				val +=roomName+" 캐릭터 TOP10 500↑"+enterStr;
+				val +=roomName+" 캐릭터 TOP10 (v1.1)"+enterStr;
 				
 				for(HashMap<String,Object> hm : hs) {
 					String starYn="";
