@@ -852,12 +852,10 @@ public class LoaChatController {
 				
 				val +=roomName+" 람쥐포인트"+enterStr;
 				
-				
-				
-				
 				for(int i =0;i<point_map.size();i++) {
 					
 					switch(i) {
+							/*
 						case 0:
 							val += rank_1st;
 							break;
@@ -867,6 +865,7 @@ public class LoaChatController {
 						case 2:
 							val += rank_3rd;
 							break;
+							*/
 						default:
 							val += rank_etc;
 							break;
@@ -874,11 +873,6 @@ public class LoaChatController {
 					
 					val += point_map.get(i).get("USER_NAME")+ " : "+point_map.get(i).get("SCORE")+enterStr ;
 				}
-				
-				for(HashMap<String,Object> hm : point_map) {
-					val += hm.get("USER_NAME")+ " : "+hm.get("SCORE")+enterStr ;
-				}
-				
 				break;
 			case "/항협": case "/항해": case "/항해협동": case "/ㅎㅎ":
 				val = shipSearch();
