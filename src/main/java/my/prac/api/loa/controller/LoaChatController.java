@@ -74,6 +74,11 @@ public class LoaChatController {
 	final String anotherMsgStr = "®";
 	final String listSeparatorStr = "㈜";
 	
+	final String rank_1st = "👑"; 
+	final String rank_2nd = "🥈"; 
+	final String rank_3rd = "🥉"; 
+	final String rank_etc = "　";
+	
 	final String[] unable_save_list = {enterStr,spaceStr,tabStr,allSeeStr,anotherMsgStr,listSeparatorStr,"\\"};
 	
 	@RequestMapping(value = "/loa/cron/{param0}", method = RequestMethod.GET)
@@ -845,7 +850,30 @@ public class LoaChatController {
 				
 				List<HashMap<String,Object>> point_map = botService.selectBotPointRankAll(reqMap);
 				
-				val +=roomName+" 람쥐포인트 TOP10"+enterStr;
+				val +=roomName+" 람쥐포인트"+enterStr;
+				
+				
+				
+				
+				for(int i =0;i<point_map.size();i++) {
+					
+					switch(i) {
+						case 0:
+							val += rank_1st;
+							break;
+						case 1:
+							val += rank_2nd;
+							break;
+						case 2:
+							val += rank_3rd;
+							break;
+						default:
+							val += rank_etc;
+							break;
+					}
+					
+					val += point_map.get(i).get("USER_NAME")+ " : "+point_map.get(i).get("SCORE")+enterStr ;
+				}
 				
 				for(HashMap<String,Object> hm : point_map) {
 					val += hm.get("USER_NAME")+ " : "+hm.get("SCORE")+enterStr ;
