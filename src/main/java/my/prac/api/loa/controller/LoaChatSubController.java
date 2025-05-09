@@ -186,7 +186,7 @@ public class LoaChatSubController {
 		String paramUrl = lostArkAPIurl + "/characters/" + userId + "/siblings";
 		String returnData = LoaApiUtils.connect_process(paramUrl);
 		
-		String resMsg=ordUserId+enterStr+"원정대 전투력 정보 v1.0" + enterStr;
+		String resMsg=ordUserId+enterStr+"원정대 전투력 정보 v1.1" + enterStr;
 		
 		List<HashMap<String, Object>> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<List<Map<String, Object>>>() {});
 		if(rtnMap.isEmpty()) return "";
@@ -602,28 +602,28 @@ public class LoaChatSubController {
 			for (String g : accessoryList) {
 				switch (g) {
 				case "상상":
-					gradeCnt_accessory += 388;
+					gradeCnt_accessory += 133;
 					break;
 				case "상중":
 				case "중상":
-					gradeCnt_accessory += 203;
+					gradeCnt_accessory += 43;
 					break;
 				case "상하":
 				case "하상":
-					gradeCnt_accessory += 77;
+					gradeCnt_accessory += 14;
 					break;
 				case "상":
-					gradeCnt_accessory += 51;
+					gradeCnt_accessory += 5;
 					break;
 				case "중중":
-					gradeCnt_accessory += 25;
+					gradeCnt_accessory += 6;
 					break;
 				case "중하":
 				case "하중":
-					gradeCnt_accessory += 16;
+					gradeCnt_accessory += 1;
 					break;
 				case "중":
-					gradeCnt_accessory += 10;
+					gradeCnt_accessory += 1;
 					break;
 				}
 			}
@@ -898,16 +898,16 @@ public class LoaChatSubController {
 		int cntGem6 = Collections.frequency(gemList, 6);
 		
 		if(cntGem10>0) {
-			gradeCnt_gem += 260;//270 ~ 170 사이 적정가 6멸5홍기준 
+			gradeCnt_gem += 220;//270 ~ 170 사이 적정가 6멸5홍기준 
 		}
 		if(cntGem9>0) {
-			gradeCnt_gem += 94;
+			gradeCnt_gem += 73;
 		}
 		if(cntGem8>0) {
-			gradeCnt_gem += 32*cntGem8;
+			gradeCnt_gem += 25*cntGem8;
 		}
 		if(cntGem7>0) {
-			gradeCnt_gem += 11*cntGem7;
+			gradeCnt_gem += 9*cntGem7;
 		}
 		if(cntGem6>0) {
 			gradeCnt_gem += 3*cntGem6;
