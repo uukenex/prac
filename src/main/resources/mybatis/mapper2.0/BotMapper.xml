@@ -602,7 +602,7 @@
 	</select>
 	
 	<select id="selectBotPointFight" parameterType="HashMap" resultType="HashMap">
-		SELECT A.SEQ,A.SCORE
+		SELECT A.SEQ,A.SCORE,A.TARGET_NAME,A.USER_NAME
 		  FROM TBOT_POINT_FIGHT A
 		 WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 		   AND A.CMD = 'fight_s'
@@ -629,7 +629,7 @@
 	   SELECT upper(#{userName, jdbcType=VARCHAR})
 			 ,upper(#{param1, jdbcType=VARCHAR})
 			 ,#{roomName, jdbcType=VARCHAR}
-			 ,#{score, jdbcType=NUMERIC}
+			 ,#{param2, jdbcType=NUMERIC}
 			 ,SYSDATE
 			 ,'fight_s'
 			 ,'0'

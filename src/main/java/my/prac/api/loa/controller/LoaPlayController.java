@@ -113,17 +113,17 @@ public class LoaPlayController {
 		map.put("cmd", "fight_s");
 		String userName;
 		String tagetName;
-		int point;
+		int score;
 		
 		userName = map.get("userName").toString();
 		try {
 			tagetName = map.get("param1").toString();
-			point = Integer.parseInt(map.get("param2").toString());
+			score = Integer.parseInt(map.get("param2").toString());
 		}catch(Exception e) {
 			return "오류발생, /결투 결투자명 포인트 형식으로 입력해야합니다.";
 		}
 		
-		if(point <= 0) {
+		if(score <= 0) {
 			return "포인트는 1포인트이상 입력해주세요.";
 		}
 		
