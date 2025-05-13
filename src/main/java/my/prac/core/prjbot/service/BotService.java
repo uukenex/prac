@@ -65,6 +65,7 @@ public interface BotService {
 	/** fight */
 	public List<HashMap<String,Object>> selectBotPointRankFightBeforeCheck(HashMap<String,Object> map);
 	public List<HashMap<String,Object>> selectBotPointFight(HashMap<String,Object> map);
+	public int  selectBotPointRankFightBeforeCount(HashMap<String,Object> map) ;
 	public void updateBotPointFightETx(HashMap<String,Object> map)  throws Exception;
 	public void insertBotPointFightSTx(HashMap<String,Object> map)  throws Exception;
 	

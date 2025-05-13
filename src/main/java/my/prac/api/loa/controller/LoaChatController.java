@@ -264,14 +264,13 @@ public class LoaChatController {
 		reqMap.put("userName", sender);
 		reqMap.put("fulltxt", fulltxt);
 		String org_fulltxt = fulltxt;
+		String org_userName = sender;
 		
 		int masterYn =0;
 		boolean passYn=false;
 		String replace_param="";
 		
 		HashMap<String,Object> saveMap = new HashMap<>();
-		HashMap<String,Object> pointMap = new HashMap<>();
-		int point = 0;
 		
 		try {
 			if(fulltxt.length()>300) {
@@ -302,6 +301,7 @@ public class LoaChatController {
 				break;
 			case "/주사위": case "/ㅈㅅㅇ":
 				val = play.diceRoll(reqMap);
+				break;
 			case "/결투": case "/ㄱㅌ":
 				val = play.fight_s(reqMap);
 				break;
@@ -1224,55 +1224,14 @@ public class LoaChatController {
 			case "/단어목록": case "/단어조회": case "/단어": case "/ㄷㅇ":
 			
 				List<String> wordList = botService.selectBotWordSaveAll(reqMap);
-				//List<String> imgList = botService.selectBotImgSaveAll(reqMap);
-				
-				//reqMap.put("limitYn", "1");
-				//List<String> limitWordList = botService.selectBotLimitWordSaveAll(reqMap);
-				//reqMap.put("limitYn", "2");
-				//List<String> limitWordList2 = botService.selectBotLimitWordSaveAll(reqMap);
-				
-				//List<String> replaceList = botService.selectBotWordReplaceAll(reqMap);
-				
-				/*
-				val = "주요명령(초성가능): "+enterStr;
-				
-				for (String word : limitWordList2) {
-					val += enterStr + word;
-				}*/
-				/*
-				val += enterStr + enterStr + "명령 더보기..▼ "+ allSeeStr;
-				for (String word : limitWordList) {
-					val += word + enterStr;
-				}
-				*/
 				val += enterStr + "단어목록:" + enterStr;
 				for (String word : wordList) {
 					val += word + enterStr;
 				}
-				/*
-				val += enterStr + "이모티콘목록:" + enterStr;
-				for (String word : imgList) {
-					val += word + enterStr;
-				}
-				*/
-				/*
-				val += enterStr + "별명목록:" + enterStr;
-				for (String word : replaceList) {
-					val += word + enterStr;
-				}
-				*/
-				/*
-				val += tossAccount();
-				val += tossAccount2();
-				*/
 				passYn=true;
 				break;
 			default:
 				val = botService.selectBotWordSaveOne(reqMap);
-				
-				if(val != null && !val.equals("") ) {
-					point =+1;
-				}
 				break;
 			}
 			
@@ -1283,17 +1242,10 @@ public class LoaChatController {
 			if(!passYn) {
 				reqMap.put("req", org_fulltxt);
 				reqMap.put("res", val);
+				reqMap.put("userName", org_userName);
 				botService.insertBotWordHisTx(reqMap);
 			}
-			/*
-			if(point > 0) {
-				pointMap.put("roomName", roomName);
-				pointMap.put("userName", sender);
-				pointMap.put("cmd", fulltxt);
-				pointMap.put("score", point);
-				botService.insertBotPointRankTx(pointMap);
-			}
-			*/
+			
 				
 		}
 		

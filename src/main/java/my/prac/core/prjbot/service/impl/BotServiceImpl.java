@@ -210,6 +210,9 @@ public class BotServiceImpl implements BotService {
 	public List<HashMap<String,Object>> selectBotPointFight(HashMap<String,Object> map){
 		return botDAO.selectBotPointFight(map);
 	}
+	public int  selectBotPointRankFightBeforeCount(HashMap<String,Object> map) {
+		return botDAO.selectBotPointRankFightBeforeCount(map);
+	}
 	
 	public void updateBotPointFightETx(HashMap<String,Object> map)  throws Exception {
 		if(botDAO.updateBotPointFightE(map) < 1) {
@@ -217,13 +220,13 @@ public class BotServiceImpl implements BotService {
 		}
 		
 		int score = Integer.parseInt(map.get("param2").toString());
-		map.put("userName", map.get("winnerName"));
+		map.put("newUserName", map.get("winnerName"));
 		map.put("score", score);
 		if(botDAO.insertBotPointFightE(map) < 1) {
 			throw new Exception("저장 실패");
 		}
 		
-		map.put("userName", map.get("loserName"));
+		map.put("newUserName", map.get("loserName"));
 		map.put("score", -score);
 		if(botDAO.insertBotPointFightE(map) < 1) {
 			throw new Exception("저장 실패");

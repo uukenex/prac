@@ -589,6 +589,16 @@
 		
 	</select>
 	
+	<select id="selectBotPointRankFightBeforeCount" parameterType="HashMap" resultType="int">
+		SELECT COUNT(1)
+		  FROM TBOT_POINT_FIGHT A
+		 WHERE A.INSERT_DATE > SYSDATE - 10 / 60 / 24
+		   AND upper(A.USER_NAME) = upper(#{userName, jdbcType=VARCHAR})
+		   AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+		   AND A.COMPLETE_YN = '1'
+
+	</select>
+	
 	<select id="selectBotPointRankFightBeforeCheck" parameterType="HashMap" resultType="HashMap">
 		SELECT B.*
 		  FROM (SELECT A.USER_NAME AS USER_NAME
@@ -651,7 +661,7 @@
 			 ,INSERT_DATE
 			 ,CMD)
 		VALUES
-			 (upper(#{userName, jdbcType=VARCHAR})
+			 (upper(#{newUserName, jdbcType=VARCHAR})
 			 ,#{roomName, jdbcType=VARCHAR}
 			 ,#{score, jdbcType=NUMERIC}
 			 ,SYSDATE

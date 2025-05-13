@@ -75,6 +75,7 @@ public interface BotDAO {
 	/** fight */
 	public List<HashMap<String,Object>> selectBotPointRankFightBeforeCheck(HashMap<String,Object> map);
 	public List<HashMap<String,Object>> selectBotPointFight(HashMap<String,Object> map);
+	public int selectBotPointRankFightBeforeCount(HashMap<String, Object> map);
 	public int insertBotPointFightS(HashMap<String, Object> map);
 	public int updateBotPointFightE(HashMap<String, Object> map);
 	public int insertBotPointFightE(HashMap<String, Object> map);

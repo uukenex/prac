@@ -127,6 +127,11 @@ public class LoaPlayController {
 			return "포인트는 1포인트이상 입력해주세요.";
 		}
 		
+		int cnt = botService.selectBotPointRankFightBeforeCount(map);
+		if(cnt>0) {
+			return "결투 쿨타임(10min..)";
+		}
+		
 		List<HashMap<String,Object>> newMap = botService.selectBotPointRankFightBeforeCheck(map);
 		if(newMap==null || newMap.size()==0 || newMap.size()==1) {
 			return "남아있는 포인트가 부족합니다.";
@@ -180,8 +185,10 @@ public class LoaPlayController {
 		//도전자가 main 
 		String main_user_name ="";
 		int main_user_point =0;
+		int main_user_point_org =0;
 		String sub_user_name ="";
 		int sub_user_point =0;
+		int sub_user_point_org =0;
 		String winner_name="";
 		String loser_name="";
 		if(h1.get("USER_NAME").equals(userName)) {
@@ -197,6 +204,8 @@ public class LoaPlayController {
 			sub_user_name = h1.get("USER_NAME").toString();
 			sub_user_point = Integer.parseInt(h1.get("SCORE").toString());
 		}
+		main_user_point_org = main_user_point;
+		 sub_user_point_org =  sub_user_point;
 		
 		Random random = new Random(); // 랜덤객체
 		int number = random.nextInt(100)%2;
@@ -223,7 +232,7 @@ public class LoaPlayController {
 			
 		}
 		return winner_name+" 님, 승리"+enterStr
-				+main_user_name +" : "+ main_user_point +" p"+enterStr
-				+ sub_user_name +" : "+  sub_user_point +" p"+enterStr;
+				+main_user_name +" : "+main_user_point_org+" → "+ main_user_point +" p"+enterStr
+				+ sub_user_name +" : "+ sub_user_point_org+" → "+  sub_user_point +" p"+enterStr;
 	}
 }
