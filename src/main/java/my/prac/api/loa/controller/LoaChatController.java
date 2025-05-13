@@ -302,6 +302,11 @@ public class LoaChatController {
 				break;
 			case "/주사위": case "/ㅈㅅㅇ":
 				val = play.diceRoll(reqMap);
+			case "/결투": case "/ㄱㅌ":
+				val = play.fight_s(reqMap);
+				break;
+			case "/저가": case "/저스트가드":
+				val = play.fight_e(reqMap);
 				break;
 			case "/로또": case "/ㄹㄸ":
 				val = lotto();
@@ -323,9 +328,6 @@ public class LoaChatController {
 				param1 =LoaApiUtils.switchWord(param1);
 				
 				try {
-					if(param2==null || param2.equals("")) {
-						param2 ="WEEK";
-					}
 					switch(param0) {
 					case "/시세":
 					case "/ㅅㅅ":

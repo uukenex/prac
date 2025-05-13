@@ -106,9 +106,116 @@ public class LoaPlayController {
 		} catch (Exception e) {
 			return "오류발생";
 		}
-		
 		return prefix+enterStr+"『"+map.get("userName") + "』 님의 주사위: "+number+" (0~100) "+score+"점 획득"+enterStr+"갱신 포인트 : "+new_score;
+	}
+	
+	String fight_s(HashMap<String,Object> map) {
+		map.put("cmd", "fight_s");
+		String userName;
+		String tagetName;
+		int point;
+		
+		userName = map.get("userName").toString();
+		try {
+			tagetName = map.get("param1").toString();
+			point = Integer.parseInt(map.get("param2").toString());
+		}catch(Exception e) {
+			return "오류발생, /결투 결투자명 포인트 형식으로 입력해야합니다.";
+		}
+		
+		if(point <= 0) {
+			return "포인트는 1포인트이상 입력해주세요.";
+		}
+		
+		List<HashMap<String,Object>> newMap = botService.selectBotPointRankFightBeforeCheck(map);
+		if(newMap==null || newMap.size()==0 || newMap.size()==1) {
+			return "남아있는 포인트가 부족합니다.";
+		}
+		
+		return userName + " 님의 결투신청!"+enterStr +tagetName+ " 님, 결투를 받으시려면 /저스트가드 입력 (60sec)";
+	}
+	String fight_e(HashMap<String,Object> map) {
+		map.put("cmd", "fight_e");
+		String userName;
+		String tagetName;
+		int score;
+		
+		userName = map.get("userName").toString();
+		//현재 내가 결투자 인지 확인, fight_s 에서 찾아옴
+		int seq =0;
+		List<HashMap<String,Object>> fightMap = botService.selectBotPointFight(map);
+		if(fightMap==null || fightMap.size()==0 || fightMap.size() > 1) {
+			return userName+" 님, 요청 결투가 없음!";
+		}
+		
+		try {
+			seq = Integer.parseInt(fightMap.get(0).get("SEQ").toString());
+			userName = fightMap.get(0).get("USER_NAME").toString();
+			tagetName = fightMap.get(0).get("TARGET_NAME").toString();
+			score = Integer.parseInt(fightMap.get(0).get("SCORE").toString());
+		}catch(Exception e) {
+			return userName+" 님, 요청 결투가 없음2!";
+		}
+		map.put("seq", seq);
+		map.put("userName", userName);
+		map.put("param1", tagetName);
+		map.put("param2", score);
+		
+		List<HashMap<String,Object>> newMap = botService.selectBotPointRankFightBeforeCheck(map);
+		if(newMap==null || newMap.size()==0 || newMap.size()==1) {
+			return "남아있는 포인트가 부족합니다.";
+		}
 		
 		
+		//0번객체
+		HashMap<String,Object> h1 = newMap.get(0);
+		//1번객체
+		HashMap<String,Object> h2 = newMap.get(1);
+		
+		//도전자가 main 
+		String main_user_name ="";
+		int main_user_point =0;
+		String sub_user_name ="";
+		int sub_user_point =0;
+		String winner_name="";
+		if(h1.get("USER_NAME").equals(userName)) {
+			//h1 : 도전자 , h2: 수락자
+			main_user_name = h1.get("USER_NAME").toString();
+			main_user_point = Integer.parseInt(h1.get("SCORE").toString());
+			sub_user_name = h2.get("USER_NAME").toString();
+			sub_user_point = Integer.parseInt(h2.get("SCORE").toString());
+		}else {
+			//h2 : 도전자 , h1: 도전자
+			main_user_name = h2.get("USER_NAME").toString();
+			main_user_point = Integer.parseInt(h2.get("SCORE").toString());
+			sub_user_name = h1.get("USER_NAME").toString();
+			sub_user_point = Integer.parseInt(h1.get("SCORE").toString());
+		}
+		
+		Random random = new Random(); // 랜덤객체
+		int number = random.nextInt(100)%2;
+		if(number==1) {
+			//main이 이기는 로직
+			winner_name = main_user_name;
+			main_user_point += score;
+			sub_user_point  -= score;
+		}else {
+			//sub가 이기는 로직
+			winner_name = sub_user_name;
+			main_user_point -= score;
+			sub_user_point  += score;
+		}		
+		
+		map.put("winnerName", winner_name);
+		try {
+			//도전 종료처리
+			botService.updateBotPointFightETx(map);
+		} catch (Exception e1) {
+			
+		}
+		return winner_name+" 님, 승리"+enterStr
+				+main_user_name +" : "+ main_user_point +" p"+enterStr
+				+ sub_user_name +" : "+  sub_user_point +" p"+enterStr
+				+"개발 테스트 중으로 실반영x";
 	}
 }

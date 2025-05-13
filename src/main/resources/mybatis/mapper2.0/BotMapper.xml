@@ -589,4 +589,73 @@
 		
 	</select>
 	
+	<select id="selectBotPointRankFightBeforeCheck" parameterType="HashMap" resultType="HashMap">
+		SELECT B.*
+		  FROM (SELECT A.USER_NAME AS USER_NAME
+				      ,SUM(A.SCORE) AS SCORE
+				  FROM TBOT_POINT_RANK A
+			     WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+				   AND UPPER(A.USER_NAME) IN ( upper(#{param1, jdbcType=VARCHAR}),upper(#{userName, jdbcType=VARCHAR}))
+			     GROUP BY A.USER_NAME
+			    HAVING SUM(A.SCORE) >= #{param2, jdbcType=NUMERIC}
+			     ORDER BY SUM(A.SCORE) DESC) B
+	</select>
+	
+	<select id="selectBotPointFight" parameterType="HashMap" resultType="HashMap">
+		SELECT A.SEQ,A.SCORE
+		  FROM TBOT_POINT_FIGHT A
+		 WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+		   AND A.CMD = 'fight_s'
+		   AND A.COMPLETE_YN = '0'
+		   AND A.INSERT_DATE BETWEEN SYSDATE - 2 / 60 / 24 AND SYSDATE
+		   <if test="cmd != null and cmd == 'fight_s' ">
+		   AND ( upper(A.TARGET_NAME) = upper(#{param1, jdbcType=VARCHAR}) or upper(a.user_name) = upper(#{userName, jdbcType=VARCHAR}) )
+		   </if>
+		   <if test="cmd != null and cmd == 'fight_e' ">
+   		   AND upper(A.TARGET_NAME) = upper(#{userName, jdbcType=VARCHAR})
+   		   </if>
+	</select>
+	
+	<insert id="insertBotPointFightS" parameterType="HashMap" >
+		INSERT INTO TBOT_POINT_FIGHT
+			 (USER_NAME
+			 ,TARGET_NAME
+			 ,ROOM_NAME
+			 ,SCORE
+			 ,INSERT_DATE
+			 ,CMD
+			 ,COMPLETE_YN
+		     ,SEQ)
+	   SELECT upper(#{userName, jdbcType=VARCHAR})
+			 ,upper(#{param1, jdbcType=VARCHAR})
+			 ,#{roomName, jdbcType=VARCHAR}
+			 ,#{score, jdbcType=NUMERIC}
+			 ,SYSDATE
+			 ,'fight_s'
+			 ,'0'
+		     ,max(A.SEQ)+1 
+		 FROM TBOT_POINT_FIGHT A
+	</insert>
+	<update id="updateBotPointFightE" parameterType="HashMap" >
+		UPDATE TBOT_POINT_FIGHT A
+		   SET A.COMPLETE_YN = '1'
+		     , A.WINNER_NAME =upper(#{winnerName, jdbcType=VARCHAR})
+		 WHERE A.SEQ = #{seq, jdbcType=NUMERIC}
+	</update>
+	
+	<insert id="insertBotPointFightE" parameterType="HashMap" >
+		INSERT INTO TBOT_POINT_RANK
+			 (USER_NAME
+			 ,ROOM_NAME
+			 ,SCORE
+			 ,INSERT_DATE
+			 ,CMD)
+		VALUES
+			 (upper(#{userName, jdbcType=VARCHAR})
+			 ,#{roomName, jdbcType=VARCHAR}
+			 ,#{score, jdbcType=NUMERIC}
+			 ,SYSDATE
+			 ,'fight_e')
+	</insert>
+	
 </mapper>

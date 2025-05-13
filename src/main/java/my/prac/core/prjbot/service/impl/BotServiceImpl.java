@@ -203,6 +203,21 @@ public class BotServiceImpl implements BotService {
 		return botDAO.selectBotPointRankAll(map);
 	}
 	
+	/** fight */
+	public List<HashMap<String,Object>> selectBotPointRankFightBeforeCheck(HashMap<String,Object> map){
+		return botDAO.selectBotPointRankFightBeforeCheck(map);
+	}
+	public List<HashMap<String,Object>> selectBotPointFight(HashMap<String,Object> map){
+		return botDAO.selectBotPointFight(map);
+	}
+	
+	public void updateBotPointFightETx(HashMap<String,Object> map)  throws Exception {
+		if(botDAO.updateBotPointFightE(map) < 1) {
+			throw new Exception("저장 실패");
+		}
+	}
+
+	
 	public void insertMarketItemList(List<HashMap<String, Object>> rawDataList) throws Exception {
 		LocalDateTime now = LocalDateTime.now();
 
