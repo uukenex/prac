@@ -131,6 +131,11 @@ public class LoaPlayController {
 		if(newMap==null || newMap.size()==0 || newMap.size()==1) {
 			return "남아있는 포인트가 부족합니다.";
 		}
+		try {
+			botService.insertBotPointFightSTx(map);
+		}catch(Exception e) {
+			return "오류발생";
+		}
 		
 		return userName + " 님의 결투신청!"+enterStr +tagetName+ " 님, 결투를 받으시려면 /저스트가드 입력 (60sec)";
 	}
@@ -178,6 +183,7 @@ public class LoaPlayController {
 		String sub_user_name ="";
 		int sub_user_point =0;
 		String winner_name="";
+		String loser_name="";
 		if(h1.get("USER_NAME").equals(userName)) {
 			//h1 : 도전자 , h2: 수락자
 			main_user_name = h1.get("USER_NAME").toString();
@@ -197,16 +203,19 @@ public class LoaPlayController {
 		if(number==1) {
 			//main이 이기는 로직
 			winner_name = main_user_name;
+			loser_name = sub_user_name;
 			main_user_point += score;
 			sub_user_point  -= score;
 		}else {
 			//sub가 이기는 로직
+			loser_name = main_user_name;
 			winner_name = sub_user_name;
 			main_user_point -= score;
 			sub_user_point  += score;
 		}		
 		
 		map.put("winnerName", winner_name);
+		map.put("loserName", loser_name);
 		try {
 			//도전 종료처리
 			botService.updateBotPointFightETx(map);
@@ -215,7 +224,6 @@ public class LoaPlayController {
 		}
 		return winner_name+" 님, 승리"+enterStr
 				+main_user_name +" : "+ main_user_point +" p"+enterStr
-				+ sub_user_name +" : "+  sub_user_point +" p"+enterStr
-				+"개발 테스트 중으로 실반영x";
+				+ sub_user_name +" : "+  sub_user_point +" p"+enterStr;
 	}
 }

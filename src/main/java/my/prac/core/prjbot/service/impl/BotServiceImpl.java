@@ -215,6 +215,24 @@ public class BotServiceImpl implements BotService {
 		if(botDAO.updateBotPointFightE(map) < 1) {
 			throw new Exception("저장 실패");
 		}
+		
+		int score = Integer.parseInt(map.get("param2").toString());
+		map.put("userName", map.get("winnerName"));
+		map.put("score", score);
+		if(botDAO.insertBotPointFightE(map) < 1) {
+			throw new Exception("저장 실패");
+		}
+		
+		map.put("userName", map.get("loserName"));
+		map.put("score", -score);
+		if(botDAO.insertBotPointFightE(map) < 1) {
+			throw new Exception("저장 실패");
+		}
+	}
+	public void insertBotPointFightSTx(HashMap<String,Object> map)  throws Exception{
+		if(botDAO.insertBotPointFightS(map) < 1) {
+			throw new Exception("저장 실패");
+		}
 	}
 
 	

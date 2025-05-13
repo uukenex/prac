@@ -66,6 +66,7 @@ public interface BotService {
 	public List<HashMap<String,Object>> selectBotPointRankFightBeforeCheck(HashMap<String,Object> map);
 	public List<HashMap<String,Object>> selectBotPointFight(HashMap<String,Object> map);
 	public void updateBotPointFightETx(HashMap<String,Object> map)  throws Exception;
+	public void insertBotPointFightSTx(HashMap<String,Object> map)  throws Exception;
 	
 	public void insertMarketItemList(List<HashMap<String, Object>> rawDataList) throws Exception;
 	public void insertAuctionItemOne(HashMap<String, Object> rawDataOne) throws Exception;
