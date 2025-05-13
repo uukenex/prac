@@ -592,7 +592,7 @@
 	<select id="selectBotPointRankFightBeforeCount" parameterType="HashMap" resultType="int">
 		SELECT COUNT(1)
 		  FROM TBOT_POINT_FIGHT A
-		 WHERE A.INSERT_DATE > SYSDATE - 10 / 60 / 24
+		 WHERE A.INSERT_DATE > SYSDATE - 5 / 60 / 24
 		   AND A.USER_NAME = #{userName, jdbcType=VARCHAR}
 		   AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 		   AND A.COMPLETE_YN = '1'

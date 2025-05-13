@@ -129,7 +129,7 @@ public class LoaPlayController {
 		
 		int cnt = botService.selectBotPointRankFightBeforeCount(map);
 		if(cnt>0) {
-			return "결투 쿨타임(10min..)";
+			return "결투 신청 쿨타임(신청만..5min..)";
 		}
 		
 		List<HashMap<String,Object>> newMap = botService.selectBotPointRankFightBeforeCheck(map);
@@ -142,7 +142,10 @@ public class LoaPlayController {
 			return "오류발생";
 		}
 		
-		return userName + " 님의 결투신청!"+enterStr +tagetName+ " 님, 결투를 받으시려면 /저스트가드 입력 (60sec)";
+		return userName + " 님의 결투신청!"+enterStr +
+				"**결투포인트: "+score+enterStr+enterStr+
+				tagetName+ " 님, 결투를 받으시려면"+enterStr+
+				" /저스트가드 입력 (60sec)";
 	}
 	String fight_e(HashMap<String,Object> map) {
 		map.put("cmd", "fight_e");
@@ -154,8 +157,11 @@ public class LoaPlayController {
 		//현재 내가 결투자 인지 확인, fight_s 에서 찾아옴
 		int seq =0;
 		List<HashMap<String,Object>> fightMap = botService.selectBotPointFight(map);
-		if(fightMap==null || fightMap.size()==0 || fightMap.size() > 1) {
+		if(fightMap==null || fightMap.size()==0) {
 			return userName+" 님, 요청 결투가 없음!";
+		}
+		if(fightMap.size() > 1) {
+			return userName+" 님, 요청 결투가 2개이상!(오류시 최대2분 후 정상화..!)";
 		}
 		
 		try {
