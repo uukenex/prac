@@ -120,7 +120,7 @@ public class LoaPlayController {
 			tagetName = map.get("param1").toString();
 			score = Integer.parseInt(map.get("param2").toString());
 		}catch(Exception e) {
-			return "오류발생, /결투 결투자명 포인트 형식으로 입력해야합니다.";
+			return "/결투 결투자명 포인트 형식으로 입력해야합니다.";
 		}
 		
 		if(score <= 0) {
@@ -129,13 +129,17 @@ public class LoaPlayController {
 		
 		int cnt = botService.selectBotPointRankFightBeforeCount(map);
 		if(cnt>0) {
-			return "결투 신청 쿨타임(신청만..5min..)";
+			return "결투 신청 쿨타임(신청만..2min..)";
 		}
 		
 		List<HashMap<String,Object>> newMap = botService.selectBotPointRankFightBeforeCheck(map);
-		if(newMap==null || newMap.size()==0 || newMap.size()==1) {
+		if(newMap==null || newMap.size()==0 ) {
 			return "남아있는 포인트가 부족합니다.";
 		}
+		if( newMap.size()==1) {
+			return newMap.get(0).get("USER_NAME").toString()+" vs "+"알수없는 상대"+enterStr+"결투 실패!";
+		}
+		
 		try {
 			botService.insertBotPointFightSTx(map);
 		}catch(Exception e) {
