@@ -491,6 +491,36 @@
 			  ,#{cmd, jdbcType=VARCHAR})
 		
 	</insert>
+	<select id="selectBotPointRankOne" parameterType="HashMap" resultType="HashMap">
+			  SELECT (SELECT '출석획득 포인트: '||NVL(SUM(A.SCORE),0) || 'p'
+				FROM TBOT_POINT_RANK A
+			   WHERE A.CMD = 'attendance'
+				 AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+				 AND upper(A.USER_NAME) = upper(#{userName, jdbcType=VARCHAR}) ) AS ATTENDANCE
+		    ,(SELECT '주사위획득 포인트: '||NVL(SUM(A.SCORE),0) || 'p'
+				FROM TBOT_POINT_RANK A
+			   WHERE A.CMD = 'diceRoll'
+				 AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+				 AND upper(A.USER_NAME) = upper(#{userName, jdbcType=VARCHAR}) ) AS DICE
+		    ,(SELECT '결투획득 포인트: '||NVL(SUM(A.SCORE),0) || 'p'
+				FROM TBOT_POINT_RANK A
+		       WHERE A.CMD = 'fight_e'
+				 AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+				 AND upper(A.USER_NAME) = upper(#{userName, jdbcType=VARCHAR}) ) AS FIGHT_SUM
+			,(SELECT '결투전적(승/패) :'|| COUNT(A.SCORE)
+				FROM TBOT_POINT_RANK A
+			   WHERE A.CMD = 'fight_e'
+				 AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+				 AND upper(A.USER_NAME) = upper(#{userName, jdbcType=VARCHAR})
+				 AND A.SCORE > 0) AS FIGHT_WIN
+			,(SELECT '/'||COUNT(A.SCORE)
+				FROM TBOT_POINT_RANK A
+			   WHERE A.CMD = 'fight_e'
+				 AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+				 AND upper(A.USER_NAME) = upper(#{userName, jdbcType=VARCHAR})
+				 AND A.SCORE &lt; 0) AS FIGHT_LOSE
+		  FROM DUAL
+	</select>
 	
 	<select id="selectBotPointRankAll" parameterType="HashMap" resultType="HashMap">
 			SELECT B.*
@@ -501,6 +531,7 @@
 				     GROUP BY A.USER_NAME
 				     ORDER BY SUM(A.SCORE) DESC) B
 	</select>
+	
 	
 	<select id="selectBotPointRankToday" parameterType="HashMap" resultType="HashMap">
 			SELECT B.*
@@ -619,10 +650,10 @@
 		   AND A.COMPLETE_YN = '0'
 		   AND A.INSERT_DATE BETWEEN SYSDATE - 2 / 60 / 24 AND SYSDATE
 		   <if test="cmd != null and cmd == 'fight_s' ">
-		   AND ( A.TARGET_NAME = #{param1, jdbcType=VARCHAR} or a.user_name = #{userName, jdbcType=VARCHAR} )
+		   AND ( upper(A.TARGET_NAME) = upper(#{param1, jdbcType=VARCHAR}) or upper(a.user_name) = upper(#{userName, jdbcType=VARCHAR}) )
 		   </if>
 		   <if test="cmd != null and cmd == 'fight_e' ">
-   		   AND A.TARGET_NAME = #{userName, jdbcType=VARCHAR}
+   		   AND upper(A.TARGET_NAME) = upper(#{userName, jdbcType=VARCHAR})
    		   </if>
 	</select>
 	

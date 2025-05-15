@@ -855,13 +855,17 @@ public class LoaChatController {
 				val +=enterStr;
 				break;
 			case "/포인트": case "/ㅍㅇㅌ":
-				
+				HashMap<String,Object> point_map_one = botService.selectBotPointRankOne(reqMap);
+				val += sender+" 포인트 이력"+enterStr+enterStr;
+				val += point_map_one.get("ATTENDANCE")+ enterStr+
+					   point_map_one.get("DICE")+enterStr +
+					   point_map_one.get("FIGHT_SUM")+enterStr +
+					   point_map_one.get("FIGHT_WIN")+point_map_one.get("FIGHT_LOSE")+enterStr ;
+				break;
+			case "/포인트랭킹": case "/ㅍㅇㅌㄹㅋ":
 				List<HashMap<String,Object>> point_map = botService.selectBotPointRankAll(reqMap);
-				
 				val +=roomName+" 람쥐포인트"+enterStr;
-				
 				for(int i =0;i<point_map.size();i++) {
-					
 					switch(i) {
 							/*
 						case 0:
@@ -878,7 +882,6 @@ public class LoaChatController {
 							val += rank_etc;
 							break;
 					}
-					
 					val += point_map.get(i).get("USER_NAME")+ " : "+point_map.get(i).get("SCORE")+enterStr ;
 				}
 				break;

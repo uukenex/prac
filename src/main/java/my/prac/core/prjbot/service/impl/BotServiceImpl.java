@@ -199,6 +199,9 @@ public class BotServiceImpl implements BotService {
 	public List<HashMap<String,Object>> selectBotPointRank(HashMap<String,Object> map){
 		return botDAO.selectBotPointRank(map);
 	}
+	public HashMap<String,Object> selectBotPointRankOne(HashMap<String,Object> map){
+		return botDAO.selectBotPointRankOne(map);
+	}
 	public List<HashMap<String,Object>> selectBotPointRankAll(HashMap<String,Object> map){
 		return botDAO.selectBotPointRankAll(map);
 	}
