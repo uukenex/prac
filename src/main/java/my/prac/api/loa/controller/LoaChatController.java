@@ -279,6 +279,9 @@ public class LoaChatController {
 			}
 			
 			switch (param0) {
+			case "/테스트":
+				val = play.testMethod(reqMap);
+				break;
 			case "/ㄹㅇ":
 			case "/주급":
 			case "/ㅈㄱ":
@@ -304,6 +307,9 @@ public class LoaChatController {
 				break;
 			case "/결투": case "/ㄱㅌ":
 				val = play.fight_s(reqMap);
+				break;
+			case "/뽑기": case "/ㅃㄱ":
+				val = play.gamble(reqMap);
 				break;
 			case "/저가": case "/저스트가드":
 				val = play.fight_e(reqMap);

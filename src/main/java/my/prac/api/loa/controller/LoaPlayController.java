@@ -37,6 +37,13 @@ public class LoaPlayController {
 		
 	}
 	
+	String testMethod(HashMap<String,Object> map) {
+		String str="";
+		
+		
+		return str;
+	}
+	
 	String attendanceToday(HashMap<String,Object> map) {
 		String msg="";
 		List<HashMap<String,Object>> point_map = botService.selectBotPointRankToday(map);
@@ -106,7 +113,9 @@ public class LoaPlayController {
 		} catch (Exception e) {
 			return "오류발생";
 		}
-		return prefix+enterStr+"『"+map.get("userName") + "』 님의 주사위: "+number+" (0~100) "+score+"점 획득"+enterStr+"갱신 포인트 : "+new_score;
+		return prefix+enterStr+"『"+map.get("userName") + "』 님의 주사위: "+number+" (0~100) "+
+			   enterStr+score+"점 획득"+
+			   enterStr+"갱신 포인트 : "+new_score;
 	}
 	
 	String fight_s(HashMap<String,Object> map) {
@@ -245,4 +254,89 @@ public class LoaPlayController {
 				+main_user_name +" : "+main_user_point_org+" → "+ main_user_point +" p"+enterStr
 				+ sub_user_name +" : "+ sub_user_point_org+" → "+  sub_user_point +" p"+enterStr;
 	}
+	
+	String gamble(HashMap<String,Object> map) {
+		return "뽑기 기능은 개발중입니다.";
+	}
+	
+	public String openBox(String str1,String str2) throws Exception {
+		String resMsg="";
+		
+		int i =0; 
+		int j =0;
+		
+		try {
+			i = Integer.parseInt(str1);
+			j = Integer.parseInt(str2);
+		}catch(Exception e) {
+			return "오류"; 
+		}
+		
+		int totJ=j; //최초 전체수량
+		
+		if(i==0 || i>j || i>2000 || j> 2000) {
+			return "오류";
+		}
+		
+		resMsg +=i+"개씩 개봉 전체:"+totJ+" 섬마0.3%/금화5%/은화94.7%"+enterStr;
+		
+		int tot_count = totJ/i; //전체회차
+		int nmg = totJ%i; //나머지
+		
+		if(tot_count>17) {
+			resMsg +=allSeeStr;
+		}
+		
+		for(int count=0;count<tot_count;count++) {
+			String findItem="";
+			j = j-i;
+			resMsg +=count+1+"회차 남은수량: "+j+"/"+totJ;
+			for(int rd =0;rd<i;rd++) {
+				findItem += openBox2();
+			}
+			int item3 = countChar(findItem, '3');
+			int item2 = countChar(findItem, '2');
+			int item1 = countChar(findItem, '1');
+			
+			StringBuilder sb = new StringBuilder();
+			if(item3>0) {
+				sb.append(" 은화 "+item3);
+			}
+			if(item2>0) {
+				sb.append(" 금화 "+item2);
+			}
+			if(item1>0) {
+				sb.append(" 섬마 "+item1);
+			}
+			resMsg +=sb+enterStr;
+			if(item1>0) {
+				break;
+			}
+		}
+		return resMsg;
+	}
+	
+	public int openBox2() {
+		Random random = new Random();
+		int rs = random.nextInt(1000)+1;
+		if(rs>997) {
+			return 1;//달성
+		}else if(rs>947) {
+			return 2;//금화
+		}else {
+			return 3;//은화
+		}
+		
+	}
+	
+	public int countChar(String str, char ch) {
+		int count = 0;
+		for (int i = 0; i < str.length(); i++) {
+			if (str.charAt(i) == ch) {
+				count++;
+			}
+		}
+		return count;
+	}
+	
 }
