@@ -862,7 +862,7 @@ public class LoaChatController {
 				}
 				
 				HashMap<String,Object> point_map_one = botService.selectBotPointRankOne(reqMap);
-				val += sender+" 포인트 이력"+enterStr+enterStr;
+				val += reqMap.get("newUserName")+" 포인트 이력"+enterStr+enterStr;
 				val += point_map_one.get("ATTENDANCE")+ enterStr+
 					   point_map_one.get("DICE")+enterStr +
 					   point_map_one.get("FIGHT_SUM")+enterStr +
