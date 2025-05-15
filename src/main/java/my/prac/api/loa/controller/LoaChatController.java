@@ -314,6 +314,9 @@ public class LoaChatController {
 			case "/저가": case "/저스트가드":
 				val = play.fight_e(reqMap);
 				break;
+			case "/이벤트참여":
+				val = play.eventApply(reqMap);
+				break;
 			case "/로또": case "/ㄹㄸ":
 				val = lotto();
 				break;

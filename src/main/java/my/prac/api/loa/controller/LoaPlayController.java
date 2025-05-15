@@ -255,6 +255,14 @@ public class LoaPlayController {
 				+ sub_user_name +" : "+ sub_user_point_org+" → "+  sub_user_point +" p"+enterStr;
 	}
 	
+	String eventApply(HashMap<String,Object> map) {
+		//select 현재 진행중인 이벤트가 있는지?
+		
+		//
+		
+		return "뽑기 기능은 개발중입니다.";
+	}
+	
 	String gamble(HashMap<String,Object> map) {
 		return "뽑기 기능은 개발중입니다.";
 	}
