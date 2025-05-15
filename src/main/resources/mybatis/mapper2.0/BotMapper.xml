@@ -496,28 +496,28 @@
 				FROM TBOT_POINT_RANK A
 			   WHERE A.CMD = 'attendance'
 				 AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
-				 AND upper(A.USER_NAME) = upper(#{userName, jdbcType=VARCHAR}) ) AS ATTENDANCE
+				 AND upper(A.USER_NAME) = upper(#{newUserName, jdbcType=VARCHAR}) ) AS ATTENDANCE
 		    ,(SELECT '주사위획득 포인트: '||NVL(SUM(A.SCORE),0) || 'p'
 				FROM TBOT_POINT_RANK A
 			   WHERE A.CMD = 'diceRoll'
 				 AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
-				 AND upper(A.USER_NAME) = upper(#{userName, jdbcType=VARCHAR}) ) AS DICE
+				 AND upper(A.USER_NAME) = upper(#{newUserName, jdbcType=VARCHAR}) ) AS DICE
 		    ,(SELECT '결투획득 포인트: '||NVL(SUM(A.SCORE),0) || 'p'
 				FROM TBOT_POINT_RANK A
 		       WHERE A.CMD = 'fight_e'
 				 AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
-				 AND upper(A.USER_NAME) = upper(#{userName, jdbcType=VARCHAR}) ) AS FIGHT_SUM
+				 AND upper(A.USER_NAME) = upper(#{newUserName, jdbcType=VARCHAR}) ) AS FIGHT_SUM
 			,(SELECT '결투전적(승/패) :'|| COUNT(A.SCORE)
 				FROM TBOT_POINT_RANK A
 			   WHERE A.CMD = 'fight_e'
 				 AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
-				 AND upper(A.USER_NAME) = upper(#{userName, jdbcType=VARCHAR})
+				 AND upper(A.USER_NAME) = upper(#{newUserName, jdbcType=VARCHAR})
 				 AND A.SCORE > 0) AS FIGHT_WIN
 			,(SELECT '/'||COUNT(A.SCORE)
 				FROM TBOT_POINT_RANK A
 			   WHERE A.CMD = 'fight_e'
 				 AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
-				 AND upper(A.USER_NAME) = upper(#{userName, jdbcType=VARCHAR})
+				 AND upper(A.USER_NAME) = upper(#{newUserName, jdbcType=VARCHAR})
 				 AND A.SCORE &lt; 0) AS FIGHT_LOSE
 		  FROM DUAL
 	</select>
@@ -636,7 +636,7 @@
 				      ,SUM(A.SCORE) AS SCORE
 				  FROM TBOT_POINT_RANK A
 			     WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
-				   AND A.USER_NAME IN ( #{param1, jdbcType=VARCHAR},#{userName, jdbcType=VARCHAR})
+				   AND upper(A.USER_NAME) IN ( upper(#{param1, jdbcType=VARCHAR}),upper(#{userName, jdbcType=VARCHAR}))
 			     GROUP BY A.USER_NAME
 			    HAVING SUM(A.SCORE) >= #{param2, jdbcType=NUMERIC}
 			     ORDER BY SUM(A.SCORE) DESC) B
