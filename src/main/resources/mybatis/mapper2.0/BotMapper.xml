@@ -492,7 +492,12 @@
 		
 	</insert>
 	<select id="selectBotPointRankOne" parameterType="HashMap" resultType="HashMap">
-			  SELECT (SELECT '출석획득 포인트: '||NVL(SUM(A.SCORE),0) || 'p'
+	  SELECT (SELECT A.USER_NAME||' 총 포인트: ' || NVL(SUM(A.SCORE), 0) || 'p'
+		        FROM TBOT_POINT_RANK A
+		       WHERE A.ROOM_NAME = '로아냥떼'
+		         AND UPPER(A.USER_NAME) = UPPER(#{newUserName, jdbcType=VARCHAR})
+		       GROUP BY A.USER_NAME ) AS TOT
+			,(SELECT '출석획득 포인트: '||NVL(SUM(A.SCORE),0) || 'p'
 				FROM TBOT_POINT_RANK A
 			   WHERE A.CMD = 'attendance'
 				 AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
@@ -507,7 +512,7 @@
 		       WHERE A.CMD = 'fight_e'
 				 AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 				 AND upper(A.USER_NAME) = upper(#{newUserName, jdbcType=VARCHAR}) ) AS FIGHT_SUM
-			,(SELECT '결투전적(승/패) :'|| COUNT(A.SCORE)
+			,(SELECT '결투전적(승/패): '|| COUNT(A.SCORE)
 				FROM TBOT_POINT_RANK A
 			   WHERE A.CMD = 'fight_e'
 				 AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
