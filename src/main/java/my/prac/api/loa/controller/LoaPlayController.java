@@ -175,9 +175,9 @@ public class LoaPlayController {
 			return "결투신청 오류:대결자가 "+newMap.size()+"명!";
 		}
 		
-		
 		int p0 = Integer.parseInt(newMap.get(0).get("SCORE").toString());
 		int p1 = Integer.parseInt(newMap.get(1).get("SCORE").toString());
+		
 		if( score > p0 ) {
 			return newMap.get(0).get("USER_NAME")+" 님 포인트 부족!"+enterStr+
 				  "*결투포인트: "+score+"p"+enterStr+
@@ -205,7 +205,7 @@ public class LoaPlayController {
 		
 		return userName + " 님의 결투신청!"+enterStr +
 				"**결투포인트: "+score+enterStr+enterStr+
-				targetName+ " 님, 결투를 받으시려면"+enterStr+
+				map.get("param1")+ " 님, 결투를 받으시려면"+enterStr+
 				" /저스트가드 입력 (60sec)";
 	}
 	String fight_e(HashMap<String,Object> map) {
