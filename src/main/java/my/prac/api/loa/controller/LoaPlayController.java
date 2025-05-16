@@ -32,6 +32,16 @@ public class LoaPlayController {
 		if(check_map ==null || check_map.size() ==0) {
 			return true; //허용
 		}else {
+			try {
+				if(Integer.parseInt(check_map.get(0).get("SCORE").toString()) < 0
+					&& map.get("cmd").equals("diceRoll")) {
+					return true;// 마이너스점수인 경우 1회 재도전 다이스만..
+				}
+			}catch(Exception e) {
+				return false;//불가
+			}
+			
+			
 			return false;//불가
 		}
 		
@@ -113,9 +123,15 @@ public class LoaPlayController {
 		} catch (Exception e) {
 			return "오류발생";
 		}
-		return prefix+enterStr+"『"+map.get("userName") + "』 님의 주사위: "+number+" (0~100) "+
-			   enterStr+score+"점 획득"+
-			   enterStr+"갱신 포인트 : "+new_score;
+		
+		
+		String msg = prefix+enterStr+"『"+map.get("userName") + "』 님의 주사위: "+number+" (0~100) "+
+				   enterStr+score+"점 획득"+
+				   enterStr+"갱신 포인트 : "+new_score;
+		if(new_score < 0) {
+			msg += enterStr+"＊마이너스 포인트로 주사위 횟수 1부여!";
+		}
+		return msg;
 	}
 	
 	String fight_s(HashMap<String,Object> map) {
