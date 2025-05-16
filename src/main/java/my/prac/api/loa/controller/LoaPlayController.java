@@ -121,12 +121,13 @@ public class LoaPlayController {
 	String fight_s(HashMap<String,Object> map) {
 		map.put("cmd", "fight_s");
 		String userName;
-		String tagetName;
+		String targetName;
 		int score;
 		
 		userName = map.get("userName").toString();
 		try {
-			tagetName = map.get("param1").toString();
+			targetName = map.get("param1").toString();
+			targetName = targetName.replaceAll("/^@/", "");
 			score = Integer.parseInt(map.get("param2").toString());
 		}catch(Exception e) {
 			return "/결투 결투자명 포인트 형식으로 입력해야합니다.";
@@ -157,7 +158,7 @@ public class LoaPlayController {
 		
 		return userName + " 님의 결투신청!"+enterStr +
 				"**결투포인트: "+score+enterStr+enterStr+
-				tagetName+ " 님, 결투를 받으시려면"+enterStr+
+				targetName+ " 님, 결투를 받으시려면"+enterStr+
 				" /저스트가드 입력 (60sec)";
 	}
 	String fight_e(HashMap<String,Object> map) {
