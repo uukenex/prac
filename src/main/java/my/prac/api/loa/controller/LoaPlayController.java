@@ -32,6 +32,7 @@ public class LoaPlayController {
 		if(check_map ==null || check_map.size() ==0) {
 			return true; //허용
 		}else {
+			/*
 			try {
 				if(Integer.parseInt(check_map.get(0).get("SCORE").toString()) < 0
 					&& map.get("cmd").equals("diceRoll")) {
@@ -40,7 +41,7 @@ public class LoaPlayController {
 			}catch(Exception e) {
 				return false;//불가
 			}
-			
+			*/
 			
 			return false;//불가
 		}
@@ -129,7 +130,7 @@ public class LoaPlayController {
 				   enterStr+score+"점 획득"+
 				   enterStr+"갱신 포인트 : "+new_score;
 		if(new_score < 0) {
-			msg += enterStr+"＊마이너스 포인트로 주사위 횟수 1부여!";
+			//msg += enterStr+"＊마이너스 포인트로 주사위 횟수 1부여!";
 		}
 		return msg;
 	}
