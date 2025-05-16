@@ -145,6 +145,7 @@ public class LoaPlayController {
 		try {
 			targetName = map.get("param1").toString();
 			targetName = targetName.replaceAll("/^@/", "");
+			map.put("param1",targetName);
 			score = Integer.parseInt(map.get("param2").toString());
 		}catch(Exception e) {
 			return "/결투 결투자명 포인트 형식으로 입력해야합니다.";
