@@ -62,7 +62,7 @@ public interface BotService {
 	public HashMap<String,Object> selectBotPointRankOne(HashMap<String,Object> map);
 	public List<HashMap<String,Object>> selectBotPointRankAll(HashMap<String,Object> map);
 	public List<HashMap<String,Object>> selectBotPointRank(HashMap<String,Object> map);
-	
+	public List<HashMap<String,Object>> selectBotPointRankNewScore(HashMap<String,Object> map);
 	/** fight */
 	public List<HashMap<String,Object>> selectBotPointRankFightBeforeCheck(HashMap<String,Object> map);
 	public List<HashMap<String,Object>> selectBotPointFight(HashMap<String,Object> map);

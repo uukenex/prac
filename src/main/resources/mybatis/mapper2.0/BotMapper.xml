@@ -492,12 +492,12 @@
 		
 	</insert>
 	<select id="selectBotPointRankOne" parameterType="HashMap" resultType="HashMap">
-	  SELECT (SELECT A.USER_NAME||' 총 포인트: ' || NVL(SUM(A.SCORE), 0) || 'p'
+	  SELECT (SELECT A.USER_NAME||'♬총 포인트: ' || NVL(SUM(A.SCORE), 0) || 'p♬'
 		        FROM TBOT_POINT_RANK A
 		       WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 		         AND UPPER(A.USER_NAME) = UPPER(#{newUserName, jdbcType=VARCHAR})
 		       GROUP BY A.USER_NAME ) AS TOT
-			,(SELECT '출석획득 포인트: '||NVL(SUM(A.SCORE),0) || 'p♬ (최근출석일: '|| MAX(TO_CHAR(A.INSERT_DATE,'mm/dd hh24:mi'))
+			,(SELECT '출석획득 포인트: ' || NVL(SUM(A.SCORE), 0) || 'p♬오늘출석: ' || DECODE(MAX(TO_CHAR(A.INSERT_DATE, 'mmdd')), TO_CHAR(SYSDATE, 'mmdd'), '완료', '미완료')
 				FROM TBOT_POINT_RANK A
 			   WHERE A.CMD = 'attendance'
 				 AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
@@ -636,6 +636,7 @@
 	</select>
 	
 	<select id="selectBotPointRankFightBeforeCheck" parameterType="HashMap" resultType="HashMap">
+		/* selectBotPointRankFightBeforeCheck */
 		SELECT B.*
 		  FROM (SELECT A.USER_NAME AS USER_NAME
 				      ,SUM(A.SCORE) AS SCORE
@@ -643,7 +644,7 @@
 			     WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 				   AND upper(A.USER_NAME) IN ( upper(#{param1, jdbcType=VARCHAR}),upper(#{userName, jdbcType=VARCHAR}))
 			     GROUP BY A.USER_NAME
-			    HAVING SUM(A.SCORE) >= #{param2, jdbcType=NUMERIC}
+			    
 			     ORDER BY SUM(A.SCORE) DESC) B
 	</select>
 	
@@ -703,5 +704,20 @@
 			 ,SYSDATE
 			 ,'fight_e')
 	</insert>
+	
+	<select id="selectParam1ToNewUserSearch" parameterType="HashMap" resultType="String" >
+		SELECT A.USER_NAME
+		  FROM TBOT_POINT_RANK A
+		 WHERE upper(A.USER_NAME) LIKE upper(#{param1, jdbcType=VARCHAR}) || '%'
+		   AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+		 GROUP BY A.USER_NAME
+			  ,A.ROOM_NAME
+		 ORDER BY CASE
+		                WHEN LENGTH(#{param1, jdbcType=VARCHAR}) = LENGTH(A.USER_NAME) THEN
+		                 1
+		                ELSE
+		                 0
+		          END desc         
+	</select>
 	
 </mapper>

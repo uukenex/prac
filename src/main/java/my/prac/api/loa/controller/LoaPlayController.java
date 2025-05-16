@@ -32,16 +32,27 @@ public class LoaPlayController {
 		if(check_map ==null || check_map.size() ==0) {
 			return true; //허용
 		}else {
-			/*
+			
 			try {
-				if(Integer.parseInt(check_map.get(0).get("SCORE").toString()) < 0
-					&& map.get("cmd").equals("diceRoll")) {
-					return true;// 마이너스점수인 경우 1회 재도전 다이스만..
+				if(map.get("cmd").equals("diceRoll")) {
+					List<HashMap<String,Object>> ls = botService.selectBotPointRankNewScore(map);
+					int score = Integer.parseInt(ls.get(0).get("SCORE").toString());
+					if(score < 0) {
+						map.put("cmd","diceReroll");
+						//reroll도 돌렸다면 진짜 불가 
+						ls = botService.selectBotPointRank(map);
+						if(ls ==null || ls.size() ==0) {
+							return true; //허용
+						}else {
+							return false;//불가
+						}
+						
+					}
 				}
 			}catch(Exception e) {
 				return false;//불가
 			}
-			*/
+			
 			
 			return false;//불가
 		}
@@ -88,6 +99,7 @@ public class LoaPlayController {
 		return map.get("userName")+"님 출석포인트 "+score+"점 획득"+enterStr+"갱신 포인트 : "+new_score;
 	}
 	
+	
 	String diceRoll(HashMap<String,Object> map) {
 		map.put("cmd", "diceRoll");
 		if(!dailyCheck(map)) {
@@ -130,7 +142,7 @@ public class LoaPlayController {
 				   enterStr+score+"점 획득"+
 				   enterStr+"갱신 포인트 : "+new_score;
 		if(new_score < 0) {
-			//msg += enterStr+"＊마이너스 포인트로 주사위 횟수 1부여!";
+			msg += enterStr+"＊마이너스 포인트는 오늘의 주사위 한번더!";
 		}
 		return msg;
 	}
@@ -140,12 +152,10 @@ public class LoaPlayController {
 		String userName;
 		String targetName;
 		int score;
-		
+		//like UPPER(#{newUserName, jdbcType=VARCHAR}||'%'
 		userName = map.get("userName").toString();
 		try {
 			targetName = map.get("param1").toString();
-			targetName = targetName.replaceAll("/^@/", "");
-			map.put("param1",targetName);
 			score = Integer.parseInt(map.get("param2").toString());
 		}catch(Exception e) {
 			return "/결투 결투자명 포인트 형식으로 입력해야합니다.";
@@ -161,12 +171,31 @@ public class LoaPlayController {
 		}
 		
 		List<HashMap<String,Object>> newMap = botService.selectBotPointRankFightBeforeCheck(map);
-		if(newMap==null || newMap.size()==0 ) {
-			return "남아있는 포인트가 부족합니다.";
+		if(newMap.size() !=2) {
+			return "결투신청 오류:대결자가 "+newMap.size()+"명!";
 		}
-		if( newMap.size()==1) {
+		
+		
+		int p0 = Integer.parseInt(newMap.get(0).get("SCORE").toString());
+		int p1 = Integer.parseInt(newMap.get(1).get("SCORE").toString());
+		if( score > p0 ) {
+			return newMap.get(0).get("USER_NAME")+" 님 포인트 부족!"+enterStr+
+				  "*결투포인트: "+score+"p"+enterStr+
+				  "*현재포인트: "+p0+"p";
+			
+		}
+		if( score > p1 ) {
+			return newMap.get(1).get("USER_NAME")+" 님 포인트 부족!"+enterStr+
+				  "*결투포인트: "+score+"p"+enterStr+
+				  "*현재포인트: "+p1+"p";
+		}
+		
+		
+		//HAVING SUM(A.SCORE) >= #{param2, jdbcType=NUMERIC}
+		//기본적으로 newMap size =2이다
+		/*if( newMap.size()==1) {
 			return newMap.get(0).get("USER_NAME").toString()+" vs "+"알수없는 상대"+enterStr+"결투 실패!";
-		}
+		}*/
 		
 		try {
 			botService.insertBotPointFightSTx(map);
@@ -209,11 +238,31 @@ public class LoaPlayController {
 		map.put("param1", tagetName);
 		map.put("param2", score);
 		
+		/*
 		List<HashMap<String,Object>> newMap = botService.selectBotPointRankFightBeforeCheck(map);
 		if(newMap==null || newMap.size()==0 || newMap.size()==1) {
 			return "남아있는 포인트가 부족합니다.";
 		}
+		*/
+		List<HashMap<String,Object>> newMap = botService.selectBotPointRankFightBeforeCheck(map);
+		if(newMap.size() !=2) {
+			return "결투신청 오류:대결자가 "+newMap.size()+"명!";
+		}
 		
+		
+		int p0 = Integer.parseInt(newMap.get(0).get("SCORE").toString());
+		int p1 = Integer.parseInt(newMap.get(1).get("SCORE").toString());
+		if( score > p0 ) {
+			return newMap.get(0).get("USER_NAME")+" 님 포인트 부족!"+enterStr+
+				  "*결투포인트: "+score+"p"+enterStr+
+				  "*현재포인트: "+p0+"p";
+			
+		}
+		if( score > p1 ) {
+			return newMap.get(1).get("USER_NAME")+" 님 포인트 부족!"+enterStr+
+				  "*결투포인트: "+score+"p"+enterStr+
+				  "*현재포인트: "+p1+"p";
+		}
 		
 		//0번객체
 		HashMap<String,Object> h1 = newMap.get(0);

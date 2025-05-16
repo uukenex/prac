@@ -177,6 +177,9 @@ public class BotServiceImpl implements BotService {
 	public List<HashMap<String,Object>> selectRoomBotPowerRank(HashMap<String,Object> map){
 		return botDAO.selectRoomBotPowerRank(map);
 	}
+	public List<HashMap<String,Object>> selectBotPointRankNewScore(HashMap<String,Object> map){
+		return botDAO.selectBotPointRankNewScore(map);
+	}
 	
 	public int insertBotPointRankTx(HashMap<String,Object> map)  throws Exception{
 		if(botDAO.insertBotPointRank(map) < 1) {
@@ -200,6 +203,14 @@ public class BotServiceImpl implements BotService {
 		return botDAO.selectBotPointRank(map);
 	}
 	public HashMap<String,Object> selectBotPointRankOne(HashMap<String,Object> map){
+		if (map.get("param1") != null && !map.get("param1").equals("")) {
+			List<String> newUserName = botDAO.selectParam1ToNewUserSearch(map);
+			if(newUserName.size()>0) {
+				map.put("newUserName", newUserName.get(0));
+			}else {
+				return null;
+			}
+		}
 		return botDAO.selectBotPointRankOne(map);
 	}
 	public List<HashMap<String,Object>> selectBotPointRankAll(HashMap<String,Object> map){
@@ -208,6 +219,14 @@ public class BotServiceImpl implements BotService {
 	
 	/** fight */
 	public List<HashMap<String,Object>> selectBotPointRankFightBeforeCheck(HashMap<String,Object> map){
+		
+		if (map.get("param1") != null && !map.get("param1").equals("")) {
+			List<String> newUserName = botDAO.selectParam1ToNewUserSearch(map);
+			if(newUserName.size()>0) {
+				map.put("param1", newUserName.get(0));
+			}
+		}
+		
 		return botDAO.selectBotPointRankFightBeforeCheck(map);
 	}
 	public List<HashMap<String,Object>> selectBotPointFight(HashMap<String,Object> map){
@@ -236,6 +255,13 @@ public class BotServiceImpl implements BotService {
 		}
 	}
 	public void insertBotPointFightSTx(HashMap<String,Object> map)  throws Exception{
+		if (map.get("param1") != null && !map.get("param1").equals("")) {
+			List<String> newUserName = botDAO.selectParam1ToNewUserSearch(map);
+			if(newUserName.size()>0) {
+				map.put("param1", newUserName.get(0));
+			}
+		}
+		
 		if(botDAO.insertBotPointFightS(map) < 1) {
 			throw new Exception("저장 실패");
 		}
