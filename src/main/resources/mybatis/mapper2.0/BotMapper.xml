@@ -566,6 +566,7 @@
 	</select>
 	
 	<select id="selectBotPointRankNewScore" parameterType="HashMap" resultType="HashMap">
+			/* selectBotPointRankNewScore */
 			SELECT B.*
 			  FROM (SELECT A.USER_NAME AS USER_NAME
 					      ,SUM(A.SCORE) AS SCORE
@@ -719,5 +720,52 @@
 		                 0
 		          END desc         
 	</select>
+	
+	<select id="selectBotPointUpdownS" parameterType="HashMap" resultType="HashMap">
+		 /* selectBotPointUpdownS */
+		 SELECT *
+		   FROM TBOT_POINT_UPDOWN A
+		  WHERE A.CMD = 'updown_s'
+		    AND A.COMPLETE_YN &lt; 6
+		    AND A.ROOM_NAME =#{roomName, jdbcType=VARCHAR}
+		    AND A.USER_NAME = #{userName, jdbcType=VARCHAR}
+		    AND A.END_YN ='0'
+		    AND ROWNUM = 1	
+	</select>
+	
+	<update id="updateBotPointUpdownS" parameterType="HashMap">
+		 /* updateBotPointUpdownS */
+		 UPDATE TBOT_POINT_UPDOWN A
+		    SET A.COMPLETE_YN = A.COMPLETE_YN + 1
+		       ,${colName}    = #{inNumber, jdbcType=NUMERIC}
+		       <if test="endYn == '1' || endYn == 1 ">
+		       ,A.END_YN = '1'
+		       </if>
+		  WHERE A.SEQ 	 = #{seq, jdbcType=NUMERIC}
+		    AND A.END_YN = '0'
+		
+	</update>
+	
+	<insert id="insertBotPointUpdownS" parameterType="HashMap">
+		/* insertBotPointUpdownS */
+		 INSERT INTO TBOT_POINT_UPDOWN
+		       (USER_NAME
+		       ,TARGET_NUMBER
+		       ,ROOM_NAME
+		       ,INSERT_DATE
+		       ,CMD
+		       ,COMPLETE_YN
+		       ,END_YN
+		       ,SEQ)
+	     SELECT #{userName, jdbcType=VARCHAR}
+		       ,#{randomNumber, jdbcType=VARCHAR}
+		       ,#{roomName, jdbcType=VARCHAR}
+		       ,SYSDATE
+		       ,'updown_s'
+		       ,0
+		       ,'0'
+		       ,max(A.SEQ)+1 
+	       FROM TBOT_POINT_UPDOWN A
+	</insert>
 	
 </mapper>

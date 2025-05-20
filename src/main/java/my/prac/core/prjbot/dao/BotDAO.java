@@ -88,5 +88,10 @@ public interface BotDAO {
 	
 	//param to userName
 	public List<String> selectParam1ToNewUserSearch(HashMap<String,Object> map);
+	
+	/** updown */
+	public HashMap<String,Object> selectBotPointUpdownS(HashMap<String,Object> map);
+	public int  insertBotPointUpdownS(HashMap<String,Object> map);
+	public int  updateBotPointUpdownS(HashMap<String,Object> map);
 }
 

@@ -326,4 +326,21 @@ public class BotServiceImpl implements BotService {
 		return botDAO.selectMarketItemPriceInfo(map);
 	}
 	
+	
+
+	
+	public HashMap<String,Object> selectBotPointUpdownS(HashMap<String,Object> map){
+		return botDAO.selectBotPointUpdownS(map);
+	}
+	public void insertBotPointUpdownSTx(HashMap<String,Object> map) throws Exception{
+		if(botDAO.insertBotPointUpdownS(map) < 1) {
+			throw new Exception("저장 실패");
+		}
+	}
+	public void updateBotPointUpdownSTx(HashMap<String,Object> map) throws Exception{
+		if(botDAO.updateBotPointUpdownS(map) < 1) {
+			throw new Exception("저장 실패");
+		}
+	}
+	
 }

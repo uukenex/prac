@@ -60,7 +60,7 @@ public class LoaPlayController {
 	}
 	
 	String testMethod(HashMap<String,Object> map) {
-		String str="";
+		String str="⭐🌟💫🌠";
 		
 		
 		return str;
@@ -332,7 +332,166 @@ public class LoaPlayController {
 	}
 	
 	String gamble(HashMap<String,Object> map) {
-		return "뽑기 기능은 개발중입니다.";
+		map.put("cmd", "gamble_s");
+		map.put("score", -500);
+		
+		String userName = map.get("userName").toString();
+		
+		HashMap<String,Object> info = botService.selectBotPointUpdownS(map);
+		if(info == null || info.size() ==0) {
+			//신규대상인 경우 
+			List<HashMap<String,Object>> ls = botService.selectBotPointRankNewScore(map);
+			try {
+				int score = Integer.parseInt(ls.get(0).get("SCORE").toString());
+				if(score < 100) {
+					return userName+" 님, 500p 이상만 가능합니다.";
+				}
+				int new_score = botService.insertBotPointRankTx(map);
+				
+				Random random = new Random(); // 랜덤객체
+				map.put("randomNumber", random.nextInt(100)+1);
+				botService.insertBotPointUpdownSTx(map);
+				
+				return userName+" 님, 500p 포인트뽑기에 사용!"+enterStr+
+						score+"p → "+new_score+"p"+enterStr+
+						"/뽑기 숫자(1~100) 입력하시면 updown게임 진행!";
+			}catch(Exception e) {
+				return userName+" 님, updown 오류!";
+			}
+		}else {
+			//count가 1이상, 현재 진행분...
+			int in_number;
+			String res = "";
+			
+			int completeYn = -1;
+			int seq = -1;
+			int number1 = -1;
+			int number2 = -1;
+			int number3 = -1;
+			int number4 = -1;
+			int number5 = -1;
+			int targetNumber = -999;
+			
+			try {
+				in_number = Integer.parseInt(map.get("param1").toString());
+				targetNumber = Integer.parseInt(info.get("TARGET_NUMBER").toString());
+				completeYn = Integer.parseInt(info.get("COMPLETE_YN").toString());
+				seq = Integer.parseInt(info.get("SEQ").toString());
+				
+				if(in_number > 100 || in_number < 0) {
+					return "0~100사이 입력해주세요";
+				}
+				
+				res += userName+" 님 현재 입력 숫자:"+in_number+enterStr+
+						"총 6회 중 "+(completeYn+1) +" 회 진행중"+enterStr;
+				
+				
+				switch(completeYn) {
+					case 5:
+						number5= Integer.parseInt(info.get("NUMBER5").toString());
+					case 4:
+						number4= Integer.parseInt(info.get("NUMBER4").toString());
+					case 3:
+						number3= Integer.parseInt(info.get("NUMBER3").toString());
+					case 2:
+						number2= Integer.parseInt(info.get("NUMBER2").toString());
+					case 1:
+						number1= Integer.parseInt(info.get("NUMBER1").toString());
+					case 0:
+						break;
+				}
+				
+				//1회차 시도때는 completeYn : 0
+				//2회차 시도때는 completeYn : 1 , number1과 동일한지 비교하기
+				//3회차 시도때는 completeYn : 2 , number1~2와 동일한지 비교하기
+				//4회차 시도때는 completeYn : 3 , number1~3과 동일한지 비교하기
+				//5회차 시도때는 completeYn : 4 , number1~4와 동일한지 비교하기
+				//6회차 시도때는 completeYn : 5 , number1~5와 동일한지 비교하기
+				
+				boolean breakFlag=false;
+				switch(completeYn) {
+					case 5:
+						if(in_number ==  number5) {
+							breakFlag = true;
+							break;
+						}
+					case 4:
+						if(in_number ==  number4) {
+							breakFlag = true;
+							break;
+						}
+					case 3:
+						if(in_number ==  number3) {
+							breakFlag = true;
+							break;
+						}
+					case 2:
+						if(in_number ==  number2) {
+							breakFlag = true;
+							break;
+						}
+					case 1:
+						if(in_number ==  number1) {
+							breakFlag = true;
+							break;
+						}
+					break;
+				}
+				if(breakFlag) {
+					res += "이전 동일숫자입력!"+enterStr+enterStr;
+				}else {
+					
+					if(targetNumber == in_number) {
+						res += (completeYn+1)+"회차 정답!"+enterStr+"정답: "+in_number+"!";
+						map.put("endYn", "1");
+					}else if(targetNumber > in_number) {
+						res += (completeYn+1)+"회차 fail!"+enterStr+in_number+"up↑"+enterStr;
+					}else {
+						res += (completeYn+1)+"회차 fail!"+enterStr+in_number+"down↓"+enterStr;
+						if(completeYn+1 ==6) {
+							map.put("endYn", "1");
+						}
+					}
+					map.put("colName","number"+(completeYn+1));
+					map.put("inNumber", in_number);
+					map.put("seq", seq);
+					botService.updateBotPointUpdownSTx(map);
+				}
+				
+				if(info.get("NUMBER1")!=null) {
+					res+="진행이력:::"+enterStr;
+					res += "1차시도"+info.get("NUMBER1")+enterStr;
+				}
+				if(info.get("NUMBER2")!=null) {
+					res += "2차시도"+info.get("NUMBER2")+enterStr;
+				}
+				if(info.get("NUMBER3")!=null) {
+					res += "3차시도"+info.get("NUMBER3")+enterStr;
+				}
+				if(info.get("NUMBER4")!=null) {
+					res += "4차시도"+info.get("NUMBER4")+enterStr;
+				}
+				if(info.get("NUMBER5")!=null) {
+					res += "5차시도"+info.get("NUMBER5")+enterStr;
+				}
+				if(info.get("NUMBER6")!=null) {
+					res += "6차시도"+info.get("NUMBER6")+enterStr;
+				}
+				
+				if(breakFlag) {
+					return res;
+				}
+				
+				
+			}catch(Exception e) {
+				return "/뽑기 숫자 입력필요!";
+			}
+			return res;
+			
+		}
+		
+		
+		
 	}
 	
 	public String openBox(String str1,String str2) throws Exception {
