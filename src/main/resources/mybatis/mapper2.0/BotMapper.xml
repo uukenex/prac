@@ -504,7 +504,7 @@
 				 AND upper(A.USER_NAME) = upper(#{newUserName, jdbcType=VARCHAR}) ) AS ATTENDANCE
 		    ,(SELECT '주사위획득 포인트: '||NVL(SUM(A.SCORE),0) || 'p'
 				FROM TBOT_POINT_RANK A
-			   WHERE A.CMD = 'diceRoll'
+			   WHERE A.CMD in ( 'diceRoll','diceReroll')
 				 AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 				 AND upper(A.USER_NAME) = upper(#{newUserName, jdbcType=VARCHAR}) ) AS DICE
 		    ,(SELECT '결투획득 포인트: '||NVL(SUM(A.SCORE),0) || 'p'
