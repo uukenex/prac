@@ -333,7 +333,7 @@ public class LoaPlayController {
 	
 	String gamble(HashMap<String,Object> map) {
 		map.put("cmd", "gamble_s");
-		map.put("score", -500);
+		map.put("score", -200);
 		
 		String userName = map.get("userName").toString();
 		
@@ -347,8 +347,8 @@ public class LoaPlayController {
 			List<HashMap<String,Object>> ls = botService.selectBotPointRankNewScore(map);
 			try {
 				int score = Integer.parseInt(ls.get(0).get("SCORE").toString());
-				if(score < 500) {
-					return userName+" 님, 500p 이상만 가능합니다.";
+				if(score < 200) {
+					return userName+" 님, 200p 이상만 가능합니다.";
 				}
 				int new_score = botService.insertBotPointRankTx(map);
 				
@@ -356,7 +356,7 @@ public class LoaPlayController {
 				map.put("randomNumber", random.nextInt(100)+1);
 				botService.insertBotPointUpdownSTx(map);
 				
-				return userName+" 님, 500p 포인트뽑기에 사용!"+enterStr+
+				return userName+" 님, 200p 포인트뽑기에 사용!"+enterStr+
 						score+"p → "+new_score+"p"+enterStr+
 						"/뽑기 숫자(1~100) 입력하시면 updown게임 진행!";
 			}catch(Exception e) {
