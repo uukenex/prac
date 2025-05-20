@@ -343,7 +343,7 @@ public class LoaPlayController {
 			List<HashMap<String,Object>> ls = botService.selectBotPointRankNewScore(map);
 			try {
 				int score = Integer.parseInt(ls.get(0).get("SCORE").toString());
-				if(score < 100) {
+				if(score < 500) {
 					return userName+" 님, 500p 이상만 가능합니다.";
 				}
 				int new_score = botService.insertBotPointRankTx(map);
