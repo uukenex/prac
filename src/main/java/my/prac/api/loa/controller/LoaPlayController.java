@@ -339,6 +339,10 @@ public class LoaPlayController {
 		
 		HashMap<String,Object> info = botService.selectBotPointUpdownS(map);
 		if(info == null || info.size() ==0) {
+			if(map.get("param1")!=null && !map.get("param1").toString().equals("") ) {
+				return userName+" 님, 신규 뽑기는 /뽑기 입력.";
+			}
+			
 			//신규대상인 경우 
 			List<HashMap<String,Object>> ls = botService.selectBotPointRankNewScore(map);
 			try {
@@ -444,14 +448,28 @@ public class LoaPlayController {
 					if(targetNumber == in_number) {
 						res += (completeYn+1)+"회차 정답!"+enterStr+"정답: "+in_number+"!";
 						map.put("endYn", "1");
+						
+						HashMap<String,Object> newMap = new HashMap<>();
+						newMap.put("userName", map.get("userName"));
+						newMap.put("roomName", map.get("roomName"));
+						newMap.put("score", 1000);
+						newMap.put("cmd", "gamble_e");
+						int newScore = botService.insertBotPointRankTx(newMap);
+						
+						res+=enterStr + "갱신포인트 " + newScore+ "p"+enterStr;
 					}else if(targetNumber > in_number) {
 						res += (completeYn+1)+"회차 fail!"+enterStr+in_number+"up↑"+enterStr;
+						res += enterStr;
 					}else {
 						res += (completeYn+1)+"회차 fail!"+enterStr+in_number+"down↓"+enterStr;
-						if(completeYn+1 ==6) {
-							map.put("endYn", "1");
-						}
+						res += enterStr;
 					}
+					
+					if(completeYn+1 ==6) {
+						res += "정답은 "+targetNumber+" !! "+enterStr;
+						map.put("endYn", "1");
+					}
+					
 					map.put("colName","number"+(completeYn+1));
 					map.put("inNumber", in_number);
 					map.put("seq", seq);
@@ -459,23 +477,21 @@ public class LoaPlayController {
 				}
 				
 				if(info.get("NUMBER1")!=null) {
+					res+= enterStr;
 					res+="진행이력:::"+enterStr;
-					res += "1차시도"+info.get("NUMBER1")+enterStr;
+					res += "1차시도 "+info.get("NUMBER1")+enterStr;
 				}
 				if(info.get("NUMBER2")!=null) {
-					res += "2차시도"+info.get("NUMBER2")+enterStr;
+					res += "2차시도 "+info.get("NUMBER2")+enterStr;
 				}
 				if(info.get("NUMBER3")!=null) {
-					res += "3차시도"+info.get("NUMBER3")+enterStr;
+					res += "3차시도 "+info.get("NUMBER3")+enterStr;
 				}
 				if(info.get("NUMBER4")!=null) {
-					res += "4차시도"+info.get("NUMBER4")+enterStr;
+					res += "4차시도 "+info.get("NUMBER4")+enterStr;
 				}
 				if(info.get("NUMBER5")!=null) {
-					res += "5차시도"+info.get("NUMBER5")+enterStr;
-				}
-				if(info.get("NUMBER6")!=null) {
-					res += "6차시도"+info.get("NUMBER6")+enterStr;
+					res += "5차시도 "+info.get("NUMBER5")+enterStr;
 				}
 				
 				if(breakFlag) {
