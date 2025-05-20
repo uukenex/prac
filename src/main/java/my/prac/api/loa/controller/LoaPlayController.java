@@ -458,11 +458,9 @@ public class LoaPlayController {
 						
 						res+=enterStr + "갱신포인트 " + newScore+ "p"+enterStr;
 					}else if(targetNumber > in_number) {
-						res += (completeYn+1)+"회차 fail!"+enterStr+in_number+"up↑"+enterStr;
-						res += enterStr;
+						res += (completeYn+1)+"회차 fail!"+enterStr+enterStr+in_number+" up↑"+enterStr;
 					}else {
-						res += (completeYn+1)+"회차 fail!"+enterStr+in_number+"down↓"+enterStr;
-						res += enterStr;
+						res += (completeYn+1)+"회차 fail!"+enterStr+enterStr+in_number+" down↓"+enterStr;
 					}
 					
 					if(completeYn+1 ==6) {
