@@ -358,7 +358,8 @@ public class LoaPlayController {
 				
 				return userName+" 님, 200p 포인트뽑기에 사용!"+enterStr+
 						score+"p → "+new_score+"p"+enterStr+
-						"/뽑기 숫자(1~100) 입력하시면 updown게임 진행!";
+						"/뽑기 숫자(1~100) 입력하시면 updown게임 진행!"+enterStr+
+						"최대 600p에서 점차적으로 줄어듭니다!";
 			}catch(Exception e) {
 				return userName+" 님, updown 오류!";
 			}
@@ -445,6 +446,37 @@ public class LoaPlayController {
 					res += "이전 동일숫자입력!"+enterStr+enterStr;
 				}else {
 					
+					int score = 0;
+					int preview_score=0;
+					switch(completeYn+1) {
+						case 1:
+							score =600;
+							preview_score=500;
+							break;
+						case 2:
+							score =500;
+							preview_score=400;
+							break;
+						case 3:
+							score =400;
+							preview_score=300;
+							break;
+						case 4:
+							score =300;
+							preview_score=200;
+							break;
+						case 5:
+							score =200;
+							preview_score=100;
+							break;
+						case 6:
+							score =100;
+							preview_score=0;
+							break;
+					}
+					
+				
+					
 					if(targetNumber == in_number) {
 						res += (completeYn+1)+"회차 정답!"+enterStr+"정답: "+in_number+"!";
 						map.put("endYn", "1");
@@ -453,37 +485,18 @@ public class LoaPlayController {
 						newMap.put("userName", map.get("userName"));
 						newMap.put("roomName", map.get("roomName"));
 						
-						int score = 0;
-						switch(completeYn+1) {
-							case 1:
-								score =600;
-								break;
-							case 2:
-								score =500;
-								break;
-							case 3:
-								score =400;
-								break;
-							case 4:
-								score =300;
-								break;
-							case 5:
-								score =200;
-								break;
-							case 6:
-								score =100;
-								break;
-						}
-						
 						newMap.put("score", score);
 						newMap.put("cmd", "gamble_e");
 						int newScore = botService.insertBotPointRankTx(newMap);
 						
+						res+=enterStr + "획득포인트 " + score+ "p"+enterStr;
 						res+=enterStr + "갱신포인트 " + newScore+ "p"+enterStr;
 					}else if(targetNumber > in_number) {
 						res += (completeYn+1)+"회차 fail!"+enterStr+enterStr+in_number+" up↑"+enterStr;
+						res += "다음에 맞춘다면... "+preview_score+"p 획득 가능";
 					}else {
 						res += (completeYn+1)+"회차 fail!"+enterStr+enterStr+in_number+" down↓"+enterStr;
+						res += "다음에 맞춘다면... "+preview_score+"p 획득 가능";
 					}
 					
 					if(completeYn+1 ==6) {
