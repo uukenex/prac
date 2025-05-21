@@ -452,7 +452,30 @@ public class LoaPlayController {
 						HashMap<String,Object> newMap = new HashMap<>();
 						newMap.put("userName", map.get("userName"));
 						newMap.put("roomName", map.get("roomName"));
-						newMap.put("score", 500);
+						
+						int score = 0;
+						switch(completeYn+1) {
+							case 1:
+								score =600;
+								break;
+							case 2:
+								score =500;
+								break;
+							case 3:
+								score =400;
+								break;
+							case 4:
+								score =300;
+								break;
+							case 5:
+								score =200;
+								break;
+							case 6:
+								score =100;
+								break;
+						}
+						
+						newMap.put("score", score);
 						newMap.put("cmd", "gamble_e");
 						int newScore = botService.insertBotPointRankTx(newMap);
 						
