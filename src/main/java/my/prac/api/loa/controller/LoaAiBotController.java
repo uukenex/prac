@@ -203,14 +203,15 @@ public class LoaAiBotController {
     
     
     private boolean isFallbackNeeded(String gptResponse) {
-        String lower = gptResponse.toLowerCase();
-        
-        return lower.contains("알 수 없습니다") || 
-               lower.contains("제공된 정보로는") || 
-               lower.contains("잘 모르겠") ||
-               lower.contains("정확한 정보가 없습니다") ||
-               lower.contains("추가 정보가 필요합니다") ||
-               gptResponse.length() < 20;  // 응답 너무 짧을 경우
+        JsonArray messages = new JsonArray();
+        messages.add(makeSystem("너는 AI 응답의 신뢰도를 판단하는 검증 봇이야."));
+        messages.add(makeUser(
+            "다음은 사용자의 질문에 대한 AI 응답이야. 만약 이 응답이 명확하고 구체적이며 사실 기반이라면 'false', " +
+            "그렇지 않고 불분명하거나 추측성 발언, 일반적인 말 돌리기라면 'true'라고만 말해줘.\n\n응답:\n" + gptResponse
+        ));
+
+        String response = callGptApi(messages);
+        return response.trim().equalsIgnoreCase("true");
     }
     
     
