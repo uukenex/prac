@@ -949,11 +949,12 @@ public class LoaChatController {
 				break;
 			case "/챗":
 				fulltxt = fulltxt.substring(param0.length()).trim();
-				
-				val = ai.search(fulltxt,roomName,sender);
-		        
-		        val = val.replaceAll("\n", enterStr);
-		        val = cutByBytesAndInsertMarker(val, 600, allSeeStr);
+				if(fulltxt.length()!=0) {
+					val = ai.search(fulltxt,roomName,sender);
+					val = val.replaceAll("\\\"", "\"");;
+					val = val.replaceAll("\n", enterStr);
+			        val = cutByBytesAndInsertMarker(val, 600, allSeeStr);
+				}
 				break;
 			case "/ㄱㅁㅈ":
 			case "/경매장":

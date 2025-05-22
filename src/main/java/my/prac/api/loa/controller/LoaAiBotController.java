@@ -74,7 +74,7 @@ public class LoaAiBotController {
         String gptResponse = callGptApi(messagesArray);
         String finalResponse = gptResponse;
 
-        if (isFallbackNeeded(gptResponse)) {
+        if (shouldSearch(reqMsg, gptResponse)) {
         	String keyword = extractSearchKeywordFromQuestion(reqMsg); // GPT로 요약 요청
 
         	String rawSerperResult = callSerperApi(keyword);
@@ -252,5 +252,35 @@ public class LoaAiBotController {
         obj.addProperty("role", "user");
         obj.addProperty("content", content);
         return obj;
+    }
+    
+    private boolean shouldSearch(String userQuestion, String gptResponse) {
+        // Step 1: GPT 응답에 실질 정보가 있는지 확인
+        if (hasUsefulInfo(gptResponse)) return false;
+
+        // Step 2: 질문이 정보성 질문인지 확인
+        return isInfoSeekingQuestion(userQuestion);
+    }
+
+    private boolean hasUsefulInfo(String gptResponse) {
+        JsonArray messages = new JsonArray();
+        messages.add(makeSystem("너는 AI 응답의 유용성을 판별하는 평가 봇이야."));
+        messages.add(makeUser(
+            "다음 응답이 유익하거나 실질적인 정보가 있으면 true, 없고 모르겠다는 말만 있으면 false라고만 답해:\n\n" +
+            gptResponse));
+        
+        String result = callGptApi(messages);
+        return result.trim().equalsIgnoreCase("true");
+    }
+    
+    private boolean isInfoSeekingQuestion(String userQuestion) {
+        JsonArray messages = new JsonArray();
+        messages.add(makeSystem("너는 사용자의 질문이 정보 탐색형인지 판단하는 봇이야."));
+        messages.add(makeUser(
+            "다음 질문이 잡담이 아닌, 실제로 정보나 사실을 찾는 질문이면 true, 그냥 대화/농담/감정 표현이면 false라고만 답해:\n\n" +
+            userQuestion));
+
+        String result = callGptApi(messages);
+        return result.trim().equalsIgnoreCase("true");
     }
 }
