@@ -942,6 +942,7 @@ public class LoaChatController {
 				val = ai.search(fulltxt,roomName,sender);
 		        
 		        val = val.replaceAll("\n", enterStr);
+		        val = cutByBytesAndInsertMarker(val, 400, allSeeStr);
 				break;
 			case "/ㄱㅁㅈ":
 			case "/경매장":

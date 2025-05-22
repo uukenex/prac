@@ -7,7 +7,9 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -70,10 +72,19 @@ public class LoaAiBotController {
         String finalResponse = gptResponse;
 
         if (isFallbackNeeded(gptResponse)) {
-            String fallback = callSerperApi(reqMsg);
-            finalResponse = "(GPT 답변이 불완전하여 검색 결과를 추가합니다)\n\n" + gptResponse + "\n\n🔍 추가 검색:\n" + fallback;
-        }
+            String rawSerperResult = callSerperApi(reqMsg);
+            
+            // ✅ JSON 파싱 및 핵심 정보 추출
+            JsonObject parsedSerper = gson.fromJson(rawSerperResult, JsonObject.class);
+            String extractedSummary = extractCoreInfoFromSerper(parsedSerper);
 
+            // ✅ 요약 요청 (파싱된 결과로)
+            String summarized = summarizeSerperResult(extractedSummary, reqMsg);
+
+            finalResponse = "(GPT 답변이 부족하여 검색 결과를 정리해드릴게요)\n\n" + summarized;
+        }
+        
+        
         queue.add(new Message("assistant", finalResponse));
         return finalResponse;
 	}
@@ -128,6 +139,32 @@ public class LoaAiBotController {
             return "검색 실패: " + e.getMessage();
         }
     }
+	
+	private String extractCoreInfoFromSerper(JsonObject serperJson) {
+	    JsonArray organic = serperJson.getAsJsonArray("organic");
+	    StringBuilder summary = new StringBuilder();
+	    Set<String> seenTitles = new HashSet<>();
+
+	    for (int i = 0; i < organic.size() && summary.length() < 1000; i++) {
+	        JsonObject result = organic.get(i).getAsJsonObject();
+	        String title = result.has("title") ? result.get("title").getAsString() : "";
+	        String snippet = result.has("snippet") ? result.get("snippet").getAsString() : "";
+	        String link = result.has("link") ? result.get("link").getAsString() : "";
+
+	        if (title.isEmpty() || seenTitles.contains(title)) continue;
+	        if (snippet.length() < 10) continue; // 너무 짧은 건 무시
+
+	        seenTitles.add(title);
+
+	        summary.append("• ").append(title).append(": ");
+	        summary.append(snippet.length() > 200 ? snippet.substring(0, 200) + "..." : snippet);
+	        if (!link.isEmpty()) summary.append(" (").append(link).append(")");
+	        summary.append("\n\n");
+	    }
+
+	    return summary.toString().trim();
+	}
+	
     
     private String readStream(InputStream is) throws IOException {
         BufferedReader reader = new BufferedReader(new InputStreamReader(is));
@@ -162,5 +199,30 @@ public class LoaAiBotController {
             || lower.contains("실시간으로 확인할 수 없습니다")
             || lower.contains("답변드리기 어렵")
             || lower.contains("확인되지 않았습니다");
+    }
+    
+ // 4단계: 요약 요청 GPT 호출
+    private String summarizeSerperResult(String searchResultText, String originalQuestion) {
+        // 길이 초과 시 잘라냄
+        String truncatedText = searchResultText.length() > 1000
+            ? searchResultText.substring(0, 1000) + "..."
+            : searchResultText;
+
+        JsonArray messagesArray = new JsonArray();
+
+        JsonObject systemMsg = new JsonObject();
+        systemMsg.addProperty("role", "system");
+        systemMsg.addProperty("content", "너는 정보를 정제하고 요약하는 데 특화된 요약 봇이야.");
+        messagesArray.add(systemMsg);
+
+        JsonObject userMsg = new JsonObject();
+        userMsg.addProperty("role", "user");
+        userMsg.addProperty("content",
+            "질문: " + originalQuestion + "\n\n" +
+            "다음은 이 질문에 대해 웹에서 검색한 결과의 요약이야. 핵심적인 정보만 간결하고 친절하게 알려줘 (300자 이내):\n\n" +
+            truncatedText);
+        messagesArray.add(userMsg);
+
+        return callGptApi(messagesArray);
     }
 }
