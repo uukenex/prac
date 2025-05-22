@@ -928,21 +928,23 @@ public class LoaChatController {
 				val = menu_list[random3.nextInt(menu_list.length)];
 				passYn=true;
 				break;
+			/*
 			case "/챗":
 				fulltxt = fulltxt.substring(param0.length()).trim();
 				val = chatGptSearch(fulltxt,sender);
 				break;
+				*/
 			case "/챗2":
 				fulltxt = fulltxt.substring(param0.length()).trim();
 				val = geminiSearch(fulltxt,sender);
 				break;
-			case "/챗3":
+			case "/챗":
 				fulltxt = fulltxt.substring(param0.length()).trim();
 				
 				val = ai.search(fulltxt,roomName,sender);
 		        
 		        val = val.replaceAll("\n", enterStr);
-		        val = cutByBytesAndInsertMarker(val, 400, allSeeStr);
+		        val = cutByBytesAndInsertMarker(val, 600, allSeeStr);
 				break;
 			case "/ㄱㅁㅈ":
 			case "/경매장":
