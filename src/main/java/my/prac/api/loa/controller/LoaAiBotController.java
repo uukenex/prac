@@ -206,14 +206,14 @@ public class LoaAiBotController {
         JsonArray messages = new JsonArray();
         messages.add(makeSystem("너는 AI 응답의 신뢰도를 판단하는 검증 봇이야."));
         messages.add(makeUser(
-            "다음은 사용자의 질문에 대한 AI 응답이야. 만약 이 응답이 명확하고 구체적이며 사실 기반이라면 'false', " +
-            "그렇지 않고 불분명하거나 추측성 발언, 일반적인 말 돌리기라면 'true'라고만 말해줘.\n\n응답:\n" + gptResponse
-        ));
+                "다음은 사용자 질문에 대한 응답이야. 응답이 유익하거나 실질적인 정보를 담고 있으면 false, " +
+                "그렇지 않고 모호하거나 모르겠다고만 답했다면 true라고만 말해줘. 예외 설명 없이 true 또는 false 하나만 출력해.\n\n" +
+                "응답:\n" + gptResponse
+            ));
 
         String response = callGptApi(messages);
         return response.trim().equalsIgnoreCase("true");
     }
-    
     
  // 4단계: 요약 요청 GPT 호출
     private String summarizeSerperResult(String searchResultText, String originalQuestion) {
