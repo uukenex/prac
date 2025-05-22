@@ -41,8 +41,10 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import my.prac.core.dto.Message;
 import my.prac.core.prjbot.service.BotService;
 import my.prac.core.util.ChatGPTUtils;
+import my.prac.core.util.FixedSizeMessageQueue;
 import my.prac.core.util.GeminiUtils;
 import my.prac.core.util.ImageUtils;
 import my.prac.core.util.LoaApiParser;
@@ -59,6 +61,8 @@ public class LoaChatController {
 	LoaMarketController market;
 	@Autowired
 	LoaPlayController play;
+	@Autowired
+	LoaAiBotController ai;
 	
 	@Resource(name = "core.prjbot.BotService")
 	BotService botService;
@@ -931,6 +935,13 @@ public class LoaChatController {
 			case "/챗2":
 				fulltxt = fulltxt.substring(param0.length()).trim();
 				val = geminiSearch(fulltxt,sender);
+				break;
+			case "/챗3":
+				fulltxt = fulltxt.substring(param0.length()).trim();
+				
+				val = ai.search(fulltxt,roomName,sender);
+		        
+		        val = val.replaceAll("\n", enterStr);
 				break;
 			case "/ㄱㅁㅈ":
 			case "/경매장":
