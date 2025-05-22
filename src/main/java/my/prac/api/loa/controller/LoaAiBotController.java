@@ -7,10 +7,13 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+
+import javax.annotation.Resource;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -21,6 +24,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 
 import my.prac.core.dto.Message;
+import my.prac.core.prjbot.service.BotService;
 import my.prac.core.util.FixedSizeMessageQueue;
 import my.prac.core.util.PropsUtil;
 import my.prac.core.util.RoomContextService;
@@ -31,13 +35,13 @@ import my.prac.core.util.RoomContextService;
 public class LoaAiBotController {
 
 	final static String openaiKey = "Bearer "+PropsUtil.getProperty("keys","openaiKey");
-	final static String openaiUrl = "https://api.openai.com/v1/chat/completions";
 	final static String serperKey = PropsUtil.getProperty("keys","serperKey");
-	
-	final String enterStr= "♬";
-	
+
 	@Autowired
 	RoomContextService roomService;
+	
+	@Resource(name = "core.prjbot.BotService")
+	BotService botService;
 	
 	private final Map<String, FixedSizeMessageQueue> roomQueues = new ConcurrentHashMap<>();
     private final Gson gson = new GsonBuilder().create();
@@ -45,7 +49,6 @@ public class LoaAiBotController {
 
 	public String search(String reqMsg,String roomName,String userName) {
 		FixedSizeMessageQueue queue = roomQueues.computeIfAbsent(roomName, r -> new FixedSizeMessageQueue(20));
-
 
         // 1. 사용자 메시지 추가
         queue.add(new Message("user", userName + ": " + reqMsg));
@@ -72,7 +75,9 @@ public class LoaAiBotController {
         String finalResponse = gptResponse;
 
         if (isFallbackNeeded(gptResponse)) {
-            String rawSerperResult = callSerperApi(reqMsg);
+        	String keyword = extractSearchKeywordFromQuestion(reqMsg); // GPT로 요약 요청
+
+        	String rawSerperResult = callSerperApi(keyword);
             
             // ✅ JSON 파싱 및 핵심 정보 추출
             JsonObject parsedSerper = gson.fromJson(rawSerperResult, JsonObject.class);
@@ -81,7 +86,7 @@ public class LoaAiBotController {
             // ✅ 요약 요청 (파싱된 결과로)
             String summarized = summarizeSerperResult(extractedSummary, reqMsg);
 
-            finalResponse = "(GPT 답변이 부족하여 검색 결과를 정리해드릴게요)\n\n" + summarized;
+            finalResponse = "(추가 검색)\n\n" + summarized;
         }
         
         
@@ -140,6 +145,16 @@ public class LoaAiBotController {
         }
     }
 	
+	private String extractSearchKeywordFromQuestion(String userQuestion) {
+	    JsonArray keywordPrompt = new JsonArray();
+
+	    keywordPrompt.add(makeSystem("너는 검색 키워드를 추출하는 봇이야."));
+	    keywordPrompt.add(makeUser("다음 질문에서 검색할 핵심 키워드만 3~5단어 이내로 출력해줘. 예외 설명 없이 키워드만:\n\n" + userQuestion));
+
+	    String response = callGptApi(keywordPrompt);
+	    return response.replaceAll("[^\\p{IsAlphabetic}\\p{IsDigit}가-힣\\s]", "").trim(); // 불필요한 문자 제거
+	}
+	
 	private String extractCoreInfoFromSerper(JsonObject serperJson) {
 	    JsonArray organic = serperJson.getAsJsonArray("organic");
 	    StringBuilder summary = new StringBuilder();
@@ -186,20 +201,18 @@ public class LoaAiBotController {
         }
     }
     
+    
     private boolean isFallbackNeeded(String gptResponse) {
-        if (gptResponse == null) return true;
-
         String lower = gptResponse.toLowerCase();
-        return gptResponse.trim().isEmpty()
-            || lower.contains("죄송")
-            || lower.contains("잘 모르")
-            || lower.contains("정보가 없습니다")
-            || lower.contains("인터넷에 접속할 수 없습니다")
-            || lower.contains("데이터베이스에 없습니다")
-            || lower.contains("실시간으로 확인할 수 없습니다")
-            || lower.contains("답변드리기 어렵")
-            || lower.contains("확인되지 않았습니다");
+        
+        return lower.contains("알 수 없습니다") || 
+               lower.contains("제공된 정보로는") || 
+               lower.contains("잘 모르겠") ||
+               lower.contains("정확한 정보가 없습니다") ||
+               lower.contains("추가 정보가 필요합니다") ||
+               gptResponse.length() < 20;  // 응답 너무 짧을 경우
     }
+    
     
  // 4단계: 요약 요청 GPT 호출
     private String summarizeSerperResult(String searchResultText, String originalQuestion) {
@@ -224,5 +237,19 @@ public class LoaAiBotController {
         messagesArray.add(userMsg);
 
         return callGptApi(messagesArray);
+    }
+    
+    private JsonObject makeSystem(String content) {
+        JsonObject obj = new JsonObject();
+        obj.addProperty("role", "system");
+        obj.addProperty("content", content);
+        return obj;
+    }
+
+    private JsonObject makeUser(String content) {
+        JsonObject obj = new JsonObject();
+        obj.addProperty("role", "user");
+        obj.addProperty("content", content);
+        return obj;
     }
 }

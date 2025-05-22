@@ -33,6 +33,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -84,6 +85,14 @@ public class LoaChatController {
 	final String rank_etc = "　";
 	
 	final String[] unable_save_list = {enterStr,spaceStr,tabStr,allSeeStr,anotherMsgStr,listSeparatorStr,"\\"};
+	
+	@RequestMapping(value = "/loa/manual", method = RequestMethod.GET)
+	public @ResponseBody String manualPage() {
+		
+		HashMap<String,Object> map =new HashMap<String,Object>();
+		String val = botService.selectBotManual(map);
+		return val;
+	}
 	
 	@RequestMapping(value = "/loa/cron/{param0}", method = RequestMethod.GET)
 	public void cronManager(@PathVariable String param0) {
