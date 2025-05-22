@@ -67,16 +67,15 @@ public class LoaAiBotController {
 
         // GPT 호출
         String gptResponse = callGptApi(messagesArray);
+        String finalResponse = gptResponse;
 
-        if (gptResponse == null || gptResponse.trim().isEmpty() || gptResponse.contains("모르겠") || gptResponse.contains("잘 모르")) {
+        if (isFallbackNeeded(gptResponse)) {
             String fallback = callSerperApi(reqMsg);
-            gptResponse = gptResponse + "\n(검색 결과로 보완된 답변)\n" + fallback;
+            finalResponse = "(GPT 답변이 불완전하여 검색 결과를 추가합니다)\n\n" + gptResponse + "\n\n🔍 추가 검색:\n" + fallback;
         }
 
-        // 응답 저장
-        queue.add(new Message("assistant", gptResponse));
-        return gptResponse;
-        
+        queue.add(new Message("assistant", finalResponse));
+        return finalResponse;
 	}
 	
 	private String callGptApi(JsonArray messages) {
@@ -148,5 +147,20 @@ public class LoaAiBotController {
         } catch (Exception e) {
             return "(응답 파싱 실패)";
         }
+    }
+    
+    private boolean isFallbackNeeded(String gptResponse) {
+        if (gptResponse == null) return true;
+
+        String lower = gptResponse.toLowerCase();
+        return gptResponse.trim().isEmpty()
+            || lower.contains("죄송")
+            || lower.contains("잘 모르")
+            || lower.contains("정보가 없습니다")
+            || lower.contains("인터넷에 접속할 수 없습니다")
+            || lower.contains("데이터베이스에 없습니다")
+            || lower.contains("실시간으로 확인할 수 없습니다")
+            || lower.contains("답변드리기 어렵")
+            || lower.contains("확인되지 않았습니다");
     }
 }
