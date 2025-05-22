@@ -37,9 +37,12 @@ public class LoaAiBotController {
         // 1. 사용자 메시지 추가
         queue.add(new Message("user", userName + ": " + reqMsg));
 
+        System.out.println("전송");
+        System.out.println("queue : "+queue);
         // 2. GPT에 메시지 전달 → 응답 받기
         String gptResponse = askGpt(queue);
 
+        System.out.println("전송완료");
         // 3. 응답 추가
         queue.add(new Message("assistant", gptResponse));
 
@@ -51,6 +54,7 @@ public class LoaAiBotController {
         String gptResponse = callGptApi(queue.toJsonArray());
 
         if (isAnswerUnclear(gptResponse)) {
+        	System.out.println("추가검색");
             // 불확실한 경우 → Serper 검색
             String lastUserMsg = getLastUserMessage(queue);
             String searchResult = callSerperApi(lastUserMsg);
@@ -96,6 +100,7 @@ public class LoaAiBotController {
                 + "}]" 
                 + "}";
 
+            System.out.println("gpt body"+body);
             try (OutputStream os = connection.getOutputStream()) {
                 os.write(body.getBytes("UTF-8"));
             }
@@ -104,6 +109,7 @@ public class LoaAiBotController {
                 connection.getInputStream() : connection.getErrorStream();
             String response = readStream(is);
 
+            System.out.println("gpt 응답:" + response);
             return extractAnswerFromResponse(response);
 
         } catch (Exception e) {
