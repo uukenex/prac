@@ -84,7 +84,7 @@ public class LoaAiBotController {
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
 
             connection.setRequestMethod("POST");
-            connection.setRequestProperty("Authorization", "Bearer " + openaiKey);
+            connection.setRequestProperty("Authorization", openaiKey);
             connection.setRequestProperty("Content-Type", "application/json");
             connection.setDoOutput(true);
 
