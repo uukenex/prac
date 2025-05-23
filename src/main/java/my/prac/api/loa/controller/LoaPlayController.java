@@ -332,8 +332,12 @@ public class LoaPlayController {
 	}
 	
 	String gamble(HashMap<String,Object> map) {
-		map.put("cmd", "gamble_s");
-		map.put("score", -200);
+		map.put("cmd", "gamble_s2");
+		//map.put("score", -200);
+		map.put("score", 0);
+		if(!dailyCheck(map)) {
+			return map.get("userName")+"님 오늘의 뽑기 기회 소진!";
+		}
 		
 		String userName = map.get("userName").toString();
 		
@@ -346,20 +350,23 @@ public class LoaPlayController {
 			//신규대상인 경우 
 			List<HashMap<String,Object>> ls = botService.selectBotPointRankNewScore(map);
 			try {
+				/*
 				int score = Integer.parseInt(ls.get(0).get("SCORE").toString());
+				
 				if(score < 200) {
 					return userName+" 님, 200p 이상만 가능합니다.";
 				}
-				int new_score = botService.insertBotPointRankTx(map);
 				
+				int new_score = botService.insertBotPointRankTx(map);
+				*/
 				Random random = new Random(); // 랜덤객체
 				map.put("randomNumber", random.nextInt(100)+1);
 				botService.insertBotPointUpdownSTx(map);
 				
-				return userName+" 님, 200p 포인트뽑기에 사용!"+enterStr+
-						score+"p → "+new_score+"p"+enterStr+
+				return userName+" 님!"+enterStr+
+						//score+"p → "+new_score+"p"+enterStr+
 						"/뽑기 숫자(1~100) 입력하시면 updown게임 진행!"+enterStr+
-						"최대 600p에서 점차적으로 줄어듭니다!";
+						"최대 50p에서 점차적으로 줄어듭니다!";
 			}catch(Exception e) {
 				return userName+" 님, updown 오류!";
 			}
@@ -450,27 +457,27 @@ public class LoaPlayController {
 					int preview_score=0;
 					switch(completeYn+1) {
 						case 1:
-							score =600;
-							preview_score=500;
+							score =50;
+							preview_score=40;
 							break;
 						case 2:
-							score =500;
-							preview_score=400;
+							score =40;
+							preview_score=30;
 							break;
 						case 3:
-							score =400;
-							preview_score=300;
+							score =30;
+							preview_score=25;
 							break;
 						case 4:
-							score =300;
-							preview_score=200;
+							score =25;
+							preview_score=20;
 							break;
 						case 5:
-							score =200;
-							preview_score=100;
+							score =20;
+							preview_score=5;
 							break;
 						case 6:
-							score =100;
+							score =5;
 							preview_score=0;
 							break;
 					}
@@ -486,7 +493,7 @@ public class LoaPlayController {
 						newMap.put("roomName", map.get("roomName"));
 						
 						newMap.put("score", score);
-						newMap.put("cmd", "gamble_e");
+						newMap.put("cmd", "gamble_e2");
 						int newScore = botService.insertBotPointRankTx(newMap);
 						
 						res+=enterStr + "획득포인트 " + score+ "p"+enterStr;
@@ -502,6 +509,14 @@ public class LoaPlayController {
 					if(completeYn+1 ==6) {
 						res += "정답은 "+targetNumber+" !! "+enterStr;
 						map.put("endYn", "1");
+						
+						HashMap<String,Object> newMap = new HashMap<>();
+						newMap.put("score", 1);
+						newMap.put("cmd", "gamble_e2");
+						int newScore = botService.insertBotPointRankTx(newMap);
+						
+						res+=enterStr + "참여포인트 " + "1 p"+enterStr;
+						res+=enterStr + "갱신포인트 " + newScore+ "p"+enterStr;
 					}
 					
 					map.put("colName","number"+(completeYn+1));
@@ -510,9 +525,10 @@ public class LoaPlayController {
 					botService.updateBotPointUpdownSTx(map);
 				}
 				
+				
+				res+= enterStr;
+				res+="진행이력:::"+enterStr;
 				if(info.get("NUMBER1")!=null) {
-					res+= enterStr;
-					res+="진행이력:::"+enterStr;
 					res += "1차시도 "+info.get("NUMBER1")+enterStr;
 				}
 				if(info.get("NUMBER2")!=null) {
@@ -527,6 +543,7 @@ public class LoaPlayController {
 				if(info.get("NUMBER5")!=null) {
 					res += "5차시도 "+info.get("NUMBER5")+enterStr;
 				}
+				res += "현재시도 "+in_number+enterStr;
 				
 				if(breakFlag) {
 					return res;
