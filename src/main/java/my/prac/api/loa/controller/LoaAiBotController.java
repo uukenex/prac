@@ -89,7 +89,9 @@ public class LoaAiBotController {
             finalResponse = "(추가 검색)\n\n" + summarized;
         }
         
-        
+        // " 제거
+        finalResponse = finalResponse.replace("\\\"", "\"");
+
         queue.add(new Message("assistant", finalResponse));
         return finalResponse;
 	}
@@ -152,7 +154,7 @@ public class LoaAiBotController {
 	    keywordPrompt.add(makeUser("다음 질문에서 검색할 핵심 키워드만 3~5단어 이내로 출력해줘. 예외 설명 없이 키워드만:\n\n" + userQuestion));
 
 	    String response = callGptApi(keywordPrompt);
-	    return response.replaceAll("[^\\p{IsAlphabetic}\\p{IsDigit}가-힣\\s]", "").trim(); // 불필요한 문자 제거
+	    return response.replaceAll("[^\\p{IsAlphabetic}\\p{IsDigit}가-힣\\s]", "").trim();
 	}
 	
 	private String extractCoreInfoFromSerper(JsonObject serperJson) {
@@ -167,7 +169,7 @@ public class LoaAiBotController {
 	        String link = result.has("link") ? result.get("link").getAsString() : "";
 
 	        if (title.isEmpty() || seenTitles.contains(title)) continue;
-	        if (snippet.length() < 10) continue; // 너무 짧은 건 무시
+	        if (snippet.length() < 10) continue;
 
 	        seenTitles.add(title);
 
@@ -180,7 +182,6 @@ public class LoaAiBotController {
 	    return summary.toString().trim();
 	}
 	
-    
     private String readStream(InputStream is) throws IOException {
         BufferedReader reader = new BufferedReader(new InputStreamReader(is));
         StringBuilder sb = new StringBuilder();
@@ -200,46 +201,17 @@ public class LoaAiBotController {
             return "(응답 파싱 실패)";
         }
     }
-    
-    
-    private boolean isFallbackNeeded(String gptResponse) {
-        JsonArray messages = new JsonArray();
-        messages.add(makeSystem("너는 AI 응답의 신뢰도를 판단하는 검증 봇이야."));
-        messages.add(makeUser(
-                "다음은 사용자 질문에 대한 응답이야. 응답이 유익하거나 실질적인 정보를 담고 있으면 false, " +
-                "그렇지 않고 모호하거나 모르겠다고만 답했다면 true라고만 말해줘. 예외 설명 없이 true 또는 false 하나만 출력해.\n\n" +
-                "응답:\n" + gptResponse
-            ));
 
-        String response = callGptApi(messages);
-        return response.trim().equalsIgnoreCase("true");
-    }
-    
- // 4단계: 요약 요청 GPT 호출
     private String summarizeSerperResult(String searchResultText, String originalQuestion) {
-        // 길이 초과 시 잘라냄
-        String truncatedText = searchResultText.length() > 1000
-            ? searchResultText.substring(0, 1000) + "..."
-            : searchResultText;
+        String truncatedText = searchResultText.length() > 1000 ? searchResultText.substring(0, 1000) + "..." : searchResultText;
 
         JsonArray messagesArray = new JsonArray();
-
-        JsonObject systemMsg = new JsonObject();
-        systemMsg.addProperty("role", "system");
-        systemMsg.addProperty("content", "너는 정보를 정제하고 요약하는 데 특화된 요약 봇이야.");
-        messagesArray.add(systemMsg);
-
-        JsonObject userMsg = new JsonObject();
-        userMsg.addProperty("role", "user");
-        userMsg.addProperty("content",
-            "질문: " + originalQuestion + "\n\n" +
-            "다음은 이 질문에 대해 웹에서 검색한 결과의 요약이야. 핵심적인 정보만 간결하고 친절하게 알려줘 (300자 이내):\n\n" +
-            truncatedText);
-        messagesArray.add(userMsg);
+        messagesArray.add(makeSystem("너는 정보를 정제하고 요약하는 데 특화된 요약 봇이야."));
+        messagesArray.add(makeUser("질문: " + originalQuestion + "\n\n다음은 이 질문에 대해 웹에서 검색한 결과의 요약이야. 핵심적인 정보만 간결하고 친절하게 알려줘 (300자 이내):\n\n" + truncatedText));
 
         return callGptApi(messagesArray);
     }
-    
+
     private JsonObject makeSystem(String content) {
         JsonObject obj = new JsonObject();
         obj.addProperty("role", "system");
@@ -253,34 +225,32 @@ public class LoaAiBotController {
         obj.addProperty("content", content);
         return obj;
     }
-    
-    private boolean shouldSearch(String userQuestion, String gptResponse) {
-        // Step 1: GPT 응답에 실질 정보가 있는지 확인
-        if (hasUsefulInfo(gptResponse)) return false;
 
-        // Step 2: 질문이 정보성 질문인지 확인
-        return isInfoSeekingQuestion(userQuestion);
+    private boolean shouldSearch(String userQuestion, String gptResponse) {
+        if (userMentionedSearch(userQuestion)) return true;
+        return !hasUsefulInfo(gptResponse) && isInfoSeekingQuestion(userQuestion);
+    }
+
+    private boolean userMentionedSearch(String userQuestion) {
+        return userQuestion.contains("검색") || userQuestion.contains("찾아줘") || userQuestion.toLowerCase().contains("search");
     }
 
     private boolean hasUsefulInfo(String gptResponse) {
         JsonArray messages = new JsonArray();
         messages.add(makeSystem("너는 AI 응답의 유용성을 판별하는 평가 봇이야."));
-        messages.add(makeUser(
-            "다음 응답이 유익하거나 실질적인 정보가 있으면 true, 없고 모르겠다는 말만 있으면 false라고만 답해:\n\n" +
-            gptResponse));
-        
+        messages.add(makeUser("다음 응답이 유익하거나 실질적인 정보가 있으면 true, 없고 모르겠다는 말만 있으면 false라고만 답해:\n\n" + gptResponse));
+
         String result = callGptApi(messages);
         return result.trim().equalsIgnoreCase("true");
     }
-    
+
     private boolean isInfoSeekingQuestion(String userQuestion) {
         JsonArray messages = new JsonArray();
         messages.add(makeSystem("너는 사용자의 질문이 정보 탐색형인지 판단하는 봇이야."));
-        messages.add(makeUser(
-            "다음 질문이 잡담이 아닌, 실제로 정보나 사실을 찾는 질문이면 true, 그냥 대화/농담/감정 표현이면 false라고만 답해:\n\n" +
-            userQuestion));
+        messages.add(makeUser("다음 질문이 잡담이 아닌, 실제로 정보나 사실을 찾는 질문이면 true, 그냥 대화/농담/감정 표현이면 false라고만 답해:\n\n" + userQuestion));
 
         String result = callGptApi(messages);
         return result.trim().equalsIgnoreCase("true");
     }
 }
+
