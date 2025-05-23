@@ -524,6 +524,16 @@
 				 AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 				 AND upper(A.USER_NAME) = upper(#{newUserName, jdbcType=VARCHAR})
 				 AND A.SCORE &lt; 0) AS FIGHT_LOSE
+		    ,(SELECT CASE
+					   WHEN MAX(A.INSERT_DATE) >= TRUNC(SYSDATE) - 3 THEN
+					    1
+					   ELSE
+					    0
+				  END AS VALID_YN
+			    FROM TBOT_POINT_RANK A
+			   WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+			     AND UPPER(A.USER_NAME) = UPPER(#{newUserName, jdbcType=VARCHAR}) 
+			  ) AS VALID_YN
 		  FROM DUAL
 	</select>
 	
@@ -534,6 +544,12 @@
 					  FROM TBOT_POINT_RANK A
 				     WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 				     GROUP BY A.USER_NAME
+				     HAVING 1 = CASE
+									 WHEN MAX(A.INSERT_DATE) >= TRUNC(SYSDATE) - 3 THEN
+									  1
+									 ELSE
+									  0
+								 END
 				     ORDER BY SUM(A.SCORE) DESC) B
 	</select>
 	
@@ -707,12 +723,19 @@
 	</insert>
 	
 	<select id="selectParam1ToNewUserSearch" parameterType="HashMap" resultType="String" >
+		/* selectParam1ToNewUserSearch */
 		SELECT A.USER_NAME
 		  FROM TBOT_POINT_RANK A
 		 WHERE upper(A.USER_NAME) LIKE upper(#{param1, jdbcType=VARCHAR}) || '%'
 		   AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 		 GROUP BY A.USER_NAME
 			  ,A.ROOM_NAME
+	     HAVING 1 = CASE
+						 WHEN MAX(A.INSERT_DATE) >= TRUNC(SYSDATE) - 3 THEN
+						  1
+						 ELSE
+						  0
+					END
 		 ORDER BY CASE
 		                WHEN LENGTH(#{param1, jdbcType=VARCHAR}) = LENGTH(A.USER_NAME) THEN
 		                 1
@@ -725,7 +748,7 @@
 		 /* selectBotPointUpdownS */
 		 SELECT *
 		   FROM TBOT_POINT_UPDOWN A
-		  WHERE A.CMD = 'updown_s'
+		  WHERE A.CMD = 'updown_s2'
 		    AND A.COMPLETE_YN &lt; 6
 		    AND A.ROOM_NAME =#{roomName, jdbcType=VARCHAR}
 		    AND A.USER_NAME = #{userName, jdbcType=VARCHAR}
@@ -761,7 +784,7 @@
 		       ,#{randomNumber, jdbcType=VARCHAR}
 		       ,#{roomName, jdbcType=VARCHAR}
 		       ,SYSDATE
-		       ,'updown_s'
+		       ,'updown_s2'
 		       ,0
 		       ,'0'
 		       ,max(A.SEQ)+1 

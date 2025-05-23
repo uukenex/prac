@@ -348,7 +348,7 @@ public class LoaPlayController {
 			}
 			
 			//신규대상인 경우 
-			List<HashMap<String,Object>> ls = botService.selectBotPointRankNewScore(map);
+			//List<HashMap<String,Object>> ls = botService.selectBotPointRankNewScore(map);
 			try {
 				/*
 				int score = Integer.parseInt(ls.get(0).get("SCORE").toString());
@@ -391,10 +391,10 @@ public class LoaPlayController {
 				seq = Integer.parseInt(info.get("SEQ").toString());
 				
 				if(in_number > 100 || in_number < 0) {
-					return "0~100사이 입력해주세요";
+					return userName+ " 님, 0~100사이 입력해주세요";
 				}
 				
-				res += userName+" 님 현재 입력 숫자:"+in_number+enterStr+
+				res += userName+" 님, 현재 입력 숫자:"+in_number+enterStr+
 						"총 6회 중 "+(completeYn+1) +" 회 진행중"+enterStr;
 				
 				
@@ -450,7 +450,7 @@ public class LoaPlayController {
 					break;
 				}
 				if(breakFlag) {
-					res += "이전 동일숫자입력!"+enterStr+enterStr;
+					res += userName+" 님, 이전 동일숫자입력!"+enterStr+enterStr;
 				}else {
 					
 					int score = 0;
@@ -484,66 +484,87 @@ public class LoaPlayController {
 					
 				
 					
-					if(targetNumber == in_number) {
-						res += (completeYn+1)+"회차 정답!"+enterStr+"정답: "+in_number+"!";
-						map.put("endYn", "1");
-						
-						HashMap<String,Object> newMap = new HashMap<>();
-						newMap.put("userName", map.get("userName"));
-						newMap.put("roomName", map.get("roomName"));
-						
-						newMap.put("score", score);
-						newMap.put("cmd", "gamble_e2");
-						int newScore = botService.insertBotPointRankTx(newMap);
-						
-						res+=enterStr + "획득포인트 " + score+ "p"+enterStr;
-						res+=enterStr + "갱신포인트 " + newScore+ "p"+enterStr;
-					}else if(targetNumber > in_number) {
-						res += (completeYn+1)+"회차 fail!"+enterStr+enterStr+in_number+" up↑"+enterStr;
-						res += "다음에 맞춘다면... "+preview_score+"p 획득 가능";
-					}else {
-						res += (completeYn+1)+"회차 fail!"+enterStr+enterStr+in_number+" down↓"+enterStr;
-						res += "다음에 맞춘다면... "+preview_score+"p 획득 가능";
+					if (targetNumber == in_number) {
+					    res += enterStr+(completeYn + 1) + "회차 정답!" + enterStr;
+					    res += "정답: " + in_number + "!" + enterStr;
+
+					    map.put("endYn", "1");
+
+					    HashMap<String, Object> newMap = new HashMap<>();
+					    newMap.put("userName", map.get("userName"));
+					    newMap.put("roomName", map.get("roomName"));
+					    newMap.put("score", score);
+					    newMap.put("cmd", "gamble_s2");
+
+					    int newScore = botService.insertBotPointRankTx(newMap);
+
+					    res += "정답포인트: " + score + "p 획득" + enterStr;
+					    res += "갱신포인트: " + newScore + "p" + enterStr;
+
+					} else {
+					    res += (completeYn + 1) + "회차 실패!" + enterStr + enterStr;
+					    
+					    if (completeYn + 1 < 6) {
+					        res += in_number + (targetNumber > in_number ? " ↑ UP" : " ↓ DOWN") + enterStr;
+					        res += "다음에 맞추면 " + preview_score + "p 획득 가능" + enterStr;
+					    }
 					}
 					
-					if(completeYn+1 ==6) {
-						res += "정답은 "+targetNumber+" !! "+enterStr;
-						map.put("endYn", "1");
-						
-						HashMap<String,Object> newMap = new HashMap<>();
-						newMap.put("score", 1);
-						newMap.put("cmd", "gamble_e2");
-						int newScore = botService.insertBotPointRankTx(newMap);
-						
-						res+=enterStr + "참여포인트 " + "1 p"+enterStr;
-						res+=enterStr + "갱신포인트 " + newScore+ "p"+enterStr;
+					// 최대 시도 도달 시 처리
+					if (completeYn + 1 == 6) {
+						if (targetNumber != in_number) {
+							res += "정답은 " + targetNumber + "!!" + enterStr+ enterStr;
+						    map.put("endYn", "1");
+
+						    HashMap<String, Object> newMap = new HashMap<>();
+						    newMap.put("userName", map.get("userName"));
+						    newMap.put("roomName", map.get("roomName"));
+						    newMap.put("score", 1);
+						    newMap.put("cmd", "gamble_s2");
+
+						    int newScore = botService.insertBotPointRankTx(newMap);
+
+						    res += "참여포인트: 1p 획득" + enterStr;
+						    res += "갱신포인트: " + newScore + "p" + enterStr;
+						}
 					}
-					
-					map.put("colName","number"+(completeYn+1));
+
+					// 게임 진행 업데이트
+					map.put("colName", "number" + (completeYn + 1));
 					map.put("inNumber", in_number);
 					map.put("seq", seq);
 					botService.updateBotPointUpdownSTx(map);
 				}
 				
 				
-				res+= enterStr;
-				res+="진행이력:::"+enterStr;
-				if(info.get("NUMBER1")!=null) {
-					res += "1차시도 "+info.get("NUMBER1")+enterStr;
+				res += enterStr + "진행이력:::" + enterStr;
+
+				for (int i = 1; i <= 5; i++) {
+				    Object value = info.get("NUMBER" + i);
+				    if (value != null) {
+				        int number = Integer.parseInt(value.toString());
+				        String direction = "";
+				        if (targetNumber > number) {
+				            direction = " ↑";
+				        } else if (targetNumber < number) {
+				            direction = " ↓";
+				        } else {
+				            direction = ""; // 정답과 같은 경우 (이론상 발생 안 함, 방어적 처리)
+				        }
+				        res += i + "차시도 " + number + direction + enterStr;
+				    }
 				}
-				if(info.get("NUMBER2")!=null) {
-					res += "2차시도 "+info.get("NUMBER2")+enterStr;
+
+				// 현재 시도는 이미 비교했으므로 다시 계산
+				String currentDirection = "";
+				if (targetNumber > in_number) {
+				    currentDirection = " ↑";
+				} else if (targetNumber < in_number) {
+				    currentDirection = " ↓";
+				} else {
+				    currentDirection = "";
 				}
-				if(info.get("NUMBER3")!=null) {
-					res += "3차시도 "+info.get("NUMBER3")+enterStr;
-				}
-				if(info.get("NUMBER4")!=null) {
-					res += "4차시도 "+info.get("NUMBER4")+enterStr;
-				}
-				if(info.get("NUMBER5")!=null) {
-					res += "5차시도 "+info.get("NUMBER5")+enterStr;
-				}
-				res += "현재시도 "+in_number+enterStr;
+				res += "현재시도 " + in_number + currentDirection + enterStr;
 				
 				if(breakFlag) {
 					return res;
@@ -551,7 +572,7 @@ public class LoaPlayController {
 				
 				
 			}catch(Exception e) {
-				return "/뽑기 숫자 입력필요!";
+				return userName+" 님, /뽑기 숫자 입력필요!!!";
 			}
 			return res;
 			

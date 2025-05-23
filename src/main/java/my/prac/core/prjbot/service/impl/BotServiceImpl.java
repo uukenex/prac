@@ -211,7 +211,14 @@ public class BotServiceImpl implements BotService {
 				return null;
 			}
 		}
-		return botDAO.selectBotPointRankOne(map);
+		
+		HashMap<String,Object> result = botDAO.selectBotPointRankOne(map);
+		
+		if(result.get("VALID_YN").equals("0")) {
+			return null;
+		}
+		
+		return result;
 	}
 	public List<HashMap<String,Object>> selectBotPointRankAll(HashMap<String,Object> map){
 		return botDAO.selectBotPointRankAll(map);
