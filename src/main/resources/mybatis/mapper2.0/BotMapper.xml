@@ -213,7 +213,7 @@
     </insert>
     <select id="selectSupporters" parameterType="String" resultType="int" >
 		 /* bot.xml selectSupporters */
-		SELECT NVL(MAX(A.ICON))
+		SELECT NVL(MAX(A.ICON),0)
 		  FROM TBOT_SUPPORTERS A
 		 WHERE upper(A.USER_ID) = upper(#{param1, jdbcType=VARCHAR})
 	</select>
