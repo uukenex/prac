@@ -232,9 +232,13 @@ public class LoaChatController {
 		String char_name = info.get("CHAR_NAME");
 		String starYn = info.get("STAR_YN");
 		String star="";
-		if(starYn!=null && starYn.equals("1")) {
-			star+="⭐";
+		
+		try {
+			star+= sp_icon(Integer.parseInt(starYn));
+		}catch (Exception e){
+			star+="　";
 		}
+		
 		if(title == null || title.equals("null")) {
 			title = "";
 		}else {
@@ -510,7 +514,7 @@ public class LoaChatController {
 					org_fulltxt = fulltxt;
 					reqMap.put("fulltxt", fulltxt);
 					try {
-						val = supporters(param1);
+						val = supportersIcon(param1);
 						val+= limitSearch(param1);
 					} catch (Exception e) {
 						val = errorCodeMng(e,reqMap);
@@ -540,7 +544,7 @@ public class LoaChatController {
 					org_fulltxt = fulltxt;
 					reqMap.put("fulltxt", fulltxt);
 					try {
-						val = supporters(param1);
+						val = supportersIcon(param1);
 						val+= collectionSearch(param1);
 					} catch (Exception e) {
 						val = errorCodeMng(e,reqMap);
@@ -571,7 +575,7 @@ public class LoaChatController {
 					org_fulltxt = fulltxt;
 					reqMap.put("fulltxt", fulltxt);
 					try {
-						val = supporters(param1);
+						val = supportersIcon(param1);
 						val+= accessorySearch(param1);
 					} catch (Exception e) {
 						val = errorCodeMng(e,reqMap);
@@ -608,7 +612,7 @@ public class LoaChatController {
 						limitLv = 50;
 					}
 					try {
-						val = supporters(param1);
+						val = supportersIcon(param1);
 						val+= subCharacterInfoSearch1(param1,limitLv);
 					} catch (Exception e) {
 						e.printStackTrace();
@@ -639,7 +643,7 @@ public class LoaChatController {
 					org_fulltxt = fulltxt;
 					reqMap.put("fulltxt", fulltxt);
 					try {
-						val = supporters(param1);
+						val = supportersIcon(param1);
 						val+= subCharacterInfoSearch2(param1);
 					} catch (Exception e) {
 						e.printStackTrace();
@@ -672,7 +676,7 @@ public class LoaChatController {
 					try {
 						//val = "v0.3으로 패치중입니다.";
 						
-						val = supporters(param1);
+						val = supportersIcon(param1);
 						val+= sub.sumTotalPowerSearch(param1,saveMap);
 						if(val!=null && !val.equals("")) {
 							//val+= tossAccount2();
@@ -712,7 +716,7 @@ public class LoaChatController {
 				reqMap.put("fulltxt", fulltxt);
 				if (param1 != null && !param1.equals("")) {
 					try {
-						val = supporters(param1);
+						val = supportersIcon(param1);
 						val += param1+" 캐릭터 전투력 상세"+enterStr;
 						HashMap<String,Object> charMap = sub.sumTotalPowerSearch2(param1);
 						sub.sumTotalPowerSearchByMainChar(charMap,saveMap);
@@ -776,12 +780,15 @@ public class LoaChatController {
 				for(HashMap<String,Object> hm : hs) {
 					String starYn="";
 					String star="";
-					starYn = hm.get("STAR_YN").toString();
-					if(starYn!=null && starYn.equals("1")) {
-						star+="⭐";
-					}else {
+					
+					try {
+						starYn = hm.get("STAR_YN").toString();	
+						star+= sp_icon(Integer.parseInt(starYn));
+					}catch (Exception e){
+						starYn = "";
 						star+="　";
 					}
+					
 					val += star +hm.get("CHAR_NAME")+ " : "+hm.get("SCORE")+enterStr ;
 				}
 				
@@ -793,10 +800,11 @@ public class LoaChatController {
 				for(HashMap<String,Object> hm : hs) {
 					String starYn="";
 					String star="";
-					starYn = hm.get("STAR_YN").toString();
-					if(starYn!=null && starYn.equals("1")) {
-						star+="⭐";
-					}else {
+					try {
+						starYn = hm.get("STAR_YN").toString();	
+						star+= sp_icon(Integer.parseInt(starYn));
+					}catch (Exception e){
+						starYn = "";
 						star+="　";
 					}
 					val += star +hm.get("CHAR_NAME")+ " : "+hm.get("SCORE")+enterStr ;
@@ -842,10 +850,11 @@ public class LoaChatController {
 				for(HashMap<String,Object> hm : hs) {
 					String starYn="";
 					String star="";
-					starYn = hm.get("STAR_YN").toString();
-					if(starYn!=null && starYn.equals("1")) {
-						star+="⭐";
-					}else {
+					try {
+						starYn = hm.get("STAR_YN").toString();	
+						star+= sp_icon(Integer.parseInt(starYn));
+					}catch (Exception e){
+						starYn = "";
 						star+="　";
 					}
 					val += star +hm.get("CHAR_NAME")+ " : "+hm.get("SCORE")+enterStr ;
@@ -859,10 +868,11 @@ public class LoaChatController {
 				for(HashMap<String,Object> hm : hs) {
 					String starYn="";
 					String star="";
-					starYn = hm.get("STAR_YN").toString();
-					if(starYn!=null && starYn.equals("1")) {
-						star+="⭐";
-					}else {
+					try {
+						starYn = hm.get("STAR_YN").toString();	
+						star+= sp_icon(Integer.parseInt(starYn));
+					}catch (Exception e){
+						starYn = "";
 						star+="　";
 					}
 					val += star +hm.get("CHAR_NAME")+ " : "+hm.get("SCORE")+enterStr ;
@@ -4673,14 +4683,55 @@ public class LoaChatController {
 		return ment; 
 	}
 	
-	public String supporters(String userId) {
-		String ment = "";
-		
-		int suppertersYn = botService.selectSupporters(userId);
-		if(suppertersYn > 0) {
-			ment+="⭐";
+	
+	public String sp_icon(int supportersCase) {
+		String ment ="";
+		switch (supportersCase) {
+			case 1:
+				ment+="⭐";
+				break;
+			case 2:
+				ment+="✪";
+				break;
+			case 3:
+				ment+="♛";
+				break;
+			case 4:
+				ment+="☁";
+				break;
+			case 5:
+				ment+="☀";
+				break;
+			case 6:
+				ment+="♦";
+				break;
+			case 7:
+				ment+="☂";
+				break;
+			case 8:
+				ment+="☃";
+				break;
+			case 9:
+				ment+="❄";
+				break;
+			case 10:
+				ment+="☠";
+				break;
 		}
-		return ment; 
+		return ment;
+		
+		
+	}
+	
+	public String supportersIcon(String userId) {
+		int supportersYn = botService.selectSupporters(userId);
+		return sp_icon(supportersYn);
+		
+	}
+	public int supporters(String userId) {
+		int suppertersYn = botService.selectSupporters(userId);
+		
+		return suppertersYn; 
 	}
 	
 	public String charImgSearch(String ordUserId,String title,String className,String imgUrl) {
@@ -4708,9 +4759,9 @@ public class LoaChatController {
 				hs.put("title", title);
 				hs.put("class_name", className);
 				
-				String star = supporters(ordUserId);
-				if(star != null && star.length()>0) {
-					hs.put("star_yn", "1");	
+				int icon = supporters(ordUserId);
+				if(icon > 0) {
+					hs.put("star_yn", icon);	
 				}
 				
 				botService.insertBotImgCharSaveTx(hs);

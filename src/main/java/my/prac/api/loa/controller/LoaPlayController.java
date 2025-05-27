@@ -60,7 +60,8 @@ public class LoaPlayController {
 	}
 	
 	String testMethod(HashMap<String,Object> map) {
-		String str="⭐🌟💫🌠";
+		String str="★☆♥♠♣♦✓✔✖☑☀☁☂☃☕☎✉☘⚠☠☯⚡❄❌✅"
+				+"	♥, ♠, ♣, ♦, ⚠, ☀, ☁ ♛ ✪";
 		
 		
 		return str;

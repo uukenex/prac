@@ -213,7 +213,7 @@
     </insert>
     <select id="selectSupporters" parameterType="String" resultType="int" >
 		 /* bot.xml selectSupporters */
-		SELECT COUNT(1)
+		SELECT NVL(MAX(A.ICON))
 		  FROM TBOT_SUPPORTERS A
 		 WHERE upper(A.USER_ID) = upper(#{param1, jdbcType=VARCHAR})
 	</select>
@@ -442,7 +442,7 @@
 	<select id="selectRoomBotPowerRank" resultType="HashMap" parameterType="HashMap">
       SELECT B.*
   		FROM (
-	        SELECT DECODE(A.CHAR_NAME,B.USER_ID, '1','0') AS STAR_YN
+	        SELECT DECODE(A.CHAR_NAME,B.USER_ID, B.ICON,'0') AS STAR_YN
 	        	  ,upper(A.CHAR_NAME) as char_name
 	        	  ,A.GUILD_NAME
 			      ,A.SCORE
@@ -451,9 +451,11 @@
 			      ,A.CLASS_GB
 			  FROM TBOT_POWER_RANK A,
 			    (SELECT UPPER(S.USER_ID) AS USER_ID
+			           ,ICON
 				   FROM TBOT_SUPPORTERS S
 				  WHERE S.USER_ID IS NOT NULL
-				  GROUP BY S.USER_ID) B
+				  GROUP BY S.USER_ID
+				          ,S.ICON) B
 		     WHERE A.GUILD_NAME = #{guildName, jdbcType=VARCHAR}
 			   AND A.TARGET_GB = #{targetGb, jdbcType=VARCHAR}
 			   AND upper(A.CHAR_NAME) = B.USER_ID(+)
