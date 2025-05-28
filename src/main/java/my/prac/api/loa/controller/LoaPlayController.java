@@ -1,7 +1,11 @@
 package my.prac.api.loa.controller;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import javax.annotation.Resource;
 
@@ -166,10 +170,12 @@ public class LoaPlayController {
 			return "포인트는 1포인트이상 입력해주세요.";
 		}
 		
+		/*
 		int cnt = botService.selectBotPointRankFightBeforeCount(map);
 		if(cnt>0) {
 			return "결투 신청 쿨타임(신청만..2min..)";
 		}
+		*/
 		
 		List<HashMap<String,Object>> newMap = botService.selectBotPointRankFightBeforeCheck(map);
 		if(newMap.size() !=2) {
@@ -581,6 +587,132 @@ public class LoaPlayController {
 		
 		
 		
+	}
+	
+	String baseball(HashMap<String,Object> map) {
+		int defaultScore=100;
+		map.put("cmd", "baseball_s");
+		map.put("score", defaultScore);
+		
+		String userName = map.get("userName").toString();
+		
+		HashMap<String,Object> info = botService.selectBotPointBaseballIngChk(map);
+		if(info == null || info.size() ==0) {
+			
+			if(map.get("param1")!=null && !map.get("param1").toString().equals("") ) {
+				return userName+" 님, 신규 야구는 /야구 입력(포인트소모)";
+			}
+			
+			//신규대상인 경우 
+			List<HashMap<String,Object>> ls = botService.selectBotPointRankNewScore(map);
+			try {
+				
+				int score = Integer.parseInt(ls.get(0).get("SCORE").toString());
+				
+				if(score < defaultScore) {
+					return userName+" 님, "+defaultScore+" p 이상만 가능합니다.";
+				}
+				map.put("score", -defaultScore);
+				int new_score = botService.insertBotPointRankTx(map);
+				
+				String target = generateRandom3Digits();
+				
+				map.put("targetNumber", target);
+				botService.insertBotPointBaseballSTx(map);
+				
+				return userName+" 님!"+enterStr+
+						score+"p → "+new_score+"p"+enterStr+
+						"/야구 숫자3자리 입력하시면 야구게임 진행!"+enterStr+
+						"방 인원 전체가 참여 가능!";
+			}catch(Exception e) {
+				return userName+" 님, 야구 오류!";
+			}
+		}else if(info.size() > 0 ){
+			try {
+				int ingCount = Integer.parseInt(info.get("ING").toString());
+				if(ingCount == 0) {
+					return userName+" 님, 진행 중인 야구 없음!";
+				}
+				if(ingCount >1) {
+					return userName+" 님, 오류! 개발자호출필요";
+				}
+				
+				//진행중인 seq
+				int seq  = Integer.parseInt(info.get("SEQ").toString());
+				String target = info.get("TARGET_NUMBER").toString();
+				String guess = map.get("param1").toString();
+				if (!guess.matches("\\d{3}") || !isAllDigitsUnique(guess)) {
+				    return userName+" 님, 서로 다른 숫자 3자리를 입력!";
+				}
+	
+	            int strike = 0, ball = 0;
+	            for (int i = 0; i < 3; i++) {
+	                if (target.charAt(i) == guess.charAt(i)) strike++;
+	                else if (target.contains(String.valueOf(guess.charAt(i)))) ball++;
+	            }
+	
+	            
+	            String retCnt = strike + "S " + ball + "B";
+	            String res="";
+	            
+            	boolean endYn = (strike == 3);
+            	
+                map.put("seq", seq);
+                map.put("tryNumber", guess);
+                map.put("retCnt", retCnt);
+                map.put("endYn", endYn);
+            	
+				botService.insertBotPointBaseballIng(map);
+				
+				if(endYn) {
+					HashMap<String, Object> newMap = new HashMap<>();
+				    newMap.put("userName", map.get("userName"));
+				    newMap.put("roomName", map.get("roomName"));
+				    newMap.put("score", defaultScore);
+				    newMap.put("cmd", "baseball_e");
+	
+				    int newScore = botService.insertBotPointRankTx(newMap);
+	
+				    res += "정답포인트: "+defaultScore+" p 획득" + enterStr;
+				    res += "갱신포인트: " + newScore + "p" + enterStr;
+				}
+					
+	            return userName+" 님,"+enterStr+
+	            		guess+" 의 결과는..."+enterStr
+	            		+retCnt+" !"+enterStr+enterStr
+	            		+res;
+			} 
+            catch (Exception e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+				return "오류!!";
+			}
+			
+			
+		}else {
+			return "오류";
+		}
+		
+		
+		
+	}
+	
+	public boolean isAllDigitsUnique(String number) {
+	    if (number == null || number.length() != 3) return false;
+	    Set<Character> digitSet = new HashSet<>();
+	    for (char ch : number.toCharArray()) {
+	        digitSet.add(ch);
+	    }
+	    return digitSet.size() == 3;
+	}
+	private String generateRandom3Digits() {
+		List<Integer> digits = new ArrayList<>();
+		while (digits.size() < 3) {
+			int n = (int) (Math.random() * 10);
+			if (!digits.contains(n))
+				digits.add(n);
+		}
+		return digits.stream().map(String::valueOf).collect(Collectors.joining());
 	}
 	
 	public String openBox(String str1,String str2) throws Exception {

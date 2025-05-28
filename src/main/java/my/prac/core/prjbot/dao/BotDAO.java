@@ -93,5 +93,16 @@ public interface BotDAO {
 	public HashMap<String,Object> selectBotPointUpdownS(HashMap<String,Object> map);
 	public int  insertBotPointUpdownS(HashMap<String,Object> map);
 	public int  updateBotPointUpdownS(HashMap<String,Object> map);
+	
+	/** baseball */
+	public HashMap<String,Object> selectBotPointBaseballIngChk(HashMap<String,Object> map);
+	public int insertBotPointBaseballS(HashMap<String,Object> map);
+	public int updateBotPointBaseballE(HashMap<String,Object> map);
+	public int insertBotPointBaseballIng(HashMap<String,Object> map);
+	
+	
+	
+	
+	
 }
 

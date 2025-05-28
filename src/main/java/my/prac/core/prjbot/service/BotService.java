@@ -74,10 +74,17 @@ public interface BotService {
 	public void insertAuctionItemOne(HashMap<String, Object> rawDataOne) throws Exception;
 	
 	public List<HashMap<String,Object>> selectMarketItemPriceInfo(HashMap<String,Object> map);
-	
+
+	/** updown */
 	public HashMap<String,Object> selectBotPointUpdownS(HashMap<String,Object> map);
 	public void  insertBotPointUpdownSTx(HashMap<String,Object> map) throws Exception;
 	public void  updateBotPointUpdownSTx(HashMap<String,Object> map) throws Exception;
+	
+	/** baseball */
+	public HashMap<String,Object> selectBotPointBaseballIngChk(HashMap<String,Object> map);
+	public void insertBotPointBaseballSTx(HashMap<String,Object> map) throws Exception;
+	public void insertBotPointBaseballIng(HashMap<String,Object> map) throws Exception;
+	
 }
 
 	

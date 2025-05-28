@@ -328,6 +328,9 @@ public class LoaChatController {
 			case "/포인트뽑기": case "/ㅃㄱ": case "/뽑기":
 				val = play.gamble(reqMap);
 				break;
+			case "/포인트야구": case "/야구":
+				val = play.baseball(reqMap);
+				break;
 			case "/저가": case "/저스트가드":
 				val = play.fight_e(reqMap);
 				break;
@@ -890,6 +893,9 @@ public class LoaChatController {
 				val += point_map_one.get("TOT")+ enterStr+ enterStr+
 					   point_map_one.get("ATTENDANCE")+ enterStr+
 					   point_map_one.get("DICE")+enterStr +
+					   point_map_one.get("GAMBLE_WIN")+enterStr +
+					   //point_map_one.get("BASEBALL_USE")+enterStr +
+					   point_map_one.get("BASEBALL_WIN")+enterStr +
 					   point_map_one.get("FIGHT_SUM")+enterStr +
 					   point_map_one.get("FIGHT_WIN")+point_map_one.get("FIGHT_LOSE")+enterStr ;
 				

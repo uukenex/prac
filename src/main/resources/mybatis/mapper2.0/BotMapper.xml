@@ -494,22 +494,22 @@
 		
 	</insert>
 	<select id="selectBotPointRankOne" parameterType="HashMap" resultType="HashMap">
-	  SELECT (SELECT A.USER_NAME||'♬총 포인트: ' || NVL(SUM(A.SCORE), 0) || 'p♬'
+	  SELECT (SELECT A.USER_NAME||'♬♬현재 포인트: ' || NVL(SUM(A.SCORE), 0) || ' p♬'
 		        FROM TBOT_POINT_RANK A
 		       WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 		         AND UPPER(A.USER_NAME) = UPPER(#{newUserName, jdbcType=VARCHAR})
 		       GROUP BY A.USER_NAME ) AS TOT
-			,(SELECT '출석획득 포인트: ' || NVL(SUM(A.SCORE), 0) || 'p♬오늘출석: ' || DECODE(MAX(TO_CHAR(A.INSERT_DATE, 'mmdd')), TO_CHAR(SYSDATE, 'mmdd'), '완료', '미완료')
+			,(SELECT '출석획득 포인트: ' || NVL(SUM(A.SCORE), 0) || ' p♬오늘출석: ' || DECODE(MAX(TO_CHAR(A.INSERT_DATE, 'mmdd')), TO_CHAR(SYSDATE, 'mmdd'), '완료', '미완료')
 				FROM TBOT_POINT_RANK A
 			   WHERE A.CMD = 'attendance'
 				 AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 				 AND upper(A.USER_NAME) = upper(#{newUserName, jdbcType=VARCHAR}) ) AS ATTENDANCE
-		    ,(SELECT '주사위획득 포인트: '||NVL(SUM(A.SCORE),0) || 'p'
+		    ,(SELECT '주사위획득 포인트: '||NVL(SUM(A.SCORE),0) || ' p'
 				FROM TBOT_POINT_RANK A
 			   WHERE A.CMD in ( 'diceRoll','diceReroll')
 				 AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 				 AND upper(A.USER_NAME) = upper(#{newUserName, jdbcType=VARCHAR}) ) AS DICE
-		    ,(SELECT '결투획득 포인트: '||NVL(SUM(A.SCORE),0) || 'p'
+		    ,(SELECT '결투획득 포인트: '||NVL(SUM(A.SCORE),0) || ' p'
 				FROM TBOT_POINT_RANK A
 		       WHERE A.CMD = 'fight_e'
 				 AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
@@ -526,6 +526,12 @@
 				 AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 				 AND upper(A.USER_NAME) = upper(#{newUserName, jdbcType=VARCHAR})
 				 AND A.SCORE &lt; 0) AS FIGHT_LOSE
+			,(SELECT '뽑기획득 포인트: ' || SUM(A.SCORE)||' p'
+				FROM TBOT_POINT_RANK A
+			    WHERE A.CMD = 'gamble_s2'
+				 AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+				 AND UPPER(A.USER_NAME) = UPPER(#{newUserName, jdbcType=VARCHAR})
+				 AND A.SCORE > 0) AS GAMBLE_WIN
 		    ,(SELECT CASE
 					   WHEN MAX(A.INSERT_DATE) >= TRUNC(SYSDATE) - 3 THEN
 					    1
@@ -536,6 +542,18 @@
 			   WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 			     AND UPPER(A.USER_NAME) = UPPER(#{newUserName, jdbcType=VARCHAR}) 
 			  ) AS VALID_YN
+			,(SELECT '야구획득 포인트: ' || NVL(SUM(A.SCORE),0)||' p' 
+		        FROM TBOT_POINT_RANK A
+		       WHERE A.CMD = 'baseball_e'
+		         AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+		         AND UPPER(A.USER_NAME) = UPPER(#{newUserName, jdbcType=VARCHAR})
+		         AND A.SCORE > 0) AS BASEBALL_WIN
+		    ,(SELECT '야구사용 포인트: ' || NVL(SUM(A.SCORE),0)||' p' 
+		        FROM TBOT_POINT_RANK A
+		       WHERE A.CMD = 'baseball_s'
+		         AND A.ROOM_NAME =  #{roomName, jdbcType=VARCHAR}
+		         AND UPPER(A.USER_NAME) = UPPER(#{newUserName, jdbcType=VARCHAR})
+		         AND A.SCORE &lt; 0) AS BASEBALL_USE
 		  FROM DUAL
 	</select>
 	
@@ -792,5 +810,62 @@
 		       ,max(A.SEQ)+1 
 	       FROM TBOT_POINT_UPDOWN A
 	</insert>
+	
+	<select id="selectBotPointBaseballIngChk" parameterType="HashMap" resultType="HashMap">
+			/* selectBotPointBaseballIngChk (진행중 체크 ing = 1 진행중 ) */
+			SELECT COUNT(1) OVER() AS ING
+				 ,A.SEQ
+				 ,A.TARGET_NUMBER
+			  FROM TBOT_POINT_BASEBALL_M A
+			 WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+			   AND A.END_YN = '0'
+			   AND ROWNUM = 1
+	</select>
+	
+	
+	<insert id="insertBotPointBaseballS" parameterType="HashMap">
+			/* insertBotPointBaseballS 신규 시작 */
+			 INSERT INTO TBOT_POINT_BASEBALL_M
+				   (SEQ
+				   ,ROOM_NAME
+				   ,USER_NAME
+				   ,TARGET_NUMBER
+				   ,END_CNT
+				   ,END_YN)
+			 SELECT MAX(A.SEQ) + 1
+				   ,#{roomName, jdbcType=VARCHAR}
+				   ,#{userName, jdbcType=VARCHAR}
+				   ,#{targetNumber, jdbcType=VARCHAR}
+				   ,0
+				   ,'0'
+			   FROM TBOT_POINT_BASEBALL_M A
+	</insert>
+	
+	<insert id="insertBotPointBaseballIng" parameterType="HashMap">
+			/*진행 중이라면 ... insertBotPointBaseballIng */
+			INSERT INTO TBOT_POINT_BASEBALL_DT
+				 (SEQ
+				 ,TRY_CNT
+				 ,TRY_NUMBER
+				 ,RET_CNT)
+			VALUES
+				 (#{seq, jdbcType=NUMERIC}
+				 ,NVL((SELECT MAX(TRY_CNT)
+					   FROM TBOT_POINT_BASEBALL_DT B
+					  WHERE B.SEQ = #{seq, jdbcType=NUMERIC}), 0) + 1
+				 ,#{tryNumber, jdbcType=VARCHAR}
+				 ,#{retCnt, jdbcType=VARCHAR})
+	</insert>
+	
+	<update id="updateBotPointBaseballE" parameterType="HashMap">
+			/* updateBotPointBaseballE */
+		    UPDATE TBOT_POINT_BASEBALL_M A
+			   SET A.END_YN        = '1'
+				  ,A.END_USER_NAME = #{userName, jdbcType=VARCHAR}
+				  ,A.END_CNT      = (SELECT COUNT(1)
+									   FROM TBOT_POINT_BASEBALL_DT B
+									  WHERE B.SEQ = #{seq, jdbcType=NUMERIC})
+			 WHERE A.SEQ = #{seq, jdbcType=NUMERIC}
+	</update>
 	
 </mapper>

@@ -335,7 +335,7 @@ public class BotServiceImpl implements BotService {
 	
 	
 
-	
+	/** updown */
 	public HashMap<String,Object> selectBotPointUpdownS(HashMap<String,Object> map){
 		return botDAO.selectBotPointUpdownS(map);
 	}
@@ -349,5 +349,33 @@ public class BotServiceImpl implements BotService {
 			throw new Exception("저장 실패");
 		}
 	}
+	
+	
+	
+	
+	/** baseball */
+	public HashMap<String,Object> selectBotPointBaseballIngChk(HashMap<String,Object> map){
+		return botDAO.selectBotPointBaseballIngChk(map);
+	}
+	public void insertBotPointBaseballSTx(HashMap<String,Object> map) throws Exception{
+		//처음시작
+		if(botDAO.insertBotPointBaseballS(map) < 1) {
+			throw new Exception("저장 실패");
+		}
+	}
+	public void insertBotPointBaseballIng(HashMap<String,Object> map) throws Exception{
+		//맞추기 시도
+		if(botDAO.insertBotPointBaseballIng(map) < 1) {
+			throw new Exception("저장 실패");
+		}
+		
+		if(map.get("endYn").equals(true) ) {
+			//맞춘경우!
+			if(botDAO.updateBotPointBaseballE(map) < 1) {
+				throw new Exception("저장 실패");
+			}
+		}
+	}
+	
 	
 }
