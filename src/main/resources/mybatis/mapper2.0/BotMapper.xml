@@ -868,4 +868,20 @@
 			 WHERE A.SEQ = #{seq, jdbcType=NUMERIC}
 	</update>
 	
+	<insert id="insertBotPointStone" parameterType="HashMap">
+		INSERT INTO TBOT_POINT_STONE
+			  (USER_NAME
+			  ,ROOM_NAME
+			  ,CNT
+			  ,INSERT_DATE
+			  ,CMD)
+		 VALUES
+			  (#{userName, jdbcType=VARCHAR}
+			  ,#{roomName, jdbcType=VARCHAR}
+			  ,#{cnt, jdbcType=NUMERIC}
+			  ,SYSDATE
+			  ,#{cmd, jdbcType=VARCHAR})
+		
+	</insert>
+	
 </mapper>

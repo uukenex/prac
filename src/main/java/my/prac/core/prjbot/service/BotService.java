@@ -85,6 +85,9 @@ public interface BotService {
 	public void insertBotPointBaseballSTx(HashMap<String,Object> map) throws Exception;
 	public void insertBotPointBaseballIng(HashMap<String,Object> map) throws Exception;
 	
+	/** 강화 */
+	//only 출첵
+	public void insertBotPointStoneTx(HashMap<String,Object> map)  throws Exception;
 }
 
 	

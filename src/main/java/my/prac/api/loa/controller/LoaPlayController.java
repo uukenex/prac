@@ -87,7 +87,7 @@ public class LoaPlayController {
 	String attendance(HashMap<String,Object> map) {
 		map.put("cmd", "attendance");
 		if(!dailyCheck(map)) {
-			return map.get("userName")+"님 이미 출석했습니다.";
+			return map.get("userName")+"님 오늘의 출석 포인트는 이미 획득 했습니다.";
 		}
 		Random random = new Random(); // 랜덤객체
 		int score = random.nextInt(10)+1;
@@ -108,7 +108,7 @@ public class LoaPlayController {
 	String diceRoll(HashMap<String,Object> map) {
 		map.put("cmd", "diceRoll");
 		if(!dailyCheck(map)) {
-			return map.get("userName")+"님 오늘의 주사위 완료!";
+			return map.get("userName")+"님 오늘의 주사위 포인트는 이미 획득 했습니다.";
 		}
 		
 		Random random = new Random(); // 랜덤객체
@@ -343,7 +343,7 @@ public class LoaPlayController {
 		//map.put("score", -200);
 		map.put("score", 0);
 		if(!dailyCheck(map)) {
-			return map.get("userName")+"님 오늘의 뽑기 기회 소진!";
+			return map.get("userName")+"님 오늘의 뽑기 포인트는 이미 획득 했습니다.";
 		}
 		
 		String userName = map.get("userName").toString();

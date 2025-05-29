@@ -377,5 +377,13 @@ public class BotServiceImpl implements BotService {
 		}
 	}
 	
+	/** 강화 */
+	//only 출첵
+	public void insertBotPointStoneTx(HashMap<String,Object> map)  throws Exception{
+		if(botDAO.insertBotPointStone(map) < 1) {
+			throw new Exception("저장 실패");
+		}
+	}
+	
 	
 }

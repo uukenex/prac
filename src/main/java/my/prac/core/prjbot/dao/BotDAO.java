@@ -101,8 +101,9 @@ public interface BotDAO {
 	public int insertBotPointBaseballIng(HashMap<String,Object> map);
 	
 	
-	
-	
+	/** 강화 */
+	//출첵시 지급 강화석
+	public int insertBotPointStone(HashMap<String,Object> map);
 	
 }
 
