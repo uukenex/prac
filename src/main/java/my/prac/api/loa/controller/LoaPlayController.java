@@ -590,7 +590,8 @@ public class LoaPlayController {
 	}
 	
 	String baseball(HashMap<String,Object> map) {
-		int defaultScore=100;
+		int defaultScore=0;
+		int SuccessScore=3;
 		map.put("cmd", "baseball_s");
 		map.put("score", defaultScore);
 		
@@ -600,28 +601,28 @@ public class LoaPlayController {
 		if(info == null || info.size() ==0) {
 			
 			if(map.get("param1")!=null && !map.get("param1").toString().equals("") ) {
-				return userName+" 님, 신규 야구는 /야구 입력(포인트소모)";
+				return userName+" 님, 신규 야구는 /야구 입력";
 			}
 			
 			//신규대상인 경우 
-			List<HashMap<String,Object>> ls = botService.selectBotPointRankNewScore(map);
+			//List<HashMap<String,Object>> ls = botService.selectBotPointRankNewScore(map);
 			try {
 				
-				int score = Integer.parseInt(ls.get(0).get("SCORE").toString());
-				
+				//int score = Integer.parseInt(ls.get(0).get("SCORE").toString());
+				/*
 				if(score < defaultScore) {
 					return userName+" 님, "+defaultScore+" p 이상만 가능합니다.";
 				}
 				map.put("score", -defaultScore);
 				int new_score = botService.insertBotPointRankTx(map);
-				
+				*/
 				String target = generateRandom3Digits();
 				
 				map.put("targetNumber", target);
 				botService.insertBotPointBaseballSTx(map);
 				
 				return userName+" 님!"+enterStr+
-						score+"p → "+new_score+"p"+enterStr+
+						//score+"p → "+new_score+"p"+enterStr+
 						"/야구 숫자3자리 입력하시면 야구게임 진행!"+enterStr+
 						"방 인원 전체가 참여 가능!";
 			}catch(Exception e) {
@@ -668,12 +669,12 @@ public class LoaPlayController {
 					HashMap<String, Object> newMap = new HashMap<>();
 				    newMap.put("userName", map.get("userName"));
 				    newMap.put("roomName", map.get("roomName"));
-				    newMap.put("score", defaultScore);
+				    newMap.put("score", SuccessScore);
 				    newMap.put("cmd", "baseball_e");
 	
 				    int newScore = botService.insertBotPointRankTx(newMap);
 	
-				    res += "정답포인트: "+defaultScore+" p 획득" + enterStr;
+				    res += "정답포인트: "+SuccessScore+" p 획득" + enterStr;
 				    res += "갱신포인트: " + newScore + "p" + enterStr;
 				}
 					
