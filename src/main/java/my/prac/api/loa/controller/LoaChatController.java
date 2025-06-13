@@ -2366,7 +2366,7 @@ public class LoaChatController {
 		//resMsg += "진/깨/도"+"　 　"+arkpoint1+" / "+arkpoint2+" / "+arkpoint3+enterStr;
 		
 		if(tier ==4) {
-			resMsg += "아크패시브"+"　 "+"진:"+arkpoint1+" /"+"깨:"+arkpoint2+" /"+"도:"+arkpoint3+enterStr;
+			resMsg += "아크패시브"+"　 "+"진:"+arkpoint1+"/"+"깨:"+arkpoint2+"/"+"도:"+arkpoint3+enterStr;
 		}
 		
 		resMsg += newGemSearch(armoryGem,ordUserId, tier);
