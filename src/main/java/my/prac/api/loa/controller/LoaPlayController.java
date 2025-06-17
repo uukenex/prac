@@ -75,6 +75,10 @@ public class LoaPlayController {
 		return "7월1일 람쥐포인트 시즌1이 종료됩니다./포인트상점 을 통해 사용할수있습니다.";
 	}
 	
+	String usePoint(HashMap<String,Object> map) {
+		return  "아마도 개발자에게 전달완료..";
+	}
+	
 	String attendanceToday(HashMap<String,Object> map) {
 		String msg="";
 		List<HashMap<String,Object>> point_map = botService.selectBotPointRankToday(map);
@@ -350,7 +354,8 @@ public class LoaPlayController {
 		str += enterStr;
 		str += "1.후원자마크(캐릭터(★)) - "+"2000p"+enterStr;
 		str += "2.골드환전 - "+"1000p단위 1000골드"+enterStr;
-		
+		str += enterStr;
+		str += "/포인트사용 할말.. 로 개발자에게 말해주세요.";
 		
 		
 		
