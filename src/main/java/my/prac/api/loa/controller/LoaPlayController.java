@@ -71,6 +71,10 @@ public class LoaPlayController {
 		return str;
 	}
 	
+	String pointSeasonMsg() {
+		return "7월1일 람쥐포인트 시즌1이 종료됩니다./포인트상점 을 통해 사용할수있습니다.";
+	}
+	
 	String attendanceToday(HashMap<String,Object> map) {
 		String msg="";
 		List<HashMap<String,Object>> point_map = botService.selectBotPointRankToday(map);
@@ -336,6 +340,21 @@ public class LoaPlayController {
 		//
 		
 		return "뽑기 기능은 개발중입니다.";
+	}
+	
+	String pointShop(HashMap<String,Object> map) {
+		List<HashMap<String,Object>> ls = botService.selectBotPointRankNewScore(map);
+		int score = Integer.parseInt(ls.get(0).get("SCORE").toString());
+		
+		String str=map.get("userName")+"님 현재 포인트 "+score +"p"+enterStr;
+		str += enterStr;
+		str += "1.후원자마크(캐릭터(★)) - "+"2000p"+enterStr;
+		str += "2.골드환전 - "+"1000p단위 1000골드"+enterStr;
+		
+		
+		
+		
+		return str;
 	}
 	
 	String gamble(HashMap<String,Object> map) {

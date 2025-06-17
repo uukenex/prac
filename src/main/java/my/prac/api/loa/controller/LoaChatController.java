@@ -318,15 +318,21 @@ public class LoaChatController {
 				break;
 			case "/ㅊㅊ": case "/cc": case "/CC": case "/출첵":
 				val = play.attendance(reqMap);
+				val+= enterStr+play.pointSeasonMsg()+enterStr;
 				break;
 			case "/주사위": case "/ㅈㅅㅇ":
 				val = play.diceRoll(reqMap);
+				val+= enterStr+play.pointSeasonMsg()+enterStr;
 				break;
 			case "/결투": case "/ㄱㅌ":
 				val = play.fight_s(reqMap);
 				break;
 			case "/포인트뽑기": case "/ㅃㄱ": case "/뽑기":
 				val = play.gamble(reqMap);
+				break;
+			case "/포인트상점": case "/상점":
+				val = play.pointShop(reqMap);
+				val+= enterStr+play.pointSeasonMsg()+enterStr;
 				break;
 			case "/포인트야구": case "/야구":
 				val = play.baseball(reqMap);
