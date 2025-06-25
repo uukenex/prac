@@ -464,6 +464,7 @@ public class LoaChatController {
 							val  = "정보없음" ;
 						}else {
 							val  = calendarSearch(0);
+							val += enterStr+enterStr;
 							val += shipSearch();
 							val += enterStr + enterStr+"내일의 모험섬 더보기..▼"+allSeeStr;
 							val += calendarSearch(1);
@@ -1495,7 +1496,9 @@ public class LoaChatController {
 		msg += enterStr + "✓3막-모르둠"+enterStr+" ↳ [노 28,000G/하 38,000G]";
 		msg += enterStr + "✓2막-아브렐슈드"+enterStr+" ↳ [노 21,500G/하 30,500G]";
 		msg += enterStr + "✓1막-에기르"+enterStr+" ↳ [노 15,500G/하 24,500G]";
-		msg += enterStr + "✓서막-에키드나"+enterStr+" ↳ [노 3,650(+3,650)G/하 8,800G]";
+		msg += enterStr + "✓서막-에키드나";
+		msg += enterStr + " ↳ [노 3,650G (+3,650G)]";
+		msg += enterStr + " ↳ [하 8,800G]";
 		
 		/*
 		msg += enterStr ;
@@ -1510,10 +1513,12 @@ public class LoaChatController {
 		msg += allSeeStr ;
 		msg += enterStr + "⭐군단장 레이드⭐";
 		msg += enterStr + "✓어둠-카멘";
-		msg += enterStr + " ↳ 1-3[노 3,200(+3,200)G/하 4,000(+4,000)G]";
-		msg += enterStr + " ↳ 4[하 2,500(+2,500)G]";
+		msg += enterStr + " ↳ 1-3[노 3,200G (+3,200G)]";
+		msg += enterStr + " ↳ 1-3[하 4,000G (+4,000G)]";
+		msg += enterStr + " ↳ 4[하 2,500G (+2,500G)]";
 		msg += enterStr + "✓질병-일리아칸";
-		msg += enterStr + " ↳ 4[노 2,350(+2,350)G/하 3,000(+3,000)G]";
+		msg += enterStr + " ↳ [노 2,350G (+2,350G)]";
+		msg += enterStr + " ↳ [하 3,000G (+3,000G)]";
 		/*
 		msg += enterStr + "✓몽환-아브렐슈드";
 		msg += enterStr + " ↳ 1-3[노 3,000G/하 3,600G]";
@@ -1528,21 +1533,24 @@ public class LoaChatController {
 		msg += enterStr;
 		msg += enterStr + "⭐어비스 던전⭐";
 		msg += enterStr + "✓혼돈의 상아탑";
-		msg += enterStr + " ↳ [노 2,600(+3,600)G/하 3,600(+3,600)G]";
+		msg += enterStr + " ↳ [노 2,600G (+3,600G)]";
+		msg += enterStr + "   [하 3,600G (+3,600G)]";
 		msg += enterStr + "✓카양겔";
-		msg += enterStr + " ↳ [노 1,650(+1,650)G/하 2,150(+2,150)G]";
+		msg += enterStr + " ↳ [노 1,650G (+1,650G)]";
+		msg += enterStr + " ↳ [하 2,150G (+2,150G)]";
 		
 		msg += enterStr;
 		msg += enterStr + "⭐싱글 모드⭐";
-		msg += enterStr + "✓에키드나 [3,650(+3,650)G]";
-		msg += enterStr + "✓카멘 [3,200(+3,200)G]";
-		msg += enterStr + "✓상아탑 [2,600(+2,600)G]";
-		msg += enterStr + "✓일리아칸 [2,350(+2,350)G]";
-		msg += enterStr + "✓카양겔 [1,650(+1,650)G]";
-		msg += enterStr + "✓아브렐슈드 [2,300(+2,300)G]";
-		msg += enterStr + "✓쿠크세이튼 [1,500(+1,500)G]";
-		msg += enterStr + "✓비아키스 [800(+800)G]";
-		msg += enterStr + "✓발탄 [600(+600)G]";
+		msg += enterStr + "✓에기르 [7,750G (+7,750G)]";
+		msg += enterStr + "✓에키드나 [3,650G (+3,650G)]";
+		msg += enterStr + "✓카멘 [3,200G( +3,200G)]";
+		msg += enterStr + "✓상아탑 [2,600G (+2,600G)]";
+		msg += enterStr + "✓일리아칸 [2,350G (+2,350G)]";
+		msg += enterStr + "✓카양겔 [1,650G (+1,650G)]";
+		msg += enterStr + "✓아브렐슈드 [2,300G (+2,300G)]";
+		msg += enterStr + "✓쿠크세이튼 [1,500G (+1,500G)]";
+		msg += enterStr + "✓비아키스 [800G (+800G)]";
+		msg += enterStr + "✓발탄 [600G (+600G)]";
 		/*
 		msg += enterStr + "싱글모드..▼ "+ allSeeStr;
 		msg += enterStr + "발탄 600G";
