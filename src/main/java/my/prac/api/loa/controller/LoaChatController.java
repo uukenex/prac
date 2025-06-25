@@ -2010,7 +2010,7 @@ public class LoaChatController {
 		}
 		
 		//템/전/원
-		String itemMaxLevel = armoryProfile.get("ItemMaxLevel").toString();
+		String itemAvgLevel = armoryProfile.get("ItemAvgLevel").toString();
 		String characterLevel = armoryProfile.get("CharacterLevel").toString();
 		String expeditionLevel = armoryProfile.get("ExpeditionLevel").toString();
 		String className = armoryProfile.get("CharacterClassName").toString();
@@ -2018,6 +2018,11 @@ public class LoaChatController {
 		String title = "";
 		if(armoryProfile.get("Title")!=null) {
 			title=armoryProfile.get("Title").toString();
+		}
+		
+		String combatPower ="";
+		if(armoryProfile.get("CombatPower") != null) {
+			combatPower = armoryProfile.get("CombatPower").toString();
 		}
 
 		//공/생
@@ -2362,13 +2367,13 @@ public class LoaChatController {
 		
 		
 		int tier = 3;
-		if(Double.parseDouble(itemMaxLevel.replaceAll(",", ""))>=1640) {
+		if(Double.parseDouble(itemAvgLevel.replaceAll(",", ""))>=1640) {
 			tier = 4;
 		}
 		if(!characterImage.equals("")) {
 			resMsg += charImgSearch(ordUserId,title,className,characterImage) + anotherMsgStr;
 		}
-		resMsg += "레벨"    +"　　　 　"+itemMaxLevel+enterStr;
+		resMsg += "레벨"    +"　　　 　"+itemAvgLevel+enterStr;
 		resMsg += "전투/원대"+"　　"+characterLevel+"　/　"+expeditionLevel+enterStr;
 		resMsg += "엘릭/초월"+"　　"+totElixir+"(" + elixirField+")"+" / "+totLimit+enterStr;
 		resMsg += "공격/최생"+"　　"+atk+" / "+life+enterStr;
@@ -2400,7 +2405,7 @@ public class LoaChatController {
 			saveMap.put("charName", ordUserId);
 			resMsg += "캐릭터전투력 : "+ saveMap.get("score");
 			if(!saveMap.get("score").toString().equals("0")) {
-				saveMap.put("lv", Double.parseDouble(itemMaxLevel.replaceAll(",", "")));
+				saveMap.put("lv", Double.parseDouble(itemAvgLevel.replaceAll(",", "")));
 				saveMap.put("targetGb", "2");
 				switch (className) {
 					case "바드":
@@ -2419,6 +2424,11 @@ public class LoaChatController {
 		}catch(Exception e) {
 			System.out.println("전투력 저장만안됨");
 		}
+		
+		if(!combatPower.equals("")) {
+			resMsg += "인게임전투력 : "+ combatPower+enterStr;
+		}
+		
 		
 		resMsg += enterStr;
 		
@@ -2449,7 +2459,7 @@ public class LoaChatController {
 		//아바타 정보 
 		resMsg +=avatarsText;
 		
-		if(Double.parseDouble(itemMaxLevel.replaceAll(",", "")) >= 1600) {
+		if(Double.parseDouble(itemAvgLevel.replaceAll(",", "")) >= 1600) {
 			if(isArkPassive.equals("true")) {
 				resMsg +="§아크패시브 : 사용"+enterStr;
 			}else {
@@ -3188,8 +3198,8 @@ public class LoaChatController {
 		List<HashMap<String, Object>> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<List<Map<String, Object>>>() {});
 		if(rtnMap.isEmpty()) return "";
 		List<HashMap<String, Object>> sortedList = rtnMap.stream()
-				.filter(x->  Double.parseDouble(x.get("ItemMaxLevel").toString().replaceAll(",", "")) >= limitLv)
-				.sorted(Comparator.comparingDouble(x-> Double.parseDouble(x.get("ItemMaxLevel").toString().replaceAll(",", ""))))
+				.filter(x->  Double.parseDouble(x.get("ItemAvgLevel").toString().replaceAll(",", "")) >= limitLv)
+				.sorted(Comparator.comparingDouble(x-> Double.parseDouble(x.get("ItemAvgLevel").toString().replaceAll(",", ""))))
 				.collect(toReversedList());
 		
 		String mainServer = sortedList.get(0).get("ServerName").toString();
@@ -3205,7 +3215,7 @@ public class LoaChatController {
 			if(mainServer.equals(charList.get("ServerName").toString())) {
 				charCnt++;
 				resMsg += "[" + LoaApiUtils.shortClassName(charList.get("CharacterClassName").toString()) + "]";
-				resMsg += "("+charList.get("ItemMaxLevel").toString().replaceAll(",", "")+")";
+				resMsg += "("+charList.get("ItemAvgLevel").toString().replaceAll(",", "")+")";
 				resMsg += charList.get("CharacterName").toString();
 				resMsg += enterStr;
 				
@@ -3213,7 +3223,7 @@ public class LoaChatController {
 				charCnt++;
 				resMsg2 += charList.get("ServerName").toString() + enterStr;
 				resMsg2 += "[" + LoaApiUtils.shortClassName(charList.get("CharacterClassName").toString()) + "]";
-				resMsg2 += "("+charList.get("ItemMaxLevel").toString().replaceAll(",", "")+")";
+				resMsg2 += "("+charList.get("ItemAvgLevel").toString().replaceAll(",", "")+")";
 				resMsg2 += charList.get("CharacterName").toString();
 				resMsg2 += enterStr;
 				
@@ -3252,8 +3262,8 @@ public class LoaChatController {
 		List<HashMap<String, Object>> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<List<Map<String, Object>>>() {});
 		if(rtnMap.isEmpty()) return "";
 		List<HashMap<String, Object>> sortedList = rtnMap.stream()
-				.filter(x->  Double.parseDouble(x.get("ItemMaxLevel").toString().replaceAll(",", "")) >= 1540)
-				.sorted(Comparator.comparingDouble(x-> Double.parseDouble(x.get("ItemMaxLevel").toString().replaceAll(",", ""))))
+				.filter(x->  Double.parseDouble(x.get("ItemAvgLevel").toString().replaceAll(",", "")) >= 1540)
+				.sorted(Comparator.comparingDouble(x-> Double.parseDouble(x.get("ItemAvgLevel").toString().replaceAll(",", ""))))
 				.collect(toReversedList());
 		
 		String mainServer = sortedList.get(0).get("ServerName").toString();
@@ -3269,7 +3279,7 @@ public class LoaChatController {
 			if(mainServer.equals(charList.get("ServerName").toString())) {
 				charCnt++;
 				resMsg += "[" + LoaApiUtils.shortClassName(charList.get("CharacterClassName").toString()) + "]";
-				resMsg += "("+charList.get("ItemMaxLevel").toString().replaceAll(",", "")+")";
+				resMsg += "("+charList.get("ItemAvgLevel").toString().replaceAll(",", "")+")";
 				resMsg += charList.get("CharacterName").toString();
 				resMsg += enterStr;
 				System.out.println(ordUserId+" : "+charCnt + " / "+ sortedList.size());
@@ -3283,7 +3293,7 @@ public class LoaChatController {
 				}
 				
 				
-				if(Double.parseDouble(charList.get("ItemMaxLevel").toString().replaceAll(",", "")) >= 1600) {
+				if(Double.parseDouble(charList.get("ItemAvgLevel").toString().replaceAll(",", "")) >= 1600) {
 					resMsg += miniLimitSearch(resMap,charList.get("CharacterName").toString());
 					resMsg += enterStr;
 				}

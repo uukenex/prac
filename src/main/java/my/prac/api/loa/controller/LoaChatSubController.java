@@ -111,7 +111,7 @@ public class LoaChatSubController {
 			accessoryList2.addAll(acceossory2);
 		}
 		
-		String maxCharLv = armoryProfile.get("ItemMaxLevel").toString().replaceAll(",", "");
+		String maxCharLv = armoryProfile.get("ItemAvgLevel").toString().replaceAll(",", "");
 		/*
 		resMsg += maxCharLv+"Lv" + enterStr;
 		resMsg += msgOfWeapon(weaponList);
@@ -191,11 +191,11 @@ public class LoaChatSubController {
 		List<HashMap<String, Object>> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<List<Map<String, Object>>>() {});
 		if(rtnMap.isEmpty()) return "";
 		List<HashMap<String, Object>> sortedList = rtnMap.stream()
-				.filter(x->  Double.parseDouble(x.get("ItemMaxLevel").toString().replaceAll(",", "")) >= 1540)
-				.sorted(Comparator.comparingDouble(x-> Double.parseDouble(x.get("ItemMaxLevel").toString().replaceAll(",", ""))))
+				.filter(x->  Double.parseDouble(x.get("ItemAvgLevel").toString().replaceAll(",", "")) >= 1540)
+				.sorted(Comparator.comparingDouble(x-> Double.parseDouble(x.get("ItemAvgLevel").toString().replaceAll(",", ""))))
 				.collect(toReversedList());
 		
-		String maxCharLv =sortedList.get(0).get("ItemMaxLevel").toString().replaceAll(",", "");
+		String maxCharLv =sortedList.get(0).get("ItemAvgLevel").toString().replaceAll(",", "");
 		int gradeCnt =0;
 		int gradeCnt_lv=0;
 		int gradeCnt_weapon=0;
@@ -229,7 +229,7 @@ public class LoaChatSubController {
 			}
 			
 			charName = charList.get("CharacterName").toString();
-			charLv =Double.parseDouble(charList.get("ItemMaxLevel").toString().replaceAll(",", "")); 
+			charLv =Double.parseDouble(charList.get("ItemAvgLevel").toString().replaceAll(",", "")); 
 			charClassName = charList.get("CharacterClassName").toString();
 			
 			if(charLv < 1640) {
