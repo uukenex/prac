@@ -2358,16 +2358,22 @@ public class LoaChatController {
 		String arkpoint1="0";
 		String arkpoint2="0";
 		String arkpoint3="0";
+		String arkpoint1Lv="0";
+		String arkpoint2Lv="0";
+		String arkpoint3Lv="0";
 		for(HashMap<String,Object> pt:arkPassivePt) {
 			switch(pt.get("Name").toString()) {
 			case "진화":
 				arkpoint1=pt.get("Value").toString();
+				arkpoint1Lv=pt.get("Description").toString();
 				break;
 			case "깨달음":
 				arkpoint2=pt.get("Value").toString();
+				arkpoint2Lv=pt.get("Description").toString();
 				break;
 			case "도약":
 				arkpoint3=pt.get("Value").toString();
+				arkpoint3Lv=pt.get("Description").toString();
 				break;
 			}
 		}
@@ -2489,16 +2495,19 @@ public class LoaChatController {
 				
 				switch(pt.get("Name").toString()) {
 					case "진화":
-						resMsg +=" / 120";
+						resMsg +=" / 120" +" 　 "+pt.get("Description").toString();
 						break;
 					case "깨달음":
-						resMsg +=" / 101";
+						resMsg +=" / 101" +" 　 "+ pt.get("Description").toString();
 						break;
 					case "도약":
-						resMsg +=" / 70";
+						resMsg +=" / 70" +" 　 "+ pt.get("Description").toString();
 						break;
 				}
 				resMsg +=enterStr;
+				
+				
+				
 			}
 			if(isArkPassive.equals("true")) {
 				resMsg +=enterStr;
