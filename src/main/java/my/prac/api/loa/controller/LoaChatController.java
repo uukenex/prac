@@ -472,7 +472,9 @@ public class LoaChatController {
 						break;
 					default:
 						val  = calendarSearch(0);
-						val += enterStr + enterStr+"내일의 모험섬 더보기..▼"+allSeeStr;
+						val += enterStr + enterStr;
+						val += val += shipSearch();
+						val += enterStr + enterStr +"내일의 모험섬 더보기..▼"+allSeeStr;
 						val += calendarSearch(1);
 						break;
 				}
@@ -1435,6 +1437,7 @@ public class LoaChatController {
 		String retMsg1="";
 		String retMsg2="";
 		String retMsg3="";
+		String retMsg4="";
 		
 		String paramUrl = lostArkAPIurl + "/gamecontents/calendar";
 		
@@ -1458,6 +1461,11 @@ public class LoaChatController {
 					}
 				}
 			}
+			
+			//로웬 등도 추가 예정
+			//if(data_sub_list.get("CategoryName").equals("")) {
+				
+			//}
 		}
 		
 		retMsg1 = enterStr+"[19:30] "+ retMsg1;
