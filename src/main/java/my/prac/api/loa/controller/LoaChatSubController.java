@@ -428,7 +428,7 @@ public class LoaChatSubController {
 	}
 	
 	List<Integer> totalGemCntSearch(Map<String,Object> rtnMap,String userId) throws Exception {
-		String[] gemList = {"멸화","홍염","겁화","작열"};
+		String[] gemList = {"멸화","홍염","겁화","작열","광휘"};
 		List<Integer> equipGemT4List = new ArrayList<>();
 		
 		List<Map<String, Object>> gems;
@@ -466,6 +466,9 @@ public class LoaChatSubController {
 						cnt++;
 						equipGemT4List.add(gemLv);
 					}else if(equipGem.equals(gemList[3])) {
+						cnt++;
+						equipGemT4List.add(gemLv);
+					}else if(equipGem.equals(gemList[4])) {
 						cnt++;
 						equipGemT4List.add(gemLv);
 					}
@@ -861,10 +864,10 @@ public class LoaChatSubController {
 		int cntGem9 = Collections.frequency(gemList, 9);
 		int cntGem8 = Collections.frequency(gemList, 8);
 		int cntGem7 = Collections.frequency(gemList, 7);
-		int cntGem6 = Collections.frequency(gemList, 6);
+		//int cntGem6 = Collections.frequency(gemList, 6);
 		
 		
-		resMsg += "보석(겁작): ";
+		resMsg += "보석(겁작광): ";
 		if(cntGem10>0) {
 			resMsg += "10:"+cntGem10+" ";
 		}
@@ -876,12 +879,12 @@ public class LoaChatSubController {
 		}
 		if(cntGem7>0) {
 			resMsg += "7:"+cntGem7+" ";
-		}
+		}/*
 		if(cntGem6>0) {
 			resMsg += "6:"+cntGem6+" ";
-		}
+		}*/
 		
-		if(cntGem10 == 0 && cntGem9 ==0 && cntGem8 ==0 && cntGem7 ==0 && cntGem6 ==0 ) {
+		if(cntGem10 == 0 && cntGem9 ==0 && cntGem8 ==0 && cntGem7 ==0  ) {
 			resMsg += "장착 보석 없음!";
 		}
 		
@@ -895,7 +898,7 @@ public class LoaChatSubController {
 		int cntGem9 = Collections.frequency(gemList, 9);
 		int cntGem8 = Collections.frequency(gemList, 8);
 		int cntGem7 = Collections.frequency(gemList, 7);
-		int cntGem6 = Collections.frequency(gemList, 6);
+		//int cntGem6 = Collections.frequency(gemList, 6);
 		
 		if(cntGem10>0) {
 			gradeCnt_gem += 220;//270 ~ 170 사이 적정가 6멸5홍기준 
@@ -909,9 +912,9 @@ public class LoaChatSubController {
 		if(cntGem7>0) {
 			gradeCnt_gem += 9*cntGem7;
 		}
-		if(cntGem6>0) {
+		/*if(cntGem6>0) {
 			gradeCnt_gem += 3*cntGem6;
-		}
+		}*/
 		
 		return gradeCnt_gem;
 	}

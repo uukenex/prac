@@ -473,7 +473,7 @@ public class LoaChatController {
 					default:
 						val  = calendarSearch(0);
 						val += enterStr + enterStr;
-						val += val += shipSearch();
+						val += shipSearch();
 						val += enterStr + enterStr +"내일의 모험섬 더보기..▼"+allSeeStr;
 						val += calendarSearch(1);
 						break;
