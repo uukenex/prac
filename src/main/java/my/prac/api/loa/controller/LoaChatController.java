@@ -481,6 +481,39 @@ public class LoaChatController {
 				
 				break;
 				
+			case "/각인":
+			case "/ㄱㅇ":
+				if (param1 != null && !param1.equals("")) {
+					param0="/ㄱㅇ";
+					param1 = param1.trim();
+					
+					replace_param = botService.selectBotWordReplace(reqMap);
+					if(replace_param!=null && !replace_param.equals("")) {
+						param1 = replace_param;
+					}
+					
+					fulltxt = param0+" "+param1;
+					org_fulltxt = fulltxt;
+					reqMap.put("fulltxt", fulltxt);
+					try {
+						//val = supporters(param1);
+						val = engraveSearch(param1);
+						//val+= tossAccount2();
+						
+					} catch (Exception e) {
+						val = errorCodeMng(e,reqMap);
+						val+=enterStr+param1+" 으로 조회됨";
+						
+						HashMap<String,Object> hs = botService.selectIssueCase(reqMap);
+						if(hs !=null && hs.size()>0) {
+							val+= enterStr+hs.get("INSERT_DATE")+ "에 최종조회된 내용 불러오기입니다.";
+							val+= enterStr;
+							val+= hs.get("RES");
+						}
+					}
+				}
+				
+				break;
 			case "/장비":
 			case "/정보":
 			case "/ㅈㅂ":
@@ -1947,6 +1980,53 @@ public class LoaChatController {
 		
 		
 		return "초월합 : " + totLimit + " 엘릭서합 : " + totElixir;
+	}
+	String engraveSearch(String userId) throws Exception{
+		String ordUserId=userId;
+		userId = URLEncoder.encode(userId, "UTF-8");
+		// +는 %2B로 치환한다
+		String paramUrl = lostArkAPIurl + "/characters/" + userId + "/siblings";
+		String returnData = LoaApiUtils.connect_process(paramUrl);
+		
+		String resMsg=ordUserId+enterStr+"원정대 각인" + enterStr+enterStr;
+		
+		List<HashMap<String, Object>> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<List<Map<String, Object>>>() {});
+		if(rtnMap.isEmpty()) return "";
+		
+		List<HashMap<String, Object>> sortedList = rtnMap.stream()
+				.filter(x->  Double.parseDouble(x.get("ItemAvgLevel").toString().replaceAll(",", "")) >= 1540)
+				.sorted(Comparator.comparingDouble(x-> Double.parseDouble(x.get("ItemAvgLevel").toString().replaceAll(",", ""))))
+				.collect(toReversedList());
+		
+		String mainCharName = sortedList.get(0).get("CharacterName").toString();
+		
+		HashMap<String,Object> resMap =new HashMap<>();
+		Map<String, Object> armoryEngraving = new HashMap<>();
+		List<Map<String,Object>> armoryEngraves = new ArrayList<>();
+		List<HashMap<String,Object>> refreshEngraveList = new ArrayList<>();
+		
+		try {
+			armoryEngraving = (Map<String, Object>) resMap.get("ArmoryEngraving");
+		}catch(Exception e){
+		}
+		
+		try {
+			armoryEngraves = (List<Map<String, Object>>) armoryEngraving.get("ArkPassiveEffects");
+			
+			for (Map<String, Object> engrave : armoryEngraves) {
+				HashMap<String,Object> refreshDataMap = LoaApiParser.engraveSelector(engrave.get("Name").toString(), engrave.get("Grade").toString(), engrave.get("Level").toString());
+				if(!refreshEngraveList.contains(refreshDataMap)) {
+					refreshEngraveList.add(refreshDataMap);
+				}
+			}
+			
+		}catch(Exception e){
+		}
+		
+		List<HashMap<String, Object>> engraveUpd = sub.updOfTotEngrave(refreshEngraveList,mainCharName);
+		resMsg += sub.msgOfTotEngrave(engraveUpd);
+		
+		return resMsg;
 	}
 	
 	String newnewEquipSearch(String userId) throws Exception{
