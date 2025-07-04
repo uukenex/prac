@@ -901,16 +901,16 @@ public class LoaChatSubController {
 		//int cntGem6 = Collections.frequency(gemList, 6);
 		
 		if(cntGem10>0) {
-			gradeCnt_gem += 220;//270 ~ 170 사이 적정가 6멸5홍기준 
+			gradeCnt_gem += 210;
 		}
 		if(cntGem9>0) {
-			gradeCnt_gem += 73;
+			gradeCnt_gem += 70;
 		}
 		if(cntGem8>0) {
-			gradeCnt_gem += 25*cntGem8;
+			gradeCnt_gem += 23*cntGem8;
 		}
 		if(cntGem7>0) {
-			gradeCnt_gem += 9*cntGem7;
+			gradeCnt_gem += 8*cntGem7;
 		}
 		/*if(cntGem6>0) {
 			gradeCnt_gem += 3*cntGem6;
