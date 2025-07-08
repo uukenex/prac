@@ -457,6 +457,8 @@ public class LoaChatController {
 					case 2:
 						//화요일엔 다음날 정보 없음
 						val  = calendarSearch(0);
+						val += enterStr+enterStr;
+						val += shipSearch();
 						break;
 					case 3:
 						//수요일 오전엔 정보 없음
