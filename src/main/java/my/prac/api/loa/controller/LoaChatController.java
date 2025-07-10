@@ -2821,6 +2821,7 @@ public class LoaChatController {
 		Collections.sort(equipGemT3CoolList,Collections.reverseOrder());
 		Collections.sort(equipGemT4DealList,Collections.reverseOrder());
 		Collections.sort(equipGemT4CoolList,Collections.reverseOrder());
+		Collections.sort(equipGemT4DualList,Collections.reverseOrder());
 		if(tier ==3) {
 			resMsg += "멸 / 홍　"+"";
 			String tmpMsg1 = equipGemT3DealList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
