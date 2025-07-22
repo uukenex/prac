@@ -313,6 +313,9 @@ public class LoaChatController {
 			case "/중중":
 				passYn = true;
 				break;
+			case "/강화": case "/ㄱㅎ": 
+				val = play.weapon(reqMap);
+				break;
 			case "/ㅊㅅㅂ": case "/출석부": 
 				val = play.attendanceToday(reqMap);
 				break;
@@ -349,7 +352,7 @@ public class LoaChatController {
 			case "/로또": case "/ㄹㄸ":
 				val = lotto();
 				break;
-			case "/궁합": case "/ㄱㅎ":
+			case "/궁합":
 				try {
 					val = loveTest(param1,param2);
 				}catch(Exception e) {

@@ -199,8 +199,8 @@ public class BotServiceImpl implements BotService {
 	public List<HashMap<String,Object>> selectBotPointRankToday(HashMap<String,Object> map){
 		return botDAO.selectBotPointRankToday(map);
 	}
-	public List<HashMap<String,Object>> selectBotPointRank(HashMap<String,Object> map){
-		return botDAO.selectBotPointRank(map);
+	public int selectDailyCheck(HashMap<String,Object> map){
+		return botDAO.selectDailyCheck(map);
 	}
 	public HashMap<String,Object> selectBotPointRankOne(HashMap<String,Object> map){
 		if (map.get("param1") != null && !map.get("param1").equals("")) {
@@ -385,5 +385,37 @@ public class BotServiceImpl implements BotService {
 		}
 	}
 	
+	public HashMap<String,Object> selectBotPointWeapon(HashMap<String,Object> map) throws Exception{
+		int firstTry = botDAO.selectCntBotPointWeapon(map);
+		if(firstTry ==0) {
+			if(botDAO.insertBotPointWeapon(map) < 1) {
+				throw new Exception("저장 실패");
+			}
+		}
+		
+		return botDAO.selectBotPointWeapon(map);
+	}
+	
+	
+	
+	public HashMap<String,Object> upsertDailyWeaponUpgradeTx(HashMap<String,Object> map) throws Exception{
+		
+		if(botDAO.insertBotPointRank(map) < 1) {
+			throw new Exception("저장 실패");
+		}
+		
+		if(botDAO.insertBotPointWeaponLog(map) < 1) {
+			throw new Exception("저장 실패");
+		}
+		
+		if(botDAO.updateBotPointWeapon(map) < 1) {
+			throw new Exception("저장 실패");
+		}
+		
+		
+		return null;
+		
+		
+	}
 	
 }

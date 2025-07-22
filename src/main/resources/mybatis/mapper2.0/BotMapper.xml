@@ -600,20 +600,14 @@
 		     ORDER BY SUM(A.SCORE) DESC) B
 	</select>
 	
-	<select id="selectBotPointRank" parameterType="HashMap" resultType="HashMap">
-			SELECT B.*
-			  FROM (SELECT A.USER_NAME AS USER_NAME
-					      ,SUM(A.SCORE) AS SCORE
-					  FROM TBOT_POINT_RANK A
-				     WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
-					   <if test="cmd != null and cmd != '' ">
-					   AND CMD = #{cmd, jdbcType=VARCHAR}
-					   AND INSERT_DATE BETWEEN TRUNC(SYSDATE) AND TRUNC(SYSDATE)+1 
-					   </if>
-					   AND upper(A.USER_NAME) = upper(#{userName, jdbcType=VARCHAR})
-					   AND A.INSERT_DATE> TO_DATE('20250701','yyyymmdd')						   
-		     GROUP BY A.USER_NAME
-		     ORDER BY SUM(A.SCORE) DESC) B
+	<select id="selectDailyCheck" parameterType="HashMap" resultType="int">
+			  SELECT COUNT(1)
+			    FROM TBOT_POINT_RANK A
+		       WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+			     AND CMD = #{cmd, jdbcType=VARCHAR}
+			     AND INSERT_DATE BETWEEN TRUNC(SYSDATE) AND TRUNC(SYSDATE)+1 
+			     AND upper(A.USER_NAME) = upper(#{userName, jdbcType=VARCHAR})
+			     AND A.INSERT_DATE> TO_DATE('20250701','yyyymmdd')
 	</select>
 	
 	<select id="selectBotPointRankNewScore" parameterType="HashMap" resultType="HashMap">
@@ -900,5 +894,62 @@
 			  ,#{cmd, jdbcType=VARCHAR})
 		
 	</insert>
+	
+	<select id="selectCntBotPointWeapon" parameterType="HashMap" resultType="int">
+		SELECT COUNT(1)
+		  FROM TBOT_POINT_WEAPON
+		 WHERE USER_NAME = #{userName, jdbcType=VARCHAR}
+		   AND ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+	</select>
+	
+	<select id="selectBotPointWeapon" parameterType="HashMap" resultType="HashMap">
+		SELECT WEAPON_LV
+			  ,FAIL_PCT
+		  FROM TBOT_POINT_WEAPON
+		 WHERE USER_NAME = #{userName, jdbcType=VARCHAR}
+		   AND ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+	</select>
+	
+	<insert id="insertBotPointWeapon" parameterType="HashMap">
+		INSERT INTO TBOT_POINT_WEAPON
+			 (USER_NAME
+			 ,ROOM_NAME
+			 ,WEAPON_LV
+			 ,FAIL_PCT
+			 ,INSERT_DATE
+			 ,MODIFY_DATE)
+		VALUES
+			 (#{userName, jdbcType=VARCHAR}
+			 ,#{roomName, jdbcType=VARCHAR}
+			 ,0
+			 ,0
+			 ,SYSDATE
+			 ,SYSDATE)
+	</insert>
+	<insert id="insertBotPointWeaponLog" parameterType="HashMap">
+		INSERT INTO TBOT_POINT_WEAPON_LOG
+			 (USER_NAME
+			 ,ROOM_NAME
+			 ,TRY_LV
+			 ,SUCCESS_YN
+			 ,ADD_PCT
+			 ,INSERT_DATE)
+		VALUES
+			 (#{userName, jdbcType=VARCHAR}
+			 ,#{roomName, jdbcType=VARCHAR}
+			 ,#{tryLv, jdbcType=NUMERIC}
+			 ,#{successYn, jdbcType=VARCHAR} 
+			 ,#{addPct, jdbcType=NUMERIC}
+			 ,SYSDATE)
+	</insert>
+	<update id="updateBotPointWeapon" parameterType="HashMap">
+		UPDATE TBOT_POINT_WEAPON
+		   SET WEAPON_LV   = #{weaponLv, jdbcType=NUMERIC}
+			  ,FAIL_PCT    = #{failPct, jdbcType=NUMERIC}
+			  ,MODIFY_DATE = SYSDATE
+		 WHERE USER_NAME = #{userName, jdbcType=VARCHAR}
+		   AND ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+	</update>
+	
 	
 </mapper>

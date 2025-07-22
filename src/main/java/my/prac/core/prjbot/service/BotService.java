@@ -61,7 +61,7 @@ public interface BotService {
 	public List<HashMap<String,Object>> selectBotPointRankToday(HashMap<String,Object> map);
 	public HashMap<String,Object> selectBotPointRankOne(HashMap<String,Object> map);
 	public List<HashMap<String,Object>> selectBotPointRankAll(HashMap<String,Object> map);
-	public List<HashMap<String,Object>> selectBotPointRank(HashMap<String,Object> map);
+	public int selectDailyCheck(HashMap<String,Object> map);
 	public List<HashMap<String,Object>> selectBotPointRankNewScore(HashMap<String,Object> map);
 	/** fight */
 	public List<HashMap<String,Object>> selectBotPointRankFightBeforeCheck(HashMap<String,Object> map);
@@ -88,6 +88,10 @@ public interface BotService {
 	/** 강화 */
 	//only 출첵
 	public void insertBotPointStoneTx(HashMap<String,Object> map)  throws Exception;
+	
+	public HashMap<String,Object> selectBotPointWeapon(HashMap<String,Object> map) throws Exception;
+	public HashMap<String,Object> upsertDailyWeaponUpgradeTx(HashMap<String,Object> map) throws Exception;
+	
 }
 
 	
