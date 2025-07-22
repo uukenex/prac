@@ -110,7 +110,7 @@ public interface BotDAO {
 	public int insertBotPointWeaponLog(HashMap<String,Object> map);
 	public int updateBotPointWeapon(HashMap<String,Object> map);
 	
-	
+	public List<HashMap<String,Object>> selectBotPointWeaponRank(HashMap<String,Object> map);
 	
 	
 }

@@ -418,4 +418,7 @@ public class BotServiceImpl implements BotService {
 		
 	}
 	
+	public List<HashMap<String,Object>> selectBotPointWeaponRank(HashMap<String,Object> map){
+		return botDAO.selectBotPointWeaponRank(map);
+	}
 }

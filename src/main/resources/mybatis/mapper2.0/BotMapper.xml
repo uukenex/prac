@@ -951,5 +951,14 @@
 		   AND ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 	</update>
 	
-	
+	<select id="selectBotPointWeaponRank" parameterType="HashMap" resultType="HashMap"> 
+		SELECT A.USER_NAME AS USER_NAME
+			  ,A.WEAPON_LV || '단계 (' || FAIL_PCT || '%)' as GRADE
+		  FROM TBOT_POINT_WEAPON A
+		 WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+		   AND A.MODIFY_DATE > SYSDATE - 7
+		 ORDER BY A.WEAPON_LV  DESC
+			     ,A.FAIL_PCT DESC
+		
+	</select>
 </mapper>

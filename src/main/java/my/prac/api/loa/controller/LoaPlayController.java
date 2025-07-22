@@ -814,10 +814,10 @@ public class LoaPlayController {
 		map.put("cmd", "weapon_upgrade");
 		map.put("score",0);
 		if(!dailyCheck(map)) {
-			return map.get("userName")+"님 오늘의 강화 완료!";
+			return map.get("userName")+" 님, 오늘의 강화 완료!";
 		}
 		
-		String msg = map.get("userName")+"님";
+		String msg = map.get("userName")+" 님,"+enterStr;
 		
 		HashMap<String, Object> now;
 		int lv;
