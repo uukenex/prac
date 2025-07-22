@@ -33,7 +33,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -42,10 +41,8 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import my.prac.core.dto.Message;
 import my.prac.core.prjbot.service.BotService;
 import my.prac.core.util.ChatGPTUtils;
-import my.prac.core.util.FixedSizeMessageQueue;
 import my.prac.core.util.GeminiUtils;
 import my.prac.core.util.ImageUtils;
 import my.prac.core.util.LoaApiParser;
@@ -315,6 +312,9 @@ public class LoaChatController {
 				break;
 			case "/강화": case "/ㄱㅎ": 
 				val = play.weapon(reqMap);
+				break;
+			case "/강화2": case "/ㄱㅎ2": 
+				val = play.weapon2(reqMap);
 				break;
 			case "/강화랭킹": case "/ㄱㅎㄹㅋ": 
 				List<HashMap<String,Object>> weapon_map = botService.selectBotPointWeaponRank(reqMap);

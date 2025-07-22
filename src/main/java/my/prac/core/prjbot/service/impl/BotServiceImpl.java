@@ -400,8 +400,12 @@ public class BotServiceImpl implements BotService {
 	
 	public HashMap<String,Object> upsertDailyWeaponUpgradeTx(HashMap<String,Object> map) throws Exception{
 		
-		if(botDAO.insertBotPointRank(map) < 1) {
-			throw new Exception("저장 실패");
+		//매일출섹 무기업그레이드 시에만 0점으로 넣고
+		//추가강화는 컨트롤러에서 insert함
+		if(map.get("cmd").equals("weapon_upgrade")) {
+			if(botDAO.insertBotPointRank(map) < 1) {
+				throw new Exception("저장 실패");
+			}
 		}
 		
 		if(botDAO.insertBotPointWeaponLog(map) < 1) {

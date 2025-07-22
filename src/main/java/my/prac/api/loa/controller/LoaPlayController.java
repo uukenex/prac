@@ -813,11 +813,44 @@ public class LoaPlayController {
 	String weapon(HashMap<String,Object> map) {
 		map.put("cmd", "weapon_upgrade");
 		map.put("score",0);
-		if(!dailyCheck(map)) {
-			return map.get("userName")+" 님, 오늘의 강화 완료!";
-		}
 		
 		String msg = map.get("userName")+" 님,"+enterStr;
+		
+		if(!dailyCheck(map)) {
+			return map.get("userName")+" 님, 오늘의 강화 완료!"+enterStr + "/강화2 : 20p 소모해서 강화 1회 진행가능!";
+		}
+		msg += weapon_upgrade_logic(map);
+		msg += enterStr + map.get("extra_msg");
+		return msg;
+	}
+	//추가강화
+	String weapon2(HashMap<String,Object> map) {
+		map.put("cmd", "weapon_upgrade2");
+		
+		String msg = map.get("userName")+" 님,"+enterStr;
+		try {
+			List<HashMap<String,Object>> ls = botService.selectBotPointRankNewScore(map);
+			int score = Integer.parseInt(ls.get(0).get("SCORE").toString());
+			int defaultScore = 20;
+			if(score < defaultScore) {
+				return map.get("userName")+" 님, "+defaultScore+" p 이상만 가능합니다.";
+			}
+			map.put("score", -defaultScore);
+			int new_score = botService.insertBotPointRankTx(map);
+			
+			msg += defaultScore+"p 사용! .. "+score + "p → "+ new_score+"p"+enterStr;
+		}catch(Exception e) {
+			return "강화2 포인트조회 오류입니다.";
+		}
+		
+		msg += weapon_upgrade_logic(map);
+		
+		return msg;
+	}
+	
+	
+	public String weapon_upgrade_logic(HashMap<String,Object> map) {
+		String msg="";
 		
 		HashMap<String, Object> now;
 		int lv;
@@ -830,7 +863,7 @@ public class LoaPlayController {
 			
 			msg +=" "+ lv + "lv → "+(lv+1)+"lv 강화 시도"+enterStr+enterStr;
 		} catch (Exception e1) {
-			return "강화정보 부족";
+			return "강화 검색 오류";
 		}
 		
 		
@@ -880,15 +913,9 @@ public class LoaPlayController {
 				
 			}
 			botService.upsertDailyWeaponUpgradeTx(map);
-			
-			msg += enterStr + map.get("extra_msg");
-			
 		} catch (Exception e) {
 			msg ="강화중 에러발생";
 		}
-		
-		
-		
 		
 		return msg;
 	}
