@@ -37,7 +37,7 @@ public class LoaPlayController {
 		
 		switch(map.get("cmd").toString()) {
 			case "weapon_upgrade":
-				if(check_val <= 5 ) {
+				if((check_val+1) <= 5 ) {
 					map.put("extra_msg", (check_val+1)+"회 시도, 5회까지 가능 이벤트 ing!!");
 					check = true;
 				}
