@@ -1318,6 +1318,13 @@ public class LoaChatController {
 					val = "단어초기화 완료!";
 				} 
 				break;
+			case "/차단":
+				masterYn = botService.selectBotWordSaveMasterCnt(reqMap);
+				if (masterYn > 0) {
+					botService.blockBotPointRankTx(reqMap);
+					val = "차단 완료!";
+				} 
+				break;	
 			case "/단어제거": case "/단어삭제":
 				try {
 					if (fulltxt.indexOf("=") < 0) {

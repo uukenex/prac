@@ -425,4 +425,11 @@ public class BotServiceImpl implements BotService {
 	public List<HashMap<String,Object>> selectBotPointWeaponRank(HashMap<String,Object> map){
 		return botDAO.selectBotPointWeaponRank(map);
 	}
+	
+	public void blockBotPointRankTx(HashMap<String,Object> map) throws Exception {
+		map.put("cmd", "block");
+		if(botDAO.insertBotPointRank(map) < 1) {
+			throw new Exception("저장 실패");
+		}
+	}
 }

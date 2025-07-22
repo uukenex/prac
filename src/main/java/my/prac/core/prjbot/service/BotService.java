@@ -92,6 +92,9 @@ public interface BotService {
 	public HashMap<String,Object> selectBotPointWeapon(HashMap<String,Object> map) throws Exception;
 	public HashMap<String,Object> upsertDailyWeaponUpgradeTx(HashMap<String,Object> map) throws Exception;
 	public List<HashMap<String,Object>> selectBotPointWeaponRank(HashMap<String,Object> map);
+	
+	//차단기능
+	public void blockBotPointRankTx(HashMap<String, Object> hashMap)  throws Exception;
 }
 
 	
