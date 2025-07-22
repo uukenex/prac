@@ -845,7 +845,7 @@ public class LoaPlayController {
 		        map.put("tryLv", lv+1); // 현재 레벨+1 (시도레벨)
 		        map.put("weaponLv", lv+1); // 현재 레벨+1 (성공레벨)
 		        
-		        msg += (lv+1) +" 단계 강화 성공!"+enterStr;	
+		        msg += (lv+1) +" 단계 강화 ⭐성공⭐!"+enterStr;	
 		        msg += "성공률 : "+"100%"+enterStr;	
 		        msg += "장인의기운이 초기화 되었습니다."+enterStr;
 			}else {
@@ -860,10 +860,10 @@ public class LoaPlayController {
 			        map.put("tryLv", lv+1); // 현재 레벨+1 (시도레벨)
 			        map.put("weaponLv", lv+1); // 현재 레벨+1 (성공레벨)
 			        
-			        msg += (lv+1) +" 단계 강화 성공!"+enterStr;	
+			        msg += (lv+1) +" 단계 강화 ⭐성공⭐!"+enterStr;	
 			        msg += "성공률 : "+successRate+"%"+enterStr;	
-			        msg += "장인의기운 "+failAdd+"%"+enterStr;			        
-			        msg += "장인의기운이 초기화 되었습니다."+enterStr;			        
+			        msg += "장인의기운이 초기화 되었습니다."+enterStr+enterStr;			        
+			        msg += "누적되었던 장인의기운 "+failPct+"%"+enterStr;			        
 			    } else {
 			        map.put("successYn", "0");
 			        map.put("failPct", failPct + failAdd); // 실패 시 누적 증가
@@ -872,7 +872,7 @@ public class LoaPlayController {
 			        map.put("weaponLv", lv); // 현재 레벨+1 (실패레벨)
 			        
 			        
-				    msg += (lv+1) + " 단계 강화 실패!"+enterStr;		
+				    msg += (lv+1) + " 단계 강화 ☂실패☂!"+enterStr;		
 				    msg += "성공률 : "+successRate+"%"+enterStr;
 				    msg += "장인의기운 +"+failAdd+"%"+enterStr;	
 			        msg += "현재 장인의기운: "+(failPct + failAdd)+"%"+enterStr;	
