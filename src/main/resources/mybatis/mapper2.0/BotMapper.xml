@@ -553,6 +553,17 @@
 			     AND UPPER(A.USER_NAME) = UPPER(#{newUserName, jdbcType=VARCHAR}) 
 			     AND A.INSERT_DATE> TO_DATE('20250701','yyyymmdd')
 			  ) AS VALID_YN
+			,(
+				SELECT CASE
+						   WHEN COUNT(1) > 0 THEN
+						    1
+						   ELSE
+						    0
+					   END AS BLOCK_YN
+				  FROM TBOT_BLOCK A
+				 WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+			       AND UPPER(A.USER_NAME) = UPPER(#{newUserName, jdbcType=VARCHAR}) 
+			  ) AS BLOCK_YN
 			,(SELECT '야구획득 포인트: ' || NVL(SUM(A.SCORE),0)||' p' 
 		        FROM TBOT_POINT_RANK A
 		       WHERE A.CMD = 'baseball_e'
@@ -579,7 +590,11 @@
 				       AND A.INSERT_DATE> TO_DATE('20250701','yyyymmdd')
 				     GROUP BY A.USER_NAME
 				     HAVING 1 = CASE
-									 WHEN MAX(A.INSERT_DATE) >= TRUNC(SYSDATE) - 3 THEN
+				      				 WHEN EXISTS (SELECT 1
+												    FROM TBOT_BLOCK B
+												   WHERE B.USER_NAME = A.USER_NAME) THEN
+									  0
+									 WHEN MAX(A.INSERT_DATE) >= TRUNC(SYSDATE) - 15 THEN
 									  1
 									 ELSE
 									  0
@@ -691,6 +706,9 @@
 			     WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 				   AND upper(A.USER_NAME) IN ( upper(#{param1, jdbcType=VARCHAR}),upper(#{userName, jdbcType=VARCHAR}))
 				   AND A.INSERT_DATE> TO_DATE('20250701','yyyymmdd')
+				   AND NOT EXISTS (SELECT *
+								     FROM TBOT_BLOCK C
+								    WHERE UPPER(C.USER_NAME) = upper(#{param1, jdbcType=VARCHAR}) )
 			     GROUP BY A.USER_NAME
 			    
 			     ORDER BY SUM(A.SCORE) DESC) B
@@ -709,6 +727,9 @@
 		   <if test="cmd != null and cmd == 'fight_e' ">
    		   AND upper(A.TARGET_NAME) = upper(#{userName, jdbcType=VARCHAR})
    		   </if>
+   		   AND NOT EXISTS (SELECT *
+						     FROM TBOT_BLOCK C
+						    WHERE UPPER(C.USER_NAME) = upper(#{param1, jdbcType=VARCHAR}) )
 	</select>
 	
 	<insert id="insertBotPointFightS" parameterType="HashMap" >
@@ -759,6 +780,9 @@
 		  FROM TBOT_POINT_RANK A
 		 WHERE upper(A.USER_NAME) LIKE upper(#{param1, jdbcType=VARCHAR}) || '%'
 		   AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+		   AND NOT EXISTS (SELECT *
+		                     FROM TBOT_BLOCK C
+		                    WHERE UPPER(C.USER_NAME) = upper(#{param1, jdbcType=VARCHAR}) )
 		 GROUP BY A.USER_NAME
 			  ,A.ROOM_NAME
 	     HAVING 1 = CASE
@@ -961,4 +985,13 @@
 			     ,A.FAIL_PCT DESC
 		
 	</select>
+	
+	<insert id="insertBotBlock" parameterType="HashMap"> 
+		INSERT INTO TBOT_BLOCK
+			 (USER_NAME
+			 ,ROOM_NAME)
+		VALUES
+			 (#{userName, jdbcType=VARCHAR}
+			 ,#{roomName, jdbcType=VARCHAR})
+	</insert>
 </mapper>

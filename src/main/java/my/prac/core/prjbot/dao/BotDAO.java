@@ -111,7 +111,9 @@ public interface BotDAO {
 	public int updateBotPointWeapon(HashMap<String,Object> map);
 	
 	public List<HashMap<String,Object>> selectBotPointWeaponRank(HashMap<String,Object> map);
-	
+
+	//차단기능
+	public int insertBotBlock(HashMap<String,Object> map);
 	
 }
 

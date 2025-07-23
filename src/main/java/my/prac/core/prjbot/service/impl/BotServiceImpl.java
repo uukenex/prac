@@ -214,7 +214,10 @@ public class BotServiceImpl implements BotService {
 		
 		HashMap<String,Object> result = botDAO.selectBotPointRankOne(map);
 		
-		if(result.get("VALID_YN").equals("0")) {
+		if(result.get("VALID_YN").toString().equals("0")) {
+			return null;
+		}
+		if(result.get("BLOCK_YN").toString().equals("1")) {
 			return null;
 		}
 		
@@ -426,9 +429,8 @@ public class BotServiceImpl implements BotService {
 		return botDAO.selectBotPointWeaponRank(map);
 	}
 	
-	public void blockBotPointRankTx(HashMap<String,Object> map) throws Exception {
-		map.put("cmd", "block");
-		if(botDAO.insertBotPointRank(map) < 1) {
+	public void insertBotBlockTx(HashMap<String,Object> map) throws Exception {
+		if(botDAO.insertBotBlock(map) < 1) {
 			throw new Exception("저장 실패");
 		}
 	}

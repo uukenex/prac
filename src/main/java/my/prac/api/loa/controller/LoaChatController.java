@@ -1321,7 +1321,7 @@ public class LoaChatController {
 			case "/차단":
 				masterYn = botService.selectBotWordSaveMasterCnt(reqMap);
 				if (masterYn > 0) {
-					botService.blockBotPointRankTx(reqMap);
+					botService.insertBotBlockTx(reqMap);
 					val = "차단 완료!";
 				} 
 				break;	
