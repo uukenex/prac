@@ -592,7 +592,8 @@
 				     HAVING 1 = CASE
 				      				 WHEN EXISTS (SELECT 1
 												    FROM TBOT_BLOCK B
-												   WHERE B.USER_NAME = A.USER_NAME) THEN
+												   WHERE B.USER_NAME = A.USER_NAME
+												     AND B.ROOM_NAME = A.ROOM_NAME) THEN
 									  0
 									 WHEN MAX(A.INSERT_DATE) >= TRUNC(SYSDATE) - 15 THEN
 									  1
@@ -708,7 +709,8 @@
 				   AND A.INSERT_DATE> TO_DATE('20250701','yyyymmdd')
 				   AND NOT EXISTS (SELECT *
 								     FROM TBOT_BLOCK C
-								    WHERE UPPER(C.USER_NAME) = upper(#{param1, jdbcType=VARCHAR}) )
+								    WHERE UPPER(C.USER_NAME) = upper(#{param1, jdbcType=VARCHAR})
+								      AND C.ROOM_NAME = A.ROOM_NAME )
 			     GROUP BY A.USER_NAME
 			    
 			     ORDER BY SUM(A.SCORE) DESC) B
@@ -729,7 +731,9 @@
    		   </if>
    		   AND NOT EXISTS (SELECT *
 						     FROM TBOT_BLOCK C
-						    WHERE UPPER(C.USER_NAME) = upper(#{param1, jdbcType=VARCHAR}) )
+						    WHERE UPPER(C.USER_NAME) = upper(#{param1, jdbcType=VARCHAR})
+						      AND C.ROOM_NAME = A.ROOM_NAME
+						     )
 	</select>
 	
 	<insert id="insertBotPointFightS" parameterType="HashMap" >
@@ -782,7 +786,9 @@
 		   AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 		   AND NOT EXISTS (SELECT *
 		                     FROM TBOT_BLOCK C
-		                    WHERE UPPER(C.USER_NAME) = upper(#{param1, jdbcType=VARCHAR}) )
+		                    WHERE UPPER(C.USER_NAME) = upper(#{param1, jdbcType=VARCHAR}) 
+		                      AND C.ROOM_NAME = A.ROOM_NAME
+		                    )
 		 GROUP BY A.USER_NAME
 			  ,A.ROOM_NAME
 	     HAVING 1 = CASE
@@ -980,7 +986,11 @@
 			  ,A.WEAPON_LV || '단계 (' || FAIL_PCT || '%)' as GRADE
 		  FROM TBOT_POINT_WEAPON A
 		 WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
-		   AND A.MODIFY_DATE > SYSDATE - 7
+		   AND A.MODIFY_DATE > SYSDATE - 15
+		   AND NOT EXISTS (SELECT *
+							 FROM TBOT_BLOCK C
+						    WHERE UPPER(C.USER_NAME) = UPPER(A.USER_NAME)
+						      AND C.ROOM_NAME = A.ROOM_NAME)
 		 ORDER BY A.WEAPON_LV  DESC
 			     ,A.FAIL_PCT DESC
 		
