@@ -52,6 +52,28 @@ public class LoaPlayController {
 		
 	}
 	
+	boolean weaponBonusCheck(HashMap<String,Object> map) {
+		int check_val = botService.selectDailyCheck(map);
+		boolean check = false;
+		
+		switch(map.get("cmd").toString()) {
+			case "weapon_upgrade":
+				if((check_val+1) <= 5 ) {
+					map.put("extra_msg", (check_val+1)+"회 시도, 5회까지 가능 이벤트 ing!!");
+					check = true;
+				}
+				break;
+			default:
+				if(check_val == 0 ) {
+					check = true;
+				}
+		}
+		
+		return check;
+		
+	}
+	
+	
 	String testMethod(HashMap<String,Object> map) {
 		String str="★☆♥♠♣♦✓✔✖☑☀☁☂☃☕☎✉☘⚠☠☯⚡❄❌✅"
 				+"	♥, ♠, ♣, ♦, ⚠, ☀, ☁ ♛ ✪";
@@ -91,7 +113,6 @@ public class LoaPlayController {
 		int score = random.nextInt(10)+1;
 		int new_score=0;
 		map.put("score",score);
-		
 		
 		try {
 			new_score = botService.insertBotPointRankTx(map);
@@ -908,7 +929,13 @@ public class LoaPlayController {
 				    msg += (lv+1) + " 단계 강화 ☂실패☂!"+enterStr;		
 				    msg += "성공률 : "+successRate+"%"+enterStr;
 				    msg += "장인의기운 +"+failAdd+"%"+enterStr;	
-			        msg += "현재 장인의기운: "+(failPct + failAdd)+"%"+enterStr;	
+				    
+				    
+				    if(failPct+failAdd > 100) {
+				    	msg += "현재 장인의기운: 100%"+enterStr;
+				    }else {
+				    	msg += "현재 장인의기운: "+(failPct + failAdd)+"%"+enterStr;	
+				    }
 			    }
 				
 			}

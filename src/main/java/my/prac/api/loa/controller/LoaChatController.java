@@ -317,6 +317,10 @@ public class LoaChatController {
 				val = play.weapon2(reqMap);
 				break;
 			case "/강화랭킹": case "/ㄱㅎㄹㅋ": 
+				
+				val = "전체 방 강화랭킹 1등: "+botService.selectBotPointWeaponRank1st()+enterStr+enterStr;
+				
+				
 				List<HashMap<String,Object>> weapon_map = botService.selectBotPointWeaponRank(reqMap);
 				val +=roomName+" 강화랭킹"+enterStr;
 				for(int i =0;i<weapon_map.size();i++) {

@@ -1004,4 +1004,16 @@
 			 (#{userName, jdbcType=VARCHAR}
 			 ,#{roomName, jdbcType=VARCHAR})
 	</insert>
+	
+	<select id="selectBotPointWeaponRank1st" resultType="String">
+		SELECT A.WEAPON_LV || '단계 (' || FAIL_PCT || '%)' as GRADE
+		  FROM (SELECT *
+				FROM TBOT_POINT_WEAPON 
+			    WHERE WEAPON_LV = (SELECT MAX(WEAPON_LV)
+								FROM TBOT_POINT_WEAPON)
+			    ORDER BY FAIL_PCT DESC) A
+		 WHERE ROWNUM = 1
+		
+	</select>
+	
 </mapper>

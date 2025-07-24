@@ -104,14 +104,16 @@ public interface BotDAO {
 	/** 강화 */
 	//출첵시 지급 강화석
 	public int insertBotPointStone(HashMap<String,Object> map);
+	
 	public int selectCntBotPointWeapon(HashMap<String,Object> map);
 	public HashMap<String,Object> selectBotPointWeapon(HashMap<String,Object> map);
+	
 	public int insertBotPointWeapon(HashMap<String,Object> map);
 	public int insertBotPointWeaponLog(HashMap<String,Object> map);
 	public int updateBotPointWeapon(HashMap<String,Object> map);
 	
 	public List<HashMap<String,Object>> selectBotPointWeaponRank(HashMap<String,Object> map);
-
+	public String selectBotPointWeaponRank1st();
 	//차단기능
 	public int insertBotBlock(HashMap<String,Object> map);
 	
