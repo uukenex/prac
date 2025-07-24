@@ -588,7 +588,7 @@
 					  FROM TBOT_POINT_RANK A
 				     WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 				       AND A.INSERT_DATE> TO_DATE('20250701','yyyymmdd')
-				     GROUP BY A.USER_NAME
+				     GROUP BY A.USER_NAME,A.ROOM_NAME
 				     HAVING 1 = CASE
 				      				 WHEN EXISTS (SELECT 1
 												    FROM TBOT_BLOCK B
@@ -711,7 +711,7 @@
 								     FROM TBOT_BLOCK C
 								    WHERE UPPER(C.USER_NAME) = upper(#{param1, jdbcType=VARCHAR})
 								      AND C.ROOM_NAME = A.ROOM_NAME )
-			     GROUP BY A.USER_NAME
+			     GROUP BY A.USER_NAME,A.ROOM_NAME
 			    
 			     ORDER BY SUM(A.SCORE) DESC) B
 	</select>
