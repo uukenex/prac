@@ -919,8 +919,11 @@ public class LoaPlayController {
 			        msg += "장인의기운이 초기화 되었습니다."+enterStr+enterStr;			        
 			        msg += "누적되었던 장인의기운 "+failPct+"%"+enterStr;			        
 			    } else {
+			    	double sum = failPct + failAdd;
+			    	double sumPct = Math.round(sum * 100.0) / 100.0; 
+			    	
 			        map.put("successYn", "0");
-			        map.put("failPct", failPct + failAdd); // 실패 시 누적 증가
+			        map.put("failPct", sumPct); // 실패 시 누적 증가
 			        map.put("addPct", failAdd); // 실패 시 누적 증가(로그테이블)
 			        map.put("tryLv", lv+1); // 현재 레벨+1 (시도레벨)
 			        map.put("weaponLv", lv); // 현재 레벨+1 (실패레벨)
@@ -934,7 +937,7 @@ public class LoaPlayController {
 				    if(failPct+failAdd > 100) {
 				    	msg += "현재 장인의기운: 100%"+enterStr;
 				    }else {
-				    	msg += "현재 장인의기운: "+(failPct + failAdd)+"%"+enterStr;	
+				    	msg += "현재 장인의기운: "+sumPct+"%"+enterStr;	
 				    }
 			    }
 				
