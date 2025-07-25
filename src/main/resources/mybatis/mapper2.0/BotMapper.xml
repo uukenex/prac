@@ -1016,4 +1016,11 @@
 		
 	</select>
 	
+	<select id="selectWeaponLvCheck" parameterType="HashMap" resultType="int">
+		SELECT NVL(SUM(A.WEAPON_LV), 0)
+		  FROM TBOT_POINT_WEAPON A
+		 WHERE USER_NAME = #{userName, jdbcType=VARCHAR}
+		   AND ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+	</select>
+	
 </mapper>

@@ -341,6 +341,9 @@ public class LoaChatController {
 							break;
 					}
 					val += weapon_map.get(i).get("USER_NAME")+ " : "+weapon_map.get(i).get("GRADE")+enterStr ;
+					if(i==3) {
+						val += allSeeStr;
+					}
 				}
 				break;
 			case "/ㅊㅅㅂ": case "/출석부": 
@@ -1040,13 +1043,16 @@ public class LoaChatController {
 				fulltxt = fulltxt.substring(param0.length()).trim();
 				val = geminiSearch(fulltxt,sender);
 				break;
-			case "/챗":
+			case "/챗": 
+			case "/ㅊ": 
+			case "/대화": 
+			case "/ㅊㅌ": 
 				fulltxt = fulltxt.substring(param0.length()).trim();
 				if(fulltxt.length()!=0) {
 					val = ai.search(fulltxt,roomName,sender);
 					val = val.replaceAll("\\\"", "\"");;
 					val = val.replaceAll("\n", enterStr);
-			        val = cutByBytesAndInsertMarker(val, 600, allSeeStr);
+			        //val = cutByBytesAndInsertMarker(val, 600, allSeeStr);
 				}
 				break;
 			case "/ㄱㅁㅈ":

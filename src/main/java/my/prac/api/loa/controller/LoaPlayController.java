@@ -52,25 +52,18 @@ public class LoaPlayController {
 		
 	}
 	
-	boolean weaponBonusCheck(HashMap<String,Object> map) {
-		int check_val = botService.selectDailyCheck(map);
-		boolean check = false;
+	int weaponBonusForFight(HashMap<String,Object> map) {
+		HashMap<String,Object> targetMap = new HashMap<>();
+		targetMap.put("roomName", map.get("roomName"));
+		targetMap.put("userName", map.get("param1"));
 		
-		switch(map.get("cmd").toString()) {
-			case "weapon_upgrade":
-				if((check_val+1) <= 5 ) {
-					map.put("extra_msg", (check_val+1)+"회 시도, 5회까지 가능 이벤트 ing!!");
-					check = true;
-				}
-				break;
-			default:
-				if(check_val == 0 ) {
-					check = true;
-				}
-		}
-		
-		return check;
-		
+		int grade0 = botService.selectWeaponLvCheck(map);
+		int grade1 = botService.selectWeaponLvCheck(targetMap);
+
+		int bonus0 = (grade0 >= 11) ? (grade0 - 10) : 0;  // 내 보너스
+	    int bonus1 = (grade1 >= 11) ? (grade1 - 10) : 0;  // 상대 보너스
+
+	    return bonus0 - bonus1;  // 보너스 차이
 	}
 	
 	
@@ -229,11 +222,22 @@ public class LoaPlayController {
 			return "오류발생";
 		}
 		
+		int diff = weaponBonusForFight(map);
+		
+		String extraMsg="";
+		
+		if(diff != 0) {
+			extraMsg+=enterStr + enterStr + Math.abs(diff)+"강화 차이로 인한 승률보정!";
+			extraMsg+=enterStr + newMap.get(0).get("USER_NAME") +" " +(50+diff) + " : " + (50-diff)+" "+newMap.get(1).get("USER_NAME");
+		}
+		
+		
 		return userName + " 님의 결투신청!"+enterStr +
 				"**결투포인트: "+score+enterStr+enterStr+
 				map.get("param1")+ " 님, 결투를 받으시려면"+enterStr+
-				" /저스트가드 입력 (60sec)";
+				" /저스트가드 입력 (60sec)"+extraMsg;
 	}
+	
 	String fight_e(HashMap<String,Object> map) {
 		map.put("cmd", "fight_e");
 		String userName;
@@ -320,9 +324,12 @@ public class LoaPlayController {
 		main_user_point_org = main_user_point;
 		 sub_user_point_org =  sub_user_point;
 		
+		int diff = weaponBonusForFight(map);
+		int baseWinRate = 50 + diff;	
+		 
 		Random random = new Random(); // 랜덤객체
-		int number = random.nextInt(100)%2;
-		if(number==1) {
+		int number = random.nextInt(100);
+		if(number < baseWinRate) {
 			//main이 이기는 로직
 			winner_name = main_user_name;
 			loser_name = sub_user_name;
@@ -346,7 +353,8 @@ public class LoaPlayController {
 		}
 		return winner_name+" 님, 승리"+enterStr
 				+main_user_name +" : "+main_user_point_org+" → "+ main_user_point +" p"+enterStr
-				+ sub_user_name +" : "+ sub_user_point_org+" → "+  sub_user_point +" p"+enterStr;
+				+ sub_user_name +" : "+ sub_user_point_org+" → "+  sub_user_point +" p"+enterStr
+				+"승률보정 "+main_user_name+" "+(50 + diff)+" : "+""+(50 - diff)+" "+sub_user_name;
 	}
 	
 	String eventApply(HashMap<String,Object> map) {
@@ -934,7 +942,7 @@ public class LoaPlayController {
 				    msg += "장인의기운 +"+failAdd+"%"+enterStr;	
 				    
 				    
-				    if(failPct+failAdd > 100) {
+				    if(sum > 100) {
 				    	msg += "현재 장인의기운: 100%"+enterStr;
 				    }else {
 				    	msg += "현재 장인의기운: "+sumPct+"%"+enterStr;	
