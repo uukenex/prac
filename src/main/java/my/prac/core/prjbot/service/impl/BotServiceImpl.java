@@ -239,6 +239,10 @@ public class BotServiceImpl implements BotService {
 		
 		return botDAO.selectBotPointRankFightBeforeCheck(map);
 	}
+	public List<HashMap<String,Object>> selectBotPointRankFightBeforeCheck2(HashMap<String,Object> map){
+		return botDAO.selectBotPointRankFightBeforeCheck2(map);
+	}
+	
 	public List<HashMap<String,Object>> selectBotPointFight(HashMap<String,Object> map){
 		return botDAO.selectBotPointFight(map);
 	}

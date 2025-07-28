@@ -715,6 +715,40 @@
 			    
 			     ORDER BY SUM(A.SCORE) DESC) B
 	</select>
+	<select id="selectBotPointRankFightBeforeCheck2" parameterType="HashMap" resultType="HashMap">
+		/* selectBotPointRankFightBeforeCheck2 */
+		SELECT 
+		    p1 || ' : ' || p2 AS RESULT
+		  FROM (
+		    SELECT 
+		       #{userName, jdbcType=VARCHAR} || ' ' || (SELECT COUNT(*) FROM TBOT_POINT_FIGHT
+		         WHERE CMD = 'fight_s'
+		           AND ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+		           AND COMPLETE_YN = '1'
+		           AND INSERT_DATE > TO_DATE('20250701','YYYYMMDD')
+		           AND INSERT_DATE BETWEEN SYSDATE - 30 AND SYSDATE
+		           AND upper(WINNER_NAME) = upper(#{param1, jdbcType=VARCHAR})
+		           AND (
+		               (UPPER(USER_NAME) = UPPER(#{param1, jdbcType=VARCHAR}) AND UPPER(TARGET_NAME) = UPPER(#{userName, jdbcType=VARCHAR}))
+		            OR (UPPER(USER_NAME) = UPPER(#{userName, jdbcType=VARCHAR}) AND UPPER(TARGET_NAME) = UPPER(#{param1, jdbcType=VARCHAR}))
+		           )
+		        ) AS p1,
+		
+		        (SELECT COUNT(*) FROM TBOT_POINT_FIGHT
+		         WHERE CMD = 'fight_s'
+		           AND ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+		           AND COMPLETE_YN = '1'
+		           AND INSERT_DATE > TO_DATE('20250701','YYYYMMDD')
+		           AND INSERT_DATE BETWEEN SYSDATE - 30 AND SYSDATE
+		           AND upper(WINNER_NAME) = upper(#{param1, jdbcType=VARCHAR})
+		           AND (
+		               (UPPER(USER_NAME) = UPPER(#{param1, jdbcType=VARCHAR}) AND UPPER(TARGET_NAME) = UPPER(#{userName, jdbcType=VARCHAR}))
+		            OR (UPPER(USER_NAME) = UPPER(#{userName, jdbcType=VARCHAR}) AND UPPER(TARGET_NAME) = UPPER(#{param1, jdbcType=VARCHAR}))
+		           )
+		        ) || ' ' || #{param1, jdbcType=VARCHAR} AS p2
+		    FROM DUAL
+		)
+	</select>
 	
 	<select id="selectBotPointFight" parameterType="HashMap" resultType="HashMap">
 		SELECT A.SEQ,A.SCORE,A.TARGET_NAME,A.USER_NAME

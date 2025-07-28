@@ -222,6 +222,17 @@ public class LoaPlayController {
 			return "오류발생";
 		}
 		
+		
+		List<HashMap<String,Object>> newMap2= botService.selectBotPointRankFightBeforeCheck2(map);
+		String newMsg ="";
+		try {
+			newMsg = enterStr+enterStr+"최근 30일간 결투전적"+enterStr+newMap2.get(0).get("RESULT").toString(); 
+		}catch(Exception e) {
+			System.out.println(e.toString());
+		}
+		
+		
+		
 		int diff = weaponBonusForFight(map);
 		
 		String extraMsg="";
@@ -235,7 +246,9 @@ public class LoaPlayController {
 		return userName + " 님의 결투신청!"+enterStr +
 				"**결투포인트: "+score+enterStr+enterStr+
 				map.get("param1")+ " 님, 결투를 받으시려면"+enterStr+
-				" /저스트가드 입력 (60sec)"+extraMsg;
+				" /저스트가드 입력 (60sec)"
+				+newMsg
+				+extraMsg;
 	}
 	
 	String fight_e(HashMap<String,Object> map) {
@@ -351,10 +364,17 @@ public class LoaPlayController {
 		} catch (Exception e1) {
 			
 		}
+		
+		String extraMsg="";
+		if(diff != 0) {
+			extraMsg+=enterStr + enterStr + Math.abs(diff)+"강화 차이로 인한 승률보정!";
+			extraMsg+=enterStr + newMap.get(0).get("USER_NAME") +" " +(50+diff) + " : " + (50-diff)+" "+newMap.get(1).get("USER_NAME");
+		}
+		
 		return winner_name+" 님, 승리"+enterStr
 				+main_user_name +" : "+main_user_point_org+" → "+ main_user_point +" p"+enterStr
 				+ sub_user_name +" : "+ sub_user_point_org+" → "+  sub_user_point +" p"+enterStr
-				+"승률보정 "+main_user_name+" "+(50 + diff)+" : "+""+(50 - diff)+" "+sub_user_name;
+				+ extraMsg;
 	}
 	
 	String eventApply(HashMap<String,Object> map) {
