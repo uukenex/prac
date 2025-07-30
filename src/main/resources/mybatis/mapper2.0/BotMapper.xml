@@ -500,42 +500,43 @@
 		         AND UPPER(A.USER_NAME) = UPPER(#{newUserName, jdbcType=VARCHAR})
 		         AND A.INSERT_DATE> TO_DATE('20250701','yyyymmdd')
 		       GROUP BY A.USER_NAME ) AS TOT
-			,(SELECT '출석획득 포인트: ' || NVL(SUM(A.SCORE), 0) || ' p♬오늘출석: ' || DECODE(MAX(TO_CHAR(A.INSERT_DATE, 'mmdd')), TO_CHAR(SYSDATE, 'mmdd'), '완료', '미완료')
+			,(SELECT '출석: ' || NVL(SUM(A.SCORE), 0) || ' p (' ||
+           			 DECODE(MAX(TO_CHAR(A.INSERT_DATE, 'mmdd')), TO_CHAR(SYSDATE, 'mmdd'), '완료', '미완료') || ')'
 				FROM TBOT_POINT_RANK A
 			   WHERE A.CMD = 'attendance'
 				 AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 				 AND upper(A.USER_NAME) = upper(#{newUserName, jdbcType=VARCHAR})
 				 AND A.INSERT_DATE> TO_DATE('20250701','yyyymmdd')
 				  ) AS ATTENDANCE
-		    ,(SELECT '주사위획득 포인트: '||NVL(SUM(A.SCORE),0) || ' p'
+		    ,(SELECT '주사위: '||NVL(SUM(A.SCORE),0) || ' p'
 				FROM TBOT_POINT_RANK A
 			   WHERE A.CMD in ( 'diceRoll','diceReroll')
 				 AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 				 AND upper(A.USER_NAME) = upper(#{newUserName, jdbcType=VARCHAR})
 				 AND A.INSERT_DATE> TO_DATE('20250701','yyyymmdd')
 				  ) AS DICE
-		    ,(SELECT '결투획득 포인트: '||NVL(SUM(A.SCORE),0) || ' p'
+		    ,(SELECT '결투: '||NVL(SUM(A.SCORE),0) || ' p'
 				FROM TBOT_POINT_RANK A
 		       WHERE A.CMD = 'fight_e'
 				 AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 				 AND upper(A.USER_NAME) = upper(#{newUserName, jdbcType=VARCHAR})
 				 AND A.INSERT_DATE> TO_DATE('20250701','yyyymmdd')
 				  ) AS FIGHT_SUM
-			,(SELECT '결투전적(승/패): '|| COUNT(A.SCORE)
+			,(SELECT '('|| COUNT(A.SCORE) ||'승'
 				FROM TBOT_POINT_RANK A
 			   WHERE A.CMD = 'fight_e'
 				 AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 				 AND upper(A.USER_NAME) = upper(#{newUserName, jdbcType=VARCHAR})
 				 AND A.INSERT_DATE> TO_DATE('20250701','yyyymmdd')
 				 AND A.SCORE > 0) AS FIGHT_WIN
-			,(SELECT '/'||COUNT(A.SCORE)
+			,(SELECT '/'||COUNT(A.SCORE)||'패)'
 				FROM TBOT_POINT_RANK A
 			   WHERE A.CMD = 'fight_e'
 				 AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 				 AND upper(A.USER_NAME) = upper(#{newUserName, jdbcType=VARCHAR})
 				 AND A.INSERT_DATE> TO_DATE('20250701','yyyymmdd')
 				 AND A.SCORE &lt; 0) AS FIGHT_LOSE
-			,(SELECT '뽑기획득 포인트: ' || SUM(A.SCORE)||' p'
+			,(SELECT '뽑기: ' || SUM(A.SCORE)||' p'
 				FROM TBOT_POINT_RANK A
 			    WHERE A.CMD = 'gamble_s2'
 				 AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
@@ -564,20 +565,33 @@
 				 WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 			       AND UPPER(A.USER_NAME) = UPPER(#{newUserName, jdbcType=VARCHAR}) 
 			  ) AS BLOCK_YN
-			,(SELECT '야구획득 포인트: ' || NVL(SUM(A.SCORE),0)||' p' 
+			,(SELECT '야구: ' || NVL(SUM(A.SCORE),0)||' p' 
 		        FROM TBOT_POINT_RANK A
 		       WHERE A.CMD = 'baseball_e'
 		         AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 		         AND UPPER(A.USER_NAME) = UPPER(#{newUserName, jdbcType=VARCHAR})
 		         AND A.INSERT_DATE> TO_DATE('20250701','yyyymmdd')
 		         AND A.SCORE > 0) AS BASEBALL_WIN
-		    ,(SELECT '야구사용 포인트: ' || NVL(SUM(A.SCORE),0)||' p' 
+		    ,(SELECT '야구: ' || NVL(SUM(A.SCORE),0)||' p' 
 		        FROM TBOT_POINT_RANK A
 		       WHERE A.CMD = 'baseball_s'
 		         AND A.ROOM_NAME =  #{roomName, jdbcType=VARCHAR}
 		         AND UPPER(A.USER_NAME) = UPPER(#{newUserName, jdbcType=VARCHAR})
 		         AND A.INSERT_DATE> TO_DATE('20250701','yyyymmdd')
 		         AND A.SCORE &lt; 0) AS BASEBALL_USE
+		    ,(SELECT '무기 강화: +' || NVL(MAX(A.WEAPON_LV), 0)
+			    FROM TBOT_POINT_WEAPON A
+			   WHERE ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+			     AND UPPER(USER_NAME) = UPPER(#{newUserName, jdbcType=VARCHAR})
+			     AND INSERT_DATE > TO_DATE('20250701','yyyymmdd')
+			 ) AS WEAPON
+			,(SELECT '(소모: ' || ABS(NVL(SUM(A.SCORE), 0)) || 'p)'
+			    FROM TBOT_POINT_RANK A
+			   WHERE ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+			     AND UPPER(USER_NAME) = UPPER(#{newUserName, jdbcType=VARCHAR})
+			     AND A.CMD = 'weapon_upgrade2'
+			     AND INSERT_DATE > TO_DATE('20250701','yyyymmdd')
+			 ) AS WEAPON_USE
 		  FROM DUAL
 	</select>
 	

@@ -971,14 +971,40 @@ public class LoaChatController {
 				if(point_map_one == null) {
 					return "";
 				}
-				val += point_map_one.get("TOT")+ enterStr+ enterStr+
-					   point_map_one.get("ATTENDANCE")+ enterStr+
-					   point_map_one.get("DICE")+enterStr +
-					   point_map_one.get("GAMBLE_WIN")+enterStr +
-					   //point_map_one.get("BASEBALL_USE")+enterStr +
-					   point_map_one.get("BASEBALL_WIN")+enterStr +
-					   point_map_one.get("FIGHT_SUM")+enterStr +
-					   point_map_one.get("FIGHT_WIN")+point_map_one.get("FIGHT_LOSE")+enterStr ;
+				/*
+				
+				[일어난다람쥐/카단] 님의 포인트 현황
+
+				✅ 보유 포인트: 17p (총 사용: 48p) point_map_one.get("TOT")+ enterStr+ enterStr+
+				🗡️ 무기 강화: +5 (소모: 30p) point_map_one.get("WEAPON")+point_map_one.get("WEAPON_USE")
+
+				📌 출석: 11p / 오늘 미출석 point_map_one.get("ATTENDANCE")
+				🎲 주사위: 1p point_map_one.get("DICE")+enterStr +
+				🎁 뽑기: 25p point_map_one.get("GAMBLE_WIN")+enterStr +
+				⚾ 야구: 0p point_map_one.get("BASEBALL_WIN")+enterStr +
+				⚔️ 결투: 0p (전적: 0승 0패) point_map_one.get("FIGHT_SUM")+point_map_one.get("FIGHT_WIN")+point_map_one.get("FIGHT_LOSE")+enterStr ;
+				
+				
+				
+				
+				현재 포인트: 17 p point_map_one.get("TOT")+ enterStr+ enterStr+
+
+
+				출석획득 포인트: 11 p point_map_one.get("ATTENDANCE")+ enterStr+
+				오늘출석: 미완료
+				주사위획득 포인트: 1 p point_map_one.get("DICE")+enterStr +
+				뽑기획득 포인트: 25 p point_map_one.get("GAMBLE_WIN")+enterStr +
+				야구획득 포인트: 0 p point_map_one.get("BASEBALL_WIN")+enterStr +
+				결투획득 포인트: 0 p point_map_one.get("FIGHT_SUM")+enterStr +
+				결투전적(승/패): 0/0 point_map_one.get("FIGHT_WIN")+point_map_one.get("FIGHT_LOSE")+enterStr ;
+				*/
+				val += "✨"+point_map_one.get("TOT")+ enterStr+ 
+					   "⚔"+point_map_one.get("WEAPON")+point_map_one.get("WEAPON_USE")+enterStr+enterStr+
+					   "⏰"+point_map_one.get("ATTENDANCE")+ enterStr+
+					   "⚅"+point_map_one.get("DICE")+enterStr +
+					   "✧"+point_map_one.get("GAMBLE_WIN")+enterStr +
+					   "⚾"+point_map_one.get("BASEBALL_WIN")+enterStr +
+					   "⚔️"+point_map_one.get("FIGHT_SUM")+point_map_one.get("FIGHT_WIN")+point_map_one.get("FIGHT_LOSE")+enterStr ;
 				
 				break;
 			case "/포인트랭킹": case "/ㅍㅇㅌㄹㅋ":

@@ -52,6 +52,33 @@ public class LoaPlayController {
 		
 	}
 	
+	
+	int weaponBonusForAttendance(HashMap<String,Object> map) {
+		int grade = botService.selectWeaponLvCheck(map);
+		int bonus = 0;
+		if(grade > 10) {
+			bonus = grade-10;
+		}
+		if(bonus > 0) {
+			map.put("extra_msg", "강화보너스 "+bonus+"p 추가");
+		}
+		
+	    return bonus;  
+	}
+	int weaponBonusForDiceRoll(HashMap<String,Object> map) {
+		int grade = botService.selectWeaponLvCheck(map);
+		int bonus = 0;
+		if(grade > 10) {
+			bonus = grade-10;
+		}
+		if(bonus > 0) {
+			map.put("extra_msg", "강화보너스 "+bonus+"p 추가");
+		}
+		
+	    return bonus;  
+	}
+	
+	
 	int weaponBonusForFight(HashMap<String,Object> map) {
 		HashMap<String,Object> targetMap = new HashMap<>();
 		targetMap.put("roomName", map.get("roomName"));
@@ -59,13 +86,12 @@ public class LoaPlayController {
 		
 		int grade0 = botService.selectWeaponLvCheck(map);
 		int grade1 = botService.selectWeaponLvCheck(targetMap);
-
+		
 		int bonus0 = (grade0 >= 11) ? (grade0 - 10) : 0;  // 내 보너스
-	    int bonus1 = (grade1 >= 11) ? (grade1 - 10) : 0;  // 상대 보너스
-
-	    return bonus0 - bonus1;  // 보너스 차이
+		int bonus1 = (grade1 >= 11) ? (grade1 - 10) : 0;  // 상대 보너스
+		
+		return bonus0 - bonus1;  // 보너스 차이
 	}
-	
 	
 	String testMethod(HashMap<String,Object> map) {
 		String str="★☆♥♠♣♦✓✔✖☑☀☁☂☃☕☎✉☘⚠☠☯⚡❄❌✅"
@@ -102,10 +128,17 @@ public class LoaPlayController {
 		if(!dailyCheck(map)) {
 			return map.get("userName")+"님 오늘의 출석 포인트는 이미 획득 했습니다.";
 		}
+		
+		String extraMsg="";
+		int bonus = weaponBonusForAttendance(map);
+		if(bonus>0) {
+			extraMsg+=enterStr+map.get("extra_msg");
+		}
+		
 		Random random = new Random(); // 랜덤객체
 		int score = random.nextInt(10)+1;
 		int new_score=0;
-		map.put("score",score);
+		map.put("score",score+bonus);
 		
 		try {
 			new_score = botService.insertBotPointRankTx(map);
@@ -113,7 +146,8 @@ public class LoaPlayController {
 			return "오류발생";
 		}
 		
-		return map.get("userName")+"님 출석포인트 "+score+"점 획득"+enterStr+"갱신 포인트 : "+new_score;
+		return map.get("userName")+"님 출석포인트 "+score+"점 획득"
+			  +extraMsg + enterStr+"갱신 포인트 : "+new_score;
 	}
 	
 	
@@ -121,6 +155,12 @@ public class LoaPlayController {
 		map.put("cmd", "diceRoll");
 		if(!dailyCheck(map)) {
 			return map.get("userName")+"님 오늘의 주사위 포인트는 이미 획득 했습니다.";
+		}
+		
+		String extraMsg="";
+		int bonus = weaponBonusForAttendance(map);
+		if(bonus>0) {
+			extraMsg+=enterStr+map.get("extra_msg");
 		}
 		
 		Random random = new Random(); // 랜덤객체
@@ -148,16 +188,17 @@ public class LoaPlayController {
 		}
 		
 		try {
-			map.put("score", score);
+			map.put("score", score+bonus);
 			new_score = botService.insertBotPointRankTx(map);
 		} catch (Exception e) {
 			return "오류발생";
 		}
 		
 		
-		String msg = prefix+enterStr+"『"+map.get("userName") + "』 님의 주사위: "+number+" (0~100) "+
-				   enterStr+score+"점 획득"+
-				   enterStr+"갱신 포인트 : "+new_score;
+		String msg = prefix+enterStr+"『"+map.get("userName") + "』 님의 주사위: "+number+" (0~100) "
+				   +enterStr+score+"점 획득"
+				   +extraMsg
+				   +enterStr+"갱신 포인트 : "+new_score;
 		if(new_score < 0) {
 			//msg += enterStr+"＊마이너스 포인트는 오늘의 주사위 한번더!";
 		}
