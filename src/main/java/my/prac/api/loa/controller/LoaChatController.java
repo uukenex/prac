@@ -998,11 +998,11 @@ public class LoaChatController {
 				결투획득 포인트: 0 p point_map_one.get("FIGHT_SUM")+enterStr +
 				결투전적(승/패): 0/0 point_map_one.get("FIGHT_WIN")+point_map_one.get("FIGHT_LOSE")+enterStr ;
 				*/
-				val += "✨"+point_map_one.get("TOT")+ enterStr+ 
+				val += "❤️"+point_map_one.get("TOT")+ enterStr+ 
 					   "⚔"+point_map_one.get("WEAPON")+point_map_one.get("WEAPON_USE")+enterStr+enterStr+
 					   "⏰"+point_map_one.get("ATTENDANCE")+ enterStr+
 					   "⚅"+point_map_one.get("DICE")+enterStr +
-					   "✧"+point_map_one.get("GAMBLE_WIN")+enterStr +
+					   "✨"+point_map_one.get("GAMBLE_WIN")+enterStr +
 					   "⚾"+point_map_one.get("BASEBALL_WIN")+enterStr +
 					   "⚔️"+point_map_one.get("FIGHT_SUM")+point_map_one.get("FIGHT_WIN")+point_map_one.get("FIGHT_LOSE")+enterStr ;
 				
