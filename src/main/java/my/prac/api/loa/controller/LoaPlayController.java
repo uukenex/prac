@@ -280,7 +280,7 @@ public class LoaPlayController {
 		
 		if(diff != 0) {
 			extraMsg+=enterStr + enterStr + Math.abs(diff)+"강화 차이로 인한 승률보정!";
-			extraMsg+=enterStr + newMap.get(0).get("USER_NAME") +" " +(50+diff) + " : " + (50-diff)+" "+newMap.get(1).get("USER_NAME");
+			extraMsg+=enterStr + newMap.get(0).get("USER_NAME") +" " +(50-diff) + " : " + (50+diff)+" "+newMap.get(1).get("USER_NAME");
 		}
 		
 		
@@ -409,7 +409,7 @@ public class LoaPlayController {
 		String extraMsg="";
 		if(diff != 0) {
 			extraMsg+=enterStr + enterStr + Math.abs(diff)+"강화 차이로 인한 승률보정!";
-			extraMsg+=enterStr + newMap.get(0).get("USER_NAME") +" " +(50+diff) + " : " + (50-diff)+" "+newMap.get(1).get("USER_NAME");
+			extraMsg+=enterStr + newMap.get(0).get("USER_NAME") +" " +(50-diff) + " : " + (50+diff)+" "+newMap.get(1).get("USER_NAME");
 		}
 		
 		return winner_name+" 님, 승리"+enterStr
