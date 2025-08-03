@@ -910,7 +910,7 @@ public class LoaPlayController {
 			return map.get("userName")+" 님, 오늘의 강화 완료!"+enterStr + "/강화2 : 20p 소모해서 강화 1회 진행가능!";
 		}
 		msg += weapon_upgrade_logic(map);
-		msg += enterStr + map.get("extra_msg");
+		//msg += enterStr + map.get("extra_msg");
 		return msg;
 	}
 	//추가강화
