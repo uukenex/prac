@@ -1001,9 +1001,9 @@ public class LoaChatController {
 				결투획득 포인트: 0 p point_map_one.get("FIGHT_SUM")+enterStr +
 				결투전적(승/패): 0/0 point_map_one.get("FIGHT_WIN")+point_map_one.get("FIGHT_LOSE")+enterStr ;
 				*/
-				int lv = play.getWeaponLv(reqMap) ;
+				int lv = ( int )point_map_one.get("WEAPON");
 				val += "❤️"+point_map_one.get("TOT")+ enterStr+ 
-					   "⚔"+point_map_one.get("WEAPON")+point_map_one.get("WEAPON_USE")+enterStr+enterStr+
+					   "⚔"+ lv+" lv"+point_map_one.get("WEAPON_USE")+enterStr+enterStr+
 					   "✨"+"공격력: 0~20 + "+lv+"치명타확률 "+(20+lv)+enterStr+
 					   "⏰"+point_map_one.get("ATTENDANCE")+ enterStr+
 					   "⚅"+point_map_one.get("DICE")+enterStr +
