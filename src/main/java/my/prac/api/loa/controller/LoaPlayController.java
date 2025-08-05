@@ -1157,7 +1157,7 @@ public class LoaPlayController {
 	        if (isCritical) {
 	            isKill = true;
 	            score = Math.min(damage, hp);
-	            score += 100;  // 보스 처치 보너스
+	            score = 100;  // 보스 처치 보너스
 	        } else {
 	            // 크리티컬이 아니면 죽지 않음: 체력을 1로 고정
 	            newHp = 1;
@@ -1182,7 +1182,7 @@ public class LoaPlayController {
 	    
 	    String remainMent="";
 	    if (newHp == 1 && !isKill) {
-	        remainMent = "🛡 보스는 체력 1! 치명타로 최후의 일격 날리세요!" +enterStr+"공격 쿨타임 : 1시간";
+	        remainMent = "✨보스는 체력 1! 치명타로 최후의 일격 날리세요!" +enterStr+"공격 쿨타임 : 1시간";
 	    } else if (newHp > max_hp / 2) {
 	        remainMent = (isKill ? " ✨보스를 처치했습니다!" : "✨보스 체력: ???/???"+enterStr+"공격 쿨타임 : 1시간");
 	        			
