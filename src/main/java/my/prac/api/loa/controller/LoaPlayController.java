@@ -1217,8 +1217,8 @@ public class LoaPlayController {
 	    
 	    String msg =  map.get("userName") + "님이 보스를 공격했습니다!"+enterStr
 			         + critMsg + enterStr
+			         + "치명타 확률: " + (int)(criticalChance * 100) + "%"+enterStr
 			         + "입힌 데미지: " + damage + enterStr
-			         + "치명타 확률: " + (int)(criticalChance * 100) + "%"
 			         + remainMent + enterStr
 			         + enterStr
 			         + "획득 포인트: " + score + enterStr
