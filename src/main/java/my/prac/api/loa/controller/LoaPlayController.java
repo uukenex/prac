@@ -1142,29 +1142,47 @@ public class LoaPlayController {
 		}
 
 	   
-	    // 데미지 계산
-	    int baseDamage = new Random().nextInt(10) + weaponLv*2;
-	    boolean isCritical = Math.random() < 0.10;
-	    int damage = isCritical ? baseDamage * 3 : baseDamage;
+		// 데미지 계산
+		int baseDamage = new Random().nextInt(20) + weaponLv;
 
-	    // 포인트 = 데미지
-	    int score = damage;
+		double baseCritical = 0.20; // 기본 20%
+		double weaponBonus = weaponLv * 0.01;
+		double criticalChance = Math.min(baseCritical + weaponBonus, 1.0); // 최대 100%
 
-	    boolean isKill = false;
-	    int newHp = hp - damage;
+		boolean isCritical = Math.random() < criticalChance;
+		boolean isSuperCritical = false;
 
-	    if (newHp <= 0) {
-	        if (isCritical) {
-	            isKill = true;
-	            score = Math.min(damage, hp);
-	            score = 100;  // 보스 처치 보너스
-	        } else {
-	            // 크리티컬이 아니면 죽지 않음: 체력을 1로 고정
-	            newHp = 1;
-	            int allowedDamage = hp - 1;
-	            score = Math.min(damage, allowedDamage);
-	        }
-	    }
+		// 크리티컬이면, 추가로 슈퍼크리티컬 10% 확률 부여
+		if (isCritical) {
+		    isSuperCritical = Math.random() < 0.10;
+		}
+
+		int damage;
+		if (isCritical) {
+		    damage = baseDamage * (isSuperCritical ? 5 : 3);
+		} else {
+		    damage = baseDamage;
+		}
+
+		// 포인트 = 데미지
+		int score = damage;
+
+		boolean isKill = false;
+		int newHp = hp - damage;
+
+		if (newHp <= 0) {
+		    if (isCritical) {
+		        isKill = true;
+		        score = Math.min(damage, hp); // 실제 남은 체력만큼만 점수 지급
+		        score = 100; // 보스 처치 보너스 (고정 포인트)
+		    } else {
+		        // 크리티컬이 아니면 죽지 않음: 체력을 1로 고정
+		        newHp = 1;
+		        int allowedDamage = hp - 1;
+		        score = Math.min(damage, allowedDamage); // 최소 체력 1은 남김
+		        damage = allowedDamage; // 점수와 맞추기 위해 데미지도 조정
+		    }
+		}
 
 	    int new_score=0;
 	    try {
@@ -1190,13 +1208,21 @@ public class LoaPlayController {
 	        remainMent = (isKill ? " ✨보스를 처치했습니다!" : "✨보스 체력: " + newHp + "/" + max_hp + enterStr+"공격 쿨타임 : 1시간");
 	    }
 	    
+	    String critMsg = "";
+	    if (isSuperCritical) {
+	        critMsg = "✨ 초강력 치명타! ✨";
+	    } else if (isCritical) {
+	        critMsg = "✨ 치명타! ";
+	    }
+	    
 	    String msg =  map.get("userName") + "님이 보스를 공격했습니다!"+enterStr
-			         + (isCritical ? " ✨치명타! " : "")
+			         + critMsg + enterStr
 			         + "입힌 데미지: " + damage + enterStr
-			         + "획득 포인트: " + score + enterStr
+			         + "치명타 확률: " + (int)(criticalChance * 100) + "%"
 			         + remainMent + enterStr
 			         + enterStr
-			         +"갱신포인트 : "+new_score;
+			         + "획득 포인트: " + score + enterStr
+			         + "갱신포인트 : "+new_score;
 	    
 	    // 메시지 출력
 	    return msg;
