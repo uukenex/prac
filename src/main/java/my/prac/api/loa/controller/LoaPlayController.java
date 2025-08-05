@@ -1174,7 +1174,7 @@ public class LoaPlayController {
 		    if (isCritical) {
 		        isKill = true;
 		        score = Math.min(damage, hp); // 실제 남은 체력만큼만 점수 지급
-		        score = 100; // 보스 처치 보너스 (고정 포인트)
+		        score += 100; // 보스 처치 보너스 (고정 포인트)
 		    } else {
 		        // 크리티컬이 아니면 죽지 않음: 체력을 1로 고정
 		        newHp = 1;
