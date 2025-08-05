@@ -360,6 +360,9 @@ public class LoaChatController {
 			case "/결투": case "/ㄱㅌ":
 				val = play.fight_s(reqMap);
 				break;
+			case "/공격": case "/ㄱㄱ":
+				val = play.attackBoss(reqMap);
+				break;
 			case "/포인트사용": 
 				val = play.usePoint(reqMap);
 				break;	

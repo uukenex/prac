@@ -1064,4 +1064,34 @@
 		   AND ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 	</select>
 	
+	<select id="selectBossHit" parameterType="HashMap" resultType="HashMap">
+		SELECT A.HP,A.MAX_HP
+		  FROM TBOT_BOSS_HIT A
+		 WHERE ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+		   AND A.END_YN = '0'
+	</select>
+	
+	<update id="updateBossHit" parameterType="HashMap">
+		UPDATE TBOT_BOSS_HIT A
+		   SET A.HP     = #{newHp, jdbcType=NUMERIC}
+			  ,A.END_YN = #{endYn, jdbcType=VARCHAR}
+			  ,A.MODIFY_DATE = SYSDATE
+		 WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+		   AND A.HP = #{hp, jdbcType=NUMERIC}
+		   AND END_YN = '0'
+	</update>
+	
+	<insert id="insertBossHitLog" parameterType="HashMap">
+	   INSERT INTO TBOT_BOSS_HIT_LOG
+		    (ROOM_NAME
+		    ,USER_NAME
+		    ,SCORE
+		    ,END_YN)
+	   VALUES
+		    (#{roomName, jdbcType=VARCHAR}
+		    ,#{userName, jdbcType=VARCHAR}
+		    ,#{score, jdbcType=NUMERIC}
+		    ,#{endYn, jdbcType=NUMERIC})
+	</insert>
+	
 </mapper>

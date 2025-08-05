@@ -446,4 +446,19 @@ public class BotServiceImpl implements BotService {
 		return botDAO.selectWeaponLvCheck(map);
 	}
 	
+	public HashMap<String,Object> selectBossHit(HashMap<String,Object> map) throws Exception{
+		return botDAO.selectBossHit(map);
+	}
+	
+	public void updateBossHitTx(HashMap<String,Object> map) throws Exception {
+		if(botDAO.updateBossHit(map) < 1) {
+			throw new Exception("저장 실패");
+		}
+		if(botDAO.insertBossHitLog(map) < 1) {
+			throw new Exception("저장 실패");
+		}
+		
+		
+	}
+	
 }

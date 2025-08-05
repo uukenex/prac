@@ -77,6 +77,9 @@ public class LoaPlayController {
 		
 	    return bonus;  
 	}
+	int getWeaponLv(HashMap<String,Object> map) {
+		return botService.selectWeaponLvCheck(map);
+	}
 	
 	
 	int weaponBonusForFight(HashMap<String,Object> map) {
@@ -1074,6 +1077,95 @@ public class LoaPlayController {
 	    result.put("successRate", successRate);     // 현재 성공 확률
 	    result.put("failAddPct", failAddPct);       // 실패시 누적 증가량
 	    return result;
+	}
+	
+	
+	public String attackBoss(HashMap<String,Object> map) {
+	    map.put("cmd", "boss_attack");
+	    
+	    // 하루 1회 공격 제한
+	    if (!dailyCheck(map)) {
+	        return map.get("userName") + "님 오늘은 이미 공격했습니다.";
+	    }
+
+		int weaponLv = getWeaponLv(map);
+		// 보스 정보 조회
+		HashMap<String, Object> boss;
+		int hp;
+		int max_hp;
+		try {
+			boss = botService.selectBossHit(map);
+			if (boss != null && boss.get("HP") != null) {
+				// 신규 보스 정보 INSERT
+				hp = Integer.parseInt(boss.get("HP").toString());
+				max_hp = Integer.parseInt(boss.get("MAX_HP").toString());
+			} else {
+				return "현재 보스가 없음!";
+			}
+
+		} catch (Exception e1) {
+			// TODO Auto-generated catch block
+			return "현재 보스가 없음!!";
+		}
+
+	   
+	    // 데미지 계산
+	    int baseDamage = new Random().nextInt(10) + weaponLv*2;
+	    boolean isCritical = Math.random() < 0.10;
+	    int damage = isCritical ? baseDamage * 3 : baseDamage;
+
+	    // 포인트 = 데미지
+	    int score = damage;
+
+	    boolean isKill = false;
+	    int newHp = hp - damage;
+
+	    if (newHp <= 0) {
+	        if (isCritical) {
+	            isKill = true;
+	            score = Math.min(damage, hp);
+	            score += 100;  // 보스 처치 보너스
+	        } else {
+	            // 크리티컬이 아니면 죽지 않음: 체력을 1로 고정
+	            newHp = 1;
+	            int allowedDamage = hp - 1;
+	            score = Math.min(damage, allowedDamage);
+	        }
+	    }
+
+	    int new_score=0;
+	    try {
+	    	map.put("hp", hp);
+		    map.put("newHp", newHp);
+		    map.put("damage", damage);
+		    map.put("score", score);
+		    //map.put("isCritical", isCritical ? "1" : "0");
+		    map.put("endYn", isKill ? "1" : "0");
+		    botService.updateBossHitTx(map); 
+			new_score = botService.insertBotPointRankTx(map);
+		} catch (Exception e) {
+			return "오류발생";
+		}
+	    
+	    String remainMent="";
+	    if (newHp == 1 && !isKill) {
+	        remainMent = "🛡 보스는 체력 1! 치명타로 최후의 일격 날리세요!";
+	    } else if (newHp > max_hp / 2) {
+	        remainMent = (isKill ? " ✨보스를 처치했습니다!" : "✨보스 체력: ???/???");
+	    } else {
+	        remainMent = (isKill ? " ✨보스를 처치했습니다!" : "✨보스 체력: " + newHp + "/" + max_hp);
+	    }
+	    
+	    String msg =  map.get("userName") + "님이 보스를 공격했습니다!"+enterStr
+			         + (isCritical ? " ✨치명타! " : "")
+			         + "입힌 데미지: " + damage + enterStr
+			         + "획득 포인트: " + score + enterStr
+			         + remainMent + enterStr
+			         + enterStr
+			         +"갱신포인트 : "+new_score;;
+	    
+	    // 메시지 출력
+	    return msg;
 	}
 	
 }
