@@ -1,4 +1,5 @@
 package my.prac.api.loa.controller;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -52,6 +53,15 @@ public class LoaPlayController {
 		
 	}
 	boolean hourCheck(HashMap<String,Object> map) {
+		LocalTime now = LocalTime.now();
+		LocalTime start = LocalTime.of(2, 0);     // 00:00
+	    LocalTime end = LocalTime.of(6, 0);        // 08:00
+
+	    if (!now.isBefore(start) && now.isBefore(end)) {
+	        map.put("extra_msg", "현재는 보스가 숨었습니다.공격불가..(02시~06시 불가시간");
+	        return false;
+	    }
+		
 		String check_val = botService.selectHourCheck(map);
 		boolean check = false;
 		
