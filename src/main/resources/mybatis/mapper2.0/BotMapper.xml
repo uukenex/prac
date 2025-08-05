@@ -572,7 +572,7 @@
 		         AND UPPER(A.USER_NAME) = UPPER(#{newUserName, jdbcType=VARCHAR})
 		         AND A.INSERT_DATE> TO_DATE('20250701','yyyymmdd')
 		         AND A.SCORE > 0) AS BASEBALL_WIN
-		    ,(SELECT '무기: +' || NVL(MAX(A.WEAPON_LV), 0)||'Lv'
+		    ,(SELECT NVL(MAX(A.WEAPON_LV), 0)
 			    FROM TBOT_POINT_WEAPON A
 			   WHERE ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 			     AND UPPER(USER_NAME) = UPPER(#{newUserName, jdbcType=VARCHAR})
