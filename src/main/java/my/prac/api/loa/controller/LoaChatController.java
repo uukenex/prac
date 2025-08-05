@@ -360,7 +360,7 @@ public class LoaChatController {
 			case "/결투": case "/ㄱㅌ":
 				val = play.fight_s(reqMap);
 				break;
-			case "/공격": case "/ㄱㄱ":
+			case "/공격": case "/ㄱㄱ": case "보스":
 				val = play.attackBoss(reqMap);
 				break;
 			case "/포인트사용": 
@@ -1003,8 +1003,8 @@ public class LoaChatController {
 				*/
 				int lv = Integer.parseInt(point_map_one.get("WEAPON").toString());
 				val += "❤️"+point_map_one.get("TOT")+ enterStr+ 
-					   "⚔"+"무기: +"+lv+" lv"+point_map_one.get("WEAPON_USE")+enterStr+enterStr+
-					   "✨"+"공격력: 0~20 + "+lv+"(치확: "+(20+lv)+"%)"+enterStr+
+					   "⚔"+"무기: +"+lv+" lv"+point_map_one.get("WEAPON_USE")+enterStr+
+					   "✨"+"공격력: "+(0+lv)+"~"+(20+lv)+" (치확: "+(20+lv)+"%)"+enterStr+enterStr+
 					   "⏰"+point_map_one.get("ATTENDANCE")+ enterStr+
 					   "⚅"+point_map_one.get("DICE")+enterStr +
 					   "✨"+point_map_one.get("GAMBLE_WIN")+enterStr +
