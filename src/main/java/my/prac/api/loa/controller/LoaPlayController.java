@@ -51,6 +51,28 @@ public class LoaPlayController {
 		return check;
 		
 	}
+	boolean hourCheck(HashMap<String,Object> map) {
+		String check_val = botService.selectHourCheck(map);
+		boolean check = false;
+		
+		switch(map.get("cmd").toString()) {
+		/*case "weapon_upgrade":
+				if((check_val+1) <= 5 ) {
+					map.put("extra_msg", (check_val+1)+"회 시도, 5회까지 가능 이벤트 ing!!");
+					check = true;
+				}
+				break;*/
+		default:
+			if(check_val == null ) {
+				check = true;
+			}else {
+				map.put("extra_msg", check_val +" 이후 재시도 가능합니다.");
+			}
+		}
+		
+		return check;
+		
+	}
 	
 	
 	int weaponBonusForAttendance(HashMap<String,Object> map) {
@@ -1083,9 +1105,10 @@ public class LoaPlayController {
 	public String attackBoss(HashMap<String,Object> map) {
 	    map.put("cmd", "boss_attack");
 	    
-	    // 하루 1회 공격 제한
-	    if (!dailyCheck(map)) {
-	        return map.get("userName") + "님 오늘은 이미 공격했습니다.";
+	    // 1시간 1회 공격 제한
+	    if (!hourCheck(map)) {
+	        return map.get("userName") + "님,"
+	              +enterStr+map.get("extra_msg");
 	    }
 
 		int weaponLv = getWeaponLv(map);
@@ -1149,11 +1172,12 @@ public class LoaPlayController {
 	    
 	    String remainMent="";
 	    if (newHp == 1 && !isKill) {
-	        remainMent = "🛡 보스는 체력 1! 치명타로 최후의 일격 날리세요!";
+	        remainMent = "🛡 보스는 체력 1! 치명타로 최후의 일격 날리세요!" +enterStr+"공격 쿨타임 : 1시간";
 	    } else if (newHp > max_hp / 2) {
-	        remainMent = (isKill ? " ✨보스를 처치했습니다!" : "✨보스 체력: ???/???");
+	        remainMent = (isKill ? " ✨보스를 처치했습니다!" : "✨보스 체력: ???/???"+enterStr+"공격 쿨타임 : 1시간");
+	        			
 	    } else {
-	        remainMent = (isKill ? " ✨보스를 처치했습니다!" : "✨보스 체력: " + newHp + "/" + max_hp);
+	        remainMent = (isKill ? " ✨보스를 처치했습니다!" : "✨보스 체력: " + newHp + "/" + max_hp + enterStr+"공격 쿨타임 : 1시간");
 	    }
 	    
 	    String msg =  map.get("userName") + "님이 보스를 공격했습니다!"+enterStr
@@ -1162,7 +1186,7 @@ public class LoaPlayController {
 			         + "획득 포인트: " + score + enterStr
 			         + remainMent + enterStr
 			         + enterStr
-			         +"갱신포인트 : "+new_score;;
+			         +"갱신포인트 : "+new_score;
 	    
 	    // 메시지 출력
 	    return msg;

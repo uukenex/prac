@@ -202,6 +202,9 @@ public class BotServiceImpl implements BotService {
 	public int selectDailyCheck(HashMap<String,Object> map){
 		return botDAO.selectDailyCheck(map);
 	}
+	public String selectHourCheck(HashMap<String,Object> map){
+		return botDAO.selectHourCheck(map);
+	}
 	public HashMap<String,Object> selectBotPointRankOne(HashMap<String,Object> map){
 		if (map.get("param1") != null && !map.get("param1").equals("")) {
 			List<String> newUserName = botDAO.selectParam1ToNewUserSearch(map);

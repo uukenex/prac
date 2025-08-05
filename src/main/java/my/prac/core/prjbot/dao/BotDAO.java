@@ -71,6 +71,7 @@ public interface BotDAO {
 	public List<HashMap<String,Object>> selectBotPointRankAll(HashMap<String,Object> map);
 	public List<HashMap<String,Object>> selectBotPointRankToday(HashMap<String,Object> map);
 	public int selectDailyCheck(HashMap<String,Object> map);
+	public String selectHourCheck(HashMap<String,Object> map);
 	public List<HashMap<String,Object>> selectBotPointRankNewScore(HashMap<String,Object> map);
 	
 	/** fight */
