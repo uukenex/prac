@@ -125,6 +125,7 @@ public interface BotDAO {
 	public HashMap<String,Object> selectBossHit(HashMap<String,Object> map);
 	public int updateBossHit(HashMap<String,Object> map);
 	public int insertBossHitLog(HashMap<String,Object> map);
+	public List<HashMap<String, Object>> selectTop3Contributors(HashMap<String, Object> hashMap);
 	
 }
 

@@ -1193,11 +1193,15 @@ public class LoaPlayController {
 		boolean isKill = false;
 		int newHp = hp - damage;
 
+		String rewardMsg ="";
 		if (newHp <= 0) {
 		    if (isCritical) {
 		        isKill = true;
 		        score = Math.min(damage, hp); // 실제 남은 체력만큼만 점수 지급
 		        score += 100; // 보스 처치 보너스 (고정 포인트)
+		        
+		        map.put("max_hp", max_hp);
+		        rewardMsg = calcBossReward(map); // 🔁 보상 로직 메서드 호출
 		    } else {
 		        // 크리티컬이 아니면 죽지 않음: 체력을 1로 고정
 		        newHp = 1;
@@ -1245,10 +1249,69 @@ public class LoaPlayController {
 			         + remainMent + enterStr
 			         + enterStr
 			         + "획득 포인트: " + score + enterStr
-			         + "갱신포인트 : "+new_score;
+			         + "갱신포인트 : "+new_score
+			         ;
+	    
+	    if(!rewardMsg.equals("")) {
+	    	msg+= anotherMsgStr+rewardMsg;
+	    }
+	    
 	    
 	    // 메시지 출력
 	    return msg;
+	}
+	
+	public String calcBossReward(HashMap<String, Object> map) {
+	    String roomName = (String) map.get("roomName");
+	    int totalReward = Integer.parseInt(map.get("max_hp").toString())/10 ; // 기본 총 보상 포인트
+
+	    List<HashMap<String, Object>> top3List = botService.selectTop3Contributors(map);
+
+	    // 총 데미지 합산
+	    int totalDamage = 0;
+	    for (HashMap<String, Object> row : top3List) {
+	        totalDamage += Integer.parseInt(row.get("SCORE").toString());
+	    }
+
+	    StringBuilder msgBuilder = new StringBuilder();
+	    msgBuilder.append("보스 기여도 보상 분배 결과").append(System.lineSeparator());
+
+	    for (HashMap<String, Object> row : top3List) {
+	        String name = row.get("USER_NAME").toString();
+	        int damage = Integer.parseInt(row.get("SCORE").toString());
+
+	        // 기여도 비율 및 보상 포인트 계산
+	        double ratio = (double) damage / totalDamage;
+	        int reward = (int) Math.floor(totalReward * ratio); // 소수점 버림
+
+	        // 포인트 지급 처리
+	        HashMap<String, Object> rewardMap = new HashMap<>();
+	        rewardMap.put("roomName", roomName);
+	        rewardMap.put("userName", name);
+	        rewardMap.put("score", reward);
+	        rewardMap.put("cmd", "boss_kill_reward");
+
+	        try {
+	            botService.insertBotPointRankTx(rewardMap);
+	        } catch (Exception e) {
+	            // 오류 무시
+	        }
+
+	        // 메시지 작성
+	        String percentStr = String.format("%.2f", ratio * 100); // 백분율 문자열
+	        msgBuilder
+	            .append(name)
+	            .append(" - ")
+	            .append(damage)
+	            .append(" dmg - ")
+	            .append(percentStr)
+	            .append("% - ")
+	            .append(reward)
+	            .append("pt 지급")
+	            .append(System.lineSeparator());
+	    }
+
+	    return msgBuilder.toString();
 	}
 	
 }

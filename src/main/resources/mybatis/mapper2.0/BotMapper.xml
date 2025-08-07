@@ -1076,7 +1076,7 @@
 	</select>
 	
 	<select id="selectBossHit" parameterType="HashMap" resultType="HashMap">
-		SELECT A.HP,A.MAX_HP
+		SELECT A.HP,A.MAX_HP,A.SEQ
 		  FROM TBOT_BOSS_HIT A
 		 WHERE ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 		   AND A.END_YN = '0'
@@ -1089,6 +1089,7 @@
 			  ,A.MODIFY_DATE = SYSDATE
 		 WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 		   AND A.HP = #{hp, jdbcType=NUMERIC}
+		   AND A.SEQ =#{seq, jdbcType=NUMERIC} 
 		   AND END_YN = '0'
 	</update>
 	
@@ -1097,12 +1098,31 @@
 		    (ROOM_NAME
 		    ,USER_NAME
 		    ,SCORE
-		    ,END_YN)
+		    ,END_YN
+		    ,SEQ)
 	   VALUES
 		    (#{roomName, jdbcType=VARCHAR}
 		    ,#{userName, jdbcType=VARCHAR}
 		    ,#{score, jdbcType=NUMERIC}
-		    ,#{endYn, jdbcType=NUMERIC})
+		    ,#{endYn, jdbcType=NUMERIC}
+		    ,#{seq, jdbcType=NUMERIC})
 	</insert>
+	
+	<select id="selectTop3Contributors" parameterType="HashMap" resultType="HashMap">
+		SELECT *
+		  FROM (
+		    SELECT user_name, SUM(score) AS score
+		      FROM tbot_boss_hit_log
+		     WHERE room_name = #{roomName, jdbcType=VARCHAR}
+		       AND seq = (
+		         SELECT MAX(seq)
+		           FROM tbot_boss_hit_log
+		          WHERE room_name = #{roomName, jdbcType=VARCHAR}
+		       )
+		     GROUP BY user_name
+		     ORDER BY total_score DESC
+		  )
+		 WHERE ROWNUM &lt;= 3
+	</select>
 	
 </mapper>
