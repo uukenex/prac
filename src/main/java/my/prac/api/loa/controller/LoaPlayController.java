@@ -1149,12 +1149,14 @@ public class LoaPlayController {
 		HashMap<String, Object> boss;
 		int hp;
 		int max_hp;
+		int seq;
 		try {
 			boss = botService.selectBossHit(map);
 			if (boss != null && boss.get("HP") != null) {
 				// 신규 보스 정보 INSERT
 				hp = Integer.parseInt(boss.get("HP").toString());
 				max_hp = Integer.parseInt(boss.get("MAX_HP").toString());
+				seq = Integer.parseInt(boss.get("SEQ").toString());
 			} else {
 				return "현재 보스가 없음!";
 			}
@@ -1215,6 +1217,7 @@ public class LoaPlayController {
 	    try {
 	    	map.put("hp", hp);
 		    map.put("newHp", newHp);
+		    map.put("seq", seq);
 		    map.put("damage", damage);
 		    map.put("score", score);
 		    //map.put("isCritical", isCritical ? "1" : "0");
