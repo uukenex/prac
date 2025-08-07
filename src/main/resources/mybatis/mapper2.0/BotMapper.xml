@@ -1120,7 +1120,7 @@
 		          WHERE room_name = #{roomName, jdbcType=VARCHAR}
 		       )
 		     GROUP BY user_name
-		     ORDER BY total_score DESC
+		     ORDER BY score DESC
 		  )
 		 WHERE ROWNUM &lt;= 3
 	</select>
