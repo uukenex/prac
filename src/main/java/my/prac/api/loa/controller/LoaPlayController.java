@@ -311,16 +311,27 @@ public class LoaPlayController {
 		
 		int diff = weaponBonusForFight(map);
 		
-		String extraMsg="";
-		
-		if(diff > 0) {
-			extraMsg+=enterStr + enterStr + Math.abs(diff)+"강화 차이로 인한 승률보정!";
-			extraMsg+=enterStr + newMap.get(0).get("USER_NAME") +" " +(50-diff) + " : " + (50+diff)+" "+newMap.get(1).get("USER_NAME");
-		}else if( diff < 0) {
-			extraMsg+=enterStr + enterStr + Math.abs(diff)+"강화 차이로 인한 승률보정!";
-			extraMsg+=enterStr + newMap.get(0).get("USER_NAME") +" " +(50+diff) + " : " + (50-diff)+" "+newMap.get(1).get("USER_NAME");
-		}
-		
+
+		String extraMsg = "";
+
+		if (diff != 0) {
+	        extraMsg += enterStr + enterStr + Math.abs(diff) + "강화 차이로 인한 승률보정!";
+
+	        int userRate = 50;
+	        int targetRate = 50;
+
+	        if (diff > 0) { // userName 강화 우세
+	            userRate = 50 + diff;
+	            targetRate = 50 - diff;
+	        } else { // targetName 강화 우세
+	            userRate = 50 + diff; // diff는 음수
+	            targetRate = 50 - diff;
+	        }
+
+	        targetRate = 100 - userRate;
+
+	        extraMsg += enterStr + userName + " " + userRate + " : " + targetRate + " " + targetName;
+	    }
 		
 		return userName + " 님의 결투신청!"+enterStr +
 				"**결투포인트: "+score+enterStr+enterStr+
@@ -333,7 +344,7 @@ public class LoaPlayController {
 	String fight_e(HashMap<String,Object> map) {
 		map.put("cmd", "fight_e");
 		String userName;
-		String tagetName;
+		String targetName;
 		int score;
 		
 		userName = map.get("userName").toString();
@@ -350,14 +361,14 @@ public class LoaPlayController {
 		try {
 			seq = Integer.parseInt(fightMap.get(0).get("SEQ").toString());
 			userName = fightMap.get(0).get("USER_NAME").toString();
-			tagetName = fightMap.get(0).get("TARGET_NAME").toString();
+			targetName = fightMap.get(0).get("TARGET_NAME").toString();
 			score = Integer.parseInt(fightMap.get(0).get("SCORE").toString());
 		}catch(Exception e) {
 			return userName+" 님, 요청 결투가 없음2!";
 		}
 		map.put("seq", seq);
 		map.put("userName", userName);
-		map.put("param1", tagetName);
+		map.put("param1", targetName);
 		map.put("param2", score);
 		
 		/*
@@ -445,13 +456,25 @@ public class LoaPlayController {
 		}
 		
 		String extraMsg="";
-		if(diff > 0) {
-			extraMsg+=enterStr + enterStr + Math.abs(diff)+"강화 차이로 인한 승률보정!";
-			extraMsg+=enterStr + newMap.get(0).get("USER_NAME") +" " +(50-diff) + " : " + (50+diff)+" "+newMap.get(1).get("USER_NAME");
-		}else if( diff < 0) {
-			extraMsg+=enterStr + enterStr + Math.abs(diff)+"강화 차이로 인한 승률보정!";
-			extraMsg+=enterStr + newMap.get(0).get("USER_NAME") +" " +(50+diff) + " : " + (50-diff)+" "+newMap.get(1).get("USER_NAME");
-		}
+		
+		if (diff != 0) {
+	        extraMsg += enterStr + enterStr + Math.abs(diff) + "강화 차이로 인한 승률보정!";
+
+	        int userRate = 50;
+	        int targetRate = 50;
+
+	        if (diff > 0) { // userName 강화 우세
+	            userRate = 50 + diff;
+	            targetRate = 50 - diff;
+	        } else { // targetName 강화 우세
+	            userRate = 50 + diff; // diff는 음수
+	            targetRate = 50 - diff;
+	        }
+
+	        targetRate = 100 - userRate;
+
+	        extraMsg += enterStr + userName + " " + userRate + " : " + targetRate + " " + targetName;
+	    }
 		
 		
 		return winner_name+" 님, 승리"+enterStr
@@ -1174,7 +1197,7 @@ public class LoaPlayController {
 		    if (isCritical) {
 		        isKill = true;
 		        score = Math.min(damage, hp); // 실제 남은 체력만큼만 점수 지급
-		        score = 100; // 보스 처치 보너스 (고정 포인트)
+		        score += 100; // 보스 처치 보너스 (고정 포인트)
 		    } else {
 		        // 크리티컬이 아니면 죽지 않음: 체력을 1로 고정
 		        newHp = 1;
