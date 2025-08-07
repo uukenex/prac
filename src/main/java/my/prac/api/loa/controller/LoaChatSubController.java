@@ -186,7 +186,7 @@ public class LoaChatSubController {
 		String paramUrl = lostArkAPIurl + "/characters/" + userId + "/siblings";
 		String returnData = LoaApiUtils.connect_process(paramUrl);
 		
-		String resMsg=ordUserId+enterStr+"원정대 전투력 정보 v1.1" + enterStr;
+		String resMsg=ordUserId+enterStr+"원정대 전투력 정보 v1.2" + enterStr;
 		
 		List<HashMap<String, Object>> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<List<Map<String, Object>>>() {});
 		if(rtnMap.isEmpty()) return "";
@@ -605,21 +605,21 @@ public class LoaChatSubController {
 			for (String g : accessoryList) {
 				switch (g) {
 				case "상상":
-					gradeCnt_accessory += 133;
+					gradeCnt_accessory += 170;
 					break;
 				case "상중":
 				case "중상":
-					gradeCnt_accessory += 43;
+					gradeCnt_accessory += 55;
 					break;
 				case "상하":
 				case "하상":
-					gradeCnt_accessory += 14;
+					gradeCnt_accessory += 10;
 					break;
 				case "상":
-					gradeCnt_accessory += 5;
+					gradeCnt_accessory += 4;
 					break;
 				case "중중":
-					gradeCnt_accessory += 6;
+					gradeCnt_accessory += 4;
 					break;
 				case "중하":
 				case "하중":
@@ -901,16 +901,16 @@ public class LoaChatSubController {
 		//int cntGem6 = Collections.frequency(gemList, 6);
 		
 		if(cntGem10>0) {
-			gradeCnt_gem += 210;
+			gradeCnt_gem += 255*cntGem10;
 		}
 		if(cntGem9>0) {
-			gradeCnt_gem += 70;
+			gradeCnt_gem += 89*cntGem9;
 		}
 		if(cntGem8>0) {
-			gradeCnt_gem += 23*cntGem8;
+			gradeCnt_gem += 29*cntGem8;
 		}
 		if(cntGem7>0) {
-			gradeCnt_gem += 8*cntGem7;
+			gradeCnt_gem += 10*cntGem7;
 		}
 		/*if(cntGem6>0) {
 			gradeCnt_gem += 3*cntGem6;
@@ -923,7 +923,7 @@ public class LoaChatSubController {
     	
     	for(int lv:lvList) {
     		if(lv>=1680) {
-    			gradeCnt_lv += 200;
+    			gradeCnt_lv += 40;
     		}
     		if(lv>=1690) {
     			gradeCnt_lv += 70;
@@ -961,7 +961,7 @@ public class LoaChatSubController {
 		int gradeCnt_lv=0;
 		Double lv = Double.parseDouble(maxCharLv);
 		if(lv>=1680) {
-			gradeCnt_lv += 200;
+			gradeCnt_lv += 40;
 		}
 		if(lv>=1690) {
 			gradeCnt_lv += 70;
