@@ -638,7 +638,7 @@
 			    FROM TBOT_POINT_RANK A
 		       WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 			     AND CMD = #{cmd, jdbcType=VARCHAR}
-			     AND INSERT_DATE BETWEEN SYSDATE-1/24 AND TRUNC(SYSDATE)+1
+			     AND INSERT_DATE BETWEEN SYSDATE-15/60/24 AND TRUNC(SYSDATE)+1
 			     AND upper(A.USER_NAME) = upper(#{userName, jdbcType=VARCHAR})
 			     AND A.INSERT_DATE> TO_DATE('20250701','yyyymmdd')
 			     AND ROWNUM=1

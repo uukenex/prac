@@ -1158,17 +1158,17 @@ public class LoaPlayController {
 				max_hp = Integer.parseInt(boss.get("MAX_HP").toString());
 				seq = Integer.parseInt(boss.get("SEQ").toString());
 			} else {
-				return "현재 보스가 없음!";
+				return "";
 			}
 
 		} catch (Exception e1) {
 			// TODO Auto-generated catch block
-			return "현재 보스가 없음!!";
+			return "";
 		}
 
 	   
 		// 데미지 계산
-		int baseDamage = new Random().nextInt(20) + weaponLv;
+		int baseDamage = new Random().nextInt(weaponLv) + 10 +1;
 
 		double baseCritical = 0.20; // 기본 20%
 		double weaponBonus = weaponLv * 0.01;
@@ -1229,13 +1229,15 @@ public class LoaPlayController {
 		}
 	    
 	    String remainMent="";
+	    String coolTimeMent="공격 쿨타임 : 15 Min";
 	    if (newHp == 1 && !isKill) {
-	        remainMent = "✨보스는 체력 1! 치명타로 최후의 일격 날리세요!" +enterStr+"공격 쿨타임 : 1시간";
-	    } else if (newHp > max_hp / 2) {
-	        remainMent = (isKill ? " ✨보스를 처치했습니다!" : "✨보스 체력: ???/???"+enterStr+"공격 쿨타임 : 1시간");
+	        remainMent = "✨보스는 체력 1! 치명타로 최후의 일격 날리세요!" +enterStr+coolTimeMent;
+	    } else if (newHp > max_hp / 10) {
+	    	//10%보다 클때
+	        remainMent = (isKill ? " ✨보스를 처치했습니다!" : "✨보스 체력: ???/???"+enterStr+coolTimeMent);
 	        			
 	    } else {
-	        remainMent = (isKill ? " ✨보스를 처치했습니다!" : "✨보스 체력: " + newHp + "/" + max_hp + enterStr+"공격 쿨타임 : 1시간");
+	        remainMent = (isKill ? " ✨보스를 처치했습니다!" : "✨보스 체력: " + newHp + "/" + max_hp + enterStr+coolTimeMent);
 	    }
 	    
 	    String critMsg = "";
@@ -1267,25 +1269,28 @@ public class LoaPlayController {
 	public String calcBossReward(HashMap<String, Object> map) {
 	    String roomName = (String) map.get("roomName");
 	    int totalReward = Integer.parseInt(map.get("max_hp").toString())/10 ; // 기본 총 보상 포인트
-
+	    int bossMaxHp = Integer.parseInt(map.get("max_hp").toString());
+	    
 	    List<HashMap<String, Object>> top3List = botService.selectTop3Contributors(map);
 
-	    // 총 데미지 합산
-	    int totalDamage = 0;
+	    int totalTop3Damage = 0;
 	    for (HashMap<String, Object> row : top3List) {
-	        totalDamage += Integer.parseInt(row.get("SCORE").toString());
+	        totalTop3Damage += Integer.parseInt(row.get("SCORE").toString());
 	    }
 
 	    StringBuilder msgBuilder = new StringBuilder();
-	    msgBuilder.append("보스 기여도 보상 분배 결과").append(System.lineSeparator());
+	    msgBuilder.append("보스 기여도 보상 분배 결과").append(enterStr);
 
 	    for (HashMap<String, Object> row : top3List) {
 	        String name = row.get("USER_NAME").toString();
 	        int damage = Integer.parseInt(row.get("SCORE").toString());
 
-	        // 기여도 비율 및 보상 포인트 계산
-	        double ratio = (double) damage / totalDamage;
-	        int reward = (int) Math.floor(totalReward * ratio); // 소수점 버림
+	        // 보스 전체 체력 대비 데미지 비율 (%)
+	        double bossRatio = (double) damage / bossMaxHp * 100;
+
+	        // top3 데미지 합 대비 분배 비율
+	        double rewardRatio = (double) damage / totalTop3Damage;
+	        int reward = (int) Math.floor(totalReward * rewardRatio); // 내림처리
 
 	        // 포인트 지급 처리
 	        HashMap<String, Object> rewardMap = new HashMap<>();
@@ -1301,17 +1306,17 @@ public class LoaPlayController {
 	        }
 
 	        // 메시지 작성
-	        String percentStr = String.format("%.2f", ratio * 100); // 백분율 문자열
+	        String percentStr = String.format("%.0f", bossRatio); // 정수 퍼센트
 	        msgBuilder
 	            .append(name)
 	            .append(" - ")
 	            .append(damage)
-	            .append(" dmg - ")
+	            .append(" dmg(")
 	            .append(percentStr)
-	            .append("% - ")
+	            .append("%) - ")
 	            .append(reward)
 	            .append("pt 지급")
-	            .append(System.lineSeparator());
+	            .append(enterStr);
 	    }
 
 	    return msgBuilder.toString();
