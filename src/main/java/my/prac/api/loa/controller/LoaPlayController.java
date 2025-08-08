@@ -1168,7 +1168,7 @@ public class LoaPlayController {
 
 	   
 		// 데미지 계산
-		int baseDamage = new Random().nextInt(weaponLv) + 10 +1;
+		int baseDamage = new Random().nextInt(weaponLv/2) + 5;
 
 		double baseCritical = 0.20; // 기본 20%
 		double weaponBonus = weaponLv * 0.01;

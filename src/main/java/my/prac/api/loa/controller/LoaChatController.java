@@ -1004,7 +1004,7 @@ public class LoaChatController {
 				int lv = Integer.parseInt(point_map_one.get("WEAPON").toString());
 				val += "❤️"+point_map_one.get("TOT")+ enterStr+ 
 					   "⚔"+"무기: +"+lv+" lv"+point_map_one.get("WEAPON_USE")+enterStr+
-					   "✨"+"공격력: "+(1+lv)+"~"+(10+lv)+" (치확: "+(20+lv)+"%)"+enterStr+enterStr+
+					   "✨"+"공격력: "+(1+lv/2)+"~"+(5+lv/2)+" (치확: "+(20+lv)+"%)"+enterStr+enterStr+
 					   "⏰"+point_map_one.get("ATTENDANCE")+ enterStr+
 					   "⚅"+point_map_one.get("DICE")+enterStr +
 					   "✨"+point_map_one.get("GAMBLE_WIN")+enterStr +
