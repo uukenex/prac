@@ -634,7 +634,7 @@
 	</select>
 	
 	<select id="selectHourCheck" parameterType="HashMap" resultType="String">
-			  SELECT TO_CHAR(A.INSERT_DATE+1/24,'PM HH')||'시 ' ||TO_CHAR(A.INSERT_DATE+1/24,'MI')||'분'
+			  SELECT TO_CHAR(A.INSERT_DATE+15/60/24,'PM HH')||'시 ' ||TO_CHAR(A.INSERT_DATE+15/60/24,'MI')||'분'
 			    FROM TBOT_POINT_RANK A
 		       WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 			     AND CMD = #{cmd, jdbcType=VARCHAR}

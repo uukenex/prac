@@ -58,7 +58,7 @@ public class LoaPlayController {
 	    LocalTime end = LocalTime.of(6, 0);        // 08:00
 
 	    if (!now.isBefore(start) && now.isBefore(end)) {
-	        map.put("extra_msg", "현재는 보스가 숨었습니다.공격불가..(02시~06시 불가시간");
+	        map.put("extra_msg", "보스가 어둠에 숨었습니다...공격불가..(02시~06시 불가시간)");
 	        return false;
 	    }
 		
