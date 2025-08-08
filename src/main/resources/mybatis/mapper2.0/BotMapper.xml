@@ -1053,7 +1053,7 @@
 			 (USER_NAME
 			 ,ROOM_NAME)
 		VALUES
-			 (#{userName, jdbcType=VARCHAR}
+			 (#{param1, jdbcType=VARCHAR}
 			 ,#{roomName, jdbcType=VARCHAR})
 	</insert>
 	
