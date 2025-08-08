@@ -1140,129 +1140,130 @@ public class LoaPlayController {
 	    
 	    // 1시간 1회 공격 제한
 	    if (!hourCheck(map)) {
-	        return map.get("userName") + "님,"
-	              +enterStr+map.get("extra_msg");
+	        return map.get("userName") + "님," + enterStr + map.get("extra_msg");
 	    }
 
-		int weaponLv = getWeaponLv(map);
-		// 보스 정보 조회
-		HashMap<String, Object> boss;
-		int hp;
-		int max_hp;
-		int seq;
-		try {
-			boss = botService.selectBossHit(map);
-			if (boss != null && boss.get("HP") != null) {
-				// 신규 보스 정보 INSERT
-				hp = Integer.parseInt(boss.get("HP").toString());
-				max_hp = Integer.parseInt(boss.get("MAX_HP").toString());
-				seq = Integer.parseInt(boss.get("SEQ").toString());
-			} else {
-				return "";
-			}
-
-		} catch (Exception e1) {
-			// TODO Auto-generated catch block
-			return "";
-		}
-
-	   
-		// 데미지 계산
-		int baseDamage = new Random().nextInt(weaponLv/2) + 5;
-
-		double baseCritical = 0.20; // 기본 20%
-		double weaponBonus = weaponLv * 0.01;
-		double criticalChance = Math.min(baseCritical + weaponBonus, 1.0); // 최대 100%
-
-		boolean isCritical = Math.random() < criticalChance;
-		boolean isSuperCritical = false;
-
-		// 크리티컬이면, 추가로 슈퍼크리티컬 10% 확률 부여
-		if (isCritical) {
-		    isSuperCritical = Math.random() < 0.10;
-		}
-
-		int damage;
-		if (isCritical) {
-		    damage = baseDamage * (isSuperCritical ? 5 : 3);
-		} else {
-		    damage = baseDamage;
-		}
-
-		// 포인트 = 데미지
-		int score = damage;
-
-		boolean isKill = false;
-		int newHp = hp - damage;
-
-		String rewardMsg ="";
-		if (newHp <= 0) {
-		    if (isCritical) {
-		        isKill = true;
-		        score = Math.min(damage, hp); // 실제 남은 체력만큼만 점수 지급
-		        score += 100; // 보스 처치 보너스 (고정 포인트)
-		        
-		        map.put("max_hp", max_hp);
-		        rewardMsg = calcBossReward(map); // 🔁 보상 로직 메서드 호출
-		    } else {
-		        // 크리티컬이 아니면 죽지 않음: 체력을 1로 고정
-		        newHp = 1;
-		        int allowedDamage = hp - 1;
-		        score = Math.min(damage, allowedDamage); // 최소 체력 1은 남김
-		        damage = allowedDamage; // 점수와 맞추기 위해 데미지도 조정
-		    }
-		}
-
-	    int new_score=0;
+	    int weaponLv = getWeaponLv(map);
+	    // 보스 정보 조회
+	    HashMap<String, Object> boss;
+	    int hp;
+	    int max_hp;
+	    int seq;
 	    try {
-	    	map.put("hp", hp);
-		    map.put("newHp", newHp);
-		    map.put("seq", seq);
-		    map.put("damage", damage);
-		    map.put("score", score);
-		    //map.put("isCritical", isCritical ? "1" : "0");
-		    map.put("endYn", isKill ? "1" : "0");
-		    botService.updateBossHitTx(map); 
-			new_score = botService.insertBotPointRankTx(map);
-		} catch (Exception e) {
-			return "오류발생";
-		}
-	    
-	    String remainMent="";
-	    String coolTimeMent="공격 쿨타임 : 15 Min";
-	    if (newHp == 1 && !isKill) {
-	        remainMent = "✨보스는 체력 1! 치명타로 최후의 일격 날리세요!" +enterStr+coolTimeMent;
-	    } else if (newHp > max_hp / 10) {
-	    	//10%보다 클때
-	        remainMent = (isKill ? " ✨보스를 처치했습니다!" : "✨보스 체력: ???/???"+enterStr+coolTimeMent);
-	        			
-	    } else {
-	        remainMent = (isKill ? " ✨보스를 처치했습니다!" : "✨보스 체력: " + newHp + "/" + max_hp + enterStr+coolTimeMent);
+	        boss = botService.selectBossHit(map);
+	        if (boss != null && boss.get("HP") != null) {
+	            hp = Integer.parseInt(boss.get("HP").toString());
+	            max_hp = Integer.parseInt(boss.get("MAX_HP").toString());
+	            seq = Integer.parseInt(boss.get("SEQ").toString());
+	        } else {
+	            return "";
+	        }
+	    } catch (Exception e1) {
+	        return "";
 	    }
-	    
+
+	    // 회피 확률 설정 (예: 10%)
+	    double evadeChance = 0.10;
+	    boolean isEvade = Math.random() < evadeChance;
+
+	    int damage = 0;
+	    boolean isCritical = false;
+	    boolean isSuperCritical = false;
+
+	    if (!isEvade) {
+	        // 데미지 계산
+	        int baseDamage = new Random().nextInt(weaponLv / 2) + 5;
+
+	        double baseCritical = 0.20; // 기본 20%
+	        double weaponBonus = weaponLv * 0.01;
+	        double criticalChance = Math.min(baseCritical + weaponBonus, 1.0); // 최대 100%
+
+	        isCritical = Math.random() < criticalChance;
+
+	        // 크리티컬이면, 추가로 슈퍼크리티컬 10% 확률 부여
+	        if (isCritical) {
+	            isSuperCritical = Math.random() < 0.10;
+	        }
+
+	        if (isCritical) {
+	            damage = baseDamage * (isSuperCritical ? 5 : 3);
+	        } else {
+	            damage = baseDamage;
+	        }
+	    } else {
+	        // 회피 시 데미지 0
+	        damage = 0;
+	    }
+
+	    // 포인트 = 데미지
+	    int score = damage;
+
+	    boolean isKill = false;
+	    int newHp = hp - damage;
+
+	    String rewardMsg = "";
+	    if (newHp <= 0) {
+	        if (isCritical) {
+	            isKill = true;
+	            score = Math.min(damage, hp);
+	            score += 100;
+
+	            map.put("max_hp", max_hp);
+	            rewardMsg = calcBossReward(map);
+	        } else {
+	            newHp = 1;
+	            int allowedDamage = hp - 1;
+	            score = Math.min(damage, allowedDamage);
+	            damage = allowedDamage;
+	        }
+	    }
+
+	    int new_score = 0;
+	    try {
+	        map.put("hp", hp);
+	        map.put("newHp", newHp);
+	        map.put("seq", seq);
+	        map.put("damage", damage);
+	        map.put("score", score);
+	        map.put("endYn", isKill ? "1" : "0");
+	        botService.updateBossHitTx(map);
+	        new_score = botService.insertBotPointRankTx(map);
+	    } catch (Exception e) {
+	        return "오류발생";
+	    }
+
+	    String remainMent = "";
+	    String coolTimeMent = "공격 쿨타임 : 15 Min";
+	    if (newHp == 1 && !isKill) {
+	        remainMent = "✨보스는 체력 1! 치명타로 최후의 일격 날리세요!" + enterStr + coolTimeMent;
+	    } else if (newHp > max_hp / 10) {
+	        remainMent = (isKill ? " ✨보스를 처치했습니다!" : "✨보스 체력: ???/???" + enterStr + coolTimeMent);
+	    } else {
+	        remainMent = (isKill ? " ✨보스를 처치했습니다!" : "✨보스 체력: " + newHp + "/" + max_hp + enterStr + coolTimeMent);
+	    }
+
 	    String critMsg = "";
-	    if (isSuperCritical) {
+	    if (isEvade) {
+	        critMsg = "보스가 공격을 회피했습니다! 데미지 0!";
+	    } else if (isSuperCritical) {
 	        critMsg = "✨ 초강력 치명타! ✨";
 	    } else if (isCritical) {
 	        critMsg = "✨ 치명타! ";
 	    }
-	    
-	    String msg =  map.get("userName") + "님이 보스를 공격했습니다!"+enterStr
-			         + critMsg + enterStr
-			         + "치명타 확률: " + (int)(criticalChance * 100) + "%"+enterStr
-			         + "입힌 데미지: " + damage + enterStr
-			         + remainMent + enterStr
-			         + enterStr
-			         + "획득 포인트: " + score + enterStr
-			         + "갱신포인트 : "+new_score
-			         ;
-	    
-	    if(!rewardMsg.equals("")) {
-	    	msg+= anotherMsgStr+rewardMsg;
+
+	    String msg = map.get("userName") + "님이 보스를 공격했습니다!" + enterStr
+	            + critMsg + enterStr
+	            + "치명타 확률: " + (int)(Math.min(0.20 + weaponLv * 0.01, 1.0) * 100) + "%" + enterStr
+	            + "입힌 데미지: " + damage + enterStr
+	            + remainMent + enterStr
+	            + enterStr
+	            + "획득 포인트: " + score + enterStr
+	            + "갱신포인트 : " + new_score;
+
+	    if (!rewardMsg.equals("")) {
+	        msg += anotherMsgStr + rewardMsg;
 	    }
-	    
-	    
-	    // 메시지 출력
+
 	    return msg;
 	}
 	
