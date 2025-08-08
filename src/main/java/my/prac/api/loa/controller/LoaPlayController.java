@@ -1172,7 +1172,12 @@ public class LoaPlayController {
 
 	    if (!isEvade) {
 	        // 데미지 계산
-	        int baseDamage = new Random().nextInt(weaponLv / 2) + 5;
+	    	
+	    	int min = (1 + (weaponLv / 2))/2;
+	    	int max = (5 + (weaponLv)) * 2;
+	    	int range = max - min + 1;  // 5
+
+	    	int baseDamage = new Random().nextInt(range) + min;
 
 	        double baseCritical = 0.20; // 기본 20%
 	        double weaponBonus = weaponLv * 0.01;
@@ -1196,7 +1201,7 @@ public class LoaPlayController {
 	    }
 
 	    // 포인트 = 데미지
-	    int score = damage;
+	    int score = damage/2;
 
 	    boolean isKill = false;
 	    int newHp = hp - damage;
