@@ -99,6 +99,11 @@ public interface BotService {
 	public int selectWeaponLvCheck(HashMap<String,Object> map);
 	//차단기능
 	public void insertBotBlockTx(HashMap<String, Object> hashMap)  throws Exception;
+	public void deleteBotBlockTx(HashMap<String, Object> hashMap)  throws Exception;
+	public List<HashMap<String,Object>> selectBotBlock(HashMap<String, Object> hashMap)  throws Exception;
+	//게임 플레이여부
+	public List<HashMap<String,Object>> selectGamePlayYn(HashMap<String,Object> map) throws Exception;
+	public void updateGamePlayYnTx(HashMap<String, Object> hashMap)  throws Exception;
 	
 	//보스몬스터 기능
 	public HashMap<String,Object> selectBossHit(HashMap<String,Object> map) throws Exception;

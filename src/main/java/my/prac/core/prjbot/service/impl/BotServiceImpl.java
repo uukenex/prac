@@ -444,6 +444,22 @@ public class BotServiceImpl implements BotService {
 			throw new Exception("저장 실패");
 		}
 	}
+	public void deleteBotBlockTx(HashMap<String,Object> map) throws Exception {
+		if(botDAO.deleteBotBlock(map) < 1) {
+			throw new Exception("저장 실패");
+		}
+	}
+	public List<HashMap<String,Object>> selectBotBlock(HashMap<String,Object> map) throws Exception {
+		return botDAO.selectBotBlock(map);
+	}
+	public List<HashMap<String,Object>> selectGamePlayYn(HashMap<String,Object> map) throws Exception {
+		return botDAO.selectGamePlayYn(map);
+	}
+	public void updateGamePlayYnTx(HashMap<String,Object> map) throws Exception {
+		if(botDAO.updateGamePlayYn(map) < 1) {
+			throw new Exception("저장 실패");
+		}
+	}
 	
 	public int selectWeaponLvCheck(HashMap<String,Object> map) {
 		return botDAO.selectWeaponLvCheck(map);

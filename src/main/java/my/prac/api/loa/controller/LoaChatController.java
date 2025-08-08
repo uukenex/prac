@@ -311,21 +311,49 @@ public class LoaChatController {
 				passYn = true;
 				break;
 			case "/강화": case "/ㄱㅎ": 
-				val = play.weapon(reqMap);
+				List<HashMap<String,Object>> gameYnList = botService.selectGamePlayYn(reqMap);
+				String playYn ="1"; 
+				for(HashMap<String,Object> gameYn : gameYnList) {
+					if(gameYn.get("NAME").equals("강화")) {
+						playYn = gameYn.get("PLAY_YN").toString(); 
+					}
+				}
+				
+				if(playYn.equals("1")) {
+					val = play.weapon(reqMap);
+				}
 				break;
 			case "/강화2": case "/ㄱㅎ2": 
-				val = play.weapon2(reqMap);
+				gameYnList = botService.selectGamePlayYn(reqMap);
+				playYn ="1"; 
+				for(HashMap<String,Object> gameYn : gameYnList) {
+					if(gameYn.get("NAME").equals("강화")) {
+						playYn = gameYn.get("PLAY_YN").toString(); 
+					}
+				}
+				
+				if(playYn.equals("1")) {
+					val = play.weapon2(reqMap);
+				}
 				break;
 			case "/강화랭킹": case "/ㄱㅎㄹㅋ": 
+				gameYnList = botService.selectGamePlayYn(reqMap);
+				playYn ="1"; 
+				for(HashMap<String,Object> gameYn : gameYnList) {
+					if(gameYn.get("NAME").equals("강화")) {
+						playYn = gameYn.get("PLAY_YN").toString(); 
+					}
+				}
 				
-				val = "전체 방 강화랭킹 1등: "+botService.selectBotPointWeaponRank1st()+enterStr+enterStr;
-				
-				
-				List<HashMap<String,Object>> weapon_map = botService.selectBotPointWeaponRank(reqMap);
-				val +=roomName+" 강화랭킹"+enterStr;
-				for(int i =0;i<weapon_map.size();i++) {
-					switch(i) {
-							/*
+				if(playYn.equals("1")) {
+					val = "전체 방 강화랭킹 1등: "+botService.selectBotPointWeaponRank1st()+enterStr+enterStr;
+					
+					
+					List<HashMap<String,Object>> weapon_map = botService.selectBotPointWeaponRank(reqMap);
+					val +=roomName+" 강화랭킹"+enterStr;
+					for(int i =0;i<weapon_map.size();i++) {
+						switch(i) {
+						/*
 						case 0:
 							val += rank_1st;
 							break;
@@ -335,49 +363,133 @@ public class LoaChatController {
 						case 2:
 							val += rank_3rd;
 							break;
-							*/
+						 */
 						default:
 							val += rank_etc;
 							break;
-					}
-					val += weapon_map.get(i).get("USER_NAME")+ " : "+weapon_map.get(i).get("GRADE")+enterStr ;
-					if(i==3) {
-						val += allSeeStr;
+						}
+						val += weapon_map.get(i).get("USER_NAME")+ " : "+weapon_map.get(i).get("GRADE")+enterStr ;
+						if(i==3) {
+							val += allSeeStr;
+						}
 					}
 				}
+				
 				break;
 			case "/ㅊㅅㅂ": case "/출석부": 
-				val = play.attendanceToday(reqMap);
+				gameYnList = botService.selectGamePlayYn(reqMap);
+				playYn ="1"; 
+				for(HashMap<String,Object> gameYn : gameYnList) {
+					if(gameYn.get("NAME").equals("출석")) {
+						playYn = gameYn.get("PLAY_YN").toString(); 
+					}
+				}
+				
+				if(playYn.equals("1")) {
+					val = play.attendanceToday(reqMap);
+				}
+				
 				break;
 			case "/ㅊㅊ": case "/cc": case "/CC": case "/출첵":
-				val = play.attendance(reqMap);
-				val+= enterStr+enterStr+play.pointSeasonMsg()+enterStr;
+				gameYnList = botService.selectGamePlayYn(reqMap);
+				playYn ="1"; 
+				for(HashMap<String,Object> gameYn : gameYnList) {
+					if(gameYn.get("NAME").equals("출석")) {
+						playYn = gameYn.get("PLAY_YN").toString(); 
+					}
+				}
+				
+				if(playYn.equals("1")) {
+					val = play.attendance(reqMap);
+					val+= enterStr+enterStr+play.pointSeasonMsg()+enterStr;
+				}
+				
 				break;
 			case "/주사위": case "/ㅈㅅㅇ":
-				val = play.diceRoll(reqMap);
-				val+= enterStr+enterStr+play.pointSeasonMsg()+enterStr;
+				gameYnList = botService.selectGamePlayYn(reqMap);
+				playYn ="1"; 
+				for(HashMap<String,Object> gameYn : gameYnList) {
+					if(gameYn.get("NAME").equals("주사위")) {
+						playYn = gameYn.get("PLAY_YN").toString(); 
+					}
+				}
+				
+				if(playYn.equals("1")) {
+					val = play.diceRoll(reqMap);
+					val+= enterStr+enterStr+play.pointSeasonMsg()+enterStr;
+				}
 				break;
 			case "/결투": case "/ㄱㅌ":
-				val = play.fight_s(reqMap);
+				gameYnList = botService.selectGamePlayYn(reqMap);
+				playYn ="1"; 
+				for(HashMap<String,Object> gameYn : gameYnList) {
+					if(gameYn.get("NAME").equals("결투")) {
+						playYn = gameYn.get("PLAY_YN").toString(); 
+					}
+				}
+				
+				if(playYn.equals("1")) {
+					val = play.fight_s(reqMap);
+				}
 				break;
 			case "/공격": case "/ㄱㄱ": case "보스":
-				val = play.attackBoss(reqMap);
+				gameYnList = botService.selectGamePlayYn(reqMap);
+				playYn ="1"; 
+				for(HashMap<String,Object> gameYn : gameYnList) {
+					if(gameYn.get("NAME").equals("강화")) {
+						playYn = gameYn.get("PLAY_YN").toString(); 
+					}
+				}
+				
+				if(playYn.equals("1")) {
+					val = play.attackBoss(reqMap);
+				}
 				break;
 			case "/포인트사용": 
 				val = play.usePoint(reqMap);
 				break;	
 			case "/포인트뽑기": case "/ㅃㄱ": case "/뽑기":
-				val = play.gamble(reqMap);
+				gameYnList = botService.selectGamePlayYn(reqMap);
+				playYn ="1"; 
+				for(HashMap<String,Object> gameYn : gameYnList) {
+					if(gameYn.get("NAME").equals("뽑기")) {
+						playYn = gameYn.get("PLAY_YN").toString(); 
+					}
+				}
+				
+				if(playYn.equals("1")) {
+					val = play.gamble(reqMap);
+				}
 				break;
 			case "/포인트상점": case "/상점": case "/ㅍㅇㅌㅅㅈ":
 				val = play.pointShop(reqMap);
 				//val+= enterStr+enterStr+play.pointSeasonMsg()+enterStr;
 				break;
 			case "/포인트야구": case "/야구":
-				val = play.baseball(reqMap);
+				gameYnList = botService.selectGamePlayYn(reqMap);
+				playYn ="1"; 
+				for(HashMap<String,Object> gameYn : gameYnList) {
+					if(gameYn.get("NAME").equals("야구")) {
+						playYn = gameYn.get("PLAY_YN").toString(); 
+					}
+				}
+				
+				if(playYn.equals("1")) {
+					val = play.baseball(reqMap);
+				}
 				break;
 			case "/저가": case "/저스트가드":
-				val = play.fight_e(reqMap);
+				gameYnList = botService.selectGamePlayYn(reqMap);
+				playYn ="1"; 
+				for(HashMap<String,Object> gameYn : gameYnList) {
+					if(gameYn.get("NAME").equals("결투")) {
+						playYn = gameYn.get("PLAY_YN").toString(); 
+					}
+				}
+				
+				if(playYn.equals("1")) {
+					val = play.fight_e(reqMap);
+				}
 				break;
 			case "/이벤트참여":
 				val = play.eventApply(reqMap);
@@ -974,33 +1086,7 @@ public class LoaChatController {
 				if(point_map_one == null) {
 					return "";
 				}
-				/*
 				
-				[일어난다람쥐/카단] 님의 포인트 현황
-
-				✅ 보유 포인트: 17p (총 사용: 48p) point_map_one.get("TOT")+ enterStr+ enterStr+
-				🗡️ 무기 강화: +5 (소모: 30p) point_map_one.get("WEAPON")+point_map_one.get("WEAPON_USE")
-
-				📌 출석: 11p / 오늘 미출석 point_map_one.get("ATTENDANCE")
-				🎲 주사위: 1p point_map_one.get("DICE")+enterStr +
-				🎁 뽑기: 25p point_map_one.get("GAMBLE_WIN")+enterStr +
-				⚾ 야구: 0p point_map_one.get("BASEBALL_WIN")+enterStr +
-				⚔️ 결투: 0p (전적: 0승 0패) point_map_one.get("FIGHT_SUM")+point_map_one.get("FIGHT_WIN")+point_map_one.get("FIGHT_LOSE")+enterStr ;
-				
-				
-				
-				
-				현재 포인트: 17 p point_map_one.get("TOT")+ enterStr+ enterStr+
-
-
-				출석획득 포인트: 11 p point_map_one.get("ATTENDANCE")+ enterStr+
-				오늘출석: 미완료
-				주사위획득 포인트: 1 p point_map_one.get("DICE")+enterStr +
-				뽑기획득 포인트: 25 p point_map_one.get("GAMBLE_WIN")+enterStr +
-				야구획득 포인트: 0 p point_map_one.get("BASEBALL_WIN")+enterStr +
-				결투획득 포인트: 0 p point_map_one.get("FIGHT_SUM")+enterStr +
-				결투전적(승/패): 0/0 point_map_one.get("FIGHT_WIN")+point_map_one.get("FIGHT_LOSE")+enterStr ;
-				*/
 				int lv = Integer.parseInt(point_map_one.get("WEAPON").toString());
 				val += "❤️"+point_map_one.get("TOT")+ enterStr+ 
 					   "⚔"+"무기: +"+lv+" lv"+point_map_one.get("WEAPON_USE")+enterStr+
@@ -1359,11 +1445,73 @@ public class LoaChatController {
 					val = "단어초기화 완료!";
 				} 
 				break;
+			case "/차단목록":
+				masterYn = botService.selectBotWordSaveMasterCnt(reqMap);
+				if (masterYn > 0) {
+					hs = botService.selectBotBlock(reqMap);
+					val+="유저 차단 목록"+enterStr;
+					for(HashMap<String,Object> hm : hs) {
+						val += hm.get("NAME")+enterStr ;
+					}
+					
+					hs = botService.selectGamePlayYn(reqMap);
+					val+="게임기능 차단 목록"+enterStr;
+					for(HashMap<String,Object> hm : hs) {
+						val += hm.get("NAME")+enterStr ;
+					}
+				} 
+				
+				
 			case "/차단":
 				masterYn = botService.selectBotWordSaveMasterCnt(reqMap);
 				if (masterYn > 0) {
-					botService.insertBotBlockTx(reqMap);
-					val = "차단 완료!";
+					if (param1 != null && !param1.equals("")) {
+						switch(param1) {
+							case "야구" :
+							case "출석" :
+							case "주사위":
+							case "뽑기" :
+							case "강화" :
+							case "결투" :
+								reqMap.put("playYn", "0");
+								botService.updateGamePlayYnTx(reqMap);
+								val = "게임 차단 완료!";
+								break;
+							default:
+								botService.insertBotBlockTx(reqMap);
+								val = "유저 차단 완료!";
+								break;
+						}
+					}else {
+						val = "차단 가능 목록 : 야구/출석/주사위/뽑기/강화/결투/카톡프로필명";
+					}
+				} 
+				break;	
+			case "/차단해제":
+				masterYn = botService.selectBotWordSaveMasterCnt(reqMap);
+				if (masterYn > 0) {
+					if (param1 != null && !param1.equals("")) {
+						switch(param1) {
+							case "야구" :
+							case "출석" :
+							case "주사위":
+							case "뽑기" :
+							case "강화" :
+							case "결투" :
+								reqMap.put("playYn", "1");
+								botService.updateGamePlayYnTx(reqMap);
+								val = "게임 차단 해제 완료!";
+								break;
+							default:
+								botService.deleteBotBlockTx(reqMap);
+								val = "유저 차단 해제 완료!";
+								break;
+						}
+					}else {
+						val = "차단해제 가능 목록 : 야구/출석/주사위/뽑기/강화/결투/카톡프로필명";
+					}
+					
+					
 				} 
 				break;	
 			case "/단어제거": case "/단어삭제":

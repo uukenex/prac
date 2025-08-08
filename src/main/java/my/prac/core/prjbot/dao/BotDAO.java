@@ -121,6 +121,11 @@ public interface BotDAO {
 	public int selectWeaponLvCheck(HashMap<String,Object> map);
 	//차단기능
 	public int insertBotBlock(HashMap<String,Object> map);
+	public int deleteBotBlock(HashMap<String,Object> map);
+	public List<HashMap<String,Object>> selectBotBlock(HashMap<String,Object> map);
+	//게임 플레이여부
+	public List<HashMap<String,Object>> selectGamePlayYn(HashMap<String,Object> map);
+	public int updateGamePlayYn(HashMap<String,Object> map);
 	//보스기능
 	public HashMap<String,Object> selectBossHit(HashMap<String,Object> map);
 	public int updateBossHit(HashMap<String,Object> map);

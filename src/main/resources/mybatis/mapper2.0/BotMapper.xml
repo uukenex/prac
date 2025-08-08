@@ -1056,6 +1056,31 @@
 			 (#{param1, jdbcType=VARCHAR}
 			 ,#{roomName, jdbcType=VARCHAR})
 	</insert>
+	<delete id="deleteBotBlock" parameterType="HashMap"> 
+		delete from TBOT_BLOCK
+		 where USER_NAME = #{param1, jdbcType=VARCHAR}
+		   and ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+	</delete>
+	
+	<delete id="updateGamePlayYn" parameterType="HashMap"> 
+		update tbot_point_play_yn a
+		   set a.play_yn = #{playYn, jdbcType=VARCHAR}
+		 where game_NAME = #{param1, jdbcType=VARCHAR}
+		   and ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+	</delete>
+	
+	<select id="selectGamePlayYn" parameterType="HashMap" resultType="HashMap"> 
+		SELECT A.GAME_NAME AS NAME,A.PLAY_YN
+		  FROM TBOT_POINT_PLAY_YN A
+		 WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+		   AND PLAY_YN = '0'
+	</select>
+	<select id="selectBotBlock" parameterType="HashMap" resultType="HashMap"> 
+		SELECT USER_NAME AS NAME
+		  FROM TBOT_BLOCK
+		 WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+	</select>
+	
 	
 	<select id="selectBotPointWeaponRank1st" resultType="String">
 		SELECT A.WEAPON_LV || '단계 (' || FAIL_PCT || '%)' as GRADE
