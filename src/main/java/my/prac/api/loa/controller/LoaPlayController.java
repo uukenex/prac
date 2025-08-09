@@ -1149,12 +1149,28 @@ public class LoaPlayController {
 	    //30에서의 시도 -> 성공률 0.1, 장기백 0.93
 
 	    Double[] data = rateMap.getOrDefault(level, new Double[]{0.0, 0.0});
-	    double successRate = data[0]*rate;
+	    double successRate = data[0];
 	    double failAddPct = data[1]*rate;
 	    
 	    double roll = Math.random() * 100;
+	    
 	    boolean isSuccess = roll < successRate;
+	    if(rate == 5) {
+	    	double roll2 = Math.random() * 100;
+		    double roll3 = Math.random() * 100;
+		    double roll4 = Math.random() * 100;
+		    double roll5 = Math.random() * 100;
 
+		    boolean isSuccess1 = roll < successRate;
+		    boolean isSuccess2 = roll2 < successRate;
+		    boolean isSuccess3 = roll3 < successRate;
+		    boolean isSuccess4 = roll4 < successRate;
+		    boolean isSuccess5 = roll5 < successRate;
+
+	    	isSuccess = isSuccess1 || isSuccess2 || isSuccess3 || isSuccess4 || isSuccess5;
+	    }
+	    
+	    
 	    HashMap<String, Object> result = new HashMap<>();
 	    result.put("isSuccess", isSuccess);         // 성공 여부
 	    result.put("successRate", successRate);     // 현재 성공 확률
