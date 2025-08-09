@@ -336,6 +336,19 @@ public class LoaChatController {
 					val = play.weapon2(reqMap);
 				}
 				break;
+			case "/강화3": case "/ㄱㅎ3": 
+				gameYnList = botService.selectGamePlayYn(reqMap);
+				playYn ="1"; 
+				for(HashMap<String,Object> gameYn : gameYnList) {
+					if(gameYn.get("NAME").equals("강화")) {
+						playYn = gameYn.get("PLAY_YN").toString(); 
+					}
+				}
+				
+				if(playYn.equals("1")) {
+					val = play.weapon3(reqMap);
+				}
+				break;
 			case "/강화랭킹": case "/ㄱㅎㄹㅋ": 
 				gameYnList = botService.selectGamePlayYn(reqMap);
 				playYn ="1"; 
