@@ -1114,24 +1114,24 @@ public class LoaPlayController {
 	
 	public HashMap<String,Object> getSuccessRate(int level,int rate) {
 		HashMap<Integer, Double[]> rateMap = new HashMap<>();
-		//0강화에서 시도-> 성공률10%, 장기 쌓이는양 
-	    rateMap.put(0,  new Double[]{15.0, 20.0});
-	    rateMap.put(1,  new Double[]{14.0, 12.0});
-	    rateMap.put(2,  new Double[]{13.0, 10.0});
-	    rateMap.put(3,  new Double[]{12.0, 8.61});
-	    rateMap.put(4,  new Double[]{11.0, 7.58});
-	    rateMap.put(5,  new Double[]{10.0, 5.46});
-	    rateMap.put(6,  new Double[]{9.0, 4.45});
-	    rateMap.put(7,  new Double[]{8.0, 3.84});
-	    rateMap.put(8,  new Double[]{7.0, 3.63});
-	    rateMap.put(9,  new Double[]{6.0, 3.42});
-	    rateMap.put(10, new Double[]{5.5, 3.11});
-	    rateMap.put(11, new Double[]{5.0, 3.05});
-	    rateMap.put(12, new Double[]{4.5, 2.98});
-	    rateMap.put(13, new Double[]{4.0, 2.75});
-	    rateMap.put(14, new Double[]{3.5, 2.57});
-	    rateMap.put(15, new Double[]{3.0, 2.51});
-	    rateMap.put(16, new Double[]{2.5, 2.44});
+		//0강화에서 시도-> 성공률15%, 장기 쌓이는양 20% 
+	    rateMap.put(0,  new Double[]{100.0, 100.0});
+	    rateMap.put(1,  new Double[]{90.0, 100.0});
+	    rateMap.put(2,  new Double[]{80.0, 100.0});
+	    rateMap.put(3,  new Double[]{70.0, 100.0});
+	    rateMap.put(4,  new Double[]{60.0, 100.0});
+	    rateMap.put(5,  new Double[]{50.0, 50.0});
+	    rateMap.put(6,  new Double[]{40.0, 50.0});
+	    rateMap.put(7,  new Double[]{30.0, 33.3});
+	    rateMap.put(8,  new Double[]{20.0, 19.9});
+	    rateMap.put(9,  new Double[]{10.0, 11.1});
+	    rateMap.put(10, new Double[]{6.0, 9.9});
+	    rateMap.put(11, new Double[]{5.0, 8.8});
+	    rateMap.put(12, new Double[]{4.5, 7.7});
+	    rateMap.put(13, new Double[]{4.0, 6.6});
+	    rateMap.put(14, new Double[]{3.5, 5.5});
+	    rateMap.put(15, new Double[]{3.0, 4.4});
+	    rateMap.put(16, new Double[]{2.5, 3.3});
 	    rateMap.put(17, new Double[]{2.0, 2.28});
 	    rateMap.put(18, new Double[]{1.5, 2.13});
 	    rateMap.put(19, new Double[]{1.0, 2.03});
@@ -1243,9 +1243,17 @@ public class LoaPlayController {
 	        // 회피 시 데미지 0
 	        damage = 0;
 	    }
-
+	    
+	    
 	    // 포인트 = 데미지
-	    int score = damage/2;
+	    int score = damage/3;
+	    
+	    boolean newbieYn = false;
+	    if(weaponLv < 10) {
+	    	score +=10;
+	    	newbieYn = true;
+	    }
+	    
 
 	    boolean isKill = false;
 	    int newHp = hp - damage;
@@ -1300,6 +1308,12 @@ public class LoaPlayController {
 	    } else if (isCritical) {
 	        critMsg = "✨ 치명타! ";
 	    }
+	    
+	    String newbieMent = "";
+	    
+	    if(newbieYn) {
+	    	newbieMent +="초보자 보너스로 추가 포인트 10p";
+	    }
 
 	    String msg = map.get("userName") + "님이 보스를 공격했습니다!" + enterStr
 	            + critMsg + enterStr
@@ -1307,7 +1321,8 @@ public class LoaPlayController {
 	            + "입힌 데미지: " + damage + enterStr
 	            + remainMent + enterStr
 	            + enterStr
-	            + "획득 포인트: " + score + enterStr
+	            + newbieMent + enterStr
+	            + "총 획득 포인트: " + score + enterStr
 	            + "갱신포인트 : " + new_score;
 
 	    if (!rewardMsg.equals("")) {
