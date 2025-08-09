@@ -1285,10 +1285,11 @@ public class LoaPlayController {
 	    String coolTimeMent = "공격 쿨타임 : 15 Min";
 	    if (newHp == 1 && !isKill) {
 	        remainMent = "✨보스는 체력 1! 치명타로 최후의 일격 날리세요!" + enterStr + coolTimeMent;
-	    } else if (newHp > max_hp / 10) {
+	    } else if (newHp > max_hp / 50) {
 	        remainMent = (isKill ? " ✨보스를 처치했습니다!" : "✨보스 체력: ???/???" + enterStr + coolTimeMent);
 	    } else {
-	        remainMent = (isKill ? " ✨보스를 처치했습니다!" : "✨보스 체력: " + newHp + "/" + max_hp + enterStr + coolTimeMent);
+	    	//newHp > max_hp / 50 :: 2% 남았을때 체력을 보여줌 
+	        remainMent = (isKill ? " ✨보스를 처치했습니다!" : "✨보스 체력: " + newHp + "/" + "???" + enterStr + coolTimeMent);
 	    }
 
 	    String critMsg = "";
