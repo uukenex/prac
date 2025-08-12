@@ -1101,7 +1101,7 @@
 	</select>
 	
 	<select id="selectBossHit" parameterType="HashMap" resultType="HashMap">
-		SELECT A.HP,A.MAX_HP,A.SEQ
+		SELECT A.HP,A.MAX_HP,A.SEQ,A.ORG_HP
 		  FROM TBOT_BOSS_HIT A
 		 WHERE ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 		   AND A.END_YN = '0'

@@ -1192,12 +1192,14 @@ public class LoaPlayController {
 	    HashMap<String, Object> boss;
 	    int hp;
 	    int max_hp;
+	    int org_hp;
 	    int seq;
 	    try {
 	        boss = botService.selectBossHit(map);
 	        if (boss != null && boss.get("HP") != null) {
 	            hp = Integer.parseInt(boss.get("HP").toString());
 	            max_hp = Integer.parseInt(boss.get("MAX_HP").toString());
+	            org_hp = Integer.parseInt(boss.get("ORG_HP").toString());
 	            seq = Integer.parseInt(boss.get("SEQ").toString());
 	        } else {
 	            return "";
@@ -1266,6 +1268,7 @@ public class LoaPlayController {
 	            score += 100;
 
 	            map.put("max_hp", max_hp);
+	            map.put("org_hp", org_hp);
 	            rewardMsg = calcBossReward(map);
 	        } else {
 	            newHp = 1;
@@ -1335,7 +1338,7 @@ public class LoaPlayController {
 	public String calcBossReward(HashMap<String, Object> map) {
 	    String roomName = (String) map.get("roomName");
 	    int totalReward = Integer.parseInt(map.get("max_hp").toString())/10 ; // 기본 총 보상 포인트
-	    int bossMaxHp = Integer.parseInt(map.get("max_hp").toString());
+	    int bossOrgMaxHp = Integer.parseInt(map.get("max_hp").toString());
 	    
 	    List<HashMap<String, Object>> top3List = botService.selectTop3Contributors(map);
 
@@ -1352,7 +1355,7 @@ public class LoaPlayController {
 	        int damage = Integer.parseInt(row.get("SCORE").toString());
 
 	        // 보스 전체 체력 대비 데미지 비율 (%)
-	        double bossRatio = (double) damage / bossMaxHp * 100;
+	        double bossRatio = (double) damage / bossOrgMaxHp * 100;
 
 	        // top3 데미지 합 대비 분배 비율
 	        double rewardRatio = (double) damage / totalTop3Damage;
