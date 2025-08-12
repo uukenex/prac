@@ -321,6 +321,8 @@ public class LoaChatController {
 				
 				if(playYn.equals("1")) {
 					val = play.weapon(reqMap);
+				}else {
+					val = "별도 게임방에서 진행해주세요.";
 				}
 				break;
 			case "/강화2": case "/ㄱㅎ2": 
@@ -334,6 +336,8 @@ public class LoaChatController {
 				
 				if(playYn.equals("1")) {
 					val = play.weapon2(reqMap);
+				}else {
+					val = "별도 게임방에서 진행해주세요.";
 				}
 				break;
 			case "/강화3": case "/ㄱㅎ3": 
@@ -347,6 +351,8 @@ public class LoaChatController {
 				
 				if(playYn.equals("1")) {
 					val = play.weapon3(reqMap);
+				}else {
+					val = "별도 게임방에서 진행해주세요.";
 				}
 				break;
 			case "/강화랭킹": case "/ㄱㅎㄹㅋ": 
@@ -386,6 +392,8 @@ public class LoaChatController {
 							val += allSeeStr;
 						}
 					}
+				}else {
+					val = "별도 게임방에서 진행해주세요.";
 				}
 				
 				break;
@@ -400,6 +408,8 @@ public class LoaChatController {
 				
 				if(playYn.equals("1")) {
 					val = play.attendanceToday(reqMap);
+				}else {
+					val = "별도 게임방에서 진행해주세요.";
 				}
 				
 				break;
@@ -415,6 +425,8 @@ public class LoaChatController {
 				if(playYn.equals("1")) {
 					val = play.attendance(reqMap);
 					val+= enterStr+enterStr+play.pointSeasonMsg()+enterStr;
+				}else {
+					val = "별도 게임방에서 진행해주세요.";
 				}
 				
 				break;
@@ -430,6 +442,8 @@ public class LoaChatController {
 				if(playYn.equals("1")) {
 					val = play.diceRoll(reqMap);
 					val+= enterStr+enterStr+play.pointSeasonMsg()+enterStr;
+				}else {
+					val = "별도 게임방에서 진행해주세요.";
 				}
 				break;
 			case "/결투": case "/ㄱㅌ":
@@ -443,6 +457,8 @@ public class LoaChatController {
 				
 				if(playYn.equals("1")) {
 					val = play.fight_s(reqMap);
+				}else {
+					val = "별도 게임방에서 진행해주세요.";
 				}
 				break;
 			case "/공격": case "/ㄱㄱ": case "보스":
@@ -456,6 +472,8 @@ public class LoaChatController {
 				
 				if(playYn.equals("1")) {
 					val = play.attackBoss(reqMap);
+				}else {
+					val = "별도 게임방에서 진행해주세요.";
 				}
 				break;
 			case "/포인트사용": 
@@ -472,6 +490,8 @@ public class LoaChatController {
 				
 				if(playYn.equals("1")) {
 					val = play.gamble(reqMap);
+				}else {
+					val = "별도 게임방에서 진행해주세요.";
 				}
 				break;
 			case "/포인트상점": case "/상점": case "/ㅍㅇㅌㅅㅈ":
@@ -489,6 +509,8 @@ public class LoaChatController {
 				
 				if(playYn.equals("1")) {
 					val = play.baseball(reqMap);
+				}else {
+					val = "별도 게임방에서 진행해주세요.";
 				}
 				break;
 			case "/저가": case "/저스트가드":
@@ -502,6 +524,8 @@ public class LoaChatController {
 				
 				if(playYn.equals("1")) {
 					val = play.fight_e(reqMap);
+				}else {
+					val = "별도 게임방에서 진행해주세요.";
 				}
 				break;
 			case "/이벤트참여":
@@ -963,6 +987,7 @@ public class LoaChatController {
 				String guildName ="";
 				switch (roomName) {
 					case "로아냥떼":
+					case "로아냥떼 도박장":
 						guildName = "냥떼목장";
 						break;
 					case "카단 포핑":
@@ -1032,6 +1057,7 @@ public class LoaChatController {
 				String guildName2 ="";
 				switch (roomName) {
 					case "로아냥떼":
+					case "로아냥떼 도박장":
 						guildName = "냥떼목장";
 						break;
 					case "카단 포핑":

@@ -171,7 +171,7 @@ public class LoaPlayController {
 		}
 		
 		Random random = new Random(); // 랜덤객체
-		int score = random.nextInt(10)+1;
+		int score = random.nextInt(100)+1;
 		int new_score=0;
 		map.put("score",score+bonus);
 		
@@ -207,19 +207,19 @@ public class LoaPlayController {
 		
 		if(number>=99) {
 			prefix="굴리기전부터 운명적입니다. 행운의 신이 함께합니다.";
-			score =+50;
+			score =+500;
 		}else if(number>=85) {
 			prefix="행운이 쌓인채로 굴러갑니다.";
-			score =+10;
+			score =+number;
 		}else if(number>=50) {
 			prefix="데굴데굴..";
-			score =+5;
+			score =+(number/2);
 		}else if(number>=20) {
 			prefix="또르르륵..";
-			score =+1;
+			score =+0;
 		}else {
 			prefix="콰쾅.. 이런! 주사위가 바닥으로 떨어졌군요.";
-			score =-5;
+			score =-50;
 		}
 		
 		try {
