@@ -5075,8 +5075,8 @@ public class LoaChatController {
 	
 	public String tossAccount() {
 		String ment = "";
-		ment += enterStr+"람쥐봇 개발자 대화하기(오픈채팅)";
-		ment += enterStr+"https://open.kakao.com/o/sC6s7lkb";
+		ment += enterStr+"람쥐봇 건의방 및 공통방 참여url(오픈채팅)";
+		ment += enterStr+"https://open.kakao.com/o/gVPFm5Lh";
 		return ment; 
 	}
 	public String tossAccount2() {
