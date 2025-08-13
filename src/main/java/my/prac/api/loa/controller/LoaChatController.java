@@ -495,8 +495,49 @@ public class LoaChatController {
 				}
 				break;
 			case "/포인트상점": case "/상점": case "/ㅍㅇㅌㅅㅈ":
-				val = play.pointShop(reqMap);
-				//val+= enterStr+enterStr+play.pointSeasonMsg()+enterStr;
+				gameYnList = botService.selectGamePlayYn(reqMap);
+				playYn ="1"; 
+				for(HashMap<String,Object> gameYn : gameYnList) {
+					if(gameYn.get("NAME").equals("뽑기")) {
+						playYn = gameYn.get("PLAY_YN").toString(); 
+					}
+				}
+				
+				if(playYn.equals("1")) {
+					val = play.pointShop(reqMap);
+				}else {
+					val = "별도 게임방에서 진행해주세요.";
+				}
+				break;
+			case "/상자구입":
+				gameYnList = botService.selectGamePlayYn(reqMap);
+				playYn ="1"; 
+				for(HashMap<String,Object> gameYn : gameYnList) {
+					if(gameYn.get("NAME").equals("뽑기")) {
+						playYn = gameYn.get("PLAY_YN").toString(); 
+					}
+				}
+				
+				if(playYn.equals("1")) {
+					val = play.pointBoxOpenBuy(reqMap);
+				}else {
+					val = "별도 게임방에서 진행해주세요.";
+				}
+				break;
+			case "/상자열기":
+				gameYnList = botService.selectGamePlayYn(reqMap);
+				playYn ="1"; 
+				for(HashMap<String,Object> gameYn : gameYnList) {
+					if(gameYn.get("NAME").equals("뽑기")) {
+						playYn = gameYn.get("PLAY_YN").toString(); 
+					}
+				}
+				
+				if(playYn.equals("1")) {
+					val = play.pointBoxOpen(reqMap);
+				}else {
+					val = "별도 게임방에서 진행해주세요.";
+				}
 				break;
 			case "/포인트야구": case "/야구":
 				gameYnList = botService.selectGamePlayYn(reqMap);

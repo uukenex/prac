@@ -206,19 +206,19 @@ public class LoaPlayController {
 		int score = 0;
 		int new_score=0;
 		
-		if(number>=99) {
+		if(number>=99) { // 500
 			prefix="굴리기전부터 운명적입니다. 행운의 신이 함께합니다.";
 			score =+500;
-		}else if(number>=85) {
+		}else if(number>=85) { // 85~98
 			prefix="행운이 쌓인채로 굴러갑니다.";
 			score =+number;
-		}else if(number>=50) {
+		}else if(number>=50) { //25~42
 			prefix="데굴데굴..";
 			score =+(number/2);
-		}else if(number>=20) {
+		}else if(number>=20) {//0
 			prefix="또르르륵..";
 			score =+0;
-		}else {
+		}else { // -50
 			prefix="콰쾅.. 이런! 주사위가 바닥으로 떨어졌군요.";
 			score =-50;
 		}
@@ -493,20 +493,46 @@ public class LoaPlayController {
 	}
 	
 	String pointShop(HashMap<String,Object> map) {
-		List<HashMap<String,Object>> ls = botService.selectBotPointRankNewScore(map);
-		int score = Integer.parseInt(ls.get(0).get("SCORE").toString());
-		
-		String str=map.get("userName")+"님 현재 포인트 "+score +"p"+enterStr;
-		str += enterStr;
-		str += "1.후원자마크(캐릭터(★)) - "+"2000p"+enterStr;
-		str += "2.골드환전 - "+"1000p단위 1000골드"+enterStr;
-		str += enterStr;
-		str += "/포인트사용 할말.. 로 개발자에게 말해주세요.";
-		
-		
-		return "";
-		//return str;
+		return "명령어 입력 ... /상자구입 : 500p";
 	}
+	
+	String pointBoxOpenBuy(HashMap<String,Object> map) {
+		map.put("cmd", "pointShop");
+		String msg = map.get("userName")+" 님,"+enterStr;
+		int defaultScore = 500;
+		try {
+			List<HashMap<String,Object>> ls = botService.selectBotPointRankNewScore(map);
+			int score = Integer.parseInt(ls.get(0).get("SCORE").toString());
+			if(score < defaultScore) {
+				return map.get("userName")+" 님, "+defaultScore+" p 이상만 가능합니다.";
+			}
+			map.put("score", -defaultScore);
+			int new_score = botService.insertBotPointRankTx(map);
+			
+			msg += defaultScore+"p 사용! .. "+score + "p → "+ new_score+"p"+enterStr;
+		}catch(Exception e) {
+			return "포인트샵 조회 오류입니다.";
+		}
+		
+		
+		try {
+			botService.insertPointNewBoxOpenTx(map);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		msg += "아이템상자 구매가 완료되었습니다."
+		    //+ enterStr + " /상자열기 입력으로 상자열기"
+		    ;
+		
+		return msg;
+	}
+	
+	
+	
+	String pointBoxOpen(HashMap<String,Object> map) {
+		return "";
+	}
+	
 	
 	String gamble(HashMap<String,Object> map) {
 		map.put("cmd", "gamble_s2");
@@ -1248,10 +1274,10 @@ public class LoaPlayController {
 	    
 	    
 	    // 포인트 = 데미지
-	    int score = damage/4;
+	    int score = damage/3;
 	    
 	    boolean newbieYn = false;
-	    if(weaponLv < 10) {
+	    if(weaponLv < 13) {
 	    	score +=10;
 	    	newbieYn = true;
 	    }

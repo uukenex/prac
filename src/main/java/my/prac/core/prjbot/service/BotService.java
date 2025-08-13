@@ -109,6 +109,11 @@ public interface BotService {
 	public HashMap<String,Object> selectBossHit(HashMap<String,Object> map) throws Exception;
 	public void updateBossHitTx(HashMap<String, Object> hashMap)  throws Exception;
 	public List<HashMap<String, Object>> selectTop3Contributors(HashMap<String, Object> hashMap);
+	
+	//아이템 뽑기 기능
+	public List<HashMap<String,Object>> selectPointItemUserList(HashMap<String,Object> map) throws Exception;
+	public void insertPointNewBoxOpenTx(HashMap<String,Object> map) throws Exception;
+	public void updatePointNewBoxOpenTx(HashMap<String,Object> map) throws Exception;
 } 
 
 	

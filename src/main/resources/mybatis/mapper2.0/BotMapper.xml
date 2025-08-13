@@ -1150,4 +1150,47 @@
 		 WHERE ROWNUM &lt;= 3
 	</select>
 	
+	<insert  id="insertPointNewBoxOpen" parameterType="HashMap">
+		INSERT INTO TBOT_POINT_ITEM_USER
+			 (USER_NAME
+			 ,ROOM_NAME
+			 ,ITEM_NO
+			 ,LV)
+		VALUES
+			 (#{userName, jdbcType=VARCHAR}
+			 ,#{roomName, jdbcType=VARCHAR}
+			 ,0
+			 ,0)
+		
+	</insert>
+	
+	<update id="updatePointNewBoxOpen" parameterType="HashMap">
+		UPDATE TBOT_POINT_ITEM_USER U
+		   SET U.LV = U.LV + #{rdLv, jdbcType=NUMERIC}
+		     , U.ITEM_NO = #{rdItemNo, jdbcType=NUMERIC}
+		     , U.MODIFY_DATE = SYSDATE
+		 WHERE U.USER_NAME = #{userName, jdbcType=VARCHAR}
+		   AND U.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+		   AND U.LV = 0
+		   AND U.ITEM_NO = 0
+		   AND ROWNUM = 1
+	</update>
+	
+	<select id="selectPointItemUserList" parameterType="HashMap" resultType="HashMap">
+		SELECT M.ITEM_NO
+			  ,M.ITEM_NAME
+			  ,M.ITEM_DESC
+			  ,NVL(SUM(U.LV), 0) AS ITEM_LV
+			  ,M.MAX_LV
+		  FROM TBOT_POINT_ITEM_M    M
+			  ,TBOT_POINT_ITEM_USER U
+		 WHERE M.ITEM_NO = U.ITEM_NO
+		   AND U.USER_NAME = #{userName, jdbcType=VARCHAR}
+		   AND U.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+		 GROUP BY M.ITEM_NO
+			     ,M.ITEM_NAME
+			     ,M.MAX_LV
+		 ORDER BY M.ITEM_NO
+		
+	</select>
 </mapper>
