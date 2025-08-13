@@ -543,7 +543,7 @@ public class LoaPlayController {
 				return userName+" 님!"+enterStr+
 						//score+"p → "+new_score+"p"+enterStr+
 						"/뽑기 숫자(1~100) 입력하시면 updown게임 진행!"+enterStr+
-						"최대 50p에서 점차적으로 줄어듭니다!";
+						"최대 500p에서 점차적으로 줄어듭니다!";
 			}catch(Exception e) {
 				return userName+" 님, updown 오류!";
 			}
