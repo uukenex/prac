@@ -977,7 +977,7 @@ public class LoaPlayController {
 					+ "/강화2 : 30p 소모해서 강화 1회 진행가능!"+ enterStr
 					+ "/강화3 : 150p 소모해서 강화 5회 진행가능!";
 		}
-		msg += weapon_upgrade_logic(map,1,0);
+		msg += weapon_upgrade_logic(map,1,1);
 		//msg += enterStr + map.get("extra_msg");
 		return msg;
 	}
