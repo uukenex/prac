@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
 
 import my.prac.core.prjbot.service.BotService;
+import my.prac.core.util.MiniGameUtil;
 
 
 @Controller
@@ -633,27 +634,27 @@ public class LoaPlayController {
 					int preview_score=0;
 					switch(completeYn+1) {
 						case 1:
-							score =50;
-							preview_score=40;
+							score =500;
+							preview_score=300;
 							break;
 						case 2:
-							score =40;
-							preview_score=30;
+							score =300;
+							preview_score=240;
 							break;
 						case 3:
-							score =30;
-							preview_score=25;
+							score =240;
+							preview_score=120;
 							break;
 						case 4:
-							score =25;
-							preview_score=20;
+							score =120;
+							preview_score=60;
 							break;
 						case 5:
-							score =20;
-							preview_score=5;
+							score =60;
+							preview_score=20;
 							break;
 						case 6:
-							score =5;
+							score =20;
 							preview_score=0;
 							break;
 					}
@@ -760,7 +761,7 @@ public class LoaPlayController {
 	
 	String baseball(HashMap<String,Object> map) {
 		int defaultScore=0;
-		int SuccessScore=3;
+		int SuccessScore=10;
 		map.put("cmd", "baseball_s");
 		map.put("score", defaultScore);
 		
@@ -972,21 +973,22 @@ public class LoaPlayController {
 		String msg = map.get("userName")+" 님,"+enterStr;
 		
 		if(!dailyCheck(map)) {
-			return map.get("userName")+" 님, 오늘의 강화 완료!"+enterStr + "/강화2 : 20p 소모해서 강화 1회 진행가능!";
+			return map.get("userName")+" 님, 오늘의 강화 완료!"+enterStr 
+					+ "/강화2 : 30p 소모해서 강화 1회 진행가능!"+ enterStr
+					+ "/강화3 : 150p 소모해서 강화 5회 진행가능!";
 		}
-		msg += weapon_upgrade_logic(map,1);
+		msg += weapon_upgrade_logic(map,1,0);
 		//msg += enterStr + map.get("extra_msg");
 		return msg;
 	}
 	//추가강화
 	String weapon2(HashMap<String,Object> map) {
 		map.put("cmd", "weapon_upgrade2");
-		
 		String msg = map.get("userName")+" 님,"+enterStr;
+		int defaultScore = 30;
 		try {
 			List<HashMap<String,Object>> ls = botService.selectBotPointRankNewScore(map);
 			int score = Integer.parseInt(ls.get(0).get("SCORE").toString());
-			int defaultScore = 20;
 			if(score < defaultScore) {
 				return map.get("userName")+" 님, "+defaultScore+" p 이상만 가능합니다.";
 			}
@@ -998,37 +1000,37 @@ public class LoaPlayController {
 			return "강화2 포인트조회 오류입니다.";
 		}
 		
-		msg += weapon_upgrade_logic(map,1);
+		msg += weapon_upgrade_logic(map,1 ,defaultScore );
 		
 		return msg;
 	}
 	//추가강화
 	String weapon3(HashMap<String,Object> map) {
 		map.put("cmd", "weapon_upgrade2");
-		
 		String msg = map.get("userName")+" 님,"+enterStr;
+		int defaultScore = 30;
+		int calcScore = defaultScore *5;
 		try {
 			List<HashMap<String,Object>> ls = botService.selectBotPointRankNewScore(map);
 			int score = Integer.parseInt(ls.get(0).get("SCORE").toString());
-			int defaultScore = 100;
-			if(score < defaultScore) {
-				return map.get("userName")+" 님, "+defaultScore+" p 이상만 가능합니다.";
+			if(score < calcScore) {
+				return map.get("userName")+" 님, "+calcScore+" p 이상만 가능합니다.";
 			}
-			map.put("score", -defaultScore);
+			map.put("score", -calcScore);
 			int new_score = botService.insertBotPointRankTx(map);
 			
-			msg += defaultScore+"p 사용! .. "+score + "p → "+ new_score+"p"+enterStr;
+			msg += calcScore+"p 사용! .. "+score + "p → "+ new_score+"p"+enterStr;
 		}catch(Exception e) {
 			return "강화3 포인트조회 오류입니다.";
 		}
 		
-		msg += weapon_upgrade_logic(map,5);
+		msg += weapon_upgrade_logic(map,5,defaultScore);
 		
 		return msg;
 	}
 	
 	
-	public String weapon_upgrade_logic(HashMap<String,Object> map,int rate) {
+	public String weapon_upgrade_logic(HashMap<String,Object> map,int rate,int tryPirce) {
 		String msg="";
 		
 		HashMap<String, Object> now;
@@ -1064,44 +1066,92 @@ public class LoaPlayController {
 		        msg += (lv+1) +" 단계 강화 ⭐성공⭐!"+enterStr;	
 		        msg += "성공률 : "+"100%"+enterStr;	
 		        msg += "장인의기운이 초기화 되었습니다."+enterStr;
+		        
+		        if(rate>1) {
+		        	msg += rate+"회차 중 "+"1회차에 성공, 환급포인트 : "+tryPirce*(rate-1)+enterStr;
+		        	map.put("score", tryPirce*(rate-1));
+		        	map.put("cmd", "weapon_upgrade2");
+		        	botService.insertBotPointRankTx(map);
+		        }
+		        
 			}else {
-				HashMap<String, Object> result = getSuccessRate(lv,rate);
-			    boolean isSuccess = (boolean) result.get("isSuccess");
-			    double failAdd = (double) result.get("failAddPct");
-			    double successRate = (double) result.get("successRate");     // 현재 성공 확률
-			    if (isSuccess) {
+				HashMap<String, Object> result;
+				boolean isSuccess =false;
+				boolean isMaxedOut = false; // 100% 달성 여부
+				
+			    double failAdd =0.0;
+			    double successRate =0.0;
+			    
+			    int i=1;
+				for( i=1 ; i <= rate ; i++) {
+					result = getSuccessRate(lv);
+					isSuccess = (boolean) result.get("isSuccess");
+				    failAdd = (double) result.get("failAddPct");
+				    successRate = (double) result.get("successRate");     // 현재 성공 확률
+				    
+				    double currentPct = failPct + failAdd * i;
+				    if (currentPct >= 100) {
+				        isMaxedOut = true; // 장인의기운 100% 달성
+				        break;
+				    }
+				    // i 번째 시도
+					if(isSuccess) {
+						break;
+					}
+				}
+				
+			    int refundCount = rate-i;     
+			    int refundAmount = refundCount*tryPirce;
+			    
+			    if(refundCount > 0) {
+			    	//중간성공시 .. 로직 
+			    	 msg += rate + "회차 중 " + (rate - refundCount) + "회차에 " +
+			    	           (isMaxedOut ? "장인의기운 100% 도달" : "성공") +
+			    	           ", 환급포인트 : " + refundAmount + enterStr;
+		        	map.put("score", refundAmount);
+		        	map.put("cmd", "weapon_upgrade2");
+		        	botService.insertBotPointRankTx(map);
+			    }
+			    
+			    if (isMaxedOut) {
+			        // 100% 도달 시 로직 (성공은 안 함)
+			        double sumPct = 100.0;
+			        map.put("successYn", "0");
+			        map.put("failPct", sumPct);
+			        map.put("addPct", failAdd * i);
+			        map.put("tryLv", lv + 1);
+			        map.put("weaponLv", lv);
+
+			        msg += "현재 장인의기운: 100%" + enterStr;
+			    }else if (isSuccess) {
 			        map.put("successYn", "1");
 			        map.put("failPct", 0); // 성공 시 누적 실패율 초기화
 			        map.put("addPct", 0); // 실패 시 누적 증가(로그테이블)
 			        map.put("tryLv", lv+1); // 현재 레벨+1 (시도레벨)
 			        map.put("weaponLv", lv+1); // 현재 레벨+1 (성공레벨)
 			        
-			        msg += (lv+1) +" 단계 강화 ⭐성공⭐!"+enterStr;	
+			        msg += (lv+1) +" 단계 강화 ⭐성공⭐"+enterStr;	
 			        msg += "성공률 : "+successRate+"%"+enterStr;	
 			        msg += "장인의기운이 초기화 되었습니다."+enterStr+enterStr;			        
-			        msg += "누적되었던 장인의기운 "+failPct+"%"+enterStr;			        
+			        msg += "누적되었던 장인의기운 "+failPct+"%"+enterStr;
 			    } else {
-			    	double sum = failPct + failAdd;
+			    	double sum = failPct + failAdd*rate;
 			    	double sumPct = Math.round(sum * 100.0) / 100.0; 
 			    	
 			        map.put("successYn", "0");
 			        map.put("failPct", sumPct); // 실패 시 누적 증가
-			        map.put("addPct", failAdd); // 실패 시 누적 증가(로그테이블)
+			        map.put("addPct", failAdd*rate); // 실패 시 누적 증가(로그테이블)
 			        map.put("tryLv", lv+1); // 현재 레벨+1 (시도레벨)
 			        map.put("weaponLv", lv); // 현재 레벨+1 (실패레벨)
 			        
 			        
-				    msg += (lv+1) + " 단계 강화 ☂실패☂!"+enterStr;		
+				    msg += (lv+1) + " 단계 강화 ☂실패☂"+enterStr;		
 				    msg += "성공률 : "+successRate+"%"+enterStr;
-				    msg += "장인의기운 +"+failAdd+"%"+enterStr;	
+				    msg += "장인의기운 +"+failAdd*rate+"%"+enterStr;	
+				    msg += "현재 장인의기운: "+sumPct+"%"+enterStr;
 				    
-				    
-				    if(sum > 100) {
-				    	msg += "현재 장인의기운: 100%"+enterStr;
-				    }else {
-				    	msg += "현재 장인의기운: "+sumPct+"%"+enterStr;	
-				    }
 			    }
+			    
 				
 			}
 			botService.upsertDailyWeaponUpgradeTx(map);
@@ -1112,64 +1162,14 @@ public class LoaPlayController {
 		return msg;
 	}
 	
-	public HashMap<String,Object> getSuccessRate(int level,int rate) {
-		HashMap<Integer, Double[]> rateMap = new HashMap<>();
-		//0강화에서 시도-> 성공률15%, 장기 쌓이는양 20% 
-	    rateMap.put(0,  new Double[]{100.0, 100.0});
-	    rateMap.put(1,  new Double[]{90.0, 100.0});
-	    rateMap.put(2,  new Double[]{80.0, 100.0});
-	    rateMap.put(3,  new Double[]{70.0, 100.0});
-	    rateMap.put(4,  new Double[]{60.0, 100.0});
-	    rateMap.put(5,  new Double[]{50.0, 50.0});
-	    rateMap.put(6,  new Double[]{40.0, 50.0});
-	    rateMap.put(7,  new Double[]{30.0, 33.3});
-	    rateMap.put(8,  new Double[]{20.0, 19.9});
-	    rateMap.put(9,  new Double[]{10.0, 11.1});
-	    rateMap.put(10, new Double[]{6.0, 9.9});
-	    rateMap.put(11, new Double[]{5.0, 8.8});
-	    rateMap.put(12, new Double[]{4.5, 7.7});
-	    rateMap.put(13, new Double[]{4.0, 6.6});
-	    rateMap.put(14, new Double[]{3.5, 5.5});
-	    rateMap.put(15, new Double[]{3.0, 4.4});
-	    rateMap.put(16, new Double[]{2.5, 3.3});
-	    rateMap.put(17, new Double[]{2.0, 2.28});
-	    rateMap.put(18, new Double[]{1.5, 2.13});
-	    rateMap.put(19, new Double[]{1.0, 2.03});
-	    rateMap.put(20, new Double[]{0.9, 1.99});
-	    rateMap.put(21, new Double[]{0.8, 1.88});
-	    rateMap.put(22, new Double[]{0.7, 1.77});
-	    rateMap.put(23, new Double[]{0.6, 1.66});
-	    rateMap.put(24, new Double[]{0.5, 1.55});
-	    rateMap.put(25, new Double[]{0.4, 1.44});
-	    rateMap.put(26, new Double[]{0.3, 1.33});
-	    rateMap.put(27, new Double[]{0.2, 1.22});
-	    rateMap.put(28, new Double[]{0.1, 1.11});
-	    rateMap.put(29, new Double[]{0.1, 1.00});
-	    rateMap.put(30, new Double[]{0.1, 0.93});
-	    //30에서의 시도 -> 성공률 0.1, 장기백 0.93
-
-	    Double[] data = rateMap.getOrDefault(level, new Double[]{0.0, 0.0});
+	public HashMap<String,Object> getSuccessRate(int level) {
+	    Double[] data = MiniGameUtil.RATE_MAP.getOrDefault(level, new Double[]{0.0, 0.0});
+	    
 	    double successRate = data[0];
-	    double failAddPct = data[1]*rate;
-	    
+	    double failAddPct = data[1];
+	    boolean isSuccess = false;
 	    double roll = Math.random() * 100;
-	    
-	    boolean isSuccess = roll < successRate;
-	    if(rate == 5) {
-	    	double roll2 = Math.random() * 100;
-		    double roll3 = Math.random() * 100;
-		    double roll4 = Math.random() * 100;
-		    double roll5 = Math.random() * 100;
-
-		    boolean isSuccess1 = roll < successRate;
-		    boolean isSuccess2 = roll2 < successRate;
-		    boolean isSuccess3 = roll3 < successRate;
-		    boolean isSuccess4 = roll4 < successRate;
-		    boolean isSuccess5 = roll5 < successRate;
-
-	    	isSuccess = isSuccess1 || isSuccess2 || isSuccess3 || isSuccess4 || isSuccess5;
-	    }
-	    
+        isSuccess = roll < successRate; 
 	    
 	    HashMap<String, Object> result = new HashMap<>();
 	    result.put("isSuccess", isSuccess);         // 성공 여부
@@ -1248,7 +1248,7 @@ public class LoaPlayController {
 	    
 	    
 	    // 포인트 = 데미지
-	    int score = damage/3;
+	    int score = damage/4;
 	    
 	    boolean newbieYn = false;
 	    if(weaponLv < 10) {
