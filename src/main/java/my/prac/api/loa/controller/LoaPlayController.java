@@ -615,6 +615,7 @@ public class LoaPlayController {
 	                try {
 	                    int count = botService.selectPointItemUserCount(map);
 	                    msg += "보물상자 오픈 실패!";
+	                    msg += enterStr+"보물상자가 모래가 되어 사라졌습니다";
 	                    
 	                    map.put("cmd", "pointBoxOpenDel");
 	                    botService.updatePointNewBoxOpenTx(map);
@@ -1488,7 +1489,7 @@ public class LoaPlayController {
 						//무료강화이면서  item_11_2 있는경우
 						 msg += "([황금모루] 보너스 성공률 적용)"+enterStr;
 					}
-				    msg += "장인의기운 +"+failAdd*rate+"%"+enterStr;	
+				    msg += "장인의기운 +" + Math.round(failAdd * rate* 100) / 100.0+"%"+enterStr;	
 				    msg += "현재 장인의기운: "+sumPct+"%"+enterStr;
 				    
 			    }
