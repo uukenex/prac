@@ -541,13 +541,13 @@ public class LoaPlayController {
 	
 	String pointShop(HashMap<String,Object> map) {
 		return "명령어 입력 ... "
-	          +enterStr+"/상자구입 : 300p";
+	          +enterStr+"/상자구입 : 500p";
 	}
 	
 	String pointBoxOpenBuy(HashMap<String,Object> map) {
 		map.put("cmd", "pointShop");
 		String msg = map.get("userName")+" 님,"+enterStr;
-		int defaultScore = 300;
+		int defaultScore = 500;
 		try {
 			
 			int count = botService.selectPointItemUserCount(map);
@@ -576,7 +576,7 @@ public class LoaPlayController {
 			e.printStackTrace();
 		}
 		msg += "아이템상자 구매가 완료되었습니다."
-		    //+ enterStr + " /상자열기 입력으로 상자열기"
+		    + enterStr + " /상자열기 입력으로 상자열기"
 		    ;
 		
 		return msg;
@@ -586,74 +586,169 @@ public class LoaPlayController {
 	
 	String pointBoxOpen(HashMap<String,Object> map) {
 	    Random rand = new Random();
-	    String msg = map.get("userName")+" 님,"+enterStr;
-	    
-	    // 1. 보물상자 성공 여부 (20%)
-	    boolean isSuccess = rand.nextInt(100) < 20;
+	    String msg = map.get("userName") + " 님," + enterStr;
 
-	    if (!isSuccess) {
-	    	int count;
-			try {
-				count = botService.selectPointItemUserCount(map);
-				msg += "보물상자 오픈 실패!";
-				if(count > 1) {
-					// 실패: 0~200P 환급
-			        int refundPoint = rand.nextInt(201); // 0~200
-			        msg += enterStr + refundPoint + "P가 환급";
-			        
-			        map.put("cmd", "pointBoxOpenDel");
-			        map.put("score", refundPoint);
-			        int new_score = botService.insertBotPointRankTx(map);
-					msg += enterStr+"갱신포인트 : "+ new_score+"p";
-					
-					botService.updatePointNewBoxOpenTx(map);
-					
-				}
-			} catch (Exception e) {
-				msg = "보물상자 오픈 오류!!";
-			}
-			
-			return msg;
+	    // 0. 현재 상자 openFlag 조회 (null 안전 처리)
+	    String openFlag = "";
+	    try {
+	        openFlag = botService.selectPointItemUserOpenFlag(map);
+	    } catch (Exception e) {
+	    	return msg+"상자열기 오류입니다";
 	    }
 	    
-	    // 2. 보물상자 오픈 성공 → 보물 정보 조회
-	    List<HashMap<String, Object>> itemInfoList;
-		try {
-			itemInfoList = botService.selectPointItemInfoList(map);
-			for(HashMap<String,Object> hs : itemInfoList) {
-		    	hs.get("ITEM_NO").toString();
-		    	hs.get("MAX_LV").toString();
-		    }
-			
-			
-		} catch (Exception e) {
-		}
-	    
-	    // TODO: 보물 ID로 맥스레벨 조회 쿼리
-	    // ex) SELECT max_level FROM treasure WHERE chest_id = ?
-	    int maxLevel = 5; // 예시: 쿼리 결과
-	    // TODO: 현재 보물의 획득 레벨 조회 쿼리
-	    // ex) SELECT current_level FROM user_treasure WHERE user_id = ? AND treasure_id = ?
-	    int currentLevel = 3; // 예시: 쿼리 결과
+	    String itemNo = "";
+	    String itemName = "";
+	    String itemLv = "1";
+        String itemDesc = "";
 
-	    int rewardLevel;
-	    if (currentLevel >= maxLevel) {
-	        // 맥스레벨이면 무조건 레벨1
-	        rewardLevel = 1;
-	    } else {
-	        // 맥스레벨 미도달 시 확률 적용
-	        rewardLevel = rand.nextInt(100) < 20 ? 2 : 1;
+        if(openFlag ==null) {
+        	return msg+"상자가 없습니다";
+        }
+        
+	    switch (openFlag) {
+	        case "0": // 아직 오픈하지 않은 상자
+	            // 1. 보물상자 성공 여부 (20%)
+	            boolean isSuccess = rand.nextInt(100) < 25;
+
+	            if (!isSuccess) {
+	                try {
+	                    int count = botService.selectPointItemUserCount(map);
+	                    msg += "보물상자 오픈 실패!";
+	                    if (count > 1) {
+	                        // 실패 시 0~200P 환급
+	                        int refundPoint = rand.nextInt(201);
+	                        msg += enterStr + refundPoint + "P가 환급";
+
+	                        map.put("cmd", "pointBoxOpenDel");
+	                        map.put("score", refundPoint);
+	                        int new_score = botService.insertBotPointRankTx(map);
+	                        msg += enterStr + "갱신포인트 : " + new_score + "p";
+
+	                        botService.updatePointNewBoxOpenTx(map);
+	                    }
+	                } catch (Exception e) {
+	                    msg = "보물상자 오픈 오류!!";
+	                    e.printStackTrace();
+	                }
+	                return msg;
+	            }
+
+	            // 2. 보물상자 오픈 성공 → 보물 정보 조회
+	            List<HashMap<String, Object>> itemInfoList = new ArrayList<>();
+	            try {
+	                itemInfoList = botService.selectPointItemInfoList(map);
+	            } catch (Exception e) {
+	                e.printStackTrace();
+	            }
+
+	            // 3. 유저가 가지고 있는 아이템 목록 (ITEM_NO-ITEM_LV)
+	            List<String> userItemList = selectPointItemUserList(map);
+
+	            // 4. MAX_LV 미도달 아이템 후보 목록 생성
+	            List<HashMap<String, Object>> candidateList = new ArrayList<>();
+	            for (HashMap<String, Object> itemInfo : itemInfoList) {
+	                itemNo = itemInfo.get("ITEM_NO").toString();
+	                int maxLevel = Integer.parseInt(itemInfo.get("MAX_LV").toString());
+	                int currentLevel = 0;
+
+	                for (String userItem : userItemList) {
+	                    String[] parts = userItem.split("-");
+	                    if (parts[0].equals(itemNo)) {
+	                        currentLevel = Integer.parseInt(parts[1]);
+	                        break;
+	                    }
+	                }
+
+	                if (currentLevel < maxLevel) {
+	                    itemInfo.put("CURRENT_LV", currentLevel);
+	                    candidateList.add(itemInfo);
+	                }
+	            }
+
+	            if (candidateList.isEmpty()) {
+	                msg += "획득 가능한 보물이 없습니다!";
+	                return msg;
+	            }
+
+	            // 5. 후보 중 랜덤 선택
+	            HashMap<String, Object> chosenItem = candidateList.get(rand.nextInt(candidateList.size()));
+	            itemNo = chosenItem.get("ITEM_NO").toString();
+	            itemDesc = chosenItem.get("ITEM_DESC").toString();
+                itemName = chosenItem.get("ITEM_NAME").toString();
+	            
+	            
+	            int maxLevel = Integer.parseInt(chosenItem.get("MAX_LV").toString());
+	            int currentLevel = Integer.parseInt(chosenItem.get("CURRENT_LV").toString());
+
+	            // 6. 보상 레벨 결정
+	            String nowOpenFlag = "0";
+	            int rewardLevel;
+	            if (currentLevel >= maxLevel) {
+	                rewardLevel = 1; // MAX_LV 도달 시 1레벨
+	                nowOpenFlag = "2";
+	            } else {
+	                rewardLevel = rand.nextInt(100) < 20 ? 2 : 1;
+	                nowOpenFlag = (rewardLevel == 2) ? "1" : "2";
+	            }
+
+	            // 7. DB 저장 (보물 지급 처리)
+	            try {
+	                map.put("rdLv", rewardLevel);
+	                map.put("rdItemNo", itemNo);
+	                map.put("openFlag", nowOpenFlag);
+	                map.put("cmd", "pointBoxOpenUp");
+	                botService.updatePointNewBoxOpenTx(map);
+	            } catch (Exception e) {
+	                e.printStackTrace();
+	            }
+
+	            // 8. 메시지 구성
+	            switch (nowOpenFlag) {
+	                case "1":
+	                    msg += "상자가 황금빛으로 빛나고 있습니다!!" + enterStr;
+	                    msg += "/상자열기 로 열기" + enterStr;
+	                    break;
+	                case "2":
+	                	msg += "보물 획득!!" + enterStr;
+	    	            msg += "item No : " + itemNo + enterStr;
+	    	            msg += itemName + itemLv+"lv"+ enterStr;
+	    	            msg += itemDesc;
+	                    break;
+	            }
+	            break;
+
+	        case "1": // 레벨2 상자, /상자열기 호출 시
+	            // 재사용 가능한 조회 메서드 활용
+	            HashMap<String, Object> rareItemInfo = null;
+	            try {
+	                rareItemInfo = botService.selectPointItemUserOpenFlag1(map);
+	            } catch (Exception e) {
+	                e.printStackTrace();
+	            }
+
+	            if (rareItemInfo != null) {
+	                itemNo = rareItemInfo.get("ITEM_NO").toString();
+	                itemName = rareItemInfo.get("ITEM_NAME").toString();
+	                itemLv = rareItemInfo.get("LV").toString();
+	                itemDesc = rareItemInfo.get("ITEM_DESC").toString();
+	            }
+
+	            // DB 업데이트 (openFlag -> 2)
+	            try {
+	                map.put("openFlag", "2");
+	                botService.updatePointNewBoxOpen2Tx(map);
+	            } catch (Exception e) {
+	                e.printStackTrace();
+	            }
+
+	            msg += "보물 획득!!" + enterStr;
+	            msg += "item No : " + itemNo + enterStr;
+	            msg += itemName + itemLv+"lv"+ enterStr;
+	            msg += itemDesc;
+	            break;
 	    }
 
-	    // 3. 보상 지급
-	    // TODO: 보물 지급 쿼리
-	    // ex) INSERT INTO user_treasure(user_id, treasure_id, level) VALUES (?, ?, ?) 
-	    //     ON DUPLICATE KEY UPDATE level = level + rewardLevel
-	    msg += "보물상자 오픈 성공! " + rewardLevel + "레벨 보물을 획득했습니다.";
-
-		
-		
-		return msg;
+	    return msg;
 	}
 	
 	

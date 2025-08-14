@@ -113,9 +113,12 @@ public interface BotService {
 	//아이템 뽑기 기능
 	public List<HashMap<String,Object>> selectPointItemUserList(HashMap<String,Object> map) throws Exception;
 	public List<HashMap<String,Object>> selectPointItemInfoList(HashMap<String,Object> map) throws Exception;
+	public HashMap<String,Object> selectPointItemUserOpenFlag1(HashMap<String,Object> map) throws Exception;
 	public void insertPointNewBoxOpenTx(HashMap<String,Object> map) throws Exception;
 	public void updatePointNewBoxOpenTx(HashMap<String,Object> map) throws Exception;
+	public void updatePointNewBoxOpen2Tx(HashMap<String,Object> map) throws Exception;
 	public int selectPointItemUserCount(HashMap<String,Object> map) throws Exception;
+	public String selectPointItemUserOpenFlag(HashMap<String,Object> map) throws Exception;
 } 
 
 	

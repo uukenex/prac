@@ -1170,6 +1170,7 @@
 		     <if test="cmd != null and cmd == 'pointBoxOpenUp' ">
 		     , U.LV = 	   #{rdLv, jdbcType=NUMERIC}
 		     , U.ITEM_NO = #{rdItemNo, jdbcType=NUMERIC}
+		     , U.OPEN_FLAG = #{openFlag, jdbcType=VARCHAR}
 		     </if>
 		     <if test="cmd != null and cmd == 'pointBoxOpenDel' ">
 		     , U.DEL_YN = '1'
@@ -1178,9 +1179,39 @@
 		   AND U.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 		   AND U.LV = 0
 		   AND U.ITEM_NO = 0
+		   AND U.OPEN_FLAG = '0'
+		   AND U.DEL_YN = '0'
 		   AND ROWNUM = 1
 	</update>
-	
+	<select id="selectPointItemUserOpenFlag1" parameterType="HashMap" resultType="HashMap">
+		SELECT U.OPEN_FLAG,
+		       M.ITEM_NO,
+		       M.ITEM_NAME,
+		       M.ITEM_DESC,
+		       U.LV
+		  FROM TBOT_POINT_ITEM_USER U, TBOT_POINT_ITEM_M M
+		 where U.ITEM_NO = M.ITEM_NO
+		   and U.OPEN_FLAG = '1'
+		   AND ROWNUM = 1
+	</select>
+	<update id="updatePointNewBoxOpen2" parameterType="HashMap">
+		UPDATE TBOT_POINT_ITEM_USER U
+		   SET U.MODIFY_DATE = SYSDATE
+		     , U.OPEN_FLAG = #{openFlag, jdbcType=VARCHAR}
+		 WHERE U.USER_NAME = #{userName, jdbcType=VARCHAR}
+		   AND U.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+		   AND U.OPEN_FLAG = '1'
+		   AND ROWNUM = 1
+	</update>
+	<select id="selectPointItemUserOpenFlag" parameterType="HashMap" resultType="String">
+		SELECT U.OPEN_FLAG
+		  FROM TBOT_POINT_ITEM_USER U
+		 WHERE U.USER_NAME = #{userName, jdbcType=VARCHAR}
+		   AND U.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+		   AND U.OPEN_FLAG IN ('0','1')
+		   AND U.DEL_YN ='0'
+		   AND ROWNUM = 1
+	</select>
 	<select id="selectPointItemInfoList" parameterType="HashMap" resultType="HashMap">
 		SELECT M.ITEM_NO
 			  ,M.ITEM_NAME

@@ -493,6 +493,9 @@ public class BotServiceImpl implements BotService {
 	public List<HashMap<String,Object>> selectPointItemInfoList(HashMap<String,Object> map) throws Exception{
 		return botDAO.selectPointItemInfoList(map);
 	}
+	public HashMap<String,Object> selectPointItemUserOpenFlag1(HashMap<String,Object> map) throws Exception{
+		return botDAO.selectPointItemUserOpenFlag1(map);
+	}
 	
 	public void insertPointNewBoxOpenTx(HashMap<String,Object> map) throws Exception{
 		if(botDAO.insertPointNewBoxOpen(map) < 1) {
@@ -505,8 +508,16 @@ public class BotServiceImpl implements BotService {
 			throw new Exception("저장 실패");
 		}
 	}
+	public void updatePointNewBoxOpen2Tx(HashMap<String,Object> map) throws Exception{
+		if(botDAO.updatePointNewBoxOpen2(map) < 1) {
+			throw new Exception("저장 실패");
+		}
+	}
 	
 	public int selectPointItemUserCount(HashMap<String,Object> map) throws Exception{
 		return botDAO.selectPointItemUserCount(map);
+	}
+	public String selectPointItemUserOpenFlag(HashMap<String,Object> map) throws Exception{
+		return botDAO.selectPointItemUserOpenFlag(map);
 	}
 }
