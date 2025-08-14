@@ -205,7 +205,8 @@ public class LoaPlayController {
 		}
 		
 		return map.get("userName")+"님 출석포인트 "+score+"점 획득"
-			  +extraMsg + enterStr+"갱신 포인트 : "+new_score;
+			  +extraMsg + enterStr+"갱신 포인트 : "+new_score
+			  +enterStr + "/포인트상점 상자 추가!";
 	}
 	
 	
@@ -541,7 +542,8 @@ public class LoaPlayController {
 	
 	String pointShop(HashMap<String,Object> map) {
 		return "명령어 입력 ... "
-	          +enterStr+"/상자구입 : 500p";
+	          +enterStr+"/상자구입 : 500p"
+	          +enterStr+"...1회차 무료!";
 	}
 	
 	String pointBoxOpenBuy(HashMap<String,Object> map) {
