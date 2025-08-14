@@ -136,6 +136,7 @@ public class LoaPlayController {
 	
 	
 	
+	
 	int weaponBonusForFight(HashMap<String,Object> map) {
 		HashMap<String,Object> targetMap = new HashMap<>();
 		targetMap.put("roomName", map.get("roomName"));
@@ -540,8 +541,7 @@ public class LoaPlayController {
 	
 	String pointShop(HashMap<String,Object> map) {
 		return "명령어 입력 ... "
-	          +enterStr+"/상자구입 : 300p"
-			  +enterStr+"사전예약 한정가격!";
+	          +enterStr+"/상자구입 : 300p";
 	}
 	
 	String pointBoxOpenBuy(HashMap<String,Object> map) {
@@ -617,7 +617,18 @@ public class LoaPlayController {
 	    }
 	    
 	    // 2. 보물상자 오픈 성공 → 보물 정보 조회
-	    //botService.selectPointItemInfoList(map);
+	    List<HashMap<String, Object>> itemInfoList;
+		try {
+			itemInfoList = botService.selectPointItemInfoList(map);
+			for(HashMap<String,Object> hs : itemInfoList) {
+		    	hs.get("ITEM_NO").toString();
+		    	hs.get("MAX_LV").toString();
+		    }
+			
+			
+		} catch (Exception e) {
+		}
+	    
 	    // TODO: 보물 ID로 맥스레벨 조회 쿼리
 	    // ex) SELECT max_level FROM treasure WHERE chest_id = ?
 	    int maxLevel = 5; // 예시: 쿼리 결과

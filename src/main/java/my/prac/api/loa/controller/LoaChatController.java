@@ -509,6 +509,7 @@ public class LoaChatController {
 					val = "별도 게임방에서 진행해주세요.";
 				}
 				break;
+				/*
 			case "/상자구입":
 				gameYnList = botService.selectGamePlayYn(reqMap);
 				playYn ="1"; 
@@ -539,6 +540,7 @@ public class LoaChatController {
 					val = "별도 게임방에서 진행해주세요.";
 				}
 				break;
+				*/
 			case "/포인트야구": case "/야구":
 				gameYnList = botService.selectGamePlayYn(reqMap);
 				playYn ="1"; 
