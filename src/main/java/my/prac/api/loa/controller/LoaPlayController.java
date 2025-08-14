@@ -602,7 +602,8 @@ public class LoaPlayController {
         String itemDesc = "";
 
         if(openFlag ==null) {
-        	return msg+"상자가 없습니다";
+        	return msg+"상자가 없습니다"
+        			+enterStr+"/상자구매 : 500p";
         }
         
 	    switch (openFlag) {
@@ -614,18 +615,20 @@ public class LoaPlayController {
 	                try {
 	                    int count = botService.selectPointItemUserCount(map);
 	                    msg += "보물상자 오픈 실패!";
+	                    
+	                    map.put("cmd", "pointBoxOpenDel");
+	                    botService.updatePointNewBoxOpenTx(map);
 	                    if (count > 1) {
 	                        // 실패 시 0~200P 환급
 	                        int refundPoint = rand.nextInt(201);
 	                        msg += enterStr + refundPoint + "P가 환급";
 
-	                        map.put("cmd", "pointBoxOpenDel");
+	                        
 	                        map.put("score", refundPoint);
 	                        int new_score = botService.insertBotPointRankTx(map);
 	                        msg += enterStr + "갱신포인트 : " + new_score + "p";
-
-	                        botService.updatePointNewBoxOpenTx(map);
 	                    }
+	                    
 	                } catch (Exception e) {
 	                    msg = "보물상자 오픈 오류!!";
 	                    e.printStackTrace();
