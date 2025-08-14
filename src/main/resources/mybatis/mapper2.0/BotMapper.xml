@@ -1166,15 +1166,29 @@
 	
 	<update id="updatePointNewBoxOpen" parameterType="HashMap">
 		UPDATE TBOT_POINT_ITEM_USER U
-		   SET U.LV = U.LV + #{rdLv, jdbcType=NUMERIC}
+		   SET U.MODIFY_DATE = SYSDATE
+		     <if test="cmd != null and cmd == 'pointBoxOpenUp' ">
+		     , U.LV = 	   #{rdLv, jdbcType=NUMERIC}
 		     , U.ITEM_NO = #{rdItemNo, jdbcType=NUMERIC}
-		     , U.MODIFY_DATE = SYSDATE
+		     </if>
+		     <if test="cmd != null and cmd == 'pointBoxOpenDel' ">
+		     , U.DEL_YN = '1'
+		     </if>
 		 WHERE U.USER_NAME = #{userName, jdbcType=VARCHAR}
 		   AND U.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 		   AND U.LV = 0
 		   AND U.ITEM_NO = 0
 		   AND ROWNUM = 1
 	</update>
+	
+	<select id="selectPointItemInfoList" parameterType="HashMap" resultType="HashMap">
+		SELECT M.ITEM_NO
+			  ,M.ITEM_NAME
+			  ,M.ITEM_DESC
+			  ,M.MAX_LV
+		  FROM TBOT_POINT_ITEM_M M
+		
+	</select>
 	
 	<select id="selectPointItemUserList" parameterType="HashMap" resultType="HashMap">
 		SELECT M.ITEM_NO
@@ -1187,10 +1201,20 @@
 		 WHERE M.ITEM_NO = U.ITEM_NO
 		   AND U.USER_NAME = #{userName, jdbcType=VARCHAR}
 		   AND U.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+		   AND U.ETC_YN ='0'
 		 GROUP BY M.ITEM_NO
 			     ,M.ITEM_NAME
+			     ,M.ITEM_DESC
 			     ,M.MAX_LV
 		 ORDER BY M.ITEM_NO
+		
+	</select>
+	
+	<select id="selectPointItemUserCount" parameterType="HashMap" resultType="int">
+		SELECT COUNT(1)
+		  FROM TBOT_POINT_ITEM_USER U
+		 WHERE U.USER_NAME = #{userName, jdbcType=VARCHAR}
+		   AND U.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 		
 	</select>
 </mapper>

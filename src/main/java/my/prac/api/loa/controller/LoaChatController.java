@@ -569,9 +569,10 @@ public class LoaChatController {
 					val = "별도 게임방에서 진행해주세요.";
 				}
 				break;
+			/*
 			case "/이벤트참여":
 				val = play.eventApply(reqMap);
-				break;
+				break;*/
 			case "/로또": case "/ㄹㄸ":
 				val = lotto();
 				break;

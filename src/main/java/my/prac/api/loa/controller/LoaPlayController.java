@@ -12,6 +12,7 @@ import javax.annotation.Resource;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 
 import my.prac.core.prjbot.service.BotService;
@@ -53,14 +54,19 @@ public class LoaPlayController {
 		return check;
 		
 	}
-	boolean hourCheck(HashMap<String,Object> map) {
+	boolean hourCheck(HashMap<String,Object> map,boolean item_6_1) {
 		LocalTime now = LocalTime.now();
 		LocalTime start = LocalTime.of(2, 0);     // 00:00
 	    LocalTime end = LocalTime.of(6, 0);        // 08:00
 
 	    if (!now.isBefore(start) && now.isBefore(end)) {
-	        map.put("extra_msg", "보스가 어둠에 숨었습니다...공격불가..(02시~06시 불가시간)");
-	        return false;
+	    	map.put("extra_msg","");
+	    	if(item_6_1) {
+	    		map.put("extra_msg", "([야간투시경] 효과 적용)"+enterStr);
+	    	}else {
+	    		map.put("extra_msg", "보스가 어둠에 숨었습니다...공격불가..(02시~06시 불가시간)");
+	    		return false;
+	    	}
 	    }
 		
 		String check_val = botService.selectHourCheck(map);
@@ -113,6 +119,21 @@ public class LoaPlayController {
 	int getWeaponLv(HashMap<String,Object> map) {
 		return botService.selectWeaponLvCheck(map);
 	}
+	
+	List<String> selectPointItemUserList(HashMap<String,Object> map){
+		List<String> ableItemList = new ArrayList<>();
+		try {
+			List<HashMap<String,Object>> userItemList = botService.selectPointItemUserList(map);
+			//MiniGameUtil.itemAddtionalFunction(map);
+			for (HashMap<String,Object> userItem : userItemList) {
+				ableItemList.add(userItem.get("ITEM_NO")+"-"+userItem.get("ITEM_LV"));
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return ableItemList;
+	}
+	
 	
 	
 	int weaponBonusForFight(HashMap<String,Object> map) {
@@ -206,21 +227,54 @@ public class LoaPlayController {
 		int score = 0;
 		int new_score=0;
 		
+		List<String> ableItemList = selectPointItemUserList(map); 
+		boolean item_1_1 = ableItemList.contains("1-1");
+		boolean item_1_2 = ableItemList.contains("1-2");
+		boolean item_1_3 = ableItemList.contains("1-3");
+		boolean item_2_1 = ableItemList.contains("2-1");
+		
+		
 		if(number>=99) { // 500
 			prefix="굴리기전부터 운명적입니다. 행운의 신이 함께합니다.";
 			score =+500;
 		}else if(number>=85) { // 85~98
 			prefix="행운이 쌓인채로 굴러갑니다.";
 			score =+number;
-		}else if(number>=50) { //25~42
-			prefix="데굴데굴..";
-			score =+(number/2);
+		}else if(number>=50) { //50~84점 => 25~42포인트
+			
+			if(item_2_1 && number == 77) {
+				prefix="아이템 [럭키세븐] 효과가 발동되었습니다"
+					  +enterStr+"오늘은 행운의 날!";
+				score =+777;
+			}else {
+				prefix="데굴데굴..";
+				score =+(number/2);
+			}
 		}else if(number>=20) {//0
 			prefix="또르르륵..";
 			score =+0;
 		}else { // -50
-			prefix="콰쾅.. 이런! 주사위가 바닥으로 떨어졌군요.";
-			score =-50;
+			if(item_2_1 && number == 7) {
+				prefix="아이템 [럭키세븐] 효과가 발동되었습니다"
+					  +enterStr+"소소한 행운발견!";
+				score =+77;
+			}else if (item_1_1){
+				prefix="콰쾅.. 이런! 주사위가 바닥으로 떨어졌군요."
+					      +enterStr+"아이템 [부적]이 도움을 줍니다 (+25p 보정효과)"	 ;
+					score =-25;
+			}else if (item_1_2){
+				prefix="콰쾅.. 이런! 주사위가 바닥으로 떨어졌군요."
+					      +enterStr+"아이템 [부적]의 효과로 보호받았습니다(+50p 보정효과)"	 ;
+					score =-0;
+			}else if (item_1_3){
+				prefix="콰쾅.. 이런! 주사위가 바닥으로 떨어졌군요."
+					      +enterStr+"아이템 [부적]의 가호가 함께합니다 (+60p 보정효과)"	 ;
+					score =+10;
+			}else {
+				prefix="콰쾅.. 이런! 주사위가 바닥으로 떨어졌군요."
+				      +enterStr+"(주사위 눈의 20보다 낮으면 -50 p)"	 ;
+				score =-50;
+			}
 		}
 		
 		try {
@@ -484,32 +538,33 @@ public class LoaPlayController {
 				+ extraMsg;
 	}
 	
-	String eventApply(HashMap<String,Object> map) {
-		//select 현재 진행중인 이벤트가 있는지?
-		
-		//
-		
-		return "뽑기 기능은 개발중입니다.";
-	}
-	
 	String pointShop(HashMap<String,Object> map) {
-		return "명령어 입력 ... /상자구입 : 500p";
+		return "명령어 입력 ... "
+	          +enterStr+"/상자구입 : 300p"
+			  +enterStr+"사전예약 한정가격!";
 	}
 	
 	String pointBoxOpenBuy(HashMap<String,Object> map) {
 		map.put("cmd", "pointShop");
 		String msg = map.get("userName")+" 님,"+enterStr;
-		int defaultScore = 500;
+		int defaultScore = 300;
 		try {
-			List<HashMap<String,Object>> ls = botService.selectBotPointRankNewScore(map);
-			int score = Integer.parseInt(ls.get(0).get("SCORE").toString());
-			if(score < defaultScore) {
-				return map.get("userName")+" 님, "+defaultScore+" p 이상만 가능합니다.";
-			}
-			map.put("score", -defaultScore);
-			int new_score = botService.insertBotPointRankTx(map);
 			
-			msg += defaultScore+"p 사용! .. "+score + "p → "+ new_score+"p"+enterStr;
+			int count = botService.selectPointItemUserCount(map);
+			if(count ==0) {
+				msg += "welcome gift 수령! 0p 소모!"+enterStr;
+			}else {
+				List<HashMap<String,Object>> ls = botService.selectBotPointRankNewScore(map);
+				int score = Integer.parseInt(ls.get(0).get("SCORE").toString());
+				if(score < defaultScore) {
+					return map.get("userName")+" 님, "+defaultScore+" p 이상만 가능합니다.";
+				}
+				map.put("score", -defaultScore);
+				int new_score = botService.insertBotPointRankTx(map);
+				
+				msg += defaultScore+"p 사용! .. "+score + "p → "+ new_score+"p"+enterStr;
+			}
+			
 		}catch(Exception e) {
 			return "포인트샵 조회 오류입니다.";
 		}
@@ -530,7 +585,64 @@ public class LoaPlayController {
 	
 	
 	String pointBoxOpen(HashMap<String,Object> map) {
-		return "";
+	    Random rand = new Random();
+	    String msg = map.get("userName")+" 님,"+enterStr;
+	    
+	    // 1. 보물상자 성공 여부 (20%)
+	    boolean isSuccess = rand.nextInt(100) < 20;
+
+	    if (!isSuccess) {
+	    	int count;
+			try {
+				count = botService.selectPointItemUserCount(map);
+				msg += "보물상자 오픈 실패!";
+				if(count > 1) {
+					// 실패: 0~200P 환급
+			        int refundPoint = rand.nextInt(201); // 0~200
+			        msg += enterStr + refundPoint + "P가 환급";
+			        
+			        map.put("cmd", "pointBoxOpenDel");
+			        map.put("score", refundPoint);
+			        int new_score = botService.insertBotPointRankTx(map);
+					msg += enterStr+"갱신포인트 : "+ new_score+"p";
+					
+					botService.updatePointNewBoxOpenTx(map);
+					
+				}
+			} catch (Exception e) {
+				msg = "보물상자 오픈 오류!!";
+			}
+			
+			return msg;
+	    }
+	    
+	    // 2. 보물상자 오픈 성공 → 보물 정보 조회
+	    //botService.selectPointItemInfoList(map);
+	    // TODO: 보물 ID로 맥스레벨 조회 쿼리
+	    // ex) SELECT max_level FROM treasure WHERE chest_id = ?
+	    int maxLevel = 5; // 예시: 쿼리 결과
+	    // TODO: 현재 보물의 획득 레벨 조회 쿼리
+	    // ex) SELECT current_level FROM user_treasure WHERE user_id = ? AND treasure_id = ?
+	    int currentLevel = 3; // 예시: 쿼리 결과
+
+	    int rewardLevel;
+	    if (currentLevel >= maxLevel) {
+	        // 맥스레벨이면 무조건 레벨1
+	        rewardLevel = 1;
+	    } else {
+	        // 맥스레벨 미도달 시 확률 적용
+	        rewardLevel = rand.nextInt(100) < 20 ? 2 : 1;
+	    }
+
+	    // 3. 보상 지급
+	    // TODO: 보물 지급 쿼리
+	    // ex) INSERT INTO user_treasure(user_id, treasure_id, level) VALUES (?, ?, ?) 
+	    //     ON DUPLICATE KEY UPDATE level = level + rewardLevel
+	    msg += "보물상자 오픈 성공! " + rewardLevel + "레벨 보물을 획득했습니다.";
+
+		
+		
+		return msg;
 	}
 	
 	
@@ -599,6 +711,9 @@ public class LoaPlayController {
 				
 				res += userName+" 님, 현재 입력 숫자:"+in_number+enterStr+
 						"총 6회 중 "+(completeYn+1) +" 회 진행중"+enterStr;
+				
+				List<String> ableItemList = selectPointItemUserList(map); 
+				boolean item_3_1 = ableItemList.contains("3-1");
 				
 				
 				switch(completeYn) {
@@ -708,7 +823,12 @@ public class LoaPlayController {
 					    res += (completeYn + 1) + "회차 실패!" + enterStr + enterStr;
 					    
 					    if (completeYn + 1 < 6) {
-					        res += in_number + (targetNumber > in_number ? " ↑ UP" : " ↓ DOWN") + enterStr;
+					    	int diff = Math.abs(targetNumber - in_number);
+					        String arrow = targetNumber > in_number ? " ↑" : " ↓";
+					        if (item_3_1 && diff >= 30) {
+					            arrow += arrow.trim(); // 화살표 두 개
+					        }
+					        res += in_number + arrow + (targetNumber > in_number ? " UP" : " DOWN") + enterStr;
 					        res += "다음에 맞추면 " + preview_score + "p 획득 가능" + enterStr;
 					    }
 					}
@@ -746,13 +866,15 @@ public class LoaPlayController {
 				    Object value = info.get("NUMBER" + i);
 				    if (value != null) {
 				        int number = Integer.parseInt(value.toString());
+				        int diff = Math.abs(targetNumber - number);
 				        String direction = "";
 				        if (targetNumber > number) {
 				            direction = " ↑";
 				        } else if (targetNumber < number) {
 				            direction = " ↓";
-				        } else {
-				            direction = ""; // 정답과 같은 경우 (이론상 발생 안 함, 방어적 처리)
+				        }
+				        if (item_3_1 && diff >= 30 && !direction.isEmpty()) {
+				            direction += direction.trim(); // 화살표 두 개
 				        }
 				        res += i + "차시도 " + number + direction + enterStr;
 				    }
@@ -760,12 +882,14 @@ public class LoaPlayController {
 
 				// 현재 시도는 이미 비교했으므로 다시 계산
 				String currentDirection = "";
+				int diff = Math.abs(targetNumber - in_number);
 				if (targetNumber > in_number) {
 				    currentDirection = " ↑";
 				} else if (targetNumber < in_number) {
 				    currentDirection = " ↓";
-				} else {
-				    currentDirection = "";
+				}
+				if (item_3_1 && diff >= 30 && !currentDirection.isEmpty()) {
+				    currentDirection += currentDirection.trim();
 				}
 				res += "현재시도 " + in_number + currentDirection + enterStr;
 				
@@ -1003,7 +1127,7 @@ public class LoaPlayController {
 					+ "/강화2 : 30p 소모해서 강화 1회 진행가능!"+ enterStr
 					+ "/강화3 : 150p 소모해서 강화 5회 진행가능!";
 		}
-		msg += weapon_upgrade_logic(map,1,1);
+		msg += weapon_upgrade_logic(map,1,0);
 		//msg += enterStr + map.get("extra_msg");
 		return msg;
 	}
@@ -1011,31 +1135,29 @@ public class LoaPlayController {
 	String weapon2(HashMap<String,Object> map) {
 		map.put("cmd", "weapon_upgrade2");
 		String msg = map.get("userName")+" 님,"+enterStr;
+		
+		List<String> ableItemList = selectPointItemUserList(map); 
+		boolean item_8_1 = ableItemList.contains("8-1");
+		boolean item_8_2 = ableItemList.contains("8-2");
+		boolean item_8_3 = ableItemList.contains("8-3");
+		boolean item_8_4 = ableItemList.contains("8-4");
+		boolean item_8_5 = ableItemList.contains("8-5");
+		
 		int defaultScore = 30;
-		try {
-			List<HashMap<String,Object>> ls = botService.selectBotPointRankNewScore(map);
-			int score = Integer.parseInt(ls.get(0).get("SCORE").toString());
-			if(score < defaultScore) {
-				return map.get("userName")+" 님, "+defaultScore+" p 이상만 가능합니다.";
-			}
-			map.put("score", -defaultScore);
-			int new_score = botService.insertBotPointRankTx(map);
-			
-			msg += defaultScore+"p 사용! .. "+score + "p → "+ new_score+"p"+enterStr;
-		}catch(Exception e) {
-			return "강화2 포인트조회 오류입니다.";
+		int calcScore = defaultScore *1;
+		
+		if(item_8_1) {
+			calcScore -=2;
+		} else if(item_8_2) {
+			calcScore -=4;
+		} else if(item_8_3) {
+			calcScore -=6;
+		} else if(item_8_4) {
+			calcScore -=8;
+		} else if(item_8_5) {
+			calcScore -=10;
 		}
 		
-		msg += weapon_upgrade_logic(map,1 ,defaultScore );
-		
-		return msg;
-	}
-	//추가강화
-	String weapon3(HashMap<String,Object> map) {
-		map.put("cmd", "weapon_upgrade2");
-		String msg = map.get("userName")+" 님,"+enterStr;
-		int defaultScore = 30;
-		int calcScore = defaultScore *5;
 		try {
 			List<HashMap<String,Object>> ls = botService.selectBotPointRankNewScore(map);
 			int score = Integer.parseInt(ls.get(0).get("SCORE").toString());
@@ -1046,6 +1168,61 @@ public class LoaPlayController {
 			int new_score = botService.insertBotPointRankTx(map);
 			
 			msg += calcScore+"p 사용! .. "+score + "p → "+ new_score+"p"+enterStr;
+			
+			if(defaultScore!=calcScore) {
+				msg +="([테메르의 정] 강화 할인 적용)"+enterStr;
+			}
+			
+		}catch(Exception e) {
+			return "강화2 포인트조회 오류입니다.";
+		}
+		
+		msg += weapon_upgrade_logic(map,1 ,calcScore );
+		
+		return msg;
+	}
+	//추가강화
+	String weapon3(HashMap<String,Object> map) {
+		map.put("cmd", "weapon_upgrade2");
+		String msg = map.get("userName")+" 님,"+enterStr;
+		
+		List<String> ableItemList = selectPointItemUserList(map); 
+		boolean item_8_1 = ableItemList.contains("8-1");
+		boolean item_8_2 = ableItemList.contains("8-2");
+		boolean item_8_3 = ableItemList.contains("8-3");
+		boolean item_8_4 = ableItemList.contains("8-4");
+		boolean item_8_5 = ableItemList.contains("8-5");
+		
+		int defaultScore = 30;
+		int calcScore = defaultScore *5;
+		
+		if(item_8_1) {
+			calcScore -=2*5;
+		} else if(item_8_2) {
+			calcScore -=4*5;
+		} else if(item_8_3) {
+			calcScore -=6*5;
+		} else if(item_8_4) {
+			calcScore -=8*5;
+		} else if(item_8_5) {
+			calcScore -=10*5;
+		}
+		
+		try {
+			List<HashMap<String,Object>> ls = botService.selectBotPointRankNewScore(map);
+			int score = Integer.parseInt(ls.get(0).get("SCORE").toString());
+			if(score < calcScore) {
+				return map.get("userName")+" 님, "+calcScore+" p 이상만 가능합니다.";
+			}
+			map.put("score", -calcScore);
+			int new_score = botService.insertBotPointRankTx(map);
+			
+			msg += calcScore+"p 사용! .. "+score + "p → "+ new_score+"p"+enterStr;
+			
+			if(defaultScore*5 != calcScore) {
+				msg +="([테메르의 정] 강화 할인 적용)"+enterStr;
+			}
+			
 		}catch(Exception e) {
 			return "강화3 포인트조회 오류입니다.";
 		}
@@ -1062,6 +1239,11 @@ public class LoaPlayController {
 		HashMap<String, Object> now;
 		int lv;
 		double failPct;
+		
+		List<String> ableItemList = selectPointItemUserList(map); 
+		boolean item_11_1 = ableItemList.contains("11-1");
+		boolean item_11_2 = ableItemList.contains("11-2");
+		
 		try {
 			//now는 현재값을 가져오고, 없을땐 생성해서 가져온다 
 			now = botService.selectBotPointWeapon(map);
@@ -1093,7 +1275,7 @@ public class LoaPlayController {
 		        msg += "성공률 : "+"100%"+enterStr;	
 		        msg += "장인의기운이 초기화 되었습니다."+enterStr;
 		        
-		        if(rate>1) {
+		        if(rate>1 && tryPirce>0) {
 		        	msg += rate+"회차 중 "+"1회차에 성공, 환급포인트 : "+tryPirce*(rate-1)+enterStr;
 		        	map.put("score", tryPirce*(rate-1));
 		        	map.put("cmd", "weapon_upgrade2");
@@ -1110,7 +1292,15 @@ public class LoaPlayController {
 			    
 			    int i=1;
 				for( i=1 ; i <= rate ; i++) {
-					result = getSuccessRate(lv);
+					if(tryPirce == 0 && item_11_1) {
+						//무료강화이면서  item_11_1 있는경우
+						result = getSuccessRate(lv,1.5);
+					}else if(tryPirce == 0 && item_11_2) {
+						//무료강화이면서  item_11_2 있는경우
+						result = getSuccessRate(lv,2);
+					}else {
+						result = getSuccessRate(lv,1);
+					}
 					isSuccess = (boolean) result.get("isSuccess");
 				    failAdd = (double) result.get("failAddPct");
 				    successRate = (double) result.get("successRate");     // 현재 성공 확률
@@ -1144,7 +1334,7 @@ public class LoaPlayController {
 			        double sumPct = 100.0;
 			        map.put("successYn", "0");
 			        map.put("failPct", sumPct);
-			        map.put("addPct", failAdd * i);
+			        map.put("addPct", Math.round(failAdd * i * 100) / 100.0);
 			        map.put("tryLv", lv + 1);
 			        map.put("weaponLv", lv);
 
@@ -1158,21 +1348,37 @@ public class LoaPlayController {
 			        
 			        msg += (lv+1) +" 단계 강화 ⭐성공⭐"+enterStr;	
 			        msg += "성공률 : "+successRate+"%"+enterStr;	
+			        if(tryPirce == 0 && item_11_1) {
+						//무료강화이면서  item_11_1 있는경우
+			        	 msg += "([황금모루] 보너스 성공률 적용)"+enterStr;	
+					}else if(tryPirce == 0 && item_11_2) {
+						//무료강화이면서  item_11_2 있는경우
+						 msg += "([황금모루] 보너스 성공률 적용)"+enterStr;
+					}
+			       
 			        msg += "장인의기운이 초기화 되었습니다."+enterStr+enterStr;			        
 			        msg += "누적되었던 장인의기운 "+failPct+"%"+enterStr;
 			    } else {
-			    	double sum = failPct + failAdd*rate;
+			    	double failAddRate = Math.round(failAdd * rate * 100) / 100.0;
+			    	double sum = failPct + failAddRate;
 			    	double sumPct = Math.round(sum * 100.0) / 100.0; 
 			    	
 			        map.put("successYn", "0");
 			        map.put("failPct", sumPct); // 실패 시 누적 증가
-			        map.put("addPct", failAdd*rate); // 실패 시 누적 증가(로그테이블)
+			        map.put("addPct", failAddRate); // 실패 시 누적 증가(로그테이블)
 			        map.put("tryLv", lv+1); // 현재 레벨+1 (시도레벨)
 			        map.put("weaponLv", lv); // 현재 레벨+1 (실패레벨)
 			        
 			        
 				    msg += (lv+1) + " 단계 강화 ☂실패☂"+enterStr;		
 				    msg += "성공률 : "+successRate+"%"+enterStr;
+				    if(tryPirce == 0 && item_11_1) {
+						//무료강화이면서  item_11_1 있는경우
+			        	 msg += "([황금모루] 보너스 성공률 적용)"+enterStr;	
+					}else if(tryPirce == 0 && item_11_2) {
+						//무료강화이면서  item_11_2 있는경우
+						 msg += "([황금모루] 보너스 성공률 적용)"+enterStr;
+					}
 				    msg += "장인의기운 +"+failAdd*rate+"%"+enterStr;	
 				    msg += "현재 장인의기운: "+sumPct+"%"+enterStr;
 				    
@@ -1188,7 +1394,7 @@ public class LoaPlayController {
 		return msg;
 	}
 	
-	public HashMap<String,Object> getSuccessRate(int level) {
+	public HashMap<String,Object> getSuccessRate(int level,double bonusRate) {
 	    Double[] data = MiniGameUtil.RATE_MAP.getOrDefault(level, new Double[]{0.0, 0.0});
 	    
 	    double successRate = data[0];
@@ -1199,8 +1405,8 @@ public class LoaPlayController {
 	    
 	    HashMap<String, Object> result = new HashMap<>();
 	    result.put("isSuccess", isSuccess);         // 성공 여부
-	    result.put("successRate", successRate);     // 현재 성공 확률
-	    result.put("failAddPct", failAddPct);       // 실패시 누적 증가량
+	    result.put("successRate", successRate*bonusRate);     // 현재 성공 확률
+	    result.put("failAddPct", failAddPct*bonusRate);       // 실패시 누적 증가량
 	    return result;
 	}
 	
@@ -1208,11 +1414,23 @@ public class LoaPlayController {
 	public String attackBoss(HashMap<String,Object> map) {
 	    map.put("cmd", "boss_attack");
 	    
-	    // 1시간 1회 공격 제한
-	    if (!hourCheck(map)) {
+	    
+
+	    List<String> ableItemList = selectPointItemUserList(map); 
+		boolean item_4_1 = ableItemList.contains("4-1");
+		boolean item_4_2 = ableItemList.contains("4-2");
+		boolean item_5_1 = ableItemList.contains("5-1");
+		boolean item_5_2 = ableItemList.contains("5-2");
+		boolean item_5_3 = ableItemList.contains("5-3");
+		boolean item_6_1 = ableItemList.contains("6-1");
+		boolean item_7_1 = ableItemList.contains("7-1");
+		boolean item_7_2 = ableItemList.contains("7-2");
+		
+		// 1시간 1회 공격 제한
+	    if (!hourCheck(map,item_6_1)) {
 	        return map.get("userName") + "님," + enterStr + map.get("extra_msg");
 	    }
-
+	    
 	    int weaponLv = getWeaponLv(map);
 	    // 보스 정보 조회
 	    HashMap<String, Object> boss;
@@ -1236,8 +1454,25 @@ public class LoaPlayController {
 
 	    // 회피 확률 설정 (예: 10%)
 	    double evadeChance = 0.10;
+	    
+	    
+	    
 	    boolean isEvade = Math.random() < evadeChance;
-
+	    String isEvadeMsg ="";
+	    if(isEvade) {
+	    	//피했을 경우 재공격
+	    	if(item_7_1) {
+	    		//60%확률로 피한다, 40% 적중률 , ex 피할확률10%에서 40%적중률 => 4%,20%에서 8%적중률
+	    		isEvade = Math.random() < 0.6;
+	    		isEvadeMsg = "[덫] 효과 적용 " + (isEvade?"실패":"")+enterStr;
+		    }else if(item_7_2) {
+		    	//20%확률로 피한다, 80% 적중률 , ex 피할확률10%에서 80%적중률 => 8%,20%에서 16%적중률
+		    	isEvade = Math.random() < 0.2;
+		    	isEvadeMsg = "[덫] 효과 적용 " + (isEvade?"실패":"")+enterStr;
+		    }
+	    	
+	    }
+	    
 	    int damage = 0;
 	    boolean isCritical = false;
 	    boolean isSuperCritical = false;
@@ -1255,6 +1490,14 @@ public class LoaPlayController {
 	        double weaponBonus = weaponLv * 0.01;
 	        double criticalChance = Math.min(baseCritical + weaponBonus, 1.0); // 최대 100%
 
+	        if(item_5_1) {
+	        	criticalChance += 0.05;
+	        }else if(item_5_2) {
+	        	criticalChance += 0.10;
+	        }else if(item_5_3) {
+	        	criticalChance += 0.15;
+	        }
+	        
 	        isCritical = Math.random() < criticalChance;
 
 	        // 크리티컬이면, 추가로 슈퍼크리티컬 10% 확률 부여
@@ -1290,7 +1533,7 @@ public class LoaPlayController {
 	    if (newHp <= 0) {
 	        if (isCritical) {
 	            isKill = true;
-	            score = Math.min(damage, hp);
+	            score = Math.min(damage, hp)/3;
 	            score += 100;
 
 	            map.put("max_hp", max_hp);
@@ -1299,7 +1542,7 @@ public class LoaPlayController {
 	        } else {
 	            newHp = 1;
 	            int allowedDamage = hp - 1;
-	            score = Math.min(damage, allowedDamage);
+	            score = Math.min(damage, allowedDamage)/3;
 	            damage = allowedDamage;
 	        }
 	    }
@@ -1323,7 +1566,16 @@ public class LoaPlayController {
 	    if (newHp == 1 && !isKill) {
 	        remainMent = "✨보스는 체력 1! 치명타로 최후의 일격 날리세요!" + enterStr + coolTimeMent;
 	    } else if (newHp > max_hp / 50) {
-	        remainMent = (isKill ? " ✨보스를 처치했습니다!" : "✨보스 체력: ???/???" + enterStr + coolTimeMent);
+	    	
+	    	if(item_4_1) {
+	    		remainMent = (isKill ? " ✨보스를 처치했습니다!" : "✨보스 체력: " + (int)(newHp/max_hp * 100) +"%" + enterStr + coolTimeMent);
+	    		remainMent+= "([스카우터] 효과 적용)";
+	    	}else if(item_4_2){ 
+	    		remainMent = (isKill ? " ✨보스를 처치했습니다!" : "✨보스 체력: " + newHp + "/" + "???" + enterStr + coolTimeMent);
+	    		remainMent+= "([스카우터] 효과 적용)";
+	    	}else {
+	    		remainMent = (isKill ? " ✨보스를 처치했습니다!" : "✨보스 체력: ???/???" + enterStr + coolTimeMent);
+	    	}
 	    } else {
 	    	//newHp > max_hp / 50 :: 2% 남았을때 체력을 보여줌 
 	        remainMent = (isKill ? " ✨보스를 처치했습니다!" : "✨보스 체력: " + newHp + "/" + "???" + enterStr + coolTimeMent);
@@ -1343,6 +1595,7 @@ public class LoaPlayController {
 	    if(newbieYn) {
 	    	newbieMent +="초보자 보너스로 추가 포인트 10p";
 	    }
+	    
 
 	    String msg = map.get("userName") + "님이 보스를 공격했습니다!" + enterStr
 	            + critMsg + enterStr
@@ -1354,10 +1607,18 @@ public class LoaPlayController {
 	            + "총 획득 포인트: " + score + enterStr
 	            + "갱신포인트 : " + new_score;
 
+	    if(item_6_1) {
+	    	msg+= map.get("extra_msg");
+	    }
+	    if(item_7_1||item_7_2) {
+	    	msg+= isEvadeMsg;
+	    }
+	    
 	    if (!rewardMsg.equals("")) {
 	        msg += anotherMsgStr + rewardMsg;
 	    }
 
+	    
 	    return msg;
 	}
 	

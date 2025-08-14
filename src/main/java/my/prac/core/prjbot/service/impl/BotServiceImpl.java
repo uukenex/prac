@@ -489,14 +489,24 @@ public class BotServiceImpl implements BotService {
 	public List<HashMap<String,Object>> selectPointItemUserList(HashMap<String,Object> map) throws Exception{
 		return botDAO.selectPointItemUserList(map);
 	}
+	
+	public List<HashMap<String,Object>> selectPointItemInfoList(HashMap<String,Object> map) throws Exception{
+		return botDAO.selectPointItemInfoList(map);
+	}
+	
 	public void insertPointNewBoxOpenTx(HashMap<String,Object> map) throws Exception{
 		if(botDAO.insertPointNewBoxOpen(map) < 1) {
 			throw new Exception("저장 실패");
 		}
 	}
+	
 	public void updatePointNewBoxOpenTx(HashMap<String,Object> map) throws Exception{
 		if(botDAO.updatePointNewBoxOpen(map) < 1) {
 			throw new Exception("저장 실패");
 		}
+	}
+	
+	public int selectPointItemUserCount(HashMap<String,Object> map) throws Exception{
+		return botDAO.selectPointItemUserCount(map);
 	}
 }

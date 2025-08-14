@@ -1,10 +1,12 @@
 package my.prac.core.util;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class MiniGameUtil {
 	public static final Map<Integer, Double[]> RATE_MAP = new HashMap<>();
+	
 	static {
 	  //0강화에서 시도-> 성공률15%, 장기 쌓이는양 20% 
 	    RATE_MAP.put(0,  new Double[]{100.0, 100.0});
@@ -40,4 +42,51 @@ public class MiniGameUtil {
 	    RATE_MAP.put(30, new Double[]{0.1, 0.93});
 	    //30에서의 시도 -> 성공률 0.1, 장기백 0.93
 	}
+	
+	
+	public static void itemAddtionalFunction(HashMap<String, Object> map) throws Exception {
+		
+		int itemNo = Integer.parseInt(map.get("ITEM_NO").toString());
+		int itemLv = Integer.parseInt(map.get("ITEM_LV").toString());
+		
+		/** 
+		 ITEM_NO	ITEM_NAME	NOTE	ITEM_DESC	MAX_LV
+				1	[부적]		"1레벨 : -50점을 상쇄하여 -25점만 받게함 2레벨 : -50점을 상쇄하여 0점만 받게함 3레벨 : -50점을 상쇄하여 10점을 획득"	주사위 시 마이너스 패널티가 감소한다	3
+				2	[럭키세븐]	1레벨 0: -50 => 0 ,7=>77 , 77=>777	주사위 시 부가효과가 추가된다 	1
+				3	[달고나]		1레벨: 30차이가 나면 화살표 두개로 표기	뽑기를 강화시켜준다	1
+				
+				4	[스카우터]	"1레벨 : 보스의 남은체력을 %로 보여줌(확률)  2레벨 : 보스의 남은체력을 %로 보여줌 3레벨 : 보스의 남은체력을 보여줌"	보스 공격시 비공개였던 체력을 알려준다	2
+				5	[예리한칼날]	"1레벨 치확 5% 증가 2레벨 치확 10% 증가 3레벨 치확 15% 증가"	보스 공격시 치명타확률을 올려준다	3
+				6	[야간투시경]	"1레벨 : 100%확률로 공격성공 "	보스가 숨어있는 시간에도 공격이 가능해진다	2 
+				7	[덫]			"1레벨 : 5% 회피율 무시 2레벨 : 10% 회피율 무시"	보스의 회피율을 감소시킨다	4
+				
+				8	[테메르의 정]	1레벨당 2포인트 할인	강화 비용을 할인한다	5
+				9	[더블어택]	"1레벨 : 10% 더블어택 2레벨 : 20% 더블어택 3레벨 : 30% 더블어택"	보스 공격시 두번 공격한다	3
+				10	[시간의지배자]	"1레벨 : 10% 초기화 2레벨 : 20% 초기화 3레벨 : 30% 초기화"	보스 공격시 쿨타임이 초기화된다	3
+				11	[황금모루]	"1레벨 : 기본강화율 1.5배 2레벨 : 기본강화율 2배"	무료 강화의 기본 강화율이 상승한다	2		  
+		 * */
+		
+		
+		switch(itemNo) {
+			case 1://부적 
+			case 2:
+			case 3:
+			case 4:
+			case 5:
+			case 6:
+			case 7:
+			case 8:
+			case 9:
+			case 10:
+			case 11:
+				map.put("additional_option", itemNo + "-" + itemLv);
+				break;
+		}
+		
+		
+		
+		return;
+	}
+	
+	
 }
