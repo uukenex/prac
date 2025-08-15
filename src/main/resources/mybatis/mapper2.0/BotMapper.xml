@@ -1230,7 +1230,7 @@
 		  FROM TBOT_POINT_ITEM_M    M
 			  ,TBOT_POINT_ITEM_USER U
 		 WHERE M.ITEM_NO = U.ITEM_NO
-		   AND U.USER_NAME = #{userName, jdbcType=VARCHAR}
+		   AND upper(U.USER_NAME) = upper(#{newUserName, jdbcType=VARCHAR})
 		   AND U.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 		   AND U.DEL_YN ='0'
 		   AND U.OPEN_FLAG ='2'
