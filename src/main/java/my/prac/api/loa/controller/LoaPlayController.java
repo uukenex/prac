@@ -1709,10 +1709,10 @@ public class LoaPlayController {
 	    String coolTimeMent = "공격 쿨타임 : 15 Min";
 	    if (newHp == 1 && !isKill) {
 	        remainMent = "✨보스는 체력 1! 치명타로 최후의 일격 날리세요!" + enterStr + coolTimeMent;
-	    } else if (newHp > max_hp / 50) {
+	    } else if (newHp > org_hp / 50) {
 	    	
 	    	if(item_4_1) {
-	    		remainMent = (isKill ? " ✨보스를 처치했습니다!" : "✨보스 체력: " + (int)(newHp/max_hp * 100) +"%" + enterStr + coolTimeMent);
+	    		remainMent = (isKill ? " ✨보스를 처치했습니다!" : "✨보스 체력: " +  (int) ((double)(newHp/org_hp) * 100) +"%" + enterStr + coolTimeMent);
 	    		remainMent+= "([스카우터] 효과 적용)";
 	    	}else if(item_4_2){ 
 	    		remainMent = (isKill ? " ✨보스를 처치했습니다!" : "✨보스 체력: " + newHp + "/" + "???" + enterStr + coolTimeMent);
