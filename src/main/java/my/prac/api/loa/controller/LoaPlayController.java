@@ -1573,7 +1573,7 @@ public class LoaPlayController {
 	        return map.get("userName") + "님," + enterStr + map.get("extra_msg");
 	    }else {
 	    	if(item_6_1) {
-	    		nightMsg ="[야간투시경] 적용 ";
+	    		nightMsg ="[야간투시경] 적용 "+enterStr;
 	    	}
 	    }
 
@@ -1722,13 +1722,13 @@ public class LoaPlayController {
 	            if (isKill) {
 	                remainMent = " ✨보스를 처치!";
 	            } else {
-	                remainMent = "✨보스 체력: " + (int) ((newHp * 100.0) / org_hp) + "%" + "([스카우터] 적용)" +enterStr + coolTimeMent ;
+	                remainMent = "✨보스 체력: " + (int) ((newHp * 100.0) / org_hp) + "%" + "[스카우터] 적용" +enterStr + coolTimeMent ;
 	            }
 	        } else if (item_4_2) {
 	            if (isKill) {
 	                remainMent = " ✨보스를 처치!";
 	            } else {
-	                remainMent = "✨보스 체력: " + newHp + "/???" +"([스카우터] 2lv 적용)" + enterStr + coolTimeMent ;
+	                remainMent = "✨보스 체력: " + newHp + "/???" +"[스카우터] 2lv 적용" + enterStr + coolTimeMent ;
 	            }
 	        } else {
 	            if (isKill) {
@@ -1767,7 +1767,7 @@ public class LoaPlayController {
 	            + "입힌 데미지: " + damage + enterStr
 	            + nightMsg
 	            + remainMent
-	            + newbieMent
+	            + enterStr
 	            + "총 획득 포인트: " + score +newbieMent
 	            + "갱신포인트 : " + new_score;
 
