@@ -1230,6 +1230,26 @@
 		  FROM TBOT_POINT_ITEM_M    M
 			  ,TBOT_POINT_ITEM_USER U
 		 WHERE M.ITEM_NO = U.ITEM_NO
+		   AND upper(U.USER_NAME) = upper(#{userName, jdbcType=VARCHAR})
+		   AND U.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+		   AND U.DEL_YN ='0'
+		   AND U.OPEN_FLAG ='2'
+		 GROUP BY M.ITEM_NO
+			     ,M.ITEM_NAME
+			     ,M.ITEM_DESC
+			     ,M.MAX_LV
+		 ORDER BY M.ITEM_NO
+		
+	</select>
+	<select id="selectPointItemUserListForPoint" parameterType="HashMap" resultType="HashMap">
+		SELECT M.ITEM_NO
+			  ,M.ITEM_NAME
+			  ,M.ITEM_DESC
+			  ,NVL(SUM(U.LV), 0) AS ITEM_LV
+			  ,M.MAX_LV
+		  FROM TBOT_POINT_ITEM_M    M
+			  ,TBOT_POINT_ITEM_USER U
+		 WHERE M.ITEM_NO = U.ITEM_NO
 		   AND upper(U.USER_NAME) = upper(#{newUserName, jdbcType=VARCHAR})
 		   AND U.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 		   AND U.DEL_YN ='0'

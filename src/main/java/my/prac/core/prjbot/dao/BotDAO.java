@@ -134,6 +134,7 @@ public interface BotDAO {
 	
 	//아이템 뽑기 기능
 	public List<HashMap<String,Object>> selectPointItemUserList(HashMap<String,Object> map) throws Exception;
+	public List<HashMap<String,Object>> selectPointItemUserListForPoint(HashMap<String,Object> map) throws Exception;
 	public List<HashMap<String,Object>> selectPointItemInfoList(HashMap<String,Object> map) throws Exception;
 	public HashMap<String,Object> selectPointItemUserOpenFlag1(HashMap<String,Object> map) throws Exception;
 	public int insertPointNewBoxOpen(HashMap<String,Object> map) throws Exception;

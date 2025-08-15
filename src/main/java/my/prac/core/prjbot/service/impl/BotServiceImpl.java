@@ -487,6 +487,9 @@ public class BotServiceImpl implements BotService {
 	
 	
 	public List<HashMap<String,Object>> selectPointItemUserList(HashMap<String,Object> map) throws Exception{
+		return botDAO.selectPointItemUserList(map);
+	}
+	public List<HashMap<String,Object>> selectPointItemUserListForPoint(HashMap<String,Object> map) throws Exception{
 		if (map.get("param1") != null && !map.get("param1").equals("")) {
 			List<String> newUserName = botDAO.selectParam1ToNewUserSearch(map);
 			if(newUserName.size()>0) {
@@ -497,7 +500,7 @@ public class BotServiceImpl implements BotService {
 		}
 		
 		
-		return botDAO.selectPointItemUserList(map);
+		return botDAO.selectPointItemUserListForPoint(map);
 	}
 	
 	public List<HashMap<String,Object>> selectPointItemInfoList(HashMap<String,Object> map) throws Exception{

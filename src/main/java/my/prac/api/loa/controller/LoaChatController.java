@@ -1181,7 +1181,7 @@ public class LoaChatController {
 					   "⚔️"+point_map_one.get("FIGHT_SUM")+point_map_one.get("FIGHT_WIN")+point_map_one.get("FIGHT_LOSE")+enterStr ;
 				
 				
-				List<HashMap<String,Object>> userItemList = botService.selectPointItemUserList(reqMap);
+				List<HashMap<String,Object>> userItemList = botService.selectPointItemUserListForPoint(reqMap);
 				if(userItemList !=null && userItemList.size()>0) {
 					val += "보물 더보기"+allSeeStr;
 				}
