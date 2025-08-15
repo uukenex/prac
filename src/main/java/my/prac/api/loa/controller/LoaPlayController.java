@@ -1700,15 +1700,15 @@ public class LoaPlayController {
 	    } else if (newHp > org_hp / 50) {
 	        if (item_4_1) {
 	            if (isKill) {
-	                remainMent = " ✨보스를 처치!([스카우터] 적용)";
+	                remainMent = " ✨보스를 처치!";
 	            } else {
-	                remainMent = "✨보스 체력: " + (int) ((newHp * 100.0) / org_hp) + "%" + enterStr + coolTimeMent + "([스카우터] 적용)";
+	                remainMent = "✨보스 체력: " + (int) ((newHp * 100.0) / org_hp) + "%" + "([스카우터] 적용)" +enterStr + coolTimeMent ;
 	            }
 	        } else if (item_4_2) {
 	            if (isKill) {
-	                remainMent = " ✨보스를 처치!([스카우터] 2lv 적용)";
+	                remainMent = " ✨보스를 처치!";
 	            } else {
-	                remainMent = "✨보스 체력: " + newHp + "/???" + enterStr + coolTimeMent + "([스카우터] 2lv 적용)";
+	                remainMent = "✨보스 체력: " + newHp + "/???" +"([스카우터] 2lv 적용)" + enterStr + coolTimeMent ;
 	            }
 	        } else {
 	            if (isKill) {
