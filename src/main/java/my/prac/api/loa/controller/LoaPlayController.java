@@ -567,9 +567,10 @@ public class LoaPlayController {
 	}
 	
 	String pointShop(HashMap<String,Object> map) {
-		return "명령어 입력 ... "
-	          +enterStr+"/상자구입 : 200p"
-	          +enterStr+"...1회차 무료!";
+		return "[포인트상점 목록]"
+	          +enterStr+"/상자구입 : 200p(1회차 무료)"
+	          +enterStr
+	          +enterStr;
 	}
 	
 	String pointBoxOpenBuy(HashMap<String,Object> map) {
@@ -597,13 +598,17 @@ public class LoaPlayController {
 			return "포인트샵 조회 오류입니다.";
 		}
 		
-		
+		int boxCount =0;
 		try {
 			botService.insertPointNewBoxOpenTx(map);
+			
+			boxCount = botService.selectPointNewBoxCount(map);
+			
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 		msg += "아이템상자 구매가 완료되었습니다."
+			+ enterStr + "보유 상자 갯수 : "+boxCount
 		    + enterStr + " /상자열기 입력으로 상자열기"
 		    ;
 		
@@ -1566,10 +1571,11 @@ public class LoaPlayController {
 	    String nightMsg = "";
 	    // 공격 제한 체크
 	    if (!hourCheck(map, item_6_1)) {
+	        return map.get("userName") + "님," + enterStr + map.get("extra_msg");
+	    }else {
 	    	if(item_6_1) {
 	    		nightMsg ="[야간투시경] 적용 ";
 	    	}
-	        return map.get("userName") + "님," + enterStr + map.get("extra_msg");
 	    }
 
 	    int weaponLv = getWeaponLv(map);
@@ -1724,6 +1730,7 @@ public class LoaPlayController {
 	            remainMent = "✨보스 체력: " + newHp + "/???" + enterStr + coolTimeMent;
 	        }
 	    }
+	    remainMent += enterStr;
 
 	    String critMsg = "";
 	    if (isEvade) {
@@ -1736,7 +1743,7 @@ public class LoaPlayController {
 
 	    String newbieMent = "";
 	    if (newbieYn) {
-	        newbieMent = "초보자 보너스 +10p";
+	        newbieMent = "초보자 보너스 +10p"+enterStr;
 	    }
 
 	    String msg = map.get("userName") + "님이 보스를 공격했습니다!" + enterStr
@@ -1744,14 +1751,12 @@ public class LoaPlayController {
 	            + "치명타 확률: " + (int) (Math.min(0.20 + weaponLv * 0.01, 1.0) * 100) + "%" + enterStr
 	            + isCritMsg
 	            + "입힌 데미지: " + damage + enterStr
-	            + remainMent + enterStr
-	            + newbieMent + enterStr
+	            + nightMsg
+	            + remainMent
+	            + newbieMent
 	            + "총 획득 포인트: " + score + enterStr
 	            + "갱신포인트 : " + new_score;
 
-	    if (item_6_1) {
-	        msg += nightMsg;
-	    }
 	    if (item_7_1 || item_7_2) {
 	        msg += isEvadeMsg;
 	    }

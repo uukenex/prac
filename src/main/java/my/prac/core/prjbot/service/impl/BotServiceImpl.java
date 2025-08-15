@@ -533,4 +533,7 @@ public class BotServiceImpl implements BotService {
 	public String selectPointItemUserOpenFlag(HashMap<String,Object> map) throws Exception{
 		return botDAO.selectPointItemUserOpenFlag(map);
 	}
+	public int selectPointNewBoxCount(HashMap<String,Object> map) throws Exception{
+		return botDAO.selectPointNewBoxCount(map);
+	}
 }

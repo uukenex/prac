@@ -1269,4 +1269,12 @@
 		   AND U.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 		
 	</select>
+	<select id="selectPointNewBoxCount" parameterType="HashMap" resultType="int">
+		SELECT COUNT(1)
+		  FROM TBOT_POINT_ITEM_USER U
+		 WHERE U.USER_NAME = #{userName, jdbcType=VARCHAR}
+		   AND U.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+		   AND U.OPEN_FLAG IN ('0','1')
+		   AND U.DEL_YN = '0'
+	</select>
 </mapper>
