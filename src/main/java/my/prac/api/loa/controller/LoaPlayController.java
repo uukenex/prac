@@ -62,8 +62,10 @@ public class LoaPlayController {
 	    if (!now.isBefore(start) && now.isBefore(end)) {
 	    	if(item_6_1) {
 	    		//
+	    		map.put("night_attack_ok", "Y");
 	    	}else {
 	    		map.put("extra_msg", "보스가 어둠에 숨었습니다...공격불가..(02시~06시 불가시간)");
+	    		map.put("night_attack_ok", "N");
 	    		return false;
 	    	}
 	    }
@@ -77,19 +79,10 @@ public class LoaPlayController {
 		String check_val = botService.selectHourCheck(map);
 		boolean check = false;
 		
-		switch(map.get("cmd").toString()) {
-		/*case "weapon_upgrade":
-				if((check_val+1) <= 5 ) {
-					map.put("extra_msg", (check_val+1)+"회 시도, 5회까지 가능 이벤트 ing!!");
-					check = true;
-				}
-				break;*/
-		default:
-			if(check_val == null ) {
-				check = true;
-			}else {
-				map.put("extra_msg", check_val +" 이후 재시도 가능합니다.");
-			}
+		if(check_val == null ) {
+			check = true;
+		}else {
+			map.put("extra_msg", check_val +" 이후 재시도 가능합니다.");
 		}
 		
 		return check;
@@ -1625,9 +1618,17 @@ public class LoaPlayController {
 
 	    int damage = 0;
 	    boolean isCritical = false;
+	    boolean isNightCritical = false;
 	    boolean isSuperCritical = false;
 	    String isCritMsg = "";
 
+	  //야간투시경 적용상태 
+        if(map.get("night_attack_ok").toString().equals("Y")) {
+        	nightMsg+= "..보스가 피했으나, 치명타로 복수합니다!";
+        	isEvade=false;
+        	isNightCritical=true;
+        }
+	    
 	    if (!isEvade) {
 	        // 기본 데미지
 	        int min = (1 + (weaponLv / 2)) / 2;
@@ -1647,7 +1648,12 @@ public class LoaPlayController {
 	            isCritMsg = "[예리한칼날] 3lv +15%" + enterStr;
 	        }
 
-	        isCritical = Math.random() < criticalChance;
+	        if(isNightCritical) {
+	        	isCritical=true;
+	        }else {
+	        	isCritical = Math.random() < criticalChance;
+	        }
+	        
 	        if (isCritical) {
 	            isSuperCritical = Math.random() < 0.10;
 	        }
@@ -1704,7 +1710,7 @@ public class LoaPlayController {
 	    // ----------------
 	    // 메시지 구성부
 	    // ----------------
-	    String remainMent;
+	    String remainMent = enterStr;
 	    String coolTimeMent = "공격 쿨타임 : "+map.get("timeDelay")+" Min";
 
 	    if (newHp == 1 && !isKill) {
