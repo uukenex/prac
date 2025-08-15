@@ -234,11 +234,19 @@ public class LoaPlayController {
 		boolean item_1_2 = ableItemList.contains("1-2");
 		boolean item_1_3 = ableItemList.contains("1-3");
 		boolean item_2_1 = ableItemList.contains("2-1");
+		boolean item_2_2 = ableItemList.contains("2-2");
 		
 		
 		if(number>=99) { // 500
-			prefix="굴리기전부터 운명적입니다. 행운의 신이 함께합니다.";
-			score =+500;
+			if(item_2_2 && number == 99) {
+				prefix="아이템 [럭키세븐] 효과가 발동되었습니다"
+					  +enterStr+"굴리기전부터 운명적입니다. 행운의 신이 함께합니다.";
+				score =+999;
+			}else {
+				prefix="굴리기전부터 운명적입니다. 행운의 신이 함께합니다.";
+				score =+500;
+			}
+			
 		}else if(number>=85) { // 85~98
 			prefix="행운이 쌓인채로 굴러갑니다.";
 			score =+number;
@@ -253,6 +261,25 @@ public class LoaPlayController {
 				score =+(number/2);
 			}
 		}else if(number>=20) {//0
+
+			if (item_2_2) {
+				if(number == 33) {
+					prefix = "아이템 [럭키세븐] 효과가 발동되었습니다" + enterStr ;
+					score = +33*2;
+				}else if(number == 33) {
+					prefix = "아이템 [럭키세븐] 효과가 발동되었습니다" + enterStr ;
+					score = +22*2;
+				}else {
+					prefix = "데굴데굴..";
+					score = +(number / 2);
+				}
+				
+				
+			}else {
+				prefix = "데굴데굴..";
+				score = +(number / 2);
+			}
+			
 			prefix="또르르륵..";
 			score =+0;
 		}else { // -50
@@ -685,12 +712,13 @@ public class LoaPlayController {
 	            
 	            int maxLevel = Integer.parseInt(chosenItem.get("MAX_LV").toString());
 	            int currentLevel = Integer.parseInt(chosenItem.get("CURRENT_LV").toString());
-
+	            
 	            // 6. 보상 레벨 결정
 	            String nowOpenFlag = "0";
 	            int rewardLevel;
-	            if (currentLevel >= maxLevel) {
-	                rewardLevel = 1; // MAX_LV 도달 시 1레벨
+	            if (currentLevel >= maxLevel || maxLevel == 1) { 
+	                // 맥스레벨 도달 or 맥스레벨이 1인 경우
+	                rewardLevel = 1;
 	                nowOpenFlag = "2";
 	            } else {
 	                rewardLevel = rand.nextInt(100) < 20 ? 2 : 1;
