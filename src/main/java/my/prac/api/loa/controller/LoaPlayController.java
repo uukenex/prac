@@ -68,6 +68,12 @@ public class LoaPlayController {
 	    	}
 	    }
 		
+	    if(item_6_1) {
+	    	map.put("timeDelay",10);
+	    }else {
+	    	map.put("timeDelay",15);
+	    }
+	    
 		String check_val = botService.selectHourCheck(map);
 		boolean check = false;
 		
@@ -1699,7 +1705,7 @@ public class LoaPlayController {
 	    // 메시지 구성부
 	    // ----------------
 	    String remainMent;
-	    String coolTimeMent = "공격 쿨타임 : 15 Min";
+	    String coolTimeMent = "공격 쿨타임 : "+map.get("timeDelay")+" Min";
 
 	    if (newHp == 1 && !isKill) {
 	        remainMent = "✨보스는 체력 1! 치명타로 최후의 일격!" + enterStr + coolTimeMent;
