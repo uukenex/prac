@@ -60,9 +60,8 @@ public class LoaPlayController {
 	    LocalTime end = LocalTime.of(6, 0);        // 08:00
 
 	    if (!now.isBefore(start) && now.isBefore(end)) {
-	    	map.put("extra_msg","");
 	    	if(item_6_1) {
-	    		map.put("extra_msg", "([야간투시경] 효과 적용)"+enterStr);
+	    		//
 	    	}else {
 	    		map.put("extra_msg", "보스가 어둠에 숨었습니다...공격불가..(02시~06시 불가시간)");
 	    		return false;
@@ -569,14 +568,14 @@ public class LoaPlayController {
 	
 	String pointShop(HashMap<String,Object> map) {
 		return "명령어 입력 ... "
-	          +enterStr+"/상자구입 : 300p"
+	          +enterStr+"/상자구입 : 200p"
 	          +enterStr+"...1회차 무료!";
 	}
 	
 	String pointBoxOpenBuy(HashMap<String,Object> map) {
 		map.put("cmd", "pointShop");
 		String msg = map.get("userName")+" 님,"+enterStr;
-		int defaultScore = 300;
+		int defaultScore = 200;
 		try {
 			
 			int count = botService.selectPointItemUserCount(map);
@@ -632,7 +631,7 @@ public class LoaPlayController {
 
         if(openFlag ==null) {
         	return msg+"상자가 없습니다"
-        			+enterStr+"/상자구매 : 300p";
+        			+enterStr+"/상자구매 : 200p";
         }
         
 	    switch (openFlag) {
@@ -1551,147 +1550,132 @@ public class LoaPlayController {
 	}
 	
 	
-	public String attackBoss(HashMap<String,Object> map) {
+	public String attackBoss(HashMap<String, Object> map) {
 	    map.put("cmd", "boss_attack");
 	    
-	    
+	    List<String> ableItemList = selectPointItemUserList(map);
+	    boolean item_4_1 = ableItemList.contains("4-1");
+	    boolean item_4_2 = ableItemList.contains("4-2");
+	    boolean item_5_1 = ableItemList.contains("5-1");
+	    boolean item_5_2 = ableItemList.contains("5-2");
+	    boolean item_5_3 = ableItemList.contains("5-3");
+	    boolean item_6_1 = ableItemList.contains("6-1");
+	    boolean item_7_1 = ableItemList.contains("7-1");
+	    boolean item_7_2 = ableItemList.contains("7-2");
 
-	    List<String> ableItemList = selectPointItemUserList(map); 
-		boolean item_4_1 = ableItemList.contains("4-1");
-		boolean item_4_2 = ableItemList.contains("4-2");
-		boolean item_5_1 = ableItemList.contains("5-1");
-		boolean item_5_2 = ableItemList.contains("5-2");
-		boolean item_5_3 = ableItemList.contains("5-3");
-		boolean item_6_1 = ableItemList.contains("6-1");
-		boolean item_7_1 = ableItemList.contains("7-1");
-		boolean item_7_2 = ableItemList.contains("7-2");
-		
-		// 1시간 1회 공격 제한
-	    if (!hourCheck(map,item_6_1)) {
+	    String nightMsg = "";
+	    // 공격 제한 체크
+	    if (!hourCheck(map, item_6_1)) {
+	    	if(item_6_1) {
+	    		nightMsg ="[야간투시경] 적용 ";
+	    	}
 	        return map.get("userName") + "님," + enterStr + map.get("extra_msg");
 	    }
-	    
+
 	    int weaponLv = getWeaponLv(map);
-	    // 보스 정보 조회
+
+	    // 보스 정보
 	    HashMap<String, Object> boss;
-	    int hp;
-	    int max_hp;
-	    int org_hp;
-	    int seq;
+	    int hp, max_hp, org_hp, seq;
 	    try {
 	        boss = botService.selectBossHit(map);
-	        if (boss != null && boss.get("HP") != null) {
-	            hp = Integer.parseInt(boss.get("HP").toString());
-	            max_hp = Integer.parseInt(boss.get("MAX_HP").toString());
-	            org_hp = Integer.parseInt(boss.get("ORG_HP").toString());
-	            seq = Integer.parseInt(boss.get("SEQ").toString());
-	        } else {
-	            return "";
-	        }
-	    } catch (Exception e1) {
+	        if (boss == null || boss.get("HP") == null) return "";
+	        hp = Integer.parseInt(boss.get("HP").toString());
+	        max_hp = Integer.parseInt(boss.get("MAX_HP").toString());
+	        org_hp = Integer.parseInt(boss.get("ORG_HP").toString());
+	        seq = Integer.parseInt(boss.get("SEQ").toString());
+	    } catch (Exception e) {
 	        return "";
 	    }
 
-	    // 회피 확률 설정 (예: 10%)
+	    // 회피 로직
 	    double evadeChance = 0.10;
-	    
-	    
-	    
 	    boolean isEvade = Math.random() < evadeChance;
-	    String isEvadeMsg ="";
-	    if(isEvade) {
-	    	//피했을 경우 재공격
-	    	if(item_7_1) {
-	    		//60%확률로 피한다, 40% 적중률 , ex 피할확률10%에서 40%적중률 => 4%,20%에서 8%적중률
-	    		isEvade = Math.random() < 0.6;
-	    		isEvadeMsg = "[덫] 효과 적용 " + (isEvade?"실패":"")+enterStr;
-		    }else if(item_7_2) {
-		    	//20%확률로 피한다, 80% 적중률 , ex 피할확률10%에서 80%적중률 => 8%,20%에서 16%적중률
-		    	isEvade = Math.random() < 0.2;
-		    	isEvadeMsg = "[덫] 효과 적용 " + (isEvade?"실패":"")+enterStr;
-		    }
-	    	
+	    String isEvadeMsg = "";
+
+	    if (isEvade) {
+	        if (item_7_1) {
+	            isEvade = Math.random() < 0.6;
+	            if (isEvade) {
+	                isEvadeMsg = "[덫] 효과 적용 실패" + enterStr;
+	            } else {
+	                isEvadeMsg = "[덫] 효과 적용 " + enterStr;
+	            }
+	        } else if (item_7_2) {
+	            isEvade = Math.random() < 0.2;
+	            if (isEvade) {
+	                isEvadeMsg = "[덫] 효과 적용 실패" + enterStr;
+	            } else {
+	                isEvadeMsg = "[덫] 효과 적용 " + enterStr;
+	            }
+	        }
 	    }
-	    
+
 	    int damage = 0;
 	    boolean isCritical = false;
 	    boolean isSuperCritical = false;
+	    String isCritMsg = "";
 
-	    String isCritMsg ="";
 	    if (!isEvade) {
-	        // 데미지 계산
-	    	
-	    	int min = (1 + (weaponLv / 2))/2;
-	    	int max = (5 + (weaponLv)) * 2;
-	    	int range = max - min + 1;  // 5
+	        // 기본 데미지
+	        int min = (1 + (weaponLv / 2)) / 2;
+	        int max = (5 + weaponLv) * 2;
+	        int baseDamage = new Random().nextInt(max - min + 1) + min;
 
-	    	int baseDamage = new Random().nextInt(range) + min;
-
-	        double baseCritical = 0.20; // 기본 20%
-	        double weaponBonus = weaponLv * 0.01;
-	        double criticalChance = Math.min(baseCritical + weaponBonus, 1.0); // 최대 100%
-
-	        if(item_5_1) {
-	        	criticalChance += 0.05;
-	        	isCritMsg = "[예리한칼날] 효과 적용 "+enterStr;
-	        }else if(item_5_2) {
-	        	criticalChance += 0.10;
-	        	isCritMsg = "[예리한칼날] 2 lv 효과 적용 "+enterStr;
-	        }else if(item_5_3) {
-	        	criticalChance += 0.15;
-	        	isCritMsg = "[예리한칼날] 3 lv 효과 적용 "+enterStr;
+	        // 크리티컬 확률
+	        double criticalChance = Math.min(0.20 + weaponLv * 0.01, 1.0);
+	        if (item_5_1) {
+	            criticalChance += 0.05;
+	            isCritMsg = "[예리한칼날] +5%" + enterStr;
+	        } else if (item_5_2) {
+	            criticalChance += 0.10;
+	            isCritMsg = "[예리한칼날] 2lv +10%" + enterStr;
+	        } else if (item_5_3) {
+	            criticalChance += 0.15;
+	            isCritMsg = "[예리한칼날] 3lv +15%" + enterStr;
 	        }
-	        
-	        isCritical = Math.random() < criticalChance;
 
-	        // 크리티컬이면, 추가로 슈퍼크리티컬 10% 확률 부여
+	        isCritical = Math.random() < criticalChance;
 	        if (isCritical) {
 	            isSuperCritical = Math.random() < 0.10;
 	        }
 
-	        if (isCritical) {
-	            damage = baseDamage * (isSuperCritical ? 5 : 3);
+	        if (isSuperCritical) {
+	            damage = baseDamage * 5;
+	        } else if (isCritical) {
+	            damage = baseDamage * 3;
 	        } else {
 	            damage = baseDamage;
 	        }
-	    } else {
-	        // 회피 시 데미지 0
-	        damage = 0;
 	    }
-	    
-	    
-	    // 포인트 = 데미지
-	    int score = damage/3;
-	    
+
+	    int score = damage / 3;
 	    boolean newbieYn = false;
-	    if(weaponLv < 13) {
-	    	score +=10;
-	    	newbieYn = true;
+	    if (weaponLv < 13) {
+	        score += 10;
+	        newbieYn = true;
 	    }
-	    
 
 	    boolean isKill = false;
 	    int newHp = hp - damage;
-
 	    String rewardMsg = "";
+
 	    if (newHp <= 0) {
 	        if (isCritical) {
 	            isKill = true;
-	            score = Math.min(damage, hp)/3;
-	            score += 100;
-
+	            score = Math.min(damage, hp) / 3 + 100;
 	            map.put("max_hp", max_hp);
 	            map.put("org_hp", org_hp);
 	            rewardMsg = calcBossReward(map);
 	        } else {
 	            newHp = 1;
 	            int allowedDamage = hp - 1;
-	            score = Math.min(damage, allowedDamage)/3;
+	            score = Math.min(damage, allowedDamage) / 3;
 	            damage = allowedDamage;
 	        }
 	    }
 
-	    int new_score = 0;
+	    int new_score;
 	    try {
 	        map.put("hp", hp);
 	        map.put("newHp", newHp);
@@ -1705,65 +1689,76 @@ public class LoaPlayController {
 	        return "오류발생";
 	    }
 
-	    String remainMent = "";
+	    // ----------------
+	    // 메시지 구성부
+	    // ----------------
+	    String remainMent;
 	    String coolTimeMent = "공격 쿨타임 : 15 Min";
+
 	    if (newHp == 1 && !isKill) {
-	        remainMent = "✨보스는 체력 1! 치명타로 최후의 일격 날리세요!" + enterStr + coolTimeMent;
+	        remainMent = "✨보스는 체력 1! 치명타로 최후의 일격!" + enterStr + coolTimeMent;
 	    } else if (newHp > org_hp / 50) {
-	    	
-	    	if(item_4_1) {
-	    		remainMent = (isKill ? " ✨보스를 처치했습니다!" : "✨보스 체력: " +  (int) ((double)(newHp/org_hp) * 100) +"%" + enterStr + coolTimeMent);
-	    		remainMent+= "([스카우터] 효과 적용)";
-	    	}else if(item_4_2){ 
-	    		remainMent = (isKill ? " ✨보스를 처치했습니다!" : "✨보스 체력: " + newHp + "/" + "???" + enterStr + coolTimeMent);
-	    		remainMent+= "([스카우터] 효과 적용)";
-	    	}else {
-	    		remainMent = (isKill ? " ✨보스를 처치했습니다!" : "✨보스 체력: ???/???" + enterStr + coolTimeMent);
-	    	}
+	        if (item_4_1) {
+	            if (isKill) {
+	                remainMent = " ✨보스를 처치!([스카우터] 적용)";
+	            } else {
+	                remainMent = "✨보스 체력: " + (int) ((newHp * 100.0) / org_hp) + "%" + enterStr + coolTimeMent + "([스카우터] 적용)";
+	            }
+	        } else if (item_4_2) {
+	            if (isKill) {
+	                remainMent = " ✨보스를 처치!([스카우터] 2lv 적용)";
+	            } else {
+	                remainMent = "✨보스 체력: " + newHp + "/???" + enterStr + coolTimeMent + "([스카우터] 2lv 적용)";
+	            }
+	        } else {
+	            if (isKill) {
+	                remainMent = " ✨보스를 처치!";
+	            } else {
+	                remainMent = "✨보스 체력: ???/???" + enterStr + coolTimeMent;
+	            }
+	        }
 	    } else {
-	    	//newHp > max_hp / 50 :: 2% 남았을때 체력을 보여줌 
-	        remainMent = (isKill ? " ✨보스를 처치했습니다!" : "✨보스 체력: " + newHp + "/" + "???" + enterStr + coolTimeMent);
+	        if (isKill) {
+	            remainMent = " ✨보스를 처치!";
+	        } else {
+	            remainMent = "✨보스 체력: " + newHp + "/???" + enterStr + coolTimeMent;
+	        }
 	    }
 
 	    String critMsg = "";
 	    if (isEvade) {
-	        critMsg = "보스가 공격을 회피했습니다! 데미지 0!";
+	        critMsg = "보스가 공격을 회피! 데미지 0!";
 	    } else if (isSuperCritical) {
 	        critMsg = "✨ 초강력 치명타! ✨";
 	    } else if (isCritical) {
 	        critMsg = "✨ 치명타! ";
 	    }
-	    
+
 	    String newbieMent = "";
-	    
-	    if(newbieYn) {
-	    	newbieMent +="초보자 보너스로 추가 포인트 10p";
+	    if (newbieYn) {
+	        newbieMent = "초보자 보너스 +10p";
 	    }
-	    
 
 	    String msg = map.get("userName") + "님이 보스를 공격했습니다!" + enterStr
 	            + critMsg + enterStr
-	            + "치명타 확률: " + (int)(Math.min(0.20 + weaponLv * 0.01, 1.0) * 100) + "%" + enterStr
+	            + "치명타 확률: " + (int) (Math.min(0.20 + weaponLv * 0.01, 1.0) * 100) + "%" + enterStr
 	            + isCritMsg
 	            + "입힌 데미지: " + damage + enterStr
 	            + remainMent + enterStr
-	            + enterStr
 	            + newbieMent + enterStr
 	            + "총 획득 포인트: " + score + enterStr
 	            + "갱신포인트 : " + new_score;
 
-	    if(item_6_1) {
-	    	msg+= map.get("extra_msg");
+	    if (item_6_1) {
+	        msg += nightMsg;
 	    }
-	    if(item_7_1||item_7_2) {
-	    	msg+= isEvadeMsg;
+	    if (item_7_1 || item_7_2) {
+	        msg += isEvadeMsg;
 	    }
-	    
-	    if (!rewardMsg.equals("")) {
+	    if (!rewardMsg.isEmpty()) {
 	        msg += anotherMsgStr + rewardMsg;
 	    }
 
-	    
 	    return msg;
 	}
 	
