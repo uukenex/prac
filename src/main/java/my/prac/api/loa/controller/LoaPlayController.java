@@ -745,7 +745,7 @@ public class LoaPlayController {
 	                case "2":
 	                	msg += "보물 획득!!" + enterStr;
 	    	            msg += "item No : " + itemNo + enterStr;
-	    	            msg += itemName + itemLv+"lv"+ enterStr;
+	    	            msg += itemName + itemLv+" lv"+ enterStr;
 	    	            msg += itemDesc;
 	                    break;
 	            }
@@ -1617,6 +1617,7 @@ public class LoaPlayController {
 	    boolean isCritical = false;
 	    boolean isSuperCritical = false;
 
+	    String isCritMsg ="";
 	    if (!isEvade) {
 	        // 데미지 계산
 	    	
@@ -1632,10 +1633,13 @@ public class LoaPlayController {
 
 	        if(item_5_1) {
 	        	criticalChance += 0.05;
+	        	isCritMsg = "[예리한칼날] 효과 적용 "+enterStr;
 	        }else if(item_5_2) {
 	        	criticalChance += 0.10;
+	        	isCritMsg = "[예리한칼날] 2 lv 효과 적용 "+enterStr;
 	        }else if(item_5_3) {
 	        	criticalChance += 0.15;
+	        	isCritMsg = "[예리한칼날] 3 lv 효과 적용 "+enterStr;
 	        }
 	        
 	        isCritical = Math.random() < criticalChance;
@@ -1740,6 +1744,7 @@ public class LoaPlayController {
 	    String msg = map.get("userName") + "님이 보스를 공격했습니다!" + enterStr
 	            + critMsg + enterStr
 	            + "치명타 확률: " + (int)(Math.min(0.20 + weaponLv * 0.01, 1.0) * 100) + "%" + enterStr
+	            + isCritMsg
 	            + "입힌 데미지: " + damage + enterStr
 	            + remainMent + enterStr
 	            + enterStr
