@@ -1232,7 +1232,8 @@
 		 WHERE M.ITEM_NO = U.ITEM_NO
 		   AND U.USER_NAME = #{userName, jdbcType=VARCHAR}
 		   AND U.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
-		   AND U.ETC_YN ='0'
+		   AND U.DEL_YN ='0'
+		   AND U.OPEN_FLAG ='2'
 		 GROUP BY M.ITEM_NO
 			     ,M.ITEM_NAME
 			     ,M.ITEM_DESC

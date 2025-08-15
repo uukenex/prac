@@ -569,14 +569,14 @@ public class LoaPlayController {
 	
 	String pointShop(HashMap<String,Object> map) {
 		return "명령어 입력 ... "
-	          +enterStr+"/상자구입 : 500p"
+	          +enterStr+"/상자구입 : 300p"
 	          +enterStr+"...1회차 무료!";
 	}
 	
 	String pointBoxOpenBuy(HashMap<String,Object> map) {
 		map.put("cmd", "pointShop");
 		String msg = map.get("userName")+" 님,"+enterStr;
-		int defaultScore = 500;
+		int defaultScore = 300;
 		try {
 			
 			int count = botService.selectPointItemUserCount(map);
@@ -632,7 +632,7 @@ public class LoaPlayController {
 
         if(openFlag ==null) {
         	return msg+"상자가 없습니다"
-        			+enterStr+"/상자구매 : 500p";
+        			+enterStr+"/상자구매 : 300p";
         }
         
 	    switch (openFlag) {
@@ -650,7 +650,7 @@ public class LoaPlayController {
 	                    botService.updatePointNewBoxOpenTx(map);
 	                    if (count > 1) {
 	                        // 실패 시 0~200P 환급
-	                        int refundPoint = rand.nextInt(201);
+	                        int refundPoint = rand.nextInt(151);
 	                        msg += enterStr + refundPoint + "P가 환급";
 
 	                        
