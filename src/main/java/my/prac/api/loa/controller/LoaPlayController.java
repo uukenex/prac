@@ -1622,12 +1622,14 @@ public class LoaPlayController {
 	    boolean isSuperCritical = false;
 	    String isCritMsg = "";
 
-	  //야간투시경 적용상태 
-        if(map.get("night_attack_ok").toString().equals("Y")) {
-        	nightMsg+= "..보스가 피했으나, 치명타로 복수합니다!";
-        	isEvade=false;
-        	isNightCritical=true;
-        }
+	   //야간투시경 적용상태 보스회피 무시
+	    if(isEvade) {
+	    	if(map.get("night_attack_ok").toString().equals("Y")) {
+	        	nightMsg+= "..보스가 회피했으나,더 강력하게 공격합니다!"+enterStr;
+	        	isEvade=false;
+	        	isNightCritical=true;
+	        }
+	    }
 	    
 	    if (!isEvade) {
 	        // 기본 데미지
@@ -1755,7 +1757,7 @@ public class LoaPlayController {
 
 	    String newbieMent = "";
 	    if (newbieYn) {
-	        newbieMent = "초보자 보너스 +10p"+enterStr;
+	        newbieMent = "(초보자 보너스 +10p)"+enterStr;
 	    }
 
 	    String msg = map.get("userName") + "님이 보스를 공격했습니다!" + enterStr
@@ -1766,7 +1768,7 @@ public class LoaPlayController {
 	            + nightMsg
 	            + remainMent
 	            + newbieMent
-	            + "총 획득 포인트: " + score + enterStr
+	            + "총 획득 포인트: " + score +newbieMent
 	            + "갱신포인트 : " + new_score;
 
 	    if (item_7_1 || item_7_2) {
