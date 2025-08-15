@@ -1180,6 +1180,16 @@ public class LoaChatController {
 					   "⚾"+point_map_one.get("BASEBALL_WIN")+enterStr +
 					   "⚔️"+point_map_one.get("FIGHT_SUM")+point_map_one.get("FIGHT_WIN")+point_map_one.get("FIGHT_LOSE")+enterStr ;
 				
+				
+				List<HashMap<String,Object>> userItemList = botService.selectPointItemUserList(reqMap);
+				if(userItemList !=null && userItemList.size()>0) {
+					val += "보물 더보기"+allSeeStr;
+				}
+				for (HashMap<String,Object> userItem : userItemList) {
+					val += enterStr+"Item No"+userItem.get("ITEM_NO")+" "+userItem.get("ITEM_NAME")+" " +userItem.get("ITEM_LV")+" lv";
+					val += enterStr+userItem.get("ITEM_DESC")+enterStr;
+				}
+				
 				break;
 			case "/포인트랭킹": case "/ㅍㅇㅌㄹㅋ":
 				List<HashMap<String,Object>> point_map = botService.selectBotPointRankAll(reqMap);
