@@ -1569,12 +1569,7 @@ public class LoaPlayController {
 	    // 공격 제한 체크
 	    if (!hourCheck(map, item_6_1)) {
 	        return map.get("userName") + "님," + enterStr + map.get("extra_msg");
-	    }else {
-	    	if(item_6_1) {
-	    		nightMsg ="[야간투시경] 적용 "+enterStr;
-	    	}
 	    }
-
 	    int weaponLv = getWeaponLv(map);
 
 	    // 보스 정보
@@ -1620,10 +1615,11 @@ public class LoaPlayController {
 	    boolean isSuperCritical = false;
 	    String isCritMsg = "";
 
-	   //야간투시경 적용상태 보스회피 무시
-	    if(isEvade) {
-	    	if(map.get("night_attack_ok").toString().equals("Y")) {
-	        	nightMsg+= "..보스가 회피했으나,더 강력하게 공격합니다!"+enterStr;
+	    if(map.get("night_attack_ok").toString().equals("Y")) {
+	    	nightMsg ="[야간투시경] 적용 "+enterStr;
+	    	//야간투시경 적용상태 보스회피 무시
+	    	if(isEvade) {
+	    		nightMsg+= "..보스가 회피했으나,더 강력하게 공격합니다!"+enterStr;
 	        	isEvade=false;
 	        	isNightCritical=true;
 	        }
@@ -1755,7 +1751,7 @@ public class LoaPlayController {
 
 	    String newbieMent = "";
 	    if (newbieYn) {
-	        newbieMent = "(초보자 보너스 +10p)"+enterStr;
+	        newbieMent = "(초보자 +10p)";
 	    }
 
 	    String msg = map.get("userName") + "님이 보스를 공격했습니다!" + enterStr
@@ -1767,7 +1763,7 @@ public class LoaPlayController {
 	            + remainMent
 	            + enterStr
 	            + "총 획득 포인트: " + score +newbieMent
-	            + "갱신포인트 : " + new_score;
+	            + enterStr+ "갱신포인트 : " + new_score;
 
 	    if (item_7_1 || item_7_2) {
 	        msg += isEvadeMsg;
