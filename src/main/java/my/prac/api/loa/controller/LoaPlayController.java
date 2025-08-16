@@ -59,10 +59,14 @@ public class LoaPlayController {
 		LocalTime start = LocalTime.of(2, 0);     // 00:00
 	    LocalTime end = LocalTime.of(6, 0);        // 08:00
 
+	    map.put("night_attack_ok", "N");
+	    map.put("timeDelay",15);
+	    
 	    if (!now.isBefore(start) && now.isBefore(end)) {
 	    	if(item_6_1) {
 	    		//
 	    		map.put("night_attack_ok", "Y");
+	    		map.put("timeDelay",10);
 	    	}else {
 	    		map.put("extra_msg", "보스가 어둠에 숨었습니다...공격불가..(02시~06시 불가시간)");
 	    		map.put("night_attack_ok", "N");
@@ -70,12 +74,6 @@ public class LoaPlayController {
 	    	}
 	    }
 		
-	    if(item_6_1) {
-	    	map.put("timeDelay",10);
-	    }else {
-	    	map.put("timeDelay",15);
-	    }
-	    
 		String check_val = botService.selectHourCheck(map);
 		boolean check = false;
 		
