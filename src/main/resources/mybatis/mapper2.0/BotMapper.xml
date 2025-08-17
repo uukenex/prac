@@ -1133,15 +1133,61 @@
 		    ,#{seq, jdbcType=NUMERIC})
 	</insert>
 	
+	
+	
+	<select id="selectBotPointBoss" parameterType="HashMap" resultType="HashMap">
+		SELECT A.REWARD,A.ORG_HP,A.HP,A.SEQ,to_char(A.INSERT_DATE,'yyyymmdd hh24miss') as START_DATE,
+		       A.EVADE_RATE,A.ATK_RATE,A.DEF_RATE,CRIT_DEF_RATE,
+		       A.ATK_POWER,A.DEF_POWER,A.HIDE_RULE
+		  FROM TBOT_POINT_BOSS A
+		 WHERE ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+		   AND A.END_YN = '0'
+	</select>
+	
+	<update id="updateBotPointBoss" parameterType="HashMap">
+		UPDATE TBOT_POINT_BOSS A
+		   SET A.HP     = #{newHp, jdbcType=NUMERIC}
+			  ,A.END_YN = #{endYn, jdbcType=VARCHAR}
+			  ,A.MODIFY_DATE = SYSDATE
+		 WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+		   AND A.HP = #{hp, jdbcType=NUMERIC}
+		   AND A.SEQ =#{seq, jdbcType=NUMERIC} 
+		   AND END_YN = '0'
+	</update>
+	
+	<insert id="insertBotPointBossLog" parameterType="HashMap">
+	   INSERT INTO TBOT_POINT_BOSS_LOG
+		    (ROOM_NAME
+		    ,USER_NAME
+		    ,SCORE
+		    ,END_YN
+		    ,SEQ
+		    ,EVADE_YN
+		    ,ATK_POWER
+		    ,DEF_POWER
+		    )
+	   VALUES
+		    (#{roomName, jdbcType=VARCHAR}
+		    ,#{userName, jdbcType=VARCHAR}
+		    ,#{score, jdbcType=NUMERIC}
+		    ,#{endYn, jdbcType=NUMERIC}
+		    ,#{seq, jdbcType=NUMERIC}
+		    ,#{evadeYn, jdbcType=VARCHAR} 
+		    ,#{atkPower, jdbcType=NUMERIC} 
+		    ,#{defPower, jdbcType=NUMERIC} 
+		    
+		    )
+	</insert>
+	
 	<select id="selectTop3Contributors" parameterType="HashMap" resultType="HashMap">
 		SELECT *
 		  FROM (
 		    SELECT user_name, SUM(score) AS score
-		      FROM tbot_boss_hit_log
+		      FROM TBOT_POINT_BOSS_log
 		     WHERE room_name = #{roomName, jdbcType=VARCHAR}
 		       AND seq = (
 		         SELECT MAX(seq)
-		           FROM tbot_boss_hit_log
+		           FROM TBOT_POINT_BOSS_log
 		          WHERE room_name = #{roomName, jdbcType=VARCHAR}
 		       )
 		     GROUP BY user_name

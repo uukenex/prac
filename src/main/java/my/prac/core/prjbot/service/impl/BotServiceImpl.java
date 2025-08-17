@@ -479,6 +479,20 @@ public class BotServiceImpl implements BotService {
 		
 		
 	}
+	public HashMap<String,Object> selectBotPointBoss(HashMap<String,Object> map) throws Exception{
+		return botDAO.selectBotPointBoss(map);
+	}
+	
+	public void updateBotPointBossTx(HashMap<String,Object> map) throws Exception {
+		if(botDAO.updateBotPointBoss(map) < 1) {
+			throw new Exception("저장 실패");
+		}
+		if(botDAO.insertBotPointBossLog(map) < 1) {
+			throw new Exception("저장 실패");
+		}
+		
+		
+	}
 	
 	public List<HashMap<String, Object>> selectTop3Contributors(HashMap<String, Object> hashMap){
 		
