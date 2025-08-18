@@ -1354,4 +1354,27 @@
 		   AND U.OPEN_FLAG IN ('0','1')
 		   AND U.DEL_YN = '0'
 	</select>
+	
+	<select id="selectPointItemOptionList" parameterType="HashMap" resultType="HashMap">
+		SELECT M.ITEM_NO
+			 ,CASE
+				   WHEN U.ITEM_NO IS NOT NULL THEN
+				    M.ITEM_NAME
+				   ELSE
+				    '[' || RPAD('*', LENGTH(M.ITEM_NAME) - 2, '*') || ']'
+			  END AS ITEM_NAME
+			 ,CASE
+				   WHEN U.ITEM_NO IS NOT NULL THEN
+				    M.ITEM_DESC
+				   ELSE
+				    RPAD('*', LENGTH(M.ITEM_DESC), '*')
+			  END AS ITEM_DESC
+		  FROM TBOT_POINT_ITEM_M M
+			 ,(SELECT DISTINCT ITEM_NO
+				FROM TBOT_POINT_ITEM_USER
+			    WHERE ROOM_NAME = #{roomName, jdbcType=VARCHAR} ) U
+		 WHERE M.ITEM_NO = U.ITEM_NO(+)
+		 ORDER BY M.ITEM_NO
+		
+	</select>
 </mapper>

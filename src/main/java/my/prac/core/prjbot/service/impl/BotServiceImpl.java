@@ -556,4 +556,7 @@ public class BotServiceImpl implements BotService {
 	public int selectPointNewBoxCount(HashMap<String,Object> map) throws Exception{
 		return botDAO.selectPointNewBoxCount(map);
 	}
+	public List<HashMap<String,Object>> selectPointItemOptionList(HashMap<String,Object> map) throws Exception{
+		return botDAO.selectPointItemOptionList(map);
+	}
 }

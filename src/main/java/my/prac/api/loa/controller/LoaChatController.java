@@ -509,7 +509,28 @@ public class LoaChatController {
 					val = "별도 게임방에서 진행해주세요.";
 				}
 				break;
+			case "/상자":
+				gameYnList = botService.selectGamePlayYn(reqMap);
+				playYn ="1"; 
+				for(HashMap<String,Object> gameYn : gameYnList) {
+					if(gameYn.get("NAME").equals("뽑기")) {
+						playYn = gameYn.get("PLAY_YN").toString(); 
+					}
+				}
 				
+				if(playYn.equals("1")) {
+					List<HashMap<String,Object>> PointItemOptionList = botService.selectPointItemOptionList(reqMap);
+					for (HashMap<String,Object> item : PointItemOptionList) {
+						val += enterStr+"Item No"+item.get("ITEM_NO")+" "+item.get("ITEM_NAME");
+						val += enterStr+item.get("ITEM_DESC")+enterStr;
+					}
+					
+					
+				}else {
+					val = "별도 게임방에서 진행해주세요.";
+				}
+				break;
+					
 			case "/상자구입": case "/상자구매":
 				gameYnList = botService.selectGamePlayYn(reqMap);
 				playYn ="1"; 

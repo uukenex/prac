@@ -126,6 +126,7 @@ public interface BotService {
 	public int selectPointItemUserCount(HashMap<String,Object> map) throws Exception;
 	public String selectPointItemUserOpenFlag(HashMap<String,Object> map) throws Exception;
 	public int selectPointNewBoxCount(HashMap<String,Object> map) throws Exception;
+	public List<HashMap<String,Object>> selectPointItemOptionList(HashMap<String,Object> map) throws Exception;
 } 
 
 	

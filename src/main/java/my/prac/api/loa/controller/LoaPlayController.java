@@ -207,7 +207,8 @@ public class LoaPlayController {
 		
 		return map.get("userName")+"님 출석포인트 "+score+"점 획득"
 			  +extraMsg + enterStr+"갱신 포인트 : "+new_score
-			  +enterStr + "/포인트상점 상자 추가!";
+			  +enterStr + "/상자구매 :200p구매"
+			  +enterStr + "/상자 : 공개된 옵션 리스트보기 추가!";
 	}
 	
 	
