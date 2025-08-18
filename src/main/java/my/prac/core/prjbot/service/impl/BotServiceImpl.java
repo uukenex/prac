@@ -483,6 +483,12 @@ public class BotServiceImpl implements BotService {
 		return botDAO.selectBotPointBoss(map);
 	}
 	
+	public void insertBotPointBossTx(HashMap<String,Object> map) throws Exception {
+		if(botDAO.insertBotPointBoss(map) < 1) {
+			throw new Exception("저장 실패");
+		}
+	}
+	
 	public void updateBotPointBossTx(HashMap<String,Object> map) throws Exception {
 		if(botDAO.updateBotPointBoss(map) < 1) {
 			throw new Exception("저장 실패");

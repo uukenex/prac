@@ -1,18 +1,20 @@
 package my.prac.api.loa.controller;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
 import javax.annotation.Resource;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 
 import my.prac.core.prjbot.service.BotService;
@@ -61,7 +63,6 @@ public class LoaPlayController {
 	    LocalTime end = LocalTime.of(6, 0);
 
 	    map.put("night_attack_ok", "N");
-	    map.put("timeDelay", 15); // 기본 쿨타임 15분
 
 	    if (!now.isBefore(start) && now.isBefore(end)) {
 	        if(item_6_1) {
@@ -1793,45 +1794,60 @@ public class LoaPlayController {
 	}
 	
 	public String attackBoss2(HashMap<String, Object> map) {
-	    map.put("cmd", "boss_attack");
+		 map.put("cmd", "boss_attack");
 
-	    HashMap<String, Object> boss;
-	    // ----------------
-	    // 보스 정보 조회
-	    // ----------------
-	    int hp, max_hp, org_hp, seq;
-	    int bossAtkRate = 20, bossAtkPower = 20, bossDefRate = 20, bossDefPower = 20;
-	    int critDefRate = 0;
-	    int evadeRate =10;
-	    String hideRule="Normal";
-	    String startTime;
-	    
-	    
-	    
-	    
-	    try {
-	        boss = botService.selectBotPointBoss(map);
-	        if (boss == null || boss.get("HP") == null) return "";
-	        hp = Integer.parseInt(boss.get("HP").toString());
-	        max_hp = Integer.parseInt(boss.get("MAX_HP").toString());
-	        org_hp = Integer.parseInt(boss.get("ORG_HP").toString());
-	        seq = Integer.parseInt(boss.get("SEQ").toString());
+		    HashMap<String, Object> boss;
+		    // ----------------
+		    // 0. 보스 정보 조회
+		    // ----------------
+		    int hp, reward, org_hp, seq;
+		    int bossAtkRate = 20, bossAtkPower = 20, bossDefRate = 20, bossDefPower = 20;
+		    int critDefRate = 0;  // ★ 크리티컬 저항 확률 (%)
+		    int evadeRate = 10;   // ★ 보스 회피 확률 (%)
+		    String hideRule = "Normal"; 
+		    String startTime;
 
-	        // 보스 공격/방어 확률, 공격력, 방어력
-	        bossAtkRate = boss.get("ATK_RATE") != null ? Integer.parseInt(boss.get("ATK_RATE").toString()) : 10;
-	        bossAtkPower = boss.get("ATK_POWER") != null ? Integer.parseInt(boss.get("ATK_POWER").toString()) : 100;
-	        bossDefRate = boss.get("DEF_RATE") != null ? Integer.parseInt(boss.get("DEF_RATE").toString()) : 10;
-	        bossDefPower = boss.get("DEF_POWER") != null ? Integer.parseInt(boss.get("DEF_POWER").toString()) : 100;
-	        
-	        
-	        startTime = boss.get("START_DATE").toString();
-	    } catch (Exception e) {
-	        return "보스 정보를 가져오는데 실패했습니다.";
-	    }
-	    
-     	 //** startDate 이전이면 불가처리 필요!
-	    
-	    
+		    int appliedDefPower=0 ;
+		    int appliedAtkPower=0 ;
+		    
+		    try {
+		        boss = botService.selectBotPointBoss(map);
+		        if (boss == null || boss.get("HP") == null) return "";
+
+		        hp = Integer.parseInt(boss.get("HP").toString());
+		        reward = Integer.parseInt(boss.get("REWARD").toString());
+		        org_hp = Integer.parseInt(boss.get("ORG_HP").toString());
+		        seq = Integer.parseInt(boss.get("SEQ").toString());
+
+		        // 보스 공격/방어 스탯 적용
+		        bossAtkRate  = boss.get("ATK_RATE")  != null ? Integer.parseInt(boss.get("ATK_RATE").toString())  : 10;
+		        bossAtkPower = boss.get("ATK_POWER") != null ? Integer.parseInt(boss.get("ATK_POWER").toString()) : 100;
+		        bossDefRate  = boss.get("DEF_RATE")  != null ? Integer.parseInt(boss.get("DEF_RATE").toString())  : 10;
+		        bossDefPower = boss.get("DEF_POWER") != null ? Integer.parseInt(boss.get("DEF_POWER").toString()) : 100;
+
+		        // ★ 추가 : 크리티컬 저항, 회피율, 숨김룰 적용
+		        if (boss.get("CRIT_DEF_RATE") != null) critDefRate = Integer.parseInt(boss.get("CRIT_DEF_RATE").toString());
+		        if (boss.get("EVADE_RATE") != null) evadeRate = Integer.parseInt(boss.get("EVADE_RATE").toString());
+		        if (boss.get("HIDE_RULE") != null) hideRule = boss.get("HIDE_RULE").toString();
+
+		        startTime = boss.get("START_DATE").toString();
+		    } catch (Exception e) {
+		        return "보스 정보를 가져오는데 실패했습니다.";
+		    }
+
+		    // ----------------
+		    // 1. 보스 시작시간 체크
+		    // ----------------
+		    try {
+		        LocalDateTime startDate = LocalDateTime.parse(startTime, DateTimeFormatter.ofPattern("yyyyMMdd HHmmss"));
+		        if (LocalDateTime.now().isBefore(startDate)) {
+		            return "보스가 아직 등장하지 않았습니다!";
+		        }
+		    } catch (Exception e) {
+		    	e.printStackTrace();
+		        // startDate 파싱 실패 시 무시 (공격 가능)
+		    }
+		    
 	    // ----------------
 	    // 아이템 조회
 	    // ----------------
@@ -1846,15 +1862,48 @@ public class LoaPlayController {
 	    boolean item_7_2 = ableItemList.contains("7-2");
 
 	    // ----------------
-	    // 1. 보스 숨김 체크
+	    // 보스 숨김 체크
 	    // ----------------
-	    // **hideRule 에 따라 처리 할 수 있도록 로직 필요 
-	    if (isBossHiddenNow(item_6_1, map)) {
-	        return map.get("userName") + "님," + enterStr + map.get("extra_msg");
-	    }
+	    
+	    LocalTime now = LocalTime.now();
+	    LocalTime start = LocalTime.of(2, 0);
+	    LocalTime end = LocalTime.of(6, 0);
+	    map.put("night_attack_ok", "N");
+	    
+		switch (hideRule) {
+		case "점심":
+			start = LocalTime.of(10, 0);
+			end = LocalTime.of(3, 0);
+			if (!now.isBefore(start) && now.isBefore(end)) {
+				return "보스가 구름에 숨었습니다...공격불가..(10시~15시 불가시간)";
+			}
+			break;
+		case "아침":
+			start = LocalTime.of(6, 0);
+			end = LocalTime.of(10, 0);
+			if (!now.isBefore(start) && now.isBefore(end)) {
+				return "보스가 안개에 숨었습니다...공격불가..(06시~10시 불가시간)";
+			}
+			break;
+		default:
+			start = LocalTime.of(2, 0);
+			end = LocalTime.of(6, 0);
+			
+			if (!now.isBefore(start) && now.isBefore(end)) {
+				if(item_6_1) {
+					map.put("night_attack_ok","Y");
+				}else {
+				
+					return "보스가 어둠에 숨었습니다...공격불가..(02시~06시 불가시간)";
+				}
+			}
+			
+			break;
+			
+		}
 
 	    // ----------------
-	    // 2. 공격 쿨타임 체크
+	    // 공격 쿨타임 체크
 	    // ----------------
 	    if (!checkBossCooldown(map)) {
 	        return map.get("userName") + "님," + enterStr + map.get("extra_msg");
@@ -1864,44 +1913,38 @@ public class LoaPlayController {
 
 	    int weaponLv = getWeaponLv(map);
 
+	 // ----------------
+	    // 5. 회피 계산
 	    // ----------------
-	    // 4. 회피 / 아이템 적용
-	    // ----------------
-	    
-	    //**evadeRate 로 변경 필요 
-	    double baseEvadeChance = 0.10; // 기본 회피율
 	    double roll = Math.random();
 	    boolean isEvade = false;
 	    String isEvadeMsg = "";
 
-	    if (roll < baseEvadeChance) {
-	        isEvadeMsg = enterStr + "보스가 회피합니다.";
+	    if (roll < (evadeRate / 100.0)) {  // 보스가 회피 성공
+	        isEvade = true;
+	        isEvadeMsg = "보스가 회피합니다." + enterStr;
 
-	        // 아이템 적용
+	        // 아이템 7-1, 7-2 가 있으면 보스 회피 무효화 시도
 	        if (item_7_1) {
-	            if (roll < 0.05) {
+	            if (roll < 0.05) {  
 	                isEvade = false;
-	                isEvadeMsg = "[덫] 적용. 보스 회피 저지!" + enterStr;
+	                isEvadeMsg = "[덫] 보스 회피 무효!" + enterStr;
 	            } else {
-	                isEvade = true;
-	                isEvadeMsg = "[덫] 실패. 보스가 피했습니다." + enterStr;
+	                isEvadeMsg = "[덫] 실패, 보스 회피 성공!" + enterStr;
 	            }
 	        } else if (item_7_2) {
-	            if (roll < 0.08) {
+	            if (roll < 0.10) {  
 	                isEvade = false;
-	                isEvadeMsg = "[덫2] 적용. 보스 회피 저지!" + enterStr;
+	                isEvadeMsg = "[덫2] 보스 회피 무효!" + enterStr;
 	            } else {
-	                isEvade = true;
-	                isEvadeMsg = "[덫2] 실패. 보스가 피했습니다." + enterStr;
+	                isEvadeMsg = "[덫2] 실패, 보스 회피 성공!" + enterStr;
 	            }
-	        } else {
-	            isEvade = true;
 	        }
 	    }
 
 	    // ----------------
-	    // 5. 야간투시경 적용
-	    // ----------------
+	    // 야간투시경 적용
+	    //  ---------------
 	    String nightMsg = "";
 	    if ("Y".equals(map.get("night_attack_ok"))) {
 	        nightMsg = "[야간투시경] 적용 " + enterStr;
@@ -1909,48 +1952,69 @@ public class LoaPlayController {
 	    }
 
 	    // ----------------
-	    // 6. 플레이어 공격 계산
+	    // 플레이어 공격 계산
 	    // ----------------
 	    int damage = 0;
 	    boolean isCritical = false;
 	    boolean isSuperCritical = false;
-	    String isCritMsg = "";
-
+	    String bossDefenseMsg = "";
+	    String isCritMsg="";
+	    String dmgMsg="";
+	    map.put("evadeYn", isEvade);
+	   
 	    if (!isEvade) {
+	        // 무기 레벨 기반 기본 데미지
 	        int min = (1 + (weaponLv / 2)) / 2;
 	        int max = (5 + weaponLv) * 2;
 	        int baseDamage = new Random().nextInt(max - min + 1) + min;
 
-	        // **critDefRate 만큼 저항처리 필요 
-	        // 크리티컬 확률
+	        dmgMsg = "데미지 "+baseDamage+" 로 공격!";
+	        // 치명타 확률 계산
 	        double criticalChance = Math.min(0.20 + weaponLv * 0.01, 1.0);
-	        if (item_5_1) criticalChance += 0.05;
-	        if (item_5_2) criticalChance += 0.10;
-	        if (item_5_3) criticalChance += 0.15;
-
-	        
-            isCritical = Math.random() < criticalChance;
-	        
-
-	        if (isCritical) isSuperCritical = Math.random() < 0.10;
-
-	        if (isSuperCritical) {
-	            damage = baseDamage * 5;
-	        } else if (isCritical) {
-	            damage = baseDamage * 3;
-	        } else {
-	            damage = baseDamage;
+	        if (item_5_1) {
+	        	criticalChance += 0.05;
+	        	isCritMsg +="[예리한칼날] +5%";
+	        }
+	        if (item_5_2) {
+	        	criticalChance += 0.10;
+	        	isCritMsg +="[예리한칼날] 2 lv +10%";
+	        }
+	        if (item_5_3) {
+	        	criticalChance += 0.15;
+	        	isCritMsg +="[예리한칼날] 3 lv +15%";
 	        }
 
-	        // 보스 방어 적용
+	        // 보스 크리티컬 저항 반영
+	        criticalChance -= (critDefRate / 100.0);
+	        if (criticalChance < 0) criticalChance = 0;
+
+	        if(critDefRate>0) {
+	        	isCritMsg+=enterStr+"보스크리저항력 -"+critDefRate;
+	        }
+	        
+	        isCritical = Math.random() < criticalChance;
+	        if (isCritical) {
+	            isSuperCritical = Math.random() < 0.10; 
+	        }
+
+	        // 최종 데미지 산출
+	        if (isSuperCritical) damage = baseDamage * 5;
+	        else if (isCritical) damage = baseDamage * 3;
+	        else damage = baseDamage;
+
+	        // 보스 방어 적용 (메시지 추가)
 	        if (Math.random() < bossDefRate / 100.0) {
-	            damage -= bossDefPower;
+	        	appliedDefPower = ThreadLocalRandom.current().nextInt(1, bossDefPower + 1);
+	        	
+	            damage -= appliedDefPower;
 	            if (damage < 0) damage = 0;
+	            
+	            bossDefenseMsg = "보스가 방어하였습니다! 데미지 " + appliedDefPower + " 상쇄!" + enterStr;
 	        }
 	    }
-
+	    
 	    // ----------------
-	    // 7. 보스 HP/스코어/리워드 처리
+	    // 보스 HP/스코어/리워드 처리
 	    // ----------------
 	    int score = damage / 3;
 	    boolean newbieYn = weaponLv < 13;
@@ -1963,25 +2027,34 @@ public class LoaPlayController {
 	        if (isCritical) {
 	            isKill = true;
 	            score = Math.min(damage, hp) / 3 + 100;
-	            map.put("max_hp", max_hp);
+	            map.put("reward", reward);
 	            map.put("org_hp", org_hp);
-	            rewardMsg = calcBossReward(map);
+	            rewardMsg = calcBossReward2(map);
+	            respawnBoss(map);
+	            
+	            appliedAtkPower=0;
+	            appliedDefPower=0;
+	            bossDefenseMsg="";
 	        } else {
 	            newHp = 1;
 	            int allowedDamage = hp - 1;
 	            score = Math.min(damage, allowedDamage) / 3;
 	            damage = allowedDamage;
+	            
+	            //보스 무적이라 메시지 필요없음 
+	            dmgMsg="";
+	            bossDefenseMsg="";
 	        }
 	    }
 	    
-	    // ⭐⭐⭐ 보스 반격 로직 추가 ⭐⭐⭐
-	    if (Math.random() < bossAtkRate / 100.0) {
-	    	int counterDamage = (int)(Math.random() * (bossAtkPower + 1))+1; // 0 ~ bossAtkPower
-	        score -= counterDamage;
-	        map.put("extra_msg", "보스가 반격합니다! 데미지를 입었습니다! -" + counterDamage+"p");
+	    if(!isKill) {
+	    	if (Math.random() < bossAtkRate / 100.0) {
+		    	appliedAtkPower = ThreadLocalRandom.current().nextInt(1, bossAtkPower + 1);
+		        score -= appliedAtkPower;
+		        map.put("extra_msg", "보스가 반격합니다! 데미지를 입었습니다! -" + appliedAtkPower+"p");
+		    }
 	    }
-
-
+	    
 	    // DB 반영
 	    int new_score;
 	    try {
@@ -1991,6 +2064,8 @@ public class LoaPlayController {
 	        map.put("damage", damage);
 	        map.put("score", score);
 	        map.put("endYn", isKill ? "1" : "0");
+	        map.put("atkPower", appliedAtkPower);
+	        map.put("defPower", appliedDefPower );
 	        botService.updateBotPointBossTx(map);
 	        new_score = botService.insertBotPointRankTx(map);
 	    } catch (Exception e) {
@@ -2002,6 +2077,7 @@ public class LoaPlayController {
 	    // ----------------
 	    StringBuilder msg = new StringBuilder();
 	    msg.append(map.get("userName")).append("님이 보스를 공격했습니다!").append(enterStr);
+	    msg.append(dmgMsg).append(enterStr);
 
 	    // 공격/치명타/회피 메시지
 	    if (isEvade) msg.append("보스가 공격을 회피! 데미지 0!").append(enterStr);
@@ -2010,6 +2086,7 @@ public class LoaPlayController {
 
 	    msg.append("치명타 확률: ").append((int)(Math.min(0.20 + weaponLv*0.01,1.0)*100)).append("%").append(enterStr);
 	    msg.append(isCritMsg).append("입힌 데미지: ").append(damage).append(enterStr);
+	    if (!bossDefenseMsg.isEmpty()) msg.append(bossDefenseMsg);
 	    msg.append(nightMsg);
 
 	    // ⭐ 반격 결과 메시지 추가
@@ -2037,8 +2114,90 @@ public class LoaPlayController {
 
 	    return msg.toString();
 	}
+	
+	private void respawnBoss(HashMap<String, Object> map) {
+	    try {
+	        HashMap<String, Object> newBoss = new HashMap<>();
+	        newBoss.put("startDate", LocalDateTime.now().plusHours(6).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+	        newBoss.put("roomName", map.get("roomName"));
+	        newBoss.put("reward", 600);
+	        newBoss.put("org_hp", 10000);
+	        newBoss.put("evadeRate", 20);
+	        newBoss.put("atkRate", 10);
+	        newBoss.put("atkPower", 10);
+	        newBoss.put("defRate", 10);
+	        newBoss.put("defPower", 10);
+	        newBoss.put("hideRule", "");
+	        newBoss.put("critDefRate", 30);
+	        // TODO: 다른 스탯(ATK_RATE, DEF_RATE 등)도 초기화 값 넣기
+	        botService.insertBotPointBossTx(newBoss); // 신규 보스 생성 쿼리
+
+
+
+	    } catch (Exception e) {
+	        System.err.println("보스 재생성 실패: " + e.getMessage());
+	    }
+	}
 
 	
+	public String calcBossReward2(HashMap<String, Object> map) {
+		String roomName = (String) map.get("roomName");
+		int totalReward = Integer.parseInt(map.get("reward").toString())/10 ; // 기본 총 보상 포인트
+		int bossOrgMaxHp = Integer.parseInt(map.get("org_hp").toString());
+		
+		List<HashMap<String, Object>> top3List = botService.selectTop3Contributors(map);
+		
+		int totalTop3Damage = 0;
+		for (HashMap<String, Object> row : top3List) {
+			totalTop3Damage += Integer.parseInt(row.get("SCORE").toString());
+		}
+		
+		StringBuilder msgBuilder = new StringBuilder();
+		msgBuilder.append("보스 기여도 보상 분배 결과").append(enterStr);
+		
+		for (HashMap<String, Object> row : top3List) {
+			String name = row.get("USER_NAME").toString();
+			int damage = Integer.parseInt(row.get("SCORE").toString());
+			
+			// 보스 전체 체력 대비 데미지 비율 (%)
+			double bossRatio = (double) damage / bossOrgMaxHp * 100;
+			
+			// top3 데미지 합 대비 분배 비율
+			double rewardRatio = (double) damage / totalTop3Damage;
+			int reward = (int) Math.floor(totalReward * rewardRatio); // 내림처리
+			
+			// 포인트 지급 처리
+			HashMap<String, Object> rewardMap = new HashMap<>();
+			rewardMap.put("roomName", roomName);
+			rewardMap.put("userName", name);
+			rewardMap.put("score", reward);
+			rewardMap.put("cmd", "boss_kill_reward");
+			
+			try {
+				botService.insertBotPointRankTx(rewardMap);
+			} catch (Exception e) {
+				// 오류 무시
+			}
+			
+			// 메시지 작성
+			String percentStr = String.format("%.0f", bossRatio); // 정수 퍼센트
+			msgBuilder
+			.append(name)
+			.append(" - ")
+			.append(damage)
+			.append(" dmg(")
+			.append(percentStr)
+			.append("%) - ")
+			.append(reward)
+			.append("pt 지급")
+			.append(enterStr)
+			.append(enterStr)
+			.append("6시간 뒤 재등장 예정!")
+			;
+		}
+		
+		return msgBuilder.toString();
+	}
 	public String calcBossReward(HashMap<String, Object> map) {
 	    String roomName = (String) map.get("roomName");
 	    int totalReward = Integer.parseInt(map.get("max_hp").toString())/10 ; // 기본 총 보상 포인트

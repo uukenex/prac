@@ -1154,6 +1154,36 @@
 		   AND A.SEQ =#{seq, jdbcType=NUMERIC} 
 		   AND END_YN = '0'
 	</update>
+	<insert id="insertBotPointBoss" parameterType="HashMap">
+		INSERT INTO TBOT_POINT_BOSS
+			 (SEQ
+			 ,INSERT_DATE
+			 ,ROOM_NAME
+			 ,REWARD
+			 ,ORG_HP
+			 ,HP
+			 ,EVADE_RATE
+			 ,ATK_RATE
+			 ,ATK_POWER
+			 ,DEF_RATE
+			 ,DEF_POWER
+			 ,HIDE_RULE
+			 ,CRIT_DEF_RATE)
+			 SELECT MAX(SEQ) + 1
+				  ,TO_DATE(#{startDate, jdbcType=DATE},'yyyy-mm-dd hh24:mi:ss')
+				  ,#{roomName, jdbcType=VARCHAR}
+				  ,#{reward, jdbcType=NUMERIC}
+				  ,#{org_hp, jdbcType=NUMERIC}
+				  ,#{org_hp, jdbcType=NUMERIC}
+				  ,#{evadeRate, jdbcType=NUMERIC}
+				  ,#{atkRate, jdbcType=NUMERIC}
+				  ,#{atkPower, jdbcType=NUMERIC}
+				  ,#{defRate, jdbcType=NUMERIC}
+				  ,#{defPower, jdbcType=NUMERIC}
+				  ,#{hideRule, jdbcType=VARCHAR}
+				  ,#{critDefRate, jdbcType=NUMERIC}
+			   FROM TBOT_POINT_BOSS A
+	</insert>
 	
 	<insert id="insertBotPointBossLog" parameterType="HashMap">
 	   INSERT INTO TBOT_POINT_BOSS_LOG
@@ -1190,6 +1220,7 @@
 		           FROM TBOT_POINT_BOSS_log
 		          WHERE room_name = #{roomName, jdbcType=VARCHAR}
 		       )
+		       AND SCORE > 0
 		     GROUP BY user_name
 		     ORDER BY score DESC
 		  )

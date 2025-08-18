@@ -461,21 +461,6 @@ public class LoaChatController {
 					val = "별도 게임방에서 진행해주세요.";
 				}
 				break;
-			case "/공격2": case "/ㄱㄱ2": 
-				gameYnList = botService.selectGamePlayYn(reqMap);
-				playYn ="1"; 
-				for(HashMap<String,Object> gameYn : gameYnList) {
-					if(gameYn.get("NAME").equals("강화")) {
-						playYn = gameYn.get("PLAY_YN").toString(); 
-					}
-				}
-				
-				if(playYn.equals("1")) {
-					val = play.attackBoss2(reqMap);
-				}else {
-					val = "별도 게임방에서 진행해주세요.";
-				}
-				break;
 			case "/공격": case "/ㄱㄱ": case "보스":
 				gameYnList = botService.selectGamePlayYn(reqMap);
 				playYn ="1"; 
@@ -486,7 +471,7 @@ public class LoaChatController {
 				}
 				
 				if(playYn.equals("1")) {
-					val = play.attackBoss(reqMap);
+					val = play.attackBoss2(reqMap);
 				}else {
 					val = "별도 게임방에서 진행해주세요.";
 				}

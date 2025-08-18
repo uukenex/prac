@@ -126,14 +126,18 @@ public interface BotDAO {
 	//게임 플레이여부
 	public List<HashMap<String,Object>> selectGamePlayYn(HashMap<String,Object> map);
 	public int updateGamePlayYn(HashMap<String,Object> map);
-	//보스기능
+	//구보스기능
 	public HashMap<String,Object> selectBossHit(HashMap<String,Object> map);
 	public int updateBossHit(HashMap<String,Object> map);
 	public int insertBossHitLog(HashMap<String,Object> map);
+	
+	public List<HashMap<String, Object>> selectTop3Contributors(HashMap<String, Object> hashMap);
+	
+	//신규보스
 	public HashMap<String,Object> selectBotPointBoss(HashMap<String,Object> map);
 	public int updateBotPointBoss(HashMap<String,Object> map);
 	public int insertBotPointBossLog(HashMap<String,Object> map);
-	public List<HashMap<String, Object>> selectTop3Contributors(HashMap<String, Object> hashMap);
+	public int insertBotPointBoss(HashMap<String,Object> map);
 	
 	//아이템 뽑기 기능
 	public List<HashMap<String,Object>> selectPointItemUserList(HashMap<String,Object> map) throws Exception;
