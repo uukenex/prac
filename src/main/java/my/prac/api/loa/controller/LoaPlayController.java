@@ -1989,7 +1989,7 @@ public class LoaPlayController {
 	        if (criticalChance < 0) criticalChance = 0;
 
 	        if(critDefRate>0) {
-	        	isCritMsg+=enterStr+"보스크리저항력 -"+critDefRate;
+	        	isCritMsg+="보스크리저항력 -"+critDefRate+"%"+enterStr;
 	        }
 	        
 	        isCritical = Math.random() < criticalChance;
