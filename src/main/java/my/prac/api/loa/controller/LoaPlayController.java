@@ -1973,15 +1973,15 @@ public class LoaPlayController {
 	        double criticalChance = Math.min(0.20 + weaponLv * 0.01, 1.0);
 	        if (item_5_1) {
 	        	criticalChance += 0.05;
-	        	isCritMsg +="[예리한칼날] +5%";
+	        	isCritMsg +="[예리한칼날] +5%"+enterStr;
 	        }
 	        if (item_5_2) {
 	        	criticalChance += 0.10;
-	        	isCritMsg +="[예리한칼날] 2 lv +10%";
+	        	isCritMsg +="[예리한칼날] 2 lv +10%"+enterStr;
 	        }
 	        if (item_5_3) {
 	        	criticalChance += 0.15;
-	        	isCritMsg +="[예리한칼날] 3 lv +15%";
+	        	isCritMsg +="[예리한칼날] 3 lv +15%"+enterStr;
 	        }
 
 	        // 보스 크리티컬 저항 반영
