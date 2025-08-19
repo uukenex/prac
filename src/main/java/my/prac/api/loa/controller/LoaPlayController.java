@@ -121,6 +121,35 @@ public class LoaPlayController {
 		return botService.selectWeaponLvCheck(map);
 	}
 	
+	public HashMap<String, Object> getWeaponStatsForPoint(HashMap<String, Object> map) {
+		HashMap<String, Object> result = new HashMap<>();
+		Random rand = new Random();
+		
+		// 무기 레벨 조회 (없으면 0)
+		int weaponLv = botService.selectWeaponLvCheckForPoint(map);
+		if (weaponLv < 0) weaponLv = 0; // 안전하게 0 처리
+		
+		// 최소/최대 데미지 계산
+		int min = (1 + (weaponLv / 2)) / 2;
+		int max = (5 + weaponLv) * 2;
+		
+		// baseDamage 랜덤 생성
+		int baseDamage = rand.nextInt(max - min + 1) + min;
+		
+		// 기본 치명타 확률 계산
+		double criticalChance = Math.min(0.20 + weaponLv * 0.01, 1.0);
+		
+		// 결과 저장
+		result.put("level", weaponLv);
+		result.put("min", min);
+		result.put("max", max);
+		result.put("baseDamage", baseDamage);
+		result.put("criticalChance", criticalChance);
+		
+		return result;
+	}
+	
+	
 	public HashMap<String, Object> getWeaponStats(HashMap<String, Object> map) {
 	    HashMap<String, Object> result = new HashMap<>();
 	    Random rand = new Random();

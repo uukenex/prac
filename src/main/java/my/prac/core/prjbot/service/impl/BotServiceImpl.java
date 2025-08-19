@@ -406,6 +406,17 @@ public class BotServiceImpl implements BotService {
 		return botDAO.selectBotPointWeapon(map);
 	}
 	
+	public int selectWeaponLvCheckForPoint(HashMap<String,Object> map){
+		if (map.get("param1") != null && !map.get("param1").equals("")) {
+			List<String> newUserName = botDAO.selectParam1ToNewUserSearch(map);
+			if(newUserName.size()>0) {
+				map.put("newUserName", newUserName.get(0));
+			}else {
+				return 0;
+			}
+		}
+		return botDAO.selectWeaponLvCheckForPoint(map);
+	}
 	
 	
 	public HashMap<String,Object> upsertDailyWeaponUpgradeTx(HashMap<String,Object> map) throws Exception{

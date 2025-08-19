@@ -119,6 +119,7 @@ public interface BotDAO {
 	
 	
 	public int selectWeaponLvCheck(HashMap<String,Object> map);
+	public int selectWeaponLvCheckForPoint(HashMap<String,Object> map);
 	//차단기능
 	public int insertBotBlock(HashMap<String,Object> map);
 	public int deleteBotBlock(HashMap<String,Object> map);

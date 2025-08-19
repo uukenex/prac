@@ -1223,7 +1223,7 @@ public class LoaChatController {
 				
 				int lv = Integer.parseInt(point_map_one.get("WEAPON").toString());
 				
-				HashMap<String, Object> weaponInfo = play.getWeaponStats(reqMap);
+				HashMap<String, Object> weaponInfo = play.getWeaponStatsForPoint(reqMap);
 			    
 			    int weaponLv = Integer.parseInt(weaponInfo.get("level").toString());
 			    double weaponCriticalChance = Double.parseDouble(weaponInfo.get("criticalChance").toString());

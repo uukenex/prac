@@ -1110,8 +1110,14 @@
 	<select id="selectWeaponLvCheck" parameterType="HashMap" resultType="int">
 		SELECT NVL(SUM(A.WEAPON_LV), 0)
 		  FROM TBOT_POINT_WEAPON A
-		 WHERE USER_NAME = #{userName, jdbcType=VARCHAR}
-		   AND ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+		 WHERE ROOM_NAME = #{roomName, jdbcType=VARCHAR} 
+		   AND USER_NAME = #{userName, jdbcType=VARCHAR}
+	</select>
+	<select id="selectWeaponLvCheckForPoint" parameterType="HashMap" resultType="int">
+		SELECT NVL(SUM(A.WEAPON_LV), 0)
+		  FROM TBOT_POINT_WEAPON A
+		 WHERE ROOM_NAME = #{roomName, jdbcType=VARCHAR} 
+		   AND upper(USER_NAME) = upper(#{newUserName, jdbcType=VARCHAR})
 	</select>
 	
 	<select id="selectBossHit" parameterType="HashMap" resultType="HashMap">
