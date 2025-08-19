@@ -1586,7 +1586,7 @@ public class LoaPlayController {
 
 			// 출력 메시지 구성
 			StringBuilder sb = new StringBuilder();
-			sb.append("===== 보스 정보 ====="+enterStr);
+			sb.append("보스 정보"+enterStr);
 			//sb.append("보스 번호 : ").append(seq).append(enterStr);
 			//sb.append("체력 : ").append(hp).append(" / ").append(orgHp).append(enterStr);
 			sb.append("체력 : ").append("???").append(" / ").append("???").append(enterStr);
