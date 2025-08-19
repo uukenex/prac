@@ -1989,12 +1989,18 @@ public class LoaPlayController {
 		} else if (isKill) {
 			msg.append("✨보스를 처치했습니다!").append(enterStr);
 		} else {
-			if (item_4_1)
-				msg.append("보스 체력: ").append((int) ((newHp * 100.0) / org_hp)).append("% [스카우터]").append(enterStr);
-			else if (item_4_2)
-				msg.append("보스 체력: ").append(newHp).append("/??? [스카우터 Lv2]").append(enterStr);
-			else
-				msg.append("보스 체력: ???/???").append(enterStr);
+			if ((newHp * 100.0) / org_hp < 10) {
+		        msg.append("보스 체력: ").append(newHp).append("/").append(org_hp).append(" (위기)").append(enterStr);
+		    }
+			else {
+				if (item_4_1)
+					msg.append("보스 체력: ").append((int) ((newHp * 100.0) / org_hp)).append("% [스카우터]").append(enterStr);
+				else if (item_4_2)
+					msg.append("보스 체력: ").append(newHp).append("/??? [스카우터 Lv2]").append(enterStr);
+				else
+					msg.append("보스 체력: ???/???").append(enterStr);
+			}
+			
 		}
 		msg.append("공격 쿨타임 : ").append(map.get("timeDelay")).append(" Min").append(enterStr);
 
@@ -2053,7 +2059,7 @@ public class LoaPlayController {
 	
 	public String calcBossReward2(HashMap<String, Object> map) {
 		String roomName = (String) map.get("roomName");
-		int totalReward = Integer.parseInt(map.get("reward").toString())/10 ; // 기본 총 보상 포인트
+		int totalReward = Integer.parseInt(map.get("reward").toString()) ; // 기본 총 보상 포인트
 		int bossOrgMaxHp = Integer.parseInt(map.get("org_hp").toString());
 		
 		List<HashMap<String, Object>> top3List = botService.selectTop3Contributors(map);
@@ -2102,11 +2108,11 @@ public class LoaPlayController {
 			.append(reward)
 			.append("pt 지급")
 			.append(enterStr)
-			.append(enterStr)
-			.append("6시간 뒤 재등장 예정!")
+			
 			;
 		}
 		
+		msgBuilder.append(enterStr).append(enterStr).append("6시간 뒤 재등장 예정!");
 		return msgBuilder.toString();
 	}
 	public String calcBossReward(HashMap<String, Object> map) {
