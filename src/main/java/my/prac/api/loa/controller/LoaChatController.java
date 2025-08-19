@@ -543,12 +543,13 @@ public class LoaChatController {
 				gameYnList = botService.selectGamePlayYn(reqMap);
 				playYn ="1"; 
 				for(HashMap<String,Object> gameYn : gameYnList) {
-					if(gameYn.get("NAME").equals("뽑기")) {
+					if(gameYn.get("NAME").equals("강화")) {
 						playYn = gameYn.get("PLAY_YN").toString(); 
 					}
 				}
 				
 				if(playYn.equals("1")) {
+					val+= allSeeStr;
 					List<HashMap<String,Object>> PointItemOptionList = botService.selectPointItemOptionList(reqMap);
 					for (HashMap<String,Object> item : PointItemOptionList) {
 						val += enterStr+"Item No"+item.get("ITEM_NO")+" "+item.get("ITEM_NAME");
@@ -565,7 +566,7 @@ public class LoaChatController {
 				gameYnList = botService.selectGamePlayYn(reqMap);
 				playYn ="1"; 
 				for(HashMap<String,Object> gameYn : gameYnList) {
-					if(gameYn.get("NAME").equals("뽑기")) {
+					if(gameYn.get("NAME").equals("강화")) {
 						playYn = gameYn.get("PLAY_YN").toString(); 
 					}
 				}
@@ -580,7 +581,7 @@ public class LoaChatController {
 				gameYnList = botService.selectGamePlayYn(reqMap);
 				playYn ="1"; 
 				for(HashMap<String,Object> gameYn : gameYnList) {
-					if(gameYn.get("NAME").equals("뽑기")) {
+					if(gameYn.get("NAME").equals("강화")) {
 						playYn = gameYn.get("PLAY_YN").toString(); 
 					}
 				}
