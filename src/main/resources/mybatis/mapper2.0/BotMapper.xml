@@ -585,6 +585,20 @@
 			     AND A.CMD = 'weapon_upgrade2'
 			     AND INSERT_DATE > TO_DATE('20250701','yyyymmdd')
 			 ) AS WEAPON_USE
+			,(
+				SELECT COUNT(1)||'/'|| NVL(SUM(DECODE(B.OPEN_FLAG, '2', 1)),0)||'/'|| NVL(SUM(DECODE(B.DEL_YN, '1', 1)),0) AS BOX_TOT
+				  FROM TBOT_POINT_ITEM_USER B
+				 WHERE B.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+				   AND UPPER(B.USER_NAME) = UPPER(#{newUserName, jdbcType=VARCHAR})
+			) AS BOX_TOT
+			, (
+				SELECT NVL(SUM(DECODE(A.CMD, 'pointShop', -A.SCORE)),0) || 'p' || '/' || NVL(SUM(DECODE(A.CMD, 'pointBoxOpenDel', A.SCORE)),0) || 'p'
+				  FROM TBOT_POINT_RANK A
+				 WHERE ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+				   AND UPPER(USER_NAME) = UPPER(#{newUserName, jdbcType=VARCHAR})
+				   AND A.CMD IN ('pointShop', 'pointBoxOpenDel')
+				   AND INSERT_DATE > TO_DATE('20250701', 'yyyymmdd')
+		   ) AS BOX_TOT_POINT
 		  FROM DUAL
 	</select>
 	

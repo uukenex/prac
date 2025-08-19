@@ -1222,14 +1222,28 @@ public class LoaChatController {
 				}
 				
 				int lv = Integer.parseInt(point_map_one.get("WEAPON").toString());
+				
+				HashMap<String, Object> weaponInfo = play.getWeaponStats(reqMap);
+			    
+			    int weaponLv = Integer.parseInt(weaponInfo.get("level").toString());
+			    double weaponCriticalChance = Double.parseDouble(weaponInfo.get("criticalChance").toString());
+			    int weaponMin = Integer.parseInt(weaponInfo.get("min").toString());
+			    int weaponMax = Integer.parseInt(weaponInfo.get("max").toString());
+			    int weaponBaseDmg = Integer.parseInt(weaponInfo.get("baseDamage").toString());
+				
 				val += "❤️"+point_map_one.get("TOT")+ enterStr+ 
-					   "⚔"+"무기: +"+lv+" lv"+point_map_one.get("WEAPON_USE")+enterStr+
-					   "✨"+"공격력: "+((1+lv/2)/2)+"~"+((5+lv)*2)+" (치확: "+(20+lv)+"%)"+enterStr+enterStr+
+					   "⚔"+"무기: +"+weaponLv+" lv"+point_map_one.get("WEAPON_USE")+enterStr+
+					   "✨"+"공격력: "+weaponMin+"~"+weaponMax+" (치확: "+(int)(weaponCriticalChance*100)+"%)"+enterStr+enterStr+
 					   "⏰"+point_map_one.get("ATTENDANCE")+ enterStr+
 					   "⚅"+point_map_one.get("DICE")+enterStr +
 					   "✨"+point_map_one.get("GAMBLE_WIN")+enterStr +
 					   "⚾"+point_map_one.get("BASEBALL_WIN")+enterStr +
-					   "⚔️"+point_map_one.get("FIGHT_SUM")+point_map_one.get("FIGHT_WIN")+point_map_one.get("FIGHT_LOSE")+enterStr ;
+					   "⚔️"+point_map_one.get("FIGHT_SUM")+point_map_one.get("FIGHT_WIN")+point_map_one.get("FIGHT_LOSE")+enterStr+
+					   "" + enterStr+
+					   "✨"+"보물상자"+enterStr+
+					   "→(전체/오픈/실패) : "+point_map_one.get("BOX_TOT")+enterStr+
+					   "→(소모/환급) : "+point_map_one.get("BOX_TOT_POINT")+enterStr
+					   ;
 				
 				
 				List<HashMap<String,Object>> userItemList = botService.selectPointItemUserListForPoint(reqMap);
