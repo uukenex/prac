@@ -1619,6 +1619,7 @@ public class LoaPlayController {
 			//sb.append("체력 : ").append(hp).append(" / ").append(orgHp).append(enterStr);
 			sb.append("체력 : ").append("???").append(" / ").append("???").append(enterStr);
 			sb.append("보상 : ").append(reward).append(" 포인트"+enterStr);
+			sb.append("(보상포인트 = 체력 / 20 ± 500 )").append(enterStr);
 			sb.append("출현 시간 : ").append(startTime).append(enterStr+enterStr);
 
 			sb.append("공격력 : 1~").append(bossAtkPower);
@@ -2030,21 +2031,38 @@ public class LoaPlayController {
 			int orgHp = 5000 + rand.nextInt(20000 - 5000 + 1);
 			newBoss.put("org_hp", orgHp);
 
-			int reward = 600 + rand.nextInt(600);
+			int reward = orgHp / 20 + rand.nextInt(500);
 			newBoss.put("reward", reward);
 
-			// 스탯 조정 : HP가 낮을수록 스탯 보정 증가
-			// orgHp가 5000이면 maxStat = 20, 20000이면 maxStat = 15
-			int maxStat = 8 + (int) ((20000 - orgHp) / 1500.0); // 예: orgHp가 낮을수록 + 스탯
-			if (maxStat > 10)
-				maxStat = 10; // 상한선
+			// --- 6개 항목 합계가 100 이하가 되도록 랜덤 분배 ---
+	        int totalLimit = 100;
+	        int remaining = totalLimit - 6; // 최소 1씩 보장하기 위해 6 빼고 시작
+	        int[] stats = new int[6];
 
-			newBoss.put("evadeRate", rand.nextInt(maxStat + 1));
-			newBoss.put("atkRate", rand.nextInt(maxStat + 1));
-			newBoss.put("atkPower", rand.nextInt(maxStat + 1));
-			newBoss.put("defRate", rand.nextInt(maxStat + 1));
-			newBoss.put("defPower", rand.nextInt(maxStat + 1));
-			newBoss.put("critDefRate", rand.nextInt(maxStat + 1));
+	        for (int i = 0; i < 6; i++) {
+	            // 남은 포인트가 있고, 아직 배분할 슬롯이 남았을 때 랜덤 분배
+	            int add = (i == 5) ? remaining : rand.nextInt(remaining + 1);
+	            stats[i] = 1 + add; // 최소 1 보장
+	            remaining -= add;
+	            if (stats[i] > 20) stats[i] = 20; // maxStat 초과 방지
+	        }
+
+	        // 랜덤 순서 섞기
+	        for (int i = stats.length - 1; i > 0; i--) {
+	            int j = rand.nextInt(i + 1);
+	            int tmp = stats[i];
+	            stats[i] = stats[j];
+	            stats[j] = tmp;
+	        }
+
+	        newBoss.put("evadeRate", stats[0]);
+	        newBoss.put("atkRate", stats[1]);
+	        newBoss.put("atkPower", stats[2]);
+	        newBoss.put("defRate", stats[3]);
+	        newBoss.put("defPower", stats[4]);
+	        newBoss.put("critDefRate", stats[5]);
+	        
+	        
 			// hideRule : 아침 / 저녁 / 새벽 중 랜덤
 			String[] hideRules = { "아침", "저녁", "새벽" };
 			newBoss.put("hideRule", hideRules[rand.nextInt(hideRules.length)]);
