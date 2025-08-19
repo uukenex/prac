@@ -208,7 +208,8 @@ public class LoaPlayController {
 		return map.get("userName")+"님 출석포인트 "+score+"점 획득"
 			  +extraMsg + enterStr+"갱신 포인트 : "+new_score
 			  +enterStr + "/상자구매 :200p구매"
-			  +enterStr + "/상자 : 공개된 옵션 리스트보기 추가!";
+			  +enterStr + "/상자 : 공개된 옵션 리스트보기 추가!"
+			  +enterStr + "/보스,/보스정보: 보스정보 추가";
 	}
 	
 	
@@ -1556,7 +1557,56 @@ public class LoaPlayController {
 	    result.put("failAddPct", failAddPct*bonusRate);       // 실패시 누적 증가량
 	    return result;
 	}
-	
+
+	public String bossInfo(HashMap<String, Object> map) {
+		HashMap<String, Object> boss;
+		try {
+			boss = botService.selectBotPointBoss(map);
+			if (boss == null || boss.get("HP") == null) {
+				return "보스가 존재하지 않습니다.";
+			}
+
+			// 보스 기본 정보
+			int hp = Integer.parseInt(boss.get("HP").toString());
+			int reward = Integer.parseInt(boss.get("REWARD").toString());
+			int orgHp = Integer.parseInt(boss.get("ORG_HP").toString());
+			int seq = Integer.parseInt(boss.get("SEQ").toString());
+			String startTime = boss.get("START_DATE").toString();
+
+			// 보스 스탯 (널이면 기본값)
+			int bossAtkRate = boss.get("ATK_RATE") != null ? Integer.parseInt(boss.get("ATK_RATE").toString()) : 10;
+			int bossAtkPower = boss.get("ATK_POWER") != null ? Integer.parseInt(boss.get("ATK_POWER").toString()) : 100;
+			int bossDefRate = boss.get("DEF_RATE") != null ? Integer.parseInt(boss.get("DEF_RATE").toString()) : 10;
+			int bossDefPower = boss.get("DEF_POWER") != null ? Integer.parseInt(boss.get("DEF_POWER").toString()) : 100;
+
+			int critDefRate = boss.get("CRIT_DEF_RATE") != null ? Integer.parseInt(boss.get("CRIT_DEF_RATE").toString())
+					: 0;
+			int evadeRate = boss.get("EVADE_RATE") != null ? Integer.parseInt(boss.get("EVADE_RATE").toString()) : 0;
+			String hideRule = boss.get("HIDE_RULE") != null ? boss.get("HIDE_RULE").toString() : "없음";
+
+			// 출력 메시지 구성
+			StringBuilder sb = new StringBuilder();
+			sb.append("===== 보스 정보 ====="+enterStr);
+			//sb.append("보스 번호 : ").append(seq).append(enterStr);
+			//sb.append("체력 : ").append(hp).append(" / ").append(orgHp).append(enterStr);
+			sb.append("체력 : ").append("???").append(" / ").append("???").append(enterStr);
+			sb.append("보상 : ").append(reward).append(" 포인트"+enterStr);
+			sb.append("출현 시간 : ").append(startTime).append(enterStr+enterStr);
+
+			sb.append("공격확률 : ").append(bossAtkRate).append("%"+enterStr);
+			sb.append("공격력 : 1~").append(bossAtkPower).append(enterStr);
+			sb.append("방어확률 : ").append(bossDefRate).append("%"+enterStr);
+			sb.append("방어력 : 1~").append(bossDefPower).append(enterStr);
+			sb.append("크리티컬 저항 : ").append(critDefRate).append("%"+enterStr);
+			sb.append("회피율 : ").append(evadeRate).append("%"+enterStr);
+			sb.append("숨김 룰 : ").append(hideRule).append(enterStr);
+
+			return sb.toString();
+
+		} catch (Exception e) {
+			return "보스 정보를 가져오는데 실패했습니다. (" + e.getMessage() + ")";
+		}
+	}
 	
 	public String attackBoss(HashMap<String, Object> map) {
 	    map.put("cmd", "boss_attack");
@@ -1823,7 +1873,7 @@ public class LoaPlayController {
 		        org_hp = Integer.parseInt(boss.get("ORG_HP").toString());
 		        seq = Integer.parseInt(boss.get("SEQ").toString());
 
-		        // 보스 공격/방어 스탯 적용
+		        // 보스 공격/방어 스탯0 적용
 		        bossAtkRate  = boss.get("ATK_RATE")  != null ? Integer.parseInt(boss.get("ATK_RATE").toString())  : 10;
 		        bossAtkPower = boss.get("ATK_POWER") != null ? Integer.parseInt(boss.get("ATK_POWER").toString()) : 100;
 		        bossDefRate  = boss.get("DEF_RATE")  != null ? Integer.parseInt(boss.get("DEF_RATE").toString())  : 10;
@@ -1845,7 +1895,7 @@ public class LoaPlayController {
 		    try {
 		        LocalDateTime startDate = LocalDateTime.parse(startTime, DateTimeFormatter.ofPattern("yyyyMMdd HHmmss"));
 		        if (LocalDateTime.now().isBefore(startDate)) {
-		            return "보스가 아직 등장하지 않았습니다!";
+		            return "보스가 아직 등장하지 않았습니다!"+enterStr+"/보스정보 로 정보확인!";
 		        }
 		    } catch (Exception e) {
 		    	e.printStackTrace();
@@ -1962,57 +2012,74 @@ public class LoaPlayController {
 		boolean isCritical = false;
 		boolean isSuperCritical = false;
 		String bossDefenseMsg = "";
-		String isCritMsg = "";
 		String dmgMsg = "";
 		map.put("evadeYn", isEvade);
 
 		double criticalChance = 0.0; // ★ 위쪽에서 치명타 확률 계산 후 메시지에서 사용
+		StringBuilder critLog = new StringBuilder(); // ★ 치명타 로그 추가
 
+		
 		if (!isEvade) {
 			// 무기 레벨 기반 기본 데미지
 			int min = (1 + (weaponLv / 2)) / 2;
 			int max = (5 + weaponLv) * 2;
 			int baseDamage = new Random().nextInt(max - min + 1) + min;
 
-			// 치명타 확률 계산
-			criticalChance = Math.min(0.20 + weaponLv * 0.01, 1.0);
-			if (item_5_1) {
-				criticalChance += 0.05;
-				isCritMsg += "+5% [예리한칼날]" + enterStr;
-			}
-			if (item_5_2) {
-				criticalChance += 0.10;
-				isCritMsg += "+10% [예리한칼날 Lv2]" + enterStr;
-			}
-			if (item_5_3) {
-				criticalChance += 0.15;
-				isCritMsg += "+15% [예리한칼날 Lv3]" + enterStr;
-			}
+			 // ----------------
+	        // 치명타 확률 계산 (새 방식)
+	        // ----------------
+	        criticalChance = Math.min(0.20 + weaponLv * 0.01, 1.0);
 
-			// 보스 크리티컬 저항 반영
-			criticalChance -= (critDefRate / 100.0);
-			if (criticalChance < 0)
-				criticalChance = 0;
+	        int baseCritPercent = (int)(criticalChance * 100); 
+	        int totalCritPercent = baseCritPercent;
+	        List<String> critParts = new ArrayList<>();
 
-			if (critDefRate > 0) {
-				isCritMsg += enterStr+ "보스 치명저항: -" + critDefRate + "%" + enterStr;
-			}else {
-				isCritMsg += enterStr;
-			}
+	        if (weaponLv > 0) {
+	            critParts.add("무기강화(" + baseCritPercent + "%)");
+	        }
 
-			// 치명타 발동 여부
-			isCritical = Math.random() < criticalChance;
-			if (isCritical) {
-				isSuperCritical = Math.random() < 0.10;
-			}
+	        if (item_5_1) {
+	            totalCritPercent += 5;
+	            critParts.add("+ [예리한칼날](5%)");
+	        }
+	        if (item_5_2) {
+	            totalCritPercent += 10;
+	            critParts.add("+ [예리한칼날 Lv2](10%)");
+	        }
+	        if (item_5_3) {
+	            totalCritPercent += 15;
+	            critParts.add("+ [예리한칼날 Lv3](15%)");
+	        }
+
+	        if (critDefRate > 0) {
+	            totalCritPercent -= critDefRate;
+	            critParts.add("- 보스저항(" + critDefRate + "%)");
+	        }
+
+	        if (totalCritPercent < 0) totalCritPercent = 0;
+
+	        critLog.setLength(0);
+	        if (totalCritPercent > 0) {
+	            critLog.append("▶치명타확률 : ").append(totalCritPercent).append("%").append(enterStr);
+	            if (!critParts.isEmpty()) {
+	                critLog.append(String.join(" ", critParts)).append(enterStr);
+	            }
+	        }
+	        
+	        
+		    // 치명타 발동 여부
+	        isCritical = Math.random() < (totalCritPercent / 100.0);
+	        if (isCritical) {
+	            isSuperCritical = Math.random() < 0.10;
+	        }
 
 			// 최종 데미지 산출
 			if (isSuperCritical) {
 				damage = baseDamage * 5;
-				dmgMsg = "[초강력 치명타!!] 데미지 " + baseDamage + " → " + damage;
+				dmgMsg = "[✨초강력 치명타!!] 데미지 " + baseDamage + " → " + damage;
 			} else if (isCritical) {
 				damage = baseDamage * 3;
-				dmgMsg = "[치명타!] 데미지 " + baseDamage + " → " + damage;
+				dmgMsg = "[✨치명타!] 데미지 " + baseDamage + " → " + damage;
 			} else {
 				damage = baseDamage;
 				dmgMsg = "데미지 " + baseDamage + " 로 공격!";
@@ -2113,12 +2180,7 @@ public class LoaPlayController {
 		msg.append(nightMsg).append(enterStr);
 		
 		// 치명타 확률 & 결과 메시지
-		msg.append("치명타 확률: ").append((int) (criticalChance * 100)).append("%");
-		if (isSuperCritical)
-		    msg.append("✨ 초강력 치명타 발동!");
-		else if (isCritical)
-		    msg.append("✨ 치명타 발동!");
-		msg.append(isCritMsg).append(enterStr);
+		msg.append(critLog.toString());
 
 		// 3. 보스 반격
 		if (map.get("extra_msg") != null) {
@@ -2150,29 +2212,45 @@ public class LoaPlayController {
 
 	    return msg.toString();
 	}
-	
+
 	private void respawnBoss(HashMap<String, Object> map) {
-	    try {
-	        HashMap<String, Object> newBoss = new HashMap<>();
-	        newBoss.put("startDate", LocalDateTime.now().plusHours(6).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
-	        newBoss.put("roomName", map.get("roomName"));
-	        newBoss.put("reward", 600);
-	        newBoss.put("org_hp", 10000);
-	        newBoss.put("evadeRate", 20);
-	        newBoss.put("atkRate", 10);
-	        newBoss.put("atkPower", 10);
-	        newBoss.put("defRate", 10);
-	        newBoss.put("defPower", 10);
-	        newBoss.put("hideRule", "");
-	        newBoss.put("critDefRate", 30);
-	        // TODO: 다른 스탯(ATK_RATE, DEF_RATE 등)도 초기화 값 넣기
-	        botService.insertBotPointBossTx(newBoss); // 신규 보스 생성 쿼리
+		try {
+			HashMap<String, Object> newBoss = new HashMap<>();
+			newBoss.put("startDate",
+					LocalDateTime.now().plusHours(6).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+			newBoss.put("roomName", map.get("roomName"));
 
+			// 랜덤 스탯 생성기
+			Random rand = new Random();
 
+			// HP : 5000 ~ 20000
+			int orgHp = 5000 + rand.nextInt(20000 - 5000 + 1);
+			newBoss.put("org_hp", orgHp);
 
-	    } catch (Exception e) {
-	        System.err.println("보스 재생성 실패: " + e.getMessage());
-	    }
+			int reward = 600 + rand.nextInt(600);
+			newBoss.put("reward", reward);
+
+			// 스탯 조정 : HP가 낮을수록 스탯 보정 증가
+			// orgHp가 5000이면 maxStat = 20, 20000이면 maxStat = 15
+			int maxStat = 15 + (int) ((20000 - orgHp) / 1500.0); // 예: orgHp가 낮을수록 + 스탯
+			if (maxStat > 20)
+				maxStat = 20; // 상한선
+
+			newBoss.put("evadeRate", rand.nextInt(maxStat + 1));
+			newBoss.put("atkRate", rand.nextInt(maxStat + 1));
+			newBoss.put("atkPower", rand.nextInt(maxStat + 1));
+			newBoss.put("defRate", rand.nextInt(maxStat + 1));
+			newBoss.put("defPower", rand.nextInt(maxStat + 1));
+			newBoss.put("critDefRate", rand.nextInt(maxStat + 1));
+			// hideRule : 아침 / 저녁 / 새벽 중 랜덤
+			String[] hideRules = { "아침", "저녁", "새벽" };
+			newBoss.put("hideRule", hideRules[rand.nextInt(hideRules.length)]);
+			// TODO: 다른 스탯(ATK_RATE, DEF_RATE 등)도 초기화 값 넣기
+			botService.insertBotPointBossTx(newBoss); // 신규 보스 생성 쿼리
+
+		} catch (Exception e) {
+			System.err.println("보스 재생성 실패: " + e.getMessage());
+		}
 	}
 
 	
