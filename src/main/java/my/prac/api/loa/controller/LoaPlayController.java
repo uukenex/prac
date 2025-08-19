@@ -1858,7 +1858,7 @@ public class LoaPlayController {
 	    }
 	    
 	    Random rand = new Random();
-	    int weaponBaseDmg =  rand.nextInt(weaponMax - weaponMin + 1) + weaponMax;
+	    int weaponBaseDmg =  rand.nextInt(weaponMax - weaponMin + 1) + weaponMin;
 	 // ----------------
 	    // 5. 회피 계산
 	    // ----------------
@@ -2314,3 +2314,4 @@ public class LoaPlayController {
 	}
 	
 }
+
