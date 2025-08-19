@@ -1657,7 +1657,23 @@ public class LoaPlayController {
 			sb.append("( 확률 : ").append(bossDefRate).append("%)"+enterStr);
 			sb.append("치명 저항 : ").append(critDefRate).append("%"+enterStr);
 			sb.append("회피율 : ").append(evadeRate).append("%"+enterStr);
-			sb.append("숨김 룰 : ").append(hideRule).append(enterStr);
+			
+			String hideRuleMsg ="";
+			switch(hideRule) {
+				case "아침":
+					hideRuleMsg="06시~10시 공격불가";
+					break;
+				case "점심":
+					hideRuleMsg="10시~15시 공격불가";
+					break;
+				case "저녁":
+					hideRuleMsg="15시~19시 공격불가";
+					break;
+				default:
+					hideRuleMsg="02시~06시 공격불가";
+					break;
+			}
+			sb.append("숨김 룰 : ").append(hideRuleMsg).append(enterStr);
 
 			return sb.toString();
 
@@ -1739,6 +1755,16 @@ public class LoaPlayController {
 	    boolean item_7_1 = ableItemList.contains("7-1");
 	    boolean item_7_2 = ableItemList.contains("7-2");
 
+	    boolean item_12_1 = ableItemList.contains("12-1");
+	    boolean item_12_2 = ableItemList.contains("12-2");
+	    boolean item_12_3 = ableItemList.contains("12-3");
+	    boolean item_12_4 = ableItemList.contains("12-4");
+	    boolean item_12_5 = ableItemList.contains("12-5");
+	    boolean item_13_1 = ableItemList.contains("13-1");
+	    boolean item_13_2 = ableItemList.contains("13-2");
+	    boolean item_13_3 = ableItemList.contains("13-3");
+	    
+	    
 	    // ----------------
 	    // 보스 숨김 체크
 	    // ----------------
@@ -1749,18 +1775,37 @@ public class LoaPlayController {
 	    map.put("night_attack_ok", "N");
 	    
 		switch (hideRule) {
-		case "점심":
-			start = LocalTime.of(10, 0);
-			end = LocalTime.of(3, 0);
-			if (!now.isBefore(start) && now.isBefore(end)) {
-				return "보스가 구름에 숨었습니다...공격불가..(10시~15시 불가시간)";
-			}
-			break;
 		case "아침":
 			start = LocalTime.of(6, 0);
 			end = LocalTime.of(10, 0);
 			if (!now.isBefore(start) && now.isBefore(end)) {
-				return "보스가 안개에 숨었습니다...공격불가..(06시~10시 불가시간)";
+				if(item_6_1) {
+					map.put("night_attack_ok","Y");
+				}else {
+					return "보스가 안개에 숨었습니다...공격불가..(06시~10시 불가시간)";
+				}
+			}
+			break;
+		case "점심":
+			start = LocalTime.of(10, 0);
+			end = LocalTime.of(15, 0);
+			if (!now.isBefore(start) && now.isBefore(end)) {
+				if(item_6_1) {
+					map.put("night_attack_ok","Y");
+				}else {
+					return "보스가 구름에 숨었습니다...공격불가..(10시~15시 불가시간)";
+				}
+			}
+			break;
+		case "저녁":
+			start = LocalTime.of(15, 0);
+			end = LocalTime.of(19, 0);
+			if (!now.isBefore(start) && now.isBefore(end)) {
+				if(item_6_1) {
+					map.put("night_attack_ok","Y");
+				}else {
+					return "보스가 퇴근길에 숨었습니다...공격불가..(15시~19시 불가시간)";
+				}
 			}
 			break;
 		default:
@@ -1795,7 +1840,25 @@ public class LoaPlayController {
 	    Double weaponCriticalChance = Double.parseDouble(weaponInfo.get("criticalChance").toString());
 	    int weaponMin = Integer.parseInt(weaponInfo.get("min").toString());
 	    int weaponMax = Integer.parseInt(weaponInfo.get("max").toString());
-	    int weaponBaseDmg = Integer.parseInt(weaponInfo.get("baseDamage").toString());
+	    
+	    if(item_12_1) {
+	    	weaponMin +=3;
+	    }
+	    if(item_12_2) {
+	    	weaponMin +=6;
+	    }
+	    if(item_12_3) {
+	    	weaponMin +=9;
+	    }
+	    if(item_12_4) {
+	    	weaponMin +=12;
+	    }
+	    if(item_12_5) {
+	    	weaponMin +=15;
+	    }
+	    
+	    Random rand = new Random();
+	    int weaponBaseDmg =  rand.nextInt(weaponMax - weaponMin + 1) + weaponMax;
 	 // ----------------
 	    // 5. 회피 계산
 	    // ----------------
@@ -1830,7 +1893,7 @@ public class LoaPlayController {
 	    //  ---------------
 	    String nightMsg = "";
 	    if ("Y".equals(map.get("night_attack_ok"))) {
-	        nightMsg = "[야간투시경] 적용 " + enterStr;
+	        nightMsg = "[야간투시경] 적용, 숨은보스 타격 효과 " + enterStr;
 	        
 	    }
 
@@ -1843,6 +1906,7 @@ public class LoaPlayController {
 		String bossDefenseMsg = "";
 		String dmgMsg = "";
 		map.put("evadeYn", isEvade);
+		String scoutMsg="";
 
 		double criticalChance = 0.0; // ★ 위쪽에서 치명타 확률 계산 후 메시지에서 사용
 		StringBuilder critLog = new StringBuilder(); // ★ 치명타 로그 추가
@@ -1861,6 +1925,7 @@ public class LoaPlayController {
 	        int totalCritPercent = baseCritPercent;
 	        List<String> critParts = new ArrayList<>();
 
+	        
 	        if (weaponLv > 0) {
 	            critParts.add("무기강화(" + baseCritPercent + "%)");
 	        }
@@ -1877,6 +1942,19 @@ public class LoaPlayController {
 	            totalCritPercent += 15;
 	            critParts.add("+ [예리한칼날 Lv3](15%)");
 	        }
+	        if((hp * 100.0) / org_hp < 10) {
+	        	if (item_4_1) {
+		            totalCritPercent += 5;
+		            critParts.add("+ [스카우터](5%)");
+		            scoutMsg +="약점을 노출시켰습니다";
+		        }
+		        if (item_4_2) {
+		            totalCritPercent += 10;
+		            critParts.add("+ [스카우터 Lv2](10%)");
+		            scoutMsg +="약점을 노출시켰습니다";
+		        }
+	        }
+	        
 
 	        if (critDefRate > 0) {
 	            totalCritPercent -= critDefRate;
@@ -1960,9 +2038,24 @@ public class LoaPlayController {
 	    
 	    if(!isKill) {
 	    	if (Math.random() < bossAtkRate / 100.0) {
+	    		String item13Msg="";
 		    	appliedAtkPower = ThreadLocalRandom.current().nextInt(1, bossAtkPower + 1);
+		    	
+		    	if(item_13_1) {
+		    		appliedAtkPower -= 2;
+		    		item13Msg+=enterStr+"방어 유물의 효과로 일부 피해를 막았습니다.";
+		    	}
+		    	if(item_13_2) {
+		    		appliedAtkPower -= 4;
+		    		item13Msg+=enterStr+"방어 유물의 효과로 일부 피해를 막았습니다.";
+		    	}
+		    	if(item_13_3) {
+		    		appliedAtkPower -= 6;
+		    		item13Msg+=enterStr+"방어 유물의 효과로 일부 피해를 막았습니다.";
+		    	}
+		    	
 		        score -= appliedAtkPower;
-		        map.put("extra_msg", "보스가 반격합니다! 데미지를 입었습니다! -" + appliedAtkPower+"p");
+		        map.put("extra_msg", "보스가 반격합니다! 데미지를 입었습니다! -" + appliedAtkPower+"p"+item13Msg);
 		    }
 	    }
 	    
@@ -1998,6 +2091,8 @@ public class LoaPlayController {
 		    msg.append(dmgMsg).append(enterStr);
 		    if (!bossDefenseMsg.isEmpty())
 		        msg.append(bossDefenseMsg);
+		    if (!scoutMsg.isEmpty())
+		        msg.append(scoutMsg);
 		} else {
 		    msg.append("보스가 공격을 회피! 데미지 0!").append(enterStr);
 		}
@@ -2020,7 +2115,7 @@ public class LoaPlayController {
 			msg.append("✨보스를 처치했습니다!").append(enterStr);
 		} else {
 			if ((newHp * 100.0) / org_hp < 10) {
-		        msg.append("보스 체력: ").append(newHp).append("/").append(org_hp).append(" (위기)").append(enterStr);
+		        msg.append("보스 체력: ").append(newHp).append("/").append(org_hp).append(enterStr);
 		    }
 			else {
 				if (item_4_1)
@@ -2093,7 +2188,7 @@ public class LoaPlayController {
 	        
 	        
 			// hideRule : 아침 / 저녁 / 새벽 중 랜덤
-			String[] hideRules = { "아침", "저녁", "새벽" };
+			String[] hideRules = { "아침","점심", "저녁", "새벽" };
 			newBoss.put("hideRule", hideRules[rand.nextInt(hideRules.length)]);
 			// TODO: 다른 스탯(ATK_RATE, DEF_RATE 등)도 초기화 값 넣기
 			botService.insertBotPointBossTx(newBoss); // 신규 보스 생성 쿼리
