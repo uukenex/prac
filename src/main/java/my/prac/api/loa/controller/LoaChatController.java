@@ -2433,6 +2433,7 @@ public class LoaChatController {
 		Map<String, Object> armoryProfile;
 		Map<String, Object> armoryEngraving;
 		Map<String, Object> armoryGem;
+		Map<String, Object> arkGrid;
 		List<Map<String, Object>> armoryAvatars;
 		
 		String avatarsText="";
@@ -2459,6 +2460,12 @@ public class LoaChatController {
 			armoryGem = (Map<String, Object>) rtnMap.get("ArmoryGem");
 		}catch(Exception e){
 			System.out.println(userId+" ArmoryGem");
+			throw new Exception("E0003");
+		}
+		try {
+			arkGrid = (Map<String, Object>) rtnMap.get("ArkGrid");
+		}catch(Exception e){
+			System.out.println(userId+" ArkGrid");
 			throw new Exception("E0003");
 		}
 		
@@ -2694,6 +2701,18 @@ public class LoaChatController {
 			}
 		}
 		
+		String arkGridMsg ="아크그리드"+enterStr;
+		try {
+			List<HashMap<String, Object>> slots= (List<HashMap<String, Object>>) arkGrid.get("Slots");
+			for (HashMap<String, Object> slot : slots) {
+				arkGridMsg += slot.get("Grade")+" " + slot.get("Name")+ ", 활성포인트: "+slot.get("Point")+enterStr;
+			}
+		}catch(Exception e) {
+			arkGridMsg ="";
+			System.out.println("아크그리드없음");
+		}
+		
+		
 		List<String> acceossory;
 		List<String> accessoryList = new ArrayList<>();
 		try {
@@ -2884,7 +2903,7 @@ public class LoaChatController {
 		
 		resMsg += acceMainMsg;
 		resMsg += enterStr;
-		resMsg += enterStr;
+		resMsg += arkGridMsg + enterStr;
 		
 		
 		/*전투력 들어갈곳*/
@@ -2921,7 +2940,8 @@ public class LoaChatController {
 		}
 		
 		
-		resMsg += enterStr;
+		
+		
 		
 		resMsg += "상세 더보기..▼"+allSeeStr;
 		//resMsg += "방어구 / 초월 / 엘릭서"+enterStr;
@@ -2990,6 +3010,8 @@ public class LoaChatController {
 				}
 			}
 		}
+		
+		resMsg += enterStr + arkGridMsg + enterStr;
 		
 		return resMsg;
 	}

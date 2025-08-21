@@ -68,7 +68,6 @@ public class LoaPlayController {
 	        if(item_6_1) {
 	            // 야간 투시경 아이템 있음
 	            map.put("night_attack_ok", "Y");
-	            map.put("timeDelay", 10); // 10분으로 줄임
 	        } else {
 	            map.put("extra_msg", "보스가 어둠에 숨었습니다...공격불가..(02시~06시 불가시간)");
 	            return true; // 숨겨진 상태
@@ -82,6 +81,10 @@ public class LoaPlayController {
 			return true;
 		}
 		map.put("timeDelay", 15);
+		if ("Y".equals(map.get("night_attack_ok"))) {
+			map.put("timeDelay", 60);
+	        
+	    }
 	    String check_val = botService.selectHourCheck(map);
 	    if(check_val == null) {
 	        return true; // 공격 가능
