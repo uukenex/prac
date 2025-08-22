@@ -294,6 +294,7 @@ public class LoaChatController {
 			
 			switch (param0) {
 			case "/테스트":
+				sender = sender.replaceAll("[\\p{So}\\p{Cn}]", "");
 				val = play.testMethod(reqMap);
 				break;
 			case "/ㄹㅇ":
