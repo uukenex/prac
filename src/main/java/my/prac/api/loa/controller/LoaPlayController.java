@@ -1515,6 +1515,7 @@ public class LoaPlayController {
 				    
 				    double currentPct = failPct + failAdd * i;
 				    if (currentPct >= 100) {
+				    	if(tryPirce > 0)//중간 시도과정만, 1회에는 문구 잘나오도록 처리
 				        isMaxedOut = true; // 장인의기운 100% 달성
 				        break;
 				    }
