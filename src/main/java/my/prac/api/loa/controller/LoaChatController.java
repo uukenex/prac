@@ -192,7 +192,10 @@ public class LoaChatController {
 
 		try {
 			System.out.println(param0 + " " + param1+ " " + param2+ " " + room+ " " + sender);
+			
 			System.out.println("fulltxt: "+fulltxt);
+			sender = removeEmojis(sender);
+			
 			String val = autoResponse(param0,param1,param2,room,sender,fulltxt);
 			
 			if(val!=null&&!val.equals("")) {
@@ -269,18 +272,17 @@ public class LoaChatController {
 	
 	public static String removeEmojis(String input) {
 	    if (input == null) return null;
-	    
+
 	    StringBuilder sb = new StringBuilder();
 	    input.codePoints().forEach(cp -> {
-	        // U+0000 ~ U+FFFF (BMP) 문자만 허용 (이모지는 주로 U+1F000 이상 보조평면)
-	        if (Character.isBmpCodePoint(cp)) {
+	        // BMP(0x0000 ~ 0xFFFF)까지만 허용
+	        if (cp <= 0xFFFF) {
 	            sb.appendCodePoint(cp);
 	        }
 	    });
-
 	    return sb.toString();
 	}
-
+	
 	String commandMsg(String param0, String param1, String param2, String roomName, String sender, String fulltxt)
 			throws Exception {
 		String val = "";
@@ -308,8 +310,6 @@ public class LoaChatController {
 			
 			switch (param0) {
 			case "/테스트":
-				sender = removeEmojis(sender);
-				reqMap.put("userName", sender);
 				val = play.testMethod(reqMap);
 				break;
 			case "/ㄹㅇ":
