@@ -191,6 +191,8 @@ public class LoaChatController {
 		
 
 		try {
+			fulltxt.replaceAll("\\u200b", "");
+			param1.replaceAll("\\u200b", "");
 			System.out.println(param0 + " " + param1+ " " + param2+ " " + room+ " " + sender);
 			
 			System.out.println("fulltxt: "+fulltxt);
