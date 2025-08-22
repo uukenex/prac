@@ -270,6 +270,8 @@ public class LoaChatController {
 	public static String removeEmojis(String input) {
 	    if (input == null) return null;
 
+	    input = input.replaceAll("？", "");
+	    
 	    StringBuilder sb = new StringBuilder();
 	    input.codePoints().forEach(cp -> {
 	        // 이모지(서플리먼터리 평면에 있는 대부분 기호) 제외
