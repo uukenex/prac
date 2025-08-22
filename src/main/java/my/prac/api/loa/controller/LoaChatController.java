@@ -269,14 +269,11 @@ public class LoaChatController {
 	
 	public static String removeEmojis(String input) {
 	    if (input == null) return null;
-
-	    input = input.replaceAll("？", "");
 	    
 	    StringBuilder sb = new StringBuilder();
 	    input.codePoints().forEach(cp -> {
-	        // 이모지(서플리먼터리 평면에 있는 대부분 기호) 제외
-	        if (!Character.isSupplementaryCodePoint(cp) && 
-	            !(Character.getType(cp) == Character.SURROGATE)) {
+	        // U+0000 ~ U+FFFF (BMP) 문자만 허용 (이모지는 주로 U+1F000 이상 보조평면)
+	        if (Character.isBmpCodePoint(cp)) {
 	            sb.appendCodePoint(cp);
 	        }
 	    });
