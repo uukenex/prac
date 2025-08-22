@@ -233,6 +233,7 @@ public class LoaPlayController {
 		String str="★☆♥♠♣♦✓✔✖☑☀☁☂☃☕☎✉☘⚠☠☯⚡❄❌✅"
 				+"	♥, ♠, ♣, ♦, ⚠, ☀, ☁ ♛ ✪";
 		
+		str = "테스트완료입니다";
 		
 		return str;
 	}

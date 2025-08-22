@@ -266,6 +266,21 @@ public class LoaChatController {
 		}
 		return val;
 	}
+	
+	public static String removeEmojis(String input) {
+	    if (input == null) return null;
+
+	    StringBuilder sb = new StringBuilder();
+	    input.codePoints().forEach(cp -> {
+	        // 이모지(서플리먼터리 평면에 있는 대부분 기호) 제외
+	        if (!Character.isSupplementaryCodePoint(cp) && 
+	            !(Character.getType(cp) == Character.SURROGATE)) {
+	            sb.appendCodePoint(cp);
+	        }
+	    });
+
+	    return sb.toString();
+	}
 
 	String commandMsg(String param0, String param1, String param2, String roomName, String sender, String fulltxt)
 			throws Exception {
@@ -294,7 +309,7 @@ public class LoaChatController {
 			
 			switch (param0) {
 			case "/테스트":
-				sender = sender.replaceAll("[\\p{So}\\p{Cn}]", "");
+				sender = removeEmojis(sender);
 				val = play.testMethod(reqMap);
 				break;
 			case "/ㄹㅇ":
