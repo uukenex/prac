@@ -2702,6 +2702,7 @@ public class LoaChatController {
 		}
 		
 		String arkGridMsg ="아크그리드"+enterStr;
+		String arkGridFullMsg="§아크그리드"+enterStr;
 		try {
 			List<HashMap<String, Object>> slots= (List<HashMap<String, Object>>) arkGrid.get("Slots");
 			for (HashMap<String, Object> slot : slots) {
@@ -2711,31 +2712,43 @@ public class LoaChatController {
 				
 				//System.out.println(slot);
 				HashMap<String, Object> maps = LoaApiParser.findElementForArkGrid(tooltip);
-				HashMap<String, Object> grid_type =(HashMap<String, Object>) maps.get("grid_type");
+				HashMap<String, Object> grid_type =(HashMap<String, Object>) maps.get("코어 타입");
 				HashMap<String, Object> grid_type_v =(HashMap<String, Object>) grid_type.get("value");
 				String grid_type_v_e1 =Jsoup.parse((String) grid_type_v.get("Element_001")).text(); 
 				
 				arkGridMsg += slot.get("Grade")+" " +grid_type_v_e1+ ", 활성포인트: "+slot.get("Point")+enterStr;
-				
+				arkGridFullMsg += slot.get("Grade")+" " +grid_type_v_e1+ ", 활성포인트: "+slot.get("Point")+enterStr;
 				
 				
 
 				List<HashMap<String, Object>> gems = (List<HashMap<String, Object>>)slot.get("Gems");
 				for(HashMap<String, Object> gem: gems) {
-					/*
-					gem.get("Tooltip") < string
+					HashMap<String, Object> gem_tooltip1 = new ObjectMapper().readValue((String)gem.get("Tooltip"), new TypeReference<Map<String, Object>>(){});
+					HashMap<String, Object> gem_tooltip2 = LoaApiParser.findElementForArkGrid(gem_tooltip1);
+					HashMap<String, Object> 젬옵션 = (HashMap<String, Object>)gem_tooltip2.get("젬 옵션");
+					HashMap<String, Object> 젬옵션_v =(HashMap<String, Object>) 젬옵션.get("value");
+					String raw = Jsoup.parse((String) 젬옵션_v.get("Element_001")).text();
+					String formatted = raw.replaceAll("(?=의지력 효율|혼돈 포인트|\\[아군 피해 강화]|\\[보스 피해]|\\[낙인력]|\\[아군 공격 강화]|\\[공격력]|\\[추가 피해])", "\n");
 					
-					HashMap<String, Object> gem_tooltip =  (HashMap<String, Object>)gem.get("Tooltip");
-					HashMap<String, Object> gem_tooltip2;
+					HashMap<String, Object> 젬이름 = (HashMap<String, Object>)gem_tooltip2.get("젬 이름");
+					String gemName = Jsoup.parse((String) 젬이름.get("value")).text();
+					gemName = gemName.replaceAll("-$", ""); // 끝에 오는 - 제거
 					
-					gem_tooltip2 = LoaApiParser.findElementForArkGrid(gem_tooltip);
-					*/
+					arkGridFullMsg += "+"+gemName + enterStr;
 					
+					
+					String[] lines = formatted.split("\n");
+					for (String line : lines) {
+						if (!line.trim().isEmpty()) { // 공백줄 무시
+							arkGridFullMsg += (" " + line)+enterStr;
+						}
+					}
 				}
 				
 			}
 		}catch(Exception e) {
 			arkGridMsg ="";
+			arkGridFullMsg="";
 			System.out.println("아크그리드없음");
 		}
 		
@@ -3038,7 +3051,7 @@ public class LoaChatController {
 			}
 		}
 		
-		resMsg += enterStr + arkGridMsg + enterStr;
+		resMsg += enterStr + arkGridFullMsg + enterStr;
 		
 		return resMsg;
 	}

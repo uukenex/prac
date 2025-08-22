@@ -310,6 +310,9 @@ public class LoaApiParser {
 		HashMap<String, Object> 타입 = new HashMap<>();
 		HashMap<String, Object> 젬옵션 = new HashMap<>();
 
+		HashMap<String, Object> 젬이름 = elements[0];
+		
+		
 		for(HashMap<String, Object> searchHs : elements) {
 			의지력 = findElementDt(searchHs,"코어 공급 의지력");
 			if(의지력.size()>0) {
@@ -340,6 +343,7 @@ public class LoaApiParser {
 		freshMap.put("코어 옵션", 옵션);
 		freshMap.put("코어 타입", 타입);
 		freshMap.put("젬 옵션", 젬옵션);
+		freshMap.put("젬 이름", 젬이름);
 		return freshMap;
 	}
 	
