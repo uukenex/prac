@@ -2705,7 +2705,34 @@ public class LoaChatController {
 		try {
 			List<HashMap<String, Object>> slots= (List<HashMap<String, Object>>) arkGrid.get("Slots");
 			for (HashMap<String, Object> slot : slots) {
-				arkGridMsg += slot.get("Grade")+" " + slot.get("Name")+ ", 활성포인트: "+slot.get("Point")+enterStr;
+				HashMap<String, Object> tooltip = new ObjectMapper().readValue((String) slot.get("Tooltip"),
+						new TypeReference<Map<String, Object>>() {
+						});
+				
+				//System.out.println(slot);
+				HashMap<String, Object> maps = LoaApiParser.findElementForArkGrid(tooltip);
+				HashMap<String, Object> grid_type =(HashMap<String, Object>) maps.get("grid_type");
+				HashMap<String, Object> grid_type_v =(HashMap<String, Object>) grid_type.get("value");
+				String grid_type_v_e1 =Jsoup.parse((String) grid_type_v.get("Element_001")).text(); 
+				
+				arkGridMsg += slot.get("Grade")+" " +grid_type_v_e1+ ", 활성포인트: "+slot.get("Point")+enterStr;
+				
+				
+				
+
+				List<HashMap<String, Object>> gems = (List<HashMap<String, Object>>)slot.get("Gems");
+				for(HashMap<String, Object> gem: gems) {
+					/*
+					gem.get("Tooltip") < string
+					
+					HashMap<String, Object> gem_tooltip =  (HashMap<String, Object>)gem.get("Tooltip");
+					HashMap<String, Object> gem_tooltip2;
+					
+					gem_tooltip2 = LoaApiParser.findElementForArkGrid(gem_tooltip);
+					*/
+					
+				}
+				
 			}
 		}catch(Exception e) {
 			arkGridMsg ="";

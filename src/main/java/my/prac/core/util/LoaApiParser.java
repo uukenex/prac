@@ -288,6 +288,61 @@ public class LoaApiParser {
 		freshMap.put("tier3_stats", tier3_stats);
 		return freshMap;
 	}
+	public static HashMap<String, Object> findElementForArkGrid(HashMap<String, Object> tooltip) {
+		
+		HashMap<String, Object> elements[] = new HashMap[13]; 
+		elements[0] = (HashMap<String, Object>) tooltip.get("Element_000"); 
+		elements[1] = (HashMap<String, Object>) tooltip.get("Element_001"); 
+		elements[2] = (HashMap<String, Object>) tooltip.get("Element_002"); 
+		elements[3] = (HashMap<String, Object>) tooltip.get("Element_003"); 
+		elements[4] = (HashMap<String, Object>) tooltip.get("Element_004"); 
+		elements[5] = (HashMap<String, Object>) tooltip.get("Element_005"); 
+		elements[6] = (HashMap<String, Object>) tooltip.get("Element_006"); 
+		elements[7] = (HashMap<String, Object>) tooltip.get("Element_007"); 
+		elements[8] = (HashMap<String, Object>) tooltip.get("Element_008"); 
+		elements[9] = (HashMap<String, Object>) tooltip.get("Element_009"); 
+		elements[10] = (HashMap<String, Object>) tooltip.get("Element_010"); 
+		elements[11] = (HashMap<String, Object>) tooltip.get("Element_011"); 
+		elements[12] = (HashMap<String, Object>) tooltip.get("Element_012"); 
+		
+		HashMap<String, Object> 의지력 = new HashMap<>();
+		HashMap<String, Object> 옵션 = new HashMap<>();
+		HashMap<String, Object> 타입 = new HashMap<>();
+		HashMap<String, Object> 젬옵션 = new HashMap<>();
+
+		for(HashMap<String, Object> searchHs : elements) {
+			의지력 = findElementDt(searchHs,"코어 공급 의지력");
+			if(의지력.size()>0) {
+				break;
+			}
+		}
+		for(HashMap<String, Object> searchHs : elements) {
+			옵션 = findElementDt(searchHs,"코어 옵션");
+			if(옵션.size()>0) {
+				break;
+			}
+		}
+		for(HashMap<String, Object> searchHs : elements) {
+			타입 = findElementDt(searchHs,"코어 타입");
+			if(타입.size()>0) {
+				break;
+			}
+		}
+		for(HashMap<String, Object> searchHs : elements) {
+			젬옵션 = findElementDt(searchHs,"젬 옵션");
+			if(젬옵션.size()>0) {
+				break;
+			}
+		}
+		
+		HashMap<String,Object> freshMap = new HashMap<>();
+		freshMap.put("코어 공급 의지력", 의지력);
+		freshMap.put("코어 옵션", 옵션);
+		freshMap.put("코어 타입", 타입);
+		freshMap.put("젬 옵션", 젬옵션);
+		return freshMap;
+	}
+	
 	
 	public static HashMap<String, Object> findElementDt(HashMap<String, Object> element,String keyword) {
 		HashMap<String, Object> findElement = new HashMap<>();
