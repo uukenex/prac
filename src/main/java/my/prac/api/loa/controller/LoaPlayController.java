@@ -81,6 +81,23 @@ public class LoaPlayController {
 			return true;
 		}
 		map.put("timeDelay", 15);
+		map.put("timeDelayMsg", "");
+		
+		if ("Y".equals(map.get("item_14_1"))) {
+			map.put("timeDelay", 14);
+			map.put("timeDelayMsg", "[모래시계] 효과");
+	    }
+		if ("Y".equals(map.get("item_14_2"))) {
+			map.put("timeDelay", 13);
+			map.put("timeDelayMsg", "[모래시계]2Lv 효과");
+		}
+		if ("Y".equals(map.get("item_14_3"))) {
+			map.put("timeDelay", 12);
+			map.put("timeDelayMsg", "[모래시계]3Lv 효과");
+		}
+		
+		
+		
 		if ("Y".equals(map.get("night_attack_ok"))) {
 			map.put("timeDelay", 60);
 	        
@@ -1768,7 +1785,23 @@ public class LoaPlayController {
 	    boolean item_13_2 = ableItemList.contains("13-2");
 	    boolean item_13_3 = ableItemList.contains("13-3");
 	    
+	    boolean item_14_1 = ableItemList.contains("14-1");
+	    boolean item_14_2 = ableItemList.contains("14-2");
+	    boolean item_14_3 = ableItemList.contains("14-3");
+	    if(item_14_1) {
+	    	map.put("item_14_1", "Y");
+	    }
+	    if(item_14_2) {
+	    	map.put("item_14_2", "Y");
+	    }
+	    if(item_14_3) {
+	    	map.put("item_14_3", "Y");
+	    }
 	    
+	    
+	    boolean item_15_1 = ableItemList.contains("15-1"); 
+	    boolean item_15_2 = ableItemList.contains("15-2"); 
+	    boolean item_16_1 = ableItemList.contains("16-1"); //징수의총
 	    // ----------------
 	    // 보스 숨김 체크
 	    // ----------------
@@ -1836,7 +1869,12 @@ public class LoaPlayController {
 	        return map.get("userName") + "님," + enterStr + map.get("extra_msg");
 	    }
 
-	    
+	    if(item_15_1) {
+	    	
+	    }
+	    if(item_15_2) {
+	    	
+	    }
 
 	    HashMap<String, Object> weaponInfo = getWeaponStats(map);
 	    
@@ -2017,7 +2055,18 @@ public class LoaPlayController {
 	    int newHp = hp - damage;
 	    String rewardMsg = "";
 	    if (newHp <= 0) {
-	        if (isCritical) {
+	    	if (item_16_1) {
+	    		isKill = true;
+	            score = Math.min(damage, hp) / 3 + 100;
+	            map.put("reward", reward);
+	            map.put("org_hp", org_hp);
+	            rewardMsg = calcBossReward2(map);
+	            respawnBoss(map);
+	            
+	            appliedAtkPower=0;
+	            appliedDefPower=0;
+	            bossDefenseMsg="";
+	    	}else if (isCritical) {
 	            isKill = true;
 	            score = Math.min(damage, hp) / 3 + 100;
 	            map.put("reward", reward);
@@ -2125,13 +2174,13 @@ public class LoaPlayController {
 				if (item_4_1)
 					msg.append("보스 체력: ").append((int) ((newHp * 100.0) / org_hp)).append("% [스카우터]").append(enterStr);
 				else if (item_4_2)
-					msg.append("보스 체력: ").append(newHp).append("/??? [스카우터 Lv2]").append(enterStr);
+					msg.append("보스 체력: ").append(newHp).append("/??? (").append((int) ((newHp * 100.0) / org_hp)).append("% ) ([스카우터 Lv2]").append(enterStr);
 				else
 					msg.append("보스 체력: ???/???").append(enterStr);
 			}
 			
 		}
-		msg.append("공격 쿨타임 : ").append(map.get("timeDelay")).append(" Min").append(enterStr);
+		msg.append("공격 쿨타임 : ").append(map.get("timeDelay")).append(" Min ").append(map.get("timeDelayMsg")).append(enterStr);
 
 		// 5. 포인트 및 보상
 		msg.append("획득 포인트: ").append(score);
@@ -2260,61 +2309,6 @@ public class LoaPlayController {
 		
 		msgBuilder.append(enterStr).append(enterStr).append("6시간 뒤 재등장 예정!");
 		return msgBuilder.toString();
-	}
-	public String calcBossReward(HashMap<String, Object> map) {
-	    String roomName = (String) map.get("roomName");
-	    int totalReward = Integer.parseInt(map.get("max_hp").toString())/10 ; // 기본 총 보상 포인트
-	    int bossOrgMaxHp = Integer.parseInt(map.get("max_hp").toString());
-	    
-	    List<HashMap<String, Object>> top3List = botService.selectTop3Contributors(map);
-
-	    int totalTop3Damage = 0;
-	    for (HashMap<String, Object> row : top3List) {
-	        totalTop3Damage += Integer.parseInt(row.get("SCORE").toString());
-	    }
-
-	    StringBuilder msgBuilder = new StringBuilder();
-	    msgBuilder.append("보스 기여도 보상 분배 결과").append(enterStr);
-
-	    for (HashMap<String, Object> row : top3List) {
-	        String name = row.get("USER_NAME").toString();
-	        int damage = Integer.parseInt(row.get("SCORE").toString());
-
-	        // 보스 전체 체력 대비 데미지 비율 (%)
-	        double bossRatio = (double) damage / bossOrgMaxHp * 100;
-
-	        // top3 데미지 합 대비 분배 비율
-	        double rewardRatio = (double) damage / totalTop3Damage;
-	        int reward = (int) Math.floor(totalReward * rewardRatio); // 내림처리
-
-	        // 포인트 지급 처리
-	        HashMap<String, Object> rewardMap = new HashMap<>();
-	        rewardMap.put("roomName", roomName);
-	        rewardMap.put("userName", name);
-	        rewardMap.put("score", reward);
-	        rewardMap.put("cmd", "boss_kill_reward");
-
-	        try {
-	            botService.insertBotPointRankTx(rewardMap);
-	        } catch (Exception e) {
-	            // 오류 무시
-	        }
-
-	        // 메시지 작성
-	        String percentStr = String.format("%.0f", bossRatio); // 정수 퍼센트
-	        msgBuilder
-	            .append(name)
-	            .append(" - ")
-	            .append(damage)
-	            .append(" dmg(")
-	            .append(percentStr)
-	            .append("%) - ")
-	            .append(reward)
-	            .append("pt 지급")
-	            .append(enterStr);
-	    }
-
-	    return msgBuilder.toString();
 	}
 	
 }
