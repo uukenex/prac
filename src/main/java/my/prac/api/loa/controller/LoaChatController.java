@@ -309,6 +309,7 @@ public class LoaChatController {
 			switch (param0) {
 			case "/테스트":
 				sender = removeEmojis(sender);
+				reqMap.put("userName", sender);
 				val = play.testMethod(reqMap);
 				break;
 			case "/ㄹㅇ":
