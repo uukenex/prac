@@ -807,7 +807,14 @@ public class LoaPlayController {
 	                rewardLevel = 1;
 	                nowOpenFlag = "2";
 	            } else {
+	            	// 20% 확률로 2레벨, 아니면 1레벨
 	                rewardLevel = rand.nextInt(100) < 20 ? 2 : 1;
+
+	                // ✅ 현재 레벨 + 보상 레벨이 맥스 초과하면 조정
+	                if (currentLevel + rewardLevel > maxLevel) {
+	                    rewardLevel = maxLevel - currentLevel;
+	                }
+
 	                nowOpenFlag = (rewardLevel == 2) ? "1" : "2";
 	            }
 
