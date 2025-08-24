@@ -1335,6 +1335,7 @@
 			     ,M.ITEM_NAME
 			     ,M.ITEM_DESC
 			     ,M.MAX_LV
+	     HAVING NOT (M.ITEM_NO = 9 AND COUNT(U.ITEM_NO) > 0)  -- ITEM_NO=9이고 ROOM에 있으면 제외
 		 ORDER BY M.ITEM_NO
 		
 	</select>

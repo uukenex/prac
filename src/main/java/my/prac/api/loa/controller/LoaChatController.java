@@ -2728,17 +2728,44 @@ public class LoaChatController {
 				
 				//System.out.println(slot);
 				HashMap<String, Object> maps = LoaApiParser.findElementForArkGrid(tooltip);
-				HashMap<String, Object> grid_type =(HashMap<String, Object>) maps.get("코어 타입");
-				HashMap<String, Object> grid_type_v =(HashMap<String, Object>) grid_type.get("value");
-				String grid_type_v_e1 =Jsoup.parse((String) grid_type_v.get("Element_001")).text(); 
 				
-				arkGridMsg += slot.get("Grade")+" " +grid_type_v_e1+ ", 활성포인트: "+slot.get("Point")+enterStr;
-				arkGridFullMsg += slot.get("Grade")+" " +grid_type_v_e1+ ", 활성포인트: "+slot.get("Point")+enterStr;
+				// 코어 타입
+				HashMap<String, Object> grid_core_type = (HashMap<String, Object>) maps.get("코어 타입");
+				HashMap<String, Object> grid_core_type_v = (HashMap<String, Object>) grid_core_type.get("value");
+				String grid_core_type_v_e1 = Jsoup.parse((String) grid_core_type_v.get("Element_001")).text();
+
+				// 활성 포인트
+				int activePoint = Integer.parseInt(slot.get("Point").toString());
+
+				// 코어 옵션
+				HashMap<String, Object> grid_core_option = (HashMap<String, Object>) maps.get("코어 옵션");
+				HashMap<String, Object> grid_core_option_v = (HashMap<String, Object>) grid_core_option.get("value");
+				String coreOptionHtml = (String) grid_core_option_v.get("Element_001");
+
+				// HTML 태그 제거 후 옵션 추출
+				String coreOptionText = Jsoup.parse(coreOptionHtml).text();
 				
+				String[] optionParts = coreOptionText.split("(?=\\[\\d+P\\])");
+
+				StringBuilder optionMsg = new StringBuilder();
+				for (String line : optionParts) {
+				    // [10P], [14P] 형태의 포인트 값 추출
+				    int reqPoint = Integer.parseInt(line.substring(line.indexOf("[") + 1, line.indexOf("P")));
+				    if (activePoint >= reqPoint) {
+				        optionMsg.append("(O)").append(line).append(enterStr);
+				    } else {
+				        optionMsg.append("(X)").append(line).append(enterStr);
+				    }
+				}
+				
+				
+				arkGridMsg += slot.get("Grade") + " " + grid_core_type_v_e1+ ", 활성포인트: " + activePoint + enterStr;
+				arkGridFullMsg += slot.get("Grade") + " " + grid_core_type_v_e1+ ", 활성포인트: " + activePoint + enterStr + optionMsg.toString();
 				
 
 				List<HashMap<String, Object>> gems = (List<HashMap<String, Object>>)slot.get("Gems");
 				for(HashMap<String, Object> gem: gems) {
+					/*
 					HashMap<String, Object> gem_tooltip1 = new ObjectMapper().readValue((String)gem.get("Tooltip"), new TypeReference<Map<String, Object>>(){});
 					HashMap<String, Object> gem_tooltip2 = LoaApiParser.findElementForArkGrid(gem_tooltip1);
 					HashMap<String, Object> 젬옵션 = (HashMap<String, Object>)gem_tooltip2.get("젬 옵션");
@@ -2759,9 +2786,19 @@ public class LoaChatController {
 							arkGridFullMsg += (" " + line)+enterStr;
 						}
 					}
+					*/
+					
 				}
 				
+				
 			}
+			List<HashMap<String, Object>> effects= (List<HashMap<String, Object>>) arkGrid.get("Effects");
+			for (HashMap<String, Object> effect : effects) {
+				arkGridFullMsg += "+"+/*effect.get("Name") + ""+ */Jsoup.parse((String) effect.get("Tooltip")).text()+enterStr;
+			}
+			
+			arkGridFullMsg += enterStr;
+			
 		}catch(Exception e) {
 			arkGridMsg ="";
 			arkGridFullMsg="";

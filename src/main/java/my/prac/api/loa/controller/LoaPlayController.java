@@ -1783,6 +1783,9 @@ public class LoaPlayController {
 	    boolean item_6_1 = ableItemList.contains("6-1");
 	    boolean item_7_1 = ableItemList.contains("7-1");
 	    boolean item_7_2 = ableItemList.contains("7-2");
+	    
+	    
+	    boolean item_9_1 = ableItemList.contains("9-1");
 
 	    boolean item_12_1 = ableItemList.contains("12-1");
 	    boolean item_12_2 = ableItemList.contains("12-2");
@@ -1877,6 +1880,16 @@ public class LoaPlayController {
 	        return map.get("userName") + "님," + enterStr + map.get("extra_msg");
 	    }
 
+	    Random rand = new Random();
+	    
+	    boolean heavensPunishment = false;
+	    String punishMsg ="";
+	    if(item_9_1) {
+	    	if (rand.nextInt(100) == 0) { // 0~99 중 0일 때 발동
+	    		heavensPunishment = true;
+	    		punishMsg = "⚡ 천벌 발동! 보스의 회피를 무시하고 1000 데미지를 줍니다!";
+	        }
+	    }
 	    if(item_15_1) {
 	    	
 	    }
@@ -1907,7 +1920,6 @@ public class LoaPlayController {
 	    	weaponMin +=15;
 	    }
 	    
-	    Random rand = new Random();
 	    int weaponBaseDmg =  rand.nextInt(weaponMax - weaponMin + 1) + weaponMin;
 	 // ----------------
 	    // 5. 회피 계산
@@ -1916,26 +1928,30 @@ public class LoaPlayController {
 	    boolean isEvade = false;
 	    String isEvadeMsg = "";
 
-	    if (roll < (evadeRate / 100.0)) {  // 보스가 회피 성공
-	        isEvade = true;
-	        isEvadeMsg = "보스가 회피합니다." + enterStr;
-
-	        // 아이템 7-1, 7-2 가 있으면 보스 회피 무효화 시도
-	        if (item_7_1) {
-	            if (roll < 0.05) {  
-	                isEvade = false;
-	                isEvadeMsg = "[덫] 보스 회피 무효!" + enterStr;
-	            } else {
-	                isEvadeMsg = "[덫] 실패, 보스 회피!!" + enterStr;
-	            }
-	        } else if (item_7_2) {
-	            if (roll < 0.10) {  
-	                isEvade = false;
-	                isEvadeMsg = "[덫] lv2 보스 회피 무효!" + enterStr;
-	            } else {
-	                isEvadeMsg = "[덫] lv2 실패, 보스 회피!!" + enterStr;
-	            }
-	        }
+	    
+	    if(!heavensPunishment) {
+	    //천벌이 아닐때만 계산 
+		    if (roll < (evadeRate / 100.0)) {  // 보스가 회피 성공
+		        isEvade = true;
+		        isEvadeMsg = "보스가 회피합니다." + enterStr;
+	
+		        // 아이템 7-1, 7-2 가 있으면 보스 회피 무효화 시도
+		        if (item_7_1) {
+		            if (roll < 0.05) {  
+		                isEvade = false;
+		                isEvadeMsg = "[덫] 보스 회피 무효!" + enterStr;
+		            } else {
+		                isEvadeMsg = "[덫] 실패, 보스 회피!!" + enterStr;
+		            }
+		        } else if (item_7_2) {
+		            if (roll < 0.10) {  
+		                isEvade = false;
+		                isEvadeMsg = "[덫] lv2 보스 회피 무효!" + enterStr;
+		            } else {
+		                isEvadeMsg = "[덫] lv2 실패, 보스 회피!!" + enterStr;
+		            }
+		        }
+		    }
 	    }
 
 	    // ----------------
@@ -1963,93 +1979,101 @@ public class LoaPlayController {
 
 		
 		if (!isEvade) {
-			// 무기 레벨 기반 기본 데미지
-			int baseDamage = weaponBaseDmg ;
+			if(heavensPunishment) {
+				damage = 1000;
+				dmgMsg = "데미지 " + 1000 + " 으로 공격!"+enterStr
+						+"(보스회피, 보스방어, 보스공격 무시)";
+			}else {
+				// 무기 레벨 기반 기본 데미지
+				int baseDamage = weaponBaseDmg ;
 
-			 // ----------------
-	        // 치명타 확률 계산 (새 방식)
-	        // ----------------
-	        criticalChance = weaponCriticalChance;
+				 // ----------------
+		        // 치명타 확률 계산 (새 방식)
+		        // ----------------
+		        criticalChance = weaponCriticalChance;
 
-	        int baseCritPercent = (int)(criticalChance * 100); 
-	        int totalCritPercent = baseCritPercent;
-	        List<String> critParts = new ArrayList<>();
+		        int baseCritPercent = (int)(criticalChance * 100); 
+		        int totalCritPercent = baseCritPercent;
+		        List<String> critParts = new ArrayList<>();
 
-	        
-	        if (weaponLv > 0) {
-	            critParts.add("무기강화(" + baseCritPercent + "%)");
-	        }
+		        
+		        if (weaponLv > 0) {
+		            critParts.add("무기강화(" + baseCritPercent + "%)");
+		        }
 
-	        if (item_5_1) {
-	            totalCritPercent += 5;
-	            critParts.add("+ [예리한칼날](5%)");
-	        }
-	        if (item_5_2) {
-	            totalCritPercent += 10;
-	            critParts.add("+ [예리한칼날 Lv2](10%)");
-	        }
-	        if (item_5_3) {
-	            totalCritPercent += 15;
-	            critParts.add("+ [예리한칼날 Lv3](15%)");
-	        }
-	        if((hp * 100.0) / org_hp < 10) {
-	        	if (item_4_1) {
+		        if (item_5_1) {
 		            totalCritPercent += 5;
-		            critParts.add("+ [스카우터](5%)");
-		            scoutMsg +="약점을 노출시켰습니다";
+		            critParts.add("+ [예리한칼날](5%)");
 		        }
-		        if (item_4_2) {
+		        if (item_5_2) {
 		            totalCritPercent += 10;
-		            critParts.add("+ [스카우터 Lv2](10%)");
-		            scoutMsg +="약점을 노출시켰습니다";
+		            critParts.add("+ [예리한칼날 Lv2](10%)");
 		        }
-	        }
-	        
+		        if (item_5_3) {
+		            totalCritPercent += 15;
+		            critParts.add("+ [예리한칼날 Lv3](15%)");
+		        }
+		        if((hp * 100.0) / org_hp < 10) {
+		        	if (item_4_1) {
+			            totalCritPercent += 5;
+			            critParts.add("+ [스카우터](5%)");
+			            scoutMsg +="약점을 노출시켰습니다";
+			        }
+			        if (item_4_2) {
+			            totalCritPercent += 10;
+			            critParts.add("+ [스카우터 Lv2](10%)");
+			            scoutMsg +="약점을 노출시켰습니다";
+			        }
+		        }
+		        
 
-	        if (critDefRate > 0) {
-	            totalCritPercent -= critDefRate;
-	            critParts.add("- 보스저항(" + critDefRate + "%)");
-	        }
+		        if (critDefRate > 0) {
+		            totalCritPercent -= critDefRate;
+		            critParts.add("- 보스저항(" + critDefRate + "%)");
+		        }
 
-	        if (totalCritPercent < 0) totalCritPercent = 0;
+		        if (totalCritPercent < 0) totalCritPercent = 0;
 
-	        critLog.setLength(0);
-	        if (totalCritPercent > 0) {
-	            critLog.append("▶치명타확률 : ").append(totalCritPercent).append("%").append(enterStr);
-	            if (!critParts.isEmpty()) {
-	                critLog.append(String.join(" ", critParts)).append(enterStr);
-	            }
-	        }
-	        
-	        
-		    // 치명타 발동 여부
-	        isCritical = Math.random() < (totalCritPercent / 100.0);
-	        if (isCritical) {
-	            isSuperCritical = Math.random() < 0.10;
-	        }
+		        critLog.setLength(0);
+		        if (totalCritPercent > 0) {
+		            critLog.append("▶치명타확률 : ").append(totalCritPercent).append("%").append(enterStr);
+		            if (!critParts.isEmpty()) {
+		                critLog.append(String.join(" ", critParts)).append(enterStr);
+		            }
+		        }
+		        
+		        
+			    // 치명타 발동 여부
+		        isCritical = Math.random() < (totalCritPercent / 100.0);
+		        if (isCritical) {
+		            isSuperCritical = Math.random() < 0.10;
+		        }
 
-			// 최종 데미지 산출
-			if (isSuperCritical) {
-				damage = baseDamage * 5;
-				dmgMsg = "[✨초강력 치명타!!] 데미지 " + baseDamage + " → " + damage;
-			} else if (isCritical) {
-				damage = baseDamage * 3;
-				dmgMsg = "[✨치명타!] 데미지 " + baseDamage + " → " + damage;
-			} else {
-				damage = baseDamage;
-				dmgMsg = "데미지 " + baseDamage + " 로 공격!";
+				// 최종 데미지 산출
+				if (isSuperCritical) {
+					damage = baseDamage * 5;
+					dmgMsg = "[✨초강력 치명타!!] 데미지 " + baseDamage + " → " + damage;
+				} else if (isCritical) {
+					damage = baseDamage * 3;
+					dmgMsg = "[✨치명타!] 데미지 " + baseDamage + " → " + damage;
+				} else {
+					damage = baseDamage;
+					dmgMsg = "데미지 " + baseDamage + " 로 공격!";
+				}
+
+				// 보스 방어 적용 (메시지 추가)
+				if (Math.random() < bossDefRate / 100.0) {
+					appliedDefPower = ThreadLocalRandom.current().nextInt(1, bossDefPower + 1);
+
+					damage -= appliedDefPower;
+					if (damage < 0)
+						damage = 0;
+
+					bossDefenseMsg = "보스가 방어하였습니다! 데미지 " + appliedDefPower + " 상쇄!" + enterStr;
+				}
 			}
-
-			// 보스 방어 적용 (메시지 추가)
-			if (Math.random() < bossDefRate / 100.0) {
-				appliedDefPower = ThreadLocalRandom.current().nextInt(1, bossDefPower + 1);
-
-				damage -= appliedDefPower;
-				if (damage < 0)
-					damage = 0;
-
-				bossDefenseMsg = "보스가 방어하였습니다! 데미지 " + appliedDefPower + " 상쇄!" + enterStr;
-			}
+			
+			
 		}
 	    
 	    // ----------------
@@ -2099,24 +2123,33 @@ public class LoaPlayController {
 	    
 	    if(!isKill) {
 	    	if (Math.random() < bossAtkRate / 100.0) {
-	    		String item13Msg="";
-		    	appliedAtkPower = ThreadLocalRandom.current().nextInt(1, bossAtkPower + 1);
-		    	
-		    	if(item_13_1) {
-		    		appliedAtkPower -= 2;
-		    		item13Msg+=enterStr+"방어 유물의 효과로 일부 피해를 막았습니다.";
-		    	}
-		    	if(item_13_2) {
-		    		appliedAtkPower -= 4;
-		    		item13Msg+=enterStr+"방어 유물의 효과로 일부 피해를 막았습니다.";
-		    	}
-		    	if(item_13_3) {
-		    		appliedAtkPower -= 6;
-		    		item13Msg+=enterStr+"방어 유물의 효과로 일부 피해를 막았습니다.";
-		    	}
-		    	
-		        score -= appliedAtkPower;
-		        map.put("extra_msg", "보스가 반격합니다! 데미지를 입었습니다! -" + appliedAtkPower+"p"+item13Msg);
+	    		if(heavensPunishment) {
+	    			
+	    		}else {
+	    			String item13Msg="";
+			    	appliedAtkPower = ThreadLocalRandom.current().nextInt(1, bossAtkPower + 1);
+			    	
+			    	if(item_13_1) {
+			    		appliedAtkPower -= 2;
+			    		item13Msg+=enterStr+"방어 유물의 효과로 일부 피해를 막았습니다.";
+			    	}
+			    	if(item_13_2) {
+			    		appliedAtkPower -= 4;
+			    		item13Msg+=enterStr+"방어 유물의 효과로 일부 피해를 막았습니다.";
+			    	}
+			    	if(item_13_3) {
+			    		appliedAtkPower -= 6;
+			    		item13Msg+=enterStr+"방어 유물의 효과로 일부 피해를 막았습니다.";
+			    	}
+			    	if(appliedAtkPower < 0) {
+			    		appliedAtkPower = 0;
+			    	}
+			        score -= appliedAtkPower;
+			        
+			        
+			        map.put("extra_msg", "보스가 반격합니다! 데미지를 입었습니다! -" + appliedAtkPower+"p"+item13Msg);
+	    		}
+	    		
 		    }
 	    }
 	    
