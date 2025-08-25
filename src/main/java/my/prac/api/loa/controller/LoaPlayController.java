@@ -816,6 +816,10 @@ public class LoaPlayController {
 	                nowOpenFlag = (rewardLevel == 2) ? "1" : "2";
 	            }
 
+	            if(itemNo.equals("9")) {
+	            	nowOpenFlag ="1";
+	            }
+	            
 	            // 7. DB 저장 (보물 지급 처리)
 	            try {
 	                map.put("rdLv", rewardLevel);
