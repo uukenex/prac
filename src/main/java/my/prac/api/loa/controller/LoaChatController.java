@@ -507,21 +507,6 @@ public class LoaChatController {
 					val = "별도 게임방에서 진행해주세요.";
 				}
 				break;
-			case "/ㄱㄱ2": 
-				gameYnList = botService.selectGamePlayYn(reqMap);
-				playYn ="1"; 
-				for(HashMap<String,Object> gameYn : gameYnList) {
-					if(gameYn.get("NAME").equals("강화")) {
-						playYn = gameYn.get("PLAY_YN").toString(); 
-					}
-				}
-				
-				if(playYn.equals("1")) {
-					val = play.attackBoss(reqMap);
-				}else {
-					val = "별도 게임방에서 진행해주세요.";
-				}
-				break;
 			case "/포인트사용": 
 				val = play.usePoint(reqMap);
 				break;	
@@ -565,6 +550,7 @@ public class LoaChatController {
 				}
 				
 				if(playYn.equals("1")) {
+					val = "상자 아이템 리스트..";
 					val+= allSeeStr;
 					List<HashMap<String,Object>> PointItemOptionList = botService.selectPointItemOptionList(reqMap);
 					for (HashMap<String,Object> item : PointItemOptionList) {
@@ -577,7 +563,34 @@ public class LoaChatController {
 					val = "별도 게임방에서 진행해주세요.";
 				}
 				break;
+			case "/상자랭킹": case "/ㅅㅈㄹㅋ":
+				gameYnList = botService.selectGamePlayYn(reqMap);
+				playYn ="1"; 
+				for(HashMap<String,Object> gameYn : gameYnList) {
+					if(gameYn.get("NAME").equals("강화")) {
+						playYn = gameYn.get("PLAY_YN").toString(); 
+					}
+				}
+				
+				if(playYn.equals("1")) {
 					
+					List<HashMap<String,Object>> box_ranking_map = botService.selectBotPointItemUserRankAll(reqMap);
+					val +=roomName+" 보물 상자 랭킹"+enterStr;
+					val +=" 레벨총합 / 종류수"+enterStr;
+					for(int i =0;i<box_ranking_map.size();i++) {
+						switch(i) {
+							default:
+								val += rank_etc;
+								break;
+						}
+						val += box_ranking_map.get(i).get("USER_NAME")+ " : "+box_ranking_map.get(i).get("SCORE")+" / "+box_ranking_map.get(i).get("KINDS")+enterStr ;
+					}
+					
+					
+				}else {
+					val = "별도 게임방에서 진행해주세요.";
+				}
+				break;		
 			case "/상자구입": case "/상자구매":
 				gameYnList = botService.selectGamePlayYn(reqMap);
 				playYn ="1"; 

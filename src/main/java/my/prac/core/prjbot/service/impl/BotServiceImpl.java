@@ -570,4 +570,8 @@ public class BotServiceImpl implements BotService {
 	public List<HashMap<String,Object>> selectPointItemOptionList(HashMap<String,Object> map) throws Exception{
 		return botDAO.selectPointItemOptionList(map);
 	}
+	
+	public List<HashMap<String,Object>> selectBotPointItemUserRankAll(HashMap<String,Object> map){
+		return botDAO.selectBotPointItemUserRankAll(map);
+	}
 }

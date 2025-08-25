@@ -284,10 +284,7 @@ public class LoaPlayController {
 		}
 		
 		return map.get("userName")+"님 출석포인트 "+score+"점 획득"
-			  +extraMsg + enterStr+"갱신 포인트 : "+new_score
-			  +enterStr + "/상자구매 :200p구매"
-			  +enterStr + "/상자 : 공개된 옵션 리스트보기 추가!"
-			  +enterStr + "/보스,/보스정보: 보스정보 추가";
+			  +extraMsg + enterStr+"갱신 포인트 : "+new_score;
 	}
 	
 	
@@ -761,6 +758,7 @@ public class LoaPlayController {
 	            }
 
 	            // 3. 유저가 가지고 있는 아이템 목록 (ITEM_NO-ITEM_LV)
+	            map.put("cmd", "pointBoxOpenUp");
 	            List<String> userItemList = selectPointItemUserList(map);
 
 	            // 4. MAX_LV 미도달 아이템 후보 목록 생성
@@ -1711,11 +1709,6 @@ public class LoaPlayController {
 		}
 	}
 	
-	public String attackBoss(HashMap<String, Object> map) {
-		return "";
-		
-	}
-	
 	public String attackBoss2(HashMap<String, Object> map) {
 		 map.put("cmd", "boss_attack");
 
@@ -1732,7 +1725,7 @@ public class LoaPlayController {
 
 		    int appliedDefPower=0 ;
 		    int appliedAtkPower=0 ;
-		    
+		    int debuff = 0;
 		    try {
 		        boss = botService.selectBotPointBoss(map);
 		        if (boss == null || boss.get("HP") == null) return "";
@@ -1747,7 +1740,7 @@ public class LoaPlayController {
 		        bossAtkPower = boss.get("ATK_POWER") != null ? Integer.parseInt(boss.get("ATK_POWER").toString()) : 100;
 		        bossDefRate  = boss.get("DEF_RATE")  != null ? Integer.parseInt(boss.get("DEF_RATE").toString())  : 10;
 		        bossDefPower = boss.get("DEF_POWER") != null ? Integer.parseInt(boss.get("DEF_POWER").toString()) : 100;
-
+		        debuff       = boss.get("DEBUFF")    != null ? Integer.parseInt(boss.get("DEBUFF").toString()) : 0;
 		        // ★ 추가 : 크리티컬 저항, 회피율, 숨김룰 적용
 		        if (boss.get("CRIT_DEF_RATE") != null) critDefRate = Integer.parseInt(boss.get("CRIT_DEF_RATE").toString());
 		        if (boss.get("EVADE_RATE") != null) evadeRate = Integer.parseInt(boss.get("EVADE_RATE").toString());
@@ -1887,7 +1880,7 @@ public class LoaPlayController {
 	    if(item_9_1) {
 	    	if (rand.nextInt(100) == 0) { // 0~99 중 0일 때 발동
 	    		heavensPunishment = true;
-	    		punishMsg = "⚡ 천벌 발동! 보스의 회피를 무시하고 1000 데미지를 줍니다!";
+	    		punishMsg = " 천벌 발동! 보스의 회피를 무시하고 1000 데미지를 줍니다!";
 	        }
 	    }
 	    if(item_15_1) {
@@ -2050,6 +2043,12 @@ public class LoaPlayController {
 		        }
 
 				// 최종 데미지 산출
+		        if(debuff>0) {
+		        	map.put("useDebuff", "Y");
+		        	damage = damage * 2;
+		        	punishMsg ="천벌의 디버프효과로 데미지 2배!"+enterStr;
+		        }
+		        
 				if (isSuperCritical) {
 					damage = baseDamage * 5;
 					dmgMsg = "[✨초강력 치명타!!] 데미지 " + baseDamage + " → " + damage;
@@ -2164,6 +2163,11 @@ public class LoaPlayController {
 	        map.put("endYn", isKill ? "1" : "0");
 	        map.put("atkPower", appliedAtkPower);
 	        map.put("defPower", appliedDefPower );
+	        
+	        //heavensPunishment
+	        if(heavensPunishment) {
+	        	map.put("heavensPunishment", "Y");
+	        }
 	        botService.updateBotPointBossTx(map);
 	        new_score = botService.insertBotPointRankTx(map);
 	    } catch (Exception e) {
@@ -2177,6 +2181,9 @@ public class LoaPlayController {
 
 		// 1. 공격 결과
 		msg.append(map.get("userName")).append("님이 보스를 공격했습니다!").append(enterStr);
+		
+		if (!punishMsg.isEmpty())
+			msg.append(punishMsg);
 		
 		if (!isEvade) {
 		    // 1. 먼저 입힌 데미지 표시

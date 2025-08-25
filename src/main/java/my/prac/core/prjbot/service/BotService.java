@@ -128,6 +128,9 @@ public interface BotService {
 	public String selectPointItemUserOpenFlag(HashMap<String,Object> map) throws Exception;
 	public int selectPointNewBoxCount(HashMap<String,Object> map) throws Exception;
 	public List<HashMap<String,Object>> selectPointItemOptionList(HashMap<String,Object> map) throws Exception;
+	
+	//상자랭킹
+	public List<HashMap<String,Object>> selectBotPointItemUserRankAll(HashMap<String,Object> map);
 } 
 
 	

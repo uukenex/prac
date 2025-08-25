@@ -1158,7 +1158,7 @@
 	<select id="selectBotPointBoss" parameterType="HashMap" resultType="HashMap">
 		SELECT A.REWARD,A.ORG_HP,A.HP,A.SEQ,to_char(A.INSERT_DATE,'yyyymmdd hh24miss') as START_DATE,
 		       A.EVADE_RATE,A.ATK_RATE,A.DEF_RATE,CRIT_DEF_RATE,
-		       A.ATK_POWER,A.DEF_POWER,A.HIDE_RULE
+		       A.ATK_POWER,A.DEF_POWER,A.HIDE_RULE,A.DEBUFF
 		  FROM TBOT_POINT_BOSS A
 		 WHERE ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 		   AND A.END_YN = '0'
@@ -1169,6 +1169,13 @@
 		   SET A.HP     = #{newHp, jdbcType=NUMERIC}
 			  ,A.END_YN = #{endYn, jdbcType=VARCHAR}
 			  ,A.MODIFY_DATE = SYSDATE
+			  
+		  <if test="heavensPunishment == 'Y'">
+			  ,A.DEBUFF = A.DEBUFF +10
+	      </if>
+		  <if test="useDebuff == 'Y'">
+			  ,A.DEBUFF = A.DEBUFF -1
+	      </if>
 		 WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 		   AND A.HP = #{hp, jdbcType=NUMERIC}
 		   AND A.SEQ =#{seq, jdbcType=NUMERIC} 
@@ -1315,6 +1322,14 @@
 			  ,M.ITEM_DESC
 			  ,M.MAX_LV
 		  FROM TBOT_POINT_ITEM_M M
+		<if test="cmd == 'pointBoxOpenUp' ">
+	     WHERE NOT ( M.ITEM_NO = 9 AND EXISTS (SELECT 1
+											     FROM TBOT_POINT_ITEM_USER U
+											    WHERE U.ITEM_NO = M.ITEM_NO
+											      AND U.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+											      AND U.DEL_YN = '0'
+											      AND U.OPEN_FLAG = '2') )
+		</if>
 		
 	</select>
 	
@@ -1335,7 +1350,7 @@
 			     ,M.ITEM_NAME
 			     ,M.ITEM_DESC
 			     ,M.MAX_LV
-	     HAVING NOT (M.ITEM_NO = 9 AND COUNT(U.ITEM_NO) > 0)  -- ITEM_NO=9이고 ROOM에 있으면 제외
+		 
 		 ORDER BY M.ITEM_NO
 		
 	</select>
@@ -1397,5 +1412,30 @@
 		 WHERE M.ITEM_NO = U.ITEM_NO(+)
 		 ORDER BY M.ITEM_NO
 		
+	</select>
+	
+	<select id="selectBotPointItemUserRankAll" parameterType="HashMap" resultType="HashMap">
+		SELECT B.*
+			  FROM (SELECT A.USER_NAME AS USER_NAME
+					      ,SUM(A.LV) AS SCORE
+					      ,COUNT(DISTINCT A.ITEM_NO) AS KINDS
+					  FROM TBOT_POINT_ITEM_USER A
+				     WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+				       AND A.INSERT_DATE> TO_DATE('20250701','yyyymmdd')
+				       AND A.ITEM_NO != 0
+				     GROUP BY A.USER_NAME,A.ROOM_NAME
+				     HAVING 1 = CASE
+				      				 WHEN EXISTS (SELECT 1
+												    FROM TBOT_BLOCK B
+												   WHERE B.USER_NAME = A.USER_NAME
+												     AND B.ROOM_NAME = A.ROOM_NAME) THEN
+									  0
+									 WHEN MAX(A.INSERT_DATE) >= TRUNC(SYSDATE) - 15 THEN
+									  1
+									 ELSE
+									  0
+								 END  
+						AND SUM(A.LV)>= 1
+				     ORDER BY SUM(A.LV) DESC) B
 	</select>
 </mapper>
