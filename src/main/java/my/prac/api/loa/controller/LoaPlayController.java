@@ -1878,9 +1878,10 @@ public class LoaPlayController {
 	    boolean heavensPunishment = false;
 	    String punishMsg ="";
 	    if(item_9_1) {
-	    	if (rand.nextInt(100) == 0) { // 0~99 중 0일 때 발동
+	    	int rn0 = rand.nextInt(100);
+	    	if (rn0 == 0) { // 0~99 중 0일 때 발동
 	    		heavensPunishment = true;
-	    		punishMsg = " 천벌 발동! 보스의 회피를 무시하고 1000 데미지를 줍니다!";
+	    		punishMsg = " [천벌] 효과! 보스의 회피를 무시하고 1000 데미지를 줍니다!";
 	        }
 	    }
 	    if(item_15_1) {
@@ -2043,11 +2044,7 @@ public class LoaPlayController {
 		        }
 
 				// 최종 데미지 산출
-		        if(debuff>0) {
-		        	map.put("useDebuff", "Y");
-		        	damage = damage * 2;
-		        	punishMsg ="천벌의 디버프효과로 데미지 2배!"+enterStr;
-		        }
+		        
 		        
 				if (isSuperCritical) {
 					damage = baseDamage * 5;
@@ -2059,6 +2056,12 @@ public class LoaPlayController {
 					damage = baseDamage;
 					dmgMsg = "데미지 " + baseDamage + " 로 공격!";
 				}
+				
+				if(debuff>0) {
+		        	map.put("useDebuff", 1);
+		        	punishMsg ="[천벌]의 디버프효과로 데미지 2배!(+"+damage+")"+enterStr;
+		        	damage = damage * 2;
+		        }
 
 				// 보스 방어 적용 (메시지 추가)
 				if (Math.random() < bossDefRate / 100.0) {
@@ -2166,7 +2169,7 @@ public class LoaPlayController {
 	        
 	        //heavensPunishment
 	        if(heavensPunishment) {
-	        	map.put("heavensPunishment", "Y");
+	        	map.put("heavensPunishment", 1);
 	        }
 	        botService.updateBotPointBossTx(map);
 	        new_score = botService.insertBotPointRankTx(map);

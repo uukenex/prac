@@ -1170,10 +1170,10 @@
 			  ,A.END_YN = #{endYn, jdbcType=VARCHAR}
 			  ,A.MODIFY_DATE = SYSDATE
 			  
-		  <if test="heavensPunishment == 'Y'">
+		  <if test="heavensPunishment == 1">
 			  ,A.DEBUFF = A.DEBUFF +10
 	      </if>
-		  <if test="useDebuff == 'Y'">
+		  <if test="useDebuff == 1">
 			  ,A.DEBUFF = A.DEBUFF -1
 	      </if>
 		 WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
