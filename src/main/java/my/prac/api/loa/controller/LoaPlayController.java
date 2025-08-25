@@ -1603,7 +1603,7 @@ public class LoaPlayController {
 			        
 			        
 				    msg += (lv+1) + " 단계 강화 ☂실패☂"+enterStr;		
-				    msg += "성공률 : "+successRate+"%"+enterStr;
+				    msg += "성공률 : "+Math.round(successRate * 100) / 100.0+"%"+enterStr;
 				    if(tryPirce == 0 && item_11_1) {
 						//무료강화이면서  item_11_1 있는경우
 			        	 msg += "([황금모루] 보너스 성공률 적용)"+enterStr;	
