@@ -1565,7 +1565,7 @@ public class LoaPlayController {
 		        	botService.insertBotPointRankTx(map);
 			    }
 			    
-			    if (isMaxedOut) {
+			    if (rate>0 && isMaxedOut) {
 			        // 100% 도달 시 로직 (성공은 안 함)
 			        double sumPct = 100.0;
 			        map.put("successYn", "0");
