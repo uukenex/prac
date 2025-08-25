@@ -1883,7 +1883,7 @@ public class LoaPlayController {
 	    String punishMsg ="";
 	    if(item_9_1) {
 	    	int rn0 = rand.nextInt(100);
-	    	if (rn0 == 0) { // 0~99 중 0일 때 발동
+	    	if (rn0 <= 4) { // 0~99 중 0~4일 때 발동(5%)
 	    		heavensPunishment = true;
 	    		punishMsg = " [천벌] 효과! 보스의 회피를 무시하고 1000 데미지를 줍니다!";
 	        }
