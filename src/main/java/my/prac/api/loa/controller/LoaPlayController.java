@@ -2351,7 +2351,7 @@ public class LoaPlayController {
 			msgBuilder
 			.append(name)
 			.append(" - ")
-			.append(damage)
+			.append(damage*3) //score가 3분의1로 나눠지기때문 
 			.append(" dmg(")
 			.append(percentStr)
 			.append("%) - ")
