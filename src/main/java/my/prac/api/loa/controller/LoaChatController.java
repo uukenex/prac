@@ -576,14 +576,14 @@ public class LoaChatController {
 					
 					List<HashMap<String,Object>> box_ranking_map = botService.selectBotPointItemUserRankAll(reqMap);
 					val +=roomName+" 보물 상자 랭킹"+enterStr;
-					val +=" 레벨총합 / 종류수"+enterStr;
+					val +="총/오픈(확률)/미개봉"+enterStr;
 					for(int i =0;i<box_ranking_map.size();i++) {
 						switch(i) {
 							default:
 								val += rank_etc;
 								break;
 						}
-						val += box_ranking_map.get(i).get("USER_NAME")+ " : "+box_ranking_map.get(i).get("SCORE")+" / "+box_ranking_map.get(i).get("KINDS")+enterStr ;
+						val += box_ranking_map.get(i).get("USER_NAME")+ " : "+box_ranking_map.get(i).get("TOT_CNT")+" / "+box_ranking_map.get(i).get("OPEN_SUM")+"("+box_ranking_map.get(i).get("RATE")+")"+" / "+box_ranking_map.get(i).get("YET_SUM")+enterStr ;
 					}
 					
 					

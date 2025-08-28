@@ -1415,27 +1415,31 @@
 	</select>
 	
 	<select id="selectBotPointItemUserRankAll" parameterType="HashMap" resultType="HashMap">
-		SELECT B.*
-			  FROM (SELECT A.USER_NAME AS USER_NAME
-					      ,SUM(A.LV) AS SCORE
-					      ,COUNT(DISTINCT A.ITEM_NO) AS KINDS
-					  FROM TBOT_POINT_ITEM_USER A
-				     WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
-				       AND A.INSERT_DATE> TO_DATE('20250701','yyyymmdd')
-				       AND A.ITEM_NO != 0
-				     GROUP BY A.USER_NAME,A.ROOM_NAME
-				     HAVING 1 = CASE
-				      				 WHEN EXISTS (SELECT 1
-												    FROM TBOT_BLOCK B
-												   WHERE B.USER_NAME = A.USER_NAME
-												     AND B.ROOM_NAME = A.ROOM_NAME) THEN
-									  0
-									 WHEN MAX(A.INSERT_DATE) >= TRUNC(SYSDATE) - 15 THEN
-									  1
-									 ELSE
-									  0
-								 END  
-						AND SUM(A.LV)>= 1
-				     ORDER BY SUM(A.LV) DESC) B
+		SELECT TRUNC(B.OPEN_SUM / B.TOT_CNT * 100) || '%' AS RATE
+			 ,B.*
+		  FROM (SELECT A.USER_NAME AS USER_NAME
+				    ,SUM(A.LV) AS SCORE
+				    ,COUNT(DISTINCT A.ITEM_NO) AS KINDS
+				    ,COUNT(A.OPEN_FLAG) AS TOT_CNT
+				    ,SUM(DECODE(A.OPEN_FLAG, '2', 1, 0)) AS OPEN_SUM
+				    ,NVL(SUM(CASE WHEN A.OPEN_FLAG != '2' AND A.DEL_YN ='0' THEN 1 END),0) AS YET_SUM
+				FROM TBOT_POINT_ITEM_USER A
+			    WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+				 AND A.INSERT_DATE > TO_DATE('20250701', 'yyyymmdd')
+			    GROUP BY A.USER_NAME
+					  ,A.ROOM_NAME
+			   HAVING 1 =CASE
+				    WHEN EXISTS (SELECT 1
+						  FROM TBOT_BLOCK B
+						 WHERE B.USER_NAME = A.USER_NAME
+						   AND B.ROOM_NAME = A.ROOM_NAME) THEN
+					0
+				    WHEN MAX(A.INSERT_DATE) >= TRUNC(SYSDATE) - 15 THEN
+					1
+				    ELSE
+					0
+			   
+			   END AND COUNT(A.OPEN_FLAG) >= 10) B
+		 ORDER BY TRUNC(B.OPEN_SUM / B.TOT_CNT * 100) DESC
 	</select>
 </mapper>
