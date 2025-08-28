@@ -1729,6 +1729,7 @@ public class LoaPlayController {
 
 		    int appliedDefPower=0 ;
 		    int appliedAtkPower=0 ;
+		    int appliedAtkPowerCalc=0 ;
 		    int debuff = 0;
 		    try {
 		        boss = botService.selectBotPointBoss(map);
@@ -1796,6 +1797,12 @@ public class LoaPlayController {
 	    boolean item_14_1 = ableItemList.contains("14-1");
 	    boolean item_14_2 = ableItemList.contains("14-2");
 	    boolean item_14_3 = ableItemList.contains("14-3");
+	    
+	    boolean item_17_1 = ableItemList.contains("17-1");
+	    boolean item_17_2 = ableItemList.contains("17-2");
+	    boolean item_17_3 = ableItemList.contains("17-3");
+	    
+	    boolean item_19_1 = ableItemList.contains("19-1");
 	    if(item_14_1) {
 	    	map.put("item_14_1", "Y");
 	    }
@@ -1926,29 +1933,60 @@ public class LoaPlayController {
 	    boolean isEvade = false;
 	    String isEvadeMsg = "";
 
-	    
+	    boolean chaserCrit = false;
 	    if(!heavensPunishment) {
 	    //천벌이 아닐때만 계산 
 		    if (roll < (evadeRate / 100.0)) {  // 보스가 회피 성공
 		        isEvade = true;
 		        isEvadeMsg = "보스가 회피합니다." + enterStr;
-	
-		        // 아이템 7-1, 7-2 가 있으면 보스 회피 무효화 시도
-		        if (item_7_1) {
-		            if (roll < 0.05) {  
+		        double effectiveEvadeRate = evadeRate;
+		        
+		        if (item_17_1) {
+		        	if (Math.random() < 0.20) { // 20%확률
 		                isEvade = false;
-		                isEvadeMsg = "[덫] 보스 회피 무효!" + enterStr;
-		            } else {
-		                isEvadeMsg = "[덫] 실패, 보스 회피!!" + enterStr;
-		            }
-		        } else if (item_7_2) {
-		            if (roll < 0.10) {  
+		                isEvadeMsg += "[화려한추격자] 보스가 피했지만 더강하게 공격합니다!" + enterStr;
+		                chaserCrit=true;
+		            } 
+		        }
+		        if (item_17_2) {
+		        	if (Math.random() < 0.40) { 
 		                isEvade = false;
-		                isEvadeMsg = "[덫] lv2 보스 회피 무효!" + enterStr;
-		            } else {
-		                isEvadeMsg = "[덫] lv2 실패, 보스 회피!!" + enterStr;
+		                isEvadeMsg += "[화려한추격자] lv2 보스가 피했지만 더강하게 공격합니다!" + enterStr;
+		                chaserCrit=true;
+		            } 
+		        }
+		        if (item_17_3) {
+		        	if (Math.random() < 0.60) { 
+		                isEvade = false;
+		                isEvadeMsg += "[화려한추격자] lv3 보스가 피했지만 더강하게 공격합니다!" + enterStr;
+		                chaserCrit=true;
 		            }
 		        }
+		        
+		        
+		        if(!chaserCrit) {
+		        	 // 아이템 7-1, 7-2 가 있으면 보스 회피 무효화 시도
+			        if (item_7_1) {
+			        	effectiveEvadeRate = Math.max(evadeRate - 5, 0); // 최소 0
+			        	if (roll < (effectiveEvadeRate / 100.0)) { //회피가 10일때 -5시켜 , 0~5
+			        		isEvadeMsg += "[덫] 실패, 보스 회피!!" + enterStr;
+			        	}else {//5~100
+			        		isEvade = false;
+			                isEvadeMsg += "[덫] 보스 회피 무효!" + enterStr;
+			        	}
+			           
+			        } else if (item_7_2) {
+			        	effectiveEvadeRate = Math.max(evadeRate - 10, 0); // 최소 0
+			        	if (roll < (effectiveEvadeRate / 100.0)) { //회피가 11일때 -10시켜 , 0~1
+			        		isEvadeMsg += "[덫] lv2 실패, 보스 회피!!" + enterStr;
+			        	}else {//1~100
+			        		isEvade = false;
+			                isEvadeMsg += "[덫] lv2 보스 회피 무효!" + enterStr;
+			        	}
+			        }
+		        }
+		        
+		       
 		    }
 	    }
 
@@ -1968,6 +2006,7 @@ public class LoaPlayController {
 		boolean isCritical = false;
 		boolean isSuperCritical = false;
 		String bossDefenseMsg = "";
+		String item_19_1_Msg = "";
 		String dmgMsg = "";
 		map.put("evadeYn", isEvade);
 		String scoutMsg="";
@@ -2024,7 +2063,6 @@ public class LoaPlayController {
 			        }
 		        }
 		        
-
 		        if (critDefRate > 0) {
 		            totalCritPercent -= critDefRate;
 		            critParts.add("- 보스저항(" + critDefRate + "%)");
@@ -2047,6 +2085,23 @@ public class LoaPlayController {
 		            isSuperCritical = Math.random() < 0.10;
 		        }
 
+		        if(chaserCrit) {
+		        	if (item_17_1) {
+		        		isCritical=true;
+		        		isSuperCritical=false;
+			        }
+			        if (item_17_2) {
+			        	isCritical=true;
+		        		isSuperCritical=false;
+			        }
+			        if (item_17_3) {
+			        	isCritical=true;
+		        		isSuperCritical=false;
+			        }
+		        }
+		        
+		        
+		        
 				// 최종 데미지 산출
 		        
 		        
@@ -2077,6 +2132,12 @@ public class LoaPlayController {
 
 					bossDefenseMsg = "보스가 방어하였습니다! 데미지 " + appliedDefPower + " 상쇄!" + enterStr;
 				}
+				
+				
+				if(item_19_1) {
+					
+				}
+				
 			}
 			
 			
@@ -2134,36 +2195,48 @@ public class LoaPlayController {
 	    		}else {
 	    			String item13Msg="";
 			    	appliedAtkPower = ThreadLocalRandom.current().nextInt(1, bossAtkPower + 1);
+			    	appliedAtkPowerCalc=appliedAtkPower;
 			    	
 			    	if(item_13_1) {
 			    		item13Msg+=enterStr+"방어 유물의 효과: "+appliedAtkPower+" → ";
-			    		appliedAtkPower -= 2;
-			    		if(appliedAtkPower < 0) {
-				    		appliedAtkPower = 0;
+			    		appliedAtkPowerCalc -= 2;
+			    		if(appliedAtkPowerCalc < 0) {
+			    			appliedAtkPowerCalc = 0;
 				    	}
-			    		item13Msg+=appliedAtkPower;
+			    		item13Msg+=appliedAtkPowerCalc;
 			    	}
 			    	if(item_13_2) {
 			    		item13Msg+=enterStr+"방어 유물의 효과: "+appliedAtkPower+" → ";
-			    		appliedAtkPower -= 4;
-			    		if(appliedAtkPower < 0) {
-				    		appliedAtkPower = 0;
+			    		appliedAtkPowerCalc -= 4;
+			    		if(appliedAtkPowerCalc < 0) {
+			    			appliedAtkPowerCalc = 0;
 				    	}
 			    		item13Msg+=appliedAtkPower;
 			    	}
 			    	if(item_13_3) {
 			    		item13Msg+=enterStr+"방어 유물의 효과: "+appliedAtkPower+" → ";
-			    		appliedAtkPower -= 6;
-			    		if(appliedAtkPower < 0) {
-				    		appliedAtkPower = 0;
+			    		appliedAtkPowerCalc -= 6;
+			    		if(appliedAtkPowerCalc < 0) {
+			    			appliedAtkPowerCalc = 0;
 				    	}
-			    		item13Msg+=appliedAtkPower;
+			    		item13Msg+=appliedAtkPowerCalc;
 			    	}
 			    	
-			        score -= appliedAtkPower;
+			        score -= appliedAtkPowerCalc;
+			        
+			        String bossAttackMsg ="보스의 반격! 데미지를 입었습니다! -" + appliedAtkPower+"p"+item13Msg; 
 			        
 			        
-			        map.put("extra_msg", "보스가 반격합니다! 데미지를 입었습니다! -" + appliedAtkPower+"p"+item13Msg);
+			        if(item_19_1) {
+			        	if (Math.random() < 0.30) { // 30%확률
+			        		score+=appliedAtkPowerCalc;
+			        		bossAttackMsg+=enterStr+"[성스러운방어막,거울의힘] 효과, "+appliedAtkPowerCalc+" 피해회복, "+appliedAtkPower+" 점수획득" ;
+			        		//item_19_1_Msg+=enterStr+appliedAtkPower+" 데미지반사" ;
+			        		score+=appliedAtkPower;
+			        	}
+			        }
+			        map.put("extra_msg", bossAttackMsg);
+			        
 	    		}
 	    		
 		    }
