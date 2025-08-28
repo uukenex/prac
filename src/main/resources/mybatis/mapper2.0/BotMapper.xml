@@ -1323,7 +1323,7 @@
 			  ,M.MAX_LV
 		  FROM TBOT_POINT_ITEM_M M
 		<if test="cmd == 'pointBoxOpenUp' ">
-	     WHERE NOT ( M.ITEM_NO = 9 AND EXISTS (SELECT 1
+	     WHERE NOT ( M.ITEM_GB = 1 AND EXISTS (SELECT 1
 											     FROM TBOT_POINT_ITEM_USER U
 											    WHERE U.ITEM_NO = M.ITEM_NO
 											      AND U.ROOM_NAME = #{roomName, jdbcType=VARCHAR}

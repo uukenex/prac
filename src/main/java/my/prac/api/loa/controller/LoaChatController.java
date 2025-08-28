@@ -580,10 +580,9 @@ public class LoaChatController {
 					for(int i =0;i<box_ranking_map.size();i++) {
 						switch(i) {
 							default:
-								val += rank_etc;
 								break;
 						}
-						val += box_ranking_map.get(i).get("USER_NAME")+ " : "+box_ranking_map.get(i).get("TOT_CNT")+" / "+box_ranking_map.get(i).get("OPEN_SUM")+"("+box_ranking_map.get(i).get("RATE")+")"+" / "+box_ranking_map.get(i).get("YET_SUM")+enterStr ;
+						val += box_ranking_map.get(i).get("USER_NAME")+ ":"+box_ranking_map.get(i).get("TOT_CNT")+"/"+box_ranking_map.get(i).get("OPEN_SUM")+"("+box_ranking_map.get(i).get("RATE")+")"+"/"+box_ranking_map.get(i).get("YET_SUM")+enterStr ;
 					}
 					
 					
