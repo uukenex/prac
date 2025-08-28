@@ -702,11 +702,24 @@ public class LoaPlayController {
 
 	    // 0. 현재 상자 openFlag 조회 (null 안전 처리)
 	    String openFlag = "";
-	    try {
-	        openFlag = botService.selectPointItemUserOpenFlag(map);
-	    } catch (Exception e) {
-	    	return msg+"상자열기 오류입니다";
-	    }
+	    HashMap<String, Object> rareItemInfo = null;
+        try {
+            rareItemInfo = botService.selectPointItemUserOpenFlag1(map);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        
+        if(rareItemInfo ==null || rareItemInfo.size()==0) {
+        	try {
+    	        openFlag = botService.selectPointItemUserOpenFlag(map);
+    	    } catch (Exception e) {
+    	    	return msg+"상자열기 오류입니다";
+    	    }
+        }else {
+        	openFlag = rareItemInfo.get("OPEN_FLAG").toString();
+        }
+        
+	    
 	    
 	    String itemNo = "";
 	    String itemName = "";
@@ -751,6 +764,7 @@ public class LoaPlayController {
 
 	            // 2. 보물상자 오픈 성공 → 보물 정보 조회
 	            List<HashMap<String, Object>> itemInfoList = new ArrayList<>();
+	            map.put("cmd", "pointBoxOpenUp");
 	            try {
 	                itemInfoList = botService.selectPointItemInfoList(map);
 	            } catch (Exception e) {
@@ -758,7 +772,6 @@ public class LoaPlayController {
 	            }
 
 	            // 3. 유저가 가지고 있는 아이템 목록 (ITEM_NO-ITEM_LV)
-	            map.put("cmd", "pointBoxOpenUp");
 	            List<String> userItemList = selectPointItemUserList(map);
 
 	            // 4. MAX_LV 미도달 아이템 후보 목록 생성
@@ -848,13 +861,6 @@ public class LoaPlayController {
 
 	        case "1": // 레벨2 상자, /상자열기 호출 시
 	            // 재사용 가능한 조회 메서드 활용
-	            HashMap<String, Object> rareItemInfo = null;
-	            try {
-	                rareItemInfo = botService.selectPointItemUserOpenFlag1(map);
-	            } catch (Exception e) {
-	                e.printStackTrace();
-	            }
-
 	            if (rareItemInfo != null) {
 	                itemNo = rareItemInfo.get("ITEM_NO").toString();
 	                itemName = rareItemInfo.get("ITEM_NAME").toString();
