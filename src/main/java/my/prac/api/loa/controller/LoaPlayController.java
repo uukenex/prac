@@ -647,7 +647,7 @@ public class LoaPlayController {
 	
 	String pointShop(HashMap<String,Object> map) {
 		return "[포인트상점 목록]"
-	          +enterStr+"/상자구입 : 200p(1회차 무료)"
+	          +enterStr+"/상자구입 : 200p(10회까지 무료)"
 	          +enterStr
 	          +enterStr;
 	}
@@ -659,7 +659,7 @@ public class LoaPlayController {
 		try {
 			
 			int count = botService.selectPointItemUserCount(map);
-			if(count ==0) {
+			if(count <= 10) {
 				msg += "welcome gift 수령! 0p 소모!"+enterStr;
 			}else {
 				List<HashMap<String,Object>> ls = botService.selectBotPointRankNewScore(map);
@@ -1885,7 +1885,7 @@ public class LoaPlayController {
 	    	int rn0 = rand.nextInt(100);
 	    	if (rn0 <= 4) { // 0~99 중 0~4일 때 발동(5%)
 	    		heavensPunishment = true;
-	    		punishMsg = " [천벌] 효과! 보스의 회피를 무시하고 1000 데미지를 줍니다!";
+	    		punishMsg = " [천벌] 효과! 보스의 회피를 무시하고 1000 데미지를 줍니다!"+enterStr;
 	        }
 	    }
 	    if(item_15_1) {
@@ -2136,20 +2136,30 @@ public class LoaPlayController {
 			    	appliedAtkPower = ThreadLocalRandom.current().nextInt(1, bossAtkPower + 1);
 			    	
 			    	if(item_13_1) {
+			    		item13Msg+=enterStr+"방어 유물의 효과: "+appliedAtkPower+" → ";
 			    		appliedAtkPower -= 2;
-			    		item13Msg+=enterStr+"방어 유물의 효과로 일부 피해를 막았습니다.";
+			    		if(appliedAtkPower < 0) {
+				    		appliedAtkPower = 0;
+				    	}
+			    		item13Msg+=appliedAtkPower;
 			    	}
 			    	if(item_13_2) {
+			    		item13Msg+=enterStr+"방어 유물의 효과: "+appliedAtkPower+" → ";
 			    		appliedAtkPower -= 4;
-			    		item13Msg+=enterStr+"방어 유물의 효과로 일부 피해를 막았습니다.";
+			    		if(appliedAtkPower < 0) {
+				    		appliedAtkPower = 0;
+				    	}
+			    		item13Msg+=appliedAtkPower;
 			    	}
 			    	if(item_13_3) {
+			    		item13Msg+=enterStr+"방어 유물의 효과: "+appliedAtkPower+" → ";
 			    		appliedAtkPower -= 6;
-			    		item13Msg+=enterStr+"방어 유물의 효과로 일부 피해를 막았습니다.";
+			    		if(appliedAtkPower < 0) {
+				    		appliedAtkPower = 0;
+				    	}
+			    		item13Msg+=appliedAtkPower;
 			    	}
-			    	if(appliedAtkPower < 0) {
-			    		appliedAtkPower = 0;
-			    	}
+			    	
 			        score -= appliedAtkPower;
 			        
 			        
@@ -2189,14 +2199,13 @@ public class LoaPlayController {
 		// 1. 공격 결과
 		msg.append(map.get("userName")).append("님이 보스를 공격했습니다!").append(enterStr);
 		
-		if (!punishMsg.isEmpty())
-			msg.append(punishMsg);
-		
 		if (!isEvade) {
 		    // 1. 먼저 입힌 데미지 표시
 		    msg.append("▶ 입힌 데미지: ").append(damage).append(enterStr);
 		    // 2. 데미지 상세 로그 (치명타, 방어 등 포함)
 		    msg.append(dmgMsg).append(enterStr);
+		    if (!punishMsg.isEmpty())
+				msg.append(punishMsg);
 		    if (!bossDefenseMsg.isEmpty())
 		        msg.append(bossDefenseMsg);
 		    if (!scoutMsg.isEmpty())
@@ -2217,6 +2226,7 @@ public class LoaPlayController {
 			msg.append(map.get("extra_msg")).append(enterStr).append(enterStr);
 		}
 		// 4. 보스 상태
+		msg.append(enterStr);
 		if (newHp == 1 && !isKill) {
 			msg.append("✨보스는 체력 1! 치명타로 최후의 일격 필요!").append(enterStr);
 		} else if (isKill) {
@@ -2229,7 +2239,7 @@ public class LoaPlayController {
 				if (item_4_1)
 					msg.append("보스 체력: ").append((int) ((newHp * 100.0) / org_hp)).append("% [스카우터]").append(enterStr);
 				else if (item_4_2)
-					msg.append("보스 체력: ").append(newHp).append("/??? (").append((int) ((newHp * 100.0) / org_hp)).append("% ) ([스카우터 Lv2]").append(enterStr);
+					msg.append("보스 체력: ").append(newHp).append("/??? (").append((int) ((newHp * 100.0) / org_hp)).append("%) [스카우터 Lv2]").append(enterStr);
 				else
 					msg.append("보스 체력: ???/???").append(enterStr);
 			}
