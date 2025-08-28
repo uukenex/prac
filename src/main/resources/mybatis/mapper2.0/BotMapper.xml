@@ -1321,6 +1321,7 @@
 			  ,M.ITEM_NAME
 			  ,M.ITEM_DESC
 			  ,M.MAX_LV
+			  ,M.ITEM_GB
 		  FROM TBOT_POINT_ITEM_M M
 		<if test="cmd == 'pointBoxOpenUp' ">
 	     WHERE NOT ( M.ITEM_GB = 1 AND EXISTS (SELECT 1

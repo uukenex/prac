@@ -816,7 +816,7 @@ public class LoaPlayController {
 	                nowOpenFlag = (rewardLevel == 2) ? "1" : "2";
 	            }
 
-	            if(itemNo.equals("9")) {
+	            if(itemNo.equals("9")||itemNo.equals("19")) {
 	            	nowOpenFlag ="1";
 	            }
 	            
@@ -2118,7 +2118,7 @@ public class LoaPlayController {
 				
 				if(debuff>0) {
 		        	map.put("useDebuff", 1);
-		        	punishMsg ="[천벌]의 디버프효과로 데미지 2배!(+"+damage+")"+enterStr;
+		        	punishMsg ="[천벌]의 디버프효과로 데미지 추가!(+"+damage+")"+enterStr;
 		        	damage = damage * 2;
 		        }
 
