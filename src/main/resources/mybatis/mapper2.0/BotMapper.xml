@@ -1324,14 +1324,14 @@
 			  ,M.ITEM_GB
 		  FROM TBOT_POINT_ITEM_M M
 		<if test="cmd == 'pointBoxOpenUp' ">
-	     WHERE (M.ITEM_GB IS NULL OR M.ITEM_GB != 1)
+	     WHERE (M.ITEM_GB IS NULL OR M.ITEM_GB != '1')
 			   OR (
-			        M.ITEM_GB = 1
+			        M.ITEM_GB = '1'
 			        AND NOT EXISTS (
 			            SELECT 1
 			            FROM TBOT_POINT_ITEM_USER U
 			            WHERE U.ITEM_NO = M.ITEM_NO
-			              AND U.ROOM_NAME = 'test123'
+			              AND U.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 			              AND U.DEL_YN = '0'
 			              AND U.OPEN_FLAG = '2'
 			        )
@@ -1340,9 +1340,9 @@
 			            FROM TBOT_POINT_ITEM_USER U2
 			            JOIN TBOT_POINT_ITEM_M M2
 			              ON U2.ITEM_NO = M2.ITEM_NO
-			            WHERE U2.USER_NAME = '전태환'
+			            WHERE U2.USER_NAME = #{userName, jdbcType=VARCHAR}
 			              AND U2.DEL_YN = '0'
-			              AND M2.ITEM_GB = 1
+			              AND M2.ITEM_GB = '1'
 			        )
 			   )
 		</if>

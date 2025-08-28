@@ -615,8 +615,8 @@ public class LoaChatController {
 				}
 				
 				if(playYn.equals("1")) {
-					//val = play.pointBoxOpen(reqMap);
-					val ="점검중입니다";
+					val = play.pointBoxOpen(reqMap);
+					//val ="점검중입니다";
 				}else {
 					val = "별도 게임방에서 진행해주세요.";
 				}
