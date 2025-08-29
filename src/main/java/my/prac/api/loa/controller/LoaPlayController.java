@@ -800,6 +800,12 @@ public class LoaPlayController {
 	                int maxLevel = Integer.parseInt(itemInfo.get("MAX_LV").toString());
 	                int currentLevel = 0;
 
+	                if(itemInfo.get("ITEM_GB") !=null && itemInfo.get("ITEM_GB").toString().equals("1")) {
+	                	if(userItemList.size() < 5) {
+	                		continue;
+	                	}
+	                }
+	                
 	                for (String userItem : userItemList) {
 	                    String[] parts = userItem.split("-");
 	                    if (parts[0].equals(itemNo)) {
