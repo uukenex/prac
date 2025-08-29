@@ -2731,6 +2731,19 @@ public class LoaChatController {
 		}
 		
 		String arkGridMsg ="아크그리드"+enterStr;
+		int ark_질서_해=-1;
+		int ark_질서_달=-1;
+		int ark_질서_별=-1;
+		int ark_혼돈_해=-1;
+		int ark_혼돈_달=-1;
+		int ark_혼돈_별=-1;
+		
+		String ark_질서_해_msg="";
+		String ark_질서_달_msg="";
+		String ark_질서_별_msg="";
+		String ark_혼돈_해_msg="";
+		String ark_혼돈_달_msg="";
+		String ark_혼돈_별_msg="";
 		String arkGridFullMsg="§아크그리드"+enterStr;
 		try {
 			List<HashMap<String, Object>> slots= (List<HashMap<String, Object>>) arkGrid.get("Slots");
@@ -2771,9 +2784,31 @@ public class LoaChatController {
 				    }
 				}
 				
+				//grid_core_type_v_e1 => 질서 - 해/ 혼돈 - 달
 				
-				arkGridMsg += slot.get("Grade") + " " + grid_core_type_v_e1+ ", 활성포인트: " + activePoint + enterStr;
-				arkGridFullMsg += slot.get("Grade") + " " + grid_core_type_v_e1+ ", 활성포인트: " + activePoint + enterStr + optionMsg.toString();
+				switch(grid_core_type_v_e1) {
+					case "질서 - 해":
+						ark_질서_해 = activePoint;
+						break;
+					case "질서 - 달":
+						ark_질서_달 = activePoint;
+						break;
+					case "질서 - 별":
+						ark_질서_별 = activePoint;
+						break;
+					case "혼돈 - 해":
+						ark_혼돈_해 = activePoint;
+						break;
+					case "혼돈 - 달":
+						ark_혼돈_달 = activePoint;
+						break;
+					case "혼돈 - 별":
+						ark_혼돈_별 = activePoint;
+						break;
+				}
+				
+				//arkGridMsg += slot.get("Grade") + " " + grid_core_type_v_e1+ ", 활성포인트: " + activePoint + enterStr ;
+				arkGridFullMsg += slot.get("Grade") + " " + slot.get("Name")+ ", 활성포인트: " + activePoint + enterStr + optionMsg.toString()+enterStr;
 				
 
 				List<HashMap<String, Object>> gems = (List<HashMap<String, Object>>)slot.get("Gems");
@@ -2806,8 +2841,9 @@ public class LoaChatController {
 				
 			}
 			List<HashMap<String, Object>> effects= (List<HashMap<String, Object>>) arkGrid.get("Effects");
+			arkGridFullMsg += enterStr+"§아크그리드 젬 전체 효과";
 			for (HashMap<String, Object> effect : effects) {
-				arkGridFullMsg += "+"+/*effect.get("Name") + ""+ */Jsoup.parse((String) effect.get("Tooltip")).text()+enterStr;
+				arkGridFullMsg += ""+/*effect.get("Name") + ""+ */Jsoup.parse((String) effect.get("Tooltip")).text()+enterStr;
 			}
 			
 			arkGridFullMsg += enterStr;
@@ -2818,7 +2854,45 @@ public class LoaChatController {
 			System.out.println("아크그리드없음");
 		}
 		
+		try {
 		
+		if(ark_질서_해==-1) {
+			ark_질서_해_msg="X";
+		}else {
+			ark_질서_해_msg = String.valueOf(ark_질서_해);
+		}
+		if(ark_질서_달==-1) {
+			ark_질서_달_msg="X";
+		}else {
+			ark_질서_달_msg = String.valueOf(ark_질서_달);
+		}
+		if(ark_질서_별==-1) {
+			ark_질서_별_msg="X";
+		}else {
+			ark_질서_별_msg = String.valueOf(ark_질서_별);
+		}
+		if(ark_혼돈_해==-1) {
+			ark_혼돈_해_msg="X";
+		}else {
+			ark_혼돈_해_msg = String.valueOf(ark_혼돈_해);
+		}
+		if(ark_혼돈_달==-1) {
+			ark_혼돈_달_msg="X";
+		}else {
+			ark_혼돈_달_msg = String.valueOf(ark_혼돈_달);
+		}
+		if(ark_혼돈_별==-1) {
+			ark_혼돈_별_msg="X";
+		}else {
+			ark_혼돈_별_msg = String.valueOf(ark_혼돈_별);
+		}
+		
+		arkGridMsg +="질서(해/달/별) 　　　 "+ark_질서_해_msg+" / "+ark_질서_달_msg+" / "+ark_질서_별_msg+enterStr;
+		arkGridMsg +="혼돈(해/달/별) 　　　 "+ark_혼돈_해_msg+" / "+ark_혼돈_달_msg+" / "+ark_혼돈_별_msg+enterStr;
+		
+		} catch(Exception e) {
+			System.out.println("아크그리드파싱실패");
+		}
 		List<String> acceossory;
 		List<String> accessoryList = new ArrayList<>();
 		try {
