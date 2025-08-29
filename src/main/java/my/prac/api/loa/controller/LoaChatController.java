@@ -2841,7 +2841,7 @@ public class LoaChatController {
 				
 			}
 			List<HashMap<String, Object>> effects= (List<HashMap<String, Object>>) arkGrid.get("Effects");
-			arkGridFullMsg += enterStr+"§아크그리드 젬 전체 효과";
+			arkGridFullMsg += enterStr+"§아크그리드 젬 전체 효과"+enterStr;
 			for (HashMap<String, Object> effect : effects) {
 				arkGridFullMsg += ""+/*effect.get("Name") + ""+ */Jsoup.parse((String) effect.get("Tooltip")).text()+enterStr;
 			}
@@ -2887,8 +2887,8 @@ public class LoaChatController {
 			ark_혼돈_별_msg = String.valueOf(ark_혼돈_별);
 		}
 		
-		arkGridMsg +="질서(해/달/별) 　　　 "+ark_질서_해_msg+" / "+ark_질서_달_msg+" / "+ark_질서_별_msg+enterStr;
-		arkGridMsg +="혼돈(해/달/별) 　　　 "+ark_혼돈_해_msg+" / "+ark_혼돈_달_msg+" / "+ark_혼돈_별_msg+enterStr;
+		arkGridMsg +="질서(해/달/별) 　　 "+ark_질서_해_msg+" / "+ark_질서_달_msg+" / "+ark_질서_별_msg+enterStr;
+		arkGridMsg +="혼돈(해/달/별) 　　 "+ark_혼돈_해_msg+" / "+ark_혼돈_달_msg+" / "+ark_혼돈_별_msg+enterStr;
 		
 		} catch(Exception e) {
 			System.out.println("아크그리드파싱실패");
