@@ -2232,7 +2232,7 @@ public class LoaPlayController {
 			    	appliedAtkPowerCalc=appliedAtkPower;
 			    	String bossAttackMsg="보스의 반격! 데미지를 입었습니다!";
 			    	if(item_13_1) {
-			    		item13Msg+=enterStr+"방어 유물의 효과: -"+appliedAtkPower+" → ";
+			    		bossAttackMsg+=enterStr+"방어 유물의 효과: -"+appliedAtkPower+" → ";
 			    		appliedAtkPowerCalc -= 3;
 			    		if(appliedAtkPowerCalc < 0) {
 			    			appliedAtkPowerCalc = 0;
@@ -2240,7 +2240,7 @@ public class LoaPlayController {
 			    		//item13Msg+="-"+appliedAtkPowerCalc;
 			    	}
 			    	if(item_13_2) {
-			    		item13Msg+=enterStr+"방어 유물의 효과: -"+appliedAtkPower+" → ";
+			    		bossAttackMsg+=enterStr+"방어 유물의 효과: -"+appliedAtkPower+" → ";
 			    		appliedAtkPowerCalc -= 6;
 			    		if(appliedAtkPowerCalc < 0) {
 			    			appliedAtkPowerCalc = 0;
@@ -2249,7 +2249,7 @@ public class LoaPlayController {
 			    		
 			    	}
 			    	if(item_13_3) {
-			    		item13Msg+=enterStr+"방어 유물의 효과: -"+appliedAtkPower+" → ";
+			    		bossAttackMsg+=enterStr+"방어 유물의 효과: -"+appliedAtkPower+" → ";
 			    		appliedAtkPowerCalc -= 9;
 			    		if(appliedAtkPowerCalc < 0) {
 			    			appliedAtkPowerCalc = 0;
@@ -2259,7 +2259,7 @@ public class LoaPlayController {
 			    	
 			        score -= appliedAtkPowerCalc;
 			        
-			        bossAttackMsg +=  "-"+appliedAtkPowerCalc; 
+			        bossAttackMsg +=  "-"+appliedAtkPowerCalc+enterStr; 
 			        
 			        
 			        if(item_19_1) {
