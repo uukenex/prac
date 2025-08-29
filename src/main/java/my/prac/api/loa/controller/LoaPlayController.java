@@ -1930,7 +1930,7 @@ public class LoaPlayController {
 	    if(item_9_1) {
 	    	if(debuff ==0) {
 	    		int rn0 = rand.nextInt(100);
-		    	if (rn0 < 10) { // 0~99 중 0~10일 때 발동(10%)
+		    	if (rn0 < 12) { // 0~99 중 0~10일 때 발동(12%)
 		    		heavensPunishment = true;
 		    		punishMsg = " [천벌] 효과! 숨은보스가 모습을 드러냅니다!" + enterStr + "보스회피,보스공격,보스방어를 무시하고 초강력치명타 피해를 줍니다!"+enterStr;
 		        }
@@ -1976,7 +1976,9 @@ public class LoaPlayController {
 	    boolean isEvade = false;
 	    String isEvadeMsg = "";
 
-	    boolean chaserCrit = false;
+	    boolean chaserCrit1 = false;
+	    boolean chaserCrit2 = false;
+	    boolean chaserCrit3 = false;
 	    if(!heavensPunishment) {
 	    //천벌이 아닐때만 계산 
 		    if (roll < (evadeRate / 100.0)) {  // 보스가 회피 성공
@@ -1985,29 +1987,41 @@ public class LoaPlayController {
 		        double effectiveEvadeRate = evadeRate;
 		        
 		        if (item_17_1) {
-		        	if (Math.random() < 0.20) { // 20%확률
+		        	if (Math.random() < 0.12) { 
 		                isEvade = false;
-		                isEvadeMsg += "[화려한추격자] 보스가 피했지만 더강하게 공격합니다!" + enterStr;
-		                chaserCrit=true;
+		                isEvadeMsg += "[화려한추격자] 보스가 피했지만 공격합니다!" + enterStr;
+		                chaserCrit1=true;
 		            } 
 		        }
 		        if (item_17_2) {
-		        	if (Math.random() < 0.40) { 
+		        	if (Math.random() < 0.12) { 
 		                isEvade = false;
-		                isEvadeMsg += "[화려한추격자] lv2 보스가 피했지만 더강하게 공격합니다!" + enterStr;
-		                chaserCrit=true;
+		                isEvadeMsg += "[화려한추격자] lv2 보스가 피했지만 공격합니다!" + enterStr;
+		                chaserCrit1=true;
+		            } else if (Math.random() < 0.24) { 
+		                isEvade = false;
+		                isEvadeMsg += "[화려한추격자] lv2 보스가 피했지만 강하게 공격합니다!" + enterStr;
+		                chaserCrit2=true;
 		            } 
 		        }
 		        if (item_17_3) {
-		        	if (Math.random() < 0.60) { 
+		        	if (Math.random() < 0.12) { 
+		                isEvade = false;
+		                isEvadeMsg += "[화려한추격자] lv3 보스가 피했지만 공격합니다!" + enterStr;
+		                chaserCrit1=true;
+		            } else if (Math.random() < 0.24) { 
+		                isEvade = false;
+		                isEvadeMsg += "[화려한추격자] lv3 보스가 피했지만 강하게 공격합니다!" + enterStr;
+		                chaserCrit2=true;
+		            } else if (Math.random() < 0.36) { 
 		                isEvade = false;
 		                isEvadeMsg += "[화려한추격자] lv3 보스가 피했지만 더강하게 공격합니다!" + enterStr;
-		                chaserCrit=true;
+		                chaserCrit3=true;
 		            }
 		        }
 		        
 		        
-		        if(!chaserCrit) {
+		        if(!(chaserCrit1||chaserCrit2||chaserCrit3)) {
 		        	 // 아이템 7-1, 7-2 가 있으면 보스 회피 무효화 시도
 			        if (item_7_1) {
 			        	effectiveEvadeRate = Math.max(evadeRate - 6, 0); // 최소 0
@@ -2049,7 +2063,6 @@ public class LoaPlayController {
 		boolean isCritical = false;
 		boolean isSuperCritical = false;
 		String bossDefenseMsg = "";
-		String item_19_1_Msg = "";
 		String dmgMsg = "";
 		map.put("evadeYn", isEvade);
 		String scoutMsg="";
@@ -2121,18 +2134,18 @@ public class LoaPlayController {
 				isSuperCritical = Math.random() < 0.10;
 			}
 
-			if (chaserCrit) {
-				if (item_17_1) {
+			if (chaserCrit1||chaserCrit2||chaserCrit3) {
+				if (chaserCrit1) {
+					isCritical = false;
+					isSuperCritical = false;
+				}
+				if (chaserCrit2) {
 					isCritical = true;
 					isSuperCritical = false;
 				}
-				if (item_17_2) {
+				if (chaserCrit3) {
 					isCritical = true;
-					isSuperCritical = false;
-				}
-				if (item_17_3) {
-					isCritical = true;
-					isSuperCritical = false;
+					isSuperCritical = true;
 				}
 			}
 			
@@ -2227,7 +2240,6 @@ public class LoaPlayController {
 	    		if(heavensPunishment) {
 	    			
 	    		}else {
-	    			String item13Msg="";
 			    	appliedAtkPower = ThreadLocalRandom.current().nextInt(1, bossAtkPower + 1);
 			    	appliedAtkPowerCalc=appliedAtkPower;
 			    	String bossAttackMsg="보스의 반격! 데미지를 입었습니다!";
