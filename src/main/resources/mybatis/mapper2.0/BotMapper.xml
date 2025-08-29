@@ -1316,6 +1316,15 @@
 		   AND U.DEL_YN ='0'
 		   AND ROWNUM = 1
 	</select>
+	<select id="selectPointItemUserOpenRate" parameterType="HashMap" resultType="int">
+		SELECT TO_NUMBER(TRUNC(OPN / (DEL + OPN) * 100)) AS RATE
+		  FROM (SELECT NVL(SUM(DECODE(A.DEL_YN, '1', 1)),0) AS DEL
+		    		  ,NVL(SUM(DECODE(A.OPEN_FLAG, '2', 1)),0) AS OPN
+				  FROM TBOT_POINT_ITEM_USER A
+			     WHERE A.USER_NAME = #{userName, jdbcType=VARCHAR}
+				   AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+			   )
+	</select>
 	<select id="selectPointItemInfoList" parameterType="HashMap" resultType="HashMap">
 		SELECT M.ITEM_NO
 			  ,M.ITEM_NAME
