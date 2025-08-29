@@ -2010,7 +2010,7 @@ public class LoaPlayController {
 		        if(!chaserCrit) {
 		        	 // 아이템 7-1, 7-2 가 있으면 보스 회피 무효화 시도
 			        if (item_7_1) {
-			        	effectiveEvadeRate = Math.max(evadeRate - 5, 0); // 최소 0
+			        	effectiveEvadeRate = Math.max(evadeRate - 6, 0); // 최소 0
 			        	if (roll < (effectiveEvadeRate / 100.0)) { //회피가 10일때 -5시켜 , 0~5
 			        		isEvadeMsg += "[덫] 실패, 보스 회피!!" + enterStr;
 			        	}else {//5~100
@@ -2019,7 +2019,7 @@ public class LoaPlayController {
 			        	}
 			           
 			        } else if (item_7_2) {
-			        	effectiveEvadeRate = Math.max(evadeRate - 10, 0); // 최소 0
+			        	effectiveEvadeRate = Math.max(evadeRate - 12, 0); // 최소 0
 			        	if (roll < (effectiveEvadeRate / 100.0)) { //회피가 11일때 -10시켜 , 0~1
 			        		isEvadeMsg += "[덫] lv2 실패, 보스 회피!!" + enterStr;
 			        	}else {//1~100
