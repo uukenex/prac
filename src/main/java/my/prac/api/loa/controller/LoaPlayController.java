@@ -1994,7 +1994,7 @@ public class LoaPlayController {
 		            } 
 		        }
 		        if (item_17_2) {
-		        	if (Math.random() < 0.12) { 
+		        	if (Math.random() < 0.20) { 
 		                isEvade = false;
 		                isEvadeMsg += "[화려한추격자] lv2 보스가 피했지만 공격합니다!" + enterStr;
 		                chaserCrit1=true;
@@ -2005,11 +2005,11 @@ public class LoaPlayController {
 		            } 
 		        }
 		        if (item_17_3) {
-		        	if (Math.random() < 0.12) { 
+		        	if (Math.random() < 0.28) { 
 		                isEvade = false;
 		                isEvadeMsg += "[화려한추격자] lv3 보스가 피했지만 공격합니다!" + enterStr;
 		                chaserCrit1=true;
-		            } else if (Math.random() < 0.24) { 
+		            } else if (Math.random() < 0.34) { 
 		                isEvade = false;
 		                isEvadeMsg += "[화려한추격자] lv3 보스가 피했지만 강하게 공격합니다!" + enterStr;
 		                chaserCrit2=true;
