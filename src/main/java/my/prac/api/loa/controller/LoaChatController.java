@@ -3083,7 +3083,11 @@ public class LoaChatController {
 		
 		resMsg += acceMainMsg;
 		resMsg += enterStr;
-		resMsg += arkGridMsg + enterStr;
+		
+		if(Double.parseDouble(itemAvgLevel.replaceAll(",", "")) >= 1700){
+			resMsg += arkGridMsg + enterStr;
+		}
+		
 		
 		
 		/*전투력 들어갈곳*/
@@ -3191,7 +3195,9 @@ public class LoaChatController {
 			}
 		}
 		
-		resMsg += enterStr + arkGridFullMsg + enterStr;
+		if(Double.parseDouble(itemAvgLevel.replaceAll(",", "")) >= 1700){
+			resMsg += enterStr + arkGridFullMsg + enterStr;
+		}
 		
 		return resMsg;
 	}
