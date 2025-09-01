@@ -57,25 +57,6 @@ public class LoaPlayController {
 		
 	}
 	
-	boolean isBossHiddenNow(boolean item_6_1, HashMap<String,Object> map) {
-	    LocalTime now = LocalTime.now();
-	    LocalTime start = LocalTime.of(2, 0);
-	    LocalTime end = LocalTime.of(6, 0);
-
-	    map.put("night_attack_ok", "N");
-
-	    if (!now.isBefore(start) && now.isBefore(end)) {
-	        if(item_6_1) {
-	            // 야간 투시경 아이템 있음
-	            map.put("night_attack_ok", "Y");
-	        } else {
-	            map.put("extra_msg", "보스가 어둠에 숨었습니다...공격불가..(02시~06시 불가시간)");
-	            return true; // 숨겨진 상태
-	        }
-	    }
-	    return false; // 숨겨지지 않음
-	}
-	
 	boolean checkBossCooldown(HashMap<String,Object> map) {
 		if("test".equals(map.get("param1"))){
 			return true;
@@ -97,11 +78,11 @@ public class LoaPlayController {
 		}
 		
 		
-		
+		/*
 		if ("Y".equals(map.get("night_attack_ok"))) {
-			map.put("timeDelay", 60);
+			map.put("timeDelay", 15);
 	        
-	    }
+	    }*/
 	    String check_val = botService.selectHourCheck(map);
 	    if(check_val == null) {
 	        return true; // 공격 가능
@@ -1871,7 +1852,9 @@ public class LoaPlayController {
 					if(item_6_1) {
 						map.put("night_attack_ok","Y");
 					}else {
-						return "보스가 안개에 숨었습니다...공격불가..(06시~10시 불가시간)";
+						map.put("night_attack_ok","Y2");
+						map.put("night_attack_y2_msg","보스가 안개에 숨었습니다...피해감소..(06시~10시)");
+						//return "보스가 안개에 숨었습니다...공격불가..(06시~10시 불가시간)";
 					}
 				}
 				break;
@@ -1882,7 +1865,9 @@ public class LoaPlayController {
 					if(item_6_1) {
 						map.put("night_attack_ok","Y");
 					}else {
-						return "보스가 구름에 숨었습니다...공격불가..(10시~15시 불가시간)";
+						map.put("night_attack_ok","Y2");
+						map.put("night_attack_y2_msg","보스가 구름에 숨었습니다...피해감소..(10시~15시)");
+						//return "보스가 구름에 숨었습니다...공격불가..(10시~15시 불가시간)";
 					}
 				}
 				break;
@@ -1893,7 +1878,9 @@ public class LoaPlayController {
 					if(item_6_1) {
 						map.put("night_attack_ok","Y");
 					}else {
-						return "보스가 퇴근길에 숨었습니다...공격불가..(15시~19시 불가시간)";
+						map.put("night_attack_ok","Y2");
+						map.put("night_attack_y2_msg","보스가 퇴근길에 숨었습니다...피해감소..(15시~19시)");
+						//return "보스가 퇴근길에 숨었습니다...공격불가..(15시~19시 불가시간)";
 					}
 				}
 				break;
@@ -1904,8 +1891,9 @@ public class LoaPlayController {
 					if(item_6_1) {
 						map.put("night_attack_ok","Y");
 					}else {
-					
-						return "보스가 어둠에 숨었습니다...공격불가..(02시~06시 불가시간)";
+						map.put("night_attack_ok","Y2");
+						map.put("night_attack_y2_msg","보스가 어둠에 숨었습니다...피해감소..(02시~06시)");
+						//return "보스가 어둠에 숨었습니다...공격불가..(02시~06시 불가시간)";
 					}
 				}
 				break;
@@ -2052,7 +2040,11 @@ public class LoaPlayController {
 	    //  ---------------
 	    String nightMsg = "";
 	    if ("Y".equals(map.get("night_attack_ok"))) {
-	        nightMsg = "[야간투시경] 적용, 숨은보스 타격 효과 " + enterStr;
+	        nightMsg = "[야간투시경] 기본데미지 보정" + enterStr;
+	        
+	    }
+	    if ("Y2".equals(map.get("night_attack_ok"))) {
+	        nightMsg = map.get("night_attack_y2_msg") + enterStr;
 	        
 	    }
 
@@ -2133,6 +2125,13 @@ public class LoaPlayController {
 			if (isCritical) {
 				isSuperCritical = Math.random() < 0.10;
 			}
+			
+			//야간투시경이 없을때 item_6_1
+			if ("Y2".equals(map.get("night_attack_ok"))) {
+				damage = damage/2;
+				isCritical = false;
+				isSuperCritical = false;
+			}
 
 			if (chaserCrit1||chaserCrit2||chaserCrit3) {
 				if (chaserCrit1) {
@@ -2153,8 +2152,6 @@ public class LoaPlayController {
 				isCritical =true;
 				isSuperCritical =true;
 			}
-
-			// 최종 데미지 산출
 
 			if (isSuperCritical) {
 				damage = baseDamage * 5;
@@ -2352,14 +2349,14 @@ public class LoaPlayController {
 		if (item_7_1 || item_7_2)
 			msg.append(isEvadeMsg);
 		
-		msg.append(nightMsg).append(enterStr);
+		msg.append(nightMsg);
 		
 		// 치명타 확률 & 결과 메시지
 		msg.append(critLog.toString());
 
 		// 3. 보스 반격
 		if (map.get("extra_msg") != null) {
-			msg.append(map.get("extra_msg")).append(enterStr).append(enterStr);
+			msg.append(map.get("extra_msg")).append(enterStr);
 		}
 		// 4. 보스 상태
 		msg.append(enterStr);

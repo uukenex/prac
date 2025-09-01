@@ -1251,7 +1251,7 @@
 		     GROUP BY user_name
 		     ORDER BY score DESC
 		  )
-		 WHERE ROWNUM &lt;= 5
+		 WHERE ROWNUM &lt;= 10
 	</select>
 	
 	<insert  id="insertPointNewBoxOpen" parameterType="HashMap">
