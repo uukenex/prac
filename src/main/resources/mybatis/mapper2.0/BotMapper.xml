@@ -1242,9 +1242,9 @@
 	</insert>
 	
 	<select id="selectTop3Contributors" parameterType="HashMap" resultType="HashMap">
-		SELECT *
+		SELECT sum(cnt) over() as tot_cnt , A.*
 		  FROM (
-		    SELECT user_name, SUM(score) AS score
+		    SELECT user_name, count(user_name) as cnt, SUM(score) AS score
 		      FROM TBOT_POINT_BOSS_log
 		     WHERE room_name = #{roomName, jdbcType=VARCHAR}
 		       AND seq = (
@@ -1254,8 +1254,8 @@
 		       )
 		       AND SCORE > 0
 		     GROUP BY user_name
-		     ORDER BY score DESC
-		  )
+		     ORDER BY count(user_name) DESC
+		  ) A
 		 WHERE ROWNUM &lt;= 10
 	</select>
 	

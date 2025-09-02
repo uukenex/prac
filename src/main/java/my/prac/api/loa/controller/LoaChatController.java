@@ -1741,6 +1741,12 @@ public class LoaChatController {
 				val = botService.selectBotManualG(reqMap);
 				passYn=true;
 				break;
+			case "/테스트2":
+				reqMap.put("reward", 1200);
+				reqMap.put("org_hp", 10000);
+				val = play.calcBossReward2(reqMap);
+				passYn=true;
+				break;
 			case "/단어목록": case "/단어조회": case "/단어": case "/ㄷㅇ":
 			
 				List<String> wordList = botService.selectBotWordSaveAll(reqMap);

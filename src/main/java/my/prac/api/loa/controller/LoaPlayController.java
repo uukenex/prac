@@ -2471,6 +2471,8 @@ public class LoaPlayController {
 		int totalReward = Integer.parseInt(map.get("reward").toString()) ; // 기본 총 보상 포인트
 		int bossOrgMaxHp = Integer.parseInt(map.get("org_hp").toString());
 		
+		totalReward = totalReward/2;
+		
 		List<HashMap<String, Object>> top3List = botService.selectTop3Contributors(map);
 		
 		int totalTop3Damage = 0;
@@ -2484,6 +2486,48 @@ public class LoaPlayController {
 		
 		msgBuilder.append(enterStr).append(enterStr).append("보스 기여도 보상 분배 결과").append(allSeeStr);
 		
+		msgBuilder.append("횟수 기여도"+enterStr);
+		for (HashMap<String, Object> row : top3List) {
+			String name = row.get("USER_NAME").toString();
+			int cnt = Integer.parseInt(row.get("CNT").toString());
+			int totCnt = Integer.parseInt(row.get("TOT_CNT").toString());
+			
+			double cntRatio = (double) cnt / totCnt * 100;
+			
+			// top3 데미지 합 대비 분배 비율
+			double rewardRatio = (double) cnt / totCnt;
+			int reward = (int) Math.floor(totalReward * rewardRatio); // 내림처리
+			
+			// 포인트 지급 처리
+			HashMap<String, Object> rewardMap = new HashMap<>();
+			rewardMap.put("roomName", roomName);
+			rewardMap.put("userName", name);
+			rewardMap.put("score", reward);
+			rewardMap.put("cmd", "boss_kill_reward");
+			
+			try {
+				botService.insertBotPointRankTx(rewardMap);
+			} catch (Exception e) {
+				// 오류 무시
+			}
+			
+			// 메시지 작성
+			String percentStr = String.format("%.0f", cntRatio); // 정수 퍼센트
+			msgBuilder
+			.append(name)
+			.append(" - ")
+			.append(cnt) //score가 3분의1로 나눠지기때문 
+			.append(" 회(")
+			.append(percentStr)
+			.append("%) - ")
+			.append(reward)
+			.append("pt 지급")
+			.append(enterStr)
+			
+			;
+		}
+		
+		msgBuilder.append("데미지 기여도"+enterStr);
 		for (HashMap<String, Object> row : top3List) {
 			String name = row.get("USER_NAME").toString();
 			int damage = Integer.parseInt(row.get("SCORE").toString());
@@ -2523,6 +2567,9 @@ public class LoaPlayController {
 			
 			;
 		}
+		
+		
+		
 		
 		
 		return msgBuilder.toString();
