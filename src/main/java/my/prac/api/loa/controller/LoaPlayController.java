@@ -745,7 +745,7 @@ public class LoaPlayController {
 	                    
 	                    map.put("cmd", "pointBoxOpenDel");
 	                    botService.updatePointNewBoxOpenTx(map);
-	                    if (count > 1) {
+	                    if (count > 10) {
 	                        // 실패 시 0~200P 환급
 	                        int refundPoint = rand.nextInt(151);
 	                        msg += enterStr + refundPoint + "P가 환급";
@@ -2127,7 +2127,7 @@ public class LoaPlayController {
 
 			critLog.setLength(0);
 			if (totalCritPercent > 0) {
-				critLog.append(enterStr+" ▶치명타확률 : ").append(totalCritPercent).append("%").append(enterStr);
+				critLog.append(enterStr+"▶ 치명타확률 : ").append(totalCritPercent).append("%").append(enterStr);
 				if (!critParts.isEmpty()) {
 					critLog.append(String.join(" ", critParts)).append(enterStr);
 				}
@@ -2256,7 +2256,7 @@ public class LoaPlayController {
 			    	appliedAtkPowerCalc=appliedAtkPower;
 			    	String bossAttackMsg="보스의 반격! 데미지를 입었습니다!";
 			    	if(item_13_1) {
-			    		bossAttackMsg+=enterStr+"방어 유물의 효과: -"+appliedAtkPower+" → ";
+			    		bossAttackMsg+=enterStr+"[바람의두루마기]: -"+appliedAtkPower+" → ";
 			    		appliedAtkPowerCalc -= 3;
 			    		if(appliedAtkPowerCalc < 0) {
 			    			appliedAtkPowerCalc = 0;
@@ -2264,7 +2264,7 @@ public class LoaPlayController {
 			    		//item13Msg+="-"+appliedAtkPowerCalc;
 			    	}
 			    	if(item_13_2) {
-			    		bossAttackMsg+=enterStr+"방어 유물의 효과: -"+appliedAtkPower+" → ";
+			    		bossAttackMsg+=enterStr+"[바람의두루마기] lv2: -"+appliedAtkPower+" → ";
 			    		appliedAtkPowerCalc -= 6;
 			    		if(appliedAtkPowerCalc < 0) {
 			    			appliedAtkPowerCalc = 0;
@@ -2273,7 +2273,7 @@ public class LoaPlayController {
 			    		
 			    	}
 			    	if(item_13_3) {
-			    		bossAttackMsg+=enterStr+"방어 유물의 효과: -"+appliedAtkPower+" → ";
+			    		bossAttackMsg+=enterStr+"[바람의두루마기] lv3: -"+appliedAtkPower+" → ";
 			    		appliedAtkPowerCalc -= 9;
 			    		if(appliedAtkPowerCalc < 0) {
 			    			appliedAtkPowerCalc = 0;
@@ -2283,7 +2283,7 @@ public class LoaPlayController {
 			    	
 			        score -= appliedAtkPowerCalc;
 			        
-			        bossAttackMsg +=  "-"+appliedAtkPowerCalc+enterStr; 
+			        bossAttackMsg +=  "-"+appliedAtkPowerCalc; 
 			        
 			        
 			        if(item_19_1) {
@@ -2349,7 +2349,7 @@ public class LoaPlayController {
 		
 		if (!isEvade) {
 		    // 1. 먼저 입힌 데미지 표시
-		    msg.append(" ▶ 입힌 데미지: ").append(damage).append(enterStr);
+		    msg.append("▶ 입힌 데미지: ").append(damage).append(enterStr);
 		    // 2. 데미지 상세 로그 (치명타, 방어 등 포함)
 		    msg.append(dmgMsg).append(enterStr);
 		    if (!punishMsg.isEmpty())
@@ -2396,7 +2396,7 @@ public class LoaPlayController {
 		msg.append("공격 쿨타임 : ").append(map.get("timeDelay")).append(" Min ").append(map.get("timeDelayMsg")).append(enterStr);
 
 		// 5. 포인트 및 보상
-		msg.append("▶획득 포인트: ").append(score);
+		msg.append("▶ 획득 포인트: ").append(score);
 		if (newbieYn)
 			msg.append(" (초보자 +10p)");
 		//msg.append("기본공격포인트 "+damage+"÷3");
