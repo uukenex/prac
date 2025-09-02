@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
@@ -1672,7 +1673,19 @@ public class LoaPlayController {
 			int orgHp = Integer.parseInt(boss.get("ORG_HP").toString());
 			int seq = Integer.parseInt(boss.get("SEQ").toString());
 			String startTime = boss.get("START_DATE").toString();
+			String startTime변환 = startTime;
+			try {
+				DateTimeFormatter parseFmt = DateTimeFormatter.ofPattern("yyyyMMdd HHmmss");
+		        LocalDateTime dt = LocalDateTime.parse(startTime변환, parseFmt);
 
+		        DateTimeFormatter outFmt = DateTimeFormatter.ofPattern("(a) h시 mm분", Locale.KOREAN);
+		        startTime변환 = dt.format(outFmt);
+			}catch (Exception e) {
+				startTime변환 = startTime;
+			}
+			
+			
+			
 			// 보스 스탯 (널이면 기본값)
 			int bossAtkRate = boss.get("ATK_RATE") != null ? Integer.parseInt(boss.get("ATK_RATE").toString()) : 10;
 			int bossAtkPower = boss.get("ATK_POWER") != null ? Integer.parseInt(boss.get("ATK_POWER").toString()) : 100;
@@ -1692,7 +1705,7 @@ public class LoaPlayController {
 			sb.append("체력 : ").append("???").append(" / ").append("???").append(enterStr);
 			sb.append("보상 : ").append(reward).append(" 포인트"+enterStr);
 			sb.append("(보상포인트 = 체력 / 20 ± 500 )").append(enterStr);
-			sb.append("출현 시간 : ").append(startTime).append(enterStr+enterStr);
+			sb.append("출현 시간 : ").append(startTime변환).append(enterStr+enterStr);
 
 			sb.append("공격력 : 1~").append(bossAtkPower);
 			sb.append("( 확률 : ").append(bossAtkRate).append("%)"+enterStr);
@@ -1704,16 +1717,16 @@ public class LoaPlayController {
 			String hideRuleMsg ="";
 			switch(hideRule) {
 				case "아침":
-					hideRuleMsg="06시~10시 공격불가";
+					hideRuleMsg="06시~10시 피해 50% 감소";
 					break;
 				case "점심":
-					hideRuleMsg="10시~15시 공격불가";
+					hideRuleMsg="10시~15시 피해 50% 감소";
 					break;
 				case "저녁":
-					hideRuleMsg="15시~19시 공격불가";
+					hideRuleMsg="15시~19시 피해 50% 감소";
 					break;
 				default:
-					hideRuleMsg="02시~06시 공격불가";
+					hideRuleMsg="02시~06시 피해 50% 감소";
 					break;
 			}
 			sb.append("숨김 룰 : ").append(hideRuleMsg).append(enterStr);
@@ -1853,7 +1866,7 @@ public class LoaPlayController {
 						map.put("night_attack_ok","Y");
 					}else {
 						map.put("night_attack_ok","Y2");
-						map.put("night_attack_y2_msg","보스가 안개에 숨었습니다...피해감소..(06시~10시)");
+						map.put("night_attack_y2_msg","보스가 안개에 숨었습니다...피해 50% 감소..(06시~10시)");
 						//return "보스가 안개에 숨었습니다...공격불가..(06시~10시 불가시간)";
 					}
 				}
@@ -1866,7 +1879,7 @@ public class LoaPlayController {
 						map.put("night_attack_ok","Y");
 					}else {
 						map.put("night_attack_ok","Y2");
-						map.put("night_attack_y2_msg","보스가 구름에 숨었습니다...피해감소..(10시~15시)");
+						map.put("night_attack_y2_msg","보스가 구름에 숨었습니다...피해 50% 감소..(10시~15시)");
 						//return "보스가 구름에 숨었습니다...공격불가..(10시~15시 불가시간)";
 					}
 				}
@@ -1879,7 +1892,7 @@ public class LoaPlayController {
 						map.put("night_attack_ok","Y");
 					}else {
 						map.put("night_attack_ok","Y2");
-						map.put("night_attack_y2_msg","보스가 퇴근길에 숨었습니다...피해감소..(15시~19시)");
+						map.put("night_attack_y2_msg","보스가 퇴근길에 숨었습니다...피해 50% 감소..(15시~19시)");
 						//return "보스가 퇴근길에 숨었습니다...공격불가..(15시~19시 불가시간)";
 					}
 				}
@@ -1892,7 +1905,7 @@ public class LoaPlayController {
 						map.put("night_attack_ok","Y");
 					}else {
 						map.put("night_attack_ok","Y2");
-						map.put("night_attack_y2_msg","보스가 어둠에 숨었습니다...피해감소..(02시~06시)");
+						map.put("night_attack_y2_msg","보스가 어둠에 숨었습니다...피해 50% 감소..(02시~06시)");
 						//return "보스가 어둠에 숨었습니다...공격불가..(02시~06시 불가시간)";
 					}
 				}
@@ -2114,7 +2127,7 @@ public class LoaPlayController {
 
 			critLog.setLength(0);
 			if (totalCritPercent > 0) {
-				critLog.append("▶치명타확률 : ").append(totalCritPercent).append("%").append(enterStr);
+				critLog.append(enterStr+" ▶치명타확률 : ").append(totalCritPercent).append("%").append(enterStr);
 				if (!critParts.isEmpty()) {
 					critLog.append(String.join(" ", critParts)).append(enterStr);
 				}
@@ -2128,7 +2141,6 @@ public class LoaPlayController {
 			
 			//야간투시경이 없을때 item_6_1
 			if ("Y2".equals(map.get("night_attack_ok"))) {
-				damage = damage/2;
 				isCritical = false;
 				isSuperCritical = false;
 			}
@@ -2159,6 +2171,9 @@ public class LoaPlayController {
 			} else if (isCritical) {
 				damage = baseDamage * 3;
 				dmgMsg = "[✨치명타!] 데미지 " + baseDamage + " → " + damage;
+			} else if ("Y2".equals(map.get("night_attack_ok"))){
+				damage = baseDamage / 2;
+				dmgMsg = "데미지 " + baseDamage + " → " + damage;
 			} else {
 				damage = baseDamage;
 				dmgMsg = "데미지 " + baseDamage + " 로 공격!";
@@ -2334,7 +2349,7 @@ public class LoaPlayController {
 		
 		if (!isEvade) {
 		    // 1. 먼저 입힌 데미지 표시
-		    msg.append("▶ 입힌 데미지: ").append(damage).append(enterStr);
+		    msg.append(" ▶ 입힌 데미지: ").append(damage).append(enterStr);
 		    // 2. 데미지 상세 로그 (치명타, 방어 등 포함)
 		    msg.append(dmgMsg).append(enterStr);
 		    if (!punishMsg.isEmpty())
@@ -2397,17 +2412,17 @@ public class LoaPlayController {
 		try {
 			HashMap<String, Object> newBoss = new HashMap<>();
 			newBoss.put("startDate",
-					LocalDateTime.now().plusHours(6).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+					LocalDateTime.now().plusHours(1).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
 			newBoss.put("roomName", map.get("roomName"));
 
 			// 랜덤 스탯 생성기
 			Random rand = new Random();
 
 			// HP : 5000 ~ 20000
-			int orgHp = 5000 + rand.nextInt(20000 - 5000 + 1);
+			int orgHp = 10000 + rand.nextInt(30000 - 5000 + 1);
 			newBoss.put("org_hp", orgHp);
 
-			int reward = orgHp / 20 + rand.nextInt(500);
+			int reward = orgHp / 20 + rand.nextInt(1000);
 			newBoss.put("reward", reward);
 
 			// --- 6개 항목 합계가 100 이하가 되도록 랜덤 분배 ---
@@ -2464,7 +2479,10 @@ public class LoaPlayController {
 		}
 		
 		StringBuilder msgBuilder = new StringBuilder();
-		msgBuilder.append("보스 기여도 보상 분배 결과").append(enterStr);
+		
+		msgBuilder.append("보스는 1시간 뒤 재등장합니다!");
+		
+		msgBuilder.append(enterStr).append(enterStr).append("보스 기여도 보상 분배 결과").append(allSeeStr);
 		
 		for (HashMap<String, Object> row : top3List) {
 			String name = row.get("USER_NAME").toString();
@@ -2506,7 +2524,7 @@ public class LoaPlayController {
 			;
 		}
 		
-		msgBuilder.append(enterStr).append(enterStr).append("6시간 뒤 재등장 예정!");
+		
 		return msgBuilder.toString();
 	}
 	
