@@ -40,6 +40,9 @@ public class BotServiceImpl implements BotService {
 	public String selectBotManual(HashMap<String, Object> hashMap){
 		return botDAO.selectBotManual(hashMap);
 	}
+	public String selectBotManualG(HashMap<String, Object> hashMap){
+		return botDAO.selectBotManualG(hashMap);
+	}
 	public List<String> selectBotLimitWordSaveAll(HashMap<String, Object> hashMap){
 		return botDAO.selectBotLimitWordSaveAll(hashMap);
 	}

@@ -43,6 +43,11 @@
 		SELECT A.TEXT
 		  FROM TBOT_MANUAL A
 	</select>
+	<select id="selectBotManualG" parameterType="hashMap" resultType="String" >
+		 /* bot.xml selectBotManualG */
+		SELECT A.TEXT
+		  FROM TBOT_MANUAL_G A
+	</select>
 	
 	<select id="selectBotLimitWordSaveAll" parameterType="hashMap" resultType="String" >
 		 /* bot.xml selectBotLimitWordSaveAll */
