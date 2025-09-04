@@ -67,15 +67,15 @@ public class LoaPlayController {
 		
 		if ("Y".equals(map.get("item_14_1"))) {
 			map.put("timeDelay", 14);
-			map.put("timeDelayMsg", "[모래시계] 효과");
+			map.put("timeDelayMsg", "[모래시계]");
 	    }
 		if ("Y".equals(map.get("item_14_2"))) {
 			map.put("timeDelay", 13);
-			map.put("timeDelayMsg", "[모래시계]2Lv 효과");
+			map.put("timeDelayMsg", "[모래시계]2Lv");
 		}
 		if ("Y".equals(map.get("item_14_3"))) {
 			map.put("timeDelay", 12);
-			map.put("timeDelayMsg", "[모래시계]3Lv 효과");
+			map.put("timeDelayMsg", "[모래시계]3Lv");
 		}
 		
 		
@@ -349,15 +349,15 @@ public class LoaPlayController {
 				score =+77;
 			}else if (item_1_1){
 				prefix="콰쾅.. 이런! 주사위가 바닥으로 떨어졌군요."
-					      +enterStr+"아이템 [부적]이 도움을 줍니다 (+25p 보정효과)"	 ;
+					      +enterStr+"아이템 [부적]이 도움을 줍니다 (+25p 보정)"	 ;
 					score =-25;
 			}else if (item_1_2){
 				prefix="콰쾅.. 이런! 주사위가 바닥으로 떨어졌군요."
-					      +enterStr+"아이템 [부적]의 효과로 보호받았습니다(+50p 보정효과)"	 ;
+					      +enterStr+"아이템 [부적]의 효과로 보호받았습니다(+50p 보정)"	 ;
 					score =-0;
 			}else if (item_1_3){
 				prefix="콰쾅.. 이런! 주사위가 바닥으로 떨어졌군요."
-					      +enterStr+"아이템 [부적]의 가호가 함께합니다 (+60p 보정효과)"	 ;
+					      +enterStr+"아이템 [부적]의 가호가 함께합니다 (+60p 보정)"	 ;
 					score =+10;
 			}else {
 				prefix="콰쾅.. 이런! 주사위가 바닥으로 떨어졌군요."
@@ -2108,12 +2108,12 @@ public class LoaPlayController {
 				if (item_4_1) {
 					totalCritPercent += 5;
 					critParts.add("+ [스카우터](5%)");
-					scoutMsg += "약점을 노출시켰습니다";
+					//scoutMsg += "약점노출시켰습니다"+enterStr;
 				}
 				if (item_4_2) {
 					totalCritPercent += 10;
 					critParts.add("+ [스카우터 Lv2](10%)");
-					scoutMsg += "약점을 노출시켰습니다";
+					//scoutMsg += "약점노출시켰습니다"+enterStr;
 				}
 			}
 
@@ -2181,7 +2181,7 @@ public class LoaPlayController {
 
 			if (debuff > 0) {
 				map.put("useDebuff", 1);
-				punishMsg = "[천벌디버프] 효과(+" + damage + "),"+(debuff-1)+"회 적용가능" + enterStr;
+				punishMsg = "[천벌디버프](+" + damage + "),"+(debuff-1)+"회 적용가능" + enterStr;
 				damage = damage * 2;
 			}
 
@@ -2289,7 +2289,7 @@ public class LoaPlayController {
 			        if(item_19_1) {
 			        	if (Math.random() <= 0.50) { // 50%확률
 			        		score+=appliedAtkPowerCalc;
-			        		bossAttackMsg+=enterStr+"[성스러운방어막,거울의힘] 효과, "+appliedAtkPowerCalc+" 피해회복,데미지반사" ;
+			        		bossAttackMsg+=enterStr+"[성스러운방어막,거울의힘], "+appliedAtkPowerCalc+" 피해회복,데미지반사" ;
 			        		//bossAttackMsg+=enterStr+appliedAtkPower+" 데미지반사" ;
 			        		
 			        		damage += appliedAtkPower;
