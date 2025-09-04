@@ -477,6 +477,11 @@
 				   AND A.CLASS_GB = #{classGb, jdbcType=VARCHAR}
 			   </if>
 			   
+			    AND NOT EXISTS (SELECT *
+							      FROM TBOT_BLOCK C
+							     WHERE UPPER(C.USER_NAME) = upper(A.CHAR_NAME)
+							       AND C.ROOM_NAME = #{roomName, jdbcType=VARCHAR} )
+			   
 			   
 		  ORDER BY A.SCORE DESC) B
  	WHERE ROWNUM &lt;= 10

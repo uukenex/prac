@@ -1108,7 +1108,6 @@ public class LoaChatController {
 				break;
 			case "/랭킹": case "/ㄹㅋ":
 				List<HashMap<String,Object>> hs;
-
 				String guildName ="";
 				switch (roomName) {
 					case "로아냥떼":
@@ -1123,7 +1122,7 @@ public class LoaChatController {
 						break;
 					case "test123":
 					case "test":
-						guildName = "냥떼목장";
+						guildName = "미움받을용기";
 						break;
 					default:
 						guildName = "";
@@ -1133,6 +1132,9 @@ public class LoaChatController {
 				if(guildName.equals("")) {
 					break;
 				}
+				
+				val +="인게임과 무관한 람쥐봇 전투력입니다!"+enterStr+enterStr;
+				
 				reqMap.put("guildName", guildName);
 				reqMap.put("targetGb", "1");
 				hs = botService.selectRoomBotPowerRank(reqMap);
