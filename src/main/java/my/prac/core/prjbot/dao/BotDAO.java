@@ -157,5 +157,7 @@ public interface BotDAO {
 	
 	//상자랭킹
 	public List<HashMap<String,Object>> selectBotPointItemUserRankAll(HashMap<String,Object> map);
+	
+	public HashMap<String,Object> selectBotMaxLv(HashMap<String,Object> map);
 }
 

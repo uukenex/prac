@@ -580,4 +580,8 @@ public class BotServiceImpl implements BotService {
 	public List<HashMap<String,Object>> selectBotPointItemUserRankAll(HashMap<String,Object> map){
 		return botDAO.selectBotPointItemUserRankAll(map);
 	}
+	
+	public HashMap<String,Object> selectBotMaxLv(HashMap<String,Object> map){
+		return botDAO.selectBotMaxLv(map);
+	}
 }

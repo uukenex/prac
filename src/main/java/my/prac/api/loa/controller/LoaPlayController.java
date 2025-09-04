@@ -3,6 +3,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -1705,7 +1706,7 @@ public class LoaPlayController {
 			//sb.append("체력 : ").append(hp).append(" / ").append(orgHp).append(enterStr);
 			sb.append("체력 : ").append("???").append(" / ").append("???").append(enterStr);
 			sb.append("보상 : ").append(reward).append(" 포인트"+enterStr);
-			sb.append("(보상포인트 = 체력 / 20 ± 500 )").append(enterStr);
+			//sb.append("(보상포인트 = 체력 / 20 ± 500 )").append(enterStr);
 			sb.append("출현 시간 : ").append(startTime변환).append(enterStr+enterStr);
 
 			sb.append("공격력 : 1~").append(bossAtkPower);
@@ -2417,51 +2418,67 @@ public class LoaPlayController {
 	    return msg.toString();
 	}
 
-	private void respawnBoss(HashMap<String, Object> map) {
+	//테스트
+	void respawnBoss(HashMap<String, Object> map) {
 		try {
 			HashMap<String, Object> newBoss = new HashMap<>();
 			newBoss.put("startDate",
-					LocalDateTime.now().plusHours(1).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+					LocalDateTime.now().plusHours(2).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
 			newBoss.put("roomName", map.get("roomName"));
 
 			// 랜덤 스탯 생성기
 			Random rand = new Random();
+			
+			 // --- 사용자 최고 레벨 조회 ---
+	        HashMap<String, Object> values = botService.selectBotMaxLv(map);
+	        int userMaxWeapon = values.get("VAL1") == null ? 0 : Integer.parseInt(values.get("VAL1").toString());
+	        int userMaxItem   = values.get("VAL2") == null ? 0 : Integer.parseInt(values.get("VAL2").toString());
+	        int userMaxAcc    = values.get("VAL3") == null ? 0 : Integer.parseInt(values.get("VAL3").toString());
 
-			// HP : 5000 ~ 20000
-			int orgHp = 10000 + rand.nextInt(30000 - 5000 + 1);
-			newBoss.put("org_hp", orgHp);
-
-			int reward = orgHp / 20 + rand.nextInt(1000);
-			newBoss.put("reward", reward);
-
-			// --- 6개 항목 합계가 100 이하가 되도록 랜덤 분배 ---
-	        int totalLimit = 100;
-	        int remaining = totalLimit - 6; // 최소 1씩 보장하기 위해 6 빼고 시작
-	        int[] stats = new int[6];
-
-	        for (int i = 0; i < 6; i++) {
-	            // 남은 포인트가 있고, 아직 배분할 슬롯이 남았을 때 랜덤 분배
-	            int add = (i == 5) ? remaining : rand.nextInt(remaining + 1);
-	            stats[i] = 1 + add; // 최소 1 보장
-	            remaining -= add;
-	            if (stats[i] > 20) stats[i] = 20; // maxStat 초과 방지
-	        }
-
-	        // 랜덤 순서 섞기
-	        for (int i = stats.length - 1; i > 0; i--) {
-	            int j = rand.nextInt(i + 1);
-	            int tmp = stats[i];
-	            stats[i] = stats[j];
-	            stats[j] = tmp;
-	        }
-
-	        newBoss.put("evadeRate", stats[0]);
-	        newBoss.put("atkRate", stats[1]);
-	        newBoss.put("atkPower", stats[2]);
-	        newBoss.put("defRate", stats[3]);
-	        newBoss.put("defPower", stats[4]);
-	        newBoss.put("critDefRate", stats[5]);
+	        // --- HP 계산: 유저 최고 레벨 총합 기반 ---
+	        int userTotalLv = userMaxWeapon + userMaxItem + userMaxAcc;
+	        int orgHp = (userTotalLv * 500) + (5000 + rand.nextInt(5001)); // 5000 ~ 10000 랜덤 보정
+	        newBoss.put("org_hp", orgHp);
 	        
+	        int reward = 1000 + (int)(Math.pow((orgHp - 5000) / 55000.0, 0.8) * 1500);
+			newBoss.put("reward", reward);
+			
+			if (userTotalLv <= 20) {
+			    // --- 유저 합계가 20레벨 이하라면 능력치는 전부 0 ---
+			    newBoss.put("evadeRate", 0);
+			    newBoss.put("atkRate", 0);
+			    newBoss.put("atkPower", 0);
+			    newBoss.put("defRate", 0);
+			    newBoss.put("defPower", 0);
+			    newBoss.put("critDefRate", 0);
+			} else {
+				// --- 능력치 총합 예산 (유저 레벨 기반 랜덤) ---
+		        int minBudget = Math.max(6, userTotalLv / 2);       // 최소 유저 합계만큼
+		        int maxBudget = Math.max(12, userTotalLv * 3 / 2);  // 1.5배까지
+		        int totalBudget = minBudget + rand.nextInt(maxBudget - minBudget + 1);
+		        
+		        int maxStat = 25; // 능력치 최대치
+		        // 최소 1씩 보장
+		        int[] stats = new int[6];
+		        Arrays.fill(stats, 1);
+		        int remaining = totalBudget - 6;
+
+		        // 남은 포인트를 랜덤 분배 (각 스탯 maxStat 초과 방지)
+		        while (remaining > 0) {
+		            int idx = rand.nextInt(6);
+		            if (stats[idx] < maxStat) {
+		                stats[idx]++;
+		                remaining--;
+		            }
+		        }
+
+		        newBoss.put("evadeRate", stats[0]);
+		        newBoss.put("atkRate", stats[1]);
+		        newBoss.put("atkPower", stats[2]);
+		        newBoss.put("defRate", stats[3]);
+		        newBoss.put("defPower", stats[4]);
+		        newBoss.put("critDefRate", stats[5]);
+			}
 	        
 			// hideRule : 아침 / 저녁 / 새벽 중 랜덤
 			String[] hideRules = { "아침","점심", "저녁", "새벽" };
@@ -2491,11 +2508,11 @@ public class LoaPlayController {
 		
 		StringBuilder msgBuilder = new StringBuilder();
 		
-		msgBuilder.append("보스는 1시간 뒤 재등장합니다!");
+		msgBuilder.append("보스는 2시간 뒤 재등장합니다!");
 		
 		msgBuilder.append(enterStr).append(enterStr).append("보스 기여도 보상 분배 결과").append(allSeeStr);
 		
-		msgBuilder.append("횟수 기여도"+enterStr);
+		msgBuilder.append(enterStr+"횟수 기여도"+enterStr);
 		for (HashMap<String, Object> row : top3List) {
 			String name = row.get("USER_NAME").toString();
 			int cnt = Integer.parseInt(row.get("CNT").toString());
@@ -2536,7 +2553,7 @@ public class LoaPlayController {
 			;
 		}
 		
-		msgBuilder.append("데미지 기여도"+enterStr);
+		msgBuilder.append(enterStr+"데미지 기여도"+enterStr);
 		for (HashMap<String, Object> row : top3List) {
 			String name = row.get("USER_NAME").toString();
 			int damage = Integer.parseInt(row.get("SCORE").toString());

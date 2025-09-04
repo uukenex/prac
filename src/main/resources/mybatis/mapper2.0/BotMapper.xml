@@ -1477,4 +1477,19 @@
 			   END AND COUNT(A.OPEN_FLAG) >= 10) B
 		 ORDER BY TRUNC(B.OPEN_SUM / B.TOT_CNT * 100) DESC
 	</select>
+	
+	<select id="selectBotMaxLv" parameterType="HashMap" resultType="HashMap">
+		SELECT VAL1, VAL2, VAL3
+		  FROM (SELECT NVL(MAX(A.WEAPON_LV),0) VAL1
+				FROM TBOT_POINT_WEAPON A
+			    WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}) AA
+			 ,(SELECT NVL(MAX(SUM(LV)),0) VAL2
+				FROM TBOT_POINT_ITEM_USER B
+			    WHERE B.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+			    GROUP BY USER_NAME) BB
+		      ,(SELECT NVL(MAX(C.WEAPON_LV),0) VAL3
+				FROM TBOT_POINT_ACC C
+			    WHERE C.ROOM_NAME = #{roomName, jdbcType=VARCHAR}) CC
+		
+	</select>
 </mapper>
