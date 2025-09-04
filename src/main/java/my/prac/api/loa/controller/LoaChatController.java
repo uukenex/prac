@@ -3618,17 +3618,12 @@ public class LoaChatController {
 			resMsg += StringUtils.center(tmpMsg1+"/"+tmpMsg2,29,spaceStr); 
 			resMsg += enterStr;
 		}
-		if(equipGemT4DealList.size()+equipGemT4CoolList.size() > 0) {
-			resMsg += "겁/작"+"";
+		if(equipGemT4DealList.size()+equipGemT4CoolList.size()+equipGemT4DualList.size() > 0) {
+			resMsg += "겁/작/광"+"";
 			String tmpMsg3 = equipGemT4DealList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
 			String tmpMsg4 = equipGemT4CoolList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
-			resMsg += StringUtils.center(tmpMsg3+"/"+tmpMsg4,29,spaceStr);
-			resMsg += enterStr;
-		}
-		if(equipGemT4DealList.size()+equipGemT4DualList.size() > 0) {
-			resMsg += "광(4T)"+"";
 			String tmpMsg5 = equipGemT4DualList.toString().replaceAll("\\[","").replaceAll("\\]","").replaceAll(" ","");
-			resMsg += StringUtils.center(tmpMsg5,29,spaceStr);
+			resMsg += StringUtils.center(tmpMsg3+"/"+tmpMsg4+"/"+tmpMsg5,29,spaceStr);
 			resMsg += enterStr;
 		}
 		return resMsg;
@@ -4011,7 +4006,7 @@ public class LoaChatController {
 		for(HashMap<String,Object> charList : sortedList) {
 			if(mainServer.equals(charList.get("ServerName").toString())) {
 				charCnt++;
-				resMsg += "[" + LoaApiUtils.shortClassName(charList.get("CharacterClassName").toString()) + "]";
+				resMsg += "[" + LoaApiUtils.shortClassName(charList.get("CharacterClassName").toString()) + "] ";
 				resMsg += charList.get("CharacterName").toString();
 				resMsg += enterStr;
 				System.out.println(ordUserId+" : "+charCnt + " / "+ sortedList.size());
@@ -4040,8 +4035,8 @@ public class LoaChatController {
 						
 						combatPower = armoryProfile.get("CombatPower").toString();
 					}
-					resMsg += "레벨:"+charList.get("ItemAvgLevel").toString().replaceAll(",", "")+"";
-					resMsg +="/ 전투력: "+combatPower;
+					resMsg += ""+charList.get("ItemAvgLevel").toString().replaceAll(",", "")+"Lv ";
+					resMsg +="전투력: "+combatPower;
 					resMsg += enterStr;
 				}
 				
