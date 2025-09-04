@@ -4012,22 +4012,36 @@ public class LoaChatController {
 			if(mainServer.equals(charList.get("ServerName").toString())) {
 				charCnt++;
 				resMsg += "[" + LoaApiUtils.shortClassName(charList.get("CharacterClassName").toString()) + "]";
-				resMsg += "("+charList.get("ItemAvgLevel").toString().replaceAll(",", "")+")";
 				resMsg += charList.get("CharacterName").toString();
 				resMsg += enterStr;
 				System.out.println(ordUserId+" : "+charCnt + " / "+ sortedList.size());
 				resMap = sub.sumTotalPowerSearch2(charList.get("CharacterName").toString());
 				
 				Map<String, Object> armoryGem = new HashMap<>();
+				Map<String, Object> armoryProfile = new HashMap<>();
 				
 				try {
 					armoryGem = (Map<String, Object>) resMap.get("ArmoryGem");
 				}catch(Exception e){
 				}
 				
+				try {
+					armoryProfile = (Map<String, Object>) resMap.get("ArmoryProfile");
+				}catch(Exception e){
+					System.out.println(userId+" ArmoryProfile");
+				}
+				
+				
 				
 				if(Double.parseDouble(charList.get("ItemAvgLevel").toString().replaceAll(",", "")) >= 1600) {
-					resMsg += miniLimitSearch(resMap,charList.get("CharacterName").toString());
+					//resMsg += miniLimitSearch(resMap,charList.get("CharacterName").toString());
+					String combatPower ="";
+					if(armoryProfile.get("CombatPower") != null) {
+						
+						combatPower = armoryProfile.get("CombatPower").toString();
+					}
+					resMsg += "레벨:"+charList.get("ItemAvgLevel").toString().replaceAll(",", "")+"";
+					resMsg +="/ 전투력: "+combatPower;
 					resMsg += enterStr;
 				}
 				
