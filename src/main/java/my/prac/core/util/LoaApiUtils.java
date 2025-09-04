@@ -457,6 +457,7 @@ public class LoaApiUtils {
 				txt ="[G]"+txt;
 			}
 			
+			txt = txt.replaceAll("유물 ","");
 			txt = txt.replaceAll(" 각인서","");
 			
 		}catch(Exception e) {
