@@ -2363,7 +2363,7 @@ public class LoaPlayController {
 					appliedAtkPower = ThreadLocalRandom.current().nextInt(10, 30);
 					appliedAtkPowerCalc = appliedAtkPower;
 					
-					bossAttackMsg = "보스의 흡혈 스킬 사용!+" + appliedAtkPowerCalc + "+의 흡혈!!";
+					bossAttackMsg = "보스의 흡혈 스킬 사용!" + appliedAtkPowerCalc + " 의 흡혈!!";
 					
 					score -= appliedAtkPowerCalc;
 					bossAttackMsg += "-" + appliedAtkPowerCalc;
