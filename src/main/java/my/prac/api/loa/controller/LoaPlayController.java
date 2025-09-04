@@ -71,11 +71,11 @@ public class LoaPlayController {
 	    }
 		if ("Y".equals(map.get("item_14_2"))) {
 			map.put("timeDelay", 13);
-			map.put("timeDelayMsg", "[모래시계]2Lv");
+			map.put("timeDelayMsg", "[모래시계2]");
 		}
 		if ("Y".equals(map.get("item_14_3"))) {
 			map.put("timeDelay", 12);
-			map.put("timeDelayMsg", "[모래시계]3Lv");
+			map.put("timeDelayMsg", "[모래시계3]");
 		}
 		
 		
@@ -452,7 +452,7 @@ public class LoaPlayController {
 		}
 		
 		
-		
+		/*
 		int diff = weaponBonusForFight(map);
 		
 
@@ -476,13 +476,13 @@ public class LoaPlayController {
 
 	        extraMsg += enterStr + userName + " " + userRate + " : " + targetRate + " " + targetName;
 	    }
-		
+		*/
 		return userName + " 님의 결투신청!"+enterStr +
 				"**결투포인트: "+score+enterStr+enterStr+
 				map.get("param1")+ " 님, 결투를 받으시려면"+enterStr+
 				" /저스트가드 입력 (60sec)"
-				+newMsg
-				+extraMsg;
+				+newMsg;
+				//+extraMsg;
 	}
 	
 	String fight_e(HashMap<String,Object> map) {
@@ -571,8 +571,9 @@ public class LoaPlayController {
 		main_user_point_org = main_user_point;
 		 sub_user_point_org =  sub_user_point;
 		
-		int diff = weaponBonusForFight(map);
-		int baseWinRate = 50 + diff;	
+		//int diff = weaponBonusForFight(map);
+		//int baseWinRate = 50 + diff;	
+		int baseWinRate = 50 ;	
 		 
 		Random random = new Random(); // 랜덤객체
 		int number = random.nextInt(100);
@@ -600,7 +601,7 @@ public class LoaPlayController {
 		}
 		
 		String extraMsg="";
-		
+		/*
 		if (diff != 0) {
 	        extraMsg += enterStr + enterStr + Math.abs(diff) + "강화 차이로 인한 승률보정!";
 
@@ -619,7 +620,7 @@ public class LoaPlayController {
 
 	        extraMsg += enterStr + userName + " " + userRate + " : " + targetRate + " " + targetName;
 	    }
-		
+		*/
 		
 		return winner_name+" 님, 승리"+enterStr
 				+main_user_name +" : "+main_user_point_org+" → "+ main_user_point +" p"+enterStr
@@ -1997,26 +1998,26 @@ public class LoaPlayController {
 		        if (item_17_2) {
 		        	if (Math.random() < 0.20) { 
 		                isEvade = false;
-		                isEvadeMsg += "[화려한추격자] lv2 보스가 피했지만 공격합니다!" + enterStr;
+		                isEvadeMsg += "[화려한추격자2]보스가 피했지만 공격합니다!" + enterStr;
 		                chaserCrit1=true;
 		            } else if (Math.random() < 0.24) { 
 		                isEvade = false;
-		                isEvadeMsg += "[화려한추격자] lv2 보스가 피했지만 강하게 공격합니다!" + enterStr;
+		                isEvadeMsg += "[화려한추격자2]보스가 피했지만 강하게 공격합니다!" + enterStr;
 		                chaserCrit2=true;
 		            } 
 		        }
 		        if (item_17_3) {
 		        	if (Math.random() < 0.28) { 
 		                isEvade = false;
-		                isEvadeMsg += "[화려한추격자] lv3 보스가 피했지만 공격합니다!" + enterStr;
+		                isEvadeMsg += "[화려한추격자3]보스가 피했지만 공격합니다!" + enterStr;
 		                chaserCrit1=true;
 		            } else if (Math.random() < 0.34) { 
 		                isEvade = false;
-		                isEvadeMsg += "[화려한추격자] lv3 보스가 피했지만 강하게 공격합니다!" + enterStr;
+		                isEvadeMsg += "[화려한추격자3]보스가 피했지만 강하게 공격합니다!" + enterStr;
 		                chaserCrit2=true;
 		            } else if (Math.random() < 0.36) { 
 		                isEvade = false;
-		                isEvadeMsg += "[화려한추격자] lv3 보스가 피했지만 더강하게 공격합니다!" + enterStr;
+		                isEvadeMsg += "[화려한추격자3]보스가 피했지만 더강하게 공격합니다!" + enterStr;
 		                chaserCrit3=true;
 		            }
 		        }
@@ -2036,10 +2037,10 @@ public class LoaPlayController {
 			        } else if (item_7_2) {
 			        	effectiveEvadeRate = Math.max(evadeRate - 12, 0); // 최소 0
 			        	if (roll < (effectiveEvadeRate / 100.0)) { //회피가 11일때 -10시켜 , 0~1
-			        		isEvadeMsg += "[덫] lv2 실패, 보스 회피!!" + enterStr;
+			        		isEvadeMsg += "[덫2]실패, 보스 회피!!" + enterStr;
 			        	}else {//1~100
 			        		isEvade = false;
-			                isEvadeMsg += "[덫] lv2 보스 회피 무효!" + enterStr;
+			                isEvadeMsg += "[덫2]보스 회피 무효!" + enterStr;
 			        	}
 			        }
 		        }
@@ -2098,11 +2099,11 @@ public class LoaPlayController {
 			}
 			if (item_5_2) {
 				totalCritPercent += 10;
-				critParts.add("+ [예리한칼날 Lv2](10%)");
+				critParts.add("+ [예리한칼날2](10%)");
 			}
 			if (item_5_3) {
 				totalCritPercent += 15;
-				critParts.add("+ [예리한칼날 Lv3](15%)");
+				critParts.add("+ [예리한칼날3](15%)");
 			}
 			if ((hp * 100.0) / org_hp < 10) {
 				if (item_4_1) {
@@ -2112,7 +2113,7 @@ public class LoaPlayController {
 				}
 				if (item_4_2) {
 					totalCritPercent += 10;
-					critParts.add("+ [스카우터 Lv2](10%)");
+					critParts.add("+ [스카우터2](10%)");
 					//scoutMsg += "약점노출시켰습니다"+enterStr;
 				}
 			}
@@ -2264,7 +2265,7 @@ public class LoaPlayController {
 			    		//item13Msg+="-"+appliedAtkPowerCalc;
 			    	}
 			    	if(item_13_2) {
-			    		bossAttackMsg+=enterStr+"[바람의두루마기] lv2: -"+appliedAtkPower+" → ";
+			    		bossAttackMsg+=enterStr+"[바람의두루마기2]: -"+appliedAtkPower+" → ";
 			    		appliedAtkPowerCalc -= 6;
 			    		if(appliedAtkPowerCalc < 0) {
 			    			appliedAtkPowerCalc = 0;
@@ -2273,7 +2274,7 @@ public class LoaPlayController {
 			    		
 			    	}
 			    	if(item_13_3) {
-			    		bossAttackMsg+=enterStr+"[바람의두루마기] lv3: -"+appliedAtkPower+" → ";
+			    		bossAttackMsg+=enterStr+"[바람의두루마기3]: -"+appliedAtkPower+" → ";
 			    		appliedAtkPowerCalc -= 9;
 			    		if(appliedAtkPowerCalc < 0) {
 			    			appliedAtkPowerCalc = 0;
@@ -2387,7 +2388,7 @@ public class LoaPlayController {
 				if (item_4_1)
 					msg.append("보스 체력: ").append((int) ((newHp * 100.0) / org_hp)).append("% [스카우터]").append(enterStr);
 				else if (item_4_2)
-					msg.append("보스 체력: ").append(newHp).append("/??? (").append((int) ((newHp * 100.0) / org_hp)).append("%) [스카우터 Lv2]").append(enterStr);
+					msg.append("보스 체력: ").append(newHp).append("/??? (").append((int) ((newHp * 100.0) / org_hp)).append("%) [스카우터2]").append(enterStr);
 				else
 					msg.append("보스 체력: ???/???").append(enterStr);
 			}
