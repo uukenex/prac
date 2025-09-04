@@ -2207,7 +2207,8 @@ public class LoaPlayController {
 	    // 보스 HP/스코어/리워드 처리
 	    // ----------------
 	    int score = damage / 3;
-	    boolean newbieYn = weaponLv < 13;
+	    boolean newbieYn = weaponLv < 15;
+	    String newbieMent1 = "";
 	    if (newbieYn) score += 10;
 
 	    boolean isKill = false;
@@ -2255,7 +2256,7 @@ public class LoaPlayController {
 	    		}else {
 			    	appliedAtkPower = ThreadLocalRandom.current().nextInt(1, bossAtkPower + 1);
 			    	appliedAtkPowerCalc=appliedAtkPower;
-			    	String bossAttackMsg="보스의 반격! 데미지를 입었습니다!";
+			    	String bossAttackMsg="보스의 반격!+"+appliedAtkPowerCalc+"+의 데미지!!";
 			    	if(item_13_1) {
 			    		bossAttackMsg+=enterStr+"[바람의두루마기]: -"+appliedAtkPower+" → ";
 			    		appliedAtkPowerCalc -= 3;
@@ -2285,6 +2286,13 @@ public class LoaPlayController {
 			        score -= appliedAtkPowerCalc;
 			        
 			        bossAttackMsg +=  "-"+appliedAtkPowerCalc; 
+			        
+			        if(newbieYn) {
+			        	if(appliedAtkPowerCalc>0) {
+			        		score += appliedAtkPowerCalc;
+			        		newbieMent1 +="(초보자)"+appliedAtkPowerCalc+" 회복";
+			        	}
+			        }
 			        
 			        
 			        if(item_19_1) {
