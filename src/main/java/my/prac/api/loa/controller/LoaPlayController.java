@@ -1758,6 +1758,9 @@ public class LoaPlayController {
 		    int appliedAtkPower=0 ;
 		    int appliedAtkPowerCalc=0 ;
 		    int debuff = 0;
+		    int debuff1 = 0;
+		    int debuff2 = 0;
+		    int drainRemain = 0;
 		    try {
 		        boss = botService.selectBotPointBoss(map);
 		        if (boss == null || boss.get("HP") == null) return "";
@@ -1773,6 +1776,9 @@ public class LoaPlayController {
 		        bossDefRate  = boss.get("DEF_RATE")  != null ? Integer.parseInt(boss.get("DEF_RATE").toString())  : 10;
 		        bossDefPower = boss.get("DEF_POWER") != null ? Integer.parseInt(boss.get("DEF_POWER").toString()) : 100;
 		        debuff       = boss.get("DEBUFF")    != null ? Integer.parseInt(boss.get("DEBUFF").toString()) : 0;
+		        debuff1      = boss.get("DEBUFF1")   != null ? Integer.parseInt(boss.get("DEBUFF1").toString()) : 0;
+		        debuff2      = boss.get("DEBUFF2")   != null ? Integer.parseInt(boss.get("DEBUFF2").toString()) : 0;
+		        drainRemain      = boss.get("DRAIN_REMAIN")   != null ? Integer.parseInt(boss.get("DRAIN_REMAIN").toString()) : 0;
 		        // ★ 추가 : 크리티컬 저항, 회피율, 숨김룰 적용
 		        if (boss.get("CRIT_DEF_RATE") != null) critDefRate = Integer.parseInt(boss.get("CRIT_DEF_RATE").toString());
 		        if (boss.get("EVADE_RATE") != null) evadeRate = Integer.parseInt(boss.get("EVADE_RATE").toString());
@@ -1844,6 +1850,19 @@ public class LoaPlayController {
 	    boolean item_15_1 = ableItemList.contains("15-1"); 
 	    boolean item_15_2 = ableItemList.contains("15-2"); 
 	    boolean item_16_1 = ableItemList.contains("16-1"); //징수의총
+	    
+
+	    double roll = Math.random();
+	    boolean flag_boss_attack = Math.random() < bossAtkRate / 100.0;
+	    boolean flag_boss_evade = Math.random() < (evadeRate / 100.0);
+	    boolean flag_boss_debuff = debuff > 0; //천벌 적용상태 
+	    boolean flag_boss_debuff1 = debuff1 > 0;
+	    boolean flag_boss_debuff2 = debuff2 > 0;
+	    boolean flag_boss_drain_remain = drainRemain > 0;
+	    //boolean flag_boss_hide_able = debuff == 0;
+	    
+	    boolean flag_boss_drain = Math.random() < 0.01;//1%확률
+	    boolean flag_boss_special = Math.random() < 0.01;//1%확률
 	    // ----------------
 	    // 보스 숨김 체크
 	    // ----------------
@@ -1853,12 +1872,7 @@ public class LoaPlayController {
 	    LocalTime end = LocalTime.of(6, 0);
 	    map.put("night_attack_ok", "N");
 	    
-	    if(debuff >0) {
-	    	//hideRule 미적용처리..
-	    	bossAtkRate = 0;
-	    	bossDefRate = 0;
-	    	evadeRate = 0;
-	    }else {
+	    if(!flag_boss_debuff) {
 	    	switch (hideRule) {
 			case "아침":
 				start = LocalTime.of(6, 0);
@@ -1913,6 +1927,12 @@ public class LoaPlayController {
 				}
 				break;
 			}
+	    } else {
+	    	//hideRule 미적용처리..
+	    	bossAtkRate = 0;
+	    	bossDefRate = 0;
+	    	evadeRate = 0;
+	    	
 	    }
 	    
 	    
@@ -1975,7 +1995,6 @@ public class LoaPlayController {
 	 // ----------------
 	    // 5. 회피 계산
 	    // ----------------
-	    double roll = Math.random();
 	    boolean isEvade = false;
 	    String isEvadeMsg = "";
 
@@ -1984,7 +2003,8 @@ public class LoaPlayController {
 	    boolean chaserCrit3 = false;
 	    if(!heavensPunishment) {
 	    //천벌이 아닐때만 계산 
-		    if (roll < (evadeRate / 100.0)) {  // 보스가 회피 성공
+	    	if (flag_boss_evade) {  // 보스가 회피 성공
+		    //if (roll < (evadeRate / 100.0)) {  // 보스가 회피 성공
 		        isEvade = true;
 		        isEvadeMsg = "보스가 회피합니다." + enterStr;
 		        double effectiveEvadeRate = evadeRate;
@@ -2134,7 +2154,7 @@ public class LoaPlayController {
 					critLog.append(String.join(" ", critParts)).append(enterStr);
 				}
 			}
-
+			
 			// 치명타 발동 여부
 			isCritical = Math.random() < (totalCritPercent / 100.0);
 			if (isCritical) {
@@ -2181,10 +2201,20 @@ public class LoaPlayController {
 				dmgMsg = "데미지 " + baseDamage + " 로 공격!";
 			}
 
-			if (debuff > 0) {
+			if (flag_boss_debuff) {
 				map.put("useDebuff", 1);
 				punishMsg = "[천벌디버프](+" + damage + "),"+(debuff-1)+"회 적용가능" + enterStr;
 				damage = damage * 2;
+			}
+			if (flag_boss_debuff1) {
+				map.put("useDebuff1", 1);
+				//punishMsg = "[천벌디버프](+" + damage + "),"+(debuff-1)+"회 적용가능" + enterStr;
+				//damage = damage * 2;
+			}
+			if (flag_boss_debuff2) {
+				map.put("useDebuff2", 1);
+				//punishMsg = "[천벌디버프](+" + damage + "),"+(debuff-1)+"회 적용가능" + enterStr;
+				//damage = damage * 2;
 			}
 
 			// 보스 방어 적용 (메시지 추가)
@@ -2197,7 +2227,7 @@ public class LoaPlayController {
 
 				bossDefenseMsg = "보스가 방어하였습니다! 데미지 " + appliedDefPower + " 상쇄!" + enterStr;
 			}
-
+			
 			if (item_19_1) {
 
 			}
@@ -2209,7 +2239,6 @@ public class LoaPlayController {
 	    // ----------------
 	    int score = damage / 3;
 	    boolean newbieYn = weaponLv < 15;
-	    String newbieMent1 = "";
 	    if (newbieYn) score += 10;
 
 	    boolean isKill = false;
@@ -2218,7 +2247,7 @@ public class LoaPlayController {
 	    if (newHp <= 0) {
 	    	if (item_16_1) {
 	    		isKill = true;
-	            score = Math.min(damage, hp) / 3 + 100;
+	            score = Math.min(damage, hp) / 3 + 100+drainRemain;
 	            map.put("reward", reward);
 	            map.put("org_hp", org_hp);
 	            rewardMsg = calcBossReward2(map);
@@ -2227,9 +2256,14 @@ public class LoaPlayController {
 	            appliedAtkPower=0;
 	            appliedDefPower=0;
 	            bossDefenseMsg="";
+	            
+	            if(flag_boss_drain_remain) {
+	            	map.put("extra_msg", enterStr+"보스가 흡혈했던 포인트 추가획득 : "+drainRemain+enterStr);
+	            }
+	            
 	    	}else if (isCritical) {
 	            isKill = true;
-	            score = Math.min(damage, hp) / 3 + 100;
+	            score = Math.min(damage, hp) / 3 + 100+drainRemain;
 	            map.put("reward", reward);
 	            map.put("org_hp", org_hp);
 	            rewardMsg = calcBossReward2(map);
@@ -2238,6 +2272,10 @@ public class LoaPlayController {
 	            appliedAtkPower=0;
 	            appliedDefPower=0;
 	            bossDefenseMsg="";
+	            
+	            if(flag_boss_drain_remain) {
+	            	map.put("extra_msg", enterStr+"보스가 흡혈했던 포인트 추가획득 : "+drainRemain+enterStr);
+	            }
 	        } else {
 	            newHp = 1;
 	            int allowedDamage = hp - 1;
@@ -2250,82 +2288,125 @@ public class LoaPlayController {
 	        }
 	    }
 	    
-	    if(!isKill) {
-	    	if (Math.random() < bossAtkRate / 100.0) {
-	    		if(heavensPunishment) {
-	    			
-	    		}else {
-			    	appliedAtkPower = ThreadLocalRandom.current().nextInt(1, bossAtkPower + 1);
-			    	appliedAtkPowerCalc=appliedAtkPower;
-			    	String bossAttackMsg="보스의 반격!+"+appliedAtkPowerCalc+"+의 데미지!!";
-			    	if(item_13_1) {
-			    		bossAttackMsg+=enterStr+"[바람의두루마기]: -"+appliedAtkPower+" → ";
-			    		appliedAtkPowerCalc -= 3;
-			    		if(appliedAtkPowerCalc < 0) {
-			    			appliedAtkPowerCalc = 0;
-				    	}
-			    		//item13Msg+="-"+appliedAtkPowerCalc;
-			    	}
-			    	if(item_13_2) {
-			    		bossAttackMsg+=enterStr+"[바람의두루마기2]: -"+appliedAtkPower+" → ";
-			    		appliedAtkPowerCalc -= 6;
-			    		if(appliedAtkPowerCalc < 0) {
-			    			appliedAtkPowerCalc = 0;
-				    	}
-			    		//item13Msg+="-"+appliedAtkPower;
-			    		
-			    	}
-			    	if(item_13_3) {
-			    		bossAttackMsg+=enterStr+"[바람의두루마기3]: -"+appliedAtkPower+" → ";
-			    		appliedAtkPowerCalc -= 9;
-			    		if(appliedAtkPowerCalc < 0) {
-			    			appliedAtkPowerCalc = 0;
-				    	}
-			    		//item13Msg+="-"+appliedAtkPowerCalc;
-			    	}
-			    	
-			        score -= appliedAtkPowerCalc;
-			        
-			        bossAttackMsg +=  "-"+appliedAtkPowerCalc; 
-			        
-			        if(newbieYn) {
-			        	if(appliedAtkPowerCalc>0) {
-			        		score += appliedAtkPowerCalc;
-			        		newbieMent1 +="(초보자)"+appliedAtkPowerCalc+" 회복";
-			        	}
-			        }
-			        
-			        
-			        if(item_19_1) {
-			        	if (Math.random() <= 0.50) { // 50%확률
-			        		score+=appliedAtkPowerCalc;
-			        		bossAttackMsg+=enterStr+"[성스러운방어막,거울의힘], "+appliedAtkPowerCalc+" 피해회복,데미지반사" ;
-			        		//bossAttackMsg+=enterStr+appliedAtkPower+" 데미지반사" ;
-			        		
-			        		damage += appliedAtkPower;
-			        		score += appliedAtkPower/3;
-			        		dmgMsg+=enterStr+"[성스러운방어막,거울의힘] +데미지 "+appliedAtkPower;
-			        		
-			        		newHp = hp - damage;
-			        		if (newHp <= 0) {
-			        			newHp = 1;
-			    	            int allowedDamage = hp - 1;
-			    	            score = Math.min(damage, allowedDamage) / 3;
-			    	            damage = allowedDamage;
-			    	            
-			    	            //보스 무적이라 메시지 필요없음 
-			    	            dmgMsg="";
-			    	            bossDefenseMsg="";
-			        		}
-			        		
-			        	}
-			        }
-			        map.put("extra_msg", bossAttackMsg);
-			        
-	    		}
-	    		
-		    }
-	    }
+	    String bossAttackMsg ="";
+		if (!isKill) {
+			if (heavensPunishment) {
+
+			} else {//천벌이 아닐때만 계산
+				if (flag_boss_attack) {
+					appliedAtkPower = ThreadLocalRandom.current().nextInt(1, bossAtkPower + 1);
+					appliedAtkPowerCalc = appliedAtkPower;
+					bossAttackMsg = "보스의 반격!+" + appliedAtkPowerCalc + "+의 데미지!!";
+					if (item_13_1) {
+						bossAttackMsg += enterStr + "[바람의두루마기]: -" + appliedAtkPower + " → ";
+						appliedAtkPowerCalc -= 3;
+						if (appliedAtkPowerCalc < 0) {
+							appliedAtkPowerCalc = 0;
+						}
+						// item13Msg+="-"+appliedAtkPowerCalc;
+					}
+					if (item_13_2) {
+						bossAttackMsg += enterStr + "[바람의두루마기2]: -" + appliedAtkPower + " → ";
+						appliedAtkPowerCalc -= 6;
+						if (appliedAtkPowerCalc < 0) {
+							appliedAtkPowerCalc = 0;
+						}
+						// item13Msg+="-"+appliedAtkPower;
+
+					}
+					if (item_13_3) {
+						bossAttackMsg += enterStr + "[바람의두루마기3]: -" + appliedAtkPower + " → ";
+						appliedAtkPowerCalc -= 9;
+						if (appliedAtkPowerCalc < 0) {
+							appliedAtkPowerCalc = 0;
+						}
+						// item13Msg+="-"+appliedAtkPowerCalc;
+					}
+
+					score -= appliedAtkPowerCalc;
+					bossAttackMsg += "-" + appliedAtkPowerCalc;
+
+					if (newbieYn) {
+						if (appliedAtkPowerCalc > 0) {
+							score += appliedAtkPowerCalc;
+							bossAttackMsg += enterStr+"(초보자) " + appliedAtkPowerCalc + " 회복";
+						}
+					}
+
+					if (item_19_1) {
+						if (Math.random() <= 0.50) { // 50%확률
+							score += appliedAtkPowerCalc;
+							bossAttackMsg += enterStr + "[성스러운방어막,거울의힘], " + appliedAtkPowerCalc + " 피해회복,데미지반사";
+							// bossAttackMsg+=enterStr+appliedAtkPower+" 데미지반사" ;
+
+							damage += appliedAtkPower;
+							score += appliedAtkPower / 3;
+							dmgMsg += enterStr + "[성스러운방어막,거울의힘] +데미지 " + appliedAtkPower;
+
+							newHp = hp - damage;
+							if (newHp <= 0) {
+								newHp = 1;
+								int allowedDamage = hp - 1;
+								score = Math.min(damage, allowedDamage) / 3;
+								damage = allowedDamage;
+
+								// 보스 무적이라 메시지 필요없음
+								dmgMsg = "";
+								bossDefenseMsg = "";
+							}
+
+						}
+					}
+					map.put("extra_msg", bossAttackMsg);
+
+				}else if(flag_boss_drain) {
+					appliedAtkPower = ThreadLocalRandom.current().nextInt(10, 30);
+					appliedAtkPowerCalc = appliedAtkPower;
+					
+					bossAttackMsg = "보스의 흡혈 스킬 사용!+" + appliedAtkPowerCalc + "+의 흡혈!!";
+					
+					score -= appliedAtkPowerCalc;
+					bossAttackMsg += "-" + appliedAtkPowerCalc;
+
+					if (newbieYn) {
+						if (appliedAtkPowerCalc > 0) {
+							score += appliedAtkPowerCalc;
+							bossAttackMsg += enterStr+"(초보자) " + appliedAtkPowerCalc + " 회복";
+						}
+					}
+					
+					map.put("drainRemain", appliedAtkPowerCalc);
+					map.put("useDrain", 1);
+					map.put("extra_msg", bossAttackMsg);
+					
+				}else if(flag_boss_special) {
+					appliedAtkPower = ThreadLocalRandom.current().nextInt(100, 200);
+					appliedAtkPowerCalc = appliedAtkPower;
+					
+					bossAttackMsg = "보스의 필살기 사용!+" + appliedAtkPowerCalc + "+의 피해..!!"
+							+enterStr+"너무큰피해에..상자를 받았습니다.";
+					
+					score -= appliedAtkPowerCalc;
+					bossAttackMsg += "-" + appliedAtkPowerCalc;
+
+					if (newbieYn) {
+						if (appliedAtkPowerCalc > 0) {
+							score += appliedAtkPowerCalc;
+							bossAttackMsg += enterStr+"(초보자) " + appliedAtkPowerCalc + " 회복";
+						}
+					}
+					
+					map.put("useSpecial", 1);
+					map.put("extra_msg", bossAttackMsg);
+					try {
+						botService.insertPointNewBoxOpenTx(map);
+					} catch (Exception e) {
+						System.out.println("오류");
+					}
+				}
+			}
+
+		}
 	    
 	    // DB 반영
 	    int new_score;

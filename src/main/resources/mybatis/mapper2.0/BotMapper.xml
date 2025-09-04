@@ -1168,7 +1168,9 @@
 	<select id="selectBotPointBoss" parameterType="HashMap" resultType="HashMap">
 		SELECT A.REWARD,A.ORG_HP,A.HP,A.SEQ,to_char(A.INSERT_DATE,'yyyymmdd hh24miss') as START_DATE,
 		       A.EVADE_RATE,A.ATK_RATE,A.DEF_RATE,CRIT_DEF_RATE,
-		       A.ATK_POWER,A.DEF_POWER,A.HIDE_RULE,A.DEBUFF
+		       A.ATK_POWER,A.DEF_POWER,A.HIDE_RULE,
+		       A.DEBUFF,A.DEBUFF1,A.DEBUFF2,
+		       A.DRAIN_TIME,A.DRAIN_REMAIN,A.SPECIAL_TIME
 		  FROM TBOT_POINT_BOSS A
 		 WHERE ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 		   AND A.END_YN = '0'
@@ -1186,6 +1188,15 @@
 		  <if test="useDebuff == 1">
 			  ,A.DEBUFF = A.DEBUFF -1
 	      </if>
+	      
+	      <if test="useDrain == 1">
+			  ,A.DRAIN_TIME = SYSDATE
+			  ,A.DRAIN_REMAIN = A.DRAIN_REMAIN+ #{drainRemain, jdbcType=NUMERIC}
+	      </if>
+		  <if test="useSpecial == 1">
+			  ,A.SPECIAL_TIME = SYSDATE
+	      </if>	  
+	      
 		 WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 		   AND A.HP = #{hp, jdbcType=NUMERIC}
 		   AND A.SEQ =#{seq, jdbcType=NUMERIC} 
