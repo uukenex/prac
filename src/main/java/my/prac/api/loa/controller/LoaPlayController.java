@@ -1854,7 +1854,8 @@ public class LoaPlayController {
 
 	    double roll = Math.random();
 	    boolean flag_boss_attack = Math.random() < bossAtkRate / 100.0;
-	    boolean flag_boss_evade = Math.random() < (evadeRate / 100.0);
+	    boolean flag_boss_evade = Math.random() < evadeRate / 100.0;
+	    boolean flag_boss_defence = Math.random() < bossDefRate / 100.0;
 	    boolean flag_boss_debuff = debuff > 0; //천벌 적용상태 
 	    boolean flag_boss_debuff1 = debuff1 > 0;
 	    boolean flag_boss_debuff2 = debuff2 > 0;
@@ -1932,6 +1933,11 @@ public class LoaPlayController {
 	    	bossAtkRate = 0;
 	    	bossDefRate = 0;
 	    	evadeRate = 0;
+	    	
+	    	flag_boss_attack = false;
+	    	flag_boss_evade = false;
+	    	flag_boss_defence = false;
+	    	//flag_boss = false;
 	    	
 	    }
 	    
@@ -2218,7 +2224,7 @@ public class LoaPlayController {
 			}
 
 			// 보스 방어 적용 (메시지 추가)
-			if (Math.random() < bossDefRate / 100.0) {
+			if (flag_boss_defence) {
 				appliedDefPower = ThreadLocalRandom.current().nextInt(1, bossDefPower + 1);
 
 				damage -= appliedDefPower;
