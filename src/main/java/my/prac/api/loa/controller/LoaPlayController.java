@@ -891,6 +891,18 @@ public class LoaPlayController {
 	            msg += itemDesc;
 	            break;
 	    }
+	    
+	    int boxCount =0;
+		try {
+			boxCount = botService.selectPointNewBoxCount(map);
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		
+		if(boxCount>0) {
+			msg +=enterStr + "보유 상자 갯수 : "+boxCount;
+		}
 
 	    return msg;
 	}
@@ -1817,6 +1829,12 @@ public class LoaPlayController {
 	    
 	    
 	    boolean item_9_1 = ableItemList.contains("9-1");
+	    
+	    boolean item_10_1 = ableItemList.contains("10-1");
+	    boolean item_10_2 = ableItemList.contains("10-2");
+	    boolean item_10_3 = ableItemList.contains("10-3");
+	    boolean item_10_4 = ableItemList.contains("10-4");
+	    boolean item_10_5 = ableItemList.contains("10-5");
 
 	    boolean item_12_1 = ableItemList.contains("12-1");
 	    boolean item_12_2 = ableItemList.contains("12-2");
@@ -1834,6 +1852,11 @@ public class LoaPlayController {
 	    boolean item_17_1 = ableItemList.contains("17-1");
 	    boolean item_17_2 = ableItemList.contains("17-2");
 	    boolean item_17_3 = ableItemList.contains("17-3");
+	    
+	    boolean item_18_1 = ableItemList.contains("18-1");
+	    boolean item_18_2 = ableItemList.contains("18-2");
+	    
+	    
 	    
 	    boolean item_19_1 = ableItemList.contains("19-1");
 	    if(item_14_1) {
@@ -1860,6 +1883,10 @@ public class LoaPlayController {
 	    boolean flag_boss_debuff1 = debuff1 > 0;
 	    boolean flag_boss_debuff2 = debuff2 > 0;
 	    boolean flag_boss_drain_remain = drainRemain > 0;
+	    
+	    
+	    boolean flag_player_double_attack = Math.random() < 0.03; //3%
+	    
 	    //boolean flag_boss_hide_able = debuff == 0;
 	    
 	    boolean flag_boss_drain = Math.random() < 0.01;//1%확률
@@ -1883,7 +1910,7 @@ public class LoaPlayController {
 						map.put("night_attack_ok","Y");
 					}else {
 						map.put("night_attack_ok","Y2");
-						map.put("night_attack_y2_msg","보스가 안개에 숨었습니다...피해 50% 감소..(06시~10시)");
+						map.put("night_attack_y2_msg","보스가 안개에 숨었습니다...피해 30% 감소..(06시~10시)");
 						//return "보스가 안개에 숨었습니다...공격불가..(06시~10시 불가시간)";
 					}
 				}
@@ -1896,7 +1923,7 @@ public class LoaPlayController {
 						map.put("night_attack_ok","Y");
 					}else {
 						map.put("night_attack_ok","Y2");
-						map.put("night_attack_y2_msg","보스가 구름에 숨었습니다...피해 50% 감소..(10시~15시)");
+						map.put("night_attack_y2_msg","보스가 구름에 숨었습니다...피해 30% 감소..(10시~15시)");
 						//return "보스가 구름에 숨었습니다...공격불가..(10시~15시 불가시간)";
 					}
 				}
@@ -1909,7 +1936,7 @@ public class LoaPlayController {
 						map.put("night_attack_ok","Y");
 					}else {
 						map.put("night_attack_ok","Y2");
-						map.put("night_attack_y2_msg","보스가 퇴근길에 숨었습니다...피해 50% 감소..(15시~19시)");
+						map.put("night_attack_y2_msg","보스가 퇴근길에 숨었습니다...피해 30% 감소..(15시~19시)");
 						//return "보스가 퇴근길에 숨었습니다...공격불가..(15시~19시 불가시간)";
 					}
 				}
@@ -1922,7 +1949,7 @@ public class LoaPlayController {
 						map.put("night_attack_ok","Y");
 					}else {
 						map.put("night_attack_ok","Y2");
-						map.put("night_attack_y2_msg","보스가 어둠에 숨었습니다...피해 50% 감소..(02시~06시)");
+						map.put("night_attack_y2_msg","보스가 어둠에 숨었습니다...피해 30% 감소..(02시~06시)");
 						//return "보스가 어둠에 숨었습니다...공격불가..(02시~06시 불가시간)";
 					}
 				}
@@ -1967,12 +1994,6 @@ public class LoaPlayController {
 	    	
 	    	
 	    }
-	    if(item_15_1) {
-	    	
-	    }
-	    if(item_15_2) {
-	    	
-	    }
 
 	    HashMap<String, Object> weaponInfo = getWeaponStats(map);
 	    
@@ -1980,6 +2001,23 @@ public class LoaPlayController {
 	    Double weaponCriticalChance = Double.parseDouble(weaponInfo.get("criticalChance").toString());
 	    int weaponMin = Integer.parseInt(weaponInfo.get("min").toString());
 	    int weaponMax = Integer.parseInt(weaponInfo.get("max").toString());
+	    
+	    if(item_10_1) {
+	    	weaponMax +=2;
+	    }
+	    if(item_10_2) {
+	    	weaponMax +=4;
+	    }
+	    if(item_10_3) {
+	    	weaponMax +=6;
+	    }
+	    if(item_10_4) {
+	    	weaponMax +=8;
+	    }
+	    if(item_10_5) {
+	    	weaponMax +=10;
+	    }
+	    
 	    
 	    if(item_12_1) {
 	    	weaponMin +=3;
@@ -2195,6 +2233,13 @@ public class LoaPlayController {
 
 			if (isSuperCritical) {
 				damage = baseDamage * 5;
+				if(item_18_1) {
+					damage += baseDamage/2; //5.5배
+			    }
+				if(item_18_2) {
+					damage += baseDamage; //6배
+				}
+				
 				dmgMsg = "[✨초강력 치명타!!] 데미지 " + baseDamage + " → " + damage;
 			} else if (isCritical) {
 				damage = baseDamage * 3;
@@ -2208,6 +2253,19 @@ public class LoaPlayController {
 				damage = damage * 7 / 10;
 				dmgMsg += " → " + damage;
 			}
+			
+			if(flag_player_double_attack) {
+		    	if(item_15_1) {
+		    		damage = damage * 3 / 2;
+		    		dmgMsg += " → " + damage+"[더블어택]";
+		    	}
+		    	if(item_15_2) {
+		    		damage = damage * 2;
+		    		dmgMsg += " → " + damage+"[더블어택2]";
+		    	}
+		    	
+		    }
+			
 			
 			if (flag_boss_debuff) {
 				map.put("useDebuff", 1);
@@ -2304,7 +2362,7 @@ public class LoaPlayController {
 				if (flag_boss_attack) {
 					appliedAtkPower = ThreadLocalRandom.current().nextInt(1, bossAtkPower + 1);
 					appliedAtkPowerCalc = appliedAtkPower;
-					bossAttackMsg = "보스의 반격!+" + appliedAtkPowerCalc + "+의 데미지!!";
+					bossAttackMsg = "▶ 보스의 반격! " + appliedAtkPowerCalc + " 의 데미지!!";
 					if (item_13_1) {
 						bossAttackMsg += enterStr + "[바람의두루마기]: -" + appliedAtkPower + " → ";
 						appliedAtkPowerCalc -= 3;
@@ -2371,7 +2429,8 @@ public class LoaPlayController {
 					appliedAtkPower = ThreadLocalRandom.current().nextInt(10, 30);
 					appliedAtkPowerCalc = appliedAtkPower;
 					
-					bossAttackMsg = "{보스의 흡혈} 사용!" + appliedAtkPowerCalc + " 의 흡혈!!";
+					bossAttackMsg = "▶ {보스의 흡혈} 사용!" + appliedAtkPowerCalc + " 의 흡혈!!";
+					bossAttackMsg += enterStr +"누적흡혈량: " + drainRemain+"(처치시 처치자 획득)";
 					
 					score -= appliedAtkPowerCalc;
 					bossAttackMsg += "-" + appliedAtkPowerCalc;
@@ -2391,7 +2450,7 @@ public class LoaPlayController {
 					appliedAtkPower = ThreadLocalRandom.current().nextInt(100, 200);
 					appliedAtkPowerCalc = appliedAtkPower;
 					
-					bossAttackMsg = "{보스의 필살기} 사용!! " + appliedAtkPowerCalc + " 의 피해..!!"
+					bossAttackMsg = "▶ {보스의 필살기} 사용!! " + appliedAtkPowerCalc + " 의 피해..!!"
 							+enterStr+"너무큰피해에..상자를 받았습니다.";
 					
 					score -= appliedAtkPowerCalc;
@@ -2504,6 +2563,19 @@ public class LoaPlayController {
 		if (!rewardMsg.isEmpty())
 			msg.append(anotherMsgStr).append(rewardMsg);
 
+		int boxCount =0;
+		try {
+			boxCount = botService.selectPointNewBoxCount(map);
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		
+		if(boxCount>0) {
+			msg.append(enterStr + "보유 상자 갯수 : "+boxCount);
+		}
+		
+		
 	    return msg.toString();
 	}
 
