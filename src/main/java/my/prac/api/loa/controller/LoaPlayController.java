@@ -1719,16 +1719,16 @@ public class LoaPlayController {
 			String hideRuleMsg ="";
 			switch(hideRule) {
 				case "아침":
-					hideRuleMsg="06시~10시 피해 50% 감소";
+					hideRuleMsg="06시~10시 피해 30% 감소";
 					break;
 				case "점심":
-					hideRuleMsg="10시~15시 피해 50% 감소";
+					hideRuleMsg="10시~15시 피해 30% 감소";
 					break;
 				case "저녁":
-					hideRuleMsg="15시~19시 피해 50% 감소";
+					hideRuleMsg="15시~19시 피해 30% 감소";
 					break;
 				default:
-					hideRuleMsg="02시~06시 피해 50% 감소";
+					hideRuleMsg="02시~06시 피해 30% 감소";
 					break;
 			}
 			sb.append("숨김 룰 : ").append(hideRuleMsg).append(enterStr);
