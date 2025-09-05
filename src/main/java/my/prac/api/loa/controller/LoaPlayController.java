@@ -2199,14 +2199,16 @@ public class LoaPlayController {
 			} else if (isCritical) {
 				damage = baseDamage * 3;
 				dmgMsg = "[✨치명타!] 데미지 " + baseDamage + " → " + damage;
-			} else if ("Y2".equals(map.get("night_attack_ok"))){
-				damage = baseDamage / 2;
-				dmgMsg = "데미지 " + baseDamage + " → " + damage;
-			} else {
+			}  else {
 				damage = baseDamage;
 				dmgMsg = "데미지 " + baseDamage + " 로 공격!";
 			}
-
+			
+			if ("Y2".equals(map.get("night_attack_ok"))){
+				damage = damage * 7 / 10;
+				dmgMsg += " → " + damage;
+			}
+			
 			if (flag_boss_debuff) {
 				map.put("useDebuff", 1);
 				punishMsg = "[천벌디버프](+" + damage + "),"+(debuff-1)+"회 적용가능" + enterStr;
@@ -2369,7 +2371,7 @@ public class LoaPlayController {
 					appliedAtkPower = ThreadLocalRandom.current().nextInt(10, 30);
 					appliedAtkPowerCalc = appliedAtkPower;
 					
-					bossAttackMsg = "보스의 흡혈 스킬 사용!" + appliedAtkPowerCalc + " 의 흡혈!!";
+					bossAttackMsg = "{보스의 흡혈} 사용!" + appliedAtkPowerCalc + " 의 흡혈!!";
 					
 					score -= appliedAtkPowerCalc;
 					bossAttackMsg += "-" + appliedAtkPowerCalc;
@@ -2389,7 +2391,7 @@ public class LoaPlayController {
 					appliedAtkPower = ThreadLocalRandom.current().nextInt(100, 200);
 					appliedAtkPowerCalc = appliedAtkPower;
 					
-					bossAttackMsg = "보스의 필살기 사용!+" + appliedAtkPowerCalc + "+의 피해..!!"
+					bossAttackMsg = "{보스의 필살기} 사용!! " + appliedAtkPowerCalc + " 의 피해..!!"
 							+enterStr+"너무큰피해에..상자를 받았습니다.";
 					
 					score -= appliedAtkPowerCalc;
