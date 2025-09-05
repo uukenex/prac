@@ -762,6 +762,18 @@ public class LoaPlayController {
 	                    msg = "보물상자 오픈 오류!!";
 	                    e.printStackTrace();
 	                }
+	                
+	                int boxCount =0;
+	        		try {
+	        			boxCount = botService.selectPointNewBoxCount(map);
+	        			
+	        		} catch (Exception e) {
+	        			e.printStackTrace();
+	        		}
+	        		
+	        		if(boxCount>0) {
+	        			msg +=enterStr + "보유 상자 갯수 : "+boxCount;
+	        		}
 	                return msg;
 	            }
 
@@ -903,7 +915,7 @@ public class LoaPlayController {
 		if(boxCount>0) {
 			msg +=enterStr + "보유 상자 갯수 : "+boxCount;
 		}
-
+	    
 	    return msg;
 	}
 	
@@ -1859,6 +1871,7 @@ public class LoaPlayController {
 	    
 	    
 	    boolean item_19_1 = ableItemList.contains("19-1");
+	    boolean item_20_1 = ableItemList.contains("20-1");
 	    if(item_14_1) {
 	    	map.put("item_14_1", "Y");
 	    }
@@ -1983,16 +1996,26 @@ public class LoaPlayController {
 	    
 	    boolean heavensPunishment = false;
 	    String punishMsg ="";
+	    String debuff1Msg ="";
+	    boolean debuff1_start =false;
 	    if(item_9_1) {
 	    	if(debuff ==0) {
 	    		int rn0 = rand.nextInt(100);
-		    	if (rn0 < 12) { // 0~99 중 0~10일 때 발동(12%)
+		    	if (rn0 < 5) { // 0~99 (5%)
 		    		heavensPunishment = true;
 		    		punishMsg = " [천벌] 효과! 숨은보스가 모습을 드러냅니다!" + enterStr + "보스회피,보스공격,보스방어를 무시하고 초강력치명타 피해를 줍니다!"+enterStr;
 		        }
 	    	}
-	    	
-	    	
+	    }
+	    
+	    if(item_20_1) {
+	    	if(debuff1 ==0) {
+	    		int rn0 = rand.nextInt(100);
+		    	if (rn0 < 5) { // 0~99 중 0~10일 때 발동(12%)
+		    		debuff1_start = true;
+		    		debuff1Msg = " [저주받은인형]보스에게 디버프부여!" + "보스의 치명저항이 감소됩니다!"+enterStr;
+		        }
+	    	}
 	    }
 
 	    HashMap<String, Object> weaponInfo = getWeaponStats(map);
@@ -2187,10 +2210,16 @@ public class LoaPlayController {
 				totalCritPercent -= critDefRate;
 				critParts.add("- 보스저항(" + critDefRate + "%)");
 			}
-
+			
+			if( debuff1 > 0) {
+				totalCritPercent += 5;
+				critParts.add("+ 보스저항감소(5%)");
+			}
+			
+			/*
 			if (totalCritPercent < 0)
 				totalCritPercent = 0;
-
+			 */
 			critLog.setLength(0);
 			if (totalCritPercent > 0) {
 				critLog.append(enterStr+"▶ 치명타확률 : ").append(totalCritPercent).append("%").append(enterStr);
@@ -2274,6 +2303,7 @@ public class LoaPlayController {
 			}
 			if (flag_boss_debuff1) {
 				map.put("useDebuff1", 1);
+				debuff1Msg = "[저주받은인형디버프](보스저항-5%)"+(debuff1-1)+"회 적용가능" + enterStr;
 				//punishMsg = "[천벌디버프](+" + damage + "),"+(debuff-1)+"회 적용가능" + enterStr;
 				//damage = damage * 2;
 			}
@@ -2491,6 +2521,10 @@ public class LoaPlayController {
 	        if(heavensPunishment) {
 	        	map.put("heavensPunishment", 1);
 	        }
+	        
+	        if(debuff1_start) {
+	        	map.put("debuff1_start", 1);
+	        }
 	        botService.updateBotPointBossTx(map);
 	        new_score = botService.insertBotPointRankTx(map);
 	    } catch (Exception e) {
@@ -2512,6 +2546,8 @@ public class LoaPlayController {
 		    msg.append(dmgMsg).append(enterStr);
 		    if (!punishMsg.isEmpty())
 				msg.append(punishMsg);
+		    if (!debuff1Msg.isEmpty())
+		    	msg.append(debuff1Msg);
 		    if (!bossDefenseMsg.isEmpty())
 		        msg.append(bossDefenseMsg);
 		    if (!scoutMsg.isEmpty())

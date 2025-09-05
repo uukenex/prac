@@ -1189,6 +1189,14 @@
 			  ,A.DEBUFF = A.DEBUFF -1
 	      </if>
 	      
+	      <if test="debuff1_start == 1">
+			  ,A.DEBUFF1 = A.DEBUFF1 +10
+	      </if>
+		  <if test="useDebuff1 == 1">
+			  ,A.DEBUFF1 = A.DEBUFF1 -1
+	      </if>
+	      
+	      
 	      <if test="useDrain == 1">
 			  ,A.DRAIN_TIME = SYSDATE
 			  ,A.DRAIN_REMAIN = A.DRAIN_REMAIN+ #{drainRemain, jdbcType=NUMERIC}
