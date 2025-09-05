@@ -5260,13 +5260,13 @@ public class LoaChatController {
 			i = Integer.parseInt(str1);
 			j = Integer.parseInt(str2);
 		}catch(Exception e) {
-			return "오류"; 
+			return "/ㄱㅂ 10 100 형태로 입력해주세요"; 
 		}
 		
 		int totJ=j; //최초 전체수량
 		
 		if(i==0 || i>j || i>2000 || j> 2000) {
-			return "오류";
+			return "/ㄱㅂ 10 100 형태로 입력해주세요";
 		}
 		
 		resMsg +=i+"개씩 개봉 전체:"+totJ+" 섬마0.3%/금화5%/은화94.7%"+enterStr;
