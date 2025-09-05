@@ -2211,7 +2211,7 @@ public class LoaPlayController {
 				critParts.add("- 보스저항(" + critDefRate + "%)");
 			}
 			
-			if( debuff1 > 0) {
+			if( debuff1 > 0 || debuff1_start) {
 				totalCritPercent += 5;
 				critParts.add("+ 보스저항감소(5%)");
 			}
@@ -2460,7 +2460,7 @@ public class LoaPlayController {
 					appliedAtkPowerCalc = appliedAtkPower;
 					
 					bossAttackMsg = "▶ {보스의 흡혈} 사용!" + appliedAtkPowerCalc + " 의 흡혈!!";
-					bossAttackMsg += enterStr +"누적흡혈량: " + drainRemain+"(처치시 처치자 획득)";
+					bossAttackMsg += enterStr +"누적흡혈량: " + (drainRemain+appliedAtkPowerCalc)+"(처치시 처치자 획득)";
 					
 					score -= appliedAtkPowerCalc;
 					bossAttackMsg += "-" + appliedAtkPowerCalc;
