@@ -2009,13 +2009,13 @@ public class LoaPlayController {
 	    }
 	    
 	    if(item_20_1) {
-	    	if(debuff1 ==0) {
+	    	//if(debuff1 ==0) {
 	    		int rn0 = rand.nextInt(100);
 		    	if (rn0 < 5) { // 0~99 중 0~10일 때 발동(12%)
 		    		debuff1_start = true;
 		    		debuff1Msg = " [저주받은인형]보스에게 디버프부여!" + "보스의 치명저항이 감소됩니다!"+enterStr;
 		        }
-	    	}
+	    	//}
 	    }
 
 	    HashMap<String, Object> weaponInfo = getWeaponStats(map);
