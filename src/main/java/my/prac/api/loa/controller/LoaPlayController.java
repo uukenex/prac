@@ -1506,6 +1506,45 @@ public class LoaPlayController {
 		return msg;
 	}
 	
+	public String acc_upgrade_logic(HashMap<String,Object> map,int rate,int tryPirce) {
+		String msg="";
+		
+		HashMap<String, Object> now;
+		int lv;
+		
+		try {
+			now = botService.selectBotPointAcc(map);
+			lv = Integer.parseInt(now.get("WEAPON_LV").toString());
+			
+			msg +=" "+ lv + "lv → "+(lv+1)+"lv 강화 시도"+enterStr+enterStr;
+			
+		} catch (Exception e1) {
+			return "악세사리가 없습니다";
+		}
+		
+		
+		try {
+			HashMap<String, Object> result;
+		    result = getSuccessRateAcc(lv,1);
+		    String resultCode = result.get("isSuccess").toString();
+		    String resultMsg = result.get("isMsg").toString();
+		    
+		    switch(resultCode) {
+		    	case "OK":
+		    		break;
+		    	case "FAIL":
+		    		break;
+		    	case "BROKEN":
+		    		break;
+		    }
+			
+			botService.updateBotPointAccTx(map);
+		} catch (Exception e) {
+			msg ="강화중 에러발생";
+		}
+		
+		return msg;
+	}
 	
 	public String weapon_upgrade_logic(HashMap<String,Object> map,int rate,int tryPirce) {
 		String msg="";
@@ -1670,7 +1709,7 @@ public class LoaPlayController {
 	}
 	
 	public HashMap<String,Object> getSuccessRate(int level,double bonusRate) {
-	    Double[] data = MiniGameUtil.RATE_MAP.getOrDefault(level, new Double[]{0.0, 0.0});
+	    Double[] data = MiniGameUtil.RATE_MAP_WEAPON.getOrDefault(level, new Double[]{0.0, 0.0});
 	    
 	    double successRate = data[0];
 	    double failAddPct = data[1];
@@ -1683,6 +1722,35 @@ public class LoaPlayController {
 	    result.put("successRate", successRate*bonusRate);     // 현재 성공 확률
 	    result.put("failAddPct", failAddPct*bonusRate);       // 실패시 누적 증가량
 	    return result;
+	}
+	public HashMap<String,Object> getSuccessRateAcc(int level,double bonusRate) {
+		Double[] data = MiniGameUtil.RATE_MAP_ACC.getOrDefault(level, new Double[]{0.0, 0.0, 0.0});
+		
+		double successRate = data[0];
+		double failRate = data[1];
+		double brokenRate = data[2];
+		
+		boolean isSuccess = false;
+		double roll = Math.random() * 100;
+		
+		String resultCode;
+		String resultMsg;
+		if (roll < successRate) {
+			resultCode = "OK"; // 성공
+			resultMsg = "성공했습니다!"; // 성공
+		} else if (roll < successRate + failRate) {
+			resultCode = "FAIL";    // 실패
+			resultMsg = "실패했습니다!"; // 성공
+		} else {
+			resultCode = "BROKEN";  // 파괴
+			resultMsg = "파괴되었습니다!"; // 성공
+		}
+		
+		HashMap<String, Object> result = new HashMap<>();
+	    result.put("isSuccess", resultCode);         // 성공 여부
+	    result.put("isMsg", resultMsg);         // 성공 여부
+
+		return result;
 	}
 
 	public String bossInfo(HashMap<String, Object> map) {
@@ -1872,6 +1940,9 @@ public class LoaPlayController {
 	    
 	    boolean item_19_1 = ableItemList.contains("19-1");
 	    boolean item_20_1 = ableItemList.contains("20-1");
+	    
+	    boolean item_21_1 = ableItemList.contains("21-1");
+	    
 	    if(item_14_1) {
 	    	map.put("item_14_1", "Y");
 	    }
@@ -2215,6 +2286,8 @@ public class LoaPlayController {
 				totalCritPercent += 5;
 				critParts.add("+ 보스저항감소(5%)");
 			}
+			
+			
 			
 			/*
 			if (totalCritPercent < 0)

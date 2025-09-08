@@ -1016,6 +1016,20 @@
 		   AND ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 	</select>
 	
+	<select id="selectCntBotPointAcc" parameterType="HashMap" resultType="int">
+		SELECT COUNT(1)
+		  FROM TBOT_POINT_ACC
+		 WHERE USER_NAME = #{userName, jdbcType=VARCHAR}
+		   AND ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+	</select>
+	
+	<select id="selectBotPointAcc" parameterType="HashMap" resultType="HashMap">
+		SELECT WEAPON_LV
+		  FROM TBOT_POINT_ACC
+		 WHERE USER_NAME = #{userName, jdbcType=VARCHAR}
+		   AND ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+	</select>
+	
 	<insert id="insertBotPointWeapon" parameterType="HashMap">
 		INSERT INTO TBOT_POINT_WEAPON
 			 (USER_NAME
@@ -1052,6 +1066,27 @@
 		UPDATE TBOT_POINT_WEAPON
 		   SET WEAPON_LV   = #{weaponLv, jdbcType=NUMERIC}
 			  ,FAIL_PCT    = #{failPct, jdbcType=NUMERIC}
+			  ,MODIFY_DATE = SYSDATE
+		 WHERE USER_NAME = #{userName, jdbcType=VARCHAR}
+		   AND ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+	</update>
+	<insert id="insertBotPointAccLog" parameterType="HashMap">
+		INSERT INTO TBOT_POINT_ACC_LOG
+			 (USER_NAME
+			 ,ROOM_NAME
+			 ,TRY_LV
+			 ,SUCCESS_YN
+			 ,INSERT_DATE)
+		VALUES
+			 (#{userName, jdbcType=VARCHAR}
+			 ,#{roomName, jdbcType=VARCHAR}
+			 ,#{tryLv, jdbcType=NUMERIC}
+			 ,#{successYn, jdbcType=VARCHAR} 
+			 ,SYSDATE)
+	</insert>
+	<update id="updateBotPointAcc" parameterType="HashMap">
+		UPDATE TBOT_POINT_ACC
+		   SET WEAPON_LV   = #{weaponLv, jdbcType=NUMERIC}
 			  ,MODIFY_DATE = SYSDATE
 		 WHERE USER_NAME = #{userName, jdbcType=VARCHAR}
 		   AND ROOM_NAME = #{roomName, jdbcType=VARCHAR}

@@ -408,6 +408,15 @@ public class BotServiceImpl implements BotService {
 		
 		return botDAO.selectBotPointWeapon(map);
 	}
+	public HashMap<String,Object> selectBotPointAcc(HashMap<String,Object> map) throws Exception{
+		
+		int cnt = botDAO.selectCntBotPointWeapon(map);
+		if(cnt == 0) {
+			return null;
+		}
+		
+		return botDAO.selectBotPointAcc(map);
+	}
 	
 	public int selectWeaponLvCheckForPoint(HashMap<String,Object> map){
 		if (map.get("param1") != null && !map.get("param1").equals("")) {
@@ -437,6 +446,20 @@ public class BotServiceImpl implements BotService {
 		}
 		
 		if(botDAO.updateBotPointWeapon(map) < 1) {
+			throw new Exception("저장 실패");
+		}
+		
+		
+		return null;
+		
+		
+	}
+	public HashMap<String,Object> updateBotPointAccTx(HashMap<String,Object> map) throws Exception{
+		if(botDAO.insertBotPointAccLog(map) < 1) {
+			throw new Exception("저장 실패");
+		}
+		
+		if(botDAO.updateBotPointAcc(map) < 1) {
 			throw new Exception("저장 실패");
 		}
 		
