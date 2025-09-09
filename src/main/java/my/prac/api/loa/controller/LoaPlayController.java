@@ -1943,6 +1943,7 @@ public class LoaPlayController {
 	    
 	    boolean item_21_1 = ableItemList.contains("21-1");
 	    
+	    boolean item_99_1 = ableItemList.contains("99-1");	    
 	    if(item_14_1) {
 	    	map.put("item_14_1", "Y");
 	    }
@@ -2287,7 +2288,10 @@ public class LoaPlayController {
 				critParts.add("+ 보스저항감소(5%)");
 			}
 			
-			
+			if(item_99_1) {
+				totalCritPercent += 50;
+				critParts.add("+ 테스트모드(50%)");
+			}
 			
 			/*
 			if (totalCritPercent < 0)
