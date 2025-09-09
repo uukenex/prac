@@ -2289,8 +2289,8 @@ public class LoaPlayController {
 			}
 			
 			if(item_99_1) {
-				totalCritPercent += 50;
-				critParts.add("+ 테스트모드(50%)");
+				totalCritPercent += 70;
+				critParts.add("+ 테스트모드(70%)");
 			}
 			
 			/*
@@ -2379,7 +2379,9 @@ public class LoaPlayController {
 				damage = damage * 2;
 			}
 			if (flag_boss_debuff1) {
-				map.put("useDebuff1", 1);
+				if(!debuff1_start) {
+					map.put("useDebuff1", 1);
+				}
 				debuff1Msg = "[저주받은인형디버프](보스저항-5%)"+(debuff1-1)+"회 적용가능" + enterStr;
 				//punishMsg = "[천벌디버프](+" + damage + "),"+(debuff-1)+"회 적용가능" + enterStr;
 				//damage = damage * 2;
