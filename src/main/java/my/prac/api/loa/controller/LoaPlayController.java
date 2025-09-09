@@ -1941,7 +1941,7 @@ public class LoaPlayController {
 	    boolean item_19_1 = ableItemList.contains("19-1");
 	    boolean item_20_1 = ableItemList.contains("20-1");
 	    
-	    boolean item_21_1 = ableItemList.contains("21-1");
+	    int item_21_1_sum = botService.selectItem21LvSum();
 	    
 	    boolean item_99_1 = ableItemList.contains("99-1");	    
 	    if(item_14_1) {
@@ -2112,6 +2112,9 @@ public class LoaPlayController {
 	    if(item_10_5) {
 	    	weaponMax +=10;
 	    }
+	    if(item_21_1_sum > 0) {
+	    	weaponMax += item_21_1_sum;
+		}
 	    
 	    
 	    if(item_12_1) {
@@ -2291,6 +2294,11 @@ public class LoaPlayController {
 			if(item_99_1) {
 				totalCritPercent += 70;
 				critParts.add("+ 테스트모드(70%)");
+			}
+			
+			if(item_21_1_sum > 0) {
+				totalCritPercent += item_21_1_sum;
+				critParts.add(" 원기옥(" + item_21_1_sum + "%)");
 			}
 			
 			/*

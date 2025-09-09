@@ -607,4 +607,7 @@ public class BotServiceImpl implements BotService {
 	public HashMap<String,Object> selectBotMaxLv(HashMap<String,Object> map){
 		return botDAO.selectBotMaxLv(map);
 	}
+	public int selectItem21LvSum(){
+		return botDAO.selectItem21LvSum();
+	}
 }

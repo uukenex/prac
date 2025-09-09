@@ -143,6 +143,7 @@ public interface BotService {
 	public List<HashMap<String,Object>> selectBotPointItemUserRankAll(HashMap<String,Object> map);
 	
 	public HashMap<String,Object> selectBotMaxLv(HashMap<String,Object> map);
+	public int selectItem21LvSum();
 } 
 
 	

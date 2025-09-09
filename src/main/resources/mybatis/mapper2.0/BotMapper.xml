@@ -1548,4 +1548,10 @@
 			    WHERE C.ROOM_NAME = #{roomName, jdbcType=VARCHAR}) CC
 		
 	</select>
+	
+	<select id="selectItem21LvSum" resultType="int">
+		SELECT NVL(SUM(A.LV), 0)
+		  FROM TBOT_POINT_ITEM_USER A
+		 WHERE A.ITEM_NO = '21'
+	</select>
 </mapper>
