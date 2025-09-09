@@ -1506,6 +1506,11 @@ public class LoaPlayController {
 		return msg;
 	}
 	
+	public String acc_buy(HashMap<String,Object> map) {
+		
+		return "";
+	}
+	
 	public String acc_upgrade_logic(HashMap<String,Object> map,int rate,int tryPirce) {
 		String msg="";
 		
@@ -1538,6 +1543,7 @@ public class LoaPlayController {
 		    		break;
 		    }
 			
+		    msg = resultMsg;
 			botService.updateBotPointAccTx(map);
 		} catch (Exception e) {
 			msg ="강화중 에러발생";
