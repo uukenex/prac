@@ -1397,7 +1397,7 @@
 			  ,M.ITEM_GB
 		  FROM TBOT_POINT_ITEM_M M
 		<if test="cmd == 'pointBoxOpenUp' ">
-	     WHERE (M.ITEM_GB IS NULL OR M.ITEM_GB != '1')
+	     WHERE ((M.ITEM_GB IS NULL OR M.ITEM_GB != '1')
 			   OR (
 			        M.ITEM_GB = '1'
 			        AND NOT EXISTS (
@@ -1417,7 +1417,9 @@
 			              AND U2.DEL_YN = '0'
 			              AND M2.ITEM_GB = '1'
 			        )
-			   )
+			   ))
+			   
+			   AND M.ITEM_GB != '0'
 		</if>
 		
 	</select>
