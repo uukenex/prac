@@ -1501,6 +1501,7 @@
 				FROM TBOT_POINT_ITEM_USER
 			    WHERE ROOM_NAME = #{roomName, jdbcType=VARCHAR} ) U
 		 WHERE M.ITEM_NO = U.ITEM_NO(+)
+		   AND M.ITEM_GB > 0
 		 ORDER BY M.ITEM_NO
 		
 	</select>
