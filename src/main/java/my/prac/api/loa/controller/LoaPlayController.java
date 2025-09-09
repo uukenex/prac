@@ -1942,6 +1942,7 @@ public class LoaPlayController {
 	    boolean item_20_1 = ableItemList.contains("20-1");
 	    
 	    int item_21_1_sum = botService.selectItem21LvSum();
+	    item_21_1_sum = item_21_1_sum/2;
 	    
 	    boolean item_99_1 = ableItemList.contains("99-1");	    
 	    if(item_14_1) {
