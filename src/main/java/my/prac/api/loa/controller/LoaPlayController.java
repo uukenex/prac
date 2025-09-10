@@ -2141,6 +2141,7 @@ public class LoaPlayController {
 	    }
 	    
 	    int weaponBaseDmg =  rand.nextInt(weaponMax - weaponMin + 1) + weaponMin;
+	    String weaponBaseDmgMsg = "("+weaponMin+"~"+weaponMax+") ";
 	 // ----------------
 	    // 5. 회피 계산
 	    // ----------------
@@ -2352,6 +2353,9 @@ public class LoaPlayController {
 				isSuperCritical =true;
 			}
 
+			
+			dmgMsg ="";
+			
 			if (isSuperCritical) {
 				damage = baseDamage * 5;
 				if(item_18_1) {
@@ -2361,13 +2365,13 @@ public class LoaPlayController {
 					damage += baseDamage; //6배
 				}
 				
-				dmgMsg = "[✨초강력 치명타!!] 데미지 " + baseDamage + " → " + damage;
+				dmgMsg += "[✨초강력 치명타!!] "+weaponBaseDmgMsg + baseDamage + " → " + damage;
 			} else if (isCritical) {
 				damage = baseDamage * 3;
-				dmgMsg = "[✨치명타!] 데미지 " + baseDamage + " → " + damage;
+				dmgMsg += "[✨치명타!] "+weaponBaseDmgMsg + baseDamage + " → " + damage;
 			}  else {
 				damage = baseDamage;
-				dmgMsg = "데미지 " + baseDamage + " 로 공격!";
+				dmgMsg += ""+weaponBaseDmgMsg + baseDamage + " 로 공격!";
 			}
 			
 			if ("Y2".equals(map.get("night_attack_ok"))){
