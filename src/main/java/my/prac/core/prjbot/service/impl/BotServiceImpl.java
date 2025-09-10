@@ -454,19 +454,43 @@ public class BotServiceImpl implements BotService {
 		
 		
 	}
-	public HashMap<String,Object> updateBotPointAccTx(HashMap<String,Object> map) throws Exception{
-		if(botDAO.insertBotPointAccLog(map) < 1) {
+	public void insertBotPointAccTx(HashMap<String,Object> map) throws Exception{
+		if(botDAO.insertBotPointAcc(map) < 1) {
 			throw new Exception("저장 실패");
 		}
 		
-		if(botDAO.updateBotPointAcc(map) < 1) {
-			throw new Exception("저장 실패");
+	}
+	public HashMap<String,Object> updateBotPointAccTx(HashMap<String,Object> map) throws Exception{
+		
+		switch( map.get("resultCode").toString()) {
+			case "OK":
+	    	case "FAIL":
+	    		if(botDAO.insertBotPointAccLog(map) < 1) {
+	    			throw new Exception("저장 실패");
+	    		}
+	    		
+	    		if(botDAO.updateBotPointAcc(map) < 1) {
+	    			throw new Exception("저장 실패");
+	    		}
+	    		break;
+	    	case "BROKEN":
+	    		if(botDAO.deleteBotPointAcc(map) < 1) {
+	    			throw new Exception("저장 실패");
+	    		}
+	    		break;
 		}
+		
+		
 		
 		
 		return null;
 		
 		
+	}
+	public void updateBotPointAccTryMentTx(HashMap<String,Object> map) throws Exception{
+		if(botDAO.updateBotPointAccTryMent(map) < 1) {
+			throw new Exception("저장 실패");
+		}
 	}
 	
 	public List<HashMap<String,Object>> selectBotPointWeaponRank(HashMap<String,Object> map){

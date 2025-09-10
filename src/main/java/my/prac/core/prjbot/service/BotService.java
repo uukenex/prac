@@ -96,7 +96,9 @@ public interface BotService {
 	//악세강화
 	public HashMap<String,Object> selectBotPointAcc(HashMap<String,Object> map) throws Exception;
 	
+	public void insertBotPointAccTx(HashMap<String,Object> map) throws Exception;
 	public HashMap<String,Object> updateBotPointAccTx(HashMap<String,Object> map) throws Exception;
+	public void updateBotPointAccTryMentTx(HashMap<String,Object> map) throws Exception;
 	
 	public HashMap<String,Object> upsertDailyWeaponUpgradeTx(HashMap<String,Object> map) throws Exception;
 	public List<HashMap<String,Object>> selectBotPointWeaponRank(HashMap<String,Object> map);

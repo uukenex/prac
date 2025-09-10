@@ -1024,11 +1024,22 @@
 	</select>
 	
 	<select id="selectBotPointAcc" parameterType="HashMap" resultType="HashMap">
-		SELECT WEAPON_LV
-		  FROM TBOT_POINT_ACC
+		SELECT WEAPON_LV AS LV,WEAPON_LV, CASE
+							   WHEN A.PROC_DATE > SYSDATE - 1 / 60 / 24 THEN
+							    'TRY'
+							   ELSE
+							    'MENT'
+						  END AS TRY
+		  FROM TBOT_POINT_ACC A
 		 WHERE USER_NAME = #{userName, jdbcType=VARCHAR}
 		   AND ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 	</select>
+	<update id="updateBotPointAccTryMent" parameterType="HashMap">
+		UPDATE TBOT_POINT_ACC A 
+		   SET A.PROC_DATE = SYSDATE
+		 WHERE USER_NAME = #{userName, jdbcType=VARCHAR}
+		   AND ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+	</update>
 	
 	<insert id="insertBotPointWeapon" parameterType="HashMap">
 		INSERT INTO TBOT_POINT_WEAPON
@@ -1070,6 +1081,22 @@
 		 WHERE USER_NAME = #{userName, jdbcType=VARCHAR}
 		   AND ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 	</update>
+	<insert id="insertBotPointAcc" parameterType="HashMap">
+		INSERT INTO TBOT_POINT_WEAPON
+			 (USER_NAME
+			 ,ROOM_NAME
+			 ,WEAPON_LV
+			 ,FAIL_PCT
+			 ,INSERT_DATE
+			 ,MODIFY_DATE)
+		VALUES
+			 (#{userName, jdbcType=VARCHAR}
+			 ,#{roomName, jdbcType=VARCHAR}
+			 ,0
+			 ,0
+			 ,SYSDATE
+			 ,SYSDATE)
+	</insert>
 	<insert id="insertBotPointAccLog" parameterType="HashMap">
 		INSERT INTO TBOT_POINT_ACC_LOG
 			 (USER_NAME
@@ -1091,6 +1118,11 @@
 		 WHERE USER_NAME = #{userName, jdbcType=VARCHAR}
 		   AND ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 	</update>
+	<delete id="deleteBotPointAcc" parameterType="HashMap">
+		DELETE TBOT_POINT_ACC
+		 WHERE USER_NAME = #{userName, jdbcType=VARCHAR}
+		   AND ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+	</delete>
 	
 	<select id="selectBotPointWeaponRank" parameterType="HashMap" resultType="HashMap"> 
 		SELECT A.USER_NAME AS USER_NAME

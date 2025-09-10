@@ -1506,12 +1506,117 @@ public class LoaPlayController {
 		return msg;
 	}
 	
+	//악세구매
 	public String acc_buy(HashMap<String,Object> map) {
+		map.put("cmd", "acc_buy");
+		String msg = map.get("userName")+" 님,"+enterStr;
+		int defaultScore = 200;
+		int calcScore = defaultScore ;
 		
-		return "";
+		
+		
+		try {
+			
+			HashMap<String, Object> now = botService.selectBotPointAcc(map);
+			if(now == null) {
+				List<HashMap<String,Object>> ls = botService.selectBotPointRankNewScore(map);
+				int score = Integer.parseInt(ls.get(0).get("SCORE").toString());
+				if(score < calcScore) {
+					return map.get("userName")+" 님, "+calcScore+" p 이상만 가능합니다.";
+				}
+				map.put("score", -calcScore);
+				int new_score = botService.insertBotPointRankTx(map);
+				
+				msg += calcScore+"p 사용! .. "+score + "p → "+ new_score+"p"+enterStr;
+				
+				botService.insertBotPointAccTx(map);
+				msg += enterStr+"악세구매 완료, MAX DMG +3" + enterStr+"/악세강화 : 200p";
+				
+			}else {
+				return map.get("userName")+" 님, "+"이미 존재! "+enterStr+"/악세강화 : 200p";
+			}
+			
+			
+			
+			
+		}catch(Exception e) {
+			return "악세구매 포인트조회 오류입니다.";
+		}
+		
+		
+		
+		
+		return msg;
 	}
 	
-	public String acc_upgrade_logic(HashMap<String,Object> map,int rate,int tryPirce) {
+	String acc_upgrade(HashMap<String,Object> map) {
+		map.put("cmd", "acc_upgrade");
+		String msg = map.get("userName")+" 님,"+enterStr;
+		int defaultScore = 200;
+		int calcScore = defaultScore ;
+		
+		try {
+			
+			HashMap<String, Object> now = botService.selectBotPointAcc(map);
+			if(now == null) {
+				return map.get("userName")+" 님, "+"이미 존재! "+enterStr+"/악세강화 : 200p";
+			}else {
+				
+				switch (now.get("TRY").toString()) {
+					case "TRY":
+						List<HashMap<String,Object>> ls = botService.selectBotPointRankNewScore(map);
+						int score = Integer.parseInt(ls.get(0).get("SCORE").toString());
+						if(score < calcScore) {
+							return map.get("userName")+" 님, "+calcScore+" p 이상만 가능합니다.";
+						}
+						map.put("score", -calcScore);
+						int new_score = botService.insertBotPointRankTx(map);
+						msg += calcScore+"p 사용! .. "+score + "p → "+ new_score+"p"+enterStr;
+						msg += acc_upgrade_logic(map);
+						
+						break;
+					case "MENT":
+						int lv = Integer.parseInt(now.get("LV").toString()) ;
+						HashMap<String, Object> result;
+					    result = getSuccessRateAcc(lv);
+					    HashMap<String, Object> result1;
+					    result1 = getSuccessRateAcc(lv+1);
+					    
+						msg += "현재 악세 Lv: "+ lv +enterStr;
+						msg +="Critical/MinDmg/MaxDmg"+enterStr;
+						msg +=result.get("plus_crit")+"/"+result.get("plus_min")+"/"+result.get("plus_max") +enterStr+enterStr;
+						
+						msg += "성공/실패/파괴" + enterStr;
+					    msg += (int)result.get("successRate")+"/"+(int)result.get("failRate")+"/"+(int)result.get("brokenRate")+enterStr +enterStr;
+					    
+					    msg += "성공시 악세 Lv: "+ lv+1 +enterStr;
+						msg +="Critical/MinDmg/MaxDmg"+enterStr;
+						msg +=result1.get("plus_crit")+"/"+result1.get("plus_min")+"/"+result1.get("plus_max") +enterStr+enterStr;
+					            
+						msg +="1 Min 내로 /악세강화 입력 시 강화시도!";
+						botService.updateBotPointAccTryMentTx(map);
+						
+						break;
+				}
+				
+				
+			}
+			
+			
+			
+		}catch(Exception e) {
+			return "악세구매 포인트조회 오류입니다.";
+		}
+		
+		
+		
+		
+		//msg += enterStr + map.get("extra_msg");
+		return msg;
+	}
+	
+	//악세강화 
+	public String acc_upgrade_logic(HashMap<String,Object> map) {
 		String msg="";
 		
 		HashMap<String, Object> now;
@@ -1524,24 +1629,27 @@ public class LoaPlayController {
 			msg +=" "+ lv + "lv → "+(lv+1)+"lv 강화 시도"+enterStr+enterStr;
 			
 		} catch (Exception e1) {
-			return "악세사리가 없습니다";
+			return  map.get("userName")+" 님, 악세사리가 없습니다. "+enterStr+"/악세구매 : 200p";
 		}
 		
 		
 		try {
 			HashMap<String, Object> result;
-		    result = getSuccessRateAcc(lv,1);
+		    result = getSuccessRateAcc(lv);
 		    String resultCode = result.get("isSuccess").toString();
 		    String resultMsg = result.get("isMsg").toString();
 		    
 		    switch(resultCode) {
 		    	case "OK":
+		    		map.put("weaponLv", lv+1);
 		    		break;
 		    	case "FAIL":
+		    		map.put("weaponLv", lv);
 		    		break;
 		    	case "BROKEN":
 		    		break;
 		    }
+			map.put("resultCode", resultCode);
 			
 		    msg = resultMsg;
 			botService.updateBotPointAccTx(map);
@@ -1729,14 +1837,18 @@ public class LoaPlayController {
 	    result.put("failAddPct", failAddPct*bonusRate);       // 실패시 누적 증가량
 	    return result;
 	}
-	public HashMap<String,Object> getSuccessRateAcc(int level,double bonusRate) {
+	public HashMap<String,Object> getSuccessRateAcc(int level) {
 		Double[] data = MiniGameUtil.RATE_MAP_ACC.getOrDefault(level, new Double[]{0.0, 0.0, 0.0});
-		
+		int[] pow_data = MiniGameUtil.POW_MAP_ACC.getOrDefault(level, new int[]{0, 0, 0}); 
 		double successRate = data[0];
 		double failRate = data[1];
 		double brokenRate = data[2];
+		int plus_crit = pow_data[0];
+		int plus_min = pow_data[1];
+		int plus_max = pow_data[2];
 		
-		boolean isSuccess = false;
+		
+		
 		double roll = Math.random() * 100;
 		
 		String resultCode;
@@ -1754,7 +1866,16 @@ public class LoaPlayController {
 		
 		HashMap<String, Object> result = new HashMap<>();
 	    result.put("isSuccess", resultCode);         // 성공 여부
-	    result.put("isMsg", resultMsg);         // 성공 여부
+	    result.put("isMsg", resultMsg); 
+	    
+	    result.put("successRate", successRate);   
+	    result.put("failRate", failRate);         
+	    result.put("brokenRate", brokenRate);       
+	    
+	    result.put("plus_crit", plus_crit);   
+	    result.put("plus_min", plus_min);         
+	    result.put("plus_max", plus_max);         
+	    
 
 		return result;
 	}
@@ -2291,7 +2412,7 @@ public class LoaPlayController {
 
 			if (critDefRate > 0) {
 				totalCritPercent -= critDefRate;
-				critParts.add("- 보스저항(" + critDefRate + "%)");
+				critParts.add("+ 보스저항(-" + critDefRate + "%)");
 			}
 			
 			if( debuff1 > 0 || debuff1_start) {
@@ -2306,7 +2427,7 @@ public class LoaPlayController {
 			
 			if(item_21_1_sum > 0) {
 				totalCritPercent += item_21_1_sum;
-				critParts.add(" 원기옥(" + item_21_1_sum + "%)");
+				critParts.add("+ 원기옥(" + item_21_1_sum + "%)");
 			}
 			
 			/*

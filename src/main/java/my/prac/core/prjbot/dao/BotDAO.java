@@ -116,8 +116,11 @@ public interface BotDAO {
 	public int insertBotPointWeapon(HashMap<String,Object> map);
 	public int insertBotPointWeaponLog(HashMap<String,Object> map);
 	public int updateBotPointWeapon(HashMap<String,Object> map);
+	public int insertBotPointAcc(HashMap<String,Object> map);
 	public int insertBotPointAccLog(HashMap<String,Object> map);
 	public int updateBotPointAcc(HashMap<String,Object> map);
+	public int deleteBotPointAcc(HashMap<String,Object> map);
+	public int updateBotPointAccTryMent(HashMap<String,Object> map) throws Exception;
 	
 	public List<HashMap<String,Object>> selectBotPointWeaponRank(HashMap<String,Object> map);
 	public String selectBotPointWeaponRank1st();

@@ -7,6 +7,7 @@ import java.util.Map;
 public class MiniGameUtil {
 	public static final Map<Integer, Double[]> RATE_MAP_WEAPON = new HashMap<>();
 	public static final Map<Integer, Double[]> RATE_MAP_ACC = new HashMap<>();
+	public static final Map<Integer, int[]> POW_MAP_ACC = new HashMap<>();
 	
 	static {
 	  //0강화에서 시도-> 성공률15%, 장기 쌓이는양 20% 
@@ -45,6 +46,7 @@ public class MiniGameUtil {
 	}
 	
 	static {
+		//0->1시도시, 30%성공 60%실패 10%파괴 ,
 	    RATE_MAP_ACC.put(0,  new Double[]{30.0, 60.0, 10.0});
 	    RATE_MAP_ACC.put(1,  new Double[]{30.0, 60.0, 10.0});
 	    RATE_MAP_ACC.put(2,  new Double[]{15.0, 75.0, 10.0});
@@ -61,6 +63,25 @@ public class MiniGameUtil {
 	    RATE_MAP_ACC.put(13, new Double[]{5.0 , 76.0, 19.0});
 	    RATE_MAP_ACC.put(14, new Double[]{3.0 , 77.6, 19.4});
 	    RATE_MAP_ACC.put(15, new Double[]{1.0 , 79.2, 19.8});
+	}
+	static {
+		//0강일때 파워: 크리0 민뎀0 맥뎀3
+		POW_MAP_ACC.put(0,   new int[]{0 , 0, 3});
+		POW_MAP_ACC.put(1,   new int[]{1 , 1, 4});
+		POW_MAP_ACC.put(2,   new int[]{2 , 2, 5});
+		POW_MAP_ACC.put(3,   new int[]{3 , 3, 7});
+		POW_MAP_ACC.put(4,   new int[]{4 , 4, 9});
+		POW_MAP_ACC.put(5,   new int[]{5 , 5, 11});
+		POW_MAP_ACC.put(6,   new int[]{6 , 6, 14});
+		POW_MAP_ACC.put(7,   new int[]{7 , 7, 17});
+		POW_MAP_ACC.put(8,   new int[]{8 , 8, 20});
+		POW_MAP_ACC.put(9,   new int[]{9 , 9, 24});
+		POW_MAP_ACC.put(10,  new int[]{10,10, 28});
+		POW_MAP_ACC.put(11,  new int[]{11,11, 32});
+		POW_MAP_ACC.put(12,  new int[]{12,12, 37});
+		POW_MAP_ACC.put(13,  new int[]{13,13, 42});
+		POW_MAP_ACC.put(14,  new int[]{14,14, 48});
+		POW_MAP_ACC.put(15,  new int[]{15,15, 55});
 	}
 
 
