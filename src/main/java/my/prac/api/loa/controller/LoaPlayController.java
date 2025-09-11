@@ -1682,7 +1682,7 @@ public class LoaPlayController {
 		    		map.put("successYn", "BROKEN");
 		    		break;
 		    }
-		    map.put("weaponLv", (lv+1));
+		    map.put("weaponLv", (lv));
 			map.put("resultCode", resultCode);
 			
 		    
