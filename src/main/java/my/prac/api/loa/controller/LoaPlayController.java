@@ -2435,7 +2435,7 @@ public class LoaPlayController {
 			List<String> critParts = new ArrayList<>();
 
 			if (weaponLv > 0) {
-				critParts.add("무기강화(" + baseCritPercent + "%)");
+				critParts.add("플레이어강화(" + baseCritPercent + "%)");
 			}
 
 			if (item_5_1) {
@@ -2666,7 +2666,7 @@ public class LoaPlayController {
 					appliedAtkPowerCalc = appliedAtkPower;
 					bossAttackMsg = "▶ 보스의 반격! " + appliedAtkPowerCalc + " 의 데미지!!";
 					if (player_deffence > 0) {
-						bossAttackMsg += enterStr + "-" + appliedAtkPower + " → ";
+						bossAttackMsg += enterStr +"(플레이어 방어)"+ "-" + appliedAtkPower + " → ";
 						appliedAtkPowerCalc -= player_deffence;
 						if (appliedAtkPowerCalc < 0) {
 							appliedAtkPowerCalc = 0;
