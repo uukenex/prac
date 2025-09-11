@@ -1664,26 +1664,25 @@ public class LoaPlayController {
 		    
 		    switch(resultCode) {
 		    	case "OK":
-		    		map.put("weaponLv", (lv+1));
 		    		map.put("successYn", "OK");
 		    		msg+="";
 		    		
 		    		HashMap<String, Object> result1 = getSuccessRateAcc(lv+1);
 		    		msg +=enterStr+enterStr ;
-					msg +="Critical +" +result1.get("plus_crit")+enterStr;
-					msg +="MinDmg +" +result1.get("plus_min")+enterStr;
-					msg +="MaxDmg +" +result1.get("plus_max")+enterStr;
+		    		msg +="최소공격력 +" +result1.get("plus_min")+ ", ";
+					msg +="최대공격력 +" +result1.get("plus_max")+enterStr;
+					msg +="치명타 +" +result1.get("plus_crit")+"%, ";
+					msg +="방어력 +" +result1.get("plus_def")+enterStr+enterStr;
 					msg +=enterStr;
 		    		break;
 		    	case "FAIL":
-		    		map.put("weaponLv", lv);
 		    		map.put("successYn", "FAIL");
 		    		break;
 		    	case "BROKEN":
-		    		map.put("weaponLv", lv);
 		    		map.put("successYn", "BROKEN");
 		    		break;
 		    }
+		    map.put("weaponLv", (lv+1));
 			map.put("resultCode", resultCode);
 			
 		    
