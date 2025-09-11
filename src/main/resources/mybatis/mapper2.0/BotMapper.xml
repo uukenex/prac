@@ -1082,7 +1082,7 @@
 		   AND ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 	</update>
 	<insert id="insertBotPointAcc" parameterType="HashMap">
-		INSERT INTO TBOT_POINT_WEAPON
+		INSERT INTO TBOT_POINT_ACC
 			 (USER_NAME
 			 ,ROOM_NAME
 			 ,WEAPON_LV
@@ -1107,7 +1107,7 @@
 		VALUES
 			 (#{userName, jdbcType=VARCHAR}
 			 ,#{roomName, jdbcType=VARCHAR}
-			 ,#{tryLv, jdbcType=NUMERIC}
+			 ,#{weaponLv, jdbcType=NUMERIC}
 			 ,#{successYn, jdbcType=VARCHAR} 
 			 ,SYSDATE)
 	</insert>
@@ -1115,6 +1115,7 @@
 		UPDATE TBOT_POINT_ACC
 		   SET WEAPON_LV   = #{weaponLv, jdbcType=NUMERIC}
 			  ,MODIFY_DATE = SYSDATE
+			  ,PROC_DATE = SYSDATE-1/60/24
 		 WHERE USER_NAME = #{userName, jdbcType=VARCHAR}
 		   AND ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 	</update>
@@ -1193,6 +1194,18 @@
 	<select id="selectWeaponLvCheckForPoint" parameterType="HashMap" resultType="int">
 		SELECT NVL(SUM(A.WEAPON_LV), 0)
 		  FROM TBOT_POINT_WEAPON A
+		 WHERE ROOM_NAME = #{roomName, jdbcType=VARCHAR} 
+		   AND upper(USER_NAME) = upper(#{newUserName, jdbcType=VARCHAR})
+	</select>
+	<select id="selectAccLvCheck" parameterType="HashMap" resultType="int">
+		SELECT NVL(SUM(A.WEAPON_LV), 0)
+		  FROM TBOT_POINT_ACC A
+		 WHERE ROOM_NAME = #{roomName, jdbcType=VARCHAR} 
+		   AND USER_NAME = #{userName, jdbcType=VARCHAR}
+	</select>
+	<select id="selectAccLvCheckForPoint" parameterType="HashMap" resultType="int">
+		SELECT NVL(SUM(A.WEAPON_LV), 0)
+		  FROM TBOT_POINT_ACC A
 		 WHERE ROOM_NAME = #{roomName, jdbcType=VARCHAR} 
 		   AND upper(USER_NAME) = upper(#{newUserName, jdbcType=VARCHAR})
 	</select>

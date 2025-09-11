@@ -8,6 +8,7 @@ public class MiniGameUtil {
 	public static final Map<Integer, Double[]> RATE_MAP_WEAPON = new HashMap<>();
 	public static final Map<Integer, Double[]> RATE_MAP_ACC = new HashMap<>();
 	public static final Map<Integer, int[]> POW_MAP_ACC = new HashMap<>();
+	public static final Map<Integer, int[]> GOLD_MAP_ACC = new HashMap<>();
 	
 	static {
 	  //0강화에서 시도-> 성공률15%, 장기 쌓이는양 20% 
@@ -43,6 +44,11 @@ public class MiniGameUtil {
 	    RATE_MAP_WEAPON.put(29, new Double[]{0.1, 1.00});
 	    RATE_MAP_WEAPON.put(30, new Double[]{0.1, 0.93});
 	    //30에서의 시도 -> 성공률 0.1, 장기백 0.93
+	    RATE_MAP_WEAPON.put(31, new Double[]{0.1, 0.80});
+	    RATE_MAP_WEAPON.put(32, new Double[]{0.1, 0.70});
+	    RATE_MAP_WEAPON.put(33, new Double[]{0.1, 0.60});
+	    RATE_MAP_WEAPON.put(34, new Double[]{0.1, 0.50});
+	    RATE_MAP_WEAPON.put(35, new Double[]{0.1, 0.40});
 	}
 	
 	static {
@@ -66,25 +72,44 @@ public class MiniGameUtil {
 	}
 	static {
 		//0강일때 파워: 크리0 민뎀0 맥뎀3
-		POW_MAP_ACC.put(0,   new int[]{0 , 0, 3});
-		POW_MAP_ACC.put(1,   new int[]{1 , 1, 4});
-		POW_MAP_ACC.put(2,   new int[]{2 , 2, 5});
-		POW_MAP_ACC.put(3,   new int[]{3 , 3, 7});
-		POW_MAP_ACC.put(4,   new int[]{4 , 4, 9});
-		POW_MAP_ACC.put(5,   new int[]{5 , 5, 11});
-		POW_MAP_ACC.put(6,   new int[]{6 , 6, 14});
-		POW_MAP_ACC.put(7,   new int[]{7 , 7, 17});
+		POW_MAP_ACC.put(0,   new int[]{0 , 0, 0});
+		POW_MAP_ACC.put(1,   new int[]{1 , 1, 1});
+		POW_MAP_ACC.put(2,   new int[]{2 , 2, 2});
+		POW_MAP_ACC.put(3,   new int[]{3 , 3, 4});
+		POW_MAP_ACC.put(4,   new int[]{4 , 4, 6});
+		POW_MAP_ACC.put(5,   new int[]{5 , 5, 9});
+		POW_MAP_ACC.put(6,   new int[]{6 , 6, 12});
+		POW_MAP_ACC.put(7,   new int[]{7 , 7, 16});
 		POW_MAP_ACC.put(8,   new int[]{8 , 8, 20});
-		POW_MAP_ACC.put(9,   new int[]{9 , 9, 24});
-		POW_MAP_ACC.put(10,  new int[]{10,10, 28});
-		POW_MAP_ACC.put(11,  new int[]{11,11, 32});
-		POW_MAP_ACC.put(12,  new int[]{12,12, 37});
-		POW_MAP_ACC.put(13,  new int[]{13,13, 42});
-		POW_MAP_ACC.put(14,  new int[]{14,14, 48});
-		POW_MAP_ACC.put(15,  new int[]{15,15, 55});
+		POW_MAP_ACC.put(9,   new int[]{9 , 9, 25});
+		POW_MAP_ACC.put(10,  new int[]{10,10, 30});
+		POW_MAP_ACC.put(11,  new int[]{11,11, 36});
+		POW_MAP_ACC.put(12,  new int[]{12,12, 42});
+		POW_MAP_ACC.put(13,  new int[]{13,13, 49});
+		POW_MAP_ACC.put(14,  new int[]{14,14, 56});
+		POW_MAP_ACC.put(15,  new int[]{15,15, 64});
 	}
 
 
+	static {
+		//0강일때 파워: 크리0 민뎀0 맥뎀3
+		GOLD_MAP_ACC.put(0,   new int[]{200});
+		GOLD_MAP_ACC.put(1,   new int[]{200});
+		GOLD_MAP_ACC.put(2,   new int[]{250});
+		GOLD_MAP_ACC.put(3,   new int[]{250});
+		GOLD_MAP_ACC.put(4,   new int[]{300});
+		GOLD_MAP_ACC.put(5,   new int[]{300});
+		GOLD_MAP_ACC.put(6,   new int[]{350});
+		GOLD_MAP_ACC.put(7,   new int[]{350});
+		GOLD_MAP_ACC.put(8,   new int[]{400});
+		GOLD_MAP_ACC.put(9,   new int[]{400});
+		GOLD_MAP_ACC.put(10,  new int[]{450});
+		GOLD_MAP_ACC.put(11,  new int[]{450});
+		GOLD_MAP_ACC.put(12,  new int[]{500});
+		GOLD_MAP_ACC.put(13,  new int[]{500});
+		GOLD_MAP_ACC.put(14,  new int[]{550});
+		GOLD_MAP_ACC.put(15,  new int[]{550});
+	}
 
 	
 	

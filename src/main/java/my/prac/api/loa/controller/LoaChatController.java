@@ -540,6 +540,40 @@ public class LoaChatController {
 					val = "별도 게임방에서 진행해주세요.";
 				}
 				break;
+			case "/악세구매":
+				gameYnList = botService.selectGamePlayYn(reqMap);
+				playYn ="1"; 
+				for(HashMap<String,Object> gameYn : gameYnList) {
+					if(gameYn.get("NAME").equals("강화")) {
+						playYn = gameYn.get("PLAY_YN").toString(); 
+					}
+				}
+				
+				if(playYn.equals("1")) {
+					
+					val = play.acc_buy(reqMap);
+					
+				}else {
+					val = "별도 게임방에서 진행해주세요.";
+				}
+				break;
+			case "/악세강화":
+				gameYnList = botService.selectGamePlayYn(reqMap);
+				playYn ="1"; 
+				for(HashMap<String,Object> gameYn : gameYnList) {
+					if(gameYn.get("NAME").equals("강화")) {
+						playYn = gameYn.get("PLAY_YN").toString(); 
+					}
+				}
+				
+				if(playYn.equals("1")) {
+					
+					val = play.acc_upgrade(reqMap);
+					
+				}else {
+					val = "별도 게임방에서 진행해주세요.";
+				}
+				break;
 			case "/상자":
 				gameYnList = botService.selectGamePlayYn(reqMap);
 				playYn ="1"; 
@@ -1258,6 +1292,7 @@ public class LoaChatController {
 				HashMap<String, Object> weaponInfo = play.getWeaponStatsForPoint(reqMap);
 			    
 			    int weaponLv = Integer.parseInt(weaponInfo.get("level").toString());
+			    int accLv = Integer.parseInt(weaponInfo.get("acc_level").toString());
 			    double weaponCriticalChance = Double.parseDouble(weaponInfo.get("criticalChance").toString());
 			    int weaponMin = Integer.parseInt(weaponInfo.get("min").toString());
 			    int weaponMax = Integer.parseInt(weaponInfo.get("max").toString());
@@ -1265,6 +1300,7 @@ public class LoaChatController {
 				
 				val += "❤️"+point_map_one.get("TOT")+ enterStr+ 
 					   "⚔"+"무기: +"+weaponLv+" lv"+point_map_one.get("WEAPON_USE")+enterStr+
+					   "⚔"+"악세: +"+accLv+" lv"+enterStr+
 					   "✨"+"공격력: "+weaponMin+"~"+weaponMax+" (치확: "+(int)(weaponCriticalChance*100)+"%)"+enterStr+enterStr+
 					   "⏰"+point_map_one.get("ATTENDANCE")+ enterStr+
 					   "⚅"+point_map_one.get("DICE")+enterStr +

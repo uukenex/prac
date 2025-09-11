@@ -120,9 +120,6 @@ public class LoaPlayController {
 		
 	    return bonus;  
 	}
-	int getWeaponLv(HashMap<String,Object> map) {
-		return botService.selectWeaponLvCheck(map);
-	}
 	
 	public HashMap<String, Object> getWeaponStatsForPoint(HashMap<String, Object> map) {
 		HashMap<String, Object> result = new HashMap<>();
@@ -130,20 +127,21 @@ public class LoaPlayController {
 		
 		// 무기 레벨 조회 (없으면 0)
 		int weaponLv = botService.selectWeaponLvCheckForPoint(map);
-		if (weaponLv < 0) weaponLv = 0; // 안전하게 0 처리
+		int accLv = botService.selectAccLvCheck(map);
+	    
+	    int[] pow_data = MiniGameUtil.POW_MAP_ACC.getOrDefault(accLv, new int[]{0, 0, 0}); 
+		int plus_crit = pow_data[0];
+		int plus_min = pow_data[1];
+		int plus_max = pow_data[2];		
 		
-		// 최소/최대 데미지 계산
-		int min = (1 + (weaponLv / 2)) / 2;
-		int max = (5 + weaponLv) * 2;
-		
-		// baseDamage 랜덤 생성
-		int baseDamage = rand.nextInt(max - min + 1) + min;
-		
-		// 기본 치명타 확률 계산
-		double criticalChance = Math.min(0.20 + weaponLv * 0.01, 1.0);
+		int min = (1 + (weaponLv / 2)) / 2 + plus_min;
+	    int max = (5 + weaponLv) * 2 + plus_max;
+	    int baseDamage = rand.nextInt(max - min + 1) + min;
+	    double criticalChance = Math.min(0.20 + weaponLv * 0.01 + plus_crit * 0.01 , 1.0);
 		
 		// 결과 저장
 		result.put("level", weaponLv);
+		result.put("acc_level", accLv);
 		result.put("min", min);
 		result.put("max", max);
 		result.put("baseDamage", baseDamage);
@@ -159,17 +157,17 @@ public class LoaPlayController {
 
 	    // 무기 레벨 조회 (없으면 0)
 	    int weaponLv = botService.selectWeaponLvCheck(map);
-	    if (weaponLv < 0) weaponLv = 0; // 안전하게 0 처리
-
-	    // 최소/최대 데미지 계산
-	    int min = (1 + (weaponLv / 2)) / 2;
-	    int max = (5 + weaponLv) * 2;
-
-	    // baseDamage 랜덤 생성
+	    int accLv = botService.selectAccLvCheck(map);
+	    
+	    int[] pow_data = MiniGameUtil.POW_MAP_ACC.getOrDefault(accLv, new int[]{0, 0, 0}); 
+		int plus_crit = pow_data[0];
+		int plus_min = pow_data[1];
+		int plus_max = pow_data[2];
+		
+	    int min = (1 + (weaponLv / 2)) / 2 + plus_min;
+	    int max = (5 + weaponLv) * 2 + plus_max;
 	    int baseDamage = rand.nextInt(max - min + 1) + min;
-
-	    // 기본 치명타 확률 계산
-	    double criticalChance = Math.min(0.20 + weaponLv * 0.01, 1.0);
+	    double criticalChance = Math.min(0.20 + weaponLv * 0.01 + plus_crit * 0.01 , 1.0);
 
 	    // 결과 저장
 	    result.put("level", weaponLv);
@@ -679,7 +677,7 @@ public class LoaPlayController {
 	}
 	
 	
-	
+	//상자열기
 	String pointBoxOpen(HashMap<String,Object> map) {
 	    Random rand = new Random();
 	    String msg = map.get("userName") + " 님," + enterStr;
@@ -722,8 +720,7 @@ public class LoaPlayController {
             int curRate = botService.selectPointItemUserOpenRate(map);
             
             if (curRate >= baseRate) {
-                // 25보다 큰 경우: 보정 완만 (차이의 1.5배 정도만 조정)
-                defaultRate = baseRate - (curRate - baseRate) * 3 / 2;  
+            	
             } else {
                 // 25보다 작은 경우: 보정 강하게 (차이의 2배 이상 보정)
                 defaultRate = baseRate - (curRate - baseRate) * 2;  
@@ -736,48 +733,7 @@ public class LoaPlayController {
         
 	    switch (openFlag) {
 	        case "0": // 아직 오픈하지 않은 상자
-	            // 1. 보물상자 성공 여부 (20%)
-	            boolean isSuccess = rand.nextInt(100) <= defaultRate;
-
-	            if (!isSuccess) {
-	                try {
-	                    int count = botService.selectPointItemUserCount(map);
-	                    msg += "보물상자 오픈 실패!";
-	                    msg += enterStr+"보물상자가 모래가 되어 사라졌습니다";
-	                    
-	                    map.put("cmd", "pointBoxOpenDel");
-	                    botService.updatePointNewBoxOpenTx(map);
-	                    if (count > 10) {
-	                        // 실패 시 0~200P 환급
-	                        int refundPoint = rand.nextInt(151);
-	                        msg += enterStr + refundPoint + "P가 환급";
-
-	                        
-	                        map.put("score", refundPoint);
-	                        int new_score = botService.insertBotPointRankTx(map);
-	                        msg += enterStr + "갱신포인트 : " + new_score + "p";
-	                    }
-	                    
-	                } catch (Exception e) {
-	                    msg = "보물상자 오픈 오류!!";
-	                    e.printStackTrace();
-	                }
-	                
-	                int boxCount =0;
-	        		try {
-	        			boxCount = botService.selectPointNewBoxCount(map);
-	        			
-	        		} catch (Exception e) {
-	        			e.printStackTrace();
-	        		}
-	        		
-	        		if(boxCount>0) {
-	        			msg +=enterStr + "보유 상자 갯수 : "+boxCount;
-	        		}
-	                return msg;
-	            }
-
-	            // 2. 보물상자 오픈 성공 → 보물 정보 조회
+	        	// 2. 보물상자 오픈 성공 → 보물 정보 조회
 	            List<HashMap<String, Object>> itemInfoList = new ArrayList<>();
 	            map.put("cmd", "pointBoxOpenUp");
 	            try {
@@ -820,6 +776,50 @@ public class LoaPlayController {
 	                msg += "획득 가능한 보물이 없습니다!";
 	                return msg;
 	            }
+	        	
+	        	
+	        	// 1. 보물상자 성공 여부 (20%)
+	            boolean isSuccess = rand.nextInt(100) <= defaultRate;
+
+	            if (!isSuccess) {
+	                try {
+	                    int count = botService.selectPointItemUserCount(map);
+	                    msg += "보물상자 오픈 실패!";
+	                    msg += enterStr+"보물상자가 모래가 되어 사라졌습니다";
+	                    
+	                    map.put("cmd", "pointBoxOpenDel");
+	                    botService.updatePointNewBoxOpenTx(map);
+	                    if (count > 10) {
+	                        // 실패 시 0~200P 환급
+	                        int refundPoint = rand.nextInt(151);
+	                        msg += enterStr + refundPoint + "P가 환급";
+
+	                        
+	                        map.put("score", refundPoint);
+	                        int new_score = botService.insertBotPointRankTx(map);
+	                        msg += enterStr + "갱신포인트 : " + new_score + "p";
+	                    }
+	                    
+	                } catch (Exception e) {
+	                    msg = "보물상자 오픈 오류!!";
+	                    e.printStackTrace();
+	                }
+	                
+	                int boxCount =0;
+	        		try {
+	        			boxCount = botService.selectPointNewBoxCount(map);
+	        			
+	        		} catch (Exception e) {
+	        			e.printStackTrace();
+	        		}
+	        		
+	        		if(boxCount>0) {
+	        			msg +=enterStr + "보유 상자 갯수 : "+boxCount;
+	        		}
+	                return msg;
+	            }
+
+	            
 
 	            // 5. 후보 중 랜덤 선택
 	            HashMap<String, Object> chosenItem = candidateList.get(rand.nextInt(candidateList.size()));
@@ -1410,6 +1410,14 @@ public class LoaPlayController {
 		map.put("cmd", "weapon_upgrade2");
 		String msg = map.get("userName")+" 님,"+enterStr;
 		
+		HashMap<String, Object> weaponInfo = getWeaponStats(map);
+	    
+	    int weaponLv = Integer.parseInt(weaponInfo.get("level").toString());
+		if(weaponLv >= 30) {
+			return "포인트 소모 강화 MAX!!";
+		}
+		
+		
 		List<String> ableItemList = selectPointItemUserList(map); 
 		boolean item_8_1 = ableItemList.contains("8-1");
 		boolean item_8_2 = ableItemList.contains("8-2");
@@ -1459,6 +1467,13 @@ public class LoaPlayController {
 	String weapon3(HashMap<String,Object> map) {
 		map.put("cmd", "weapon_upgrade2");
 		String msg = map.get("userName")+" 님,"+enterStr;
+		
+		HashMap<String, Object> weaponInfo = getWeaponStats(map);
+	    
+	    int weaponLv = Integer.parseInt(weaponInfo.get("level").toString());
+		if(weaponLv >= 30) {
+			return "포인트 소모 강화 MAX!!";
+		}
 		
 		List<String> ableItemList = selectPointItemUserList(map); 
 		boolean item_8_1 = ableItemList.contains("8-1");
@@ -1530,37 +1545,33 @@ public class LoaPlayController {
 				msg += calcScore+"p 사용! .. "+score + "p → "+ new_score+"p"+enterStr;
 				
 				botService.insertBotPointAccTx(map);
-				msg += enterStr+"악세구매 완료, MAX DMG +3" + enterStr+"/악세강화 : 200p";
+				msg += enterStr+"악세구매 완료, " + enterStr+"/악세강화 : 200p";
 				
 			}else {
 				return map.get("userName")+" 님, "+"이미 존재! "+enterStr+"/악세강화 : 200p";
 			}
-			
-			
-			
-			
 		}catch(Exception e) {
 			return "악세구매 포인트조회 오류입니다.";
 		}
-		
-		
-		
-		
 		return msg;
 	}
 	
+	//악세강화
 	String acc_upgrade(HashMap<String,Object> map) {
 		map.put("cmd", "acc_upgrade");
 		String msg = map.get("userName")+" 님,"+enterStr;
-		int defaultScore = 200;
-		int calcScore = defaultScore ;
 		
 		try {
 			
 			HashMap<String, Object> now = botService.selectBotPointAcc(map);
 			if(now == null) {
-				return map.get("userName")+" 님, "+"이미 존재! "+enterStr+"/악세강화 : 200p";
+				return map.get("userName")+" 님, "+"악세가 없습니다! "+enterStr+"/악세구매 : 200p";
 			}else {
+				int lv = Integer.parseInt(now.get("LV").toString()) ;
+				int[] gold_data = MiniGameUtil.GOLD_MAP_ACC.getOrDefault(lv, new int[]{0}); 
+				
+				int defaultScore = gold_data[0];
+				int calcScore = defaultScore ;
 				
 				switch (now.get("TRY").toString()) {
 					case "TRY":
@@ -1576,7 +1587,7 @@ public class LoaPlayController {
 						
 						break;
 					case "MENT":
-						int lv = Integer.parseInt(now.get("LV").toString()) ;
+						
 						HashMap<String, Object> result;
 					    result = getSuccessRateAcc(lv);
 					    HashMap<String, Object> result1;
@@ -1586,26 +1597,26 @@ public class LoaPlayController {
 						msg +="Critical/MinDmg/MaxDmg"+enterStr;
 						msg +=result.get("plus_crit")+"/"+result.get("plus_min")+"/"+result.get("plus_max") +enterStr+enterStr;
 						
-						msg += "성공/실패/파괴" + enterStr;
-					    msg += (int)result.get("successRate")+"/"+(int)result.get("failRate")+"/"+(int)result.get("brokenRate")+enterStr +enterStr;
+						msg += "확률::성공 / 실패 / 파괴" + enterStr;
+					    msg += result.get("successRate")+"% / "+result.get("failRate")+"% / "+result.get("brokenRate")+"%"+enterStr ;
+					    msg += "필요비용"+defaultScore +enterStr+enterStr;
 					    
-					    msg += "성공시 악세 Lv: "+ lv+1 +enterStr;
-						msg +="Critical/MinDmg/MaxDmg"+enterStr;
-						msg +=result1.get("plus_crit")+"/"+result1.get("plus_min")+"/"+result1.get("plus_max") +enterStr+enterStr;
+					    
+					    msg += "성공시 악세 Lv: "+ (lv+1) +enterStr;
+						msg +="Critical / MinDmg / MaxDmg"+enterStr;
+						msg +=result1.get("plus_crit")+" / "+result1.get("plus_min")+" / "+result1.get("plus_max") +enterStr+enterStr;
 					            
-						msg +="1 Min 내로 /악세강화 입력 시 강화시도!";
+						msg +="1 Min 내로 '/악세강화' 입력 시 강화시도!"+enterStr;
 						botService.updateBotPointAccTryMentTx(map);
 						
 						break;
 				}
-				
-				
 			}
 			
 			
 			
 		}catch(Exception e) {
-			return "악세구매 포인트조회 오류입니다.";
+			return "악세강화 포인트조회 오류입니다.";
 		}
 		
 		
@@ -1639,19 +1650,32 @@ public class LoaPlayController {
 		    String resultCode = result.get("isSuccess").toString();
 		    String resultMsg = result.get("isMsg").toString();
 		    
+		    
+		    msg = map.get("userName")+" 님, 악세 "+(lv+1)+" 강화 결과.."+enterStr+resultMsg;
+		    
+		    
 		    switch(resultCode) {
 		    	case "OK":
-		    		map.put("weaponLv", lv+1);
+		    		map.put("weaponLv", (lv+1));
+		    		map.put("successYn", "OK");
+		    		msg+="";
+		    		
+		    		HashMap<String, Object> result1 = getSuccessRateAcc(lv+1);
+		    		msg +=enterStr+enterStr + "Critical/MinDmg/MaxDmg" + enterStr;
+					msg +=result1.get("plus_crit")+"/"+result1.get("plus_min")+"/"+result1.get("plus_max") +enterStr+enterStr;
 		    		break;
 		    	case "FAIL":
 		    		map.put("weaponLv", lv);
+		    		map.put("successYn", "FAIL");
 		    		break;
 		    	case "BROKEN":
+		    		map.put("successYn", "BROKEN");
 		    		break;
 		    }
 			map.put("resultCode", resultCode);
 			
-		    msg = resultMsg;
+		    
+		    
 			botService.updateBotPointAccTx(map);
 		} catch (Exception e) {
 			msg ="강화중 에러발생";

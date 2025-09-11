@@ -106,6 +106,8 @@ public interface BotService {
 	
 	public int selectWeaponLvCheck(HashMap<String,Object> map);
 	public int selectWeaponLvCheckForPoint(HashMap<String,Object> map);
+	public int selectAccLvCheck(HashMap<String,Object> map);
+	public int selectAccLvCheckForPoint(HashMap<String,Object> map);
 	
 	
 	

@@ -418,17 +418,6 @@ public class BotServiceImpl implements BotService {
 		return botDAO.selectBotPointAcc(map);
 	}
 	
-	public int selectWeaponLvCheckForPoint(HashMap<String,Object> map){
-		if (map.get("param1") != null && !map.get("param1").equals("")) {
-			List<String> newUserName = botDAO.selectParam1ToNewUserSearch(map);
-			if(newUserName.size()>0) {
-				map.put("newUserName", newUserName.get(0));
-			}else {
-				return 0;
-			}
-		}
-		return botDAO.selectWeaponLvCheckForPoint(map);
-	}
 	
 	
 	public HashMap<String,Object> upsertDailyWeaponUpgradeTx(HashMap<String,Object> map) throws Exception{
@@ -477,6 +466,11 @@ public class BotServiceImpl implements BotService {
 	    		if(botDAO.deleteBotPointAcc(map) < 1) {
 	    			throw new Exception("저장 실패");
 	    		}
+	    		
+	    		if(botDAO.insertBotPointAccLog(map) < 1) {
+	    			throw new Exception("저장 실패");
+	    		}
+	    		
 	    		break;
 		}
 		
@@ -525,6 +519,36 @@ public class BotServiceImpl implements BotService {
 	public int selectWeaponLvCheck(HashMap<String,Object> map) {
 		return botDAO.selectWeaponLvCheck(map);
 	}
+
+	public int selectWeaponLvCheckForPoint(HashMap<String,Object> map){
+		if (map.get("param1") != null && !map.get("param1").equals("")) {
+			List<String> newUserName = botDAO.selectParam1ToNewUserSearch(map);
+			if(newUserName.size()>0) {
+				map.put("newUserName", newUserName.get(0));
+			}else {
+				return 0;
+			}
+		}
+		return botDAO.selectWeaponLvCheckForPoint(map);
+	}
+	
+	
+	public int selectAccLvCheck(HashMap<String,Object> map) {
+		return botDAO.selectAccLvCheck(map);
+	}
+	
+	public int selectAccLvCheckForPoint(HashMap<String,Object> map){
+		if (map.get("param1") != null && !map.get("param1").equals("")) {
+			List<String> newUserName = botDAO.selectParam1ToNewUserSearch(map);
+			if(newUserName.size()>0) {
+				map.put("newUserName", newUserName.get(0));
+			}else {
+				return 0;
+			}
+		}
+		return botDAO.selectAccLvCheckForPoint(map);
+	}
+	
 	
 	public HashMap<String,Object> selectBossHit(HashMap<String,Object> map) throws Exception{
 		return botDAO.selectBossHit(map);
