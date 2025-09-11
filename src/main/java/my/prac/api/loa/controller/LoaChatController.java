@@ -541,6 +541,7 @@ public class LoaChatController {
 				}
 				break;
 			case "/악세구매":
+			case "/악세구입":
 				gameYnList = botService.selectGamePlayYn(reqMap);
 				playYn ="1"; 
 				for(HashMap<String,Object> gameYn : gameYnList) {

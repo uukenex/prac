@@ -129,10 +129,11 @@ public class LoaPlayController {
 		int weaponLv = botService.selectWeaponLvCheckForPoint(map);
 		int accLv = botService.selectAccLvCheck(map);
 	    
-	    int[] pow_data = MiniGameUtil.POW_MAP_ACC.getOrDefault(accLv, new int[]{0, 0, 0}); 
+	    int[] pow_data = MiniGameUtil.POW_MAP_ACC.getOrDefault(accLv, new int[]{0, 0, 0,0}); 
 		int plus_crit = pow_data[0];
 		int plus_min = pow_data[1];
 		int plus_max = pow_data[2];		
+		int plus_def = pow_data[3];		
 		
 		int min = (1 + (weaponLv / 2)) / 2 + plus_min;
 	    int max = (5 + weaponLv) * 2 + plus_max;
@@ -146,7 +147,7 @@ public class LoaPlayController {
 		result.put("max", max);
 		result.put("baseDamage", baseDamage);
 		result.put("criticalChance", criticalChance);
-		
+		result.put("def", plus_def);
 		return result;
 	}
 	
@@ -163,6 +164,7 @@ public class LoaPlayController {
 		int plus_crit = pow_data[0];
 		int plus_min = pow_data[1];
 		int plus_max = pow_data[2];
+		int plus_def = pow_data[3];
 		
 	    int min = (1 + (weaponLv / 2)) / 2 + plus_min;
 	    int max = (5 + weaponLv) * 2 + plus_max;
@@ -175,6 +177,7 @@ public class LoaPlayController {
 	    result.put("max", max);
 	    result.put("baseDamage", baseDamage);
 	    result.put("criticalChance", criticalChance);
+	    result.put("def", plus_def);
 
 	    return result;
 	}
@@ -1593,20 +1596,25 @@ public class LoaPlayController {
 					    HashMap<String, Object> result1;
 					    result1 = getSuccessRateAcc(lv+1);
 					    
-						msg += "현재 악세 Lv: "+ lv +enterStr;
-						msg +="Critical/MinDmg/MaxDmg"+enterStr;
-						msg +=result.get("plus_crit")+"/"+result.get("plus_min")+"/"+result.get("plus_max") +enterStr+enterStr;
+					    msg += "확률::성공 / 실패 / 파괴" + enterStr;
+					    msg += result.get("successRate")+"% / "+result.get("failRate")+"% / "+result.get("brokenRate")+"%"+enterStr+enterStr ;
+					    
+					    
+						msg += "현재 악세 "+ lv+" lv" +enterStr;
+						msg +="최소공격력 +" +result.get("plus_min")+ ", ";
+						msg +="최대공격력 +" +result.get("plus_max")+enterStr;
+						msg +="치명타 +" +result.get("plus_crit")+"%, ";
+						msg +="방어력 +" +result.get("plus_def")+enterStr+enterStr;
 						
-						msg += "확률::성공 / 실패 / 파괴" + enterStr;
-					    msg += result.get("successRate")+"% / "+result.get("failRate")+"% / "+result.get("brokenRate")+"%"+enterStr ;
-					    msg += "필요비용"+defaultScore +enterStr+enterStr;
-					    
-					    
-					    msg += "성공시 악세 Lv: "+ (lv+1) +enterStr;
-						msg +="Critical / MinDmg / MaxDmg"+enterStr;
-						msg +=result1.get("plus_crit")+" / "+result1.get("plus_min")+" / "+result1.get("plus_max") +enterStr+enterStr;
+					    msg += "성공시 악세 "+ (lv+1)+" lv" +enterStr;
+					    msg +="최소공격력 +" +result1.get("plus_min")+ ", ";
+						msg +="최대공격력 +" +result1.get("plus_max")+enterStr;
+						msg +="치명타 +" +result1.get("plus_crit")+"%, ";
+						msg +="방어력 +" +result1.get("plus_def")+enterStr+enterStr;
 					            
-						msg +="1 Min 내로 '/악세강화' 입력 시 강화시도!"+enterStr;
+						
+						msg +=map.get("userName")+" 님, "+ enterStr +"( 2 Min ) 내로 '/악세강화' 입력 시 강화시도!"+enterStr;
+						msg += "강화비용 : "+ defaultScore + " p" +enterStr+enterStr;
 						botService.updateBotPointAccTryMentTx(map);
 						
 						break;
@@ -1651,7 +1659,7 @@ public class LoaPlayController {
 		    String resultMsg = result.get("isMsg").toString();
 		    
 		    
-		    msg = map.get("userName")+" 님, 악세 "+(lv+1)+" 강화 결과.."+enterStr+resultMsg;
+		    msg = map.get("userName")+" 님,"+enterStr+" 악세 "+(lv+1)+" 시도 결과.."+enterStr+resultMsg;
 		    
 		    
 		    switch(resultCode) {
@@ -1661,14 +1669,18 @@ public class LoaPlayController {
 		    		msg+="";
 		    		
 		    		HashMap<String, Object> result1 = getSuccessRateAcc(lv+1);
-		    		msg +=enterStr+enterStr + "Critical/MinDmg/MaxDmg" + enterStr;
-					msg +=result1.get("plus_crit")+"/"+result1.get("plus_min")+"/"+result1.get("plus_max") +enterStr+enterStr;
+		    		msg +=enterStr+enterStr ;
+					msg +="Critical +" +result1.get("plus_crit")+enterStr;
+					msg +="MinDmg +" +result1.get("plus_min")+enterStr;
+					msg +="MaxDmg +" +result1.get("plus_max")+enterStr;
+					msg +=enterStr;
 		    		break;
 		    	case "FAIL":
 		    		map.put("weaponLv", lv);
 		    		map.put("successYn", "FAIL");
 		    		break;
 		    	case "BROKEN":
+		    		map.put("weaponLv", lv);
 		    		map.put("successYn", "BROKEN");
 		    		break;
 		    }
@@ -1863,13 +1875,14 @@ public class LoaPlayController {
 	}
 	public HashMap<String,Object> getSuccessRateAcc(int level) {
 		Double[] data = MiniGameUtil.RATE_MAP_ACC.getOrDefault(level, new Double[]{0.0, 0.0, 0.0});
-		int[] pow_data = MiniGameUtil.POW_MAP_ACC.getOrDefault(level, new int[]{0, 0, 0}); 
+		int[] pow_data = MiniGameUtil.POW_MAP_ACC.getOrDefault(level, new int[]{0, 0, 0, 0}); 
 		double successRate = data[0];
 		double failRate = data[1];
 		double brokenRate = data[2];
 		int plus_crit = pow_data[0];
 		int plus_min = pow_data[1];
 		int plus_max = pow_data[2];
+		int plus_def = pow_data[3];
 		
 		
 		
@@ -1899,6 +1912,7 @@ public class LoaPlayController {
 	    result.put("plus_crit", plus_crit);   
 	    result.put("plus_min", plus_min);         
 	    result.put("plus_max", plus_max);         
+	    result.put("plus_def", plus_def);         
 	    
 
 		return result;
@@ -2111,7 +2125,26 @@ public class LoaPlayController {
 	    boolean item_15_2 = ableItemList.contains("15-2"); 
 	    boolean item_16_1 = ableItemList.contains("16-1"); //징수의총
 	    
+	    
+	    HashMap<String, Object> weaponInfo = getWeaponStats(map);
+	    
+	    int weaponLv = Integer.parseInt(weaponInfo.get("level").toString());
+	    Double weaponCriticalChance = Double.parseDouble(weaponInfo.get("criticalChance").toString());
+	    int weaponMin = Integer.parseInt(weaponInfo.get("min").toString());
+	    int weaponMax = Integer.parseInt(weaponInfo.get("max").toString());
+	    int def = Integer.parseInt(weaponInfo.get("def").toString());
 
+	    int player_deffence = def;
+	    if (item_13_1) {
+	    	player_deffence += 3;
+	    }
+	    if (item_13_2) {
+	    	player_deffence += 6;
+	    }
+	    if (item_13_3) {
+	    	player_deffence += 9;
+	    }
+	    
 	    double roll = Math.random();
 	    boolean flag_boss_attack = Math.random() < bossAtkRate / 100.0;
 	    boolean flag_boss_evade = Math.random() < evadeRate / 100.0;
@@ -2242,12 +2275,6 @@ public class LoaPlayController {
 	    	//}
 	    }
 
-	    HashMap<String, Object> weaponInfo = getWeaponStats(map);
-	    
-	    int weaponLv = Integer.parseInt(weaponInfo.get("level").toString());
-	    Double weaponCriticalChance = Double.parseDouble(weaponInfo.get("criticalChance").toString());
-	    int weaponMin = Integer.parseInt(weaponInfo.get("min").toString());
-	    int weaponMax = Integer.parseInt(weaponInfo.get("max").toString());
 	    
 	    if(item_10_1) {
 	    	weaponMax +=2;
@@ -2344,19 +2371,19 @@ public class LoaPlayController {
 			        if (item_7_1) {
 			        	effectiveEvadeRate = Math.max(evadeRate - 6, 0); // 최소 0
 			        	if (roll < (effectiveEvadeRate / 100.0)) { //회피가 10일때 -5시켜 , 0~5
-			        		isEvadeMsg += "[덫] 실패, 보스 회피!!" + enterStr;
+			        		//isEvadeMsg += "[덫] 실패, 보스 회피!!" + enterStr;
 			        	}else {//5~100
 			        		isEvade = false;
-			                isEvadeMsg += "[덫] 보스 회피 무효!" + enterStr;
+			              //  isEvadeMsg += "[덫] 보스 회피 무효!" + enterStr;
 			        	}
 			           
 			        } else if (item_7_2) {
 			        	effectiveEvadeRate = Math.max(evadeRate - 12, 0); // 최소 0
 			        	if (roll < (effectiveEvadeRate / 100.0)) { //회피가 11일때 -10시켜 , 0~1
-			        		isEvadeMsg += "[덫2]실패, 보스 회피!!" + enterStr;
+			        		//isEvadeMsg += "[덫2]실패, 보스 회피!!" + enterStr;
 			        	}else {//1~100
 			        		isEvade = false;
-			                isEvadeMsg += "[덫2]보스 회피 무효!" + enterStr;
+			              //  isEvadeMsg += "[덫2]보스 회피 무효!" + enterStr;
 			        	}
 			        }
 		        }
@@ -2636,26 +2663,9 @@ public class LoaPlayController {
 					appliedAtkPower = ThreadLocalRandom.current().nextInt(1, bossAtkPower + 1);
 					appliedAtkPowerCalc = appliedAtkPower;
 					bossAttackMsg = "▶ 보스의 반격! " + appliedAtkPowerCalc + " 의 데미지!!";
-					if (item_13_1) {
-						bossAttackMsg += enterStr + "[바람의두루마기]: -" + appliedAtkPower + " → ";
-						appliedAtkPowerCalc -= 3;
-						if (appliedAtkPowerCalc < 0) {
-							appliedAtkPowerCalc = 0;
-						}
-						// item13Msg+="-"+appliedAtkPowerCalc;
-					}
-					if (item_13_2) {
-						bossAttackMsg += enterStr + "[바람의두루마기2]: -" + appliedAtkPower + " → ";
-						appliedAtkPowerCalc -= 6;
-						if (appliedAtkPowerCalc < 0) {
-							appliedAtkPowerCalc = 0;
-						}
-						// item13Msg+="-"+appliedAtkPower;
-
-					}
-					if (item_13_3) {
-						bossAttackMsg += enterStr + "[바람의두루마기3]: -" + appliedAtkPower + " → ";
-						appliedAtkPowerCalc -= 9;
+					if (player_deffence > 0) {
+						bossAttackMsg += enterStr + "-" + appliedAtkPower + " → ";
+						appliedAtkPowerCalc -= player_deffence;
 						if (appliedAtkPowerCalc < 0) {
 							appliedAtkPowerCalc = 0;
 						}

@@ -71,23 +71,23 @@ public class MiniGameUtil {
 	    RATE_MAP_ACC.put(15, new Double[]{1.0 , 79.2, 19.8});
 	}
 	static {
-		//0강일때 파워: 크리0 민뎀0 맥뎀3
-		POW_MAP_ACC.put(0,   new int[]{0 , 0, 0});
-		POW_MAP_ACC.put(1,   new int[]{1 , 1, 1});
-		POW_MAP_ACC.put(2,   new int[]{2 , 2, 2});
-		POW_MAP_ACC.put(3,   new int[]{3 , 3, 4});
-		POW_MAP_ACC.put(4,   new int[]{4 , 4, 6});
-		POW_MAP_ACC.put(5,   new int[]{5 , 5, 9});
-		POW_MAP_ACC.put(6,   new int[]{6 , 6, 12});
-		POW_MAP_ACC.put(7,   new int[]{7 , 7, 16});
-		POW_MAP_ACC.put(8,   new int[]{8 , 8, 20});
-		POW_MAP_ACC.put(9,   new int[]{9 , 9, 25});
-		POW_MAP_ACC.put(10,  new int[]{10,10, 30});
-		POW_MAP_ACC.put(11,  new int[]{11,11, 36});
-		POW_MAP_ACC.put(12,  new int[]{12,12, 42});
-		POW_MAP_ACC.put(13,  new int[]{13,13, 49});
-		POW_MAP_ACC.put(14,  new int[]{14,14, 56});
-		POW_MAP_ACC.put(15,  new int[]{15,15, 64});
+		//0강일때 파워: 크리0 민뎀0 맥뎀3,방어력
+		POW_MAP_ACC.put(0,   new int[]{0 , 0, 0, 0});
+		POW_MAP_ACC.put(1,   new int[]{1 , 1, 1, 1});
+		POW_MAP_ACC.put(2,   new int[]{2 , 2, 2, 1});
+		POW_MAP_ACC.put(3,   new int[]{3 , 3, 4, 2});
+		POW_MAP_ACC.put(4,   new int[]{4 , 4, 6, 2});
+		POW_MAP_ACC.put(5,   new int[]{5 , 5, 9, 3});
+		POW_MAP_ACC.put(6,   new int[]{6 , 6, 12,3});
+		POW_MAP_ACC.put(7,   new int[]{7 , 7, 16,4});
+		POW_MAP_ACC.put(8,   new int[]{8 , 8, 20,4});
+		POW_MAP_ACC.put(9,   new int[]{9 , 9, 25,5});
+		POW_MAP_ACC.put(10,  new int[]{10,10, 30,5});
+		POW_MAP_ACC.put(11,  new int[]{11,11, 36,6});
+		POW_MAP_ACC.put(12,  new int[]{12,12, 42,6});
+		POW_MAP_ACC.put(13,  new int[]{13,13, 49,7});
+		POW_MAP_ACC.put(14,  new int[]{14,14, 56,7});
+		POW_MAP_ACC.put(15,  new int[]{15,15, 64,8});
 	}
 
 

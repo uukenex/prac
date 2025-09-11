@@ -1025,7 +1025,7 @@
 	
 	<select id="selectBotPointAcc" parameterType="HashMap" resultType="HashMap">
 		SELECT WEAPON_LV AS LV,WEAPON_LV, CASE
-							   WHEN A.PROC_DATE > SYSDATE - 1 / 60 / 24 THEN
+							   WHEN A.PROC_DATE > SYSDATE - 2 / 60 / 24 THEN
 							    'TRY'
 							   ELSE
 							    'MENT'
