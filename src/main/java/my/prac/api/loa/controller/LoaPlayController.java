@@ -1674,15 +1674,18 @@ public class LoaPlayController {
 					msg +="치명타 +" +result1.get("plus_crit")+"%, ";
 					msg +="방어력 +" +result1.get("plus_def")+enterStr+enterStr;
 					msg +=enterStr;
+					map.put("weaponLv", (lv+1));
 		    		break;
 		    	case "FAIL":
 		    		map.put("successYn", "FAIL");
+		    		map.put("weaponLv", (lv));
 		    		break;
 		    	case "BROKEN":
 		    		map.put("successYn", "BROKEN");
+		    		map.put("weaponLv", (lv));
 		    		break;
 		    }
-		    map.put("weaponLv", (lv));
+		   
 			map.put("resultCode", resultCode);
 			
 		    
