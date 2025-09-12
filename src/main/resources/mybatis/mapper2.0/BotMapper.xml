@@ -1205,13 +1205,13 @@
 	</select>
 	<select id="selectAccLogMaxLv" parameterType="HashMap" resultType="int">
 		SELECT NVL(MAX(A.TRY_LV), 0)
-		  FROM TBOT_POINT_ACC A
+		  FROM TBOT_POINT_ACC_LOG A
 		 WHERE ROOM_NAME = #{roomName, jdbcType=VARCHAR} 
 		   AND USER_NAME = #{userName, jdbcType=VARCHAR}
 	</select>
 	<select id="selectAccLogMaxLvForPoint" parameterType="HashMap" resultType="int">
 		SELECT NVL(MAX(A.TRY_LV), 0)
-		  FROM TBOT_POINT_ACC A
+		  FROM TBOT_POINT_ACC_LOG A
 		 WHERE ROOM_NAME = #{roomName, jdbcType=VARCHAR} 
 		   AND upper(USER_NAME) = upper(#{newUserName, jdbcType=VARCHAR})
 	</select>
