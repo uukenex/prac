@@ -632,7 +632,8 @@ public class LoaPlayController {
 	
 	String pointShop(HashMap<String,Object> map) {
 		return "[포인트상점 목록]"
-	          +enterStr+"/상자구입 : 200p(10회까지 무료)"
+	          +enterStr+"/상자구매 : 200p(10회까지 무료)"
+	          +enterStr+"/악세구매 : 200p(상자 누적50회부터 가능)"
 	          +enterStr
 	          +enterStr;
 	}
@@ -1524,7 +1525,7 @@ public class LoaPlayController {
 		return msg;
 	}
 	
-	//악세구매
+	//악세구매 악세구입 
 	public String acc_buy(HashMap<String,Object> map) {
 		map.put("cmd", "acc_buy");
 		String msg = map.get("userName")+" 님,"+enterStr;
@@ -1534,6 +1535,12 @@ public class LoaPlayController {
 		
 		
 		try {
+			int count = botService.selectPointItemUserCount(map);
+			
+			if(count < 50) {
+				return  map.get("userName")+" 님,"+enterStr+"상자획득 누적 50개이상 구매가능!";
+			}
+			
 			
 			HashMap<String, Object> now = botService.selectBotPointAcc(map);
 			if(now == null) {
@@ -1596,9 +1603,6 @@ public class LoaPlayController {
 					    HashMap<String, Object> result1;
 					    result1 = getSuccessRateAcc(lv+1);
 					    
-					    msg += "확률::성공 / 실패 / 파괴" + enterStr;
-					    msg += result.get("successRate")+"% / "+result.get("failRate")+"% / "+result.get("brokenRate")+"%"+enterStr+enterStr ;
-					    
 					    
 						msg += "현재 악세 "+ lv+" lv" +enterStr;
 						msg +="최소공격력 +" +result.get("plus_min")+ ", ";
@@ -1613,8 +1617,11 @@ public class LoaPlayController {
 						msg +="방어력 +" +result1.get("plus_def")+enterStr+enterStr;
 					            
 						
-						msg +=map.get("userName")+" 님, "+ enterStr +"( 2 Min ) 내로 '/악세강화' 입력 시 강화시도!"+enterStr;
+						msg += "( 2 Min ) 내로 '/악세강화' 입력 시 강화시도!"+enterStr;
 						msg += "강화비용 : "+ defaultScore + " p" +enterStr+enterStr;
+						msg += "확률::성공 / 실패 / 파괴" + enterStr;
+					    msg += result.get("successRate")+"% / "+result.get("failRate")+"% / "+result.get("brokenRate")+"%"+enterStr+enterStr ;
+					    
 						botService.updateBotPointAccTryMentTx(map);
 						
 						break;
@@ -1645,8 +1652,6 @@ public class LoaPlayController {
 			now = botService.selectBotPointAcc(map);
 			lv = Integer.parseInt(now.get("WEAPON_LV").toString());
 			
-			msg +=" "+ lv + "lv → "+(lv+1)+"lv 강화 시도"+enterStr+enterStr;
-			
 		} catch (Exception e1) {
 			return  map.get("userName")+" 님, 악세사리가 없습니다. "+enterStr+"/악세구매 : 200p";
 		}
@@ -1659,7 +1664,7 @@ public class LoaPlayController {
 		    String resultMsg = result.get("isMsg").toString();
 		    
 		    
-		    msg = map.get("userName")+" 님,"+enterStr+" 악세 "+(lv+1)+" 시도 결과.."+enterStr+resultMsg;
+		    msg = map.get("userName")+" 님,"+enterStr+" 악세 "+(lv+1)+" lv 강화 시도 결과.."+enterStr+resultMsg;
 		    
 		    
 		    switch(resultCode) {
@@ -2399,7 +2404,7 @@ public class LoaPlayController {
 	    //  ---------------
 	    String nightMsg = "";
 	    if ("Y".equals(map.get("night_attack_ok"))) {
-	        nightMsg = "[야간투시경] 기본데미지 보정" + enterStr;
+	        nightMsg = "";
 	        
 	    }
 	    if ("Y2".equals(map.get("night_attack_ok"))) {
@@ -2718,7 +2723,6 @@ public class LoaPlayController {
 					bossAttackMsg += enterStr +"누적흡혈량: " + (drainRemain+appliedAtkPowerCalc)+"(처치시 처치자 획득)";
 					
 					score -= appliedAtkPowerCalc;
-					bossAttackMsg += "-" + appliedAtkPowerCalc;
 
 					if (newbieYn) {
 						if (appliedAtkPowerCalc > 0) {

@@ -492,7 +492,7 @@ public class LoaChatController {
 					val = "별도 게임방에서 진행해주세요.";
 				}
 				break;
-			case "/공격": case "/ㄱㄱ": 
+			case "/공격": case "/ㄱㄱ": case "/rr": case "/RR": 
 				gameYnList = botService.selectGamePlayYn(reqMap);
 				playYn ="1"; 
 				for(HashMap<String,Object> gameYn : gameYnList) {
@@ -542,6 +542,8 @@ public class LoaChatController {
 				break;
 			case "/악세구매":
 			case "/악세구입":
+			case "/ㅇㅅㄱㅇ":
+			case "/ㅇㅅㄱㅁ":
 				gameYnList = botService.selectGamePlayYn(reqMap);
 				playYn ="1"; 
 				for(HashMap<String,Object> gameYn : gameYnList) {
@@ -559,6 +561,7 @@ public class LoaChatController {
 				}
 				break;
 			case "/악세강화":
+			case "/ㅇㅅㄱㅎ":
 				gameYnList = botService.selectGamePlayYn(reqMap);
 				playYn ="1"; 
 				for(HashMap<String,Object> gameYn : gameYnList) {
@@ -1803,7 +1806,17 @@ public class LoaChatController {
 		}finally {
 			if(!passYn) {
 				reqMap.put("req", org_fulltxt);
-				reqMap.put("res", val);
+				
+				String db_input_val =val;
+				if(param0.equals("/ㅈㅂ")) {
+					try{
+						db_input_val = val.split(allSeeStr)[0];
+					}catch(Exception e) {
+						db_input_val = val;
+					}
+				}
+				
+				reqMap.put("res", db_input_val);
 				reqMap.put("userName", org_userName);
 				botService.insertBotWordHisTx(reqMap);
 			}
