@@ -1306,7 +1306,7 @@ public class LoaChatController {
 				
 				val += "❤️"+point_map_one.get("TOT")+ enterStr+ 
 					   "⚔"+"무기: +"+weaponLv+" lv"+point_map_one.get("WEAPON_USE")+enterStr+
-					   "⚔"+"악세: +"+accLv+" lv(max:"+accMaxLv+" lv, 적용:"+acc_apply_level+"lv)"+enterStr+
+					   "⚔"+"악세: +"+accLv+" lv(max:"+accMaxLv+" lv, 적용: "+acc_apply_level+"lv)"+enterStr+
 					   "‡ 악세파괴시 (최대레벨-1) 적용"+enterStr+
 					   "✨"+"공격력: "+weaponMin+"~"+weaponMax+" (치확: "+(int)(weaponCriticalChance*100)+"%)"+enterStr+enterStr+
 					   "⏰"+point_map_one.get("ATTENDANCE")+ enterStr+
