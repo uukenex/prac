@@ -122,49 +122,63 @@ public class LoaPlayController {
 	}
 	
 	public HashMap<String, Object> getWeaponStatsForPoint(HashMap<String, Object> map) {
-		HashMap<String, Object> result = new HashMap<>();
-		Random rand = new Random();
-		
 		// 무기 레벨 조회 (없으면 0)
 		int weaponLv = botService.selectWeaponLvCheckForPoint(map);
-		int accLv = botService.selectAccLvCheck(map);
-	    
-	    int[] pow_data = MiniGameUtil.POW_MAP_ACC.getOrDefault(accLv, new int[]{0, 0, 0,0}); 
-		int plus_crit = pow_data[0];
-		int plus_min = pow_data[1];
-		int plus_max = pow_data[2];		
-		int plus_def = pow_data[3];		
+		int accLv = botService.selectAccLvCheckForPoint(map);
+		int accMaxLv = botService.selectAccLogMaxLvForPoint(map);
 		
-		int min = (1 + (weaponLv / 2)) / 2 + plus_min;
-	    int max = (5 + weaponLv) * 2 + plus_max;
-	    int baseDamage = rand.nextInt(max - min + 1) + min;
-	    double criticalChance = Math.min(0.20 + weaponLv * 0.01 + plus_crit * 0.01 , 1.0);
-		
-		// 결과 저장
-		result.put("level", weaponLv);
-		result.put("acc_level", accLv);
-		result.put("min", min);
-		result.put("max", max);
-		result.put("baseDamage", baseDamage);
-		result.put("criticalChance", criticalChance);
-		result.put("def", plus_def);
-		return result;
+		map.put("level", weaponLv);
+	    map.put("acc_level", accLv);
+		map.put("acc_max_level", accMaxLv);
+		getStatPointProcess(map);
+	    return map;
 	}
 	
 	
 	public HashMap<String, Object> getWeaponStats(HashMap<String, Object> map) {
-	    HashMap<String, Object> result = new HashMap<>();
-	    Random rand = new Random();
-
 	    // 무기 레벨 조회 (없으면 0)
 	    int weaponLv = botService.selectWeaponLvCheck(map);
 	    int accLv = botService.selectAccLvCheck(map);
-	    
-	    int[] pow_data = MiniGameUtil.POW_MAP_ACC.getOrDefault(accLv, new int[]{0, 0, 0}); 
-		int plus_crit = pow_data[0];
-		int plus_min = pow_data[1];
-		int plus_max = pow_data[2];
-		int plus_def = pow_data[3];
+		int accMaxLv = botService.selectAccLogMaxLv(map);
+		
+		map.put("level", weaponLv);
+	    map.put("acc_level", accLv);
+		map.put("acc_max_level", accMaxLv);
+		getStatPointProcess(map);
+	    return map;
+	}
+	
+	void getStatPointProcess(HashMap<String,Object> result) {
+		Random rand = new Random();
+		int weaponLv = Integer.parseInt(result.get("level").toString());
+		int accLv = Integer.parseInt(result.get("acc_level").toString());
+		int accMaxLv = Integer.parseInt(result.get("acc_max_level").toString());
+		
+		// 실제 적용될 레벨
+	    int acc_apply_level = accLv;
+		
+		 // --- 현재 accLv 기준 스탯 ---
+	    int[] pow_data = MiniGameUtil.POW_MAP_ACC.getOrDefault(accLv, new int[]{0, 0, 0, 0}); 
+	    int plus_crit = pow_data[0];
+	    int plus_min  = pow_data[1];
+	    int plus_max  = pow_data[2];
+	    int plus_def  = pow_data[3];
+
+	    // --- 최대 레벨-1 기준 스탯 ---
+	    int[] pow_data_max = MiniGameUtil.POW_MAP_ACC.getOrDefault(accMaxLv - 1, new int[]{0, 0, 0, 0}); 
+	    int plus_crit_max = pow_data_max[0];
+	    int plus_min_max  = pow_data_max[1];
+	    int plus_max_max  = pow_data_max[2];
+	    int plus_def_max  = pow_data_max[3];
+
+	    // --- accLv < accMaxLv 조건일 때, Max-1 스탯으로 덮어씌우기 ---
+	    if (accLv < accMaxLv) {
+	    	acc_apply_level = accMaxLv-1;
+	        plus_crit = plus_crit_max;
+	        plus_min  = plus_min_max;
+	        plus_max  = plus_max_max;
+	        plus_def  = plus_def_max;
+	    }
 		
 	    int min = (1 + (weaponLv / 2)) / 2 + plus_min;
 	    int max = (5 + weaponLv) * 2 + plus_max;
@@ -173,14 +187,17 @@ public class LoaPlayController {
 
 	    // 결과 저장
 	    result.put("level", weaponLv);
+	    result.put("acc_level", accLv);
+		result.put("acc_max_level", accMaxLv);
+		result.put("acc_apply_level", acc_apply_level);
+		
 	    result.put("min", min);
 	    result.put("max", max);
 	    result.put("baseDamage", baseDamage);
 	    result.put("criticalChance", criticalChance);
 	    result.put("def", plus_def);
-
-	    return result;
 	}
+	
 	
 	List<String> selectPointItemUserList(HashMap<String,Object> map){
 		List<String> ableItemList = new ArrayList<>();

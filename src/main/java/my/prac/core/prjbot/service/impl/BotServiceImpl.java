@@ -548,7 +548,13 @@ public class BotServiceImpl implements BotService {
 		}
 		return botDAO.selectAccLvCheckForPoint(map);
 	}
+	public int selectAccLogMaxLv(HashMap<String,Object> map) {
+		return botDAO.selectAccLogMaxLv(map);
+	}
 	
+	public int selectAccLogMaxLvForPoint(HashMap<String,Object> map) {
+		return botDAO.selectAccLogMaxLvForPoint(map);
+	}
 	
 	public HashMap<String,Object> selectBossHit(HashMap<String,Object> map) throws Exception{
 		return botDAO.selectBossHit(map);
