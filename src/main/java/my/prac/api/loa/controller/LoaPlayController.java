@@ -197,12 +197,29 @@ public class LoaPlayController {
 	    result.put("criticalChance", criticalChance);
 	    result.put("def", plus_def);
 	}
-	
+	List<HashMap<String,Object>> selectPointItemUserListForPoint(HashMap<String,Object> map){
+		List<String> ableItemList = new ArrayList<>();
+		List<HashMap<String,Object>> PointItemOptionList= new ArrayList<>(); 
+		List<HashMap<String,Object>> userItemList = new ArrayList<>();
+		try {
+			PointItemOptionList = botService.selectPointItemOptionList(map);
+			userItemList = botService.selectPointItemUserListForPoint(map);
+			map.put("totalItemListSize",PointItemOptionList.size());
+			map.put("userItemListSize",userItemList.size());
+			//MiniGameUtil.itemAddtionalFunction(map);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return userItemList;
+	}
 	
 	List<String> selectPointItemUserList(HashMap<String,Object> map){
 		List<String> ableItemList = new ArrayList<>();
 		try {
+			List<HashMap<String,Object>> PointItemOptionList = botService.selectPointItemOptionList(map);
 			List<HashMap<String,Object>> userItemList = botService.selectPointItemUserList(map);
+			map.put("totalItemListSize",PointItemOptionList.size());
+			map.put("userItemListSize",userItemList.size());
 			//MiniGameUtil.itemAddtionalFunction(map);
 			for (HashMap<String,Object> userItem : userItemList) {
 				ableItemList.add(userItem.get("ITEM_NO")+"-"+userItem.get("ITEM_LV"));
@@ -212,9 +229,6 @@ public class LoaPlayController {
 		}
 		return ableItemList;
 	}
-	
-	
-	
 	
 	int weaponBonusForFight(HashMap<String,Object> map) {
 		HashMap<String,Object> targetMap = new HashMap<>();
@@ -723,7 +737,9 @@ public class LoaPlayController {
         }
         
 	    
-	    
+        List<String> userItemList = selectPointItemUserList(map);
+        
+        
 	    String itemNo = "";
 	    String itemName = "";
 	    String itemLv = "1";
@@ -764,7 +780,7 @@ public class LoaPlayController {
 	            }
 
 	            // 3. 유저가 가지고 있는 아이템 목록 (ITEM_NO-ITEM_LV)
-	            List<String> userItemList = selectPointItemUserList(map);
+	            
 
 	            // 4. MAX_LV 미도달 아이템 후보 목록 생성
 	            List<HashMap<String, Object>> candidateList = new ArrayList<>();
@@ -936,7 +952,16 @@ public class LoaPlayController {
 		if(boxCount>0) {
 			msg +=enterStr + "보유 상자 갯수 : "+boxCount;
 		}
-	    
+	    try {
+	    	if(map.get("totalItemListSize")!=null && map.get("totalItemListSize").equals("")) {
+				msg += "보물수집: "+map.get("userItemListSize")+" / "+(map.get("totalItemListSize"));
+			}
+			
+	    }catch(Exception e) {
+	    	
+	    }
+		
+		
 	    return msg;
 	}
 	

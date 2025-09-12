@@ -1307,21 +1307,32 @@ public class LoaChatController {
 				val += "❤️"+point_map_one.get("TOT")+ enterStr+ 
 					   "⚔"+"무기: +"+weaponLv+" lv"+point_map_one.get("WEAPON_USE")+enterStr+
 					   "⚔"+"악세: +"+accLv+" lv(max:"+accMaxLv+" lv, 적용: "+acc_apply_level+"lv)"+enterStr+
-					   "‡ 악세파괴시 (최대레벨-1) 적용"+enterStr+
+					   "　 ‡　 악세파괴시 (최대레벨-1) 적용"+enterStr+
 					   "✨"+"공격력: "+weaponMin+"~"+weaponMax+" (치확: "+(int)(weaponCriticalChance*100)+"%)"+enterStr+enterStr+
 					   "⏰"+point_map_one.get("ATTENDANCE")+ enterStr+
-					   "⚅"+point_map_one.get("DICE")+enterStr +
-					   "✨"+point_map_one.get("GAMBLE_WIN")+enterStr +
-					   "⚾"+point_map_one.get("BASEBALL_WIN")+enterStr +
-					   "⚔️"+point_map_one.get("FIGHT_SUM")+point_map_one.get("FIGHT_WIN")+point_map_one.get("FIGHT_LOSE")+enterStr+
-					   "" + enterStr+
-					   "✨"+"보물상자"+enterStr+
-					   "→(전체/오픈/실패) : "+point_map_one.get("BOX_TOT")+enterStr+
-					   "→(소모/환급) : "+point_map_one.get("BOX_TOT_POINT")+enterStr
-					   ;
+					   "⚅"+point_map_one.get("DICE")+enterStr+enterStr ;
+					   //"✨"+point_map_one.get("GAMBLE_WIN")+enterStr +
+					   //"⚾"+point_map_one.get("BASEBALL_WIN")+enterStr +
+					   //"⚔️"+point_map_one.get("FIGHT_SUM")+point_map_one.get("FIGHT_WIN")+point_map_one.get("FIGHT_LOSE")+enterStr+
+					   
 				
 				
-				List<HashMap<String,Object>> userItemList = botService.selectPointItemUserListForPoint(reqMap);
+				val += "✨"+"보물상자";
+				
+				List<HashMap<String,Object>> userItemList = play.selectPointItemUserListForPoint(reqMap);
+				try {
+					if(reqMap.get("totalItemListSize")!=null && reqMap.get("totalItemListSize").equals("")) {
+						val += "(수집현황: "+reqMap.get("userItemListSize")+" / "+(reqMap.get("totalItemListSize"));
+					}
+					
+				}catch(Exception e) {
+					val += enterStr;
+				}
+				
+				val +="→(전체/오픈/실패) : "+point_map_one.get("BOX_TOT")+enterStr+
+				      "→(소모/환급) : "+point_map_one.get("BOX_TOT_POINT")+enterStr
+				   ;
+				
 				if(userItemList !=null && userItemList.size()>0) {
 					val += "보물 더보기"+allSeeStr;
 				}
