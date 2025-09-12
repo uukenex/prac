@@ -1322,7 +1322,7 @@ public class LoaChatController {
 				List<HashMap<String,Object>> userItemList = play.selectPointItemUserListForPoint(reqMap);
 				try {
 					if(reqMap.get("totalItemListSize")!=null && !reqMap.get("totalItemListSize").equals("")) {
-						val += "(수집현황: "+reqMap.get("userItemListSize")+" / "+(reqMap.get("totalItemListSize"));
+						val += "(수집현황: "+reqMap.get("userItemListSize")+" / "+(reqMap.get("totalItemListSize"))+")"+enterStr;
 					}
 					
 				}catch(Exception e) {
