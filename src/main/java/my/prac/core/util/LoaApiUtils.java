@@ -198,64 +198,64 @@ public class LoaApiUtils {
 		}
 		switch(name) {
 			case "아드레날린":
-				gold = 32;
+				gold = 22.8;
 				break;
 			case "원한":
-				gold = 31.5;
+				gold = 22.8;
 				break;
 			case "예리한 둔기":
-				gold = 21;
+				gold = 15.8;
 				break;
 			case "저주받은 인형":
-				gold = 13.7;
+				gold = 10;
 				break;
 			case "돌격대장":
-				gold = 22;
+				gold = 17;
 				break;
 			case "타격의 대가":
-				gold = 8;
+				gold = 6.5;
 				break;
 			case "기습의 대가":
-				gold = 12;
+				gold = 9.8;
 				break;
 			case "질량 증가":
-				gold = 9;
+				gold = 8.8;
 				break;
 			case "슈퍼 차지":
-				gold = 2.2;
+				gold = 2;
 				break;
 			case "결투의 대가":
-				gold = 3.3;
+				gold = 3;
 				break;
 			case "속전속결":
-				gold = 0.3;
+				gold = 0.4;
 				break;
 			case "바리케이드":
-				gold = 0.6;
+				gold = 0.7;
 				break;
 			case "마나 효율 증가":
-				gold = 1;
-				break;
-			case "안정된 상태":
 				gold = 0.8;
 				break;
-			case "정밀 단도":
-				gold = 0.3;
+			case "안정된 상태":
+				gold = 0.6;
 				break;
-			case "에테르 포식자":
+			case "정밀 단도":
 				gold = 0.2;
 				break;
+			case "에테르 포식자":
+				gold = 0.1;
+				break;
 			case "마나의 흐름":
-				gold = 2.6;
+				gold = 1.9;
 				break;
 			case "구슬동자":
-				gold = 2.3;
+				gold = 1.6;
 				break;
 			case "전문의":
 				gold = 4;
 				break;
 			case "각성":
-				gold = 8.3;
+				gold = 7.5;
 				break;
 			case "중갑 착용":
 				gold = 0.5;

@@ -186,7 +186,7 @@ public class LoaChatSubController {
 		String paramUrl = lostArkAPIurl + "/characters/" + userId + "/siblings";
 		String returnData = LoaApiUtils.connect_process(paramUrl);
 		
-		String resMsg=ordUserId+enterStr+"원정대 전투력 정보 v1.2" + enterStr;
+		String resMsg=ordUserId+enterStr+"원정대 전투력 정보 v1.3" + enterStr;
 		
 		List<HashMap<String, Object>> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<List<Map<String, Object>>>() {});
 		if(rtnMap.isEmpty()) return "";
@@ -342,19 +342,25 @@ public class LoaChatSubController {
 			grade="모코코";
 		}
 		if(gradeCnt>500) {
-			grade="모코코와 중급자 사이 어딘가";
+			grade="모코코";
 		}
 		if(gradeCnt>1000) {
-			grade="중급자";
+			grade="모코코";
 		}
 		if(gradeCnt>2000) {
-			grade="고인물";
+			grade="중급자";
 		}
 		if(gradeCnt>4000) {
-			grade="슈퍼고인물";
+			grade="고인물";
 		}
 		if(gradeCnt>6000) {
+			grade="슈퍼고인물";
+		}
+		if(gradeCnt>8000) {
 			grade="일반인이 아님";
+		}
+		if(gradeCnt>10000) {
+			grade="로악귀";
 		}
 		
 		resMsg += enterStr;
@@ -369,8 +375,11 @@ public class LoaChatSubController {
 		resMsg += "각인합 "+gradeCnt_engrave+enterStr;
 		resMsg += "각인상세"+enterStr + msgOfTotEngrave(engraveUpd)+enterStr;
 		
+		//카드
+		//질서17p
+		
 		resMsg += "가격표:"+enterStr;
-		resMsg += "http://rgb-tns.dev-apc.com/in/totalGold5";
+		resMsg += "http://rgb-tns.dev-apc.com/in/totalGold6";
 		
 		if(gradeCnt_gem ==0) {
 			gradeCnt=0;
@@ -605,25 +614,25 @@ public class LoaChatSubController {
 			for (String g : accessoryList) {
 				switch (g) {
 				case "상상":
-					gradeCnt_accessory += 170;
+					gradeCnt_accessory += 105;
 					break;
 				case "상중":
 				case "중상":
-					gradeCnt_accessory += 55;
+					gradeCnt_accessory += 42;
 					break;
 				case "상하":
 				case "하상":
-					gradeCnt_accessory += 10;
+					gradeCnt_accessory += 11;
 					break;
 				case "상":
-					gradeCnt_accessory += 4;
+					gradeCnt_accessory += 4.6;
 					break;
 				case "중중":
-					gradeCnt_accessory += 4;
+					gradeCnt_accessory += 6.6;
 					break;
 				case "중하":
 				case "하중":
-					gradeCnt_accessory += 1;
+					gradeCnt_accessory += 2.2;
 					break;
 				case "중":
 					gradeCnt_accessory += 1;
@@ -901,16 +910,16 @@ public class LoaChatSubController {
 		//int cntGem6 = Collections.frequency(gemList, 6);
 		
 		if(cntGem10>0) {
-			gradeCnt_gem += 255*cntGem10;
+			gradeCnt_gem += 195*cntGem10;
 		}
 		if(cntGem9>0) {
-			gradeCnt_gem += 89*cntGem9;
+			gradeCnt_gem += 67*cntGem9;
 		}
 		if(cntGem8>0) {
-			gradeCnt_gem += 29*cntGem8;
+			gradeCnt_gem += 23*cntGem8;
 		}
 		if(cntGem7>0) {
-			gradeCnt_gem += 10*cntGem7;
+			gradeCnt_gem += 7.7*cntGem7;
 		}
 		/*if(cntGem6>0) {
 			gradeCnt_gem += 3*cntGem6;

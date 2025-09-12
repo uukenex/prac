@@ -953,8 +953,8 @@ public class LoaPlayController {
 			msg +=enterStr + "보유 상자 갯수 : "+boxCount;
 		}
 	    try {
-	    	if(map.get("totalItemListSize")!=null && map.get("totalItemListSize").equals("")) {
-				msg += "보물수집: "+map.get("userItemListSize")+" / "+(map.get("totalItemListSize"));
+	    	if(map.get("totalItemListSize")!=null && !map.get("totalItemListSize").equals("")) {
+				msg += enterStr+"보물수집: "+map.get("userItemListSize")+" / "+(map.get("totalItemListSize"));
 			}
 			
 	    }catch(Exception e) {
