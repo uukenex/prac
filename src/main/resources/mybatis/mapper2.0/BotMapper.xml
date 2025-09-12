@@ -1115,7 +1115,7 @@
 		UPDATE TBOT_POINT_ACC
 		   SET WEAPON_LV   = #{weaponLv, jdbcType=NUMERIC}
 			  ,MODIFY_DATE = SYSDATE
-			  ,PROC_DATE = SYSDATE-1/60/24
+			  ,PROC_DATE = SYSDATE - 2 / 60 / 24
 		 WHERE USER_NAME = #{userName, jdbcType=VARCHAR}
 		   AND ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 	</update>
