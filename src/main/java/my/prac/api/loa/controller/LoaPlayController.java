@@ -1562,7 +1562,7 @@ public class LoaPlayController {
 			return "강화3 포인트조회 오류입니다.";
 		}
 		
-		msg += weapon_upgrade_logic(map,5,defaultScore);
+		msg += weapon_upgrade_logic(map,5,calcScore);
 		
 		return msg;
 	}
@@ -2423,7 +2423,7 @@ public class LoaPlayController {
 			        		//isEvadeMsg += "[덫] 실패, 보스 회피!!" + enterStr;
 			        	}else {//5~100
 			        		isEvade = false;
-			              //  isEvadeMsg += "[덫] 보스 회피 무효!" + enterStr;
+			                isEvadeMsg += "[덫] 보스 회피 무효!" + enterStr;
 			        	}
 			           
 			        } else if (item_7_2) {
@@ -2432,7 +2432,7 @@ public class LoaPlayController {
 			        		//isEvadeMsg += "[덫2]실패, 보스 회피!!" + enterStr;
 			        	}else {//1~100
 			        		isEvade = false;
-			              //  isEvadeMsg += "[덫2]보스 회피 무효!" + enterStr;
+			                isEvadeMsg += "[덫2]보스 회피 무효!" + enterStr;
 			        	}
 			        }
 		        }
