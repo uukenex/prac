@@ -1550,7 +1550,7 @@ public class LoaPlayController {
 			
 			msg += calcScore+"p 사용! .. "+score + "p → "+ new_score+"p"+enterStr;
 			
-			if(defaultScore!=calcScore) {
+			if(item_8_1 || item_8_2 || item_8_3 ||item_8_4 ||item_8_5) {
 				msg +="([테메르의 정] 강화 할인 적용)"+enterStr;
 			}
 			
@@ -1607,7 +1607,7 @@ public class LoaPlayController {
 			
 			msg += calcScore+"p 사용! .. "+score + "p → "+ new_score+"p"+enterStr;
 			
-			if(defaultScore*5 != calcScore) {
+			if(item_8_1 || item_8_2 || item_8_3 ||item_8_4 ||item_8_5) {
 				msg +="([테메르의 정] 강화 할인 적용)"+enterStr;
 			}
 			
