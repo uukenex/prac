@@ -155,7 +155,7 @@ public class LoaPlayController {
 		int accMaxLv = Integer.parseInt(result.get("acc_max_level").toString());
 		
 		// 실제 적용될 레벨
-	    int acc_apply_level = accLv;
+	    int acc_apply_level = accMaxLv;
 		
 		 // --- 현재 accLv 기준 스탯 ---
 	    int[] pow_data = MiniGameUtil.POW_MAP_ACC.getOrDefault(accMaxLv, new int[]{0, 0, 0, 0}); 
