@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -313,8 +314,6 @@ public class LoaChatController {
 				val = play.testMethod(reqMap);
 				break;
 			case "/ㄹㅇ":
-			case "/주급":
-			case "/ㅈㄱ":
 			case "/보상":
 			case "/비싼전각":
 			case "/비싼유각":
@@ -1058,6 +1057,37 @@ public class LoaChatController {
 					}
 				}
 				break;
+			case "/주급":
+				if (param1 != null && !param1.equals("")) {
+					param0="/주급";
+					param1 = param1.trim();
+					
+					replace_param = botService.selectBotWordReplace(reqMap);
+					if(replace_param!=null && !replace_param.equals("")) {
+						param1 = replace_param;
+					}
+					
+					fulltxt = param0+" "+param1;
+					org_fulltxt = fulltxt;
+					reqMap.put("fulltxt", fulltxt);
+					try {
+						val = supportersIcon(param1);
+						val+= subCharacterGoldSum(param1);
+					} catch (Exception e) {
+						e.printStackTrace();
+						val = errorCodeMng(e,reqMap);
+						val+=enterStr+param1+" 으로 조회됨";
+						
+						HashMap<String,Object> hs = botService.selectIssueCase(reqMap);
+						if(hs !=null && hs.size()>0) {
+							val+= enterStr+hs.get("INSERT_DATE")+ "에 최종조회된 내용 불러오기입니다.";
+							val+= anotherMsgStr;
+							val+= hs.get("RES");
+						}
+					}
+				}
+				break;
+			
 			case "/전투력":
 			case "/ㅈㅌㄹ":
 				param0="/ㅈㅌㄹ";
@@ -1420,6 +1450,18 @@ public class LoaChatController {
 			        //val = cutByBytesAndInsertMarker(val, 600, allSeeStr);
 				}
 				break;
+				
+			case "/ㅈㄱ":
+			case "/젬값":
+				param0="/ㅈㄱ";
+				org_fulltxt = param0;
+				try {
+					val = marketSearch("gem");
+				}catch(Exception e) {
+					val = errorCodeMng(e,reqMap);
+				}
+				break;	
+				
 			case "/ㄱㅁㅈ":
 			case "/경매장":
 				if(param1==null || param1.equals("")) {
@@ -4035,6 +4077,105 @@ public class LoaChatController {
 		return resMsg;
 	}
 	
+	String subCharacterGoldSum(String userId) throws Exception {
+		String ordUserId=userId;
+		userId = URLEncoder.encode(userId, "UTF-8");
+		// +는 %2B로 치환한다
+		String paramUrl = lostArkAPIurl + "/characters/" + userId + "/siblings";
+		String returnData ="";
+		try {
+			returnData = LoaApiUtils.connect_process(paramUrl);	
+		}catch(Exception e) {
+			e.printStackTrace();
+			throw new Exception("E0004");
+		}
+		
+		
+		
+		
+		String resMsg=ordUserId;
+		
+		List<HashMap<String, Object>> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<List<Map<String, Object>>>() {});
+		if(rtnMap.isEmpty()) return "";
+		List<HashMap<String, Object>> sortedList = rtnMap.stream()
+				.filter(x->  Double.parseDouble(x.get("ItemAvgLevel").toString().replaceAll(",", "")) >= 1540)
+				.sorted(Comparator.comparingDouble(x-> Double.parseDouble(x.get("ItemAvgLevel").toString().replaceAll(",", ""))))
+				.collect(toReversedList());
+		
+		String mainServer = sortedList.get(0).get("ServerName").toString();
+		
+		//resMsg += mainServer;
+		resMsg += enterStr;
+		
+		
+		HashMap<String,Object> resMap =new HashMap<>();
+		
+		int charCnt = 0;
+		int partial_gold = 0;
+		int total_gold   = 0;
+		String resMsg1 ="";
+		
+		for(HashMap<String,Object> charList : sortedList) {
+			if(mainServer.equals(charList.get("ServerName").toString())) {
+				charCnt++;
+				resMsg1 += "[" + LoaApiUtils.shortClassName(charList.get("CharacterClassName").toString()) + "] ";
+				resMsg1 += charList.get("CharacterName").toString()+" - ";
+				Map<String, Object> armoryProfile = new HashMap<>();
+				
+				
+				try {
+					resMap = sub.sumTotalPowerSearch2(charList.get("CharacterName").toString());
+					armoryProfile = (Map<String, Object>) resMap.get("ArmoryProfile");
+				}catch(Exception e){
+					System.out.println(userId+" ArmoryProfile");
+				}
+				
+				double lv = Double.parseDouble(charList.get("ItemAvgLevel").toString().replaceAll(",", ""));
+				
+				if(lv >= 1730 ) {
+					partial_gold = 132000;
+				}else if(lv >= 1720) {
+					partial_gold = 120000;
+				}else if(lv >= 1710) {
+					partial_gold = 111000;
+				}else if(lv >= 1700) {
+					partial_gold = 101500;
+				}else if(lv >= 1690) {
+					partial_gold = 83000;
+				}else if(lv >= 1680) {
+					partial_gold = 74000;
+				}else if(lv >= 1670) {
+					partial_gold = 45800;
+				}else if(lv >= 1660) {
+					partial_gold = 33100;
+				}else if(lv >= 1640) {
+					partial_gold = 24100;
+				}
+				total_gold +=partial_gold;
+				
+				if(Double.parseDouble(charList.get("ItemAvgLevel").toString().replaceAll(",", "")) >= 1600) {
+					String combatPower ="";
+					if(armoryProfile.get("CombatPower") != null) {
+						
+						combatPower = armoryProfile.get("CombatPower").toString();
+					}
+					resMsg1 += partial_gold + " G " + enterStr;
+					resMsg1 += charList.get("ItemAvgLevel").toString().replaceAll(",", "")+"Lv ";
+					resMsg1 += ",전투력("+combatPower+")";
+					resMsg1 += enterStr ;
+				}
+				
+				if(charCnt ==6) {
+					break;
+				}
+			}
+			
+		}
+		resMsg += " 총 골드합계 "+total_gold+" G"+enterStr+enterStr;
+		resMsg += resMsg1;
+		
+		return resMsg;
+	}
 	String subCharacterInfoSearch2(String userId) throws Exception {
 		String ordUserId=userId;
 		userId = URLEncoder.encode(userId, "UTF-8");
@@ -4946,6 +5087,36 @@ public class LoaChatController {
 		return resMsg;
 	}
 	
+	String marketSearch(String item) throws Exception {
+		JSONObject json ;
+		String resMsg= "[아이템명]-[실시간최저가]"+enterStr;
+		
+		json = new JSONObject();
+		
+
+		json.put("CategoryCode", "230000");
+		json.put("Sort", "CURRENT_MIN_PRICE");
+		json.put("SortCondition", "ASC");
+		json.put("ItemName", "질서");
+		json.put("PageNo", "1");
+		
+		
+		resMsg +="[젬이름]-[ 고급 / 희귀 / 영웅 ]"+enterStr;
+		
+		resMsg += marketDtSearch(json,5,true,true);
+		
+		resMsg +=enterStr;
+		
+		json.put("ItemName", "혼돈");
+		resMsg += marketDtSearch(json,5,true,true);
+		
+		resMsg = LoaApiUtils.filterTextForMarket(resMsg);
+	
+		
+		
+		return resMsg;
+	}
+	
 	String marketSearch(int tier) throws Exception {
 		JSONObject json ;
 		String resMsg= "[아이템명]-[실시간최저가]"+enterStr;
@@ -5128,6 +5299,34 @@ public class LoaChatController {
 					}
 					
 					
+					break;
+				case 5:
+					
+					Map<String, List<String>> groupedMap = new LinkedHashMap<>();
+					
+					for (HashMap<String, Object> item : itemMap) {
+				        String name = item.get("Name").toString(); // ex) "질서의 젬 : 안정"
+				        String[] parts = name.split(" : ");
+				        if (parts.length < 2) continue;
+
+				        String groupKey = parts[0].replace("의 젬", "").trim() + " - " + parts[1].trim(); 
+				        // ex) "질서 - 안정"
+
+				        price = item.get("CurrentMinPrice").toString();
+				        
+				        groupedMap.computeIfAbsent(groupKey, k -> new ArrayList<>()).add(price);
+				    }
+					
+					
+					StringBuilder sb = new StringBuilder();
+				    for (Map.Entry<String, List<String>> entry : groupedMap.entrySet()) {
+				        sb.append(entry.getKey())
+				          .append(" [ ")
+				          .append(String.join(" / ", entry.getValue()))
+				          .append(" ] G");
+				        if (enterYn) sb.append(enterStr);
+				    }
+					str+= sb;
 					break;
 				
 			}

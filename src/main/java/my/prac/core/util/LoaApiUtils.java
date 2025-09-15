@@ -184,6 +184,7 @@ public class LoaApiUtils {
 			txt=txt.replaceAll("용암", "[무기]용암");
 			txt=txt.replaceAll("빙하", "[방어구]빙하");
 			txt=txt.replaceAll(" 각인서", "");
+			txt=txt.replaceAll("의 젬 : ", "");
 			
 		}catch(Exception e) {
 			txt="";
