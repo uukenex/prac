@@ -158,12 +158,12 @@ public class LoaPlayController {
 	    int acc_apply_level = accLv;
 		
 		 // --- 현재 accLv 기준 스탯 ---
-	    int[] pow_data = MiniGameUtil.POW_MAP_ACC.getOrDefault(accLv, new int[]{0, 0, 0, 0}); 
+	    int[] pow_data = MiniGameUtil.POW_MAP_ACC.getOrDefault(accMaxLv, new int[]{0, 0, 0, 0}); 
 	    int plus_crit = pow_data[0];
 	    int plus_min  = pow_data[1];
 	    int plus_max  = pow_data[2];
 	    int plus_def  = pow_data[3];
-
+	    /*
 	    // --- 최대 레벨-1 기준 스탯 ---
 	    int[] pow_data_max = MiniGameUtil.POW_MAP_ACC.getOrDefault(accMaxLv - 1, new int[]{0, 0, 0, 0}); 
 	    int plus_crit_max = pow_data_max[0];
@@ -179,17 +179,34 @@ public class LoaPlayController {
 	        plus_max  = plus_max_max;
 	        plus_def  = plus_def_max;
 	    }
+		*/
+	    int part_of_min_weapon = (1 + (weaponLv / 2)) / 2 ;
+	    int part_of_max_weapon = (5 + weaponLv) * 2 ;
+
+		int part_of_min_acc = plus_min;
+		int part_of_max_acc = plus_max;
 		
-	    int min = (1 + (weaponLv / 2)) / 2 + plus_min;
-	    int max = (5 + weaponLv) * 2 + plus_max;
+	    int min = part_of_min_weapon + part_of_min_acc;
+	    int max = part_of_max_weapon + part_of_max_acc;
 	    int baseDamage = rand.nextInt(max - min + 1) + min;
-	    double criticalChance = Math.min(0.20 + weaponLv * 0.01 + plus_crit * 0.01 , 1.0);
+	    
+	    
+	    double part_of_weapon_crit = Math.min(0.20 + weaponLv * 0.01 , 1.0);
+	    double part_of_acc_crit = Math.min(0 + plus_crit * 0.01 , 1.0);
+	    double criticalChance = part_of_weapon_crit+part_of_acc_crit;
 
 	    // 결과 저장
 	    result.put("level", weaponLv);
 	    result.put("acc_level", accLv);
 		result.put("acc_max_level", accMaxLv);
 		result.put("acc_apply_level", acc_apply_level);
+		
+		result.put("part_of_min_weapon", part_of_min_weapon);
+		result.put("part_of_max_weapon", part_of_max_weapon);
+		result.put("part_of_min_acc", part_of_min_acc);
+		result.put("part_of_max_acc", part_of_max_acc);
+		result.put("part_of_weapon_crit", part_of_weapon_crit);
+		result.put("part_of_acc_crit", part_of_acc_crit);
 		
 	    result.put("min", min);
 	    result.put("max", max);
@@ -206,6 +223,23 @@ public class LoaPlayController {
 			userItemList = botService.selectPointItemUserListForPoint(map);
 			map.put("totalItemListSize",PointItemOptionList.size());
 			map.put("userItemListSize",userItemList.size());
+			
+			int totSum =0;
+			int userSum = 0;
+			
+			for(HashMap<String,Object> hs : PointItemOptionList) {
+				totSum += Integer.parseInt(hs.get("MAX_LV").toString());
+			}
+			
+			if(userItemList.size() > 0) {
+				for(HashMap<String,Object> hs : userItemList) {
+					userSum += Integer.parseInt(hs.get("ITEM_LV").toString());
+				}
+				
+			}
+			
+			map.put("totSum", totSum);
+			map.put("userSum", userSum);
 			//MiniGameUtil.itemAddtionalFunction(map);
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -224,6 +258,24 @@ public class LoaPlayController {
 			for (HashMap<String,Object> userItem : userItemList) {
 				ableItemList.add(userItem.get("ITEM_NO")+"-"+userItem.get("ITEM_LV"));
 			}
+			
+			int totSum =0;
+			int userSum = 0;
+			
+			for(HashMap<String,Object> hs : PointItemOptionList) {
+				totSum += Integer.parseInt(hs.get("MAX_LV").toString());
+			}
+			
+			if(userItemList.size() > 0) {
+				for(HashMap<String,Object> hs : userItemList) {
+					userSum += Integer.parseInt(hs.get("ITEM_LV").toString());
+				}
+				
+			}
+			
+			map.put("totSum", totSum);
+			map.put("userSum", userSum);
+			
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -955,11 +1007,12 @@ public class LoaPlayController {
 	    try {
 	    	if(map.get("totalItemListSize")!=null && !map.get("totalItemListSize").equals("")) {
 				msg += enterStr+"보물수집: "+map.get("userItemListSize")+" / "+(map.get("totalItemListSize"));
+				msg += "(수집점수: "+map.get("userSum")+" / "+(map.get("totSum"))+")"+enterStr;
 			}
 			
 	    }catch(Exception e) {
 	    	
-	    }
+	    } 
 		
 		
 	    return msg;
@@ -1472,20 +1525,20 @@ public class LoaPlayController {
 		boolean item_8_5 = ableItemList.contains("8-5");
 		
 		int defaultScore = 30;
-		int calcScore = defaultScore *1;
+		
 		
 		if(item_8_1) {
-			calcScore -=2;
+			defaultScore -=2;
 		} else if(item_8_2) {
-			calcScore -=4;
+			defaultScore -=4;
 		} else if(item_8_3) {
-			calcScore -=6;
+			defaultScore -=6;
 		} else if(item_8_4) {
-			calcScore -=8;
+			defaultScore -=8;
 		} else if(item_8_5) {
-			calcScore -=10;
+			defaultScore -=10;
 		}
-		
+		int calcScore = defaultScore *1;
 		try {
 			List<HashMap<String,Object>> ls = botService.selectBotPointRankNewScore(map);
 			int score = Integer.parseInt(ls.get(0).get("SCORE").toString());
@@ -1505,7 +1558,7 @@ public class LoaPlayController {
 			return "강화2 포인트조회 오류입니다.";
 		}
 		
-		msg += weapon_upgrade_logic(map,1 ,calcScore );
+		msg += weapon_upgrade_logic(map,1 ,defaultScore );
 		
 		return msg;
 	}
@@ -1529,19 +1582,19 @@ public class LoaPlayController {
 		boolean item_8_5 = ableItemList.contains("8-5");
 		
 		int defaultScore = 30;
-		int calcScore = defaultScore;
-		
 		if(item_8_1) {
-			calcScore -=2*5;
+			defaultScore -=2;
 		} else if(item_8_2) {
-			calcScore -=4*5;
+			defaultScore -=4;
 		} else if(item_8_3) {
-			calcScore -=6*5;
+			defaultScore -=6;
 		} else if(item_8_4) {
-			calcScore -=8*5;
+			defaultScore -=8;
 		} else if(item_8_5) {
-			calcScore -=10*5;
+			defaultScore -=10;
 		}
+		int calcScore = defaultScore *5;
+		
 		
 		try {
 			List<HashMap<String,Object>> ls = botService.selectBotPointRankNewScore(map);
@@ -1562,7 +1615,7 @@ public class LoaPlayController {
 			return "강화3 포인트조회 오류입니다.";
 		}
 		
-		msg += weapon_upgrade_logic(map,5,calcScore);
+		msg += weapon_upgrade_logic(map,5,defaultScore);
 		
 		return msg;
 	}

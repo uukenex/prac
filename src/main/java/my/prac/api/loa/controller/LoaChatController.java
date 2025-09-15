@@ -351,8 +351,7 @@ public class LoaChatController {
 				}
 				
 				if(playYn.equals("1")) {
-					val= "점검중입니다.";
-					//val = play.weapon2(reqMap);
+					val = play.weapon2(reqMap);
 				}else {
 					val = "별도 게임방에서 진행해주세요.";
 				}
@@ -367,8 +366,7 @@ public class LoaChatController {
 				}
 				
 				if(playYn.equals("1")) {
-					val= "점검중입니다.";
-					//val = play.weapon3(reqMap);
+					val = play.weapon3(reqMap);
 				}else {
 					val = "별도 게임방에서 진행해주세요.";
 				}
@@ -1301,16 +1299,19 @@ public class LoaChatController {
 			    int accLv = Integer.parseInt(weaponInfo.get("acc_level").toString());
 			    int accMaxLv = Integer.parseInt(weaponInfo.get("acc_max_level").toString());
 			    int acc_apply_level = Integer.parseInt(weaponInfo.get("acc_apply_level").toString());
-			    double weaponCriticalChance = Double.parseDouble(weaponInfo.get("criticalChance").toString());
-			    int weaponMin = Integer.parseInt(weaponInfo.get("min").toString());
-			    int weaponMax = Integer.parseInt(weaponInfo.get("max").toString());
-			    int weaponBaseDmg = Integer.parseInt(weaponInfo.get("baseDamage").toString());
+			    double part_of_weapon_crit = Double.parseDouble(weaponInfo.get("part_of_weapon_crit").toString());
+			    double part_of_acc_crit = Double.parseDouble(weaponInfo.get("part_of_acc_crit").toString());
+			    int weaponMin = Integer.parseInt(weaponInfo.get("part_of_min_weapon").toString());
+			    int weaponMax = Integer.parseInt(weaponInfo.get("part_of_max_weapon").toString());
+			    int accMin = Integer.parseInt(weaponInfo.get("part_of_min_acc").toString());
+			    int accMax = Integer.parseInt(weaponInfo.get("part_of_max_acc").toString());
 				
 				val += "❤️"+point_map_one.get("TOT")+ enterStr+ 
 					   "⚔"+"무기: +"+weaponLv+" lv"+point_map_one.get("WEAPON_USE")+enterStr+
-					   "⚔"+"악세: +"+accLv+" lv(max:"+accMaxLv+" lv, 적용: "+acc_apply_level+"lv)"+enterStr+
-					   "　 ‡　 악세파괴시 (최대레벨-1) 적용"+enterStr+
-					   "✨"+"공격력: "+weaponMin+"~"+weaponMax+" (치확: "+(int)(weaponCriticalChance*100)+"%)"+enterStr+enterStr+
+					   "⚔"+"악세: +"+accLv+" lv(max:"+accMaxLv+"lv)"+enterStr+
+					   "　 ‡　 악세달성 최고레벨 적용"+(acc_apply_level)+enterStr+
+					   "✨"+"공격력: "+weaponMin+"~"+weaponMax+" (치확: "+(int)(part_of_weapon_crit*100)+"%)"+enterStr+
+					   "✨"+"　추가: "+accMin+"~"+accMax+" (치확: "+(int)(part_of_acc_crit*100)+"%)"+enterStr+enterStr+
 					   "⏰"+point_map_one.get("ATTENDANCE")+ enterStr+
 					   "⚅"+point_map_one.get("DICE")+enterStr+enterStr ;
 					   //"✨"+point_map_one.get("GAMBLE_WIN")+enterStr +
@@ -1324,7 +1325,8 @@ public class LoaChatController {
 				List<HashMap<String,Object>> userItemList = play.selectPointItemUserListForPoint(reqMap);
 				try {
 					if(reqMap.get("totalItemListSize")!=null && !reqMap.get("totalItemListSize").equals("")) {
-						val += "(수집현황: "+reqMap.get("userItemListSize")+" / "+(reqMap.get("totalItemListSize"))+")"+enterStr;
+						val += "(보물수집: "+reqMap.get("userItemListSize")+" / "+(reqMap.get("totalItemListSize"))+")"+enterStr;
+						val += "(수집점수: "+reqMap.get("userSum")+" / "+(reqMap.get("totSum"))+")"+enterStr;
 					}
 					
 				}catch(Exception e) {

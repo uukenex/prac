@@ -53,22 +53,22 @@ public class MiniGameUtil {
 	
 	static {
 		//0->1시도시, 30%성공 60%실패 10%파괴 ,
-	    RATE_MAP_ACC.put(0,  new Double[]{30.0, 60.0, 10.0});
-	    RATE_MAP_ACC.put(1,  new Double[]{30.0, 60.0, 10.0});
-	    RATE_MAP_ACC.put(2,  new Double[]{15.0, 75.0, 10.0});
-	    RATE_MAP_ACC.put(3,  new Double[]{15.0, 75.0, 10.0});
-	    RATE_MAP_ACC.put(4,  new Double[]{15.0, 75.0, 10.0});
-	    RATE_MAP_ACC.put(5,  new Double[]{30.0, 50.0, 20.0});
-	    RATE_MAP_ACC.put(6,  new Double[]{15.0, 75.0, 10.0});
-	    RATE_MAP_ACC.put(7,  new Double[]{15.0, 70.0, 15.0});
-	    RATE_MAP_ACC.put(8,  new Double[]{15.0, 65.0, 20.0});
-	    RATE_MAP_ACC.put(9,  new Double[]{10.0, 72.0, 18.0});
-	    RATE_MAP_ACC.put(10, new Double[]{10.0, 72.0, 18.0});
-	    RATE_MAP_ACC.put(11, new Double[]{10.0, 72.0, 18.0});
-	    RATE_MAP_ACC.put(12, new Double[]{7.0 , 74.4, 18.6});
-	    RATE_MAP_ACC.put(13, new Double[]{5.0 , 76.0, 19.0});
-	    RATE_MAP_ACC.put(14, new Double[]{3.0 , 77.6, 19.4});
-	    RATE_MAP_ACC.put(15, new Double[]{1.0 , 79.2, 19.8});
+	    RATE_MAP_ACC.put(0,  new Double[]{30.0, 70.0-3.0 , 3.0});
+	    RATE_MAP_ACC.put(1,  new Double[]{30.0, 70.0-5.0 , 5.0});
+	    RATE_MAP_ACC.put(2,  new Double[]{25.0, 70.0-7.0 , 7.0});
+	    RATE_MAP_ACC.put(3,  new Double[]{25.0, 70.0-9.0 , 9.0});
+	    RATE_MAP_ACC.put(4,  new Double[]{20.0, 70.0-11.0, 11.0});
+	    RATE_MAP_ACC.put(5,  new Double[]{20.0, 70.0-13.0, 13.0});
+	    RATE_MAP_ACC.put(6,  new Double[]{15.0, 70.0-15.0, 15.0});
+	    RATE_MAP_ACC.put(7,  new Double[]{15.0, 70.0-17.0, 17.0});
+	    RATE_MAP_ACC.put(8,  new Double[]{10.0, 70.0-19.0, 19.0});
+	    RATE_MAP_ACC.put(9,  new Double[]{10.0, 70.0-21.0, 21.0});
+	    RATE_MAP_ACC.put(10, new Double[]{5.0,  70.0-23.0, 23.0});
+	    RATE_MAP_ACC.put(11, new Double[]{5.0,  70.0-25.0, 25.0});
+	    RATE_MAP_ACC.put(12, new Double[]{3.0 , 70.0-27.0, 27.0});
+	    RATE_MAP_ACC.put(13, new Double[]{3.0 , 70.0-29.0, 29.0});
+	    RATE_MAP_ACC.put(14, new Double[]{1.0 , 70.0-31.0, 31.0});
+	    RATE_MAP_ACC.put(15, new Double[]{1.0 , 70.0-33.0, 33.0});
 	}
 	static {
 		//0강일때 파워: 크리0 민뎀0 맥뎀3,방어력
@@ -93,22 +93,22 @@ public class MiniGameUtil {
 
 	static {
 		//0강일때 파워: 크리0 민뎀0 맥뎀3
-		GOLD_MAP_ACC.put(0,   new int[]{200});
-		GOLD_MAP_ACC.put(1,   new int[]{200});
-		GOLD_MAP_ACC.put(2,   new int[]{250});
-		GOLD_MAP_ACC.put(3,   new int[]{250});
-		GOLD_MAP_ACC.put(4,   new int[]{300});
-		GOLD_MAP_ACC.put(5,   new int[]{300});
-		GOLD_MAP_ACC.put(6,   new int[]{350});
-		GOLD_MAP_ACC.put(7,   new int[]{350});
-		GOLD_MAP_ACC.put(8,   new int[]{400});
-		GOLD_MAP_ACC.put(9,   new int[]{400});
-		GOLD_MAP_ACC.put(10,  new int[]{450});
-		GOLD_MAP_ACC.put(11,  new int[]{450});
-		GOLD_MAP_ACC.put(12,  new int[]{500});
-		GOLD_MAP_ACC.put(13,  new int[]{500});
-		GOLD_MAP_ACC.put(14,  new int[]{550});
-		GOLD_MAP_ACC.put(15,  new int[]{550});
+		GOLD_MAP_ACC.put(0,   new int[]{50});
+		GOLD_MAP_ACC.put(1,   new int[]{100});
+		GOLD_MAP_ACC.put(2,   new int[]{100});
+		GOLD_MAP_ACC.put(3,   new int[]{150});
+		GOLD_MAP_ACC.put(4,   new int[]{150});
+		GOLD_MAP_ACC.put(5,   new int[]{200});
+		GOLD_MAP_ACC.put(6,   new int[]{200});
+		GOLD_MAP_ACC.put(7,   new int[]{250});
+		GOLD_MAP_ACC.put(8,   new int[]{250});
+		GOLD_MAP_ACC.put(9,   new int[]{300});
+		GOLD_MAP_ACC.put(10,  new int[]{300});
+		GOLD_MAP_ACC.put(11,  new int[]{350});
+		GOLD_MAP_ACC.put(12,  new int[]{350});
+		GOLD_MAP_ACC.put(13,  new int[]{400});
+		GOLD_MAP_ACC.put(14,  new int[]{400});
+		GOLD_MAP_ACC.put(15,  new int[]{450});
 	}
 
 	
