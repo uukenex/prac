@@ -2867,7 +2867,7 @@ public class LoaPlayController {
 	        map.put("seq", seq);
 	        map.put("damage", damage);
 	        
-	        if(score > 100) {
+	        if(score > 150) {
 	        	score =150;
 	        }
 	        
