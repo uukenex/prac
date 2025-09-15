@@ -42,7 +42,8 @@ public interface BotService {
 	public int selectSupporters(String userId);
 	
 	public int insertBotWordHisTx(HashMap<String, Object> hashMap);
-	public List<String> selectRoomList(HashMap<String, Object> hashMap);
+	public List<String> selectRoomList1(HashMap<String, Object> hashMap);
+	public List<String> selectRoomList2(HashMap<String, Object> hashMap);
 	
 	public List<HashMap<String,Object>> selectMarketCondition(HashMap<String, Object> hashMap);
 	public HashMap<String,Object> selectIssueCase(HashMap<String, Object> hashMap);

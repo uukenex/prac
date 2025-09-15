@@ -1594,10 +1594,49 @@ public class LoaChatController {
 				}
 				break;		
 				*/
-			case "/공지":
-				List<String> list =botService.selectRoomList(reqMap);
+			case "/게임공지":
+				List<String> list =botService.selectRoomList2(reqMap);
 				
 				String tmp_val ="";
+				
+				for(int i=0;i<list.size();i++) {
+					if(i!=0) {
+						tmp_val += listSeparatorStr;
+					}
+					tmp_val += list.get(i);
+				}
+				
+				if(tmp_val.equals("")) {
+					return "";
+				}
+				//tmp_val  = param1+tmp_val;
+				
+				/**  
+				  res = room1㉾room2
+				  
+				  if(res.indexOf(listSeparatorStr)){
+				  	var room_list = res.split("㉾")
+				    //room_list[0] =room1
+				    //room_list[1] =room2
+				    
+				    for (room:room_list){ 
+					  Api.replyRoom(room, 공지내용);
+					}
+				    
+				  }else{
+				   원래로직
+				  }
+				  =>
+				  
+				  
+				 **/
+				
+				val = tmp_val;
+				break;
+			case "/공지":
+				list =botService.selectRoomList1(reqMap);
+				
+				tmp_val ="";
 				
 				for(int i=0;i<list.size();i++) {
 					if(i!=0) {

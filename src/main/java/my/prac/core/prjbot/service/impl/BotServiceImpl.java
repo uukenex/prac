@@ -129,8 +129,11 @@ public class BotServiceImpl implements BotService {
 		return botDAO.insertBotWordHis(hashMap);
 	}
 	
-	public List<String> selectRoomList(HashMap<String, Object> hashMap){
-		return botDAO.selectRoomList(hashMap);
+	public List<String> selectRoomList1(HashMap<String, Object> hashMap){
+		return botDAO.selectRoomList1(hashMap);
+	}
+	public List<String> selectRoomList2(HashMap<String, Object> hashMap){
+		return botDAO.selectRoomList2(hashMap);
 	}
 	
 	public List<HashMap<String,Object>> selectMarketCondition(HashMap<String, Object> hashMap){

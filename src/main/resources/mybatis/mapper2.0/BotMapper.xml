@@ -278,12 +278,24 @@
 			 ,#{issue_yn, jdbcType=VARCHAR})
 	</insert>
 	
-	<select id="selectRoomList" resultType="String" parameterType="hashMap">
-		/* bot.xml selectRoomList */
+	<select id="selectRoomList1" resultType="String" parameterType="hashMap">
+		/* bot.xml selectRoomList1 */
 		SELECT A.ROOM_NAME
 		  FROM TBOT_WORD_SAVE_MASTER A
 		 WHERE A.ROOM_NAME IS NOT NULL
-		   AND A.TEST_YN ='1'
+		   AND A.NOTI_YN ='1'
+		   AND EXISTS (SELECT 1
+						 FROM TBOT_WORD_SAVE_MASTER B
+					    WHERE B.USER_NAME = #{userName, jdbcType=VARCHAR}
+						  AND B.ROOM_NAME IS NULL)
+		 GROUP BY A.ROOM_NAME
+	</select>
+	<select id="selectRoomList2" resultType="String" parameterType="hashMap">
+		/* bot.xml selectRoomList2 */
+		SELECT A.ROOM_NAME
+		  FROM TBOT_WORD_SAVE_MASTER A
+		 WHERE A.ROOM_NAME IS NOT NULL
+		   AND A.GAME_YN ='1'
 		   AND EXISTS (SELECT 1
 						 FROM TBOT_WORD_SAVE_MASTER B
 					    WHERE B.USER_NAME = #{userName, jdbcType=VARCHAR}
