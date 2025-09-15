@@ -4137,14 +4137,14 @@ public class LoaChatController {
 		List<HashMap<String, Object>> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<List<Map<String, Object>>>() {});
 		if(rtnMap.isEmpty()) return "";
 		List<HashMap<String, Object>> sortedList = rtnMap.stream()
-				.filter(x->  Double.parseDouble(x.get("ItemAvgLevel").toString().replaceAll(",", "")) >= 1540)
+				.filter(x->  Double.parseDouble(x.get("ItemAvgLevel").toString().replaceAll(",", "")) >= 1640)
 				.sorted(Comparator.comparingDouble(x-> Double.parseDouble(x.get("ItemAvgLevel").toString().replaceAll(",", ""))))
 				.collect(toReversedList());
 		
 		String mainServer = sortedList.get(0).get("ServerName").toString();
 		
 		//resMsg += mainServer;
-		resMsg += enterStr;
+		//resMsg += enterStr;
 		
 		
 		HashMap<String,Object> resMap =new HashMap<>();
@@ -4170,7 +4170,7 @@ public class LoaChatController {
 				}
 				
 				double lv = Double.parseDouble(charList.get("ItemAvgLevel").toString().replaceAll(",", ""));
-				
+				partial_gold = 0;
 				if(lv >= 1730 ) {
 					partial_gold = 132000;
 				}else if(lv >= 1720) {
