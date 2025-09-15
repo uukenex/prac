@@ -2399,19 +2399,19 @@ public class LoaPlayController {
 	    
 	    
 	    if(item_12_1) {
-	    	weaponMin +=3;
+	    	weaponMin +=1;
 	    }
 	    if(item_12_2) {
-	    	weaponMin +=6;
+	    	weaponMin +=2;
 	    }
 	    if(item_12_3) {
-	    	weaponMin +=9;
+	    	weaponMin +=3;
 	    }
 	    if(item_12_4) {
-	    	weaponMin +=12;
+	    	weaponMin +=4;
 	    }
 	    if(item_12_5) {
-	    	weaponMin +=15;
+	    	weaponMin +=5;
 	    }
 	    
 	    int weaponBaseDmg =  rand.nextInt(weaponMax - weaponMin + 1) + weaponMin;
@@ -2539,16 +2539,16 @@ public class LoaPlayController {
 			}
 
 			if (item_5_1) {
-				totalCritPercent += 5;
-				critParts.add("+ [예리한칼날](5%)");
+				totalCritPercent += 3;
+				critParts.add("+ [예리한칼날](3%)");
 			}
 			if (item_5_2) {
-				totalCritPercent += 10;
-				critParts.add("+ [예리한칼날2](10%)");
+				totalCritPercent += 6;
+				critParts.add("+ [예리한칼날2](6%)");
 			}
 			if (item_5_3) {
-				totalCritPercent += 15;
-				critParts.add("+ [예리한칼날3](15%)");
+				totalCritPercent += 9;
+				critParts.add("+ [예리한칼날3](9%)");
 			}
 			if ((hp * 100.0) / org_hp < 10) {
 				if (item_4_1) {
@@ -2866,6 +2866,11 @@ public class LoaPlayController {
 	        map.put("newHp", newHp);
 	        map.put("seq", seq);
 	        map.put("damage", damage);
+	        
+	        if(score > 100) {
+	        	score =150;
+	        }
+	        
 	        map.put("score", score);
 	        map.put("endYn", isKill ? "1" : "0");
 	        map.put("atkPower", appliedAtkPower);
@@ -2945,6 +2950,10 @@ public class LoaPlayController {
 
 		// 5. 포인트 및 보상
 		msg.append("▶ 획득 포인트: ").append(score);
+		if(score ==150) {
+			msg.append("(MAX)");
+		}
+		
 		if (newbieYn)
 			msg.append(" (초보자 +10p)");
 		//msg.append("기본공격포인트 "+damage+"÷3");
