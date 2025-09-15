@@ -1832,7 +1832,7 @@ public class LoaPlayController {
 			    int refundCount = rate-i;     
 			    int refundAmount = refundCount*tryPirce;
 			    
-			    if(refundCount > 0) {
+			    if(refundCount > 1) {
 			    	//중간성공시 .. 로직 
 			    	 msg += rate + "회차 중 " + (rate - refundCount) + "회차에 " +
 			    	           (isMaxedOut ? "장인의기운 100% 도달" : "성공") +

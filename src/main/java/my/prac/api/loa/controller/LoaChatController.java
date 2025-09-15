@@ -351,7 +351,8 @@ public class LoaChatController {
 				}
 				
 				if(playYn.equals("1")) {
-					val = play.weapon2(reqMap);
+					val= "점검중입니다.";
+					//val = play.weapon2(reqMap);
 				}else {
 					val = "별도 게임방에서 진행해주세요.";
 				}
@@ -366,7 +367,8 @@ public class LoaChatController {
 				}
 				
 				if(playYn.equals("1")) {
-					val = play.weapon3(reqMap);
+					val= "점검중입니다.";
+					//val = play.weapon3(reqMap);
 				}else {
 					val = "별도 게임방에서 진행해주세요.";
 				}
