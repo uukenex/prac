@@ -3046,9 +3046,12 @@ public class LoaPlayController {
 	public String calcBossReward2(HashMap<String, Object> map) {
 		String roomName = (String) map.get("roomName");
 		int totalReward = Integer.parseInt(map.get("reward").toString()) ; // 기본 총 보상 포인트
+		int tot1=0;
+		int tot2=0;
 		int bossOrgMaxHp = Integer.parseInt(map.get("org_hp").toString());
 		
-		totalReward = totalReward/2;
+		tot1 = totalReward/10*7;
+		tot2 = totalReward/10*3;
 		
 		List<HashMap<String, Object>> top3List = botService.selectTop3Contributors(map);
 		
@@ -3073,7 +3076,7 @@ public class LoaPlayController {
 			
 			// top3 데미지 합 대비 분배 비율
 			double rewardRatio = (double) cnt / totCnt;
-			int reward = (int) Math.floor(totalReward * rewardRatio); // 내림처리
+			int reward = (int) Math.floor(tot1 * rewardRatio); // 내림처리
 			
 			// 포인트 지급 처리
 			HashMap<String, Object> rewardMap = new HashMap<>();
@@ -3114,7 +3117,7 @@ public class LoaPlayController {
 			
 			// top3 데미지 합 대비 분배 비율
 			double rewardRatio = (double) damage / totalTop3Damage;
-			int reward = (int) Math.floor(totalReward * rewardRatio); // 내림처리
+			int reward = (int) Math.floor(tot2 * rewardRatio); // 내림처리
 			
 			// 포인트 지급 처리
 			HashMap<String, Object> rewardMap = new HashMap<>();
