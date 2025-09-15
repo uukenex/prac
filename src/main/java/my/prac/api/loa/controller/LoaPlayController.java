@@ -1529,7 +1529,7 @@ public class LoaPlayController {
 		boolean item_8_5 = ableItemList.contains("8-5");
 		
 		int defaultScore = 30;
-		int calcScore = defaultScore *5;
+		int calcScore = defaultScore;
 		
 		if(item_8_1) {
 			calcScore -=2*5;
