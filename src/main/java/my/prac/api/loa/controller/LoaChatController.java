@@ -5320,31 +5320,52 @@ public class LoaChatController {
 					
 					break;
 				case 5:
-					
-					Map<String, List<String>> groupedMap = new LinkedHashMap<>();
-					
+					// 옵션 점수 매핑 테이블
+					Map<String, String> optionPointMap = new HashMap<>();
+					optionPointMap.put("불변", "10p");
+					optionPointMap.put("견고", "9p");
+					optionPointMap.put("안정", "8p");
+					optionPointMap.put("붕괴", "10p");
+					optionPointMap.put("왜곡", "9p");
+					optionPointMap.put("침식", "8p");
+
+					Map<String, Map<String, List<String>>> groupedMap = new LinkedHashMap<>();
+
 					for (HashMap<String, Object> item : itemMap) {
-				        String name = item.get("Name").toString(); // ex) "질서의 젬 : 안정"
-				        String[] parts = name.split(" : ");
-				        if (parts.length < 2) continue;
+					    String name = item.get("Name").toString(); // ex) "질서의 젬 : 안정"
+					    String[] parts = name.split(" : ");
+					    if (parts.length < 2) continue;
 
-				        String groupKey = parts[0].replace("의 젬", "").trim() + " - " + parts[1].trim(); 
-				        // ex) "질서 - 안정"
+					    String mainName = parts[0].replace("의 젬", "").trim(); // ex) "질서"
+					    String option = parts[1].trim();                      // ex) "안정"
 
-				        price = item.get("CurrentMinPrice").toString();
-				        
-				        groupedMap.computeIfAbsent(groupKey, k -> new ArrayList<>()).add(price);
-				    }
-					
-					
+					    price = item.get("CurrentMinPrice").toString();
+
+					    groupedMap
+					        .computeIfAbsent(mainName, k -> new LinkedHashMap<>())
+					        .computeIfAbsent(option, k -> new ArrayList<>())
+					        .add(price);
+					}
+
+					// 최종 문자열 조립
 					StringBuilder sb = new StringBuilder();
-				    for (Map.Entry<String, List<String>> entry : groupedMap.entrySet()) {
-				        sb.append(entry.getKey())
-				          .append(" [ ")
-				          .append(String.join(" / ", entry.getValue()))
-				          .append(" ] G");
-				        if (enterYn) sb.append(enterStr);
-				    }
+					for (Map.Entry<String, Map<String, List<String>>> mainEntry : groupedMap.entrySet()) {
+					    sb.append(mainEntry.getKey()).append("\n"); // ex) "질서"
+
+					    for (Map.Entry<String, List<String>> optionEntry : mainEntry.getValue().entrySet()) {
+					        String option = optionEntry.getKey(); // ex) "안정"
+					        String point = optionPointMap.getOrDefault(option, "0p"); // 점수
+					        List<String> prices = optionEntry.getValue();
+
+					        sb.append(option)
+					          .append("(").append(point).append(")")
+					          .append("[")
+					          .append(String.join("/", prices))
+					          .append("]G")
+					          .append(enterStr);
+					    }
+					}
+
 					str+= sb;
 					break;
 				
