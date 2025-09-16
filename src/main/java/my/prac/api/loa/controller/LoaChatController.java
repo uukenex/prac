@@ -5350,7 +5350,7 @@ public class LoaChatController {
 					// 최종 문자열 조립
 					StringBuilder sb = new StringBuilder();
 					for (Map.Entry<String, Map<String, List<String>>> mainEntry : groupedMap.entrySet()) {
-					    sb.append(mainEntry.getKey()).append("\n"); // ex) "질서"
+					    sb.append(mainEntry.getKey()).append(enterStr); // ex) "질서"
 
 					    for (Map.Entry<String, List<String>> optionEntry : mainEntry.getValue().entrySet()) {
 					        String option = optionEntry.getKey(); // ex) "안정"
@@ -5358,10 +5358,10 @@ public class LoaChatController {
 					        List<String> prices = optionEntry.getValue();
 
 					        sb.append(option)
-					          .append("(").append(point).append(")")
-					          .append("[")
+					          .append("(").append(point).append(") - ").append(enterStr)
+					          .append("　[ ")
 					          .append(String.join("/", prices))
-					          .append("]G")
+					          .append(" ] G")
 					          .append(enterStr);
 					    }
 					}
