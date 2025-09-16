@@ -781,7 +781,7 @@
 		           AND COMPLETE_YN = '1'
 		           AND INSERT_DATE > TO_DATE('20250701','YYYYMMDD')
 		           AND INSERT_DATE BETWEEN SYSDATE - 30 AND SYSDATE
-		           AND upper(WINNER_NAME) = upper(#{param1, jdbcType=VARCHAR})
+		           AND upper(WINNER_NAME) = upper(#{userName, jdbcType=VARCHAR})
 		           AND (
 		               (UPPER(USER_NAME) = UPPER(#{param1, jdbcType=VARCHAR}) AND UPPER(TARGET_NAME) = UPPER(#{userName, jdbcType=VARCHAR}))
 		            OR (UPPER(USER_NAME) = UPPER(#{userName, jdbcType=VARCHAR}) AND UPPER(TARGET_NAME) = UPPER(#{param1, jdbcType=VARCHAR}))
