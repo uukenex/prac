@@ -1491,7 +1491,7 @@ public class LoaPlayController {
 	
 	String weaponInfo(HashMap<String,Object> map) {
 		map.put("cmd", "weapon_upgrade2");
-		String msg = map.get("userName")+" 님, Thankyou for playing"+enterStr;
+		String msg = map.get("userName")+" 님, "+enterStr;
 		
 		HashMap<String, Object> weaponInfo = getWeaponStats(map);
 	    
@@ -1499,6 +1499,7 @@ public class LoaPlayController {
 		if(weaponLv < 30) {
 			return msg+"30레벨 달성시 공개됩니다!!";
 		}
+		msg +="Thankyou for playing"+enterStr;
 		List<HashMap<String,Object>> list = botService.selectBotPointWeaponPct(map);
 		for(HashMap<String,Object> hs : list) {
 			msg += hs.get("LV")+" " +hs.get("PCT")+enterStr ;
