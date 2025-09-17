@@ -1491,12 +1491,12 @@ public class LoaPlayController {
 	
 	String weaponInfo(HashMap<String,Object> map) {
 		map.put("cmd", "weapon_upgrade2");
-		String msg = map.get("userName")+" 님,"+enterStr;
+		String msg = map.get("userName")+" 님, Thankyou for playing"+enterStr;
 		
 		HashMap<String, Object> weaponInfo = getWeaponStats(map);
 	    
 	    int weaponLv = Integer.parseInt(weaponInfo.get("level").toString());
-		if(weaponLv <= 30) {
+		if(weaponLv < 30) {
 			return msg+"30레벨 달성시 공개됩니다!!";
 		}
 		List<HashMap<String,Object>> list = botService.selectBotPointWeaponPct(map);

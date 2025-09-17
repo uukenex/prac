@@ -1628,7 +1628,7 @@
 	</select>
 	
 	<select id="selectBotPointWeaponPct" parameterType="HashMap" resultType="HashMap">
-		SELECT A.TRY_LV || ' to ' || (A.TRY_LV + 1) AS LV,
+		SELECT (A.TRY_LV-1) || ' to ' || (A.TRY_LV) AS LV,
 		       CASE
 		         WHEN SUM(A.ADD_PCT) > 100 THEN
 		          100
