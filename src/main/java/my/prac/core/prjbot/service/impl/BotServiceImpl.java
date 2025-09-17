@@ -186,6 +186,9 @@ public class BotServiceImpl implements BotService {
 	public List<HashMap<String,Object>> selectBotPointRankNewScore(HashMap<String,Object> map){
 		return botDAO.selectBotPointRankNewScore(map);
 	}
+	public List<HashMap<String,Object>> selectBotPointWeaponPct(HashMap<String,Object> map){
+		return botDAO.selectBotPointWeaponPct(map);
+	}
 	
 	public int insertBotPointRankTx(HashMap<String,Object> map)  throws Exception{
 		if(botDAO.insertBotPointRank(map) < 1) {

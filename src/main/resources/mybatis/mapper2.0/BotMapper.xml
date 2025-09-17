@@ -1626,4 +1626,20 @@
 		  FROM TBOT_POINT_ITEM_USER A
 		 WHERE A.ITEM_NO = '21'
 	</select>
+	
+	<select id="selectBotPointWeaponPct" parameterType="HashMap" resultType="HashMap">
+		SELECT A.TRY_LV || ' to ' || (A.TRY_LV + 1) AS LV,
+		       CASE
+		         WHEN SUM(A.ADD_PCT) > 100 THEN
+		          100
+		         ELSE
+		          SUM(A.ADD_PCT)
+		       END AS PCT
+		  FROM TBOT_POINT_WEAPON_LOG A
+		 WHERE A.USER_NAME = #{userName, jdbcType=VARCHAR}
+		   AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+		 GROUP BY A.USER_NAME, A.ROOM_NAME, A.TRY_LV
+		 ORDER BY A.TRY_LV DESC
+	</select>
+	
 </mapper>

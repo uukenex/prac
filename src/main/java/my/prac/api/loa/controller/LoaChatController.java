@@ -340,6 +340,21 @@ public class LoaChatController {
 					val = "별도 게임방에서 진행해주세요.";
 				}
 				break;
+			case "/강화정보": case "/ㄱㅎㅈㅂ": 
+				gameYnList = botService.selectGamePlayYn(reqMap);
+				playYn ="1"; 
+				for(HashMap<String,Object> gameYn : gameYnList) {
+					if(gameYn.get("NAME").equals("강화")) {
+						playYn = gameYn.get("PLAY_YN").toString(); 
+					}
+				}
+				
+				if(playYn.equals("1")) {
+					val = play.weaponInfo(reqMap);
+				}else {
+					val = "별도 게임방에서 진행해주세요.";
+				}
+				break;
 			case "/강화2": case "/ㄱㅎ2": 
 				gameYnList = botService.selectGamePlayYn(reqMap);
 				playYn ="1"; 
