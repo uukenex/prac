@@ -427,6 +427,48 @@ public class LoaChatController {
 				}
 				
 				break;
+			case "/악세랭킹": case "/ㅇㅅㄹㅋ": 
+				gameYnList = botService.selectGamePlayYn(reqMap);
+				playYn ="1"; 
+				for(HashMap<String,Object> gameYn : gameYnList) {
+					if(gameYn.get("NAME").equals("강화")) {
+						playYn = gameYn.get("PLAY_YN").toString(); 
+					}
+				}
+				
+				if(playYn.equals("1")) {
+					val = "전체 방 악세랭킹 1등: "+botService.selectBotPointAccRank1st()+enterStr+enterStr;
+					
+					
+					List<HashMap<String,Object>> weapon_map = botService.selectBotPointAccRank(reqMap);
+					val +=roomName+" 악세랭킹"+enterStr;
+					for(int i =0;i<weapon_map.size();i++) {
+						switch(i) {
+						/*
+						case 0:
+							val += rank_1st;
+							break;
+						case 1:
+							val += rank_2nd;
+							break;
+						case 2:
+							val += rank_3rd;
+							break;
+						 */
+						default:
+							val += rank_etc;
+							break;
+						}
+						val += weapon_map.get(i).get("USER_NAME")+ " : "+weapon_map.get(i).get("GRADE")+enterStr ;
+						if(i==3) {
+							val += allSeeStr;
+						}
+					}
+				}else {
+					val = "별도 게임방에서 진행해주세요.";
+				}
+				
+				break;
 			case "/ㅊㅅㅂ": case "/출석부": 
 				gameYnList = botService.selectGamePlayYn(reqMap);
 				playYn ="1"; 

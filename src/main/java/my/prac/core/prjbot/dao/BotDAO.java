@@ -126,6 +126,8 @@ public interface BotDAO {
 	
 	public List<HashMap<String,Object>> selectBotPointWeaponRank(HashMap<String,Object> map);
 	public String selectBotPointWeaponRank1st();
+	public List<HashMap<String,Object>> selectBotPointAccRank(HashMap<String,Object> map);
+	public String selectBotPointAccRank1st();
 	
 	
 	public int selectWeaponLvCheck(HashMap<String,Object> map);

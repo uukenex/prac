@@ -103,8 +103,12 @@ public interface BotService {
 	public void updateBotPointAccTryMentTx(HashMap<String,Object> map) throws Exception;
 	
 	public HashMap<String,Object> upsertDailyWeaponUpgradeTx(HashMap<String,Object> map) throws Exception;
+
+	//랭킹
 	public List<HashMap<String,Object>> selectBotPointWeaponRank(HashMap<String,Object> map);
 	public String selectBotPointWeaponRank1st();
+	public List<HashMap<String,Object>> selectBotPointAccRank(HashMap<String,Object> map);
+	public String selectBotPointAccRank1st();
 	
 	public int selectWeaponLvCheck(HashMap<String,Object> map);
 	public int selectWeaponLvCheckForPoint(HashMap<String,Object> map);
