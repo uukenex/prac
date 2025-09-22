@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="my.prac.core.prjbot.dao.BotNewDAO">
+	<insert id="insertBotPointNew" parameterType="HashMap">
+		INSERT INTO TBOT_POINT_NEW
+			  (USER_NAME
+			  ,ROOM_NAME
+			  ,SCORE
+			  ,INSERT_DATE
+			  ,CMD)
+		 VALUES
+			  (#{userName, jdbcType=VARCHAR}
+			  ,#{roomName, jdbcType=VARCHAR}
+			  ,#{score, jdbcType=NUMERIC}
+			  ,SYSDATE
+			  ,#{cmd, jdbcType=VARCHAR})
+		
+	</insert>
+	
+</mapper>
