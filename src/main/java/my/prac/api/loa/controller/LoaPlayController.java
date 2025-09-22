@@ -20,14 +20,19 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
 
 import my.prac.core.prjbot.service.BotService;
+import my.prac.core.prjbot.service.BotSettleService;
 import my.prac.core.util.MiniGameUtil;
 
 
 @Controller
 public class LoaPlayController {
 	static Logger logger = LoggerFactory.getLogger(LoaPlayController.class);
+	
 	@Resource(name = "core.prjbot.BotService")
 	BotService botService;
+	
+	@Resource(name = "core.prjbot.BotSettleService")
+	BotSettleService botSettleService;
 
 	final String enterStr= "♬";
 	final String spaceStr= "`";
@@ -126,10 +131,12 @@ public class LoaPlayController {
 		int weaponLv = botService.selectWeaponLvCheckForPoint(map);
 		int accLv = botService.selectAccLvCheckForPoint(map);
 		int accMaxLv = botService.selectAccLogMaxLvForPoint(map);
+		int sumScore = botSettleService.selectBotPointSumScoreForPoint(map);
 		
 		map.put("level", weaponLv);
 	    map.put("acc_level", accLv);
 		map.put("acc_max_level", accMaxLv);
+		map.put("sum_score", sumScore);
 		getStatPointProcess(map);
 	    return map;
 	}
@@ -140,10 +147,12 @@ public class LoaPlayController {
 	    int weaponLv = botService.selectWeaponLvCheck(map);
 	    int accLv = botService.selectAccLvCheck(map);
 		int accMaxLv = botService.selectAccLogMaxLv(map);
+		int sumScore = botSettleService.selectBotPointSumScore(map);
 		
 		map.put("level", weaponLv);
 	    map.put("acc_level", accLv);
 		map.put("acc_max_level", accMaxLv);
+		map.put("sum_score", sumScore);
 		getStatPointProcess(map);
 	    return map;
 	}
@@ -2725,7 +2734,10 @@ public class LoaPlayController {
 	    // 보스 HP/스코어/리워드 처리
 	    // ----------------
 	    int score = damage / 3;
-	    boolean newbieYn = weaponLv < 15;
+	    
+	    int sum_score = Integer.parseInt(weaponInfo.get("sum_score").toString());
+	    
+	    boolean newbieYn = sum_score < 6000 ;
 	    if (newbieYn) score += 10;
 
 	    boolean isKill = false;

@@ -1216,7 +1216,7 @@
 	</select>
 	
 	<select id="selectBotPointAccRank1st" resultType="String">
-		SELECT A.WEAPON_LV || '단계 (' || FAIL_PCT || '%)' as GRADE
+		SELECT A.WEAPON_LV || '단계 ' as GRADE
 		  FROM (SELECT *
 				FROM TBOT_POINT_ACC 
 			    WHERE WEAPON_LV = (SELECT MAX(WEAPON_LV)

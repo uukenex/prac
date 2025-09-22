@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="my.prac.core.prjbot.dao.BotSettleDAO">
+	<select id="selectBotPointSumScore" parameterType="HashMap" resultType="int">
+		 SELECT NVL(SUM(A.SCORE),0) AS SUM_SCORE
+		   FROM TBOT_POINT_RANK A
+		  WHERE A.USER_NAME = #{userName, jdbcType=VARCHAR}
+		    AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+		    AND A.SCORE > 0
+	</select>
+	
+	<select id="selectBotPointSumScoreForPoint" parameterType="HashMap" resultType="int">
+		SELECT NVL(SUM(A.SCORE),0) AS SUM_SCORE
+		   FROM TBOT_POINT_RANK A
+		  WHERE upper(USER_NAME) = upper(#{newUserName, jdbcType=VARCHAR})
+		    AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+		    AND A.SCORE > 0
+	</select>
+	
+</mapper>
