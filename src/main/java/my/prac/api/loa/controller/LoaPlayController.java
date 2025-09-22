@@ -2886,9 +2886,12 @@ public class LoaPlayController {
 	        map.put("seq", seq);
 	        map.put("damage", damage);
 	        
-	        if(score > 150) {
-	        	score =150;
+	        if(!isKill) {
+	        	if(score > 150) {
+		        	score =150;
+		        }
 	        }
+	        
 	        
 	        map.put("score", score);
 	        map.put("endYn", isKill ? "1" : "0");
