@@ -19,6 +19,7 @@
 		<mapper resource="mybatis/mapper2.0/SystemMapper.xml" />
 		<mapper resource="mybatis/mapper2.0/BotMapper.xml" />
 		<mapper resource="mybatis/mapper2.0/BotSettleMapper.xml" />
+		<mapper resource="mybatis/mapper2.0/BotNewMapper.xml" />
 	</mappers>
 
 </configuration>
