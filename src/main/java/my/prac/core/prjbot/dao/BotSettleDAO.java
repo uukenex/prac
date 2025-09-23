@@ -11,5 +11,10 @@ import org.springframework.stereotype.Repository;
 public interface BotSettleDAO {
 	public int selectBotPointSumScore(HashMap<String,Object> map);
 	public int selectBotPointSumScoreForPoint(HashMap<String,Object> map);
+	
+	public List<HashMap<String,Object>> selectBotPointAccRank(HashMap<String,Object> map);
+	public String selectBotPointAccRank1st();
+	public List<HashMap<String,Object>> selectBotPointAccLogRank(HashMap<String,Object> map);
+	public String selectBotPointAccLogRank1st();
 }
 

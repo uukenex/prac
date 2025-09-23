@@ -522,6 +522,7 @@
 		         AND UPPER(A.USER_NAME) = UPPER(#{newUserName, jdbcType=VARCHAR})
 		         AND A.INSERT_DATE> TO_DATE('20250701','yyyymmdd')
 		       GROUP BY A.USER_NAME ) AS TOT
+			
 			,(SELECT '출석: ' || NVL(SUM(A.SCORE), 0) || ' p (' ||
            			 DECODE(MAX(TO_CHAR(A.INSERT_DATE, 'mmdd')), TO_CHAR(SYSDATE, 'mmdd'), '완료', '미완료') || ')'
 				FROM TBOT_POINT_RANK A
@@ -565,6 +566,9 @@
 				 AND UPPER(A.USER_NAME) = UPPER(#{newUserName, jdbcType=VARCHAR})
 				 AND A.INSERT_DATE> TO_DATE('20250701','yyyymmdd')
 				 AND A.SCORE > 0) AS GAMBLE_WIN
+				 
+				 
+				 
 		    ,(SELECT CASE
 					   WHEN MAX(A.INSERT_DATE) >= TRUNC(SYSDATE) - 3 THEN
 					    1
@@ -587,6 +591,7 @@
 				 WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 			       AND UPPER(A.USER_NAME) = UPPER(#{newUserName, jdbcType=VARCHAR}) 
 			  ) AS BLOCK_YN
+			
 			,(SELECT '야구: ' || NVL(SUM(A.SCORE),0)||' p' 
 		        FROM TBOT_POINT_RANK A
 		       WHERE A.CMD = 'baseball_e'
@@ -594,6 +599,7 @@
 		         AND UPPER(A.USER_NAME) = UPPER(#{newUserName, jdbcType=VARCHAR})
 		         AND A.INSERT_DATE> TO_DATE('20250701','yyyymmdd')
 		         AND A.SCORE > 0) AS BASEBALL_WIN
+		         
 		    ,(SELECT NVL(MAX(A.WEAPON_LV), 0)
 			    FROM TBOT_POINT_WEAPON A
 			   WHERE ROOM_NAME = #{roomName, jdbcType=VARCHAR}
@@ -607,7 +613,14 @@
 			     AND A.CMD = 'weapon_upgrade2'
 			     AND INSERT_DATE > TO_DATE('20250701','yyyymmdd')
 			 ) AS WEAPON_USE
-			,(
+			,(SELECT ' (소모: ' || ABS(NVL(SUM(A.SCORE), 0)) || 'p)'
+			    FROM TBOT_POINT_RANK A
+			   WHERE ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+			     AND UPPER(USER_NAME) = UPPER(#{newUserName, jdbcType=VARCHAR})
+			     AND A.CMD = 'acc_upgrade'
+			     AND INSERT_DATE > TO_DATE('20250701','yyyymmdd')
+			 ) AS ACC_USE
+			 ,(
 				SELECT COUNT(1)||'/'|| NVL(SUM(DECODE(B.OPEN_FLAG, '2', 1)),0)||'/'|| NVL(SUM(DECODE(B.DEL_YN, '1', 1)),0) AS BOX_TOT
 				  FROM TBOT_POINT_ITEM_USER B
 				 WHERE B.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
@@ -1199,33 +1212,7 @@
 		
 	</select>
 	
-	<select id="selectBotPointAccRank" parameterType="HashMap" resultType="HashMap"> 
-		SELECT A.USER_NAME AS USER_NAME
-			  ,A.WEAPON_LV || '단계 ' as GRADE
-		  FROM TBOT_POINT_ACC A
-		 WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
-		   AND A.MODIFY_DATE > SYSDATE - 15
-		   AND A.TEST_YN='0'
-		   AND NOT EXISTS (SELECT *
-							 FROM TBOT_BLOCK C
-						    WHERE UPPER(C.USER_NAME) = UPPER(A.USER_NAME)
-						      AND C.ROOM_NAME = A.ROOM_NAME)
-		 ORDER BY A.WEAPON_LV  DESC
-			     ,A.FAIL_PCT DESC
-		
-	</select>
 	
-	<select id="selectBotPointAccRank1st" resultType="String">
-		SELECT A.WEAPON_LV || '단계 ' as GRADE
-		  FROM (SELECT *
-				FROM TBOT_POINT_ACC 
-			    WHERE WEAPON_LV = (SELECT MAX(WEAPON_LV)
-									 FROM TBOT_POINT_ACC
-								 	WHERE TEST_YN = '0')
-			    ORDER BY FAIL_PCT DESC) A
-		 WHERE ROWNUM = 1
-		
-	</select>
 	
 	<select id="selectWeaponLvCheck" parameterType="HashMap" resultType="int">
 		SELECT NVL(SUM(A.WEAPON_LV), 0)

@@ -42,7 +42,9 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import my.prac.core.prjbot.service.BotNewService;
 import my.prac.core.prjbot.service.BotService;
+import my.prac.core.prjbot.service.BotSettleService;
 import my.prac.core.util.ChatGPTUtils;
 import my.prac.core.util.GeminiUtils;
 import my.prac.core.util.ImageUtils;
@@ -65,6 +67,10 @@ public class LoaChatController {
 	
 	@Resource(name = "core.prjbot.BotService")
 	BotService botService;
+	@Resource(name = "core.prjbot.BotSettleService")
+	BotSettleService botSettleService;
+	@Resource(name = "core.prjbot.BotNewService")
+	BotNewService botNewService;
 	
 	// final String lostArkAPIurl =
 	// "https://developer-lostark.game.onstove.com/armories/characters/일어난다람쥐/equipment";
@@ -437,10 +443,10 @@ public class LoaChatController {
 				}
 				
 				if(playYn.equals("1")) {
-					val = "전체 방 악세랭킹 1등: "+botService.selectBotPointAccRank1st()+enterStr+enterStr;
+					val = "전체 방 악세랭킹 1등: "+botSettleService.selectBotPointAccRank1st()+enterStr+enterStr;
 					
 					
-					List<HashMap<String,Object>> weapon_map = botService.selectBotPointAccRank(reqMap);
+					List<HashMap<String,Object>> weapon_map = botSettleService.selectBotPointAccRank(reqMap);
 					val +=roomName+" 악세랭킹"+enterStr;
 					for(int i =0;i<weapon_map.size();i++) {
 						switch(i) {
@@ -469,6 +475,48 @@ public class LoaChatController {
 				}
 				
 				break;
+			case "/악세랭킹2": case "/ㅇㅅㄹㅋ2": 
+				gameYnList = botService.selectGamePlayYn(reqMap);
+				playYn ="1"; 
+				for(HashMap<String,Object> gameYn : gameYnList) {
+					if(gameYn.get("NAME").equals("강화")) {
+						playYn = gameYn.get("PLAY_YN").toString(); 
+					}
+				}
+				
+				if(playYn.equals("1")) {
+					val = "전체 방 달성 악세랭킹 1등: "+botSettleService.selectBotPointAccLogRank1st()+enterStr+enterStr;
+					
+					
+					List<HashMap<String,Object>> weapon_map = botSettleService.selectBotPointAccLogRank(reqMap);
+					val +=roomName+" 달성악세랭킹"+enterStr;
+					for(int i =0;i<weapon_map.size();i++) {
+						switch(i) {
+						/*
+						case 0:
+							val += rank_1st;
+							break;
+						case 1:
+							val += rank_2nd;
+							break;
+						case 2:
+							val += rank_3rd;
+							break;
+						 */
+						default:
+							val += rank_etc;
+							break;
+						}
+						val += weapon_map.get(i).get("USER_NAME")+ " : "+weapon_map.get(i).get("GRADE")+enterStr ;
+						if(i==3) {
+							val += allSeeStr;
+						}
+					}
+				}else {
+					val = "별도 게임방에서 진행해주세요.";
+				}
+				
+				break;	
 			case "/ㅊㅅㅂ": case "/출석부": 
 				gameYnList = botService.selectGamePlayYn(reqMap);
 				playYn ="1"; 
@@ -1395,12 +1443,12 @@ public class LoaChatController {
 				
 				val += "❤️"+point_map_one.get("TOT")+ enterStr+ 
 					   "⚔"+"무기: +"+weaponLv+" lv"+point_map_one.get("WEAPON_USE")+enterStr+
-					   "⚔"+"악세: +"+accLv+" lv(max:"+accMaxLv+"lv)"+enterStr+
-					   "　 ‡　 악세달성 최고레벨 적용"+enterStr+
+					   "⚔"+"악세: +"+accLv+" lv"+point_map_one.get("ACC_USE")+enterStr+
+					   "　 ‡　 악세달성 최고레벨 "+accMaxLv+" lv 적용"+enterStr+
 					   "✨"+"공격력: "+weaponMin+"~"+weaponMax+" (치확: "+(int)(part_of_weapon_crit*100)+"%)"+enterStr+
-					   "✨"+"+추가: "+accMin+"~"+accMax+" (치확: "+(int)(part_of_acc_crit*100)+"%)"+enterStr+enterStr+
-					   "⏰"+point_map_one.get("ATTENDANCE")+ enterStr+
-					   "⚅"+point_map_one.get("DICE")+enterStr+enterStr ;
+					   "✨"+"+추가: "+accMin+"~"+accMax+" (치확: "+(int)(part_of_acc_crit*100)+"%)"+enterStr+enterStr;
+					   //"⏰"+point_map_one.get("ATTENDANCE")+ enterStr+
+					   //"⚅"+point_map_one.get("DICE")+enterStr+enterStr ;
 					   //"✨"+point_map_one.get("GAMBLE_WIN")+enterStr +
 					   //"⚾"+point_map_one.get("BASEBALL_WIN")+enterStr +
 					   //"⚔️"+point_map_one.get("FIGHT_SUM")+point_map_one.get("FIGHT_WIN")+point_map_one.get("FIGHT_LOSE")+enterStr+

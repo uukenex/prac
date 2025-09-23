@@ -20,4 +20,49 @@
 		    AND A.SCORE > 0
 	</select>
 	
+	<select id="selectBotPointAccRank" parameterType="HashMap" resultType="HashMap"> 
+		SELECT A.USER_NAME AS USER_NAME
+			  ,A.WEAPON_LV || '단계 ' as GRADE
+		  FROM TBOT_POINT_ACC A
+		 WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+		   AND A.MODIFY_DATE > SYSDATE - 15
+		   AND A.TEST_YN='0'
+		   AND NOT EXISTS (SELECT *
+							 FROM TBOT_BLOCK C
+						    WHERE UPPER(C.USER_NAME) = UPPER(A.USER_NAME)
+						      AND C.ROOM_NAME = A.ROOM_NAME)
+		 ORDER BY A.WEAPON_LV  DESC
+			     ,A.FAIL_PCT DESC
+		
+	</select>
+	
+	<select id="selectBotPointAccRank1st" resultType="String">
+		SELECT A.WEAPON_LV || '단계 ' as GRADE
+		  FROM (SELECT *
+				FROM TBOT_POINT_ACC 
+			    WHERE WEAPON_LV = (SELECT MAX(WEAPON_LV)
+									 FROM TBOT_POINT_ACC
+								 	WHERE TEST_YN = '0')
+			    ORDER BY FAIL_PCT DESC) A
+		 WHERE ROWNUM = 1
+		
+	</select>
+	
+	<select id="selectBotPointAccLogRank" parameterType="HashMap" resultType="HashMap"> 
+		SELECT A.USER_NAME AS USER_NAME, MAX(A.TRY_LV) AS GRADE
+		  FROM TBOT_POINT_ACC_LOG A
+		 WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+		 GROUP BY A.USER_NAME
+	</select>
+	
+	<select id="selectBotPointAccLogRank1st" resultType="String">
+		SELECT A.TRY_LV || '단계 ' AS GRADE
+		  FROM (SELECT *
+		          FROM TBOT_POINT_ACC_LOG
+		         WHERE TRY_LV = (SELECT MAX(TRY_LV) 
+		                           FROM TBOT_POINT_ACC_LOG)
+		         ) A
+		 WHERE ROWNUM = 1
+		
+	</select>
 </mapper>

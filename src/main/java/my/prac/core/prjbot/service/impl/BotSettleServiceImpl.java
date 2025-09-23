@@ -34,4 +34,21 @@ public class BotSettleServiceImpl implements BotSettleService {
 		}
 		return botSettleDAO.selectBotPointSumScore(map);
 	}
+	
+
+	public List<HashMap<String,Object>> selectBotPointAccRank(HashMap<String,Object> map){
+		return botSettleDAO.selectBotPointAccRank(map);
+	}
+	public String selectBotPointAccRank1st() {
+		return botSettleDAO.selectBotPointAccRank1st();
+	}
+	
+
+	public List<HashMap<String,Object>> selectBotPointAccLogRank(HashMap<String,Object> map){
+		return botSettleDAO.selectBotPointAccLogRank(map);
+	}
+	public String selectBotPointAccLogRank1st() {
+		return botSettleDAO.selectBotPointAccLogRank1st();
+	}
+	
 }

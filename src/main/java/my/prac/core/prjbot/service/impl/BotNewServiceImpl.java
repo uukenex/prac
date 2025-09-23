@@ -8,7 +8,7 @@ import my.prac.core.prjbot.dao.BotDAO;
 import my.prac.core.prjbot.dao.BotSettleDAO;
 import my.prac.core.prjbot.service.BotNewService;
 
-@Service("core.prjbot.BotSettleService")
+@Service("core.prjbot.BotNewService")
 public class BotNewServiceImpl implements BotNewService {
 	
 	@Resource(name = "core.prjbot.BotDAO")
