@@ -133,9 +133,13 @@ public class LoaPlayController {
 		int accMaxLv = botService.selectAccLogMaxLvForPoint(map);
 		int sumScore = botSettleService.selectBotPointSumScoreForPoint(map);
 		
+		int hitRingLevel =0;
+		
+		
 		map.put("level", weaponLv);
 	    map.put("acc_level", accLv);
 		map.put("acc_max_level", accMaxLv);
+		map.put("hit_ring_level", hitRingLevel);
 		map.put("sum_score", sumScore);
 		getStatPointProcess(map);
 	    return map;
@@ -149,9 +153,12 @@ public class LoaPlayController {
 		int accMaxLv = botService.selectAccLogMaxLv(map);
 		int sumScore = botSettleService.selectBotPointSumScore(map);
 		
+		int hitRingLevel = 0;
+		
 		map.put("level", weaponLv);
 	    map.put("acc_level", accLv);
 		map.put("acc_max_level", accMaxLv);
+		map.put("hit_ring_level", hitRingLevel);
 		map.put("sum_score", sumScore);
 		getStatPointProcess(map);
 	    return map;
@@ -162,6 +169,7 @@ public class LoaPlayController {
 		int weaponLv = Integer.parseInt(result.get("level").toString());
 		int accLv = Integer.parseInt(result.get("acc_level").toString());
 		int accMaxLv = Integer.parseInt(result.get("acc_max_level").toString());
+		int hitRingLevel = Integer.parseInt(result.get("hit_ring_level").toString());
 		
 		// 실제 적용될 레벨
 	    int acc_apply_level = accMaxLv;
@@ -222,6 +230,7 @@ public class LoaPlayController {
 	    result.put("baseDamage", baseDamage);
 	    result.put("criticalChance", criticalChance);
 	    result.put("def", plus_def);
+	    result.put("hit", hitRingLevel);
 	}
 	List<HashMap<String,Object>> selectPointItemUserListForPoint(HashMap<String,Object> map){
 		List<String> ableItemList = new ArrayList<>();
@@ -2263,6 +2272,7 @@ public class LoaPlayController {
 	    int weaponMin = Integer.parseInt(weaponInfo.get("min").toString());
 	    int weaponMax = Integer.parseInt(weaponInfo.get("max").toString());
 	    int def = Integer.parseInt(weaponInfo.get("def").toString());
+	    int hit = Integer.parseInt(weaponInfo.get("hit").toString());
 
 	    int player_deffence = def;
 	    if (item_13_1) {
@@ -2274,6 +2284,9 @@ public class LoaPlayController {
 	    if (item_13_3) {
 	    	player_deffence += 9;
 	    }
+	    
+	    int player_hit = hit;
+	    evadeRate -= player_hit;
 	    
 	    double roll = Math.random();
 	    boolean flag_boss_attack = Math.random() < bossAtkRate / 100.0;
