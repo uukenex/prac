@@ -1026,6 +1026,8 @@ public class LoaPlayController {
 	            msg += "item No : " + itemNo + enterStr;
 	            msg += itemName + itemLv+"lv"+ enterStr;
 	            msg += itemDesc;
+	            
+	            userItemList = selectPointItemUserList(map);
 	            break;
 	    }
 	    
