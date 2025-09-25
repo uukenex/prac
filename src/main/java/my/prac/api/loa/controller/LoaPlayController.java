@@ -1539,8 +1539,16 @@ public class LoaPlayController {
 		}
 		msg +="Thankyou for playing"+enterStr;
 		List<HashMap<String,Object>> list = botService.selectBotPointWeaponPct(map);
+		
+		int i=0;
 		for(HashMap<String,Object> hs : list) {
 			msg += hs.get("LV")+" " +hs.get("PCT")+enterStr ;
+			i++;
+			
+			if(i == 7) {
+				msg+=allSeeStr;
+			}
+			
 		}
 		
 		
