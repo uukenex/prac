@@ -219,6 +219,7 @@ public class LoaApiParser {
 		HashMap<String, Object> ark_passive_point_element = new HashMap<>();
 		//3티어 효과
 		HashMap<String, Object> tier3_stats = new HashMap<>();
+		HashMap<String, Object> nakwon = new HashMap<>();
 
 		for(HashMap<String, Object> searchHs : elements) {
 			quality_element = findElementDt(searchHs,"qualityValue");
@@ -275,6 +276,12 @@ public class LoaApiParser {
 				break;
 			}
 		}
+		for (HashMap<String, Object> searchHs : elements) {
+			nakwon = findElementDt(searchHs, "낙원력");
+			if (nakwon.size() > 0) {
+				break;
+			}
+		}
 		HashMap<String,Object> freshMap = new HashMap<>();
 		freshMap.put("weapon_element", weapon_element);
 		freshMap.put("quality_element", quality_element);
@@ -286,6 +293,7 @@ public class LoaApiParser {
 		freshMap.put("grinding_element", grinding_element);
 		freshMap.put("ark_passive_point_element", ark_passive_point_element);
 		freshMap.put("tier3_stats", tier3_stats);
+		freshMap.put("nakwon", nakwon);
 		return freshMap;
 	}
 	public static HashMap<String, Object> findElementForArkGrid(HashMap<String, Object> tooltip) {

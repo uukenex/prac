@@ -64,6 +64,23 @@ public class LoaPlayController {
 		
 	}
 	
+	String BossAttackInfo(HashMap<String,Object> map) {
+		String msg=map.get("userName") + "님," + enterStr;
+		map.put("cmd", "boss_attack");
+		String checkCount = botService.selectHourCheckCount(map);
+	    int checkCountInt = Integer.parseInt(checkCount);
+	    int defaultCheckCount =30;
+	    
+	    msg += "일일공격횟수: "+checkCountInt+" / "+defaultCheckCount+enterStr;
+	    
+	    List<String> info = botService.selectHourCheckToday(map);
+	    for(String s : info) {
+	    	msg+=s+enterStr;
+	    }
+	    
+	    return msg;
+	}
+	
 	boolean checkBossCooldown(HashMap<String,Object> map) {
 		if("test".equals(map.get("param1"))){
 			return true;
@@ -91,6 +108,7 @@ public class LoaPlayController {
 	        
 	    }*/
 	    String check_val = botService.selectHourCheck(map);
+	    
 	    if(check_val == null) {
 	        return true; // 공격 가능
 	    } else {
@@ -404,10 +422,10 @@ public class LoaPlayController {
 			if(item_2_2 && number == 99) {
 				prefix="아이템 [럭키세븐] 효과가 발동되었습니다"
 					  +enterStr+"굴리기전부터 운명적입니다. 행운의 신이 함께합니다.";
-				score =+999;
+				score =+199;
 			}else {
 				prefix="굴리기전부터 운명적입니다. 행운의 신이 함께합니다.";
-				score =+500;
+				score =+100;
 			}
 			
 		}else if(number>=85) { // 85~98
@@ -418,7 +436,7 @@ public class LoaPlayController {
 			if(item_2_1 && number == 77) {
 				prefix="아이템 [럭키세븐] 효과가 발동되었습니다"
 					  +enterStr+"오늘은 행운의 날!";
-				score =+777;
+				score =+200;
 			}else {
 				prefix="데굴데굴..";
 				score =+(number/2);
@@ -2207,6 +2225,8 @@ public class LoaPlayController {
 	    boolean item_5_1 = ableItemList.contains("5-1");
 	    boolean item_5_2 = ableItemList.contains("5-2");
 	    boolean item_5_3 = ableItemList.contains("5-3");
+	    boolean item_5_4 = ableItemList.contains("5-4");
+	    
 	    boolean item_6_1 = ableItemList.contains("6-1");
 	    boolean item_7_1 = ableItemList.contains("7-1");
 	    boolean item_7_2 = ableItemList.contains("7-2");
@@ -2219,15 +2239,19 @@ public class LoaPlayController {
 	    boolean item_10_3 = ableItemList.contains("10-3");
 	    boolean item_10_4 = ableItemList.contains("10-4");
 	    boolean item_10_5 = ableItemList.contains("10-5");
+	    boolean item_10_6 = ableItemList.contains("10-6");
 
 	    boolean item_12_1 = ableItemList.contains("12-1");
 	    boolean item_12_2 = ableItemList.contains("12-2");
 	    boolean item_12_3 = ableItemList.contains("12-3");
 	    boolean item_12_4 = ableItemList.contains("12-4");
 	    boolean item_12_5 = ableItemList.contains("12-5");
+	    boolean item_12_6 = ableItemList.contains("12-6");
+	    
 	    boolean item_13_1 = ableItemList.contains("13-1");
 	    boolean item_13_2 = ableItemList.contains("13-2");
 	    boolean item_13_3 = ableItemList.contains("13-3");
+	    boolean item_13_4 = ableItemList.contains("13-4");
 	    
 	    boolean item_14_1 = ableItemList.contains("14-1");
 	    boolean item_14_2 = ableItemList.contains("14-2");
@@ -2283,6 +2307,9 @@ public class LoaPlayController {
 	    }
 	    if (item_13_3) {
 	    	player_deffence += 9;
+	    }
+	    if (item_13_4) {
+	    	player_deffence += 12;
 	    }
 	    
 	    int player_hit = hit;
@@ -2383,8 +2410,18 @@ public class LoaPlayController {
 	    
 	    
 	    
-		
-
+	    String checkCount = botService.selectHourCheckCount(map);
+	    int checkCountInt = Integer.parseInt(checkCount);
+	    int defaultCheckCount =30;
+	    
+	    
+	    
+	    if(checkCountInt > defaultCheckCount) {
+	    	return map.get("userName") + "님," + enterStr + "일일공격횟수 끝!";
+	    }
+	    String countingMsg = "";
+	    checkCountInt +=1;
+	    countingMsg += "일일공격횟수: "+checkCountInt+" / "+defaultCheckCount;
 	    // ----------------
 	    // 공격 쿨타임 체크
 	    // ----------------
@@ -2434,6 +2471,9 @@ public class LoaPlayController {
 	    if(item_10_5) {
 	    	weaponMax +=10;
 	    }
+	    if(item_10_6) {
+	    	weaponMax +=12;
+	    }
 	    if(item_21_1_sum > 0) {
 	    	weaponMax += item_21_1_sum;
 		}
@@ -2452,6 +2492,9 @@ public class LoaPlayController {
 	    	weaponMin +=4;
 	    }
 	    if(item_12_5) {
+	    	weaponMin +=5;
+	    }
+	    if(item_12_6) {
 	    	weaponMin +=5;
 	    }
 	    
@@ -2590,6 +2633,10 @@ public class LoaPlayController {
 			if (item_5_3) {
 				totalCritPercent += 9;
 				critParts.add("+ [예리한칼날3](9%)");
+			}
+			if (item_5_4) {
+				totalCritPercent += 12;
+				critParts.add("+ [예리한칼날4](12%)");
 			}
 			if ((hp * 100.0) / org_hp < 10) {
 				if (item_4_1) {
@@ -3020,7 +3067,7 @@ public class LoaPlayController {
 		if(boxCount>0) {
 			msg.append(enterStr + "보유 상자 갯수 : "+boxCount);
 		}
-		
+		msg.append(enterStr +countingMsg);
 		
 	    return msg.toString();
 	}

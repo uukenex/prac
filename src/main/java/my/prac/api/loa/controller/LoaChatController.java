@@ -16,6 +16,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
@@ -592,6 +594,21 @@ public class LoaChatController {
 				
 				if(playYn.equals("1")) {
 					val = play.bossInfo(reqMap);
+				}else {
+					val = "별도 게임방에서 진행해주세요.";
+				}
+				break;
+			case "/공격정보": case "/ㄱㄱㅈㅂ": 
+				gameYnList = botService.selectGamePlayYn(reqMap);
+				playYn ="1"; 
+				for(HashMap<String,Object> gameYn : gameYnList) {
+					if(gameYn.get("NAME").equals("강화")) {
+						playYn = gameYn.get("PLAY_YN").toString(); 
+					}
+				}
+				
+				if(playYn.equals("1")) {
+					val = play.BossAttackInfo(reqMap);
 				}else {
 					val = "별도 게임방에서 진행해주세요.";
 				}
@@ -2812,6 +2829,8 @@ public class LoaChatController {
 		String accessoryMsg = "";
 		String braceletMsg = "";
 		
+		String nakwonMsg ="";
+		
 		HashMap<String,Object> arkPassive= (HashMap<String, Object>) rtnMap.get("ArkPassive");
 		String isArkPassive = arkPassive.get("IsArkPassive").toString();
 		List<HashMap<String,Object>> arkPassivePt = (List<HashMap<String, Object>>) arkPassive.get("Points");
@@ -2829,6 +2848,7 @@ public class LoaChatController {
 			HashMap<String, Object> stone_element = (HashMap<String, Object>)maps.get("stone_element");
 			HashMap<String, Object> grinding_element = (HashMap<String, Object>)maps.get("grinding_element");
 			HashMap<String, Object> tier3_stats = (HashMap<String, Object>)maps.get("tier3_stats");
+			HashMap<String, Object> nakwon = (HashMap<String, Object>)maps.get("nakwon");
 			
 			switch (equip.get("Type").toString()) {
 			case "무기":
@@ -2967,6 +2987,20 @@ public class LoaChatController {
 						break;
 				}
 				braceletMsg += enterStr;
+				break;
+			case "보주":
+				nakwonMsg += "";
+				HashMap<String, Object> nakwonTooltip = (HashMap<String, Object>) nakwon.get("value");
+				String nakwonElelment001 = Jsoup.parse((String)nakwonTooltip.get("Element_001")).text();
+				
+				Pattern p = Pattern.compile("낙원력\\s*:\\s*(\\d+)");
+				Matcher m = p.matcher(nakwonElelment001);
+
+				if (m.find()) {
+				    String value = m.group(1);  // 숫자만 추출됨 (83597)
+				    nakwonMsg += "낙원력 : " + value;
+				}
+				
 				break;	
 			default:
 			continue;
@@ -3303,7 +3337,7 @@ public class LoaChatController {
 			tier = 4;
 		}
 		if(!characterImage.equals("")) {
-			resMsg += charImgSearch(ordUserId,title,className,characterImage) + anotherMsgStr;
+			//resMsg += charImgSearch(ordUserId,title,className,characterImage) + anotherMsgStr;
 		}
 		resMsg += "레벨"    +"　　　 　"+itemAvgLevel+enterStr;
 		resMsg += "전투/원대"+"　　"+characterLevel+"　/　"+expeditionLevel+enterStr;

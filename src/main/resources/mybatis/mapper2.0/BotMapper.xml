@@ -683,7 +683,7 @@
 	</select>
 	
 	<select id="selectHourCheck" parameterType="HashMap" resultType="String">
-			  SELECT TO_CHAR(A.INSERT_DATE+#{timeDelay, jdbcType=NUMERIC}/60/24,'PM HH')||'시 ' ||TO_CHAR(A.INSERT_DATE+#{timeDelay, jdbcType=NUMERIC}/60/24,'MI')||'분'
+			  SELECT TO_CHAR(A.INSERT_DATE+#{timeDelay, jdbcType=NUMERIC}/60/24,'PM HH')||'시 ' ||TO_CHAR(A.INSERT_DATE+#{timeDelay, jdbcType=NUMERIC}/60/24,'MI')||'분, 이전획득 포인트: '||a.score
 			    FROM TBOT_POINT_RANK A
 		       WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 			     AND CMD = #{cmd, jdbcType=VARCHAR}
@@ -692,6 +692,28 @@
 			     AND A.INSERT_DATE> TO_DATE('20250701','yyyymmdd')
 			     AND ROWNUM=1
 	</select>
+	<select id="selectHourCheckCount" parameterType="HashMap" resultType="String">
+			  SELECT COUNT(1)
+			    FROM TBOT_POINT_RANK A
+		       WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+			     AND CMD = #{cmd, jdbcType=VARCHAR}
+			     AND INSERT_DATE BETWEEN TRUNC(SYSDATE) AND TRUNC(SYSDATE)+1
+			     AND upper(A.USER_NAME) = upper(#{userName, jdbcType=VARCHAR})
+			     AND A.INSERT_DATE> TO_DATE('20250701','yyyymmdd')
+	</select>
+	<select id="selectHourCheckToday" parameterType="HashMap" resultType="String">
+			  SELECT TO_CHAR(A.INSERT_DATE, 'hh24"시"mi"분"') || ' 획득포인트: ' || A.SCORE AS INFO
+			    FROM TBOT_POINT_RANK A
+		       WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+			     AND CMD = #{cmd, jdbcType=VARCHAR}
+			     AND INSERT_DATE BETWEEN TRUNC(SYSDATE) AND TRUNC(SYSDATE)+1
+			     AND upper(A.USER_NAME) = upper(#{userName, jdbcType=VARCHAR})
+			     AND A.INSERT_DATE> TO_DATE('20250701','yyyymmdd')
+			   ORDER BY A.INSERT_DATE DESC
+	</select>
+	
+	
+	
 	
 	<select id="selectBotPointRankNewScore" parameterType="HashMap" resultType="HashMap">
 			/* selectBotPointRankNewScore */
