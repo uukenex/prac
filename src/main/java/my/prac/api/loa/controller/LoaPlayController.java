@@ -69,7 +69,7 @@ public class LoaPlayController {
 		map.put("cmd", "boss_attack");
 		String checkCount = botService.selectHourCheckCount(map);
 	    int checkCountInt = Integer.parseInt(checkCount);
-	    int defaultCheckCount =30;
+	    int defaultCheckCount =35;
 	    
 	    msg += "일일공격횟수: "+checkCountInt+" / "+defaultCheckCount+enterStr+enterStr;
 	    
@@ -2282,6 +2282,11 @@ public class LoaPlayController {
 	    int item_21_1_sum = botService.selectItem21LvSum();
 	    item_21_1_sum = item_21_1_sum/2;
 	    
+	    //공격횟수아이템
+	    boolean item_22_1 = ableItemList.contains("22-1");
+	    boolean item_22_2 = ableItemList.contains("22-2");
+	    boolean item_22_3 = ableItemList.contains("22-3");
+	    
 	    boolean item_99_1 = ableItemList.contains("99-1");	    
 	    if(item_14_1) {
 	    	map.put("item_14_1", "Y");
@@ -2422,9 +2427,17 @@ public class LoaPlayController {
 	    
 	    String checkCount = botService.selectHourCheckCount(map);
 	    int checkCountInt = Integer.parseInt(checkCount);
-	    int defaultCheckCount =30;
+	    int defaultCheckCount =35;
 	    
-	    
+	    if(item_22_1) {
+	    	defaultCheckCount +=1;
+	    }
+	    if(item_22_2) {
+	    	defaultCheckCount +=2;
+	    }
+	    if(item_22_3) {
+	    	defaultCheckCount +=3;
+	    }
 	    
 	    if(checkCountInt > defaultCheckCount) {
 	    	return map.get("userName") + "님," + enterStr + "일일공격횟수 끝!";
