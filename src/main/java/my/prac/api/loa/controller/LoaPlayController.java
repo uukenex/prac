@@ -71,7 +71,7 @@ public class LoaPlayController {
 	    int checkCountInt = Integer.parseInt(checkCount);
 	    int defaultCheckCount =30;
 	    
-	    msg += "일일공격횟수: "+checkCountInt+" / "+defaultCheckCount+enterStr;
+	    msg += "일일공격횟수: "+checkCountInt+" / "+defaultCheckCount+enterStr+enterStr;
 	    
 	    List<String> info = botService.selectHourCheckToday(map);
 	    for(String s : info) {

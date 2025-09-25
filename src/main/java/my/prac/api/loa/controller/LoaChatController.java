@@ -2989,18 +2989,21 @@ public class LoaChatController {
 				braceletMsg += enterStr;
 				break;
 			case "보주":
-				nakwonMsg += "";
-				HashMap<String, Object> nakwonTooltip = (HashMap<String, Object>) nakwon.get("value");
-				String nakwonElelment001 = Jsoup.parse((String)nakwonTooltip.get("Element_001")).text();
-				
-				Pattern p = Pattern.compile("낙원력\\s*:\\s*(\\d+)");
-				Matcher m = p.matcher(nakwonElelment001);
-
-				if (m.find()) {
-				    String value = m.group(1);  // 숫자만 추출됨 (83597)
-				    nakwonMsg += "낙원력 : " + value;
+				try {
+					nakwonMsg += "";
+					HashMap<String, Object> nakwonTooltip = (HashMap<String, Object>) nakwon.get("value");
+					String nakwonElelment001 = Jsoup.parse((String)nakwonTooltip.get("Element_001")).text();
+					
+					Pattern p = Pattern.compile("낙원력\\s*:\\s*(\\d+)");
+					Matcher m = p.matcher(nakwonElelment001);
+	
+					if (m.find()) {
+					    String value = m.group(1);  // 숫자만 추출됨 (83597)
+					    nakwonMsg += "⭐낙원력 : " + value;
+					}
+				}catch(Exception e) {
+					
 				}
-				
 				break;	
 			default:
 			continue;
@@ -3400,7 +3403,9 @@ public class LoaChatController {
 			resMsg += "⭐인게임전투력 : "+ combatPower+enterStr;
 		}
 		
-		
+		if(!nakwonMsg.equals("")) {
+			resMsg +=nakwonMsg+enterStr;
+		}
 		
 		
 		
