@@ -3120,6 +3120,9 @@ public class LoaPlayController {
 		        }
 	        }
 	        
+	        if(score < 20) {
+	        	score = 20;
+	        }
 	        
 	        map.put("score", score);
 	        map.put("endYn", isKill ? "1" : "0");
@@ -3206,6 +3209,8 @@ public class LoaPlayController {
 		
 		if (newbieYn)
 			msg.append(" (초보자 +10p)");
+		if (score ==20)
+			msg.append(" (최소p 보정)");
 		//msg.append("기본공격포인트 "+damage+"÷3");
 		msg.append(enterStr).append("갱신포인트 : ").append(new_score).append(enterStr);
 		
