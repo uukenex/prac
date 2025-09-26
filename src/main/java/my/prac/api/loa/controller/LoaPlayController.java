@@ -73,7 +73,7 @@ public class LoaPlayController {
 		map.put("cmd", "boss_attack");
 		String checkCount = botService.selectHourCheckCountForPoint(map);
 	    int checkCountInt = Integer.parseInt(checkCount);
-	    int defaultCheckCount =35;
+	    int defaultCheckCount =40;
 	    String msg=map.get("newUserName") + "님," + enterStr;
 	    msg += "일일공격횟수: "+checkCountInt+" / "+defaultCheckCount+enterStr+enterStr;
 	    
@@ -106,6 +106,10 @@ public class LoaPlayController {
 		if ("Y".equals(map.get("item_14_3"))) {
 			map.put("timeDelay", 12);
 			map.put("timeDelayMsg", "[모래시계3]");
+		}
+		if ("Y".equals(map.get("item_14_4"))) {
+			map.put("timeDelay", 11);
+			map.put("timeDelayMsg", "[모래시계4]");
 		}
 		
 		
@@ -2412,6 +2416,7 @@ public class LoaPlayController {
 	    boolean item_14_1 = ableItemList.contains("14-1");
 	    boolean item_14_2 = ableItemList.contains("14-2");
 	    boolean item_14_3 = ableItemList.contains("14-3");
+	    boolean item_14_4 = ableItemList.contains("14-4");
 	    
 	    boolean item_17_1 = ableItemList.contains("17-1");
 	    boolean item_17_2 = ableItemList.contains("17-2");
@@ -2442,6 +2447,9 @@ public class LoaPlayController {
 	    }
 	    if(item_14_3) {
 	    	map.put("item_14_3", "Y");
+	    }
+	    if(item_14_4) {
+	    	map.put("item_14_4", "Y");
 	    }
 	    
 	    
@@ -2573,7 +2581,7 @@ public class LoaPlayController {
 	    
 	    String checkCount = botService.selectHourCheckCount(map);
 	    int checkCountInt = Integer.parseInt(checkCount);
-	    int defaultCheckCount =35;
+	    int defaultCheckCount =40;
 	    
 	    if(item_22_1) {
 	    	defaultCheckCount +=2;
