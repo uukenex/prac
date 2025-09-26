@@ -67,6 +67,7 @@ public interface BotService {
 	
 	public String selectHourCheck(HashMap<String,Object> map);
 	public String selectHourCheckCount(HashMap<String,Object> map);
+	public String selectHourCheckCountForPoint(HashMap<String,Object> map);
 	public List<String> selectHourCheckToday(HashMap<String,Object> map);
 	
 	public List<HashMap<String,Object>> selectBotPointRankNewScore(HashMap<String,Object> map);

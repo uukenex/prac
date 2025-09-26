@@ -68,12 +68,12 @@ public class LoaPlayController {
 	}
 	
 	String BossAttackInfoForPoint(HashMap<String,Object> map) {
-		String msg=map.get("userName") + "님," + enterStr;
+		
 		map.put("cmd", "boss_attack");
-		String checkCount = botService.selectHourCheckCount(map);
+		String checkCount = botService.selectHourCheckCountForPoint(map);
 	    int checkCountInt = Integer.parseInt(checkCount);
 	    int defaultCheckCount =35;
-	    
+	    String msg=map.get("newUserName") + "님," + enterStr;
 	    msg += "일일공격횟수: "+checkCountInt+" / "+defaultCheckCount+enterStr+enterStr;
 	    
 	    List<String> info = botService.selectHourCheckToday(map);

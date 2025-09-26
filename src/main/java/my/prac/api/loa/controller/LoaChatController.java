@@ -1473,7 +1473,7 @@ public class LoaChatController {
 			    int accMin = Integer.parseInt(weaponInfo.get("part_of_min_acc").toString());
 			    int accMax = Integer.parseInt(weaponInfo.get("part_of_max_acc").toString());
 				
-				val += "❤️"+point_map_one.get("TOT")+"/획득 포인트: "+weaponInfo.get("sum_score")+ enterStr+ 
+				val += "❤️"+point_map_one.get("TOT")+"누적획득 포인트: "+weaponInfo.get("sum_score")+" p"+ enterStr+ 
 					   "⚔"+"무기: +"+weaponLv+" lv"+point_map_one.get("WEAPON_USE")+enterStr+
 					   "⚔"+"악세: +"+accLv+" lv"+point_map_one.get("ACC_USE")+enterStr+
 					   "　 ‡　 악세달성 최고레벨 "+accMaxLv+" lv 적용"+enterStr+
