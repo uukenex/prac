@@ -1948,7 +1948,7 @@ public class LoaPlayController {
 			}
 			
 			evadeCnt = botService.selectBotPointHitRingEvadeCnt(map);
-			calcScore -= evadeCnt*20; //회피횟수 * 20 만큼 할인
+			calcScore -= evadeCnt*30; //회피횟수 * 30 만큼 할인
 			
 			if(calcScore<0) {
 				calcScore=0;
@@ -1976,11 +1976,26 @@ public class LoaPlayController {
 				case "MENT":
 				    
 					msg += "현재 반지 "+ lv+" lv" +enterStr;
-					msg +="명중률 +" +lv + "%" +enterStr+enterStr;
+					msg +="명중률 +" + lv    + "%" +enterStr+enterStr;
+					msg +="강화시 +" +(lv+1) + "%" +enterStr+enterStr;
 					
 					msg += "( 2 Min ) 내로 '/반지강화' 입력 시 강화시도!"+enterStr;
 					msg += "강화비용 : "+ calcScore + " p" +enterStr;
-					msg +="(이전 강화 이후 보스 회피횟수 *20p 할인!)"+enterStr;
+					
+					msg +="(최초 500p,보스 회피횟수당 30p 할인!)"+enterStr;
+					
+					// 1. 문자열을 LocalDateTime으로 파싱
+			        DateTimeFormatter inputFormat = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
+			        LocalDateTime dateTime = LocalDateTime.parse(map.get("calc_date").toString(), inputFormat);
+
+			        // 2. 원하는 출력 포맷 지정
+			        DateTimeFormatter outputFormat = DateTimeFormatter.ofPattern("M월 d일 HH시 mm분");
+
+			        // 3. 변환 후 출력
+			        String formatted = dateTime.format(outputFormat);
+					
+					msg +="이전 강화 성공 시점인 " +  formatted + enterStr;
+					msg +=" 이후 부터 계산.." + enterStr;
 				    
 					botService.updateBotPointHitRingTryMentTx(map);
 					
@@ -2561,13 +2576,13 @@ public class LoaPlayController {
 	    int defaultCheckCount =35;
 	    
 	    if(item_22_1) {
-	    	defaultCheckCount +=1;
-	    }
-	    if(item_22_2) {
 	    	defaultCheckCount +=2;
 	    }
+	    if(item_22_2) {
+	    	defaultCheckCount +=4;
+	    }
 	    if(item_22_3) {
-	    	defaultCheckCount +=3;
+	    	defaultCheckCount +=6;
 	    }
 	    
 	    if(checkCountInt >= defaultCheckCount) {
@@ -3252,10 +3267,10 @@ public class LoaPlayController {
 
 	        // --- HP 계산: 유저 최고 레벨 총합 기반 ---
 	        int userTotalLv = userMaxWeapon + userMaxItem + userMaxAcc;
-	        int orgHp = (userTotalLv * 500) + (5000 + rand.nextInt(5001)); // 5000 ~ 10000 랜덤 보정
+	        int orgHp = (userTotalLv * 300) + (5000 + rand.nextInt(5001)); // 5000 ~ 10000 랜덤 보정
 	        newBoss.put("org_hp", orgHp);
 	        
-	        int reward = 1000 + (int)(Math.pow((orgHp - 5000) / 55000.0, 0.8) * 1500);
+	        int reward = 600 + (int)(Math.pow((orgHp - 5000) / 55000.0, 0.8) * 1200);
 			newBoss.put("reward", reward);
 			
 			if (userTotalLv <= 20) {
