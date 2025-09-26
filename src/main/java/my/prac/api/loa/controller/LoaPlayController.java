@@ -67,6 +67,7 @@ public class LoaPlayController {
 		
 	}
 	
+	//ㄱㄱㅈㅂ
 	String BossAttackInfoForPoint(HashMap<String,Object> map) {
 		
 		map.put("cmd", "boss_attack");
@@ -2948,7 +2949,7 @@ public class LoaPlayController {
 	    // ----------------
 	    // 보스 HP/스코어/리워드 처리
 	    // ----------------
-	    int score = damage / 3;
+	    int score = damage / 4;
 	    
 	    int sum_score = Integer.parseInt(weaponInfo.get("sum_score").toString());
 	    
@@ -2961,7 +2962,7 @@ public class LoaPlayController {
 	    if (newHp <= 0) {
 	    	if (item_16_1) {
 	    		isKill = true;
-	            score = Math.min(damage, hp) / 3 + 100+drainRemain;
+	            score = Math.min(damage, hp) / 4 + 100+drainRemain;
 	            map.put("reward", reward);
 	            map.put("org_hp", org_hp);
 	            rewardMsg = calcBossReward2(map);
@@ -2977,7 +2978,7 @@ public class LoaPlayController {
 	            
 	    	}else if (isCritical) {
 	            isKill = true;
-	            score = Math.min(damage, hp) / 3 + 100+drainRemain;
+	            score = Math.min(damage, hp) / 4 + 100+drainRemain;
 	            map.put("reward", reward);
 	            map.put("org_hp", org_hp);
 	            rewardMsg = calcBossReward2(map);
@@ -2993,7 +2994,7 @@ public class LoaPlayController {
 	        } else {
 	            newHp = 1;
 	            int allowedDamage = hp - 1;
-	            score = Math.min(damage, allowedDamage) / 3;
+	            score = Math.min(damage, allowedDamage) / 4;
 	            damage = allowedDamage;
 	            
 	            //보스 무적이라 메시지 필요없음 
@@ -3037,14 +3038,14 @@ public class LoaPlayController {
 							// bossAttackMsg+=enterStr+appliedAtkPower+" 데미지반사" ;
 
 							damage += appliedAtkPower;
-							score += appliedAtkPower / 3;
+							score += appliedAtkPower / 4;
 							dmgMsg += enterStr + "[성스러운방어막,거울의힘] +데미지 " + appliedAtkPower;
 
 							newHp = hp - damage;
 							if (newHp <= 0) {
 								newHp = 1;
 								int allowedDamage = hp - 1;
-								score = Math.min(damage, allowedDamage) / 3;
+								score = Math.min(damage, allowedDamage) / 4;
 								damage = allowedDamage;
 
 								// 보스 무적이라 메시지 필요없음

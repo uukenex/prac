@@ -613,7 +613,9 @@ public class LoaChatController {
 					val = "별도 게임방에서 진행해주세요.";
 				}
 				break;
-			case "/공격정보": case "/ㄱㄱㅈㅂ": 
+			case "/공격정보": case "/ㄱㄱㅈㅂ":
+				reqMap.put("newUserName", sender);
+				
 				gameYnList = botService.selectGamePlayYn(reqMap);
 				playYn ="1"; 
 				for(HashMap<String,Object> gameYn : gameYnList) {
