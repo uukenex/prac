@@ -32,7 +32,7 @@ public class BotSettleServiceImpl implements BotSettleService {
 				return 0;
 			}
 		}
-		return botSettleDAO.selectBotPointSumScore(map);
+		return botSettleDAO.selectBotPointSumScoreForPoint(map);
 	}
 	
 
