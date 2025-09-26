@@ -701,7 +701,7 @@
 			     AND upper(A.USER_NAME) = upper(#{userName, jdbcType=VARCHAR})
 			     AND A.INSERT_DATE> TO_DATE('20250701','yyyymmdd')
 	</select>
-	<select id="selectHourCheckCount" parameterType="HashMap" resultType="String">
+	<select id="selectHourCheckCountForPoint" parameterType="HashMap" resultType="String">
 			  SELECT COUNT(1)
 			    FROM TBOT_POINT_RANK A
 		       WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
