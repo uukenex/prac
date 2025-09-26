@@ -106,6 +106,14 @@ public interface BotService {
 	public HashMap<String,Object> updateBotPointAccTx(HashMap<String,Object> map) throws Exception;
 	public void updateBotPointAccTryMentTx(HashMap<String,Object> map) throws Exception;
 	
+	//반지강화
+	public HashMap<String,Object> selectBotPointHitRingForPoint(HashMap<String,Object> map);
+	public HashMap<String,Object> selectBotPointHitRingTx(HashMap<String,Object> map) throws Exception;
+	public int selectBotPointHitRingEvadeCnt(HashMap<String,Object> map) throws Exception;
+	public void updateBotPointHitRingTryMentTx(HashMap<String,Object> map) throws Exception;
+	public void updateBotPointHitRingTx(HashMap<String,Object> map) throws Exception;
+	
+	
 	public HashMap<String,Object> upsertDailyWeaponUpgradeTx(HashMap<String,Object> map) throws Exception;
 
 	//랭킹

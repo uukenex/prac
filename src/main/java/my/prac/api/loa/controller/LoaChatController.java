@@ -348,6 +348,21 @@ public class LoaChatController {
 					val = "별도 게임방에서 진행해주세요.";
 				}
 				break;
+			case "/반지강화": case "/ㅂㅈㄱㅎ": 
+				gameYnList = botService.selectGamePlayYn(reqMap);
+				playYn ="1"; 
+				for(HashMap<String,Object> gameYn : gameYnList) {
+					if(gameYn.get("NAME").equals("강화")) {
+						playYn = gameYn.get("PLAY_YN").toString(); 
+					}
+				}
+				
+				if(playYn.equals("1")) {
+					val = play.hit_ring_upgrade(reqMap);
+				}else {
+					val = "별도 게임방에서 진행해주세요.";
+				}
+				break;
 			case "/강화정보": case "/ㄱㅎㅈㅂ": 
 				gameYnList = botService.selectGamePlayYn(reqMap);
 				playYn ="1"; 
@@ -608,7 +623,7 @@ public class LoaChatController {
 				}
 				
 				if(playYn.equals("1")) {
-					val = play.BossAttackInfo(reqMap);
+					val = play.BossAttackInfoForPoint(reqMap);
 				}else {
 					val = "별도 게임방에서 진행해주세요.";
 				}
@@ -1458,7 +1473,7 @@ public class LoaChatController {
 			    int accMin = Integer.parseInt(weaponInfo.get("part_of_min_acc").toString());
 			    int accMax = Integer.parseInt(weaponInfo.get("part_of_max_acc").toString());
 				
-				val += "❤️"+point_map_one.get("TOT")+ enterStr+ 
+				val += "❤️"+point_map_one.get("TOT")+"/획득 포인트: "+weaponInfo.get("sum_score")+ enterStr+ 
 					   "⚔"+"무기: +"+weaponLv+" lv"+point_map_one.get("WEAPON_USE")+enterStr+
 					   "⚔"+"악세: +"+accLv+" lv"+point_map_one.get("ACC_USE")+enterStr+
 					   "　 ‡　 악세달성 최고레벨 "+accMaxLv+" lv 적용"+enterStr+

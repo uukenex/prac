@@ -218,6 +218,15 @@ public class BotServiceImpl implements BotService {
 		return botDAO.selectHourCheckCount(map);
 	}
 	public List<String> selectHourCheckToday(HashMap<String,Object> map){
+		if (map.get("param1") != null && !map.get("param1").equals("")) {
+			List<String> newUserName = botDAO.selectParam1ToNewUserSearch(map);
+			if(newUserName.size()>0) {
+				map.put("newUserName", newUserName.get(0));
+			}else {
+				return null;
+			}
+		}
+		
 		return botDAO.selectHourCheckToday(map);
 	}
 	public HashMap<String,Object> selectBotPointRankOne(HashMap<String,Object> map){
@@ -430,6 +439,41 @@ public class BotServiceImpl implements BotService {
 		return botDAO.selectBotPointAcc(map);
 	}
 	
+	public HashMap<String,Object> selectBotPointHitRingForPoint(HashMap<String,Object> map){
+		if (map.get("param1") != null && !map.get("param1").equals("")) {
+			List<String> newUserName = botDAO.selectParam1ToNewUserSearch(map);
+			if(newUserName.size()>0) {
+				map.put("newUserName", newUserName.get(0));
+			}else {
+				return null;
+			}
+		}
+		return botDAO.selectBotPointHitRingForPoint(map);
+	}
+	
+	public HashMap<String,Object> selectBotPointHitRingTx(HashMap<String,Object> map) throws Exception{
+		int cnt = botDAO.selectBotPointHitRingCnt(map);
+		if(cnt == 0) {
+			botDAO.insertBotPointHitRing(map);
+		}
+		
+		return botDAO.selectBotPointHitRing(map);
+	}
+	
+	public int selectBotPointHitRingEvadeCnt(HashMap<String,Object> map) throws Exception{
+		return botDAO.selectBotPointHitRingEvadeCnt(map);
+	}
+	
+	public void updateBotPointHitRingTryMentTx(HashMap<String,Object> map) throws Exception{
+		if(botDAO.updateBotPointHitRingTryMent(map) < 1) {
+			throw new Exception("저장 실패");
+		}
+	}
+	public void updateBotPointHitRingTx(HashMap<String,Object> map) throws Exception{
+		if(botDAO.updateBotPointHitRing(map) < 1) {
+			throw new Exception("저장 실패");
+		}
+	}
 	
 	
 	public HashMap<String,Object> upsertDailyWeaponUpgradeTx(HashMap<String,Object> map) throws Exception{

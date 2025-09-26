@@ -1,9 +1,12 @@
 package my.prac.api.loa.controller;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -64,7 +67,7 @@ public class LoaPlayController {
 		
 	}
 	
-	String BossAttackInfo(HashMap<String,Object> map) {
+	String BossAttackInfoForPoint(HashMap<String,Object> map) {
 		String msg=map.get("userName") + "님," + enterStr;
 		map.put("cmd", "boss_attack");
 		String checkCount = botService.selectHourCheckCount(map);
@@ -74,6 +77,9 @@ public class LoaPlayController {
 	    msg += "일일공격횟수: "+checkCountInt+" / "+defaultCheckCount+enterStr+enterStr;
 	    
 	    List<String> info = botService.selectHourCheckToday(map);
+	    if(info ==null){
+	    	return "";
+	    }
 	    for(String s : info) {
 	    	msg+=s+enterStr;
 	    }
@@ -151,7 +157,18 @@ public class LoaPlayController {
 		int accMaxLv = botService.selectAccLogMaxLvForPoint(map);
 		int sumScore = botSettleService.selectBotPointSumScoreForPoint(map);
 		
+		HashMap<String, Object> now;
 		int hitRingLevel =0;
+		try {
+			now = botService.selectBotPointHitRingForPoint(map);
+			hitRingLevel = Integer.parseInt(now.get("LV").toString()) ;
+		} catch (Exception e) {
+			hitRingLevel = 0;
+		}
+		
+		
+		
+		
 		
 		
 		map.put("level", weaponLv);
@@ -171,7 +188,15 @@ public class LoaPlayController {
 		int accMaxLv = botService.selectAccLogMaxLv(map);
 		int sumScore = botSettleService.selectBotPointSumScore(map);
 		
-		int hitRingLevel = 0;
+		HashMap<String, Object> now;
+		int hitRingLevel =0;
+		try {
+			now = botService.selectBotPointHitRingTx(map);
+			hitRingLevel = Integer.parseInt(now.get("LV").toString()) ;
+		} catch (Exception e) {
+			hitRingLevel = 0;
+		}
+		
 		
 		map.put("level", weaponLv);
 	    map.put("acc_level", accLv);
@@ -1715,7 +1740,7 @@ public class LoaPlayController {
 				msg += calcScore+"p 사용! .. "+score + "p → "+ new_score+"p"+enterStr;
 				
 				botService.insertBotPointAccTx(map);
-				msg += enterStr+"악세구매 완료, " + enterStr+"/악세강화 : 200p";
+				msg += enterStr+"악세구매 완료, " + enterStr+"/악세강화 : 50p";
 				
 			}else {
 				return map.get("userName")+" 님, "+"이미 존재! "+enterStr+"/악세강화 : 200p";
@@ -1858,6 +1883,111 @@ public class LoaPlayController {
 			botService.updateBotPointAccTx(map);
 		} catch (Exception e) {
 			msg ="강화중 에러발생";
+		}
+		
+		return msg;
+	}
+	
+	//반지강화
+	String hit_ring_upgrade(HashMap<String,Object> map) {
+		map.put("cmd", "hit_ring_upgrade");
+		String msg = map.get("userName")+" 님,"+enterStr;
+		
+		try {
+			
+			HashMap<String, Object> now = botService.selectBotPointHitRingTx(map);
+			
+			int lv = Integer.parseInt(now.get("LV").toString()) ;
+			
+			String price0to1_dateStr = now.get("PRICE0TO1_DATE").toString();
+			String price1to2_dateStr = now.get("PRICE1TO2_DATE").toString();
+			String price2to3_dateStr = now.get("PRICE2TO3_DATE").toString();
+			String price3to4_dateStr = now.get("PRICE3TO4_DATE").toString();
+			String price4to5_dateStr = now.get("PRICE4TO5_DATE").toString();
+			String price5to6_dateStr = now.get("PRICE5TO6_DATE").toString();
+			
+			int calcScore = 500;
+			int evadeCnt = 0;
+			switch(lv) {
+				case 0:
+					//0 to 1 일때는 9.15~sysdate까지의 counting하여, 횟수 가져오기 
+					map.put("calc_date", price0to1_dateStr);
+					map.put("priceColName", "PRICE0TO1");//성공시 업데이트할 컬럼
+					map.put("colName", "PRICE0TO1_DATE");//성공시 업데이트할 컬럼
+					break;
+				case 1:
+					//price0to1_dateStr 부터 현재까지의 
+					map.put("calc_date", price0to1_dateStr);
+					map.put("priceColName", "PRICE1TO2");//성공시 업데이트할 컬럼
+					map.put("colName", "PRICE1TO2_DATE");
+					break;
+				case 2:
+					//price0to1_dateStr 부터 현재까지의 
+					map.put("calc_date", price1to2_dateStr);
+					map.put("priceColName", "PRICE2TO3");//성공시 업데이트할 컬럼
+					map.put("colName", "PRICE2TO3_DATE");
+					break;
+				case 3:
+					map.put("calc_date", price2to3_dateStr);
+					map.put("priceColName", "PRICE3TO4");//성공시 업데이트할 컬럼
+					map.put("colName", "PRICE3TO4_DATE");
+					break;
+				case 4:
+					map.put("calc_date", price3to4_dateStr);
+					map.put("priceColName", "PRICE4TO5");//성공시 업데이트할 컬럼
+					map.put("colName", "PRICE4TO5_DATE");
+					break;
+				case 5:
+					map.put("calc_date", price4to5_dateStr);
+					map.put("priceColName", "PRICE5TO6");//성공시 업데이트할 컬럼
+					map.put("colName", "PRICE5TO6_DATE");
+					break;
+				case 6:
+					return map.get("userName")+" 님, 반지강화 MAX!!";
+			}
+			
+			evadeCnt = botService.selectBotPointHitRingEvadeCnt(map);
+			calcScore -= evadeCnt*20; //회피횟수 * 20 만큼 할인
+			
+			if(calcScore<0) {
+				calcScore=0;
+			}
+			
+			map.put("lv", lv);
+			map.put("calcScore",calcScore);
+			
+			switch (now.get("TRY").toString()) {
+				case "TRY":
+					List<HashMap<String,Object>> ls = botService.selectBotPointRankNewScore(map);
+					int score = Integer.parseInt(ls.get(0).get("SCORE").toString());
+					if(score < calcScore) {
+						return map.get("userName")+" 님, "+calcScore+" p 이상만 가능합니다.";
+					}
+					map.put("score", -calcScore);
+					int new_score = botService.insertBotPointRankTx(map);
+					msg += calcScore+"p 사용! .. "+score + "p → "+ new_score+"p"+enterStr;
+					//msg += hit_ring_upgrade_logic(map);
+					
+					botService.updateBotPointHitRingTx(map);
+					msg +=(lv+1)+"lv 강화 성공!" + enterStr;
+					msg +="명중률 : +"+(lv+1)+"%";
+					break;
+				case "MENT":
+				    
+					msg += "현재 반지 "+ lv+" lv" +enterStr;
+					msg +="명중률 +" +lv + "%" +enterStr+enterStr;
+					
+					msg += "( 2 Min ) 내로 '/반지강화' 입력 시 강화시도!"+enterStr;
+					msg += "강화비용 : "+ calcScore + " p" +enterStr;
+					msg +="(이전 강화 이후 보스 회피횟수 *20p 할인!)"+enterStr;
+				    
+					botService.updateBotPointHitRingTryMentTx(map);
+					
+					break;
+			}
+			
+		}catch(Exception e) {
+			return "반지강화 포인트조회 오류입니다.";
 		}
 		
 		return msg;
@@ -2439,7 +2569,7 @@ public class LoaPlayController {
 	    	defaultCheckCount +=3;
 	    }
 	    
-	    if(checkCountInt > defaultCheckCount) {
+	    if(checkCountInt >= defaultCheckCount) {
 	    	return map.get("userName") + "님," + enterStr + "일일공격횟수 끝!";
 	    }
 	    String countingMsg = "";
@@ -2576,6 +2706,8 @@ public class LoaPlayController {
 		        
 		        
 		        if(!(chaserCrit1||chaserCrit2||chaserCrit3)) {
+		        	
+		        	
 		        	 // 아이템 7-1, 7-2 가 있으면 보스 회피 무효화 시도
 			        if (item_7_1) {
 			        	effectiveEvadeRate = Math.max(evadeRate - 6, 0); // 최소 0

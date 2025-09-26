@@ -707,7 +707,7 @@
 		       WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 			     AND CMD = #{cmd, jdbcType=VARCHAR}
 			     AND INSERT_DATE BETWEEN TRUNC(SYSDATE) AND TRUNC(SYSDATE)+1
-			     AND upper(A.USER_NAME) = upper(#{userName, jdbcType=VARCHAR})
+			     AND upper(A.USER_NAME) = upper(#{newUserName, jdbcType=VARCHAR})
 			     AND A.INSERT_DATE> TO_DATE('20250701','yyyymmdd')
 			   ORDER BY A.INSERT_DATE DESC
 	</select>
@@ -1679,6 +1679,98 @@
 		   AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 		 GROUP BY A.USER_NAME, A.ROOM_NAME, A.TRY_LV
 		 ORDER BY A.TRY_LV DESC
+	</select>
+	
+	
+	<select id="selectBotPointHitRingCnt" parameterType="HashMap" resultType="int">
+		SELECT count(1)
+		  FROM TBOT_POINT_HIT_RING A
+		 WHERE USER_NAME = #{userName, jdbcType=VARCHAR}
+		   AND ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+	</select>
+	<insert id="insertBotPointHitRing" parameterType="HashMap">
+		INSERT INTO TBOT_POINT_HIT_RING
+			 (USER_NAME
+			 ,ROOM_NAME)
+		VALUES
+			 (#{userName, jdbcType=VARCHAR}
+			 ,#{roomName, jdbcType=VARCHAR})
+	</insert>
+	
+	<select id="selectBotPointHitRingForPoint" parameterType="HashMap" resultType="HashMap">
+		SELECT WEAPON_LV AS LV,
+		       WEAPON_LV,
+			   CASE
+				   WHEN A.PROC_DATE > SYSDATE - 2 / 60 / 24 THEN
+				    'TRY'
+				   ELSE
+				    'MENT'
+			   END AS TRY
+			  ,A.PRICE0TO1
+	 		  ,TO_CHAR(PRICE0TO1_DATE,'YYYYMMDDHH24MISS') AS PRICE0TO1_DATE
+	 		  ,A.PRICE1TO2
+	 		  ,TO_CHAR(PRICE1TO2_DATE,'YYYYMMDDHH24MISS') AS PRICE1TO2_DATE
+	 		  ,A.PRICE2TO3
+	 		  ,TO_CHAR(PRICE2TO3_DATE,'YYYYMMDDHH24MISS') AS PRICE2TO3_DATE
+	 		  ,A.PRICE3TO4
+	 		  ,TO_CHAR(PRICE3TO4_DATE,'YYYYMMDDHH24MISS') AS PRICE3TO4_DATE
+	 		  ,A.PRICE4TO5
+	 		  ,TO_CHAR(PRICE4TO5_DATE,'YYYYMMDDHH24MISS') AS PRICE4TO5_DATE
+	 		  ,A.PRICE5TO6
+	 		  ,TO_CHAR(PRICE5TO6_DATE,'YYYYMMDDHH24MISS') AS PRICE5TO6_DATE
+		  FROM TBOT_POINT_HIT_RING A
+		 WHERE USER_NAME = #{newUserName, jdbcType=VARCHAR}
+		   AND ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+	</select>
+	
+	<select id="selectBotPointHitRing" parameterType="HashMap" resultType="HashMap">
+		SELECT WEAPON_LV AS LV,
+		       WEAPON_LV,
+			   CASE
+				   WHEN A.PROC_DATE > SYSDATE - 2 / 60 / 24 THEN
+				    'TRY'
+				   ELSE
+				    'MENT'
+			   END AS TRY
+			  ,A.PRICE0TO1
+	 		  ,TO_CHAR(PRICE0TO1_DATE,'YYYYMMDDHH24MISS') AS PRICE0TO1_DATE
+	 		  ,A.PRICE1TO2
+	 		  ,TO_CHAR(PRICE1TO2_DATE,'YYYYMMDDHH24MISS') AS PRICE1TO2_DATE
+	 		  ,A.PRICE2TO3
+	 		  ,TO_CHAR(PRICE2TO3_DATE,'YYYYMMDDHH24MISS') AS PRICE2TO3_DATE
+	 		  ,A.PRICE3TO4
+	 		  ,TO_CHAR(PRICE3TO4_DATE,'YYYYMMDDHH24MISS') AS PRICE3TO4_DATE
+	 		  ,A.PRICE4TO5
+	 		  ,TO_CHAR(PRICE4TO5_DATE,'YYYYMMDDHH24MISS') AS PRICE4TO5_DATE
+	 		  ,A.PRICE5TO6
+	 		  ,TO_CHAR(PRICE5TO6_DATE,'YYYYMMDDHH24MISS') AS PRICE5TO6_DATE
+		  FROM TBOT_POINT_HIT_RING A
+		 WHERE USER_NAME = #{userName, jdbcType=VARCHAR}
+		   AND ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+	</select>
+	<update id="updateBotPointHitRingTryMent" parameterType="HashMap">
+		UPDATE TBOT_POINT_HIT_RING A 
+		   SET A.PROC_DATE = SYSDATE
+		 WHERE USER_NAME = #{userName, jdbcType=VARCHAR}
+		   AND ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+	</update>
+	<update id="updateBotPointHitRing" parameterType="HashMap">
+		UPDATE TBOT_POINT_HIT_RING A 
+		   SET ${colName} = SYSDATE
+		     , A.WEAPON_LV = A.WEAPON_LV+1
+		     , ${priceColName} = #{calcScore, jdbcType=NUMERIC}
+		     , A.PROC_DATE = SYSDATE - 1/24
+		 WHERE USER_NAME = #{userName, jdbcType=VARCHAR}
+		   AND ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+	</update>
+	
+	<select id="selectBotPointHitRingEvadeCnt" parameterType="HashMap" resultType="int">
+		SELECT COUNT(1)
+		  FROM TBOT_POINT_BOSS_LOG A
+		 WHERE A.INSERT_DATE > TO_DATE(#{calc_date, jdbcType=VARCHAR}, 'yyyymmddhh24miss')
+		   AND A.EVADE_YN = '1'
+		   AND USER_NAME = #{userName, jdbcType=VARCHAR}
+		   AND ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 	</select>
 	
 </mapper>

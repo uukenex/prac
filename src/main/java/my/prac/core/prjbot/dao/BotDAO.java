@@ -118,6 +118,15 @@ public interface BotDAO {
 	public int selectCntBotPointAcc(HashMap<String,Object> map);
 	public HashMap<String,Object> selectBotPointAcc(HashMap<String,Object> map);
 	
+	
+	public int selectBotPointHitRingCnt(HashMap<String,Object> map);
+	public int insertBotPointHitRing(HashMap<String,Object> map);
+	public HashMap<String,Object> selectBotPointHitRingForPoint(HashMap<String,Object> map);
+	public HashMap<String,Object> selectBotPointHitRing(HashMap<String,Object> map);
+	public int updateBotPointHitRingTryMent(HashMap<String,Object> map);
+	public int updateBotPointHitRing(HashMap<String,Object> map);
+	public int selectBotPointHitRingEvadeCnt(HashMap<String,Object> map);
+	
 	public int insertBotPointWeapon(HashMap<String,Object> map);
 	public int insertBotPointWeaponLog(HashMap<String,Object> map);
 	public int updateBotPointWeapon(HashMap<String,Object> map);
