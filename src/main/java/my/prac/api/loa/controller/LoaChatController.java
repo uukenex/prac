@@ -3357,7 +3357,7 @@ public class LoaChatController {
 			tier = 4;
 		}
 		if(!characterImage.equals("")) {
-			//resMsg += charImgSearch(ordUserId,title,className,characterImage) + anotherMsgStr;
+			resMsg += charImgSearch(ordUserId,title,className,characterImage) + anotherMsgStr;
 		}
 		resMsg += "레벨"    +"　　　 　"+itemAvgLevel+enterStr;
 		resMsg += "전투/원대"+"　　"+characterLevel+"　/　"+expeditionLevel+enterStr;
