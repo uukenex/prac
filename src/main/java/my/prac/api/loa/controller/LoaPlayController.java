@@ -2437,6 +2437,10 @@ public class LoaPlayController {
 	    boolean item_22_1 = ableItemList.contains("22-1");
 	    boolean item_22_2 = ableItemList.contains("22-2");
 	    boolean item_22_3 = ableItemList.contains("22-3");
+	    //보스 방어 무시
+	    boolean item_23_1 = ableItemList.contains("23-1");
+	    boolean item_23_2 = ableItemList.contains("23-2");
+	    boolean item_23_3 = ableItemList.contains("23-3");
 	    
 	    boolean item_99_1 = ableItemList.contains("99-1");	    
 	    if(item_14_1) {
@@ -2955,12 +2959,29 @@ public class LoaPlayController {
 			// 보스 방어 적용 (메시지 추가)
 			if (flag_boss_defence) {
 				appliedDefPower = ThreadLocalRandom.current().nextInt(1, bossDefPower + 1);
-
+				bossDefenseMsg = "보스가 방어하였습니다! 데미지 " + appliedDefPower + " 상쇄!" + enterStr;
+				
+				if(item_23_1) {
+					appliedDefPower -= 1;
+				}
+				if(item_23_2) {
+					appliedDefPower -= 2;
+				}
+				if(item_23_3) {
+					appliedDefPower -= 3;
+				}
+				if(appliedDefPower <0) {
+					appliedDefPower = 0;
+				}
+			
 				damage -= appliedDefPower;
 				if (damage < 0)
 					damage = 0;
-
-				bossDefenseMsg = "보스가 방어하였습니다! 데미지 " + appliedDefPower + " 상쇄!" + enterStr;
+				
+				if(item_23_1 || item_23_2 || item_23_3) {
+					bossDefenseMsg+="보스의 방어 무시" +appliedDefPower;
+				}
+				
 			}
 			
 			if (item_19_1) {
@@ -3143,9 +3164,15 @@ public class LoaPlayController {
 		        }
 	        }
 	        
-	        if(score < 15) {
-	        	score = 15;
+	        if(flag_boss_attack || flag_boss_drain || flag_boss_special) {
+	        	
+	        }else {
+	        	
+	        	if(score < 10) {
+	        		score = 10;
+	        	}
 	        }
+	        
 	        
 	        map.put("score", score);
 	        map.put("endYn", isKill ? "1" : "0");
