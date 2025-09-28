@@ -3259,7 +3259,7 @@ public class LoaPlayController {
 		
 		if (newbieYn)
 			msg.append(" (초보자 +10p)");
-		if (score ==15)
+		if (score ==10)
 			msg.append(" (최소p 보정)");
 		//msg.append("기본공격포인트 "+damage+"÷3");
 		msg.append(enterStr).append("갱신포인트 : ").append(new_score).append(enterStr);
@@ -3451,7 +3451,7 @@ public class LoaPlayController {
 			msgBuilder
 			.append(name)
 			.append(" - ")
-			.append(damage*3) //score가 3분의1로 나눠지기때문 
+			.append(damage*4) //score가 3분의1로 나눠지기때문 
 			.append(" dmg(")
 			.append(percentStr)
 			.append("%) - ")
