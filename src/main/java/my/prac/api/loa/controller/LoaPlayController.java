@@ -3147,9 +3147,10 @@ public class LoaPlayController {
 					map.put("useSpecial", 1);
 					map.put("extra_msg", bossAttackMsg);
 					
+					/*
 					if(flag_new_point) {
 						
-					}
+					}*/
 					try {
 						botService.insertPointNewBoxOpenTx(map);
 					} catch (Exception e) {

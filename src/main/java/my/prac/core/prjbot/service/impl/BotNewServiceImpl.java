@@ -16,7 +16,7 @@ public class BotNewServiceImpl implements BotNewService {
 	
 	@Resource(name = "core.prjbot.BotDAO")
 	BotDAO botDAO;
-	@Resource(name = "core.prjbot.BotDAO")
+	@Resource(name = "core.prjbot.BotNewDAO")
 	BotNewDAO botNewDAO;
 	
 	@Resource(name = "core.prjbot.BotSettleDAO")
