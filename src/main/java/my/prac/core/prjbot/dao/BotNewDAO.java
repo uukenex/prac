@@ -9,6 +9,6 @@ import org.springframework.stereotype.Repository;
 
 @Repository("core.prjbot.BotNewDAO")
 public interface BotNewDAO {
-	
+	public int insertBotPointNew(HashMap<String,Object> map);
 }
 

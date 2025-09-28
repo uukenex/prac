@@ -1031,6 +1031,7 @@ public class LoaPlayController {
 	    	            msg += "item No : " + itemNo + enterStr;
 	    	            msg += itemName + itemLv+" lv"+ enterStr;
 	    	            msg += itemDesc;
+	    	            userItemList = selectPointItemUserList(map);
 	                    break;
 	            }
 	            break;
@@ -2504,6 +2505,7 @@ public class LoaPlayController {
 	    
 	    boolean flag_boss_drain = Math.random() < 0.01;//1%확률
 	    boolean flag_boss_special = Math.random() < 0.01;//1%확률
+	    boolean flag_new_point = Math.random() < 0.01;//1%확률
 	    // ----------------
 	    // 보스 숨김 체크
 	    // ----------------
@@ -2974,13 +2976,17 @@ public class LoaPlayController {
 					appliedDefPower = 0;
 				}
 			
+				if(item_23_1 || item_23_2 || item_23_3) {
+					bossDefenseMsg+="보스의 방어 무시 방어도:" +appliedDefPower;
+				}
+				
 				damage -= appliedDefPower;
 				if (damage < 0)
 					damage = 0;
-				
 				if(item_23_1 || item_23_2 || item_23_3) {
-					bossDefenseMsg+="보스의 방어 무시" +appliedDefPower;
+					bossDefenseMsg+="→ " +appliedDefPower+enterStr;
 				}
+				
 				
 			}
 			
@@ -3140,6 +3146,10 @@ public class LoaPlayController {
 					
 					map.put("useSpecial", 1);
 					map.put("extra_msg", bossAttackMsg);
+					
+					if(flag_new_point) {
+						
+					}
 					try {
 						botService.insertPointNewBoxOpenTx(map);
 					} catch (Exception e) {

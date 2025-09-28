@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Map;
 
 public interface BotNewService {
-	
+	public int insertBotPointNew(HashMap<String,Object> map);
 } 
 
 	
