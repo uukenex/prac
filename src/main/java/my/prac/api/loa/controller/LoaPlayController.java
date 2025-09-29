@@ -2964,21 +2964,22 @@ public class LoaPlayController {
 				bossDefenseMsg = "보스가 방어하였습니다! 데미지 " + appliedDefPower + " 상쇄!" + enterStr;
 				
 				if(item_23_1) {
-					appliedDefPower -= 1;
+					appliedDefPower -= 2;
+					bossDefenseMsg+="[스트립아머]방어도 무시 효과.." +appliedDefPower;
 				}
 				if(item_23_2) {
-					appliedDefPower -= 2;
+					appliedDefPower -= 4;
+					bossDefenseMsg+="[스트립아머]방어도 무시 효과.." +appliedDefPower;
 				}
 				if(item_23_3) {
-					appliedDefPower -= 3;
+					appliedDefPower -= 6;
+					bossDefenseMsg+="[스트립아머]방어도 무시 효과.." +appliedDefPower;
 				}
 				if(appliedDefPower <0) {
 					appliedDefPower = 0;
 				}
 			
-				if(item_23_1 || item_23_2 || item_23_3) {
-					bossDefenseMsg+="보스의 방어 무시 방어도:" +appliedDefPower;
-				}
+				
 				
 				damage -= appliedDefPower;
 				if (damage < 0)
