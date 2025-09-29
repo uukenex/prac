@@ -734,6 +734,16 @@ public class BotServiceImpl implements BotService {
 		return botDAO.selectItem21LvSum();
 	}
 	
+	public List<HashMap<String,Object>> selectBotPointStatUserSumForPoint(HashMap<String,Object> map) {
+		int cnt =  botDAO.selectBotPointStatUserCntForPoint(map);
+		
+		if(cnt>0) {
+			return botDAO.selectBotPointStatUserSumForPoint(map);
+		}
+		return new ArrayList<>();
+		
+	}
+	
 	public List<HashMap<String,Object>> selectBotPointStatUserSum(HashMap<String,Object> map) {
 		int cnt =  botDAO.selectBotPointStatUserCnt(map);
 		

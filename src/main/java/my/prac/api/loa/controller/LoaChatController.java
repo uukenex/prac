@@ -712,7 +712,10 @@ public class LoaChatController {
 					val = "별도 게임방에서 진행해주세요.";
 				}
 				break;
-			case "/리밋강화": case "/ㄻㄱㅎ": case "/ㄹㅁㄱㅎ": 
+			case "/근력강화": case "/ㄱㄺㅎ": case "/ㄱㄹㄱㅎ": 
+			case "/방어강화": case "/ㅂㅇㄱㅎ": 
+			case "/치명강화": case "/ㅊㅁㄱㅎ": 
+			case "/맥포강화": case "/ㅁㅍㄱㅎ": 
 				gameYnList = botService.selectGamePlayYn(reqMap);
 				playYn ="1"; 
 				for(HashMap<String,Object> gameYn : gameYnList) {
@@ -722,8 +725,21 @@ public class LoaChatController {
 				}
 				
 				if(playYn.equals("1")) {
-					
-					val = play.maximum_limit_upgrade(reqMap);
+					switch(param0) {
+						case "/근력강화": case "/ㄱㄺㅎ": case "/ㄱㄹㄱㅎ":
+							reqMap.put("stat", "STR");
+						break;
+						case "/방어강화": case "/ㅂㅇㄱㅎ": 
+							reqMap.put("stat", "DEF");
+							break;
+						case "/치명강화": case "/ㅊㅁㄱㅎ": 
+							reqMap.put("stat", "CRI");
+							break;
+						case "/맥포강화": case "/ㅁㅍㄱㅎ":
+							reqMap.put("stat", "LIMIT");
+							break;
+					}
+					val = play.limit_upgrade(reqMap);
 					
 				}else {
 					val = "별도 게임방에서 진행해주세요.";
@@ -1491,9 +1507,14 @@ public class LoaChatController {
 				val += "❤️"+point_map_one.get("TOT")+"누적획득 포인트: "+weaponInfo.get("sum_score")+" p"+ enterStr+ 
 					   "⚔"+"무기: +"+weaponLv+" lv"+point_map_one.get("WEAPON_USE")+enterStr+
 					   "⚔"+"악세: +"+accLv+" lv"+point_map_one.get("ACC_USE")+enterStr+
-					   "　 ‡　 악세달성 최고레벨 "+accMaxLv+" lv 적용"+enterStr+
 					   "✨"+"공격력: "+weaponMin+"~"+weaponMax+" (치확: "+(int)(part_of_weapon_crit*100)+"%)"+enterStr+
-					   "✨"+"+추가: "+accMin+"~"+accMax+" (치확: "+(int)(part_of_acc_crit*100)+"%)"+enterStr+enterStr;
+					   "✨"+"+악세: "+accMin+"~"+accMax+" (치확: "+(int)(part_of_acc_crit*100)+"%)"+enterStr+
+					   "　 ‡　악세달성 최고레벨 "+accMaxLv+" lv 적용"+enterStr+enterStr;
+				val += "⚅언리밋⚅"+ enterStr+
+					   "⚔근력강화: "+weaponInfo.get("limit_str")+ enterStr+
+					   "⚔방어강화: "+weaponInfo.get("limit_def")+ enterStr+
+					   "⚔치명강화: "+weaponInfo.get("limit_cri")+ enterStr+
+					   "⚔맥포강화: "+weaponInfo.get("limit_limit")+ enterStr+enterStr;
 					   //"⏰"+point_map_one.get("ATTENDANCE")+ enterStr+
 					   //"⚅"+point_map_one.get("DICE")+enterStr+enterStr ;
 					   //"✨"+point_map_one.get("GAMBLE_WIN")+enterStr +
@@ -1508,7 +1529,7 @@ public class LoaChatController {
 				try {
 					if(reqMap.get("totalItemListSize")!=null && !reqMap.get("totalItemListSize").equals("")) {
 						val += "(보물수집: "+reqMap.get("userItemListSize")+" / "+(reqMap.get("totalItemListSize"))+")"+enterStr;
-						val += "(수집점수: "+reqMap.get("userSum")+" / "+(reqMap.get("totSum"))+")"+enterStr;
+						val += "　　　　(수집점수: "+reqMap.get("userSum")+" / "+(reqMap.get("totSum"))+")"+enterStr;
 					}
 					
 				}catch(Exception e) {

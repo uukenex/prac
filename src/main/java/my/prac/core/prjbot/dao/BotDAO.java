@@ -189,6 +189,8 @@ public interface BotDAO {
 	public int selectItem21LvSum();
 	
 	//스탯조회및 강화
+	public int selectBotPointStatUserCntForPoint(HashMap<String,Object> map);
+	public List<HashMap<String,Object>> selectBotPointStatUserSumForPoint(HashMap<String,Object> map);
 	public int selectBotPointStatUserCnt(HashMap<String,Object> map);
 	public List<HashMap<String,Object>> selectBotPointStatUserSum(HashMap<String,Object> map);
 	public int insertBotPointStatUser(HashMap<String,Object> map) throws Exception;

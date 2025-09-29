@@ -171,8 +171,22 @@ public class LoaPlayController {
 			hitRingLevel = 0;
 		}
 		
+		List<HashMap<String, Object>> limitList;
+		String limit_stat_name="";
+		int limit_stat_lv =0;
 		
-		
+		try {
+			limitList = botService.selectBotPointStatUserSumForPoint(map);
+			for(HashMap<String,Object> hs : limitList) {
+				limit_stat_name = "LIMIT_"+hs.get("STAT_NAME").toString();
+				limit_stat_lv = Integer.parseInt(hs.get("LV").toString());
+				//STR , DEF, CRI , LIMIT
+				//LIMIT_STR , LIMIT_DEF, LIMIT_CRI , LIMIT_LIMIT
+				map.put(limit_stat_name, limit_stat_lv);
+			}
+			
+		} catch (Exception e) {
+		}
 		
 		
 		
@@ -200,6 +214,23 @@ public class LoaPlayController {
 			hitRingLevel = Integer.parseInt(now.get("LV").toString()) ;
 		} catch (Exception e) {
 			hitRingLevel = 0;
+		}
+		
+		List<HashMap<String, Object>> limitList;
+		String limit_stat_name="";
+		int limit_stat_lv =0;
+		
+		try {
+			limitList = botService.selectBotPointStatUserSum(map);
+			for(HashMap<String,Object> hs : limitList) {
+				limit_stat_name = "LIMIT_"+hs.get("STAT_NAME").toString();
+				limit_stat_lv = Integer.parseInt(hs.get("LV").toString());
+				//STR , DEF, CRI , LIMIT
+				//LIMIT_STR , LIMIT_DEF, LIMIT_CRI , LIMIT_LIMIT
+				map.put(limit_stat_name, limit_stat_lv);
+			}
+			
+		} catch (Exception e) {
 		}
 		
 		
@@ -253,14 +284,9 @@ public class LoaPlayController {
 		int part_of_min_acc = plus_min;
 		int part_of_max_acc = plus_max;
 		
-	    int min = part_of_min_weapon + part_of_min_acc;
-	    int max = part_of_max_weapon + part_of_max_acc;
-	    int baseDamage = rand.nextInt(max - min + 1) + min;
-	    
-	    
 	    double part_of_weapon_crit = Math.min(0.20 + weaponLv * 0.01 , 1.0);
 	    double part_of_acc_crit = Math.min(0 + plus_crit * 0.01 , 1.0);
-	    double criticalChance = part_of_weapon_crit+part_of_acc_crit;
+	    
 
 	    // 결과 저장
 	    result.put("level", weaponLv);
@@ -275,11 +301,38 @@ public class LoaPlayController {
 		result.put("part_of_weapon_crit", part_of_weapon_crit);
 		result.put("part_of_acc_crit", part_of_acc_crit);
 		
+		int limit_str =0;
+		int limit_def =0;
+		int limit_cri =0;
+		int limit_limit =0;
+		if(result.get("LIMIT_STR")!=null) {
+			limit_str = Integer.parseInt(result.get("LIMIT_STR").toString());
+	    }
+		if(result.get("LIMIT_DEF")!=null) {
+			limit_def = Integer.parseInt(result.get("LIMIT_DEF").toString());
+		}
+		if(result.get("LIMIT_CRI")!=null) {
+			limit_cri = Integer.parseInt(result.get("LIMIT_CRI").toString());
+		}
+		if(result.get("LIMIT_LIMIT")!=null) {
+			limit_limit = Integer.parseInt(result.get("LIMIT_LIMIT").toString());
+		}
+		
+		result.put("limit_str", limit_str); 
+		result.put("limit_def", limit_def); 
+		result.put("limit_cri", limit_cri); 
+		result.put("limit_limit", limit_limit); 
+		
+		int min = part_of_min_weapon + part_of_min_acc;
+	    int max = part_of_max_weapon + part_of_max_acc+limit_str;
+	    int baseDamage = rand.nextInt(max - min + 1) + min;
+	    double criticalChance = part_of_weapon_crit+part_of_acc_crit+limit_cri;
+	    
 	    result.put("min", min);
 	    result.put("max", max);
 	    result.put("baseDamage", baseDamage);
 	    result.put("criticalChance", criticalChance);
-	    result.put("def", default_def+plus_def);
+	    result.put("def", default_def+plus_def+limit_def);
 	    result.put("hit", hitRingLevel);
 	}
 	List<HashMap<String,Object>> selectPointItemUserListForPoint(HashMap<String,Object> map){
@@ -787,7 +840,11 @@ public class LoaPlayController {
 	          +enterStr+"/악세구매 : 200p(상자 누적50회부터 가능)"
 	          +enterStr+"/악세강화 : 레벨별 상이"
 	          +enterStr+"/반지강화 : 500p(보스회피시 할인)"
-	          +enterStr+"/리밋강화 : 1000p(포인트획득제한 +1)"
+	          +enterStr+enterStr+"[언리밋]"
+	          +enterStr+"/맥포강화 : 1000p(맥스포인트획득제한 +1)"
+	          +enterStr+"/근력강화 : 1000p(최대데미지+1)"
+	          +enterStr+"/방어강화 : 1000p(방어력+1)"
+	          +enterStr+"/치명강화 : 1000p(치명타+1%)"
 	          +enterStr
 	          +enterStr;
 	}
@@ -1722,12 +1779,14 @@ public class LoaPlayController {
 	}
 
 	//리밋강화 ㄹㅁㄱㅎ ㄻㄱㅎ
-	public String maximum_limit_upgrade(HashMap<String,Object> map) {
+	
+	public String limit_upgrade(HashMap<String,Object> map) {
 		map.put("cmd", "maximum_limit_upgrade");
 		String msg = map.get("userName")+" 님,"+enterStr;
 		int defaultScore = 1000;
 		int calcScore = defaultScore ;
 		
+		String statName =map.get("stat").toString();
 		
 		
 		try {
@@ -1741,22 +1800,36 @@ public class LoaPlayController {
 			
 			msg += calcScore+"p 사용! .. "+score + "p → "+ new_score+"p"+enterStr;
 			
-			map.put("statName", "LIMIT");
+			map.put("statName", statName);
 			map.put("lv", 1);
 			botService.insertBotPointStatUserTx(map);
 			
 			int lv = 0;
 			List<HashMap<String,Object>> ls2 = botService.selectBotPointStatUserSum(map);
 			for(HashMap<String,Object> hs2 : ls2) {
-				if(hs2.get("STAT_NAME").toString().equals("LIMIT")) {
+				if(hs2.get("STAT_NAME").toString().equals(statName)) {
 					lv = Integer.parseInt(hs2.get("LV").toString());
 				}
 			}
 			
-			msg += enterStr+"리밋강화 완료, " + enterStr+"Maximum get Point +"+lv;
+			switch(statName) {
+				case "LIMIT":
+					msg += enterStr+"맥포강화 완료, " + enterStr+"Maximum get Point +"+lv;
+					break;
+				case "STR":
+					msg += enterStr+"근력강화 완료, " + enterStr+"Str Point +"+lv;
+					break;
+				case "DEF":
+					msg += enterStr+"방어강화 완료, " + enterStr+"Def Point +"+lv;
+					break;
+				case "CRI":
+					msg += enterStr+"치명강화 완료, " + enterStr+"Cri Point +"+lv;
+					break;
+			}
+			
 			
 		}catch(Exception e) {
-			return "리밋강화 포인트조회 오류입니다.";
+			return "강화 포인트조회 오류입니다.";
 		}
 		return msg;
 	}
