@@ -785,7 +785,9 @@ public class LoaPlayController {
 		return "[포인트상점 목록]"
 	          +enterStr+"/상자구매 : 200p(10회까지 무료)"
 	          +enterStr+"/악세구매 : 200p(상자 누적50회부터 가능)"
-	          +enterStr+"/상한해제 : 1000p(포인트획득제한 +1)"
+	          +enterStr+"/악세강화 : 레벨별 상이"
+	          +enterStr+"/반지강화 : 500p(보스회피시 할인)"
+	          +enterStr+"/리밋강화 : 1000p(포인트획득제한 +1)"
 	          +enterStr
 	          +enterStr;
 	}
@@ -1719,7 +1721,7 @@ public class LoaPlayController {
 		return msg;
 	}
 
-	//상한해제
+	//리밋강화 ㄹㅁㄱㅎ ㄻㄱㅎ
 	public String maximum_limit_upgrade(HashMap<String,Object> map) {
 		map.put("cmd", "maximum_limit_upgrade");
 		String msg = map.get("userName")+" 님,"+enterStr;
@@ -1729,33 +1731,32 @@ public class LoaPlayController {
 		
 		
 		try {
-			int count = botService.selectPointItemUserCount(map);
-			
-			if(count < 50) {
-				return  map.get("userName")+" 님,"+enterStr+"상자획득 누적 50개이상 구매가능!";
+			List<HashMap<String,Object>> ls = botService.selectBotPointRankNewScore(map);
+			int score = Integer.parseInt(ls.get(0).get("SCORE").toString());
+			if(score < calcScore) {
+				return map.get("userName")+" 님, "+calcScore+" p 이상만 가능합니다.";
 			}
+			map.put("score", -calcScore);
+			int new_score = botService.insertBotPointRankTx(map);
 			
+			msg += calcScore+"p 사용! .. "+score + "p → "+ new_score+"p"+enterStr;
 			
-			HashMap<String, Object> now = botService.selectBotPointAcc(map);
-			if(now == null) {
-				List<HashMap<String,Object>> ls = botService.selectBotPointRankNewScore(map);
-				int score = Integer.parseInt(ls.get(0).get("SCORE").toString());
-				if(score < calcScore) {
-					return map.get("userName")+" 님, "+calcScore+" p 이상만 가능합니다.";
+			map.put("statName", "LIMIT");
+			map.put("lv", 1);
+			botService.insertBotPointStatUserTx(map);
+			
+			int lv = 0;
+			List<HashMap<String,Object>> ls2 = botService.selectBotPointStatUserSum(map);
+			for(HashMap<String,Object> hs2 : ls2) {
+				if(hs2.get("STAT_NAME").toString().equals("LIMIT")) {
+					lv = Integer.parseInt(hs2.get("LV").toString());
 				}
-				map.put("score", -calcScore);
-				int new_score = botService.insertBotPointRankTx(map);
-				
-				msg += calcScore+"p 사용! .. "+score + "p → "+ new_score+"p"+enterStr;
-				
-				botService.insertBotPointAccTx(map);
-				msg += enterStr+"악세구매 완료, " + enterStr+"/악세강화 : 50p";
-				
-			}else {
-				return map.get("userName")+" 님, "+"이미 존재! "+enterStr+"/악세강화 : 200p";
 			}
+			
+			msg += enterStr+"리밋강화 완료, " + enterStr+"Maximum get Point +"+lv;
+			
 		}catch(Exception e) {
-			return "악세구매 포인트조회 오류입니다.";
+			return "리밋강화 포인트조회 오류입니다.";
 		}
 		return msg;
 	}
@@ -3216,8 +3217,18 @@ public class LoaPlayController {
 	        map.put("damage", damage);
 	        
 	        if(!isKill) {
+	        	
+	        	int limit_lv = 0;
+				List<HashMap<String,Object>> ls2 = botService.selectBotPointStatUserSum(map);
+				for(HashMap<String,Object> hs2 : ls2) {
+					if(hs2.get("STAT_NAME").toString().equals("LIMIT")) {
+						limit_lv = Integer.parseInt(hs2.get("LV").toString());
+					}
+				}
+	        	
+	        	
 	        	if(score > 150) {
-		        	score =150;
+		        	score =150 +limit_lv;
 		        }
 	        }
 	        

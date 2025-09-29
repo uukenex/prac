@@ -187,5 +187,11 @@ public interface BotDAO {
 	
 	public HashMap<String,Object> selectBotMaxLv(HashMap<String,Object> map);
 	public int selectItem21LvSum();
+	
+	//스탯조회및 강화
+	public int selectBotPointStatUserCnt(HashMap<String,Object> map);
+	public List<HashMap<String,Object>> selectBotPointStatUserSum(HashMap<String,Object> map);
+	public int insertBotPointStatUser(HashMap<String,Object> map) throws Exception;
+	
 }
 

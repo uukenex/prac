@@ -3,6 +3,7 @@ package my.prac.core.prjbot.service.impl;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.WeekFields;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -731,5 +732,20 @@ public class BotServiceImpl implements BotService {
 	}
 	public int selectItem21LvSum(){
 		return botDAO.selectItem21LvSum();
+	}
+	
+	public List<HashMap<String,Object>> selectBotPointStatUserSum(HashMap<String,Object> map) {
+		int cnt =  botDAO.selectBotPointStatUserCnt(map);
+		
+		if(cnt>0) {
+			return botDAO.selectBotPointStatUserSum(map);
+		}
+		return new ArrayList<>();
+		
+	}
+	public void insertBotPointStatUserTx(HashMap<String,Object> map) throws Exception{
+		if(botDAO.insertBotPointStatUser(map) < 1) {
+			throw new Exception("저장 실패");
+		}
 	}
 }

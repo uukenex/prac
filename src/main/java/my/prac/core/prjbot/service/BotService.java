@@ -166,6 +166,10 @@ public interface BotService {
 	
 	public HashMap<String,Object> selectBotMaxLv(HashMap<String,Object> map);
 	public int selectItem21LvSum();
+	
+	//리미트강화
+	public List<HashMap<String,Object>> selectBotPointStatUserSum(HashMap<String,Object> map);
+	public void insertBotPointStatUserTx(HashMap<String,Object> map) throws Exception;
 } 
 
 	

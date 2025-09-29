@@ -678,10 +678,7 @@ public class LoaChatController {
 					val = "별도 게임방에서 진행해주세요.";
 				}
 				break;
-			case "/악세구매":
-			case "/악세구입":
-			case "/ㅇㅅㄱㅇ":
-			case "/ㅇㅅㄱㅁ":
+			case "/악세구매": case "/악세구입": case "/ㅇㅅㄱㅇ": case "/ㅇㅅㄱㅁ":
 				gameYnList = botService.selectGamePlayYn(reqMap);
 				playYn ="1"; 
 				for(HashMap<String,Object> gameYn : gameYnList) {
@@ -698,8 +695,7 @@ public class LoaChatController {
 					val = "별도 게임방에서 진행해주세요.";
 				}
 				break;
-			case "/악세강화":
-			case "/ㅇㅅㄱㅎ":
+			case "/악세강화": case "/ㅇㅅㄱㅎ":
 				gameYnList = botService.selectGamePlayYn(reqMap);
 				playYn ="1"; 
 				for(HashMap<String,Object> gameYn : gameYnList) {
@@ -711,6 +707,23 @@ public class LoaChatController {
 				if(playYn.equals("1")) {
 					
 					val = play.acc_upgrade(reqMap);
+					
+				}else {
+					val = "별도 게임방에서 진행해주세요.";
+				}
+				break;
+			case "/리밋강화": case "/ㄻㄱㅎ": case "/ㄹㅁㄱㅎ": 
+				gameYnList = botService.selectGamePlayYn(reqMap);
+				playYn ="1"; 
+				for(HashMap<String,Object> gameYn : gameYnList) {
+					if(gameYn.get("NAME").equals("강화")) {
+						playYn = gameYn.get("PLAY_YN").toString(); 
+					}
+				}
+				
+				if(playYn.equals("1")) {
+					
+					val = play.maximum_limit_upgrade(reqMap);
 					
 				}else {
 					val = "별도 게임방에서 진행해주세요.";
@@ -766,7 +779,7 @@ public class LoaChatController {
 					val = "별도 게임방에서 진행해주세요.";
 				}
 				break;		
-			case "/상자구입": case "/상자구매":
+			case "/상자구입": case "/상자구매": case "/ㅅㅈㄱㅁ": case "/ㅅㅈㄱㅇ":
 				gameYnList = botService.selectGamePlayYn(reqMap);
 				playYn ="1"; 
 				for(HashMap<String,Object> gameYn : gameYnList) {
@@ -781,7 +794,7 @@ public class LoaChatController {
 					val = "별도 게임방에서 진행해주세요.";
 				}
 				break;
-			case "/상자열기": case "/상자오픈":
+			case "/상자열기": case "/상자오픈": case "/ㅅㅈㅇㄱ": case "/ㅅㅈㅇㅍ":
 				gameYnList = botService.selectGamePlayYn(reqMap);
 				playYn ="1"; 
 				for(HashMap<String,Object> gameYn : gameYnList) {
