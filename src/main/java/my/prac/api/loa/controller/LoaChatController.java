@@ -1503,13 +1503,15 @@ public class LoaChatController {
 			    int weaponMax = Integer.parseInt(weaponInfo.get("part_of_max_weapon").toString());
 			    int accMin = Integer.parseInt(weaponInfo.get("part_of_min_acc").toString());
 			    int accMax = Integer.parseInt(weaponInfo.get("part_of_max_acc").toString());
+			    int hit = Integer.parseInt(weaponInfo.get("hit").toString());
 				
 				val += "❤️"+point_map_one.get("TOT")+"누적획득 포인트: "+weaponInfo.get("sum_score")+" p"+ enterStr+ 
 					   "⚔"+"무기: +"+weaponLv+" lv"+point_map_one.get("WEAPON_USE")+enterStr+
 					   "⚔"+"악세: +"+accLv+" lv"+point_map_one.get("ACC_USE")+enterStr+
 					   "✨"+"공격력: "+weaponMin+"~"+weaponMax+" (치확: "+(int)(part_of_weapon_crit*100)+"%)"+enterStr+
 					   "✨"+"+악세: "+accMin+"~"+accMax+" (치확: "+(int)(part_of_acc_crit*100)+"%)"+enterStr+
-					   "　 ‡　악세달성 최고레벨 "+accMaxLv+" lv 적용"+enterStr+enterStr;
+					   "　 ‡　악세달성 최고레벨 "+accMaxLv+" lv 적용"+enterStr+
+					   "✨"+"+반지: "+hit+ "(명중: "+(int)(hit)+"%)"+enterStr+enterStr;
 				val += "⚅언리밋⚅"+ enterStr+
 					   "⚔근력강화: "+weaponInfo.get("limit_str")+ enterStr+
 					   "⚔방어강화: "+weaponInfo.get("limit_def")+ enterStr+
