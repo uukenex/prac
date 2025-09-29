@@ -785,6 +785,7 @@ public class LoaPlayController {
 		return "[포인트상점 목록]"
 	          +enterStr+"/상자구매 : 200p(10회까지 무료)"
 	          +enterStr+"/악세구매 : 200p(상자 누적50회부터 가능)"
+	          +enterStr+"/상한해제 : 1000p(포인트획득제한 +1)"
 	          +enterStr
 	          +enterStr;
 	}
@@ -1717,7 +1718,47 @@ public class LoaPlayController {
 		
 		return msg;
 	}
-	
+
+	//상한해제
+	public String maximum_limit_upgrade(HashMap<String,Object> map) {
+		map.put("cmd", "maximum_limit_upgrade");
+		String msg = map.get("userName")+" 님,"+enterStr;
+		int defaultScore = 1000;
+		int calcScore = defaultScore ;
+		
+		
+		
+		try {
+			int count = botService.selectPointItemUserCount(map);
+			
+			if(count < 50) {
+				return  map.get("userName")+" 님,"+enterStr+"상자획득 누적 50개이상 구매가능!";
+			}
+			
+			
+			HashMap<String, Object> now = botService.selectBotPointAcc(map);
+			if(now == null) {
+				List<HashMap<String,Object>> ls = botService.selectBotPointRankNewScore(map);
+				int score = Integer.parseInt(ls.get(0).get("SCORE").toString());
+				if(score < calcScore) {
+					return map.get("userName")+" 님, "+calcScore+" p 이상만 가능합니다.";
+				}
+				map.put("score", -calcScore);
+				int new_score = botService.insertBotPointRankTx(map);
+				
+				msg += calcScore+"p 사용! .. "+score + "p → "+ new_score+"p"+enterStr;
+				
+				botService.insertBotPointAccTx(map);
+				msg += enterStr+"악세구매 완료, " + enterStr+"/악세강화 : 50p";
+				
+			}else {
+				return map.get("userName")+" 님, "+"이미 존재! "+enterStr+"/악세강화 : 200p";
+			}
+		}catch(Exception e) {
+			return "악세구매 포인트조회 오류입니다.";
+		}
+		return msg;
+	}
 	//악세구매 악세구입 
 	public String acc_buy(HashMap<String,Object> map) {
 		map.put("cmd", "acc_buy");
@@ -1955,7 +1996,7 @@ public class LoaPlayController {
 			}
 			
 			evadeCnt = botService.selectBotPointHitRingEvadeCnt(map);
-			calcScore -= evadeCnt*30; //회피횟수 * 30 만큼 할인
+			calcScore -= evadeCnt*50; //회피횟수 * 30 만큼 할인
 			
 			if(calcScore<0) {
 				calcScore=0;
@@ -1989,7 +2030,7 @@ public class LoaPlayController {
 					msg += "( 2 Min ) 내로 '/반지강화' 입력 시 강화시도!"+enterStr;
 					msg += "강화비용 : "+ calcScore + " p" +enterStr;
 					
-					msg +="(최초 500p,보스 회피횟수당 30p 할인!)"+enterStr;
+					msg +="(최초 500p,보스 회피횟수당 50p 할인!)"+enterStr;
 					
 					// 1. 문자열을 LocalDateTime으로 파싱
 			        DateTimeFormatter inputFormat = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
