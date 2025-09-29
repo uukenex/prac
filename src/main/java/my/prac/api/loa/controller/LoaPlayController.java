@@ -222,6 +222,8 @@ public class LoaPlayController {
 		// 실제 적용될 레벨
 	    int acc_apply_level = accMaxLv;
 		
+	    int default_def = 5;
+	    
 		 // --- 현재 accLv 기준 스탯 ---
 	    int[] pow_data = MiniGameUtil.POW_MAP_ACC.getOrDefault(accMaxLv, new int[]{0, 0, 0, 0}); 
 	    int plus_crit = pow_data[0];
@@ -277,7 +279,7 @@ public class LoaPlayController {
 	    result.put("max", max);
 	    result.put("baseDamage", baseDamage);
 	    result.put("criticalChance", criticalChance);
-	    result.put("def", plus_def);
+	    result.put("def", default_def+plus_def);
 	    result.put("hit", hitRingLevel);
 	}
 	List<HashMap<String,Object>> selectPointItemUserListForPoint(HashMap<String,Object> map){
