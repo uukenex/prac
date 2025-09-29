@@ -53,9 +53,9 @@ public class MiniGameUtil {
 	
 	static {
 		//0->1시도시, 30%성공 60%실패 10%파괴 ,
-	    RATE_MAP_ACC.put(0,  new Double[]{30.0, 70.0-3.0 , 3.0});
-	    RATE_MAP_ACC.put(1,  new Double[]{30.0, 70.0-5.0 , 5.0});
-	    RATE_MAP_ACC.put(2,  new Double[]{25.0, 75.0-7.0 , 7.0});
+	    RATE_MAP_ACC.put(0,  new Double[]{30.0, 70.0-0.0 , 0.0});
+	    RATE_MAP_ACC.put(1,  new Double[]{30.0, 70.0-0.0 , 0.0});
+	    RATE_MAP_ACC.put(2,  new Double[]{25.0, 75.0-0.0 , 0.0});
 	    RATE_MAP_ACC.put(3,  new Double[]{25.0, 75.0-9.0 , 9.0});
 	    RATE_MAP_ACC.put(4,  new Double[]{20.0, 80.0-11.0, 11.0});
 	    RATE_MAP_ACC.put(5,  new Double[]{20.0, 80.0-13.0, 13.0});
