@@ -2962,32 +2962,34 @@ public class LoaPlayController {
 
 			// 보스 방어 적용 (메시지 추가)
 			if (flag_boss_defence) {
+				 
 				appliedDefPower = ThreadLocalRandom.current().nextInt(1, bossDefPower + 1);
+				int appliedDefPowerNew=appliedDefPower;
 				bossDefenseMsg = "보스가 방어하였습니다! 데미지 " + appliedDefPower + " 상쇄!" + enterStr;
 				
 				if(item_23_1) {
-					appliedDefPower -= 2;
+					appliedDefPowerNew -= 2;
 					bossDefenseMsg+="[스트립아머]방어도 무시 효과.." +appliedDefPower;
 				}
 				if(item_23_2) {
-					appliedDefPower -= 4;
+					appliedDefPowerNew -= 4;
 					bossDefenseMsg+="[스트립아머]방어도 무시 효과.." +appliedDefPower;
 				}
 				if(item_23_3) {
-					appliedDefPower -= 6;
+					appliedDefPowerNew -= 6;
 					bossDefenseMsg+="[스트립아머]방어도 무시 효과.." +appliedDefPower;
 				}
-				if(appliedDefPower <0) {
-					appliedDefPower = 0;
+				if(appliedDefPowerNew <0) {
+					appliedDefPowerNew = 0;
 				}
 			
 				
 				
-				damage -= appliedDefPower;
+				damage -= appliedDefPowerNew;
 				if (damage < 0)
 					damage = 0;
 				if(item_23_1 || item_23_2 || item_23_3) {
-					bossDefenseMsg+="→ " +appliedDefPower+enterStr;
+					bossDefenseMsg+="→ " +appliedDefPowerNew+enterStr;
 				}
 				
 				
