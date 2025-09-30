@@ -1511,12 +1511,12 @@ public class LoaChatController {
 					   "✨"+"공격력: "+weaponMin+"~"+weaponMax+" (치확: "+(int)(part_of_weapon_crit*100)+"%)"+enterStr+
 					   "✨"+"+악세: "+accMin+"~"+accMax+" (치확: "+(int)(part_of_acc_crit*100)+"%)"+enterStr+
 					   "　 ‡　악세달성 최고레벨 "+accMaxLv+" lv 적용"+enterStr+
-					   "✨"+"+반지: "+hit+ "(명중: "+(int)(hit)+"%)"+enterStr+enterStr;
+					   "✨"+"+반지: "+hit+ " lv (명중: "+(int)(hit)+"%)"+enterStr+enterStr;
 				val += "⚅언리밋⚅"+ enterStr+
-					   "⚔근력강화: "+weaponInfo.get("limit_str")+ enterStr+
-					   "⚔방어강화: "+weaponInfo.get("limit_def")+ enterStr+
-					   "⚔치명강화: "+(int)weaponInfo.get("limit_cri")*100+ enterStr+
-					   "⚔맥포강화: "+weaponInfo.get("limit_limit")+ enterStr+enterStr;
+					   "⚔근력강화: +"+weaponInfo.get("limit_str")+ enterStr+
+					   "⚔방어강화: +"+weaponInfo.get("limit_def")+ enterStr+
+					   "⚔치명강화: +"+(double)weaponInfo.get("limit_cri")*100+"%"+ enterStr+
+					   "⚔맥포강화: +"+weaponInfo.get("limit_limit")+ enterStr+enterStr;
 					   //"⏰"+point_map_one.get("ATTENDANCE")+ enterStr+
 					   //"⚅"+point_map_one.get("DICE")+enterStr+enterStr ;
 					   //"✨"+point_map_one.get("GAMBLE_WIN")+enterStr +
