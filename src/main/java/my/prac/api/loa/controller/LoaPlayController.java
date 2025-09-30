@@ -303,7 +303,7 @@ public class LoaPlayController {
 		
 		int limit_str =0;
 		int limit_def =0;
-		int limit_cri =0;
+		double limit_cri =0.00;
 		int limit_limit =0;
 		if(result.get("LIMIT_STR")!=null) {
 			limit_str = Integer.parseInt(result.get("LIMIT_STR").toString());
@@ -312,7 +312,7 @@ public class LoaPlayController {
 			limit_def = Integer.parseInt(result.get("LIMIT_DEF").toString());
 		}
 		if(result.get("LIMIT_CRI")!=null) {
-			limit_cri = Integer.parseInt(result.get("LIMIT_CRI").toString());
+			limit_cri = Double.parseDouble(result.get("LIMIT_CRI").toString())*0.01;
 		}
 		if(result.get("LIMIT_LIMIT")!=null) {
 			limit_limit = Integer.parseInt(result.get("LIMIT_LIMIT").toString());
@@ -320,7 +320,7 @@ public class LoaPlayController {
 		
 		result.put("limit_str", limit_str); 
 		result.put("limit_def", limit_def); 
-		result.put("limit_cri", limit_cri*0.01); 
+		result.put("limit_cri", limit_cri); 
 		result.put("limit_limit", limit_limit); 
 		
 		int min = part_of_min_weapon + part_of_min_acc;
