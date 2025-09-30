@@ -320,7 +320,7 @@ public class LoaPlayController {
 		
 		result.put("limit_str", limit_str); 
 		result.put("limit_def", limit_def); 
-		result.put("limit_cri", limit_cri); 
+		result.put("limit_cri", limit_cri*0.01); 
 		result.put("limit_limit", limit_limit); 
 		
 		int min = part_of_min_weapon + part_of_min_acc;
