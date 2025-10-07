@@ -735,6 +735,16 @@ public class BotServiceImpl implements BotService {
 	}
 	
 	public List<HashMap<String,Object>> selectBotPointStatUserSumForPoint(HashMap<String,Object> map) {
+		
+		if (map.get("param1") != null && !map.get("param1").equals("")) {
+			List<String> newUserName = botDAO.selectParam1ToNewUserSearch(map);
+			if(newUserName.size()>0) {
+				map.put("newUserName", newUserName.get(0));
+			}else {
+				return new ArrayList<>();
+			}
+		}
+		
 		int cnt =  botDAO.selectBotPointStatUserCntForPoint(map);
 		
 		if(cnt>0) {
