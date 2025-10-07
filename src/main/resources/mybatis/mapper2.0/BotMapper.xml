@@ -1739,14 +1739,14 @@
 	<select id="selectBotPointStatUserCntForPoint" parameterType="HashMap" resultType="int">
 		SELECT COUNT(1)
 		  FROM TBOT_POINT_STAT_USER A
-		 WHERE AND upper(A.USER_NAME) = upper(#{newUserName, jdbcType=VARCHAR})
+		 WHERE upper(A.USER_NAME) = upper(#{newUserName, jdbcType=VARCHAR})
 		   AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 	</select>
 	
 	<select id="selectBotPointStatUserSumForPoint" parameterType="HashMap" resultType="HashMap">
 		SELECT A.STAT_NAME,SUM(LV) AS LV
 		  FROM TBOT_POINT_STAT_USER A
-		 WHERE AND upper(A.USER_NAME) = upper(#{newUserName, jdbcType=VARCHAR})
+		 WHERE upper(A.USER_NAME) = upper(#{newUserName, jdbcType=VARCHAR})
 		   AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 	  GROUP BY A.USER_NAME
 		      ,A.ROOM_NAME
