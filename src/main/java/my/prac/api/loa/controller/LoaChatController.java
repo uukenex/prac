@@ -1515,7 +1515,9 @@ public class LoaChatController {
 				val += "⚅언리밋⚅"+ enterStr+
 					   "⚔근력강화: +"+weaponInfo.get("limit_str")+ enterStr+
 					   "⚔방어강화: +"+weaponInfo.get("limit_def")+ enterStr+
-					   "⚔치명강화: +"+(double) Double.parseDouble(weaponInfo.get("limit_cri").toString())*100+"%"+ enterStr+
+					   
+					   
+					   "⚔치명강화: +"+Math.round( (double) Double.parseDouble(weaponInfo.get("limit_cri").toString())*100) +"%"+ enterStr+
 					   "⚔맥포강화: +"+weaponInfo.get("limit_limit")+ enterStr+enterStr;
 					   //"⏰"+point_map_one.get("ATTENDANCE")+ enterStr+
 					   //"⚅"+point_map_one.get("DICE")+enterStr+enterStr ;
