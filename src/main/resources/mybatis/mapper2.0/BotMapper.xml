@@ -213,7 +213,10 @@
 	
 	<select id="selectBotRaidSaveAll" parameterType="hashMap" resultType="hashMap" >
 		 /* bot.xml selectBotRaidSaveAll */
-		SELECT A.CHAR_NAME,A.RAID_NAME,A.REMARK
+		SELECT A.CHAR_NAME,A.RAID_NAME,(SELECT REMARK
+								          FROM TBOT_RAID_LIST B
+								         WHERE B.RAID_NAME = A.RAID_NAME
+								           AND B.ROOM_NAME = A.ROOM_NAME) AS REMARK
 		  FROM TBOT_RAID_SAVE A
 		 WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 		 

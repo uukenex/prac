@@ -2205,7 +2205,7 @@ public class LoaChatController {
 			remark   = hs.get("REMARK").toString();
 			count    = hs.get("CNT").toString();
 			
-			resMsg += "※" + raidName + "※ "+ "("+count+"명)"+enterStr;
+			resMsg += "파티명:" + raidName+ "　(현재 "+count+" 명)"+enterStr;
 			resMsg += "설명: "+remark;
 			resMsg += enterStr;
 			resMsg += enterStr;
@@ -2224,7 +2224,8 @@ public class LoaChatController {
 		List<HashMap<String,Object>> attackerList = new ArrayList<>();
 		List<HashMap<String,Object>> supporterList = new ArrayList<>();
 		
-		HashMap<String,Object> charInfo; 
+		HashMap<String,Object> charInfo;
+		String remark ="";
 		
 		int count = 0;
 		for(HashMap<String,Object> hs:charList) {
@@ -2265,6 +2266,8 @@ public class LoaChatController {
 				attackerList.add(charInfo);
 				count++;
 			}
+			
+			remark = hs.get("REMARK").toString();
 		}
 		
 		
@@ -2277,8 +2280,8 @@ public class LoaChatController {
 		
 		
 		
-		String resMsg =reqMap.get("param1")+" "+count+"/8"+enterStr;
-		
+		String resMsg ="파티명: "+reqMap.get("param1")+" 　"+count+"/8"+enterStr;
+		resMsg += "설명: "+remark+enterStr;
 		resMsg += "※딜러※"+enterStr;
 		for(HashMap<String,Object> hs :sortedList1) {
 			resMsg += "[" + LoaApiUtils.shortClassName(hs.get("class").toString()) + "] ";
