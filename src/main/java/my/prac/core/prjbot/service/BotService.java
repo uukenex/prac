@@ -36,8 +36,12 @@ public interface BotService {
 	public void insertBotImgCharSaveTx(HashMap<String, Object> hashMap)  throws Exception;
 	
 	
-	public List<String> selectBotRaidSaveAll(HashMap<String, Object> hashMap);
+	public List<HashMap<String,Object>> selectBotRaidSaveAll(HashMap<String, Object> hashMap);
+	public List<HashMap<String,Object>> selectBotRaidSaveListAll(HashMap<String, Object> hashMap);
 	public void insertBotRaidSaveTx(HashMap<String, Object> hashMap)  throws Exception;
+	public void updateBotRaidSaveTx(HashMap<String, Object> hashMap)  throws Exception;
+	public void insertBotRaidJoinSaveTx(HashMap<String, Object> hashMap)  throws Exception;
+	public void insertBotRaidDelTx(HashMap<String, Object> hashMap)  throws Exception;
 	
 	public int selectSupporters(String userId);
 	

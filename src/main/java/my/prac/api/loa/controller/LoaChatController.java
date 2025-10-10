@@ -1028,8 +1028,98 @@ public class LoaChatController {
 							val+= hs.get("RES");
 						}
 					}
+				}else {
+					return "/ㄱㅇ 캐릭명 으로 입력해주세요";
 				}
 				
+				break;
+			case "/파티":
+			case "/ㅍㅌ":
+				if (param1 != null && !param1.equals("")) {
+					try {
+						val = raidSearch(reqMap);
+					} catch (Exception e) {
+						val = errorCodeMng(e,reqMap);
+					}
+				}else {
+					val = raidListSearch(reqMap);
+				}
+				break;	
+			
+			case "/파티생성":
+			case "/ㅍㅌㅅㅅ":
+				if (param1 != null && !param1.equals("")) {
+					try {
+						for (String str : unable_save_list) {
+							if (fulltxt.indexOf(str) >= 0) {
+								val = "파티설명 등록 실패!, 특수문자 안되요!";
+								return val;
+							}
+						}
+
+						fulltxt = fulltxt.substring(param0.length()+1+param1.length()).trim();
+						reqMap.put("param2", fulltxt);
+						
+						val = raidAdd(reqMap);
+						
+					} catch (Exception e) {
+						val = errorCodeMng(e,reqMap);
+					}
+				}else {
+					val = "/파티생성 파티명 파티설명 으로 입력해주세요"
+						 +enterStr +"/파티 로 파티명조회";
+				}
+				break;
+			case "/파티수정":
+			case "/ㅍㅌㅅㅈ":
+				if (param1 != null && !param1.equals("")) {
+					try {
+						for (String str : unable_save_list) {
+							if (fulltxt.indexOf(str) >= 0) {
+								val = "파티설명 등록 실패!, 특수문자 안되요!";
+								return val;
+							}
+						}
+
+						fulltxt = fulltxt.substring(param0.length()+1+param1.length()).trim();
+						reqMap.put("param2", fulltxt);
+						
+						val = raidMod(reqMap);
+						
+					} catch (Exception e) {
+						val = errorCodeMng(e,reqMap);
+					}
+				}else {
+					val = "/파티생성 파티명 파티설명 으로 입력해주세요"
+						 +enterStr +"/파티 로 파티명조회";
+				}
+				break;
+			case "/파티가입":
+			case "/ㅍㅌㄱㅇ":
+				if (param1 != null && !param1.equals("")) {
+					try {
+						val = raidJoin(reqMap);
+						
+					} catch (Exception e) {
+						val = errorCodeMng(e,reqMap);
+					}
+				}else {
+					val = "/파티가입 파티명 캐릭명 으로 입력해주세요"
+						+enterStr +"/파티 로 파티명조회";
+				}
+				break;
+			case "/파티탈퇴":
+			case "/ㅍㅌㅌㅌ":
+				if (param1 != null && !param1.equals("")) {
+					try {
+						raidDel(reqMap);
+						//val = raidSearch(reqMap);
+					} catch (Exception e) {
+						val = errorCodeMng(e,reqMap);
+					}
+				}else {
+					val = "/파티탈퇴 파티명 으로 입력해주세요";
+				}
 				break;
 			case "/장비":
 			case "/정보":
@@ -1062,6 +1152,8 @@ public class LoaChatController {
 							val+= hs.get("RES");
 						}
 					}
+				}else {
+					return "/ㅈㅂ 캐릭명 으로 입력해주세요";
 				}
 				break;
 			
@@ -1093,6 +1185,8 @@ public class LoaChatController {
 							val+= hs.get("RES");
 						}
 					}
+				}else {
+					return "/ㅊㅇ 캐릭명 또는 /ㅇㄹㅅ 캐릭명 으로 입력해주세요";
 				}
 				break;
 			case "/내실":
@@ -1123,6 +1217,8 @@ public class LoaChatController {
 							val+= hs.get("RES");
 						}
 					}
+				}else {
+					return "/ㄴㅅ 캐릭명 으로 입력해주세요";
 				}
 				break;
 			
@@ -1154,6 +1250,8 @@ public class LoaChatController {
 							val+= hs.get("RES");
 						}
 					}
+				}else {
+					return "/ㅇㅅ 캐릭명 으로 입력해주세요";
 				}
 				break;		
 			case "/부캐":
@@ -1192,6 +1290,8 @@ public class LoaChatController {
 							val+= hs.get("RES");
 						}
 					}
+				}else {
+					return "/ㅂㅋ 캐릭명 으로 입력해주세요";
 				}
 				break;
 			case "/부캐2":
@@ -1223,6 +1323,8 @@ public class LoaChatController {
 							val+= hs.get("RES");
 						}
 					}
+				}else {
+					return "/ㅂㅋ2 캐릭명 으로 입력해주세요";
 				}
 				break;
 			case "/주급":
@@ -1253,6 +1355,8 @@ public class LoaChatController {
 							val+= hs.get("RES");
 						}
 					}
+				}else {
+					return "/주급 캐릭명 으로 입력해주세요";
 				}
 				break;
 			
@@ -1286,6 +1390,8 @@ public class LoaChatController {
 						val = errorCodeMng(e,reqMap);
 						val+=enterStr+param1+" 으로 조회됨";
 					}
+				}else {
+					return "/ㅈㅌㄹ 캐릭명 으로 입력해주세요";
 				}
 				
 				try {
@@ -1330,6 +1436,8 @@ public class LoaChatController {
 						val = errorCodeMng(e,reqMap);
 						val+=enterStr+param1+" 으로 조회됨";
 					}
+				}else {
+					return "/ㅈㅌㄹ2 캐릭명 으로 입력해주세요";
 				}
 				
 
@@ -2084,15 +2192,161 @@ public class LoaChatController {
 
 		return val;
 	}
-
-	String jsw() throws Exception {
-		String val ="";
+	String raidListSearch(HashMap<String,Object> reqMap) throws Exception {
+		List<HashMap<String,Object>> raidList = botService.selectBotRaidSaveListAll(reqMap);
+		String count = "";
+		String raidName="";
+		String remark="";
+		String resMsg = "";
 		
 		
+		for(HashMap<String,Object> hs:raidList) {
+			raidName = hs.get("RAID_NAME").toString();
+			remark   = hs.get("REMARK").toString();
+			count    = hs.get("CNT").toString();
+			
+			resMsg += "※" + raidName + "※ "+ "("+count+"명)"+enterStr;
+			resMsg += "설명: "+remark;
+			resMsg += enterStr;
+			resMsg += enterStr;
+		}
 		
-		return val;
+		return resMsg;
 	}
 	
+	String raidSearch(HashMap<String,Object> reqMap) throws Exception {
+		List<HashMap<String,Object>> charList = botService.selectBotRaidSaveAll(reqMap);
+		
+		if(charList ==null) {
+			return "해당 파티명이 없습니다.";
+		}
+		
+		List<HashMap<String,Object>> attackerList = new ArrayList<>();
+		List<HashMap<String,Object>> supporterList = new ArrayList<>();
+		
+		HashMap<String,Object> charInfo; 
+		
+		int count = 0;
+		for(HashMap<String,Object> hs:charList) {
+			String ordUserId=hs.get("CHAR_NAME").toString();
+			String userId = URLEncoder.encode(ordUserId, "UTF-8");
+			// +는 %2B로 치환한다
+			String paramUrl = lostArkAPIurl + "/armories/characters/" + userId + "?filters=profiles";
+			String returnData = LoaApiUtils.connect_process(paramUrl);
+			HashMap<String, Object> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<Map<String, Object>>() {});
+
+			Map<String, Object> armoryProfile;
+			try {
+				armoryProfile = (Map<String, Object>) rtnMap.get("ArmoryProfile");
+			}catch(Exception e){
+				continue;
+			}
+			
+			charInfo = new HashMap<>();
+			String avgLv = armoryProfile.get("ItemAvgLevel").toString();
+			String className = armoryProfile.get("CharacterClassName").toString();
+			String combatPower ="";
+			if(armoryProfile.get("CombatPower") != null) {
+				combatPower = armoryProfile.get("CombatPower").toString();
+			}
+			
+			charInfo.put("id",ordUserId);
+			charInfo.put("lv", avgLv);
+			charInfo.put("class", className);
+			charInfo.put("combatPower", combatPower);
+			
+			Double lv = Double.parseDouble(avgLv.replaceAll(",", ""));
+			if(className.equals("바드")
+				  || className.equals("도화가")
+				  || className.equals("홀리나이트")) {
+				supporterList.add(charInfo);
+				count++;
+			}else {
+				attackerList.add(charInfo);
+				count++;
+			}
+		}
+		
+		
+		List<HashMap<String, Object>> sortedList1 = attackerList.stream()
+				.sorted(Comparator.comparingDouble(x-> Double.parseDouble(x.get("lv").toString().replaceAll(",", ""))))
+				.collect(toReversedList());
+		List<HashMap<String, Object>> sortedList2 = supporterList.stream()
+				.sorted(Comparator.comparingDouble(x-> Double.parseDouble(x.get("lv").toString().replaceAll(",", ""))))
+				.collect(toReversedList());
+		
+		
+		
+		String resMsg =reqMap.get("param1")+" "+count+"/8"+enterStr;
+		
+		resMsg += "※딜러※"+enterStr;
+		for(HashMap<String,Object> hs :sortedList1) {
+			resMsg += "[" + LoaApiUtils.shortClassName(hs.get("class").toString()) + "] ";
+			resMsg += "("+hs.get("lv")+")";
+			resMsg += "("+hs.get("combatPower")+")";
+			resMsg += hs.get("id");
+			resMsg += enterStr;
+		}
+		resMsg += "※서포터※"+enterStr;
+		for(HashMap<String,Object> hs :sortedList2) {
+			resMsg += "[" + LoaApiUtils.shortClassName(hs.get("class").toString()) + "] ";
+			resMsg += "("+hs.get("lv")+")";
+			resMsg += "("+hs.get("combatPower")+")";
+			resMsg += hs.get("id");
+			resMsg += enterStr;
+		}
+		
+		return resMsg;
+	}
+	String raidAdd(HashMap<String,Object> reqMap) throws Exception {
+		String resMsg ="";
+		try {
+			botService.insertBotRaidSaveTx(reqMap);
+		}catch(Exception e) {
+			return "이미 동명의 파티가 있거나 오류입니다"
+					+enterStr+e.getMessage();
+		}
+		
+		resMsg = raidSearch(reqMap);
+		
+		
+		return resMsg;
+	}
+	String raidMod(HashMap<String,Object> reqMap) throws Exception {
+		String resMsg ="";
+		try {
+			botService.updateBotRaidSaveTx(reqMap);
+		}catch(Exception e) {
+			return "이미 동명의 파티가 있거나 오류입니다"
+					+enterStr+e.getMessage();
+		}
+		
+		resMsg = raidSearch(reqMap);
+		
+		
+		return resMsg;
+	}
+	String raidJoin(HashMap<String,Object> reqMap) throws Exception {
+		String resMsg ="";
+		try {
+			botService.insertBotRaidJoinSaveTx(reqMap);
+		}catch(Exception e) {
+			return "/파티가입 파티명 캐릭명 으로 입력해주세요"
+					+enterStr +"/파티 로 파티명조회"
+					+enterStr+e.getMessage();
+		}
+		
+		resMsg = raidSearch(reqMap);
+		
+		
+		return resMsg;
+	}
+	void raidDel(HashMap<String,Object> reqMap) throws Exception {
+		botService.insertBotRaidDelTx(reqMap);
+	}
+	
+	
+
 	String lotto() throws Exception {
 		String val ="";
 		

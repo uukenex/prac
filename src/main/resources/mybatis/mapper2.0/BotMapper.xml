@@ -200,19 +200,94 @@
 		 WHERE ROWNUM = 1   
 	</select>
 	
-	<select id="selectBotRaidSaveAll" parameterType="hashMap" resultType="String" >
+	<select id="selectBotRaidSaveListAll" parameterType="hashMap" resultType="hashMap" >
+		SELECT A.RAID_NAME,
+		       A.REMARK,
+		       (SELECT COUNT(1)
+		          FROM TBOT_RAID_SAVE B
+		         WHERE B.RAID_NAME = A.RAID_NAME
+		           AND B.ROOM_NAME = A.ROOM_NAME) AS CNT
+		  FROM TBOT_RAID_LIST A
+		 WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+	</select>
+	
+	<select id="selectBotRaidSaveAll" parameterType="hashMap" resultType="hashMap" >
 		 /* bot.xml selectBotRaidSaveAll */
-		SELECT A.CHAR_NAME
+		SELECT A.CHAR_NAME,A.RAID_NAME,A.REMARK
 		  FROM TBOT_RAID_SAVE A
 		 WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+		 
+		 <if test="param1 != null and param1 != '' ">
+		   AND A.RAID_NAME = #{param1, jdbcType=VARCHAR}
+	     </if>
+		   
 	</select>
 	<insert id="insertBotRaidSaveOne" parameterType="hashMap">
 		/* bot.xml insertBotRaidSaveOne */
+		INSERT INTO TBOT_RAID_LIST
+			 (ROOM_NAME
+			 ,RAID_NAME
+			 ,REMARK
+			 )
+		SELECT #{roomName, jdbcType=VARCHAR}
+			  ,#{param1, jdbcType=VARCHAR}
+			  ,#{param2, jdbcType=VARCHAR}
+		  FROM DUAL
+    </insert>
+	<insert id="updateBotRaidListMod" parameterType="hashMap">
+		/* bot.xml updateBotRaidListMod */
+		UPDATE TBOT_RAID_LIST 
+		   SET REMARK = #{param2, jdbcType=VARCHAR}
+	     WHERE ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+		   AND RAID_NAME = #{param1, jdbcType=VARCHAR}
+    </insert>
+	<select id="selectBotRaidJoinSaveOneCheck1" parameterType="hashMap" resultType="int">
+		/* bot.xml selectBotRaidJoinSaveOneCheck1 */
+		SELECT COUNT(1)
+		  FROM TBOT_RAID_LIST A
+		 WHERE A.RAID_NAME = #{param1, jdbcType=VARCHAR}
+		   AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+    </select>
+	<select id="selectBotRaidJoinSaveOneCheck2" parameterType="hashMap" resultType="int">
+		/* bot.xml selectBotRaidJoinSaveOneCheck2 */
+		SELECT COUNT(1)
+		  FROM TBOT_POWER_RANK B 
+		 WHERE B.CHAR_NAME = #{param2, jdbcType=VARCHAR}
+    </select>
+    <select id="selectBotRaidJoinSaveOneCheck3" parameterType="hashMap" resultType="int">
+		/* bot.xml selectBotRaidJoinSaveOneCheck3 */
+		SELECT COUNT(1)
+		  FROM TBOT_RAID_SAVE A
+		 WHERE A.CHAR_NAME = #{param2, jdbcType=VARCHAR}
+		   AND A.RAID_NAME = #{param1, jdbcType=VARCHAR}
+		   AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+		   AND EXISTS (SELECT *
+		          FROM TBOT_RAID_SAVE C
+		         WHERE C.CHAR_NAME = A.CHAR_NAME
+		           AND C.RAID_NAME = A.RAID_NAME
+		           AND C.ROOM_NAME = A.ROOM_NAME)
+    </select>
+	<insert id="insertBotRaidJoinSaveOne" parameterType="hashMap">
+		/* bot.xml insertBotRaidJoinSaveOne */
 		INSERT INTO TBOT_RAID_SAVE
 			 (ROOM_NAME
+			 ,RAID_NAME
 			 ,CHAR_NAME
 			 )
 		SELECT #{roomName, jdbcType=VARCHAR}
+			  ,#{param1, jdbcType=VARCHAR}
+			  ,#{param2, jdbcType=VARCHAR}
+		  FROM DUAL
+    </insert>
+	<insert id="insertBotRaidDelOne" parameterType="hashMap">
+		/* bot.xml insertBotRaidDelOne */
+		DELETE FROM TBOT_RAID_SAVE
+			 (ROOM_NAME
+			 ,CHAR_NAME
+			 ,RAID_NAME
+			 )
+		SELECT #{roomName, jdbcType=VARCHAR}
+			  ,#{param2, jdbcType=VARCHAR}
 			  ,#{param1, jdbcType=VARCHAR}
 		  FROM DUAL
     </insert>

@@ -38,8 +38,15 @@ public interface BotDAO {
 	public HashMap<String,String> selectBotImgCharSaveI3(String res);
 	public int insertBotImgCharSave(HashMap<String, Object> hashMap);
 	
-	public List<String> selectBotRaidSaveAll(HashMap<String, Object> hashMap);
+	public List<HashMap<String,Object>> selectBotRaidSaveAll(HashMap<String, Object> hashMap);
+	public List<HashMap<String,Object>> selectBotRaidSaveListAll(HashMap<String, Object> hashMap);
 	public int insertBotRaidSaveOne(HashMap<String, Object> hashMap);
+	public int updateBotRaidListMod(HashMap<String, Object> hashMap);
+	public int selectBotRaidJoinSaveOneCheck1(HashMap<String, Object> hashMap);
+	public int selectBotRaidJoinSaveOneCheck2(HashMap<String, Object> hashMap);
+	public int selectBotRaidJoinSaveOneCheck3(HashMap<String, Object> hashMap);
+	public int insertBotRaidJoinSaveOne(HashMap<String, Object> hashMap);
+	public int insertBotRaidDelOne(HashMap<String, Object> hashMap);
 	
 	public int selectSupporters(String userId);
 	

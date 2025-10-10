@@ -113,11 +113,67 @@ public class BotServiceImpl implements BotService {
 	
 	
 	
-	public List<String> selectBotRaidSaveAll(HashMap<String, Object> hashMap){
-		return botDAO.selectBotRaidSaveAll(hashMap);
+	public List<HashMap<String,Object>> selectBotRaidSaveAll(HashMap<String, Object> hashMap){
+		int cnt = botDAO.selectBotRaidJoinSaveOneCheck1(hashMap);
+		if(cnt > 0) {
+			return botDAO.selectBotRaidSaveAll(hashMap);
+		}else {
+			return null;
+		}
+		
+	}
+	public List<HashMap<String,Object>> selectBotRaidSaveListAll(HashMap<String, Object> hashMap){
+		return botDAO.selectBotRaidSaveListAll(hashMap);
 	}
 	public void insertBotRaidSaveTx(HashMap<String, Object> hashMap) throws Exception{
+		int cnt = botDAO.selectBotRaidJoinSaveOneCheck1(hashMap);
+		if(cnt > 0) {
+			throw new Exception("파티명이 이미 존재");
+		}else {
+			
+		}
 		if(botDAO.insertBotRaidSaveOne(hashMap)< 1) {
+			throw new Exception("저장 실패");
+		}
+	}
+	public void updateBotRaidSaveTx(HashMap<String, Object> hashMap) throws Exception{
+		int cnt = botDAO.selectBotRaidJoinSaveOneCheck1(hashMap);
+		if(cnt > 0) {
+			
+		}else {
+			throw new Exception("파티명이 없습니다");
+		}
+		if(botDAO.updateBotRaidListMod(hashMap)< 1) {
+			throw new Exception("저장 실패");
+		}
+	}
+	public void insertBotRaidJoinSaveTx(HashMap<String, Object> hashMap) throws Exception{
+		int cnt = 0;
+		//참여하려는 방이 있는지
+		cnt = botDAO.selectBotRaidJoinSaveOneCheck1(hashMap);
+		if(cnt > 0) {
+			//ok
+		}else {
+			throw new Exception("방을 찾지 못함!");
+		}
+		cnt = botDAO.selectBotRaidJoinSaveOneCheck2(hashMap);
+		if(cnt > 0) {
+			//ok
+		}else {
+			throw new Exception("람쥐봇 정보 조회에 없는 캐릭터!");
+		}
+		cnt = botDAO.selectBotRaidJoinSaveOneCheck3(hashMap);
+		if(cnt > 0) {
+			throw new Exception("이미 참여중!!");
+		}else {
+			//ok
+		}
+		if(botDAO.insertBotRaidJoinSaveOne(hashMap)< 1) {
+			throw new Exception("저장 실패");
+		}
+	}
+	public void insertBotRaidDelTx(HashMap<String, Object> hashMap) throws Exception{
+		if(botDAO.insertBotRaidDelOne(hashMap)< 1) {
 			throw new Exception("저장 실패");
 		}
 	}
