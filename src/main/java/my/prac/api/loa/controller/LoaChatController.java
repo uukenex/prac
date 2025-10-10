@@ -1112,13 +1112,13 @@ public class LoaChatController {
 			case "/ㅍㅌㅌㅌ":
 				if (param1 != null && !param1.equals("")) {
 					try {
-						raidDel(reqMap);
+						val = raidDel(reqMap);
 						//val = raidSearch(reqMap);
 					} catch (Exception e) {
 						val = errorCodeMng(e,reqMap);
 					}
 				}else {
-					val = "/파티탈퇴 파티명 으로 입력해주세요";
+					val = "/파티탈퇴 파티명 닉네임으로 입력해주세요";
 				}
 				break;
 			case "/장비":

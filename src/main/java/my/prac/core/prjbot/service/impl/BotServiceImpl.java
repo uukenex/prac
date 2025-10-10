@@ -173,6 +173,21 @@ public class BotServiceImpl implements BotService {
 		}
 	}
 	public void insertBotRaidDelTx(HashMap<String, Object> hashMap) throws Exception{
+		int cnt = 0;
+		//참여하려는 방이 있는지
+		cnt = botDAO.selectBotRaidJoinSaveOneCheck1(hashMap);
+		if(cnt > 0) {
+			//ok
+		}else {
+			throw new Exception("방을 찾지 못함!");
+		}
+		
+		cnt = botDAO.selectBotRaidJoinSaveOneCheck3(hashMap);
+		if(cnt > 0) {
+			
+		}else {
+			throw new Exception("참여중이 아님!!");
+		}
 		if(botDAO.insertBotRaidDelOne(hashMap)< 1) {
 			throw new Exception("저장 실패");
 		}
