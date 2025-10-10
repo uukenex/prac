@@ -2227,7 +2227,8 @@ public class LoaChatController {
 		if(charList ==null) {
 			return "해당 파티명이 없습니다.";
 		}
-		
+		List<HashMap<String,Object>> raidOne = botService.selectBotRaidSaveListAll(reqMap);
+		HashMap<String,Object> raidInfo = raidOne.get(0);
 		List<HashMap<String,Object>> attackerList = new ArrayList<>();
 		List<HashMap<String,Object>> supporterList = new ArrayList<>();
 		
@@ -2274,7 +2275,7 @@ public class LoaChatController {
 				count++;
 			}
 			
-			remark = hs.get("REMARK").toString();
+			//remark = hs.get("REMARK").toString();
 		}
 		
 		
@@ -2287,8 +2288,8 @@ public class LoaChatController {
 		
 		
 		
-		String resMsg ="파티명: "+reqMap.get("param1")+" 　"+count+"/8"+enterStr;
-		resMsg += "설명: "+remark+enterStr;
+		String resMsg ="파티명: "+raidInfo.get("RAID_NAME")+" 　"+raidInfo.get("CNT")+"/8"+enterStr;
+		resMsg += "설명: "+raidInfo.get("REMARK")+enterStr;
 		resMsg += "※딜러※"+enterStr;
 		for(HashMap<String,Object> hs :sortedList1) {
 			resMsg += "[" + LoaApiUtils.shortClassName(hs.get("class").toString()) + "] ";

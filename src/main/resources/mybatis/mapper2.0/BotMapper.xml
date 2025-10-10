@@ -209,6 +209,9 @@
 		           AND B.ROOM_NAME = A.ROOM_NAME) AS CNT
 		  FROM TBOT_RAID_LIST A
 		 WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+		 <if test="param1 != null and param1 != '' ">
+		   AND A.RAID_NAME = #{param1, jdbcType=VARCHAR}
+	     </if>
 	</select>
 	
 	<select id="selectBotRaidSaveAll" parameterType="hashMap" resultType="hashMap" >
