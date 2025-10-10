@@ -1112,8 +1112,8 @@ public class LoaChatController {
 			case "/ㅍㅌㅌㅌ":
 				if (param1 != null && !param1.equals("")) {
 					try {
-						val = raidDel(reqMap);
-						//val = raidSearch(reqMap);
+						raidDel(reqMap);
+						val = raidSearch(reqMap);
 					} catch (Exception e) {
 						val = errorCodeMng(e,reqMap);
 					}
