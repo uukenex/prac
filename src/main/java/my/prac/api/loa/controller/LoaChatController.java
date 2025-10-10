@@ -1049,6 +1049,13 @@ public class LoaChatController {
 			case "/파티생성":
 			case "/ㅍㅌㅅㅅ":
 				if (param1 != null && !param1.equals("")) {
+					
+					if (param2 != null && !param2.equals("")) {
+						return "파티설명 등록 실패!"+
+								enterStr+"/파티생성 파티명 파티설명 으로 입력해주세요";
+								
+					}
+					
 					try {
 						for (String str : unable_save_list) {
 							if (fulltxt.indexOf(str) >= 0) {
