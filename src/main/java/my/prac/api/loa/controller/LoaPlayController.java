@@ -3588,11 +3588,11 @@ public class LoaPlayController {
 			}
 			
 			// 메시지 작성
-			String percentStr = String.format("%.0f", bossRatio); // 정수 퍼센트
+			String percentStr = String.format("%.0f", bossRatio*4); // 정수 퍼센트
 			msgBuilder
 			.append(name)
 			.append(" - ")
-			.append(damage*4) //score가 3분의1로 나눠지기때문 
+			.append(damage*4) //score가 4분의1로 나눠지기때문 
 			.append(" dmg(")
 			.append(percentStr)
 			.append("%) - ")
