@@ -256,6 +256,9 @@ public class BotServiceImpl implements BotService {
 		return botDAO.selectRoomBotPowerRank(map);
 	}
 	public List<HashMap<String,Object>> selectBotPointRankNewScore(HashMap<String,Object> map){
+		if(map.get("newYn") ==null) {
+			map.put("newYn","0");
+		}
 		return botDAO.selectBotPointRankNewScore(map);
 	}
 	public List<HashMap<String,Object>> selectBotPointWeaponPct(HashMap<String,Object> map){
@@ -263,6 +266,9 @@ public class BotServiceImpl implements BotService {
 	}
 	
 	public int insertBotPointRankTx(HashMap<String,Object> map)  throws Exception{
+		if(map.get("newYn") ==null) {
+			map.put("newYn","0");
+		}
 		if(botDAO.insertBotPointRank(map) < 1) {
 			throw new Exception("저장 실패");
 		}
@@ -563,6 +569,9 @@ public class BotServiceImpl implements BotService {
 		
 		//매일출섹 무기업그레이드 시에만 0점으로 넣고
 		//추가강화는 컨트롤러에서 insert함
+		if(map.get("newYn") ==null) {
+			map.put("newYn","0");
+		}
 		if(map.get("cmd").equals("weapon_upgrade")) {
 			if(botDAO.insertBotPointRank(map) < 1) {
 				throw new Exception("저장 실패");

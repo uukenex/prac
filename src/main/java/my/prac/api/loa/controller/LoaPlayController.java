@@ -1,12 +1,10 @@
 package my.prac.api.loa.controller;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -448,6 +446,14 @@ public class LoaPlayController {
 		
 		return msg;
 	}
+	
+	public boolean isNewLogic() {
+        LocalDate today = LocalDate.now();                     // 오늘
+        LocalDate newLogicStart = LocalDate.of(2025, 10, 21);  // 신규로직 시작일
+
+        return !today.isBefore(newLogicStart); // today >= newLogicStart 이면 true
+    }
+	
 	String attendance(HashMap<String,Object> map) {
 		map.put("cmd", "attendance");
 		if(!dailyCheck(map)) {
@@ -462,17 +468,33 @@ public class LoaPlayController {
 		
 		Random random = new Random(); // 랜덤객체
 		int score = random.nextInt(100)+1;
-		int new_score=0;
+		int score1 = 1;
+		int new0_score=0;
+		int new1_score=0;
 		map.put("score",score+bonus);
 		
-		try {
-			new_score = botService.insertBotPointRankTx(map);
-		} catch (Exception e) {
-			return "오류발생";
-		}
 		
-		return map.get("userName")+"님 출석포인트 "+score+"점 획득"
-			  +extraMsg + enterStr+"갱신 포인트 : "+new_score;
+		if(isNewLogic()) {
+			try {
+				map.put("newYn", "1");
+				map.put("score", score1);
+				new1_score = botService.insertBotPointRankTx(map);
+			} catch (Exception e) {
+				return "오류발생";
+			}
+			
+			return map.get("userName")+"님 출석 실버p "+score1+" p 획득"
+			  +enterStr + "갱신 실버p : "+new1_score +" p";
+		}else {
+			try {
+				new0_score = botService.insertBotPointRankTx(map);
+			} catch (Exception e) {
+				return "오류발생";
+			}
+			
+			return map.get("userName")+"님 출석p "+score+" p 획득"
+			  +extraMsg + enterStr+"갱신p : "+new0_score + " p";
+		}
 	}
 	
 	
@@ -1276,27 +1298,33 @@ public class LoaPlayController {
 				}else {
 					
 					int score = 0;
+					int score1 = 0;
 					int preview_score=0;
 					switch(completeYn+1) {
 						case 1:
 							score =500;
 							preview_score=300;
+							score1 = 3;
 							break;
 						case 2:
 							score =300;
 							preview_score=240;
+							score1 = 2;
 							break;
 						case 3:
 							score =240;
 							preview_score=120;
+							score1 = 2;
 							break;
 						case 4:
 							score =120;
 							preview_score=60;
+							score1 = 1;
 							break;
 						case 5:
 							score =60;
 							preview_score=20;
+							score1 = 1;
 							break;
 						case 6:
 							score =20;
@@ -1318,10 +1346,24 @@ public class LoaPlayController {
 					    newMap.put("score", score);
 					    newMap.put("cmd", "gamble_s2");
 
-					    int newScore = botService.insertBotPointRankTx(newMap);
+					    if(isNewLogic()) {
+					    	map.put("newYn", "1");
+							map.put("score", score1);
+					    	int newScore = botService.insertBotPointRankTx(newMap);
 
-					    res += "정답포인트: " + score + "p 획득" + enterStr;
-					    res += "갱신포인트: " + newScore + "p" + enterStr;
+						    res += "정답 실버p: " + score + "p 획득" + enterStr;
+						    res += "갱신: " + newScore + "p" + enterStr;
+						    
+						}else {
+							
+							int newScore = botService.insertBotPointRankTx(newMap);
+
+						    res += "정답 p: " + score + "p 획득" + enterStr;
+						    res += "갱신: " + newScore + "p" + enterStr;
+						}
+					    
+					    
+					    
 
 					} else {
 					    res += (completeYn + 1) + "회차 실패!" + enterStr + enterStr;
@@ -1349,10 +1391,16 @@ public class LoaPlayController {
 						    newMap.put("score", 1);
 						    newMap.put("cmd", "gamble_s2");
 
-						    int newScore = botService.insertBotPointRankTx(newMap);
+						    
+						    if(isNewLogic()) {
+							    res += "오답으로 포인트 획득 실패!"+ enterStr;
+							}else {
+								int newScore = botService.insertBotPointRankTx(newMap);
 
-						    res += "참여포인트: 1p 획득" + enterStr;
-						    res += "갱신포인트: " + newScore + "p" + enterStr;
+							    res += "참여포인트: 1p 획득" + enterStr;
+							    res += "갱신포인트: " + newScore + "p" + enterStr;
+							}
+
 						}
 					}
 

@@ -587,13 +587,15 @@
 			  ,ROOM_NAME
 			  ,SCORE
 			  ,INSERT_DATE
-			  ,CMD)
+			  ,CMD
+			  ,NEW_YN)
 		 VALUES
 			  (#{userName, jdbcType=VARCHAR}
 			  ,#{roomName, jdbcType=VARCHAR}
 			  ,#{score, jdbcType=NUMERIC}
 			  ,SYSDATE
-			  ,#{cmd, jdbcType=VARCHAR})
+			  ,#{cmd, jdbcType=VARCHAR}
+			  ,#{newYn, jdbcType=VARCHAR})
 		
 	</insert>
 	<select id="selectBotPointRankOne" parameterType="HashMap" resultType="HashMap">
@@ -679,6 +681,7 @@
 					  FROM TBOT_POINT_RANK A
 				     WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 				       AND A.INSERT_DATE> TO_DATE('20250701','yyyymmdd')
+				       AND A.NEW_YN = '0'
 				     GROUP BY A.USER_NAME,A.ROOM_NAME
 				     HAVING 1 = CASE
 				      				 WHEN EXISTS (SELECT 1
@@ -753,6 +756,7 @@
 			     AND INSERT_DATE BETWEEN TRUNC(SYSDATE) AND TRUNC(SYSDATE)+1
 			     AND upper(A.USER_NAME) = upper(#{newUserName, jdbcType=VARCHAR})
 			     AND A.INSERT_DATE> TO_DATE('20250701','yyyymmdd')
+			     AND A.NEW_YN ='0'
 			   ORDER BY A.INSERT_DATE DESC
 	</select>
 	
@@ -767,7 +771,8 @@
 					  FROM TBOT_POINT_RANK A
 				     WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 					   AND upper(A.USER_NAME) = upper(#{userName, jdbcType=VARCHAR})
-					   AND A.INSERT_DATE> TO_DATE('20250701','yyyymmdd')  						   
+					   AND A.INSERT_DATE> TO_DATE('20250701','yyyymmdd')
+					   AND A.NEW_YN = #{newYn, jdbcType=VARCHAR}
 				     GROUP BY A.USER_NAME
 				     ORDER BY SUM(A.SCORE) DESC) B
 	</select>
@@ -840,6 +845,7 @@
 			     WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 				   AND upper(A.USER_NAME) IN ( upper(#{param1, jdbcType=VARCHAR}),upper(#{userName, jdbcType=VARCHAR}))
 				   AND A.INSERT_DATE> TO_DATE('20250701','yyyymmdd')
+				   AND A.NEW_YN ='0'
 				   AND NOT EXISTS (SELECT *
 								     FROM TBOT_BLOCK C
 								    WHERE UPPER(C.USER_NAME) = upper(#{param1, jdbcType=VARCHAR})
