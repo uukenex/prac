@@ -1875,9 +1875,11 @@
 							 #{outMsg 	, jdbcType=VARCHAR,mode=INOUT},
 							 #{userName , jdbcType=VARCHAR,mode=IN},
 							 #{roomName , jdbcType=VARCHAR,mode=IN},
-							 #{score 	, jdbcType=VARCHAR,mode=IN},
+							 #{score 	, jdbcType=NUMERIC,mode=IN},
 							 #{cmd 		, jdbcType=VARCHAR,mode=IN},
-							 #{newYn	, jdbcType=VARCHAR,mode=IN}
+							 #{param0	, jdbcType=VARCHAR,mode=IN},
+							 #{param1	, jdbcType=VARCHAR,mode=IN},
+							 #{param2	, jdbcType=VARCHAR,mode=IN}
 							)
 		}
 	</update>

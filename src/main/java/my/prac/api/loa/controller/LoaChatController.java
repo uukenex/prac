@@ -333,12 +333,14 @@ public class LoaChatController {
 			case "/중중":
 				passYn = true;
 				break;
-				
-				
+			case "/ㅌㅅㅌ":
+				val = botService.execSPProcTest(reqMap);
+				break;
 			case "/큐브":
 				break;
 			case "/시즌이력":
 			case "/ㅅㅈㅇㄹ":
+				reqMap.put("param0", "/ㅅㅈㅇㄹ");
 				val = botService.execSPProcTest(reqMap);
 				break;
 			case "/시즌정보":
