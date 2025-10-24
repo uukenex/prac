@@ -333,6 +333,16 @@ public class LoaChatController {
 			case "/중중":
 				passYn = true;
 				break;
+				
+				
+			case "/큐브":
+				break;
+			case "/시즌이력":
+			case "/ㅅㅈㅇㄹ":
+				val = botService.execSPProcTest(reqMap);
+				break;
+			case "/시즌정보":
+				break;
 			case "/강화": case "/ㄱㅎ": 
 				List<HashMap<String,Object>> gameYnList = botService.selectGamePlayYn(reqMap);
 				String playYn ="1"; 

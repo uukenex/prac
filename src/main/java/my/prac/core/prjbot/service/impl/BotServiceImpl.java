@@ -848,4 +848,11 @@ public class BotServiceImpl implements BotService {
 			throw new Exception("저장 실패");
 		}
 	}
+	
+	
+	public String execSPProcTest(HashMap<String,Object> map) throws Exception{
+		botDAO.execSPProcTest(map);
+		String outMsg = map.get("outMsg").toString();
+		return outMsg;
+	}
 }

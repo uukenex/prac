@@ -201,6 +201,7 @@ public interface BotDAO {
 	public int selectBotPointStatUserCnt(HashMap<String,Object> map);
 	public List<HashMap<String,Object>> selectBotPointStatUserSum(HashMap<String,Object> map);
 	public int insertBotPointStatUser(HashMap<String,Object> map) throws Exception;
+	public int execSPProcTest(HashMap<String,Object> map) throws Exception;
 	
 }
 

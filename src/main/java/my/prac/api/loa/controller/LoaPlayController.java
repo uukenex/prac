@@ -449,7 +449,7 @@ public class LoaPlayController {
 	
 	public boolean isNewLogic() {
         LocalDate today = LocalDate.now();                     // 오늘
-        LocalDate newLogicStart = LocalDate.of(2025, 10, 21);  // 신규로직 시작일
+        LocalDate newLogicStart = LocalDate.of(2025, 10, 27);  // 신규로직 시작일
 
         return !today.isBefore(newLogicStart); // today >= newLogicStart 이면 true
     }

@@ -1869,4 +1869,17 @@
 			,#{lv      , jdbcType=NUMERIC})
 	</insert>
 	
+	
+	<update id="execSPProcTest" statementType="CALLABLE" parameterType="hashMap">
+		{call SP_PROC_TEST ( #{outCode  , jdbcType=NUMERIC,mode=INOUT},
+							 #{outMsg 	, jdbcType=VARCHAR,mode=INOUT},
+							 #{userName , jdbcType=VARCHAR,mode=IN},
+							 #{roomName , jdbcType=VARCHAR,mode=IN},
+							 #{score 	, jdbcType=VARCHAR,mode=IN},
+							 #{cmd 		, jdbcType=VARCHAR,mode=IN},
+							 #{newYn	, jdbcType=VARCHAR,mode=IN}
+							)
+		}
+	</update>
+	
 </mapper>

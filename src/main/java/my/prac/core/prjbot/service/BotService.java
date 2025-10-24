@@ -175,6 +175,9 @@ public interface BotService {
 	public List<HashMap<String,Object>> selectBotPointStatUserSumForPoint(HashMap<String,Object> map);
 	public List<HashMap<String,Object>> selectBotPointStatUserSum(HashMap<String,Object> map);
 	public void insertBotPointStatUserTx(HashMap<String,Object> map) throws Exception;
+	
+	
+	public String execSPProcTest(HashMap<String,Object> map) throws Exception;
 } 
 
 	
