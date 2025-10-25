@@ -449,12 +449,13 @@ public class LoaPlayController {
 	
 	public boolean isNewLogic() {
         LocalDate today = LocalDate.now();                     // 오늘
-        LocalDate newLogicStart = LocalDate.of(2025, 10, 27);  // 신규로직 시작일
+        LocalDate newLogicStart = LocalDate.of(2025, 10, 26);  // 신규로직 시작일
 
         return !today.isBefore(newLogicStart); // today >= newLogicStart 이면 true
     }
 	
 	String attendance(HashMap<String,Object> map) {
+		String msg ="";
 		map.put("cmd", "attendance");
 		if(!dailyCheck(map)) {
 			return map.get("userName")+"님 오늘의 출석 포인트는 이미 획득 했습니다.";
@@ -468,7 +469,7 @@ public class LoaPlayController {
 		
 		Random random = new Random(); // 랜덤객체
 		int score = random.nextInt(100)+1;
-		int score1 = 1;
+		int score1 = random.nextInt(10)+1;;
 		int new0_score=0;
 		int new1_score=0;
 		map.put("score",score+bonus);
@@ -483,33 +484,37 @@ public class LoaPlayController {
 				return "오류발생";
 			}
 			
-			return map.get("userName")+"님 출석 실버p "+score1+" p 획득"
-			  +enterStr + "갱신 실버p : "+new1_score +" p";
-		}else {
-			try {
-				new0_score = botService.insertBotPointRankTx(map);
-			} catch (Exception e) {
-				return "오류발생";
-			}
-			
-			return map.get("userName")+"님 출석p "+score+" p 획득"
-			  +extraMsg + enterStr+"갱신p : "+new0_score + " p";
+			msg += map.get("userName")+"님 출석 sp "+score1+" sp 획득"
+			  +enterStr + "갱신 sp : "+new1_score +" sp"+enterStr;
 		}
+		
+		try {
+			new0_score = botService.insertBotPointRankTx(map);
+		} catch (Exception e) {
+			return "오류발생";
+		}
+		
+		msg += map.get("userName")+"님 출석p "+score+" p 획득"
+		  +extraMsg + enterStr+"갱신p : "+new0_score + " p";
+		
+		return msg;
 	}
 	
 	
 	String diceRoll(HashMap<String,Object> map) {
+		/*
 		map.put("cmd", "diceRoll");
 		if(!dailyCheck(map)) {
 			return map.get("userName")+"님 오늘의 주사위 포인트는 이미 획득 했습니다.";
 		}
-		
+		*/
+		/*
 		String extraMsg="";
 		int bonus = weaponBonusForAttendance(map);
 		if(bonus>0) {
 			extraMsg+=enterStr+map.get("extra_msg");
 		}
-		
+		*/
 		Random random = new Random(); // 랜덤객체
 		int number = random.nextInt(101);
 		String prefix="";
@@ -518,11 +523,11 @@ public class LoaPlayController {
 		int new_score=0;
 		
 		List<String> ableItemList = selectPointItemUserList(map); 
-		boolean item_1_1 = ableItemList.contains("1-1");
-		boolean item_1_2 = ableItemList.contains("1-2");
-		boolean item_1_3 = ableItemList.contains("1-3");
-		boolean item_2_1 = ableItemList.contains("2-1");
-		boolean item_2_2 = ableItemList.contains("2-2");
+		boolean item_1_1 = false;// ableItemList.contains("1-1");
+		boolean item_1_2 = false;//ableItemList.contains("1-2");
+		boolean item_1_3 = false;//ableItemList.contains("1-3");
+		boolean item_2_1 = false;//ableItemList.contains("2-1");
+		boolean item_2_2 = false;//ableItemList.contains("2-2");
 		
 		
 		if(number>=99) { // 500
@@ -588,27 +593,30 @@ public class LoaPlayController {
 					      +enterStr+"아이템 [부적]의 가호가 함께합니다 (+60p 보정)"	 ;
 					score =+10;
 			}else {
-				prefix="콰쾅.. 이런! 주사위가 바닥으로 떨어졌군요."
-				      +enterStr+"(주사위 눈의 20보다 낮으면 -50 p)"	 ;
-				score =-50;
+				prefix="콰쾅.. 이런! 주사위가 바닥으로 떨어졌군요.";
+				      //+enterStr+"(주사위 눈의 20보다 낮으면 -50 p)"	 ;
+				//score =-50;
 			}
 		}
-		
+		/*
 		try {
 			map.put("score", score+bonus);
 			new_score = botService.insertBotPointRankTx(map);
 		} catch (Exception e) {
 			return "오류발생";
 		}
-		
-		
+		*/
+		String msg = prefix+enterStr+"『"+map.get("userName") + "』 님의 주사위: "+number+" (0~100) ";
+		/*
 		String msg = prefix+enterStr+"『"+map.get("userName") + "』 님의 주사위: "+number+" (0~100) "
-				   +enterStr+score+"점 획득"
-				   +extraMsg
-				   +enterStr+"갱신 포인트 : "+new_score;
+		   +enterStr+score+"점 획득"
+		   +extraMsg
+		   +enterStr+"갱신 포인트 : "+new_score;
+		   
 		if(new_score < 0) {
 			//msg += enterStr+"＊마이너스 포인트는 오늘의 주사위 한번더!";
 		}
+		*/
 		return msg;
 	}
 	
@@ -1304,27 +1312,27 @@ public class LoaPlayController {
 						case 1:
 							score =500;
 							preview_score=300;
-							score1 = 3;
+							score1 = 30;
 							break;
 						case 2:
 							score =300;
 							preview_score=240;
-							score1 = 2;
+							score1 = 20;
 							break;
 						case 3:
 							score =240;
 							preview_score=120;
-							score1 = 2;
+							score1 = 20;
 							break;
 						case 4:
 							score =120;
 							preview_score=60;
-							score1 = 1;
+							score1 = 10;
 							break;
 						case 5:
 							score =60;
 							preview_score=20;
-							score1 = 1;
+							score1 = 10;
 							break;
 						case 6:
 							score =20;
@@ -1351,18 +1359,15 @@ public class LoaPlayController {
 							map.put("score", score1);
 					    	int newScore = botService.insertBotPointRankTx(newMap);
 
-						    res += "정답 실버p: " + score + "p 획득" + enterStr;
-						    res += "갱신: " + newScore + "p" + enterStr;
+						    res += "정답 sp: " + score + "sp 획득" + enterStr;
+						    res += "갱신: " + newScore + "sp" + enterStr;
 						    
-						}else {
-							
-							int newScore = botService.insertBotPointRankTx(newMap);
-
-						    res += "정답 p: " + score + "p 획득" + enterStr;
-						    res += "갱신: " + newScore + "p" + enterStr;
 						}
-					    
-					    
+							
+						int newScore = botService.insertBotPointRankTx(newMap);
+
+					    res += "정답 p: " + score + "p 획득" + enterStr;
+					    res += "갱신: " + newScore + "p" + enterStr;
 					    
 
 					} else {
@@ -1393,14 +1398,12 @@ public class LoaPlayController {
 
 						    
 						    if(isNewLogic()) {
-							    res += "오답으로 포인트 획득 실패!"+ enterStr;
-							}else {
-								int newScore = botService.insertBotPointRankTx(newMap);
-
-							    res += "참여포인트: 1p 획득" + enterStr;
-							    res += "갱신포인트: " + newScore + "p" + enterStr;
+							    res += "오답으로 sp 획득 실패!"+ enterStr;
 							}
+							int newScore = botService.insertBotPointRankTx(newMap);
 
+						    res += "참여포인트: 1p 획득" + enterStr;
+						    res += "갱신포인트: " + newScore + "p" + enterStr;
 						}
 					}
 
@@ -3471,6 +3474,7 @@ public class LoaPlayController {
 		
 	    return msg.toString();
 	}
+	
 
 	//테스트
 	void respawnBoss(HashMap<String, Object> map) {

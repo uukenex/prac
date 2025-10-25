@@ -852,7 +852,12 @@ public class BotServiceImpl implements BotService {
 	
 	public String execSPProcTest(HashMap<String,Object> map) throws Exception{
 		botDAO.execSPProcTest(map);
-		String outMsg = map.get("outMsg").toString();
+		String outMsg = "";
+		try {
+			outMsg = map.get("outMsg").toString();
+		}catch(Exception e) {
+			outMsg = "";
+		}
 		return outMsg;
 	}
 }
