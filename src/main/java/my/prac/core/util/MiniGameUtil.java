@@ -9,6 +9,25 @@ public class MiniGameUtil {
 	public static final Map<Integer, Double[]> RATE_MAP_ACC = new HashMap<>();
 	public static final Map<Integer, int[]> POW_MAP_ACC = new HashMap<>();
 	public static final Map<Integer, int[]> GOLD_MAP_ACC = new HashMap<>();
+	public static String[] hideRules = { "아침","점심", "저녁", "새벽" };
+	public static String[] PatternRules = { "대기","공격", "방어", "필살기" };
+	
+	//몬스터체력,공격력,경험치,드랍템,드랍템가격
+	public static final Map<Integer, Object[]> MON_SPEC = new HashMap<>();
+	
+	static {
+		//1레벨,토끼              체력 / 공격력 / 경험치 / 드랍템 / 드랍템가격 / 패턴갯수
+		MON_SPEC.put(1,  new Object[]{ 5   /*체력*/, 0  /*공격력*/, 5    /*경험치*/ ,"토끼고기"/*드랍템*/, 1   /*드랍템가격*/,1/*패턴갯수*/});/*토끼*/
+		MON_SPEC.put(2,  new Object[]{ 20  /*체력*/, 2  /*공격력*/, 10   /*경험치*/ ,"도토리" /*드랍템*/, 2   /*드랍템가격*/,2/*패턴갯수*/});/*다람쥐*/
+		MON_SPEC.put(3,  new Object[]{ 50  /*체력*/, 5  /*공격력*/, 15   /*경험치*/ ,"쥐고기" /*드랍템*/, 3   /*드랍템가격*/,2/*패턴갯수*/});/*쥐*/
+		MON_SPEC.put(4,  new Object[]{ 90  /*체력*/, 9  /*공격력*/, 20   /*경험치*/ ,"뱀고기" /*드랍템*/, 5   /*드랍템가격*/,2/*패턴갯수*/});/*뱀*/
+		MON_SPEC.put(5,  new Object[]{ 140 /*체력*/, 14 /*공격력*/, 25   /*경험치*/ ,"사슴고기"/*드랍템*/, 10  /*드랍템가격*/,2/*패턴갯수*/});/*사슴*/
+		MON_SPEC.put(6,  new Object[]{ 200 /*체력*/, 20 /*공격력*/, 30   /*경험치*/ ,"곰고기" /*드랍템*/, 20  /*드랍템가격*/,3/*패턴갯수*/});/*곰*/
+		MON_SPEC.put(7,  new Object[]{ 300 /*체력*/, 30 /*공격력*/, 35   /*경험치*/ ,"여우고기"/*드랍템*/, 25  /*드랍템가격*/,3/*패턴갯수*/});/*여우*/
+		MON_SPEC.put(8,  new Object[]{ 420 /*체력*/, 42 /*공격력*/, 40   /*경험치*/ ,"돼지고기"/*드랍템*/, 30  /*드랍템가격*/,3/*패턴갯수*/});/*돼지*/
+		MON_SPEC.put(9,  new Object[]{ 550 /*체력*/, 55 /*공격력*/, 45   /*경험치*/ ,null   /*드랍템*/, 0   /*드랍템가격*/,3/*패턴갯수*/});/*사마귀*/
+		MON_SPEC.put(10, new Object[]{ 700 /*체력*/, 70 /*공격력*/, 50   /*경험치*/ ,null   /*드랍템*/, 0   /*드랍템가격*/,3/*패턴갯수*/});/*인형*/
+	}
 	
 	static {
 	  //0강화에서 시도-> 성공률15%, 장기 쌓이는양 20% 
