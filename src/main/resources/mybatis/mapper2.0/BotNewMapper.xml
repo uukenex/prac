@@ -1,8 +1,5 @@
-<?xml version="1.0" encoding="UTF-8" ?>
-<!DOCTYPE mapper
-  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
-  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="my.prac.core.prjbot.dao.BotNewDAO">
 	<insert id="insertBotPointNew" parameterType="HashMap">
 		INSERT INTO TBOT_POINT_NEW
@@ -19,5 +16,69 @@
 			  ,#{cmd, jdbcType=VARCHAR})
 		
 	</insert>
-	
+	<!-- 1) 유저 조회 -->
+	<select id="selectUser" resultType="my.prac.api.loa.controller.BossAttackController$User">
+	    SELECT
+	      USER_NAME,
+	      ROOM_NAME,
+	      LV,
+	      EXP_CUR,
+	      EXP_NEXT,
+	      HP_CUR,
+	      HP_MAX,
+	      HP_REGEN,
+	      ATK_MIN,
+	      ATK_MAX,
+	      CRIT_RATE,
+	      CRIT_DMG,
+	      TARGET_MON
+	    FROM TBOT_POINT_NEW_USER
+	    WHERE USER_NAME = #{userName}
+	      AND ROOM_NAME = #{roomName}
+	  </select>
+	<!-- 2) 몬스터 조회 -->
+	<select id="selectMonsterByNo" resultType="my.prac.api.loa.controller.BossAttackController$Monster">
+	    SELECT
+	      MON_NO,
+	      MON_HP,
+	      MON_ATK,
+	      MON_EXP,
+	      MON_DROP,
+	      MON_PATTEN,
+	      MON_NAME
+	    FROM TBOT_POINT_NEW_MON_INFO
+	    WHERE MON_NO = #{monNo}
+	  </select>
+	<!-- 3) 최근 공격 시간 (쿨타임 체크용) -->
+	<select id="selectLastAttackTime" resultType="java.sql.Timestamp">
+	    SELECT MAX(INSERT_DATE)
+	    FROM TBOT_POINT_NEW_BATTLE_LOG
+	    WHERE USER_NAME = #{userName}
+	      AND ROOM_NAME = #{roomName}
+	      AND NOW_YN    = 1
+	  </select>
+	<!-- 4) 유저 전투 후 업데이트 -->
+	<update id="updateUserAfterBattle">
+	    UPDATE TBOT_POINT_NEW_USER
+	       SET LV       = #{newLv},
+	           EXP_CUR  = #{newExpCur},
+	           EXP_NEXT = #{newExpNext},
+	           HP_CUR   = #{newHpCur},
+	           HP_MAX   = #{newHpMax},
+	           ATK_MIN  = #{newAtkMin},
+	           ATK_MAX  = #{newAtkMax}
+	     WHERE USER_NAME = #{userName}
+	       AND ROOM_NAME = #{roomName}
+	  </update>
+	<!-- 5) 전투 로그 적재 -->
+	<insert id="insertBattleLog" parameterType="my.prac.api.loa.controller.BossAttackController$BattleLog">
+	    INSERT INTO TBOT_POINT_NEW_BATTLE_LOG
+	      (USER_NAME, ROOM_NAME, LV, TARGET_MON_LV,
+	       GAIN_EXP, ATK_DMG, MON_DMG, ATK_CRIT_YN,
+	       MON_PATTEN, INSERT_DATE, KILL_YN, NOW_YN, DROP_YN)
+	    VALUES
+	      (#{userName}, #{roomName}, #{lv}, #{targetMonLv},
+	       #{gainExp}, #{atkDmg}, #{monDmg}, #{atkCritYn},
+	       #{monPatten}, SYSTIMESTAMP, #{killYn}, #{nowYn}, #{dropYn})
+	  </insert>
 </mapper>
