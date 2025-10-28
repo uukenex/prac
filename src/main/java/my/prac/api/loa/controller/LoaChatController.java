@@ -67,12 +67,17 @@ public class LoaChatController {
 	@Autowired
 	LoaAiBotController ai;
 	
+	@Autowired
+	BossAttackController boss;
+	
 	@Resource(name = "core.prjbot.BotService")
 	BotService botService;
 	@Resource(name = "core.prjbot.BotSettleService")
 	BotSettleService botSettleService;
 	@Resource(name = "core.prjbot.BotNewService")
 	BotNewService botNewService;
+	
+	
 	
 	// final String lostArkAPIurl =
 	// "https://developer-lostark.game.onstove.com/armories/characters/일어난다람쥐/equipment";
@@ -642,7 +647,15 @@ public class LoaChatController {
 					val = "별도 게임방에서 진행해주세요.";
 				}
 				break;
+			case "/ㄱㄱㄱ":
+				val = boss.monsterAttack(reqMap);
+				break;
+			case "/ㄱㄱㅌㄱ":case "/공격타겟":  
+				reqMap.put("monNo", param1);
+				val = boss.changeTarget(reqMap);
+				break;
 			case "/공격": case "/ㄱㄱ": case "/rr": case "/RR": 
+				
 				gameYnList = botService.selectGamePlayYn(reqMap);
 				playYn ="1"; 
 				for(HashMap<String,Object> gameYn : gameYnList) {
