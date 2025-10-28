@@ -126,20 +126,13 @@ public class BossAttackController {
 		}
 
 		// 3) 쿨타임 + 체력 50% 미만 안내
-		boolean isTest = "test".equals(Objects.toString(map.get("param1"), ""));
-		if (!isTest) {
-			CooldownCheck cd = checkCooldown(userName, roomName);
-			if (!cd.ok)
-				return userName + "님, 공격 쿨타임 " + cd.remainMinutes + "분 남았습니다.";
-			String hpMsg = buildBelowHalfMsg(userName, roomName, u);
-			if (hpMsg != null)
-				return hpMsg;
-		} else {
-			// test 모드에서는 쿨타임 무시하지만, HP 50% 미만 안내는 유지
-			String hpMsg = buildBelowHalfMsgIgnoreCooldown(userName, roomName, u);
-			if (hpMsg != null)
-				return hpMsg;
-		}
+		CooldownCheck cd = checkCooldown(userName, roomName);
+		if (!cd.ok)
+			return userName + "님, 공격 쿨타임 " + cd.remainMinutes + "분 남았습니다.";
+		String hpMsg = buildBelowHalfMsg(userName, roomName, u);
+		if (hpMsg != null)
+			return hpMsg;
+		
 
 		// 4) 플래그/피해 계산
 		Flags flags = rollFlags(u, m);
@@ -268,7 +261,7 @@ public class BossAttackController {
 		List<Monster> monsters = botNewService.selectAllMonsters();
 		String NL = "♬";
 		StringBuilder sb = new StringBuilder();
-		sb.append("공격 타겟이 없습니다. 먼저 타겟을 설정해주세요.").append(NL).append("예) /타겟 1   또는   /타겟 토끼").append(NL).append(NL)
+		sb.append("공격 타겟이 없습니다. 먼저 타겟을 설정해주세요.").append(NL).append("예) /공격타겟 1   또는   /공격타겟 토끼").append(NL).append(NL)
 				.append("선택 가능한 몬스터 목록").append(NL);
 		for (Monster m : monsters) {
 			sb.append(m.monNo).append(" : ").append(m.monName).append(NL);
