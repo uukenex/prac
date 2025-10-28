@@ -101,7 +101,7 @@ public class BossAttackController {
 		if (roomName.isEmpty() || userName.isEmpty())
 			return "방/유저 정보가 누락되었습니다.";
 		if (input.isEmpty())
-			return "변경할 몬스터 번호 또는 이름을 입력해주세요.";
+			return guideSetTargetMessage();
 
 		Monster m = input.matches("\\d+") ? botNewService.selectMonsterByNo(Integer.parseInt(input))
 				: botNewService.selectMonsterByName(input);
@@ -416,9 +416,16 @@ public class BossAttackController {
 		ThreadLocalRandom r = ThreadLocalRandom.current();
 		AttackCalc c = new AttackCalc();
 
-		int baseAtk = r.nextInt(u.atkMin, u.atkMax + 1);
-		c.atkDmg = f.atkCrit ? (int) Math.round(baseAtk * Math.max(1.0, u.critDmg / 100.0)) : baseAtk;
+		 // 기본 공격력 (랜덤)
+	    int baseAtk = r.nextInt(u.atkMin, u.atkMax + 1);
 
+	    // 치명타 여부
+	    boolean crit = f.atkCrit;
+	    double critMultiplier = Math.max(1.0, u.critDmg / 100.0); // ex: 150 -> 1.5배
+
+	    // 실제 적용되는 피해 계산
+	    c.atkDmg = crit ? (int) Math.round(baseAtk * critMultiplier) : baseAtk;
+	    
 		String name = m.monName; // 자연어 메시지에 사용
 		switch (f.monPattern) {
 		case 1: // WAIT
@@ -464,6 +471,14 @@ public class BossAttackController {
 			c.monDmg = 0;
 			c.patternMsg = name + "의 알 수 없는 행동… (피해 0)";
 		}
+		
+		if (crit) {
+	        c.patternMsg = (c.patternMsg == null ? "" : c.patternMsg + "\n")
+	                     + "💥 치명타! 데미지 " + baseAtk + " * " + critMultiplier + " = "
+	                     + c.atkDmg + "!";
+	    }
+
+	    
 		return c;
 	}
 
@@ -506,7 +521,7 @@ public class BossAttackController {
 		}
 
 		int monHpAfter = Math.max(0, monHpRemainBefore - calc.atkDmg);
-		sb.append("데미지 : ").append(calc.atkDmg).append(" / 받은 피해: ").append(calc.monDmg).append(NL).append(NL).append("▶몬스터 HP: ")
+		sb.append("준 피해 : ").append(calc.atkDmg).append(" / 받은 피해: ").append(calc.monDmg).append(NL).append(NL).append("▶몬스터 HP: ")
 				.append(monHpAfter).append("/").append(monMaxHp).append(NL);
 
 		if (res.killed) {
