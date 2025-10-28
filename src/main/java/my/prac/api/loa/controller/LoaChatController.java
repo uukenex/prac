@@ -647,7 +647,7 @@ public class LoaChatController {
 					val = "별도 게임방에서 진행해주세요.";
 				}
 				break;
-			case "/ㄱㄱㄱ":
+			case "/ㄱㄱㄱ": case "/ㄱ":
 				val = boss.monsterAttack(reqMap);
 				break;
 			case "/ㄱㄱㅌㄱ":case "/공격타겟":  

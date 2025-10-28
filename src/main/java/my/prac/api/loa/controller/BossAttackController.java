@@ -69,14 +69,14 @@ public class BossAttackController {
 		if (u == null) {
 			// ❗ 유저 미등록이면 생성 + 타겟 세팅
 			botNewService.insertUserWithTargetTx(userName, roomName, m.monNo);
-			return userName + "님, 새 유저를 생성하고 타겟을 " + m.monName + "(MON_NO=" + m.monNo + ") 으로 설정했습니다.";
+			return userName + "님, 공격 타겟을 " + m.monName + "(MON_NO=" + m.monNo + ") 으로 설정했습니다.";
 		}
 		if (u.targetMon == m.monNo)
 			return "현재 타겟이 이미 " + m.monName + "(MON_NO=" + m.monNo + ") 입니다.";
 
 		botNewService.closeOngoingBattleTx(userName, roomName);
 		botNewService.updateUserTargetMonTx(userName, roomName, m.monNo);
-		return userName + "님, 공격 타겟을 " + m.monName + "(MON_NO=" + m.monNo + ") 으로 변경했습니다.";
+		return userName + "님, 공격 타겟을 " + m.monName + "(MON_NO=" + m.monNo + ") 으로 설정했습니다.";
 	}
 
 	/** 몬스터 공격 */
@@ -144,17 +144,8 @@ public class BossAttackController {
 			botNewService.closeOngoingBattleTx(userName, roomName);
 			botNewService.updateUserHpOnlyTx(userName, roomName, 0);
 
-			int minutes = minutesToHalf(u, 0);
-			if (minutes == Integer.MAX_VALUE) {
-				return userName + "님, 큰 피해로 쓰러졌습니다." + NL + "현재 체력: 0 / " + u.hpMax + NL
-						+ "(자동 회복 불가: 분당 회복 0) 회복 수단을 사용해주세요.";
-			} else {
-				int threshold = (int) Math.ceil(u.hpMax * 0.5);
-				int projected = Math.min(u.hpMax, minutes * u.hpRegen);
-				return userName + "님, 큰 피해로 쓰러졌습니다." + NL + "현재 체력: 0 / " + u.hpMax + NL + "(분당 +" + u.hpRegen
-						+ " HP) 약 " + minutes + "분 후 공격 가능" + NL + "예상 체력: " + projected + " / " + u.hpMax + " (목표: "
-						+ threshold + ")";
-			}
+			return userName + "님, 큰 피해로 쓰러졌습니다." + NL + "현재 체력: 0 / " + u.hpMax + NL + "1시간 뒤 부활하여 50%체력을 가집니다.";
+			
 		}
 
 		// 6) 처치/드랍 판단
@@ -170,17 +161,6 @@ public class BossAttackController {
 
 		// 8) 메시지
 		return buildAttackMessage(userName, u, m, flags, calc, res, up, monHpRemainBefore, monMaxHp);
-	}
-
-	private String buildBelowHalfMsgIgnoreCooldown(String userName, String roomName, User u) {
-		int regenMin = minutesToHalf(u); // 50%까지 필요한 분
-		if (regenMin == Integer.MAX_VALUE) {
-	        return userName + "님, 체력이 50% 미만이며 자동 회복(분당 +" 
-	            + u.hpRegen + ")이 불가합니다. 회복 수단을 사용해주세요.";
-	    }
-
-	    // regenMin > 0 인 경우만 남음
-	    return "리젠 hp : +" + u.hpRegen + " , " + regenMin + "분뒤 50%까지 도달합니다";
 	}
 
 	/**
@@ -297,8 +277,48 @@ public class BossAttackController {
 		ThreadLocalRandom r = ThreadLocalRandom.current();
 		Flags f = new Flags();
 		f.atkCrit = r.nextDouble(0, 100) < clamp(u.critRate, 0, 100);
-		f.monPattern = (m.monPatten <= 1) ? 1 : r.nextInt(1, m.monPatten + 1);
+		f.monPattern = rollPatternWeighted(m, r);
 		return f;
+	}
+	
+	/** 패턴 가중치 랜덤 (간단 버전) */
+	private int rollPatternWeighted(Monster m, ThreadLocalRandom r) {
+	    // m.monPatten: 사용 가능한 패턴 수 (1~N)
+	    int enabled = Math.max(1, m.monPatten);
+
+	    // ✅ 기본값: 균등 분포
+	    int[] weights = new int[enabled];
+	    for (int i = 0; i < enabled; i++) weights[i] = 1;
+
+	    // ✅ 예: "패턴 플래그가 2일 때, 1/2 중 2가 90%"를 전역 규칙으로
+	    if (enabled == 2) {
+	        weights[0] = 40;  // 패턴 1 → 10%
+	        weights[1] = 60;  // 패턴 2 → 90%
+	    }
+	    
+	    if (enabled == 3) {
+	        weights[0] = 20;  // 패턴 1 → 10%
+	        weights[1] = 50;  // 패턴 2 → 90%
+	        weights[2] = 30;  // 패턴 2 → 90%
+	    }
+
+	    // (선택) 특정 몬스터만 다르게 하고 싶으면 monNo 기준으로 분기 가능
+	    // if (m.monNo == 7 && enabled >= 3) { weights = new int[]{60, 30, 10}; }
+
+	    // 가중치 합산 후 룰렛 선택
+	    int sum = 0;
+	    for (int w : weights) sum += Math.max(0, w);
+	    if (sum <= 0) { // 방어: 전부 0이면 균등
+	        for (int i = 0; i < enabled; i++) weights[i] = 1;
+	        sum = enabled;
+	    }
+	    int pick = r.nextInt(sum) + 1;
+	    int acc = 0;
+	    for (int i = 0; i < enabled; i++) {
+	        acc += weights[i];
+	        if (pick <= acc) return i + 1; // 패턴 번호: 1-based
+	    }
+	    return 1; // fallback
 	}
 
 	private AttackCalc calcDamage(User u, Monster m, Flags f) {
@@ -312,18 +332,38 @@ public class BossAttackController {
 		switch (f.monPattern) {
 		case 1: // WAIT
 			c.monDmg = 0;
-			c.patternMsg = name + "이(가) 대기합니다! (피해 0)";
+			c.patternMsg = name + "이(가) 당신을 응시합니다!";
 			break;
 		case 2: // ATTACK (50%~100% 랜덤)
 			int minDmg = Math.max(1, (int) Math.floor(m.monAtk * 0.5));
 			int maxDmg = m.monAtk;
 			c.monDmg = ThreadLocalRandom.current().nextInt(minDmg, maxDmg + 1);
-			c.patternMsg = name + "이(가) 공격합니다! (피해 " + c.monDmg + ")";
+			c.patternMsg = name + "이(가) "+c.monDmg+" 의 데미지로 공격합니다!";
 			break;
 		case 3: // DEFEND
-			c.atkDmg = (int) Math.round(c.atkDmg * 0.5);
-			c.monDmg = 0;
-			c.patternMsg = name + "이(가) 방어합니다! (당신의 피해 50%로 감소)";
+			// 몬스터가 방어 태세로 전환
+		    // 플레이어의 공격력 중 절반만 우선 적용 (기본 방어 효과)
+		    int reducedAtk = (int) Math.round(c.atkDmg * 0.5);
+
+		    // 방어력 난수 계산: 몬스터 공격력 기준으로 변동 (예: 30%~100%)
+		    int minDef = Math.max(1, (int) Math.floor(m.monAtk * 0.5));
+		    int maxDef = m.monAtk;
+		    int defPower = ThreadLocalRandom.current().nextInt(minDef, maxDef + 1);
+
+		    // 방어 성공 여부 판정
+		    if (defPower >= reducedAtk) {
+		        // 완벽 방어 성공
+		        c.atkDmg = 0;
+		        c.monDmg = 0;
+		        c.patternMsg = name + "이(가) 공격을 완전 방어했습니다!";
+		    } else {
+		        // 일부 방어 (절반 피해 적용)
+		        c.atkDmg = reducedAtk;
+		        c.monDmg = 0;
+		        int blocked = reducedAtk - defPower;
+		        c.patternMsg = name + "이(가) 방어합니다!(" 
+		                     + defPower + " 방어, " + blocked + " 피해)";
+		    }
 			break;
 		case 4: // SPECIAL
 			c.monDmg = (int) Math.round(m.monAtk * 2.0);
@@ -393,7 +433,7 @@ public class BossAttackController {
 					.append(up.levelUpCount).append(")").append(NL);
 
 			boolean comma = false;
-			if (up.hpMaxDelta > 0 || up.atkMinDelta > 0 || up.atkMaxDelta > 0) {
+			if (up.hpMaxDelta > 0 || up.atkMinDelta > 0 || up.atkMaxDelta > 0 || up.critDelta > 0) {
 				sb.append("상승치: ");
 				if (up.hpMaxDelta > 0) {
 					sb.append("HP_MAX +").append(up.hpMaxDelta);
@@ -409,6 +449,12 @@ public class BossAttackController {
 					if (comma)
 						sb.append(", ");
 					sb.append("ATK_MAX +").append(up.atkMaxDelta);
+					comma = true;
+				}
+				if (up.atkMaxDelta > 0) {
+					if (comma)
+						sb.append(", ");
+					sb.append("CRI +").append(up.critDelta);
 				}
 				sb.append(NL);
 			}
@@ -520,6 +566,7 @@ public class BossAttackController {
 	public static class LevelUpResult {
 		public int gainedExp, beforeLv, afterLv, beforeExpCur, afterExpCur, afterExpNext, levelUpCount;
 		public int hpMaxDelta, atkMinDelta, atkMaxDelta;
+		double critDelta;
 	}
 
 	/** EXP 반영 + 레벨업 처리 */
@@ -555,8 +602,8 @@ public class BossAttackController {
 			hpDelta += 10;
 			atkMin += 1;
 			atkMinDelta += 1;
-			atkMax += 2;
-			atkMaxDelta += 2;
+			atkMax += 3;
+			atkMaxDelta += 3;
 			crit += 2.0;
 			critDelta += 2.0;
 		}
@@ -577,6 +624,7 @@ public class BossAttackController {
 		r.hpMaxDelta = hpDelta;
 		r.atkMinDelta = atkMinDelta;
 		r.atkMaxDelta = atkMaxDelta;
+		r.critDelta = Math.max(0, Math.min(100, critDelta));
 		// (원하면 LevelUpResult에 critDelta 필드 추가해서 메시지로도 보여줄 수 있음)
 		return r;
 	}

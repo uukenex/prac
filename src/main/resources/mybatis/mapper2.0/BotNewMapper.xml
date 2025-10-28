@@ -149,7 +149,7 @@
 	      #{userName}, #{roomName},
 	      1, 0, 100,       <!-- 초기 레벨/경험치 규칙 -->
 	      10, 10, 1,      <!-- HP_CUR/HP_MAX/HP_REGEN 기본값 (스키마 기본과 다르면 맞춰 수정) -->
-	      1, 2,             <!-- ATK_MIN/MAX -->
+	      1, 5,             <!-- ATK_MIN/MAX -->
 	      0, 150,           <!-- CRIT_RATE(%), CRIT_DMG(%) -->
 	      SYSDATE,
 	      #{targetMonNo}
