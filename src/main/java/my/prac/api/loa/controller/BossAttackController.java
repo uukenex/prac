@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ThreadLocalRandom;
+
 import javax.annotation.Resource;
 
 import org.slf4j.Logger;
@@ -15,6 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 
 import my.prac.core.game.dto.BattleLog;
+import my.prac.core.game.dto.KillStat;
 import my.prac.core.game.dto.Monster;
 import my.prac.core.game.dto.OngoingBattle;
 import my.prac.core.game.dto.User;
@@ -42,6 +44,56 @@ public class BossAttackController {
 
 	/* ===== Public APIs ===== */
 
+	/** 유저 기본정보 + 누적 처치 정보 */
+	public String attackInfo(HashMap<String, Object> map) {
+	    final String roomName = Objects.toString(map.get("roomName"), "");
+	    final String userName = Objects.toString(map.get("userName"), "");
+	    if (roomName.isEmpty() || userName.isEmpty()) return "방/유저 정보가 누락되었습니다.";
+	    final String NL = "♬";
+
+	    // 유저 조회
+	    User u = botNewService.selectUser(userName, roomName);
+	    if (u == null) return guideSetTargetMessage();
+
+	    // 읽기-회복(저장 없이) 계산된 현재 체력
+	    int effHp = computeEffectiveHpFromLastAttack(userName, roomName, u);
+	    int hp50  = (int) Math.ceil(u.hpMax * 0.5);
+
+	    // 누적 처치 통계
+	    List<KillStat> kills = botNewService.selectKillStats(userName, roomName); // 아래 DAO 참고
+	    int totalKills = 0;
+	    for (KillStat ks : kills) totalKills += ks.killCount;
+
+	    // 타겟 몬스터명
+	    Monster target = (u.targetMon > 0) ? botNewService.selectMonsterByNo(u.targetMon) : null;
+	    String targetName = (target == null) ? "-" : target.monName;
+
+	    StringBuilder sb = new StringBuilder();
+	    sb.append("공격 정보 / 프로필").append(NL)
+	      .append("유저: ").append(userName).append("  |  방: ").append(roomName).append(NL)
+	      .append("레벨: ").append(u.lv)
+	        .append("  |  EXP ").append(u.expCur).append("/").append(u.expNext)
+	        .append(" (다음까지 ").append(Math.max(0, u.expNext - u.expCur)).append(")").append(NL)
+	      .append("ATK: ").append(u.atkMin).append("~").append(u.atkMax)
+	        .append("  |  CRIT: ").append((int)u.critRate).append("%").append(NL)
+	      .append("HP: ").append(effHp).append("/").append(u.hpMax)
+	        .append("  |  분당 회복 +").append(u.hpRegen).append(NL)
+	      .append("현재 타겟: ").append(targetName).append(" (MON_NO=").append(u.targetMon).append(")").append(NL)
+	      .append(NL);
+
+	    sb.append("누적 처치 기록 (총 ").append(totalKills).append("마리)").append(NL);
+	    if (kills.isEmpty()) {
+	        sb.append("기록 없음").append(NL);
+	    } else {
+	        for (KillStat ks : kills) {
+	            sb.append("- ").append(ks.monName)
+	              .append(" (MON_NO=").append(ks.monNo).append(") : ")
+	              .append(ks.killCount).append("마리").append(NL);
+	        }
+	    }
+	    return sb.toString();
+	}
+	
 	/** 타겟 변경 (번호/이름 허용) */
 	public String changeTarget(HashMap<String, Object> map) {
 		final String roomName = Objects.toString(map.get("roomName"), "");
@@ -415,19 +467,19 @@ public class BossAttackController {
 		}
 
 		int monHpAfter = Math.max(0, monHpRemainBefore - calc.atkDmg);
-		sb.append("가한 피해: ").append(calc.atkDmg).append(" / 받은 피해: ").append(calc.monDmg).append(NL).append("몬스터 HP: ")
+		sb.append("가한 피해: ").append(calc.atkDmg).append(" / 받은 피해: ").append(calc.monDmg).append(NL).append(NL).append("▶몬스터 HP: ")
 				.append(monHpAfter).append("/").append(monMaxHp).append(NL);
 
 		if (res.killed) {
-			sb.append("처치 성공! +경험치 ").append(res.gainExp).append(NL);
+			sb.append("▶처치 성공! +경험치 ").append(res.gainExp).append(NL);
 			if (res.dropYn)
-				sb.append("드랍 획득: ").append(m.monDrop).append(NL);
+				sb.append("✨드랍 획득: ").append(m.monDrop).append(NL);
 		}
 
-		sb.append("현재 체력: ").append(u.hpCur).append(" / ").append(u.hpMax).append(NL);
+		sb.append("▶현재 체력: ").append(u.hpCur).append(" / ").append(u.hpMax).append(NL).append(NL);
 
 		// 경험치/레벨업 안내
-		sb.append("경험치 +").append(up.gainedExp).append(NL);
+		sb.append("▶경험치 +").append(up.gainedExp).append(NL);
 		if (up.levelUpCount > 0) {
 			sb.append("레벨업! Lv.").append(up.beforeLv).append(" → Lv.").append(up.afterLv).append(" (+")
 					.append(up.levelUpCount).append(")").append(NL);
@@ -461,7 +513,7 @@ public class BossAttackController {
 		}
 		// 현재 EXP 상황(다음 레벨까지 남은 EXP)
 		int remain = Math.max(0, u.expNext - u.expCur);
-		sb.append("현재 EXP: ").append(u.expCur).append(" / ").append(u.expNext).append(" (다음 레벨까지 ").append(remain)
+		sb.append("현재 EXP: ").append(u.expCur).append(" / ").append(u.expNext)//.append(" (다음 레벨까지 ").append(remain)
 				.append(")").append(NL);
 
 		return sb.toString();

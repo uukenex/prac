@@ -8,6 +8,7 @@ import org.apache.ibatis.annotations.Param;
 import org.springframework.stereotype.Repository;
 
 import my.prac.core.game.dto.BattleLog;
+import my.prac.core.game.dto.KillStat;
 import my.prac.core.game.dto.Monster;
 import my.prac.core.game.dto.OngoingBattle;
 import my.prac.core.game.dto.User;
@@ -18,6 +19,12 @@ public interface BotNewDAO {
 
 	User selectUser(@Param("userName") String userName, @Param("roomName") String roomName);
 
+	/** 유저의 몬스터별 누적 처치 수 (많은 순) */
+    List<KillStat> selectKillStats(
+        @Param("userName") String userName,
+        @Param("roomName") String roomName
+    );
+    
 	List<Monster> selectAllMonsters();
 	Monster selectMonsterByNo(@Param("monNo") int monNo);
 	Monster selectMonsterByName(@Param("monName") String monName);

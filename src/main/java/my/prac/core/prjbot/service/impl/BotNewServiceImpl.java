@@ -9,6 +9,7 @@ import javax.annotation.Resource;
 import org.springframework.stereotype.Service;
 
 import my.prac.core.game.dto.BattleLog;
+import my.prac.core.game.dto.KillStat;
 import my.prac.core.game.dto.Monster;
 import my.prac.core.game.dto.OngoingBattle;
 import my.prac.core.game.dto.User;
@@ -42,6 +43,12 @@ public class BotNewServiceImpl implements BotNewService {
         return botNewDAO.selectOngoingBattle(userName, roomName);
     }
 
+    @Override
+    public List<KillStat> selectKillStats(String userName, String roomName){
+    	return botNewDAO.selectKillStats(userName,roomName);
+    }
+    
+    @Override
     public List<Monster> selectAllMonsters(){
     	return botNewDAO.selectAllMonsters();
     }

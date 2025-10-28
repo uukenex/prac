@@ -631,6 +631,8 @@ public class LoaChatController {
 				}
 				break;
 			case "/공격정보": case "/ㄱㄱㅈㅂ":
+				val = boss.attackInfo(reqMap);
+				/*
 				reqMap.put("newUserName", sender);
 				
 				gameYnList = botService.selectGamePlayYn(reqMap);
@@ -646,6 +648,7 @@ public class LoaChatController {
 				}else {
 					val = "별도 게임방에서 진행해주세요.";
 				}
+				*/
 				break;
 			case "/ㄱㄱㄱ": case "/ㄱ":
 				val = boss.monsterAttack(reqMap);

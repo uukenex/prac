@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 
 import my.prac.core.game.dto.BattleLog;
+import my.prac.core.game.dto.KillStat;
 import my.prac.core.game.dto.Monster;
 import my.prac.core.game.dto.OngoingBattle;
 import my.prac.core.game.dto.User;
@@ -17,6 +18,8 @@ public interface BotNewService {
     /** 진행중 전투(NOW_YN=1 묶음). 없으면 null */
     OngoingBattle selectOngoingBattle(String userName, String roomName);
 
+    List<KillStat> selectKillStats(String userName, String roomName);
+    
     List<Monster> selectAllMonsters();
     Monster selectMonsterByNo(int monNo);
     Monster selectMonsterByName(String monName);
