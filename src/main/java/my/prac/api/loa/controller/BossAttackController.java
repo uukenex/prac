@@ -27,7 +27,7 @@ public class BossAttackController {
 
 	/* ===== Config / Const ===== */
 	private static final Logger log = LoggerFactory.getLogger(BossAttackController.class);
-	private static final int COOLDOWN_SECONDS = 120; // 2분
+	private static final int COOLDOWN_SECONDS = 60; // 1분
 	private static final String NL = "♬";
 
 	/* ===== DI ===== */
