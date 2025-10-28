@@ -593,28 +593,6 @@ public class BossAttackController {
 	}
 
 	/* ===== Regen & Time Helpers ===== */
-
-	private RegenResult applyPassiveRegen(String userName, String roomName, User u) {
-		Timestamp last = botNewService.selectLastAttackTime(userName, roomName);
-		if (last == null && u.insertDate != null)
-			last = u.insertDate;
-		if (last == null || u.hpCur >= u.hpMax || u.hpRegen <= 0)
-			return new RegenResult(0, 0, u.hpCur);
-
-		long minutes = Math.max(0, Duration.between(last.toInstant(), Instant.now()).toMinutes());
-		if (minutes <= 0)
-			return new RegenResult(0, 0, u.hpCur);
-
-		long heal = minutes * (long) u.hpRegen;
-		int newHp = (int) Math.min((long) u.hpMax, (long) u.hpCur + heal);
-		int healed = newHp - u.hpCur;
-		if (healed <= 0)
-			return new RegenResult(0, (int) minutes, u.hpCur);
-
-		botNewService.updateUserHpOnlyTx(userName, roomName, newHp);
-		return new RegenResult(healed, (int) minutes, newHp);
-	}
-
 	private int minutesToHalf(User u) {
 		return minutesToHalf(u, u.hpCur);
 	}
@@ -640,17 +618,6 @@ public class BossAttackController {
 	}
 
 	/* ===== DTOs (inner simple) ===== */
-
-	private static class RegenResult {
-		final int healed, elapsedMinutes, newHpCur;
-
-		RegenResult(int healed, int elapsedMinutes, int newHpCur) {
-			this.healed = healed;
-			this.elapsedMinutes = elapsedMinutes;
-			this.newHpCur = newHpCur;
-		}
-	}
-
 	private static class Flags {
 		boolean atkCrit;
 		int monPattern;
@@ -665,7 +632,6 @@ public class BossAttackController {
 	private static class Resolve {
 		boolean killed;
 		boolean dropYn;
-		boolean deathYn;
 		int gainExp;
 		int levelUpCount;
 	}
