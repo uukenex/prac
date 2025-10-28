@@ -185,10 +185,36 @@ public class BossAttackController {
 			return hpMsg;
 		
 
+		// (1) 우선 치명타만 굴려 순수 공격 대미지 산출
+		boolean crit = rollCrit(u);
+		int baseAtk = rollBaseAtk(u);
+		int rawAtkDmg = applyCrit(baseAtk, crit, u.critDmg);
+
+		// (2) 순수 대미지로 킬 여부 선판정
+		boolean lethal = rawAtkDmg >= monHpRemainBefore;
+		
+
 		// 4) 플래그/피해 계산
 		Flags flags = rollFlags(u, m);
 		AttackCalc calc = calcDamage(u, m, flags);
 
+		if (lethal) {
+		    // 킬 확정 → 패턴 스킵, 몬스터 피해 0, 패턴 메시지 없음
+		    flags = new Flags();
+		    flags.atkCrit = crit;
+		    flags.monPattern = 0; // 의미상 '패턴 없음'
+
+		    calc = new AttackCalc();
+		    calc.atkDmg = rawAtkDmg;  // 패턴으로 인한 감소 없이 순수 대미지
+		    calc.monDmg = 0;          // 몬스터 공격 없음
+		    calc.patternMsg = null;   // 패턴 메시지 출력 안 함
+		} else {
+		    // 킬 아님 → 기존처럼 패턴 포함 계산
+		    flags = rollFlags(u, m);
+		    flags.atkCrit = crit; // 이미 굴린 치명타를 사용해 일관성 유지(선택)
+		    calc = calcDamage(u, m, flags);
+		}
+		
 		// 5) 즉사 처리 (HP <= 0 미리보기)
 		int newHpPreview = Math.max(0, u.hpCur - calc.monDmg);
 		if (newHpPreview <= 0) {
@@ -214,6 +240,17 @@ public class BossAttackController {
 		return buildAttackMessage(userName, u, m, flags, calc, res, up, monHpRemainBefore, monMaxHp);
 	}
 
+	
+	private boolean rollCrit(User u) {
+	    return ThreadLocalRandom.current().nextDouble(0, 100) < clamp(u.critRate, 0, 100);
+	}
+	private int rollBaseAtk(User u) {
+	    return ThreadLocalRandom.current().nextInt(u.atkMin, u.atkMax + 1);
+	}
+	private int applyCrit(int baseAtk, boolean crit, double critDmgPercent) {
+	    return crit ? (int)Math.round(baseAtk * Math.max(1.0, critDmgPercent / 100.0)) : baseAtk;
+	}
+	
 	/**
 	 * HP<=0일 때만 동작. 마지막 공격시간 +60분 기준으로 자동 부활 로직.
 	 * - 60분 미만: 남은 분 안내 후 종료(문구 리턴)
@@ -316,12 +353,15 @@ public class BossAttackController {
 	private String buildBelowHalfMsg(String userName, String roomName, User u) {
 		int regenMin = minutesToHalf(u);
 		int coolMin = cooldownRemainMinutes(userName, roomName);
-		if (regenMin == Integer.MAX_VALUE)
-			return userName + "님, 체력이 50% 미만이며 자동 회복(분당 +" + u.hpRegen + ")이 불가합니다. 회복 수단을 사용해주세요.";
+		
 		int waitMin = Math.max(regenMin, coolMin);
-		if (waitMin > 0)
-			return userName + "님, 약 " + waitMin + "분 후 공격 가능 (회복 필요 " + regenMin + "분, 쿨타임 " + coolMin + "분)";
-		return null;
+	    if (waitMin > 0) {
+	        return userName + "님, 약 " + waitMin + "분 후 공격 가능" + NL
+	             + "(회복 필요 " + regenMin + "분, 쿨타임 " + coolMin + "분)" + NL
+	             + "현재 체력: " + u.hpCur + " / " + u.hpMax + "  |  분당 회복 +" + u.hpRegen;
+	    }
+	    
+	    return null;
 	}
 
 	private Flags rollFlags(User u, Monster m) {
@@ -383,7 +423,7 @@ public class BossAttackController {
 		switch (f.monPattern) {
 		case 1: // WAIT
 			c.monDmg = 0;
-			c.patternMsg = name + "이(가) 당신을 응시합니다!";
+			c.patternMsg = name + "이(가) 당신을 바라봅니다";
 			break;
 		case 2: // ATTACK (50%~100% 랜덤)
 			int minDmg = Math.max(1, (int) Math.floor(m.monAtk * 0.5));
@@ -466,7 +506,7 @@ public class BossAttackController {
 		}
 
 		int monHpAfter = Math.max(0, monHpRemainBefore - calc.atkDmg);
-		sb.append("가한 피해: ").append(calc.atkDmg).append(" / 받은 피해: ").append(calc.monDmg).append(NL).append(NL).append("▶몬스터 HP: ")
+		sb.append("데미지 : ").append(calc.atkDmg).append(" / 받은 피해: ").append(calc.monDmg).append(NL).append(NL).append("▶몬스터 HP: ")
 				.append(monHpAfter).append("/").append(monMaxHp).append(NL);
 
 		if (res.killed) {
@@ -513,7 +553,7 @@ public class BossAttackController {
 		// 현재 EXP 상황(다음 레벨까지 남은 EXP)
 		int remain = Math.max(0, u.expNext - u.expCur);
 		sb.append("현재 EXP: ").append(u.expCur).append(" / ").append(u.expNext)//.append(" (다음 레벨까지 ").append(remain)
-				.append(")").append(NL);
+				.append(NL);
 
 		return sb.toString();
 	}
