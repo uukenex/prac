@@ -57,7 +57,7 @@ public class BossAttackController {
 
 	    // 읽기-회복(저장 없이) 계산된 현재 체력
 	    int effHp = computeEffectiveHpFromLastAttack(userName, roomName, u);
-	    int hp50  = (int) Math.ceil(u.hpMax * 0.5);
+	    //int hp50  = (int) Math.ceil(u.hpMax * 0.5);
 
 	    // 누적 처치 통계
 	    List<KillStat> kills = botNewService.selectKillStats(userName, roomName); // 아래 DAO 참고
@@ -69,11 +69,10 @@ public class BossAttackController {
 	    String targetName = (target == null) ? "-" : target.monName;
 
 	    StringBuilder sb = new StringBuilder();
-	    sb.append("공격 정보 / 프로필").append(NL)
-	      .append("유저: ").append(userName).append("  |  방: ").append(roomName).append(NL)
-	      .append("레벨: ").append(u.lv)
-	        .append("  |  EXP ").append(u.expCur).append("/").append(u.expNext)
-	        .append(" (다음까지 ").append(Math.max(0, u.expNext - u.expCur)).append(")").append(NL)
+	    sb.append("공격 정보").append(NL)
+	      .append("✨").append(userName).append(NL)
+	      .append("Lv: ").append(u.lv)
+	      .append(", EXP ").append(u.expCur).append("/").append(u.expNext).append(NL)
 	      .append("ATK: ").append(u.atkMin).append("~").append(u.atkMax)
 	        .append("  |  CRIT: ").append((int)u.critRate).append("%").append(NL)
 	      .append("HP: ").append(effHp).append("/").append(u.hpMax)
