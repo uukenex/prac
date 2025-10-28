@@ -19,17 +19,71 @@ public class BattleLog {
 	private int killYn;
 	private int nowYn;
 	private int dropYn;
+	private int deathYn; // 0/1 (또는 null)
 
-	public BattleLog setUserName(String v){this.userName=v;return this;}
-	public BattleLog setRoomName(String v){this.roomName=v;return this;}
-	public BattleLog setLv(int v){this.lv=v;return this;}
-	public BattleLog setTargetMonLv(int v){this.targetMonLv=v;return this;}
-	public BattleLog setGainExp(int v){this.gainExp=v;return this;}
-	public BattleLog setAtkDmg(int v){this.atkDmg=v;return this;}
-	public BattleLog setMonDmg(int v){this.monDmg=v;return this;}
-	public BattleLog setAtkCritYn(int v){this.atkCritYn=v;return this;}
-	public BattleLog setMonPatten(int v){this.monPatten=v;return this;}
-	public BattleLog setKillYn(int v){this.killYn=v;return this;}
-	public BattleLog setNowYn(int v){this.nowYn=v;return this;}
-	public BattleLog setDropYn(int v){this.dropYn=v;return this;}
+	public BattleLog setUserName(String v) {
+		this.userName = v;
+		return this;
+	}
+
+	public BattleLog setRoomName(String v) {
+		this.roomName = v;
+		return this;
+	}
+
+	public BattleLog setLv(int v) {
+		this.lv = v;
+		return this;
+	}
+
+	public BattleLog setTargetMonLv(int v) {
+		this.targetMonLv = v;
+		return this;
+	}
+
+	public BattleLog setGainExp(int v) {
+		this.gainExp = v;
+		return this;
+	}
+
+	public BattleLog setAtkDmg(int v) {
+		this.atkDmg = v;
+		return this;
+	}
+
+	public BattleLog setMonDmg(int v) {
+		this.monDmg = v;
+		return this;
+	}
+
+	public BattleLog setAtkCritYn(int v) {
+		this.atkCritYn = v;
+		return this;
+	}
+
+	public BattleLog setMonPatten(int v) {
+		this.monPatten = v;
+		return this;
+	}
+
+	public BattleLog setKillYn(int v) {
+		this.killYn = v;
+		return this;
+	}
+
+	public BattleLog setNowYn(int v) {
+		this.nowYn = v;
+		return this;
+	}
+
+	public BattleLog setDropYn(int v) {
+		this.dropYn = v;
+		return this;
+	}
+
+
+	public BattleLog setDeathYn(int v) {
+		this.deathYn = v;
+		return this;
+	}
 }

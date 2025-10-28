@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 
+import my.prac.core.game.dto.AttackDeathStat;
 import my.prac.core.game.dto.BattleLog;
 import my.prac.core.game.dto.KillStat;
 import my.prac.core.game.dto.Monster;
@@ -44,33 +45,33 @@ public class BossAttackController {
 
 	/* ===== Public APIs ===== */
 
-	/** 유저 기본정보 + 누적 처치 정보 */
+	/** 유저 기본정보 + 누적 처치/공격/사망 정보 */
 	public String attackInfo(HashMap<String, Object> map) {
 	    final String roomName = Objects.toString(map.get("roomName"), "");
 	    final String userName = Objects.toString(map.get("userName"), "");
 	    if (roomName.isEmpty() || userName.isEmpty()) return "방/유저 정보가 누락되었습니다.";
 	    final String NL = "♬";
 
-	    // 유저 조회
 	    User u = botNewService.selectUser(userName, roomName);
 	    if (u == null) return guideSetTargetMessage();
 
-	    // 읽기-회복(저장 없이) 계산된 현재 체력
 	    int effHp = computeEffectiveHpFromLastAttack(userName, roomName, u);
-	    //int hp50  = (int) Math.ceil(u.hpMax * 0.5);
 
-	    // 누적 처치 통계
-	    List<KillStat> kills = botNewService.selectKillStats(userName, roomName); // 아래 DAO 참고
+	    // 누적 처치
+	    List<KillStat> kills = botNewService.selectKillStats(userName, roomName);
 	    int totalKills = 0;
 	    for (KillStat ks : kills) totalKills += ks.killCount;
 
-	    // 타겟 몬스터명
+	    // 누적 공격/사망
+	    AttackDeathStat ads = botNewService.selectAttackDeathStats(userName, roomName);
+	    int totalAttacks = (ads == null ? 0 : ads.totalAttacks);
+	    int totalDeaths  = (ads == null ? 0 : ads.totalDeaths);
+
 	    Monster target = (u.targetMon > 0) ? botNewService.selectMonsterByNo(u.targetMon) : null;
 	    String targetName = (target == null) ? "-" : target.monName;
 
 	    StringBuilder sb = new StringBuilder();
-	    sb.append("공격 정보").append(NL)
-	      .append("✨").append(userName).append(NL)
+	    sb.append("✨").append(userName).append(" 공격 정보").append(NL)
 	      .append("Lv: ").append(u.lv)
 	      .append(", EXP ").append(u.expCur).append("/").append(u.expNext).append(NL)
 	      .append("ATK: ").append(u.atkMin).append("~").append(u.atkMax)
@@ -78,6 +79,11 @@ public class BossAttackController {
 	      .append("HP: ").append(effHp).append("/").append(u.hpMax)
 	        .append("  |  분당 회복 +").append(u.hpRegen).append(NL)
 	      .append("현재 타겟: ").append(targetName).append(" (MON_NO=").append(u.targetMon).append(")").append(NL)
+	      .append(NL);
+
+	    sb.append("누적 전투 기록").append(NL)
+	      .append("- 총 공격 횟수: ").append(totalAttacks).append("회").append(NL)
+	      .append("- 총 사망 횟수: ").append(totalDeaths).append("회").append(NL)
 	      .append(NL);
 
 	    sb.append("누적 처치 기록 (총 ").append(totalKills).append("마리)").append(NL);
@@ -185,33 +191,27 @@ public class BossAttackController {
 			return hpMsg;
 		
 
-		// (1) 우선 치명타만 굴려 순수 공격 대미지 산출
+		// (1) 치명타 및 순수 공격 대미지 산출
 		boolean crit = rollCrit(u);
 		int baseAtk = rollBaseAtk(u);
 		int rawAtkDmg = applyCrit(baseAtk, crit, u.critDmg);
 
-		// (2) 순수 대미지로 킬 여부 선판정
+		// (2) 킬 선판정
 		boolean lethal = rawAtkDmg >= monHpRemainBefore;
 		
-
-		// 4) 플래그/피해 계산
-		Flags flags = rollFlags(u, m);
-		AttackCalc calc = calcDamage(u, m, flags);
-
+		Flags flags;
+		AttackCalc calc;
 		if (lethal) {
-		    // 킬 확정 → 패턴 스킵, 몬스터 피해 0, 패턴 메시지 없음
 		    flags = new Flags();
 		    flags.atkCrit = crit;
-		    flags.monPattern = 0; // 의미상 '패턴 없음'
-
+		    flags.monPattern = 0;
 		    calc = new AttackCalc();
-		    calc.atkDmg = rawAtkDmg;  // 패턴으로 인한 감소 없이 순수 대미지
-		    calc.monDmg = 0;          // 몬스터 공격 없음
-		    calc.patternMsg = null;   // 패턴 메시지 출력 안 함
+		    calc.atkDmg = rawAtkDmg;
+		    calc.monDmg = 0;
+		    calc.patternMsg = null;
 		} else {
-		    // 킬 아님 → 기존처럼 패턴 포함 계산
 		    flags = rollFlags(u, m);
-		    flags.atkCrit = crit; // 이미 굴린 치명타를 사용해 일관성 유지(선택)
+		    flags.atkCrit = crit; // 치명타 일관성 유지
 		    calc = calcDamage(u, m, flags);
 		}
 		
@@ -221,7 +221,26 @@ public class BossAttackController {
 			botNewService.closeOngoingBattleTx(userName, roomName);
 			botNewService.updateUserHpOnlyTx(userName, roomName, 0);
 
-			return userName + "님, 큰 피해로 쓰러졌습니다." + NL + "현재 체력: 0 / " + u.hpMax + NL + "1시간 뒤 부활하여 50%체력을 가집니다.";
+			// ✅ 사망 로그 남기기
+		    botNewService.insertBattleLogTx(new BattleLog()
+		        .setUserName(userName)
+		        .setRoomName(roomName)
+		        .setLv(u.lv)
+		        .setTargetMonLv(m.monNo)
+		        .setGainExp(0)
+		        .setAtkDmg(calc.atkDmg)
+		        .setMonDmg(calc.monDmg)
+		        .setAtkCritYn(flags.atkCrit ? 1 : 0)
+		        .setMonPatten(flags.monPattern)
+		        .setKillYn(0)
+		        .setNowYn(1)
+		        .setDropYn(0)
+		        .setDeathYn(1) // ✅
+		    );
+
+		    return userName + "님, 큰 피해로 쓰러졌습니다." + NL
+		         + "현재 체력: 0 / " + u.hpMax + NL
+		         + "1시간 뒤 부활하여 50%체력을 가집니다.";
 			
 		}
 
@@ -436,7 +455,7 @@ public class BossAttackController {
 			int minDmg = Math.max(1, (int) Math.floor(m.monAtk * 0.5));
 			int maxDmg = m.monAtk;
 			c.monDmg = ThreadLocalRandom.current().nextInt(minDmg, maxDmg + 1);
-			c.patternMsg = name + "이(가) "+c.monDmg+" 의 데미지로 공격합니다!";
+			c.patternMsg = name + "이(가) "+c.monDmg+" 의 데미지로 반격합니다!";
 			break;
 		case 3: // DEFEND
 			// 몬스터가 방어 태세로 전환
@@ -498,11 +517,13 @@ public class BossAttackController {
 
 		botNewService.updateUserAfterBattleTx(userName, roomName, u.lv, u.expCur, u.expNext, u.hpCur, u.hpMax, u.atkMin,
 				u.atkMax);
-
+		 // ✅ 이번 공격으로 사망했는지 계산
+	    int deathYn = (u.hpCur == 0 && c.monDmg > 0) ? 1 : 0;
+	    
 		botNewService.insertBattleLogTx(new BattleLog().setUserName(userName).setRoomName(roomName).setLv(up.beforeLv)
 				.setTargetMonLv(m.monNo).setGainExp(up.gainedExp).setAtkDmg(c.atkDmg).setMonDmg(c.monDmg)
 				.setAtkCritYn(f.atkCrit ? 1 : 0).setMonPatten(f.monPattern).setKillYn(res.killed ? 1 : 0).setNowYn(1)
-				.setDropYn(res.dropYn ? 1 : 0));
+				.setDropYn(res.dropYn ? 1 : 0).setDeathYn(deathYn));
 
 		res.levelUpCount = up.levelUpCount;
 		return up;
@@ -513,9 +534,7 @@ public class BossAttackController {
 			LevelUpResult up, int monHpRemainBefore, int monMaxHp) {
 		StringBuilder sb = new StringBuilder();
 		sb.append(userName).append("님, ").append(m.monName).append("을(를) 공격!").append(NL);
-		if (flags.atkCrit)
-			sb.append("치명타 발생!").append(NL);
-
+		
 		if (calc.patternMsg != null && !calc.patternMsg.isEmpty()) {
 			sb.append(calc.patternMsg).append(NL);
 		}
@@ -557,7 +576,7 @@ public class BossAttackController {
 					sb.append("ATK_MAX +").append(up.atkMaxDelta);
 					comma = true;
 				}
-				if (up.atkMaxDelta > 0) {
+				if (up.critDelta  > 0) {
 					if (comma)
 						sb.append(", ");
 					sb.append("CRI +").append(up.critDelta);
@@ -646,6 +665,7 @@ public class BossAttackController {
 	private static class Resolve {
 		boolean killed;
 		boolean dropYn;
+		boolean deathYn;
 		int gainExp;
 		int levelUpCount;
 	}

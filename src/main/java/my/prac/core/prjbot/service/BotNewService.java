@@ -4,6 +4,7 @@ import java.sql.Timestamp;
 import java.util.HashMap;
 import java.util.List;
 
+import my.prac.core.game.dto.AttackDeathStat;
 import my.prac.core.game.dto.BattleLog;
 import my.prac.core.game.dto.KillStat;
 import my.prac.core.game.dto.Monster;
@@ -19,6 +20,7 @@ public interface BotNewService {
     OngoingBattle selectOngoingBattle(String userName, String roomName);
 
     List<KillStat> selectKillStats(String userName, String roomName);
+    AttackDeathStat selectAttackDeathStats(String userName, String roomName);
     
     List<Monster> selectAllMonsters();
     Monster selectMonsterByNo(int monNo);

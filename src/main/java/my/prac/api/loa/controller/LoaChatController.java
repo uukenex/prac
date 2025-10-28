@@ -439,7 +439,7 @@ public class LoaChatController {
 					
 					
 					List<HashMap<String,Object>> weapon_map = botService.selectBotPointWeaponRank(reqMap);
-					val +=roomName+" 강화랭킹"+enterStr;
+					val +="현재방 강화랭킹"+enterStr;
 					for(int i =0;i<weapon_map.size();i++) {
 						switch(i) {
 						/*

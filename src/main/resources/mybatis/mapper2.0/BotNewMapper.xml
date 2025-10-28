@@ -40,6 +40,15 @@
 		= #{userName}
 		AND ROOM_NAME = #{roomName}
 	</select>
+	
+	<select id="selectAttackDeathStats" resultType="my.prac.core.game.dto.AttackDeathStat">
+        SELECT
+            COUNT(*) AS TOTAL_ATTACKS,
+            SUM(CASE WHEN DEATH_YN = '1' THEN 1 ELSE 0 END) AS TOTAL_DEATHS
+        FROM TBOT_POINT_NEW_BATTLE_LOG
+        WHERE USER_NAME = #{userName}
+          AND ROOM_NAME = #{roomName}
+    </select>
 
 	<select id="selectKillStats" resultType="my.prac.core.game.dto.KillStat">
 		SELECT
@@ -145,14 +154,14 @@
 		(USER_NAME,
 		ROOM_NAME, LV, TARGET_MON_LV,
 		GAIN_EXP, ATK_DMG, MON_DMG, ATK_CRIT_YN,
-		MON_PATTEN, INSERT_DATE, KILL_YN, NOW_YN, DROP_YN)
+		MON_PATTEN, INSERT_DATE, KILL_YN, NOW_YN, DROP_YN, DEATH_YN)
 		VALUES
 		(#{userName},
 		#{roomName}, #{lv}, #{targetMonLv},
 		#{gainExp}, #{atkDmg}, #{monDmg},
 		#{atkCritYn},
 		#{monPatten}, SYSTIMESTAMP, #{killYn}, #{nowYn},
-		#{dropYn})
+		#{dropYn},#{deathYn})
 	</insert>
 	<!-- 7) 전투 종료: NOW_YN=1 → 0 -->
 	<update id="closeOngoingBattle">
