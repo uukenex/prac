@@ -559,27 +559,27 @@ public class BossAttackController {
 
 			boolean comma = false;
 			if (up.hpMaxDelta > 0 || up.atkMinDelta > 0 || up.atkMaxDelta > 0 || up.critDelta > 0) {
-				sb.append("상승치: ");
 				if (up.hpMaxDelta > 0) {
 					sb.append("HP_MAX +").append(up.hpMaxDelta);
-					comma = true;
+					sb.append(NL);
 				}
 				if (up.atkMinDelta > 0) {
 					if (comma)
 						sb.append(", ");
 					sb.append("ATK_MIN +").append(up.atkMinDelta);
-					comma = true;
+					sb.append(NL);
 				}
 				if (up.atkMaxDelta > 0) {
 					if (comma)
 						sb.append(", ");
 					sb.append("ATK_MAX +").append(up.atkMaxDelta);
-					comma = true;
+					sb.append(NL);
 				}
 				if (up.critDelta  > 0) {
 					if (comma)
 						sb.append(", ");
 					sb.append("CRI +").append(up.critDelta);
+					sb.append(NL);
 				}
 				sb.append(NL);
 			}
@@ -720,9 +720,20 @@ public class BossAttackController {
 		// (원하면 LevelUpResult에 critDelta 필드 추가해서 메시지로도 보여줄 수 있음)
 		return r;
 	}
+	// 튜닝 파라미터(원하는 난이도에 맞게 조절)
+	private static final int DELTA_BASE = 150;   // 저레벨 기본 증가량
+	private static final int DELTA_LIN  = 120;   // 선형 계수
+	private static final int DELTA_QUAD = 8;     // 2차 계수(볼록도)
+
+	// 오버플로우 방지용
+	private static final int NEXT_CAP   = Integer.MAX_VALUE;
 
 	private int calcNextExp(int newLv, int prevExpNext) {
-		return prevExpNext + 200 + 250 * newLv; // 필요 시 커스텀
+	    long lv = Math.max(1, newLv); // 방어
+	    long delta = (long)DELTA_BASE + (long)DELTA_LIN * lv + (long)DELTA_QUAD * lv * lv;
+	    long next  = (long)prevExpNext + delta;
+	    if (next > NEXT_CAP) return NEXT_CAP;
+	    return (int) next;
 	}
 
 	private static double clamp(double v, double min, double max) {
