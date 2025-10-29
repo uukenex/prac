@@ -30,6 +30,10 @@ public class BotNewServiceImpl implements BotNewService {
 	@Resource(name = "core.prjbot.BotSettleDAO")
 	BotSettleDAO botSettleDAO;
 
+	public List<String> selectParam1ToNewUserSearch(HashMap<String,Object> map){
+		return botNewDAO.selectParam1ToNewUserSearch(map);
+	}
+	
 	public int insertBotPointNew(HashMap<String, Object> map) {
 		return botNewDAO.insertBotPointNew(map);
 	}

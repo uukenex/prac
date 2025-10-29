@@ -206,4 +206,32 @@
 		)
 	</insert>
 	<!-- 진행중 전투 종료 (이미 존재) -->
+	
+	<select id="selectParam1ToNewUserSearch" parameterType="HashMap" resultType="String" >
+		/* selectParam1ToNewUserSearch */
+		SELECT A.USER_NAME
+		  FROM TBOT_POINT_NEW_USER A
+		 WHERE upper(A.USER_NAME) LIKE upper(#{param1, jdbcType=VARCHAR}) || '%'
+		   AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+		   AND NOT EXISTS (SELECT *
+		                     FROM TBOT_BLOCK C
+		                    WHERE UPPER(C.USER_NAME) = upper(#{param1, jdbcType=VARCHAR}) 
+		                      AND C.ROOM_NAME = A.ROOM_NAME
+		                    )
+		 GROUP BY A.USER_NAME
+			  ,A.ROOM_NAME
+	     HAVING 1 = CASE
+						 WHEN MAX(A.INSERT_DATE) >= TRUNC(SYSDATE) - 3 THEN
+						  1
+						 ELSE
+						  0
+					END
+		 ORDER BY CASE
+		                WHEN LENGTH(#{param1, jdbcType=VARCHAR}) = LENGTH(A.USER_NAME) THEN
+		                 1
+		                ELSE
+		                 0
+		          END desc         
+	</select>
+	
 </mapper>

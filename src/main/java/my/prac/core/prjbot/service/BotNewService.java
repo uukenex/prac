@@ -16,6 +16,7 @@ public interface BotNewService {
 	
 	User selectUser(String userName, String roomName);
 
+	public List<String> selectParam1ToNewUserSearch(HashMap<String,Object> map);
     /** 진행중 전투(NOW_YN=1 묶음). 없으면 null */
     OngoingBattle selectOngoingBattle(String userName, String roomName);
 

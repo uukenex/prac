@@ -21,6 +21,7 @@ import my.prac.core.game.dto.KillStat;
 import my.prac.core.game.dto.Monster;
 import my.prac.core.game.dto.OngoingBattle;
 import my.prac.core.game.dto.User;
+import my.prac.core.prjbot.dao.BotDAO;
 import my.prac.core.prjbot.service.BotNewService;
 import my.prac.core.prjbot.service.BotService;
 import my.prac.core.prjbot.service.BotSettleService;
@@ -38,6 +39,8 @@ public class BossAttackController {
 	LoaPlayController play;
 	@Resource(name = "core.prjbot.BotService")
 	BotService botService;
+	@Resource(name = "core.prjbot.BotDAO")
+	BotDAO botDAO;
 	@Resource(name = "core.prjbot.BotNewService")
 	BotNewService botNewService;
 	@Resource(name = "core.prjbot.BotSettleService")
@@ -49,36 +52,52 @@ public class BossAttackController {
 	public String attackInfo(HashMap<String, Object> map) {
 	    final String roomName = Objects.toString(map.get("roomName"), "");
 	    final String userName = Objects.toString(map.get("userName"), "");
-	    if (roomName.isEmpty() || userName.isEmpty()) return "방/유저 정보가 누락되었습니다.";
+	    if (roomName.isEmpty() || userName.isEmpty())
+	        return "방/유저 정보가 누락되었습니다.";
 	    final String NL = "♬";
 
-	    User u = botNewService.selectUser(userName, roomName);
-	    if (u == null) return guideSetTargetMessage();
+	    // 🔹 ① param1이 존재하면 다른 유저 조회 시도로 교체
+	    String targetUser = userName;
+	    if (map.get("param1") != null && !Objects.toString(map.get("param1"), "").isEmpty()) {
+	        List<String> newUserName = botNewService.selectParam1ToNewUserSearch(map);
+	        if (newUserName != null && !newUserName.isEmpty()) {
+	            targetUser = newUserName.get(0);
+	        } else {
+	            return "해당 유저(" + map.get("param1") + ")를 찾을 수 없습니다.";
+	        }
+	    }
 
-	    int effHp = computeEffectiveHpFromLastAttack(userName, roomName, u);
+	    // 🔹 ② 유저 조회
+	    User u = botNewService.selectUser(targetUser, roomName);
+	    if (u == null) return targetUser + "님의 정보를 찾을 수 없습니다.";
 
-	    // 누적 처치
-	    List<KillStat> kills = botNewService.selectKillStats(userName, roomName);
+	    // 🔹 ③ 읽기 계산 회복
+	    int effHp = computeEffectiveHpFromLastAttack(targetUser, roomName, u);
+
+	    // 🔹 ④ 누적 처치
+	    List<KillStat> kills = botNewService.selectKillStats(targetUser, roomName);
 	    int totalKills = 0;
 	    for (KillStat ks : kills) totalKills += ks.killCount;
 
-	    // 누적 공격/사망
-	    AttackDeathStat ads = botNewService.selectAttackDeathStats(userName, roomName);
+	    // 🔹 ⑤ 누적 공격/사망
+	    AttackDeathStat ads = botNewService.selectAttackDeathStats(targetUser, roomName);
 	    int totalAttacks = (ads == null ? 0 : ads.totalAttacks);
 	    int totalDeaths  = (ads == null ? 0 : ads.totalDeaths);
 
 	    Monster target = (u.targetMon > 0) ? botNewService.selectMonsterByNo(u.targetMon) : null;
 	    String targetName = (target == null) ? "-" : target.monName;
 
+	    // 🔹 ⑥ 출력
 	    StringBuilder sb = new StringBuilder();
-	    sb.append("✨").append(userName).append(" 공격 정보").append(NL)
+	    sb.append("✨").append(targetUser).append(" 공격 정보").append(NL)
 	      .append("Lv: ").append(u.lv)
 	      .append(", EXP ").append(u.expCur).append("/").append(u.expNext).append(NL)
 	      .append("ATK: ").append(u.atkMin).append("~").append(u.atkMax)
-	        .append("  |  CRIT: ").append((int)u.critRate).append("%").append(NL)
+	        .append("  |  CRIT: ").append(u.critRate).append("%").append(NL)
 	      .append("HP: ").append(effHp).append("/").append(u.hpMax)
 	        .append("  |  분당 회복 +").append(u.hpRegen).append(NL)
-	      .append("현재 타겟: ").append(targetName).append(" (MON_NO=").append(u.targetMon).append(")").append(NL)
+	      .append("현재 타겟: ").append(targetName)
+	        .append(" (MON_NO=").append(u.targetMon).append(")").append(NL)
 	      .append(NL);
 
 	    sb.append("누적 전투 기록").append(NL)
@@ -96,6 +115,7 @@ public class BossAttackController {
 	              .append(ks.killCount).append("마리").append(NL);
 	        }
 	    }
+
 	    return sb.toString();
 	}
 	

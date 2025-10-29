@@ -17,7 +17,8 @@ import my.prac.core.game.dto.User;
 @Repository("core.prjbot.BotNewDAO")
 public interface BotNewDAO {
 	public int insertBotPointNew(HashMap<String, Object> map);
-
+	public List<String> selectParam1ToNewUserSearch(HashMap<String,Object> map);
+	
 	User selectUser(@Param("userName") String userName, @Param("roomName") String roomName);
 
 	AttackDeathStat selectAttackDeathStats(@Param("userName") String userName,
