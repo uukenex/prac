@@ -31,7 +31,8 @@ public class BossAttackController {
 
 	/* ===== Config / Const ===== */
 	private static final Logger log = LoggerFactory.getLogger(BossAttackController.class);
-	private static final int COOLDOWN_SECONDS = 60; // 1분
+	private static final int COOLDOWN_SECONDS = 180; // 1분
+	private static final int REVIVE_WAIT_MINUTES = 10; 
 	private static final String NL = "♬";
 
 	/* ===== DI ===== */
@@ -204,34 +205,37 @@ public class BossAttackController {
 
 		// 3) 쿨타임 + 체력 50% 미만 안내
 		CooldownCheck cd = checkCooldown(userName, roomName);
-		if (!cd.ok)
-			return userName + "님, 공격 쿨타임 " + cd.remainMinutes + "분 남았습니다.";
+		if (!cd.ok) {
+			long min = cd.remainSeconds / 60;
+		    long sec = cd.remainSeconds % 60;
+		    return String.format("%s님, 공격 쿨타임 %d분 %d초 남았습니다.", userName, min, sec);
+		}
 		String hpMsg = buildBelowHalfMsg(userName, roomName, u);
 		if (hpMsg != null)
 			return hpMsg;
 		
 
-		// (1) 치명타 및 순수 공격 대미지 산출
+		// (1) 순수 공격 데미지 계산
 		boolean crit = rollCrit(u);
 		int baseAtk = rollBaseAtk(u);
 		int rawAtkDmg = applyCrit(baseAtk, crit, u.critDmg);
 
-		// (2) 킬 선판정
+		// (2) 원턴킬 여부 판정
 		boolean lethal = rawAtkDmg >= monHpRemainBefore;
-		
-		Flags flags;
-		AttackCalc calc;
+
+		// (3) 킬이면 몬스터 패턴 스킵
+		Flags flags = new Flags();
+		AttackCalc calc = new AttackCalc();
 		if (lethal) {
-		    flags = new Flags();
 		    flags.atkCrit = crit;
-		    flags.monPattern = 0;
-		    calc = new AttackCalc();
+		    flags.monPattern = 0;  // 패턴 없음
 		    calc.atkDmg = rawAtkDmg;
 		    calc.monDmg = 0;
-		    calc.patternMsg = null;
+		    calc.patternMsg = null; // ✅ 패턴 메시지 표시 X
 		} else {
+		    // 킬이 아닐 경우에만 몬스터 패턴 굴림
 		    flags = rollFlags(u, m);
-		    flags.atkCrit = crit; // 치명타 일관성 유지
+		    flags.atkCrit = crit;
 		    calc = calcDamage(u, m, flags);
 		}
 		
@@ -315,7 +319,7 @@ public class BossAttackController {
 	        return ""; // 메시지 없이 계속 진행 (이번 턴에 읽기-회복 금지)
 	    }
 
-	    Instant reviveAt = last.toInstant().plus(Duration.ofMinutes(60));
+	    Instant reviveAt = last.toInstant().plus(Duration.ofMinutes(REVIVE_WAIT_MINUTES));
 	    Instant now = Instant.now();
 
 	    // 아직 60분이 안 지났으면 대기 안내
@@ -379,27 +383,32 @@ public class BossAttackController {
 	/* ===== Helpers ===== */
 
 	private CooldownCheck checkCooldown(String userName, String roomName) {
-		Timestamp last = botNewService.selectLastAttackTime(userName, roomName);
-		if (last == null)
-			return CooldownCheck.ok();
-		long sec = Duration.between(last.toInstant(), Instant.now()).getSeconds();
-		if (sec >= COOLDOWN_SECONDS)
-			return CooldownCheck.ok();
-		long remain = COOLDOWN_SECONDS - sec;
-		return CooldownCheck.block((int) Math.ceil(remain / 60.0));
+	    Timestamp last = botNewService.selectLastAttackTime(userName, roomName);
+	    if (last == null)
+	        return CooldownCheck.ok();
+	    
+	    long sec = Duration.between(last.toInstant(), Instant.now()).getSeconds();
+	    if (sec >= COOLDOWN_SECONDS)
+	        return CooldownCheck.ok();
+	    
+	    long remainSec = COOLDOWN_SECONDS - sec;
+	    return CooldownCheck.blockSeconds(remainSec);
 	}
 
 	private String buildBelowHalfMsg(String userName, String roomName, User u) {
-		int regenMin = minutesToHalf(u);
-		int coolMin = cooldownRemainMinutes(userName, roomName);
-		
-		int waitMin = Math.max(regenMin, coolMin);
+	    int regenMin = minutesToHalf(u);
+	    CooldownCheck cd = checkCooldown(userName, roomName);
+
+	    long remainMin = cd.remainSeconds / 60;
+	    long remainSec = cd.remainSeconds % 60;
+
+	    int waitMin = Math.max(regenMin, cd.remainMinutes);
 	    if (waitMin > 0) {
 	        return userName + "님, 약 " + waitMin + "분 후 공격 가능" + NL
-	             + "(회복 필요 " + regenMin + "분, 쿨타임 " + coolMin + "분)" + NL
+	             + "(회복 필요 " + regenMin + "분, 쿨타임 " 
+	             + remainMin + "분 " + remainSec + "초)" + NL
 	             + "현재 체력: " + u.hpCur + " / " + u.hpMax + "  |  분당 회복 +" + u.hpRegen;
 	    }
-	    
 	    return null;
 	}
 
@@ -539,7 +548,7 @@ public class BossAttackController {
 		LevelUpResult up = applyExpAndLevelUp(u, res.gainExp);
 
 		botNewService.updateUserAfterBattleTx(userName, roomName, u.lv, u.expCur, u.expNext, u.hpCur, u.hpMax, u.atkMin,
-				u.atkMax,u.critRate);
+				u.atkMax,u.critRate,u.hpRegen );
 		 // ✅ 이번 공격으로 사망했는지 계산
 	    int deathYn = (u.hpCur == 0 && c.monDmg > 0) ? 1 : 0;
 	    
@@ -567,7 +576,7 @@ public class BossAttackController {
 				.append(monHpAfter).append(" / ").append(monMaxHp).append(NL);
 
 		if (res.killed) {
-			sb.append("▶처치 성공! +경험치 ").append(res.gainExp).append(NL);
+			sb.append("▶처치 성공").append(NL);
 			if (res.dropYn && m.monDrop != null && !m.monDrop.trim().isEmpty()) {
 			    sb.append("✨드랍 획득: ").append(m.monDrop).append(NL);
 			}
@@ -588,6 +597,7 @@ public class BossAttackController {
 		    int prevAtkMin = u.atkMin - up.atkMinDelta;
 		    int prevAtkMax = u.atkMax - up.atkMaxDelta;
 		    int prevCrit   = u.critRate - up.critDelta;
+		    int prevRegen  = u.hpRegen - up.hpRegenDelta; 
 
 		    sb.append("상승치:").append(NL);
 
@@ -607,9 +617,13 @@ public class BossAttackController {
 		        sb.append(" CRI     ").append(prevCrit).append(" → ").append(u.critRate)
 		          .append(" (+" + up.critDelta + ")").append(NL);
 		    }
+		    if (up.hpRegenDelta> 0) {
+		    	sb.append(" HP_REGEN ").append(prevRegen).append(" → ").append(u.hpRegen)  // ✅
+            	  .append(" (+").append(up.hpRegenDelta).append(")").append(NL);
+		    }
 		}
 		// 현재 EXP 상황(다음 레벨까지 남은 EXP)
-		int remain = Math.max(0, u.expNext - u.expCur);
+		//int remain = Math.max(0, u.expNext - u.expCur);
 		sb.append("현재 EXP: ").append(u.expCur).append(" / ").append(u.expNext)//.append(" (다음 레벨까지 ").append(remain)
 				.append(NL);
 
@@ -630,17 +644,6 @@ public class BossAttackController {
 		int need = threshold - currentHp;
 		return (int) Math.ceil(need / (double) u.hpRegen);
 	}
-
-	private int cooldownRemainMinutes(String userName, String roomName) {
-		Timestamp last = botNewService.selectLastAttackTime(userName, roomName);
-		if (last == null)
-			return 0;
-		long sec = Duration.between(last.toInstant(), Instant.now()).getSeconds();
-		if (sec >= COOLDOWN_SECONDS)
-			return 0;
-		return (int) Math.ceil((COOLDOWN_SECONDS - sec) / 60.0);
-	}
-
 	/* ===== DTOs (inner simple) ===== */
 	private static class Flags {
 		boolean atkCrit;
@@ -661,28 +664,33 @@ public class BossAttackController {
 	}
 
 	private static class CooldownCheck {
-		final boolean ok;
-		final int remainMinutes;
+	    final boolean ok;
+	    final int remainMinutes;
+	    final long remainSeconds; // ✅ 추가
 
-		private CooldownCheck(boolean ok, int remainMinutes) {
-			this.ok = ok;
-			this.remainMinutes = remainMinutes;
-		}
+	    private CooldownCheck(boolean ok, int remainMinutes, long remainSeconds) {
+	        this.ok = ok;
+	        this.remainMinutes = remainMinutes;
+	        this.remainSeconds = remainSeconds;
+	    }
 
-		static CooldownCheck ok() {
-			return new CooldownCheck(true, 0);
-		}
+	    static CooldownCheck ok() {
+	        return new CooldownCheck(true, 0, 0);
+	    }
 
-		static CooldownCheck block(int remainMin) {
-			return new CooldownCheck(false, remainMin);
-		}
+	    static CooldownCheck blockSeconds(long remainSec) {
+	        return new CooldownCheck(false,
+	            (int) Math.ceil(remainSec / 60.0),
+	            remainSec);
+	    }
 	}
-
+	
 	/** 레벨업 처리 결과 */
 	public static class LevelUpResult {
 		public int gainedExp, beforeLv, afterLv, beforeExpCur, afterExpCur, afterExpNext, levelUpCount;
 		public int hpMaxDelta, atkMinDelta, atkMaxDelta;
 		public int critDelta;
+		public int hpRegenDelta;
 	}
 
 	/** EXP 반영 + 레벨업 처리 */
@@ -700,9 +708,10 @@ public class BossAttackController {
 		int atkMin = u.atkMin;
 		int atkMax = u.atkMax;
 		int crit = u.critRate; // % 단위 (예: 0, 2, 4, ...)
+		 int regen   = u.hpRegen;
 
 		int hpDelta = 0, atkMinDelta = 0, atkMaxDelta = 0;
-		int critDelta = 0;
+		int critDelta = 0, regenDelta = 0;
 		int upCount = 0;
 
 		while (expCur >= expNext) {
@@ -722,6 +731,10 @@ public class BossAttackController {
 			atkMaxDelta += 3;
 			crit += 2;
 			critDelta += 2;
+			if (lv % 3 == 0) {          // ✅ 3레벨마다 리젠 +1
+	            regen++;
+	            regenDelta++;
+	        }
 		}
 
 		// 결과 반영
@@ -732,6 +745,7 @@ public class BossAttackController {
 		u.atkMin = atkMin;
 		u.atkMax = atkMax;
 		u.critRate = crit;
+		u.hpRegen  = regen;
 
 		r.afterLv = lv;
 		r.afterExpCur = expCur;
@@ -740,7 +754,8 @@ public class BossAttackController {
 		r.hpMaxDelta = hpDelta;
 		r.atkMinDelta = atkMinDelta;
 		r.atkMaxDelta = atkMaxDelta;
-		r.critDelta = crit;
+		r.critDelta = critDelta;
+		r.hpRegenDelta   = regenDelta;
 		// (원하면 LevelUpResult에 critDelta 필드 추가해서 메시지로도 보여줄 수 있음)
 		return r;
 	}
