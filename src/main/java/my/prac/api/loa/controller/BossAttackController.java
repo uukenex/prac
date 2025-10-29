@@ -386,7 +386,10 @@ public class BossAttackController {
 	private Flags rollFlags(User u, Monster m) {
 		ThreadLocalRandom r = ThreadLocalRandom.current();
 		Flags f = new Flags();
-		f.atkCrit = r.nextDouble(0, 100) < clamp(u.critRate, 0, 100);
+
+		int crit = Math.min(100, Math.max(0, u.critRate));
+		f.atkCrit = r.nextInt(100) < crit; // ✅ 정수 비교로 간단·빠름
+
 		f.monPattern = rollPatternWeighted(m, r);
 		return f;
 	}
@@ -493,7 +496,7 @@ public class BossAttackController {
 		
 		if (crit) {
 	        c.patternMsg = (c.patternMsg == null ? "" : c.patternMsg + "\n")
-	                     + "💥 치명타! 데미지 " + baseAtk + " * " + critMultiplier + " = "
+	                     + "✨치명타! 데미지 " + baseAtk + " * " + critMultiplier + " = "
 	                     + c.atkDmg + "!";
 	    }
 
@@ -516,7 +519,7 @@ public class BossAttackController {
 		LevelUpResult up = applyExpAndLevelUp(u, res.gainExp);
 
 		botNewService.updateUserAfterBattleTx(userName, roomName, u.lv, u.expCur, u.expNext, u.hpCur, u.hpMax, u.atkMin,
-				u.atkMax);
+				u.atkMax,u.critRate);
 		 // ✅ 이번 공격으로 사망했는지 계산
 	    int deathYn = (u.hpCur == 0 && c.monDmg > 0) ? 1 : 0;
 	    
@@ -541,12 +544,13 @@ public class BossAttackController {
 
 		int monHpAfter = Math.max(0, monHpRemainBefore - calc.atkDmg);
 		sb.append("준 피해 : ").append(calc.atkDmg).append(" / 받은 피해: ").append(calc.monDmg).append(NL).append(NL).append("▶몬스터 HP: ")
-				.append(monHpAfter).append("/").append(monMaxHp).append(NL);
+				.append(monHpAfter).append(" / ").append(monMaxHp).append(NL);
 
 		if (res.killed) {
 			sb.append("▶처치 성공! +경험치 ").append(res.gainExp).append(NL);
-			if (res.dropYn)
-				sb.append("✨드랍 획득: ").append(m.monDrop).append(NL);
+			if (res.dropYn && m.monDrop != null && !m.monDrop.trim().isEmpty()) {
+			    sb.append("✨드랍 획득: ").append(m.monDrop).append(NL);
+			}
 		}
 
 		sb.append("▶현재 체력: ").append(u.hpCur).append(" / ").append(u.hpMax).append(NL).append(NL);
@@ -554,35 +558,35 @@ public class BossAttackController {
 		// 경험치/레벨업 안내
 		sb.append("▶경험치 +").append(up.gainedExp).append(NL);
 		if (up.levelUpCount > 0) {
-			sb.append("레벨업! Lv.").append(up.beforeLv).append(" → Lv.").append(up.afterLv).append(" (+")
-					.append(up.levelUpCount).append(")").append(NL);
+			sb.append("레벨업! Lv.")
+		      .append(up.beforeLv).append(" → Lv.")
+		      .append(up.afterLv)
+		      .append(" (+").append(up.levelUpCount).append(")").append(NL);
 
-			boolean comma = false;
-			if (up.hpMaxDelta > 0 || up.atkMinDelta > 0 || up.atkMaxDelta > 0 || up.critDelta > 0) {
-				if (up.hpMaxDelta > 0) {
-					sb.append("HP_MAX +").append(up.hpMaxDelta);
-					sb.append(NL);
-				}
-				if (up.atkMinDelta > 0) {
-					if (comma)
-						sb.append(", ");
-					sb.append("ATK_MIN +").append(up.atkMinDelta);
-					sb.append(NL);
-				}
-				if (up.atkMaxDelta > 0) {
-					if (comma)
-						sb.append(", ");
-					sb.append("ATK_MAX +").append(up.atkMaxDelta);
-					sb.append(NL);
-				}
-				if (up.critDelta  > 0) {
-					if (comma)
-						sb.append(", ");
-					sb.append("CRI +").append(up.critDelta);
-					sb.append(NL);
-				}
-				sb.append(NL);
-			}
+		    // 이전값 계산 (현재 u는 이미 반영된 상태)
+		    int prevHpMax  = u.hpMax - up.hpMaxDelta;
+		    int prevAtkMin = u.atkMin - up.atkMinDelta;
+		    int prevAtkMax = u.atkMax - up.atkMaxDelta;
+		    int prevCrit   = u.critRate - up.critDelta;
+
+		    sb.append("상승치:").append(NL);
+
+		    if (up.hpMaxDelta > 0) {
+		        sb.append(" HP_MAX  ").append(prevHpMax).append(" → ").append(u.hpMax)
+		          .append(" (+" + up.hpMaxDelta + ")").append(NL);
+		    }
+		    if (up.atkMinDelta > 0) {
+		        sb.append(" ATK_MIN ").append(prevAtkMin).append(" → ").append(u.atkMin)
+		          .append(" (+" + up.atkMinDelta + ")").append(NL);
+		    }
+		    if (up.atkMaxDelta > 0) {
+		        sb.append(" ATK_MAX ").append(prevAtkMax).append(" → ").append(u.atkMax)
+		          .append(" (+" + up.atkMaxDelta + ")").append(NL);
+		    }
+		    if (up.critDelta > 0) {
+		        sb.append(" CRI     ").append(prevCrit).append(" → ").append(u.critRate)
+		          .append(" (+" + up.critDelta + ")").append(NL);
+		    }
 		}
 		// 현재 EXP 상황(다음 레벨까지 남은 EXP)
 		int remain = Math.max(0, u.expNext - u.expCur);
@@ -658,7 +662,7 @@ public class BossAttackController {
 	public static class LevelUpResult {
 		public int gainedExp, beforeLv, afterLv, beforeExpCur, afterExpCur, afterExpNext, levelUpCount;
 		public int hpMaxDelta, atkMinDelta, atkMaxDelta;
-		double critDelta;
+		public int critDelta;
 	}
 
 	/** EXP 반영 + 레벨업 처리 */
@@ -675,10 +679,10 @@ public class BossAttackController {
 		int hpMax = u.hpMax;
 		int atkMin = u.atkMin;
 		int atkMax = u.atkMax;
-		double crit = u.critRate; // % 단위 (예: 0, 2, 4, ...)
+		int crit = u.critRate; // % 단위 (예: 0, 2, 4, ...)
 
 		int hpDelta = 0, atkMinDelta = 0, atkMaxDelta = 0;
-		double critDelta = 0.0;
+		int critDelta = 0;
 		int upCount = 0;
 
 		while (expCur >= expNext) {
@@ -696,8 +700,8 @@ public class BossAttackController {
 			atkMinDelta += 1;
 			atkMax += 3;
 			atkMaxDelta += 3;
-			crit += 2.0;
-			critDelta += 2.0;
+			crit += 2;
+			critDelta += 2;
 		}
 
 		// 결과 반영
@@ -707,7 +711,7 @@ public class BossAttackController {
 		u.hpMax = hpMax;
 		u.atkMin = atkMin;
 		u.atkMax = atkMax;
-		u.critRate = Math.max(0, Math.min(100, crit)); // 0~100% 클램프
+		u.critRate = crit;
 
 		r.afterLv = lv;
 		r.afterExpCur = expCur;
@@ -716,7 +720,7 @@ public class BossAttackController {
 		r.hpMaxDelta = hpDelta;
 		r.atkMinDelta = atkMinDelta;
 		r.atkMaxDelta = atkMaxDelta;
-		r.critDelta = Math.max(0, Math.min(100, critDelta));
+		r.critDelta = crit;
 		// (원하면 LevelUpResult에 critDelta 필드 추가해서 메시지로도 보여줄 수 있음)
 		return r;
 	}

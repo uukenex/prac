@@ -19,8 +19,8 @@ public  class User {
 	public int hpRegen;
 	public int atkMin;
 	public int atkMax;
-	public double critRate; // %
-	public double critDmg;  // %
+	public int critRate; // %
+	public int critDmg;  // %
 	public int targetMon;
 	public java.sql.Timestamp insertDate; // ⬅️ fallback용
 }

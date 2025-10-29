@@ -142,7 +142,8 @@
 		HP_MAX =
 		#{newHpMax},
 		ATK_MIN = #{newAtkMin},
-		ATK_MAX = #{newAtkMax}
+		ATK_MAX = #{newAtkMax},
+		CRIT_RATE= #{critRate}
 		WHERE
 		USER_NAME = #{userName}
 		AND ROOM_NAME = #{roomName}

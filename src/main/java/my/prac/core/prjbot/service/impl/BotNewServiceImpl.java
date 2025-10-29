@@ -74,9 +74,9 @@ public class BotNewServiceImpl implements BotNewService {
 
     @Override
     public int updateUserAfterBattleTx(String userName, String roomName, int newLv, int newExpCur, int newExpNext,
-                                     int newHpCur, int newHpMax, int newAtkMin, int newAtkMax) {
+                                     int newHpCur, int newHpMax, int newAtkMin, int newAtkMax,int critRate) {
         return botNewDAO.updateUserAfterBattle(userName, roomName, newLv, newExpCur, newExpNext,
-                                            newHpCur, newHpMax, newAtkMin, newAtkMax);
+                                            newHpCur, newHpMax, newAtkMin, newAtkMax, critRate);
     }
 
     @Override

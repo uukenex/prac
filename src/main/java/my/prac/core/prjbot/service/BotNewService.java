@@ -30,7 +30,8 @@ public interface BotNewService {
 
     int updateUserAfterBattleTx(String userName, String roomName,
                               int newLv, int newExpCur, int newExpNext,
-                              int newHpCur, int newHpMax, int newAtkMin, int newAtkMax);
+                              int newHpCur, int newHpMax, int newAtkMin, int newAtkMax
+                              ,int critRate);
 
     int insertBattleLogTx(BattleLog log);
 
