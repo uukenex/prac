@@ -270,7 +270,7 @@ public class BossAttackController {
 
 		// 6) 처치/드랍 판단
 		boolean willKill = calc.atkDmg >= monHpRemainBefore;
-		Resolve res = resolveKillAndDrop(m, calc, willKill);
+		Resolve res = resolveKillAndDrop(m, calc, willKill, u);
 
 		// 7) DB 반영 (HP/EXP/LV + 로그)
 		LevelUpResult up = persist(userName, roomName, u, m, flags, calc, res);
@@ -533,14 +533,22 @@ public class BossAttackController {
 		return c;
 	}
 
-	private Resolve resolveKillAndDrop(Monster m, AttackCalc c, boolean willKill) {
-		Resolve r = new Resolve();
-		r.killed = willKill;
-		r.gainExp = r.killed ? m.monExp : Math.max(0, Math.min(1, m.monExp / 5));
-		r.dropYn = r.killed && ThreadLocalRandom.current().nextDouble(0, 100) < 30.0;
-		return r;
-	}
+	private Resolve resolveKillAndDrop(Monster m, AttackCalc c, boolean willKill, User u) {
+	    Resolve r = new Resolve();
+	    r.killed = willKill;
 
+	    int baseExp = m.monExp;
+
+	    // 📉 레벨차에 따른 경험치 보정
+	    int diff = Math.max(0, u.lv - m.monNo); // 유저가 높을수록 불이익
+	    double ratio = Math.max(0.1, 1.0 - diff * 0.2); // 20%씩 감소, 최소 10%
+	    int adjustedExp = (int)Math.round(baseExp * ratio);
+
+	    r.gainExp = r.killed ? adjustedExp : Math.max(0, Math.min(1, adjustedExp / 5));
+	    r.dropYn = r.killed && ThreadLocalRandom.current().nextDouble(0, 100) < 30.0;
+	    return r;
+	}
+	
 	/** HP/EXP/LV 반영 + 로그 기록. LevelUpResult 반환해 메시지에서 사용 */
 	private LevelUpResult persist(String userName, String roomName, User u, Monster m, Flags f, AttackCalc c,
 			Resolve res) {
