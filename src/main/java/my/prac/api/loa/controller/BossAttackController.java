@@ -644,7 +644,7 @@ public class BossAttackController {
 	    } else {
 	        sb.append(calc.atkDmg);
 	    }
-	    sb.append(")").append(NL).append(NL);
+	    sb.append(")").append(NL);
 
 	    // 4) 몬스터 HP
 	    int monHpAfter = Math.max(0, monHpRemainBefore - calc.atkDmg);
@@ -655,12 +655,14 @@ public class BossAttackController {
 	        sb.append("⚅ ").append(calc.patternMsg).append(NL);
 	    }
 
-	    // 6) 받은 피해 + 현재 체력 (받은 피해>0일 때만 한 줄로)
 	    if (calc.monDmg > 0) {
 	        sb.append("❤️ 받은 피해: ").append(calc.monDmg)
-	          .append(", 현재 체력: ").append(u.hpCur).append(" / ").append(u.hpMax).append(NL);
+	          .append(",  현재 체력: ").append(u.hpCur).append(" / ").append(u.hpMax).append(NL).append(NL);
+	    } else {
+	        // ✅ 피해 없을 때는 현재 체력만
+	        sb.append("❤️ 현재 체력: ").append(u.hpCur).append(" / ").append(u.hpMax).append(NL).append(NL);
 	    }
-
+	    
 	    // 7) EXP 라인 (상단보다 아래, 그러나 EXP 총계와 함께 한 줄)
 	    sb.append("✨ EXP+").append(res.gainExp)
 	      .append(" , EXP: ").append(u.expCur).append(" / ").append(u.expNext).append(NL);
