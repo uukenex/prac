@@ -179,168 +179,174 @@ public class BossAttackController {
 		return userName + "님, 공격 타겟을 " + m.monName + "(MON_NO=" + m.monNo + ") 으로 설정했습니다.";
 	}
 
-	/** 몬스터 공격 */
+	/** 몬스터 공격 (u.atkMax 불변: 무기보너스는 전투/표시에만 반영) */
 	public String monsterAttack(HashMap<String, Object> map) {
-		map.put("cmd", "monster_attack");
-		final String roomName = Objects.toString(map.get("roomName"), "");
-		final String userName = Objects.toString(map.get("userName"), "");
-		if (roomName.isEmpty() || userName.isEmpty())
-			return "방/유저 정보가 누락되었습니다.";
+	    map.put("cmd", "monster_attack");
 
-		// 1) 유저 조회
-		User u = botNewService.selectUser(userName, roomName);
-		if (u == null)
-			return guideSetTargetMessage();
+	    final String roomName = Objects.toString(map.get("roomName"), "");
+	    final String userName = Objects.toString(map.get("userName"), "");
+	    if (roomName.isEmpty() || userName.isEmpty())
+	        return "방/유저 정보가 누락되었습니다.";
 
-		// 🎯 무기 강화 조회
-		int weaponLv = botService.selectWeaponLvCheck(map);
-		int weaponBonus = getWeaponAtkBonus(weaponLv);
+	    // 1) 유저 조회
+	    User u = botNewService.selectUser(userName, roomName);
+	    if (u == null)
+	        return guideSetTargetMessage();
 
-		// 사용자 공격력에 무기 보너스 반영 (내부 계산용)
-		u.atkMax += weaponBonus;
+	    // 🎯 무기 강화 조회 (안전하게 조회 실패 시 0강)
+	    int weaponLv = 0;
+	    try {
+	        weaponLv = botService.selectWeaponLvCheck(map);
+	    } catch (Exception ignore) {
+	        weaponLv = 0;
+	    }
+	    int weaponBonus = getWeaponAtkBonus(weaponLv);
 
-		// 표시용 범위 계산 (Min은 그대로, Max는 보너스 반영)
-		int shownMin = u.atkMin;
-		int shownMax = u.atkMax; // 위에서 보너스 반영 후 값
+	    // ✅ 전투/표시용 공격력 범위 (유저 기본 스탯 불변)
+	    final int effAtkMin = u.atkMin;
+	    final int effAtkMax = u.atkMax + weaponBonus;
 
-		// 사용자 공격력에 무기 보너스 반영
-		u.atkMax += weaponBonus;
-		// 🔽🔽🔽 여기부터 새 로직 삽입 🔽🔽🔽
+	    // 2) 쓰러진 경우: 자동부활 체크 (REVIVE_WAIT_MINUTES 기준)
+	    String reviveMsg = reviveAfter1hIfDead(userName, roomName, u);
+	    boolean revivedThisTurn = false;
+	    if (reviveMsg != null) {
+	        if (!reviveMsg.isEmpty()) return reviveMsg; // 대기 안내 등 즉시 리턴
+	        revivedThisTurn = true; // "" → 이번 턴에 자동부활 반영됨(아래 읽기회복 스킵)
+	    }
 
-		// ① 쓰러진 경우: 1시간 부활 체크
-		String reviveMsg = reviveAfter1hIfDead(userName, roomName, u);
-		boolean revivedThisTurn = false;
-		if (reviveMsg != null) {
-		    if (!reviveMsg.isEmpty()) return reviveMsg; // 대기 안내 등 즉시 리턴
-		    revivedThisTurn = true; // "" → 이번 턴에 자동부활 반영됨
-		}
+	    // 3) 읽기 계산 회복(저장 없이 사용) — 자동부활이 이번 턴에 적용된 경우엔 스킵
+	    int effectiveHp = revivedThisTurn ? u.hpCur : computeEffectiveHpFromLastAttack(userName, roomName, u);
+	    u.hpCur = effectiveHp;
 
-		// ② 읽기 계산 회복(저장 없이 사용) — 자동부활이 이번 턴에 적용된 경우엔 스킵
-		int effectiveHp = revivedThisTurn ? u.hpCur : computeEffectiveHpFromLastAttack(userName, roomName, u);
-		u.hpCur = effectiveHp;
-		
-		
-		// 2) 진행중 전투 or 신규 타겟 세팅
-		OngoingBattle ob = botNewService.selectOngoingBattle(userName, roomName);
-		Monster m;
-		int monMaxHp, monHpRemainBefore;
-		if (ob != null) {
-			m = botNewService.selectMonsterByNo(ob.monNo);
-			if (m == null)
-				return "진행중 몬스터 정보를 찾을 수 없습니다.";
-			monMaxHp = m.monHp;
-			monHpRemainBefore = Math.max(0, m.monHp - ob.totalDealtDmg);
-		} else {
-			m = botNewService.selectMonsterByNo(u.targetMon);
-			if (m == null)
-				return "대상 몬스터가 지정되어 있지 않습니다. (TARGET_MON 없음)";
-			monMaxHp = m.monHp;
-			monHpRemainBefore = m.monHp;
-		}
+	    // 4) 진행중 전투 or 신규 타겟 세팅
+	    OngoingBattle ob = botNewService.selectOngoingBattle(userName, roomName);
+	    Monster m;
+	    int monMaxHp, monHpRemainBefore;
+	    if (ob != null) {
+	        m = botNewService.selectMonsterByNo(ob.monNo);
+	        if (m == null) return "진행중 몬스터 정보를 찾을 수 없습니다.";
+	        monMaxHp = m.monHp;
+	        monHpRemainBefore = Math.max(0, m.monHp - ob.totalDealtDmg);
+	    } else {
+	        m = botNewService.selectMonsterByNo(u.targetMon);
+	        if (m == null) return "대상 몬스터가 지정되어 있지 않습니다. (TARGET_MON 없음)";
+	        monMaxHp = m.monHp;
+	        monHpRemainBefore = m.monHp;
+	    }
 
-		// 3) 쿨타임 + 체력 50% 미만 안내
-		CooldownCheck cd = checkCooldown(userName, roomName);
-		if (!cd.ok) {
-			long min = cd.remainSeconds / 60;
-		    long sec = cd.remainSeconds % 60;
-		    return String.format("%s님, 공격 쿨타임 %d분 %d초 남았습니다.", userName, min, sec);
-		}
-		String hpMsg = buildBelowHalfMsg(userName, roomName, u);
-		if (hpMsg != null)
-			return hpMsg;
-		
+	    // 5) 쿨타임 + 체력 50% 미만 안내 (초 단위 표기)
+	    CooldownCheck cd = checkCooldown(userName, roomName);
+	    if (!cd.ok) {
+	        long min = cd.remainSeconds / 60;
+	        long sec = cd.remainSeconds % 60;
+	        return String.format("%s님, 공격 쿨타임 %d분 %d초 남았습니다.", userName, min, sec);
+	    }
+	    String hpMsg = buildBelowHalfMsg(userName, roomName, u);
+	    if (hpMsg != null) return hpMsg;
 
-		// (A) 치명타/기본공격력/배율을 '외부에서' 한 번만 굴림
-		boolean crit = rollCrit(u);
-		int baseAtk = rollBaseAtk(u);
-		double critMultiplier = Math.max(1.0, u.critDmg / 100.0);
-		int rawAtkDmg = crit ? (int)Math.round(baseAtk * critMultiplier) : baseAtk;
+	    // 6) 외부 굴림: 치명/기본공격/배율
+	    boolean crit = rollCrit(u);
 
-		// (B) 원턴킬 선판정
-		boolean lethal = rawAtkDmg >= monHpRemainBefore;
+	    // (버그 방지) 무기보너스 반영 범위에서 직접 굴림 (유저 기본 스탯 변경 금지)
+	    int baseAtk;
+	    if (effAtkMax <= effAtkMin) {
+	        baseAtk = effAtkMin; // 방어: 역전/동일 범위
+	    } else {
+	        baseAtk = ThreadLocalRandom.current().nextInt(effAtkMin, effAtkMax + 1);
+	    }
 
-		Flags flags = new Flags();
-		AttackCalc calc = new AttackCalc();
+	    double critMultiplier = Math.max(1.0, u.critDmg / 100.0);
+	    int rawAtkDmg = crit ? (int)Math.round(baseAtk * critMultiplier) : baseAtk;
 
-		if (lethal) {
-		    // ✅ 원턴킬: 패턴 완전 스킵
-		    flags.atkCrit = crit;
-		    flags.monPattern = 0;
+	    // 7) 원턴킬 선판정 → 원턴킬이면 패턴 스킵, 치명타 상세는 메시지에서만
+	    boolean lethal = rawAtkDmg >= monHpRemainBefore;
 
-		    calc.atkDmg = rawAtkDmg;
-		    calc.monDmg = 0;
-		    calc.patternMsg = null;
+	    Flags flags = new Flags();
+	    AttackCalc calc = new AttackCalc();
 
-		    // ✅ 치명타 상세 문구는 여기서 직접 작성해 줌 (누락 방지)
-		    if (crit) {
-		        calc.baseAtk = baseAtk;
-		        calc.critMultiplier = critMultiplier;
-		        calc.critMsg = "치명타! 데미지 " + baseAtk + " * " + critMultiplier + " = " + rawAtkDmg + "!";
-		    }
-		} else {
-		    // ✅ 킬 아님: 이때만 패턴 굴림 + 데미지 계산
-		    flags = rollFlags(u, m);
-		    flags.atkCrit = crit;
+	    if (lethal) {
+	        // ✅ 원턴킬: 패턴 완전 스킵
+	        flags.atkCrit = crit;
+	        flags.monPattern = 0;
 
-		    // 외부에서 굴린 baseAtk/crit/배율을 사용하도록 시그니처 변경
-		    calc = calcDamage(u, m, flags, baseAtk, crit, critMultiplier);
-		}
-		
-		// 5) 즉사 처리 (HP <= 0 미리보기)
-		int newHpPreview = Math.max(0, u.hpCur - calc.monDmg);
-		if (newHpPreview <= 0) {
-			botNewService.closeOngoingBattleTx(userName, roomName);
-			botNewService.updateUserHpOnlyTx(userName, roomName, 0);
+	        calc.atkDmg = rawAtkDmg;
+	        calc.monDmg = 0;
+	        calc.patternMsg = null;
 
-			// ✅ 사망 로그 남기기
-		    botNewService.insertBattleLogTx(new BattleLog()
-		        .setUserName(userName)
-		        .setRoomName(roomName)
-		        .setLv(u.lv)
-		        .setTargetMonLv(m.monNo)
-		        .setGainExp(0)
-		        .setAtkDmg(calc.atkDmg)
-		        .setMonDmg(calc.monDmg)
-		        .setAtkCritYn(flags.atkCrit ? 1 : 0)
-		        .setMonPatten(flags.monPattern)
-		        .setKillYn(0)
-		        .setNowYn(1)
-		        .setDropYn(0)
-		        .setDeathYn(1) // ✅
-		    );
+	        // 치명타 상세 값만 유지(문구는 buildAttackMessage에서 작성)
+	        if (crit) {
+	            calc.baseAtk = baseAtk;
+	            calc.critMultiplier = critMultiplier;
+	        }
+	    } else {
+	        // ✅ 킬 아님: 이때만 패턴 굴림 + 데미지 계산
+	        flags = rollFlags(u, m);
+	        flags.atkCrit = crit;
 
-		    return userName + "님, 큰 피해로 쓰러졌습니다." + NL
-		         + "현재 체력: 0 / " + u.hpMax + NL
-		         + "1시간 뒤 부활하여 50%체력을 가집니다.";
-			
-		}
+	        // calcDamage는 내부 치명타 문구를 만들지 않도록 수정되어 있어야 함
+	        calc = calcDamage(u, m, flags, baseAtk, crit, critMultiplier);
+	    }
 
-		// 6) 처치/드랍 판단
-		boolean willKill = calc.atkDmg >= monHpRemainBefore;
-		Resolve res = resolveKillAndDrop(m, calc, willKill, u);
+	    // 8) 즉사 처리(반격 피해 미리 반영)
+	    int newHpPreview = Math.max(0, u.hpCur - calc.monDmg);
+	    if (newHpPreview <= 0) {
+	        botNewService.closeOngoingBattleTx(userName, roomName);
+	        botNewService.updateUserHpOnlyTx(userName, roomName, 0);
 
-		// 7) DB 반영 (HP/EXP/LV + 로그)
-		LevelUpResult up = persist(userName, roomName, u, m, flags, calc, res);
+	        // ✅ 사망 로그
+	        botNewService.insertBattleLogTx(new BattleLog()
+	            .setUserName(userName)
+	            .setRoomName(roomName)
+	            .setLv(u.lv)
+	            .setTargetMonLv(m.monNo)
+	            .setGainExp(0)
+	            .setAtkDmg(calc.atkDmg)
+	            .setMonDmg(calc.monDmg)
+	            .setAtkCritYn(flags.atkCrit ? 1 : 0)
+	            .setMonPatten(flags.monPattern)
+	            .setKillYn(0)
+	            .setNowYn(1)
+	            .setDropYn(0)
+	            .setDeathYn(1)
+	        );
 
-		// 처치 시 전투 종료
-		if (res.killed)
-			botNewService.closeOngoingBattleTx(userName, roomName);
+	        return userName + "님, 큰 피해로 쓰러졌습니다." + NL
+	             + "현재 체력: 0 / " + u.hpMax + NL
+	             + REVIVE_WAIT_MINUTES + "분 뒤 부활하여 50% 체력을 가집니다.";
+	    }
 
-		// 8) 메시지
-		return buildAttackMessage(
-			    userName, u, m, flags, calc, res, up,
-			    monHpRemainBefore, monMaxHp,
-			    shownMin, shownMax,           // ⬅️ 추가
-			    weaponLv, weaponBonus         // ⬅️ 필요시 추가 표시용
-			);
+	    // 9) 처치/드랍 판단
+	    boolean willKill = calc.atkDmg >= monHpRemainBefore;
+	    Resolve res = resolveKillAndDrop(m, calc, willKill, u);
+
+	    // 10) DB 반영 (HP/EXP/LV + 로그)
+	    LevelUpResult up = persist(userName, roomName, u, m, flags, calc, res);
+
+	    // 처치 시 전투 종료
+	    if (res.killed) botNewService.closeOngoingBattleTx(userName, roomName);
+
+	    // 11) 메시지 (요청 레이아웃에 맞춘 buildAttackMessage 사용)
+	    int shownMin = effAtkMin;
+	    int shownMax = effAtkMax;
+
+	    return buildAttackMessage(
+	        userName, u, m, flags, calc, res, up,
+	        monHpRemainBefore, monMaxHp,
+	        shownMin, shownMax,
+	        weaponLv, weaponBonus
+	    );
 	}
 
 	
 	private boolean rollCrit(User u) {
 	    return ThreadLocalRandom.current().nextDouble(0, 100) < clamp(u.critRate, 0, 100);
 	}
-	private int rollBaseAtk(User u) {
-	    return ThreadLocalRandom.current().nextInt(u.atkMin, u.atkMax + 1);
+
+	// 추가 (무기보너스 반영 범위를 안전하게 쓸 수 있게)
+	private int rollBaseAtk(int min, int max) {
+	    int lo = Math.max(0, min);
+	    int hi = Math.max(lo, max);
+	    return ThreadLocalRandom.current().nextInt(lo, hi + 1);
 	}
 	private int applyCrit(int baseAtk, boolean crit, double critDmgPercent) {
 	    return crit ? (int)Math.round(baseAtk * Math.max(1.0, critDmgPercent / 100.0)) : baseAtk;
@@ -587,9 +593,11 @@ public class BossAttackController {
 		u.hpCur = Math.max(0, u.hpCur - c.monDmg);
 		LevelUpResult up = applyExpAndLevelUp(u, res.gainExp);
 
-		botNewService.updateUserAfterBattleTx(userName, roomName, u.lv, u.expCur, u.expNext, u.hpCur, u.hpMax, u.atkMin,
-				u.atkMax,u.critRate,u.hpRegen );
-		 // ✅ 이번 공격으로 사망했는지 계산
+		botNewService.updateUserAfterBattleTx(
+				   userName, roomName,
+				   u.lv, u.expCur, u.expNext, u.hpCur, u.hpMax,
+				   u.atkMin, u.atkMax, u.critRate, u.hpRegen
+				);
 	    int deathYn = (u.hpCur == 0 && c.monDmg > 0) ? 1 : 0;
 	    
 		botNewService.insertBattleLogTx(new BattleLog().setUserName(userName).setRoomName(roomName).setLv(up.beforeLv)
@@ -597,6 +605,7 @@ public class BossAttackController {
 				.setAtkCritYn(f.atkCrit ? 1 : 0).setMonPatten(f.monPattern).setKillYn(res.killed ? 1 : 0).setNowYn(1)
 				.setDropYn(res.dropYn ? 1 : 0).setDeathYn(deathYn));
 
+		
 		res.levelUpCount = up.levelUpCount;
 		return up;
 	}
