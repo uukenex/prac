@@ -663,6 +663,12 @@ public class BossAttackController {
 	        sb.append("❤️ 현재 체력: ").append(u.hpCur).append(" / ").append(u.hpMax).append(NL).append(NL);
 	    }
 	    
+	    // ✅ 드랍 표시 (여기!)
+	    if (res.killed && res.dropYn) {
+	        String dropName = (m.monDrop == null || m.monDrop.trim().isEmpty()) ? "아이템" : m.monDrop;
+	        sb.append("✨ 드랍 획득: ").append(dropName).append(NL);
+	    }
+
 	    // 7) EXP 라인 (상단보다 아래, 그러나 EXP 총계와 함께 한 줄)
 	    sb.append("✨ EXP+").append(res.gainExp)
 	      .append(" , EXP: ").append(u.expCur).append(" / ").append(u.expNext).append(NL);
