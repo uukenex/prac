@@ -58,4 +58,13 @@ public interface BotNewDAO {
 	int insertUserWithTarget(@Param("userName") String userName,
             @Param("roomName") String roomName,
             @Param("targetMonNo") int targetMonNo);
+	
+	/**
+     * 최근(now_yn=1) 배틀로그의 lucky_yn (0/1)을 반환. 없으면 null.
+     * 내부적으로 메모리 캐시를 먼저 확인한 후, 캐시에 없으면 DB 조회.
+     */
+    Integer selectLatestLuckyYn(String userName, String roomName);
+
+    /** (옵션) 캐시 갱신용 헬퍼: persist 직후 호출하면 캐시 최신화됨 */
+    void updateLuckyCache(String userName, String roomName, Integer luckyYn);
 }

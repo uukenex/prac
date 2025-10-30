@@ -44,6 +44,7 @@ public interface BotNewService {
     int updateUserTargetMonTx(String userName, String roomName, int newMonNo);
     
     int insertUserWithTargetTx(String userName, String roomName, int targetMonNo);
+    Integer selectLatestLuckyYn(String userName, String roomName);
 } 
 
 	

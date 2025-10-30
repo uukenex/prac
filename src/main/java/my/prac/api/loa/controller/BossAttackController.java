@@ -32,8 +32,10 @@ public class BossAttackController {
 	/* ===== Config / Const ===== */
 	private static final Logger log = LoggerFactory.getLogger(BossAttackController.class);
 	private static final int COOLDOWN_SECONDS = 180; // 1분
-	private static final int REVIVE_WAIT_MINUTES = 10; 
+	private static final int REVIVE_WAIT_MINUTES = 10;
 	private static final String NL = "♬";
+	// 🍀 Lucky: 전투 시작 시 5% 확률 고정
+	private static final double LUCKY_RATE = 0.05;
 
 	/* ===== DI ===== */
 	@Autowired
@@ -83,10 +85,9 @@ public class BossAttackController {
 	    try {
 	        weaponLv = botService.selectWeaponLvCheck(wm);
 	    } catch (Exception ignore) {
-	        // 조회 실패시 0강 처리
 	        weaponLv = 0;
 	    }
-	    int weaponBonus = getWeaponAtkBonus(weaponLv); // 현재 전역 규칙을 그대로 사용 (25강부터 +1씩)
+	    int weaponBonus = getWeaponAtkBonus(weaponLv); // 25강부터 +1씩
 
 	    // ⑤ 표시용 ATK 범위 (Min은 기본, Max는 무기보너스 반영)
 	    int shownAtkMin = u.atkMin;
@@ -234,6 +235,10 @@ public class BossAttackController {
 	        monHpRemainBefore = m.monHp;
 	    }
 
+	    // 🍀 Lucky 결정/유지: 새 전투 시작일 때만 5%로 고정, 진행 중이면 최근 now_yn=1 로그에서 유지
+	    boolean isNewBattle = (ob == null);
+	    boolean lucky = resolveBattleLucky(userName, roomName, isNewBattle);
+
 	    // 5) 쿨타임 + 체력 50% 미만 안내 (초 단위 표기)
 	    CooldownCheck cd = checkCooldown(userName, roomName);
 	    if (!cd.ok) {
@@ -283,7 +288,7 @@ public class BossAttackController {
 	        flags = rollFlags(u, m);
 	        flags.atkCrit = crit;
 
-	        // calcDamage는 내부 치명타 문구를 만들지 않도록 수정되어 있어야 함
+	        // calcDamage는 내부 치명타 문구를 만들지 않도록 유지
 	        calc = calcDamage(u, m, flags, baseAtk, crit, critMultiplier);
 	    }
 
@@ -315,17 +320,17 @@ public class BossAttackController {
 	             + REVIVE_WAIT_MINUTES + "분 뒤 부활하여 50% 체력을 가집니다.";
 	    }
 
-	    // 9) 처치/드랍 판단
+	    // 9) 처치/드랍 판단 (🍀 lucky 반영)
 	    boolean willKill = calc.atkDmg >= monHpRemainBefore;
-	    Resolve res = resolveKillAndDrop(m, calc, willKill, u);
+	    Resolve res = resolveKillAndDrop(m, calc, willKill, u, lucky);
 
-	    // 10) DB 반영 (HP/EXP/LV + 로그)
+	    // 10) DB 반영 (HP/EXP/LV + 로그) — lucky/dropCode 저장
 	    LevelUpResult up = persist(userName, roomName, u, m, flags, calc, res);
 
 	    // 처치 시 전투 종료
 	    if (res.killed) botNewService.closeOngoingBattleTx(userName, roomName);
 
-	    // 11) 메시지 (요청 레이아웃에 맞춘 buildAttackMessage 사용)
+	    // 11) 메시지
 	    int shownMin = effAtkMin;
 	    int shownMax = effAtkMax;
 
@@ -337,6 +342,18 @@ public class BossAttackController {
 	    );
 	}
 
+	/** 진행 중이면 최근 now_yn=1 로그 lucky 유지, 새 전투 시작이면 5%로 결정 */
+	private boolean resolveBattleLucky(String userName, String roomName, boolean isNewBattle) {
+	    if (isNewBattle) {
+	        return ThreadLocalRandom.current().nextDouble() < LUCKY_RATE;
+	    }
+	    // 진행 중 전투: 최근 로그에서 lucky_yn 조회 (없으면 false)
+	    Integer lastLucky = null;
+	    try {
+	        lastLucky = botNewService.selectLatestLuckyYn(userName, roomName);
+	    } catch (Exception ignore) {}
+	    return lastLucky != null && lastLucky == 1;
+	}
 	
 	private boolean rollCrit(User u) {
 	    return ThreadLocalRandom.current().nextDouble(0, 100) < clamp(u.critRate, 0, 100);
@@ -397,7 +414,6 @@ public class BossAttackController {
 
 	    return ""; // 메시지 없이 계속 진행 (이번 턴에 읽기-회복 금지)
 	}
-
 
 	/**
 	 * 마지막 공격시각 기준 '읽기 계산' 체력. DB에는 즉시 저장하지 않고, 이후 공격 성공 시 persist에서 최종 HP를 저장. 이렇게
@@ -488,25 +504,20 @@ public class BossAttackController {
 	    int[] weights = new int[enabled];
 	    for (int i = 0; i < enabled; i++) weights[i] = 1;
 
-	    // ✅ 예: "패턴 플래그가 2일 때, 1/2 중 2가 90%"를 전역 규칙으로
+	    // 예시 가중치
 	    if (enabled == 2) {
-	        weights[0] = 40;  // 패턴 1 → 10%
-	        weights[1] = 60;  // 패턴 2 → 90%
+	        weights[0] = 40;
+	        weights[1] = 60;
 	    }
-	    
 	    if (enabled == 3) {
-	        weights[0] = 20;  // 패턴 1 → 10%
-	        weights[1] = 50;  // 패턴 2 → 90%
-	        weights[2] = 30;  // 패턴 2 → 90%
+	        weights[0] = 20;
+	        weights[1] = 50;
+	        weights[2] = 30;
 	    }
 
-	    // (선택) 특정 몬스터만 다르게 하고 싶으면 monNo 기준으로 분기 가능
-	    // if (m.monNo == 7 && enabled >= 3) { weights = new int[]{60, 30, 10}; }
-
-	    // 가중치 합산 후 룰렛 선택
 	    int sum = 0;
 	    for (int w : weights) sum += Math.max(0, w);
-	    if (sum <= 0) { // 방어: 전부 0이면 균등
+	    if (sum <= 0) {
 	        for (int i = 0; i < enabled; i++) weights[i] = 1;
 	        sum = enabled;
 	    }
@@ -514,7 +525,7 @@ public class BossAttackController {
 	    int acc = 0;
 	    for (int i = 0; i < enabled; i++) {
 	        acc += weights[i];
-	        if (pick <= acc) return i + 1; // 패턴 번호: 1-based
+	        if (pick <= acc) return i + 1; // 1-based
 	    }
 	    return 1; // fallback
 	}
@@ -570,24 +581,27 @@ public class BossAttackController {
 		return c;
 	}
 
-	private Resolve resolveKillAndDrop(Monster m, AttackCalc c, boolean willKill, User u) {
+	/** 🍀 Lucky 반영: EXP×3, 드랍×3('3') */
+	private Resolve resolveKillAndDrop(Monster m, AttackCalc c, boolean willKill, User u, boolean lucky) {
 		Resolve r = new Resolve();
 		r.killed = willKill;
+		r.lucky = lucky;
 
-		// 📉 레벨차 보정은 "킬일 때만" 적용
-		int baseExp = m.monExp;
-		int diff = Math.max(0, u.lv - m.monNo); // 유저가 높을수록 불이익
-		double ratio = Math.max(0.1, 1.0 - diff * 0.2); // 20%씩 감소, 최소 10%
-		int adjustedExp = (int) Math.round(baseExp * ratio); // 킬 경험치(보정 적용)
+		// EXP 기본 계산
+		int baseExp = willKill
+			? (int)Math.round(m.monExp * Math.max(0.1, 1.0 - Math.max(0, u.lv - m.monNo) * 0.2))
+			: 1;
 
-		// ✅ 비킬(공격 성공, 생존) = 항상 1 EXP
-		r.gainExp = r.killed ? adjustedExp : 1;
+		int expMul = lucky ? 3 : 1;
+		r.gainExp = baseExp * expMul;
 
-		r.dropYn = r.killed && ThreadLocalRandom.current().nextDouble(0, 100) < 30.0;
+		// 드랍: 성공 시 '1' 또는 '3', 실패 시 '0'
+		boolean drop = willKill && ThreadLocalRandom.current().nextDouble(0, 100) < 30.0;
+		r.dropCode = drop ? (lucky ? "3" : "1") : "0";
 		return r;
 	}
 	
-	/** HP/EXP/LV 반영 + 로그 기록. LevelUpResult 반환해 메시지에서 사용 */
+	/** HP/EXP/LV 반영 + 로그 기록. Lucky/Drop 문자열 저장. */
 	private LevelUpResult persist(String userName, String roomName, User u, Monster m, Flags f, AttackCalc c,
 			Resolve res) {
 		u.hpCur = Math.max(0, u.hpCur - c.monDmg);
@@ -599,13 +613,38 @@ public class BossAttackController {
 				   u.atkMin, u.atkMax, u.critRate, u.hpRegen
 				);
 	    int deathYn = (u.hpCur == 0 && c.monDmg > 0) ? 1 : 0;
-	    
-		botNewService.insertBattleLogTx(new BattleLog().setUserName(userName).setRoomName(roomName).setLv(up.beforeLv)
-				.setTargetMonLv(m.monNo).setGainExp(up.gainedExp).setAtkDmg(c.atkDmg).setMonDmg(c.monDmg)
-				.setAtkCritYn(f.atkCrit ? 1 : 0).setMonPatten(f.monPattern).setKillYn(res.killed ? 1 : 0).setNowYn(1)
-				.setDropYn(res.dropYn ? 1 : 0).setDeathYn(deathYn));
 
-		
+	    BattleLog log = new BattleLog()
+				.setUserName(userName)
+				.setRoomName(roomName)
+				.setLv(up.beforeLv)
+				.setTargetMonLv(m.monNo)
+				.setGainExp(up.gainedExp)
+				.setAtkDmg(c.atkDmg)
+				.setMonDmg(c.monDmg)
+				.setAtkCritYn(f.atkCrit ? 1 : 0)
+				.setMonPatten(f.monPattern)
+				.setKillYn(res.killed ? 1 : 0)
+				.setNowYn(1)
+				.setDeathYn(deathYn);
+
+	    // lucky_yn 저장 (0/1)
+	    try { log.getClass().getMethod("setLuckyYn", int.class).invoke(log, res.lucky ? 1 : 0); } catch (Exception ignore) {}
+
+	    // drop_yn VARCHAR '0'|'1'|'3'
+	    boolean usedStrSetter = false;
+	    try {
+	    	log.getClass().getMethod("setDropYnStr", String.class).invoke(log, res.dropCode);
+	    	usedStrSetter = true;
+	    } catch (Exception ignore) {}
+	    if (!usedStrSetter) {
+	        // DTO가 int만 받는 경우 임시 매핑
+	        int dropAsInt = "3".equals(res.dropCode) ? 3 : ("1".equals(res.dropCode) ? 1 : 0);
+	        log.setDropYn(dropAsInt);
+	    }
+
+	    botNewService.insertBattleLogTx(log);
+
 		res.levelUpCount = up.levelUpCount;
 		return up;
 	}
@@ -613,7 +652,7 @@ public class BossAttackController {
 	/** 무기강화 효과 계산 */
 	private int getWeaponAtkBonus(int weaponLv) {
 	    if (weaponLv < 25) return 0;
-	    return weaponLv - 24; // 25강부터 +1씩 증가
+	    return weaponLv - 24; // 25강부터 +1씩 증가 (상한 필요시 Math.min(...,5))
 	}
 	
 	private String buildAttackMessage(
@@ -625,20 +664,24 @@ public class BossAttackController {
 
 	    StringBuilder sb = new StringBuilder();
 
-	    // 1) 헤더 (두 줄)
+	    // 1) 헤더
 	    sb.append("⚔ ").append(userName).append("님, ").append(NL)
 	      .append("▶ ").append(m.monName).append("을(를) 공격!").append(NL).append(NL);
+
+	    // 🍀 Lucky 배너
+	    if (res.lucky) {
+	        sb.append("✨ LUCKY MONSTER! (경험치×3, 드랍×3)").append(NL);
+	    }
 
 	    // 2) 치명타 라인 (있을 때만)
 	    if (flags.atkCrit) {
 	        sb.append("✨ 치명타!").append(NL);
 	    }
 
-	    // 3) 데미지 라인: (Min~Max ⇒ 실제)
+	    // 3) 데미지 라인: (Min~Max ⇒ 실제). 치명타면 base*mult=>total
 	    sb.append("⚔ 데미지: (")
 	      .append(shownAtkMin).append("~").append(shownAtkMax).append(" ⇒ ");
 	    if (flags.atkCrit && calc.baseAtk > 0 && calc.critMultiplier >= 1.0) {
-	        // 예: 19*1.5=>29
 	        sb.append(calc.baseAtk).append("*").append(trimDouble(calc.critMultiplier))
 	          .append("=>").append(calc.atkDmg);
 	    } else {
@@ -655,21 +698,25 @@ public class BossAttackController {
 	        sb.append("⚅ ").append(calc.patternMsg).append(NL);
 	    }
 
+	    // 6) 받은 피해/현재 체력 (조건에 따라 한 줄/단독)
 	    if (calc.monDmg > 0) {
 	        sb.append("❤️ 받은 피해: ").append(calc.monDmg)
-	          .append(",  현재 체력: ").append(u.hpCur).append(" / ").append(u.hpMax).append(NL).append(NL);
+	          .append(",  현재 체력: ").append(u.hpCur).append(" / ").append(u.hpMax).append(NL);
 	    } else {
-	        // ✅ 피해 없을 때는 현재 체력만
-	        sb.append("❤️ 현재 체력: ").append(u.hpCur).append(" / ").append(u.hpMax).append(NL).append(NL);
-	    }
-	    
-	    // ✅ 드랍 표시 (여기!)
-	    if (res.killed && res.dropYn) {
-	        String dropName = (m.monDrop == null || m.monDrop.trim().isEmpty()) ? "아이템" : m.monDrop;
-	        sb.append("✨ 드랍 획득: ").append(dropName).append(NL);
+	        sb.append("❤️ 현재 체력: ").append(u.hpCur).append(" / ").append(u.hpMax).append(NL);
 	    }
 
-	    // 7) EXP 라인 (상단보다 아래, 그러나 EXP 총계와 함께 한 줄)
+	    // 7) 드랍 (있을 때만). '3'이면 x3 강조
+	    if (res.killed && !"0".equals(res.dropCode)) {
+	        String dropName = (m.monDrop == null || m.monDrop.trim().isEmpty()) ? "아이템" : m.monDrop;
+	        if ("3".equals(res.dropCode)) {
+	            sb.append("✨ 드랍 획득 x3: ").append(dropName).append(NL);
+	        } else {
+	            sb.append("✨ 드랍 획득: ").append(dropName).append(NL);
+	        }
+	    }
+
+	    // 8) EXP 라인 (획득 + 총계)
 	    sb.append("✨ EXP+").append(res.gainExp)
 	      .append(" , EXP: ").append(u.expCur).append(" / ").append(u.expNext).append(NL);
 
@@ -697,6 +744,7 @@ public class BossAttackController {
 		int need = threshold - currentHp;
 		return (int) Math.ceil(need / (double) u.hpRegen);
 	}
+
 	/* ===== DTOs (inner simple) ===== */
 	private static class Flags {
 		boolean atkCrit;
@@ -710,23 +758,25 @@ public class BossAttackController {
 	    int atkMax;
 	    String patternMsg;
 
-	    // ✅ 치명타 표시용
-	    String critMsg;
 	    int baseAtk;
 	    double critMultiplier;
 	}
 
 	private static class Resolve {
 		boolean killed;
-		boolean dropYn;
+		// 드랍 코드: '0'(없음) / '1'(일반) / '3'(럭키 x3)
+		String dropCode;
 		int gainExp;
 		int levelUpCount;
+
+		// 🍀 럭키 유지
+		boolean lucky;
 	}
 
 	private static class CooldownCheck {
 	    final boolean ok;
 	    final int remainMinutes;
-	    final long remainSeconds; // ✅ 추가
+	    final long remainSeconds;
 
 	    private CooldownCheck(boolean ok, int remainMinutes, long remainSeconds) {
 	        this.ok = ok;
@@ -767,8 +817,8 @@ public class BossAttackController {
 		int hpMax = u.hpMax;
 		int atkMin = u.atkMin;
 		int atkMax = u.atkMax;
-		int crit = u.critRate; // % 단위 (예: 0, 2, 4, ...)
-		 int regen   = u.hpRegen;
+		int crit = u.critRate;
+		int regen = u.hpRegen;
 
 		int hpDelta = 0, atkMinDelta = 0, atkMaxDelta = 0;
 		int critDelta = 0, regenDelta = 0;
@@ -779,21 +829,16 @@ public class BossAttackController {
 			lv++;
 			upCount++;
 
-			// 다음 레벨 필요치 규칙 (원래 쓰던 규칙 유지)
+			// 다음 레벨 필요치 규칙
 			expNext = calcNextExp(lv, expNext);
 
-			// ★ 레벨업 보상: HP+10, ATK_MIN+1, ATK_MAX+2, CRIT_RATE+2%
-			hpMax += 10;
-			hpDelta += 10;
-			atkMin += 1;
-			atkMinDelta += 1;
-			atkMax += 3;
-			atkMaxDelta += 3;
-			crit += 2;
-			critDelta += 2;
-			if (lv % 3 == 0) {          // ✅ 3레벨마다 리젠 +1
-	            regen++;
-	            regenDelta++;
+			// ★ 레벨업 보상
+			hpMax += 10;  hpDelta     += 10;
+			atkMin += 1;  atkMinDelta += 1;
+			atkMax += 3;  atkMaxDelta += 3;
+			crit   += 2;  critDelta   += 2;
+			if (lv % 3 == 0) {
+	            regen++; regenDelta++;
 	        }
 		}
 
@@ -815,20 +860,19 @@ public class BossAttackController {
 		r.atkMinDelta = atkMinDelta;
 		r.atkMaxDelta = atkMaxDelta;
 		r.critDelta = critDelta;
-		r.hpRegenDelta   = regenDelta;
-		// (원하면 LevelUpResult에 critDelta 필드 추가해서 메시지로도 보여줄 수 있음)
+		r.hpRegenDelta = regenDelta;
 		return r;
 	}
-	// 튜닝 파라미터(원하는 난이도에 맞게 조절)
-	private static final int DELTA_BASE = 150;   // 저레벨 기본 증가량
-	private static final int DELTA_LIN  = 120;   // 선형 계수
-	private static final int DELTA_QUAD = 8;     // 2차 계수(볼록도)
 
-	// 오버플로우 방지용
+	// 튜닝 파라미터
+	private static final int DELTA_BASE = 150;
+	private static final int DELTA_LIN  = 120;
+	private static final int DELTA_QUAD = 8;
+
 	private static final int NEXT_CAP   = Integer.MAX_VALUE;
 
 	private int calcNextExp(int newLv, int prevExpNext) {
-	    long lv = Math.max(1, newLv); // 방어
+	    long lv = Math.max(1, newLv);
 	    long delta = (long)DELTA_BASE + (long)DELTA_LIN * lv + (long)DELTA_QUAD * lv * lv;
 	    long next  = (long)prevExpNext + delta;
 	    if (next > NEXT_CAP) return NEXT_CAP;

@@ -234,5 +234,20 @@
 		                 0
 		          END desc         
 	</select>
-	
+	<!--
+      최근(now_yn=1) 로그에서 lucky_yn 1건 반환 (없으면 null)
+      Oracle 11gR2: ROWNUM 사용
+    -->
+    <select id="selectLatestLuckyYn" parameterType="map" resultType="int">
+        SELECT lucky_yn
+        FROM (
+            SELECT bl.lucky_yn
+            FROM TBOT_POINT_NEW_BATTLE_LOG bl
+            WHERE bl.user_name = #{userName}
+              AND bl.room_name = #{roomName}
+              AND bl.now_yn    = 1
+            ORDER BY bl.insert_date DESC
+        )
+        WHERE ROWNUM = 1
+    </select>
 </mapper>

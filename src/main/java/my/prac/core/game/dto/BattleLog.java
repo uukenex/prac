@@ -20,6 +20,7 @@ public class BattleLog {
 	private int nowYn;
 	private int dropYn;
 	private int deathYn; // 0/1 (또는 null)
+	private int luckyYn; // 0/1 (또는 null)
 
 	public BattleLog setUserName(String v) {
 		this.userName = v;
@@ -81,9 +82,14 @@ public class BattleLog {
 		return this;
 	}
 
-
 	public BattleLog setDeathYn(int v) {
 		this.deathYn = v;
 		return this;
 	}
+
+	public BattleLog setLuckyYn(int v) {
+		this.luckyYn = v;
+		return this;
+	}
+
 }

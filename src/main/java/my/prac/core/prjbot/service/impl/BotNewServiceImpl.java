@@ -105,4 +105,15 @@ public class BotNewServiceImpl implements BotNewService {
     public int insertUserWithTargetTx(String userName, String roomName, int targetMonNo) {
     	return botNewDAO.insertUserWithTarget(userName, roomName,targetMonNo);
     }
+    
+    @Override
+    public Integer selectLatestLuckyYn(String userName, String roomName) {
+        if (userName == null || roomName == null) return null;
+        try {
+            return botNewDAO.selectLatestLuckyYn(userName, roomName);
+        } catch (Exception e) {
+            // 안정성: 실패 시 null
+            return null;
+        }
+    }
 }
