@@ -170,6 +170,12 @@ public class BossAttackController {
 		if (u == null)
 			return guideSetTargetMessage();
 
+		// 🎯 무기 강화 조회
+		int weaponLv = botService.selectWeaponLvCheck(map);
+		int weaponBonus = getWeaponAtkBonus(weaponLv);
+
+		// 사용자 공격력에 무기 보너스 반영
+		u.atkMax += weaponBonus;
 		// 🔽🔽🔽 여기부터 새 로직 삽입 🔽🔽🔽
 
 		// ① 쓰러진 경우: 1시간 부활 체크
@@ -215,28 +221,40 @@ public class BossAttackController {
 			return hpMsg;
 		
 
-		// (1) 순수 공격 데미지 계산
+		// (A) 치명타/기본공격력/배율을 '외부에서' 한 번만 굴림
 		boolean crit = rollCrit(u);
 		int baseAtk = rollBaseAtk(u);
-		int rawAtkDmg = applyCrit(baseAtk, crit, u.critDmg);
+		double critMultiplier = Math.max(1.0, u.critDmg / 100.0);
+		int rawAtkDmg = crit ? (int)Math.round(baseAtk * critMultiplier) : baseAtk;
 
-		// (2) 원턴킬 여부 판정
+		// (B) 원턴킬 선판정
 		boolean lethal = rawAtkDmg >= monHpRemainBefore;
 
-		// (3) 킬이면 몬스터 패턴 스킵
 		Flags flags = new Flags();
 		AttackCalc calc = new AttackCalc();
+
 		if (lethal) {
+		    // ✅ 원턴킬: 패턴 완전 스킵
 		    flags.atkCrit = crit;
-		    flags.monPattern = 0;  // 패턴 없음
+		    flags.monPattern = 0;
+
 		    calc.atkDmg = rawAtkDmg;
 		    calc.monDmg = 0;
-		    calc.patternMsg = null; // ✅ 패턴 메시지 표시 X
+		    calc.patternMsg = null;
+
+		    // ✅ 치명타 상세 문구는 여기서 직접 작성해 줌 (누락 방지)
+		    if (crit) {
+		        calc.baseAtk = baseAtk;
+		        calc.critMultiplier = critMultiplier;
+		        calc.critMsg = "💥 치명타! 데미지 " + baseAtk + " * " + critMultiplier + " = " + rawAtkDmg + "!";
+		    }
 		} else {
-		    // 킬이 아닐 경우에만 몬스터 패턴 굴림
+		    // ✅ 킬 아님: 이때만 패턴 굴림 + 데미지 계산
 		    flags = rollFlags(u, m);
 		    flags.atkCrit = crit;
-		    calc = calcDamage(u, m, flags);
+
+		    // 외부에서 굴린 baseAtk/crit/배율을 사용하도록 시그니처 변경
+		    calc = calcDamage(u, m, flags, baseAtk, crit, critMultiplier);
 		}
 		
 		// 5) 즉사 처리 (HP <= 0 미리보기)
@@ -415,10 +433,8 @@ public class BossAttackController {
 	private Flags rollFlags(User u, Monster m) {
 		ThreadLocalRandom r = ThreadLocalRandom.current();
 		Flags f = new Flags();
-
-		int crit = Math.min(100, Math.max(0, u.critRate));
-		f.atkCrit = r.nextInt(100) < crit; // ✅ 정수 비교로 간단·빠름
-
+		int crit = Math.min(100, Math.max(0, u.critRate)); // int 0~100
+		f.atkCrit = r.nextInt(100) < crit;
 		f.monPattern = rollPatternWeighted(m, r);
 		return f;
 	}
@@ -463,21 +479,17 @@ public class BossAttackController {
 	    return 1; // fallback
 	}
 
-	private AttackCalc calcDamage(User u, Monster m, Flags f) {
+	private AttackCalc calcDamage(User u, Monster m, Flags f, int baseAtk, boolean crit, double critMultiplier) {
 		ThreadLocalRandom r = ThreadLocalRandom.current();
 		AttackCalc c = new AttackCalc();
 
-		 // 기본 공격력 (랜덤)
-	    int baseAtk = r.nextInt(u.atkMin, u.atkMax + 1);
+		// ✅ 외부에서 전달받은 값 사용 (내부에서 다시 굴리지 않음)
+		c.baseAtk = baseAtk;
+		c.critMultiplier = critMultiplier;
+		c.atkDmg = crit ? (int) Math.round(baseAtk * critMultiplier) : baseAtk;
 
-	    // 치명타 여부
-	    boolean crit = f.atkCrit;
-	    double critMultiplier = Math.max(1.0, u.critDmg / 100.0); // ex: 150 -> 1.5배
+		String name = m.monName;
 
-	    // 실제 적용되는 피해 계산
-	    c.atkDmg = crit ? (int) Math.round(baseAtk * critMultiplier) : baseAtk;
-	    
-		String name = m.monName; // 자연어 메시지에 사용
 		switch (f.monPattern) {
 		case 1: // WAIT
 			c.monDmg = 0;
@@ -487,32 +499,24 @@ public class BossAttackController {
 			int minDmg = Math.max(1, (int) Math.floor(m.monAtk * 0.5));
 			int maxDmg = m.monAtk;
 			c.monDmg = ThreadLocalRandom.current().nextInt(minDmg, maxDmg + 1);
-			c.patternMsg = name + "이(가) "+c.monDmg+" 의 데미지로 반격합니다!";
+			c.patternMsg = name + "이(가) " + c.monDmg + " 의 데미지로 반격합니다!";
 			break;
 		case 3: // DEFEND
-			// 몬스터가 방어 태세로 전환
-		    // 플레이어의 공격력 중 절반만 우선 적용 (기본 방어 효과)
-		    int reducedAtk = (int) Math.round(c.atkDmg * 0.5);
+			int reducedAtk = (int) Math.round(c.atkDmg * 0.5);
+			int minDef = Math.max(1, (int) Math.floor(m.monAtk * 0.5));
+			int maxDef = m.monAtk;
+			int defPower = ThreadLocalRandom.current().nextInt(minDef, maxDef + 1);
 
-		    // 방어력 난수 계산: 몬스터 공격력 기준으로 변동 (예: 30%~100%)
-		    int minDef = Math.max(1, (int) Math.floor(m.monAtk * 0.5));
-		    int maxDef = m.monAtk;
-		    int defPower = ThreadLocalRandom.current().nextInt(minDef, maxDef + 1);
-
-		    // 방어 성공 여부 판정
-		    if (defPower >= reducedAtk) {
-		        // 완벽 방어 성공
-		        c.atkDmg = 0;
-		        c.monDmg = 0;
-		        c.patternMsg = name + "이(가) 공격을 완전 방어했습니다!";
-		    } else {
-		        // 일부 방어 (절반 피해 적용)
-		        c.atkDmg = reducedAtk;
-		        c.monDmg = 0;
-		        int blocked = reducedAtk - defPower;
-		        c.patternMsg = name + "이(가) 방어합니다!(" 
-		                     + defPower + " 방어, " + blocked + " 피해)";
-		    }
+			if (defPower >= reducedAtk) {
+				c.atkDmg = 0;
+				c.monDmg = 0;
+				c.patternMsg = name + "이(가) 공격을 완전 방어했습니다!";
+			} else {
+				c.atkDmg = reducedAtk;
+				c.monDmg = 0;
+				int blocked = reducedAtk - defPower;
+				c.patternMsg = name + "이(가) 방어합니다!(" + defPower + " 방어, " + blocked + " 피해)";
+			}
 			break;
 		case 4: // SPECIAL
 			c.monDmg = (int) Math.round(m.monAtk * 2.0);
@@ -522,31 +526,30 @@ public class BossAttackController {
 			c.monDmg = 0;
 			c.patternMsg = name + "의 알 수 없는 행동… (피해 0)";
 		}
-		
-		if (crit) {
-	        c.patternMsg = (c.patternMsg == null ? "" : c.patternMsg + "\n")
-	                     + "✨치명타! 데미지 " + baseAtk + " * " + critMultiplier + " = "
-	                     + c.atkDmg + "!";
-	    }
 
-	    
+// ✅ 치명타 상세 문구는 pattern과 별개로 항상 세팅
+		if (crit) {
+			c.critMsg = "💥 치명타! 데미지 " + baseAtk + " * " + critMultiplier + " = " + c.atkDmg + "!";
+		}
+
 		return c;
 	}
 
 	private Resolve resolveKillAndDrop(Monster m, AttackCalc c, boolean willKill, User u) {
-	    Resolve r = new Resolve();
-	    r.killed = willKill;
+		Resolve r = new Resolve();
+		r.killed = willKill;
 
-	    int baseExp = m.monExp;
+		// 📉 레벨차 보정은 "킬일 때만" 적용
+		int baseExp = m.monExp;
+		int diff = Math.max(0, u.lv - m.monNo); // 유저가 높을수록 불이익
+		double ratio = Math.max(0.1, 1.0 - diff * 0.2); // 20%씩 감소, 최소 10%
+		int adjustedExp = (int) Math.round(baseExp * ratio); // 킬 경험치(보정 적용)
 
-	    // 📉 레벨차에 따른 경험치 보정
-	    int diff = Math.max(0, u.lv - m.monNo); // 유저가 높을수록 불이익
-	    double ratio = Math.max(0.1, 1.0 - diff * 0.2); // 20%씩 감소, 최소 10%
-	    int adjustedExp = (int)Math.round(baseExp * ratio);
+		// ✅ 비킬(공격 성공, 생존) = 항상 1 EXP
+		r.gainExp = r.killed ? adjustedExp : 1;
 
-	    r.gainExp = r.killed ? adjustedExp : Math.max(0, Math.min(1, adjustedExp / 5));
-	    r.dropYn = r.killed && ThreadLocalRandom.current().nextDouble(0, 100) < 30.0;
-	    return r;
+		r.dropYn = r.killed && ThreadLocalRandom.current().nextDouble(0, 100) < 30.0;
+		return r;
 	}
 	
 	/** HP/EXP/LV 반영 + 로그 기록. LevelUpResult 반환해 메시지에서 사용 */
@@ -569,73 +572,86 @@ public class BossAttackController {
 		return up;
 	}
 
+	/** 무기강화 효과 계산 */
+	private int getWeaponAtkBonus(int weaponLv) {
+	    if (weaponLv < 25) return 0;
+	    return weaponLv - 24; // 25강부터 +1씩 증가
+	}
+	
 	/** 최종 메시지 */
-	private String buildAttackMessage(String userName, User u, Monster m, Flags flags, AttackCalc calc, Resolve res,
-			LevelUpResult up, int monHpRemainBefore, int monMaxHp) {
-		StringBuilder sb = new StringBuilder();
-		sb.append(userName).append("님, ").append(m.monName).append("을(를) 공격!").append(NL);
-		
-		if (calc.patternMsg != null && !calc.patternMsg.isEmpty()) {
-			sb.append(calc.patternMsg).append(NL);
-		}
+	private String buildAttackMessage(String userName, User u, Monster m, Flags flags, AttackCalc calc,
+	                                  Resolve res, LevelUpResult up, int monHpRemainBefore, int monMaxHp) {
+	    StringBuilder sb = new StringBuilder();
 
-		int monHpAfter = Math.max(0, monHpRemainBefore - calc.atkDmg);
-		sb.append("준 피해 : ").append(calc.atkDmg).append(" / 받은 피해: ").append(calc.monDmg).append(NL).append(NL).append("▶몬스터 HP: ")
-				.append(monHpAfter).append(" / ").append(monMaxHp).append(NL);
+	    sb.append(" ").append(userName).append("님, ").append(m.monName).append("을(를) 공격!").append(NL);
 
-		if (res.killed) {
-			sb.append("▶처치 성공").append(NL);
-			if (res.dropYn && m.monDrop != null && !m.monDrop.trim().isEmpty()) {
-			    sb.append("✨드랍 획득: ").append(m.monDrop).append(NL);
-			}
-		}
+	    // ✅ 간단 치명타 문구
+	    if (flags.atkCrit) sb.append(" 치명타 발생!").append(NL);
 
-		sb.append("▶현재 체력: ").append(u.hpCur).append(" / ").append(u.hpMax).append(NL).append(NL);
+	    // ✅ 몬스터 행동 메시지 (원턴킬 시 null)
+	    if (calc.patternMsg != null && !calc.patternMsg.isEmpty()) {
+	        sb.append(calc.patternMsg).append(NL);
+	    }
 
-		// 경험치/레벨업 안내
-		sb.append("▶경험치 +").append(up.gainedExp).append(NL);
-		if (up.levelUpCount > 0) {
-			sb.append("레벨업! Lv.")
-		      .append(up.beforeLv).append(" → Lv.")
-		      .append(up.afterLv)
-		      .append(" (+").append(up.levelUpCount).append(")").append(NL);
+	    // ✅ 치명타 상세 메시지 (항상 별도)
+	    if (calc.critMsg != null && !calc.critMsg.isEmpty()) {
+	        sb.append(calc.critMsg).append(NL);
+	    }
 
-		    // 이전값 계산 (현재 u는 이미 반영된 상태)
-		    int prevHpMax  = u.hpMax - up.hpMaxDelta;
-		    int prevAtkMin = u.atkMin - up.atkMinDelta;
-		    int prevAtkMax = u.atkMax - up.atkMaxDelta;
-		    int prevCrit   = u.critRate - up.critDelta;
-		    int prevRegen  = u.hpRegen - up.hpRegenDelta; 
+	    int monHpAfter = Math.max(0, monHpRemainBefore - calc.atkDmg);
 
-		    sb.append("상승치:").append(NL);
+	    sb.append(" 준 피해: ").append(calc.atkDmg)
+	      .append(" /  받은 피해: ").append(calc.monDmg).append(NL)
+	      .append(" 몬스터 HP: ").append(monHpAfter).append(" / ").append(monMaxHp).append(NL).append(NL);
 
-		    if (up.hpMaxDelta > 0) {
-		        sb.append(" HP_MAX  ").append(prevHpMax).append(" → ").append(u.hpMax)
-		          .append(" (+" + up.hpMaxDelta + ")").append(NL);
-		    }
-		    if (up.atkMinDelta > 0) {
-		        sb.append(" ATK_MIN ").append(prevAtkMin).append(" → ").append(u.atkMin)
-		          .append(" (+" + up.atkMinDelta + ")").append(NL);
-		    }
-		    if (up.atkMaxDelta > 0) {
-		        sb.append(" ATK_MAX ").append(prevAtkMax).append(" → ").append(u.atkMax)
-		          .append(" (+" + up.atkMaxDelta + ")").append(NL);
-		    }
-		    if (up.critDelta > 0) {
-		        sb.append(" CRI     ").append(prevCrit).append(" → ").append(u.critRate)
-		          .append(" (+" + up.critDelta + ")").append(NL);
-		    }
-		    if (up.hpRegenDelta> 0) {
-		    	sb.append(" HP_REGEN ").append(prevRegen).append(" → ").append(u.hpRegen)  // ✅
-            	  .append(" (+").append(up.hpRegenDelta).append(")").append(NL);
-		    }
-		}
-		// 현재 EXP 상황(다음 레벨까지 남은 EXP)
-		//int remain = Math.max(0, u.expNext - u.expCur);
-		sb.append("현재 EXP: ").append(u.expCur).append(" / ").append(u.expNext)//.append(" (다음 레벨까지 ").append(remain)
-				.append(NL);
+	    // ✅ 처치 정보
+	    if (res.killed) {
+	        sb.append(" 처치 성공! +경험치 ").append(res.gainExp).append(NL);
 
-		return sb.toString();
+	        String dropName = (m.monDrop == null || m.monDrop.trim().isEmpty()) ? "없음" : m.monDrop;
+	        if (res.dropYn) {
+	            sb.append(" 드랍 획득: ").append(dropName).append(NL);
+	        } else {
+	            sb.append(" 드랍: 없음").append(NL);
+	        }
+	    } else {
+	        sb.append(" 경험치 +").append(res.gainExp).append(NL);
+	    }
+
+	    sb.append(" 현재 체력: ").append(u.hpCur).append(" / ").append(u.hpMax).append(NL);
+
+	    // ✅ 레벨업 안내
+	    if (up.levelUpCount > 0) {
+	        sb.append(" 레벨업! Lv.")
+	          .append(up.beforeLv).append(" → Lv.").append(up.afterLv)
+	          .append(" ( +").append(up.levelUpCount).append(" )").append(NL);
+
+	        sb.append(" 능력치 상승:").append(NL);
+
+	        if (up.hpMaxDelta > 0)
+	            sb.append("- HP_MAX: ").append(u.hpMax - up.hpMaxDelta)
+	              .append(" → ").append(u.hpMax)
+	              .append(" ( +").append(up.hpMaxDelta).append(" )").append(NL);
+
+	        if (up.atkMinDelta > 0)
+	            sb.append("- ATK_MIN: ").append(u.atkMin - up.atkMinDelta)
+	              .append(" → ").append(u.atkMin)
+	              .append(" ( +").append(up.atkMinDelta).append(" )").append(NL);
+
+	        if (up.atkMaxDelta > 0)
+	            sb.append("- ATK_MAX: ").append(u.atkMax - up.atkMaxDelta)
+	              .append(" → ").append(u.atkMax)
+	              .append(" ( +").append(up.atkMaxDelta).append(" )").append(NL);
+
+	        if (up.critDelta > 0)
+	            sb.append("- CRIT: ").append((int)(u.critRate - up.critDelta))
+	              .append("% → ").append((int)u.critRate)
+	              .append("% ( +").append((int)up.critDelta).append("% )").append(NL);
+	    }
+
+	    sb.append(" EXP: ").append(u.expCur).append(" / ").append(u.expNext).append(NL);
+
+	    return sb.toString();
 	}
 
 	/* ===== Regen & Time Helpers ===== */
@@ -660,8 +676,13 @@ public class BossAttackController {
 
 	private static class AttackCalc {
 		int atkDmg;
-		int monDmg;
-		String patternMsg;
+	    int monDmg;
+	    String patternMsg;
+
+	    // ✅ 치명타 표시용
+	    String critMsg;
+	    int baseAtk;
+	    double critMultiplier;
 	}
 
 	private static class Resolve {
