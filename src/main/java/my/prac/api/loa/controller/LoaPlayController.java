@@ -1354,20 +1354,21 @@ public class LoaPlayController {
 					    newMap.put("score", score);
 					    newMap.put("cmd", "gamble_s2");
 
+					    
 					    if(isNewLogic()) {
-					    	map.put("newYn", "1");
-							map.put("score", score1);
+					    	newMap.put("newYn", "1");
+					    	newMap.put("score", score1);
 					    	int newScore = botService.insertBotPointRankTx(newMap);
 
 						    res += "정답 sp: " + score + "sp 획득" + enterStr;
 						    res += "갱신: " + newScore + "sp" + enterStr;
 						    
 						}
-							
+						/*	
 						int newScore = botService.insertBotPointRankTx(newMap);
-
-					    res += "정답 p: " + score + "p 획득" + enterStr;
-					    res += "갱신: " + newScore + "p" + enterStr;
+						 */
+					    //res += "정답 p: " + score + "p 획득" + enterStr;
+					    //res += "갱신: " + newScore + "p" + enterStr;
 					    
 
 					} else {
