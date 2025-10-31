@@ -9,6 +9,13 @@ import java.io.Serializable;
  * @version $Id$
  */
 public  class OngoingBattle {
-	public int monNo;          // TARGET_MON_LV = MON_NO
-	public int totalDealtDmg;  // NOW_YN=1 묶음에서 누적 가한 피해 합계
+	public int monNo;
+    public int totalDealtDmg;
+
+    // 진행 중 전투(now_yn=1) 묶음에서 ‘가장 최근’ lucky 상태
+    public Integer luckyYn; // 0/1, null 가능
+
+    public OngoingBattle setMonNo(int v){ this.monNo=v; return this; }
+    public OngoingBattle setTotalDealtDmg(int v){ this.totalDealtDmg=v; return this; }
+    public OngoingBattle setLuckyYn(Integer v){ this.luckyYn=v; return this; }
 }

@@ -105,22 +105,22 @@
 	<!-- 3) 진행중 전투: NOW_YN=1 묶음의 누적 대미지와 타겟 몬 번호 -->
 	<select id="selectOngoingBattle"
 		resultType="my.prac.core.game.dto.OngoingBattle">
-		SELECT monNo, totalDealtDmg
-		FROM (
-		SELECT
-		TARGET_MON_LV AS
-		monNo,
-		NVL(SUM(ATK_DMG), 0) AS totalDealtDmg,
-		MAX(INSERT_DATE) AS
-		lastTime
-		FROM TBOT_POINT_NEW_BATTLE_LOG
-		WHERE USER_NAME = #{userName}
-		AND ROOM_NAME = #{roomName}
-		AND NOW_YN = '1'
-		GROUP BY TARGET_MON_LV
-		ORDER BY lastTime DESC
-		)
-		WHERE ROWNUM = 1
+		SELECT monNo, totalDealtDmg, luckyYn
+		  FROM (
+		    SELECT
+		      TARGET_MON_LV AS monNo,
+		      NVL(SUM(ATK_DMG), 0) AS totalDealtDmg,
+		      /* now_yn=1 묶음 내부에서 ‘가장 최근’ 행의 lucky_yn을 숫자로 가져온다 */
+		      MAX(TO_NUMBER(LUCKY_YN)) KEEP (DENSE_RANK LAST ORDER BY INSERT_DATE) AS luckyYn,
+		      MAX(INSERT_DATE) AS lastTime
+		    FROM TBOT_POINT_NEW_BATTLE_LOG
+		    WHERE USER_NAME = #{userName}
+		      AND ROOM_NAME = #{roomName}
+		      AND NOW_YN    = '1'
+		    GROUP BY TARGET_MON_LV
+		    ORDER BY lastTime DESC
+		  )
+		  WHERE ROWNUM = 1
 	</select>
 	<!-- 4) 최신 공격 시간 (쿨타임 체크용) -->
 	<select id="selectLastAttackTime"
@@ -156,14 +156,14 @@
 		(USER_NAME,
 		ROOM_NAME, LV, TARGET_MON_LV,
 		GAIN_EXP, ATK_DMG, MON_DMG, ATK_CRIT_YN,
-		MON_PATTEN, INSERT_DATE, KILL_YN, NOW_YN, DROP_YN, DEATH_YN)
+		MON_PATTEN, INSERT_DATE, KILL_YN, NOW_YN, DROP_YN, DEATH_YN, LUCKY_YN)
 		VALUES
 		(#{userName},
 		#{roomName}, #{lv}, #{targetMonLv},
 		#{gainExp}, #{atkDmg}, #{monDmg},
 		#{atkCritYn},
 		#{monPatten}, SYSTIMESTAMP, #{killYn}, #{nowYn},
-		#{dropYn},#{deathYn})
+		#{dropYn},#{deathYn},#{luckyYn})
 	</insert>
 	<!-- 7) 전투 종료: NOW_YN=1 → 0 -->
 	<update id="closeOngoingBattle">
@@ -239,15 +239,15 @@
       Oracle 11gR2: ROWNUM 사용
     -->
     <select id="selectLatestLuckyYn" parameterType="map" resultType="int">
-        SELECT lucky_yn
-        FROM (
-            SELECT bl.lucky_yn
-            FROM TBOT_POINT_NEW_BATTLE_LOG bl
-            WHERE bl.user_name = #{userName}
-              AND bl.room_name = #{roomName}
-              AND bl.now_yn    = 1
-            ORDER BY bl.insert_date DESC
-        )
-        WHERE ROWNUM = 1
+        SELECT TO_NUMBER(lucky_yn) AS lucky_yn
+		  FROM (
+		    SELECT bl.lucky_yn
+		    FROM TBOT_POINT_NEW_BATTLE_LOG bl
+		    WHERE bl.user_name = #{userName}
+		      AND bl.room_name = #{roomName}
+		      AND bl.now_yn    = '1'
+		    ORDER BY bl.insert_date DESC
+		  )
+		  WHERE ROWNUM = 1
     </select>
 </mapper>
