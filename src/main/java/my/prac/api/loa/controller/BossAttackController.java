@@ -33,8 +33,8 @@ public class BossAttackController {
 	private static final int COOLDOWN_SECONDS = 180; // 1분
 	private static final int REVIVE_WAIT_MINUTES = 10;
 	private static final String NL = "♬";
-	// 🍀 Lucky: 전투 시작 시 5% 확률 고정
-	private static final double LUCKY_RATE = 0.05; // <- FIX: 5%
+	// 🍀 Lucky: 전투 시작 시 10% 확률 고정
+	private static final double LUCKY_RATE = 0.10; 
 
 	/* ===== DI ===== */
 	@Autowired
@@ -625,16 +625,18 @@ public class BossAttackController {
 	        sb.append("❤️ 현재 체력: ").append(u.hpCur).append(" / ").append(u.hpMax).append(NL);
 	    }
 
-	    // 7) 드랍
+	    // 7) 드랍 (드랍명 없으면 출력 안 함)
 	    if (res.killed && !"0".equals(res.dropCode)) {
-	        String dropName = (m.monDrop == null || m.monDrop.trim().isEmpty()) ? "아이템" : m.monDrop;
-	        if ("3".equals(res.dropCode)) {
-	            sb.append("✨ 드랍 획득 x3: ").append(dropName).append(NL);
-	        } else {
-	            sb.append("✨ 드랍 획득: ").append(dropName).append(NL);
+	        String dropName = (m.monDrop == null ? "" : m.monDrop.trim());
+	        if (!dropName.isEmpty()) { // ✅ 드랍명 존재할 경우에만 출력
+	            if ("3".equals(res.dropCode)) {
+	                sb.append("✨ 드랍 획득: ").append(dropName).append(" x3").append(NL);
+	            } else {
+	                sb.append("✨ 드랍 획득: ").append(dropName).append(NL);
+	            }
 	        }
 	    }
-
+	    
 	    // 8) EXP
 	    sb.append("✨ EXP+").append(res.gainExp)
 	      .append(" , EXP: ").append(u.expCur).append(" / ").append(u.expNext).append(NL);
