@@ -422,16 +422,17 @@ public class BossAttackController {
 	    String curPointStr = String.format("%d sp", curPoint);
 
 	    StringBuilder sb = new StringBuilder();
-	    sb.append("▶ 판매 결과").append(NL)
-	      .append("- 아이템: ").append(itemName).append(NL)
-	      .append("- 판매 수량: ").append(sold).append("개").append(NL)
-	      .append("- 단가: ").append(price).append("sp").append(NL)
-	      .append("- 합계 적립: ").append(totalSp).append("sp").append(NL)
-	      .append("- 현재 포인트: ").append(curPointStr);
-	    if (sold < reqQty) {
-	        sb.append(NL).append("(보유 수량/판매 가능 수량 부족으로 요청한 ").append(reqQty)
-	          .append("개 중 ").append(sold).append("개만 판매)");
-	    }
+	    sb.append("⚔ ").append(userName).append("님,").append(NL)   // ← 추가
+		    .append("▶ 판매 결과").append(NL)
+		    .append("- 아이템: ").append(itemName).append(NL)
+		    .append("- 판매 수량: ").append(sold).append("개").append(NL)
+		    .append("- 단가: ").append(price).append("sp").append(NL)
+		    .append("- 합계 적립: ").append(totalSp).append("sp").append(NL)
+		    .append("- 현재 포인트: ").append(curPointStr);
+		if (sold < reqQty) {
+		      sb.append(NL).append("(보유 수량 부족으로 요청한 ")
+		        .append(reqQty).append("개 중 ").append(sold).append("개만 판매)");
+		}
 	    return sb.toString();
 	}
 

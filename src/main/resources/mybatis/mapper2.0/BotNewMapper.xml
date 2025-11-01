@@ -144,7 +144,8 @@
 		ATK_MIN = #{newAtkMin},
 		ATK_MAX = #{newAtkMax},
 		CRIT_RATE= #{critRate},
-		HP_REGEN  = #{hpRegen}
+		HP_REGEN  = #{hpRegen},
+		PROC_DATE = SYSDATE
 		WHERE
 		USER_NAME = #{userName}
 		AND ROOM_NAME = #{roomName}
@@ -222,7 +223,7 @@
 		 GROUP BY A.USER_NAME
 			  ,A.ROOM_NAME
 	     HAVING 1 = CASE
-						 WHEN MAX(A.INSERT_DATE) >= TRUNC(SYSDATE) - 3 THEN
+						 WHEN MAX(A.PROC_DATE) >= TRUNC(SYSDATE) - 3 THEN
 						  1
 						 ELSE
 						  0
