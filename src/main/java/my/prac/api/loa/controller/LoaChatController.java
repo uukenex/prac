@@ -630,6 +630,9 @@ public class LoaChatController {
 					val = "별도 게임방에서 진행해주세요.";
 				}
 				break;
+			case "/판매": case "/ㅍㅁ":
+				val = boss.sellItem(reqMap);
+				break;
 			case "/공격정보": case "/ㄱㄱㅈㅂ":
 				val = boss.attackInfo(reqMap);
 				/*
@@ -650,7 +653,7 @@ public class LoaChatController {
 				}
 				*/
 				break;
-			case "/ㄱㄱㄱ": case "/ㄱ":
+			case "/ㄱㄱㄱ": case "/ㄱ": case "/R": case "/r": 
 				val = boss.monsterAttack(reqMap);
 				break;
 			case "/ㄱㄱㅌㄱ":case "/공격타겟":  

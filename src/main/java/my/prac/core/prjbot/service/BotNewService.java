@@ -45,6 +45,20 @@ public interface BotNewService {
     
     int insertUserWithTargetTx(String userName, String roomName, int targetMonNo);
     Integer selectLatestLuckyYn(String userName, String roomName);
+    Integer selectItemIdByCode(String itemCode);
+    Integer selectItemIdByName(String itemName);
+
+    int insertInventoryLogTx(HashMap<String, Object> p);  // 트랜잭션 메서드 권장
+
+    List<HashMap<String,Object>> selectInventorySummary(String userName, String roomName);
+    
+    Integer selectCurrentPoint(String userName, String roomName);
+    int insertPointRank(HashMap<String, Object> p);
+    Integer selectItemSellPriceById(int itemId);
+    List<HashMap<String, Object>> selectInventoryRowsForSale(String u, String r, int id);
+    int updateInventoryDelByRowId(String rowid) ;
+    int updateInventoryQtyByRowId(String rowid, int newQty) ;
+    Integer selectInventoryQty(String userName, String roomName, Integer itemId);
 } 
 
 	

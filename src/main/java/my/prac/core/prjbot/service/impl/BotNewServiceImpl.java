@@ -116,4 +116,59 @@ public class BotNewServiceImpl implements BotNewService {
             return null;
         }
     }
+    
+	@Override
+	public Integer selectItemIdByCode(String itemCode) {
+		return botNewDAO.selectItemIdByCode(itemCode);
+	}
+
+	@Override
+	public Integer selectItemIdByName(String itemName) {
+		return botNewDAO.selectItemIdByName(itemName);
+	}
+
+	@Override
+	public int insertInventoryLogTx(HashMap<String, Object> p) {
+		return botNewDAO.insertInventoryLog(p);
+	}
+
+	@Override
+	public List<HashMap<String, Object>> selectInventorySummary(String userName, String roomName) {
+		return botNewDAO.selectInventorySummary(userName, roomName);
+	}
+	
+	@Override
+	public Integer selectCurrentPoint(String userName, String roomName) {
+	    return botNewDAO.selectCurrentPoint(userName, roomName);
+	}
+
+	@Override
+	public int insertPointRank(HashMap<String, Object> p) {
+		return botNewDAO.insertPointRank(p);
+	}
+
+	@Override
+	public Integer selectItemSellPriceById(int itemId) {
+		return botNewDAO.selectItemSellPriceById(itemId);
+	}
+
+	@Override
+	public List<HashMap<String, Object>> selectInventoryRowsForSale(String u, String r, int id) {
+		return botNewDAO.selectInventoryRowsForSale(u, r, id);
+	}
+
+	@Override
+	public int updateInventoryDelByRowId(String rowid) {
+		return botNewDAO.updateInventoryDelByRowId(rowid);
+	}
+
+	@Override
+	public int updateInventoryQtyByRowId(String rowid, int newQty) {
+		return botNewDAO.updateInventoryQtyByRowId(rowid, newQty);
+	}
+	@Override
+	public Integer selectInventoryQty(String userName, String roomName, Integer itemId) {
+	    return botNewDAO.selectInventoryQty(userName, roomName, itemId);
+	}
+
 }

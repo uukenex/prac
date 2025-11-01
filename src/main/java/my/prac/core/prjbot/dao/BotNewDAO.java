@@ -67,4 +67,40 @@ public interface BotNewDAO {
 
     /** (옵션) 캐시 갱신용 헬퍼: persist 직후 호출하면 캐시 최신화됨 */
     void updateLuckyCache(String userName, String roomName, Integer luckyYn);
+    
+    /** 아이템 ID 조회 (코드/이름) */
+    Integer selectItemIdByCode(@Param("itemCode") String itemCode);
+    Integer selectItemIdByName(@Param("itemName") String itemName);
+
+    /** 인벤토리 로그 적재 (드랍/구매/이벤트 등 공용) */
+    int insertInventoryLog(HashMap<String, Object> p);
+
+    /** 유저 인벤토리 합산 요약 (아이템별 보유 수량) */
+    List<HashMap<String,Object>> selectInventorySummary(@Param("userName") String userName,
+                                                        @Param("roomName") String roomName);
+    
+    Integer selectCurrentPoint(
+    	    @Param("userName") String userName,
+    	    @Param("roomName") String roomName
+    	);
+    
+    
+    
+ // 판매용
+    List<HashMap<String,Object>> selectInventoryRowsForSale(
+        @Param("userName") String userName,
+        @Param("roomName") String roomName,
+        @Param("itemId")   int itemId
+    );
+    int updateInventoryDelByRowId(@Param("rowid") String rowid);
+    int updateInventoryQtyByRowId(@Param("rowid") String rowid, @Param("newQty") int newQty);
+    Integer selectInventoryQty(@Param("userName") String userName,
+                               @Param("roomName") String roomName,
+                               @Param("itemId")   int itemId);
+    Integer selectItemSellPriceById(@Param("itemId") int itemId);
+
+    // 포인트 적립
+    int insertPointRank(HashMap<String,Object> p);
+
+    
 }

@@ -250,4 +250,115 @@
 		  )
 		  WHERE ROWNUM = 1
     </select>
+    
+     <!-- 아이템 ID 조회: 코드 -->
+    <select id="selectItemIdByCode" resultType="int">
+        SELECT ITEM_ID
+          FROM TBOT_POINT_NEW_ITEM
+         WHERE ITEM_CODE = #{itemCode}
+    </select>
+
+    <!-- 아이템 ID 조회: 이름 -->
+    <select id="selectItemIdByName" resultType="int">
+        SELECT ITEM_ID
+          FROM TBOT_POINT_NEW_ITEM
+         WHERE ITEM_NAME = #{itemName}
+    </select>
+
+    <!-- 인벤토리 로그 적재 (DROP / BUY / EVENT 등 공용) -->
+    <insert id="insertInventoryLog" parameterType="hashmap">
+        INSERT INTO TBOT_POINT_NEW_INVENTORY
+          (USER_NAME, ROOM_NAME, ITEM_ID, QTY, DEL_YN, GAIN_TYPE, INSERT_DATE)
+        VALUES
+          (#{userName, jdbcType=VARCHAR},
+           #{roomName, jdbcType=VARCHAR},
+           #{itemId,   jdbcType=NUMERIC},
+           #{qty,      jdbcType=NUMERIC},
+           NVL(#{delYn, jdbcType=VARCHAR}, '0'),
+           #{gainType, jdbcType=VARCHAR},
+           SYSDATE)
+    </insert>
+
+    <!-- 유저 인벤토리 합산 요약 (아이템별 수량) -->
+    <select id="selectInventorySummary" resultType="hashmap">
+        SELECT
+		      x.ITEM_ID,
+		      /* 화면 표시용 이름 */
+		      CASE
+		        WHEN x.GAIN_TYPE = 'DROP3' THEN '빛나는 ' || t.ITEM_NAME
+		        ELSE t.ITEM_NAME
+		      END AS ITEM_NAME,
+		      /* 판매 가능 여부: DROP3(빛나는)면 0, 그 외 1 */
+		      CASE
+		        WHEN x.GAIN_TYPE = 'DROP3' THEN '0' ELSE '1'
+		      END AS SELLABLE_YN,
+		      /* 합계 수량 */
+		      x.TOTAL_QTY
+		  FROM (
+		      SELECT ITEM_ID, GAIN_TYPE, SUM(QTY) AS TOTAL_QTY
+		      FROM TBOT_POINT_NEW_INVENTORY
+		      WHERE USER_NAME = #{userName}
+		        AND ROOM_NAME = #{roomName}
+		        AND DEL_YN    = '0'
+		      GROUP BY ITEM_ID, GAIN_TYPE
+		  ) x
+		  /* 기본 아이템명만 조인(빛나는은 아이템마스터에 없음 → 기본명으로 표시) */
+		  LEFT JOIN TBOT_POINT_NEW_ITEM t
+		    ON t.ITEM_ID = x.ITEM_ID
+		  WHERE x.TOTAL_QTY > 0
+		  ORDER BY
+		      /* 보기 좋게: 빛나는 먼저 보이게 하려면 아래 정렬 유지 */
+		      CASE WHEN x.GAIN_TYPE = 'DROP3' THEN 0 ELSE 1 END,
+		      NVL(t.ITEM_NAME, 'ZZZ'), x.ITEM_ID
+    </select>
+
+	<select id="selectCurrentPoint" resultType="int">
+		SELECT NVL(SUM(score), 0)
+		FROM TBOT_POINT_RANK
+		WHERE user_name = #{userName}
+		AND room_name = #{roomName}
+		AND new_yn = '1'
+	</select>
+
+	<!-- 판매 대상 행(FIFO) -->
+	<select id="selectInventoryRowsForSale" resultType="hashmap">
+		SELECT ROWID AS RID, QTY
+		FROM TBOT_POINT_NEW_INVENTORY
+		WHERE USER_NAME = #{userName}
+		AND ROOM_NAME = #{roomName}
+		AND ITEM_ID = #{itemId}
+		AND NVL(DEL_YN,'0') != '1'
+		AND NVL(GAIN_TYPE,'DROP') != 'DROP3'
+		ORDER BY INSERT_DATE ASC, ROWID
+	</select>
+
+	<update id="updateInventoryDelByRowId">
+		UPDATE TBOT_POINT_NEW_INVENTORY SET DEL_YN = '1' WHERE ROWID = #{rowid}
+	</update>
+
+	<update id="updateInventoryQtyByRowId">
+		UPDATE TBOT_POINT_NEW_INVENTORY SET QTY = #{newQty} WHERE ROWID = #{rowid}
+	</update>
+
+	<select id="selectInventoryQty" resultType="int">
+		SELECT NVL(SUM(QTY),0)
+		FROM TBOT_POINT_NEW_INVENTORY
+		WHERE USER_NAME = #{userName}
+		AND ROOM_NAME = #{roomName}
+		AND ITEM_ID = #{itemId}
+		AND NVL(DEL_YN,'0') != '1'
+	</select>
+
+	<select id="selectItemSellPriceById" resultType="int">
+		SELECT NVL(ITEM_SELL_PRICE,0) FROM TBOT_POINT_NEW_ITEM WHERE ITEM_ID =
+		#{itemId}
+	</select>
+
+	<!-- 포인트 적립 -->
+	<insert id="insertPointRank" parameterType="hashmap">
+		INSERT INTO TBOT_POINT_RANK
+		(USER_NAME, ROOM_NAME, SCORE, INSERT_DATE, CMD, NEW_YN)
+		VALUES
+		(#{userName}, #{roomName}, #{score}, SYSDATE, #{cmd}, '1')
+	</insert>
 </mapper>
