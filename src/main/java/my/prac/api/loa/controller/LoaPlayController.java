@@ -470,7 +470,6 @@ public class LoaPlayController {
 		Random random = new Random(); // 랜덤객체
 		int score = random.nextInt(100)+1;
 		int score1 = random.nextInt(10)+1;;
-		int new0_score=0;
 		int new1_score=0;
 		map.put("score",score+bonus);
 		
@@ -487,16 +486,6 @@ public class LoaPlayController {
 			msg += map.get("userName")+"님 출석 sp "+score1+" sp 획득"
 			  +enterStr + "갱신 sp : "+new1_score +" sp"+enterStr;
 		}
-		
-		try {
-			new0_score = botService.insertBotPointRankTx(map);
-		} catch (Exception e) {
-			return "오류발생";
-		}
-		
-		msg += map.get("userName")+"님 출석p "+score+" p 획득"
-		  +extraMsg + enterStr+"갱신p : "+new0_score + " p";
-		
 		return msg;
 	}
 	
