@@ -59,6 +59,14 @@ public interface BotNewService {
     int updateInventoryDelByRowId(String rowid) ;
     int updateInventoryQtyByRowId(String rowid, int newQty) ;
     Integer selectInventoryQty(String userName, String roomName, Integer itemId);
+    Integer selectItemPriceByName(String itemName);
+
+    /** 아이템 보너스 총합 */
+    HashMap<String,Object> selectOwnedItemBuffTotals(String userName, String roomName, String onlyMarket);
+
+    /** 인벤토리 요약(전체) */
+    List<HashMap<String,Object>> selectInventorySummaryAll(String userName, String roomName);
+
 } 
 
 	

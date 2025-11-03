@@ -171,4 +171,19 @@ public class BotNewServiceImpl implements BotNewService {
 	    return botNewDAO.selectInventoryQty(userName, roomName, itemId);
 	}
 
+	
+	@Override
+	public HashMap<String, Object> selectOwnedItemBuffTotals(String user, String room, String onlyMarket) {
+	    return botNewDAO.selectOwnedItemBuffTotals(user, room, onlyMarket);
+	}
+
+	@Override
+	public List<HashMap<String, Object>> selectInventorySummaryAll(String user, String room) {
+	    return botNewDAO.selectInventorySummaryAll(user, room);
+	}
+
+	@Override
+	public Integer selectItemPriceByName(String itemName) {
+	    return botNewDAO.selectItemPriceByName(itemName);
+	}
 }
