@@ -259,6 +259,13 @@ public class BotServiceImpl implements BotService {
 		if(map.get("newYn") ==null) {
 			map.put("newYn","0");
 		}
+		try {
+			String userName = map.get("userName").toString();
+			userName = userName.replaceAll("\\r?\\n", " ").trim();
+			map.put("userName", userName);
+		}catch(Exception e) {
+			
+		}
 		return botDAO.selectBotPointRankNewScore(map);
 	}
 	public List<HashMap<String,Object>> selectBotPointWeaponPct(HashMap<String,Object> map){
@@ -269,10 +276,16 @@ public class BotServiceImpl implements BotService {
 		if(map.get("newYn") ==null) {
 			map.put("newYn","0");
 		}
+		try {
+			String userName = map.get("userName").toString();
+			userName = userName.replaceAll("\\r?\\n", " ").trim();
+			map.put("userName", userName);
+		}catch(Exception e) {
+			
+		}
 		if(botDAO.insertBotPointRank(map) < 1) {
 			throw new Exception("저장 실패");
 		}
-		
 		List<HashMap<String,Object>> ls = botDAO.selectBotPointRankNewScore(map);
 		int new_score = -999;
 		try {
