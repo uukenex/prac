@@ -770,7 +770,7 @@
 					      ,SUM(A.SCORE) AS SCORE
 					  FROM TBOT_POINT_RANK A
 				     WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
-					   AND upper(A.USER_NAME) = TRIM(REGEXP_REPLACE(UPPER(#{newUserName, jdbcType=VARCHAR}), '[[:space:]]+', ' '))  
+					   AND upper(A.USER_NAME) = TRIM(REGEXP_REPLACE(UPPER(#{userName, jdbcType=VARCHAR}), '[[:space:]]+', ' '))  
 					   AND A.INSERT_DATE> TO_DATE('20250701','yyyymmdd')
 					   AND A.NEW_YN = #{newYn, jdbcType=VARCHAR}
 				     GROUP BY A.USER_NAME
