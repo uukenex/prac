@@ -127,7 +127,7 @@ public class LoaPlayController {
 	}
 	
 	
-	
+	/*
 	int weaponBonusForAttendance(HashMap<String,Object> map) {
 		int grade = botService.selectWeaponLvCheck(map);
 		int bonus = 0;
@@ -139,7 +139,8 @@ public class LoaPlayController {
 		}
 		
 	    return bonus;  
-	}
+	}*/
+	/*
 	int weaponBonusForDiceRoll(HashMap<String,Object> map) {
 		int grade = botService.selectWeaponLvCheck(map);
 		int bonus = 0;
@@ -151,7 +152,7 @@ public class LoaPlayController {
 		}
 		
 	    return bonus;  
-	}
+	}*/
 	
 	public HashMap<String, Object> getWeaponStatsForPoint(HashMap<String, Object> map) {
 		// 무기 레벨 조회 (없으면 0)
@@ -462,16 +463,16 @@ public class LoaPlayController {
 		}
 		
 		String extraMsg="";
-		int bonus = weaponBonusForAttendance(map);
-		if(bonus>0) {
-			extraMsg+=enterStr+map.get("extra_msg");
-		}
+		//int bonus = weaponBonusForAttendance(map);
+		//if(bonus>0) {
+		//	extraMsg+=enterStr+map.get("extra_msg");
+		//}
 		
 		Random random = new Random(); // 랜덤객체
-		int score = random.nextInt(100)+1;
+		//int score = random.nextInt(100)+1;
 		int score1 = random.nextInt(10)+1;;
 		int new1_score=0;
-		map.put("score",score+bonus);
+		//map.put("score",score+bonus);
 		
 		
 		if(isNewLogic()) {
