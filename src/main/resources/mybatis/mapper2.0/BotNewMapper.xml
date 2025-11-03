@@ -2,25 +2,24 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="my.prac.core.prjbot.dao.BotNewDAO">
 
-  <!-- 포인트 적립 (일반 점수 테이블) -->
-  <insert id="insertBotPointNew" parameterType="hashmap">
+  <insert id="insertBotPointNew" parameterType="HashMap">
     INSERT INTO TBOT_POINT_NEW
       (USER_NAME, ROOM_NAME, SCORE, INSERT_DATE, CMD)
     VALUES
-      (#{userName, jdbcType=VARCHAR},
-       #{roomName, jdbcType=VARCHAR},
-       #{score,    jdbcType=NUMERIC},
+      (#{userName,jdbcType=VARCHAR},
+       #{roomName,jdbcType=VARCHAR},
+       #{score,jdbcType=NUMERIC},
        SYSDATE,
-       #{cmd,      jdbcType=VARCHAR})
+       #{cmd,jdbcType=VARCHAR})
   </insert>
 
   <!-- 1) 유저 -->
   <select id="selectUser" resultType="my.prac.core.game.dto.User">
     SELECT USER_NAME, ROOM_NAME, LV, EXP_CUR, EXP_NEXT, HP_CUR, HP_MAX, HP_REGEN,
            ATK_MIN, ATK_MAX, CRIT_RATE, CRIT_DMG, TARGET_MON, INSERT_DATE
-      FROM TBOT_POINT_NEW_USER
-     WHERE USER_NAME = #{userName}
-       AND ROOM_NAME = #{roomName}
+    FROM TBOT_POINT_NEW_USER
+    WHERE USER_NAME = #{userName}
+      AND ROOM_NAME = #{roomName}
   </select>
 
   <select id="selectAttackDeathStats" resultType="my.prac.core.game.dto.AttackDeathStat">
@@ -33,48 +32,45 @@
   </select>
 
   <select id="selectKillStats" resultType="my.prac.core.game.dto.KillStat">
-    SELECT
-      bl.TARGET_MON_LV AS MON_NO,
-      m.MON_NAME       AS MON_NAME,
-      COUNT(*)         AS KILL_COUNT
+    SELECT bl.TARGET_MON_LV AS MON_NO,
+           m.MON_NAME AS MON_NAME,
+           COUNT(*) AS KILL_COUNT
     FROM TBOT_POINT_NEW_BATTLE_LOG bl
-    JOIN TBOT_POINT_NEW_MON_INFO  m ON m.MON_NO = bl.TARGET_MON_LV
+    JOIN TBOT_POINT_NEW_MON_INFO m ON m.MON_NO = bl.TARGET_MON_LV
     WHERE bl.USER_NAME = #{userName}
       AND bl.ROOM_NAME = #{roomName}
-      AND bl.KILL_YN   = 1
+      AND bl.KILL_YN = 1
     GROUP BY bl.TARGET_MON_LV, m.MON_NAME
     ORDER BY KILL_COUNT DESC, MON_NO ASC
   </select>
 
-  <!-- 2) 몬스터 -->
   <select id="selectAllMonsters" resultType="my.prac.core.game.dto.Monster">
     SELECT MON_NO, MON_NAME, MON_HP, MON_ATK, MON_EXP, MON_DROP, MON_PATTEN
-      FROM TBOT_POINT_NEW_MON_INFO
-     ORDER BY MON_NO
+    FROM TBOT_POINT_NEW_MON_INFO
+    ORDER BY MON_NO
   </select>
 
+  <!-- 2) 몬스터 -->
   <select id="selectMonsterByNo" resultType="my.prac.core.game.dto.Monster">
     SELECT MON_NO, MON_HP, MON_ATK, MON_EXP, MON_DROP, MON_PATTEN, MON_NAME
-      FROM TBOT_POINT_NEW_MON_INFO
-     WHERE MON_NO = #{monNo}
+    FROM TBOT_POINT_NEW_MON_INFO
+    WHERE MON_NO = #{monNo}
   </select>
 
   <select id="selectMonsterByName" resultType="my.prac.core.game.dto.Monster">
     SELECT MON_NO, MON_HP, MON_ATK, MON_EXP, MON_DROP, MON_PATTEN, MON_NAME
-      FROM TBOT_POINT_NEW_MON_INFO
-     WHERE MON_NAME = #{monName}
+    FROM TBOT_POINT_NEW_MON_INFO
+    WHERE MON_NAME = #{monName}
   </select>
 
-  <!-- 3) 진행중 전투 (NOW_YN=1 묶음): 누적 대미지 + 최근 lucky 유지 -->
+  <!-- 3) 진행중 전투 -->
   <select id="selectOngoingBattle" resultType="my.prac.core.game.dto.OngoingBattle">
     SELECT monNo, totalDealtDmg, luckyYn
       FROM (
-        SELECT
-          TARGET_MON_LV AS monNo,
-          NVL(SUM(ATK_DMG), 0) AS totalDealtDmg,
-          /* 가장 최근 lucky_yn */
-          MAX(TO_NUMBER(LUCKY_YN)) KEEP (DENSE_RANK LAST ORDER BY INSERT_DATE) AS luckyYn,
-          MAX(INSERT_DATE) AS lastTime
+        SELECT TARGET_MON_LV AS monNo,
+               NVL(SUM(ATK_DMG), 0) AS totalDealtDmg,
+               MAX(TO_NUMBER(LUCKY_YN)) KEEP (DENSE_RANK LAST ORDER BY INSERT_DATE) AS luckyYn,
+               MAX(INSERT_DATE) AS lastTime
         FROM TBOT_POINT_NEW_BATTLE_LOG
         WHERE USER_NAME = #{userName}
           AND ROOM_NAME = #{roomName}
@@ -85,16 +81,16 @@
      WHERE ROWNUM = 1
   </select>
 
-  <!-- 4) 최신 공격 시간 (쿨타임) -->
+  <!-- 4) 최신 공격 시간 -->
   <select id="selectLastAttackTime" resultType="java.sql.Timestamp">
     SELECT MAX(INSERT_DATE)
-      FROM TBOT_POINT_NEW_BATTLE_LOG
-     WHERE USER_NAME = #{userName}
-       AND ROOM_NAME = #{roomName}
+    FROM TBOT_POINT_NEW_BATTLE_LOG
+    WHERE USER_NAME = #{userName}
+      AND ROOM_NAME = #{roomName}
   </select>
 
-  <!-- 5) 유저 전투 후 업데이트 -->
-  <update id="updateUserAfterBattle" parameterType="hashmap">
+  <!-- 5) 전투 후 유저 업데이트 -->
+  <update id="updateUserAfterBattle">
     UPDATE TBOT_POINT_NEW_USER
        SET LV        = #{newLv},
            EXP_CUR   = #{newExpCur},
@@ -110,22 +106,20 @@
        AND ROOM_NAME = #{roomName}
   </update>
 
-  <!-- 6) 전투 로그 적재 -->
+  <!-- 6) 전투 로그 -->
   <insert id="insertBattleLog" parameterType="my.prac.core.game.dto.BattleLog">
     INSERT INTO TBOT_POINT_NEW_BATTLE_LOG
       (USER_NAME, ROOM_NAME, LV, TARGET_MON_LV,
        GAIN_EXP, ATK_DMG, MON_DMG, ATK_CRIT_YN,
        MON_PATTEN, INSERT_DATE, KILL_YN, NOW_YN, DROP_YN, DEATH_YN, LUCKY_YN)
     VALUES
-      (#{userName},
-       #{roomName}, #{lv}, #{targetMonLv},
+      (#{userName}, #{roomName}, #{lv}, #{targetMonLv},
        #{gainExp}, #{atkDmg}, #{monDmg}, #{atkCritYn},
-       #{monPatten}, SYSTIMESTAMP, #{killYn}, #{nowYn},
-       #{dropYn}, #{deathYn}, #{luckyYn})
+       #{monPatten}, SYSTIMESTAMP, #{killYn}, #{nowYn}, #{dropYn}, #{deathYn}, #{luckyYn})
   </insert>
 
   <!-- 7) 전투 종료 -->
-  <update id="closeOngoingBattle" parameterType="hashmap">
+  <update id="closeOngoingBattle">
     UPDATE TBOT_POINT_NEW_BATTLE_LOG
        SET NOW_YN = '0'
      WHERE USER_NAME = #{userName}
@@ -134,56 +128,52 @@
   </update>
 
   <!-- HP만 갱신 -->
-  <update id="updateUserHpOnly" parameterType="hashmap">
+  <update id="updateUserHpOnly">
     UPDATE TBOT_POINT_NEW_USER
        SET HP_CUR = #{newHpCur}
      WHERE USER_NAME = #{userName}
        AND ROOM_NAME = #{roomName}
   </update>
 
-  <!-- 타겟 변경 -->
-  <update id="updateUserTargetMon" parameterType="hashmap">
+  <update id="updateUserTargetMon">
     UPDATE TBOT_POINT_NEW_USER
        SET TARGET_MON = #{newMonNo}
-     WHERE USER_NAME  = #{userName}
-       AND ROOM_NAME  = #{roomName}
+     WHERE USER_NAME = #{userName}
+       AND ROOM_NAME = #{roomName}
   </update>
 
-  <!-- 유저 신규 생성 + 타겟설정 -->
-  <insert id="insertUserWithTarget" parameterType="hashmap">
+  <insert id="insertUserWithTarget">
     INSERT INTO TBOT_POINT_NEW_USER
       (USER_NAME, ROOM_NAME, LV, EXP_CUR, EXP_NEXT,
        HP_CUR, HP_MAX, HP_REGEN, ATK_MIN, ATK_MAX,
        CRIT_RATE, CRIT_DMG, INSERT_DATE, TARGET_MON)
     VALUES
       (#{userName}, #{roomName},
-       1, 0, 100,          <!-- 초기 EXP 규칙 -->
-       10, 10, 1,          <!-- HP_CUR/HP_MAX/HP_REGEN -->
-       1, 5,               <!-- ATK_MIN/MAX -->
-       10, 150,            <!-- CRIT_RATE(%), CRIT_DMG(%) -->
-       SYSDATE,
-       #{targetMonNo})
+       1, 0, 100,
+       10, 10, 1,
+       1, 5,
+       10, 150,
+       SYSDATE, #{targetMonNo})
   </insert>
 
-  <!-- 닉네임 검색 보조 -->
-  <select id="selectParam1ToNewUserSearch" parameterType="hashmap" resultType="string">
+  <!-- 보조 닉네임 검색 -->
+  <select id="selectParam1ToNewUserSearch" parameterType="HashMap" resultType="String">
     SELECT A.USER_NAME
       FROM TBOT_POINT_NEW_USER A
-     WHERE UPPER(A.USER_NAME) LIKE UPPER(#{param1, jdbcType=VARCHAR}) || '%'
-       AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+     WHERE UPPER(A.USER_NAME) LIKE UPPER(#{param1,jdbcType=VARCHAR}) || '%'
+       AND A.ROOM_NAME = #{roomName,jdbcType=VARCHAR}
        AND NOT EXISTS (
-             SELECT 1
-               FROM TBOT_BLOCK C
-              WHERE UPPER(C.USER_NAME) = UPPER(#{param1, jdbcType=VARCHAR})
-                AND C.ROOM_NAME = A.ROOM_NAME
-           )
+           SELECT 1 FROM TBOT_BLOCK C
+            WHERE UPPER(C.USER_NAME) = UPPER(#{param1,jdbcType=VARCHAR})
+              AND C.ROOM_NAME = A.ROOM_NAME
+       )
      GROUP BY A.USER_NAME, A.ROOM_NAME
     HAVING 1 = CASE WHEN MAX(A.PROC_DATE) >= TRUNC(SYSDATE) - 3 THEN 1 ELSE 0 END
-     ORDER BY CASE WHEN LENGTH(#{param1, jdbcType=VARCHAR}) = LENGTH(A.USER_NAME) THEN 1 ELSE 0 END DESC
+     ORDER BY CASE WHEN LENGTH(#{param1,jdbcType=VARCHAR}) = LENGTH(A.USER_NAME) THEN 1 ELSE 0 END DESC
   </select>
 
-  <!-- (보류 가능) 최근 now_yn=1 lucky_yn 1건 -->
-  <select id="selectLatestLuckyYn" parameterType="hashmap" resultType="int">
+  <!-- 최근 lucky -->
+  <select id="selectLatestLuckyYn" parameterType="map" resultType="int">
     SELECT TO_NUMBER(lucky_yn) AS lucky_yn
       FROM (
         SELECT bl.lucky_yn
@@ -196,36 +186,34 @@
      WHERE ROWNUM = 1
   </select>
 
-  <!-- 아이템 ID by CODE -->
+  <!-- 아이템 -->
   <select id="selectItemIdByCode" resultType="int">
     SELECT ITEM_ID FROM TBOT_POINT_NEW_ITEM WHERE ITEM_CODE = #{itemCode}
   </select>
 
-  <!-- 아이템 ID by NAME -->
-  <select id="selectItemIdByName" resultType="int">
+  <!-- (중복 제거하고 이 한 개만 남김) -->
+  <select id="selectItemIdByName" parameterType="string" resultType="int">
     SELECT ITEM_ID FROM TBOT_POINT_NEW_ITEM WHERE ITEM_NAME = #{itemName}
   </select>
 
-  <!-- 인벤토리 로그 적재 -->
   <insert id="insertInventoryLog" parameterType="hashmap">
     INSERT INTO TBOT_POINT_NEW_INVENTORY
       (USER_NAME, ROOM_NAME, ITEM_ID, QTY, DEL_YN, GAIN_TYPE, INSERT_DATE)
     VALUES
-      (#{userName, jdbcType=VARCHAR},
-       #{roomName, jdbcType=VARCHAR},
-       #{itemId,   jdbcType=NUMERIC},
-       #{qty,      jdbcType=NUMERIC},
-       NVL(#{delYn, jdbcType=VARCHAR}, '0'),
-       #{gainType, jdbcType=VARCHAR},
+      (#{userName,jdbcType=VARCHAR},
+       #{roomName,jdbcType=VARCHAR},
+       #{itemId,jdbcType=NUMERIC},
+       #{qty,jdbcType=NUMERIC},
+       NVL(#{delYn,jdbcType=VARCHAR}, '0'),
+       #{gainType,jdbcType=VARCHAR},
        SYSDATE)
   </insert>
 
-  <!-- 인벤토리 요약(판매불가 표기용 ‘빛나는 ’ 프리픽스 포함) -->
+  <!-- 일반 요약(판매가능/불가 분리 용) -->
   <select id="selectInventorySummary" resultType="hashmap">
     SELECT
       x.ITEM_ID,
-      CASE WHEN x.GAIN_TYPE = 'DROP3' THEN '빛나는 ' || t.ITEM_NAME
-           ELSE t.ITEM_NAME END AS ITEM_NAME,
+      CASE WHEN x.GAIN_TYPE = 'DROP3' THEN '빛나는 ' || t.ITEM_NAME ELSE t.ITEM_NAME END AS ITEM_NAME,
       CASE WHEN x.GAIN_TYPE = 'DROP3' THEN '0' ELSE '1' END AS SELLABLE_YN,
       x.TOTAL_QTY
     FROM (
@@ -237,80 +225,78 @@
        GROUP BY ITEM_ID, GAIN_TYPE
     ) x
     LEFT JOIN TBOT_POINT_NEW_ITEM t ON t.ITEM_ID = x.ITEM_ID
-    WHERE x.TOTAL_QTY > 0
-    ORDER BY CASE WHEN x.GAIN_TYPE = 'DROP3' THEN 0 ELSE 1 END,
-             NVL(t.ITEM_NAME, 'ZZZ'), x.ITEM_ID
+   WHERE x.TOTAL_QTY > 0
+   ORDER BY CASE WHEN x.GAIN_TYPE = 'DROP3' THEN 0 ELSE 1 END,
+            NVL(t.ITEM_NAME, 'ZZZ'), x.ITEM_ID
   </select>
 
-  <!-- 인벤토리 요약(공격정보용: 일반+MARKET+빛나는 한 번에) -->
-  <select id="selectInventorySummaryAll" resultType="hashmap" parameterType="hashmap">
+  <!-- 공격정보용: DROP/MARKET/빛나는 다 포함 -->
+  <select id="selectInventorySummaryAll" resultType="hashmap">
     SELECT
-      CASE WHEN inv.GAIN_TYPE = 'DROP3' THEN '빛나는 ' || i.ITEM_NAME
-           ELSE i.ITEM_NAME END AS ITEM_NAME,
-      SUM(inv.QTY)                           AS TOTAL_QTY,
-      NVL(MAX(i.ITEM_SELL_PRICE),0)          AS ITEM_SELL_PRICE,
-      NVL(MAX(i.ITEM_TYPE),'')               AS ITEM_TYPE
+        CASE 
+          WHEN NVL(inv.gain_type,'DROP') = 'DROP3' THEN '빛나는 ' || NVL(i.item_name, '알 수 없음')
+          ELSE NVL(i.item_name, '알 수 없음')
+        END AS ITEM_NAME,
+        SUM(inv.qty) AS TOTAL_QTY,
+        NVL(MAX(i.item_sell_price), 0) AS ITEM_SELL_PRICE,
+        NVL(MAX(i.item_type), '')      AS ITEM_TYPE
     FROM TBOT_POINT_NEW_INVENTORY inv
     LEFT JOIN TBOT_POINT_NEW_ITEM i
-      ON i.ITEM_ID = inv.ITEM_ID
-    WHERE inv.USER_NAME = #{userName}
-      AND inv.ROOM_NAME = #{roomName}
-      AND inv.DEL_YN    = '0'
-    GROUP BY
-      CASE WHEN inv.GAIN_TYPE = 'DROP3' THEN '빛나는 ' || i.ITEM_NAME
-           ELSE i.ITEM_NAME END
+      ON i.item_id = inv.item_id
+    WHERE inv.user_name = #{userName}
+      AND inv.room_name = #{roomName}
+      AND inv.del_yn = '0'
+    GROUP BY 
+        CASE 
+          WHEN NVL(inv.gain_type,'DROP') = 'DROP3' THEN '빛나는 ' || NVL(i.item_name, '알 수 없음')
+          ELSE NVL(i.item_name, '알 수 없음')
+        END
     ORDER BY ITEM_NAME
   </select>
 
-  <!-- 현재 포인트 -->
   <select id="selectCurrentPoint" resultType="int">
-    SELECT NVL(SUM(SCORE), 0)
+    SELECT NVL(SUM(score), 0)
       FROM TBOT_POINT_RANK
-     WHERE USER_NAME = #{userName}
-       AND ROOM_NAME = #{roomName}
-       AND NEW_YN    = '1'
+     WHERE user_name = #{userName}
+       AND room_name = #{roomName}
+       AND new_yn = '1'
   </select>
 
-  <!-- 판매 대상 행(FIFO) : 빛나는 제외 + GAIN_TYPE 반환 -->
-  <select id="selectInventoryRowsForSale" resultType="hashmap" parameterType="hashmap">
-    SELECT ROWID AS RID, QTY, GAIN_TYPE
+  <!-- 판매 대상 행(FIFO) : 빛나는 제외 -->
+  <select id="selectInventoryRowsForSale" resultType="hashmap">
+    SELECT ROWID AS RID, QTY, NVL(GAIN_TYPE,'DROP') AS GAIN_TYPE
       FROM TBOT_POINT_NEW_INVENTORY
      WHERE USER_NAME = #{userName}
        AND ROOM_NAME = #{roomName}
        AND ITEM_ID   = #{itemId}
-       AND NVL(DEL_YN, '0') != '1'
-       AND NVL(GAIN_TYPE, 'DROP') <> 'DROP3'
+       AND NVL(DEL_YN,'0') != '1'
      ORDER BY INSERT_DATE ASC, ROWID
   </select>
 
-  <!-- ROWID 삭제/차감 (컨트롤러는 'rid' 키로 전달) -->
-  <update id="updateInventoryDelByRowId" parameterType="hashmap">
+  <update id="updateInventoryDelByRowId">
     UPDATE TBOT_POINT_NEW_INVENTORY SET DEL_YN = '1' WHERE ROWID = #{rid}
   </update>
 
-  <update id="updateInventoryQtyByRowId" parameterType="hashmap">
+  <update id="updateInventoryQtyByRowId">
     UPDATE TBOT_POINT_NEW_INVENTORY SET QTY = #{newQty} WHERE ROWID = #{rid}
   </update>
 
-  <!-- 판매 가능 총합: 빛나는 제외 -->
-  <select id="selectInventoryQty" resultType="int" parameterType="hashmap">
+  <select id="selectInventoryQty" resultType="int">
     SELECT NVL(SUM(QTY),0)
       FROM TBOT_POINT_NEW_INVENTORY
      WHERE USER_NAME = #{userName}
        AND ROOM_NAME = #{roomName}
        AND ITEM_ID   = #{itemId}
        AND NVL(DEL_YN,'0') != '1'
-       AND NVL(GAIN_TYPE,'DROP') <> 'DROP3'
   </select>
 
-  <!-- 판매 단가 -->
   <select id="selectItemSellPriceById" resultType="int">
     SELECT NVL(ITEM_SELL_PRICE,0)
       FROM TBOT_POINT_NEW_ITEM
      WHERE ITEM_ID = #{itemId}
   </select>
 
-  <!-- 포인트 적립/차감 (BUY/SELL) -->
+  <!-- 포인트 적립 -->
   <insert id="insertPointRank" parameterType="hashmap">
     INSERT INTO TBOT_POINT_RANK
       (USER_NAME, ROOM_NAME, SCORE, INSERT_DATE, CMD, NEW_YN)
@@ -318,28 +304,28 @@
       (#{userName}, #{roomName}, #{score}, SYSDATE, #{cmd}, '1')
   </insert>
 
-  <!-- 아이템 단가 조회(by NAME) -->
   <select id="selectItemPriceByName" parameterType="string" resultType="int">
-    SELECT NVL(ITEM_SELL_PRICE,0)
+    SELECT NVL(item_sell_price,0)
       FROM TBOT_POINT_NEW_ITEM
-     WHERE ITEM_NAME = #{itemName}
+     WHERE item_name = #{itemName}
   </select>
 
-  <!-- 보유 MARKET 아이템 능력치 총합 (DEL_YN='0') -->
-  <select id="selectOwnedItemBuffTotals" resultType="hashmap" parameterType="hashmap">
+  <!-- 보유 아이템 능력치 총합 (DEL_YN='0') -->
+  <select id="selectOwnedItemBuffTotals" resultType="hashmap">
     SELECT
-      NVL(SUM(i.ATK_MIN),  0) AS ATK_MIN,
-      NVL(SUM(i.ATK_MAX),  0) AS ATK_MAX,
-      NVL(SUM(i.ATK_CRI),  0) AS ATK_CRI,
-      NVL(SUM(i.HP_REGEN), 0) AS HP_REGEN,
-      NVL(SUM(i.HP_MAX),   0) AS HP_MAX
+        NVL(SUM(i.atk_min),0)  AS ATK_MIN,
+        NVL(SUM(i.atk_max),0)  AS ATK_MAX,
+        NVL(SUM(i.atk_cri),0)  AS ATK_CRI,
+        NVL(SUM(i.hp_regen),0) AS HP_REGEN,
+        NVL(SUM(i.hp_max),0)   AS HP_MAX
     FROM TBOT_POINT_NEW_INVENTORY inv
-    JOIN TBOT_POINT_NEW_ITEM      i ON i.ITEM_ID = inv.ITEM_ID
-    WHERE inv.USER_NAME = #{userName}
-      AND inv.ROOM_NAME = #{roomName}
-      AND inv.DEL_YN    = '0'
+    JOIN TBOT_POINT_NEW_ITEM i
+      ON i.item_id = inv.item_id
+    WHERE inv.user_name = #{userName}
+      AND inv.room_name = #{roomName}
+      AND inv.del_yn = '0'
       <if test="onlyMarket != null and onlyMarket == 'Y'">
-        AND i.ITEM_TYPE = 'MARKET'
+        AND i.item_type = 'MARKET'
       </if>
   </select>
 
