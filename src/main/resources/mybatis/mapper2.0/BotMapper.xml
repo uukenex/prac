@@ -1592,7 +1592,7 @@
 		  FROM TBOT_POINT_ITEM_M    M
 			  ,TBOT_POINT_ITEM_USER U
 		 WHERE M.ITEM_NO = U.ITEM_NO
-		   AND upper(U.USER_NAME) = upper(#{userName, jdbcType=VARCHAR})
+		   AND upper(A.USER_NAME) = TRIM(REGEXP_REPLACE(UPPER(#{userName, jdbcType=VARCHAR}), '[[:space:]]+', ' '))
 		   AND U.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 		   AND U.DEL_YN ='0'
 		   AND U.OPEN_FLAG ='2'
