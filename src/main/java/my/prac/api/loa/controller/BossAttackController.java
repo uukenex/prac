@@ -169,42 +169,6 @@ public class BossAttackController {
 					if (itemName.startsWith("빛나는 "))
 					    sb.append(" (판매불가)");
 
-					// ✅ HP_REGEN 장비 옵션 간단 표기
-					// (예: 지력의투구1 → HP_REGEN +1)
-					if ("MARKET".equals(typeStr)) {
-					    int atkMin = toInt(row.get("ATK_MIN"));
-					    int atkMax = toInt(row.get("ATK_MAX"));
-					    int hpRegen = toInt(row.get("HP_REGEN"));
-					    int hpMax = toInt(row.get("HP_MAX"));
-					    int crit = toInt(row.get("ATK_CRI"));
-
-					    StringBuilder opt = new StringBuilder(" +옵션: ");
-
-					    boolean first = true;
-					    if (atkMin != 0 || atkMax != 0) {
-					        opt.append("ATK ");
-					        if (atkMin == atkMax) opt.append("+").append(atkMin);
-					        else opt.append("+").append(atkMin).append("~").append(atkMax);
-					        first = false;
-					    }
-					    if (crit > 0) {
-					        if (!first) opt.append(", ");
-					        opt.append("CRIT +").append(crit).append("%");
-					        first = false;
-					    }
-					    if (hpRegen > 0) {
-					        if (!first) opt.append(", ");
-					        opt.append("HP_REGEN +").append(hpRegen); 
-					        first = false;
-					    }
-					    if (hpMax > 0) {
-					        if (!first) opt.append(", ");
-					        opt.append("HP_MAX +").append(hpMax);
-					    }
-
-					    sb.append(" ").append(opt);
-					}
-
 					sb.append(NL);
 				}
 			}
