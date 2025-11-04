@@ -520,7 +520,7 @@ public class BossAttackController {
 	    String curSpStr = formatSp(curPoint);
 
 	    // ✔ 문구 붙이기
-	    msg = msg + NL + "현재 포인트: " + curSpStr + "  /  /구매 , /판매 로 상점기능 가능!";
+	    msg = msg + NL + "현재 포인트: " + curSpStr +NL+ "/구매, /판매 로 상점열기!";
 
 	    return msg;
 	}
