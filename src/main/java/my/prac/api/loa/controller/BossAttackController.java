@@ -938,7 +938,7 @@ public class BossAttackController {
 	        // 1) [ID] 이름 (구매완료)
 	        sb.append("[").append(itemId).append("] ").append(name);
 	        if ("Y".equalsIgnoreCase(ownedYn)) sb.append(" (구매완료)");
-	        sb.append("\n");
+	        sb.append(NL);
 
 	        // 2) 가격/옵션 라인
 	        sb.append("가격:").append(price).append("sp, 옵션: ");
@@ -952,7 +952,7 @@ public class BossAttackController {
 	        if (hpMax != 0)  { sb.append(first?"": " ").append("hp+").append(hpMax); first=false; }
 
 	        if (first) sb.append("없음"); // 모든 옵션이 0이면
-	        sb.append("\n");
+	        sb.append(NL);
 	    }
 	    return sb.toString();
 	}
