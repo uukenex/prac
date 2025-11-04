@@ -301,7 +301,7 @@ public class BossAttackController {
 	    Integer tmpAfter = null;
 	    try { tmpAfter = botNewService.selectCurrentPoint(userName, roomName); } catch (Exception ignore) {}
 	    int afterPoint = (tmpAfter == null ? 0 : tmpAfter.intValue());
-	    String afterPointStr = String.format("%04dsp", afterPoint);
+	    String afterPointStr = String.format("%dsp", afterPoint);
 
 	    // 7) 능력치 표기(보여주기 용)
 	    int atkMin   = getInt(item.get("ATK_MIN"));
@@ -337,7 +337,7 @@ public class BossAttackController {
 
 	private String formatSp(int v) {
 	    if (v < 0) v = 0;
-	    return String.format("%dsp", v);  // 예: 42 -> 0042sp
+	    return String.format("%dsp", v);  
 	}
 
 	/** 몬스터 공격 (MARKET 장비 버프 + 무기보너스 적용, 럭키 유지, 드랍→인벤 반영) */

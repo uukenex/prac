@@ -636,7 +636,7 @@ public class LoaChatController {
 			case "/판매": case "/ㅍㅁ":
 				val = boss.sellItem(reqMap);
 				break;
-			case "/공격정보": case "/ㄱㄱㅈㅂ":
+			case "/공격정보": case "/ㄱㄱㅈㅂ": case "/가방": case "/ㄱㅂ":
 				val = boss.attackInfo(reqMap);
 				/*
 				reqMap.put("newUserName", sender);
@@ -1728,9 +1728,11 @@ public class LoaChatController {
 			case "/항협": case "/항해": case "/항해협동": case "/ㅎㅎ":
 				val = shipSearch();
 				break;
+				/*
 			case "/가방": case "/ㄱㅂ":
 				val = openBox(param1,param2);
 				break;
+				*/
 			case "/날씨": case "/ㄴㅆ":
 				if (param1 != null && !param1.equals("")) {
 					val = weatherSearch(param1);
