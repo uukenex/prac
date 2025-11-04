@@ -225,15 +225,11 @@ public class BossAttackController {
 	        return "방/유저 정보가 누락되었습니다.";
 	    }
 
-	 // 파라미터 없으면: 구매 가능 목록 노출
+	    // 파라미터 없으면: 구매 가능 목록 노출
 	    if (raw.isEmpty() || "리스트".equalsIgnoreCase(raw) || "list".equalsIgnoreCase(raw)) {
 	        List<HashMap<String,Object>> list = botNewService.selectMarketItemsWithOwned(userName, roomName);
-	        String compact = renderMarketListCompactWithOwned(list);
-	        StringBuilder sb = new StringBuilder();
-	        sb.append("▶ ").append(userName).append("님, 구매 가능 아이템").append(NL)
-	          .append(compact)
-	          .append("예) /구매 목검  또는  /구매 102");
-	        return sb.toString();
+	        String compact = renderMarketListForBuy(list, userName);
+	        return compact; // 이미 NL 포함 완성 문자열
 	    }
 
 	    // ====== 구매 진행 ======
@@ -700,7 +696,67 @@ public class BossAttackController {
 
 	    return sb.toString();
 	}
-	
+	/** 구매 리스트(한국어 직관 표기, NL='♬') 
+	 *  헤더: ▶ {userName}님, 구매 가능 아이템
+	 *  각 아이템: 
+	 *   [ID] 이름 (구매완료)
+	 *   ↘가격: {price}sp
+	 *   ↘옵션: 최소뎀 ±X, 최대뎀 ±Y, 치명타 +Z%, 체력회복 +R (5분마다), 최대체력 +H
+	 *  - '랜덤' 문구 없음. 부호는 값 그대로(+/-) 노출.
+	 */
+	private String renderMarketListForBuy(List<HashMap<String,Object>> items, String userName) {
+	    final String NL = "♬";
+	    if (items == null || items.isEmpty()) {
+	        return "▶ " + userName + "님, 구매 가능 아이템" + NL + "- (없음)";
+	    }
+
+	    StringBuilder sb = new StringBuilder();
+	    sb.append("▶ ").append(userName).append("님, 구매 가능 아이템").append(NL);
+
+	    for (HashMap<String,Object> it : items) {
+	        int    itemId   = safeInt(it.get("ITEM_ID"));
+	        String name     = String.valueOf(it.get("ITEM_NAME"));
+	        int    price    = safeInt(it.get("ITEM_SELL_PRICE"));
+	        int    atkMin   = safeInt(it.get("ATK_MIN"));
+	        int    atkMax   = safeInt(it.get("ATK_MAX"));
+	        int    atkCri   = safeInt(it.get("ATK_CRI"));
+	        int    hpRegen  = safeInt(it.get("HP_REGEN"));
+	        int    hpMax    = safeInt(it.get("HP_MAX"));
+	        String ownedYn  = String.valueOf(it.get("OWNED_YN"));
+
+	        // 1행: [ID] 이름 (구매완료)
+	        sb.append("[").append(itemId).append("] ").append(name);
+	        if ("Y".equalsIgnoreCase(ownedYn)) sb.append(" (구매완료)");
+	        sb.append(NL);
+
+	        // 2행: 가격
+	        sb.append("↘가격: ").append(price).append("sp").append(NL);
+
+	        // 3행: 옵션 (값이 있는 것만 표기, 부호 그대로)
+	        sb.append("↘옵션: ");
+	        StringBuilder opt = new StringBuilder();
+	        boolean first = true;
+
+	        if (atkMin != 0) { appendOpt(opt, first, "최소뎀 " + formatSigned(atkMin)); first = false; }
+	        if (atkMax != 0) { appendOpt(opt, first, "최대뎀 " + formatSigned(atkMax)); first = false; }
+	        if (atkCri != 0) { appendOpt(opt, first, "치명타 +" + atkCri + "%"); first = false; }
+	        if (hpRegen != 0){ appendOpt(opt, first, "체력회복 +" + hpRegen + " (5분마다)"); first = false; }
+	        if (hpMax != 0)  { appendOpt(opt, first, "최대체력 +" + hpMax); first = false; }
+
+	        sb.append(first ? "없음" : opt.toString()).append(NL);
+	        // 아이템 간 공백 줄 없이 연속 출력 (요청 사례에 맞춤)
+	    }
+
+	    // 안내 예시
+	    sb.append("예) /구매 목검  또는  /구매 102");
+	    return sb.toString();
+	}
+
+	private void appendOpt(StringBuilder opt, boolean first, String token) {
+	    if (!first) opt.append(", ");
+	    opt.append(token);
+	}
+
 
 	private int toInt(Object v) {
 	    try { return (v == null) ? 0 : Integer.parseInt(String.valueOf(v)); }
