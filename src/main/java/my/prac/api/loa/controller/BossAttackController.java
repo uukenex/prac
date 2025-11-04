@@ -28,7 +28,7 @@ import my.prac.core.prjbot.service.BotSettleService;
 public class BossAttackController {
 
 	/* ===== Config / Const ===== */
-	private static final int COOLDOWN_SECONDS = 30; // 30초 
+	private static final int COOLDOWN_SECONDS = 10; // 30초 
 	private static final int REVIVE_WAIT_MINUTES = 60;
 	private static final String NL = "♬";
 	// 🍀 Lucky: 전투 시작 시 10% 확률 고정(신규 전투에서만 결정)
@@ -716,25 +716,52 @@ public class BossAttackController {
 	}
 
 	private String buildBelowHalfMsg(String userName, String roomName, User u, String param1) {
-	    // 테스트 모드는 무시
-	    if ("test".equals(param1)) return null;
+	    if ("test".equals(param1)) return null; // 테스트 모드 패스
 
 	    int regenWaitMin = minutesUntilReach30(u, userName, roomName);
-
 	    CooldownCheck cd = checkCooldown(userName, roomName, param1);
 
 	    long remainMin = cd.remainSeconds / 60;
 	    long remainSec = cd.remainSeconds % 60;
 
 	    int waitMin = Math.max(regenWaitMin, cd.remainMinutes);
-
-	    // 체력 충분 + 쿨타임 OK → 통과
 	    if (waitMin <= 0) return null;
 
-	    return userName + "님, 약 " + waitMin + "분 후 공격 가능" + NL
-	         + "(최대체력의 30%까지 회복 필요 " + regenWaitMin + "분, "
-	         + "쿨타임 " + remainMin + "분 " + remainSec + "초)" + NL
-	         + "현재 체력: " + u.hpCur + " / " + u.hpMax + "  |  10분당 회복 +" + u.hpRegen;
+	    StringBuilder sb = new StringBuilder();
+	    sb.append(userName).append("님, 약 ").append(waitMin).append("분 후 공격 가능").append(NL)
+	      .append("(최대체력의 30%까지 회복 필요 ").append(regenWaitMin).append("분, ")
+	      .append("쿨타임 ").append(remainMin).append("분 ").append(remainSec).append("초)").append(NL)
+	      .append("현재 체력: ").append(u.hpCur).append(" / ").append(u.hpMax)
+	      .append("  |  10분당 회복 +").append(u.hpRegen).append(NL);
+
+	    // ✅ 리젠 스케줄 출력
+	    String sched = buildRegenScheduleSnippet(userName, roomName, u, waitMin);
+	    if (sched != null) sb.append(sched).append(NL);
+
+	    // ✅ 풀HP ETA 출력
+	    int toFull = minutesUntilFull(userName, roomName, u);
+	    if (toFull == Integer.MAX_VALUE) {
+	        sb.append("(풀HP까지: 리젠 없음)").append(NL);
+	    } else if (toFull > 0) {
+	        sb.append("(풀HP까지 약 ").append(toFull).append("분)").append(NL);
+	    }
+
+	    return sb.toString();
+	}
+	
+	private int minutesUntilFull(String userName, String roomName, User u) {
+	    if (u.hpCur >= u.hpMax) return 0;
+	    if (u.hpRegen <= 0) return Integer.MAX_VALUE; // 리젠 없음
+
+	    Timestamp baseline = getLastDamageBaseline(userName, roomName);
+	    if (baseline == null) return Integer.MAX_VALUE;
+
+	    long minutesPassed   = Math.max(0, Duration.between(baseline.toInstant(), Instant.now()).toMinutes());
+	    int  toNextTick      = (int)((10 - (minutesPassed % 10)) % 10); // 0이면 지금이 틱 경계
+	    int  needHp          = u.hpMax - u.hpCur;
+	    int  ticksNeeded     = (int) Math.ceil(needHp / (double) u.hpRegen);
+	    // 첫 틱이 지금이면 10분 뒤부터 회복이므로 toNextTick 보정
+	    return toNextTick + (ticksNeeded - (toNextTick == 0 ? 0 : 1)) * 10;
 	}
 
 	private Flags rollFlags(User u, Monster m) {
@@ -1071,6 +1098,44 @@ public class BossAttackController {
 	    // 폴백: 과거 데이터/초기 유저를 위해 기존 공격시각도 고려
 	    Timestamp any = botNewService.selectLastAttackTime(userName, roomName);
 	    return any;
+	}
+	private String buildRegenScheduleSnippet(String userName, String roomName, User u, int horizonMinutes) {
+	    Timestamp baseline = getLastDamageBaseline(userName, roomName);
+	    if (baseline == null || horizonMinutes <= 0 || u.hpRegen <= 0) return null;
+
+	    long minutesPassed = Math.max(0, Duration.between(baseline.toInstant(), Instant.now()).toMinutes());
+	    long ticksSoFar    = minutesPassed / 10;
+	    int toNextTick     = (int)((10 - (minutesPassed % 10)) % 10); // 0이면 "지금이 딱 틱 경계"
+	    int startOffset    = (toNextTick == 0 ? 10 : toNextTick);     // 다음 틱은 최소 10분 뒤로 표기
+
+	    StringBuilder sb = new StringBuilder();
+	    int hp = u.hpCur;
+
+	    // ① 각 틱 경계(10분 단위)마다 예상 HP
+	    for (int t = startOffset; t <= horizonMinutes; t += 10) {
+	        if (hp >= u.hpMax) break;
+	        int ticksAdded = (int)(((minutesPassed + t) / 10) - ticksSoFar); // 해당 시점까지 새로 발생한 틱 수
+	        int healed = Math.max(0, ticksAdded) * Math.max(0, u.hpRegen);
+	        int proj = Math.min(u.hpMax, u.hpCur + healed);
+	        sb.append("- ").append(t).append("분 뒤: HP ").append(proj).append(" / ").append(u.hpMax).append(NL);
+	    }
+
+	    // ② 마지막 대기 시점(horizonMinutes)이 틱 경계가 아니면, 그 시점도 별도로 표시
+	    if (horizonMinutes % 10 != 0) {
+	        int ticksAtHorizon = (int)(((minutesPassed + horizonMinutes) / 10) - ticksSoFar);
+	        int healed = Math.max(0, ticksAtHorizon) * Math.max(0, u.hpRegen);
+	        int proj = Math.min(u.hpMax, u.hpCur + healed);
+	        // 중복 방지: 이미 같은 분(=마지막 틱 경계)로 출력했으면 생략
+	        int lastPrinted = (startOffset <= horizonMinutes) ? ((horizonMinutes - startOffset) % 10 == 0 ? horizonMinutes : (horizonMinutes/10)*10) : -1;
+	        if (horizonMinutes != lastPrinted) {
+	            sb.append("- ").append(horizonMinutes).append("분 뒤: HP ").append(proj).append(" / ").append(u.hpMax).append(NL);
+	        }
+	    }
+	    
+	    
+
+	    String out = sb.toString().trim();
+	    return out.isEmpty() ? null : out;
 	}
 	
 	private static double clamp(double v, double min, double max) {
