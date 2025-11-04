@@ -45,6 +45,7 @@ public class BossAttackController {
 
 	/** 유저 기본정보 + 누적 처치/공격/사망 + 포인트 + 인벤토리 요약 */
 	public String attackInfo(HashMap<String, Object> map) {
+		final String allSeeStr = "===";
 		final String roomName = Objects.toString(map.get("roomName"), "");
 		final String userName = Objects.toString(map.get("userName"), "");
 		if (roomName.isEmpty() || userName.isEmpty())
@@ -97,13 +98,15 @@ public class BossAttackController {
 		int bCri = (buffs != null && buffs.get("ATK_CRI") != null) ? buffs.get("ATK_CRI").intValue() : 0;
 		int bRegen = (buffs != null && buffs.get("HP_REGEN") != null) ? buffs.get("HP_REGEN").intValue() : 0;
 		int bHpMax = (buffs != null && buffs.get("HP_MAX") != null) ? buffs.get("HP_MAX").intValue() : 0;
-
+		int bCriDmg = (buffs != null && buffs.get("CRI_DMG") != null) ? buffs.get("CRI_DMG").intValue() : 0;
 		// ⑥ 표시 수치 (DB 스탯은 불변)
 		int shownAtkMin = u.atkMin + bAtkMin;
 		int shownAtkMax = u.atkMax + weaponBonus + bAtkMax;
 		int shownCrit = u.critRate + bCri;
 		int shownHpMax = u.hpMax + bHpMax;
 		int shownRegen = u.hpRegen + bRegen;
+		int shownCritDmg = u.critDmg + bCriDmg; // 예: 150 + 20 = 170
+
 
 		// ⑦ 읽기 회복(표시용, Max 클램프)
 		int effHp = computeEffectiveHpFromLastAttack(targetUser, roomName, u, shownHpMax, shownRegen);
@@ -125,13 +128,23 @@ public class BossAttackController {
 		StringBuilder sb = new StringBuilder();
 		sb.append("✨").append(targetUser).append(" 공격 정보").append(NL).append("Lv: ").append(u.lv).append(", EXP ")
 				.append(u.expCur).append("/").append(u.expNext).append(NL).append("포인트: ").append(pointStr).append(NL)
-				.append("⚔ ATK: ").append(shownAtkMin).append(" ~ ").append(shownAtkMax).append("  |  CRIT: ")
-				.append(shownCrit).append("%").append(NL).append("   └ 무기강: ").append(weaponLv).append("강 (Max +")
-				.append(weaponBonus).append(")").append("  + 아이템(+").append(bAtkMin).append("~").append(bAtkMax)
-				.append(", CRIT+").append(bCri).append("%)").append(NL).append("❤️ HP: ").append(effHp).append(" / ")
-				.append(shownHpMax).append("  | 5분당 회복 +").append(shownRegen).append(NL).append("▶ 현재 타겟: ")
+				.append("⚔ATK: ").append(shownAtkMin).append(" ~ ").append(shownAtkMax).append(NL).append("   └ 기본효과 (")
+				.append(u.atkMin).append("~").append(u.atkMax).append(")").append(NL).append("   └ 시즌1 강화보너스: ")
+				.append(weaponLv).append("강 (max+").append(weaponBonus).append(")").append(NL).append("   └ 아이템효과 (min")
+				.append(formatSigned(bAtkMin)).append(", max").append(formatSigned(bAtkMax)).append(")").append(NL)
+
+				.append("⚔CRIT: ").append(shownCrit).append("%  CDMG ").append(shownCritDmg).append("%").append(NL)
+				.append("   └ 기본효과 (").append(u.critRate).append("%, ").append(u.critDmg).append("%)").append(NL)
+				.append("   └ 아이템효과 (CRIT ").append(formatSigned(bCri)).append("%, CDMG ").append(formatSigned(bCriDmg))
+				.append("%)").append(NL)
+
+				.append("❤️ HP: ").append(effHp).append(" / ").append(shownHpMax).append("  | 5분당 회복 +")
+				.append(shownRegen).append(NL).append("   └ 기본효과 (").append(u.hpMax).append(",  5분당 회복 +")
+				.append(u.hpRegen).append(")").append(NL).append("   └ 아이템효과 (HP ").append(formatSigned(bHpMax))
+				.append(",  5분당 회복 ").append(formatSigned(bRegen)).append(")").append(NL).append("▶ 현재 타겟: ")
 				.append(targetName).append(" (MON_NO=").append(u.targetMon).append(")").append(NL).append(NL);
 
+		sb.append(allSeeStr);
 		sb.append("누적 전투 기록").append(NL).append("- 총 공격 횟수: ").append(totalAttacks).append("회").append(NL)
 				.append("- 총 사망 횟수: ").append(totalDeaths).append("회").append(NL).append(NL);
 
@@ -313,27 +326,28 @@ public class BossAttackController {
 	    int afterPoint = (tmpAfter == null ? 0 : tmpAfter.intValue());
 	    String afterPointStr = String.format("%dsp", afterPoint);
 
-	    // 7) 능력치 표기(보여주기 용)
+	 // 7) 능력치 표기(보여주기 용) — 한국어 축약표기
 	    int atkMin   = getInt(item.get("ATK_MIN"));
 	    int atkMax   = getInt(item.get("ATK_MAX"));
 	    int atkCri   = getInt(item.get("ATK_CRI"));
 	    int hpRegen  = getInt(item.get("HP_REGEN"));
 	    int hpMax    = getInt(item.get("HP_MAX"));
+	    
+	    StringBuilder opt = new StringBuilder();
+	    boolean first = true;
 
-	    StringBuilder bonus = new StringBuilder();
-	    boolean printed = false;
-	    if (atkMin != 0 || atkMax != 0) { bonus.append(String.format("+ATK %d~%d  ", atkMin, atkMax)); printed = true; }
-	    if (atkCri != 0) { bonus.append(String.format("+CRI %d%%  ", atkCri)); printed = true; }
-	    if (hpRegen != 0) { bonus.append(String.format("+HP_REGEN %d  ", hpRegen)); printed = true; }
-	    if (hpMax != 0) { bonus.append(String.format("+HP_MAX %d  ", hpMax)); printed = true; }
-	    if (!printed) bonus.append("(능력치 없음)");
+	    if (atkMin != 0) { appendOpt(opt, first, "최소뎀" + formatSigned(atkMin)); first = false; }
+	    if (atkMax != 0) { appendOpt(opt, first, "최대뎀" + formatSigned(atkMax)); first = false; }
+	    if (atkCri  != 0){ appendOpt(opt, first, "치명타" + atkCri + "%");       first = false; }
+	    if (hpRegen != 0){ appendOpt(opt, first, "체력회복" + hpRegen);          first = false; }
+	    if (hpMax   != 0){ appendOpt(opt, first, "최대체력" + formatSigned(hpMax));first = false; }
 
 	    // 8) 결과 메시지
 	    StringBuilder sb = new StringBuilder();
 	    sb.append("▶ 구매 완료").append(NL)
 	      .append(userName).append("님, ").append(itemName).append("을(를) 구매했습니다.").append(NL)
-	      .append("가격: ").append(price).append("sp").append(NL)
-	      .append("능력치: ").append(bonus.toString()).append(NL)
+	      .append("↘가격: ").append(price).append("sp").append(NL)
+	      .append("↘옵션: ").append(buildOptionTokensFromMap(item)).append(NL)
 	      .append("현재 포인트: ").append(afterPointStr);
 	    return sb.toString();
 	}
@@ -438,7 +452,12 @@ public class BossAttackController {
 	    boolean crit = ThreadLocalRandom.current().nextDouble(0, 100) < clamp(effCritRate, 0, 100);
 	    int baseAtk = (effAtkMax <= effAtkMin) ? effAtkMin
 	                   : ThreadLocalRandom.current().nextInt(effAtkMin, effAtkMax + 1);
-	    double critMultiplier = Math.max(1.0, u.critDmg / 100.0);
+	    int bCriDmg = 0;
+	    try { bCriDmg = buffs.get("CRI_DMG").intValue(); } catch (Exception ignore) { /* 0 */ }
+
+	    final int effCritDmg = u.critDmg + bCriDmg;           // ex) 150 + 20 = 170
+	    double critMultiplier = Math.max(1.0, effCritDmg / 100.0);
+	    
 	    int rawAtkDmg = crit ? (int)Math.round(baseAtk * critMultiplier) : baseAtk;
 
 	    // 10) 원턴킬 선판정
@@ -710,20 +729,17 @@ public class BossAttackController {
 	        return "▶ " + userName + "님, 구매 가능 아이템" + NL + "- (없음)";
 	    }
 	    final String allSeeStr = "===";
+
 	    StringBuilder sb = new StringBuilder();
 	    sb.append("▶ ").append(userName).append("님").append(NL);
 	    sb.append("더보기 리스트에서 선택 후 구매해주세요").append(NL);
 	    sb.append("예) /구매 목검  또는  /구매 102");
 	    sb.append(allSeeStr);
+
 	    for (HashMap<String,Object> it : items) {
 	        int    itemId   = safeInt(it.get("ITEM_ID"));
 	        String name     = String.valueOf(it.get("ITEM_NAME"));
 	        int    price    = safeInt(it.get("ITEM_SELL_PRICE"));
-	        int    atkMin   = safeInt(it.get("ATK_MIN"));
-	        int    atkMax   = safeInt(it.get("ATK_MAX"));
-	        int    atkCri   = safeInt(it.get("ATK_CRI"));
-	        int    hpRegen  = safeInt(it.get("HP_REGEN"));
-	        int    hpMax    = safeInt(it.get("HP_MAX"));
 	        String ownedYn  = String.valueOf(it.get("OWNED_YN"));
 
 	        // 1행: [ID] 이름 (구매완료)
@@ -734,26 +750,36 @@ public class BossAttackController {
 	        // 2행: 가격
 	        sb.append("↘가격: ").append(price).append("sp").append(NL);
 
-	        // 3행: 옵션 (값이 있는 것만 표기, 부호 그대로)
-	        sb.append("↘옵션: ");
-	        StringBuilder opt = new StringBuilder();
-	        boolean first = true;
-
-	        if (atkMin != 0) { appendOpt(opt, first, "최소뎀" + formatSigned(atkMin)); first = false; }
-	        if (atkMax != 0) { appendOpt(opt, first, "최대뎀" + formatSigned(atkMax)); first = false; }
-	        if (atkCri != 0) { appendOpt(opt, first, "치명타+" + atkCri + "%"); first = false; }
-	        if (hpRegen != 0){ appendOpt(opt, first, "체력회복+" + hpRegen); first = false; }
-	        if (hpMax != 0)  { appendOpt(opt, first, "최대체력+" + hpMax); first = false; }
-
-	        sb.append(first ? "없음" : opt.toString()).append(NL);
-	        // 아이템 간 공백 줄 없이 연속 출력 (요청 사례에 맞춤)
+	        // 3행: 옵션 (공통 포맷터)
+	        sb.append("↘옵션: ").append(buildOptionTokensFromMap(it)).append(NL);
 	    }
-
-	    // 안내 예시
-	    
 	    return sb.toString();
 	}
 
+
+	/** 옵션 토큰 공통 포맷터 (최소뎀/최대뎀/치명타/체력회복/최대체력/치명타뎀) */
+	private String buildOptionTokensFromMap(HashMap<String, Object> m) {
+	    int atkMin   = getInt(m.get("ATK_MIN"));
+	    int atkMax   = getInt(m.get("ATK_MAX"));
+	    int atkCri   = getInt(m.get("ATK_CRI"));
+	    int hpRegen  = getInt(m.get("HP_REGEN"));
+	    int hpMax    = getInt(m.get("HP_MAX"));
+	    int criDmg   = getInt(m.get("CRI_DMG")); // NEW: 치명타뎀
+
+	    StringBuilder opt = new StringBuilder();
+	    boolean first = true;
+
+	    if (atkMin != 0) { appendOpt(opt, first, "최소뎀" + formatSigned(atkMin)); first = false; }
+	    if (atkMax != 0) { appendOpt(opt, first, "최대뎀" + formatSigned(atkMax)); first = false; }
+	    if (atkCri  != 0){ appendOpt(opt, first, "치명타" + formatSigned(atkCri) + "%"); first = false; }
+	    if (hpRegen != 0){ appendOpt(opt, first, "체력회복" + formatSigned(hpRegen)); first = false; }
+	    if (hpMax   != 0){ appendOpt(opt, first, "최대체력" + formatSigned(hpMax)); first = false; }
+	    if (criDmg  != 0){ appendOpt(opt, first, "치명타뎀" + formatSigned(criDmg) + "%"); first = false; }
+
+	    return first ? "없음" : opt.toString();
+	}
+
+	
 	private void appendOpt(StringBuilder opt, boolean first, String token) {
 	    if (!first) opt.append(", ");
 	    opt.append(token);

@@ -328,7 +328,8 @@
 	      NVL(SUM(i.atk_max),0)   AS ATK_MAX,
 	      NVL(SUM(i.atk_cri),0)   AS ATK_CRI,
 	      NVL(SUM(i.hp_regen),0)  AS HP_REGEN,
-	      NVL(SUM(i.hp_max),0)    AS HP_MAX
+	      NVL(SUM(i.hp_max),0)    AS HP_MAX,
+	      NVL(SUM(i.cri_dmg),0) AS CRI_DMG
 	  FROM TBOT_POINT_NEW_INVENTORY inv
 	  JOIN TBOT_POINT_NEW_ITEM i
 	    ON i.item_id = inv.item_id
@@ -345,7 +346,8 @@
 	      NVL(SUM(i.atk_max),0)   AS ATK_MAX,
 	      NVL(SUM(i.atk_cri),0)   AS ATK_CRI,
 	      NVL(SUM(i.hp_regen),0)  AS HP_REGEN,
-	      NVL(SUM(i.hp_max),0)    AS HP_MAX
+	      NVL(SUM(i.hp_max),0)    AS HP_MAX,
+	      NVL(SUM(i.cri_dmg),0) AS CRI_DMG
 	  FROM TBOT_POINT_NEW_INVENTORY inv
 	  JOIN TBOT_POINT_NEW_ITEM i
 	    ON i.item_id = inv.item_id
@@ -367,6 +369,7 @@
 	      i.atk_cri,
 	      i.hp_regen,
 	      i.hp_max,
+	      i.cri_dmg,
 	      CASE
 	        WHEN EXISTS (
 	          SELECT 1
@@ -393,7 +396,8 @@
 	      i.atk_max,
 	      i.atk_cri,
 	      i.hp_regen,
-	      i.hp_max
+	      i.hp_max,
+	      i.cri_dmg
 	  FROM TBOT_POINT_NEW_ITEM i
 	  WHERE i.item_type = 'MARKET'
 	    AND i.item_id   = #{itemId}
@@ -410,7 +414,8 @@
 	      i.atk_max,
 	      i.atk_cri,
 	      i.hp_regen,
-	      i.hp_max
+	      i.hp_max,
+	      i.cri_dmg
 	  FROM TBOT_POINT_NEW_ITEM i
 	  WHERE i.item_type = 'MARKET'
 	    AND (i.item_name = #{token} OR i.item_code = #{token})
@@ -437,7 +442,8 @@
 	        NVL(i.ATK_MAX,   0) AS ATK_MAX,
 	        NVL(i.ATK_CRI,   0) AS ATK_CRI,
 	        NVL(i.HP_REGEN,  0) AS HP_REGEN,
-	        NVL(i.HP_MAX,    0) AS HP_MAX
+	        NVL(i.HP_MAX,    0) AS HP_MAX,
+	        NVL(i.CRI_DMG,   0) AS CRI_DMG
 	    FROM TBOT_POINT_NEW_ITEM i
 	    WHERE i.ITEM_TYPE = 'MARKET'
 	    ORDER BY i.ITEM_ID
@@ -456,7 +462,8 @@
 	        NVL(i.ATK_MAX,   0) AS ATK_MAX,
 	        NVL(i.ATK_CRI,   0) AS ATK_CRI,
 	        NVL(i.HP_REGEN,  0) AS HP_REGEN,
-	        NVL(i.HP_MAX,    0) AS HP_MAX
+	        NVL(i.HP_MAX,    0) AS HP_MAX,
+	        NVL(i.CRI_DMG,   0) AS CRI_DMG
 	    FROM TBOT_POINT_NEW_ITEM i
 	    WHERE i.ITEM_ID = #{itemId}
 	</select>
@@ -483,6 +490,7 @@
 	      NVL(i.ATK_CRI,0)  AS ATK_CRI,
 	      NVL(i.HP_REGEN,0) AS HP_REGEN,
 	      NVL(i.HP_MAX,0)   AS HP_MAX,
+	      NVL(i.CRI_DMG,   0) AS CRI_DMG,
 	      CASE
 	        WHEN EXISTS (
 	          SELECT 1
