@@ -751,7 +751,7 @@ public class BossAttackController {
 	        sb.append("↘가격: ").append(price).append("sp").append(NL);
 
 	        // 3행: 옵션 (공통 포맷터)
-	        sb.append("↘옵션: ").append(buildOptionTokensFromMap(it)).append(NL);
+	        sb.append("↘옵션: ").append(buildOptionTokensFromMap(it)).append(NL).append(NL);
 	    }
 	    return sb.toString();
 	}
