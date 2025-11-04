@@ -137,4 +137,7 @@ public interface BotNewDAO {
         @Param("roomName") String roomName,
         @Param("itemId")   Integer itemId
     );
+    
+    Timestamp selectLastDamagedTime(@Param("userName") String userName,
+            @Param("roomName") String roomName);
 }

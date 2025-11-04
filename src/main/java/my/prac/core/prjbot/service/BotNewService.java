@@ -82,7 +82,7 @@ public interface BotNewService {
     List<HashMap<String,Object>> selectMarketItemsWithOwned(String userName, String roomName);
     Integer selectHasOwnedMarketItem(String userName, String roomName, Integer itemId);
 
-   
+    Timestamp selectLastDamagedTime(String userName, String roomName) ;
 } 
 
 	

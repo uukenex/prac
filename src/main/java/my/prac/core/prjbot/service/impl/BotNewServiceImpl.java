@@ -231,5 +231,10 @@ public class BotNewServiceImpl implements BotNewService {
     public Integer selectHasOwnedMarketItem(String userName, String roomName, Integer itemId) {
         return botNewDAO.selectHasOwnedMarketItem(userName, roomName, itemId);
     }
+    
+    @Override
+    public Timestamp selectLastDamagedTime(String userName, String roomName) {
+        return botNewDAO.selectLastDamagedTime(userName, roomName);
+    }
 
 }

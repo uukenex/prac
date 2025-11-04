@@ -506,4 +506,13 @@
 	    AND inv.ITEM_ID   = #{itemId}
 	    AND inv.DEL_YN    = '0'
 	</select>
+	
+	<!-- 마지막으로 '피해를 받은' 시각: MON_DMG>0 또는 DEATH_YN='1' -->
+	<select id="selectLastDamagedTime" resultType="java.sql.Timestamp">
+	  SELECT MAX(INSERT_DATE)
+	    FROM TBOT_POINT_NEW_BATTLE_LOG
+	   WHERE USER_NAME = #{userName}
+	     AND ROOM_NAME = #{roomName}
+	     AND (MON_DMG > 0 OR DEATH_YN = '1')
+	</select>
 </mapper>
