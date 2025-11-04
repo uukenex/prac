@@ -156,11 +156,55 @@ public class BossAttackController {
 					String itemName = Objects.toString(row.get("ITEM_NAME"), "-");
 					String qtyStr = Objects.toString(row.get("TOTAL_QTY"), "0");
 					String typeStr = Objects.toString(row.get("ITEM_TYPE"), "");
-					sb.append("- ").append(itemName).append(" x").append(qtyStr);
-					if ("MARKET".equals(typeStr))
-						sb.append(" (장비)");
+					sb.append("- ").append(itemName);
+
+					// ✅ MARKET(장비)은 수량표시 x 제거
+					if ("MARKET".equals(typeStr)) {
+					    sb.append(" (장비)");
+					} else {
+					    sb.append(" x").append(qtyStr);
+					}
+
+					// ✅ 빛나는 아이템은 판매불가 표시
 					if (itemName.startsWith("빛나는 "))
-						sb.append(" (판매불가)");
+					    sb.append(" (판매불가)");
+
+					// ✅ HP_REGEN 장비 옵션 간단 표기
+					// (예: 지력의투구1 → HP_REGEN +1)
+					if ("MARKET".equals(typeStr)) {
+					    int atkMin = toInt(row.get("ATK_MIN"));
+					    int atkMax = toInt(row.get("ATK_MAX"));
+					    int hpRegen = toInt(row.get("HP_REGEN"));
+					    int hpMax = toInt(row.get("HP_MAX"));
+					    int crit = toInt(row.get("ATK_CRI"));
+
+					    StringBuilder opt = new StringBuilder(" +옵션: ");
+
+					    boolean first = true;
+					    if (atkMin != 0 || atkMax != 0) {
+					        opt.append("ATK ");
+					        if (atkMin == atkMax) opt.append("+").append(atkMin);
+					        else opt.append("+").append(atkMin).append("~").append(atkMax);
+					        first = false;
+					    }
+					    if (crit > 0) {
+					        if (!first) opt.append(", ");
+					        opt.append("CRIT +").append(crit).append("%");
+					        first = false;
+					    }
+					    if (hpRegen > 0) {
+					        if (!first) opt.append(", ");
+					        opt.append("HP_REGEN +").append(hpRegen); 
+					        first = false;
+					    }
+					    if (hpMax > 0) {
+					        if (!first) opt.append(", ");
+					        opt.append("HP_MAX +").append(hpMax);
+					    }
+
+					    sb.append(" ").append(opt);
+					}
+
 					sb.append(NL);
 				}
 			}
@@ -217,50 +261,15 @@ public class BossAttackController {
 	        return "방/유저 정보가 누락되었습니다.";
 	    }
 
-	    // 파라미터 없으면: 구매 가능 목록 노출
+	 // 파라미터 없으면: 구매 가능 목록 노출
 	    if (raw.isEmpty() || "리스트".equalsIgnoreCase(raw) || "list".equalsIgnoreCase(raw)) {
-	    	
-	    	List<HashMap<String,Object>> items = botNewService.selectMarketItemsWithOwned(userName, roomName);
-
-	    	StringBuilder sb = new StringBuilder();
-	    	sb.append("▶ ").append(userName).append("님, 구매 가능 아이템").append(NL);
-
-	    	for (HashMap<String,Object> item : items) {
-	    	    String name = (String)item.get("ITEM_NAME");
-	    	    int price   = ((Number)item.get("ITEM_SELL_PRICE")).intValue();
-	    	    String owned = "Y".equals(item.get("OWNED_YN")) ? "[구매완료]" : "";
-	    	    int atkMin  = ((Number)item.get("ATK_MIN")).intValue();
-	    	    int atkMax  = ((Number)item.get("ATK_MAX")).intValue();
-	    	    int hpMax   = ((Number)item.get("HP_MAX")).intValue();
-	    	    int regen   = ((Number)item.get("HP_REGEN")).intValue();
-	    	    int cri     = ((Number)item.get("ATK_CRI")).intValue();
-
-	    	    // 첫 줄: 아이템 + 상태
-	    	    sb.append(item.get("ITEM_ID")).append(" ").append(name);
-	    	    if (!owned.isEmpty()) sb.append(" ").append(owned);
-	    	    sb.append(NL);
-
-	    	    // 두 번째 줄: 옵션 설명
-	    	    sb.append("(")
-	    	      .append(price).append("sp");
-
-	    	    if (atkMin != 0 || atkMax != 0) {
-	    	        sb.append(", +ATK ").append(atkMin).append("~").append(atkMax);
-	    	    }
-	    	    if (cri > 0) {
-	    	        sb.append(", +CRI ").append(cri).append("%");
-	    	    }
-	    	    if (hpMax > 0) {
-	    	        sb.append(", +HP ").append(hpMax);
-	    	    }
-	    	    if (regen > 0) {
-	    	        sb.append(", +HP_REGEN ").append(regen).append("/10m");
-	    	    }
-
-	    	    sb.append(")").append(NL);
-	    	}
-	    	return sb.toString();
-	    	
+	        List<HashMap<String,Object>> list = botNewService.selectMarketItemsWithOwned(userName, roomName);
+	        String compact = renderMarketListCompactWithOwned(list);
+	        StringBuilder sb = new StringBuilder();
+	        sb.append("▶ ").append(userName).append("님, 구매 가능 아이템").append(NL)
+	          .append(compact)
+	          .append("예) /구매 목검  또는  /구매 102");
+	        return sb.toString();
 	    }
 
 	    // ====== 구매 진행 ======
@@ -912,33 +921,44 @@ public class BossAttackController {
 	
 	
 	private String renderMarketListCompactWithOwned(List<HashMap<String,Object>> items) {
-	    if (items == null || items.isEmpty()) return "판매중인 아이템이 없습니다.";
+		if (items == null || items.isEmpty()) return "판매중인 아이템이 없습니다.";
 	    StringBuilder sb = new StringBuilder();
-	    for (HashMap<String,Object> it : items) {
-	        int itemId   = safeInt(it.get("ITEM_ID"));
-	        String name  = String.valueOf(it.get("ITEM_NAME"));
-	        int price    = safeInt(it.get("ITEM_SELL_PRICE"));
-	        int atkMin   = safeInt(it.get("ATK_MIN"));
-	        int atkMax   = safeInt(it.get("ATK_MAX"));
-	        int atkCri   = safeInt(it.get("ATK_CRI"));
-	        int hpRegen  = safeInt(it.get("HP_REGEN"));
-	        int hpMax    = safeInt(it.get("HP_MAX"));
-	        String owned = String.valueOf(it.get("OWNED_YN"));
 
-	        sb.append(itemId).append(" ").append(name).append(" (")
-	          .append(price).append("sp");
+	    for (HashMap<String,Object> it : items) {
+	        int    itemId   = safeInt(it.get("ITEM_ID"));
+	        String name     = String.valueOf(it.get("ITEM_NAME"));
+	        int    price    = safeInt(it.get("ITEM_SELL_PRICE"));
+	        int    atkMin   = safeInt(it.get("ATK_MIN"));
+	        int    atkMax   = safeInt(it.get("ATK_MAX"));
+	        int    atkCri   = safeInt(it.get("ATK_CRI"));
+	        int    hpRegen  = safeInt(it.get("HP_REGEN"));
+	        int    hpMax    = safeInt(it.get("HP_MAX"));
+	        String ownedYn  = String.valueOf(it.get("OWNED_YN"));
+
+	        // 1) [ID] 이름 (구매완료)
+	        sb.append("[").append(itemId).append("] ").append(name);
+	        if ("Y".equalsIgnoreCase(ownedYn)) sb.append(" (구매완료)");
+	        sb.append("\n");
+
+	        // 2) 가격/옵션 라인
+	        sb.append("가격:").append(price).append("sp, 옵션: ");
 
 	        boolean first = true;
-	        if (atkMin != 0 || atkMax != 0) { sb.append(", +ATK ").append(atkMin).append("~").append(atkMax); first=false; }
-	        if (atkCri != 0)  { sb.append(first?", ":" , ").append("+CRI ").append(atkCri).append("%"); first=false; }
-	        if (hpRegen != 0) { sb.append(first?", ":" , ").append("+REGEN ").append(hpRegen).append(" /10m"); first=false; }
-	        if (hpMax != 0)   { sb.append(first?", ":" , ").append("+HP ").append(hpMax); }
+	        // min/max: 0이면 생략, 부호 그대로 표시 (예: max-5)
+	        if (atkMin != 0) { sb.append("min").append(formatSigned(atkMin)); first=false; }
+	        if (atkMax != 0) { sb.append(first?"":" ").append("max").append(formatSigned(atkMax)); first=false; }
+	        if (atkCri != 0) { sb.append(first?"": " ").append("cri+").append(atkCri).append("%"); first=false; }
+	        if (hpRegen != 0){ sb.append(first?"": " ").append("hp_regen+").append(hpRegen); first=false; }
+	        if (hpMax != 0)  { sb.append(first?"": " ").append("hp+").append(hpMax); first=false; }
 
-	        sb.append(")");
-	        if ("Y".equalsIgnoreCase(owned)) sb.append("[보유중]");
-	        sb.append(NL);
+	        if (first) sb.append("없음"); // 모든 옵션이 0이면
+	        sb.append("\n");
 	    }
 	    return sb.toString();
+	}
+	
+	private String formatSigned(int v) {
+	    return (v >= 0 ? "+" + v : String.valueOf(v));
 	}
 
 	private int safeInt(Object v) {
