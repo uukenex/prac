@@ -714,8 +714,8 @@ public class BossAttackController {
 	    int enabled = Math.max(1, m.monPatten);
 	    int[] weights = new int[enabled];
 	    for (int i = 0; i < enabled; i++) weights[i] = 1;
-	    if (enabled == 2) { weights[0] = 40; weights[1] = 60; }
-	    if (enabled == 3) { weights[0] = 20; weights[1] = 50; weights[2] = 30; }
+	    if (enabled == 2) { weights[0] = 20; weights[1] = 80; }
+	    if (enabled == 3) { weights[0] = 10; weights[1] = 60; weights[2] = 30; }
 	    int sum = 0; for (int w : weights) sum += Math.max(0, w);
 	    if (sum <= 0) { for (int i = 0; i < enabled; i++) weights[i] = 1; sum = enabled; }
 	    int pick = r.nextInt(sum) + 1, acc = 0;
