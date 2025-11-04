@@ -1236,8 +1236,8 @@ public class LoaPlayController {
 				res += userName+" 님, 현재 입력 숫자:"+in_number+enterStr+
 						"총 6회 중 "+(completeYn+1) +" 회 진행중"+enterStr;
 				
-				List<String> ableItemList = selectPointItemUserList(map); 
-				boolean item_3_1 = ableItemList.contains("3-1");
+				//List<String> ableItemList = selectPointItemUserList(map); 
+				boolean item_3_1 = true;
 				
 				
 				switch(completeYn) {
@@ -1391,10 +1391,12 @@ public class LoaPlayController {
 						    if(isNewLogic()) {
 							    res += "오답으로 sp 획득 실패!"+ enterStr;
 							}
+						    /*
 							int newScore = botService.insertBotPointRankTx(newMap);
 
 						    res += "참여포인트: 1p 획득" + enterStr;
 						    res += "갱신포인트: " + newScore + "p" + enterStr;
+						    */
 						}
 					}
 
