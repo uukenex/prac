@@ -230,29 +230,30 @@
             NVL(t.ITEM_NAME, 'ZZZ'), x.ITEM_ID
   </select>
 
-  <!-- 공격정보용: DROP/MARKET/빛나는 다 포함 -->
   <select id="selectInventorySummaryAll" resultType="hashmap">
-    SELECT
-        CASE 
-          WHEN NVL(inv.gain_type,'DROP') = 'DROP3' THEN '빛나는 ' || NVL(i.item_name, '알 수 없음')
-          ELSE NVL(i.item_name, '알 수 없음')
-        END AS ITEM_NAME,
-        SUM(inv.qty) AS TOTAL_QTY,
-        NVL(MAX(i.item_sell_price), 0) AS ITEM_SELL_PRICE,
-        NVL(MAX(i.item_type), '')      AS ITEM_TYPE
-    FROM TBOT_POINT_NEW_INVENTORY inv
-    LEFT JOIN TBOT_POINT_NEW_ITEM i
-      ON i.item_id = inv.item_id
-    WHERE inv.user_name = #{userName}
-      AND inv.room_name = #{roomName}
-      AND inv.del_yn = '0'
-    GROUP BY 
-        CASE 
-          WHEN NVL(inv.gain_type,'DROP') = 'DROP3' THEN '빛나는 ' || NVL(i.item_name, '알 수 없음')
-          ELSE NVL(i.item_name, '알 수 없음')
-        END
-    ORDER BY ITEM_NAME
-  </select>
+	  SELECT
+	      NVL(i.item_id, -1) AS ITEM_ID,
+	      CASE 
+	        WHEN NVL(inv.gain_type,'DROP') = 'DROP3' THEN '빛나는 ' || NVL(i.item_name, '알 수 없음')
+	        ELSE NVL(i.item_name, '알 수 없음')
+	      END AS ITEM_NAME,
+	      SUM(inv.qty) AS TOTAL_QTY,
+	      NVL(MAX(i.item_sell_price), 0) AS ITEM_SELL_PRICE,
+	      NVL(MAX(i.item_type), '')      AS ITEM_TYPE
+	  FROM TBOT_POINT_NEW_INVENTORY inv
+	  LEFT JOIN TBOT_POINT_NEW_ITEM i
+	    ON i.item_id = inv.item_id
+	  WHERE inv.user_name = #{userName}
+	    AND inv.room_name = #{roomName}
+	    AND inv.del_yn = '0'
+	  GROUP BY
+	      NVL(i.item_id, -1),
+	      CASE 
+	        WHEN NVL(inv.gain_type,'DROP') = 'DROP3' THEN '빛나는 ' || NVL(i.item_name, '알 수 없음')
+	        ELSE NVL(i.item_name, '알 수 없음')
+	      END
+	  ORDER BY NVL(i.item_id, -1)
+	</select>
 
   <select id="selectCurrentPoint" resultType="int">
     SELECT NVL(SUM(score), 0)

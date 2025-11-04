@@ -887,7 +887,6 @@ public class BossAttackController {
 	}
 
 
-	/** 🍀 Lucky: 처치시에만 EXP×3, 드랍코드 '3' = 빛나는(판매불가) */
 	private Resolve resolveKillAndDrop(Monster m, AttackCalc c, boolean willKill, User u, boolean lucky) {
 	    Resolve r = new Resolve();
 	    r.killed = willKill;
@@ -898,14 +897,14 @@ public class BossAttackController {
 	    );
 
 	    if (willKill) r.gainExp = lucky ? baseKillExp * 3 : baseKillExp;
-	    else          r.gainExp = 1;
+	    else          r.gainExp = 2;  // ✅ 비처치 EXP 1 → 2
 
 	    if (lucky && willKill) {
-	        r.dropCode = "3";         // 빛나는(판매불가)
+	        r.dropCode = "3";
 	        return r;
 	    }
 	    boolean drop = willKill && ThreadLocalRandom.current().nextDouble(0, 100) < 30.0;
-	    r.dropCode = drop ? "1" : "0"; // '1' = 일반드랍(판매가능)
+	    r.dropCode = drop ? "1" : "0";
 	    return r;
 	}
 
