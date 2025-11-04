@@ -281,14 +281,6 @@
     UPDATE TBOT_POINT_NEW_INVENTORY SET QTY = #{newQty} WHERE ROWID = #{rid}
   </update>
 
-  <select id="selectInventoryQty" resultType="int">
-    SELECT NVL(SUM(QTY),0)
-      FROM TBOT_POINT_NEW_INVENTORY
-     WHERE USER_NAME = #{userName}
-       AND ROOM_NAME = #{roomName}
-       AND ITEM_ID   = #{itemId}
-       AND NVL(DEL_YN,'0') != '1'
-  </select>
 
   <select id="selectItemSellPriceById" resultType="int">
     SELECT NVL(ITEM_SELL_PRICE,0)
@@ -328,5 +320,190 @@
         AND i.item_type = 'MARKET'
       </if>
   </select>
-
+  
+  <select id="selectOwnedMarketBuffTotals" resultType="map">
+	  SELECT
+	      NVL(SUM(i.atk_min),0)   AS ATK_MIN,
+	      NVL(SUM(i.atk_max),0)   AS ATK_MAX,
+	      NVL(SUM(i.atk_cri),0)   AS ATK_CRI,
+	      NVL(SUM(i.hp_regen),0)  AS HP_REGEN,
+	      NVL(SUM(i.hp_max),0)    AS HP_MAX
+	  FROM TBOT_POINT_NEW_INVENTORY inv
+	  JOIN TBOT_POINT_NEW_ITEM i
+	    ON i.item_id = inv.item_id
+	  WHERE inv.user_name = #{userName}
+	    AND inv.room_name = #{roomName}
+	    AND inv.del_yn = '0'
+	    AND i.item_type = 'MARKET'
+	</select>
+	
+	<!-- 전체(필요시) -->
+	<select id="selectOwnedAllBuffTotals" resultType="map">
+	  SELECT
+	      NVL(SUM(i.atk_min),0)   AS ATK_MIN,
+	      NVL(SUM(i.atk_max),0)   AS ATK_MAX,
+	      NVL(SUM(i.atk_cri),0)   AS ATK_CRI,
+	      NVL(SUM(i.hp_regen),0)  AS HP_REGEN,
+	      NVL(SUM(i.hp_max),0)    AS HP_MAX
+	  FROM TBOT_POINT_NEW_INVENTORY inv
+	  JOIN TBOT_POINT_NEW_ITEM i
+	    ON i.item_id = inv.item_id
+	  WHERE inv.user_name = #{userName}
+	    AND inv.room_name = #{roomName}
+	    AND inv.del_yn = '0'
+	    /* 전체라서 item_type 조건 없음 */
+	</select>
+	
+	<!-- 구매 가능한 MARKET 아이템 목록 + 보유여부 -->
+	<select id="selectMarketItemsForSale" resultType="hashmap">
+	  SELECT
+	      i.item_id,
+	      i.item_name,
+	      i.item_sell_price,
+	      i.item_desc,
+	      i.atk_min,
+	      i.atk_max,
+	      i.atk_cri,
+	      i.hp_regen,
+	      i.hp_max,
+	      CASE
+	        WHEN EXISTS (
+	          SELECT 1
+	            FROM TBOT_POINT_NEW_INVENTORY inv
+	           WHERE inv.user_name = #{userName}
+	             AND inv.room_name = #{roomName}
+	             AND inv.item_id   = i.item_id
+	             AND inv.del_yn    = '0'
+	        ) THEN 'Y' ELSE 'N'
+	      END AS owned_yn
+	  FROM TBOT_POINT_NEW_ITEM i
+	  WHERE i.item_type = 'MARKET'
+	  ORDER BY i.item_id
+	</select>
+	
+	<!-- MARKET 단일: ITEM_ID 기준 -->
+	<select id="selectMarketItemById" resultType="hashmap">
+	  SELECT
+	      i.item_id,
+	      i.item_name,
+	      i.item_sell_price,
+	      i.item_desc,
+	      i.atk_min,
+	      i.atk_max,
+	      i.atk_cri,
+	      i.hp_regen,
+	      i.hp_max
+	  FROM TBOT_POINT_NEW_ITEM i
+	  WHERE i.item_type = 'MARKET'
+	    AND i.item_id   = #{itemId}
+	</select>
+	
+	<!-- MARKET 단일: 이름 또는 코드 기준 (두 칼럼 모두 매칭 시 우선 한 건) -->
+	<select id="selectMarketItemByNameOrCode" resultType="hashmap">
+	  SELECT
+	      i.item_id,
+	      i.item_name,
+	      i.item_sell_price,
+	      i.item_desc,
+	      i.atk_min,
+	      i.atk_max,
+	      i.atk_cri,
+	      i.hp_regen,
+	      i.hp_max
+	  FROM TBOT_POINT_NEW_ITEM i
+	  WHERE i.item_type = 'MARKET'
+	    AND (i.item_name = #{token} OR i.item_code = #{token})
+	</select>
+	
+	<!-- 보유중인 MARKET 인벤토리 수량(활성행) -->
+	<select id="countOwnedMarketItem" resultType="int">
+	  SELECT NVL(SUM(inv.qty),0)
+	  FROM TBOT_POINT_NEW_INVENTORY inv
+	  WHERE inv.user_name = #{userName}
+	    AND inv.room_name = #{roomName}
+	    AND inv.item_id   = #{itemId}
+	    AND inv.del_yn    = '0'
+	</select>
+	
+	
+	<select id="selectMarketItems" resultType="hashmap">
+	    SELECT 
+	        i.ITEM_ID,
+	        i.ITEM_NAME,
+	        i.ITEM_SELL_PRICE,
+	        i.ITEM_TYPE,
+	        NVL(i.ATK_MIN,   0) AS ATK_MIN,
+	        NVL(i.ATK_MAX,   0) AS ATK_MAX,
+	        NVL(i.ATK_CRI,   0) AS ATK_CRI,
+	        NVL(i.HP_REGEN,  0) AS HP_REGEN,
+	        NVL(i.HP_MAX,    0) AS HP_MAX
+	    FROM TBOT_POINT_NEW_ITEM i
+	    WHERE i.ITEM_TYPE = 'MARKET'
+	    ORDER BY i.ITEM_ID
+	</select>
+	
+	<!--  B. 아이템 단건 상세  -->
+	<select id="selectItemDetailById" resultType="hashmap">
+	    SELECT 
+	        i.ITEM_ID,
+	        i.ITEM_CODE,
+	        i.ITEM_NAME,
+	        i.ITEM_SELL_PRICE,
+	        i.ITEM_DESC,
+	        i.ITEM_TYPE,
+	        NVL(i.ATK_MIN,   0) AS ATK_MIN,
+	        NVL(i.ATK_MAX,   0) AS ATK_MAX,
+	        NVL(i.ATK_CRI,   0) AS ATK_CRI,
+	        NVL(i.HP_REGEN,  0) AS HP_REGEN,
+	        NVL(i.HP_MAX,    0) AS HP_MAX
+	    FROM TBOT_POINT_NEW_ITEM i
+	    WHERE i.ITEM_ID = #{itemId}
+	</select>
+	
+	
+	<!--  D. 인벤토리 보유 수량 합(DEL_YN='0'만)  -->
+	<select id="selectInventoryQty" resultType="int">
+	    SELECT NVL(SUM(n.QTY), 0)
+	    FROM TBOT_POINT_NEW_INVENTORY n
+	    WHERE n.USER_NAME = #{userName}
+	      AND n.ROOM_NAME = #{roomName}
+	      AND n.ITEM_ID   = #{itemId}
+	      AND NVL(n.DEL_YN, '0') = '0'
+	</select>
+	<!-- MARKET 아이템 전체 + 보유여부(OWNED_YN) -->
+	<select id="selectMarketItemsWithOwned" resultType="hashmap">
+	  SELECT
+	      i.ITEM_ID,
+	      i.ITEM_NAME,
+	      i.ITEM_SELL_PRICE,
+	      i.ITEM_TYPE,
+	      NVL(i.ATK_MIN,0)  AS ATK_MIN,
+	      NVL(i.ATK_MAX,0)  AS ATK_MAX,
+	      NVL(i.ATK_CRI,0)  AS ATK_CRI,
+	      NVL(i.HP_REGEN,0) AS HP_REGEN,
+	      NVL(i.HP_MAX,0)   AS HP_MAX,
+	      CASE
+	        WHEN EXISTS (
+	          SELECT 1
+	            FROM TBOT_POINT_NEW_INVENTORY inv
+	           WHERE inv.USER_NAME = #{userName}
+	             AND inv.ROOM_NAME = #{roomName}
+	             AND inv.ITEM_ID   = i.ITEM_ID
+	             AND inv.DEL_YN    = '0'
+	        ) THEN 'Y' ELSE 'N'
+	      END AS OWNED_YN
+	  FROM TBOT_POINT_NEW_ITEM i
+	  WHERE i.ITEM_TYPE = 'MARKET'
+	  ORDER BY i.ITEM_ID
+	</select>
+	
+	<!-- 이미 소유한 MARKET 아이템인지 확인 -->
+	<select id="selectHasOwnedMarketItem" resultType="int">
+	  SELECT COUNT(1)
+	  FROM TBOT_POINT_NEW_INVENTORY inv
+	  WHERE inv.USER_NAME = #{userName}
+	    AND inv.ROOM_NAME = #{roomName}
+	    AND inv.ITEM_ID   = #{itemId}
+	    AND inv.DEL_YN    = '0'
+	</select>
 </mapper>

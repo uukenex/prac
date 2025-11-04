@@ -630,6 +630,9 @@ public class LoaChatController {
 					val = "별도 게임방에서 진행해주세요.";
 				}
 				break;
+			case "/구매": case "/ㄱㅁ":
+				val = boss.buyItem(reqMap);
+				break;
 			case "/판매": case "/ㅍㅁ":
 				val = boss.sellItem(reqMap);
 				break;

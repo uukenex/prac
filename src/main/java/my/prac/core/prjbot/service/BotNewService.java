@@ -67,6 +67,22 @@ public interface BotNewService {
     /** 인벤토리 요약(전체) */
     List<HashMap<String,Object>> selectInventorySummaryAll(String userName, String roomName);
 
+    HashMap<String, Number> selectOwnedMarketBuffTotals(String user, String room);
+    HashMap<String, Number> selectOwnedAllBuffTotals(String user, String room);
+    
+    List<HashMap<String,Object>> selectMarketItemsForSale(String userName, String roomName);
+    HashMap<String,Object> selectMarketItemById(Integer itemId);
+    HashMap<String,Object> selectMarketItemByNameOrCode(String token);
+    Integer countOwnedMarketItem(String userName, String roomName, Integer itemId);
+    
+    List<HashMap<String, Object>> selectMarketItems();
+    HashMap<String, Object> selectItemDetailById(int itemId);
+    
+ // BotNewService
+    List<HashMap<String,Object>> selectMarketItemsWithOwned(String userName, String roomName);
+    Integer selectHasOwnedMarketItem(String userName, String roomName, Integer itemId);
+
+   
 } 
 
 	

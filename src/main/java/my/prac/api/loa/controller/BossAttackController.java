@@ -28,7 +28,7 @@ import my.prac.core.prjbot.service.BotSettleService;
 public class BossAttackController {
 
 	/* ===== Config / Const ===== */
-	private static final int COOLDOWN_SECONDS = 180; // 3분
+	private static final int COOLDOWN_SECONDS = 30; // 30초 
 	private static final int REVIVE_WAIT_MINUTES = 10;
 	private static final String NL = "♬";
 	// 🍀 Lucky: 전투 시작 시 10% 확률 고정(신규 전투에서만 결정)
@@ -78,13 +78,15 @@ public class BossAttackController {
 	    int weaponBonus = getWeaponAtkBonus(weaponLv); // 25강부터 +1 (상한 없음)
 
 	    // ⑤ MARKET 장비 버프 합계(표시/전투용)
-	    HashMap<String,Object> buffs = botNewService.selectOwnedItemBuffTotals(userName, roomName, "Y");
-	    int bAtkMin = ((Number) buffs.getOrDefault("ATK_MIN", 0)).intValue();
-	    int bAtkMax = ((Number) buffs.getOrDefault("ATK_MAX", 0)).intValue();
-	    int bCri    = ((Number) buffs.getOrDefault("ATK_CRI", 0)).intValue();
-	    int bRegen  = ((Number) buffs.getOrDefault("HP_REGEN", 0)).intValue();
-	    int bHpMax  = ((Number) buffs.getOrDefault("HP_MAX", 0)).intValue();
-
+	    HashMap<String, Number> buffs = botNewService.selectOwnedMarketBuffTotals(userName, roomName);
+		
+		int bAtkMin = buffs.get("ATK_MIN").intValue();
+		int bAtkMax = buffs.get("ATK_MAX").intValue();
+		int bCri    = buffs.get("ATK_CRI").intValue();
+		int bRegen  = buffs.get("HP_REGEN").intValue();
+		int bHpMax  = buffs.get("HP_MAX").intValue();
+		
+		
 	    // ⑥ 표시 수치 (DB 스탯은 불변)
 	    int shownAtkMin = u.atkMin + bAtkMin;
 	    int shownAtkMax = u.atkMax + weaponBonus + bAtkMax;
@@ -117,7 +119,7 @@ public class BossAttackController {
 	        .append("  + 아이템(+").append(bAtkMin).append("~").append(bAtkMax)
 	        .append(", CRIT+").append(bCri).append("%)").append(NL)
 	      .append("❤️ HP: ").append(effHp).append(" / ").append(shownHpMax)
-	        .append("  |  분당 회복 +").append(shownRegen).append(NL)
+	        .append("  | 10분당 회복 +").append(shownRegen).append(NL)
 	      .append("▶ 현재 타겟: ").append(targetName)
 	        .append(" (MON_NO=").append(u.targetMon).append(")").append(NL)
 	      .append(NL);
@@ -192,56 +194,150 @@ public class BossAttackController {
 		return userName + "님, 공격 타겟을 " + m.monName + "(MON_NO=" + m.monNo + ") 으로 설정했습니다.";
 	}
 
-	/** 아이템 구매(/구매) — 모든 아이템 구매 가능, 장비는 버프로 반영, 포인트 차감 */
-	public String buyItem(HashMap<String,Object> map) {
+	/** /구매 [아이템명|아이템번호]
+	 *   - 파라미터 없으면: 구매 가능한 MARKET 아이템 리스트(+능력치) 출력
+	 *   - 파라미터 있으면: 단일 구매 진행 (같은 아이템은 1회만 구매 가능)
+	 *   - 결제: TBOT_POINT_RANK(new_yn='1', cmd='BUY')에 음수 점수 적립
+	 *   - 인벤토리: TBOT_POINT_NEW_INVENTORY에 GAIN_TYPE='BUY', QTY=1, DEL_YN='0' 적재
+	 */
+	public String buyItem(HashMap<String, Object> map) {
 	    final String roomName = Objects.toString(map.get("roomName"), "");
 	    final String userName = Objects.toString(map.get("userName"), "");
-	    final String itemName = Objects.toString(map.get("param1"), "").trim();
-	    final int reqQty = Math.max(1, parseIntSafe(Objects.toString(map.get("param2"), "1")));
+	    final String raw = Objects.toString(map.get("param1"), "").trim();
 
-	    if (roomName.isEmpty() || userName.isEmpty()) return "방/유저 정보가 누락되었습니다.";
-	    if (itemName.isEmpty()) return "구매할 아이템명을 입력해주세요. 예) /구매 목검 1";
-
-	    Integer itemId = botNewService.selectItemIdByName(itemName);
-	    if (itemId == null) return "해당 아이템을 찾을 수 없습니다: " + itemName;
-
-	    Integer unit = botNewService.selectItemPriceByName(itemName);
-	    int unitPrice = unit == null ? 0 : unit;
-	    long total = (long)unitPrice * (long)reqQty;
-
-	    Integer cur = botNewService.selectCurrentPoint(userName, roomName);
-	    int currentPoint = (cur == null ? 0 : cur);
-	    if (total > currentPoint) {
-	        return "포인트가 부족합니다. 필요: " + total + "sp / 보유: " + currentPoint + "sp";
+	    if (roomName.isEmpty() || userName.isEmpty()) {
+	        return "방/유저 정보가 누락되었습니다.";
 	    }
 
-	    // 인벤토리 적재
-	    HashMap<String,Object> inv = new HashMap<String,Object>();
-	    inv.put("userName", userName);
-	    inv.put("roomName", roomName);
-	    inv.put("itemId",   itemId);
-	    inv.put("qty",      reqQty);
-	    inv.put("delYn",    "0");
-	    inv.put("gainType", "BUY");
-	    botNewService.insertInventoryLogTx(inv);
+	    // 파라미터 없으면: 구매 가능 목록 노출
+	    if (raw.isEmpty() || "리스트".equalsIgnoreCase(raw) || "list".equalsIgnoreCase(raw)) {
+	    	
+	    	List<HashMap<String,Object>> list = botNewService.selectMarketItemsWithOwned(userName, roomName);
+	    	String compact = renderMarketListCompactWithOwned(list);
+	    	StringBuilder sb = new StringBuilder();
+	    	sb.append("▶ 구매 가능 아이템").append(NL)
+	    	  .append(compact)
+	    	  .append("예) /구매 목검  또는  /구매 102").append(NL);
+	    	return sb.toString();
+	    	
+	    }
 
-	    // 포인트 차감(음수)
-	    HashMap<String,Object> pr = new HashMap<String,Object>();
+	    // ====== 구매 진행 ======
+	    // 1) 입력 → itemId 해석 (숫자면 바로, 아니면 이름→코드 순으로 시도)
+	    Integer itemId = null;
+	    if (raw.matches("\\d+")) {
+	        try {
+	            itemId = Integer.valueOf(raw);
+	        } catch (Exception ignore) { /* no-op */ }
+	    }
+	    if (itemId == null) {
+	        try {
+	            itemId = botNewService.selectItemIdByName(raw);
+	        } catch (Exception ignore) {}
+	    }
+	    if (itemId == null) {
+	        try {
+	            itemId = botNewService.selectItemIdByCode(raw);
+	        } catch (Exception ignore) {}
+	    }
+	    if (itemId == null) {
+	        return "해당 아이템을 찾을 수 없습니다: " + raw + NL + "(/구매 입력만으로 목록을 확인하세요)";
+	    }
+
+	    // 2) 아이템 상세 조회 (MARKET 인지, 가격/능력치)
+	    HashMap<String, Object> item = null;
+	    try {
+	        item = botNewService.selectItemDetailById(itemId);
+	    } catch (Exception ignore) {}
+	    if (item == null || !"MARKET".equalsIgnoreCase(Objects.toString(item.get("ITEM_TYPE"), ""))) {
+	        return "구매할 수 없는 아이템입니다. (MARKET 유형만 구매 가능)";
+	    }
+
+	    String itemName = Objects.toString(item.get("ITEM_NAME"), String.valueOf(itemId));
+	    // 단가
+	    Integer tmpPrice = null;
+	    try { tmpPrice = botNewService.selectItemSellPriceById(itemId); } catch (Exception ignore) {}
+	    int price = (tmpPrice == null ? 0 : tmpPrice.intValue());
+	    if (price <= 0) {
+	        return "구매 가격 정보가 없습니다. 관리자에게 문의해주세요.";
+	    }
+
+	    
+	    // 구매 직전
+	    Integer ownedCnt = botNewService.selectHasOwnedMarketItem(userName, roomName, itemId);
+	    if (ownedCnt != null && ownedCnt > 0) {
+	        return "⚠ 이미 보유중인 아이템입니다. [" + itemName + "] 은(는) 중복구매가 불가합니다.";
+	    }
+	    
+
+	    // 4) 포인트 확인
+	    Integer tmpPoint = null;
+	    try { tmpPoint = botNewService.selectCurrentPoint(userName, roomName); } catch (Exception ignore) {}
+	    int curPoint = (tmpPoint == null ? 0 : tmpPoint.intValue());
+	    if (curPoint < price) {
+	        return userName + "님, 포인트가 부족합니다. (가격: " + price + "sp, 보유: " + curPoint + "sp)";
+	    }
+
+	    // 5) 결제(포인트 차감: 음수 점수 적립) + 인벤토리 적재
+	    //    - 포인트: TBOT_POINT_RANK(new_yn='1', cmd='BUY', score = -price)
+	    HashMap<String, Object> pr = new HashMap<String, Object>();
 	    pr.put("userName", userName);
 	    pr.put("roomName", roomName);
-	    pr.put("score",   - (int)total);
-	    pr.put("cmd",     "BUY");
+	    pr.put("score", Integer.valueOf(-price));
+	    pr.put("cmd", "BUY");
 	    botNewService.insertPointRank(pr);
 
-	    Integer afterObj = botNewService.selectCurrentPoint(userName, roomName);
-	    int after = (afterObj == null ? 0 : afterObj);
+	    //    - 인벤토리: QTY=1, DEL_YN='0', GAIN_TYPE='BUY'
+	    HashMap<String, Object> inv = new HashMap<String, Object>();
+	    inv.put("userName", userName);
+	    inv.put("roomName", roomName);
+	    inv.put("itemId",  Integer.valueOf(itemId));
+	    inv.put("qty",     Integer.valueOf(1));
+	    inv.put("delYn",   "0");
+	    inv.put("gainType","BUY");
+	    botNewService.insertInventoryLogTx(inv);
 
-	    return "▶ " + userName + "님 구매 완료" + NL
-	         + "- 아이템: " + itemName + NL
-	         + "- 수량: " + reqQty + NL
-	         + "- 단가: " + unitPrice + "sp" + NL
-	         + "- 합계 차감: " + total + "sp" + NL
-	         + "- 현재 포인트: " + String.format("%d sp", after);
+	    // 6) 구매 후 포인트
+	    Integer tmpAfter = null;
+	    try { tmpAfter = botNewService.selectCurrentPoint(userName, roomName); } catch (Exception ignore) {}
+	    int afterPoint = (tmpAfter == null ? 0 : tmpAfter.intValue());
+	    String afterPointStr = String.format("%04dsp", afterPoint);
+
+	    // 7) 능력치 표기(보여주기 용)
+	    int atkMin   = getInt(item.get("ATK_MIN"));
+	    int atkMax   = getInt(item.get("ATK_MAX"));
+	    int atkCri   = getInt(item.get("ATK_CRI"));
+	    int hpRegen  = getInt(item.get("HP_REGEN"));
+	    int hpMax    = getInt(item.get("HP_MAX"));
+
+	    StringBuilder bonus = new StringBuilder();
+	    boolean printed = false;
+	    if (atkMin != 0 || atkMax != 0) { bonus.append(String.format("+ATK %d~%d  ", atkMin, atkMax)); printed = true; }
+	    if (atkCri != 0) { bonus.append(String.format("+CRI %d%%  ", atkCri)); printed = true; }
+	    if (hpRegen != 0) { bonus.append(String.format("+HP_REGEN %d  ", hpRegen)); printed = true; }
+	    if (hpMax != 0) { bonus.append(String.format("+HP_MAX %d  ", hpMax)); printed = true; }
+	    if (!printed) bonus.append("(능력치 없음)");
+
+	    // 8) 결과 메시지
+	    StringBuilder sb = new StringBuilder();
+	    sb.append("▶ 구매 완료").append(NL)
+	      .append(userName).append("님, ").append(itemName).append("을(를) 구매했습니다.").append(NL)
+	      .append("가격: ").append(price).append("sp").append(NL)
+	      .append("능력치: ").append(bonus.toString()).append(NL)
+	      .append("현재 포인트: ").append(afterPointStr);
+	    return sb.toString();
+	}
+
+	/** Map에서 Number → int 변환(Java 1.8) */
+	private int getInt(Object o) {
+	    if (o == null) return 0;
+	    if (o instanceof Number) return ((Number)o).intValue();
+	    try { return Integer.parseInt(String.valueOf(o)); } catch (Exception e) { return 0; }
+	}
+
+	private String formatSp(int v) {
+	    if (v < 0) v = 0;
+	    return String.format("%dsp", v);  // 예: 42 -> 0042sp
 	}
 
 	/** 몬스터 공격 (MARKET 장비 버프 + 무기보너스 적용, 럭키 유지, 드랍→인벤 반영) */
@@ -260,13 +356,15 @@ public class BossAttackController {
 	    if (u == null) return guideSetTargetMessage();
 
 	    // 2) MARKET 버프 합산
-	    HashMap<String,Object> buffs = botNewService.selectOwnedItemBuffTotals(userName, roomName, "Y");
-	    int bAtkMin = ((Number) buffs.getOrDefault("ATK_MIN", 0)).intValue();
-	    int bAtkMax = ((Number) buffs.getOrDefault("ATK_MAX", 0)).intValue();
-	    int bCri    = ((Number) buffs.getOrDefault("ATK_CRI", 0)).intValue();
-	    int bRegen  = ((Number) buffs.getOrDefault("HP_REGEN", 0)).intValue();
-	    int bHpMax  = ((Number) buffs.getOrDefault("HP_MAX", 0)).intValue();
+	    HashMap<String, Number> buffs = botNewService.selectOwnedMarketBuffTotals(userName, roomName);
 
+	    int bAtkMin = buffs.get("ATK_MIN").intValue();
+	    int bAtkMax = buffs.get("ATK_MAX").intValue();
+	    int bCri    = buffs.get("ATK_CRI").intValue();
+	    int bRegen  = buffs.get("HP_REGEN").intValue();
+	    int bHpMax  = buffs.get("HP_MAX").intValue();
+	    
+	    
 	    // 3) 무기 강화
 	    int weaponLv = 0;
 	    try { weaponLv = botService.selectWeaponLvCheck(map); } catch (Exception ignore) { weaponLv = 0; }
@@ -406,13 +504,25 @@ public class BossAttackController {
 	    // 15) 메시지 (HP Max는 표시 Max 사용)
 	    int shownMin = effAtkMin;
 	    int shownMax = effAtkMax;
-	    return buildAttackMessage(
-	        userName, u, m, flags, calc, res, up,
-	        monHpRemainBefore, monMaxHp,
-	        shownMin, shownMax,
-	        weaponLv, weaponBonus,
-	        effHpMax // ← 표시용 HP Max
-	    );
+	    String msg = buildAttackMessage(
+	    	    userName, u, m, flags, calc, res, up,
+	    	    monHpRemainBefore, monMaxHp,
+	    	    shownMin, shownMax,
+	    	    weaponLv, weaponBonus,effHpMax
+	    	);
+	    
+	 // ✅ 기존 쿼리(selectCurrentPoint) 재사용만 함 — 새 SQL 추가 없음
+	    int curPoint = 0;
+	    try {
+	        Integer p = botNewService.selectCurrentPoint(userName, roomName);
+	        curPoint = (p == null ? 0 : p.intValue());
+	    } catch (Exception ignore) {}
+	    String curSpStr = formatSp(curPoint);
+
+	    // ✔ 문구 붙이기
+	    msg = msg + NL + "현재 포인트: " + curSpStr + "  /  /구매 , /판매 로 상점기능 가능!";
+
+	    return msg;
 	}
 
 	/** /판매 {아이템명} {수량} — DROP3(빛나는) 판매 금지 + FIFO */
@@ -534,15 +644,19 @@ public class BossAttackController {
 	}
 
 	private int computeEffectiveHpFromLastAttack(String userName, String roomName, User u) {
-		if (u.hpCur >= u.hpMax || u.hpRegen <= 0) return u.hpCur;
-		Timestamp last = botNewService.selectLastAttackTime(userName, roomName);
-		if (last == null) return u.hpCur;
-		long minutes = Math.max(0, Duration.between(last.toInstant(), Instant.now()).toMinutes());
-		if (minutes <= 0) return u.hpCur;
-		long heal = minutes * (long) u.hpRegen;
-		long effective = (long) u.hpCur + heal;
-		if (effective >= u.hpMax) return u.hpMax;
-		return (int) effective;
+		 if (u.hpCur >= u.hpMax || u.hpRegen <= 0) return u.hpCur;
+
+		    Timestamp last = botNewService.selectLastAttackTime(userName, roomName);
+		    if (last == null) return u.hpCur;
+
+		    long minutes = Math.max(0, Duration.between(last.toInstant(), Instant.now()).toMinutes());
+		    long ticks   = minutes / 10;                 // ✅ 10분마다 1틱
+		    if (ticks <= 0) return u.hpCur;
+
+		    long heal     = ticks * (long) u.hpRegen;    // ✅ 틱 수 × 리젠
+		    long effective = (long) u.hpCur + heal;
+		    if (effective >= u.hpMax) return u.hpMax;
+		    return (int) effective;
 	}
 
 	public String guideSetTargetMessage() {
@@ -566,19 +680,25 @@ public class BossAttackController {
 	}
 
 	private String buildBelowHalfMsg(String userName, String roomName, User u, String param1) {
-	    int regenMin = minutesToHalf(u);
+	    // 테스트 모드는 무시
+	    if ("test".equals(param1)) return null;
+
+	    int regenWaitMin = minutesUntilReach30(u, userName, roomName);
+
 	    CooldownCheck cd = checkCooldown(userName, roomName, param1);
+
 	    long remainMin = cd.remainSeconds / 60;
 	    long remainSec = cd.remainSeconds % 60;
 
-	    int waitMin = Math.max(regenMin, cd.remainMinutes);
-	    if (waitMin > 0) {
-	        return userName + "님, 약 " + waitMin + "분 후 공격 가능" + NL
-	             + "(회복 필요 " + regenMin + "분, 쿨타임 "
-	             + remainMin + "분 " + remainSec + "초)" + NL
-	             + "현재 체력: " + u.hpCur + " / " + u.hpMax + "  |  분당 회복 +" + u.hpRegen;
-	    }
-	    return null;
+	    int waitMin = Math.max(regenWaitMin, cd.remainMinutes);
+
+	    // 체력 충분 + 쿨타임 OK → 통과
+	    if (waitMin <= 0) return null;
+
+	    return userName + "님, 약 " + waitMin + "분 후 공격 가능" + NL
+	         + "(최대체력의 30%까지 회복 필요 " + regenWaitMin + "분, "
+	         + "쿨타임 " + remainMin + "분 " + remainSec + "초)" + NL
+	         + "현재 체력: " + u.hpCur + " / " + u.hpMax + "  |  10분당 회복 +" + u.hpRegen;
 	}
 
 	private Flags rollFlags(User u, Monster m) {
@@ -635,6 +755,85 @@ public class BossAttackController {
 		}
 		return c;
 	}
+	
+	
+	private String renderMarketListCompactWithOwned(List<HashMap<String,Object>> items) {
+	    if (items == null || items.isEmpty()) return "판매중인 아이템이 없습니다.";
+	    StringBuilder sb = new StringBuilder();
+	    for (HashMap<String,Object> it : items) {
+	        int itemId   = safeInt(it.get("ITEM_ID"));
+	        String name  = String.valueOf(it.get("ITEM_NAME"));
+	        int price    = safeInt(it.get("ITEM_SELL_PRICE"));
+	        int atkMin   = safeInt(it.get("ATK_MIN"));
+	        int atkMax   = safeInt(it.get("ATK_MAX"));
+	        int atkCri   = safeInt(it.get("ATK_CRI"));
+	        int hpRegen  = safeInt(it.get("HP_REGEN"));
+	        int hpMax    = safeInt(it.get("HP_MAX"));
+	        String owned = String.valueOf(it.get("OWNED_YN"));
+
+	        sb.append(itemId).append(" ").append(name).append(" (")
+	          .append(price).append("sp");
+
+	        boolean first = true;
+	        if (atkMin != 0 || atkMax != 0) { sb.append(", +ATK ").append(atkMin).append("~").append(atkMax); first=false; }
+	        if (atkCri != 0)  { sb.append(first?", ":" , ").append("+CRI ").append(atkCri).append("%"); first=false; }
+	        if (hpRegen != 0) { sb.append(first?", ":" , ").append("+REGEN ").append(hpRegen).append(" /10m"); first=false; }
+	        if (hpMax != 0)   { sb.append(first?", ":" , ").append("+HP ").append(hpMax); }
+
+	        sb.append(")");
+	        if ("Y".equalsIgnoreCase(owned)) sb.append("[보유중]");
+	        sb.append(NL);
+	    }
+	    return sb.toString();
+	}
+
+	private int safeInt(Object v) {
+	    try { return v == null ? 0 : Integer.parseInt(String.valueOf(v)); }
+	    catch (Exception e) { return 0; }
+	}
+	private int minutesToRegenThreshold(User u, int currentHp) {
+	    // 30% 기준
+	    int threshold = (int) Math.ceil(u.hpMax * 0.3);
+
+	    if (currentHp >= threshold) return 0;
+	    if (u.hpRegen <= 0) return Integer.MAX_VALUE;
+
+	    return threshold - currentHp; // 부족한 HP량
+	}
+	
+	private int minutesUntilReach30(User u, String userName, String roomName) {
+	    int curHp = u.hpCur;
+	    int threshold = (int) Math.ceil(u.hpMax * 0.3);
+	    if (curHp >= threshold) return 0;
+
+	    Timestamp last = botNewService.selectLastAttackTime(userName, roomName);
+	    if (last == null) return 0;
+
+	    long minutesPassed = Math.max(0, Duration.between(last.toInstant(), Instant.now()).toMinutes());
+
+	    // 현재까지 회복된 틱
+	    long ticksDone = minutesPassed / 10;
+
+	    // 다음 틱까지 남은 시간
+	    long minutesToNextTick = 10 - (minutesPassed % 10);
+	    if (minutesToNextTick == 10) minutesToNextTick = 0;
+
+	    // 틱당 회복량
+	    int regenPerTick = u.hpRegen;
+
+	    // 목표까지 필요한 HP
+	    int hpNeeded = threshold - curHp;
+
+	    // 필요한 틱 수
+	    int ticksNeeded = (int) Math.ceil(hpNeeded / (double) regenPerTick);
+
+	    // 총 남은 시간
+	    int totalMinutes =
+	        (int) (minutesToNextTick + Math.max(0, ticksNeeded - 1) * 10);
+
+	    return Math.max(totalMinutes, 0);
+	}
+
 
 	/** 🍀 Lucky: 처치시에만 EXP×3, 드랍코드 '3' = 빛나는(판매불가) */
 	private Resolve resolveKillAndDrop(Monster m, AttackCalc c, boolean willKill, User u, boolean lucky) {
@@ -776,11 +975,13 @@ public class BossAttackController {
 
 	private int minutesToHalf(User u) { return minutesToHalf(u, u.hpCur); }
 	private int minutesToHalf(User u, int currentHp) {
-		int threshold = (int) Math.ceil(u.hpMax * 0.5);
-		if (currentHp >= threshold) return 0;
-		if (u.hpRegen <= 0) return Integer.MAX_VALUE;
-		int need = threshold - currentHp;
-		return (int) Math.ceil(need / (double) u.hpRegen);
+	    int threshold = (int) Math.ceil(u.hpMax * 0.5);
+	    if (currentHp >= threshold) return 0;
+	    if (u.hpRegen <= 0) return Integer.MAX_VALUE;
+
+	    int need = threshold - currentHp;                 // 필요한 HP
+	    int ticksNeeded = (need + u.hpRegen - 1) / u.hpRegen; // ⌈need / regen⌉
+	    return ticksNeeded * 10;                          // ✅ 틱(10분) → 분
 	}
 
 	private static class Flags { boolean atkCrit; int monPattern; }

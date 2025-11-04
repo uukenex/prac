@@ -3,6 +3,7 @@ package my.prac.core.prjbot.dao;
 import java.sql.Timestamp;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.ibatis.annotations.Param;
 import org.springframework.stereotype.Repository;
@@ -87,4 +88,53 @@ public interface BotNewDAO {
 
     // 닉네임 보조검색
     List<String> selectParam1ToNewUserSearch(HashMap<String,Object> map);
+    
+    /** MARKET 아이템만 능력치 합 */
+    HashMap<String, Number> selectOwnedMarketBuffTotals(
+        @Param("userName") String userName,
+        @Param("roomName") String roomName
+    );
+
+    /** 전체 아이템 능력치 합 (필요하면) */
+    HashMap<String, Number> selectOwnedAllBuffTotals(
+        @Param("userName") String userName,
+        @Param("roomName") String roomName
+    );
+    
+    /** 내 계정 기준으로 구매 가능한 MARKET 아이템 목록 + 보유 여부 */
+    List<HashMap<String, Object>> selectMarketItemsForSale(
+        @Param("userName") String userName,
+        @Param("roomName") String roomName
+    );
+
+    /** ITEM_ID로 단일 아이템 조회 (MARKET 한정) */
+    HashMap<String, Object> selectMarketItemById(@Param("itemId") Integer itemId);
+
+    /** 이름/코드로 단일 아이템 조회 (MARKET 한정) */
+    HashMap<String, Object> selectMarketItemByNameOrCode(@Param("token") String token);
+
+    /** 보유 여부(활성 재고) */
+    Integer countOwnedMarketItem(
+        @Param("userName") String userName,
+        @Param("roomName") String roomName,
+        @Param("itemId") Integer itemId
+    );
+    
+    /** ITEM_TYPE='MARKET' 목록 (구매 리스트 노출용) */
+    List<HashMap<String, Object>> selectMarketItems();
+
+    /** 아이템 단건 상세 (구매 처리/보너스 표기용) */
+    HashMap<String, Object> selectItemDetailById(@Param("itemId") int itemId);
+ // BotNewDAO
+    List<HashMap<String,Object>> selectMarketItemsWithOwned(
+        @Param("userName") String userName,
+        @Param("roomName") String roomName
+    );
+
+    // 이미 소유한 MARKET 아이템인가? (del_yn='0' 남아있는지)
+    Integer selectHasOwnedMarketItem(
+        @Param("userName") String userName,
+        @Param("roomName") String roomName,
+        @Param("itemId")   Integer itemId
+    );
 }

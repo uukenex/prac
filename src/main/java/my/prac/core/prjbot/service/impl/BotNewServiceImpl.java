@@ -186,4 +186,50 @@ public class BotNewServiceImpl implements BotNewService {
 	public Integer selectItemPriceByName(String itemName) {
 	    return botNewDAO.selectItemPriceByName(itemName);
 	}
+	
+	@Override
+	public HashMap<String, Number> selectOwnedMarketBuffTotals(String user, String room) {
+	    return botNewDAO.selectOwnedMarketBuffTotals(user, room);
+	}
+	@Override
+	public HashMap<String, Number> selectOwnedAllBuffTotals(String user, String room) {
+	    return botNewDAO.selectOwnedAllBuffTotals(user, room);
+	}
+	@Override
+    public List<HashMap<String, Object>> selectMarketItemsForSale(String userName, String roomName) {
+        return botNewDAO.selectMarketItemsForSale(userName, roomName);
+    }
+    @Override
+    public HashMap<String, Object> selectMarketItemById(Integer itemId) {
+        return botNewDAO.selectMarketItemById(itemId);
+    }
+    @Override
+    public HashMap<String, Object> selectMarketItemByNameOrCode(String token) {
+        return botNewDAO.selectMarketItemByNameOrCode(token);
+    }
+    @Override
+    public Integer countOwnedMarketItem(String userName, String roomName, Integer itemId) {
+        return botNewDAO.countOwnedMarketItem(userName, roomName, itemId);
+    }
+    
+    @Override
+    public List<HashMap<String, Object>> selectMarketItems() {
+        return botNewDAO.selectMarketItems();
+    }
+
+    @Override
+    public HashMap<String, Object> selectItemDetailById(int itemId) {
+        return botNewDAO.selectItemDetailById(itemId);
+    }
+    
+    // BotNewServiceImpl
+    @Override
+    public List<HashMap<String,Object>> selectMarketItemsWithOwned(String userName, String roomName) {
+        return botNewDAO.selectMarketItemsWithOwned(userName, roomName);
+    }
+    @Override
+    public Integer selectHasOwnedMarketItem(String userName, String roomName, Integer itemId) {
+        return botNewDAO.selectHasOwnedMarketItem(userName, roomName, itemId);
+    }
+
 }
