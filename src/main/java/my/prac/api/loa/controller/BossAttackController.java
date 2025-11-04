@@ -709,10 +709,12 @@ public class BossAttackController {
 	    if (items == null || items.isEmpty()) {
 	        return "▶ " + userName + "님, 구매 가능 아이템" + NL + "- (없음)";
 	    }
-
+	    final String allSeeStr = "===";
 	    StringBuilder sb = new StringBuilder();
-	    sb.append("▶ ").append(userName).append("님, 구매 가능 아이템").append(NL);
-
+	    sb.append("▶ ").append(userName).append("님").append(NL);
+	    sb.append("더보기 리스트에서 선택 후 구매해주세요").append(NL);
+	    sb.append("예) /구매 목검  또는  /구매 102");
+	    sb.append(allSeeStr);
 	    for (HashMap<String,Object> it : items) {
 	        int    itemId   = safeInt(it.get("ITEM_ID"));
 	        String name     = String.valueOf(it.get("ITEM_NAME"));
@@ -737,18 +739,18 @@ public class BossAttackController {
 	        StringBuilder opt = new StringBuilder();
 	        boolean first = true;
 
-	        if (atkMin != 0) { appendOpt(opt, first, "최소뎀 " + formatSigned(atkMin)); first = false; }
-	        if (atkMax != 0) { appendOpt(opt, first, "최대뎀 " + formatSigned(atkMax)); first = false; }
-	        if (atkCri != 0) { appendOpt(opt, first, "치명타 +" + atkCri + "%"); first = false; }
-	        if (hpRegen != 0){ appendOpt(opt, first, "체력회복 +" + hpRegen + " (5분마다)"); first = false; }
-	        if (hpMax != 0)  { appendOpt(opt, first, "최대체력 +" + hpMax); first = false; }
+	        if (atkMin != 0) { appendOpt(opt, first, "최소뎀" + formatSigned(atkMin)); first = false; }
+	        if (atkMax != 0) { appendOpt(opt, first, "최대뎀" + formatSigned(atkMax)); first = false; }
+	        if (atkCri != 0) { appendOpt(opt, first, "치명타+" + atkCri + "%"); first = false; }
+	        if (hpRegen != 0){ appendOpt(opt, first, "체력회복+" + hpRegen); first = false; }
+	        if (hpMax != 0)  { appendOpt(opt, first, "최대체력+" + hpMax); first = false; }
 
 	        sb.append(first ? "없음" : opt.toString()).append(NL);
 	        // 아이템 간 공백 줄 없이 연속 출력 (요청 사례에 맞춤)
 	    }
 
 	    // 안내 예시
-	    sb.append("예) /구매 목검  또는  /구매 102");
+	    
 	    return sb.toString();
 	}
 
