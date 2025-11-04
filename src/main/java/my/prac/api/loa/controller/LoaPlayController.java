@@ -1540,10 +1540,10 @@ public class LoaPlayController {
 				    newMap.put("score", SuccessScore);
 				    newMap.put("cmd", "baseball_e");
 	
-				    int newScore = botService.insertBotPointRankTx(newMap);
+				    //int newScore = botService.insertBotPointRankTx(newMap);
 	
-				    res += "정답포인트: "+SuccessScore+" p 획득" + enterStr;
-				    res += "갱신포인트: " + newScore + "p" + enterStr;
+				    //res += "정답포인트: "+SuccessScore+" p 획득" + enterStr;
+				    //res += "갱신포인트: " + newScore + "p" + enterStr;
 				}
 					
 	            return userName+" 님,"+enterStr+
