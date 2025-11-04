@@ -516,4 +516,49 @@
 	     AND ROOM_NAME = #{roomName}
 	     AND (MON_DMG > 0 OR DEATH_YN = '1')
 	</select>
+	
+	<!-- ① 레벨 랭킹 1위 (LV DESC, EXP_CUR DESC, 동률 모두) -->
+	<select id="selectTopLevelUsers" resultType="hashmap">
+	  SELECT USER_NAME, LV, EXP_CUR, EXP_NEXT
+	  FROM TBOT_POINT_NEW_USER
+	  WHERE ROOM_NAME = #{roomName}
+	    AND (LV, EXP_CUR) IN (
+	      SELECT MAX_LV, MAX_EXP
+	      FROM (
+	        SELECT LV AS MAX_LV, MAX(EXP_CUR) KEEP (DENSE_RANK LAST ORDER BY LV) AS MAX_EXP
+	        FROM TBOT_POINT_NEW_USER
+	        WHERE ROOM_NAME = #{roomName}
+	        GROUP BY LV
+	        ORDER BY LV DESC
+	      )
+	      WHERE ROWNUM = 1
+	    )
+	  ORDER BY USER_NAME
+	</select>
+	
+	<!-- ② 몬스터별 학살자 (킬 50 이상, 동률 허용) -->
+	<select id="selectKillLeadersByMonster" resultType="hashmap">
+	  SELECT MON_NO, MON_NAME, USER_NAME, KILL_COUNT
+	  FROM (
+	    SELECT
+	      bl.TARGET_MON_LV AS MON_NO,
+	      m.MON_NAME       AS MON_NAME,
+	      bl.USER_NAME     AS USER_NAME,
+	      COUNT(*)         AS KILL_COUNT,
+	      DENSE_RANK() OVER (
+	        PARTITION BY bl.TARGET_MON_LV
+	        ORDER BY COUNT(*) DESC
+	      ) AS RNK
+	    FROM TBOT_POINT_NEW_BATTLE_LOG bl
+	    JOIN TBOT_POINT_NEW_MON_INFO m
+	      ON m.MON_NO = bl.TARGET_MON_LV
+	    WHERE bl.ROOM_NAME = #{roomName}
+	      AND bl.KILL_YN   = 1
+	    GROUP BY bl.TARGET_MON_LV, m.MON_NAME, bl.USER_NAME
+	  )
+	  WHERE RNK = 1
+	    AND KILL_COUNT >= 50
+	  ORDER BY MON_NO, USER_NAME
+	</select>
+	
 </mapper>

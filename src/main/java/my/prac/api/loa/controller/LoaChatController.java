@@ -636,6 +636,9 @@ public class LoaChatController {
 			case "/판매": case "/ㅍㅁ":
 				val = boss.sellItem(reqMap);
 				break;
+			case "/공격랭킹": case "/ㄱㄱㄹㅋ":
+				val = boss.attackRanking(reqMap);
+				break;
 			case "/공격정보": case "/ㄱㄱㅈㅂ": case "/가방": case "/ㄱㅂ":
 				val = boss.attackInfo(reqMap);
 				/*

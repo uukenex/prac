@@ -83,6 +83,9 @@ public interface BotNewService {
     Integer selectHasOwnedMarketItem(String userName, String roomName, Integer itemId);
 
     Timestamp selectLastDamagedTime(String userName, String roomName) ;
+    
+    List<HashMap<String,Object>> selectTopLevelUsers(String roomName);
+    List<HashMap<String,Object>> selectKillLeadersByMonster(String roomName);
 } 
 
 	

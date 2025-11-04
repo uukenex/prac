@@ -653,6 +653,86 @@ public class BossAttackController {
 	    return sb.toString();
 	}
 
+	/** 공격 랭킹 보기 */
+	public String attackRanking(HashMap<String, Object> map) {
+	    final String roomName = Objects.toString(map.get("roomName"), "");
+	    if (roomName.isEmpty()) return "방 정보가 누락되었습니다.";
+	    final String NL = "♬";
+
+	    StringBuilder sb = new StringBuilder();
+	    sb.append("⚔ 공격 랭킹").append(NL);
+
+	    // 1) 레벨 랭킹 1위(동률 허용)
+	    List<HashMap<String,Object>> lvTop = botNewService.selectTopLevelUsers(roomName);
+	    if (lvTop == null || lvTop.isEmpty()) {
+	        sb.append("- 레벨랭킹: 데이터 없음").append(NL);
+	    } else {
+	        // 동일 랭킹 복수면 모두 표기
+	        StringBuilder names = new StringBuilder();
+	        Integer lv = null, expCur = null;
+	        for (int i = 0; i < lvTop.size(); i++) {
+	            HashMap<String,Object> r = lvTop.get(i);
+	            String u  = Objects.toString(r.get("USER_NAME"), "-");
+	            lv        = (lv == null) ? toInt(r.get("LV")) : lv;
+	            expCur    = (expCur == null) ? toInt(r.get("EXP_CUR")) : expCur;
+	            if (i > 0) names.append(", ");
+	            names.append(u);
+	        }
+	        sb.append("레벨랭킹 1위: ").append(names)
+	          .append(" (Lv ").append(lv).append(", EXP ").append(expCur).append(")").append(NL);
+	    }
+
+	    sb.append(NL);
+
+	    // 2) 몬스터별 학살자(킬 50 이상, 동률 허용)
+	    List<HashMap<String,Object>> killers = botNewService.selectKillLeadersByMonster(roomName);
+	    if (killers == null || killers.isEmpty()) {
+	        sb.append("학살자 랭킹: 조건(50킬 이상)을 만족하는 데이터가 없습니다.").append(NL);
+	    } else {
+	        // 같은 MON_NO 묶어서 "토끼 학살자 누구, 누구 (킬 XX마리)" 형태
+	        Integer curMon = null;
+	        String curMonName = null;
+	        StringBuilder line = new StringBuilder();
+	        int curKills = -1;
+
+	        for (HashMap<String,Object> r : killers) {
+	            int monNo   = toInt(r.get("MON_NO"));
+	            String mName= Objects.toString(r.get("MON_NAME"), "알 수 없음");
+	            String user = Objects.toString(r.get("USER_NAME"), "-");
+	            int kills   = toInt(r.get("KILL_COUNT"));
+
+	            if (curMon == null || curMon != monNo) {
+	                // flush 이전 몬스터 라인
+	                if (curMon != null) {
+	                    line.append(" (").append(curKills).append("마리)").append(NL);
+	                    sb.append(line.toString());
+	                }
+	                // 새로운 몬스터
+	                curMon = monNo;
+	                curMonName = mName;
+	                curKills = kills;
+	                line.setLength(0);
+	                line.append(curMonName).append(" 학살자: ").append(user);
+	            } else {
+	                // 동률 사용자 이어 붙이기
+	                line.append(", ").append(user);
+	            }
+	        }
+	        // flush 마지막
+	        if (curMon != null) {
+	            line.append(" (").append(curKills).append("마리)").append(NL);
+	            sb.append(line.toString());
+	        }
+	    }
+
+	    return sb.toString();
+	}
+	
+
+	private int toInt(Object v) {
+	    try { return (v == null) ? 0 : Integer.parseInt(String.valueOf(v)); }
+	    catch (Exception e) { return 0; }
+	}
 	/* ===== Combat helpers ===== */
 
 	// 변경 후  ✅ 효과치 & 10분당 1틱 규칙
