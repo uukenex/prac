@@ -521,13 +521,12 @@
 	<select id="selectTopLevelUsers" resultType="hashmap">
 	  SELECT USER_NAME, LV, EXP_CUR, EXP_NEXT
 	  FROM TBOT_POINT_NEW_USER
-	  WHERE ROOM_NAME = #{roomName}
-	    AND (LV, EXP_CUR) IN (
+	  WHERE (LV, EXP_CUR) IN (
 	      SELECT MAX_LV, MAX_EXP
 	      FROM (
 	        SELECT LV AS MAX_LV, MAX(EXP_CUR) KEEP (DENSE_RANK LAST ORDER BY LV) AS MAX_EXP
 	        FROM TBOT_POINT_NEW_USER
-	        WHERE ROOM_NAME = #{roomName}
+	        
 	        GROUP BY LV
 	        ORDER BY LV DESC
 	      )
@@ -552,8 +551,7 @@
 	    FROM TBOT_POINT_NEW_BATTLE_LOG bl
 	    JOIN TBOT_POINT_NEW_MON_INFO m
 	      ON m.MON_NO = bl.TARGET_MON_LV
-	    WHERE bl.ROOM_NAME = #{roomName}
-	      AND bl.KILL_YN   = 1
+	    WHERE bl.KILL_YN   = 1
 	    GROUP BY bl.TARGET_MON_LV, m.MON_NAME, bl.USER_NAME
 	  )
 	  WHERE RNK = 1

@@ -687,7 +687,7 @@ public class BossAttackController {
 	    // 2) 몬스터별 학살자(킬 50 이상, 동률 허용)
 	    List<HashMap<String,Object>> killers = botNewService.selectKillLeadersByMonster(roomName);
 	    if (killers == null || killers.isEmpty()) {
-	        sb.append("학살자 랭킹: 조건(50킬 이상)을 만족하는 데이터가 없습니다.").append(NL);
+	        //sb.append("학살자 랭킹: 조건(50킬 이상)을 만족하는 데이터가 없습니다.").append(NL);
 	    } else {
 	        // 같은 MON_NO 묶어서 "토끼 학살자 누구, 누구 (킬 XX마리)" 형태
 	        Integer curMon = null;
