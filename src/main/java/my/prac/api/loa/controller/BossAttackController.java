@@ -28,7 +28,7 @@ import my.prac.core.prjbot.service.BotSettleService;
 public class BossAttackController {
 
 	/* ===== Config / Const ===== */
-	private static final int COOLDOWN_SECONDS = 10; // 30초 
+	private static final int COOLDOWN_SECONDS = 30; // 30초 
 	private static final int REVIVE_WAIT_MINUTES = 60;
 	private static final String NL = "♬";
 	// 🍀 Lucky: 전투 시작 시 10% 확률 고정(신규 전투에서만 결정)
