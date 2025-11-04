@@ -28,7 +28,7 @@ import my.prac.core.prjbot.service.BotSettleService;
 public class BossAttackController {
 
 	/* ===== Config / Const ===== */
-	private static final int COOLDOWN_SECONDS = 30; // 30초 
+	private static final int COOLDOWN_SECONDS = 180; // 1분
 	private static final int REVIVE_WAIT_MINUTES = 60;
 	private static final String NL = "♬";
 	// 🍀 Lucky: 전투 시작 시 10% 확률 고정(신규 전투에서만 결정)
@@ -856,23 +856,27 @@ public class BossAttackController {
 	}
 
 	private int minutesUntilReach30(User u, String userName, String roomName) {
-		int threshold = (int) Math.ceil(u.hpMax * 0.3);
-		if (u.hpCur >= threshold)
-			return 0;
+	    // 효과치(아이템 포함) 전제: u.hpMax/u.hpRegen 은 호출부에서 일시 치환 완료 상태여야 함
+	    int threshold = (int) Math.ceil(u.hpMax * 0.3);
+	    if (u.hpCur >= threshold) return 0;
+	    if (u.hpRegen <= 0) return Integer.MAX_VALUE;
 
-		Timestamp baseline = getLastDamageBaseline(userName, roomName);
-		if (baseline == null)
-			return 0;
+	    Timestamp baseline = getLastDamageBaseline(userName, roomName);
+	    if (baseline == null) return 0; // 과거 데이터 없음: 대기차단 방지
 
-		long minutesPassed = Math.max(0, Duration.between(baseline.toInstant(), Instant.now()).toMinutes());
-		long minutesToNextTick = (10 - (minutesPassed % 10)) % 10;
-		int regenPerTick = Math.max(0, u.hpRegen);
-		if (regenPerTick <= 0)
-			return Integer.MAX_VALUE;
+	    long minutesPassed = Math.max(0, Duration.between(baseline.toInstant(), Instant.now()).toMinutes());
 
-		int hpNeeded = Math.max(0, threshold - u.hpCur);
-		int ticksNeeded = (int) Math.ceil(hpNeeded / (double) regenPerTick);
-		return (int) (minutesToNextTick + Math.max(0, ticksNeeded - 1) * 10);
+	    // 다음 틱까지 남은 분(0~9). 0이면 '지금이 틱 경계'
+	    int toNext = (int) ((10 - (minutesPassed % 10)) % 10);
+
+	    // ✅ 경계(0분)일 때도 첫 회복은 '10분 뒤'에 일어나므로 10으로 보정
+	    int firstTick = (toNext == 0 ? 10 : toNext);
+
+	    int hpNeeded = threshold - u.hpCur;                 // 목표까지 필요한 HP
+	    int ticksNeeded = (int) Math.ceil(hpNeeded / (double) u.hpRegen); // 필요한 틱 수
+
+	    // 총 대기시간 = 첫 틱까지 + (남은 틱-1) * 10분
+	    return firstTick + Math.max(0, ticksNeeded - 1) * 10;
 	}
 
 	/** 🍀 Lucky: 처치시에만 EXP×3, 드랍코드 '3' = 빛나는(판매불가) */
