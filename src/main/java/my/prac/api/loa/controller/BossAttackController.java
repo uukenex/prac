@@ -1051,7 +1051,7 @@ public class BossAttackController {
 	        r.dropCode = "3";
 	        return r;
 	    }
-	    boolean drop = willKill && ThreadLocalRandom.current().nextDouble(0, 100) < 30.0;
+	    boolean drop = willKill && ThreadLocalRandom.current().nextDouble(0, 100) < 40.0;
 	    r.dropCode = drop ? "1" : "0";
 	    return r;
 	}
