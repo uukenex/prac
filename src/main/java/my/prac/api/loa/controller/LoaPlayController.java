@@ -1300,32 +1300,32 @@ public class LoaPlayController {
 					int preview_score=0;
 					switch(completeYn+1) {
 						case 1:
-							score =500;
-							preview_score=300;
+							score =30;
+							preview_score=20;
 							score1 = 30;
 							break;
 						case 2:
-							score =300;
-							preview_score=240;
+							score =30;
+							preview_score=20;
 							score1 = 20;
 							break;
 						case 3:
-							score =240;
-							preview_score=120;
+							score =20;
+							preview_score=10;
 							score1 = 20;
 							break;
 						case 4:
-							score =120;
-							preview_score=60;
+							score =10;
+							preview_score=10;
 							score1 = 10;
 							break;
 						case 5:
-							score =60;
-							preview_score=20;
+							score =10;
+							preview_score=0;
 							score1 = 10;
 							break;
 						case 6:
-							score =20;
+							score =0;
 							preview_score=0;
 							break;
 					}
