@@ -33,7 +33,6 @@ public class BossAttackController {
 	private static final String NL = "♬";
 	// 🍀 Lucky: 전투 시작 시 10% 확률 고정(신규 전투에서만 결정)
 	private static final double LUCKY_RATE = 0.15;
-	private static final int SHINY_MULTIPLIER = 5; // ✅ 빛템 판매 ×5
 
 	/* ===== DI ===== */
 	@Autowired LoaPlayController play;
@@ -553,107 +552,115 @@ public class BossAttackController {
 	}
 
 
-	public String sellItem(String userName, String roomName, String itemNameRaw, int reqQty) {
-	    final String NL = "♬";
-	    if (reqQty <= 0) return "판매 수량을 확인해주세요.";
+	public String sellItem(HashMap<String, Object> map) {
+	    final int SHINY_MULTIPLIER = 5; // ✨ 빛템 5배
 
-	    String baseName = itemNameRaw.replace("빛", "").replace("✨", "");
-	    boolean wantShinyOnly = itemNameRaw.startsWith("빛") || itemNameRaw.startsWith("✨");
+	    final String userName = Objects.toString(map.get("userName"), "");
+	    final String roomName = Objects.toString(map.get("roomName"), "");
+	    final String itemNameRaw = Objects.toString(map.get("param1"), "").trim(); // 아이템명(띄어쓰기 불가)
+	    final int reqQty = Math.max(1, parseIntSafe(Objects.toString(map.get("param2"), "1"))); // 수량(띄어쓰기 불가)
 
-	    // STEP 1: 아이템 ID 조회
-	    Integer itemId = botNewService.selectItemIdByName(baseName);
-	    if (itemId == null) return baseName + " 아이템을 찾을 수 없습니다.";
+	    if (userName.isEmpty() || roomName.isEmpty()) return "방/유저 정보가 누락되었습니다.";
+	    if (itemNameRaw.isEmpty()) return "판매할 아이템명을 입력해주세요. 예) /판매 도토리 5 또는 /판매 빛도토리 2";
 
-	    // STEP 2: FIFO 행
-	    List<HashMap<String,Object>> rows = botNewService.selectInventoryRowsForSale(userName, roomName, itemId);
-	    if (rows == null || rows.isEmpty()) return "보유한 아이템이 없습니다.";
+	    // 접두어 제거해 원본 아이템명 도출 + 판매 대상 유형 결정
+	    final boolean wantShinyOnly = itemNameRaw.startsWith("빛") || itemNameRaw.startsWith("✨");
+	    final String baseName = itemNameRaw.replace("빛", "").replace("✨", "");
 
-	    // STEP 3: 전체 재고 집계
+	    // 아이템 식별
+	    Integer itemId = null;
+	    try { itemId = botNewService.selectItemIdByName(baseName); } catch (Exception ignore) {}
+	    if (itemId == null) return "해당 아이템을 찾을 수 없습니다: " + itemNameRaw;
+
+	    // FIFO 대상 행(일반/빛 모두)
+	    List<HashMap<String, Object>> rows = botNewService.selectInventoryRowsForSale(userName, roomName, itemId);
+	    if (rows == null || rows.isEmpty()) return "인벤토리에 보유 중인 [" + itemNameRaw + "]이(가) 없습니다.";
+
+	    // 재고 집계 (판매 전)
 	    int normalQty = 0, shinyQty = 0;
-	    for (HashMap<String, Object> r : rows) {
-	        String gt = Objects.toString(r.get("GAIN_TYPE"), "DROP");
-	        int q  = Integer.parseInt(Objects.toString(r.get("QTY"), "0"));
-	        if ("DROP3".equalsIgnoreCase(gt)) shinyQty += Math.max(0, q);
-	        else normalQty += Math.max(0, q);
+	    for (HashMap<String, Object> row : rows) {
+	        String gainType = Objects.toString(row.get("GAIN_TYPE"), "DROP");
+	        int qty = parseIntSafe(Objects.toString(row.get("QTY"), "0"));
+	        if ("DROP3".equalsIgnoreCase(gainType)) shinyQty += Math.max(0, qty);
+	        else normalQty += Math.max(0, qty);
 	    }
 	    int haveTotal = normalQty + shinyQty;
-	    if (haveTotal <= 0) return "인벤토리에 [" + baseName + "]이(가) 없습니다.";
+	    if (haveTotal <= 0) return "인벤토리에 보유 중인 [" + itemNameRaw + "]이(가) 없습니다.";
 
-	    // STEP 4: 빛템 단가 x5
-	    Integer basePrice = botNewService.selectItemPriceByName(baseName);
-	    if (basePrice == null) basePrice = 0;
-	    int SHINY_MULTIPLIER = 5;
+	    // 단가
+	    Integer basePriceObj = null;
+	    try { basePriceObj = botNewService.selectItemSellPriceById(itemId); } catch (Exception ignore) {}
+	    int basePrice = (basePriceObj == null ? 0 : basePriceObj);
+	    if (basePrice <= 0) return "해당 아이템은 판매가 설정이 없어 판매할 수 없습니다: " + itemNameRaw;
 
+	    // 판매 루프
 	    int need = Math.min(reqQty, haveTotal);
 	    int sold = 0, soldNormal = 0, soldShiny = 0;
 	    long totalSp = 0L;
 
-	    for (HashMap<String,Object> row : rows) {
+	    for (HashMap<String, Object> row : rows) {
 	        if (need <= 0) break;
-	        String gt = Objects.toString(row.get("GAIN_TYPE"), "DROP");
-	        boolean isShinyRow = "DROP3".equalsIgnoreCase(gt);
 
-	        // 필터링 (빛 요청이면 빛만, 일반요청이면 일반만)
-	        if (wantShinyOnly && !isShinyRow) continue;
-	        if (!wantShinyOnly && isShinyRow) continue;
+	        String gainType = Objects.toString(row.get("GAIN_TYPE"), "DROP");
+	        boolean isShinyRow = "DROP3".equalsIgnoreCase(gainType);
 
-	        String rid = Objects.toString(row.get("RID"), null);
-	        int qty = Integer.parseInt(Objects.toString(row.get("QTY"), "0"));
+	        // 입력 의도에 따라 필터링
+	        if (wantShinyOnly && !isShinyRow) continue;  // 빛만
+	        if (!wantShinyOnly && isShinyRow) continue;  // 일반만
+
+	        String rid = (row.get("RID") != null ? row.get("RID").toString() : null);
+	        int qty = parseIntSafe(Objects.toString(row.get("QTY"), "0"));
 	        if (rid == null || qty <= 0) continue;
 
 	        int take = Math.min(qty, need);
 	        int unitPrice = isShinyRow ? basePrice * SHINY_MULTIPLIER : basePrice;
 
-	        // 재고 차감
+	        // FIFO 차감
 	        if (qty == take) botNewService.updateInventoryDelByRowId(rid);
 	        else botNewService.updateInventoryQtyByRowId(rid, qty - take);
 
-	        if (isShinyRow) soldShiny += take;
-	        else soldNormal += take;
-
+	        if (isShinyRow) soldShiny += take; else soldNormal += take;
 	        sold += take;
 	        need -= take;
-	        totalSp += (long) take * unitPrice;
+	        totalSp += (long) take * (long) unitPrice;
 	    }
 
 	    if (sold <= 0) {
-	        return "판매 가능한 재고가 없습니다." + NL +
-	               "보유: " + baseName + " " + normalQty + "개, " +
-	               "✨빛" + baseName + " " + shinyQty + "개";
+	        // 조건 불일치로 아무 것도 못 팔았을 때: 현재 재고 안내
+	        String preStock = "보유: " + baseName + " " + normalQty + "개" + (shinyQty > 0 ? ", ✨빛" + baseName + " " + shinyQty + "개" : "");
+	        return "판매 가능한 재고가 없습니다." + NL + preStock;
 	    }
 
-	    // STEP 5: 포인트 적립
-	    HashMap<String,Object> p = new HashMap<>();
-	    p.put("userName", userName);
-	    p.put("roomName", roomName);
-	    p.put("score", totalSp);
-	    p.put("cmd", "SELL");
-	    botNewService.insertPointRank(p);
+	    // 포인트 적립
+	    HashMap<String, Object> pr = new HashMap<>();
+	    pr.put("userName", userName);
+	    pr.put("roomName", roomName);
+	    pr.put("score", (int) totalSp);
+	    pr.put("cmd", "SELL");
+	    botNewService.insertPointRank(pr);
 
-	    Integer cp = botNewService.selectCurrentPoint(userName, roomName);
-	    if (cp == null) cp = 0;
-	    String curPointStr = String.format("%,d sp", cp);
+	    // 현재 포인트
+	    int curPoint = 0;
+	    try { Integer curP = botNewService.selectCurrentPoint(userName, roomName); curPoint = (curP == null ? 0 : Math.max(0, curP)); } catch (Exception ignore) {}
+	    String curPointStr = String.format("%,d sp", curPoint);
 
-	    // STEP 6: 남은 재고 계산 (0이면 표시 안함)
+	    // 남은 재고(0은 생략)
 	    int remainNormal = Math.max(0, normalQty - soldNormal);
 	    int remainShiny  = Math.max(0, shinyQty  - soldShiny);
 
 	    StringBuilder remainSb = new StringBuilder("남은 재고: ");
-	    boolean first = true;
-	    if (remainNormal > 0) {
-	        remainSb.append(baseName).append(" ").append(remainNormal).append("개");
-	        first = false;
-	    }
+	    boolean printed = false;
+	    if (remainNormal > 0) { remainSb.append(baseName).append(" ").append(remainNormal).append("개"); printed = true; }
 	    if (remainShiny > 0) {
-	        if (!first) remainSb.append(", ");
+	        if (printed) remainSb.append(", ");
 	        remainSb.append("✨빛").append(baseName).append(" ").append(remainShiny).append("개");
-	        first = false;
+	        printed = true;
 	    }
-	    if (first) remainSb = new StringBuilder("남은 재고: 없음");
+	    if (!printed) remainSb = new StringBuilder("남은 재고: 없음");
 
-	    // STEP 7: 출력 메세지
 	    String dispName = wantShinyOnly ? ("✨빛" + baseName) : baseName;
 
+	    // 출력
 	    StringBuilder sb = new StringBuilder();
 	    sb.append("⚔ ").append(userName).append("님,").append(NL)
 	      .append("▶ 판매 완료!").append(NL)
@@ -667,17 +674,14 @@ public class BossAttackController {
 	    if (sold < reqQty) {
 	        sb.append(NL).append("(요청 ").append(reqQty).append("개 → 실제 ").append(sold).append("개 판매)");
 	    }
-
 	    return sb.toString();
 	}
-
 
 	
 	/** 공격 랭킹 보기 */
 	public String attackRanking(HashMap<String, Object> map) {
 	    final String roomName = Objects.toString(map.get("roomName"), "");
 	    if (roomName.isEmpty()) return "방 정보가 누락되었습니다.";
-	    final String NL = "♬";
 
 	    StringBuilder sb = new StringBuilder();
 	    sb.append("⚔ 공격 랭킹").append(NL);
@@ -756,7 +760,6 @@ public class BossAttackController {
 	 *  - '랜덤' 문구 없음. 부호는 값 그대로(+/-) 노출.
 	 */
 	private String renderMarketListForBuy(List<HashMap<String,Object>> items, String userName) {
-	    final String NL = "♬";
 	    if (items == null || items.isEmpty()) {
 	        return "▶ " + userName + "님, 구매 가능 아이템" + NL + "- (없음)";
 	    }
