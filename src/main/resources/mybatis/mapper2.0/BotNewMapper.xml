@@ -212,29 +212,32 @@
   <!-- 일반 요약(판매가능/불가 분리 용) -->
   <select id="selectInventorySummary" resultType="hashmap">
     SELECT
-      x.ITEM_ID,
-      CASE WHEN x.GAIN_TYPE = 'DROP3' THEN '빛나는 ' || t.ITEM_NAME ELSE t.ITEM_NAME END AS ITEM_NAME,
-      CASE WHEN x.GAIN_TYPE = 'DROP3' THEN '0' ELSE '1' END AS SELLABLE_YN,
-      x.TOTAL_QTY
-    FROM (
-      SELECT ITEM_ID, GAIN_TYPE, SUM(QTY) AS TOTAL_QTY
-        FROM TBOT_POINT_NEW_INVENTORY
-       WHERE USER_NAME = #{userName}
-         AND ROOM_NAME = #{roomName}
-         AND DEL_YN    = '0'
-       GROUP BY ITEM_ID, GAIN_TYPE
-    ) x
-    LEFT JOIN TBOT_POINT_NEW_ITEM t ON t.ITEM_ID = x.ITEM_ID
-   WHERE x.TOTAL_QTY > 0
-   ORDER BY CASE WHEN x.GAIN_TYPE = 'DROP3' THEN 0 ELSE 1 END,
-            NVL(t.ITEM_NAME, 'ZZZ'), x.ITEM_ID
+	    x.ITEM_ID,
+	    CASE WHEN x.GAIN_TYPE = 'DROP3'
+	         THEN '✨빛' || NVL(t.ITEM_NAME, '알 수 없음')
+	         ELSE NVL(t.ITEM_NAME, '알 수 없음')
+	    END AS ITEM_NAME,
+	    '1' AS SELLABLE_YN,             -- 빛템도 판매 가능
+	    x.TOTAL_QTY
+	  FROM (
+	    SELECT ITEM_ID, GAIN_TYPE, SUM(QTY) AS TOTAL_QTY
+	      FROM TBOT_POINT_NEW_INVENTORY
+	     WHERE USER_NAME = #{userName}
+	       AND ROOM_NAME = #{roomName}
+	       AND DEL_YN    = '0'
+	     GROUP BY ITEM_ID, GAIN_TYPE
+	  ) x
+	  LEFT JOIN TBOT_POINT_NEW_ITEM t ON t.ITEM_ID = x.ITEM_ID
+	 WHERE x.TOTAL_QTY > 0
+	 ORDER BY NVL(t.ITEM_NAME, 'ZZZ'), x.ITEM_ID
   </select>
 
   <select id="selectInventorySummaryAll" resultType="hashmap">
 	  SELECT
 	      NVL(i.item_id, -1) AS ITEM_ID,
 	      CASE 
-	        WHEN NVL(inv.gain_type,'DROP') = 'DROP3' THEN '빛나는 ' || NVL(i.item_name, '알 수 없음')
+	        WHEN NVL(inv.gain_type,'DROP') = 'DROP3'
+	          THEN '✨빛' || NVL(i.item_name, '알 수 없음')
 	        ELSE NVL(i.item_name, '알 수 없음')
 	      END AS ITEM_NAME,
 	      SUM(inv.qty) AS TOTAL_QTY,
@@ -249,7 +252,8 @@
 	  GROUP BY
 	      NVL(i.item_id, -1),
 	      CASE 
-	        WHEN NVL(inv.gain_type,'DROP') = 'DROP3' THEN '빛나는 ' || NVL(i.item_name, '알 수 없음')
+	        WHEN NVL(inv.gain_type,'DROP') = 'DROP3'
+	          THEN '✨빛' || NVL(i.item_name, '알 수 없음')
 	        ELSE NVL(i.item_name, '알 수 없음')
 	      END
 	  ORDER BY NVL(i.item_id, -1)
