@@ -688,7 +688,7 @@ public class BossAttackController {
 	    StringBuilder sb = new StringBuilder();
 
 	    // === ⚔ 공격 랭킹 ===
-	    sb.append("=== ⚔ 공격 랭킹 ===").append(NL);
+	    sb.append("⚔ 공격 랭킹").append(NL);
 	    List<HashMap<String,Object>> top3 = botNewService.selectTopLevelUsers();
 	    if (top3 == null || top3.isEmpty()) {
 	        sb.append("데이터 없음").append(NL);
@@ -709,7 +709,7 @@ public class BossAttackController {
 	    sb.append(NL);
 
 	    // === ⚔ 몬스터 학살자 ===
-	    sb.append("=== ⚔ 몬스터 학살자 ===").append(NL);
+	    sb.append("⚔ 몬스터 학살자").append(NL);
 	    List<HashMap<String,Object>> killers = botNewService.selectKillLeadersByMonster();
 	    if (killers == null || killers.isEmpty()) {
 	        sb.append("데이터 없음").append(NL);
@@ -736,7 +736,7 @@ public class BossAttackController {
 	    sb.append(NL);
 
 	    // === ⚔ 최초 토벌자 ===
-	    sb.append("=== ⚔ 최초 토벌자 ===").append(NL);
+	    sb.append("⚔ 최초 토벌자").append(NL);
 	    List<HashMap<String,Object>> firsts = botNewService.selectFirstClearInfo();
 	    if (firsts == null || firsts.isEmpty()) {
 	        sb.append("데이터 없음").append(NL);
@@ -752,7 +752,8 @@ public class BossAttackController {
 	            sb.append("- ").append(monName);
 	            // 정렬 용도로 자간 맞추고 싶으면 패딩 로직 추가 가능(간단히 공백 하나)
 	            sb.append(" : ").append(NL);
-	            sb.append("▶").append(firstUser).append(" (").append(firstTime).append(")").append(NL);
+	            sb.append("▶").append(firstUser).append(NL);
+	            sb.append(" (").append(firstTime).append(")").append(NL);
 	        }
 	    }
 
