@@ -746,14 +746,10 @@ public class BossAttackController {
 	            String firstUser = String.valueOf(fc.get("FIRST_CLEAR_USER"));
 	            String firstTime = String.valueOf(fc.get("FIRST_CLEAR_DATE")); // YYYY-MM-DD HH24:MI
 
-	            // 예시 포맷: 
-	            // - 토끼  :
-	            // ▶전태환 (2025-11-05 15:22)
 	            sb.append("- ").append(monName);
-	            // 정렬 용도로 자간 맞추고 싶으면 패딩 로직 추가 가능(간단히 공백 하나)
-	            sb.append(" : ").append(NL);
-	            sb.append("▶").append(firstUser).append(NL);
 	            sb.append(" (").append(firstTime).append(")").append(NL);
+	            sb.append("▶").append(firstUser).append(NL);
+	            
 	        }
 	    }
 
