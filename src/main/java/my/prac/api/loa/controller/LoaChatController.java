@@ -637,7 +637,7 @@ public class LoaChatController {
 				val = boss.sellItem(reqMap);
 				break;
 			case "/공격랭킹": case "/ㄱㄱㄹㅋ":
-				val = boss.attackRanking(reqMap);
+				val = boss.showAttackRanking(reqMap);
 				break;
 			case "/공격정보": case "/ㄱㄱㅈㅂ": case "/가방": case "/ㄱㅂ":
 				val = boss.attackInfo(reqMap);
@@ -662,7 +662,8 @@ public class LoaChatController {
 			case "/ㄱㄱㄱ": case "/ㄱ": case "/R": case "/r": 
 				val = boss.monsterAttack(reqMap);
 				break;
-			case "/ㄱㄱㅌㄱ":case "/공격타겟":  
+			case "/ㄱㄱㅌㄱ":case "/공격타겟":
+			case "/ㄱㄱㄷㅅ":case "/공격대상": 
 				reqMap.put("monNo", param1);
 				val = boss.changeTarget(reqMap);
 				break;

@@ -128,20 +128,20 @@ public class BossAttackController {
 		StringBuilder sb = new StringBuilder();
 		sb.append("✨").append(targetUser).append(" 공격 정보").append(NL).append("Lv: ").append(u.lv).append(", EXP ")
 				.append(u.expCur).append("/").append(u.expNext).append(NL).append("포인트: ").append(pointStr).append(NL)
-				.append("⚔ATK: ").append(shownAtkMin).append(" ~ ").append(shownAtkMax).append(NL).append("   └ 기본효과 (")
-				.append(u.atkMin).append("~").append(u.atkMax).append(")").append(NL).append("   └ 시즌1 강화보너스: ")
-				.append(weaponLv).append("강 (max+").append(weaponBonus).append(")").append(NL).append("   └ 아이템효과 (min")
+				.append("⚔ATK: ").append(shownAtkMin).append(" ~ ").append(shownAtkMax).append(NL).append("   └ 기본 (")
+				.append(u.atkMin).append("~").append(u.atkMax).append(")").append(NL).append("   └ 시즌1 강화: ")
+				.append(weaponLv).append("강 (max+").append(weaponBonus).append(")").append(NL).append("   └ 아이템 (min")
 				.append(formatSigned(bAtkMin)).append(", max").append(formatSigned(bAtkMax)).append(")").append(NL)
 
 				.append("⚔CRIT: ").append(shownCrit).append("%  CDMG ").append(shownCritDmg).append("%").append(NL)
-				.append("   └ 기본효과 (").append(u.critRate).append("%, ").append(u.critDmg).append("%)").append(NL)
-				.append("   └ 아이템효과 (CRIT ").append(formatSigned(bCri)).append("%, CDMG ").append(formatSigned(bCriDmg))
+				.append("   └ 기본 (").append(u.critRate).append("%, ").append(u.critDmg).append("%)").append(NL)
+				.append("   └ 아이템 (CRIT").append(formatSigned(bCri)).append("%, CDMG ").append(formatSigned(bCriDmg))
 				.append("%)").append(NL)
 
-				.append("❤️ HP: ").append(effHp).append(" / ").append(shownHpMax).append("  | 5분당 회복 +")
-				.append(shownRegen).append(NL).append("   └ 기본효과 (").append(u.hpMax).append(",  5분당 회복 +")
-				.append(u.hpRegen).append(")").append(NL).append("   └ 아이템효과 (HP ").append(formatSigned(bHpMax))
-				.append(",  5분당 회복 ").append(formatSigned(bRegen)).append(")").append(NL).append("▶ 현재 타겟: ")
+				.append("❤️ HP: ").append(effHp).append(" / ").append(shownHpMax).append("|5분당회복+")
+				.append(shownRegen).append(NL).append("   └ 기본 (HP+").append(u.hpMax).append(",5분당회복+")
+				.append(u.hpRegen).append(")").append(NL).append("   └ 아이템 (HP").append(formatSigned(bHpMax))
+				.append(",5분당회복").append(formatSigned(bRegen)).append(")").append(NL).append("▶ 현재 타겟: ")
 				.append(targetName).append(" (MON_NO=").append(u.targetMon).append(")").append(NL).append(NL);
 
 		sb.append(allSeeStr);
@@ -199,24 +199,27 @@ public class BossAttackController {
 		        : botNewService.selectMonsterByName(input);
 
 		if (m == null) {
-			List<Monster> monsters = botNewService.selectAllMonsters();
-			StringBuilder sb = new StringBuilder();
-			sb.append("해당 몬스터(").append(input).append(")를 찾을 수 없습니다.").append(NL)
-			  .append("아래 목록 중에서 선택해주세요:").append(NL).append(NL);
-			for (Monster mm : monsters) sb.append(mm.monNo).append(" : ").append(mm.monName).append(NL);
-			return sb.toString();
+		    List<Monster> monsters = botNewService.selectAllMonsters();
+		    StringBuilder sb = new StringBuilder();
+		    sb.append("해당 몬스터(").append(input).append(")를 찾을 수 없습니다.").append(NL)
+		      .append("아래 목록 중에서 선택해주세요:").append(NL).append(NL)
+		      .append("▶ 선택 가능한 몬스터").append(NL);
+		    for (Monster mm : monsters) sb.append(renderMonsterCompactLine(mm)).append(NL);
+		    return sb.toString();
 		}
-
+		
 		User u = botNewService.selectUser(userName, roomName);
 		if (u == null) {
-			botNewService.insertUserWithTargetTx(userName, roomName, m.monNo);
-			return userName + "님, 공격 타겟을 " + m.monName + "(MON_NO=" + m.monNo + ") 으로 설정했습니다.";
+		    botNewService.insertUserWithTargetTx(userName, roomName, m.monNo);
+		    return userName + "님, 공격 타겟을 " + m.monName + "(MON_NO=" + m.monNo + ") 으로 설정했습니다." + NL
+		         + "▶ 선택: " + renderMonsterCompactLine(m);
 		}
 		if (u.targetMon == m.monNo) return "현재 타겟이 이미 " + m.monName + "(MON_NO=" + m.monNo + ") 입니다.";
 
 		botNewService.closeOngoingBattleTx(userName, roomName);
 		botNewService.updateUserTargetMonTx(userName, roomName, m.monNo);
-		return userName + "님, 공격 타겟을 " + m.monName + "(MON_NO=" + m.monNo + ") 으로 설정했습니다.";
+		return userName + "님, 공격 타겟을 " + m.monName + "(MON_NO=" + m.monNo + ") 으로 설정했습니다." + NL
+			     + "▶ 선택: " + renderMonsterCompactLine(m);
 	}
 
 	/** /구매 [아이템명|아이템번호]
@@ -678,79 +681,86 @@ public class BossAttackController {
 	}
 
 	
-	/** 공격 랭킹 보기 */
-	public String attackRanking(HashMap<String, Object> map) {
-	    final String roomName = Objects.toString(map.get("roomName"), "");
-	    if (roomName.isEmpty()) return "방 정보가 누락되었습니다.";
+	/** 공격 랭킹 출력 (Top3 / 몬스터 학살자 / 최초 토벌자) */
+	public String showAttackRanking(HashMap<String,Object> map) {
+	    final String NL = "♬";
 
 	    StringBuilder sb = new StringBuilder();
-	    sb.append("⚔ 공격 랭킹").append(NL);
 
-	    // 1) 레벨 랭킹 1위(동률 허용)
-	    List<HashMap<String,Object>> lvTop = botNewService.selectTopLevelUsers(roomName);
-	    if (lvTop == null || lvTop.isEmpty()) {
-	        sb.append("- 레벨랭킹: 데이터 없음").append(NL);
+	    // === ⚔ 공격 랭킹 ===
+	    sb.append("=== ⚔ 공격 랭킹 ===").append(NL);
+	    List<HashMap<String,Object>> top3 = botNewService.selectTopLevelUsers();
+	    if (top3 == null || top3.isEmpty()) {
+	        sb.append("데이터 없음").append(NL);
 	    } else {
-	        // 동일 랭킹 복수면 모두 표기
-	        StringBuilder names = new StringBuilder();
-	        Integer lv = null, expCur = null;
-	        for (int i = 0; i < lvTop.size(); i++) {
-	            HashMap<String,Object> r = lvTop.get(i);
-	            String u  = Objects.toString(r.get("USER_NAME"), "-");
-	            lv        = (lv == null) ? toInt(r.get("LV")) : lv;
-	            expCur    = (expCur == null) ? toInt(r.get("EXP_CUR")) : expCur;
-	            if (i > 0) names.append(", ");
-	            names.append(u);
-	        }
-	        sb.append("레벨랭킹 1위: ").append(names)
-	          .append(" (Lv ").append(lv).append(", EXP ").append(expCur).append(")").append(NL);
-	    }
+	        int rank = 1;
+	        for (HashMap<String,Object> row : top3) {
+	            String name = String.valueOf(row.get("USER_NAME"));
+	            int lv      = safeInt(row.get("LV"));
+	            int expCur  = safeInt(row.get("EXP_CUR"));
+	            int expNext = safeInt(row.get("EXP_NEXT"));
 
+	            sb.append(rank).append("위: ").append(name).append(" ").append(NL)
+	              .append("▶(Lv.").append(lv).append(", EXP ").append(expCur).append("/")
+	              .append(expNext).append(")").append(NL);
+	            rank++;
+	        }
+	    }
 	    sb.append(NL);
 
-	    // 2) 몬스터별 학살자(킬 50 이상, 동률 허용)
-	    List<HashMap<String,Object>> killers = botNewService.selectKillLeadersByMonster(roomName);
+	    // === ⚔ 몬스터 학살자 ===
+	    sb.append("=== ⚔ 몬스터 학살자 ===").append(NL);
+	    List<HashMap<String,Object>> killers = botNewService.selectKillLeadersByMonster();
 	    if (killers == null || killers.isEmpty()) {
-	        //sb.append("학살자 랭킹: 조건(50킬 이상)을 만족하는 데이터가 없습니다.").append(NL);
+	        sb.append("데이터 없음").append(NL);
 	    } else {
-	        // 같은 MON_NO 묶어서 "토끼 학살자 누구, 누구 (킬 XX마리)" 형태
-	        Integer curMon = null;
-	        String curMonName = null;
-	        StringBuilder line = new StringBuilder();
-	        int curKills = -1;
+	        // 몬스터별 블록 출력
+	        Integer lastMonNo = null;
+	        String  lastMonName = null;
+	        for (HashMap<String,Object> k : killers) {
+	            int monNo = safeInt(k.get("MON_NO"));
+	            String monName = String.valueOf(k.get("MON_NAME"));
+	            String uName = String.valueOf(k.get("USER_NAME"));
+	            int kills = safeInt(k.get("KILL_COUNT"));
 
-	        for (HashMap<String,Object> r : killers) {
-	            int monNo   = toInt(r.get("MON_NO"));
-	            String mName= Objects.toString(r.get("MON_NAME"), "알 수 없음");
-	            String user = Objects.toString(r.get("USER_NAME"), "-");
-	            int kills   = toInt(r.get("KILL_COUNT"));
-
-	            if (curMon == null || curMon != monNo) {
-	                // flush 이전 몬스터 라인
-	                if (curMon != null) {
-	                    line.append(" (").append(curKills).append("마리)").append(NL);
-	                    sb.append(line.toString());
-	                }
-	                // 새로운 몬스터
-	                curMon = monNo;
-	                curMonName = mName;
-	                curKills = kills;
-	                line.setLength(0);
-	                line.append(curMonName).append(" 학살자: ").append(user);
-	            } else {
-	                // 동률 사용자 이어 붙이기
-	                line.append(", ").append(user);
+	            if (!Objects.equals(lastMonNo, monNo)) {
+	                // 새 몬스터 헤더
+	                if (lastMonNo != null) sb.append(""); // 구분 필요 시 사용
+	                sb.append("- ").append(monName).append(" 학살자: ").append(NL);
+	                lastMonNo = monNo;
+	                lastMonName = monName;
 	            }
+	            sb.append("▶").append(uName).append(" (").append(kills).append("마리)").append(NL);
 	        }
-	        // flush 마지막
-	        if (curMon != null) {
-	            line.append(" (").append(curKills).append("마리)").append(NL);
-	            sb.append(line.toString());
+	    }
+	    sb.append(NL);
+
+	    // === ⚔ 최초 토벌자 ===
+	    sb.append("=== ⚔ 최초 토벌자 ===").append(NL);
+	    List<HashMap<String,Object>> firsts = botNewService.selectFirstClearInfo();
+	    if (firsts == null || firsts.isEmpty()) {
+	        sb.append("데이터 없음").append(NL);
+	    } else {
+	        for (HashMap<String,Object> fc : firsts) {
+	            String monName  = String.valueOf(fc.get("MON_NAME"));
+	            String firstUser = String.valueOf(fc.get("FIRST_CLEAR_USER"));
+	            String firstTime = String.valueOf(fc.get("FIRST_CLEAR_DATE")); // YYYY-MM-DD HH24:MI
+
+	            // 예시 포맷: 
+	            // - 토끼  :
+	            // ▶전태환 (2025-11-05 15:22)
+	            sb.append("- ").append(monName);
+	            // 정렬 용도로 자간 맞추고 싶으면 패딩 로직 추가 가능(간단히 공백 하나)
+	            sb.append(" : ").append(NL);
+	            sb.append("▶").append(firstUser).append(" (").append(firstTime).append(")").append(NL);
 	        }
 	    }
 
 	    return sb.toString();
 	}
+
+	
+	/** 공격 랭킹 보기 */
 	/** 구매 리스트(한국어 직관 표기, NL='♬') 
 	 *  헤더: ▶ {userName}님, 구매 가능 아이템
 	 *  각 아이템: 
@@ -874,17 +884,19 @@ public class BossAttackController {
 	long effective = (long) u.hpCur + heal;
 	return (int) Math.min(effective, (long) effHpMax);
 	}
-
+	
 	public String guideSetTargetMessage() {
-		List<Monster> monsters = botNewService.selectAllMonsters();
-		StringBuilder sb = new StringBuilder();
-		sb.append("공격 타겟이 없습니다. 먼저 타겟을 설정해주세요.").append(NL)
-		  .append("예) /공격타겟 1   또는   /공격타겟 토끼").append(NL).append(NL)
-		  .append("선택 가능한 몬스터 목록").append(NL);
-		for (Monster m : monsters) sb.append(m.monNo).append(" : ").append(m.monName).append(NL);
-		return sb.toString();
+	    final String NL = "♬";
+	    List<Monster> monsters = botNewService.selectAllMonsters();
+	    StringBuilder sb = new StringBuilder();
+	    sb.append("공격 타겟이 없습니다. 먼저 타겟을 설정해주세요.").append(NL)
+	      .append("예) /공격타겟 1   또는   /공격타겟 토끼").append(NL).append(NL)
+	      .append("▶ 선택 가능한 몬스터").append(NL);
+	    for (Monster m : monsters) {
+	        sb.append(renderMonsterCompactLine(m)).append(NL);
+	    }
+	    return sb.toString();
 	}
-
 	private CooldownCheck checkCooldown(String userName, String roomName, String param1) {
 		if ("test".equals(param1)) return CooldownCheck.ok();
 	    Timestamp last = botNewService.selectLastAttackTime(userName, roomName);
@@ -1194,8 +1206,36 @@ public class BossAttackController {
 
 	    // EXP
 	    sb.append("✨ EXP+").append(res.gainExp)
-	      .append(" , EXP: ").append(u.expCur).append(" / ").append(u.expNext).append(NL);
+	      .append(" , EXP: ").append(u.expCur).append(" / ").append(u.expNext).append(NL).append(NL);
 
+	    if (up != null && up.levelUpCount > 0) {
+	        sb.append("✨ 레벨업! Lv ").append(up.beforeLv)
+	          .append(" → ").append(up.afterLv);
+	        if (up.levelUpCount > 1)
+	            sb.append(" ( +").append(up.levelUpCount).append(" )");
+	        sb.append(NL);
+
+	        // ❤️ HP
+	        sb.append("└:❤️HP ")
+	          .append(up.beforeHpMax).append("→").append(up.afterHpMax)
+	          .append(" (+").append(up.hpMaxDelta).append(")").append(NL);
+
+	        // ⚔ ATK
+	        sb.append("└:⚔ATK ")
+	          .append(up.beforeAtkMin).append("~").append(up.beforeAtkMax)
+	          .append("→").append(up.afterAtkMin).append("~").append(up.afterAtkMax)
+	          .append(" (+").append(up.atkMinDelta).append("~+").append(up.atkMaxDelta).append(")").append(NL);
+
+	        // CRIT
+	        sb.append("└: CRIT ")
+	          .append(up.beforeCrit).append("%→").append(up.afterCrit).append("%")
+	          .append(" (+").append(up.critDelta).append("%)").append(NL);
+
+	        // HP_REGEN
+	        sb.append("└: 5분당회복 ")
+	          .append(up.beforeHpRegen).append("→").append(up.afterHpRegen)
+	          .append(" (+").append(up.hpRegenDelta).append(")").append(NL);
+	    }
 	    return sb.toString();
 	}
 
@@ -1240,37 +1280,69 @@ public class BossAttackController {
 	public static class LevelUpResult {
 		public int gainedExp, beforeLv, afterLv, beforeExpCur, afterExpCur, afterExpNext, levelUpCount;
 		public int hpMaxDelta, atkMinDelta, atkMaxDelta;
-		public int critDelta; public int hpRegenDelta;
+		public int critDelta;
+		public int hpRegenDelta;
+		public int beforeHpMax,   afterHpMax;
+		public int beforeAtkMin,  afterAtkMin;
+		public int beforeAtkMax,  afterAtkMax;
+		public int beforeCrit,    afterCrit;
+		public int beforeHpRegen, afterHpRegen;
 	}
 
 	private LevelUpResult applyExpAndLevelUp(User u, int gainedExp) {
-		LevelUpResult r = new LevelUpResult();
-		r.gainedExp = Math.max(0, gainedExp);
-		r.beforeLv = u.lv; r.beforeExpCur = u.expCur;
+	    LevelUpResult r = new LevelUpResult();
+	    r.gainedExp = Math.max(0, gainedExp);
+	    r.beforeLv = u.lv; 
+	    r.beforeExpCur = u.expCur;
 
-		int lv = u.lv, expCur = u.expCur + r.gainedExp, expNext = u.expNext;
-		int hpMax = u.hpMax, atkMin = u.atkMin, atkMax = u.atkMax, crit = u.critRate, regen = u.hpRegen;
+	    // ✅ 레벨업 "전" 스냅샷
+	    r.beforeHpMax   = u.hpMax;
+	    r.beforeAtkMin  = u.atkMin;
+	    r.beforeAtkMax  = u.atkMax;
+	    r.beforeCrit    = u.critRate;
+	    r.beforeHpRegen = u.hpRegen;
 
-		int hpDelta = 0, atkMinDelta = 0, atkMaxDelta = 0, critDelta = 0, regenDelta = 0, upCount = 0;
+	    int lv = u.lv, expCur = u.expCur + r.gainedExp, expNext = u.expNext;
+	    int hpMax = u.hpMax, atkMin = u.atkMin, atkMax = u.atkMax, crit = u.critRate, regen = u.hpRegen;
 
-		while (expCur >= expNext) {
-			expCur -= expNext; lv++; upCount++;
-			expNext = calcNextExp(lv, expNext);
-			hpMax += 10;  hpDelta     += 10;
-			atkMin += 1;  atkMinDelta += 1;
-			atkMax += 3;  atkMaxDelta += 3;
-			crit   += 2;  critDelta   += 2;
-			if (lv % 3 == 0) { regen++; regenDelta++; }
-		}
+	    int hpDelta = 0, atkMinDelta = 0, atkMaxDelta = 0, critDelta = 0, regenDelta = 0, upCount = 0;
 
-		u.lv = lv; u.expCur = expCur; u.expNext = expNext;
-		u.hpMax = hpMax; u.atkMin = atkMin; u.atkMax = atkMax;
-		u.critRate = crit; u.hpRegen  = regen;
+	    while (expCur >= expNext) {
+	        expCur -= expNext; lv++; upCount++;
+	        expNext = calcNextExp(lv, expNext);
 
-		r.afterLv = lv; r.afterExpCur = expCur; r.afterExpNext = expNext; r.levelUpCount = upCount;
-		r.hpMaxDelta = hpDelta; r.atkMinDelta = atkMinDelta; r.atkMaxDelta = atkMaxDelta;
-		r.critDelta = critDelta; r.hpRegenDelta = regenDelta;
-		return r;
+	        hpMax += 10;  hpDelta     += 10;
+	        atkMin += 1;  atkMinDelta += 1;
+	        atkMax += 3;  atkMaxDelta += 3;
+	        crit   += 2;  critDelta   += 2;
+	        if (lv % 3 == 0) { regen++; regenDelta++; }
+	    }
+
+	    // ✅ 레벨업 "후" 스냅샷
+	    r.afterHpMax   = hpMax;
+	    r.afterAtkMin  = atkMin;
+	    r.afterAtkMax  = atkMax;
+	    r.afterCrit    = crit;
+	    r.afterHpRegen = regen;
+
+	    // 유저 상태 갱신
+	    u.lv = lv; u.expCur = expCur; u.expNext = expNext;
+	    u.hpMax = hpMax; u.atkMin = atkMin; u.atkMax = atkMax;
+	    u.critRate = crit; u.hpRegen  = regen;
+
+	    // 결과 정리
+	    r.afterLv = lv; 
+	    r.afterExpCur = expCur; 
+	    r.afterExpNext = expNext; 
+	    r.levelUpCount = upCount;
+
+	    r.hpMaxDelta   = hpDelta; 
+	    r.atkMinDelta  = atkMinDelta; 
+	    r.atkMaxDelta  = atkMaxDelta;
+	    r.critDelta    = critDelta; 
+	    r.hpRegenDelta = regenDelta;
+
+	    return r;
 	}
 
 	private static final int DELTA_BASE = 150;
@@ -1329,5 +1401,33 @@ public class BossAttackController {
 
 	private static int parseIntSafe(String s) {
 	    try { return Integer.parseInt(s); } catch (Exception e) { return 0; }
+	}
+	
+	/** 드랍 아이템 이름 → 판매가 조회 (없으면 0) */
+	private int getDropPriceByName(String dropName) {
+	    if (dropName == null || dropName.trim().isEmpty()) return 0;
+	    try {
+	        Integer p = botNewService.selectItemPriceByName(dropName.trim());
+	        return (p == null ? 0 : Math.max(0, p));
+	    } catch (Exception ignore) {
+	        return 0;
+	    }
+	}
+	/** 몬스터 요약 한 줄 UI */
+	private String renderMonsterCompactLine(Monster m) {
+	    // 예: "1. 토끼 | ❤️HP 40 | ⚔ATK 7 | EXP 20 | 드랍 5sp"
+	    int dropPrice = getDropPriceByName(m.monDrop);
+	    StringBuilder sb = new StringBuilder();
+	    // 첫 줄: 이름, HP, ATK
+	    sb.append(m.monNo).append(". ").append(m.monName)
+	      .append(" | ❤️HP ").append(m.monHp)
+	      .append(" | ⚔ATK ").append(m.monAtk)
+	      .append(NL);
+
+	    // 두 번째 줄: EXP, 드랍템
+	    sb.append("▶처치시: EXP ").append(m.monExp)
+	      .append(", drop: ").append(m.monDrop).append("(").append(dropPrice).append("sp)");
+
+	    return sb.toString();
 	}
 }

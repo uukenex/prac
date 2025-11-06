@@ -141,7 +141,12 @@ public interface BotNewDAO {
     Timestamp selectLastDamagedTime(@Param("userName") String userName,
             @Param("roomName") String roomName);
     
-    List<HashMap<String,Object>> selectTopLevelUsers(@Param("roomName") String roomName);
+ // Top 3 레벨 랭킹
+    List<HashMap<String,Object>> selectTopLevelUsers();
 
-    List<HashMap<String,Object>> selectKillLeadersByMonster(@Param("roomName") String roomName);
+    // 몬스터별 학살자(50킬 이상, 1위/동률)
+    List<HashMap<String,Object>> selectKillLeadersByMonster();
+
+    // 최초 토벌자
+    List<HashMap<String,Object>> selectFirstClearInfo();
 }

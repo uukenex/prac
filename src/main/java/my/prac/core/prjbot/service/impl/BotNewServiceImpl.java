@@ -239,14 +239,16 @@ public class BotNewServiceImpl implements BotNewService {
 
     
 
-    // BotNewServiceImpl.java (구현)
     @Override
-    public List<HashMap<String, Object>> selectTopLevelUsers(String roomName) {
-        return botNewDAO.selectTopLevelUsers(roomName);
+    public List<HashMap<String, Object>> selectTopLevelUsers() {
+        return botNewDAO.selectTopLevelUsers();
     }
-
     @Override
-    public List<HashMap<String, Object>> selectKillLeadersByMonster(String roomName) {
-        return botNewDAO.selectKillLeadersByMonster(roomName);
+    public List<HashMap<String, Object>> selectKillLeadersByMonster() {
+        return botNewDAO.selectKillLeadersByMonster();
+    }
+    @Override
+    public List<HashMap<String, Object>> selectFirstClearInfo() {
+        return botNewDAO.selectFirstClearInfo();
     }
 }

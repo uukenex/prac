@@ -529,22 +529,15 @@
 	     AND (MON_DMG > 0 OR DEATH_YN = '1')
 	</select>
 	
-	<!-- ① 레벨 랭킹 1위 (LV DESC, EXP_CUR DESC, 동률 모두) -->
 	<select id="selectTopLevelUsers" resultType="hashmap">
 	  SELECT USER_NAME, LV, EXP_CUR, EXP_NEXT
-	  FROM TBOT_POINT_NEW_USER
-	  WHERE (LV, EXP_CUR) IN (
-	      SELECT MAX_LV, MAX_EXP
-	      FROM (
-	        SELECT LV AS MAX_LV, MAX(EXP_CUR) KEEP (DENSE_RANK LAST ORDER BY LV) AS MAX_EXP
-	        FROM TBOT_POINT_NEW_USER
-	        
-	        GROUP BY LV
-	        ORDER BY LV DESC
-	      )
-	      WHERE ROWNUM = 1
-	    )
-	  ORDER BY USER_NAME
+	  FROM (
+	    SELECT u.USER_NAME, u.LV, u.EXP_CUR, u.EXP_NEXT,
+	           ROW_NUMBER() OVER (ORDER BY u.LV DESC, u.EXP_CUR DESC, u.USER_NAME ASC) AS RN
+	      FROM TBOT_POINT_NEW_USER u
+	  )
+	  WHERE RN &lt;= 3
+	  ORDER BY RN
 	</select>
 	
 	<!-- ② 몬스터별 학살자 (킬 50 이상, 동률 허용) -->
@@ -569,6 +562,27 @@
 	  WHERE RNK = 1
 	    AND KILL_COUNT >= 50
 	  ORDER BY MON_NO, USER_NAME
+	</select>
+	
+	<!-- ③ 최초 토벌자 정보 -->
+	<select id="selectFirstClearInfo" resultType="hashmap">
+	  SELECT
+	      m.MON_NO,
+	      m.MON_NAME,
+	      fc.FIRST_CLEAR_USER,
+	      TO_CHAR(fc.FIRST_CLEAR_DATE, 'YYYY-MM-DD HH24:MI') AS FIRST_CLEAR_DATE
+	  FROM TBOT_POINT_NEW_MON_INFO m
+	  LEFT JOIN (
+	    SELECT
+	        bl.TARGET_MON_LV AS MON_NO,
+	        MIN(bl.INSERT_DATE) AS FIRST_CLEAR_DATE,
+	        MIN(bl.USER_NAME) KEEP (DENSE_RANK FIRST ORDER BY bl.INSERT_DATE) AS FIRST_CLEAR_USER
+	    FROM TBOT_POINT_NEW_BATTLE_LOG bl
+	    WHERE bl.KILL_YN = 1
+	    GROUP BY bl.TARGET_MON_LV
+	  ) fc ON fc.MON_NO = m.MON_NO
+	  WHERE fc.FIRST_CLEAR_USER IS NOT NULL
+	  ORDER BY m.MON_NO
 	</select>
 	
 </mapper>
