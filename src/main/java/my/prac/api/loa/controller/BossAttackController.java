@@ -1421,14 +1421,14 @@ public class BossAttackController {
 	    StringBuilder sb = new StringBuilder();
 	    // 첫 줄: 이름, HP, ATK
 	    sb.append(m.monNo).append(". ").append(m.monName)
-	      .append(" | ❤️HP ").append(m.monHp)
-	      .append(" | ⚔ATK ").append(m.monAtk)
+	      .append(" ❤️HP ").append(m.monHp)
+	      .append(", ⚔ATK ").append(m.monAtk)
 	      .append(NL);
 
 	    // 두 번째 줄: EXP, 드랍템
-	    sb.append("▶처치시: EXP ").append(m.monExp)
-	      .append(", drop: ").append(m.monDrop).append("(").append(dropPrice).append("sp)");
-
+	    sb.append("▶ 보상: EXP ").append(m.monExp)
+	      .append(", drop: ").append(m.monDrop).append("(").append(dropPrice).append("sp)")
+	      .append(NL);
 	    return sb.toString();
 	}
 }
