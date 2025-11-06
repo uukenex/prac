@@ -237,7 +237,7 @@
 	      NVL(i.item_id, -1) AS ITEM_ID,
 	      CASE 
 	        WHEN NVL(inv.gain_type,'DROP') = 'DROP3'
-	          THEN '✨빛' || NVL(i.item_name, '알 수 없음')
+	          THEN '빛' || NVL(i.item_name, '알 수 없음')
 	        ELSE NVL(i.item_name, '알 수 없음')
 	      END AS ITEM_NAME,
 	      SUM(inv.qty) AS TOTAL_QTY,
