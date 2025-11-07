@@ -1217,10 +1217,11 @@ public class BossAttackController {
 
 	    // EXP
 	    sb.append("✨ EXP+").append(res.gainExp)
-	      .append(" , EXP: ").append(u.expCur).append(" / ").append(u.expNext).append(NL).append(NL);
+	      .append(" , EXP: ").append(u.expCur).append(" / ").append(u.expNext).append(NL);
 
 	    if (up != null && up.levelUpCount > 0) {
-	        sb.append("✨ 레벨업! Lv ").append(up.beforeLv)
+	        sb.append(NL)
+	          .append("✨ 레벨업! Lv ").append(up.beforeLv)
 	          .append(" → ").append(up.afterLv);
 	        if (up.levelUpCount > 1)
 	            sb.append(" ( +").append(up.levelUpCount).append(" )");
