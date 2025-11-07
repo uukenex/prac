@@ -199,12 +199,19 @@ public class BossAttackController {
 		        : botNewService.selectMonsterByName(input);
 
 		if (m == null) {
+			 // 유저 레벨 조회 (없으면 Lv1 기준)
+		    User u = botNewService.selectUser(userName, roomName);
+		    int userLv = (u != null ? u.lv : 1);
+
 		    List<Monster> monsters = botNewService.selectAllMonsters();
 		    StringBuilder sb = new StringBuilder();
 		    sb.append("해당 몬스터(").append(input).append(")를 찾을 수 없습니다.").append(NL)
 		      .append("아래 목록 중에서 선택해주세요:").append(NL).append(NL)
 		      .append("▶ 선택 가능한 몬스터").append(NL);
-		    for (Monster mm : monsters) sb.append(renderMonsterCompactLine(mm)).append(NL);
+
+		    for (Monster mm : monsters) {
+		        sb.append(renderMonsterCompactLine(mm, userLv));
+		    }
 		    return sb.toString();
 		}
 		
@@ -212,14 +219,15 @@ public class BossAttackController {
 		if (u == null) {
 		    botNewService.insertUserWithTargetTx(userName, roomName, m.monNo);
 		    return userName + "님, 공격 타겟을 " + m.monName + "(MON_NO=" + m.monNo + ") 으로 설정했습니다." + NL
-		         + "▶ 선택: " + renderMonsterCompactLine(m);
+		         + "▶ 선택: " + renderMonsterCompactLine(m, 1);
 		}
 		if (u.targetMon == m.monNo) return "현재 타겟이 이미 " + m.monName + "(MON_NO=" + m.monNo + ") 입니다.";
 
 		botNewService.closeOngoingBattleTx(userName, roomName);
 		botNewService.updateUserTargetMonTx(userName, roomName, m.monNo);
+		int userLvForView = (u != null ? u.lv : 1);
 		return userName + "님, 공격 타겟을 " + m.monName + "(MON_NO=" + m.monNo + ") 으로 설정했습니다." + NL
-			     + "▶ 선택: " + renderMonsterCompactLine(m);
+		     + "▶ 선택: " + NL + renderMonsterCompactLine(m, userLvForView);
 	}
 
 	/** /구매 [아이템명|아이템번호]
@@ -890,7 +898,7 @@ public class BossAttackController {
 	      .append("예) /공격타겟 1   또는   /공격타겟 토끼").append(NL).append(NL)
 	      .append("▶ 선택 가능한 몬스터").append(NL);
 	    for (Monster m : monsters) {
-	        sb.append(renderMonsterCompactLine(m)).append(NL);
+	        sb.append(renderMonsterCompactLine(m,1)).append(NL);
 	    }
 	    return sb.toString();
 	}
@@ -1426,20 +1434,43 @@ public class BossAttackController {
 	    }
 	}
 	/** 몬스터 요약 한 줄 UI */
-	private String renderMonsterCompactLine(Monster m) {
-	    // 예: "1. 토끼 | ❤️HP 40 | ⚔ATK 7 | EXP 20 | 드랍 5sp"
+	private String renderMonsterCompactLine(Monster m, int userLv) {
 	    int dropPrice = getDropPriceByName(m.monDrop);
+	    int baseExp = m.monExp;
+
+	    // 패널티 계산
+	    int diff = userLv - m.monNo;
+	    int over = Math.max(0, diff);
+	    double rate = Math.max(0.1, 1.0 - over * 0.2);
+	    int effExp = (int) Math.round(baseExp * rate);
+
+	    boolean hasPenalty = (over > 0 && rate < 1.0);
+
 	    StringBuilder sb = new StringBuilder();
-	    // 첫 줄: 이름, HP, ATK
+
 	    sb.append(m.monNo).append(". ").append(m.monName)
-	      .append(" ❤️HP ").append(m.monHp)
-	      .append(", ⚔ATK ").append(m.monAtk)
+	      .append(" | ❤️HP ").append(m.monHp)
+	      .append(" | ⚔ATK ").append(m.monAtk)
+	      .append(" | EXP ").append(effExp);
+
+	    if (hasPenalty) sb.append("▼"); // 패널티 시 아래화살표 추가
+
+	    sb.append(" | 드랍 ").append(dropPrice).append("sp")
 	      .append(NL);
 
-	    // 두 번째 줄: EXP, 드랍템
-	    sb.append("▶ 보상: EXP ").append(m.monExp)
-	      .append(", drop: ").append(m.monDrop).append("(").append(dropPrice).append("sp)")
-	      .append(NL);
 	    return sb.toString();
+	}
+	
+	/** 레벨 차이 패널티를 적용한 EXP 표시값 (공격타겟용, u.lv 기준) */
+	private int calcExpWithPenaltyForDisplay(Monster m, int userLv) {
+	    if (m == null) return 0;
+	    int baseExp = Math.max(0, m.monExp);
+	    if (baseExp == 0) return 0;
+
+	    int diff = userLv - m.monNo;           // 유저 레벨 - 몬스터 번호
+	    int over = Math.max(0, diff);          // 초과분만 패널티
+	    double rate = Math.max(0.1, 1.0 - over * 0.2);  // 레벨당 -20%, 최소 10%
+
+	    return (int) Math.round(baseExp * rate);
 	}
 }
