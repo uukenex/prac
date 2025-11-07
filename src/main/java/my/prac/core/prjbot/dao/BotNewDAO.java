@@ -158,4 +158,6 @@ public interface BotNewDAO {
             @Param("roomName") String roomName,
             @Param("userName") String userName,
             @Param("cmd") String cmd);
+    
+    List<HashMap<String,Object>> selectAchievementsByUser(@Param("userName") String userName);
 }

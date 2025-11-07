@@ -96,6 +96,8 @@ public interface BotNewService {
     int selectPointRankCountByCmdGlobal(String cmd);
 
     int selectPointRankCountByCmdUserInRoom(String roomName, String userName, String cmd);
+    
+    public List<HashMap<String,Object>> selectAchievementsByUser(String userName);
 } 
 
 	

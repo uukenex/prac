@@ -611,4 +611,12 @@
 	    WHERE CMD = #{cmd}
 	      AND NEW_YN = '1'
 	</select>
+	
+	<select id="selectAchievementsByUser" resultType="hashMap" parameterType="string">
+	  SELECT CMD, SCORE, USER_NAME, ROOM_NAME, INSERT_DATE
+	  FROM TBOT_POINT_RANK
+	  WHERE USER_NAME = #{userName}
+	    AND CMD LIKE 'ACHV_%'
+	  ORDER BY INSERT_DATE DESC
+	</select>
 </mapper>

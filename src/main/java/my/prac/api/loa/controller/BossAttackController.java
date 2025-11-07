@@ -183,6 +183,21 @@ public class BossAttackController {
 			}
 		} catch (Exception ignore) {
 		}
+		
+		// ===== 기존 인벤토리 출력 뒤에 추가 =====
+		try {
+		    List<HashMap<String,Object>> achv = botNewService.selectAchievementsByUser(targetUser);
+		    sb.append(NL).append("▶ 업적").append(NL);
+		    if (achv == null || achv.isEmpty()) {
+		        sb.append("- 달성된 업적이 없습니다.").append(NL);
+		    } else {
+		        for (HashMap<String,Object> row : achv) {
+		            String cmd = Objects.toString(row.get("CMD"), "");
+		            String label = formatAchievementLabelSimple(cmd);
+		            sb.append("✨ ").append(label).append(NL);
+		        }
+		    }
+		} catch (Exception ignore) {}
 		return sb.toString();
 	}
 
@@ -1394,11 +1409,21 @@ public class BossAttackController {
 	}
 
 	private Timestamp getLastDamageBaseline(String userName, String roomName) {
-	    Timestamp damaged = botNewService.selectLastDamagedTime(userName, roomName);
-	    if (damaged != null) return damaged;
-	    // 폴백: 과거 데이터/초기 유저를 위해 기존 공격시각도 고려
-	    Timestamp any = botNewService.selectLastAttackTime(userName, roomName);
-	    return any;
+		Timestamp damaged = botNewService.selectLastDamagedTime(userName, roomName);
+	    Timestamp attacked = botNewService.selectLastAttackTime(userName, roomName);
+
+	    if (damaged == null && attacked == null) {
+	        return null;
+	    }
+	    if (damaged == null) {
+	        return attacked;
+	    }
+	    if (attacked == null) {
+	        return damaged;
+	    }
+
+	    // ✅ 더 "최근" 시점을 기준으로 사용 (사망 포함한 마지막 피격 or 공격)
+	    return damaged.after(attacked) ? damaged : attacked;
 	}
 	// ✅ 5분 단위 스케줄로 변경
 	private String buildRegenScheduleSnippet(String userName, String roomName, User u, int horizonMinutes) {
@@ -1681,5 +1706,51 @@ public class BossAttackController {
 	    double rate = Math.max(0.1, 1.0 - over * 0.2);  // 레벨당 -20%, 최소 10%
 
 	    return (int) Math.round(baseExp * rate);
+	}
+	
+	/** 업적 CMD → 단순 업적명 라벨 (보상/날짜 없이) */
+	private String formatAchievementLabelSimple(String cmd) {
+	    if (cmd == null || cmd.isEmpty()) return "";
+
+	    // 최초토벌
+	    if (cmd.startsWith("ACHV_FIRST_CLEAR_MON_")) {
+	        try {
+	            int monNo = Integer.parseInt(cmd.substring("ACHV_FIRST_CLEAR_MON_".length()));
+	            Monster m = botNewService.selectMonsterByNo(monNo);
+	            return "최초토벌: " + (m == null ? ("몬스터#" + monNo) : m.monName);
+	        } catch (Exception e) {
+	            return "최초토벌";
+	        }
+	    }
+
+	    // 몬스터별 킬 업적
+	    if (cmd.startsWith("ACHV_KILL") && cmd.contains("_MON_")) {
+	        try {
+	            String[] parts = cmd.substring("ACHV_KILL".length()).split("_MON_");
+	            int threshold = Integer.parseInt(parts[0]);
+	            int monNo = Integer.parseInt(parts[1]);
+	            Monster m = botNewService.selectMonsterByNo(monNo);
+	            String name = (m == null ? ("몬스터#" + monNo) : m.monName);
+	            return name + " " + threshold + "킬 달성";
+	        } catch (Exception e) {
+	            return "킬 업적";
+	        }
+	    }
+
+	    // 통산 킬 업적
+	    if (cmd.startsWith("ACHV_KILL_TOTAL_")) {
+	        try {
+	            int th = Integer.parseInt(cmd.substring("ACHV_KILL_TOTAL_".length()));
+	            return "통산 처치 " + th + "회 달성";
+	        } catch (Exception e) {
+	            return "통산 업적";
+	        }
+	    }
+
+	    return cmd;
+	}
+
+	private String monNameWithThresholdLabel(String mname, int threshold) {
+	    return mname + " " + threshold + "킬 달성";
 	}
 }
