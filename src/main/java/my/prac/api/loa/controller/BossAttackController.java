@@ -1640,7 +1640,7 @@ public class BossAttackController {
 	    int totalKills = 0;
 
 	 // 1) 몬스터별 업적 (각 MON_NO별)
-	    int[] perMonThresholds = {300, 500, 1000};
+	    int[] perMonThresholds = {50, 100, 300, 500, 1000};
 
 	    for (KillStat ks : ksList) {
 	        int monNo = ks.monNo;
