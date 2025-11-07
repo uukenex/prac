@@ -43,7 +43,6 @@ public class BossAttackController {
 
 	/* ===== Public APIs ===== */
 
-	/** 유저 기본정보 + 누적 처치/공격/사망 + 포인트 + 인벤토리 요약 */
 	public String attackInfo(HashMap<String, Object> map) {
 		final String allSeeStr = "===";
 		final String roomName = Objects.toString(map.get("roomName"), "");
@@ -142,7 +141,7 @@ public class BossAttackController {
 				.append(shownRegen).append(NL).append("   └ 기본 (HP+").append(u.hpMax).append(",5분당회복+")
 				.append(u.hpRegen).append(")").append(NL).append("   └ 아이템 (HP").append(formatSigned(bHpMax))
 				.append(",5분당회복").append(formatSigned(bRegen)).append(")").append(NL).append("▶ 현재 타겟: ")
-				.append(targetName).append(" (MON_NO=").append(u.targetMon).append(")").append(NL).append(NL);
+				.append(targetName).append(" (MON_NO=").append(u.targetMon).append(")");
 
 		sb.append(allSeeStr);
 		sb.append("누적 전투 기록").append(NL).append("- 총 공격 횟수: ").append(totalAttacks).append("회").append(NL)
@@ -522,8 +521,9 @@ public class BossAttackController {
 	            .setLuckyYn(0)
 	        );
 	        return userName + "님, 큰 피해로 쓰러졌습니다." + NL
-	             + "현재 체력: 0 / " + u.hpMax + NL
-	             + REVIVE_WAIT_MINUTES + "분 뒤 부활하여 50% 체력을 가집니다.";
+	        	     + "현재 체력: 0 / " + u.hpMax + NL
+	        	     + REVIVE_WAIT_MINUTES + "분 뒤 부활하여 최대체력의 50%로 시작하며,"
+	        	     + " 이후 5분마다 체력이 회복됩니다.";
 	    }
 
 	    // 12) 처치/드랍 판단
@@ -872,52 +872,63 @@ public class BossAttackController {
 	}
 	/* ===== Combat helpers ===== */
 
-	// 변경 후  ✅ 효과치 & 10분당 1틱 규칙
+	// 변경 후 ✅ 효과치 & 10분당 1틱 규칙
 	private String reviveAfter1hIfDead(String userName, String roomName, User u, int effHpMax, int effRegen) {
-		if (u.hpCur > 0) return null;
+		if (u.hpCur > 0)
+			return null; // 살아있으면 관여 안함
 
-	    // “마지막으로 공격받은 시각” 이후 60분
-	    Timestamp baseline = getLastDamageBaseline(userName, roomName);
-	    if (baseline == null) {
-	        int half = (int) Math.ceil(effHpMax * 0.3);
-	        botNewService.updateUserHpOnlyTx(userName, roomName, half);
-	        u.hpCur = half;
-	        return "";
-	    }
+		Timestamp baseline = getLastDamageBaseline(userName, roomName);
 
-	    Instant reviveAt = baseline.toInstant().plus(Duration.ofMinutes(REVIVE_WAIT_MINUTES));
-	    Instant now = Instant.now();
+// 기준 이벤트가 전혀 없으면: 보수적으로 50%로 세팅 후 조용히 복구
+		if (baseline == null) {
+			int half = (int) Math.ceil(effHpMax * 0.5);
+			botNewService.updateUserHpOnlyTx(userName, roomName, half);
+			u.hpCur = half;
+			return "";
+		}
 
-	    if (now.isBefore(reviveAt)) {
-	        long remainMin = (long) Math.ceil(Duration.between(now, reviveAt).getSeconds() / 60.0);
-	        return "쓰러진 상태입니다. 약 " + remainMin + "분 후 자동 부활합니다.";
-	    }
+		Instant reviveAt = baseline.toInstant().plus(Duration.ofMinutes(REVIVE_WAIT_MINUTES));
+		Instant now = Instant.now();
 
-	    int half = (int) Math.ceil(effHpMax * 0.3);
-	    long afterMin = Duration.between(reviveAt, now).toMinutes();
-	    long healedTicks = Math.max(0, afterMin) / 5;      // ✅ 5분당 1틱
-	    long healed = healedTicks * Math.max(0, (long) effRegen);
-	    int effective = (int) Math.min((long) effHpMax, (long) half + healed);
+// 아직 부활 시간 전이면 대기 안내
+		if (now.isBefore(reviveAt)) {
+			long remainMin = (long) Math.ceil(Duration.between(now, reviveAt).getSeconds() / 60.0);
+			return "쓰러진 상태입니다. 약 " + remainMin + "분 후 자동 부활합니다.";
+		}
 
-	    botNewService.updateUserHpOnlyTx(userName, roomName, effective);
-	    u.hpCur = effective;
-	    return "";
+// 부활 시간 경과: 50%에서 시작
+		int half = (int) Math.ceil(effHpMax * 0.5);
+
+// 부활 시점 이후 경과 시간만큼 5분마다 회복 적용
+		long afterMin = Duration.between(reviveAt, now).toMinutes();
+		long healedTicks = Math.max(0, afterMin) / 5;
+		long healed = healedTicks * Math.max(0, (long) effRegen);
+
+		int effective = (int) Math.min((long) effHpMax, (long) half + healed);
+
+		botNewService.updateUserHpOnlyTx(userName, roomName, effective);
+		u.hpCur = effective;
+
+// 빈 문자열 반환: 이번 턴에는 그냥 공격 진행 (부활 안내 멘트 별도 출력 안함)
+		return "";
 	}
 
-	private int computeEffectiveHpFromLastAttack(String userName, String roomName, User u,
-            int effHpMax, int effRegen) {
-	if (u.hpCur >= effHpMax || effRegen <= 0) return Math.min(u.hpCur, effHpMax);
-	
-	Timestamp baseline = getLastDamageBaseline(userName, roomName);
-	if (baseline == null) return Math.min(u.hpCur, effHpMax);
-	
-	long minutes = Math.max(0, Duration.between(baseline.toInstant(), Instant.now()).toMinutes());
-	long ticks   = minutes / 5; // ✅ 5분당 1틱
-	if (ticks <= 0) return Math.min(u.hpCur, effHpMax);
-	
-	long heal = ticks * (long) effRegen;
-	long effective = (long) u.hpCur + heal;
-	return (int) Math.min(effective, (long) effHpMax);
+	private int computeEffectiveHpFromLastAttack(String userName, String roomName, User u, int effHpMax, int effRegen) {
+		if (u.hpCur >= effHpMax || effRegen <= 0)
+			return Math.min(u.hpCur, effHpMax);
+
+		Timestamp baseline = getLastDamageBaseline(userName, roomName);
+		if (baseline == null)
+			return Math.min(u.hpCur, effHpMax);
+
+		long minutes = Math.max(0, Duration.between(baseline.toInstant(), Instant.now()).toMinutes());
+		long ticks = minutes / 5; // ✅ 5분당 1틱
+		if (ticks <= 0)
+			return Math.min(u.hpCur, effHpMax);
+
+		long heal = ticks * (long) effRegen;
+		long effective = (long) u.hpCur + heal;
+		return (int) Math.min(effective, (long) effHpMax);
 	}
 	
 	public String guideSetTargetMessage() {
