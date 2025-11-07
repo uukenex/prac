@@ -138,7 +138,7 @@ public class BossAttackController {
 				.append("   └ 아이템 (CRIT").append(formatSigned(bCri)).append("%, CDMG ").append(formatSigned(bCriDmg))
 				.append("%)").append(NL)
 
-				.append("❤️ HP: ").append(effHp).append(" / ").append(shownHpMax).append("|5분당회복+")
+				.append("❤️ HP: ").append(effHp).append(" / ").append(shownHpMax).append(",5분당회복+")
 				.append(shownRegen).append(NL).append("   └ 기본 (HP+").append(u.hpMax).append(",5분당회복+")
 				.append(u.hpRegen).append(")").append(NL).append("   └ 아이템 (HP").append(formatSigned(bHpMax))
 				.append(",5분당회복").append(formatSigned(bRegen)).append(")").append(NL).append("▶ 현재 타겟: ")
@@ -736,7 +736,7 @@ public class BossAttackController {
 	    sb.append(NL);
 
 	    // === ⚔ 최초 토벌자 ===
-	    sb.append("⚔ 최초 토벌자").append(NL);
+	    sb.append("⚔ 최초토벌").append(NL);
 	    List<HashMap<String,Object>> firsts = botNewService.selectFirstClearInfo();
 	    if (firsts == null || firsts.isEmpty()) {
 	        sb.append("데이터 없음").append(NL);
@@ -993,18 +993,32 @@ public class BossAttackController {
 			c.monDmg = ThreadLocalRandom.current().nextInt(minDmg, maxDmg + 1);
 			c.patternMsg = name + "이(가) " + c.monDmg + " 의 데미지로 반격합니다!"; break;
 		case 3:
-			int reducedAtk = (int) Math.round(c.atkDmg * 0.5);
-			int minDef = Math.max(1, (int) Math.floor(m.monAtk * 0.5));
-			int maxDef = m.monAtk;
-			int defPower = ThreadLocalRandom.current().nextInt(minDef, maxDef + 1);
-			if (defPower >= reducedAtk) {
-				c.atkDmg = 0; c.monDmg = 0; c.patternMsg = name + "이(가) 공격을 완전 방어했습니다!";
-			} else {
-				c.atkDmg = reducedAtk; c.monDmg = 0;
-				int blocked = reducedAtk - defPower;
-				c.patternMsg = name + "이(가) 방어합니다!(" + defPower + " 방어, " + blocked + " 피해)";
-			}
-			break;
+		    // 기존 공격 데미지(크리티컬 반영 후)를 절반으로 줄인 뒤,
+		    // 몬스터 방어력(defPower)을 적용하여 최종 피해를 계산한다.
+		    int original = c.atkDmg; // 이전 단계(크리 포함) 데미지
+		    int reduced = (int) Math.round(original * 0.5); // 방어 패턴으로 1차 감소
+
+		    int minDef = Math.max(1, (int) Math.floor(m.monAtk * 0.5)); // 예: 22라면 11
+		    int maxDef = m.monAtk;                                      // 예: 22
+		    int defPower = ThreadLocalRandom.current().nextInt(minDef, maxDef + 1);
+
+		    if (defPower >= reduced) {
+		        // 완전 방어
+		        c.atkDmg = 0;
+		        c.monDmg = 0;
+		        c.patternMsg = name + "이(가) 공격을 완전 방어했습니다!";
+		    } else {
+		        // 일부 방어: 최종 피해 = reduced - defPower
+		        int finalDmg = reduced - defPower;
+		        c.atkDmg = finalDmg;
+		        c.monDmg = 0;
+		        c.patternMsg = name + "이(가) 방어합니다!("
+		                + original
+		                + " → 50%↓ " + reduced
+		                + " → 방어력 " + defPower
+		                + " → 최종 " + finalDmg + ")";
+		    }
+		    break;
 		case 4: c.monDmg = (int) Math.round(m.monAtk * 2.0); c.patternMsg = name + "의 필살기! (피해 " + c.monDmg + ")"; break;
 		default: c.monDmg = 0; c.patternMsg = name + "의 알 수 없는 행동… (피해 0)";
 		}
