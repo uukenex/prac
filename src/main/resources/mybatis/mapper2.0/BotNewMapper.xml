@@ -585,4 +585,22 @@
 	  ORDER BY m.MON_NO
 	</select>
 	
+	
+		<!-- 특정 방에서 특정 CMD가 이미 존재하는지 (최초 토벌 체크용) -->
+	<select id="selectPointRankCountByCmdInRoom" parameterType="hashMap" resultType="int">
+	    SELECT COUNT(1)
+	    FROM TBOT_POINT_RANK
+	    WHERE CMD = #{cmd}
+	      AND NEW_YN = '1'
+	</select>
+	
+		<!-- 특정 방에서 특정 유저가 특정 업적 CMD로 이미 보상받았는지 -->
+	<select id="selectPointRankCountByCmdGlobal" parameterType="hashMap" resultType="int">
+	    SELECT COUNT(1)
+	    FROM TBOT_POINT_RANK
+	    WHERE ROOM_NAME = #{roomName}
+	      AND USER_NAME = #{userName}
+	      AND CMD = #{cmd}
+	      AND NEW_YN = '1'
+	</select>
 </mapper>

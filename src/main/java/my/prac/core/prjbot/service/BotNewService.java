@@ -92,6 +92,10 @@ public interface BotNewService {
 
     // 최초 토벌자
     List<HashMap<String,Object>> selectFirstClearInfo();
+    
+    int selectPointRankCountByCmdGlobal(String cmd);
+
+    int selectPointRankCountByCmdUserInRoom(String roomName, String userName, String cmd);
 } 
 
 	

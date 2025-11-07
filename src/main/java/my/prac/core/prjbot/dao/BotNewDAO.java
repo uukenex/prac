@@ -149,4 +149,13 @@ public interface BotNewDAO {
 
     // 최초 토벌자
     List<HashMap<String,Object>> selectFirstClearInfo();
+    
+    
+    int selectPointRankCountByCmdGlobal(
+            @Param("cmd") String cmd);
+
+    int selectPointRankCountByCmdUserInRoom(
+            @Param("roomName") String roomName,
+            @Param("userName") String userName,
+            @Param("cmd") String cmd);
 }

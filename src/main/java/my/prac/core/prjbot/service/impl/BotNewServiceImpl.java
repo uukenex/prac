@@ -251,4 +251,14 @@ public class BotNewServiceImpl implements BotNewService {
     public List<HashMap<String, Object>> selectFirstClearInfo() {
         return botNewDAO.selectFirstClearInfo();
     }
+    
+    @Override
+    public int selectPointRankCountByCmdGlobal(String cmd) {
+    	return botNewDAO.selectPointRankCountByCmdGlobal(cmd);
+    }
+
+    @Override
+    public int selectPointRankCountByCmdUserInRoom(String roomName, String userName, String cmd) {
+    	return botNewDAO.selectPointRankCountByCmdUserInRoom(roomName, userName, cmd);
+    }
 }

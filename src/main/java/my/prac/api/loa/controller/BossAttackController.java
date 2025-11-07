@@ -537,8 +537,8 @@ public class BossAttackController {
 	            }
 	        }
 	    }
-
-	    // 15) 메시지 (HP Max는 표시 Max 사용)
+	    
+	    // 15) 기본 전투 메시지
 	    int shownMin = effAtkMin;
 	    int shownMax = effAtkMax;
 	    String msg = buildAttackMessage(
@@ -548,7 +548,23 @@ public class BossAttackController {
 	    	    weaponLv, weaponBonus,effHpMax
 	    	);
 	    
-	 // ✅ 기존 쿼리(selectCurrentPoint) 재사용만 함 — 새 SQL 추가 없음
+
+		 // 16) 업적 처리 (최초토벌 + 몬스터별/통산 킬)
+			StringBuilder achvMsg = new StringBuilder();
+
+			if (res.killed) {
+				// room별 최초 토벌 보상 (switch 버전 grantFirstClearIfEligible 사용)
+				achvMsg.append(grantFirstClearIfEligible(userName, roomName, m));
+			}
+
+			// 몬스터별 50/100킬 + 통산 킬 업적
+			achvMsg.append(grantKillAchievements(userName, roomName));
+
+			if (achvMsg.length() > 0) {
+				msg += NL + achvMsg.toString().trim();
+			}
+
+		// 17) 현재 포인트 표시 (기존 유지)
 	    int curPoint = 0;
 	    try {
 	        Integer p = botNewService.selectCurrentPoint(userName, roomName);
@@ -556,7 +572,6 @@ public class BossAttackController {
 	    } catch (Exception ignore) {}
 	    String curSpStr = formatSp(curPoint);
 
-	    // ✔ 문구 붙이기
 	    msg = msg + NL + "현재 포인트: " + curSpStr +NL+ "/구매, /판매 로 상점열기!";
 
 	    return msg;
@@ -1435,31 +1450,225 @@ public class BossAttackController {
 	}
 	/** 몬스터 요약 한 줄 UI */
 	private String renderMonsterCompactLine(Monster m, int userLv) {
-	    int dropPrice = getDropPriceByName(m.monDrop);
-	    int baseExp = m.monExp;
+		// 드랍 아이템명 및 판매가격
+	    String dropName = (m.monDrop != null ? m.monDrop : "-");
+	    int dropPrice = getDropPriceByName(dropName);
 
-	    // 패널티 계산
+	    // ATK 범위 계산 (50% ~ 100%)
+	    int atkMin = (int) Math.floor(m.monAtk * 0.5);
+	    int atkMax = m.monAtk;
+
+	    // EXP 패널티 계산 (전투 공식 동일)
+	    int baseExp = Math.max(0, m.monExp);
 	    int diff = userLv - m.monNo;
 	    int over = Math.max(0, diff);
 	    double rate = Math.max(0.1, 1.0 - over * 0.2);
 	    int effExp = (int) Math.round(baseExp * rate);
-
 	    boolean hasPenalty = (over > 0 && rate < 1.0);
 
 	    StringBuilder sb = new StringBuilder();
 
+	    // 1행: 기본 정보
 	    sb.append(m.monNo).append(". ").append(m.monName)
-	      .append(" | ❤️HP ").append(m.monHp)
-	      .append(" | ⚔ATK ").append(m.monAtk)
-	      .append(" | EXP ").append(effExp);
+	      .append(" ❤️HP ").append(m.monHp)
+	      .append(" ⚔ATK ").append(atkMin).append("~").append(atkMax)
+	      .append(NL);
 
-	    if (hasPenalty) sb.append("▼"); // 패널티 시 아래화살표 추가
-
-	    sb.append(" | 드랍 ").append(dropPrice).append("sp")
+	    // 2행: 보상 정보
+	    sb.append("▶ 보상: EXP ").append(effExp);
+	    if (hasPenalty) sb.append("▼");
+	    sb.append(" / ").append(dropName).append(" ").append(dropPrice).append("sp")
 	      .append(NL);
 
 	    return sb.toString();
 	}
+	
+	/** 몬스터 최초 토벌 보상 (방별 1명만)
+	 *  - 이미 해당 ROOM_NAME에 ACHV_FIRST_CLEAR_MON_{monNo}가 존재하면 스킵
+	 *  - 없으면: 해당 유저에게 rewardSp 지급 + CMD 기록
+	 */
+	private String grantFirstClearIfEligible(String userName, String roomName, Monster m) {
+	    if (m == null) return "";
+
+	    String achvCmd = "ACHV_FIRST_CLEAR_MON_" + m.monNo;
+
+	    // 이미 이 방에서 해당 몬스터 최초토벌 보상이 지급되었는지 확인
+	    Integer cnt = botNewService.selectPointRankCountByCmdGlobal(achvCmd);
+	    if (cnt != null && cnt > 0) {
+	        return ""; // 이미 다른 누가 받음
+	    }
+
+		int rewardSp = 0;
+		switch (m.monNo) {
+		case 1:
+		case 2:
+		case 3:
+		case 4:
+		case 5:
+			rewardSp = 100;
+			break;
+		case 6:
+			rewardSp = 300;
+			break;
+		case 7:
+			rewardSp = 500;
+			break;
+		case 8:
+			rewardSp = 500;
+			break;
+		case 9:
+			rewardSp = 1000;
+			break;
+		case 10:
+			rewardSp = 1000;
+			break;
+
+		default:
+			break;
+		}
+	    if (rewardSp <= 0) {
+	        return ""; // 보상 값이 0이면 지급하지 않음
+	    }
+
+	    HashMap<String,Object> pr = new HashMap<>();
+	    pr.put("userName", userName);
+	    pr.put("roomName", roomName);
+	    pr.put("score", rewardSp);
+	    pr.put("cmd", achvCmd);
+	    botNewService.insertPointRank(pr);
+
+	    return "✨ 업적 달성! [" + m.monName + "] 최초 토벌자 보상 +" + rewardSp + "sp 지급되었습니다." + NL;
+	}
+	
+	
+	/** 특정 유저가 특정 업적 CMD를 아직 받지 않았으면 1회성 보상 지급 */
+	private String grantOnceIfEligible(String userName, String roomName,
+	                                   String achvCmd, int rewardSp) {
+	    if (rewardSp <= 0) return "";
+
+	    Integer cnt = botNewService.selectPointRankCountByCmdUserInRoom(roomName, userName, achvCmd);
+	    if (cnt != null && cnt > 0) {
+	        return ""; // 이미 이 업적 보상 받음
+	    }
+
+	    HashMap<String,Object> pr = new HashMap<>();
+	    pr.put("userName", userName);
+	    pr.put("roomName", roomName);
+	    pr.put("score", rewardSp);
+	    pr.put("cmd", achvCmd);
+	    botNewService.insertPointRank(pr);
+
+	    return "✨ 업적 달성! [" + achvCmd + "] 보상 +" + rewardSp + "sp 지급되었습니다." + NL;
+	}
+
+	
+	/** 몬스터별 50/100/300/500 킬 업적 보상 */
+	private int calcPerMonsterKillReward(int monNo, int threshold) {
+	    switch (monNo) {
+	        case 1: // 토끼
+	        case 2: // 다람쥐
+	        case 3: // 쥐
+	            switch (threshold) {
+	                case 50:  return 50;
+	                case 100: return 50;
+	                case 300: return 50;
+	                case 500: return 50;
+	            }
+	            break;
+
+	        case 4: // 뱀
+	        case 5: // 사슴
+	            switch (threshold) {
+	                case 50:  return 100;
+	                case 100: return 100;
+	                case 300: return 100;
+	                case 500: return 100;
+	            }
+	            break;
+
+	        case 6: // 곰
+	            switch (threshold) {
+	                case 50:  return 200;
+	                case 100: return 200;
+	                case 300: return 200;
+	                case 500: return 200;
+	            }
+	            break;
+
+	        case 7: // 여우
+	        case 8: // 돼지
+	            switch (threshold) {
+	                case 50:  return 300;
+	                case 100: return 300;
+	                case 300: return 300;
+	                case 500: return 300;
+	            }
+	            break;
+
+	        case 9: // 호랑이
+	        case 10: // 해골
+	            switch (threshold) {
+	                case 50:  return 500;
+	                case 100: return 500;
+	                case 300: return 500;
+	                case 500: return 500;
+	            }
+	            break;
+	    }
+	    return 0;
+	}
+	
+	/** 통산 킬수 업적 보상 */
+	private int calcTotalKillReward(int threshold) {
+	    switch (threshold) {
+	        case 300:  return 100;
+	        case 500:  return 300;
+	        case 1000: return 500;
+	        default:   return 0;
+	    }
+	}
+	/**
+	 * 몬스터별(50/100킬) + 통산 킬 업적 처리
+	 * - room 단위로 동작
+	 * - TBOT_POINT_RANK.CMD 기반 1회성 지급
+	 */
+	private String grantKillAchievements(String userName, String roomName) {
+	    List<KillStat> ksList = botNewService.selectKillStats(userName, roomName);
+	    if (ksList == null || ksList.isEmpty()) return "";
+
+	    StringBuilder sb = new StringBuilder();
+	    int totalKills = 0;
+
+	 // 1) 몬스터별 업적 (각 MON_NO별)
+	    int[] perMonThresholds = {300, 500, 1000};
+
+	    for (KillStat ks : ksList) {
+	        int monNo = ks.monNo;
+	        int kills = ks.killCount;
+	        totalKills += kills;
+
+	        for (int th : perMonThresholds) {
+	            if (kills >= th) {
+	                String cmd = "ACHV_KILL" + th + "_MON_" + monNo;
+	                int reward = calcPerMonsterKillReward(monNo, th);
+	                sb.append(grantOnceIfEligible(userName, roomName, cmd, reward));
+	            }
+	        }
+	    }
+
+	    // 2) 통산 킬 업적
+	    int[] totalThresholds = {50, 100, 300, 500, 1000};
+	    for (int th : totalThresholds) {
+	        if (totalKills >= th) {
+	            String cmd = "ACHV_KILL_TOTAL_" + th;
+	            int reward = calcTotalKillReward(th);
+	            sb.append(grantOnceIfEligible(userName, roomName, cmd, reward));
+	        }
+	    }
+
+	    return sb.toString();
+	}
+
 	
 	/** 레벨 차이 패널티를 적용한 EXP 표시값 (공격타겟용, u.lv 기준) */
 	private int calcExpWithPenaltyForDisplay(Monster m, int userLv) {
