@@ -636,7 +636,7 @@ public class LoaChatController {
 			case "/판매": case "/ㅍㅁ":
 				val = boss.sellItem(reqMap);
 				break;
-			case "/직업":
+			case "/직업": case "/전직":
 				val = boss.changeJob(reqMap);
 				break;
 			case "/공격랭킹": case "/ㄱㄱㄹㅋ":

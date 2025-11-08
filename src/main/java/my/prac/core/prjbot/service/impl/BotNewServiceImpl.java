@@ -276,4 +276,14 @@ public class BotNewServiceImpl implements BotNewService {
                                           int hpMax, int atkMin, int atkMax) {
         botNewDAO.updateUserStatsForWarrior(userName, roomName, hpMax, atkMin, atkMax);
     }
+    
+    @Override
+    public Timestamp selectJobChangeDate(String userName, String roomName) {
+        return botNewDAO.selectJobChangeDate(userName, roomName);
+    }
+
+    @Override
+    public int updateUserJobAndChangeDate(String userName, String roomName, String job) {
+        return botNewDAO.updateUserJobAndChangeDate(userName, roomName, job);
+    }
 }

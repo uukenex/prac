@@ -102,6 +102,9 @@ public interface BotNewService {
     void updateUserJob(String userName, String roomName, String job);
     
     void updateUserStatsForWarrior(String userName, String roomName, int hpMax, int atkMin, int atkMax);
+    
+    Timestamp selectJobChangeDate(String userName, String roomName);
+    int updateUserJobAndChangeDate(String userName, String roomName, String job);
 } 
 
 	

@@ -42,14 +42,10 @@ public class BossAttackController {
 	@Resource(name = "core.prjbot.BotSettleService")  BotSettleService botSettleService;
 
 	/* ===== Public APIs ===== */
-	/**
-	 * /전직 명령어 또는 /직업 명령어
-	 * param1 없으면 직업 설명 목록 표시
-	 */
 	public String changeJob(HashMap<String,Object> map) {
 	    final String roomName = Objects.toString(map.get("roomName"), "");
 	    final String userName = Objects.toString(map.get("userName"), "");
-	    final String sel = Objects.toString(map.get("param1"), "").trim();
+	    final String selRaw  = Objects.toString(map.get("param1"), "").trim();
 
 	    if (roomName.isEmpty() || userName.isEmpty())
 	        return "방/유저 정보가 누락되었습니다.";
@@ -59,58 +55,75 @@ public class BossAttackController {
 	        return "유저 정보를 찾을 수 없습니다.";
 
 	    String curJob = (u.job == null ? "" : u.job.trim());
-	    if (curJob.isEmpty() && sel.isEmpty()) {
-	        // 📘 직업 설명 목록
-	        return buildJobDescriptionList();
-	    }
+	    String sel = selRaw;
 
-	    if (!curJob.isEmpty()) {
-	        // 이미 전직한 유저가 /직업 입력 시 현재 직업 표시
-	        if (sel.isEmpty()) {
+	    // 1) param1 없이 호출한 경우: 안내
+	    if (sel.isEmpty()) {
+	        if (curJob.isEmpty()) {
+	            // 아직 직업 없음 → 직업 설명
+	            return buildJobDescriptionList();
+	        } else {
+	            // 현재 직업 보여주고 설명
 	            return "현재 직업: " + curJob + NL + buildJobDescriptionList();
 	        }
-	        return "이미 전직을 완료했습니다. (" + curJob + ")";
 	    }
 
+	    // 2) 입력한 직업명 파싱
+	    String newJob = normalizeJob(sel);
+	    if (newJob == null) {
+	        return "존재하지 않는 직업입니다. /직업 으로 확인해주세요.";
+	    }
+
+	    // 3) 레벨 제한 (처음/변경 모두 공통 룰)
 	    if (u.lv < 5) {
 	        return "전직은 5레벨부터 가능합니다. 현재 레벨: " + u.lv;
 	    }
 
-	    // 직업명 입력된 경우
-	    String job = normalizeJob(sel);
-	    if (job == null)
-	        return "존재하지 않는 직업입니다. /직업 으로 확인해주세요.";
+	    // 4) 동일 직업으로 변경 시도
+	    if (!curJob.isEmpty() && newJob.equals(curJob)) {
+	        return "이미 [" + curJob + "] 직업입니다.";
+	    }
 
-	    botNewService.updateUserJob(userName, roomName, job);
+	    // 5) 24시간 쿨타임 체크
+	    // - JOB_CHANGE_DATE 기본값을 SYSDATE-6/24 로 잡았으므로
+	    //   초기 유저는 바로 변경 가능하게 됨.
+	    Timestamp lastChange = u.jobChangeDate;
+	    if (lastChange != null) {
+	        long diffSec = java.time.Duration.between(lastChange.toInstant(), java.time.Instant.now()).getSeconds();
+	        long limitSec = 24L * 60 * 60;
 
-	 // 1) 전사: 지금까지의 레벨업 스탯을 2배로 소급적용
-	    if ("전사".equals(job)) {
-	        // 최신 유저 정보 다시 조회 (JOB 세팅 후)
-	        User after = botNewService.selectUser(userName, roomName);
-	        if (after != null) {
-	            int newHpMax  = after.hpMax * 2;
-	            int newAtkMin = after.atkMin * 2;
-	            int newAtkMax = after.atkMax * 2;
+	        if (diffSec < limitSec) {
+	            long remain = limitSec - diffSec;
+	            long rh = remain / 3600;
+	            long rm = (remain % 3600) / 60;
 
-	            botNewService.updateUserStatsForWarrior(userName, roomName, newHpMax, newAtkMin, newAtkMax);
+	            return "직업 변경은 24시간에 1회 가능합니다." + NL
+	                 + "다음 변경까지 남은 시간: " + rh + "시간 " + rm + "분";
 	        }
 	    }
 
-	    
-	    return "✨ " + userName + "님, [" + job + "] 으로 전직이 완료되었습니다.";
+	    // 6) 직업 변경 수행 (JOB + JOB_CHANGE_DATE = SYSDATE)
+	    int updated = botNewService.updateUserJobAndChangeDate(userName, roomName, newJob);
+	    if (updated <= 0) {
+	        return "직업 변경 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.";
+	    }
+
+	    // 7) 완료 메시지
+	    return "✨ " + userName + "님, [" + newJob + "] 으로 직업이 변경되었습니다." + NL
+	         + "(직업 변경은 24시간에 1회 가능합니다)";
 	}
+
 
 	private String buildJobDescriptionList() {
 	    String NL = "♬";
 	    return "전직 가능한 직업 목록" + NL +
 	           "▶ 전사 : 기본 HP·공격력 만큼 증가" + NL +
-	           "▶ 궁수 : 최종데미지 ×1.5, 공격 쿨타임 5분으로 증가" + NL +
+	           "▶ 궁수 : 최종데미지 ×1.8, 공격 쿨타임 5분으로 증가, EXP +15%" + NL +
 	           "▶ 마법사 : 몬스터 방어패턴 40% 확률 무시" + NL +
 	           "▶ 도적 : 공격 시 10% 확률로 드랍템 훔침(빛x), 적의 공격을 회피 20%" + NL +
 	           "▶ 프리스트 : 아이템으로 인한 최대HP증가,리젠 효과 1.5배" + NL +
 	           "▶ 상인 : 상점구매시 10% 할인, 드랍판매가 10% 증가" + NL +
-	           "♬ /직업 [직업명] 으로 전직 가능합니다.(변경 불가)"+ NL+
-	           "추후 직업추가시 변경할수 있습니다.";
+	           "♬ 일 1회 /직업 [직업명] 으로 전직 가능합니다."+ NL;
 	}
 
 	
@@ -306,7 +319,7 @@ public class BossAttackController {
 
 	    // 직업 설명 라인
 	    if ("궁수".equals(job)) {
-	        sb.append("   ⚔ 직업 : 최종 데미지 ×1.5, 쿨타임 5분").append(NL);
+	        sb.append("   ⚔ 직업 : 최종 데미지 ×1.8, 쿨타임 5분, EXP +15%").append(NL);
 	    } else if ("전사".equals(job)) {
 	        sb.append("   ⚔ 직업 : 기본 ATK(min/max)와 HP만큼 추가 적용").append(NL);
 	    } else if ("마법사".equals(job)) {
@@ -623,7 +636,7 @@ public class BossAttackController {
 	    
 	    // 6) 궁수 배율 (최종 공격력 1.5배) → 실제 데미지 범위에 반영
 	    if ("궁수".equals(job)) {
-	        jobDmgMul = 1.5;
+	        jobDmgMul = 1.8;
 	    }else if ("전사".equals(job)) {
 	        // ✅ 전사: "기본 min 한 번 더, 기본 max 한 번 더" (아이템/강화 제외)
 	        jobBonusMin = baseMin;
@@ -787,6 +800,13 @@ public class BossAttackController {
 	    boolean willKill = calc.atkDmg >= monHpRemainBefore;
 	    Resolve res = resolveKillAndDrop(m, calc, willKill, u, lucky);
 
+	    // 🔹 궁수: 획득 EXP +10%
+	    if ("궁수".equals(u.job)) {
+	        int baseExp = res.gainExp;
+	        int bonus = (int) Math.floor(res.gainExp * 0.15);
+	        res.gainExp = baseExp + bonus;
+	    }
+	    
 	    String stealMsg = null;
 	    // 도적: 공격 시 10% 확률로 추가 드랍 (비처치도 가능)
 	    if ("도적".equals(job)) {

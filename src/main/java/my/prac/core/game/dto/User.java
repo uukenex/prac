@@ -1,6 +1,6 @@
 package my.prac.core.game.dto;
 
-import java.io.Serializable;
+import java.sql.Timestamp;
 
 /**
  * 사용자 모델 클래스.
@@ -24,4 +24,5 @@ public  class User {
 	public int targetMon;
 	public java.sql.Timestamp insertDate; // ⬅️ fallback용
 	public String job;
+	public Timestamp jobChangeDate;
 }

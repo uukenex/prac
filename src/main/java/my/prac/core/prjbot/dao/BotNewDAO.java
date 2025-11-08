@@ -171,4 +171,11 @@ public interface BotNewDAO {
             @Param("hpMax") int hpMax,
             @Param("atkMin") int atkMin,
             @Param("atkMax") int atkMax);
+    
+    Timestamp selectJobChangeDate(@Param("userName") String userName,
+            @Param("roomName") String roomName);
+
+    int updateUserJobAndChangeDate(@Param("userName") String userName,
+             @Param("roomName") String roomName,
+             @Param("job") String job);
 }

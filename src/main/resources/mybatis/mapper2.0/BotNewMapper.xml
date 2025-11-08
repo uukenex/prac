@@ -16,7 +16,7 @@
   <!-- 1) 유저 -->
   <select id="selectUser" resultType="my.prac.core.game.dto.User">
     SELECT USER_NAME, ROOM_NAME, LV, EXP_CUR, EXP_NEXT, HP_CUR, HP_MAX, HP_REGEN,
-           ATK_MIN, ATK_MAX, CRIT_RATE, CRIT_DMG, TARGET_MON, INSERT_DATE,JOB
+           ATK_MIN, ATK_MAX, CRIT_RATE, CRIT_DMG, TARGET_MON, INSERT_DATE,JOB,JOB_CHANGE_DATE
     FROM TBOT_POINT_NEW_USER
     WHERE USER_NAME = #{userName}
       AND ROOM_NAME = #{roomName}
@@ -636,5 +636,20 @@
 	     WHERE USER_NAME = #{userName}
 	       AND ROOM_NAME = #{roomName}
 	       AND JOB = '전사'
+	</update>
+	
+	<select id="selectJobChangeDate" resultType="java.sql.Timestamp">
+	    SELECT JOB_CHANGE_DATE
+	    FROM TBOT_POINT_NEW_USER
+	    WHERE USER_NAME = #{userName}
+	      AND ROOM_NAME = #{roomName}
+	</select>
+	
+	<update id="updateUserJobAndChangeDate">
+	    UPDATE TBOT_POINT_NEW_USER
+	       SET JOB = #{job},
+	           JOB_CHANGE_DATE = SYSDATE
+	     WHERE USER_NAME = #{userName}
+	       AND ROOM_NAME = #{roomName}
 	</update>
 </mapper>
