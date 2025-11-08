@@ -106,7 +106,7 @@ public class BossAttackController {
 	           "▶ 전사 : 레벨업 시 HP·공격력 상승량 2배" + NL +
 	           "▶ 궁수 : 공격력 ×1.5, 공격 쿨타임 5분으로 증가" + NL +
 	           "▶ 마법사 : 몬스터 방어패턴 30% 확률 무시" + NL +
-	           "▶ 도적 : 공격 시 10% 확률로 드랍템 훔침" + NL +
+	           "▶ 도적 : 공격 시 10% 확률로 드랍템 훔침(빛x)" + NL +
 	           "▶ 프리스트 : 아이템으로 인한 최대HP증가,리젠 효과 1.5배" + NL +
 	           "▶ 상인 : 상점구매시 20% 할인, 드랍판매가 20% 증가" + NL +
 	           "♬ /전직 [직업명] 으로 전직 가능합니다.";
@@ -247,13 +247,6 @@ public class BossAttackController {
 	      .append("   └ 아이템 (min").append(formatSigned(bAtkMinRaw))
 	      .append(", max").append(formatSigned(bAtkMaxRaw)).append(")").append(NL);
 
-	    // 직업 보너스(ATK 계열) - 필요 시 확장 포인트 (현재 궁수/전사는 전투 로직/성장에 반영)
-	    if ("궁수".equals(job)) {
-	        sb.append("   └ 직업 (최종 데미지 ×1.5, 쿨타임 5분)").append(NL);
-	    } else if ("전사".equals(job)) {
-	        sb.append("   └ 직업 (기본공격력에 반영됨)").append(NL);
-	    }
-
 	    // CRIT 블럭
 	    sb.append("⚔CRIT: ").append(shownCrit).append("%  CDMG ").append(shownCritDmg).append("%").append(NL)
 	      .append("   └ 기본 (").append(u.critRate).append("%, ").append(u.critDmg).append("%)").append(NL)
@@ -277,13 +270,16 @@ public class BossAttackController {
 	          .append(")").append(NL);
 	    }
 
-	    // 기타 직업 설명
-	    if ("마법사".equals(job)) {
-	        sb.append("   └ 직업 효과: 몬스터 방어 패턴 30% 확률 무시").append(NL);
+	    if ("궁수".equals(job)) {
+	        sb.append("   └ 직업 : 최종 데미지 ×1.5, 쿨타임 5분").append(NL);
+	    } else if ("전사".equals(job)) {
+	        sb.append("   └ 직업 : 기본공격력에 반영됨").append(NL);
+	    } else if ("마법사".equals(job)) {
+	        sb.append("   └ 직업 : 몬스터 방어 패턴 30% 확률 무시").append(NL);
 	    } else if ("도적".equals(job)) {
-	        sb.append("   └ 직업 효과: 공격 시 10% 확률로 추가 드랍 획득(STEAL)").append(NL);
+	        sb.append("   └ 직업 : 공격 시 10% 확률로 추가 드랍 획득(STEAL)").append(NL);
 	    } else if ("상인".equals(job)) {
-	        sb.append("   └ 직업 효과: 상점 구매 20% 할인, 드랍 판매가 20% 증가").append(NL);
+	        sb.append("   └ 직업 : 상점 구매 20% 할인, 드랍 판매가 20% 증가").append(NL);
 	    }
 
 	    sb.append("▶ 현재 타겟: ").append(targetName)
@@ -670,14 +666,22 @@ public class BossAttackController {
 	        flags = rollFlags(u, m);
 	        flags.atkCrit = crit;
 
+	        boolean mageBreakGuard = false;
+	        
 	        // 마법사: 방어 패턴 무시 (예: 패턴 3일 때 30% 확률로 무시)
 	        if ("마법사".equals(job) && flags.monPattern == 3) {
 	            if (ThreadLocalRandom.current().nextDouble() < 0.3) {
+	            	mageBreakGuard = true;
 	                flags.monPattern = 1; // 방어 대신 무행동으로 취급
 	            }
 	        }
 
 	        calc = calcDamage(u, m, flags, baseAtk, crit, critMultiplier);
+	        
+	        // 방어 파괴 성공 시 전용 메시지로 교체
+	        if (mageBreakGuard) {
+	            calc.patternMsg = m.monName + "의 방어가 마법사의 힘에 의해 무너졌습니다!";
+	        }
 	    }
 
 	    // 13) 즉사 처리
@@ -710,6 +714,7 @@ public class BossAttackController {
 	    boolean willKill = calc.atkDmg >= monHpRemainBefore;
 	    Resolve res = resolveKillAndDrop(m, calc, willKill, u, lucky);
 
+	    String stealMsg = null;
 	    // 도적: 공격 시 10% 확률로 추가 드랍 (비처치도 가능)
 	    if ("도적".equals(job)) {
 	        if (ThreadLocalRandom.current().nextDouble() < 0.10) {
@@ -727,6 +732,7 @@ public class BossAttackController {
 	                        inv.put("gainType", "STEAL");
 	                        botNewService.insertInventoryLogTx(inv);
 	                        // 메시지는 buildAttackMessage에서 드랍 파트와 함께 표현 가능 (원하면 추가)
+	                        stealMsg = "✨ " + m.monName + "의 아이템을 훔쳤습니다! (" + dropName + ")";
 	                    }
 	                } catch (Exception ignore) {}
 	            }
@@ -756,6 +762,10 @@ public class BossAttackController {
 	            weaponLv, weaponBonus,
 	            effHpMax
 	    );
+	    
+	    if (stealMsg != null) {
+	        msg += NL + stealMsg;
+	    }
 
 	    // 18) 현재 포인트 조회
 	    int curPoint = 0;
