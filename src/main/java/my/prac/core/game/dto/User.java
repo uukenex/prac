@@ -23,4 +23,5 @@ public  class User {
 	public int critDmg;  // %
 	public int targetMon;
 	public java.sql.Timestamp insertDate; // ⬅️ fallback용
+	public String job;
 }

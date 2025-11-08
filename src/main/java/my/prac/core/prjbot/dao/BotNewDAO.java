@@ -160,4 +160,15 @@ public interface BotNewDAO {
             @Param("cmd") String cmd);
     
     List<HashMap<String,Object>> selectAchievementsByUser(@Param("userName") String userName);
+    
+    void updateUserJob(@Param("userName") String userName,
+            @Param("roomName") String roomName,
+            @Param("job") String job);
+    
+    int updateUserStatsForWarrior(
+            @Param("userName") String userName,
+            @Param("roomName") String roomName,
+            @Param("hpMax") int hpMax,
+            @Param("atkMin") int atkMin,
+            @Param("atkMax") int atkMax);
 }

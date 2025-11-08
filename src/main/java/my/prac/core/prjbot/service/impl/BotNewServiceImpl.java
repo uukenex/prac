@@ -265,4 +265,15 @@ public class BotNewServiceImpl implements BotNewService {
     public List<HashMap<String,Object>> selectAchievementsByUser(String userName) {
         return botNewDAO.selectAchievementsByUser(userName);
     }
+    
+    @Override
+    public void updateUserJob(String userName, String roomName, String job) {
+    	botNewDAO.updateUserJob(userName,roomName,job);
+    }
+    
+    @Override
+    public void updateUserStatsForWarrior(String userName, String roomName,
+                                          int hpMax, int atkMin, int atkMax) {
+        botNewDAO.updateUserStatsForWarrior(userName, roomName, hpMax, atkMin, atkMax);
+    }
 }

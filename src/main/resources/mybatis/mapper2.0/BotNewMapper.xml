@@ -16,7 +16,7 @@
   <!-- 1) 유저 -->
   <select id="selectUser" resultType="my.prac.core.game.dto.User">
     SELECT USER_NAME, ROOM_NAME, LV, EXP_CUR, EXP_NEXT, HP_CUR, HP_MAX, HP_REGEN,
-           ATK_MIN, ATK_MAX, CRIT_RATE, CRIT_DMG, TARGET_MON, INSERT_DATE
+           ATK_MIN, ATK_MAX, CRIT_RATE, CRIT_DMG, TARGET_MON, INSERT_DATE,JOB
     FROM TBOT_POINT_NEW_USER
     WHERE USER_NAME = #{userName}
       AND ROOM_NAME = #{roomName}
@@ -619,4 +619,22 @@
 	    AND CMD LIKE 'ACHV_%'
 	  ORDER BY INSERT_DATE DESC
 	</select>
+	
+	<update id="updateUserJob">
+	    UPDATE TBOT_POINT_NEW_USER
+	       SET JOB = #{job}
+	     WHERE USER_NAME = #{userName}
+	       AND ROOM_NAME = #{roomName}
+	       AND (JOB IS NULL OR JOB = '')
+	</update>
+	
+	<update id="updateUserStatsForWarrior">
+	    UPDATE TBOT_POINT_NEW_USER
+	       SET HP_MAX = #{hpMax},
+	           ATK_MIN = #{atkMin},
+	           ATK_MAX = #{atkMax}
+	     WHERE USER_NAME = #{userName}
+	       AND ROOM_NAME = #{roomName}
+	       AND JOB = '전사'
+	</update>
 </mapper>

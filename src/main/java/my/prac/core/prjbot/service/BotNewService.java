@@ -98,6 +98,10 @@ public interface BotNewService {
     int selectPointRankCountByCmdUserInRoom(String roomName, String userName, String cmd);
     
     public List<HashMap<String,Object>> selectAchievementsByUser(String userName);
+    
+    void updateUserJob(String userName, String roomName, String job);
+    
+    void updateUserStatsForWarrior(String userName, String roomName, int hpMax, int atkMin, int atkMax);
 } 
 
 	
