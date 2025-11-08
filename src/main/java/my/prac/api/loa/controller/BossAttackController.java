@@ -103,12 +103,12 @@ public class BossAttackController {
 	private String buildJobDescriptionList() {
 	    String NL = "♬";
 	    return "전직 가능한 직업 목록" + NL +
-	           "▶ 전사 : 레벨업 시 기본 HP·공격력 상승량 2배(기존레벨소급적용)" + NL +
+	           "▶ 전사 : 기본 HP·공격력 만큼 증가" + NL +
 	           "▶ 궁수 : 최종데미지 ×1.5, 공격 쿨타임 5분으로 증가" + NL +
 	           "▶ 마법사 : 몬스터 방어패턴 40% 확률 무시" + NL +
 	           "▶ 도적 : 공격 시 10% 확률로 드랍템 훔침(빛x), 적의 공격을 회피 20%" + NL +
 	           "▶ 프리스트 : 아이템으로 인한 최대HP증가,리젠 효과 1.5배" + NL +
-	           "▶ 상인 : 상점구매시 20% 할인, 드랍판매가 20% 증가" + NL +
+	           "▶ 상인 : 상점구매시 10% 할인, 드랍판매가 10% 증가" + NL +
 	           "♬ /직업 [직업명] 으로 전직 가능합니다.(변경 불가)"+ NL+
 	           "추후 직업추가시 변경할수 있습니다.";
 	}
@@ -183,7 +183,7 @@ public class BossAttackController {
 	    int bHpMaxRaw  = (buffs != null && buffs.get("HP_MAX")   != null) ? buffs.get("HP_MAX").intValue()   : 0;
 	    int bCriDmgRaw = (buffs != null && buffs.get("CRI_DMG")  != null) ? buffs.get("CRI_DMG").intValue()  : 0;
 
-	    // ===== 직업 보너스 계산용 변수 =====
+	    // ===== 직업 보너스 계산용 (표시용 쪼개기) =====
 	    int bAtkMin = bAtkMinRaw;
 	    int bAtkMax = bAtkMaxRaw;
 	    int bCri    = bCriRaw;
@@ -193,10 +193,8 @@ public class BossAttackController {
 
 	    int jobHpMaxBonus   = 0;
 	    int jobRegenBonus   = 0;
-	    int jobAtkMinBonus  = 0;
-	    int jobAtkMaxBonus  = 0;
 
-	    // 프리스트: 아이템 HP/리젠 효과 1.5배 → 추가분 따로 표시 가능
+	    // 프리스트: 아이템 HP/리젠 효과 1.5배 (표시용 쪼개기)
 	    if ("프리스트".equals(job)) {
 	        int boostedHp    = (int)Math.round(bHpMaxRaw * 1.5);
 	        int boostedRegen = (int)Math.round(bRegenRaw * 1.5);
@@ -206,20 +204,41 @@ public class BossAttackController {
 	        bRegen           = boostedRegen;
 	    }
 
-	    // (전사/궁수 등은 실스탯/쿨타임/전투 로직에 들어가 있어,
-	    //  여기서는 설명 위주로만 표기하고 수치는 따로 쪼개지 않음.)
+	    // ===== 기본 스탯 =====
+	    int baseMin   = u.atkMin;
+	    int baseMax   = u.atkMax;
+	    int baseHpMax = u.hpMax;
 
-	    // ⑥ 표시 수치
-	    int shownAtkMin   = u.atkMin + bAtkMin;
-	    int shownAtkMax   = u.atkMax + weaponBonus + bAtkMax;
-	    int shownCrit     = u.critRate + bCri;
-	    int shownHpMax    = u.hpMax + bHpMax;
-	    int shownRegen    = u.hpRegen + bRegen;
-	    int shownCritDmg  = u.critDmg + bCriDmg;
+	    // ===== 전투 기준(직업 보너스 적용 전) =====
+	    int atkMinWithItem = baseMin + bAtkMin;
+	    int atkMaxWithItem = baseMax + weaponBonus + bAtkMax;
 
-	    // ⑦ 표시용 회복 적용
-	    int effHp = computeEffectiveHpFromLastAttack(targetUser, roomName, u, shownHpMax, shownRegen);
-	    if (effHp > shownHpMax) effHp = shownHpMax;
+	    int shownCrit    = u.critRate + bCri;
+	    int shownRegen   = u.hpRegen + bRegen;
+	    int shownCritDmg = u.critDmg + bCriDmg;
+
+	    // HP: 프리스트 직업 보너스 포함한 아이템/직업 적용 값
+	    int hpMaxWithItemAndPriest = baseHpMax + bHpMax; // bHpMax는 위에서 프리스트 보정 포함 상태
+
+	    // ===== 직업 보너스(전사) 반영 =====
+	    // 전사 ATK 보너스: 기본 min 한 번 더, 기본 max 한 번 더 (아이템/강화 제외)
+	    int finalAtkMin = atkMinWithItem;
+	    int finalAtkMax = atkMaxWithItem;
+
+	    if ("전사".equals(job)) {
+	        finalAtkMin += baseMin;
+	        finalAtkMax += baseMax;
+	    }
+
+	    // 전사 HP 보너스: 기본 HP 한 번 더 (아이템 제외)
+	    int finalHpMax = hpMaxWithItemAndPriest;
+	    if ("전사".equals(job)) {
+	        finalHpMax += baseHpMax;
+	    }
+
+	    // 표시용 회복 적용 (전사/프리스트 포함 최종 HP 기준)
+	    int effHp = computeEffectiveHpFromLastAttack(targetUser, roomName, u, finalHpMax, shownRegen);
+	    if (effHp > finalHpMax) effHp = finalHpMax;
 
 	    // ⑧ 누적 통계/타겟
 	    List<KillStat> kills = botNewService.selectKillStats(targetUser, roomName);
@@ -241,28 +260,36 @@ public class BossAttackController {
 	    sb.append(", EXP ").append(u.expCur).append("/").append(u.expNext).append(NL)
 	      .append("포인트: ").append(pointStr).append(NL);
 
-	    // ATK 블럭
-	    sb.append("⚔ATK: ").append(shownAtkMin).append(" ~ ").append(shownAtkMax).append(NL)
-	      .append("   └ 기본 (").append(u.atkMin).append("~").append(u.atkMax).append(")").append(NL)
+	    // ⚔ ATK 블럭 (monsterAttack 로직과 동일한 전사 보너스 구조)
+	    sb.append("⚔ATK: ").append(finalAtkMin).append(" ~ ").append(finalAtkMax).append(NL)
+	      .append("   └ 기본 (").append(baseMin).append("~").append(baseMax).append(")").append(NL)
 	      .append("   └ 시즌1 강화: ").append(weaponLv).append("강 (max+").append(weaponBonus).append(")").append(NL)
 	      .append("   └ 아이템 (min").append(formatSigned(bAtkMinRaw))
 	      .append(", max").append(formatSigned(bAtkMaxRaw)).append(")").append(NL);
 
-	    // CRIT 블럭
+	    if ("전사".equals(job)) {
+	        sb.append("   └ 직업 (min+")
+	          .append(baseMin)
+	          .append(", max+")
+	          .append(baseMax)
+	          .append(")")
+	          .append(NL);
+	    }
+
+	    // ⚔ CRIT 블럭
 	    sb.append("⚔CRIT: ").append(shownCrit).append("%  CDMG ").append(shownCritDmg).append("%").append(NL)
 	      .append("   └ 기본 (").append(u.critRate).append("%, ").append(u.critDmg).append("%)").append(NL)
 	      .append("   └ 아이템 (CRIT").append(formatSigned(bCriRaw))
 	      .append("%, CDMG ").append(formatSigned(bCriDmgRaw)).append("%)").append(NL);
 
-	    // HP 블럭
-	    sb.append("❤️ HP: ").append(effHp).append(" / ").append(shownHpMax)
+	    // ❤️ HP 블럭 (전사/프리스트 효과 포함)
+	    sb.append("❤️ HP: ").append(effHp).append(" / ").append(finalHpMax)
 	      .append(",5분당회복+").append(shownRegen).append(NL)
-	      .append("   └ 기본 (HP+").append(u.hpMax)
+	      .append("   └ 기본 (HP+").append(baseHpMax)
 	      .append(",5분당회복+").append(u.hpRegen).append(")").append(NL)
 	      .append("   └ 아이템 (HP").append(formatSigned(bHpMaxRaw))
 	      .append(",5분당회복").append(formatSigned(bRegenRaw)).append(")").append(NL);
 
-	    // 프리스트 직업 보너스 숫자 표기
 	    if ("프리스트".equals(job) && (jobHpMaxBonus != 0 || jobRegenBonus != 0)) {
 	        sb.append("   └ 직업 (HP")
 	          .append(formatSigned(jobHpMaxBonus))
@@ -271,16 +298,23 @@ public class BossAttackController {
 	          .append(")").append(NL);
 	    }
 
+	    if ("전사".equals(job)) {
+	        sb.append("   └ 직업 (HP+")
+	          .append(baseHpMax)
+	          .append(")").append(NL);
+	    }
+
+	    // 직업 설명 라인
 	    if ("궁수".equals(job)) {
 	        sb.append("   ⚔ 직업 : 최종 데미지 ×1.5, 쿨타임 5분").append(NL);
 	    } else if ("전사".equals(job)) {
-	        sb.append("   ⚔ 직업 : 기본공격력에 반영됨").append(NL);
+	        sb.append("   ⚔ 직업 : 기본 ATK(min/max)와 HP만큼 추가 적용").append(NL);
 	    } else if ("마법사".equals(job)) {
 	        sb.append("   ⚔ 직업 : 몬스터 방어 패턴 30% 확률 무시").append(NL);
 	    } else if ("도적".equals(job)) {
-	        sb.append("   ⚔ 직업 : 공격 시 10% 확률로 노획, 적의공격 회피(20%)").append(NL);
+	        sb.append("   ⚔ 직업 : 공격 시 10% 확률 추가 드랍(STEAL), 적의 공격 20% 회피").append(NL);
 	    } else if ("상인".equals(job)) {
-	        sb.append("   ⚔ 직업 : 상점 구매 20% 할인, 드랍 판매가 20% 증가").append(NL);
+	        sb.append("   ⚔ 직업 : 상점 구매 10% 할인, 드랍 판매가 10% 증가").append(NL);
 	    }
 
 	    sb.append("▶ 현재 타겟: ").append(targetName)
@@ -445,9 +479,9 @@ public class BossAttackController {
 	        return "구매 가격 정보가 없습니다. 관리자에게 문의해주세요.";
 	    }
 
-	    // 상인: 20% 할인
+	    // 상인: 10% 할인
 	    if (isMerchant) {
-	        price = (int)Math.floor(price * 0.8);
+	        price = (int)Math.floor(price * 0.9);
 	    }
 
 	    // 이미 소유 여부
@@ -549,7 +583,6 @@ public class BossAttackController {
 	    int bCriDmg  = (buffs != null && buffs.get("CRI_DMG")  != null) ? buffs.get("CRI_DMG").intValue()  : 0;
 
 	    // 3) 직업 패시브 반영 (표시/전투 공통 기반치)
-	    // 전사: 전직 시점에 소급 2배 적용, 여기서는 추가 보정 없음 (DB 값이 이미 반영되어 있다고 가정)
 	    // 프리스트: 아이템 HP 효과 2배
 	    if ("프리스트".equals(job)) {
 	        bHpMax = (int) Math.round(bHpMax * 1.5);
@@ -565,24 +598,46 @@ public class BossAttackController {
 	    }
 	    int weaponBonus = getWeaponAtkBonus(weaponLv);
 
-	    // 5) 전투용 유효치 (직업/버프/강화 적용 전 기본)
-	    final int effAtkMinBase   = u.atkMin + bAtkMin;
-	    final int effAtkMaxBase   = u.atkMax + weaponBonus + bAtkMax;
-	    final int effCritRate     = u.critRate + bCri;
-	    final int effHpMax        = u.hpMax + bHpMax;
-	    final int effRegen        = u.hpRegen + bRegen;
-	    final int effCriDmg  = u.critDmg+bCriDmg;
+	    
+	 // === 전사 보너스 기준이 되는 "순수 기본값" (아이템/강화 제외) ===
+	    int baseMin = u.atkMin;
+	    int baseMax = u.atkMax;
+	    int baseHpMax = u.hpMax;
 
-	    // 6) 궁수 배율 (최종 공격력 1.5배) → 실제 데미지 범위에 반영
+	 // === 아이템/강화 포함한 일반 전투용 베이스 (전사 보너스 적용 전) ===
+	    int atkMinWithItem = baseMin + bAtkMin;                        // 기본 + 아이템(min)
+	    int atkMaxWithItem = baseMax + weaponBonus + bAtkMax;          // 기본 + 무기강 + 아이템(max)
+	    int hpMaxWithItem  = baseHpMax + bHpMax;
+
+	    int effCritRate = u.critRate + bCri;
+	    int effRegen    = u.hpRegen + bRegen;
+	    int effCriDmg   = u.critDmg + bCriDmg;
+	    
+	    
+	 // === 직업별 보너스 계산 ===
+	    int jobBonusMin = 0;
+	    int jobBonusMax = 0;
+	    int jobBonusHp  = 0;
 	    double jobDmgMul = 1.0;
+	    
+	    
+	    // 6) 궁수 배율 (최종 공격력 1.5배) → 실제 데미지 범위에 반영
 	    if ("궁수".equals(job)) {
 	        jobDmgMul = 1.5;
+	    }else if ("전사".equals(job)) {
+	        // ✅ 전사: "기본 min 한 번 더, 기본 max 한 번 더" (아이템/강화 제외)
+	        jobBonusMin = baseMin;
+	        jobBonusMax = baseMax;
+	        jobBonusHp  = baseHpMax;
 	    }
-
-	    int effAtkMin = (int)Math.round(effAtkMinBase * jobDmgMul);
-	    int effAtkMax = (int)Math.round(effAtkMaxBase * jobDmgMul);
+	 // 3) 전사 보너스(기본값 기준)를 각각 더함
+	    int effAtkMin = (int) Math.round(atkMinWithItem * jobDmgMul + jobBonusMin);
+	    int effAtkMax = (int) Math.round(atkMaxWithItem * jobDmgMul + jobBonusMax);
 	    if (effAtkMax < effAtkMin) effAtkMax = effAtkMin;
 
+	 // === 최종 전투용 HP_MAX ===
+	    int effHpMax = hpMaxWithItem + jobBonusHp;
+	    
 	    // 7) 부활/자동회복 처리
 	    String reviveMsg = reviveAfter1hIfDead(userName, roomName, u, effHpMax, effRegen);
 	    boolean revivedThisTurn = false;
@@ -874,7 +929,7 @@ public class BossAttackController {
 
 	        // 상인: DROP/DROP3 판매 시 20% 추가
 	        if (isMerchant && isDropRow) {
-	            unitPrice = (int)Math.round(unitPrice * 1.2);
+	            unitPrice = (int)Math.round(unitPrice * 1.1);
 	        }
 
 	        if (qty == take) botNewService.updateInventoryDelByRowId(rid);
@@ -1210,7 +1265,7 @@ public class BossAttackController {
 	      .append("(최대체력의 20%까지 회복 필요 ").append(regenWaitMin).append("분, ")
 	      .append("쿨타임 ").append(remainMin).append("분 ").append(remainSec).append("초)").append(NL)
 	      .append("현재 체력: ").append(u.hpCur).append(" / ").append(u.hpMax)
-	      .append("  |  5분당 회복 +").append(u.hpRegen).append(NL);
+	      .append(", 5분당 회복 +").append(u.hpRegen).append(NL);
 
 	    // ✅ 리젠 스케줄 출력
 	    String sched = buildRegenScheduleSnippet(userName, roomName, u, waitMin);
