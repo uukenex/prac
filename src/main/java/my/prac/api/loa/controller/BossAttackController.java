@@ -1381,38 +1381,66 @@ public class BossAttackController {
 
 	/** HP/EXP/LV + 로그 저장 */
 	private LevelUpResult persist(String userName, String roomName, User u, Monster m, Flags f, AttackCalc c, Resolve res) {
-		u.hpCur = Math.max(0, u.hpCur - c.monDmg);
-		LevelUpResult up = applyExpAndLevelUp(u, res.gainExp);
+	    // 1) 유저 HP 반영
+	    u.hpCur = Math.max(0, u.hpCur - c.monDmg);
+	    LevelUpResult up = applyExpAndLevelUp(u, res.gainExp);
 
-		botNewService.updateUserAfterBattleTx(
-		   userName, roomName,
-		   u.lv, u.expCur, u.expNext, u.hpCur, u.hpMax,
-		   u.atkMin, u.atkMax, u.critRate, u.hpRegen
-		);
+	    // 2) 유저 스탯 DB 반영
+	    botNewService.updateUserAfterBattleTx(
+	        userName, roomName,
+	        u.lv, u.expCur, u.expNext, u.hpCur, u.hpMax,
+	        u.atkMin, u.atkMax, u.critRate, u.hpRegen
+	    );
+
 	    int deathYn = (u.hpCur == 0 && c.monDmg > 0) ? 1 : 0;
 
-	    BattleLog log = new BattleLog()
-				.setUserName(userName)
-				.setRoomName(roomName)
-				.setLv(up.beforeLv)
-				.setTargetMonLv(m.monNo)
-				.setGainExp(up.gainedExp)
-				.setAtkDmg(c.atkDmg)
-				.setMonDmg(c.monDmg)
-				.setAtkCritYn(f.atkCrit ? 1 : 0)
-				.setMonPatten(f.monPattern)
-				.setKillYn(res.killed ? 1 : 0)
-				.setNowYn(1)
-				.setDeathYn(deathYn)
-				.setLuckyYn(res.lucky ? 1 : 0);
+	    // 3) 🔹 드랍 인벤토리 적재 (DROP / DROP3)
+	    if (res.killed && !"0".equals(res.dropCode)) {
+	        String dropName = (m.monDrop == null ? "" : m.monDrop.trim());
+	        if (!dropName.isEmpty()) {
+	            try {
+	                Integer itemId = botNewService.selectItemIdByName(dropName);
+	                if (itemId != null) {
+	                    HashMap<String, Object> inv = new HashMap<>();
+	                    inv.put("userName", userName);
+	                    inv.put("roomName", roomName);
+	                    inv.put("itemId",  itemId);
+	                    inv.put("qty",     1);
+	                    inv.put("delYn",   "0");
+	                    inv.put("gainType", "3".equals(res.dropCode) ? "DROP3" : "DROP");
+	                    botNewService.insertInventoryLogTx(inv);
+	                }
+	            } catch (Exception ignore) {
+	                // 드랍 적재 실패해도 전투 진행은 계속
+	            }
+	        }
+	    }
 
+	    // 4) BattleLog dropYn 세팅
 	    int dropAsInt = "3".equals(res.dropCode) ? 3 : ("1".equals(res.dropCode) ? 1 : 0);
-	    log.setDropYn(dropAsInt);
+
+	    BattleLog log = new BattleLog()
+	        .setUserName(userName)
+	        .setRoomName(roomName)
+	        .setLv(up.beforeLv)
+	        .setTargetMonLv(m.monNo)
+	        .setGainExp(up.gainedExp)
+	        .setAtkDmg(c.atkDmg)
+	        .setMonDmg(c.monDmg)
+	        .setAtkCritYn(f.atkCrit ? 1 : 0)
+	        .setMonPatten(f.monPattern)
+	        .setKillYn(res.killed ? 1 : 0)
+	        .setNowYn(1)
+	        .setDeathYn(deathYn)
+	        .setLuckyYn(res.lucky ? 1 : 0)
+	        .setDropYn(dropAsInt);
+
 	    botNewService.insertBattleLogTx(log);
 
-		res.levelUpCount = up.levelUpCount;
-		return up;
+	    res.levelUpCount = up.levelUpCount;
+	    return up;
 	}
+
 
 	/** 무기강화 효과 (25강부터 +1, 상한 없음) */
 	private int getWeaponAtkBonus(int weaponLv) {
