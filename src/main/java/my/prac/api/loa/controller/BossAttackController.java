@@ -926,6 +926,18 @@ public class BossAttackController {
 	    int basePrice = (basePriceObj == null ? 0 : basePriceObj);
 	    if (basePrice <= 0) return "해당 아이템은 판매가 설정이 없어 판매할 수 없습니다: " + itemNameRaw;
 
+	 // ✅ 아이템 정보 조회 (장비 여부 확인)
+	    HashMap<String, Object> itemDetail = null;
+	    try {
+	        itemDetail = botNewService.selectItemDetailById(itemId);
+	    } catch (Exception ignore) {}
+	    String itemType = (itemDetail == null) ? "" : Objects.toString(itemDetail.get("ITEM_TYPE"), "");
+	    boolean isEquip = "MARKET".equalsIgnoreCase(itemType);
+	    // ✅ 상인은 장비(MARKET) 아이템 판매 불가
+	    if (isMerchant && isEquip) {
+	        return "상인 직업은 장비 아이템(MARKET)을 판매할 수 없습니다.";
+	    }
+	    
 	    int need = Math.min(reqQty, haveTotal);
 	    int sold = 0, soldNormal = 0, soldShiny = 0;
 	    long totalSp = 0L;
