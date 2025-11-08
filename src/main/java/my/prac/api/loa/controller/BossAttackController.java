@@ -103,13 +103,14 @@ public class BossAttackController {
 	private String buildJobDescriptionList() {
 	    String NL = "♬";
 	    return "전직 가능한 직업 목록" + NL +
-	           "▶ 전사 : 레벨업 시 HP·공격력 상승량 2배" + NL +
-	           "▶ 궁수 : 공격력 ×1.5, 공격 쿨타임 5분으로 증가" + NL +
-	           "▶ 마법사 : 몬스터 방어패턴 30% 확률 무시" + NL +
-	           "▶ 도적 : 공격 시 10% 확률로 드랍템 훔침(빛x)" + NL +
+	           "▶ 전사 : 레벨업 시 기본 HP·공격력 상승량 2배(기존레벨소급적용)" + NL +
+	           "▶ 궁수 : 최종데미지 ×1.5, 공격 쿨타임 5분으로 증가" + NL +
+	           "▶ 마법사 : 몬스터 방어패턴 40% 확률 무시" + NL +
+	           "▶ 도적 : 공격 시 10% 확률로 드랍템 훔침(빛x), 적의 공격을 회피 20%" + NL +
 	           "▶ 프리스트 : 아이템으로 인한 최대HP증가,리젠 효과 1.5배" + NL +
 	           "▶ 상인 : 상점구매시 20% 할인, 드랍판매가 20% 증가" + NL +
-	           "♬ /직업 [직업명] 으로 전직 가능합니다.(변경 불가)";
+	           "♬ /직업 [직업명] 으로 전직 가능합니다.(변경 불가)"+ NL+
+	           "추후 직업추가시 변경할수 있습니다.";
 	}
 
 	
@@ -277,7 +278,7 @@ public class BossAttackController {
 	    } else if ("마법사".equals(job)) {
 	        sb.append("   ⚔ 직업 : 몬스터 방어 패턴 30% 확률 무시").append(NL);
 	    } else if ("도적".equals(job)) {
-	        sb.append("   ⚔ 직업 : 공격 시 10% 확률로 추가 드랍 획득(STEAL)").append(NL);
+	        sb.append("   ⚔ 직업 : 공격 시 10% 확률로 노획, 적의공격 회피(20%)").append(NL);
 	    } else if ("상인".equals(job)) {
 	        sb.append("   ⚔ 직업 : 상점 구매 20% 할인, 드랍 판매가 20% 증가").append(NL);
 	    }
@@ -682,6 +683,23 @@ public class BossAttackController {
 	        if (mageBreakGuard) {
 	            calc.patternMsg = m.monName + "의 방어가 마법사의 힘에 의해 무너졌습니다!";
 	        }
+	        // 🔹 프리스트: 해골 상대로 피격 데미지 50% 감소
+	        if ("프리스트".equals(job) && calc.monDmg > 0 && isSkeleton(m)) {
+	            int reduced = (int) Math.floor(calc.monDmg * 0.5);
+	            if (reduced < 1) reduced = 1; // 완전무효는 아님, 최소 1 유지
+	            String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
+	            calc.patternMsg = baseMsg + "(프리스트 효과로 피해 50% 감소 → " + reduced + ")";
+	            calc.monDmg = reduced;
+	        }
+
+	        // 🔹 도적: 30% 확률 회피 (몬스터 피해 무효화)
+	        if ("도적".equals(job) && calc.monDmg > 0) {
+	            if (ThreadLocalRandom.current().nextDouble() < 0.20) {
+	                String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
+	                calc.patternMsg = baseMsg + "도적의 회피! 피해를 받지 않았습니다.";
+	                calc.monDmg = 0;
+	            }
+	        }
 	    }
 
 	    // 13) 즉사 처리
@@ -785,6 +803,12 @@ public class BossAttackController {
 	    return msg;
 	}
 
+	private boolean isSkeleton(Monster m) {
+	    if (m == null) return false;
+	    if (m.monNo == 10) return true;
+	    String name = m.monName;
+	    return name != null && name.contains("해골");
+	}
 
 	public String sellItem(HashMap<String, Object> map) {
 	    final int SHINY_MULTIPLIER = 5; // ✨ 빛템 5배
@@ -1183,7 +1207,7 @@ public class BossAttackController {
 
 	    StringBuilder sb = new StringBuilder();
 	    sb.append(userName).append("님, 약 ").append(waitMin).append("분 후 공격 가능").append(NL)
-	      .append("(최대체력의 30%까지 회복 필요 ").append(regenWaitMin).append("분, ")
+	      .append("(최대체력의 20%까지 회복 필요 ").append(regenWaitMin).append("분, ")
 	      .append("쿨타임 ").append(remainMin).append("분 ").append(remainSec).append("초)").append(NL)
 	      .append("현재 체력: ").append(u.hpCur).append(" / ").append(u.hpMax)
 	      .append("  |  5분당 회복 +").append(u.hpRegen).append(NL);
@@ -1339,7 +1363,7 @@ public class BossAttackController {
 
 	// ✅ firstTick 경계보정 유지, 10→5분 주기로 변경
 	private int minutesUntilReach30(User u, String userName, String roomName) {
-	    int threshold = (int) Math.ceil(u.hpMax * 0.3);
+	    int threshold = (int) Math.ceil(u.hpMax * 0.2);
 	    if (u.hpCur >= threshold) return 0;
 	    if (u.hpRegen <= 0) return Integer.MAX_VALUE;
 
