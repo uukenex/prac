@@ -1291,8 +1291,10 @@
 	<select id="selectWeaponLvCheck" parameterType="HashMap" resultType="int">
 		SELECT NVL(SUM(A.WEAPON_LV), 0)
 		  FROM TBOT_POINT_WEAPON A
-		 WHERE ROOM_NAME = #{roomName, jdbcType=VARCHAR} 
-		   AND USER_NAME = #{userName, jdbcType=VARCHAR}
+		 WHERE USER_NAME = #{userName, jdbcType=VARCHAR} 
+		   <if test="roomName != null and roomName != '람쥐봇 문의방'">
+		   AND A.room_name = #{roomName}
+		  </if>	
 	</select>
 	<select id="selectWeaponLvCheckForPoint" parameterType="HashMap" resultType="int">
 		SELECT NVL(SUM(A.WEAPON_LV), 0)
