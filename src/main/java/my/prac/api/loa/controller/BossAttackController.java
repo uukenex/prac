@@ -1810,21 +1810,7 @@ public class BossAttackController {
 	}
 
 	private Timestamp getLastDamageBaseline(String userName, String roomName) {
-		Timestamp damaged = botNewService.selectLastDamagedTime(userName, roomName);
-	    Timestamp attacked = botNewService.selectLastAttackTime(userName, roomName);
-
-	    if (damaged == null && attacked == null) {
-	        return null;
-	    }
-	    if (damaged == null) {
-	        return attacked;
-	    }
-	    if (attacked == null) {
-	        return damaged;
-	    }
-
-	    // ✅ 더 "최근" 시점을 기준으로 사용 (사망 포함한 마지막 피격 or 공격)
-	    return damaged.after(attacked) ? damaged : attacked;
+		return botNewService.selectLastDamagedTime(userName, roomName);
 	}
 	// ✅ 5분 단위 스케줄로 변경
 	private String buildRegenScheduleSnippet(String userName, String roomName, User u, int horizonMinutes) {
