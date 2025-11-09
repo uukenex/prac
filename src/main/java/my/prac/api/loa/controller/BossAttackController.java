@@ -119,13 +119,13 @@ public class BossAttackController {
 	private String buildJobDescriptionList() {
 	    String NL = "♬";
 	    return "전직 가능한 직업 목록" + NL +
-	           "▶ 전사 : 기본 HP·공격력 만큼 증가" + NL +
-	           "▶ 궁수 : 최종데미지 ×1.8, 공격 쿨타임 5분으로 증가, EXP +15%" + NL +
-	           "▶ 마법사 : 몬스터 방어패턴 40% 확률 무시" + NL +
-	           "▶ 도적 : 공격 시 10% 확률로 드랍템 훔침(빛x), 적의 공격을 회피 20%" + NL +
-	           "▶ 프리스트 : 아이템으로 인한 최대HP증가,리젠 효과 1.5배" + NL +
-	           "▶ 상인 : 상점구매시 10% 할인, 드랍판매가 10% 증가" + NL +
-	           "♬ 일 1회 /직업 [직업명] 으로 전직 가능합니다."+ NL;
+	           "▶ 전사 : 기본 HP·공격력만큼 추가 적용, 버서크모드(체력이 낮아지면 데미지 2배)" + NL +
+	           "▶ 궁수 : 최종 데미지 ×1.7, 공격 쿨타임 5분, EXP +15%, [히든]" + NL +
+	           "▶ 마법사 : 몬스터 방어 패턴(패턴3) 50% 확률로 무시, 성공 시 피해 1.5배" + NL +
+	           "▶ 도적 : 공격 시 20% 확률로 추가 드랍(STEAL), 몬스터 기본 공격 50% 회피" + NL +
+	           "▶ 프리스트 : 아이템 HP/리젠 효과 1.5배, 특정 몬스터에게 받는 피해 50% 감소" + NL +
+	           "▶ 상인 : 상점 구매 10% 할인, 드랍 판매가 10% 증가, 공격시 SP 추가 획득" + NL +
+	           "♬ 일 1회 /직업 [직업명] 으로 전직 가능합니다." + NL;
 	}
 
 	
@@ -321,19 +321,21 @@ public class BossAttackController {
 
 	    // 직업 설명 라인
 	    if ("궁수".equals(job)) {
-	        sb.append("   ⚔ 직업 : 최종 데미지 ×1.8, 쿨타임 5분, EXP +15%").append(NL);
+	        sb.append("   ⚔ 직업 : 최종 데미지 ×1.7, 쿨타임 5분, EXP +15%").append(NL);
 	    } else if ("전사".equals(job)) {
-	        sb.append("   ⚔ 직업 : 기본 ATK(min/max)와 HP만큼 추가 적용").append(NL);
+	        sb.append("   ⚔ 직업 : 기본 ATK(min/max)와 HP만큼 추가 적용, 버서크모드(체력이 낮아지면 데미지 최대 2배)").append(NL);
 	    } else if ("마법사".equals(job)) {
-	        sb.append("   ⚔ 직업 : 몬스터 방어 패턴 30% 확률 무시").append(NL);
+	        sb.append("   ⚔ 직업 : 몬스터 방어 패턴(패턴3)을 50% 확률로 무시, 성공시 피해 1.5배").append(NL);
 	    } else if ("도적".equals(job)) {
-	        sb.append("   ⚔ 직업 : 공격 시 10% 확률 추가 드랍(STEAL), 적의 공격 20% 회피").append(NL);
+	        sb.append("   ⚔ 직업 : 공격 시 20% 확률 추가 드랍(STEAL), 몬스터 기본 공격 50% 회피").append(NL);
+	    } else if ("프리스트".equals(job)) {
+	        sb.append("   ⚔ 직업 : 아이템 HP/리젠 효과 1.5배, 특정몬스터에게 받는 피해 감소").append(NL);
 	    } else if ("상인".equals(job)) {
-	        sb.append("   ⚔ 직업 : 상점 구매 10% 할인, 드랍 판매가 10% 증가").append(NL);
+	        sb.append("   ⚔ 직업 : 상점 구매 10% 할인, 드랍 판매가 10% 증가, 공격시 SP 추가 획득").append(NL);
 	    }
 
 	    sb.append("▶ 현재 타겟: ").append(targetName)
-	      .append(" (MON_NO=").append(u.targetMon).append(")").append(NL);
+	      .append(" (MON_NO=").append(u.targetMon).append(")");
 
 	    // 누적 전투
 	    sb.append(allSeeStr);
@@ -567,7 +569,6 @@ public class BossAttackController {
 	    return String.format("%dsp", v);  
 	}
 
-	/** 몬스터 공격 (MARKET 장비 버프 + 무기보너스 적용, 럭키 유지, 드랍→인벤 반영) */
 	public String monsterAttack(HashMap<String, Object> map) {
 	    map.put("cmd", "monster_attack");
 
@@ -638,7 +639,7 @@ public class BossAttackController {
 	    
 	    // 6) 궁수 배율 (최종 공격력 1.5배) → 실제 데미지 범위에 반영
 	    if ("궁수".equals(job)) {
-	        jobDmgMul = 1.8;
+	        jobDmgMul = 1.7;
 	    }else if ("전사".equals(job)) {
 	        // ✅ 전사: "기본 min 한 번 더, 기본 max 한 번 더" (아이템/강화 제외)
 	        jobBonusMin = baseMin;
@@ -665,6 +666,15 @@ public class BossAttackController {
 	            ? u.hpCur
 	            : computeEffectiveHpFromLastAttack(userName, roomName, u, effHpMax, effRegen);
 	    u.hpCur = Math.min(effectiveHp, effHpMax);
+	    
+	    // 🔹 전사 히든: 체력이 낮을수록 공격력 증가 (최대 +30%)
+	    double berserkMul = 1.0;
+	    if ("전사".equals(job) && effHpMax > 0) {
+	        double hpRatio = (double) u.hpCur / effHpMax;
+	        if (hpRatio < 0.5) {
+	            berserkMul = 1.0 + (0.5 - hpRatio) * 2.0; // 0% ~ +30%
+	        }
+	    }
 
 	    // 8) 진행중 전투 / 신규 전투 + LUCKY 유지
 	    OngoingBattle ob = botNewService.selectOngoingBattle(userName, roomName);
@@ -709,100 +719,152 @@ public class BossAttackController {
 	    // 11) 데미지 굴림
 	    boolean crit = ThreadLocalRandom.current().nextDouble(0, 100) < clamp(effCritRate, 0, 100);
 
-	    int baseAtk = (effAtkMax <= effAtkMin)
-	            ? effAtkMin
-	            : ThreadLocalRandom.current().nextInt(effAtkMin, effAtkMax + 1);
+	    int baseAtkRangeMin = effAtkMin;
+	    int baseAtkRangeMax = effAtkMax;
+
+	 // 전사 버서커 배율 적용 (범위 전체에 곱)
+	    baseAtkRangeMin = (int) Math.round(baseAtkRangeMin * berserkMul);
+	    baseAtkRangeMax = (int) Math.round(baseAtkRangeMax * berserkMul);
+	    if (baseAtkRangeMax < baseAtkRangeMin) baseAtkRangeMax = baseAtkRangeMin;
+	    
+	    int baseAtk = (baseAtkRangeMax <= baseAtkRangeMin)
+	            ? baseAtkRangeMin
+	            : ThreadLocalRandom.current().nextInt(baseAtkRangeMin, baseAtkRangeMax + 1);
 
 	    double critMultiplier = Math.max(1.0, effCriDmg / 100.0);
 
 	    int rawAtkDmg = crit ? (int)Math.round(baseAtk * critMultiplier) : baseAtk;
 
+	 // 🎯 궁수 히든 스킬: 저격 (1% 확률로 최종 데미지 20배)
+	    boolean snipe = false;
+	    if ("궁수".equals(job)) {
+	        if (ThreadLocalRandom.current().nextDouble() < 0.01) {
+	            snipe = true;
+	            rawAtkDmg = (int) Math.round(rawAtkDmg * 20.0);
+	        }
+	    }
+	    
 	    // 12) 원턴킬 선판정
-	    boolean lethal = rawAtkDmg >= monHpRemainBefore;
+		boolean lethal = rawAtkDmg >= monHpRemainBefore;
 
-	    Flags flags = new Flags();
-	    AttackCalc calc = new AttackCalc();
+		Flags flags = new Flags();
+		AttackCalc calc = new AttackCalc();
 
-	    if (lethal) {
-	        flags.atkCrit = crit;
-	        flags.monPattern = 0;
-	        calc.atkDmg = rawAtkDmg;
-	        calc.monDmg = 0;
-	        calc.patternMsg = null;
-	        if (crit) {
-	            calc.baseAtk = baseAtk;
-	            calc.critMultiplier = critMultiplier;
-	        }
-	    } else {
-	        flags = rollFlags(u, m);
-	        flags.atkCrit = crit;
+		if (lethal) {
+			flags.atkCrit = crit;
+			flags.monPattern = 0;
+			flags.snipe = snipe; // 추가
+			calc.atkDmg = rawAtkDmg;
+			calc.monDmg = 0;
+			calc.patternMsg = null;
+			if (crit) {
+				calc.baseAtk = baseAtk;
+				calc.critMultiplier = critMultiplier;
+			}
+		} else {
+			flags = rollFlags(u, m);
+			flags.atkCrit = crit;
+			flags.snipe = snipe; // 저격 여부 유지
 
-	        boolean mageBreakGuard = false;
-	        
-	        // 마법사: 방어 패턴 무시 (예: 패턴 3일 때 30% 확률로 무시)
-	        if ("마법사".equals(job) && flags.monPattern == 3) {
-	            if (ThreadLocalRandom.current().nextDouble() < 0.3) {
-	            	mageBreakGuard = true;
-	                flags.monPattern = 1; // 방어 대신 무행동으로 취급
-	            }
-	        }
+			boolean mageBreakGuard = false;
 
-	        calc = calcDamage(u, m, flags, baseAtk, crit, critMultiplier);
-	        
-	        // 방어 파괴 성공 시 전용 메시지로 교체
-	        if (mageBreakGuard) {
-	            calc.patternMsg = m.monName + "의 방어가 마법사의 힘에 의해 무너졌습니다!";
-	        }
-	        // 🔹 프리스트: 해골 상대로 피격 데미지 50% 감소
-	        if ("프리스트".equals(job) && calc.monDmg > 0 && isSkeleton(m)) {
-	            int reduced = (int) Math.floor(calc.monDmg * 0.5);
-	            if (reduced < 1) reduced = 1; // 완전무효는 아님, 최소 1 유지
-	            String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
-	            calc.patternMsg = baseMsg + "(프리스트 효과로 피해 50% 감소 → " + reduced + ")";
-	            calc.monDmg = reduced;
-	        }
+			// 🔹 마법사: 패턴3 방어 50% 확률 무시 + 무시 시 데미지 1.5배
+			if ("마법사".equals(job) && flags.monPattern == 3) {
+				if (ThreadLocalRandom.current().nextDouble() < 0.50) {
+					mageBreakGuard = true;
+					flags.monPattern = 1; // 방어 대신 무행동으로 취급
+				}
+			}
 
-	        // 🔹 도적: 30% 확률 회피 (몬스터 피해 무효화)
-	        if ("도적".equals(job) && calc.monDmg > 0) {
-	            if (ThreadLocalRandom.current().nextDouble() < 0.20) {
-	                String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
-	                calc.patternMsg = baseMsg + "도적의 회피! 피해를 받지 않았습니다.";
-	                calc.monDmg = 0;
-	            }
-	        }
-	    }
+			calc = calcDamage(u, m, flags, baseAtk, crit, critMultiplier);
 
-	    // 13) 즉사 처리
-	    int newHpPreview = Math.max(0, u.hpCur - calc.monDmg);
-	    if (newHpPreview <= 0) {
-	        botNewService.closeOngoingBattleTx(userName, roomName);
-	        botNewService.updateUserHpOnlyTx(userName, roomName, 0);
-	        botNewService.insertBattleLogTx(new BattleLog()
-	                .setUserName(userName)
-	                .setRoomName(roomName)
-	                .setLv(u.lv)
-	                .setTargetMonLv(m.monNo)
-	                .setGainExp(0)
-	                .setAtkDmg(calc.atkDmg)
-	                .setMonDmg(calc.monDmg)
-	                .setAtkCritYn(flags.atkCrit ? 1 : 0)
-	                .setMonPatten(flags.monPattern)
-	                .setKillYn(0)
-	                .setNowYn(1)
-	                .setDropYn(0)
-	                .setDeathYn(1)
-	                .setLuckyYn(0)
-	        );
-	        return userName + "님, 전투 불능 상태입니다." + NL
-	        	    + "현재 체력: 0 / " + effHpMax + NL
-	        	    + "10분 뒤 최대 체력의 10%로 부활하며," + NL
-	        	    + "이후 5분마다 HP_REGEN 만큼 서서히 회복됩니다.";
-	    }
+			if (mageBreakGuard) {
+				// 방어를 깨뜨린 경우: 최종 공격 데미지 1.5배
+				calc.atkDmg = (int) Math.round(calc.atkDmg * 1.5);
+				calc.patternMsg = m.monName + "의 방어가 마법사의 힘에 의해 무너졌습니다! (피해 1.5배)";
+			}
+			// 🔹 프리스트: 해골 상대로 피격 데미지 50% 감소
+			if ("프리스트".equals(job) && calc.monDmg > 0 && isSkeleton(m)) {
+				int reduced = (int) Math.floor(calc.monDmg * 0.5);
+				if (reduced < 1)
+					reduced = 1; // 완전무효는 아님, 최소 1 유지
+				String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
+				calc.patternMsg = baseMsg + "(프리스트 효과로 피해 50% 감소 → " + reduced + ")";
+				calc.monDmg = reduced;
+			}
+
+			// 🔹 도적: 50% 확률 회피 (몬스터 피해 무효화)
+			if ("도적".equals(job) && calc.monDmg > 0) {
+				if (ThreadLocalRandom.current().nextDouble() < 0.50) {
+					String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
+					calc.patternMsg = baseMsg + "도적의 회피! 피해를 받지 않았습니다.";
+					calc.monDmg = 0;
+				}
+			}
+			
+			
+		}
+
+			
+
+		 // 13) 즉사 처리
+		 int newHpPreview = Math.max(0, u.hpCur - calc.monDmg);
+		 if (newHpPreview <= 0) {
+		     botNewService.closeOngoingBattleTx(userName, roomName);
+		     botNewService.updateUserHpOnlyTx(userName, roomName, 0);
+		     botNewService.insertBattleLogTx(new BattleLog()
+		             .setUserName(userName)
+		             .setRoomName(roomName)
+		             .setLv(u.lv)
+		             .setTargetMonLv(m.monNo)
+		             .setGainExp(0)
+		             .setAtkDmg(calc.atkDmg)
+		             .setMonDmg(calc.monDmg)
+		             .setAtkCritYn(flags.atkCrit ? 1 : 0)
+		             .setMonPatten(flags.monPattern)
+		             .setKillYn(0)
+		             .setNowYn(1)
+		             .setDropYn(0)
+		             .setDeathYn(1)
+		             .setLuckyYn(0)
+		     );
+		     return userName + "님, 전투 불능 상태입니다." + NL
+		             + "현재 체력: 0 / " + effHpMax + NL
+		             + "10분 뒤 최대 체력의 10%로 부활하며," + NL
+		             + "이후 5분마다 HP_REGEN 만큼 서서히 회복됩니다.";
+		 }
 
 	    // 14) 처치/드랍 판단
 	    boolean willKill = calc.atkDmg >= monHpRemainBefore;
 	    Resolve res = resolveKillAndDrop(m, calc, willKill, u, lucky);
 
+	 // 🔹 상인: 드랍템 판매가의 10%를 즉시 SP로 추가 획득
+	    int merchantBonusSp = 0;
+	    if ("상인".equals(job) && res.killed && !"0".equals(res.dropCode)) {
+	        String dropName = (m.monDrop == null ? "" : m.monDrop.trim());
+	        if (!dropName.isEmpty()) {
+	            int dropPrice = getDropPriceByName(dropName); // 이미 존재하는 헬퍼 사용
+
+	            if (dropPrice > 0) {
+	                // 빛드랍(DROP3)은 판매가 5배이므로, 상인 보너스도 그 기준 적용
+	                if ("3".equals(res.dropCode)) {
+	                    dropPrice *= 5;
+	                }
+
+	                merchantBonusSp = (int) Math.floor(dropPrice * 0.10);
+
+	                if (merchantBonusSp > 0) {
+	                    HashMap<String,Object> pr = new HashMap<>();
+	                    pr.put("userName", userName);
+	                    pr.put("roomName", roomName);
+	                    pr.put("score", merchantBonusSp);
+	                    pr.put("cmd", "MERCHANT_DROP_BONUS");
+	                    botNewService.insertPointRank(pr);
+	                }
+	            }
+	        }
+	    }
+	    
 	    // 🔹 궁수: 획득 EXP +10%
 	    if ("궁수".equals(u.job)) {
 	        int baseExp = res.gainExp;
@@ -811,9 +873,9 @@ public class BossAttackController {
 	    }
 	    
 	    String stealMsg = null;
-	    // 도적: 공격 시 10% 확률로 추가 드랍 (비처치도 가능)
+	 // 도적: 공격 시 20% 확률로 추가 드랍 (비처치도 가능)
 	    if ("도적".equals(job)) {
-	        if (ThreadLocalRandom.current().nextDouble() < 0.10) {
+	        if (ThreadLocalRandom.current().nextDouble() < 0.20) {
 	            String dropName = (m.monDrop == null ? "" : m.monDrop.trim());
 	            if (!dropName.isEmpty()) {
 	                try {
@@ -873,6 +935,11 @@ public class BossAttackController {
 	    // ✅ 최초토벌/업적 메시지 추가
 	    if (!bonusMsg.isEmpty()) {
 	        msg += bonusMsg;
+	    }
+	    
+	 // 🔹 상인 추가 보너스 안내
+	    if (merchantBonusSp > 0) {
+	        msg += NL + "💰 상인 효과!" + merchantBonusSp + "sp 추가 획득";
 	    }
 
 	    // 18) 현재 포인트 조회
@@ -1644,6 +1711,11 @@ public class BossAttackController {
 
 	    // 치명타
 	    if (flags.atkCrit) sb.append("✨ 치명타!").append(NL);
+	    
+	    // 궁수 저격
+	    if (flags.snipe) {
+	        sb.append("✨ 저격[히든] 발동! 치명적인 피해를 선사합니다.").append(NL);
+	    }
 
 	    // 데미지
 	    sb.append("⚔ 데미지: (").append(shownAtkMin).append("~").append(shownAtkMax).append(" ⇒ ");
@@ -1727,7 +1799,12 @@ public class BossAttackController {
 	    return s;
 	}
 
-	private static class Flags { boolean atkCrit; int monPattern; }
+	private static class Flags {
+	    boolean atkCrit;
+	    int monPattern;
+	    boolean snipe; // 궁수 저격 여부
+	}
+	
 	private static class AttackCalc {
 		int atkDmg; int monDmg; int atkMin; int atkMax; String patternMsg;
 	    int baseAtk; double critMultiplier;
