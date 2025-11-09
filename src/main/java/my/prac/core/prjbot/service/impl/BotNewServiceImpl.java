@@ -34,9 +34,6 @@ public class BotNewServiceImpl implements BotNewService {
 		return botNewDAO.selectParam1ToNewUserSearch(map);
 	}
 	
-	public int insertBotPointNew(HashMap<String, Object> map) {
-		return botNewDAO.insertBotPointNew(map);
-	}
 
 	@Override
     public User selectUser(String userName, String roomName) {
@@ -173,11 +170,6 @@ public class BotNewServiceImpl implements BotNewService {
 
 	
 	@Override
-	public HashMap<String, Object> selectOwnedItemBuffTotals(String user, String room, String onlyMarket) {
-	    return botNewDAO.selectOwnedItemBuffTotals(user, room, onlyMarket);
-	}
-
-	@Override
 	public List<HashMap<String, Object>> selectInventorySummaryAll(String user, String room) {
 	    return botNewDAO.selectInventorySummaryAll(user, room);
 	}
@@ -190,10 +182,6 @@ public class BotNewServiceImpl implements BotNewService {
 	@Override
 	public HashMap<String, Number> selectOwnedMarketBuffTotals(String user, String room) {
 	    return botNewDAO.selectOwnedMarketBuffTotals(user, room);
-	}
-	@Override
-	public HashMap<String, Number> selectOwnedAllBuffTotals(String user, String room) {
-	    return botNewDAO.selectOwnedAllBuffTotals(user, room);
 	}
 	@Override
     public List<HashMap<String, Object>> selectMarketItemsForSale(String userName, String roomName) {
@@ -266,22 +254,6 @@ public class BotNewServiceImpl implements BotNewService {
         return botNewDAO.selectAchievementsByUser(userName);
     }
     
-    @Override
-    public void updateUserJob(String userName, String roomName, String job) {
-    	botNewDAO.updateUserJob(userName,roomName,job);
-    }
-    
-    @Override
-    public void updateUserStatsForWarrior(String userName, String roomName,
-                                          int hpMax, int atkMin, int atkMax) {
-        botNewDAO.updateUserStatsForWarrior(userName, roomName, hpMax, atkMin, atkMax);
-    }
-    
-    @Override
-    public Timestamp selectJobChangeDate(String userName, String roomName) {
-        return botNewDAO.selectJobChangeDate(userName, roomName);
-    }
-
     @Override
     public int updateUserJobAndChangeDate(String userName, String roomName, String job) {
         return botNewDAO.updateUserJobAndChangeDate(userName, roomName, job);

@@ -2,17 +2,6 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="my.prac.core.prjbot.dao.BotNewDAO">
 
-  <insert id="insertBotPointNew" parameterType="HashMap">
-    INSERT INTO TBOT_POINT_NEW
-      (USER_NAME, ROOM_NAME, SCORE, INSERT_DATE, CMD)
-    VALUES
-      (#{userName,jdbcType=VARCHAR},
-       #{roomName,jdbcType=VARCHAR},
-       #{score,jdbcType=NUMERIC},
-       SYSDATE,
-       #{cmd,jdbcType=VARCHAR})
-  </insert>
-
   <!-- 1) 유저 -->
   <select id="selectUser" resultType="my.prac.core.game.dto.User">
     SELECT USER_NAME, ROOM_NAME, LV, EXP_CUR, EXP_NEXT, HP_CUR, HP_MAX, HP_REGEN,
@@ -307,24 +296,6 @@
      WHERE item_name = #{itemName}
   </select>
 
-  <!-- 보유 아이템 능력치 총합 (DEL_YN='0') -->
-  <select id="selectOwnedItemBuffTotals" resultType="hashmap">
-    SELECT
-        NVL(SUM(i.atk_min),0)  AS ATK_MIN,
-        NVL(SUM(i.atk_max),0)  AS ATK_MAX,
-        NVL(SUM(i.atk_cri),0)  AS ATK_CRI,
-        NVL(SUM(i.hp_regen),0) AS HP_REGEN,
-        NVL(SUM(i.hp_max),0)   AS HP_MAX
-    FROM TBOT_POINT_NEW_INVENTORY inv
-    JOIN TBOT_POINT_NEW_ITEM i
-      ON i.item_id = inv.item_id
-    WHERE inv.user_name = #{userName}
-      AND inv.room_name = #{roomName}
-      AND inv.del_yn = '0'
-      <if test="onlyMarket != null and onlyMarket == 'Y'">
-        AND i.item_type = 'MARKET'
-      </if>
-  </select>
   
   <select id="selectOwnedMarketBuffTotals" resultType="map">
 	  SELECT
@@ -341,24 +312,6 @@
 	    AND inv.room_name = #{roomName}
 	    AND inv.del_yn = '0'
 	    AND i.item_type = 'MARKET'
-	</select>
-	
-	<!-- 전체(필요시) -->
-	<select id="selectOwnedAllBuffTotals" resultType="map">
-	  SELECT
-	      NVL(SUM(i.atk_min),0)   AS ATK_MIN,
-	      NVL(SUM(i.atk_max),0)   AS ATK_MAX,
-	      NVL(SUM(i.atk_cri),0)   AS ATK_CRI,
-	      NVL(SUM(i.hp_regen),0)  AS HP_REGEN,
-	      NVL(SUM(i.hp_max),0)    AS HP_MAX,
-	      NVL(SUM(i.cri_dmg),0) AS CRI_DMG
-	  FROM TBOT_POINT_NEW_INVENTORY inv
-	  JOIN TBOT_POINT_NEW_ITEM i
-	    ON i.item_id = inv.item_id
-	  WHERE inv.user_name = #{userName}
-	    AND inv.room_name = #{roomName}
-	    AND inv.del_yn = '0'
-	    /* 전체라서 item_type 조건 없음 */
 	</select>
 	
 	<!-- 구매 가능한 MARKET 아이템 목록 + 보유여부 -->
@@ -586,14 +539,6 @@
 	</select>
 	
 	
-		<!-- 특정 방에서 특정 CMD가 이미 존재하는지 (최초 토벌 체크용) -->
-	<select id="selectPointRankCountByCmdInRoom" parameterType="hashMap" resultType="int">
-	    SELECT COUNT(1)
-	    FROM TBOT_POINT_RANK
-	    WHERE ROOM_NAME = #{roomName}
-	      AND CMD = #{cmd}
-	      AND NEW_YN = '1'
-	</select>
 	
 		<!-- 특정 방에서 특정 유저가 특정 업적 CMD로 이미 보상받았는지 -->
 	<select id="selectPointRankCountByCmdUserInRoom" parameterType="hashMap" resultType="int">
@@ -620,30 +565,6 @@
 	  ORDER BY INSERT_DATE DESC
 	</select>
 	
-	<update id="updateUserJob">
-	    UPDATE TBOT_POINT_NEW_USER
-	       SET JOB = #{job}
-	     WHERE USER_NAME = #{userName}
-	       AND ROOM_NAME = #{roomName}
-	       AND (JOB IS NULL OR JOB = '')
-	</update>
-	
-	<update id="updateUserStatsForWarrior">
-	    UPDATE TBOT_POINT_NEW_USER
-	       SET HP_MAX = #{hpMax},
-	           ATK_MIN = #{atkMin},
-	           ATK_MAX = #{atkMax}
-	     WHERE USER_NAME = #{userName}
-	       AND ROOM_NAME = #{roomName}
-	       AND JOB = '전사'
-	</update>
-	
-	<select id="selectJobChangeDate" resultType="java.sql.Timestamp">
-	    SELECT JOB_CHANGE_DATE
-	    FROM TBOT_POINT_NEW_USER
-	    WHERE USER_NAME = #{userName}
-	      AND ROOM_NAME = #{roomName}
-	</select>
 	
 	<update id="updateUserJobAndChangeDate">
 	    UPDATE TBOT_POINT_NEW_USER

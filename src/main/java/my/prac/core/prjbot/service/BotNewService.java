@@ -12,7 +12,6 @@ import my.prac.core.game.dto.OngoingBattle;
 import my.prac.core.game.dto.User;
 
 public interface BotNewService {
-	public int insertBotPointNew(HashMap<String,Object> map);
 	
 	User selectUser(String userName, String roomName);
 
@@ -62,13 +61,11 @@ public interface BotNewService {
     Integer selectItemPriceByName(String itemName);
 
     /** 아이템 보너스 총합 */
-    HashMap<String,Object> selectOwnedItemBuffTotals(String userName, String roomName, String onlyMarket);
 
     /** 인벤토리 요약(전체) */
     List<HashMap<String,Object>> selectInventorySummaryAll(String userName, String roomName);
 
     HashMap<String, Number> selectOwnedMarketBuffTotals(String user, String room);
-    HashMap<String, Number> selectOwnedAllBuffTotals(String user, String room);
     
     List<HashMap<String,Object>> selectMarketItemsForSale(String userName, String roomName);
     HashMap<String,Object> selectMarketItemById(Integer itemId);
@@ -99,11 +96,8 @@ public interface BotNewService {
     
     public List<HashMap<String,Object>> selectAchievementsByUser(String userName);
     
-    void updateUserJob(String userName, String roomName, String job);
     
-    void updateUserStatsForWarrior(String userName, String roomName, int hpMax, int atkMin, int atkMax);
     
-    Timestamp selectJobChangeDate(String userName, String roomName);
     int updateUserJobAndChangeDate(String userName, String roomName, String job);
     
     List<HashMap<String,Object>> selectRisingStarsTop5Last6h();

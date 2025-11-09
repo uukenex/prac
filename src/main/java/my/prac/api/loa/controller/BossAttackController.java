@@ -1494,43 +1494,6 @@ public class BossAttackController {
 	}
 	
 	
-	private String renderMarketListCompactWithOwned(List<HashMap<String,Object>> items) {
-		if (items == null || items.isEmpty()) return "판매중인 아이템이 없습니다.";
-	    StringBuilder sb = new StringBuilder();
-
-	    for (HashMap<String,Object> it : items) {
-	        int    itemId   = safeInt(it.get("ITEM_ID"));
-	        String name     = String.valueOf(it.get("ITEM_NAME"));
-	        int    price    = safeInt(it.get("ITEM_SELL_PRICE"));
-	        int    atkMin   = safeInt(it.get("ATK_MIN"));
-	        int    atkMax   = safeInt(it.get("ATK_MAX"));
-	        int    atkCri   = safeInt(it.get("ATK_CRI"));
-	        int    hpRegen  = safeInt(it.get("HP_REGEN"));
-	        int    hpMax    = safeInt(it.get("HP_MAX"));
-	        String ownedYn  = String.valueOf(it.get("OWNED_YN"));
-
-	        // 1) [ID] 이름 (구매완료)
-	        sb.append("[").append(itemId).append("] ").append(name);
-	        if ("Y".equalsIgnoreCase(ownedYn)) sb.append(" (구매완료)");
-	        sb.append(NL);
-
-	        // 2) 가격/옵션 라인
-	        sb.append("가격:").append(price).append("sp, 옵션: ");
-
-	        boolean first = true;
-	        // min/max: 0이면 생략, 부호 그대로 표시 (예: max-5)
-	        if (atkMin != 0) { sb.append("min").append(formatSigned(atkMin)); first=false; }
-	        if (atkMax != 0) { sb.append(first?"":" ").append("max").append(formatSigned(atkMax)); first=false; }
-	        if (atkCri != 0) { sb.append(first?"": " ").append("cri+").append(atkCri).append("%"); first=false; }
-	        if (hpRegen != 0){ sb.append(first?"": " ").append("hp_regen+").append(hpRegen); first=false; }
-	        if (hpMax != 0)  { sb.append(first?"": " ").append("hp+").append(hpMax); first=false; }
-
-	        if (first) sb.append("없음"); // 모든 옵션이 0이면
-	        sb.append(NL);
-	    }
-	    return sb.toString();
-	}
-	
 	private String formatSigned(int v) {
 	    return (v >= 0 ? "+" + v : String.valueOf(v));
 	}
@@ -1762,17 +1725,6 @@ public class BossAttackController {
 	    String s = String.valueOf(v);
 	    if (s.endsWith(".0")) return s.substring(0, s.length()-2);
 	    return s;
-	}
-
-	private int minutesToHalf(User u) { return minutesToHalf(u, u.hpCur); }
-	private int minutesToHalf(User u, int currentHp) {
-	    int threshold = (int) Math.ceil(u.hpMax * 0.5);
-	    if (currentHp >= threshold) return 0;
-	    if (u.hpRegen <= 0) return Integer.MAX_VALUE;
-
-	    int need = threshold - currentHp;                 // 필요한 HP
-	    int ticksNeeded = (need + u.hpRegen - 1) / u.hpRegen; // ⌈need / regen⌉
-	    return ticksNeeded * 10;                          // ✅ 틱(10분) → 분
 	}
 
 	private static class Flags { boolean atkCrit; int monPattern; }
@@ -2208,19 +2160,6 @@ public class BossAttackController {
 	}
 
 	
-	/** 레벨 차이 패널티를 적용한 EXP 표시값 (공격타겟용, u.lv 기준) */
-	private int calcExpWithPenaltyForDisplay(Monster m, int userLv) {
-	    if (m == null) return 0;
-	    int baseExp = Math.max(0, m.monExp);
-	    if (baseExp == 0) return 0;
-
-	    int diff = userLv - m.monNo;           // 유저 레벨 - 몬스터 번호
-	    int over = Math.max(0, diff);          // 초과분만 패널티
-	    double rate = Math.max(0.1, 1.0 - over * 0.2);  // 레벨당 -20%, 최소 10%
-
-	    return (int) Math.round(baseExp * rate);
-	}
-	
 	/** 업적 CMD → 단순 업적명 라벨 (보상/날짜 없이) */
 	private String formatAchievementLabelSimple(String cmd) {
 	    if (cmd == null || cmd.isEmpty()) return "";
@@ -2263,7 +2202,4 @@ public class BossAttackController {
 	    return cmd;
 	}
 
-	private String monNameWithThresholdLabel(String mname, int threshold) {
-	    return mname + " " + threshold + "킬 달성";
-	}
 }

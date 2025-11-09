@@ -18,9 +18,6 @@ import my.prac.core.game.dto.User;
 @Repository("core.prjbot.BotNewDAO")
 public interface BotNewDAO {
 
-
-    int insertBotPointNew(HashMap<String,Object> map);
-
     // User / Battle
     User selectUser(@Param("userName") String userName, @Param("roomName") String roomName);
     OngoingBattle selectOngoingBattle(@Param("userName") String userName, @Param("roomName") String roomName);
@@ -75,10 +72,6 @@ public interface BotNewDAO {
 
     Integer selectInventoryQty(@Param("userName") String userName, @Param("roomName") String roomName, @Param("itemId") Integer itemId);
 
-    // MARKET 합산 버프 (Number 안전)
-    HashMap<String,Object> selectOwnedItemBuffTotals(
-        @Param("userName") String userName, @Param("roomName") String roomName, @Param("onlyMarket") String onlyMarket);
-
     // 공격정보용 인벤토리 요약 (일반+MARKET+빛나는)
     List<HashMap<String,Object>> selectInventorySummaryAll(
         @Param("userName") String userName, @Param("roomName") String roomName);
@@ -95,11 +88,6 @@ public interface BotNewDAO {
         @Param("roomName") String roomName
     );
 
-    /** 전체 아이템 능력치 합 (필요하면) */
-    HashMap<String, Number> selectOwnedAllBuffTotals(
-        @Param("userName") String userName,
-        @Param("roomName") String roomName
-    );
     
     /** 내 계정 기준으로 구매 가능한 MARKET 아이템 목록 + 보유 여부 */
     List<HashMap<String, Object>> selectMarketItemsForSale(
@@ -161,20 +149,6 @@ public interface BotNewDAO {
     
     List<HashMap<String,Object>> selectAchievementsByUser(@Param("userName") String userName);
     
-    void updateUserJob(@Param("userName") String userName,
-            @Param("roomName") String roomName,
-            @Param("job") String job);
-    
-    int updateUserStatsForWarrior(
-            @Param("userName") String userName,
-            @Param("roomName") String roomName,
-            @Param("hpMax") int hpMax,
-            @Param("atkMin") int atkMin,
-            @Param("atkMax") int atkMax);
-    
-    Timestamp selectJobChangeDate(@Param("userName") String userName,
-            @Param("roomName") String roomName);
-
     int updateUserJobAndChangeDate(@Param("userName") String userName,
              @Param("roomName") String roomName,
              @Param("job") String job);
