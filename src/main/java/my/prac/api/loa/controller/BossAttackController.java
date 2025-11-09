@@ -92,14 +92,14 @@ public class BossAttackController {
 	    Timestamp lastChange = u.jobChangeDate;
 	    if (lastChange != null) {
 	        long diffSec = java.time.Duration.between(lastChange.toInstant(), java.time.Instant.now()).getSeconds();
-	        long limitSec = 24L * 60 * 60;
+	        long limitSec = 6L * 60 * 60;
 
 	        if (diffSec < limitSec) {
 	            long remain = limitSec - diffSec;
 	            long rh = remain / 3600;
 	            long rm = (remain % 3600) / 60;
 
-	            return "직업 변경은 24시간에 1회 가능합니다." + NL
+	            return "직업 변경은 6시간에 1회 가능합니다." + NL
 	                 + "다음 변경까지 남은 시간: " + rh + "시간 " + rm + "분";
 	        }
 	    }
@@ -112,7 +112,7 @@ public class BossAttackController {
 
 	    // 7) 완료 메시지
 	    return "✨ " + userName + "님, [" + newJob + "] 으로 직업이 변경되었습니다." + NL
-	         + "(직업 변경은 24시간에 1회 가능합니다)";
+	         + "(직업 변경은 6시간에 1회 가능합니다)";
 	}
 
 
@@ -496,9 +496,11 @@ public class BossAttackController {
 	        return "구매 가격 정보가 없습니다. 관리자에게 문의해주세요.";
 	    }
 
-	    // 상인: 10% 할인
+	    
+	    boolean usedMerchantDiscount = false;
 	    if (isMerchant) {
 	        price = (int)Math.floor(price * 0.9);
+	        usedMerchantDiscount = true;
 	    }
 
 	    // 이미 소유 여부
@@ -530,7 +532,7 @@ public class BossAttackController {
 	    inv.put("itemId",  itemId);
 	    inv.put("qty",     1);
 	    inv.put("delYn",   "0");
-	    inv.put("gainType","BUY");
+	    inv.put("gainType", usedMerchantDiscount ? "BUY_MERCHANT" : "BUY");
 	    botNewService.insertInventoryLogTx(inv);
 
 	    // 구매 후 포인트
@@ -735,12 +737,17 @@ public class BossAttackController {
 
 	    int rawAtkDmg = crit ? (int)Math.round(baseAtk * critMultiplier) : baseAtk;
 
-	 // 🎯 궁수 히든 스킬: 저격 (1% 확률로 최종 데미지 20배)
-	    boolean snipe = false;
+	    // 🎯 궁수 히든 저격: 유저Lv-2 ~ Lv+5 몬스터 대상, 5% 확률, 20배 데미지
+	    boolean isSnipe = false;
 	    if ("궁수".equals(job)) {
-	        if (ThreadLocalRandom.current().nextDouble() < 0.01) {
-	            snipe = true;
-	            rawAtkDmg = (int) Math.round(rawAtkDmg * 20.0);
+	    	int monLv = m.monNo; // int형이므로 null 비교 불필요
+	        int userLv = u.lv;
+
+	        if (monLv > 0 && monLv >= userLv - 2 && monLv <= userLv + 5) {
+	            if (ThreadLocalRandom.current().nextDouble() < 0.01) {
+	                isSnipe = true;
+	                rawAtkDmg = rawAtkDmg * 20;
+	            }
 	        }
 	    }
 	    
@@ -753,7 +760,7 @@ public class BossAttackController {
 		if (lethal) {
 			flags.atkCrit = crit;
 			flags.monPattern = 0;
-			flags.snipe = snipe; // 추가
+			flags.snipe = isSnipe; // 추가
 			calc.atkDmg = rawAtkDmg;
 			calc.monDmg = 0;
 			calc.patternMsg = null;
@@ -764,7 +771,7 @@ public class BossAttackController {
 		} else {
 			flags = rollFlags(u, m);
 			flags.atkCrit = crit;
-			flags.snipe = snipe; // 저격 여부 유지
+			flags.snipe = isSnipe; // 저격 여부 유지
 
 			boolean mageBreakGuard = false;
 
@@ -775,7 +782,7 @@ public class BossAttackController {
 					flags.monPattern = 1; // 방어 대신 무행동으로 취급
 				}
 			}
-
+			
 			calc = calcDamage(u, m, flags, baseAtk, crit, critMultiplier);
 
 			if (mageBreakGuard) {
@@ -1017,13 +1024,17 @@ public class BossAttackController {
 	    int sold = 0, soldNormal = 0, soldShiny = 0;
 	    long totalSp = 0L;
 
+	    boolean soldMerchantDiscount = false; // BUY_MERCHANT 물건을 실제로 판 적 있는지
+	    boolean soldMerchantBonus = false;    // 상인 보너스(드랍템 10%↑) 적용된 판매가 있었는지
+	    
 	    for (HashMap<String, Object> row : rows) {
 	        if (need <= 0) break;
 
 	        String gainType = Objects.toString(row.get("GAIN_TYPE"), "DROP");
 	        boolean isShinyRow = "DROP3".equalsIgnoreCase(gainType);
 	        boolean isDropRow  = isShinyRow || "DROP".equalsIgnoreCase(gainType);
-
+	        boolean isMerchantBuy  = "BUY_MERCHANT".equalsIgnoreCase(gainType);
+	        
 	        if (wantShinyOnly && !isShinyRow) continue;
 	        if (!wantShinyOnly && isShinyRow) continue;
 
@@ -1032,12 +1043,36 @@ public class BossAttackController {
 	        if (rid == null || qty <= 0) continue;
 
 	        int take = Math.min(qty, need);
-	        int unitPrice = isShinyRow ? basePrice * SHINY_MULTIPLIER : basePrice;
+	        if (take <= 0) continue;
 
-	        // 상인: DROP/DROP3 판매 시 20% 추가
+	        int unitPrice;
+
+	        if (isShinyRow) {
+	            // ✨빛드랍 기본 5배
+	            unitPrice = basePrice * SHINY_MULTIPLIER;
+	        } else {
+	            // 기본은 아이템 판매가
+	            unitPrice = basePrice;
+	        }
+
+	        // ✅ 상인 할인으로 산 아이템(BUY_MERCHANT)은 언제 팔든 '구매 당시 가격'으로만
+	        if (isMerchantBuy) {
+	            unitPrice = (int)Math.floor(basePrice * 0.9);
+	        }
+
+	        // ✅ 상인 직업 보너스는 DROP/DROP3 에만 적용 (BUY_MERCHANT에는 미적용)
 	        if (isMerchant && isDropRow) {
 	            unitPrice = (int)Math.round(unitPrice * 1.1);
 	        }
+
+	     // 👇 실제로 해당 타입이 팔렸는지 기록
+	        if (isMerchantBuy && take > 0) {
+	            soldMerchantDiscount = true;
+	        }
+	        if (isMerchant && isDropRow && !isMerchantBuy && take > 0) {
+	            soldMerchantBonus = true;
+	        }
+	        
 
 	        if (qty == take) botNewService.updateInventoryDelByRowId(rid);
 	        else botNewService.updateInventoryQtyByRowId(rid, qty - take);
@@ -1095,6 +1130,17 @@ public class BossAttackController {
 	      .append("- 현재 포인트: ").append(curPointStr).append(NL)
 	      .append(remainSb.toString());
 
+
+		 // 👇 여기 추가
+		 if (soldMerchantDiscount) {
+		     sb.append(NL)
+		       .append("※ 상인 할인으로 구매한 아이템은 할인가(90%) 기준으로 판매되었습니다.");
+		 }
+		 if (soldMerchantBonus) {
+		     sb.append(NL)
+		       .append("(상인 효과: 드랍 아이템 판매가 10% 보너스 적용)");
+		 }
+		 
 	    if (sold < reqQty) {
 	        sb.append(NL)
 	          .append("(요청 ").append(reqQty).append("개 → 실제 ").append(sold).append("개 판매)");
@@ -1705,9 +1751,84 @@ public class BossAttackController {
 	    // 치명타
 	    if (flags.atkCrit) sb.append("✨ 치명타!").append(NL);
 	    
-	    // 궁수 저격
+	 // 🎯 궁수 저격 히든: 데미지 수치는 비공개, 결과만 표기
 	    if (flags.snipe) {
-	        sb.append("✨ 저격[히든] 발동! 치명적인 피해를 선사합니다.").append(NL);
+	        int monHpAfter = Math.max(0, monHpRemainBefore - calc.atkDmg);
+
+	        sb.append("✨ 저격[히든] 발동!").append(NL);
+
+	        if (res.killed || monHpAfter <= 0) {
+	            sb.append(m.monName)
+	              .append("을(를) 단번에 처치했습니다!").append(NL)
+	              .append("❤️ 몬스터 HP: 0 / ").append(monMaxHp).append(NL);
+	        } else {
+	            sb.append(m.monName)
+	              .append("이(가) 간신히 버텼습니다.").append(NL)
+	              .append("❤️ 몬스터 HP: ")
+	              .append(monHpAfter).append(" / ").append(monMaxHp).append(NL);
+	        }
+
+	        // 몬스터 패턴 / 받은 피해 안내 (여긴 정상 공개)
+	        if (calc.patternMsg != null && !calc.patternMsg.isEmpty()) {
+	            sb.append("⚅ ").append(calc.patternMsg).append(NL);
+	        }
+
+	        if (calc.monDmg > 0) {
+	            sb.append("❤️ 받은 피해: ").append(calc.monDmg)
+	              .append(",  현재 체력: ").append(u.hpCur)
+	              .append(" / ").append(displayHpMax).append(NL);
+	        } else {
+	            sb.append("❤️ 현재 체력: ").append(u.hpCur)
+	              .append(" / ").append(displayHpMax).append(NL);
+	        }
+
+	        // 드랍
+	        if (res.killed && !"0".equals(res.dropCode)) {
+	            String dropName = (m.monDrop == null ? "" : m.monDrop.trim());
+	            if (!dropName.isEmpty()) {
+	                if ("3".equals(res.dropCode)) {
+	                    sb.append("✨ 드랍 획득: ✨빛").append(dropName).append(NL);
+	                } else {
+	                    sb.append("✨ 드랍 획득: ").append(dropName).append(NL);
+	                }
+	            }
+	        }
+
+	        // EXP
+	        sb.append("✨ EXP+").append(res.gainExp)
+	          .append(" , EXP: ").append(u.expCur)
+	          .append(" / ").append(u.expNext).append(NL);
+
+	        // 레벨업 정보
+	        if (up != null && up.levelUpCount > 0) {
+	            sb.append(NL)
+	              .append("✨ 레벨업! Lv ").append(up.beforeLv)
+	              .append(" → ").append(up.afterLv);
+	            if (up.levelUpCount > 1) {
+	                sb.append(" ( +").append(up.levelUpCount).append(" )");
+	            }
+	            sb.append(NL);
+
+	            sb.append("└:❤️HP ")
+	              .append(up.beforeHpMax).append("→").append(up.afterHpMax)
+	              .append(" (+").append(up.hpMaxDelta).append(")").append(NL);
+
+	            sb.append("└:⚔ATK ")
+	              .append(up.beforeAtkMin).append("~").append(up.beforeAtkMax)
+	              .append("→").append(up.afterAtkMin).append("~").append(up.afterAtkMax)
+	              .append(" (+").append(up.atkMinDelta).append("~+").append(up.atkMaxDelta).append(")").append(NL);
+
+	            sb.append("└: CRIT ")
+	              .append(up.beforeCrit).append("%→").append(up.afterCrit).append("%")
+	              .append(" (+").append(up.critDelta).append("%)").append(NL);
+
+	            sb.append("└: 5분당회복 ")
+	              .append(up.beforeHpRegen).append("→").append(up.afterHpRegen)
+	              .append(" (+").append(up.hpRegenDelta).append(")").append(NL);
+	        }
+
+	        // ✅ 여기서 끝: 저격일 땐 일반 데미지 표현 블록으로 내려가지 않음
+	        return sb.toString();
 	    }
 
 	    // 데미지
