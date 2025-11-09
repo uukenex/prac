@@ -830,7 +830,7 @@ public class BossAttackController {
 		             .setAtkCritYn(flags.atkCrit ? 1 : 0)
 		             .setMonPatten(flags.monPattern)
 		             .setKillYn(0)
-		             .setNowYn(1)
+		             .setNowYn(0)
 		             .setDropYn(0)
 		             .setDeathYn(1)
 		             .setLuckyYn(0)
