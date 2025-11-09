@@ -838,27 +838,20 @@ public class BossAttackController {
 	    boolean willKill = calc.atkDmg >= monHpRemainBefore;
 	    Resolve res = resolveKillAndDrop(m, calc, willKill, u, lucky);
 
-	 // 🔹 상인: 드랍템 판매가의 10%를 즉시 SP로 추가 획득
+	    // 🔹 상인: 공격 시마다, 해당 몬스터 드랍템 판매가의 10%를 SP로 추가 획득 (킬/드랍 여부 무관)
 	    int merchantBonusSp = 0;
-	    if ("상인".equals(job) && res.killed && !"0".equals(res.dropCode)) {
+	    if ("상인".equals(job)) {
 	        String dropName = (m.monDrop == null ? "" : m.monDrop.trim());
 	        if (!dropName.isEmpty()) {
-	            int dropPrice = getDropPriceByName(dropName); // 이미 존재하는 헬퍼 사용
-
+	            int dropPrice = getDropPriceByName(dropName); // 이미 있는 헬퍼
 	            if (dropPrice > 0) {
-	                // 빛드랍(DROP3)은 판매가 5배이므로, 상인 보너스도 그 기준 적용
-	                if ("3".equals(res.dropCode)) {
-	                    dropPrice *= 5;
-	                }
-
 	                merchantBonusSp = (int) Math.floor(dropPrice * 0.10);
-
 	                if (merchantBonusSp > 0) {
 	                    HashMap<String,Object> pr = new HashMap<>();
 	                    pr.put("userName", userName);
 	                    pr.put("roomName", roomName);
 	                    pr.put("score", merchantBonusSp);
-	                    pr.put("cmd", "MERCHANT_DROP_BONUS");
+	                    pr.put("cmd", "MERCHANT_ATTACK_BONUS");
 	                    botNewService.insertPointRank(pr);
 	                }
 	            }
@@ -939,7 +932,7 @@ public class BossAttackController {
 	    
 	 // 🔹 상인 추가 보너스 안내
 	    if (merchantBonusSp > 0) {
-	        msg += NL + "💰 상인 효과!" + merchantBonusSp + "sp 추가 획득";
+	        msg += NL + "✨ 상인 효과!" + merchantBonusSp + "sp 획득";
 	    }
 
 	    // 18) 현재 포인트 조회
