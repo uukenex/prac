@@ -1159,7 +1159,7 @@ public class BossAttackController {
 
 	    /* === 떠오르는샛별 (최근 6시간 공격횟수 TOP5) === */
 	    List<HashMap<String,Object>> rising = botNewService.selectRisingStarsTop5Last6h();
-	    sb.append("떠오르는샛별").append(NL);
+	    sb.append("✨ 떠오르는샛별").append(NL);
 	    if (rising == null || rising.isEmpty()) {
 	        sb.append("- 데이터 없음").append(NL);
 	    } else {
