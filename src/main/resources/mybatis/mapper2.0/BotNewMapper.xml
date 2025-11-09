@@ -652,4 +652,53 @@
 	     WHERE USER_NAME = #{userName}
 	       AND ROOM_NAME = #{roomName}
 	</update>
+	
+	<select id="selectRisingStarsTop5Last6h" resultType="hashmap">
+	    SELECT *
+	    FROM (
+	        SELECT USER_NAME,
+	               ROOM_NAME,
+	               COUNT(*) AS ATK_CNT,
+	               MAX(INSERT_DATE) AS LAST_ATTACK
+	        FROM TBOT_POINT_NEW_BATTLE_LOG
+	        WHERE INSERT_DATE >= SYSDATE - (6/24)
+	        GROUP BY USER_NAME, ROOM_NAME
+	        ORDER BY ATK_CNT DESC, LAST_ATTACK DESC
+	    )
+	    WHERE ROWNUM &lt;= 5
+	</select>
+	<select id="selectOngoingChallengesForUnclearedBosses" resultType="hashmap">
+	  SELECT
+	      ob.TARGET_MON_LV          AS MON_NO,
+	      m.MON_NAME                AS MON_NAME,
+	      ob.USER_NAME              AS USER_NAME,
+	      u.JOB                     AS JOB,
+	      u.LV                      AS LV,
+	      TO_CHAR(ob.START_TIME, 'YYYY-MM-DD HH24:MI:SS') AS START_TIME,
+	      m.MON_HP                  AS MON_HP,
+	      GREATEST(m.MON_HP - ob.TOTAL_ATK, 0) AS REMAIN_HP
+	  FROM (
+	      SELECT
+	          bl.USER_NAME,
+	          bl.ROOM_NAME,
+	          bl.TARGET_MON_LV,
+	          MIN(bl.INSERT_DATE)         AS START_TIME,
+	          NVL(SUM(bl.ATK_DMG), 0)     AS TOTAL_ATK
+	      FROM TBOT_POINT_NEW_BATTLE_LOG bl
+	      WHERE bl.NOW_YN = '1'
+	      GROUP BY bl.USER_NAME, bl.ROOM_NAME, bl.TARGET_MON_LV
+	  ) ob
+	  JOIN TBOT_POINT_NEW_MON_INFO m
+	    ON m.MON_NO = ob.TARGET_MON_LV
+	  JOIN TBOT_POINT_NEW_USER u
+	    ON u.USER_NAME = ob.USER_NAME
+	   AND u.ROOM_NAME = ob.ROOM_NAME
+	  WHERE NOT EXISTS (
+	        SELECT 1
+	          FROM TBOT_POINT_NEW_BATTLE_LOG b2
+	         WHERE b2.TARGET_MON_LV = ob.TARGET_MON_LV
+	           AND b2.KILL_YN = 1
+	    )
+	  ORDER BY m.MON_NO, ob.START_TIME, ob.USER_NAME
+	</select>
 </mapper>

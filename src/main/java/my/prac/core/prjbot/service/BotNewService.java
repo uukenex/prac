@@ -105,6 +105,9 @@ public interface BotNewService {
     
     Timestamp selectJobChangeDate(String userName, String roomName);
     int updateUserJobAndChangeDate(String userName, String roomName, String job);
+    
+    List<HashMap<String,Object>> selectRisingStarsTop5Last6h();
+    List<HashMap<String,Object>> selectOngoingChallengesForUnclearedBosses();
 } 
 
 	

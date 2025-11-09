@@ -286,4 +286,14 @@ public class BotNewServiceImpl implements BotNewService {
     public int updateUserJobAndChangeDate(String userName, String roomName, String job) {
         return botNewDAO.updateUserJobAndChangeDate(userName, roomName, job);
     }
+    
+    @Override
+    public List<HashMap<String,Object>> selectRisingStarsTop5Last6h() {
+        return botNewDAO.selectRisingStarsTop5Last6h();
+    }
+
+    @Override
+    public List<HashMap<String,Object>> selectOngoingChallengesForUnclearedBosses() {
+        return botNewDAO.selectOngoingChallengesForUnclearedBosses();
+    }
 }

@@ -178,4 +178,8 @@ public interface BotNewDAO {
     int updateUserJobAndChangeDate(@Param("userName") String userName,
              @Param("roomName") String roomName,
              @Param("job") String job);
+    
+ // 신규
+    List<HashMap<String,Object>> selectRisingStarsTop5Last6h();
+    List<HashMap<String,Object>> selectOngoingChallengesForUnclearedBosses();
 }

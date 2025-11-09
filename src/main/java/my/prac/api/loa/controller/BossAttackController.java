@@ -4,8 +4,10 @@ import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 
 import javax.annotation.Resource;
@@ -791,9 +793,10 @@ public class BossAttackController {
 	                .setDeathYn(1)
 	                .setLuckyYn(0)
 	        );
-	        return userName + "님, 큰 피해로 쓰러졌습니다." + NL
-	                + "현재 체력: 0 / " + effHpMax + NL
-	                + REVIVE_WAIT_MINUTES + "분 뒤 부활하여 50% 체력을 가집니다.";
+	        return userName + "님, 전투 불능 상태입니다." + NL
+	        	    + "현재 체력: 0 / " + effHpMax + NL
+	        	    + "10분 뒤 최대 체력의 10%로 부활하며," + NL
+	        	    + "이후 5분마다 HP_REGEN 만큼 서서히 회복됩니다.";
 	    }
 
 	    // 14) 처치/드랍 판단
@@ -834,14 +837,21 @@ public class BossAttackController {
 
 	    // 15) DB 반영 + 로그
 	    LevelUpResult up = persist(userName, roomName, u, m, flags, calc, res);
+	    String bonusMsg = "";
 	    if (res.killed) {
+	        // 진행중 전투 종료
 	        botNewService.closeOngoingBattleTx(userName, roomName);
-	    }
 
-	    // 16) 최초 토벌 업적/보상
-	    if (res.killed) {
-	        // 방 전체 또는 글로벌 조건에 맞게 구현되어 있다고 가정
-	        // 예: msg에 추가 텍스트를 append
+	        // ✅ 최초토벌 보상 (글로벌 1회 or 룸 기준: selectPointRankCountByCmdGlobal 구현에 따름)
+	        String firstClearMsg = grantFirstClearIfEligible(userName, roomName, m);
+
+	        // ✅ 킬수 업적 (몬스터별/통산)
+	        String killAchvMsg = grantKillAchievements(userName, roomName);
+
+	        if ((firstClearMsg != null && !firstClearMsg.isEmpty())
+	         || (killAchvMsg != null && !killAchvMsg.isEmpty())) {
+	            bonusMsg = NL + firstClearMsg + killAchvMsg;
+	        }
 	    }
 
 	    // 17) 메시지 구성 (표시용 ATK 범위에 직업 효과 반영)
@@ -858,6 +868,11 @@ public class BossAttackController {
 	    
 	    if (stealMsg != null) {
 	        msg += NL + stealMsg;
+	    }
+	    
+	    // ✅ 최초토벌/업적 메시지 추가
+	    if (!bonusMsg.isEmpty()) {
+	        msg += bonusMsg;
 	    }
 
 	    // 18) 현재 포인트 조회
@@ -1029,13 +1044,30 @@ public class BossAttackController {
 	}
 
 	
-	/** 공격 랭킹 출력 (Top3 / 몬스터 학살자 / 최초 토벌자) */
+	/** 공격 랭킹 출력 (떠오르는샛별 / Top3 / 몬스터 학살자 / 최초토벌 + 도전중) */
 	public String showAttackRanking(HashMap<String,Object> map) {
 	    final String NL = "♬";
+	    final String allSeeStr = "===";
 
 	    StringBuilder sb = new StringBuilder();
 
-	    // === ⚔ 공격 랭킹 ===
+	    /* === 떠오르는샛별 (최근 6시간 공격횟수 TOP5) === */
+	    List<HashMap<String,Object>> rising = botNewService.selectRisingStarsTop5Last6h();
+	    sb.append("떠오르는샛별").append(NL);
+	    if (rising == null || rising.isEmpty()) {
+	        sb.append("- 데이터 없음").append(NL);
+	    } else {
+	        int rank = 1;
+	        for (HashMap<String,Object> row : rising) {
+	            String name = String.valueOf(row.get("USER_NAME"));
+	            // 필요시 방 이름, 공격 횟수도 붙일 수 있음 (ex. " (12회)")
+	            sb.append(rank).append("위: ").append(name).append(NL);
+	            if (rank++ >= 5) break;
+	        }
+	    }
+	    sb.append(allSeeStr).append(NL).append(NL);
+
+	    /* === ⚔ 공격 랭킹 (기존 Top3) === */
 	    sb.append("⚔ 공격 랭킹").append(NL);
 	    List<HashMap<String,Object>> top3 = botNewService.selectTopLevelUsers();
 	    if (top3 == null || top3.isEmpty()) {
@@ -1043,66 +1075,101 @@ public class BossAttackController {
 	    } else {
 	        int rank = 1;
 	        for (HashMap<String,Object> row : top3) {
-	            String name = String.valueOf(row.get("USER_NAME"));
-	            int lv      = safeInt(row.get("LV"));
-	            int expCur  = safeInt(row.get("EXP_CUR"));
-	            int expNext = safeInt(row.get("EXP_NEXT"));
+	            String name    = String.valueOf(row.get("USER_NAME"));
+	            int lv         = safeInt(row.get("LV"));
+	            int expCur     = safeInt(row.get("EXP_CUR"));
+	            int expNext    = safeInt(row.get("EXP_NEXT"));
 
-	            sb.append(rank).append("위: ").append(name).append(" ").append(NL)
-	              .append("▶(Lv.").append(lv).append(", EXP ").append(expCur).append("/")
-	              .append(expNext).append(")").append(NL);
+	            sb.append(rank).append("위: ").append(name).append(NL)
+	              .append("▶(Lv.").append(lv)
+	              .append(", EXP ").append(expCur).append("/").append(expNext).append(")")
+	              .append(NL);
 	            rank++;
+	            if (rank > 3) break;
 	        }
 	    }
 	    sb.append(NL);
 
-	    // === ⚔ 몬스터 학살자 ===
+	    /* === ⚔ 몬스터 학살자 (기존) === */
 	    sb.append("⚔ 몬스터 학살자").append(NL);
 	    List<HashMap<String,Object>> killers = botNewService.selectKillLeadersByMonster();
 	    if (killers == null || killers.isEmpty()) {
 	        sb.append("데이터 없음").append(NL);
 	    } else {
-	        // 몬스터별 블록 출력
 	        Integer lastMonNo = null;
 	        String  lastMonName = null;
 	        for (HashMap<String,Object> k : killers) {
-	            int monNo = safeInt(k.get("MON_NO"));
-	            String monName = String.valueOf(k.get("MON_NAME"));
-	            String uName = String.valueOf(k.get("USER_NAME"));
-	            int kills = safeInt(k.get("KILL_COUNT"));
+	            int monNo       = safeInt(k.get("MON_NO"));
+	            String monName  = String.valueOf(k.get("MON_NAME"));
+	            String uName    = String.valueOf(k.get("USER_NAME"));
+	            int kills       = safeInt(k.get("KILL_COUNT"));
 
-	            if (!Objects.equals(lastMonNo, monNo)) {
-	                // 새 몬스터 헤더
-	                if (lastMonNo != null) sb.append(""); // 구분 필요 시 사용
+	            if (!java.util.Objects.equals(lastMonNo, monNo)) {
 	                sb.append("- ").append(monName).append(" 학살자: ").append(NL);
 	                lastMonNo = monNo;
 	                lastMonName = monName;
 	            }
-	            sb.append("▶").append(uName).append(" (").append(kills).append("마리)").append(NL);
+	            sb.append("▶").append(uName)
+	              .append(" (").append(kills).append("마리)").append(NL);
 	        }
 	    }
 	    sb.append(NL);
 
-	    // === ⚔ 최초 토벌자 ===
+	    /* === ⚔ 최초토벌 === */
 	    sb.append("⚔ 최초토벌").append(NL);
-	    List<HashMap<String,Object>> firsts = botNewService.selectFirstClearInfo();
-	    if (firsts == null || firsts.isEmpty()) {
-	        sb.append("데이터 없음").append(NL);
-	    } else {
-	        for (HashMap<String,Object> fc : firsts) {
-	            String monName  = String.valueOf(fc.get("MON_NAME"));
-	            String firstUser = String.valueOf(fc.get("FIRST_CLEAR_USER"));
-	            String firstTime = String.valueOf(fc.get("FIRST_CLEAR_DATE")); // YYYY-MM-DD HH24:MI
 
-	            sb.append("- ").append(monName);
-	            sb.append(" (").append(firstTime).append(")").append(NL);
-	            sb.append("▶").append(firstUser).append(NL);
-	            
+	 // 1) 이미 토벌된 몬스터
+	    List<HashMap<String,Object>> firsts = botNewService.selectFirstClearInfo();
+	    Set<Integer> clearedMonSet = new HashSet<>();
+
+	    if (firsts != null && !firsts.isEmpty()) {
+	        for (HashMap<String,Object> fc : firsts) {
+	            int monNo        = safeInt(fc.get("MON_NO"));
+	            String monName   = String.valueOf(fc.get("MON_NAME"));
+	            String firstUser = String.valueOf(fc.get("FIRST_CLEAR_USER"));
+	            String firstJob  = Objects.toString(fc.get("FIRST_CLEAR_JOB"), "");
+	            String firstTime = Objects.toString(fc.get("FIRST_CLEAR_DATE"), "");
+
+	            clearedMonSet.add(monNo);
+
+	            sb.append("- ").append(monName).append(NL)
+	              .append("▶").append(firstUser);
+
+	            if (!firstJob.isEmpty() && !"null".equalsIgnoreCase(firstJob)) {
+	                sb.append("/").append(firstJob);
+	            }
+	            if (!firstTime.isEmpty() && !"null".equalsIgnoreCase(firstTime)) {
+	                sb.append(" (").append(firstTime).append(")");
+	            }
+	            sb.append(NL);
+	        }
+	    }
+
+	    List<HashMap<String,Object>> ongoing = botNewService.selectOngoingChallengesForUnclearedBosses();
+	    if (ongoing != null && !ongoing.isEmpty()) {
+	        sb.append(NL).append("⚔ 최초토벌 도전중").append(NL);
+	        for (HashMap<String,Object> row : ongoing) {
+	            String monName   = String.valueOf(row.get("MON_NAME"));
+	            String userName2 = String.valueOf(row.get("USER_NAME"));
+	            String job       = Objects.toString(row.get("JOB"), "");
+	            int lv           = safeInt(row.get("LV"));
+	            String startTime = String.valueOf(row.get("START_TIME"));
+	            int monHp        = safeInt(row.get("MON_HP"));
+	            int remainHp     = safeInt(row.get("REMAIN_HP"));
+
+	            sb.append("- ").append(monName)
+	              .append(" ").append(remainHp).append(" / ").append(monHp).append(NL)
+	              .append("▶[도전 중] ").append(userName2);
+	            if (!job.isEmpty()) sb.append("/").append(job);
+	            sb.append("(Lv.").append(lv).append(")")
+	              .append(" (").append(startTime).append(")")
+	              .append(NL);
 	        }
 	    }
 
 	    return sb.toString();
 	}
+
 
 	
 	/** 공격 랭킹 보기 */
@@ -1228,22 +1295,35 @@ public class BossAttackController {
 	    return "";
 	}
 
-
 	private int computeEffectiveHpFromLastAttack(String userName, String roomName, User u, int effHpMax, int effRegen) {
-		if (u.hpCur >= effHpMax || effRegen <= 0)
+		if (u.hpCur >= effHpMax || effRegen <= 0) {
 			return Math.min(u.hpCur, effHpMax);
+		}
 
-		Timestamp baseline = getLastDamageBaseline(userName, roomName);
-		if (baseline == null)
+// 피격 시점 (회복 시작 기준)
+		Timestamp damaged = botNewService.selectLastDamagedTime(userName, roomName);
+		if (damaged == null) {
+// 맞은 적이 없다면 피격 기반 리젠 없음
 			return Math.min(u.hpCur, effHpMax);
+		}
 
-		long minutes = Math.max(0, Duration.between(baseline.toInstant(), Instant.now()).toMinutes());
-		long ticks = minutes / 5; // ✅ 5분당 1틱
-		if (ticks <= 0)
+// 마지막 공격 시점 (여기까지의 리젠은 이미 HP에 반영되었다고 본다)
+		Timestamp lastAtk = botNewService.selectLastAttackTime(userName, roomName);
+
+		Timestamp from = damaged;
+		if (lastAtk != null && lastAtk.after(damaged)) {
+			from = lastAtk;
+		}
+
+		long minutes = Math.max(0, Duration.between(from.toInstant(), Instant.now()).toMinutes());
+		long ticks = minutes / 5; // 5분당 1틱
+		if (ticks <= 0) {
 			return Math.min(u.hpCur, effHpMax);
+		}
 
 		long heal = ticks * (long) effRegen;
 		long effective = (long) u.hpCur + heal;
+
 		return (int) Math.min(effective, (long) effHpMax);
 	}
 	
@@ -1300,7 +1380,7 @@ public class BossAttackController {
 	      .append(", 5분당 회복 +").append(u.hpRegen).append(NL);
 
 	    // ✅ 리젠 스케줄 출력
-	    String sched = buildRegenScheduleSnippet(userName, roomName, u, waitMin);
+	    String sched = buildRegenScheduleSnippetEnhanced(userName, roomName, u, waitMin);
 	    if (sched != null) sb.append(sched).append(NL);
 
 	    // ✅ 풀HP ETA 출력
@@ -1314,23 +1394,35 @@ public class BossAttackController {
 	    return sb.toString();
 	}
 	
-	// ✅ 5분 단위로 변경
+	// ✅ 5분 단위 회복 기준, 피격/공격 기준과 일관성 유지
 	private int minutesUntilFull(String userName, String roomName, User u) {
 	    if (u.hpCur >= u.hpMax) return 0;
 	    if (u.hpRegen <= 0) return Integer.MAX_VALUE;
 
-	    Timestamp baseline = getLastDamageBaseline(userName, roomName);
-	    if (baseline == null) return Integer.MAX_VALUE;
+	    Timestamp damaged = botNewService.selectLastDamagedTime(userName, roomName);
+	    if (damaged == null) return Integer.MAX_VALUE;
 
-	    long minutesPassed = Math.max(0, Duration.between(baseline.toInstant(), Instant.now()).toMinutes());
-	    int  toNextTick    = (int)((5 - (minutesPassed % 5)) % 5); // 0이면 경계
-	    int  firstTick     = (toNextTick == 0 ? 5 : toNextTick);   // ✅ 경계 보정
+	    Timestamp lastAtk = botNewService.selectLastAttackTime(userName, roomName);
 
-	    int needHp      = u.hpMax - u.hpCur;
-	    int ticksNeeded = (int) Math.ceil(needHp / (double) u.hpRegen);
+	    Timestamp from = damaged;
+	    if (lastAtk != null && lastAtk.after(damaged)) {
+	        from = lastAtk;
+	    }
 
-	    return firstTick + Math.max(0, ticksNeeded - 1) * 5;       // ✅ 5분 단위
+	    long minutesPassed = Math.max(0, Duration.between(from.toInstant(), Instant.now()).toMinutes());
+	    long offset = minutesPassed % 5;
+
+	    // 다음 틱까지 남은 시간 (경계면 → 5분 후를 다음 틱으로 본다)
+	    int toNextTick = (int)((5 - offset) % 5);
+	    if (toNextTick == 0) toNextTick = 5;
+
+	    int needHp = u.hpMax - u.hpCur;
+	    int ticksNeeded = (int)Math.ceil(needHp / (double)u.hpRegen);
+	    if (ticksNeeded <= 0) return 0;
+
+	    return toNextTick + (ticksNeeded - 1) * 5;
 	}
+
 
 	private Flags rollFlags(User u, Monster m) {
 		ThreadLocalRandom r = ThreadLocalRandom.current();
@@ -1448,24 +1540,33 @@ public class BossAttackController {
 	    catch (Exception e) { return 0; }
 	}
 
-	// ✅ firstTick 경계보정 유지, 10→5분 주기로 변경
+	// 이름은 기존 그대로 두고, 현재는 20% 기준으로 동작
 	private int minutesUntilReach30(User u, String userName, String roomName) {
-	    int threshold = (int) Math.ceil(u.hpMax * 0.2);
+	    int threshold = (int)Math.ceil(u.hpMax * 0.2); // ✅ 20% 기준
 	    if (u.hpCur >= threshold) return 0;
 	    if (u.hpRegen <= 0) return Integer.MAX_VALUE;
 
-	    Timestamp baseline = getLastDamageBaseline(userName, roomName);
-	    if (baseline == null) return 0;
+	    Timestamp damaged = botNewService.selectLastDamagedTime(userName, roomName);
+	    if (damaged == null) return 0; // 맞은 적 없으면 막지 않음
 
-	    long minutesPassed = Math.max(0, Duration.between(baseline.toInstant(), Instant.now()).toMinutes());
+	    Timestamp lastAtk = botNewService.selectLastAttackTime(userName, roomName);
 
-	    int toNext    = (int)((5 - (minutesPassed % 5)) % 5);   // ✅ 5분 단위
-	    int firstTick = (toNext == 0 ? 5 : toNext);              // ✅ 경계 보정: 0 → 5분
+	    Timestamp from = damaged;
+	    if (lastAtk != null && lastAtk.after(damaged)) {
+	        from = lastAtk;
+	    }
 
-	    int hpNeeded    = threshold - u.hpCur;
-	    int ticksNeeded = (int) Math.ceil(hpNeeded / (double) u.hpRegen);
+	    long minutesPassed = Math.max(0, Duration.between(from.toInstant(), Instant.now()).toMinutes());
+	    long offset = minutesPassed % 5;
 
-	    return firstTick + Math.max(0, ticksNeeded - 1) * 5;    // ✅ 5분 단위
+	    int toNextTick = (int)((5 - offset) % 5);
+	    if (toNextTick == 0) toNextTick = 5;
+
+	    int hpNeeded = threshold - u.hpCur;
+	    int ticksNeeded = (int)Math.ceil(hpNeeded / (double)u.hpRegen);
+	    if (ticksNeeded <= 0) return 0;
+
+	    return toNextTick + (ticksNeeded - 1) * 5;
 	}
 
 
@@ -1812,34 +1913,59 @@ public class BossAttackController {
 	private Timestamp getLastDamageBaseline(String userName, String roomName) {
 		return botNewService.selectLastDamagedTime(userName, roomName);
 	}
-	// ✅ 5분 단위 스케줄로 변경
-	private String buildRegenScheduleSnippet(String userName, String roomName, User u, int horizonMinutes) {
-	    Timestamp baseline = getLastDamageBaseline(userName, roomName);
-	    if (baseline == null || horizonMinutes <= 0 || u.hpRegen <= 0) return null;
+	// ✅ 5분 단위 리젠 스케줄 + 풀HP까지 예상시간 표시
+	private String buildRegenScheduleSnippetEnhanced(String userName, String roomName, User u, int horizonMinutes) {
+	    if (horizonMinutes <= 0 || u.hpRegen <= 0 || u.hpCur >= u.hpMax) return null;
 
-	    long minutesPassed = Math.max(0, Duration.between(baseline.toInstant(), Instant.now()).toMinutes());
-	    long ticksSoFar    = minutesPassed / 5;                       // ✅ 5분 틱
-	    int  toNextTick    = (int)((5 - (minutesPassed % 5)) % 5);    // 0이면 경계
-	    int  startOffset   = (toNextTick == 0 ? 5 : toNextTick);      // ✅ 경계 보정
+	    Timestamp damaged = botNewService.selectLastDamagedTime(userName, roomName);
+	    if (damaged == null) return null;
+
+	    Timestamp lastAtk = botNewService.selectLastAttackTime(userName, roomName);
+	    Timestamp from = damaged;
+	    if (lastAtk != null && lastAtk.after(damaged)) {
+	        from = lastAtk;
+	    }
+
+	    long minutesPassed = Math.max(0, Duration.between(from.toInstant(), Instant.now()).toMinutes());
+	    long ticksSoFar = minutesPassed / 5;
+
+	    int toNextTick = (int)((5 - (minutesPassed % 5)) % 5);
+	    if (toNextTick == 0) toNextTick = 5;
 
 	    StringBuilder sb = new StringBuilder();
+	    final String NL = "♬";
 
-	    for (int t = startOffset; t <= horizonMinutes; t += 5) {      // ✅ 5분 스텝
-	        if (u.hpCur >= u.hpMax) break;
+	    int curHp = u.hpCur;
+	    int maxHp = u.hpMax;
+	    int regen = u.hpRegen;
+
+	    // 5분 단위로 예측 표시
+	    for (int t = toNextTick; t <= horizonMinutes; t += 5) {
 	        int ticksAdded = (int)(((minutesPassed + t) / 5) - ticksSoFar);
-	        int proj = Math.min(u.hpMax, u.hpCur + Math.max(0, ticksAdded) * Math.max(0, u.hpRegen));
-	        sb.append("- ").append(t).append("분 뒤: HP ").append(proj).append(" / ").append(u.hpMax).append(NL);
+	        if (ticksAdded <= 0) continue;
+
+	        int proj = Math.min(maxHp, curHp + ticksAdded * regen);
+	        sb.append("- ").append(t).append("분 뒤: HP ").append(proj)
+	          .append(" / ").append(maxHp).append(NL);
+
+	        if (proj >= maxHp) break; // 풀피 도달 시 중단
 	    }
 
-	    if (horizonMinutes % 5 != 0) {
-	        int ticksAtHorizon = (int)(((minutesPassed + horizonMinutes) / 5) - ticksSoFar);
-	        int proj = Math.min(u.hpMax, u.hpCur + Math.max(0, ticksAtHorizon) * Math.max(0, u.hpRegen));
-	        sb.append("- ").append(horizonMinutes).append("분 뒤: HP ").append(proj).append(" / ").append(u.hpMax).append(NL);
+	    // === 풀 HP까지 남은 시간 계산 ===
+	    int hpNeeded = maxHp - curHp;
+	    int ticksNeeded = (int)Math.ceil(hpNeeded / (double)regen);
+	    int minutesToFull = (toNextTick + (ticksNeeded - 1) * 5);
+	    if (minutesToFull < 0) minutesToFull = 0;
+
+	    String result = sb.toString().trim();
+	    if (!result.isEmpty()) {
+	        result += NL + "♬(풀HP까지 약 " + minutesToFull + "분)♬";
 	    }
 
-	    String out = sb.toString().trim();
-	    return out.isEmpty() ? null : out;
+	    return result.isEmpty() ? null : result;
 	}
+
+
 
 	
 	private static double clamp(double v, double min, double max) {
