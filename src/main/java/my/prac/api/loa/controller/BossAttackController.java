@@ -631,6 +631,15 @@ public class BossAttackController {
 	    int effRegen    = u.hpRegen + bRegen;
 	    int effCriDmg   = u.critDmg + bCriDmg;
 	    
+	 // 🌟 운영자의 축복: Lv 7 이하 전투 시 전용 버프 (DB에는 저장하지 않음)
+	    boolean hasBless = (u.lv <= 7);
+	    int blessAtk = 0;
+	    int blessRegen = 0;
+	    if (hasBless) {
+	        blessAtk = 3;
+	        blessRegen = 3;
+	        effRegen += blessRegen; // 체젠은 여기서 바로 반영
+	    }
 	    
 	 // === 직업별 보너스 계산 ===
 	    int jobBonusMin = 0;
@@ -651,17 +660,17 @@ public class BossAttackController {
 	 // 3) 전사 보너스(기본값 기준)를 각각 더함
 	    int effAtkMin = (int) Math.round(atkMinWithItem * jobDmgMul + jobBonusMin);
 	    int effAtkMax = (int) Math.round(atkMaxWithItem * jobDmgMul + jobBonusMax);
+	    
+	    // 운영자의 축복 ATK +3/+3 (Lv 7 이하)
+	    if (hasBless) {
+	        effAtkMin += blessAtk;
+	        effAtkMax += blessAtk;
+	    }
+
 	    if (effAtkMax < effAtkMin) effAtkMax = effAtkMin;
 
 	 // === 최종 전투용 HP_MAX ===
 	    int effHpMax = hpMaxWithItem + jobBonusHp;
-	    
-	    // ✅ 운영자의 축복: LV 5 미만 전투 시 전용 버프 (DB 미반영)
-	    if (u.lv < 5) {
-	        effAtkMin += 3;
-	        effAtkMax += 3;
-	        effRegen  += 3;
-	    }
 	    
 	    // 7) 부활/자동회복 처리
 	    String reviveMsg = reviveAfter1hIfDead(userName, roomName, u, effHpMax, effRegen);
@@ -997,6 +1006,12 @@ public class BossAttackController {
 
 	    msg = msg + NL + "현재 포인트: " + curSpStr + NL + "/구매, /판매 로 상점열기!";
 
+	 // 🌟 운영자의 축복 안내 (실제 반영된 수치 기준)
+	    if (hasBless) {
+	        msg += NL + "※ 운영자의 축복 적용 중: ATK +" + blessAtk + ", 5분당 회복 +" + blessRegen
+	             + " (Lv 7 이하 한정 버프)";
+	    }
+	    
 	    // 19) 전직 안내 (전직 안 했고 5레벨 이상일 때만)
 	    if ((job.isEmpty()) && u.lv >= 5) {
 	        msg += NL + "※ 아직 전직하지 않았습니다. /직업 으로 확인해주세요!";
@@ -1818,12 +1833,42 @@ public class BossAttackController {
 
 	    botNewService.insertBattleLogTx(log);
 
+	    // 🔹 운영자의 축복 레벨 구간 보너스: 5, 6, 7레벨 달성 시 각각 500sp (1회 지급)
+	    grantBlessLevelBonus(userName, roomName, up.beforeLv, up.afterLv);
 	    // 레벨업 횟수 전달
 	    res.levelUpCount = up.levelUpCount;
 	    return up;
 	}
 
 
+	 /** 
+     * 운영자의 축복 레벨 보상
+     * Lv5, Lv6, Lv7 달성 시 각각 500sp, 각 레벨당 1회만 지급.
+     */
+    private void grantBlessLevelBonus(String userName, String roomName, int beforeLv, int afterLv) {
+        if (afterLv <= beforeLv) return;
+
+        int[] targetLv = {5, 6, 7};
+        for (int lv : targetLv) {
+            if (beforeLv < lv && afterLv >= lv) {
+                String cmd = "ADMIN_BLESS_LV" + lv;
+
+                int already = 0;
+                try {
+                    already = botNewService.selectPointRankCountByCmdUserInRoom(roomName, userName, cmd);
+                } catch (Exception ignore) {}
+
+                if (already == 0) {
+                    HashMap<String,Object> p = new HashMap<>();
+                    p.put("userName", userName);
+                    p.put("roomName", roomName);
+                    p.put("score", 500);
+                    p.put("cmd", cmd);
+                    botNewService.insertPointRank(p);
+                }
+            }
+        }
+    }
 
 	/** 무기강화 효과 (25강부터 +1, 상한 없음) */
 	private int getWeaponAtkBonus(int weaponLv) {
