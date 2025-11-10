@@ -123,7 +123,7 @@ public class BossAttackController {
 	           "▶ 궁수 : 최종 데미지 ×1.7, 공격 쿨타임 5분, EXP +15%, [히든]" + NL +
 	           "▶ 마법사 : 몬스터 방어 패턴(패턴3) 50% 확률로 무시, 성공 시 피해 1.5배" + NL +
 	           "▶ 도적 : 공격 시 15% 확률로 추가 드랍(STEAL), 몬스터 기본 공격 40% 회피" + NL +
-	           "▶ 프리스트 : 아이템 HP/리젠 효과 1.5배, 특정 몬스터에게 받는 피해 50% 감소" + NL +
+	           "▶ 프리스트 : 아이템 HP/리젠 효과 1.5배, 몬스터에게 받는 피해 30% 감소, [히든]" + NL +
 	           "▶ 상인 : 상점 구매 10% 할인, 드랍 판매가 10% 증가, 공격시 SP 추가 획득" + NL +
 	           "♬ 6시간마다 /직업 [직업명] 으로 전직 가능합니다." + NL;
 	}
@@ -329,7 +329,7 @@ public class BossAttackController {
 	    } else if ("도적".equals(job)) {
 	        sb.append("   ⚔ 직업 : 공격 시 15% 확률 추가 드랍(STEAL), 몬스터 기본 공격 40% 회피").append(NL);
 	    } else if ("프리스트".equals(job)) {
-	        sb.append("   ⚔ 직업 : 아이템 HP/리젠 효과 1.5배, 특정몬스터에게 받는 피해 감소").append(NL);
+	        sb.append("   ⚔ 직업 : 아이템 HP/리젠 효과 1.5배, 몬스터에게 받는 피해 감소, [히든]").append(NL);
 	    } else if ("상인".equals(job)) {
 	        sb.append("   ⚔ 직업 : 상점 구매 10% 할인, 드랍 판매가 10% 증가, 공격시 SP 추가 획득").append(NL);
 	    }
@@ -797,15 +797,7 @@ public class BossAttackController {
 				calc.atkDmg = (int) Math.round(calc.atkDmg * 1.5);
 				calc.patternMsg = m.monName + "의 방어가 마법사의 힘에 의해 무너졌습니다! (피해 1.5배)";
 			}
-			// 🔹 프리스트: 해골 상대로 피격 데미지 50% 감소
-			if ("프리스트".equals(job) && calc.monDmg > 0 && isSkeleton(m)) {
-				int reduced = (int) Math.floor(calc.monDmg * 0.5);
-				if (reduced < 1)
-					reduced = 1; // 완전무효는 아님, 최소 1 유지
-				String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
-				calc.patternMsg = baseMsg + "(프리스트 효과로 피해 50% 감소 → " + reduced + ")";
-				calc.monDmg = reduced;
-			}
+			
 
 			// 🔹 도적: 40% 확률 회피 (몬스터 피해 무효화)
 			if ("도적".equals(job) && calc.monDmg > 0) {
@@ -820,6 +812,27 @@ public class BossAttackController {
 		}
 
 			
+		// 🔹 프리스트: 해골에게 주는 피해 1.5배
+		if ("프리스트".equals(job) && isSkeleton(m) && calc.atkDmg > 0) {
+		    int boosted = (int) Math.round(calc.atkDmg * 1.5);
+		    if (boosted <= calc.atkDmg) {
+		        boosted = calc.atkDmg + 1; // 최소 1 이상 증가 보장 (체감용)
+		    }
+		    calc.atkDmg = boosted;
+
+		    String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
+		    calc.patternMsg = baseMsg + "[언데드 추가 피해]";
+		}
+
+		// 🔹 프리스트: 받는 피해 30% 감소 (모든 몬스터 대상)
+		if ("프리스트".equals(job) && calc.monDmg > 0) {
+		    int reduced = (int) Math.floor(calc.monDmg * 0.7); // 30% 감소
+		    if (reduced < 1) reduced = 1; // 최소 1 유지
+		    String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
+		    calc.patternMsg = baseMsg + "(받는 피해 30% 감소 → " + reduced + ")";
+		    calc.monDmg = reduced;
+		}
+		
 
 		 // 13) 즉사 처리
 		 int newHpPreview = Math.max(0, u.hpCur - calc.monDmg);
@@ -1693,34 +1706,29 @@ public class BossAttackController {
 	}
 
 	
-	/** 기본 HP 계산 (레벨 1 기준 50, 레벨당 +10) */
 	private int calcBaseHpMax(int lv) {
-	    if (lv <= 1) return 50;
-	    return 50 + (lv - 1) * 10;
+	    if (lv <= 1) return 10;
+	    return 10 + (lv - 1) * 10;
 	}
 
-	/** 기본 최소 공격력 (레벨 1 기준 5, 레벨당 +2) */
 	private int calcBaseAtkMin(int lv) {
-	    if (lv <= 1) return 5;
-	    return 5 + (lv - 1) * 2;
+	    if (lv <= 1) return 1;
+	    return lv;
 	}
 
-	/** 기본 최대 공격력 (레벨 1 기준 15, 레벨당 +3) */
 	private int calcBaseAtkMax(int lv) {
 	    if (lv <= 1) return 15;
-	    return 15 + (lv - 1) * 3;
+	    return 3 + (lv - 1) * 3;
 	}
 
-	/** 기본 치명타 확률 (레벨 1 기준 10%, 레벨당 +2%) */
 	private int calcBaseCritRate(int lv) {
 	    if (lv <= 1) return 10;
 	    return 10 + (lv - 1) * 2;
 	}
 
-	/** 기본 HP 회복량 (레벨 1 기준 1, 레벨당 +1) */
 	private int calcBaseHpRegen(int lv) {
-	    if (lv <= 1) return 1;
-	    return 1 + (lv - 1);
+	    if (lv <= 1) return 2;  // Lv1 = 2부터 시작
+	    return 2 + ((lv - 1) / 3); // 3레벨마다 +1
 	}
 	
 	/** HP/EXP/LV + 로그 저장 (DB에는 '순수 레벨 기반 스탯'만 반영) */
