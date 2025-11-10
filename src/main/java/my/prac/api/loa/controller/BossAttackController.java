@@ -1843,12 +1843,12 @@ public class BossAttackController {
 
 	 /** 
      * 운영자의 축복 레벨 보상
-     * Lv5, Lv6, Lv7 달성 시 각각 500sp, 각 레벨당 1회만 지급.
+     * Lv5, Lv6, Lv7 달성 시 200 500sp, 각 레벨당 1회만 지급.
      */
     private void grantBlessLevelBonus(String userName, String roomName, int beforeLv, int afterLv) {
         if (afterLv <= beforeLv) return;
 
-        int[] targetLv = {5, 6, 7};
+        int[] targetLv = {2, 3, 4, 5, 6, 7};
         for (int lv : targetLv) {
             if (beforeLv < lv && afterLv >= lv) {
                 String cmd = "ADMIN_BLESS_LV" + lv;
@@ -1862,7 +1862,7 @@ public class BossAttackController {
                     HashMap<String,Object> p = new HashMap<>();
                     p.put("userName", userName);
                     p.put("roomName", roomName);
-                    p.put("score", 500);
+                    p.put("score", 200);
                     p.put("cmd", cmd);
                     botNewService.insertPointRank(p);
                 }
