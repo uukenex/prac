@@ -683,7 +683,7 @@ public class BossAttackController {
 	    int effectiveHp = revivedThisTurn
 	            ? u.hpCur
 	            : computeEffectiveHpFromLastAttack(userName, roomName, u, effHpMax, effRegen);
-	    u.hpCur = Math.min(effectiveHp, effHpMax);
+	    u.hpCur = effectiveHp;
 	    
 	    // 🔹 전사 히든: 체력이 낮을수록 공격력 증가 (최대 +30%)
 	    double berserkMul = 1.0;
@@ -2556,4 +2556,5 @@ if (u.hpCur > effHpMax) {
 	}
 
 }
+
 
