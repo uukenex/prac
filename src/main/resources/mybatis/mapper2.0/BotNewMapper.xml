@@ -167,12 +167,9 @@
        HP_CUR, HP_MAX, HP_REGEN, ATK_MIN, ATK_MAX,
        CRIT_RATE, CRIT_DMG, INSERT_DATE, TARGET_MON)
     VALUES
-      (#{userName}, #{roomName},
-       1, 0, 100,
-       10, 10, 1,
-       1, 5,
-       10, 150,
-       SYSDATE, #{targetMonNo})
+      (#{userName}, #{roomName},1, 0, 100,
+       10, 10, 2, 1, 5,
+       10, 150, SYSDATE, #{targetMonNo})
   </insert>
 
   <!-- 보조 닉네임 검색 -->

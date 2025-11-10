@@ -927,7 +927,7 @@ public class BossAttackController {
 	    }
 
 	    // 15) DB 반영 + 로그
-	    LevelUpResult up = persist(userName, roomName, u, m, flags, calc, res);
+	    LevelUpResult up = persist(userName, roomName, u, m, flags, calc, res, effHpMax);
 	    String bonusMsg = "";
 	    
 	 // ✅ Lv5 달성 운영자의 축복 보상 (1회)
@@ -1462,19 +1462,19 @@ public class BossAttackController {
 	}
 
 	private int computeEffectiveHpFromLastAttack(String userName, String roomName, User u, int effHpMax, int effRegen) {
-	
-// 회복 수치가 없으면, 일단 현재 HP를 effHpMax까지만 캡
-if (effRegen <= 0) {
-    return Math.min(u.hpCur, effHpMax);
-}
 
-// 과거 데이터 때문에 hpCur가 effHpMax보다 커도,
-// "공격 시작 시점에 갑자기 깎지 않는다" 정책이면 이렇게 둔다.
-if (u.hpCur > effHpMax) {
-    // 버프 계산 방식 변경 등으로 최대치가 줄어들었어도,
-    // 실제 피해를 입기 전까지는 기존 HP 유지
-    return u.hpCur;
-}
+		// 	회복 수치가 없으면, 일단 현재 HP를 effHpMax까지만 캡
+		if (effRegen <= 0) {
+			return Math.min(u.hpCur, effHpMax);
+		}
+
+		// 과거 데이터 때문에 hpCur가 effHpMax보다 커도,
+		// "공격 시작 시점에 갑자기 깎지 않는다" 정책이면 이렇게 둔다.
+		if (u.hpCur > effHpMax) {
+			// 버프 계산 방식 변경 등으로 최대치가 줄어들었어도,
+			// 실제 피해를 입기 전까지는 기존 HP 유지
+			return u.hpCur;
+		}
 
 
 
@@ -1764,13 +1764,18 @@ if (u.hpCur > effHpMax) {
 	/** HP/EXP/LV + 로그 저장 (DB에는 '순수 레벨 기반 스탯'만 반영) */
 	private LevelUpResult persist(String userName, String roomName,
 	                              User u, Monster m,
-	                              Flags f, AttackCalc c, Resolve res) {
+	                              Flags f, AttackCalc c, Resolve res,int effHpMax) {
 
 	    // 1) 최종 HP 계산 (전투 데미지 반영)
 	    u.hpCur = Math.max(0, u.hpCur - c.monDmg);
 
 	    // 2) EXP 적용 + 레벨업 (u.lv, u.expCur, u.expNext 변경)
 	    LevelUpResult up = applyExpAndLevelUp(u, res.gainExp);
+	    
+	 // 3) 레벨업이 발생했고, 죽은 게 아니라면 → 실전투 HPMax 기준으로 풀피 회복
+	    if (up.levelUpCount > 0 && u.hpCur > 0 && effHpMax > 0) {
+	        u.hpCur = effHpMax; // 여기서 109 같은 값으로 올려줌
+	    }
 
 	    // 3) 순수 레벨 기준 스탯 계산
 	    //    ※ 여기서 사용하는 calcBaseXXX()는
@@ -1781,11 +1786,16 @@ if (u.hpCur > effHpMax) {
 	    int baseCritRate = calcBaseCritRate(u.lv);
 	    int baseHpRegen  = calcBaseHpRegen(u.lv);
 
-	    // HP가 레벨 기준 Max를 넘지 않도록 보정
-	    if (u.hpCur > baseHpMax) {
-	        u.hpCur = baseHpMax;
-	    }
+	    // 4) DB에는 "현재 HP" 그대로 저장
+	    botNewService.updateUserAfterBattleTx(
+	        userName, roomName,
+	        u.lv, u.expCur, u.expNext,
+	        u.hpCur,         // 여기 이제 109 같은 값 들어갈 수 있음
+	        u.hpMax,         // 이건 여전히 '기본 HP' (원하면 그대로 두는게 안정적)
+	        u.atkMin, u.atkMax, u.critRate, u.hpRegen
+	    );
 
+	    
 	    // 4) 유저 테이블 업데이트: **항상 '순수 레벨 스탯'만 저장**
 	    botNewService.updateUserAfterBattleTx(
 	        userName,
@@ -2124,9 +2134,6 @@ if (u.hpCur > effHpMax) {
 	    r.beforeCrit    = u.critRate;
 	    r.beforeHpRegen = u.hpRegen;
 
-	    String job = (u.job == null ? "" : u.job.trim());
-	    boolean isWarrior = "전사".equals(job);
-
 	    int lv      = u.lv;
 	    int expCur  = u.expCur + r.gainedExp;
 	    int expNext = u.expNext;
@@ -2154,13 +2161,6 @@ if (u.hpCur > effHpMax) {
 	        int incHp    = 10;
 	        int incAtkMin= 1;
 	        int incAtkMax= 3;
-
-	        // 전사: 레벨업 증가량 2배
-	        if (isWarrior) {
-	            incHp    *= 2;
-	            incAtkMin*= 2;
-	            incAtkMax*= 2;
-	        }
 
 	        hpMax  += incHp;     hpDelta     += incHp;
 	        atkMin += incAtkMin; atkMinDelta += incAtkMin;
