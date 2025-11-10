@@ -122,7 +122,7 @@ public class BossAttackController {
 	           "▶ 전사 : 기본 HP·공격력만큼 추가 적용, 버서크모드(체력이 낮아지면 데미지 2배)" + NL +
 	           "▶ 궁수 : 최종 데미지 ×1.7, 공격 쿨타임 5분, EXP +15%, [히든]" + NL +
 	           "▶ 마법사 : 몬스터 방어 패턴(패턴3) 50% 확률로 무시, 성공 시 피해 1.5배" + NL +
-	           "▶ 도적 : 공격 시 20% 확률로 추가 드랍(STEAL), 몬스터 기본 공격 50% 회피" + NL +
+	           "▶ 도적 : 공격 시 15% 확률로 추가 드랍(STEAL), 몬스터 기본 공격 40% 회피" + NL +
 	           "▶ 프리스트 : 아이템 HP/리젠 효과 1.5배, 특정 몬스터에게 받는 피해 50% 감소" + NL +
 	           "▶ 상인 : 상점 구매 10% 할인, 드랍 판매가 10% 증가, 공격시 SP 추가 획득" + NL +
 	           "♬ 6시간마다 /직업 [직업명] 으로 전직 가능합니다." + NL;
@@ -327,7 +327,7 @@ public class BossAttackController {
 	    } else if ("마법사".equals(job)) {
 	        sb.append("   ⚔ 직업 : 몬스터 방어 패턴(패턴3)을 50% 확률로 무시, 성공시 피해 1.5배").append(NL);
 	    } else if ("도적".equals(job)) {
-	        sb.append("   ⚔ 직업 : 공격 시 20% 확률 추가 드랍(STEAL), 몬스터 기본 공격 50% 회피").append(NL);
+	        sb.append("   ⚔ 직업 : 공격 시 15% 확률 추가 드랍(STEAL), 몬스터 기본 공격 40% 회피").append(NL);
 	    } else if ("프리스트".equals(job)) {
 	        sb.append("   ⚔ 직업 : 아이템 HP/리젠 효과 1.5배, 특정몬스터에게 받는 피해 감소").append(NL);
 	    } else if ("상인".equals(job)) {
@@ -656,6 +656,13 @@ public class BossAttackController {
 	 // === 최종 전투용 HP_MAX ===
 	    int effHpMax = hpMaxWithItem + jobBonusHp;
 	    
+	    // ✅ 운영자의 축복: LV 5 미만 전투 시 전용 버프 (DB 미반영)
+	    if (u.lv < 5) {
+	        effAtkMin += 3;
+	        effAtkMax += 3;
+	        effRegen  += 3;
+	    }
+	    
 	    // 7) 부활/자동회복 처리
 	    String reviveMsg = reviveAfter1hIfDead(userName, roomName, u, effHpMax, effRegen);
 	    boolean revivedThisTurn = false;
@@ -800,9 +807,9 @@ public class BossAttackController {
 				calc.monDmg = reduced;
 			}
 
-			// 🔹 도적: 50% 확률 회피 (몬스터 피해 무효화)
+			// 🔹 도적: 40% 확률 회피 (몬스터 피해 무효화)
 			if ("도적".equals(job) && calc.monDmg > 0) {
-				if (ThreadLocalRandom.current().nextDouble() < 0.50) {
+				if (ThreadLocalRandom.current().nextDouble() < 0.40) {
 					String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
 					calc.patternMsg = baseMsg + "도적의 회피! 피해를 받지 않았습니다.";
 					calc.monDmg = 0;
@@ -873,9 +880,9 @@ public class BossAttackController {
 	    }
 	    
 	    String stealMsg = null;
-	 // 도적: 공격 시 20% 확률로 추가 드랍 (비처치도 가능)
+	 // 도적: 공격 시 15% 확률로 추가 드랍 (비처치도 가능)
 	    if ("도적".equals(job)) {
-	        if (ThreadLocalRandom.current().nextDouble() < 0.20) {
+	        if (ThreadLocalRandom.current().nextDouble() < 0.15) {
 	            String dropName = (m.monDrop == null ? "" : m.monDrop.trim());
 	            if (!dropName.isEmpty()) {
 	                try {
@@ -900,6 +907,28 @@ public class BossAttackController {
 	    // 15) DB 반영 + 로그
 	    LevelUpResult up = persist(userName, roomName, u, m, flags, calc, res);
 	    String bonusMsg = "";
+	    
+	 // ✅ Lv5 달성 운영자의 축복 보상 (1회)
+	    String blessMsg = "";
+	    if (up != null && up.beforeLv < 5 && up.afterLv >= 5) {
+	        int already = 0;
+	        try {
+	            already = botNewService.selectPointRankCountByCmdUserInRoom(
+	                    roomName, userName, "BLESS_LV5");
+	        } catch (Exception ignore) {}
+
+	        if (already == 0) {
+	            HashMap<String,Object> pr = new HashMap<>();
+	            pr.put("userName", userName);
+	            pr.put("roomName", roomName);
+	            pr.put("score", 500);
+	            pr.put("cmd", "BLESS_LV5");
+	            botNewService.insertPointRank(pr);
+
+	            blessMsg = NL + "✨ 운영자의 축복! Lv5 달성을 기념하여 500sp가 지급되었습니다.";
+	        }
+	    }
+	    
 	    if (res.killed) {
 	        // 진행중 전투 종료
 	        botNewService.closeOngoingBattleTx(userName, roomName);
@@ -935,6 +964,9 @@ public class BossAttackController {
 	    // ✅ 최초토벌/업적 메시지 추가
 	    if (!bonusMsg.isEmpty()) {
 	        msg += bonusMsg;
+	    }
+	    if (!blessMsg.isEmpty()) {
+	        msg += blessMsg;
 	    }
 	    
 	 // 🔹 상인 추가 보너스 안내
@@ -1660,22 +1692,81 @@ public class BossAttackController {
 	    return r;
 	}
 
-	/** HP/EXP/LV + 로그 저장 */
-	private LevelUpResult persist(String userName, String roomName, User u, Monster m, Flags f, AttackCalc c, Resolve res) {
-	    // 1) 유저 HP 반영
+	
+	/** 기본 HP 계산 (레벨 1 기준 50, 레벨당 +10) */
+	private int calcBaseHpMax(int lv) {
+	    if (lv <= 1) return 50;
+	    return 50 + (lv - 1) * 10;
+	}
+
+	/** 기본 최소 공격력 (레벨 1 기준 5, 레벨당 +2) */
+	private int calcBaseAtkMin(int lv) {
+	    if (lv <= 1) return 5;
+	    return 5 + (lv - 1) * 2;
+	}
+
+	/** 기본 최대 공격력 (레벨 1 기준 15, 레벨당 +3) */
+	private int calcBaseAtkMax(int lv) {
+	    if (lv <= 1) return 15;
+	    return 15 + (lv - 1) * 3;
+	}
+
+	/** 기본 치명타 확률 (레벨 1 기준 10%, 레벨당 +2%) */
+	private int calcBaseCritRate(int lv) {
+	    if (lv <= 1) return 10;
+	    return 10 + (lv - 1) * 2;
+	}
+
+	/** 기본 HP 회복량 (레벨 1 기준 1, 레벨당 +1) */
+	private int calcBaseHpRegen(int lv) {
+	    if (lv <= 1) return 1;
+	    return 1 + (lv - 1);
+	}
+	
+	/** HP/EXP/LV + 로그 저장 (DB에는 '순수 레벨 기반 스탯'만 반영) */
+	private LevelUpResult persist(String userName, String roomName,
+	                              User u, Monster m,
+	                              Flags f, AttackCalc c, Resolve res) {
+
+	    // 1) 최종 HP 계산 (전투 데미지 반영)
 	    u.hpCur = Math.max(0, u.hpCur - c.monDmg);
+
+	    // 2) EXP 적용 + 레벨업 (u.lv, u.expCur, u.expNext 변경)
 	    LevelUpResult up = applyExpAndLevelUp(u, res.gainExp);
 
-	    // 2) 유저 스탯 DB 반영
+	    // 3) 순수 레벨 기준 스탯 계산
+	    //    ※ 여기서 사용하는 calcBaseXXX()는
+	    //       "아이템/직업/강화 미포함 기준"으로 구현해야 함.
+	    int baseHpMax    = calcBaseHpMax(u.lv);
+	    int baseAtkMin   = calcBaseAtkMin(u.lv);
+	    int baseAtkMax   = calcBaseAtkMax(u.lv);
+	    int baseCritRate = calcBaseCritRate(u.lv);
+	    int baseHpRegen  = calcBaseHpRegen(u.lv);
+
+	    // HP가 레벨 기준 Max를 넘지 않도록 보정
+	    if (u.hpCur > baseHpMax) {
+	        u.hpCur = baseHpMax;
+	    }
+
+	    // 4) 유저 테이블 업데이트: **항상 '순수 레벨 스탯'만 저장**
 	    botNewService.updateUserAfterBattleTx(
-	        userName, roomName,
-	        u.lv, u.expCur, u.expNext, u.hpCur, u.hpMax,
-	        u.atkMin, u.atkMax, u.critRate, u.hpRegen
+	        userName,
+	        roomName,
+	        u.lv,
+	        u.expCur,
+	        u.expNext,
+	        u.hpCur,
+	        baseHpMax,
+	        baseAtkMin,
+	        baseAtkMax,
+	        baseCritRate,
+	        baseHpRegen
 	    );
 
+	    // 5) 사망 여부
 	    int deathYn = (u.hpCur == 0 && c.monDmg > 0) ? 1 : 0;
 
-	    // 3) 🔹 드랍 인벤토리 적재 (DROP / DROP3)
+	    // 6) 드랍 인벤토리 적재 (킬+드랍 있을 때)
 	    if (res.killed && !"0".equals(res.dropCode)) {
 	        String dropName = (m.monDrop == null ? "" : m.monDrop.trim());
 	        if (!dropName.isEmpty()) {
@@ -1683,27 +1774,28 @@ public class BossAttackController {
 	                Integer itemId = botNewService.selectItemIdByName(dropName);
 	                if (itemId != null) {
 	                    HashMap<String, Object> inv = new HashMap<>();
-	                    inv.put("userName", userName);
-	                    inv.put("roomName", roomName);
-	                    inv.put("itemId",  itemId);
-	                    inv.put("qty",     1);
-	                    inv.put("delYn",   "0");
+	                    inv.put("userName",  userName);
+	                    inv.put("roomName",  roomName);
+	                    inv.put("itemId",    itemId);
+	                    inv.put("qty",       1);
+	                    inv.put("delYn",     "0");
 	                    inv.put("gainType", "3".equals(res.dropCode) ? "DROP3" : "DROP");
 	                    botNewService.insertInventoryLogTx(inv);
 	                }
 	            } catch (Exception ignore) {
-	                // 드랍 적재 실패해도 전투 진행은 계속
+	                // 드랍 저장 실패해도 전투 진행은 계속
 	            }
 	        }
 	    }
 
-	    // 4) BattleLog dropYn 세팅
-	    int dropAsInt = "3".equals(res.dropCode) ? 3 : ("1".equals(res.dropCode) ? 1 : 0);
+	    // 7) BattleLog 저장 (전투 당시 정보 기준)
+	    int dropAsInt = "3".equals(res.dropCode) ? 3
+	                 : ("1".equals(res.dropCode) ? 1 : 0);
 
 	    BattleLog log = new BattleLog()
 	        .setUserName(userName)
 	        .setRoomName(roomName)
-	        .setLv(up.beforeLv)
+	        .setLv(up.beforeLv)                 // 공격 시점 레벨
 	        .setTargetMonLv(m.monNo)
 	        .setGainExp(up.gainedExp)
 	        .setAtkDmg(c.atkDmg)
@@ -1718,9 +1810,11 @@ public class BossAttackController {
 
 	    botNewService.insertBattleLogTx(log);
 
+	    // 레벨업 횟수 전달
 	    res.levelUpCount = up.levelUpCount;
 	    return up;
 	}
+
 
 
 	/** 무기강화 효과 (25강부터 +1, 상한 없음) */
