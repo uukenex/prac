@@ -1462,9 +1462,24 @@ public class BossAttackController {
 	}
 
 	private int computeEffectiveHpFromLastAttack(String userName, String roomName, User u, int effHpMax, int effRegen) {
-		if (u.hpCur >= effHpMax || effRegen <= 0) {
-			return Math.min(u.hpCur, effHpMax);
-		}
+	
+// 회복 수치가 없으면, 일단 현재 HP를 effHpMax까지만 캡
+if (effRegen <= 0) {
+    return Math.min(u.hpCur, effHpMax);
+}
+
+// 과거 데이터 때문에 hpCur가 effHpMax보다 커도,
+// "공격 시작 시점에 갑자기 깎지 않는다" 정책이면 이렇게 둔다.
+if (u.hpCur > effHpMax) {
+    // 버프 계산 방식 변경 등으로 최대치가 줄어들었어도,
+    // 실제 피해를 입기 전까지는 기존 HP 유지
+    return u.hpCur;
+}
+
+
+
+
+		
 
 // 피격 시점 (회복 시작 기준)
 		Timestamp damaged = botNewService.selectLastDamagedTime(userName, roomName);
@@ -2541,3 +2556,4 @@ public class BossAttackController {
 	}
 
 }
+
