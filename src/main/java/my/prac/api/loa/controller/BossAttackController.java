@@ -465,10 +465,34 @@ public class BossAttackController {
 	    final String userName = Objects.toString(map.get("userName"), "");
 	    final String raw = Objects.toString(map.get("param1"), "").trim();
 
+
 	    if (roomName.isEmpty() || userName.isEmpty()) {
 	        return "방/유저 정보가 누락되었습니다.";
 	    }
 	    
+	    User u = botNewService.selectUser(userName, roomName);
+	    String job = (u == null || u.job == null) ? "" : u.job.trim();
+	    boolean isMerchant = "상인".equals(job);
+
+	    boolean hiddenYn = false;
+	    
+	    if(raw.equals("전체")) {
+	    	hiddenYn = false;
+	    }
+	    
+	    if( raw.isEmpty()){
+	    	hiddenYn = true;
+	    }
+	    
+	    
+	    
+	    // 파라미터 없으면: 구매 가능 목록 노출
+	    if (raw.isEmpty() || raw.equals("전체")) {
+	        List<HashMap<String,Object>> list = botNewService.selectMarketItemsWithOwned(userName, roomName);
+	        String compact = renderMarketListForBuy(list, userName,hiddenYn);
+	        return compact;
+	    }
+
 	    if(roomName.equals("람쥐봇 문의방")) {
 			
 			if(userName.equals("일어난다람쥐/카단")) {
@@ -477,17 +501,6 @@ public class BossAttackController {
 				return "문의방에서는 불가능합니다.";
 			}
 		}
-
-	    User u = botNewService.selectUser(userName, roomName);
-	    String job = (u == null || u.job == null) ? "" : u.job.trim();
-	    boolean isMerchant = "상인".equals(job);
-
-	    // 파라미터 없으면: 구매 가능 목록 노출
-	    if (raw.isEmpty() || "리스트".equalsIgnoreCase(raw) || "list".equalsIgnoreCase(raw)) {
-	        List<HashMap<String,Object>> list = botNewService.selectMarketItemsWithOwned(userName, roomName);
-	        String compact = renderMarketListForBuy(list, userName);
-	        return compact;
-	    }
 
 	    // 입력 → itemId 해석
 	    Integer itemId = null;
@@ -1395,7 +1408,7 @@ public class BossAttackController {
 	 *   ↘옵션: 최소뎀 ±X, 최대뎀 ±Y, 치명타 +Z%, 체력회복 +R (5분마다), 최대체력 +H
 	 *  - '랜덤' 문구 없음. 부호는 값 그대로(+/-) 노출.
 	 */
-	private String renderMarketListForBuy(List<HashMap<String,Object>> items, String userName) {
+	private String renderMarketListForBuy(List<HashMap<String,Object>> items, String userName, boolean hiddenYn) {
 	    if (items == null || items.isEmpty()) {
 	        return "▶ " + userName + "님, 구매 가능 아이템" + NL + "- (없음)";
 	    }
@@ -1404,15 +1417,20 @@ public class BossAttackController {
 	    StringBuilder sb = new StringBuilder();
 	    sb.append("▶ ").append(userName).append("님").append(NL);
 	    sb.append("더보기 리스트에서 선택 후 구매해주세요").append(NL);
+	    sb.append("/구매 전체 < 전체보기, /구매 < 보유템 제외보기").append(NL);
 	    sb.append("예) /구매 목검  또는  /구매 102");
 	    sb.append(allSeeStr);
 
 	    for (HashMap<String,Object> it : items) {
-	        int    itemId   = safeInt(it.get("ITEM_ID"));
+	    	int    itemId   = safeInt(it.get("ITEM_ID"));
 	        String name     = String.valueOf(it.get("ITEM_NAME"));
 	        int    price    = safeInt(it.get("ITEM_SELL_PRICE"));
 	        String ownedYn  = String.valueOf(it.get("OWNED_YN"));
 
+	        if(hiddenYn && "Y".equalsIgnoreCase(ownedYn)) {
+	    		continue;
+	    	}
+	        
 	        // 1행: [ID] 이름 (구매완료)
 	        sb.append("[").append(itemId).append("] ").append(name);
 	        if ("Y".equalsIgnoreCase(ownedYn)) sb.append(" (구매완료)");

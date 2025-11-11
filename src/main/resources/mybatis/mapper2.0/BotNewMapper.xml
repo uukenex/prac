@@ -496,7 +496,11 @@
 	          SELECT 1
 	            FROM TBOT_POINT_NEW_INVENTORY inv
 	           WHERE inv.USER_NAME = #{userName}
-	             AND inv.ROOM_NAME = #{roomName}
+	             
+               <if test="roomName != null and roomName != '람쥐봇 문의방'">
+			     AND inv.room_name = #{roomName}
+			   </if>
+             
 	             AND inv.ITEM_ID   = i.ITEM_ID
 	             AND inv.DEL_YN    = '0'
 	        ) THEN 'Y' ELSE 'N'
