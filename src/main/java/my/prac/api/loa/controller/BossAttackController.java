@@ -2365,6 +2365,36 @@ public class BossAttackController {
 		case 10:
 			rewardSp = 1000;
 			break;
+		case 11:
+			rewardSp = 1000;
+			break;
+		case 12:
+			rewardSp = 1000;
+			break;
+		case 13:
+			rewardSp = 1500;
+			break;
+		case 14:
+			rewardSp = 1500;
+			break;
+		case 15:
+			rewardSp = 2000;
+			break;
+		case 16:
+			rewardSp = 2000;
+			break;
+		case 17:
+			rewardSp = 2500;
+			break;
+		case 18:
+			rewardSp = 2500;
+			break;
+		case 19:
+			rewardSp = 3000;
+			break;
+		case 20:
+			rewardSp = 3000;
+			break;
 
 		default:
 			break;
