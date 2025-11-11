@@ -60,7 +60,7 @@
 	  </if>
       AND bl.KILL_YN = 1
     GROUP BY bl.TARGET_MON_LV, m.MON_NAME
-    ORDER BY KILL_COUNT DESC, MON_NO ASC
+    ORDER BY MON_NO DESC
   </select>
 
   <select id="selectAllMonsters" resultType="my.prac.core.game.dto.Monster">

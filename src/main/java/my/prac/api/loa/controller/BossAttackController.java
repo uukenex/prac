@@ -388,7 +388,7 @@ public class BossAttackController {
 
 	    // 업적
 	    try {
-	        List<HashMap<String,Object>> achv = botNewService.selectAchievementsByUser(targetUser);
+	        List<HashMap<String,Object>> achv = botNewService.selectAchievementsByUser(targetUser,roomName);
 	        sb.append(NL).append("▶ 업적").append(NL);
 	        if (achv == null || achv.isEmpty()) {
 	            sb.append("- 달성된 업적이 없습니다.").append(NL);

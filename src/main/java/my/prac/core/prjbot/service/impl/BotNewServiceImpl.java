@@ -250,8 +250,8 @@ public class BotNewServiceImpl implements BotNewService {
     	return botNewDAO.selectPointRankCountByCmdUserInRoom(roomName, userName, cmd);
     }
     @Override
-    public List<HashMap<String,Object>> selectAchievementsByUser(String userName) {
-        return botNewDAO.selectAchievementsByUser(userName);
+    public List<HashMap<String,Object>> selectAchievementsByUser(String userName,String roomName) {
+        return botNewDAO.selectAchievementsByUser(userName, roomName);
     }
     
     @Override

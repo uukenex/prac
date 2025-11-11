@@ -147,7 +147,7 @@ public interface BotNewDAO {
             @Param("userName") String userName,
             @Param("cmd") String cmd);
     
-    List<HashMap<String,Object>> selectAchievementsByUser(@Param("userName") String userName);
+    List<HashMap<String,Object>> selectAchievementsByUser(@Param("userName") String userName,@Param("roomName") String roomName);
     
     int updateUserJobAndChangeDate(@Param("userName") String userName,
              @Param("roomName") String roomName,
