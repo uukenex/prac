@@ -56,6 +56,15 @@ public class BossAttackController {
 	    if (u == null)
 	        return "유저 정보를 찾을 수 없습니다.";
 
+	    if(roomName.equals("람쥐봇 문의방")) {
+			
+			if(userName.equals("일어난다람쥐/카단")) {
+				
+			}else {
+				return "문의방에서는 불가능합니다.";
+			}
+		}
+
 	    String curJob = (u.job == null ? "" : u.job.trim());
 	    String sel = selRaw;
 
@@ -406,6 +415,15 @@ public class BossAttackController {
 		if (roomName.isEmpty() || userName.isEmpty()) return "방/유저 정보가 누락되었습니다.";
 		if (input.isEmpty()) return guideSetTargetMessage();
 
+		if(roomName.equals("람쥐봇 문의방")) {
+			
+			if(userName.equals("일어난다람쥐/카단")) {
+				
+			}else {
+				return "문의방에서는 불가능합니다.";
+			}
+		}
+
 		Monster m = input.matches("\\d+")
 		        ? botNewService.selectMonsterByNo(Integer.parseInt(input))
 		        : botNewService.selectMonsterByName(input);
@@ -435,6 +453,7 @@ public class BossAttackController {
 		}
 		if (u.targetMon == m.monNo) return "현재 타겟이 이미 " + m.monName + "(MON_NO=" + m.monNo + ") 입니다.";
 
+		
 		botNewService.closeOngoingBattleTx(userName, roomName);
 		botNewService.updateUserTargetMonTx(userName, roomName, m.monNo);
 		int userLvForView = (u != null ? u.lv : 1);
@@ -449,6 +468,15 @@ public class BossAttackController {
 	    if (roomName.isEmpty() || userName.isEmpty()) {
 	        return "방/유저 정보가 누락되었습니다.";
 	    }
+	    
+	    if(roomName.equals("람쥐봇 문의방")) {
+			
+			if(userName.equals("일어난다람쥐/카단")) {
+				
+			}else {
+				return "문의방에서는 불가능합니다.";
+			}
+		}
 
 	    User u = botNewService.selectUser(userName, roomName);
 	    String job = (u == null || u.job == null) ? "" : u.job.trim();
@@ -579,6 +607,16 @@ public class BossAttackController {
 	    if (roomName.isEmpty() || userName.isEmpty())
 	        return "방/유저 정보가 누락되었습니다.";
 
+	    
+	    if(roomName.equals("람쥐봇 문의방")) {
+			
+			if(userName.equals("일어난다람쥐/카단")) {
+				
+			}else {
+				return "문의방에서는 불가능합니다.";
+			}
+		}
+	    
 	    final String param1 = Objects.toString(map.get("param1"), "");
 
 	    // 1) 유저 조회
@@ -1032,6 +1070,16 @@ public class BossAttackController {
 
 	    final String userName = Objects.toString(map.get("userName"), "");
 	    final String roomName = Objects.toString(map.get("roomName"), "");
+	    
+	    if(roomName.equals("람쥐봇 문의방")) {
+			
+			if(userName.equals("일어난다람쥐/카단")) {
+				
+			}else {
+				return "문의방에서는 불가능합니다.";
+			}
+		}
+	    
 	    final String itemNameRaw = Objects.toString(map.get("param1"), "").trim();
 	    final int reqQty = Math.max(1, parseIntSafe(Objects.toString(map.get("param2"), "1")));
 

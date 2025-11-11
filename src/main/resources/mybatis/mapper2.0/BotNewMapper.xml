@@ -566,7 +566,7 @@
 	      m.MON_NO,
 	      m.MON_NAME,
 	      fc.FIRST_CLEAR_USER,
-	      TO_CHAR(fc.FIRST_CLEAR_DATE, 'YYYY-MM-DD') AS FIRST_CLEAR_DATE
+	      TO_CHAR(fc.FIRST_CLEAR_DATE, 'YYYY-MM-DD HH24:MI') AS FIRST_CLEAR_DATE
 	  FROM TBOT_POINT_NEW_MON_INFO m
 	  LEFT JOIN (
 	    SELECT
@@ -604,8 +604,32 @@
 	  SELECT CMD, SCORE, USER_NAME, ROOM_NAME, INSERT_DATE
 	  FROM TBOT_POINT_RANK
 	  WHERE USER_NAME = #{userName}
+	   <if test="roomName != null and roomName != '람쥐봇 문의방'">
+        AND ROOM_NAME = #{roomName}
+      </if>
 	    AND CMD LIKE 'ACHV_%'
-	  ORDER BY INSERT_DATE DESC
+	  ORDER BY CASE
+			        WHEN CMD LIKE 'ACHV_FIRST_CLEAR_MON_%' THEN 1
+			        WHEN CMD LIKE 'ACHV_KILL_TOTAL_%'      THEN 2
+			        WHEN CMD LIKE 'ACHV_KILL%_MON_%'       THEN 3
+			        ELSE 9
+			    END,
+			    -- 2순위: 몬스터번호 or 총킬조건 숫자(각 패턴에 맞게)
+			    CASE
+			        WHEN CMD LIKE 'ACHV_FIRST_CLEAR_MON_%'
+			             THEN -TO_NUMBER(REGEXP_SUBSTR(CMD, '[0-9]+$'))
+			        WHEN CMD LIKE 'ACHV_KILL_TOTAL_%'
+			             THEN -TO_NUMBER(REGEXP_SUBSTR(CMD, '[0-9]+$'))
+			        WHEN CMD LIKE 'ACHV_KILL%_MON_%'
+			             THEN -TO_NUMBER(REGEXP_SUBSTR(CMD, '[0-9]+$'))  -- MON_뒤 숫자 (몬스터 번호)
+			        ELSE NULL
+			    END,
+			    -- 3순위: 같은 MON에서 50 → 100 순
+			    CASE
+			        WHEN CMD LIKE 'ACHV_KILL50_MON_%'  THEN 1
+			        WHEN CMD LIKE 'ACHV_KILL100_MON_%' THEN 2
+			        ELSE 0
+			    END
 	</select>
 	
 	
