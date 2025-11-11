@@ -87,6 +87,20 @@ public class BossAttackController {
 	    if (effHpMax <= 0) effHpMax = 1;
 	    if (effRegen < 0) effRegen = 0;
 
+	    
+	    // 7) 부활/자동회복 처리
+	    String reviveMsg = reviveAfter1hIfDead(userName, roomName, u, effHpMax, effRegen);
+	    boolean revivedThisTurn = false;
+	    if (reviveMsg != null) {
+	        if (!reviveMsg.isEmpty()) return reviveMsg;
+	        revivedThisTurn = true;
+	    }
+	    
+	    int effectiveHp = revivedThisTurn
+	            ? u.hpCur
+	            : computeEffectiveHpFromLastAttack(userName, roomName, u, effHpMax, effRegen);
+	    u.hpCur = effectiveHp;
+	    
 	    // 6) 출력
 	    StringBuilder sb = new StringBuilder();
 	    sb.append("❤️ ").append(userName).append("님의 체력 상태").append(NL)
@@ -1084,8 +1098,10 @@ public class BossAttackController {
 	    if (!bonusMsg.isEmpty()) {
 	        msg += bonusMsg;
 	    }
-	    if (!blessMsg.isEmpty()) {
-	        msg += blessMsg;
+	    
+	    
+	    if (!res.blessMsg.isEmpty()) {
+	        msg += res.blessMsg;
 	    }
 	    
 	 // 🔹 상인 추가 보너스 안내
@@ -1971,8 +1987,12 @@ public class BossAttackController {
 	    botNewService.insertBattleLogTx(log);
 
 	    // 🔹 운영자의 축복 레벨 구간 보너스: 5, 6, 7레벨 달성 시 각각 500sp (1회 지급)
-	    grantBlessLevelBonus(userName, roomName, up.beforeLv, up.afterLv);
+	    String blessMsg = grantBlessLevelBonus(userName, roomName, up.beforeLv, up.afterLv);
 	    // 레벨업 횟수 전달
+	    if (blessMsg != null && !blessMsg.isEmpty()) {
+	        res.blessMsg = blessMsg; // Resolve에 필드 있으면 활용, 없으면 monsterAttack 쪽에서 바로 사용해도 됨
+	    }
+	    
 	    res.levelUpCount = up.levelUpCount;
 	    return up;
 	}
@@ -1982,8 +2002,11 @@ public class BossAttackController {
      * 운영자의 축복 레벨 보상
      * Lv5, Lv6, Lv7 달성 시 200, 각 레벨당 1회만 지급.
      */
-    private void grantBlessLevelBonus(String userName, String roomName, int beforeLv, int afterLv) {
-        if (afterLv <= beforeLv) return;
+    private String grantBlessLevelBonus(String userName, String roomName, int beforeLv, int afterLv) {
+    	int total = 0;
+        StringBuilder sb = new StringBuilder();
+    	
+    	if (afterLv <= beforeLv) return "";
 
         int[] targetLv = {2, 3, 4, 5, 6, 7};
         for (int lv : targetLv) {
@@ -2002,9 +2025,23 @@ public class BossAttackController {
                     p.put("score", 200);
                     p.put("cmd", cmd);
                     botNewService.insertPointRank(p);
+                    
+                    sb.append("✨ 운영자의 축복! Lv")
+                    .append(lv)
+                    .append(" 달성 보너스 :")
+                    .append("200 sp 지급").append(NL);
+                    total++;
                 }
             }
         }
+        
+        if(total>0) {
+        	return sb.toString();
+        }else {
+        	
+        	return "";
+        }
+        
     }
 
 	/** 무기강화 효과 (25강부터 +1, 상한 없음) */
@@ -2208,7 +2245,7 @@ public class BossAttackController {
 	    int baseAtk; double critMultiplier;
 	}
 	private static class Resolve {
-		boolean killed; String dropCode; int gainExp; int levelUpCount; boolean lucky;
+		boolean killed; String dropCode; int gainExp; int levelUpCount; boolean lucky; String blessMsg;
 	}
 	private static class CooldownCheck {
 	    final boolean ok; final int remainMinutes; final long remainSeconds;
