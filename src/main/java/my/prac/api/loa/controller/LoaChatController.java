@@ -639,6 +639,9 @@ public class LoaChatController {
 			case "/직업": case "/전직":
 				val = boss.changeJob(reqMap);
 				break;
+			case "/체력": case "/ㅊㄹ":
+				val = boss.getHpStatus(reqMap);
+				break;
 			case "/공격랭킹": case "/ㄱㄱㄹㅋ":
 				val = boss.showAttackRanking(reqMap);
 				break;

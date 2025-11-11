@@ -35,6 +35,8 @@ public class BossAttackController {
 	private static final String NL = "♬";
 	// 🍀 Lucky: 전투 시작 시 10% 확률 고정(신규 전투에서만 결정)
 	private static final double LUCKY_RATE = 0.15;
+	private static final String ALL_SEE_STR = "===";
+	
 
 	/* ===== DI ===== */
 	@Autowired LoaPlayController play;
@@ -43,6 +45,69 @@ public class BossAttackController {
 	@Resource(name = "core.prjbot.BotNewService")     BotNewService botNewService;
 	@Resource(name = "core.prjbot.BotSettleService")  BotSettleService botSettleService;
 
+	
+	/** 
+	 */
+	public String getHpStatus(HashMap<String,Object> map) {
+	    final String roomName = Objects.toString(map.get("roomName"), "");
+	    final String userName = Objects.toString(map.get("userName"), "");
+	    final String param1  = Objects.toString(map.get("param1"), "").trim();
+	    User u = botNewService.selectUser(userName, roomName);
+	    if (u == null) {
+	        return "❌ 유저 정보를 찾을 수 없습니다.";
+	    }
+
+	    final String job = (u.job == null ? "" : u.job.trim());
+
+	    // 2) MARKET 아이템 버프 (공격로직에서 쓰는 것 그대로)
+	    HashMap<String, Number> buffs = null;
+	    try {
+	        buffs = botNewService.selectOwnedMarketBuffTotals(userName, roomName);
+	    } catch (Exception ignore) {}
+
+	    int bHpMax = (buffs != null && buffs.get("HP_MAX")   != null) ? buffs.get("HP_MAX").intValue()   : 0;
+	    int bRegen = (buffs != null && buffs.get("HP_REGEN") != null) ? buffs.get("HP_REGEN").intValue() : 0;
+
+	    // 3) 직업 패시브 (프리스트 등) - 공격로직과 동일하게
+	    if ("프리스트".equals(job)) {
+	        bHpMax = (int) Math.round(bHpMax * 1.5);
+	        bRegen = (int) Math.round(bRegen * 1.5);
+	    }
+
+	    // 4) 운영자의 축복 (Lv 7 이하) - 공격 로직과 맞춰서 적용
+	    boolean hasBless = (u.lv <= 7);
+	    int blessHpMaxBonus   = 0;   // HP_MAX에 축복을 올리는 설계면 값 채우고
+	    int blessHpRegenBonus = (hasBless ? 3 : 0);
+
+	    // 5) 실질 최대체력 / 회복량 계산 (공격 시와 동일 컨셉)
+	    int effHpMax = u.hpMax + bHpMax + blessHpMaxBonus;
+	    int effRegen = u.hpRegen + bRegen + blessHpRegenBonus;
+
+	    // 최소 방어선
+	    if (effHpMax <= 0) effHpMax = 1;
+	    if (effRegen < 0) effRegen = 0;
+
+	    // 6) 출력
+	    StringBuilder sb = new StringBuilder();
+	    sb.append("❤️ ").append(userName).append("님의 체력 상태").append(NL)
+	      .append("현재 체력: ").append(u.hpCur).append(" / ").append(effHpMax).append(NL)
+	      .append("5분당 회복: +").append(effRegen).append(NL);
+
+	    if (hasBless) {
+	        sb.append("✨ 운영자의 축복 적용 중 (Lv 7 이하): 5분당 회복 +3").append(NL);
+	    }
+
+	    if (u.hpCur <= effHpMax * 0.2) {
+	        sb.append("⚠️ 현재 공격불가!");
+	    } else if (u.hpCur >= effHpMax) {
+	        sb.append("✅ 현재 체력은 최대 상태입니다.");
+	    }
+	    String hpMsg = buildBelowHalfMsg(userName, roomName, u, param1);
+        if (hpMsg != null) return hpMsg;
+
+	    return sb.toString();
+	}
+	
 	/* ===== Public APIs ===== */
 	public String changeJob(HashMap<String,Object> map) {
 	    final String roomName = Objects.toString(map.get("roomName"), "");
@@ -437,7 +502,7 @@ public class BossAttackController {
 		    StringBuilder sb = new StringBuilder();
 		    sb.append("해당 몬스터(").append(input).append(")를 찾을 수 없습니다.").append(NL)
 		      .append("아래 목록 중에서 선택해주세요:").append(NL).append(NL)
-		      .append("▶ 선택 가능한 몬스터").append(NL);
+		      .append("▶ 선택 가능한 몬스터").append(ALL_SEE_STR);
 
 		    for (Monster mm : monsters) {
 		        sb.append(renderMonsterCompactLine(mm, userLv));
@@ -772,7 +837,7 @@ public class BossAttackController {
 	        return String.format("%s님, 공격 쿨타임 %d분 %d초 남았습니다.", userName, min, sec);
 	    }
 
-	    // 10) HP 30% 미만 가이드 (기존 로직, u에 effHpMax/effRegen 반영해서 호출)
+	    // 10) HP 20% 미만 가이드 (기존 로직, u에 effHpMax/effRegen 반영해서 호출)
 	    int origHpMax = u.hpMax;
 	    int origRegen = u.hpRegen;
 	    u.hpMax = effHpMax;
@@ -1580,7 +1645,7 @@ public class BossAttackController {
 	    StringBuilder sb = new StringBuilder();
 	    sb.append("공격 타겟이 없습니다. 먼저 타겟을 설정해주세요.").append(NL)
 	      .append("예) /공격타겟 1   또는   /공격타겟 토끼").append(NL).append(NL)
-	      .append("▶ 선택 가능한 몬스터").append(NL);
+	      .append("▶ 선택 가능한 몬스터").append(ALL_SEE_STR);
 	    for (Monster m : monsters) {
 	        sb.append(renderMonsterCompactLine(m,1)).append(NL);
 	    }
@@ -2311,6 +2376,8 @@ public class BossAttackController {
 	    int regen = u.hpRegen;
 
 	    // 5분 단위로 예측 표시
+	    
+	    int msg_cnt =0;
 	    for (int t = toNextTick; t <= horizonMinutes; t += 5) {
 	        int ticksAdded = (int)(((minutesPassed + t) / 5) - ticksSoFar);
 	        if (ticksAdded <= 0) continue;
@@ -2319,6 +2386,9 @@ public class BossAttackController {
 	        sb.append("- ").append(t).append("분 뒤: HP ").append(proj)
 	          .append(" / ").append(maxHp).append(NL);
 
+	        msg_cnt++;
+	        if(msg_cnt > 5) break;
+	        
 	        if (proj >= maxHp) break; // 풀피 도달 시 중단
 	    }
 
@@ -2329,9 +2399,6 @@ public class BossAttackController {
 	    if (minutesToFull < 0) minutesToFull = 0;
 
 	    String result = sb.toString().trim();
-	    if (!result.isEmpty()) {
-	        result += NL + "♬(풀HP까지 약 " + minutesToFull + "분)♬";
-	    }
 
 	    return result.isEmpty() ? null : result;
 	}
