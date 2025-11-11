@@ -110,7 +110,11 @@ public class BossAttackController {
 	    if (hasBless) {
 	        sb.append("✨ 운영자의 축복 적용 중 (Lv 7 이하): 5분당 회복 +3").append(NL);
 	    }
-
+	    
+	   
+	    
+	    
+	    //TODO 
 	    if (u.hpCur <= effHpMax * 0.2) {
 	        sb.append("⚠️ 현재 공격불가!");
 	    } else if (u.hpCur >= effHpMax) {
@@ -1059,8 +1063,13 @@ public class BossAttackController {
 	    // 15) DB 반영 + 로그
 	    LevelUpResult up = persist(userName, roomName, u, m, flags, calc, res, effHpMax);
 	    String bonusMsg = "";
+	    String blessMsg = "";
+	    //TODO
 	    
-	
+	    // 🔹 운영자의 축복 레벨 구간 보너스:2,3,4, 5, 6, 7레벨 달성 시 각각 200sp (1회 지급)
+	    blessMsg = grantBlessLevelBonus(userName, roomName, up.beforeLv, up.afterLv);
+	    
+	    
 	    
 	    if (res.killed) {
 	        // 진행중 전투 종료
@@ -1098,11 +1107,12 @@ public class BossAttackController {
 	    if (!bonusMsg.isEmpty()) {
 	        msg += bonusMsg;
 	    }
-	    
-	    
-	    if (!res.blessMsg.isEmpty()) {
-	        msg += res.blessMsg;
+	    // ✅ 최초토벌/업적 메시지 추가
+	    if (!blessMsg.isEmpty()) {
+	    	msg += blessMsg;
 	    }
+	    
+	    
 	    
 	 // 🔹 상인 추가 보너스 안내
 	    if (merchantBonusSp > 0) {
@@ -1986,22 +1996,14 @@ public class BossAttackController {
 
 	    botNewService.insertBattleLogTx(log);
 
-	    // 🔹 운영자의 축복 레벨 구간 보너스: 5, 6, 7레벨 달성 시 각각 500sp (1회 지급)
-	    String blessMsg = grantBlessLevelBonus(userName, roomName, up.beforeLv, up.afterLv);
-	    // 레벨업 횟수 전달
-	    if (blessMsg != null && !blessMsg.isEmpty()) {
-	        res.blessMsg = blessMsg; // Resolve에 필드 있으면 활용, 없으면 monsterAttack 쪽에서 바로 사용해도 됨
-	    }
+	    
 	    
 	    res.levelUpCount = up.levelUpCount;
 	    return up;
 	}
 
 
-	 /** 
-     * 운영자의 축복 레벨 보상
-     * Lv5, Lv6, Lv7 달성 시 200, 각 레벨당 1회만 지급.
-     */
+	 
     private String grantBlessLevelBonus(String userName, String roomName, int beforeLv, int afterLv) {
     	int total = 0;
         StringBuilder sb = new StringBuilder();
@@ -2245,7 +2247,7 @@ public class BossAttackController {
 	    int baseAtk; double critMultiplier;
 	}
 	private static class Resolve {
-		boolean killed; String dropCode; int gainExp; int levelUpCount; boolean lucky; String blessMsg;
+		boolean killed; String dropCode; int gainExp; int levelUpCount; boolean lucky;
 	}
 	private static class CooldownCheck {
 	    final boolean ok; final int remainMinutes; final long remainSeconds;
