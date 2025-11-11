@@ -59,69 +59,69 @@ public class BossAttackController {
 
 	    final String job = (u.job == null ? "" : u.job.trim());
 
-	    // 2) MARKET 아이템 버프 (공격로직에서 쓰는 것 그대로)
+	 // 1) MARKET 장비 버프 (attackInfo와 동일 소스)
 	    HashMap<String, Number> buffs = null;
 	    try {
 	        buffs = botNewService.selectOwnedMarketBuffTotals(userName, roomName);
 	    } catch (Exception ignore) {}
 
-	    int bHpMax = (buffs != null && buffs.get("HP_MAX")   != null) ? buffs.get("HP_MAX").intValue()   : 0;
-	    int bRegen = (buffs != null && buffs.get("HP_REGEN") != null) ? buffs.get("HP_REGEN").intValue() : 0;
+	    int bHpMaxRaw = (buffs != null && buffs.get("HP_MAX") != null) ? buffs.get("HP_MAX").intValue() : 0;
+	    int bRegenRaw = (buffs != null && buffs.get("HP_REGEN") != null) ? buffs.get("HP_REGEN").intValue() : 0;
 
-	    // 3) 직업 패시브 (프리스트 등) - 공격로직과 동일하게
+	    // 2) 프리스트: 아이템 HP/리젠 1.5배 (attackInfo와 동일하게 처리)
+	    int bHpMax = bHpMaxRaw;
+	    int bRegen = bRegenRaw;
 	    if ("프리스트".equals(job)) {
-	        bHpMax = (int) Math.round(bHpMax * 1.5);
-	        bRegen = (int) Math.round(bRegen * 1.5);
+	        bHpMax = (int)Math.round(bHpMaxRaw * 1.5);
+	        bRegen = (int)Math.round(bRegenRaw * 1.5);
 	    }
 
-	    // 4) 운영자의 축복 (Lv 7 이하) - 공격 로직과 맞춰서 적용
+	    int baseHpMax = u.hpMax;
+	    int baseRegen = u.hpRegen;
+
+	    // 3) 운영자의 축복 (Lv 7 이하: 리젠 +3만, HP Max는 그대로)
 	    boolean hasBless = (u.lv <= 7);
-	    int blessHpMaxBonus   = 0;   // HP_MAX에 축복을 올리는 설계면 값 채우고
-	    int blessHpRegenBonus = (hasBless ? 3 : 0);
+	    int blessRegenBonus = hasBless ? 3 : 0;
 
-	    // 5) 실질 최대체력 / 회복량 계산 (공격 시와 동일 컨셉)
-	    int effHpMax = u.hpMax + bHpMax + blessHpMaxBonus;
-	    int effRegen = u.hpRegen + bRegen + blessHpRegenBonus;
+	    // 4) 최종 Max HP (attackInfo와 동일 로직)
+	    int finalHpMax = baseHpMax + bHpMax;
+	    if ("전사".equals(job)) {
+	        finalHpMax += baseHpMax; // 전사: 기본 HP 한 번 더
+	    }
+	    if (finalHpMax <= 0) finalHpMax = 1;
 
-	    // 최소 방어선
-	    if (effHpMax <= 0) effHpMax = 1;
+	    // 5) 최종 리젠
+	    int effRegen = baseRegen + bRegen + blessRegenBonus;
 	    if (effRegen < 0) effRegen = 0;
 
-	    
-	    // 7) 부활/자동회복 처리
-	    String reviveMsg = reviveAfter1hIfDead(userName, roomName, u, effHpMax, effRegen);
-	    boolean revivedThisTurn = false;
-	    if (reviveMsg != null) {
-	        if (!reviveMsg.isEmpty()) return reviveMsg;
-	        revivedThisTurn = true;
-	    }
-	    
-	    int effectiveHp = revivedThisTurn
-	            ? u.hpCur
-	            : computeEffectiveHpFromLastAttack(userName, roomName, u, effHpMax, effRegen);
-	    u.hpCur = effectiveHp;
-	    
-	    // 6) 출력
+	    // 6) 유효 체력 계산 (attackInfo와 동일 함수 사용)
+	    int effHp = computeEffectiveHpFromLastAttack(userName, roomName, u, finalHpMax, effRegen);
+	    if (effHp > finalHpMax) effHp = finalHpMax;
+
 	    StringBuilder sb = new StringBuilder();
 	    sb.append("❤️ ").append(userName).append("님의 체력 상태").append(NL)
-	      .append("현재 체력: ").append(u.hpCur).append(" / ").append(effHpMax).append(NL)
+	      .append("현재 체력: ").append(effHp).append(" / ").append(finalHpMax).append(NL)
 	      .append("5분당 회복: +").append(effRegen).append(NL);
 
 	    if (hasBless) {
 	        sb.append("✨ 운영자의 축복 적용 중 (Lv 7 이하): 5분당 회복 +3").append(NL);
 	    }
-	    
-	   
-	    
-	    
-	    //TODO 
-	    if (u.hpCur <= effHpMax * 0.2) {
-	        sb.append("⚠️ 현재 공격불가!");
-	    } else if (u.hpCur >= effHpMax) {
-	        sb.append("✅ 현재 체력은 최대 상태입니다.");
+
+	    if (effHp <= finalHpMax * 0.2) {
+	        sb.append("⚠️ 현재 공격 불가").append(NL);
+	    } else if (effHp >= finalHpMax) {
+	        sb.append("✅ 현재 체력은 최대 상태입니다.").append(NL);
 	    }
-	    String hpMsg = buildBelowHalfMsg(userName, roomName, u, param1);
-        if (hpMsg != null) return hpMsg;
+	    
+	 // ✅ 회복 예측 스케줄 (예: 60분 범위 내)
+	    String regenInfo = buildRegenScheduleSnippetEnhanced(userName, roomName, u, 60);
+	    if (regenInfo != null && !regenInfo.isEmpty()) {
+	        sb.append(regenInfo);
+	    }
+
+
+	    // ❌ 기존의 buildBelowHalfMsg 호출은 제거 (HP 조회 전용이니까)
+	    // String hpMsg = buildBelowHalfMsg(...);  <-- 이 라인은 삭제 또는 주석
 
 	    return sb.toString();
 	}
@@ -1703,13 +1703,14 @@ public class BossAttackController {
 	    if (sched != null) sb.append(sched).append(NL);
 
 	    // ✅ 풀HP ETA 출력
-	    int toFull = minutesUntilFull(userName, roomName, u);
+	    //int toFull = minutesUntilFull(userName, roomName, u);
+	    /*
 	    if (toFull == Integer.MAX_VALUE) {
 	        sb.append("(풀HP까지: 리젠 없음)").append(NL);
 	    } else if (toFull > 0) {
 	        sb.append("(풀HP까지 약 ").append(toFull).append("분)").append(NL);
 	    }
-
+*/
 	    return sb.toString();
 	}
 	
@@ -2417,7 +2418,9 @@ public class BossAttackController {
 	    int ticksNeeded = (int)Math.ceil(hpNeeded / (double)regen);
 	    int minutesToFull = (toNextTick + (ticksNeeded - 1) * 5);
 	    if (minutesToFull < 0) minutesToFull = 0;
-
+	    
+	    sb.append(" (풀HP까지 약 ").append(minutesToFull).append("분)").append(NL);
+	    
 	    String result = sb.toString().trim();
 
 	    return result.isEmpty() ? null : result;
