@@ -980,7 +980,7 @@ public class BossAttackController {
 		             .setDeathYn(1)
 		             .setLuckyYn(0)
 		     );
-		     return userName + "님, 전투 불능 상태입니다." + NL
+		     return userName + "님, 이번전투에서 패배하여, 전투 불능이 되었습니다." + NL
 		             + "현재 체력: 0 / " + effHpMax + NL
 		             + "10분 뒤 최대 체력의 10%로 부활하며," + NL
 		             + "이후 5분마다 HP_REGEN 만큼 서서히 회복됩니다.";
