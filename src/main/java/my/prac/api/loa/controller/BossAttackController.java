@@ -1046,26 +1046,7 @@ public class BossAttackController {
 	    LevelUpResult up = persist(userName, roomName, u, m, flags, calc, res, effHpMax);
 	    String bonusMsg = "";
 	    
-	 // ✅ Lv5 달성 운영자의 축복 보상 (1회)
-	    String blessMsg = "";
-	    if (up != null && up.beforeLv < 5 && up.afterLv >= 5) {
-	        int already = 0;
-	        try {
-	            already = botNewService.selectPointRankCountByCmdUserInRoom(
-	                    roomName, userName, "BLESS_LV5");
-	        } catch (Exception ignore) {}
-
-	        if (already == 0) {
-	            HashMap<String,Object> pr = new HashMap<>();
-	            pr.put("userName", userName);
-	            pr.put("roomName", roomName);
-	            pr.put("score", 500);
-	            pr.put("cmd", "BLESS_LV5");
-	            botNewService.insertPointRank(pr);
-
-	            blessMsg = NL + "✨ 운영자의 축복! Lv5 달성을 기념하여 500sp가 지급되었습니다.";
-	        }
-	    }
+	
 	    
 	    if (res.killed) {
 	        // 진행중 전투 종료
@@ -1999,7 +1980,7 @@ public class BossAttackController {
 
 	 /** 
      * 운영자의 축복 레벨 보상
-     * Lv5, Lv6, Lv7 달성 시 200 500sp, 각 레벨당 1회만 지급.
+     * Lv5, Lv6, Lv7 달성 시 200, 각 레벨당 1회만 지급.
      */
     private void grantBlessLevelBonus(String userName, String roomName, int beforeLv, int afterLv) {
         if (afterLv <= beforeLv) return;
