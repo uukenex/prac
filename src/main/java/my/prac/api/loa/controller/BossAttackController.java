@@ -223,7 +223,7 @@ public class BossAttackController {
 	           "▶ 도적 : 공격 시 15% 확률로 추가 드랍(STEAL), 몬스터 기본 공격 40% 회피" + NL +
 	           "▶ 프리스트 : 아이템 HP/리젠 효과 1.5배, 몬스터에게 받는 피해 30% 감소, [히든]" + NL +
 	           "▶ 상인 : 상점 구매 10% 할인, 드랍 판매가 10% 증가, 공격시 SP 추가 획득" + NL +
-	           "▶ 도사 : 다음 공격하는 아군의 공격력증가,치명타확률 증가,HP회복, 럭키몬스터 등장확률증가" + NL +
+	           "▶ 도사 : 다음 공격하는 아군의 (공격력↑,치명타확률↑,HP회복), 자신의 럭키몬스터 등장 확률 증가" + NL +
 	           "♬ 4시간마다 /직업 [직업명] 으로 전직 가능합니다." + NL;
 	}
 
@@ -433,7 +433,7 @@ public class BossAttackController {
 	    } else if ("상인".equals(job)) {
 	        sb.append("   ⚔ 직업 : 상점 구매 10% 할인, 드랍 판매가 10% 증가, 공격시 SP 추가 획득").append(NL);
 		} else if ("도사".equals(job)) {
-			sb.append("   ⚔ 직업 : 다음 공격하는 아군의 공격력증가,치명타확률 증가,HP회복, 럭키몬스터 등장확률증가").append(NL);
+			sb.append("   ⚔ 직업 : 다음 공격하는 아군의 (공격력↑,치명타확률↑,HP회복), 자신의 럭키몬스터 등장확률증가").append(NL);
 		}
 
 	    sb.append("▶ 현재 타겟: ").append(targetName)
@@ -932,7 +932,7 @@ public class BossAttackController {
 	    if (dosaBuff != null) {
 	        int dosaLv = 1;
 	        try { dosaLv = Integer.parseInt(dosaBuff.get("LV").toString()); } catch (Exception ignore) {}
-	        
+	        int baseDosaLv = dosaLv;
 	        dosaLv = (int) Math.round(dosaLv * 0.5);
 	        
 	        // 도사 버프: 각 스탯 = 도사 레벨 만큼
@@ -943,10 +943,11 @@ public class BossAttackController {
 	        // HP 회복은 상한을 초과해도 된다
 	        u.hpCur = u.hpCur + dosaLv;
 
-	        dosabuffMsg = "✨ 도사의 버프 발동! (Lv " + dosaLv +
+	        dosabuffMsg = "✨ 도사의 버프 발동! (Lv " + baseDosaLv +
 	                      ") ATK+" + dosaLv +
 	                      ", CRIT+" + dosaLv +
-	                      ", HP+" + dosaLv;
+	                      ", HP+" + dosaLv+
+	                      ", CRI_DMG"+"..ing";
 
 	        // 1회 소모 → 방내 BUFF_YN 전부 초기화
 	        botNewService.clearRoomBuff(roomName);
