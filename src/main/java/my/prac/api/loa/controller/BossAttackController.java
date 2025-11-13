@@ -1040,6 +1040,7 @@ public class BossAttackController {
 
 		 // 13) 즉사 처리
 		 int newHpPreview = Math.max(0, u.hpCur - calc.monDmg);
+		 String deathAchvMsg = "";
 		 if (newHpPreview <= 0) {
 		     botNewService.closeOngoingBattleTx(userName, roomName);
 		     botNewService.updateUserHpOnlyTx(userName, roomName, 0);
@@ -1059,10 +1060,14 @@ public class BossAttackController {
 		             .setDeathYn(1)
 		             .setLuckyYn(0)
 		     );
+		     
+		     deathAchvMsg = grantDeathAchievements(userName, roomName);
+		     
+		     
 		     return userName + "님, 이번전투에서 패배하여, 전투 불능이 되었습니다." + NL
 		             + "현재 체력: 0 / " + effHpMax + NL
 		             + "10분 뒤 최대 체력의 10%로 부활하며," + NL
-		             + "이후 5분마다 HP_REGEN 만큼 서서히 회복됩니다.";
+		             + "이후 5분마다 HP_REGEN 만큼 서서히 회복됩니다."+NL+ deathAchvMsg;
 		 }
 
 	    // 14) 처치/드랍 판단
@@ -1135,15 +1140,13 @@ public class BossAttackController {
 	            }
 	        }
 	    }
-
+	    
 	    // 15) DB 반영 + 로그
 	    LevelUpResult up = persist(userName, roomName, u, m, flags, calc, res, effHpMax);
 	    String bonusMsg = "";
 	    String blessMsg = "";
-	    String deathAchvMsg = "";
-	    if (u.hpCur == 0) {
-	        deathAchvMsg = grantDeathAchievements(userName, roomName);
-	    }
+	    
+	    
 	    //TODO
 	    
 	    // 🔹 운영자의 축복 레벨 구간 보너스:2,3,4, 5, 6, 7레벨 달성 시 각각 200sp (1회 지급)
@@ -1191,11 +1194,6 @@ public class BossAttackController {
 	    if (!blessMsg.isEmpty()) {
 	    	msg += blessMsg;
 	    }
-	    if (!deathAchvMsg.isEmpty()) {
-	        msg += NL + deathAchvMsg;
-	    }
-	    
-	    
 	 // 🔹 상인 추가 보너스 안내
 	    if (merchantBonusSp > 0) {
 	        msg += NL + "✨ 상인 효과!" + merchantBonusSp + "sp 획득";
