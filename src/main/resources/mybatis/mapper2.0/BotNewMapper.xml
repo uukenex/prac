@@ -651,7 +651,7 @@
 	    FROM (
 	        SELECT USER_NAME,
 	               ROOM_NAME,
-	               SELECT U.JOB
+	               (SELECT U.JOB
 					   FROM TBOT_POINT_NEW_USER U
 					  WHERE U.USER_NAME = A.USER_NAME) AS JOB,
 	               COUNT(*) AS ATK_CNT,
