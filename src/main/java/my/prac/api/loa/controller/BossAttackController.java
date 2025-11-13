@@ -944,7 +944,22 @@ public class BossAttackController {
 
 			// 🔹 도적: 40% 확률 회피 (몬스터 피해 무효화)
 			if ("도적".equals(job) && calc.monDmg > 0) {
-				if (ThreadLocalRandom.current().nextDouble() < 0.40) {
+				
+			    int monLv  = m.monNo;
+			    double evadeRate = 0.40;
+			    switch(monLv) {
+			    	case 12: 
+			    		evadeRate -=0.05;
+			    	case 13:
+			    		evadeRate -=0.05;
+			    	case 14:
+			    		evadeRate -=0.05;
+			    	case 15:
+			    		evadeRate -=0.05;
+			    }
+			    
+			    
+				if (ThreadLocalRandom.current().nextDouble() < evadeRate) {
 					String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
 					calc.patternMsg = baseMsg + "도적의 회피! 피해를 받지 않았습니다.";
 					calc.monDmg = 0;
@@ -1036,9 +1051,24 @@ public class BossAttackController {
 	    }
 	    
 	    String stealMsg = null;
-	 // 도적: 공격 시 15% 확률로 추가 드랍 (비처치도 가능)
 	    if ("도적".equals(job)) {
-	        if (ThreadLocalRandom.current().nextDouble() < 0.15) {
+	    	
+	    	
+	    	double stealRate = 0.15;
+	    	int monLv  = m.monNo;
+		    switch(monLv) {
+		    	case 12: 
+		    		stealRate -=0.03;
+		    	case 13:
+		    		stealRate -=0.03;
+		    	case 14:
+		    		stealRate -=0.03;
+		    	case 15:
+		    		stealRate -=0.03;
+		    }
+		    
+	    	
+	        if (ThreadLocalRandom.current().nextDouble() < stealRate) {
 	            String dropName = (m.monDrop == null ? "" : m.monDrop.trim());
 	            if (!dropName.isEmpty()) {
 	                try {
@@ -1359,9 +1389,16 @@ public class BossAttackController {
 	        int rank = 1;
 	        for (HashMap<String,Object> row : rising) {
 	            String name = String.valueOf(row.get("USER_NAME"));
+	            String job = String.valueOf(row.get("JOB"));
 	            // 필요시 방 이름, 공격 횟수도 붙일 수 있음 (ex. " (12회)")
-	            sb.append(rank).append("위: ").append(name).append(NL);
-	            if (rank++ >= 5) break;
+	            sb.append(rank).append("위: ").append(name);
+	            
+	            if(!"".equals(job)) {
+	            	sb.append("(").append(job).append(")");
+	            }
+	            
+	            sb.append(NL);
+	            if (rank++ >= 7) break;
 	        }
 	    }
 	    sb.append(allSeeStr).append(NL).append(NL);
@@ -1378,13 +1415,14 @@ public class BossAttackController {
 	            int lv         = safeInt(row.get("LV"));
 	            int expCur     = safeInt(row.get("EXP_CUR"));
 	            int expNext    = safeInt(row.get("EXP_NEXT"));
+	            String job	   = String.valueOf(row.get("JOB"));
 
-	            sb.append(rank).append("위: ").append(name).append(NL)
+	            sb.append(rank).append("위: ").append(name).append("(").append(job).append(")").append(NL)
 	              .append("▶(Lv.").append(lv)
 	              .append(", EXP ").append(expCur).append("/").append(expNext).append(")")
 	              .append(NL);
 	            rank++;
-	            if (rank > 3) break;
+	            if (rank > 7) break;
 	        }
 	    }
 	    sb.append(NL);
@@ -1759,6 +1797,7 @@ public class BossAttackController {
 	    for (int i = 0; i < enabled; i++) weights[i] = 1;
 	    if (enabled == 2) { weights[0] = 20; weights[1] = 80; }
 	    if (enabled == 3) { weights[0] = 10; weights[1] = 60; weights[2] = 30; }
+	    if (enabled == 4) { weights[0] = 0; weights[1] = 60; weights[2] = 25; weights[3] = 15; }
 	    int sum = 0; for (int w : weights) sum += Math.max(0, w);
 	    if (sum <= 0) { for (int i = 0; i < enabled; i++) weights[i] = 1; sum = enabled; }
 	    int pick = r.nextInt(sum) + 1, acc = 0;

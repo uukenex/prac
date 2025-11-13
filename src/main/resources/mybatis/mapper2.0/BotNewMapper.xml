@@ -530,13 +530,14 @@
 	</select>
 	
 	<select id="selectTopLevelUsers" resultType="hashmap">
-	  SELECT USER_NAME, LV, EXP_CUR, EXP_NEXT
+	  SELECT USER_NAME, LV, EXP_CUR, EXP_NEXT, JOB
 	  FROM (
-	    SELECT u.USER_NAME, u.LV, u.EXP_CUR, u.EXP_NEXT,
+	    SELECT u.USER_NAME, u.LV, u.EXP_CUR, u.EXP_NEXT, U.JOB,
 	           ROW_NUMBER() OVER (ORDER BY u.LV DESC, u.EXP_CUR DESC, u.USER_NAME ASC) AS RN
 	      FROM TBOT_POINT_NEW_USER u
+	      WHERE U.PROC_DATE > SYSDATE-3
 	  )
-	  WHERE RN &lt;= 3
+	  WHERE RN &lt;= 7
 	  ORDER BY RN
 	</select>
 	
@@ -650,9 +651,12 @@
 	    FROM (
 	        SELECT USER_NAME,
 	               ROOM_NAME,
+	               ,(SELECT U.JOB
+					   FROM TBOT_POINT_NEW_USER U
+					  WHERE U.USER_NAME = A.USER_NAME) AS JOB
 	               COUNT(*) AS ATK_CNT,
 	               MAX(INSERT_DATE) AS LAST_ATTACK
-	        FROM TBOT_POINT_NEW_BATTLE_LOG
+	        FROM TBOT_POINT_NEW_BATTLE_LOG A
 	        WHERE INSERT_DATE >= SYSDATE - (6/24)
 	        GROUP BY USER_NAME, ROOM_NAME
 	        ORDER BY ATK_CNT DESC, LAST_ATTACK DESC
