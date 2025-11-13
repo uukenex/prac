@@ -169,7 +169,7 @@ public class BossAttackController {
 	    }
 
 	    // 3) 레벨 제한 (처음/변경 모두 공통 룰)
-	    if (u.lv < 5) {
+	    if (u.lv < 4) {
 	        return "전직은 5레벨부터 가능합니다. 현재 레벨: " + u.lv;
 	    }
 
@@ -178,6 +178,13 @@ public class BossAttackController {
 	        return "이미 [" + curJob + "] 직업입니다.";
 	    }
 
+	    
+	 // 레벨 4는 직업 체험 모드: 쿨타임 체크 생략 + 날짜 미갱신(체험은 기록 안 남김)
+	    if (u.lv == 4) {
+	        botNewService.updateUserJobAndChangeDate(userName, roomName, newJob); // **JOB_CHANGE_DATE 갱신 없는 버전 사용**
+	        return "🎓 레벨4 직업 체험: 쿨타임 없이 [" + newJob + "] 으로 변경했습니다!";
+	    }
+	    
 	    // 5) 24시간 쿨타임 체크
 	    // - JOB_CHANGE_DATE 기본값을 SYSDATE-6/24 로 잡았으므로
 	    //   초기 유저는 바로 변경 가능하게 됨.
@@ -455,6 +462,7 @@ public class BossAttackController {
 	            sb.append("- (비어있음)").append(NL);
 	        } else {
 	            for (HashMap<String, Object> row : bag) {
+	            	
 	                String itemName = Objects.toString(row.get("ITEM_NAME"), "-");
 	                String qtyStr   = Objects.toString(row.get("TOTAL_QTY"), "0");
 	                String typeStr  = Objects.toString(row.get("ITEM_TYPE"), "");
@@ -536,6 +544,34 @@ public class BossAttackController {
 		}
 		if (u.targetMon == m.monNo) return "현재 타겟이 이미 " + m.monName + "(MON_NO=" + m.monNo + ") 입니다.";
 
+		
+
+
+		// 예: 사용자가 /공격타겟 13 입력 → newMonNo = 13
+		int newMonNo = Integer.parseInt(input); // 네가 사용하는 변수명에 맞게 치환
+
+		// 1) 바로 아래 등급 몬스터 번호 계산
+		int prevMonNo = Math.max(1, newMonNo - 1);
+
+		// 2) 해당 몬스터를 내가 몇 마리 잡았는지 조회 (기존 selectKillStats 재사용)
+		int killsOnPrev = 0;
+		List<KillStat> killStats = botNewService.selectKillStats(userName, roomName);
+		if (killStats != null) {
+		    for (KillStat ks : killStats) {
+		        if (ks.monNo == prevMonNo) {          // KillStat의 필드명에 맞게 조정
+		            killsOnPrev = ks.killCount;      // getKillCount() 쓰는 구조면 그걸로
+		            break;
+		        }
+		    }
+		}
+
+		// 3) 조건 미달 시 거부
+		if (killsOnPrev < 10) {
+		    Monster prev = botNewService.selectMonsterByNo(prevMonNo);
+		    String prevName = (prev == null ? ("Lv " + prevMonNo) : prev.monName);
+		    return "상위 등급으로 올리려면 [" + prevName + "]을(를) 최소 10마리 처치해야 합니다. (현재 "
+		         + killsOnPrev + "마리)";
+		}
 		
 		botNewService.closeOngoingBattleTx(userName, roomName);
 		botNewService.updateUserTargetMonTx(userName, roomName, m.monNo);
@@ -922,6 +958,7 @@ public class BossAttackController {
 			flags = rollFlags(u, m);
 			flags.atkCrit = crit;
 			flags.snipe = isSnipe; // 저격 여부 유지
+			flags.finisher = (flags.monPattern == 4); // 패턴4=필살기
 
 			boolean mageBreakGuard = false;
 
@@ -943,7 +980,7 @@ public class BossAttackController {
 			
 
 			// 🔹 도적: 40% 확률 회피 (몬스터 피해 무효화)
-			if ("도적".equals(job) && calc.monDmg > 0) {
+			if ("도적".equals(job) && calc.monDmg > 0 && !flags.finisher) {
 				
 			    int monLv  = m.monNo;
 			    double evadeRate = 0.40;
@@ -981,9 +1018,18 @@ public class BossAttackController {
 		    String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
 		    calc.patternMsg = baseMsg + "[언데드 추가 피해]";
 		}
+		
+		// 🔰 전사: 레벨당 2 고정 피해감소 (필살기에는 미적용)
+		if ("전사".equals(job) && calc.monDmg > 0 && !flags.finisher) {
+		    int reduce = Math.max(0, u.lv) * 2;
+		    int after  = Math.max(0, calc.monDmg - reduce); // 최소 0
+		    String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
+		    calc.patternMsg = baseMsg + "(전사 효과로 " + reduce + " 피해 감소 → " + after + ")";
+		    calc.monDmg = after;
+		}
 
 		// 🔹 프리스트: 받는 피해 30% 감소 (모든 몬스터 대상)
-		if ("프리스트".equals(job) && calc.monDmg > 0) {
+		if ("프리스트".equals(job) && calc.monDmg > 0 && !flags.finisher) {
 		    int reduced = (int) Math.floor(calc.monDmg * 0.7); // 30% 감소
 		    if (reduced < 1) reduced = 1; // 최소 1 유지
 		    String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
@@ -1083,7 +1129,7 @@ public class BossAttackController {
 	                        inv.put("gainType", "STEAL");
 	                        botNewService.insertInventoryLogTx(inv);
 	                        // 메시지는 buildAttackMessage에서 드랍 파트와 함께 표현 가능 (원하면 추가)
-	                        stealMsg = "✨ " + m.monName + "의 아이템을 훔쳤습니다! (" + dropName + ")";
+	                        stealMsg = "✨ " + m.monName + "의 아이템을 훔쳤습니다! (" + dropName + "조각)";
 	                    }
 	                } catch (Exception ignore) {}
 	            }
@@ -1094,6 +1140,10 @@ public class BossAttackController {
 	    LevelUpResult up = persist(userName, roomName, u, m, flags, calc, res, effHpMax);
 	    String bonusMsg = "";
 	    String blessMsg = "";
+	    String deathAchvMsg = "";
+	    if (u.hpCur == 0) {
+	        deathAchvMsg = grantDeathAchievements(userName, roomName);
+	    }
 	    //TODO
 	    
 	    // 🔹 운영자의 축복 레벨 구간 보너스:2,3,4, 5, 6, 7레벨 달성 시 각각 200sp (1회 지급)
@@ -1141,7 +1191,9 @@ public class BossAttackController {
 	    if (!blessMsg.isEmpty()) {
 	    	msg += blessMsg;
 	    }
-	    
+	    if (!deathAchvMsg.isEmpty()) {
+	        msg += NL + deathAchvMsg;
+	    }
 	    
 	    
 	 // 🔹 상인 추가 보너스 안내
@@ -1165,6 +1217,10 @@ public class BossAttackController {
 	             + " (Lv 7 이하 한정 버프)";
 	    }
 	    
+	 // 🎓 레벨 4 체험 멘트: 공격할 때마다 노출
+	    if (u.lv == 4) {
+	        msg += NL + "※ 지금은 레벨4 직업 체험 구간입니다. 직업 변경 쿨타임이 없습니다!";
+	    }
 	    // 19) 전직 안내 (전직 안 했고 5레벨 이상일 때만)
 	    if ((job.isEmpty()) && u.lv >= 5) {
 	        msg += NL + "※ 아직 전직하지 않았습니다. /직업 으로 확인해주세요!";
@@ -1206,7 +1262,14 @@ public class BossAttackController {
 	    boolean isMerchant = "상인".equals(job);
 
 	    final boolean wantShinyOnly = itemNameRaw.startsWith("빛") || itemNameRaw.startsWith("✨");
-	    final String baseName = itemNameRaw.replace("빛", "").replace("✨", "");
+	    final boolean stealOnly = itemNameRaw.endsWith("조각");
+	    
+	    String baseName = itemNameRaw;
+	    baseName = baseName.replace("빛", "").replace("✨", "");
+	    if (stealOnly && baseName.endsWith("조각")) {
+	        baseName = baseName.substring(0, baseName.length() - 2); // "조각" 두 글자 제거
+	    }
+	    
 
 	    Integer itemId = null;
 	    try { itemId = botNewService.selectItemIdByName(baseName); } catch (Exception ignore) {}
@@ -1215,16 +1278,33 @@ public class BossAttackController {
 	    List<HashMap<String, Object>> rows = botNewService.selectInventoryRowsForSale(userName, roomName, itemId);
 	    if (rows == null || rows.isEmpty()) return "인벤토리에 보유 중인 [" + itemNameRaw + "]이(가) 없습니다.";
 
-	    int normalQty = 0, shinyQty = 0;
+	    // ★ 조각 수량 추가
+	    int normalQty = 0, shinyQty = 0, fragQty = 0;
 	    for (HashMap<String, Object> row : rows) {
 	        String gainType = Objects.toString(row.get("GAIN_TYPE"), "DROP");
 	        int qty = parseIntSafe(Objects.toString(row.get("QTY"), "0"));
-	        if ("DROP3".equalsIgnoreCase(gainType)) shinyQty += Math.max(0, qty);
-	        else normalQty += Math.max(0, qty);
+	        qty = Math.max(0, qty);
+
+	        if ("STEAL".equalsIgnoreCase(gainType)) {
+	            fragQty += qty;
+	        } else if ("DROP3".equalsIgnoreCase(gainType)) {
+	            shinyQty += qty;
+	        } else {
+	            normalQty += qty;
+	        }
 	    }
 
-	    int haveTotal = normalQty + shinyQty;
-	    if (haveTotal <= 0) return "인벤토리에 보유 중인 [" + itemNameRaw + "]이(가) 없습니다.";
+	 // ★ 판매 대상 수량 계산: 조각 모드 vs 일반 모드
+	    int haveTotal;
+	    if (stealOnly) {
+	        haveTotal = fragQty;
+	    } else {
+	        haveTotal = normalQty + shinyQty;
+	    }
+
+	    if (haveTotal <= 0) {
+	        return "인벤토리에 보유 중인 [" + itemNameRaw + "]이(가) 없습니다.";
+	    }
 
 	    Integer basePriceObj = null;
 	    try { basePriceObj = botNewService.selectItemSellPriceById(itemId); } catch (Exception ignore) {}
@@ -1244,9 +1324,10 @@ public class BossAttackController {
 	    }
 	    
 	    int need = Math.min(reqQty, haveTotal);
-	    int sold = 0, soldNormal = 0, soldShiny = 0;
+	    int sold = 0, soldNormal = 0, soldShiny = 0, soldFrag = 0;
 	    long totalSp = 0L;
-
+	    
+	    
 	    boolean soldMerchantDiscount = false; // BUY_MERCHANT 물건을 실제로 판 적 있는지
 	    boolean soldMerchantBonus = false;    // 상인 보너스(드랍템 10%↑) 적용된 판매가 있었는지
 	    
@@ -1257,9 +1338,17 @@ public class BossAttackController {
 	        boolean isShinyRow = "DROP3".equalsIgnoreCase(gainType);
 	        boolean isDropRow  = isShinyRow || "DROP".equalsIgnoreCase(gainType);
 	        boolean isMerchantBuy  = "BUY_MERCHANT".equalsIgnoreCase(gainType);
+	        boolean isStealRow   = "STEAL".equalsIgnoreCase(gainType);   // ★ 추가
 	        
+	     // ★ 모드에 따라 행 필터링
+	        if (stealOnly && !isStealRow) continue;      // /판매 모피조각 → STEAL만
+	        if (!stealOnly && isStealRow) continue;      // /판매 모피 → STEAL 제외
+
+	        // 기존 빛/일반 필터
 	        if (wantShinyOnly && !isShinyRow) continue;
 	        if (!wantShinyOnly && isShinyRow) continue;
+	        
+	        
 
 	        String rid = (row.get("RID") != null ? row.get("RID").toString() : null);
 	        int qty = parseIntSafe(Objects.toString(row.get("QTY"), "0"));
@@ -1287,6 +1376,11 @@ public class BossAttackController {
 	        if (isMerchant && isDropRow) {
 	            unitPrice = (int)Math.round(unitPrice * 1.1);
 	        }
+	        
+	        // ★ 조각(STEAL)은 절반 가격
+	        if (isStealRow) {
+	            unitPrice = (int)Math.floor(unitPrice * 0.5);
+	        }
 
 	     // 👇 실제로 해당 타입이 팔렸는지 기록
 	        if (isMerchantBuy && take > 0) {
@@ -1300,15 +1394,29 @@ public class BossAttackController {
 	        if (qty == take) botNewService.updateInventoryDelByRowId(rid);
 	        else botNewService.updateInventoryQtyByRowId(rid, qty - take);
 
-	        if (isShinyRow) soldShiny += take; else soldNormal += take;
+	     // 판매 카운트
+	        if (isStealRow) {
+	            soldFrag += take;
+	        } else if (isShinyRow) {
+	            soldShiny += take;
+	        } else {
+	            soldNormal += take;
+	        }
 	        sold += take;
 	        need -= take;
 	        totalSp += (long) take * (long) unitPrice;
 	    }
 
 	    if (sold <= 0) {
-	        String preStock = "보유: " + baseName + " " + normalQty + "개"
-	                + (shinyQty > 0 ? ", ✨빛" + baseName + " " + shinyQty + "개" : "");
+	        // ★ 보유 안내도 모드별 분리
+	        String preStock;
+	        if (stealOnly) {
+	            preStock = "보유: " + baseName + "조각 " + fragQty + "개";
+	        } else {
+	            preStock = "보유: " + baseName + " " + normalQty + "개"
+	                    + (shinyQty > 0 ? ", ✨빛" + baseName + " " + shinyQty + "개" : "")
+	                    + (fragQty  > 0 ? ", " + baseName + "조각 " + fragQty + "개" : "");
+	        }
 	        return "판매 가능한 재고가 없습니다." + NL + preStock;
 	    }
 
@@ -1328,22 +1436,38 @@ public class BossAttackController {
 
 	    int remainNormal = Math.max(0, normalQty - soldNormal);
 	    int remainShiny  = Math.max(0, shinyQty  - soldShiny);
+	    int remainFrag   = Math.max(0, fragQty   - soldFrag);  // ★
+	    
 
 	    StringBuilder remainSb = new StringBuilder("남은 재고: ");
 	    boolean printed = false;
-	    if (remainNormal > 0) {
-	        remainSb.append(baseName).append(" ").append(remainNormal).append("개");
-	        printed = true;
-	    }
-	    if (remainShiny > 0) {
-	        if (printed) remainSb.append(", ");
-	        remainSb.append("✨빛").append(baseName).append(" ").append(remainShiny).append("개");
-	        printed = true;
-	    }
+	    
+        if (remainNormal > 0) {
+            remainSb.append(baseName).append(" ").append(remainNormal).append("개");
+            printed = true;
+        }
+        if (remainShiny > 0) {
+            if (printed) remainSb.append(", ");
+            remainSb.append("✨빛").append(baseName).append(" ").append(remainShiny).append("개");
+            printed = true;
+        }
+     // ★ 여기 추가: 조각도 같이 보여주기
+        if (remainFrag > 0) {
+            if (printed) remainSb.append(", ");
+            remainSb.append(baseName).append("조각 ").append(remainFrag).append("개");
+            printed = true;
+        }
+	    
 	    if (!printed) remainSb = new StringBuilder("남은 재고: 없음");
 
-	    String dispName = wantShinyOnly ? ("✨빛" + baseName) : baseName;
-
+	 // 표시용 이름
+	    String dispName;
+	    if (stealOnly) {
+	        dispName = baseName + "조각";                         // ★ /판매 모피조각
+	    } else {
+	        dispName = wantShinyOnly ? ("✨빛" + baseName) : baseName;
+	    }
+	    
 	    StringBuilder sb = new StringBuilder();
 	    sb.append("⚔ ").append(userName).append("님,").append(NL)
 	      .append("▶ 판매 완료!").append(NL)
@@ -2280,6 +2404,7 @@ public class BossAttackController {
 	    boolean atkCrit;
 	    int monPattern;
 	    boolean snipe; // 궁수 저격 여부
+	    boolean finisher;  // ← 필살기 여부
 	}
 	
 	private static class AttackCalc {
@@ -2778,6 +2903,53 @@ public class BossAttackController {
 	    }
 
 	    return cmd;
+	}
+	// BossAttackController 내부에 추가 (필드/DI 그대로 사용)
+	private String grantDeathAchievements(String userName, String roomName) {
+	    // 규칙: {사망누적, 보상SP}
+	    final int[][] rules = new int[][]{
+	        {1,   100},
+	        {10,  200},
+	        {50,  500},
+	        {100, 1000}
+	    };
+
+	    StringBuilder sb = new StringBuilder();
+	    int deaths = 0;
+
+	    try {
+	        AttackDeathStat stat = botNewService.selectAttackDeathStats(userName, roomName);
+	        deaths = (stat == null ? 0 : stat.getTotalDeaths());
+	    } catch (Exception ignore) { /* 안전무시 */ }
+
+	    for (int[] r : rules) {
+	        int threshold = r[0];
+	        int rewardSp  = r[1];
+
+	        if (deaths >= threshold) {
+	            String cmd = "ACHV_DEATH_" + threshold;
+	            int already = 0;
+	            try {
+	                already = botNewService.selectPointRankCountByCmdUserInRoom(roomName, userName, cmd);
+	            } catch (Exception ignore) {}
+
+	            if (already == 0) {
+	                try {
+	                    HashMap<String, Object> p = new HashMap<>();
+	                    p.put("userName", userName);
+	                    p.put("roomName", roomName);
+	                    p.put("score", rewardSp);
+	                    p.put("cmd", cmd);
+	                    botNewService.insertPointRank(p);
+
+	                    sb.append("✨ 죽음 ").append(threshold)
+	                      .append("회 달성 보상 +").append(rewardSp)
+	                      .append("sp 지급!♬");
+	                } catch (Exception ignore) {}
+	            }
+	        }
+	    }
+	    return sb.toString();
 	}
 
 }
