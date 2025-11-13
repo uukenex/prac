@@ -268,4 +268,20 @@ public class BotNewServiceImpl implements BotNewService {
     public List<HashMap<String,Object>> selectOngoingChallengesForUnclearedBosses() {
         return botNewDAO.selectOngoingChallengesForUnclearedBosses();
     }
+    
+    @Override
+    public int selectRoomBuffCount(String roomName) {
+        return botNewDAO.selectRoomBuffCount(roomName);
+    }
+
+    @Override
+    public void clearRoomBuff(String roomName) {
+        botNewDAO.clearRoomBuff(roomName);
+    }
+    
+    @Override
+    public HashMap<String,Object> selectDosaBuffInfo(String roomName) {
+        return botNewDAO.selectDosaBuffInfo(roomName);
+    }
+    
 }

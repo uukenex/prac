@@ -35,6 +35,7 @@ public class BossAttackController {
 	private static final String NL = "♬";
 	// 🍀 Lucky: 전투 시작 시 10% 확률 고정(신규 전투에서만 결정)
 	private static final double LUCKY_RATE = 0.15;
+	private static final double LUCKY_RATE_DOSA = 0.20;
 	private static final String ALL_SEE_STR = "===";
 	
 
@@ -216,13 +217,14 @@ public class BossAttackController {
 	private String buildJobDescriptionList() {
 	    String NL = "♬";
 	    return "전직 가능한 직업 목록" + NL +
-	           "▶ 전사 : 기본 HP·공격력만큼 추가 적용, 버서크모드(체력이 낮아지면 데미지 2배)" + NL +
+	           "▶ 전사 : 기본 HP·공격력만큼 추가 적용, 몬스터 공격 방어(레벨*2), 버서크모드(체력이 낮아지면 데미지 2배)" + NL +
 	           "▶ 궁수 : 최종 데미지 ×1.7, 공격 쿨타임 5분, EXP +15%, [히든]" + NL +
 	           "▶ 마법사 : 몬스터 방어 패턴(패턴3) 50% 확률로 무시, 성공 시 피해 1.5배" + NL +
 	           "▶ 도적 : 공격 시 15% 확률로 추가 드랍(STEAL), 몬스터 기본 공격 40% 회피" + NL +
 	           "▶ 프리스트 : 아이템 HP/리젠 효과 1.5배, 몬스터에게 받는 피해 30% 감소, [히든]" + NL +
 	           "▶ 상인 : 상점 구매 10% 할인, 드랍 판매가 10% 증가, 공격시 SP 추가 획득" + NL +
-	           "♬ 6시간마다 /직업 [직업명] 으로 전직 가능합니다." + NL;
+	           "▶ 도사 : 다음 공격하는 아군의 공격력증가,치명타확률 증가,HP회복, 럭키몬스터 등장확률증가" + NL +
+	           "♬ 4시간마다 /직업 [직업명] 으로 전직 가능합니다." + NL;
 	}
 
 	
@@ -234,6 +236,7 @@ public class BossAttackController {
 	        case "도적": return "도적";
 	        case "프리스트": return "프리스트";
 	        case "상인": return "상인";
+	        case "도사": return "도사";
 	        default: return null;
 	    }
 	}
@@ -420,7 +423,7 @@ public class BossAttackController {
 	    if ("궁수".equals(job)) {
 	        sb.append("   ⚔ 직업 : 최종 데미지 ×1.7, 쿨타임 5분, EXP +15%").append(NL);
 	    } else if ("전사".equals(job)) {
-	        sb.append("   ⚔ 직업 : 기본 ATK(min/max)와 HP만큼 추가 적용, 버서크모드(체력이 낮아지면 데미지 최대 2배)").append(NL);
+	        sb.append("   ⚔ 직업 : 기본 ATK(min/max)와 HP만큼 추가 적용, 몬스터 공격 방어(레벨*2), 버서크모드(체력이 낮아지면 데미지 최대 2배)").append(NL);
 	    } else if ("마법사".equals(job)) {
 	        sb.append("   ⚔ 직업 : 몬스터 방어 패턴(패턴3)을 50% 확률로 무시, 성공시 피해 1.5배").append(NL);
 	    } else if ("도적".equals(job)) {
@@ -429,7 +432,9 @@ public class BossAttackController {
 	        sb.append("   ⚔ 직업 : 아이템 HP/리젠 효과 1.5배, 몬스터에게 받는 피해 감소, [히든]").append(NL);
 	    } else if ("상인".equals(job)) {
 	        sb.append("   ⚔ 직업 : 상점 구매 10% 할인, 드랍 판매가 10% 증가, 공격시 SP 추가 획득").append(NL);
-	    }
+		} else if ("도사".equals(job)) {
+			sb.append("   ⚔ 직업 : 다음 공격하는 아군의 공격력증가,치명타확률 증가,HP회복, 럭키몬스터 등장확률증가").append(NL);
+		}
 
 	    sb.append("▶ 현재 타겟: ").append(targetName)
 	      .append(" (MON_NO=").append(u.targetMon).append(")");
@@ -546,7 +551,7 @@ public class BossAttackController {
 
 
 		// 예: 사용자가 /공격타겟 13 입력 → newMonNo = 13
-		int newMonNo = Integer.parseInt(input); // 네가 사용하는 변수명에 맞게 치환
+		int newMonNo = m.monNo; // 네가 사용하는 변수명에 맞게 치환
 
 		// 1) 바로 아래 등급 몬스터 번호 계산
 		int prevMonNo = Math.max(1, newMonNo - 1);
@@ -878,7 +883,13 @@ public class BossAttackController {
 	        if (m == null) return "대상 몬스터가 지정되어 있지 않습니다. (TARGET_MON 없음)";
 	        monMaxHp = m.monHp;
 	        monHpRemainBefore = m.monHp;
-	        lucky = ThreadLocalRandom.current().nextDouble() < LUCKY_RATE;
+	        
+	        if ("도사".equals(job)) {
+	        	lucky = ThreadLocalRandom.current().nextDouble() < LUCKY_RATE_DOSA;
+	        }else {
+	        	lucky = ThreadLocalRandom.current().nextDouble() < LUCKY_RATE;
+	        }
+	        
 	    }
 
 	    // 9) 쿨타임 체크 (궁수 5분 반영)
@@ -912,6 +923,35 @@ public class BossAttackController {
 	    baseAtkRangeMin = (int) Math.round(baseAtkRangeMin * berserkMul);
 	    baseAtkRangeMax = (int) Math.round(baseAtkRangeMax * berserkMul);
 	    if (baseAtkRangeMax < baseAtkRangeMin) baseAtkRangeMax = baseAtkRangeMin;
+	    
+	    
+	//  // === 도사 버프 검사 ===
+	    HashMap<String,Object> dosaBuff = botNewService.selectDosaBuffInfo(roomName);
+	    String dosabuffMsg = null;
+
+	    if (dosaBuff != null) {
+	        int dosaLv = 1;
+	        try { dosaLv = Integer.parseInt(dosaBuff.get("LV").toString()); } catch (Exception ignore) {}
+	        
+	        dosaLv = (int) Math.round(dosaLv * 0.5);
+	        
+	        // 도사 버프: 각 스탯 = 도사 레벨 만큼
+	        effAtkMin += dosaLv;
+	        effAtkMax += dosaLv;
+	        effCritRate += dosaLv;
+
+	        // HP 회복은 상한을 초과해도 된다
+	        u.hpCur = u.hpCur + dosaLv;
+
+	        dosabuffMsg = "✨ 도사의 버프 발동! (Lv " + dosaLv +
+	                      ") ATK+" + dosaLv +
+	                      ", CRIT+" + dosaLv +
+	                      ", HP+" + dosaLv;
+
+	        // 1회 소모 → 방내 BUFF_YN 전부 초기화
+	        botNewService.clearRoomBuff(roomName);
+	    }
+	    
 	    
 	    int baseAtk = (baseAtkRangeMax <= baseAtkRangeMin)
 	            ? baseAtkRangeMin
@@ -1013,8 +1053,8 @@ public class BossAttackController {
 		    }
 		    calc.atkDmg = boosted;
 
-		    String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
-		    calc.patternMsg = baseMsg + "[언데드 추가 피해]";
+		    //String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
+		    //calc.patternMsg = baseMsg + "[언데드 추가 피해]";
 		}
 		
 		// 🔰 전사: 레벨당 2 고정 피해감소 (필살기에는 미적용)
@@ -1035,6 +1075,17 @@ public class BossAttackController {
 		    calc.monDmg = reduced;
 		}
 		
+		
+		// calcDamage, 마법사/프리스트/도적 처리 다 끝난 직후
+
+		int monHpAfterPreview = Math.max(0, monHpRemainBefore - calc.atkDmg);
+		if (monHpAfterPreview <= 0) {
+		    // 몬스터는 결국 이 턴에 죽는다 → 반격 데미지는 없다고 본다
+		    calc.monDmg     = 0;
+		    flags.monPattern= 0;
+		    // 필요하면 반격 관련 메시지도 비우기
+		    calc.patternMsg = null;
+		}
 
 		 // 13) 즉사 처리
 		 int newHpPreview = Math.max(0, u.hpCur - calc.monDmg);
@@ -1092,7 +1143,7 @@ public class BossAttackController {
 	        }
 	    }
 	    
-	    // 🔹 궁수: 획득 EXP +10%
+	    // 🔹 궁수: 획득 EXP +15%
 	    if ("궁수".equals(u.job)) {
 	        int baseExp = res.gainExp;
 	        int bonus = (int) Math.floor(res.gainExp * 0.15);
@@ -1138,6 +1189,11 @@ public class BossAttackController {
 	            }
 	        }
 	    }
+	    String dosaCastMsg = null;
+	    if ("도사".equals(job)) {
+	        // persist() 이후 로그에서 사용할 수 있게 도사 버프 기록
+	        dosaCastMsg = "✨ 도사의 기원! 다음 공격 강화!"+NL;
+	    }
 	    
 	    // 15) DB 반영 + 로그
 	    LevelUpResult up = persist(userName, roomName, u, m, flags, calc, res, effHpMax);
@@ -1179,6 +1235,13 @@ public class BossAttackController {
 	            weaponLv, weaponBonus,
 	            effHpMax
 	    );
+	    
+	    if (dosabuffMsg != null) {
+	        msg += NL + dosabuffMsg;
+	    }
+	    if (dosaCastMsg != null) {
+	        msg += NL + dosaCastMsg;
+	    }
 	    
 	    if (stealMsg != null) {
 	        msg += NL + stealMsg;
@@ -2117,6 +2180,13 @@ public class BossAttackController {
 	    int dropAsInt = "3".equals(res.dropCode) ? 3
 	                 : ("1".equals(res.dropCode) ? 1 : 0);
 
+	    
+	    int buffYn = 0;
+	    if ("도사".equals(u.job.trim())) {   // job 은 u.job.trim()
+	        buffYn = 1;
+	    }
+
+	    
 	    BattleLog log = new BattleLog()
 	        .setUserName(userName)
 	        .setRoomName(roomName)
@@ -2131,7 +2201,8 @@ public class BossAttackController {
 	        .setNowYn(1)
 	        .setDeathYn(deathYn)
 	        .setLuckyYn(res.lucky ? 1 : 0)
-	        .setDropYn(dropAsInt);
+	        .setDropYn(dropAsInt)
+	    	.setBuffYn(buffYn);
 
 	    botNewService.insertBattleLogTx(log);
 
@@ -2904,7 +2975,7 @@ public class BossAttackController {
 	        try {
 	            int monNo = Integer.parseInt(cmd.substring("ACHV_FIRST_CLEAR_MON_".length()));
 	            Monster m = botNewService.selectMonsterByNo(monNo);
-	            return "최초토벌: " + (m == null ? ("몬스터#" + monNo) : m.monName);
+	            return "✨최초토벌: " + (m == null ? ("몬스터#" + monNo) : m.monName);
 	        } catch (Exception e) {
 	            return "최초토벌";
 	        }
@@ -2932,6 +3003,15 @@ public class BossAttackController {
 	        } catch (Exception e) {
 	            return "통산 업적";
 	        }
+	    }
+	    // 데스 업적
+	    if (cmd.startsWith("ACHV_DEATH_")) {
+	    	try {
+	    		int th = Integer.parseInt(cmd.substring("ACHV_DEATH_".length()));
+	    		return "죽음 극복 " + th + "회 달성";
+	    	} catch (Exception e) {
+	    		return "죽음 업적";
+	    	}
 	    }
 
 	    return cmd;

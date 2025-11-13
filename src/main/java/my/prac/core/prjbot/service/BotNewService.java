@@ -4,6 +4,8 @@ import java.sql.Timestamp;
 import java.util.HashMap;
 import java.util.List;
 
+import org.apache.ibatis.annotations.Param;
+
 import my.prac.core.game.dto.AttackDeathStat;
 import my.prac.core.game.dto.BattleLog;
 import my.prac.core.game.dto.KillStat;
@@ -102,6 +104,11 @@ public interface BotNewService {
     
     List<HashMap<String,Object>> selectRisingStarsTop5Last6h();
     List<HashMap<String,Object>> selectOngoingChallengesForUnclearedBosses();
+    
+    int selectRoomBuffCount(String roomName);
+    void clearRoomBuff(String roomName);
+    
+    HashMap<String,Object> selectDosaBuffInfo(String roomName);
 } 
 
 	

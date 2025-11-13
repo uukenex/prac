@@ -130,11 +130,11 @@
     INSERT INTO TBOT_POINT_NEW_BATTLE_LOG
       (USER_NAME, ROOM_NAME, LV, TARGET_MON_LV,
        GAIN_EXP, ATK_DMG, MON_DMG, ATK_CRIT_YN,
-       MON_PATTEN, INSERT_DATE, KILL_YN, NOW_YN, DROP_YN, DEATH_YN, LUCKY_YN)
+       MON_PATTEN, INSERT_DATE, KILL_YN, NOW_YN, DROP_YN, DEATH_YN, LUCKY_YN, BUFF_YN)
     VALUES
       (#{userName}, #{roomName}, #{lv}, #{targetMonLv},
        #{gainExp}, #{atkDmg}, #{monDmg}, #{atkCritYn},
-       #{monPatten}, SYSTIMESTAMP, #{killYn}, #{nowYn}, #{dropYn}, #{deathYn}, #{luckyYn})
+       #{monPatten}, SYSTIMESTAMP, #{killYn}, #{nowYn}, #{dropYn}, #{deathYn}, #{luckyYn},#{buffYn})
   </insert>
 
   <!-- 7) 전투 종료 -->
@@ -627,6 +627,7 @@
 			        WHEN CMD LIKE 'ACHV_FIRST_CLEAR_MON_%' THEN 1
 			        WHEN CMD LIKE 'ACHV_KILL_TOTAL_%'      THEN 2
 			        WHEN CMD LIKE 'ACHV_KILL%_MON_%'       THEN 3
+			        WHEN CMD LIKE 'ACHV_DEATH%'       	   THEN 4
 			        ELSE 9
 			    END,
 			    -- 2순위: 몬스터번호 or 총킬조건 숫자(각 패턴에 맞게)
@@ -637,6 +638,8 @@
 			             THEN -TO_NUMBER(REGEXP_SUBSTR(CMD, '[0-9]+$'))
 			        WHEN CMD LIKE 'ACHV_KILL%_MON_%'
 			             THEN -TO_NUMBER(REGEXP_SUBSTR(CMD, '[0-9]+$'))  -- MON_뒤 숫자 (몬스터 번호)
+			        WHEN CMD LIKE 'ACHV_DEATH%'
+			             THEN -TO_NUMBER(REGEXP_SUBSTR(CMD, '[0-9]+$'))
 			        ELSE NULL
 			    END,
 			    -- 3순위: 같은 MON에서 50 → 100 순
@@ -706,5 +709,31 @@
 	           AND b2.KILL_YN = 1
 	    )
 	  ORDER BY m.MON_NO, ob.START_TIME, ob.USER_NAME
+	</select>
+	
+	<!-- 도사 버프 확인 (방 전체 1회용 버프 존재 여부) -->
+	<select id="selectRoomBuffCount" parameterType="string" resultType="int">
+	    SELECT COUNT(1)
+	    FROM TBOT_POINT_NEW_BATTLE_LOG
+	    WHERE ROOM_NAME = #{roomName}
+	      AND BUFF_YN = '1'
+	</select>
+	
+	<!-- 도사 버프 리셋 (1회 사용 후 0으로 초기화) -->
+	<update id="clearRoomBuff" parameterType="string">
+	    UPDATE TBOT_POINT_NEW_BATTLE_LOG
+	       SET BUFF_YN = '0'
+	     WHERE ROOM_NAME = #{roomName}
+	       AND BUFF_YN = '1'
+	</update>
+	
+	<select id="selectDosaBuffInfo" parameterType="string" resultType="hashmap">
+	    SELECT USER_NAME,
+	           LV,
+	           INSERT_DATE
+	      FROM TBOT_POINT_NEW_BATTLE_LOG
+	     WHERE ROOM_NAME = #{roomName}
+	       AND BUFF_YN = '1'
+	     ORDER BY INSERT_DATE DESC
 	</select>
 </mapper>

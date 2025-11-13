@@ -156,4 +156,9 @@ public interface BotNewDAO {
  // 신규
     List<HashMap<String,Object>> selectRisingStarsTop5Last6h();
     List<HashMap<String,Object>> selectOngoingChallengesForUnclearedBosses();
+    
+    int selectRoomBuffCount(@Param("roomName")String roomName);
+    void clearRoomBuff(@Param("roomName")String roomName);
+    
+    HashMap<String,Object> selectDosaBuffInfo(@Param("roomName")String roomName);
 }
