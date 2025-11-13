@@ -114,7 +114,8 @@ public class BossAttackController {
 	    }
 	    
 	 // ✅ 회복 예측 스케줄 (예: 60분 범위 내)
-	    String regenInfo = buildRegenScheduleSnippetEnhanced(userName, roomName, u, 60);
+	    String regenInfo = buildRegenScheduleSnippetEnhanced2(userName, roomName, u, 30,effHp, finalHpMax, effRegen, 60);
+
 	    if (regenInfo != null && !regenInfo.isEmpty()) {
 	        sb.append(regenInfo);
 	    }
@@ -1834,6 +1835,7 @@ public class BossAttackController {
 	      .append(", 5분당 회복 +").append(u.hpRegen).append(NL);
 
 	    // ✅ 리젠 스케줄 출력
+	    //String sched = buildRegenScheduleSnippetEnhanced2(effHp, finalHpMax, effRegen, 60);
 	    String sched = buildRegenScheduleSnippetEnhanced(userName, roomName, u, waitMin);
 	    if (sched != null) sb.append(sched).append(NL);
 
@@ -2507,6 +2509,63 @@ public class BossAttackController {
 	private Timestamp getLastDamageBaseline(String userName, String roomName) {
 		return botNewService.selectLastDamagedTime(userName, roomName);
 	}
+	private String buildRegenScheduleSnippetEnhanced2(String userName, String roomName, User u, int horizonMinutes, int currentHp, int hpMax, int effRegen, int minutesSpan) {
+
+	    if (horizonMinutes <= 0 || u.hpRegen <= 0 || u.hpCur >= u.hpMax) return null;
+
+	    Timestamp damaged = botNewService.selectLastDamagedTime(userName, roomName);
+	    if (damaged == null) return null;
+
+	    Timestamp lastAtk = botNewService.selectLastAttackTime(userName, roomName);
+	    Timestamp from = damaged;
+	    if (lastAtk != null && lastAtk.after(damaged)) {
+	        from = lastAtk;
+	    }
+
+	    long minutesPassed = Math.max(0, Duration.between(from.toInstant(), Instant.now()).toMinutes());
+	    long ticksSoFar = minutesPassed / 5;
+
+	    int toNextTick = (int)((5 - (minutesPassed % 5)) % 5);
+	    if (toNextTick == 0) toNextTick = 5;
+
+	    StringBuilder sb = new StringBuilder();
+	    final String NL = "♬";
+
+	    int curHp = currentHp;
+	    int maxHp = hpMax;
+	    int regen = effRegen;
+
+	    // 5분 단위로 예측 표시
+	    
+	    int msg_cnt =0;
+	    for (int t = toNextTick; t <= horizonMinutes; t += 5) {
+	        int ticksAdded = (int)(((minutesPassed + t) / 5) - ticksSoFar);
+	        if (ticksAdded <= 0) continue;
+
+	        int proj = Math.min(maxHp, curHp + ticksAdded * regen);
+	        sb.append("- ").append(t).append("분 뒤: HP ").append(proj)
+	          .append(" / ").append(maxHp).append(NL);
+
+	        msg_cnt++;
+	        if(msg_cnt > 5) break;
+	        
+	        if (proj >= maxHp) break; // 풀피 도달 시 중단
+	    }
+
+	    // === 풀 HP까지 남은 시간 계산 ===
+	    int hpNeeded = maxHp - curHp;
+	    int ticksNeeded = (int)Math.ceil(hpNeeded / (double)regen);
+	    int minutesToFull = (toNextTick + (ticksNeeded - 1) * 5);
+	    if (minutesToFull < 0) minutesToFull = 0;
+	    
+	    sb.append(" (풀HP까지 약 ").append(minutesToFull).append("분)").append(NL);
+	    
+	    String result = sb.toString().trim();
+
+	    return result.isEmpty() ? null : result;
+	
+	}
+	
 	// ✅ 5분 단위 리젠 스케줄 + 풀HP까지 예상시간 표시
 	private String buildRegenScheduleSnippetEnhanced(String userName, String roomName, User u, int horizonMinutes) {
 	    if (horizonMinutes <= 0 || u.hpRegen <= 0 || u.hpCur >= u.hpMax) return null;
