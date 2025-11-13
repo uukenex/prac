@@ -120,9 +120,6 @@ public class BossAttackController {
 	    }
 
 
-	    // ❌ 기존의 buildBelowHalfMsg 호출은 제거 (HP 조회 전용이니까)
-	    // String hpMsg = buildBelowHalfMsg(...);  <-- 이 라인은 삭제 또는 주석
-
 	    return sb.toString();
 	}
 	
@@ -170,7 +167,7 @@ public class BossAttackController {
 
 	    // 3) 레벨 제한 (처음/변경 모두 공통 룰)
 	    if (u.lv < 4) {
-	        return "전직은 5레벨부터 가능합니다. 현재 레벨: " + u.lv;
+	        return "전직은 4레벨부터 가능합니다. 현재 레벨: " + u.lv;
 	    }
 
 	    // 4) 동일 직업으로 변경 시도
@@ -182,7 +179,7 @@ public class BossAttackController {
 	 // 레벨 4는 직업 체험 모드: 쿨타임 체크 생략 + 날짜 미갱신(체험은 기록 안 남김)
 	    if (u.lv == 4) {
 	        botNewService.updateUserJobAndChangeDate(userName, roomName, newJob); // **JOB_CHANGE_DATE 갱신 없는 버전 사용**
-	        return "🎓 레벨4 직업 체험: 쿨타임 없이 [" + newJob + "] 으로 변경했습니다!";
+	        return "✨ 레벨4 직업 체험: 쿨타임 없이 [" + newJob + "] 으로 변경했습니다!";
 	    }
 	    
 	    // 5) 24시간 쿨타임 체크
@@ -191,14 +188,14 @@ public class BossAttackController {
 	    Timestamp lastChange = u.jobChangeDate;
 	    if (lastChange != null) {
 	        long diffSec = java.time.Duration.between(lastChange.toInstant(), java.time.Instant.now()).getSeconds();
-	        long limitSec = 6L * 60 * 60;
+	        long limitSec = 4L * 60 * 60;
 
 	        if (diffSec < limitSec) {
 	            long remain = limitSec - diffSec;
 	            long rh = remain / 3600;
 	            long rm = (remain % 3600) / 60;
 
-	            return "직업 변경은 6시간에 1회 가능합니다." + NL
+	            return "직업 변경은 4시간에 1회 가능합니다." + NL
 	                 + "다음 변경까지 남은 시간: " + rh + "시간 " + rm + "분";
 	        }
 	    }
@@ -211,7 +208,7 @@ public class BossAttackController {
 
 	    // 7) 완료 메시지
 	    return "✨ " + userName + "님, [" + newJob + "] 으로 직업이 변경되었습니다." + NL
-	         + "(직업 변경은 6시간에 1회 가능합니다)";
+	         + "(직업 변경은 4시간에 1회 가능합니다)";
 	}
 
 
@@ -1215,12 +1212,8 @@ public class BossAttackController {
 	             + " (Lv 7 이하 한정 버프)";
 	    }
 	    
-	 // 🎓 레벨 4 체험 멘트: 공격할 때마다 노출
-	    if (u.lv == 4) {
-	        msg += NL + "※ 지금은 레벨4 직업 체험 구간입니다. 직업 변경 쿨타임이 없습니다!";
-	    }
 	    // 19) 전직 안내 (전직 안 했고 5레벨 이상일 때만)
-	    if ((job.isEmpty()) && u.lv >= 5) {
+	    if ((job.isEmpty()) && u.lv >= 4) {
 	        msg += NL + "※ 아직 전직하지 않았습니다. /직업 으로 확인해주세요!";
 	    }
 
@@ -1760,50 +1753,32 @@ public class BossAttackController {
 	}
 
 	private int computeEffectiveHpFromLastAttack(String userName, String roomName, User u, int effHpMax, int effRegen) {
+		 // 이미 풀피거나 리젠수치 0이면 더 볼 필요 없음
+	    if (u.hpCur >= effHpMax || effRegen <= 0) {
+	        return Math.min(u.hpCur, effHpMax);
+	    }
 
-		// 	회복 수치가 없으면, 일단 현재 HP를 effHpMax까지만 캡
-		if (effRegen <= 0) {
-			return Math.min(u.hpCur, effHpMax);
-		}
+	    // 1) 마지막으로 "맞은" 시각 (몬스터 데미지 or 즉사)
+	    Timestamp damaged = botNewService.selectLastDamagedTime(userName, roomName);
+	    if (damaged == null) {
+	        // 아직 한 번도 맞지 않았다면, 피격 기반 리젠 없음
+	        return Math.min(u.hpCur, effHpMax);
+	    }
 
-		// 과거 데이터 때문에 hpCur가 effHpMax보다 커도,
-		// "공격 시작 시점에 갑자기 깎지 않는다" 정책이면 이렇게 둔다.
-		if (u.hpCur > effHpMax) {
-			// 버프 계산 방식 변경 등으로 최대치가 줄어들었어도,
-			// 실제 피해를 입기 전까지는 기존 HP 유지
-			return u.hpCur;
-		}
+	    // 🔵 [TO-BE] 공격 시간은 아예 안 봄. "마지막 피격 시점 → 지금" 누적시간만 본다.
+	    Instant from = damaged.toInstant();
+	    Instant now  = Instant.now();
 
+	    long minutes = Math.max(0, Duration.between(from, now).toMinutes());
+	    long ticks   = minutes / 5;   // 5분당 1틱
+	    if (ticks <= 0) {
+	        return Math.min(u.hpCur, effHpMax);
+	    }
 
+	    long heal     = ticks * (long) effRegen;
+	    long effective = (long) u.hpCur + heal;
 
-
-		
-
-// 피격 시점 (회복 시작 기준)
-		Timestamp damaged = botNewService.selectLastDamagedTime(userName, roomName);
-		if (damaged == null) {
-// 맞은 적이 없다면 피격 기반 리젠 없음
-			return Math.min(u.hpCur, effHpMax);
-		}
-
-// 마지막 공격 시점 (여기까지의 리젠은 이미 HP에 반영되었다고 본다)
-		Timestamp lastAtk = botNewService.selectLastAttackTime(userName, roomName);
-
-		Timestamp from = damaged;
-		if (lastAtk != null && lastAtk.after(damaged)) {
-			from = lastAtk;
-		}
-
-		long minutes = Math.max(0, Duration.between(from.toInstant(), Instant.now()).toMinutes());
-		long ticks = minutes / 5; // 5분당 1틱
-		if (ticks <= 0) {
-			return Math.min(u.hpCur, effHpMax);
-		}
-
-		long heal = ticks * (long) effRegen;
-		long effective = (long) u.hpCur + heal;
-
-		return (int) Math.min(effective, (long) effHpMax);
+	    return (int) Math.min(effective, (long) effHpMax);
 	}
 	
 	public String guideSetTargetMessage() {

@@ -521,7 +521,9 @@
 	  SELECT COUNT(1)
 	  FROM TBOT_POINT_NEW_INVENTORY inv
 	  WHERE inv.USER_NAME = #{userName}
+	 	<if test="roomName != null and roomName != '람쥐봇 문의방'">
 	    AND inv.ROOM_NAME = #{roomName}
+	   </if>
 	    AND inv.ITEM_ID   = #{itemId}
 	    AND inv.DEL_YN    = '0'
 	</select>
@@ -531,7 +533,9 @@
 	  SELECT MAX(INSERT_DATE)
 	    FROM TBOT_POINT_NEW_BATTLE_LOG
 	   WHERE USER_NAME = #{userName}
+	   <if test="roomName != null and roomName != '람쥐봇 문의방'">
 	     AND ROOM_NAME = #{roomName}
+	   </if>
 	     AND (MON_DMG > 0 OR DEATH_YN = '1')
 	</select>
 	
