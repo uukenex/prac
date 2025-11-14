@@ -6,6 +6,7 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
@@ -37,7 +38,7 @@ public class BossAttackController {
 	private static final double LUCKY_RATE = 0.15;
 	private static final double LUCKY_RATE_DOSA = 0.20;
 	private static final String ALL_SEE_STR = "===";
-	
+	private final Map<String, Long> regenTickMap = new java.util.concurrent.ConcurrentHashMap<>();
 
 	/* ===== DI ===== */
 	@Autowired LoaPlayController play;
@@ -1839,33 +1840,60 @@ public class BossAttackController {
 	}
 
 	private int computeEffectiveHpFromLastAttack(String userName, String roomName, User u, int effHpMax, int effRegen) {
-		 // 이미 풀피거나 리젠수치 0이면 더 볼 필요 없음
+
+	    // 0) 이미 풀피이거나 리젠 수치가 0 이하면 그대로 반환
 	    if (u.hpCur >= effHpMax || effRegen <= 0) {
 	        return Math.min(u.hpCur, effHpMax);
 	    }
 
-	    // 1) 마지막으로 "맞은" 시각 (몬스터 데미지 or 즉사)
+	    // 1) 마지막으로 "맞은" 시각 (몬스터에게 데미지 혹은 즉사 시점)
 	    Timestamp damaged = botNewService.selectLastDamagedTime(userName, roomName);
 	    if (damaged == null) {
-	        // 아직 한 번도 맞지 않았다면, 피격 기반 리젠 없음
+	        // 아직 한 번도 맞은 적이 없다면 피격 기반 리젠 없음
 	        return Math.min(u.hpCur, effHpMax);
 	    }
 
-	    // 🔵 [TO-BE] 공격 시간은 아예 안 봄. "마지막 피격 시점 → 지금" 누적시간만 본다.
-	    Instant from = damaged.toInstant();
-	    Instant now  = Instant.now();
+	    Instant damagedAt = damaged.toInstant();
+	    Instant now = Instant.now();
 
-	    long minutes = Math.max(0, Duration.between(from, now).toMinutes());
-	    long ticks   = minutes / 5;   // 5분당 1틱
-	    if (ticks <= 0) {
+	    // 2) damaged 이후 현재까지 경과 시간(분) → 지금까지 총 리젠 틱 수
+	    long minutesFromDamaged = java.time.Duration.between(damagedAt, now).toMinutes();
+	    if (minutesFromDamaged <= 0) {
 	        return Math.min(u.hpCur, effHpMax);
 	    }
 
-	    long heal     = ticks * (long) effRegen;
+	    long totalTicksNow = minutesFromDamaged / 5L;  // 5분당 1틱
+	    if (totalTicksNow <= 0) {
+	        return Math.min(u.hpCur, effHpMax);
+	    }
+
+	    // 3) 마지막 공격 시각을 이용해, "이미 리젠에 반영된 틱" 계산
+	    long prevTicks = 0L;
+	    Timestamp lastAtk = botNewService.selectLastAttackTime(userName, roomName);
+	    if (lastAtk != null && lastAtk.after(damaged)) {
+	        long minutesUntilLastAtk = java.time.Duration.between(damagedAt, lastAtk.toInstant()).toMinutes();
+	        if (minutesUntilLastAtk > 0) {
+	            prevTicks = minutesUntilLastAtk / 5L;
+	        }
+	    }
+
+	    // 4) 이번에 새로 발생한 틱만 회복에 사용
+	    long newTicks = totalTicksNow - prevTicks;
+	    if (newTicks <= 0) {
+	        // 아직 "이전에 공격했을 때까지"보다 더 많은 5분 구간이 지나지 않았다면 추가 리젠 없음
+	        return Math.min(u.hpCur, effHpMax);
+	    }
+
+	    long heal = newTicks * (long) effRegen;
 	    long effective = (long) u.hpCur + heal;
 
-	    return (int) Math.min(effective, (long) effHpMax);
+	    if (effective > effHpMax) {
+	        effective = effHpMax;
+	    }
+
+	    return (int) effective;
 	}
+
 	
 	public String guideSetTargetMessage() {
 	    final String NL = "♬";
