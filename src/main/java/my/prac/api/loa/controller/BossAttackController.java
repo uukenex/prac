@@ -848,7 +848,9 @@ public class BossAttackController {
 	 // === 최종 전투용 HP_MAX ===
 	    int effHpMax = hpMaxWithItem + jobBonusHp;
 	    
-	    // 7) 부활/자동회복 처리
+	    // -----------------------------
+	    // 7) 부활 처리만 (리젠 X)
+	    // -----------------------------
 	    String reviveMsg = reviveAfter1hIfDead(userName, roomName, u, effHpMax, effRegen);
 	    boolean revivedThisTurn = false;
 	    if (reviveMsg != null) {
@@ -856,11 +858,6 @@ public class BossAttackController {
 	        revivedThisTurn = true;
 	    }
 
-	    int effectiveHp = revivedThisTurn
-	            ? u.hpCur
-	            : computeEffectiveHpFromLastAttack(userName, roomName, u, effHpMax, effRegen);
-	    u.hpCur = effectiveHp;
-	    
 	    // 🔹 전사 히든: 체력이 낮을수록 공격력 증가 (최대 +30%)
 	    double berserkMul = 1.0;
 	    if ("전사".equals(job) && effHpMax > 0) {
@@ -902,6 +899,13 @@ public class BossAttackController {
 	        long sec = cd.remainSeconds % 60;
 	        return String.format("%s님, 공격 쿨타임 %d분 %d초 남았습니다.", userName, min, sec);
 	    }
+	    
+
+	    int effectiveHp = revivedThisTurn
+	            ? u.hpCur
+	            : computeEffectiveHpFromLastAttack(userName, roomName, u, effHpMax, effRegen);
+	    u.hpCur = effectiveHp;
+	    
 
 	    // 10) HP 20% 미만 가이드 (기존 로직, u에 effHpMax/effRegen 반영해서 호출)
 	    int origHpMax = u.hpMax;
