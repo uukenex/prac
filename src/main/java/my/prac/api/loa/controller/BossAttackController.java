@@ -919,15 +919,6 @@ public class BossAttackController {
 	    // 11) 데미지 굴림
 	    boolean crit = ThreadLocalRandom.current().nextDouble(0, 100) < clamp(effCritRate, 0, 100);
 
-	    int baseAtkRangeMin = effAtkMin;
-	    int baseAtkRangeMax = effAtkMax;
-
-	 // 전사 버서커 배율 적용 (범위 전체에 곱)
-	    baseAtkRangeMin = (int) Math.round(baseAtkRangeMin * berserkMul);
-	    baseAtkRangeMax = (int) Math.round(baseAtkRangeMax * berserkMul);
-	    if (baseAtkRangeMax < baseAtkRangeMin) baseAtkRangeMax = baseAtkRangeMin;
-	    
-	    
 	//  // === 도사 버프 검사 ===
 	    HashMap<String,Object> dosaBuff = botNewService.selectDosaBuffInfo(roomName);
 	    String dosabuffMsg = null;
@@ -942,19 +933,29 @@ public class BossAttackController {
 	        effAtkMin += dosaLv;
 	        effAtkMax += dosaLv;
 	        effCritRate += dosaLv;
+	        //effCriDmg += dosaLv;
 
 	        // HP 회복은 상한을 초과해도 된다
 	        u.hpCur = u.hpCur + dosaLv;
 
 	        dosabuffMsg = "✨ 도사의 버프 발동! (Lv " + baseDosaLv +
-	                      ") ATK+" + dosaLv +
-	                      ", CRIT+" + dosaLv +
-	                      ", HP+" + dosaLv+
-	                      ", CRI_DMG"+"..ing";
+	                      ") min+" + dosaLv +
+	                      " max+" + dosaLv +
+	                      ", cri+" + dosaLv +
+	                      ", hp+" + dosaLv+
+	                      ", cridmg+"+"..ing";
 
 	        // 1회 소모 → 방내 BUFF_YN 전부 초기화
 	        botNewService.clearRoomBuff(roomName);
 	    }
+	    
+	    int baseAtkRangeMin = effAtkMin;
+	    int baseAtkRangeMax = effAtkMax;
+
+	 // 전사 버서커 배율 적용 (범위 전체에 곱)
+	    baseAtkRangeMin = (int) Math.round(baseAtkRangeMin * berserkMul);
+	    baseAtkRangeMax = (int) Math.round(baseAtkRangeMax * berserkMul);
+	    if (baseAtkRangeMax < baseAtkRangeMin) baseAtkRangeMax = baseAtkRangeMin;
 	    
 	    
 	    int baseAtk = (baseAtkRangeMax <= baseAtkRangeMin)
@@ -1196,7 +1197,7 @@ public class BossAttackController {
 	    String dosaCastMsg = null;
 	    if ("도사".equals(job)) {
 	        // persist() 이후 로그에서 사용할 수 있게 도사 버프 기록
-	        dosaCastMsg = "✨ 도사의 기원! 다음 공격 강화!"+NL;
+	        dosaCastMsg = "✨ 도사의 기원! 다음 공격자 강화!"+NL;
 	    }
 	    
 	    // 15) DB 반영 + 로그
