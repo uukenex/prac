@@ -957,7 +957,7 @@ public class BossAttackController {
 	                      " max+" + dosaLvBonus +
 	                      ", cri+" + dosaLvBonus +
 	                      ", hp+" + dosaLvBonus+
-	                      ", cridmg+"+dosaCriDmg;
+	                      ", cridmg +"+dosaCriDmg+"%";
 
 	        // 1회 소모 → 방내 BUFF_YN 전부 초기화
 	        botNewService.clearRoomBuff(roomName);
@@ -3122,8 +3122,9 @@ public class BossAttackController {
 	        weaponLv = w;
 	    } catch (Exception ignore) {}
 
+	    int weaponBonus = getWeaponAtkBonus(weaponLv); // 25강부터 +1
 	    // 네 구조: max ATK 는 무기레벨 만큼 +1 per level
-	    atkMax += weaponLv;
+	    atkMax += weaponBonus;
 
 	    // -------------------------------
 	    // 4) 운영자의 축복: Lv7 이하 → ATK +3
