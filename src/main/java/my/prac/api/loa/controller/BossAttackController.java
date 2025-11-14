@@ -928,26 +928,36 @@ public class BossAttackController {
 	    String dosabuffMsg = null;
 
 	    if (dosaBuff != null) {
+	    	String dosaName = (String)dosaBuff.get("USER_NAME");
+	    	
+	    	 // 도사 유저 가져오기
+	        User dosaUser = botNewService.selectUser(dosaName, roomName);
+
+	        // 공격력 계산식 그대로 다시 적용
+	        int dosaAtkMax = calcUserEffectiveAtkMax(dosaUser, roomName);
+	    	
+	    	
 	        int dosaLv = 1;
 	        try { dosaLv = Integer.parseInt(dosaBuff.get("LV").toString()); } catch (Exception ignore) {}
 	        int baseDosaLv = dosaLv;
-	        dosaLv = (int) Math.round(dosaLv * 0.5);
+	        int dosaLvBonus = (int) Math.round(dosaLv * 0.5);
+	        int dosaCriDmg = (int) Math.round(dosaAtkMax * 0.5);
 	        
 	        // 도사 버프: 각 스탯 = 도사 레벨 만큼
-	        effAtkMin += dosaLv;
-	        effAtkMax += dosaLv;
-	        effCritRate += dosaLv;
-	        //effCriDmg += dosaLv;
+	        effAtkMin += dosaLvBonus;
+	        effAtkMax += dosaLvBonus;
+	        effCritRate += dosaLvBonus;
+	        effCriDmg += dosaCriDmg;
 
 	        // HP 회복은 상한을 초과해도 된다
-	        u.hpCur = u.hpCur + dosaLv;
+	        u.hpCur = u.hpCur + dosaLvBonus;
 
 	        dosabuffMsg = "✨ 도사의 버프 발동! (Lv " + baseDosaLv +
-	                      ") min+" + dosaLv +
-	                      " max+" + dosaLv +
-	                      ", cri+" + dosaLv +
-	                      ", hp+" + dosaLv+
-	                      ", cridmg+"+"..ing";
+	                      ") min+" + dosaLvBonus +
+	                      " max+" + dosaLvBonus +
+	                      ", cri+" + dosaLvBonus +
+	                      ", hp+" + dosaLvBonus+
+	                      ", cridmg+"+dosaCriDmg;
 
 	        // 1회 소모 → 방내 BUFF_YN 전부 초기화
 	        botNewService.clearRoomBuff(roomName);
@@ -3076,6 +3086,78 @@ public class BossAttackController {
 	    }
 	    return sb.toString();
 	}
+	
+	private int calcUserEffectiveAtkMax(User u, String roomName) {
+
+	    // -------------------------------
+	    // 1) 기본값
+	    // -------------------------------
+	    int atkMax = u.atkMax;
+	    final String job = (u.job == null ? "" : u.job.trim());
+
+	    // -------------------------------
+	    // 2) MARKET 아이템 버프 
+	    //    (selectOwnedMarketBuffTotals 사용)
+	    // -------------------------------
+	    HashMap<String, Number> buffs = null;
+	    try {
+	        buffs = botNewService.selectOwnedMarketBuffTotals(u.userName, roomName);
+	    } catch(Exception ignore){}
+
+	    int bAtkMax = (buffs != null && buffs.get("ATK_MAX") != null)
+	                    ? buffs.get("ATK_MAX").intValue()
+	                    : 0;
+
+	    atkMax += bAtkMax;
+
+	    // -------------------------------
+	    // 3) 무기 강화 (selectWeaponLvCheck 사용)
+	    // -------------------------------
+	    int weaponLv = 0;
+	    try {
+	    	HashMap<String,Object> map =new HashMap<>();
+	    	map.put("userName", u.userName);
+	    	map.put("roomName", roomName);
+	        int w = botService.selectWeaponLvCheck(map);
+	        weaponLv = w;
+	    } catch (Exception ignore) {}
+
+	    // 네 구조: max ATK 는 무기레벨 만큼 +1 per level
+	    atkMax += weaponLv;
+
+	    // -------------------------------
+	    // 4) 운영자의 축복: Lv7 이하 → ATK +3
+	    // -------------------------------
+	    if (u.lv <= 7) {
+	        atkMax += 3;
+	    }
+
+	    // -------------------------------
+	    // 5) 직업 패시브
+	    // -------------------------------
+
+	    // 전사: HP 기반 공격력 비례 (최대 2배)
+	    if ("전사".equals(job)) {
+	        // 체력 0%~100% → *1.0 ~ 2.0
+	        double hpRate = (u.hpCur <= 0 ? 0 : (double)u.hpCur / (double)u.hpMax);
+	        double mul = 1.0 + (hpRate);   // 0% =1.0 , 100% =2.0
+	        atkMax = (int)Math.round(atkMax * mul);
+	    }
+
+	    // 마법사: 패턴3 무시 시(여기서는 반영 X), 기본적으로 보정 없음
+	    // 도적: 스틸 / 회피 (공격력 보정 없음)
+	    // 상인: 공격력 보정 없음
+	    // 프리스트: 공격력 보정 없음
+	    // 궁수: 저격은 dmg 보정이며 min/max에는 영향 없음
+
+	    // -------------------------------
+	    // 6) 최소 하한선
+	    // -------------------------------
+	    if (atkMax < 1) atkMax = 1;
+
+	    return atkMax;
+	}
+
 
 }
 
