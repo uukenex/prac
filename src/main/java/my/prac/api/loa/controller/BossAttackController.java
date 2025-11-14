@@ -2147,7 +2147,7 @@ public class BossAttackController {
 	    int baseAtkMax   = calcBaseAtkMax(u.lv);
 	    int baseCritRate = calcBaseCritRate(u.lv);
 	    int baseHpRegen  = calcBaseHpRegen(u.lv);
-
+/*
 	    // 4) DB에는 "현재 HP" 그대로 저장
 	    botNewService.updateUserAfterBattleTx(
 	        userName, roomName,
@@ -2156,7 +2156,7 @@ public class BossAttackController {
 	        u.hpMax,         // 이건 여전히 '기본 HP' (원하면 그대로 두는게 안정적)
 	        u.atkMin, u.atkMax, u.critRate, u.hpRegen
 	    );
-
+*/
 	    
 	    // 4) 유저 테이블 업데이트: **항상 '순수 레벨 스탯'만 저장**
 	    botNewService.updateUserAfterBattleTx(
