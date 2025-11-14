@@ -1272,7 +1272,10 @@ public class BossAttackController {
 	    } catch (Exception ignore) {}
 	    String curSpStr = formatSp(curPoint);
 
-	    msg = msg + NL + "현재 포인트: " + curSpStr + NL + "/구매, /판매 로 상점열기!";
+	    msg = msg + NL + "현재 포인트: " + curSpStr + NL
+	    		+ "/구매 : 아이템상점오픈"+NL
+	    		+ "/판매 : 판매기능"+NL
+	    		+ "/공격타겟 : 타겟변경"+NL;
 
 	 // 🌟 운영자의 축복 안내 (실제 반영된 수치 기준)
 	    if (hasBless) {
