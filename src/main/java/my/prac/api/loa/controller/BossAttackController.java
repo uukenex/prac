@@ -553,28 +553,31 @@ public class BossAttackController {
 		// 예: 사용자가 /공격타겟 13 입력 → newMonNo = 13
 		int newMonNo = m.monNo; // 네가 사용하는 변수명에 맞게 치환
 
-		// 1) 바로 아래 등급 몬스터 번호 계산
-		int prevMonNo = Math.max(1, newMonNo - 1);
+		if(newMonNo > 1) {
+			// 1) 바로 아래 등급 몬스터 번호 계산
+			int prevMonNo = Math.max(1, newMonNo - 1);
 
-		// 2) 해당 몬스터를 내가 몇 마리 잡았는지 조회 (기존 selectKillStats 재사용)
-		int killsOnPrev = 0;
-		List<KillStat> killStats = botNewService.selectKillStats(userName, roomName);
-		if (killStats != null) {
-		    for (KillStat ks : killStats) {
-		        if (ks.monNo == prevMonNo) {          // KillStat의 필드명에 맞게 조정
-		            killsOnPrev = ks.killCount;      // getKillCount() 쓰는 구조면 그걸로
-		            break;
-		        }
-		    }
-		}
+			// 2) 해당 몬스터를 내가 몇 마리 잡았는지 조회 (기존 selectKillStats 재사용)
+			int killsOnPrev = 0;
+			List<KillStat> killStats = botNewService.selectKillStats(userName, roomName);
+			if (killStats != null) {
+			    for (KillStat ks : killStats) {
+			        if (ks.monNo == prevMonNo) {          // KillStat의 필드명에 맞게 조정
+			            killsOnPrev = ks.killCount;      // getKillCount() 쓰는 구조면 그걸로
+			            break;
+			        }
+			    }
+			}
 
-		// 3) 조건 미달 시 거부
-		if (killsOnPrev < 10) {
-		    Monster prev = botNewService.selectMonsterByNo(prevMonNo);
-		    String prevName = (prev == null ? ("Lv " + prevMonNo) : prev.monName);
-		    return "상위 등급으로 올리려면 [" + prevName + "]을(를) 최소 10마리 처치해야 합니다. (현재 "
-		         + killsOnPrev + "마리)";
+			// 3) 조건 미달 시 거부
+			if (killsOnPrev < 10) {
+			    Monster prev = botNewService.selectMonsterByNo(prevMonNo);
+			    String prevName = (prev == null ? ("Lv " + prevMonNo) : prev.monName);
+			    return "상위 등급으로 올리려면 [" + prevName + "]을(를) 최소 10마리 처치해야 합니다. (현재 "
+			         + killsOnPrev + "마리)";
+			}
 		}
+		
 		
 		botNewService.closeOngoingBattleTx(userName, roomName);
 		botNewService.updateUserTargetMonTx(userName, roomName, m.monNo);
