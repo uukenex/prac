@@ -297,4 +297,14 @@ public class BotNewServiceImpl implements BotNewService {
     	return botNewDAO.selectItemIdByRowId(rid);
     }
     
+    @Override
+    public List<HashMap<String, Object>> selectThiefKingRanking(){
+    	return botNewDAO.selectThiefKingRanking();
+    }
+
+    @Override
+    public List<HashMap<String, Object>> selectAchievementCountRanking(){
+    	return botNewDAO.selectAchievementCountRanking();
+    }
+    
 }

@@ -115,6 +115,10 @@ public interface BotNewService {
     HashMap<String,Object> selectDosaBuffInfo(String roomName);
     
     int selectItemIdByRowId(String rid);
+    
+    List<HashMap<String, Object>> selectThiefKingRanking();
+
+    List<HashMap<String, Object>> selectAchievementCountRanking();
 } 
 
 	

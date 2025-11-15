@@ -166,5 +166,9 @@ public interface BotNewDAO {
     HashMap<String,Object> selectDosaBuffInfo(@Param("roomName")String roomName);
     
     int selectItemIdByRowId(String rid);
+    
+    List<HashMap<String, Object>> selectThiefKingRanking();
+
+    List<HashMap<String, Object>> selectAchievementCountRanking();
 
 }

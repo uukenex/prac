@@ -778,4 +778,35 @@
 	           AND DEL_YN = '0')
 	  FROM DUAL
 	  </select>
+	  
+	  <select id="selectThiefKingRanking" parameterType="string" resultType="hashmap">
+	    SELECT *
+	    FROM (
+	        SELECT USER_NAME,
+	               ROOM_NAME,
+	               SUM(QTY) AS STEAL_QTY
+	          FROM TBOT_POINT_NEW_INVENTORY
+	         WHERE NVL(GAIN_TYPE, 'DROP') = 'STEAL'
+	         GROUP BY USER_NAME, ROOM_NAME
+	         ORDER BY SUM(QTY) DESC, USER_NAME
+	    )
+	    WHERE ROWNUM &lt;= 5
+	</select>
+	
+	
+	<select id="selectAchievementCountRanking" parameterType="string" resultType="hashmap">
+	    SELECT *
+		    FROM (
+		        SELECT USER_NAME,
+		               ROOM_NAME,
+		               COUNT(*) AS ACHV_CNT
+		          FROM TBOT_POINT_RANK
+		         WHERE NEW_YN = '1'
+		           AND CMD LIKE 'ACHV%'
+		         GROUP BY USER_NAME, ROOM_NAME
+		         ORDER BY COUNT(*) DESC, USER_NAME
+		    )
+		    WHERE ROWNUM &lt;= 5
+	</select>
+		
 </mapper>
