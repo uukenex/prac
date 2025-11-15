@@ -2110,7 +2110,7 @@ public class BossAttackController {
 	    r.lucky  = lucky;
 
 	    int baseKillExp = (int)Math.round(
-	        m.monExp * Math.max(0.1, 1.0 - Math.max(0, u.lv - m.monNo) * 0.2)
+	        m.monExp * Math.max(0.1, 1.0 - Math.max(0, u.lv - m.monNo) * 0.1)
 	    );
 
 	    if (willKill) r.gainExp = lucky ? baseKillExp * 3 : baseKillExp;
