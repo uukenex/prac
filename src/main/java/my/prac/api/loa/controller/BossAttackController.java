@@ -82,8 +82,8 @@ public class BossAttackController {
 	    int baseRegen = u.hpRegen;
 
 	    // 3) 운영자의 축복 (Lv 7 이하: 리젠 +3만, HP Max는 그대로)
-	    boolean hasBless = (u.lv <= 7);
-	    int blessRegenBonus = hasBless ? 3 : 0;
+	    boolean hasBless = (u.lv <= 15);
+	    int blessRegenBonus = hasBless ? 5 : 0;
 
 	    // 4) 최종 Max HP (attackInfo와 동일 로직)
 	    int finalHpMax = baseHpMax + bHpMax;
@@ -106,7 +106,7 @@ public class BossAttackController {
 	      .append("5분당 회복: +").append(effRegen).append(NL);
 
 	    if (hasBless) {
-	        sb.append("✨ 운영자의 축복 적용 중 (Lv 7 이하): 5분당 회복 +3").append(NL);
+	        sb.append("✨ 운영자의 축복 적용 중 (Lv 15 이하): 5분당 회복 +5").append(NL);
 	    }
 
 	    if (effHp <= finalHpMax * 0.2) {
@@ -221,7 +221,7 @@ public class BossAttackController {
 	           "▶ 전사 : 기본 HP·공격력만큼 추가 적용, 몬스터 공격 방어(레벨*2), 버서크모드(체력이 낮아지면 데미지 2배)" + NL +
 	           "▶ 궁수 : 최종 데미지 ×1.7, 공격 쿨타임 5분, EXP +15%, [히든]" + NL +
 	           "▶ 마법사 : 몬스터 방어 패턴(패턴3) 50% 확률로 무시, 성공 시 피해 1.5배" + NL +
-	           "▶ 도적 : 공격 시 15% 확률로 추가 드랍(STEAL), 몬스터 기본 공격 40% 회피" + NL +
+	           "▶ 도적 : 공격 시 25% 확률로 추가 드랍(STEAL), 몬스터 기본 공격 40% 회피" + NL +
 	           "▶ 프리스트 : 아이템 HP/리젠 효과 1.5배, 몬스터에게 받는 피해 30% 감소, [히든]" + NL +
 	           "▶ 상인 : 상점 구매 10% 할인, 드랍 판매가 10% 증가, 공격시 SP 추가 획득" + NL +
 	           "▶ 도사 : 다음 공격하는 아군의 (공격력↑,치명타확률↑,HP회복), 자신의 럭키몬스터 등장 확률 증가" + NL +
@@ -428,7 +428,7 @@ public class BossAttackController {
 	    } else if ("마법사".equals(job)) {
 	        sb.append("   ⚔ 직업 : 몬스터 방어 패턴(패턴3)을 50% 확률로 무시, 성공시 피해 1.5배").append(NL);
 	    } else if ("도적".equals(job)) {
-	        sb.append("   ⚔ 직업 : 공격 시 15% 확률 추가 드랍(STEAL), 몬스터 기본 공격 40% 회피").append(NL);
+	        sb.append("   ⚔ 직업 : 공격 시 25% 확률 추가 드랍(STEAL), 몬스터 기본 공격 40% 회피").append(NL);
 	    } else if ("프리스트".equals(job)) {
 	        sb.append("   ⚔ 직업 : 아이템 HP/리젠 효과 1.5배, 몬스터에게 받는 피해 감소, [히든]").append(NL);
 	    } else if ("상인".equals(job)) {
@@ -809,12 +809,12 @@ public class BossAttackController {
 	    int effCriDmg   = u.critDmg + bCriDmg;
 	    
 	 // 🌟 운영자의 축복: Lv 7 이하 전투 시 전용 버프 (DB에는 저장하지 않음)
-	    boolean hasBless = (u.lv <= 7);
+	    boolean hasBless = (u.lv <= 15);
 	    int blessAtk = 0;
 	    int blessRegen = 0;
 	    if (hasBless) {
-	        blessAtk = 3;
-	        blessRegen = 3;
+	        //blessAtk = 3;
+	        blessRegen = 5;
 	        effRegen += blessRegen; // 체젠은 여기서 바로 반영
 	    }
 	    
@@ -840,8 +840,8 @@ public class BossAttackController {
 	    
 	    // 운영자의 축복 ATK +3/+3 (Lv 7 이하)
 	    if (hasBless) {
-	        effAtkMin += blessAtk;
-	        effAtkMax += blessAtk;
+	        //effAtkMin += blessAtk;
+	        //effAtkMax += blessAtk;
 	    }
 
 	    if (effAtkMax < effAtkMin) effAtkMax = effAtkMin;
@@ -1174,7 +1174,7 @@ public class BossAttackController {
 	    if ("도적".equals(job)) {
 	    	
 	    	
-	    	double stealRate = 0.15;
+	    	double stealRate = 0.25;
 	    	int monLv  = m.monNo;
 		    switch(monLv) {
 		    	case 12: 
@@ -1295,8 +1295,8 @@ public class BossAttackController {
 
 	 // 🌟 운영자의 축복 안내 (실제 반영된 수치 기준)
 	    if (hasBless) {
-	        msg += NL + "※ 운영자의 축복 적용 중: ATK +" + blessAtk + ", 5분당 회복 +" + blessRegen
-	             + " (Lv 7 이하 한정 버프)";
+	        msg += NL + "※ 운영자의 축복 적용 중: 5분당 회복 +" + blessRegen
+	             + " (Lv 15 이하 한정 버프)";
 	    }
 	    
 	    // 19) 전직 안내 (전직 안 했고 5레벨 이상일 때만)
@@ -3157,8 +3157,8 @@ public class BossAttackController {
 	    // -------------------------------
 	    // 4) 운영자의 축복: Lv7 이하 → ATK +3
 	    // -------------------------------
-	    if (u.lv <= 7) {
-	        atkMax += 3;
+	    if (u.lv <= 15) {
+	        //atkMax += 3;
 	    }
 
 	    // -------------------------------
