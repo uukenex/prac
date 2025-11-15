@@ -500,7 +500,7 @@ public class BossAttackController {
 	            } else {
 	                sb.append(String.join(", ", equipList));
 	            }
-	            sb.append(NL);
+	            sb.append(NL).append(NL);
 
 	            sb.append("기타: ");
 	            if (etcList.isEmpty()) {
@@ -517,7 +517,7 @@ public class BossAttackController {
 	                    sb.append(String.join(", ", etcList));
 	                }*/
 	            }
-	            sb.append(NL);
+	            sb.append(NL).append(NL);
 	        }
 	    } catch (Exception ignore) {}
 	    
