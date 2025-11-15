@@ -138,6 +138,10 @@ public class BotNewServiceImpl implements BotNewService {
 	public Integer selectCurrentPoint(String userName, String roomName) {
 	    return botNewDAO.selectCurrentPoint(userName, roomName);
 	}
+	@Override
+	public Integer selectTotalEarnedSp(String userName, String roomName) {
+		return botNewDAO.selectTotalEarnedSp(userName, roomName);
+	}
 
 	@Override
 	public int insertPointRank(HashMap<String, Object> p) {
@@ -152,6 +156,10 @@ public class BotNewServiceImpl implements BotNewService {
 	@Override
 	public List<HashMap<String, Object>> selectInventoryRowsForSale(String u, String r, int id) {
 		return botNewDAO.selectInventoryRowsForSale(u, r, id);
+	}
+	@Override
+	public List<HashMap<String, Object>> selectAllInventoryRowsForSale(String u, String r) {
+		return botNewDAO.selectAllInventoryRowsForSale(u, r);
 	}
 
 	@Override
@@ -282,6 +290,11 @@ public class BotNewServiceImpl implements BotNewService {
     @Override
     public HashMap<String,Object> selectDosaBuffInfo(String roomName) {
         return botNewDAO.selectDosaBuffInfo(roomName);
+    }
+    
+    @Override
+    public int selectItemIdByRowId(String rid) {
+    	return botNewDAO.selectItemIdByRowId(rid);
     }
     
 }

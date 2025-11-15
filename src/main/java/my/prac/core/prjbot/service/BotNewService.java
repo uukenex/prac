@@ -54,9 +54,13 @@ public interface BotNewService {
     List<HashMap<String,Object>> selectInventorySummary(String userName, String roomName);
     
     Integer selectCurrentPoint(String userName, String roomName);
+    Integer selectTotalEarnedSp(String userName, String roomName);
     int insertPointRank(HashMap<String, Object> p);
     Integer selectItemSellPriceById(int itemId);
     List<HashMap<String, Object>> selectInventoryRowsForSale(String u, String r, int id);
+    List<HashMap<String, Object>> selectAllInventoryRowsForSale(String u, String R);
+    
+    
     int updateInventoryDelByRowId(String rowid) ;
     int updateInventoryQtyByRowId(String rowid, int newQty) ;
     Integer selectInventoryQty(String userName, String roomName, Integer itemId);
@@ -109,6 +113,8 @@ public interface BotNewService {
     void clearRoomBuff(String roomName);
     
     HashMap<String,Object> selectDosaBuffInfo(String roomName);
+    
+    int selectItemIdByRowId(String rid);
 } 
 
 	

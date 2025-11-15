@@ -59,6 +59,7 @@ public interface BotNewDAO {
     List<HashMap<String,Object>> selectInventorySummary(@Param("userName") String userName, @Param("roomName") String roomName);
 
     Integer selectCurrentPoint(@Param("userName") String userName, @Param("roomName") String roomName);
+    Integer selectTotalEarnedSp(@Param("userName") String userName, @Param("roomName") String roomName);
 
     int insertPointRank(HashMap<String,Object> p);
 
@@ -66,6 +67,8 @@ public interface BotNewDAO {
 
     List<HashMap<String,Object>> selectInventoryRowsForSale(
         @Param("userName") String userName, @Param("roomName") String roomName, @Param("itemId") int itemId);
+    List<HashMap<String,Object>> selectAllInventoryRowsForSale(
+    		@Param("userName") String userName, @Param("roomName") String roomName);
 
     int updateInventoryDelByRowId(@Param("rid") String rid);
     int updateInventoryQtyByRowId(@Param("rid") String rid, @Param("newQty") int newQty);
@@ -161,4 +164,7 @@ public interface BotNewDAO {
     void clearRoomBuff(@Param("roomName")String roomName);
     
     HashMap<String,Object> selectDosaBuffInfo(@Param("roomName")String roomName);
+    
+    int selectItemIdByRowId(String rid);
+
 }

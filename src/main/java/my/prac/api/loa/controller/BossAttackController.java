@@ -274,6 +274,13 @@ public class BossAttackController {
 	    } catch (Exception ignore) {}
 	    final String pointStr = String.format("%d sp", currentPoint);
 
+	    int lifetimeSp = 0;
+	    try {
+	        Integer t = botNewService.selectTotalEarnedSp(userName, roomName);
+	        lifetimeSp = (t == null ? 0 : t);
+	    } catch (Exception ignore) {}
+	    
+	    
 	    // ④ 무기강/보너스 조회
 	    HashMap<String, Object> wm = new HashMap<>();
 	    wm.put("userName", targetUser);
@@ -374,9 +381,36 @@ public class BossAttackController {
 	        sb.append(" (").append(job).append(")");
 	    }
 	    sb.append(", EXP ").append(u.expCur).append("/").append(u.expNext).append(NL)
-	      .append("포인트: ").append(pointStr).append(NL);
+	      .append("포인트: ").append(pointStr).append(NL)
+	      .append("누적 획득 포인트: ").append(String.format("%,d", lifetimeSp)).append("sp").append(NL);
+	    sb.append("⚔ATK: ").append(finalAtkMin).append(" ~ ").append(finalAtkMax).append(NL);
+	    sb.append("⚔CRIT: ").append(shownCrit).append("%  CDMG ").append(shownCritDmg).append("%").append(NL);
+	    sb.append("❤️ HP: ").append(effHp).append(" / ").append(finalHpMax);
 
-	    // ⚔ ATK 블럭 (monsterAttack 로직과 동일한 전사 보너스 구조)
+	    // 직업 설명 라인
+	    if ("궁수".equals(job)) {
+	        sb.append("   ⚔ 직업 : 최종 데미지 ×1.7, 쿨타임 5분, EXP +15%").append(NL);
+	    } else if ("전사".equals(job)) {
+	        sb.append("   ⚔ 직업 : 기본 ATK(min/max)와 HP만큼 추가 적용, 몬스터 공격 방어(레벨*2), 버서크모드(체력이 낮아지면 데미지 최대 2배)").append(NL);
+	    } else if ("마법사".equals(job)) {
+	        sb.append("   ⚔ 직업 : 몬스터 방어 패턴(패턴3)을 50% 확률로 무시, 성공시 피해 1.5배").append(NL);
+	    } else if ("도적".equals(job)) {
+	        sb.append("   ⚔ 직업 : 공격 시 25% 확률 추가 드랍(STEAL), 몬스터 기본 공격 40% 회피").append(NL);
+	    } else if ("프리스트".equals(job)) {
+	        sb.append("   ⚔ 직업 : 아이템 HP/리젠 효과 1.5배, 몬스터에게 받는 피해 감소, [히든]").append(NL);
+	    } else if ("상인".equals(job)) {
+	        sb.append("   ⚔ 직업 : 상점 구매 10% 할인, 드랍 판매가 10% 증가, 공격시 SP 추가 획득").append(NL);
+		} else if ("도사".equals(job)) {
+			sb.append("   ⚔ 직업 : 다음 공격하는 아군의 (공격력↑,치명타확률↑,HP회복), 자신의 럭키몬스터 등장확률증가").append(NL);
+		}
+
+	    sb.append("▶ 현재 타겟: ").append(targetName)
+	      .append(" (MON_NO=").append(u.targetMon).append(")");
+
+	    // 누적 전투
+	    sb.append(allSeeStr);
+	    
+	    
 	    sb.append("⚔ATK: ").append(finalAtkMin).append(" ~ ").append(finalAtkMax).append(NL)
 	      .append("   └ 기본 (").append(baseMin).append("~").append(baseMax).append(")").append(NL)
 	      .append("   └ 시즌1 강화: ").append(weaponLv).append("강 (max+").append(weaponBonus).append(")").append(NL)
@@ -391,8 +425,7 @@ public class BossAttackController {
 	          .append(")")
 	          .append(NL);
 	    }
-
-	    // ⚔ CRIT 블럭
+	    
 	    sb.append("⚔CRIT: ").append(shownCrit).append("%  CDMG ").append(shownCritDmg).append("%").append(NL)
 	      .append("   └ 기본 (").append(u.critRate).append("%, ").append(u.critDmg).append("%)").append(NL)
 	      .append("   └ 아이템 (CRIT").append(formatSigned(bCriRaw))
@@ -420,28 +453,8 @@ public class BossAttackController {
 	          .append(")").append(NL);
 	    }
 
-	    // 직업 설명 라인
-	    if ("궁수".equals(job)) {
-	        sb.append("   ⚔ 직업 : 최종 데미지 ×1.7, 쿨타임 5분, EXP +15%").append(NL);
-	    } else if ("전사".equals(job)) {
-	        sb.append("   ⚔ 직업 : 기본 ATK(min/max)와 HP만큼 추가 적용, 몬스터 공격 방어(레벨*2), 버서크모드(체력이 낮아지면 데미지 최대 2배)").append(NL);
-	    } else if ("마법사".equals(job)) {
-	        sb.append("   ⚔ 직업 : 몬스터 방어 패턴(패턴3)을 50% 확률로 무시, 성공시 피해 1.5배").append(NL);
-	    } else if ("도적".equals(job)) {
-	        sb.append("   ⚔ 직업 : 공격 시 25% 확률 추가 드랍(STEAL), 몬스터 기본 공격 40% 회피").append(NL);
-	    } else if ("프리스트".equals(job)) {
-	        sb.append("   ⚔ 직업 : 아이템 HP/리젠 효과 1.5배, 몬스터에게 받는 피해 감소, [히든]").append(NL);
-	    } else if ("상인".equals(job)) {
-	        sb.append("   ⚔ 직업 : 상점 구매 10% 할인, 드랍 판매가 10% 증가, 공격시 SP 추가 획득").append(NL);
-		} else if ("도사".equals(job)) {
-			sb.append("   ⚔ 직업 : 다음 공격하는 아군의 (공격력↑,치명타확률↑,HP회복), 자신의 럭키몬스터 등장확률증가").append(NL);
-		}
-
-	    sb.append("▶ 현재 타겟: ").append(targetName)
-	      .append(" (MON_NO=").append(u.targetMon).append(")");
-
-	    // 누적 전투
-	    sb.append(allSeeStr);
+	    
+	    
 	    sb.append("누적 전투 기록").append(NL)
 	      .append("- 총 공격 횟수: ").append(totalAttacks).append("회").append(NL)
 	      .append("- 총 사망 횟수: ").append(totalDeaths).append("회").append(NL).append(NL);
@@ -1333,12 +1346,23 @@ public class BossAttackController {
 	    final int reqQty = Math.max(1, parseIntSafe(Objects.toString(map.get("param2"), "1")));
 
 	    if (userName.isEmpty() || roomName.isEmpty()) return "방/유저 정보가 누락되었습니다.";
-	    if (itemNameRaw.isEmpty()) return "판매할 아이템명을 입력해주세요. 예) /판매 도토리 5 또는 /판매 빛도토리 2";
+	    if (itemNameRaw.isEmpty()) {
+	    	return "판매할 아이템명을 입력해주세요."+NL+" 예) /판매 도토리 5 또는 /판매 빛도토리 2";
+	         //+NL+"/판매 기타 ->잡템전체"+NL+"/판매 장비 ->장비전체";
+	    }
 
 	    User u = botNewService.selectUser(userName, roomName);
 	    String job = (u == null || u.job == null) ? "" : u.job.trim();
 	    boolean isMerchant = "상인".equals(job);
 
+	 // 🔥 여기부터 추가: param1 으로 전체판매 모드 제어
+	    if ("기타".equals(itemNameRaw)) {
+	        return sellAllByCategory(userName, roomName, u, false); // 잡템 전체판매
+	    }
+	    if ("장비".equals(itemNameRaw)) {
+	        return sellAllByCategory(userName, roomName, u, true);  // 장비 전체판매
+	    }
+	    
 	    final boolean wantShinyOnly = itemNameRaw.startsWith("빛") || itemNameRaw.startsWith("✨");
 	    final boolean stealOnly = itemNameRaw.endsWith("조각");
 	    
@@ -1502,7 +1526,12 @@ public class BossAttackController {
 	    pr.put("userName", userName);
 	    pr.put("roomName", roomName);
 	    pr.put("score", (int) totalSp);
-	    pr.put("cmd", "SELL");
+	    if (isEquip) {
+	        pr.put("cmd", "SELL_EQUIP");  // 장비 판매
+	    } else {
+	        pr.put("cmd", "SELL_JUNK");   // 잡템 판매
+	    }
+	    //pr.put("cmd", "SELL");
 	    botNewService.insertPointRank(pr);
 
 	    int curPoint = 0;
@@ -1569,6 +1598,194 @@ public class BossAttackController {
 	    if (sold < reqQty) {
 	        sb.append(NL)
 	          .append("(요청 ").append(reqQty).append("개 → 실제 ").append(sold).append("개 판매)");
+	    }
+
+	    return sb.toString();
+	}
+
+	/**
+	 * 잡템 / 장비 전체판매
+	 *
+	 * @param equipOnly true  = 장비(MARKET)만 전체판매
+	 *                  false = 장비 제외 잡템 전체판매
+	 */
+	private String sellAllByCategory(String userName, String roomName, User u, boolean equipOnly) {
+	    final int SHINY_MULTIPLIER = 5; // ✨ 빛템 5배
+	    final String NL = BossAttackController.NL; // 클래스 상단 static final NL = "♬" 사용
+
+	    String job = (u == null || u.job == null) ? "" : u.job.trim();
+	    boolean isMerchant = "상인".equals(job);
+
+	    // 상인은 장비 전체판매 불가 (기존 장비 판매 금지 룰 유지)
+	    if (equipOnly && isMerchant) {
+	        return "상인 직업은 장비 아이템(MARKET)을 일괄 판매할 수 없습니다. 직업을 변경 후 다시 시도해주세요.";
+	    }
+
+	    // 인벤토리 전체 판매 대상 조회 (ROWID, QTY, GAIN_TYPE만)
+	    List<HashMap<String, Object>> rows = botNewService.selectAllInventoryRowsForSale(userName, roomName);
+	    if (rows == null || rows.isEmpty()) {
+	        return equipOnly ? "판매 가능한 장비가 없습니다."
+	                         : "판매 가능한 잡템이 없습니다.";
+	    }
+
+	    // 캐시: ITEM_ID → 장비 여부 / 판매가
+	    Map<Integer, Boolean> equipCache = new HashMap<>();
+	    Map<Integer, Integer> priceCache = new HashMap<>();
+
+	    int sold = 0, soldNormal = 0, soldShiny = 0, soldFrag = 0;
+	    long totalSp = 0L;
+	    boolean soldMerchantDiscount = false; // BUY_MERCHANT 판매 여부
+	    boolean soldMerchantBonus    = false; // 상인 10% 보너스 적용 여부
+
+	    for (HashMap<String, Object> row : rows) {
+
+	        String rid = (row.get("RID") != null ? row.get("RID").toString() : null);
+	        if (rid == null) continue;
+
+	        int qty = parseIntSafe(Objects.toString(row.get("QTY"), "0"));
+	        if (qty <= 0) continue;
+
+	        String gainType = Objects.toString(row.get("GAIN_TYPE"), "DROP");
+	        boolean isShinyRow    = "DROP3".equalsIgnoreCase(gainType);
+	        boolean isDropRow     = isShinyRow || "DROP".equalsIgnoreCase(gainType);
+	        boolean isMerchantBuy = "BUY_MERCHANT".equalsIgnoreCase(gainType);
+	        boolean isStealRow    = "STEAL".equalsIgnoreCase(gainType);
+
+	        // 1) ROWID → ITEM_ID 조회 (ITEM_ID 기준 로직을 쓰기 위함)
+	        Integer itemId = null;
+	        try {
+	            itemId = botNewService.selectItemIdByRowId(rid);
+	        } catch (Exception ignore) {}
+	        if (itemId == null || itemId <= 0) {
+	            continue; // 아이템 정보 없으면 스킵
+	        }
+
+	        // 2) ITEM_ID → 장비 여부(ITEM_TYPE = MARKET) 캐시
+	        Boolean isEquipObj = equipCache.get(itemId);
+	        if (isEquipObj == null) {
+	            HashMap<String, Object> itemDetail = null;
+	            try {
+	                itemDetail = botNewService.selectItemDetailById(itemId);
+	            } catch (Exception ignore) {}
+	            String itemType = (itemDetail == null) ? "" : Objects.toString(itemDetail.get("ITEM_TYPE"), "");
+	            isEquipObj = "MARKET".equalsIgnoreCase(itemType);
+	            equipCache.put(itemId, isEquipObj);
+	        }
+	        boolean isEquip = Boolean.TRUE.equals(isEquipObj);
+
+	        // 3) 모드에 따라 필터링
+	        if (equipOnly && !isEquip) continue;   // 장비 전체판매 → 장비(MARKET)만
+	        if (!equipOnly && isEquip) continue;   // 잡템 전체판매 → 장비 제외
+
+	        // 4) ITEM_ID → 기본 판매가 캐시
+	        Integer basePriceObj = priceCache.get(itemId);
+	        if (basePriceObj == null) {
+	            Integer tmpPrice = null;
+	            try { tmpPrice = botNewService.selectItemSellPriceById(itemId); } catch (Exception ignore) {}
+	            basePriceObj = (tmpPrice == null ? 0 : tmpPrice.intValue());
+	            priceCache.put(itemId, basePriceObj);
+	        }
+	        int basePrice = basePriceObj;
+	        if (basePrice <= 0) {
+	            // 가격 정보 없는 아이템은 판매 불가
+	            continue;
+	        }
+
+	        // 5) gainType + 직업에 따른 실제 단가 계산
+	        int unitPrice = basePrice;
+
+	        // 빛드랍 5배
+	        if (isShinyRow) {
+	            unitPrice = basePrice * SHINY_MULTIPLIER;
+	        }
+
+	        // 상인 할인으로 구매한 아이템은 구매 당시 가격(90%) 기준(기존 sellItem 룰과 동일)
+	        if (isMerchantBuy) {
+	            unitPrice = (int) Math.floor(basePrice * 0.9);
+	        }
+
+	        // 상인 직업 보너스: DROP/DROP3 드랍템은 10% 보너스 (단, 상인할인구매는 보너스 X)
+	        if (isMerchant && isDropRow && !isMerchantBuy) {
+	            unitPrice = (int) Math.round(unitPrice * 1.1);
+	        }
+
+	        // 조각(STEAL)은 절반 가격
+	        if (isStealRow) {
+	            unitPrice = (int) Math.floor(unitPrice * 0.5);
+	        }
+
+	        // 통계 플래그
+	        if (isMerchantBuy && qty > 0) {
+	            soldMerchantDiscount = true;
+	        }
+	        if (isMerchant && isDropRow && !isMerchantBuy && qty > 0) {
+	            soldMerchantBonus = true;
+	        }
+
+	        // 6) 실제 판매: 전체판매이므로 가진 수량(qty) 전부 판매
+	        int take = qty;
+
+	        // 인벤토리에서 행 삭제 (전량 판매)
+	        botNewService.updateInventoryDelByRowId(rid);
+
+	        // 카운트/합계 누적
+	        if (isStealRow) {
+	            soldFrag += take;
+	        } else if (isShinyRow) {
+	            soldShiny += take;
+	        } else {
+	            soldNormal += take;
+	        }
+
+	        sold += take;
+	        totalSp += (long) take * (long) unitPrice;
+	    }
+
+	    if (sold <= 0) {
+	        return equipOnly ? "판매 가능한 장비가 없습니다."
+	                         : "판매 가능한 잡템이 없습니다.";
+	    }
+
+	    // 포인트 적립 (기존 sellItem 과 동일 패턴)
+	    HashMap<String, Object> pr = new HashMap<>();
+	    pr.put("userName", userName);
+	    pr.put("roomName", roomName);
+	    pr.put("score", (int) totalSp);
+	    //pr.put("cmd", "SELL");
+	    if (equipOnly) {
+	        pr.put("cmd", "SELL_EQUIP");  // 장비 판매
+	    } else {
+	        pr.put("cmd", "SELL_JUNK");   // 잡템 판매
+	    }
+	    botNewService.insertPointRank(pr);
+
+	    int curPoint = 0;
+	    try {
+	        Integer curP = botNewService.selectCurrentPoint(userName, roomName);
+	        curPoint = (curP == null ? 0 : Math.max(0, curP));
+	    } catch (Exception ignore) {}
+	    String curPointStr = String.format("%,d sp", curPoint);
+
+	    StringBuilder sb = new StringBuilder();
+	    sb.append("⚔ ").append(userName).append("님,").append(NL)
+	      .append("▶ 전체 판매 완료!").append(NL)
+	      .append(equipOnly ? "- 대상: 장비 아이템 전체(MARKET)" + NL
+	                        : "- 대상: 잡템 전체(장비 제외)" + NL)
+	      .append("- 총 판매 수량: ").append(sold).append("개").append(NL)
+	      .append("- 합계 적립: ").append(totalSp).append("sp").append(NL)
+	      .append("- 현재 포인트: ").append(curPointStr);
+
+	    if (soldNormal > 0) sb.append(NL).append("  · 일반 아이템: ").append(soldNormal).append("개");
+	    if (soldShiny  > 0) sb.append(NL).append("  · ✨빛 아이템: ").append(soldShiny).append("개");
+	    if (soldFrag   > 0) sb.append(NL).append("  · 조각: ").append(soldFrag).append("개");
+
+	    if (soldMerchantDiscount) {
+	        sb.append(NL)
+	          .append("※ 상인 할인으로 구매한 아이템은 할인가(90%) 기준으로 판매되었습니다.");
+	    }
+	    if (soldMerchantBonus) {
+	        sb.append(NL)
+	          .append("(상인 효과: 드랍 아이템 판매가 10% 보너스 적용)");
 	    }
 
 	    return sb.toString();
