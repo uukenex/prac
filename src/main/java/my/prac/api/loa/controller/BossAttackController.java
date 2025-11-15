@@ -2058,7 +2058,7 @@ public class BossAttackController {
 		                + " → 최종 " + finalDmg + ")";
 		    }
 		    break;
-		case 4: c.monDmg = (int) Math.round(m.monAtk * 2.0); c.patternMsg = name + "의 필살기! (피해 " + c.monDmg + ")"; break;
+		case 4: c.monDmg = (int) Math.round(m.monAtk * 1.5); c.patternMsg = name + "의 필살기! (피해 " + c.monDmg + ")"; break;
 		default: c.monDmg = 0; c.patternMsg = name + "의 알 수 없는 행동… (피해 0)";
 		}
 		return c;
@@ -2779,7 +2779,7 @@ public class BossAttackController {
 	    int baseExp = Math.max(0, m.monExp);
 	    int diff = userLv - m.monNo;
 	    int over = Math.max(0, diff);
-	    double rate = Math.max(0.1, 1.0 - over * 0.2);
+	    double rate = Math.max(0.1, 1.0 - over * 0.1);
 	    int effExp = (int) Math.round(baseExp * rate);
 	    boolean hasPenalty = (over > 0 && rate < 1.0);
 
