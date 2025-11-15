@@ -380,12 +380,12 @@ public class BossAttackController {
 	    if (!job.isEmpty()) {
 	        sb.append(" (").append(job).append(")");
 	    }
-	    sb.append(", EXP ").append(u.expCur).append("/").append(u.expNext).append(NL)
-	      .append("포인트: ").append(pointStr).append(NL)
-	      .append("누적 획득 포인트: ").append(String.format("%,d", lifetimeSp)).append("sp").append(NL);
+	    sb.append(", EXP ").append(u.expCur).append("/").append(u.expNext).append(NL);
+	    sb.append("포인트: ").append(pointStr).append(NL);
+	    //sb.append("누적 획득 포인트: ").append(String.format("%,d", lifetimeSp)).append("sp").append(NL);
 	    sb.append("⚔ATK: ").append(finalAtkMin).append(" ~ ").append(finalAtkMax).append(NL);
 	    sb.append("⚔CRIT: ").append(shownCrit).append("%  CDMG ").append(shownCritDmg).append("%").append(NL);
-	    sb.append("❤️ HP: ").append(effHp).append(" / ").append(finalHpMax);
+	    sb.append("❤️HP: ").append(effHp).append(" / ").append(finalHpMax).append(",5분당회복+").append(shownRegen).append(NL);
 
 	    // 직업 설명 라인
 	    if ("궁수".equals(job)) {
@@ -432,7 +432,7 @@ public class BossAttackController {
 	      .append("%, CDMG ").append(formatSigned(bCriDmgRaw)).append("%)").append(NL);
 
 	    // ❤️ HP 블럭 (전사/프리스트 효과 포함)
-	    sb.append("❤️ HP: ").append(effHp).append(" / ").append(finalHpMax)
+	    sb.append("❤️HP: ").append(effHp).append(" / ").append(finalHpMax)
 	      .append(",5분당회복+").append(shownRegen).append(NL)
 	      .append("   └ 기본 (HP+").append(baseHpMax)
 	      .append(",5분당회복+").append(u.hpRegen).append(")").append(NL)
