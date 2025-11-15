@@ -3,6 +3,7 @@ package my.prac.api.loa.controller;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -38,7 +39,6 @@ public class BossAttackController {
 	private static final double LUCKY_RATE = 0.15;
 	private static final double LUCKY_RATE_DOSA = 0.20;
 	private static final String ALL_SEE_STR = "===";
-	private final Map<String, Long> regenTickMap = new java.util.concurrent.ConcurrentHashMap<>();
 
 	/* ===== DI ===== */
 	@Autowired LoaPlayController play;
@@ -272,11 +272,11 @@ public class BossAttackController {
 	        Integer p = botNewService.selectCurrentPoint(targetUser, roomName);
 	        currentPoint = (p == null ? 0 : p);
 	    } catch (Exception ignore) {}
-	    final String pointStr = String.format("%d sp", currentPoint);
+	    final String pointStr = String.format("%,d sp", currentPoint);
 
 	    int lifetimeSp = 0;
 	    try {
-	        Integer t = botNewService.selectTotalEarnedSp(userName, roomName);
+	        Integer t = botNewService.selectTotalEarnedSp(targetUser, roomName);
 	        lifetimeSp = (t == null ? 0 : t);
 	    } catch (Exception ignore) {}
 	    
@@ -382,7 +382,7 @@ public class BossAttackController {
 	    }
 	    sb.append(", EXP ").append(u.expCur).append("/").append(u.expNext).append(NL);
 	    sb.append("포인트: ").append(pointStr).append(NL);
-	    //sb.append("누적 획득 포인트: ").append(String.format("%,d", lifetimeSp)).append("sp").append(NL);
+	    sb.append("누적 획득 포인트: ").append(String.format("%,d", lifetimeSp)).append("sp").append(NL);
 	    sb.append("⚔ATK: ").append(finalAtkMin).append(" ~ ").append(finalAtkMax).append(NL);
 	    sb.append("⚔CRIT: ").append(shownCrit).append("%  CDMG ").append(shownCritDmg).append("%").append(NL);
 	    sb.append("❤️HP: ").append(effHp).append(" / ").append(finalHpMax).append(",5분당회복+").append(shownRegen).append(NL);
@@ -453,6 +453,73 @@ public class BossAttackController {
 	          .append(")").append(NL);
 	    }
 
+	 // 인벤토리
+	 // 인벤토리
+	    try {
+	        List<HashMap<String, Object>> bag = botNewService.selectInventorySummaryAll(targetUser, roomName);
+
+	        sb.append(NL).append("▶ 인벤토리").append(NL);
+	        if (bag == null || bag.isEmpty()) {
+	            sb.append("- (비어있음)").append(NL);
+	        } else {
+
+	            // 1) ITEM_NO ASC 정렬
+	            bag.sort((a, b) -> {
+	                int noA = parseIntSafe(Objects.toString(a.get("ITEM_ID"), "0"));
+	                int noB = parseIntSafe(Objects.toString(b.get("ITEM_ID"), "0"));
+	                return Integer.compare(noA, noB);
+	            });
+
+	            // 2) 장비 & 잡템 분리
+	            List<String> equipList = new ArrayList<>();
+	            List<String> etcList   = new ArrayList<>();
+
+	            for (HashMap<String, Object> row : bag) {
+	                String itemName = Objects.toString(row.get("ITEM_NAME"), "-");
+	                String qtyStr   = Objects.toString(row.get("TOTAL_QTY"), "0");
+	                String typeStr  = Objects.toString(row.get("ITEM_TYPE"), "");
+	                String enhance  = Objects.toString(row.get("ENHANCE"), "0");  // 강화 값 있으면 사용
+
+	                if ("MARKET".equals(typeStr)) {
+	                    // 장비 → "이름(+강화)"
+	                    try {
+	                        int e = Integer.parseInt(enhance);
+	                        if (e > 0) itemName = itemName + "(+" + e + ")";
+	                    } catch (Exception ignore) {}
+	                    equipList.add(itemName);
+	                } else {
+	                    // 잡템 → "이름x수량"
+	                    etcList.add(itemName + "x" + qtyStr);
+	                }
+	            }
+
+	            // 3) 한 줄 요약 형태로 정렬된 리스트 출력
+	            sb.append("장비: ");
+	            if (equipList.isEmpty()) {
+	                sb.append("(없음)");
+	            } else {
+	                sb.append(String.join(", ", equipList));
+	            }
+	            sb.append(NL);
+
+	            sb.append("기타: ");
+	            if (etcList.isEmpty()) {
+	                sb.append("(없음)");
+	            } else {
+	                // 너무 길면 자동 축약
+	            	sb.append(String.join(", ", etcList));
+	            	/*
+	                if (etcList.size() > 10) {
+	                    List<String> head = etcList.subList(0, 10);
+	                    sb.append(String.join(", ", head))
+	                      .append(" 외 ").append(etcList.size() - 10).append("종");
+	                } else {
+	                    sb.append(String.join(", ", etcList));
+	                }*/
+	            }
+	            sb.append(NL);
+	        }
+	    } catch (Exception ignore) {}
 	    
 	    
 	    sb.append("누적 전투 기록").append(NL)
@@ -471,29 +538,7 @@ public class BossAttackController {
 	        }
 	    }
 
-	    // 인벤토리
-	    try {
-	        List<HashMap<String, Object>> bag = botNewService.selectInventorySummaryAll(targetUser, roomName);
-	        sb.append(NL).append("▶ 인벤토리").append(NL);
-	        if (bag == null || bag.isEmpty()) {
-	            sb.append("- (비어있음)").append(NL);
-	        } else {
-	            for (HashMap<String, Object> row : bag) {
-	            	
-	                String itemName = Objects.toString(row.get("ITEM_NAME"), "-");
-	                String qtyStr   = Objects.toString(row.get("TOTAL_QTY"), "0");
-	                String typeStr  = Objects.toString(row.get("ITEM_TYPE"), "");
-	                sb.append("- ").append(itemName);
-	                if ("MARKET".equals(typeStr)) {
-	                    sb.append(" (장비)");
-	                } else {
-	                    sb.append(" x").append(qtyStr);
-	                }
-	                sb.append(NL);
-	            }
-	        }
-	    } catch (Exception ignore) {}
-
+	    
 	    // 업적
 	    try {
 	        List<HashMap<String,Object>> achv = botNewService.selectAchievementsByUser(targetUser,roomName);
@@ -1347,8 +1392,8 @@ public class BossAttackController {
 
 	    if (userName.isEmpty() || roomName.isEmpty()) return "방/유저 정보가 누락되었습니다.";
 	    if (itemNameRaw.isEmpty()) {
-	    	return "판매할 아이템명을 입력해주세요."+NL+" 예) /판매 도토리 5 또는 /판매 빛도토리 2";
-	         //+NL+"/판매 기타 ->잡템전체"+NL+"/판매 장비 ->장비전체";
+	    	return "판매할 아이템명을 입력해주세요."+NL+" 예) /판매 도토리 5 또는 /판매 빛도토리 2"
+	         +NL+"/판매 기타 ->잡템전체"+NL+"/판매 장비 ->장비전체";
 	    }
 
 	    User u = botNewService.selectUser(userName, roomName);

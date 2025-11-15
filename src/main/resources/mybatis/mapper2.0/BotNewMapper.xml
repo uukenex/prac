@@ -302,16 +302,6 @@
        
        AND new_yn = '1'
   </select>
-  <select id="selectTotalEarnedSp" resultType="int">
-    SELECT NVL(SUM(score), 0)
-      FROM TBOT_POINT_RANK
-     WHERE user_name = #{userName}
-     <if test="roomName != null and roomName != '람쥐봇 문의방'">
-	   AND room_name = #{roomName}
-	 </if>
-       
-       AND new_yn = '1'
-  </select>
 
   <!-- 판매 대상 행(FIFO) : 빛나는 제외 -->
   <select id="selectInventoryRowsForSale" resultType="hashmap">
@@ -761,4 +751,31 @@
 	      FROM TBOT_POINT_NEW_INVENTORY
 	     WHERE ROWID = #{rid}
 	</select>
+	
+	<select id="selectTotalEarnedSp" resultType="int">
+	SELECT (SELECT SUM(A.SCORE)
+	          FROM TBOT_POINT_RANK A
+	         WHERE A.NEW_YN = '1'
+	           AND A.USER_NAME = #{userName}
+	           <if test="roomName != null and roomName != '람쥐봇 문의방'">
+	           AND ROOM_NAME = #{roomName}
+	           </if>
+	           
+	           ) +
+	       (SELECT SUM(CASE
+	                     WHEN A.GAIN_TYPE = 'BUY_MERCHANT' THEN
+	                      ROUND(B.ITEM_SELL_PRICE * 0.9)
+	                     ELSE
+	                      B.ITEM_SELL_PRICE
+	                   END)
+	          FROM TBOT_POINT_NEW_INVENTORY A, TBOT_POINT_NEW_ITEM B
+	         WHERE A.USER_NAME LIKE #{userName}
+	         <if test="roomName != null and roomName != '람쥐봇 문의방'">
+	           AND ROOM_NAME = #{roomName}
+	         </if>
+	           AND A.GAIN_TYPE NOT IN ('DROP', 'DROP3', 'STEAL')
+	           AND A.ITEM_ID = B.ITEM_ID
+	           AND DEL_YN = '0')
+	  FROM DUAL
+	  </select>
 </mapper>
