@@ -1855,7 +1855,7 @@ public class BossAttackController {
 	            String name = String.valueOf(row.get("USER_NAME"));
 	            String job = String.valueOf(row.get("JOB"));
 	            // 필요시 방 이름, 공격 횟수도 붙일 수 있음 (ex. " (12회)")
-	            sb.append(rank).append("위: ").append(name);
+	            sb.append(rank).append("위 ").append(name);
 	            
 	            if(!"".equals(job)) {
 	            	sb.append("(").append(job).append(")");
@@ -1923,9 +1923,9 @@ public class BossAttackController {
 	            int expNext    = safeInt(row.get("EXP_NEXT"));
 	            String job	   = String.valueOf(row.get("JOB"));
 
-	            sb.append(rank).append("위: ")
+	            sb.append(rank).append("위 ")
 	              .append("▶ Lv.").append(lv)
-	              .append(", EXP ").append(expCur).append("/").append(expNext).append("")
+	              .append(", EXP ").append(expCur).append("/").append(expNext).append(" ")
 	              .append(name).append("(").append(job).append(")")
 	              .append(NL);
 	            rank++;
@@ -1949,11 +1949,11 @@ public class BossAttackController {
 	            int kills       = safeInt(k.get("KILL_COUNT"));
 
 	            if (!java.util.Objects.equals(lastMonNo, monNo)) {
-	                sb.append("- ").append(monName).append(" 학살자: ");
+	            	sb.append(monNo).append("Lv ").append(monName).append(" 학살자");
 	                lastMonNo = monNo;
 	                lastMonName = monName;
 	            }
-	            sb.append("▶ ").append(uName)
+	            sb.append(" ▶ ").append(uName)
 	              .append(" (").append(kills).append("마리)").append(NL);
 	        }
 	    }
@@ -1976,8 +1976,8 @@ public class BossAttackController {
 
 	            clearedMonSet.add(monNo);
 
-	            sb.append("-").append(monName)
-	              .append("▶ ").append(firstUser);
+	            sb.append(monNo).append("Lv ").append(monName)
+	              .append(" ▶ ").append(firstUser);
 
 	            if (!firstJob.isEmpty() && !"null".equalsIgnoreCase(firstJob)) {
 	                sb.append("/").append(firstJob);
@@ -2003,7 +2003,7 @@ public class BossAttackController {
 
 	            sb.append("- ").append(monName)
 	              .append(" ").append(remainHp).append(" / ").append(monHp).append(NL)
-	              .append("▶[도전 중] ").append(userName2);
+	              .append(" ▶[도전 중] ").append(userName2);
 	            if (!job.isEmpty()) sb.append("/").append(job);
 	            sb.append("(Lv.").append(lv).append(")")
 	              .append(" (").append(startTime).append(")")
