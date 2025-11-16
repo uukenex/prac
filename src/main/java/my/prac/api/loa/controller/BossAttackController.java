@@ -1039,14 +1039,13 @@ public class BossAttackController {
 
 	    int rawAtkDmg = crit ? (int)Math.round(baseAtk * critMultiplier) : baseAtk;
 
-	    // 🎯 궁수 히든 저격: 유저Lv-2 ~ Lv+5 몬스터 대상, 5% 확률, 20배 데미지
 	    boolean isSnipe = false;
 	    if ("궁수".equals(job)) {
 	    	int monLv = m.monNo; // int형이므로 null 비교 불필요
 	        int userLv = u.lv;
 
-	        if (monLv > 0 && monLv >= userLv - 2 && monLv <= userLv + 5) {
-	            if (ThreadLocalRandom.current().nextDouble() < 0.01) {
+	        if (monLv > 0 && monLv >= userLv - 5 && monLv <= userLv + 1) {
+	            if (ThreadLocalRandom.current().nextDouble() < 0.02) {
 	                isSnipe = true;
 	                rawAtkDmg = rawAtkDmg * 20;
 	            }
