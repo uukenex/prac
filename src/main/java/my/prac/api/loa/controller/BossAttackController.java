@@ -107,7 +107,7 @@ public class BossAttackController {
 	      .append("5분당 회복: +").append(effRegen).append(NL);
 
 	    if (hasBless) {
-	        sb.append("✨ 운영자의 축복 적용 중 (Lv 15 이하): 5분당 회복 +5").append(NL);
+	        sb.append("✨ 운영자의 축복 포함되어있음 (Lv 15 이하): 5분당 회복 +5").append(NL);
 	    }
 
 	    if (effHp <= finalHpMax * 0.2) {
@@ -246,9 +246,9 @@ public class BossAttackController {
 	private String buildJobDescriptionList() {
 	    String NL = "♬";
 	    return "전직 가능한 직업 목록" + NL +
-	           "▶ 전사 : 기본 HP·공격력만큼 추가 적용, 몬스터 공격 방어(레벨*2), 버서크모드(체력이 낮아지면 데미지 2배)" + NL +
+	           "▶ 전사 : 기본 HP·공격력만큼 추가 적용, 몬스터 공격 방어(레벨*1.5), 버서크모드(체력이 낮아지면 데미지 1.5배)" + NL +
 	           "▶ 궁수 : 최종 데미지 ×1.7, 공격 쿨타임 5분, EXP +15%, -hidden-" + NL +
-	           "▶ 마법사 : 몬스터 방어 패턴(패턴3) 50% 확률로 무시, 성공 시 피해 1.5배" + NL +
+	           "▶ 마법사 : 몬스터가 방어시 방어를 무시하고 피해 1.25배를 줌" + NL +
 	           "▶ 도적 : 공격 시 25% 확률로 추가 드랍(STEAL), 몬스터 기본 공격 40% 회피" + NL +
 	           "▶ 프리스트 : 아이템 HP/리젠 효과 1.5배, 몬스터에게 받는 피해 30% 감소, -hidden-" + NL +
 	           "▶ 상인 : 상점 구매 10% 할인, 드랍 판매가 10% 증가, 공격시 SP 추가 획득" + NL +
@@ -419,9 +419,9 @@ public class BossAttackController {
 	    if ("궁수".equals(job)) {
 	        sb.append("⚔직업("+job+") 최종 데미지 ×1.7, 쿨타임 5분, EXP +15%,-hidden-").append(NL);
 	    } else if ("전사".equals(job)) {
-	        sb.append("⚔직업("+job+"): 기본 ATK(min/max)와 HP만큼 추가 적용, 몬스터 공격 방어(레벨*2), 버서크모드(체력이 낮아지면 데미지 최대 2배)").append(NL);
+	        sb.append("⚔직업("+job+"): 기본 ATK(min/max)와 HP만큼 추가 적용, 몬스터 공격 방어(레벨*1.5), 버서크모드(체력이 낮아지면 데미지 최대 1.5배)").append(NL);
 	    } else if ("마법사".equals(job)) {
-	        sb.append("⚔직업("+job+"): 몬스터 방어 패턴(패턴3)을 50% 확률로 무시, 성공시 피해 1.5배").append(NL);
+	        sb.append("⚔직업("+job+"): 몬스터가 방어시 방어를 무시하고 피해 1.25배를 줌").append(NL);
 	    } else if ("도적".equals(job)) {
 	        sb.append("⚔직업("+job+"): 공격 시 25% 확률 추가 드랍(STEAL), 몬스터 기본 공격 40% 회피").append(NL);
 	    } else if ("프리스트".equals(job)) {
@@ -956,7 +956,7 @@ public class BossAttackController {
 	    if ("전사".equals(job) && effHpMax > 0) {
 	        double hpRatio = (double) u.hpCur / effHpMax;
 	        if (hpRatio < 0.5) {
-	            berserkMul = 1.0 + (0.5 - hpRatio) * 2.0; // 0% ~ +30%
+	            berserkMul = 1.0 + (0.5 - hpRatio) * 1.5; // 0% ~ +50%
 	        }
 	    }
 
@@ -1016,45 +1016,35 @@ public class BossAttackController {
 	    // 11) 데미지 굴림
 	    boolean crit = ThreadLocalRandom.current().nextDouble(0, 100) < clamp(effCritRate, 0, 100);
 
-	//  // === 도사 버프 검사 ===
-	    HashMap<String,Object> dosaBuff = botNewService.selectDosaBuffInfo(roomName);
-	    String dosabuffMsg = null;
+	    DosaBuffEffect buffEff = loadRoomDosaBuffAndBuild(roomName);
+	    String dosabuffMsg = "";
 
-	    if (dosaBuff != null) {
-	    	String dosaName = (String)dosaBuff.get("USER_NAME");
-	    	
-	    	 // 도사 유저 가져오기
-	        User dosaUser = botNewService.selectUser(dosaName, roomName);
+	    if ("도사".equals(job)) {
+	    	DosaBuffEffect buffEff_self = buildDosaBuffEffect(u, u.lv, roomName);
+	    	effAtkMin   += buffEff_self.addAtkMin;
+	        effAtkMax   += buffEff_self.addAtkMax;
+	        effCritRate += buffEff_self.addCritRate;
+	        effCriDmg   += buffEff_self.addCritDmg;
+	        u.hpCur     += buffEff_self.addHp;   // HP 상한 무시 회복
 
-	        // 공격력 계산식 그대로 다시 적용
-	        int dosaAtkMax = calcUserEffectiveAtkMax(dosaUser, roomName);
-	    	
-	    	
-	        int dosaLv = 1;
-	        try { dosaLv = Integer.parseInt(dosaBuff.get("LV").toString()); } catch (Exception ignore) {}
-	        int baseDosaLv = dosaLv;
-	        int dosaLvBonus = (int) Math.round(dosaLv * 0.5);
-	        int dosaCriDmg = (int) Math.round(dosaAtkMax * 0.5);
-	        
-	        // 도사 버프: 각 스탯 = 도사 레벨 만큼
-	        effAtkMin += dosaLvBonus;
-	        effAtkMax += dosaLvBonus;
-	        effCritRate += dosaLvBonus;
-	        effCriDmg += dosaCriDmg;
+	        dosabuffMsg += buffEff_self.msg+NL;
+	    }
+	    
+	    if (buffEff != null) {
+	        effAtkMin   += buffEff.addAtkMin;
+	        effAtkMax   += buffEff.addAtkMax;
+	        effCritRate += buffEff.addCritRate;
+	        effCriDmg   += buffEff.addCritDmg;
+	        u.hpCur     += buffEff.addHp;   // HP 상한 무시 회복
 
-	        // HP 회복은 상한을 초과해도 된다
-	        u.hpCur = u.hpCur + dosaLvBonus;
-
-	        dosabuffMsg = "✨ 도사의 버프 발동! (Lv " + baseDosaLv +
-	                      ") min+" + dosaLvBonus +
-	                      " max+" + dosaLvBonus +
-	                      ", cri+" + dosaLvBonus +
-	                      ", hp+" + dosaLvBonus+
-	                      ", cridmg +"+dosaCriDmg+"%";
+	        dosabuffMsg += buffEff.msg;
 
 	        // 1회 소모 → 방내 BUFF_YN 전부 초기화
 	        botNewService.clearRoomBuff(roomName);
 	    }
+	    
+	    
+	    
 	    
 	    int baseAtkRangeMin = effAtkMin;
 	    int baseAtkRangeMax = effAtkMax;
@@ -1177,7 +1167,7 @@ public class BossAttackController {
 		
 		// 🔰 전사: 레벨당 2 고정 피해감소 (필살기에는 미적용)
 		if ("전사".equals(job) && calc.monDmg > 0 && !flags.finisher) {
-		    int reduce = Math.max(0, u.lv) * 2;
+		    int reduce = (int) Math.round(u.lv * 1.5);
 		    int after  = Math.max(0, calc.monDmg - reduce); // 최소 0
 		    String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
 		    calc.patternMsg = baseMsg + "(전사 효과로 " + reduce + " 피해 감소 → " + after + ")";
@@ -1250,7 +1240,7 @@ public class BossAttackController {
 	        if (!dropName.isEmpty()) {
 	            int dropPrice = getDropPriceByName(dropName); // 이미 있는 헬퍼
 	            if (dropPrice > 0) {
-	                merchantBonusSp = (int) Math.floor(dropPrice * 0.10);
+	                merchantBonusSp = (int) Math.floor(dropPrice * 0.20);
 	                if (merchantBonusSp > 0) {
 	                    HashMap<String,Object> pr = new HashMap<>();
 	                    pr.put("userName", userName);
@@ -2461,7 +2451,7 @@ public class BossAttackController {
 	    );
 
 	    if (willKill) r.gainExp = lucky ? baseKillExp * 3 : baseKillExp;
-	    else          r.gainExp = 2;  // ✅ 비처치 EXP 1 → 2
+	    else          r.gainExp = (int)Math.round(baseKillExp/100)+1;  // ✅ 비처치 EXP 1 → 2
 
 	    if (lucky && willKill) {
 	        r.dropCode = "3";
@@ -2978,15 +2968,21 @@ public class BossAttackController {
 	}
 	private String buildRegenScheduleSnippetEnhanced2(String userName, String roomName, User u, int horizonMinutes, int currentHp, int hpMax, int effRegen, int minutesSpan) {
 
-	    if (horizonMinutes <= 0 || u.hpRegen <= 0 || u.hpCur >= u.hpMax) return null;
+	    if (horizonMinutes <= 0 || u.hpRegen <= 0 || u.hpCur >= hpMax) return null;
 
 	    Timestamp damaged = botNewService.selectLastDamagedTime(userName, roomName);
-	    if (damaged == null) return null;
-
 	    Timestamp lastAtk = botNewService.selectLastAttackTime(userName, roomName);
-	    Timestamp from = damaged;
-	    if (lastAtk != null && lastAtk.after(damaged)) {
+
+	    Timestamp from;
+	    if (damaged != null && lastAtk != null) {
+	        from = lastAtk.after(damaged) ? lastAtk : damaged;
+	    } else if (damaged != null) {
+	        from = damaged;
+	    } else if (lastAtk != null) {
 	        from = lastAtk;
+	    } else {
+	        // ✅ 아무 로그도 없으면 "지금" 기준으로 시작
+	        from = Timestamp.from(Instant.now());
 	    }
 
 	    long minutesPassed = Math.max(0, Duration.between(from.toInstant(), Instant.now()).toMinutes());
@@ -3530,6 +3526,52 @@ public class BossAttackController {
 	    if (atkMax < 1) atkMax = 1;
 
 	    return atkMax;
+	}
+	private DosaBuffEffect loadRoomDosaBuffAndBuild(String roomName) {
+	    HashMap<String,Object> dosaBuff = botNewService.selectDosaBuffInfo(roomName);
+	    if (dosaBuff == null) return null;
+
+	    String dosaName = (String)dosaBuff.get("USER_NAME");
+	    User dosaUser   = botNewService.selectUser(dosaName, roomName);
+
+	    int dosaLv = 1;
+	    try {
+	        dosaLv = Integer.parseInt(dosaBuff.get("LV").toString());
+	    } catch (Exception ignore) {}
+
+	    return buildDosaBuffEffect(dosaUser, dosaLv, roomName);
+	}
+	
+	private DosaBuffEffect buildDosaBuffEffect(User dosaUser, int dosaLv, String roomName) {
+	    DosaBuffEffect eff = new DosaBuffEffect();
+
+	    int dosaAtkMax = calcUserEffectiveAtkMax(dosaUser, roomName);
+
+	    int dosaLvBonus = (int) Math.round(dosaLv * 0.5);
+	    int dosaCriDmg  = (int) Math.round(dosaAtkMax * 0.5);
+
+	    eff.addAtkMin   = dosaLvBonus;
+	    eff.addAtkMax   = dosaLvBonus;
+	    eff.addCritRate = dosaLvBonus;
+	    eff.addCritDmg  = dosaCriDmg;
+	    eff.addHp       = dosaLvBonus;
+	    eff.msg = "✨ 도사의 버프 발동! (Lv " + dosaLv +
+	              ") min+" + dosaLvBonus +
+	              " max+" + dosaLvBonus +
+	              ", cri+" + dosaLvBonus +
+	              ", hp+" + dosaLvBonus +
+	              ", cridmg +" + dosaCriDmg + "%";
+
+	    return eff;
+	}
+	
+	public static class DosaBuffEffect {
+	    public int addAtkMin;
+	    public int addAtkMax;
+	    public int addCritRate;
+	    public int addCritDmg;
+	    public int addHp;
+	    public String msg;
 	}
 
 
