@@ -386,11 +386,16 @@ public class BossAttackController {
 	    if ("전사".equals(job)) {
 	        finalHpMax += baseHpMax;
 	    }
-
+	    
 	    // 표시용 회복 적용 (전사/프리스트 포함 최종 HP 기준)
 	    int effHp = computeEffectiveHpFromLastAttack(targetUser, roomName, u, finalHpMax, shownRegen);
 	    if (effHp > finalHpMax) effHp = finalHpMax;
 
+	    
+	    
+	    
+	    
+	    
 	    // ⑧ 누적 통계/타겟
 	    List<KillStat> kills = botNewService.selectKillStats(targetUser, roomName);
 	    int totalKills = 0;
@@ -936,6 +941,7 @@ public class BossAttackController {
 	        //effAtkMax += blessAtk;
 	    }
 
+	    
 	    if (effAtkMax < effAtkMin) effAtkMax = effAtkMin;
 
 	 // === 최종 전투용 HP_MAX ===
@@ -1063,6 +1069,52 @@ public class BossAttackController {
 
 	    int rawAtkDmg = crit ? (int)Math.round(baseAtk * critMultiplier) : baseAtk;
 
+
+	    /*
+	     * 기사 최소공격력 만큼의 피해감소효과,공격이 항상 최대공격력의 50%로 적용
+		사신 체력이 0이되도 공격가능,체력이0이될때는 공격이 절반데미지로 적용
+		광전사 맥스체력 50%가 되고, 크리율 -100% / 맥스데미지로 고정
+		저격수 2턴의 공격이 최소공격력으로 적용되고, 세번째 공격은 최대공격력의 1.5배의 데미지를 준다.
+*/
+	    if ("기사".equals(job)) {
+	        rawAtkDmg = (int)(rawAtkDmg * 0.8);
+	    }
+
+	    // ☠️ 사신 — 유령모드면 공격력 60%, 크리티컬 불가
+	    if ("사신".equals(job)) {
+	    	/*
+	        int ghostMode = botNewService.selectGhostMode(userName, roomName);
+	        if (ghostMode == 1) {
+	            rawAtkDmg = (int) (rawAtkDmg * 0.6);
+	            crit = false; // 크리티컬 불가
+	        }
+	        */
+	    }
+	    
+	 // ⚡ 광전사 — HP 비율로 데미지 강화 (최대 2배)
+	    if ("광전사".equals(job)) {
+	        double hpRatio = (double) u.hpCur / (double) effHpMax;
+	        double bonus = 1 + ((1 - hpRatio) * 1.0); // 1.0~2.0배
+	        if (bonus > 2.0) bonus = 2.0;
+	        rawAtkDmg = (int)(rawAtkDmg * bonus);
+	    }
+
+	 // 🎯 저격수 — JOB_SKILL_YN = 1→2→3 (3일 때 강공)
+	    if ("저격수".equals(job)) {
+/*
+	        int sniperStack = botNewService.selectJobSkillYn(userName, roomName); // 1,2,3
+
+	        if (sniperStack == 3) {
+	            // ★★★ 3회차 강공
+	            crit = true;            // 확정 크리티컬
+	            rawAtkDmg = rawAtkDmg * 2;  // 데미지 2배
+	            botNewService.updateJobSkillYn(userName, roomName, 1); // 초기화
+	        } else {
+	            botNewService.updateJobSkillYn(userName, roomName, sniperStack + 1);
+	        }*/
+	    }
+
+	    
 	    AttackCalc calc = new AttackCalc();
 	    calc.jobSkillUsed = false; 
 	    
@@ -1117,6 +1169,24 @@ public class BossAttackController {
 			}
 			
 			calc = calcDamage(u, m, flags, baseAtk, crit, critMultiplier);
+			
+			// 🛡 기사 — 받는 피해 50% 감소 + 20% 무효화 (필살기 제외)
+			if ("기사".equals(job) && calc.monDmg > 0 && !flags.finisher) {
+
+			    if (ThreadLocalRandom.current().nextDouble() < 0.20) {
+			        // 20% 확률 무효화
+			        calc.monDmg = 0;
+			        calc.patternMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ")
+			                + "기사의 방패! 피해를 받지 않았습니다.";
+			    } else {
+			        int reduced = (int)(calc.monDmg * 0.5);
+			        calc.patternMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ")
+			                + "(기사 효과로 피해 50% 감소 → " + reduced + ")";
+			        calc.monDmg = reduced;
+			    }
+			}
+			
+
 
 			if (mageBreakGuard) {
 				// 방어를 깨뜨린 경우: 최종 공격 데미지 1.5배
