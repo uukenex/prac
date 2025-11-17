@@ -200,9 +200,6 @@ public class BossAttackController {
 	    }
 
 	    // 3) 레벨 제한 (처음/변경 모두 공통 룰)
-	    if (u.lv < 4) {
-	        return "전직은 4레벨부터 가능합니다. 현재 레벨: " + u.lv;
-	    }
 
 	    // 4) 동일 직업으로 변경 시도
 	    if (!curJob.isEmpty() && newJob.equals(curJob)) {
@@ -211,9 +208,9 @@ public class BossAttackController {
 
 	    
 	 // 레벨 4는 직업 체험 모드: 쿨타임 체크 생략 + 날짜 미갱신(체험은 기록 안 남김)
-	    if (u.lv == 4) {
+	    if (u.lv < 5) {
 	        botNewService.updateUserJobAndChangeDate(userName, roomName, newJob); // **JOB_CHANGE_DATE 갱신 없는 버전 사용**
-	        return "✨ 레벨4 직업 체험: 쿨타임 없이 [" + newJob + "] 으로 변경했습니다!";
+	        return "✨ 레벨5 미만 직업 체험: 쿨타임 없이 [" + newJob + "] 으로 변경했습니다!";
 	    }
 	    
 	    // 5) 24시간 쿨타임 체크
@@ -844,6 +841,9 @@ public class BossAttackController {
 			}
 		}
 	    
+	    
+	    
+	    
 	    final String param1 = Objects.toString(map.get("param1"), "");
 
 	    // 1) 유저 조회
@@ -851,6 +851,10 @@ public class BossAttackController {
 	    if (u == null) return guideSetTargetMessage();
 
 	    final String job = (u.job == null ? "" : u.job.trim());
+
+	    if(job.isEmpty()) {
+	    	return userName+" 님, /직업 을 통해 먼저 전직해주세요.";
+	    }
 
 	    // 2) MARKET 버프 합산 (null-safe)
 	    HashMap<String, Number> buffs = null;
@@ -1393,7 +1397,7 @@ public class BossAttackController {
 	    }
 	    
 	    // 19) 전직 안내 (전직 안 했고 5레벨 이상일 때만)
-	    if ((job.isEmpty()) && u.lv >= 4) {
+	    if ((job.isEmpty()) && u.lv >= 1) {
 	        msg += NL + "※ 아직 전직하지 않았습니다. /직업 으로 확인해주세요!";
 	    }
 
