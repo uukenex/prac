@@ -1905,10 +1905,10 @@ public class BossAttackController {
 	            if (rank++ >= 7) break;
 	        }
 	    }
-	    sb.append(NL);
-	    sb.append(NL);
+	    
 	    List<HashMap<String,Object>> ongoing = botNewService.selectOngoingChallengesForUnclearedBosses();
 	    if (ongoing != null && !ongoing.isEmpty()) {
+	    	sb.append(NL);
 	        sb.append(NL).append("⚔ 최초토벌 도전중").append(NL);
 	        for (HashMap<String,Object> row : ongoing) {
 	            String monName   = String.valueOf(row.get("MON_NAME"));
