@@ -17,6 +17,7 @@ import javax.annotation.Resource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 
+import my.prac.core.game.dto.AttackCalc;
 import my.prac.core.game.dto.AttackDeathStat;
 import my.prac.core.game.dto.BattleLog;
 import my.prac.core.game.dto.KillStat;
@@ -120,6 +121,36 @@ public class BossAttackController {
 
 	    if (regenInfo != null && !regenInfo.isEmpty()) {
 	        sb.append(regenInfo);
+	    }
+	    
+	 // 🔹 여기서 "공격 로직"에서 쓰는 진행중 전투 계산 재사용
+	    try {
+	        OngoingBattle ob = botNewService.selectOngoingBattle(userName, roomName);
+	        if (ob != null) {
+	            Monster m = botNewService.selectMonsterByNo(ob.monNo);
+	            if (m != null) {
+	                int monMaxHp       = m.monHp;
+	                int monHpRemain    = Math.max(0, m.monHp - ob.totalDealtDmg);
+
+	                sb.append(NL)
+	                  .append("▶ 전투중인 몬스터").append(NL)
+	                  .append(m.monName)
+	                  .append(" (").append(monHpRemain).append(" / ").append(monMaxHp).append(")")
+	                  .append(NL);
+	            }
+	        } else {
+	            // 진행중 전투는 없지만 타겟몬은 있을 수 있음 (선택)
+	            Monster m = botNewService.selectMonsterByNo(u.targetMon);
+	            if (m != null) {
+	                sb.append(NL)
+	                  .append("▶ 타겟 몬스터").append(NL)
+	                  .append(m.monName)
+	                  .append(" (").append(m.monHp).append(" / ").append(m.monHp).append(")")
+	                  .append(NL);
+	            }
+	        }
+	    } catch (Exception ignore) {
+	        sb.append(NL).append("전투중인 몬스터 정보를 불러오지 못했습니다.").append(NL);
 	    }
 
 
@@ -798,7 +829,6 @@ public class BossAttackController {
 
 	public String monsterAttack(HashMap<String, Object> map) {
 	    map.put("cmd", "monster_attack");
-
 	    final String roomName = Objects.toString(map.get("roomName"), "");
 	    final String userName = Objects.toString(map.get("userName"), "");
 	    if (roomName.isEmpty() || userName.isEmpty())
@@ -1039,6 +1069,9 @@ public class BossAttackController {
 
 	    int rawAtkDmg = crit ? (int)Math.round(baseAtk * critMultiplier) : baseAtk;
 
+	    AttackCalc calc = new AttackCalc();
+	    calc.jobSkillUsed = false; 
+	    
 	    boolean isSnipe = false;
 	    if ("궁수".equals(job)) {
 	    	int monLv = m.monNo; // int형이므로 null 비교 불필요
@@ -1048,6 +1081,7 @@ public class BossAttackController {
 	            if (ThreadLocalRandom.current().nextDouble() < 0.02) {
 	                isSnipe = true;
 	                rawAtkDmg = rawAtkDmg * 20;
+	                calc.jobSkillUsed = true;  
 	            }
 	        }
 	    }
@@ -1056,8 +1090,10 @@ public class BossAttackController {
 		boolean lethal = rawAtkDmg >= monHpRemainBefore;
 
 		Flags flags = new Flags();
-		AttackCalc calc = new AttackCalc();
+		
 
+		
+		
 		if (lethal) {
 			flags.atkCrit = crit;
 			flags.monPattern = 0;
@@ -1081,6 +1117,7 @@ public class BossAttackController {
 			if ("마법사".equals(job) && flags.monPattern == 3) {
 				if (ThreadLocalRandom.current().nextDouble() < 0.50) {
 					mageBreakGuard = true;
+					calc.jobSkillUsed = true;   // 🔥 마법사 스킬 사용 표시
 					flags.monPattern = 1; // 방어 대신 무행동으로 취급
 				}
 			}
@@ -1185,6 +1222,8 @@ public class BossAttackController {
 		             .setDropYn(0)
 		             .setDeathYn(1)
 		             .setLuckyYn(0)
+		             .setJobSkillYn(0)
+		             .setJob(job)
 		     );
 		     
 		     deathAchvMsg = grantDeathAchievements(userName, roomName);
@@ -1261,6 +1300,7 @@ public class BossAttackController {
 	                        botNewService.insertInventoryLogTx(inv);
 	                        // 메시지는 buildAttackMessage에서 드랍 파트와 함께 표현 가능 (원하면 추가)
 	                        stealMsg = "✨ " + m.monName + "의 아이템을 훔쳤습니다! (" + dropName + "조각)";
+	                        calc.jobSkillUsed = true;  
 	                    }
 	                } catch (Exception ignore) {}
 	            }
@@ -1268,7 +1308,6 @@ public class BossAttackController {
 	    }
 	    String dosaCastMsg = null;
 	    if ("도사".equals(job)) {
-	        // persist() 이후 로그에서 사용할 수 있게 도사 버프 기록
 	        dosaCastMsg = "✨ 도사의 기원! 다음 공격자 강화!"+NL;
 	    }
 	    
@@ -1345,10 +1384,7 @@ public class BossAttackController {
 	    } catch (Exception ignore) {}
 	    String curSpStr = formatSp(curPoint);
 
-	    msg = msg + NL + "현재 포인트: " + curSpStr + NL
-	    		+ "/구매 : 아이템상점오픈"+NL
-	    		+ "/판매 : 판매기능"+NL
-	    		+ "/공격타겟 : 타겟변경"+NL;
+	    msg = msg + NL + "현재 포인트: " + curSpStr + NL;
 
 	 // 🌟 운영자의 축복 안내 (실제 반영된 수치 기준)
 	    if (hasBless) {
@@ -1563,7 +1599,8 @@ public class BossAttackController {
 	                    + (shinyQty > 0 ? ", ✨빛" + baseName + " " + shinyQty + "개" : "")
 	                    + (fragQty  > 0 ? ", " + baseName + "조각 " + fragQty + "개" : "");
 	        }
-	        return "판매 가능한 재고가 없습니다." + NL + preStock;
+	        return "판매 가능한 재고가 없습니다." + NL + preStock
+	        		 +NL+"/판매 기타 ->잡템전체"+NL+"/판매 장비 ->장비전체";
 	    }
 
 	    HashMap<String, Object> pr = new HashMap<>();
@@ -1864,6 +1901,30 @@ public class BossAttackController {
 	            if (rank++ >= 7) break;
 	        }
 	    }
+	    sb.append(NL);
+	    sb.append(NL);
+	    List<HashMap<String,Object>> ongoing = botNewService.selectOngoingChallengesForUnclearedBosses();
+	    if (ongoing != null && !ongoing.isEmpty()) {
+	        sb.append(NL).append("⚔ 최초토벌 도전중").append(NL);
+	        for (HashMap<String,Object> row : ongoing) {
+	            String monName   = String.valueOf(row.get("MON_NAME"));
+	            String userName2 = String.valueOf(row.get("USER_NAME"));
+	            String job       = Objects.toString(row.get("JOB"), "");
+	            int lv           = safeInt(row.get("LV"));
+	            String startTime = String.valueOf(row.get("START_TIME"));
+	            int monHp        = safeInt(row.get("MON_HP"));
+	            int remainHp     = safeInt(row.get("REMAIN_HP"));
+	            
+	            sb.append(" ").append(monName)
+	              .append(" ").append(remainHp).append(" / ").append(monHp).append(NL)
+	              .append(" ▶[도전 중] ").append(userName2);
+	            if (!job.isEmpty()) sb.append("/").append(job);
+	            sb.append("(Lv.").append(lv).append(")")
+	              .append(" (").append(startTime).append(")")
+	              .append(NL);
+	        }
+	    }
+	    
 	    sb.append(allSeeStr);
 	    
 	    // =========================
@@ -1985,28 +2046,6 @@ public class BossAttackController {
 	                sb.append(" (").append(firstTime).append(")");
 	            }
 	            sb.append(NL);
-	        }
-	    }
-
-	    List<HashMap<String,Object>> ongoing = botNewService.selectOngoingChallengesForUnclearedBosses();
-	    if (ongoing != null && !ongoing.isEmpty()) {
-	        sb.append(NL).append("⚔ 최초토벌 도전중").append(NL);
-	        for (HashMap<String,Object> row : ongoing) {
-	            String monName   = String.valueOf(row.get("MON_NAME"));
-	            String userName2 = String.valueOf(row.get("USER_NAME"));
-	            String job       = Objects.toString(row.get("JOB"), "");
-	            int lv           = safeInt(row.get("LV"));
-	            String startTime = String.valueOf(row.get("START_TIME"));
-	            int monHp        = safeInt(row.get("MON_HP"));
-	            int remainHp     = safeInt(row.get("REMAIN_HP"));
-
-	            sb.append("- ").append(monName)
-	              .append(" ").append(remainHp).append(" / ").append(monHp).append(NL)
-	              .append(" ▶[도전 중] ").append(userName2);
-	            if (!job.isEmpty()) sb.append("/").append(job);
-	            sb.append("(Lv.").append(lv).append(")")
-	              .append(" (").append(startTime).append(")")
-	              .append(NL);
 	        }
 	    }
 
@@ -2557,7 +2596,9 @@ public class BossAttackController {
 	        .setDeathYn(deathYn)
 	        .setLuckyYn(res.lucky ? 1 : 0)
 	        .setDropYn(dropAsInt)
-	    	.setBuffYn(buffYn);
+	    	.setBuffYn(buffYn)
+	    	.setJobSkillYn(c.jobSkillUsed ? 1 : 0)
+	    	.setJob(u.job);
 
 	    botNewService.insertBattleLogTx(log);
 
@@ -2808,10 +2849,6 @@ public class BossAttackController {
 	    boolean finisher;  // ← 필살기 여부
 	}
 	
-	private static class AttackCalc {
-		int atkDmg; int monDmg; int atkMin; int atkMax; String patternMsg;
-	    int baseAtk; double critMultiplier;
-	}
 	private static class Resolve {
 		boolean killed; String dropCode; int gainExp; int levelUpCount; boolean lucky;
 	}

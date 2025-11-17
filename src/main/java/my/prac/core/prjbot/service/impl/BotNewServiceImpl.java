@@ -306,5 +306,8 @@ public class BotNewServiceImpl implements BotNewService {
     public List<HashMap<String, Object>> selectAchievementCountRanking(){
     	return botNewDAO.selectAchievementCountRanking();
     }
-    
+    @Override
+    public HashMap<String, Object> selectActiveMonster(String userName, String roomName){
+    	return botNewDAO.selectActiveMonster(userName,roomName);
+    }
 }

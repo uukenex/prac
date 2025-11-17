@@ -17,9 +17,15 @@ public  class AttackCalc {
 	public int hpCur;
 	public int hpMax;
 	public int hpRegen;
+	public int atkDmg; 
+	public int monDmg; 
 	public int atkMin;
 	public int atkMax;
+	public String patternMsg;
+	public int baseAtk; 
+	public double critMultiplier;
 	public double critRate; // %
 	public double critDmg;  // %
 	public int targetMon;
+	public boolean jobSkillUsed;
 }

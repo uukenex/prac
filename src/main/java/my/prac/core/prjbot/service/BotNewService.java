@@ -119,6 +119,8 @@ public interface BotNewService {
     List<HashMap<String, Object>> selectThiefKingRanking();
 
     List<HashMap<String, Object>> selectAchievementCountRanking();
+    
+    HashMap<String, Object> selectActiveMonster(String userName, String roomName);
 } 
 
 	

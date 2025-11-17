@@ -22,6 +22,8 @@ public class BattleLog {
 	private int deathYn; // 0/1 (또는 null)
 	private int luckyYn; // 0/1 (또는 null)
 	private int buffYn; // 0/1 (또는 null)
+	private int jobSkillYn; // 0/1 (또는 null)
+	private String job; 
 
 	public BattleLog setUserName(String v) {
 		this.userName = v;
@@ -95,6 +97,14 @@ public class BattleLog {
 
 	public BattleLog setLuckyYn(int v) {
 		this.luckyYn = v;
+		return this;
+	}
+	public BattleLog setJobSkillYn(int v) {
+		this.jobSkillYn = v;
+		return this;
+	}
+	public BattleLog setJob(String v) {
+		this.job = v;
 		return this;
 	}
 

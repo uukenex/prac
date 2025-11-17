@@ -171,4 +171,5 @@ public interface BotNewDAO {
 
     List<HashMap<String, Object>> selectAchievementCountRanking();
 
+    HashMap<String, Object> selectActiveMonster(@Param("userName")String userName,@Param("roomName") String roomName);
 }

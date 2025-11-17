@@ -130,11 +130,15 @@
     INSERT INTO TBOT_POINT_NEW_BATTLE_LOG
       (USER_NAME, ROOM_NAME, LV, TARGET_MON_LV,
        GAIN_EXP, ATK_DMG, MON_DMG, ATK_CRIT_YN,
-       MON_PATTEN, INSERT_DATE, KILL_YN, NOW_YN, DROP_YN, DEATH_YN, LUCKY_YN, BUFF_YN)
+       MON_PATTEN, INSERT_DATE, KILL_YN, NOW_YN, DROP_YN, DEATH_YN, LUCKY_YN, BUFF_YN
+       ,JOB_SKILL_YN,JOB
+       )
     VALUES
       (#{userName}, #{roomName}, #{lv}, #{targetMonLv},
        #{gainExp}, #{atkDmg}, #{monDmg}, #{atkCritYn},
-       #{monPatten}, SYSTIMESTAMP, #{killYn}, #{nowYn}, #{dropYn}, #{deathYn}, #{luckyYn},#{buffYn})
+       #{monPatten}, SYSTIMESTAMP, #{killYn}, #{nowYn}, #{dropYn}, #{deathYn}, #{luckyYn},#{buffYn}
+       ,#{jobSkillYn},#{job}
+       )
   </insert>
 
   <!-- 7) 전투 종료 -->
@@ -539,7 +543,14 @@
 	
 	<!-- 마지막으로 '피해를 받은' 시각: MON_DMG>0 또는 DEATH_YN='1' -->
 	<select id="selectLastDamagedTime" resultType="java.sql.Timestamp">
-	  SELECT MAX(INSERT_DATE)
+	  SELECT MAX(
+	           INSERT_DATE
+	           + CASE 
+	               WHEN DEATH_YN = '1' 
+	                 THEN (10 / 24 / 60)  -- 10분 = 10/24/60 일
+	               ELSE 0
+	             END
+	         )
 	    FROM TBOT_POINT_NEW_BATTLE_LOG
 	   WHERE USER_NAME = #{userName}
 	   <if test="roomName != null and roomName != '람쥐봇 문의방'">
@@ -807,6 +818,25 @@
 		         ORDER BY COUNT(*) DESC, USER_NAME
 		    )
 		    WHERE ROWNUM &lt;= 5
+	</select>
+	
+	<select id="selectActiveMonster" parameterType="hashmap" resultType="hashmap">
+	  SELECT *
+	    FROM (
+	        SELECT 
+	               b.TARGET_MON_LV,
+	               mi.MON_NAME,
+	               mi.MON_HP       AS MON_MAX_HP
+	          FROM TBOT_POINT_NEW_BATTLE_LOG b
+	          JOIN TBOT_POINT_NEW_MON_INFO mi
+	            ON b.TARGET_MON_LV = mi.MON_NO     <!-- 몬스터 레벨/번호 매핑 -->
+	         WHERE b.USER_NAME = #{userName}
+	           AND b.ROOM_NAME = #{roomName}
+	           AND NVL(b.NOW_YN, '1') = '1'        <!-- 현재 진행중 전투 -->
+	           AND NVL(b.KILL_YN, '0') = '0'       <!-- 아직 안 죽은 몬스터 -->
+	         ORDER BY b.INSERT_DATE DESC           <!-- 가장 최근 전투 로그 -->
+	    )
+	    WHERE ROWNUM = 1
 	</select>
 		
 </mapper>
