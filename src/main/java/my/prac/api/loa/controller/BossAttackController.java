@@ -34,7 +34,7 @@ public class BossAttackController {
 
 	/* ===== Config / Const ===== */
 	private static final int COOLDOWN_SECONDS = 120; // 2분
-	private static final int REVIVE_WAIT_MINUTES = 10;
+	private static final int REVIVE_WAIT_MINUTES = 0;//쿼리에서계산함
 	private static final String NL = "♬";
 	// 🍀 Lucky: 전투 시작 시 10% 확률 고정(신규 전투에서만 결정)
 	private static final double LUCKY_RATE = 0.15;
