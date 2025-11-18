@@ -220,14 +220,14 @@ public class BossAttackController {
 	    Timestamp lastChange = u.jobChangeDate;
 	    if (lastChange != null) {
 	        long diffSec = java.time.Duration.between(lastChange.toInstant(), java.time.Instant.now()).getSeconds();
-	        long limitSec = 4L * 60 * 60;
+	        long limitSec = 3L * 60 * 60;
 
 	        if (diffSec < limitSec) {
 	            long remain = limitSec - diffSec;
 	            long rh = remain / 3600;
 	            long rm = (remain % 3600) / 60;
 
-	            return "직업 변경은 4시간에 1회 가능합니다." + NL
+	            return "직업 변경은 3시간에 1회 가능합니다." + NL
 	                 + "다음 변경까지 남은 시간: " + rh + "시간 " + rm + "분";
 	        }
 	    }
@@ -237,10 +237,16 @@ public class BossAttackController {
 	    if (updated <= 0) {
 	        return "직업 변경 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.";
 	    }
+	    try {
+	    	botNewService.closeOngoingBattleTx(userName, roomName);
+	    }catch(Exception e){
+	    	
+	    }
+	    
 
 	    // 7) 완료 메시지
 	    return "✨ " + userName + "님, [" + newJob + "] 으로 직업이 변경되었습니다." + NL
-	         + "(직업 변경은 4시간에 1회 가능합니다)";
+	         + "(직업 변경은 3시간에 1회 가능합니다)";
 	}
 
 
@@ -252,7 +258,7 @@ public class BossAttackController {
 	        sb.append(def.attackLine).append(NL).append(NL);
 	        
 	    }
-	    sb.append("♬ 4시간마다 /직업 [직업명] 으로 전직 가능합니다.").append(NL);
+	    sb.append("♬ 3시간마다 /직업 [직업명] 으로 전직 가능합니다.").append(NL);
 	    return sb.toString();
 	}
 
