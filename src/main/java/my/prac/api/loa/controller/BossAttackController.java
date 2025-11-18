@@ -90,7 +90,7 @@ public class BossAttackController {
 	    // 4) 최종 Max HP (attackInfo와 동일 로직)
 	    int finalHpMax = baseHpMax + bHpMax;
 	    if ("전사".equals(job)) {
-	        finalHpMax += baseHpMax; // 전사: 기본 HP 한 번 더
+	        finalHpMax -= baseHpMax*0.5; // 전사: 기본 HP 한 번 더
 	    }
 	    if (finalHpMax <= 0) finalHpMax = 1;
 
@@ -399,7 +399,7 @@ public class BossAttackController {
 	    // 전사 HP 보너스: 기본 HP 한 번 더 (아이템 제외)
 	    int finalHpMax = hpMaxWithItemAndPriest;
 	    if ("전사".equals(job)) {
-	        finalHpMax += baseHpMax;
+	        finalHpMax -= baseHpMax*0.5;
 	    }
 	    
 	 // 🩸 흡혈귀: 리젠 완전 불가 (아이템/버프/운영자 축복 포함)
@@ -924,7 +924,7 @@ public class BossAttackController {
 	    int atkMaxWithItem = baseMax + weaponBonus + bAtkMax;          // 기본 + 무기강 + 아이템(max)
 	    int hpMaxWithItem  = baseHpMax + bHpMax;
 
-	    // 🩸 흡혈귀: 리젠 완전 불가 (아이템/버프/운영자 축복 포함)
+	    // 🩸 흡혈귀: 기초리젠 불가 
 	    if ("흡혈귀".equals(job)) {
 	    	bRegen = 0;
 	    }
@@ -969,7 +969,7 @@ public class BossAttackController {
 	        // ✅ 전사: "기본 min 한 번 더, 기본 max 한 번 더" (아이템/강화 제외)
 	        jobBonusMin = baseMin;
 	        jobBonusMax = baseMax;
-	        jobBonusHp  = baseHpMax;
+	        jobBonusHp  = -(int)Math.round(baseHpMax*0.5);
 	    }
 	 // 3) 전사 보너스(기본값 기준)를 각각 더함
 	    int effAtkMin = (int) Math.round(atkMinWithItem * jobDmgMul + jobBonusMin);
@@ -1002,7 +1002,7 @@ public class BossAttackController {
 	    if ("전사".equals(job) && effHpMax > 0) {
 	        double hpRatio = (double) u.hpCur / effHpMax;
 	        if (hpRatio < 0.5) {
-	            berserkMul = 1.0 + (0.5 - hpRatio) * 1.5; // 0% ~ +50%
+	            berserkMul = 1.0 + (0.5 - hpRatio) * 2.0; // 0% ~ +100%
 	        }
 	    }
 
@@ -1132,10 +1132,7 @@ public class BossAttackController {
 	    
 	    boolean isSnipe = false;
 	    if ("궁수".equals(job)) {
-	    	int monLv = m.monNo; // int형이므로 null 비교 불필요
-	        int userLv = u.lv;
-
-            if (ThreadLocalRandom.current().nextDouble() < 0.04) {
+            if (ThreadLocalRandom.current().nextDouble() < 0.065) {
                 isSnipe = true;
                 rawAtkDmg = rawAtkDmg * 20;
                 calc.jobSkillUsed = true;  
@@ -1146,9 +1143,6 @@ public class BossAttackController {
 		boolean lethal = rawAtkDmg >= monHpRemainBefore;
 
 		Flags flags = new Flags();
-		
-
-		
 		
 		if (lethal) {
 			flags.atkCrit = crit;
@@ -1180,10 +1174,6 @@ public class BossAttackController {
 			
 			calc = calcDamage(u, m, flags, baseAtk, crit, critMultiplier);
 			
-			
-			
-
-
 			if (mageBreakGuard) {
 				// 방어를 깨뜨린 경우: 최종 공격 데미지 1.5배
 				calc.atkDmg = (int) Math.round(calc.atkDmg * 1.5);
@@ -1222,19 +1212,24 @@ public class BossAttackController {
 		// 🩸 흡혈귀: 이번 턴 몬스터에게 준 데미지의 20%만큼 체력 회복
 		// 순서: 내 공격 → 회복 → 몬스터 반격/필살기
 		if ("흡혈귀".equals(job) && calc.atkDmg > 0) {
-		    int heal = (int) Math.round(calc.atkDmg * 0.20); // 20%
-		    if (heal < 1) heal = 1;                          // 최소 1 회복 (원하면 빼도 됨)
-
-		    int beforeHp = u.hpCur;
-		    u.hpCur = Math.min(effHpMax, u.hpCur + heal);    // 최대 체력 초과 방지
-
-		    String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
-		    calc.patternMsg = baseMsg
-		            + NL+"흡혈 효과! " + heal + "만큼 체력을 회복했습니다. "
-		            + "(HP " + beforeHp + " → " + u.hpCur + "/" + effHpMax + ")";
-
-		    // 스킬 사용 흔적 표시
-		    calc.jobSkillUsed = true;
+			
+			if(m.monNo == 10|| m.monNo == 14) {
+				calc.patternMsg =  calc.patternMsg+"언데드는 흡혈 불가";
+			}else {
+			    int heal = (int) Math.round(calc.atkDmg * 0.20); // 20%
+			    if (heal < 1) heal = 1;                          // 최소 1 회복 (원하면 빼도 됨)
+	
+			    int beforeHp = u.hpCur;
+			    u.hpCur = Math.min(effHpMax, u.hpCur + heal);    // 최대 체력 초과 방지
+	
+			    String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
+			    calc.patternMsg = baseMsg
+			            + NL+"흡혈 효과! " + heal + "만큼 체력을 회복했습니다. "
+			            + "(HP " + beforeHp + " → " + u.hpCur + "/" + effHpMax + ")";
+	
+			    // 스킬 사용 흔적 표시
+			    calc.jobSkillUsed = true;
+			}
 		}
 		
 		int monHpAfterPreview = Math.max(0, monHpRemainBefore - calc.atkDmg);
@@ -1243,7 +1238,7 @@ public class BossAttackController {
 		    calc.monDmg     = 0;
 		    flags.monPattern= 0;
 		    // 필요하면 반격 관련 메시지도 비우기
-		    calc.patternMsg = null;
+		    //calc.patternMsg = null;
 		}
 
 			
@@ -1304,6 +1299,7 @@ public class BossAttackController {
 		}
 		
 		// 🔰 전사: 레벨당 2 고정 피해감소 (필살기에는 미적용)
+		/*
 		if ("전사".equals(job) && calc.monDmg > 0 && !flags.finisher) {
 		    int reduce = (int) Math.round(u.lv * 1.5);
 		    int after  = Math.max(0, calc.monDmg - reduce); // 최소 0
@@ -1311,7 +1307,7 @@ public class BossAttackController {
 		    calc.patternMsg = baseMsg + "(전사 효과로 " + reduce + " 피해 감소 → " + after + ")";
 		    calc.monDmg = after;
 		}
-
+		 */
 		// 🔹 프리스트: 받는 피해 30% 감소 (모든 몬스터 대상)
 		if ("프리스트".equals(job) && calc.monDmg > 0 && !flags.finisher) {
 		    int reduced = (int) Math.floor(calc.monDmg * 0.7); // 30% 감소
@@ -1548,8 +1544,14 @@ public class BossAttackController {
 	private boolean isSkeleton(Monster m) {
 	    if (m == null) return false;
 	    if (m.monNo == 10) return true;
-	    String name = m.monName;
-	    return name != null && name.contains("해골");
+	    if (m.monNo == 14) return true;
+	    if (m.monName.equals("해골")) {
+	    	return true;
+	    }
+	    if (m.monName.equals("리치")) {
+	    	return true;
+	    }
+	    return false;
 	}
 
 	public String sellItem(HashMap<String, Object> map) {
@@ -3757,8 +3759,8 @@ public class BossAttackController {
 	    // NL은 클래스에 이미 있는 상수라고 가정하고 그대로 사용
 	    JOB_DEFS.put("전사", new JobDef(
 	        "전사",
-	        "▶ 전사 :육체능력이 향상되며, 체력이 낮아질수록 강해진다",
-	        "⚔ 기본 ATK(min/max)와 HP만큼 추가 적용, 몬스터 공격 방어(레벨*1.5), 버서크모드(체력이 낮아지면 데미지 최대 1.5배)"
+	        "▶ 전사 :육체능력이 변경되며, 체력이 낮아질수록 강해진다",
+	        "⚔ 기본 ATK(min/max) 증가, 기본 HP 절반으로 감소, 버서크모드(50%이하부터,점점 강해짐 데미지 최대 2배)"
 	    ));
 
 	    JOB_DEFS.put("궁수", new JobDef(
