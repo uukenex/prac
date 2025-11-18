@@ -2588,8 +2588,8 @@ public class BossAttackController {
 	}
 
 	private int calcBaseCritRate(int lv) {
-	    if (lv <= 1) return 10;
-	    return 10 + (lv - 1) * 2;
+	    if (lv <= 1) return 0;  // Lv1 = 2부터 시작
+	    return 0 + ((lv - 1) / 3); // 3레벨마다 +1
 	}
 
 	private int calcBaseHpRegen(int lv) {
@@ -3023,8 +3023,9 @@ public class BossAttackController {
 	        atkMin += incAtkMin; atkMinDelta += incAtkMin;
 	        atkMax += incAtkMax; atkMaxDelta += incAtkMax;
 
-	        crit   += 2;         critDelta   += 2;
-
+	        if (lv % 3 == 0) {
+	        	crit   += 1;         critDelta   += 1;
+	        }
 	        if (lv % 3 == 0) {
 	            regen++;         regenDelta++;
 	        }
@@ -3411,6 +3412,16 @@ public class BossAttackController {
 	                case 500: return 500;
 	            }
 	            break;
+	        case 11: // 산적
+	        case 12: // 도깨비
+	        case 13: // 새끼용
+	        	switch (threshold) {
+	        	case 50:  return 600;
+	        	case 100: return 600;
+	        	case 300: return 600;
+	        	case 500: return 600;
+	        	}
+	        	break;
 	    }
 	    return 0;
 	}
