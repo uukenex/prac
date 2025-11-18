@@ -1117,13 +1117,11 @@ public class BossAttackController {
 	    	int monLv = m.monNo; // int형이므로 null 비교 불필요
 	        int userLv = u.lv;
 
-	        if (monLv > 0 && monLv >= userLv - 5 && monLv <= userLv + 1) {
-	            if (ThreadLocalRandom.current().nextDouble() < 0.04) {
-	                isSnipe = true;
-	                rawAtkDmg = rawAtkDmg * 20;
-	                calc.jobSkillUsed = true;  
-	            }
-	        }
+            if (ThreadLocalRandom.current().nextDouble() < 0.04) {
+                isSnipe = true;
+                rawAtkDmg = rawAtkDmg * 20;
+                calc.jobSkillUsed = true;  
+            }
 	    }
 	    
 	    // 12) 원턴킬 선판정
@@ -1201,6 +1199,26 @@ public class BossAttackController {
 			
 			
 		}
+		
+		
+		// 🩸 흡혈귀: 이번 턴 몬스터에게 준 데미지의 20%만큼 체력 회복
+		// 순서: 내 공격 → 회복 → 몬스터 반격/필살기
+		if ("흡혈귀".equals(job) && calc.atkDmg > 0) {
+		    int heal = (int) Math.round(calc.atkDmg * 0.20); // 20%
+		    if (heal < 1) heal = 1;                          // 최소 1 회복 (원하면 빼도 됨)
+
+		    int beforeHp = u.hpCur;
+		    u.hpCur = Math.min(effHpMax, u.hpCur + heal);    // 최대 체력 초과 방지
+
+		    String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
+		    calc.patternMsg = baseMsg
+		            + "흡혈 효과! " + heal + "만큼 체력을 회복했습니다. "
+		            + "(HP " + beforeHp + " → " + u.hpCur + "/" + effHpMax + ")";
+
+		    // 스킬 사용 흔적 표시
+		    calc.jobSkillUsed = true;
+		}
+		
 		int monHpAfterPreview = Math.max(0, monHpRemainBefore - calc.atkDmg);
 		if (monHpAfterPreview <= 0) {
 		    // 몬스터는 결국 이 턴에 죽는다 → 반격 데미지는 없다고 본다
@@ -1211,9 +1229,9 @@ public class BossAttackController {
 		}
 
 			
-		// 🔹 프리스트: 해골에게 주는 피해 1.5배
+		// 🔹 프리스트: 해골에게 주는 피해 1.25배
 		if ("프리스트".equals(job) && isSkeleton(m) && calc.atkDmg > 0) {
-		    int boosted = (int) Math.round(calc.atkDmg * 1.5);
+		    int boosted = (int) Math.round(calc.atkDmg * 1.25);
 		    if (boosted <= calc.atkDmg) {
 		        boosted = calc.atkDmg + 1; // 최소 1 이상 증가 보장 (체감용)
 		    }
@@ -3771,6 +3789,12 @@ public class BossAttackController {
             "사신",
             "▶ 사신 :이름하야 죽음의 신, 죽지않는다",
             "⚔ 아이템으로 인한 치명타,치명타뎀 증감처리 미적용, 체력 0에서도 죽지 않음"
+        ));
+        
+        JOB_DEFS.put("흡혈귀", new JobDef(
+            "흡혈귀",
+            "▶ 흡혈귀 :배가고프다, 나는 배가 고프다!",
+            "⚔ 공격시 준피해의 20% 흡혈(공격&흡혈 선계산, 후피해)"
         ));
 	}
 }
