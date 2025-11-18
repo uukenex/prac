@@ -863,6 +863,7 @@ public class BossAttackController {
 
 	    // 2) MARKET 버프 합산 (null-safe)
 	    HashMap<String, Number> buffs = null;
+	    
 	    try {
 	        buffs = botNewService.selectOwnedMarketBuffTotals(userName, roomName);
 	    } catch (Exception ignore) {}
@@ -889,7 +890,8 @@ public class BossAttackController {
 	        weaponLv = 0;
 	    }
 	    int weaponBonus = getWeaponAtkBonus(weaponLv);
-
+	    
+	    String critDebugMsg = null;
 	    
 	 // === 전사 보너스 기준이 되는 "순수 기본값" (아이템/강화 제외) ===
 	    int baseMin = u.atkMin;
@@ -1019,9 +1021,7 @@ public class BossAttackController {
 	        u.hpRegen = origRegen;
 	    }
 
-	    // 11) 데미지 굴림
-	    boolean crit = ThreadLocalRandom.current().nextDouble(0, 100) < clamp(effCritRate, 0, 100);
-
+	    //11) 데미지 굴림 (도사/방 버프 적용 전: crit 계산은 아래로 이동)
 	    DosaBuffEffect buffEff = loadRoomDosaBuffAndBuild(roomName);
 	    String dosabuffMsg = "";
 
@@ -1049,8 +1049,19 @@ public class BossAttackController {
 	        botNewService.clearRoomBuff(roomName);
 	    }
 	    
-	    
-	    
+		 // === 여기서부터 "최종 effCritRate" 기준 크리 판정 + 디버그 문자열 생성 ===
+	    int critRoll = ThreadLocalRandom.current().nextInt(0, 101);
+	    int critThreshold = Math.min(100, effCritRate);  // 0~100 제한
+	    boolean crit = (critRoll <= critThreshold);
+
+	    critDebugMsg = String.format(
+	    	    "crit calc 0~100 => [%d %s %d] : %s (effCrit= %d)",
+	    	    critRoll,
+	    	    crit ? "<=" : ">",
+	    	    critThreshold,
+	    	    crit ? "CRIT!" : "crit fail",
+	    	    effCritRate
+    	);
 	    
 	    int baseAtkRangeMin = effAtkMin;
 	    int baseAtkRangeMax = effAtkMax;
@@ -1450,11 +1461,15 @@ public class BossAttackController {
 
 	    msg = msg + NL + "현재 포인트: " + curSpStr + NL;
 
-	 // 🌟 운영자의 축복 안내 (실제 반영된 수치 기준)
+	    // 🌟 운영자의 축복 안내 (실제 반영된 수치 기준)
 	    if (hasBless) {
 	        msg += NL + "※ 운영자의 축복 적용 중: 5분당 회복 +" + blessRegen
 	             + " (Lv 15 이하 한정 버프)";
 	    }
+	    // 🔍 크리티컬 판정 디버그 출력
+	   // if (critDebugMsg != null) {
+	   //     msg += NL + critDebugMsg;
+	   // }
 	    
 	    // 19) 전직 안내 (전직 안 했고 5레벨 이상일 때만)
 	    if ((job.isEmpty()) && u.lv >= 1) {
