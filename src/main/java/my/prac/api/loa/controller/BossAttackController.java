@@ -6,6 +6,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -244,30 +245,27 @@ public class BossAttackController {
 
 
 	private String buildJobDescriptionList() {
-	    String NL = "♬";
-	    return "전직 가능한 직업 목록" + NL +
-	           "▶ 전사 : 기본 HP·공격력만큼 추가 적용, 몬스터 공격 방어(레벨*1.5), 버서크모드(체력이 낮아지면 데미지 1.5배)" + NL +
-	           "▶ 궁수 : 최종 데미지 ×1.7, 공격 쿨타임 5분, EXP +15%, -hidden-" + NL +
-	           "▶ 마법사 : 몬스터가 방어시 방어를 무시하고 피해 1.25배를 줌" + NL +
-	           "▶ 도적 : 공격 시 25% 확률로 추가 드랍(STEAL), 몬스터 기본 공격 40% 회피" + NL +
-	           "▶ 프리스트 : 아이템 HP/리젠 효과 1.5배, 몬스터에게 받는 피해 30% 감소, -hidden-" + NL +
-	           "▶ 상인 : 상점 구매 10% 할인, 드랍 판매가 10% 증가, 공격시 SP 추가 획득" + NL +
-	           "▶ 도사 : 다음 공격하는 아군의 (공격력↑,치명타확률↑,HP회복), 자신의 럭키몬스터 등장 확률 증가" + NL +
-	           "♬ 4시간마다 /직업 [직업명] 으로 전직 가능합니다." + NL;
+		StringBuilder sb = new StringBuilder();
+	    sb.append("전직 가능한 직업 목록").append(ALL_SEE_STR);
+	    for (JobDef def : JOB_DEFS.values()) {
+	        sb.append(def.listLine).append(NL);
+	        sb.append(def.attackLine).append(NL).append(NL);
+	        
+	    }
+	    sb.append("♬ 4시간마다 /직업 [직업명] 으로 전직 가능합니다.").append(NL);
+	    return sb.toString();
 	}
 
 	
-	private String normalizeJob(String s) {
-	    switch (s) {
-	        case "전사": return "전사";
-	        case "궁수": return "궁수";
-	        case "마법사": return "마법사";
-	        case "도적": return "도적";
-	        case "프리스트": return "프리스트";
-	        case "상인": return "상인";
-	        case "도사": return "도사";
-	        default: return null;
-	    }
+	private String normalizeJob(String raw) {
+		 if (raw == null) return null;
+		    String s = raw.trim();
+
+		    // 별칭을 허용하고 싶으면 여기서 추가 매핑
+		    // if ("전".equals(s) || "전사".equals(s)) s = "전사";
+
+		    JobDef def = JOB_DEFS.get(s);
+		    return (def != null ? def.name : null);
 	}
 
 	public String attackInfo(HashMap<String, Object> map) {
@@ -345,15 +343,21 @@ public class BossAttackController {
 	    int jobHpMaxBonus   = 0;
 	    int jobRegenBonus   = 0;
 
-	    // 프리스트: 아이템 HP/리젠 효과 1.5배 (표시용 쪼개기)
-	    if ("프리스트".equals(job)) {
-	        int boostedHp    = (int)Math.round(bHpMaxRaw * 1.5);
-	        int boostedRegen = (int)Math.round(bRegenRaw * 1.5);
-	        jobHpMaxBonus    = boostedHp - bHpMaxRaw;
-	        jobRegenBonus    = boostedRegen - bRegenRaw;
-	        bHpMax           = boostedHp;
-	        bRegen           = boostedRegen;
-	    }
+		// 사신: 아이템으로 인한 HP·크리티컬 증가 효과 미적용
+		if ("사신".equals(job)) {
+			bCri = 0; // 아이템 크리 확률 보너스 미적용
+			bCriDmg = 0; // 아이템 크리 데미지 보너스 미적용
+		}
+
+		// 프리스트: 아이템 HP/리젠 효과 1.5배 (표시용 쪼개기)
+		if ("프리스트".equals(job)) {
+			int boostedHp = (int) Math.round(bHpMaxRaw * 1.5);
+			int boostedRegen = (int) Math.round(bRegenRaw * 1.5);
+			jobHpMaxBonus = boostedHp - bHpMaxRaw;
+			jobRegenBonus = boostedRegen - bRegenRaw;
+			bHpMax = boostedHp;
+			bRegen = boostedRegen;
+		}
 
 	    // ===== 기본 스탯 =====
 	    int baseMin   = u.atkMin;
@@ -415,27 +419,15 @@ public class BossAttackController {
 	    }
 	    sb.append(", EXP ").append(u.expCur).append("/").append(u.expNext).append(NL);
 	    sb.append("포인트: ").append(pointStr).append(NL);
-	    sb.append("누적 획득 포인트: ").append(String.format("%,d", lifetimeSp)).append("sp").append(NL);
+	    sb.append("누적 획득 포인트: ").append(String.format("%,d", lifetimeSp)).append("sp").append(NL).append(NL);
 	    sb.append("⚔ATK: ").append(finalAtkMin).append(" ~ ").append(finalAtkMax).append(NL);
 	    sb.append("⚔CRIT: ").append(shownCrit).append("%  CDMG ").append(shownCritDmg).append("%").append(NL);
-	    sb.append("❤️HP: ").append(effHp).append(" / ").append(finalHpMax).append(",5분당회복+").append(shownRegen).append(NL);
+	    sb.append("❤️HP: ").append(effHp).append(" / ").append(finalHpMax).append(",5분당회복+").append(shownRegen).append(NL).append(NL);
 
-	    // 직업 설명 라인
-	    if ("궁수".equals(job)) {
-	        sb.append("⚔직업("+job+") 최종 데미지 ×1.7, 쿨타임 5분, EXP +15%,-hidden-").append(NL);
-	    } else if ("전사".equals(job)) {
-	        sb.append("⚔직업("+job+"): 기본 ATK(min/max)와 HP만큼 추가 적용, 몬스터 공격 방어(레벨*1.5), 버서크모드(체력이 낮아지면 데미지 최대 1.5배)").append(NL);
-	    } else if ("마법사".equals(job)) {
-	        sb.append("⚔직업("+job+"): 몬스터가 방어시 방어를 무시하고 피해 1.25배를 줌").append(NL);
-	    } else if ("도적".equals(job)) {
-	        sb.append("⚔직업("+job+"): 공격 시 25% 확률 추가 드랍(STEAL), 몬스터 기본 공격 40% 회피").append(NL);
-	    } else if ("프리스트".equals(job)) {
-	        sb.append("⚔직업("+job+"): 아이템 HP/리젠 효과 1.5배, 몬스터에게 받는 피해 감소, -hidden-").append(NL);
-	    } else if ("상인".equals(job)) {
-	        sb.append("⚔직업("+job+"): 상점 구매 10% 할인, 드랍 판매가 10% 증가, 공격시 SP 추가 획득").append(NL);
-		} else if ("도사".equals(job)) {
-			sb.append("⚔직업("+job+"): 다음 공격하는 아군의 (공격력↑,치명타확률↑,HP회복), 자신의 럭키몬스터 등장확률증가").append(NL);
-		}
+	    JobDef jobDef = JOB_DEFS.get(job);
+	    if (jobDef != null && jobDef.attackLine != null && !jobDef.attackLine.isEmpty()) {
+	        sb.append(jobDef.attackLine).append(NL);
+	    }
 
 	    sb.append("▶ 현재 타겟: ").append(targetName)
 	      .append(" (MON_NO=").append(u.targetMon).append(")");
@@ -460,9 +452,22 @@ public class BossAttackController {
 	    }
 	    
 	    sb.append("⚔CRIT: ").append(shownCrit).append("%  CDMG ").append(shownCritDmg).append("%").append(NL)
-	      .append("   └ 기본 (").append(u.critRate).append("%, ").append(u.critDmg).append("%)").append(NL)
-	      .append("   └ 아이템 (CRIT").append(formatSigned(bCriRaw))
-	      .append("%, CDMG ").append(formatSigned(bCriDmgRaw)).append("%)").append(NL);
+	      .append("   └ 기본 (").append(u.critRate).append("%, ").append(u.critDmg).append("%)").append(NL);
+	      
+	      if ("사신".equals(job)) {
+	    	    sb.append("   └ 아이템 (CRIT")
+	    	      .append(formatSigned(bCriRaw))
+	    	      .append("%, CDMG ")
+	    	      .append(formatSigned(bCriDmgRaw))
+	    	      .append("%) [미적용]").append(NL);
+	    	} else {
+	    	    sb.append("   └ 아이템 (CRIT")
+	    	      .append(formatSigned(bCriRaw))
+	    	      .append("%, CDMG ")
+	    	      .append(formatSigned(bCriDmgRaw))
+	    	      .append("%)").append(NL);
+	    	}
+	      
 
 	    // ❤️ HP 블럭 (전사/프리스트 효과 포함)
 	    sb.append("❤️HP: ").append(effHp).append(" / ").append(finalHpMax)
@@ -909,9 +914,6 @@ public class BossAttackController {
 	    
 	 // ☠ 사신: 아이템으로 인한 HP / 크리 증가량 무시
 	    if ("사신".equals(job)) {
-	        // HP는 순수 기본값만 사용
-	        hpMaxWithItem = baseHpMax;
-
 	        // 크리율/크리뎀도 아이템 증가분(bCri, bCriDmg) 제거
 	        effCritRate = u.critRate;
 	        effCriDmg   = u.critDmg;
@@ -1218,25 +1220,44 @@ public class BossAttackController {
 		// 🛡 기사: 이번 턴 자신의 공격 데미지로 몬스터 공격을 막아냄 (공격↔방어 상쇄)
 		// 예시) 기사공격 80, 몬스터공격 100 → 기사공격 0, 피해 20
 //		      기사공격 80, 몬스터공격  60 → 기사공격 20, 피해 0
-		if ("기사".equals(job) && calc.monDmg > 0 && calc.atkDmg > 0 && !flags.finisher) {
-		    int knightAtkBefore = calc.atkDmg;
-		    int monDmgBefore    = calc.monDmg;
+		if ("기사".equals(job) && calc.monDmg > 0) {
 
-		    int blocked    = Math.min(knightAtkBefore, monDmgBefore);
-		    int newAtkDmg  = knightAtkBefore - blocked;
-		    int newMonDmg  = monDmgBefore - blocked;
+		    // 1) 일반 공격일 때: 공격력으로 데미지 방어
+		    if (!flags.finisher && calc.atkDmg > 0) {
+		        int knightAtkBefore = calc.atkDmg;
+		        int monDmgBefore    = calc.monDmg;
 
-		    String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
-		    calc.patternMsg = baseMsg
-		            + "기사의 방패! 공격 " + blocked + "만큼 막아냅니다. "
-		            + "(남은 공격력 " + newAtkDmg + ", 받은 피해 " + newMonDmg + ")";
+		        int blocked    = Math.min(knightAtkBefore, monDmgBefore);
+		        int newAtkDmg  = knightAtkBefore - blocked;
+		        int newMonDmg  = monDmgBefore - blocked;
 
-		    calc.atkDmg = newAtkDmg;
-		    calc.monDmg = newMonDmg;
+		        String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
+		        calc.patternMsg = baseMsg
+		                + "기사의 방패! 공격 " + blocked + "만큼 막아냅니다. "
+		                + "(남은 공격력 " + newAtkDmg + ", 받은 피해 " + newMonDmg + ")";
 
-		    // 몬스터가 원래는 공격했는데, 기사가 전부 막아서 피해 0이 된 경우
-		    if (monDmgBefore > 0 && newMonDmg == 0) {
-		        calc.jobSkillUsed = true;
+		        calc.atkDmg = newAtkDmg;
+		        calc.monDmg = newMonDmg;
+
+		        // 몬스터가 원래는 공격했는데, 기사가 전부 막아서 피해 0이 된 경우
+		        if (monDmgBefore > 0 && newMonDmg == 0) {
+		            calc.jobSkillUsed = true;
+		        }
+
+		    // 2) 보스 필살기일 때: 데미지 50% 감소
+		    } else if (flags.finisher) {
+		        int monDmgBefore = calc.monDmg;
+
+		        // 30% 감소 (반올림 올림 처리: 1 데미지는 1로 유지됨)
+		        int reduced =(int) Math.round((monDmgBefore + 1) * 0.7);
+
+		        String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
+		        calc.patternMsg = baseMsg
+		                + "기사의 강인한 수호! 보스 필살기의 피해가 30% 감소합니다. "
+		                + "(원래 피해 " + monDmgBefore + " → 최종 피해 " + reduced + ")";
+
+		        calc.monDmg = reduced;
+		        calc.jobSkillUsed = true;   // 직업 패시브 발동 표시
 		    }
 		}
 		
@@ -1451,7 +1472,7 @@ public class BossAttackController {
 	    }
 	 // 🔹 상인 추가 보너스 안내
 	    if (merchantBonusSp > 0) {
-	        msg += NL + "✨ 상인 효과!" + merchantBonusSp + "sp 획득";
+	        msg += NL + "✨ 상인 효과!" + merchantBonusSp + " sp 획득";
 	    }
 
 	    // 18) 현재 포인트 조회
@@ -3663,6 +3684,78 @@ public class BossAttackController {
 	}
 
 
+	
+	// 직업 공통 정의
+	private static final class JobDef {
+	    final String name;       // 표기 이름 (전사, 궁수, ...)
+	    final String listLine;   // /직업 안내용 한 줄
+	    final String attackLine; // 공격정보용 한 줄
+
+	    JobDef(String name, String listLine, String attackLine) {
+	        this.name = name;
+	        this.listLine = listLine;
+	        this.attackLine = attackLine;
+	    }
+	}
+	
+	// 직업 메타데이터 맵 (등록 순서 유지 위해 LinkedHashMap)
+	private static final Map<String, JobDef> JOB_DEFS = new LinkedHashMap<>();
+
+	static {
+	    // NL은 클래스에 이미 있는 상수라고 가정하고 그대로 사용
+	    JOB_DEFS.put("전사", new JobDef(
+	        "전사",
+	        "▶ 전사 :육체능력이 향상되며, 체력이 낮아질수록 강해진다",
+	        "⚔ 기본 ATK(min/max)와 HP만큼 추가 적용, 몬스터 공격 방어(레벨*1.5), 버서크모드(체력이 낮아지면 데미지 최대 1.5배)"
+	    ));
+
+	    JOB_DEFS.put("궁수", new JobDef(
+	        "궁수",
+	        "▶ 궁수 :사냥감을 조준하는 집요한 추적자, 강력한 한방을 선사하지만, 쿨타임이 길어진다",
+	        "⚔ 최종 데미지 ×1.7, 쿨타임 5분, EXP +15%,-hidden-"
+	    ));
+
+	    JOB_DEFS.put("마법사", new JobDef(
+	        "마법사",
+	        "▶ 마법사 :강력한 마법공격으로 몬스터의 방어태세를 무력화한다",
+	        "⚔ 몬스터가 방어시 방어를 무시하고 피해 1.25배를 줌"
+	    ));
+
+	    JOB_DEFS.put("도적", new JobDef(
+	        "도적",
+	        "▶ 도적 :날렵한 손놀림으로 적의공격을 피하며,아이템을 강탈한다",
+	        "⚔ 공격 시 25% 확률 추가 드랍(STEAL), 몬스터 기본 공격 40% 회피, [고레벨 일수록 확률 감소] "
+	    ));
+
+	    JOB_DEFS.put("프리스트", new JobDef(
+	        "프리스트",
+	        "▶ 프리스트 :대사제의 축복을 받아 신성의힘으로 적을 물리친다",
+	        "⚔ 아이템 HP/리젠 효과 1.5배, 몬스터에게 받는 피해 감소, -hidden-"
+	    ));
+
+	    JOB_DEFS.put("상인", new JobDef(
+	        "상인",
+	        "▶ 상인 :떠도는 몬스터에게 현금을 갈취하며, 상점 거래의 달인",
+	        "⚔ 상점 구매 10% 할인, 드랍 판매가 10% 증가, 공격시 몬스터 드롭템의 20%에 해당하는 SP 추가 획득"
+	    ));
+
+	    JOB_DEFS.put("도사", new JobDef(
+	        "도사",
+	        "▶ 도사 :도를 닦아 깨달음을 얻은 위인",
+	        "⚔ 다음 공격하는 아군의 (공격력↑,치명타↑,치명타뎀↑,HP회복), 자신의 럭키몬스터 등장 확률 증가"
+	    ));
+	    JOB_DEFS.put("기사", new JobDef(
+            "기사",
+            "▶ 기사 :방패로 몬스터의 공격을 방어하는 굳건한 기사",
+            "⚔ 공격력만큼 몬스터 공격을 방어하며, 방어량만큼 자신의 공격력이 감소"
+        ));
+
+        JOB_DEFS.put("사신", new JobDef(
+            "사신",
+            "▶ 사신 :이름하야 죽음의 신, 죽지않는다",
+            "⚔ 아이템으로 인한 치명타,치명타뎀 증감처리 미적용, 체력 0에서도 죽지 않음"
+        ));
+	}
 }
 
 
