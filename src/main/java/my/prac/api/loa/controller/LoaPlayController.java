@@ -1205,7 +1205,7 @@ public class LoaPlayController {
 				return userName+" 님!"+enterStr+
 						//score+"p → "+new_score+"p"+enterStr+
 						"/뽑기 숫자(1~100) 입력하시면 updown게임 진행!"+enterStr+
-						"최대 30sp에서 점차적으로 줄어듭니다!";
+						"최대 1000sp에서 점차적으로 줄어듭니다!";
 			}catch(Exception e) {
 				return userName+" 님, updown 오류!";
 			}
@@ -1296,33 +1296,27 @@ public class LoaPlayController {
 				}else {
 					
 					int score = 0;
-					int score1 = 0;
 					int preview_score=0;
 					switch(completeYn+1) {
 						case 1:
-							score =30;
-							preview_score=20;
-							score1 = 30;
+							score =1000;
+							preview_score=500;
 							break;
 						case 2:
-							score =30;
-							preview_score=20;
-							score1 = 20;
+							score =500;
+							preview_score=500;
 							break;
 						case 3:
-							score =20;
-							preview_score=10;
-							score1 = 20;
+							score =300;
+							preview_score=150;
 							break;
 						case 4:
-							score =10;
-							preview_score=10;
-							score1 = 10;
+							score =150;
+							preview_score=100;
 							break;
 						case 5:
-							score =10;
+							score =100;
 							preview_score=0;
-							score1 = 10;
 							break;
 						case 6:
 							score =0;
@@ -1347,7 +1341,6 @@ public class LoaPlayController {
 					    
 					    if(isNewLogic()) {
 					    	newMap.put("newYn", "1");
-					    	newMap.put("score", score1);
 					    	int newScore = botService.insertBotPointRankTx(newMap);
 
 						    res += "정답 sp: " + score + "sp 획득" + enterStr;
