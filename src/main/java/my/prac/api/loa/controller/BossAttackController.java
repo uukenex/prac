@@ -98,6 +98,11 @@ public class BossAttackController {
 	    int effRegen = baseRegen + bRegen + blessRegenBonus;
 	    if (effRegen < 0) effRegen = 0;
 
+	 // 🩸 흡혈귀: 리젠 완전 불가 (아이템/버프/운영자 축복 포함)
+	    if ("흡혈귀".equals(job)) {
+	        effRegen = 0;
+	    }
+	    
 	    // 6) 유효 체력 계산 (attackInfo와 동일 함수 사용)
 	    int effHp = computeEffectiveHpFromLastAttack(userName, roomName, u, finalHpMax, effRegen);
 	    if (effHp > finalHpMax) effHp = finalHpMax;
@@ -395,6 +400,11 @@ public class BossAttackController {
 	    int finalHpMax = hpMaxWithItemAndPriest;
 	    if ("전사".equals(job)) {
 	        finalHpMax += baseHpMax;
+	    }
+	    
+	 // 🩸 흡혈귀: 리젠 완전 불가 (아이템/버프/운영자 축복 포함)
+	    if ("흡혈귀".equals(job)) {
+	    	shownRegen = 0;
 	    }
 	    
 	    // 표시용 회복 적용 (전사/프리스트 포함 최종 HP 기준)
@@ -935,6 +945,11 @@ public class BossAttackController {
 	        //blessAtk = 3;
 	        blessRegen = 5;
 	        effRegen += blessRegen; // 체젠은 여기서 바로 반영
+	    }
+	    
+	 // 🩸 흡혈귀: 리젠 완전 불가 (아이템/버프/운영자 축복 포함)
+	    if ("흡혈귀".equals(job)) {
+	        effRegen = 0;
 	    }
 	    
 	 // === 직업별 보너스 계산 ===
@@ -3794,7 +3809,7 @@ public class BossAttackController {
         JOB_DEFS.put("흡혈귀", new JobDef(
             "흡혈귀",
             "▶ 흡혈귀 :배가고프다, 나는 배가 고프다!",
-            "⚔ 공격시 준피해의 20% 흡혈(공격&흡혈 선계산, 후피해)"
+            "⚔ 공격시 준피해의 20% 흡혈(공격&흡혈 선계산, 후피해), hp리젠 불가"
         ));
 	}
 }
