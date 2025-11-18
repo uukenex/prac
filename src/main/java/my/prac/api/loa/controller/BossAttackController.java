@@ -907,6 +907,18 @@ public class BossAttackController {
 	    int effRegen    = u.hpRegen + bRegen;
 	    int effCriDmg   = u.critDmg + bCriDmg;
 	    
+	 // ☠ 사신: 아이템으로 인한 HP / 크리 증가량 무시
+	    if ("사신".equals(job)) {
+	        // HP는 순수 기본값만 사용
+	        hpMaxWithItem = baseHpMax;
+
+	        // 크리율/크리뎀도 아이템 증가분(bCri, bCriDmg) 제거
+	        effCritRate = u.critRate;
+	        effCriDmg   = u.critDmg;
+	        // 체젠(effRegen)은 말 안 하셨으니 그대로 두었음
+	    }
+	    
+	    
 	 // 🌟 운영자의 축복: Lv 7 이하 전투 시 전용 버프 (DB에는 저장하지 않음)
 	    boolean hasBless = (u.lv <= 15);
 	    int blessAtk = 0;
@@ -1087,44 +1099,7 @@ public class BossAttackController {
 		광전사 맥스체력 50%가 되고, 크리율 -100% / 맥스데미지로 고정
 		저격수 2턴의 공격이 최소공격력으로 적용되고, 세번째 공격은 최대공격력의 1.5배의 데미지를 준다.
 */
-	    if ("기사".equals(job)) {
-	        rawAtkDmg = (int)(rawAtkDmg * 0.8);
-	    }
-
-	    // ☠️ 사신 — 유령모드면 공격력 60%, 크리티컬 불가
-	    if ("사신".equals(job)) {
-	    	/*
-	        int ghostMode = botNewService.selectGhostMode(userName, roomName);
-	        if (ghostMode == 1) {
-	            rawAtkDmg = (int) (rawAtkDmg * 0.6);
-	            crit = false; // 크리티컬 불가
-	        }
-	        */
-	    }
-	    
-	 // ⚡ 광전사 — HP 비율로 데미지 강화 (최대 2배)
-	    if ("광전사".equals(job)) {
-	        double hpRatio = (double) u.hpCur / (double) effHpMax;
-	        double bonus = 1 + ((1 - hpRatio) * 1.0); // 1.0~2.0배
-	        if (bonus > 2.0) bonus = 2.0;
-	        rawAtkDmg = (int)(rawAtkDmg * bonus);
-	    }
-
-	 // 🎯 저격수 — JOB_SKILL_YN = 1→2→3 (3일 때 강공)
-	    if ("저격수".equals(job)) {
-/*
-	        int sniperStack = botNewService.selectJobSkillYn(userName, roomName); // 1,2,3
-
-	        if (sniperStack == 3) {
-	            // ★★★ 3회차 강공
-	            crit = true;            // 확정 크리티컬
-	            rawAtkDmg = rawAtkDmg * 2;  // 데미지 2배
-	            botNewService.updateJobSkillYn(userName, roomName, 1); // 초기화
-	        } else {
-	            botNewService.updateJobSkillYn(userName, roomName, sniperStack + 1);
-	        }*/
-	    }
-
+	   
 	    
 	    AttackCalc calc = new AttackCalc();
 	    calc.jobSkillUsed = false; 
@@ -1135,7 +1110,7 @@ public class BossAttackController {
 	        int userLv = u.lv;
 
 	        if (monLv > 0 && monLv >= userLv - 5 && monLv <= userLv + 1) {
-	            if (ThreadLocalRandom.current().nextDouble() < 0.02) {
+	            if (ThreadLocalRandom.current().nextDouble() < 0.04) {
 	                isSnipe = true;
 	                rawAtkDmg = rawAtkDmg * 20;
 	                calc.jobSkillUsed = true;  
@@ -1181,21 +1156,7 @@ public class BossAttackController {
 			
 			calc = calcDamage(u, m, flags, baseAtk, crit, critMultiplier);
 			
-			// 🛡 기사 — 받는 피해 50% 감소 + 20% 무효화 (필살기 제외)
-			if ("기사".equals(job) && calc.monDmg > 0 && !flags.finisher) {
-
-			    if (ThreadLocalRandom.current().nextDouble() < 0.20) {
-			        // 20% 확률 무효화
-			        calc.monDmg = 0;
-			        calc.patternMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ")
-			                + "기사의 방패! 피해를 받지 않았습니다.";
-			    } else {
-			        int reduced = (int)(calc.monDmg * 0.5);
-			        calc.patternMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ")
-			                + "(기사 효과로 피해 50% 감소 → " + reduced + ")";
-			        calc.monDmg = reduced;
-			    }
-			}
+			
 			
 
 
@@ -1232,6 +1193,14 @@ public class BossAttackController {
 			
 			
 		}
+		int monHpAfterPreview = Math.max(0, monHpRemainBefore - calc.atkDmg);
+		if (monHpAfterPreview <= 0) {
+		    // 몬스터는 결국 이 턴에 죽는다 → 반격 데미지는 없다고 본다
+		    calc.monDmg     = 0;
+		    flags.monPattern= 0;
+		    // 필요하면 반격 관련 메시지도 비우기
+		    calc.patternMsg = null;
+		}
 
 			
 		// 🔹 프리스트: 해골에게 주는 피해 1.5배
@@ -1244,6 +1213,31 @@ public class BossAttackController {
 
 		    //String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
 		    //calc.patternMsg = baseMsg + "[언데드 추가 피해]";
+		}
+		
+		// 🛡 기사: 이번 턴 자신의 공격 데미지로 몬스터 공격을 막아냄 (공격↔방어 상쇄)
+		// 예시) 기사공격 80, 몬스터공격 100 → 기사공격 0, 피해 20
+//		      기사공격 80, 몬스터공격  60 → 기사공격 20, 피해 0
+		if ("기사".equals(job) && calc.monDmg > 0 && calc.atkDmg > 0 && !flags.finisher) {
+		    int knightAtkBefore = calc.atkDmg;
+		    int monDmgBefore    = calc.monDmg;
+
+		    int blocked    = Math.min(knightAtkBefore, monDmgBefore);
+		    int newAtkDmg  = knightAtkBefore - blocked;
+		    int newMonDmg  = monDmgBefore - blocked;
+
+		    String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
+		    calc.patternMsg = baseMsg
+		            + "기사의 방패! 공격 " + blocked + "만큼 막아냅니다. "
+		            + "(남은 공격력 " + newAtkDmg + ", 받은 피해 " + newMonDmg + ")";
+
+		    calc.atkDmg = newAtkDmg;
+		    calc.monDmg = newMonDmg;
+
+		    // 몬스터가 원래는 공격했는데, 기사가 전부 막아서 피해 0이 된 경우
+		    if (monDmgBefore > 0 && newMonDmg == 0) {
+		        calc.jobSkillUsed = true;
+		    }
 		}
 		
 		// 🔰 전사: 레벨당 2 고정 피해감소 (필살기에는 미적용)
@@ -1265,50 +1259,59 @@ public class BossAttackController {
 		}
 		
 		
-		// calcDamage, 마법사/프리스트/도적 처리 다 끝난 직후
-
-		int monHpAfterPreview = Math.max(0, monHpRemainBefore - calc.atkDmg);
-		if (monHpAfterPreview <= 0) {
-		    // 몬스터는 결국 이 턴에 죽는다 → 반격 데미지는 없다고 본다
-		    calc.monDmg     = 0;
-		    flags.monPattern= 0;
-		    // 필요하면 반격 관련 메시지도 비우기
-		    calc.patternMsg = null;
-		}
-
 		 // 13) 즉사 처리
 		 int newHpPreview = Math.max(0, u.hpCur - calc.monDmg);
-		 String deathAchvMsg = "";
-		 if (newHpPreview <= 0) {
-		     botNewService.closeOngoingBattleTx(userName, roomName);
-		     botNewService.updateUserHpOnlyTx(userName, roomName, 0);
-		     botNewService.insertBattleLogTx(new BattleLog()
-		             .setUserName(userName)
-		             .setRoomName(roomName)
-		             .setLv(u.lv)
-		             .setTargetMonLv(m.monNo)
-		             .setGainExp(0)
-		             .setAtkDmg(calc.atkDmg)
-		             .setMonDmg(calc.monDmg)
-		             .setAtkCritYn(flags.atkCrit ? 1 : 0)
-		             .setMonPatten(flags.monPattern)
-		             .setKillYn(0)
-		             .setNowYn(0)
-		             .setDropYn(0)
-		             .setDeathYn(1)
-		             .setLuckyYn(0)
-		             .setJobSkillYn(0)
-		             .setJob(job)
-		     );
-		     
-		     deathAchvMsg = grantDeathAchievements(userName, roomName);
-		     
-		     
-		     return userName + "님, 이번전투에서 패배하여, 전투 불능이 되었습니다." + NL
-		             + "현재 체력: 0 / " + effHpMax + NL
-		             + "10분 뒤 최대 체력의 10%로 부활하며," + NL
-		             + "이후 5분마다 HP_REGEN 만큼 서서히 회복됩니다."+NL+ deathAchvMsg;
+		 
+		// ☠ 사신: 체력이 0이 되어도 죽지 않고, 대신 공격에 실패
+		 if ("사신".equals(job) && newHpPreview <= 0) {
+		     // HP는 1 남기고 버틴다고 가정
+		     newHpPreview = 1;
+		     // 실제로는 1만 남도록 몬스터 피해 조정
+		     calc.monDmg = Math.max(0, u.hpCur - newHpPreview);
+		     // 이 턴 공격은 실패 처리 (데미지 0)
+		     calc.atkDmg = 0;
+		     calc.jobSkillUsed = true;  
+		     String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
+		     calc.patternMsg = baseMsg + "사신은 죽음을 거부하고 버텼지만, 공격에 실패했습니다.";
+
+		     // ★ 여기서 바로 리턴하지 않고, 아래 persist() 로직을 타면서
+		     //    HP 1, atkDmg=0 상태로 저장되도록 둔다.
 		 }
+		 
+		 String deathAchvMsg = "";
+		 if (!"사신".equals(job) && newHpPreview <= 0) {
+			 if (newHpPreview <= 0) {
+			     botNewService.closeOngoingBattleTx(userName, roomName);
+			     botNewService.updateUserHpOnlyTx(userName, roomName, 0);
+			     botNewService.insertBattleLogTx(new BattleLog()
+			             .setUserName(userName)
+			             .setRoomName(roomName)
+			             .setLv(u.lv)
+			             .setTargetMonLv(m.monNo)
+			             .setGainExp(0)
+			             .setAtkDmg(calc.atkDmg)
+			             .setMonDmg(calc.monDmg)
+			             .setAtkCritYn(flags.atkCrit ? 1 : 0)
+			             .setMonPatten(flags.monPattern)
+			             .setKillYn(0)
+			             .setNowYn(0)
+			             .setDropYn(0)
+			             .setDeathYn(1)
+			             .setLuckyYn(0)
+			             .setJobSkillYn(0)
+			             .setJob(job)
+			     );
+			     
+			     deathAchvMsg = grantDeathAchievements(userName, roomName);
+			     
+			     
+			     return userName + "님, 이번전투에서 패배하여, 전투 불능이 되었습니다." + NL
+			             + "현재 체력: 0 / " + effHpMax + NL
+			             + "10분 뒤 최대 체력의 10%로 부활하며," + NL
+			             + "이후 5분마다 HP_REGEN 만큼 서서히 회복됩니다."+NL+ deathAchvMsg;
+			 }
+		 }
+		 
 
 	    // 14) 처치/드랍 판단
 	    boolean willKill = calc.atkDmg >= monHpRemainBefore;
@@ -3632,8 +3635,8 @@ public class BossAttackController {
 
 	    int dosaAtkMax = calcUserEffectiveAtkMax(dosaUser, roomName);
 
-	    int dosaLvBonus = (int) Math.round(dosaLv * 0.5);
-	    int dosaCriDmg  = (int) Math.round(dosaAtkMax * 0.5);
+	    int dosaLvBonus = (int) Math.round(dosaLv * 0.25);
+	    int dosaCriDmg  = (int) Math.round(dosaAtkMax * 0.1);
 
 	    eff.addAtkMin   = dosaLvBonus;
 	    eff.addAtkMax   = dosaLvBonus;
