@@ -503,7 +503,7 @@ public class BossAttackController {
 
 	    if ("전사".equals(job)) {
 	        sb.append("   └ 직업 (HP+")
-	          .append(baseHpMax)
+	          .append(-baseHpMax*0.5)
 	          .append(")").append(NL);
 	    }
 
