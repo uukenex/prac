@@ -100,7 +100,7 @@ public class BossAttackController {
 
 	 // 🩸 흡혈귀: 리젠 완전 불가 (아이템/버프/운영자 축복 포함)
 	    if ("흡혈귀".equals(job)) {
-	        effRegen = 0;
+	    	bRegenRaw = 0;
 	    }
 	    
 	    // 6) 유효 체력 계산 (attackInfo와 동일 함수 사용)
@@ -404,7 +404,7 @@ public class BossAttackController {
 	    
 	 // 🩸 흡혈귀: 리젠 완전 불가 (아이템/버프/운영자 축복 포함)
 	    if ("흡혈귀".equals(job)) {
-	    	shownRegen = 0;
+	    	bRegenRaw = 0;
 	    }
 	    
 	    // 표시용 회복 적용 (전사/프리스트 포함 최종 HP 기준)
@@ -924,17 +924,23 @@ public class BossAttackController {
 	    int atkMaxWithItem = baseMax + weaponBonus + bAtkMax;          // 기본 + 무기강 + 아이템(max)
 	    int hpMaxWithItem  = baseHpMax + bHpMax;
 
+	    // 🩸 흡혈귀: 리젠 완전 불가 (아이템/버프/운영자 축복 포함)
+	    if ("흡혈귀".equals(job)) {
+	    	bRegen = 0;
+	    }
+	 // ☠ 사신: 아이템으로 인한 HP / 크리 증가량 무시
+	    if ("사신".equals(job)) {
+	        // 크리율/크리뎀도 아이템 증가분(bCri, bCriDmg) 제거
+	    	bCri = 0;
+	    	bCriDmg   = 0;
+	        // 체젠(effRegen)은 말 안 하셨으니 그대로 두었음
+	    }
+	    
 	    int effCritRate = u.critRate + bCri;
 	    int effRegen    = u.hpRegen + bRegen;
 	    int effCriDmg   = u.critDmg + bCriDmg;
 	    
-	 // ☠ 사신: 아이템으로 인한 HP / 크리 증가량 무시
-	    if ("사신".equals(job)) {
-	        // 크리율/크리뎀도 아이템 증가분(bCri, bCriDmg) 제거
-	        effCritRate = u.critRate;
-	        effCriDmg   = u.critDmg;
-	        // 체젠(effRegen)은 말 안 하셨으니 그대로 두었음
-	    }
+	 
 	    
 	    
 	 // 🌟 운영자의 축복: Lv 7 이하 전투 시 전용 버프 (DB에는 저장하지 않음)
@@ -947,10 +953,7 @@ public class BossAttackController {
 	        effRegen += blessRegen; // 체젠은 여기서 바로 반영
 	    }
 	    
-	 // 🩸 흡혈귀: 리젠 완전 불가 (아이템/버프/운영자 축복 포함)
-	    if ("흡혈귀".equals(job)) {
-	        effRegen = 0;
-	    }
+	
 	    
 	 // === 직업별 보너스 계산 ===
 	    int jobBonusMin = 0;
@@ -1227,7 +1230,7 @@ public class BossAttackController {
 
 		    String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
 		    calc.patternMsg = baseMsg
-		            + "흡혈 효과! " + heal + "만큼 체력을 회복했습니다. "
+		            + NL+"흡혈 효과! " + heal + "만큼 체력을 회복했습니다. "
 		            + "(HP " + beforeHp + " → " + u.hpCur + "/" + effHpMax + ")";
 
 		    // 스킬 사용 흔적 표시
@@ -3808,7 +3811,7 @@ public class BossAttackController {
         JOB_DEFS.put("흡혈귀", new JobDef(
             "흡혈귀",
             "▶ 흡혈귀 :배가고프다, 나는 배가 고프다!",
-            "⚔ 공격시 준피해의 20% 흡혈(공격&흡혈 선계산, 후피해), hp리젠 불가"
+            "⚔ 공격시 준피해의 20% 흡혈(공격&흡혈 선계산, 후피해), hp리젠 아이템의 증감처리 미적용"
         ));
 	}
 }
