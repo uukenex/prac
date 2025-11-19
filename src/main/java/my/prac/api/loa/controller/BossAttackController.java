@@ -881,7 +881,7 @@ public class BossAttackController {
 	    if(job.isEmpty()) {
 	    	return userName+" 님, /직업 을 통해 먼저 전직해주세요.";
 	    }
-
+	    
 	    // 2) MARKET 버프 합산 (null-safe)
 	    HashMap<String, Number> buffs = null;
 	    
@@ -1045,19 +1045,33 @@ public class BossAttackController {
 	            : computeEffectiveHpFromLastAttack(userName, roomName, u, effHpMax, effRegen);
 	    u.hpCur = effectiveHp;
 	    
-
-	    // 10) HP 20% 미만 가이드 (기존 로직, u에 effHpMax/effRegen 반영해서 호출)
-	    int origHpMax = u.hpMax;
-	    int origRegen = u.hpRegen;
-	    u.hpMax = effHpMax;
-	    u.hpRegen = effRegen;
-	    try {
-	        String hpMsg = buildBelowHalfMsg(userName, roomName, u, param1);
-	        if (hpMsg != null) return hpMsg;
-	    } finally {
-	        u.hpMax = origHpMax;
-	        u.hpRegen = origRegen;
+	    Flags flags = new Flags();
+		flags = rollFlags(u, m);
+	 // 🖤 사신: 체력 10% 이하 → 치명타 +50%
+	    if ("사신".equals(job)) {
+	        int tenPercent = (int)Math.ceil(effHpMax * 0.1);
+	        if (u.hpCur <= tenPercent) {
+	            effCritRate += 50;
+	        }
 	    }
+
+	 // 10) HP 20% 제한 체크 (사신은 무시)
+	    if (!"사신".equals(job)) {
+	        int origHpMax = u.hpMax;
+	        int origRegen = u.hpRegen;
+
+	        u.hpMax = effHpMax;
+	        u.hpRegen = effRegen;
+
+	        try {
+	            String hpMsg = buildBelowHalfMsg(userName, roomName, u, param1);
+	            if (hpMsg != null) return hpMsg;
+	        } finally {
+	            u.hpMax = origHpMax;
+	            u.hpRegen = origRegen;
+	        }
+	    }
+
 
 	    //11) 데미지 굴림 (도사/방 버프 적용 전: crit 계산은 아래로 이동)
 	    DosaBuffEffect buffEff = loadRoomDosaBuffAndBuild(roomName);
@@ -1086,6 +1100,9 @@ public class BossAttackController {
 	        // 1회 소모 → 방내 BUFF_YN 전부 초기화
 	        botNewService.clearRoomBuff(roomName);
 	    }
+	    
+	    
+	    
 	    
 		 // === 여기서부터 "최종 effCritRate" 기준 크리 판정 + 디버그 문자열 생성 ===
 	    int critRoll = ThreadLocalRandom.current().nextInt(0, 101);
@@ -1141,9 +1158,6 @@ public class BossAttackController {
 	    
 	    // 12) 원턴킬 선판정
 		boolean lethal = rawAtkDmg >= monHpRemainBefore;
-
-		Flags flags = new Flags();
-		
 		if (lethal) {
 			flags.atkCrit = crit;
 			flags.monPattern = 0;
@@ -1156,7 +1170,7 @@ public class BossAttackController {
 				calc.critMultiplier = critMultiplier;
 			}
 		} else {
-			flags = rollFlags(u, m);
+			
 			flags.atkCrit = crit;
 			flags.snipe = isSnipe; // 저격 여부 유지
 			flags.finisher = (flags.monPattern == 4); // 패턴4=필살기
@@ -1321,20 +1335,21 @@ public class BossAttackController {
 		 // 13) 즉사 처리
 		 int newHpPreview = Math.max(0, u.hpCur - calc.monDmg);
 		 
-		// ☠ 사신: 체력이 0이 되어도 죽지 않고, 대신 공격에 실패
 		 if ("사신".equals(job) && newHpPreview <= 0) {
 		     // HP는 1 남기고 버틴다고 가정
 		     newHpPreview = 1;
 		     // 실제로는 1만 남도록 몬스터 피해 조정
 		     calc.monDmg = Math.max(0, u.hpCur - newHpPreview);
-		     // 이 턴 공격은 실패 처리 (데미지 0)
-		     calc.atkDmg = 0;
 		     calc.jobSkillUsed = true;  
-		     String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
-		     calc.patternMsg = baseMsg + "사신은 죽음을 거부하고 버텼지만, 공격에 실패했습니다.";
-
-		     // ★ 여기서 바로 리턴하지 않고, 아래 persist() 로직을 타면서
-		     //    HP 1, atkDmg=0 상태로 저장되도록 둔다.
+		     // 이 턴 공격은 실패 처리 (데미지 0)
+		     if (flags.monPattern == 4) {
+		    	 calc.atkDmg = 0;
+		    	 String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
+		         calc.patternMsg = baseMsg + NL+"죽음을 거부하고, 필살기를 버텨냅니다";
+		     } else if(flags.monPattern == 2) {
+		    	 String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
+		         calc.patternMsg = baseMsg + NL+"죽음을 거부하고, 반격합니다";
+		     } 
 		 }
 		 
 		 String deathAchvMsg = "";
@@ -1468,6 +1483,7 @@ public class BossAttackController {
 	        // ✅ 최초토벌 보상 (글로벌 1회 or 룸 기준: selectPointRankCountByCmdGlobal 구현에 따름)
 	        String firstClearMsg = grantFirstClearIfEligible(userName, roomName, m);
 
+	     
 	        // ✅ 킬수 업적 (몬스터별/통산)
 	        String killAchvMsg = grantKillAchievements(userName, roomName);
 
@@ -1475,6 +1491,7 @@ public class BossAttackController {
 	         || (killAchvMsg != null && !killAchvMsg.isEmpty())) {
 	            bonusMsg = NL + firstClearMsg + killAchvMsg;
 	        }
+	        
 	    }
 
 	    // 17) 메시지 구성 (표시용 ATK 범위에 직업 효과 반영)
@@ -1500,6 +1517,8 @@ public class BossAttackController {
 	        msg += NL + stealMsg;
 	    }
 	    
+	    
+	    
 	    // ✅ 최초토벌/업적 메시지 추가
 	    if (!bonusMsg.isEmpty()) {
 	        msg += bonusMsg;
@@ -1508,6 +1527,11 @@ public class BossAttackController {
 	    if (!blessMsg.isEmpty()) {
 	    	msg += blessMsg;
 	    }
+	    
+	    String celebrationMsg = grantCelebrationClearBonus(userName, roomName);
+        if(celebrationMsg !=null && !celebrationMsg.isEmpty()) {
+        	msg +=NL+celebrationMsg; 
+        }
 	 // 🔹 상인 추가 보너스 안내
 	    if (merchantBonusSp > 0) {
 	        msg += NL + "✨ 상인 효과!" + merchantBonusSp + " sp 획득";
@@ -3535,6 +3559,15 @@ public class BossAttackController {
 	            return "최초토벌";
 	        }
 	    }
+	    if (cmd.startsWith("ACHV_CLEAR_BROADCAST_MON_")) {
+	    	try {
+	    		int monNo = Integer.parseInt(cmd.substring("ACHV_CLEAR_BROADCAST_MON_".length()));
+	    		Monster m = botNewService.selectMonsterByNo(monNo);
+	    		return "✨축하보상: " + (m == null ? ("몬스터#" + monNo) : m.monName);
+	    	} catch (Exception e) {
+	    		return "축하보상";
+	    	}
+	    }
 
 	    // 몬스터별 킬 업적
 	    if (cmd.startsWith("ACHV_KILL") && cmd.contains("_MON_")) {
@@ -3815,6 +3848,73 @@ public class BossAttackController {
             "▶ 흡혈귀 :배가고프다, 나는 배가 고프다!",
             "⚔ 공격시 준피해의 20% 흡혈(공격&흡혈 선계산, 후피해), hp리젠 아이템의 증감처리 미적용"
         ));
+	}
+	
+	private String grantCelebrationClearBonus(String userName, String roomName) {
+
+	    StringBuilder sb = new StringBuilder();
+
+	    List<Monster> mons = botNewService.selectAllMonsters();
+
+	    for (Monster m : mons) {
+
+	        String firstCmd = "ACHV_FIRST_CLEAR_MON_" + m.monNo;   // 최초토벌 기록
+	        String userCmd  = "ACHV_CLEAR_BROADCAST_MON_" + m.monNo; // 유저 축하보상 기록
+
+	        // 1) 해당 몬스터가 최초토벌된 적이 있는가?
+	        int global = botNewService.selectPointRankCountByCmdGlobal(firstCmd);
+	        if (global == 0) {
+	            continue; // 아직 전세계 최초토벌 X
+	        }
+
+	        // 2) 나는 축하보상을 이미 받았는가?
+	        int mine = botNewService.selectPointRankCountByCmdUserInRoom(roomName, userName, userCmd);
+	        if (mine > 0) {
+	            continue; // 이미 받음
+	        }
+
+	        // 3) 최초토벌 보상의 1/3 계산
+	        int rewardFull = calcFirstClearReward(m.monNo);
+	        int rewardShared = Math.max(1, rewardFull / 3);
+
+	        // 4) 축하 보상 지급
+	        HashMap<String,Object> pr = new HashMap<>();
+	        pr.put("userName", userName);
+	        pr.put("roomName", roomName);
+	        pr.put("score", rewardShared);
+	        pr.put("cmd", userCmd);
+	        botNewService.insertPointRank(pr);
+
+	        sb.append("✨ [")
+	          .append(m.monName)
+	          .append("] 최초토벌 축하 보상 +")
+	          .append(rewardShared).append("sp 지급되었습니다!")
+	          .append(NL);
+	    }
+
+	    return sb.toString();
+	}
+	
+	private int calcFirstClearReward(int monNo) {
+	    switch(monNo) {
+	        case 1: case 2: case 3: case 4: case 5: return 100;
+	        case 6: return 300;
+	        case 7: return 500;
+	        case 8: return 500;
+	        case 9: return 1000;
+	        case 10: return 1000;
+	        case 11: return 1000;
+	        case 12: return 1000;
+	        case 13: return 1500;
+	        case 14: return 1500;
+	        case 15: return 2000;
+	        case 16: return 2000;
+	        case 17: return 2500;
+	        case 18: return 2500;
+	        case 19: return 3000;
+	        case 20: return 3000;
+	    }
+	    return 0;
 	}
 }
 
