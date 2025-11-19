@@ -711,9 +711,9 @@ public class BossAttackController {
 	        return "방/유저 정보가 누락되었습니다.";
 	    }
 	    
-	    User u = botNewService.selectUser(userName, roomName);
-	    String job = (u == null || u.job == null) ? "" : u.job.trim();
-	    boolean isMerchant = "상인".equals(job);
+	    //User u = botNewService.selectUser(userName, roomName);
+	    //String job = (u == null || u.job == null) ? "" : u.job.trim();
+	    //boolean isMerchant = "상인".equals(job);
 
 	    
 	    
@@ -782,7 +782,7 @@ public class BossAttackController {
 
 	    
 	    boolean usedMerchantDiscount = false;
-	    
+	    /*
 	    if(itemId.toString().startsWith("7") || itemId.toString().startsWith("9") ) {
 	    	isMerchant =false;
 	    }
@@ -791,6 +791,7 @@ public class BossAttackController {
 	        price = (int)Math.floor(price * 0.9);
 	        usedMerchantDiscount = true;
 	    }
+	    */
 
 	    // 이미 소유 여부
 	    Integer ownedCnt = botNewService.selectHasOwnedMarketItem(userName, roomName, itemId);
@@ -838,9 +839,9 @@ public class BossAttackController {
 	    sb.append("▶ 구매 완료").append(NL)
 	      .append(userName).append("님, ").append(itemName).append("을(를) 구매했습니다.").append(NL)
 	      .append("↘가격: ").append(price).append("sp");
-	    if (isMerchant) {
+	    /*if (isMerchant) {
 	        sb.append(" (상인 할인 적용)");
-	    }
+	    }*/
 	    sb.append(NL)
 	      .append("↘옵션: ").append(sbOpt).append(NL)
 	      .append("현재 포인트: ").append(afterPoint).append("sp");
@@ -1156,7 +1157,7 @@ public class BossAttackController {
 		사신 체력이 0이되도 공격가능,체력이0이될때는 공격이 절반데미지로 적용
 		광전사 맥스체력 50%가 되고, 크리율 -100% / 맥스데미지로 고정
 		저격수 2턴의 공격이 최소공격력으로 적용되고, 세번째 공격은 최대공격력의 1.5배의 데미지를 준다.
-*/
+	     */
 	   
 	    
 	    AttackCalc calc = new AttackCalc();
@@ -1288,6 +1289,7 @@ public class BossAttackController {
 		// 🛡 기사: 이번 턴 자신의 공격 데미지로 몬스터 공격을 막아냄 (공격↔방어 상쇄)
 		// 예시) 기사공격 80, 몬스터공격 100 → 기사공격 0, 피해 20
 //		      기사공격 80, 몬스터공격  60 → 기사공격 20, 피해 0
+		/*
 		if ("기사".equals(job) && calc.monDmg > 0) {
 
 		    // 1) 일반 공격일 때: 공격력으로 데미지 방어
@@ -1328,7 +1330,7 @@ public class BossAttackController {
 		        calc.jobSkillUsed = true;   // 직업 패시브 발동 표시
 		    }
 		}
-		
+		*/
 		// 🔰 전사: 레벨당 2 고정 피해감소 (필살기에는 미적용)
 		/*
 		if ("전사".equals(job) && calc.monDmg > 0 && !flags.finisher) {
@@ -1413,6 +1415,7 @@ public class BossAttackController {
 	    Resolve res = resolveKillAndDrop(m, calc, willKill, u, lucky);
 
 	    // 🔹 상인: 공격 시마다, 해당 몬스터 드랍템 판매가의 10%를 SP로 추가 획득 (킬/드랍 여부 무관)
+	    /*
 	    int merchantBonusSp = 0;
 	    if ("상인".equals(job)) {
 	        String dropName = (m.monDrop == null ? "" : m.monDrop.trim());
@@ -1430,7 +1433,7 @@ public class BossAttackController {
 	                }
 	            }
 	        }
-	    }
+	    }*/
 	    
 	    // 🔹 궁수: 획득 EXP +15%
 	    if ("궁수".equals(u.job)) {
@@ -1553,11 +1556,13 @@ public class BossAttackController {
         if(celebrationMsg !=null && !celebrationMsg.isEmpty()) {
         	msg +=NL+celebrationMsg; 
         }
+        
+        /*
 	 // 🔹 상인 추가 보너스 안내
 	    if (merchantBonusSp > 0) {
 	        msg += NL + "✨ 상인 효과!" + merchantBonusSp + " sp 획득";
 	    }
-
+         */
 	    // 18) 현재 포인트 조회
 	    int curPoint = 0;
 	    try {
@@ -1624,8 +1629,8 @@ public class BossAttackController {
 	    }
 
 	    User u = botNewService.selectUser(userName, roomName);
-	    String job = (u == null || u.job == null) ? "" : u.job.trim();
-	    boolean isMerchant = "상인".equals(job);
+	    //String job = (u == null || u.job == null) ? "" : u.job.trim();
+	    //boolean isMerchant = true;
 
 	 // 🔥 여기부터 추가: param1 으로 전체판매 모드 제어
 	    if ("기타".equals(itemNameRaw)) {
@@ -1693,9 +1698,9 @@ public class BossAttackController {
 	    String itemType = (itemDetail == null) ? "" : Objects.toString(itemDetail.get("ITEM_TYPE"), "");
 	    boolean isEquip = "MARKET".equalsIgnoreCase(itemType);
 	    // ✅ 상인은 장비(MARKET) 아이템 판매 불가
-	    if (isMerchant && isEquip) {
-	        return "상인 직업은 장비 아이템(MARKET)을 판매할 수 없습니다.";
-	    }
+	    //if (isMerchant && isEquip) {
+	    //    return "상인 직업은 장비 아이템(MARKET)을 판매할 수 없습니다.";
+	    //}
 	    
 	    int need = Math.min(reqQty, haveTotal);
 	    int sold = 0, soldNormal = 0, soldShiny = 0, soldFrag = 0;
@@ -1703,7 +1708,7 @@ public class BossAttackController {
 	    
 	    
 	    boolean soldMerchantDiscount = false; // BUY_MERCHANT 물건을 실제로 판 적 있는지
-	    boolean soldMerchantBonus = false;    // 상인 보너스(드랍템 10%↑) 적용된 판매가 있었는지
+	    //boolean soldMerchantBonus = false;    // 상인 보너스(드랍템 10%↑) 적용된 판매가 있었는지
 	    
 	    for (HashMap<String, Object> row : rows) {
 	        if (need <= 0) break;
@@ -1747,9 +1752,9 @@ public class BossAttackController {
 	        }
 
 	        // ✅ 상인 직업 보너스는 DROP/DROP3 에만 적용 (BUY_MERCHANT에는 미적용)
-	        if (isMerchant && isDropRow) {
-	            unitPrice = (int)Math.round(unitPrice * 1.1);
-	        }
+	        //if (isMerchant && isDropRow) {
+	        //    unitPrice = (int)Math.round(unitPrice * 1.1);
+	        //}
 	        
 	        // ★ 조각(STEAL)은 절반 가격
 	        if (isStealRow) {
@@ -1760,10 +1765,11 @@ public class BossAttackController {
 	        if (isMerchantBuy && take > 0) {
 	            soldMerchantDiscount = true;
 	        }
+	        /*
 	        if (isMerchant && isDropRow && !isMerchantBuy && take > 0) {
 	            soldMerchantBonus = true;
 	        }
-	        
+	        */
 
 	        if (qty == take) botNewService.updateInventoryDelByRowId(rid);
 	        else botNewService.updateInventoryQtyByRowId(rid, qty - take);
@@ -1791,8 +1797,7 @@ public class BossAttackController {
 	                    + (shinyQty > 0 ? ", ✨빛" + baseName + " " + shinyQty + "개" : "")
 	                    + (fragQty  > 0 ? ", " + baseName + "조각 " + fragQty + "개" : "");
 	        }
-	        return "판매 가능한 재고가 없습니다." + NL + preStock
-	        		 +NL+"/판매 기타 ->잡템전체"+NL+"/판매 장비 ->장비전체";
+	        return "판매 가능한 재고가 없습니다." + NL + preStock;
 	    }
 
 	    HashMap<String, Object> pr = new HashMap<>();
@@ -1863,41 +1868,33 @@ public class BossAttackController {
 		     sb.append(NL)
 		       .append("※ 상인 할인으로 구매한 아이템은 할인가(90%) 기준으로 판매되었습니다.");
 		 }
+		 /*
 		 if (soldMerchantBonus) {
 		     sb.append(NL)
 		       .append("(상인 효과: 드랍 아이템 판매가 10% 보너스 적용)");
-		 }
+		 }*/
 		 
 	    if (sold < reqQty) {
 	        sb.append(NL)
 	          .append("(요청 ").append(reqQty).append("개 → 실제 ").append(sold).append("개 판매)");
 	    }
-	    try {
-	    	botNewService.closeOngoingBattleTx(userName, roomName);
-	    }catch(Exception e) {
-	    	
-	    }
+
 	    return sb.toString();
 	}
 
-	/**
-	 * 잡템 / 장비 전체판매
-	 *
-	 * @param equipOnly true  = 장비(MARKET)만 전체판매
-	 *                  false = 장비 제외 잡템 전체판매
-	 */
-	private String sellAllByCategory(String userName, String roomName, User u, boolean equipOnly) {
+private String sellAllByCategory(String userName, String roomName, User u, boolean equipOnly) {
 	    final int SHINY_MULTIPLIER = 5; // ✨ 빛템 5배
 	    final String NL = BossAttackController.NL; // 클래스 상단 static final NL = "♬" 사용
 
-	    String job = (u == null || u.job == null) ? "" : u.job.trim();
-	    boolean isMerchant = "상인".equals(job);
+	    //String job = (u == null || u.job == null) ? "" : u.job.trim();
+	    //boolean isMerchant = "상인".equals(job);
 
-	    // 상인은 장비 전체판매 불가 (기존 장비 판매 금지 룰 유지)
+	    // 상인은 장비 전체판매 불가 (기존 장비 판매 금지 룰 유지)/
+	    /*
 	    if (equipOnly && isMerchant) {
 	        return "상인 직업은 장비 아이템(MARKET)을 일괄 판매할 수 없습니다. 직업을 변경 후 다시 시도해주세요.";
 	    }
-
+	     */
 	    // 인벤토리 전체 판매 대상 조회 (ROWID, QTY, GAIN_TYPE만)
 	    List<HashMap<String, Object>> rows = botNewService.selectAllInventoryRowsForSale(userName, roomName);
 	    if (rows == null || rows.isEmpty()) {
@@ -1912,7 +1909,7 @@ public class BossAttackController {
 	    int sold = 0, soldNormal = 0, soldShiny = 0, soldFrag = 0;
 	    long totalSp = 0L;
 	    boolean soldMerchantDiscount = false; // BUY_MERCHANT 판매 여부
-	    boolean soldMerchantBonus    = false; // 상인 10% 보너스 적용 여부
+	    //boolean soldMerchantBonus    = false; // 상인 10% 보너스 적용 여부
 
 	    for (HashMap<String, Object> row : rows) {
 
@@ -1981,11 +1978,12 @@ public class BossAttackController {
 	            unitPrice = (int) Math.floor(basePrice * 0.9);
 	        }
 
-	        // 상인 직업 보너스: DROP/DROP3 드랍템은 10% 보너스 (단, 상인할인구매는 보너스 X)
+	        // 상인 직업 보너스: DROP/DROP3 드랍템은 10% 보너스 (단, 상인할인구매는 보너스 X)/
+	        /*
 	        if (isMerchant && isDropRow && !isMerchantBuy) {
 	            unitPrice = (int) Math.round(unitPrice * 1.1);
 	        }
-
+	         */
 	        // 조각(STEAL)은 절반 가격
 	        if (isStealRow) {
 	            unitPrice = (int) Math.floor(unitPrice * 0.5);
@@ -1995,9 +1993,10 @@ public class BossAttackController {
 	        if (isMerchantBuy && qty > 0) {
 	            soldMerchantDiscount = true;
 	        }
+	        /*
 	        if (isMerchant && isDropRow && !isMerchantBuy && qty > 0) {
 	            soldMerchantBonus = true;
-	        }
+	        }*/
 
 	        // 6) 실제 판매: 전체판매이므로 가진 수량(qty) 전부 판매
 	        int take = qty;
@@ -2060,14 +2059,15 @@ public class BossAttackController {
 	        sb.append(NL)
 	          .append("※ 상인 할인으로 구매한 아이템은 할인가(90%) 기준으로 판매되었습니다.");
 	    }
+	    /*
 	    if (soldMerchantBonus) {
 	        sb.append(NL)
 	          .append("(상인 효과: 드랍 아이템 판매가 10% 보너스 적용)");
-	    }
+	    }*/
 
 	    return sb.toString();
 	}
-
+	
 	
 	/** 공격 랭킹 출력 (떠오르는샛별 / Top3 / 몬스터 학살자 / 최초토벌 + 도전중) */
 	public String showAttackRanking(HashMap<String,Object> map) {
@@ -3844,24 +3844,25 @@ public class BossAttackController {
 	        "▶ 프리스트 :대사제의 축복을 받아 신성의힘으로 적을 물리친다",
 	        "⚔ 아이템 HP/리젠 효과 1.5배, 몬스터에게 받는 피해 감소, -hidden-"
 	    ));
-
+	    /*
 	    JOB_DEFS.put("상인", new JobDef(
 	        "상인",
 	        "▶ 상인 :떠도는 몬스터에게 현금을 갈취하며, 상점 거래의 달인",
 	        "⚔ 상점 구매 10% 할인, 드랍 판매가 10% 증가, 공격시 몬스터 드롭템의 20%에 해당하는 SP 추가 획득"
 	    ));
-
+ 		*/
 	    JOB_DEFS.put("도사", new JobDef(
 	        "도사",
 	        "▶ 도사 :도를 닦아 깨달음을 얻은 위인",
 	        "⚔ 다음 공격하는 아군의 (공격력↑,치명타↑,치명타뎀↑,HP회복), 자신의 럭키몬스터 등장 확률 증가"
 	    ));
+	    /*
 	    JOB_DEFS.put("기사", new JobDef(
             "기사",
             "▶ 기사 :방패로 몬스터의 공격을 방어하는 굳건한 기사",
             "⚔ 공격력만큼 몬스터 공격을 방어하며, 방어량만큼 자신의 공격력이 감소"
         ));
-
+	     */
         JOB_DEFS.put("사신", new JobDef(
             "사신",
             "▶ 사신 :이름하야 죽음의 신, 죽지않는다",
