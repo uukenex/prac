@@ -214,28 +214,32 @@ public class BossAttackController {
 
 	    
 	 // 레벨 4는 직업 체험 모드: 쿨타임 체크 생략 + 날짜 미갱신(체험은 기록 안 남김)
+	    /*
 	    if (u.lv < 5) {
 	        botNewService.updateUserJobAndChangeDate(userName, roomName, newJob); // **JOB_CHANGE_DATE 갱신 없는 버전 사용**
 	        return "✨ 레벨5 미만 직업 체험: 쿨타임 없이 [" + newJob + "] 으로 변경했습니다!";
 	    }
-	    
+	    */
 	    // 5) 24시간 쿨타임 체크
 	    // - JOB_CHANGE_DATE 기본값을 SYSDATE-6/24 로 잡았으므로
 	    //   초기 유저는 바로 변경 가능하게 됨.
+	    
+	    /*
 	    Timestamp lastChange = u.jobChangeDate;
 	    if (lastChange != null) {
 	        long diffSec = java.time.Duration.between(lastChange.toInstant(), java.time.Instant.now()).getSeconds();
-	        long limitSec = 3L * 60 * 60;
+	        long limitSec = 0L * 60 * 60;
 
 	        if (diffSec < limitSec) {
 	            long remain = limitSec - diffSec;
 	            long rh = remain / 3600;
 	            long rm = (remain % 3600) / 60;
 
-	            return "직업 변경은 3시간에 1회 가능합니다." + NL
+	            return "직업 변경은 0시간에 1회 가능합니다." + NL
 	                 + "다음 변경까지 남은 시간: " + rh + "시간 " + rm + "분";
 	        }
 	    }
+	    */
 
 	    // 6) 직업 변경 수행 (JOB + JOB_CHANGE_DATE = SYSDATE)
 	    int updated = botNewService.updateUserJobAndChangeDate(userName, roomName, newJob);
@@ -250,8 +254,7 @@ public class BossAttackController {
 	    
 
 	    // 7) 완료 메시지
-	    return "✨ " + userName + "님, [" + newJob + "] 으로 직업이 변경되었습니다." + NL
-	         + "(직업 변경은 3시간에 1회 가능합니다)";
+	    return "✨ " + userName + "님, [" + newJob + "] 으로 직업이 변경되었습니다." + NL;
 	}
 
 
@@ -263,7 +266,7 @@ public class BossAttackController {
 	        sb.append(def.attackLine).append(NL).append(NL);
 	        
 	    }
-	    sb.append("♬ 3시간마다 /직업 [직업명] 으로 전직 가능합니다.").append(NL);
+	    sb.append("♬ /직업 [직업명] 으로 전직 가능합니다.").append(NL);
 	    return sb.toString();
 	}
 
@@ -712,6 +715,8 @@ public class BossAttackController {
 	    String job = (u == null || u.job == null) ? "" : u.job.trim();
 	    boolean isMerchant = "상인".equals(job);
 
+	    
+	    
 	    boolean hiddenYn = false;
 	    
 	    if(raw.equals("전체")) {
@@ -777,6 +782,11 @@ public class BossAttackController {
 
 	    
 	    boolean usedMerchantDiscount = false;
+	    
+	    if(itemId.toString().startsWith("7") || itemId.toString().startsWith("9") ) {
+	    	isMerchant =false;
+	    }
+	    
 	    if (isMerchant) {
 	        price = (int)Math.floor(price * 0.9);
 	        usedMerchantDiscount = true;
@@ -835,6 +845,11 @@ public class BossAttackController {
 	      .append("↘옵션: ").append(sbOpt).append(NL)
 	      .append("현재 포인트: ").append(afterPoint).append("sp");
 
+	    try {
+	    	botNewService.closeOngoingBattleTx(userName, roomName);
+	    }catch(Exception e) {
+	    	
+	    }
 	    return sb.toString();
 	}
 
@@ -1851,7 +1866,11 @@ public class BossAttackController {
 	        sb.append(NL)
 	          .append("(요청 ").append(reqQty).append("개 → 실제 ").append(sold).append("개 판매)");
 	    }
-
+	    try {
+	    	botNewService.closeOngoingBattleTx(userName, roomName);
+	    }catch(Exception e) {
+	    	
+	    }
 	    return sb.toString();
 	}
 
@@ -3840,7 +3859,7 @@ public class BossAttackController {
         JOB_DEFS.put("사신", new JobDef(
             "사신",
             "▶ 사신 :이름하야 죽음의 신, 죽지않는다",
-            "⚔ 아이템으로 인한 치명타,치명타뎀 증감처리 미적용, 체력 0에서도 죽지 않음"
+            "⚔ 아이템으로 인한 치명타,치명타뎀 증감처리 미적용, 체력 0에서도 죽지 않음,10%미만 체력에서 치명타확률50%증가"
         ));
         
         JOB_DEFS.put("흡혈귀", new JobDef(
