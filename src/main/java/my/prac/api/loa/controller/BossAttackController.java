@@ -1261,14 +1261,7 @@ public class BossAttackController {
 			}
 		}
 		
-		int monHpAfterPreview = Math.max(0, monHpRemainBefore - calc.atkDmg);
-		if (monHpAfterPreview <= 0) {
-		    // 몬스터는 결국 이 턴에 죽는다 → 반격 데미지는 없다고 본다
-		    calc.monDmg     = 0;
-		    flags.monPattern= 0;
-		    // 필요하면 반격 관련 메시지도 비우기
-		    //calc.patternMsg = null;
-		}
+		
 
 			
 		// 🔹 프리스트: 해골에게 주는 피해 1.25배
@@ -1282,6 +1275,15 @@ public class BossAttackController {
 		    //String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
 		    //calc.patternMsg = baseMsg + "[언데드 추가 피해]";
 		}
+		int monHpAfterPreview = Math.max(0, monHpRemainBefore - calc.atkDmg);
+		if (monHpAfterPreview <= 0) {
+		    // 몬스터는 결국 이 턴에 죽는다 → 반격 데미지는 없다고 본다
+		    calc.monDmg     = 0;
+		    flags.monPattern= 0;
+		    // 필요하면 반격 관련 메시지도 비우기
+		    //calc.patternMsg = null;
+		}
+		
 		
 		// 🛡 기사: 이번 턴 자신의 공격 데미지로 몬스터 공격을 막아냄 (공격↔방어 상쇄)
 		// 예시) 기사공격 80, 몬스터공격 100 → 기사공격 0, 피해 20
@@ -1337,6 +1339,10 @@ public class BossAttackController {
 		    calc.monDmg = after;
 		}
 		 */
+		
+		
+		
+		
 		// 🔹 프리스트: 받는 피해 30% 감소 (모든 몬스터 대상)
 		if ("프리스트".equals(job) && calc.monDmg > 0 && !flags.finisher) {
 		    int reduced = (int) Math.floor(calc.monDmg * 0.7); // 30% 감소
