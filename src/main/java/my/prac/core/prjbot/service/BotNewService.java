@@ -6,6 +6,7 @@ import java.util.List;
 
 import org.apache.ibatis.annotations.Param;
 
+import my.prac.core.game.dto.AchievementCount;
 import my.prac.core.game.dto.AttackDeathStat;
 import my.prac.core.game.dto.BattleLog;
 import my.prac.core.game.dto.KillStat;
@@ -119,7 +120,8 @@ public interface BotNewService {
     List<HashMap<String, Object>> selectThiefKingRanking();
 
     List<HashMap<String, Object>> selectAchievementCountRanking();
-    
+    List<AchievementCount> selectAchvCountsGlobal(String userName,String roomName);
+    List<AchievementCount> selectAchvCountsGlobalAll();
     HashMap<String, Object> selectActiveMonster(String userName, String roomName);
 } 
 

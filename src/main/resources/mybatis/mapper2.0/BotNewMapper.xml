@@ -634,6 +634,14 @@
 	    WHERE CMD = #{cmd}
 	      AND NEW_YN = '1'
 	</select>
+	<select id="selectAchvCountsGlobalAll" resultType="my.prac.core.game.dto.AchievementCount">
+	    SELECT CMD,
+	           COUNT(1) AS CNT
+	      FROM TBOT_POINT_RANK
+	     WHERE NEW_YN = '1'
+	       AND CMD LIKE 'ACHV_%'
+	     GROUP BY CMD
+	</select>
 	
 	<select id="selectAchievementsByUser" resultType="hashMap" parameterType="string">
 	  SELECT CMD, SCORE, USER_NAME, ROOM_NAME, INSERT_DATE
@@ -837,6 +845,19 @@
 	         ORDER BY b.INSERT_DATE DESC           <!-- 가장 최근 전투 로그 -->
 	    )
 	    WHERE ROWNUM = 1
+	</select>
+	
+	<select id="selectAchvCountsGlobal" resultType="my.prac.core.game.dto.AchievementCount">
+	    SELECT CMD,
+	           COUNT(1) AS CNT
+	      FROM TBOT_POINT_RANK
+	     WHERE NEW_YN = '1'
+	       <if test="roomName != null and roomName != '람쥐봇 문의방'">
+           AND ROOM_NAME = #{roomName}
+	       </if>
+	       AND USER_NAME = #{userName}
+	       AND CMD LIKE 'ACHV_%'
+	     GROUP BY CMD
 	</select>
 		
 </mapper>

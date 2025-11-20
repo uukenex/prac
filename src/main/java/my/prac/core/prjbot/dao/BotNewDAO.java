@@ -3,11 +3,11 @@ package my.prac.core.prjbot.dao;
 import java.sql.Timestamp;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.apache.ibatis.annotations.Param;
 import org.springframework.stereotype.Repository;
 
+import my.prac.core.game.dto.AchievementCount;
 import my.prac.core.game.dto.AttackDeathStat;
 import my.prac.core.game.dto.BattleLog;
 import my.prac.core.game.dto.KillStat;
@@ -170,6 +170,10 @@ public interface BotNewDAO {
     List<HashMap<String, Object>> selectThiefKingRanking();
 
     List<HashMap<String, Object>> selectAchievementCountRanking();
+    List<AchievementCount> selectAchvCountsGlobal(@Param("userName")String userName,@Param("roomName") String roomName);
+    List<AchievementCount> selectAchvCountsGlobalAll();
 
     HashMap<String, Object> selectActiveMonster(@Param("userName")String userName,@Param("roomName") String roomName);
+    
+    
 }

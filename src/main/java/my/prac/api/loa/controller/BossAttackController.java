@@ -18,9 +18,12 @@ import javax.annotation.Resource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 
+import my.prac.core.game.dto.AchievementCount;
 import my.prac.core.game.dto.AttackCalc;
 import my.prac.core.game.dto.AttackDeathStat;
 import my.prac.core.game.dto.BattleLog;
+import my.prac.core.game.dto.DamageOutcome;
+import my.prac.core.game.dto.Flags;
 import my.prac.core.game.dto.KillStat;
 import my.prac.core.game.dto.Monster;
 import my.prac.core.game.dto.OngoingBattle;
@@ -90,7 +93,7 @@ public class BossAttackController {
 	    // 4) 최종 Max HP (attackInfo와 동일 로직)
 	    int finalHpMax = baseHpMax + bHpMax;
 	    if ("전사".equals(job)) {
-	        finalHpMax -= baseHpMax*0.5; // 전사: 기본 HP 한 번 더
+	        finalHpMax += baseHpMax; // 전사: 기본 HP 한 번 더
 	    }
 	    if (finalHpMax <= 0) finalHpMax = 1;
 
@@ -395,14 +398,14 @@ public class BossAttackController {
 	    int finalAtkMax = atkMaxWithItem;
 
 	    if ("전사".equals(job)) {
-	        finalAtkMin += baseMin;
-	        finalAtkMax += baseMax;
+	        //finalAtkMin += baseMin;
+	        //finalAtkMax += baseMax;
 	    }
 
 	    // 전사 HP 보너스: 기본 HP 한 번 더 (아이템 제외)
 	    int finalHpMax = hpMaxWithItemAndPriest;
 	    if ("전사".equals(job)) {
-	        finalHpMax -= baseHpMax*0.5;
+	        finalHpMax += baseHpMax;
 	    }
 	    
 	 // 🩸 흡혈귀: 리젠 완전 불가 (아이템/버프/운영자 축복 포함)
@@ -461,6 +464,7 @@ public class BossAttackController {
 	      .append("   └ 아이템 (min").append(formatSigned(bAtkMinRaw))
 	      .append(", max").append(formatSigned(bAtkMaxRaw)).append(")").append(NL);
 
+	    /*
 	    if ("전사".equals(job)) {
 	        sb.append("   └ 직업 (min+")
 	          .append(baseMin)
@@ -469,7 +473,7 @@ public class BossAttackController {
 	          .append(")")
 	          .append(NL);
 	    }
-	    
+	    */
 	    sb.append("⚔CRIT: ").append(shownCrit).append("%  CDMG ").append(shownCritDmg).append("%").append(NL)
 	      .append("   └ 기본 (").append(u.critRate).append("%, ").append(u.critDmg).append("%)").append(NL);
 	      
@@ -488,7 +492,6 @@ public class BossAttackController {
 	    	}
 	      
 
-	    // ❤️ HP 블럭 (전사/프리스트 효과 포함)
 	    sb.append("❤️HP: ").append(effHp).append(" / ").append(finalHpMax)
 	      .append(",5분당회복+").append(shownRegen).append(NL)
 	      .append("   └ 기본 (HP+").append(baseHpMax)
@@ -506,7 +509,7 @@ public class BossAttackController {
 
 	    if ("전사".equals(job)) {
 	        sb.append("   └ 직업 (HP+")
-	          .append(-baseHpMax*0.5)
+	          .append(+baseHpMax)
 	          .append(")").append(NL);
 	    }
 
@@ -875,16 +878,11 @@ public class BossAttackController {
 
 	    
 	    if(roomName.equals("람쥐봇 문의방")) {
-			
 			if(userName.equals("일어난다람쥐/카단")) {
-				
 			}else {
 				return "문의방에서는 불가능합니다.";
 			}
 		}
-	    
-	    
-	    
 	    
 	    final String param1 = Objects.toString(map.get("param1"), "");
 
@@ -900,7 +898,6 @@ public class BossAttackController {
 	    
 	    // 2) MARKET 버프 합산 (null-safe)
 	    HashMap<String, Number> buffs = null;
-	    
 	    try {
 	        buffs = botNewService.selectOwnedMarketBuffTotals(userName, roomName);
 	    } catch (Exception ignore) {}
@@ -927,8 +924,6 @@ public class BossAttackController {
 	        weaponLv = 0;
 	    }
 	    int weaponBonus = getWeaponAtkBonus(weaponLv);
-	    
-	    String critDebugMsg = null;
 	    
 	 // === 전사 보너스 기준이 되는 "순수 기본값" (아이템/강화 제외) ===
 	    int baseMin = u.atkMin;
@@ -980,23 +975,13 @@ public class BossAttackController {
 	    
 	    // 6) 궁수 배율 (최종 공격력 1.5배) → 실제 데미지 범위에 반영
 	    if ("궁수".equals(job)) {
-	        jobDmgMul = 1.7;
+	        jobDmgMul = 1.8;
 	    }else if ("전사".equals(job)) {
-	        // ✅ 전사: "기본 min 한 번 더, 기본 max 한 번 더" (아이템/강화 제외)
-	        jobBonusMin = baseMin;
-	        jobBonusMax = baseMax;
-	        jobBonusHp  = -(int)Math.round(baseHpMax*0.5);
+	        jobBonusHp  = +(int)Math.round(baseHpMax);
 	    }
 	 // 3) 전사 보너스(기본값 기준)를 각각 더함
 	    int effAtkMin = (int) Math.round(atkMinWithItem * jobDmgMul + jobBonusMin);
 	    int effAtkMax = (int) Math.round(atkMaxWithItem * jobDmgMul + jobBonusMax);
-	    
-	    // 운영자의 축복 ATK +3/+3 (Lv 7 이하)
-	    if (hasBless) {
-	        //effAtkMin += blessAtk;
-	        //effAtkMax += blessAtk;
-	    }
-
 	    
 	    if (effAtkMax < effAtkMin) effAtkMax = effAtkMin;
 
@@ -1013,7 +998,6 @@ public class BossAttackController {
 	        revivedThisTurn = true;
 	    }
 
-	    // 🔹 전사 히든: 체력이 낮을수록 공격력 증가 (최대 +30%)
 	    double berserkMul = 1.0;
 	    if ("전사".equals(job) && effHpMax > 0) {
 	        double hpRatio = (double) u.hpCur / effHpMax;
@@ -1117,27 +1101,39 @@ public class BossAttackController {
 	        botNewService.clearRoomBuff(roomName);
 	    }
 	    
+	    /** TODO /
+	     * 
+	     */
 	    
 	    
+	    // 🔥 A형 완전 분리: 데미지 전부 calculateDamage로 처리
+	    DamageOutcome dmg = calculateDamage(
+	            u,
+	            m,
+	            job,
+	            flags,
+	            effAtkMin,
+	            effAtkMax,
+	            effCritRate,
+	            effCriDmg,
+	            berserkMul,
+	            monHpRemainBefore,
+	            effHpMax
+	    );
+
+	    AttackCalc calc = dmg.calc;
+	    flags = dmg.flags;          // (필요하면) 갱신된 플래그 다시 반영
+	    boolean willKill = dmg.willKill;
 	    
-		 // === 여기서부터 "최종 effCritRate" 기준 크리 판정 + 디버그 문자열 생성 ===
+	    /*
 	    int critRoll = ThreadLocalRandom.current().nextInt(0, 101);
 	    int critThreshold = Math.min(100, effCritRate);  // 0~100 제한
 	    boolean crit = (critRoll <= critThreshold);
 
-	    critDebugMsg = String.format(
-	    	    "crit calc 0~100 => [%d %s %d] : %s (effCrit= %d)",
-	    	    critRoll,
-	    	    crit ? "<=" : ">",
-	    	    critThreshold,
-	    	    crit ? "CRIT!" : "crit fail",
-	    	    effCritRate
-    	);
-	    
 	    int baseAtkRangeMin = effAtkMin;
 	    int baseAtkRangeMax = effAtkMax;
 
-	 // 전사 버서커 배율 적용 (범위 전체에 곱)
+	    // 전사 버서커 배율 적용 (범위 전체에 곱)
 	    baseAtkRangeMin = (int) Math.round(baseAtkRangeMin * berserkMul);
 	    baseAtkRangeMax = (int) Math.round(baseAtkRangeMax * berserkMul);
 	    if (baseAtkRangeMax < baseAtkRangeMin) baseAtkRangeMax = baseAtkRangeMin;
@@ -1152,16 +1148,13 @@ public class BossAttackController {
 	    int rawAtkDmg = crit ? (int)Math.round(baseAtk * critMultiplier) : baseAtk;
 
 
-	    /*
-	     * 기사 최소공격력 만큼의 피해감소효과,공격이 항상 최대공격력의 50%로 적용
-		사신 체력이 0이되도 공격가능,체력이0이될때는 공격이 절반데미지로 적용
-		광전사 맥스체력 50%가 되고, 크리율 -100% / 맥스데미지로 고정
-		저격수 2턴의 공격이 최소공격력으로 적용되고, 세번째 공격은 최대공격력의 1.5배의 데미지를 준다.
-	     */
-	   
+	    
+	    
 	    
 	    AttackCalc calc = new AttackCalc();
 	    calc.jobSkillUsed = false; 
+	    
+	    
 	    
 	    boolean isSnipe = false;
 	    if ("궁수".equals(job)) {
@@ -1171,6 +1164,10 @@ public class BossAttackController {
                 calc.jobSkillUsed = true;  
             }
 	    }
+	    
+	    if ("프리스트".equals(job) && isSkeleton(m)) {
+	    	rawAtkDmg = (int) Math.round( rawAtkDmg * 1.25);
+		}
 	    
 	    // 12) 원턴킬 선판정
 		boolean lethal = rawAtkDmg >= monHpRemainBefore;
@@ -1185,48 +1182,60 @@ public class BossAttackController {
 				calc.baseAtk = baseAtk;
 				calc.critMultiplier = critMultiplier;
 			}
+			
+			
 		} else {
+			calc = calcDamage(u, m, flags, baseAtk, crit, critMultiplier);
+			
 			
 			flags.atkCrit = crit;
 			flags.snipe = isSnipe; // 저격 여부 유지
 			flags.finisher = (flags.monPattern == 4); // 패턴4=필살기
 
-			boolean mageBreakGuard = false;
-
-			// 🔹 마법사: 패턴3 방어 50% 확률 무시 + 무시 시 데미지 1.5배
 			if ("마법사".equals(job) && flags.monPattern == 3) {
-				if (ThreadLocalRandom.current().nextDouble() < 0.50) {
-					mageBreakGuard = true;
-					calc.jobSkillUsed = true;   // 🔥 마법사 스킬 사용 표시
-					flags.monPattern = 1; // 방어 대신 무행동으로 취급
-				}
-			}
-			
-			calc = calcDamage(u, m, flags, baseAtk, crit, critMultiplier);
-			
-			if (mageBreakGuard) {
+				calc.jobSkillUsed = true;   // 🔥 마법사 스킬 사용 표시
+				flags.monPattern = 1; // 방어 대신 무행동으로 취급
 				// 방어를 깨뜨린 경우: 최종 공격 데미지 1.5배
 				calc.atkDmg = (int) Math.round(calc.atkDmg * 1.5);
 				calc.patternMsg = m.monName + "의 방어가 마법사의 힘에 의해 무너졌습니다! (피해 1.5배)";
 			}
 			
+			if ("전사".equals(job) && flags.finisher && calc.monDmg > 0) {
+			    if (ThreadLocalRandom.current().nextDouble() < 0.20) {
 
+			        int bossSkillDmg = calc.monDmg;          // 보스 필살기 데미지
+			        int reflectTotal = calc.atkDmg + bossSkillDmg; // 되돌려줄 총 피해
+
+			        // 몬스터에게 추가적인 피해를 주기 위해 내 최종 공격 데미지에 합산
+			        calc.atkDmg += bossSkillDmg;
+
+			        // 나는 피해를 받지 않음
+			        calc.monDmg = 0;
+
+			        String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
+			        calc.patternMsg = baseMsg
+			                + "패링! 보스의 필살기를 되받아쳐 총 " 
+			                + reflectTotal + " 피해를 입히고 피해를 받지 않았습니다.";
+
+			        calc.jobSkillUsed = true;
+			    }
+			}
+			
 			// 🔹 도적: 40% 확률 회피 (몬스터 피해 무효화)
 			if ("도적".equals(job) && calc.monDmg > 0 && !flags.finisher) {
 				
 			    int monLv  = m.monNo;
 			    double evadeRate = 0.40;
 			    switch(monLv) {
-			    	case 12: 
-			    		evadeRate -=0.05;
-			    	case 13:
-			    		evadeRate -=0.05;
-			    	case 14:
-			    		evadeRate -=0.05;
-			    	case 15:
-			    		evadeRate -=0.05;
+			    case 15:
+			    	evadeRate -=0.05;
+			    case 14:
+			    	evadeRate -=0.05;
+			    case 13:
+			    	evadeRate -=0.05;
+			    case 12: 
+			    	evadeRate -=0.05;
 			    }
-			    
 			    
 				if (ThreadLocalRandom.current().nextDouble() < evadeRate) {
 					String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
@@ -1235,57 +1244,48 @@ public class BossAttackController {
 				}
 			}
 			
-			
-		}
-		
-		
-		// 🩸 흡혈귀: 이번 턴 몬스터에게 준 데미지의 20%만큼 체력 회복
-		// 순서: 내 공격 → 회복 → 몬스터 반격/필살기
-		if ("흡혈귀".equals(job) && calc.atkDmg > 0) {
-			
-			if(m.monNo == 10|| m.monNo == 14) {
-				calc.patternMsg =  calc.patternMsg+"언데드는 흡혈 불가";
-			}else {
-			    int heal = (int) Math.round(calc.atkDmg * 0.20); // 20%
-			    if (heal < 1) heal = 1;                          // 최소 1 회복 (원하면 빼도 됨)
-	
-			    int beforeHp = u.hpCur;
-			    u.hpCur = Math.min(effHpMax, u.hpCur + heal);    // 최대 체력 초과 방지
-	
+			// 🔹 프리스트: 받는 피해 30% 감소 (모든 몬스터 대상)
+			if ("프리스트".equals(job) && calc.monDmg > 0 && !flags.finisher) {
+			    int reduced = (int) Math.floor(calc.monDmg * 0.7); // 30% 감소
+			    if (reduced < 1) reduced = 1; // 최소 1 유지
 			    String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
-			    calc.patternMsg = baseMsg
-			            + NL+"흡혈 효과! " + heal + "만큼 체력을 회복했습니다. "
-			            + "(HP " + beforeHp + " → " + u.hpCur + "/" + effHpMax + ")";
-	
-			    // 스킬 사용 흔적 표시
-			    calc.jobSkillUsed = true;
+			    calc.patternMsg = baseMsg + "(받는 피해 30% 감소 → " + reduced + ")";
+			    calc.monDmg = reduced;
 			}
-		}
-		
-		
-
 			
-		// 🔹 프리스트: 해골에게 주는 피해 1.25배
-		if ("프리스트".equals(job) && isSkeleton(m) && calc.atkDmg > 0) {
-		    int boosted = (int) Math.round(calc.atkDmg * 1.25);
-		    if (boosted <= calc.atkDmg) {
-		        boosted = calc.atkDmg + 1; // 최소 1 이상 증가 보장 (체감용)
-		    }
-		    calc.atkDmg = boosted;
+			if ("전사".equals(job) && calc.monDmg > 0 && !flags.finisher) {
+			    int reduce = (int) Math.round(u.lv * 2);
+			    int after  = Math.max(0, calc.monDmg - reduce); // 최소 0
+			    String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
+			    calc.patternMsg = baseMsg + "(전사의방패 효과로 " + reduce + " 피해 감소 → " + after + ")";
+			    calc.monDmg = after;
+			}
+			
+		}
+		
+		if ("흡혈귀".equals(job) && calc.atkDmg > 0) {
 
-		    //String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
-		    //calc.patternMsg = baseMsg + "[언데드 추가 피해]";
+		    if (m.monNo == 10 || m.monNo == 14) {
+		        String base = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
+		        calc.patternMsg = base + "언데드는 흡혈 불가";
+		    } else {
+		        int realDamage = Math.min(calc.atkDmg, monHpRemainBefore);
+		        int heal = (int)Math.round(realDamage * 0.20);
+		        if (heal < 1) heal = 1;
+
+		        int before = u.hpCur;
+		        u.hpCur = Math.min(effHpMax, u.hpCur + heal);
+
+		        String base = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
+		        calc.patternMsg = base + "흡혈 효과! " + heal +
+		            " 회복 (HP " + before + " → " + u.hpCur + "/" + effHpMax + ")";
+		        calc.jobSkillUsed = true;
+		    }
 		}
-		int monHpAfterPreview = Math.max(0, monHpRemainBefore - calc.atkDmg);
-		if (monHpAfterPreview <= 0) {
-		    // 몬스터는 결국 이 턴에 죽는다 → 반격 데미지는 없다고 본다
-		    calc.monDmg     = 0;
-		    flags.monPattern= 0;
-		    // 필요하면 반격 관련 메시지도 비우기
-		    //calc.patternMsg = null;
-		}
+			
 		
 		
+		*/
 		// 🛡 기사: 이번 턴 자신의 공격 데미지로 몬스터 공격을 막아냄 (공격↔방어 상쇄)
 		// 예시) 기사공격 80, 몬스터공격 100 → 기사공격 0, 피해 20
 //		      기사공격 80, 몬스터공격  60 → 기사공격 20, 피해 0
@@ -1330,29 +1330,13 @@ public class BossAttackController {
 		        calc.jobSkillUsed = true;   // 직업 패시브 발동 표시
 		    }
 		}
-		*/
-		// 🔰 전사: 레벨당 2 고정 피해감소 (필살기에는 미적용)
-		/*
-		if ("전사".equals(job) && calc.monDmg > 0 && !flags.finisher) {
-		    int reduce = (int) Math.round(u.lv * 1.5);
-		    int after  = Math.max(0, calc.monDmg - reduce); // 최소 0
-		    String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
-		    calc.patternMsg = baseMsg + "(전사 효과로 " + reduce + " 피해 감소 → " + after + ")";
-		    calc.monDmg = after;
-		}
-		 */
+ */		
 		
 		
 		
 		
-		// 🔹 프리스트: 받는 피해 30% 감소 (모든 몬스터 대상)
-		if ("프리스트".equals(job) && calc.monDmg > 0 && !flags.finisher) {
-		    int reduced = (int) Math.floor(calc.monDmg * 0.7); // 30% 감소
-		    if (reduced < 1) reduced = 1; // 최소 1 유지
-		    String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
-		    calc.patternMsg = baseMsg + "(받는 피해 30% 감소 → " + reduced + ")";
-		    calc.monDmg = reduced;
-		}
+		
+		
 		
 		
 		 // 13) 즉사 처리
@@ -1411,7 +1395,7 @@ public class BossAttackController {
 		 
 
 	    // 14) 처치/드랍 판단
-	    boolean willKill = calc.atkDmg >= monHpRemainBefore;
+	    //boolean willKill = calc.atkDmg >= monHpRemainBefore;
 	    Resolve res = resolveKillAndDrop(m, calc, willKill, u, lucky);
 
 	    // 🔹 상인: 공격 시마다, 해당 몬스터 드랍템 판매가의 10%를 SP로 추가 획득 (킬/드랍 여부 무관)
@@ -1444,18 +1428,16 @@ public class BossAttackController {
 	    
 	    String stealMsg = null;
 	    if ("도적".equals(job)) {
-	    	
-	    	
 	    	double stealRate = 0.25;
 	    	int monLv  = m.monNo;
 		    switch(monLv) {
-		    	case 12: 
-		    		stealRate -=0.03;
-		    	case 13:
+		    	case 15:
 		    		stealRate -=0.03;
 		    	case 14:
 		    		stealRate -=0.03;
-		    	case 15:
+		    	case 13:
+		    		stealRate -=0.03;
+		    	case 12: 
 		    		stealRate -=0.03;
 		    }
 		    
@@ -1500,12 +1482,32 @@ public class BossAttackController {
 	    
 	    
 	    
+	 // 🔹 글로벌(서버 전체) 기준 ACHV 카운트
+	    List<AchievementCount> globalList = botNewService.selectAchvCountsGlobalAll();
+	    Map<String, Integer> globalAchvMap = new HashMap<>();
+	    if (globalList != null) {
+	        for (AchievementCount ac : globalList) {
+	            if (ac == null || ac.getCmd() == null) continue;
+	            globalAchvMap.put(ac.getCmd(), ac.getCnt());
+	        }
+	    }
+
+	    // 🔹 현재 유저(방 기준) ACHV 카운트
+	    List<AchievementCount> userList = botNewService.selectAchvCountsGlobal(userName, roomName);
+	    Map<String, Integer> userAchvMap = new HashMap<>();
+	    if (userList != null) {
+	        for (AchievementCount ac : userList) {
+	            if (ac == null || ac.getCmd() == null) continue;
+	            userAchvMap.put(ac.getCmd(), ac.getCnt());
+	        }
+	    }
+	    
 	    if (res.killed) {
 	        // 진행중 전투 종료
 	        botNewService.closeOngoingBattleTx(userName, roomName);
 
 	        // ✅ 최초토벌 보상 (글로벌 1회 or 룸 기준: selectPointRankCountByCmdGlobal 구현에 따름)
-	        String firstClearMsg = grantFirstClearIfEligible(userName, roomName, m);
+	        String firstClearMsg = grantFirstClearIfEligible(userName, roomName, m,globalAchvMap);
 
 	     
 	        // ✅ 킬수 업적 (몬스터별/통산)
@@ -1552,7 +1554,7 @@ public class BossAttackController {
 	    	msg += blessMsg;
 	    }
 	    
-	    String celebrationMsg = grantCelebrationClearBonus(userName, roomName);
+	    String celebrationMsg = grantCelebrationClearBonus(userName, roomName, globalAchvMap, userAchvMap);
         if(celebrationMsg !=null && !celebrationMsg.isEmpty()) {
         	msg +=NL+celebrationMsg; 
         }
@@ -3038,12 +3040,6 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	    return s;
 	}
 
-	private static class Flags {
-	    boolean atkCrit;
-	    int monPattern;
-	    boolean snipe; // 궁수 저격 여부
-	    boolean finisher;  // ← 필살기 여부
-	}
 	
 	private static class Resolve {
 		boolean killed; String dropCode; int gainExp; int levelUpCount; boolean lucky;
@@ -3347,77 +3343,62 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	 *  - 이미 해당 ROOM_NAME에 ACHV_FIRST_CLEAR_MON_{monNo}가 존재하면 스킵
 	 *  - 없으면: 해당 유저에게 rewardSp 지급 + CMD 기록
 	 */
-	private String grantFirstClearIfEligible(String userName, String roomName, Monster m) {
+	private String grantFirstClearIfEligible(
+	        String userName,
+	        String roomName,
+	        Monster m,
+	        Map<String, Integer> globalAchvMap  // 🔹 추가
+	) {
 	    if (m == null) return "";
 
 	    String achvCmd = "ACHV_FIRST_CLEAR_MON_" + m.monNo;
 
-	    // 이미 이 방에서 해당 몬스터 최초토벌 보상이 지급되었는지 확인
-	    Integer cnt = botNewService.selectPointRankCountByCmdGlobal(achvCmd);
-	    if (cnt != null && cnt > 0) {
-	        return ""; // 이미 다른 누가 받음
+	    // 1) 글로벌 Map에서 이미 존재하는지 확인
+	    int globalCnt = 0;
+	    if (globalAchvMap != null) {
+	        Integer v = globalAchvMap.get(achvCmd);
+	        if (v != null) globalCnt = v.intValue();
+	    }
+	    if (globalCnt > 0) {
+	        // 이미 이 CMD로 기록된 최초 토벌이 있음 → 보상 X
+	        return "";
 	    }
 
-		int rewardSp = 0;
-		switch (m.monNo) {
-		case 1:
-		case 2:
-		case 3:
-		case 4:
-		case 5:
-			rewardSp = 100;
-			break;
-		case 6:
-			rewardSp = 300;
-			break;
-		case 7:
-			rewardSp = 500;
-			break;
-		case 8:
-			rewardSp = 500;
-			break;
-		case 9:
-			rewardSp = 1000;
-			break;
-		case 10:
-			rewardSp = 1000;
-			break;
-		case 11:
-			rewardSp = 1000;
-			break;
-		case 12:
-			rewardSp = 1000;
-			break;
-		case 13:
-			rewardSp = 1500;
-			break;
-		case 14:
-			rewardSp = 1500;
-			break;
-		case 15:
-			rewardSp = 2000;
-			break;
-		case 16:
-			rewardSp = 2000;
-			break;
-		case 17:
-			rewardSp = 2500;
-			break;
-		case 18:
-			rewardSp = 2500;
-			break;
-		case 19:
-			rewardSp = 3000;
-			break;
-		case 20:
-			rewardSp = 3000;
-			break;
-
-		default:
-			break;
-		}
+	    int rewardSp = 0;
+	    switch (m.monNo) {
+	        case 1:
+	        case 2:
+	        case 3:
+	        case 4:
+	        case 5:
+	            rewardSp = 100; break;
+	        case 6:
+	            rewardSp = 300; break;
+	        case 7:
+	        case 8:
+	            rewardSp = 500; break;
+	        case 9:
+	        case 10:
+	        case 11:
+	        case 12:
+	            rewardSp = 1000; break;
+	        case 13:
+	        case 14:
+	            rewardSp = 1500; break;
+	        case 15:
+	        case 16:
+	            rewardSp = 2000; break;
+	        case 17:
+	        case 18:
+	            rewardSp = 2500; break;
+	        case 19:
+	        case 20:
+	            rewardSp = 3000; break;
+	        default:
+	            break;
+	    }
 	    if (rewardSp <= 0) {
-	        return ""; // 보상 값이 0이면 지급하지 않음
+	        return ""; // 0이면 지급 X
 	    }
 
 	    HashMap<String,Object> pr = new HashMap<>();
@@ -3427,8 +3408,15 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	    pr.put("cmd", achvCmd);
 	    botNewService.insertPointRank(pr);
 
-	    return "✨ 업적 달성! [" + m.monName + "] 최초 토벌자 보상 +" + rewardSp + "sp 지급되었습니다." + NL;
+	    // (선택) 메모리상으로도 업데이트
+	    if (globalAchvMap != null) {
+	        globalAchvMap.put(achvCmd, globalCnt + 1);
+	    }
+
+	    return "✨ 업적 달성! [" + m.monName + "] 최초 토벌자 보상 +"
+	            + rewardSp + "sp 지급되었습니다." + NL;
 	}
+
 	
 	
 	/** 특정 유저가 특정 업적 CMD를 아직 받지 않았으면 1회성 보상 지급 */
@@ -3569,6 +3557,93 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	    return sb.toString();
 	}
 
+	private String grantCelebrationClearBonus(
+	        String userName,
+	        String roomName,
+	        Map<String, Integer> globalAchvMap,
+	        Map<String, Integer> userAchvMap
+	) {
+
+	    StringBuilder sb = new StringBuilder();
+
+	    List<Monster> mons = botNewService.selectAllMonsters();
+
+	    for (Monster m : mons) {
+
+	        String firstCmd = "ACHV_FIRST_CLEAR_MON_" + m.monNo;     // 최초토벌 기록
+	        String userCmd  = "ACHV_CLEAR_BROADCAST_MON_" + m.monNo; // 유저 축하보상 기록
+
+	        // 1) 해당 몬스터가 최초토벌된 적이 있는가? (글로벌)
+	        int globalCnt = 0;
+	        if (globalAchvMap != null) {
+	            Integer v = globalAchvMap.get(firstCmd);
+	            if (v != null) globalCnt = v.intValue();
+	        }
+	        if (globalCnt == 0) {
+	            // 아직 아무도 이 몬스터를 최초토벌하지 않음 → 축하 보상 X
+	            continue;
+	        }
+
+	        // 2) 나는 축하보상을 이미 받았는가? (유저 기준)
+	        int mine = 0;
+	        if (userAchvMap != null) {
+	            Integer mineCnt = userAchvMap.get(userCmd);
+	            if (mineCnt != null) mine = mineCnt.intValue();
+	        }
+	        if (mine > 0) {
+	            // 이미 이 몬스터에 대한 축하 보상을 받은 상태
+	            continue;
+	        }
+
+	        // 3) 최초토벌 보상의 1/3 계산
+	        int rewardFull   = calcFirstClearReward(m.monNo);
+	        int rewardShared = Math.max(1, rewardFull / 3);
+
+	        // 4) 축하 보상 지급
+	        HashMap<String,Object> pr = new HashMap<>();
+	        pr.put("userName", userName);
+	        pr.put("roomName", roomName);
+	        pr.put("score", rewardShared);
+	        pr.put("cmd", userCmd);
+	        botNewService.insertPointRank(pr);
+
+	        // (선택) 메모리 캐시 업데이트
+	        if (userAchvMap != null) {
+	            userAchvMap.put(userCmd, mine + 1);
+	        }
+
+	        sb.append("✨ [")
+	          .append(m.monName)
+	          .append("] 최초토벌 축하 보상 +")
+	          .append(rewardShared).append("sp 지급되었습니다!")
+	          .append(NL);
+	    }
+
+	    return sb.toString();
+	}
+
+
+	private int calcFirstClearReward(int monNo) {
+	    switch(monNo) {
+	        case 1: case 2: case 3: case 4: case 5: return 100;
+	        case 6: return 300;
+	        case 7: return 500;
+	        case 8: return 500;
+	        case 9: return 1000;
+	        case 10: return 1000;
+	        case 11: return 1000;
+	        case 12: return 1000;
+	        case 13: return 1500;
+	        case 14: return 1500;
+	        case 15: return 2000;
+	        case 16: return 2000;
+	        case 17: return 2500;
+	        case 18: return 2500;
+	        case 19: return 3000;
+	        case 20: return 3000;
+	    }
+	    return 0;
+	}
 	
 	/** 업적 CMD → 단순 업적명 라벨 (보상/날짜 없이) */
 	private String formatAchievementLabelSimple(String cmd) {
@@ -3796,6 +3871,209 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	}
 
 
+	/**
+	 * 데미지 전체 처리 전용 메서드 (A형: 완전 분리형)
+	 * - 공격력 굴림, 크리티컬, 원턴킬 판정
+	 * - calcDamage 호출
+	 * - 마법사 패턴3 무력화
+	 * - 전사 필살기 패링
+	 * - 도적 회피
+	 * - 프리스트 피해 감소
+	 * - 전사 방패
+	 * - 흡혈귀 흡혈
+	 */
+	private DamageOutcome calculateDamage(
+	        User u,
+	        Monster m,
+	        String job,
+	        Flags flags,
+	        int effAtkMin,
+	        int effAtkMax,
+	        int effCritRate,
+	        int effCriDmg,
+	        double berserkMul,
+	        int monHpRemainBefore,
+	        int effHpMax
+	) {
+	    DamageOutcome out = new DamageOutcome();
+	    AttackCalc calc = new AttackCalc();
+	    calc.jobSkillUsed = false;
+
+	    StringBuilder extraMsg = new StringBuilder();
+
+	    // -----------------------------
+	    // 1) 공격력 굴림 + 크리티컬
+	    // -----------------------------
+	    int critRoll = ThreadLocalRandom.current().nextInt(0, 101);
+	    int critThreshold = Math.min(100, effAtkMin < 0 ? 0 : effAtkRateLimit(effCritRate)); // 안전빵 방어
+	    boolean crit = (critRoll <= critThreshold);
+
+	    int baseAtkRangeMin = (int) Math.round(effAtkMin * berserkMul);
+	    int baseAtkRangeMax = (int) Math.round(effAtkMax * berserkMul);
+	    if (baseAtkRangeMax < baseAtkRangeMin) baseAtkRangeMax = baseAtkRangeMin;
+
+	    int baseAtk = (baseAtkRangeMax <= baseAtkRangeMin)
+	            ? baseAtkRangeMin
+	            : ThreadLocalRandom.current().nextInt(baseAtkRangeMin, baseAtkRangeMax + 1);
+
+	    double critMultiplier = Math.max(1.0, effCriDmg / 100.0);
+
+	    int rawAtkDmg = crit ? (int) Math.round(baseAtk * critMultiplier) : baseAtk;
+
+	    // -----------------------------
+	    // 2) 궁수 저격, 프리스트 스켈레톤 추가뎀
+	    // -----------------------------
+	    boolean isSnipe = false;
+	    if ("궁수".equals(job)) {
+	        if (ThreadLocalRandom.current().nextDouble() < 0.065) {
+	            isSnipe = true;
+	            rawAtkDmg = rawAtkDmg * 20;
+	            calc.jobSkillUsed = true;
+	        }
+	    }
+
+	    if ("프리스트".equals(job) && isSkeleton(m)) {
+	        rawAtkDmg = (int) Math.round(rawAtkDmg * 1.25);
+	    }
+
+	    // -----------------------------
+	    // 3) 원턴킬 선판정
+	    // -----------------------------
+	    boolean lethal = rawAtkDmg >= monHpRemainBefore;
+
+	    if (lethal) {
+	        flags.atkCrit = crit;
+	        flags.monPattern = 0;
+	        flags.snipe = isSnipe;
+
+	        calc.atkDmg = rawAtkDmg;
+	        calc.monDmg = 0;
+	        calc.patternMsg = null;
+
+	        if (crit) {
+	            calc.baseAtk = baseAtk;
+	            calc.critMultiplier = critMultiplier;
+	        }
+
+	    } else {
+	        // -----------------------------
+	        // 4) 보스 패턴 포함 실제 데미지 계산
+	        // -----------------------------
+	        calc = calcDamage(u, m, flags, baseAtk, crit, critMultiplier);
+
+	        flags.atkCrit = crit;
+	        flags.snipe = isSnipe;
+	        flags.finisher = (flags.monPattern == 4); // 패턴4=필살기
+
+	        // 🔥 마법사: 패턴3 방어를 깨뜨리고 1.5배 피해
+	        if ("마법사".equals(job) && flags.monPattern == 3) {
+	            calc.jobSkillUsed = true;
+	            flags.monPattern = 1; // 방어 대신 무행동으로 취급
+	            calc.atkDmg = (int) Math.round(calc.atkDmg * 1.5);
+	            calc.patternMsg = m.monName + "의 방어가 마법사의 힘에 의해 무너졌습니다! (피해 1.5배)";
+	        }
+
+	        // 🛡 전사: 보스 필살기 패링 (20% 확률)
+	        if ("전사".equals(job) && flags.finisher && calc.monDmg > 0) {
+	            if (ThreadLocalRandom.current().nextDouble() < 0.20) {
+
+	                int bossSkillDmg = calc.monDmg;             // 보스 필살기 데미지
+	                int reflectTotal = calc.atkDmg + bossSkillDmg; // 되돌려줄 총 피해
+
+	                calc.atkDmg += bossSkillDmg;  // 되받아친 만큼 공격에 누적
+	                calc.monDmg = 0;              // 나는 피해 없음
+
+	                String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
+	                calc.patternMsg = baseMsg
+	                        + "패링! 보스의 필살기를 되받아쳐 총 "
+	                        + reflectTotal + " 피해를 입히고 피해를 받지 않았습니다.";
+
+	                calc.jobSkillUsed = true;
+	            }
+	        }
+
+	        // 🌀 도적: 회피 (고레벨 보스일수록 회피율 감소, 필살기 제외)
+	        if ("도적".equals(job) && calc.monDmg > 0 && !flags.finisher) {
+
+	            int monLv = m.monNo;
+	            double evadeRate = 0.40;
+	            switch (monLv) {
+	                case 15:
+	                    evadeRate -= 0.05;
+	                case 14:
+	                    evadeRate -= 0.05;
+	                case 13:
+	                    evadeRate -= 0.05;
+	                case 12:
+	                    evadeRate -= 0.05;
+	            }
+
+	            if (ThreadLocalRandom.current().nextDouble() < evadeRate) {
+	                String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
+	                calc.patternMsg = baseMsg + "도적의 회피! 피해를 받지 않았습니다.";
+	                calc.monDmg = 0;
+	            }
+	        }
+
+	        // ✝ 프리스트: 받는 피해 30% 감소 (필살기 제외)
+	        if ("프리스트".equals(job) && calc.monDmg > 0 && !flags.finisher) {
+	            int reduced = (int) Math.floor(calc.monDmg * 0.7); // 30% 감소
+	            if (reduced < 1) reduced = 1;
+	            String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
+	            calc.patternMsg = baseMsg + "(받는 피해 30% 감소 → " + reduced + ")";
+	            calc.monDmg = reduced;
+	        }
+
+	        // 🛡 전사: 일반 패턴 피해 감소
+	        if ("전사".equals(job) && calc.monDmg > 0 && !flags.finisher) {
+	            int reduce = (int) Math.round(u.lv * 2);
+	            int after = Math.max(0, calc.monDmg - reduce); // 최소 0
+	            String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
+	            calc.patternMsg = baseMsg
+	                    + "(전사의방패 효과로 " + reduce + " 피해 감소 → " + after + ")";
+	            calc.monDmg = after;
+	        }
+	    }
+
+	    // -----------------------------
+	    // 5) 흡혈귀: 이번 턴 실제 입힌 피해의 20% 회복
+	    // -----------------------------
+	    if ("흡혈귀".equals(job) && calc.atkDmg > 0) {
+
+	        if (m.monNo == 10 || m.monNo == 14) {
+	            String base = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
+	            calc.patternMsg = base + "언데드는 흡혈 불가";
+	        } else {
+	            // 몬스터가 실제로 잃은 체력만큼만 흡혈 가능
+	            int realDamage = Math.min(calc.atkDmg, monHpRemainBefore);
+	            int heal = (int) Math.round(realDamage * 0.20);
+	            if (heal < 1) heal = 1;
+
+	            int before = u.hpCur;
+	            u.hpCur = Math.min(effHpMax, u.hpCur + heal);
+
+	            String base = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
+	            calc.patternMsg = base + "흡혈 효과! " + heal +
+	                    " 회복 (HP " + before + " → " + u.hpCur + "/" + effHpMax + ")";
+	            calc.jobSkillUsed = true;
+	        }
+	    }
+
+	    out.calc = calc;
+	    out.flags = flags;
+	    out.willKill = (calc.atkDmg >= monHpRemainBefore);
+	    out.extraMsg = extraMsg.toString();
+
+	    return out;
+	}
+
+	// 크리율 방어용 헬퍼 (0~100 clamp 용)
+	private int effAtkRateLimit(int rate) {
+	    if (rate < 0) return 0;
+	    if (rate > 100) return 100;
+	    return rate;
+	}
+
 	
 	// 직업 공통 정의
 	private static final class JobDef {
@@ -3818,13 +4096,13 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	    JOB_DEFS.put("전사", new JobDef(
 	        "전사",
 	        "▶ 전사 :육체능력이 변경되며, 체력이 낮아질수록 강해진다",
-	        "⚔ 기본 ATK(min/max) 증가, 기본 HP 절반으로 감소, 버서크모드(50%이하부터,점점 강해짐 데미지 최대 2배)"
+	        "⚔ 기본 HP만큼 추가 증가, 방어 추가, 버서크모드(50%이하부터,점점 강해짐 데미지 최대 2배), -hidden-"
 	    ));
 
 	    JOB_DEFS.put("궁수", new JobDef(
 	        "궁수",
 	        "▶ 궁수 :사냥감을 조준하는 집요한 추적자, 강력한 한방을 선사하지만, 쿨타임이 길어진다",
-	        "⚔ 최종 데미지 ×1.7, 쿨타임 5분, EXP +15%,-hidden-"
+	        "⚔ 최종 데미지 ×1.8, 쿨타임 5분, EXP +15%, 공격시 6.5%확률로 강력한공격"
 	    ));
 
 	    JOB_DEFS.put("마법사", new JobDef(
@@ -3876,72 +4154,8 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
         ));
 	}
 	
-	private String grantCelebrationClearBonus(String userName, String roomName) {
-
-	    StringBuilder sb = new StringBuilder();
-
-	    List<Monster> mons = botNewService.selectAllMonsters();
-
-	    for (Monster m : mons) {
-
-	        String firstCmd = "ACHV_FIRST_CLEAR_MON_" + m.monNo;   // 최초토벌 기록
-	        String userCmd  = "ACHV_CLEAR_BROADCAST_MON_" + m.monNo; // 유저 축하보상 기록
-
-	        // 1) 해당 몬스터가 최초토벌된 적이 있는가?
-	        int global = botNewService.selectPointRankCountByCmdGlobal(firstCmd);
-	        if (global == 0) {
-	            continue; // 아직 전세계 최초토벌 X
-	        }
-
-	        // 2) 나는 축하보상을 이미 받았는가?
-	        int mine = botNewService.selectPointRankCountByCmdUserInRoom(roomName, userName, userCmd);
-	        if (mine > 0) {
-	            continue; // 이미 받음
-	        }
-
-	        // 3) 최초토벌 보상의 1/3 계산
-	        int rewardFull = calcFirstClearReward(m.monNo);
-	        int rewardShared = Math.max(1, rewardFull / 3);
-
-	        // 4) 축하 보상 지급
-	        HashMap<String,Object> pr = new HashMap<>();
-	        pr.put("userName", userName);
-	        pr.put("roomName", roomName);
-	        pr.put("score", rewardShared);
-	        pr.put("cmd", userCmd);
-	        botNewService.insertPointRank(pr);
-
-	        sb.append("✨ [")
-	          .append(m.monName)
-	          .append("] 최초토벌 축하 보상 +")
-	          .append(rewardShared).append("sp 지급되었습니다!")
-	          .append(NL);
-	    }
-
-	    return sb.toString();
-	}
 	
-	private int calcFirstClearReward(int monNo) {
-	    switch(monNo) {
-	        case 1: case 2: case 3: case 4: case 5: return 100;
-	        case 6: return 300;
-	        case 7: return 500;
-	        case 8: return 500;
-	        case 9: return 1000;
-	        case 10: return 1000;
-	        case 11: return 1000;
-	        case 12: return 1000;
-	        case 13: return 1500;
-	        case 14: return 1500;
-	        case 15: return 2000;
-	        case 16: return 2000;
-	        case 17: return 2500;
-	        case 18: return 2500;
-	        case 19: return 3000;
-	        case 20: return 3000;
-	    }
-	    return 0;
-	}
+	
 }
 
 

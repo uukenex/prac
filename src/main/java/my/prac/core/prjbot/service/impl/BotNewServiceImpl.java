@@ -8,6 +8,7 @@ import javax.annotation.Resource;
 
 import org.springframework.stereotype.Service;
 
+import my.prac.core.game.dto.AchievementCount;
 import my.prac.core.game.dto.AttackDeathStat;
 import my.prac.core.game.dto.BattleLog;
 import my.prac.core.game.dto.KillStat;
@@ -310,4 +311,14 @@ public class BotNewServiceImpl implements BotNewService {
     public HashMap<String, Object> selectActiveMonster(String userName, String roomName){
     	return botNewDAO.selectActiveMonster(userName,roomName);
     }
+    @Override
+    public List<AchievementCount> selectAchvCountsGlobal(String userName,String roomName){
+        return botNewDAO.selectAchvCountsGlobal(userName,roomName);
+    }
+    
+    @Override
+    public List<AchievementCount> selectAchvCountsGlobalAll() {
+        return botNewDAO.selectAchvCountsGlobalAll();
+    }
+
 }
