@@ -66,52 +66,45 @@ public class BossAttackController {
 
 	    final String job = (u.job == null ? "" : u.job.trim());
 
-	 // 1) MARKET 장비 버프 (attackInfo와 동일 소스)
+	 // 1) MARKET 장비 버프 (monsterAttack과 동일)
 	    HashMap<String, Number> buffs = null;
 	    try {
 	        buffs = botNewService.selectOwnedMarketBuffTotals(userName, roomName);
 	    } catch (Exception ignore) {}
 
-	    int bHpMaxRaw = (buffs != null && buffs.get("HP_MAX") != null) ? buffs.get("HP_MAX").intValue() : 0;
-	    int bRegenRaw = (buffs != null && buffs.get("HP_REGEN") != null) ? buffs.get("HP_REGEN").intValue() : 0;
+	    int bHpMax  = (buffs != null && buffs.get("HP_MAX")   != null) ? buffs.get("HP_MAX").intValue()   : 0;
+	    int bRegen  = (buffs != null && buffs.get("HP_REGEN") != null) ? buffs.get("HP_REGEN").intValue() : 0;
 
-	    // 2) 프리스트: 아이템 HP/리젠 1.5배 (attackInfo와 동일하게 처리)
-	    int bHpMax = bHpMaxRaw;
-	    int bRegen = bRegenRaw;
+	    // 2) 프리스트: 아이템 HP/리젠 1.5배
 	    if ("프리스트".equals(job)) {
-	        bHpMax = (int)Math.round(bHpMaxRaw * 1.5);
-	        bRegen = (int)Math.round(bRegenRaw * 1.5);
+	        bHpMax = (int)Math.round(bHpMax * 1.5);
+	        bRegen = (int)Math.round(bRegen * 1.5);
 	    }
 
 	    int baseHpMax = u.hpMax;
 	    int baseRegen = u.hpRegen;
 
-	    // 🩸 흡혈귀: (현재 캐논 기준) 아이템 리젠만 무효
-	    //   monsterAttack 쪽이 bRegen=0 만 하고 있어서 여기서도 동일하게 맞춤
-	    if ("흡혈귀".equals(job)) {
-	        bRegen = 0;
-	    }
-	    
-	    // 3) 운영자의 축복 (Lv 7 이하: 리젠 +3만, HP Max는 그대로)
+	    // 3) 운영자의 축복
 	    boolean hasBless = (u.lv <= 15);
 	    int blessRegenBonus = hasBless ? 5 : 0;
 
-	    // 4) 최종 Max HP (attackInfo와 동일 로직)
+	    // 🩸 흡혈귀: monsterAttack 캐논과 동일하게 "아이템 리젠만" 무효
+	    if ("흡혈귀".equals(job)) {
+	        bRegen = 0;
+	    }
+
+	    // 4) 최종 Max HP
 	    int finalHpMax = baseHpMax + bHpMax;
 	    if ("전사".equals(job)) {
-	        finalHpMax += baseHpMax; // 전사: 기본 HP 한 번 더
+	        finalHpMax += baseHpMax;
 	    }
 	    if (finalHpMax <= 0) finalHpMax = 1;
 
-	    // 5) 최종 리젠
-	    int effRegen = baseRegen + bRegen + blessRegenBonus;
+	    // 5) 최종 리젠 (기본+아이템+축복)
+	    int effRegen = baseRegen + bRegen;
+	    effRegen += blessRegenBonus;
 	    if (effRegen < 0) effRegen = 0;
 
-	 // 🩸 흡혈귀: 리젠 완전 불가 (아이템/버프/운영자 축복 포함)
-	    if ("흡혈귀".equals(job)) {
-	    	bRegenRaw = 0;
-	    }
-	    
 	    // 6) 유효 체력 계산 (attackInfo와 동일 함수 사용)
 	    int effHp = computeEffectiveHpFromLastAttack(userName, roomName, u, finalHpMax, effRegen);
 	    if (effHp > finalHpMax) effHp = finalHpMax;
