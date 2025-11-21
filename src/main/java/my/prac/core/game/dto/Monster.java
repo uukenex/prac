@@ -8,4 +8,5 @@ public class Monster {
 	public String monDrop;
 	public int monPatten;
 	public String monName;
+	public int monLv;
 }
