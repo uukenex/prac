@@ -1024,6 +1024,8 @@ public class BossAttackController {
 	        
 	        if ("도사".equals(job)) {
 	        	lucky = ThreadLocalRandom.current().nextDouble() < LUCKY_RATE_DOSA;
+	        }else if("사신".equals(job)){
+	        	lucky = false;
 	        }else {
 	        	lucky = ThreadLocalRandom.current().nextDouble() < LUCKY_RATE;
 	        }
@@ -1077,6 +1079,11 @@ public class BossAttackController {
 	        if (globalCnt == 0) {
 	            return "사신은 최초 토벌에 도전불가!";
 	        }
+	        
+	        if(u.lv < m.monLv) {
+	        	return "사신은 몬스터레벨보다 높아야 공격할 수 있음!";
+	        }
+	        
 	    }
 	    
 	    Flags flags = new Flags();
@@ -1973,7 +1980,7 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	            int kills       = safeInt(k.get("KILL_COUNT"));
 
 	            if (!java.util.Objects.equals(lastMonNo, monNo)) {
-	            	sb.append(monNo).append("Lv ").append(monName).append(" 학살자");
+	            	sb.append(monNo).append("No ").append(monName).append(" 학살자");
 	                lastMonNo = monNo;
 	                lastMonName = monName;
 	            }
@@ -2000,7 +2007,7 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 
 	            clearedMonSet.add(monNo);
 
-	            sb.append(monNo).append("Lv ").append(monName)
+	            sb.append(monNo).append("No ").append(monName)
 	              .append(" ▶ ").append(firstUser);
 
 	            if (!firstJob.isEmpty() && !"null".equalsIgnoreCase(firstJob)) {
@@ -3682,10 +3689,8 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	            ? baseAtkRangeMin
 	            : ThreadLocalRandom.current().nextInt(baseAtkRangeMin, baseAtkRangeMax + 1);
 
-	    double critMultiplier = Math.max(1.0, effCriDmg / 100.0);
-
-	    int rawAtkDmg = crit ? (int) Math.round(baseAtk * critMultiplier) : baseAtk;
-
+	   
+	    
 	    // -----------------------------
 	    // 2) 궁수 저격, 프리스트 스켈레톤 추가뎀
 	    // -----------------------------
@@ -3693,14 +3698,18 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	    if ("궁수".equals(job)) {
 	        if (ThreadLocalRandom.current().nextDouble() < 0.065) {
 	            isSnipe = true;
-	            rawAtkDmg = rawAtkDmg * 20;
+	            baseAtk = baseAtk * 20;
 	            calc.jobSkillUsed = true;
 	        }
 	    }
 
 	    if ("프리스트".equals(job) && isSkeleton(m)) {
-	        rawAtkDmg = (int) Math.round(rawAtkDmg * 1.25);
+	    	baseAtk = (int) Math.round(baseAtk * 1.25);
 	    }
+	    
+	    
+	    double critMultiplier = Math.max(1.0, effCriDmg / 100.0);
+	    int rawAtkDmg = crit ? (int) Math.round(baseAtk * critMultiplier) : baseAtk;
 
 	    // -----------------------------
 	    // 3) 원턴킬 선판정

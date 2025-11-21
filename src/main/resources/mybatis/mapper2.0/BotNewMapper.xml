@@ -64,20 +64,20 @@
   </select>
 
   <select id="selectAllMonsters" resultType="my.prac.core.game.dto.Monster">
-    SELECT MON_NO, MON_NAME, MON_HP, MON_ATK, MON_EXP, MON_DROP, MON_PATTEN
+    SELECT MON_NO, MON_NAME, MON_HP, MON_ATK, MON_EXP, MON_DROP, MON_PATTEN, MON_LV
     FROM TBOT_POINT_NEW_MON_INFO
     ORDER BY MON_NO
   </select>
 
   <!-- 2) 몬스터 -->
   <select id="selectMonsterByNo" resultType="my.prac.core.game.dto.Monster">
-    SELECT MON_NO, MON_HP, MON_ATK, MON_EXP, MON_DROP, MON_PATTEN, MON_NAME
+    SELECT MON_NO, MON_HP, MON_ATK, MON_EXP, MON_DROP, MON_PATTEN, MON_NAME, MON_LV
     FROM TBOT_POINT_NEW_MON_INFO
     WHERE MON_NO = #{monNo}
   </select>
 
   <select id="selectMonsterByName" resultType="my.prac.core.game.dto.Monster">
-    SELECT MON_NO, MON_HP, MON_ATK, MON_EXP, MON_DROP, MON_PATTEN, MON_NAME
+    SELECT MON_NO, MON_HP, MON_ATK, MON_EXP, MON_DROP, MON_PATTEN, MON_NAME, MON_LV
     FROM TBOT_POINT_NEW_MON_INFO
     WHERE MON_NAME = #{monName}
   </select>
