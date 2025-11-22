@@ -2000,6 +2000,7 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	    if (firsts != null && !firsts.isEmpty()) {
 	        for (HashMap<String,Object> fc : firsts) {
 	            int monNo        = safeInt(fc.get("MON_NO"));
+	            int monLv        = safeInt(fc.get("MON_LV"));
 	            String monName   = String.valueOf(fc.get("MON_NAME"));
 	            String firstUser = String.valueOf(fc.get("FIRST_CLEAR_USER"));
 	            String firstJob  = Objects.toString(fc.get("FIRST_CLEAR_JOB"), "");
@@ -2007,7 +2008,7 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 
 	            clearedMonSet.add(monNo);
 
-	            sb.append(monNo).append("No ").append(monName)
+	            sb.append("No ").append(monNo).append(" ").append(monName).append(monLv).append("Lv")
 	              .append(" ▶ ").append(firstUser);
 
 	            if (!firstJob.isEmpty() && !"null".equalsIgnoreCase(firstJob)) {
@@ -3106,7 +3107,7 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	    StringBuilder sb = new StringBuilder();
 
 	    // 1행: 기본 정보
-	    sb.append(m.monNo).append(". ").append(m.monName)
+	    sb.append(m.monNo).append(". ").append(m.monName).append(" [").append(m.monLv).append("lv]")
 	      .append(" ❤️HP ").append(m.monHp)
 	      .append(" ⚔ATK ").append(atkMin).append("~").append(atkMax)
 	      .append(NL);
