@@ -671,7 +671,7 @@ public class BossAttackController {
 		// 예: 사용자가 /공격타겟 13 입력 → newMonNo = 13
 		int newMonNo = m.monNo; // 네가 사용하는 변수명에 맞게 치환
 
-		if(newMonNo > 1) {
+		if(newMonNo > 1  && newMonNo < 50) {
 			// 1) 바로 아래 등급 몬스터 번호 계산
 			int prevMonNo = Math.max(1, newMonNo - 1);
 
@@ -3941,5 +3941,6 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	
 	
 }
+
 
 
