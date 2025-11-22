@@ -2422,13 +2422,21 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	    Resolve r = new Resolve();
 	    r.killed = willKill;
 	    r.lucky  = lucky;
+	    int levelGap = u.lv - m.monLv;
+	    double expMultiplier;
+	    
+	    if (levelGap >= 0) {
+	        // 플레이어가 몬스터보다 높을 때
+	        expMultiplier = Math.max(0.1, 1.0 - Math.min(levelGap, 5) * 0.1);
+	    } else {
+	        // 몬스터가 더 강할 때 (보너스)
+	        expMultiplier = 1.0 + Math.min(-levelGap, 5) * 0.05; // 레벨 차이 1당 5% 보너스, 최대 25%
+	    }
 
-	    int baseKillExp = (int)Math.round(
-	        m.monExp * Math.max(0.1, 1.0 - Math.max(0, u.lv - m.monNo) * 0.1)
-	    );
+	    int baseKillExp = (int)Math.round(m.monExp * expMultiplier);
 
 	    if (willKill) r.gainExp = lucky ? baseKillExp * 3 : baseKillExp;
-	    else          r.gainExp = (int)Math.round(baseKillExp/100)+1;  // ✅ 비처치 EXP 1 → 2
+	    else          r.gainExp = (int)Math.round(baseKillExp/100)+1;  //
 
 	    if (lucky && willKill) {
 	        r.dropCode = "3";
