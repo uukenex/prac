@@ -77,8 +77,8 @@ public class BossAttackController {
 
 	    // 2) 프리스트: 아이템 HP/리젠 1.5배
 	    if ("프리스트".equals(job)) {
-	        bHpMax = (int)Math.round(bHpMax * 1.5);
-	        bRegen = (int)Math.round(bRegen * 1.5);
+	        bHpMax = (int)Math.round(bHpMax * 1.25);
+	        bRegen = (int)Math.round(bRegen * 1.25);
 	    }
 
 	    int baseHpMax = u.hpMax;
@@ -367,8 +367,8 @@ public class BossAttackController {
 
 		// 프리스트: 아이템 HP/리젠 효과 1.5배 (표시용 쪼개기)
 		if ("프리스트".equals(job)) {
-			int boostedHp = (int) Math.round(bHpMaxRaw * 1.5);
-			int boostedRegen = (int) Math.round(bRegenRaw * 1.5);
+			int boostedHp = (int) Math.round(bHpMaxRaw * 1.25);
+			int boostedRegen = (int) Math.round(bRegenRaw * 1.25);
 			jobHpMaxBonus = boostedHp - bHpMaxRaw;
 			jobRegenBonus = boostedRegen - bRegenRaw;
 			bHpMax = boostedHp;
@@ -911,8 +911,8 @@ public class BossAttackController {
 	    // 3) 직업 패시브 반영 (표시/전투 공통 기반치)
 	    // 프리스트: 아이템 HP 효과 2배
 	    if ("프리스트".equals(job)) {
-	        bHpMax = (int) Math.round(bHpMax * 1.5);
-	        bRegen = (int) Math.round(bRegen * 1.5);
+	        bHpMax = (int) Math.round(bHpMax * 1.25);
+	        bRegen = (int) Math.round(bRegen * 1.25);
 	    }
 
 	    // 4) 무기 강화
@@ -997,13 +997,6 @@ public class BossAttackController {
 	        revivedThisTurn = true;
 	    }
 
-	    double berserkMul = 1.0;
-	    if ("전사".equals(job) && effHpMax > 0) {
-	        double hpRatio = (double) u.hpCur / effHpMax;
-	        if (hpRatio < 0.5) {
-	            berserkMul = 1.0 + (0.5 - hpRatio) * 2.0; // 0% ~ +100%
-	        }
-	    }
 
 	    // 8) 진행중 전투 / 신규 전투 + LUCKY 유지
 	    OngoingBattle ob = botNewService.selectOngoingBattle(userName, roomName);
@@ -1064,6 +1057,14 @@ public class BossAttackController {
 	        for (AchievementCount ac : userList) {
 	            if (ac == null || ac.getCmd() == null) continue;
 	            userAchvMap.put(ac.getCmd(), ac.getCnt());
+	        }
+	    }
+	    
+	    double berserkMul = 1.0;
+	    if ("전사".equals(job) && effHpMax > 0 && m.monLv >= u.lv) {
+	        double hpRatio = (double) u.hpCur / effHpMax;
+	        if (hpRatio < 0.5) {
+	            berserkMul = 1.0 + (0.5 - hpRatio) * 2.0; // 0% ~ +100%
 	        }
 	    }
 	    
@@ -1169,7 +1170,7 @@ public class BossAttackController {
 		 // 13) 즉사 처리
 		 int newHpPreview = Math.max(0, u.hpCur - calc.monDmg);
 		 
-		 if ("사신".equals(job) && newHpPreview <= 0) {
+		 if ("사신".equals(job) && newHpPreview <= 0 && flags.monPattern != 5) {
 		     // HP는 1 남기고 버틴다고 가정
 		     newHpPreview = 1;
 		     // 실제로는 1만 남도록 몬스터 피해 조정
@@ -2325,6 +2326,7 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	    if (enabled == 2) { weights[0] = 20; weights[1] = 80; }
 	    if (enabled == 3) { weights[0] = 10; weights[1] = 60; weights[2] = 30; }
 	    if (enabled == 4) { weights[0] = 0; weights[1] = 60; weights[2] = 25; weights[3] = 15; }
+	    if (enabled == 5) { weights[0] = 0; weights[1] = 60; weights[2] = 9; weights[3] = 30; weights[4] = 1; }
 	    int sum = 0; for (int w : weights) sum += Math.max(0, w);
 	    if (sum <= 0) { for (int i = 0; i < enabled; i++) weights[i] = 1; sum = enabled; }
 	    int pick = r.nextInt(sum) + 1, acc = 0;
@@ -2374,6 +2376,10 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 		    }
 		    break;
 		case 4: c.monDmg = (int) Math.round(m.monAtk * 1.5); c.patternMsg = name + "의 필살기! (피해 " + c.monDmg + ")"; break;
+		case 5:   // 🔥 NEW: 즉사 패턴
+		    c.monDmg = 9_999_999;  // 사실상 무조건 즉사
+		    c.patternMsg = name + "의 알수없는 공격"; 
+		    break;
 		default: c.monDmg = 0; c.patternMsg = name + "의 알 수 없는 행동… (피해 0)";
 		}
 		return c;
@@ -2443,11 +2449,38 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	        r.dropCode = "3";
 	        return r;
 	    }
-	    boolean drop = willKill && ThreadLocalRandom.current().nextDouble(0, 100) < 40.0;
+	    
+	    double dropRate = getDropRateByLevel(m.monNo);  // ← 새 메서드 사용
+	    
+	    boolean drop = willKill && ThreadLocalRandom.current().nextDouble(0, 100) < dropRate;
 	    r.dropCode = drop ? "1" : "0";
 	    return r;
 	}
-
+	private double getDropRateByLevel(int monLv) {
+	    switch (monLv) {
+	        case 1:  return 70.0;
+	        case 2:  return 65.0;
+	        case 3:  return 60.0;
+	        case 4:  return 60.0;
+	        case 5:  return 50.0;
+	        case 6:  return 50.0;
+	        case 7:  return 50.0;
+	        case 8:  return 50.0;
+	        case 9:  return 50.0;
+	        case 10: return 40.0;
+	        case 11: return 40.0;
+	        case 12: return 40.0;
+	        case 13: return 30.0;
+	        case 14: return 20.0;
+	        case 15: return 20.0;
+	        case 16: return 20.0;
+	        case 17: return 20.0;
+	        case 18: return 20.0;
+	        case 19: return 20.0;
+	        case 20: return 20.0;
+	        default: return 10.0;
+	    }
+	}
 	
 	private int calcBaseHpMax(int lv) {
 	    if (lv <= 1) return 10;
@@ -3625,8 +3658,8 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 
 	    int dosaAtkMax = calcUserEffectiveAtkMax(dosaUser, roomName);
 
-	    int dosaLvBonus = (int) Math.round(dosaLv * 0.25);
-	    int dosaCriDmg  = (int) Math.round(dosaAtkMax * 0.1);
+	    int dosaLvBonus = (int) Math.round(dosaLv * 0.5);
+	    int dosaCriDmg  = (int) Math.round(dosaAtkMax * 0.2);
 
 	    eff.addAtkMin   = dosaLvBonus;
 	    eff.addAtkMax   = dosaLvBonus;
@@ -3753,12 +3786,12 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	        if ("마법사".equals(job) && flags.monPattern == 3) {
 	            calc.jobSkillUsed = true;
 	            flags.monPattern = 1; // 방어 대신 무행동으로 취급
-	            calc.atkDmg = (int) Math.round(calc.atkDmg * 1.5);
-	            calc.patternMsg = m.monName + "의 방어가 마법사의 힘에 의해 무너졌습니다! (피해 1.5배)";
+	            calc.atkDmg = (int) Math.round(calc.atkDmg * 2);
+	            calc.patternMsg = m.monName + "의 방어가 마법사의 힘에 의해 무너졌습니다! (피해 2배)";
 	        }
 
 	        // 🛡 전사: 보스 필살기 패링 (20% 확률)
-	        if ("전사".equals(job) && flags.finisher && calc.monDmg > 0) {
+	        if ("전사".equals(job) && flags.finisher && calc.monDmg > 0 && m.monLv > u.lv) {
 	            if (ThreadLocalRandom.current().nextDouble() < 0.20) {
 
 	                int bossSkillDmg = calc.monDmg;             // 보스 필살기 데미지
@@ -3799,12 +3832,11 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	            }
 	        }
 
-	        // ✝ 프리스트: 받는 피해 30% 감소 (필살기 제외)
 	        if ("프리스트".equals(job) && calc.monDmg > 0 && !flags.finisher) {
-	            int reduced = (int) Math.floor(calc.monDmg * 0.7); // 30% 감소
+	            int reduced = (int) Math.floor(calc.monDmg * 0.8);
 	            if (reduced < 1) reduced = 1;
 	            String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
-	            calc.patternMsg = baseMsg + "(받는 피해 30% 감소 → " + reduced + ")";
+	            calc.patternMsg = baseMsg + "(받는 피해 20% 감소 → " + reduced + ")";
 	            calc.monDmg = reduced;
 	        }
 
@@ -3879,8 +3911,8 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	    // NL은 클래스에 이미 있는 상수라고 가정하고 그대로 사용
 	    JOB_DEFS.put("전사", new JobDef(
 	        "전사",
-	        "▶ 전사 :육체능력이 변경되며, 체력이 낮아질수록 강해진다",
-	        "⚔ 기본 HP만큼 추가 증가, 방어 추가, 버서크모드(50%이하부터,점점 강해짐 데미지 최대 2배), -hidden-"
+	        "▶ 전사 :육체능력이 변경되며, 강한적을 상대하면 강해진다",
+	        "⚔ 기본 HP만큼 추가 증가, 방어 추가, 자신보다 몬스터 lv이 높을때 [버서크모드(50%이하부터,점점 강해짐 데미지 최대 2배), -hidden-] 활성화"
 	    ));
 
 	    JOB_DEFS.put("궁수", new JobDef(
@@ -3892,19 +3924,19 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	    JOB_DEFS.put("마법사", new JobDef(
 	        "마법사",
 	        "▶ 마법사 :강력한 마법공격으로 몬스터의 방어태세를 무력화한다",
-	        "⚔ 몬스터가 방어시 방어를 무시하고 피해 1.25배를 줌"
+	        "⚔ 몬스터가 방어시 방어를 무시하고 피해 2배를 줌"
 	    ));
 
 	    JOB_DEFS.put("도적", new JobDef(
 	        "도적",
 	        "▶ 도적 :날렵한 손놀림으로 적의공격을 피하며,아이템을 강탈한다",
-	        "⚔ 공격 시 25% 확률 추가 드랍(STEAL), 몬스터 기본 공격 40% 회피, [고레벨 일수록 확률 감소] "
+	        "⚔ 공격 시 25% 확률 추가 드랍(STEAL), 몬스터 기본 공격 40% 회피, [스틸,회피 no12부터 3%씩 감소] "
 	    ));
 
 	    JOB_DEFS.put("프리스트", new JobDef(
 	        "프리스트",
 	        "▶ 프리스트 :대사제의 축복을 받아 신성의힘으로 적을 물리친다",
-	        "⚔ 아이템 HP/리젠 효과 1.5배, 몬스터에게 받는 피해 감소, -hidden-"
+	        "⚔ 아이템 HP/리젠 효과 1.25배, 몬스터에게 받는 피해 감소(20%), 언데드추가피해(+25%)"
 	    ));
 	    /*
 	    JOB_DEFS.put("상인", new JobDef(
@@ -3916,7 +3948,7 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	    JOB_DEFS.put("도사", new JobDef(
 	        "도사",
 	        "▶ 도사 :도를 닦아 깨달음을 얻은 위인",
-	        "⚔ 다음 공격하는 아군의 (공격력↑,치명타↑,치명타뎀↑,HP회복), 자신의 럭키몬스터 등장 확률 증가"
+	        "⚔ 다음 공격하는 아군 강화(레벨*0.5만큼 능력강화,맥뎀*0.2만큼 치명뎀강화, 자신의 럭키몬스터 등장 확률 증가"
 	    ));
 	    /*
 	    JOB_DEFS.put("기사", new JobDef(
