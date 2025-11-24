@@ -350,6 +350,12 @@ public class BotNewServiceImpl implements BotNewService {
         return botNewDAO.selectItemNameById(itemId);
     }
 
-    
+    @Override
+    public List<Integer> selectBagRewardItemIdsUserNotOwned(String userName, String roomName) {
+        HashMap<String,Object> p = new HashMap<>();
+        p.put("userName", userName);
+        p.put("roomName", roomName);
+        return botNewDAO.selectBagRewardItemIdsUserNotOwned(p);
+    }
 
 }

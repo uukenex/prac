@@ -903,4 +903,17 @@
 	      FROM TBOT_POINT_NEW_ITEM
 	     WHERE ITEM_ID = #{itemId}
 	</select>
+	
+	<select id="selectBagRewardItemIdsUserNotOwned" parameterType="hashmap" resultType="int">
+    SELECT ITEM_ID
+      FROM TBOT_POINT_NEW_ITEM I
+     WHERE I.ITEM_TYPE = 'BAG_REWARD'
+       AND I.ITEM_ID NOT IN (
+           SELECT DISTINCT ITEM_ID
+             FROM TBOT_POINT_NEW_INVENTORY
+            WHERE USER_NAME = #{userName}
+              AND ROOM_NAME = #{roomName}
+              AND DEL_YN = '0'
+       )
+</select>
 </mapper>

@@ -185,5 +185,7 @@ public interface BotNewDAO {
 	List<Integer> selectBagRewardItemIds();
 	
 	String selectItemNameById(@Param("itemId") int itemId);
+	
+	List<Integer> selectBagRewardItemIdsUserNotOwned(HashMap<String,Object> map);
     
 }

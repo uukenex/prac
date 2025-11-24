@@ -190,10 +190,9 @@ public class BossAttackController {
 	    // 3) 보상 결정 (컨트롤러에서 확률/로직 모두 처리)
 	    double roll = ThreadLocalRandom.current().nextDouble();
 
-	    // 예시: 60% SP, 40% 아이템
-	    if (roll < 0.60) {
-	        // SP 보상
-	        int sp = ThreadLocalRandom.current().nextInt(200, 50001); // 100~300
+	    if (roll < 0.80) {
+	    	// 🔥 작은 쪽이 더 잘 나오는 SP 보상 (200 ~ 50000)
+	        int sp = pickBiasedSp(200, 50000);
 
 	        HashMap<String,Object> pr = new HashMap<>();
 	        pr.put("userName", userName);
@@ -205,11 +204,22 @@ public class BossAttackController {
 
 	        return "가방을 열어보니 반짝이는 포인트가 나옵니다! +" + sp + "sp";
 	    } else {
-	        // 아이템 보상
-	        List<Integer> rewardItemIds = botNewService.selectBagRewardItemIds();
+	    	
+	    	// 아이템 보상
+
+	        // 1순위: 가지고 있지 않은 보상 아이템
+	        List<Integer> rewardItemIds = botNewService
+	                .selectBagRewardItemIdsUserNotOwned(userName, roomName);
+
+	        // 하나도 없으면: 전체 보상 풀에서 뽑거나, SP로 대체
 	        if (rewardItemIds == null || rewardItemIds.isEmpty()) {
-	            // 보상 풀 없으면 SP로 대체
-	            int sp = ThreadLocalRandom.current().nextInt(100, 301);
+	            // 전체 보상 아이템 목록
+	            rewardItemIds = botNewService.selectBagRewardItemIds();
+	        }
+
+	        // 그래도 없으면 최종적으로 SP 보상
+	        if (rewardItemIds == null || rewardItemIds.isEmpty()) {
+	            int sp = pickBiasedSp(100, 300);
 
 	            HashMap<String,Object> pr = new HashMap<>();
 	            pr.put("userName", userName);
@@ -4068,6 +4078,13 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	        this.listLine = listLine;
 	        this.attackLine = attackLine;
 	    }
+	}
+	
+	private int pickBiasedSp(int min, int max) {
+	    double r = ThreadLocalRandom.current().nextDouble(); // 0.0 ~ 1.0
+	    double biased = r * r; // 0에 가까운 값이 더 많이 나옴
+	    int span = max - min;
+	    return min + (int)Math.round(span * biased);
 	}
 	
 	// 직업 메타데이터 맵 (등록 순서 유지 위해 LinkedHashMap)

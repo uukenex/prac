@@ -134,6 +134,8 @@ public interface BotNewService {
     List<Integer> selectBagRewardItemIds();
 
     String selectItemNameById(int itemId);
+    
+    List<Integer> selectBagRewardItemIdsUserNotOwned(String userName, String roomName);
 } 
 
 	
