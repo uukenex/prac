@@ -3324,7 +3324,7 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	                case 1: desc = "1: 주시"; break;
 	                case 2: desc = "2: 공격"; break;
 	                case 3: desc = "3: 방어"; break;
-	                case 4: desc = "4: 필살기"; break;
+	                case 4: desc = "4: 필살기(최댐*1.5)"; break;
 	                case 5: desc = "5: hidden"; break; // 필요하면
 	                default: break;
 	            }
@@ -4173,8 +4173,9 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	}
 	
 	private int pickBiasedSp(int min, int max) {
-	    double r = ThreadLocalRandom.current().nextDouble(); // 0.0 ~ 1.0
-	    double biased = r * r; // 0에 가까운 값이 더 많이 나옴
+	    double r = ThreadLocalRandom.current().nextDouble(); // 0~1
+	    double biased = Math.pow(r, 8); // 극단적으로 0쪽으로 치우침
+
 	    int span = max - min;
 	    return min + (int)Math.round(span * biased);
 	}
