@@ -768,12 +768,14 @@
 	</update>
 	
 	<select id="selectDosaBuffInfo" parameterType="string" resultType="hashmap">
+	    /*selectDosaBuffInfo*/
 	    SELECT USER_NAME,
 	           LV,
 	           INSERT_DATE
 	      FROM TBOT_POINT_NEW_BATTLE_LOG
 	     WHERE ROOM_NAME = #{roomName}
 	       AND BUFF_YN = '1'
+	       and rownum=1
 	     ORDER BY INSERT_DATE DESC
 	</select>
 	
