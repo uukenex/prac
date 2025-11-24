@@ -261,7 +261,7 @@ public class BossAttackController {
 	                label += suffix;    // 예: 고대돌조각(ATK+30~30)
 	            }
 	        }
-	        return "🎒 가방을 열어보니 [" + label + "] 아이템을 획득했습니다!";
+	        return "가방을 열어보니 [" + label + "] 아이템을 획득했습니다!";
 	    }
 	}
 
@@ -669,7 +669,7 @@ public class BossAttackController {
 	                
 	                List<String> bucket = catMap.get(cat);
 	                if (bucket == null) {
-	                    bucket = catMap.get("기타");
+	                    bucket = catMap.get("※기타");
 	                }
 	                bucket.add(label);
 	            }
@@ -686,7 +686,9 @@ public class BossAttackController {
 
 	            sb.append(NL);
 	        }
-	    } catch (Exception ignore) {}
+	    } catch (Exception ignore) {
+	    	ignore.printStackTrace();
+	    }
 
 	    
 	    
@@ -4226,7 +4228,7 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	    if (itemId >= 700 && itemId < 800)  return "※전설";   // 700번대
 	    if (itemId >= 900 && itemId < 1000) return "※선물";   // 900번대
 	    if (itemId >= 9000 && itemId < 10000) return "※유물"; // 9000번대 (BAG_REWARD, 유물류)
-	    return "기타";
+	    return "※기타";
 	}
 	private String buildRelicStatSuffix(HashMap<String, Object> row) {
 	    int atkMin = parseIntSafe(Objects.toString(row.get("ATK_MIN"), "0"));
