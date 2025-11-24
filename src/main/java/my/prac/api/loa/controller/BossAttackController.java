@@ -3784,9 +3784,21 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 
 	        // 🔥 마법사: 패턴3 방어를 깨뜨리고 1.5배 피해
 	        if ("마법사".equals(job) && flags.monPattern == 3) {
-	            calc.jobSkillUsed = true;
-	            flags.monPattern = 1; // 방어 대신 무행동으로 취급
-	            calc.atkDmg = (int) Math.round(calc.atkDmg * 2);
+	        	// 패턴3 → 방어 대신 무행동 취급
+	            flags.monPattern = 1;
+
+	            // ✅ 방어 적용 전 기준( baseAtk * critMultiplier )으로 다시 계산
+	            int originalDmg = (int) Math.round(calc.baseAtk * calc.critMultiplier);
+
+	            int newDmg = (int) Math.round(originalDmg * 2.0);
+	            calc.atkDmg = newDmg;
+	            calc.monDmg = 0;  // 방어 패턴이었으니 몬스터 피해는 0 유지
+
+	            // 디버그용 계수도 실제 데미지에 맞게 재계산
+	            if (calc.baseAtk > 0) {
+	                calc.critMultiplier = (double) newDmg / calc.baseAtk;
+	            }
+
 	            calc.patternMsg = m.monName + "의 방어가 마법사의 힘에 의해 무너졌습니다! (피해 2배)";
 	        }
 
