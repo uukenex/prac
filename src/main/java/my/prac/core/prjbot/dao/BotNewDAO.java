@@ -175,5 +175,6 @@ public interface BotNewDAO {
 
     HashMap<String, Object> selectActiveMonster(@Param("userName")String userName,@Param("roomName") String roomName);
     
+    public int execSPMsgTest(HashMap<String,Object> map) throws Exception;
     
 }

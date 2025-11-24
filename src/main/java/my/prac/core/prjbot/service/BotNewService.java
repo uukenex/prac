@@ -123,6 +123,8 @@ public interface BotNewService {
     List<AchievementCount> selectAchvCountsGlobal(String userName,String roomName);
     List<AchievementCount> selectAchvCountsGlobalAll();
     HashMap<String, Object> selectActiveMonster(String userName, String roomName);
+    
+    public void execSPMsgTest(HashMap<String,Object> map) throws Exception;
 } 
 
 	

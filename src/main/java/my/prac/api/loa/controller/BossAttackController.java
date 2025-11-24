@@ -1364,6 +1364,15 @@ public class BossAttackController {
 	        msg += NL + "※ 아직 전직하지 않았습니다. /직업 으로 확인해주세요!";
 	    }
 
+	    try {
+			botNewService.execSPMsgTest(map);
+			
+			msg+=NL+""+map.get("outMsg");
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	    
 	    return msg;
 	}
 
@@ -3315,6 +3324,16 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	        	case 100: return 600;
 	        	case 300: return 600;
 	        	case 500: return 600;
+	        	}
+	        	break;
+	        case 14: // 리치
+	        case 15: // 하급악마
+	        case 16: // 
+	        	switch (threshold) {
+	        	case 50:  return 800;
+	        	case 100: return 800;
+	        	case 300: return 800;
+	        	case 500: return 800;
 	        	}
 	        	break;
 	    }

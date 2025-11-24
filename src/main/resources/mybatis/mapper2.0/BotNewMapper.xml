@@ -695,7 +695,8 @@
 	               ROOM_NAME,
 	               (SELECT U.JOB
 					   FROM TBOT_POINT_NEW_USER U
-					  WHERE U.USER_NAME = A.USER_NAME) AS JOB,
+					  WHERE U.USER_NAME = A.USER_NAME
+					    AND ROWNUM=1) AS JOB,
 	               COUNT(*) AS ATK_CNT,
 	               MAX(INSERT_DATE) AS LAST_ATTACK
 	        FROM TBOT_POINT_NEW_BATTLE_LOG A
@@ -860,5 +861,12 @@
 	       AND CMD LIKE 'ACHV_%'
 	     GROUP BY CMD
 	</select>
+	
+	<update id="execSPMsgTest" statementType="CALLABLE" parameterType="hashMap">
+		{call SP_MSG_TEST ( #{outCode  , jdbcType=NUMERIC,mode=INOUT},
+						 	#{outMsg   , jdbcType=VARCHAR,mode=INOUT}
+							)
+		}
+	</update>
 		
 </mapper>

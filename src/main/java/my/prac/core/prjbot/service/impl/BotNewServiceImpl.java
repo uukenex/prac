@@ -320,5 +320,9 @@ public class BotNewServiceImpl implements BotNewService {
     public List<AchievementCount> selectAchvCountsGlobalAll() {
         return botNewDAO.selectAchvCountsGlobalAll();
     }
+    @Override
+    public void execSPMsgTest(HashMap<String,Object> map) throws Exception{
+    	 botNewDAO.execSPMsgTest(map);
+    }
 
 }
