@@ -44,7 +44,7 @@ public class BossAttackController {
 	private static final double LUCKY_RATE = 0.15;
 	private static final double LUCKY_RATE_DOSA = 0.20;
 	private static final String ALL_SEE_STR = "===";
-
+	private static final int BAG_ITEM_ID = 91;
 	/* ===== DI ===== */
 	@Autowired LoaPlayController play;
 	@Resource(name = "core.prjbot.BotService")        BotService botService;
@@ -165,6 +165,82 @@ public class BossAttackController {
 	    return sb.toString();
 	}
 	
+	
+
+	public String openBag(HashMap<String,Object> map) {
+	    final String roomName = Objects.toString(map.get("roomName"), "");
+	    final String userName = Objects.toString(map.get("userName"), "");
+
+	    if (roomName.isEmpty() || userName.isEmpty()) {
+	        return "방/유저 정보가 누락되었습니다.";
+	    }
+
+	    // 1) 가방 개수 확인
+	    int bagCount = botNewService.selectBagCount(userName, roomName);
+	    if (bagCount <= 0) {
+	        return "🎒 열 수 있는 가방이 없습니다.";
+	    }
+
+	    // 2) 가방 1개 소비
+	    int updated = botNewService.consumeOneBag(userName, roomName);
+	    if (updated <= 0) {
+	        return "🎒 가방을 사용하는 중 오류가 발생했습니다. 다시 시도해주세요.";
+	    }
+
+	    // 3) 보상 결정 (컨트롤러에서 확률/로직 모두 처리)
+	    double roll = ThreadLocalRandom.current().nextDouble();
+
+	    // 예시: 60% SP, 40% 아이템
+	    if (roll < 0.60) {
+	        // SP 보상
+	        int sp = ThreadLocalRandom.current().nextInt(200, 50001); // 100~300
+
+	        HashMap<String,Object> pr = new HashMap<>();
+	        pr.put("userName", userName);
+	        pr.put("roomName", roomName);
+	        pr.put("score", sp);
+	        pr.put("cmd", "BAG_OPEN_SP");
+
+	        botNewService.insertPointRank(pr);
+
+	        return "가방을 열어보니 반짝이는 포인트가 나옵니다! +" + sp + "sp";
+	    } else {
+	        // 아이템 보상
+	        List<Integer> rewardItemIds = botNewService.selectBagRewardItemIds();
+	        if (rewardItemIds == null || rewardItemIds.isEmpty()) {
+	            // 보상 풀 없으면 SP로 대체
+	            int sp = ThreadLocalRandom.current().nextInt(100, 301);
+
+	            HashMap<String,Object> pr = new HashMap<>();
+	            pr.put("userName", userName);
+	            pr.put("roomName", roomName);
+	            pr.put("score", sp);
+	            pr.put("cmd", "BAG_OPEN_SP");
+
+	            botNewService.insertPointRank(pr);
+
+	            return "보상 아이템이 없어, 대신 +" + sp + "sp 를 획득했습니다.";
+	        }
+
+	        int idx = ThreadLocalRandom.current().nextInt(rewardItemIds.size());
+	        int itemId = rewardItemIds.get(idx);
+
+	        HashMap<String,Object> inv = new HashMap<>();
+	        inv.put("userName", userName);
+	        inv.put("roomName", roomName);
+	        inv.put("itemId", itemId);
+	        inv.put("qty", 1);
+	        inv.put("delYn", "0");
+	        inv.put("gainType", "BAG_OPEN");
+
+	        botNewService.insertInventoryLogTx(inv);
+
+	        String itemName = botNewService.selectItemNameById(itemId);
+
+	        return "🎒 가방을 열어보니 [" + itemName + "] 아이템을 획득했습니다!";
+	    }
+	}
+
 	/* ===== Public APIs ===== */
 	public String changeJob(HashMap<String,Object> map) {
 	    final String roomName = Objects.toString(map.get("roomName"), "");
@@ -1019,6 +1095,8 @@ public class BossAttackController {
 	        	lucky = ThreadLocalRandom.current().nextDouble() < LUCKY_RATE_DOSA;
 	        }else if("사신".equals(job)){
 	        	lucky = false;
+	        }else if(m.monNo > 50){
+	        	lucky = false;
 	        }else {
 	        	lucky = ThreadLocalRandom.current().nextDouble() < LUCKY_RATE;
 	        }
@@ -1234,7 +1312,7 @@ public class BossAttackController {
 	    }
 	    
 	    String stealMsg = null;
-	    if ("도적".equals(job)) {
+	    if ("도적".equals(job) && !(m.monNo > 50) ) {
 	    	double stealRate = 0.25;
 	    	int monLv  = m.monNo;
 		    switch(monLv) {
@@ -1286,6 +1364,7 @@ public class BossAttackController {
 	    blessMsg = grantBlessLevelBonus(userName, roomName, up.beforeLv, up.afterLv);
 	    
 	    
+	    String bagDropMsg = "";
 	    if (res.killed) {
 	        // 진행중 전투 종료
 	        botNewService.closeOngoingBattleTx(userName, roomName);
@@ -1302,6 +1381,8 @@ public class BossAttackController {
 	            bonusMsg = NL + firstClearMsg + killAchvMsg;
 	        }
 	        
+	        // 💼 가방 드랍 시도
+	        bagDropMsg = tryDropBag(userName, roomName, m);
 	    }
 
 	    // 17) 메시지 구성 (표시용 ATK 범위에 직업 효과 반영)
@@ -1363,6 +1444,10 @@ public class BossAttackController {
 	    if ((job.isEmpty()) && u.lv >= 1) {
 	        msg += NL + "※ 아직 전직하지 않았습니다. /직업 으로 확인해주세요!";
 	    }
+	    
+	    if (bagDropMsg != null && !bagDropMsg.isEmpty()) {
+	        msg += NL + bagDropMsg;
+	    }
 
 	    try {
 			botNewService.execSPMsgTest(map);
@@ -1374,6 +1459,56 @@ public class BossAttackController {
 		}
 	    
 	    return msg;
+	}
+	
+	
+	private String tryDropBag(String userName, String roomName, Monster m) {
+
+	    // 몬스터에 따른 가방 드랍 확률 (예시)
+	    double rate = getBagDropRate(m.monNo);
+
+	    if (ThreadLocalRandom.current().nextDouble() >= rate) {
+	        return ""; // 드랍 실패 → 메시지 없음
+	    }
+
+	    // 인벤토리에 가방 1개 추가
+	    try {
+	        HashMap<String,Object> inv = new HashMap<>();
+	        inv.put("userName", userName);
+	        inv.put("roomName", roomName);
+	        inv.put("itemId", BAG_ITEM_ID);
+	        inv.put("qty", 1);
+	        inv.put("delYn", "0");
+	        inv.put("gainType", "BAG_DROP");
+
+	        botNewService.insertInventoryLogTx(inv);
+
+	        return "" + m.monName + "이(가) 수상한 가방을 떨어뜨렸습니다! (/가방열기 로 열 수 있습니다.)";
+	    } catch (Exception e) {
+	        // 실패해도 전투 진행은 깨지 않게
+	        // log.error("bag drop error", e);
+	        return "";
+	    }
+	}
+	
+	private double getBagDropRate(int monNo) {
+	    // 예시: 초반 몹은 5%, 후반 보스는 15%
+	    switch (monNo) {
+	        case 1: case 2: case 3: case 4: case 5:
+	            return 0.001;  // 0.1%
+	        case 6: case 7: case 8: case 9: case 10:
+	            return 0.002;  // 0.2%
+	        case 11: case 12: case 13:
+	            return 0.003;  // 0.3%
+	        case 14: case 15:
+	            return 0.004;  // 0.4%
+	        case 16: case 17: case 18: case 19: case 20:
+	            return 0.005;  // 0.5%
+	        case 91:
+	        	return 0.01;  // 1%
+	        default:
+	            return 0.01;
+	    }
 	}
 
 	private boolean isSkeleton(Monster m) {

@@ -642,6 +642,11 @@ public class LoaChatController {
 			case "/체력": case "/ㅊㄹ":
 				val = boss.getHpStatus(reqMap);
 				break;
+			case "/ㄱㅂㅇㅍ": case "/ㄱㅂㅇㄱ":
+			case "/가방오픈": case "/가방열기":
+				val = "공개되지 않았습니다.";
+				//val = boss.openBag(reqMap);
+				break;
 			case "/공격랭킹": case "/ㄱㄱㄹㅋ":
 				val = boss.showAttackRanking(reqMap);
 				break;

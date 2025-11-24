@@ -324,5 +324,32 @@ public class BotNewServiceImpl implements BotNewService {
     public void execSPMsgTest(HashMap<String,Object> map) throws Exception{
     	 botNewDAO.execSPMsgTest(map);
     }
+    
+    
+    @Override
+    public int selectBagCount(String userName, String roomName) {
+        return botNewDAO.selectBagCount(userName, roomName, 91);
+    }
+
+    @Override
+    public int consumeOneBag(String userName, String roomName) {
+        HashMap<String,Object> p = new HashMap<>();
+        p.put("userName", userName);
+        p.put("roomName", roomName);
+        p.put("itemId", 91);
+        return botNewDAO.consumeOneBag(p);
+    }
+
+    @Override
+    public List<Integer> selectBagRewardItemIds() {
+        return botNewDAO.selectBagRewardItemIds();
+    }
+
+    @Override
+    public String selectItemNameById(int itemId) {
+        return botNewDAO.selectItemNameById(itemId);
+    }
+
+    
 
 }

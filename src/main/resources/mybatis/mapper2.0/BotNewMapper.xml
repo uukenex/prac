@@ -869,4 +869,38 @@
 		}
 	</update>
 		
+		
+	<select id="selectBagCount" resultType="int">
+    SELECT NVL(SUM(QTY), 0)
+      FROM TBOT_POINT_NEW_INVENTORY
+     WHERE USER_NAME = #{userName}
+       AND ROOM_NAME = #{roomName}
+       AND ITEM_ID   = #{itemId}
+       AND DEL_YN    = '0'
+	</select>
+	
+	<!-- 2) 가방 1개 소비: 가장 먼저 들어온 1개를 del_yn='1'로 -->
+	<update id="consumeOneBag" parameterType="hashmap">
+	    UPDATE TBOT_POINT_NEW_INVENTORY
+	       SET DEL_YN = '1'
+	     WHERE USER_NAME = #{userName}
+	       AND ROOM_NAME = #{roomName}
+	       AND ITEM_ID   = #{itemId}
+	       AND DEL_YN    = '0'
+	       AND ROWNUM    = 1
+	</update>
+	
+	<!-- 3) 가방 보상용 아이템 목록: ITEM_TYPE='BAG_REWARD' 가정 -->
+	<select id="selectBagRewardItemIds" resultType="int">
+	    SELECT ITEM_ID
+	      FROM TBOT_POINT_NEW_ITEM
+	     WHERE ITEM_TYPE = 'SELL'
+	</select>
+	
+	<!-- 4) 아이템 이름 조회 -->
+	<select id="selectItemNameById" resultType="string">
+	    SELECT ITEM_NAME
+	      FROM TBOT_POINT_NEW_ITEM
+	     WHERE ITEM_ID = #{itemId}
+	</select>
 </mapper>
