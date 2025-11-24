@@ -743,7 +743,20 @@ public class BossAttackController {
 		final String userName = Objects.toString(map.get("userName"), "");
 		final String input = Objects.toString(map.get("monNo"), "").trim();
 		if (roomName.isEmpty() || userName.isEmpty()) return "방/유저 정보가 누락되었습니다.";
-		if (input.isEmpty()) return guideSetTargetMessage();
+		if (input.isEmpty()) {
+		    User u = botNewService.selectUser(userName, roomName);
+		    int userLv = (u != null ? u.lv : 1);
+
+		    List<Monster> monsters = botNewService.selectAllMonsters();
+		    StringBuilder sb = new StringBuilder();
+		    sb.append("공격 타겟 목록입니다:").append(NL).append(NL)
+		      .append("▶ 선택 가능한 몬스터").append(ALL_SEE_STR);
+
+		    for (Monster mm : monsters) {
+		        sb.append(renderMonsterCompactLine(mm, userLv)); // ★ 레벨 비례 EXP 반영됨!
+		    }
+		    return sb.toString();
+		}
 
 		if(roomName.equals("람쥐봇 문의방")) {
 			
@@ -3295,13 +3308,22 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	    int atkMin = (int) Math.floor(m.monAtk * 0.5);
 	    int atkMax = m.monAtk;
 
-	    // EXP 패널티 계산 (전투 공식 동일)
+	 // EXP 보정 계산 (resolveKillAndDrop 과 동일)
 	    int baseExp = Math.max(0, m.monExp);
-	    int diff = userLv - m.monNo;
-	    int over = Math.max(0, diff);
-	    double rate = Math.max(0.1, 1.0 - over * 0.1);
-	    int effExp = (int) Math.round(baseExp * rate);
-	    boolean hasPenalty = (over > 0 && rate < 1.0);
+	    int levelGap = userLv - m.monLv;
+	    double expMultiplier;
+
+	    if (levelGap >= 0) {
+	        // 플레이어가 몬스터보다 높을 때 → 패널티
+	        expMultiplier = Math.max(0.1, 1.0 - Math.min(levelGap, 5) * 0.1);
+	    } else {
+	        // 몬스터가 더 강할 때 → 보너스
+	        expMultiplier = 1.0 + Math.min(-levelGap, 5) * 0.05; // 레벨 차 1당 5%, 최대 25%
+	    }
+
+	    int effExp = (int)Math.round(baseExp * expMultiplier);
+	    boolean hasPenalty = (levelGap >= 0 && expMultiplier < 1.0);
+	    boolean hasBonus   = (levelGap < 0  && expMultiplier > 1.0);
 
 	    StringBuilder sb = new StringBuilder();
 
@@ -3338,12 +3360,12 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	        sb.append(NL);
 	    }
 
-	 // 2행: 보상 정보
+	    // 2행: 보상 정보
 	    sb.append("▶ 보상: EXP ").append(effExp);
 	    if (hasPenalty) sb.append("▼");
+	    else if (hasBonus) sb.append("▲");
 	    sb.append(" / ").append(dropName).append(" ").append(dropPrice).append("sp")
 	      .append(NL);
-	    
 
 
 	    // 🔹 4행: 추가 설명 (mon_note)
