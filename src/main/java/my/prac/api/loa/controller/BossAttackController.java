@@ -1127,7 +1127,7 @@ public class BossAttackController {
 	        effCriDmg   += buffEff_self.addCritDmg;
 	        u.hpCur     += buffEff_self.addHp;   // HP 상한 무시 회복
 
-	        dosabuffMsg += buffEff_self.msg+NL;
+	        dosabuffMsg += "(셀프)"+buffEff_self.msg+NL;
 	    }
 	    
 	    if (buffEff != null) {
@@ -2459,14 +2459,14 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	        return r;
 	    }
 	    
-	    double dropRate = getDropRateByLevel(m.monNo);  // ← 새 메서드 사용
+	    double dropRate = getDropRateByNo(m.monNo);  // ← 새 메서드 사용
 	    
 	    boolean drop = willKill && ThreadLocalRandom.current().nextDouble(0, 100) < dropRate;
 	    r.dropCode = drop ? "1" : "0";
 	    return r;
 	}
-	private double getDropRateByLevel(int monLv) {
-	    switch (monLv) {
+	private double getDropRateByNo(int monNo) {
+	    switch (monNo) {
 	        case 1:  return 70.0;
 	        case 2:  return 65.0;
 	        case 3:  return 60.0;
@@ -2487,7 +2487,8 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	        case 18: return 20.0;
 	        case 19: return 20.0;
 	        case 20: return 20.0;
-	        default: return 10.0;
+	        case 91: return 1.0;
+	        default: return 40.0;
 	    }
 	}
 	
