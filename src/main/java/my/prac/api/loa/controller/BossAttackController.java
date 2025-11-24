@@ -658,7 +658,7 @@ public class BossAttackController {
 
 	                String cat = resolveItemCategory(itemId);
 	                // 🧿 유물(9000번대)에만 짧은 능력치 꼬리표 추가
-	                if ("유물".equals(cat)) {
+	                if ("※유물".equals(cat)) {
 	                	HashMap<String,Object> info = botNewService.selectItemDetailById(itemId);  
 	        	        
 	                    String relicStat = buildRelicStatSuffix(info); // 아래 헬퍼
@@ -4194,15 +4194,15 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 
 	
 	private String resolveItemCategory(int itemId) {
-	    if (itemId >= 100 && itemId < 200)  return "무기";   // 100번대
-	    if (itemId >= 200 && itemId < 300)  return "투구";   // 200번대
-	    if (itemId >= 300 && itemId < 400)  return "행운";   // 300번대
-	    if (itemId >= 400 && itemId < 500)  return "갑옷";   // 400번대
-	    if (itemId >= 500 && itemId < 600)  return "반지";   // 500번대
-	    if (itemId >= 600 && itemId < 700)  return "토템";   // 600번대
-	    if (itemId >= 700 && itemId < 800)  return "전설";   // 700번대
-	    if (itemId >= 900 && itemId < 1000) return "선물";   // 900번대
-	    if (itemId >= 9000 && itemId < 10000) return "유물"; // 9000번대 (BAG_REWARD, 유물류)
+	    if (itemId >= 100 && itemId < 200)  return "※무기";   // 100번대
+	    if (itemId >= 200 && itemId < 300)  return "※투구";   // 200번대
+	    if (itemId >= 300 && itemId < 400)  return "※행운";   // 300번대
+	    if (itemId >= 400 && itemId < 500)  return "※갑옷";   // 400번대
+	    if (itemId >= 500 && itemId < 600)  return "※반지";   // 500번대
+	    if (itemId >= 600 && itemId < 700)  return "※토템";   // 600번대
+	    if (itemId >= 700 && itemId < 800)  return "※전설";   // 700번대
+	    if (itemId >= 900 && itemId < 1000) return "※선물";   // 900번대
+	    if (itemId >= 9000 && itemId < 10000) return "※유물"; // 9000번대 (BAG_REWARD, 유물류)
 	    return "기타";
 	}
 	private String buildRelicStatSuffix(HashMap<String, Object> row) {
