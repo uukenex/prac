@@ -1115,13 +1115,14 @@ public class BossAttackController {
 	        monMaxHp = m.monHp;
 	        monHpRemainBefore = m.monHp;
 	        
-	        if ("도사".equals(job)) {
+	        
+	        if(m.monNo > 50){
+	        	lucky = false;
+	        } else if("사신".equals(job)){
+	        	lucky = false;
+	        } else if ("도사".equals(job)) {
 	        	lucky = ThreadLocalRandom.current().nextDouble() < LUCKY_RATE_DOSA;
-	        }else if("사신".equals(job)){
-	        	lucky = false;
-	        }else if(m.monNo > 50){
-	        	lucky = false;
-	        }else {
+	        } else {
 	        	lucky = ThreadLocalRandom.current().nextDouble() < LUCKY_RATE;
 	        }
 	        
