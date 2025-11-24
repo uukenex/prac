@@ -219,7 +219,7 @@ public class BossAttackController {
 
 	        // 그래도 없으면 최종적으로 SP 보상
 	        if (rewardItemIds == null || rewardItemIds.isEmpty()) {
-	            int sp = pickBiasedSp(100, 300);
+	            int sp = pickBiasedSp(200, 50000);
 
 	            HashMap<String,Object> pr = new HashMap<>();
 	            pr.put("userName", userName);
@@ -1505,19 +1505,21 @@ public class BossAttackController {
 	    // 예시: 초반 몹은 5%, 후반 보스는 15%
 	    switch (monNo) {
 	        case 1: case 2: case 3: case 4: case 5:
-	            return 0.001;  // 0.1%
+	            return 0.0025;  // 0.25%
 	        case 6: case 7: case 8: case 9: case 10:
-	            return 0.002;  // 0.2%
+	            return 0.0025;  // 0.25%
 	        case 11: case 12: case 13:
 	            return 0.003;  // 0.3%
 	        case 14: case 15:
 	            return 0.004;  // 0.4%
 	        case 16: case 17: case 18: case 19: case 20:
 	            return 0.005;  // 0.5%
+	        case 51: case 52: case 53: case 61: case 62: case 63:
+	        	return 0;  // 0%
 	        case 91:
 	        	return 0.01;  // 1%
 	        default:
-	            return 0.01;
+	            return 0;
 	    }
 	}
 
@@ -2632,6 +2634,12 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	        case 18: return 20.0;
 	        case 19: return 20.0;
 	        case 20: return 20.0;
+	        case 51: return 80;
+	        case 52: return 80;
+	        case 53: return 80;
+	        case 61: return 0;
+	        case 62: return 0;
+	        case 63: return 0;
 	        case 91: return 1.0;
 	        default: return 40.0;
 	    }
@@ -3299,11 +3307,46 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	      .append(" ⚔ATK ").append(atkMin).append("~").append(atkMax)
 	      .append(NL);
 
-	    // 2행: 보상 정보
+	    
+	 // 🔹 3행: 몬스터 패턴 정보 (mon_patten = 최대 패턴 번호)
+	    int patMax = m.monPatten; // 예: 4라면 1~4까지 사용됨
+	    if (patMax > 0) {
+	        sb.append("▶ 패턴(").append(patMax).append("): ");
+
+	        boolean first = true;
+	        for (int pat = 1; pat <= patMax; pat++) {
+	            String desc = null;
+	            switch (pat) {
+	                case 1: desc = "1: 주시"; break;
+	                case 2: desc = "2: 공격"; break;
+	                case 3: desc = "3: 방어"; break;
+	                case 4: desc = "4: 필살기"; break;
+	                case 5: desc = "5: hidden"; break; // 필요하면
+	                default: break;
+	            }
+
+	            if (desc != null) {
+	                if (!first) sb.append(", ");
+	                sb.append(desc);
+	                first = false;
+	            }
+	        }
+	        sb.append(NL);
+	    }
+
+	 // 2행: 보상 정보
 	    sb.append("▶ 보상: EXP ").append(effExp);
 	    if (hasPenalty) sb.append("▼");
 	    sb.append(" / ").append(dropName).append(" ").append(dropPrice).append("sp")
 	      .append(NL);
+	    
+
+
+	    // 🔹 4행: 추가 설명 (mon_note)
+	    String note = (m.monNote != null ? m.monNote.trim() : "");
+	    if (!note.isEmpty()) {
+	        sb.append("※ ").append(note).append(NL);
+	    }
 
 	    return sb.toString();
 	}
