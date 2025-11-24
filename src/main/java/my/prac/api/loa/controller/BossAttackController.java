@@ -178,13 +178,13 @@ public class BossAttackController {
 	    // 1) 가방 개수 확인
 	    int bagCount = botNewService.selectBagCount(userName, roomName);
 	    if (bagCount <= 0) {
-	        return "🎒 열 수 있는 가방이 없습니다.";
+	        return "열 수 있는 가방이 없습니다.";
 	    }
 
 	    // 2) 가방 1개 소비
-	    int updated = botNewService.consumeOneBag(userName, roomName);
+	    int updated = botNewService.consumeOneBagTx(userName, roomName);
 	    if (updated <= 0) {
-	        return "🎒 가방을 사용하는 중 오류가 발생했습니다. 다시 시도해주세요.";
+	        return "가방을 사용하는 중 오류가 발생했습니다. 다시 시도해주세요.";
 	    }
 
 	    // 3) 보상 결정 (컨트롤러에서 확률/로직 모두 처리)
@@ -247,7 +247,21 @@ public class BossAttackController {
 
 	        String itemName = botNewService.selectItemNameById(itemId);
 
-	        return "🎒 가방을 열어보니 [" + itemName + "] 아이템을 획득했습니다!";
+	     // 아이템 전체 정보 조회 (권장: ITEM_CODE / ATK_MIN 등 얻기 위해)
+	        HashMap<String,Object> info = botNewService.selectItemDetailById(itemId);  
+	        // Map 형태라는 가정: ITEM_CODE, ATK_MIN, ATK_MAX, HP_REGEN, HP_MAX, CRI_DMG...
+
+	        String label = itemName;
+
+	        // 9000번대 = 유물
+	        if (itemId >= 9000 && itemId < 10000) {
+	            // buildRelicStatSuffix(HashMap row) 그대로 사용 가능!
+	            String suffix = buildRelicStatSuffix(info);
+	            if (!suffix.isEmpty()) {
+	                label += suffix;    // 예: 고대돌조각(ATK+30~30)
+	            }
+	        }
+	        return "🎒 가방을 열어보니 [" + label + "] 아이템을 획득했습니다!";
 	    }
 	}
 
@@ -343,31 +357,6 @@ public class BossAttackController {
 
 	    // 7) 완료 메시지
 	    return "✨ " + userName + "님, [" + newJob + "] 으로 직업이 변경되었습니다." + NL;
-	}
-
-
-	private String buildJobDescriptionList() {
-		StringBuilder sb = new StringBuilder();
-	    sb.append("전직 가능한 직업 목록").append(ALL_SEE_STR);
-	    for (JobDef def : JOB_DEFS.values()) {
-	        sb.append(def.listLine).append(NL);
-	        sb.append(def.attackLine).append(NL).append(NL);
-	        
-	    }
-	    sb.append("♬ /직업 [직업명] 으로 전직 가능합니다.").append(NL);
-	    return sb.toString();
-	}
-
-	
-	private String normalizeJob(String raw) {
-		 if (raw == null) return null;
-		    String s = raw.trim();
-
-		    // 별칭을 허용하고 싶으면 여기서 추가 매핑
-		    // if ("전".equals(s) || "전사".equals(s)) s = "전사";
-
-		    JobDef def = JOB_DEFS.get(s);
-		    return (def != null ? def.name : null);
 	}
 
 	public String attackInfo(HashMap<String, Object> map) {
@@ -514,8 +503,19 @@ public class BossAttackController {
 	    AttackDeathStat ads = botNewService.selectAttackDeathStats(targetUser, roomName);
 	    int totalAttacks = (ads == null ? 0 : ads.totalAttacks);
 	    int totalDeaths  = (ads == null ? 0 : ads.totalDeaths);
-	    Monster target = (u.targetMon > 0) ? botNewService.selectMonsterByNo(u.targetMon) : null;
-	    String targetName = (target == null) ? "-" : target.monName;
+	    
+
+		// 🔹 여기서 몬스터 전체 캐시
+		List<Monster> monList = botNewService.selectAllMonsters();
+		Map<Integer, Monster> monMap = new HashMap<>();
+		if (monList != null) {
+			for (Monster mm : monList) {
+				monMap.put(mm.monNo, mm);
+			}
+		}
+
+		Monster target = (u.targetMon > 0) ? monMap.get(u.targetMon) : null;
+		String targetName = (target == null) ? "-" : target.monName;
 
 	    // ⑨ 출력
 	    StringBuilder sb = new StringBuilder();
@@ -599,7 +599,6 @@ public class BossAttackController {
 	    }
 
 	 // 인벤토리
-	 // 인벤토리
 	    try {
 	        List<HashMap<String, Object>> bag = botNewService.selectInventorySummaryAll(targetUser, roomName);
 
@@ -608,63 +607,87 @@ public class BossAttackController {
 	            sb.append("- (비어있음)").append(NL);
 	        } else {
 
-	            // 1) ITEM_NO ASC 정렬
+	            // 1) ITEM_ID ASC 정렬
 	            bag.sort((a, b) -> {
 	                int noA = parseIntSafe(Objects.toString(a.get("ITEM_ID"), "0"));
 	                int noB = parseIntSafe(Objects.toString(b.get("ITEM_ID"), "0"));
 	                return Integer.compare(noA, noB);
 	            });
 
-	            // 2) 장비 & 잡템 분리
-	            List<String> equipList = new ArrayList<>();
-	            List<String> etcList   = new ArrayList<>();
+	            // 2) 카테고리별 버킷 생성
+	            Map<String, List<String>> catMap = new LinkedHashMap<>();
+	            catMap.put("무기", new ArrayList<>());
+	            catMap.put("투구", new ArrayList<>());
+	            catMap.put("행운", new ArrayList<>());
+	            catMap.put("갑옷", new ArrayList<>());
+	            catMap.put("반지", new ArrayList<>());
+	            catMap.put("토템", new ArrayList<>());
+	            catMap.put("전설", new ArrayList<>());
+	            catMap.put("선물", new ArrayList<>());
+	            catMap.put("유물", new ArrayList<>());
+	            catMap.put("기타", new ArrayList<>());
 
+	            // 3) 인벤토리 한 줄씩 카테고리 분류
 	            for (HashMap<String, Object> row : bag) {
+	                if (row == null) continue;
+
 	                String itemName = Objects.toString(row.get("ITEM_NAME"), "-");
 	                String qtyStr   = Objects.toString(row.get("TOTAL_QTY"), "0");
 	                String typeStr  = Objects.toString(row.get("ITEM_TYPE"), "");
-	                String enhance  = Objects.toString(row.get("ENHANCE"), "0");  // 강화 값 있으면 사용
+	                int itemId    = parseIntSafe(Objects.toString(row.get("ITEM_ID"), "0"));
 
-	                if ("MARKET".equals(typeStr)) {
-	                    // 장비 → "이름(+강화)"
+	                if (itemName == null || itemName.trim().isEmpty()) continue;
+
+	                // 표시용 라벨 구성
+	                String label = itemName;
+
+	                // MARKET / MASTER 는 장비 취급 → +강화 표시, 수량은 보통 1
+	                if ("MARKET".equals(typeStr)|| "BAG_REWARD".equals(typeStr) || "MASTER".equals(typeStr)) {
 	                    try {
-	                        int e = Integer.parseInt(enhance);
-	                        if (e > 0) itemName = itemName + "(+" + e + ")";
+	                        //int e = Integer.parseInt(enhance);
+	                        //if (e > 0) label = label + "(+" + e + ")";
 	                    } catch (Exception ignore) {}
-	                    equipList.add(itemName);
+	                    // 장비는 x수량 안 붙임 (원하면 여기서 qty도 붙일 수 있음)
 	                } else {
-	                    // 잡템 → "이름x수량"
-	                    etcList.add(itemName + "x" + qtyStr);
+	                    // 잡템 / 가방보상 / 기타 → 이름x수량
+	                    int q = parseIntSafe(qtyStr);
+	                    if (q > 1) {
+	                        label = label + "x" + q;
+	                    }
 	                }
+
+	                String cat = resolveItemCategory(itemId);
+	                // 🧿 유물(9000번대)에만 짧은 능력치 꼬리표 추가
+	                if ("유물".equals(cat)) {
+	                	HashMap<String,Object> info = botNewService.selectItemDetailById(itemId);  
+	        	        
+	                    String relicStat = buildRelicStatSuffix(info); // 아래 헬퍼
+	                    if (!relicStat.isEmpty()) {
+	                        label = label + relicStat; // 예: "고대돌조각(ATK+30~30)"
+	                    }
+	                }
+	                
+	                List<String> bucket = catMap.get(cat);
+	                if (bucket == null) {
+	                    bucket = catMap.get("기타");
+	                }
+	                bucket.add(label);
 	            }
 
-	            // 3) 한 줄 요약 형태로 정렬된 리스트 출력
-	            sb.append("장비: ");
-	            if (equipList.isEmpty()) {
-	                sb.append("(없음)");
-	            } else {
-	                sb.append(String.join(", ", equipList));
-	            }
-	            sb.append(NL).append(NL);
+	            // 4) 카테고리별 출력
+	            for (Map.Entry<String, List<String>> e : catMap.entrySet()) {
+	                List<String> list = e.getValue();
+	                if (list == null || list.isEmpty()) continue; // 비어 있으면 스킵
 
-	            sb.append("기타: ");
-	            if (etcList.isEmpty()) {
-	                sb.append("(없음)");
-	            } else {
-	                // 너무 길면 자동 축약
-	            	sb.append(String.join(", ", etcList));
-	            	/*
-	                if (etcList.size() > 10) {
-	                    List<String> head = etcList.subList(0, 10);
-	                    sb.append(String.join(", ", head))
-	                      .append(" 외 ").append(etcList.size() - 10).append("종");
-	                } else {
-	                    sb.append(String.join(", ", etcList));
-	                }*/
+	                sb.append(e.getKey()).append(": ");
+	                sb.append(String.join(", ", list));
+	                sb.append(NL);
 	            }
-	            sb.append(NL).append(NL);
+
+	            sb.append(NL);
 	        }
 	    } catch (Exception ignore) {}
+
 	    
 	    
 	    sb.append("누적 전투 기록").append(NL)
@@ -676,10 +699,19 @@ public class BossAttackController {
 	    if (kills.isEmpty()) {
 	        sb.append("기록 없음").append(NL);
 	    } else {
-	        for (KillStat ks : kills) {
-	            sb.append("- ").append(ks.monName)
-	              .append(" (MON_NO=").append(ks.monNo).append(") : ")
-	              .append(ks.killCount).append("마리").append(NL);
+			for (KillStat ks : kills) {
+				String monName = ks.monName;
+
+				// KillStat에 이름이 없거나 빈 문자열이면 monMap에서 보충
+				if (monName == null || monName.isEmpty()) {
+					Monster mm = monMap.get(ks.monNo);
+					if (mm != null)
+						monName = mm.monName;
+				}
+
+				sb.append("- ").append(monName)
+			      .append(" (MON_NO=").append(ks.monNo).append(") : ")
+			      .append(ks.killCount).append("마리").append(NL);
 	        }
 	    }
 
@@ -693,7 +725,7 @@ public class BossAttackController {
 	        } else {
 	            for (HashMap<String,Object> row : achv) {
 	                String cmd = Objects.toString(row.get("CMD"), "");
-	                String label = formatAchievementLabelSimple(cmd);
+	                String label = formatAchievementLabelSimple(cmd,monMap);
 	                if (!label.isEmpty()) {
 	                    sb.append("✨ ").append(label).append(NL);
 	                }
@@ -798,12 +830,6 @@ public class BossAttackController {
 	    if (roomName.isEmpty() || userName.isEmpty()) {
 	        return "방/유저 정보가 누락되었습니다.";
 	    }
-	    
-	    //User u = botNewService.selectUser(userName, roomName);
-	    //String job = (u == null || u.job == null) ? "" : u.job.trim();
-	    //boolean isMerchant = "상인".equals(job);
-
-	    
 	    
 	    boolean hiddenYn = false;
 	    
@@ -940,18 +966,6 @@ public class BossAttackController {
 	    	
 	    }
 	    return sb.toString();
-	}
-
-	/** Map에서 Number → int 변환(Java 1.8) */
-	private int getInt(Object o) {
-	    if (o == null) return 0;
-	    if (o instanceof Number) return ((Number)o).intValue();
-	    try { return Integer.parseInt(String.valueOf(o)); } catch (Exception e) { return 0; }
-	}
-
-	private String formatSp(int v) {
-	    if (v < 0) v = 0;
-	    return String.format("%dsp", v);  
 	}
 
 	public String monsterAttack(HashMap<String, Object> map) {
@@ -1523,18 +1537,7 @@ public class BossAttackController {
 	    }
 	}
 
-	private boolean isSkeleton(Monster m) {
-	    if (m == null) return false;
-	    if (m.monNo == 10) return true;
-	    if (m.monNo == 14) return true;
-	    if (m.monName.equals("해골")) {
-	    	return true;
-	    }
-	    if (m.monName.equals("리치")) {
-	    	return true;
-	    }
-	    return false;
-	}
+	
 
 	public String sellItem(HashMap<String, Object> map) {
 	    final int SHINY_MULTIPLIER = 5; // ✨ 빛템 5배
@@ -3527,6 +3530,14 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	    }
 	    return 0;
 	}
+	private boolean isSkeleton(Monster m) {
+	    if (m == null) return false;
+	    if (m.monNo == 10||m.monNo ==14||m.monNo ==15) return true;
+	    if (m.monName.equals("해골")||m.monName.equals("리치")||m.monName.equals("하급악마")) {
+	    	return true;
+	    }
+	    return false;
+	}
 	
 	/** 통산 킬수 업적 보상 */
 	private int calcTotalKillReward(int threshold) {
@@ -3666,46 +3677,55 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	    }
 	    return 0;
 	}
-	
-	/** 업적 CMD → 단순 업적명 라벨 (보상/날짜 없이) */
-	private String formatAchievementLabelSimple(String cmd) {
+	private String formatAchievementLabelSimple(String cmd, Map<Integer, Monster> monMap) {
 	    if (cmd == null || cmd.isEmpty()) return "";
 
-	    // 최초토벌
+	    // 작은 헬퍼: monNo → 이름 (monMap에서만 조회)
+	    java.util.function.Function<Integer, String> findMonName = (Integer monNo) -> {
+	        if (monNo == null) return "몬스터#" + monNo;
+	        Monster m = null;
+	        if (monMap != null) {
+	            m = monMap.get(monNo);
+	        }
+	        return (m == null ? ("몬스터#" + monNo) : m.monName);
+	    };
+
+	    // 🔹 최초토벌
 	    if (cmd.startsWith("ACHV_FIRST_CLEAR_MON_")) {
 	        try {
 	            int monNo = Integer.parseInt(cmd.substring("ACHV_FIRST_CLEAR_MON_".length()));
-	            Monster m = botNewService.selectMonsterByNo(monNo);
-	            return "✨최초토벌: " + (m == null ? ("몬스터#" + monNo) : m.monName);
+	            String name = findMonName.apply(monNo);
+	            return "✨최초토벌: " + name;
 	        } catch (Exception e) {
 	            return "최초토벌";
 	        }
 	    }
+
+	    // 🔹 최초토벌 축하보상
 	    if (cmd.startsWith("ACHV_CLEAR_BROADCAST_MON_")) {
-	    	try {
-	    		int monNo = Integer.parseInt(cmd.substring("ACHV_CLEAR_BROADCAST_MON_".length()));
-	    		Monster m = botNewService.selectMonsterByNo(monNo);
-	    		return "✨축하보상: " + (m == null ? ("몬스터#" + monNo) : m.monName);
-	    	} catch (Exception e) {
-	    		return "축하보상";
-	    	}
+	        try {
+	            int monNo = Integer.parseInt(cmd.substring("ACHV_CLEAR_BROADCAST_MON_".length()));
+	            String name = findMonName.apply(monNo);
+	            return "✨축하보상: " + name;
+	        } catch (Exception e) {
+	            return "축하보상";
+	        }
 	    }
 
-	    // 몬스터별 킬 업적
+	    // 🔹 몬스터별 킬 업적: ACHV_KILL10_MON_3 이런 형태 가정
 	    if (cmd.startsWith("ACHV_KILL") && cmd.contains("_MON_")) {
 	        try {
 	            String[] parts = cmd.substring("ACHV_KILL".length()).split("_MON_");
-	            int threshold = Integer.parseInt(parts[0]);
-	            int monNo = Integer.parseInt(parts[1]);
-	            Monster m = botNewService.selectMonsterByNo(monNo);
-	            String name = (m == null ? ("몬스터#" + monNo) : m.monName);
+	            int threshold = Integer.parseInt(parts[0]);   // 10
+	            int monNo = Integer.parseInt(parts[1]);       // 3
+	            String name = findMonName.apply(monNo);
 	            return name + " " + threshold + "킬 달성";
 	        } catch (Exception e) {
 	            return "킬 업적";
 	        }
 	    }
 
-	    // 통산 킬 업적
+	    // 🔹 통산 킬 업적
 	    if (cmd.startsWith("ACHV_KILL_TOTAL_")) {
 	        try {
 	            int th = Integer.parseInt(cmd.substring("ACHV_KILL_TOTAL_".length()));
@@ -3714,19 +3734,21 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	            return "통산 업적";
 	        }
 	    }
-	    // 데스 업적
+
+	    // 🔹 데스 업적
 	    if (cmd.startsWith("ACHV_DEATH_")) {
-	    	try {
-	    		int th = Integer.parseInt(cmd.substring("ACHV_DEATH_".length()));
-	    		return "죽음 극복 " + th + "회 달성";
-	    	} catch (Exception e) {
-	    		return "죽음 업적";
-	    	}
+	        try {
+	            int th = Integer.parseInt(cmd.substring("ACHV_DEATH_".length()));
+	            return "죽음 극복 " + th + "회 달성";
+	        } catch (Exception e) {
+	            return "죽음 업적";
+	        }
 	    }
 
 	    return cmd;
 	}
-	// BossAttackController 내부에 추가 (필드/DI 그대로 사용)
+
+	
 	private String grantDeathAchievements(String userName, String roomName) {
 	    // 규칙: {사망누적, 보상SP}
 	    final int[][] rules = new int[][]{
@@ -4108,6 +4130,32 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	    if (rate > 100) return 100;
 	    return rate;
 	}
+	
+
+	private String buildJobDescriptionList() {
+		StringBuilder sb = new StringBuilder();
+	    sb.append("전직 가능한 직업 목록").append(ALL_SEE_STR);
+	    for (JobDef def : JOB_DEFS.values()) {
+	        sb.append(def.listLine).append(NL);
+	        sb.append(def.attackLine).append(NL).append(NL);
+	        
+	    }
+	    sb.append("♬ /직업 [직업명] 으로 전직 가능합니다.").append(NL);
+	    return sb.toString();
+	}
+
+	
+	private String normalizeJob(String raw) {
+		 if (raw == null) return null;
+		    String s = raw.trim();
+
+		    // 별칭을 허용하고 싶으면 여기서 추가 매핑
+		    // if ("전".equals(s) || "전사".equals(s)) s = "전사";
+
+		    JobDef def = JOB_DEFS.get(s);
+		    return (def != null ? def.name : null);
+	}
+
 
 	
 	// 직업 공통 정의
@@ -4129,6 +4177,83 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	    int span = max - min;
 	    return min + (int)Math.round(span * biased);
 	}
+
+	/** Map에서 Number → int 변환(Java 1.8) */
+	private int getInt(Object o) {
+	    if (o == null) return 0;
+	    if (o instanceof Number) return ((Number)o).intValue();
+	    try { return Integer.parseInt(String.valueOf(o)); } catch (Exception e) { return 0; }
+	}
+
+	private String formatSp(int v) {
+	    if (v < 0) v = 0;
+	    return String.format("%dsp", v);  
+	}
+
+	
+	private String resolveItemCategory(int itemId) {
+	    if (itemId >= 100 && itemId < 200)  return "무기";   // 100번대
+	    if (itemId >= 200 && itemId < 300)  return "투구";   // 200번대
+	    if (itemId >= 300 && itemId < 400)  return "행운";   // 300번대
+	    if (itemId >= 400 && itemId < 500)  return "갑옷";   // 400번대
+	    if (itemId >= 500 && itemId < 600)  return "반지";   // 500번대
+	    if (itemId >= 600 && itemId < 700)  return "토템";   // 600번대
+	    if (itemId >= 700 && itemId < 800)  return "전설";   // 700번대
+	    if (itemId >= 900 && itemId < 1000) return "선물";   // 900번대
+	    if (itemId >= 9000 && itemId < 10000) return "유물"; // 9000번대 (BAG_REWARD, 유물류)
+	    return "기타";
+	}
+	private String buildRelicStatSuffix(HashMap<String, Object> row) {
+	    int atkMin = parseIntSafe(Objects.toString(row.get("ATK_MIN"), "0"));
+	    int atkMax = parseIntSafe(Objects.toString(row.get("ATK_MAX"), "0"));
+	    int atkCri = parseIntSafe(Objects.toString(row.get("ATK_CRI"), "0"));
+	    int hpRegen = parseIntSafe(Objects.toString(row.get("HP_REGEN"), "0"));
+	    int hpMax   = parseIntSafe(Objects.toString(row.get("HP_MAX"), "0"));
+	    int criDmg  = parseIntSafe(Objects.toString(row.get("CRI_DMG"), "0"));
+
+	    StringBuilder sb = new StringBuilder();
+	    boolean first = true;
+
+	    // 1) ATK_MIN
+	    if (atkMin != 0) {
+	        sb.append("ATK_MIN+").append(atkMin);
+	        first = false;
+	    }
+
+	    // 2) ATK_MAX
+	    if (atkMax != 0) {
+	        if (!first) sb.append(", ");
+	        sb.append("ATK_MAX+").append(atkMax);
+	        first = false;
+	    }
+
+	    if (hpRegen != 0) {
+	        if (!first) sb.append(", ");
+	        sb.append("REGEN+").append(hpRegen);
+	        first = false;
+	    }
+	    if (hpMax != 0) {
+	        if (!first) sb.append(", ");
+	        sb.append("HP+").append(hpMax);
+	        first = false;
+	    }
+	    if (atkCri != 0) {
+	    	if (!first) sb.append(", ");
+	    	sb.append("CRI+").append(atkCri);
+	    	first = false;
+	    }
+	    if (criDmg != 0) {
+	        if (!first) sb.append(", ");
+	        sb.append("CRI_DMG+").append(criDmg);
+	        first = false;
+	    }
+
+	    if (first) return ""; // 전부 0이면
+
+	    return "(" + sb.toString() + ")";
+	}
+
+	
 	
 	// 직업 메타데이터 맵 (등록 순서 유지 위해 LinkedHashMap)
 	private static final Map<String, JobDef> JOB_DEFS = new LinkedHashMap<>();

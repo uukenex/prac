@@ -332,7 +332,7 @@ public class BotNewServiceImpl implements BotNewService {
     }
 
     @Override
-    public int consumeOneBag(String userName, String roomName) {
+    public int consumeOneBagTx(String userName, String roomName) {
         HashMap<String,Object> p = new HashMap<>();
         p.put("userName", userName);
         p.put("roomName", roomName);

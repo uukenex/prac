@@ -38,6 +38,7 @@
 	</select>
 
   <select id="selectAttackDeathStats" resultType="my.prac.core.game.dto.AttackDeathStat">
+  /*selectAttackDeathStats*/
     SELECT
       COUNT(*) AS TOTAL_ATTACKS,
       SUM(CASE WHEN DEATH_YN = '1' THEN 1 ELSE 0 END) AS TOTAL_DEATHS
@@ -49,6 +50,7 @@
   </select>
 
   <select id="selectKillStats" resultType="my.prac.core.game.dto.KillStat">
+  /*selectKillStats*/
     SELECT bl.TARGET_MON_LV AS MON_NO,
            m.MON_NAME AS MON_NAME,
            COUNT(*) AS KILL_COUNT
@@ -71,12 +73,14 @@
 
   <!-- 2) 몬스터 -->
   <select id="selectMonsterByNo" resultType="my.prac.core.game.dto.Monster">
+  /*selectMonsterByNo*/
     SELECT MON_NO, MON_HP, MON_ATK, MON_EXP, MON_DROP, MON_PATTEN, MON_NAME, MON_LV,MON_NOTE
     FROM TBOT_POINT_NEW_MON_INFO
     WHERE MON_NO = #{monNo}
   </select>
 
   <select id="selectMonsterByName" resultType="my.prac.core.game.dto.Monster">
+  /*selectMonsterByName*/
     SELECT MON_NO, MON_HP, MON_ATK, MON_EXP, MON_DROP, MON_PATTEN, MON_NAME, MON_LV,MON_NOTE
     FROM TBOT_POINT_NEW_MON_INFO
     WHERE MON_NAME = #{monName}
@@ -630,12 +634,14 @@
 	</select>
 	
 	<select id="selectPointRankCountByCmdGlobal" resultType="int">
+	/*selectPointRankCountByCmdGlobal*/
 	   SELECT COUNT(1)
 	     FROM TBOT_POINT_RANK
 	    WHERE CMD = #{cmd}
 	      AND NEW_YN = '1'
 	</select>
 	<select id="selectAchvCountsGlobalAll" resultType="my.prac.core.game.dto.AchievementCount">
+	    /*selectAchvCountsGlobalAll*/
 	    SELECT CMD,
 	           COUNT(1) AS CNT
 	      FROM TBOT_POINT_RANK
@@ -645,6 +651,7 @@
 	</select>
 	
 	<select id="selectAchievementsByUser" resultType="hashMap" parameterType="string">
+	/*selectAchievementsByUser*/
 	  SELECT CMD, SCORE, USER_NAME, ROOM_NAME, INSERT_DATE
 	  FROM TBOT_POINT_RANK
 	  WHERE USER_NAME = #{userName}
@@ -681,6 +688,7 @@
 	
 	
 	<update id="updateUserJobAndChangeDate">
+	/*updateUserJobAndChangeDate*/
 	    UPDATE TBOT_POINT_NEW_USER
 	       SET JOB = #{job},
 	           JOB_CHANGE_DATE = SYSDATE
@@ -689,6 +697,7 @@
 	</update>
 	
 	<select id="selectRisingStarsTop5Last6h" resultType="hashmap">
+	/*selectRisingStarsTop5Last6h*/
 	    SELECT *
 	    FROM (
 	        SELECT USER_NAME,
@@ -707,6 +716,7 @@
 	    WHERE ROWNUM &lt;= 7
 	</select>
 	<select id="selectOngoingChallengesForUnclearedBosses" resultType="hashmap">
+	/*selectOngoingChallengesForUnclearedBosses*/
 	  SELECT
 	      ob.TARGET_MON_LV          AS MON_NO,
 	      m.MON_NAME                AS MON_NAME,

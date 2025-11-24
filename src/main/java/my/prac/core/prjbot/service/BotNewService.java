@@ -129,7 +129,7 @@ public interface BotNewService {
     
     int selectBagCount(String userName, String roomName);
 
-    int consumeOneBag(String userName, String roomName);
+    int consumeOneBagTx(String userName, String roomName);
 
     List<Integer> selectBagRewardItemIds();
 
