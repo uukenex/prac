@@ -2860,9 +2860,8 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	/* ===== utils ===== */
 
 	private String trimDouble(double v) {
-	    String s = String.valueOf(v);
-	    if (s.endsWith(".0")) return s.substring(0, s.length()-2);
-	    return s;
+		return String.format("%.2f", v);
+	    
 	}
 
 	
