@@ -1399,8 +1399,9 @@ public class BossAttackController {
 	    
 	    
 	    // 🔹 운영자의 축복 레벨 구간 보너스:2,3,4, 5, 6, 7레벨 달성 시 각각 200sp (1회 지급)
-	    blessMsg = grantBlessLevelBonus(userName, roomName, up.beforeLv, up.afterLv);
-	    
+	    if(u.lv < 8) {
+	    	blessMsg = grantBlessLevelBonus(userName, roomName, up.beforeLv, up.afterLv);
+	    }
 	    
 	    String bagDropMsg = "";
 	    if (res.killed) {
