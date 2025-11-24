@@ -1239,11 +1239,11 @@ public class BossAttackController {
 
 	    if ("도사".equals(job)) {
 	    	DosaBuffEffect buffEff_self = buildDosaBuffEffect(u, u.lv, roomName);
-	    	effAtkMin   += buffEff_self.addAtkMin;
-	        effAtkMax   += buffEff_self.addAtkMax;
-	        effCritRate += buffEff_self.addCritRate;
-	        effCriDmg   += buffEff_self.addCritDmg;
-	        u.hpCur     += buffEff_self.addHp;   // HP 상한 무시 회복
+	    	effAtkMin   += Math.round(buffEff_self.addAtkMin/2);
+	        effAtkMax   += Math.round(buffEff_self.addAtkMax/2);
+	        effCritRate += Math.round(buffEff_self.addCritRate/2);
+	        effCriDmg   += Math.round(buffEff_self.addCritDmg/2);
+	        u.hpCur     += Math.round(buffEff_self.addHp/2);   // HP 상한 무시 회복
 
 	        dosabuffMsg += "(셀프)"+buffEff_self.msg+NL;
 	    }
@@ -4038,23 +4038,31 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	        flags.finisher = (flags.monPattern == 4); // 패턴4=필살기
 
 	        // 🔥 마법사: 패턴3 방어를 깨뜨리고 1.5배 피해
-	        if ("마법사".equals(job) && flags.monPattern == 3) {
-	        	// 패턴3 → 방어 대신 무행동 취급
-	            flags.monPattern = 1;
-
-	            // ✅ 방어 적용 전 기준( baseAtk * critMultiplier )으로 다시 계산
-	            int originalDmg = (int) Math.round(calc.baseAtk * calc.critMultiplier);
-
-	            int newDmg = (int) Math.round(originalDmg * 2.0);
-	            calc.atkDmg = newDmg;
-	            calc.monDmg = 0;  // 방어 패턴이었으니 몬스터 피해는 0 유지
-
-	            // 디버그용 계수도 실제 데미지에 맞게 재계산
-	            if (calc.baseAtk > 0) {
-	                calc.critMultiplier = (double) newDmg / calc.baseAtk;
-	            }
-
-	            calc.patternMsg = m.monName + "의 방어가 마법사의 힘에 의해 무너졌습니다! (피해 2배)";
+	        if ("마법사".equals(job) ) {
+	        	if(flags.monPattern == 3) {
+		        	// 패턴3 → 방어 대신 무행동 취급
+		            flags.monPattern = 1;
+	
+		            // ✅ 방어 적용 전 기준( baseAtk * critMultiplier )으로 다시 계산
+		            int originalDmg = (int) Math.round(calc.baseAtk * calc.critMultiplier);
+	
+		            int newDmg = (int) Math.round(originalDmg * 2.0);
+		            calc.atkDmg = newDmg;
+		            calc.monDmg = 0;  // 방어 패턴이었으니 몬스터 피해는 0 유지
+	
+		            // 디버그용 계수도 실제 데미지에 맞게 재계산
+		            if (calc.baseAtk > 0) {
+		                calc.critMultiplier = (double) newDmg / calc.baseAtk;
+		            }
+	
+		            calc.patternMsg = m.monName + "의 방어가 마법사의 힘에 의해 무너졌습니다! (피해 2배)";
+	        	}else if(flags.monPattern == 4) {
+	        		int reduced = (int) Math.floor(calc.monDmg * 0.8);
+		            if (reduced < 1) reduced = 1;
+		            String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
+		            calc.patternMsg = baseMsg + "(마나실드 필살피해 20% 감소 → " + reduced + ")";
+		            calc.monDmg = reduced;
+	        	}
 	        }
 
 	        // 🛡 전사: 보스 필살기 패링 (20% 확률)
@@ -4175,9 +4183,6 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 		 if (raw == null) return null;
 		    String s = raw.trim();
 
-		    // 별칭을 허용하고 싶으면 여기서 추가 매핑
-		    // if ("전".equals(s) || "전사".equals(s)) s = "전사";
-
 		    JobDef def = JOB_DEFS.get(s);
 		    return (def != null ? def.name : null);
 	}
@@ -4186,9 +4191,9 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	
 	// 직업 공통 정의
 	private static final class JobDef {
-	    final String name;       // 표기 이름 (전사, 궁수, ...)
-	    final String listLine;   // /직업 안내용 한 줄
-	    final String attackLine; // 공격정보용 한 줄
+	    final String name;       
+	    final String listLine;   
+	    final String attackLine; 
 
 	    JobDef(String name, String listLine, String attackLine) {
 	        this.name = name;
