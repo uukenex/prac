@@ -616,16 +616,16 @@ public class BossAttackController {
 
 	            // 2) 카테고리별 버킷 생성
 	            Map<String, List<String>> catMap = new LinkedHashMap<>();
-	            catMap.put("무기", new ArrayList<>());
-	            catMap.put("투구", new ArrayList<>());
-	            catMap.put("행운", new ArrayList<>());
-	            catMap.put("갑옷", new ArrayList<>());
-	            catMap.put("반지", new ArrayList<>());
-	            catMap.put("토템", new ArrayList<>());
-	            catMap.put("전설", new ArrayList<>());
-	            catMap.put("선물", new ArrayList<>());
-	            catMap.put("유물", new ArrayList<>());
-	            catMap.put("기타", new ArrayList<>());
+	            catMap.put("※무기", new ArrayList<>());
+	            catMap.put("※투구", new ArrayList<>());
+	            catMap.put("※행운", new ArrayList<>());
+	            catMap.put("※갑옷", new ArrayList<>());
+	            catMap.put("※반지", new ArrayList<>());
+	            catMap.put("※토템", new ArrayList<>());
+	            catMap.put("※전설", new ArrayList<>());
+	            catMap.put("※선물", new ArrayList<>());
+	            catMap.put("※유물", new ArrayList<>());
+	            catMap.put("※기타", new ArrayList<>());
 
 	            // 3) 인벤토리 한 줄씩 카테고리 분류
 	            for (HashMap<String, Object> row : bag) {
