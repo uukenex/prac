@@ -3990,13 +3990,13 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	    int dosaCriDmg  = 0;
 
 	    if(selfYn==1) {
-	    	dosaLvBonus = (int) Math.round(dosaLv * 0.25);
-	    	dosaCriDmg = (int) Math.round(dosaAtkMax * 0.05);
-	    	eff.addAtkMin   = dosaLvBonus;
-	 	    eff.addAtkMax   = dosaLvBonus;
-	 	    eff.addCritRate = dosaLvBonus;
-	 	    eff.addCritDmg  = dosaCriDmg;
-	 	    eff.addHp       = dosaLvBonus*2;
+	    	//dosaLvBonus = (int) Math.round(dosaLv * 0.25);
+	    	//dosaCriDmg = (int) Math.round(dosaAtkMax * 0.05);
+	    	//eff.addAtkMin   = dosaLvBonus;
+	 	    //eff.addAtkMax   = dosaLvBonus;
+	 	    //eff.addCritRate = dosaLvBonus;
+	 	    //eff.addCritDmg  = dosaCriDmg;
+	 	    eff.addHp       = dosaLvBonus;
 	    }else {
 	    	dosaLvBonus = (int) Math.round(dosaLv * 0.5);
 	    	dosaCriDmg = (int) Math.round(dosaAtkMax * 0.1);
@@ -4444,7 +4444,7 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	    JOB_DEFS.put("도사", new JobDef(
 	        "도사",
 	        "▶ 도사 :도를 닦아 깨달음을 얻은 위인",
-	        "⚔ 다음 공격하는 아군 강화(레벨*0.5만큼 능력강화,맥뎀*0.1만큼 치명뎀강화,"+NL+"매턴 공격시 절반만큼 자신 강화,자신의 럭키몬스터 등장 확률 증가"
+	        "⚔ 다음 공격하는 아군 강화(레벨*0.5만큼 능력강화,맥뎀*0.1만큼 치명뎀강화,"+NL+"매턴 공격시 자신 회복,자신의 럭키몬스터 등장 확률 증가"
 	    ));
 	    /*
 	    JOB_DEFS.put("기사", new JobDef(
