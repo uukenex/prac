@@ -1434,7 +1434,7 @@ public class BossAttackController {
 	    }
 	    String dosaCastMsg = null;
 	    if ("도사".equals(job)) {
-	        dosaCastMsg = "✨ 도사의 기원! 다음 공격자 강화!"+NL;
+	        dosaCastMsg = "✨ 도사의 기원! 다음 공격자 강화!";
 	    }
 	    
 	    // 15) DB 반영 + 로그
@@ -3090,15 +3090,15 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 
 	    // 몬스터 HP
 	    int monHpAfter = Math.max(0, monHpRemainBefore - calc.atkDmg);
-	    sb.append("❤️ 몬스터 HP: ").append(monHpAfter).append(" / ").append(monMaxHp).append(NL).append(NL);
+	    sb.append("❤️ 몬스터 HP: ").append(monHpAfter).append(" / ").append(monMaxHp).append(NL);
 
 	    // 반격
 	    if (calc.patternMsg != null && !calc.patternMsg.isEmpty()) {
-	        sb.append("⚅ ").append(calc.patternMsg).append(NL);
+	        sb.append(NL).append("⚅ ").append(calc.patternMsg).append(NL);
 	    }
 
 	    if (midExtraLines != null && !midExtraLines.isEmpty()) {
-	        sb.append(midExtraLines).append(NL);
+	        sb.append(midExtraLines).append(NL).append(NL);
 	    }
 	    
 	    // 현재 체력(표시 Max 사용)
