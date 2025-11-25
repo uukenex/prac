@@ -1560,7 +1560,7 @@ public class BossAttackController {
 	                String u = b.getUserName();
 	                if (userName.equals(u)) {
 	                    // 최근 5개 가방 로그 안에 있으면 → 이미 먹은 사람
-	                    return 0.5; // 기본 확률의 50%만
+	                    return 1; // 기본 확률의 50%만
 	                }
 	            }
 	        }
