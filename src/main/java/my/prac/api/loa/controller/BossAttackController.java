@@ -3990,7 +3990,7 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	    int dosaCriDmg  = 0;
 
 	    if(selfYn==1) {
-	    	//dosaLvBonus = (int) Math.round(dosaLv * 0.25);
+	    	dosaLvBonus = (int) Math.round(dosaLv);
 	    	//dosaCriDmg = (int) Math.round(dosaAtkMax * 0.05);
 	    	//eff.addAtkMin   = dosaLvBonus;
 	 	    //eff.addAtkMax   = dosaLvBonus;
