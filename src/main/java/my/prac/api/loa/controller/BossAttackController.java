@@ -1387,7 +1387,7 @@ public class BossAttackController {
 	    //boolean willKill = calc.atkDmg >= monHpRemainBefore;
 	    Resolve res = resolveKillAndDrop(m, calc, willKill, u, lucky);
 	    
-	    // 🔹 궁수: 획득 EXP +15%
+	    // 🔹 궁수: 획득 EXP +25%
 	    if ("궁수".equals(u.job)) {
 	        int baseExp = res.gainExp;
 	        int bonus = (int) Math.floor(res.gainExp * 0.25);
@@ -2649,8 +2649,33 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 		    break;
 		case 4: c.monDmg = (int) Math.round(m.monAtk * 1.5); c.patternMsg = name + "의 필살기! (피해 " + c.monDmg + ")"; break;
 		case 5:   // 🔥 NEW: 즉사 패턴
-		    c.monDmg = 9_999_999;  // 사실상 무조건 즉사
-		    c.patternMsg = name + "의 알수없는 공격"; 
+			int maxHpBase = Math.max(1, u.hpMax); // 0 방지
+            double hpRatio = (double) u.hpCur / maxHpBase;
+
+            if (hpRatio < 0.80) {
+                // 즉사 조건 충족
+                c.monDmg = 9_999_999;
+                c.patternMsg = name + "의 알 수 없는 공격!";
+            } else {
+            	// 🔥 보스 흡혈 패턴
+                // 1) 플레이어에게 들어갈 피해 = 보스 ATK의 20%
+                int lifeDmg = Math.max(1, (int)Math.round(m.monAtk * 0.2));
+
+                // 2) 플레이어 공격은 0으로 취급 (보스에게 데미지 못 줌)
+                //    내부적으로는 보스 회복량을 기록하기 위해 ATK_DMG를 음수로 넣는다.
+                //    이렇게 하면 totalDealtDmg가 줄어들어서 "보스 HP 회복" 효과가 난다.
+                int heal = lifeDmg * 10;  // 준 피해의 10배를 회복 (오버힐 느낌)
+                c.atkDmg = -heal;         // 누적 데미지 감소 → 보스가 heal 만큼 회복
+
+                // 3) 플레이어가 받는 피해
+                c.monDmg = lifeDmg;
+
+                // 4) 메시지
+                c.patternMsg = name
+                        + "의 흡혈 공격! 보스가 공격을 막고, 유저에게 "
+                        + lifeDmg + " 피해를 주고, 체력을 "
+                        + heal + " 만큼 회복했습니다!";
+            }
 		    break;
 		default: c.monDmg = 0; c.patternMsg = name + "의 알 수 없는 행동… (피해 0)";
 		}
@@ -4100,7 +4125,7 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	        flags.atkCrit = crit;
 	        flags.snipe = isSnipe;
 	        flags.finisher = (flags.monPattern == 4); // 패턴4=필살기
-
+	        
 	        // 🔥 마법사: 패턴3 방어를 깨뜨리고 1.5배 피해
 	        if ("마법사".equals(job) ) {
 	        	if(flags.monPattern == 3) {
@@ -4203,6 +4228,10 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	            int realDamage = Math.min(calc.atkDmg, monHpRemainBefore);
 	            int heal = (int) Math.round(realDamage * 0.20);
 	            if (heal < 1) heal = 1;
+	            
+	            int maxHeal = (int) Math.round(effHpMax * 0.20);
+	            if (heal > maxHeal) heal = maxHeal;
+	            
 
 	            int before = u.hpCur;
 	            u.hpCur = Math.min(effHpMax, u.hpCur + heal);
