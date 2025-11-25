@@ -1266,38 +1266,35 @@ public class BossAttackController {
 	        }
 	    }
 
-
-	    //11) 데미지 굴림 (도사/방 버프 적용 전: crit 계산은 아래로 이동)
-	    DosaBuffEffect buffEff = loadRoomDosaBuffAndBuild(roomName);
-	    String dosabuffMsg = "";
-
+	 // 도사 본인 버프
+	    DosaBuffEffect buffEff_self = null;
 	    if ("도사".equals(job)) {
-	    	DosaBuffEffect buffEff_self = buildDosaBuffEffect(u, u.lv, roomName);
-	    	effAtkMin   += Math.round(buffEff_self.addAtkMin/2);
-	        effAtkMax   += Math.round(buffEff_self.addAtkMax/2);
-	        effCritRate += Math.round(buffEff_self.addCritRate/2);
-	        effCriDmg   += Math.round(buffEff_self.addCritDmg/2);
-	        u.hpCur     += Math.round(buffEff_self.addHp/2);   // HP 상한 무시 회복
+	        buffEff_self = buildDosaBuffEffect(u, u.lv, roomName,1);
 
-	        dosabuffMsg += "(셀프)"+buffEff_self.msg+NL;
+	        effAtkMin   += buffEff_self.addAtkMin;
+	        effAtkMax   += buffEff_self.addAtkMax;
+	        effCritRate += buffEff_self.addCritRate;
+	        effCriDmg   += buffEff_self.addCritDmg;
+	        u.hpCur     += buffEff_self.addHp;
 	    }
-	    
-	    if (buffEff != null) {
-	        effAtkMin   += buffEff.addAtkMin;
-	        effAtkMax   += buffEff.addAtkMax;
-	        effCritRate += buffEff.addCritRate;
-	        effCriDmg   += buffEff.addCritDmg;
-	        u.hpCur     += buffEff.addHp;   // HP 상한 무시 회복
 
-	        dosabuffMsg += buffEff.msg;
+	    // 방 전체 버프
+	    DosaBuffEffect buffEff_room = loadRoomDosaBuffAndBuild(roomName);
 
-	        // 1회 소모 → 방내 BUFF_YN 전부 초기화
+	    if (buffEff_room != null) {
+	        effAtkMin   += buffEff_room.addAtkMin;
+	        effAtkMax   += buffEff_room.addAtkMax;
+	        effCritRate += buffEff_room.addCritRate;
+	        effCriDmg   += buffEff_room.addCritDmg;
+	        u.hpCur     += buffEff_room.addHp;
+
 	        botNewService.clearRoomBuff(roomName);
 	    }
-	    
-	    /** TODO /
-	     * 
-	     */
+	    String dosabuffMsg ="";
+	    // ★ 여기서 둘을 합쳐 하나의 메시지를 만든다
+	    if (buffEff_room != null || buffEff_self !=null) {
+	    	dosabuffMsg = buildUnifiedDosaBuffMessage(buffEff_self, buffEff_room);
+	    }
 	    
 	    
 	    // 🔥 A형 완전 분리: 데미지 전부 calculateDamage로 처리
@@ -1463,25 +1460,28 @@ public class BossAttackController {
 	    // 17) 메시지 구성 (표시용 ATK 범위에 직업 효과 반영)
 	    int shownMin = effAtkMin;
 	    int shownMax = effAtkMax;
+	    
+	    
+	    StringBuilder midExtra = new StringBuilder();
+	    StringBuilder botExtra = new StringBuilder();
+	    if (dosabuffMsg != null && !dosabuffMsg.isEmpty()) {
+	        midExtra.append(NL).append(dosabuffMsg);
+	    }
+	    if (dosaCastMsg != null && !dosaCastMsg.isEmpty()) {
+	    	botExtra.append(NL).append(dosaCastMsg);
+	    }
+	    if (stealMsg != null && !stealMsg.isEmpty()) {
+	    	botExtra.append(NL).append(stealMsg);
+	    }
 
 	    String msg = buildAttackMessage(
 	            userName, u, m, flags, calc, res, up,
 	            monHpRemainBefore, monMaxHp,
 	            shownMin, shownMax,
 	            weaponLv, weaponBonus,
-	            effHpMax
+	            effHpMax,midExtra.toString(),botExtra.toString()
 	    );
 	    
-	    if (dosabuffMsg != null) {
-	        msg += NL + dosabuffMsg;
-	    }
-	    if (dosaCastMsg != null) {
-	        msg += NL + dosaCastMsg;
-	    }
-	    
-	    if (stealMsg != null) {
-	        msg += NL + stealMsg;
-	    }
 	    
 	    
 	    
@@ -1511,7 +1511,7 @@ public class BossAttackController {
 
 	    // 🌟 운영자의 축복 안내 (실제 반영된 수치 기준)
 	    if (hasBless) {
-	        msg += NL + "※ 운영자의 축복 적용 중: 5분당 회복 +" + blessRegen
+	        msg += NL + "※ 축복: 5분당 회복 +" + blessRegen
 	             + " (Lv 15 이하 한정 버프)";
 	    }
 	    
@@ -1539,6 +1539,7 @@ public class BossAttackController {
 	private double computeBagPityMultiplier(String userName, String roomName) {
 
 	    // 1) 최근 가방 먹은 사람인지 확인
+		/*
 	    try {
 	        List<BagLog> lastDrops = botNewService.selectRecentBagDrops();
 	        if (lastDrops != null) {
@@ -1547,15 +1548,15 @@ public class BossAttackController {
 	                String u = b.getUserName();
 	                if (userName.equals(u)) {
 	                    // 최근 5개 가방 로그 안에 있으면 → 이미 먹은 사람
-	                    return 0.3; // 기본 확률의 30%만
+	                    return 0.5; // 기본 확률의 30%만
 	                }
 	            }
 	        }
 	    } catch (Exception ignore) {}
-
+		 */
 	    boolean isRising = false;
 
-	    // 2) 최근 6시간 라이징 스타(Top5)인지 확인
+	    // 2) 최근 6시간 라이징 스타(Top7)인지 확인
 	    try {
 	        List<HashMap<String,Object>> rising = botNewService.selectRisingStarsTop5Last6h();
 	        if (rising != null) {
@@ -2946,7 +2947,9 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	        int monHpRemainBefore, int monMaxHp,
 	        int shownAtkMin, int shownAtkMax,
 	        int weaponLv, int weaponBonus,
-	        int displayHpMax // ← 표시용 HP Max(아이템 포함)
+	        int displayHpMax, // ← 표시용 HP Max(아이템 포함)
+	        String midExtraLines,
+	        String botExtraLines
 	) {
 	    StringBuilder sb = new StringBuilder();
 
@@ -3060,6 +3063,10 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	        sb.append("⚅ ").append(calc.patternMsg).append(NL);
 	    }
 
+	    if (midExtraLines != null && !midExtraLines.isEmpty()) {
+	        sb.append(midExtraLines).append(NL);
+	    }
+	    
 	    // 현재 체력(표시 Max 사용)
 	    if (calc.monDmg > 0) {
 	        sb.append("❤️ 받은 피해: ").append(calc.monDmg)
@@ -3113,6 +3120,11 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	          .append(up.beforeHpRegen).append("→").append(up.afterHpRegen)
 	          .append(" (+").append(up.hpRegenDelta).append(")").append(NL);
 	    }
+	    
+	    if (botExtraLines != null && !botExtraLines.isEmpty()) {
+	        sb.append(botExtraLines).append(NL);
+	    }
+	    
 	    return sb.toString();
 	}
 
@@ -3998,29 +4010,46 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	        dosaLv = Integer.parseInt(dosaBuff.get("LV").toString());
 	    } catch (Exception ignore) {}
 
-	    return buildDosaBuffEffect(dosaUser, dosaLv, roomName);
+	    return buildDosaBuffEffect(dosaUser, dosaLv, roomName,0);
 	}
 	
-	private DosaBuffEffect buildDosaBuffEffect(User dosaUser, int dosaLv, String roomName) {
+	private DosaBuffEffect buildDosaBuffEffect(User dosaUser, int dosaLv, String roomName, int selfYn) {
 	    DosaBuffEffect eff = new DosaBuffEffect();
 
 	    int dosaAtkMax = calcUserEffectiveAtkMax(dosaUser, roomName);
 
-	    int dosaLvBonus = (int) Math.round(dosaLv * 0.5);
-	    int dosaCriDmg  = (int) Math.round(dosaAtkMax * 0.2);
+	    int dosaLvBonus = 0;
+	    int dosaCriDmg  = 0;
 
-	    eff.addAtkMin   = dosaLvBonus;
-	    eff.addAtkMax   = dosaLvBonus;
-	    eff.addCritRate = dosaLvBonus;
-	    eff.addCritDmg  = dosaCriDmg;
-	    eff.addHp       = dosaLvBonus;
-	    eff.msg = "✨ 도사의 버프 발동! (Lv " + dosaLv +
-	              ") min+" + dosaLvBonus +
-	              " max+" + dosaLvBonus +
-	              ", cri+" + dosaLvBonus +
-	              ", hp+" + dosaLvBonus +
-	              ", cridmg +" + dosaCriDmg + "%";
-
+	    if(selfYn==1) {
+	    	dosaLvBonus = (int) Math.round(dosaLv * 0.25);
+	    	dosaCriDmg = (int) Math.round(dosaAtkMax * 0.1);
+	    	 eff.addAtkMin   = dosaLvBonus;
+	 	    eff.addAtkMax   = dosaLvBonus;
+	 	    eff.addCritRate = dosaLvBonus;
+	 	    eff.addCritDmg  = dosaCriDmg;
+	 	    eff.addHp       = dosaLvBonus*2;
+	 	    eff.msg = "✨ 도사의 버프 발동! (Lv " + dosaLv +
+	 	              ") min+" + dosaLvBonus +
+	 	              " max+" + dosaLvBonus +
+	 	              ", cri+" + dosaLvBonus +
+	 	              ", hp+" + dosaLvBonus +
+	 	              ", cridmg +" + dosaCriDmg + "%";
+	    }else {
+	    	dosaLvBonus = (int) Math.round(dosaLv * 0.5);
+	    	dosaCriDmg = (int) Math.round(dosaAtkMax * 0.2);
+	    	eff.addAtkMin   = dosaLvBonus;
+		    eff.addAtkMax   = dosaLvBonus;
+		    eff.addCritRate = dosaLvBonus;
+		    eff.addCritDmg  = dosaCriDmg;
+		    eff.addHp       = dosaLvBonus*2;
+		    eff.msg = "✨ 도사의 버프 발동! (Lv " + dosaLv +
+		              ") min+" + dosaLvBonus +
+		              " max+" + dosaLvBonus +
+		              ", cri+" + dosaLvBonus +
+		              ", hp+" + dosaLvBonus +
+		              ", cridmg +" + dosaCriDmg + "%";
+	    }
 	    return eff;
 	}
 	
@@ -4315,6 +4344,37 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	    return String.format("%dsp", v);  
 	}
 
+	private String buildUnifiedDosaBuffMessage(DosaBuffEffect self, DosaBuffEffect room) {
+
+	    double atk = 0, max = 0, crit = 0, cdmg = 0, hp = 0;
+
+	    if (self != null) {
+	        atk  += self.addAtkMin + self.addAtkMax;
+	        crit += self.addCritRate;
+	        cdmg += self.addCritDmg;
+	        hp   += self.addHp;
+	    }
+
+	    if (room != null) {
+	        atk  += room.addAtkMin + room.addAtkMax;
+	        crit += room.addCritRate;
+	        cdmg += room.addCritDmg;
+	        hp   += room.addHp;
+	    }
+
+	    StringBuilder sb = new StringBuilder("※도사의 버프 효과: ");
+
+	    List<String> parts = new ArrayList<>();
+
+	    if (atk != 0)  parts.add("ATK "  + (atk >= 0 ? "+" : "") + (int)atk);
+	    if (crit != 0) parts.add("CRIT " + (crit>= 0 ? "+" : "") + (int)crit + "%");
+	    if (cdmg != 0) parts.add("CDMG " + (cdmg>= 0 ? "+" : "") + (int)cdmg + "%");
+	    if (hp   != 0) parts.add("HP "   + (hp  >= 0 ? "+" : "") + (int)hp);
+
+	    sb.append(String.join(", ", parts));
+
+	    return sb.toString();
+	}
 	
 	private String resolveItemCategory(int itemId) {
 	    if (itemId >= 100 && itemId < 200)  return "※무기";   // 100번대
