@@ -1147,6 +1147,18 @@ public class BossAttackController {
 	    }
 
 
+	    
+	    // 🔹 글로벌(서버 전체) 기준 ACHV 카운트
+	    List<AchievementCount> globalList = botNewService.selectAchvCountsGlobalAll();
+	    Map<String, Integer> globalAchvMap = new HashMap<>();
+	    if (globalList != null) {
+	        for (AchievementCount ac : globalList) {
+	            if (ac == null || ac.getCmd() == null) continue;
+	            globalAchvMap.put(ac.getCmd(), ac.getCnt());
+	        }
+	    }
+
+	    
 	    // 8) 진행중 전투 / 신규 전투 + LUCKY 유지
 	    OngoingBattle ob = botNewService.selectOngoingBattle(userName, roomName);
 	    Monster m;
@@ -1165,7 +1177,16 @@ public class BossAttackController {
 	        monHpRemainBefore = m.monHp;
 	        
 	        
+	        int globalCnt = 0;
+	        if (globalAchvMap != null) {
+	            Integer v = globalAchvMap.get( "ACHV_FIRST_CLEAR_MON_" + m.monNo);
+	            if (v != null) globalCnt = v.intValue();
+	        }
+
+	        
 	        if(m.monNo > 50){
+	        	lucky = false;
+	        } else if (globalCnt == 0) {//최초토벌 안된몹
 	        	lucky = false;
 	        } else if("사신".equals(job)){
 	        	lucky = false;
@@ -1191,17 +1212,7 @@ public class BossAttackController {
 	            : computeEffectiveHpFromLastAttack(userName, roomName, u, effHpMax, effRegen);
 	    u.hpCur = effectiveHp;
 	    
-	    
-	    // 🔹 글로벌(서버 전체) 기준 ACHV 카운트
-	    List<AchievementCount> globalList = botNewService.selectAchvCountsGlobalAll();
-	    Map<String, Integer> globalAchvMap = new HashMap<>();
-	    if (globalList != null) {
-	        for (AchievementCount ac : globalList) {
-	            if (ac == null || ac.getCmd() == null) continue;
-	            globalAchvMap.put(ac.getCmd(), ac.getCnt());
-	        }
-	    }
-
+	
 	    // 🔹 현재 유저(방 기준) ACHV 카운트
 	    List<AchievementCount> userList = botNewService.selectAchvCountsGlobal(userName, roomName);
 	    Map<String, Integer> userAchvMap = new HashMap<>();
@@ -1211,6 +1222,7 @@ public class BossAttackController {
 	            userAchvMap.put(ac.getCmd(), ac.getCnt());
 	        }
 	    }
+	    
 	    
 	    double berserkMul = 1.0;
 	    if ("전사".equals(job) && effHpMax > 0 && m.monLv >= u.lv) {
@@ -1378,7 +1390,7 @@ public class BossAttackController {
 	    // 🔹 궁수: 획득 EXP +15%
 	    if ("궁수".equals(u.job)) {
 	        int baseExp = res.gainExp;
-	        int bonus = (int) Math.floor(res.gainExp * 0.15);
+	        int bonus = (int) Math.floor(res.gainExp * 0.25);
 	        res.gainExp = baseExp + bonus;
 	    }
 	    
@@ -2586,7 +2598,7 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	    if (enabled == 2) { weights[0] = 20; weights[1] = 80; }
 	    if (enabled == 3) { weights[0] = 10; weights[1] = 60; weights[2] = 30; }
 	    if (enabled == 4) { weights[0] = 0; weights[1] = 60; weights[2] = 25; weights[3] = 15; }
-	    if (enabled == 5) { weights[0] = 0; weights[1] = 60; weights[2] = 9; weights[3] = 30; weights[4] = 1; }
+	    if (enabled == 5) { weights[0] = 0; weights[1] = 62; weights[2] = 7; weights[3] = 26; weights[4] = 5; }
 	    int sum = 0; for (int w : weights) sum += Math.max(0, w);
 	    if (sum <= 0) { for (int i = 0; i < enabled; i++) weights[i] = 1; sum = enabled; }
 	    int pick = r.nextInt(sum) + 1, acc = 0;
@@ -3954,7 +3966,7 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 
 	    return buildDosaBuffEffect(dosaUser, dosaLv, roomName,0);
 	}
-	
+	//도사
 	private DosaBuffEffect buildDosaBuffEffect(User dosaUser, int dosaLv, String roomName, int selfYn) {
 	    DosaBuffEffect eff = new DosaBuffEffect();
 
@@ -4414,7 +4426,7 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	    JOB_DEFS.put("도사", new JobDef(
 	        "도사",
 	        "▶ 도사 :도를 닦아 깨달음을 얻은 위인",
-	        "⚔ 다음 공격하는 아군 강화(레벨*0.5만큼 능력강화,맥뎀*0.2만큼 치명뎀강화, 자신의 럭키몬스터 등장 확률 증가"
+	        "⚔ 다음 공격하는 아군 강화(레벨*0.5만큼 능력강화,맥뎀*0.1만큼 치명뎀강화,"+NL+"매턴 공격시 절반만큼 자신 강화,자신의 럭키몬스터 등장 확률 증가"
 	    ));
 	    /*
 	    JOB_DEFS.put("기사", new JobDef(
