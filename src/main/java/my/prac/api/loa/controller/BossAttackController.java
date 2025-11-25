@@ -1539,7 +1539,7 @@ public class BossAttackController {
 	private double computeBagPityMultiplier(String userName, String roomName) {
 
 	    // 1) 최근 가방 먹은 사람인지 확인
-		/*
+		
 	    try {
 	        List<BagLog> lastDrops = botNewService.selectRecentBagDrops();
 	        if (lastDrops != null) {
@@ -1548,12 +1548,12 @@ public class BossAttackController {
 	                String u = b.getUserName();
 	                if (userName.equals(u)) {
 	                    // 최근 5개 가방 로그 안에 있으면 → 이미 먹은 사람
-	                    return 0.5; // 기본 확률의 30%만
+	                    return 0.5; // 기본 확률의 50%만
 	                }
 	            }
 	        }
 	    } catch (Exception ignore) {}
-		 */
+		 
 	    boolean isRising = false;
 
 	    // 2) 최근 6시간 라이징 스타(Top7)인지 확인
@@ -1623,13 +1623,10 @@ public class BossAttackController {
 	    // 예시: 초반 몹은 5%, 후반 보스는 15%
 	    switch (monNo) {
 	        case 1: case 2: case 3: case 4: case 5:
-	            return 0.0025;  // 0.25%
 	        case 6: case 7: case 8: case 9: case 10:
 	            return 0.0025;  // 0.25%
-	        case 11: case 12: case 13:
-	            return 0.003;  // 0.3%
-	        case 14: case 15:
-	            return 0.004;  // 0.4%
+	        case 11: case 12: case 13:case 14: case 15:
+	            return 0.0035;  // 0.35%
 	        case 16: case 17: case 18: case 19: case 20:
 	            return 0.005;  // 0.5%
 	        case 51: case 52: case 53: case 61: case 62: case 63:
@@ -3503,42 +3500,8 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	        return "";
 	    }
 
-	    int rewardSp = 0;
-	    switch (m.monNo) {
-	        case 1:
-	        case 2:
-	        case 3:
-	        case 4:
-	        case 5:
-	            rewardSp = 100; break;
-	        case 6:
-	            rewardSp = 300; break;
-	        case 7:
-	        case 8:
-	            rewardSp = 500; break;
-	        case 9:
-	        case 10:
-	        case 11:
-	        case 12:
-	            rewardSp = 1000; break;
-	        case 13:
-	        case 14:
-	            rewardSp = 1500; break;
-	        case 15:
-	        case 16:
-	            rewardSp = 2000; break;
-	        case 17:
-	        case 18:
-	            rewardSp = 2500; break;
-	        case 19:
-	        case 20:
-	            rewardSp = 3000; break;
-	        default:
-	            break;
-	    }
-	    if (rewardSp <= 0) {
-	        return ""; // 0이면 지급 X
-	    }
+	    int rewardSp = calcFirstClearReward(m.monNo);
+	    
 
 	    HashMap<String,Object> pr = new HashMap<>();
 	    pr.put("userName", userName);
@@ -3804,11 +3767,11 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	        case 13: return 1500;
 	        case 14: return 1500;
 	        case 15: return 5000;
-	        case 16: return 2000;
-	        case 17: return 2500;
-	        case 18: return 2500;
-	        case 19: return 3000;
-	        case 20: return 3000;
+	        case 16: return 5000;
+	        case 17: return 5000;
+	        case 18: return 5000;
+	        case 19: return 5000;
+	        case 20: return 5000;
 	    }
 	    return 0;
 	}
