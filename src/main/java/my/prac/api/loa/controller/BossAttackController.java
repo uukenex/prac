@@ -3472,7 +3472,7 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	    // 🔹 4행: 추가 설명 (mon_note)
 	    String note = (m.monNote != null ? m.monNote.trim() : "");
 	    if (!note.isEmpty()) {
-	        sb.append("※ ").append(note).append(NL);
+	        sb.append("※ ").append(note).append(NL).append(NL);;
 	    }
 
 	    return sb.toString();
@@ -3676,6 +3676,10 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	        case 300:  return 100;
 	        case 500:  return 300;
 	        case 1000: return 500;
+	        case 2000: return 1000;
+	        case 3000: return 3000;
+	        case 4000: return 10000;
+	        case 5000: return 50000;
 	        default:   return 0;
 	    }
 	}
@@ -3692,7 +3696,7 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	    int totalKills = 0;
 
 	 // 1) 몬스터별 업적 (각 MON_NO별)
-	    int[] perMonThresholds = {50, 100, 300, 500, 1000};
+	    int[] perMonThresholds = {50, 100, 300, 500, 1000,2000,3000,4000,5000};
 
 	    for (KillStat ks : ksList) {
 	        int monNo = ks.monNo;
@@ -3709,7 +3713,7 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	    }
 
 	    // 2) 통산 킬 업적
-	    int[] totalThresholds = {50, 100, 300, 500, 1000};
+	    int[] totalThresholds = {50, 100, 300, 500, 1000,2000,3000,4000,5000};
 	    for (int th : totalThresholds) {
 	        if (totalKills >= th) {
 	            String cmd = "ACHV_KILL_TOTAL_" + th;
@@ -3886,7 +3890,9 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	        {1,   100},
 	        {10,  200},
 	        {50,  500},
-	        {100, 1000}
+	        {100, 1000},
+	        {300, 3000},
+	        {500, 10000}
 	    };
 
 	    StringBuilder sb = new StringBuilder();
@@ -3933,8 +3939,6 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	    // 1) 기본값
 	    // -------------------------------
 	    int atkMax = u.atkMax;
-	    final String job = (u.job == null ? "" : u.job.trim());
-
 	    // -------------------------------
 	    // 2) MARKET 아이템 버프 
 	    //    (selectOwnedMarketBuffTotals 사용)
@@ -3965,31 +3969,6 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	    int weaponBonus = getWeaponAtkBonus(weaponLv); // 25강부터 +1
 	    // 네 구조: max ATK 는 무기레벨 만큼 +1 per level
 	    atkMax += weaponBonus;
-
-	    // -------------------------------
-	    // 4) 운영자의 축복: Lv7 이하 → ATK +3
-	    // -------------------------------
-	    if (u.lv <= 15) {
-	        //atkMax += 3;
-	    }
-
-	    // -------------------------------
-	    // 5) 직업 패시브
-	    // -------------------------------
-
-	    // 전사: HP 기반 공격력 비례 (최대 2배)
-	    if ("전사".equals(job)) {
-	        // 체력 0%~100% → *1.0 ~ 2.0
-	        double hpRate = (u.hpCur <= 0 ? 0 : (double)u.hpCur / (double)u.hpMax);
-	        double mul = 1.0 + (hpRate);   // 0% =1.0 , 100% =2.0
-	        atkMax = (int)Math.round(atkMax * mul);
-	    }
-
-	    // 마법사: 패턴3 무시 시(여기서는 반영 X), 기본적으로 보정 없음
-	    // 도적: 스틸 / 회피 (공격력 보정 없음)
-	    // 상인: 공격력 보정 없음
-	    // 프리스트: 공격력 보정 없음
-	    // 궁수: 저격은 dmg 보정이며 min/max에는 영향 없음
 
 	    // -------------------------------
 	    // 6) 최소 하한선
@@ -4448,7 +4427,7 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	    JOB_DEFS.put("마법사", new JobDef(
 	        "마법사",
 	        "▶ 마법사 :강력한 마법공격으로 몬스터의 방어태세를 무력화한다",
-	        "⚔ 몬스터가 방어시 방어를 무시하고 피해 2배를 줌"
+	        "⚔ 몬스터가 방어시 방어를 무시하고 피해 2배를 줌, 보스의 필살기를 마나실드로 방어(20%데미지감소)"
 	    ));
 
 	    JOB_DEFS.put("도적", new JobDef(
