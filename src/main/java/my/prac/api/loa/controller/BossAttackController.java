@@ -3076,6 +3076,10 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	    }
 	    sb.append(")").append(NL);
 
+	    if (midExtraLines != null && !midExtraLines.isEmpty()) {
+	        sb.append(midExtraLines).append(NL).append(NL);
+	    }
+	    
 	    // 몬스터 HP
 	    int monHpAfter = Math.max(0, monHpRemainBefore - calc.atkDmg);
 	    sb.append("❤️ 몬스터 HP: ").append(monHpAfter).append(" / ").append(monMaxHp).append(NL);
@@ -3085,10 +3089,6 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	        sb.append(NL).append("⚅ ").append(calc.patternMsg).append(NL);
 	    }
 
-	    if (midExtraLines != null && !midExtraLines.isEmpty()) {
-	        sb.append(midExtraLines).append(NL).append(NL);
-	    }
-	    
 	    // 현재 체력(표시 Max 사용)
 	    if (calc.monDmg > 0) {
 	        sb.append("❤️ 받은 피해: ").append(calc.monDmg)
