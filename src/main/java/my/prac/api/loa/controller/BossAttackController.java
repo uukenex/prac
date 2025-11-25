@@ -59,7 +59,17 @@ public class BossAttackController {
 	    final String roomName = Objects.toString(map.get("roomName"), "");
 	    final String userName = Objects.toString(map.get("userName"), "");
 	    final String param1  = Objects.toString(map.get("param1"), "").trim();
-	    User u = botNewService.selectUser(userName, roomName);
+	    
+	 // ① param1으로 다른 유저 조회 시도
+	    String targetUser = userName;
+	    if (map.get("param1") != null && !Objects.toString(map.get("param1"), "").isEmpty()) {
+	        List<String> newUserName = botNewService.selectParam1ToNewUserSearch(map);
+	        if (newUserName != null && !newUserName.isEmpty())
+	            targetUser = newUserName.get(0);
+	        else
+	            return "해당 유저(" + map.get("param1") + ")를 찾을 수 없습니다.";
+	    }
+	    User u = botNewService.selectUser(targetUser, roomName);
 	    if (u == null) {
 	        return "❌ 유저 정보를 찾을 수 없습니다.";
 	    }
@@ -69,7 +79,7 @@ public class BossAttackController {
 	 // 1) MARKET 장비 버프 (monsterAttack과 동일)
 	    HashMap<String, Number> buffs = null;
 	    try {
-	        buffs = botNewService.selectOwnedMarketBuffTotals(userName, roomName);
+	        buffs = botNewService.selectOwnedMarketBuffTotals(targetUser, roomName);
 	    } catch (Exception ignore) {}
 
 	    int bHpMax  = (buffs != null && buffs.get("HP_MAX")   != null) ? buffs.get("HP_MAX").intValue()   : 0;
@@ -106,11 +116,11 @@ public class BossAttackController {
 	    if (effRegen < 0) effRegen = 0;
 
 	    // 6) 유효 체력 계산 (attackInfo와 동일 함수 사용)
-	    int effHp = computeEffectiveHpFromLastAttack(userName, roomName, u, finalHpMax, effRegen);
+	    int effHp = computeEffectiveHpFromLastAttack(targetUser, roomName, u, finalHpMax, effRegen);
 	    if (effHp > finalHpMax) effHp = finalHpMax;
 
 	    StringBuilder sb = new StringBuilder();
-	    sb.append("❤️ ").append(userName).append("님의 체력 상태").append(NL)
+	    sb.append("❤️ ").append(targetUser).append("님의 체력 상태").append(NL)
 	      .append("현재 체력: ").append(effHp).append(" / ").append(finalHpMax).append(NL)
 	      .append("5분당 회복: +").append(effRegen).append(NL);
 
@@ -125,7 +135,7 @@ public class BossAttackController {
 	    }
 	    
 	 // ✅ 회복 예측 스케줄 (예: 60분 범위 내)
-	    String regenInfo = buildRegenScheduleSnippetEnhanced2(userName, roomName, u, 30,effHp, finalHpMax, effRegen, 60);
+	    String regenInfo = buildRegenScheduleSnippetEnhanced2(targetUser, roomName, u, 30,effHp, finalHpMax, effRegen, 60);
 
 	    if (regenInfo != null && !regenInfo.isEmpty()) {
 	        sb.append(regenInfo);
@@ -133,7 +143,7 @@ public class BossAttackController {
 	    
 	 // 🔹 여기서 "공격 로직"에서 쓰는 진행중 전투 계산 재사용
 	    try {
-	        OngoingBattle ob = botNewService.selectOngoingBattle(userName, roomName);
+	        OngoingBattle ob = botNewService.selectOngoingBattle(targetUser, roomName);
 	        if (ob != null) {
 	            Monster m = botNewService.selectMonsterByNo(ob.monNo);
 	            if (m != null) {
