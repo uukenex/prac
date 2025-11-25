@@ -1007,7 +1007,7 @@ public class BossAttackController {
 	    }*/
 	    sb.append(NL)
 	      .append("↘옵션: ").append(sbOpt).append(NL)
-	      .append("현재 포인트: ").append(afterPoint).append("sp");
+	      .append("✨포인트: ").append(afterPoint).append("sp");
 
 	    try {
 	    	botNewService.closeOngoingBattleTx(userName, roomName);
@@ -1225,12 +1225,13 @@ public class BossAttackController {
 	    
 	    
 	    double berserkMul = 1.0;
+	    /*
 	    if ("전사".equals(job) && effHpMax > 0 && m.monLv >= u.lv) {
 	        double hpRatio = (double) u.hpCur / effHpMax;
 	        if (hpRatio < 0.5) {
 	            berserkMul = 1.0 + (0.5 - hpRatio) * 2.0; // 0% ~ +100%
 	        }
-	    }
+	    }*/
 	    
 	    if ("사신".equals(job)) {
 	        String firstCmd = "ACHV_FIRST_CLEAR_MON_" + m.monNo;
@@ -1518,7 +1519,7 @@ public class BossAttackController {
 	    } catch (Exception ignore) {}
 	    String curSpStr = formatSp(curPoint);
 
-	    msg += "현재 포인트: " + curSpStr;
+	    msg += "✨포인트: " + curSpStr;
 
 	    if (bagDropMsg != null && !bagDropMsg.isEmpty()) {
 	        msg += NL + bagDropMsg;
@@ -4143,7 +4144,7 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	        }
 
 	        // 🛡 전사: 보스 필살기 패링 (20% 확률)
-	        if ("전사".equals(job) && flags.finisher && calc.monDmg > 0 && m.monLv > u.lv) {
+	        if ("전사".equals(job) && flags.finisher && calc.monDmg > 0) {
 	            if (ThreadLocalRandom.current().nextDouble() < 0.20) {
 
 	                int bossSkillDmg = calc.monDmg;             // 보스 필살기 데미지
@@ -4406,14 +4407,14 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	    // NL은 클래스에 이미 있는 상수라고 가정하고 그대로 사용
 	    JOB_DEFS.put("전사", new JobDef(
 	        "전사",
-	        "▶ 전사 :육체능력이 변경되며, 강한적을 상대하면 강해진다",
-	        "⚔ 기본 HP만큼 추가 증가, 방어 추가, 자신보다 몬스터 lv이 높을때 [버서크모드(50%이하부터,점점 강해짐 데미지 최대 2배), -hidden-] 활성화"
+	        "▶ 전사 :육체능력이 변경되며, 패링 스킬 추가 ",
+	        "⚔ 기본 HP만큼 추가 증가, 방어 추가, 적의 필살기를 반격(20%)"
 	    ));
 
 	    JOB_DEFS.put("궁수", new JobDef(
 	        "궁수",
 	        "▶ 궁수 :사냥감을 조준하는 집요한 추적자, 강력한 한방을 선사하지만, 쿨타임이 길어진다",
-	        "⚔ 최종 데미지 ×1.8, 쿨타임 5분, EXP +15%, 공격시 6.5%확률로 강력한공격"
+	        "⚔ 최종 데미지 ×1.8, 쿨타임 5분, EXP +25%, 공격시 6.5%확률로 강력한공격"
 	    ));
 
 	    JOB_DEFS.put("마법사", new JobDef(
@@ -4461,7 +4462,7 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
         JOB_DEFS.put("흡혈귀", new JobDef(
             "흡혈귀",
             "▶ 흡혈귀 :배가고프다, 나는 배가 고프다!",
-            "⚔ 공격시 준피해의 20% 흡혈(공격&흡혈 선계산, 후피해), hp리젠 아이템의 증감처리 미적용"
+            "⚔ 공격시 준피해의 20% 흡혈(공격&흡혈 선계산, 후피해)[max: 최대체력의20%], hp리젠 아이템의 증감처리 미적용"
         ));
 	}
 	
