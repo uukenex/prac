@@ -1424,7 +1424,6 @@ public class BossAttackController {
 	                        inv.put("delYn", "0");
 	                        inv.put("gainType", "STEAL");
 	                        botNewService.insertInventoryLogTx(inv);
-	                        // 메시지는 buildAttackMessage에서 드랍 파트와 함께 표현 가능 (원하면 추가)
 	                        stealMsg = "✨ " + m.monName + "의 아이템을 훔쳤습니다! (" + dropName + "조각)";
 	                        calc.jobSkillUsed = true;  
 	                    }
@@ -1519,19 +1518,8 @@ public class BossAttackController {
 	    } catch (Exception ignore) {}
 	    String curSpStr = formatSp(curPoint);
 
-	    msg = msg + NL + "현재 포인트: " + curSpStr + NL;
+	    msg += "현재 포인트: " + curSpStr;
 
-	    // 🌟 운영자의 축복 안내 (실제 반영된 수치 기준)
-	    if (hasBless) {
-	        msg += NL + "※ 축복: 5분당 회복 +" + blessRegen
-	             + " (Lv 15 이하 한정 버프)";
-	    }
-	    
-	    // 19) 전직 안내 (전직 안 했고 5레벨 이상일 때만)
-	    if ((job.isEmpty()) && u.lv >= 1) {
-	        msg += NL + "※ 아직 전직하지 않았습니다. /직업 으로 확인해주세요!";
-	    }
-	    
 	    if (bagDropMsg != null && !bagDropMsg.isEmpty()) {
 	        msg += NL + bagDropMsg;
 	    }
