@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 
 import my.prac.core.game.dto.AchievementCount;
 import my.prac.core.game.dto.AttackDeathStat;
+import my.prac.core.game.dto.BagLog;
 import my.prac.core.game.dto.BattleLog;
 import my.prac.core.game.dto.KillStat;
 import my.prac.core.game.dto.Monster;
@@ -188,4 +189,5 @@ public interface BotNewDAO {
 	
 	List<Integer> selectBagRewardItemIdsUserNotOwned(HashMap<String,Object> map);
     
+	List<BagLog> selectRecentBagDrops();
 }

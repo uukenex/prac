@@ -21,6 +21,7 @@ import org.springframework.stereotype.Controller;
 import my.prac.core.game.dto.AchievementCount;
 import my.prac.core.game.dto.AttackCalc;
 import my.prac.core.game.dto.AttackDeathStat;
+import my.prac.core.game.dto.BagLog;
 import my.prac.core.game.dto.BattleLog;
 import my.prac.core.game.dto.DamageOutcome;
 import my.prac.core.game.dto.Flags;
@@ -52,7 +53,30 @@ public class BossAttackController {
 	@Resource(name = "core.prjbot.BotNewService")     BotNewService botNewService;
 	@Resource(name = "core.prjbot.BotSettleService")  BotSettleService botSettleService;
 
-	
+	public String bagLog(HashMap<String, Object> map) {
+	    List<BagLog> logs = botNewService.selectRecentBagDrops();
+
+	    if (logs == null || logs.isEmpty()) {
+	        return "";
+	    }
+
+	    StringBuilder sb = new StringBuilder();
+	    sb.append("최근 가방 획득 로그 (최대 5건)").append(NL);
+
+	    java.text.SimpleDateFormat fmt = new java.text.SimpleDateFormat("MM-dd HH:mm");
+
+	    for (BagLog log : logs) {
+	        String when = (log.getInsertDate() != null ? fmt.format(log.getInsertDate()) : "-");
+	        sb.append("- ")
+	          .append(when)
+	          .append(" : ")
+	          .append(log.getUserName())
+	          .append("님이 가방을 획득했습니다.")
+	          .append(NL);
+	    }
+
+	    return sb.toString();
+	}
 	/** 
 	 */
 	public String getHpStatus(HashMap<String,Object> map) {
@@ -1512,13 +1536,65 @@ public class BossAttackController {
 	    return msg;
 	}
 	
+	private double computeBagPityMultiplier(String userName, String roomName) {
+
+	    // 1) 최근 가방 먹은 사람인지 확인
+	    try {
+	        List<BagLog> lastDrops = botNewService.selectRecentBagDrops();
+	        if (lastDrops != null) {
+	            for (BagLog b : lastDrops) {
+	                if (b == null) continue;
+	                String u = b.getUserName();
+	                if (userName.equals(u)) {
+	                    // 최근 5개 가방 로그 안에 있으면 → 이미 먹은 사람
+	                    return 0.3; // 기본 확률의 30%만
+	                }
+	            }
+	        }
+	    } catch (Exception ignore) {}
+
+	    boolean isRising = false;
+
+	    // 2) 최근 6시간 라이징 스타(Top5)인지 확인
+	    try {
+	        List<HashMap<String,Object>> rising = botNewService.selectRisingStarsTop5Last6h();
+	        if (rising != null) {
+	            for (HashMap<String,Object> row : rising) {
+	                if (row == null) continue;
+
+	                String rn = Objects.toString(row.get("ROOM_NAME"), "");
+	                String un = Objects.toString(row.get("USER_NAME"), "");
+
+	                if (roomName.equals(rn) && userName.equals(un)) {
+	                    isRising = true;
+	                    break;
+	                }
+	            }
+	        }
+	    } catch (Exception ignore) {}
+
+	    if (isRising) {
+	        // 열심히 때렸는데 최근 가방 기록은 없는 사람 → 드랍율 2배
+	        return 2.0;
+	    }
+
+	    // 기본값: 보정 없음
+	    return 1.0;
+	}
 	
 	private String tryDropBag(String userName, String roomName, Monster m) {
 
 	    // 몬스터에 따른 가방 드랍 확률 (예시)
-	    double rate = getBagDropRate(m.monNo);
+	    double baseRate = getBagDropRate(m.monNo);
+	    
+	    // 2) 최근 가방/라이징스타 기반 보정 배율
+	    double pityMul = computeBagPityMultiplier(userName, roomName);
 
-	    if (ThreadLocalRandom.current().nextDouble() >= rate) {
+	    // 3) 최종 드랍율 (상한 50% 정도로 캡)
+	    double finalRate = baseRate * pityMul;
+	    if (finalRate > 0.5) finalRate = 0.5;
+
+	    if (ThreadLocalRandom.current().nextDouble() >= baseRate) {
 	        return ""; // 드랍 실패 → 메시지 없음
 	    }
 
@@ -3554,6 +3630,13 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	        	}
 	        	break;
 	        case 14: // 리치
+	        	switch (threshold) {
+	        	case 50:  return 800;
+	        	case 100: return 800;
+	        	case 300: return 800;
+	        	case 500: return 800;
+	        	}
+	        	break;
 	        case 15: // 하급악마
 	        case 16: // 
 	        	switch (threshold) {
@@ -3704,7 +3787,7 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	        case 12: return 1000;
 	        case 13: return 1500;
 	        case 14: return 1500;
-	        case 15: return 2000;
+	        case 15: return 5000;
 	        case 16: return 2000;
 	        case 17: return 2500;
 	        case 18: return 2500;

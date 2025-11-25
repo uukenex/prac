@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 
 import my.prac.core.game.dto.AchievementCount;
 import my.prac.core.game.dto.AttackDeathStat;
+import my.prac.core.game.dto.BagLog;
 import my.prac.core.game.dto.BattleLog;
 import my.prac.core.game.dto.KillStat;
 import my.prac.core.game.dto.Monster;
@@ -358,4 +359,8 @@ public class BotNewServiceImpl implements BotNewService {
         return botNewDAO.selectBagRewardItemIdsUserNotOwned(p);
     }
 
+    @Override
+    public List<BagLog> selectRecentBagDrops() {
+        return botNewDAO.selectRecentBagDrops();
+    }
 }

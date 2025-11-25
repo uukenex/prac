@@ -4,10 +4,9 @@ import java.sql.Timestamp;
 import java.util.HashMap;
 import java.util.List;
 
-import org.apache.ibatis.annotations.Param;
-
 import my.prac.core.game.dto.AchievementCount;
 import my.prac.core.game.dto.AttackDeathStat;
+import my.prac.core.game.dto.BagLog;
 import my.prac.core.game.dto.BattleLog;
 import my.prac.core.game.dto.KillStat;
 import my.prac.core.game.dto.Monster;
@@ -136,6 +135,8 @@ public interface BotNewService {
     String selectItemNameById(int itemId);
     
     List<Integer> selectBagRewardItemIdsUserNotOwned(String userName, String roomName);
+    
+    List<BagLog> selectRecentBagDrops();
 } 
 
 	

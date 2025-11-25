@@ -928,5 +928,19 @@
               AND ROOM_NAME = #{roomName}
               AND DEL_YN = '0'
        )
-</select>
+	</select>
+
+	<select id="selectRecentBagDrops" resultType="my.prac.core.game.dto.BagLog">
+	    SELECT *
+		  FROM (
+		      SELECT 
+		          USER_NAME AS userName,
+		          ROOM_NAME AS roomName,
+		          INSERT_DATE AS insertDate
+		      FROM TBOT_POINT_NEW_INVENTORY
+		      WHERE ITEM_ID = 91     -- 가방
+		      ORDER BY INSERT_DATE DESC
+		  )
+		  WHERE ROWNUM &lt;= 5
+	</select>
 </mapper>
