@@ -378,7 +378,7 @@
 	    AND inv.room_name = #{roomName}
 	  </if>
 	    AND inv.del_yn = '0'
-	    AND i.item_type in ('MARKET','MASTER')
+	    AND i.item_type in ('MARKET','BAG_OPEN','MASTER')
 	</select>
 	
 	<!-- 구매 가능한 MARKET 아이템 목록 + 보유여부 -->
