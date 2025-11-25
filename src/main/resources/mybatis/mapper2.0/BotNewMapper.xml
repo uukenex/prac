@@ -903,7 +903,6 @@
 	       AND ROWNUM    = 1
 	</update>
 	
-	<!-- 3) 가방 보상용 아이템 목록: ITEM_TYPE='BAG_REWARD' 가정 -->
 	<select id="selectBagRewardItemIds" resultType="int">
 	    SELECT ITEM_ID
 	      FROM TBOT_POINT_NEW_ITEM
@@ -920,7 +919,7 @@
 	<select id="selectBagRewardItemIdsUserNotOwned" parameterType="hashmap" resultType="int">
     SELECT ITEM_ID
       FROM TBOT_POINT_NEW_ITEM I
-     WHERE I.ITEM_TYPE = 'BAG_REWARD'
+     WHERE I.ITEM_TYPE = 'BAG_OPEN'
        AND I.ITEM_ID NOT IN (
            SELECT DISTINCT ITEM_ID
              FROM TBOT_POINT_NEW_INVENTORY

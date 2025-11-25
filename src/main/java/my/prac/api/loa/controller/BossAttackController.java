@@ -676,7 +676,7 @@ public class BossAttackController {
 	                String label = itemName;
 
 	                // MARKET / MASTER 는 장비 취급 → +강화 표시, 수량은 보통 1
-	                if ("MARKET".equals(typeStr)|| "BAG_REWARD".equals(typeStr) || "MASTER".equals(typeStr)) {
+	                if ("MARKET".equals(typeStr)|| "BAG_OPEN".equals(typeStr) || "MASTER".equals(typeStr)) {
 	                    try {
 	                        //int e = Integer.parseInt(enhance);
 	                        //if (e > 0) label = label + "(+" + e + ")";
@@ -4345,7 +4345,7 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	    if (itemId >= 600 && itemId < 700)  return "※토템";   // 600번대
 	    if (itemId >= 700 && itemId < 800)  return "※전설";   // 700번대
 	    if (itemId >= 900 && itemId < 1000) return "※선물";   // 900번대
-	    if (itemId >= 9000 && itemId < 10000) return "※유물"; // 9000번대 (BAG_REWARD, 유물류)
+	    if (itemId >= 9000 && itemId < 10000) return "※유물"; // 9000번대 
 	    return "※기타";
 	}
 	private String buildRelicStatSuffix(HashMap<String, Object> row) {
