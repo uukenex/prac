@@ -4023,32 +4023,20 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 
 	    if(selfYn==1) {
 	    	dosaLvBonus = (int) Math.round(dosaLv * 0.25);
-	    	dosaCriDmg = (int) Math.round(dosaAtkMax * 0.1);
-	    	 eff.addAtkMin   = dosaLvBonus;
+	    	dosaCriDmg = (int) Math.round(dosaAtkMax * 0.05);
+	    	eff.addAtkMin   = dosaLvBonus;
 	 	    eff.addAtkMax   = dosaLvBonus;
 	 	    eff.addCritRate = dosaLvBonus;
 	 	    eff.addCritDmg  = dosaCriDmg;
 	 	    eff.addHp       = dosaLvBonus*2;
-	 	    eff.msg = "✨ 도사의 버프 발동! (Lv " + dosaLv +
-	 	              ") min+" + dosaLvBonus +
-	 	              " max+" + dosaLvBonus +
-	 	              ", cri+" + dosaLvBonus +
-	 	              ", hp+" + dosaLvBonus +
-	 	              ", cridmg +" + dosaCriDmg + "%";
 	    }else {
 	    	dosaLvBonus = (int) Math.round(dosaLv * 0.5);
-	    	dosaCriDmg = (int) Math.round(dosaAtkMax * 0.2);
+	    	dosaCriDmg = (int) Math.round(dosaAtkMax * 0.1);
 	    	eff.addAtkMin   = dosaLvBonus;
 		    eff.addAtkMax   = dosaLvBonus;
 		    eff.addCritRate = dosaLvBonus;
 		    eff.addCritDmg  = dosaCriDmg;
 		    eff.addHp       = dosaLvBonus*2;
-		    eff.msg = "✨ 도사의 버프 발동! (Lv " + dosaLv +
-		              ") min+" + dosaLvBonus +
-		              " max+" + dosaLvBonus +
-		              ", cri+" + dosaLvBonus +
-		              ", hp+" + dosaLvBonus +
-		              ", cridmg +" + dosaCriDmg + "%";
 	    }
 	    return eff;
 	}
