@@ -1577,7 +1577,7 @@ public class BossAttackController {
 
 	    if (isRising) {
 	        // 열심히 때렸는데 최근 가방 기록은 없는 사람 → 드랍율 2배
-	        return 2.0;
+	        return 4.0;
 	    }
 
 	    // 기본값: 보정 없음
@@ -1625,13 +1625,13 @@ public class BossAttackController {
 	    switch (monNo) {
 	        case 1: case 2: case 3: case 4: case 5:
 	        case 6: case 7: case 8: case 9: case 10:
-	            return 0.0025;  // 0.25%
+	            return 0.004;  // 0.4%
 	        case 11: case 12: case 13:case 14: case 15:
-	            return 0.0035;  // 0.35%
+	            return 0.005;  // 0.5%
 	        case 16: case 17: case 18: case 19: case 20:
 	            return 0.005;  // 0.5%
 	        case 51: case 52: case 53: case 61: case 62: case 63:
-	        	return 0;  // 0%
+	        	return 0.005;  // 0.5%
 	        case 91:
 	        	return 0.01;  // 1%
 	        default:
