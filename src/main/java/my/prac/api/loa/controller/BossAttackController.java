@@ -1125,6 +1125,7 @@ public class BossAttackController {
 	    if ("궁수".equals(job)) {
 	        jobDmgMul = 1.8;
 	    }else if ("전사".equals(job)) {
+	    	jobDmgMul = 1.2;
 	        jobBonusHp  = +(int)Math.round(baseHpMax);
 	    }
 	 // 3) 전사 보너스(기본값 기준)를 각각 더함
@@ -1191,9 +1192,17 @@ public class BossAttackController {
 	        } else if("사신".equals(job)){
 	        	lucky = false;
 	        } else if ("도사".equals(job)) {
-	        	lucky = ThreadLocalRandom.current().nextDouble() < LUCKY_RATE_DOSA;
+	        	if(m.monNo>11) {
+	        		lucky = ThreadLocalRandom.current().nextDouble() < LUCKY_RATE_DOSA/2;
+	        	}else {
+	        		lucky = ThreadLocalRandom.current().nextDouble() < LUCKY_RATE_DOSA;
+	        	}
 	        } else {
-	        	lucky = ThreadLocalRandom.current().nextDouble() < LUCKY_RATE;
+	        	if(m.monNo>11) {
+	        		lucky = ThreadLocalRandom.current().nextDouble() < LUCKY_RATE/2;
+	        	}else {
+	        		lucky = ThreadLocalRandom.current().nextDouble() < LUCKY_RATE;
+	        	}
 	        }
 	        
 	    }
@@ -3926,7 +3935,7 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 		    eff.addAtkMax   = dosaLvBonus;
 		    eff.addCritRate = dosaLvBonus;
 		    eff.addCritDmg  = dosaCriDmg;
-		    eff.addHp       = dosaLvBonus*2;
+		    eff.addHp       = dosaLvBonus;
 	    }
 	    return eff;
 	}
@@ -3990,10 +3999,11 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	    // -----------------------------
 	    boolean isSnipe = false;
 	    if ("궁수".equals(job)) {
-	        if (ThreadLocalRandom.current().nextDouble() < 0.065) {
+	        if (ThreadLocalRandom.current().nextDouble() < 0.13) {
 	            isSnipe = true;
 	            baseAtk = baseAtk * 20;
 	            calc.jobSkillUsed = true;
+	            crit = false;
 	        }
 	    }
 
@@ -4002,26 +4012,23 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	    }
 	    
 	    if ("용기사".equals(job)) {
-
-	        // 1) 풀 HP 1.25배
 	        if (u.hpCur >= effHpMax) {
 	        	out.dmgCalcMsg += "풀HP DMG "+baseAtk+"→";
 	        	baseAtk = (int)Math.round(baseAtk * 1.25);
 	        	out.dmgCalcMsg += baseAtk+NL;
 	        }
-
 	        
 	        int overCrit = Math.max(0, effCritRate-100);
 	        if (overCrit > 0) {
-	            int bonus = (int)Math.round(overCrit*3); 
-	            out.dmgCalcMsg += "치명타배율 보너스 ("+bonus+") "+baseAtk+"→";
+	            int bonus = (int)Math.round(effCritRate*3); 
+	            out.dmgCalcMsg += "크리율 보너스 ("+bonus+") "+baseAtk+"→";
 	            baseAtk += bonus;
 	            out.dmgCalcMsg += baseAtk+NL;
 	        }
 	        int overCriDmg = Math.max(0, effCriDmg-150); 
 	        if (overCriDmg > 0) {
-	        	int bonus = (int)Math.round(overCriDmg*3); 
-	        	out.dmgCalcMsg += "치명타배율 보너스 ("+bonus+") "+baseAtk+"→";
+	        	int bonus = (int)Math.round(effCriDmg*3); 
+	        	out.dmgCalcMsg += "크리뎀 보너스 ("+bonus+") "+baseAtk+"→";
 	        	baseAtk += bonus;
 	        	out.dmgCalcMsg += baseAtk+NL;
 	        }
@@ -4031,7 +4038,7 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	        crit = false;
 	        if (m.monNo==13) {
 	        	out.dmgCalcMsg += "용족 보너스 "+baseAtk+"→";
-	        	baseAtk = (int)Math.round(baseAtk * 1.5);
+	        	baseAtk = (int)Math.round(baseAtk * 2);
 	        	out.dmgCalcMsg += baseAtk;
 	        }
 	    }
@@ -4261,17 +4268,19 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 
 	private String buildUnifiedDosaBuffMessage(DosaBuffEffect self, DosaBuffEffect room) {
 
-	    double atk = 0, max = 0, crit = 0, cdmg = 0, hp = 0;
+	    double min= 0, max = 0, crit = 0, cdmg = 0, hp = 0;
 
 	    if (self != null) {
-	        atk  += self.addAtkMin + self.addAtkMax;
+	    	min  += self.addAtkMin; 
+	    	max  += self.addAtkMax;
 	        crit += self.addCritRate;
 	        cdmg += self.addCritDmg;
 	        hp   += self.addHp;
 	    }
 
 	    if (room != null) {
-	        atk  += room.addAtkMin + room.addAtkMax;
+	    	min  += self.addAtkMin; 
+	    	max  += self.addAtkMax;
 	        crit += room.addCritRate;
 	        cdmg += room.addCritDmg;
 	        hp   += room.addHp;
@@ -4281,7 +4290,8 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 
 	    List<String> parts = new ArrayList<>();
 
-	    if (atk != 0)  parts.add("ATK "  + (atk >= 0 ? "+" : "") + (int)atk);
+	    if (min != 0)  parts.add("MIN "  + (min >= 0 ? "+" : "") + (int)min);
+	    if (max != 0)  parts.add("MAX "  + (max >= 0 ? "+" : "") + (int)max);
 	    if (crit != 0) parts.add("CRIT " + (crit>= 0 ? "+" : "") + (int)crit + "%");
 	    if (cdmg != 0) parts.add("CDMG " + (cdmg>= 0 ? "+" : "") + (int)cdmg + "%");
 	    if (hp   != 0) parts.add("HP "   + (hp  >= 0 ? "+" : "") + (int)hp);
@@ -4363,13 +4373,13 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	    JOB_DEFS.put("전사", new JobDef(
 	        "전사",
 	        "▶ 육체능력이 변경되며, 패링 스킬 추가 ",
-	        "⚔ 기본 HP만큼 추가 증가, 방어 추가, 적의 필살기를 반격(20%)"
+	        "⚔ 기본 HP만큼 추가 증가, 방어 추가, 적의 필살기를 반격(20%),모든 적에게 데미지 추가(+20%)"
 	    ));
 
 	    JOB_DEFS.put("궁수", new JobDef(
 	        "궁수",
 	        "▶ 사냥감을 조준하는 집요한 추적자, 강력한 한방을 선사하지만, 쿨타임이 길어진다",
-	        "⚔ 최종 데미지 ×1.8, 쿨타임 5분, EXP +25%, 공격시 6.5%확률로 강력한공격"
+	        "⚔ 최종 데미지 ×1.8, 쿨타임 5분, EXP +25%, 공격시 13%확률로 강력한공격"
 	    ));
 
 	    JOB_DEFS.put("마법사", new JobDef(
@@ -4389,25 +4399,11 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	        "▶ 대사제의 축복을 받아 신성의힘으로 적을 물리친다",
 	        "⚔ 아이템 HP/리젠 효과 1.25배, 몬스터에게 받는 피해 감소(20%), 언데드추가피해(+25%)"
 	    ));
-	    /*
-	    JOB_DEFS.put("상인", new JobDef(
-	        "상인",
-	        "▶ 상인 :떠도는 몬스터에게 현금을 갈취하며, 상점 거래의 달인",
-	        "⚔ 상점 구매 10% 할인, 드랍 판매가 10% 증가, 공격시 몬스터 드롭템의 20%에 해당하는 SP 추가 획득"
-	    ));
- 		*/
 	    JOB_DEFS.put("도사", new JobDef(
 	        "도사",
 	        "▶ 도를 닦아 깨달음을 얻은 위인",
 	        "⚔ 다음 공격하는 아군 강화(레벨*0.5만큼 능력강화,맥뎀*0.1만큼 치명뎀강화,"+NL+"매턴 공격시 자신 회복,자신의 럭키몬스터 등장 확률 증가"
 	    ));
-	    /*
-	    JOB_DEFS.put("기사", new JobDef(
-            "기사",
-            "▶ 기사 :방패로 몬스터의 공격을 방어하는 굳건한 기사",
-            "⚔ 공격력만큼 몬스터 공격을 방어하며, 방어량만큼 자신의 공격력이 감소"
-        ));
-	     */
         JOB_DEFS.put("사신", new JobDef(
             "사신",
             "▶ 이름하야 죽음의 신, 죽지않는다",
@@ -4423,7 +4419,7 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
         JOB_DEFS.put("용기사", new JobDef(
     		"용기사",
     		"▶ 용족의 마지막 후예, 배신당한 아픔을 가지고 있다",
-    		"⚔ 풀HP일때 데미지1.25배, 100% 초과 치명타확률, 기본 치명타 데미지 초과분을 공격력으로 전환,치명타가 발생하지않음, 용족에 1.5배의 피해"
+    		"⚔ 풀HP일때 데미지1.5배, 100% 초과 치명타확률, 기본 치명타 데미지 초과분을 공격력으로 전환,치명타가 발생하지않음, 용족에 2배의 피해"
         ));
         
 	}
