@@ -4010,15 +4010,25 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	        	out.dmgCalcMsg += baseAtk+NL;
 	        }
 
-	        // 2) 치명타 오버분 → 추가 데미지
-	        int overCrit = Math.max(0, effCritRate - 100); // 100 이상 넘어간 부분
+	        
+	        int overCrit = Math.max(0, effCritRate-100);
 	        if (overCrit > 0) {
 	            int bonus = (int)Math.round(overCrit); 
-	            out.dmgCalcMsg += "치명타배율 DMG "+baseAtk+"→";
+	            out.dmgCalcMsg += "치명타배율 보너스 "+baseAtk+"→";
 	            baseAtk += bonus;
 	            out.dmgCalcMsg += baseAtk+NL;
 	        }
-
+	        int overCriDmg = Math.max(0, effCriDmg-150); 
+	        if (overCriDmg > 0) {
+	        	int bonus = (int)Math.round(overCriDmg); 
+	        	out.dmgCalcMsg += "치명타배율 보너스 "+baseAtk+"→";
+	        	baseAtk += bonus;
+	        	out.dmgCalcMsg += baseAtk+NL;
+	        }
+	        
+	        effCritRate = 0;
+	        effCriDmg = 0;
+	        
 	        if (m.monNo==13) {
 	        	out.dmgCalcMsg += "용족 보너스 "+baseAtk+"→";
 	        	baseAtk = (int)Math.round(baseAtk * 1.5);
@@ -4196,6 +4206,7 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 		StringBuilder sb = new StringBuilder();
 	    sb.append("전직 가능한 직업 목록").append(ALL_SEE_STR);
 	    for (JobDef def : JOB_DEFS.values()) {
+	    	sb.append(def.name).append(":");
 	        sb.append(def.listLine).append(NL);
 	        sb.append(def.attackLine).append(NL).append(NL);
 	        
@@ -4412,7 +4423,7 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
         JOB_DEFS.put("용기사", new JobDef(
     		"용기사",
     		"▶ 용족의 마지막 후예, 배신당한 아픔을 가지고 있다",
-    		"⚔ 풀HP일때 데미지1.25배, 치명타확률 오버시 데미지로 변환, 용족에 1.5배의 피해"
+    		"⚔ 풀HP일때 데미지1.25배, 100% 초과 치명타확률, 기본 치명타 데미지 초과분을 공격력으로 전환,치명타가 발생하지않음, 용족에 1.5배의 피해"
         ));
         
 	}
