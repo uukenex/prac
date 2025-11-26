@@ -1549,7 +1549,7 @@ public class BossAttackController {
 	                String u = b.getUserName();
 	                if (userName.equals(u)) {
 	                    // 최근 5개 가방 로그 안에 있으면 → 이미 먹은 사람
-	                    return 1; // 기본 확률의 50%만
+	                    return 1; // 기본 확률
 	                }
 	            }
 	        }
@@ -1594,9 +1594,9 @@ public class BossAttackController {
 
 	    // 3) 최종 드랍율 (상한 50% 정도로 캡)
 	    double finalRate = baseRate * pityMul;
-	    if (finalRate > 0.5) finalRate = 0.5;
+	    //if (finalRate > 0.5) finalRate = 0.5;
 
-	    if (ThreadLocalRandom.current().nextDouble() >= baseRate) {
+	    if (ThreadLocalRandom.current().nextDouble() >= finalRate) {
 	        return ""; // 드랍 실패 → 메시지 없음
 	    }
 
@@ -1625,15 +1625,15 @@ public class BossAttackController {
 	    switch (monNo) {
 	        case 1: case 2: case 3: case 4: case 5:
 	        case 6: case 7: case 8: case 9: case 10:
-	            return 0.004;  // 0.4%
+	            return 0.007;  // 0.7%
 	        case 11: case 12: case 13:case 14: case 15:
-	            return 0.005;  // 0.5%
+	            return 0.01;  // 1%
 	        case 16: case 17: case 18: case 19: case 20:
-	            return 0.005;  // 0.5%
+	            return 0.02;  // 2%
 	        case 51: case 52: case 53: case 61: case 62: case 63:
 	        	return 0.005;  // 0.5%
 	        case 91:
-	        	return 0.01;  // 1%
+	        	return 0.02;  // 2%
 	        default:
 	            return 0;
 	    }
