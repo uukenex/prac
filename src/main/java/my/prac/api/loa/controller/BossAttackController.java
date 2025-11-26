@@ -1476,6 +1476,9 @@ public class BossAttackController {
 	    
 	    StringBuilder midExtra = new StringBuilder();
 	    StringBuilder botExtra = new StringBuilder();
+	    if (dmg.dmgCalcMsg != null && !dmg.dmgCalcMsg.isEmpty()) {
+	    	midExtra.append(dmg.dmgCalcMsg);
+	    }
 	    if (dosabuffMsg != null && !dosabuffMsg.isEmpty()) {
 	        midExtra.append(NL).append(dosabuffMsg);
 	    }
@@ -2163,6 +2166,7 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	    // =========================
 	    // 도적왕 (스틸 아이템 수)
 	    // =========================
+	    /*
 	    try {
 	        List<HashMap<String, Object>> thiefRank = botNewService.selectThiefKingRanking();
 	        sb.append(NL).append("◆ 도적왕 (스틸 아이템 수 TOP5)").append(NL);
@@ -2179,7 +2183,7 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	            }
 	        }
 	    } catch (Exception ignore) {}
-	    
+	    */
 	    // =========================
 	    // 업적 갯수 랭킹
 	    // =========================
@@ -3495,8 +3499,9 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	    // 🔹 4행: 추가 설명 (mon_note)
 	    String note = (m.monNote != null ? m.monNote.trim() : "");
 	    if (!note.isEmpty()) {
-	        sb.append("※ ").append(note).append(NL).append(NL);;
+	        sb.append("※ ").append(note).append(NL);
 	    }
+	    sb.append(NL);
 
 	    return sb.toString();
 	}
@@ -3567,89 +3572,6 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	    return "✨ 업적 달성! [" + achvCmd + "] 보상 +" + rewardSp + "sp 지급되었습니다." + NL;
 	}
 
-	
-	/** 몬스터별 50/100/300/500 킬 업적 보상 */
-	private int calcPerMonsterKillReward(int monNo, int threshold) {
-	    switch (monNo) {
-	        case 1: // 토끼
-	        case 2: // 다람쥐
-	        case 3: // 쥐
-	            switch (threshold) {
-	                case 50:  return 50;
-	                case 100: return 50;
-	                case 300: return 50;
-	                case 500: return 50;
-	            }
-	            break;
-
-	        case 4: // 뱀
-	        case 5: // 사슴
-	            switch (threshold) {
-	                case 50:  return 100;
-	                case 100: return 100;
-	                case 300: return 100;
-	                case 500: return 100;
-	            }
-	            break;
-
-	        case 6: // 곰
-	            switch (threshold) {
-	                case 50:  return 200;
-	                case 100: return 200;
-	                case 300: return 200;
-	                case 500: return 200;
-	            }
-	            break;
-
-	        case 7: // 여우
-	        case 8: // 돼지
-	            switch (threshold) {
-	                case 50:  return 300;
-	                case 100: return 300;
-	                case 300: return 300;
-	                case 500: return 300;
-	            }
-	            break;
-
-	        case 9: // 호랑이
-	        case 10: // 해골
-	            switch (threshold) {
-	                case 50:  return 500;
-	                case 100: return 500;
-	                case 300: return 500;
-	                case 500: return 500;
-	            }
-	            break;
-	        case 11: // 산적
-	        case 12: // 도깨비
-	        case 13: // 새끼용
-	        	switch (threshold) {
-	        	case 50:  return 600;
-	        	case 100: return 600;
-	        	case 300: return 600;
-	        	case 500: return 600;
-	        	}
-	        	break;
-	        case 14: // 리치
-	        	switch (threshold) {
-	        	case 50:  return 800;
-	        	case 100: return 800;
-	        	case 300: return 800;
-	        	case 500: return 800;
-	        	}
-	        	break;
-	        case 15: // 하급악마
-	        case 16: // 
-	        	switch (threshold) {
-	        	case 50:  return 800;
-	        	case 100: return 800;
-	        	case 300: return 800;
-	        	case 500: return 800;
-	        	}
-	        	break;
-	    }
-	    return 0;
-	}
 	private boolean isSkeleton(Monster m) {
 	    if (m == null) return false;
 	    if (m.monNo == 10||m.monNo ==14||m.monNo ==15) return true;
@@ -3695,7 +3617,7 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	        for (int th : perMonThresholds) {
 	            if (kills >= th) {
 	                String cmd = "ACHV_KILL" + th + "_MON_" + monNo;
-	                int reward = calcPerMonsterKillReward(monNo, th);
+	                int reward =  th*monNo/2;
 	                sb.append(grantOnceIfEligible(userName, roomName, cmd, reward));
 	            }
 	        }
@@ -4048,21 +3970,18 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	    calc.jobSkillUsed = false;
 
 	    StringBuilder extraMsg = new StringBuilder();
+	    out.dmgCalcMsg="";
 
 	    // -----------------------------
 	    // 1) 공격력 굴림 + 크리티컬
 	    // -----------------------------
 	    int critRoll = ThreadLocalRandom.current().nextInt(0, 101);
-	    int critThreshold = Math.min(100, effAtkMin < 0 ? 0 : effAtkRateLimit(effCritRate)); // 안전빵 방어
+	    int critThreshold = effAtkRateLimit(effCritRate); // 안전빵 방어
 	    boolean crit = (critRoll <= critThreshold);
 
-	    int baseAtkRangeMin = (int) Math.round(effAtkMin * berserkMul);
-	    int baseAtkRangeMax = (int) Math.round(effAtkMax * berserkMul);
-	    if (baseAtkRangeMax < baseAtkRangeMin) baseAtkRangeMax = baseAtkRangeMin;
-
-	    int baseAtk = (baseAtkRangeMax <= baseAtkRangeMin)
-	            ? baseAtkRangeMin
-	            : ThreadLocalRandom.current().nextInt(baseAtkRangeMin, baseAtkRangeMax + 1);
+	    int baseAtk = (effAtkMax <= effAtkMin)
+	            ? effAtkMin
+	            : ThreadLocalRandom.current().nextInt(effAtkMin, effAtkMax + 1);
 
 	   
 	    
@@ -4080,6 +3999,31 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 
 	    if ("프리스트".equals(job) && isSkeleton(m)) {
 	    	baseAtk = (int) Math.round(baseAtk * 1.25);
+	    }
+	    
+	    if ("용기사".equals(job)) {
+
+	        // 1) 풀 HP 1.25배
+	        if (u.hpCur >= effHpMax) {
+	        	out.dmgCalcMsg += "풀HP DMG "+baseAtk+"→";
+	        	baseAtk = (int)Math.round(baseAtk * 1.25);
+	        	out.dmgCalcMsg += baseAtk+NL;
+	        }
+
+	        // 2) 치명타 오버분 → 추가 데미지
+	        int overCrit = Math.max(0, effCritRate - 100); // 100 이상 넘어간 부분
+	        if (overCrit > 0) {
+	            int bonus = (int)Math.round(overCrit); 
+	            out.dmgCalcMsg += "치명타배율 DMG "+baseAtk+"→";
+	            baseAtk += bonus;
+	            out.dmgCalcMsg += baseAtk+NL;
+	        }
+
+	        if (m.monNo==13) {
+	        	out.dmgCalcMsg += "용족 보너스 "+baseAtk+"→";
+	        	baseAtk = (int)Math.round(baseAtk * 1.5);
+	        	out.dmgCalcMsg += baseAtk;
+	        }
 	    }
 	    
 	    
@@ -4407,31 +4351,31 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	    // NL은 클래스에 이미 있는 상수라고 가정하고 그대로 사용
 	    JOB_DEFS.put("전사", new JobDef(
 	        "전사",
-	        "▶ 전사 :육체능력이 변경되며, 패링 스킬 추가 ",
+	        "▶ 육체능력이 변경되며, 패링 스킬 추가 ",
 	        "⚔ 기본 HP만큼 추가 증가, 방어 추가, 적의 필살기를 반격(20%)"
 	    ));
 
 	    JOB_DEFS.put("궁수", new JobDef(
 	        "궁수",
-	        "▶ 궁수 :사냥감을 조준하는 집요한 추적자, 강력한 한방을 선사하지만, 쿨타임이 길어진다",
+	        "▶ 사냥감을 조준하는 집요한 추적자, 강력한 한방을 선사하지만, 쿨타임이 길어진다",
 	        "⚔ 최종 데미지 ×1.8, 쿨타임 5분, EXP +25%, 공격시 6.5%확률로 강력한공격"
 	    ));
 
 	    JOB_DEFS.put("마법사", new JobDef(
 	        "마법사",
-	        "▶ 마법사 :강력한 마법공격으로 몬스터의 방어태세를 무력화한다",
+	        "▶ 강력한 마법공격으로 몬스터의 방어태세를 무력화한다",
 	        "⚔ 몬스터가 방어시 방어를 무시하고 피해 2배를 줌, 보스의 필살기를 마나실드로 방어(20%데미지감소)"
 	    ));
 
 	    JOB_DEFS.put("도적", new JobDef(
 	        "도적",
-	        "▶ 도적 :날렵한 손놀림으로 적의공격을 피하며,아이템을 강탈한다",
+	        "▶ 날렵한 손놀림으로 적의공격을 피하며,아이템을 강탈한다",
 	        "⚔ 공격 시 25% 확률 추가 드랍(STEAL), 몬스터 기본 공격 40% 회피, [스틸,회피 no12부터 3%씩 감소] "
 	    ));
 
 	    JOB_DEFS.put("프리스트", new JobDef(
 	        "프리스트",
-	        "▶ 프리스트 :대사제의 축복을 받아 신성의힘으로 적을 물리친다",
+	        "▶ 대사제의 축복을 받아 신성의힘으로 적을 물리친다",
 	        "⚔ 아이템 HP/리젠 효과 1.25배, 몬스터에게 받는 피해 감소(20%), 언데드추가피해(+25%)"
 	    ));
 	    /*
@@ -4443,7 +4387,7 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
  		*/
 	    JOB_DEFS.put("도사", new JobDef(
 	        "도사",
-	        "▶ 도사 :도를 닦아 깨달음을 얻은 위인",
+	        "▶ 도를 닦아 깨달음을 얻은 위인",
 	        "⚔ 다음 공격하는 아군 강화(레벨*0.5만큼 능력강화,맥뎀*0.1만큼 치명뎀강화,"+NL+"매턴 공격시 자신 회복,자신의 럭키몬스터 등장 확률 증가"
 	    ));
 	    /*
@@ -4455,15 +4399,22 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	     */
         JOB_DEFS.put("사신", new JobDef(
             "사신",
-            "▶ 사신 :이름하야 죽음의 신, 죽지않는다",
+            "▶ 이름하야 죽음의 신, 죽지않는다",
             "⚔ 아이템으로 인한 치명타,치명타뎀 증감처리 미적용, 체력 0에서도 죽지 않음,10%미만 체력에서 치명타확률50%증가"
         ));
         
         JOB_DEFS.put("흡혈귀", new JobDef(
             "흡혈귀",
-            "▶ 흡혈귀 :배가고프다, 나는 배가 고프다!",
+            "▶ 배가고프다, 나는 배가 고프다!",
             "⚔ 공격시 준피해의 20% 흡혈(공격&흡혈 선계산, 후피해)[max: 최대체력의20%], hp리젠 아이템의 증감처리 미적용"
         ));
+        
+        JOB_DEFS.put("용기사", new JobDef(
+    		"용기사",
+    		"▶ 용족의 마지막 후예, 배신당한 아픔을 가지고 있다",
+    		"⚔ 풀HP일때 데미지1.25배, 치명타확률 오버시 데미지로 변환, 용족에 1.5배의 피해"
+        ));
+        
 	}
 	
 	
