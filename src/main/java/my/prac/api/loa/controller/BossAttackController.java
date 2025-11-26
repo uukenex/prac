@@ -4014,14 +4014,14 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	        int overCrit = Math.max(0, effCritRate-100);
 	        if (overCrit > 0) {
 	            int bonus = (int)Math.round(overCrit); 
-	            out.dmgCalcMsg += "치명타배율 보너스 "+baseAtk+"→";
+	            out.dmgCalcMsg += "치명타배율 보너스 ("+bonus+") "+baseAtk+"→";
 	            baseAtk += bonus;
 	            out.dmgCalcMsg += baseAtk+NL;
 	        }
 	        int overCriDmg = Math.max(0, effCriDmg-150); 
 	        if (overCriDmg > 0) {
 	        	int bonus = (int)Math.round(overCriDmg); 
-	        	out.dmgCalcMsg += "치명타배율 보너스 "+baseAtk+"→";
+	        	out.dmgCalcMsg += "치명타배율 보너스 ("+bonus+") "+baseAtk+"→";
 	        	baseAtk += bonus;
 	        	out.dmgCalcMsg += baseAtk+NL;
 	        }
