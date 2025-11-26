@@ -4013,14 +4013,14 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	        
 	        int overCrit = Math.max(0, effCritRate-100);
 	        if (overCrit > 0) {
-	            int bonus = (int)Math.round(overCrit); 
+	            int bonus = (int)Math.round(overCrit*3); 
 	            out.dmgCalcMsg += "치명타배율 보너스 ("+bonus+") "+baseAtk+"→";
 	            baseAtk += bonus;
 	            out.dmgCalcMsg += baseAtk+NL;
 	        }
 	        int overCriDmg = Math.max(0, effCriDmg-150); 
 	        if (overCriDmg > 0) {
-	        	int bonus = (int)Math.round(overCriDmg); 
+	        	int bonus = (int)Math.round(overCriDmg*3); 
 	        	out.dmgCalcMsg += "치명타배율 보너스 ("+bonus+") "+baseAtk+"→";
 	        	baseAtk += bonus;
 	        	out.dmgCalcMsg += baseAtk+NL;
@@ -4028,7 +4028,7 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	        
 	        effCritRate = 0;
 	        effCriDmg = 0;
-	        
+	        crit = false;
 	        if (m.monNo==13) {
 	        	out.dmgCalcMsg += "용족 보너스 "+baseAtk+"→";
 	        	baseAtk = (int)Math.round(baseAtk * 1.5);
