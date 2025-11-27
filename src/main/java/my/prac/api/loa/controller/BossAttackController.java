@@ -920,6 +920,13 @@ public class BossAttackController {
 	             + "(/구매 입력만으로 목록을 확인하세요)";
 	    }
 
+	 // (2) 장비 카테고리 수량 제한 체크 ★★
+	    String limitMsg = checkEquipCategoryLimit(userName, roomName, itemId, 1);
+	    if (limitMsg != null) {
+	        // 제한에 걸리면 이 시점에서 구매 불가
+	        return limitMsg;
+	    }
+	    
 	    // 아이템 상세 조회
 	    HashMap<String, Object> item = null;
 	    try {
@@ -3913,7 +3920,7 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	    boolean first = true;
 	    for (Integer v : steps) {
 	        if (v == null) continue;
-	        if (!first) tmp.append("/");
+	        if (!first) tmp.append(",");
 	        tmp.append(v);
 	        first = false;
 	    }
@@ -4498,6 +4505,118 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	    return sb.toString();
 	}
 	
+	// ===== 장비 카테고리별 최대 소지 수량 =====
+	private int getEquipCategoryMax(int itemId) {
+	    // 무기 (100번대): 최대 5개
+	    if (itemId >= 100 && itemId < 200) return 5;
+	    // 투구 (200번대): 1개
+	    if (itemId >= 200 && itemId < 300) return 1;
+	    // 갑옷 (400번대): 1개
+	    if (itemId >= 400 && itemId < 500) return 1;
+	    // 전설 (700번대): 1개
+	    if (itemId >= 700 && itemId < 800) return 1;
+
+	    // 나머지는 제한 없음
+	    return Integer.MAX_VALUE;
+	}
+
+	
+	/**
+	 * 같은 "장비 카테고리"인지 판별
+	 *  - 여기서 말하는 카테고리는 위 제한이 걸리는 4개(무기/투구/갑옷/전설)
+	 */
+	private boolean isSameEquipCategory(int baseItemId, int otherItemId) {
+	    // 무기
+	    if (baseItemId >= 100 && baseItemId < 200) {
+	        return (otherItemId >= 100 && otherItemId < 200);
+	    }
+	    // 투구
+	    if (baseItemId >= 200 && baseItemId < 300) {
+	        return (otherItemId >= 200 && otherItemId < 300);
+	    }
+	    // 갑옷
+	    if (baseItemId >= 400 && baseItemId < 500) {
+	        return (otherItemId >= 400 && otherItemId < 500);
+	    }
+	    // 전설
+	    if (baseItemId >= 700 && baseItemId < 800) {
+	        return (otherItemId >= 700 && otherItemId < 800);
+	    }
+	    return false;
+	}
+	
+	/**
+	 * selectInventorySummaryAll 를 이용해서
+	 *  - baseItemId 와 같은 "장비 카테고리"에 속한 아이템들의
+	 *    총 소지 개수를 구한다.
+	 *
+	 *  ※ 주의: TOTAL_QTY 컬럼명은
+	 *     실제 selectInventorySummaryAll 의 합계 alias 에 맞게 바꿔줘야 함.
+	 */
+	private int getCurrentEquipCategoryHolding(String userName,
+	                                           String roomName,
+	                                           int baseItemId) {
+
+	    List<HashMap<String, Object>> inv =
+	            botNewService.selectInventorySummaryAll(userName, roomName);
+
+	    if (inv == null || inv.isEmpty()) {
+	        return 0;
+	    }
+
+	    int sum = 0;
+	    for (HashMap<String, Object> row : inv) {
+	        Object oItemId = row.get("ITEM_ID");
+	        if (!(oItemId instanceof Number)) continue;
+
+	        int itemId = ((Number) oItemId).intValue();
+
+	        // baseItemId 와 같은 장비 카테고리인지 체크
+	        if (!isSameEquipCategory(baseItemId, itemId)) continue;
+
+	        // 합계 컬럼명은 Mapper alias 에 맞게 수정 (예: TOTAL_QTY, QTY, SUM_QTY 등)
+	        Object oQty = row.get("TOTAL_QTY");
+	        if (oQty instanceof Number) {
+	            sum += ((Number) oQty).intValue();
+	        }
+	    }
+	    return sum;
+	}
+	
+	/**
+	 * 장비아이템 카테고리 수량 제한 체크
+	 *
+	 * @return null 이면 OK, 문자열이면 에러 메시지
+	 */
+	private String checkEquipCategoryLimit(String userName,
+	                                       String roomName,
+	                                       int itemId,
+	                                       int gainQty) {
+
+	    if (gainQty <= 0) {
+	        return null; // 실제로 얻는 수량이 없으면 체크 안 함
+	    }
+
+	    int maxAllowed = getEquipCategoryMax(itemId);
+	    if (maxAllowed == Integer.MAX_VALUE) {
+	        // 제한 없는 카테고리 (행운/반지/토템/선물/유물 등)
+	        return null;
+	    }
+
+	    // 현재 인벤토리 기준 해당 카테고리 총합
+	    int current = getCurrentEquipCategoryHolding(userName, roomName, itemId);
+
+	    if (current + gainQty > maxAllowed) {
+	        // 메시지는 네 스타일에 맞게
+	        return "❌ 장비 카테고리 수량 제한으로 인해 행동이 불가능합니다."
+	             + NL
+	             + "현재 카테고리 보유 수량: " + current
+	             + "개 / 최대 " + maxAllowed + "개, 판매 후 구매해주세요. ";
+	    }
+
+	    return null;
+	}
+	
 	private String resolveItemCategory(int itemId) {
 	    if (itemId >= 100 && itemId < 200)  return "※무기";   // 100번대
 	    if (itemId >= 200 && itemId < 300)  return "※투구";   // 200번대
@@ -4510,6 +4629,7 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	    if (itemId >= 9000 && itemId < 10000) return "※유물"; // 9000번대 
 	    return "※기타";
 	}
+	
 	private String buildRelicStatSuffix(HashMap<String, Object> row) {
 	    int atkMin = parseIntSafe(Objects.toString(row.get("ATK_MIN"), "0"));
 	    int atkMax = parseIntSafe(Objects.toString(row.get("ATK_MAX"), "0"));
