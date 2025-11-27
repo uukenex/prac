@@ -4279,8 +4279,8 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	    }
 
 	    if (room != null) {
-	    	min  += self.addAtkMin; 
-	    	max  += self.addAtkMax;
+	    	min  += room.addAtkMin; 
+	    	max  += room.addAtkMax;
 	        crit += room.addCritRate;
 	        cdmg += room.addCritDmg;
 	        hp   += room.addHp;
