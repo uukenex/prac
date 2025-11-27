@@ -137,6 +137,9 @@ public interface BotNewService {
     List<Integer> selectBagRewardItemIdsUserNotOwned(String userName, String roomName);
     
     List<BagLog> selectRecentBagDrops();
+    
+ // 상점/소비로 삭제된 인벤토리 누적 수량
+    int selectInventorySoldCount(String userName, String roomName);
 } 
 
 	

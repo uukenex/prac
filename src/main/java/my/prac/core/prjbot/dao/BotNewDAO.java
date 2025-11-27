@@ -190,4 +190,9 @@ public interface BotNewDAO {
 	List<Integer> selectBagRewardItemIdsUserNotOwned(HashMap<String,Object> map);
     
 	List<BagLog> selectRecentBagDrops();
+	
+	int selectInventorySoldCount(
+	        @Param("userName") String userName,
+	        @Param("roomName") String roomName);
+
 }

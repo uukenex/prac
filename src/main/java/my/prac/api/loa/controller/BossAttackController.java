@@ -12,6 +12,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.annotation.Resource;
 
@@ -754,18 +756,12 @@ public class BossAttackController {
 	    
 	    // 업적
 	    try {
-	        List<HashMap<String,Object>> achv = botNewService.selectAchievementsByUser(targetUser,roomName);
+	        List<HashMap<String,Object>> achv = botNewService.selectAchievementsByUser(targetUser, roomName);
 	        sb.append(NL).append("▶ 업적").append(NL);
 	        if (achv == null || achv.isEmpty()) {
 	            sb.append("- 달성된 업적이 없습니다.").append(NL);
 	        } else {
-	            for (HashMap<String,Object> row : achv) {
-	                String cmd = Objects.toString(row.get("CMD"), "");
-	                String label = formatAchievementLabelSimple(cmd,monMap);
-	                if (!label.isEmpty()) {
-	                    sb.append("✨ ").append(label).append(NL);
-	                }
-	            }
+	            renderAchievementLinesCompact(sb, achv, monMap);
 	        }
 	    } catch (Exception ignore) {}
 
@@ -1928,6 +1924,12 @@ public class BossAttackController {
 	          .append("(요청 ").append(reqQty).append("개 → 실제 ").append(sold).append("개 판매)");
 	    }
 
+	    String achvMsg = grantShopSellAchievements(userName, roomName);
+	    if (achvMsg != null && !achvMsg.isEmpty()) {
+	        sb.append(NL).append("업적").append(NL)
+	          .append(achvMsg);
+	    }
+	    
 	    return sb.toString();
 	}
 
@@ -2114,6 +2116,11 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	          .append("(상인 효과: 드랍 아이템 판매가 10% 보너스 적용)");
 	    }*/
 
+	    String achvMsg = grantShopSellAchievements(userName, roomName);
+	    if (achvMsg != null && !achvMsg.isEmpty()) {
+	        sb.append(NL).append("업적").append(NL)
+	          .append(achvMsg);
+	    }
 	    return sb.toString();
 	}
 	
@@ -2300,7 +2307,61 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	}
 
 
-	
+	/**
+	 * 상점/소비로 삭제된 인벤토리 누적 수량 기준 업적 지급
+	 * - 기준: TBOT_POINT_NEW_INVENTORY의 DEL_YN='1' QTY 합계
+	 * - 업적 CMD: ACHV_SHOP_SELL_{threshold}
+	 */
+	private String grantShopSellAchievements(String userName, String roomName) {
+	    // {기준 수량, 보상 SP}
+	    final int[][] rules = new int[][]{
+	        {1000,  1000},
+	        {5000,  3000},
+	        {10000, 7000}
+	    };
+
+	    StringBuilder sb = new StringBuilder();
+	    int soldCount = 0;
+
+	    try {
+	        soldCount = botNewService.selectInventorySoldCount(userName, roomName);
+	    } catch (Exception ignore) { /* 안전 무시 */ }
+
+	    for (int[] r : rules) {
+	        int threshold = r[0];
+	        int rewardSp  = r[1];
+
+	        if (soldCount >= threshold) {
+	            String cmd = "ACHV_SHOP_SELL_" + threshold;
+
+	            int already = 0;
+	            try {
+	                already = botNewService.selectPointRankCountByCmdUserInRoom(roomName, userName, cmd);
+	            } catch (Exception ignore) {}
+
+	            if (already == 0) {
+	                try {
+	                    HashMap<String,Object> p = new HashMap<>();
+	                    p.put("userName", userName);
+	                    p.put("roomName", roomName);
+	                    p.put("score", rewardSp);
+	                    p.put("cmd", cmd);
+
+	                    botNewService.insertPointRank(p);
+
+	                    sb.append("✨ 상점 판매 ")
+	                      .append(threshold)
+	                      .append("회 달성 보상 +")
+	                      .append(rewardSp)
+	                      .append("sp 지급!♬")
+	                      .append(NL);
+	                } catch (Exception ignore) {}
+	            }
+	        }
+	    }
+
+	    return sb.toString();
+	}
 	/** 공격 랭킹 보기 */
 	/** 구매 리스트(한국어 직관 표기, NL='♬') 
 	 *  헤더: ▶ {userName}님, 구매 가능 아이템
@@ -3732,6 +3793,133 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	    }
 	    return 0;
 	}
+	
+	/**
+	 * 업적 리스트를:
+	 * - 축하보상 숨기고
+	 * - 통산 처치 / 몬스터별 킬 / 죽음 극복 은 [..] 형태로 묶어서 출력
+	 */
+	// 업적 문자열 패턴
+	private static final Pattern P_TOTAL_KILL =
+	        Pattern.compile("^통산 처치 (\\d+)회 달성$");
+	private static final Pattern P_DEATH_OVERCOME =
+	        Pattern.compile("^죽음 극복 (\\d+)회 달성$");
+	private static final Pattern P_MONSTER_KILL =
+	        Pattern.compile("^(.+?) (\\d+)킬 달성$");
+
+	private void renderAchievementLinesCompact(
+	        StringBuilder sb,
+	        List<HashMap<String, Object>> achv,
+	        Map<Integer, Monster> monMap) {
+
+	    // 1) 카테고리별 버킷
+	    //    - 최초토벌/기타: 그대로 출력
+	    //    - 통산 처치: 숫자 모아 [a/b/c]
+	    //    - 죽음 극복: 숫자 모아 [a/b/c]
+	    //    - 몬스터별 킬: 몬스터 이름별로 숫자 모아 [a/b/c]
+	    List<String> others = new ArrayList<>();                 // 최초토벌 등
+	    java.util.SortedSet<Integer> totalKillSteps = new java.util.TreeSet<>();
+	    java.util.SortedSet<Integer> deathSteps = new java.util.TreeSet<>();
+	    Map<String, java.util.SortedSet<Integer>> monKillSteps = new LinkedHashMap<>();
+
+	    for (HashMap<String, Object> row : achv) {
+	        if (row == null) continue;
+
+	        String cmd = Objects.toString(row.get("CMD"), "");
+	        String label = formatAchievementLabelSimple(cmd, monMap);
+	        if (label == null) continue;
+	        label = label.trim();
+	        if (label.isEmpty()) continue;
+
+	        // 1-1) 축하보상은 공격정보에서 노출하지 않음
+	        if (label.contains("축하보상")) {
+	            continue;
+	        }
+
+	        // 1-2) 패턴 매칭
+	        Matcher mTotal = P_TOTAL_KILL.matcher(label);
+	        Matcher mDeath = P_DEATH_OVERCOME.matcher(label);
+	        Matcher mMon = P_MONSTER_KILL.matcher(label);
+
+	        if (mTotal.matches()) {
+	            int v = parseIntSafe(mTotal.group(1));
+	            if (v > 0) totalKillSteps.add(v);
+	            continue;
+	        }
+
+	        if (mDeath.matches()) {
+	            int v = parseIntSafe(mDeath.group(1));
+	            if (v > 0) deathSteps.add(v);
+	            continue;
+	        }
+
+	        if (mMon.matches()) {
+	            String monName = mMon.group(1).trim();  // 예: 산적, 사과나무, 새끼용 ...
+	            int v = parseIntSafe(mMon.group(2));
+	            if (monName.isEmpty() || v <= 0) {
+	                others.add(label);
+	                continue;
+	            }
+	            java.util.SortedSet<Integer> set = monKillSteps.get(monName);
+	            if (set == null) {
+	                set = new java.util.TreeSet<>();
+	                monKillSteps.put(monName, set);
+	            }
+	            set.add(v);
+	            continue;
+	        }
+
+	        // 위 어느 패턴에도 안 걸리면 (예: 최초토벌 등) 그대로 보존
+	        others.add(label);
+	    }
+
+	    // 2) 출력 순서:
+	    //    1) others (최초토벌 등)
+	    //    2) 통산 처치
+	    //    3) 몬스터별 킬
+	    //    4) 죽음 극복
+	    for (String line : others) {
+	        sb.append("✨ ").append(line).append(NL);
+	    }
+
+	    if (!totalKillSteps.isEmpty()) {
+	        sb.append("✨ 통산 처치 [")
+	          .append(joinStepNumbers(totalKillSteps))
+	          .append("]회 달성").append(NL);
+	    }
+
+	    for (Map.Entry<String, java.util.SortedSet<Integer>> e : monKillSteps.entrySet()) {
+	        String monName = e.getKey();
+	        java.util.SortedSet<Integer> steps = e.getValue();
+	        if (steps == null || steps.isEmpty()) continue;
+
+	        sb.append("✨ ")
+	          .append(monName)
+	          .append(" [")
+	          .append(joinStepNumbers(steps))
+	          .append("]킬 달성").append(NL);
+	    }
+
+	    if (!deathSteps.isEmpty()) {
+	        sb.append("✨ 죽음 극복 [")
+	          .append(joinStepNumbers(deathSteps))
+	          .append("]회 달성").append(NL);
+	    }
+	}
+
+	/** TreeSet<Integer> → "300/500/1000" 형식으로 이어 붙이기 */
+	private static String joinStepNumbers(java.util.SortedSet<Integer> steps) {
+	    StringBuilder tmp = new StringBuilder();
+	    boolean first = true;
+	    for (Integer v : steps) {
+	        if (v == null) continue;
+	        if (!first) tmp.append("/");
+	        tmp.append(v);
+	        first = false;
+	    }
+	    return tmp.toString();
+	}
+	
 	private String formatAchievementLabelSimple(String cmd, Map<Integer, Monster> monMap) {
 	    if (cmd == null || cmd.isEmpty()) return "";
 
@@ -3799,6 +3987,15 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	            return "죽음 업적";
 	        }
 	    }
+	    if (cmd.startsWith("ACHV_SHOP_SELL_")) {
+	    	try {
+	    		int th = Integer.parseInt(cmd.substring("ACHV_SHOP_SELL_".length()));
+	    		return "상점 판매 " + th + "회 달성";
+	    	} catch (Exception e) {
+	    		return "상점 판매 ";
+	    	}
+	    }
+	    
 
 	    return cmd;
 	}

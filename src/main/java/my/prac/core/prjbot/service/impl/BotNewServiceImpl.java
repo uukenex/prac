@@ -363,4 +363,9 @@ public class BotNewServiceImpl implements BotNewService {
     public List<BagLog> selectRecentBagDrops() {
         return botNewDAO.selectRecentBagDrops();
     }
+    
+    @Override
+    public int selectInventorySoldCount(String userName, String roomName) {
+        return botNewDAO.selectInventorySoldCount(userName, roomName);
+    }
 }

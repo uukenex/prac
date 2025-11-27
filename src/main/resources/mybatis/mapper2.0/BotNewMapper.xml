@@ -942,4 +942,17 @@
 		  )
 		  WHERE ROWNUM &lt;= 5
 	</select>
+	
+	<!-- DEL_YN='1' 인 인벤토리 누적 수량(판매/사용 포함) -->
+	<select id="selectInventorySoldCount" resultType="int">
+	  SELECT NVL(SUM(QTY), 0)
+	  FROM TBOT_POINT_NEW_INVENTORY
+	  WHERE USER_NAME = #{userName}
+	  <if test="roomName != null and roomName != '람쥐봇 문의방'">
+	    AND ROOM_NAME = #{roomName}
+	  </if>
+	  AND GAIN_TYPE IN ('DROP','DROP3','STEAL')
+	  AND NVL(DEL_YN, '0') = '1'
+	</select>
+	
 </mapper>
