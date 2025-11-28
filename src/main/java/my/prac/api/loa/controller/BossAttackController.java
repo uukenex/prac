@@ -1208,7 +1208,16 @@ public class BossAttackController {
 	                dark = true;
 	            }
 	        }
+	        
+	        boolean able_to_lucky_yn =false ;
+	        if (killCountForThisMon >= 50) {
+	        	able_to_lucky_yn=true;
+	        }
 
+	        if(!able_to_lucky_yn) {
+	        	lucky = false;
+	        }
+	        
 	        // ★ 3) 어둠몬스터면 HP 5배로
 	        if (dark) {
 	            monMaxHp = monMaxHp * 5;
