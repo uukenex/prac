@@ -1,0 +1,52 @@
+{
+	"characterInfo": {
+		"nickname": "일어난다람쥐",
+		"className": "기상술사",
+		"itemLevel": "1,742.50",
+		"combatPower": "3,859.84",
+		"arkPassiveTitle": "질풍노도"
+	},
+	"critRateInfo": {
+		"details": [
+			{
+				"source": "스텟[1073]",
+				"value": 38.4
+			},
+			{
+				"source": "악세",
+				"value": 1.55,
+				"note": "[반지]"
+			},
+			{
+				"source": "악세",
+				"value": 1.55,
+				"note": "[반지]"
+			},
+			{
+				"source": "팔찌",
+				"value": 5
+			},
+			{
+				"source": "각인",
+				"value": 18.5,
+				"note": "[아드레날린]"
+			},
+			{
+				"source": "앜패",
+				"value": 12,
+				"note": "[기민함] (최대 기준)"
+			},
+			{
+				"source": "앜패",
+				"value": 12,
+				"note": "[혼신의 강타]"
+			},
+			{
+				"source": "돌개바람",
+				"value": 10
+			}
+		],
+		"conditional": [],
+		"total": 99
+	}
+}

@@ -68,6 +68,9 @@ public class LoaChatController {
 	LoaAiBotController ai;
 	
 	@Autowired
+	ExtController ext;
+	
+	@Autowired
 	BossAttackController boss;
 	
 	@Resource(name = "core.prjbot.BotService")
@@ -1217,7 +1220,44 @@ public class LoaChatController {
 					return "/ㅈㅂ 캐릭명 으로 입력해주세요";
 				}
 				break;
-			
+			case "/치적": case "/ㅊㅈ":
+				if (param1 != null && !param1.equals("")) {
+					param0="/ㅊㅈ";
+					param1 = param1.trim();
+					
+					replace_param = botService.selectBotWordReplace(reqMap);
+					if(replace_param!=null && !replace_param.equals("")) {
+						param1 = replace_param;
+					}
+					
+					fulltxt = param0+" "+param1;
+					org_fulltxt = fulltxt;
+					reqMap.put("fulltxt", fulltxt);
+					try {
+						String ordUserId=param1;
+						String userId = URLEncoder.encode(ordUserId, "UTF-8");
+						// +는 %2B로 치환한다
+						String paramUrl = "https://www.daloa.xyz/api/critical/" + userId ;
+						
+						val = ext.buildCritMessageFromUrl(paramUrl);
+						val+="https://www.daloa.xyz"+enterStr ;
+					} catch (Exception e) {
+						val = errorCodeMng(e,reqMap);
+						val+=enterStr+param1+" 으로 조회됨";
+						/*
+						HashMap<String,Object> hs = botService.selectIssueCase(reqMap);
+						if(hs !=null && hs.size()>0) {
+							val+= enterStr+hs.get("INSERT_DATE")+ "에 최종조회된 내용 불러오기입니다.";
+							val+= enterStr;
+							val+= hs.get("RES");
+						}
+						*/
+					}
+				}else {
+					return "/치적 캐릭명 으로 입력해주세요";
+				}
+				
+				break;
 			case "/초월": case "/엘릭서":
 			case "/ㅊㅇ": case "/ㅇㄹㅅ":
 				if (param1 != null && !param1.equals("")) {

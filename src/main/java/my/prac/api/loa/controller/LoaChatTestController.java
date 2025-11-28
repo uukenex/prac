@@ -1,6 +1,7 @@
 package my.prac.api.loa.controller;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
@@ -23,6 +24,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.util.StreamUtils;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import my.prac.core.prjbot.service.BotNewService;
@@ -74,10 +76,97 @@ public class LoaChatTestController {
 	public static void main(String[] args) {
 		ParamMap pm = new ParamMap();
 		try {
-		t2(pm);
+			File f = new File("");
+		    String path = f.getAbsolutePath(); // 현재 클래스의 절대 경로를 가져온다.
+		    System.out.println(path); //--> 절대 경로가 출력됨
+			File file = new File(path + "/src/main/java/my/prac/api/loa/controller/response_critical.json");
+			String a =buildCritMessageFromFile(file);
+			System.out.println(a);
+		//t2(pm);
 		}catch (Exception e) {
 			e.printStackTrace();
 		}
+	}
+
+	 private final static ObjectMapper objectMapper = new ObjectMapper();
+
+	public static String buildCritMessageFromFile(File file) throws IOException {
+		JsonNode root = objectMapper.readTree(file);
+
+		// characterInfo
+		JsonNode characterInfo = root.path("characterInfo");
+		String nickname = characterInfo.path("nickname").asText("");
+		String className = characterInfo.path("className").asText("");
+		String itemLevel = characterInfo.path("itemLevel").asText("");
+		String arkPassiveTitle = characterInfo.path("arkPassiveTitle").asText("");
+
+		// critRateInfo
+		JsonNode critRateInfo = root.path("critRateInfo");
+		double total = critRateInfo.path("total").asDouble(0.0);
+
+		StringBuilder sb = new StringBuilder();
+
+		// 1) 캐릭터 기본 정보
+		sb.append("[").append(nickname).append("] ").append(className);
+
+		if (!itemLevel.isEmpty()) {
+			sb.append(" (").append(itemLevel).append(")");
+		}
+		if (!arkPassiveTitle.isEmpty()) {
+			sb.append(" - 아크패시브: ").append(arkPassiveTitle);
+		}
+		sb.append("\n");
+
+		// 2) 총 치적
+		sb.append("총 치명타 적중률: ").append(String.format("%.2f", total)).append("%\n\n");
+
+		// 3) 상세 치적 구성
+		sb.append("[상세]\n");
+
+		JsonNode details = critRateInfo.path("details");
+		if (details.isArray()) {
+			for (JsonNode d : details) {
+				String source = d.path("source").asText("");
+				double value = d.path("value").asDouble(0.0);
+				String note = d.path("note").asText("");
+
+				sb.append("- ");
+
+				// source
+				if (!source.isEmpty()) {
+					sb.append(source);
+				}
+
+				// note (있으면 괄호나 공백으로 붙여주기)
+				if (!note.isEmpty()) {
+					sb.append(" ").append(note);
+				}
+
+				sb.append(" : ").append(String.format("%.2f", value)).append("%\n");
+			}
+		}
+
+		// 4) 조건부 치적 (conditional) 처리 (지금은 빈 배열이지만 대비용)
+		JsonNode conditional = critRateInfo.path("conditional");
+		if (conditional.isArray() && conditional.size() > 0) {
+			sb.append("\n[조건부 치적]\n");
+			for (JsonNode c : conditional) {
+				String source = c.path("source").asText("");
+				double value = c.path("value").asDouble(0.0);
+				String note = c.path("note").asText("");
+
+				sb.append("- ");
+				if (!source.isEmpty()) {
+					sb.append(source);
+				}
+				if (!note.isEmpty()) {
+					sb.append(" ").append(note);
+				}
+				sb.append(" : ").append(String.format("%.2f", value)).append("%\n");
+			}
+		}
+
+		return sb.toString();
 	}
 	
 	static void t2(ParamMap param) throws Exception {
