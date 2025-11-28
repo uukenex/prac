@@ -2937,23 +2937,11 @@ public class BossAttackController {
 	    }
 
 	    // 3) 순수 레벨 기준 스탯 계산
-	    //    ※ 여기서 사용하는 calcBaseXXX()는
-	    //       "아이템/직업/강화 미포함 기준"으로 구현해야 함.
 	    int baseHpMax    = calcBaseHpMax(u.lv);
 	    int baseAtkMin   = calcBaseAtkMin(u.lv);
 	    int baseAtkMax   = calcBaseAtkMax(u.lv);
 	    int baseCritRate = calcBaseCritRate(u.lv);
 	    int baseHpRegen  = calcBaseHpRegen(u.lv);
-/*
-	    // 4) DB에는 "현재 HP" 그대로 저장
-	    botNewService.updateUserAfterBattleTx(
-	        userName, roomName,
-	        u.lv, u.expCur, u.expNext,
-	        u.hpCur,         // 여기 이제 109 같은 값 들어갈 수 있음
-	        u.hpMax,         // 이건 여전히 '기본 HP' (원하면 그대로 두는게 안정적)
-	        u.atkMin, u.atkMax, u.critRate, u.hpRegen
-	    );
-*/
 	    
 	    // 4) 유저 테이블 업데이트: **항상 '순수 레벨 스탯'만 저장**
 	    botNewService.updateUserAfterBattleTx(
