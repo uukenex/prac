@@ -48,6 +48,7 @@ public class BossAttackController {
 	private static final double LUCKY_RATE_DOSA = 0.20;
 	private static final String ALL_SEE_STR = "===";
 	private static final int BAG_ITEM_ID = 91;
+	
 	/* ===== DI ===== */
 	@Autowired LoaPlayController play;
 	@Resource(name = "core.prjbot.BotService")        BotService botService;
@@ -265,7 +266,7 @@ public class BossAttackController {
 
 	            botNewService.insertPointRank(pr);
 
-	            return "보상 아이템이 없어, 대신 +" + sp + "sp 를 획득했습니다.";
+	            return "가방을 열어보니 반짝이는 포인트가 나옵니다! +" + sp + "sp";
 	        }
 
 	        int idx = ThreadLocalRandom.current().nextInt(rewardItemIds.size());
@@ -954,19 +955,6 @@ public class BossAttackController {
 	        return "구매 가격 정보가 없습니다. 관리자에게 문의해주세요.";
 	    }
 
-	    
-	    boolean usedMerchantDiscount = false;
-	    /*
-	    if(itemId.toString().startsWith("7") || itemId.toString().startsWith("9") ) {
-	    	isMerchant =false;
-	    }
-	    
-	    if (isMerchant) {
-	        price = (int)Math.floor(price * 0.9);
-	        usedMerchantDiscount = true;
-	    }
-	    */
-
 	    // 이미 소유 여부
 	    Integer ownedCnt = botNewService.selectHasOwnedMarketItem(userName, roomName, itemId);
 	    if (ownedCnt != null && ownedCnt > 0) {
@@ -996,7 +984,7 @@ public class BossAttackController {
 	    inv.put("itemId",  itemId);
 	    inv.put("qty",     1);
 	    inv.put("delYn",   "0");
-	    inv.put("gainType", usedMerchantDiscount ? "BUY_MERCHANT" : "BUY");
+	    inv.put("gainType", "BUY");
 	    botNewService.insertInventoryLogTx(inv);
 
 	    // 구매 후 포인트
@@ -1176,30 +1164,71 @@ public class BossAttackController {
 	    Monster m;
 	    int monMaxHp, monHpRemainBefore;
 	    boolean lucky;
+	    boolean dark = false; // ★ 추가: 어둠몬스터 여부
+	    
 	    if (ob != null) {
 	        m = botNewService.selectMonsterByNo(ob.monNo);
 	        if (m == null) return "진행중 몬스터 정보를 찾을 수 없습니다.";
-	        monMaxHp = m.monHp;
-	        monHpRemainBefore = Math.max(0, m.monHp - ob.totalDealtDmg);
 	        lucky = (ob.luckyYn != null && ob.luckyYn == 1);
+	        dark = (ob.luckyYn != null && ob.luckyYn == 2);
+	        if(dark) {
+	        	monMaxHp = m.monHp*5;
+	        	m.monAtk = m.monAtk*2;
+	        }else {
+	        	monMaxHp = m.monHp;
+	        }
+	        monHpRemainBefore = Math.max(0, monMaxHp - ob.totalDealtDmg);
+	        
 	    } else {
 	        m = botNewService.selectMonsterByNo(u.targetMon);
 	        if (m == null) return "대상 몬스터가 지정되어 있지 않습니다. (TARGET_MON 없음)";
+	        
 	        monMaxHp = m.monHp;
 	        monHpRemainBefore = m.monHp;
 	        
-	        
+	     // ★ 1) 이 유저의 해당 몬스터 누적 킬 수 조회 (기존 selectKillStats 재사용)
+	        int killCountForThisMon = 0;
+	        try {
+	            List<KillStat> kills = botNewService.selectKillStats(userName, roomName);
+	            if (kills != null) {
+	                for (KillStat ks : kills) {
+	                    if (ks.monNo == m.monNo) {
+	                        killCountForThisMon = ks.killCount;
+	                        break;
+	                    }
+	                }
+	            }
+	        } catch (Exception ignore) {}
+
+	        // ★ 2) 300킬 이상 + 20% 확률이면 어둠몬스터 플래그 ON
+	        if (killCountForThisMon >= 300) {
+	            double rnd = ThreadLocalRandom.current().nextDouble(); // 0.0 ~ 1.0
+	            if (rnd < 0.20) {
+	                dark = true;
+	            }
+	        }
+
+	        // ★ 3) 어둠몬스터면 HP 5배로
+	        if (dark) {
+	            monMaxHp = monMaxHp * 5;
+	            m.monAtk = m.monAtk*2;
+	            monHpRemainBefore = monMaxHp; // 첫 조우이므로 남은 HP도 5배 기준
+	        }
+
 	        int globalCnt = 0;
 	        if (globalAchvMap != null) {
 	            Integer v = globalAchvMap.get( "ACHV_FIRST_CLEAR_MON_" + m.monNo);
 	            if (v != null) globalCnt = v.intValue();
 	        }
 
-	        
-	        if(m.monNo > 50){
+	        if(dark) { 
 	        	lucky = false;
+	        } else if(m.monNo > 50){
+	        	lucky = false;
+	        	dark = false;
 	        } else if (globalCnt == 0) {//최초토벌 안된몹
 	        	lucky = false;
+	        	dark = false;
 	        } else if("사신".equals(job)){
 	        	lucky = false;
 	        } else if ("도사".equals(job)) {
@@ -1406,7 +1435,7 @@ public class BossAttackController {
 
 	    // 14) 처치/드랍 판단
 	    //boolean willKill = calc.atkDmg >= monHpRemainBefore;
-	    Resolve res = resolveKillAndDrop(m, calc, willKill, u, lucky);
+	    Resolve res = resolveKillAndDrop(m, calc, willKill, u, lucky,dark);
 	    
 	    // 🔹 궁수: 획득 EXP +25%
 	    if ("궁수".equals(u.job)) {
@@ -1700,11 +1729,12 @@ public class BossAttackController {
 	        return sellAllByCategory(userName, roomName, u, true);  // 장비 전체판매
 	    }
 	    
-	    final boolean wantShinyOnly = itemNameRaw.startsWith("빛") || itemNameRaw.startsWith("✨");
+	    final boolean wantShinyOnly = itemNameRaw.startsWith("빛") ;
+	    final boolean wantDarkOnly = itemNameRaw.startsWith("어둠");
 	    final boolean stealOnly = itemNameRaw.endsWith("조각");
 	    
 	    String baseName = itemNameRaw;
-	    baseName = baseName.replace("빛", "").replace("✨", "");
+	    baseName = baseName.replace("빛", "").replace("어둠", "");
 	    if (stealOnly && baseName.endsWith("조각")) {
 	        baseName = baseName.substring(0, baseName.length() - 2); // "조각" 두 글자 제거
 	    }
@@ -1718,7 +1748,7 @@ public class BossAttackController {
 	    if (rows == null || rows.isEmpty()) return "인벤토리에 보유 중인 [" + itemNameRaw + "]이(가) 없습니다.";
 
 	    // ★ 조각 수량 추가
-	    int normalQty = 0, shinyQty = 0, fragQty = 0;
+	    int normalQty = 0, shinyQty = 0, fragQty = 0, darkQty=0;
 	    for (HashMap<String, Object> row : rows) {
 	        String gainType = Objects.toString(row.get("GAIN_TYPE"), "DROP");
 	        int qty = parseIntSafe(Objects.toString(row.get("QTY"), "0"));
@@ -1728,6 +1758,8 @@ public class BossAttackController {
 	            fragQty += qty;
 	        } else if ("DROP3".equalsIgnoreCase(gainType)) {
 	            shinyQty += qty;
+	        } else if ("DROP5".equalsIgnoreCase(gainType)) {
+	            darkQty += qty;
 	        } else {
 	            normalQty += qty;
 	        }
@@ -1738,7 +1770,7 @@ public class BossAttackController {
 	    if (stealOnly) {
 	        haveTotal = fragQty;
 	    } else {
-	        haveTotal = normalQty + shinyQty;
+	        haveTotal = normalQty + shinyQty + darkQty;
 	    }
 
 	    if (haveTotal <= 0) {
@@ -1757,36 +1789,40 @@ public class BossAttackController {
 	    } catch (Exception ignore) {}
 	    String itemType = (itemDetail == null) ? "" : Objects.toString(itemDetail.get("ITEM_TYPE"), "");
 	    boolean isEquip = "MARKET".equalsIgnoreCase(itemType);
-	    // ✅ 상인은 장비(MARKET) 아이템 판매 불가
-	    //if (isMerchant && isEquip) {
-	    //    return "상인 직업은 장비 아이템(MARKET)을 판매할 수 없습니다.";
-	    //}
 	    
 	    int need = Math.min(reqQty, haveTotal);
-	    int sold = 0, soldNormal = 0, soldShiny = 0, soldFrag = 0;
+	    int sold = 0, soldNormal = 0, soldShiny = 0,soldDark=0, soldFrag = 0;
 	    long totalSp = 0L;
 	    
 	    
 	    boolean soldMerchantDiscount = false; // BUY_MERCHANT 물건을 실제로 판 적 있는지
-	    //boolean soldMerchantBonus = false;    // 상인 보너스(드랍템 10%↑) 적용된 판매가 있었는지
 	    
 	    for (HashMap<String, Object> row : rows) {
 	        if (need <= 0) break;
 
 	        String gainType = Objects.toString(row.get("GAIN_TYPE"), "DROP");
 	        boolean isShinyRow = "DROP3".equalsIgnoreCase(gainType);
-	        boolean isDropRow  = isShinyRow || "DROP".equalsIgnoreCase(gainType);
-	        boolean isMerchantBuy  = "BUY_MERCHANT".equalsIgnoreCase(gainType);
-	        boolean isStealRow   = "STEAL".equalsIgnoreCase(gainType);   // ★ 추가
-	        
-	     // ★ 모드에 따라 행 필터링
-	        if (stealOnly && !isStealRow) continue;      // /판매 모피조각 → STEAL만
-	        if (!stealOnly && isStealRow) continue;      // /판매 모피 → STEAL 제외
+	        boolean isDarkRow  = "DROP5".equalsIgnoreCase(gainType);
+	        boolean isStealRow = "STEAL".equalsIgnoreCase(gainType);   // ★ 추가
 
-	        // 기존 빛/일반 필터
-	        if (wantShinyOnly && !isShinyRow) continue;
-	        if (!wantShinyOnly && isShinyRow) continue;
-	        
+
+	        // ★ 모드에 따라 행 필터링
+	        // 행 종류 분류
+	        boolean isNormalRow = !isShinyRow && !isDarkRow && !isStealRow;
+
+	        if (stealOnly) {
+	            // /판매 도토리조각 → STEAL만
+	            if (!isStealRow) continue;
+	        } else if (wantShinyOnly) {
+	            // /판매 빛도토리 → DROP3(빛도토리)만
+	            if (!isShinyRow) continue;
+	        } else if (wantDarkOnly) {
+	            // /판매 어둠도토리 → DROP5(어둠도토리)만
+	            if (!isDarkRow) continue;
+	        } else {
+	            // /판매 도토리 → 일반도토리만
+	            if (!isNormalRow) continue;
+	        }
 	        
 
 	        String rid = (row.get("RID") != null ? row.get("RID").toString() : null);
@@ -1798,7 +1834,7 @@ public class BossAttackController {
 
 	        int unitPrice;
 
-	        if (isShinyRow) {
+	        if (isShinyRow || isDarkRow) {
 	            // ✨빛드랍 기본 5배
 	            unitPrice = basePrice * SHINY_MULTIPLIER;
 	        } else {
@@ -1806,30 +1842,10 @@ public class BossAttackController {
 	            unitPrice = basePrice;
 	        }
 
-	        // ✅ 상인 할인으로 산 아이템(BUY_MERCHANT)은 언제 팔든 '구매 당시 가격'으로만
-	        if (isMerchantBuy) {
-	            unitPrice = (int)Math.floor(basePrice * 0.9);
-	        }
-
-	        // ✅ 상인 직업 보너스는 DROP/DROP3 에만 적용 (BUY_MERCHANT에는 미적용)
-	        //if (isMerchant && isDropRow) {
-	        //    unitPrice = (int)Math.round(unitPrice * 1.1);
-	        //}
-	        
 	        // ★ 조각(STEAL)은 절반 가격
 	        if (isStealRow) {
 	            unitPrice = (int)Math.floor(unitPrice * 0.5);
 	        }
-
-	     // 👇 실제로 해당 타입이 팔렸는지 기록
-	        if (isMerchantBuy && take > 0) {
-	            soldMerchantDiscount = true;
-	        }
-	        /*
-	        if (isMerchant && isDropRow && !isMerchantBuy && take > 0) {
-	            soldMerchantBonus = true;
-	        }
-	        */
 
 	        if (qty == take) botNewService.updateInventoryDelByRowId(rid);
 	        else botNewService.updateInventoryQtyByRowId(rid, qty - take);
@@ -1839,6 +1855,8 @@ public class BossAttackController {
 	            soldFrag += take;
 	        } else if (isShinyRow) {
 	            soldShiny += take;
+	        } else if (isDarkRow) {
+	            soldDark += take;
 	        } else {
 	            soldNormal += take;
 	        }
@@ -1854,7 +1872,8 @@ public class BossAttackController {
 	            preStock = "보유: " + baseName + "조각 " + fragQty + "개";
 	        } else {
 	            preStock = "보유: " + baseName + " " + normalQty + "개"
-	                    + (shinyQty > 0 ? ", ✨빛" + baseName + " " + shinyQty + "개" : "")
+	                    + (shinyQty > 0 ? ", 빛" + baseName + " " + shinyQty + "개" : "")
+	                    + (darkQty > 0 ? ", 어둠" + baseName + " " + darkQty + "개" : "")
 	                    + (fragQty  > 0 ? ", " + baseName + "조각 " + fragQty + "개" : "");
 	        }
 	        return "판매 가능한 재고가 없습니다." + NL + preStock;
@@ -1881,6 +1900,7 @@ public class BossAttackController {
 
 	    int remainNormal = Math.max(0, normalQty - soldNormal);
 	    int remainShiny  = Math.max(0, shinyQty  - soldShiny);
+	    int remainDark  = Math.max(0, darkQty  - soldDark);
 	    int remainFrag   = Math.max(0, fragQty   - soldFrag);  // ★
 	    
 
@@ -1893,8 +1913,13 @@ public class BossAttackController {
         }
         if (remainShiny > 0) {
             if (printed) remainSb.append(", ");
-            remainSb.append("✨빛").append(baseName).append(" ").append(remainShiny).append("개");
+            remainSb.append("빛").append(baseName).append(" ").append(remainShiny).append("개");
             printed = true;
+        }
+        if (remainDark > 0) {
+        	if (printed) remainSb.append(", ");
+        	remainSb.append("어둠").append(baseName).append(" ").append(remainDark).append("개");
+        	printed = true;
         }
      // ★ 여기 추가: 조각도 같이 보여주기
         if (remainFrag > 0) {
@@ -1909,8 +1934,12 @@ public class BossAttackController {
 	    String dispName;
 	    if (stealOnly) {
 	        dispName = baseName + "조각";                         // ★ /판매 모피조각
-	    } else {
-	        dispName = wantShinyOnly ? ("✨빛" + baseName) : baseName;
+	    } else if(wantShinyOnly){
+	        dispName = "빛" + baseName;
+	    } else if(wantDarkOnly){
+	        dispName = "어둠" + baseName;
+	    }else {
+	    	dispName = baseName;
 	    }
 	    
 	    StringBuilder sb = new StringBuilder();
@@ -1928,12 +1957,6 @@ public class BossAttackController {
 		     sb.append(NL)
 		       .append("※ 상인 할인으로 구매한 아이템은 할인가(90%) 기준으로 판매되었습니다.");
 		 }
-		 /*
-		 if (soldMerchantBonus) {
-		     sb.append(NL)
-		       .append("(상인 효과: 드랍 아이템 판매가 10% 보너스 적용)");
-		 }*/
-		 
 	    if (sold < reqQty) {
 	        sb.append(NL)
 	          .append("(요청 ").append(reqQty).append("개 → 실제 ").append(sold).append("개 판매)");
@@ -1948,8 +1971,8 @@ public class BossAttackController {
 	    return sb.toString();
 	}
 
-private String sellAllByCategory(String userName, String roomName, User u, boolean equipOnly) {
-	    final int SHINY_MULTIPLIER = 5; // ✨ 빛템 5배
+	private String sellAllByCategory(String userName, String roomName, User u, boolean equipOnly) {
+	    final int SHINY_MULTIPLIER = 5; //  빛템 5배
 	    final String NL = BossAttackController.NL; // 클래스 상단 static final NL = "♬" 사용
 
 	    //String job = (u == null || u.job == null) ? "" : u.job.trim();
@@ -1972,10 +1995,9 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	    Map<Integer, Boolean> equipCache = new HashMap<>();
 	    Map<Integer, Integer> priceCache = new HashMap<>();
 
-	    int sold = 0, soldNormal = 0, soldShiny = 0, soldFrag = 0;
+	    int sold = 0, soldNormal = 0, soldShiny = 0,soldDark=0, soldFrag = 0;
 	    long totalSp = 0L;
 	    boolean soldMerchantDiscount = false; // BUY_MERCHANT 판매 여부
-	    //boolean soldMerchantBonus    = false; // 상인 10% 보너스 적용 여부
 
 	    for (HashMap<String, Object> row : rows) {
 
@@ -1987,8 +2009,7 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 
 	        String gainType = Objects.toString(row.get("GAIN_TYPE"), "DROP");
 	        boolean isShinyRow    = "DROP3".equalsIgnoreCase(gainType);
-	        boolean isDropRow     = isShinyRow || "DROP".equalsIgnoreCase(gainType);
-	        boolean isMerchantBuy = "BUY_MERCHANT".equalsIgnoreCase(gainType);
+	        boolean isDarkRow    = "DROP5".equalsIgnoreCase(gainType);
 	        boolean isStealRow    = "STEAL".equalsIgnoreCase(gainType);
 
 	        // 1) ROWID → ITEM_ID 조회 (ITEM_ID 기준 로직을 쓰기 위함)
@@ -2035,34 +2056,14 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	        int unitPrice = basePrice;
 
 	        // 빛드랍 5배
-	        if (isShinyRow) {
+	        if (isShinyRow||isDarkRow) {
 	            unitPrice = basePrice * SHINY_MULTIPLIER;
 	        }
 
-	        // 상인 할인으로 구매한 아이템은 구매 당시 가격(90%) 기준(기존 sellItem 룰과 동일)
-	        if (isMerchantBuy) {
-	            unitPrice = (int) Math.floor(basePrice * 0.9);
-	        }
-
-	        // 상인 직업 보너스: DROP/DROP3 드랍템은 10% 보너스 (단, 상인할인구매는 보너스 X)/
-	        /*
-	        if (isMerchant && isDropRow && !isMerchantBuy) {
-	            unitPrice = (int) Math.round(unitPrice * 1.1);
-	        }
-	         */
 	        // 조각(STEAL)은 절반 가격
 	        if (isStealRow) {
 	            unitPrice = (int) Math.floor(unitPrice * 0.5);
 	        }
-
-	        // 통계 플래그
-	        if (isMerchantBuy && qty > 0) {
-	            soldMerchantDiscount = true;
-	        }
-	        /*
-	        if (isMerchant && isDropRow && !isMerchantBuy && qty > 0) {
-	            soldMerchantBonus = true;
-	        }*/
 
 	        // 6) 실제 판매: 전체판매이므로 가진 수량(qty) 전부 판매
 	        int take = qty;
@@ -2075,6 +2076,8 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	            soldFrag += take;
 	        } else if (isShinyRow) {
 	            soldShiny += take;
+	        } else if (isDarkRow) {
+	            soldDark += take;
 	        } else {
 	            soldNormal += take;
 	        }
@@ -2118,7 +2121,8 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	      .append("- 현재 포인트: ").append(curPointStr);
 
 	    if (soldNormal > 0) sb.append(NL).append("  · 일반 아이템: ").append(soldNormal).append("개");
-	    if (soldShiny  > 0) sb.append(NL).append("  · ✨빛 아이템: ").append(soldShiny).append("개");
+	    if (soldShiny  > 0) sb.append(NL).append("  · 빛 아이템: ").append(soldShiny).append("개");
+	    if (soldDark  > 0) sb.append(NL).append("  · 어둠 아이템: ").append(soldDark).append("개");
 	    if (soldFrag   > 0) sb.append(NL).append("  · 조각: ").append(soldFrag).append("개");
 
 	    if (soldMerchantDiscount) {
@@ -2800,10 +2804,11 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	}
 
 
-	private Resolve resolveKillAndDrop(Monster m, AttackCalc c, boolean willKill, User u, boolean lucky) {
+	private Resolve resolveKillAndDrop(Monster m, AttackCalc c, boolean willKill, User u, boolean lucky,boolean dark) {
 	    Resolve r = new Resolve();
 	    r.killed = willKill;
 	    r.lucky  = lucky;
+	    r.dark = dark;
 	    int levelGap = u.lv - m.monLv;
 	    double expMultiplier;
 	    
@@ -2817,11 +2822,25 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 
 	    int baseKillExp = (int)Math.round(m.monExp * expMultiplier);
 
-	    if (willKill) r.gainExp = lucky ? baseKillExp * 3 : baseKillExp;
-	    else          r.gainExp = (int)Math.round(baseKillExp/100)+1;  //
+	    if (willKill) {
+	    	if(dark) {
+	    		baseKillExp *= 5;
+	    	}else if(lucky) {
+	    		baseKillExp *= 3;
+	    	}
+	    	
+	    	r.gainExp = baseKillExp;
+	    }
+	    else {
+	    	r.gainExp = (int)Math.round(baseKillExp/20)+1;  //
+	    }
 
-	    if (lucky && willKill) {
+	    if ( lucky && willKill ) {
 	        r.dropCode = "3";
+	        return r;
+	    }
+	    if ( dark && willKill ) {
+	        r.dropCode = "5";
 	        return r;
 	    }
 	    
@@ -2947,6 +2966,14 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	        String dropName = (m.monDrop == null ? "" : m.monDrop.trim());
 	        if (!dropName.isEmpty()) {
 	            try {
+	            	
+	            	String gainType="DROP";
+	            	if("3".equals(res.dropCode)) {
+	            		gainType = "DROP3";
+	            	}else if ("5".equals(res.dropCode)) {
+	            		gainType = "DROP5";
+	            	}
+	            	
 	                Integer itemId = botNewService.selectItemIdByName(dropName);
 	                if (itemId != null) {
 	                    HashMap<String, Object> inv = new HashMap<>();
@@ -2955,7 +2982,7 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	                    inv.put("itemId",    itemId);
 	                    inv.put("qty",       1);
 	                    inv.put("delYn",     "0");
-	                    inv.put("gainType", "3".equals(res.dropCode) ? "DROP3" : "DROP");
+	                    inv.put("gainType", gainType);
 	                    botNewService.insertInventoryLogTx(inv);
 	                }
 	            } catch (Exception ignore) {
@@ -2975,6 +3002,12 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	        buffYn = 1;
 	    }
 
+	    int luckyYn=0;
+	    if(res.dark) {
+	    	luckyYn =2;
+	    }else if(res.lucky) {
+	    	luckyYn =1;
+	    }
 	    
 	    BattleLog log = new BattleLog()
 	        .setUserName(userName)
@@ -2989,7 +3022,7 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	        .setKillYn(res.killed ? 1 : 0)
 	        .setNowYn(1)
 	        .setDeathYn(deathYn)
-	        .setLuckyYn(res.lucky ? 1 : 0)
+	        .setLuckyYn(luckyYn)
 	        .setDropYn(dropAsInt)
 	    	.setBuffYn(buffYn)
 	    	.setJobSkillYn(c.jobSkillUsed ? 1 : 0)
@@ -3069,9 +3102,11 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	    sb.append("⚔ ").append(userName).append("님, ").append(NL)
 	      .append("▶ ").append(m.monName).append("을(를) 공격!").append(NL).append(NL);
 
-	    // 🍀 Lucky 배너(빛나는 정책)
+	    if (res.dark) {
+	    	sb.append("✨ DARK MONSTER! (처치시 경험치×5, 어둠 드랍)").append(NL);
+	    }
 	    if (res.lucky) {
-	        sb.append("✨ LUCKY MONSTER! (처치시 경험치×3, 빛나는 드랍)").append(NL);
+	        sb.append("✨ LUCKY MONSTER! (처치시 경험치×3, 빛 드랍)").append(NL);
 	    }
 
 	    // 치명타
@@ -3112,8 +3147,10 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	        if (res.killed && !"0".equals(res.dropCode)) {
 	            String dropName = (m.monDrop == null ? "" : m.monDrop.trim());
 	            if (!dropName.isEmpty()) {
-	                if ("3".equals(res.dropCode)) {
-	                    sb.append("✨ 드랍 획득: ✨빛").append(dropName).append(NL);
+	            	if ("5".equals(res.dropCode)) {
+	                    sb.append("✨ 드랍 획득: 어둠").append(dropName).append(NL);
+	                } else if ("3".equals(res.dropCode)) {
+	                    sb.append("✨ 드랍 획득: 빛").append(dropName).append(NL);
 	                } else {
 	                    sb.append("✨ 드랍 획득: ").append(dropName).append(NL);
 	                }
@@ -3191,8 +3228,10 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	    if (res.killed && !"0".equals(res.dropCode)) {
 	        String dropName = (m.monDrop == null ? "" : m.monDrop.trim());
 	        if (!dropName.isEmpty()) {
-	            if ("3".equals(res.dropCode)) {
-	                sb.append("✨ 드랍 획득: ✨빛").append(dropName).append(NL);
+	        	if ("5".equals(res.dropCode)) {
+	                sb.append("✨ 드랍 획득: 어둠").append(dropName).append(NL);
+	            } else if ("3".equals(res.dropCode)) {
+	                sb.append("✨ 드랍 획득: 빛").append(dropName).append(NL);
 	            } else {
 	                sb.append("✨ 드랍 획득: ").append(dropName).append(NL);
 	            }
@@ -3249,7 +3288,7 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 
 	
 	private static class Resolve {
-		boolean killed; String dropCode; int gainExp; int levelUpCount; boolean lucky;
+		boolean killed; String dropCode; int gainExp; int levelUpCount; boolean lucky; boolean dark;
 	}
 	private static class CooldownCheck {
 	    final boolean ok; final int remainMinutes; final long remainSeconds;

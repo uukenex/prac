@@ -245,7 +245,9 @@
     SELECT
 	    x.ITEM_ID,
 	    CASE WHEN x.GAIN_TYPE = 'DROP3'
-	         THEN '✨빛' || NVL(t.ITEM_NAME, '알 수 없음')
+	         THEN '빛' || NVL(t.ITEM_NAME, '알 수 없음')
+	         WHEN x.GAIN_TYPE = 'DROP5'
+	         THEN '어둠' || NVL(t.ITEM_NAME, '알 수 없음')
 	         WHEN x.GAIN_TYPE = 'STEAL'
     		 THEN NVL(t.ITEM_NAME, '알 수 없음') || '조각'
 	         ELSE NVL(t.ITEM_NAME, '알 수 없음')
@@ -274,6 +276,8 @@
 	      CASE 
 	        WHEN NVL(inv.gain_type,'DROP') = 'DROP3'
 	          THEN '빛' || NVL(i.item_name, '알 수 없음')
+	        WHEN NVL(inv.gain_type,'DROP') = 'DROP5'
+	          THEN '어둠' || NVL(i.item_name, '알 수 없음')
 	        WHEN NVL(inv.gain_type,'DROP') = 'STEAL'
           	  THEN NVL(i.item_name, '알 수 없음') || '조각'
 	        ELSE NVL(i.item_name, '알 수 없음')
@@ -294,6 +298,8 @@
 	      CASE 
 	        WHEN NVL(inv.gain_type,'DROP') = 'DROP3'
 	          THEN '빛' || NVL(i.item_name, '알 수 없음')
+	        WHEN NVL(inv.gain_type,'DROP') = 'DROP5'
+	          THEN '어둠' || NVL(i.item_name, '알 수 없음')
 	        WHEN NVL(inv.gain_type,'DROP') = 'STEAL'
           	  THEN NVL(i.item_name, '알 수 없음') || '조각'
           	ELSE NVL(i.item_name, '알 수 없음')
@@ -807,7 +813,7 @@
 	         <if test="roomName != null and roomName != '람쥐봇 문의방'">
 	           AND ROOM_NAME = #{roomName}
 	         </if>
-	           AND A.GAIN_TYPE NOT IN ('DROP', 'DROP3', 'STEAL')
+	           AND A.GAIN_TYPE NOT IN ('DROP', 'DROP3','DROP5', 'STEAL')
 	           AND A.ITEM_ID = B.ITEM_ID
 	           AND DEL_YN = '0')
 	  FROM DUAL
@@ -951,7 +957,7 @@
 	  <if test="roomName != null and roomName != '람쥐봇 문의방'">
 	    AND ROOM_NAME = #{roomName}
 	  </if>
-	  AND GAIN_TYPE IN ('DROP','DROP3','STEAL')
+	  AND GAIN_TYPE IN ('DROP','DROP3','DROP5','STEAL')
 	  AND NVL(DEL_YN, '0') = '1'
 	</select>
 	
