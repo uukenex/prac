@@ -112,7 +112,10 @@ public class ExtController {
 			conn.setRequestMethod("GET");
 			conn.setConnectTimeout(10000); // 5초 타임아웃
 			conn.setReadTimeout(10000); // 5초 타임아웃
-
+			/*
+			conn.setRequestProperty("x-api-key", "YOUR_API_KEY");
+			conn.setRequestProperty("accept", "application/json");
+			*/		
 			int responseCode = conn.getResponseCode();
 			if (responseCode != HttpURLConnection.HTTP_OK) {
 				throw new IOException("HTTP error code: " + responseCode);

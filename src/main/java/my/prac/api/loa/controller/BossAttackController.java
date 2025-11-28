@@ -797,6 +797,11 @@ public class BossAttackController {
 		    for (Monster mm : monsters) {
 		        sb.append(renderMonsterCompactLine(mm, userLv)); // ★ 레벨 비례 EXP 반영됨!
 		    }
+		    
+		    sb.append(NL+"다음 몬스터 해금은 아래의조건 중 하나를 만족하면 추가됩니다");
+		    sb.append(NL+"1. 3위까지 40Lv달성");
+		    sb.append(NL+"2. 3위까지 하급악마 5마리 클리어");
+		    sb.append(NL+"3. 하급악마의 5번째스킬 발견 제보");
 		    return sb.toString();
 		}
 
