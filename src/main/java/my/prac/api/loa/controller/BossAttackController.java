@@ -315,15 +315,6 @@ public class BossAttackController {
 	    if (u == null)
 	        return "유저 정보를 찾을 수 없습니다.";
 
-	    if(roomName.equals("람쥐봇 문의방")) {
-			
-			if(userName.equals("일어난다람쥐/카단")) {
-				
-			}else {
-				return "문의방에서는 불가능합니다.";
-			}
-		}
-
 	    String curJob = (u.job == null ? "" : u.job.trim());
 	    String sel = selRaw;
 
@@ -337,6 +328,16 @@ public class BossAttackController {
 	            return "현재 직업: " + curJob + NL + buildJobDescriptionList();
 	        }
 	    }
+	    
+	    if(roomName.equals("람쥐봇 문의방")) {
+			
+			if(userName.equals("일어난다람쥐/카단")) {
+				
+			}else {
+				return "문의방에서는 불가능합니다.";
+			}
+		}
+
 
 	    // 2) 입력한 직업명 파싱
 	    String newJob = normalizeJob(sel);
