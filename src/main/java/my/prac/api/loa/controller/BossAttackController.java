@@ -3829,7 +3829,7 @@ public class BossAttackController {
 	    if (th <= 300) return 8000;
 	    if (th <= 500) return 12000;
 	    if (th <= 1000)return 20000;
-	    return 30000;
+	    return 0;
 	}
 
 	private int calcDarkItemReward(int th) {
