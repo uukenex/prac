@@ -2731,14 +2731,16 @@ public class BossAttackController {
 		    }
 		    break;
 		case 4: c.monDmg = (int) Math.round(m.monAtk * 1.5); c.patternMsg = name + "의 필살기! (피해 " + c.monDmg + ")"; break;
-		case 5:   // 🔥 NEW: 즉사 패턴
+		case 5:  
 			int maxHpBase = Math.max(1, u.hpMax); // 0 방지
             double hpRatio = (double) u.hpCur / maxHpBase;
 
             if (hpRatio < 0.80) {
-                // 즉사 조건 충족
-                c.monDmg = 9_999_999;
-                c.patternMsg = name + "의 알 수 없는 공격!";
+            	 // 🔥 빈사 패턴: 체력을 1 남기고 공격 연출
+                int lethalDmg = Math.max(1, u.hpCur - 1); // 1HP 남기기
+                c.atkDmg = 0;  
+                c.monDmg = lethalDmg;
+                c.patternMsg = name + "의 일격! 당신을 빈사 상태로 몰아넣었습니다!";
             } else {
             	// 🔥 보스 흡혈 패턴
                 // 1) 플레이어에게 들어갈 피해 = 보스 ATK의 20%
