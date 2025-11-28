@@ -715,7 +715,15 @@ public class BossAttackController {
 	                List<String> list = e.getValue();
 	                if (list == null || list.isEmpty()) continue; // 비어 있으면 스킵
 
-	                sb.append(e.getKey()).append(": ");
+	                int max = getMaxAllowedByCategoryLabel(e.getKey());
+
+	                // 최대 소지 제한이 있는 경우만 표기
+	                if (max != Integer.MAX_VALUE) {
+	                    sb.append(e.getKey()).append("(최대").append(max).append("개)").append(": ");
+	                } else {
+	                    sb.append(e.getKey()).append(": ");
+	                }
+	                
 	                sb.append(String.join(", ", list));
 	                sb.append(NL);
 	            }
@@ -4520,6 +4528,15 @@ private String sellAllByCategory(String userName, String roomName, User u, boole
 	    return Integer.MAX_VALUE;
 	}
 
+	private int getMaxAllowedByCategoryLabel(String label) {
+	    if (label.contains("무기"))  return 5;    // 100번대
+	    if (label.contains("투구"))  return 1;    // 200번대
+	    if (label.contains("갑옷"))  return 1;    // 400번대
+	    if (label.contains("전설"))  return 1;    // 700번대
+
+	    // 나머지(행운/반지/토템/선물/유물 등)
+	    return Integer.MAX_VALUE;
+	}
 	
 	/**
 	 * 같은 "장비 카테고리"인지 판별
