@@ -140,6 +140,8 @@ public interface BotNewService {
     
  // 상점/소비로 삭제된 인벤토리 누적 수량
     int selectInventorySoldCount(String userName, String roomName);
+    
+    List<HashMap<String, Object>> selectTotalGainCountByGainType(String userName, String roomName);
 } 
 
 	

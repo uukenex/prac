@@ -368,4 +368,9 @@ public class BotNewServiceImpl implements BotNewService {
     public int selectInventorySoldCount(String userName, String roomName) {
         return botNewDAO.selectInventorySoldCount(userName, roomName);
     }
+    
+    @Override
+    public List<HashMap<String, Object>> selectTotalGainCountByGainType(String userName, String roomName) {
+        return botNewDAO.selectTotalGainCountByGainType(userName, roomName);
+    }
 }

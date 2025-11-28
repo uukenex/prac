@@ -1519,11 +1519,18 @@ public class BossAttackController {
 	        // ✅ 킬수 업적 (몬스터별/통산)
 	        String killAchvMsg = grantKillAchievements(userName, roomName);
 
-	        if ((firstClearMsg != null && !firstClearMsg.isEmpty())
-	         || (killAchvMsg != null && !killAchvMsg.isEmpty())) {
-	            bonusMsg = NL + firstClearMsg + killAchvMsg;
-	        }
+	        String itemAchvMsg   = grantLightDarkItemAchievements(userName, roomName);
 	        
+	        
+	        if ((firstClearMsg != null && !firstClearMsg.isEmpty())
+	        	     || (killAchvMsg   != null && !killAchvMsg.isEmpty())
+	        	     || (itemAchvMsg   != null && !itemAchvMsg.isEmpty())) {
+
+	        	        bonusMsg = NL
+	        	                 + firstClearMsg
+	        	                 + killAchvMsg
+	        	                 + itemAchvMsg;  // 🔹 추가
+	        	    }
 	        // 💼 가방 드랍 시도
 	        bagDropMsg = tryDropBag(userName, roomName, m);
 	    }
@@ -3693,6 +3700,7 @@ public class BossAttackController {
 	    pr.put("cmd", achvCmd);
 	    botNewService.insertPointRank(pr);
 
+	    
 	    return "✨ 업적 달성! [" + achvCmd + "] 보상 +" + rewardSp + "sp 지급되었습니다." + NL;
 	}
 
@@ -3760,6 +3768,76 @@ public class BossAttackController {
 	    return sb.toString();
 	}
 
+	private String grantLightDarkItemAchievements(String userName, String roomName) {
+
+	    // 🔹 1) 누적 획득 개수 조회 (GAIN_TYPE 기준)
+	    //    → 이 부분은 TBOT_INVENTORY_LOG (또는 네 로그 테이블)에서
+	    //      GAIN_TYPE별 SUM(QTY)를 가져오는 Service/DAO 를 하나 만들어서 사용하면 됨.
+	    int lightTotal = 0; // DROP3 누적
+	    int darkTotal  = 0; // DROP5 누적
+	    List<HashMap<String, Object>> gainRows = botNewService.selectTotalGainCountByGainType(userName, roomName);
+
+	    if (gainRows != null) {
+	        for (HashMap<String, Object> row : gainRows) {
+	            String type = Objects.toString(row.get("GAIN_TYPE"), "");
+	            int qty     = parseIntSafe(Objects.toString(row.get("TOTAL_QTY"), "0"));
+
+	            if ("DROP3".equals(type)) {
+	                lightTotal = qty;
+	            } else if ("DROP5".equals(type)) {
+	                darkTotal = qty;
+	            }
+	        }
+	    }
+	    if (lightTotal <= 0 && darkTotal <= 0) {
+	        return "";
+	    }
+
+	    StringBuilder sb = new StringBuilder();
+
+	    // 🔹 2) 공통 threshold 정의 (원하는 대로 조절)
+	    int[] thresholds = {1, 10, 50, 100, 300, 500, 1000, 2000};
+
+	    // 🔹 3) 빛 아이템 누적 업적
+	    for (int th : thresholds) {
+	        if (lightTotal >= th) {
+	            String cmd   = "ACHV_LIGHT_ITEM_" + th;     // 예: ACHV_LIGHT_ITEM_50
+	            int rewardSp = calcLightItemReward(th);     // 아래에서 정의
+	            sb.append(grantOnceIfEligible(userName, roomName, cmd, rewardSp));
+	        }
+	    }
+
+	    // 🔹 4) 어둠 아이템 누적 업적
+	    for (int th : thresholds) {
+	        if (darkTotal >= th) {
+	            String cmd   = "ACHV_DARK_ITEM_" + th;      // 예: ACHV_DARK_ITEM_50
+	            int rewardSp = calcDarkItemReward(th);
+	            sb.append(grantOnceIfEligible(userName, roomName, cmd, rewardSp));
+	        }
+	    }
+
+	    return sb.toString();
+	}
+	
+	private int calcLightItemReward(int th) {
+	    // 예시: 빛템은 kill 업적보다 살짝 약하게
+	    // th = 1,10,50, ... 기준
+	    if (th <= 1)   return 100;
+	    if (th <= 10)  return 500;
+	    if (th <= 50)  return 2000;
+	    if (th <= 100) return 4000;
+	    if (th <= 300) return 8000;
+	    if (th <= 500) return 12000;
+	    if (th <= 1000)return 20000;
+	    return 30000;
+	}
+
+	private int calcDarkItemReward(int th) {
+	    // 예시: 어둠템은 좀 더 희귀하다고 가정해서 빛템보다 1.5배 정도
+	    int base = calcLightItemReward(th);
+	    return (int)Math.round(base * 1.5);
+	}
+	
 	private String grantCelebrationClearBonus(
 	        String userName,
 	        String roomName,
@@ -3860,6 +3938,10 @@ public class BossAttackController {
 	        Pattern.compile("^죽음 극복 (\\d+)회 달성$");
 	private static final Pattern P_MONSTER_KILL =
 	        Pattern.compile("^(.+?) (\\d+)킬 달성$");
+	private static final Pattern P_LIGHT_ITEM_GET=
+			Pattern.compile("^빛 아이템 획득 (\\d+)회 달성$");
+	private static final Pattern P_DARK_ITEM_GET =
+			Pattern.compile("^어둠 아이템 획득 (\\d+)회 달성$");
 
 	private void renderAchievementLinesCompact(
 	        StringBuilder sb,
@@ -3875,6 +3957,8 @@ public class BossAttackController {
 	    java.util.SortedSet<Integer> totalKillSteps = new java.util.TreeSet<>();
 	    java.util.SortedSet<Integer> deathSteps = new java.util.TreeSet<>();
 	    Map<String, java.util.SortedSet<Integer>> monKillSteps = new LinkedHashMap<>();
+	    java.util.SortedSet<Integer> lightItemSteps = new java.util.TreeSet<>();
+	    java.util.SortedSet<Integer> darkItemSteps = new java.util.TreeSet<>();
 
 	    for (HashMap<String, Object> row : achv) {
 	        if (row == null) continue;
@@ -3894,6 +3978,8 @@ public class BossAttackController {
 	        Matcher mTotal = P_TOTAL_KILL.matcher(label);
 	        Matcher mDeath = P_DEATH_OVERCOME.matcher(label);
 	        Matcher mMon = P_MONSTER_KILL.matcher(label);
+	        Matcher mLightItem = P_LIGHT_ITEM_GET.matcher(label);
+	        Matcher mDarkItem = P_DARK_ITEM_GET.matcher(label);
 
 	        if (mTotal.matches()) {
 	            int v = parseIntSafe(mTotal.group(1));
@@ -3920,6 +4006,16 @@ public class BossAttackController {
 	                monKillSteps.put(monName, set);
 	            }
 	            set.add(v);
+	            continue;
+	        }
+	        if (mLightItem.matches()) {
+	            int v = parseIntSafe(mLightItem.group(1));
+	            if (v > 0) lightItemSteps.add(v);
+	            continue;
+	        }
+	        if (mDarkItem.matches()) {
+	            int v = parseIntSafe(mDarkItem.group(1));
+	            if (v > 0) darkItemSteps.add(v);
 	            continue;
 	        }
 
@@ -3958,6 +4054,16 @@ public class BossAttackController {
 	        sb.append("✨ 죽음 극복 [")
 	          .append(joinStepNumbers(deathSteps))
 	          .append("]회 달성").append(NL);
+	    }
+	    if (!lightItemSteps.isEmpty()) {
+	    	sb.append("✨ 빛 획득 [")
+	    	.append(joinStepNumbers(lightItemSteps))
+	    	.append("]회 달성").append(NL);
+	    }
+	    if (!darkItemSteps.isEmpty()) {
+	    	sb.append("✨ 어둠 획득 [")
+	    	.append(joinStepNumbers(darkItemSteps))
+	    	.append("]회 달성").append(NL);
 	    }
 	}
 
@@ -4047,6 +4153,22 @@ public class BossAttackController {
 	    		return "상점 판매 " + th + "회 달성";
 	    	} catch (Exception e) {
 	    		return "상점 판매 ";
+	    	}
+	    }
+	    if (cmd.startsWith("ACHV_LIGHT_ITEM_")) {
+	    	try {
+	    		int th = Integer.parseInt(cmd.substring("ACHV_LIGHT_ITEM_".length()));
+	    		return "빛 아이템 획득 " + th + "회 달성";
+	    	} catch (Exception e) {
+	    		return "빛 아이템 획득";
+	    	}
+	    }
+	    if (cmd.startsWith("ACHV_DARK_ITEM_")) {
+	    	try {
+	    		int th = Integer.parseInt(cmd.substring("ACHV_DARK_ITEM_".length()));
+	    		return "어둠 아이템 획득 " + th + "회 달성";
+	    	} catch (Exception e) {
+	    		return "어둠 아이템 획득 ";
 	    	}
 	    }
 	    

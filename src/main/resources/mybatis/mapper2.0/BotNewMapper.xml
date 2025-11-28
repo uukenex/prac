@@ -961,4 +961,15 @@
 	  AND NVL(DEL_YN, '0') = '1'
 	</select>
 	
+	<select id="selectTotalGainCountByGainType"
+	        resultType="hashmap">
+	    SELECT GAIN_TYPE,
+	           SUM(QTY) AS TOTAL_QTY
+	    FROM   TBOT_POINT_NEW_INVENTORY
+	    WHERE  USER_NAME = #{userName}
+	      AND  ROOM_NAME = #{roomName}
+	      AND  GAIN_TYPE IN ('DROP3', 'DROP5')
+	    GROUP BY GAIN_TYPE
+	</select>
+	
 </mapper>

@@ -194,5 +194,8 @@ public interface BotNewDAO {
 	int selectInventorySoldCount(
 	        @Param("userName") String userName,
 	        @Param("roomName") String roomName);
+	
+	List<HashMap<String, Object>> selectTotalGainCountByGainType(@Param("userName") String userName,
+	        @Param("roomName") String roomName);
 
 }
