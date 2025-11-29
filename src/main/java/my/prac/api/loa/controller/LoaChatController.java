@@ -1983,6 +1983,10 @@ public class LoaChatController {
 				break;		
 				*/
 			case "/게임공지":
+				
+				if(!sender.equals("전태환")) {
+					return "";
+				}
 				List<String> list =botService.selectRoomList2(reqMap);
 				
 				String tmp_val ="";
@@ -2022,6 +2026,9 @@ public class LoaChatController {
 				val = tmp_val;
 				break;
 			case "/전체공지":
+				if(!sender.equals("전태환")) {
+					return "";
+				}
 				list =botService.selectRoomList1(reqMap);
 				
 				tmp_val ="";
