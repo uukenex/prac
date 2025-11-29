@@ -370,12 +370,54 @@
   
   <select id="selectOwnedMarketBuffTotals" resultType="map">
 	  SELECT
-	      NVL(SUM(i.atk_min),0)   AS ATK_MIN,
-	      NVL(SUM(i.atk_max),0)   AS ATK_MAX,
-	      NVL(SUM(i.atk_cri),0)   AS ATK_CRI,
-	      NVL(SUM(i.hp_regen),0)  AS HP_REGEN,
-	      NVL(SUM(i.hp_max),0)    AS HP_MAX,
-	      NVL(SUM(i.cri_dmg),0) AS CRI_DMG
+	      	NVL(SUM( ROUND(i.atk_min  * 
+		        CASE 
+		            WHEN inv.qty = 1 THEN 1.0
+		            WHEN inv.qty =  2 THEN 1.3
+		            WHEN inv.qty =  3 THEN 1.5
+		            ELSE 1.6            -- qty >= 4
+		        END
+		    )), 0) AS ATK_MIN,
+		    NVL(SUM( ROUND(i.atk_max  * 
+		        CASE 
+		            WHEN inv.qty = 1 THEN 1.0
+		            WHEN inv.qty =  2 THEN 1.3
+		            WHEN inv.qty =  3 THEN 1.5
+		            ELSE 1.6
+		        END
+		    )), 0) AS ATK_MAX,
+		    NVL(SUM( ROUND(i.atk_cri  *
+		        CASE 
+		            WHEN inv.qty = 1 THEN 1.0
+		            WHEN inv.qty =  2 THEN 1.3
+		            WHEN inv.qty =  3 THEN 1.5
+		            ELSE 1.6
+		        END
+		    )), 0) AS ATK_CRI,
+		    NVL(SUM( ROUND(i.hp_regen *
+		        CASE 
+		            WHEN inv.qty = 1 THEN 1.0
+		            WHEN inv.qty =  2 THEN 1.3
+		            WHEN inv.qty =  3 THEN 1.5
+		            ELSE 1.6
+		        END
+		    )), 0) AS HP_REGEN,
+		    NVL(SUM( ROUND(i.hp_max   *
+		        CASE 
+		            WHEN inv.qty = 1 THEN 1.0
+		            WHEN inv.qty =  2 THEN 1.3
+		            WHEN inv.qty =  3 THEN 1.5
+		            ELSE 1.6
+		        END
+		    )), 0) AS HP_MAX,
+		    NVL(SUM( ROUND(i.cri_dmg  *
+		        CASE 
+		            WHEN inv.qty = 1 THEN 1.0
+		            WHEN inv.qty =  2 THEN 1.3
+		            WHEN inv.qty =  3 THEN 1.5
+		            ELSE 1.6
+		        END
+		    )), 0) AS CRI_DMG
 	  FROM TBOT_POINT_NEW_INVENTORY inv
 	  JOIN TBOT_POINT_NEW_ITEM i
 	    ON i.item_id = inv.item_id
@@ -510,35 +552,65 @@
 	</select>
 	<!-- MARKET 아이템 전체 + 보유여부(OWNED_YN) -->
 	<select id="selectMarketItemsWithOwned" resultType="hashmap">
-	  SELECT
-	      i.ITEM_ID,
-	      i.ITEM_NAME,
-	      i.ITEM_SELL_PRICE,
-	      i.ITEM_TYPE,
-	      NVL(i.ATK_MIN,0)  AS ATK_MIN,
-	      NVL(i.ATK_MAX,0)  AS ATK_MAX,
-	      NVL(i.ATK_CRI,0)  AS ATK_CRI,
-	      NVL(i.HP_REGEN,0) AS HP_REGEN,
-	      NVL(i.HP_MAX,0)   AS HP_MAX,
-	      NVL(i.CRI_DMG,   0) AS CRI_DMG,
-	      CASE
-	        WHEN EXISTS (
-	          SELECT 1
-	            FROM TBOT_POINT_NEW_INVENTORY inv
-	           WHERE inv.USER_NAME = #{userName}
-	             
-               <if test="roomName != null and roomName != '람쥐봇 문의방'">
-			     AND inv.room_name = #{roomName}
-			   </if>
-             
-	             AND inv.ITEM_ID   = i.ITEM_ID
-	             AND inv.DEL_YN    = '0'
-	        ) THEN 'Y' ELSE 'N'
-	      END AS OWNED_YN
-	  FROM TBOT_POINT_NEW_ITEM i
-	  WHERE i.ITEM_TYPE = 'MARKET'
-	  ORDER BY i.ITEM_ID
+	    SELECT
+	        i.ITEM_ID,
+	        i.ITEM_NAME,
+	        i.ITEM_SELL_PRICE,
+	        i.ITEM_TYPE,
+	        NVL(i.ATK_MIN,0)   AS ATK_MIN,
+	        NVL(i.ATK_MAX,0)   AS ATK_MAX,
+	        NVL(i.ATK_CRI,0)   AS ATK_CRI,
+	        NVL(i.HP_REGEN,0)  AS HP_REGEN,
+	        NVL(i.HP_MAX,0)    AS HP_MAX,
+	        NVL(i.CRI_DMG,0)   AS CRI_DMG,
+	
+	        -- 🔹 인벤토리에서 현재 보유 수량
+	        NVL(inv.OWN_QTY, 0) AS OWN_QTY,
+	
+	        -- 🔹 기존 OWNED_YN 유지 (0보다 크면 Y)
+	        CASE WHEN NVL(inv.OWN_QTY, 0) > 0 THEN 'Y' ELSE 'N' END AS OWNED_YN,
+	
+	        -- 🔹 업그레이드 가능/최대 여부 (100/200/400번대만 4개까지)
+	        CASE
+	            WHEN i.ITEM_ID BETWEEN 100 AND 199
+	              OR i.ITEM_ID BETWEEN 200 AND 299
+	              OR i.ITEM_ID BETWEEN 400 AND 499
+	            THEN
+	                CASE
+	                    WHEN NVL(inv.OWN_QTY, 0) >= 4 THEN 'Y'  -- 이미 MAX
+	                    ELSE 'N'
+	                END
+	            ELSE
+	                -- 나머지 장비는 1개만 보유 가능 (1 이상이면 MAX로 간주)
+	                CASE
+	                    WHEN NVL(inv.OWN_QTY, 0) >= 1 THEN 'Y'
+	                    ELSE 'N'
+	                END
+	        END AS MAXED_YN
+	
+	    FROM TBOT_POINT_NEW_ITEM i
+	
+	    -- 🔹 인벤토리 요약 LEFT JOIN
+	    LEFT JOIN (
+	        SELECT
+	            inv.ITEM_ID,
+	            inv.USER_NAME,
+	            inv.ROOM_NAME,
+	            SUM(inv.QTY) AS OWN_QTY
+	        FROM TBOT_POINT_NEW_INVENTORY inv
+	        WHERE inv.DEL_YN = '0'
+	        GROUP BY inv.ITEM_ID, inv.USER_NAME, inv.ROOM_NAME
+	    ) inv
+	      ON inv.ITEM_ID   = i.ITEM_ID
+	     AND inv.USER_NAME = #{userName}
+	     <if test="roomName != null and roomName != '람쥐봇 문의방'">
+	       AND inv.ROOM_NAME = #{roomName}
+	     </if>
+	
+	    WHERE i.ITEM_TYPE = 'MARKET'
+	    ORDER BY i.ITEM_ID
 	</select>
+
 	
 	<!-- 이미 소유한 MARKET 아이템인지 확인 -->
 	<select id="selectHasOwnedMarketItem" resultType="int">

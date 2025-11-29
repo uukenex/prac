@@ -352,35 +352,6 @@ public class BossAttackController {
 	        return "이미 [" + curJob + "] 직업입니다.";
 	    }
 
-	    
-	 // 레벨 4는 직업 체험 모드: 쿨타임 체크 생략 + 날짜 미갱신(체험은 기록 안 남김)
-	    /*
-	    if (u.lv < 5) {
-	        botNewService.updateUserJobAndChangeDate(userName, roomName, newJob); // **JOB_CHANGE_DATE 갱신 없는 버전 사용**
-	        return "✨ 레벨5 미만 직업 체험: 쿨타임 없이 [" + newJob + "] 으로 변경했습니다!";
-	    }
-	    */
-	    // 5) 24시간 쿨타임 체크
-	    // - JOB_CHANGE_DATE 기본값을 SYSDATE-6/24 로 잡았으므로
-	    //   초기 유저는 바로 변경 가능하게 됨.
-	    
-	    /*
-	    Timestamp lastChange = u.jobChangeDate;
-	    if (lastChange != null) {
-	        long diffSec = java.time.Duration.between(lastChange.toInstant(), java.time.Instant.now()).getSeconds();
-	        long limitSec = 0L * 60 * 60;
-
-	        if (diffSec < limitSec) {
-	            long remain = limitSec - diffSec;
-	            long rh = remain / 3600;
-	            long rm = (remain % 3600) / 60;
-
-	            return "직업 변경은 0시간에 1회 가능합니다." + NL
-	                 + "다음 변경까지 남은 시간: " + rh + "시간 " + rm + "분";
-	        }
-	    }
-	    */
-
 	    // 6) 직업 변경 수행 (JOB + JOB_CHANGE_DATE = SYSDATE)
 	    int updated = botNewService.updateUserJobAndChangeDate(userName, roomName, newJob);
 	    if (updated <= 0) {
@@ -504,15 +475,8 @@ public class BossAttackController {
 	    // HP: 프리스트 직업 보너스 포함한 아이템/직업 적용 값
 	    int hpMaxWithItemAndPriest = baseHpMax + bHpMax; // bHpMax는 위에서 프리스트 보정 포함 상태
 
-	    // ===== 직업 보너스(전사) 반영 =====
-	    // 전사 ATK 보너스: 기본 min 한 번 더, 기본 max 한 번 더 (아이템/강화 제외)
 	    int finalAtkMin = atkMinWithItem;
 	    int finalAtkMax = atkMaxWithItem;
-
-	    if ("전사".equals(job)) {
-	        //finalAtkMin += baseMin;
-	        //finalAtkMax += baseMax;
-	    }
 
 	    // 전사 HP 보너스: 기본 HP 한 번 더 (아이템 제외)
 	    int finalHpMax = hpMaxWithItemAndPriest;
@@ -586,17 +550,8 @@ public class BossAttackController {
 	      .append("   └ 시즌1 강화: ").append(weaponLv).append("강 (max+").append(weaponBonus).append(")").append(NL)
 	      .append("   └ 아이템 (min").append(formatSigned(bAtkMinRaw))
 	      .append(", max").append(formatSigned(bAtkMaxRaw)).append(")").append(NL);
-
-	    /*
-	    if ("전사".equals(job)) {
-	        sb.append("   └ 직업 (min+")
-	          .append(baseMin)
-	          .append(", max+")
-	          .append(baseMax)
-	          .append(")")
-	          .append(NL);
-	    }
-	    */
+	    
+	    
 	    sb.append("⚔CRIT: ").append(shownCrit).append("%  CDMG ").append(shownCritDmg).append("%").append(NL)
 	      .append("   └ 기본 (").append(u.critRate).append("%, ").append(u.critDmg).append("%)").append(NL);
 	      
@@ -666,45 +621,94 @@ public class BossAttackController {
 	            catMap.put("※기타", new ArrayList<>());
 
 	            // 3) 인벤토리 한 줄씩 카테고리 분류
+	         // 3) 인벤토리 한 줄씩 카테고리 분류
 	            for (HashMap<String, Object> row : bag) {
 	                if (row == null) continue;
 
 	                String itemName = Objects.toString(row.get("ITEM_NAME"), "-");
 	                String qtyStr   = Objects.toString(row.get("TOTAL_QTY"), "0");
 	                String typeStr  = Objects.toString(row.get("ITEM_TYPE"), "");
-	                int itemId    = parseIntSafe(Objects.toString(row.get("ITEM_ID"), "0"));
+	                int itemId      = parseIntSafe(Objects.toString(row.get("ITEM_ID"), "0"));
 
 	                if (itemName == null || itemName.trim().isEmpty()) continue;
 
-	                // 표시용 라벨 구성
+	                // 수량 파싱
+	                int qtyVal = parseIntSafe(qtyStr);
+	                if (qtyVal < 1) qtyVal = 1; // 최소 1
+
 	                String label = itemName;
 
-	                // MARKET / MASTER 는 장비 취급 → +강화 표시, 수량은 보통 1
-	                if ("MARKET".equals(typeStr)|| "BAG_OPEN".equals(typeStr) || "MASTER".equals(typeStr)) {
-	                    try {
-	                        //int e = Integer.parseInt(enhance);
-	                        //if (e > 0) label = label + "(+" + e + ")";
-	                    } catch (Exception ignore) {}
-	                    // 장비는 x수량 안 붙임 (원하면 여기서 qty도 붙일 수 있음)
+	                boolean isEquipType =
+	                        "MARKET".equalsIgnoreCase(typeStr) ||
+	                        "BAG_OPEN".equalsIgnoreCase(typeStr) ||
+	                        "MASTER".equalsIgnoreCase(typeStr);
+
+	                if (isEquipType) {
+	                    // 🪄 이름에 업그레이드 단계 "(+n)" 표시 (QTY-1)
+	                    int plusLv = Math.max(0, qtyVal - 1);
+	                    if (plusLv > 0) {
+	                        label = label + "(+" + plusLv + ")";
+	                    }
+
+	                    // 🪄 업그레이드 계수 (1: 1.0, 2: 1.3, 3: 1.5, 4이상: 1.6)
+	                    double factor = calcEquipUpgradeFactor(qtyVal);
+
+	                    // 기본 스탯 (인벤 요약 쿼리에서 같이 가져오고 있다고 가정)
+	                    int atkMin0 = parseIntSafe(Objects.toString(row.get("ATK_MIN"), "0"));
+	                    int atkMax0 = parseIntSafe(Objects.toString(row.get("ATK_MAX"), "0"));
+	                    int hpMax0  = parseIntSafe(Objects.toString(row.get("HP_MAX"), "0"));
+	                    int regen0  = parseIntSafe(Objects.toString(row.get("HP_REGEN"), "0"));
+
+	                    // 업글 후 스탯
+	                    int atkMinUp = (int)Math.round(atkMin0 * factor);
+	                    int atkMaxUp = (int)Math.round(atkMax0 * factor);
+	                    int hpMaxUp  = (int)Math.round(hpMax0  * factor);
+	                    int regenUp  = (int)Math.round(regen0  * factor);
+
+	                    // "100(+30)" 포맷 적용
+	                    String atkMinStr = formatStatWithPlus(atkMin0, atkMinUp);
+	                    String atkMaxStr = formatStatWithPlus(atkMax0, atkMaxUp);
+
+	                    String hpMaxStr  = (hpMax0  != 0 ? formatStatWithPlus(hpMax0,  hpMaxUp)  : null);
+	                    String regenStr  = (regen0  != 0 ? formatStatWithPlus(regen0,  regenUp)  : null);
+
+	                    StringBuilder optSb = new StringBuilder();
+	                    // 공격력
+	                    if (atkMin0 != 0 || atkMax0 != 0) {
+	                        optSb.append(" 공격력 ")
+	                             .append(atkMinStr)
+	                             .append("~")
+	                             .append(atkMaxStr);
+	                    }
+	                    // HP
+	                    if (hpMaxStr != null) {
+	                        optSb.append(" 체력 ").append(hpMaxStr);
+	                    }
+	                    // 체젠
+	                    if (regenStr != null) {
+	                        optSb.append(" 체젠 ").append(regenStr);
+	                    }
+
+	                    label = label + optSb.toString();
+
 	                } else {
-	                    // 잡템 / 가방보상 / 기타 → 이름x수량
-	                    int q = parseIntSafe(qtyStr);
-	                    if (q > 1) {
-	                        label = label + "x" + q;
+	                    // 잡템 / 기타 → 이름x수량
+	                    if (qtyVal > 1) {
+	                        label = label + "x" + qtyVal;
 	                    }
 	                }
 
 	                String cat = resolveItemCategory(itemId);
-	                // 🧿 유물(9000번대)에만 짧은 능력치 꼬리표 추가
+
+	                // 🧿 유물(9000번대)에만 짧은 능력치 꼬리표 추가 (기존 로직 유지)
 	                if ("※유물".equals(cat)) {
-	                	HashMap<String,Object> info = botNewService.selectItemDetailById(itemId);  
-	        	        
-	                    String relicStat = buildRelicStatSuffix(info); // 아래 헬퍼
+	                    HashMap<String,Object> info = botNewService.selectItemDetailById(itemId);
+	                    String relicStat = buildRelicStatSuffix(info);
 	                    if (!relicStat.isEmpty()) {
-	                        label = label + relicStat; // 예: "고대돌조각(ATK+30~30)"
+	                        label += relicStat + NL;
 	                    }
 	                }
-	                
+
 	                List<String> bucket = catMap.get(cat);
 	                if (bucket == null) {
 	                    bucket = catMap.get("※기타");
@@ -947,7 +951,9 @@ public class BossAttackController {
 	    try {
 	        item = botNewService.selectItemDetailById(itemId);
 	    } catch (Exception ignore) {}
-	    if (item == null || !"MARKET".equalsIgnoreCase(Objects.toString(item.get("ITEM_TYPE"), ""))) {
+	    String itemType = (item == null) ? "" : Objects.toString(item.get("ITEM_TYPE"), "");
+	    
+	    if (item == null || !"MARKET".equalsIgnoreCase(itemType)) {
 	        return "구매할 수 없는 아이템입니다. (MARKET 유형만 구매 가능)";
 	    }
 
@@ -962,10 +968,12 @@ public class BossAttackController {
 	    }
 
 	    // 이미 소유 여부
+	    
+	    /*
 	    Integer ownedCnt = botNewService.selectHasOwnedMarketItem(userName, roomName, itemId);
 	    if (ownedCnt != null && ownedCnt > 0) {
 	        return "⚠ 이미 보유중인 아이템입니다. [" + itemName + "] 은(는) 중복구매가 불가합니다.";
-	    }
+	    }*/
 
 	    // 포인트 확인
 	    Integer tmpPoint = null;
@@ -983,37 +991,145 @@ public class BossAttackController {
 	    pr.put("cmd", "BUY");
 	    botNewService.insertPointRank(pr);
 
-	    // 인벤토리 적재
-	    HashMap<String, Object> inv = new HashMap<>();
-	    inv.put("userName", userName);
-	    inv.put("roomName", roomName);
-	    inv.put("itemId",  itemId);
-	    inv.put("qty",     1);
-	    inv.put("delYn",   "0");
-	    inv.put("gainType", "BUY");
-	    botNewService.insertInventoryLogTx(inv);
+	 // ============================
+	    // 인벤토리 적재 (장비는 중복구매 시 QTY 증가)
+	    // ============================
+	    int buyQty = 1; // 현재 /구매는 1개씩 구매
+	    
+	    int finalQty = 1; // 👉 이 값을 나중에 옵션 표시에 사용
+
+	    int itemIdInt = itemId; // 위에서 구한 itemId 그대로 사용
+	    boolean upgradeOk = isUpgradableEquip(itemIdInt);
+	    
+	    if ("MARKET".equalsIgnoreCase(itemType)) {
+	        // 장비: 같은 ITEM_ID 가진 행이 있으면 QTY만 증가
+	        List<HashMap<String, Object>> rows =
+	                botNewService.selectInventoryRowsForSale(userName, roomName, itemId);
+
+	        String targetRowId = null;
+	        int currentQty = 0;
+
+	        if (rows != null) {
+	            for (HashMap<String, Object> row : rows) {
+	                if (row == null) continue;
+
+	                String delYn = Objects.toString(row.get("DEL_YN"), "0");
+	                if (!"0".equals(delYn)) continue; // 삭제된 건 스킵
+
+	                String rid = (row.get("RID") != null ? row.get("RID").toString() : null);
+	                if (rid == null) continue;
+
+	                int q = parseIntSafe(Objects.toString(row.get("QTY"), "0"));
+	                if (q <= 0) continue;
+
+	                // 같은 ITEM_ID 한 줄만 관리한다고 가정 → 첫 행 사용
+	                targetRowId = rid;
+	                currentQty = q;
+	                break;
+	            }
+	        }
+	        
+	        if (!upgradeOk) {
+	            // ❌ 업그레이드 불가 장비 (100/200/400번대 외 MARKET)
+	            // → 기존처럼 1개만 보유 가능
+	            if (currentQty > 0) {
+	                return "⚠ 이미 보유중인 아이템입니다. [" + itemName + "] 은(는) 1개만 보유 가능합니다.";
+	            }
+
+	            // 최초 구매만 허용 (QTY=1)
+	            finalQty = buyQty;
+	            HashMap<String, Object> inv = new HashMap<>();
+	            inv.put("userName", userName);
+	            inv.put("roomName", roomName);
+	            inv.put("itemId",  itemIdInt);
+	            inv.put("qty",     buyQty);
+	            inv.put("delYn",   "0");
+	            inv.put("gainType","BUY");
+	            botNewService.insertInventoryLogTx(inv);
+
+	        } else {
+	            // ✅ 업그레이드 가능 장비(100/200/400번대)
+	            int newQty = currentQty + buyQty;
+
+	            // 최대 4단계(QTY=4)까지 허용
+	            if (newQty > 4) {
+	                int plus = Math.max(0, currentQty - 1);
+	                return "⚠ [" + itemName + "] 은(는) 최대 (+3) 까지 업그레이드 가능합니다."
+	                     + NL + "현재 보유 상태: " + itemName
+	                     + (plus > 0 ? "(+" + plus + ")" : "")
+	                     + " (현재 갯수=" + currentQty + ")";
+	            }
+
+	            if (targetRowId != null) {
+	                finalQty = newQty;
+	                botNewService.updateInventoryQtyByRowId(targetRowId, newQty);
+	            } else {
+	                finalQty = buyQty;
+	                HashMap<String, Object> inv = new HashMap<>();
+	                inv.put("userName", userName);
+	                inv.put("roomName", roomName);
+	                inv.put("itemId",  itemIdInt);
+	                inv.put("qty",     buyQty);
+	                inv.put("delYn",   "0");
+	                inv.put("gainType","BUY");
+	                botNewService.insertInventoryLogTx(inv);
+	            }
+	        }
+
+	    } else {
+	    	finalQty = buyQty;
+	        // 장비가 아닌 경우 → 기존처럼 바로 insert
+	        HashMap<String, Object> inv = new HashMap<>();
+	        inv.put("userName", userName);
+	        inv.put("roomName", roomName);
+	        inv.put("itemId",  itemId);
+	        inv.put("qty",     buyQty);
+	        inv.put("delYn",   "0");
+	        inv.put("gainType","BUY");
+	        botNewService.insertInventoryLogTx(inv);
+	    }
 
 	    // 구매 후 포인트
 	    Integer tmpAfter = null;
 	    try { tmpAfter = botNewService.selectCurrentPoint(userName, roomName); } catch (Exception ignore) {}
 	    int afterPoint = (tmpAfter == null ? 0 : tmpAfter.intValue());
 
-	    // 옵션 표기
-	    StringBuilder sbOpt = new StringBuilder();
-	    sbOpt.append(buildOptionTokensFromMap(item));
+	    int upgradeLevel = 0;
+	    if ("MARKET".equalsIgnoreCase(itemType)) {
+	        upgradeLevel = Math.max(0, finalQty - 1); // qty=2 → +1, qty=3 → +2 ...
+	    }
+
+	    // 표시용 이름
+	    String shownName = itemName;
+	    if (upgradeLevel > 0) {
+	        shownName = itemName + "(+" + upgradeLevel + ")";
+	    }
+	    
+	    
+	 // 옵션 문자열 결정
+	    String optionStr;
+	    if ("MARKET".equalsIgnoreCase(itemType)) {
+	        // 장비: 강화 수량 기반 옵션 (공격력 1(+1)~1(+1) 형태)
+	        optionStr = buildEnhancedOptionLine(item, finalQty);
+	    } else {
+	        // 기타: 기존 옵션 포맷 유지
+	        optionStr = buildOptionTokensFromMap(item);
+	    }
 
 	    // 결과 메시지
 	    StringBuilder sb = new StringBuilder();
 	    sb.append("▶ 구매 완료").append(NL)
-	      .append(userName).append("님, ").append(itemName).append("을(를) 구매했습니다.").append(NL)
-	      .append("↘가격: ").append(price).append("sp");
-	    /*if (isMerchant) {
-	        sb.append(" (상인 할인 적용)");
-	    }*/
-	    sb.append(NL)
-	      .append("↘옵션: ").append(sbOpt).append(NL)
+	      .append(userName).append("님, ").append(shownName).append("을(를) 구매했습니다.").append(NL)
+	      .append("↘가격: ").append(price).append("sp").append(NL)
+	      .append("↘옵션: ").append(optionStr).append(NL)
 	      .append("✨포인트: ").append(afterPoint).append("sp");
 
+	    // 업그레이드 안내 문구
+	    if (upgradeLevel > 0) {
+	        sb.append(NL)
+	          .append("✨ ").append(itemName)
+	          .append("이(가) (+" + upgradeLevel + ") 되었습니다!");
+	    }
 	    try {
 	    	botNewService.closeOngoingBattleTx(userName, roomName);
 	    }catch(Exception e) {
@@ -1105,6 +1221,14 @@ public class BossAttackController {
 	    int effCriDmg   = u.critDmg + bCriDmg;
 	    
 	 
+	    
+	 // ✅ 공격 시 적용 상한 (표시/저장은 그대로, 실제 전투에만 제한)
+	    if (effCritRate > 300) {
+	        effCritRate = 300;   // 크리티컬 확률 최대 300%
+	    }
+	    if (effCriDmg > 1000) {
+	        effCriDmg = 1000;    // 치명타 데미지 최대 1000%
+	    }
 	    
 	    
 	 // 🌟 운영자의 축복: Lv 7 이하 전투 시 전용 버프 (DB에는 저장하지 않음)
@@ -1750,22 +1874,46 @@ public class BossAttackController {
 	    if ("장비".equals(itemNameRaw)) {
 	        return sellAllByCategory(userName, roomName, u, true);  // 장비 전체판매
 	    }
-	    
-	    final boolean wantShinyOnly = itemNameRaw.startsWith("빛") ;
-	    final boolean wantDarkOnly = itemNameRaw.startsWith("어둠");
-	    final boolean stealOnly = itemNameRaw.endsWith("조각");
-	    
-	    String baseName = itemNameRaw;
-	    baseName = baseName.replace("빛", "").replace("어둠", "");
-	    if (stealOnly && baseName.endsWith("조각")) {
-	        baseName = baseName.substring(0, baseName.length() - 2); // "조각" 두 글자 제거
+	    // 숫자로만 들어온 경우: ITEM_ID 로 직접 판매 (/판매 10001)
+	    boolean isNumericId = itemNameRaw.matches("\\d+");
+
+	    boolean wantShinyOnly = false;
+	    boolean wantDarkOnly  = false;
+	    boolean stealOnly     = false;
+
+	    String baseName = itemNameRaw;   // 화면 표기용 기본 이름
+	    Integer itemId = null;
+
+	    if (isNumericId) {
+	        // 번호로 들어온 경우 → 바로 ITEM_ID 사용
+	        try {
+	            itemId = Integer.valueOf(itemNameRaw);
+	        } catch (Exception ignore) {}
+
+	        // 빛/어둠/조각 모드는 번호 모드에서는 사용하지 않음
+	        wantShinyOnly = false;
+	        wantDarkOnly  = false;
+	        stealOnly     = false;
+	    } else {
+	        // 🔹 이름으로 들어온 경우 → 기존 빛/어둠/조각 규칙 유지
+	        wantShinyOnly = itemNameRaw.startsWith("빛");
+	        wantDarkOnly  = itemNameRaw.startsWith("어둠");
+	        stealOnly     = itemNameRaw.endsWith("조각");
+	        
+	        baseName = itemNameRaw.replace("빛", "").replace("어둠", "");
+	        if (stealOnly && baseName.endsWith("조각")) {
+	            baseName = baseName.substring(0, baseName.length() - 2); // "조각" 두 글자 제거
+	        }
+
+	        try {
+	            itemId = botNewService.selectItemIdByName(baseName);
+	        } catch (Exception ignore) {}
+	    }
+
+	    if (itemId == null) {
+	        return "해당 아이템을 찾을 수 없습니다: " + itemNameRaw;
 	    }
 	    
-
-	    Integer itemId = null;
-	    try { itemId = botNewService.selectItemIdByName(baseName); } catch (Exception ignore) {}
-	    if (itemId == null) return "해당 아이템을 찾을 수 없습니다: " + itemNameRaw;
-
 	    List<HashMap<String, Object>> rows = botNewService.selectInventoryRowsForSale(userName, roomName, itemId);
 	    if (rows == null || rows.isEmpty()) return "인벤토리에 보유 중인 [" + itemNameRaw + "]이(가) 없습니다.";
 
@@ -1809,10 +1957,25 @@ public class BossAttackController {
 	    try {
 	        itemDetail = botNewService.selectItemDetailById(itemId);
 	    } catch (Exception ignore) {}
+	    
+	    // 🔹 번호로 들어온 경우에도 실제 아이템명으로 baseName 보정
+	    if (itemDetail != null) {
+	        String realName = Objects.toString(itemDetail.get("ITEM_NAME"), baseName);
+	        baseName = realName;
+	    }
+	    
 	    String itemType = (itemDetail == null) ? "" : Objects.toString(itemDetail.get("ITEM_TYPE"), "");
 	    boolean isEquip = "MARKET".equalsIgnoreCase(itemType);
 	    
-	    int need = Math.min(reqQty, haveTotal);
+	    int need;
+	    if (isEquip) {
+	        // 🛡 장비(MARKET)인 경우: 요청 수량과 상관없이 보유분 전체 판매
+	        need = haveTotal;
+	    } else {
+	        // 잡템 / 기타는 기존처럼 요청 수량만큼만 판매
+	        need = Math.min(reqQty, haveTotal);
+	    }
+
 	    int sold = 0, soldNormal = 0, soldShiny = 0,soldDark=0, soldFrag = 0;
 	    long totalSp = 0L;
 	    
@@ -1997,16 +2160,6 @@ public class BossAttackController {
 	    final int SHINY_MULTIPLIER = 5; //  빛템 5배
 	    final String NL = BossAttackController.NL; // 클래스 상단 static final NL = "♬" 사용
 
-	    //String job = (u == null || u.job == null) ? "" : u.job.trim();
-	    //boolean isMerchant = "상인".equals(job);
-
-	    // 상인은 장비 전체판매 불가 (기존 장비 판매 금지 룰 유지)/
-	    /*
-	    if (equipOnly && isMerchant) {
-	        return "상인 직업은 장비 아이템(MARKET)을 일괄 판매할 수 없습니다. 직업을 변경 후 다시 시도해주세요.";
-	    }
-	     */
-	    // 인벤토리 전체 판매 대상 조회 (ROWID, QTY, GAIN_TYPE만)
 	    List<HashMap<String, Object>> rows = botNewService.selectAllInventoryRowsForSale(userName, roomName);
 	    if (rows == null || rows.isEmpty()) {
 	        return equipOnly ? "판매 가능한 장비가 없습니다."
@@ -2403,15 +2556,6 @@ public class BossAttackController {
 
 	    return sb.toString();
 	}
-	/** 공격 랭킹 보기 */
-	/** 구매 리스트(한국어 직관 표기, NL='♬') 
-	 *  헤더: ▶ {userName}님, 구매 가능 아이템
-	 *  각 아이템: 
-	 *   [ID] 이름 (구매완료)
-	 *   ↘가격: {price}sp
-	 *   ↘옵션: 최소뎀 ±X, 최대뎀 ±Y, 치명타 +Z%, 체력회복 +R (5분마다), 최대체력 +H
-	 *  - '랜덤' 문구 없음. 부호는 값 그대로(+/-) 노출.
-	 */
 	private String renderMarketListForBuy(List<HashMap<String,Object>> items, String userName, boolean hiddenYn) {
 	    if (items == null || items.isEmpty()) {
 	        return "▶ " + userName + "님, 구매 가능 아이템" + NL + "- (없음)";
@@ -2426,30 +2570,161 @@ public class BossAttackController {
 	    sb.append(allSeeStr);
 
 	    for (HashMap<String,Object> it : items) {
-	    	int    itemId   = safeInt(it.get("ITEM_ID"));
+	        int    itemId   = safeInt(it.get("ITEM_ID"));
 	        String name     = String.valueOf(it.get("ITEM_NAME"));
 	        int    price    = safeInt(it.get("ITEM_SELL_PRICE"));
 	        String ownedYn  = String.valueOf(it.get("OWNED_YN"));
+	        String itemType = String.valueOf(it.get("ITEM_TYPE"));
 
-	        if(hiddenYn && "Y".equalsIgnoreCase(ownedYn)) {
-	    		continue;
-	    	}
-	        
-	        // 1행: [ID] 이름 (구매완료)
-	        sb.append("[").append(itemId).append("] ").append(name);
-	        if ("Y".equalsIgnoreCase(ownedYn)) sb.append(" (구매완료)");
+	        // 인벤 쿼리에서 OWN_QTY, MAXED_YN 을 내려주고 있다고 가정
+	        int ownQty      = safeInt(it.get("OWN_QTY"));          // 없으면 0
+	        String maxedYn  = String.valueOf(it.get("MAXED_YN"));  // 없으면 "null"
+
+	        if (hiddenYn && "Y".equalsIgnoreCase(ownedYn)) {
+	            // 보유템 제외 옵션일 때 이미 가진 건 안 보여줌
+	            continue;
+	        }
+
+	        boolean isEquipType =
+	                "MARKET".equalsIgnoreCase(itemType);
+	        boolean upgradable =
+	                (itemId >= 100 && itemId < 200) ||   // 무기
+	                (itemId >= 200 && itemId < 300) ||   // 투구
+	                (itemId >= 400 && itemId < 500);     // 갑옷
+
+	        // 표시용 이름에 (+n) 붙이기 (업그레이드 장비만)
+	        String dispName = name;
+	        if (isEquipType && upgradable && ownQty > 1) {
+	            int plus = ownQty - 1;      // QTY 2 → +1, QTY 3 → +2 ...
+	            if (plus > 0) {
+	                dispName = name + "(+" + plus + ")";
+	            }
+	        }
+
+	        // 1행: [ID] 이름 (상태)
+	        sb.append("[")
+	          .append(itemId)
+	          .append("] ")
+	          .append(dispName);
+
+	        if ("Y".equalsIgnoreCase(ownedYn)) {
+	            if (isEquipType && upgradable) {
+	                if ("Y".equalsIgnoreCase(maxedYn)) {
+	                    sb.append(" (최대강화)");
+	                } else {
+	                    sb.append(" (보유중)");
+	                }
+	            } else {
+	                sb.append(" (구매완료)");
+	            }
+	        }
 	        sb.append(NL);
 
 	        // 2행: 가격
 	        sb.append("↘가격: ").append(price).append("sp").append(NL);
 
-	        // 3행: 옵션 (공통 포맷터)
-	        sb.append("↘옵션: ").append(buildOptionTokensFromMap(it)).append(NL).append(NL);
+	        // 3행 이후: 옵션
+	        if (isEquipType && upgradable) {
+	            // 🔹 업그레이드 가능한 장비: 현재/다음 옵션 둘 다 보여주기
+
+	            // 현재 기준 QTY (0이면 아직 미보유 → 1개 기준으로 표시)
+	            int curQty = (ownQty <= 0 ? 1 : ownQty);
+	            String curOpt = buildEnhancedOptionLine(it, curQty);
+	            sb.append("↘옵션: ").append(curOpt).append(NL);
+
+	            // 다음 구매시 옵션 (MAX가 아니라면)
+	            if (!"Y".equalsIgnoreCase(maxedYn)) {
+	                int nextQty = curQty + 1;
+	                if (nextQty > 4) nextQty = 4;  // 안전 캡
+	                String nextOpt = buildEnhancedOptionLine(it, nextQty);
+	                sb.append("↘다음 구매시: ").append(nextOpt).append(NL);
+	            } else {
+	                sb.append("↘다음 구매시: (최대 강화 상태입니다)").append(NL);
+	            }
+
+	            sb.append(NL);
+	        } else {
+	            // 🔹 그 외 아이템: 기존 옵션 포맷 그대로
+	            sb.append("↘옵션: ")
+	              .append(buildOptionTokensFromMap(it))
+	              .append(NL).append(NL);
+	        }
 	    }
 	    return sb.toString();
 	}
 
 
+	/** 장비 중복 구매 수량(qty)에 따라 능력치를 30%씩 증가시키고,
+	 *  "100(+30)~200(+60)" 같은 표기로 출력하는 버전 */
+	private String buildOptionTokensFromMapWithQty(HashMap<String,Object> item, int qty) {
+	    if (item == null) return "";
+
+	    // 기본 스탯
+	    int baseMin   = parseIntSafe(Objects.toString(item.get("ATK_MIN"), "0"));
+	    int baseMax   = parseIntSafe(Objects.toString(item.get("ATK_MAX"), "0"));
+	    int baseHpMax    = parseIntSafe(Objects.toString(item.get("HP_MAX"), "0"));
+	    int baseHpRegen  = parseIntSafe(Objects.toString(item.get("HP_REGEN"), "0"));
+	    int baseCriDmg   = parseIntSafe(Objects.toString(item.get("CRI_DMG"), "0"));
+	    int baseAtkCri   = parseIntSafe(Objects.toString(item.get("ATK_CRI"), "0"));
+
+	    // 업그레이드 계수: 1개는 100%, 이후 1개마다 +30%
+	    double factor = 1.0 + 0.3 * Math.max(0, (qty - 1));
+
+	    // 상승 후 스탯
+	    int upMin   = (int)Math.round(baseMin * factor);
+	    int upMax   = (int)Math.round(baseMax * factor);
+	    int upHpMax     = (int)Math.round(baseHpMax * factor);
+	    int upHpRegen   = (int)Math.round(baseHpRegen * factor);
+	    int upCriDmg    = (int)Math.round(baseCriDmg * factor);
+	    int upAtkCri    = (int)Math.round(baseAtkCri * factor);
+
+	    // 증가량
+	    int incMin   = upMin - baseMin;
+	    int incMax   = upMax - baseMax;
+	    int incHp    = upHpMax - baseHpMax;
+	    int incRegen = upHpRegen - baseHpRegen;
+	    int incCriDmg = upCriDmg - baseCriDmg;
+	    int incAtkCri = upAtkCri - baseAtkCri;
+
+	    StringBuilder sb = new StringBuilder();
+
+	    // 공격력 표기
+	    if (baseMin != 0 || baseMax != 0) {
+	        sb.append("[공격력 ")
+	          .append(baseMin).append("(+").append(incMin).append(")")
+	          .append("~")
+	          .append(baseMax).append("(+").append(incMax).append(")")
+	          .append("] ");
+	    }
+
+	    // HP_MAX
+	    if (baseHpMax != 0) {
+	        sb.append("[체력 ")
+	          .append(baseHpMax).append("(+").append(incHp).append(")] ");
+	    }
+
+	    // HP_REGEN
+	    if (baseHpRegen != 0) {
+	        sb.append("[체젠 ")
+	          .append(baseHpRegen).append("(+").append(incRegen).append(")] ");
+	    }
+
+	    // ATK_CRI
+	    if (baseAtkCri != 0) {
+	        sb.append("[치확 ")
+	          .append(baseAtkCri).append("(+").append(incAtkCri).append(")] ");
+	    }
+
+	    // CRI_DMG
+	    if (baseCriDmg != 0) {
+	        sb.append("[치피 ")
+	          .append(baseCriDmg).append("(+").append(incCriDmg).append(")] ");
+	    }
+
+	    return sb.toString().trim();
+	}
+
+	
 	/** 옵션 토큰 공통 포맷터 (최소뎀/최대뎀/치명타/체력회복/최대체력/치명타뎀) */
 	private String buildOptionTokensFromMap(HashMap<String, Object> m) {
 	    int atkMin   = getInt(m.get("ATK_MIN"));
@@ -4727,43 +5002,45 @@ public class BossAttackController {
 	    }
 	    return false;
 	}
-	
-	/**
-	 * selectInventorySummaryAll 를 이용해서
-	 *  - baseItemId 와 같은 "장비 카테고리"에 속한 아이템들의
-	 *    총 소지 개수를 구한다.
-	 *
-	 *  ※ 주의: TOTAL_QTY 컬럼명은
-	 *     실제 selectInventorySummaryAll 의 합계 alias 에 맞게 바꿔줘야 함.
-	 */
-	private int getCurrentEquipCategoryHolding(String userName,
-	                                           String roomName,
-	                                           int baseItemId) {
 
-	    List<HashMap<String, Object>> inv =
-	            botNewService.selectInventorySummaryAll(userName, roomName);
+	private int getCurrentEquipCategoryHolding(String userName, String roomName, int baseItemId) {
 
-	    if (inv == null || inv.isEmpty()) {
-	        return 0;
-	    }
+		List<HashMap<String, Object>> inv = botNewService.selectInventorySummaryAll(userName, roomName);
 
-	    int sum = 0;
-	    for (HashMap<String, Object> row : inv) {
-	        Object oItemId = row.get("ITEM_ID");
-	        if (!(oItemId instanceof Number)) continue;
+		if (inv == null || inv.isEmpty()) {
+			return 0;
+		}
 
-	        int itemId = ((Number) oItemId).intValue();
+		int count = 0;
+		for (HashMap<String, Object> row : inv) {
+			if (row == null)
+				continue;
 
-	        // baseItemId 와 같은 장비 카테고리인지 체크
-	        if (!isSameEquipCategory(baseItemId, itemId)) continue;
+			Object oItemId = row.get("ITEM_ID");
+			if (!(oItemId instanceof Number))
+				continue;
 
-	        // 합계 컬럼명은 Mapper alias 에 맞게 수정 (예: TOTAL_QTY, QTY, SUM_QTY 등)
-	        Object oQty = row.get("TOTAL_QTY");
-	        if (oQty instanceof Number) {
-	            sum += ((Number) oQty).intValue();
-	        }
-	    }
-	    return sum;
+			int itemId = ((Number) oItemId).intValue();
+
+// baseItemId 와 같은 장비 카테고리인지 체크
+			if (!isSameEquipCategory(baseItemId, itemId))
+				continue;
+
+// 장비인지 한 번 더 필터 (ITEM_TYPE 이 MARKET 인 것만)
+			String itemType = Objects.toString(row.get("ITEM_TYPE"), "");
+			if (!"MARKET".equalsIgnoreCase(itemType))
+				continue;
+
+// TOTAL_QTY 가 0 이면 사실상 미보유로 간주
+			Object oQty = row.get("TOTAL_QTY");
+			int qty = (oQty instanceof Number) ? ((Number) oQty).intValue() : 0;
+			if (qty <= 0)
+				continue;
+
+// ✅ 장비 제한은 "행 개수" 기준으로 +1
+			count++;
+		}
+		return count;
 	}
 	
 	/**
@@ -4862,8 +5139,116 @@ public class BossAttackController {
 
 	    return "(" + sb.toString() + ")";
 	}
+	
+	private String buildEnhancedOptionLine(HashMap<String,Object> item, int qty) {
+	    if (item == null) return "";
+
+	    int baseMin    = parseIntSafe(Objects.toString(item.get("ATK_MIN"), "0"));
+	    int baseMax    = parseIntSafe(Objects.toString(item.get("ATK_MAX"), "0"));
+	    int baseHp     = parseIntSafe(Objects.toString(item.get("HP_MAX"), "0"));
+	    int baseRegen  = parseIntSafe(Objects.toString(item.get("HP_REGEN"), "0"));
+	    int baseCri    = parseIntSafe(Objects.toString(item.get("ATK_CRI"), "0"));   // 치확
+	    int baseCriDmg = parseIntSafe(Objects.toString(item.get("CRI_DMG"), "0"));   // 치피
+
+	    // qty 1 → level 0, qty 2 → level 1 ...
+	    int level = Math.max(0, qty - 1);
+	    if (level > 3) level = 3; // 최대 3단계까지
+
+	    // 레벨별 누적 강화율 (%)
+	    int percent;
+	    switch (level) {
+	        case 1:  percent = 30; break; // +1
+	        case 2:  percent = 50; break; // +1 +2 = 30 + 20
+	        case 3:  percent = 60; break; // +1 +2 +3 = 30 + 20 + 10
+	        default: percent = 0;  break; // level 0
+	    }
+
+	    int bonusMin    = (int)Math.floor(baseMin    * percent / 100.0);
+	    int bonusMax    = (int)Math.floor(baseMax    * percent / 100.0);
+	    int bonusHp     = (int)Math.floor(baseHp     * percent / 100.0);
+	    int bonusRegen  = (int)Math.floor(baseRegen  * percent / 100.0);
+	    int bonusCri    = (int)Math.floor(baseCri    * percent / 100.0);
+	    int bonusCriDmg = (int)Math.floor(baseCriDmg * percent / 100.0);
+
+	    StringBuilder sb = new StringBuilder();
+
+	    // 공격력
+	    if (baseMin != 0 || baseMax != 0) {
+	        sb.append("[공격력 ")
+	          .append(baseMin);
+	        if (bonusMin != 0) {
+	            sb.append("(").append(formatSigned(bonusMin)).append(")");
+	        }
+	        sb.append("~")
+	          .append(baseMax);
+	        if (bonusMax != 0) {
+	            sb.append("(").append(formatSigned(bonusMax)).append(")");
+	        }
+	        sb.append("] ");
+	    }
+
+	    // HP
+	    if (baseHp != 0) {
+	        sb.append("[체력 ").append(baseHp);
+	        if (bonusHp != 0) {
+	            sb.append("(").append(formatSigned(bonusHp)).append(")");
+	        }
+	        sb.append("] ");
+	    }
+
+	    // 체젠
+	    if (baseRegen != 0) {
+	        sb.append("[체젠 ").append(baseRegen);
+	        if (bonusRegen != 0) {
+	            sb.append("(").append(formatSigned(bonusRegen)).append(")");
+	        }
+	        sb.append("] ");
+	    }
+
+	    // 치확
+	    if (baseCri != 0) {
+	        sb.append("[치확 ").append(baseCri);
+	        if (bonusCri != 0) {
+	            sb.append("(").append(formatSigned(bonusCri)).append(")");
+	        }
+	        sb.append("] ");
+	    }
+
+	    // 치피
+	    if (baseCriDmg != 0) {
+	        sb.append("[치피 ").append(baseCriDmg);
+	        if (bonusCriDmg != 0) {
+	            sb.append("(").append(formatSigned(bonusCriDmg)).append(")");
+	        }
+	        sb.append("] ");
+	    }
+
+	    return sb.toString().trim();
+	}
 
 	
+	/** 장비 업그레이드 계수: QTY 1~4 → 1.0 / 1.3 / 1.5 / 1.6 */
+	private double calcEquipUpgradeFactor(int qty) {
+	    if (qty <= 1) return 1.0;
+	    if (qty == 2) return 1.3;
+	    if (qty == 3) return 1.5;
+	    return 1.6; // QTY 4 이상도 1.6으로 캡
+	}
+
+	/** "100(+30)" 형식으로 포맷 */
+	private String formatStatWithPlus(int base, int upgraded) {
+	    int inc = upgraded - base;
+	    if (inc <= 0) {
+	        return String.valueOf(base);
+	    }
+	    return base + "(+" + inc + ")";
+	}
+	
+	private boolean isUpgradableEquip(int itemId) {
+	    return (itemId >= 100 && itemId < 200)   // 무기
+	        || (itemId >= 200 && itemId < 300)   // 투구
+	        || (itemId >= 400 && itemId < 500);  // 갑옷
+	}
 	
 	// 직업 메타데이터 맵 (등록 순서 유지 위해 LinkedHashMap)
 	private static final Map<String, JobDef> JOB_DEFS = new LinkedHashMap<>();

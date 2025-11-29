@@ -1240,7 +1240,7 @@ public class LoaChatController {
 						String paramUrl = "https://www.daloa.xyz/api/critical/" + userId ;
 						
 						val = ext.buildCritMessageFromUrl(paramUrl);
-						val+="https://www.daloa.xyz"+enterStr ;
+						val+="https://www.daloa.xyz"+allSeeStr ;
 					} catch (Exception e) {
 						val = errorCodeMng(e,reqMap);
 						val+=enterStr+param1+" 으로 조회됨";
