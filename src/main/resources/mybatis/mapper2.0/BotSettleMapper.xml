@@ -10,6 +10,7 @@
 		  WHERE A.USER_NAME = #{userName, jdbcType=VARCHAR}
 		    AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 		    AND A.SCORE > 0
+		    and a.new_yn ='0'
 	</select>
 	
 	<select id="selectBotPointSumScoreForPoint" parameterType="HashMap" resultType="int">
@@ -18,6 +19,7 @@
 		  WHERE upper(USER_NAME) = upper(#{newUserName, jdbcType=VARCHAR})
 		    AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 		    AND A.SCORE > 0
+		    and a.new_yn = '0'
 	</select>
 	
 	<select id="selectBotPointAccRank" parameterType="HashMap" resultType="HashMap"> 
