@@ -938,12 +938,33 @@ public class BossAttackController {
 	        return "해당 아이템을 찾을 수 없습니다: " + raw + NL
 	             + "(/구매 입력만으로 목록을 확인하세요)";
 	    }
+	    boolean alreadyOwnedThisItem = false;
+	    try {
+	        List<HashMap<String,Object>> inv = botNewService.selectInventorySummaryAll(userName, roomName);
+	        if (inv != null) {
+	            for (HashMap<String,Object> row : inv) {
+	                if (row == null) continue;
 
-	 // (2) 장비 카테고리 수량 제한 체크 ★★
-	    String limitMsg = checkEquipCategoryLimit(userName, roomName, itemId, 1);
-	    if (limitMsg != null) {
-	        // 제한에 걸리면 이 시점에서 구매 불가
-	        return limitMsg;
+	                int rowItemId = parseIntSafe(Objects.toString(row.get("ITEM_ID"), "0"));
+	                if (rowItemId != itemId) continue;
+
+	                int q = parseIntSafe(Objects.toString(row.get("TOTAL_QTY"), "0"));
+	                if (q > 0) {
+	                    alreadyOwnedThisItem = true;  // 이미 이 아이템은 가지고 있음 → 업그레이드 구매
+	                    break;
+	                }
+	            }
+	        }
+	    } catch (Exception ignore) {}
+
+	    // (2) 장비 카테고리 수량 제한 체크 ★★
+	    //  👉 "새 장비"를 처음 사는 경우에만 적용, 업그레이드는 카테고리 제한에서 제외
+	    if (!alreadyOwnedThisItem) {
+	        String limitMsg = checkEquipCategoryLimit(userName, roomName, itemId, 1);
+	        if (limitMsg != null) {
+	            // 제한에 걸리면 이 시점에서 구매 불가
+	            return limitMsg;
+	        }
 	    }
 	    
 	    // 아이템 상세 조회
@@ -2580,10 +2601,7 @@ public class BossAttackController {
 	        int ownQty      = safeInt(it.get("OWN_QTY"));          // 없으면 0
 	        String maxedYn  = String.valueOf(it.get("MAXED_YN"));  // 없으면 "null"
 
-	        if (hiddenYn && "Y".equalsIgnoreCase(ownedYn)) {
-	            // 보유템 제외 옵션일 때 이미 가진 건 안 보여줌
-	            continue;
-	        }
+	      
 
 	        boolean isEquipType =
 	                "MARKET".equalsIgnoreCase(itemType);
@@ -2591,7 +2609,17 @@ public class BossAttackController {
 	                (itemId >= 100 && itemId < 200) ||   // 무기
 	                (itemId >= 200 && itemId < 300) ||   // 투구
 	                (itemId >= 400 && itemId < 500);     // 갑옷
-
+	        boolean isMaxed = "Y".equalsIgnoreCase(maxedYn);
+	     // 🔥 보유템 제외 모드일 때 필터링
+	        if (hiddenYn && "Y".equalsIgnoreCase(ownedYn)) {
+	            // 👉 강화 가능한 장비이고, 아직 MAX가 아니라면 예외로 보여준다
+	            boolean showForUpgrade = isEquipType && upgradable && !isMaxed;
+	            if (!showForUpgrade) {
+	                // 강화도 안 되고 / 이미 MAX면 숨김
+	                continue;
+	            }
+	        }
+	        
 	        // 표시용 이름에 (+n) 붙이기 (업그레이드 장비만)
 	        String dispName = name;
 	        if (isEquipType && upgradable && ownQty > 1) {

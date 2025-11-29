@@ -242,6 +242,7 @@
 
   <!-- 일반 요약(판매가능/불가 분리 용) -->
   <select id="selectInventorySummary" resultType="hashmap">
+    /*selectInventorySummary*/
     SELECT
 	    x.ITEM_ID,
 	    CASE WHEN x.GAIN_TYPE = 'DROP3'
@@ -564,24 +565,20 @@
 	        NVL(i.HP_MAX,0)    AS HP_MAX,
 	        NVL(i.CRI_DMG,0)   AS CRI_DMG,
 	
-	        -- 🔹 인벤토리에서 현재 보유 수량
 	        NVL(inv.OWN_QTY, 0) AS OWN_QTY,
 	
-	        -- 🔹 기존 OWNED_YN 유지 (0보다 크면 Y)
 	        CASE WHEN NVL(inv.OWN_QTY, 0) > 0 THEN 'Y' ELSE 'N' END AS OWNED_YN,
 	
-	        -- 🔹 업그레이드 가능/최대 여부 (100/200/400번대만 4개까지)
 	        CASE
 	            WHEN i.ITEM_ID BETWEEN 100 AND 199
 	              OR i.ITEM_ID BETWEEN 200 AND 299
 	              OR i.ITEM_ID BETWEEN 400 AND 499
 	            THEN
 	                CASE
-	                    WHEN NVL(inv.OWN_QTY, 0) >= 4 THEN 'Y'  -- 이미 MAX
+	                    WHEN NVL(inv.OWN_QTY, 0) >= 4 THEN 'Y'  
 	                    ELSE 'N'
 	                END
 	            ELSE
-	                -- 나머지 장비는 1개만 보유 가능 (1 이상이면 MAX로 간주)
 	                CASE
 	                    WHEN NVL(inv.OWN_QTY, 0) >= 1 THEN 'Y'
 	                    ELSE 'N'
@@ -590,7 +587,6 @@
 	
 	    FROM TBOT_POINT_NEW_ITEM i
 	
-	    -- 🔹 인벤토리 요약 LEFT JOIN
 	    LEFT JOIN (
 	        SELECT
 	            inv.ITEM_ID,
