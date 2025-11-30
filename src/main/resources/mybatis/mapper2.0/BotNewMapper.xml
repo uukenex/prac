@@ -872,9 +872,9 @@
 	           ) +
 	       (SELECT SUM(CASE
 	                     WHEN A.GAIN_TYPE = 'BUY_MERCHANT' THEN
-	                      ROUND(B.ITEM_SELL_PRICE * 0.9)
+	                      ROUND(B.ITEM_SELL_PRICE * 0.9)*A.QTY
 	                     ELSE
-	                      B.ITEM_SELL_PRICE
+	                      B.ITEM_SELL_PRICE*A.QTY
 	                   END)
 	          FROM TBOT_POINT_NEW_INVENTORY A, TBOT_POINT_NEW_ITEM B
 	         WHERE A.USER_NAME LIKE #{userName}

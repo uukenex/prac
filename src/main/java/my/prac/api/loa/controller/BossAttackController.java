@@ -1243,14 +1243,6 @@ public class BossAttackController {
 	    
 	 
 	    
-	 // ✅ 공격 시 적용 상한 (표시/저장은 그대로, 실제 전투에만 제한)
-	    if (effCritRate > 300) {
-	        effCritRate = 300;   // 크리티컬 확률 최대 300%
-	    }
-	    if (effCriDmg > 1000) {
-	        effCriDmg = 1000;    // 치명타 데미지 최대 1000%
-	    }
-	    
 	    
 	 // 🌟 운영자의 축복: Lv 7 이하 전투 시 전용 버프 (DB에는 저장하지 않음)
 	    boolean hasBless = (u.lv <= 15);
@@ -1516,6 +1508,16 @@ public class BossAttackController {
 	    // ★ 여기서 둘을 합쳐 하나의 메시지를 만든다
 	    if (buffEff_room != null || buffEff_self !=null) {
 	    	dosabuffMsg = buildUnifiedDosaBuffMessage(buffEff_self, buffEff_room);
+	    }
+	    
+
+	    
+	    // ✅ 공격 시 적용 상한 (표시/저장은 그대로, 실제 전투에만 제한)
+	    if (effCritRate > 300) {
+	        effCritRate = 300;   // 크리티컬 확률 최대 300%
+	    }
+	    if (effCriDmg > 1000) {
+	        effCriDmg = 1000;    // 치명타 데미지 최대 1000%
 	    }
 	    
 	    
