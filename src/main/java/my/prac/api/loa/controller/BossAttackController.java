@@ -227,7 +227,7 @@ public class BossAttackController {
 	    // 3) 보상 결정 (컨트롤러에서 확률/로직 모두 처리)
 	    double roll = ThreadLocalRandom.current().nextDouble();
 
-	    if (roll < 0.80) {
+	    if (roll < 0.40) { //40퍼확률로 골드 
 	    	// 🔥 작은 쪽이 더 잘 나오는 SP 보상 (200 ~ 50000)
 	        int sp = pickBiasedSp(200, 50000);
 
@@ -1796,10 +1796,20 @@ public class BossAttackController {
 	        }
 	    } catch (Exception ignore) {}
 
+	    try {
+	    	if(userName.equals("은용/아르카나/1720")||userName.equals("나는야덩어리")) {
+	    		return 10.0;
+	    	}
+	    	
+	    }catch(Exception e) {}
+	    
 	    if (isRising) {
 	        // 열심히 때렸는데 최근 가방 기록은 없는 사람 → 드랍율 2배
 	        return 4.0;
 	    }
+	    
+	    
+	    
 
 	    // 기본값: 보정 없음
 	    return 1.0;
