@@ -229,7 +229,7 @@ public class BossAttackController {
 
 	    if (roll < 0.40) { //40퍼확률로 골드 
 	    	// 🔥 작은 쪽이 더 잘 나오는 SP 보상 (200 ~ 50000)
-	        int sp = pickBiasedSp(200, 50000);
+	        int sp = pickBiasedSp(200, 100000);
 
 	        HashMap<String,Object> pr = new HashMap<>();
 	        pr.put("userName", userName);
@@ -256,7 +256,7 @@ public class BossAttackController {
 
 	        // 그래도 없으면 최종적으로 SP 보상
 	        if (rewardItemIds == null || rewardItemIds.isEmpty()) {
-	            int sp = pickBiasedSp(200, 50000);
+	            int sp = pickBiasedSp(200, 100000);
 
 	            HashMap<String,Object> pr = new HashMap<>();
 	            pr.put("userName", userName);
@@ -1770,12 +1770,26 @@ public class BossAttackController {
 	                String u = b.getUserName();
 	                if (userName.equals(u)) {
 	                    // 최근 5개 가방 로그 안에 있으면 → 이미 먹은 사람
+	                	try {
+	            	    	if(userName.equals("은용/아르카나/1720")||userName.equals("나는야덩어리")) {
+	            	    		return 2;
+	            	    	}
+	            	    	
+	            	    }catch(Exception e) {}
 	                    return 1; // 기본 확률
 	                }
 	            }
 	        }
 	    } catch (Exception ignore) {}
 		 
+	    
+	    try {
+	    	if(userName.equals("은용/아르카나/1720")||userName.equals("나는야덩어리")) {
+	    		return 10.0;
+	    	}
+	    	
+	    }catch(Exception e) {}
+	    
 	    boolean isRising = false;
 
 	    // 2) 최근 6시간 라이징 스타(Top7)인지 확인
@@ -1796,12 +1810,7 @@ public class BossAttackController {
 	        }
 	    } catch (Exception ignore) {}
 
-	    try {
-	    	if(userName.equals("은용/아르카나/1720")||userName.equals("나는야덩어리")) {
-	    		return 10.0;
-	    	}
-	    	
-	    }catch(Exception e) {}
+	    
 	    
 	    if (isRising) {
 	        // 열심히 때렸는데 최근 가방 기록은 없는 사람 → 드랍율 2배
