@@ -802,10 +802,6 @@ public class BossAttackController {
 		        sb.append(renderMonsterCompactLine(mm, userLv)); // ★ 레벨 비례 EXP 반영됨!
 		    }
 		    
-		    sb.append(NL+"다음 몬스터 해금은 아래의조건 중 하나를 만족하면 추가됩니다");
-		    sb.append(NL+"1. 3위까지 40Lv달성");
-		    sb.append(NL+"2. 3위까지 하급악마 5마리 클리어");
-		    sb.append(NL+"3. 하급악마의 5번째스킬 발견 제보");
 		    return sb.toString();
 		}
 
@@ -3162,7 +3158,7 @@ public class BossAttackController {
 	    
 	    if (levelGap >= 0) {
 	        // 플레이어가 몬스터보다 높을 때
-	        expMultiplier = Math.max(0.1, 1.0 - Math.min(levelGap, 5) * 0.1);
+	        expMultiplier = Math.max(0.1, 1.0 - levelGap * 0.1);
 	    } else {
 	        // 몬스터가 더 강할 때 (보너스)
 	        expMultiplier = 1.0 + Math.min(-levelGap, 5) * 0.05; // 레벨 차이 1당 5% 보너스, 최대 25%
@@ -3903,7 +3899,7 @@ public class BossAttackController {
 
 	    if (levelGap >= 0) {
 	        // 플레이어가 몬스터보다 높을 때 → 패널티
-	        expMultiplier = Math.max(0.1, 1.0 - Math.min(levelGap, 5) * 0.1);
+	        expMultiplier = Math.max(0.1, 1.0 - levelGap * 0.1);
 	    } else {
 	        // 몬스터가 더 강할 때 → 보너스
 	        expMultiplier = 1.0 + Math.min(-levelGap, 5) * 0.05; // 레벨 차 1당 5%, 최대 25%
