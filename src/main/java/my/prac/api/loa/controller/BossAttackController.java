@@ -4779,6 +4779,12 @@ public class BossAttackController {
 	        }
 	    }
 	    
+	    if("파이터".equals(job)) {
+	    	effCritRate = 0;
+	        effCriDmg = 0;
+	        crit = false;
+	    }
+	    
 	    
 	    double critMultiplier = Math.max(1.0, effCriDmg / 100.0);
 	    int rawAtkDmg = crit ? (int) Math.round(baseAtk * critMultiplier) : baseAtk;
@@ -4815,9 +4821,11 @@ public class BossAttackController {
 	        
 	    	if ("파이터".equals(job) ) {
 	    		if(u.hpCur < effHpMax*0.3) {
-	    			flags.monPattern = 1;
-	    			calc.monDmg = 0;  // 방어 패턴이었으니 몬스터 피해는 0 유지
-	    			calc.patternMsg = m.monName + "의 패턴파훼! 몬스터가 모든행동을 멈춥니다";
+	    			if (ThreadLocalRandom.current().nextDouble() < 0.40) {
+	    				flags.monPattern = 1;
+		    			calc.monDmg = 0;  // 방어 패턴이었으니 몬스터 피해는 0 유지
+		    			calc.patternMsg = m.monName + "의 패턴파훼! 몬스터가 모든행동을 멈춥니다";
+		    		}
 	    		}
 	        }
 	        // 🔥 마법사: 패턴3 방어를 깨뜨리고 1.5배 피해
