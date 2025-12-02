@@ -5,6 +5,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -883,47 +884,150 @@ public class BossAttackController {
 		return userName + "님, 공격 타겟을 " + m.monName + "(MON_NO=" + m.monNo + ") 으로 설정했습니다." + NL
 		     + "▶ 선택: " + NL + renderMonsterCompactLine(m, userLvForView);
 	}
+	// 엔트리 포인트: 기존 /구매 명령이 들어오는 곳
 	public String buyItem(HashMap<String, Object> map) {
 	    final String roomName = Objects.toString(map.get("roomName"), "");
 	    final String userName = Objects.toString(map.get("userName"), "");
-	    final String raw = Objects.toString(map.get("param1"), "").trim();
-
+	    final String rawParam = Objects.toString(map.get("param1"), "").trim();
 
 	    if (roomName.isEmpty() || userName.isEmpty()) {
 	        return "방/유저 정보가 누락되었습니다.";
 	    }
-	    
-	    boolean hiddenYn = false;
-	    
-	    if(raw.equals("전체")) {
-	    	hiddenYn = false;
+
+
+	    // 파라미터 없으면: 구매 가능 목록 노출 (기존 로직 유지)
+	    if (rawParam.isEmpty() || "전체".equals(rawParam)) {
+	    	return buildCustomMarketAllMessage(userName, roomName);
 	    }
 	    
-	    if( raw.isEmpty()){
-	    	hiddenYn = true;
-	    }
-	    
-	    
-	    
-	    // 파라미터 없으면: 구매 가능 목록 노출
-	    if (raw.isEmpty() || raw.equals("전체")) {
+	    // 2) /구매 신규  (또는 /구매 000 같이 쓰고 싶으면 OR 유지)
+	    if ("신규".equals(rawParam) || "000".equals(rawParam)) {
+	        // 전체 목록 조회 (기존에 쓰던 쿼리)
 	        List<HashMap<String,Object>> list = botNewService.selectMarketItemsWithOwned(userName, roomName);
-	        String compact = renderMarketListForBuy(list, userName,hiddenYn);
-	        return compact;
+	        if (list == null || list.isEmpty()) {
+	            return "신규 등록 아이템이 없습니다.";
+	        }
+
+	        // INSERT_DATE 기준으로 내림차순 정렬 (최근 등록 순)
+	        list.sort(new Comparator<HashMap<String,Object>>() {
+	            @Override
+	            public int compare(HashMap<String,Object> o1, HashMap<String,Object> o2) {
+	                java.sql.Timestamp t1 = toTimestamp(o1.get("INSERT_DATE"));
+	                java.sql.Timestamp t2 = toTimestamp(o2.get("INSERT_DATE"));
+	                // null 안전 처리: null 은 가장 오래된 것으로 취급
+	                if (t1 == null && t2 == null) return 0;
+	                if (t1 == null) return 1;
+	                if (t2 == null) return -1;
+	                // 최근 것이 앞으로 오도록 내림차순
+	                return t2.compareTo(t1);
+	            }
+	        });
+
+	        // 상위 10개만 사용
+	        int limit = Math.min(10, list.size());
+	        List<HashMap<String,Object>> newestList = new ArrayList<>(list.subList(0, limit));
+
+	        String compact = renderMarketListForBuy(newestList, userName, false);
+	        return "▶ 신규 등록 아이템 목록" + NL + compact;
+	    }
+	    
+	    
+	 // ➊ 카테고리 목록 모드 체크
+	    int[] range = resolveCategoryRange(rawParam);  // ex) "무기" → [100, 200]
+	    if (range != null) {
+	        int min = range[0];
+	        int max = range[1];
+
+	        // DB에서 모든 아이템 가져온 뒤 100~199 사이만 필터
+	        List<HashMap<String,Object>> list = botNewService.selectMarketItemsWithOwned(userName, roomName);
+
+	        List<HashMap<String,Object>> filtered = new ArrayList<>();
+	        for (HashMap<String,Object> row : list) {
+	            int id = parseIntSafe(Objects.toString(row.get("ITEM_ID"), "0"));
+	            if (id >= min && id < max) {
+	                filtered.add(row);
+	            }
+	        }
+
+	        return "▶ " + rawParam + " 카테고리 목록" + NL
+	             + renderMarketListForBuy(filtered, userName, false);
 	    }
 
-	    if(roomName.equals("람쥐봇 문의방")) {
-			
-			if(userName.equals("일어난다람쥐/카단")) {
-				
-			}else {
-				return "문의방에서는 불가능합니다.";
-			}
-		}
+	    // 문의방 제한 (기존 로직 유지)
+	    if (roomName.equals("람쥐봇 문의방")) {
+	        if (!userName.equals("일어난다람쥐/카단")) {
+	            return "문의방에서는 불가능합니다.";
+	        }
+	    }
+
+	    // 멀티 구매: 콤마 포함 시
+	    if (rawParam.contains(",")) {
+	        return buyMultiItems(roomName, userName, rawParam);
+	    }
+
+	    // 단일 구매
+	    return buySingleItem(roomName, userName, rawParam);
+	}
+
+	
+	// 콤마 기반 멀티 구매 + x / * 수량 지원
+	// 예) "101,102,백화검*3,200x2"
+	private String buyMultiItems(String roomName, String userName, String raw) {
+	    String[] tokens = raw.split(",");
+	    StringBuilder sb = new StringBuilder();
+	    sb.append("▶ 일괄 구매 결과").append(NL);
+
+	    boolean hasAny = false;
+
+	    for (String t : tokens) {
+	        String token = (t == null ? "" : t.trim());
+	        if (token.isEmpty()) {
+	            continue;
+	        }
+	        hasAny = true;
+
+	        // 수량 파싱: 123x2, 123*2, 백화검*3 등
+	        int qty = 1;
+	        String itemToken = token;
+
+	        java.util.regex.Matcher m =
+	            java.util.regex.Pattern
+	                .compile("(.+?)[xX\\*](\\d+)$")
+	                .matcher(token);
+
+	        if (m.matches()) {
+	            itemToken = m.group(1).trim();
+	            qty = parseIntSafe(m.group(2));
+	            if (qty <= 0) qty = 1;
+	        }
+
+	        for (int i = 0; i < qty; i++) {
+	            String oneResult = buySingleItem(roomName, userName, itemToken);
+
+	            String label = resolveItemLabel(itemToken);   // 🔹 여기서 아이템 이름으로 변환
+
+	            sb.append(NL)
+	              .append("[").append(label);                 // 🔹 itemToken 대신 label 사용
+	            if (qty > 1) {
+	                sb.append(" #").append(i + 1).append("/").append(qty);
+	            }
+	            sb.append("]").append(NL)
+	              .append(oneResult).append(NL);
+	        }
+	    }
+
+	    if (!hasAny) {
+	        return "구매할 대상이 없습니다.";
+	    }
+
+	    return sb.toString();
+	}
+	// 실제 단일 아이템 구매 로직 (기존 buyItem의 본체 부분)
+	private String buySingleItem(String roomName, String userName, String raw) {
 
 	    // 입력 → itemId 해석
 	    Integer itemId = null;
-	    if (raw.matches("\\d+")) {
+	    if (raw != null && raw.matches("\\d+")) {
 	        try { itemId = Integer.valueOf(raw); } catch (Exception ignore) {}
 	    }
 	    if (itemId == null) {
@@ -936,6 +1040,8 @@ public class BossAttackController {
 	        return "해당 아이템을 찾을 수 없습니다: " + raw + NL
 	             + "(/구매 입력만으로 목록을 확인하세요)";
 	    }
+
+	    // 이미 소유 여부 체크
 	    boolean alreadyOwnedThisItem = false;
 	    try {
 	        List<HashMap<String,Object>> inv = botNewService.selectInventorySummaryAll(userName, roomName);
@@ -955,23 +1061,21 @@ public class BossAttackController {
 	        }
 	    } catch (Exception ignore) {}
 
-	    // (2) 장비 카테고리 수량 제한 체크 ★★
-	    //  👉 "새 장비"를 처음 사는 경우에만 적용, 업그레이드는 카테고리 제한에서 제외
+	    // 장비 카테고리 수량 제한 체크 (새 장비일 때만)
 	    if (!alreadyOwnedThisItem) {
 	        String limitMsg = checkEquipCategoryLimit(userName, roomName, itemId, 1);
 	        if (limitMsg != null) {
-	            // 제한에 걸리면 이 시점에서 구매 불가
 	            return limitMsg;
 	        }
 	    }
-	    
+
 	    // 아이템 상세 조회
 	    HashMap<String, Object> item = null;
 	    try {
 	        item = botNewService.selectItemDetailById(itemId);
 	    } catch (Exception ignore) {}
 	    String itemType = (item == null) ? "" : Objects.toString(item.get("ITEM_TYPE"), "");
-	    
+
 	    if (item == null || !"MARKET".equalsIgnoreCase(itemType)) {
 	        return "구매할 수 없는 아이템입니다. (MARKET 유형만 구매 가능)";
 	    }
@@ -986,20 +1090,14 @@ public class BossAttackController {
 	        return "구매 가격 정보가 없습니다. 관리자에게 문의해주세요.";
 	    }
 
-	    // 이미 소유 여부
-	    
-	    /*
-	    Integer ownedCnt = botNewService.selectHasOwnedMarketItem(userName, roomName, itemId);
-	    if (ownedCnt != null && ownedCnt > 0) {
-	        return "⚠ 이미 보유중인 아이템입니다. [" + itemName + "] 은(는) 중복구매가 불가합니다.";
-	    }*/
-
 	    // 포인트 확인
 	    Integer tmpPoint = null;
 	    try { tmpPoint = botNewService.selectCurrentPoint(userName, roomName); } catch (Exception ignore) {}
 	    int curPoint = (tmpPoint == null ? 0 : tmpPoint.intValue());
+	    
 	    if (curPoint < price) {
-	        return userName + "님, 포인트가 부족합니다. (가격: " + price + "sp, 보유: " + curPoint + "sp)";
+	        return userName + "님, [" + itemName + "] 구매에 필요한 포인트가 부족합니다."
+	             + " (가격: " + price + "sp, 보유: " + curPoint + "sp)";
 	    }
 
 	    // 결제 (포인트 차감)
@@ -1010,16 +1108,15 @@ public class BossAttackController {
 	    pr.put("cmd", "BUY");
 	    botNewService.insertPointRank(pr);
 
-	 // ============================
+	    // ============================
 	    // 인벤토리 적재 (장비는 중복구매 시 QTY 증가)
 	    // ============================
 	    int buyQty = 1; // 현재 /구매는 1개씩 구매
-	    
 	    int finalQty = 1; // 👉 이 값을 나중에 옵션 표시에 사용
 
 	    int itemIdInt = itemId; // 위에서 구한 itemId 그대로 사용
 	    boolean upgradeOk = isUpgradableEquip(itemIdInt);
-	    
+
 	    if ("MARKET".equalsIgnoreCase(itemType)) {
 	        // 장비: 같은 ITEM_ID 가진 행이 있으면 QTY만 증가
 	        List<HashMap<String, Object>> rows =
@@ -1047,7 +1144,7 @@ public class BossAttackController {
 	                break;
 	            }
 	        }
-	        
+
 	        if (!upgradeOk) {
 	            // ❌ 업그레이드 불가 장비 (100/200/400번대 외 MARKET)
 	            // → 기존처럼 1개만 보유 가능
@@ -1096,7 +1193,7 @@ public class BossAttackController {
 	        }
 
 	    } else {
-	    	finalQty = buyQty;
+	        finalQty = buyQty;
 	        // 장비가 아닌 경우 → 기존처럼 바로 insert
 	        HashMap<String, Object> inv = new HashMap<>();
 	        inv.put("userName", userName);
@@ -1123,9 +1220,8 @@ public class BossAttackController {
 	    if (upgradeLevel > 0) {
 	        shownName = itemName + "(+" + upgradeLevel + ")";
 	    }
-	    
-	    
-	 // 옵션 문자열 결정
+
+	    // 옵션 문자열 결정
 	    String optionStr;
 	    if ("MARKET".equalsIgnoreCase(itemType)) {
 	        // 장비: 강화 수량 기반 옵션 (공격력 1(+1)~1(+1) 형태)
@@ -1143,20 +1239,77 @@ public class BossAttackController {
 	      .append("↘옵션: ").append(optionStr).append(NL)
 	      .append("✨포인트: ").append(afterPoint).append("sp");
 
-	    // 업그레이드 안내 문구
-	    if (upgradeLevel > 0) {
-	        sb.append(NL)
-	          .append("✨ ").append(itemName)
-	          .append("이(가) (+" + upgradeLevel + ") 되었습니다!");
-	    }
 	    try {
-	    	botNewService.closeOngoingBattleTx(userName, roomName);
-	    }catch(Exception e) {
-	    	
+	        botNewService.closeOngoingBattleTx(userName, roomName);
+	    } catch(Exception e) {
+	        // 무시
 	    }
+
 	    return sb.toString();
 	}
 
+
+	private String buildCustomMarketAllMessage(String userName, String roomName) {
+
+
+	    // 기본(키워드 없음 또는 기타)
+	    StringBuilder sb = new StringBuilder();
+	    sb.append("▶ 람쥐 상점 전체 안내").append(NL)
+	      .append("- /구매 100 or /구매 무기: 무기 카테고리").append(NL)
+	      .append("- /구매 200 or /구매 투구: 투구 카테고리").append(NL)
+	      .append("- /구매 000 or /구매 신규: 최근 등록 아이템").append(NL)
+	      .append("- /구매 아이템명 : 개별 구매").append(NL);
+
+	    // 필요하면 여기서 전체 상품 일부만 보여줘도 됨
+	    // List<HashMap<String,Object>> list = botNewService.selectMarketItemsWithOwned(userName, roomName);
+	    // sb.append(NL).append(renderMarketListForBuy(list, userName, true));
+
+	    return sb.toString();
+	}
+	// 멀티 구매 출력용: "101" → "목검" 같은 ITEM_NAME으로 바꿔줌
+	private String resolveItemLabel(String itemToken) {
+	    if (itemToken == null || itemToken.trim().isEmpty()) {
+	        return "";
+	    }
+
+	    String token = itemToken.trim();
+	    Integer itemId = null;
+
+	    // 1) 숫자면 ID로 시도
+	    if (token.matches("\\d+")) {
+	        try { itemId = Integer.valueOf(token); } catch (Exception ignore) {}
+	    }
+
+	    // 2) 이름으로 시도
+	    if (itemId == null) {
+	        try { itemId = botNewService.selectItemIdByName(token); } catch (Exception ignore) {}
+	    }
+
+	    // 3) 코드로 시도
+	    if (itemId == null) {
+	        try { itemId = botNewService.selectItemIdByCode(token); } catch (Exception ignore) {}
+	    }
+
+	    if (itemId == null) {
+	        // 끝까지 못 찾으면 그냥 원래 토큰 리턴
+	        return token;
+	    }
+
+	    // 4) ITEM_NAME 조회
+	    try {
+	        HashMap<String, Object> item = botNewService.selectItemDetailById(itemId);
+	        if (item != null) {
+	            String itemName = Objects.toString(item.get("ITEM_NAME"), "");
+	            if (!itemName.isEmpty()) {
+	                return itemName;
+	            }
+	        }
+	    } catch (Exception ignore) {}
+
+	    // 조회 실패 시 토큰 그대로
+	    return token;
+	}
+	
 	public String monsterAttack(HashMap<String, Object> map) {
 	    map.put("cmd", "monster_attack");
 	    final String roomName = Objects.toString(map.get("roomName"), "");
@@ -2613,8 +2766,9 @@ public class BossAttackController {
 	    StringBuilder sb = new StringBuilder();
 	    sb.append("▶ ").append(userName).append("님").append(NL);
 	    sb.append("더보기 리스트에서 선택 후 구매해주세요").append(NL);
-	    sb.append("/구매 전체 < 전체보기, /구매 < 보유템 제외보기").append(NL);
-	    sb.append("예) /구매 목검  또는  /구매 102");
+	    sb.append("/구매 전체 < 설명보기, /구매 [카테고리]< 카테고리 전체 보기").append(NL);
+	    sb.append("/구매 목검  또는  /구매 102").append(NL);
+	    sb.append("다중구매: /구매 101,102,401  또는 /구매 목검x3,도씨검*3");
 	    sb.append(allSeeStr);
 
 	    for (HashMap<String,Object> it : items) {
@@ -5060,6 +5214,35 @@ public class BossAttackController {
 	    if (itemId >= 9000 && itemId < 10000) return "※유물"; // 9000번대 
 	    return "※기타";
 	}
+	// 카테고리명 또는 숫자로 범위를 구하는 함수
+	private int[] resolveCategoryRange(String raw) {
+	    if (raw == null) return null;
+	    String s = raw.trim();
+
+	    // ➊ 숫자일 경우 ex) "100", "200"
+	    if (s.matches("\\d+")) {
+	        int num = Integer.parseInt(s);
+	        int base = (num / 100) * 100;   // 123 → 100
+	        return new int[]{ base, base + 100 };   // [100, 200)
+	    }
+
+	    // ➋ 문자 카테고리
+	    switch (s) {
+	    	case "신규": return new int[]{000, 1000};
+	        case "무기": return new int[]{100, 200};
+	        case "투구": return new int[]{200, 300};
+	        case "행운": return new int[]{300, 400};
+	        case "갑옷": return new int[]{400, 500};
+	        case "반지": return new int[]{500, 600};
+	        case "토템": return new int[]{600, 700};
+	        case "전설": return new int[]{700, 800};
+	        case "선물": return new int[]{900, 1000};
+	        //case "유물": return new int[]{9000, 10000};
+	    }
+
+	    return null;
+	}
+	
 	
 	private String buildRelicStatSuffix(HashMap<String, Object> row) {
 	    int atkMin = parseIntSafe(Objects.toString(row.get("ATK_MIN"), "0"));
@@ -5220,7 +5403,40 @@ public class BossAttackController {
 	        || (itemId >= 200 && itemId < 300)   // 투구
 	        || (itemId >= 400 && itemId < 500);  // 갑옷
 	}
-	
+	private java.sql.Timestamp toTimestamp(Object obj) {
+	    if (obj == null) return null;
+
+	    if (obj instanceof java.sql.Timestamp) {
+	        return (java.sql.Timestamp) obj;
+	    }
+	    if (obj instanceof java.util.Date) {
+	        return new java.sql.Timestamp(((java.util.Date) obj).getTime());
+	    }
+	    if (obj instanceof String) {
+	        String s = ((String) obj).trim();
+	        if (s.isEmpty()) return null;
+
+	        // 1) yyyy-MM-dd HH:mm:ss 형태 시도
+	        try {
+	            java.text.SimpleDateFormat fmt = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+	            java.util.Date d = fmt.parse(s);
+	            return new java.sql.Timestamp(d.getTime());
+	        } catch (Exception ignore) {}
+
+	        // 2) yyyyMMddHHmmss 형태 시도
+	        try {
+	            java.text.SimpleDateFormat fmt = new java.text.SimpleDateFormat("yyyyMMddHHmmss");
+	            java.util.Date d = fmt.parse(s);
+	            return new java.sql.Timestamp(d.getTime());
+	        } catch (Exception ignore) {}
+
+	        // 3) 위 포맷이 아니면, 그냥 null 취급
+	        return null;
+	    }
+
+	    // 예상 밖 타입이면 null
+	    return null;
+	}
 	// 직업 메타데이터 맵 (등록 순서 유지 위해 LinkedHashMap)
 	private static final Map<String, JobDef> JOB_DEFS = new LinkedHashMap<>();
 

@@ -583,7 +583,8 @@
 	                    WHEN NVL(inv.OWN_QTY, 0) >= 1 THEN 'Y'
 	                    ELSE 'N'
 	                END
-	        END AS MAXED_YN
+	        END AS MAXED_YN,
+	        I.INSERT_DATE
 	
 	    FROM TBOT_POINT_NEW_ITEM i
 	
