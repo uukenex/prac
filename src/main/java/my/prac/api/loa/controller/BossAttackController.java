@@ -1339,7 +1339,9 @@ public class BossAttackController {
 	      .append("- /구매 100 or /구매 무기: 무기 카테고리").append(NL)
 	      .append("- /구매 200 or /구매 투구: 투구 카테고리").append(NL)
 	      .append("- /구매 000 or /구매 신규: 최근 등록 아이템").append(NL)
-	      .append("- /구매 아이템명 : 개별 구매").append(NL);
+	      .append("- 입력 가능 카테고리 ").append(NL)
+	      .append("- 신규 무기 투구 행운 갑옷 반지 토템 전설 선물 ").append(NL)
+	      .append("- 000 100 200 300 400 500 600 700 900").append(NL);
 
 	    // 필요하면 여기서 전체 상품 일부만 보여줘도 됨
 	    // List<HashMap<String,Object>> list = botNewService.selectMarketItemsWithOwned(userName, roomName);
@@ -1632,7 +1634,7 @@ public class BossAttackController {
 	    if ("파이터".equals(job) && effHpMax > 0) {
 	    	double hpRatio = (double) u.hpCur / effHpMax;
 	        if (hpRatio < 1) {
-	            berserkMul = 1.0 + (1 - hpRatio) * 2.0;   // 최대 3배
+	            berserkMul = 1.0 + (1 - hpRatio) * 0.5;   // 최대 3배
 	        }
 	    }
 
@@ -2727,7 +2729,7 @@ public class BossAttackController {
 	    sb.append("더보기 리스트에서 선택 후 구매해주세요").append(NL);
 	    sb.append("/구매 전체 < 설명보기, /구매 [카테고리]< 카테고리 전체 보기").append(NL);
 	    sb.append("/구매 목검  또는  /구매 102").append(NL);
-	    sb.append("다중구매: /구매 101,102,401  또는 /구매 목검x3,도씨검*3");
+	    sb.append("다중구매: /구매 101,102,401  또는 /구매 목검,도씨검");
 	    sb.append(allSeeStr);
 
 	    for (HashMap<String,Object> it : items) {
