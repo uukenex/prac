@@ -157,7 +157,7 @@ public class BossAttackController {
 	        sb.append("✨ 운영자의 축복 포함되어있음 (Lv 15 이하): 5분당 회복 +5").append(NL);
 	    }
 
-	    if (effHp <= finalHpMax * 0.2) {
+	    if (effHp <= finalHpMax * 0.05) {
 	        sb.append("⚠️ 현재 공격 불가").append(NL);
 	    } else if (effHp >= finalHpMax) {
 	        sb.append("✅ 현재 체력은 최대 상태입니다.").append(NL);
@@ -1227,6 +1227,7 @@ public class BossAttackController {
 	    if ("흡혈귀".equals(job)) {
 	    	bRegen = 0;
 	    }
+	    /*
 	 // ☠ 사신: 아이템으로 인한 HP / 크리 증가량 무시
 	    if ("사신".equals(job)) {
 	        // 크리율/크리뎀도 아이템 증가분(bCri, bCriDmg) 제거
@@ -1234,7 +1235,7 @@ public class BossAttackController {
 	    	bCriDmg   = 0;
 	        // 체젠(effRegen)은 말 안 하셨으니 그대로 두었음
 	    }
-	    
+	    */
 	    int effCritRate = u.critRate + bCri;
 	    int effRegen    = u.hpRegen + bRegen;
 	    int effCriDmg   = u.critDmg + bCriDmg;
@@ -1397,7 +1398,6 @@ public class BossAttackController {
 	        
 	    }
 
-	    // 9) 쿨타임 체크 (궁수 5분 반영)
 	    CooldownCheck cd = checkCooldown(userName, roomName, param1, job);
 	    if (!cd.ok) {
 	        long min = cd.remainSeconds / 60;
@@ -1432,6 +1432,7 @@ public class BossAttackController {
 	        }
 	    }*/
 	    
+	    /*
 	    if ("사신".equals(job)) {
 	        String firstCmd = "ACHV_FIRST_CLEAR_MON_" + m.monNo;
 
@@ -1450,33 +1451,35 @@ public class BossAttackController {
 	        }
 	        
 	    }
+	    */
 	    
 	    Flags flags = new Flags();
 		flags = rollFlags(u, m);
 	 // 🖤 사신: 체력 10% 이하 → 치명타 +50%
+		/*
 	    if ("사신".equals(job)) {
 	        int tenPercent = (int)Math.ceil(effHpMax * 0.1);
 	        if (u.hpCur <= tenPercent) {
 	            effCritRate += 50;
 	        }
 	    }
+		 */
+		
+	 // 10) HP 20% 제한 체크
+        int origHpMax = u.hpMax;
+        int origRegen = u.hpRegen;
 
-	 // 10) HP 20% 제한 체크 (사신은 무시)
-	    if (!"사신".equals(job)) {
-	        int origHpMax = u.hpMax;
-	        int origRegen = u.hpRegen;
+        u.hpMax = effHpMax;
+        u.hpRegen = effRegen;
 
-	        u.hpMax = effHpMax;
-	        u.hpRegen = effRegen;
-
-	        try {
-	            String hpMsg = buildBelowHalfMsg(userName, roomName, u, param1);
-	            if (hpMsg != null) return hpMsg;
-	        } finally {
-	            u.hpMax = origHpMax;
-	            u.hpRegen = origRegen;
-	        }
-	    }
+        try {
+            String hpMsg = buildBelowHalfMsg(userName, roomName, u, param1);
+            if (hpMsg != null) return hpMsg;
+        } finally {
+            u.hpMax = origHpMax;
+            u.hpRegen = origRegen;
+        }
+	    
 
 	 // 도사 본인 버프
 	    DosaBuffEffect buffEff_self = null;
@@ -1509,7 +1512,7 @@ public class BossAttackController {
 	    }
 	    
 
-	    
+	    /*
 	    // ✅ 공격 시 적용 상한 (표시/저장은 그대로, 실제 전투에만 제한)
 	    if (effCritRate > 300) {
 	        effCritRate = 300;   // 크리티컬 확률 최대 300%
@@ -1517,7 +1520,7 @@ public class BossAttackController {
 	    if (effCriDmg > 1000) {
 	        effCriDmg = 1000;    // 치명타 데미지 최대 1000%
 	    }
-	    
+	    */
 	    
 	    // 🔥 A형 완전 분리: 데미지 전부 calculateDamage로 처리
 	    DamageOutcome dmg = calculateDamage(
@@ -1541,6 +1544,7 @@ public class BossAttackController {
 		 // 13) 즉사 처리
 		 int newHpPreview = Math.max(0, u.hpCur - calc.monDmg);
 		 
+		 /*
 		 if ("사신".equals(job) && newHpPreview <= 0 && flags.monPattern != 5) {
 		     // HP는 1 남기고 버틴다고 가정
 		     newHpPreview = 1;
@@ -1557,7 +1561,7 @@ public class BossAttackController {
 		         calc.patternMsg = baseMsg + NL+"죽음을 거부하고, 반격합니다";
 		     } 
 		 }
-		 
+		 */
 		 String deathAchvMsg = "";
 		 if (!"사신".equals(job) && newHpPreview <= 0) {
 			 if (newHpPreview <= 0) {
@@ -1587,7 +1591,7 @@ public class BossAttackController {
 			     
 			     return userName + "님, 이번전투에서 패배하여, 전투 불능이 되었습니다." + NL
 			             + "현재 체력: 0 / " + effHpMax + NL
-			             + "10분 뒤 최대 체력의 10%로 부활하며," + NL
+			             + "5분 뒤 최대 체력의 10%로 부활하며," + NL
 			             + "이후 5분마다 HP_REGEN 만큼 서서히 회복됩니다."+NL+ deathAchvMsg;
 			 }
 		 }
@@ -2705,76 +2709,6 @@ public class BossAttackController {
 	}
 
 
-	/** 장비 중복 구매 수량(qty)에 따라 능력치를 30%씩 증가시키고,
-	 *  "100(+30)~200(+60)" 같은 표기로 출력하는 버전 */
-	private String buildOptionTokensFromMapWithQty(HashMap<String,Object> item, int qty) {
-	    if (item == null) return "";
-
-	    // 기본 스탯
-	    int baseMin   = parseIntSafe(Objects.toString(item.get("ATK_MIN"), "0"));
-	    int baseMax   = parseIntSafe(Objects.toString(item.get("ATK_MAX"), "0"));
-	    int baseHpMax    = parseIntSafe(Objects.toString(item.get("HP_MAX"), "0"));
-	    int baseHpRegen  = parseIntSafe(Objects.toString(item.get("HP_REGEN"), "0"));
-	    int baseCriDmg   = parseIntSafe(Objects.toString(item.get("CRI_DMG"), "0"));
-	    int baseAtkCri   = parseIntSafe(Objects.toString(item.get("ATK_CRI"), "0"));
-
-	    // 업그레이드 계수: 1개는 100%, 이후 1개마다 +30%
-	    double factor = 1.0 + 0.3 * Math.max(0, (qty - 1));
-
-	    // 상승 후 스탯
-	    int upMin   = (int)Math.round(baseMin * factor);
-	    int upMax   = (int)Math.round(baseMax * factor);
-	    int upHpMax     = (int)Math.round(baseHpMax * factor);
-	    int upHpRegen   = (int)Math.round(baseHpRegen * factor);
-	    int upCriDmg    = (int)Math.round(baseCriDmg * factor);
-	    int upAtkCri    = (int)Math.round(baseAtkCri * factor);
-
-	    // 증가량
-	    int incMin   = upMin - baseMin;
-	    int incMax   = upMax - baseMax;
-	    int incHp    = upHpMax - baseHpMax;
-	    int incRegen = upHpRegen - baseHpRegen;
-	    int incCriDmg = upCriDmg - baseCriDmg;
-	    int incAtkCri = upAtkCri - baseAtkCri;
-
-	    StringBuilder sb = new StringBuilder();
-
-	    // 공격력 표기
-	    if (baseMin != 0 || baseMax != 0) {
-	        sb.append("[공격력 ")
-	          .append(baseMin).append("(+").append(incMin).append(")")
-	          .append("~")
-	          .append(baseMax).append("(+").append(incMax).append(")")
-	          .append("] ");
-	    }
-
-	    // HP_MAX
-	    if (baseHpMax != 0) {
-	        sb.append("[체력 ")
-	          .append(baseHpMax).append("(+").append(incHp).append(")] ");
-	    }
-
-	    // HP_REGEN
-	    if (baseHpRegen != 0) {
-	        sb.append("[체젠 ")
-	          .append(baseHpRegen).append("(+").append(incRegen).append(")] ");
-	    }
-
-	    // ATK_CRI
-	    if (baseAtkCri != 0) {
-	        sb.append("[치확 ")
-	          .append(baseAtkCri).append("(+").append(incAtkCri).append(")] ");
-	    }
-
-	    // CRI_DMG
-	    if (baseCriDmg != 0) {
-	        sb.append("[치피 ")
-	          .append(baseCriDmg).append("(+").append(incCriDmg).append(")] ");
-	    }
-
-	    return sb.toString().trim();
-	}
-
 	
 	/** 옵션 토큰 공통 포맷터 (최소뎀/최대뎀/치명타/체력회복/최대체력/치명타뎀) */
 	private String buildOptionTokensFromMap(HashMap<String, Object> m) {
@@ -2804,13 +2738,6 @@ public class BossAttackController {
 	    opt.append(token);
 	}
 
-
-	private int toInt(Object v) {
-	    try { return (v == null) ? 0 : Integer.parseInt(String.valueOf(v)); }
-	    catch (Exception e) { return 0; }
-	}
-	/* ===== Combat helpers ===== */
-
 	/**
 	 * 쓰러진 유저 자동 부활 처리
 	 * - 마지막 피격(또는 공격) 시점 기준 REVIVE_WAIT_MINUTES(10) 경과 시 최대체력 10%로 부활
@@ -2825,7 +2752,7 @@ public class BossAttackController {
 
 	    // 기준 이벤트가 전혀 없으면: 보수적으로 10%로 세팅 후 조용히 복구
 	    if (baseline == null) {
-	        int startHp = (int) Math.ceil(effHpMax * 0.1); // 10%
+	        int startHp = (int) Math.ceil(effHpMax * 0.10); // 10%
 	        botNewService.updateUserHpOnlyTx(userName, roomName, startHp);
 	        u.hpCur = startHp;
 	        return "";
@@ -2930,11 +2857,7 @@ public class BossAttackController {
 	    if ("test".equals(param1)) return CooldownCheck.ok();
 
 	    int baseCd = COOLDOWN_SECONDS; // 2분
-	    /*
-	    if ("궁수".equals(job)) {
-	        baseCd = 300; // 5분
-	    }
-	     */
+	    
 	    Timestamp last = botNewService.selectLastAttackTime(userName, roomName);
 	    if (last == null) return CooldownCheck.ok();
 
@@ -2946,72 +2869,6 @@ public class BossAttackController {
 	}
 
 	
-
-	private String buildBelowHalfMsg(String userName, String roomName, User u, String param1) {
-	    if ("test".equals(param1)) return null; // 테스트 모드 패스
-
-	    int regenWaitMin = minutesUntilReach30(u, userName, roomName);
-	    CooldownCheck cd = checkCooldown(userName, roomName, param1, u.job);
-
-	    long remainMin = cd.remainSeconds / 60;
-	    long remainSec = cd.remainSeconds % 60;
-
-	    int waitMin = Math.max(regenWaitMin, cd.remainMinutes);
-	    if (waitMin <= 0) return null;
-
-	    StringBuilder sb = new StringBuilder();
-	    sb.append(userName).append("님, 약 ").append(waitMin).append("분 후 공격 가능").append(NL)
-	      .append("(최대체력의 20%까지 회복 필요 ").append(regenWaitMin).append("분, ")
-	      .append("쿨타임 ").append(remainMin).append("분 ").append(remainSec).append("초)").append(NL)
-	      .append("현재 체력: ").append(u.hpCur).append(" / ").append(u.hpMax)
-	      .append(", 5분당 회복 +").append(u.hpRegen).append(NL);
-
-	    // ✅ 리젠 스케줄 출력
-	    //String sched = buildRegenScheduleSnippetEnhanced2(effHp, finalHpMax, effRegen, 60);
-	    String sched = buildRegenScheduleSnippetEnhanced(userName, roomName, u, waitMin);
-	    if (sched != null) sb.append(sched).append(NL);
-
-	    // ✅ 풀HP ETA 출력
-	    //int toFull = minutesUntilFull(userName, roomName, u);
-	    /*
-	    if (toFull == Integer.MAX_VALUE) {
-	        sb.append("(풀HP까지: 리젠 없음)").append(NL);
-	    } else if (toFull > 0) {
-	        sb.append("(풀HP까지 약 ").append(toFull).append("분)").append(NL);
-	    }
-*/
-	    return sb.toString();
-	}
-	
-	// ✅ 5분 단위 회복 기준, 피격/공격 기준과 일관성 유지
-	private int minutesUntilFull(String userName, String roomName, User u) {
-	    if (u.hpCur >= u.hpMax) return 0;
-	    if (u.hpRegen <= 0) return Integer.MAX_VALUE;
-
-	    Timestamp damaged = botNewService.selectLastDamagedTime(userName, roomName);
-	    if (damaged == null) return Integer.MAX_VALUE;
-
-	    Timestamp lastAtk = botNewService.selectLastAttackTime(userName, roomName);
-
-	    Timestamp from = damaged;
-	    if (lastAtk != null && lastAtk.after(damaged)) {
-	        from = lastAtk;
-	    }
-
-	    long minutesPassed = Math.max(0, Duration.between(from.toInstant(), Instant.now()).toMinutes());
-	    long offset = minutesPassed % 5;
-
-	    // 다음 틱까지 남은 시간 (경계면 → 5분 후를 다음 틱으로 본다)
-	    int toNextTick = (int)((5 - offset) % 5);
-	    if (toNextTick == 0) toNextTick = 5;
-
-	    int needHp = u.hpMax - u.hpCur;
-	    int ticksNeeded = (int)Math.ceil(needHp / (double)u.hpRegen);
-	    if (ticksNeeded <= 0) return 0;
-
-	    return toNextTick + (ticksNeeded - 1) * 5;
-	}
-
 
 	private Flags rollFlags(User u, Monster m) {
 		ThreadLocalRandom r = ThreadLocalRandom.current();
@@ -3167,36 +3024,6 @@ public class BossAttackController {
 	    try { return v == null ? 0 : Integer.parseInt(String.valueOf(v)); }
 	    catch (Exception e) { return 0; }
 	}
-
-	// 이름은 기존 그대로 두고, 현재는 20% 기준으로 동작
-	private int minutesUntilReach30(User u, String userName, String roomName) {
-	    int threshold = (int)Math.ceil(u.hpMax * 0.2); // ✅ 20% 기준
-	    if (u.hpCur >= threshold) return 0;
-	    if (u.hpRegen <= 0) return Integer.MAX_VALUE;
-
-	    Timestamp damaged = botNewService.selectLastDamagedTime(userName, roomName);
-	    if (damaged == null) return 0; // 맞은 적 없으면 막지 않음
-
-	    Timestamp lastAtk = botNewService.selectLastAttackTime(userName, roomName);
-
-	    Timestamp from = damaged;
-	    if (lastAtk != null && lastAtk.after(damaged)) {
-	        from = lastAtk;
-	    }
-
-	    long minutesPassed = Math.max(0, Duration.between(from.toInstant(), Instant.now()).toMinutes());
-	    long offset = minutesPassed % 5;
-
-	    int toNextTick = (int)((5 - offset) % 5);
-	    if (toNextTick == 0) toNextTick = 5;
-
-	    int hpNeeded = threshold - u.hpCur;
-	    int ticksNeeded = (int)Math.ceil(hpNeeded / (double)u.hpRegen);
-	    if (ticksNeeded <= 0) return 0;
-
-	    return toNextTick + (ticksNeeded - 1) * 5;
-	}
-
 
 	private Resolve resolveKillAndDrop(Monster m, AttackCalc c, boolean willKill, User u, boolean lucky,boolean dark) {
 	    Resolve r = new Resolve();
@@ -3668,7 +3495,113 @@ public class BossAttackController {
 	    
 	}
 
-	
+	// 이름은 기존 그대로 두고, 현재는 20% 기준으로 동작
+	private int minutesUntilReach30(User u, String userName, String roomName) {
+	    int threshold = (int)Math.ceil(u.hpMax * 0.05); // ✅ 5% 기준
+	    if (u.hpCur >= threshold) return 0;
+	    if (u.hpRegen <= 0) return Integer.MAX_VALUE;
+
+	    Timestamp damaged = botNewService.selectLastDamagedTime(userName, roomName);
+	    if (damaged == null) return 0; // 맞은 적 없으면 막지 않음
+
+	    Timestamp lastAtk = botNewService.selectLastAttackTime(userName, roomName);
+
+	    Timestamp from = damaged;
+	    if (lastAtk != null && lastAtk.after(damaged)) {
+	        from = lastAtk;
+	    }
+
+	    long minutesPassed = Math.max(0, Duration.between(from.toInstant(), Instant.now()).toMinutes());
+	    long offset = minutesPassed % 5;
+
+	    int toNextTick = (int)((5 - offset) % 5);
+	    if (toNextTick == 0) toNextTick = 5;
+
+	    int hpNeeded = threshold - u.hpCur;
+	    int ticksNeeded = (int)Math.ceil(hpNeeded / (double)u.hpRegen);
+	    if (ticksNeeded <= 0) return 0;
+
+	    return toNextTick + (ticksNeeded - 1) * 5;
+	}
+	private String buildBelowHalfMsg(String userName, String roomName, User u, String param1) {
+	    if ("test".equals(param1)) return null; // 테스트 모드 패스
+
+	    int regenWaitMin = minutesUntilReach30(u, userName, roomName);
+	    CooldownCheck cd = checkCooldown(userName, roomName, param1, u.job);
+
+	    long remainMin = cd.remainSeconds / 60;
+	    long remainSec = cd.remainSeconds % 60;
+
+	    int waitMin = Math.max(regenWaitMin, cd.remainMinutes);
+	    if (waitMin <= 0) return null;
+
+	    StringBuilder sb = new StringBuilder();
+	    sb.append(userName).append("님, 약 ").append(waitMin).append("분 후 공격 가능").append(NL)
+	      .append("(최대체력의 5%까지 회복 필요 ").append(regenWaitMin).append("분, ")
+	      .append("쿨타임 ").append(remainMin).append("분 ").append(remainSec).append("초)").append(NL)
+	      .append("현재 체력: ").append(u.hpCur).append(" / ").append(u.hpMax)
+	      .append(", 5분당 회복 +").append(u.hpRegen).append(NL);
+
+	    String sched = buildRegenScheduleSnippetEnhanced(userName, roomName, u, waitMin);
+	    if (sched != null) sb.append(sched).append(NL);
+
+	    return sb.toString();
+	}
+	// ✅ 5분 단위 리젠 스케줄 + 풀HP까지 예상시간 표시
+		private String buildRegenScheduleSnippetEnhanced(String userName, String roomName, User u, int horizonMinutes) {
+		    if (horizonMinutes <= 0 || u.hpRegen <= 0 || u.hpCur >= u.hpMax) return null;
+
+		    Timestamp damaged = botNewService.selectLastDamagedTime(userName, roomName);
+		    if (damaged == null) return null;
+
+		    Timestamp lastAtk = botNewService.selectLastAttackTime(userName, roomName);
+		    Timestamp from = damaged;
+		    if (lastAtk != null && lastAtk.after(damaged)) {
+		        from = lastAtk;
+		    }
+
+		    long minutesPassed = Math.max(0, Duration.between(from.toInstant(), Instant.now()).toMinutes());
+		    long ticksSoFar = minutesPassed / 5;
+
+		    int toNextTick = (int)((5 - (minutesPassed % 5)) % 5);
+		    if (toNextTick == 0) toNextTick = 5;
+
+		    StringBuilder sb = new StringBuilder();
+		    final String NL = "♬";
+
+		    int curHp = u.hpCur;
+		    int maxHp = u.hpMax;
+		    int regen = u.hpRegen;
+
+		    // 5분 단위로 예측 표시
+		    
+		    int msg_cnt =0;
+		    for (int t = toNextTick; t <= horizonMinutes; t += 5) {
+		        int ticksAdded = (int)(((minutesPassed + t) / 5) - ticksSoFar);
+		        if (ticksAdded <= 0) continue;
+
+		        int proj = Math.min(maxHp, curHp + ticksAdded * regen);
+		        sb.append("- ").append(t).append("분 뒤: HP ").append(proj)
+		          .append(" / ").append(maxHp).append(NL);
+
+		        msg_cnt++;
+		        if(msg_cnt > 5) break;
+		        
+		        if (proj >= maxHp) break; // 풀피 도달 시 중단
+		    }
+
+		    // === 풀 HP까지 남은 시간 계산 ===
+		    int hpNeeded = maxHp - curHp;
+		    int ticksNeeded = (int)Math.ceil(hpNeeded / (double)regen);
+		    int minutesToFull = (toNextTick + (ticksNeeded - 1) * 5);
+		    if (minutesToFull < 0) minutesToFull = 0;
+		    
+		    sb.append(" (풀HP까지 약 ").append(minutesToFull).append("분)").append(NL);
+		    
+		    String result = sb.toString().trim();
+
+		    return result.isEmpty() ? null : result;
+		}
 	private static class Resolve {
 		boolean killed; String dropCode; int gainExp; int levelUpCount; boolean lucky; boolean dark;
 	}
@@ -3855,68 +3788,6 @@ public class BossAttackController {
 	
 	}
 	
-	// ✅ 5분 단위 리젠 스케줄 + 풀HP까지 예상시간 표시
-	private String buildRegenScheduleSnippetEnhanced(String userName, String roomName, User u, int horizonMinutes) {
-	    if (horizonMinutes <= 0 || u.hpRegen <= 0 || u.hpCur >= u.hpMax) return null;
-
-	    Timestamp damaged = botNewService.selectLastDamagedTime(userName, roomName);
-	    if (damaged == null) return null;
-
-	    Timestamp lastAtk = botNewService.selectLastAttackTime(userName, roomName);
-	    Timestamp from = damaged;
-	    if (lastAtk != null && lastAtk.after(damaged)) {
-	        from = lastAtk;
-	    }
-
-	    long minutesPassed = Math.max(0, Duration.between(from.toInstant(), Instant.now()).toMinutes());
-	    long ticksSoFar = minutesPassed / 5;
-
-	    int toNextTick = (int)((5 - (minutesPassed % 5)) % 5);
-	    if (toNextTick == 0) toNextTick = 5;
-
-	    StringBuilder sb = new StringBuilder();
-	    final String NL = "♬";
-
-	    int curHp = u.hpCur;
-	    int maxHp = u.hpMax;
-	    int regen = u.hpRegen;
-
-	    // 5분 단위로 예측 표시
-	    
-	    int msg_cnt =0;
-	    for (int t = toNextTick; t <= horizonMinutes; t += 5) {
-	        int ticksAdded = (int)(((minutesPassed + t) / 5) - ticksSoFar);
-	        if (ticksAdded <= 0) continue;
-
-	        int proj = Math.min(maxHp, curHp + ticksAdded * regen);
-	        sb.append("- ").append(t).append("분 뒤: HP ").append(proj)
-	          .append(" / ").append(maxHp).append(NL);
-
-	        msg_cnt++;
-	        if(msg_cnt > 5) break;
-	        
-	        if (proj >= maxHp) break; // 풀피 도달 시 중단
-	    }
-
-	    // === 풀 HP까지 남은 시간 계산 ===
-	    int hpNeeded = maxHp - curHp;
-	    int ticksNeeded = (int)Math.ceil(hpNeeded / (double)regen);
-	    int minutesToFull = (toNextTick + (ticksNeeded - 1) * 5);
-	    if (minutesToFull < 0) minutesToFull = 0;
-	    
-	    sb.append(" (풀HP까지 약 ").append(minutesToFull).append("분)").append(NL);
-	    
-	    String result = sb.toString().trim();
-
-	    return result.isEmpty() ? null : result;
-	}
-
-
-
-	
-	private static double clamp(double v, double min, double max) {
-		return Math.max(min, Math.min(max, v));
-	}
 
 	private static int parseIntSafe(String s) {
 	    try { return Integer.parseInt(s); } catch (Exception e) { return 0; }
@@ -4670,12 +4541,13 @@ public class BossAttackController {
 
 	    if(selfYn==1) {
 	    	dosaLvBonus = (int) Math.round(dosaLv);
+	    	dosaCriDmg = (int) Math.round(dosaAtkMax * 0.1);
 	    	//dosaCriDmg = (int) Math.round(dosaAtkMax * 0.05);
 	    	//eff.addAtkMin   = dosaLvBonus;
 	 	    //eff.addAtkMax   = dosaLvBonus;
 	 	    //eff.addCritRate = dosaLvBonus;
 	 	    //eff.addCritDmg  = dosaCriDmg;
-	 	    eff.addHp       = dosaLvBonus;
+	 	    eff.addHp       = dosaCriDmg;
 	    }else {
 	    	dosaLvBonus = (int) Math.round(dosaLv * 0.5);
 	    	dosaCriDmg = (int) Math.round(dosaAtkMax * 0.1);
@@ -4683,7 +4555,7 @@ public class BossAttackController {
 		    eff.addAtkMax   = dosaLvBonus;
 		    eff.addCritRate = dosaLvBonus;
 		    eff.addCritDmg  = dosaCriDmg;
-		    eff.addHp       = dosaLvBonus;
+		    eff.addHp       = dosaCriDmg*3;
 	    }
 	    return eff;
 	}
