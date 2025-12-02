@@ -1629,11 +1629,10 @@ public class BossAttackController {
 	        }
 	    }
 
-	    // 파이터: 체력 비례 버서크 배율 (네가 추가한 신규 로직 유지)
 	    if ("파이터".equals(job) && effHpMax > 0) {
-	        double hpRatio = (double) u.hpCur / effHpMax;
+	    	double hpRatio = (double) u.hpCur / effHpMax;
 	        if (hpRatio < 1) {
-	            berserkMul = 1.0 + (1 - hpRatio) * 3.0;
+	            berserkMul = 1.0 + (1 - hpRatio) * 2.0;   // 최대 3배
 	        }
 	    }
 
@@ -4780,6 +4779,7 @@ public class BossAttackController {
 	    }
 	    
 	    if("파이터".equals(job)) {
+	    	baseAtk = (int) Math.round(berserkMul * baseAtk);
 	    	effCritRate = 0;
 	        effCriDmg = 0;
 	        crit = false;
