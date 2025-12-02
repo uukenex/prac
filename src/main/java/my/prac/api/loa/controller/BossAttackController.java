@@ -3076,7 +3076,8 @@ public class BossAttackController {
 			int maxHpBase = Math.max(1, u.hpMax); // 0 방지
             double hpRatio = (double) u.hpCur / maxHpBase;
 
-            if (hpRatio < 0.80) {
+            // 기본체력의 5배 아래일때 쓴다
+            if (hpRatio < 2) {
             	 // 🔥 빈사 패턴: 체력을 1 남기고 공격 연출
                 int lethalDmg = Math.max(1, u.hpCur - 1); // 1HP 남기기
                 c.atkDmg = 0;  

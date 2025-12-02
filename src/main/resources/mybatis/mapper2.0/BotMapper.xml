@@ -258,13 +258,13 @@
 		/* bot.xml selectBotRaidJoinSaveOneCheck2 */
 		SELECT COUNT(1)
 		  FROM TBOT_POWER_RANK B 
-		 WHERE B.CHAR_NAME = #{param2, jdbcType=VARCHAR}
+		 WHERE UPPER(B.CHAR_NAME) = UPPER(#{param2, jdbcType=VARCHAR})
     </select>
     <select id="selectBotRaidJoinSaveOneCheck3" parameterType="hashMap" resultType="int">
 		/* bot.xml selectBotRaidJoinSaveOneCheck3 */
 		SELECT COUNT(1)
 		  FROM TBOT_RAID_SAVE A
-		 WHERE A.CHAR_NAME = #{param2, jdbcType=VARCHAR}
+		 WHERE UPPER(A.CHAR_NAME) = UPPER(#{param2, jdbcType=VARCHAR})
 		   AND A.RAID_NAME = #{param1, jdbcType=VARCHAR}
 		   AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 		   AND EXISTS (SELECT *
