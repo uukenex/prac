@@ -1264,7 +1264,7 @@ public class BossAttackController {
 	    
 	    // 6) 궁수 배율 (최종 공격력 1.5배) → 실제 데미지 범위에 반영
 	    if ("궁수".equals(job)) {
-	        jobDmgMul = 1.8;
+	        jobDmgMul = 1.6;
 	    }else if ("전사".equals(job)) {
 	    	jobDmgMul = 1.2;
 	        jobBonusHp  = +(int)Math.round(baseHpMax);
@@ -4780,7 +4780,7 @@ public class BossAttackController {
 
 	        // 🛡 전사: 일반 패턴 피해 감소
 	        if ("전사".equals(job) && calc.monDmg > 0 && !flags.finisher) {
-	            int reduce = (int) Math.round(u.lv * 2);
+	            int reduce = (int) Math.round(u.lv * 2)+m.monLv*2;
 	            int after = Math.max(0, calc.monDmg - reduce); // 최소 0
 	            String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
 	            calc.patternMsg = baseMsg
@@ -5235,7 +5235,7 @@ public class BossAttackController {
 	    JOB_DEFS.put("궁수", new JobDef(
 	        "궁수",
 	        "▶ 사냥감을 조준하는 집요한 추적자, 강력한 한방을 선사하지만, 쿨타임이 길어진다",
-	        "⚔ 최종 데미지 ×1.8, EXP +25%, 공격시 13%확률로 강력한공격"
+	        "⚔ 최종 데미지 ×1.6, EXP +25%, 공격시 13%확률로 강력한공격"
 	    ));
 
 	    JOB_DEFS.put("마법사", new JobDef(
