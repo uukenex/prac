@@ -1815,7 +1815,7 @@ public class BossAttackController {
 	    
 	    
 	    if (isRising) {
-	        // 열심히 때렸는데 최근 가방 기록은 없는 사람 → 드랍율 2배
+	        // 열심히 때렸는데 최근 가방 기록은 없는 사람 → 드랍율 4배
 	        return 4.0;
 	    }
 	    
@@ -1869,9 +1869,9 @@ public class BossAttackController {
 	        case 6: case 7: case 8: case 9: case 10:
 	            return 0.007;  // 0.7%
 	        case 11: case 12: case 13:case 14: case 15:
-	            return 0.01;  // 1%
+	            return 0.012;  // 1.2%
 	        case 16: case 17: case 18: case 19: case 20:
-	            return 0.02;  // 2%
+	            return 0.015;  // 1.5
 	        case 51: case 52: case 53: case 61: case 62: case 63:
 	        	return 0.005;  // 0.5%
 	        case 91:

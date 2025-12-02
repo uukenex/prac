@@ -784,11 +784,11 @@
 	               COUNT(*) AS ATK_CNT,
 	               MAX(INSERT_DATE) AS LAST_ATTACK
 	        FROM TBOT_POINT_NEW_BATTLE_LOG A
-	        WHERE INSERT_DATE >= SYSDATE - (6/24)
+	        WHERE INSERT_DATE >= SYSDATE - (3/24)
 	        GROUP BY USER_NAME, ROOM_NAME
 	        ORDER BY ATK_CNT DESC, LAST_ATTACK DESC
 	    )
-	    WHERE ROWNUM &lt;= 7
+	    WHERE ROWNUM &lt;= 8
 	</select>
 	<select id="selectOngoingChallengesForUnclearedBosses" resultType="hashmap">
 	/*selectOngoingChallengesForUnclearedBosses*/
