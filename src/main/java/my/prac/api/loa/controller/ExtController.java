@@ -1,11 +1,17 @@
 package my.prac.api.loa.controller;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 
+import org.apache.http.HttpResponse;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.http.util.EntityUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
@@ -140,5 +146,62 @@ public class ExtController {
 			if (conn != null)
 				conn.disconnect();
 		}
+	}
+	
+	//파일생성테스트
+	public String fetchMerchantServer5Cached() throws Exception {
+
+
+	    // 오늘 날짜 (yyyy-MM-dd)
+	    String today = new java.text.SimpleDateFormat("yyyy-MM-dd").format(new java.util.Date());
+
+	    String filePath = "C:/devkit/merchant_server5"+today+".json"; 
+	    File file = new File(filePath);
+	    // 파일이 존재하면 → 날짜 비교
+	    if (file.exists()) {
+	        String fileDate = new java.text.SimpleDateFormat("yyyy-MM-dd")
+	                .format(new java.util.Date(file.lastModified()));
+
+	        // 이미 오늘 파일이 있으면 API 호출 안 함
+	        if (fileDate.equals(today)) {
+	            return readFileJson(filePath);
+	        }
+	    }
+
+	    // 존재하지 않거나 → 하루 지나서 갱신해야 함 → API 호출
+	    String json = fetchMerchantServer5();  // 기존 API 호출 메서드
+
+	    // 디렉토리 없으면 생성
+	    file.getParentFile().mkdirs();
+
+	    // 파일 저장
+	    saveJsonToFile(json, filePath);
+
+	    return json;
+	}
+	
+	public String fetchMerchantServer5() throws Exception {
+	    String url = "https://api.korlark.com/lostark/merchant/reports?server=5";
+
+	    HttpClient client = HttpClientBuilder.create().build();
+	    HttpGet get = new HttpGet(url);
+
+	    get.setHeader("accept", "application/json");
+	    get.setHeader("User-Agent", "Mozilla/5.0");
+
+	    HttpResponse response = client.execute(get);
+	    String json = EntityUtils.toString(response.getEntity(), "UTF-8");
+
+	    return json;
+	}
+	
+	public String readFileJson(String filePath) throws Exception {
+	    return new String(java.nio.file.Files.readAllBytes(java.nio.file.Paths.get(filePath)), "UTF-8");
+	}
+	public void saveJsonToFile(String json, String filePath) throws Exception {
+	    java.nio.file.Files.write(
+	            java.nio.file.Paths.get(filePath),
+	            json.getBytes("UTF-8")
+	    );
 	}
 }

@@ -1220,6 +1220,9 @@ public class LoaChatController {
 					return "/ㅈㅂ 캐릭명 으로 입력해주세요";
 				}
 				break;
+			case "/떠상테스트": case "/ㄸㅅㅌㅅㅌ":
+				val = ext.fetchMerchantServer5Cached();
+				break;
 			case "/치적": case "/ㅊㅈ":
 				if (param1 != null && !param1.equals("")) {
 					param0="/ㅊㅈ";
