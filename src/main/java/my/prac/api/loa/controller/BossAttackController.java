@@ -1554,7 +1554,7 @@ public class BossAttackController {
 	        } catch (Exception ignore) {}
 
 	        // ★ 300킬 이상 + 20% 확률이면 어둠몬
-	        if (killCountForThisMon >= 300) {
+	        if (killCountForThisMon >= 300&& m.monNo<15) {
 	            double rnd = ThreadLocalRandom.current().nextDouble();
 	            if (rnd < 0.20) {
 	                dark = true;
