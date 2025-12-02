@@ -1,0 +1,5706 @@
+{
+	"pageProps": {
+		"initialData": {
+			"scheme": {
+				"schedules": [
+					{
+						"dayOfWeek": 0,
+						"startTime": "10:00:00",
+						"duration": "05:30:00",
+						"groups": [
+							2
+						]
+					},
+					{
+						"dayOfWeek": 0,
+						"startTime": "22:00:00",
+						"duration": "05:30:00",
+						"groups": [
+							2
+						]
+					},
+					{
+						"dayOfWeek": 0,
+						"startTime": "16:00:00",
+						"duration": "05:30:00",
+						"groups": [
+							1,
+							3
+						]
+					},
+					{
+						"dayOfWeek": 0,
+						"startTime": "04:00:00",
+						"duration": "05:30:00",
+						"groups": [
+							1,
+							3
+						]
+					},
+					{
+						"dayOfWeek": 1,
+						"startTime": "04:00:00",
+						"duration": "05:30:00",
+						"groups": [
+							1,
+							2
+						]
+					},
+					{
+						"dayOfWeek": 1,
+						"startTime": "10:00:00",
+						"duration": "05:30:00",
+						"groups": [
+							3
+						]
+					},
+					{
+						"dayOfWeek": 1,
+						"startTime": "16:00:00",
+						"duration": "05:30:00",
+						"groups": [
+							1,
+							2
+						]
+					},
+					{
+						"dayOfWeek": 1,
+						"startTime": "22:00:00",
+						"duration": "05:30:00",
+						"groups": [
+							3
+						]
+					},
+					{
+						"dayOfWeek": 2,
+						"startTime": "04:00:00",
+						"duration": "05:30:00",
+						"groups": [
+							2,
+							3
+						]
+					},
+					{
+						"dayOfWeek": 2,
+						"startTime": "10:00:00",
+						"duration": "05:30:00",
+						"groups": [
+							1
+						]
+					},
+					{
+						"dayOfWeek": 2,
+						"startTime": "22:00:00",
+						"duration": "05:30:00",
+						"groups": [
+							1
+						]
+					},
+					{
+						"dayOfWeek": 3,
+						"startTime": "04:00:00",
+						"duration": "05:30:00",
+						"groups": [
+							1,
+							2
+						]
+					},
+					{
+						"dayOfWeek": 3,
+						"startTime": "10:00:00",
+						"duration": "05:30:00",
+						"groups": [
+							3
+						]
+					},
+					{
+						"dayOfWeek": 3,
+						"startTime": "22:00:00",
+						"duration": "05:30:00",
+						"groups": [
+							3
+						]
+					},
+					{
+						"dayOfWeek": 4,
+						"startTime": "04:00:00",
+						"duration": "05:30:00",
+						"groups": [
+							2
+						]
+					},
+					{
+						"dayOfWeek": 4,
+						"startTime": "10:00:00",
+						"duration": "05:30:00",
+						"groups": [
+							1,
+							3
+						]
+					},
+					{
+						"dayOfWeek": 4,
+						"startTime": "22:00:00",
+						"duration": "05:30:00",
+						"groups": [
+							1,
+							3
+						]
+					},
+					{
+						"dayOfWeek": 5,
+						"startTime": "04:00:00",
+						"duration": "05:30:00",
+						"groups": [
+							1
+						]
+					},
+					{
+						"dayOfWeek": 5,
+						"startTime": "10:00:00",
+						"duration": "05:30:00",
+						"groups": [
+							2,
+							3
+						]
+					},
+					{
+						"dayOfWeek": 5,
+						"startTime": "22:00:00",
+						"duration": "05:30:00",
+						"groups": [
+							2,
+							3
+						]
+					},
+					{
+						"dayOfWeek": 6,
+						"startTime": "04:00:00",
+						"duration": "05:30:00",
+						"groups": [
+							3
+						]
+					},
+					{
+						"dayOfWeek": 6,
+						"startTime": "10:00:00",
+						"duration": "05:30:00",
+						"groups": [
+							1,
+							2
+						]
+					},
+					{
+						"dayOfWeek": 6,
+						"startTime": "22:00:00",
+						"duration": "05:30:00",
+						"groups": [
+							1,
+							2
+						]
+					},
+					{
+						"dayOfWeek": 3,
+						"startTime": "16:00:00",
+						"duration": "05:30:00",
+						"groups": [
+							1,
+							2
+						]
+					},
+					{
+						"dayOfWeek": 5,
+						"startTime": "16:00:00",
+						"duration": "05:30:00",
+						"groups": [
+							1
+						]
+					},
+					{
+						"dayOfWeek": 6,
+						"startTime": "16:00:00",
+						"duration": "05:30:00",
+						"groups": [
+							3
+						]
+					},
+					{
+						"dayOfWeek": 4,
+						"startTime": "16:00:00",
+						"duration": "05:30:00",
+						"groups": [
+							2
+						]
+					},
+					{
+						"dayOfWeek": 2,
+						"startTime": "16:00:00",
+						"duration": "05:30:00",
+						"groups": [
+							2,
+							3
+						]
+					}
+				],
+				"regions": [
+					{
+						"id": "1",
+						"name": "아르테미스",
+						"npcName": "벤",
+						"group": 1,
+						"items": [
+							{
+								"id": "238",
+								"type": 2,
+								"name": "영웅 호감도",
+								"grade": 3,
+								"icon": "efui_iconatlas/shop_icon/shop_icon_17.png",
+								"default": false,
+								"hidden": true
+							},
+							{
+								"id": "1",
+								"type": 1,
+								"name": "시이라",
+								"grade": 1,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "239",
+								"type": 2,
+								"name": "전설 호감도",
+								"grade": 4,
+								"icon": "efui_iconatlas/shop_icon/shop_icon_17.png",
+								"default": false,
+								"hidden": true
+							},
+							{
+								"id": "8",
+								"type": 2,
+								"name": "두근두근 상자",
+								"grade": 4,
+								"icon": "efui_iconatlas/all_quest/all_quest_02_230.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "7",
+								"type": 2,
+								"name": "아르테미스 성수",
+								"grade": 3,
+								"icon": "efui_iconatlas/all_quest/all_quest_01_23.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "6",
+								"type": 2,
+								"name": "레온하트 감자",
+								"grade": 3,
+								"icon": "efui_iconatlas/all_quest/all_quest_01_108.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "5",
+								"type": 2,
+								"name": "더욱 화려한 꽃다발",
+								"grade": 3,
+								"icon": "efui_iconatlas/all_quest/all_quest_03_133.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "4",
+								"type": 1,
+								"name": "카마인",
+								"grade": 4,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "3",
+								"type": 1,
+								"name": "레온하트 네리아",
+								"grade": 2,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "2",
+								"type": 1,
+								"name": "바루투",
+								"grade": 2,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							}
+						]
+					},
+					{
+						"id": "2",
+						"name": "유디아",
+						"npcName": "루카스",
+						"group": 2,
+						"items": [
+							{
+								"id": "11",
+								"type": 1,
+								"name": "천둥",
+								"grade": 2,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "10",
+								"type": 1,
+								"name": "자이언트 웜",
+								"grade": 1,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "9",
+								"type": 1,
+								"name": "모리나",
+								"grade": 1,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "241",
+								"type": 2,
+								"name": "전설 호감도",
+								"grade": 4,
+								"icon": "efui_iconatlas/shop_icon/shop_icon_17.png",
+								"default": false,
+								"hidden": true
+							},
+							{
+								"id": "240",
+								"type": 2,
+								"name": "영웅 호감도",
+								"grade": 3,
+								"icon": "efui_iconatlas/shop_icon/shop_icon_17.png",
+								"default": false,
+								"hidden": true
+							},
+							{
+								"id": "14",
+								"type": 2,
+								"name": "하늘을 비추는 기름",
+								"grade": 4,
+								"icon": "efui_iconatlas/all_quest/all_quest_01_117.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "13",
+								"type": 2,
+								"name": "유디아 주술서",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_8_39.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "12",
+								"type": 2,
+								"name": "유디아 천연소금",
+								"grade": 3,
+								"icon": "efui_iconatlas/all_quest/all_quest_01_64.png",
+								"default": false,
+								"hidden": false
+							}
+						]
+					},
+					{
+						"id": "3",
+						"name": "루테란 서부",
+						"npcName": "말론",
+						"group": 3,
+						"items": [
+							{
+								"id": "243",
+								"type": 2,
+								"name": "전설 호감도",
+								"grade": 4,
+								"icon": "efui_iconatlas/shop_icon/shop_icon_17.png",
+								"default": false,
+								"hidden": true
+							},
+							{
+								"id": "242",
+								"type": 2,
+								"name": "영웅 호감도",
+								"grade": 3,
+								"icon": "efui_iconatlas/shop_icon/shop_icon_17.png",
+								"default": false,
+								"hidden": true
+							},
+							{
+								"id": "16",
+								"type": 1,
+								"name": "베르하트",
+								"grade": 1,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "15",
+								"type": 1,
+								"name": "카도건",
+								"grade": 1,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "17",
+								"type": 1,
+								"name": "하셀링크",
+								"grade": 2,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "21",
+								"type": 2,
+								"name": "사슬전쟁 실록",
+								"grade": 4,
+								"icon": "efui_iconatlas/all_quest/all_quest_01_155.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "20",
+								"type": 2,
+								"name": "흑장미",
+								"grade": 3,
+								"icon": "efui_iconatlas/all_quest/all_quest_02_95.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "19",
+								"type": 2,
+								"name": "견고한 새장",
+								"grade": 3,
+								"icon": "efui_iconatlas/all_quest/all_quest_02_46.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "22",
+								"type": 3,
+								"name": "머리초",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_2_139.png",
+								"default": true,
+								"hidden": false
+							},
+							{
+								"id": "18",
+								"type": 2,
+								"name": "레이크바 토마토 주스",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_1_224.png",
+								"default": false,
+								"hidden": false
+							}
+						]
+					},
+					{
+						"id": "4",
+						"name": "루테란 동부",
+						"npcName": "모리스",
+						"group": 2,
+						"items": [
+							{
+								"id": "283",
+								"type": 1,
+								"name": "진저웨일",
+								"grade": 4,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "245",
+								"type": 2,
+								"name": "전설 호감도",
+								"grade": 4,
+								"icon": "efui_iconatlas/shop_icon/shop_icon_17.png",
+								"default": false,
+								"hidden": true
+							},
+							{
+								"id": "31",
+								"type": 3,
+								"name": "드라이에이징 된 고기",
+								"grade": 2,
+								"icon": "efui_iconatlas/use/use_2_193.png",
+								"default": true,
+								"hidden": false
+							},
+							{
+								"id": "23",
+								"type": 1,
+								"name": "모르페오",
+								"grade": 1,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "24",
+								"type": 1,
+								"name": "푸름 전사 브리뉴",
+								"grade": 1,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "25",
+								"type": 1,
+								"name": "미한",
+								"grade": 2,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "26",
+								"type": 1,
+								"name": "데런 아만",
+								"grade": 4,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "27",
+								"type": 2,
+								"name": "디오리카 밀짚모자",
+								"grade": 3,
+								"icon": "efui_iconatlas/all_quest/all_quest_01_183.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "28",
+								"type": 2,
+								"name": "루테란의 검 모형",
+								"grade": 3,
+								"icon": "efui_iconatlas/all_quest/all_quest_01_161.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "29",
+								"type": 2,
+								"name": "아제나포리움 브로치",
+								"grade": 3,
+								"icon": "efui_iconatlas/all_quest/all_quest_01_57.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "30",
+								"type": 2,
+								"name": "사슬전쟁 실록",
+								"grade": 4,
+								"icon": "efui_iconatlas/all_quest/all_quest_01_155.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "244",
+								"type": 2,
+								"name": "영웅 호감도",
+								"grade": 3,
+								"icon": "efui_iconatlas/shop_icon/shop_icon_17.png",
+								"default": false,
+								"hidden": true
+							}
+						]
+					},
+					{
+						"id": "5",
+						"name": "루테란 동부",
+						"npcName": "버트",
+						"group": 3,
+						"items": [
+							{
+								"id": "247",
+								"type": 2,
+								"name": "전설 호감도",
+								"grade": 4,
+								"icon": "efui_iconatlas/shop_icon/shop_icon_17.png",
+								"default": false,
+								"hidden": true
+							},
+							{
+								"id": "246",
+								"type": 2,
+								"name": "영웅 호감도",
+								"grade": 3,
+								"icon": "efui_iconatlas/shop_icon/shop_icon_17.png",
+								"default": false,
+								"hidden": true
+							},
+							{
+								"id": "39",
+								"type": 3,
+								"name": "뜨거운 초코 커피",
+								"grade": 2,
+								"icon": "efui_iconatlas/all_quest/all_quest_02_32.png",
+								"default": true,
+								"hidden": false
+							},
+							{
+								"id": "32",
+								"type": 1,
+								"name": "집행관 솔라스",
+								"grade": 1,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "33",
+								"type": 1,
+								"name": "녹스",
+								"grade": 2,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "34",
+								"type": 1,
+								"name": "세리아",
+								"grade": 2,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "35",
+								"type": 2,
+								"name": "디오리카 밀짚모자",
+								"grade": 3,
+								"icon": "efui_iconatlas/all_quest/all_quest_01_183.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "36",
+								"type": 2,
+								"name": "루테란의 검 모형",
+								"grade": 3,
+								"icon": "efui_iconatlas/all_quest/all_quest_01_161.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "37",
+								"type": 2,
+								"name": "아제나포리움 브로치",
+								"grade": 3,
+								"icon": "efui_iconatlas/all_quest/all_quest_01_57.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "38",
+								"type": 2,
+								"name": "사슬전쟁 실록",
+								"grade": 4,
+								"icon": "efui_iconatlas/all_quest/all_quest_01_155.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "282",
+								"type": 1,
+								"name": "에스더 루테란",
+								"grade": 4,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							}
+						]
+					},
+					{
+						"id": "6",
+						"name": "토토이크",
+						"npcName": "올리버",
+						"group": 3,
+						"items": [
+							{
+								"id": "45",
+								"type": 2,
+								"name": "특대 무당벌레 인형",
+								"grade": 3,
+								"icon": "efui_iconatlas/all_quest/all_quest_03_113.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "44",
+								"type": 2,
+								"name": "모코코 당근",
+								"grade": 3,
+								"icon": "efui_iconatlas/all_quest/all_quest_01_172.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "41",
+								"type": 1,
+								"name": "수호자 에오로",
+								"grade": 2,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "40",
+								"type": 1,
+								"name": "창조의 알",
+								"grade": 1,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "43",
+								"type": 2,
+								"name": "동글동글한 유리조각",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_3_129.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "248",
+								"type": 2,
+								"name": "영웅 호감도",
+								"grade": 3,
+								"icon": "efui_iconatlas/shop_icon/shop_icon_17.png",
+								"default": false,
+								"hidden": true
+							},
+							{
+								"id": "249",
+								"type": 2,
+								"name": "전설 호감도",
+								"grade": 4,
+								"icon": "efui_iconatlas/shop_icon/shop_icon_17.png",
+								"default": false,
+								"hidden": true
+							},
+							{
+								"id": "42",
+								"type": 1,
+								"name": "모카모카",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "46",
+								"type": 2,
+								"name": "수줍은 바람꽃가루",
+								"grade": 4,
+								"icon": "efui_iconatlas/all_quest/all_quest_01_66.png",
+								"default": false,
+								"hidden": false
+							}
+						]
+					},
+					{
+						"id": "7",
+						"name": "애니츠",
+						"npcName": "맥",
+						"group": 2,
+						"items": [
+							{
+								"id": "284",
+								"type": 1,
+								"name": "가디언 루",
+								"grade": 4,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "52",
+								"type": 2,
+								"name": "강태공의 낚싯대",
+								"grade": 4,
+								"icon": "efui_iconatlas/lifelevel/lifelevel_01_59.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "51",
+								"type": 2,
+								"name": "비무제 참가 인장",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_8_38.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "50",
+								"type": 1,
+								"name": "웨이",
+								"grade": 4,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "49",
+								"type": 1,
+								"name": "수령도사",
+								"grade": 1,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "48",
+								"type": 1,
+								"name": "객주도사",
+								"grade": 1,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "47",
+								"type": 1,
+								"name": "월향도사",
+								"grade": 1,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "250",
+								"type": 2,
+								"name": "영웅 호감도",
+								"grade": 3,
+								"icon": "efui_iconatlas/shop_icon/shop_icon_17.png",
+								"default": false,
+								"hidden": true
+							},
+							{
+								"id": "251",
+								"type": 2,
+								"name": "전설 호감도",
+								"grade": 4,
+								"icon": "efui_iconatlas/shop_icon/shop_icon_17.png",
+								"default": false,
+								"hidden": true
+							},
+							{
+								"id": "285",
+								"type": 1,
+								"name": "에스더 시엔",
+								"grade": 4,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							}
+						]
+					},
+					{
+						"id": "8",
+						"name": "아르데타인",
+						"npcName": "녹스",
+						"group": 3,
+						"items": [
+							{
+								"id": "55",
+								"type": 1,
+								"name": "카인",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "253",
+								"type": 2,
+								"name": "전설 호감도",
+								"grade": 4,
+								"icon": "efui_iconatlas/shop_icon/shop_icon_17.png",
+								"default": false,
+								"hidden": true
+							},
+							{
+								"id": "252",
+								"type": 2,
+								"name": "영웅 호감도",
+								"grade": 3,
+								"icon": "efui_iconatlas/shop_icon/shop_icon_17.png",
+								"default": false,
+								"hidden": true
+							},
+							{
+								"id": "54",
+								"type": 1,
+								"name": "슈테른 네리아",
+								"grade": 2,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "57",
+								"type": 2,
+								"name": "고급 축음기",
+								"grade": 4,
+								"icon": "efui_iconatlas/all_quest/all_quest_01_90.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "56",
+								"type": 2,
+								"name": "에너지 X7 캡슐",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_8_42.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "58",
+								"type": 3,
+								"name": "아드레날린 강화 수액",
+								"grade": 2,
+								"icon": "efui_iconatlas/all_quest/all_quest_01_31.png",
+								"default": true,
+								"hidden": false
+							},
+							{
+								"id": "53",
+								"type": 1,
+								"name": "아이히만 박사",
+								"grade": 2,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							}
+						]
+					},
+					{
+						"id": "9",
+						"name": "베른 북부",
+						"npcName": "피터",
+						"group": 1,
+						"items": [
+							{
+								"id": "255",
+								"type": 2,
+								"name": "전설 호감도",
+								"grade": 4,
+								"icon": "efui_iconatlas/shop_icon/shop_icon_17.png",
+								"default": false,
+								"hidden": true
+							},
+							{
+								"id": "59",
+								"type": 1,
+								"name": "페일린",
+								"grade": 2,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "60",
+								"type": 1,
+								"name": "기드온",
+								"grade": 2,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "61",
+								"type": 1,
+								"name": "라하르트",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "62",
+								"type": 2,
+								"name": "기사단 가입 신청서",
+								"grade": 3,
+								"icon": "efui_iconatlas/all_quest/all_quest_01_141.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "63",
+								"type": 2,
+								"name": "고블린 고구마",
+								"grade": 3,
+								"icon": "efui_iconatlas/all_quest/all_quest_01_105.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "64",
+								"type": 2,
+								"name": "마법 옷감",
+								"grade": 3,
+								"icon": "efui_iconatlas/all_quest/all_quest_01_207.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "65",
+								"type": 2,
+								"name": "마력 결정",
+								"grade": 3,
+								"icon": "efui_iconatlas/all_quest/all_quest_02_71.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "66",
+								"type": 2,
+								"name": "화려한 오르골",
+								"grade": 3,
+								"icon": "efui_iconatlas/all_quest/all_quest_01_56.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "68",
+								"type": 3,
+								"name": "위대한 미술품 #2",
+								"grade": 3,
+								"icon": "efui_iconatlas/tokenitem/tokenitem_2.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "67",
+								"type": 2,
+								"name": "베른 건국 기념주화",
+								"grade": 4,
+								"icon": "efui_iconatlas/all_quest/all_quest_01_253.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "254",
+								"type": 2,
+								"name": "영웅 호감도",
+								"grade": 3,
+								"icon": "efui_iconatlas/shop_icon/shop_icon_17.png",
+								"default": false,
+								"hidden": true
+							}
+						]
+					},
+					{
+						"id": "10",
+						"name": "슈샤이어",
+						"npcName": "제프리",
+						"group": 2,
+						"items": [
+							{
+								"id": "69",
+								"type": 1,
+								"name": "자베른",
+								"grade": 1,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "257",
+								"type": 2,
+								"name": "전설 호감도",
+								"grade": 4,
+								"icon": "efui_iconatlas/shop_icon/shop_icon_17.png",
+								"default": false,
+								"hidden": true
+							},
+							{
+								"id": "256",
+								"type": 2,
+								"name": "영웅 호감도",
+								"grade": 3,
+								"icon": "efui_iconatlas/shop_icon/shop_icon_17.png",
+								"default": false,
+								"hidden": true
+							},
+							{
+								"id": "71",
+								"type": 1,
+								"name": "진 매드닉",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "73",
+								"type": 2,
+								"name": "시리우스의 성서",
+								"grade": 4,
+								"icon": "efui_iconatlas/all_quest/all_quest_03_4.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "72",
+								"type": 2,
+								"name": "빛나는 정수",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_8_41.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "74",
+								"type": 3,
+								"name": "사파이어 정어리",
+								"grade": 2,
+								"icon": "efui_iconatlas/use/use_3_167.png",
+								"default": true,
+								"hidden": false
+							},
+							{
+								"id": "70",
+								"type": 1,
+								"name": "시안",
+								"grade": 2,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							}
+						]
+					},
+					{
+						"id": "11",
+						"name": "로헨델",
+						"npcName": "아리세르",
+						"group": 3,
+						"items": [
+							{
+								"id": "79",
+								"type": 2,
+								"name": "새벽의 마력석",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_6_10.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "80",
+								"type": 2,
+								"name": "정령의 깃털",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_6_11.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "81",
+								"type": 2,
+								"name": "다뉴브의 귀걸이",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_7_132.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "82",
+								"type": 2,
+								"name": "실린여왕의 축복",
+								"grade": 4,
+								"icon": "efui_iconatlas/use/use_7_133.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "78",
+								"type": 1,
+								"name": "아제나&이난나",
+								"grade": 4,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "77",
+								"type": 1,
+								"name": "그노시스",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "75",
+								"type": 1,
+								"name": "알리페르",
+								"grade": 2,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "83",
+								"type": 3,
+								"name": "두근두근 마카롱",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_5_213.png",
+								"default": true,
+								"hidden": false
+							},
+							{
+								"id": "258",
+								"type": 2,
+								"name": "영웅 호감도",
+								"grade": 3,
+								"icon": "efui_iconatlas/shop_icon/shop_icon_17.png",
+								"default": false,
+								"hidden": true
+							},
+							{
+								"id": "259",
+								"type": 2,
+								"name": "전설 호감도",
+								"grade": 4,
+								"icon": "efui_iconatlas/shop_icon/shop_icon_17.png",
+								"default": false,
+								"hidden": true
+							},
+							{
+								"id": "76",
+								"type": 1,
+								"name": "엘레노아",
+								"grade": 2,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							}
+						]
+					},
+					{
+						"id": "12",
+						"name": "욘",
+						"npcName": "라이티르",
+						"group": 1,
+						"items": [
+							{
+								"id": "286",
+								"type": 1,
+								"name": "에스더 갈라투르",
+								"grade": 4,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "84",
+								"type": 1,
+								"name": "피에르",
+								"grade": 2,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "85",
+								"type": 1,
+								"name": "위대한 성 네리아",
+								"grade": 2,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "86",
+								"type": 1,
+								"name": "케이사르",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "87",
+								"type": 1,
+								"name": "바훈투르",
+								"grade": 4,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "88",
+								"type": 2,
+								"name": "피에르의 비법서",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_8_44.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "89",
+								"type": 2,
+								"name": "파후투르 맥주",
+								"grade": 4,
+								"icon": "efui_iconatlas/use/use_6_84.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "260",
+								"type": 2,
+								"name": "영웅 호감도",
+								"grade": 3,
+								"icon": "efui_iconatlas/shop_icon/shop_icon_17.png",
+								"default": false,
+								"hidden": true
+							},
+							{
+								"id": "261",
+								"type": 2,
+								"name": "전설 호감도",
+								"grade": 4,
+								"icon": "efui_iconatlas/shop_icon/shop_icon_17.png",
+								"default": false,
+								"hidden": true
+							},
+							{
+								"id": "90",
+								"type": 3,
+								"name": "뒷골목 럼주",
+								"grade": 1,
+								"icon": "efui_iconatlas/use/use_6_49.png",
+								"default": true,
+								"hidden": false
+							}
+						]
+					},
+					{
+						"id": "13",
+						"name": "페이튼",
+						"npcName": "도렐라",
+						"group": 2,
+						"items": [
+							{
+								"id": "262",
+								"type": 2,
+								"name": "영웅 호감도",
+								"grade": 3,
+								"icon": "efui_iconatlas/shop_icon/shop_icon_17.png",
+								"default": false,
+								"hidden": true
+							},
+							{
+								"id": "98",
+								"type": 2,
+								"name": "붉은 달의 눈물",
+								"grade": 4,
+								"icon": "efui_iconatlas/use/use_6_231.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "97",
+								"type": 2,
+								"name": "바싹 마른 목상",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_6_230.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "96",
+								"type": 2,
+								"name": "생존의 서",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_6_229.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "99",
+								"type": 3,
+								"name": "선지 덩어리",
+								"grade": 2,
+								"icon": "efui_iconatlas/use/use_2_24.png",
+								"default": true,
+								"hidden": false
+							},
+							{
+								"id": "95",
+								"type": 2,
+								"name": "부러진 단검",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_6_228.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "94",
+								"type": 1,
+								"name": "페데리코",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "91",
+								"type": 1,
+								"name": "굴딩",
+								"grade": 2,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "93",
+								"type": 1,
+								"name": "칼도르",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "92",
+								"type": 1,
+								"name": "비올레",
+								"grade": 2,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "263",
+								"type": 2,
+								"name": "전설 호감도",
+								"grade": 4,
+								"icon": "efui_iconatlas/shop_icon/shop_icon_17.png",
+								"default": false,
+								"hidden": true
+							}
+						]
+					},
+					{
+						"id": "14",
+						"name": "파푸니카",
+						"npcName": "레이니",
+						"group": 3,
+						"items": [
+							{
+								"id": "264",
+								"type": 2,
+								"name": "영웅 호감도",
+								"grade": 3,
+								"icon": "efui_iconatlas/shop_icon/shop_icon_17.png",
+								"default": false,
+								"hidden": true
+							},
+							{
+								"id": "100",
+								"type": 1,
+								"name": "세토",
+								"grade": 2,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "101",
+								"type": 1,
+								"name": "스텔라",
+								"grade": 2,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "102",
+								"type": 1,
+								"name": "키케라",
+								"grade": 2,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "103",
+								"type": 1,
+								"name": "알비온",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "104",
+								"type": 2,
+								"name": "포튼쿨 열매",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_7_134.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "105",
+								"type": 2,
+								"name": "피냐타 제작 세트",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_7_135.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "106",
+								"type": 2,
+								"name": "무지개 티카티카 꽃",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_7_136.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "107",
+								"type": 2,
+								"name": "오레하의 수석",
+								"grade": 4,
+								"icon": "efui_iconatlas/use/use_7_137.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "110",
+								"type": 3,
+								"name": "부드러운 주머니",
+								"grade": 3,
+								"icon": "efui_iconatlas/lifelevel/lifelevel_01_235.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "111",
+								"type": 3,
+								"name": "빛나는 백금 주머니",
+								"grade": 3,
+								"icon": "efui_iconatlas/lifelevel/lifelevel_01_251.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "109",
+								"type": 3,
+								"name": "신비한 녹색 주머니",
+								"grade": 3,
+								"icon": "efui_iconatlas/lifelevel/lifelevel_01_249.png",
+								"default": true,
+								"hidden": false
+							},
+							{
+								"id": "108",
+								"type": 3,
+								"name": "멧돼지 생고기",
+								"grade": 2,
+								"icon": "efui_iconatlas/all_quest/all_quest_02_126.png",
+								"default": true,
+								"hidden": false
+							},
+							{
+								"id": "287",
+								"type": 1,
+								"name": "광기를 잃은 쿠크세이튼",
+								"grade": 4,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "265",
+								"type": 2,
+								"name": "전설 호감도",
+								"grade": 4,
+								"icon": "efui_iconatlas/shop_icon/shop_icon_17.png",
+								"default": false,
+								"hidden": true
+							}
+						]
+					},
+					{
+						"id": "15",
+						"name": "베른 남부",
+						"npcName": "에반",
+						"group": 1,
+						"items": [
+							{
+								"id": "115",
+								"type": 1,
+								"name": "제레온",
+								"grade": 2,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "114",
+								"type": 1,
+								"name": "루기네",
+								"grade": 2,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "125",
+								"type": 3,
+								"name": "집중 룬",
+								"grade": 4,
+								"icon": "efui_iconatlas/use/use_7_200.png",
+								"default": true,
+								"hidden": false
+							},
+							{
+								"id": "124",
+								"type": 3,
+								"name": "보석 장식 주머니",
+								"grade": 3,
+								"icon": "efui_iconatlas/lifelevel/lifelevel_01_248.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "123",
+								"type": 3,
+								"name": "신기한 마법 주머니",
+								"grade": 3,
+								"icon": "efui_iconatlas/lifelevel/lifelevel_01_238.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "122",
+								"type": 3,
+								"name": "질긴 가죽 주머니",
+								"grade": 3,
+								"icon": "efui_iconatlas/lifelevel/lifelevel_01_246.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "121",
+								"type": 2,
+								"name": "사령술사의 기록",
+								"grade": 4,
+								"icon": "efui_iconatlas/use/use_9_212.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "120",
+								"type": 2,
+								"name": "모형 반딧불이",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_9_211.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "119",
+								"type": 2,
+								"name": "깃털 부채",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_9_210.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "118",
+								"type": 2,
+								"name": "페브리 포션",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_9_209.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "117",
+								"type": 1,
+								"name": "천둥날개",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "116",
+								"type": 1,
+								"name": "베른 젠로드",
+								"grade": 2,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "267",
+								"type": 2,
+								"name": "전설 호감도",
+								"grade": 4,
+								"icon": "efui_iconatlas/shop_icon/shop_icon_17.png",
+								"default": false,
+								"hidden": true
+							},
+							{
+								"id": "266",
+								"type": 2,
+								"name": "영웅 호감도",
+								"grade": 3,
+								"icon": "efui_iconatlas/shop_icon/shop_icon_17.png",
+								"default": false,
+								"hidden": true
+							},
+							{
+								"id": "112",
+								"type": 1,
+								"name": "사트라",
+								"grade": 1,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "113",
+								"type": 1,
+								"name": "킬리언",
+								"grade": 1,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							}
+						]
+					},
+					{
+						"id": "16",
+						"name": "로웬",
+						"npcName": "세라한",
+						"group": 1,
+						"items": [
+							{
+								"id": "141",
+								"type": 2,
+								"name": "최상급 육포",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_10_109.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "140",
+								"type": 2,
+								"name": "엔야카 향유",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_10_108.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "138",
+								"type": 1,
+								"name": "다르시",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "139",
+								"type": 2,
+								"name": "늑대 이빨 목걸이",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_10_107.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "137",
+								"type": 1,
+								"name": "오스피어",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "136",
+								"type": 1,
+								"name": "뮨 히다카",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "135",
+								"type": 1,
+								"name": "마리나",
+								"grade": 2,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "134",
+								"type": 1,
+								"name": "하눈",
+								"grade": 2,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "133",
+								"type": 1,
+								"name": "빌헬름",
+								"grade": 2,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "132",
+								"type": 1,
+								"name": "피엘라",
+								"grade": 2,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "131",
+								"type": 1,
+								"name": "앙케",
+								"grade": 2,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "130",
+								"type": 1,
+								"name": "사일러스",
+								"grade": 2,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "269",
+								"type": 2,
+								"name": "전설 호감도",
+								"grade": 4,
+								"icon": "efui_iconatlas/shop_icon/shop_icon_17.png",
+								"default": false,
+								"hidden": true
+							},
+							{
+								"id": "268",
+								"type": 2,
+								"name": "영웅 호감도",
+								"grade": 3,
+								"icon": "efui_iconatlas/shop_icon/shop_icon_17.png",
+								"default": false,
+								"hidden": true
+							},
+							{
+								"id": "129",
+								"type": 1,
+								"name": "바스키아",
+								"grade": 2,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "128",
+								"type": 1,
+								"name": "아르노",
+								"grade": 2,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "127",
+								"type": 1,
+								"name": "레퓌스",
+								"grade": 1,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "126",
+								"type": 1,
+								"name": "로웬 젠로드",
+								"grade": 1,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "142",
+								"type": 2,
+								"name": "보온용 귀도리",
+								"grade": 4,
+								"icon": "efui_iconatlas/use/use_10_110.png",
+								"default": false,
+								"hidden": false
+							}
+						]
+					},
+					{
+						"id": "17",
+						"name": "엘가시아",
+						"npcName": "플라노스",
+						"group": 1,
+						"items": [
+							{
+								"id": "288",
+								"type": 1,
+								"name": "베아트리스",
+								"grade": 4,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "143",
+								"type": 1,
+								"name": "코니",
+								"grade": 0,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "144",
+								"type": 1,
+								"name": "티엔",
+								"grade": 1,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "145",
+								"type": 1,
+								"name": "키르케",
+								"grade": 1,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "146",
+								"type": 1,
+								"name": "유클리드",
+								"grade": 1,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "147",
+								"type": 1,
+								"name": "프리우나",
+								"grade": 1,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "148",
+								"type": 1,
+								"name": "하늘 고래",
+								"grade": 1,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "149",
+								"type": 1,
+								"name": "별자리 큰뱀",
+								"grade": 1,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "150",
+								"type": 1,
+								"name": "아자키엘",
+								"grade": 2,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "151",
+								"type": 1,
+								"name": "벨루마테",
+								"grade": 2,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "152",
+								"type": 1,
+								"name": "다이나웨일",
+								"grade": 2,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "153",
+								"type": 1,
+								"name": "디오게네스",
+								"grade": 2,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "154",
+								"type": 1,
+								"name": "라우리엘",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "155",
+								"type": 1,
+								"name": "영원의 아크 카양겔",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "156",
+								"type": 1,
+								"name": "에버그레이스",
+								"grade": 4,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "157",
+								"type": 2,
+								"name": "빛을 머금은 과실주",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_10_158.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "158",
+								"type": 2,
+								"name": "별자리 큰뱀의 껍질",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_10_159.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "159",
+								"type": 2,
+								"name": "크레도프 유리경",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_10_160.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "160",
+								"type": 2,
+								"name": "행운의 초롱별 꽃",
+								"grade": 4,
+								"icon": "efui_iconatlas/use/use_10_161.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "161",
+								"type": 3,
+								"name": "향기 나는 주머니",
+								"grade": 3,
+								"icon": "efui_iconatlas/lifelevel/lifelevel_01_240.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "162",
+								"type": 3,
+								"name": "반짝이는 주머니",
+								"grade": 3,
+								"icon": "efui_iconatlas/lifelevel/lifelevel_01_243.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "270",
+								"type": 2,
+								"name": "영웅 호감도",
+								"grade": 3,
+								"icon": "efui_iconatlas/shop_icon/shop_icon_17.png",
+								"default": false,
+								"hidden": true
+							},
+							{
+								"id": "271",
+								"type": 2,
+								"name": "전설 호감도",
+								"grade": 4,
+								"icon": "efui_iconatlas/shop_icon/shop_icon_17.png",
+								"default": false,
+								"hidden": true
+							}
+						]
+					},
+					{
+						"id": "18",
+						"name": "플레체",
+						"npcName": "페드로",
+						"group": 2,
+						"items": [
+							{
+								"id": "165",
+								"type": 1,
+								"name": "안토니오 주교",
+								"grade": 2,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "173",
+								"type": 3,
+								"name": "미술품 캐리어",
+								"grade": 4,
+								"icon": "efui_iconatlas/use/use_11_63.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "167",
+								"type": 1,
+								"name": "클라우디아",
+								"grade": 2,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "273",
+								"type": 2,
+								"name": "전설 호감도",
+								"grade": 4,
+								"icon": "efui_iconatlas/shop_icon/shop_icon_17.png",
+								"default": false,
+								"hidden": true
+							},
+							{
+								"id": "272",
+								"type": 2,
+								"name": "영웅 호감도",
+								"grade": 3,
+								"icon": "efui_iconatlas/shop_icon/shop_icon_17.png",
+								"default": false,
+								"hidden": true
+							},
+							{
+								"id": "163",
+								"type": 1,
+								"name": "자크라",
+								"grade": 2,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "164",
+								"type": 1,
+								"name": "로잘린 베디체",
+								"grade": 2,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "170",
+								"type": 2,
+								"name": "정체불명의 입",
+								"grade": 3,
+								"icon": "efui_iconatlas/all_quest/all_quest_02_21.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "171",
+								"type": 2,
+								"name": "컬러풀 집게 장난감",
+								"grade": 3,
+								"icon": "efui_iconatlas/all_quest/all_quest_02_17.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "172",
+								"type": 2,
+								"name": "불과 얼음의 축제",
+								"grade": 4,
+								"icon": "efui_iconatlas/all_quest/all_quest_01_85.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "168",
+								"type": 1,
+								"name": "어린 아만",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "169",
+								"type": 2,
+								"name": "교육용 해도",
+								"grade": 3,
+								"icon": "efui_iconatlas/all_quest/all_quest_01_51.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "166",
+								"type": 1,
+								"name": "알폰스 베디체",
+								"grade": 2,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							}
+						]
+					},
+					{
+						"id": "19",
+						"name": "볼다이크",
+						"npcName": "구디스",
+						"group": 3,
+						"items": [
+							{
+								"id": "181",
+								"type": 1,
+								"name": "라자람",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "180",
+								"type": 1,
+								"name": "베히모스",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "179",
+								"type": 1,
+								"name": "칼리나리 네리아",
+								"grade": 2,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "178",
+								"type": 1,
+								"name": "마레가",
+								"grade": 2,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "177",
+								"type": 1,
+								"name": "아이작",
+								"grade": 2,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "176",
+								"type": 1,
+								"name": "마리우",
+								"grade": 2,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "175",
+								"type": 1,
+								"name": "닐라이",
+								"grade": 1,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "174",
+								"type": 1,
+								"name": "베라드",
+								"grade": 1,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "275",
+								"type": 2,
+								"name": "전설 호감도",
+								"grade": 4,
+								"icon": "efui_iconatlas/shop_icon/shop_icon_17.png",
+								"default": false,
+								"hidden": true
+							},
+							{
+								"id": "274",
+								"type": 2,
+								"name": "영웅 호감도",
+								"grade": 3,
+								"icon": "efui_iconatlas/shop_icon/shop_icon_17.png",
+								"default": false,
+								"hidden": true
+							},
+							{
+								"id": "195",
+								"type": 3,
+								"name": "무지개 정수",
+								"grade": 3,
+								"icon": "efui_iconatlas/lifelevel/lifelevel_02_8.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "194",
+								"type": 3,
+								"name": "무지개 미끼",
+								"grade": 1,
+								"icon": "efui_iconatlas/all_quest/all_quest_05_47.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "193",
+								"type": 3,
+								"name": "마력이 스민 주머니",
+								"grade": 3,
+								"icon": "efui_iconatlas/lifelevel/lifelevel_01_253.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "192",
+								"type": 3,
+								"name": "안정된 연성 촉매",
+								"grade": 2,
+								"icon": "efui_iconatlas/use/use_11_150.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "191",
+								"type": 3,
+								"name": "오징어",
+								"grade": 4,
+								"icon": "efui_iconatlas/use/use_11_127.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "190",
+								"type": 2,
+								"name": "볼다이칸 스톤",
+								"grade": 4,
+								"icon": "efui_iconatlas/use/use_11_135.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "189",
+								"type": 2,
+								"name": "속삭이는 휘스피",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_11_136.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "188",
+								"type": 2,
+								"name": "쿠리구리 물약",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_11_137.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "187",
+								"type": 2,
+								"name": "정체불명의 꼬리",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_11_138.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "186",
+								"type": 1,
+								"name": "바르칸",
+								"grade": 4,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "185",
+								"type": 1,
+								"name": "세헤라데",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "184",
+								"type": 1,
+								"name": "파이어혼",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "183",
+								"type": 1,
+								"name": "칼테이야",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "182",
+								"type": 1,
+								"name": "라카이서스",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							}
+						]
+					},
+					{
+						"id": "20",
+						"name": "쿠르잔 남부",
+						"npcName": "도니아",
+						"group": 2,
+						"items": [
+							{
+								"id": "198",
+								"type": 1,
+								"name": "프타",
+								"grade": 1,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "197",
+								"type": 1,
+								"name": "네페르",
+								"grade": 1,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "196",
+								"type": 1,
+								"name": "게메트",
+								"grade": 1,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "276",
+								"type": 2,
+								"name": "영웅 호감도",
+								"grade": 3,
+								"icon": "efui_iconatlas/shop_icon/shop_icon_17.png",
+								"default": false,
+								"hidden": true
+							},
+							{
+								"id": "277",
+								"type": 2,
+								"name": "전설 호감도",
+								"grade": 4,
+								"icon": "efui_iconatlas/shop_icon/shop_icon_17.png",
+								"default": false,
+								"hidden": true
+							},
+							{
+								"id": "210",
+								"type": 3,
+								"name": "줄기로 엮은 티아라",
+								"grade": 2,
+								"icon": "efui_iconatlas/lifelevel/lifelevel_02_21.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "209",
+								"type": 3,
+								"name": "구릿빛 반지",
+								"grade": 2,
+								"icon": "efui_iconatlas/lifelevel/lifelevel_02_23.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "208",
+								"type": 3,
+								"name": "거무스름한 주머니",
+								"grade": 3,
+								"icon": "efui_iconatlas/lifelevel/lifelevel_02_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "207",
+								"type": 3,
+								"name": "군용 보급 정화제",
+								"grade": 4,
+								"icon": "efui_iconatlas/use/use_1_175.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "206",
+								"type": 3,
+								"name": "고급 정화제",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_1_175.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "205",
+								"type": 3,
+								"name": "간이 정화제",
+								"grade": 2,
+								"icon": "efui_iconatlas/use/use_1_175.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "204",
+								"type": 2,
+								"name": "시들지 않는 불꽃",
+								"grade": 4,
+								"icon": "efui_iconatlas/use/use_12_2.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "203",
+								"type": 2,
+								"name": "흑요석 거울",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_12_5.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "202",
+								"type": 2,
+								"name": "투케투스 고래 기름",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_12_4.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "201",
+								"type": 2,
+								"name": "유황 버섯 납작구이",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_12_3.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "200",
+								"type": 1,
+								"name": "다르키엘",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "199",
+								"type": 1,
+								"name": "까미",
+								"grade": 1,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							}
+						]
+					},
+					{
+						"id": "21",
+						"name": "쿠르잔 북부",
+						"npcName": "콜빈",
+						"group": 1,
+						"items": [
+							{
+								"id": "214",
+								"type": 1,
+								"name": "렌",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "216",
+								"type": 2,
+								"name": "아사르 가면",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_12_125.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "217",
+								"type": 2,
+								"name": "전투 식량",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_12_123.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "218",
+								"type": 2,
+								"name": "부서진 토우",
+								"grade": 4,
+								"icon": "efui_iconatlas/use/use_12_126.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "219",
+								"type": 3,
+								"name": "수상한 지도",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_12_168.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "220",
+								"type": 3,
+								"name": "검은 미끼 주머니",
+								"grade": 3,
+								"icon": "efui_iconatlas/lifelevel/lifelevel_02_38.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "221",
+								"type": 3,
+								"name": "조각난 금속 파편",
+								"grade": 2,
+								"icon": "efui_iconatlas/lifelevel/lifelevel_02_44.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "212",
+								"type": 1,
+								"name": "알키오네",
+								"grade": 1,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "211",
+								"type": 1,
+								"name": "아그리스",
+								"grade": 1,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "278",
+								"type": 2,
+								"name": "영웅 호감도",
+								"grade": 3,
+								"icon": "efui_iconatlas/shop_icon/shop_icon_17.png",
+								"default": false,
+								"hidden": true
+							},
+							{
+								"id": "279",
+								"type": 2,
+								"name": "전설 호감도",
+								"grade": 4,
+								"icon": "efui_iconatlas/shop_icon/shop_icon_17.png",
+								"default": false,
+								"hidden": true
+							},
+							{
+								"id": "213",
+								"type": 1,
+								"name": "타무트",
+								"grade": 2,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "215",
+								"type": 2,
+								"name": "둥근 뿌리 차",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_12_124.png",
+								"default": false,
+								"hidden": false
+							}
+						]
+					},
+					{
+						"id": "22",
+						"name": "림레이크 남섬",
+						"npcName": "재마",
+						"group": 1,
+						"items": [
+							{
+								"id": "233",
+								"type": 3,
+								"name": "왠지 가벼운 빛바랜 황금 사과",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_13_10.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "232",
+								"type": 3,
+								"name": "빛바랜 황금 사과",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_13_10.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "231",
+								"type": 3,
+								"name": "밀가루",
+								"grade": 2,
+								"icon": "efui_iconatlas/lifelevel/lifelevel_02_79.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "230",
+								"type": 2,
+								"name": "유리 나비",
+								"grade": 4,
+								"icon": "efui_iconatlas/use/use_12_233.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "229",
+								"type": 2,
+								"name": "환영 잉크",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_12_236.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "228",
+								"type": 2,
+								"name": "날씨 상자",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_12_235.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "227",
+								"type": 2,
+								"name": "기묘한 주전자",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_12_234.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "223",
+								"type": 1,
+								"name": "린",
+								"grade": 2,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "222",
+								"type": 1,
+								"name": "긴",
+								"grade": 2,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "280",
+								"type": 2,
+								"name": "영웅 호감도",
+								"grade": 3,
+								"icon": "efui_iconatlas/shop_icon/shop_icon_17.png",
+								"default": false,
+								"hidden": true
+							},
+							{
+								"id": "281",
+								"type": 2,
+								"name": "전설 호감도",
+								"grade": 4,
+								"icon": "efui_iconatlas/shop_icon/shop_icon_17.png",
+								"default": false,
+								"hidden": true
+							},
+							{
+								"id": "226",
+								"type": 1,
+								"name": "헤아누",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "225",
+								"type": 1,
+								"name": "란게",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "224",
+								"type": 1,
+								"name": "타라코룸",
+								"grade": 2,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "237",
+								"type": 1,
+								"name": "파후",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "236",
+								"type": 1,
+								"name": "유즈",
+								"grade": 3,
+								"icon": "efui_iconatlas/use/use_2_13.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "235",
+								"type": 3,
+								"name": "불그스럼 주머니",
+								"grade": 3,
+								"icon": "efui_iconatlas/lifelevel/lifelevel_02_92.png",
+								"default": false,
+								"hidden": false
+							},
+							{
+								"id": "234",
+								"type": 3,
+								"name": "비법의 주머니",
+								"grade": 3,
+								"icon": "efui_iconatlas/lifelevel/lifelevel_02_87.png",
+								"default": false,
+								"hidden": false
+							}
+						]
+					}
+				]
+			}
+		},
+		"initialDataUpdatedAt": 1764683562364,
+		"data": [
+			{
+				"id": "1",
+				"name": "시이라",
+				"grade": 1,
+				"type": 1,
+				"regionId": "1",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.5137420718816068,
+				"total": 6666,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "2",
+				"name": "바루투",
+				"grade": 2,
+				"type": 1,
+				"regionId": "1",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.4883720930232558,
+				"total": 6691,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "3",
+				"name": "레온하트 네리아",
+				"grade": 2,
+				"type": 1,
+				"regionId": "1",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.4693446088794926,
+				"total": 6613,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "4",
+				"name": "카마인",
+				"grade": 4,
+				"type": 1,
+				"regionId": "1",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.10570824524312897,
+				"total": 1168,
+				"averageIntervalInDays": 4.88
+			},
+			{
+				"id": "5",
+				"name": "더욱 화려한 꽃다발",
+				"grade": 3,
+				"type": 2,
+				"regionId": "1",
+				"icon": "efui_iconatlas/all_quest/all_quest_03_133.png",
+				"rateWithin30Days": 0.572938689217759,
+				"total": 2195,
+				"averageIntervalInDays": 0.8
+			},
+			{
+				"id": "6",
+				"name": "레온하트 감자",
+				"grade": 3,
+				"type": 2,
+				"regionId": "1",
+				"icon": "efui_iconatlas/all_quest/all_quest_01_108.png",
+				"rateWithin30Days": 0.6109936575052855,
+				"total": 2202,
+				"averageIntervalInDays": 0.8
+			},
+			{
+				"id": "7",
+				"name": "아르테미스 성수",
+				"grade": 3,
+				"type": 2,
+				"regionId": "1",
+				"icon": "efui_iconatlas/all_quest/all_quest_01_23.png",
+				"rateWithin30Days": 0.6046511627906976,
+				"total": 2182,
+				"averageIntervalInDays": 0.88
+			},
+			{
+				"id": "8",
+				"name": "두근두근 상자",
+				"grade": 4,
+				"type": 2,
+				"regionId": "1",
+				"icon": "efui_iconatlas/all_quest/all_quest_02_230.png",
+				"rateWithin30Days": 0.20930232558139537,
+				"total": 703,
+				"averageIntervalInDays": 2.64
+			},
+			{
+				"id": "9",
+				"name": "모리나",
+				"grade": 1,
+				"type": 1,
+				"regionId": "2",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.5166666666666667,
+				"total": 6638,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "10",
+				"name": "자이언트 웜",
+				"grade": 1,
+				"type": 1,
+				"regionId": "2",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.5083333333333333,
+				"total": 6661,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "11",
+				"name": "천둥",
+				"grade": 2,
+				"type": 1,
+				"regionId": "2",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.5020833333333333,
+				"total": 6664,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "12",
+				"name": "유디아 천연소금",
+				"grade": 3,
+				"type": 2,
+				"regionId": "2",
+				"icon": "efui_iconatlas/all_quest/all_quest_01_64.png",
+				"rateWithin30Days": 0.89375,
+				"total": 3283,
+				"averageIntervalInDays": 0.56
+			},
+			{
+				"id": "13",
+				"name": "유디아 주술서",
+				"grade": 3,
+				"type": 2,
+				"regionId": "2",
+				"icon": "efui_iconatlas/use/use_8_39.png",
+				"rateWithin30Days": 0.9145833333333333,
+				"total": 3299,
+				"averageIntervalInDays": 0.56
+			},
+			{
+				"id": "14",
+				"name": "하늘을 비추는 기름",
+				"grade": 4,
+				"type": 2,
+				"regionId": "2",
+				"icon": "efui_iconatlas/all_quest/all_quest_01_117.png",
+				"rateWithin30Days": 0.18541666666666668,
+				"total": 677,
+				"averageIntervalInDays": 2.72
+			},
+			{
+				"id": "15",
+				"name": "카도건",
+				"grade": 1,
+				"type": 1,
+				"regionId": "3",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.4895833333333333,
+				"total": 6704,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "16",
+				"name": "베르하트",
+				"grade": 1,
+				"type": 1,
+				"regionId": "3",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.54375,
+				"total": 6667,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "17",
+				"name": "하셀링크",
+				"grade": 2,
+				"type": 1,
+				"regionId": "3",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.51875,
+				"total": 6849,
+				"averageIntervalInDays": 0.96
+			},
+			{
+				"id": "18",
+				"name": "레이크바 토마토 주스",
+				"grade": 3,
+				"type": 2,
+				"regionId": "3",
+				"icon": "efui_iconatlas/use/use_1_224.png",
+				"rateWithin30Days": 0.6479166666666667,
+				"total": 2228,
+				"averageIntervalInDays": 0.8
+			},
+			{
+				"id": "19",
+				"name": "견고한 새장",
+				"grade": 3,
+				"type": 2,
+				"regionId": "3",
+				"icon": "efui_iconatlas/all_quest/all_quest_02_46.png",
+				"rateWithin30Days": 0.5916666666666667,
+				"total": 2226,
+				"averageIntervalInDays": 0.8
+			},
+			{
+				"id": "20",
+				"name": "흑장미",
+				"grade": 3,
+				"type": 2,
+				"regionId": "3",
+				"icon": "efui_iconatlas/all_quest/all_quest_02_95.png",
+				"rateWithin30Days": 0.5916666666666667,
+				"total": 2215,
+				"averageIntervalInDays": 0.8
+			},
+			{
+				"id": "21",
+				"name": "사슬전쟁 실록",
+				"grade": 4,
+				"type": 2,
+				"regionId": "3",
+				"icon": "efui_iconatlas/all_quest/all_quest_01_155.png",
+				"rateWithin30Days": 0.16666666666666667,
+				"total": 680,
+				"averageIntervalInDays": 2.72
+			},
+			{
+				"id": "23",
+				"name": "모르페오",
+				"grade": 1,
+				"type": 1,
+				"regionId": "4",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.4885654885654886,
+				"total": 6681,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "24",
+				"name": "푸름 전사 브리뉴",
+				"grade": 1,
+				"type": 1,
+				"regionId": "4",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.5031185031185032,
+				"total": 6720,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "25",
+				"name": "미한",
+				"grade": 2,
+				"type": 1,
+				"regionId": "4",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.4968814968814969,
+				"total": 6676,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "26",
+				"name": "데런 아만",
+				"grade": 4,
+				"type": 1,
+				"regionId": "4",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.09563409563409564,
+				"total": 1265,
+				"averageIntervalInDays": 5.36
+			},
+			{
+				"id": "27",
+				"name": "디오리카 밀짚모자",
+				"grade": 3,
+				"type": 2,
+				"regionId": "4",
+				"icon": "efui_iconatlas/all_quest/all_quest_01_183.png",
+				"rateWithin30Days": 0.5758835758835759,
+				"total": 2199,
+				"averageIntervalInDays": 0.8
+			},
+			{
+				"id": "28",
+				"name": "루테란의 검 모형",
+				"grade": 3,
+				"type": 2,
+				"regionId": "4",
+				"icon": "efui_iconatlas/all_quest/all_quest_01_161.png",
+				"rateWithin30Days": 0.6340956340956341,
+				"total": 2201,
+				"averageIntervalInDays": 0.8
+			},
+			{
+				"id": "29",
+				"name": "아제나포리움 브로치",
+				"grade": 3,
+				"type": 2,
+				"regionId": "4",
+				"icon": "efui_iconatlas/all_quest/all_quest_01_57.png",
+				"rateWithin30Days": 0.5925155925155925,
+				"total": 2210,
+				"averageIntervalInDays": 0.8
+			},
+			{
+				"id": "30",
+				"name": "사슬전쟁 실록",
+				"grade": 4,
+				"type": 2,
+				"regionId": "4",
+				"icon": "efui_iconatlas/all_quest/all_quest_01_155.png",
+				"rateWithin30Days": 0.19750519750519753,
+				"total": 654,
+				"averageIntervalInDays": 2.8
+			},
+			{
+				"id": "32",
+				"name": "집행관 솔라스",
+				"grade": 1,
+				"type": 1,
+				"regionId": "5",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.49166666666666666,
+				"total": 2469,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "33",
+				"name": "녹스",
+				"grade": 2,
+				"type": 1,
+				"regionId": "5",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.5291666666666667,
+				"total": 6835,
+				"averageIntervalInDays": 0.96
+			},
+			{
+				"id": "34",
+				"name": "세리아",
+				"grade": 2,
+				"type": 1,
+				"regionId": "5",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.475,
+				"total": 6588,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "35",
+				"name": "디오리카 밀짚모자",
+				"grade": 3,
+				"type": 2,
+				"regionId": "5",
+				"icon": "efui_iconatlas/all_quest/all_quest_01_183.png",
+				"rateWithin30Days": 0.5791666666666667,
+				"total": 2221,
+				"averageIntervalInDays": 0.8
+			},
+			{
+				"id": "36",
+				"name": "루테란의 검 모형",
+				"grade": 3,
+				"type": 2,
+				"regionId": "5",
+				"icon": "efui_iconatlas/all_quest/all_quest_01_161.png",
+				"rateWithin30Days": 0.6416666666666667,
+				"total": 2200,
+				"averageIntervalInDays": 0.8
+			},
+			{
+				"id": "37",
+				"name": "아제나포리움 브로치",
+				"grade": 3,
+				"type": 2,
+				"regionId": "5",
+				"icon": "efui_iconatlas/all_quest/all_quest_01_57.png",
+				"rateWithin30Days": 0.5791666666666667,
+				"total": 2228,
+				"averageIntervalInDays": 0.8
+			},
+			{
+				"id": "38",
+				"name": "사슬전쟁 실록",
+				"grade": 4,
+				"type": 2,
+				"regionId": "5",
+				"icon": "efui_iconatlas/all_quest/all_quest_01_155.png",
+				"rateWithin30Days": 0.2,
+				"total": 694,
+				"averageIntervalInDays": 2.64
+			},
+			{
+				"id": "40",
+				"name": "창조의 알",
+				"grade": 1,
+				"type": 1,
+				"regionId": "6",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.49166666666666666,
+				"total": 6690,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "41",
+				"name": "수호자 에오로",
+				"grade": 2,
+				"type": 1,
+				"regionId": "6",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.5083333333333333,
+				"total": 6745,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "42",
+				"name": "모카모카",
+				"grade": 3,
+				"type": 1,
+				"regionId": "6",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.23125,
+				"total": 3307,
+				"averageIntervalInDays": 2.08
+			},
+			{
+				"id": "43",
+				"name": "동글동글한 유리조각",
+				"grade": 3,
+				"type": 2,
+				"regionId": "6",
+				"icon": "efui_iconatlas/use/use_3_129.png",
+				"rateWithin30Days": 0.6166666666666667,
+				"total": 2206,
+				"averageIntervalInDays": 0.8
+			},
+			{
+				"id": "44",
+				"name": "모코코 당근",
+				"grade": 3,
+				"type": 2,
+				"regionId": "6",
+				"icon": "efui_iconatlas/all_quest/all_quest_01_172.png",
+				"rateWithin30Days": 0.6,
+				"total": 2246,
+				"averageIntervalInDays": 0.8
+			},
+			{
+				"id": "45",
+				"name": "특대 무당벌레 인형",
+				"grade": 3,
+				"type": 2,
+				"regionId": "6",
+				"icon": "efui_iconatlas/all_quest/all_quest_03_113.png",
+				"rateWithin30Days": 0.63125,
+				"total": 2260,
+				"averageIntervalInDays": 0.8
+			},
+			{
+				"id": "46",
+				"name": "수줍은 바람꽃가루",
+				"grade": 4,
+				"type": 2,
+				"regionId": "6",
+				"icon": "efui_iconatlas/all_quest/all_quest_01_66.png",
+				"rateWithin30Days": 0.15,
+				"total": 628,
+				"averageIntervalInDays": 2.96
+			},
+			{
+				"id": "47",
+				"name": "월향도사",
+				"grade": 1,
+				"type": 1,
+				"regionId": "7",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.5197505197505198,
+				"total": 6628,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "48",
+				"name": "객주도사",
+				"grade": 1,
+				"type": 1,
+				"regionId": "7",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.48232848232848238,
+				"total": 6666,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "49",
+				"name": "수령도사",
+				"grade": 1,
+				"type": 1,
+				"regionId": "7",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.4885654885654886,
+				"total": 6684,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "50",
+				"name": "웨이",
+				"grade": 4,
+				"type": 1,
+				"regionId": "7",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.0893970893970894,
+				"total": 1287,
+				"averageIntervalInDays": 5.28
+			},
+			{
+				"id": "51",
+				"name": "비무제 참가 인장",
+				"grade": 3,
+				"type": 2,
+				"regionId": "7",
+				"icon": "efui_iconatlas/use/use_8_38.png",
+				"rateWithin30Days": 0.8253638253638254,
+				"total": 2956,
+				"averageIntervalInDays": 0.64
+			},
+			{
+				"id": "52",
+				"name": "강태공의 낚싯대",
+				"grade": 4,
+				"type": 2,
+				"regionId": "7",
+				"icon": "efui_iconatlas/lifelevel/lifelevel_01_59.png",
+				"rateWithin30Days": 0.17463617463617465,
+				"total": 678,
+				"averageIntervalInDays": 2.72
+			},
+			{
+				"id": "53",
+				"name": "아이히만 박사",
+				"grade": 2,
+				"type": 1,
+				"regionId": "8",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.5260960334029228,
+				"total": 6649,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "54",
+				"name": "슈테른 네리아",
+				"grade": 2,
+				"type": 1,
+				"regionId": "8",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.47390396659707725,
+				"total": 6792,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "55",
+				"name": "카인",
+				"grade": 3,
+				"type": 1,
+				"regionId": "8",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.2546972860125261,
+				"total": 3351,
+				"averageIntervalInDays": 2
+			},
+			{
+				"id": "56",
+				"name": "에너지 X7 캡슐",
+				"grade": 3,
+				"type": 2,
+				"regionId": "8",
+				"icon": "efui_iconatlas/use/use_8_42.png",
+				"rateWithin30Days": 0.8121085594989561,
+				"total": 2990,
+				"averageIntervalInDays": 0.64
+			},
+			{
+				"id": "57",
+				"name": "고급 축음기",
+				"grade": 4,
+				"type": 2,
+				"regionId": "8",
+				"icon": "efui_iconatlas/all_quest/all_quest_01_90.png",
+				"rateWithin30Days": 0.18997912317327768,
+				"total": 679,
+				"averageIntervalInDays": 2.72
+			},
+			{
+				"id": "59",
+				"name": "페일린",
+				"grade": 2,
+				"type": 1,
+				"regionId": "9",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.510593220338983,
+				"total": 6718,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "60",
+				"name": "기드온",
+				"grade": 2,
+				"type": 1,
+				"regionId": "9",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.4894067796610169,
+				"total": 6596,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "61",
+				"name": "라하르트",
+				"grade": 3,
+				"type": 1,
+				"regionId": "9",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.24152542372881356,
+				"total": 3321,
+				"averageIntervalInDays": 2.08
+			},
+			{
+				"id": "62",
+				"name": "기사단 가입 신청서",
+				"grade": 3,
+				"type": 2,
+				"regionId": "9",
+				"icon": "efui_iconatlas/all_quest/all_quest_01_141.png",
+				"rateWithin30Days": 0.3877118644067797,
+				"total": 1278,
+				"averageIntervalInDays": 1.44
+			},
+			{
+				"id": "63",
+				"name": "고블린 고구마",
+				"grade": 3,
+				"type": 2,
+				"regionId": "9",
+				"icon": "efui_iconatlas/all_quest/all_quest_01_105.png",
+				"rateWithin30Days": 0.3326271186440678,
+				"total": 1303,
+				"averageIntervalInDays": 1.44
+			},
+			{
+				"id": "64",
+				"name": "마법 옷감",
+				"grade": 3,
+				"type": 2,
+				"regionId": "9",
+				"icon": "efui_iconatlas/all_quest/all_quest_01_207.png",
+				"rateWithin30Days": 0.375,
+				"total": 1323,
+				"averageIntervalInDays": 1.36
+			},
+			{
+				"id": "65",
+				"name": "마력 결정",
+				"grade": 3,
+				"type": 2,
+				"regionId": "9",
+				"icon": "efui_iconatlas/all_quest/all_quest_02_71.png",
+				"rateWithin30Days": 0.3707627118644068,
+				"total": 1334,
+				"averageIntervalInDays": 1.36
+			},
+			{
+				"id": "66",
+				"name": "화려한 오르골",
+				"grade": 3,
+				"type": 2,
+				"regionId": "9",
+				"icon": "efui_iconatlas/all_quest/all_quest_01_56.png",
+				"rateWithin30Days": 0.3622881355932203,
+				"total": 1335,
+				"averageIntervalInDays": 1.36
+			},
+			{
+				"id": "67",
+				"name": "베른 건국 기념주화",
+				"grade": 4,
+				"type": 2,
+				"regionId": "9",
+				"icon": "efui_iconatlas/all_quest/all_quest_01_253.png",
+				"rateWithin30Days": 0.1716101694915254,
+				"total": 687,
+				"averageIntervalInDays": 2.72
+			},
+			{
+				"id": "68",
+				"name": "위대한 미술품 #2",
+				"grade": 3,
+				"type": 3,
+				"regionId": "9",
+				"icon": "efui_iconatlas/tokenitem/tokenitem_2.png",
+				"rateWithin30Days": 0.5127118644067796,
+				"total": 3928,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "69",
+				"name": "자베른",
+				"grade": 1,
+				"type": 1,
+				"regionId": "10",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.5365344467640919,
+				"total": 6652,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "70",
+				"name": "시안",
+				"grade": 2,
+				"type": 1,
+				"regionId": "10",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.46346555323590818,
+				"total": 6639,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "71",
+				"name": "진 매드닉",
+				"grade": 3,
+				"type": 1,
+				"regionId": "10",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.24008350730688936,
+				"total": 3297,
+				"averageIntervalInDays": 2.08
+			},
+			{
+				"id": "72",
+				"name": "빛나는 정수",
+				"grade": 3,
+				"type": 2,
+				"regionId": "10",
+				"icon": "efui_iconatlas/use/use_8_41.png",
+				"rateWithin30Days": 0.7807933194154488,
+				"total": 2888,
+				"averageIntervalInDays": 0.64
+			},
+			{
+				"id": "73",
+				"name": "시리우스의 성서",
+				"grade": 4,
+				"type": 2,
+				"regionId": "10",
+				"icon": "efui_iconatlas/all_quest/all_quest_03_4.png",
+				"rateWithin30Days": 0.21920668058455115,
+				"total": 737,
+				"averageIntervalInDays": 2.48
+			},
+			{
+				"id": "75",
+				"name": "알리페르",
+				"grade": 2,
+				"type": 1,
+				"regionId": "11",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.4665271966527197,
+				"total": 6715,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "76",
+				"name": "엘레노아",
+				"grade": 2,
+				"type": 1,
+				"regionId": "11",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.5313807531380753,
+				"total": 6746,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "77",
+				"name": "그노시스",
+				"grade": 3,
+				"type": 1,
+				"regionId": "11",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.25732217573221757,
+				"total": 3388,
+				"averageIntervalInDays": 2
+			},
+			{
+				"id": "78",
+				"name": "아제나&이난나",
+				"grade": 4,
+				"type": 1,
+				"regionId": "11",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.08158995815899582,
+				"total": 1113,
+				"averageIntervalInDays": 5.12
+			},
+			{
+				"id": "79",
+				"name": "새벽의 마력석",
+				"grade": 3,
+				"type": 2,
+				"regionId": "11",
+				"icon": "efui_iconatlas/use/use_6_10.png",
+				"rateWithin30Days": 0.6317991631799164,
+				"total": 2274,
+				"averageIntervalInDays": 0.8
+			},
+			{
+				"id": "80",
+				"name": "정령의 깃털",
+				"grade": 3,
+				"type": 2,
+				"regionId": "11",
+				"icon": "efui_iconatlas/use/use_6_11.png",
+				"rateWithin30Days": 0.6171548117154811,
+				"total": 2212,
+				"averageIntervalInDays": 0.8
+			},
+			{
+				"id": "81",
+				"name": "다뉴브의 귀걸이",
+				"grade": 3,
+				"type": 2,
+				"regionId": "11",
+				"icon": "efui_iconatlas/use/use_7_132.png",
+				"rateWithin30Days": 0.5857740585774058,
+				"total": 2188,
+				"averageIntervalInDays": 0.88
+			},
+			{
+				"id": "82",
+				"name": "실린여왕의 축복",
+				"grade": 4,
+				"type": 2,
+				"regionId": "11",
+				"icon": "efui_iconatlas/use/use_7_133.png",
+				"rateWithin30Days": 0.16527196652719665,
+				"total": 664,
+				"averageIntervalInDays": 2.8
+			},
+			{
+				"id": "84",
+				"name": "피에르",
+				"grade": 2,
+				"type": 1,
+				"regionId": "12",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.4682203389830508,
+				"total": 6644,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "85",
+				"name": "위대한 성 네리아",
+				"grade": 2,
+				"type": 1,
+				"regionId": "12",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.5317796610169492,
+				"total": 6675,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "86",
+				"name": "케이사르",
+				"grade": 3,
+				"type": 1,
+				"regionId": "12",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.2754237288135593,
+				"total": 3315,
+				"averageIntervalInDays": 2.08
+			},
+			{
+				"id": "87",
+				"name": "바훈투르",
+				"grade": 4,
+				"type": 1,
+				"regionId": "12",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.07838983050847458,
+				"total": 1243,
+				"averageIntervalInDays": 5.52
+			},
+			{
+				"id": "88",
+				"name": "피에르의 비법서",
+				"grade": 3,
+				"type": 2,
+				"regionId": "12",
+				"icon": "efui_iconatlas/use/use_8_44.png",
+				"rateWithin30Days": 0.8305084745762712,
+				"total": 2985,
+				"averageIntervalInDays": 0.64
+			},
+			{
+				"id": "89",
+				"name": "파후투르 맥주",
+				"grade": 4,
+				"type": 2,
+				"regionId": "12",
+				"icon": "efui_iconatlas/use/use_6_84.png",
+				"rateWithin30Days": 0.1716101694915254,
+				"total": 652,
+				"averageIntervalInDays": 2.8
+			},
+			{
+				"id": "91",
+				"name": "굴딩",
+				"grade": 2,
+				"type": 1,
+				"regionId": "13",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.48434237995824638,
+				"total": 6641,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "92",
+				"name": "비올레",
+				"grade": 2,
+				"type": 1,
+				"regionId": "13",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.5135699373695198,
+				"total": 6647,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "93",
+				"name": "칼도르",
+				"grade": 3,
+				"type": 1,
+				"regionId": "13",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.29018789144050108,
+				"total": 3349,
+				"averageIntervalInDays": 2
+			},
+			{
+				"id": "94",
+				"name": "페데리코",
+				"grade": 3,
+				"type": 1,
+				"regionId": "13",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.24425887265135699,
+				"total": 3321,
+				"averageIntervalInDays": 2.08
+			},
+			{
+				"id": "95",
+				"name": "부러진 단검",
+				"grade": 3,
+				"type": 2,
+				"regionId": "13",
+				"icon": "efui_iconatlas/use/use_6_228.png",
+				"rateWithin30Days": 0.6179540709812108,
+				"total": 2197,
+				"averageIntervalInDays": 0.8
+			},
+			{
+				"id": "96",
+				"name": "생존의 서",
+				"grade": 3,
+				"type": 2,
+				"regionId": "13",
+				"icon": "efui_iconatlas/use/use_6_229.png",
+				"rateWithin30Days": 0.6116910229645094,
+				"total": 2162,
+				"averageIntervalInDays": 0.88
+			},
+			{
+				"id": "97",
+				"name": "바싹 마른 목상",
+				"grade": 3,
+				"type": 2,
+				"regionId": "13",
+				"icon": "efui_iconatlas/use/use_6_230.png",
+				"rateWithin30Days": 0.592901878914405,
+				"total": 2236,
+				"averageIntervalInDays": 0.8
+			},
+			{
+				"id": "98",
+				"name": "붉은 달의 눈물",
+				"grade": 4,
+				"type": 2,
+				"regionId": "13",
+				"icon": "efui_iconatlas/use/use_6_231.png",
+				"rateWithin30Days": 0.17745302713987474,
+				"total": 652,
+				"averageIntervalInDays": 2.8
+			},
+			{
+				"id": "100",
+				"name": "세토",
+				"grade": 2,
+				"type": 1,
+				"regionId": "14",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.4553014553014553,
+				"total": 6661,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "101",
+				"name": "스텔라",
+				"grade": 2,
+				"type": 1,
+				"regionId": "14",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.5613305613305614,
+				"total": 6841,
+				"averageIntervalInDays": 0.96
+			},
+			{
+				"id": "102",
+				"name": "키케라",
+				"grade": 2,
+				"type": 1,
+				"regionId": "14",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.5051975051975052,
+				"total": 6678,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "103",
+				"name": "알비온",
+				"grade": 3,
+				"type": 1,
+				"regionId": "14",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.26195426195426199,
+				"total": 3421,
+				"averageIntervalInDays": 2
+			},
+			{
+				"id": "104",
+				"name": "포튼쿨 열매",
+				"grade": 3,
+				"type": 2,
+				"regionId": "14",
+				"icon": "efui_iconatlas/use/use_7_134.png",
+				"rateWithin30Days": 0.6029106029106029,
+				"total": 2282,
+				"averageIntervalInDays": 0.8
+			},
+			{
+				"id": "105",
+				"name": "피냐타 제작 세트",
+				"grade": 3,
+				"type": 2,
+				"regionId": "14",
+				"icon": "efui_iconatlas/use/use_7_135.png",
+				"rateWithin30Days": 0.6153846153846154,
+				"total": 2238,
+				"averageIntervalInDays": 0.8
+			},
+			{
+				"id": "106",
+				"name": "무지개 티카티카 꽃",
+				"grade": 3,
+				"type": 2,
+				"regionId": "14",
+				"icon": "efui_iconatlas/use/use_7_136.png",
+				"rateWithin30Days": 0.604989604989605,
+				"total": 2171,
+				"averageIntervalInDays": 0.88
+			},
+			{
+				"id": "107",
+				"name": "오레하의 수석",
+				"grade": 4,
+				"type": 2,
+				"regionId": "14",
+				"icon": "efui_iconatlas/use/use_7_137.png",
+				"rateWithin30Days": 0.17255717255717258,
+				"total": 656,
+				"averageIntervalInDays": 2.8
+			},
+			{
+				"id": "110",
+				"name": "부드러운 주머니",
+				"grade": 3,
+				"type": 3,
+				"regionId": "14",
+				"icon": "efui_iconatlas/lifelevel/lifelevel_01_235.png",
+				"rateWithin30Days": 0.6465696465696466,
+				"total": 8848,
+				"averageIntervalInDays": 0.8
+			},
+			{
+				"id": "111",
+				"name": "빛나는 백금 주머니",
+				"grade": 3,
+				"type": 3,
+				"regionId": "14",
+				"icon": "efui_iconatlas/lifelevel/lifelevel_01_251.png",
+				"rateWithin30Days": 0.6424116424116424,
+				"total": 8935,
+				"averageIntervalInDays": 0.8
+			},
+			{
+				"id": "112",
+				"name": "사트라",
+				"grade": 1,
+				"type": 1,
+				"regionId": "15",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.5127118644067796,
+				"total": 6684,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "113",
+				"name": "킬리언",
+				"grade": 1,
+				"type": 1,
+				"regionId": "15",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.4872881355932203,
+				"total": 6610,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "114",
+				"name": "루기네",
+				"grade": 2,
+				"type": 1,
+				"regionId": "15",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.5127118644067796,
+				"total": 6573,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "115",
+				"name": "제레온",
+				"grade": 2,
+				"type": 1,
+				"regionId": "15",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.4724576271186441,
+				"total": 6643,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "116",
+				"name": "베른 젠로드",
+				"grade": 2,
+				"type": 1,
+				"regionId": "15",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.4872881355932203,
+				"total": 6685,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "117",
+				"name": "천둥날개",
+				"grade": 3,
+				"type": 1,
+				"regionId": "15",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.2711864406779661,
+				"total": 3164,
+				"averageIntervalInDays": 2.08
+			},
+			{
+				"id": "118",
+				"name": "페브리 포션",
+				"grade": 3,
+				"type": 2,
+				"regionId": "15",
+				"icon": "efui_iconatlas/use/use_9_209.png",
+				"rateWithin30Days": 0.6080508474576272,
+				"total": 2217,
+				"averageIntervalInDays": 0.8
+			},
+			{
+				"id": "119",
+				"name": "깃털 부채",
+				"grade": 3,
+				"type": 2,
+				"regionId": "15",
+				"icon": "efui_iconatlas/use/use_9_210.png",
+				"rateWithin30Days": 0.6059322033898306,
+				"total": 2213,
+				"averageIntervalInDays": 0.8
+			},
+			{
+				"id": "120",
+				"name": "모형 반딧불이",
+				"grade": 3,
+				"type": 2,
+				"regionId": "15",
+				"icon": "efui_iconatlas/use/use_9_211.png",
+				"rateWithin30Days": 0.597457627118644,
+				"total": 2174,
+				"averageIntervalInDays": 0.88
+			},
+			{
+				"id": "121",
+				"name": "사령술사의 기록",
+				"grade": 4,
+				"type": 2,
+				"regionId": "15",
+				"icon": "efui_iconatlas/use/use_9_212.png",
+				"rateWithin30Days": 0.1864406779661017,
+				"total": 658,
+				"averageIntervalInDays": 2.8
+			},
+			{
+				"id": "122",
+				"name": "질긴 가죽 주머니",
+				"grade": 3,
+				"type": 3,
+				"regionId": "15",
+				"icon": "efui_iconatlas/lifelevel/lifelevel_01_246.png",
+				"rateWithin30Days": 0.6694915254237288,
+				"total": 8884,
+				"averageIntervalInDays": 0.8
+			},
+			{
+				"id": "123",
+				"name": "신기한 마법 주머니",
+				"grade": 3,
+				"type": 3,
+				"regionId": "15",
+				"icon": "efui_iconatlas/lifelevel/lifelevel_01_238.png",
+				"rateWithin30Days": 0.6334745762711864,
+				"total": 8811,
+				"averageIntervalInDays": 0.8
+			},
+			{
+				"id": "124",
+				"name": "보석 장식 주머니",
+				"grade": 3,
+				"type": 3,
+				"regionId": "15",
+				"icon": "efui_iconatlas/lifelevel/lifelevel_01_248.png",
+				"rateWithin30Days": 0.684322033898305,
+				"total": 8825,
+				"averageIntervalInDays": 0.8
+			},
+			{
+				"id": "126",
+				"name": "로웬 젠로드",
+				"grade": 1,
+				"type": 1,
+				"regionId": "16",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.53276955602537,
+				"total": 6615,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "127",
+				"name": "레퓌스",
+				"grade": 1,
+				"type": 1,
+				"regionId": "16",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.4608879492600423,
+				"total": 6674,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "128",
+				"name": "아르노",
+				"grade": 2,
+				"type": 1,
+				"regionId": "16",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.47357293868921776,
+				"total": 6625,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "129",
+				"name": "바스키아",
+				"grade": 2,
+				"type": 1,
+				"regionId": "16",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.492600422832981,
+				"total": 6624,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "130",
+				"name": "사일러스",
+				"grade": 2,
+				"type": 1,
+				"regionId": "16",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.49471458773784357,
+				"total": 6668,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "131",
+				"name": "앙케",
+				"grade": 2,
+				"type": 1,
+				"regionId": "16",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.5391120507399577,
+				"total": 6715,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "132",
+				"name": "피엘라",
+				"grade": 2,
+				"type": 1,
+				"regionId": "16",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.5095137420718816,
+				"total": 6580,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "133",
+				"name": "빌헬름",
+				"grade": 2,
+				"type": 1,
+				"regionId": "16",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.5052854122621564,
+				"total": 6648,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "134",
+				"name": "하눈",
+				"grade": 2,
+				"type": 1,
+				"regionId": "16",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.4883720930232558,
+				"total": 6640,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "135",
+				"name": "마리나",
+				"grade": 2,
+				"type": 1,
+				"regionId": "16",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.49471458773784357,
+				"total": 6757,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "136",
+				"name": "뮨 히다카",
+				"grade": 3,
+				"type": 1,
+				"regionId": "16",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.2346723044397463,
+				"total": 3257,
+				"averageIntervalInDays": 2.08
+			},
+			{
+				"id": "137",
+				"name": "오스피어",
+				"grade": 3,
+				"type": 1,
+				"regionId": "16",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.24735729386892178,
+				"total": 3388,
+				"averageIntervalInDays": 2
+			},
+			{
+				"id": "138",
+				"name": "다르시",
+				"grade": 3,
+				"type": 1,
+				"regionId": "16",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.25792811839323467,
+				"total": 3335,
+				"averageIntervalInDays": 2.08
+			},
+			{
+				"id": "139",
+				"name": "늑대 이빨 목걸이",
+				"grade": 3,
+				"type": 2,
+				"regionId": "16",
+				"icon": "efui_iconatlas/use/use_10_107.png",
+				"rateWithin30Days": 0.5898520084566596,
+				"total": 2197,
+				"averageIntervalInDays": 0.8
+			},
+			{
+				"id": "140",
+				"name": "엔야카 향유",
+				"grade": 3,
+				"type": 2,
+				"regionId": "16",
+				"icon": "efui_iconatlas/use/use_10_108.png",
+				"rateWithin30Days": 0.6131078224101479,
+				"total": 2205,
+				"averageIntervalInDays": 0.8
+			},
+			{
+				"id": "141",
+				"name": "최상급 육포",
+				"grade": 3,
+				"type": 2,
+				"regionId": "16",
+				"icon": "efui_iconatlas/use/use_10_109.png",
+				"rateWithin30Days": 0.6405919661733616,
+				"total": 2230,
+				"averageIntervalInDays": 0.8
+			},
+			{
+				"id": "142",
+				"name": "보온용 귀도리",
+				"grade": 4,
+				"type": 2,
+				"regionId": "16",
+				"icon": "efui_iconatlas/use/use_10_110.png",
+				"rateWithin30Days": 0.15644820295983087,
+				"total": 634,
+				"averageIntervalInDays": 2.88
+			},
+			{
+				"id": "143",
+				"name": "코니",
+				"grade": 0,
+				"type": 1,
+				"regionId": "17",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.4766949152542373,
+				"total": 6501,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "144",
+				"name": "티엔",
+				"grade": 1,
+				"type": 1,
+				"regionId": "17",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.527542372881356,
+				"total": 6505,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "145",
+				"name": "키르케",
+				"grade": 1,
+				"type": 1,
+				"regionId": "17",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.4915254237288136,
+				"total": 6615,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "146",
+				"name": "유클리드",
+				"grade": 1,
+				"type": 1,
+				"regionId": "17",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.4830508474576271,
+				"total": 6507,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "147",
+				"name": "프리우나",
+				"grade": 1,
+				"type": 1,
+				"regionId": "17",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.4957627118644068,
+				"total": 6397,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "148",
+				"name": "하늘 고래",
+				"grade": 1,
+				"type": 1,
+				"regionId": "17",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.5233050847457628,
+				"total": 6560,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "149",
+				"name": "별자리 큰뱀",
+				"grade": 1,
+				"type": 1,
+				"regionId": "17",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.4936440677966102,
+				"total": 6466,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "150",
+				"name": "아자키엘",
+				"grade": 2,
+				"type": 1,
+				"regionId": "17",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.5296610169491526,
+				"total": 6552,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "151",
+				"name": "벨루마테",
+				"grade": 2,
+				"type": 1,
+				"regionId": "17",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.5021186440677966,
+				"total": 6536,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "152",
+				"name": "다이나웨일",
+				"grade": 2,
+				"type": 1,
+				"regionId": "17",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.4724576271186441,
+				"total": 6442,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "153",
+				"name": "디오게네스",
+				"grade": 2,
+				"type": 1,
+				"regionId": "17",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.4872881355932203,
+				"total": 6489,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "154",
+				"name": "라우리엘",
+				"grade": 3,
+				"type": 1,
+				"regionId": "17",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.2563559322033898,
+				"total": 3246,
+				"averageIntervalInDays": 2.08
+			},
+			{
+				"id": "155",
+				"name": "영원의 아크 카양겔",
+				"grade": 3,
+				"type": 1,
+				"regionId": "17",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.2817796610169492,
+				"total": 3350,
+				"averageIntervalInDays": 2
+			},
+			{
+				"id": "156",
+				"name": "에버그레이스",
+				"grade": 4,
+				"type": 1,
+				"regionId": "17",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.1038135593220339,
+				"total": 1114,
+				"averageIntervalInDays": 6.08
+			},
+			{
+				"id": "157",
+				"name": "빛을 머금은 과실주",
+				"grade": 3,
+				"type": 2,
+				"regionId": "17",
+				"icon": "efui_iconatlas/use/use_10_158.png",
+				"rateWithin30Days": 0.6122881355932204,
+				"total": 2004,
+				"averageIntervalInDays": 0.88
+			},
+			{
+				"id": "158",
+				"name": "별자리 큰뱀의 껍질",
+				"grade": 3,
+				"type": 2,
+				"regionId": "17",
+				"icon": "efui_iconatlas/use/use_10_159.png",
+				"rateWithin30Days": 0.6313559322033898,
+				"total": 2103,
+				"averageIntervalInDays": 0.88
+			},
+			{
+				"id": "159",
+				"name": "크레도프 유리경",
+				"grade": 3,
+				"type": 2,
+				"regionId": "17",
+				"icon": "efui_iconatlas/use/use_10_160.png",
+				"rateWithin30Days": 0.5572033898305084,
+				"total": 2066,
+				"averageIntervalInDays": 0.88
+			},
+			{
+				"id": "160",
+				"name": "행운의 초롱별 꽃",
+				"grade": 4,
+				"type": 2,
+				"regionId": "17",
+				"icon": "efui_iconatlas/use/use_10_161.png",
+				"rateWithin30Days": 0.19703389830508476,
+				"total": 619,
+				"averageIntervalInDays": 2.96
+			},
+			{
+				"id": "161",
+				"name": "향기 나는 주머니",
+				"grade": 3,
+				"type": 3,
+				"regionId": "17",
+				"icon": "efui_iconatlas/lifelevel/lifelevel_01_240.png",
+				"rateWithin30Days": 0.6546610169491526,
+				"total": 8671,
+				"averageIntervalInDays": 0.8
+			},
+			{
+				"id": "162",
+				"name": "반짝이는 주머니",
+				"grade": 3,
+				"type": 3,
+				"regionId": "17",
+				"icon": "efui_iconatlas/lifelevel/lifelevel_01_243.png",
+				"rateWithin30Days": 0.625,
+				"total": 8577,
+				"averageIntervalInDays": 0.8
+			},
+			{
+				"id": "163",
+				"name": "자크라",
+				"grade": 2,
+				"type": 1,
+				"regionId": "18",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.4279749478079332,
+				"total": 6581,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "164",
+				"name": "로잘린 베디체",
+				"grade": 2,
+				"type": 1,
+				"regionId": "18",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.4989561586638831,
+				"total": 6689,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "165",
+				"name": "안토니오 주교",
+				"grade": 2,
+				"type": 1,
+				"regionId": "18",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.5448851774530271,
+				"total": 6656,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "166",
+				"name": "알폰스 베디체",
+				"grade": 2,
+				"type": 1,
+				"regionId": "18",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.5073068893528184,
+				"total": 6585,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "167",
+				"name": "클라우디아",
+				"grade": 2,
+				"type": 1,
+				"regionId": "18",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.49269311064718165,
+				"total": 6718,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "168",
+				"name": "어린 아만",
+				"grade": 3,
+				"type": 1,
+				"regionId": "18",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.24634655532359082,
+				"total": 3267,
+				"averageIntervalInDays": 2.08
+			},
+			{
+				"id": "169",
+				"name": "교육용 해도",
+				"grade": 3,
+				"type": 2,
+				"regionId": "18",
+				"icon": "efui_iconatlas/all_quest/all_quest_01_51.png",
+				"rateWithin30Days": 0.5636743215031316,
+				"total": 2191,
+				"averageIntervalInDays": 0.88
+			},
+			{
+				"id": "170",
+				"name": "정체불명의 입",
+				"grade": 3,
+				"type": 2,
+				"regionId": "18",
+				"icon": "efui_iconatlas/all_quest/all_quest_02_21.png",
+				"rateWithin30Days": 0.6033402922755741,
+				"total": 2171,
+				"averageIntervalInDays": 0.88
+			},
+			{
+				"id": "171",
+				"name": "컬러풀 집게 장난감",
+				"grade": 3,
+				"type": 2,
+				"regionId": "18",
+				"icon": "efui_iconatlas/all_quest/all_quest_02_17.png",
+				"rateWithin30Days": 0.6012526096033403,
+				"total": 2248,
+				"averageIntervalInDays": 0.8
+			},
+			{
+				"id": "172",
+				"name": "불과 얼음의 축제",
+				"grade": 4,
+				"type": 2,
+				"regionId": "18",
+				"icon": "efui_iconatlas/all_quest/all_quest_01_85.png",
+				"rateWithin30Days": 0.22964509394572026,
+				"total": 642,
+				"averageIntervalInDays": 2.88
+			},
+			{
+				"id": "173",
+				"name": "미술품 캐리어",
+				"grade": 4,
+				"type": 3,
+				"regionId": "18",
+				"icon": "efui_iconatlas/use/use_11_63.png",
+				"rateWithin30Days": 0.3444676409185804,
+				"total": 4455,
+				"averageIntervalInDays": 1.52
+			},
+			{
+				"id": "174",
+				"name": "베라드",
+				"grade": 1,
+				"type": 1,
+				"regionId": "19",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.46764091858037579,
+				"total": 6715,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "175",
+				"name": "닐라이",
+				"grade": 1,
+				"type": 1,
+				"regionId": "19",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.5323590814196242,
+				"total": 6771,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "176",
+				"name": "마리우",
+				"grade": 2,
+				"type": 1,
+				"regionId": "19",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.5156576200417536,
+				"total": 6763,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "177",
+				"name": "아이작",
+				"grade": 2,
+				"type": 1,
+				"regionId": "19",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.4572025052192067,
+				"total": 6828,
+				"averageIntervalInDays": 0.96
+			},
+			{
+				"id": "178",
+				"name": "마레가",
+				"grade": 2,
+				"type": 1,
+				"regionId": "19",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.5281837160751566,
+				"total": 6677,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "179",
+				"name": "칼리나리 네리아",
+				"grade": 2,
+				"type": 1,
+				"regionId": "19",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.4968684759916493,
+				"total": 6730,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "180",
+				"name": "베히모스",
+				"grade": 3,
+				"type": 1,
+				"regionId": "19",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.24634655532359082,
+				"total": 3410,
+				"averageIntervalInDays": 2
+			},
+			{
+				"id": "181",
+				"name": "라자람",
+				"grade": 3,
+				"type": 1,
+				"regionId": "19",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.22338204592901879,
+				"total": 3366,
+				"averageIntervalInDays": 2
+			},
+			{
+				"id": "182",
+				"name": "라카이서스",
+				"grade": 3,
+				"type": 1,
+				"regionId": "19",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.29018789144050108,
+				"total": 3416,
+				"averageIntervalInDays": 2
+			},
+			{
+				"id": "183",
+				"name": "칼테이야",
+				"grade": 3,
+				"type": 1,
+				"regionId": "19",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.24634655532359082,
+				"total": 3410,
+				"averageIntervalInDays": 2
+			},
+			{
+				"id": "184",
+				"name": "파이어혼",
+				"grade": 3,
+				"type": 1,
+				"regionId": "19",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.2254697286012526,
+				"total": 3345,
+				"averageIntervalInDays": 2.08
+			},
+			{
+				"id": "185",
+				"name": "세헤라데",
+				"grade": 3,
+				"type": 1,
+				"regionId": "19",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.2609603340292276,
+				"total": 3313,
+				"averageIntervalInDays": 2.08
+			},
+			{
+				"id": "186",
+				"name": "바르칸",
+				"grade": 4,
+				"type": 1,
+				"regionId": "19",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.10855949895615867,
+				"total": 1264,
+				"averageIntervalInDays": 5.36
+			},
+			{
+				"id": "187",
+				"name": "정체불명의 꼬리",
+				"grade": 3,
+				"type": 2,
+				"regionId": "19",
+				"icon": "efui_iconatlas/use/use_11_138.png",
+				"rateWithin30Days": 0.6033402922755741,
+				"total": 2200,
+				"averageIntervalInDays": 0.8
+			},
+			{
+				"id": "188",
+				"name": "쿠리구리 물약",
+				"grade": 3,
+				"type": 2,
+				"regionId": "19",
+				"icon": "efui_iconatlas/use/use_11_137.png",
+				"rateWithin30Days": 0.6033402922755741,
+				"total": 2269,
+				"averageIntervalInDays": 0.8
+			},
+			{
+				"id": "189",
+				"name": "속삭이는 휘스피",
+				"grade": 3,
+				"type": 2,
+				"regionId": "19",
+				"icon": "efui_iconatlas/use/use_11_136.png",
+				"rateWithin30Days": 0.6200417536534447,
+				"total": 2201,
+				"averageIntervalInDays": 0.8
+			},
+			{
+				"id": "190",
+				"name": "볼다이칸 스톤",
+				"grade": 4,
+				"type": 2,
+				"regionId": "19",
+				"icon": "efui_iconatlas/use/use_11_135.png",
+				"rateWithin30Days": 0.1732776617954071,
+				"total": 682,
+				"averageIntervalInDays": 2.72
+			},
+			{
+				"id": "191",
+				"name": "오징어",
+				"grade": 4,
+				"type": 3,
+				"regionId": "19",
+				"icon": "efui_iconatlas/use/use_11_127.png",
+				"rateWithin30Days": 0.2150313152400835,
+				"total": 3350,
+				"averageIntervalInDays": 2
+			},
+			{
+				"id": "192",
+				"name": "안정된 연성 촉매",
+				"grade": 2,
+				"type": 3,
+				"regionId": "19",
+				"icon": "efui_iconatlas/use/use_11_150.png",
+				"rateWithin30Days": 0.1315240083507307,
+				"total": 1635,
+				"averageIntervalInDays": 4.16
+			},
+			{
+				"id": "193",
+				"name": "마력이 스민 주머니",
+				"grade": 3,
+				"type": 3,
+				"regionId": "19",
+				"icon": "efui_iconatlas/lifelevel/lifelevel_01_253.png",
+				"rateWithin30Days": 0.4363256784968685,
+				"total": 6053,
+				"averageIntervalInDays": 1.12
+			},
+			{
+				"id": "194",
+				"name": "무지개 미끼",
+				"grade": 1,
+				"type": 3,
+				"regionId": "19",
+				"icon": "efui_iconatlas/all_quest/all_quest_05_47.png",
+				"rateWithin30Days": 0.2860125260960334,
+				"total": 4056,
+				"averageIntervalInDays": 1.68
+			},
+			{
+				"id": "195",
+				"name": "무지개 정수",
+				"grade": 3,
+				"type": 3,
+				"regionId": "19",
+				"icon": "efui_iconatlas/lifelevel/lifelevel_02_8.png",
+				"rateWithin30Days": 0.3883089770354906,
+				"total": 5223,
+				"averageIntervalInDays": 1.28
+			},
+			{
+				"id": "196",
+				"name": "게메트",
+				"grade": 1,
+				"type": 1,
+				"regionId": "20",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.5125,
+				"total": 5341,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "197",
+				"name": "네페르",
+				"grade": 1,
+				"type": 1,
+				"regionId": "20",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.5041666666666667,
+				"total": 5234,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "198",
+				"name": "프타",
+				"grade": 1,
+				"type": 1,
+				"regionId": "20",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.45416666666666669,
+				"total": 5367,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "199",
+				"name": "까미",
+				"grade": 1,
+				"type": 1,
+				"regionId": "20",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.5291666666666667,
+				"total": 5339,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "200",
+				"name": "다르키엘",
+				"grade": 3,
+				"type": 1,
+				"regionId": "20",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.23125,
+				"total": 2640,
+				"averageIntervalInDays": 2
+			},
+			{
+				"id": "201",
+				"name": "유황 버섯 납작구이",
+				"grade": 3,
+				"type": 2,
+				"regionId": "20",
+				"icon": "efui_iconatlas/use/use_12_3.png",
+				"rateWithin30Days": 0.5770833333333333,
+				"total": 2212,
+				"averageIntervalInDays": 0.8
+			},
+			{
+				"id": "202",
+				"name": "투케투스 고래 기름",
+				"grade": 3,
+				"type": 2,
+				"regionId": "20",
+				"icon": "efui_iconatlas/use/use_12_4.png",
+				"rateWithin30Days": 0.6291666666666667,
+				"total": 2193,
+				"averageIntervalInDays": 0.88
+			},
+			{
+				"id": "203",
+				"name": "흑요석 거울",
+				"grade": 3,
+				"type": 2,
+				"regionId": "20",
+				"icon": "efui_iconatlas/use/use_12_5.png",
+				"rateWithin30Days": 0.5979166666666667,
+				"total": 2207,
+				"averageIntervalInDays": 0.8
+			},
+			{
+				"id": "204",
+				"name": "시들지 않는 불꽃",
+				"grade": 4,
+				"type": 2,
+				"regionId": "20",
+				"icon": "efui_iconatlas/use/use_12_2.png",
+				"rateWithin30Days": 0.19375,
+				"total": 646,
+				"averageIntervalInDays": 2.88
+			},
+			{
+				"id": "205",
+				"name": "간이 정화제",
+				"grade": 2,
+				"type": 3,
+				"regionId": "20",
+				"icon": "efui_iconatlas/use/use_1_175.png",
+				"rateWithin30Days": 0.475,
+				"total": 1635,
+				"averageIntervalInDays": 1.12
+			},
+			{
+				"id": "206",
+				"name": "고급 정화제",
+				"grade": 3,
+				"type": 3,
+				"regionId": "20",
+				"icon": "efui_iconatlas/use/use_1_175.png",
+				"rateWithin30Days": 0.3416666666666667,
+				"total": 1253,
+				"averageIntervalInDays": 1.44
+			},
+			{
+				"id": "207",
+				"name": "군용 보급 정화제",
+				"grade": 4,
+				"type": 3,
+				"regionId": "20",
+				"icon": "efui_iconatlas/use/use_1_175.png",
+				"rateWithin30Days": 0.17916666666666668,
+				"total": 2206,
+				"averageIntervalInDays": 2.48
+			},
+			{
+				"id": "208",
+				"name": "거무스름한 주머니",
+				"grade": 3,
+				"type": 3,
+				"regionId": "20",
+				"icon": "efui_iconatlas/lifelevel/lifelevel_02_13.png",
+				"rateWithin30Days": 0.24166666666666668,
+				"total": 2695,
+				"averageIntervalInDays": 2
+			},
+			{
+				"id": "209",
+				"name": "구릿빛 반지",
+				"grade": 2,
+				"type": 3,
+				"regionId": "20",
+				"icon": "efui_iconatlas/lifelevel/lifelevel_02_23.png",
+				"rateWithin30Days": 0.25,
+				"total": 929,
+				"averageIntervalInDays": 2
+			},
+			{
+				"id": "210",
+				"name": "줄기로 엮은 티아라",
+				"grade": 2,
+				"type": 3,
+				"regionId": "20",
+				"icon": "efui_iconatlas/lifelevel/lifelevel_02_21.png",
+				"rateWithin30Days": 0.22708333333333334,
+				"total": 882,
+				"averageIntervalInDays": 2.08
+			},
+			{
+				"id": "211",
+				"name": "아그리스",
+				"grade": 1,
+				"type": 1,
+				"regionId": "21",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.4915254237288136,
+				"total": 3905,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "212",
+				"name": "알키오네",
+				"grade": 1,
+				"type": 1,
+				"regionId": "21",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.5021186440677966,
+				"total": 3980,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "213",
+				"name": "타무트",
+				"grade": 2,
+				"type": 1,
+				"regionId": "21",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.4936440677966102,
+				"total": 3533,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "214",
+				"name": "렌",
+				"grade": 3,
+				"type": 1,
+				"regionId": "21",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.2860169491525424,
+				"total": 1780,
+				"averageIntervalInDays": 2.08
+			},
+			{
+				"id": "215",
+				"name": "둥근 뿌리 차",
+				"grade": 3,
+				"type": 2,
+				"regionId": "21",
+				"icon": "efui_iconatlas/use/use_12_124.png",
+				"rateWithin30Days": 0.5889830508474576,
+				"total": 2240,
+				"averageIntervalInDays": 0.8
+			},
+			{
+				"id": "216",
+				"name": "아사르 가면",
+				"grade": 3,
+				"type": 2,
+				"regionId": "21",
+				"icon": "efui_iconatlas/use/use_12_125.png",
+				"rateWithin30Days": 0.6292372881355932,
+				"total": 2197,
+				"averageIntervalInDays": 0.8
+			},
+			{
+				"id": "217",
+				"name": "전투 식량",
+				"grade": 3,
+				"type": 2,
+				"regionId": "21",
+				"icon": "efui_iconatlas/use/use_12_123.png",
+				"rateWithin30Days": 0.5889830508474576,
+				"total": 2193,
+				"averageIntervalInDays": 0.88
+			},
+			{
+				"id": "218",
+				"name": "부서진 토우",
+				"grade": 4,
+				"type": 2,
+				"regionId": "21",
+				"icon": "efui_iconatlas/use/use_12_126.png",
+				"rateWithin30Days": 0.19279661016949155,
+				"total": 641,
+				"averageIntervalInDays": 2.88
+			},
+			{
+				"id": "219",
+				"name": "수상한 지도",
+				"grade": 3,
+				"type": 3,
+				"regionId": "21",
+				"icon": "efui_iconatlas/use/use_12_168.png",
+				"rateWithin30Days": 0.02754237288135593,
+				"total": 250,
+				"averageIntervalInDays": 16.08
+			},
+			{
+				"id": "220",
+				"name": "검은 미끼 주머니",
+				"grade": 3,
+				"type": 3,
+				"regionId": "21",
+				"icon": "efui_iconatlas/lifelevel/lifelevel_02_38.png",
+				"rateWithin30Days": 0.21822033898305086,
+				"total": 1944,
+				"averageIntervalInDays": 2.08
+			},
+			{
+				"id": "221",
+				"name": "조각난 금속 파편",
+				"grade": 2,
+				"type": 3,
+				"regionId": "21",
+				"icon": "efui_iconatlas/lifelevel/lifelevel_02_44.png",
+				"rateWithin30Days": 0.2796610169491525,
+				"total": 2009,
+				"averageIntervalInDays": 2
+			},
+			{
+				"id": "222",
+				"name": "긴",
+				"grade": 2,
+				"type": 1,
+				"regionId": "22",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.4767932489451477,
+				"total": 2609,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "223",
+				"name": "린",
+				"grade": 2,
+				"type": 1,
+				"regionId": "22",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.5295358649789029,
+				"total": 2575,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "224",
+				"name": "타라코룸",
+				"grade": 2,
+				"type": 1,
+				"regionId": "22",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.5253164556962026,
+				"total": 2494,
+				"averageIntervalInDays": 1.04
+			},
+			{
+				"id": "225",
+				"name": "란게",
+				"grade": 3,
+				"type": 1,
+				"regionId": "22",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.2911392405063291,
+				"total": 1288,
+				"averageIntervalInDays": 2
+			},
+			{
+				"id": "226",
+				"name": "헤아누",
+				"grade": 3,
+				"type": 1,
+				"regionId": "22",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.2679324894514768,
+				"total": 1280,
+				"averageIntervalInDays": 2.08
+			},
+			{
+				"id": "227",
+				"name": "기묘한 주전자",
+				"grade": 3,
+				"type": 2,
+				"regionId": "22",
+				"icon": "efui_iconatlas/use/use_12_234.png",
+				"rateWithin30Days": 0.5421940928270043,
+				"total": 2163,
+				"averageIntervalInDays": 0.88
+			},
+			{
+				"id": "228",
+				"name": "날씨 상자",
+				"grade": 3,
+				"type": 2,
+				"regionId": "22",
+				"icon": "efui_iconatlas/use/use_12_235.png",
+				"rateWithin30Days": 0.6371308016877637,
+				"total": 2253,
+				"averageIntervalInDays": 0.8
+			},
+			{
+				"id": "229",
+				"name": "환영 잉크",
+				"grade": 3,
+				"type": 2,
+				"regionId": "22",
+				"icon": "efui_iconatlas/use/use_12_236.png",
+				"rateWithin30Days": 0.6329113924050633,
+				"total": 2185,
+				"averageIntervalInDays": 0.88
+			},
+			{
+				"id": "230",
+				"name": "유리 나비",
+				"grade": 4,
+				"type": 2,
+				"regionId": "22",
+				"icon": "efui_iconatlas/use/use_12_233.png",
+				"rateWithin30Days": 0.1877637130801688,
+				"total": 683,
+				"averageIntervalInDays": 2.72
+			},
+			{
+				"id": "231",
+				"name": "밀가루",
+				"grade": 2,
+				"type": 3,
+				"regionId": "22",
+				"icon": "efui_iconatlas/lifelevel/lifelevel_02_79.png",
+				"rateWithin30Days": 0.25738396624472578,
+				"total": 1314,
+				"averageIntervalInDays": 2
+			},
+			{
+				"id": "232",
+				"name": "빛바랜 황금 사과",
+				"grade": 3,
+				"type": 3,
+				"regionId": "22",
+				"icon": "efui_iconatlas/use/use_13_10.png",
+				"rateWithin30Days": 0.046413502109704646,
+				"total": 287,
+				"averageIntervalInDays": 9.12
+			},
+			{
+				"id": "233",
+				"name": "왠지 가벼운 빛바랜 황금 사과",
+				"grade": 3,
+				"type": 3,
+				"regionId": "22",
+				"icon": "efui_iconatlas/use/use_13_10.png",
+				"rateWithin30Days": 0.46624472573839667,
+				"total": 2238,
+				"averageIntervalInDays": 1.2
+			},
+			{
+				"id": "234",
+				"name": "비법의 주머니",
+				"grade": 3,
+				"type": 3,
+				"regionId": "22",
+				"icon": "efui_iconatlas/lifelevel/lifelevel_02_87.png",
+				"rateWithin30Days": 0.24261603375527428,
+				"total": 1243,
+				"averageIntervalInDays": 2.08
+			},
+			{
+				"id": "235",
+				"name": "불그스럼 주머니",
+				"grade": 3,
+				"type": 3,
+				"regionId": "22",
+				"icon": "efui_iconatlas/lifelevel/lifelevel_02_92.png",
+				"rateWithin30Days": 0.24050632911392406,
+				"total": 1237,
+				"averageIntervalInDays": 2.16
+			},
+			{
+				"id": "236",
+				"name": "유즈",
+				"grade": 3,
+				"type": 1,
+				"regionId": "22",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.2616033755274262,
+				"total": 1027,
+				"averageIntervalInDays": 2.08
+			},
+			{
+				"id": "237",
+				"name": "파후",
+				"grade": 3,
+				"type": 1,
+				"regionId": "22",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.23628691983122364,
+				"total": 1076,
+				"averageIntervalInDays": 2
+			},
+			{
+				"id": "90",
+				"name": "뒷골목 럼주",
+				"grade": 1,
+				"type": 3,
+				"regionId": "12",
+				"icon": "efui_iconatlas/use/use_6_49.png",
+				"rateWithin30Days": 1,
+				"total": 3637,
+				"averageIntervalInDays": 0.48
+			},
+			{
+				"id": "109",
+				"name": "신비한 녹색 주머니",
+				"grade": 3,
+				"type": 3,
+				"regionId": "14",
+				"icon": "efui_iconatlas/lifelevel/lifelevel_01_249.png",
+				"rateWithin30Days": 1,
+				"total": 3679,
+				"averageIntervalInDays": 0.48
+			},
+			{
+				"id": "108",
+				"name": "멧돼지 생고기",
+				"grade": 2,
+				"type": 3,
+				"regionId": "14",
+				"icon": "efui_iconatlas/all_quest/all_quest_02_126.png",
+				"rateWithin30Days": 1,
+				"total": 3679,
+				"averageIntervalInDays": 0.48
+			},
+			{
+				"id": "31",
+				"name": "드라이에이징 된 고기",
+				"grade": 2,
+				"type": 3,
+				"regionId": "4",
+				"icon": "efui_iconatlas/use/use_2_193.png",
+				"rateWithin30Days": 1,
+				"total": 3636,
+				"averageIntervalInDays": 0.48
+			},
+			{
+				"id": "22",
+				"name": "머리초",
+				"grade": 3,
+				"type": 3,
+				"regionId": "3",
+				"icon": "efui_iconatlas/use/use_2_139.png",
+				"rateWithin30Days": 1,
+				"total": 3681,
+				"averageIntervalInDays": 0.48
+			},
+			{
+				"id": "125",
+				"name": "집중 룬",
+				"grade": 4,
+				"type": 3,
+				"regionId": "15",
+				"icon": "efui_iconatlas/use/use_7_200.png",
+				"rateWithin30Days": 1,
+				"total": 7753,
+				"averageIntervalInDays": 0.56
+			},
+			{
+				"id": "83",
+				"name": "두근두근 마카롱",
+				"grade": 3,
+				"type": 3,
+				"regionId": "11",
+				"icon": "efui_iconatlas/use/use_5_213.png",
+				"rateWithin30Days": 1,
+				"total": 3670,
+				"averageIntervalInDays": 0.48
+			},
+			{
+				"id": "74",
+				"name": "사파이어 정어리",
+				"grade": 2,
+				"type": 3,
+				"regionId": "10",
+				"icon": "efui_iconatlas/use/use_3_167.png",
+				"rateWithin30Days": 1,
+				"total": 3624,
+				"averageIntervalInDays": 0.48
+			},
+			{
+				"id": "39",
+				"name": "뜨거운 초코 커피",
+				"grade": 2,
+				"type": 3,
+				"regionId": "5",
+				"icon": "efui_iconatlas/all_quest/all_quest_02_32.png",
+				"rateWithin30Days": 1,
+				"total": 3675,
+				"averageIntervalInDays": 0.48
+			},
+			{
+				"id": "99",
+				"name": "선지 덩어리",
+				"grade": 2,
+				"type": 3,
+				"regionId": "13",
+				"icon": "efui_iconatlas/use/use_2_24.png",
+				"rateWithin30Days": 1,
+				"total": 3625,
+				"averageIntervalInDays": 0.48
+			},
+			{
+				"id": "58",
+				"name": "아드레날린 강화 수액",
+				"grade": 2,
+				"type": 3,
+				"regionId": "8",
+				"icon": "efui_iconatlas/all_quest/all_quest_01_31.png",
+				"rateWithin30Days": 1,
+				"total": 3668,
+				"averageIntervalInDays": 0.48
+			},
+			{
+				"id": "282",
+				"name": "에스더 루테란",
+				"grade": 4,
+				"type": 1,
+				"regionId": "5",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.11666666666666667,
+				"total": 254,
+				"averageIntervalInDays": 5.04
+			},
+			{
+				"id": "283",
+				"name": "진저웨일",
+				"grade": 4,
+				"type": 1,
+				"regionId": "4",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.12266112266112267,
+				"total": 243,
+				"averageIntervalInDays": 5.28
+			},
+			{
+				"id": "284",
+				"name": "가디언 루",
+				"grade": 4,
+				"type": 1,
+				"regionId": "7",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.12681912681912684,
+				"total": 267,
+				"averageIntervalInDays": 4.8
+			},
+			{
+				"id": "285",
+				"name": "에스더 시엔",
+				"grade": 4,
+				"type": 1,
+				"regionId": "7",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.08108108108108109,
+				"total": 245,
+				"averageIntervalInDays": 5.2
+			},
+			{
+				"id": "286",
+				"name": "에스더 갈라투르",
+				"grade": 4,
+				"type": 1,
+				"regionId": "12",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.0826271186440678,
+				"total": 266,
+				"averageIntervalInDays": 4.8
+			},
+			{
+				"id": "287",
+				"name": "광기를 잃은 쿠크세이튼",
+				"grade": 4,
+				"type": 1,
+				"regionId": "14",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.10395010395010396,
+				"total": 268,
+				"averageIntervalInDays": 4.8
+			},
+			{
+				"id": "288",
+				"name": "베아트리스",
+				"grade": 4,
+				"type": 1,
+				"regionId": "17",
+				"icon": "efui_iconatlas/use/use_2_13.png",
+				"rateWithin30Days": 0.09533898305084746,
+				"total": 263,
+				"averageIntervalInDays": 4.8
+			}
+		]
+	},
+	"__N_SSG": true
+}
