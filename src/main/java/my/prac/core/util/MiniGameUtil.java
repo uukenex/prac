@@ -11,6 +11,29 @@ public class MiniGameUtil {
 	public static final Map<Integer, int[]> GOLD_MAP_ACC = new HashMap<>();
 	public static String[] hideRules = { "아침","점심", "저녁", "새벽" };
 	public static String[] PatternRules = { "대기","공격", "방어", "필살기" };
+	public static final Map<Integer, int[]> MON_PATTERN_WEIGHTS = new HashMap<>();
+	static {
+		//대기,공격,방어,필살,히든
+	    MON_PATTERN_WEIGHTS.put(1, new int[]{100});
+	    MON_PATTERN_WEIGHTS.put(2, new int[]{20, 80});
+	    MON_PATTERN_WEIGHTS.put(3, new int[]{20, 80});
+	    MON_PATTERN_WEIGHTS.put(4, new int[]{20, 80});
+	    MON_PATTERN_WEIGHTS.put(5, new int[]{20, 80});
+	    MON_PATTERN_WEIGHTS.put(6, new int[]{20, 50, 30});
+	    MON_PATTERN_WEIGHTS.put(7, new int[]{20, 50, 30});
+	    MON_PATTERN_WEIGHTS.put(8, new int[]{20, 50, 30});
+	    MON_PATTERN_WEIGHTS.put(9, new int[]{20, 50, 30});
+	    MON_PATTERN_WEIGHTS.put(10,new int[]{0, 60, 25, 15});
+	    MON_PATTERN_WEIGHTS.put(11,new int[]{0, 60, 25, 15});
+	    MON_PATTERN_WEIGHTS.put(12,new int[]{0, 60, 25, 15});
+	    MON_PATTERN_WEIGHTS.put(13,new int[]{0, 60, 25, 15});
+	    MON_PATTERN_WEIGHTS.put(14,new int[]{0, 60, 25, 15});
+	    MON_PATTERN_WEIGHTS.put(15,new int[]{0, 62, 7, 26,5});
+	    MON_PATTERN_WEIGHTS.put(16,new int[]{0, 62, 12, 26,0});
+	    MON_PATTERN_WEIGHTS.put(17,new int[]{0, 10, 80, 10,0});
+
+	    // 필요할 때마다 여기 계속 추가하면 됨
+	}
 	
 	//몬스터체력,공격력,경험치,드랍템,드랍템가격
 	public static final Map<Integer, Object[]> MON_SPEC = new HashMap<>();

@@ -4,6 +4,7 @@ import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -35,6 +36,7 @@ import my.prac.core.prjbot.dao.BotDAO;
 import my.prac.core.prjbot.service.BotNewService;
 import my.prac.core.prjbot.service.BotService;
 import my.prac.core.prjbot.service.BotSettleService;
+import my.prac.core.util.MiniGameUtil;
 
 @Controller
 public class BossAttackController {
@@ -2924,10 +2926,11 @@ public class BossAttackController {
 	    if ("test".equals(param1)) return CooldownCheck.ok();
 
 	    int baseCd = COOLDOWN_SECONDS; // 2분
+	    /*
 	    if ("궁수".equals(job)) {
 	        baseCd = 300; // 5분
 	    }
-
+	     */
 	    Timestamp last = botNewService.selectLastAttackTime(userName, roomName);
 	    if (last == null) return CooldownCheck.ok();
 
@@ -3014,21 +3017,63 @@ public class BossAttackController {
 		f.monPattern = rollPatternWeighted(m, r);
 		return f;
 	}
-
+	
 	private int rollPatternWeighted(Monster m, ThreadLocalRandom r) {
-	    int enabled = Math.max(1, m.monPatten);
-	    int[] weights = new int[enabled];
-	    for (int i = 0; i < enabled; i++) weights[i] = 1;
-	    if (enabled == 2) { weights[0] = 20; weights[1] = 80; }
-	    if (enabled == 3) { weights[0] = 10; weights[1] = 60; weights[2] = 30; }
-	    if (enabled == 4) { weights[0] = 0; weights[1] = 60; weights[2] = 25; weights[3] = 15; }
-	    if (enabled == 5) { weights[0] = 0; weights[1] = 62; weights[2] = 7; weights[3] = 26; weights[4] = 5; }
-	    int sum = 0; for (int w : weights) sum += Math.max(0, w);
-	    if (sum <= 0) { for (int i = 0; i < enabled; i++) weights[i] = 1; sum = enabled; }
-	    int pick = r.nextInt(sum) + 1, acc = 0;
-	    for (int i = 0; i < enabled; i++) { acc += weights[i]; if (pick <= acc) return i + 1; }
-	    return 1;
+		int enabled = Math.max(1, m.monPatten);
+		int[] custom = MiniGameUtil.MON_PATTERN_WEIGHTS.get(m.monNo);
+		int[] weights;
+
+		if (custom != null && custom.length >= enabled) {
+			// 몬스터별로 설정된 가중치가 있고, 패턴 개수만큼 들어있으면 그대로 사용
+			weights = Arrays.copyOf(custom, enabled);
+		} else {
+			// 2) 없으면 기존 공통 로직 사용
+			weights = new int[enabled];
+			for (int i = 0; i < enabled; i++)
+				weights[i] = 1;
+
+			if (enabled == 2) {
+				weights[0] = 20;
+				weights[1] = 80;
+			} else if (enabled == 3) {
+				weights[0] = 10;
+				weights[1] = 60;
+				weights[2] = 30;
+			} else if (enabled == 4) {
+				weights[0] = 0;
+				weights[1] = 60;
+				weights[2] = 25;
+				weights[3] = 15;
+			} else if (enabled == 5) {
+				weights[0] = 0;
+				weights[1] = 62;
+				weights[2] = 7;
+				weights[3] = 26;
+				weights[4] = 5;
+			}
+		}
+
+		// 3) 안전장치 (모든 weight가 0일 경우)
+		int sum = 0;
+		for (int w : weights)
+			sum += Math.max(0, w);
+		if (sum <= 0) {
+			for (int i = 0; i < enabled; i++)
+				weights[i] = 1;
+			sum = enabled;
+		}
+
+		// 4) 가중치 랜덤 픽
+		int pick = r.nextInt(sum) + 1;
+		int acc = 0;
+		for (int i = 0; i < enabled; i++) {
+			acc += weights[i];
+			if (pick <= acc)
+				return i + 1; // 패턴 번호는 1부터
+		}
+		return 1;
 	}
+
 
 	private AttackCalc calcDamage(User u, Monster m, Flags f, int baseAtk, boolean crit, double critMultiplier) {
 		AttackCalc c = new AttackCalc();
@@ -4713,7 +4758,7 @@ public class BossAttackController {
 	    if ("용기사".equals(job)) {
 	        if (u.hpCur >= effHpMax) {
 	        	out.dmgCalcMsg += "풀HP DMG "+baseAtk+"→";
-	        	baseAtk = (int)Math.round(baseAtk * 1.25);
+	        	baseAtk = (int)Math.round(baseAtk * 1.5);
 	        	out.dmgCalcMsg += baseAtk+NL;
 	        }
 	        
@@ -5310,7 +5355,7 @@ public class BossAttackController {
 	    JOB_DEFS.put("궁수", new JobDef(
 	        "궁수",
 	        "▶ 사냥감을 조준하는 집요한 추적자, 강력한 한방을 선사하지만, 쿨타임이 길어진다",
-	        "⚔ 최종 데미지 ×1.8, 쿨타임 5분, EXP +25%, 공격시 13%확률로 강력한공격"
+	        "⚔ 최종 데미지 ×1.8, EXP +25%, 공격시 13%확률로 강력한공격"
 	    ));
 
 	    JOB_DEFS.put("마법사", new JobDef(
@@ -5322,7 +5367,7 @@ public class BossAttackController {
 	    JOB_DEFS.put("도적", new JobDef(
 	        "도적",
 	        "▶ 날렵한 손놀림으로 적의공격을 피하며,아이템을 강탈한다",
-	        "⚔ 공격 시 25% 확률 추가 드랍(STEAL), 몬스터 기본 공격 40% 회피, [스틸,회피 no12부터 3%씩 감소] "
+	        "⚔ 공격 시 40% 확률 추가 드랍(STEAL), 몬스터 기본 공격 40% 회피, [스틸,회피 no12부터 3%씩 감소] "
 	    ));
 
 	    JOB_DEFS.put("프리스트", new JobDef(
@@ -5335,12 +5380,13 @@ public class BossAttackController {
 	        "▶ 도를 닦아 깨달음을 얻은 위인",
 	        "⚔ 다음 공격하는 아군 강화(레벨*0.5만큼 능력강화,맥뎀*0.1만큼 치명뎀강화,"+NL+"매턴 공격시 자신 회복,자신의 럭키몬스터 등장 확률 증가"
 	    ));
+	    /*
         JOB_DEFS.put("사신", new JobDef(
             "사신",
             "▶ 이름하야 죽음의 신, 죽지않는다",
             "⚔ 아이템으로 인한 치명타,치명타뎀 증감처리 미적용, 체력 0에서도 죽지 않음,10%미만 체력에서 치명타확률50%증가"
         ));
-        
+        */
         JOB_DEFS.put("흡혈귀", new JobDef(
             "흡혈귀",
             "▶ 배가고프다, 나는 배가 고프다!",
