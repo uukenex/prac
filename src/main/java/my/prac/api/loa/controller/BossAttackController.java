@@ -1606,9 +1606,13 @@ public class BossAttackController {
 	    
 	    String stealMsg = null;
 	    if ("도적".equals(job) && !(m.monNo > 50) ) {
-	    	double stealRate = 0.25;
+	    	double stealRate = 0.40;
 	    	int monLv  = m.monNo;
 		    switch(monLv) {
+			    case 17:
+			    	stealRate -=0.05;
+			    case 16:
+			    	stealRate -=0.05;
 		    	case 15:
 		    		stealRate -=0.03;
 		    	case 14:
@@ -4871,8 +4875,12 @@ public class BossAttackController {
 	        if ("도적".equals(job) && calc.monDmg > 0 && !flags.finisher) {
 
 	            int monLv = m.monNo;
-	            double evadeRate = 0.40;
+	            double evadeRate = 0.50;
 	            switch (monLv) {
+		            case 17:
+		            	evadeRate -= 0.05;
+		            case 16:
+		            	evadeRate -= 0.05;
 	                case 15:
 	                    evadeRate -= 0.05;
 	                case 14:
@@ -5367,7 +5375,7 @@ public class BossAttackController {
 	    JOB_DEFS.put("도적", new JobDef(
 	        "도적",
 	        "▶ 날렵한 손놀림으로 적의공격을 피하며,아이템을 강탈한다",
-	        "⚔ 공격 시 40% 확률 추가 드랍(STEAL), 몬스터 기본 공격 40% 회피, [스틸,회피 no12부터 3%씩 감소] "
+	        "⚔ 공격 시 40% 확률 추가 드랍(STEAL), 몬스터 기본 공격 50% 회피, [스틸,회피 no12부터 3%씩 감소] "
 	    ));
 
 	    JOB_DEFS.put("프리스트", new JobDef(
