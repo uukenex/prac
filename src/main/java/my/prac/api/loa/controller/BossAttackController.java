@@ -1340,8 +1340,8 @@ public class BossAttackController {
 	      .append("- /구매 200 or /구매 투구: 투구 카테고리").append(NL)
 	      .append("- /구매 000 or /구매 신규: 최근 등록 아이템").append(NL)
 	      .append("- 입력 가능 카테고리 ").append(NL)
-	      .append("- 신규 무기 투구 행운 갑옷 반지 토템 전설 선물 ").append(NL)
-	      .append("- 000 100 200 300 400 500 600 700 900").append(NL);
+	      .append("- 신규 무기 투구 행운 갑옷 반지 토템 전설 업적 선물 ").append(NL)
+	      .append("- 000 100 200 300 400 500 600 700 800 900").append(NL);
 
 	    // 필요하면 여기서 전체 상품 일부만 보여줘도 됨
 	    // List<HashMap<String,Object>> list = botNewService.selectMarketItemsWithOwned(userName, roomName);
@@ -5190,6 +5190,7 @@ public class BossAttackController {
 	    if (itemId >= 500 && itemId < 600)  return "※반지";   // 500번대
 	    if (itemId >= 600 && itemId < 700)  return "※토템";   // 600번대
 	    if (itemId >= 700 && itemId < 800)  return "※전설";   // 700번대
+	    if (itemId >= 800 && itemId < 900)  return "※업적";   // 800번대
 	    if (itemId >= 900 && itemId < 1000) return "※선물";   // 900번대
 	    if (itemId >= 9000 && itemId < 10000) return "※유물"; // 9000번대 
 	    return "※기타";
@@ -5199,16 +5200,10 @@ public class BossAttackController {
 	    if (raw == null) return null;
 	    String s = raw.trim();
 
-	    // ➊ 숫자일 경우 ex) "100", "200"
-	    if (s.matches("\\d+")) {
-	        int num = Integer.parseInt(s);
-	        int base = (num / 100) * 100;   // 123 → 100
-	        return new int[]{ base, base + 100 };   // [100, 200)
-	    }
+	    if (s.isEmpty()) return null;
 
-	    // ➋ 문자 카테고리
+	    // 1) 문자 카테고리 먼저 처리
 	    switch (s) {
-	    	case "신규": return new int[]{000, 1000};
 	        case "무기": return new int[]{100, 200};
 	        case "투구": return new int[]{200, 300};
 	        case "행운": return new int[]{300, 400};
@@ -5216,8 +5211,27 @@ public class BossAttackController {
 	        case "반지": return new int[]{500, 600};
 	        case "토템": return new int[]{600, 700};
 	        case "전설": return new int[]{700, 800};
+	        case "업적": return new int[]{800, 900};
 	        case "선물": return new int[]{900, 1000};
 	        //case "유물": return new int[]{9000, 10000};
+	    }
+
+	    // 2) 숫자인 경우: "100", "200", "9000" 같이 "00"으로 끝나는 것만 카테고리로 취급
+	    if (s.matches("\\d+")) {
+	        // 끝이 "00"이 아니면 카테고리 아님 → 단일 구매로 내려가게 null 리턴
+	        if (!s.endsWith("00")) {
+	            return null;
+	        }
+
+	        int num;
+	        try {
+	            num = Integer.parseInt(s);
+	        } catch (NumberFormatException e) {
+	            return null;
+	        }
+
+	        // 100 → [100,200), 200 → [200,300), 9000 → [9000,9100) (원하면 여기 커스텀 가능)
+	        return new int[]{num, num + 100};
 	    }
 
 	    return null;
