@@ -4282,9 +4282,9 @@ public class BossAttackController {
 	        case 15: return 5000;
 	        case 16: return 5000;
 	        case 17: return 5000;
-	        case 18: return 5000;
-	        case 19: return 5000;
-	        case 20: return 5000;
+	        case 18: return 15000;
+	        case 19: return 25000;
+	        case 20: return 35000;
 	    }
 	    return 0;
 	}
@@ -5068,7 +5068,7 @@ public class BossAttackController {
 	    // 갑옷 (400번대): 1개
 	    if (itemId >= 400 && itemId < 500) return 1;
 	    // 전설 (700번대): 1개
-	    if (itemId >= 700 && itemId < 800) return 1;
+	    if (itemId >= 700 && itemId < 800) return 2;
 
 	    // 나머지는 제한 없음
 	    return Integer.MAX_VALUE;
@@ -5078,7 +5078,7 @@ public class BossAttackController {
 	    if (label.contains("무기"))  return 5;    // 100번대
 	    if (label.contains("투구"))  return 1;    // 200번대
 	    if (label.contains("갑옷"))  return 1;    // 400번대
-	    if (label.contains("전설"))  return 1;    // 700번대
+	    if (label.contains("전설"))  return 2;    // 700번대
 
 	    // 나머지(행운/반지/토템/선물/유물 등)
 	    return Integer.MAX_VALUE;
