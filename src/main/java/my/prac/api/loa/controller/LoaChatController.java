@@ -44,6 +44,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import my.prac.core.prjbot.service.BotExtService;
 import my.prac.core.prjbot.service.BotNewService;
 import my.prac.core.prjbot.service.BotService;
 import my.prac.core.prjbot.service.BotSettleService;
@@ -72,15 +73,16 @@ public class LoaChatController {
 	
 	@Autowired
 	BossAttackController boss;
-	
+
 	@Resource(name = "core.prjbot.BotService")
 	BotService botService;
 	@Resource(name = "core.prjbot.BotSettleService")
 	BotSettleService botSettleService;
 	@Resource(name = "core.prjbot.BotNewService")
 	BotNewService botNewService;
-	
-	
+
+	@Resource(name = "core.prjbot.BotExtService")
+	BotExtService botExtService;
 	
 	// final String lostArkAPIurl =
 	// "https://developer-lostark.game.onstove.com/armories/characters/일어난다람쥐/equipment";
@@ -1221,6 +1223,12 @@ public class LoaChatController {
 				}
 				break;
 			case "/떠상테스트": case "/ㄸㅅㅌㅅㅌ":
+				
+				// 1) 캐시된 JSON 가져오기 (하루 1번만 API 호출하도록 만들어둔 메서드)
+				String json = ext.fetchMerchantServer5Cached();
+
+				// 2) DB 저장 (server=5: 카단)
+				int saved = botExtService.saveLatestMerchantReports(json, 5);
 				val = ext.fetchMerchantServer5Cached();
 				break;
 			case "/치적": case "/ㅊㅈ":
