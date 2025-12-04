@@ -248,7 +248,7 @@ public class BossAttackController {
 	    // 4) 최종 HP
 	    int finalHpMax = baseHpMax + bHpMaxRaw;
 	    if ("전사".equals(job)) {
-	        finalHpMax += baseHpMax; // 기본 HP 추가
+	        finalHpMax += baseHpMax*10; // 기본 HP 추가
 	    }
 	    if (finalHpMax <= 0) finalHpMax = 1;
 
@@ -1758,6 +1758,9 @@ public class BossAttackController {
 	        double stealRate = 0.40;
 	        int monLv  = m.monNo;
 	        switch (monLv) {
+		        case 20: stealRate -= 0.05;
+		        case 19: stealRate -= 0.05;
+		        case 18: stealRate -= 0.05;
 	            case 17: stealRate -= 0.05;
 	            case 16: stealRate -= 0.05;
 	            case 15: stealRate -= 0.03;
@@ -3106,11 +3109,9 @@ public class BossAttackController {
 		    break;
 		case 4: c.monDmg = (int) Math.round(m.monAtk * 1.5); c.patternMsg = name + "의 필살기! (피해 " + c.monDmg + ")"; break;
 		case 5:  
-			int maxHpBase = Math.max(1, u.hpMax); // 0 방지
-            double hpRatio = (double) u.hpCur / maxHpBase;
 
-            // 기본체력의 5배 아래일때 쓴다
-            if (hpRatio < 2) {
+            double rnd = ThreadLocalRandom.current().nextDouble();
+            if (rnd < 0.20) {
             	 // 🔥 빈사 패턴: 체력을 1 남기고 공격 연출
                 int lethalDmg = Math.max(1, u.hpCur - 1); // 1HP 남기기
                 c.atkDmg = 0;  
@@ -4889,8 +4890,14 @@ public class BossAttackController {
 	        if ("도적".equals(job) && calc.monDmg > 0 && !flags.finisher) {
 
 	            int monLv = m.monNo;
-	            double evadeRate = 0.50;
+	            double evadeRate = 0.80;
 	            switch (monLv) {
+		            case 20:
+		            	evadeRate -= 0.05;
+		            case 19:
+		            	evadeRate -= 0.05;
+		            case 18:
+		            	evadeRate -= 0.05;
 		            case 17:
 		            	evadeRate -= 0.05;
 		            case 16:
@@ -4922,7 +4929,7 @@ public class BossAttackController {
 
 	        // 🛡 전사: 일반 패턴 피해 감소
 	        if ("전사".equals(job) && calc.monDmg > 0 && !flags.finisher) {
-	            int reduce = (int) Math.round(u.lv * 2)+m.monLv*2;
+	            int reduce = (int) Math.round(u.lv * 10)+m.monLv*10;
 	            int after = Math.max(0, calc.monDmg - reduce); // 최소 0
 	            String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
 	            calc.patternMsg = baseMsg
@@ -5447,13 +5454,13 @@ public class BossAttackController {
 	    JOB_DEFS.put("전사", new JobDef(
 	        "전사",
 	        "▶ 육체능력이 변경되며, 패링 스킬 추가 ",
-	        "⚔ 기본 HP만큼 추가 증가, 몬스터레벨에 따라 방어도 추가, 적의 필살기를 반격(20%),모든 적에게 데미지 추가(+20%)"
+	        "⚔ 기본 HP*10만큼 추가 증가, 몬스터레벨에 따라 방어도 추가, 적의 필살기를 반격(20%),모든 적에게 데미지 추가(+20%)"
 	    ));
 
 	    JOB_DEFS.put("궁수", new JobDef(
 	        "궁수",
-	        "▶ 사냥감을 조준하는 집요한 추적자, 강력한 한방을 선사하지만, 쿨타임이 길어진다",
-	        "⚔ 최종 데미지 ×1.6, EXP +25%, 공격시 13%확률로 강력한공격"
+	        "▶ 사냥감을 조준하는 집요한 추적자, 강력한 한방을 선사한다",
+	        "⚔ 최종 데미지 ×1.6, EXP +25%, 공격시 13%확률로 강력한공격(dmg*20)"
 	    ));
 
 	    JOB_DEFS.put("마법사", new JobDef(
@@ -5465,7 +5472,7 @@ public class BossAttackController {
 	    JOB_DEFS.put("도적", new JobDef(
 	        "도적",
 	        "▶ 날렵한 손놀림으로 적의공격을 피하며,아이템을 강탈한다",
-	        "⚔ 공격 시 40% 확률 추가 드랍(STEAL), 몬스터 기본 공격 50% 회피, [스틸,회피 no12부터 3%씩 감소] "
+	        "⚔ 공격 시 40% 확률 추가 드랍(STEAL), 몬스터 기본 공격 80% 회피, [스틸,회피 no12부터 3%씩,no15부터 5%씩 감소] "
 	    ));
 
 	    JOB_DEFS.put("프리스트", new JobDef(
@@ -5500,7 +5507,7 @@ public class BossAttackController {
         JOB_DEFS.put("파이터", new JobDef(
     		"파이터",
     		"▶ 강인한 체력의 소유자, 체력이 낮아지면 적의 행동을 저지시킨다",
-    		"⚔ 공격력 최대치, 치명타 배율 및 치명타데미지 증가가 체력으로 전환(3배수,치명 미발생)"+NL+"본인의 체력%에 따라 데미지 증가"
+    		"⚔ 공격력 최대치, 치명타 배율 및 치명타데미지 증가가 체력으로 전환(3배수,치명 미발생)"+NL+"본인의 체력이 낮아질수록 데미지 증가, 체력이 낮을때 적행동저지"
         ));
         
 	}

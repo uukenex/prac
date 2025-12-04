@@ -32,6 +32,8 @@ public class MiniGameUtil {
 	    MON_PATTERN_WEIGHTS.put(16,new int[]{0, 62, 12, 26,0});
 	    MON_PATTERN_WEIGHTS.put(17,new int[]{0, 10, 80, 10,0});
 	    MON_PATTERN_WEIGHTS.put(18,new int[]{0, 33, 33, 33, 1});
+	    MON_PATTERN_WEIGHTS.put(19,new int[]{0, 85, 0, 10, 5});//공격특화 
+	    MON_PATTERN_WEIGHTS.put(20,new int[]{0, 10, 0, 85, 5});//필살특화 
 
 	    // 필요할 때마다 여기 계속 추가하면 됨
 	}
