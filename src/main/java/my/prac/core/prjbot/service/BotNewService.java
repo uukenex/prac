@@ -7,6 +7,7 @@ import java.util.List;
 import my.prac.core.game.dto.AchievementCount;
 import my.prac.core.game.dto.AttackDeathStat;
 import my.prac.core.game.dto.BagLog;
+import my.prac.core.game.dto.BagRewardLog;
 import my.prac.core.game.dto.BattleLog;
 import my.prac.core.game.dto.KillStat;
 import my.prac.core.game.dto.Monster;
@@ -137,6 +138,7 @@ public interface BotNewService {
     List<Integer> selectBagRewardItemIdsUserNotOwned(String userName, String roomName);
     
     List<BagLog> selectRecentBagDrops();
+    List<BagRewardLog> selectRecentBagRewards();
     
  // 상점/소비로 삭제된 인벤토리 누적 수량
     int selectInventorySoldCount(String userName, String roomName);

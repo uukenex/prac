@@ -1018,6 +1018,37 @@
 		  WHERE ROWNUM &lt;= 5
 	</select>
 	
+	<select id="selectRecentBagRewards"
+        resultType="my.prac.core.game.dto.BagRewardLog">
+	    SELECT *
+	    FROM (
+	        SELECT gain,
+	               userName,
+	               roomName,
+	               insertDate
+	        FROM (
+	            SELECT TO_CHAR(C.SCORE) || ' sp' AS gain,
+	                   C.USER_NAME               AS userName,
+	                   C.ROOM_NAME               AS roomName,
+	                   C.INSERT_DATE             AS insertDate
+	              FROM TBOT_POINT_RANK C
+	             WHERE C.NEW_YN = '1'
+	               AND C.CMD   = 'BAG_OPEN_SP'
+	            UNION ALL
+	            SELECT B.ITEM_NAME              AS gain,
+	                   A.USER_NAME              AS userName,
+	                   A.ROOM_NAME              AS roomName,
+	                   A.INSERT_DATE            AS insertDate
+	              FROM TBOT_POINT_NEW_INVENTORY A
+	              JOIN TBOT_POINT_NEW_ITEM      B
+	                ON A.ITEM_ID   = B.ITEM_ID
+	             WHERE A.GAIN_TYPE = 'BAG_OPEN'
+	        )
+	        ORDER BY insertDate DESC
+	    )
+	    WHERE ROWNUM &lt;= 5
+	</select>
+	
 	<!-- DEL_YN='1' 인 인벤토리 누적 수량(판매/사용 포함) -->
 	<select id="selectInventorySoldCount" resultType="int">
 	  SELECT NVL(SUM(QTY), 0)

@@ -26,6 +26,7 @@ import my.prac.core.game.dto.AchievementCount;
 import my.prac.core.game.dto.AttackCalc;
 import my.prac.core.game.dto.AttackDeathStat;
 import my.prac.core.game.dto.BagLog;
+import my.prac.core.game.dto.BagRewardLog;
 import my.prac.core.game.dto.BattleLog;
 import my.prac.core.game.dto.DamageOutcome;
 import my.prac.core.game.dto.Flags;
@@ -61,28 +62,37 @@ public class BossAttackController {
 	@Resource(name = "core.prjbot.BotSettleService")  BotSettleService botSettleService;
 
 	public String bagLog(HashMap<String, Object> map) {
-	    List<BagLog> logs = botNewService.selectRecentBagDrops();
+		List<BagLog> logs = botNewService.selectRecentBagDrops();
+		List<BagRewardLog> rewards = botNewService.selectRecentBagRewards();
 
-	    if (logs == null || logs.isEmpty()) {
-	        return "";
-	    }
+		if ((logs == null || logs.isEmpty()) && (rewards == null || rewards.isEmpty())) {
+			return "";
+		}
 
-	    StringBuilder sb = new StringBuilder();
-	    sb.append("최근 가방 획득 로그 (최대 5건)").append(NL);
+		StringBuilder sb = new StringBuilder();
+		java.text.SimpleDateFormat fmt = new java.text.SimpleDateFormat("MM-dd HH:mm");
 
-	    java.text.SimpleDateFormat fmt = new java.text.SimpleDateFormat("MM-dd HH:mm");
+		// 1) 가방 획득 로그 (기존)
+		if (logs != null && !logs.isEmpty()) {
+			sb.append("최근 가방 획득 로그 (최대 5건)").append(NL);
+			for (BagLog log : logs) {
+				String when = (log.getInsertDate() != null ? fmt.format(log.getInsertDate()) : "-");
+				sb.append("- ").append(when).append(" : ").append(log.getUserName()).append("님이 가방을 획득~!").append(NL);
+			}
+			sb.append(NL);
+		}
 
-	    for (BagLog log : logs) {
-	        String when = (log.getInsertDate() != null ? fmt.format(log.getInsertDate()) : "-");
-	        sb.append("- ")
-	          .append(when)
-	          .append(" : ")
-	          .append(log.getUserName())
-	          .append("님이 가방을 획득~!")
-	          .append(NL);
-	    }
+		// 2) 가방 보상 로그 (SP/아이템)
+		if (rewards != null && !rewards.isEmpty()) {
+			sb.append("최근 가방 보상 로그 (최대 5건)").append(NL);
+			for (BagRewardLog r : rewards) {
+				String when = (r.getInsertDate() != null ? fmt.format(r.getInsertDate()) : "-");
+				sb.append("- ").append(when).append(" : ").append(r.getUserName()).append("님이 ").append(r.getGain())
+						.append(" 획득!").append(NL);
+			}
+		}
 
-	    return sb.toString();
+		return sb.toString();
 	}
 	
 	private UserBattleContext calcUserBattleContext(HashMap<String, Object> map) {
