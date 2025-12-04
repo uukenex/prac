@@ -4782,7 +4782,7 @@ public class BossAttackController {
 	        effCritRate = 0;
 	        effCriDmg = 0;
 	        crit = false;
-	        if (m.monNo==13) {
+	        if (m.monNo==13 || m.monNo==20) {
 	        	out.dmgCalcMsg += "용족 보너스 "+baseAtk+"→";
 	        	baseAtk = (int)Math.round(baseAtk * 2);
 	        	out.dmgCalcMsg += baseAtk;
