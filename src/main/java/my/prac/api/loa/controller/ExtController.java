@@ -159,9 +159,17 @@ public class ExtController {
 	    HttpClient client = HttpClientBuilder.create().build();
 	    HttpGet get = new HttpGet(url);
 
-	    get.setHeader("accept", "application/json");
-	    get.setHeader("User-Agent", "Mozilla/5.0");
-
+	    // 일반 브라우저 비슷한 헤더들
+	    get.setHeader("User-Agent",
+	        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+	      + "AppleWebKit/537.36 (KHTML, like Gecko) "
+	      + "Chrome/121.0.0.0 Safari/537.36");
+	    get.setHeader("Accept", "application/json, text/javascript, */*; q=0.01");
+	    get.setHeader("Accept-Language", "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7");
+	    get.setHeader("Referer", "https://kloa.gg/merchant"); // 실제 사용하는 페이지 기준
+	    get.setHeader("Origin", "https://kloa.gg");
+	    
+	    
 	    HttpResponse response = client.execute(get);
 	    String json = EntityUtils.toString(response.getEntity(), "UTF-8");
 
