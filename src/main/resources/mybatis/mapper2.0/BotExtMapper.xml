@@ -8,16 +8,26 @@
 	    INSERT INTO TBOT_MERCHANT_REPORT (
 	        SERVER_ID,
 	        START_TIME_KST,
+	        END_TIME_KST,
 	        REGION_ID,
 	        ITEM_ID,
+	        TIME_VAL,
 	        INSERT_DATE
 	    )
 	    VALUES (
 	        #{serverId},
 	        #{startTimeKst},
+	        #{endTimeKst},
 	        #{regionId},
 	        #{itemId},
+	        #{timeVal},
 	        SYSDATE
 	    )
 	</insert>
+	
+	<select id="selectMerchantMasterAll" resultType="my.prac.core.ext.dto.MerchantMasterVO">
+	    SELECT ITEM_ID AS itemId,
+	           ITEM_GRADE AS itemGrade
+	    FROM TBOT_MERCHANT_M
+	</select>
 </mapper>

@@ -3,6 +3,10 @@ package my.prac.core.prjbot.service.impl;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import javax.annotation.Resource;
 
@@ -11,6 +15,7 @@ import org.springframework.stereotype.Service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import my.prac.core.ext.dto.MerchantMasterVO;
 import my.prac.core.ext.dto.MerchantReportVO;
 import my.prac.core.prjbot.dao.BotExtDAO;
 import my.prac.core.prjbot.service.BotExtService;
@@ -37,7 +42,14 @@ public class BotExtServiceImpl implements BotExtService {
             return 0;
         }
 
-        // 1. 가장 최근 startTime 블럭 찾기
+        // ★ 1) 기준데이터 전체 읽어서 itemId -> grade 맵 생성
+        List<MerchantMasterVO> masterList = botExtDAO.selectMerchantMasterAll();
+        Map<Integer, Integer> gradeMap = new HashMap<>();
+        for (MerchantMasterVO m : masterList) {
+            gradeMap.put(m.getItemId(), m.getItemGrade());
+        }
+
+        // ★ 2) 가장 최근 startTime 블럭 찾기
         JsonNode latestNode = null;
         Instant latestStartInstant = null;
 
@@ -45,8 +57,7 @@ public class BotExtServiceImpl implements BotExtService {
             String startTimeStr = node.path("startTime").asText(null);
             if (startTimeStr == null) continue;
 
-            // 예: 2025-12-02T13:00:00Z
-            Instant startInstant = Instant.parse(startTimeStr);
+            Instant startInstant = Instant.parse(startTimeStr); // UTC
 
             if (latestStartInstant == null || startInstant.isAfter(latestStartInstant)) {
                 latestStartInstant = startInstant;
@@ -58,11 +69,23 @@ public class BotExtServiceImpl implements BotExtService {
             return 0;
         }
 
-        // 2. UTC startTime 을 KST(+9) 로 변환
-        ZonedDateTime kstDateTime = latestStartInstant.atZone(ZoneId.of("Asia/Seoul"));
-        java.util.Date startTimeKst = java.util.Date.from(kstDateTime.toInstant());
+        // ★ 3) startTime, endTime → KST 변환
+        String startTimeStr = latestNode.path("startTime").asText();
+        String endTimeStr   = latestNode.path("endTime").asText();
 
-        // 3. reports 배열 돌면서 regionId / itemIds 를 DB에 저장
+        Instant startUtc = Instant.parse(startTimeStr);
+        Instant endUtc   = Instant.parse(endTimeStr);
+
+        ZonedDateTime startKstZdt = startUtc.atZone(ZoneId.of("Asia/Seoul"));
+        ZonedDateTime endKstZdt   = endUtc.atZone(ZoneId.of("Asia/Seoul"));
+
+        Date startTimeKst = Date.from(startKstZdt.toInstant());
+        Date endTimeKst   = Date.from(endKstZdt.toInstant());
+
+        // ★ 4) time_val 생성 (yyyyMMdd_HH, start 기준)
+        String timeVal = makeTimeVal(startTimeKst);
+
+        // ★ 5) reports 파싱
         JsonNode reports = latestNode.path("reports");
         if (!reports.isArray()) {
             return 0;
@@ -81,23 +104,33 @@ public class BotExtServiceImpl implements BotExtService {
                 int itemId = itemIdNode.asInt(0);
                 if (itemId == 0) continue;
 
+                // ★ 6) grade == 4 체크 (서비스에서)
+                Integer grade = gradeMap.get(itemId);
+                if (grade == null || grade != 4) {
+                    continue;  // 전설(4) 아니면 스킵
+                }
+
                 MerchantReportVO vo = new MerchantReportVO();
-                vo.setServerId(serverId);          // 5
-                vo.setStartTimeKst(startTimeKst);  // +9h 변환된 시작시간
+                vo.setServerId(serverId);
+                vo.setStartTimeKst(startTimeKst);
+                vo.setEndTimeKst(endTimeKst);    // ★ endTime도 같이 저장
+                vo.setTimeVal(timeVal);
                 vo.setRegionId(regionId);
                 vo.setItemId(itemId);
 
                 try {
                 	botExtDAO.insertMerchantReport(vo);
-                    insertCount++;
-                } catch (Exception e) {
-                    // 이미 PK가 있으면 (중복) 무시하고 넘어가도 됨
-                    // 로그만 남기고 continue 해도 됨
-                    // logger.warn("중복 또는 insert 실패", e);
-                }
+                }catch(Exception e) {}
             }
         }
 
         return insertCount;
+    }
+
+    
+    private String makeTimeVal(Date startTimeKst) {
+        java.text.SimpleDateFormat fmt = new java.text.SimpleDateFormat("yyyyMMdd_HH");
+        fmt.setTimeZone(java.util.TimeZone.getTimeZone("Asia/Seoul")); // 안전하게 KST 고정
+        return fmt.format(startTimeKst);
     }
 }

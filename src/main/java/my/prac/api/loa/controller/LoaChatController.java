@@ -148,6 +148,18 @@ public class LoaChatController {
 				//val = errorCodeMng(e,reqMap);
 			}
 			break;
+		case "c2":
+			org_fulltxt = "/ㄸㅅㅋㄹㄹ";
+			try {
+				// 1) 캐시된 JSON 가져오기 (하루 1번만 API 호출하도록 만들어둔 메서드)
+				String json = ext.fetchMerchantServer5();
+
+				// 2) DB 저장 (server=5: 카단)
+				botExtService.saveLatestMerchantReports(json, 5);
+			} catch (Exception e1) {
+				e1.printStackTrace();
+			}
+			break;
 		case "test":
 			try {
 				market.search_c2();
@@ -1224,12 +1236,7 @@ public class LoaChatController {
 				break;
 			case "/떠상테스트": case "/ㄸㅅㅌㅅㅌ":
 				
-				// 1) 캐시된 JSON 가져오기 (하루 1번만 API 호출하도록 만들어둔 메서드)
-				String json = ext.fetchMerchantServer5Cached();
-
-				// 2) DB 저장 (server=5: 카단)
-				int saved = botExtService.saveLatestMerchantReports(json, 5);
-				val = ext.fetchMerchantServer5Cached();
+				
 				break;
 			case "/치적": case "/ㅊㅈ":
 				if (param1 != null && !param1.equals("")) {

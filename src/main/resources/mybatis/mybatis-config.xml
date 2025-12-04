@@ -20,6 +20,7 @@
 		<mapper resource="mybatis/mapper2.0/BotMapper.xml" />
 		<mapper resource="mybatis/mapper2.0/BotSettleMapper.xml" />
 		<mapper resource="mybatis/mapper2.0/BotNewMapper.xml" />
+		<mapper resource="mybatis/mapper2.0/BotExtMapper.xml" />
 	</mappers>
 
 </configuration>
