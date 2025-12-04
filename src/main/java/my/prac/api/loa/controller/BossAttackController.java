@@ -3978,7 +3978,7 @@ public class BossAttackController {
 	                case 2: desc = "2: 공격"; break;
 	                case 3: desc = "3: 방어"; break;
 	                case 4: desc = "4: 필살기(최댐*1.5)"; break;
-	                case 5: desc = "5: hidden"; break; // 필요하면
+	                case 5: desc = "5: 흡혈/즉사급피해"; break; // 필요하면
 	                default: break;
 	            }
 
