@@ -1234,9 +1234,13 @@ public class LoaChatController {
 					return "/ㅈㅂ 캐릭명 으로 입력해주세요";
 				}
 				break;
-			case "/떠상테스트": case "/ㄸㅅㅌㅅㅌ":
-				
-				
+			case "/떠상": case "/ㄸㅅ":
+				int serverId = 5; // 카단
+				try {
+					val= botExtService.buildMerchantMessage(serverId);
+				}catch(Exception e) {
+					e.printStackTrace();
+				}
 				break;
 			case "/치적": case "/ㅊㅈ":
 				if (param1 != null && !param1.equals("")) {

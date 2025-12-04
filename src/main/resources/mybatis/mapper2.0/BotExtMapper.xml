@@ -30,4 +30,16 @@
 	           ITEM_GRADE AS itemGrade
 	    FROM TBOT_MERCHANT_M
 	</select>
+	
+	<select id="selectMerchantByTimeVal" parameterType="map" resultType="map">
+	    SELECT B.ITEM_NAME,
+	           B.REGION_NAME
+	    FROM TBOT_MERCHANT_REPORT A
+	    JOIN TBOT_MERCHANT_M B
+	      ON A.ITEM_ID   = B.ITEM_ID
+	     AND A.REGION_ID = B.REGION_ID
+	    WHERE A.TIME_VAL  = #{timeVal}
+	      AND A.SERVER_ID = #{serverId}
+	    ORDER BY B.REGION_NAME, B.ITEM_NAME
+	</select>
 </mapper>
