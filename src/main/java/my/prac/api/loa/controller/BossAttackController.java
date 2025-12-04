@@ -78,7 +78,7 @@ public class BossAttackController {
 	          .append(when)
 	          .append(" : ")
 	          .append(log.getUserName())
-	          .append("님이 가방을 획득했습니다.")
+	          .append("님이 가방을 획득~!")
 	          .append(NL);
 	    }
 
@@ -3242,8 +3242,8 @@ public class BossAttackController {
 	}
 
 	private int calcBaseHpRegen(int lv) {
-	    if (lv <= 1) return 2;  // Lv1 = 2부터 시작
-	    return 2 + ((lv - 1) / 3); // 3레벨마다 +1
+		 if (lv <= 1) return 1;
+	    return lv; // 3레벨마다 +1
 	}
 	
 	/** HP/EXP/LV + 로그 저장 (DB에는 '순수 레벨 기반 스탯'만 반영) */
@@ -3792,9 +3792,7 @@ public class BossAttackController {
 
 	        crit   += 2;         critDelta   += 2;
 
-	        if (lv % 3 == 0) {
-	            regen++;         regenDelta++;
-	        }
+            regen++;         regenDelta++;
 	    }
 
 	    u.lv        = lv;
