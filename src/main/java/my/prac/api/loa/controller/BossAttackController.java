@@ -1891,7 +1891,7 @@ public class BossAttackController {
 	                if (userName.equals(u)) {
 	                    // 최근 5개 가방 로그 안에 있으면 → 이미 먹은 사람
 	                	try {
-	            	    	if(userName.equals("은용/아르카나/1720")||userName.equals("나는야덩어리")) {
+	            	    	if(userName.equals("나는야덩어리")) {
 	            	    		return 2;
 	            	    	}
 	            	    	
@@ -1904,7 +1904,7 @@ public class BossAttackController {
 		 
 	    
 	    try {
-	    	if(userName.equals("은용/아르카나/1720")||userName.equals("나는야덩어리")) {
+	    	if(userName.equals("나는야덩어리")) {
 	    		return 10.0;
 	    	}
 	    	
