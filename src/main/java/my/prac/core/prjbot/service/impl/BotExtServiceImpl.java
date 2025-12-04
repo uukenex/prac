@@ -120,7 +120,7 @@ public class BotExtServiceImpl implements BotExtService {
 
                 try {
                 	botExtDAO.insertMerchantReport(vo);
-                }catch(Exception e) {}
+                }catch(Exception e) { continue;}
             }
         }
 
