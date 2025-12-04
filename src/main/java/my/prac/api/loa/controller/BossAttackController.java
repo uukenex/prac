@@ -697,7 +697,7 @@ public class BossAttackController {
 
 	    if ("전사".equals(job)) {
 	        sb.append("   └ 직업 (HP+")
-	          .append(baseHpMax)
+	          .append(baseHpMax*10)
 	          .append(")").append(NL);
 	    }
 
@@ -1462,17 +1462,12 @@ public class BossAttackController {
 	    final int atkMinWithItem = ctx.atkMinWithItem; // baseMin + bAtkMin
 	    final int atkMaxWithItem = ctx.atkMaxWithItem; // baseMax + weaponBonus + bAtkMax
 
-	    // HP (아이템까지 포함, 직업 HP보너스 적용 전 베이스)
-	    final int hpMaxWithItem  = baseHpMax + bHpMax;
 
 	    // 리젠/HP, 크리 (calcUserBattleContext에서 직업 패시브/축복/흡혈귀 등 반영한 값)
 	    int effRegen    = ctx.effRegen;
 	    int effHpMax    = ctx.finalHpMax;  // 최종 전투용 HP_MAX (전사/파이터 HP 보너스 포함이라고 가정)
 	    int effCritRate = ctx.shownCrit;
 	    int effCriDmg   = ctx.shownCritDmg;
-
-	    final boolean hasBless = ctx.hasBless;
-	    final int blessRegen   = ctx.blessRegenBonus;
 
 	    // ─────────────────────────────
 	    // 4) 직업별 데미지 배율 (궁수 / 전사) - 구버전 로직 복원
