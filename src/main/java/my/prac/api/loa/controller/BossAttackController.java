@@ -4859,10 +4859,10 @@ public class BossAttackController {
 	
 		            calc.patternMsg = m.monName + "의 방어가 마법사의 힘에 의해 무너졌습니다! (피해 2배)";
 	        	}else if(flags.monPattern == 4) {
-	        		int reduced = (int) Math.floor(calc.monDmg * 0.8);
+	        		int reduced = (int) Math.floor(calc.monDmg * 0.7);
 		            if (reduced < 1) reduced = 1;
 		            String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
-		            calc.patternMsg = baseMsg + "(마나실드 필살피해 20% 감소 → " + reduced + ")";
+		            calc.patternMsg = baseMsg + "(마나실드 필살피해 30% 감소 → " + reduced + ")";
 		            calc.monDmg = reduced;
 	        	}
 	        }
@@ -5466,7 +5466,7 @@ public class BossAttackController {
 	    JOB_DEFS.put("마법사", new JobDef(
 	        "마법사",
 	        "▶ 강력한 마법공격으로 몬스터의 방어태세를 무력화한다",
-	        "⚔ 몬스터가 방어시 방어를 무시하고 피해 2배를 줌, 보스의 필살기를 마나실드로 방어(20%데미지감소)"
+	        "⚔ 몬스터가 방어시 방어를 무시하고 피해 2배를 줌, 보스의 필살기를 마나실드로 방어(30%데미지감소)"
 	    ));
 
 	    JOB_DEFS.put("도적", new JobDef(
