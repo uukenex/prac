@@ -1546,7 +1546,7 @@ public class BossAttackController {
 	        m = botNewService.selectMonsterByNo(u.targetMon);
 	        if (m == null) return "대상 몬스터가 지정되어 있지 않습니다. (TARGET_MON 없음)";
 
-	        beforeJobSkillYn = 0;
+	        beforeJobSkillYn = -1;
 	        
 	        monMaxHp = m.monHp;
 	        monHpRemainBefore = m.monHp;
@@ -4765,7 +4765,10 @@ public class BossAttackController {
 	        // 첫 조우는 그냥 일반공격: 몬스터어택에서 sniperPhase=0 으로 넘겨주면 됨
 	    	switch(beforeJobSkillYn) {
 	    		case 0:
-	    			baseAtk = (int)Math.round(baseAtk * 2.5);
+	    			out.dmgCalcMsg += "조준 보너스 DMG "+baseAtk+"→";
+		        	baseAtk = (int)Math.round(baseAtk * 2.5);
+		        	out.dmgCalcMsg += baseAtk+NL;
+	    			calc.jobSkillUsed = true;
 	    			break;
 	    		case 1:
 	    			break;
@@ -4855,9 +4858,10 @@ public class BossAttackController {
 	        // -----------------------------
 	        // 4) 보스 패턴 포함 실제 데미지 계산
 	        // -----------------------------
-	    	
+	    	boolean beforeCalc = calc.jobSkillUsed;
 	        calc = calcDamage(u, m, flags, baseAtk, crit, critMultiplier);
-
+	        calc.jobSkillUsed = beforeCalc;
+	        
 	        flags.atkCrit = crit;
 	        flags.snipe = isSnipe;
 	        flags.finisher = (flags.monPattern == 4); // 패턴4=필살기
@@ -5545,6 +5549,7 @@ public class BossAttackController {
     		"⚔ 공격력 최대치, 치명타 배율 및 치명타데미지 증가가 체력으로 전환(3배수,치명 미발생)"+NL+"본인의 체력이 낮아질수록 데미지 증가, 체력이 낮을때 적행동저지"
         ));
         
+        /*
         JOB_DEFS.put("궁사", new JobDef(
     		"궁사",
     		"▶ 궁사",
@@ -5555,7 +5560,7 @@ public class BossAttackController {
     		"▶ 저격수",
     		"⚔ 저격수"
         ));
-        
+        */
         
         
 	}
