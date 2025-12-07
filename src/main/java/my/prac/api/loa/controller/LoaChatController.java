@@ -2650,15 +2650,26 @@ public class LoaChatController {
 	String checkGoldList() throws Exception {
 		String msg = "";
 		//msg += enterStr + "종막[ "+enterStr+"[하 0G/노 0G]";
+		msg += enterStr + "⭐그림자 레이드⭐";
+		msg += enterStr + "✓고통-세르카"+enterStr+" ↳ [노 35,000G/하 44,000G]";
+		msg += enterStr+" ↳ [나메 54,000G]";
+		/*
+		msg += enterStr + "✓절망-****"+enterStr+" ↳ [노 **,000G/하 **,000G]";
+		msg += enterStr+" ↳ [나메 **,000G]";
+		*/
+		msg += enterStr ;
+		
 		msg += enterStr + "⭐카제로스 레이드⭐";
 		msg += enterStr + "✓종막-카제로스"+enterStr+" ↳ [노 40,000G/하 52,000G]";
 		msg += enterStr + "✓4막-아르모체"+enterStr+" ↳ [노 33,000G/하 42,000G]";
-		msg += enterStr + "✓3막-모르둠"+enterStr+" ↳ [노 28,000G/하 38,000G]";
-		msg += enterStr + "✓2막-아브렐슈드"+enterStr+" ↳ [노 21,500G/하 30,500G]";
-		msg += enterStr + "✓1막-에기르"+enterStr+" ↳ [노 15,500G/하 24,500G]";
-		msg += enterStr + "✓서막-에키드나";
-		msg += enterStr + " ↳ [노 3,650G (+3,650G)]";
-		msg += enterStr + " ↳ [하 8,800G]";
+		msg += enterStr + "✓(신)3막-모르둠"+enterStr+" ↳ [노 21,000G/하 27,000G]";
+		msg += enterStr + " ↳ (구)[노 28,000G/하 38,000G]";
+		msg += enterStr + "✓(신)2막-아브렐슈드"+enterStr+" ↳ [노 16,500G/하 23,000G]";
+		msg += enterStr + " ↳ (구)[노 21,500G/하 30,500G]";
+		msg += enterStr + "✓(신)1막-에기르"+enterStr+" ↳ [노 11,500G/하 18,000G]";
+		msg += enterStr + " ↳ (구) [노 15,500G/하 24,500G]";
+		msg += enterStr + "✓(신)서막-에키드나"+enterStr+" ↳ [노 6,100/하 7,200G]";
+		msg += enterStr + " ↳ (구) [노 3,650G (+3,650G)] [하 8,800G]";
 		
 		/*
 		msg += enterStr ;
@@ -2667,18 +2678,19 @@ public class LoaChatController {
 		*/
 		msg += enterStr ;
 		msg += enterStr + "⭐에픽 레이드⭐";
-		msg += enterStr + "✓베히모스 [ 8,800G ]";
+		msg += enterStr + "✓(신)베히모스 [ 7,200G ]";
+		msg += enterStr + " ↳(구) [ 8,800G ]";
 		
 		
 		msg += allSeeStr ;
 		msg += enterStr + "⭐군단장 레이드⭐";
 		msg += enterStr + "✓어둠-카멘";
-		msg += enterStr + " ↳ 1-3[노 3,200G (+3,200G)]";
-		msg += enterStr + " ↳ 1-3[하 4,000G (+4,000G)]";
-		msg += enterStr + " ↳ 4[하 2,500G (+2,500G)]";
+		msg += enterStr + " ↳ 1-3[노 6,400G(귀속)]";
+		msg += enterStr + " ↳ 1-3[하 8,000G(귀속)]";
+		msg += enterStr + " ↳ 4[하 5,000G(귀속)]";
 		msg += enterStr + "✓질병-일리아칸";
-		msg += enterStr + " ↳ [노 2,350G (+2,350G)]";
-		msg += enterStr + " ↳ [하 3,000G (+3,000G)]";
+		msg += enterStr + " ↳ [노 4,700G(귀속)]";
+		msg += enterStr + " ↳ [하 6,000G(귀속)]";
 		/*
 		msg += enterStr + "✓몽환-아브렐슈드";
 		msg += enterStr + " ↳ 1-3[노 3,000G/하 3,600G]";
@@ -2693,24 +2705,26 @@ public class LoaChatController {
 		msg += enterStr;
 		msg += enterStr + "⭐어비스 던전⭐";
 		msg += enterStr + "✓혼돈의 상아탑";
-		msg += enterStr + " ↳ [노 2,600G (+3,600G)]";
-		msg += enterStr + "   [하 3,600G (+3,600G)]";
+		msg += enterStr + " ↳ [노 5,200G(귀속)]";
+		msg += enterStr + "   [하 7,200G(귀속)]";
 		msg += enterStr + "✓카양겔";
-		msg += enterStr + " ↳ [노 1,650G (+1,650G)]";
-		msg += enterStr + " ↳ [하 2,150G (+2,150G)]";
+		msg += enterStr + " ↳ [노 3,300G(귀속)]";
+		msg += enterStr + " ↳ [하 4,300G(귀속)]";
+		
 		
 		msg += enterStr;
-		msg += enterStr + "⭐싱글 모드⭐";
-		msg += enterStr + "✓에기르 [7,750G (+7,750G)]";
-		msg += enterStr + "✓에키드나 [3,650G (+3,650G)]";
-		msg += enterStr + "✓카멘 [3,200G( +3,200G)]";
-		msg += enterStr + "✓상아탑 [2,600G (+2,600G)]";
-		msg += enterStr + "✓일리아칸 [2,350G (+2,350G)]";
-		msg += enterStr + "✓카양겔 [1,650G (+1,650G)]";
-		msg += enterStr + "✓아브렐슈드 [2,300G (+2,300G)]";
-		msg += enterStr + "✓쿠크세이튼 [1,500G (+1,500G)]";
-		msg += enterStr + "✓비아키스 [800G (+800G)]";
-		msg += enterStr + "✓발탄 [600G (+600G)]";
+		msg += enterStr + "⭐싱글 모드⭐(미확정)";
+		msg += enterStr + "✓아브렐슈드 [8,250G (+8,250G)]";
+		msg += enterStr + "✓에기르 [5,750G (+5,750G)]";
+		msg += enterStr + "✓에키드나 [3,050G (+3,050G)]";
+		msg += enterStr + "✓카멘 [6,400G(귀속)]";
+		msg += enterStr + "✓상아탑 [5,200G(귀속)]";
+		msg += enterStr + "✓일리아칸 [4,700G(귀속)]";
+		msg += enterStr + "✓카양겔 [3,300G(귀속)]";
+		msg += enterStr + "✓아브렐슈드 [4,600G(귀속)]";
+		msg += enterStr + "✓쿠크세이튼 [3,000G(귀속)]";
+		msg += enterStr + "✓비아키스 [1600G(귀속)]";
+		msg += enterStr + "✓발탄 [1200G(귀속)]";
 		/*
 		msg += enterStr + "싱글모드..▼ "+ allSeeStr;
 		msg += enterStr + "발탄 600G";
