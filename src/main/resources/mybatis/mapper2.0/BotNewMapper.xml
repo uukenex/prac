@@ -88,11 +88,12 @@
 
   <!-- 3) 진행중 전투 -->
   <select id="selectOngoingBattle" resultType="my.prac.core.game.dto.OngoingBattle">
-    SELECT monNo, totalDealtDmg, luckyYn
+    SELECT monNo, totalDealtDmg, luckyYn,beforeJobSkillYn
       FROM (
         SELECT TARGET_MON_LV AS monNo,
                NVL(SUM(ATK_DMG), 0) AS totalDealtDmg,
                MAX(TO_NUMBER(LUCKY_YN)) KEEP (DENSE_RANK LAST ORDER BY INSERT_DATE) AS luckyYn,
+               MAX(JOB_SKILL_YN) KEEP (DENSE_RANK LAST ORDER BY INSERT_DATE) AS beforeJobSkillYn,
                MAX(INSERT_DATE) AS lastTime
         FROM TBOT_POINT_NEW_BATTLE_LOG
         WHERE USER_NAME = #{userName}

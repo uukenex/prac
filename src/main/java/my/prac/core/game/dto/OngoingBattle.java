@@ -11,11 +11,14 @@ import java.io.Serializable;
 public  class OngoingBattle {
 	public int monNo;
     public int totalDealtDmg;
+    public Integer beforeJobSkillYn;
 
     // 진행 중 전투(now_yn=1) 묶음에서 ‘가장 최근’ lucky 상태
     public Integer luckyYn; // 0/1, null 가능
+    
 
     public OngoingBattle setMonNo(int v){ this.monNo=v; return this; }
     public OngoingBattle setTotalDealtDmg(int v){ this.totalDealtDmg=v; return this; }
     public OngoingBattle setLuckyYn(Integer v){ this.luckyYn=v; return this; }
+    public OngoingBattle setBeforeJobSkillYn(int v){ this.beforeJobSkillYn=v; return this; }
 }

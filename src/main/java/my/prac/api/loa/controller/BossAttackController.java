@@ -1191,13 +1191,6 @@ public class BossAttackController {
 	             + " (가격: " + price + "sp, 보유: " + curPoint + "sp)";
 	    }
 
-	    // 결제 (포인트 차감)
-	    HashMap<String, Object> pr = new HashMap<>();
-	    pr.put("userName", userName);
-	    pr.put("roomName", roomName);
-	    pr.put("score", -price);
-	    pr.put("cmd", "BUY");
-	    botNewService.insertPointRank(pr);
 
 	    // ============================
 	    // 인벤토리 적재 (장비는 중복구매 시 QTY 증가)
@@ -1295,6 +1288,15 @@ public class BossAttackController {
 	        inv.put("gainType","BUY");
 	        botNewService.insertInventoryLogTx(inv);
 	    }
+	    
+
+	    // 결제 (포인트 차감)
+	    HashMap<String, Object> pr = new HashMap<>();
+	    pr.put("userName", userName);
+	    pr.put("roomName", roomName);
+	    pr.put("score", -price);
+	    pr.put("cmd", "BUY");
+	    botNewService.insertPointRank(pr);
 
 	    // 구매 후 포인트
 	    Integer tmpAfter = null;
@@ -1523,10 +1525,13 @@ public class BossAttackController {
 	    int monMaxHp, monHpRemainBefore;
 	    boolean lucky;
 	    boolean dark = false; // 어둠몬스터 여부
+	    
+	    int beforeJobSkillYn=0;
 
 	    if (ob != null) {
 	        m = botNewService.selectMonsterByNo(ob.monNo);
 	        if (m == null) return "진행중 몬스터 정보를 찾을 수 없습니다.";
+	        beforeJobSkillYn = ob.beforeJobSkillYn;
 	        lucky = (ob.luckyYn != null && ob.luckyYn == 1);
 	        dark  = (ob.luckyYn != null && ob.luckyYn == 2);
 	        if (dark) {
@@ -1541,6 +1546,8 @@ public class BossAttackController {
 	        m = botNewService.selectMonsterByNo(u.targetMon);
 	        if (m == null) return "대상 몬스터가 지정되어 있지 않습니다. (TARGET_MON 없음)";
 
+	        beforeJobSkillYn = 0;
+	        
 	        monMaxHp = m.monHp;
 	        monHpRemainBefore = m.monHp;
 
@@ -1697,7 +1704,8 @@ public class BossAttackController {
 	            effCriDmg,
 	            berserkMul,
 	            monHpRemainBefore,
-	            effHpMax
+	            effHpMax,
+	            beforeJobSkillYn
 	    );
 
 	    AttackCalc calc = dmg.calc;
@@ -4713,7 +4721,8 @@ public class BossAttackController {
 	        int effCriDmg,
 	        double berserkMul,
 	        int monHpRemainBefore,
-	        int effHpMax
+	        int effHpMax,
+	        int beforeJobSkillYn
 	) {
 	    DamageOutcome out = new DamageOutcome();
 	    AttackCalc calc = new AttackCalc();
@@ -4738,6 +4747,34 @@ public class BossAttackController {
 	    // -----------------------------
 	    // 2) 궁수 저격, 프리스트 스켈레톤 추가뎀
 	    // -----------------------------
+	    
+	    int hitCount = 1;
+	    if ("궁사".equals(job)) {
+	        int gap = Math.max(0, effAtkMax - effAtkMin);
+
+	        if (gap >= 1000) {
+	            // 예시: 2~10연타 10%씩 같은 룰을 여기서 만들면 됨
+	            // hitCount = ...
+	        } else if (gap >= 200) {
+	            // 예시: 2연속 공격 50% 같은 룰
+	            // hitCount = 2 or 1
+	        }
+	    }
+
+	    if ("저격수".equals(job)) {
+	        // 첫 조우는 그냥 일반공격: 몬스터어택에서 sniperPhase=0 으로 넘겨주면 됨
+	    	switch(beforeJobSkillYn) {
+	    		case 0:
+	    			baseAtk = (int)Math.round(baseAtk * 2.5);
+	    			break;
+	    		case 1:
+	    			break;
+    			default:
+    				break;
+	    	}
+	    }
+	    
+	    
 	    boolean isSnipe = false;
 	    if ("궁수".equals(job)) {
 	        if (ThreadLocalRandom.current().nextDouble() < 0.13) {
@@ -4831,6 +4868,9 @@ public class BossAttackController {
 	    				flags.monPattern = 1;
 		    			calc.monDmg = 0;  // 방어 패턴이었으니 몬스터 피해는 0 유지
 		    			calc.patternMsg = m.monName + "의 패턴파훼! 몬스터가 모든행동을 멈춥니다";
+		    			
+		    			int originalDmg = (int) Math.round(calc.baseAtk * calc.critMultiplier);
+			            calc.atkDmg = originalDmg;
 		    		}
 	    		}
 	        }
@@ -5504,6 +5544,19 @@ public class BossAttackController {
     		"▶ 강인한 체력의 소유자, 체력이 낮아지면 적의 행동을 저지시킨다",
     		"⚔ 공격력 최대치, 치명타 배율 및 치명타데미지 증가가 체력으로 전환(3배수,치명 미발생)"+NL+"본인의 체력이 낮아질수록 데미지 증가, 체력이 낮을때 적행동저지"
         ));
+        
+        JOB_DEFS.put("궁사", new JobDef(
+    		"궁사",
+    		"▶ 궁사",
+    		"⚔ 궁사"
+        ));
+        JOB_DEFS.put("저격수", new JobDef(
+    		"저격수",
+    		"▶ 저격수",
+    		"⚔ 저격수"
+        ));
+        
+        
         
 	}
 	
