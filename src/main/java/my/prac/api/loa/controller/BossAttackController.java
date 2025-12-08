@@ -250,6 +250,9 @@ public class BossAttackController {
 	    if ("전사".equals(job)) {
 	        finalHpMax += baseHpMax*10; // 기본 HP 추가
 	    }
+	    if ("저격수".equals(job)) {
+	        finalHpMax = finalHpMax/2; // 기본 HP 추가
+	    }
 	    if (finalHpMax <= 0) finalHpMax = 1;
 
 	    // 5) 최종 리젠 (기본+아이템+축복)
@@ -4802,17 +4805,21 @@ public class BossAttackController {
 	    }
 
 	    if ("저격수".equals(job)) {
-	        // 첫 조우는 그냥 일반공격: 몬스터어택에서 sniperPhase=0 으로 넘겨주면 됨
 	    	switch(beforeJobSkillYn) {
 	    		case 0:
 	    			out.dmgCalcMsg += "조준 보너스 DMG "+baseAtk+"→";
-		        	baseAtk = (int)Math.round(baseAtk * 2.5);
+		        	baseAtk = (int)Math.round(baseAtk * 2.2);
 		        	out.dmgCalcMsg += baseAtk+NL;
 	    			calc.jobSkillUsed = true;
 	    			break;
 	    		case 1:
+	    			out.dmgCalcMsg += "다음 공격이 강화됩니다"+NL;
 	    			break;
     			default:
+    				out.dmgCalcMsg += "조준 보너스 DMG "+baseAtk+"→";
+		        	baseAtk = (int)Math.round(baseAtk * 2.2);
+		        	out.dmgCalcMsg += baseAtk+NL;
+	    			calc.jobSkillUsed = true;
     				break;
 	    	}
 	    }
@@ -4906,6 +4913,13 @@ public class BossAttackController {
 	        flags.snipe = isSnipe;
 	        flags.finisher = (flags.monPattern == 4); // 패턴4=필살기
 	        
+	        if ("저격수".equals(job) ) {
+	        	if(calc.jobSkillUsed && flags.monPattern==2) {
+	        		flags.monPattern = 1;
+	    			calc.monDmg = 0;   
+	    			calc.patternMsg = m.monName + " (이)가 표적을 잃어 방황합니다";
+	        	}
+	        }
 	    	if ("파이터".equals(job) ) {
 	    		if(u.hpCur < effHpMax*0.3) {
 	    			if (ThreadLocalRandom.current().nextDouble() < 0.40) {
@@ -5595,12 +5609,13 @@ public class BossAttackController {
     		"▶ 궁사",
     		"⚔ 궁사"
         ));
+        */
         JOB_DEFS.put("저격수", new JobDef(
     		"저격수",
-    		"▶ 저격수",
-    		"⚔ 저격수"
+    		"▶ 숨어서 급소를 노리는 암살자, 극강의 공격력을 선사한다",
+    		"⚔ 최대체력-50%, 공격 후 다음 공격강화, 강화공격 시전 시 몬스터의 일반공격을 받지않는다.(조우 시 강화판정)"
         ));
-        */
+        
         
         
 	}
