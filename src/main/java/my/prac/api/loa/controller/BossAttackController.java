@@ -4803,6 +4803,10 @@ public class BossAttackController {
 	                (int) Math.round(perHitRateRaw)
 	        ); // 안전하게 캡(300% 제한 등) 적용
 
+	        if (perHitRateRaw > 40.0) {
+	            perHitRateRaw = 40.0;
+	        }
+	        
 	        int totalDmg = 0;
 	        StringBuilder multiMsg = new StringBuilder();
 
@@ -5650,7 +5654,7 @@ public class BossAttackController {
         JOB_DEFS.put("궁사", new JobDef(
     		"궁사",
     		"▶ 연속공격의 달인, 최대데미지와 최소공격력 차이가 클수록 연속공격한다",
-    		"⚔ 최대-최소 데미지 차이 160 마다 1연사 추가공격(치명타확률은 각연사 나눔)"
+    		"⚔ 최대-최소 데미지 차이 160 마다 1연사 추가공격(치명타확률은 각연사 나눔,최대40%)"
         ));
         
         JOB_DEFS.put("저격수", new JobDef(
