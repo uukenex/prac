@@ -414,7 +414,7 @@ public class BossAttackController {
 
 	    if (roll < 0.40) { //40퍼확률로 골드 
 	    	// 🔥 작은 쪽이 더 잘 나오는 SP 보상 (200 ~ 50000)
-	        int sp = pickBiasedSp(200, 100000);
+	        int sp = rollBagSpWithCeiling(userName, roomName);
 
 	        HashMap<String,Object> pr = new HashMap<>();
 	        pr.put("userName", userName);
@@ -441,7 +441,7 @@ public class BossAttackController {
 
 	        // 그래도 없으면 최종적으로 SP 보상
 	        if (rewardItemIds == null || rewardItemIds.isEmpty()) {
-	            int sp = pickBiasedSp(200, 100000);
+	        	int sp = rollBagSpWithCeiling(userName, roomName);
 
 	            HashMap<String,Object> pr = new HashMap<>();
 	            pr.put("userName", userName);
@@ -485,6 +485,23 @@ public class BossAttackController {
 	        }
 	        return "가방을 열어보니 [" + label + "] 아이템을 획득했습니다!";
 	    }
+	}
+	
+	private int rollBagSpWithCeiling(String userName, String roomName) {
+	    int recentSum = botNewService.selectRecentBagSpSum(userName, roomName);
+	    
+	    int minSp;
+	    int maxSp = 100000;
+
+	    if (recentSum < 50000) {
+	        // 최근 10개의 합이 5만 미만이면 천장 적용: 5만 ~ 10만 구간에서 룰렛
+	        minSp = 50000;
+	    } else {
+	        // 평소처럼 200 ~ 10만
+	        minSp = 200;
+	    }
+
+	    return pickBiasedSp(minSp, maxSp);
 	}
 
 	/* ===== Public APIs ===== */

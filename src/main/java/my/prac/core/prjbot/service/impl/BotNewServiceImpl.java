@@ -375,6 +375,13 @@ public class BotNewServiceImpl implements BotNewService {
     public List<BagRewardLog> selectRecentBagRewards() {
     	return botNewDAO.selectRecentBagRewards();
     }
+    @Override
+    public int selectRecentBagSpSum(String userName, String roomName) {
+    	HashMap<String,Object> p = new HashMap<>();
+        p.put("userName", userName);
+        p.put("roomName", roomName);
+    	return botNewDAO.selectRecentBagSpSum(p);
+    }
     
     @Override
     public int selectInventorySoldCount(String userName, String roomName) {

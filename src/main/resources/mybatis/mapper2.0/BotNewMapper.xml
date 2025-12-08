@@ -1056,6 +1056,21 @@
 	    WHERE ROWNUM &lt;= 5
 	</select>
 	
+	<!-- 최근 5개의 BAG_OPEN_SP 합계 -->
+	<select id="selectRecentBagSpSum" parameterType="hashmap" resultType="int">
+	    SELECT NVL(SUM(x.SCORE), 0) AS sumScore
+	      FROM (
+	            SELECT SCORE
+	              FROM TBOT_POINT_RANK
+	             WHERE NEW_YN   = '1'
+	               AND CMD      = 'BAG_OPEN_SP'
+	               AND USER_NAME = #{userName}
+	               AND ROOM_NAME = #{roomName}
+	             ORDER BY INSERT_DATE DESC
+	          ) x
+	     WHERE ROWNUM &lt;= 10
+	</select>
+	
 	<!-- DEL_YN='1' 인 인벤토리 누적 수량(판매/사용 포함) -->
 	<select id="selectInventorySoldCount" resultType="int">
 	  SELECT NVL(SUM(QTY), 0)
