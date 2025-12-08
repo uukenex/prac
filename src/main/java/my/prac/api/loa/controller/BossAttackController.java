@@ -4785,23 +4785,65 @@ public class BossAttackController {
 	            ? effAtkMin
 	            : ThreadLocalRandom.current().nextInt(effAtkMin, effAtkMax + 1);
 
-	   
+	    double critMultiplier = Math.max(1.0, effCriDmg / 100.0);
 	    
 	    // -----------------------------
-	    // 2) 궁수 저격, 프리스트 스켈레톤 추가뎀
+	    // 2) 추가데미지 로직
 	    // -----------------------------
 	    
-	    int hitCount = 1;
 	    if ("궁사".equals(job)) {
-	        int gap = Math.max(0, effAtkMax - effAtkMin);
+	    	int range = Math.max(0, effAtkMax - effAtkMin);   // 최대뎀-최소뎀
+	        int extraHits = range / 160;                      // 160당 +1타
+	        int hitCount = Math.max(1, extraHits);            // 최소 1타
+	        double perHitRateRaw = (hitCount > 0)
+	                ? (double) effCritRate / hitCount
+	                : effCritRate;
 
-	        if (gap >= 1000) {
-	            // 예시: 2~10연타 10%씩 같은 룰을 여기서 만들면 됨
-	            // hitCount = ...
-	        } else if (gap >= 200) {
-	            // 예시: 2연속 공격 50% 같은 룰
-	            // hitCount = 2 or 1
+	        int perHitCritThreshold = effAtkRateLimit(
+	                (int) Math.round(perHitRateRaw)
+	        ); // 안전하게 캡(300% 제한 등) 적용
+
+	        int totalDmg = 0;
+	        StringBuilder multiMsg = new StringBuilder();
+
+	        if (hitCount > 1) {
+	            multiMsg.append("궁사의 연사 발동! ")
+	                    .append(hitCount).append("연사").append(NL);
 	        }
+
+	        for (int i = 1; i <= hitCount; i++) {
+	            // 각 타마다 독립적으로 데미지/크리 굴림
+	            int shotAtk = (effAtkMax <= effAtkMin)
+	                    ? effAtkMin
+	                    : ThreadLocalRandom.current().nextInt(effAtkMin, effAtkMax + 1);
+
+	            int roll = ThreadLocalRandom.current().nextInt(0, 101);
+	            boolean shotCrit = (roll <= perHitCritThreshold);
+
+	            int shotDmg = shotCrit
+	                    ? (int) Math.round(shotAtk * critMultiplier)
+	                    : shotAtk;
+
+	            totalDmg += shotDmg;
+
+	            if (hitCount > 1) {
+	                multiMsg.append(i).append("타: ").append(shotDmg);
+	                if (shotCrit) multiMsg.append(" (크리)");
+	                multiMsg.append("!").append(NL);
+	            }
+	        }
+
+	        if (hitCount > 1) {
+	            multiMsg.append("총합 데미지: ").append(totalDmg).append("!").append(NL);
+	        }
+
+	        // 이후 공통 로직에서는 "한 번의 큰 타격"처럼 처리되지만
+	        // 실제로는 위에서 연사 데미지로 합산한 값이 들어간다.
+	        baseAtk = totalDmg;
+	        crit = false;               // 이미 shot별로 처리했으니 여기선 의미 없음
+
+	        // 궁사 전용 계산 메시지는 out.dmgCalcMsg 쪽으로 넘김
+	        out.dmgCalcMsg = multiMsg.toString();
 	    }
 
 	    if ("저격수".equals(job)) {
@@ -4879,7 +4921,7 @@ public class BossAttackController {
 	    }
 	    
 	    
-	    double critMultiplier = Math.max(1.0, effCriDmg / 100.0);
+	    
 	    int rawAtkDmg = crit ? (int) Math.round(baseAtk * critMultiplier) : baseAtk;
 
 	    // -----------------------------
@@ -5550,12 +5592,13 @@ public class BossAttackController {
 	        "⚔ 기본 HP*10만큼 추가 증가, 몬스터레벨에 따라 방어도 추가, 적의 필살기를 반격(20%),모든 적에게 데미지 추가(+20%)"
 	    ));
 
+	    /*
 	    JOB_DEFS.put("궁수", new JobDef(
 	        "궁수",
 	        "▶ 사냥감을 조준하는 집요한 추적자, 강력한 한방을 선사한다",
 	        "⚔ 최종 데미지 ×1.6, EXP +25%, 공격시 13%확률로 강력한공격(dmg*20)"
 	    ));
-
+	     */
 	    JOB_DEFS.put("마법사", new JobDef(
 	        "마법사",
 	        "▶ 강력한 마법공격으로 몬스터의 방어태세를 무력화한다",
@@ -5600,16 +5643,16 @@ public class BossAttackController {
         JOB_DEFS.put("파이터", new JobDef(
     		"파이터",
     		"▶ 강인한 체력의 소유자, 체력이 낮아지면 적의 행동을 저지시킨다",
-    		"⚔ 공격력 최대치, 치명타 배율 및 치명타데미지 증가가 체력으로 전환(3배수,치명 미발생)"+NL+"본인의 체력이 낮아질수록 데미지 증가, 체력이 낮을때 적행동저지"
+    		"⚔ 공격력 최대치, 치명타 배율 및 치명타데미지 증가가 체력으로 전환(3배수,치명 미발생)"+NL+"본인의 체력이 낮아질수록 데미지 증가(추가 2배까지), 체력이 30%이하 일 때 적 행동저지(40%)"
         ));
         
-        /*
+        
         JOB_DEFS.put("궁사", new JobDef(
     		"궁사",
-    		"▶ 궁사",
-    		"⚔ 궁사"
+    		"▶ 연속공격의 달인, 최대데미지와 최소공격력 차이가 클수록 연속공격한다",
+    		"⚔ 최대-최소 데미지 차이 160 마다 1연사 추가공격(치명타확률은 각연사 나눔)"
         ));
-        */
+        
         JOB_DEFS.put("저격수", new JobDef(
     		"저격수",
     		"▶ 숨어서 급소를 노리는 암살자, 극강의 공격력을 선사한다",
