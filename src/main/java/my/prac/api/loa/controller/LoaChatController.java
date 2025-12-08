@@ -3273,57 +3273,63 @@ public class LoaChatController {
 	                // 젬 옵션 텍스트
 	                HashMap<String, Object> 젬옵션 = (HashMap<String, Object>) gem_tooltip2.get("젬 옵션");
 	                HashMap<String, Object> 젬옵션_v = (HashMap<String, Object>) 젬옵션.get("value");
-	                String rawOptText = Jsoup.parse((String) 젬옵션_v.get("Element_001")).text();
+	                
+	                try {
+	                	String rawOptText = Jsoup.parse((String) 젬옵션_v.get("Element_001")).text();
 
-	                // 의지력 효율 / X 포인트
-	                Integer effVal = null;
-	                Integer pointVal = null;
+		                // 의지력 효율 / X 포인트
+		                Integer effVal = null;
+		                Integer pointVal = null;
 
-	                java.util.regex.Matcher mEff = pEff.matcher(rawOptText);
-	                if (mEff.find()) {
-	                    effVal = Integer.parseInt(mEff.group(1));
-	                }
+		                java.util.regex.Matcher mEff = pEff.matcher(rawOptText);
+		                if (mEff.find()) {
+		                    effVal = Integer.parseInt(mEff.group(1));
+		                }
 
-	                java.util.regex.Matcher mPoint = pPoint.matcher(rawOptText);
-	                String pointType = "";
-	                if (mPoint.find()) {
-	                    pointType = mPoint.group(1).trim();              // 질서 / 혼돈
-	                    pointVal = Integer.parseInt(mPoint.group(2));
-	                }
+		                java.util.regex.Matcher mPoint = pPoint.matcher(rawOptText);
+		                String pointType = "";
+		                if (mPoint.find()) {
+		                    pointType = mPoint.group(1).trim();              // 질서 / 혼돈
+		                    pointVal = Integer.parseInt(mPoint.group(2));
+		                }
 
-	                // [낙인력] Lv.3 / [추가 피해] Lv.4 / ...
-	                List<Integer> lvList = new ArrayList<>();
-	                java.util.regex.Matcher mStat = pStat.matcher(rawOptText);
-	                while (mStat.find()) {
-	                    String lvlStr = mStat.group(2).trim();
-	                    try {
-	                        lvList.add(Integer.parseInt(lvlStr));
-	                    } catch (NumberFormatException ignore) {}
-	                }
+		                // [낙인력] Lv.3 / [추가 피해] Lv.4 / ...
+		                List<Integer> lvList = new ArrayList<>();
+		                java.util.regex.Matcher mStat = pStat.matcher(rawOptText);
+		                while (mStat.find()) {
+		                    String lvlStr = mStat.group(2).trim();
+		                    try {
+		                        lvList.add(Integer.parseInt(lvlStr));
+		                    } catch (NumberFormatException ignore) {}
+		                }
 
-	                // 요약코드 [5514] = eff(5) + point(5) + 첫옵션Lv(1) + 두번째옵션Lv(4)
-	                String summaryCode = "";
-	                if (effVal != null && pointVal != null && lvList.size() >= 2) {
-	                    int lv1 = lvList.get(0);
-	                    int lv2 = lvList.get(1);
-	                    summaryCode = "[" + effVal + "" + pointVal + "" + lv1 + "" + lv2 + "]";
-	                }
+		                // 요약코드 [5514] = eff(5) + point(5) + 첫옵션Lv(1) + 두번째옵션Lv(4)
+		                String summaryCode = "";
+		                if (effVal != null && pointVal != null && lvList.size() >= 2) {
+		                    int lv1 = lvList.get(0);
+		                    int lv2 = lvList.get(1);
+		                    summaryCode = "[" + effVal + "" + pointVal + "" + lv1 + "" + lv2 + "]";
+		                }
 
-	                // ─ 출력 구성 ─
-	                // 한 줄: +[5514]질서 : 견고 (전설)
-	                coreGemMsg.append("+");
-	                if (!summaryCode.isEmpty()) {
-	                    coreGemMsg.append(summaryCode);
+		                // ─ 출력 구성 ─
+		                // 한 줄: +[5514]질서 : 견고 (전설)
+		                coreGemMsg.append("+");
+		                if (!summaryCode.isEmpty()) {
+		                    coreGemMsg.append(summaryCode);
+		                }
+		                if (!gemType.isEmpty()) {
+		                    coreGemMsg.append(gemType).append(" : ").append(gemLabel);
+		                } else {
+		                    coreGemMsg.append(fullGemName);
+		                }
+		                if (!gemGrade.isEmpty()) {
+		                    coreGemMsg.append(" (").append(gemGrade).append(")");
+		                }
+		                coreGemMsg.append(enterStr);
+	                }catch(Exception e) {
+	                	
 	                }
-	                if (!gemType.isEmpty()) {
-	                    coreGemMsg.append(gemType).append(" : ").append(gemLabel);
-	                } else {
-	                    coreGemMsg.append(fullGemName);
-	                }
-	                if (!gemGrade.isEmpty()) {
-	                    coreGemMsg.append(" (").append(gemGrade).append(")");
-	                }
-	                coreGemMsg.append(enterStr);
+	                
 	            }
 
 	            Map<String, Object> coreInfo = new HashMap<>();

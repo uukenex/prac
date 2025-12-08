@@ -3374,13 +3374,13 @@ public class BossAttackController {
 	        case 11: return 40.0;
 	        case 12: return 40.0;
 	        case 13: return 30.0;
-	        case 14: return 20.0;
+	        case 14: return 25.0;
 	        case 15: return 20.0;
-	        case 16: return 20.0;
-	        case 17: return 20.0;
-	        case 18: return 20.0;
-	        case 19: return 20.0;
-	        case 20: return 20.0;
+	        case 16: return 25.0;
+	        case 17: return 25.0;
+	        case 18: return 25.0;
+	        case 19: return 25.0;
+	        case 20: return 25.0;
 	        case 51: return 80;
 	        case 52: return 80;
 	        case 53: return 80;
@@ -4758,6 +4758,31 @@ public class BossAttackController {
 	    	} catch (Exception e) {
 	    		return "어둠 아이템 획득 ";
 	    	}
+	    }
+	    
+	    if (cmd.startsWith("ACHV_ATTACK_TOTAL_")) {
+	        try {
+	            int th = Integer.parseInt(cmd.substring("ACHV_ATTACK_TOTAL_".length()));
+	            return "통산 공격 " + th + "회 달성";
+	        } catch (Exception e) {
+	            return "통산 공격 업적";
+	        }
+	    }
+
+	    if (cmd.startsWith("ACHV_JOB_SKILL_")) {
+	        try {
+	            String rest = cmd.substring("ACHV_JOB_SKILL_".length()); // "궁수_10"
+	            String[] parts = rest.split("_");
+	            if (parts.length >= 2) {
+	                String jobName = parts[0];               // 궁수, 사신, 기사...
+	                int th = Integer.parseInt(parts[1]);     // 10
+	                return jobName + " 스킬 사용 " + th + "회 달성";
+	            } else {
+	                return "직업 스킬 사용 업적";
+	            }
+	        } catch (Exception e) {
+	            return "직업 스킬 사용 업적";
+	        }
 	    }
 	    
 
