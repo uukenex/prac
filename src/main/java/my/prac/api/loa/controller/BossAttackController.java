@@ -1893,6 +1893,21 @@ public class BossAttackController {
 
 	    return msg;
 	}
+	
+	
+	public String patchNote(HashMap<String,Object> map) {
+		String msg ="";
+		try {
+			botNewService.execSPPatchNoteTest(map);
+			msg += Objects.toString(map.get("outMsg"), "");
+	    } catch (Exception e) {
+	    	msg ="";
+	        e.printStackTrace();
+	    }
+		return msg;
+		
+	}
+	
 
 	private double computeBagPityMultiplier(String userName, String roomName) {
 

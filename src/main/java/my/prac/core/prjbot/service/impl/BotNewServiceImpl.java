@@ -327,6 +327,13 @@ public class BotNewServiceImpl implements BotNewService {
     	 botNewDAO.execSPMsgTest(map);
     }
     
+    @Override
+    public void execSPPatchNoteTest(HashMap<String,Object> map) throws Exception{
+    	botNewDAO.execSPPatchNoteTest(map);
+    }
+    
+    
+    
     
     @Override
     public int selectBagCount(String userName, String roomName) {

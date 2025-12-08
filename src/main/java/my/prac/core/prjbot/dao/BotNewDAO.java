@@ -178,6 +178,8 @@ public interface BotNewDAO {
     HashMap<String, Object> selectActiveMonster(@Param("userName")String userName,@Param("roomName") String roomName);
     
     public int execSPMsgTest(HashMap<String,Object> map) throws Exception;
+    public int execSPPatchNoteTest(HashMap<String,Object> map) throws Exception;
+    
     int selectBagCount(@Param("userName") String userName,
             @Param("roomName") String roomName,
             @Param("itemId") int itemId);

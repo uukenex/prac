@@ -125,6 +125,7 @@ public interface BotNewService {
     HashMap<String, Object> selectActiveMonster(String userName, String roomName);
     
     public void execSPMsgTest(HashMap<String,Object> map) throws Exception;
+    public void execSPPatchNoteTest(HashMap<String,Object> map) throws Exception;
     
     
     int selectBagCount(String userName, String roomName);

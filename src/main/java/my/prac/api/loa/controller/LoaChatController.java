@@ -692,6 +692,9 @@ public class LoaChatController {
 				}
 				*/
 				break;
+			case "/ㄱㄱㄱㅈ": case "/공격공지": case "/공지": 
+				val = boss.patchNote(reqMap);
+				break;
 			case "/ㄱㄱㄱ": case "/ㄱ": case "/R": case "/r": 
 				val = boss.monsterAttack(reqMap);
 				break;

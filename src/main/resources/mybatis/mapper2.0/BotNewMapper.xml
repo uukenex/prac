@@ -957,6 +957,12 @@
 							)
 		}
 	</update>
+	<update id="execSPPatchNoteTest" statementType="CALLABLE" parameterType="hashMap">
+		{call SP_PATCH_NOTE_TEST ( #{outCode  , jdbcType=NUMERIC,mode=INOUT},
+								   #{outMsg   , jdbcType=VARCHAR,mode=INOUT}
+								  )
+		}
+	</update>
 		
 		
 	<select id="selectBagCount" resultType="int">
