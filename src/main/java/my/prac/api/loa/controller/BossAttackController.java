@@ -1844,15 +1844,27 @@ public class BossAttackController {
 	        String killAchvMsg   = grantKillAchievements(userName, roomName);
 	        String itemAchvMsg   = grantLightDarkItemAchievements(userName, roomName);
 
-	        if ((firstClearMsg != null && !firstClearMsg.isEmpty())
-	                || (killAchvMsg != null && !killAchvMsg.isEmpty())
-	                || (itemAchvMsg != null && !itemAchvMsg.isEmpty())) {
+	     // 🔹 새로 추가: 공격 횟수 업적
+	        String attackAchvMsg = grantAttackCountAchievements(userName, roomName);
 
-	            bonusMsg = NL
-	                    + firstClearMsg
-	                    + killAchvMsg
-	                    + itemAchvMsg;
+	        // 🔹 새로 추가: 직업별 스킬 사용 업적 (이번 턴에 스킬 썼을 때만)
+	        String jobSkillAchvMsg = "";
+	        if (calc.jobSkillUsed) {
+	            jobSkillAchvMsg = grantJobSkillUseAchievementsAllJobs(userName, roomName);
 	        }
+	        if ((firstClearMsg   != null && !firstClearMsg.isEmpty())
+	                || (killAchvMsg     != null && !killAchvMsg.isEmpty())
+	                || (itemAchvMsg     != null && !itemAchvMsg.isEmpty())
+	                || (attackAchvMsg   != null && !attackAchvMsg.isEmpty())
+	                || (jobSkillAchvMsg != null && !jobSkillAchvMsg.isEmpty())) {
+
+	                   bonusMsg = NL
+	                           + firstClearMsg
+	                           + killAchvMsg
+	                           + itemAchvMsg
+	                           + attackAchvMsg
+	                           + jobSkillAchvMsg;
+	               }
 
 	        bagDropMsg = tryDropBag(userName, roomName, m);
 	    }
@@ -2721,6 +2733,108 @@ public class BossAttackController {
 	    return sb.toString();
 	}
 
+	/** 공격 횟수 기반 업적 (통산 공격 수) */
+	private String grantAttackCountAchievements(String userName, String roomName) {
+	    AttackDeathStat ads = botNewService.selectAttackDeathStats(userName, roomName);
+	    if (ads == null) return "";
+
+	    int totalAttacks = ads.totalAttacks;
+	    if (totalAttacks <= 0) return "";
+
+	    // 원하는 구간은 자유롭게 조정 가능
+	    int[] thresholds = {1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000,10000,11000
+	    		,12000,13000,14000,15000,16000,17000,18000,19000,20000};
+
+	    StringBuilder sb = new StringBuilder();
+	    for (int th : thresholds) {
+	        if (totalAttacks >= th) {
+	            String cmd = "ACHV_ATTACK_TOTAL_" + th;
+	            int rewardSp = th * 10; // 예: 100회 → 20sp, 1000회 → 200sp (원하면 바꿔도 됨)
+	            sb.append(grantOnceIfEligible(userName, roomName, cmd, rewardSp));
+	        }
+	    }
+	    return sb.toString();
+	}
+	/** 
+	 * 직업별 스킬 사용 횟수 업적 (모든 직업 한 번에 계산)
+	 * - 예전에 사신, 기사 같은 직업으로 사용한 기록도 전부 포함
+	 */
+	private String grantJobSkillUseAchievementsAllJobs(String userName, String roomName) {
+
+	    List<HashMap<String,Object>> rows =
+	            botNewService.selectJobSkillUseCountAllJobs(userName, roomName);
+	    if (rows == null || rows.isEmpty()) return "";
+
+	    // 공통 threshold (원하는 대로 조정 가능)
+	    int[] thresholds = { 1, 10, 30, 50, 100, 150,200,250, 300,350,400,450, 500,600,700,800,900, 1000 };
+
+	    StringBuilder sb = new StringBuilder();
+
+	    for (HashMap<String,Object> row : rows) {
+	        String jobName = Objects.toString(row.get("JOB"), "").trim();
+	        if (jobName.isEmpty()) continue; // 혹시 null/공백인 이상값 방지
+
+	        int totalSkillUse = 0;
+	        Object v = row.get("TOTAL_SKILL_USE");
+	        if (v instanceof Number) {
+	            totalSkillUse = ((Number) v).intValue();
+	        } else {
+	            totalSkillUse = parseIntSafe(Objects.toString(v, "0"));
+	        }
+
+	        if (totalSkillUse <= 0) continue;
+
+	        for (int th : thresholds) {
+	            if (totalSkillUse >= th) {
+
+	                // 예: ACHV_JOB_SKILL_사신_10 / ACHV_JOB_SKILL_궁수_100
+	                String cmd = "ACHV_JOB_SKILL_" + jobName + "_" + th;
+
+	                int rewardSp = th * 10; // 숫자는 취향대로 조정 가능
+
+	                sb.append(grantOnceIfEligible(userName, roomName, cmd, rewardSp));
+	            }
+	        }
+	    }
+
+	    return sb.toString();
+	}
+	/** 직업별 스킬 사용 업적 (각 직업당 1회) */
+	private String grantJobSkillUseAchievements(String userName, String roomName, String job) {
+		if (job == null)
+			return "";
+		job = job.trim();
+		if (job.isEmpty())
+			return "";
+
+		int totalSkillUse = 0;
+		try {
+			Integer v = botNewService.selectJobSkillUseCount(userName, roomName, job);
+			if (v != null)
+				totalSkillUse = v;
+		} catch (Exception ignore) {
+		}
+
+		if (totalSkillUse <= 0)
+			return "";
+
+		// 🔸 원하는 구간으로 조정하면 됨
+		int[] thresholds = { 1, 10, 30, 50, 100, 150,200,250, 300,350,400,450, 500,600,700,800,900, 1000 };
+
+		StringBuilder sb = new StringBuilder();
+		for (int th : thresholds) {
+			if (totalSkillUse >= th) {
+				// 예: ACHV_JOB_SKILL_궁사_10
+				String cmd = "ACHV_JOB_SKILL_" + job + "_" + th;
+
+				// 보상 수치는 취향대로 – 대략 공격/킬 업적이랑 비슷한 느낌으로
+				int rewardSp = th * 10;
+
+				sb.append(grantOnceIfEligible(userName, roomName, cmd, rewardSp));
+			}
+		}
+		return sb.toString();
+	}
 
 	/**
 	 * 상점/소비로 삭제된 인벤토리 누적 수량 기준 업적 지급
@@ -4360,6 +4474,12 @@ public class BossAttackController {
 			Pattern.compile("^빛 아이템 획득 (\\d+)회 달성$");
 	private static final Pattern P_DARK_ITEM_GET =
 			Pattern.compile("^어둠 아이템 획득 (\\d+)회 달성$");
+	// 통산 공격 횟수 업적  예) "통산 공격 100회"
+	private static final Pattern P_ATTACK_COUNT =
+	        Pattern.compile("^통산 공격 (\\d+)회$");
+	// 직업별 스킬 사용 업적 예) "궁수 스킬 사용 10회", "사신 스킬 사용 100회"
+	private static final Pattern P_JOB_SKILL =
+	        Pattern.compile("^(.+?) 스킬 사용 (\\d+)회$");
 
 	private void renderAchievementLinesCompact(
 	        StringBuilder sb,
@@ -4377,7 +4497,10 @@ public class BossAttackController {
 	    Map<String, java.util.SortedSet<Integer>> monKillSteps = new LinkedHashMap<>();
 	    java.util.SortedSet<Integer> lightItemSteps = new java.util.TreeSet<>();
 	    java.util.SortedSet<Integer> darkItemSteps = new java.util.TreeSet<>();
-
+	    java.util.SortedSet<Integer> attackSteps = new java.util.TreeSet<>();
+	    Map<String, java.util.SortedSet<Integer>> jobSkillSteps = new LinkedHashMap<>();
+	    
+	    
 	    for (HashMap<String, Object> row : achv) {
 	        if (row == null) continue;
 
@@ -4398,6 +4521,8 @@ public class BossAttackController {
 	        Matcher mMon = P_MONSTER_KILL.matcher(label);
 	        Matcher mLightItem = P_LIGHT_ITEM_GET.matcher(label);
 	        Matcher mDarkItem = P_DARK_ITEM_GET.matcher(label);
+	        Matcher mAttack    = P_ATTACK_COUNT.matcher(label);
+	        Matcher mJobSkill  = P_JOB_SKILL.matcher(label);
 
 	        if (mTotal.matches()) {
 	            int v = parseIntSafe(mTotal.group(1));
@@ -4434,6 +4559,30 @@ public class BossAttackController {
 	        if (mDarkItem.matches()) {
 	            int v = parseIntSafe(mDarkItem.group(1));
 	            if (v > 0) darkItemSteps.add(v);
+	            continue;
+	        }
+	        
+	     // 🔥 통산 공격 업적
+	        if (mAttack.matches()) {
+	            int v = parseIntSafe(mAttack.group(1));
+	            if (v > 0) attackSteps.add(v);
+	            continue;
+	        }
+
+	        // 🔥 직업별 스킬 사용 업적
+	        if (mJobSkill.matches()) {
+	            String jobName = mJobSkill.group(1).trim();  // 궁수, 사신, 기사 ...
+	            int v = parseIntSafe(mJobSkill.group(2));
+	            if (jobName.isEmpty() || v <= 0) {
+	                others.add(label);
+	                continue;
+	            }
+	            java.util.SortedSet<Integer> set = jobSkillSteps.get(jobName);
+	            if (set == null) {
+	                set = new java.util.TreeSet<>();
+	                jobSkillSteps.put(jobName, set);
+	            }
+	            set.add(v);
 	            continue;
 	        }
 
@@ -4473,6 +4622,27 @@ public class BossAttackController {
 	          .append(joinStepNumbers(deathSteps))
 	          .append("]회 달성").append(NL);
 	    }
+	    
+	 // 🔥 통산 공격 업적
+	    if (!attackSteps.isEmpty()) {
+	        sb.append("✨ 통산 공격 [")
+	          .append(joinStepNumbers(attackSteps))
+	          .append("]회 달성").append(NL);
+	    }
+
+	    // 🔥 직업별 스킬 사용 업적
+	    for (Map.Entry<String, java.util.SortedSet<Integer>> e : jobSkillSteps.entrySet()) {
+	        String jobName = e.getKey();
+	        java.util.SortedSet<Integer> steps = e.getValue();
+	        if (steps == null || steps.isEmpty()) continue;
+
+	        sb.append("✨ ")
+	          .append(jobName)
+	          .append(" 스킬 사용 [")
+	          .append(joinStepNumbers(steps))
+	          .append("]회 달성").append(NL);
+	    }
+	    
 	    if (!lightItemSteps.isEmpty()) {
 	    	sb.append("✨ 빛 획득 [")
 	    	.append(joinStepNumbers(lightItemSteps))
@@ -4794,7 +4964,7 @@ public class BossAttackController {
 	    if ("궁사".equals(job)) {
 	    	
 	    	int range = Math.max(0, effAtkMax - effAtkMin);   // 최대뎀-최소뎀
-	        int extraHits = range / 220;                      // 160당 +1타
+	        int extraHits = range / 280;                      // 280당 +1타
 	        int hitCount = Math.max(1, extraHits);            // 최소 1타
 	        double perHitRateRaw = (hitCount > 0)
 	                ? (double) effCritRate / hitCount
@@ -4803,8 +4973,8 @@ public class BossAttackController {
 	        
 	        
 	        
-	        if (perHitRateRaw > 60.0) {
-	            perHitRateRaw = 60.0;
+	        if (perHitRateRaw > 80.0) {
+	            perHitRateRaw = 80.0;
 	        }
 	        
 	        int totalDmg = 0;
@@ -4815,8 +4985,8 @@ public class BossAttackController {
 	                    .append(hitCount).append("연사").append(NL);
 	        }
 	        
-	        effAtkMin = effAtkMin/2;
-	        effAtkMax = effAtkMax/2;
+	        effAtkMin =(int) Math.round(effAtkMin*0.8);
+	        effAtkMax =(int) Math.round(effAtkMax*0.8);
 	        
 	        for (int i = 1; i <= hitCount; i++) {
 	            // 각 타마다 독립적으로 데미지/크리 굴림
@@ -5657,7 +5827,7 @@ public class BossAttackController {
         JOB_DEFS.put("궁사", new JobDef(
     		"궁사",
     		"▶ 연속공격의 달인, 최대데미지와 최소공격력 차이가 클수록 연속공격한다",
-    		"⚔ 최대-최소 데미지 차이 220 마다 1연사 추가공격(각 공격은 기존공격력의 절반,치명타확률은 각연사 나눔,최대60%)"
+    		"⚔ 최대-최소 데미지 차이 280 마다 1연사 추가공격(각 공격은 기존공격력의 80%,치명타확률은 각연사 나눔,최대80%)"
         ));
         
         JOB_DEFS.put("저격수", new JobDef(

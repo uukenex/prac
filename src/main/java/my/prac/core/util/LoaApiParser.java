@@ -233,6 +233,7 @@ public class LoaApiParser {
 				break;
 			}
 		}
+		/*
 		for(HashMap<String, Object> searchHs : elements) {
 			limit_element = findElementDt(searchHs,"[초월]");
 			if(limit_element.size()>0) {
@@ -244,7 +245,7 @@ public class LoaApiParser {
 			if(elixir_element.size()>0) {
 				break;
 			}
-		}
+		}*/
 		for(HashMap<String, Object> searchHs : elements) {
 			bracelet_element = findElementDt(searchHs,"팔찌 효과");
 			if(bracelet_element.size()>0) {

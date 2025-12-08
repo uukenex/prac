@@ -1317,6 +1317,7 @@ public class LoaChatController {
 				}
 				
 				break;
+				/*
 			case "/초월": case "/엘릭서":
 			case "/ㅊㅇ": case "/ㅇㄹㅅ":
 				if (param1 != null && !param1.equals("")) {
@@ -1349,6 +1350,7 @@ public class LoaChatController {
 					return "/ㅊㅇ 캐릭명 또는 /ㅇㄹㅅ 캐릭명 으로 입력해주세요";
 				}
 				break;
+				*/
 			case "/내실":
 			case "/ㄴㅅ":
 				if (param1 != null && !param1.equals("")) {
@@ -2946,7 +2948,7 @@ public class LoaChatController {
 
 		return retMsg;
 	}
-
+/*
 	String limitSearch(String userId) throws Exception {
 		String ordUserId=userId;
 		userId = URLEncoder.encode(userId, "UTF-8");
@@ -3085,72 +3087,7 @@ public class LoaChatController {
 		
 		return resMsg;
 	}
-	String miniLimitSearch(Map<String,Object> rtnMap,String userId) throws Exception {
-		/*String ordUserId=userId;
-		userId = URLEncoder.encode(userId, "UTF-8");
-		// +는 %2B로 치환한다
-		String paramUrl = lostArkAPIurl + "/armories/characters/" + userId + "?filters=equipment";
-		String returnData ="";
-		try {
-			returnData = LoaApiUtils.connect_process(paramUrl);	
-		}catch(Exception e) {
-			throw new Exception("E0004");
-		}*/
-		
-		List<Map<String, Object>> armoryEquipment = null;
-		try {
-			armoryEquipment = (List<Map<String, Object>>) rtnMap.get("ArmoryEquipment");
-		}catch(Exception e){
-		}
-		
-		
-		//HashMap<String, Object> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<Map<String, Object>>() {});
-
-		
-		if(rtnMap ==null) return "초월합 : 엘릭서합 : 0" ;
-		/*List<Map<String, Object>> armoryEquipment;
-		try {
-			
-			armoryEquipment = (List<Map<String, Object>>) rtnMap.get("ArmoryEquipment");
-		}catch(Exception e){
-			e.printStackTrace();
-			throw new Exception("E0003");
-			
-		}*/
-		
-		List<String> equipElixirList = new ArrayList<>();
-		
-		String totLimit ="";
-		int totElixir =0;
-		
-		for (Map<String, Object> equip : armoryEquipment) {
-			HashMap<String, Object> tooltip = new ObjectMapper().readValue((String) equip.get("Tooltip"),new TypeReference<Map<String, Object>>() {});
-			HashMap<String, Object> maps = LoaApiParser.findElement(tooltip);
-			HashMap<String, Object> limit_element = (HashMap<String, Object>)maps.get("limit_element");
-			HashMap<String, Object> elixir_element = (HashMap<String, Object>)maps.get("elixir_element");
-			
-			switch (equip.get("Type").toString()) {
-			case "투구":
-			case "상의":
-			case "하의":
-			case "장갑":
-			case "어깨":
-				//초월합계는 장비에서가져옴 
-				String tmpLimit = LoaApiParser.parseLimit(limit_element);
-				if(!tmpLimit.equals("")) {
-					totLimit = tmpLimit;
-				}
-				//엘릭서 정보 출력 
-				totElixir +=LoaApiParser.parseElixirForEquip(equipElixirList,elixir_element);
-				break;
-				default:
-				continue;
-			}
-		}
-		
-		
-		return "초월합 : " + totLimit + " 엘릭서합 : " + totElixir;
-	}
+	*/
 	String engraveSearch(String userId) throws Exception{
 		String ordUserId=userId;
 		userId = URLEncoder.encode(userId, "UTF-8");
@@ -3433,6 +3370,7 @@ public class LoaChatController {
 
 	    } catch(Exception e) {
 	        arkGridFullMsg = "";
+	        e.printStackTrace();
 	        System.out.println("아크그리드없음");
 	    }
 
@@ -3560,8 +3498,8 @@ public class LoaChatController {
 		}
 		
 		//엘/초
-		String totLimit ="";
-		int totElixir =0;
+		//String totLimit ="";
+		//int totElixir =0;
 		
 		String abillityStoneMsg = "";
 		String accessoryMsg = "";
@@ -3626,7 +3564,7 @@ public class LoaChatController {
 					}
 				}
 				resField1 += enterStr;
-				
+				/*
 				resField2 += equip.get("Type").toString()+" :";//초
 				resField2 += LoaApiParser.parseLimitForLimit(limit_element);
 				resField2 = LoaApiUtils.filterText(resField2);
@@ -3636,8 +3574,8 @@ public class LoaChatController {
 					resField3 += equip.get("Type").toString()+" :";//엘
 					resField3 += LoaApiParser.parseElixirForLimit(null,elixir_element,0);
 					resField3 += enterStr;
-				}
-				
+				}*/
+				/*
 				//초월
 				//초월합계는 장비에서가져옴 
 				String tmpLimit = LoaApiParser.parseLimit(limit_element);
@@ -3646,6 +3584,7 @@ public class LoaChatController {
 				}
 				//엘릭서
 				totElixir +=LoaApiParser.parseElixirForEquip(equipElixirList, elixir_element);
+				*/
 				break;
 			case "어빌리티 스톤":
 				HashMap<String, Object> stone_val = (HashMap<String, Object>) stone_element.get("value");
@@ -4068,11 +4007,6 @@ public class LoaChatController {
 			}
 		}
 		
-		if(totLimit.equals("")) {
-			totLimit="0";
-		}
-		
-		
 		int tier = 3;
 		if(Double.parseDouble(itemAvgLevel.replaceAll(",", ""))>=1640) {
 			tier = 4;
@@ -4082,7 +4016,7 @@ public class LoaChatController {
 		}
 		resMsg += "레벨"    +"　　　 　"+itemAvgLevel+enterStr;
 		resMsg += "전투/원대"+"　　"+characterLevel+"　/　"+expeditionLevel+enterStr;
-		resMsg += "엘릭/초월"+"　　"+totElixir+"(" + elixirField+")"+" / "+totLimit+enterStr;
+		//resMsg += "엘릭/초월"+"　　"+totElixir+"(" + elixirField+")"+" / "+totLimit+enterStr;
 		resMsg += "공격/최생"+"　　"+atk+" / "+life+enterStr;
 		//resMsg += "진/깨/도"+"　 　"+arkpoint1+" / "+arkpoint2+" / "+arkpoint3+enterStr;
 		
@@ -4156,21 +4090,22 @@ public class LoaChatController {
 		resMsg +=abillityStoneMsg+ enterStr;
 		resMsg +=accessoryMsg + enterStr;
 		resMsg +=braceletMsg + enterStr;
-		
+		/*
 		if(totLimit.equals("")) {
 			resMsg += "§초월 : 없음" + enterStr;
 		}else {
 			resMsg += "§초월합 : " + totLimit + enterStr;
 			resMsg += resField2 + enterStr;
 		}
-		
+		*/
+		/*
 		if(totElixir==0) {
 			resMsg += "§엘릭서 : 없음" + enterStr;
 		}else {
 			resMsg += "§엘릭서합 : " + totElixir + "(" + elixirField+")" + enterStr;;
 			resMsg += resField3 + enterStr;
 		}
-		
+		*/
 		//아바타 정보 
 		resMsg +=avatarsText;
 		

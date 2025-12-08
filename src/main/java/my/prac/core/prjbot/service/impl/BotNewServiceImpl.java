@@ -399,4 +399,20 @@ public class BotNewServiceImpl implements BotNewService {
     public List<HashMap<String, Object>> selectTotalGainCountByGainType(String userName, String roomName) {
         return botNewDAO.selectTotalGainCountByGainType(userName, roomName);
     }
+    
+    @Override
+    public Integer selectJobSkillUseCount(String userName, String roomName, String job) {
+        HashMap<String,Object> p = new HashMap<>();
+        p.put("userName", userName);
+        p.put("roomName", roomName);
+        p.put("job", job);
+        return botNewDAO.selectJobSkillUseCount(p);
+    }
+    @Override
+    public List<HashMap<String,Object>> selectJobSkillUseCountAllJobs(String userName, String roomName) {
+        HashMap<String,Object> p = new HashMap<>();
+        p.put("userName", userName);
+        p.put("roomName", roomName);
+        return botNewDAO.selectJobSkillUseCountAllJobs(p);
+    }
 }

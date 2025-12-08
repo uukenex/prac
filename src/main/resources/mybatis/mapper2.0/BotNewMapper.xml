@@ -1103,4 +1103,26 @@
 	    GROUP BY GAIN_TYPE
 	</select>
 	
+	<select id="selectJobSkillUseCount"
+	        parameterType="map"
+	        resultType="int">
+	    SELECT NVL(SUM(job_skill_yn), 0) AS totalSkillUse
+	      FROM TBOT_POINT_NEW_BATTLE_LOG
+	     WHERE USER_NAME = #{userName}
+	       AND ROOM_NAME = #{roomName}
+	       AND JOB       = #{job}
+	</select>
+	
+	<select id="selectJobSkillUseCountAllJobs"
+	        parameterType="map"
+	        resultType="hashmap">
+	    SELECT 
+	        JOB                 AS JOB,
+	        NVL(SUM(job_skill_yn), 0) AS TOTAL_SKILL_USE
+	    FROM TBOT_POINT_NEW_BATTLE_LOG
+	    WHERE USER_NAME = #{userName}
+	      AND ROOM_NAME = #{roomName}
+	    GROUP BY JOB
+	</select>
+	
 </mapper>

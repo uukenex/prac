@@ -147,6 +147,9 @@ public interface BotNewService {
     int selectInventorySoldCount(String userName, String roomName);
     
     List<HashMap<String, Object>> selectTotalGainCountByGainType(String userName, String roomName);
+    
+    Integer selectJobSkillUseCount(String userName, String roomName, String job);
+    List<HashMap<String,Object>> selectJobSkillUseCountAllJobs(String userName, String roomName);
 } 
 
 	

@@ -203,5 +203,6 @@ public interface BotNewDAO {
 	
 	List<HashMap<String, Object>> selectTotalGainCountByGainType(@Param("userName") String userName,
 	        @Param("roomName") String roomName);
-
+	public Integer selectJobSkillUseCount(HashMap<String,Object> param);
+	public List<HashMap<String,Object>> selectJobSkillUseCountAllJobs(HashMap<String,Object> param);
 }
