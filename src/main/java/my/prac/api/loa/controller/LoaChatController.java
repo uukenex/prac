@@ -2662,14 +2662,14 @@ public class LoaChatController {
 		msg += enterStr + "⭐카제로스 레이드⭐";
 		msg += enterStr + "✓종막-카제로스"+enterStr+" ↳ [노 40,000G/하 52,000G]";
 		msg += enterStr + "✓4막-아르모체"+enterStr+" ↳ [노 33,000G/하 42,000G]";
-		msg += enterStr + "✓3막-모르둠"+enterStr+" ↳ (신)[노 21,000G/하 27,000G]";
-		msg += enterStr + " ↳ (구)[노 28,000G/하 38,000G]";
-		msg += enterStr + "✓2막-아브렐슈드"+enterStr+" ↳ (신)[노 16,500G/하 23,000G]";
-		msg += enterStr + " ↳ (구)[노 21,500G/하 30,500G]";
-		msg += enterStr + "✓1막-에기르"+enterStr+" ↳ (신)[노 11,500G/하 18,000G]";
-		msg += enterStr + " ↳ (구) [노 15,500G/하 24,500G]";
-		msg += enterStr + "✓서막-에키드나"+enterStr+" ↳ (신)[노 6,100/하 7,200G]";
-		msg += enterStr + " ↳ (구) [노 3,650G (+3,650G)] [하 8,800G]";
+		msg += enterStr + "✓3막-모르둠"+enterStr+" ↳ [노 21,000G/하 27,000G]";
+		//msg += enterStr + " ↳ (구)[노 28,000G/하 38,000G]";
+		msg += enterStr + "✓2막-아브렐슈드"+enterStr+" ↳ [노 16,500G/하 23,000G]";
+		//msg += enterStr + " ↳ (구)[노 21,500G/하 30,500G]";
+		msg += enterStr + "✓1막-에기르"+enterStr+" ↳ [노 11,500G/하 18,000G]";
+		//msg += enterStr + " ↳ (구) [노 15,500G/하 24,500G]";
+		msg += enterStr + "✓서막-에키드나"+enterStr+" ↳ [노 6,100/하 7,200G]";
+		//msg += enterStr + " ↳ (구) [노 3,650G (+3,650G)] [하 8,800G]";
 		
 		/*
 		msg += enterStr ;
@@ -2679,7 +2679,7 @@ public class LoaChatController {
 		msg += enterStr ;
 		msg += enterStr + "⭐에픽 레이드⭐";
 		msg += enterStr + "✓베히모스 (신)[ 7,200G ]";
-		msg += enterStr + " ↳(구) [ 8,800G ]";
+		//msg += enterStr + " ↳(구) [ 8,800G ]";
 		
 		
 		msg += allSeeStr ;
@@ -2713,7 +2713,7 @@ public class LoaChatController {
 		
 		
 		msg += enterStr;
-		msg += enterStr + "⭐싱글 모드⭐(미확정)";
+		msg += enterStr + "⭐싱글 모드⭐(싱글골드:미확정)";
 		msg += enterStr + "✓아브렐슈드 [8,250G (+8,250G)]";
 		msg += enterStr + "✓에기르 [5,750G (+5,750G)]";
 		msg += enterStr + "✓에키드나 [3,050G (+3,050G)]";
@@ -4754,24 +4754,26 @@ public class LoaChatController {
 				
 				double lv = Double.parseDouble(charList.get("ItemAvgLevel").toString().replaceAll(",", ""));
 				partial_gold = 0;
-				if(lv >= 1730 ) {
-					partial_gold = 132000;
+				if(lv >= 1740 ) {
+					partial_gold = 148000;
+				}else if(lv >= 1730) {
+					partial_gold = 138000;
 				}else if(lv >= 1720) {
-					partial_gold = 120000;
+					partial_gold = 117000;
 				}else if(lv >= 1710) {
-					partial_gold = 111000;
+					partial_gold = 108000;
 				}else if(lv >= 1700) {
-					partial_gold = 101500;
-				}else if(lv >= 1690) {
 					partial_gold = 83000;
+				}else if(lv >= 1690) {
+					partial_gold = 62000;
 				}else if(lv >= 1680) {
-					partial_gold = 74000;
+					partial_gold = 55500;
 				}else if(lv >= 1670) {
-					partial_gold = 45800;
+					partial_gold = 16500+11500+7200;
 				}else if(lv >= 1660) {
-					partial_gold = 33100;
+					partial_gold = 25900;
 				}else if(lv >= 1640) {
-					partial_gold = 24100;
+					partial_gold = 7200+7200;
 				}
 				total_gold +=partial_gold;
 				
