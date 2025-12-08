@@ -4799,10 +4799,7 @@ public class BossAttackController {
 	                ? (double) effCritRate / hitCount
 	                : effCritRate;
 
-	        int perHitCritThreshold = effAtkRateLimit(
-	                (int) Math.round(perHitRateRaw)
-	        ); // 안전하게 캡(300% 제한 등) 적용
-
+	        
 	        if (perHitRateRaw > 40.0) {
 	            perHitRateRaw = 40.0;
 	        }
@@ -4822,7 +4819,7 @@ public class BossAttackController {
 	                    : ThreadLocalRandom.current().nextInt(effAtkMin, effAtkMax + 1);
 
 	            int roll = ThreadLocalRandom.current().nextInt(0, 101);
-	            boolean shotCrit = (roll <= perHitCritThreshold);
+	            boolean shotCrit = (roll <= perHitRateRaw);
 
 	            int shotDmg = shotCrit
 	                    ? (int) Math.round(shotAtk * critMultiplier)
