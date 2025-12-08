@@ -4476,10 +4476,10 @@ public class BossAttackController {
 			Pattern.compile("^어둠 아이템 획득 (\\d+)회 달성$");
 	// 통산 공격 횟수 업적  예) "통산 공격 100회"
 	private static final Pattern P_ATTACK_COUNT =
-	        Pattern.compile("^통산 공격 (\\d+)회$");
+	        Pattern.compile("^통산 공격 (\\d+)회 달성$");
 	// 직업별 스킬 사용 업적 예) "궁수 스킬 사용 10회", "사신 스킬 사용 100회"
 	private static final Pattern P_JOB_SKILL =
-	        Pattern.compile("^(.+?) 스킬 사용 (\\d+)회$");
+	        Pattern.compile("^(.+?) 스킬 사용 (\\d+)회 달성$");
 
 	private void renderAchievementLinesCompact(
 	        StringBuilder sb,
@@ -4989,7 +4989,7 @@ public class BossAttackController {
 	    if ("궁사".equals(job)) {
 	    	
 	    	int range = Math.max(0, effAtkMax - effAtkMin);   // 최대뎀-최소뎀
-	        int extraHits = range / 280;                      // 280당 +1타
+	        int extraHits = range / 280 +1;                      // 280당 +1타
 	        int hitCount = Math.max(1, extraHits);            // 최소 1타
 	        double perHitRateRaw = (hitCount > 0)
 	                ? (double) effCritRate / hitCount
