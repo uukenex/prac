@@ -3154,7 +3154,7 @@ public class LoaChatController {
 		Map<String, Object> arkGrid;
 		
 		
-		String resMsg=ordUserId+ " 그리드 정보" + enterStr+enterStr;
+		String resMsg=ordUserId+ " 그리드 정보" + enterStr;
 		
 		try {
 	        arkGrid = (Map<String, Object>) rtnMap.get("ArkGrid");
@@ -3164,7 +3164,7 @@ public class LoaChatController {
 	    }
 
 	    String allSeeMsg = "";
-	    String arkGridFullMsg = "" + enterStr;
+	    String arkGridFullMsg = "";
 
 	    try {
 
@@ -3223,7 +3223,7 @@ public class LoaChatController {
 	            }
 
 	            // 헤더용 한 줄 (위쪽, allSee쪽 모두에서 공통 사용)
-	            String headerLine = "[" + grade + "] " + coreTypeText + " : " + skillName + ", 활성포인트: " + activePoint;
+	            String headerLine = "[" + grade + "] " + coreTypeText + " : " + skillName + " : " + activePoint;
 
 	            // 정렬 키 계산 (질서/혼돈, 해/달/별)
 	            int major;   // 질서(0) → 혼돈(1) → 기타(2)
@@ -3381,7 +3381,7 @@ public class LoaChatController {
 	    }
 
 	    // allSeeStr은 기존처럼 "===\n" 같은 값을 갖고 있다고 가정
-	    resMsg += enterStr + arkGridFullMsg + allSeeStr + allSeeMsg;
+	    resMsg += arkGridFullMsg + allSeeStr + allSeeMsg;
 		return resMsg;
 	}
 	
@@ -3771,7 +3771,7 @@ public class LoaChatController {
 				}
 				
 				//arkGridMsg += slot.get("Grade") + " " + grid_core_type_v_e1+ ", 활성포인트: " + activePoint + enterStr ;
-				arkGridFullMsg += slot.get("Grade") + " " + slot.get("Name")+ ", 활성포인트: " + activePoint + enterStr + optionMsg.toString()+enterStr;
+				arkGridFullMsg += slot.get("Grade") + " " + slot.get("Name")+ " : " + activePoint + enterStr + optionMsg.toString()+enterStr;
 				
 
 				List<HashMap<String, Object>> gems = (List<HashMap<String, Object>>)slot.get("Gems");
