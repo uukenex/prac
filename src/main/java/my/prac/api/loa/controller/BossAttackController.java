@@ -1563,12 +1563,21 @@ public class BossAttackController {
 	        lucky = (ob.luckyYn != null && ob.luckyYn == 1);
 	        dark  = (ob.luckyYn != null && ob.luckyYn == 2);
 	        if (dark) {
-	            monMaxHp = m.monHp * 5;
-	            m.monAtk = m.monAtk * 2;
-	        } else {
-	            monMaxHp = m.monHp;
-	        }
-	        monHpRemainBefore = Math.max(0, monMaxHp - ob.totalDealtDmg);
+	        	if(m.monNo <15) {
+	        		monMaxHp = m.monHp * 5;
+	        		m.monAtk = m.monAtk * 2;
+	        	}else if(m.monNo>15) {
+	        		monMaxHp = m.monHp * 3;
+	        		m.monAtk = (int)Math.round( m.monAtk * 1.5);
+	        	}else {
+	        		
+	        	}
+	        	
+	        } 
+	        
+	        monMaxHp = m.monHp;
+            monHpRemainBefore = Math.max(0, monMaxHp - ob.totalDealtDmg);
+	        
 
 	    } else {
 	        m = botNewService.selectMonsterByNo(u.targetMon);
@@ -1594,7 +1603,7 @@ public class BossAttackController {
 	        } catch (Exception ignore) {}
 
 	        // ★ 300킬 이상 + 20% 확률이면 어둠몬
-	        if (killCountForThisMon >= 300&& m.monNo<15) {
+	        if (killCountForThisMon >= 300&& m.monNo != 15) {
 	            double rnd = ThreadLocalRandom.current().nextDouble();
 	            if (rnd < 0.20) {
 	                dark = true;
@@ -1611,9 +1620,15 @@ public class BossAttackController {
 	        }
 
 	        if (dark) {
-	            monMaxHp = monMaxHp * 5;
-	            m.monAtk = m.monAtk * 2;
-	            monHpRemainBefore = monMaxHp;
+	        	if(m.monNo <15) {
+	        		monMaxHp = monMaxHp * 5;
+	        		m.monAtk = m.monAtk * 2;
+	        		monHpRemainBefore = monMaxHp;
+	        	}else if(m.monNo>15) {
+	        		monMaxHp = monMaxHp * 3;
+	        		m.monAtk = (int)Math.round( m.monAtk * 1.5);
+	        		monHpRemainBefore = monMaxHp;
+	        	}
 	        }
 
 	        int globalCnt = 0;
@@ -1633,17 +1648,9 @@ public class BossAttackController {
 	        } else if ("사신".equals(job)) {
 	            lucky = false;
 	        } else if ("도사".equals(job)) {
-	            if (m.monNo > 11) {
-	                lucky = ThreadLocalRandom.current().nextDouble() < LUCKY_RATE_DOSA / 2;
-	            } else {
-	                lucky = ThreadLocalRandom.current().nextDouble() < LUCKY_RATE_DOSA;
-	            }
+                lucky = ThreadLocalRandom.current().nextDouble() < LUCKY_RATE_DOSA;
 	        } else {
-	            if (m.monNo > 11) {
-	                lucky = ThreadLocalRandom.current().nextDouble() < LUCKY_RATE / 2;
-	            } else {
-	                lucky = ThreadLocalRandom.current().nextDouble() < LUCKY_RATE;
-	            }
+                lucky = ThreadLocalRandom.current().nextDouble() < LUCKY_RATE ;
 	        }
 	    }
 
@@ -5060,10 +5067,16 @@ public class BossAttackController {
 	    			out.dmgCalcMsg += "다음 공격이 강화됩니다"+NL;
 	    			break;
     			default:
-    				out.dmgCalcMsg += "조준 보너스 DMG "+baseAtk+"→";
-		        	baseAtk = (int)Math.round(baseAtk * 2.2);
-		        	out.dmgCalcMsg += baseAtk+NL;
-	    			calc.jobSkillUsed = true;
+    				double rnd = ThreadLocalRandom.current().nextDouble();
+    	            if (rnd < 0.50) {
+    	            	out.dmgCalcMsg += "조준 보너스 DMG "+baseAtk+"→";
+    		        	baseAtk = (int)Math.round(baseAtk * 2.2);
+    		        	out.dmgCalcMsg += baseAtk+NL;
+    	    			calc.jobSkillUsed = true;
+    	            }else {
+    	            	out.dmgCalcMsg += "다음 공격이 강화됩니다"+NL;
+    	            }
+    				
     				break;
 	    	}
 	    }
@@ -5858,7 +5871,7 @@ public class BossAttackController {
         JOB_DEFS.put("저격수", new JobDef(
     		"저격수",
     		"▶ 숨어서 급소를 노리는 암살자, 극강의 공격력을 선사한다",
-    		"⚔ 최대체력-50%, 공격 후 다음 공격강화, 강화공격 시전 시 몬스터의 일반공격을 받지않는다.(조우 시 강화판정)"
+    		"⚔ 최대체력-50%, 공격 후 다음 공격강화, 강화공격 시전 시 몬스터의 일반공격을 받지않는다.(조우 시 50%확률 강화판정)"
         ));
         
         
