@@ -15,6 +15,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Random;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -1202,6 +1203,39 @@ public class LoaChatController {
 					val = "/파티탈퇴 파티명 닉네임으로 입력해주세요";
 				}
 				break;
+			case "/ㄱㄹㄷ": case "/그리드":
+				if (param1 != null && !param1.equals("")) {
+					param0="/ㄱㄹㄷ";
+					param1 = param1.trim();
+					
+					replace_param = botService.selectBotWordReplace(reqMap);
+					if(replace_param!=null && !replace_param.equals("")) {
+						param1 = replace_param;
+					}
+					
+					fulltxt = param0+" "+param1;
+					org_fulltxt = fulltxt;
+					reqMap.put("fulltxt", fulltxt);
+					try {
+						//val = supporters(param1);
+						val = arkGridSearch(param1);
+						//val+= tossAccount2();
+						
+					} catch (Exception e) {
+						val = errorCodeMng(e,reqMap);
+						val+=enterStr+param1+" 으로 조회됨";
+						
+						HashMap<String,Object> hs = botService.selectIssueCase(reqMap);
+						if(hs !=null && hs.size()>0) {
+							val+= enterStr+hs.get("INSERT_DATE")+ "에 최종조회된 내용 불러오기입니다.";
+							val+= enterStr;
+							val+= hs.get("RES");
+						}
+					}
+				}else {
+					return "/ㄱㄹㄷ 캐릭명 으로 입력해주세요";
+				}
+				break;	
 			case "/장비":
 			case "/정보":
 			case "/ㅈㅂ":
@@ -3162,6 +3196,248 @@ public class LoaChatController {
 		List<HashMap<String, Object>> engraveUpd = sub.updOfTotEngrave(refreshEngraveList,mainCharName);
 		resMsg += sub.msgOfTotEngrave(engraveUpd);
 		
+		return resMsg;
+	}
+	
+	String arkGridSearch(String userId) throws Exception{
+		String ordUserId=userId;
+		userId = URLEncoder.encode(userId, "UTF-8");
+		// +는 %2B로 치환한다
+		String paramUrl = lostArkAPIurl + "/armories/characters/" + userId;// + "?filters=equipment%2Bprofiles";
+		String returnData;
+		try {
+			returnData = LoaApiUtils.connect_process(paramUrl);
+		}catch(Exception e){
+			System.out.println(ordUserId+" arkGridSearch "+e.getMessage());
+			throw new Exception("E0004");
+		}
+		
+		HashMap<String, Object> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<Map<String, Object>>() {});
+
+		Map<String, Object> arkGrid;
+		
+		
+		String resMsg=ordUserId+ " 그리드 정보" + enterStr+enterStr;
+		
+		try {
+	        arkGrid = (Map<String, Object>) rtnMap.get("ArkGrid");
+	    } catch(Exception e) {
+	        System.out.println(userId + " ArkGrid");
+	        throw new Exception("E0003");
+	    }
+
+	    String allSeeMsg = "";
+	    String arkGridFullMsg = "" + enterStr;
+
+	    try {
+
+	        List<HashMap<String, Object>> slots = (List<HashMap<String, Object>>) arkGrid.get("Slots");
+
+	        // 코어 + 젬 정보를 한 번에 담을 리스트
+	        List<Map<String, Object>> coreList = new ArrayList<>();
+
+	        // 젬 옵션 파싱용 패턴들
+	        java.util.regex.Pattern pEff   = java.util.regex.Pattern.compile("의지력 효율\\s*:\\s*(\\d+)");
+	        java.util.regex.Pattern pPoint = java.util.regex.Pattern.compile("([가-힣]+) 포인트\\s*:\\s*(\\d+)");
+	        java.util.regex.Pattern pStat  = java.util.regex.Pattern.compile("\\[(.+?)]\\s*Lv\\.(\\d+)");
+
+	        for (HashMap<String, Object> slot : slots) {
+	            HashMap<String, Object> tooltip = new ObjectMapper().readValue(
+	                    (String) slot.get("Tooltip"),
+	                    new TypeReference<Map<String, Object>>() {}
+	            );
+
+	            HashMap<String, Object> maps = LoaApiParser.findElementForArkGrid(tooltip);
+
+	            // 코어 타입 : "질서 - 해", "혼돈 - 달" 등
+	            HashMap<String, Object> grid_core_type = (HashMap<String, Object>) maps.get("코어 타입");
+	            HashMap<String, Object> grid_core_type_v = (HashMap<String, Object>) grid_core_type.get("value");
+	            String coreTypeText = Jsoup.parse((String) grid_core_type_v.get("Element_001")).text(); // ex) "질서 - 해"
+
+	            // 활성 포인트
+	            int activePoint = Integer.parseInt(slot.get("Point").toString());
+
+	            // 코어 옵션 (필요하면 사용)
+	            HashMap<String, Object> grid_core_option = (HashMap<String, Object>) maps.get("코어 옵션");
+	            HashMap<String, Object> grid_core_option_v = (HashMap<String, Object>) grid_core_option.get("value");
+	            String coreOptionHtml = (String) grid_core_option_v.get("Element_001");
+	            String coreOptionText = Jsoup.parse(coreOptionHtml).text();
+
+	            String[] optionParts = coreOptionText.split("(?=\\[\\d+P\\])");
+	            StringBuilder optionMsg = new StringBuilder();
+	            for (String line : optionParts) {
+	                if (line.trim().isEmpty()) continue;
+	                int reqPoint = Integer.parseInt(line.substring(line.indexOf("[") + 1, line.indexOf("P")));
+	                if (activePoint >= reqPoint) {
+	                    optionMsg.append("(O)").append(line).append(enterStr);
+	                } else {
+	                    optionMsg.append("(X)").append(line).append(enterStr);
+	                }
+	            }
+
+	            String grade = Objects.toString(slot.get("Grade"), "");          // 전설 / 유물 / 고대
+	            String name  = Objects.toString(slot.get("Name"), "");           // "질서의 해 코어 : 비연참"
+
+	            // 스킬명 추출 ("코어 : " 뒤쪽)
+	            String skillName = "";
+	            int colonIdx = name.indexOf(" : ");
+	            if (colonIdx > -1 && colonIdx + 3 < name.length()) {
+	                skillName = name.substring(colonIdx + 3);                    // ex) "비연참"
+	            }
+
+	            // 헤더용 한 줄 (위쪽, allSee쪽 모두에서 공통 사용)
+	            String headerLine = "[" + grade + "] " + coreTypeText + " : " + skillName + ", 활성포인트: " + activePoint;
+
+	            // 정렬 키 계산 (질서/혼돈, 해/달/별)
+	            int major;   // 질서(0) → 혼돈(1) → 기타(2)
+	            if (coreTypeText.startsWith("질서"))      major = 0;
+	            else if (coreTypeText.startsWith("혼돈")) major = 1;
+	            else                                      major = 2;
+
+	            int minor;   // 해(0) → 달(1) → 별(2) → 기타(3)
+	            if (coreTypeText.contains("해"))      minor = 0;
+	            else if (coreTypeText.contains("달")) minor = 1;
+	            else if (coreTypeText.contains("별")) minor = 2;
+	            else                                  minor = 3;
+
+	            int sortKey = major * 10 + minor;
+
+	            // ─────────────────────────────
+	            // 이 코어에 속한 젬들 문자열 만들기
+	            // ─────────────────────────────
+	            StringBuilder coreGemMsg = new StringBuilder();
+
+	            List<HashMap<String, Object>> gems = (List<HashMap<String, Object>>) slot.get("Gems");
+	            for (HashMap<String, Object> gem : gems) {
+
+	                HashMap<String, Object> gem_tooltip1 = new ObjectMapper().readValue(
+	                        (String) gem.get("Tooltip"),
+	                        new TypeReference<Map<String, Object>>() {}
+	                );
+	                HashMap<String, Object> gem_tooltip2 = LoaApiParser.findElementForArkGrid(gem_tooltip1);
+
+	                // 젬 이름
+	                HashMap<String, Object> 젬이름 = (HashMap<String, Object>) gem_tooltip2.get("젬 이름");
+	                String fullGemName = Jsoup.parse((String) 젬이름.get("value")).text(); // ex) "질서의 젬 : 안정"
+
+	                // "질서의 젬 : 안정" → 타입/이름 분리
+	                String gemType = "";
+	                String gemLabel = fullGemName;
+	                java.util.regex.Matcher mName =
+	                        java.util.regex.Pattern.compile("(.*)의 젬\\s*:\\s*(.*)").matcher(fullGemName);
+	                if (mName.find()) {
+	                    gemType = mName.group(1).trim();   // 질서 / 혼돈 등
+	                    gemLabel = mName.group(2).trim();  // 안정 / 붕괴 등
+	                }
+
+	                // 젬 등급 (전설/유물/고대)
+	                String gemGrade = Objects.toString(gem.get("Grade"), "");
+
+	                // 젬 옵션 텍스트
+	                HashMap<String, Object> 젬옵션 = (HashMap<String, Object>) gem_tooltip2.get("젬 옵션");
+	                HashMap<String, Object> 젬옵션_v = (HashMap<String, Object>) 젬옵션.get("value");
+	                String rawOptText = Jsoup.parse((String) 젬옵션_v.get("Element_001")).text();
+
+	                // 의지력 효율 / X 포인트
+	                Integer effVal = null;
+	                Integer pointVal = null;
+
+	                java.util.regex.Matcher mEff = pEff.matcher(rawOptText);
+	                if (mEff.find()) {
+	                    effVal = Integer.parseInt(mEff.group(1));
+	                }
+
+	                java.util.regex.Matcher mPoint = pPoint.matcher(rawOptText);
+	                String pointType = "";
+	                if (mPoint.find()) {
+	                    pointType = mPoint.group(1).trim();              // 질서 / 혼돈
+	                    pointVal = Integer.parseInt(mPoint.group(2));
+	                }
+
+	                // [낙인력] Lv.3 / [추가 피해] Lv.4 / ...
+	                List<Integer> lvList = new ArrayList<>();
+	                java.util.regex.Matcher mStat = pStat.matcher(rawOptText);
+	                while (mStat.find()) {
+	                    String lvlStr = mStat.group(2).trim();
+	                    try {
+	                        lvList.add(Integer.parseInt(lvlStr));
+	                    } catch (NumberFormatException ignore) {}
+	                }
+
+	                // 요약코드 [5514] = eff(5) + point(5) + 첫옵션Lv(1) + 두번째옵션Lv(4)
+	                String summaryCode = "";
+	                if (effVal != null && pointVal != null && lvList.size() >= 2) {
+	                    int lv1 = lvList.get(0);
+	                    int lv2 = lvList.get(1);
+	                    summaryCode = "[" + effVal + "" + pointVal + "" + lv1 + "" + lv2 + "]";
+	                }
+
+	                // ─ 출력 구성 ─
+	                // 한 줄: +[5514]질서 : 견고 (전설)
+	                coreGemMsg.append("+");
+	                if (!summaryCode.isEmpty()) {
+	                    coreGemMsg.append(summaryCode);
+	                }
+	                if (!gemType.isEmpty()) {
+	                    coreGemMsg.append(gemType).append(" : ").append(gemLabel);
+	                } else {
+	                    coreGemMsg.append(fullGemName);
+	                }
+	                if (!gemGrade.isEmpty()) {
+	                    coreGemMsg.append(" (").append(gemGrade).append(")");
+	                }
+	                coreGemMsg.append(enterStr);
+	            }
+
+	            Map<String, Object> coreInfo = new HashMap<>();
+	            coreInfo.put("header", headerLine);
+	            coreInfo.put("sortKey", sortKey);
+	            coreInfo.put("gemMsg", coreGemMsg.toString());
+
+	            coreList.add(coreInfo);
+	        }
+
+	        // ─────────────────────────────
+	        // 코어 정렬 후 상단 출력
+	        // ─────────────────────────────
+	        arkGridFullMsg += "§아크그리드" + enterStr;
+
+	        coreList.sort(Comparator.comparingInt(o -> (Integer) o.get("sortKey")));
+
+	        for (Map<String, Object> c : coreList) {
+	            String headerLine = Objects.toString(c.get("header"), "");
+	            arkGridFullMsg += headerLine + enterStr;
+	        }
+
+	        // 젬 전체 효과
+	        List<HashMap<String, Object>> effects= (List<HashMap<String, Object>>) arkGrid.get("Effects");
+	        arkGridFullMsg += enterStr + "§젬 전체 효과" + enterStr;
+	        for (HashMap<String, Object> effect : effects) {
+	            arkGridFullMsg += Jsoup.parse((String) effect.get("Tooltip")).text() + enterStr;
+	        }
+	        arkGridFullMsg += enterStr;
+
+	        // ─────────────────────────────
+	        // allSeeStr(===) 이후: 코어별 젬 상세
+	        // ─────────────────────────────
+	        StringBuilder allSeeSb = new StringBuilder();
+	        for (Map<String, Object> c : coreList) {
+	            String headerLine = Objects.toString(c.get("header"), "");
+	            String gemMsg     = Objects.toString(c.get("gemMsg"), "");
+
+	            allSeeSb.append(headerLine).append(enterStr);
+	            allSeeSb.append(gemMsg);
+	            allSeeSb.append(enterStr); // 코어 사이 공백 줄
+	        }
+	        allSeeMsg = allSeeSb.toString();
+
+	    } catch(Exception e) {
+	        arkGridFullMsg = "";
+	        System.out.println("아크그리드없음");
+	    }
+
+	    // allSeeStr은 기존처럼 "===\n" 같은 값을 갖고 있다고 가정
+	    resMsg += enterStr + arkGridFullMsg + allSeeStr + allSeeMsg;
 		return resMsg;
 	}
 	

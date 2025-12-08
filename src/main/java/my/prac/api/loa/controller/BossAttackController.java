@@ -4792,16 +4792,19 @@ public class BossAttackController {
 	    // -----------------------------
 	    
 	    if ("궁사".equals(job)) {
+	    	
 	    	int range = Math.max(0, effAtkMax - effAtkMin);   // 최대뎀-최소뎀
-	        int extraHits = range / 160;                      // 160당 +1타
+	        int extraHits = range / 220;                      // 160당 +1타
 	        int hitCount = Math.max(1, extraHits);            // 최소 1타
 	        double perHitRateRaw = (hitCount > 0)
 	                ? (double) effCritRate / hitCount
 	                : effCritRate;
 
 	        
-	        if (perHitRateRaw > 40.0) {
-	            perHitRateRaw = 40.0;
+	        
+	        
+	        if (perHitRateRaw > 60.0) {
+	            perHitRateRaw = 60.0;
 	        }
 	        
 	        int totalDmg = 0;
@@ -4811,7 +4814,10 @@ public class BossAttackController {
 	            multiMsg.append("궁사의 연사 발동! ")
 	                    .append(hitCount).append("연사").append(NL);
 	        }
-
+	        
+	        effAtkMin = effAtkMin/2;
+	        effAtkMax = effAtkMax/2;
+	        
 	        for (int i = 1; i <= hitCount; i++) {
 	            // 각 타마다 독립적으로 데미지/크리 굴림
 	            int shotAtk = (effAtkMax <= effAtkMin)
@@ -5644,14 +5650,14 @@ public class BossAttackController {
         JOB_DEFS.put("파이터", new JobDef(
     		"파이터",
     		"▶ 강인한 체력의 소유자, 체력이 낮아지면 적의 행동을 저지시킨다",
-    		"⚔ 공격력 최대치, 치명타 배율 및 치명타데미지 증가가 체력으로 전환(3배수,치명 미발생)"+NL+"본인의 체력이 낮아질수록 데미지 증가(추가 2배까지), 체력이 30%이하 일 때 적 행동저지(40%)"
+    		"⚔ 공격력 최대치, 치명타 배율 및 치명타데미지 증가가 체력으로 전환(3배수,치명 미발생)"+NL+"본인의 체력이 낮아질수록 데미지 증가(추가 50%까지), 체력이 30%이하 일 때 적 행동저지(40%)"
         ));
         
         
         JOB_DEFS.put("궁사", new JobDef(
     		"궁사",
     		"▶ 연속공격의 달인, 최대데미지와 최소공격력 차이가 클수록 연속공격한다",
-    		"⚔ 최대-최소 데미지 차이 160 마다 1연사 추가공격(치명타확률은 각연사 나눔,최대40%)"
+    		"⚔ 최대-최소 데미지 차이 220 마다 1연사 추가공격(각 공격은 기존공격력의 절반,치명타확률은 각연사 나눔,최대60%)"
         ));
         
         JOB_DEFS.put("저격수", new JobDef(
