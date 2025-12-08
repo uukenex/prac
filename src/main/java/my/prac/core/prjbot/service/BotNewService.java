@@ -140,6 +140,7 @@ public interface BotNewService {
     
     List<BagLog> selectRecentBagDrops();
     List<BagRewardLog> selectRecentBagRewards();
+    int selectBagOpenSpCount(String userName, String roomName);
     int selectRecentBagSpSum(String userName, String roomName);
     
  // 상점/소비로 삭제된 인벤토리 누적 수량

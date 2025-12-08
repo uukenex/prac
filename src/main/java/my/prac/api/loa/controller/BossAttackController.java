@@ -488,17 +488,25 @@ public class BossAttackController {
 	}
 	
 	private int rollBagSpWithCeiling(String userName, String roomName) {
+		 // ① 유저의 BAG_OPEN_SP 기록 개수 조회
+	    int totalCount = botNewService.selectBagOpenSpCount(userName, roomName);
+
+	    // ② 10개 미만이면 천장 적용 안 함 → 기본 200~100000 룰렛
+	    if (totalCount < 10) {
+	        return pickBiasedSp(200, 100000);
+	    }
+
+	    // ③ 최근 10개 SP 합계 조회
 	    int recentSum = botNewService.selectRecentBagSpSum(userName, roomName);
-	    
+
+	    // ④ 최근 10개 합계가 5만 미만일 때만 천장 발동
 	    int minSp;
 	    int maxSp = 100000;
 
 	    if (recentSum < 50000) {
-	        // 최근 10개의 합이 5만 미만이면 천장 적용: 5만 ~ 10만 구간에서 룰렛
-	        minSp = 50000;
+	        minSp = 50000;   // 천장 발동: 50,000 ~ 100,000 룰렛
 	    } else {
-	        // 평소처럼 200 ~ 10만
-	        minSp = 200;
+	        minSp = 200;     // 평소 확률
 	    }
 
 	    return pickBiasedSp(minSp, maxSp);

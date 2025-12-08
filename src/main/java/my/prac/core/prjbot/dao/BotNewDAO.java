@@ -194,6 +194,7 @@ public interface BotNewDAO {
     
 	List<BagLog> selectRecentBagDrops();
 	List<BagRewardLog> selectRecentBagRewards();
+	int selectBagOpenSpCount(HashMap<String, Object> map);
 	int selectRecentBagSpSum(HashMap<String, Object> map);
 	
 	int selectInventorySoldCount(

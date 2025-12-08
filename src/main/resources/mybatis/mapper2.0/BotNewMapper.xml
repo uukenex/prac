@@ -1056,6 +1056,15 @@
 	    WHERE ROWNUM &lt;= 5
 	</select>
 	
+	<select id="selectBagOpenSpCount" parameterType="hashmap" resultType="int">
+	    SELECT COUNT(*)
+	      FROM TBOT_POINT_RANK
+	     WHERE NEW_YN = '1'
+	       AND CMD = 'BAG_OPEN_SP'
+	       AND USER_NAME = #{userName}
+	       AND ROOM_NAME = #{roomName}
+	</select>
+
 	<!-- 최근 5개의 BAG_OPEN_SP 합계 -->
 	<select id="selectRecentBagSpSum" parameterType="hashmap" resultType="int">
 	    SELECT NVL(SUM(x.SCORE), 0) AS sumScore

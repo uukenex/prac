@@ -376,6 +376,13 @@ public class BotNewServiceImpl implements BotNewService {
     	return botNewDAO.selectRecentBagRewards();
     }
     @Override
+    public int selectBagOpenSpCount(String userName, String roomName) {
+        HashMap<String,Object> param = new HashMap<>();
+        param.put("userName", userName);
+        param.put("roomName", roomName);
+        return botNewDAO.selectBagOpenSpCount(param);
+    }
+    @Override
     public int selectRecentBagSpSum(String userName, String roomName) {
     	HashMap<String,Object> p = new HashMap<>();
         p.put("userName", userName);
