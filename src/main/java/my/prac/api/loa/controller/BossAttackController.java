@@ -5132,14 +5132,13 @@ public class BossAttackController {
 		        		out.dmgCalcMsg += baseAtk+NL;
 		        		calc.jobSkillUsed = true;
 		        		
-		        		m.monPatten = 1;
-		        		
 		        	}else {
 		        		out.dmgCalcMsg += "조준 보너스 DMG "+baseAtk+"→";
 		        		baseAtk = (int)Math.round(baseAtk * 2.25);
 		        		out.dmgCalcMsg += baseAtk+NL;
 						calc.jobSkillUsed = true;
 		        	}
+		        	flags.monPattern = 1;
 		        	
 	    			break;
 	    		case 1:
@@ -5147,9 +5146,9 @@ public class BossAttackController {
 	    			baseAtk=0;
 	    			break;
     			default:
-	            	out.dmgCalcMsg += "저격 위치 확보 중.. "+baseAtk+"→";
+	            	out.dmgCalcMsg += "저격 위치 확보 중.. ";
 		        	baseAtk =0;
-		        	m.monPatten = 1;
+		        	flags.monPattern = 1;
 		        	out.dmgCalcMsg += baseAtk+NL;
 	    			
     				
@@ -5251,12 +5250,12 @@ public class BossAttackController {
 	        	
 	        	switch(beforeJobSkillYn) {
 		    		case 0:
-		    			calc.patternMsg = m.monName + " (이)가 표적을 잃어 방황합니다";
+		    			calc.patternMsg = m.monName + " (이)가 표적을 찾고 있습니다.";
 		    			break;
 		    		case 1:
 		    			break;
 	    			default:
-		    			calc.patternMsg = m.monName + " (이)가 멈춰있습니다";
+		    			calc.patternMsg = m.monName + " (이)가 배회합니다";
 	    				break;
 	        	}
 	        	
