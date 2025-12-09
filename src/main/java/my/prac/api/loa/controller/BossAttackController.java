@@ -4985,21 +4985,12 @@ public class BossAttackController {
 	    // -----------------------------
 	    
 	    if ("궁사".equals(job)) {
-	    	
-	    	int range = Math.max(0, effAtkMax - effAtkMin);   // 최대뎀-최소뎀
-	        int extraHits = range / 280 +1;                      // 280당 +1타
-	        int hitCount = Math.max(1, extraHits);            // 최소 1타
-	        double perHitRateRaw = (hitCount > 0)
-	                ? (double) effCritRate / hitCount
-	                : effCritRate;
 
-	        
-	        
-	        
-	        if (perHitRateRaw > 80.0) {
-	            perHitRateRaw = 80.0;
-	        }
-	        
+	        // 1) 연사 횟수 계산
+	        int range    = Math.max(0, effAtkMax - effAtkMin); // 최대뎀 - 최소뎀
+	        int segments = range / 280;                        // 280 차이마다 1구간
+	        int hitCount = Math.max(1, segments + 1);          // 구간+1이 실제 발사 수
+
 	        int totalDmg = 0;
 	        StringBuilder multiMsg = new StringBuilder();
 
@@ -5007,50 +4998,107 @@ public class BossAttackController {
 	            multiMsg.append("궁사의 연사 발동! ")
 	                    .append(hitCount).append("연사").append(NL);
 	        }
-	        
-	        effAtkMin =(int) Math.round(effAtkMin*0.8);
-	        effAtkMax =(int) Math.round(effAtkMax*0.8);
-	        
-	        for (int i = 1; i <= hitCount; i++) {
-	            // 각 타마다 독립적으로 데미지/크리 굴림
-	            int shotAtk = (effAtkMax <= effAtkMin)
-	                    ? effAtkMin
-	                    : ThreadLocalRandom.current().nextInt(effAtkMin, effAtkMax + 1);
 
-	            int roll = ThreadLocalRandom.current().nextInt(0, 101);
-	            boolean shotCrit = (roll <= perHitRateRaw);
+	        // 2) 크리티컬 분배
+	        //  - 1타는 무조건 크리
+	        //  - 나머지 (2~hitCount) 샷에 대해 남은 크리율을 균등 분배
+	        int remainingCritBudget = Math.max(0, effCritRate - 100); // 100은 1타 확정크리용
+	        double perHitRateRaw = (hitCount > 1)
+	                ? (double) remainingCritBudget / (hitCount - 1)
+	                : 0.0;
+
+	        // 2~마지막샷까지 개별 최대 80%
+	        if (perHitRateRaw > 80.0) {
+	            perHitRateRaw = 80.0;
+	        }
+	        double perHitRate = perHitRateRaw; // 0.0 ~ 80.0
+
+	        boolean allCrit = true; // 전탄 크리 체크용
+
+	        for (int i = 1; i <= hitCount; i++) {
+	            int shotAtk;
+
+	            if (i < hitCount) {
+	                // 1샷 ~ (hitCount-1)샷: 구간별 고정값
+	                // 1샷: effAtkMin
+	                // 2샷: effAtkMin + 280
+	                // 3샷: effAtkMin + 560 ...
+	                shotAtk = effAtkMin + 280 * (i - 1);
+	                if (shotAtk > effAtkMax) {
+	                    shotAtk = effAtkMax;
+	                }
+	            } else {
+	                // 마지막 샷: [startLast ~ effAtkMax] 랜덤
+	                int startLast = effAtkMin + 280 * (hitCount - 1);
+	                if (startLast > effAtkMax) {
+	                    startLast = effAtkMax;
+	                }
+
+	                if (effAtkMax <= startLast) {
+	                    shotAtk = effAtkMax;
+	                } else {
+	                    shotAtk = ThreadLocalRandom.current()
+	                            .nextInt(startLast, effAtkMax + 1);
+	                }
+	            }
+
+	            // 3) 크리 판정
+	            boolean shotCrit;
+	            if (i == 1) {
+	                // 1타는 확정 크리
+	                shotCrit = true;
+	            } else {
+	                int roll = ThreadLocalRandom.current().nextInt(0, 101);
+	                shotCrit = (roll <= perHitRate);
+	            }
 
 	            int shotDmg = shotCrit
 	                    ? (int) Math.round(shotAtk * critMultiplier)
 	                    : shotAtk;
 
 	            totalDmg += shotDmg;
+	            if (!shotCrit) {
+	                allCrit = false;
+	            }
 
 	            if (hitCount > 1) {
 	                multiMsg.append(i).append("타: ").append(shotDmg);
-	                if (shotCrit) multiMsg.append(" (크리)");
-	                multiMsg.append("!").append(NL);
+	                if (shotCrit) multiMsg.append(" (치명!)");
+	                multiMsg.append(NL);
 	            }
 	        }
 
-	        if (hitCount > 1) {
+	        // 4) 전탄 크리 보너스 (1.25배)
+	        if (hitCount > 1 && allCrit) {
+	            int before = totalDmg;
+	            totalDmg = (int) Math.round(totalDmg * 1.25);
+	            multiMsg.append("ALL 치명! ")
+	                    .append(before).append(" → ").append(totalDmg)
+	                    .append(" (+25%)").append(NL);
+	            calc.jobSkillUsed =true;
+	        } else if (hitCount > 1) {
+	            // 기존 총합 안내
 	            multiMsg.append("총합 데미지: ").append(totalDmg).append("!").append(NL);
 	        }
 
 	        // 이후 공통 로직에서는 "한 번의 큰 타격"처럼 처리되지만
 	        // 실제로는 위에서 연사 데미지로 합산한 값이 들어간다.
 	        baseAtk = totalDmg;
-	        crit = false;               // 이미 shot별로 처리했으니 여기선 의미 없음
+	        crit = false;           // 샷별로 이미 크리 반영했으므로 여기서는 의미없음
 
-	        // 궁사 전용 계산 메시지는 out.dmgCalcMsg 쪽으로 넘김
+	        // 궁사 전용 계산 메시지를 out에 남김
 	        out.dmgCalcMsg = multiMsg.toString();
 	    }
 
+
 	    if ("저격수".equals(job)) {
+	    	
+	    	baseAtk = (effAtkMin + effAtkMax + 1) /2;
+	    	
 	    	switch(beforeJobSkillYn) {
 	    		case 0:
 	    			out.dmgCalcMsg += "조준 보너스 DMG "+baseAtk+"→";
-		        	baseAtk = (int)Math.round(baseAtk * 2.2);
+		        	baseAtk = (int)Math.round(baseAtk * 2.0);
 		        	out.dmgCalcMsg += baseAtk+NL;
 	    			calc.jobSkillUsed = true;
 	    			break;
@@ -5058,15 +5106,11 @@ public class BossAttackController {
 	    			out.dmgCalcMsg += "다음 공격이 강화됩니다"+NL;
 	    			break;
     			default:
-    				double rnd = ThreadLocalRandom.current().nextDouble();
-    	            if (rnd < 0.50) {
-    	            	out.dmgCalcMsg += "조준 보너스 DMG "+baseAtk+"→";
-    		        	baseAtk = (int)Math.round(baseAtk * 2.2);
-    		        	out.dmgCalcMsg += baseAtk+NL;
-    	    			calc.jobSkillUsed = true;
-    	            }else {
-    	            	out.dmgCalcMsg += "다음 공격이 강화됩니다"+NL;
-    	            }
+    				//double rnd = ThreadLocalRandom.current().nextDouble();
+	            	out.dmgCalcMsg += "조준 보너스 DMG "+baseAtk+"→";
+		        	baseAtk = (int)Math.round(baseAtk * 2.0);
+		        	out.dmgCalcMsg += baseAtk+NL;
+	    			calc.jobSkillUsed = true;
     				
     				break;
 	    	}
@@ -5856,13 +5900,13 @@ public class BossAttackController {
         JOB_DEFS.put("궁사", new JobDef(
     		"궁사",
     		"▶ 연속공격의 달인, 최대데미지와 최소공격력 차이가 클수록 연속공격한다",
-    		"⚔ 최대-최소 데미지 차이 280 마다 1연사 추가공격(각 공격은 기존공격력의 80%,치명타확률은 각연사 나눔,최대80%)"
+    		"⚔ 최대-최소 데미지 차이 280 마다 1연사 추가공격(각 구간 별 공격은 개별치명타율 최대80%)"
         ));
         
         JOB_DEFS.put("저격수", new JobDef(
     		"저격수",
     		"▶ 숨어서 급소를 노리는 암살자, 극강의 공격력을 선사한다",
-    		"⚔ 최대체력-50%, 공격 후 다음 공격강화, 강화공격 시전 시 몬스터의 일반공격을 받지않는다.(조우 시 50%확률 강화판정)"
+    		"⚔ 공격력이 항상 중간값으로 고정, 최대체력-50%, 공격 후 다음 공격강화(+100%), 강화공격 시전 시 몬스터의 일반공격을 받지않는다.(조우 시 강화판정)"
         ));
         
         
