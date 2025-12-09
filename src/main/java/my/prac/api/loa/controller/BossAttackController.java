@@ -5111,7 +5111,7 @@ public class BossAttackController {
 	    	baseAtk = (effAtkMin + effAtkMax + 1) /2;
 	    	
 	    	switch(beforeJobSkillYn) {
-	    		case 0:
+	    		case 1:
 	    			
 		        	if (ThreadLocalRandom.current().nextDouble() < 0.13) {
 		        		out.dmgCalcMsg += "[헤드샷] 보너스 DMG "+baseAtk+"→";
@@ -5126,7 +5126,7 @@ public class BossAttackController {
 		        	}
 		        	
 	    			break;
-	    		case 1:
+	    		case 0:
 	    			out.dmgCalcMsg += "다음 공격이 강화됩니다"+NL;
 	    			baseAtk=0;
 	    			break;
@@ -5135,7 +5135,7 @@ public class BossAttackController {
 		        	baseAtk =0;
 		        	m.monPatten = 1;
 		        	out.dmgCalcMsg += baseAtk+NL;
-	    			calc.jobSkillUsed = true;
+	    			
     				
     				break;
 	    	}
@@ -5951,7 +5951,7 @@ public class BossAttackController {
         JOB_DEFS.put("저격수", new JobDef(
     		"저격수",
     		"▶ 숨어서 급소를 노리는 암살자, 극강의 공격력을 선사한다",
-    		"⚔ 공격력이 항상 중간값으로 고정, 최대체력-50%, 공격 후 다음 공격강화(+100%), 강화공격 시전 시 몬스터의 일반공격을 받지않는다.(조우 시 강화판정)"
+    		"⚔ 공격력이 항상 중간값으로 고정, 최대체력-50%, 공격 후 다음 공격강화(%), 저격 시전 시 몬스터의 일반공격을 받지않는다.)"
         ));
         
         
@@ -5961,6 +5961,7 @@ public class BossAttackController {
 	
 	
 }
+
 
 
 
