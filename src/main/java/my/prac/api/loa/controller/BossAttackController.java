@@ -5001,11 +5001,7 @@ public class BossAttackController {
 
 	        // 2) 크리티컬 분배
 	        //  - 1타는 무조건 크리
-	        //  - 나머지 (2~hitCount) 샷에 대해 남은 크리율을 균등 분배
-	        int remainingCritBudget = Math.max(0, effCritRate - 100); // 100은 1타 확정크리용
-	        double perHitRateRaw = (hitCount > 1)
-	                ? (double) remainingCritBudget / (hitCount - 1)
-	                : 0.0;
+	        double perHitRateRaw = effCritRate;
 
 	        // 2~마지막샷까지 개별 최대 80%
 	        if (perHitRateRaw > 80.0) {
