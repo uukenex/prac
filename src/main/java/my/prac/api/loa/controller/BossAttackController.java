@@ -5111,7 +5111,7 @@ public class BossAttackController {
 	    	baseAtk = (effAtkMin + effAtkMax + 1) /2;
 	    	
 	    	switch(beforeJobSkillYn) {
-	    		case 1:
+	    		case 0:
 	    			
 		        	if (ThreadLocalRandom.current().nextDouble() < 0.13) {
 		        		out.dmgCalcMsg += "[헤드샷] 보너스 DMG "+baseAtk+"→";
@@ -5123,10 +5123,11 @@ public class BossAttackController {
 		        		out.dmgCalcMsg += "조준 보너스 DMG "+baseAtk+"→";
 		        		baseAtk = (int)Math.round(baseAtk * 2.25);
 		        		out.dmgCalcMsg += baseAtk+NL;
+						calc.jobSkillUsed = true;
 		        	}
 		        	
 	    			break;
-	    		case 0:
+	    		case 1:
 	    			out.dmgCalcMsg += "다음 공격이 강화됩니다"+NL;
 	    			baseAtk=0;
 	    			break;
@@ -5961,6 +5962,7 @@ public class BossAttackController {
 	
 	
 }
+
 
 
 
