@@ -420,7 +420,7 @@ public class BossAttackController {
 	    // 3) 보상 결정 (컨트롤러에서 확률/로직 모두 처리)
 	    double roll = ThreadLocalRandom.current().nextDouble();
 
-	    if (roll < 0.40) { //40퍼확률로 골드 
+	    if (roll < 0.90) { //40퍼확률로 골드 
 	    	// 🔥 작은 쪽이 더 잘 나오는 SP 보상 (200 ~ 50000)
 	        int sp = rollBagSpWithCeiling(userName, roomName);
 
@@ -2652,6 +2652,71 @@ public class BossAttackController {
 	        }
 	    } catch (Exception ignore) {}
 	    */
+	    
+	    
+	    
+		 // =========================
+		 // SP / 공격횟수 랭킹
+		 // =========================
+		 try {
+		     List<HashMap<String, Object>> spAtkList = botNewService.selectSpAndAtkRanking();
+		     sb.append(NL).append("◆ SP 누적 랭킹 (TOP7)").append(NL);
+	
+		     if (spAtkList == null || spAtkList.isEmpty()) {
+		         sb.append("- 데이터가 없습니다.").append(NL);
+		     } else {
+		         // SP 순위 정렬 (이미 TOT_SP DESC 이지만, 방어용으로 한 번 더 정렬)
+		         List<HashMap<String, Object>> bySp = new ArrayList<>(spAtkList);
+		         bySp.sort((a, b) -> Integer.compare(
+		                 safeInt(b.get("TOT_SP")),
+		                 safeInt(a.get("TOT_SP"))
+		         ));
+	
+		         int rank = 1;
+		         for (HashMap<String, Object> row : bySp) {
+		             String userName2 = Objects.toString(row.get("USER_NAME"), "-");
+		             int lv          = safeInt(row.get("LV"));
+		             int totSp       = safeInt(row.get("TOT_SP"));
+	
+		             sb.append(rank).append("위 ")
+		               .append(userName2)
+		               .append(" (Lv.").append(lv).append(")")
+		               .append(" - SP ").append(String.format("%,d", totSp)).append("sp")
+		               .append(NL);
+	
+		             if (++rank > 7) break;
+		         }
+		     }
+	
+		     sb.append(NL).append("◆ 공격 횟수 랭킹 (TOP7)").append(NL);
+	
+		     if (spAtkList == null || spAtkList.isEmpty()) {
+		         sb.append("- 데이터가 없습니다.").append(NL);
+		     } else {
+		         // 공격 횟수 순위 정렬
+		         List<HashMap<String, Object>> byAtk = new ArrayList<>(spAtkList);
+		         byAtk.sort((a, b) -> Integer.compare(
+		                 safeInt(b.get("ATK_CNT")),
+		                 safeInt(a.get("ATK_CNT"))
+		         ));
+	
+		         int rank = 1;
+		         for (HashMap<String, Object> row : byAtk) {
+		             String userName2 = Objects.toString(row.get("USER_NAME"), "-");
+		             int lv          = safeInt(row.get("LV"));
+		             int atkCnt      = safeInt(row.get("ATK_CNT"));
+	
+		             sb.append(rank).append("위 ")
+		               .append(userName2)
+		               .append(" (Lv.").append(lv).append(")")
+		               .append(" - 공격 ").append(String.format("%,d", atkCnt)).append("회")
+		               .append(NL);
+	
+		             if (++rank > 7) break;
+		         }
+		     }
+	
+		 } catch (Exception ignore) {}
 	    // =========================
 	    // 업적 갯수 랭킹
 	    // =========================
@@ -5117,6 +5182,69 @@ public class BossAttackController {
 	        // 궁사 전용 계산 메시지를 out에 남김
 	        out.dmgCalcMsg = multiMsg.toString();
 	    }
+	    
+	    if ("궁사2".equals(job)) {
+
+	        // 1) 연사 횟수 계산 (280 차이마다 1연타 증가)
+	        int range    = Math.max(0, effAtkMax - effAtkMin); // 최대뎀 - 최소뎀
+	        int segments = range / 280;                        // 280 차이마다 1구간
+	        int hitCount = Math.max(1, segments + 1);          // 구간+1이 실제 발사 수
+
+	        // 2) 기존 한 번 공격했을 때 데미지(크리 포함)
+	        int singleDmg = crit
+	                ? (int)Math.round(baseAtk * critMultiplier)
+	                : baseAtk;
+
+	        // 3) 연타 보너스: 1타 추가될 때마다 +20%
+	        //    hitCount=1 → 1.0배, 2 → 1.2배, 3 → 1.4배, ...
+	        double bonusRate = 1.0 + 0.2 * (hitCount - 1);
+	        int totalDmg = (int)Math.round(singleDmg * bonusRate);
+
+	        // 4) totalDmg를 hitCount개로 랜덤 분배 (합은 항상 totalDmg)
+	        int[] parts = new int[hitCount];
+	        int remain = totalDmg;
+
+	        for (int i = 0; i < hitCount; i++) {
+	            int slotsLeft = hitCount - i;
+
+	            if (slotsLeft == 1) {
+	                // 마지막 타는 남은 데미지 전부
+	                parts[i] = remain;
+	            } else {
+	                // 최소 1은 남기고 랜덤 분배
+	                int minVal = 1;
+	                int maxVal = remain - (slotsLeft - 1); // 뒤 타들 최소 1씩은 남겨야 함
+	                if (maxVal < minVal) {
+	                    maxVal = minVal;
+	                }
+	                int val = ThreadLocalRandom.current().nextInt(minVal, maxVal + 1);
+	                parts[i] = val;
+	                remain  -= val;
+	            }
+	        }
+
+	        // 5) 표시용 메시지 구성
+	        StringBuilder multiMsg = new StringBuilder();
+	        if (hitCount > 1) {
+	            multiMsg.append("궁사의 연사 발동! ")
+	                    .append(hitCount).append("연타").append(NL);
+	        }
+
+	        if (hitCount > 1) {
+	            for (int i = 0; i < hitCount; i++) {
+	                multiMsg.append(i + 1).append("타: ")
+	                        .append(parts[i]).append(NL);
+	            }
+	            multiMsg.append("총합 데미지: ")
+	                    .append(totalDmg).append(NL);
+	            //calc.jobSkillUsed = true;
+	        }
+
+	        // 6) 실제 전투용 데미지는 totalDmg 한 번만 사용
+	        baseAtk = totalDmg;
+	        crit    = false;           // 크리티컬은 singleDmg 안에 이미 반영 끝
+	        out.dmgCalcMsg = multiMsg.toString();
+	    }
 
 
 	    if ("저격수".equals(job)) {
@@ -5142,14 +5270,18 @@ public class BossAttackController {
 		        	
 	    			break;
 	    		case 1:
-	    			out.dmgCalcMsg += "다음 공격이 강화됩니다"+NL;
+	    			if (ThreadLocalRandom.current().nextDouble() < 0.20) {
+	    				flags.monPattern = 1;
+	    				out.dmgCalcMsg += "몬스터를 따돌려 숨었다.."+NL;
+	    			}else {
+	    				out.dmgCalcMsg += "다음 공격 준비 중.."+NL;
+	    			}
 	    			baseAtk=0;
 	    			break;
     			default:
 	            	out.dmgCalcMsg += "저격 위치 확보 중.. ";
 		        	baseAtk =0;
 		        	flags.monPattern = 1;
-		        	out.dmgCalcMsg += baseAtk+NL;
 	    			
     				
     				break;
@@ -5959,11 +6091,19 @@ public class BossAttackController {
     		"⚔ 최대-최소 데미지 차이 280 마다 1연사 추가공격(각 구간 별 공격은 개별치명타율 최대70%)"
         ));
         
+        
+        JOB_DEFS.put("궁사2", new JobDef(
+    		"궁사2",
+    		"▶ 연속공격의 달인, 최대데미지와 최소공격력 차이가 클수록 연속공격한다(테스트모드)",
+    		"⚔ 최대-최소 데미지 차이 280 마다 1연사 추가공격(추가공격데미지 고정)"
+		));
+        
         JOB_DEFS.put("저격수", new JobDef(
     		"저격수",
     		"▶ 숨어서 급소를 노리는 암살자, 극강의 공격력을 선사한다",
     		"⚔ 공격력이 항상 중간값으로 고정, 최대체력-50%"+NL+
-    		  " 조우 첫공격은 은신, 두번째는 공격 두패턴을 반복, 조우,공격시에 공격받지않음"
+    		  "*조우 은엄폐 이후, *저격 - *이동 패턴을 반복"+NL+
+    		  "*조우 은엄폐, *저격(13% headShot) 시 모든 행동 무시, *이동 시 20%확률 모든 행동 무시"
         ));
         
         

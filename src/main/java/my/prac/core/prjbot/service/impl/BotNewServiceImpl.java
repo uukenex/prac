@@ -279,6 +279,10 @@ public class BotNewServiceImpl implements BotNewService {
     public List<HashMap<String,Object>> selectOngoingChallengesForUnclearedBosses() {
         return botNewDAO.selectOngoingChallengesForUnclearedBosses();
     }
+    @Override
+    public List<HashMap<String, Object>> selectSpAndAtkRanking() throws Exception {
+        return botNewDAO.selectSpAndAtkRanking();
+    }
     
     @Override
     public int selectRoomBuffCount(String roomName) {

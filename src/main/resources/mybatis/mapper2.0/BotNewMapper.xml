@@ -792,6 +792,44 @@
 	    )
 	    WHERE ROWNUM &lt;= 8
 	</select>
+	
+	<select id="selectSpAndAtkRanking" resultType="hashmap">
+	    SELECT SUM(
+	               CASE
+	                   WHEN A.GAIN_TYPE = 'BUY_MERCHANT' THEN
+	                       ROUND(B.ITEM_SELL_PRICE * 0.9) * A.QTY
+	                   ELSE
+	                       B.ITEM_SELL_PRICE * A.QTY
+	               END
+	           )
+	           + (
+	               SELECT SUM(A1.SCORE)
+	                 FROM TBOT_POINT_RANK A1
+	                WHERE A1.NEW_YN    = '1'
+	                  AND A1.USER_NAME = A.USER_NAME
+	                  AND A1.ROOM_NAME = A.ROOM_NAME
+	             ) AS TOT_SP,
+	           A.USER_NAME,
+	           A.ROOM_NAME,
+	           (
+	               SELECT COUNT(1)
+	                 FROM TBOT_POINT_NEW_BATTLE_LOG A2
+	                WHERE A2.USER_NAME = A.USER_NAME
+	                  AND A2.ROOM_NAME = A.ROOM_NAME
+	           ) AS ATK_CNT,
+	           C.LV
+	      FROM TBOT_POINT_NEW_INVENTORY A,
+	           TBOT_POINT_NEW_ITEM      B,
+	           TBOT_POINT_NEW_USER      C
+	     WHERE A.GAIN_TYPE NOT IN ('DROP', 'DROP3', 'DROP5', 'STEAL')
+	       AND A.ITEM_ID   = B.ITEM_ID
+	       AND A.DEL_YN    = '0'
+	       AND C.USER_NAME = A.USER_NAME
+	       AND C.ROOM_NAME = A.ROOM_NAME
+	     GROUP BY A.USER_NAME, A.ROOM_NAME, C.LV
+	     ORDER BY TOT_SP DESC
+	</select>
+	
 	<select id="selectOngoingChallengesForUnclearedBosses" resultType="hashmap">
 	/*selectOngoingChallengesForUnclearedBosses*/
 	  SELECT

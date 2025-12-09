@@ -109,6 +109,7 @@ public interface BotNewService {
     
     List<HashMap<String,Object>> selectRisingStarsTop5Last6h();
     List<HashMap<String,Object>> selectOngoingChallengesForUnclearedBosses();
+    List<HashMap<String,Object>> selectSpAndAtkRanking() throws Exception;
     
     int selectRoomBuffCount(String roomName);
     void clearRoomBuff(String roomName);
