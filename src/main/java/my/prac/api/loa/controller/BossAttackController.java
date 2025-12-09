@@ -190,6 +190,11 @@ public class BossAttackController {
 	        jobHpMaxBonus = bHpMaxRaw  - hpBase;
 	        jobRegenBonus = bRegenRaw  - regenBase;
 	    }
+	    
+	    if ("용기사".equals(job)) {
+	    	bHpMaxRaw  = (int) Math.round(bHpMaxRaw * 2);
+	        bRegenRaw  = (int) Math.round(bRegenRaw * 2);
+	    }
 
 	    // 기본 스탯
 	    int baseMin     = u.atkMin;
@@ -5142,22 +5147,23 @@ public class BossAttackController {
 	    }
 	    
 	    if ("용기사".equals(job)) {
-	        if (u.hpCur >= effHpMax) {
+	        /*
+	    	if (u.hpCur >= effHpMax) {
 	        	out.dmgCalcMsg += "풀HP DMG "+baseAtk+"→";
 	        	baseAtk = (int)Math.round(baseAtk * 1.5);
 	        	out.dmgCalcMsg += baseAtk+NL;
 	        }
-	        
+	        */
 	        int overCrit = Math.max(0, effCritRate-100);
 	        if (overCrit > 0) {
-	            int bonus = (int)Math.round(effCritRate*3); 
+	            int bonus = (int)Math.round(effCritRate*5); 
 	            out.dmgCalcMsg += "크리율 보너스 ("+bonus+") "+baseAtk+"→";
 	            baseAtk += bonus;
 	            out.dmgCalcMsg += baseAtk+NL;
 	        }
 	        int overCriDmg = Math.max(0, effCriDmg-150); 
 	        if (overCriDmg > 0) {
-	        	int bonus = (int)Math.round(effCriDmg*3); 
+	        	int bonus = (int)Math.round(effCriDmg*5); 
 	        	out.dmgCalcMsg += "크리뎀 보너스 ("+bonus+") "+baseAtk+"→";
 	        	baseAtk += bonus;
 	        	out.dmgCalcMsg += baseAtk+NL;
@@ -5168,7 +5174,7 @@ public class BossAttackController {
 	        crit = false;
 	        if (m.monNo==13 || m.monNo==20) {
 	        	out.dmgCalcMsg += "용족 보너스 "+baseAtk+"→";
-	        	baseAtk = (int)Math.round(baseAtk * 2);
+	        	baseAtk = (int)Math.round(baseAtk * 2.5);
 	        	out.dmgCalcMsg += baseAtk;
 	        }
 	    }
@@ -5897,7 +5903,7 @@ public class BossAttackController {
         JOB_DEFS.put("용기사", new JobDef(
     		"용기사",
     		"▶ 용족의 마지막 후예, 배신당한 아픔을 가지고 있다",
-    		"⚔ 풀HP일때 데미지1.5배, 100% 초과 치명타확률, 기본 치명타 데미지 초과분을 공격력으로 전환,치명타가 발생하지않음, 용족에 2배의 피해"
+    		"⚔ 아이템 HP/리젠 효과 2배, 100% 초과 치명타확률, 기본 치명타 데미지 초과분을 공격력으로 전환,치명타가 발생하지않음, 용족에 2.5배의 피해"
         ));
         
         JOB_DEFS.put("파이터", new JobDef(
