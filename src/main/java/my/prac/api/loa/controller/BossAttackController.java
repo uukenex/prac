@@ -5112,18 +5112,28 @@ public class BossAttackController {
 	    	
 	    	switch(beforeJobSkillYn) {
 	    		case 0:
-	    			out.dmgCalcMsg += "조준 보너스 DMG "+baseAtk+"→";
-		        	baseAtk = (int)Math.round(baseAtk * 2.0);
-		        	out.dmgCalcMsg += baseAtk+NL;
-	    			calc.jobSkillUsed = true;
+	    			
+		        	if (ThreadLocalRandom.current().nextDouble() < 0.13) {
+		        		out.dmgCalcMsg += "[헤드샷] 보너스 DMG "+baseAtk+"→";
+		        		baseAtk = (int)Math.round(baseAtk * 3.75);
+		        		out.dmgCalcMsg += baseAtk+NL;
+		        		calc.jobSkillUsed = true;
+		        		
+		        	}else {
+		        		out.dmgCalcMsg += "조준 보너스 DMG "+baseAtk+"→";
+		        		baseAtk = (int)Math.round(baseAtk * 2.25);
+		        		out.dmgCalcMsg += baseAtk+NL;
+		        	}
+		        	
 	    			break;
 	    		case 1:
 	    			out.dmgCalcMsg += "다음 공격이 강화됩니다"+NL;
+	    			baseAtk=0;
 	    			break;
     			default:
-    				//double rnd = ThreadLocalRandom.current().nextDouble();
-	            	out.dmgCalcMsg += "조준 보너스 DMG "+baseAtk+"→";
-		        	baseAtk = (int)Math.round(baseAtk * 2.0);
+	            	out.dmgCalcMsg += "저격 위치 확보 중.. "+baseAtk+"→";
+		        	baseAtk =0;
+		        	m.monPatten = 1;
 		        	out.dmgCalcMsg += baseAtk+NL;
 	    			calc.jobSkillUsed = true;
     				
@@ -5222,11 +5232,23 @@ public class BossAttackController {
 	        flags.finisher = (flags.monPattern == 4); // 패턴4=필살기
 	        
 	        if ("저격수".equals(job) ) {
-	        	if(calc.jobSkillUsed && flags.monPattern==2) {
-	        		flags.monPattern = 1;
-	    			calc.monDmg = 0;   
-	    			calc.patternMsg = m.monName + " (이)가 표적을 잃어 방황합니다";
+	        	
+	        	switch(beforeJobSkillYn) {
+		    		case 0:
+		    			flags.monPattern = 1;
+		    			calc.monDmg = 0;   
+		    			calc.patternMsg = m.monName + " (이)가 표적을 잃어 방황합니다";
+		    			break;
+		    		case 1:
+		    			break;
+	    			default:
+	    				flags.monPattern = 1;
+		    			calc.monDmg = 0;   
+		    			calc.patternMsg = m.monName + " (이)가 멈춰있습니다";
+	    				break;
 	        	}
+	        	
+	        	
 	        }
 	    	if ("파이터".equals(job) ) {
 	    		if(u.hpCur < effHpMax*0.3) {
