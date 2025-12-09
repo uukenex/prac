@@ -4988,7 +4988,7 @@ public class BossAttackController {
 
 	        // 1) 연사 횟수 계산
 	        int range    = Math.max(0, effAtkMax - effAtkMin); // 최대뎀 - 최소뎀
-	        int segments = range / 440;                        // 280 차이마다 1구간
+	        int segments = range / 280;                        // 280 차이마다 1구간
 	        int hitCount = Math.max(1, segments + 1);          // 구간+1이 실제 발사 수
 
 	        int totalDmg = 0;
@@ -5007,9 +5007,9 @@ public class BossAttackController {
 	                ? (double) remainingCritBudget / (hitCount - 1)
 	                : 0.0;
 
-	        // 2~마지막샷까지 개별 최대 60%
-	        if (perHitRateRaw > 55.0) {
-	            perHitRateRaw = 55.0;
+	        // 2~마지막샷까지 개별 최대 70%
+	        if (perHitRateRaw > 70.0) {
+	            perHitRateRaw = 70.0;
 	        }
 	        double perHitRate = perHitRateRaw; // 0.0 ~ 80.0
 
@@ -5023,13 +5023,13 @@ public class BossAttackController {
 	                // 1샷: effAtkMin
 	                // 2샷: effAtkMin + 280
 	                // 3샷: effAtkMin + 560 ...
-	                shotAtk = effAtkMin + 440 * (i - 1);
+	                shotAtk = effAtkMin + 280 * (i - 1);
 	                if (shotAtk > effAtkMax) {
 	                    shotAtk = effAtkMax;
 	                }
 	            } else {
 	                // 마지막 샷: [startLast ~ effAtkMax] 랜덤
-	                int startLast = effAtkMin + 440 * (hitCount - 1);
+	                int startLast = effAtkMin + 280 * (hitCount - 1);
 	                if (startLast > effAtkMax) {
 	                    startLast = effAtkMax;
 	                }
@@ -5041,7 +5041,17 @@ public class BossAttackController {
 	                            .nextInt(startLast, effAtkMax + 1);
 	                }
 	            }
+	            
+	            double minFactor = 0.3; // 마지막 타 최소 비율 (원하면 0.2~0.4 사이로 튜닝)
 
+	            int maxIdx = (hitCount > 1 ? hitCount - 1 : 1);
+	            double factor = 1.0;
+	            if (hitCount > 1) {
+	                factor = 1.0 - (1.0 - minFactor) * (i - 1) / maxIdx;
+	            }
+	            shotAtk = (int)Math.round(shotAtk * factor);
+	            
+	            
 	            // 3) 크리 판정
 	            boolean shotCrit;
 	            if (i == 1) {
@@ -5896,13 +5906,13 @@ public class BossAttackController {
     		"⚔ 공격력 최대치, 치명타 배율 및 치명타데미지 증가가 체력으로 전환(3배수,치명 미발생)"+NL+"본인의 체력이 낮아질수록 데미지 증가(추가 50%까지), 체력이 30%이하 일 때 적 행동저지(40%)"
         ));
         
-        /*
+        
         JOB_DEFS.put("궁사", new JobDef(
     		"궁사",
     		"▶ 연속공격의 달인, 최대데미지와 최소공격력 차이가 클수록 연속공격한다",
-    		"⚔ 최대-최소 데미지 차이 440 마다 1연사 추가공격(각 구간 별 공격은 개별치명타율 최대55%)"
+    		"⚔ 최대-최소 데미지 차이 280 마다 1연사 추가공격(각 구간 별 공격은 개별치명타율 최대70%)"
         ));
-        */
+        
         JOB_DEFS.put("저격수", new JobDef(
     		"저격수",
     		"▶ 숨어서 급소를 노리는 암살자, 극강의 공격력을 선사한다",
