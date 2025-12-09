@@ -1565,6 +1565,9 @@ public class BossAttackController {
 	        m = botNewService.selectMonsterByNo(ob.monNo);
 	        if (m == null) return "진행중 몬스터 정보를 찾을 수 없습니다.";
 	        beforeJobSkillYn = ob.beforeJobSkillYn;
+	        
+	        monMaxHp = m.monHp;
+	        
 	        lucky = (ob.luckyYn != null && ob.luckyYn == 1);
 	        dark  = (ob.luckyYn != null && ob.luckyYn == 2);
 	        if (dark) {
@@ -1580,7 +1583,7 @@ public class BossAttackController {
 	        	
 	        } 
 	        
-	        monMaxHp = m.monHp;
+	        
             monHpRemainBefore = Math.max(0, monMaxHp - ob.totalDealtDmg);
 	        
 
@@ -1608,7 +1611,16 @@ public class BossAttackController {
 	        } catch (Exception ignore) {}
 
 	        // ★ 300킬 이상 + 20% 확률이면 어둠몬
-	        if (killCountForThisMon >= 300&& m.monNo != 15) {
+	        
+	     // ★ 300킬 이상 + 20% 확률이면 어둠몬
+	        if (killCountForThisMon >= 150&& m.monNo > 15) {
+	            double rnd = ThreadLocalRandom.current().nextDouble();
+	            if (rnd < 0.20) {
+	                dark = true;
+	            }
+	        }
+	        
+	        if (killCountForThisMon >= 300&& m.monNo < 15) {
 	            double rnd = ThreadLocalRandom.current().nextDouble();
 	            if (rnd < 0.20) {
 	                dark = true;
@@ -1779,6 +1791,7 @@ public class BossAttackController {
 
 	        deathAchvMsg = grantDeathAchievements(userName, roomName);
 	        return userName + "님, 이번전투에서 패배하여, 전투 불능이 되었습니다." + NL
+	        		+calc.monDmg +"피해로 사망! "+NL
 	                + "현재 체력: 0 / " + effHpMax + NL
 	                + "5분 뒤 최대 체력의 10%로 부활하며," + NL
 	                + "이후 5분마다 HP_REGEN 만큼 서서히 회복됩니다." + NL
@@ -5119,6 +5132,8 @@ public class BossAttackController {
 		        		out.dmgCalcMsg += baseAtk+NL;
 		        		calc.jobSkillUsed = true;
 		        		
+		        		m.monPatten = 1;
+		        		
 		        	}else {
 		        		out.dmgCalcMsg += "조준 보너스 DMG "+baseAtk+"→";
 		        		baseAtk = (int)Math.round(baseAtk * 2.25);
@@ -5236,15 +5251,11 @@ public class BossAttackController {
 	        	
 	        	switch(beforeJobSkillYn) {
 		    		case 0:
-		    			flags.monPattern = 1;
-		    			calc.monDmg = 0;   
 		    			calc.patternMsg = m.monName + " (이)가 표적을 잃어 방황합니다";
 		    			break;
 		    		case 1:
 		    			break;
 	    			default:
-	    				flags.monPattern = 1;
-		    			calc.monDmg = 0;   
 		    			calc.patternMsg = m.monName + " (이)가 멈춰있습니다";
 	    				break;
 	        	}
@@ -5952,7 +5963,8 @@ public class BossAttackController {
         JOB_DEFS.put("저격수", new JobDef(
     		"저격수",
     		"▶ 숨어서 급소를 노리는 암살자, 극강의 공격력을 선사한다",
-    		"⚔ 공격력이 항상 중간값으로 고정, 최대체력-50%, 공격 후 다음 공격강화(%), 저격 시전 시 몬스터의 일반공격을 받지않는다.)"
+    		"⚔ 공격력이 항상 중간값으로 고정, 최대체력-50%"+NL+
+    		  " 조우 첫공격은 은신, 두번째는 공격 두패턴을 반복, 조우,공격시에 공격받지않음"
         ));
         
         
