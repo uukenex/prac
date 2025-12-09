@@ -3368,34 +3368,25 @@ public class BossAttackController {
 	}
 	private double getDropRateByNo(int monNo) {
 	    switch (monNo) {
-	        case 1:  return 70.0;
-	        case 2:  return 65.0;
-	        case 3:  return 60.0;
-	        case 4:  return 60.0;
-	        case 5:  return 50.0;
-	        case 6:  return 50.0;
-	        case 7:  return 50.0;
-	        case 8:  return 50.0;
-	        case 9:  return 50.0;
-	        case 10: return 40.0;
-	        case 11: return 40.0;
-	        case 12: return 40.0;
-	        case 13: return 30.0;
-	        case 14: return 25.0;
-	        case 15: return 20.0;
-	        case 16: return 25.0;
-	        case 17: return 25.0;
-	        case 18: return 25.0;
-	        case 19: return 25.0;
-	        case 20: return 25.0;
-	        case 51: return 80;
-	        case 52: return 80;
-	        case 53: return 80;
-	        case 61: return 0;
-	        case 62: return 0;
-	        case 63: return 0;
-	        case 91: return 1.0;
-	        default: return 40.0;
+	        case 1:  case 2:  case 3:  case 4:  
+	        case 5:  case 6:  case 7:  case 8:  
+	        case 9:  case 10: case 11: case 12:
+	        	return 60;
+	        case 13: case 14: case 16: case 17: 
+	        case 18: case 19: case 20:
+	        	return 50;
+	        	
+	        case 15:
+	        	return 25;
+	        	
+	        case 51: case 52: case 53: 
+	        	return 80;
+	        case 61: case 62: case 63: 
+	        	return 0;
+	        case 91: 
+	        	return 0;
+	        default: 
+	        	return 0;
 	    }
 	}
 	
