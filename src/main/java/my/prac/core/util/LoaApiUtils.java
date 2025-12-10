@@ -152,6 +152,7 @@ public class LoaApiUtils {
 			txt=txt.replaceAll("아르카나", "알　카");
 			txt=txt.replaceAll("바드", "바　드");
 			txt=txt.replaceAll("리퍼", "리　퍼");
+			txt=txt.replaceAll("가디언나이트", "가　나");
 			
 		}catch(Exception e) {
 			txt="";
