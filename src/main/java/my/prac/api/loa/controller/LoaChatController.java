@@ -2707,7 +2707,7 @@ public class LoaChatController {
 		//msg += enterStr + " ↳ (구)[노 21,500G/하 30,500G]";
 		msg += enterStr + "✓1막-에기르"+enterStr+" ↳ [노 11,500G/하 18,000G]";
 		//msg += enterStr + " ↳ (구) [노 15,500G/하 24,500G]";
-		msg += enterStr + "✓서막-에키드나"+enterStr+" ↳ [노 6,100/하 7,200G]";
+		msg += enterStr + "✓서막-에키드나"+enterStr+" ↳ [노 6,100(*귀속)/하 7,200G]";
 		//msg += enterStr + " ↳ (구) [노 3,650G (+3,650G)] [하 8,800G]";
 		
 		/*
@@ -2724,12 +2724,12 @@ public class LoaChatController {
 		msg += allSeeStr ;
 		msg += enterStr + "⭐군단장 레이드⭐";
 		msg += enterStr + "✓어둠-카멘";
-		msg += enterStr + " ↳ 1-3[노 6,400G(귀속)]";
-		msg += enterStr + " ↳ 1-3[하 8,000G(귀속)]";
-		msg += enterStr + " ↳ 4[하 5,000G(귀속)]";
+		msg += enterStr + " ↳ 1-3[노 6,400G(*귀속)]";
+		msg += enterStr + " ↳ 1-3[하 8,000G(*귀속)]";
+		msg += enterStr + " ↳ 4[하 5,000G(*귀속)]";
 		msg += enterStr + "✓질병-일리아칸";
-		msg += enterStr + " ↳ [노 4,700G(귀속)]";
-		msg += enterStr + " ↳ [하 6,000G(귀속)]";
+		msg += enterStr + " ↳ [노 4,700G(*귀속)]";
+		msg += enterStr + " ↳ [하 6,000G(*귀속)]";
 		/*
 		msg += enterStr + "✓몽환-아브렐슈드";
 		msg += enterStr + " ↳ 1-3[노 3,000G/하 3,600G]";
@@ -2744,18 +2744,19 @@ public class LoaChatController {
 		msg += enterStr;
 		msg += enterStr + "⭐어비스 던전⭐";
 		msg += enterStr + "✓혼돈의 상아탑";
-		msg += enterStr + " ↳ [노 5,200G(귀속)]";
-		msg += enterStr + "   [하 7,200G(귀속)]";
+		msg += enterStr + " ↳ [노 5,200G(*귀속)]";
+		msg += enterStr + "   [하 7,200G(*귀속)]";
 		msg += enterStr + "✓카양겔";
-		msg += enterStr + " ↳ [노 3,300G(귀속)]";
-		msg += enterStr + " ↳ [하 4,300G(귀속)]";
+		msg += enterStr + " ↳ [노 3,300G(*귀속)]";
+		msg += enterStr + " ↳ [하 4,300G(*귀속)]";
 		
 		
 		msg += enterStr;
 		msg += enterStr + "⭐싱글 모드⭐(싱글골드:미확정)";
+		msg += enterStr + "✓모르둠 [10,500G (+10,500G)]";
 		msg += enterStr + "✓아브렐슈드 [8,250G (+8,250G)]";
 		msg += enterStr + "✓에기르 [5,750G (+5,750G)]";
-		msg += enterStr + "✓에키드나 [3,050G (+3,050G)]";
+		msg += enterStr + "✓에키드나 [6,100G(귀속)]";
 		msg += enterStr + "✓카멘 [6,400G(귀속)]";
 		msg += enterStr + "✓상아탑 [5,200G(귀속)]";
 		msg += enterStr + "✓일리아칸 [4,700G(귀속)]";
