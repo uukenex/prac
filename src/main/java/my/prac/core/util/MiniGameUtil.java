@@ -34,6 +34,15 @@ public class MiniGameUtil {
 	    MON_PATTERN_WEIGHTS.put(18,new int[]{0, 33, 33, 33, 1});
 	    MON_PATTERN_WEIGHTS.put(19,new int[]{0, 85, 0, 10, 5});//공격특화 
 	    MON_PATTERN_WEIGHTS.put(20,new int[]{0, 10, 0, 85, 5});//필살특화 
+	    MON_PATTERN_WEIGHTS.put(21,new int[]{80,10, 0, 10, 0}); 
+	    MON_PATTERN_WEIGHTS.put(22,new int[]{0, 40,40, 10,10}); 
+	    MON_PATTERN_WEIGHTS.put(23,new int[]{0, 50, 0, 50, 0}); 
+	    MON_PATTERN_WEIGHTS.put(24,new int[]{0, 30,50, 20, 0}); 
+	    MON_PATTERN_WEIGHTS.put(25,new int[]{30, 5,30,  5,30});//중간보스
+	    MON_PATTERN_WEIGHTS.put(26,new int[]{0, 10, 0, 85, 5}); 
+	    MON_PATTERN_WEIGHTS.put(27,new int[]{0, 10, 0, 85, 5}); 
+	    MON_PATTERN_WEIGHTS.put(28,new int[]{0, 10, 0, 85, 5}); 
+	    
 
 	    // 필요할 때마다 여기 계속 추가하면 됨
 	}

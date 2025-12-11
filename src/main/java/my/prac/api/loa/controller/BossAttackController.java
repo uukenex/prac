@@ -1900,6 +1900,14 @@ public class BossAttackController {
 	        double stealRate = 0.40;
 	        int monLv  = m.monNo;
 	        switch (monLv) {
+		        case 28: stealRate -= 0.05;
+		        case 27: stealRate -= 0.05;
+		        case 26: stealRate -= 0.05;
+		        case 25: stealRate -= 0.05;
+		        case 24: stealRate -= 0.05;
+		        case 23: stealRate -= 0.05;
+		        case 22: stealRate -= 0.05;
+		        case 21: stealRate -= 0.05;
 		        case 20: stealRate -= 0.05;
 		        case 19: stealRate -= 0.05;
 		        case 18: stealRate -= 0.05;
@@ -2211,6 +2219,10 @@ public class BossAttackController {
 	            return 0.012;  // 1.2%
 	        case 16: case 17: case 18: case 19: case 20:
 	            return 0.015;  // 1.5
+	        case 21: case 22: case 23: case 24: case 25:
+	        	return 0.015;  // 1.5
+	        case 26: case 27: case 28: 
+	        	return 0.015;  // 1.5
 	        case 51: case 52: case 53: case 61: case 62: case 63:
 	        	return 0.005;  // 0.5%
 	        case 91:
@@ -3587,10 +3599,12 @@ public class BossAttackController {
 	        case 9:  case 10: case 11: case 12:
 	        	return 60;
 	        case 13: case 14: case 16: case 17: 
-	        case 18: case 19: case 20:
+	        case 18: case 19: case 20: case 21:
+	        case 22: case 23: case 24: case 26:
+	        case 27: case 28: 
 	        	return 50;
 	        	
-	        case 15:
+	        case 15: case 25:
 	        	return 25;
 	        	
 	        case 51: case 52: case 53: 
@@ -4467,6 +4481,21 @@ public class BossAttackController {
 	        case 3000: return 3000;
 	        case 4000: return 10000;
 	        case 5000: return 50000;
+	        case 6000: return 50000;
+	        case 7000: return 100000;
+	        case 8000: return 100000;
+	        case 9000: return 150000;
+	        case 10000: return 150000;
+	        case 11000: return 200000;
+	        case 12000: return 200000;
+	        case 13000: return 250000;
+	        case 14000: return 250000;
+	        case 15000: return 300000;
+	        case 16000: return 300000;
+	        case 17000: return 300000;
+	        case 18000: return 300000;
+	        case 19000: return 300000;
+	        case 20000: return 300000;
 	        default:   return 0;
 	    }
 	}
@@ -4593,6 +4622,10 @@ public class BossAttackController {
 	    StringBuilder sb = new StringBuilder();
 
 	    List<Monster> mons = botNewService.selectAllMonsters();
+	    
+	    // ⭐ NEW: 내 레벨 한 번만 조회
+	    User u = botNewService.selectUser(userName, roomName);
+	    int myLv = (u == null ? 0 : u.lv);
 
 	    for (Monster m : mons) {
 
@@ -4609,6 +4642,23 @@ public class BossAttackController {
 	            // 아직 아무도 이 몬스터를 최초토벌하지 않음 → 축하 보상 X
 	            continue;
 	        }
+	        
+	     // ⭐ NEW ①: 내가 이 몬스터의 최초토벌자인 경우 → 축하보상 스킵
+	        int myFirstCnt = 0;
+	        if (userAchvMap != null) {
+	            Integer v = userAchvMap.get(firstCmd); // firstCmd = ACHV_FIRST_CLEAR_MON_X
+	            if (v != null) myFirstCnt = v.intValue();
+	        }
+	        if (myFirstCnt > 0) {
+	            // 나는 이미 이 몬스터의 '최초토벌' 업적을 가진 사람 → 축하보상 대상에서 제외
+	            continue;
+	        }
+
+	        // ⭐ NEW ②: 내 레벨이 몬스터 레벨 미만이면 축하보상 스킵
+	        if (myLv < m.monLv) {
+	            continue;
+	        }
+	        
 
 	        // 2) 나는 축하보상을 이미 받았는가? (유저 기준)
 	        int mine = 0;
@@ -4620,6 +4670,8 @@ public class BossAttackController {
 	            // 이미 이 몬스터에 대한 축하 보상을 받은 상태
 	            continue;
 	        }
+	        
+	        
 
 	        // 3) 최초토벌 보상의 1/3 계산
 	        int rewardFull   = calcFirstClearReward(m.monNo);
@@ -4667,6 +4719,14 @@ public class BossAttackController {
 	        case 18: return 15000;
 	        case 19: return 25000;
 	        case 20: return 35000;
+	        case 21: return 45000;
+	        case 22: return 60000;
+	        case 23: return 75000;
+	        case 24: return 100000;
+	        case 25: return 200000;
+	        case 26: return 200000;
+	        case 27: return 200000;
+	        case 28: return 200000;
 	    }
 	    return 0;
 	}
@@ -5619,6 +5679,22 @@ public class BossAttackController {
 	            int monLv = m.monNo;
 	            double evadeRate = 0.80;
 	            switch (monLv) {
+		            case 28:
+		            	evadeRate -= 0.05;
+		            case 27:
+		            	evadeRate -= 0.05;
+		            case 26:
+		            	evadeRate -= 0.05;
+		            case 25:
+		            	evadeRate -= 0.05;
+		            case 24:
+		            	evadeRate -= 0.05;
+		            case 23:
+		            	evadeRate -= 0.05;
+		            case 22:
+		            	evadeRate -= 0.05;    
+		            case 21:
+		            	evadeRate -= 0.05;
 		            case 20:
 		            	evadeRate -= 0.05;
 		            case 19:
@@ -5651,6 +5727,22 @@ public class BossAttackController {
 	            int monLv = m.monNo;
 	            double evadeRate = 0.80;
 	            switch (monLv) {
+		            case 28:
+		            	evadeRate -= 0.05;
+		            case 27:
+		            	evadeRate -= 0.05;
+		            case 26:
+		            	evadeRate -= 0.05;
+		            case 25:
+		            	evadeRate -= 0.05;
+		            case 24:
+		            	evadeRate -= 0.05;
+		            case 23:
+		            	evadeRate -= 0.05;
+		            case 22:
+		            	evadeRate -= 0.05;
+		            case 21:
+		            	evadeRate -= 0.05;
 		            case 20:
 		            	evadeRate -= 0.05;
 		            case 19:
