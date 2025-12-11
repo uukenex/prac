@@ -1,5 +1,6 @@
 package my.prac.api.loa.controller;
 
+import java.util.Date;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
@@ -703,6 +704,70 @@ public class BossAttackController {
 	    int totalAttacks = (ads == null ? 0 : ads.totalAttacks);
 	    int totalDeaths  = (ads == null ? 0 : ads.totalDeaths);
 
+	    
+	 // === NEW: 일별 공격 통계 (어제 자정까지) ===
+	    Date firstAttackDay = null;
+	    Date maxAttackDay   = null;
+	    int  maxAttackCnt   = 0;
+	    int  avgAttackPerDay = 0;
+
+	    try {
+	        List<HashMap<String,Object>> dailyList =
+	                botNewService.selectDailyAttackCounts(targetUser, roomName);
+
+	        if (dailyList != null && !dailyList.isEmpty()) {
+	            int totalAtkBeforeToday = 0;
+
+	            // dailyList 는 쿼리에서 ATTACK_DAY ASC로 정렬됐다고 가정
+	            for (int i = 0; i < dailyList.size(); i++) {
+	                HashMap<String,Object> row = dailyList.get(i);
+	                if (row == null) continue;
+
+	                Object dayObj = row.get("ATTACK_DAY");
+	                Date day = null;
+	                if (dayObj instanceof Date) {
+	                    day = (Date) dayObj;
+	                } else if (dayObj instanceof java.sql.Date) {
+	                    day = new Date(((java.sql.Date)dayObj).getTime());
+	                } else if (dayObj != null) {
+	                    // 문자열로 오는 경우 등
+	                    // 필요하면 파싱 추가
+	                }
+
+	                int cnt = safeInt(row.get("ATK_CNT"));
+
+	                if (day != null) {
+	                    if (firstAttackDay == null) {
+	                        firstAttackDay = day;
+	                    }
+	                    // 최대 타수/날짜
+	                    if (cnt > maxAttackCnt) {
+	                        maxAttackCnt = cnt;
+	                        maxAttackDay = day;
+	                    }
+	                }
+
+	                totalAtkBeforeToday += cnt;
+	            }
+
+	            // 일평균 = 총 공격횟수 / (공격한 날 수)
+	            int activeDays = dailyList.size();
+	            if (activeDays > 0) {
+	                avgAttackPerDay = totalAtkBeforeToday / activeDays;
+	            }
+	        }
+	    } catch (Exception ignore) {
+	        ignore.printStackTrace();
+	    }
+	 // === NEW: 직업별 공격 횟수 ===
+	    Map<String, Integer> jobAtkMap = Collections.emptyMap();
+	    try {
+	        jobAtkMap = botNewService.selectBattleCountByUser(targetUser, roomName);
+	    } catch (Exception ignore) {
+	        ignore.printStackTrace();
+	        jobAtkMap = new HashMap<>();
+	    }
+	    
 	    // 🔹 몬스터 전체 캐시
 	    List<Monster> monList = botNewService.selectAllMonsters();
 	    Map<Integer, Monster> monMap = new HashMap<>();
@@ -942,6 +1007,43 @@ public class BossAttackController {
 	      .append("- 총 공격 횟수: ").append(totalAttacks).append("회").append(NL)
 	      .append("- 총 사망 횟수: ").append(totalDeaths).append("회").append(NL).append(NL);
 
+	    if (firstAttackDay != null) {
+	        sb.append("시작일: ")
+	          .append(formatDateYMD(firstAttackDay))
+	          .append(NL);
+	    } else {
+	        sb.append("시작일: -").append(NL);
+	    }
+
+	    sb.append("일별 평균 공격(어제까지): ")
+	      .append(avgAttackPerDay)
+	      .append("회/일").append(NL);
+
+	    if (maxAttackDay != null && maxAttackCnt > 0) {
+	        sb.append("최고 공격: ")
+	          .append(formatDateMD(maxAttackDay))
+	          .append(" ")
+	          .append(maxAttackCnt).append("회").append(NL);
+	    } else {
+	        sb.append("최고 공격: -").append(NL);
+	    }
+
+	    
+	    sb.append(NL);
+	 // === NEW: 직업별 공격 횟수 출력 ===
+	    if (jobAtkMap != null && !jobAtkMap.isEmpty()) {
+	        sb.append("- 직업별 공격 횟수").append(NL);
+	        // 직업명 정렬 (가독성용)
+	        List<String> jobNames = new ArrayList<>(jobAtkMap.keySet());
+	        Collections.sort(jobNames);
+	        for (String jName : jobNames) {
+	            int cnt = jobAtkMap.get(jName);
+	            sb.append("  · ").append(jName).append(": ")
+	              .append(cnt).append("회").append(NL);
+	        }
+	        sb.append(NL);
+	    }
+	    
 	    // 누적 처치
 	    sb.append("누적 처치 기록 (총 ").append(totalKills).append("마리)").append(NL);
 	    if (kills.isEmpty()) {
@@ -6319,6 +6421,15 @@ public class BossAttackController {
 
 	    // 예상 밖 타입이면 null
 	    return null;
+	}
+	private static String formatDateYMD(Date d) {
+	    if (d == null) return "-";
+	    return new java.text.SimpleDateFormat("yyyy-MM-dd").format(d);
+	}
+
+	private static String formatDateMD(Date d) {
+	    if (d == null) return "-";
+	    return new java.text.SimpleDateFormat("MM월dd일").format(d);
 	}
 	// 직업 메타데이터 맵 (등록 순서 유지 위해 LinkedHashMap)
 	private static final Map<String, JobDef> JOB_DEFS = new LinkedHashMap<>();

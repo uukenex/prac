@@ -104,7 +104,7 @@ public interface BotNewService {
     public List<HashMap<String,Object>> selectAchievementsByUser(String userName,String roomName);
     
     
-    
+    List<HashMap<String,Object>> selectDailyAttackCounts(String userName, String roomName) throws Exception;
     HashMap<String,Integer> selectBattleCountByUser(String userName, String roomName) throws Exception;
     int updateUserJobAndChangeDate(String userName, String roomName, String job);
     

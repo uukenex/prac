@@ -265,7 +265,13 @@ public class BotNewServiceImpl implements BotNewService {
     public List<HashMap<String,Object>> selectAchievementsByUser(String userName,String roomName) {
         return botNewDAO.selectAchievementsByUser(userName, roomName);
     }
-    
+    @Override
+    public List<HashMap<String, Object>> selectDailyAttackCounts(String userName, String roomName) throws Exception {
+        HashMap<String,Object> param = new HashMap<>();
+        param.put("userName", userName);
+        param.put("roomName", roomName);
+        return botNewDAO.selectDailyAttackCounts(param);
+    }
     @Override
     public HashMap<String,Integer> selectBattleCountByUser(String userName, String roomName) throws Exception {
     	HashMap<String,Object> param = new HashMap<String,Object>();

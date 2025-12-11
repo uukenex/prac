@@ -525,6 +525,7 @@
 	
 	<!--  B. 아이템 단건 상세  -->
 	<select id="selectItemDetailById" resultType="hashmap">
+		/*selectItemDetailById*/
 	    SELECT 
 	        i.ITEM_ID,
 	        i.ITEM_CODE,
@@ -545,6 +546,7 @@
 	
 	<!--  D. 인벤토리 보유 수량 합(DEL_YN='0'만)  -->
 	<select id="selectInventoryQty" resultType="int">
+		/*selectInventoryQty*/
 	    SELECT NVL(SUM(n.QTY), 0)
 	    FROM TBOT_POINT_NEW_INVENTORY n
 	    WHERE n.USER_NAME = #{userName}
@@ -763,12 +765,29 @@
 			    END
 	</select>
 	
+	<select id="selectDailyAttackCounts" parameterType="hashmap" resultType="hashmap">
+		/*selectDailyAttackCounts*/
+	    SELECT TRUNC(INSERT_DATE) AS ATTACK_DAY,
+	           COUNT(1)            AS ATK_CNT
+	      FROM TBOT_POINT_NEW_BATTLE_LOG
+	     WHERE USER_NAME = #{userName}
+	      <if test="roomName != null and roomName != '람쥐봇 문의방'">
+	           AND ROOM_NAME = #{roomName}
+           </if>
+	       AND INSERT_DATE &lt; TRUNC(SYSDATE)   <!-- 어제 자정까지 -->
+	     GROUP BY TRUNC(INSERT_DATE)
+	     ORDER BY ATTACK_DAY
+	</select>
+	
 	<select id="selectBattleCountByUser" parameterType="hashmap" resultType="hashmap">
+		/*selectBattleCountByUser*/
 	    SELECT NVL(JOB,'초보자') AS JOB,
 	           COUNT(1) AS CNT
 	    FROM TBOT_POINT_NEW_BATTLE_LOG
 	    WHERE USER_NAME = #{userName}
-	      AND ROOM_NAME = #{roomName}
+	    <if test="roomName != null and roomName != '람쥐봇 문의방'">
+          AND ROOM_NAME = #{roomName}
+        </if>
 	    GROUP BY JOB
 	</select>
  
