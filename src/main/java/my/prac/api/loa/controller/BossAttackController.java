@@ -1895,7 +1895,7 @@ public class BossAttackController {
 	    }
 
 	    // 도적: 훔치기
-	    String stealMsg = null;
+	    String stealMsg = "";
 	    if ("도적".equals(job) && !(m.monNo > 50)) {
 	        double stealRate = 0.40;
 	        int monLv  = m.monNo;
@@ -1973,13 +1973,18 @@ public class BossAttackController {
 	                        inv.put("delYn", "0");
 	                        inv.put("gainType", "STEAL");
 	                        botNewService.insertInventoryLogTx(inv);
-	                        stealMsg = "✨ " + m.monName + "의 아이템을 훔쳤습니다! (" + dropName + "조각)";
+	                        if(ThreadLocalRandom.current().nextDouble() < 0.5) {
+	                        	stealMsg += "✨ " + m.monName + "과  싸우던 마을주민에게서 약탈했다! (" + dropName + "조각)";
+	                        }else {
+	                        	stealMsg += "✨ 촌장 집에서 " + m.monName + "의 아이템을 발견했다! (" + dropName + "조각)";
+	                        }
 	                        calc.jobSkillUsed = true;
 	                    }
 	                } catch (Exception ignore) {}
 	            }
 	        }
 	    }
+	    
 
 	    String dosaCastMsg = null;
 	    if ("도사".equals(job)) {
@@ -6325,7 +6330,15 @@ public class BossAttackController {
 	        "⚔ 방어를 무시하고 피해 2.5배를 줌, 몬스터의 기본공격 80%회피 [회피 no12부터 3%씩,no15부터 5%씩 감소] , 처치시 추가드랍(30%), -hidden- "+NL
 	        +"◎선행조건 마법사,도적 직업으로 각 300회 공격"
 	    ));
-        
+	    
+	    /*
+	    JOB_DEFS.put("용투사", new JobDef(
+			"용투사",
+			"▶ 용족의 마지막 후예, 격투술로 상대를 제압한다",
+			"⚔ 용 "+NL
+			+"◎선행조건 마법사,도적 직업으로 각 300회 공격"
+		));
+        */
 	}
 	
 	// 목표직업 -> 요구조건 리스트
