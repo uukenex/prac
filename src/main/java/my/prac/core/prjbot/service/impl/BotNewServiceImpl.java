@@ -3,6 +3,7 @@ package my.prac.core.prjbot.service.impl;
 import java.sql.Timestamp;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Objects;
 
 import javax.annotation.Resource;
 
@@ -265,6 +266,26 @@ public class BotNewServiceImpl implements BotNewService {
         return botNewDAO.selectAchievementsByUser(userName, roomName);
     }
     
+    @Override
+    public HashMap<String,Integer> selectBattleCountByUser(String userName, String roomName) throws Exception {
+    	HashMap<String,Object> param = new HashMap<String,Object>();
+        param.put("userName", userName);
+        param.put("roomName", roomName);
+
+        List<HashMap<String,Object>> list = botNewDAO.selectBattleCountByUser(param);
+
+        HashMap<String, Integer> map = new HashMap<String, Integer>();
+        if (list != null) {
+            for (HashMap<String,Object> row : list) {
+                String job = Objects.toString(row.get("JOB"), "").trim();
+                if (job.isEmpty()) continue;
+                Number n = (Number) row.get("CNT");
+                int cnt = (n == null ? 0 : n.intValue());
+                map.put(job, cnt);
+            }
+        }
+        return map;
+    }
     @Override
     public int updateUserJobAndChangeDate(String userName, String roomName, String job) {
         return botNewDAO.updateUserJobAndChangeDate(userName, roomName, job);

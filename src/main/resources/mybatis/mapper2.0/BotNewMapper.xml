@@ -763,7 +763,15 @@
 			    END
 	</select>
 	
-	
+	<select id="selectBattleCountByUser" parameterType="hashmap" resultType="hashmap">
+	    SELECT NVL(JOB,'초보자') AS JOB,
+	           COUNT(1) AS CNT
+	    FROM TBOT_POINT_NEW_BATTLE_LOG
+	    WHERE USER_NAME = #{userName}
+	      AND ROOM_NAME = #{roomName}
+	    GROUP BY JOB
+	</select>
+ 
 	<update id="updateUserJobAndChangeDate">
 	/*updateUserJobAndChangeDate*/
 	    UPDATE TBOT_POINT_NEW_USER
@@ -787,6 +795,7 @@
 	               MAX(INSERT_DATE) AS LAST_ATTACK
 	        FROM TBOT_POINT_NEW_BATTLE_LOG A
 	        WHERE INSERT_DATE >= SYSDATE - (3/24)
+	          AND ROOM_NAME NOT IN ('람쥐봇 문의방','test123')
 	        GROUP BY USER_NAME, ROOM_NAME
 	        ORDER BY ATK_CNT DESC, LAST_ATTACK DESC
 	    )
@@ -817,6 +826,13 @@
 	                WHERE A2.USER_NAME = A.USER_NAME
 	                  AND A2.ROOM_NAME = A.ROOM_NAME
 	           ) AS ATK_CNT,
+	           (
+	                 SELECT COUNT(1)
+	                   FROM TBOT_POINT_NEW_BATTLE_LOG A2
+	                  WHERE A2.USER_NAME = A.USER_NAME
+	                    AND A2.ROOM_NAME = A.ROOM_NAME
+	                    AND A2.DEATH_YN = '1'
+	            ) AS DEATH_CNT,
 	           C.LV
 	      FROM TBOT_POINT_NEW_INVENTORY A,
 	           TBOT_POINT_NEW_ITEM      B,

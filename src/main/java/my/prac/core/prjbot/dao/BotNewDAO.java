@@ -154,6 +154,8 @@ public interface BotNewDAO {
     
     List<HashMap<String,Object>> selectAchievementsByUser(@Param("userName") String userName,@Param("roomName") String roomName);
     
+    List<HashMap<String,Object>>  selectBattleCountByUser(HashMap<String,Object> param) throws Exception;
+    
     int updateUserJobAndChangeDate(@Param("userName") String userName,
              @Param("roomName") String roomName,
              @Param("job") String job);

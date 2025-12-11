@@ -105,6 +105,7 @@ public interface BotNewService {
     
     
     
+    HashMap<String,Integer> selectBattleCountByUser(String userName, String roomName) throws Exception;
     int updateUserJobAndChangeDate(String userName, String roomName, String job);
     
     List<HashMap<String,Object>> selectRisingStarsTop5Last6h();

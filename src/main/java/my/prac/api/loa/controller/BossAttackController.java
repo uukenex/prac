@@ -5,6 +5,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -254,6 +255,9 @@ public class BossAttackController {
 	    int finalHpMax = baseHpMax + bHpMaxRaw;
 	    if ("전사".equals(job)) {
 	        finalHpMax += baseHpMax*10; // 기본 HP 추가
+	    }
+	    if ("용사".equals(job)) {
+	    	finalHpMax += baseHpMax*10; // 기본 HP 추가
 	    }
 	    if ("저격수".equals(job)) {
 	        finalHpMax = finalHpMax/2; // 기본 HP 추가
@@ -526,6 +530,7 @@ public class BossAttackController {
 	    final String userName = Objects.toString(map.get("userName"), "");
 	    final String selRaw  = Objects.toString(map.get("param1"), "").trim();
 
+	    boolean master =false;
 	    if (roomName.isEmpty() || userName.isEmpty())
 	        return "방/유저 정보가 누락되었습니다.";
 
@@ -550,7 +555,7 @@ public class BossAttackController {
 	    if(roomName.equals("람쥐봇 문의방")) {
 			
 			if(userName.equals("일어난다람쥐/카단")) {
-				
+				master =true;
 			}else {
 				return "문의방에서는 불가능합니다.";
 			}
@@ -570,6 +575,63 @@ public class BossAttackController {
 	        return "이미 [" + curJob + "] 직업입니다.";
 	    }
 
+	    if(!master) {
+	    	// 5-0) 해당 유저의 직업별 공격횟수 전체 조회 (쿼리 1번)
+		    Map<String, Integer> jobCntMap = Collections.emptyMap();
+		    int totalCnt = 0;
+
+		    try {
+		        jobCntMap = botNewService.selectBattleCountByUser(userName, roomName);
+		    } catch (Exception e) {
+		        e.printStackTrace();
+		        jobCntMap = new HashMap<String, Integer>();
+		    }
+
+		    // 전체 공격횟수 = 모든 직업 CNT 합
+		    for (Integer v : jobCntMap.values()) {
+		        if (v != null) {
+		            totalCnt += v;
+		        }
+		    }
+
+		    // 5-1) 직업별 전직 조건 체크 (전사 100, 도적 100 같은 것들)
+		    List<JobChangeReq> reqList = JOB_CHANGE_REQS.get(newJob);
+		    if (reqList != null && !reqList.isEmpty()) {
+		        StringBuilder sb = new StringBuilder();
+
+		        for (JobChangeReq req : reqList) {
+		            int curCnt = jobCntMap.getOrDefault(req.baseJob, 0);
+
+		            if (curCnt < req.minCount) {
+		                sb.append("- [")
+		                  .append(req.baseJob)
+		                  .append("] 직업으로 ")
+		                  .append(req.minCount)
+		                  .append("회 이상 공격 필요 (현재: ")
+		                  .append(curCnt)
+		                  .append("회)")
+		                  .append(NL);
+		            }
+		        }
+
+		        if (sb.length() > 0) {
+		            return "[" + newJob + "] 직업은 아래 조건을 모두 만족해야 전직 가능합니다." + NL
+		                 + sb.toString().trim();
+		        }
+		    }
+
+		    // 5-2) 전체 공격 횟수 조건 체크
+		    Integer totalReq = JOB_CHANGE_TOTAL_REQS.get(newJob);
+		    if (totalReq != null) {
+		        if (totalCnt < totalReq) {
+		            return "[" + newJob + "] 직업은 전체 공격 횟수 "
+		                 + totalReq + "회를 달성해야 전직 가능합니다. (현재: "
+		                 + totalCnt + "회)";
+		        }
+		    }
+	    }
+	    
+	    
 	    // 6) 직업 변경 수행 (JOB + JOB_CHANGE_DATE = SYSDATE)
 	    int updated = botNewService.updateUserJobAndChangeDate(userName, roomName, newJob);
 	    if (updated <= 0) {
@@ -729,6 +791,11 @@ public class BossAttackController {
 	    }
 
 	    if ("전사".equals(job)) {
+	        sb.append("   └ 직업 (HP+")
+	          .append(baseHpMax*10)
+	          .append(")").append(NL);
+	    }
+	    if ("용사".equals(job)) {
 	        sb.append("   └ 직업 (HP+")
 	          .append(baseHpMax*10)
 	          .append(")").append(NL);
@@ -915,6 +982,8 @@ public class BossAttackController {
 		final String roomName = Objects.toString(map.get("roomName"), "");
 		final String userName = Objects.toString(map.get("userName"), "");
 		final String input = Objects.toString(map.get("monNo"), "").trim();
+		
+		boolean master = false;
 		if (roomName.isEmpty() || userName.isEmpty()) return "방/유저 정보가 누락되었습니다.";
 		if (input.isEmpty()) {
 		    User u = botNewService.selectUser(userName, roomName);
@@ -935,7 +1004,7 @@ public class BossAttackController {
 		if(roomName.equals("람쥐봇 문의방")) {
 			
 			if(userName.equals("일어난다람쥐/카단")) {
-				
+				master = true;
 			}else {
 				return "문의방에서는 불가능합니다.";
 			}
@@ -993,11 +1062,13 @@ public class BossAttackController {
 			}
 
 			// 3) 조건 미달 시 거부
-			if (killsOnPrev < 5) {
-			    Monster prev = botNewService.selectMonsterByNo(prevMonNo);
-			    String prevName = (prev == null ? ("Lv " + prevMonNo) : prev.monName);
-			    return "상위 등급으로 올리려면 [" + prevName + "]을(를) 최소 5마리 처치해야 합니다. (현재 "
-			         + killsOnPrev + "마리)";
+			if(!master) {
+				if (killsOnPrev < 5 ) {
+				    Monster prev = botNewService.selectMonsterByNo(prevMonNo);
+				    String prevName = (prev == null ? ("Lv " + prevMonNo) : prev.monName);
+				    return "상위 등급으로 올리려면 [" + prevName + "]을(를) 최소 5마리 처치해야 합니다. (현재 "
+				         + killsOnPrev + "마리)";
+				}
 			}
 		}
 		
@@ -1444,14 +1515,22 @@ public class BossAttackController {
 	    // 0) 방/유저 기본 검증 (구버전 그대로)
 	    final String roomName = Objects.toString(map.get("roomName"), "");
 	    final String userName = Objects.toString(map.get("userName"), "");
+	    
+	    boolean master = false;
+	    
 	    if (roomName.isEmpty() || userName.isEmpty())
 	        return "방/유저 정보가 누락되었습니다.";
 
 	    // 문의방 제한 (구버전 그대로)
-	    if ("람쥐봇 문의방".equals(roomName)) {
-	        if (!"일어난다람쥐/카단".equals(userName)) {
-	            return "문의방에서는 불가능합니다.";
-	        }
+	    if ("람쥐봇 문의방".equals(roomName) && "일어난다람쥐/카단".equals(userName) ) {
+	    	master =  true;
+	    }
+	    if (master) {
+	    	map.put("param1","test");
+	    }
+	    
+	    if ("람쥐봇 문의방".equals(roomName) && !master) {
+            return "문의방에서는 불가능합니다.";
 	    }
 
 	    // 쿨타임/HP 제한에서 쓰는 원래 param1 (구버전과 동일)
@@ -1701,6 +1780,13 @@ public class BossAttackController {
 	            berserkMul = 1.0 + (1 - hpRatio) * 0.5;   // 최대 3배
 	        }
 	    }
+	    
+	    if ("용사".equals(job) && dark ) {
+	        berserkMul = 2;
+	    }
+	    if ("처단자".equals(job) && lucky ) {
+	    	berserkMul = 2;
+	    }
 
 	    Flags flags = rollFlags(u, m);
 
@@ -1825,6 +1911,54 @@ public class BossAttackController {
 	            case 12: stealRate -= 0.03;
 	        }
 
+	        if (ThreadLocalRandom.current().nextDouble() < stealRate) {
+	            String dropName = (m.monDrop == null ? "" : m.monDrop.trim());
+	            if (!dropName.isEmpty()) {
+	                try {
+	                    Integer itemId = botNewService.selectItemIdByName(dropName);
+	                    if (itemId != null) {
+	                        HashMap<String, Object> inv = new HashMap<>();
+	                        inv.put("userName", userName);
+	                        inv.put("roomName", roomName);
+	                        inv.put("itemId", itemId);
+	                        inv.put("qty", 1);
+	                        inv.put("delYn", "0");
+	                        inv.put("gainType", "STEAL");
+	                        botNewService.insertInventoryLogTx(inv);
+	                        stealMsg = "✨ " + m.monName + "의 아이템을 훔쳤습니다! (" + dropName + "조각)";
+	                        calc.jobSkillUsed = true;
+	                    }
+	                } catch (Exception ignore) {}
+	            }
+	        }
+	    }
+	    
+	    if ("처단자".equals(job) && !(m.monNo > 50) && willKill) {
+	        double stealRate = 0.30;
+	        if (ThreadLocalRandom.current().nextDouble() < stealRate) {
+	            String dropName = (m.monDrop == null ? "" : m.monDrop.trim());
+	            if (!dropName.isEmpty()) {
+	                try {
+	                    Integer itemId = botNewService.selectItemIdByName(dropName);
+	                    if (itemId != null) {
+	                        HashMap<String, Object> inv = new HashMap<>();
+	                        inv.put("userName", userName);
+	                        inv.put("roomName", roomName);
+	                        inv.put("itemId", itemId);
+	                        inv.put("qty", 1);
+	                        inv.put("delYn", "0");
+	                        inv.put("gainType", "DROP");
+	                        botNewService.insertInventoryLogTx(inv);
+	                        stealMsg = "✨ 날카로운 처단으로 추가획득 (+" + dropName + ")";
+	                        calc.jobSkillUsed = true;
+	                    }
+	                } catch (Exception ignore) {}
+	            }
+	        }
+	    }
+	    
+	    if ("용사".equals(job) && !(m.monNo > 50)) {
+	        double stealRate = 0.30;
 	        if (ThreadLocalRandom.current().nextDouble() < stealRate) {
 	            String dropName = (m.monDrop == null ? "" : m.monDrop.trim());
 	            if (!dropName.isEmpty()) {
@@ -1986,26 +2120,12 @@ public class BossAttackController {
 	                String u = b.getUserName();
 	                if (userName.equals(u)) {
 	                    // 최근 5개 가방 로그 안에 있으면 → 이미 먹은 사람
-	                	try {
-	            	    	if(userName.equals("나는야덩어리")) {
-	            	    		return 2;
-	            	    	}
-	            	    	
-	            	    }catch(Exception e) {}
 	                    return 1; // 기본 확률
 	                }
 	            }
 	        }
 	    } catch (Exception ignore) {}
-		 
-	    
-	    try {
-	    	if(userName.equals("나는야덩어리")) {
-	    		return 10.0;
-	    	}
-	    	
-	    }catch(Exception e) {}
-	    
+		 	    
 	    boolean isRising = false;
 
 	    // 2) 최근 6시간 라이징 스타(Top7)인지 확인
@@ -2577,7 +2697,6 @@ public class BossAttackController {
 	}
 	
 	
-	/** 공격 랭킹 출력 (떠오르는샛별 / Top3 / 몬스터 학살자 / 최초토벌 + 도전중) */
 	public String showAttackRanking(HashMap<String,Object> map) {
 	    final String NL = "♬";
 	    final String allSeeStr = "===";
@@ -2631,27 +2750,6 @@ public class BossAttackController {
 	    
 	    sb.append(allSeeStr);
 	    
-	    // =========================
-	    // 도적왕 (스틸 아이템 수)
-	    // =========================
-	    /*
-	    try {
-	        List<HashMap<String, Object>> thiefRank = botNewService.selectThiefKingRanking();
-	        sb.append(NL).append("◆ 도적왕 (스틸 아이템 수 TOP5)").append(NL);
-	        if (thiefRank == null || thiefRank.isEmpty()) {
-	            sb.append("- 데이터가 없습니다.").append(NL);
-	        } else {
-	            int rank = 1;
-	            for (HashMap<String, Object> row : thiefRank) {
-	                String userName = Objects.toString(row.get("USER_NAME"), "-");
-	                int stealQty = parseIntSafe(Objects.toString(row.get("STEAL_QTY"), "0"));
-	                sb.append(rank).append("위 ").append(userName)
-	                  .append(" - 스틸 ").append(stealQty).append("회").append(NL);
-	                rank++;
-	            }
-	        }
-	    } catch (Exception ignore) {}
-	    */
 	    
 	    
 	    
@@ -2715,6 +2813,32 @@ public class BossAttackController {
 		             if (++rank > 7) break;
 		         }
 		     }
+		     
+		     sb.append(NL).append("◆ 죽음 극복 랭킹 (TOP7)").append(NL);
+		 	
+		     if (spAtkList == null || spAtkList.isEmpty()) {
+		         sb.append("- 데이터가 없습니다.").append(NL);
+		     } else {
+		         // 공격 횟수 순위 정렬
+		         List<HashMap<String, Object>> byDeath = new ArrayList<>(spAtkList);
+		         byDeath.sort((a, b) -> Integer.compare(
+		                 safeInt(b.get("DEATH_CNT")),
+		                 safeInt(a.get("DEATH_CNT"))
+		         ));
+	
+		         int rank = 1;
+		         for (HashMap<String, Object> row : byDeath) {
+		             String userName2 = Objects.toString(row.get("USER_NAME"), "-");
+		             int deathCnt      = safeInt(row.get("DEATH_CNT"));
+	
+		             sb.append(rank).append("위 ")
+		               .append(userName2)
+		               .append(" - 죽음 ").append(String.format("%,d", deathCnt)).append("회")
+		               .append(NL);
+	
+		             if (++rank > 7) break;
+		         }
+		     }
 	
 		 } catch (Exception ignore) {}
 	    // =========================
@@ -2740,6 +2864,7 @@ public class BossAttackController {
 	    
 	    
 	    /* === ⚔ 공격 랭킹 (기존 Top3) === */
+	    /*
 	    sb.append(NL).append("⚔ 공격 레벨 랭킹").append(NL);
 	    List<HashMap<String,Object>> top3 = botNewService.selectTopLevelUsers();
 	    if (top3 == null || top3.isEmpty()) {
@@ -2763,7 +2888,8 @@ public class BossAttackController {
 	        }
 	    }
 	    sb.append(NL);
-
+	     */
+	    sb.append(NL);
 	    /* === ⚔ 몬스터 학살자 (기존) === */
 	    sb.append("⚔ 몬스터 학살자").append(NL);
 	    List<HashMap<String,Object>> killers = botNewService.selectKillLeadersByMonster();
@@ -4369,7 +4495,8 @@ public class BossAttackController {
 	    }
 
 	    // 2) 통산 킬 업적
-	    int[] totalThresholds = {50, 100, 300, 500, 1000,2000,3000,4000,5000};
+	    int[] totalThresholds = {50, 100, 300, 500, 1000,2000,3000,4000,5000,6000,7000,8000,9000,10000
+	    		,11000,12000,13000,14000,15000,16000,17000,18000,19000,20000};
 	    for (int th : totalThresholds) {
 	        if (totalKills >= th) {
 	            String cmd = "ACHV_KILL_TOTAL_" + th;
@@ -5146,7 +5273,7 @@ public class BossAttackController {
 	            }
 
 	            int shotDmg = shotCrit
-	                    ? (int) Math.round(shotAtk * critMultiplier)
+	                    ? (int) Math.round(shotAtk * critMultiplier*0.9)
 	                    : shotAtk;
 
 	            totalDmg += shotDmg;
@@ -5164,10 +5291,10 @@ public class BossAttackController {
 	        // 4) 전탄 크리 보너스 (1.1배)
 	        if (hitCount > 1 && allCrit) {
 	            int before = totalDmg;
-	            totalDmg = (int) Math.round(totalDmg * 1.1);
+	            totalDmg = (int) Math.round(totalDmg * 1.15);
 	            multiMsg.append("ALL 치명! ")
 	                    .append(before).append(" → ").append(totalDmg)
-	                    .append(" (+10%)").append(NL);
+	                    .append(" (+15%)").append(NL);
 	            calc.jobSkillUsed =true;
 	        } else if (hitCount > 1) {
 	            // 기존 총합 안내
@@ -5302,6 +5429,9 @@ public class BossAttackController {
 	    if ("프리스트".equals(job) && isSkeleton(m)) {
 	    	baseAtk = (int) Math.round(baseAtk * 1.25);
 	    }
+	    if ("용사".equals(job) && isSkeleton(m)) {
+	    	baseAtk = (int) Math.round(baseAtk * 1.25);
+	    }
 	    
 	    if ("용기사".equals(job)) {
 	        /*
@@ -5338,11 +5468,17 @@ public class BossAttackController {
 	    
 	    if("파이터".equals(job)) {
 	    	baseAtk = (int) Math.round(berserkMul * baseAtk);
-	    	effCritRate = 0;
+	    	effCritRate = -100;
 	        effCriDmg = 0;
 	        crit = false;
 	    }
 	    
+	    if("용사".equals(job)) {
+	    	baseAtk = (int) Math.round(berserkMul * baseAtk);
+	    }
+	    if("처단자".equals(job)) {
+	    	baseAtk = (int) Math.round(berserkMul * baseAtk);
+	    }
 	    
 	    
 	    int rawAtkDmg = crit ? (int) Math.round(baseAtk * critMultiplier) : baseAtk;
@@ -5400,8 +5536,7 @@ public class BossAttackController {
 		    			calc.monDmg = 0;  // 방어 패턴이었으니 몬스터 피해는 0 유지
 		    			calc.patternMsg = m.monName + "의 패턴파훼! 몬스터가 모든행동을 멈춥니다";
 		    			
-		    			int originalDmg = (int) Math.round(calc.baseAtk * calc.critMultiplier);
-			            calc.atkDmg = originalDmg;
+			            calc.atkDmg = calc.baseAtk;
 		    		}
 	    		}
 	        }
@@ -5430,6 +5565,27 @@ public class BossAttackController {
 		            String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
 		            calc.patternMsg = baseMsg + "(마나실드 필살피해 30% 감소 → " + reduced + ")";
 		            calc.monDmg = reduced;
+	        	}
+	        }
+	        
+	        if ("처단자".equals(job) ) {
+	        	if(flags.monPattern == 3) {
+		        	// 패턴3 → 방어 대신 무행동 취급
+		            flags.monPattern = 1;
+	
+		            // ✅ 방어 적용 전 기준( baseAtk * critMultiplier )으로 다시 계산
+		            int originalDmg = (int) Math.round(calc.baseAtk * calc.critMultiplier);
+	
+		            int newDmg = (int) Math.round(originalDmg * 2.5);
+		            calc.atkDmg = newDmg;
+		            calc.monDmg = 0;  // 방어 패턴이었으니 몬스터 피해는 0 유지
+	
+		            // 디버그용 계수도 실제 데미지에 맞게 재계산
+		            if (calc.baseAtk > 0) {
+		                calc.critMultiplier = (double) newDmg / calc.baseAtk;
+		            }
+	
+		            calc.patternMsg = "처단자의 방어파괴! (피해 2.5배)";
 	        	}
 	        }
 
@@ -5484,6 +5640,38 @@ public class BossAttackController {
 	                calc.monDmg = 0;
 	            }
 	        }
+	        
+	        if ("처단자".equals(job) && calc.monDmg > 0 && !flags.finisher) {
+
+	            int monLv = m.monNo;
+	            double evadeRate = 0.80;
+	            switch (monLv) {
+		            case 20:
+		            	evadeRate -= 0.05;
+		            case 19:
+		            	evadeRate -= 0.05;
+		            case 18:
+		            	evadeRate -= 0.05;
+		            case 17:
+		            	evadeRate -= 0.05;
+		            case 16:
+		            	evadeRate -= 0.05;
+	                case 15:
+	                    evadeRate -= 0.05;
+	                case 14:
+	                    evadeRate -= 0.05;
+	                case 13:
+	                    evadeRate -= 0.05;
+	                case 12:
+	                    evadeRate -= 0.05;
+	            }
+
+	            if (ThreadLocalRandom.current().nextDouble() < evadeRate) {
+	                String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
+	                calc.patternMsg = baseMsg + "적의 공격이 처단자에게 닿지않습니다";
+	                calc.monDmg = 0;
+	            }
+	        }
 
 	        if ("프리스트".equals(job) && calc.monDmg > 0 && !flags.finisher) {
 	            int reduced = (int) Math.floor(calc.monDmg * 0.8);
@@ -5504,6 +5692,20 @@ public class BossAttackController {
 	        }
 	    }
 
+	    if ("용사".equals(job)) {
+	    	double rnd = ThreadLocalRandom.current().nextDouble();
+            if (rnd < 0.10) {
+            	int heal = (int) Math.round(effHpMax * 1);
+
+	            int before = u.hpCur;
+	            u.hpCur = Math.min(effHpMax, u.hpCur + heal);
+
+	            String base = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
+	            calc.patternMsg = base + "정령의 가호 효과! " + 
+	                    "fullHp 회복 (HP " + before + " → " + u.hpCur + "/" + effHpMax + ")";
+	            calc.jobSkillUsed = true;
+            }
+	    }
 	    // -----------------------------
 	    // 5) 흡혈귀: 이번 턴 실제 입힌 피해의 20% 회복
 	    // -----------------------------
@@ -5550,14 +5752,15 @@ public class BossAttackController {
 
 	private String buildJobDescriptionList() {
 		StringBuilder sb = new StringBuilder();
-	    sb.append("전직 가능한 직업 목록").append(ALL_SEE_STR);
+		sb.append("♬ /직업 [직업명] 으로 전직 가능합니다.");
+	    sb.append("♬♬ 전직 가능한 직업 목록").append(ALL_SEE_STR);
 	    for (JobDef def : JOB_DEFS.values()) {
 	    	sb.append(def.name).append(":");
 	        sb.append(def.listLine).append(NL);
 	        sb.append(def.attackLine).append(NL).append(NL);
 	        
 	    }
-	    sb.append("♬ /직업 [직업명] 으로 전직 가능합니다.").append(NL);
+	    
 	    return sb.toString();
 	}
 
@@ -5571,7 +5774,15 @@ public class BossAttackController {
 	}
 
 
-	
+	private static class JobChangeReq {
+	    final String baseJob;   // 어떤 직업으로
+	    final int minCount;     // 몇 회 이상 공격해야 하는지
+
+	    JobChangeReq(String baseJob, int minCount) {
+	        this.baseJob = baseJob;
+	        this.minCount = minCount;
+	    }
+	}
 	// 직업 공통 정의
 	private static final class JobDef {
 	    final String name;       
@@ -6047,13 +6258,7 @@ public class BossAttackController {
     		"▶ 대사제의 축복을 받아 신성의힘으로 적을 물리친다",
     		"⚔ 아이템 HP/리젠 효과 1.25배, 몬스터에게 받는 피해 감소(20%), 언데드추가피해(+25%)"
 		));
-	    /*
-	    JOB_DEFS.put("처단자", new JobDef(
-	        "처단자",
-	        "▶ 신을 모독하는 자는 그의 손에서 살아남을수 없다, 물론 모독을 안했어도 말이지..! ",
-	        "⚔ 방어를 무시하고 피해 2배를 줌, 몬스터의 기본공격 80%회피, 처치시 추가드랍(50%)"
-	    ));
-	     */
+	    
 	    JOB_DEFS.put("도사", new JobDef(
 	        "도사",
 	        "▶ 도를 닦아 깨달음을 얻은 위인",
@@ -6083,21 +6288,13 @@ public class BossAttackController {
     		"▶ 강인한 체력의 소유자, 체력이 낮아지면 적의 행동을 저지시킨다",
     		"⚔ 공격력 최대치, 치명타 배율 및 치명타데미지 증가가 체력으로 전환(3배수,치명 미발생)"+NL+"본인의 체력이 낮아질수록 데미지 증가(추가 50%까지), 체력이 30%이하 일 때 적 행동저지(40%)"
         ));
-        
-        
-        JOB_DEFS.put("궁사", new JobDef(
-    		"궁사",
-    		"▶ 연속공격의 달인, 최대데미지와 최소공격력 차이가 클수록 연속공격한다",
-    		"⚔ 최대-최소 데미지 차이 280 마다 1연사 추가공격(각 구간 별 공격은 개별치명타율 최대70%)"
-        ));
-        
-        
+        /*
         JOB_DEFS.put("궁사2", new JobDef(
     		"궁사2",
     		"▶ 연속공격의 달인, 최대데미지와 최소공격력 차이가 클수록 연속공격한다(테스트모드)",
     		"⚔ 최대-최소 데미지 차이 280 마다 1연사 추가공격(추가공격데미지 고정)"
 		));
-        
+        */
         JOB_DEFS.put("저격수", new JobDef(
     		"저격수",
     		"▶ 숨어서 급소를 노리는 암살자, 극강의 공격력을 선사한다",
@@ -6106,12 +6303,52 @@ public class BossAttackController {
     		  "*조우 은엄폐, *저격(13% headShot) 시 모든 행동 무시, *이동 시 20%확률 모든 행동 무시"
         ));
         
+        JOB_DEFS.put("궁사", new JobDef(
+    		"궁사",
+    		"▶ 연속공격의 달인, 최대데미지와 최소공격력 차이가 클수록 연속공격한다",
+    		"⚔ 최대-최소 데미지 차이 280 마다 1연사 추가공격(각 구간 별 공격은 개별치명타율 최대70%)"+NL
+ 	         +"◎선행조건 : 공격횟수 5000회 "
+        ));
+
         
+        JOB_DEFS.put("용사", new JobDef(
+	        "용사",
+	        "▶ 선택 받은 자",//어둠몹에 피해두배 ,언데드추뎀25% ,스틸30%, 10%확률 완전회복
+	        "⚔ 기본 HP*10만큼 추가 증가, -hidden- (*2), -hidden- (+25%), -hidden- (30%), -hidden- (10%)"+NL
+	        +"◎선행조건 전사,도적,도사,프리스트 직업으로 각 300회 공격"
+	    ));
+	     
+	    
+	    JOB_DEFS.put("처단자", new JobDef(
+	        "처단자",
+	        "▶ 신을 모독하는 자는 그의 손에서 살아남을수 없다, 물론 모독을 안했어도 말이지..! ",
+	        "⚔ 방어를 무시하고 피해 2.5배를 줌, 몬스터의 기본공격 80%회피 [회피 no12부터 3%씩,no15부터 5%씩 감소] , 처치시 추가드랍(30%), -hidden- "+NL
+	        +"◎선행조건 마법사,도적 직업으로 각 300회 공격"
+	    ));
         
 	}
 	
+	// 목표직업 -> 요구조건 리스트
+	private static final Map<String, List<JobChangeReq>> JOB_CHANGE_REQS = new HashMap<>();
+	// 목표직업 -> 전체 공격 횟수 요구
+	private static final Map<String, Integer> JOB_CHANGE_TOTAL_REQS = new HashMap<>();
 	
-	
+	static {
+	    // 용사 = 전사 300회 + 도적 300회 공격해야 전직 가능
+	    JOB_CHANGE_REQS.put("용사", Arrays.asList(
+	        new JobChangeReq("전사", 300),
+	        new JobChangeReq("도적", 300),
+	        new JobChangeReq("도사", 300),
+	        new JobChangeReq("프리스트", 300)
+	    ));
+	    JOB_CHANGE_REQS.put("처단자", Arrays.asList(
+    		new JobChangeReq("마법사", 300),
+    		new JobChangeReq("도적", 300)
+		));
+	    // 용사 = 전체 공격 1000회 이상
+	    JOB_CHANGE_TOTAL_REQS.put("궁사", 5000);
+	    
+	}
 }
 
 
