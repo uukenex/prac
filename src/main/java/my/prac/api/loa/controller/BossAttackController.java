@@ -56,6 +56,10 @@ public class BossAttackController {
 	private static final String ALL_SEE_STR = "===";
 	private static final int BAG_ITEM_ID = 91;
 	
+	private static final int JOB_ACHV_EXPERT = 300;
+	private static final int JOB_ACHV_MASTER = 1000;
+	private static final int JOB_ACHV_GRAND  = 2500;
+	
 	/* ===== DI ===== */
 	@Autowired LoaPlayController play;
 	@Resource(name = "core.prjbot.BotService")        BotService botService;
@@ -5040,6 +5044,70 @@ public class BossAttackController {
 	    	.append(joinStepNumbers(darkItemSteps))
 	    	.append("]회 달성").append(NL);
 	    }
+	}
+	
+	private String grantJobAttackCountAchvSimple(
+	        String userName,
+	        String roomName,
+	        String job,
+	        int jobAtkCnt,                      // 현재 직업으로 누적 공격횟수
+	        Map<String, Integer> userAchvMap     // 이미 받은 업적 체크용(없으면 null 가능)
+	) {
+	    if (job == null) job = "";
+	    job = job.trim();
+	    if (job.isEmpty()) return "";
+
+	    StringBuilder sb = new StringBuilder();
+
+	    // 300/1000/2500 각각 업적 cmd 생성
+	    // 예: ACHV_JOB_ATK_EXPERT_전사
+	    if (jobAtkCnt >= JOB_ACHV_EXPERT) {
+	        String cmd = "ACHV_JOB_ATK_EXPERT_" + job;
+	        if (!hasAchv(userAchvMap, cmd)) {
+	            insertAchvRank(userName, roomName, cmd);
+	            putAchv(userAchvMap, cmd);
+	            sb.append("[익스퍼트 ").append(job).append("] 달성! (").append(jobAtkCnt).append("회)").append(NL);
+	        }
+	    }
+
+	    if (jobAtkCnt >= JOB_ACHV_MASTER) {
+	        String cmd = "ACHV_JOB_ATK_MASTER_" + job;
+	        if (!hasAchv(userAchvMap, cmd)) {
+	            insertAchvRank(userName, roomName, cmd);
+	            putAchv(userAchvMap, cmd);
+	            sb.append("[마스터 ").append(job).append("] 달성! (").append(jobAtkCnt).append("회)").append(NL);
+	        }
+	    }
+
+	    if (jobAtkCnt >= JOB_ACHV_GRAND) {
+	        String cmd = "ACHV_JOB_ATK_GRAND_" + job;
+	        if (!hasAchv(userAchvMap, cmd)) {
+	            insertAchvRank(userName, roomName, cmd);
+	            putAchv(userAchvMap, cmd);
+	            sb.append("[그랜드마스터 ").append(job).append("] 달성! (").append(jobAtkCnt).append("회)").append(NL);
+	        }
+	    }
+
+	    return sb.toString();
+	}
+
+	private boolean hasAchv(Map<String, Integer> userAchvMap, String cmd) {
+	    if (userAchvMap == null) return false;
+	    Integer v = userAchvMap.get(cmd);
+	    return v != null && v.intValue() > 0;
+	}
+
+	private void putAchv(Map<String, Integer> userAchvMap, String cmd) {
+	    if (userAchvMap != null) userAchvMap.put(cmd, 1);
+	}
+
+	private void insertAchvRank(String userName, String roomName, String cmd) {
+	    HashMap<String,Object> pr = new HashMap<>();
+	    pr.put("userName", userName);
+	    pr.put("roomName", roomName);
+	    pr.put("score", 0);
+	    pr.put("cmd", cmd);
+	    botNewService.insertPointRank(pr);
 	}
 
 	/** TreeSet<Integer> → "300/500/1000" 형식으로 이어 붙이기 */
