@@ -2371,6 +2371,28 @@ public class BossAttackController {
 	    if ("장비".equals(itemNameRaw)) {
 	        return sellAllByCategory(userName, roomName, u, true);  // 장비 전체판매
 	    }
+	    if ("무기".equals(itemNameRaw)) {
+	        return sellAllBySlot(userName, roomName, u, "※무기"); // 또는 "무기"
+	    }
+	    if ("투구".equals(itemNameRaw)) {
+	        return sellAllBySlot(userName, roomName, u, "※투구");   // 또는 "투구"
+	    }
+	    if ("갑옷".equals(itemNameRaw)) {
+	        return sellAllBySlot(userName, roomName, u, "※갑옷");  // 또는 "갑옷"
+	    }
+	    if ("반지".equals(itemNameRaw)) {
+	        return sellAllBySlot(userName, roomName, u, "※반지");   // 또는 "반지"
+	    }
+	    if ("토템".equals(itemNameRaw)) {
+	        return sellAllBySlot(userName, roomName, u, "※토템");  // 또는 "토템"
+	    }
+	    if ("행운".equals(itemNameRaw)) {
+	        return sellAllBySlot(userName, roomName, u, "※행운");   // 또는 "행운"
+	    }
+	    if ("전설".equals(itemNameRaw)) {
+	        return sellAllBySlot(userName, roomName, u, "※전설"); // 또는 "전설"
+	    }
+	    
 	    // 숫자로만 들어온 경우: ITEM_ID 로 직접 판매 (/판매 10001)
 	    boolean isNumericId = itemNameRaw.matches("\\d+");
 
@@ -2652,24 +2674,24 @@ public class BossAttackController {
 	    
 	    return sb.toString();
 	}
-
-	private String sellAllByCategory(String userName, String roomName, User u, boolean equipOnly) {
-	    final int SHINY_MULTIPLIER = 5; //  빛템 5배
-	    final String NL = BossAttackController.NL; // 클래스 상단 static final NL = "♬" 사용
+	
+	private String sellAllByCategoryFiltered(String userName, String roomName, User u, boolean equipOnly, String slotKey) {
+	    final int SHINY_MULTIPLIER = 5;
+	    final String NL = BossAttackController.NL;
 
 	    List<HashMap<String, Object>> rows = botNewService.selectAllInventoryRowsForSale(userName, roomName);
 	    if (rows == null || rows.isEmpty()) {
-	        return equipOnly ? "판매 가능한 장비가 없습니다."
-	                         : "판매 가능한 잡템이 없습니다.";
+	        if (slotKey != null) return "판매 가능한 " + slotKey + " 아이템이 없습니다.";
+	        return equipOnly ? "판매 가능한 장비가 없습니다." : "판매 가능한 잡템이 없습니다.";
 	    }
 
-	    // 캐시: ITEM_ID → 장비 여부 / 판매가
 	    Map<Integer, Boolean> equipCache = new HashMap<>();
 	    Map<Integer, Integer> priceCache = new HashMap<>();
+	    Map<Integer, String>  catCache   = new HashMap<>(); // NEW: itemId -> 카테고리(※무기 등)
 
-	    int sold = 0, soldNormal = 0, soldShiny = 0,soldDark=0, soldFrag = 0;
+	    int sold = 0, soldNormal = 0, soldShiny = 0, soldDark = 0, soldFrag = 0;
 	    long totalSp = 0L;
-	    boolean soldMerchantDiscount = false; // BUY_MERCHANT 판매 여부
+	    boolean soldMerchantDiscount = false;
 
 	    for (HashMap<String, Object> row : rows) {
 
@@ -2680,37 +2702,45 @@ public class BossAttackController {
 	        if (qty <= 0) continue;
 
 	        String gainType = Objects.toString(row.get("GAIN_TYPE"), "DROP");
-	        boolean isShinyRow    = "DROP3".equalsIgnoreCase(gainType);
-	        boolean isDarkRow    = "DROP5".equalsIgnoreCase(gainType);
-	        boolean isStealRow    = "STEAL".equalsIgnoreCase(gainType);
+	        boolean isShinyRow = "DROP3".equalsIgnoreCase(gainType);
+	        boolean isDarkRow  = "DROP5".equalsIgnoreCase(gainType);
+	        boolean isStealRow = "STEAL".equalsIgnoreCase(gainType);
 
-	        // 1) ROWID → ITEM_ID 조회 (ITEM_ID 기준 로직을 쓰기 위함)
 	        Integer itemId = null;
-	        try {
-	            itemId = botNewService.selectItemIdByRowId(rid);
-	        } catch (Exception ignore) {}
-	        if (itemId == null || itemId <= 0) {
-	            continue; // 아이템 정보 없으면 스킵
-	        }
+	        try { itemId = botNewService.selectItemIdByRowId(rid); } catch (Exception ignore) {}
+	        if (itemId == null || itemId <= 0) continue;
 
-	        // 2) ITEM_ID → 장비 여부(ITEM_TYPE = MARKET) 캐시
+	        // 장비 여부 캐시
 	        Boolean isEquipObj = equipCache.get(itemId);
 	        if (isEquipObj == null) {
 	            HashMap<String, Object> itemDetail = null;
-	            try {
-	                itemDetail = botNewService.selectItemDetailById(itemId);
-	            } catch (Exception ignore) {}
+	            try { itemDetail = botNewService.selectItemDetailById(itemId); } catch (Exception ignore) {}
 	            String itemType = (itemDetail == null) ? "" : Objects.toString(itemDetail.get("ITEM_TYPE"), "");
 	            isEquipObj = "MARKET".equalsIgnoreCase(itemType);
 	            equipCache.put(itemId, isEquipObj);
 	        }
 	        boolean isEquip = Boolean.TRUE.equals(isEquipObj);
 
-	        // 3) 모드에 따라 필터링
-	        if (equipOnly && !isEquip) continue;   // 장비 전체판매 → 장비(MARKET)만
-	        if (!equipOnly && isEquip) continue;   // 잡템 전체판매 → 장비 제외
+	        // 기존 필터(장비 전체/잡템 전체)
+	        if (equipOnly && !isEquip) continue;
+	        if (!equipOnly && isEquip) continue;
 
-	        // 4) ITEM_ID → 기본 판매가 캐시
+	        // ✅ NEW: 슬롯(카테고리) 필터
+	        if (slotKey != null) {
+	            String cat = catCache.get(itemId);
+	            if (cat == null) {
+	                // 기존 attackInfo에서 쓰던 resolveItemCategory(itemId) 재사용 가능
+	                // 여기서 "※무기" 같은 문자열을 반환한다고 가정
+	                cat = resolveItemCategory(itemId);
+	                catCache.put(itemId, cat);
+	            }
+
+	            // slotKey를 "※무기" 형태로 맞추는 걸 추천 (제일 안전)
+	            // 예: slotKey="※무기"
+	            if (!slotKey.equals(cat)) continue;
+	        }
+
+	        // 가격 캐시
 	        Integer basePriceObj = priceCache.get(itemId);
 	        if (basePriceObj == null) {
 	            Integer tmpPrice = null;
@@ -2719,61 +2749,34 @@ public class BossAttackController {
 	            priceCache.put(itemId, basePriceObj);
 	        }
 	        int basePrice = basePriceObj;
-	        if (basePrice <= 0) {
-	            // 가격 정보 없는 아이템은 판매 불가
-	            continue;
-	        }
+	        if (basePrice <= 0) continue;
 
-	        // 5) gainType + 직업에 따른 실제 단가 계산
 	        int unitPrice = basePrice;
+	        if (isShinyRow || isDarkRow) unitPrice = basePrice * SHINY_MULTIPLIER;
+	        if (isStealRow) unitPrice = (int)Math.floor(unitPrice * 0.5);
 
-	        // 빛드랍 5배
-	        if (isShinyRow||isDarkRow) {
-	            unitPrice = basePrice * SHINY_MULTIPLIER;
-	        }
-
-	        // 조각(STEAL)은 절반 가격
-	        if (isStealRow) {
-	            unitPrice = (int) Math.floor(unitPrice * 0.5);
-	        }
-
-	        // 6) 실제 판매: 전체판매이므로 가진 수량(qty) 전부 판매
 	        int take = qty;
-
-	        // 인벤토리에서 행 삭제 (전량 판매)
 	        botNewService.updateInventoryDelByRowId(rid);
 
-	        // 카운트/합계 누적
-	        if (isStealRow) {
-	            soldFrag += take;
-	        } else if (isShinyRow) {
-	            soldShiny += take;
-	        } else if (isDarkRow) {
-	            soldDark += take;
-	        } else {
-	            soldNormal += take;
-	        }
+	        if (isStealRow) soldFrag += take;
+	        else if (isShinyRow) soldShiny += take;
+	        else if (isDarkRow) soldDark += take;
+	        else soldNormal += take;
 
 	        sold += take;
 	        totalSp += (long) take * (long) unitPrice;
 	    }
 
 	    if (sold <= 0) {
-	        return equipOnly ? "판매 가능한 장비가 없습니다."
-	                         : "판매 가능한 잡템이 없습니다.";
+	        if (slotKey != null) return "판매 가능한 " + slotKey + " 아이템이 없습니다.";
+	        return equipOnly ? "판매 가능한 장비가 없습니다." : "판매 가능한 잡템이 없습니다.";
 	    }
 
-	    // 포인트 적립 (기존 sellItem 과 동일 패턴)
 	    HashMap<String, Object> pr = new HashMap<>();
 	    pr.put("userName", userName);
 	    pr.put("roomName", roomName);
 	    pr.put("score", (int) totalSp);
-	    //pr.put("cmd", "SELL");
-	    if (equipOnly) {
-	        pr.put("cmd", "SELL_EQUIP");  // 장비 판매
-	    } else {
-	        pr.put("cmd", "SELL_JUNK");   // 잡템 판매
-	    }
+	    pr.put("cmd", equipOnly ? "SELL_EQUIP" : "SELL_JUNK");
 	    botNewService.insertPointRank(pr);
 
 	    int curPoint = 0;
@@ -2783,38 +2786,44 @@ public class BossAttackController {
 	    } catch (Exception ignore) {}
 	    String curPointStr = String.format("%,d sp", curPoint);
 
+	    String title = (slotKey != null)
+	            ? ("- 대상: " + slotKey + " 전체 판매" + NL)
+	            : (equipOnly ? "- 대상: 장비 아이템 전체(MARKET)" + NL
+	                        : "- 대상: 잡템 전체(장비 제외)" + NL);
+
 	    StringBuilder sb = new StringBuilder();
 	    sb.append("⚔ ").append(userName).append("님,").append(NL)
 	      .append("▶ 전체 판매 완료!").append(NL)
-	      .append(equipOnly ? "- 대상: 장비 아이템 전체(MARKET)" + NL
-	                        : "- 대상: 잡템 전체(장비 제외)" + NL)
+	      .append(title)
 	      .append("- 총 판매 수량: ").append(sold).append("개").append(NL)
 	      .append("- 합계 적립: ").append(totalSp).append("sp").append(NL)
 	      .append("- 현재 포인트: ").append(curPointStr);
 
 	    if (soldNormal > 0) sb.append(NL).append("  · 일반 아이템: ").append(soldNormal).append("개");
 	    if (soldShiny  > 0) sb.append(NL).append("  · 빛 아이템: ").append(soldShiny).append("개");
-	    if (soldDark  > 0) sb.append(NL).append("  · 어둠 아이템: ").append(soldDark).append("개");
+	    if (soldDark   > 0) sb.append(NL).append("  · 어둠 아이템: ").append(soldDark).append("개");
 	    if (soldFrag   > 0) sb.append(NL).append("  · 조각: ").append(soldFrag).append("개");
 
 	    if (soldMerchantDiscount) {
-	        sb.append(NL)
-	          .append("※ 상인 할인으로 구매한 아이템은 할인가(90%) 기준으로 판매되었습니다.");
+	        sb.append(NL).append("※ 상인 할인으로 구매한 아이템은 할인가(90%) 기준으로 판매되었습니다.");
 	    }
-	    /*
-	    if (soldMerchantBonus) {
-	        sb.append(NL)
-	          .append("(상인 효과: 드랍 아이템 판매가 10% 보너스 적용)");
-	    }*/
 
 	    String achvMsg = grantShopSellAchievements(userName, roomName);
 	    if (achvMsg != null && !achvMsg.isEmpty()) {
-	        sb.append(NL).append("업적").append(NL)
-	          .append(achvMsg);
+	        sb.append(NL).append("업적").append(NL).append(achvMsg);
 	    }
+
 	    return sb.toString();
 	}
 	
+	private String sellAllBySlot(String userName, String roomName, User u, String slotKey) {
+	    // equipOnly = true 로 두고, 슬롯 필터까지 적용
+	    return sellAllByCategoryFiltered(userName, roomName, u, true, slotKey);
+	}
+	private String sellAllByCategory(String userName, String roomName, User u, boolean equipOnly) {
+	    return sellAllByCategoryFiltered(userName, roomName, u, equipOnly, null);
+	}
+
 	
 	public String showAttackRanking(HashMap<String,Object> map) {
 	    final String NL = "♬";
