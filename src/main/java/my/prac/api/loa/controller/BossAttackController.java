@@ -589,7 +589,7 @@ public class BossAttackController {
 
 	    // ② 10개 미만이면 천장 적용 안 함 → 기본 200~100000 룰렛
 	    if (totalCount < 10) {
-	        return pickBiasedSp(200, 100000);
+	        return pickBiasedSp(5000, 100000);
 	    }
 
 	    // ③ 최근 10개 SP 합계 조회
@@ -602,7 +602,7 @@ public class BossAttackController {
 	    if (recentSum < 50000) {
 	        minSp = 50000;   // 천장 발동: 50,000 ~ 100,000 룰렛
 	    } else {
-	        minSp = 200;     // 평소 확률
+	        minSp = 5000;     // 평소 확률
 	    }
 
 	    return pickBiasedSp(minSp, maxSp);
