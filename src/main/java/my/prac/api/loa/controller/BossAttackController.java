@@ -1973,6 +1973,21 @@ public class BossAttackController {
 	    if ("처단자".equals(job) && lucky ) {
 	    	berserkMul = 2;
 	    }
+	    
+	    if ("궁사".equals(job)) {
+	        String firstCmd = "ACHV_FIRST_CLEAR_MON_" + m.monNo;
+
+	        int globalCnt = 0;
+	        if (globalAchvMap != null) {
+	            Integer v = globalAchvMap.get(firstCmd);
+	            if (v != null) globalCnt = v.intValue();
+	        }
+
+	        if (globalCnt == 0) {
+	            return "궁사 최초 토벌에 도전불가!";
+	        }
+	        
+	    }
 
 	    Flags flags = rollFlags(u, m);
 
@@ -6700,7 +6715,7 @@ public class BossAttackController {
         JOB_DEFS.put("용사", new JobDef(
 	        "용사",
 	        "▶ 선택 받은 자",//어둠몹에 피해두배 ,언데드추뎀25% ,스틸30%, 10%확률 완전회복
-	        "⚔ 기본 HP*10만큼 추가 증가, -hidden- (*2), -hidden- (+25%), -hidden- (30%), -hidden- (10%)"+NL
+	        "⚔ 기본 HP*10만큼 추가 증가, 어둠몬스터에 피해*2, 언데드 추가피해(+25%), 공격시 steal(30%), 정령의가호(10%)"+NL
 	        +"◎선행조건 전사,도적,도사,프리스트 직업으로 각 300회 공격"
 	    ));
 	     
@@ -6708,7 +6723,7 @@ public class BossAttackController {
 	    JOB_DEFS.put("처단자", new JobDef(
 	        "처단자",
 	        "▶ 신을 모독하는 자는 그의 손에서 살아남을수 없다, 물론 모독을 안했어도 말이지..! ",
-	        "⚔ 방어를 무시하고 피해 2.5배를 줌, 몬스터의 기본공격 80%회피 [회피 no12부터 3%씩,no15부터 5%씩 감소] , 처치시 추가드랍(30%), -hidden- "+NL
+	        "⚔ 방어를 무시하고 피해 2.5배를 줌, 몬스터의 기본공격 80%회피 [회피 no12부터 3%씩,no15부터 5%씩 감소] , 처치시 추가드랍(30%), 빛몬스터에 피해*2 "+NL
 	        +"◎선행조건 마법사,도적 직업으로 각 300회 공격"
 	    ));
 	    
