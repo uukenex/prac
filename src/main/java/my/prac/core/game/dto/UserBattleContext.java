@@ -53,4 +53,7 @@ public class UserBattleContext {
  // 직업 보너스(표시용)
     public int jobHpMaxBonus;   // 직업으로 인해 추가된 HP (프리스트/파이터)
     public int jobRegenBonus;   // 직업으로 인해 추가된 리젠 (프리스트용)
+    
+    public int dailyAtkBonus;
+    public int dailyCriDmgBonus;
 }

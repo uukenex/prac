@@ -1198,4 +1198,33 @@
 	    GROUP BY JOB
 	</select>
 	
+	<select id="selectTodayDailyBuff" parameterType="hashmap" resultType="hashmap">
+	    SELECT ATK_BONUS,
+	           CRI_DMG_BONUS
+	      FROM TBOT_POINT_NEW_DAILY_BUFF
+	     WHERE ROOM_NAME = #{roomName}
+	       AND USER_NAME = #{userName}
+	       AND BUFF_DATE = TRUNC(SYSDATE)
+	</select>
+	
+	<update id="upsertTodayDailyBuff" parameterType="hashmap">
+	    MERGE INTO TBOT_POINT_NEW_DAILY_BUFF T
+	    USING (
+	        SELECT #{roomName} AS ROOM_NAME,
+	               #{userName} AS USER_NAME,
+	               TRUNC(SYSDATE) AS BUFF_DATE,
+	               #{atkBonus} AS ATK_BONUS,
+	               #{criDmgBonus} AS CRI_DMG_BONUS
+	          FROM DUAL
+	    ) S
+	    ON (T.ROOM_NAME = S.ROOM_NAME AND T.USER_NAME = S.USER_NAME AND T.BUFF_DATE = S.BUFF_DATE)
+	    WHEN MATCHED THEN
+	        UPDATE SET T.ATK_BONUS     = S.ATK_BONUS,
+	                   T.CRI_DMG_BONUS = S.CRI_DMG_BONUS,
+	                   T.UPDATE_DATE   = SYSDATE
+	    WHEN NOT MATCHED THEN
+	        INSERT (ROOM_NAME, USER_NAME, BUFF_DATE, ATK_BONUS, CRI_DMG_BONUS, INSERT_DATE, UPDATE_DATE)
+	        VALUES (S.ROOM_NAME, S.USER_NAME, S.BUFF_DATE, S.ATK_BONUS, S.CRI_DMG_BONUS, SYSDATE, SYSDATE)
+	</update>	
+	
 </mapper>

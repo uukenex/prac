@@ -210,4 +210,8 @@ public interface BotNewDAO {
 	        @Param("roomName") String roomName);
 	public Integer selectJobSkillUseCount(HashMap<String,Object> param);
 	public List<HashMap<String,Object>> selectJobSkillUseCountAllJobs(HashMap<String,Object> param);
+	
+	HashMap<String, Object> selectTodayDailyBuff(HashMap<String, Object> param) throws Exception;
+	int upsertTodayDailyBuff(HashMap<String, Object> param) throws Exception;
+	
 }

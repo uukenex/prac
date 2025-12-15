@@ -446,4 +446,23 @@ public class BotNewServiceImpl implements BotNewService {
         p.put("roomName", roomName);
         return botNewDAO.selectJobSkillUseCountAllJobs(p);
     }
+    
+    @Override
+    public HashMap<String, Object> selectTodayDailyBuff(String userName, String roomName) throws Exception {
+        HashMap<String,Object> p = new HashMap<>();
+        p.put("userName", userName);
+        p.put("roomName", roomName);
+        return botNewDAO.selectTodayDailyBuff(p);
+    }
+
+    @Override
+    public int upsertTodayDailyBuff(String userName, String roomName, int atkBonus, int criDmgBonus) throws Exception {
+        HashMap<String,Object> p = new HashMap<>();
+        p.put("userName", userName);
+        p.put("roomName", roomName);
+        p.put("atkBonus", atkBonus);
+        p.put("criDmgBonus", criDmgBonus);
+        return botNewDAO.upsertTodayDailyBuff(p);
+    }
+    
 }

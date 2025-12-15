@@ -152,6 +152,9 @@ public interface BotNewService {
     
     Integer selectJobSkillUseCount(String userName, String roomName, String job);
     List<HashMap<String,Object>> selectJobSkillUseCountAllJobs(String userName, String roomName);
+    
+    HashMap<String, Object> selectTodayDailyBuff(String userName, String roomName) throws Exception;
+    int upsertTodayDailyBuff(String userName, String roomName, int atkBonus, int criDmgBonus) throws Exception;
 } 
 
 	

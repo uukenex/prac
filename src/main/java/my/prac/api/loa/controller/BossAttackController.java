@@ -66,6 +66,43 @@ public class BossAttackController {
 	@Resource(name = "core.prjbot.BotDAO")            BotDAO botDAO;
 	@Resource(name = "core.prjbot.BotNewService")     BotNewService botNewService;
 	@Resource(name = "core.prjbot.BotSettleService")  BotSettleService botSettleService;
+	
+	public String roulette(HashMap<String, Object> map) {
+	    final String roomName = Objects.toString(map.get("roomName"), "");
+	    final String userName = Objects.toString(map.get("userName"), "");
+
+	    if (roomName.isEmpty() || userName.isEmpty()) return "방/유저 정보가 누락되었습니다.";
+
+	    // 문의방 제한 동일 패턴
+	    if ("람쥐봇 문의방".equals(roomName) && !"일어난다람쥐/카단".equals(userName)) {
+	        return "문의방에서는 불가능합니다.";
+	    }
+
+	    try {
+	        // 1) 오늘 이미 돌렸는지 확인
+	        HashMap<String, Object> today = botNewService.selectTodayDailyBuff(userName, roomName);
+	        if (today != null && !today.isEmpty()) {
+	            int atk  = safeInt(today.get("ATK_BONUS"));
+	            int cdmg = safeInt(today.get("CRI_DMG_BONUS"));
+	            return " " + userName + "님, 오늘은 이미 룰렛을 돌렸습니다." + NL
+	                 + "오늘의 버프: ATK +" + atk + ", CDMG +" + cdmg + "%" + NL
+	                 + "(자정에 초기화됩니다)";
+	        }
+
+	        // 2) 새로 뽑기
+	        int atkBonus = ThreadLocalRandom.current().nextInt(10, 101);    // 10~100
+	        int cdmgBonus = ThreadLocalRandom.current().nextInt(30, 301);  // 30~300
+
+	        botNewService.upsertTodayDailyBuff(userName, roomName, atkBonus, cdmgBonus);
+
+	        return " " + userName + "님, 룰렛 결과!" + NL
+	             + "오늘의 버프: ATK +" + atkBonus + ", CDMG +" + cdmgBonus + "%" + NL
+	             + "(자정에 초기화됩니다)";
+	    } catch (Exception e) {
+	        e.printStackTrace();
+	        return "룰렛 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.";
+	    }
+	}
 
 	public String bagLog(HashMap<String, Object> map) {
 		List<BagLog> logs = botNewService.selectRecentBagDrops();
@@ -304,6 +341,26 @@ public class BossAttackController {
 	    ctx.atkMinWithItem = atkMinWithItem;
 	    ctx.atkMaxWithItem = atkMaxWithItem;
 	    
+	 // ✅ 오늘 룰렛 버프(개인형, 00시 초기화: TRUNC(SYSDATE) 기준)
+	    int dailyAtkBonus  = 0;
+	    int dailyCdmgBonus = 0;
+	    try {
+	        HashMap<String,Object> b = botNewService.selectTodayDailyBuff(targetUser, roomName);
+	        if (b != null && !b.isEmpty()) {
+	            dailyAtkBonus  = safeInt(b.get("ATK_BONUS"));
+	            dailyCdmgBonus = safeInt(b.get("CRI_DMG_BONUS"));
+	        }
+	    } catch (Exception ignore) {}
+
+	    // ctx에 저장(attackInfo 노출용)
+	    ctx.dailyAtkBonus     = dailyAtkBonus;
+	    ctx.dailyCriDmgBonus  = dailyCdmgBonus;
+
+	    // 실제 스탯에 반영 (공격력 +, 크리뎀 +)
+	    atkMinWithItem += dailyAtkBonus;
+	    atkMaxWithItem += dailyAtkBonus;
+	    bCriDmgRaw     += dailyCdmgBonus; // shownCritDmg 계산에 자연스럽게 포함
+	    
 	    // 표시용 스탯 (1번 메서드에서 쓰던 값)
 	    ctx.shownCrit     = baseCrit + bCriRaw;
 	    ctx.shownRegen    = effRegen;                // 축복 포함 리젠을 그대로 표시하고 싶으면 이렇게
@@ -314,6 +371,10 @@ public class BossAttackController {
 	    ctx.jobRegenBonus = jobRegenBonus;
 	    
 	    ctx.success = true;
+	    
+	    
+	    
+	    
 	    return ctx;
 	}
 	/** 
@@ -817,10 +878,16 @@ public class BossAttackController {
 	      .append("   └ 시즌1 강화: ").append(weaponLv).append("강 (max+").append(weaponBonus).append(")").append(NL)
 	      .append("   └ 아이템 (min").append(formatSigned(bAtkMinRaw))
 	      .append(", max").append(formatSigned(bAtkMaxRaw)).append(")").append(NL);
+	    
+	    if(ctx.dailyAtkBonus > 0) {
+	    	sb.append("   └ 룰렛 버프: ATK +").append(ctx.dailyAtkBonus).append(NL);
+	    }
+	    
 
 	    // ─ CRIT 상세 ─
 	    sb.append("⚔CRIT: ").append(shownCrit).append("%  CDMG ").append(shownCritDmg).append("%").append(NL)
 	      .append("   └ 기본 (").append(u.critRate).append("%, ").append(u.critDmg).append("%)").append(NL);
+	      
 
 	    if ("파이터".equals(job)) {
 	        sb.append("   └ 아이템 (CRIT")
@@ -835,7 +902,17 @@ public class BossAttackController {
 	          .append(formatSigned(bCriDmgRaw))
 	          .append("%)").append(NL);
 	    }
-
+	    
+	    if(ctx.dailyCriDmgBonus > 0) {
+	    	sb.append("   └ 룰렛 버프 (CRIT")
+	        .append(formatSigned(0))
+	        .append("%, CDMG ")
+	        .append(formatSigned(ctx.dailyCriDmgBonus))
+	        .append("%)").append(NL);
+		    
+	    }
+	    
+	    
 	    // ─ HP 상세 ─
 	    sb.append("❤️HP: ").append(effHp).append(" / ").append(finalHpMax)
 	      .append(",5분당회복+").append(shownRegen).append(NL)
@@ -2557,6 +2634,11 @@ public class BossAttackController {
 	        if (isStealRow) {
 	            unitPrice = (int)Math.floor(unitPrice * 0.5);
 	        }
+	        
+	        // ✅ 저레벨(60 미만) 기타 아이템 판매 보너스 (2배)
+	        if (!isEquip && u.lv < 60) {
+	            unitPrice *= 2;
+	        }
 
 	        if (qty == take) botNewService.updateInventoryDelByRowId(rid);
 	        else botNewService.updateInventoryQtyByRowId(rid, qty - take);
@@ -2662,7 +2744,11 @@ public class BossAttackController {
 	      .append("- 현재 포인트: ").append(curPointStr).append(NL)
 	      .append(remainSb.toString());
 
-
+	    if (u.lv < 60) {
+	        sb.append(NL)
+	          .append("✨ 레벨 보너스 적용! (Lv.60 미만 기타 아이템 판매가 x2)");
+	    }
+	    
 		 // 👇 여기 추가
 		 if (soldMerchantDiscount) {
 		     sb.append(NL)
@@ -2762,6 +2848,11 @@ public class BossAttackController {
 	        if (isShinyRow || isDarkRow) unitPrice = basePrice * SHINY_MULTIPLIER;
 	        if (isStealRow) unitPrice = (int)Math.floor(unitPrice * 0.5);
 
+	        // ✅ 저레벨(60 미만) 기타 아이템 판매 보너스 (2배)
+	        if (!isEquip && u.lv < 60) {
+	            unitPrice *= 2;
+	        }
+	        
 	        int take = qty;
 	        botNewService.updateInventoryDelByRowId(rid);
 
@@ -2806,6 +2897,10 @@ public class BossAttackController {
 	      .append("- 합계 적립: ").append(totalSp).append("sp").append(NL)
 	      .append("- 현재 포인트: ").append(curPointStr);
 
+	    if (u.lv < 60) {
+	        sb.append(NL)
+	          .append("✨ 레벨 보너스 적용! (Lv.60 미만 기타 아이템 판매가 x2)");
+	    }
 	    if (soldNormal > 0) sb.append(NL).append("  · 일반 아이템: ").append(soldNormal).append("개");
 	    if (soldShiny  > 0) sb.append(NL).append("  · 빛 아이템: ").append(soldShiny).append("개");
 	    if (soldDark   > 0) sb.append(NL).append("  · 어둠 아이템: ").append(soldDark).append("개");
@@ -6571,11 +6666,13 @@ public class BossAttackController {
     		"⚔ 아이템 HP/리젠 효과 2배, 100% 초과 치명타확률, 기본 치명타 데미지 초과분을 공격력으로 전환,치명타가 발생하지않음, 용족에 2.5배의 피해"
         ));
         
+        /*
         JOB_DEFS.put("파이터", new JobDef(
     		"파이터",
     		"▶ 강인한 체력의 소유자, 체력이 낮아지면 적의 행동을 저지시킨다",
     		"⚔ 공격력 최대치, 치명타 배율 및 치명타데미지 증가가 체력으로 전환(3배수,치명 미발생)"+NL+"본인의 체력이 낮아질수록 데미지 증가(추가 50%까지), 체력이 30%이하 일 때 적 행동저지(40%)"
         ));
+        */
         /*
         JOB_DEFS.put("궁사2", new JobDef(
     		"궁사2",
