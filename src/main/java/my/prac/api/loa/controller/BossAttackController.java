@@ -279,9 +279,6 @@ public class BossAttackController {
 	    int atkMinWithItem = baseMin + bAtkMinRaw;
 	    int atkMaxWithItem = baseMax + weaponBonus + bAtkMaxRaw;
 
-	    ctx.atkMinWithItem = atkMinWithItem;
-	    ctx.atkMaxWithItem = atkMaxWithItem;
-
 	    // 3) 운영자의 축복
 	    boolean hasBless = (u.lv <= 15);
 	    int blessRegenBonus = hasBless ? 5 : 0;
@@ -337,10 +334,6 @@ public class BossAttackController {
 	    ctx.finalHpMax  = finalHpMax;
 	    ctx.effRegen    = effRegen;
 
-	    // HP/ATK 확정치 저장
-	    ctx.atkMinWithItem = atkMinWithItem;
-	    ctx.atkMaxWithItem = atkMaxWithItem;
-	    
 	 // ✅ 오늘 룰렛 버프(개인형, 00시 초기화: TRUNC(SYSDATE) 기준)
 	    int dailyAtkBonus  = 0;
 	    int dailyCdmgBonus = 0;
@@ -360,6 +353,12 @@ public class BossAttackController {
 	    atkMinWithItem += dailyAtkBonus;
 	    atkMaxWithItem += dailyAtkBonus;
 	    bCriDmgRaw     += dailyCdmgBonus; // shownCritDmg 계산에 자연스럽게 포함
+	    
+
+	    // HP/ATK 확정치 저장
+	    ctx.atkMinWithItem = atkMinWithItem;
+	    ctx.atkMaxWithItem = atkMaxWithItem;
+	    
 	    
 	    // 표시용 스탯 (1번 메서드에서 쓰던 값)
 	    ctx.shownCrit     = baseCrit + bCriRaw;
