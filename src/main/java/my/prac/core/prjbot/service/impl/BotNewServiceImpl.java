@@ -464,5 +464,22 @@ public class BotNewServiceImpl implements BotNewService {
         p.put("criDmgBonus", criDmgBonus);
         return botNewDAO.upsertTodayDailyBuff(p);
     }
+    @Override
+    public int countTodayJobMasterAll() throws Exception {
+        return botNewDAO.countTodayJobMasterAll();
+    }
+
+    @Override
+    public int createTodayJobMastersFromYesterdayAll() throws Exception {
+        return botNewDAO.createTodayJobMastersFromYesterdayAll();
+    }
+
+    @Override
+    public int selectIsTodayJobMasterAll(String userName, String job) throws Exception {
+        HashMap<String,Object> p = new HashMap<>();
+        p.put("userName", userName);
+        p.put("job", job);
+        return botNewDAO.selectIsTodayJobMasterAll(p);
+    }
     
 }

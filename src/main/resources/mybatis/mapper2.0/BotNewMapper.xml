@@ -1225,6 +1225,50 @@
 	    WHEN NOT MATCHED THEN
 	        INSERT (ROOM_NAME, USER_NAME, BUFF_DATE, ATK_BONUS, CRI_DMG_BONUS, INSERT_DATE, UPDATE_DATE)
 	        VALUES (S.ROOM_NAME, S.USER_NAME, S.BUFF_DATE, S.ATK_BONUS, S.CRI_DMG_BONUS, SYSDATE, SYSDATE)
-	</update>	
+	</update>
 	
+	<select id="countTodayJobMasterAll" resultType="int">
+	    SELECT COUNT(1)
+	      FROM TBOT_POINT_NEW_JOB_MASTER
+	     WHERE MASTER_DATE = TRUNC(SYSDATE)
+	</select>
+	
+	<update id="createTodayJobMastersFromYesterdayAll">
+	    MERGE INTO TBOT_POINT_NEW_JOB_MASTER M
+	    USING (
+	        SELECT JOB,
+	               TRUNC(SYSDATE) AS MASTER_DATE,
+	               USER_NAME,
+	               ATK_CNT
+	          FROM (
+	                SELECT JOB, USER_NAME, ATK_CNT,
+	                       ROW_NUMBER() OVER(
+	                           PARTITION BY JOB
+	                           ORDER BY ATK_CNT DESC, USER_NAME ASC
+	                       ) AS RN
+	                  FROM (
+	                        SELECT BL.JOB,
+	                               BL.USER_NAME,
+	                               COUNT(1) AS ATK_CNT
+	                          FROM TBOT_POINT_NEW_BATTLE_LOG BL
+	                         WHERE TRUNC(BL.INSERT_DATE) = TRUNC(SYSDATE) - 1
+	                           AND BL.JOB IS NOT NULL
+	                           AND BL.ROOM_NAME not in ('람쥐봇 문의방','test123')
+	                         GROUP BY BL.JOB, BL.USER_NAME
+	                       )
+	               )
+	         WHERE RN = 1
+	    ) S
+	    ON (M.JOB = S.JOB AND M.MASTER_DATE = S.MASTER_DATE)
+	    WHEN NOT MATCHED THEN
+	        INSERT (JOB, MASTER_DATE, USER_NAME, ATK_CNT, INSERT_DATE, UPDATE_DATE)
+	        VALUES (S.JOB, S.MASTER_DATE, S.USER_NAME, S.ATK_CNT, SYSDATE, SYSDATE)
+	</update>
+	<select id="selectIsTodayJobMasterAll" parameterType="hashmap" resultType="int">
+	    SELECT COUNT(1)
+	      FROM TBOT_POINT_NEW_JOB_MASTER
+	     WHERE MASTER_DATE = TRUNC(SYSDATE)
+	       AND JOB = #{job}
+	       AND USER_NAME = #{userName}
+	</select>
 </mapper>

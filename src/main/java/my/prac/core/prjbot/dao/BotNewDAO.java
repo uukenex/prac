@@ -214,4 +214,8 @@ public interface BotNewDAO {
 	HashMap<String, Object> selectTodayDailyBuff(HashMap<String, Object> param) throws Exception;
 	int upsertTodayDailyBuff(HashMap<String, Object> param) throws Exception;
 	
+	int countTodayJobMasterAll() throws Exception;
+	int createTodayJobMastersFromYesterdayAll() throws Exception;
+	int selectIsTodayJobMasterAll(HashMap<String,Object> param) throws Exception;
+	
 }

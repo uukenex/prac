@@ -155,6 +155,10 @@ public interface BotNewService {
     
     HashMap<String, Object> selectTodayDailyBuff(String userName, String roomName) throws Exception;
     int upsertTodayDailyBuff(String userName, String roomName, int atkBonus, int criDmgBonus) throws Exception;
+    
+    int countTodayJobMasterAll() throws Exception;
+    int createTodayJobMastersFromYesterdayAll() throws Exception;
+    int selectIsTodayJobMasterAll(String userName, String job) throws Exception;
 } 
 
 	

@@ -330,9 +330,7 @@ public class BossAttackController {
 	    }
 	    
 
-	    
-	    ctx.finalHpMax  = finalHpMax;
-	    ctx.effRegen    = effRegen;
+	  
 
 	 // ✅ 오늘 룰렛 버프(개인형, 00시 초기화: TRUNC(SYSDATE) 기준)
 	    int dailyAtkBonus  = 0;
@@ -345,6 +343,8 @@ public class BossAttackController {
 	        }
 	    } catch (Exception ignore) {}
 
+	    
+	    
 	    // ctx에 저장(attackInfo 노출용)
 	    ctx.dailyAtkBonus     = dailyAtkBonus;
 	    ctx.dailyCriDmgBonus  = dailyCdmgBonus;
@@ -355,10 +355,29 @@ public class BossAttackController {
 	    bCriDmgRaw     += dailyCdmgBonus; // shownCritDmg 계산에 자연스럽게 포함
 	    
 
+	 // ✅ 직업 마스터 보너스(오늘) : ATK+100, HP+1000
+	    boolean isMaster = false;
+	    try {
+	        if (job != null && !job.trim().isEmpty()) {
+	            isMaster = botNewService.selectIsTodayJobMasterAll(targetUser, job) > 0;
+	        }
+	    } catch (Exception ignore) {}
+
+	    if (isMaster) {
+	        atkMinWithItem += 100;
+	        atkMaxWithItem += 100;
+	        finalHpMax     += 1000;
+	        ctx.isJobMaster = true;
+	    } else {
+	        ctx.isJobMaster = false;
+	    }
+	    
 	    // HP/ATK 확정치 저장
 	    ctx.atkMinWithItem = atkMinWithItem;
 	    ctx.atkMaxWithItem = atkMaxWithItem;
 	    
+	    ctx.finalHpMax  = finalHpMax;
+	    ctx.effRegen    = effRegen;
 	    
 	    // 표시용 스탯 (1번 메서드에서 쓰던 값)
 	    ctx.shownCrit     = baseCrit + bCriRaw;
@@ -863,6 +882,10 @@ public class BossAttackController {
 	    JobDef jobDef = JOB_DEFS.get(job);
 	    if (jobDef != null && jobDef.attackLine != null && !jobDef.attackLine.isEmpty()) {
 	        sb.append(jobDef.attackLine).append(NL);
+	    }
+	    
+	    if (ctx.isJobMaster) {
+	        sb.append(ctx.job).append("직업 마스터 보너스: ATK+100, HP+1000").append(NL);
 	    }
 
 	    sb.append("▶ 현재 타겟: ").append(targetName)
@@ -1729,6 +1752,14 @@ public class BossAttackController {
 	    HashMap<String, Object> statMap = new HashMap<>(map);
 	    statMap.put("param1", "");   // calcUserBattleContext 에서 다른 유저 검색 못 하게 막는 용도
 
+	 // ✅ 크론 없이: 오늘 첫 공격이면 전일 배틀로그로 오늘 마스터 생성(전체방 기준)
+	    try {
+	        int todayCnt = botNewService.countTodayJobMasterAll();
+	        if (todayCnt == 0) {
+	            botNewService.createTodayJobMastersFromYesterdayAll();
+	        }
+	    } catch (Exception ignore) {}
+	    
 	    // 2) 공통 스탯 계산
 	    UserBattleContext ctx = calcUserBattleContext(statMap);
 	    if (!ctx.success) {
@@ -3759,6 +3790,8 @@ public class BossAttackController {
                         + heal + " 만큼 회복했습니다!";
             }
 		    break;
+		case 6:
+			break;
 		default: c.monDmg = 0; c.patternMsg = name + "의 알 수 없는 행동… (피해 0)";
 		}
 		return c;
@@ -4884,7 +4917,7 @@ public class BossAttackController {
 
 	        // ⭐ NEW ②: 내 레벨이 몬스터 레벨 미만이면 축하보상 스킵
 	        
-	        if (myLv+10 < m.monLv) {
+	        if (myLv + 30 < m.monLv) {
 	            continue;
 	        }
 	        
