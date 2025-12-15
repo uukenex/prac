@@ -2092,6 +2092,11 @@ public class BossAttackController {
 	    int newHpPreview = Math.max(0, u.hpCur - calc.monDmg);
 	    String deathAchvMsg = "";
 	    if (!"사신".equals(job) && newHpPreview <= 0) {
+	    	
+	    	 // ✅ 이번에 준 피해 / 몬스터 남은 체력 표시
+	        int dealtThisTurn = Math.max(0, calc.atkDmg);
+	        int monRemainAfter = Math.max(0, monHpRemainBefore - dealtThisTurn);
+	    	
 	        botNewService.closeOngoingBattleTx(userName, roomName);
 	        botNewService.updateUserHpOnlyTx(userName, roomName, 0);
 	        botNewService.insertBattleLogTx(new BattleLog()
@@ -2115,7 +2120,9 @@ public class BossAttackController {
 
 	        deathAchvMsg = grantDeathAchievements(userName, roomName);
 	        return userName + "님, 이번전투에서 패배하여, 전투 불능이 되었습니다." + NL
-	        		+calc.monDmg +"피해로 사망! "+NL
+	                + calc.monDmg + " 피해로 사망!" + NL
+	                + "▶ 이번에 준 피해: " + dealtThisTurn + NL
+	                + "▶ 몬스터 남은 체력: " + monRemainAfter + " / " + monMaxHp + NL
 	                + "현재 체력: 0 / " + effHpMax + NL
 	                + "5분 뒤 최대 체력의 10%로 부활하며," + NL
 	                + "이후 5분마다 HP_REGEN 만큼 서서히 회복됩니다." + NL
