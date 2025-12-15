@@ -1640,7 +1640,8 @@ public class BossAttackController {
 	        optionStr = buildOptionTokensFromMap(item);
 	    }*/
 	    
-	    optionStr = buildOptionTokensFromMap(item);
+	    optionStr = buildEnhancedOptionLine(item, 1); 
+	    //buildOptionTokensFromMap(item);
 
 	    // 결과 메시지
 	    StringBuilder sb = new StringBuilder();
@@ -3474,6 +3475,7 @@ public class BossAttackController {
 
 	            // 현재 기준 QTY (0이면 아직 미보유 → 1개 기준으로 표시)
 	            int curQty = (ownQty <= 0 ? 1 : ownQty);
+	            
 	            String curOpt = buildEnhancedOptionLine(it, curQty);
 	            sb.append("↘옵션: ").append(curOpt).append(NL);
 
@@ -3491,7 +3493,7 @@ public class BossAttackController {
 	        } else {
 	            // 🔹 그 외 아이템: 기존 옵션 포맷 그대로
 	            sb.append("↘옵션: ")
-	              .append(buildOptionTokensFromMap(it))
+	              .append(buildEnhancedOptionLine(it, 1))
 	              .append(NL).append(NL);
 	        }
 	    }
