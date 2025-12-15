@@ -1229,6 +1229,7 @@ public class BossAttackController {
 
 
 		// 예: 사용자가 /공격타겟 13 입력 → newMonNo = 13
+		/*
 		int newMonNo = m.monNo; // 네가 사용하는 변수명에 맞게 치환
 
 		if(newMonNo > 1  && newMonNo < 50) {
@@ -1257,7 +1258,7 @@ public class BossAttackController {
 				}
 			}
 		}
-		
+		*/
 		
 		botNewService.closeOngoingBattleTx(userName, roomName);
 		botNewService.updateUserTargetMonTx(userName, roomName, m.monNo);
@@ -4868,7 +4869,8 @@ public class BossAttackController {
 	        }
 
 	        // ⭐ NEW ②: 내 레벨이 몬스터 레벨 미만이면 축하보상 스킵
-	        if (myLv < m.monLv) {
+	        
+	        if (myLv+10 < m.monLv) {
 	            continue;
 	        }
 	        
