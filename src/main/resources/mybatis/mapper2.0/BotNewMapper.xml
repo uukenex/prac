@@ -578,7 +578,7 @@
 	              OR i.ITEM_ID BETWEEN 400 AND 499
 	            THEN
 	                CASE
-	                    WHEN NVL(inv.OWN_QTY, 0) >= 4 THEN 'Y'  
+	                    WHEN NVL(inv.OWN_QTY, 0) >= 1 THEN 'Y'  
 	                    ELSE 'N'
 	                END
 	            ELSE
@@ -608,7 +608,7 @@
 	     </if>
 	
 	    WHERE i.ITEM_TYPE = 'MARKET'
-	    ORDER BY i.ITEM_ID
+	    ORDER BY i.ITEM_ID desc
 	</select>
 
 	
@@ -1202,8 +1202,10 @@
 	    SELECT ATK_BONUS,
 	           CRI_DMG_BONUS
 	      FROM TBOT_POINT_NEW_DAILY_BUFF
-	     WHERE ROOM_NAME = #{roomName}
-	       AND USER_NAME = #{userName}
+	     WHERE USER_NAME = #{userName}
+	       <if test="roomName != null and roomName != '람쥐봇 문의방'">
+           AND ROOM_NAME = #{roomName}
+         </if>
 	       AND BUFF_DATE = TRUNC(SYSDATE)
 	</select>
 	

@@ -879,13 +879,8 @@ public class BossAttackController {
 	    sb.append("❤️HP: ").append(effHp).append(" / ").append(finalHpMax)
 	      .append(",5분당회복+").append(shownRegen).append(NL).append(NL);
 
-	    JobDef jobDef = JOB_DEFS.get(job);
-	    if (jobDef != null && jobDef.attackLine != null && !jobDef.attackLine.isEmpty()) {
-	        sb.append(jobDef.attackLine).append(NL);
-	    }
-	    
 	    if (ctx.isJobMaster) {
-	        sb.append(ctx.job).append("직업 마스터 보너스: ATK+100, HP+1000").append(NL);
+	        sb.append(ctx.job).append(" 마스터 보너스: ATK+100, HP+1000").append(NL);
 	    }
 
 	    sb.append("▶ 현재 타겟: ").append(targetName)
@@ -894,6 +889,10 @@ public class BossAttackController {
 	    // 누적 전투
 	    sb.append(allSeeStr);
 
+	    JobDef jobDef = JOB_DEFS.get(job);
+	    if (jobDef != null && jobDef.attackLine != null && !jobDef.attackLine.isEmpty()) {
+	        sb.append(jobDef.attackLine).append(NL).append(NL);
+	    }
 	    // ─ ATK 상세 ─
 	    sb.append("⚔ATK: ").append(finalAtkMin).append(" ~ ").append(finalAtkMax).append(NL)
 	      .append("   └ 기본 (").append(baseMin).append("~").append(baseMax).append(")").append(NL)
@@ -993,6 +992,7 @@ public class BossAttackController {
 	            catMap.put("※반지", new ArrayList<>());
 	            catMap.put("※토템", new ArrayList<>());
 	            catMap.put("※전설", new ArrayList<>());
+	            catMap.put("※날개", new ArrayList<>());
 	            catMap.put("※선물", new ArrayList<>());
 	            catMap.put("※유물", new ArrayList<>());
 	            catMap.put("※기타", new ArrayList<>());
@@ -1512,7 +1512,7 @@ public class BossAttackController {
 	    int finalQty = 1; // 👉 이 값을 나중에 옵션 표시에 사용
 
 	    int itemIdInt = itemId; // 위에서 구한 itemId 그대로 사용
-	    boolean upgradeOk = isUpgradableEquip(itemIdInt);
+	    boolean upgradeOk = false;// isUpgradableEquip(itemIdInt);
 
 	    if ("MARKET".equalsIgnoreCase(itemType)) {
 	        // 장비: 같은 ITEM_ID 가진 행이 있으면 QTY만 증가
@@ -1565,7 +1565,8 @@ public class BossAttackController {
 	            int newQty = currentQty + buyQty;
 
 	            // 최대 4단계(QTY=4)까지 허용
-	            if (newQty > 4) {
+	            if (newQty > 1) {
+	            //if (newQty > 4) {
 	                int plus = Math.max(0, currentQty - 1);
 	                return "⚠ [" + itemName + "] 은(는) 최대 (+3) 까지 업그레이드 가능합니다."
 	                     + NL + "현재 보유 상태: " + itemName
@@ -1629,13 +1630,17 @@ public class BossAttackController {
 
 	    // 옵션 문자열 결정
 	    String optionStr;
+	    
+	    /*
 	    if ("MARKET".equalsIgnoreCase(itemType)) {
 	        // 장비: 강화 수량 기반 옵션 (공격력 1(+1)~1(+1) 형태)
 	        optionStr = buildEnhancedOptionLine(item, finalQty);
 	    } else {
 	        // 기타: 기존 옵션 포맷 유지
 	        optionStr = buildOptionTokensFromMap(item);
-	    }
+	    }*/
+	    
+	    optionStr = buildOptionTokensFromMap(item);
 
 	    // 결과 메시지
 	    StringBuilder sb = new StringBuilder();
@@ -1665,7 +1670,7 @@ public class BossAttackController {
 	      .append("- /구매 200 or /구매 투구: 투구 카테고리").append(NL)
 	      .append("- /구매 000 or /구매 신규: 최근 등록 아이템").append(NL)
 	      .append("- 입력 가능 카테고리 ").append(NL)
-	      .append("- 신규 무기 투구 행운 갑옷 반지 토템 전설 업적 선물 ").append(NL)
+	      .append("- 신규 무기 투구 행운 갑옷 반지 토템 전설 날개 선물 ").append(NL)
 	      .append("- 000 100 200 300 400 500 600 700 800 900").append(NL);
 
 	    // 필요하면 여기서 전체 상품 일부만 보여줘도 됨
@@ -1769,7 +1774,7 @@ public class BossAttackController {
 	    final User u = ctx.user;
 	    String job   = (u.job == null ? "" : u.job.trim());
 	    if (job.isEmpty()) {
-	        return userName + " 님, /직업 을 통해 먼저 전직해주세요.";
+	        return userName + " 님, /직업 을 통해 먼저 전직해주세요."+NL+"12/15 업데이트 이후 가방으로 능력치 변경을 확인해주세요.";
 	    }
 
 	    // ─────────────────────────────
@@ -2518,6 +2523,9 @@ public class BossAttackController {
 	    }
 	    if ("행운".equals(itemNameRaw)) {
 	        return sellAllBySlot(userName, roomName, u, "※행운");   // 또는 "행운"
+	    }
+	    if ("날개".equals(itemNameRaw)) {
+	    	return sellAllBySlot(userName, roomName, u, "※날개"); // 또는 "전설"
 	    }
 	    if ("전설".equals(itemNameRaw)) {
 	        return sellAllBySlot(userName, roomName, u, "※전설"); // 또는 "전설"
@@ -3412,10 +3420,12 @@ public class BossAttackController {
 
 	        boolean isEquipType =
 	                "MARKET".equalsIgnoreCase(itemType);
-	        boolean upgradable =
-	                (itemId >= 100 && itemId < 200) ||   // 무기
+	        boolean upgradable = false;
+	        /*        
+	        (itemId >= 100 && itemId < 200) ||   // 무기
 	                (itemId >= 200 && itemId < 300) ||   // 투구
 	                (itemId >= 400 && itemId < 500);     // 갑옷
+	                */
 	        boolean isMaxed = "Y".equalsIgnoreCase(maxedYn);
 	     // 🔥 보유템 제외 모드일 때 필터링
 	        if (hiddenYn && "Y".equalsIgnoreCase(ownedYn)) {
@@ -3445,7 +3455,7 @@ public class BossAttackController {
 	        if ("Y".equalsIgnoreCase(ownedYn)) {
 	            if (isEquipType && upgradable) {
 	                if ("Y".equalsIgnoreCase(maxedYn)) {
-	                    sb.append(" (최대강화)");
+	                    //sb.append(" (최대강화)");
 	                } else {
 	                    sb.append(" (보유중)");
 	                }
@@ -3474,7 +3484,7 @@ public class BossAttackController {
 	                String nextOpt = buildEnhancedOptionLine(it, nextQty);
 	                sb.append("↘다음 구매시: ").append(nextOpt).append(NL);
 	            } else {
-	                sb.append("↘다음 구매시: (최대 강화 상태입니다)").append(NL);
+	               //sb.append("↘다음 구매시: (최대 강화 상태입니다)").append(NL);
 	            }
 
 	            sb.append(NL);
@@ -6283,7 +6293,9 @@ public class BossAttackController {
 	    // 갑옷 (400번대): 1개
 	    if (itemId >= 400 && itemId < 500) return 1;
 	    // 전설 (700번대): 1개
-	    if (itemId >= 700 && itemId < 800) return 2;
+	    if (itemId >= 700 && itemId < 800) return 1;
+	    // 날개 (800번대): 1개
+	    if (itemId >= 800 && itemId < 900) return 1;
 
 	    // 나머지는 제한 없음
 	    return Integer.MAX_VALUE;
@@ -6293,7 +6305,8 @@ public class BossAttackController {
 	    if (label.contains("무기"))  return 5;    // 100번대
 	    if (label.contains("투구"))  return 1;    // 200번대
 	    if (label.contains("갑옷"))  return 1;    // 400번대
-	    if (label.contains("전설"))  return 2;    // 700번대
+	    if (label.contains("날개"))  return 1;    // 800번대
+	    if (label.contains("전설"))  return 1;    // 700번대
 
 	    // 나머지(행운/반지/토템/선물/유물 등)
 	    return Integer.MAX_VALUE;
@@ -6315,6 +6328,10 @@ public class BossAttackController {
 	    // 갑옷
 	    if (baseItemId >= 400 && baseItemId < 500) {
 	        return (otherItemId >= 400 && otherItemId < 500);
+	    }
+	    // 날개
+	    if (baseItemId >= 800 && baseItemId < 900) {
+	    	return (otherItemId >= 800 && otherItemId < 900);
 	    }
 	    // 전설
 	    if (baseItemId >= 700 && baseItemId < 800) {
@@ -6405,7 +6422,7 @@ public class BossAttackController {
 	    if (itemId >= 500 && itemId < 600)  return "※반지";   // 500번대
 	    if (itemId >= 600 && itemId < 700)  return "※토템";   // 600번대
 	    if (itemId >= 700 && itemId < 800)  return "※전설";   // 700번대
-	    if (itemId >= 800 && itemId < 900)  return "※업적";   // 800번대
+	    if (itemId >= 800 && itemId < 900)  return "※날개";   // 800번대
 	    if (itemId >= 900 && itemId < 1000) return "※선물";   // 900번대
 	    if (itemId >= 9000 && itemId < 10000) return "※유물"; // 9000번대 
 	    return "※기타";
@@ -6426,7 +6443,7 @@ public class BossAttackController {
 	        case "반지": return new int[]{500, 600};
 	        case "토템": return new int[]{600, 700};
 	        case "전설": return new int[]{700, 800};
-	        case "업적": return new int[]{800, 900};
+	        case "날개": return new int[]{800, 900};
 	        case "선물": return new int[]{900, 1000};
 	        //case "유물": return new int[]{9000, 10000};
 	    }
