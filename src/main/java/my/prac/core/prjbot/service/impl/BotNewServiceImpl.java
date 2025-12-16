@@ -481,5 +481,9 @@ public class BotNewServiceImpl implements BotNewService {
         p.put("job", job);
         return botNewDAO.selectIsTodayJobMasterAll(p);
     }
+    @Override
+    public List<HashMap<String, Object>> selectTodayJobMastersAll(){
+    	return botNewDAO.selectTodayJobMastersAll();
+    }
     
 }

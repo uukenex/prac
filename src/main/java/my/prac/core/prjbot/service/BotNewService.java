@@ -159,6 +159,7 @@ public interface BotNewService {
     int countTodayJobMasterAll() throws Exception;
     int createTodayJobMastersFromYesterdayAll() throws Exception;
     int selectIsTodayJobMasterAll(String userName, String job) throws Exception;
+    List<HashMap<String, Object>> selectTodayJobMastersAll();
 } 
 
 	

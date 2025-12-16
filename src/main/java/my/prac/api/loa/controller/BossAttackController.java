@@ -295,6 +295,9 @@ public class BossAttackController {
 	    if ("전사".equals(job)) {
 	        finalHpMax += baseHpMax*10; // 기본 HP 추가
 	    }
+	    if ("검성".equals(job)) {
+	        finalHpMax += baseHpMax*20; // 기본 HP 추가
+	    }
 	    if ("용사".equals(job)) {
 	    	finalHpMax += baseHpMax*10; // 기본 HP 추가
 	    }
@@ -1819,7 +1822,12 @@ public class BossAttackController {
 	        jobDmgMul = 1.6;   // 궁수: 데미지 1.6배
 	    } else if ("전사".equals(job)) {
 	        jobDmgMul = 1.2;   // 전사: 데미지 1.2배
-	        // HP 보너스는 finalHpMax에 포함되어 있음 (이전 설계 기준)
+	    } else if ("검성".equals(job)) {
+	        jobDmgMul = 2.0;   // 
+	    } else if ("처단자".equals(job)) {
+	        jobDmgMul = 1.4;   
+	    } else if ("용사".equals(job)) {
+	        jobDmgMul = 1.4;   
 	    }
 
 	    // 직업 배율까지 반영된 실제 전투용 공격력 (구버전 공식과 동일)
@@ -3017,6 +3025,30 @@ public class BossAttackController {
 	        }
 	    }
 	    
+	    List<HashMap<String,Object>> masters = botNewService.selectTodayJobMastersAll();
+
+	    sb.append("✨ Today 직업 마스터").append(NL);
+
+	    if (masters == null || masters.isEmpty()) {
+	        sb.append("- 데이터 없음").append(NL);
+	    } else {
+	        for (HashMap<String,Object> row : masters) {
+	            String job  = String.valueOf(row.get("JOB"));
+	            String name = String.valueOf(row.get("USER_NAME"));
+	            int cnt     = Integer.parseInt(String.valueOf(row.get("ATK_CNT")));
+
+	            sb.append("• ")
+	              .append(job)
+	              .append(" : ")
+	              .append(name)
+	              .append(" (")
+	              .append(cnt)
+	              .append("회)")
+	              .append(NL);
+	        }
+	    }
+	    
+	    
 	    List<HashMap<String,Object>> ongoing = botNewService.selectOngoingChallengesForUnclearedBosses();
 	    if (ongoing != null && !ongoing.isEmpty()) {
 	    	sb.append(NL);
@@ -3050,7 +3082,7 @@ public class BossAttackController {
 		 // =========================
 		 try {
 		     List<HashMap<String, Object>> spAtkList = botNewService.selectSpAndAtkRanking();
-		     sb.append(NL).append("◆ SP 누적 랭킹 (TOP7)").append(NL);
+		     sb.append(NL).append("◆ SP 누적 랭킹 (TOP10)").append(NL);
 	
 		     if (spAtkList == null || spAtkList.isEmpty()) {
 		         sb.append("- 데이터가 없습니다.").append(NL);
@@ -3074,11 +3106,11 @@ public class BossAttackController {
 		               .append(" - SP ").append(String.format("%,d", totSp)).append("sp")
 		               .append(NL);
 	
-		             if (++rank > 7) break;
+		             if (++rank > 10) break;
 		         }
 		     }
 	
-		     sb.append(NL).append("◆ 공격 횟수 랭킹 (TOP7)").append(NL);
+		     sb.append(NL).append("◆ 공격 횟수 랭킹 (TOP10)").append(NL);
 	
 		     if (spAtkList == null || spAtkList.isEmpty()) {
 		         sb.append("- 데이터가 없습니다.").append(NL);
@@ -3102,7 +3134,7 @@ public class BossAttackController {
 		               .append(" - 공격 ").append(String.format("%,d", atkCnt)).append("회")
 		               .append(NL);
 	
-		             if (++rank > 7) break;
+		             if (++rank > 10) break;
 		         }
 		     }
 		     
@@ -5209,51 +5241,6 @@ public class BossAttackController {
 	    }
 	}
 	
-	private String grantJobAttackCountAchvSimple(
-	        String userName,
-	        String roomName,
-	        String job,
-	        int jobAtkCnt,                      // 현재 직업으로 누적 공격횟수
-	        Map<String, Integer> userAchvMap     // 이미 받은 업적 체크용(없으면 null 가능)
-	) {
-	    if (job == null) job = "";
-	    job = job.trim();
-	    if (job.isEmpty()) return "";
-
-	    StringBuilder sb = new StringBuilder();
-
-	    // 300/1000/2500 각각 업적 cmd 생성
-	    // 예: ACHV_JOB_ATK_EXPERT_전사
-	    if (jobAtkCnt >= JOB_ACHV_EXPERT) {
-	        String cmd = "ACHV_JOB_ATK_EXPERT_" + job;
-	        if (!hasAchv(userAchvMap, cmd)) {
-	            insertAchvRank(userName, roomName, cmd);
-	            putAchv(userAchvMap, cmd);
-	            sb.append("[익스퍼트 ").append(job).append("] 달성! (").append(jobAtkCnt).append("회)").append(NL);
-	        }
-	    }
-
-	    if (jobAtkCnt >= JOB_ACHV_MASTER) {
-	        String cmd = "ACHV_JOB_ATK_MASTER_" + job;
-	        if (!hasAchv(userAchvMap, cmd)) {
-	            insertAchvRank(userName, roomName, cmd);
-	            putAchv(userAchvMap, cmd);
-	            sb.append("[마스터 ").append(job).append("] 달성! (").append(jobAtkCnt).append("회)").append(NL);
-	        }
-	    }
-
-	    if (jobAtkCnt >= JOB_ACHV_GRAND) {
-	        String cmd = "ACHV_JOB_ATK_GRAND_" + job;
-	        if (!hasAchv(userAchvMap, cmd)) {
-	            insertAchvRank(userName, roomName, cmd);
-	            putAchv(userAchvMap, cmd);
-	            sb.append("[그랜드마스터 ").append(job).append("] 달성! (").append(jobAtkCnt).append("회)").append(NL);
-	        }
-	    }
-
-	    return sb.toString();
-	}
-
 	private boolean hasAchv(Map<String, Integer> userAchvMap, String cmd) {
 	    if (userAchvMap == null) return false;
 	    Integer v = userAchvMap.get(cmd);
@@ -5628,8 +5615,8 @@ public class BossAttackController {
 	                : 0.0;
 
 	        // 2~마지막샷까지 개별 최대 70%
-	        if (perHitRateRaw > 70.0) {
-	            perHitRateRaw = 70.0;
+	        if (perHitRateRaw > 75.0) {
+	            perHitRateRaw = 75.0;
 	        }
 	        double perHitRate = perHitRateRaw; // 0.0 ~ 80.0
 
@@ -5683,7 +5670,7 @@ public class BossAttackController {
 	            }
 
 	            int shotDmg = shotCrit
-	                    ? (int) Math.round(shotAtk * critMultiplier*0.9)
+	                    ? (int) Math.round(shotAtk * critMultiplier*0.6)
 	                    : shotAtk;
 
 	            totalDmg += shotDmg;
@@ -5701,10 +5688,10 @@ public class BossAttackController {
 	        // 4) 전탄 크리 보너스 (1.1배)
 	        if (hitCount > 1 && allCrit) {
 	            int before = totalDmg;
-	            totalDmg = (int) Math.round(totalDmg * 1.15);
+	            totalDmg = (int) Math.round(totalDmg * 1.3);
 	            multiMsg.append("ALL 치명! ")
 	                    .append(before).append(" → ").append(totalDmg)
-	                    .append(" (+15%)").append(NL);
+	                    .append(" (+30%)").append(NL);
 	            calc.jobSkillUsed =true;
 	        } else if (hitCount > 1) {
 	            // 기존 총합 안내
@@ -5825,6 +5812,57 @@ public class BossAttackController {
 	    	}
 	    }
 	    
+	    if ("제너럴".equals(job)) {
+	    	switch(beforeJobSkillYn) {
+	    		case 0:
+	    			baseAtk = (effAtkMin + effAtkMax + 1) /2;
+		        	if (ThreadLocalRandom.current().nextDouble() < 0.13) {
+		        		out.dmgCalcMsg += "[헤드샷] 보너스 DMG "+baseAtk+"→";
+		        		baseAtk = (int)Math.round(baseAtk * 4.25);
+		        		out.dmgCalcMsg += baseAtk+NL;
+		        		
+		        	}else {
+		        		out.dmgCalcMsg += "조준 보너스 DMG "+baseAtk+"→";
+		        		baseAtk = (int)Math.round(baseAtk * 2.75);
+		        		out.dmgCalcMsg += baseAtk+NL;
+		        	}
+		        	calc.jobSkillUsed = true;
+		        	flags.monPattern = 1;
+		        	
+	    			break;
+	    		case 1:
+	    			if (ThreadLocalRandom.current().nextDouble() < 0.13) {
+		        		out.dmgCalcMsg += "[헤드샷] 보너스 DMG "+baseAtk+"→";
+		        		baseAtk = (int)Math.round(baseAtk * 2.25);
+		        		out.dmgCalcMsg += baseAtk+NL;
+	    			}
+	    			out.dmgCalcMsg += "회피기동타격..!"+NL;
+	    			
+	    			calc.jobSkillUsed = true;
+	    			break;
+    			default:
+    				if (ThreadLocalRandom.current().nextDouble() < 0.05) {
+    					out.dmgCalcMsg += "폭격 지원 요청 중.. 몬스터의 무력화..!";
+    		        	baseAtk =(int)Math.round(baseAtk * 5);
+    		        	flags.monPattern = 1;
+    				}else {
+    					out.dmgCalcMsg += "저격 위치 확보 중.. ";
+    		        	baseAtk =0;
+    		        	flags.monPattern = 1;
+    				}
+    				break;
+	    	}
+	    }
+	    if ("검성".equals(job)) {
+	    	if (ThreadLocalRandom.current().nextDouble() < 0.13) {
+        		out.dmgCalcMsg += "바람을 갈랐다..! "+baseAtk+"→";
+        		baseAtk = (int)Math.round(baseAtk * 5);
+        		out.dmgCalcMsg += baseAtk+NL;
+        		out.dmgCalcMsg += "몬스터가 바람에 갖혀 행동불가가 됨!";
+			}
+	    	calc.jobSkillUsed = true;
+        	flags.monPattern = 1;
+	    }
 	    
 	    boolean isSnipe = false;
 	    if ("궁수".equals(job)) {
@@ -5936,8 +5974,86 @@ public class BossAttackController {
 		    			calc.patternMsg = m.monName + " (이)가 배회합니다";
 	    				break;
 	        	}
+	        }
+	        if ("제너럴".equals(job) ) {
 	        	
-	        	
+	        	switch(beforeJobSkillYn) {
+	        	case 0:
+	        		calc.patternMsg = m.monName + " (이)가 표적을 찾고 있습니다.";
+	        		break;
+	        	case 1:
+	        		if(!flags.finisher && calc.monDmg > 0) {
+	        			int monLv = m.monNo;
+	        			double evadeRate = 0.80;
+	    	            switch (monLv) {
+	    		            case 28:
+	    		            	evadeRate -= 0.05;
+	    		            case 27:
+	    		            	evadeRate -= 0.05;
+	    		            case 26:
+	    		            	evadeRate -= 0.05;
+	    		            case 25:
+	    		            	evadeRate -= 0.05;
+	    		            case 24:
+	    		            	evadeRate -= 0.05;
+	    		            case 23:
+	    		            	evadeRate -= 0.05;
+	    		            case 22:
+	    		            	evadeRate -= 0.05;    
+	    		            case 21:
+	    		            	evadeRate -= 0.05;
+	    		            case 20:
+	    		            	evadeRate -= 0.05;
+	    		            case 19:
+	    		            	evadeRate -= 0.05;
+	    		            case 18:
+	    		            	evadeRate -= 0.05;
+	    		            case 17:
+	    		            	evadeRate -= 0.05;
+	    		            case 16:
+	    		            	evadeRate -= 0.05;
+	    	                case 15:
+	    	                    evadeRate -= 0.05;
+	    	                case 14:
+	    	                    evadeRate -= 0.05;
+	    	                case 13:
+	    	                    evadeRate -= 0.05;
+	    	                case 12:
+	    	                    evadeRate -= 0.05;
+	    	            }
+
+	    	            if (ThreadLocalRandom.current().nextDouble() < evadeRate) {
+	    	                String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
+	    	                calc.patternMsg = baseMsg + "제너럴의 회피! 피해를 받지 않았습니다.";
+	    	                calc.monDmg = 0;
+	    	            }
+	        		}else if(flags.finisher && calc.monDmg > 0) {
+	        			if (ThreadLocalRandom.current().nextDouble() < 0.20) {
+
+			                int bossSkillDmg = calc.monDmg;             // 보스 필살기 데미지
+			                int reflectTotal = calc.atkDmg + bossSkillDmg; // 되돌려줄 총 피해
+
+			                calc.atkDmg += bossSkillDmg;  // 되받아친 만큼 공격에 누적
+			                calc.monDmg = 0;              // 나는 피해 없음
+
+			                String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
+			                calc.patternMsg = baseMsg
+			                        + "패링! 보스의 필살기를 되받아쳐 총 "
+			                        + reflectTotal + " 피해를 입히고 피해를 받지 않았습니다.";
+
+			                calc.jobSkillUsed = true;
+			            }
+	        		}
+	        		
+	        		break;
+	        	default:
+	        		if(baseAtk>0) {
+    					calc.patternMsg = m.monName + " (이)가 날벼락에 맞았습니다!";
+    				}else {
+    					calc.patternMsg = m.monName + " (이)가 배회합니다";
+    				}
+	        		break;
+	        	}
 	        }
 	    	if ("파이터".equals(job) ) {
 	    		if(u.hpCur < effHpMax*0.3) {
@@ -6000,23 +6116,68 @@ public class BossAttackController {
 	        }
 
 	        // 🛡 전사: 보스 필살기 패링 (20% 확률)
-	        if ("전사".equals(job) && flags.finisher && calc.monDmg > 0) {
-	            if (ThreadLocalRandom.current().nextDouble() < 0.20) {
+	        if ("검성".equals(job) && flags.finisher && calc.monDmg > 0) {
+	        	if (flags.finisher && calc.monDmg > 0) {
+		            if (ThreadLocalRandom.current().nextDouble() < 0.30) {
 
-	                int bossSkillDmg = calc.monDmg;             // 보스 필살기 데미지
-	                int reflectTotal = calc.atkDmg + bossSkillDmg; // 되돌려줄 총 피해
+		                int bossSkillDmg = calc.monDmg;             // 보스 필살기 데미지
+		                int reflectTotal = calc.atkDmg + bossSkillDmg; // 되돌려줄 총 피해
 
-	                calc.atkDmg += bossSkillDmg;  // 되받아친 만큼 공격에 누적
-	                calc.monDmg = 0;              // 나는 피해 없음
+		                calc.atkDmg += bossSkillDmg;  // 되받아친 만큼 공격에 누적
+		                calc.monDmg = 0;              // 나는 피해 없음
 
-	                String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
-	                calc.patternMsg = baseMsg
-	                        + "패링! 보스의 필살기를 되받아쳐 총 "
-	                        + reflectTotal + " 피해를 입히고 피해를 받지 않았습니다.";
+		                String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
+		                calc.patternMsg = baseMsg
+		                        + "패링! 몬스터의 필살기를 되받아쳐 총 "
+		                        + reflectTotal + " 피해를 입히고 피해를 받지 않았습니다.";
 
-	                calc.jobSkillUsed = true;
-	            }
+		                calc.jobSkillUsed = true;
+		            }
+		        }else if (!flags.finisher && calc.monDmg > 0) {
+		        	if (ThreadLocalRandom.current().nextDouble() < 0.30) {
+		        		int bossSkillDmg = calc.monDmg;             // 보스 필살기 데미지
+		                int reflectTotal = calc.atkDmg + bossSkillDmg; // 되돌려줄 총 피해
+
+		                calc.atkDmg += bossSkillDmg;  // 되받아친 만큼 공격에 누적
+		                calc.monDmg = 0;              // 나는 피해 없음
+
+		                String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
+		                calc.patternMsg = baseMsg
+		                        + "패링! 몬스터의 공격를 되받아쳐 총 "
+		                        + reflectTotal + " 피해를 입히고 피해를 받지 않았습니다.";
+
+		                calc.jobSkillUsed = true;
+		        	}
+		        }
 	        }
+	        
+	        if("전사".equals(job)) {
+	        	if (flags.finisher && calc.monDmg > 0) {
+		            if (ThreadLocalRandom.current().nextDouble() < 0.20) {
+
+		                int bossSkillDmg = calc.monDmg;             // 보스 필살기 데미지
+		                int reflectTotal = calc.atkDmg + bossSkillDmg; // 되돌려줄 총 피해
+
+		                calc.atkDmg += bossSkillDmg;  // 되받아친 만큼 공격에 누적
+		                calc.monDmg = 0;              // 나는 피해 없음
+
+		                String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
+		                calc.patternMsg = baseMsg
+		                        + "패링! 보스의 필살기를 되받아쳐 총 "
+		                        + reflectTotal + " 피해를 입히고 피해를 받지 않았습니다.";
+
+		                calc.jobSkillUsed = true;
+		            }
+		        }else if (!flags.finisher && calc.monDmg > 0) {
+		            int reduce = (int) Math.round(u.lv * 10)+m.monLv*10;
+		            int after = Math.max(0, calc.monDmg - reduce); // 최소 0
+		            String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
+		            calc.patternMsg = baseMsg
+		                    + "(전사의방패 효과로 " + reduce + " 피해 감소 → " + after + ")";
+		            calc.monDmg = after;
+		        }
+	        }
+	        
 
 	        // 🌀 도적: 회피 (고레벨 보스일수록 회피율 감소, 필살기 제외)
 	        if ("도적".equals(job) && calc.monDmg > 0 && !flags.finisher) {
@@ -6123,15 +6284,7 @@ public class BossAttackController {
 	            calc.monDmg = reduced;
 	        }
 
-	        // 🛡 전사: 일반 패턴 피해 감소
-	        if ("전사".equals(job) && calc.monDmg > 0 && !flags.finisher) {
-	            int reduce = (int) Math.round(u.lv * 10)+m.monLv*10;
-	            int after = Math.max(0, calc.monDmg - reduce); // 최소 0
-	            String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
-	            calc.patternMsg = baseMsg
-	                    + "(전사의방패 효과로 " + reduce + " 피해 감소 → " + after + ")";
-	            calc.monDmg = after;
-	        }
+	        
 	    }
 
 	    if ("용사".equals(job)) {
@@ -6766,15 +6919,15 @@ public class BossAttackController {
         JOB_DEFS.put("궁사", new JobDef(
     		"궁사",
     		"▶ 연속공격의 달인, 최대데미지와 최소공격력 차이가 클수록 연속공격한다",
-    		"⚔ 최대-최소 데미지 차이 280 마다 1연사 추가공격(각 구간 별 공격은 개별치명타율 최대70%)"+NL
- 	         +"◎선행조건 : 공격횟수 5000회 "
+    		"⚔ 최대-최소 데미지 차이 280 마다 1연사 추가공격(각 구간 별 공격은 개별치명타율 최대75%)"+NL
+ 	         +"◎선행조건 : 공격횟수 3000회 "
         ));
 
         
         JOB_DEFS.put("용사", new JobDef(
 	        "용사",
 	        "▶ 선택 받은 자",//어둠몹에 피해두배 ,언데드추뎀25% ,스틸30%, 10%확률 완전회복
-	        "⚔ 기본 HP*10만큼 추가 증가, 어둠몬스터에 피해*2, 언데드 추가피해(+25%), 공격시 steal(30%), 정령의가호(10%)"+NL
+	        "⚔ 기본 HP*10만큼 추가 증가, 어둠몬스터에 피해*2, 언데드 추가피해(+25%), 공격시 steal(30%), 정령의가호(10%), 기본데미지 * 1.4"+NL
 	        +"◎선행조건 전사,도적,도사,프리스트 직업으로 각 300회 공격"
 	    ));
 	     
@@ -6782,8 +6935,22 @@ public class BossAttackController {
 	    JOB_DEFS.put("처단자", new JobDef(
 	        "처단자",
 	        "▶ 신을 모독하는 자는 그의 손에서 살아남을수 없다, 물론 모독을 안했어도 말이지..! ",
-	        "⚔ 방어를 무시하고 피해 2.5배를 줌, 몬스터의 기본공격 80%회피 [회피 no12부터 3%씩,no15부터 5%씩 감소] , 처치시 추가드랍(30%), 빛몬스터에 피해*2 "+NL
+	        "⚔ 방어를 무시하고 피해 2.5배를 줌, 몬스터의 기본공격 80%회피 [회피 no12부터 3%씩,no15부터 5%씩 감소] , 처치시 추가드랍(30%), 빛몬스터에 피해*2, 기본데미지 *1.4 "+NL
 	        +"◎선행조건 마법사,도적 직업으로 각 300회 공격"
+	    ));
+	    JOB_DEFS.put("제너럴", new JobDef(
+	        "제너럴",
+	        "▶ 블랙필드에서는 누구도 따라잡을자가 없다!",
+	        "⚔ 조우 은엄폐-저격 이후 * 회피기동전술을 다회 반복"+NL
+	        +"- 조우시 hidden -, *조우 은엄폐, *저격(13% headShot) 시 모든 행동 무시, *회피기동전술 시 - hidden -"+NL
+	        +"◎선행조건 저격수,전사 직업으로 각 300회 공격"
+	    ));
+	    
+	    JOB_DEFS.put("검성", new JobDef(
+	        "검성",
+	        "▶ 검으로 이룬 경지",
+	        "⚔ 기본 HP*20만큼 추가 증가, 적의 공격 반격(30%),기본데미지*2"
+	        +"◎선행조건 전사 직업으로 1000회 공격,"
 	    ));
 	    
 	    /*
@@ -6813,8 +6980,15 @@ public class BossAttackController {
     		new JobChangeReq("마법사", 300),
     		new JobChangeReq("도적", 300)
 		));
+	    JOB_CHANGE_REQS.put("제너럴", Arrays.asList(
+    		new JobChangeReq("저격수", 300),
+    		new JobChangeReq("전사", 300)
+		));
+	    JOB_CHANGE_REQS.put("검성", Arrays.asList(
+    		new JobChangeReq("전사", 1000)
+		));
 	    // 용사 = 전체 공격 1000회 이상
-	    JOB_CHANGE_TOTAL_REQS.put("궁사", 5000);
+	    JOB_CHANGE_TOTAL_REQS.put("궁사", 3000);
 	    
 	}
 }

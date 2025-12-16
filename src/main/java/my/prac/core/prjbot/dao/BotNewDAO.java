@@ -218,4 +218,6 @@ public interface BotNewDAO {
 	int createTodayJobMastersFromYesterdayAll() throws Exception;
 	int selectIsTodayJobMasterAll(HashMap<String,Object> param) throws Exception;
 	
+	List<HashMap<String, Object>> selectTodayJobMastersAll();
+	
 }

@@ -1267,10 +1267,21 @@
 	        VALUES (S.JOB, S.MASTER_DATE, S.USER_NAME, S.ATK_CNT, SYSDATE, SYSDATE)
 	</update>
 	<select id="selectIsTodayJobMasterAll" parameterType="hashmap" resultType="int">
+	    /*selectIsTodayJobMasterAll*/
 	    SELECT COUNT(1)
 	      FROM TBOT_POINT_NEW_JOB_MASTER
 	     WHERE MASTER_DATE = TRUNC(SYSDATE)
 	       AND JOB = #{job}
 	       AND USER_NAME = #{userName}
+	</select>
+	
+	<select id="selectTodayJobMastersAll" resultType="hashmap">
+		/*selectIsTodayJobMasterAll*/
+		SELECT JOB,
+		       USER_NAME,
+		       ATK_CNT
+		  FROM TBOT_DAILY_JOB_MASTER
+		 WHERE MASTER_DATE = TRUNC(SYSDATE)
+		 ORDER BY JOB ASC, ATK_CNT DESC
 	</select>
 </mapper>
