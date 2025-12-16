@@ -3890,8 +3890,7 @@ public class BossAttackController {
 	    	}
 	    	
 	    	r.gainExp = baseKillExp;
-	    }
-	    else {
+	    }else if(c.atkDmg >0){
 	    	r.gainExp = (int)Math.round(baseKillExp/20)+1;  //
 	    }
 
@@ -5824,7 +5823,7 @@ public class BossAttackController {
 	    	switch(beforeJobSkillYn) {
 	    		case 0:
 	    			baseAtk = (effAtkMin + effAtkMax + 1) /2;
-		        	if (ThreadLocalRandom.current().nextDouble() < 0.13) {
+		        	if (ThreadLocalRandom.current().nextDouble() < 0.15) {
 		        		out.dmgCalcMsg += "[헤드샷] 보너스 DMG "+baseAtk+"→";
 		        		baseAtk = (int)Math.round(baseAtk * 4.25);
 		        		out.dmgCalcMsg += baseAtk+NL;
@@ -5839,7 +5838,7 @@ public class BossAttackController {
 		        	
 	    			break;
 	    		case 1:
-	    			if (ThreadLocalRandom.current().nextDouble() < 0.13) {
+	    			if (ThreadLocalRandom.current().nextDouble() < 0.15) {
 		        		out.dmgCalcMsg += "[헤드샷] 보너스 DMG "+baseAtk+"→";
 		        		baseAtk = (int)Math.round(baseAtk * 2.25);
 		        		out.dmgCalcMsg += baseAtk+NL;
@@ -5849,7 +5848,7 @@ public class BossAttackController {
 	    			calc.jobSkillUsed = true;
 	    			break;
     			default:
-    				if (ThreadLocalRandom.current().nextDouble() < 0.065) {
+    				if (ThreadLocalRandom.current().nextDouble() < 0.10) {
     					out.dmgCalcMsg += "폭격 지원 요청 중.. 몬스터의 무력화..!";
     		        	baseAtk =(int)Math.round(baseAtk * 5);
     		        	flags.monPattern = 1;
@@ -5995,7 +5994,7 @@ public class BossAttackController {
 	        	case 1:
 	        		if(!flags.finisher && calc.monDmg > 0) {
 	        			int monLv = m.monNo;
-	        			double evadeRate = 0.80;
+	        			double evadeRate = 0.90;
 	    	            switch (monLv) {
 	    		            case 28:
 	    		            	evadeRate -= 0.05;
