@@ -1257,7 +1257,7 @@
 	                           AND BL.JOB IS NOT NULL
 	                           AND BL.ROOM_NAME not in ('람쥐봇 문의방','test123')
 	                         GROUP BY BL.JOB, BL.USER_NAME
-	                        HAVING COUNT(1) >100
+	                        HAVING COUNT(1) >50
 	                       )
 	               )
 	         WHERE RN = 1
