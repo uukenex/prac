@@ -5859,9 +5859,10 @@ public class BossAttackController {
         		baseAtk = (int)Math.round(baseAtk * 5);
         		out.dmgCalcMsg += baseAtk+NL;
         		out.dmgCalcMsg += "몬스터가 바람에 갖혀 행동불가가 됨!";
+        		calc.jobSkillUsed = true;
+            	flags.monPattern = 1;
 			}
-	    	calc.jobSkillUsed = true;
-        	flags.monPattern = 1;
+	    	
 	    }
 	    
 	    boolean isSnipe = false;
@@ -6116,7 +6117,7 @@ public class BossAttackController {
 	        }
 
 	        // 🛡 전사: 보스 필살기 패링 (20% 확률)
-	        if ("검성".equals(job) && flags.finisher && calc.monDmg > 0) {
+	        if ("검성".equals(job)) {
 	        	if (flags.finisher && calc.monDmg > 0) {
 		            if (ThreadLocalRandom.current().nextDouble() < 0.30) {
 
