@@ -210,6 +210,7 @@ public class BossAttackController {
 	    int bRegenRaw  = (buffs != null && buffs.get("HP_REGEN") != null) ? buffs.get("HP_REGEN").intValue() : 0;
 	    int bHpMaxRaw  = (buffs != null && buffs.get("HP_MAX")   != null) ? buffs.get("HP_MAX").intValue()   : 0;
 	    int bCriDmgRaw = (buffs != null && buffs.get("CRI_DMG")  != null) ? buffs.get("CRI_DMG").intValue()  : 0;
+	    int bHpMaxRateRaw  = (buffs != null && buffs.get("HP_MAX_RATE")   != null) ? buffs.get("HP_MAX_RATE").intValue()   : 0;
 
 	    // 🔹 직업 보너스 표시용 변수
 	    int jobHpMaxBonus = 0;
@@ -260,6 +261,7 @@ public class BossAttackController {
 	    ctx.bRegenRaw   = bRegenRaw;
 	    ctx.bHpMaxRaw   = bHpMaxRaw;
 	    ctx.bCriDmgRaw  = bCriDmgRaw;
+	    ctx.bHpMaxRateRaw  = bHpMaxRateRaw;
 
 	    // ② 무기강/보너스 조회
 	    HashMap<String, Object> wm = new HashMap<>();
@@ -378,6 +380,9 @@ public class BossAttackController {
 	    // HP/ATK 확정치 저장
 	    ctx.atkMinWithItem = atkMinWithItem;
 	    ctx.atkMaxWithItem = atkMaxWithItem;
+	    
+	    int finalHpMaxBonus = (finalHpMax * ctx.bHpMaxRateRaw) /100;
+	    finalHpMax += finalHpMaxBonus;
 	    
 	    ctx.finalHpMax  = finalHpMax;
 	    ctx.effRegen    = effRegen;
@@ -1440,9 +1445,7 @@ public class BossAttackController {
 	    if (itemId == null) {
 	        try { itemId = botNewService.selectItemIdByName(raw); } catch (Exception ignore) {}
 	    }
-	    if (itemId == null) {
-	        try { itemId = botNewService.selectItemIdByCode(raw); } catch (Exception ignore) {}
-	    }
+	    
 	    if (itemId == null) {
 	        return "해당 아이템을 찾을 수 없습니다: " + raw + NL
 	             + "(/구매 입력만으로 목록을 확인하세요)";
@@ -2019,6 +2022,7 @@ public class BossAttackController {
 	    	berserkMul = 2;
 	    }
 	    
+	    /*
 	    if ("궁사".equals(job)) {
 	        String firstCmd = "ACHV_FIRST_CLEAR_MON_" + m.monNo;
 
@@ -2033,6 +2037,7 @@ public class BossAttackController {
 	        }
 	        
 	    }
+	    */
 
 	    Flags flags = rollFlags(u, m);
 
@@ -5671,7 +5676,7 @@ public class BossAttackController {
 	            }
 
 	            int shotDmg = shotCrit
-	                    ? (int) Math.round(shotAtk * critMultiplier*0.6)
+	                    ? (int) Math.round(shotAtk * critMultiplier*0.65)
 	                    : shotAtk;
 
 	            totalDmg += shotDmg;
@@ -6697,6 +6702,7 @@ public class BossAttackController {
 	    int baseRegen  = parseIntSafe(Objects.toString(item.get("HP_REGEN"), "0"));
 	    int baseCri    = parseIntSafe(Objects.toString(item.get("ATK_CRI"), "0"));   // 치확
 	    int baseCriDmg = parseIntSafe(Objects.toString(item.get("CRI_DMG"), "0"));   // 치피
+	    int baseHpRate  = parseIntSafe(Objects.toString(item.get("HP_MAX_RATE"), "0"));
 
 	    // qty 1 → level 0, qty 2 → level 1 ...
 	    int level = Math.max(0, qty - 1);
@@ -6717,6 +6723,7 @@ public class BossAttackController {
 	    int bonusRegen  = (int)Math.floor(baseRegen  * percent / 100.0);
 	    int bonusCri    = (int)Math.floor(baseCri    * percent / 100.0);
 	    int bonusCriDmg = (int)Math.floor(baseCriDmg * percent / 100.0);
+	    int bonusHpRate = (int)Math.floor(baseHpRate * percent / 100.0);
 
 	    StringBuilder sb = new StringBuilder();
 
@@ -6737,9 +6744,16 @@ public class BossAttackController {
 
 	    // HP
 	    if (baseHp != 0) {
-	        sb.append("[체력 ").append(baseHp);
+	        sb.append("[체력+ ").append(baseHp);
 	        if (bonusHp != 0) {
 	            sb.append("(").append(formatSigned(bonusHp)).append(")");
+	        }
+	        sb.append("] ");
+	    }
+	    if (baseHpRate != 0) {
+	        sb.append("[체력% ").append(baseHpRate);
+	        if (bonusHpRate != 0) {
+	            sb.append("(").append(formatSigned(bonusHpRate)).append(")");
 	        }
 	        sb.append("] ");
 	    }

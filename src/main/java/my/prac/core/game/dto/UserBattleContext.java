@@ -20,6 +20,7 @@ public class UserBattleContext {
     public int bRegenRaw;
     public int bHpMaxRaw;
     public int bCriDmgRaw;
+    public int bHpMaxRateRaw;
 
     // 무기
     public int weaponLv;

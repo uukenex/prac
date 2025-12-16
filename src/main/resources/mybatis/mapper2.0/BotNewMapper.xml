@@ -218,11 +218,6 @@
      WHERE ROWNUM = 1
   </select>
 
-  <!-- 아이템 -->
-  <select id="selectItemIdByCode" resultType="int">
-    SELECT ITEM_ID FROM TBOT_POINT_NEW_ITEM WHERE ITEM_CODE = #{itemCode}
-  </select>
-
   <!-- (중복 제거하고 이 한 개만 남김) -->
   <select id="selectItemIdByName" parameterType="string" resultType="int">
     SELECT ITEM_ID FROM TBOT_POINT_NEW_ITEM WHERE ITEM_NAME = #{itemName}
@@ -419,7 +414,15 @@
 		            WHEN inv.qty =  3 THEN 1.5
 		            ELSE 1.6
 		        END
-		    )), 0) AS CRI_DMG
+		    )), 0) AS CRI_DMG,
+		    NVL(SUM( ROUND(i.hp_max_rate  *
+		        CASE 
+		            WHEN inv.qty = 1 THEN 1.0
+		            WHEN inv.qty =  2 THEN 1.3
+		            WHEN inv.qty =  3 THEN 1.5
+		            ELSE 1.6
+		        END
+		    )), 0) AS HP_MAX_RATE
 	  FROM TBOT_POINT_NEW_INVENTORY inv
 	  JOIN TBOT_POINT_NEW_ITEM i
 	    ON i.item_id = inv.item_id
@@ -437,7 +440,6 @@
 	      i.item_id,
 	      i.item_name,
 	      i.item_sell_price,
-	      i.item_desc,
 	      i.atk_min,
 	      i.atk_max,
 	      i.atk_cri,
@@ -465,7 +467,6 @@
 	      i.item_id,
 	      i.item_name,
 	      i.item_sell_price,
-	      i.item_desc,
 	      i.atk_min,
 	      i.atk_max,
 	      i.atk_cri,
@@ -475,24 +476,6 @@
 	  FROM TBOT_POINT_NEW_ITEM i
 	  WHERE i.item_type = 'MARKET'
 	    AND i.item_id   = #{itemId}
-	</select>
-	
-	<!-- MARKET 단일: 이름 또는 코드 기준 (두 칼럼 모두 매칭 시 우선 한 건) -->
-	<select id="selectMarketItemByNameOrCode" resultType="hashmap">
-	  SELECT
-	      i.item_id,
-	      i.item_name,
-	      i.item_sell_price,
-	      i.item_desc,
-	      i.atk_min,
-	      i.atk_max,
-	      i.atk_cri,
-	      i.hp_regen,
-	      i.hp_max,
-	      i.cri_dmg
-	  FROM TBOT_POINT_NEW_ITEM i
-	  WHERE i.item_type = 'MARKET'
-	    AND (i.item_name = #{token} OR i.item_code = #{token})
 	</select>
 	
 	<!-- 보유중인 MARKET 인벤토리 수량(활성행) -->
@@ -528,10 +511,8 @@
 		/*selectItemDetailById*/
 	    SELECT 
 	        i.ITEM_ID,
-	        i.ITEM_CODE,
 	        i.ITEM_NAME,
 	        i.ITEM_SELL_PRICE,
-	        i.ITEM_DESC,
 	        i.ITEM_TYPE,
 	        NVL(i.ATK_MIN,   0) AS ATK_MIN,
 	        NVL(i.ATK_MAX,   0) AS ATK_MAX,
@@ -567,6 +548,7 @@
 	        NVL(i.HP_REGEN,0)  AS HP_REGEN,
 	        NVL(i.HP_MAX,0)    AS HP_MAX,
 	        NVL(i.CRI_DMG,0)   AS CRI_DMG,
+	        NVL(i.HP_MAX_RATE,0)   AS HP_MAX_RATE,
 	
 	        NVL(inv.OWN_QTY, 0) AS OWN_QTY,
 	
