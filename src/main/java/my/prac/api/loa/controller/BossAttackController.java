@@ -367,9 +367,9 @@ public class BossAttackController {
 	    } catch (Exception ignore) {}
 
 	    if (isMaster) {
-	        atkMinWithItem += 100;
-	        atkMaxWithItem += 100;
-	        finalHpMax     += 1000;
+	        atkMinWithItem += 200;
+	        atkMaxWithItem += 200;
+	        finalHpMax     += 2000;
 	        ctx.isJobMaster = true;
 	    } else {
 	        ctx.isJobMaster = false;
@@ -883,7 +883,7 @@ public class BossAttackController {
 	      .append(",5분당회복+").append(shownRegen).append(NL).append(NL);
 
 	    if (ctx.isJobMaster) {
-	        sb.append(ctx.job).append(" 마스터 보너스: ATK+100, HP+1000").append(NL);
+	        sb.append(ctx.job).append(" 마스터 보너스: ATK+200, HP+2000").append(NL);
 	    }
 
 	    sb.append("▶ 현재 타겟: ").append(targetName)
@@ -3024,6 +3024,7 @@ public class BossAttackController {
 	            if (rank++ >= 7) break;
 	        }
 	    }
+	    sb.append(NL);
 	    
 	    List<HashMap<String,Object>> masters = botNewService.selectTodayJobMastersAll();
 
@@ -3931,8 +3932,8 @@ public class BossAttackController {
 	}
 	
 	private int calcBaseHpMax(int lv) {
-	    if (lv <= 1) return 10;
-	    return 10 + (lv - 1) * 10;
+	    if (lv <= 1) return 20;
+	    return 20 + (lv - 1) * 20;
 	}
 
 	private int calcBaseAtkMin(int lv) {
@@ -4491,7 +4492,7 @@ public class BossAttackController {
 
 	        expNext = calcNextExp(lv, expNext);
 
-	        int incHp    = 10;
+	        int incHp    = 20;
 	        int incAtkMin= 1;
 	        int incAtkMax= 3;
 
@@ -5803,6 +5804,8 @@ public class BossAttackController {
 	    			baseAtk=0;
 	    			break;
     			default:
+    				baseAtk=0;
+    				crit=false;
 	            	out.dmgCalcMsg += "저격 위치 확보 중.. ";
 		        	baseAtk =0;
 		        	flags.monPattern = 1;
@@ -5841,11 +5844,13 @@ public class BossAttackController {
 	    			calc.jobSkillUsed = true;
 	    			break;
     			default:
-    				if (ThreadLocalRandom.current().nextDouble() < 0.05) {
+    				if (ThreadLocalRandom.current().nextDouble() < 0.065) {
     					out.dmgCalcMsg += "폭격 지원 요청 중.. 몬스터의 무력화..!";
     		        	baseAtk =(int)Math.round(baseAtk * 5);
     		        	flags.monPattern = 1;
     				}else {
+    					baseAtk=0;
+        				crit=false;
     					out.dmgCalcMsg += "저격 위치 확보 중.. ";
     		        	baseAtk =0;
     		        	flags.monPattern = 1;
@@ -5855,10 +5860,10 @@ public class BossAttackController {
 	    }
 	    if ("검성".equals(job)) {
 	    	if (ThreadLocalRandom.current().nextDouble() < 0.13) {
-        		out.dmgCalcMsg += "바람을 갈랐다..! "+baseAtk+"→";
+        		out.dmgCalcMsg += "바람가르기 ! "+baseAtk+"→";
         		baseAtk = (int)Math.round(baseAtk * 5);
         		out.dmgCalcMsg += baseAtk+NL;
-        		out.dmgCalcMsg += "몬스터가 바람에 갖혀 행동불가가 됨!";
+        		out.dmgCalcMsg += "몬스터가 바람에 갇혀 행동불가가 됨!";
         		calc.jobSkillUsed = true;
             	flags.monPattern = 1;
 			}
