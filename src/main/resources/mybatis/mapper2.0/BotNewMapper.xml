@@ -25,9 +25,11 @@
 	      FROM TBOT_POINT_NEW_USER
 	      WHERE USER_NAME = #{userName}
 	        <!-- 문의방이 아니면 기존처럼 roomName 고정 -->
+	        <!-- 
 	        <if test="roomName != null and roomName != '람쥐봇 문의방'">
 	          AND ROOM_NAME = #{roomName}
 	        </if>
+	         -->
 	      ORDER BY
 	          PROC_DATE DESC NULLS LAST,
 	          INSERT_DATE DESC NULLS LAST,
@@ -44,9 +46,11 @@
       SUM(CASE WHEN DEATH_YN = '1' THEN 1 ELSE 0 END) AS TOTAL_DEATHS
     FROM TBOT_POINT_NEW_BATTLE_LOG
     WHERE USER_NAME = #{userName}
+    <!-- 
     <if test="roomName != null and roomName != '람쥐봇 문의방'">
       AND ROOM_NAME = #{roomName}
     </if>
+    -->
   </select>
 
   <select id="selectKillStats" resultType="my.prac.core.game.dto.KillStat">
@@ -57,9 +61,11 @@
     FROM TBOT_POINT_NEW_BATTLE_LOG bl
     JOIN TBOT_POINT_NEW_MON_INFO m ON m.MON_NO = bl.TARGET_MON_LV
     WHERE bl.USER_NAME = #{userName}
+    <!-- 
       <if test="roomName != null and roomName != '람쥐봇 문의방'">
 	    AND bl.ROOM_NAME = #{roomName}
 	  </if>
+	   -->
       AND bl.KILL_YN = 1
     GROUP BY bl.TARGET_MON_LV, m.MON_NAME
     ORDER BY MON_NO DESC
@@ -88,6 +94,7 @@
 
   <!-- 3) 진행중 전투 -->
   <select id="selectOngoingBattle" resultType="my.prac.core.game.dto.OngoingBattle">
+  /*selectOngoingBattle*/
     SELECT monNo, totalDealtDmg, luckyYn,beforeJobSkillYn
       FROM (
         SELECT TARGET_MON_LV AS monNo,
@@ -97,7 +104,9 @@
                MAX(INSERT_DATE) AS lastTime
         FROM TBOT_POINT_NEW_BATTLE_LOG
         WHERE USER_NAME = #{userName}
+        <!-- 
           AND ROOM_NAME = #{roomName}
+           -->
           AND NOW_YN    = '1'
         GROUP BY TARGET_MON_LV
         ORDER BY lastTime DESC
@@ -107,14 +116,18 @@
 
   <!-- 4) 최신 공격 시간 -->
   <select id="selectLastAttackTime" resultType="java.sql.Timestamp">
+  /*selectLastAttackTime*/
     SELECT MAX(INSERT_DATE)
     FROM TBOT_POINT_NEW_BATTLE_LOG
     WHERE USER_NAME = #{userName}
+    <!-- 
       AND ROOM_NAME = #{roomName}
+       -->
   </select>
 
   <!-- 5) 전투 후 유저 업데이트 -->
   <update id="updateUserAfterBattle">
+  /*updateUserAfterBattle*/
     UPDATE TBOT_POINT_NEW_USER
        SET LV        = #{newLv},
            EXP_CUR   = #{newExpCur},
@@ -127,11 +140,14 @@
            HP_REGEN  = #{hpRegen},
            PROC_DATE = SYSDATE
      WHERE USER_NAME = #{userName}
+     <!-- 
        AND ROOM_NAME = #{roomName}
+        -->
   </update>
 
   <!-- 6) 전투 로그 -->
   <insert id="insertBattleLog" parameterType="my.prac.core.game.dto.BattleLog">
+  /*insertBattleLog*/
     INSERT INTO TBOT_POINT_NEW_BATTLE_LOG
       (USER_NAME, ROOM_NAME, LV, TARGET_MON_LV,
        GAIN_EXP, ATK_DMG, MON_DMG, ATK_CRIT_YN,
@@ -148,26 +164,35 @@
 
   <!-- 7) 전투 종료 -->
   <update id="closeOngoingBattle">
+  /*closeOngoingBattle*/
     UPDATE TBOT_POINT_NEW_BATTLE_LOG
        SET NOW_YN = '0'
      WHERE USER_NAME = #{userName}
+     <!-- 
        AND ROOM_NAME = #{roomName}
+        -->
        AND NOW_YN    = '1'
   </update>
 
   <!-- HP만 갱신 -->
   <update id="updateUserHpOnly">
+  /*updateUserHpOnly*/
     UPDATE TBOT_POINT_NEW_USER
        SET HP_CUR = #{newHpCur}
      WHERE USER_NAME = #{userName}
+     <!-- 
        AND ROOM_NAME = #{roomName}
+        -->
   </update>
 
   <update id="updateUserTargetMon">
+  /*updateUserHpOnly*/
     UPDATE TBOT_POINT_NEW_USER
        SET TARGET_MON = #{newMonNo}
      WHERE USER_NAME = #{userName}
+     <!-- 
        AND ROOM_NAME = #{roomName}
+        -->
   </update>
 
   <insert id="insertUserWithTarget">
@@ -183,21 +208,27 @@
 
   <!-- 보조 닉네임 검색 -->
   <select id="selectParam1ToNewUserSearch" parameterType="HashMap" resultType="String">
+	  /*selectParam1ToNewUserSearch*/
 	  SELECT A.USER_NAME
 	    FROM TBOT_POINT_NEW_USER A
 	   WHERE UPPER(A.USER_NAME) LIKE UPPER(#{param1,jdbcType=VARCHAR}) || '%'
+	   
 	     <!-- 문의방이 아닐 때만 방 고정 -->
+	     <!-- 
 	     <if test="roomName != null and roomName != '람쥐봇 문의방'">
 	       AND A.ROOM_NAME = #{roomName,jdbcType=VARCHAR}
 	     </if>
+	      -->
 	     AND NOT EXISTS (
 	         SELECT 1
 	           FROM TBOT_BLOCK C
 	          WHERE UPPER(C.USER_NAME) = UPPER(#{param1,jdbcType=VARCHAR})
 	            <!-- 블록 체크도 동일 방 기준 (문의방이면 전체에 대해 해당 닉/방 조합 기준으로 동작) -->
+	            <!-- 
 	            <if test="roomName != null and roomName != '람쥐봇 문의방'">
 	              AND C.ROOM_NAME = A.ROOM_NAME
 	            </if>
+	             -->
 	     )
 	   GROUP BY A.USER_NAME, A.ROOM_NAME
 	  HAVING 1 = CASE WHEN MAX(A.PROC_DATE) >= TRUNC(SYSDATE) - 3 THEN 1 ELSE 0 END
@@ -206,12 +237,15 @@
 
   <!-- 최근 lucky -->
   <select id="selectLatestLuckyYn" parameterType="map" resultType="int">
+  /*selectLatestLuckyYn*/
     SELECT TO_NUMBER(lucky_yn) AS lucky_yn
       FROM (
         SELECT bl.lucky_yn
           FROM TBOT_POINT_NEW_BATTLE_LOG bl
          WHERE bl.user_name = #{userName}
+         <!-- 
            AND bl.room_name = #{roomName}
+            -->
            AND bl.now_yn    = '1'
          ORDER BY bl.insert_date DESC
       )
@@ -255,9 +289,11 @@
 	    SELECT ITEM_ID, GAIN_TYPE, SUM(QTY) AS TOTAL_QTY
 	      FROM TBOT_POINT_NEW_INVENTORY
 	     WHERE USER_NAME = #{userName}
+	     <!-- 
 	       <if test="roomName != null and roomName != '람쥐봇 문의방'">
 		    AND ROOM_NAME = #{roomName}
 		   </if>
+		    -->
 	       AND DEL_YN    = '0'
 	     GROUP BY ITEM_ID, GAIN_TYPE
 	  ) x
@@ -286,9 +322,11 @@
 	  LEFT JOIN TBOT_POINT_NEW_ITEM i
 	    ON i.item_id = inv.item_id
 	  WHERE inv.user_name = #{userName}
+	  <!-- 
 	   <if test="roomName != null and roomName != '람쥐봇 문의방'">
 	    AND inv.room_name = #{roomName}
 	  </if>
+	   -->
 	    AND inv.del_yn = '0'
 	  GROUP BY
 	      NVL(i.item_id, -1),
@@ -308,9 +346,11 @@
     SELECT NVL(SUM(score), 0)
       FROM TBOT_POINT_RANK
      WHERE user_name = #{userName}
+     <!-- 
      <if test="roomName != null and roomName != '람쥐봇 문의방'">
 	   AND room_name = #{roomName}
 	 </if>
+	  -->
        
        AND new_yn = '1'
   </select>
@@ -320,7 +360,9 @@
     SELECT ROWID AS RID, QTY, NVL(GAIN_TYPE,'DROP') AS GAIN_TYPE
       FROM TBOT_POINT_NEW_INVENTORY
      WHERE USER_NAME = #{userName}
+     <!-- 
        AND ROOM_NAME = #{roomName}
+        -->
        AND ITEM_ID   = #{itemId}
        AND NVL(DEL_YN,'0') != '1'
      ORDER BY INSERT_DATE ASC, ROWID
@@ -330,7 +372,9 @@
     SELECT ROWID AS RID, QTY, NVL(GAIN_TYPE,'DROP') AS GAIN_TYPE
       FROM TBOT_POINT_NEW_INVENTORY
      WHERE USER_NAME = #{userName}
+     <!-- 
        AND ROOM_NAME = #{roomName}
+        -->
        AND NVL(DEL_YN,'0') != '1'
      ORDER BY INSERT_DATE ASC, ROWID
   </select>
@@ -427,9 +471,11 @@
 	  JOIN TBOT_POINT_NEW_ITEM i
 	    ON i.item_id = inv.item_id
 	  WHERE inv.user_name = #{userName}
+	  <!-- 
 	    <if test="roomName != null and roomName != '람쥐봇 문의방'">
 	    AND inv.room_name = #{roomName}
-	  </if>
+	   </if>
+	   -->
 	    AND inv.del_yn = '0'
 	    AND i.item_type in ('MARKET','BAG_OPEN','MASTER')
 	</select>
@@ -451,7 +497,9 @@
 	          SELECT 1
 	            FROM TBOT_POINT_NEW_INVENTORY inv
 	           WHERE inv.user_name = #{userName}
+	           <!-- 
 	             AND inv.room_name = #{roomName}
+	              -->
 	             AND inv.item_id   = i.item_id
 	             AND inv.del_yn    = '0'
 	        ) THEN 'Y' ELSE 'N'
@@ -483,7 +531,9 @@
 	  SELECT NVL(SUM(inv.qty),0)
 	  FROM TBOT_POINT_NEW_INVENTORY inv
 	  WHERE inv.user_name = #{userName}
+	  <!-- 
 	    AND inv.room_name = #{roomName}
+	     -->
 	    AND inv.item_id   = #{itemId}
 	    AND inv.del_yn    = '0'
 	</select>
@@ -531,7 +581,9 @@
 	    SELECT NVL(SUM(n.QTY), 0)
 	    FROM TBOT_POINT_NEW_INVENTORY n
 	    WHERE n.USER_NAME = #{userName}
+	    <!-- 
 	      AND n.ROOM_NAME = #{roomName}
+	       -->
 	      AND n.ITEM_ID   = #{itemId}
 	      AND NVL(n.DEL_YN, '0') = '0'
 	</select>
@@ -585,10 +637,11 @@
 	    ) inv
 	      ON inv.ITEM_ID   = i.ITEM_ID
 	     AND inv.USER_NAME = #{userName}
+	     <!-- 
 	     <if test="roomName != null and roomName != '람쥐봇 문의방'">
 	       AND inv.ROOM_NAME = #{roomName}
 	     </if>
-	
+	 	-->
 	    WHERE i.ITEM_TYPE = 'MARKET'
 	    ORDER BY i.ITEM_ID desc
 	</select>
@@ -599,9 +652,11 @@
 	  SELECT COUNT(1)
 	  FROM TBOT_POINT_NEW_INVENTORY inv
 	  WHERE inv.USER_NAME = #{userName}
+	  <!-- 
 	 	<if test="roomName != null and roomName != '람쥐봇 문의방'">
 	    AND inv.ROOM_NAME = #{roomName}
 	   </if>
+	    -->
 	    AND inv.ITEM_ID   = #{itemId}
 	    AND inv.DEL_YN    = '0'
 	</select>
@@ -618,9 +673,11 @@
 	         )
 	    FROM TBOT_POINT_NEW_BATTLE_LOG
 	   WHERE USER_NAME = #{userName}
+	   <!-- 
 	   <if test="roomName != null and roomName != '람쥐봇 문의방'">
 	     AND ROOM_NAME = #{roomName}
 	   </if>
+	    -->
 	     AND (MON_DMG > 0 OR DEATH_YN = '1')
 	</select>
 	
@@ -688,8 +745,10 @@
 	<select id="selectPointRankCountByCmdUserInRoom" parameterType="hashMap" resultType="int">
 	    SELECT COUNT(1)
 	    FROM TBOT_POINT_RANK
-	    WHERE ROOM_NAME = #{roomName}
-	      AND USER_NAME = #{userName}
+	    WHERE USER_NAME = #{userName}
+	      <!-- 
+	      AND ROOM_NAME = #{roomName}
+	       -->
 	      AND CMD = #{cmd}
 	      AND NEW_YN = '1'
 	</select>
@@ -716,9 +775,11 @@
 	  SELECT CMD, SCORE, USER_NAME, ROOM_NAME, INSERT_DATE
 	  FROM TBOT_POINT_RANK
 	  WHERE USER_NAME = #{userName}
+	  <!-- 
 	   <if test="roomName != null and roomName != '람쥐봇 문의방'">
         AND ROOM_NAME = #{roomName}
       </if>
+       -->
 	    AND CMD LIKE 'ACHV_%'
 	  ORDER BY CASE
 			        WHEN CMD LIKE 'ACHV_FIRST_CLEAR_MON_%' THEN 1
@@ -753,9 +814,11 @@
 	           COUNT(1)            AS ATK_CNT
 	      FROM TBOT_POINT_NEW_BATTLE_LOG
 	     WHERE USER_NAME = #{userName}
+	     <!-- 
 	      <if test="roomName != null and roomName != '람쥐봇 문의방'">
 	           AND ROOM_NAME = #{roomName}
            </if>
+            -->
 	       AND INSERT_DATE &lt; TRUNC(SYSDATE)   <!-- 어제 자정까지 -->
 	     GROUP BY TRUNC(INSERT_DATE)
 	     ORDER BY ATTACK_DAY
@@ -767,9 +830,11 @@
 	           COUNT(1) AS CNT
 	    FROM TBOT_POINT_NEW_BATTLE_LOG
 	    WHERE USER_NAME = #{userName}
+	    <!-- 
 	    <if test="roomName != null and roomName != '람쥐봇 문의방'">
           AND ROOM_NAME = #{roomName}
         </if>
+         -->
 	    GROUP BY JOB
 	</select>
  
@@ -779,7 +844,9 @@
 	       SET JOB = #{job},
 	           JOB_CHANGE_DATE = SYSDATE
 	     WHERE USER_NAME = #{userName}
+	     <!-- 
 	       AND ROOM_NAME = #{roomName}
+	        -->
 	</update>
 	
 	<select id="selectRisingStarsTop5Last6h" resultType="hashmap">
@@ -817,7 +884,9 @@
 	                 FROM TBOT_POINT_RANK A1
 	                WHERE A1.NEW_YN    = '1'
 	                  AND A1.USER_NAME = A.USER_NAME
+	                  <!-- 
 	                  AND A1.ROOM_NAME = A.ROOM_NAME
+	                   -->
 	             ) AS TOT_SP,
 	           A.USER_NAME,
 	           A.ROOM_NAME,
@@ -825,13 +894,17 @@
 	               SELECT COUNT(1)
 	                 FROM TBOT_POINT_NEW_BATTLE_LOG A2
 	                WHERE A2.USER_NAME = A.USER_NAME
+	                  <!-- 
 	                  AND A2.ROOM_NAME = A.ROOM_NAME
+	                   -->
 	           ) AS ATK_CNT,
 	           (
 	                 SELECT COUNT(1)
 	                   FROM TBOT_POINT_NEW_BATTLE_LOG A2
 	                  WHERE A2.USER_NAME = A.USER_NAME
+	                    <!-- 
 	                    AND A2.ROOM_NAME = A.ROOM_NAME
+	                     -->
 	                    AND A2.DEATH_YN = '1'
 	            ) AS DEATH_CNT,
 	           C.LV
@@ -842,7 +915,9 @@
 	       AND A.ITEM_ID   = B.ITEM_ID
 	       AND A.DEL_YN    = '0'
 	       AND C.USER_NAME = A.USER_NAME
+	       <!-- 
 	       AND C.ROOM_NAME = A.ROOM_NAME
+	        -->
 	     GROUP BY A.USER_NAME, A.ROOM_NAME, C.LV
 	     ORDER BY TOT_SP DESC
 	</select>
@@ -873,7 +948,9 @@
 	    ON m.MON_NO = ob.TARGET_MON_LV
 	  JOIN TBOT_POINT_NEW_USER u
 	    ON u.USER_NAME = ob.USER_NAME
+	   <!-- 
 	   AND u.ROOM_NAME = ob.ROOM_NAME
+	    -->
 	  WHERE NOT EXISTS (
 	        SELECT 1
 	          FROM TBOT_POINT_NEW_BATTLE_LOG b2
@@ -922,10 +999,11 @@
 	          FROM TBOT_POINT_RANK A
 	         WHERE A.NEW_YN = '1'
 	           AND A.USER_NAME = #{userName}
+	           <!-- 
 	           <if test="roomName != null and roomName != '람쥐봇 문의방'">
 	           AND ROOM_NAME = #{roomName}
 	           </if>
-	           
+	            -->
 	           ) +
 	       (SELECT SUM(CASE
 	                     WHEN A.GAIN_TYPE = 'BUY_MERCHANT' THEN
@@ -935,9 +1013,11 @@
 	                   END)
 	          FROM TBOT_POINT_NEW_INVENTORY A, TBOT_POINT_NEW_ITEM B
 	         WHERE A.USER_NAME LIKE #{userName}
+	         <!-- 
 	         <if test="roomName != null and roomName != '람쥐봇 문의방'">
 	           AND ROOM_NAME = #{roomName}
 	         </if>
+	          -->
 	           AND A.GAIN_TYPE NOT IN ('DROP', 'DROP3','DROP5', 'STEAL')
 	           AND A.ITEM_ID = B.ITEM_ID
 	           AND DEL_YN = '0')
@@ -985,7 +1065,9 @@
 	          JOIN TBOT_POINT_NEW_MON_INFO mi
 	            ON b.TARGET_MON_LV = mi.MON_NO     <!-- 몬스터 레벨/번호 매핑 -->
 	         WHERE b.USER_NAME = #{userName}
+	           <!-- 
 	           AND b.ROOM_NAME = #{roomName}
+	            -->
 	           AND NVL(b.NOW_YN, '1') = '1'        <!-- 현재 진행중 전투 -->
 	           AND NVL(b.KILL_YN, '0') = '0'       <!-- 아직 안 죽은 몬스터 -->
 	         ORDER BY b.INSERT_DATE DESC           <!-- 가장 최근 전투 로그 -->
@@ -998,9 +1080,11 @@
 	           COUNT(1) AS CNT
 	      FROM TBOT_POINT_RANK
 	     WHERE NEW_YN = '1'
+	     <!-- 
 	       <if test="roomName != null and roomName != '람쥐봇 문의방'">
            AND ROOM_NAME = #{roomName}
 	       </if>
+	        -->
 	       AND USER_NAME = #{userName}
 	       AND CMD LIKE 'ACHV_%'
 	     GROUP BY CMD
@@ -1024,7 +1108,9 @@
     SELECT NVL(SUM(QTY), 0)
       FROM TBOT_POINT_NEW_INVENTORY
      WHERE USER_NAME = #{userName}
+       <!-- 
        AND ROOM_NAME = #{roomName}
+        -->
        AND ITEM_ID   = #{itemId}
        AND DEL_YN    = '0'
 	</select>
@@ -1034,7 +1120,9 @@
 	    UPDATE TBOT_POINT_NEW_INVENTORY
 	       SET DEL_YN = '1'
 	     WHERE USER_NAME = #{userName}
+	     <!-- 
 	       AND ROOM_NAME = #{roomName}
+	        -->
 	       AND ITEM_ID   = #{itemId}
 	       AND DEL_YN    = '0'
 	       AND ROWNUM    = 1
@@ -1061,7 +1149,9 @@
            SELECT DISTINCT ITEM_ID
              FROM TBOT_POINT_NEW_INVENTORY
             WHERE USER_NAME = #{userName}
+              <!-- 
               AND ROOM_NAME = #{roomName}
+               -->
               AND DEL_YN = '0'
        )
 	</select>
@@ -1117,7 +1207,9 @@
 	     WHERE NEW_YN = '1'
 	       AND CMD = 'BAG_OPEN_SP'
 	       AND USER_NAME = #{userName}
+	       <!-- 
 	       AND ROOM_NAME = #{roomName}
+	        -->
 	</select>
 
 	<!-- 최근 5개의 BAG_OPEN_SP 합계 -->
@@ -1129,7 +1221,9 @@
 	             WHERE NEW_YN   = '1'
 	               AND CMD      = 'BAG_OPEN_SP'
 	               AND USER_NAME = #{userName}
+	               <!-- 
 	               AND ROOM_NAME = #{roomName}
+	                -->
 	             ORDER BY INSERT_DATE DESC
 	          ) x
 	     WHERE ROWNUM &lt;= 10
@@ -1140,9 +1234,11 @@
 	  SELECT NVL(SUM(QTY), 0)
 	  FROM TBOT_POINT_NEW_INVENTORY
 	  WHERE USER_NAME = #{userName}
+	  <!-- 
 	  <if test="roomName != null and roomName != '람쥐봇 문의방'">
 	    AND ROOM_NAME = #{roomName}
 	  </if>
+	   -->
 	  AND GAIN_TYPE IN ('DROP','DROP3','DROP5','STEAL')
 	  AND NVL(DEL_YN, '0') = '1'
 	</select>
@@ -1153,7 +1249,9 @@
 	           SUM(QTY) AS TOTAL_QTY
 	    FROM   TBOT_POINT_NEW_INVENTORY
 	    WHERE  USER_NAME = #{userName}
+	    <!-- 
 	      AND  ROOM_NAME = #{roomName}
+	       -->
 	      AND  GAIN_TYPE IN ('DROP3', 'DROP5')
 	    GROUP BY GAIN_TYPE
 	</select>
@@ -1164,7 +1262,9 @@
 	    SELECT NVL(SUM(job_skill_yn), 0) AS totalSkillUse
 	      FROM TBOT_POINT_NEW_BATTLE_LOG
 	     WHERE USER_NAME = #{userName}
+	     <!-- 
 	       AND ROOM_NAME = #{roomName}
+	        -->
 	       AND JOB       = #{job}
 	</select>
 	
@@ -1176,7 +1276,9 @@
 	        NVL(SUM(job_skill_yn), 0) AS TOTAL_SKILL_USE
 	    FROM TBOT_POINT_NEW_BATTLE_LOG
 	    WHERE USER_NAME = #{userName}
+	    <!-- 
 	      AND ROOM_NAME = #{roomName}
+	       -->
 	    GROUP BY JOB
 	</select>
 	
@@ -1185,9 +1287,11 @@
 	           CRI_DMG_BONUS
 	      FROM TBOT_POINT_NEW_DAILY_BUFF
 	     WHERE USER_NAME = #{userName}
+	     <!-- 
 	       <if test="roomName != null and roomName != '람쥐봇 문의방'">
            AND ROOM_NAME = #{roomName}
          </if>
+          -->
 	       AND BUFF_DATE = TRUNC(SYSDATE)
 	</select>
 	
@@ -1201,7 +1305,7 @@
 	               #{criDmgBonus} AS CRI_DMG_BONUS
 	          FROM DUAL
 	    ) S
-	    ON (T.ROOM_NAME = S.ROOM_NAME AND T.USER_NAME = S.USER_NAME AND T.BUFF_DATE = S.BUFF_DATE)
+	    ON ( <!--  T.ROOM_NAME = S.ROOM_NAME  AND --> T.USER_NAME = S.USER_NAME AND T.BUFF_DATE = S.BUFF_DATE)
 	    WHEN MATCHED THEN
 	        UPDATE SET T.ATK_BONUS     = S.ATK_BONUS,
 	                   T.CRI_DMG_BONUS = S.CRI_DMG_BONUS,

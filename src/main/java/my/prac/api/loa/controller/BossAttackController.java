@@ -170,7 +170,7 @@ public class BossAttackController {
 	    ctx.targetUser = targetUser;
 
 	    // ② 유저 조회
-	    User u = botNewService.selectUser(targetUser, roomName);
+	    User u = botNewService.selectUser(targetUser,null);
 	    if (u == null) {
 	        ctx.success = false;
 	        ctx.errorMessage = "❌ 유저 정보를 찾을 수 없습니다.";
@@ -268,11 +268,7 @@ public class BossAttackController {
 	    wm.put("userName", targetUser);
 	    wm.put("roomName", roomName);
 	    int weaponLv = 0;
-	    try {
-	        weaponLv = botService.selectWeaponLvCheck(wm);
-	    } catch (Exception ignore) {
-	        weaponLv = 0;
-	    }
+	    
 	    int weaponBonus = getWeaponAtkBonus(weaponLv); // 25강부터 +1
 
 	    ctx.weaponLv     = weaponLv;
@@ -626,7 +622,7 @@ public class BossAttackController {
 	    if (roomName.isEmpty() || userName.isEmpty())
 	        return "방/유저 정보가 누락되었습니다.";
 
-	    User u = botNewService.selectUser(userName, roomName);
+	    User u = botNewService.selectUser(userName, null);
 	    if (u == null)
 	        return "유저 정보를 찾을 수 없습니다.";
 
@@ -1202,7 +1198,7 @@ public class BossAttackController {
 		boolean master = false;
 		if (roomName.isEmpty() || userName.isEmpty()) return "방/유저 정보가 누락되었습니다.";
 		if (input.isEmpty()) {
-		    User u = botNewService.selectUser(userName, roomName);
+		    User u = botNewService.selectUser(userName, null);
 		    int userLv = (u != null ? u.lv : 1);
 
 		    List<Monster> monsters = botNewService.selectAllMonsters();
@@ -1232,7 +1228,7 @@ public class BossAttackController {
 
 		if (m == null) {
 			 // 유저 레벨 조회 (없으면 Lv1 기준)
-		    User u = botNewService.selectUser(userName, roomName);
+		    User u = botNewService.selectUser(userName, null);
 		    int userLv = (u != null ? u.lv : 1);
 
 		    List<Monster> monsters = botNewService.selectAllMonsters();
@@ -1247,7 +1243,7 @@ public class BossAttackController {
 		    return sb.toString();
 		}
 		
-		User u = botNewService.selectUser(userName, roomName);
+		User u = botNewService.selectUser(userName, null);
 		if (u == null) {
 		    botNewService.insertUserWithTargetTx(userName, roomName, m.monNo);
 		    return userName + "님, 공격 타겟을 " + m.monName + "(MON_NO=" + m.monNo + ") 으로 설정했습니다." + NL
@@ -2516,7 +2512,7 @@ public class BossAttackController {
 	         +NL+"/판매 기타 ->잡템전체"+NL+"/판매 장비 ->장비전체";
 	    }
 
-	    User u = botNewService.selectUser(userName, roomName);
+	    User u = botNewService.selectUser(userName, null);
 	    //String job = (u == null || u.job == null) ? "" : u.job.trim();
 	    //boolean isMerchant = true;
 
@@ -4941,7 +4937,7 @@ public class BossAttackController {
 	    List<Monster> mons = botNewService.selectAllMonsters();
 	    
 	    // ⭐ NEW: 내 레벨 한 번만 조회
-	    User u = botNewService.selectUser(userName, roomName);
+	    User u = botNewService.selectUser(userName, null);
 	    int myLv = (u == null ? 0 : u.lv);
 
 	    for (Monster m : mons) {
@@ -5470,19 +5466,7 @@ public class BossAttackController {
 
 	    atkMax += bAtkMax;
 
-	    // -------------------------------
-	    // 3) 무기 강화 (selectWeaponLvCheck 사용)
-	    // -------------------------------
-	    int weaponLv = 0;
-	    try {
-	    	HashMap<String,Object> map =new HashMap<>();
-	    	map.put("userName", u.userName);
-	    	map.put("roomName", roomName);
-	        int w = botService.selectWeaponLvCheck(map);
-	        weaponLv = w;
-	    } catch (Exception ignore) {}
-
-	    int weaponBonus = getWeaponAtkBonus(weaponLv); // 25강부터 +1
+	    int weaponBonus = getWeaponAtkBonus(0); // 25강부터 +1
 	    // 네 구조: max ATK 는 무기레벨 만큼 +1 per level
 	    atkMax += weaponBonus;
 
