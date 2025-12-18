@@ -177,6 +177,8 @@ public class BossAttackController {
 	        return ctx;
 	    }
 
+	    ctx.isReturnUser = botNewService.isReturnUser(targetUser);
+	    
 	    ctx.user = u;
 	    ctx.job  = (u.job == null ? "" : u.job.trim());
 
@@ -591,9 +593,14 @@ public class BossAttackController {
 		 // ① 유저의 BAG_OPEN_SP 기록 개수 조회
 	    int totalCount = botNewService.selectBagOpenSpCount(userName, roomName);
 
+	    
+
+	    // 🔥 누적 SP 기반 상한 적용
+		int cap = botNewService.selectBagRewardCap(userName);
+	 
 	    // ② 10개 미만이면 천장 적용 안 함 → 기본 200~100000 룰렛
 	    if (totalCount < 10) {
-	        return pickBiasedSp(5000, 100000);
+	        return pickBiasedSp(5000, cap);
 	    }
 
 	    // ③ 최근 10개 SP 합계 조회
@@ -601,7 +608,6 @@ public class BossAttackController {
 
 	    // ④ 최근 10개 합계가 5만 미만일 때만 천장 발동
 	    int minSp;
-	    int maxSp = 100000;
 
 	    if (recentSum < 50000) {
 	        minSp = 50000;   // 천장 발동: 50,000 ~ 100,000 룰렛
@@ -609,7 +615,7 @@ public class BossAttackController {
 	        minSp = 5000;     // 평소 확률
 	    }
 
-	    return pickBiasedSp(minSp, maxSp);
+	    return pickBiasedSp(minSp, cap);
 	}
 
 	/* ===== Public APIs ===== */
@@ -2254,7 +2260,7 @@ public class BossAttackController {
 	    }
 
 	    // 14) DB 반영 + 레벨업 처리
-	    LevelUpResult up = persist(userName, roomName, u, m, flags, calc, res, effHpMax);
+	    LevelUpResult up = persist(userName, roomName, u, m, flags, calc, res, effHpMax,ctx.isReturnUser);
 	    String bonusMsg = "";
 	    String blessMsg = "";
 
@@ -2348,6 +2354,9 @@ public class BossAttackController {
 
 	    if (bagDropMsg != null && !bagDropMsg.isEmpty()) {
 	        msg += NL + bagDropMsg;
+	    }
+	    if (ctx.isReturnUser) {
+	    	msg += NL + "[복귀자 보너스]드랍x2 적용중";
 	    }
 
 	    try {
@@ -3959,7 +3968,8 @@ public class BossAttackController {
 	/** HP/EXP/LV + 로그 저장 (DB에는 '순수 레벨 기반 스탯'만 반영) */
 	private LevelUpResult persist(String userName, String roomName,
 	                              User u, Monster m,
-	                              Flags f, AttackCalc c, Resolve res,int effHpMax) {
+	                              Flags f, AttackCalc c, Resolve res,int effHpMax,
+	                              boolean isReturnUser ) {
 
 	    // 1) 최종 HP 계산 (전투 데미지 반영)
 	    u.hpCur = Math.max(0, u.hpCur - c.monDmg);
@@ -4016,7 +4026,11 @@ public class BossAttackController {
 	                    inv.put("userName",  userName);
 	                    inv.put("roomName",  roomName);
 	                    inv.put("itemId",    itemId);
-	                    inv.put("qty",       1);
+	                    if (isReturnUser) {
+	                    	inv.put("qty",       2);
+	                    }else {
+	                    	inv.put("qty",       1);
+	                    }
 	                    inv.put("delYn",     "0");
 	                    inv.put("gainType", gainType);
 	                    botNewService.insertInventoryLogTx(inv);

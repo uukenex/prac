@@ -58,4 +58,7 @@ public class UserBattleContext {
     public int dailyAtkBonus;
     public int dailyCriDmgBonus;
     public boolean isJobMaster;
+    
+    public boolean isReturnUser;
+    
 }

@@ -1371,4 +1371,81 @@
 		 WHERE MASTER_DATE = TRUNC(SYSDATE)
 		 ORDER BY JOB ASC, ATK_CNT DESC
 	</select>
+	
+	<select id="selectIsReturnUser" parameterType="map" resultType="string">
+	    SELECT CASE
+	             WHEN past_cnt >= 500
+	              AND recent_cnt &lt;= 500
+	              AND today_cnt >= 1
+	             THEN 'Y'
+	             ELSE 'N'
+	           END AS IS_RETURN_USER
+	    FROM (
+	        SELECT
+	            /* 과거 활발 */
+	            (SELECT COUNT(*)
+	               FROM TBOT_POINT_NEW_BATTLE_LOG
+	              WHERE USER_NAME = #{userName}
+	                AND INSERT_DATE >= TRUNC(SYSDATE) - 40
+	                AND INSERT_DATE &lt;  TRUNC(SYSDATE) - 5
+	            ) AS past_cnt,
+	
+	            /* 최근 침체 */
+	            (SELECT COUNT(*)
+	               FROM TBOT_POINT_NEW_BATTLE_LOG
+	              WHERE USER_NAME = #{userName}
+	                AND INSERT_DATE >= TRUNC(SYSDATE) - 5
+	                AND INSERT_DATE &lt;  TRUNC(SYSDATE) - 2
+	            ) AS recent_cnt,
+	
+	            /* 복귀 트리거 */
+	            (SELECT COUNT(*)
+	               FROM TBOT_POINT_NEW_BATTLE_LOG
+	              WHERE USER_NAME = #{userName}
+	                AND INSERT_DATE >= TRUNC(SYSDATE) - 2
+	            ) AS today_cnt
+	        FROM dual
+	    )
+	</select>
+	
+	<select id="selectBagRewardCap" parameterType="map" resultType="int">
+	    SELECT
+	        CASE
+	            WHEN total_sp &lt; 5000000 THEN 50000
+	            ELSE
+	                50000
+	                + TRUNC((total_sp - 5000000) / 1000000) * 10000
+	        END AS BAG_REWARD_CAP
+	    FROM (
+	        SELECT
+	            NVL(inv_sp, 0) + NVL(rank_sp, 0) AS total_sp
+	        FROM
+	            (
+	                /* 인벤토리 기반 누적 SP */
+	                SELECT
+	                    SUM(
+	                        CASE
+	                            WHEN A.GAIN_TYPE = 'BUY_MERCHANT' THEN
+	                                ROUND(B.ITEM_SELL_PRICE * 0.9) * A.QTY
+	                            ELSE
+	                                B.ITEM_SELL_PRICE * A.QTY
+	                        END
+	                    ) AS inv_sp
+	                FROM TBOT_POINT_NEW_INVENTORY A
+	                     JOIN TBOT_POINT_NEW_ITEM B
+	                       ON A.ITEM_ID = B.ITEM_ID
+	                WHERE A.GAIN_TYPE NOT IN ('DROP', 'DROP3', 'DROP5', 'STEAL')
+	                  AND A.DEL_YN = '0'
+	                  AND A.USER_NAME = #{userName}
+	            ),
+	            (
+	                /* 랭킹 기반 누적 SP */
+	                SELECT
+	                    SUM(A1.SCORE) AS rank_sp
+	                FROM TBOT_POINT_RANK A1
+	                WHERE A1.NEW_YN = '1'
+	                  AND A1.USER_NAME = #{userName}
+	            )
+	    )
+	</select>
 </mapper>

@@ -486,4 +486,32 @@ public class BotNewServiceImpl implements BotNewService {
     	return botNewDAO.selectTodayJobMastersAll();
     }
     
+    @Override
+    public boolean isReturnUser(String userName) {
+
+        HashMap<String, Object> map = new HashMap<>();
+        map.put("userName", userName);
+
+        try {
+            String yn = botNewDAO.selectIsReturnUser(map);
+            return "Y".equalsIgnoreCase(yn);
+        } catch (Exception e) {
+            // 복귀자 판정 실패 시 보너스 미적용
+            return false;
+        }
+    }
+    
+    @Override
+    public int selectBagRewardCap(String userName) {
+
+        HashMap<String, Object> map = new HashMap<>();
+        map.put("userName", userName);
+
+        try {
+            return botNewDAO.selectBagRewardCap(map);
+        } catch (Exception e) {
+            // 가방 보상 계산 실패 시 안전 상한
+            return 50000;
+        }
+    }
 }

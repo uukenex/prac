@@ -220,4 +220,7 @@ public interface BotNewDAO {
 	
 	List<HashMap<String, Object>> selectTodayJobMastersAll();
 	
+    String selectIsReturnUser(HashMap<String, Object> map);
+    
+    int selectBagRewardCap(HashMap<String, Object> map);
 }

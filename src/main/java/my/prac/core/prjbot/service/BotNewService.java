@@ -160,6 +160,9 @@ public interface BotNewService {
     int createTodayJobMastersFromYesterdayAll() throws Exception;
     int selectIsTodayJobMasterAll(String userName, String job) throws Exception;
     List<HashMap<String, Object>> selectTodayJobMastersAll();
+    
+    boolean isReturnUser(String userName);
+    int selectBagRewardCap(String userName);
 } 
 
 	
