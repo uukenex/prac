@@ -6345,7 +6345,7 @@ public class BossAttackController {
 	        	
 	        	if (ThreadLocalRandom.current().nextDouble() < evadeRate) {
 	                String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
-	                calc.patternMsg = baseMsg + "어세신의 날렵한 회피! 피해를 받지 않았습니다.";
+	                calc.patternMsg = baseMsg + NL+"어쎄신의 날렵한 회피! 피해를 받지 않았습니다.";
 	                calc.monDmg = 0;
 	            }
 
