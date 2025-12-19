@@ -2331,7 +2331,7 @@ public class BossAttackController {
 	    if (stealMsg != null && !stealMsg.isEmpty()) {
 	        botExtra.append(NL).append(stealMsg);
 	    }
-
+	    
 	    String msg = buildAttackMessage(
 	            userName, u, m, flags, calc, res, up,
 	            monHpRemainBefore, monMaxHp,
@@ -2339,7 +2339,8 @@ public class BossAttackController {
 	            weaponLv, weaponBonus,
 	            effHpMax,
 	            midExtra.toString(),
-	            botExtra.toString()
+	            botExtra.toString(),
+	            ctx.isReturnUser
 	    );
 
 	    if (!bonusMsg.isEmpty()) {
@@ -2367,9 +2368,7 @@ public class BossAttackController {
 	    if (bagDropMsg != null && !bagDropMsg.isEmpty()) {
 	        msg += NL + bagDropMsg;
 	    }
-	    if (ctx.isReturnUser) {
-	    	msg += NL + "[복귀자 보너스]드랍x2 적용중";
-	    }
+	    
 
 	    try {
 	        botNewService.execSPMsgTest(map);
@@ -4156,7 +4155,8 @@ public class BossAttackController {
 	        int weaponLv, int weaponBonus,
 	        int displayHpMax, // ← 표시용 HP Max(아이템 포함)
 	        String midExtraLines,
-	        String botExtraLines
+	        String botExtraLines,
+	        boolean isReturnUser
 	) {
 	    StringBuilder sb = new StringBuilder();
 
@@ -4210,12 +4210,17 @@ public class BossAttackController {
 	            String dropName = (m.monDrop == null ? "" : m.monDrop.trim());
 	            if (!dropName.isEmpty()) {
 	            	if ("5".equals(res.dropCode)) {
-	                    sb.append("✨ 드랍 획득: 어둠").append(dropName).append(NL);
+	                    sb.append("✨ 드랍 획득: 어둠").append(dropName);
 	                } else if ("3".equals(res.dropCode)) {
-	                    sb.append("✨ 드랍 획득: 빛").append(dropName).append(NL);
+	                    sb.append("✨ 드랍 획득: 빛").append(dropName);
 	                } else {
-	                    sb.append("✨ 드랍 획득: ").append(dropName).append(NL);
+	                    sb.append("✨ 드랍 획득: ").append(dropName);
 	                }
+	            	
+	            	if(isReturnUser) {
+	            	    	sb.append("x2 (복귀bonus) ");
+	            	}
+	            	sb.append(NL);
 	            }
 	        }
 
