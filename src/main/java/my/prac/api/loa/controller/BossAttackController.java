@@ -7111,7 +7111,7 @@ public class BossAttackController {
 	    JOB_DEFS.put("어쎄신", new JobDef(
     		"어쎄신",
     		"▶ 그의 암습은 누구도 피할수없다.상대가 누구일 지라도,기본데미지*1.8",
-    		"⚔ 공격 시 STEAL, 몬스터 기본 공격 회피, 필살기를 확률 회피"
+    		"⚔ 공격 시 STEAL(Kill에 따라 증가), 몬스터 기본 공격 회피, 필살기를 확률 회피"
 		));
 	    /*
 	    JOB_DEFS.put("용투사", new JobDef(
