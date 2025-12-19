@@ -6181,11 +6181,13 @@ public class BossAttackController {
 	        		
 	        		break;
 	        	default:
-	        		if(baseAtk>0) {
-    					calc.patternMsg = m.monName + " (이)가 날벼락에 맞았습니다!";
-    				}else {
-    					calc.patternMsg = m.monName + " (이)가 배회합니다";
-    				}
+	        		if(!calc.jobSkillUsed) {
+	        			if(baseAtk>0) {
+	        				calc.patternMsg = m.monName + " (이)가 날벼락에 맞았습니다!";
+	        			}else {
+	        				calc.patternMsg = m.monName + " (이)가 배회합니다";
+	        			}
+	        		}
 	        		break;
 	        	}
 	        }
