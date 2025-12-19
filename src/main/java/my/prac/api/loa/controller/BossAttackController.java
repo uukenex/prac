@@ -4175,6 +4175,7 @@ public class BossAttackController {
 	    if (flags.atkCrit) sb.append("✨ 치명타!").append(NL);
 	    
 	 // 🎯 궁수 저격 히든: 데미지 수치는 비공개, 결과만 표기
+	    /*
 	    if (flags.snipe) {
 	        int monHpAfter = Math.max(0, monHpRemainBefore - calc.atkDmg);
 
@@ -4260,7 +4261,8 @@ public class BossAttackController {
 	        // ✅ 여기서 끝: 저격일 땐 일반 데미지 표현 블록으로 내려가지 않음
 	        return sb.toString();
 	    }
-
+	     */
+	    
 	    // 데미지
 	    sb.append("⚔ 데미지: (").append(shownAtkMin).append("~").append(shownAtkMax).append(" ⇒ ");
 	    if (flags.atkCrit && calc.baseAtk > 0 && calc.critMultiplier >= 1.0) {
@@ -4302,6 +4304,12 @@ public class BossAttackController {
 	            } else {
 	                sb.append("✨ 드랍 획득: ").append(dropName).append(NL);
 	            }
+	        	
+	        	if(isReturnUser) {
+        	    	sb.append("x2 (복귀bonus) ");
+	        	}
+	        	sb.append(NL);
+	        	
 	        }
 	    }
 
