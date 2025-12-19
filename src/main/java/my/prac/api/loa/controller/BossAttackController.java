@@ -1829,6 +1829,8 @@ public class BossAttackController {
 	        jobDmgMul = 1.2;   // 전사: 데미지 1.2배
 	    } else if ("검성".equals(job)) {
 	        jobDmgMul = 2.0;   // 
+	    } else if ("제너럴".equals(job)) {
+	        jobDmgMul = 1.2;   //
 	    } else if ("처단자".equals(job)) {
 	        jobDmgMul = 1.4;   
 	    } else if ("용사".equals(job)) {
@@ -5823,12 +5825,12 @@ public class BossAttackController {
 	    			baseAtk = (effAtkMin + effAtkMax + 1) /2;
 		        	if (ThreadLocalRandom.current().nextDouble() < 0.15) {
 		        		out.dmgCalcMsg += "[헤드샷] 보너스 DMG "+baseAtk+"→";
-		        		baseAtk = (int)Math.round(baseAtk * 4.25);
+		        		baseAtk = (int)Math.round(baseAtk * 3.25);
 		        		out.dmgCalcMsg += baseAtk+NL;
 		        		
 		        	}else {
 		        		out.dmgCalcMsg += "조준 보너스 DMG "+baseAtk+"→";
-		        		baseAtk = (int)Math.round(baseAtk * 2.75);
+		        		baseAtk = (int)Math.round(baseAtk * 1.85);
 		        		out.dmgCalcMsg += baseAtk+NL;
 		        	}
 		        	calc.jobSkillUsed = true;
@@ -5838,7 +5840,7 @@ public class BossAttackController {
 	    		case 1:
 	    			if (ThreadLocalRandom.current().nextDouble() < 0.15) {
 		        		out.dmgCalcMsg += "[헤드샷] 보너스 DMG "+baseAtk+"→";
-		        		baseAtk = (int)Math.round(baseAtk * 2.25);
+		        		baseAtk = (int)Math.round(baseAtk * 1.65);
 		        		out.dmgCalcMsg += baseAtk+NL;
 	    			}
 	    			out.dmgCalcMsg += "회피기동타격..!"+NL;
@@ -5846,22 +5848,38 @@ public class BossAttackController {
 	    			calc.jobSkillUsed = true;
 	    			break;
     			default:
-    				if (ThreadLocalRandom.current().nextDouble() < 0.10) {
-    					out.dmgCalcMsg += "폭격 지원 요청 중.. 몬스터의 무력화..!";
-    		        	baseAtk =(int)Math.round(baseAtk * 5);
-    		        	flags.monPattern = 1;
+    				
+    				if (ThreadLocalRandom.current().nextDouble() < 0.50) {
+    					//회피기동타격 
+    					if (ThreadLocalRandom.current().nextDouble() < 0.15) {
+    		        		out.dmgCalcMsg += "[헤드샷] 보너스 DMG "+baseAtk+"→";
+    		        		baseAtk = (int)Math.round(baseAtk * 1.65);
+    		        		out.dmgCalcMsg += baseAtk+NL;
+    	    			}
+    	    			out.dmgCalcMsg += "회피기동타격..!"+NL;
+    	    			
+    	    			calc.jobSkillUsed = true;
     				}else {
-    					baseAtk=0;
-        				crit=false;
-    					out.dmgCalcMsg += "저격 위치 확보 중.. ";
-    		        	baseAtk =0;
-    		        	flags.monPattern = 1;
+    					//저격모드
+    					if (ThreadLocalRandom.current().nextDouble() < 0.10) {
+        					out.dmgCalcMsg += "폭격 지원 요청 중.. 몬스터의 무력화..!";
+        		        	baseAtk =(int)Math.round(baseAtk * 3);
+        		        	flags.monPattern = 1;
+        				}else {
+        					baseAtk=0;
+            				crit=false;
+        					out.dmgCalcMsg += "저격 위치 확보 중.. ";
+        		        	baseAtk =0;
+        		        	flags.monPattern = 1;
+        				}
     				}
+    				
+    				
     				break;
 	    	}
 	    }
 	    if ("검성".equals(job)) {
-	    	if (ThreadLocalRandom.current().nextDouble() < 0.13) {
+	    	if (ThreadLocalRandom.current().nextDouble() < 0.065) {
         		out.dmgCalcMsg += "바람가르기 ! "+baseAtk+"→";
         		baseAtk = (int)Math.round(baseAtk * 5);
         		out.dmgCalcMsg += baseAtk+NL;
@@ -6959,7 +6977,7 @@ public class BossAttackController {
 	        "제너럴",
 	        "▶ 블랙필드에서는 누구도 따라잡을자가 없다!",
 	        "⚔ 조우 은엄폐-저격 이후 * 회피기동전술을 다회 반복"+NL
-	        +"- 조우시 hidden -, *조우 은엄폐, *저격(13% headShot) 시 모든 행동 무시, *회피기동전술 시 - hidden -"+NL
+	        +"- 조우시 hidden -, *조우 은엄폐, *저격(13% headShot) 시 모든 행동 무시, *회피기동전술 시 - hidden -,기본공격력 * 1.2"+NL
 	        +"◎선행조건 저격수,전사 직업으로 각 300회 공격"
 	    ));
 	    
