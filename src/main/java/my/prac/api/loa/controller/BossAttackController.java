@@ -2589,6 +2589,9 @@ public class BossAttackController {
 	    final String userName = Objects.toString(map.get("userName"), "");
 	    final String roomName = Objects.toString(map.get("roomName"), "");
 	    
+	    boolean flag1 = false;
+	    boolean flag2 = false;
+	    
 	    if(roomName.equals("람쥐봇 문의방")) {
 			
 			if(userName.equals("일어난다람쥐/카단")) {
@@ -2801,9 +2804,13 @@ public class BossAttackController {
 	            unitPrice = (int)Math.floor(unitPrice * 0.5);
 	        }
 	        
-	        // ✅ 저레벨(60 미만) 기타 아이템 판매 보너스 (2배)
-	        if (!isEquip && u.lv < 60) {
-	            unitPrice *= 2;
+	        
+	        if (!isEquip && u.totalSp < 10000000) {
+	        	unitPrice *= 2;
+	        	flag1 = true;
+	        }else if (!isEquip && u.totalSp < 20000000) {
+	            unitPrice *= 1.5;
+	            flag2 = true;
 	        }
 
 	        if (qty == take) botNewService.updateInventoryDelByRowId(rid);
@@ -2910,9 +2917,13 @@ public class BossAttackController {
 	      .append("- 현재 포인트: ").append(curPointStr).append(NL)
 	      .append(remainSb.toString());
 
-	    if (u.lv < 60) {
+	    if (flag1) {
 	        sb.append(NL)
-	          .append("✨ 레벨 보너스 적용! (Lv.60 미만 기타 아이템 판매가 x2)");
+	          .append("✨지원보너스 적용! (10,000,000sp 까지 기타 아이템 판매가 x2)");
+	    }
+	    if (flag2) {
+	    	sb.append(NL)
+	    	  .append("✨지원보너스 적용! (20,000,000sp 까지 기타 아이템 판매가 x1.5)");
 	    }
 	    
 		 // 👇 여기 추가
@@ -2937,6 +2948,9 @@ public class BossAttackController {
 	private String sellAllByCategoryFiltered(String userName, String roomName, User u, boolean equipOnly, String slotKey) {
 	    final int SHINY_MULTIPLIER = 5;
 	    final String NL = BossAttackController.NL;
+	    boolean flag1 = false;
+	    boolean flag2 = false;
+	    
 
 	    List<HashMap<String, Object>> rows = botNewService.selectAllInventoryRowsForSale(userName, roomName);
 	    if (rows == null || rows.isEmpty()) {
@@ -3014,9 +3028,12 @@ public class BossAttackController {
 	        if (isShinyRow || isDarkRow) unitPrice = basePrice * SHINY_MULTIPLIER;
 	        if (isStealRow) unitPrice = (int)Math.floor(unitPrice * 0.5);
 
-	        // ✅ 저레벨(60 미만) 기타 아이템 판매 보너스 (2배)
-	        if (!isEquip && u.lv < 60) {
-	            unitPrice *= 2;
+	        if (!isEquip && u.totalSp < 10000000) {
+	        	unitPrice *= 2;
+	        	flag1 = true;
+	        }else if (!isEquip && u.totalSp < 20000000) {
+	            unitPrice *= 1.5;
+	            flag2 = true;
 	        }
 	        
 	        int take = qty;
@@ -3063,10 +3080,16 @@ public class BossAttackController {
 	      .append("- 합계 적립: ").append(totalSp).append("sp").append(NL)
 	      .append("- 현재 포인트: ").append(curPointStr);
 
-	    if (u.lv < 60) {
+	    if (flag1) {
 	        sb.append(NL)
-	          .append("✨ 레벨 보너스 적용! (Lv.60 미만 기타 아이템 판매가 x2)");
+	          .append("✨지원보너스 적용! (10,000,000sp 까지 기타 아이템 판매가 x2)");
 	    }
+	    if (flag2) {
+	    	sb.append(NL)
+	    	  .append("✨지원보너스 적용! (20,000,000sp 까지 기타 아이템 판매가 x1.5)");
+	    }
+	    
+	    
 	    if (soldNormal > 0) sb.append(NL).append("  · 일반 아이템: ").append(soldNormal).append("개");
 	    if (soldShiny  > 0) sb.append(NL).append("  · 빛 아이템: ").append(soldShiny).append("개");
 	    if (soldDark   > 0) sb.append(NL).append("  · 어둠 아이템: ").append(soldDark).append("개");

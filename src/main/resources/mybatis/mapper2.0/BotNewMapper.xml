@@ -4,37 +4,65 @@
 
   <!-- 1) 유저 -->
   <select id="selectUser" resultType="my.prac.core.game.dto.User">
-	  SELECT *
+	 SELECT *
 	  FROM (
-	      SELECT USER_NAME,
-	             ROOM_NAME,
-	             LV,
-	             EXP_CUR,
-	             EXP_NEXT,
-	             HP_CUR,
-	             HP_MAX,
-	             HP_REGEN,
-	             ATK_MIN,
-	             ATK_MAX,
-	             CRIT_RATE,
-	             CRIT_DMG,
-	             TARGET_MON,
-	             INSERT_DATE,
-	             JOB,
-	             JOB_CHANGE_DATE
-	      FROM TBOT_POINT_NEW_USER
-	      WHERE USER_NAME = #{userName}
-	        <!-- 문의방이 아니면 기존처럼 roomName 고정 -->
-	        <!-- 
-	        <if test="roomName != null and roomName != '람쥐봇 문의방'">
-	          AND ROOM_NAME = #{roomName}
-	        </if>
-	         -->
+	      SELECT
+	          U.USER_NAME,
+	          U.ROOM_NAME,
+	          U.LV,
+	          U.EXP_CUR,
+	          U.EXP_NEXT,
+	          U.HP_CUR,
+	          U.HP_MAX,
+	          U.HP_REGEN,
+	          U.ATK_MIN,
+	          U.ATK_MAX,
+	          U.CRIT_RATE,
+	          U.CRIT_DMG,
+	          U.TARGET_MON,
+	          U.INSERT_DATE,
+	          U.JOB,
+	          U.JOB_CHANGE_DATE,
+	
+	          /* 🔥 전체 누적 SP */
+	          NVL(SP_SUM.TOTAL_SP, 0) AS TOTAL_SP
+	
+	      FROM TBOT_POINT_NEW_USER U
+	
+	      /* 🔥 누적 SP 집계 */
+	      LEFT JOIN (
+	          SELECT
+	              A.USER_NAME,
+	              SUM(
+	                  CASE
+	                      WHEN A.GAIN_TYPE = 'BUY_MERCHANT' THEN
+	                          ROUND(B.ITEM_SELL_PRICE * 0.9) * A.QTY
+	                      ELSE
+	                          B.ITEM_SELL_PRICE * A.QTY
+	                  END
+	              )
+	              + NVL((
+	                  SELECT SUM(R.SCORE)
+	                  FROM TBOT_POINT_RANK R
+	                  WHERE R.NEW_YN = '1'
+	                    AND R.USER_NAME = A.USER_NAME
+	              ), 0) AS TOTAL_SP
+	          FROM TBOT_POINT_NEW_INVENTORY A
+	               JOIN TBOT_POINT_NEW_ITEM B
+	                 ON A.ITEM_ID = B.ITEM_ID
+	          WHERE A.GAIN_TYPE NOT IN ('DROP', 'DROP3', 'DROP5', 'STEAL')
+	            AND A.DEL_YN = '0'
+	          GROUP BY A.USER_NAME
+	      ) SP_SUM
+	        ON SP_SUM.USER_NAME = U.USER_NAME
+	
+	      WHERE U.USER_NAME = #{userName}
+	
 	      ORDER BY
-	          PROC_DATE DESC NULLS LAST,
-	          INSERT_DATE DESC NULLS LAST,
-	          LV DESC,
-	          EXP_CUR DESC
+	          U.PROC_DATE DESC NULLS LAST,
+	          U.INSERT_DATE DESC NULLS LAST,
+	          U.LV DESC,
+	          U.EXP_CUR DESC
 	  )
 	  WHERE ROWNUM = 1
 	</select>

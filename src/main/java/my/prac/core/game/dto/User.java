@@ -25,4 +25,5 @@ public  class User {
 	public java.sql.Timestamp insertDate; // ⬅️ fallback용
 	public String job;
 	public Timestamp jobChangeDate;
+	public long totalSp; 
 }
