@@ -21,6 +21,7 @@ public class UserBattleContext {
     public int bHpMaxRaw;
     public int bCriDmgRaw;
     public int bHpMaxRateRaw;
+    public int bAtkMaxRateRaw;
 
     // 무기
     public int weaponLv;

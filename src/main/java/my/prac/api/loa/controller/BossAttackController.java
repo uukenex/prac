@@ -213,6 +213,7 @@ public class BossAttackController {
 	    int bHpMaxRaw  = (buffs != null && buffs.get("HP_MAX")   != null) ? buffs.get("HP_MAX").intValue()   : 0;
 	    int bCriDmgRaw = (buffs != null && buffs.get("CRI_DMG")  != null) ? buffs.get("CRI_DMG").intValue()  : 0;
 	    int bHpMaxRateRaw  = (buffs != null && buffs.get("HP_MAX_RATE")   != null) ? buffs.get("HP_MAX_RATE").intValue()   : 0;
+	    int bAtkMaxRateRaw  = (buffs != null && buffs.get("ATK_MAX_RATE")   != null) ? buffs.get("ATK_MAX_RATE").intValue()   : 0;
 
 	    // 🔹 직업 보너스 표시용 변수
 	    int jobHpMaxBonus = 0;
@@ -264,6 +265,7 @@ public class BossAttackController {
 	    ctx.bHpMaxRaw   = bHpMaxRaw;
 	    ctx.bCriDmgRaw  = bCriDmgRaw;
 	    ctx.bHpMaxRateRaw  = bHpMaxRateRaw;
+	    ctx.bAtkMaxRateRaw  = bAtkMaxRateRaw;
 
 	    // ② 무기강/보너스 조회
 	    HashMap<String, Object> wm = new HashMap<>();
@@ -375,13 +377,17 @@ public class BossAttackController {
 	        ctx.isJobMaster = false;
 	    }
 	    
-	    // HP/ATK 확정치 저장
-	    ctx.atkMinWithItem = atkMinWithItem;
-	    ctx.atkMaxWithItem = atkMaxWithItem;
 	    
 	    int finalHpMaxBonus = (finalHpMax * ctx.bHpMaxRateRaw) /100;
 	    finalHpMax += finalHpMaxBonus;
+	    int atkMinWithItemBonus = (atkMinWithItem * ctx.bAtkMaxRateRaw) /100;
+	    atkMinWithItem += atkMinWithItemBonus;
+	    int atkMaxWithItemBonus = (atkMinWithItem * ctx.bAtkMaxRateRaw) /100;
+	    atkMaxWithItem += atkMaxWithItemBonus;
 	    
+	    // HP/ATK 확정치 저장
+	    ctx.atkMinWithItem = atkMinWithItem;
+	    ctx.atkMaxWithItem = atkMaxWithItem;
 	    ctx.finalHpMax  = finalHpMax;
 	    ctx.effRegen    = effRegen;
 	    
@@ -771,6 +777,7 @@ public class BossAttackController {
 
 	    final int bAtkMinRaw    = ctx.bAtkMinRaw;
 	    final int bAtkMaxRaw    = ctx.bAtkMaxRaw;
+	    final int bAtkMaxRateRaw    = ctx.bAtkMaxRateRaw;
 	    final int bCriRaw       = ctx.bCriRaw;
 	    final int bCriDmgRaw    = ctx.bCriDmgRaw;
 	    final int bHpMaxRaw     = ctx.bHpMaxRaw;
@@ -906,9 +913,12 @@ public class BossAttackController {
 	    // ─ ATK 상세 ─
 	    sb.append("⚔ATK: ").append(finalAtkMin).append(" ~ ").append(finalAtkMax).append(NL)
 	      .append("   └ 기본 (").append(baseMin).append("~").append(baseMax).append(")").append(NL)
+	      /*
 	      .append("   └ 시즌1 강화: ").append(weaponLv).append("강 (max+").append(weaponBonus).append(")").append(NL)
+	      */
 	      .append("   └ 아이템 (min").append(formatSigned(bAtkMinRaw))
-	      .append(", max").append(formatSigned(bAtkMaxRaw)).append(")").append(NL);
+	      .append(", max").append(formatSigned(bAtkMaxRaw)).append(")").append(NL)
+	      .append(", 최종 ").append(formatSigned(bAtkMaxRateRaw)).append("%추가 )").append(NL);
 	    
 	    if(ctx.dailyAtkBonus > 0) {
 	    	sb.append("   └ 룰렛 버프: ATK +").append(ctx.dailyAtkBonus).append(NL);
@@ -6718,6 +6728,7 @@ public class BossAttackController {
 	    int baseCri    = parseIntSafe(Objects.toString(item.get("ATK_CRI"), "0"));   // 치확
 	    int baseCriDmg = parseIntSafe(Objects.toString(item.get("CRI_DMG"), "0"));   // 치피
 	    int baseHpRate  = parseIntSafe(Objects.toString(item.get("HP_MAX_RATE"), "0"));
+	    int baseAtkRate  = parseIntSafe(Objects.toString(item.get("ATK_MAX_RATE"), "0"));
 
 	    // qty 1 → level 0, qty 2 → level 1 ...
 	    int level = Math.max(0, qty - 1);
@@ -6739,6 +6750,7 @@ public class BossAttackController {
 	    int bonusCri    = (int)Math.floor(baseCri    * percent / 100.0);
 	    int bonusCriDmg = (int)Math.floor(baseCriDmg * percent / 100.0);
 	    int bonusHpRate = (int)Math.floor(baseHpRate * percent / 100.0);
+	    int bonusAtkRate = (int)Math.floor(baseAtkRate * percent / 100.0);
 
 	    StringBuilder sb = new StringBuilder();
 
@@ -6755,6 +6767,13 @@ public class BossAttackController {
 	            sb.append("(").append(formatSigned(bonusMax)).append(")");
 	        }
 	        sb.append("] ");
+	    }
+	    if (baseAtkRate != 0) {
+	    	sb.append("[공격력% ").append(baseAtkRate);
+	    	if (bonusAtkRate != 0) {
+	    		sb.append("(").append(formatSigned(bonusAtkRate)).append(")");
+	    	}
+	    	sb.append("] ");
 	    }
 
 	    // HP
