@@ -1839,6 +1839,8 @@ public class BossAttackController {
 	        jobDmgMul = 1.2;   // 전사: 데미지 1.2배
 	    } else if ("검성".equals(job)) {
 	        jobDmgMul = 2.0;   // 
+	    } else if ("어쎄신".equals(job)) {
+	        jobDmgMul = 1.8;   // 
 	    } else if ("제너럴".equals(job)) {
 	        jobDmgMul = 1.2;   //
 	    } else if ("처단자".equals(job)) {
@@ -1887,7 +1889,7 @@ public class BossAttackController {
 	    boolean dark = false; // 어둠몬스터 여부
 	    
 	    int beforeJobSkillYn=0;
-
+	    int killCountForThisMon=0;
 	    if (ob != null) {
 	        m = botNewService.selectMonsterByNo(ob.monNo);
 	        if (m == null) return "진행중 몬스터 정보를 찾을 수 없습니다.";
@@ -1913,6 +1915,19 @@ public class BossAttackController {
 	        
             monHpRemainBefore = Math.max(0, monMaxHp - ob.totalDealtDmg);
 	        
+         // ★ 이 유저의 해당 몬스터 누적 킬 수 조회
+	        killCountForThisMon = 0;
+	        try {
+	            List<KillStat> kills = botNewService.selectKillStats(userName, roomName);
+	            if (kills != null) {
+	                for (KillStat ks : kills) {
+	                    if (ks.monNo == m.monNo) {
+	                        killCountForThisMon = ks.killCount;
+	                        break;
+	                    }
+	                }
+	            }
+	        } catch (Exception ignore) {}
 
 	    } else {
 	        m = botNewService.selectMonsterByNo(u.targetMon);
@@ -1924,7 +1939,7 @@ public class BossAttackController {
 	        monHpRemainBefore = m.monHp;
 
 	        // ★ 이 유저의 해당 몬스터 누적 킬 수 조회
-	        int killCountForThisMon = 0;
+	        killCountForThisMon = 0;
 	        try {
 	            List<KillStat> kills = botNewService.selectKillStats(userName, roomName);
 	            if (kills != null) {
@@ -2209,6 +2224,57 @@ public class BossAttackController {
 	                        calc.jobSkillUsed = true;
 	                    }
 	                } catch (Exception ignore) {}
+	            }
+	        }
+	    }
+	    
+	 // 어쎄신 스틸 (신규 전투 시작 시)
+	    if ("어쎄신".equals(job) && m.monNo <= 50) {
+
+	        // 스틸 불가 몬스터
+	        if (m.monNo != 15 && m.monNo != 25) {
+
+	            // killCountForThisMon ← 이미 위에서 계산됨
+	            int kc = killCountForThisMon;
+
+	            // 기본 10%, 15킬마다 +10%, 150킬 이상 100%
+	            double stealRate = 0.10 + (kc / 15) * 0.10;
+	            if (kc >= 150) {
+	                stealRate = 1.0;
+	            }
+	            if (stealRate > 1.0) {
+	                stealRate = 1.0;
+	            }
+
+	            if (ThreadLocalRandom.current().nextDouble() < stealRate) {
+	                String dropName = (m.monDrop == null ? "" : m.monDrop.trim());
+	                if (!dropName.isEmpty()) {
+	                    try {
+	                        Integer itemId = botNewService.selectItemIdByName(dropName);
+	                        if (itemId != null) {
+	                            HashMap<String, Object> inv = new HashMap<>();
+	                            inv.put("userName", userName);
+	                            inv.put("roomName", roomName);
+	                            inv.put("itemId", itemId);
+	                            inv.put("qty", 1);
+	                            inv.put("delYn", "0");
+	                            inv.put("gainType", "STEAL");
+	                            botNewService.insertInventoryLogTx(inv);
+
+	                            stealMsg =
+	                                "어쎄신의 조용한 수확..!"+ dropName+
+	                                 " 획득! ( "+kc +"킬 / "+ (int)(stealRate * 100) + "%) " ;
+
+	                            calc.jobSkillUsed = true;
+	                        }
+	                    } catch (Exception ignore) {}
+	                }
+	            }else {
+	            	stealMsg =
+                            "어쎄신 수확! (" +
+                            kc + "킬 / " +
+                            (int)(stealRate * 100) + "%) " +
+                            "실패!";
 	            }
 	        }
 	    }
@@ -5903,7 +5969,7 @@ public class BossAttackController {
 	    }
 	    if ("검성".equals(job)) {
 	    	if (ThreadLocalRandom.current().nextDouble() < 0.065) {
-        		out.dmgCalcMsg += "바람가르기 ! "+baseAtk+"→";
+        		out.dmgCalcMsg += "바람가르기! "+baseAtk+"→";
         		baseAtk = (int)Math.round(baseAtk * 5);
         		out.dmgCalcMsg += baseAtk+NL;
         		out.dmgCalcMsg += "몬스터가 바람에 갇혀 행동불가가 됨!";
@@ -5912,7 +5978,17 @@ public class BossAttackController {
 			}
 	    	
 	    }
-	    
+	    if ("어쎄신".equals(job)) {
+	    	if (ThreadLocalRandom.current().nextDouble() < 0.065) {
+        		out.dmgCalcMsg += "그림투스! "+baseAtk+"→";
+        		baseAtk = (int)Math.round(baseAtk * 5);
+        		out.dmgCalcMsg += baseAtk+NL;
+        		out.dmgCalcMsg += "몬스터가 기습에 당해 행동불가가 됨!";
+        		calc.jobSkillUsed = true;
+            	flags.monPattern = 1;
+			}
+	    	
+	    }
 	    boolean isSnipe = false;
 	    if ("궁수".equals(job)) {
 	        if (ThreadLocalRandom.current().nextDouble() < 0.13) {
@@ -6227,7 +6303,20 @@ public class BossAttackController {
 		        }
 	        }
 	        
+	        if ("어쎄신".equals(job) && calc.monDmg > 0 ) {
+	        	double evadeRate = 1;
+	        	if(flags.finisher) {
+	        		evadeRate = 0.20;
+	        	}
+	        	
+	        	if (ThreadLocalRandom.current().nextDouble() < evadeRate) {
+	                String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
+	                calc.patternMsg = baseMsg + "도적의 회피! 피해를 받지 않았습니다.";
+	                calc.monDmg = 0;
+	            }
 
+	            
+	        }
 	        // 🌀 도적: 회피 (고레벨 보스일수록 회피율 감소, 필살기 제외)
 	        if ("도적".equals(job) && calc.monDmg > 0 && !flags.finisher) {
 
@@ -7019,7 +7108,11 @@ public class BossAttackController {
 	        "⚔ 기본 HP*20만큼 추가 증가, 적의 공격 반격(30%),기본데미지*2"+NL
 	        +"◎선행조건 전사 직업으로 1000회 공격"
 	    ));
-	    
+	    JOB_DEFS.put("어쎄신", new JobDef(
+    		"어쎄신",
+    		"▶ 그의 암습은 누구도 피할수없다.상대가 누구일 지라도,기본데미지*1.8",
+    		"⚔ 공격 시 STEAL, 몬스터 기본 공격 회피, 필살기를 확률 회피"
+		));
 	    /*
 	    JOB_DEFS.put("용투사", new JobDef(
 			"용투사",
@@ -7053,6 +7146,9 @@ public class BossAttackController {
 		));
 	    JOB_CHANGE_REQS.put("검성", Arrays.asList(
     		new JobChangeReq("전사", 1000)
+		));
+	    JOB_CHANGE_REQS.put("어쎄신", Arrays.asList(
+	    		new JobChangeReq("도적", 1000)
 		));
 	    // 용사 = 전체 공격 1000회 이상
 	    JOB_CHANGE_TOTAL_REQS.put("궁사", 3000);
