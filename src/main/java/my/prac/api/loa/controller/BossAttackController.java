@@ -6117,7 +6117,7 @@ public class BossAttackController {
 	        
 	        flags.atkCrit = crit;
 	        flags.snipe = isSnipe;
-	        flags.finisher = (flags.monPattern == 4); // 패턴4=필살기
+	        flags.finisher = (flags.monPattern >= 4); // 패턴4=필살기
 	        
 	        if ("저격수".equals(job) ) {
 	        	
@@ -6345,7 +6345,7 @@ public class BossAttackController {
 	        	
 	        	if (ThreadLocalRandom.current().nextDouble() < evadeRate) {
 	                String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
-	                calc.patternMsg = baseMsg + "도적의 회피! 피해를 받지 않았습니다.";
+	                calc.patternMsg = baseMsg + "어세신의 날렵한 회피! 피해를 받지 않았습니다.";
 	                calc.monDmg = 0;
 	            }
 
