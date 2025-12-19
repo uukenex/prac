@@ -282,11 +282,12 @@ public class BossAttackController {
 	    int atkMaxWithItem = baseMax + weaponBonus + bAtkMaxRaw;
 
 	    // 3) 운영자의 축복
+	    /*
 	    boolean hasBless = (u.lv <= 15);
 	    int blessRegenBonus = hasBless ? 5 : 0;
 	    ctx.hasBless          = hasBless;
 	    ctx.blessRegenBonus   = blessRegenBonus;
-
+	     */
 	    // 🩸 흡혈귀: monsterAttack 캐논 기준으로 "아이템 리젠만" 무효
 	    if ("흡혈귀".equals(job)) {
 	        bRegenRaw = 0;
@@ -294,6 +295,7 @@ public class BossAttackController {
 
 	    // 4) 최종 HP
 	    int finalHpMax = baseHpMax + bHpMaxRaw;
+	    int finalRegen = baseRegen + bRegenRaw;
 	    if ("전사".equals(job)) {
 	        finalHpMax += baseHpMax*10; // 기본 HP 추가
 	    }
@@ -302,6 +304,10 @@ public class BossAttackController {
 	    }
 	    if ("용사".equals(job)) {
 	    	finalHpMax += baseHpMax*10; // 기본 HP 추가
+	    	finalRegen += baseRegen*5;
+
+	        jobHpMaxBonus = baseHpMax*10;
+	        jobRegenBonus = baseRegen*5;
 	    }
 	    if ("저격수".equals(job)) {
 	        finalHpMax = finalHpMax/2; // 기본 HP 추가
@@ -309,7 +315,7 @@ public class BossAttackController {
 	    if (finalHpMax <= 0) finalHpMax = 1;
 
 	    // 5) 최종 리젠 (기본+아이템+축복)
-	    int effRegen = baseRegen + bRegenRaw + blessRegenBonus;
+	    int effRegen = finalRegen + jobRegenBonus;
 	    if (effRegen < 0) effRegen = 0;
 
 	    // 6) 파이터: HP 추가 보정
@@ -382,7 +388,7 @@ public class BossAttackController {
 	    finalHpMax += finalHpMaxBonus;
 	    int atkMinWithItemBonus = (atkMinWithItem * ctx.bAtkMaxRateRaw) /100;
 	    atkMinWithItem += atkMinWithItemBonus;
-	    int atkMaxWithItemBonus = (atkMinWithItem * ctx.bAtkMaxRateRaw) /100;
+	    int atkMaxWithItemBonus = (atkMaxWithItem * ctx.bAtkMaxRateRaw) /100;
 	    atkMaxWithItem += atkMaxWithItemBonus;
 	    
 	    // HP/ATK 확정치 저장
@@ -917,14 +923,15 @@ public class BossAttackController {
 	      .append("   └ 시즌1 강화: ").append(weaponLv).append("강 (max+").append(weaponBonus).append(")").append(NL)
 	      */
 	      .append("   └ 아이템 (min").append(formatSigned(bAtkMinRaw))
-	      .append(", max").append(formatSigned(bAtkMaxRaw)).append(")").append(NL)
-	      .append(", 최종공격력 ").append(formatSigned(bAtkMaxRateRaw)).append("% )").append(NL);
+	      .append(", max").append(formatSigned(bAtkMaxRaw)).append(")").append(NL);
+	      
 	    
 	    if(ctx.dailyAtkBonus > 0) {
 	    	sb.append("   └ 룰렛 버프: ATK +").append(ctx.dailyAtkBonus).append(NL);
 	    }
-	    
-
+	    if(bAtkMaxRateRaw > 0) {
+	    	sb.append("   └  최종공격력 ").append(formatSigned(bAtkMaxRateRaw)).append("% )").append(NL);
+	    }
 	    // ─ CRIT 상세 ─
 	    sb.append("⚔CRIT: ").append(shownCrit).append("%  CDMG ").append(shownCritDmg).append("%").append(NL)
 	      .append("   └ 기본 (").append(u.critRate).append("%, ").append(u.critDmg).append("%)").append(NL);
@@ -983,8 +990,10 @@ public class BossAttackController {
 	          .append(")").append(NL);
 	    }
 	    if ("용사".equals(job)) {
-	        sb.append("   └ 직업 (HP+")
-	          .append(baseHpMax*10)
+	    	sb.append("   └ 직업 (HP")
+	          .append(formatSigned(jobHpMaxBonus))
+	          .append(",5분당회복")
+	          .append(formatSigned(jobRegenBonus))
 	          .append(")").append(NL);
 	    }
 
@@ -7083,7 +7092,7 @@ public class BossAttackController {
         JOB_DEFS.put("용사", new JobDef(
 	        "용사",
 	        "▶ 선택 받은 자",//어둠몹에 피해두배 ,언데드추뎀25% ,스틸30%, 10%확률 완전회복
-	        "⚔ 기본 HP*10만큼 추가 증가, 어둠몬스터에 피해*2, 언데드 추가피해(+25%), 공격시 steal(30%), 정령의가호(10%), 기본데미지 * 1.4"+NL
+	        "⚔ 기본 HP*10,리젠*5 만큼 추가 증가, 어둠몬스터에 피해*2, 언데드 추가피해(+25%), 공격시 steal(30%), 정령의가호(10%), 기본데미지 * 1.4"+NL
 	        +"◎선행조건 전사,도적,도사,프리스트 직업으로 각 300회 공격"
 	    ));
 	     
@@ -7097,7 +7106,7 @@ public class BossAttackController {
 	    JOB_DEFS.put("제너럴", new JobDef(
 	        "제너럴",
 	        "▶ 블랙필드에서는 누구도 따라잡을자가 없다!",
-	        "⚔ 조우 은엄폐-저격 이후 * 회피기동전술을 다회 반복"+NL
+	        "⚔ 조우시 (*은엄폐-저격 or *회피기동전술) 이후 *회피기동전술을 다회 반복"+NL
 	        +"- 조우시 hidden -, *조우 은엄폐, *저격(13% headShot) 시 모든 행동 무시, *회피기동전술 시 - hidden -,기본공격력 * 1.2"+NL
 	        +"◎선행조건 저격수,전사 직업으로 각 300회 공격"
 	    ));
@@ -7111,7 +7120,8 @@ public class BossAttackController {
 	    JOB_DEFS.put("어쎄신", new JobDef(
     		"어쎄신",
     		"▶ 그의 암습은 누구도 피할수없다.상대가 누구일 지라도,기본데미지*1.8",
-    		"⚔ 공격 시 STEAL(Kill에 따라 증가), 몬스터 기본 공격 회피, 필살기를 확률 회피"
+    		"⚔ 공격 시 STEAL(Kill에 따라 증가), 몬스터 기본 공격 회피, 필살기를 확률 회피"+NL
+    		+"◎선행조건 도적 직업으로 1000회 공격"
 		));
 	    /*
 	    JOB_DEFS.put("용투사", new JobDef(
