@@ -918,7 +918,7 @@ public class BossAttackController {
 	      */
 	      .append("   └ 아이템 (min").append(formatSigned(bAtkMinRaw))
 	      .append(", max").append(formatSigned(bAtkMaxRaw)).append(")").append(NL)
-	      .append(", 최종 ").append(formatSigned(bAtkMaxRateRaw)).append("%추가 )").append(NL);
+	      .append(", 최종공격력 ").append(formatSigned(bAtkMaxRateRaw)).append("% )").append(NL);
 	    
 	    if(ctx.dailyAtkBonus > 0) {
 	    	sb.append("   └ 룰렛 버프: ATK +").append(ctx.dailyAtkBonus).append(NL);
@@ -6769,11 +6769,11 @@ public class BossAttackController {
 	        sb.append("] ");
 	    }
 	    if (baseAtkRate != 0) {
-	    	sb.append("[공격력% ").append(baseAtkRate);
+	    	sb.append("[최종공격력 ").append(baseAtkRate);
 	    	if (bonusAtkRate != 0) {
 	    		sb.append("(").append(formatSigned(bonusAtkRate)).append(")");
 	    	}
-	    	sb.append("] ");
+	    	sb.append("%] ");
 	    }
 
 	    // HP

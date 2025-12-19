@@ -558,7 +558,9 @@
 	        NVL(i.ATK_CRI,   0) AS ATK_CRI,
 	        NVL(i.HP_REGEN,  0) AS HP_REGEN,
 	        NVL(i.HP_MAX,    0) AS HP_MAX,
-	        NVL(i.CRI_DMG,   0) AS CRI_DMG
+	        NVL(i.CRI_DMG,   0) AS CRI_DMG,
+	        NVL(i.HP_MAX_RATE,   0) AS HP_MAX_RATE,
+	        NVL(i.ATK_MAX_RATE,   0) AS ATK_MAX_RATE
 	    FROM TBOT_POINT_NEW_ITEM i
 	    WHERE i.ITEM_TYPE = 'MARKET'
 	    ORDER BY i.ITEM_ID
@@ -577,7 +579,9 @@
 	        NVL(i.ATK_CRI,   0) AS ATK_CRI,
 	        NVL(i.HP_REGEN,  0) AS HP_REGEN,
 	        NVL(i.HP_MAX,    0) AS HP_MAX,
-	        NVL(i.CRI_DMG,   0) AS CRI_DMG
+	        NVL(i.CRI_DMG,   0) AS CRI_DMG,
+	        NVL(i.HP_MAX_RATE,   0) AS HP_MAX_RATE,
+	        NVL(i.ATK_MAX_RATE,   0) AS ATK_MAX_RATE
 	    FROM TBOT_POINT_NEW_ITEM i
 	    WHERE i.ITEM_ID = #{itemId}
 	</select>
