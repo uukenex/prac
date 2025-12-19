@@ -592,7 +592,8 @@ public class BossAttackController {
 	        // 9000번대 = 유물
 	        if (itemId >= 9000 && itemId < 10000) {
 	            // buildRelicStatSuffix(HashMap row) 그대로 사용 가능!
-	            String suffix = buildRelicStatSuffix(info);
+	        	String suffix = buildEnhancedOptionLine(info,1);
+	            //String suffix = buildRelicStatSuffix(info);
 	            if (!suffix.isEmpty()) {
 	                label += suffix;    // 예: 고대돌조각(ATK+30~30)
 	            }
@@ -930,7 +931,7 @@ public class BossAttackController {
 	    	sb.append("   └ 룰렛 버프: ATK +").append(ctx.dailyAtkBonus).append(NL);
 	    }
 	    if(bAtkMaxRateRaw > 0) {
-	    	sb.append("   └  최종공격력 ").append(formatSigned(bAtkMaxRateRaw)).append("% )").append(NL);
+	    	sb.append("   └ 최종공격력 (").append(formatSigned(bAtkMaxRateRaw)).append("% )").append(NL);
 	    }
 	    // ─ CRIT 상세 ─
 	    sb.append("⚔CRIT: ").append(shownCrit).append("%  CDMG ").append(shownCritDmg).append("%").append(NL)
@@ -1099,7 +1100,7 @@ public class BossAttackController {
 	                // 유물(9000번대)에만 짧은 능력치 꼬리표 추가
 	                if ("※유물".equals(cat)) {
 	                    HashMap<String,Object> info = botNewService.selectItemDetailById(itemId);
-	                    String relicStat = buildRelicStatSuffix(info);
+	                    String relicStat = buildEnhancedOptionLine(info,1);
 	                    if (!relicStat.isEmpty()) {
 	                        label += relicStat + NL;
 	                    }
@@ -6804,56 +6805,6 @@ public class BossAttackController {
 	}
 	
 	
-	private String buildRelicStatSuffix(HashMap<String, Object> row) {
-	    int atkMin = parseIntSafe(Objects.toString(row.get("ATK_MIN"), "0"));
-	    int atkMax = parseIntSafe(Objects.toString(row.get("ATK_MAX"), "0"));
-	    int atkCri = parseIntSafe(Objects.toString(row.get("ATK_CRI"), "0"));
-	    int hpRegen = parseIntSafe(Objects.toString(row.get("HP_REGEN"), "0"));
-	    int hpMax   = parseIntSafe(Objects.toString(row.get("HP_MAX"), "0"));
-	    int criDmg  = parseIntSafe(Objects.toString(row.get("CRI_DMG"), "0"));
-
-	    StringBuilder sb = new StringBuilder();
-	    boolean first = true;
-
-	    // 1) ATK_MIN
-	    if (atkMin != 0) {
-	        sb.append("ATK_MIN+").append(atkMin);
-	        first = false;
-	    }
-
-	    // 2) ATK_MAX
-	    if (atkMax != 0) {
-	        if (!first) sb.append(", ");
-	        sb.append("ATK_MAX+").append(atkMax);
-	        first = false;
-	    }
-
-	    if (hpRegen != 0) {
-	        if (!first) sb.append(", ");
-	        sb.append("REGEN+").append(hpRegen);
-	        first = false;
-	    }
-	    if (hpMax != 0) {
-	        if (!first) sb.append(", ");
-	        sb.append("HP+").append(hpMax);
-	        first = false;
-	    }
-	    if (atkCri != 0) {
-	    	if (!first) sb.append(", ");
-	    	sb.append("CRI+").append(atkCri);
-	    	first = false;
-	    }
-	    if (criDmg != 0) {
-	        if (!first) sb.append(", ");
-	        sb.append("CRI_DMG+").append(criDmg);
-	        first = false;
-	    }
-
-	    if (first) return ""; // 전부 0이면
-
-	    return "(" + sb.toString() + ")";
-	}
-	
 	private String buildEnhancedOptionLine(HashMap<String,Object> item, int qty) {
 	    if (item == null) return "";
 
@@ -6889,7 +6840,7 @@ public class BossAttackController {
 	    int bonusAtkRate = (int)Math.floor(baseAtkRate * percent / 100.0);
 
 	    StringBuilder sb = new StringBuilder();
-
+ 
 	    // 공격력
 	    if (baseMin != 0 || baseMax != 0) {
 	        sb.append("[공격력 ")
