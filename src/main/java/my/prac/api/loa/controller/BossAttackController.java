@@ -622,7 +622,7 @@ public class BossAttackController {
 	    // ④ 최근 10개 합계가 5만 미만일 때만 천장 발동
 	    int minSp;
 
-	    if (recentSum < 50000) {
+	    if (recentSum < 150000) {
 	        minSp = 50000;   // 천장 발동: 50,000 ~ 100,000 룰렛
 	    } else {
 	        minSp = 5000;     // 평소 확률
@@ -2273,7 +2273,7 @@ public class BossAttackController {
 
 	                            stealMsg =
 	                                "어쎄신의 조용한 수확..!"+ dropName+
-	                                 " 획득! ( "+kc +"킬 / "+ (int)(stealRate * 100) + "%) " ;
+	                                 "조각 획득! ( "+kc +"킬 / "+ (int)(stealRate * 100) + "%) " ;
 
 	                            calc.jobSkillUsed = true;
 	                        }
@@ -2281,7 +2281,7 @@ public class BossAttackController {
 	                }
 	            }else {
 	            	stealMsg =
-                            "어쎄신 수확! (" +
+                            "어쎄신의 수확! (" +
                             kc + "킬 / " +
                             (int)(stealRate * 100) + "%) " +
                             "실패!";
