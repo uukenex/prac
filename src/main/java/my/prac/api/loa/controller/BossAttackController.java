@@ -3032,7 +3032,7 @@ public class BossAttackController {
 	        if (!isEquip && u.totalSp < 10000000) {
 	        	unitPrice *= 2;
 	        	flag1 = true;
-	        }else if (!isEquip && u.totalSp < 20000000) {
+	        }else if (!isEquip && u.totalSp < 25000000) {
 	            unitPrice *= 1.5;
 	            flag2 = true;
 	        }
@@ -3087,7 +3087,7 @@ public class BossAttackController {
 	    }
 	    if (flag2) {
 	    	sb.append(NL)
-	    	  .append("✨지원보너스 적용! (20,000,000sp 까지 기타 아이템 판매가 x1.5)");
+	    	  .append("✨지원보너스 적용! (25,000,000sp 까지 기타 아이템 판매가 x1.5)");
 	    }
 	    
 	    
