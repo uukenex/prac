@@ -2809,7 +2809,7 @@ public class BossAttackController {
 	        if (!isEquip && u.totalSp < 10000000) {
 	        	unitPrice *= 2;
 	        	flag1 = true;
-	        }else if (!isEquip && u.totalSp < 20000000) {
+	        }else if (!isEquip && u.totalSp < 25000000) {
 	            unitPrice *= 1.5;
 	            flag2 = true;
 	        }
@@ -2924,7 +2924,7 @@ public class BossAttackController {
 	    }
 	    if (flag2) {
 	    	sb.append(NL)
-	    	  .append("✨지원보너스 적용! (20,000,000sp 까지 기타 아이템 판매가 x1.5)");
+	    	  .append("✨지원보너스 적용! (25,000,000sp 까지 기타 아이템 판매가 x1.5)");
 	    }
 	    
 		 // 👇 여기 추가
@@ -4018,10 +4018,21 @@ public class BossAttackController {
 	        return r;
 	    }
 	    
-	    double dropRate = getDropRateByNo(m.monNo);  // ← 새 메서드 사용
+	    //기본드랍 100%
+	    r.dropCode = "1";
 	    
-	    boolean drop = willKill && ThreadLocalRandom.current().nextDouble(0, 100) < dropRate;
-	    r.dropCode = drop ? "1" : "0";
+	    
+	    double extraDropRate = getDropRateByNo(m.monNo);  // ← 새 메서드 사용
+	    
+	    boolean extraDrop =
+	            ThreadLocalRandom.current().nextDouble(0, 100) < extraDropRate;
+
+	        if (extraDrop) {
+	            r.dropCode = "2"; // 🔥 기본 + 추가 드랍
+	        }
+	        
+	    //boolean drop = willKill && ThreadLocalRandom.current().nextDouble(0, 100) < dropRate;
+	    //r.dropCode = drop ? "1" : "0";
 	    return r;
 	}
 	private double getDropRateByNo(int monNo) {
@@ -4029,12 +4040,12 @@ public class BossAttackController {
 	        case 1:  case 2:  case 3:  case 4:  
 	        case 5:  case 6:  case 7:  case 8:  
 	        case 9:  case 10: case 11: case 12:
-	        	return 60;
+	        	return 30;
 	        case 13: case 14: case 16: case 17: 
 	        case 18: case 19: case 20: case 21:
 	        case 22: case 23: case 24: case 26:
 	        case 27: case 28: 
-	        	return 50;
+	        	return 20;
 	        	
 	        case 15: case 25:
 	        	return 25;
@@ -4130,6 +4141,12 @@ public class BossAttackController {
 	            		gainType = "DROP5";
 	            	}
 	            	
+	            	int qty=1;
+	            	if ("2".equals(res.dropCode)) {
+	            	    qty = 2; // 기본 1 + 추가 1
+	            	}
+
+	            	
 	                Integer itemId = botNewService.selectItemIdByName(dropName);
 	                if (itemId != null) {
 	                    HashMap<String, Object> inv = new HashMap<>();
@@ -4137,9 +4154,9 @@ public class BossAttackController {
 	                    inv.put("roomName",  roomName);
 	                    inv.put("itemId",    itemId);
 	                    if (isReturnUser) {
-	                    	inv.put("qty",       2);
+	                    	inv.put("qty",qty*2);
 	                    }else {
-	                    	inv.put("qty",       1);
+	                    	inv.put("qty",qty);
 	                    }
 	                    inv.put("delYn",     "0");
 	                    inv.put("gainType", gainType);
@@ -4273,95 +4290,6 @@ public class BossAttackController {
 	    // 치명타
 	    if (flags.atkCrit) sb.append("✨ 치명타!").append(NL);
 	    
-	 // 🎯 궁수 저격 히든: 데미지 수치는 비공개, 결과만 표기
-	    /*
-	    if (flags.snipe) {
-	        int monHpAfter = Math.max(0, monHpRemainBefore - calc.atkDmg);
-
-	        sb.append("✨ 저격[히든] 발동!").append(NL);
-
-	        if (res.killed || monHpAfter <= 0) {
-	            sb.append(m.monName)
-	              .append("을(를) 단번에 처치했습니다!").append(NL)
-	              .append("❤️ 몬스터 HP: 0 / ").append(monMaxHp).append(NL);
-	        } else {
-	            sb.append(m.monName)
-	              .append("이(가) 간신히 버텼습니다.").append(NL)
-	              .append("❤️ 몬스터 HP: ")
-	              .append(monHpAfter).append(" / ").append(monMaxHp).append(NL);
-	        }
-
-	        // 몬스터 패턴 / 받은 피해 안내 (여긴 정상 공개)
-	        if (calc.patternMsg != null && !calc.patternMsg.isEmpty()) {
-	            sb.append("⚅ ").append(calc.patternMsg).append(NL);
-	        }
-
-	        if (calc.monDmg > 0) {
-	            sb.append("❤️ 받은 피해: ").append(calc.monDmg)
-	              .append(",  현재 체력: ").append(u.hpCur)
-	              .append(" / ").append(displayHpMax).append(NL);
-	        } else {
-	            sb.append("❤️ 현재 체력: ").append(u.hpCur)
-	              .append(" / ").append(displayHpMax).append(NL);
-	        }
-
-	        // 드랍
-	        if (res.killed && !"0".equals(res.dropCode)) {
-	            String dropName = (m.monDrop == null ? "" : m.monDrop.trim());
-	            if (!dropName.isEmpty()) {
-	            	if ("5".equals(res.dropCode)) {
-	                    sb.append("✨ 드랍 획득: 어둠").append(dropName);
-	                } else if ("3".equals(res.dropCode)) {
-	                    sb.append("✨ 드랍 획득: 빛").append(dropName);
-	                } else {
-	                    sb.append("✨ 드랍 획득: ").append(dropName);
-	                }
-	            	
-	            	if(isReturnUser) {
-	            	    	sb.append("x2 (복귀bonus) ");
-	            	}
-	            	sb.append(NL);
-	            }
-	        }
-
-	        // EXP
-	        sb.append("✨ EXP+").append(res.gainExp)
-	          .append(" , EXP: ").append(u.expCur)
-	          .append(" / ").append(u.expNext).append(NL);
-
-	        // 레벨업 정보
-	        if (up != null && up.levelUpCount > 0) {
-	            sb.append(NL)
-	              .append("✨ 레벨업! Lv ").append(up.beforeLv)
-	              .append(" → ").append(up.afterLv);
-	            if (up.levelUpCount > 1) {
-	                sb.append(" ( +").append(up.levelUpCount).append(" )");
-	            }
-	            sb.append(NL);
-
-	            sb.append("└:❤️HP ")
-	              .append(up.beforeHpMax).append("→").append(up.afterHpMax)
-	              .append(" (+").append(up.hpMaxDelta).append(")").append(NL);
-
-	            sb.append("└:⚔ATK ")
-	              .append(up.beforeAtkMin).append("~").append(up.beforeAtkMax)
-	              .append("→").append(up.afterAtkMin).append("~").append(up.afterAtkMax)
-	              .append(" (+").append(up.atkMinDelta).append("~+").append(up.atkMaxDelta).append(")").append(NL);
-
-	            sb.append("└: CRIT ")
-	              .append(up.beforeCrit).append("%→").append(up.afterCrit).append("%")
-	              .append(" (+").append(up.critDelta).append("%)").append(NL);
-
-	            sb.append("└: 5분당회복 ")
-	              .append(up.beforeHpRegen).append("→").append(up.afterHpRegen)
-	              .append(" (+").append(up.hpRegenDelta).append(")").append(NL);
-	        }
-
-	        // ✅ 여기서 끝: 저격일 땐 일반 데미지 표현 블록으로 내려가지 않음
-	        return sb.toString();
-	    }
-	     */
-	    
 	    // 데미지
 	    sb.append("⚔ 데미지: (").append(shownAtkMin).append("~").append(shownAtkMax).append(" ⇒ ");
 	    if (flags.atkCrit && calc.baseAtk > 0 && calc.critMultiplier >= 1.0) {
@@ -4400,6 +4328,8 @@ public class BossAttackController {
 	                sb.append("✨ 드랍 획득: 어둠").append(dropName).append(NL);
 	            } else if ("3".equals(res.dropCode)) {
 	                sb.append("✨ 드랍 획득: 빛").append(dropName).append(NL);
+	            } else if ("2".equals(res.dropCode)) {
+	                sb.append("✨ 드랍 획득: ").append(dropName).append(" x2");
 	            } else {
 	                sb.append("✨ 드랍 획득: ").append(dropName).append(NL);
 	            }
