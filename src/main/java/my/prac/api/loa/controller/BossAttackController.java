@@ -1850,7 +1850,7 @@ public class BossAttackController {
 	    } else if ("검성".equals(job)) {
 	        jobDmgMul = 2.0;   // 
 	    } else if ("어쎄신".equals(job)) {
-	        jobDmgMul = 1.8;   // 
+	        jobDmgMul = 1.3;   // 
 	    } else if ("제너럴".equals(job)) {
 	        jobDmgMul = 1.2;   //
 	    } else if ("처단자".equals(job)) {
@@ -2247,13 +2247,13 @@ public class BossAttackController {
 	            // killCountForThisMon ← 이미 위에서 계산됨
 	            int kc = killCountForThisMon;
 
-	            // 기본 10%, 15킬마다 +10%, 150킬 이상 100%
-	            double stealRate = 0.10 + (kc / 15) * 0.10;
-	            if (kc >= 150) {
-	                stealRate = 1.0;
+	            // 기본 30%, 100킬마다 +5%, 1000킬 이상 80%
+	            double stealRate = 0.30 + (kc / 100) * 0.05;
+	            if (kc >= 1000) {
+	                stealRate = 0.8;
 	            }
-	            if (stealRate > 1.0) {
-	                stealRate = 1.0;
+	            if (stealRate > 0.8) {
+	                stealRate = 0.8;
 	            }
 
 	            if (ThreadLocalRandom.current().nextDouble() < stealRate) {
@@ -7025,8 +7025,8 @@ public class BossAttackController {
 	    ));
 	    JOB_DEFS.put("어쎄신", new JobDef(
     		"어쎄신",
-    		"▶ 그의 암습은 누구도 피할수없다.상대가 누구일 지라도,기본데미지*1.8",
-    		"⚔ 공격 시 STEAL(Kill에 따라 증가), 몬스터 기본 공격 회피, 필살기를 확률 회피"+NL
+    		"▶ 그의 암습은 누구도 피할수없다.상대가 누구일 지라도,기본데미지*1.3",
+    		"⚔ 공격 시 STEAL(30%,100킬 당 5%씩 증가,max 80%), 몬스터 기본 공격 회피, 필살기를 확률 회피"+NL
     		+"◎선행조건 도적 직업으로 1000회 공격"
 		));
 	    /*
