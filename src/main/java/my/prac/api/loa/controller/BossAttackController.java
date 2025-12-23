@@ -610,7 +610,7 @@ public class BossAttackController {
 
 	    // 🔥 누적 SP 기반 상한 적용
 		int cap = botNewService.selectBagRewardCap(userName);
-	 
+	    cap = (int) Math.round(cap*1.5);
 	    // ② 10개 미만이면 천장 적용 안 함 → 기본 200~100000 룰렛
 	    if (totalCount < 10) {
 	        return pickBiasedSp(5000, cap);
@@ -623,7 +623,7 @@ public class BossAttackController {
 	    int minSp;
 
 	    if (recentSum < 150000) {
-	        minSp = 50000;   // 천장 발동: 50,000 ~ 100,000 룰렛
+	        minSp = 100000;   // 천장 발동: 50,000 ~ 100,000 룰렛
 	    } else {
 	        minSp = 5000;     // 평소 확률
 	    }
