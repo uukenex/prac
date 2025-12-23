@@ -57,7 +57,12 @@
 	        ON SP_SUM.USER_NAME = U.USER_NAME
 	
 	      WHERE U.USER_NAME = #{userName}
-	
+		  AND NOT EXISTS (
+	         SELECT 1
+	           FROM TBOT_BLOCK C
+	          WHERE UPPER(C.USER_NAME) = UPPER(#{userName})
+	           
+	     )
 	      ORDER BY
 	          U.PROC_DATE DESC NULLS LAST,
 	          U.INSERT_DATE DESC NULLS LAST,
