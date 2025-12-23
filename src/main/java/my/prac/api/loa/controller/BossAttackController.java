@@ -2816,12 +2816,10 @@ public class BossAttackController {
 	            flag2 = true;
 	        }
 	        */
-	        long virtualTotal = soldSoFarSp; // 이번 판매 기준
-
-	        if (!isEquip && virtualTotal < 10000000) {
+	        if (!isEquip && soldSoFarSp < 10000000) {
 	            unitPrice *= 2;
 	            flag1 = true;
-	        } else if (!isEquip && virtualTotal < 25000000) {
+	        } else if (!isEquip && soldSoFarSp < 25000000) {
 	            unitPrice *= 1.5;
 	            flag2 = true;
 	        }
@@ -3060,12 +3058,12 @@ public class BossAttackController {
 	            flag2 = true;
 	        }
 	        */
-	        long virtualTotal = soldSoFarSp;
+	        
 
-	        if (!isEquip && virtualTotal < 10000000) {
+	        if (!isEquip && soldSoFarSp < 10000000) {
 	            unitPrice *= 2;
 	            flag1 = true;
-	        } else if (!isEquip && virtualTotal < 25000000) {
+	        } else if (!isEquip && soldSoFarSp < 25000000) {
 	            unitPrice *= 1.5;
 	            flag2 = true;
 	        }
