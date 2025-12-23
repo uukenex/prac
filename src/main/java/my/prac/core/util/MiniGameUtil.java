@@ -39,9 +39,9 @@ public class MiniGameUtil {
 	    MON_PATTERN_WEIGHTS.put(23,new int[]{0, 50, 0, 50, 0}); 
 	    MON_PATTERN_WEIGHTS.put(24,new int[]{0, 30,50, 20, 0}); 
 	    MON_PATTERN_WEIGHTS.put(25,new int[]{30, 5,30,  5,30});//중간보스
-	    MON_PATTERN_WEIGHTS.put(26,new int[]{0, 10, 0, 85, 5}); 
-	    MON_PATTERN_WEIGHTS.put(27,new int[]{0, 10, 0, 85, 5}); 
-	    MON_PATTERN_WEIGHTS.put(28,new int[]{0, 10, 0, 85, 5}); 
+	    MON_PATTERN_WEIGHTS.put(26,new int[]{0, 55, 0, 38, 5,2}); 
+	    MON_PATTERN_WEIGHTS.put(27,new int[]{0, 48, 30,20, 0,2}); 
+	    MON_PATTERN_WEIGHTS.put(28,new int[]{0, 18, 60, 15,5,2}); 
 	    
 
 	    // 필요할 때마다 여기 계속 추가하면 됨

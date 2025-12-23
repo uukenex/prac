@@ -28,4 +28,5 @@ public  class AttackCalc {
 	public double critDmg;  // %
 	public int targetMon;
 	public boolean jobSkillUsed;
+	public boolean endBattle = false;
 }

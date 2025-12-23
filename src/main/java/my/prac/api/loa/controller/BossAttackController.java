@@ -220,12 +220,13 @@ public class BossAttackController {
 	    int jobRegenBonus = 0;
 	    
 	    // 사신: 아이템으로 인한 크리/크리뎀 효과 미적용
+	    /*
 	    if ("사신".equals(job)) {
 	        bCriRaw    = 0;
 	        bCriDmgRaw = 0;
 	        // (주석상 HP까지 막고 싶으면 bHpMaxRaw = 0; 도 여기서 처리)
 	    }
-
+	     */
 	    // 프리스트: 아이템 HP/리젠 1.25배 (monsterAttack 기준으로 맞춤)
 	    if ("프리스트".equals(job)) {
 	    	int hpBase   = bHpMaxRaw;
@@ -1895,7 +1896,7 @@ public class BossAttackController {
 	    OngoingBattle ob = botNewService.selectOngoingBattle(userName, roomName);
 	    Monster m;
 	    int monMaxHp, monHpRemainBefore;
-	    boolean lucky;
+	    boolean lucky = false;
 	    boolean dark = false; // 어둠몬스터 여부
 	    
 	    int beforeJobSkillYn=0;
@@ -2015,7 +2016,8 @@ public class BossAttackController {
 	            lucky = false;
 	            dark = false;
 	        } else if ("사신".equals(job)) {
-	            lucky = false;
+	            //lucky = false;
+	            dark = false;
 	        } else if ("도사".equals(job)) {
                 lucky = ThreadLocalRandom.current().nextDouble() < LUCKY_RATE_DOSA;
 	        } else {
@@ -2077,6 +2079,20 @@ public class BossAttackController {
 	        
 	    }
 	    */
+	    if ("사신".equals(job)) {
+	        String firstCmd = "ACHV_FIRST_CLEAR_MON_" + m.monNo;
+
+	        int globalCnt = 0;
+	        if (globalAchvMap != null) {
+	            Integer v = globalAchvMap.get(firstCmd);
+	            if (v != null) globalCnt = v.intValue();
+	        }
+
+	        if (globalCnt == 0) {
+	            return "최초 토벌에 도전불가 직업!";
+	        }
+	        
+	    }
 
 	    Flags flags = rollFlags(u, m);
 
@@ -2139,9 +2155,51 @@ public class BossAttackController {
 	    AttackCalc calc = dmg.calc;
 	    flags = dmg.flags;
 	    boolean willKill = dmg.willKill;
+	    
+	 // 🔥 전투 종료 패턴 처리 (패턴 6)
+	    if (calc.endBattle) {
+
+	        // ✅ 기존 캐논 전투 종료 로직 재사용
+	        botNewService.closeOngoingBattleTx(userName, roomName);
+
+	        // EXP / 드랍 없는 빈 Resolve
+	        Resolve emptyResolve = new Resolve();
+	        emptyResolve.killed   = false;
+	        emptyResolve.gainExp  = 0;
+	        emptyResolve.dropCode = "0";
+
+	        return buildAttackMessage(
+	            userName, u, m, flags, calc,
+	            emptyResolve, null,
+	            monHpRemainBefore, monMaxHp,
+	            effAtkMin, effAtkMax,   // 표시용 공격력
+	            weaponLv, weaponBonus,
+	            effHpMax,               // 표시용 HP_MAX
+	            null,
+	            null,
+	            ctx.isReturnUser
+	        );
+	    }
+	    
 
 	    // 12) 사망 처리
 	    int newHpPreview = Math.max(0, u.hpCur - calc.monDmg);
+	    
+	 // ☠ 사신: 체력이 0이 되어도 죽지 않고, 대신 공격에 실패
+ 		 if ("사신".equals(job) && newHpPreview <= 0) {
+		     // HP는 1 남기고 버틴다고 가정
+		     newHpPreview = 1;
+		     // 실제로는 1만 남도록 몬스터 피해 조정
+		     calc.monDmg = Math.max(0, u.hpCur - newHpPreview);
+		     calc.atkDmg = (int) Math.round(calc.atkDmg*0.5) ;
+		     calc.jobSkillUsed = true;  
+		     String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
+		     calc.patternMsg = baseMsg + "사신은 죽음을 거부하고 버텼지만, 약화된 피해를 주었습니다.(50%)";
+	
+		     // ★ 여기서 바로 리턴하지 않고, 아래 persist() 로직을 타면서
+		     //    HP 1, atkDmg=0 상태로 저장되도록 둔다.
+		 }
+	 
 	    String deathAchvMsg = "";
 	    if (!"사신".equals(job) && newHpPreview <= 0) {
 	    	
@@ -4001,6 +4059,14 @@ public class BossAttackController {
             }
 		    break;
 		case 6:
+			c.atkDmg = 0;
+		    c.monDmg = 0;
+		    c.endBattle = true;
+		    c.patternMsg = name + "이(가) 울부짖었습니다. 플레이어는 기절했습니다.(전투종료)";
+		    break;
+		case 7:
+			break;
+		case 8:
 			break;
 		default: c.monDmg = 0; c.patternMsg = name + "의 알 수 없는 행동… (피해 0)";
 		}
@@ -4056,19 +4122,38 @@ public class BossAttackController {
 	        return r;
 	    }
 	    
-	    //기본드랍 100%
+	    
+	  //기본드랍 100%
 	    r.dropCode = "1";
 	    
 	    
-	    double extraDropRate = getDropRateByNo(m.monNo);  // ← 새 메서드 사용
 	    
-	    boolean extraDrop =
-	            ThreadLocalRandom.current().nextDouble(0, 100) < extraDropRate;
+	    
+	    boolean normalDrop =
+	            ThreadLocalRandom.current().nextDouble(0, 100) < 70;
+	    
+	    // 30% 감소 
+	    if("사신".equals(u.job)) {
+	    	if(normalDrop) {
+	    		r.dropCode = "1";
+	    	}else {
+	    		r.dropCode = "0";
+	    	}
+	    }
+	    
 
-	        if (extraDrop) {
-	            r.dropCode = "2"; // 🔥 기본 + 추가 드랍
-	        }
-	        
+	    if(!"사신".equals(u.job)) {
+	    	 double extraDropRate = getDropRateByNo(m.monNo);  // ← 새 메서드 사용
+	 	    
+	 	    boolean extraDrop =
+	 	            ThreadLocalRandom.current().nextDouble(0, 100) < extraDropRate;
+
+	 	        if (extraDrop) {
+	 	            r.dropCode = "2"; // 🔥 기본 + 추가 드랍
+	 	        }
+	 	        
+	    }
+	   
 	    //boolean drop = willKill && ThreadLocalRandom.current().nextDouble(0, 100) < dropRate;
 	    //r.dropCode = drop ? "1" : "0";
 	    return r;
@@ -6320,6 +6405,8 @@ public class BossAttackController {
 
 	            
 	        }
+	        
+	        
 	        // 🌀 도적: 회피 (고레벨 보스일수록 회피율 감소, 필살기 제외)
 	        if ("도적".equals(job) && calc.monDmg > 0 && !flags.finisher) {
 
@@ -6984,13 +7071,13 @@ public class BossAttackController {
 	        "▶ 도를 닦아 깨달음을 얻은 위인",
 	        "⚔ 다음 공격하는 아군 강화(레벨*0.5만큼 능력강화,맥뎀*0.1만큼 치명뎀강화,"+NL+"매턴 공격시 자신 회복,자신의 럭키몬스터 등장 확률 증가"
 	    ));
-	    /*
+	    
         JOB_DEFS.put("사신", new JobDef(
             "사신",
             "▶ 이름하야 죽음의 신, 죽지않는다",
-            "⚔ 아이템으로 인한 치명타,치명타뎀 증감처리 미적용, 체력 0에서도 죽지 않음,10%미만 체력에서 치명타확률50%증가"
+            "⚔ 드랍율-30%, 체력 0에서도 죽지 않음, 다크 몬스터 조우 불가"
         ));
-        */
+        
         JOB_DEFS.put("흡혈귀", new JobDef(
             "흡혈귀",
             "▶ 배가고프다, 나는 배가 고프다!",
