@@ -2674,7 +2674,6 @@ public class BossAttackController {
 	    //String job = (u == null || u.job == null) ? "" : u.job.trim();
 	    //boolean isMerchant = true;
 
-	    long soldSoFarSp = u.totalSp;  // 이번 판매에서 누적된 SP (배율 전 기준)
 	 // 🔥 여기부터 추가: param1 으로 전체판매 모드 제어
 	    if ("기타".equals(itemNameRaw)) {
 	        return sellAllByCategory(userName, roomName, u, false); // 잡템 전체판매
@@ -2865,7 +2864,6 @@ public class BossAttackController {
 	            unitPrice = (int)Math.floor(unitPrice * 0.5);
 	        }
 	        
-	        /*
 	        if (!isEquip && u.totalSp < 10000000) {
 	        	unitPrice *= 2;
 	        	flag1 = true;
@@ -2873,14 +2871,7 @@ public class BossAttackController {
 	            unitPrice *= 1.5;
 	            flag2 = true;
 	        }
-	        */
-	        if (!isEquip && soldSoFarSp < 10000000) {
-	            unitPrice *= 2;
-	            flag1 = true;
-	        } else if (!isEquip && soldSoFarSp < 25000000) {
-	            unitPrice *= 1.5;
-	            flag2 = true;
-	        }
+	        
 	        
 
 	        if (qty == take) botNewService.updateInventoryDelByRowId(rid);
@@ -2899,12 +2890,6 @@ public class BossAttackController {
 	        sold += take;
 	        need -= take;
 	        totalSp += (long) take * (long) unitPrice;
-	        long gained = (long) take * (long) unitPrice;
-
-	        totalSp += gained;
-
-	        // ✅ 여기! 이 줄이 3단계 위치
-	        soldSoFarSp += gained;
 	    }
 
 	    if (sold <= 0) {
@@ -3025,7 +3010,6 @@ public class BossAttackController {
 	    final int SHINY_MULTIPLIER = 5;
 	    final String NL = BossAttackController.NL;
 	    
-	    long soldSoFarSp =  u.totalSp ; // 이번 판매에서 누적된 SP (배율 전 기준)
 	    boolean flag1 = false;
 	    boolean flag2 = false;
 	    
@@ -3106,22 +3090,12 @@ public class BossAttackController {
 	        if (isShinyRow || isDarkRow) unitPrice = basePrice * SHINY_MULTIPLIER;
 	        if (isStealRow) unitPrice = (int)Math.floor(unitPrice * 0.5);
 
-	        /*
+	        
 	        if (!isEquip && u.totalSp < 10000000) {
 	        	unitPrice *= 2;
 	        	flag1 = true;
 	        	
 	        }else if (!isEquip && u.totalSp < 25000000) {
-	            unitPrice *= 1.5;
-	            flag2 = true;
-	        }
-	        */
-	        
-
-	        if (!isEquip && soldSoFarSp < 10000000) {
-	            unitPrice *= 2;
-	            flag1 = true;
-	        } else if (!isEquip && soldSoFarSp < 25000000) {
 	            unitPrice *= 1.5;
 	            flag2 = true;
 	        }
@@ -3137,12 +3111,6 @@ public class BossAttackController {
 	        sold += take;
 	        totalSp += (long) take * (long) unitPrice;
 	        
-	        long gained = (long) take * (long) unitPrice;
-
-	        totalSp += gained;
-
-	        // ✅ 여기! 이 줄이 3단계 위치
-	        soldSoFarSp += gained;
 	    }
 
 	    if (sold <= 0) {
