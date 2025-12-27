@@ -2241,7 +2241,10 @@ public class BossAttackController {
 
 	    // 13) 처치/드랍 판단
 	    Resolve res = resolveKillAndDrop(m, calc, willKill, u, lucky, dark);
-
+	    String newPoint ="";
+	    String stealPoint ="";
+	 
+	    
 	    // 궁수: 획득 EXP +25%
 	    if ("궁수".equals(u.job)) {
 	        int baseExp = res.gainExp;
@@ -2285,13 +2288,15 @@ public class BossAttackController {
 	                        inv.put("roomName", roomName);
 	                        inv.put("itemId", itemId);
 	                        inv.put("qty", 1);
-	                        inv.put("delYn", "0");
+	                        inv.put("delYn", "1");
 	                        inv.put("gainType", "STEAL");
 	                        botNewService.insertInventoryLogTx(inv);
 	                        stealMsg = "✨ " + m.monName + "의 아이템을 훔쳤습니다! (" + dropName + "조각)";
 	                        calc.jobSkillUsed = true;
 	                    }
 	                } catch (Exception ignore) {}
+	                
+	                stealPoint += " +"+baroSellItem(dropName,res,userName,roomName,ctx,u,"STEAL");
 	            }
 	        }
 	    }
@@ -2325,7 +2330,7 @@ public class BossAttackController {
 	                            inv.put("roomName", roomName);
 	                            inv.put("itemId", itemId);
 	                            inv.put("qty", 1);
-	                            inv.put("delYn", "0");
+	                            inv.put("delYn", "1");
 	                            inv.put("gainType", "STEAL");
 	                            botNewService.insertInventoryLogTx(inv);
 
@@ -2336,6 +2341,7 @@ public class BossAttackController {
 	                            calc.jobSkillUsed = true;
 	                        }
 	                    } catch (Exception ignore) {}
+	                    stealPoint += " +"+baroSellItem(dropName,res,userName,roomName,ctx,u,"STEAL");
 	                }
 	            }else {
 	            	stealMsg =
@@ -2359,14 +2365,17 @@ public class BossAttackController {
 	                        inv.put("userName", userName);
 	                        inv.put("roomName", roomName);
 	                        inv.put("itemId", itemId);
-	                        inv.put("qty", 1);
-	                        inv.put("delYn", "0");
-	                        inv.put("gainType", "DROP");
+	                        inv.put("qty", 2);
+	                        inv.put("delYn", "1");
+	                        inv.put("gainType", "STEAL");
 	                        botNewService.insertInventoryLogTx(inv);
 	                        stealMsg = "✨ 날카로운 처단으로 추가획득 (+" + dropName + ")";
 	                        calc.jobSkillUsed = true;
 	                    }
+	                    
+	                    
 	                } catch (Exception ignore) {}
+	                stealPoint += " +" +baroSellItem(dropName,res,userName,roomName,ctx,u,"DROP");
 	            }
 	        }
 	    }
@@ -2384,7 +2393,7 @@ public class BossAttackController {
 	                        inv.put("roomName", roomName);
 	                        inv.put("itemId", itemId);
 	                        inv.put("qty", 1);
-	                        inv.put("delYn", "0");
+	                        inv.put("delYn", "1");
 	                        inv.put("gainType", "STEAL");
 	                        botNewService.insertInventoryLogTx(inv);
 	                        if(ThreadLocalRandom.current().nextDouble() < 0.5) {
@@ -2394,6 +2403,9 @@ public class BossAttackController {
 	                        }
 	                        calc.jobSkillUsed = true;
 	                    }
+	                    
+	                    stealPoint += " +"+baroSellItem(dropName,res,userName,roomName,ctx,u,"STEAL");
+	                    
 	                } catch (Exception ignore) {}
 	            }
 	        }
@@ -2404,6 +2416,22 @@ public class BossAttackController {
 	    if ("도사".equals(job)) {
 	        dosaCastMsg = "✨ 도사의 기원! 다음 공격자 강화!";
 	    }
+	    
+	    
+	    boolean flag1 =false;
+	    boolean flag2 =false;
+	 // 🔥 드랍 즉시 SP 지급
+	   
+	    
+	    if (res.killed && !"0".equals(res.dropCode)) {
+
+	        String dropName = (m.monDrop == null ? "" : m.monDrop.trim());
+	        if (!dropName.isEmpty()) {
+
+	            newPoint += " +"+baroSellItem(dropName,res,userName,roomName,ctx,u,"DROP");
+	        }
+	    }
+	    
 
 	    // 14) DB 반영 + 레벨업 처리
 	    LevelUpResult up = persist(userName, roomName, u, m, flags, calc, res, effHpMax,ctx.isReturnUser);
@@ -2496,7 +2524,21 @@ public class BossAttackController {
 	        curPoint = (p == null ? 0 : p.intValue());
 	    } catch (Exception ignore) {}
 	    String curSpStr = formatSp(curPoint);
-
+	    if (!stealPoint.isEmpty()) {
+	    	msg += "✨추가획득" + stealPoint ;
+    		msg +=NL;
+	    }
+	    
+	    if (!newPoint.isEmpty()) {
+	    	msg += "✨전투획득" + newPoint;
+	    	if(flag1) {
+	    		msg+="(누적 1000만sp 이하 2배 적용)";
+	    	}
+    		if(flag2) {
+    			msg+="(누적 2500만sp 이하 1.5배 적용)";
+    		}
+    		msg +=NL;
+	    }
 	    msg += "✨포인트: " + curSpStr;
 
 	    if (bagDropMsg != null && !bagDropMsg.isEmpty()) {
@@ -2513,6 +2555,62 @@ public class BossAttackController {
 
 	    return msg;
 	}
+	
+	public String baroSellItem(String dropName,Resolve res,String userName,String roomName,UserBattleContext ctx,User u,String gainType) {
+		String newPoint="";
+		try {
+            Integer itemId = botNewService.selectItemIdByName(dropName);
+            Integer basePrice = botNewService.selectItemSellPriceById(itemId);
+
+            if (basePrice != null && basePrice > 0) {
+
+                int gainSp = basePrice;
+
+                if("STEAL".equals(gainType)) {
+                	gainSp /= 2;
+                }
+                
+                if(!"STEAL".equals(gainType)) {
+                	// 빛 / 어둠 보정
+                    if ("3".equals(res.dropCode) || "5".equals(res.dropCode)) {
+                        gainSp *= 5;
+                    }
+                    if ("2".equals(res.dropCode)) {
+                        gainSp *= 2;
+                    }
+
+                   
+
+                }
+                
+                // 복귀자 보너스
+                if (ctx.isReturnUser) {
+                    gainSp *= 2;
+                }
+
+    	        
+                // SP 즉시 지급
+                HashMap<String, Object> pr = new HashMap<>();
+                pr.put("userName", userName);
+                pr.put("roomName", roomName);
+                pr.put("score", (int) gainSp);
+                pr.put("cmd", "DROP_SP");
+
+                botNewService.insertPointRank(pr);
+
+                newPoint = formatSp(gainSp);
+                
+                
+                // 메시지용
+                //stealMsg += NL + "SP 즉시 획득: +" + formatSp(gainSp);
+
+            }
+
+        } catch (Exception ignore) {}
+		
+		return newPoint;
+	}
+	
 	
 	
 	public String patchNote(HashMap<String,Object> map) {
@@ -4249,7 +4347,7 @@ public class BossAttackController {
 	                    }else {
 	                    	inv.put("qty",qty);
 	                    }
-	                    inv.put("delYn",     "0");
+	                    inv.put("delYn",     "1");
 	                    inv.put("gainType", gainType);
 	                    botNewService.insertInventoryLogTx(inv);
 	                }

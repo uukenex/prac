@@ -332,6 +332,9 @@ public class LoaChatController {
 		boolean passYn=false;
 		String replace_param="";
 		
+		List<HashMap<String,Object>> gameYnList;
+		String playYn ; 
+		
 		HashMap<String,Object> saveMap = new HashMap<>();
 		
 		try {
@@ -361,6 +364,7 @@ public class LoaChatController {
 				break;
 			case "/큐브":
 				break;
+				/*
 			case "/시즌이력":
 			case "/ㅅㅈㅇㄹ":
 				reqMap.put("param0", "/ㅅㅈㅇㄹ");
@@ -368,6 +372,8 @@ public class LoaChatController {
 				break;
 			case "/시즌정보":
 				break;
+				*/
+				/*
 			case "/강화": case "/ㄱㅎ": 
 				List<HashMap<String,Object>> gameYnList = botService.selectGamePlayYn(reqMap);
 				String playYn ="1"; 
@@ -383,6 +389,8 @@ public class LoaChatController {
 					val = "별도 게임방에서 진행해주세요.";
 				}
 				break;
+				*/
+				/*
 			case "/반지강화": case "/ㅂㅈㄱㅎ": 
 				gameYnList = botService.selectGamePlayYn(reqMap);
 				playYn ="1"; 
@@ -398,6 +406,8 @@ public class LoaChatController {
 					val = "별도 게임방에서 진행해주세요.";
 				}
 				break;
+				*/
+				/*
 			case "/강화정보": case "/ㄱㅎㅈㅂ": 
 				gameYnList = botService.selectGamePlayYn(reqMap);
 				playYn ="1"; 
@@ -413,6 +423,8 @@ public class LoaChatController {
 					val = "별도 게임방에서 진행해주세요.";
 				}
 				break;
+				*/
+				/*
 			case "/강화2": case "/ㄱㅎ2": 
 				gameYnList = botService.selectGamePlayYn(reqMap);
 				playYn ="1"; 
@@ -428,6 +440,8 @@ public class LoaChatController {
 					val = "별도 게임방에서 진행해주세요.";
 				}
 				break;
+				*/
+				/*
 			case "/강화3": case "/ㄱㅎ3": 
 				gameYnList = botService.selectGamePlayYn(reqMap);
 				playYn ="1"; 
@@ -443,6 +457,8 @@ public class LoaChatController {
 					val = "별도 게임방에서 진행해주세요.";
 				}
 				break;
+				*/
+				/*
 			case "/강화랭킹": case "/ㄱㅎㄹㅋ": 
 				gameYnList = botService.selectGamePlayYn(reqMap);
 				playYn ="1"; 
@@ -459,18 +475,7 @@ public class LoaChatController {
 					List<HashMap<String,Object>> weapon_map = botService.selectBotPointWeaponRank(reqMap);
 					val +="현재방 강화랭킹"+enterStr;
 					for(int i =0;i<weapon_map.size();i++) {
-						switch(i) {
-						/*
-						case 0:
-							val += rank_1st;
-							break;
-						case 1:
-							val += rank_2nd;
-							break;
-						case 2:
-							val += rank_3rd;
-							break;
-						 */
+						
 						default:
 							val += rank_etc;
 							break;
@@ -502,17 +507,7 @@ public class LoaChatController {
 					val +=roomName+" 악세랭킹"+enterStr;
 					for(int i =0;i<weapon_map.size();i++) {
 						switch(i) {
-						/*
-						case 0:
-							val += rank_1st;
-							break;
-						case 1:
-							val += rank_2nd;
-							break;
-						case 2:
-							val += rank_3rd;
-							break;
-						 */
+						
 						default:
 							val += rank_etc;
 							break;
@@ -544,17 +539,7 @@ public class LoaChatController {
 					val +=roomName+" 달성악세랭킹"+enterStr;
 					for(int i =0;i<weapon_map.size();i++) {
 						switch(i) {
-						/*
-						case 0:
-							val += rank_1st;
-							break;
-						case 1:
-							val += rank_2nd;
-							break;
-						case 2:
-							val += rank_3rd;
-							break;
-						 */
+						
 						default:
 							val += rank_etc;
 							break;
@@ -569,6 +554,8 @@ public class LoaChatController {
 				}
 				
 				break;	
+				*/
+				/*
 			case "/ㅊㅅㅂ": case "/출석부": 
 				gameYnList = botService.selectGamePlayYn(reqMap);
 				playYn ="1"; 
@@ -585,6 +572,7 @@ public class LoaChatController {
 				}
 				
 				break;
+				*/
 			case "/ㅊㅊ": case "/cc": case "/CC": case "/출첵":
 				gameYnList = botService.selectGamePlayYn(reqMap);
 				playYn ="1"; 
@@ -602,6 +590,7 @@ public class LoaChatController {
 				}
 				
 				break;
+				/*
 			case "/주사위": case "/ㅈㅅㅇ":
 				gameYnList = botService.selectGamePlayYn(reqMap);
 				playYn ="1"; 
@@ -618,6 +607,7 @@ public class LoaChatController {
 					val = "별도 게임방에서 진행해주세요.";
 				}
 				break;
+				*/
 			case "/결투": case "/ㄱㅌ":
 				gameYnList = botService.selectGamePlayYn(reqMap);
 				playYn ="1"; 
@@ -633,6 +623,7 @@ public class LoaChatController {
 					val = "별도 게임방에서 진행해주세요.";
 				}
 				break;
+				/*
 			case "/보스": case "/보스정보":
 				gameYnList = botService.selectGamePlayYn(reqMap);
 				playYn ="1"; 
@@ -648,6 +639,7 @@ public class LoaChatController {
 					val = "별도 게임방에서 진행해주세요.";
 				}
 				break;
+				*/
 			case "/구매": case "/ㄱㅁ":
 				val = boss.buyItem(reqMap);
 				break;
@@ -723,6 +715,7 @@ public class LoaChatController {
 					val = "별도 게임방에서 진행해주세요.";
 				}
 				break;
+				/*
 			case "/포인트사용": 
 				val = play.usePoint(reqMap);
 				break;	
@@ -756,6 +749,8 @@ public class LoaChatController {
 					val = "별도 게임방에서 진행해주세요.";
 				}
 				break;
+				*/
+				/*
 			case "/악세구매": case "/악세구입": case "/ㅇㅅㄱㅇ": case "/ㅇㅅㄱㅁ":
 				gameYnList = botService.selectGamePlayYn(reqMap);
 				playYn ="1"; 
@@ -904,7 +899,7 @@ public class LoaChatController {
 					val = "별도 게임방에서 진행해주세요.";
 				}
 				break;
-				
+				*/
 			case "/포인트야구": case "/야구":
 				gameYnList = botService.selectGamePlayYn(reqMap);
 				playYn ="1"; 
