@@ -611,7 +611,11 @@ public class BossAttackController {
 
 	    // 🔥 누적 SP 기반 상한 적용
 		int cap = botNewService.selectBagRewardCap(userName);
-	    cap = (int) Math.round(cap*1.5);
+	    cap = (int) Math.round(cap/2);
+	    if(cap <50000) {
+	    	cap = 100000;
+	    }
+	    
 	    // ② 10개 미만이면 천장 적용 안 함 → 기본 200~100000 룰렛
 	    if (totalCount < 10) {
 	        return pickBiasedSp(5000, cap);
@@ -2652,7 +2656,7 @@ public class BossAttackController {
 	                String u = b.getUserName();
 	                if (userName.equals(u)) {
 	                    // 최근 5개 가방 로그 안에 있으면 → 이미 먹은 사람
-	                    return 1; // 기본 확률
+	                    return 0.5; // 기본 확률
 	                }
 	            }
 	        }
@@ -2682,7 +2686,7 @@ public class BossAttackController {
 	    
 	    if (isRising) {
 	        // 열심히 때렸는데 최근 가방 기록은 없는 사람 → 드랍율 4배
-	        return 4.0;
+	        return 6.0;
 	    }
 	    
 	    
