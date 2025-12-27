@@ -699,6 +699,7 @@ public class LoaChatController {
 				reqMap.put("monNo", param1);
 				val = boss.changeTarget(reqMap);
 				break;
+				/*
 			case "/공격": case "/ㄱㄱ": case "/rr": case "/RR": 
 				
 				gameYnList = botService.selectGamePlayYn(reqMap);
@@ -715,6 +716,7 @@ public class LoaChatController {
 					val = "별도 게임방에서 진행해주세요.";
 				}
 				break;
+				*/
 				/*
 			case "/포인트사용": 
 				val = play.usePoint(reqMap);
@@ -1749,6 +1751,7 @@ public class LoaChatController {
 				
 				val +=enterStr;
 				break;
+				/*
 			case "/포인트": case "/ㅍㅇㅌ":
 				reqMap.put("newUserName", sender);
 				
@@ -1821,22 +1824,14 @@ public class LoaChatController {
 				}
 				
 				break;
+				*/
+				/*
 			case "/포인트랭킹": case "/ㅍㅇㅌㄹㅋ":
 				List<HashMap<String,Object>> point_map = botService.selectBotPointRankAll(reqMap);
 				val +=roomName+" 람쥐포인트"+enterStr;
 				for(int i =0;i<point_map.size();i++) {
 					switch(i) {
-							/*
-						case 0:
-							val += rank_1st;
-							break;
-						case 1:
-							val += rank_2nd;
-							break;
-						case 2:
-							val += rank_3rd;
-							break;
-							*/
+							
 						default:
 							val += rank_etc;
 							break;
@@ -1844,6 +1839,7 @@ public class LoaChatController {
 					val += point_map.get(i).get("USER_NAME")+ " : "+point_map.get(i).get("SCORE")+enterStr ;
 				}
 				break;
+				*/
 			case "/항협": case "/항해": case "/항해협동": case "/ㅎㅎ":
 				val = shipSearch();
 				break;
