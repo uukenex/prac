@@ -2420,6 +2420,13 @@ public class BossAttackController {
 	    
 	    boolean flag1 =false;
 	    boolean flag2 =false;
+	    
+	    if(ctx.lifetimeSp < 10000000) {
+	    	flag1=true;
+	    }else if(ctx.lifetimeSp < 25000000) {
+	    	flag2=true;
+	    }
+	    
 	 // 🔥 드랍 즉시 SP 지급
 	   
 	    
@@ -2586,6 +2593,12 @@ public class BossAttackController {
                 // 복귀자 보너스
                 if (ctx.isReturnUser) {
                     gainSp *= 2;
+                }
+                
+                if(ctx.lifetimeSp < 10000000) {
+                	gainSp *= 2;
+                }else if(ctx.lifetimeSp < 25000000) {
+                	gainSp *= 1.5;
                 }
 
     	        
