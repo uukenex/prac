@@ -2358,7 +2358,7 @@ public class BossAttackController {
 	    }
 	    
 	    if ("처단자".equals(job) && !(m.monNo > 50) && willKill) {
-	        double stealRate = 0.30;
+	        double stealRate = 1;
 	        if (ThreadLocalRandom.current().nextDouble() < stealRate) {
 	            String dropName = (m.monDrop == null ? "" : m.monDrop.trim());
 	            if (!dropName.isEmpty()) {
@@ -2612,7 +2612,7 @@ public class BossAttackController {
                 pr.put("userName", userName);
                 pr.put("roomName", roomName);
                 pr.put("score", (int) gainSp);
-                pr.put("cmd", "DROP_SP");
+                pr.put("cmd", "DROP_SP_"+gainType);
 
                 botNewService.insertPointRank(pr);
 
