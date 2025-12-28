@@ -2300,7 +2300,7 @@ public class BossAttackController {
 	                    }
 	                } catch (Exception ignore) {}
 	                
-	                stealPoint += " +"+baroSellItem(dropName,res,userName,roomName,ctx,u,"STEAL");
+	                stealPoint += " +"+baroSellItem(dropName,res,userName,roomName,ctx,u,"STEAL",1);
 	            }
 	        }
 	    }
@@ -2345,7 +2345,7 @@ public class BossAttackController {
 	                            calc.jobSkillUsed = true;
 	                        }
 	                    } catch (Exception ignore) {}
-	                    stealPoint += " +"+baroSellItem(dropName,res,userName,roomName,ctx,u,"STEAL");
+	                    stealPoint += " +"+baroSellItem(dropName,res,userName,roomName,ctx,u,"STEAL",1);
 	                }
 	            }else {
 	            	stealMsg =
@@ -2379,7 +2379,7 @@ public class BossAttackController {
 	                    
 	                    
 	                } catch (Exception ignore) {}
-	                stealPoint += " +" +baroSellItem(dropName,res,userName,roomName,ctx,u,"STEAL");
+	                stealPoint += " +" +baroSellItem(dropName,res,userName,roomName,ctx,u,"STEAL",2);
 	            }
 	        }
 	    }
@@ -2408,7 +2408,7 @@ public class BossAttackController {
 	                        calc.jobSkillUsed = true;
 	                    }
 	                    
-	                    stealPoint += " +"+baroSellItem(dropName,res,userName,roomName,ctx,u,"STEAL");
+	                    stealPoint += " +"+baroSellItem(dropName,res,userName,roomName,ctx,u,"STEAL",1);
 	                    
 	                } catch (Exception ignore) {}
 	            }
@@ -2439,7 +2439,7 @@ public class BossAttackController {
 	        String dropName = (m.monDrop == null ? "" : m.monDrop.trim());
 	        if (!dropName.isEmpty()) {
 
-	            newPoint += " +"+baroSellItem(dropName,res,userName,roomName,ctx,u,"DROP");
+	            newPoint += " +"+baroSellItem(dropName,res,userName,roomName,ctx,u,"DROP",1);
 	        }
 	    }
 	    
@@ -2567,7 +2567,7 @@ public class BossAttackController {
 	    return msg;
 	}
 	
-	public String baroSellItem(String dropName,Resolve res,String userName,String roomName,UserBattleContext ctx,User u,String gainType) {
+	public String baroSellItem(String dropName,Resolve res,String userName,String roomName,UserBattleContext ctx,User u,String gainType,int qty) {
 		String newPoint="";
 		try {
             Integer itemId = botNewService.selectItemIdByName(dropName);
@@ -2579,6 +2579,7 @@ public class BossAttackController {
 
                 if("STEAL".equals(gainType)) {
                 	gainSp /= 2;
+                	gainSp *= qty;
                 }
                 
                 if(!"STEAL".equals(gainType)) {

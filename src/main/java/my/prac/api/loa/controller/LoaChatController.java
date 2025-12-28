@@ -721,6 +721,7 @@ public class LoaChatController {
 			case "/포인트사용": 
 				val = play.usePoint(reqMap);
 				break;	
+				*/
 			case "/포인트뽑기": case "/ㅃㄱ": case "/뽑기":
 				gameYnList = botService.selectGamePlayYn(reqMap);
 				playYn ="1"; 
@@ -736,6 +737,7 @@ public class LoaChatController {
 					val = "별도 게임방에서 진행해주세요.";
 				}
 				break;
+				/*
 			case "/포인트상점": case "/상점": case "/ㅍㅇㅌㅅㅈ":
 				gameYnList = botService.selectGamePlayYn(reqMap);
 				playYn ="1"; 
