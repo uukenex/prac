@@ -2379,7 +2379,7 @@ public class BossAttackController {
 	                    
 	                    
 	                } catch (Exception ignore) {}
-	                stealPoint += " +" +baroSellItem(dropName,res,userName,roomName,ctx,u,"DROP");
+	                stealPoint += " +" +baroSellItem(dropName,res,userName,roomName,ctx,u,"STEAL");
 	            }
 	        }
 	    }
