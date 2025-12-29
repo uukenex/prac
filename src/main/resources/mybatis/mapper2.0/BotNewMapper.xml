@@ -908,7 +908,7 @@
 	        GROUP BY USER_NAME, ROOM_NAME
 	        ORDER BY ATK_CNT DESC, LAST_ATTACK DESC
 	    )
-	    WHERE ROWNUM &lt;= 8
+	    WHERE ROWNUM &lt;= 10
 	</select>
 	
 	<select id="selectSpAndAtkRanking" resultType="hashmap">

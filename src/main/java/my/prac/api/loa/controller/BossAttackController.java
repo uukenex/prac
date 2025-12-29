@@ -3330,7 +3330,7 @@ public class BossAttackController {
 	            }
 	            
 	            sb.append(NL);
-	            if (rank++ >= 7) break;
+	            if (rank++ >= 10) break;
 	        }
 	    }
 	    sb.append(NL);
