@@ -2001,16 +2001,24 @@ public class BossAttackController {
 
 	        if (dark) {
 	            lucky = false;
-	        } else if (m.monNo > 50) {
+	        } 
+	        
+	        if (m.monNo > 50) {
 	            lucky = false;
 	            dark = false;
-	        } else if (globalCnt == 0) {
+	        } 
+	        
+	        if (globalCnt == 0) {
 	            lucky = false;
 	            dark = false;
-	        } else if ("사신".equals(job)) {
+	        } 
+	        
+	        if ("사신".equals(job)) {
 	            //lucky = false;
 	            dark = false;
-	        } else if ("도사".equals(job)) {
+	        } 
+	        
+	        if ("도사".equals(job)) {
                 lucky = ThreadLocalRandom.current().nextDouble() < LUCKY_RATE_DOSA;
 	        } else {
                 lucky = ThreadLocalRandom.current().nextDouble() < LUCKY_RATE ;
