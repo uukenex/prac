@@ -1983,10 +1983,18 @@ public class BossAttackController {
 	            }
 	        }
 
+	       
+	        
+	        if ("도사".equals(job)) {
+                lucky = ThreadLocalRandom.current().nextDouble() < LUCKY_RATE_DOSA;
+	        } else {
+                lucky = ThreadLocalRandom.current().nextDouble() < LUCKY_RATE ;
+	        }
 	        boolean able_to_lucky_yn = false;
 	        if (killCountForThisMon >= 50) {
 	            able_to_lucky_yn = true;
 	        }
+	        
 
 	        if (!able_to_lucky_yn) {
 	            lucky = false;
@@ -1999,31 +2007,14 @@ public class BossAttackController {
 	            if (v != null) globalCnt = v.intValue();
 	        }
 
-	        if (dark) {
+	        if (dark || globalCnt == 0 ||m.monNo > 50) {
 	            lucky = false;
 	        } 
 	        
-	        if (m.monNo > 50) {
-	            lucky = false;
-	            dark = false;
-	        } 
-	        
-	        if (globalCnt == 0) {
-	            lucky = false;
-	            dark = false;
-	        } 
-	        
-	        if ("사신".equals(job)) {
-	            //lucky = false;
-	            dark = false;
-	        } 
-	        
-	        if ("도사".equals(job)) {
-                lucky = ThreadLocalRandom.current().nextDouble() < LUCKY_RATE_DOSA;
-	        } else {
-                lucky = ThreadLocalRandom.current().nextDouble() < LUCKY_RATE ;
+	        if (lucky || globalCnt == 0||m.monNo > 50 ||"사신".equals(job)) {
+	        	dark = false;
 	        }
-	        
+	       
 	        
 	        if (dark) {
 	        	if(m.monNo <15) {
