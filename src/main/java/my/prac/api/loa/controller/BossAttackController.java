@@ -305,7 +305,6 @@ public class BossAttackController {
 	    }
 	    if ("용사".equals(job)) {
 	    	finalHpMax += baseHpMax*10; // 기본 HP 추가
-	    	finalRegen += baseRegen*5;
 
 	        jobHpMaxBonus = baseHpMax*10;
 	        jobRegenBonus = baseRegen*5;
@@ -1993,18 +1992,7 @@ public class BossAttackController {
 	            lucky = false;
 	        }
 
-	        if (dark) {
-	        	if(m.monNo <15) {
-	        		monMaxHp = monMaxHp * 5;
-	        		m.monAtk = m.monAtk * 2;
-	        		monHpRemainBefore = monMaxHp;
-	        	}else if(m.monNo>15) {
-	        		monMaxHp = monMaxHp * 3;
-	        		m.monAtk = (int)Math.round( m.monAtk * 1.5);
-	        		monHpRemainBefore = monMaxHp;
-	        	}
-	        }
-
+	       
 	        int globalCnt = 0;
 	        if (globalAchvMap != null) {
 	            Integer v = globalAchvMap.get("ACHV_FIRST_CLEAR_MON_" + m.monNo);
@@ -2027,6 +2015,20 @@ public class BossAttackController {
 	        } else {
                 lucky = ThreadLocalRandom.current().nextDouble() < LUCKY_RATE ;
 	        }
+	        
+	        
+	        if (dark) {
+	        	if(m.monNo <15) {
+	        		monMaxHp = monMaxHp * 5;
+	        		m.monAtk = m.monAtk * 2;
+	        		monHpRemainBefore = monMaxHp;
+	        	}else if(m.monNo>15) {
+	        		monMaxHp = monMaxHp * 3;
+	        		m.monAtk = (int)Math.round( m.monAtk * 1.5);
+	        		monHpRemainBefore = monMaxHp;
+	        	}
+	        }
+
 	    }
 
 	    // 7) 쿨타임 체크 (param1 그대로 사용)
@@ -2061,10 +2063,10 @@ public class BossAttackController {
 	    }
 	    
 	    if ("용사".equals(job) && dark ) {
-	        berserkMul = 2;
+	        berserkMul = 1.5;
 	    }
 	    if ("처단자".equals(job) && lucky ) {
-	    	berserkMul = 2;
+	    	berserkMul = 1.5;
 	    }
 	    
 	    /*
@@ -2100,16 +2102,23 @@ public class BossAttackController {
 
 	    Flags flags = rollFlags(u, m);
 
-	    // 9) HP 20% 제한 체크
+	    // 9) HP 5% 제한 체크
 	    int origHpMax = u.hpMax;
 	    int origRegen = u.hpRegen;
 
 	    u.hpMax   = effHpMax;
 	    u.hpRegen = effRegen;
 
+	    
+	    
 	    try {
 	        String hpMsg = buildBelowHalfMsg(userName, roomName, u, param1);
-	        if (hpMsg != null) return hpMsg;
+	        if (!"사신".equals(job)) {
+	        	if (hpMsg != null) {
+		        	return hpMsg;
+		        }
+	    	}
+	        
 	    } finally {
 	        u.hpMax   = origHpMax;
 	        u.hpRegen = origRegen;
@@ -6140,7 +6149,7 @@ public class BossAttackController {
 	    if ("검성".equals(job)) {
 	    	if (ThreadLocalRandom.current().nextDouble() < 0.065) {
         		out.dmgCalcMsg += "바람가르기! "+baseAtk+"→";
-        		baseAtk = (int)Math.round(baseAtk * 5);
+        		baseAtk = (int)Math.round(baseAtk * 4);
         		out.dmgCalcMsg += baseAtk+NL;
         		out.dmgCalcMsg += "몬스터가 바람에 갇혀 행동불가가 됨!";
         		calc.jobSkillUsed = true;
@@ -6151,7 +6160,7 @@ public class BossAttackController {
 	    if ("어쎄신".equals(job)) {
 	    	if (ThreadLocalRandom.current().nextDouble() < 0.065) {
         		out.dmgCalcMsg += "그림투스! "+baseAtk+"→";
-        		baseAtk = (int)Math.round(baseAtk * 5);
+        		baseAtk = (int)Math.round(baseAtk * 4);
         		out.dmgCalcMsg += baseAtk+NL;
         		out.dmgCalcMsg += "몬스터가 기습에 당해 행동불가가 됨!";
         		calc.jobSkillUsed = true;
@@ -6415,7 +6424,7 @@ public class BossAttackController {
 	        // 🛡 전사: 보스 필살기 패링 (20% 확률)
 	        if ("검성".equals(job)) {
 	        	if (flags.finisher && calc.monDmg > 0) {
-		            if (ThreadLocalRandom.current().nextDouble() < 0.30) {
+		            if (ThreadLocalRandom.current().nextDouble() < 0.15) {
 
 		                int bossSkillDmg = calc.monDmg;             // 보스 필살기 데미지
 		                int reflectTotal = calc.atkDmg + bossSkillDmg; // 되돌려줄 총 피해
@@ -6431,7 +6440,7 @@ public class BossAttackController {
 		                calc.jobSkillUsed = true;
 		            }
 		        }else if (!flags.finisher && calc.monDmg > 0) {
-		        	if (ThreadLocalRandom.current().nextDouble() < 0.30) {
+		        	if (ThreadLocalRandom.current().nextDouble() < 0.15) {
 		        		int bossSkillDmg = calc.monDmg;             // 보스 필살기 데미지
 		                int reflectTotal = calc.atkDmg + bossSkillDmg; // 되돌려줄 총 피해
 
@@ -7207,7 +7216,7 @@ public class BossAttackController {
         JOB_DEFS.put("용사", new JobDef(
 	        "용사",
 	        "▶ 선택 받은 자",//어둠몹에 피해두배 ,언데드추뎀25% ,스틸30%, 10%확률 완전회복
-	        "⚔ 기본 HP*10,리젠*5 만큼 추가 증가, 어둠몬스터에 피해*2, 언데드 추가피해(+25%), 공격시 steal(30%), 정령의가호(10%), 기본데미지 * 1.4"+NL
+	        "⚔ 기본 HP*10,리젠*5 만큼 추가 증가, 어둠몬스터에 추가피해(+50%), 언데드 추가피해(+25%), 공격시 steal(30%), 정령의가호(10%), 기본데미지 * 1.4"+NL
 	        +"◎선행조건 전사,도적,도사,프리스트 직업으로 각 300회 공격"
 	    ));
 	     
@@ -7215,7 +7224,7 @@ public class BossAttackController {
 	    JOB_DEFS.put("처단자", new JobDef(
 	        "처단자",
 	        "▶ 신을 모독하는 자는 그의 손에서 살아남을수 없다, 물론 모독을 안했어도 말이지..! ",
-	        "⚔ 방어를 무시하고 피해 2.5배를 줌, 몬스터의 기본공격 80%회피 [회피 no12부터 3%씩,no15부터 5%씩 감소] , 처치시 추가드랍(30%), 빛몬스터에 피해*2, 기본데미지 *1.4 "+NL
+	        "⚔ 방어를 무시하고 피해 2.5배를 줌, 몬스터의 기본공격 80%회피 [회피 no12부터 3%씩,no15부터 5%씩 감소] , 처치시 추가드랍(30%), 빛몬스터에 추가피해(+50%), 기본데미지 *1.4 "+NL
 	        +"◎선행조건 마법사,도적 직업으로 각 300회 공격"
 	    ));
 	    JOB_DEFS.put("제너럴", new JobDef(
@@ -7229,7 +7238,7 @@ public class BossAttackController {
 	    JOB_DEFS.put("검성", new JobDef(
 	        "검성",
 	        "▶ 검으로 세상 끝에 닿았다",
-	        "⚔ 기본 HP*20만큼 추가 증가, 적의 공격 반격(30%),기본데미지*2"+NL
+	        "⚔ 기본 HP*20만큼 추가 증가, 적의 공격 반격(15%),기본데미지*2"+NL
 	        +"◎선행조건 전사 직업으로 1000회 공격"
 	    ));
 	    JOB_DEFS.put("어쎄신", new JobDef(
