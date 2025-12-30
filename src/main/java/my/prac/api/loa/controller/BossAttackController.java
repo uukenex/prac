@@ -808,11 +808,13 @@ public class BossAttackController {
 	        String label = itemName;
 
 	        // ─────────────────
-	        // 장비 / 전설 / 날개 / 토템
+	        // 장비 / 전설 / 날개 / 토템 /업적
 	        // ─────────────────
 	        if ("MARKET".equalsIgnoreCase(type)
 	            || "MASTER".equalsIgnoreCase(type)
-	            || "BAG_OPEN".equalsIgnoreCase(type)) {
+	            || "BAG_OPEN".equalsIgnoreCase(type)
+	            || "ACHV".equalsIgnoreCase(type)
+	        		) {
 	        	
 	        	
 	        	/*
@@ -1218,7 +1220,9 @@ public class BossAttackController {
 	                boolean isEquipType =
 	                        "MARKET".equalsIgnoreCase(typeStr) ||
 	                        "BAG_OPEN".equalsIgnoreCase(typeStr) ||
-	                        "MASTER".equalsIgnoreCase(typeStr);
+	                        "MASTER".equalsIgnoreCase(typeStr) || 
+	                        "ACHV".equalsIgnoreCase(typeStr) 
+	                        ;
 
 	                if (isEquipType) {
 	                	
@@ -6005,10 +6009,12 @@ public class BossAttackController {
 	    // -----------------------------
 	    
 	    if ("궁사".equals(job)) {
-
+	        int step = (int)Math.round(effAtkMax * 0.10);
+	        step = Math.max(step, 280); // 최소 200 단위
+	        
 	        // 1) 연사 횟수 계산
 	        int range    = Math.max(0, effAtkMax - effAtkMin); // 최대뎀 - 최소뎀
-	        int segments = range / 280;                        // 280 차이마다 1구간
+	        int segments = range / step;
 	        int hitCount = Math.max(1, segments + 1);          // 구간+1이 실제 발사 수
 
 	        int totalDmg = 0;
@@ -7380,7 +7386,7 @@ public class BossAttackController {
         JOB_DEFS.put("궁사", new JobDef(
     		"궁사",
     		"▶ 연속공격의 달인, 최대데미지와 최소공격력 차이가 클수록 연속공격한다",
-    		"⚔ 최대-최소 데미지 차이 280 마다 1연사 추가공격(각 구간 별 공격은 개별치명타율 최대75%)"+NL
+    		"⚔ 최대-최소 데미지 차이 최대데미지의10%마다(최소280) 1연사 추가공격(각 구간 별 공격은 개별치명타율 최대75%)"+NL
  	         +"◎선행조건 : 공격횟수 3000회 "
         ));
 
