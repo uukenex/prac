@@ -826,12 +826,8 @@
 	  SELECT CMD, SCORE, USER_NAME, ROOM_NAME, INSERT_DATE
 	  FROM TBOT_POINT_RANK
 	  WHERE USER_NAME = #{userName}
-	  <!-- 
-	   <if test="roomName != null and roomName != '람쥐봇 문의방'">
-        AND ROOM_NAME = #{roomName}
-      </if>
-       -->
 	    AND CMD LIKE 'ACHV_%'
+	    AND CMD NOT LIKE '%BROAD%'
 	  ORDER BY CASE
 			        WHEN CMD LIKE 'ACHV_FIRST_CLEAR_MON_%' THEN 1
 			        WHEN CMD LIKE 'ACHV_KILL_TOTAL_%'      THEN 2
@@ -865,11 +861,6 @@
 	           COUNT(1)            AS ATK_CNT
 	      FROM TBOT_POINT_NEW_BATTLE_LOG
 	     WHERE USER_NAME = #{userName}
-	     <!-- 
-	      <if test="roomName != null and roomName != '람쥐봇 문의방'">
-	           AND ROOM_NAME = #{roomName}
-           </if>
-            -->
 	       AND INSERT_DATE &lt; SYSDATE
 	     GROUP BY TRUNC(INSERT_DATE)
 	     ORDER BY ATTACK_DAY
@@ -881,11 +872,6 @@
 	           COUNT(1) AS CNT
 	    FROM TBOT_POINT_NEW_BATTLE_LOG
 	    WHERE USER_NAME = #{userName}
-	    <!-- 
-	    <if test="roomName != null and roomName != '람쥐봇 문의방'">
-          AND ROOM_NAME = #{roomName}
-        </if>
-         -->
 	    GROUP BY JOB
 	</select>
  
@@ -895,9 +881,6 @@
 	       SET JOB = #{job},
 	           JOB_CHANGE_DATE = SYSDATE
 	     WHERE USER_NAME = #{userName}
-	     <!-- 
-	       AND ROOM_NAME = #{roomName}
-	        -->
 	</update>
 	
 	<select id="selectRisingStarsTop5Last6h" resultType="hashmap">
@@ -1099,6 +1082,7 @@
 		          FROM TBOT_POINT_RANK
 		         WHERE NEW_YN = '1'
 		           AND CMD LIKE 'ACHV%'
+		           AND CMD NOT LIKE '%BROAD%'
 		         GROUP BY USER_NAME, ROOM_NAME
 		         ORDER BY COUNT(*) DESC, USER_NAME
 		    )
