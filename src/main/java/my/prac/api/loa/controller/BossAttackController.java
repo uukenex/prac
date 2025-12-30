@@ -3271,12 +3271,13 @@ public class BossAttackController {
 	          .append("(요청 ").append(reqQty).append("개 → 실제 ").append(sold).append("개 판매)");
 	    }
 
+	    /*
 	    String achvMsg = grantShopSellAchievements(userName, roomName);
 	    if (achvMsg != null && !achvMsg.isEmpty()) {
 	        sb.append(NL).append("업적").append(NL)
 	          .append(achvMsg);
 	    }
-	    
+	    */
 	    return sb.toString();
 	}
 	
@@ -3438,10 +3439,11 @@ public class BossAttackController {
 	        sb.append(NL).append("※ 상인 할인으로 구매한 아이템은 할인가(90%) 기준으로 판매되었습니다.");
 	    }
 
+	    /*
 	    String achvMsg = grantShopSellAchievements(userName, roomName);
 	    if (achvMsg != null && !achvMsg.isEmpty()) {
 	        sb.append(NL).append("업적").append(NL).append(achvMsg);
-	    }
+	    }*/
 
 	    return sb.toString();
 	}
@@ -3909,11 +3911,12 @@ public class BossAttackController {
 	        Set<String> achvCmdSet) {
 
 	    final int[][] rules = {
-	        {1000,  10000},
+	    	{500,   5000},
+	        {1000,  5000},
 	        {2000,  10000},
 	        {3000,  10000},
 	        {4000,  10000},
-	        {5000,  10000},
+	        {5000,  20000},
 	        {6000,  20000},
 	        {7000,  20000},
 	        {8000,  20000},
@@ -3969,63 +3972,6 @@ public class BossAttackController {
 	 * - 기준: TBOT_POINT_NEW_INVENTORY의 DEL_YN='1' QTY 합계
 	 * - 업적 CMD: ACHV_SHOP_SELL_{threshold}
 	 */
-	private String grantShopSellAchievements(String userName, String roomName) {
-	    // {기준 수량, 보상 SP}
-	    final int[][] rules = new int[][]{
-	        {1000,  10000},
-	        {2000,  10000},
-	        {3000,  10000},
-	        {4000,  10000},
-	        {5000,  10000},
-	        {6000,  20000},
-	        {7000,  20000},
-	        {8000,  20000},
-	        {9000,  20000},
-	        {10000, 30000}
-	    };
-
-	    StringBuilder sb = new StringBuilder();
-	    int soldCount = 0;
-
-	    try {
-	        soldCount = botNewService.selectInventorySoldCount(userName, roomName);
-	    } catch (Exception ignore) { /* 안전 무시 */ }
-
-	    for (int[] r : rules) {
-	        int threshold = r[0];
-	        int rewardSp  = r[1];
-
-	        if (soldCount >= threshold) {
-	            String cmd = "ACHV_SHOP_SELL_" + threshold;
-
-	            int already = 0;
-	            try {
-	                already = botNewService.selectPointRankCountByCmdUserInRoom(roomName, userName, cmd);
-	            } catch (Exception ignore) {}
-
-	            if (already == 0) {
-	                try {
-	                    HashMap<String,Object> p = new HashMap<>();
-	                    p.put("userName", userName);
-	                    p.put("roomName", roomName);
-	                    p.put("score", rewardSp);
-	                    p.put("cmd", cmd);
-
-	                    botNewService.insertPointRank(p);
-
-	                    sb.append("✨ 상점 판매 ")
-	                      .append(threshold)
-	                      .append("회 달성 보상 +")
-	                      .append(rewardSp)
-	                      .append("sp 지급!♬")
-	                      .append(NL);
-	                } catch (Exception ignore) {}
-	            }
-	        }
-	    }
-
-	    return sb.toString();
-	}
 	private String renderMarketListForBuy(List<HashMap<String,Object>> items, String userName, boolean hiddenYn) {
 	    if (items == null || items.isEmpty()) {
 	        return "▶ " + userName + "님, 구매 가능 아이템" + NL + "- (없음)";

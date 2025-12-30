@@ -818,7 +818,6 @@
 	      FROM TBOT_POINT_RANK
 	     WHERE NEW_YN = '1'
 	       AND CMD LIKE 'ACHV_%'
-	       AND CMD NOT LIKE '%BROAD%'
 	     GROUP BY CMD
 	</select>
 	
@@ -828,7 +827,6 @@
 	  FROM TBOT_POINT_RANK
 	  WHERE USER_NAME = #{userName}
 	    AND CMD LIKE 'ACHV_%'
-	    AND CMD NOT LIKE '%BROAD%'
 	  ORDER BY CASE
 			        WHEN CMD LIKE 'ACHV_FIRST_CLEAR_MON_%' THEN 1
 			        WHEN CMD LIKE 'ACHV_KILL_TOTAL_%'      THEN 2
@@ -1083,7 +1081,6 @@
 		          FROM TBOT_POINT_RANK
 		         WHERE NEW_YN = '1'
 		           AND CMD LIKE 'ACHV%'
-		           AND CMD NOT LIKE '%BROAD%'
 		         GROUP BY USER_NAME, ROOM_NAME
 		         ORDER BY COUNT(*) DESC, USER_NAME
 		    )
@@ -1119,7 +1116,6 @@
 	     WHERE NEW_YN = '1'
 	       AND USER_NAME = #{userName}
 	       AND CMD LIKE 'ACHV_%'
-	       AND CMD NOT LIKE '%BROAD%'
 	     GROUP BY CMD
 	</select>
 	
