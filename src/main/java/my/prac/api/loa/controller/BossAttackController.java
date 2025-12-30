@@ -796,6 +796,7 @@ public class BossAttackController {
 	    catMap.put("※반지", new ArrayList<>());
 	    catMap.put("※선물", new ArrayList<>());
 	    catMap.put("※유물", new ArrayList<>());
+	    catMap.put("※업적", new ArrayList<>());
 	    catMap.put("※기타", new ArrayList<>());
 
 	    for (HashMap<String, Object> row : bag) {
@@ -1075,9 +1076,13 @@ public class BossAttackController {
 	        sb.append(ctx.job).append(" 마스터 보너스: ATK+200, HP+2000").append(NL);
 	    }
 
-        String relicSummary = buildRelicSummaryLine(bag);
+        String relicSummary = buildRelicSummaryLine(bag,9000);
         if (relicSummary != null) {
             sb.append(NL).append(relicSummary).append(NL);
+        }
+        String relicSummary2 = buildRelicSummaryLine(bag,8000);
+        if (relicSummary2 != null) {
+        	sb.append(NL).append(relicSummary2).append(NL);
         }
         
         sb.append("▶ 현재 타겟: ").append(targetName)
@@ -1196,6 +1201,7 @@ public class BossAttackController {
 	            catMap.put("※날개", new ArrayList<>());
 	            catMap.put("※선물", new ArrayList<>());
 	            catMap.put("※유물", new ArrayList<>());
+	            catMap.put("※업적", new ArrayList<>());
 	            catMap.put("※기타", new ArrayList<>());
 
 	            // 3) 인벤토리 한 줄씩 카테고리 분류
@@ -2177,10 +2183,10 @@ public class BossAttackController {
 	    u.hpCur = effectiveHp;
 
 	    // 유저별 업적 카운트
-	    List<AchievementCount> userList = botNewService.selectAchvCountsGlobal(userName, roomName);
+	    List<AchievementCount> userAchvList = botNewService.selectAchvCountsGlobal(userName, roomName);
 	    Map<String, Integer> userAchvMap = new HashMap<>();
-	    if (userList != null) {
-	        for (AchievementCount ac : userList) {
+	    if (userAchvList != null) {
+	        for (AchievementCount ac : userAchvList) {
 	            if (ac == null || ac.getCmd() == null) continue;
 	            userAchvMap.put(ac.getCmd(), ac.getCnt());
 	        }
@@ -2604,6 +2610,8 @@ public class BossAttackController {
 	     // 🔹 새로 추가: 공격 횟수 업적
 	        String attackAchvMsg = grantAttackCountAchievements(userName, roomName);
 
+	        String achvRewardMsg = grantAchievementBasedReward(userName, roomName, userAchvList);
+	        
 	        // 🔹 새로 추가: 직업별 스킬 사용 업적 (이번 턴에 스킬 썼을 때만)
 	        String jobSkillAchvMsg = "";
 	        if (calc.jobSkillUsed) {
@@ -2613,14 +2621,16 @@ public class BossAttackController {
 	                || (killAchvMsg     != null && !killAchvMsg.isEmpty())
 	                || (itemAchvMsg     != null && !itemAchvMsg.isEmpty())
 	                || (attackAchvMsg   != null && !attackAchvMsg.isEmpty())
-	                || (jobSkillAchvMsg != null && !jobSkillAchvMsg.isEmpty())) {
+	                || (jobSkillAchvMsg != null && !jobSkillAchvMsg.isEmpty())
+	                || (achvRewardMsg  != null && !achvRewardMsg.isEmpty())) {
 
 	                   bonusMsg = NL
 	                           + firstClearMsg
 	                           + killAchvMsg
 	                           + itemAchvMsg
 	                           + attackAchvMsg
-	                           + jobSkillAchvMsg;
+	                           + jobSkillAchvMsg
+	                           + achvRewardMsg;
 	               }
 
 	        bagDropMsg = tryDropBag(userName, roomName, m);
@@ -3714,6 +3724,66 @@ public class BossAttackController {
 	    return sb.toString();
 	}
 
+	private String grantAchievementBasedReward(
+	        String userName,
+	        String roomName,
+	        List<AchievementCount> achievements
+	) {
+	    if (achievements == null || achievements.isEmpty()) {
+	        return "";
+	    }
+
+	    int achvCnt = 0;
+	    for (AchievementCount ac : achievements) {
+	        achvCnt += ac.getCnt();
+	    }
+	    StringBuilder msg = new StringBuilder();
+
+	    try {
+	        // 업적 개수 → 지급 아이템 (고정)
+	        LinkedHashMap<Integer, Integer> rewardMap = new LinkedHashMap<>();
+	        rewardMap.put(150,8001);
+	        rewardMap.put(2,  9101);
+	        rewardMap.put(3,  9101);
+	        // rewardMap.put(120, 9103);
+
+	        for (Map.Entry<Integer, Integer> e : rewardMap.entrySet()) {
+	            int needCnt = e.getKey();
+	            int itemId  = e.getValue();
+
+	            if (achvCnt < needCnt) continue;
+
+	            // 이미 지급했는지 체크 (보유 여부)
+	            Integer alreadyHave =
+	                    botNewService.selectInventoryQty(userName, roomName, itemId);
+
+	            if (alreadyHave != null && alreadyHave > 0) continue;
+
+	            // 지급
+	            HashMap<String,Object> inv = new HashMap<>();
+	            inv.put("userName", userName);
+	            inv.put("roomName", roomName);
+	            inv.put("itemId", itemId);
+	            inv.put("qty", 1);
+	            inv.put("delYn", "0");
+	            inv.put("gainType", "ACHV");
+
+	            botNewService.insertInventoryLogTx(inv);
+
+	            msg.append("🎁 업적 ")
+	               .append(needCnt)
+	               .append("개 달성 보상 획득! (")
+	               .append("아이템#").append(itemId)
+	               .append(")").append(NL);
+	        }
+	    } catch (Exception e) {
+	        e.printStackTrace();
+	    }
+
+	    return msg.toString();
+	}
+
+	
 	/** 공격 횟수 기반 업적 (통산 공격 수) */
 	private String grantAttackCountAchievements(String userName, String roomName) {
 	    AttackDeathStat ads = botNewService.selectAttackDeathStats(userName, roomName);
@@ -6995,6 +7065,7 @@ public class BossAttackController {
 	    if (itemId >= 700 && itemId < 800)  return "※전설";   // 700번대
 	    if (itemId >= 800 && itemId < 900)  return "※날개";   // 800번대
 	    if (itemId >= 900 && itemId < 1000) return "※선물";   // 900번대
+	    if (itemId >= 8000 && itemId < 9000) return "※업적"; // 9000번대 
 	    if (itemId >= 9000 && itemId < 10000) return "※유물"; // 9000번대 
 	    return "※기타";
 	}
@@ -7176,7 +7247,7 @@ public class BossAttackController {
 	    return null;
 	}
 
-	private String buildRelicSummaryLine(List<HashMap<String, Object>> bag) {
+	private String buildRelicSummaryLine(List<HashMap<String, Object>> bag,int number) {
 		int sumAtkMin = 0;
 		int sumAtkMax = 0;
 		int sumHp = 0;
@@ -7185,25 +7256,18 @@ public class BossAttackController {
 		int sumCritDmg = 0;
 		int sumAtkRate = 0;
 		int sumHpRate = 0;
-
 		int relicCount = 0;
-
 		try {
-
 			if (bag == null)
 				return null;
 
 			for (HashMap<String, Object> row : bag) {
 				int itemId = safeInt(row.get("ITEM_ID"));
-				if (itemId < 9000 || itemId >= 10000)
-					continue; // 🔥 유물만
+				if (itemId < number || itemId >= number+1000)
+					continue;
 
 				relicCount++;
 
-				/*
-				 * HashMap<String,Object> info = botNewService.selectItemDetailById(itemId); if
-				 * (info == null) continue;
-				 */
 				sumAtkMin += safeInt(row.get("ATK_MIN"));
 				sumAtkMax += safeInt(row.get("ATK_MAX"));
 				sumHp += safeInt(row.get("HP_MAX"));
@@ -7222,7 +7286,11 @@ public class BossAttackController {
 			return null;
 
 		StringBuilder sb = new StringBuilder();
-		sb.append("✨ 유물 효과 (").append(relicCount).append("개): ");
+		if(number==8000) {
+			sb.append("✨ 유물 효과 (").append(relicCount).append("개): ");
+		}else if(number==9000) {
+			sb.append("✨ 업적 효과 (").append(relicCount).append("개): ");
+		}
 
 		boolean first = true;
 

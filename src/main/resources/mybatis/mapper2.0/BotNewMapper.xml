@@ -523,7 +523,7 @@
 	   </if>
 	   -->
 	    AND inv.del_yn = '0'
-	    AND i.item_type in ('MARKET','BAG_OPEN','MASTER')
+	    AND i.item_type in ('MARKET','BAG_OPEN','MASTER','ACHV')
 	</select>
 	
 	<!-- 구매 가능한 MARKET 아이템 목록 + 보유여부 -->
@@ -818,6 +818,7 @@
 	      FROM TBOT_POINT_RANK
 	     WHERE NEW_YN = '1'
 	       AND CMD LIKE 'ACHV_%'
+	       AND CMD NOT LIKE '%BROAD%'
 	     GROUP BY CMD
 	</select>
 	
