@@ -514,4 +514,9 @@ public class BotNewServiceImpl implements BotNewService {
             return 50000;
         }
     }
+    
+    @Override
+    public List<HashMap<String, Object>> selectTotalDropItems(String userName){
+    	 return botNewDAO.selectTotalDropItems(userName);
+    }
 }

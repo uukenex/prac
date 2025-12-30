@@ -223,4 +223,6 @@ public interface BotNewDAO {
     String selectIsReturnUser(HashMap<String, Object> map);
     
     int selectBagRewardCap(HashMap<String, Object> map);
+    List<HashMap<String, Object>> selectTotalDropItems(String userName);
+
 }

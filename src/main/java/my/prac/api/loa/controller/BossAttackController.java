@@ -1,13 +1,14 @@
 package my.prac.api.loa.controller;
 
-import java.util.Date;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -15,6 +16,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -759,6 +762,146 @@ public class BossAttackController {
 	    return "✨ " + userName + "님, [" + newJob + "] 으로 직업이 변경되었습니다." + NL;
 	}
 
+	public String invenInfo(HashMap<String, Object> map) {
+
+	    UserBattleContext ctx = calcUserBattleContext(map);
+	    if (!ctx.success) {
+	        return ctx.errorMessage;
+	    }
+
+	    final String userName = ctx.targetUser;
+	    final String roomName = ctx.roomName;
+
+	    StringBuilder sb = new StringBuilder();
+	    sb.append("✨").append(userName).append(" 인벤토리");
+
+	    sb.append(ALL_SEE_STR);
+	    List<HashMap<String, Object>> bag =
+	            botNewService.selectInventorySummaryAll(userName, roomName);
+
+	    if (bag == null || bag.isEmpty()) {
+	        sb.append("- 인벤토리가 비어있습니다.");
+	        return sb.toString();
+	    }
+
+	    // 카테고리 버킷
+	    Map<String, List<String>> catMap = new LinkedHashMap<>();
+	    catMap.put("※무기", new ArrayList<>());
+	    catMap.put("※갑옷", new ArrayList<>());
+	    catMap.put("※투구", new ArrayList<>());
+	    catMap.put("※전설", new ArrayList<>());
+	    catMap.put("※날개", new ArrayList<>());
+	    catMap.put("※토템", new ArrayList<>());
+	    catMap.put("※행운", new ArrayList<>());
+	    catMap.put("※반지", new ArrayList<>());
+	    catMap.put("※선물", new ArrayList<>());
+	    catMap.put("※유물", new ArrayList<>());
+	    catMap.put("※기타", new ArrayList<>());
+
+	    for (HashMap<String, Object> row : bag) {
+
+	        int itemId = safeInt(row.get("ITEM_ID"));
+	        String itemName = Objects.toString(row.get("ITEM_NAME"), "");
+	        String type = Objects.toString(row.get("ITEM_TYPE"), "");
+	        int qty = safeInt(row.get("TOTAL_QTY"));
+
+	        if (itemName.isEmpty()) continue;
+
+	        String cat = resolveItemCategory(itemId);
+	        String label = itemName;
+
+	        // ─────────────────
+	        // 장비 / 전설 / 날개 / 토템
+	        // ─────────────────
+	        if ("MARKET".equalsIgnoreCase(type)
+	            || "MASTER".equalsIgnoreCase(type)
+	            || "BAG_OPEN".equalsIgnoreCase(type)) {
+	        	
+	        	
+	        	/*
+	        	HashMap<String, Object> info =
+	                    botNewService.selectItemDetailById(itemId);
+	            */
+	        	//String opt = buildEnhancedOptionLine(info, 1);
+	        	String opt = buildEnhancedOptionLine(row, 1);
+	            if (!opt.isEmpty()) {
+	                label += opt;
+	            }
+	        }
+	        // ─────────────────
+	        // 기타
+	        // ─────────────────
+	        else {
+	            if (qty > 1) {
+	                label += "x" + qty;
+	            }
+	        }
+
+	        List<String> bucket = catMap.getOrDefault(cat, catMap.get("※기타"));
+	        bucket.add(label);
+	    }
+
+	    // 출력
+	    for (Map.Entry<String, List<String>> e : catMap.entrySet()) {
+	        List<String> list = e.getValue();
+	        if (list.isEmpty()) continue;
+
+	        sb.append(e.getKey()).append(":").append(NL);
+	        for (String s : list) {
+	            sb.append(", ").append(s).append(NL);
+	        }
+	    }
+
+	    sb.append(NL);
+	    try {
+	        List<HashMap<String,Object>> drops =
+	                botNewService.selectTotalDropItems(userName);
+
+	        if (drops != null && !drops.isEmpty()) {
+	            sb.append(NL).append("▶ 누적 획득 드랍 아이템").append(NL);
+
+	            int lineCnt = 0;
+	            StringBuilder line = new StringBuilder();
+
+	            for (HashMap<String,Object> row : drops) {
+	                String name = Objects.toString(row.get("ITEM_NAME"), "");
+	                String gainType = Objects.toString(row.get("GAIN_TYPE"), "");
+	                int qty = safeInt(row.get("TOTAL_QTY"));
+
+	                if (qty <= 0 || name.isEmpty()) continue;
+
+	                // 🔹 조각 처리
+	                if ("STEAL".equals(gainType)
+	                 || "DROP3".equals(gainType)
+	                 || "DROP5".equals(gainType)) {
+	                    name = name + "조각";
+	                }
+
+	                if (line.length() > 0) {
+	                    line.append(" / ");
+	                }
+	                line.append(name).append("x").append(qty);
+
+	                lineCnt++;
+	                if (lineCnt == 3) {
+	                    sb.append(line).append(NL);
+	                    line.setLength(0);
+	                    lineCnt = 0;
+	                }
+	            }
+
+	            if (line.length() > 0) {
+	                sb.append(line).append(NL);
+	            }
+	        }
+	    } catch (Exception ignore) {
+	        ignore.printStackTrace();
+	    }
+	    
+	    return sb.toString();
+	}
+
+	
 	public String attackInfo(HashMap<String, Object> map) {
 	    UserBattleContext ctx = calcUserBattleContext(map);
 	    if (!ctx.success) {
@@ -816,11 +959,15 @@ public class BossAttackController {
 	    int totalDeaths  = (ads == null ? 0 : ads.totalDeaths);
 
 	    
+	    
 	 // === NEW: 일별 공격 통계 (어제 자정까지) ===
 	    Date firstAttackDay = null;
 	    Date maxAttackDay   = null;
 	    int  maxAttackCnt   = 0;
 	    int  avgAttackPerDay = 0;
+	    int  todayAttackCnt  = 0;   // ★ 추가
+	    Date today = truncateToDate(new Date()); // ★ 오늘 기준일
+
 
 	    try {
 	        List<HashMap<String,Object>> dailyList =
@@ -828,8 +975,8 @@ public class BossAttackController {
 
 	        if (dailyList != null && !dailyList.isEmpty()) {
 	            int totalAtkBeforeToday = 0;
+	            int activeDays = 0; // ★ 어제까지 실제 일수
 
-	            // dailyList 는 쿼리에서 ATTACK_DAY ASC로 정렬됐다고 가정
 	            for (int i = 0; i < dailyList.size(); i++) {
 	                HashMap<String,Object> row = dailyList.get(i);
 	                if (row == null) continue;
@@ -837,32 +984,37 @@ public class BossAttackController {
 	                Object dayObj = row.get("ATTACK_DAY");
 	                Date day = null;
 	                if (dayObj instanceof Date) {
-	                    day = (Date) dayObj;
+	                    day = truncateToDate((Date) dayObj);
 	                } else if (dayObj instanceof java.sql.Date) {
-	                    day = new Date(((java.sql.Date)dayObj).getTime());
-	                } else if (dayObj != null) {
-	                    // 문자열로 오는 경우 등
-	                    // 필요하면 파싱 추가
+	                    day = truncateToDate(new Date(((java.sql.Date)dayObj).getTime()));
 	                }
 
 	                int cnt = safeInt(row.get("ATK_CNT"));
 
-	                if (day != null) {
-	                    if (firstAttackDay == null) {
-	                        firstAttackDay = day;
-	                    }
-	                    // 최대 타수/날짜
-	                    if (cnt > maxAttackCnt) {
-	                        maxAttackCnt = cnt;
-	                        maxAttackDay = day;
-	                    }
+	                if (day == null) continue;
+
+	                // 최초 공격일
+	                if (firstAttackDay == null) {
+	                    firstAttackDay = day;
 	                }
 
-	                totalAtkBeforeToday += cnt;
+	                // 최대 공격일
+	                if (cnt > maxAttackCnt) {
+	                    maxAttackCnt = cnt;
+	                    maxAttackDay = day;
+	                }
+
+	                // ★ 오늘 공격
+	                if (day.equals(today)) {
+	                    todayAttackCnt = cnt;
+	                } else {
+	                    // ★ 어제까지 누적/평균용
+	                    totalAtkBeforeToday += cnt;
+	                    activeDays++;
+	                }
 	            }
 
-	            // 일평균 = 총 공격횟수 / (공격한 날 수)
-	            int activeDays = dailyList.size();
+	            // ★ 일평균 = 어제까지 기준
 	            if (activeDays > 0) {
 	                avgAttackPerDay = totalAtkBeforeToday / activeDays;
 	            }
@@ -891,6 +1043,9 @@ public class BossAttackController {
 	    Monster target = (u.targetMon > 0) ? monMap.get(u.targetMon) : null;
 	    String targetName = (target == null) ? "-" : target.monName;
 
+	    
+	    List<HashMap<String, Object>> bag = botNewService.selectInventorySummaryAll(targetUser, roomName);
+	    
 	    // ⑨ 출력
 	    StringBuilder sb = new StringBuilder();
 	    sb.append("✨").append(targetUser).append(" 공격 정보").append(NL)
@@ -911,7 +1066,12 @@ public class BossAttackController {
 	        sb.append(ctx.job).append(" 마스터 보너스: ATK+200, HP+2000").append(NL);
 	    }
 
-	    sb.append("▶ 현재 타겟: ").append(targetName)
+        String relicSummary = buildRelicSummaryLine(bag);
+        if (relicSummary != null) {
+            sb.append(NL).append(relicSummary).append(NL);
+        }
+        
+        sb.append("▶ 현재 타겟: ").append(targetName)
 	      .append(" (MON_NO=").append(u.targetMon).append(")");
 
 	    // 누적 전투
@@ -935,7 +1095,7 @@ public class BossAttackController {
 	    	sb.append("   └ 룰렛 버프: ATK +").append(ctx.dailyAtkBonus).append(NL);
 	    }
 	    if(bAtkMaxRateRaw > 0) {
-	    	sb.append("   └ 최종공격력 (").append(formatSigned(bAtkMaxRateRaw)).append("% )").append(NL);
+	    	sb.append("   └ 최종공격력 (").append(formatSigned(bAtkMaxRateRaw)).append("%)").append(NL);
 	    }
 	    // ─ CRIT 상세 ─
 	    sb.append("⚔CRIT: ").append(shownCrit).append("%  CDMG ").append(shownCritDmg).append("%").append(NL)
@@ -1004,9 +1164,7 @@ public class BossAttackController {
 
 	    // ─ 인벤토리 ─
 	    try {
-	        List<HashMap<String, Object>> bag = botNewService.selectInventorySummaryAll(targetUser, roomName);
-
-	        sb.append(NL).append("▶ 인벤토리").append(NL);
+	        sb.append(NL).append("▶ 인벤토리<옵션:/가방상세>").append(NL);
 	        if (bag == null || bag.isEmpty()) {
 	            sb.append("- (비어있음)").append(NL);
 	        } else {
@@ -1053,46 +1211,7 @@ public class BossAttackController {
 	                        "MASTER".equalsIgnoreCase(typeStr);
 
 	                if (isEquipType) {
-	                    // 이름에 업그레이드 단계 "(+n)" 표시 (QTY-1)
-	                    int plusLv = Math.max(0, qtyVal - 1);
-	                    if (plusLv > 0) {
-	                        label = label + "(+" + plusLv + ")";
-	                    }
-
-	                    double factor = calcEquipUpgradeFactor(qtyVal);
-
-	                    int atkMin0 = parseIntSafe(Objects.toString(row.get("ATK_MIN"), "0"));
-	                    int atkMax0 = parseIntSafe(Objects.toString(row.get("ATK_MAX"), "0"));
-	                    int hpMax0  = parseIntSafe(Objects.toString(row.get("HP_MAX"), "0"));
-	                    int regen0  = parseIntSafe(Objects.toString(row.get("HP_REGEN"), "0"));
-
-	                    int atkMinUp = (int)Math.round(atkMin0 * factor);
-	                    int atkMaxUp = (int)Math.round(atkMax0 * factor);
-	                    int hpMaxUp  = (int)Math.round(hpMax0  * factor);
-	                    int regenUp  = (int)Math.round(regen0  * factor);
-
-	                    String atkMinStr = formatStatWithPlus(atkMin0, atkMinUp);
-	                    String atkMaxStr = formatStatWithPlus(atkMax0, atkMaxUp);
-
-	                    String hpMaxStr  = (hpMax0  != 0 ? formatStatWithPlus(hpMax0,  hpMaxUp)  : null);
-	                    String regenStr  = (regen0  != 0 ? formatStatWithPlus(regen0,  regenUp)  : null);
-
-	                    StringBuilder optSb = new StringBuilder();
-	                    if (atkMin0 != 0 || atkMax0 != 0) {
-	                        optSb.append(" 공격력 ")
-	                             .append(atkMinStr)
-	                             .append("~")
-	                             .append(atkMaxStr);
-	                    }
-	                    if (hpMaxStr != null) {
-	                        optSb.append(" 체력 ").append(hpMaxStr);
-	                    }
-	                    if (regenStr != null) {
-	                        optSb.append(" 체젠 ").append(regenStr);
-	                    }
-
-	                    label = label + optSb.toString();
-
+	                	
 	                } else {
 	                    if (qtyVal > 1) {
 	                        label = label + "x" + qtyVal;
@@ -1100,15 +1219,6 @@ public class BossAttackController {
 	                }
 
 	                String cat = resolveItemCategory(itemId);
-
-	                // 유물(9000번대)에만 짧은 능력치 꼬리표 추가
-	                if ("※유물".equals(cat)) {
-	                    HashMap<String,Object> info = botNewService.selectItemDetailById(itemId);
-	                    String relicStat = buildEnhancedOptionLine(info,1);
-	                    if (!relicStat.isEmpty()) {
-	                        label += relicStat + NL;
-	                    }
-	                }
 
 	                List<String> bucket = catMap.get(cat);
 	                if (bucket == null) {
@@ -1164,42 +1274,53 @@ public class BossAttackController {
 	    } else {
 	        sb.append("최고 공격: -").append(NL);
 	    }
+	    sb.append("오늘 공격: ")
+	      .append(todayAttackCnt)
+	      .append("회")
+	      .append(NL);
 
-	    
-	    sb.append(NL);
-	 // === NEW: 직업별 공격 횟수 출력 ===
-	    if (jobAtkMap != null && !jobAtkMap.isEmpty()) {
-	        sb.append("- 직업별 공격 횟수").append(NL);
-	        // 직업명 정렬 (가독성용)
-	        List<String> jobNames = new ArrayList<>(jobAtkMap.keySet());
-	        Collections.sort(jobNames);
-	        for (String jName : jobNames) {
-	            int cnt = jobAtkMap.get(jName);
-	            sb.append("  · ").append(jName).append(": ")
-	              .append(cnt).append("회").append(NL);
-	        }
-	        sb.append(NL);
-	    }
-	    
-	    // 누적 처치
-	    sb.append("누적 처치 기록 (총 ").append(totalKills).append("마리)").append(NL);
-	    if (kills.isEmpty()) {
-	        sb.append("기록 없음").append(NL);
-	    } else {
-	        for (KillStat ks : kills) {
-	            String monName = ks.monName;
+		sb.append(NL);
+		// === NEW: 직업별 공격 횟수 출력 ===
+		if (jobAtkMap != null && !jobAtkMap.isEmpty()) {
+			sb.append("직업별 공격 횟수").append(NL);
 
-	            if (monName == null || monName.isEmpty()) {
-	                Monster mm = monMap.get(ks.monNo);
-	                if (mm != null)
-	                    monName = mm.monName;
-	            }
+			List<String> rows = new ArrayList<>();
+			List<String> jobNames = new ArrayList<>(jobAtkMap.keySet());
+			Collections.sort(jobNames);
 
-	            sb.append("- ").append(monName)
-	              .append(" (MON_NO=").append(ks.monNo).append(") : ")
-	              .append(ks.killCount).append("마리").append(NL);
-	        }
-	    }
+			for (String j : jobNames) {
+				rows.add(j + ": " + String.format("%,d", jobAtkMap.get(j)) + "회");
+			}
+
+			for (int i = 0; i < rows.size(); i += 3) {
+				sb.append("- ").append(String.join(" / ", rows.subList(i, Math.min(i + 3, rows.size())))).append(NL);
+			}
+
+			sb.append(NL);
+		}
+
+		// 누적 처치
+		sb.append("누적 처치 기록 (총 ").append(totalKills).append("마리)").append(NL);
+
+		if (kills == null || kills.isEmpty()) {
+			sb.append("기록 없음").append(NL);
+		} else {
+			List<String> rows = new ArrayList<>();
+
+			for (KillStat ks : kills) {
+				String monName = ks.monName;
+				if ((monName == null || monName.isEmpty()) && monMap != null) {
+					Monster mm = monMap.get(ks.monNo);
+					if (mm != null)
+						monName = mm.monName;
+				}
+				rows.add(monName + ": " + String.format("%,d", ks.killCount) + "마리");
+			}
+
+			for (int i = 0; i < rows.size(); i += 3) {
+				sb.append("- ").append(String.join(" / ", rows.subList(i, Math.min(i + 3, rows.size())))).append(NL);
+			}
+		}
 
 	    // 업적
 	    int achvCnt = 0;
@@ -1211,6 +1332,8 @@ public class BossAttackController {
 	        if (achv == null || achv.isEmpty()) {
 	            sb.append("- 달성된 업적이 없습니다.").append(NL);
 	        } else {
+	        	//renderAchievementSummary(sb, achv);
+	        	//sb.append("(상세: /가방상세)").append(NL);
 	            renderAchievementLinesCompact(sb, achv, monMap);
 	        }
 	    } catch (Exception ignore) {}
@@ -3329,7 +3452,7 @@ public class BossAttackController {
 	            }
 	            
 	            sb.append(NL);
-	            if (rank++ >= 10) break;
+	            if (rank++ >= 9) break;
 	        }
 	    }
 	    sb.append(NL);
@@ -5334,196 +5457,153 @@ public class BossAttackController {
 	 * - 통산 처치 / 몬스터별 킬 / 죽음 극복 은 [..] 형태로 묶어서 출력
 	 */
 	// 업적 문자열 패턴
-	private static final Pattern P_TOTAL_KILL =
-	        Pattern.compile("^통산 처치 (\\d+)회 달성$");
-	private static final Pattern P_DEATH_OVERCOME =
-	        Pattern.compile("^죽음 극복 (\\d+)회 달성$");
-	private static final Pattern P_MONSTER_KILL =
-	        Pattern.compile("^(.+?) (\\d+)킬 달성$");
-	private static final Pattern P_LIGHT_ITEM_GET=
-			Pattern.compile("^빛 아이템 획득 (\\d+)회 달성$");
-	private static final Pattern P_DARK_ITEM_GET =
-			Pattern.compile("^어둠 아이템 획득 (\\d+)회 달성$");
-	// 통산 공격 횟수 업적  예) "통산 공격 100회"
-	private static final Pattern P_ATTACK_COUNT =
-	        Pattern.compile("^통산 공격 (\\d+)회 달성$");
-	// 직업별 스킬 사용 업적 예) "궁수 스킬 사용 10회", "사신 스킬 사용 100회"
-	private static final Pattern P_JOB_SKILL =
-	        Pattern.compile("^(.+?) 스킬 사용 (\\d+)회 달성$");
-
+	
 	private void renderAchievementLinesCompact(
 	        StringBuilder sb,
 	        List<HashMap<String, Object>> achv,
 	        Map<Integer, Monster> monMap) {
 
-	    // 1) 카테고리별 버킷
-	    //    - 최초토벌/기타: 그대로 출력
-	    //    - 통산 처치: 숫자 모아 [a/b/c]
-	    //    - 죽음 극복: 숫자 모아 [a/b/c]
-	    //    - 몬스터별 킬: 몬스터 이름별로 숫자 모아 [a/b/c]
-	    List<String> others = new ArrayList<>();                 // 최초토벌 등
-	    java.util.SortedSet<Integer> totalKillSteps = new java.util.TreeSet<>();
-	    java.util.SortedSet<Integer> deathSteps = new java.util.TreeSet<>();
-	    Map<String, java.util.SortedSet<Integer>> monKillSteps = new LinkedHashMap<>();
-	    java.util.SortedSet<Integer> lightItemSteps = new java.util.TreeSet<>();
-	    java.util.SortedSet<Integer> darkItemSteps = new java.util.TreeSet<>();
-	    java.util.SortedSet<Integer> attackSteps = new java.util.TreeSet<>();
-	    Map<String, java.util.SortedSet<Integer>> jobSkillSteps = new LinkedHashMap<>();
-	    
-	    
+	    // ===== 패턴 =====
+	    Pattern P_TOTAL_KILL =
+	            Pattern.compile("^통산 처치 (\\d+)회 달성$");
+	    Pattern P_DEATH_OVERCOME =
+	            Pattern.compile("^죽음 극복 (\\d+)회 달성$");
+	    Pattern P_MONSTER_KILL =
+	            Pattern.compile("^(.+?) (\\d+)킬 달성$");
+	    Pattern P_LIGHT_ITEM_GET =
+	            Pattern.compile("^빛 아이템 획득 (\\d+)회 달성$");
+	    Pattern P_DARK_ITEM_GET =
+	            Pattern.compile("^어둠 아이템 획득 (\\d+)회 달성$");
+	    Pattern P_ATTACK_COUNT =
+	            Pattern.compile("^통산 공격 (\\d+)회 달성$");
+	    Pattern P_JOB_SKILL =
+	            Pattern.compile("^(.+?) 스킬 사용 (\\d+)회 달성$");
+
+	    // ===== 집계용 =====
+	    SortedSet<Integer> totalKillSteps = new TreeSet<>();
+	    SortedSet<Integer> deathSteps     = new TreeSet<>();
+	    SortedSet<Integer> attackSteps   = new TreeSet<>();
+	    SortedSet<Integer> lightSteps    = new TreeSet<>();
+	    SortedSet<Integer> darkSteps     = new TreeSet<>();
+
+	    Map<String, Integer> monsterKills = new LinkedHashMap<>();
+	    Map<String, SortedSet<Integer>> jobSkillSteps = new LinkedHashMap<>();
+
+	    List<String> firstClears = new ArrayList<>();
+
+	    // ===== 수집 =====
 	    for (HashMap<String, Object> row : achv) {
 	        if (row == null) continue;
 
 	        String cmd = Objects.toString(row.get("CMD"), "");
 	        String label = formatAchievementLabelSimple(cmd, monMap);
-	        if (label == null) continue;
-	        label = label.trim();
-	        if (label.isEmpty()) continue;
+	        if (label == null || label.isEmpty()) continue;
 
-	        // 1-1) 축하보상은 공격정보에서 노출하지 않음
-	        if (label.contains("축하보상")) {
+	        label = label.replace("✨", "").trim();
+
+	        if (label.contains("축하보상")) continue;
+
+	        Matcher m;
+
+	        if ((m = P_TOTAL_KILL.matcher(label)).matches()) {
+	            totalKillSteps.add(parseIntSafe(m.group(1)));
+	            continue;
+	        }
+	        if ((m = P_DEATH_OVERCOME.matcher(label)).matches()) {
+	            deathSteps.add(parseIntSafe(m.group(1)));
+	            continue;
+	        }
+	        if ((m = P_ATTACK_COUNT.matcher(label)).matches()) {
+	            attackSteps.add(parseIntSafe(m.group(1)));
+	            continue;
+	        }
+	        if ((m = P_LIGHT_ITEM_GET.matcher(label)).matches()) {
+	            lightSteps.add(parseIntSafe(m.group(1)));
+	            continue;
+	        }
+	        if ((m = P_DARK_ITEM_GET.matcher(label)).matches()) {
+	            darkSteps.add(parseIntSafe(m.group(1)));
+	            continue;
+	        }
+	        if ((m = P_JOB_SKILL.matcher(label)).matches()) {
+	            String job = m.group(1).trim();
+	            int v = parseIntSafe(m.group(2));
+	            jobSkillSteps
+	                .computeIfAbsent(job, k -> new TreeSet<>())
+	                .add(v);
+	            continue;
+	        }
+	        if ((m = P_MONSTER_KILL.matcher(label)).matches()) {
+	            String mon = m.group(1).trim();
+	            int v = parseIntSafe(m.group(2));
+	            monsterKills.put(mon, Math.max(monsterKills.getOrDefault(mon, 0), v));
 	            continue;
 	        }
 
-	        // 1-2) 패턴 매칭
-	        Matcher mTotal = P_TOTAL_KILL.matcher(label);
-	        Matcher mDeath = P_DEATH_OVERCOME.matcher(label);
-	        Matcher mMon = P_MONSTER_KILL.matcher(label);
-	        Matcher mLightItem = P_LIGHT_ITEM_GET.matcher(label);
-	        Matcher mDarkItem = P_DARK_ITEM_GET.matcher(label);
-	        Matcher mAttack    = P_ATTACK_COUNT.matcher(label);
-	        Matcher mJobSkill  = P_JOB_SKILL.matcher(label);
+	        // 최초 토벌
+	        if (label.startsWith("최초토벌")) {
+	            firstClears.add(label.replace("최초토벌:", "").trim());
+	        }
+	    }
 
-	        if (mTotal.matches()) {
-	            int v = parseIntSafe(mTotal.group(1));
-	            if (v > 0) totalKillSteps.add(v);
-	            continue;
+	    // ===== 출력 =====
+
+	    // 1️⃣ 통산 기록 (최대값만)
+	    sb.append("✨통산기록").append(NL);
+
+	    if (!attackSteps.isEmpty())
+	        sb.append("공격: ").append(String.format("%,d", attackSteps.last())).append("회").append(NL);
+	    if (!totalKillSteps.isEmpty())
+	        sb.append("처치: ").append(String.format("%,d", totalKillSteps.last())).append("마리").append(NL);
+	    if (!deathSteps.isEmpty())
+	        sb.append("죽음 극복: ").append(String.format("%,d", deathSteps.last())).append("회").append(NL);
+	    if (!lightSteps.isEmpty())
+	        sb.append("빛 획득: ").append(String.format("%,d", lightSteps.last())).append("회").append(NL);
+	    if (!darkSteps.isEmpty())
+	        sb.append("어둠 획득: ").append(String.format("%,d", darkSteps.last())).append("회").append(NL);
+
+	    sb.append(NL);
+
+	    // 2️⃣ 스킬 숙련 (3개씩)
+	    if (!jobSkillSteps.isEmpty()) {
+	        sb.append("✨스킬 숙련").append(NL);
+
+	        List<String> rows = new ArrayList<>();
+	        for (Map.Entry<String, SortedSet<Integer>> e : jobSkillSteps.entrySet()) {
+	            rows.add(e.getKey() + " " + String.format("%,d", e.getValue().last()) + "회");
 	        }
 
-	        if (mDeath.matches()) {
-	            int v = parseIntSafe(mDeath.group(1));
-	            if (v > 0) deathSteps.add(v);
-	            continue;
+	        for (int i = 0; i < rows.size(); i += 3) {
+	            sb.append(String.join(" / ",
+	                    rows.subList(i, Math.min(i + 3, rows.size()))))
+	              .append(NL);
+	        }
+	        sb.append(NL);
+	    }
+
+	    // 3️⃣ 최초 토벌 (한 줄)
+	    if (!firstClears.isEmpty()) {
+	        sb.append("✨최초 토벌: ").append(firstClears.size()).append("종").append(NL);
+	        sb.append(String.join(", ", firstClears)).append(NL).append(NL);
+	    }
+
+	    // 4️⃣ 몬스터 처치 (3개씩)
+	    if (!monsterKills.isEmpty()) {
+	        sb.append("✨몬스터 처치").append(NL);
+
+	        List<String> rows = new ArrayList<>();
+	        for (Map.Entry<String, Integer> e : monsterKills.entrySet()) {
+	            rows.add(e.getKey() + ": " + String.format("%,d", e.getValue()) + "킬");
 	        }
 
-	        if (mMon.matches()) {
-	            String monName = mMon.group(1).trim();  // 예: 산적, 사과나무, 새끼용 ...
-	            int v = parseIntSafe(mMon.group(2));
-	            if (monName.isEmpty() || v <= 0) {
-	                others.add(label);
-	                continue;
-	            }
-	            java.util.SortedSet<Integer> set = monKillSteps.get(monName);
-	            if (set == null) {
-	                set = new java.util.TreeSet<>();
-	                monKillSteps.put(monName, set);
-	            }
-	            set.add(v);
-	            continue;
+	        for (int i = 0; i < rows.size(); i += 3) {
+	            sb.append(String.join(" / ",
+	                    rows.subList(i, Math.min(i + 3, rows.size()))))
+	              .append(NL);
 	        }
-	        if (mLightItem.matches()) {
-	            int v = parseIntSafe(mLightItem.group(1));
-	            if (v > 0) lightItemSteps.add(v);
-	            continue;
-	        }
-	        if (mDarkItem.matches()) {
-	            int v = parseIntSafe(mDarkItem.group(1));
-	            if (v > 0) darkItemSteps.add(v);
-	            continue;
-	        }
-	        
-	     // 🔥 통산 공격 업적
-	        if (mAttack.matches()) {
-	            int v = parseIntSafe(mAttack.group(1));
-	            if (v > 0) attackSteps.add(v);
-	            continue;
-	        }
-
-	        // 🔥 직업별 스킬 사용 업적
-	        if (mJobSkill.matches()) {
-	            String jobName = mJobSkill.group(1).trim();  // 궁수, 사신, 기사 ...
-	            int v = parseIntSafe(mJobSkill.group(2));
-	            if (jobName.isEmpty() || v <= 0) {
-	                others.add(label);
-	                continue;
-	            }
-	            java.util.SortedSet<Integer> set = jobSkillSteps.get(jobName);
-	            if (set == null) {
-	                set = new java.util.TreeSet<>();
-	                jobSkillSteps.put(jobName, set);
-	            }
-	            set.add(v);
-	            continue;
-	        }
-
-	        // 위 어느 패턴에도 안 걸리면 (예: 최초토벌 등) 그대로 보존
-	        others.add(label);
-	    }
-
-	    // 2) 출력 순서:
-	    //    1) others (최초토벌 등)
-	    //    2) 통산 처치
-	    //    3) 몬스터별 킬
-	    //    4) 죽음 극복
-	    for (String line : others) {
-	        sb.append("✨ ").append(line).append(NL);
-	    }
-
-	    if (!totalKillSteps.isEmpty()) {
-	        sb.append("✨ 통산 처치 [")
-	          .append(joinStepNumbers(totalKillSteps))
-	          .append("]회 달성").append(NL);
-	    }
-
-	    for (Map.Entry<String, java.util.SortedSet<Integer>> e : monKillSteps.entrySet()) {
-	        String monName = e.getKey();
-	        java.util.SortedSet<Integer> steps = e.getValue();
-	        if (steps == null || steps.isEmpty()) continue;
-
-	        sb.append("✨ ")
-	          .append(monName)
-	          .append(" [")
-	          .append(joinStepNumbers(steps))
-	          .append("]킬 달성").append(NL);
-	    }
-
-	    if (!deathSteps.isEmpty()) {
-	        sb.append("✨ 죽음 극복 [")
-	          .append(joinStepNumbers(deathSteps))
-	          .append("]회 달성").append(NL);
-	    }
-	    
-	 // 🔥 통산 공격 업적
-	    if (!attackSteps.isEmpty()) {
-	        sb.append("✨ 통산 공격 [")
-	          .append(joinStepNumbers(attackSteps))
-	          .append("]회 달성").append(NL);
-	    }
-
-	    // 🔥 직업별 스킬 사용 업적
-	    for (Map.Entry<String, java.util.SortedSet<Integer>> e : jobSkillSteps.entrySet()) {
-	        String jobName = e.getKey();
-	        java.util.SortedSet<Integer> steps = e.getValue();
-	        if (steps == null || steps.isEmpty()) continue;
-
-	        sb.append("✨ ")
-	          .append(jobName)
-	          .append(" 스킬 사용 [")
-	          .append(joinStepNumbers(steps))
-	          .append("]회 달성").append(NL);
-	    }
-	    
-	    if (!lightItemSteps.isEmpty()) {
-	    	sb.append("✨ 빛 획득 [")
-	    	.append(joinStepNumbers(lightItemSteps))
-	    	.append("]회 달성").append(NL);
-	    }
-	    if (!darkItemSteps.isEmpty()) {
-	    	sb.append("✨ 어둠 획득 [")
-	    	.append(joinStepNumbers(darkItemSteps))
-	    	.append("]회 달성").append(NL);
 	    }
 	}
+
 	
 	private boolean hasAchv(Map<String, Integer> userAchvMap, String cmd) {
 	    if (userAchvMap == null) return false;
@@ -6955,108 +7035,81 @@ public class BossAttackController {
 	private String buildEnhancedOptionLine(HashMap<String,Object> item, int qty) {
 	    if (item == null) return "";
 
-	    int baseMin    = parseIntSafe(Objects.toString(item.get("ATK_MIN"), "0"));
-	    int baseMax    = parseIntSafe(Objects.toString(item.get("ATK_MAX"), "0"));
-	    int baseHp     = parseIntSafe(Objects.toString(item.get("HP_MAX"), "0"));
-	    int baseRegen  = parseIntSafe(Objects.toString(item.get("HP_REGEN"), "0"));
-	    int baseCri    = parseIntSafe(Objects.toString(item.get("ATK_CRI"), "0"));   // 치확
-	    int baseCriDmg = parseIntSafe(Objects.toString(item.get("CRI_DMG"), "0"));   // 치피
-	    int baseHpRate  = parseIntSafe(Objects.toString(item.get("HP_MAX_RATE"), "0"));
-	    int baseAtkRate  = parseIntSafe(Objects.toString(item.get("ATK_MAX_RATE"), "0"));
-
-	    // qty 1 → level 0, qty 2 → level 1 ...
-	    int level = Math.max(0, qty - 1);
-	    if (level > 3) level = 3; // 최대 3단계까지
-
-	    // 레벨별 누적 강화율 (%)
-	    int percent;
-	    switch (level) {
-	        case 1:  percent = 30; break; // +1
-	        case 2:  percent = 50; break; // +1 +2 = 30 + 20
-	        case 3:  percent = 60; break; // +1 +2 +3 = 30 + 20 + 10
-	        default: percent = 0;  break; // level 0
-	    }
-
-	    int bonusMin    = (int)Math.floor(baseMin    * percent / 100.0);
-	    int bonusMax    = (int)Math.floor(baseMax    * percent / 100.0);
-	    int bonusHp     = (int)Math.floor(baseHp     * percent / 100.0);
-	    int bonusRegen  = (int)Math.floor(baseRegen  * percent / 100.0);
-	    int bonusCri    = (int)Math.floor(baseCri    * percent / 100.0);
-	    int bonusCriDmg = (int)Math.floor(baseCriDmg * percent / 100.0);
-	    int bonusHpRate = (int)Math.floor(baseHpRate * percent / 100.0);
-	    int bonusAtkRate = (int)Math.floor(baseAtkRate * percent / 100.0);
+	    int baseMin     = parseIntSafe(Objects.toString(item.get("ATK_MIN"), "0"));
+	    int baseMax     = parseIntSafe(Objects.toString(item.get("ATK_MAX"), "0"));
+	    int baseHp      = parseIntSafe(Objects.toString(item.get("HP_MAX"), "0"));
+	    int baseRegen   = parseIntSafe(Objects.toString(item.get("HP_REGEN"), "0"));
+	    int baseCri     = parseIntSafe(Objects.toString(item.get("ATK_CRI"), "0"));    // 치확
+	    int baseCriDmg  = parseIntSafe(Objects.toString(item.get("CRI_DMG"), "0"));    // 치피
+	    int baseHpRate  = parseIntSafe(Objects.toString(item.get("HP_MAX_RATE"), "0"));// 체력%
+	    int baseAtkRate = parseIntSafe(Objects.toString(item.get("ATK_MAX_RATE"), "0"));// 최종공격력%
 
 	    StringBuilder sb = new StringBuilder();
- 
+
 	    // 공격력
 	    if (baseMin != 0 || baseMax != 0) {
 	        sb.append("[공격력 ")
-	          .append(baseMin);
-	        if (bonusMin != 0) {
-	            sb.append("(").append(formatSigned(bonusMin)).append(")");
-	        }
-	        sb.append("~")
-	          .append(baseMax);
-	        if (bonusMax != 0) {
-	            sb.append("(").append(formatSigned(bonusMax)).append(")");
-	        }
-	        sb.append("] ");
+	          .append(baseMin)
+	          .append("~")
+	          .append(baseMax)
+	          .append("] ");
 	    }
+
+	    // 최종 공격력 %
 	    if (baseAtkRate != 0) {
-	    	sb.append("[최종공격력 ").append(baseAtkRate);
-	    	if (bonusAtkRate != 0) {
-	    		sb.append("(").append(formatSigned(bonusAtkRate)).append(")");
-	    	}
-	    	sb.append("%] ");
+	        sb.append("[최종공격력 ")
+	          .append(baseAtkRate)
+	          .append("%] ");
 	    }
 
 	    // HP
 	    if (baseHp != 0) {
-	        sb.append("[체력+ ").append(baseHp);
-	        if (bonusHp != 0) {
-	            sb.append("(").append(formatSigned(bonusHp)).append(")");
-	        }
-	        sb.append("] ");
+	        sb.append("[체력+ ")
+	          .append(baseHp)
+	          .append("] ");
 	    }
+
+	    // HP %
 	    if (baseHpRate != 0) {
-	        sb.append("[체력% ").append(baseHpRate);
-	        if (bonusHpRate != 0) {
-	            sb.append("(").append(formatSigned(bonusHpRate)).append(")");
-	        }
-	        sb.append("] ");
+	        sb.append("[체력% ")
+	          .append(baseHpRate)
+	          .append("] ");
 	    }
 
 	    // 체젠
 	    if (baseRegen != 0) {
-	        sb.append("[체젠 ").append(baseRegen);
-	        if (bonusRegen != 0) {
-	            sb.append("(").append(formatSigned(bonusRegen)).append(")");
-	        }
-	        sb.append("] ");
+	        sb.append("[체젠 ")
+	          .append(baseRegen)
+	          .append("] ");
 	    }
 
 	    // 치확
 	    if (baseCri != 0) {
-	        sb.append("[치확 ").append(baseCri);
-	        if (bonusCri != 0) {
-	            sb.append("(").append(formatSigned(bonusCri)).append(")");
-	        }
-	        sb.append("] ");
+	        sb.append("[치확 ")
+	          .append(baseCri)
+	          .append("] ");
 	    }
 
 	    // 치피
 	    if (baseCriDmg != 0) {
-	        sb.append("[치피 ").append(baseCriDmg);
-	        if (bonusCriDmg != 0) {
-	            sb.append("(").append(formatSigned(bonusCriDmg)).append(")");
-	        }
-	        sb.append("] ");
+	        sb.append("[치피 ")
+	          .append(baseCriDmg)
+	          .append("] ");
 	    }
 
 	    return sb.toString().trim();
 	}
 
-	
+
+	private Date truncateToDate(Date d) {
+	    Calendar c = Calendar.getInstance();
+	    c.setTime(d);
+	    c.set(Calendar.HOUR_OF_DAY, 0);
+	    c.set(Calendar.MINUTE, 0);
+	    c.set(Calendar.SECOND, 0);
+	    c.set(Calendar.MILLISECOND, 0);
+	    return c.getTime();
+	}
 	/** 장비 업그레이드 계수: QTY 1~4 → 1.0 / 1.3 / 1.5 / 1.6 */
 	private double calcEquipUpgradeFactor(int qty) {
 	    if (qty <= 1) return 1.0;
@@ -7113,6 +7166,147 @@ public class BossAttackController {
 	    // 예상 밖 타입이면 null
 	    return null;
 	}
+
+	private String buildRelicSummaryLine(List<HashMap<String, Object>> bag) {
+		int sumAtkMin = 0;
+		int sumAtkMax = 0;
+		int sumHp = 0;
+		int sumRegen = 0;
+		int sumCrit = 0;
+		int sumCritDmg = 0;
+		int sumAtkRate = 0;
+		int sumHpRate = 0;
+
+		int relicCount = 0;
+
+		try {
+
+			if (bag == null)
+				return null;
+
+			for (HashMap<String, Object> row : bag) {
+				int itemId = safeInt(row.get("ITEM_ID"));
+				if (itemId < 9000 || itemId >= 10000)
+					continue; // 🔥 유물만
+
+				relicCount++;
+
+				/*
+				 * HashMap<String,Object> info = botNewService.selectItemDetailById(itemId); if
+				 * (info == null) continue;
+				 */
+				sumAtkMin += safeInt(row.get("ATK_MIN"));
+				sumAtkMax += safeInt(row.get("ATK_MAX"));
+				sumHp += safeInt(row.get("HP_MAX"));
+				sumRegen += safeInt(row.get("HP_REGEN"));
+				sumCrit += safeInt(row.get("CRIT_RATE"));
+				sumCritDmg += safeInt(row.get("CRIT_DMG"));
+				sumAtkRate += safeInt(row.get("ATK_MAX_RATE"));
+				sumHpRate += safeInt(row.get("HP_MAX_RATE"));
+			}
+
+		} catch (Exception e) {
+			return null;
+		}
+
+		if (relicCount == 0)
+			return null;
+
+		StringBuilder sb = new StringBuilder();
+		sb.append("✨ 유물 효과 (").append(relicCount).append("개): ");
+
+		boolean first = true;
+
+		if (sumAtkMin != 0 || sumAtkMax != 0) {
+			sb.append("ATK ").append(sumAtkMin).append("~").append(sumAtkMax);
+			first = false;
+		}
+		if (sumAtkRate > 0) {
+			if (!first)
+				sb.append(", ");
+			sb.append("최종ATK +").append(sumAtkRate).append("%");
+			first = false;
+		}
+		if (sumHp > 0 || sumHpRate > 0) {
+			if (!first)
+				sb.append(", ");
+			sb.append("HP +").append(sumHp);
+			if (sumHpRate > 0)
+				sb.append(" (+").append(sumHpRate).append("%)");
+			first = false;
+		}
+		if (sumRegen > 0) {
+			if (!first)
+				sb.append(", ");
+			sb.append("체젠 +").append(sumRegen);
+			first = false;
+		}
+		if (sumCrit > 0 || sumCritDmg > 0) {
+			if (!first)
+				sb.append(", ");
+			sb.append("CRIT +").append(sumCrit).append("% / CDMG +").append(sumCritDmg).append("%");
+		}
+
+		return sb.toString();
+	}
+	
+	private void renderAchievementSummary(
+	        StringBuilder sb,
+	        List<HashMap<String, Object>> achv
+	) {
+	    if (achv == null || achv.isEmpty()) {
+	        sb.append("- 달성된 업적 없음").append(NL);
+	        return;
+	    }
+
+	    int total = achv.size();
+
+	    int firstClear = 0;
+	    int totalKill = 0;
+	    int attack = 0;
+	    int jobSkill = 0;
+	    int light = 0;
+	    int dark = 0;
+
+	    String latest = null;
+
+	    for (HashMap<String, Object> row : achv) {
+	        String cmd = Objects.toString(row.get("CMD"), "");
+
+	        if (cmd.startsWith("ACHV_FIRST_CLEAR")) firstClear++;
+	        else if (cmd.startsWith("ACHV_TOTAL_KILL")) totalKill++;
+	        else if (cmd.startsWith("ACHV_ATTACK")) attack++;
+	        else if (cmd.startsWith("ACHV_JOB_")) jobSkill++;
+	        else if (cmd.startsWith("ACHV_LIGHT_ITEM")) light++;
+	        else if (cmd.startsWith("ACHV_DARK_ITEM")) dark++;
+
+	        // 최신 업적 하나만 표시 (정렬돼 있다고 가정)
+	        if (latest == null) {
+	            latest = formatAchievementLabelSimple(cmd, null);
+	        }
+	    }
+
+	    sb.append("▶ 업적 요약").append(NL)
+	      .append("- 총 업적: ").append(total).append("개").append(NL);
+
+	    if (firstClear > 0)
+	        sb.append("- 최초 토벌: ").append(firstClear).append("개").append(NL);
+	    if (totalKill > 0)
+	        sb.append("- 처치 업적: ").append(totalKill).append("개").append(NL);
+	    if (attack > 0)
+	        sb.append("- 공격 업적: ").append(attack).append("개").append(NL);
+	    if (jobSkill > 0)
+	        sb.append("- 스킬 업적: ").append(jobSkill).append("개").append(NL);
+	    if (light > 0 || dark > 0)
+	        sb.append("- 빛/어둠 획득: ")
+	          .append(light).append("/")
+	          .append(dark).append("개").append(NL);
+
+	    if (latest != null) {
+	        sb.append("- 최근 달성: ").append(latest).append(NL);
+	    }
+	}
+	
 	private static String formatDateYMD(Date d) {
 	    if (d == null) return "-";
 	    return new java.text.SimpleDateFormat("yyyy-MM-dd").format(d);
@@ -7122,6 +7316,20 @@ public class BossAttackController {
 	    if (d == null) return "-";
 	    return new java.text.SimpleDateFormat("MM월dd일").format(d);
 	}
+	
+	private Integer maxOf(SortedSet<Integer> set) {
+	    if (set == null || set.isEmpty()) return null;
+	    return set.last();
+	}
+	private List<String> chunk(List<String> list, int size) {
+	    List<String> out = new ArrayList<>();
+	    for (int i = 0; i < list.size(); i += size) {
+	        out.add(String.join(" / ",
+	            list.subList(i, Math.min(i + size, list.size()))));
+	    }
+	    return out;
+	}
+	
 	// 직업 메타데이터 맵 (등록 순서 유지 위해 LinkedHashMap)
 	private static final Map<String, JobDef> JOB_DEFS = new LinkedHashMap<>();
 

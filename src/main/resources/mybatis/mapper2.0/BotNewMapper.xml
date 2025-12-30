@@ -331,54 +331,64 @@
   </select>
 
   <select id="selectInventorySummaryAll" resultType="hashmap">
-  /*selectInventorySummaryAll*/
-	  SELECT
-	      NVL(i.item_id, -1) AS ITEM_ID,
-	      CASE 
-	        WHEN NVL(inv.gain_type,'DROP') = 'DROP3'
-	          THEN '빛' || NVL(i.item_name, '알 수 없음')
-	        WHEN NVL(inv.gain_type,'DROP') = 'DROP5'
-	          THEN '어둠' || NVL(i.item_name, '알 수 없음')
-	        WHEN NVL(inv.gain_type,'DROP') = 'STEAL'
-          	  THEN NVL(i.item_name, '알 수 없음') || '조각'
-	        ELSE NVL(i.item_name, '알 수 없음')
-	      END AS ITEM_NAME,
-	      SUM(inv.qty) AS TOTAL_QTY,
-	      NVL(MAX(i.item_sell_price), 0) AS ITEM_SELL_PRICE,
-	      NVL(MAX(i.item_type), '')      AS ITEM_TYPE
-	  FROM TBOT_POINT_NEW_INVENTORY inv
-	  LEFT JOIN TBOT_POINT_NEW_ITEM i
-	    ON i.item_id = inv.item_id
-	  WHERE inv.user_name = #{userName}
-	  <!-- 
-	   <if test="roomName != null and roomName != '람쥐봇 문의방'">
-	    AND inv.room_name = #{roomName}
-	  </if>
-	   -->
-	    AND inv.del_yn = '0'
-	  GROUP BY
-	      NVL(i.item_id, -1),
-	      CASE 
-	        WHEN NVL(inv.gain_type,'DROP') = 'DROP3'
-	          THEN '빛' || NVL(i.item_name, '알 수 없음')
-	        WHEN NVL(inv.gain_type,'DROP') = 'DROP5'
-	          THEN '어둠' || NVL(i.item_name, '알 수 없음')
-	        WHEN NVL(inv.gain_type,'DROP') = 'STEAL'
-          	  THEN NVL(i.item_name, '알 수 없음') || '조각'
-          	ELSE NVL(i.item_name, '알 수 없음')
-	      END
-	  ORDER BY NVL(i.item_id, -1)
+	/* selectInventorySummaryAll */
+	SELECT
+	    NVL(i.item_id, -1) AS ITEM_ID,
+	
+	    /* 🔹 기존 이름 가공 로직 유지 */
+	    CASE 
+	      WHEN NVL(inv.gain_type,'DROP') = 'DROP3'
+	        THEN '빛' || NVL(i.item_name, '알 수 없음')
+	      WHEN NVL(inv.gain_type,'DROP') = 'DROP5'
+	        THEN '어둠' || NVL(i.item_name, '알 수 없음')
+	      WHEN NVL(inv.gain_type,'DROP') = 'STEAL'
+	        THEN NVL(i.item_name, '알 수 없음') || '조각'
+	      ELSE NVL(i.item_name, '알 수 없음')
+	    END AS ITEM_NAME,
+	
+	    SUM(inv.qty) AS TOTAL_QTY,
+	
+	    /* 🔹 기존 컬럼 */
+	    NVL(MAX(i.item_sell_price), 0) AS ITEM_SELL_PRICE,
+	    NVL(MAX(i.item_type), '')      AS ITEM_TYPE,
+	
+	    /* 🔥 아이템 상세 옵션 (추가) */
+	    NVL(MAX(i.ATK_MIN), 0)        AS ATK_MIN,
+	    NVL(MAX(i.ATK_MAX), 0)        AS ATK_MAX,
+	    NVL(MAX(i.ATK_CRI), 0)        AS ATK_CRI,
+	    NVL(MAX(i.HP_REGEN), 0)       AS HP_REGEN,
+	    NVL(MAX(i.HP_MAX), 0)         AS HP_MAX,
+	    NVL(MAX(i.CRI_DMG), 0)        AS CRI_DMG,
+	    NVL(MAX(i.HP_MAX_RATE), 0)    AS HP_MAX_RATE,
+	    NVL(MAX(i.ATK_MAX_RATE), 0)   AS ATK_MAX_RATE
+	
+	FROM TBOT_POINT_NEW_INVENTORY inv
+	LEFT JOIN TBOT_POINT_NEW_ITEM i
+	  ON i.item_id = inv.item_id
+	
+	WHERE inv.user_name = #{userName}
+	  AND inv.del_yn = '0'
+	
+	GROUP BY
+	    NVL(i.item_id, -1),
+	    CASE 
+	      WHEN NVL(inv.gain_type,'DROP') = 'DROP3'
+	        THEN '빛' || NVL(i.item_name, '알 수 없음')
+	      WHEN NVL(inv.gain_type,'DROP') = 'DROP5'
+	        THEN '어둠' || NVL(i.item_name, '알 수 없음')
+	      WHEN NVL(inv.gain_type,'DROP') = 'STEAL'
+	        THEN NVL(i.item_name, '알 수 없음') || '조각'
+	      ELSE NVL(i.item_name, '알 수 없음')
+	    END
+	
+	ORDER BY NVL(i.item_id, -1)
 	</select>
+
 
   <select id="selectCurrentPoint" resultType="int">
     SELECT NVL(SUM(score), 0)
       FROM TBOT_POINT_RANK
      WHERE user_name = #{userName}
-     <!-- 
-     <if test="roomName != null and roomName != '람쥐봇 문의방'">
-	   AND room_name = #{roomName}
-	 </if>
-	  -->
        
        AND new_yn = '1'
   </select>
@@ -860,7 +870,7 @@
 	           AND ROOM_NAME = #{roomName}
            </if>
             -->
-	       AND INSERT_DATE &lt; TRUNC(SYSDATE)   <!-- 어제 자정까지 -->
+	       AND INSERT_DATE &lt; SYSDATE
 	     GROUP BY TRUNC(INSERT_DATE)
 	     ORDER BY ATTACK_DAY
 	</select>
@@ -1489,4 +1499,23 @@
 	            )
 	    )
 	</select>
+	
+	<!-- 누적 드랍 아이템 집계 -->
+	<select id="selectTotalDropItems"
+	        parameterType="map"
+	        resultType="hashmap">
+	    SELECT
+	        I.ITEM_ID,
+	        IT.ITEM_NAME,
+	        I.GAIN_TYPE,
+	        SUM(I.QTY) AS TOTAL_QTY
+	    FROM TBOT_POINT_NEW_INVENTORY I
+	    JOIN TBOT_POINT_NEW_ITEM IT
+	      ON I.ITEM_ID = IT.ITEM_ID
+	    WHERE I.USER_NAME = #{userName}
+	      AND I.GAIN_TYPE IN ('DROP','DROP2','DROP3','DROP5','STEAL')
+	    GROUP BY I.ITEM_ID, IT.ITEM_NAME, I.GAIN_TYPE
+	    ORDER BY SUM(I.QTY) DESC
+	</select>
+
 </mapper>

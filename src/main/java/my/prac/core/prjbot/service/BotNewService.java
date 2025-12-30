@@ -163,6 +163,9 @@ public interface BotNewService {
     
     boolean isReturnUser(String userName);
     int selectBagRewardCap(String userName);
+    
+    List<HashMap<String, Object>> selectTotalDropItems(String userName);
+
 } 
 
 	

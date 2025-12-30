@@ -667,23 +667,9 @@ public class LoaChatController {
 				break;
 			case "/공격정보": case "/ㄱㄱㅈㅂ": case "/가방": case "/ㄱㅂ":
 				val = boss.attackInfo(reqMap);
-				/*
-				reqMap.put("newUserName", sender);
-				
-				gameYnList = botService.selectGamePlayYn(reqMap);
-				playYn ="1"; 
-				for(HashMap<String,Object> gameYn : gameYnList) {
-					if(gameYn.get("NAME").equals("강화")) {
-						playYn = gameYn.get("PLAY_YN").toString(); 
-					}
-				}
-				
-				if(playYn.equals("1")) {
-					val = play.BossAttackInfoForPoint(reqMap);
-				}else {
-					val = "별도 게임방에서 진행해주세요.";
-				}
-				*/
+				break;
+			case "/가방상세": case "/ㄱㅂㅅㅅ": case "/ㄱㅄㅅ": case "/ㅇㅂ":case "/인벤":case "/인벤토리":
+				val = boss.invenInfo(reqMap);
 				break;
 			case "/ㄱㄱㄱㅈ": case "/공격공지": case "/공지": 
 				val = boss.patchNote(reqMap);
