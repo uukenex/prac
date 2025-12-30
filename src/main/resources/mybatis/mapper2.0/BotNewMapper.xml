@@ -333,7 +333,7 @@
   <select id="selectInventorySummaryAll" resultType="hashmap">
 	/* selectInventorySummaryAll */
 	SELECT
-	    NVL(i.item_id, -1) AS ITEM_ID,
+	    i.item_id AS ITEM_ID,
 	
 	    /* 🔹 기존 이름 가공 로직 유지 */
 	    CASE 
@@ -368,9 +368,9 @@
 	
 	WHERE inv.user_name = #{userName}
 	  AND inv.del_yn = '0'
-	
+	  AND inv.item_id > 90
 	GROUP BY
-	    NVL(i.item_id, -1),
+	    i.item_id, -1,
 	    CASE 
 	      WHEN NVL(inv.gain_type,'DROP') = 'DROP3'
 	        THEN '빛' || NVL(i.item_name, '알 수 없음')
@@ -381,7 +381,7 @@
 	      ELSE NVL(i.item_name, '알 수 없음')
 	    END
 	
-	ORDER BY NVL(i.item_id, -1)
+	ORDER BY i.item_id
 	</select>
 
 
@@ -1504,6 +1504,7 @@
 	<select id="selectTotalDropItems"
 	        parameterType="map"
 	        resultType="hashmap">
+	        /*selectTotalDropItems*/
 	    SELECT
 	        I.ITEM_ID,
 	        IT.ITEM_NAME,
@@ -1514,8 +1515,9 @@
 	      ON I.ITEM_ID = IT.ITEM_ID
 	    WHERE I.USER_NAME = #{userName}
 	      AND I.GAIN_TYPE IN ('DROP','DROP2','DROP3','DROP5','STEAL')
+	      AND I.ITEM_ID &lt; 50
 	    GROUP BY I.ITEM_ID, IT.ITEM_NAME, I.GAIN_TYPE
-	    ORDER BY SUM(I.QTY) DESC
+	    ORDER BY I.ITEM_ID DESC, I.GAIN_TYPE
 	</select>
 
 </mapper>

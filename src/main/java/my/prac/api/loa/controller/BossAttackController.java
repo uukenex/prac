@@ -862,32 +862,41 @@ public class BossAttackController {
 
 	            int lineCnt = 0;
 	            StringBuilder line = new StringBuilder();
-
+	            Integer prevItemId = null;
+	            
 	            for (HashMap<String,Object> row : drops) {
+	            	int itemId = safeInt(row.get("ITEM_ID"));
 	                String name = Objects.toString(row.get("ITEM_NAME"), "");
 	                String gainType = Objects.toString(row.get("GAIN_TYPE"), "");
 	                int qty = safeInt(row.get("TOTAL_QTY"));
 
 	                if (qty <= 0 || name.isEmpty()) continue;
 
+	                if (prevItemId != null && prevItemId != itemId) {
+	                    if (line.length() > 0) {
+	                        sb.append(line).append(NL);
+	                        line.setLength(0);
+	                    }
+	                }
+	                prevItemId = itemId;
+
+	                
 	                // 🔹 조각 처리
-	                if ("STEAL".equals(gainType)
-	                 || "DROP3".equals(gainType)
-	                 || "DROP5".equals(gainType)) {
+	                if ("STEAL".equals(gainType)) {
 	                    name = name + "조각";
+	                }
+	                if ("DROP3".equals(gainType)) {
+	                	name = "빛"+name ;
+	                }
+	                if ("DROP5".equals(gainType)) {
+	                	name = "어둠"+name;
 	                }
 
 	                if (line.length() > 0) {
 	                    line.append(" / ");
 	                }
 	                line.append(name).append("x").append(qty);
-
-	                lineCnt++;
-	                if (lineCnt == 3) {
-	                    sb.append(line).append(NL);
-	                    line.setLength(0);
-	                    lineCnt = 0;
-	                }
+	                
 	            }
 
 	            if (line.length() > 0) {
@@ -1262,19 +1271,19 @@ public class BossAttackController {
 	        sb.append("시작일: -").append(NL);
 	    }
 
-	    sb.append("일별 평균 공격(어제까지): ")
+	    sb.append("- 일별 평균 공격(어제까지): ")
 	      .append(avgAttackPerDay)
 	      .append("회/일").append(NL);
 
 	    if (maxAttackDay != null && maxAttackCnt > 0) {
-	        sb.append("최고 공격: ")
+	        sb.append("- 최고 공격: ")
 	          .append(formatDateMD(maxAttackDay))
 	          .append(" ")
 	          .append(maxAttackCnt).append("회").append(NL);
 	    } else {
-	        sb.append("최고 공격: -").append(NL);
+	        sb.append("- 최고 공격: -").append(NL);
 	    }
-	    sb.append("오늘 공격: ")
+	    sb.append("- 오늘 공격: ")
 	      .append(todayAttackCnt)
 	      .append("회")
 	      .append(NL);
@@ -7199,8 +7208,8 @@ public class BossAttackController {
 				sumAtkMax += safeInt(row.get("ATK_MAX"));
 				sumHp += safeInt(row.get("HP_MAX"));
 				sumRegen += safeInt(row.get("HP_REGEN"));
-				sumCrit += safeInt(row.get("CRIT_RATE"));
-				sumCritDmg += safeInt(row.get("CRIT_DMG"));
+				sumCrit += safeInt(row.get("ATK_CRI"));
+				sumCritDmg += safeInt(row.get("CRI_DMG"));
 				sumAtkRate += safeInt(row.get("ATK_MAX_RATE"));
 				sumHpRate += safeInt(row.get("HP_MAX_RATE"));
 			}
@@ -7244,8 +7253,10 @@ public class BossAttackController {
 		if (sumCrit > 0 || sumCritDmg > 0) {
 			if (!first)
 				sb.append(", ");
-			sb.append("CRIT +").append(sumCrit).append("% / CDMG +").append(sumCritDmg).append("%");
+			sb.append("치확 +").append(sumCrit).append("% / 치뎀 +").append(sumCritDmg).append("%");
 		}
+		
+
 
 		return sb.toString();
 	}
