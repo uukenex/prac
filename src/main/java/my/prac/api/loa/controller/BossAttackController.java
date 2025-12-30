@@ -3850,7 +3850,7 @@ public class BossAttackController {
 	    final int[] thresholds = {
 	        1, 10, 30, 50, 100, 150,
 	        200, 250, 300, 350, 400, 450,
-	        500, 600, 700, 800, 900, 1000
+	        500, 600, 700, 800, 900, 1000,1200,1400,1600,1800,2000,2300,2600,3000
 	    };
 
 	    StringBuilder sb = new StringBuilder();
@@ -3908,9 +3908,16 @@ public class BossAttackController {
 	private String grantShopSellAchievements(String userName, String roomName) {
 	    // {기준 수량, 보상 SP}
 	    final int[][] rules = new int[][]{
-	        {1000,  1000},
-	        {5000,  3000},
-	        {10000, 7000}
+	        {1000,  10000},
+	        {2000,  10000},
+	        {3000,  10000},
+	        {4000,  10000},
+	        {5000,  10000},
+	        {6000,  20000},
+	        {7000,  20000},
+	        {8000,  20000},
+	        {9000,  20000},
+	        {10000, 30000}
 	    };
 
 	    StringBuilder sb = new StringBuilder();
