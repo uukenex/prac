@@ -3782,7 +3782,7 @@ public class BossAttackController {
 
 	            botNewService.insertInventoryLogTx(inv);
 
-	            msg.append("🎁 업적 ")
+	            msg.append("업적 ")
 	               .append(needCnt)
 	               .append("개 달성 보상 획득! (")
 	               .append("아이템#").append(itemId)
@@ -7248,9 +7248,9 @@ public class BossAttackController {
 
 		StringBuilder sb = new StringBuilder();
 		if(number==8000) {
-			sb.append("✨ 유물 효과 (").append(relicCount).append("개): ");
-		}else if(number==9000) {
 			sb.append("✨ 업적 효과 (").append(relicCount).append("개): ");
+		}else if(number==9000) {
+			sb.append("✨ 유물 효과 (").append(relicCount).append("개): ");
 		}
 
 		boolean first = true;
