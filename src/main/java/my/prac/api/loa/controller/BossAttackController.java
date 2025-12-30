@@ -59,10 +59,6 @@ public class BossAttackController {
 	private static final String ALL_SEE_STR = "===";
 	private static final int BAG_ITEM_ID = 91;
 	
-	private static final int JOB_ACHV_EXPERT = 300;
-	private static final int JOB_ACHV_MASTER = 1000;
-	private static final int JOB_ACHV_GRAND  = 2500;
-	
 	/* ===== DI ===== */
 	@Autowired LoaPlayController play;
 	@Resource(name = "core.prjbot.BotService")        BotService botService;
@@ -861,7 +857,6 @@ public class BossAttackController {
 	        if (drops != null && !drops.isEmpty()) {
 	            sb.append(NL).append("▶ 누적 획득 드랍 아이템").append(NL);
 
-	            int lineCnt = 0;
 	            StringBuilder line = new StringBuilder();
 	            Integer prevItemId = null;
 	            
@@ -1363,7 +1358,6 @@ public class BossAttackController {
 		final String userName = Objects.toString(map.get("userName"), "");
 		final String input = Objects.toString(map.get("monNo"), "").trim();
 		
-		boolean master = false;
 		if (roomName.isEmpty() || userName.isEmpty()) return "방/유저 정보가 누락되었습니다.";
 		if (input.isEmpty()) {
 		    User u = botNewService.selectUser(userName, null);
@@ -1384,7 +1378,6 @@ public class BossAttackController {
 		if(roomName.equals("람쥐봇 문의방")) {
 			
 			if(userName.equals("일어난다람쥐/카단")) {
-				master = true;
 			}else {
 				return "문의방에서는 불가능합니다.";
 			}
@@ -2184,6 +2177,14 @@ public class BossAttackController {
 
 	    // 유저별 업적 카운트
 	    List<AchievementCount> userAchvList = botNewService.selectAchvCountsGlobal(userName, roomName);
+	    
+	    Set<String> achievedCmdSet = new HashSet<>();
+	    if (userAchvList != null) {
+	        for (AchievementCount ac : userAchvList) {
+	            achievedCmdSet.add(ac.getCmd());
+	        }
+	    }
+	    
 	    Map<String, Integer> userAchvMap = new HashMap<>();
 	    if (userAchvList != null) {
 	        for (AchievementCount ac : userAchvList) {
@@ -2444,9 +2445,9 @@ public class BossAttackController {
 	                        stealMsg = "✨ " + m.monName + "의 아이템을 훔쳤습니다! (" + dropName + "조각)";
 	                        calc.jobSkillUsed = true;
 	                    }
+	                    stealPoint += " +"+baroSellItem(dropName,itemId,res,userName,roomName,ctx,u,"STEAL",1);
 	                } catch (Exception ignore) {}
 	                
-	                stealPoint += " +"+baroSellItem(dropName,res,userName,roomName,ctx,u,"STEAL",1);
 	            }
 	        }
 	    }
@@ -2490,8 +2491,9 @@ public class BossAttackController {
 
 	                            calc.jobSkillUsed = true;
 	                        }
+	                        stealPoint += " +"+baroSellItem(dropName,itemId,res,userName,roomName,ctx,u,"STEAL",1);
 	                    } catch (Exception ignore) {}
-	                    stealPoint += " +"+baroSellItem(dropName,res,userName,roomName,ctx,u,"STEAL",1);
+	                    
 	                }
 	            }else {
 	            	stealMsg =
@@ -2522,10 +2524,10 @@ public class BossAttackController {
 	                        stealMsg = "✨ 날카로운 처단으로 추가획득 (+" + dropName + ")";
 	                        calc.jobSkillUsed = true;
 	                    }
+	                    stealPoint += " +" +baroSellItem(dropName,itemId,res,userName,roomName,ctx,u,"STEAL",2);
 	                    
 	                    
 	                } catch (Exception ignore) {}
-	                stealPoint += " +" +baroSellItem(dropName,res,userName,roomName,ctx,u,"STEAL",2);
 	            }
 	        }
 	    }
@@ -2554,7 +2556,7 @@ public class BossAttackController {
 	                        calc.jobSkillUsed = true;
 	                    }
 	                    
-	                    stealPoint += " +"+baroSellItem(dropName,res,userName,roomName,ctx,u,"STEAL",1);
+	                    stealPoint += " +"+baroSellItem(dropName,itemId,res,userName,roomName,ctx,u,"STEAL",1);
 	                    
 	                } catch (Exception ignore) {}
 	            }
@@ -2585,7 +2587,7 @@ public class BossAttackController {
 	        String dropName = (m.monDrop == null ? "" : m.monDrop.trim());
 	        if (!dropName.isEmpty()) {
 
-	            newPoint += " +"+baroSellItem(dropName,res,userName,roomName,ctx,u,"DROP",1);
+	            newPoint += " +"+baroSellItem(dropName,0,res,userName,roomName,ctx,u,"DROP",1);
 	        }
 	    }
 	    
@@ -2604,19 +2606,15 @@ public class BossAttackController {
 	        botNewService.closeOngoingBattleTx(userName, roomName);
 
 	        String firstClearMsg = grantFirstClearIfEligible(userName, roomName, m, globalAchvMap);
-	        String killAchvMsg   = grantKillAchievements(userName, roomName);
-	        String itemAchvMsg   = grantLightDarkItemAchievements(userName, roomName);
-
-	     // 🔹 새로 추가: 공격 횟수 업적
-	        String attackAchvMsg = grantAttackCountAchievements(userName, roomName);
-
+	        String killAchvMsg   = grantKillAchievements(userName, roomName,achievedCmdSet);
+	        String itemAchvMsg   = grantLightDarkItemAchievements(userName, roomName,achievedCmdSet);
+	        String attackAchvMsg = grantAttackCountAchievements(userName, roomName,achievedCmdSet);
+	        String jobSkillAchvMsg = grantJobSkillUseAchievementsAllJobs(userName, roomName,achievedCmdSet);
+	        
 	        String achvRewardMsg = grantAchievementBasedReward(userName, roomName, userAchvList);
 	        
 	        // 🔹 새로 추가: 직업별 스킬 사용 업적 (이번 턴에 스킬 썼을 때만)
-	        String jobSkillAchvMsg = "";
-	        if (calc.jobSkillUsed) {
-	            jobSkillAchvMsg = grantJobSkillUseAchievementsAllJobs(userName, roomName);
-	        }
+	        
 	        if ((firstClearMsg   != null && !firstClearMsg.isEmpty())
 	                || (killAchvMsg     != null && !killAchvMsg.isEmpty())
 	                || (itemAchvMsg     != null && !itemAchvMsg.isEmpty())
@@ -2717,10 +2715,12 @@ public class BossAttackController {
 	    return msg;
 	}
 	
-	public String baroSellItem(String dropName,Resolve res,String userName,String roomName,UserBattleContext ctx,User u,String gainType,int qty) {
+	public String baroSellItem(String dropName,Integer itemId,Resolve res,String userName,String roomName,UserBattleContext ctx,User u,String gainType,int qty) {
 		String newPoint="";
 		try {
-            Integer itemId = botNewService.selectItemIdByName(dropName);
+			if(0 == itemId) {
+				itemId = botNewService.selectItemIdByName(dropName);
+			}
             Integer basePrice = botNewService.selectItemSellPriceById(itemId);
 
             if (basePrice != null && basePrice > 0) {
@@ -3672,7 +3672,6 @@ public class BossAttackController {
 	        sb.append("데이터 없음").append(NL);
 	    } else {
 	        Integer lastMonNo = null;
-	        String  lastMonName = null;
 	        for (HashMap<String,Object> k : killers) {
 	            int monNo       = safeInt(k.get("MON_NO"));
 	            String monName  = String.valueOf(k.get("MON_NAME"));
@@ -3682,7 +3681,6 @@ public class BossAttackController {
 	            if (!java.util.Objects.equals(lastMonNo, monNo)) {
 	            	sb.append(monNo).append("No ").append(monName).append(" 학살자");
 	                lastMonNo = monNo;
-	                lastMonName = monName;
 	            }
 	            sb.append(" ▶ ").append(uName)
 	              .append(" (").append(kills).append("마리)").append(NL);
@@ -3794,48 +3792,73 @@ public class BossAttackController {
 	}
 
 	
-	/** 공격 횟수 기반 업적 (통산 공격 수) */
-	private String grantAttackCountAchievements(String userName, String roomName) {
+	private String grantAttackCountAchievements(
+	        String userName,
+	        String roomName,
+	        Set<String> achievedCmdSet
+	) {
 	    AttackDeathStat ads = botNewService.selectAttackDeathStats(userName, roomName);
 	    if (ads == null) return "";
 
 	    int totalAttacks = ads.totalAttacks;
 	    if (totalAttacks <= 0) return "";
 
-	    // 원하는 구간은 자유롭게 조정 가능
-	    int[] thresholds = {1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000,10000,11000
-	    		,12000,13000,14000,15000,16000,17000,18000,19000,20000};
+	    int[] thresholds = {
+	        1000,2000,3000,4000,5000,6000,7000,8000,9000,
+	        10000,11000,12000,13000,14000,15000,16000,17000,
+	        18000,19000,20000
+	    };
 
 	    StringBuilder sb = new StringBuilder();
+
 	    for (int th : thresholds) {
-	        if (totalAttacks >= th) {
-	            String cmd = "ACHV_ATTACK_TOTAL_" + th;
-	            int rewardSp = th * 10; // 예: 100회 → 20sp, 1000회 → 200sp (원하면 바꿔도 됨)
-	            sb.append(grantOnceIfEligible(userName, roomName, cmd, rewardSp));
-	        }
+	        if (totalAttacks < th) break;
+
+	        String cmd = "ACHV_ATTACK_TOTAL_" + th;
+	        if (achievedCmdSet.contains(cmd)) continue;
+
+	        int rewardSp = th * 10;
+
+	        sb.append(
+	            grantOnceIfEligibleFast(
+	                userName, roomName, cmd, rewardSp, achievedCmdSet
+	            )
+	        );
 	    }
+
 	    return sb.toString();
 	}
-	/** 
-	 * 직업별 스킬 사용 횟수 업적 (모든 직업 한 번에 계산)
-	 * - 예전에 사신, 기사 같은 직업으로 사용한 기록도 전부 포함
-	 */
-	private String grantJobSkillUseAchievementsAllJobs(String userName, String roomName) {
 
+
+
+	private String grantJobSkillUseAchievementsAllJobs(
+	        String userName,
+	        String roomName,
+	        Set<String> achievedCmdSet
+	) {
+
+	    // 1️⃣ 직업별 스킬 사용 누적 수 (쿼리 1회)
 	    List<HashMap<String,Object>> rows =
 	            botNewService.selectJobSkillUseCountAllJobs(userName, roomName);
 	    if (rows == null || rows.isEmpty()) return "";
 
-	    // 공통 threshold (원하는 대로 조정 가능)
-	    int[] thresholds = { 1, 10, 30, 50, 100, 150,200,250, 300,350,400,450, 500,600,700,800,900, 1000 };
+	    // 2️⃣ 공통 임계치
+	    final int[] thresholds = {
+	        1, 10, 30, 50, 100, 150,
+	        200, 250, 300, 350, 400, 450,
+	        500, 600, 700, 800, 900, 1000
+	    };
 
 	    StringBuilder sb = new StringBuilder();
 
+	    // 3️⃣ 직업별 처리
 	    for (HashMap<String,Object> row : rows) {
-	        String jobName = Objects.toString(row.get("JOB"), "").trim();
-	        if (jobName.isEmpty()) continue; // 혹시 null/공백인 이상값 방지
+	        if (row == null) continue;
 
-	        int totalSkillUse = 0;
+	        String jobName = Objects.toString(row.get("JOB"), "").trim();
+	        if (jobName.isEmpty()) continue;
+
+	        int totalSkillUse;
 	        Object v = row.get("TOTAL_SKILL_USE");
 	        if (v instanceof Number) {
 	            totalSkillUse = ((Number) v).intValue();
@@ -3845,57 +3868,33 @@ public class BossAttackController {
 
 	        if (totalSkillUse <= 0) continue;
 
+	        // 4️⃣ 임계치 달성 여부만 체크 (DB 조회 ❌)
 	        for (int th : thresholds) {
-	            if (totalSkillUse >= th) {
+	            if (totalSkillUse < th) break; // 정렬 가정 → 효율
 
-	                // 예: ACHV_JOB_SKILL_사신_10 / ACHV_JOB_SKILL_궁수_100
-	                String cmd = "ACHV_JOB_SKILL_" + jobName + "_" + th;
+	            String cmd = "ACHV_JOB_SKILL_" + jobName + "_" + th;
 
-	                int rewardSp = th * 10; // 숫자는 취향대로 조정 가능
+	            // 이미 달성한 업적이면 스킵 (메모리)
+	            if (achievedCmdSet.contains(cmd)) continue;
 
-	                sb.append(grantOnceIfEligible(userName, roomName, cmd, rewardSp));
-	            }
+	            int rewardSp = th * 10; // 기존 정책 유지
+
+	            sb.append(
+	                grantOnceIfEligibleFast(
+	                    userName,
+	                    roomName,
+	                    cmd,
+	                    rewardSp,
+	                    achievedCmdSet
+	                )
+	            );
 	        }
 	    }
 
 	    return sb.toString();
 	}
-	/** 직업별 스킬 사용 업적 (각 직업당 1회) */
-	private String grantJobSkillUseAchievements(String userName, String roomName, String job) {
-		if (job == null)
-			return "";
-		job = job.trim();
-		if (job.isEmpty())
-			return "";
 
-		int totalSkillUse = 0;
-		try {
-			Integer v = botNewService.selectJobSkillUseCount(userName, roomName, job);
-			if (v != null)
-				totalSkillUse = v;
-		} catch (Exception ignore) {
-		}
-
-		if (totalSkillUse <= 0)
-			return "";
-
-		// 🔸 원하는 구간으로 조정하면 됨
-		int[] thresholds = { 1, 10, 30, 50, 100, 150,200,250, 300,350,400,450, 500,600,700,800,900, 1000 };
-
-		StringBuilder sb = new StringBuilder();
-		for (int th : thresholds) {
-			if (totalSkillUse >= th) {
-				// 예: ACHV_JOB_SKILL_궁사_10
-				String cmd = "ACHV_JOB_SKILL_" + job + "_" + th;
-
-				// 보상 수치는 취향대로 – 대략 공격/킬 업적이랑 비슷한 느낌으로
-				int rewardSp = th * 10;
-
-				sb.append(grantOnceIfEligible(userName, roomName, cmd, rewardSp));
-			}
-		}
-		return sb.toString();
-	}
+	
 
 	/**
 	 * 상점/소비로 삭제된 인벤토리 누적 수량 기준 업적 지급
@@ -4062,33 +4061,6 @@ public class BossAttackController {
 
 
 	
-	/** 옵션 토큰 공통 포맷터 (최소뎀/최대뎀/치명타/체력회복/최대체력/치명타뎀) */
-	private String buildOptionTokensFromMap(HashMap<String, Object> m) {
-	    int atkMin   = getInt(m.get("ATK_MIN"));
-	    int atkMax   = getInt(m.get("ATK_MAX"));
-	    int atkCri   = getInt(m.get("ATK_CRI"));
-	    int hpRegen  = getInt(m.get("HP_REGEN"));
-	    int hpMax    = getInt(m.get("HP_MAX"));
-	    int criDmg   = getInt(m.get("CRI_DMG")); // NEW: 치명타뎀
-
-	    StringBuilder opt = new StringBuilder();
-	    boolean first = true;
-
-	    if (atkMin != 0) { appendOpt(opt, first, "최소뎀" + formatSigned(atkMin)); first = false; }
-	    if (atkMax != 0) { appendOpt(opt, first, "최대뎀" + formatSigned(atkMax)); first = false; }
-	    if (atkCri  != 0){ appendOpt(opt, first, "치명타" + formatSigned(atkCri) + "%"); first = false; }
-	    if (hpRegen != 0){ appendOpt(opt, first, "체력회복" + formatSigned(hpRegen)); first = false; }
-	    if (hpMax   != 0){ appendOpt(opt, first, "최대체력" + formatSigned(hpMax)); first = false; }
-	    if (criDmg  != 0){ appendOpt(opt, first, "치명타뎀" + formatSigned(criDmg) + "%"); first = false; }
-
-	    return first ? "없음" : opt.toString();
-	}
-
-	
-	private void appendOpt(StringBuilder opt, boolean first, String token) {
-	    if (!first) opt.append(", ");
-	    opt.append(token);
-	}
 
 	/**
 	 * 쓰러진 유저 자동 부활 처리
@@ -5248,15 +5220,18 @@ public class BossAttackController {
 	}
 
 	
-	
-	/** 특정 유저가 특정 업적 CMD를 아직 받지 않았으면 1회성 보상 지급 */
-	private String grantOnceIfEligible(String userName, String roomName,
-	                                   String achvCmd, int rewardSp) {
+	private String grantOnceIfEligibleFast(
+	        String userName,
+	        String roomName,
+	        String achvCmd,
+	        int rewardSp,
+	        Set<String> achievedCmdSet
+	) {
 	    if (rewardSp <= 0) return "";
 
-	    Integer cnt = botNewService.selectPointRankCountByCmdUserInRoom(roomName, userName, achvCmd);
-	    if (cnt != null && cnt > 0) {
-	        return ""; // 이미 이 업적 보상 받음
+	    // ✅ 메모리에서만 중복 체크
+	    if (achievedCmdSet.contains(achvCmd)) {
+	        return "";
 	    }
 
 	    HashMap<String,Object> pr = new HashMap<>();
@@ -5264,11 +5239,15 @@ public class BossAttackController {
 	    pr.put("roomName", roomName);
 	    pr.put("score", rewardSp);
 	    pr.put("cmd", achvCmd);
+
 	    botNewService.insertPointRank(pr);
 
-	    
+	    // ✅ 즉시 Set 갱신 (같은 공격 내 중복 방지)
+	    achievedCmdSet.add(achvCmd);
+
 	    return "✨ 업적 달성! [" + achvCmd + "] 보상 +" + rewardSp + "sp 지급되었습니다." + NL;
 	}
+	
 
 	private boolean isSkeleton(Monster m) {
 	    if (m == null) return false;
@@ -5312,15 +5291,18 @@ public class BossAttackController {
 	 * - room 단위로 동작
 	 * - TBOT_POINT_RANK.CMD 기반 1회성 지급
 	 */
-	private String grantKillAchievements(String userName, String roomName) {
+	private String grantKillAchievements(
+	        String userName,
+	        String roomName,
+	        Set<String> achievedCmdSet
+	) {
 	    List<KillStat> ksList = botNewService.selectKillStats(userName, roomName);
 	    if (ksList == null || ksList.isEmpty()) return "";
 
 	    StringBuilder sb = new StringBuilder();
 	    int totalKills = 0;
 
-	 // 1) 몬스터별 업적 (각 MON_NO별)
-	    int[] perMonThresholds = {50, 100, 300, 500, 1000,2000,3000,4000,5000};
+	    int[] perMonThresholds = {50,100,300,500,1000,2000,3000,4000,5000};
 
 	    for (KillStat ks : ksList) {
 	        int monNo = ks.monNo;
@@ -5328,78 +5310,101 @@ public class BossAttackController {
 	        totalKills += kills;
 
 	        for (int th : perMonThresholds) {
-	            if (kills >= th) {
-	                String cmd = "ACHV_KILL" + th + "_MON_" + monNo;
-	                int reward =  th*monNo/2;
-	                sb.append(grantOnceIfEligible(userName, roomName, cmd, reward));
-	            }
+	            if (kills < th) break;
+
+	            String cmd = "ACHV_KILL" + th + "_MON_" + monNo;
+	            if (achievedCmdSet.contains(cmd)) continue;
+
+	            int reward = th * monNo / 2;
+
+	            sb.append(
+	                grantOnceIfEligibleFast(
+	                    userName, roomName, cmd, reward, achievedCmdSet
+	                )
+	            );
 	        }
 	    }
 
-	    // 2) 통산 킬 업적
-	    int[] totalThresholds = {50, 100, 300, 500, 1000,2000,3000,4000,5000,6000,7000,8000,9000,10000
-	    		,11000,12000,13000,14000,15000,16000,17000,18000,19000,20000};
+	    int[] totalThresholds = {
+	        50,100,300,500,1000,2000,3000,4000,5000,
+	        6000,7000,8000,9000,10000,11000,12000,
+	        13000,14000,15000,16000,17000,18000,19000,20000
+	    };
+
 	    for (int th : totalThresholds) {
-	        if (totalKills >= th) {
-	            String cmd = "ACHV_KILL_TOTAL_" + th;
-	            int reward = calcTotalKillReward(th);
-	            sb.append(grantOnceIfEligible(userName, roomName, cmd, reward));
-	        }
+	        if (totalKills < th) break;
+
+	        String cmd = "ACHV_KILL_TOTAL_" + th;
+	        if (achievedCmdSet.contains(cmd)) continue;
+
+	        int reward = calcTotalKillReward(th);
+
+	        sb.append(
+	            grantOnceIfEligibleFast(
+	                userName, roomName, cmd, reward, achievedCmdSet
+	            )
+	        );
 	    }
 
 	    return sb.toString();
 	}
 
-	private String grantLightDarkItemAchievements(String userName, String roomName) {
+	private String grantLightDarkItemAchievements(
+	        String userName,
+	        String roomName,
+	        Set<String> achievedCmdSet
+	) {
+	    int lightTotal = 0;
+	    int darkTotal  = 0;
 
-	    // 🔹 1) 누적 획득 개수 조회 (GAIN_TYPE 기준)
-	    //    → 이 부분은 TBOT_INVENTORY_LOG (또는 네 로그 테이블)에서
-	    //      GAIN_TYPE별 SUM(QTY)를 가져오는 Service/DAO 를 하나 만들어서 사용하면 됨.
-	    int lightTotal = 0; // DROP3 누적
-	    int darkTotal  = 0; // DROP5 누적
-	    List<HashMap<String, Object>> gainRows = botNewService.selectTotalGainCountByGainType(userName, roomName);
+	    List<HashMap<String, Object>> gainRows =
+	            botNewService.selectTotalGainCountByGainType(userName, roomName);
 
 	    if (gainRows != null) {
 	        for (HashMap<String, Object> row : gainRows) {
 	            String type = Objects.toString(row.get("GAIN_TYPE"), "");
-	            int qty     = parseIntSafe(Objects.toString(row.get("TOTAL_QTY"), "0"));
+	            int qty = parseIntSafe(Objects.toString(row.get("TOTAL_QTY"), "0"));
 
-	            if ("DROP3".equals(type)) {
-	                lightTotal = qty;
-	            } else if ("DROP5".equals(type)) {
-	                darkTotal = qty;
-	            }
+	            if ("DROP3".equals(type)) lightTotal = qty;
+	            else if ("DROP5".equals(type)) darkTotal = qty;
 	        }
 	    }
-	    if (lightTotal <= 0 && darkTotal <= 0) {
-	        return "";
-	    }
 
+	    if (lightTotal <= 0 && darkTotal <= 0) return "";
+
+	    int[] thresholds = {1,10,50,100,300,500,1000,2000};
 	    StringBuilder sb = new StringBuilder();
 
-	    // 🔹 2) 공통 threshold 정의 (원하는 대로 조절)
-	    int[] thresholds = {1, 10, 50, 100, 300, 500, 1000, 2000};
-
-	    // 🔹 3) 빛 아이템 누적 업적
 	    for (int th : thresholds) {
 	        if (lightTotal >= th) {
-	            String cmd   = "ACHV_LIGHT_ITEM_" + th;     // 예: ACHV_LIGHT_ITEM_50
-	            int rewardSp = calcLightItemReward(th);     // 아래에서 정의
-	            sb.append(grantOnceIfEligible(userName, roomName, cmd, rewardSp));
+	            String cmd = "ACHV_LIGHT_ITEM_" + th;
+	            if (!achievedCmdSet.contains(cmd)) {
+	                sb.append(
+	                    grantOnceIfEligibleFast(
+	                        userName, roomName, cmd,
+	                        calcLightItemReward(th),
+	                        achievedCmdSet
+	                    )
+	                );
+	            }
 	        }
-	    }
-
-	    // 🔹 4) 어둠 아이템 누적 업적
-	    for (int th : thresholds) {
 	        if (darkTotal >= th) {
-	            String cmd   = "ACHV_DARK_ITEM_" + th;      // 예: ACHV_DARK_ITEM_50
-	            int rewardSp = calcDarkItemReward(th);
-	            sb.append(grantOnceIfEligible(userName, roomName, cmd, rewardSp));
+	            String cmd = "ACHV_DARK_ITEM_" + th;
+	            if (!achievedCmdSet.contains(cmd)) {
+	                sb.append(
+	                    grantOnceIfEligibleFast(
+	                        userName, roomName, cmd,
+	                        calcDarkItemReward(th),
+	                        achievedCmdSet
+	                    )
+	                );
+	            }
 	        }
 	    }
 
 	    return sb.toString();
 	}
+
 	
 	private int calcLightItemReward(int th) {
 	    // 예시: 빛템은 kill 업적보다 살짝 약하게
@@ -5693,39 +5698,6 @@ public class BossAttackController {
 	    }
 	}
 
-	
-	private boolean hasAchv(Map<String, Integer> userAchvMap, String cmd) {
-	    if (userAchvMap == null) return false;
-	    Integer v = userAchvMap.get(cmd);
-	    return v != null && v.intValue() > 0;
-	}
-
-	private void putAchv(Map<String, Integer> userAchvMap, String cmd) {
-	    if (userAchvMap != null) userAchvMap.put(cmd, 1);
-	}
-
-	private void insertAchvRank(String userName, String roomName, String cmd) {
-	    HashMap<String,Object> pr = new HashMap<>();
-	    pr.put("userName", userName);
-	    pr.put("roomName", roomName);
-	    pr.put("score", 0);
-	    pr.put("cmd", cmd);
-	    botNewService.insertPointRank(pr);
-	}
-
-	/** TreeSet<Integer> → "300/500/1000" 형식으로 이어 붙이기 */
-	private static String joinStepNumbers(java.util.SortedSet<Integer> steps) {
-	    StringBuilder tmp = new StringBuilder();
-	    boolean first = true;
-	    for (Integer v : steps) {
-	        if (v == null) continue;
-	        if (!first) tmp.append(",");
-	        tmp.append(v);
-	        first = false;
-	    }
-	    return tmp.toString();
-	}
-	
 	private String formatAchievementLabelSimple(String cmd, Map<Integer, Monster> monMap) {
 	    if (cmd == null || cmd.isEmpty()) return "";
 
@@ -6888,12 +6860,6 @@ public class BossAttackController {
 	    return min + (int)Math.round(span * biased);
 	}
 
-	/** Map에서 Number → int 변환(Java 1.8) */
-	private int getInt(Object o) {
-	    if (o == null) return 0;
-	    if (o instanceof Number) return ((Number)o).intValue();
-	    try { return Integer.parseInt(String.valueOf(o)); } catch (Exception e) { return 0; }
-	}
 
 	private String formatSp(int v) {
 	    if (v < 0) v = 0;
@@ -7200,28 +7166,7 @@ public class BossAttackController {
 	    c.set(Calendar.MILLISECOND, 0);
 	    return c.getTime();
 	}
-	/** 장비 업그레이드 계수: QTY 1~4 → 1.0 / 1.3 / 1.5 / 1.6 */
-	private double calcEquipUpgradeFactor(int qty) {
-	    if (qty <= 1) return 1.0;
-	    if (qty == 2) return 1.3;
-	    if (qty == 3) return 1.5;
-	    return 1.6; // QTY 4 이상도 1.6으로 캡
-	}
-
-	/** "100(+30)" 형식으로 포맷 */
-	private String formatStatWithPlus(int base, int upgraded) {
-	    int inc = upgraded - base;
-	    if (inc <= 0) {
-	        return String.valueOf(base);
-	    }
-	    return base + "(+" + inc + ")";
-	}
 	
-	private boolean isUpgradableEquip(int itemId) {
-	    return (itemId >= 100 && itemId < 200)   // 무기
-	        || (itemId >= 200 && itemId < 300)   // 투구
-	        || (itemId >= 400 && itemId < 500);  // 갑옷
-	}
 	private java.sql.Timestamp toTimestamp(Object obj) {
 	    if (obj == null) return null;
 
@@ -7339,63 +7284,6 @@ public class BossAttackController {
 		return sb.toString();
 	}
 	
-	private void renderAchievementSummary(
-	        StringBuilder sb,
-	        List<HashMap<String, Object>> achv
-	) {
-	    if (achv == null || achv.isEmpty()) {
-	        sb.append("- 달성된 업적 없음").append(NL);
-	        return;
-	    }
-
-	    int total = achv.size();
-
-	    int firstClear = 0;
-	    int totalKill = 0;
-	    int attack = 0;
-	    int jobSkill = 0;
-	    int light = 0;
-	    int dark = 0;
-
-	    String latest = null;
-
-	    for (HashMap<String, Object> row : achv) {
-	        String cmd = Objects.toString(row.get("CMD"), "");
-
-	        if (cmd.startsWith("ACHV_FIRST_CLEAR")) firstClear++;
-	        else if (cmd.startsWith("ACHV_TOTAL_KILL")) totalKill++;
-	        else if (cmd.startsWith("ACHV_ATTACK")) attack++;
-	        else if (cmd.startsWith("ACHV_JOB_")) jobSkill++;
-	        else if (cmd.startsWith("ACHV_LIGHT_ITEM")) light++;
-	        else if (cmd.startsWith("ACHV_DARK_ITEM")) dark++;
-
-	        // 최신 업적 하나만 표시 (정렬돼 있다고 가정)
-	        if (latest == null) {
-	            latest = formatAchievementLabelSimple(cmd, null);
-	        }
-	    }
-
-	    sb.append("▶ 업적 요약").append(NL)
-	      .append("- 총 업적: ").append(total).append("개").append(NL);
-
-	    if (firstClear > 0)
-	        sb.append("- 최초 토벌: ").append(firstClear).append("개").append(NL);
-	    if (totalKill > 0)
-	        sb.append("- 처치 업적: ").append(totalKill).append("개").append(NL);
-	    if (attack > 0)
-	        sb.append("- 공격 업적: ").append(attack).append("개").append(NL);
-	    if (jobSkill > 0)
-	        sb.append("- 스킬 업적: ").append(jobSkill).append("개").append(NL);
-	    if (light > 0 || dark > 0)
-	        sb.append("- 빛/어둠 획득: ")
-	          .append(light).append("/")
-	          .append(dark).append("개").append(NL);
-
-	    if (latest != null) {
-	        sb.append("- 최근 달성: ").append(latest).append(NL);
-	    }
-	}
-	
 	private static String formatDateYMD(Date d) {
 	    if (d == null) return "-";
 	    return new java.text.SimpleDateFormat("yyyy-MM-dd").format(d);
@@ -7406,18 +7294,6 @@ public class BossAttackController {
 	    return new java.text.SimpleDateFormat("MM월dd일").format(d);
 	}
 	
-	private Integer maxOf(SortedSet<Integer> set) {
-	    if (set == null || set.isEmpty()) return null;
-	    return set.last();
-	}
-	private List<String> chunk(List<String> list, int size) {
-	    List<String> out = new ArrayList<>();
-	    for (int i = 0; i < list.size(); i += size) {
-	        out.add(String.join(" / ",
-	            list.subList(i, Math.min(i + size, list.size()))));
-	    }
-	    return out;
-	}
 	
 	// 직업 메타데이터 맵 (등록 순서 유지 위해 LinkedHashMap)
 	private static final Map<String, JobDef> JOB_DEFS = new LinkedHashMap<>();
