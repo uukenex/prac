@@ -2614,6 +2614,7 @@ public class BossAttackController {
 	        String itemAchvMsg   = grantLightDarkItemAchievements(userName, roomName,achievedCmdSet);
 	        String attackAchvMsg = grantAttackCountAchievements(userName, roomName,achievedCmdSet);
 	        String jobSkillAchvMsg = grantJobSkillUseAchievementsAllJobs(userName, roomName,achievedCmdSet);
+	        String shopSellAchvMsg = grantShopSellAchievementsFast(userName, roomName, achievedCmdSet);
 	        
 	        String achvRewardMsg = grantAchievementBasedReward(userName, roomName, userAchvList);
 	        
@@ -2624,7 +2625,9 @@ public class BossAttackController {
 	                || (itemAchvMsg     != null && !itemAchvMsg.isEmpty())
 	                || (attackAchvMsg   != null && !attackAchvMsg.isEmpty())
 	                || (jobSkillAchvMsg != null && !jobSkillAchvMsg.isEmpty())
-	                || (achvRewardMsg  != null && !achvRewardMsg.isEmpty())) {
+	                || (shopSellAchvMsg  != null && !shopSellAchvMsg.isEmpty())
+	                || (achvRewardMsg  != null && !achvRewardMsg.isEmpty())
+	        		) {
 
 	                   bonusMsg = NL
 	                           + firstClearMsg
@@ -2632,6 +2635,7 @@ public class BossAttackController {
 	                           + itemAchvMsg
 	                           + attackAchvMsg
 	                           + jobSkillAchvMsg
+	                           + shopSellAchvMsg
 	                           + achvRewardMsg;
 	               }
 
@@ -3899,6 +3903,66 @@ public class BossAttackController {
 	}
 
 	
+	private String grantShopSellAchievementsFast(
+	        String userName,
+	        String roomName,
+	        Set<String> achvCmdSet) {
+
+	    final int[][] rules = {
+	        {1000,  10000},
+	        {2000,  10000},
+	        {3000,  10000},
+	        {4000,  10000},
+	        {5000,  10000},
+	        {6000,  20000},
+	        {7000,  20000},
+	        {8000,  20000},
+	        {9000,  20000},
+	        {10000, 30000}
+	    };
+
+	    int soldCount;
+	    try {
+	        soldCount = botNewService.selectInventorySoldCount(userName, roomName);
+	    } catch (Exception e) {
+	        return "";
+	    }
+
+	    if (soldCount <= 0) return "";
+
+	    StringBuilder sb = new StringBuilder();
+
+	    for (int[] r : rules) {
+	        int threshold = r[0];
+	        int rewardSp  = r[1];
+
+	        if (soldCount < threshold) continue;
+
+	        String cmd = "ACHV_SHOP_SELL_" + threshold;
+
+	        // 🔹 Fast 체크 (쿼리 안 탐)
+	        if (achvCmdSet.contains(cmd)) continue;
+
+	        // 🔹 지급
+	        HashMap<String,Object> p = new HashMap<>();
+	        p.put("userName", userName);
+	        p.put("roomName", roomName);
+	        p.put("score", rewardSp);
+	        p.put("cmd", cmd);
+
+	        botNewService.insertPointRank(p);
+	        achvCmdSet.add(cmd); // 중요 ⭐
+
+	        sb.append("✨ 상점 판매 ")
+	          .append(threshold)
+	          .append("회 달성 보상 +")
+	          .append(rewardSp)
+	          .append("sp 지급!♬")
+	          .append(NL);
+	    }
+
+	    return sb.toString();
+	}
 
 	/**
 	 * 상점/소비로 삭제된 인벤토리 누적 수량 기준 업적 지급
