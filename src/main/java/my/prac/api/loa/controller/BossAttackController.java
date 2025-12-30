@@ -3742,10 +3742,20 @@ public class BossAttackController {
 	    try {
 	        // 업적 개수 → 지급 아이템 (고정)
 	        LinkedHashMap<Integer, Integer> rewardMap = new LinkedHashMap<>();
-	        rewardMap.put(150,8001);
-	        rewardMap.put(2,  9101);
-	        rewardMap.put(3,  9101);
-	        // rewardMap.put(120, 9103);
+	        rewardMap.put(50 ,8001);
+	        rewardMap.put(80 ,8002);
+	        rewardMap.put(100,8003);
+	        rewardMap.put(120,8004);
+	        rewardMap.put(150,8005);
+	        rewardMap.put(170,8006);
+	        rewardMap.put(200,8007);
+	        rewardMap.put(220,8008);
+	        rewardMap.put(250,8009);
+	        rewardMap.put(300,8010);
+	        rewardMap.put(320,8011);
+	        rewardMap.put(350,8012);
+	        rewardMap.put(400,8013);
+	        rewardMap.put(500,8014);
 
 	        for (Map.Entry<Integer, Integer> e : rewardMap.entrySet()) {
 	            int needCnt = e.getKey();
