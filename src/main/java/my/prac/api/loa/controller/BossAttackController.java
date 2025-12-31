@@ -2510,7 +2510,7 @@ public class BossAttackController {
 	    }
 	    
 	    if ("처단자".equals(job) && !(m.monNo > 50) && willKill) {
-	        double stealRate = 1;
+	        double stealRate = 0.3;
 	        if (ThreadLocalRandom.current().nextDouble() < stealRate) {
 	            String dropName = (m.monDrop == null ? "" : m.monDrop.trim());
 	            if (!dropName.isEmpty()) {
