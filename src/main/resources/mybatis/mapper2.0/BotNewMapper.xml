@@ -917,27 +917,17 @@
 	                 FROM TBOT_POINT_RANK A1
 	                WHERE A1.NEW_YN    = '1'
 	                  AND A1.USER_NAME = A.USER_NAME
-	                  <!-- 
-	                  AND A1.ROOM_NAME = A.ROOM_NAME
-	                   -->
 	             ) AS TOT_SP,
 	           A.USER_NAME,
-	           A.ROOM_NAME,
 	           (
 	               SELECT COUNT(1)
 	                 FROM TBOT_POINT_NEW_BATTLE_LOG A2
 	                WHERE A2.USER_NAME = A.USER_NAME
-	                  <!-- 
-	                  AND A2.ROOM_NAME = A.ROOM_NAME
-	                   -->
 	           ) AS ATK_CNT,
 	           (
 	                 SELECT COUNT(1)
 	                   FROM TBOT_POINT_NEW_BATTLE_LOG A2
 	                  WHERE A2.USER_NAME = A.USER_NAME
-	                    <!-- 
-	                    AND A2.ROOM_NAME = A.ROOM_NAME
-	                     -->
 	                    AND A2.DEATH_YN = '1'
 	            ) AS DEATH_CNT,
 	           C.LV
@@ -948,10 +938,7 @@
 	       AND A.ITEM_ID   = B.ITEM_ID
 	       AND A.DEL_YN    = '0'
 	       AND C.USER_NAME = A.USER_NAME
-	       <!-- 
-	       AND C.ROOM_NAME = A.ROOM_NAME
-	        -->
-	     GROUP BY A.USER_NAME, A.ROOM_NAME, C.LV
+	     GROUP BY A.USER_NAME, C.LV
 	     ORDER BY TOT_SP DESC
 	</select>
 	
