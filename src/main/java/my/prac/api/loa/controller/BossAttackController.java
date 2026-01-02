@@ -3545,7 +3545,7 @@ public class BossAttackController {
 		 // =========================
 		 try {
 		     List<HashMap<String, Object>> spAtkList = botNewService.selectSpAndAtkRanking();
-		     sb.append(NL).append("◆ SP 누적 랭킹 (TOP10)").append(NL);
+		     sb.append(NL).append("◆ SP 누적 랭킹 (TOP5)").append(NL);
 	
 		     if (spAtkList == null || spAtkList.isEmpty()) {
 		         sb.append("- 데이터가 없습니다.").append(NL);
@@ -3569,7 +3569,7 @@ public class BossAttackController {
 		               .append(" - SP ").append(String.format("%,d", totSp)).append("sp")
 		               .append(NL);
 	
-		             if (++rank > 10) break;
+		             if (++rank > 5) break;
 		         }
 		     }
 	
@@ -3601,6 +3601,7 @@ public class BossAttackController {
 		         }
 		     }
 		     
+		     /*
 		     sb.append(NL).append("◆ 죽음 극복 랭킹 (TOP7)").append(NL);
 		 	
 		     if (spAtkList == null || spAtkList.isEmpty()) {
@@ -3626,7 +3627,7 @@ public class BossAttackController {
 		             if (++rank > 7) break;
 		         }
 		     }
-	
+		     */
 		 } catch (Exception ignore) {}
 	    // =========================
 	    // 업적 갯수 랭킹
@@ -4498,7 +4499,7 @@ public class BossAttackController {
 
 		int bonus = 0;
 	    if (lv >= 80)  bonus += (lv - 79) * 1;
-	    if (lv >= 150) bonus += (lv - 159) * 2;
+	    if (lv >= 150) bonus += (lv - 149) * 2;
 
 	    return base + bonus;
 	}
@@ -4510,7 +4511,7 @@ public class BossAttackController {
 	    if (lv >= 60)  bonus += (lv - 59) * 1;
 	    if (lv >= 80)  bonus += (lv - 79) * 2;
 	    if (lv >= 120)  bonus += (lv - 119) * 3;
-	    if (lv >= 150) bonus += (lv - 159) * 4;
+	    if (lv >= 150) bonus += (lv - 149) * 4;
 
 	    return base + bonus;
 	}
@@ -4524,8 +4525,13 @@ public class BossAttackController {
 		
 		int bonus = 0;
 		
-		if (lv >= 80)  bonus += (lv - 79) * 2;
-		if (lv >= 150) bonus += (lv - 159) * 4;
+		if (lv >= 50)  bonus += (lv - 49) * 3;
+		if (lv >= 80)  bonus += (lv - 79) * 5;
+		if (lv >= 100) bonus += (lv - 99) * 8;
+		if (lv >= 110) bonus += (lv - 109) * 10;
+		if (lv >= 120) bonus += (lv - 109) * 15;
+		if (lv >= 130) bonus += (lv - 109) * 20;
+		if (lv >= 150) bonus += (lv - 149) * 30;
 
 	    return base+bonus;
 	}
@@ -5728,10 +5734,13 @@ public class BossAttackController {
 	    }
 
 	    // 3️⃣ 최초 토벌 (한 줄)
+	    /*
 	    if (!firstClears.isEmpty()) {
 	        sb.append("✨최초 토벌: ").append(firstClears.size()).append("종").append(NL);
 	        sb.append(String.join(", ", firstClears)).append(NL).append(NL);
 	    }
+	    */
+	    
 
 	    // 4️⃣ 몬스터 처치 (3개씩)
 	    if (!monsterKills.isEmpty()) {
@@ -5984,7 +5993,7 @@ public class BossAttackController {
 	 	    //eff.addAtkMax   = dosaLvBonus;
 	 	    //eff.addCritRate = dosaLvBonus;
 	 	    //eff.addCritDmg  = dosaCriDmg;
-	 	    eff.addHp       = dosaCriDmg;
+	 	    eff.addHp       = dosaCriDmg*2;
 	    }else {
 	    	dosaLvBonus = (int) Math.round(dosaLv * 0.5);
 	    	dosaCriDmg = (int) Math.round(dosaAtkMax * 0.1);
@@ -5992,7 +6001,7 @@ public class BossAttackController {
 		    eff.addAtkMax   = dosaLvBonus;
 		    eff.addCritRate = dosaLvBonus;
 		    eff.addCritDmg  = dosaCriDmg;
-		    eff.addHp       = dosaCriDmg*3;
+		    eff.addHp       = dosaCriDmg*5;
 	    }
 	    return eff;
 	}
@@ -7386,7 +7395,7 @@ public class BossAttackController {
         JOB_DEFS.put("용사", new JobDef(
 	        "용사",
 	        "▶ 선택 받은 자",//어둠몹에 피해두배 ,언데드추뎀25% ,스틸30%, 10%확률 완전회복
-	        "⚔ 기본 HP*2,리젠*5 만큼 추가 증가, 어둠몬스터에 추가피해(+50%), 언데드 추가피해(+25%), 공격시 steal(30%), 정령의가호(10%), 기본데미지 * 1.4"+NL
+	        "⚔ 기본 HP*2 만큼 추가 증가, 어둠몬스터에 추가피해(+50%), 언데드 추가피해(+25%), 공격시 steal(30%), 정령의가호(10%), 기본데미지 * 1.4"+NL
 	        +"◎선행조건 전사,도적,도사,프리스트 직업으로 각 300회 공격"
 	    ));
 	     
@@ -7401,7 +7410,7 @@ public class BossAttackController {
 	        "제너럴",
 	        "▶ 블랙필드에서는 누구도 따라잡을자가 없다!",
 	        "⚔ 조우시 (*은엄폐-저격 or *회피기동전술) 이후 *회피기동전술을 다회 반복"+NL
-	        +"- 조우시 hidden -, *조우 은엄폐, *저격(13% headShot) 시 모든 행동 무시, *회피기동전술 시 - hidden -,기본공격력 * 1.2"+NL
+	        +"*조우 은엄폐(공격x or 폭격[hidden]), *저격(13% headShot) 시 모든 행동 무시, *회피기동전술 시 - hidden -,기본공격력 * 1.2"+NL
 	        +"◎선행조건 저격수,전사 직업으로 각 300회 공격"
 	    ));
 	    
