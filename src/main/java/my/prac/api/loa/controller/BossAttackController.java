@@ -297,16 +297,15 @@ public class BossAttackController {
 	    int finalHpMax = baseHpMax + bHpMaxRaw;
 	    int finalRegen = baseRegen + bRegenRaw;
 	    if ("전사".equals(job)) {
-	        finalHpMax += baseHpMax*10; // 기본 HP 추가
+	        //finalHpMax += baseHpMax*10; // 기본 HP 추가
 	    }
 	    if ("검성".equals(job)) {
 	        finalHpMax += baseHpMax*20; // 기본 HP 추가
 	    }
 	    if ("용사".equals(job)) {
-	    	finalHpMax += baseHpMax*10; // 기본 HP 추가
+	    	finalHpMax += baseHpMax*2; // 기본 HP 추가
 
-	        jobHpMaxBonus = baseHpMax*10;
-	        jobRegenBonus = baseRegen*5;
+	        jobHpMaxBonus = baseHpMax*2;
 	    }
 	    if ("저격수".equals(job)) {
 	        finalHpMax = finalHpMax/2; // 기본 HP 추가
@@ -1073,15 +1072,6 @@ public class BossAttackController {
 	        sb.append(ctx.job).append(" 마스터 보너스: ATK+200, HP+2000").append(NL);
 	    }
 
-        String relicSummary = buildRelicSummaryLine(bag,9000);
-        if (relicSummary != null) {
-            sb.append(NL).append(relicSummary).append(NL);
-        }
-        String relicSummary2 = buildRelicSummaryLine(bag,8000);
-        if (relicSummary2 != null) {
-        	sb.append(NL).append(relicSummary2).append(NL);
-        }
-        
         sb.append("▶ 현재 타겟: ").append(targetName)
 	      .append(" (MON_NO=").append(u.targetMon).append(")");
 
@@ -1136,7 +1126,6 @@ public class BossAttackController {
 		    
 	    }
 	    
-	    
 	    // ─ HP 상세 ─
 	    sb.append("❤️HP: ").append(effHp).append(" / ").append(finalHpMax)
 	      .append(",5분당회복+").append(shownRegen).append(NL)
@@ -1160,11 +1149,14 @@ public class BossAttackController {
 	          .append(")").append(NL);
 	    }
 
+	    /*
 	    if ("전사".equals(job)) {
 	        sb.append("   └ 직업 (HP+")
 	          .append(baseHpMax*10)
 	          .append(")").append(NL);
+	          
 	    }
+	    */
 	    if ("용사".equals(job)) {
 	    	sb.append("   └ 직업 (HP")
 	          .append(formatSigned(jobHpMaxBonus))
@@ -1172,10 +1164,19 @@ public class BossAttackController {
 	          .append(formatSigned(jobRegenBonus))
 	          .append(")").append(NL);
 	    }
+	    
+	    String relicSummary = buildRelicSummaryLine(bag,9000);
+        if (relicSummary != null) {
+            sb.append(NL).append(relicSummary).append(NL);
+        }
+        String relicSummary2 = buildRelicSummaryLine(bag,8000);
+        if (relicSummary2 != null) {
+        	sb.append(NL).append(relicSummary2).append(NL);
+        }
 
 	    // ─ 인벤토리 ─
 	    try {
-	        sb.append(NL).append("▶ 인벤토리<옵션:/가방상세>").append(NL);
+	        sb.append(NL).append("▶ 인벤토리<옵션:/인벤>").append(NL);
 	        if (bag == null || bag.isEmpty()) {
 	            sb.append("- (비어있음)").append(NL);
 	        } else {
@@ -2104,16 +2105,16 @@ public class BossAttackController {
 	        // ★ 300킬 이상 + 20% 확률이면 어둠몬
 	        
 	     // ★ 300킬 이상 + 20% 확률이면 어둠몬
-	        if (killCountForThisMon >= 150&& m.monNo > 15) {
+	        if (killCountForThisMon >= 350 && m.monNo > 15) {
 	            double rnd = ThreadLocalRandom.current().nextDouble();
-	            if (rnd < 0.20) {
+	            if (rnd < 0.10) {
 	                dark = true;
 	            }
 	        }
 	        
-	        if (killCountForThisMon >= 300&& m.monNo < 15) {
+	        if (killCountForThisMon >= 300 && m.monNo < 15) {
 	            double rnd = ThreadLocalRandom.current().nextDouble();
-	            if (rnd < 0.20) {
+	            if (rnd < 0.10) {
 	                dark = true;
 	            }
 	        }
@@ -2601,10 +2602,11 @@ public class BossAttackController {
 	    String bonusMsg = "";
 	    String blessMsg = "";
 
+	    /*
 	    if (u.lv < 8) {
 	        blessMsg = grantBlessLevelBonus(userName, roomName, up.beforeLv, up.afterLv);
 	    }
-
+	     */
 	    String bagDropMsg = "";
 	    if (res.killed) {
 	        botNewService.closeOngoingBattleTx(userName, roomName);
@@ -4482,28 +4484,50 @@ public class BossAttackController {
 	}
 	
 	private int calcBaseHpMax(int lv) {
-	    if (lv <= 1) return 20;
-	    return 20 + (lv - 1) * 20;
+		int base = lv * 20;
+		int bonus = 0;
+	    if (lv >= 50)  bonus += (lv - 49) * 20;   
+	    if (lv >= 100) bonus += (lv - 99) * 40;  
+	    if (lv >= 150) bonus += (lv - 149) * 80; 
+		
+	    return base+bonus;
 	}
 
 	private int calcBaseAtkMin(int lv) {
-	    if (lv <= 1) return 1;
-	    return lv;
+		int base = lv;
+
+		int bonus = 0;
+	    if (lv >= 80)  bonus += (lv - 79) * 1;
+	    if (lv >= 150) bonus += (lv - 159) * 2;
+
+	    return base + bonus;
 	}
 
 	private int calcBaseAtkMax(int lv) {
-	    if (lv <= 1) return 15;
-	    return 3 + (lv - 1) * 3;
+		int base = lv * 3;
+
+	    int bonus = 0;
+	    if (lv >= 60)  bonus += (lv - 59) * 1;
+	    if (lv >= 80)  bonus += (lv - 79) * 2;
+	    if (lv >= 120)  bonus += (lv - 119) * 3;
+	    if (lv >= 150) bonus += (lv - 159) * 4;
+
+	    return base + bonus;
 	}
 
 	private int calcBaseCritRate(int lv) {
-		if (lv <= 1) return 10;
 	    return 10 + (lv - 1) * 2;
 	}
 
 	private int calcBaseHpRegen(int lv) {
-		 if (lv <= 1) return 1;
-	    return lv; // 3레벨마다 +1
+		int base = lv * 3;
+		
+		int bonus = 0;
+		
+		if (lv >= 80)  bonus += (lv - 79) * 2;
+		if (lv >= 150) bonus += (lv - 159) * 4;
+
+	    return base+bonus;
 	}
 	
 	/** HP/EXP/LV + 로그 저장 (DB에는 '순수 레벨 기반 스탯'만 반영) */
@@ -4980,17 +5004,24 @@ public class BossAttackController {
 
 	        expNext = calcNextExp(lv, expNext);
 
-	        int incHp    = 20;
-	        int incAtkMin= 1;
-	        int incAtkMax= 3;
+	     // 🔥 핵심: 레벨 기준 재계산
+	        int newHpMax   = calcBaseHpMax(lv);
+	        int newAtkMin = calcBaseAtkMin(lv);
+	        int newAtkMax = calcBaseAtkMax(lv);
+	        int newCrit   = calcBaseCritRate(lv);
+	        int newRegen  = calcBaseHpRegen(lv);
 
-	        hpMax  += incHp;     hpDelta     += incHp;
-	        atkMin += incAtkMin; atkMinDelta += incAtkMin;
-	        atkMax += incAtkMax; atkMaxDelta += incAtkMax;
-
-	        crit   += 2;         critDelta   += 2;
-
-            regen++;         regenDelta++;
+	        hpDelta     += (newHpMax   - hpMax);
+	        atkMinDelta += (newAtkMin - atkMin);
+	        atkMaxDelta += (newAtkMax - atkMax);
+	        critDelta   += (newCrit   - crit);
+	        regenDelta  += (newRegen  - regen);
+	        
+	        hpMax   = newHpMax;
+	        atkMin = newAtkMin;
+	        atkMax = newAtkMax;
+	        crit   = newCrit;
+	        regen  = newRegen;
 	    }
 
 	    u.lv        = lv;
@@ -6469,24 +6500,6 @@ public class BossAttackController {
 	    		            	evadeRate -= 0.05;    
 	    		            case 21:
 	    		            	evadeRate -= 0.05;
-	    		            case 20:
-	    		            	evadeRate -= 0.05;
-	    		            case 19:
-	    		            	evadeRate -= 0.05;
-	    		            case 18:
-	    		            	evadeRate -= 0.05;
-	    		            case 17:
-	    		            	evadeRate -= 0.05;
-	    		            case 16:
-	    		            	evadeRate -= 0.05;
-	    	                case 15:
-	    	                    evadeRate -= 0.05;
-	    	                case 14:
-	    	                    evadeRate -= 0.05;
-	    	                case 13:
-	    	                    evadeRate -= 0.05;
-	    	                case 12:
-	    	                    evadeRate -= 0.05;
 	    	            }
 
 	    	            if (ThreadLocalRandom.current().nextDouble() < evadeRate) {
@@ -6682,27 +6695,7 @@ public class BossAttackController {
 		            case 23:
 		            	evadeRate -= 0.05;
 		            case 22:
-		            	evadeRate -= 0.05;    
-		            case 21:
-		            	evadeRate -= 0.05;
-		            case 20:
-		            	evadeRate -= 0.05;
-		            case 19:
-		            	evadeRate -= 0.05;
-		            case 18:
-		            	evadeRate -= 0.05;
-		            case 17:
-		            	evadeRate -= 0.05;
-		            case 16:
-		            	evadeRate -= 0.05;
-	                case 15:
-	                    evadeRate -= 0.05;
-	                case 14:
-	                    evadeRate -= 0.05;
-	                case 13:
-	                    evadeRate -= 0.05;
-	                case 12:
-	                    evadeRate -= 0.05;
+		            	evadeRate -= 0.05;  
 	            }
 
 	            if (ThreadLocalRandom.current().nextDouble() < evadeRate) {
@@ -6733,24 +6726,6 @@ public class BossAttackController {
 		            	evadeRate -= 0.05;
 		            case 21:
 		            	evadeRate -= 0.05;
-		            case 20:
-		            	evadeRate -= 0.05;
-		            case 19:
-		            	evadeRate -= 0.05;
-		            case 18:
-		            	evadeRate -= 0.05;
-		            case 17:
-		            	evadeRate -= 0.05;
-		            case 16:
-		            	evadeRate -= 0.05;
-	                case 15:
-	                    evadeRate -= 0.05;
-	                case 14:
-	                    evadeRate -= 0.05;
-	                case 13:
-	                    evadeRate -= 0.05;
-	                case 12:
-	                    evadeRate -= 0.05;
 	            }
 
 	            if (ThreadLocalRandom.current().nextDouble() < evadeRate) {
@@ -7326,7 +7301,7 @@ public class BossAttackController {
 	    JOB_DEFS.put("전사", new JobDef(
 	        "전사",
 	        "▶ 육체능력이 변경되며, 패링 스킬 추가 ",
-	        "⚔ 기본 HP*10만큼 추가 증가, 몬스터레벨에 따라 방어도 추가, 적의 필살기를 반격(20%),모든 적에게 데미지 추가(+20%)"
+	        "⚔ 몬스터레벨에 따라 방어도 추가, 적의 필살기를 반격(20%),모든 적에게 데미지 추가(+20%)"
 	    ));
 
 	    /*
@@ -7411,7 +7386,7 @@ public class BossAttackController {
         JOB_DEFS.put("용사", new JobDef(
 	        "용사",
 	        "▶ 선택 받은 자",//어둠몹에 피해두배 ,언데드추뎀25% ,스틸30%, 10%확률 완전회복
-	        "⚔ 기본 HP*10,리젠*5 만큼 추가 증가, 어둠몬스터에 추가피해(+50%), 언데드 추가피해(+25%), 공격시 steal(30%), 정령의가호(10%), 기본데미지 * 1.4"+NL
+	        "⚔ 기본 HP*2,리젠*5 만큼 추가 증가, 어둠몬스터에 추가피해(+50%), 언데드 추가피해(+25%), 공격시 steal(30%), 정령의가호(10%), 기본데미지 * 1.4"+NL
 	        +"◎선행조건 전사,도적,도사,프리스트 직업으로 각 300회 공격"
 	    ));
 	     
@@ -7438,8 +7413,8 @@ public class BossAttackController {
 	    ));
 	    JOB_DEFS.put("어쎄신", new JobDef(
     		"어쎄신",
-    		"▶ 그의 암습은 누구도 피할수없다.상대가 누구일 지라도,기본데미지*1.3",
-    		"⚔ 공격 시 STEAL(30%,100킬 당 5%씩 증가,max 80%), 몬스터 기본 공격 회피, 필살기를 확률 회피"+NL
+    		"▶ 그의 암습은 누구도 피할수없다.상대가 누구일 지라도",
+    		"⚔ 공격 시 STEAL(30%,100킬 당 5%씩 증가,max 80%), 몬스터 기본 공격 회피, 필살기를 확률 회피, 기본데미지*1.3"+NL
     		+"◎선행조건 도적 직업으로 1000회 공격"
 		));
 	    /*
