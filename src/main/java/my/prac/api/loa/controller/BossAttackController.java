@@ -300,7 +300,7 @@ public class BossAttackController {
 	        //finalHpMax += baseHpMax*10; // 기본 HP 추가
 	    }
 	    if ("검성".equals(job)) {
-	        finalHpMax += baseHpMax*20; // 기본 HP 추가
+	        finalHpMax += baseHpMax*2; // 기본 HP 추가
 	    }
 	    if ("용사".equals(job)) {
 	    	finalHpMax += baseHpMax*2; // 기본 HP 추가
@@ -7505,7 +7505,7 @@ public class BossAttackController {
 	    JOB_DEFS.put("검성", new JobDef(
 	        "검성",
 	        "▶ 검으로 세상 끝에 닿았다",
-	        "⚔ 기본 HP*20만큼 추가 증가, 적의 공격 반격(15%),기본데미지*2"+NL
+	        "⚔ 기본 HP*2만큼 추가 증가, 적의 공격 반격(15%),기본데미지*2"+NL
 	        +"◎선행조건 전사 직업으로 1000회 공격"
 	    ));
 	    JOB_DEFS.put("어쎄신", new JobDef(
