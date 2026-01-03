@@ -407,7 +407,8 @@ public class BossAttackController {
 	    ctx.success = true;
 	    
 	    
-	    
+	    applyDropBonusToContext(ctx, targetUser, roomName);
+
 	    
 	    return ctx;
 	}
@@ -1173,6 +1174,21 @@ public class BossAttackController {
         if (relicSummary2 != null) {
         	sb.append(NL).append(relicSummary2).append(NL);
         }
+        
+        
+        if (ctx.dropMinAtkBonus +ctx.dropMaxAtkBonus +  ctx.dropHpBonus + ctx.dropRegenBonus
+                + ctx.dropCritBonus + ctx.dropCritDmgBonus > 0) {
+
+        	sb.append(NL).append("✨어둠 부가 효과: ");
+            if (ctx.dropMinAtkBonus > 0) sb.append("min_ATK+").append(ctx.dropMinAtkBonus).append(" ");
+            if (ctx.dropMaxAtkBonus > 0) sb.append("max_ATK+").append(ctx.dropMaxAtkBonus).append(" ");
+            if (ctx.dropHpBonus > 0) sb.append("HP+").append(ctx.dropHpBonus).append(" ");
+            if (ctx.dropRegenBonus > 0) sb.append("체젠+").append(ctx.dropRegenBonus).append(" ");
+            if (ctx.dropCritBonus > 0) sb.append("치확+").append(ctx.dropCritBonus).append("% ");
+            if (ctx.dropCritDmgBonus > 0) sb.append("치피+").append(ctx.dropCritDmgBonus).append("% ");
+            sb.append(NL);
+        }
+
 
 	    // ─ 인벤토리 ─
 	    try {
@@ -1828,7 +1844,79 @@ public class BossAttackController {
 	    return sb.toString();
 	}
 
+	private void applyDropBonusToContext(
+	        UserBattleContext ctx,
+	        String userName,
+	        String roomName
+	) {
 
+	    List<HashMap<String,Object>> drops =
+	            botNewService.selectTotalDropItems(userName);
+
+	    if (drops == null || drops.isEmpty()) return;
+
+	    int bonusMinAtk     = 0;
+	    int bonusMaxAtk     = 0;
+	    int bonusHp      = 0;
+	    int bonusRegen   = 0;
+	    int bonusCrit    = 0;
+	    int bonusCritDmg = 0;
+
+	    for (HashMap<String,Object> row : drops) {
+
+	        String name     = Objects.toString(row.get("ITEM_NAME"), "");
+	        String gainType = Objects.toString(row.get("GAIN_TYPE"), "");
+	        int itemId = safeInt(row.get("ITEM_ID"));
+	        int qty         = safeInt(row.get("TOTAL_QTY"));
+
+	        if (qty <= 0 || name.isEmpty()) continue;
+
+	        // 👉 어둠 아이템만 적용 (원하면 조건 제거 가능)
+	        if (!"DROP5".equals(gainType)) continue;
+	        
+	        switch(itemId) {
+	        case 1: case 15: case 25: 
+	        	bonusCritDmg += qty /10;
+	        	break;
+	        case 8: case 20: case 7:  case 12: case 27: 
+	        	bonusRegen+=qty/10;
+	        	break;
+	        case 17: case 9: case 11: case 19: case 23: case 28: 
+	        	bonusCrit+=qty/10;
+	        	break;
+	        case 2: case 3: case 5: case 16: case 24: case 29: 
+	        	bonusMinAtk+=qty/10;
+	        	break;
+	        case 13: case 4: case 6: case 14: case 26: case 30: 
+	        	bonusMaxAtk+=qty/10;
+	        	break;
+	        case 10: case 21: case 18: case 22: 
+	        	bonusHp += qty/10;
+	        	break;
+	        }
+	    }
+
+	    // ctx 에 바로 반영
+	    ctx.atkMinWithItem += bonusMinAtk;
+	    ctx.atkMaxWithItem += bonusMaxAtk;
+
+	    ctx.finalHpMax     += bonusHp;
+	    ctx.shownRegen     += bonusRegen;
+
+	    ctx.shownCrit      += bonusCrit;
+	    ctx.shownCritDmg   += bonusCritDmg;
+
+	    // 표시용 (선택)
+	    ctx.dropMinAtkBonus     = bonusMinAtk;
+	    ctx.dropMaxAtkBonus     = bonusMaxAtk;
+	    ctx.dropHpBonus      = bonusHp;
+	    ctx.dropRegenBonus   = bonusRegen;
+	    ctx.dropCritBonus    = bonusCrit;
+	    ctx.dropCritDmgBonus = bonusCritDmg;
+	}
+
+	
+	
 	private String buildCustomMarketAllMessage(String userName, String roomName) {
 
 
