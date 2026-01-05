@@ -1875,25 +1875,58 @@ public class BossAttackController {
 	        if (!"DROP5".equals(gainType)) continue;
 	        
 	        switch(itemId) {
-	        case 1: case 15: case 25: 
+	        case 1:  
 	        	bonusCritDmg += qty /10;
 	        	break;
-	        case 8: case 20: case 7:  case 12: case 27: 
+	        case 15: 
+	        	bonusCritDmg += qty /5;
+	        	break;
+	        case 25: 
+	        	bonusCritDmg += qty ;
+	        	break;
+	        	
+	        case 27:
+	        	bonusRegen+=qty/2;
+	        	break;
+	        case 20:  
+	        	bonusRegen+=qty/5;
+	        	break;
+	        case 12:  case 7: case 8:  
 	        	bonusRegen+=qty/10;
 	        	break;
-	        case 17: case 9: case 11: case 19: case 23: case 28: 
+	        	
+	        case 23: case 28:
+	        	bonusCrit+=qty/5;
+	        	break;
+	        case 17: case 9: case 11: case 19:  
 	        	bonusCrit+=qty/10;
 	        	break;
-	        case 2: case 3: case 5: case 16: case 24: case 29: 
+	        	
+	        case 24: case 29:
+	        	bonusMinAtk+=qty/2;
+	        	break;
+	        case 2: case 3: case 5: case 16:  
 	        	bonusMinAtk+=qty/10;
 	        	break;
-	        case 13: case 4: case 6: case 14: case 26: case 30: 
+	        	
+	        case 26: case 30:
+	        	bonusMaxAtk+=qty/2;
+	        	break;
+	        case 13: case 4: case 6: case 14: 
 	        	bonusMaxAtk+=qty/10;
 	        	break;
-	        case 10: case 21: case 18: case 22: 
-	        	bonusHp += qty/10;
+	        	
+	        case 10: case 18: case 21: case 22: 
+	        	bonusHp += qty/2;
 	        	break;
 	        }
+	        
+	        
+	        //상한초과방지
+	        bonusCrit = Math.min(bonusCrit, 100);
+	        bonusCritDmg = Math.min(bonusCritDmg, 200);
+	        bonusMinAtk = Math.min(bonusMinAtk, 150);
+	        bonusMaxAtk = Math.min(bonusMaxAtk, 200);
 	    }
 
 	    // ctx 에 바로 반영
