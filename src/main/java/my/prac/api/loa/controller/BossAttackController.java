@@ -237,6 +237,16 @@ public class BossAttackController {
 	        jobHpMaxBonus = bHpMaxRaw  - hpBase;
 	        jobRegenBonus = bRegenRaw  - regenBase;
 	    }
+	    if ("어둠사냥꾼".equals(job)) {
+	    	int hpBase   = bHpMaxRaw;
+	        int regenBase= bRegenRaw;
+
+	        bHpMaxRaw  = (int) Math.round(bHpMaxRaw * 1.25);
+	        bRegenRaw  = (int) Math.round(bRegenRaw * 1.25);
+
+	        jobHpMaxBonus = bHpMaxRaw  - hpBase;
+	        jobRegenBonus = bRegenRaw  - regenBase;
+	    }
 	    
 	    if ("용기사".equals(job)) {
 	    	bHpMaxRaw  = (int) Math.round(bHpMaxRaw * 2);
@@ -1141,6 +1151,13 @@ public class BossAttackController {
 	          .append(",5분당회복")
 	          .append(formatSigned(jobRegenBonus))
 	          .append(")").append(NL);
+	    }
+	    if ("어둠사냥꾼".equals(job) && (jobHpMaxBonus != 0 || jobRegenBonus != 0)) {
+	    	sb.append("   └ 직업 (HP")
+	    	.append(formatSigned(jobHpMaxBonus))
+	    	.append(",5분당회복")
+	    	.append(formatSigned(jobRegenBonus))
+	    	.append(")").append(NL);
 	    }
 	    if ("파이터".equals(job) && (jobHpMaxBonus != 0)) {
 	        sb.append("   └ 직업 (HP")
@@ -5430,8 +5447,9 @@ public class BossAttackController {
 
 	private boolean isSkeleton(Monster m) {
 	    if (m == null) return false;
-	    if (m.monNo == 10||m.monNo ==14||m.monNo ==15) return true;
-	    if (m.monName.equals("해골")||m.monName.equals("리치")||m.monName.equals("하급악마")) {
+	    if (m.monNo == 10||m.monNo ==14||m.monNo ==15||m.monNo ==25||m.monNo ==28) return true;
+	    if (m.monName.equals("해골")||m.monName.equals("리치")||m.monName.equals("하급악마")
+	    		||m.monName.equals("중급악마")||m.monName.equals("미이라")) {
 	    	return true;
 	    }
 	    return false;
@@ -6505,6 +6523,9 @@ public class BossAttackController {
 	    if ("프리스트".equals(job) && isSkeleton(m)) {
 	    	baseAtk = (int) Math.round(baseAtk * 1.25);
 	    }
+	    if ("어둠사냥꾼".equals(job) && isSkeleton(m)) {
+	    	baseAtk = (int) Math.round(baseAtk * 1.75);
+	    }
 	    if ("용사".equals(job) && isSkeleton(m)) {
 	    	baseAtk = (int) Math.round(baseAtk * 1.25);
 	    }
@@ -6872,6 +6893,20 @@ public class BossAttackController {
 	            calc.patternMsg = baseMsg + "(받는 피해 20% 감소 → " + reduced + ")";
 	            calc.monDmg = reduced;
 	        }
+	        if ("어둠사냥꾼".equals(job) && calc.monDmg > 0 && !flags.finisher) {
+	        	int reduced = (int) Math.floor(calc.monDmg * 0.7);
+	        	if (reduced < 1) reduced = 1;
+	        	String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
+	        	calc.patternMsg = baseMsg + "(받는 피해 30% 감소 → " + reduced + ")";
+	        	calc.monDmg = reduced;
+	        }
+	        
+	        if ("어둠사냥꾼".equals(job) && flags.finisher && flags.monPattern==6 ) {
+	        	calc.atkDmg = rawAtkDmg*5;
+			    calc.monDmg = 0;
+			    calc.endBattle = false;
+			    calc.patternMsg = "도망가는 적을 붙잡아 강력한 일격!" + rawAtkDmg*5 + " 피해";
+	        }
 
 	        
 	    }
@@ -6895,7 +6930,7 @@ public class BossAttackController {
 	    // -----------------------------
 	    if ("흡혈귀".equals(job) && calc.atkDmg > 0) {
 
-	        if (m.monNo == 10 || m.monNo == 14) {
+	        if (m.monNo == 10 || m.monNo == 14 || m.monNo == 28) {
 	            String base = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
 	            calc.patternMsg = base + "언데드는 흡혈 불가";
 	        } else {
@@ -7547,6 +7582,13 @@ public class BossAttackController {
     		"⚔ 공격 시 STEAL(30%,100킬 당 5%씩 증가,max 80%), 몬스터 기본 공격 회피, 필살기를 확률 회피, 기본데미지*1.3"+NL
     		+"◎선행조건 도적 직업으로 1000회 공격"
 		));
+	    
+	    JOB_DEFS.put("어둠사냥꾼", new JobDef(
+    		"어둠사냥꾼",
+    		"▶ ???",
+    		"⚔ ???, ???, ???"+NL
+    		+"◎선행조건 프리스트,흡혈귀 직업으로 300회 공격"
+		));
 	    /*
 	    JOB_DEFS.put("용투사", new JobDef(
 			"용투사",
@@ -7582,7 +7624,11 @@ public class BossAttackController {
     		new JobChangeReq("전사", 1000)
 		));
 	    JOB_CHANGE_REQS.put("어쎄신", Arrays.asList(
-	    		new JobChangeReq("도적", 1000)
+	    	new JobChangeReq("도적", 1000)
+		));
+	    JOB_CHANGE_REQS.put("어둠사냥꾼", Arrays.asList(
+	    	new JobChangeReq("프리스트", 300),
+	    	new JobChangeReq("용기사", 300)
 		));
 	    // 용사 = 전체 공격 1000회 이상
 	    JOB_CHANGE_TOTAL_REQS.put("궁사", 3000);
