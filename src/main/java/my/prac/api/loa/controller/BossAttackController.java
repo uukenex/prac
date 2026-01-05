@@ -6538,20 +6538,65 @@ public class BossAttackController {
 	        	out.dmgCalcMsg += baseAtk+NL;
 	        }
 	        */
-	        int overCrit = Math.max(0, effCritRate-100);
-	        if (overCrit > 0) {
-	            int bonus = (int)Math.round(effCritRate*5); 
+	    	if(effCritRate > 400) {
+	    		int bonus = (int)Math.round(effCritRate*9); 
 	            out.dmgCalcMsg += "크리율 보너스 ("+bonus+") "+baseAtk+"→";
 	            baseAtk += bonus;
 	            out.dmgCalcMsg += baseAtk+NL;
-	        }
-	        int overCriDmg = Math.max(0, effCriDmg-150); 
-	        if (overCriDmg > 0) {
-	        	int bonus = (int)Math.round(effCriDmg*5); 
+	    	}else if(effCritRate > 400) {
+	    		int bonus = (int)Math.round(effCritRate*8); 
+	            out.dmgCalcMsg += "크리율 보너스 ("+bonus+") "+baseAtk+"→";
+	            baseAtk += bonus;
+	            out.dmgCalcMsg += baseAtk+NL;
+	    	}else if(effCritRate > 300) {
+	    		int bonus = (int)Math.round(effCritRate*7); 
+	            out.dmgCalcMsg += "크리율 보너스 ("+bonus+") "+baseAtk+"→";
+	            baseAtk += bonus;
+	            out.dmgCalcMsg += baseAtk+NL;
+	    	}else if(effCritRate > 200) {
+	    		int bonus = (int)Math.round(effCritRate*6); 
+	            out.dmgCalcMsg += "크리율 보너스 ("+bonus+") "+baseAtk+"→";
+	            baseAtk += bonus;
+	            out.dmgCalcMsg += baseAtk+NL;
+	    	}else if(effCritRate > 100) {
+	    		int bonus = (int)Math.round(effCritRate*5); 
+	            out.dmgCalcMsg += "크리율 보너스 ("+bonus+") "+baseAtk+"→";
+	            baseAtk += bonus;
+	            out.dmgCalcMsg += baseAtk+NL;
+	    	}else {
+	    		int bonus = (int)Math.round(effCritRate*4); 
+	            out.dmgCalcMsg += "크리율 보너스 ("+bonus+") "+baseAtk+"→";
+	            baseAtk += bonus;
+	            out.dmgCalcMsg += baseAtk+NL;
+	    	}
+	    	
+	    	
+	    	if(effCriDmg > 1700) {
+	    		int bonus = (int)Math.round(effCriDmg*10); 
 	        	out.dmgCalcMsg += "크리뎀 보너스 ("+bonus+") "+baseAtk+"→";
 	        	baseAtk += bonus;
 	        	out.dmgCalcMsg += baseAtk+NL;
-	        }
+	    	}else if(effCriDmg > 1300) {
+	    		int bonus = (int)Math.round(effCriDmg*9); 
+	        	out.dmgCalcMsg += "크리뎀 보너스 ("+bonus+") "+baseAtk+"→";
+	        	baseAtk += bonus;
+	        	out.dmgCalcMsg += baseAtk+NL;
+	    	}else if(effCriDmg > 1000) {
+	    		int bonus = (int)Math.round(effCriDmg*8); 
+	        	out.dmgCalcMsg += "크리뎀 보너스 ("+bonus+") "+baseAtk+"→";
+	        	baseAtk += bonus;
+	        	out.dmgCalcMsg += baseAtk+NL;
+	    	}else if(effCriDmg > 700) {
+	    		int bonus = (int)Math.round(effCriDmg*7); 
+	        	out.dmgCalcMsg += "크리뎀 보너스 ("+bonus+") "+baseAtk+"→";
+	        	baseAtk += bonus;
+	        	out.dmgCalcMsg += baseAtk+NL;
+	    	}else {
+	    		int bonus = (int)Math.round(effCriDmg*6); 
+	        	out.dmgCalcMsg += "크리뎀 보너스 ("+bonus+") "+baseAtk+"→";
+	        	baseAtk += bonus;
+	        	out.dmgCalcMsg += baseAtk+NL;
+	    	}
 	        
 	        effCritRate = 0;
 	        effCriDmg = 0;
