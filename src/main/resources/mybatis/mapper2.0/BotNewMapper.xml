@@ -887,7 +887,6 @@
 	    SELECT *
 	    FROM (
 	        SELECT USER_NAME,
-	               ROOM_NAME,
 	               (SELECT U.JOB
 					   FROM TBOT_POINT_NEW_USER U
 					  WHERE U.USER_NAME = A.USER_NAME
@@ -897,7 +896,7 @@
 	        FROM TBOT_POINT_NEW_BATTLE_LOG A
 	        WHERE INSERT_DATE >= SYSDATE - (3/24)
 	          AND ROOM_NAME NOT IN ('람쥐봇 문의방','test123')
-	        GROUP BY USER_NAME, ROOM_NAME
+	        GROUP BY USER_NAME
 	        ORDER BY ATK_CNT DESC, LAST_ATTACK DESC
 	    )
 	    WHERE ROWNUM &lt;= 10
@@ -1063,12 +1062,11 @@
 	    SELECT *
 		    FROM (
 		        SELECT USER_NAME,
-		               ROOM_NAME,
 		               COUNT(*) AS ACHV_CNT
 		          FROM TBOT_POINT_RANK
 		         WHERE NEW_YN = '1'
 		           AND CMD LIKE 'ACHV%'
-		         GROUP BY USER_NAME, ROOM_NAME
+		         GROUP BY USER_NAME
 		         ORDER BY COUNT(*) DESC, USER_NAME
 		    )
 		    WHERE ROWNUM &lt;= 5
