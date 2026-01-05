@@ -7587,7 +7587,7 @@ public class BossAttackController {
     		"어둠사냥꾼",
     		"▶ ???",
     		"⚔ ???, ???, ???"+NL
-    		+"◎선행조건 프리스트,흡혈귀 직업으로 300회 공격"
+    		+"◎선행조건 프리스트,용기사 직업으로 300회 공격"
 		));
 	    /*
 	    JOB_DEFS.put("용투사", new JobDef(
