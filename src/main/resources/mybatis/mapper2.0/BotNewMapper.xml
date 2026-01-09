@@ -775,7 +775,7 @@
 	      m.MON_NAME,
 	      m.MON_LV,
 	      fc.FIRST_CLEAR_USER,
-	      ,CASE
+	      CASE
 			   WHEN FC.FIRST_CLEAR_DATE > SYSDATE - 7 THEN
 			    TO_CHAR(FC.FIRST_CLEAR_DATE, 'YYYY-MM-DD HH24:MI')
 			   ELSE
