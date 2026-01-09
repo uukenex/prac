@@ -2581,16 +2581,6 @@ public class BossAttackController {
 		        case 24: stealRate -= 0.05;
 		        case 23: stealRate -= 0.05;
 		        case 22: stealRate -= 0.05;
-		        case 21: stealRate -= 0.05;
-		        case 20: stealRate -= 0.05;
-		        case 19: stealRate -= 0.05;
-		        case 18: stealRate -= 0.05;
-	            case 17: stealRate -= 0.05;
-	            case 16: stealRate -= 0.05;
-	            case 15: stealRate -= 0.03;
-	            case 14: stealRate -= 0.03;
-	            case 13: stealRate -= 0.03;
-	            case 12: stealRate -= 0.03;
 	        }
 
 	        if (ThreadLocalRandom.current().nextDouble() < stealRate) {
@@ -2621,7 +2611,6 @@ public class BossAttackController {
 	    if ("어쎄신".equals(job) && m.monNo <= 50) {
 
 	        // 스틸 불가 몬스터
-	        if (m.monNo != 15 && m.monNo != 25) {
 
 	            // killCountForThisMon ← 이미 위에서 계산됨
 	            int kc = killCountForThisMon;
@@ -2668,7 +2657,6 @@ public class BossAttackController {
                             "실패!";
 	            }
 	        }
-	    }
 	    
 	    if ("처단자".equals(job) && !(m.monNo > 50) && willKill) {
 	        double stealRate = 0.3;
@@ -6725,8 +6713,6 @@ public class BossAttackController {
 	    		            	evadeRate -= 0.05;
 	    		            case 22:
 	    		            	evadeRate -= 0.05;    
-	    		            case 21:
-	    		            	evadeRate -= 0.05;
 	    	            }
 
 	    	            if (ThreadLocalRandom.current().nextDouble() < evadeRate) {
@@ -6958,8 +6944,6 @@ public class BossAttackController {
 		            case 23:
 		            	evadeRate -= 0.05;
 		            case 22:
-		            	evadeRate -= 0.05;
-		            case 21:
 		            	evadeRate -= 0.05;
 	            }
 
@@ -7569,13 +7553,13 @@ public class BossAttackController {
 	    JOB_DEFS.put("도적", new JobDef(
 	        "도적",
 	        "▶ 날렵한 손놀림으로 적의공격을 피하며,아이템을 강탈한다",
-	        "⚔ 공격 시 40% 확률 추가 드랍(STEAL), 몬스터 기본 공격 80% 회피, [스틸,회피 no12부터 3%씩,no15부터 5%씩 감소] "
+	        "⚔ 공격 시 40% 확률 추가 드랍(STEAL), 몬스터 기본 공격 80% 회피, [스틸,회피 no22부터 5%씩 감소] "
 	    ));
 	    
 	    JOB_DEFS.put("프리스트", new JobDef(
     		"프리스트",
     		"▶ 대사제의 축복을 받아 신성의힘으로 적을 물리친다",
-    		"⚔ 아이템 HP/리젠 효과 1.25배, 몬스터에게 받는 피해 감소(20%), 언데드추가피해(+25%)"
+    		"⚔ 아이템 HP/리젠 효과 1.25배, 몬스터에게 받는 일반공격 피해 감소(20%), 언데드추가피해(+25%)"
 		));
 	    
 	    JOB_DEFS.put("도사", new JobDef(
@@ -7599,7 +7583,7 @@ public class BossAttackController {
         JOB_DEFS.put("용기사", new JobDef(
     		"용기사",
     		"▶ 용족의 마지막 후예, 배신당한 아픔을 가지고 있다",
-    		"⚔ 아이템 HP/리젠 효과 2배, 100% 초과 치명타확률, 기본 치명타 데미지 초과분을 공격력으로 전환,치명타가 발생하지않음, 용족에 2.5배의 피해"
+    		"⚔ 아이템 HP/리젠 효과 2배, 100% 초과 치명타확률, 기본 치명타 데미지 초과분을 공격력으로 전환,치명타가 발생하지않음, 용족에 5배의 피해"
         ));
         
         /*
@@ -7643,7 +7627,7 @@ public class BossAttackController {
 	    JOB_DEFS.put("처단자", new JobDef(
 	        "처단자",
 	        "▶ 신을 모독하는 자는 그의 손에서 살아남을수 없다, 물론 모독을 안했어도 말이지..! ",
-	        "⚔ 방어를 무시하고 피해 2.5배를 줌, 몬스터의 기본공격 80%회피 [회피 no12부터 3%씩,no15부터 5%씩 감소] , 처치시 추가드랍(30%), 빛몬스터에 추가피해(+50%), 기본데미지 *1.4 "+NL
+	        "⚔ 방어를 무시하고 피해 2.5배를 줌, 몬스터의 기본공격 80%회피 [회피 no22부터 5%씩 감소] , 처치시 추가드랍(30%), 빛몬스터에 추가피해(+50%), 기본데미지 *1.4 "+NL
 	        +"◎선행조건 마법사,도적 직업으로 각 300회 공격"
 	    ));
 	    JOB_DEFS.put("제너럴", new JobDef(
@@ -7670,7 +7654,7 @@ public class BossAttackController {
 	    JOB_DEFS.put("어둠사냥꾼", new JobDef(
     		"어둠사냥꾼",
     		"▶ ???",
-    		"⚔ ???, ???, ???"+NL
+    		"⚔ 아이템 HP/리젠 효과 1.25배, 몬스터에게 받는 일반공격 피해 감소(30%), 언데드추가피해(+75%), -???- "+NL
     		+"◎선행조건 프리스트,용기사 직업으로 300회 공격"
 		));
 	    /*
