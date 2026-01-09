@@ -1905,13 +1905,13 @@ public class BossAttackController {
 	        if (!"DROP5".equals(gainType)) continue;
 	        
 	        switch(itemId) {
-	        case 1: case 30 :
+	        case 1: 
 	        	bonusCritDmg += qty /10;
 	        	break;
-	        case 15: 
+	        case 15: case 30:
 	        	bonusCritDmg += qty /5;
 	        	break;
-	        case 25: 
+	        case 25:  
 	        	bonusCritDmg += qty ;
 	        	break;
 	        	
