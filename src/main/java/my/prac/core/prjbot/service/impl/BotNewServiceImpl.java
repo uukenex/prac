@@ -379,6 +379,15 @@ public class BotNewServiceImpl implements BotNewService {
         p.put("itemId", 91);
         return botNewDAO.consumeOneBag(p);
     }
+    @Override
+    public int consumeBagBulkTx(String userName, String roomName,int bagCount) {
+    	HashMap<String,Object> p = new HashMap<>();
+    	p.put("userName", userName);
+    	p.put("roomName", roomName);
+    	p.put("itemId", 91);
+    	p.put("bagCount", bagCount);
+    	return botNewDAO.consumeBagBulk(p);
+    }
 
     @Override
     public List<Integer> selectBagRewardItemIds() {

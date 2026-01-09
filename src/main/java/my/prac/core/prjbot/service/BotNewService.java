@@ -133,6 +133,7 @@ public interface BotNewService {
     int selectBagCount(String userName, String roomName);
 
     int consumeOneBagTx(String userName, String roomName);
+    int consumeBagBulkTx(String userName, String roomName,int bagCount);
 
     List<Integer> selectBagRewardItemIds();
 

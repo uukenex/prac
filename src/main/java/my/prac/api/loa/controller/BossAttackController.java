@@ -525,90 +525,103 @@ public class BossAttackController {
 	    if (bagCount <= 0) {
 	        return "열 수 있는 가방이 없습니다.";
 	    }
-
+	    /*
 	    // 2) 가방 1개 소비
 	    int updated = botNewService.consumeOneBagTx(userName, roomName);
 	    if (updated <= 0) {
 	        return "가방을 사용하는 중 오류가 발생했습니다. 다시 시도해주세요.";
 	    }
+	     */    
+	 // 🔹 한 번에 모두 소비
+	    int updated = botNewService.consumeBagBulkTx(userName, roomName, bagCount);
+	    if (updated <= 0) {
+	        return "가방을 사용하는 중 오류가 발생했습니다.";
+	    }
+	    
+	    
+	    int totalSp = 0;
+	    List<String> detail = new ArrayList<>();
+	    List<String> itemSummary = new ArrayList<>();
+	    
+	    for (int i = 1; i <= bagCount; i++) {
 
-	    // 3) 보상 결정 (컨트롤러에서 확률/로직 모두 처리)
-	    double roll = ThreadLocalRandom.current().nextDouble();
+	        double roll = ThreadLocalRandom.current().nextDouble();
 
-	    if (roll < 0.90) { //40퍼확률로 골드 
-	    	// 🔥 작은 쪽이 더 잘 나오는 SP 보상 (200 ~ 50000)
-	        int sp = rollBagSpWithCeiling(userName, roomName);
+	        if (roll < 0.90) {
+	            int sp = rollBagSpWithCeiling(userName, roomName);
+	            totalSp += sp;
+	            detail.add("가방" + i + ": " + sp + "sp");
+	        } else {
 
+	            List<Integer> rewardItemIds =
+	                    botNewService.selectBagRewardItemIdsUserNotOwned(userName, roomName);
+
+	            if (rewardItemIds == null || rewardItemIds.isEmpty()) {
+	                rewardItemIds = botNewService.selectBagRewardItemIds();
+	            }
+
+	            if (rewardItemIds == null || rewardItemIds.isEmpty()) {
+	                int sp = rollBagSpWithCeiling(userName, roomName);
+	                totalSp += sp;
+	                detail.add("가방" + i + ": " + sp + "sp");
+	                continue;
+	            }
+
+	            int itemId = rewardItemIds.get(
+	                    ThreadLocalRandom.current().nextInt(rewardItemIds.size())
+	            );
+
+	            HashMap<String,Object> inv = new HashMap<>();
+	            inv.put("userName", userName);
+	            inv.put("roomName", roomName);
+	            inv.put("itemId", itemId);
+	            inv.put("qty", 1);
+	            inv.put("delYn", "0");
+	            inv.put("gainType", "BAG_OPEN");
+	            botNewService.insertInventoryLogTx(inv);
+
+	            HashMap<String,Object> info = botNewService.selectItemDetailById(itemId);
+	            String itemName = Objects.toString(info.get("ITEM_NAME"), "");
+
+	            String label = itemName;
+	            if (itemId >= 9000 && itemId < 10000) {
+	                String opt = buildEnhancedOptionLine(info, 1);
+	                if (!opt.isEmpty()) label += opt;
+	            }
+
+	            itemSummary.add(label);
+	            detail.add("가방" + i + ": " + label + " 획득");
+	        }
+	    }
+
+	    // 🔹 SP는 합산해서 1번만 저장
+	    if (totalSp > 0) {
 	        HashMap<String,Object> pr = new HashMap<>();
 	        pr.put("userName", userName);
 	        pr.put("roomName", roomName);
-	        pr.put("score", sp);
+	        pr.put("score", totalSp);
 	        pr.put("cmd", "BAG_OPEN_SP");
-
 	        botNewService.insertPointRank(pr);
-
-	        return "가방을 열어보니 반짝이는 포인트가 나옵니다! +" + sp + "sp";
-	    } else {
-	    	
-	    	// 아이템 보상
-
-	        // 1순위: 가지고 있지 않은 보상 아이템
-	        List<Integer> rewardItemIds = botNewService
-	                .selectBagRewardItemIdsUserNotOwned(userName, roomName);
-
-	        // 하나도 없으면: 전체 보상 풀에서 뽑거나, SP로 대체
-	        if (rewardItemIds == null || rewardItemIds.isEmpty()) {
-	            // 전체 보상 아이템 목록
-	            rewardItemIds = botNewService.selectBagRewardItemIds();
-	        }
-
-	        // 그래도 없으면 최종적으로 SP 보상
-	        if (rewardItemIds == null || rewardItemIds.isEmpty()) {
-	        	int sp = rollBagSpWithCeiling(userName, roomName);
-
-	            HashMap<String,Object> pr = new HashMap<>();
-	            pr.put("userName", userName);
-	            pr.put("roomName", roomName);
-	            pr.put("score", sp);
-	            pr.put("cmd", "BAG_OPEN_SP");
-
-	            botNewService.insertPointRank(pr);
-
-	            return "가방을 열어보니 반짝이는 포인트가 나옵니다! +" + sp + "sp";
-	        }
-
-	        int idx = ThreadLocalRandom.current().nextInt(rewardItemIds.size());
-	        int itemId = rewardItemIds.get(idx);
-
-	        HashMap<String,Object> inv = new HashMap<>();
-	        inv.put("userName", userName);
-	        inv.put("roomName", roomName);
-	        inv.put("itemId", itemId);
-	        inv.put("qty", 1);
-	        inv.put("delYn", "0");
-	        inv.put("gainType", "BAG_OPEN");
-
-	        botNewService.insertInventoryLogTx(inv);
-
-	        String itemName = botNewService.selectItemNameById(itemId);
-
-	     // 아이템 전체 정보 조회 (권장: ITEM_CODE / ATK_MIN 등 얻기 위해)
-	        HashMap<String,Object> info = botNewService.selectItemDetailById(itemId);  
-	        // Map 형태라는 가정: ITEM_CODE, ATK_MIN, ATK_MAX, HP_REGEN, HP_MAX, CRI_DMG...
-
-	        String label = itemName;
-
-	        // 9000번대 = 유물
-	        if (itemId >= 9000 && itemId < 10000) {
-	            // buildRelicStatSuffix(HashMap row) 그대로 사용 가능!
-	        	String suffix = buildEnhancedOptionLine(info,1);
-	            //String suffix = buildRelicStatSuffix(info);
-	            if (!suffix.isEmpty()) {
-	                label += suffix;    // 예: 고대돌조각(ATK+30~30)
-	            }
-	        }
-	        return "가방을 열어보니 [" + label + "] 아이템을 획득했습니다!";
 	    }
+
+	    // 🔹 메시지 조립
+	    StringBuilder sb = new StringBuilder();
+	    sb.append("가방 ").append(bagCount).append("개를 열었습니다!").append(NL);
+
+	    if (totalSp > 0) {
+	        sb.append("✨ 총 획득: ").append(totalSp).append("sp").append(NL);
+	    }
+
+	    if (!itemSummary.isEmpty()) {
+	        sb.append("✨ 아이템 획득: ").append(String.join(", ", itemSummary)).append(NL);
+	    }
+
+	    sb.append(NL).append("▶ 상세 내역").append(NL);
+	    for (String d : detail) {
+	        sb.append(d).append(NL);
+	    }
+
+	    return sb.toString();
 	}
 	
 	private int rollBagSpWithCeiling(String userName, String roomName) {
@@ -1892,7 +1905,7 @@ public class BossAttackController {
 	        if (!"DROP5".equals(gainType)) continue;
 	        
 	        switch(itemId) {
-	        case 1:  
+	        case 1: case 30 :
 	        	bonusCritDmg += qty /10;
 	        	break;
 	        case 15: 
@@ -1919,14 +1932,14 @@ public class BossAttackController {
 	        	bonusCrit+=qty/10;
 	        	break;
 	        	
-	        case 24: case 29:
+	        case 24: 
 	        	bonusMinAtk+=qty/2;
 	        	break;
 	        case 2: case 3: case 5: case 16:  
 	        	bonusMinAtk+=qty/10;
 	        	break;
 	        	
-	        case 26: case 30:
+	        case 26: case 29:
 	        	bonusMaxAtk+=qty/2;
 	        	break;
 	        case 13: case 4: case 6: case 14: 
@@ -2191,10 +2204,13 @@ public class BossAttackController {
 	        	if(m.monNo <15) {
 	        		monMaxHp = m.monHp * 5;
 	        		m.monAtk = m.monAtk * 2;
-	        	}else if(m.monNo>15) {
+	        	}else if(m.monNo>=25) {
+	        		monMaxHp = m.monHp * 2;
+	        		m.monAtk = (int)Math.round( m.monAtk * 1.25);
+	        	}else if(m.monNo>=15) {
 	        		monMaxHp = m.monHp * 3;
 	        		m.monAtk = (int)Math.round( m.monAtk * 1.5);
-	        	}else {
+	        	}else{
 	        		
 	        	}
 	        	
@@ -2243,9 +2259,9 @@ public class BossAttackController {
 	        // ★ 300킬 이상 + 20% 확률이면 어둠몬
 	        
 	     // ★ 300킬 이상 + 20% 확률이면 어둠몬
-	        if (killCountForThisMon >= 350 && m.monNo > 15) {
+	        if (killCountForThisMon >= 350 && m.monNo >= 15) {
 	            double rnd = ThreadLocalRandom.current().nextDouble();
-	            if (rnd < 0.10) {
+	            if (rnd < 0.05) {
 	                dark = true;
 	            }
 	        }
@@ -2295,7 +2311,11 @@ public class BossAttackController {
 	        		monMaxHp = monMaxHp * 5;
 	        		m.monAtk = m.monAtk * 2;
 	        		monHpRemainBefore = monMaxHp;
-	        	}else if(m.monNo>15) {
+	        	}else if(m.monNo>=25) {
+	        		monMaxHp = monMaxHp * 2;
+	        		m.monAtk = (int)Math.round( m.monAtk * 1.25);
+	        		monHpRemainBefore = monMaxHp;
+	        	}else if(m.monNo>=15) {
 	        		monMaxHp = monMaxHp * 3;
 	        		m.monAtk = (int)Math.round( m.monAtk * 1.5);
 	        		monHpRemainBefore = monMaxHp;
@@ -2552,6 +2572,8 @@ public class BossAttackController {
 	        double stealRate = 0.40;
 	        int monLv  = m.monNo;
 	        switch (monLv) {
+		        case 30: stealRate -= 0.05;
+		        case 29: stealRate -= 0.05;
 		        case 28: stealRate -= 0.05;
 		        case 27: stealRate -= 0.05;
 		        case 26: stealRate -= 0.05;
@@ -3043,7 +3065,7 @@ public class BossAttackController {
 	            return 0.015;  // 1.5
 	        case 21: case 22: case 23: case 24: case 25:
 	        	return 0.015;  // 1.5
-	        case 26: case 27: case 28: 
+	        case 26: case 27: case 28: case 29: case 30:
 	        	return 0.015;  // 1.5
 	        case 51: case 52: case 53: case 61: case 62: case 63:
 	        	return 0.005;  // 0.5%
@@ -3957,7 +3979,9 @@ public class BossAttackController {
 	    int[] thresholds = {
 	        1000,2000,3000,4000,5000,6000,7000,8000,9000,
 	        10000,11000,12000,13000,14000,15000,16000,17000,
-	        18000,19000,20000
+	        18000,19000,20000,21000,22000,23000,24000,25000,
+	        26000,27000,28000,29000,30000,31000,32000,33000,
+	        34000,35000,36000,37000,38000,39000,40000
 	    };
 
 	    StringBuilder sb = new StringBuilder();
@@ -4605,7 +4629,7 @@ public class BossAttackController {
 	        case 13: case 14: case 16: case 17: 
 	        case 18: case 19: case 20: case 21:
 	        case 22: case 23: case 24: case 26:
-	        case 27: case 28: 
+	        case 27: case 28: case 29: case 30:
 	        	return 20;
 	        	
 	        case 15: case 25:
@@ -5499,7 +5523,7 @@ public class BossAttackController {
 	    StringBuilder sb = new StringBuilder();
 	    int totalKills = 0;
 
-	    int[] perMonThresholds = {50,100,300,500,1000,2000,3000,4000,5000};
+	    int[] perMonThresholds = {50,100,300,500,1000,2000,3000,4000,5000,6000,7000,8000,9000,10000};
 
 	    for (KillStat ks : ksList) {
 	        int monNo = ks.monNo;
@@ -5569,7 +5593,7 @@ public class BossAttackController {
 
 	    if (lightTotal <= 0 && darkTotal <= 0) return "";
 
-	    int[] thresholds = {1,10,50,100,300,500,1000,2000};
+	    int[] thresholds = {1,10,50,100,300,500,700,1000,1300,1600,2000};
 	    StringBuilder sb = new StringBuilder();
 
 	    for (int th : thresholds) {
@@ -5612,7 +5636,8 @@ public class BossAttackController {
 	    if (th <= 100) return 4000;
 	    if (th <= 300) return 8000;
 	    if (th <= 500) return 12000;
-	    if (th <= 1000)return 20000;
+	    if (th <= 1500)return 20000;
+	    if (th <= 2000)return 30000;
 	    return 0;
 	}
 
@@ -5738,6 +5763,8 @@ public class BossAttackController {
 	        case 26: return 200000;
 	        case 27: return 200000;
 	        case 28: return 200000;
+	        case 29: return 250000;
+	        case 30: return 300000;
 	    }
 	    return 0;
 	}
@@ -6538,23 +6565,23 @@ public class BossAttackController {
 	        	out.dmgCalcMsg += baseAtk+NL;
 	        }
 	        */
-	    	if(effCritRate > 400) {
-	    		int bonus = (int)Math.round(effCritRate*9); 
+	    	if(effCritRate > 500) {
+	    		int bonus = (int)Math.round(effCritRate*21); 
 	            out.dmgCalcMsg += "크리율 보너스 ("+bonus+") "+baseAtk+"→";
 	            baseAtk += bonus;
 	            out.dmgCalcMsg += baseAtk+NL;
 	    	}else if(effCritRate > 400) {
-	    		int bonus = (int)Math.round(effCritRate*8); 
+	    		int bonus = (int)Math.round(effCritRate*17); 
 	            out.dmgCalcMsg += "크리율 보너스 ("+bonus+") "+baseAtk+"→";
 	            baseAtk += bonus;
 	            out.dmgCalcMsg += baseAtk+NL;
 	    	}else if(effCritRate > 300) {
-	    		int bonus = (int)Math.round(effCritRate*7); 
+	    		int bonus = (int)Math.round(effCritRate*13); 
 	            out.dmgCalcMsg += "크리율 보너스 ("+bonus+") "+baseAtk+"→";
 	            baseAtk += bonus;
 	            out.dmgCalcMsg += baseAtk+NL;
 	    	}else if(effCritRate > 200) {
-	    		int bonus = (int)Math.round(effCritRate*6); 
+	    		int bonus = (int)Math.round(effCritRate*9); 
 	            out.dmgCalcMsg += "크리율 보너스 ("+bonus+") "+baseAtk+"→";
 	            baseAtk += bonus;
 	            out.dmgCalcMsg += baseAtk+NL;
@@ -6564,7 +6591,7 @@ public class BossAttackController {
 	            baseAtk += bonus;
 	            out.dmgCalcMsg += baseAtk+NL;
 	    	}else {
-	    		int bonus = (int)Math.round(effCritRate*4); 
+	    		int bonus = (int)Math.round(effCritRate*3); 
 	            out.dmgCalcMsg += "크리율 보너스 ("+bonus+") "+baseAtk+"→";
 	            baseAtk += bonus;
 	            out.dmgCalcMsg += baseAtk+NL;
@@ -6572,27 +6599,27 @@ public class BossAttackController {
 	    	
 	    	
 	    	if(effCriDmg > 1700) {
-	    		int bonus = (int)Math.round(effCriDmg*10); 
+	    		int bonus = (int)Math.round(effCriDmg*21); 
 	        	out.dmgCalcMsg += "크리뎀 보너스 ("+bonus+") "+baseAtk+"→";
 	        	baseAtk += bonus;
 	        	out.dmgCalcMsg += baseAtk+NL;
 	    	}else if(effCriDmg > 1300) {
-	    		int bonus = (int)Math.round(effCriDmg*9); 
+	    		int bonus = (int)Math.round(effCriDmg*17); 
 	        	out.dmgCalcMsg += "크리뎀 보너스 ("+bonus+") "+baseAtk+"→";
 	        	baseAtk += bonus;
 	        	out.dmgCalcMsg += baseAtk+NL;
 	    	}else if(effCriDmg > 1000) {
-	    		int bonus = (int)Math.round(effCriDmg*8); 
+	    		int bonus = (int)Math.round(effCriDmg*13); 
 	        	out.dmgCalcMsg += "크리뎀 보너스 ("+bonus+") "+baseAtk+"→";
 	        	baseAtk += bonus;
 	        	out.dmgCalcMsg += baseAtk+NL;
 	    	}else if(effCriDmg > 700) {
-	    		int bonus = (int)Math.round(effCriDmg*7); 
+	    		int bonus = (int)Math.round(effCriDmg*9); 
 	        	out.dmgCalcMsg += "크리뎀 보너스 ("+bonus+") "+baseAtk+"→";
 	        	baseAtk += bonus;
 	        	out.dmgCalcMsg += baseAtk+NL;
 	    	}else {
-	    		int bonus = (int)Math.round(effCriDmg*6); 
+	    		int bonus = (int)Math.round(effCriDmg*5); 
 	        	out.dmgCalcMsg += "크리뎀 보너스 ("+bonus+") "+baseAtk+"→";
 	        	baseAtk += bonus;
 	        	out.dmgCalcMsg += baseAtk+NL;
@@ -6601,9 +6628,9 @@ public class BossAttackController {
 	        effCritRate = 0;
 	        effCriDmg = 0;
 	        crit = false;
-	        if (m.monNo==13 || m.monNo==20) {
+	        if (m.monNo==13 || m.monNo==20 || m.monNo==29) {
 	        	out.dmgCalcMsg += "용족 보너스 "+baseAtk+"→";
-	        	baseAtk = (int)Math.round(baseAtk * 2.5);
+	        	baseAtk = (int)Math.round(baseAtk * 5);
 	        	out.dmgCalcMsg += baseAtk;
 	        }
 	    }
@@ -6680,6 +6707,10 @@ public class BossAttackController {
 	        			int monLv = m.monNo;
 	        			double evadeRate = 0.90;
 	    	            switch (monLv) {
+		    	            case 30:
+		    	            	evadeRate -= 0.05;
+		    	            case 29:
+		    	            	evadeRate -= 0.05;
 	    		            case 28:
 	    		            	evadeRate -= 0.05;
 	    		            case 27:
@@ -6878,6 +6909,10 @@ public class BossAttackController {
 	            int monLv = m.monNo;
 	            double evadeRate = 0.80;
 	            switch (monLv) {
+		            case 30:
+		            	evadeRate -= 0.05;
+		            case 29:
+		            	evadeRate -= 0.05;
 		            case 28:
 		            	evadeRate -= 0.05;
 		            case 27:
@@ -6906,6 +6941,10 @@ public class BossAttackController {
 	            int monLv = m.monNo;
 	            double evadeRate = 0.80;
 	            switch (monLv) {
+		            case 30:
+		            	evadeRate -= 0.05;
+		            case 29:
+		            	evadeRate -= 0.05;
 		            case 28:
 		            	evadeRate -= 0.05;
 		            case 27:

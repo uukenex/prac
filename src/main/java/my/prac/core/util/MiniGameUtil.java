@@ -42,6 +42,8 @@ public class MiniGameUtil {
 	    MON_PATTERN_WEIGHTS.put(26,new int[]{0, 55, 0, 38, 5,2}); 
 	    MON_PATTERN_WEIGHTS.put(27,new int[]{0, 48, 30,20, 0,2}); 
 	    MON_PATTERN_WEIGHTS.put(28,new int[]{0, 18, 60, 15,5,2}); 
+	    MON_PATTERN_WEIGHTS.put(29,new int[]{0, 70, 10, 10,5,5}); 
+	    MON_PATTERN_WEIGHTS.put(30,new int[]{0, 20, 20, 20,20,20}); 
 	    
 
 	    // 필요할 때마다 여기 계속 추가하면 됨

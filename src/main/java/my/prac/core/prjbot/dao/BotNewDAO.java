@@ -190,6 +190,7 @@ public interface BotNewDAO {
             @Param("itemId") int itemId);
 
 	int consumeOneBag(HashMap<String,Object> map);
+	int consumeBagBulk(HashMap<String,Object> map);
 	
 	List<Integer> selectBagRewardItemIds();
 	

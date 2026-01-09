@@ -1142,6 +1142,18 @@
 	       AND ROWNUM    = 1
 	</update>
 	
+	
+	<!-- 2) 가방 1개 소비: 가장 먼저 들어온 1개를 del_yn='1'로 -->
+	<update id="consumeBagBulk" parameterType="hashmap">
+	    UPDATE TBOT_POINT_NEW_INVENTORY
+	       SET DEL_YN = '1'
+	     WHERE USER_NAME = #{userName}
+	       AND ITEM_ID   = #{itemId}
+	       AND DEL_YN    = '0'
+	       AND ROWNUM &lt;=  #{bagCount}
+	</update>
+	
+	
 	<select id="selectBagRewardItemIds" resultType="int">
 	    SELECT ITEM_ID
 	      FROM TBOT_POINT_NEW_ITEM
