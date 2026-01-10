@@ -2965,7 +2965,7 @@ public class BossAttackController {
 	                String u = b.getUserName();
 	                if (userName.equals(u)) {
 	                    // 최근 5개 가방 로그 안에 있으면 → 이미 먹은 사람
-	                    return 0.5; // 기본 확률
+	                    return 0.3; //3.5->1.05퍼로 강등 
 	                }
 	            }
 	        }
@@ -2995,7 +2995,7 @@ public class BossAttackController {
 	    
 	    if (isRising) {
 	        // 열심히 때렸는데 최근 가방 기록은 없는 사람 → 드랍율 4배
-	        return 6.0;
+	        return 5.0;
 	    }
 	    
 	    
@@ -3042,8 +3042,12 @@ public class BossAttackController {
 	}
 	
 	private double getBagDropRate(int monNo) {
+		return 0.035; //3.5%
+		
 	    // 예시: 초반 몹은 5%, 후반 보스는 15%
+		/*
 	    switch (monNo) {
+	    
 	        case 1: case 2: case 3: case 4: case 5:
 	        case 6: case 7: case 8: case 9: case 10:
 	            return 0.007;  // 0.7%
@@ -3062,6 +3066,7 @@ public class BossAttackController {
 	        default:
 	            return 0;
 	    }
+	    */
 	}
 
 	
