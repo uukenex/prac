@@ -7724,7 +7724,7 @@ public class BossAttackController {
 		));
 	    
 	    JOB_DEFS.put("도박사", new JobDef(
-    		"워록",
+    		"도박사",
     		"▶ ???",
     		"⚔ -???- "+NL
     		+"◎선행조건 어둠사냥꾼, 복수자 직업으로 각 100회 공격"
