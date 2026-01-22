@@ -2160,6 +2160,7 @@ public class BossAttackController {
 	    int monMaxHp, monHpRemainBefore;
 	    boolean lucky = false;
 	    boolean dark = false; // 어둠몬스터 여부
+	    boolean gray = false; 
 	    
 	    int beforeJobSkillYn=0;
 	    int killCountForThisMon=0;
@@ -2172,6 +2173,7 @@ public class BossAttackController {
 	        
 	        lucky = (ob.luckyYn != null && ob.luckyYn == 1);
 	        dark  = (ob.luckyYn != null && ob.luckyYn == 2);
+	        gray  = (ob.luckyYn != null && ob.luckyYn == 3);
 	        if (dark) {
 	        	if(m.monNo <15) {
 	        		monMaxHp = m.monHp * 5;
@@ -2245,8 +2247,6 @@ public class BossAttackController {
 	            }
 	        }
 
-	       
-	        
 	        if ("도사".equals(job)) {
                 lucky = ThreadLocalRandom.current().nextDouble() < LUCKY_RATE_DOSA;
 	        } else {
@@ -2277,6 +2277,15 @@ public class BossAttackController {
 	        	dark = false;
 	        }
 	       
+	        if ("음양사".equals(job)) {
+	        	gray = ThreadLocalRandom.current().nextDouble() < 0.05;
+	        }
+	        
+	        if(gray) {
+	        	lucky = false;
+	        	dark = false;
+	        }
+	        
 	        
 	        if (dark) {
 	        	if(m.monNo <15) {
@@ -2526,7 +2535,7 @@ public class BossAttackController {
 	    }
 
 	    // 13) 처치/드랍 판단
-	    Resolve res = resolveKillAndDrop(m, calc, willKill, u, lucky, dark);
+	    Resolve res = resolveKillAndDrop(m, calc, willKill, u, lucky, dark, gray);
 	    String newPoint ="";
 	    String stealPoint ="";
 	 
@@ -2864,6 +2873,9 @@ public class BossAttackController {
                 
                 if(!"STEAL".equals(gainType)) {
                 	// 빛 / 어둠 보정
+                	if ("9".equals(res.dropCode)) {
+                		gainSp *=15;
+                	}
                     if ("3".equals(res.dropCode) || "5".equals(res.dropCode)) {
                         gainSp *= 5;
                     }
@@ -4511,11 +4523,12 @@ public class BossAttackController {
 	    catch (Exception e) { return 0; }
 	}
 
-	private Resolve resolveKillAndDrop(Monster m, AttackCalc c, boolean willKill, User u, boolean lucky,boolean dark) {
+	private Resolve resolveKillAndDrop(Monster m, AttackCalc c, boolean willKill, User u, boolean lucky,boolean dark,boolean gray) {
 	    Resolve r = new Resolve();
 	    r.killed = willKill;
 	    r.lucky  = lucky;
 	    r.dark = dark;
+	    r.gray = gray;
 	    int levelGap = u.lv - m.monLv;
 	    double expMultiplier;
 	    
@@ -4530,7 +4543,9 @@ public class BossAttackController {
 	    int baseKillExp = (int)Math.round(m.monExp * expMultiplier);
 
 	    if (willKill) {
-	    	if(dark) {
+	    	if(gray) {
+	    		baseKillExp *= 15;
+	    	}else if(dark) {
 	    		baseKillExp *= 5;
 	    	}else if(lucky) {
 	    		baseKillExp *= 3;
@@ -4541,6 +4556,10 @@ public class BossAttackController {
 	    	r.gainExp = (int)Math.round(baseKillExp/20)+1;  //
 	    }
 
+	    if ( gray && willKill ) {
+	    	r.dropCode = "9";
+	    	return r;
+	    }
 	    if ( lucky && willKill ) {
 	        r.dropCode = "3";
 	        return r;
@@ -4758,7 +4777,9 @@ public class BossAttackController {
 	    }
 
 	    int luckyYn=0;
-	    if(res.dark) {
+	    if(res.gray) {
+	    	luckyYn =3;
+	    }else if(res.dark) {
 	    	luckyYn =2;
 	    }else if(res.lucky) {
 	    	luckyYn =1;
@@ -4858,6 +4879,9 @@ public class BossAttackController {
 	    sb.append("⚔ ").append(userName).append("님, ").append(NL)
 	      .append("▶ ").append(m.monName).append("을(를) 공격!").append(NL).append(NL);
 
+	    if (res.gray) {
+	    	sb.append("✨ LIGHT&DARK MONSTER! (처치시 경험치×15, 음양 드랍)").append(NL);
+	    }
 	    if (res.dark) {
 	    	sb.append("✨ DARK MONSTER! (처치시 경험치×5, 어둠 드랍)").append(NL);
 	    }
@@ -5076,7 +5100,7 @@ public class BossAttackController {
 		    return result.isEmpty() ? null : result;
 		}
 	private static class Resolve {
-		boolean killed; String dropCode; int gainExp; int levelUpCount; boolean lucky; boolean dark;
+		boolean killed; String dropCode; int gainExp; int levelUpCount; boolean lucky; boolean dark; boolean gray;
 	}
 	private static class CooldownCheck {
 	    final boolean ok; final int remainMinutes; final long remainSeconds;
@@ -5543,6 +5567,7 @@ public class BossAttackController {
 	) {
 	    int lightTotal = 0;
 	    int darkTotal  = 0;
+	    int grayTotal  = 0;
 
 	    List<HashMap<String, Object>> gainRows =
 	            botNewService.selectTotalGainCountByGainType(userName, roomName);
@@ -5554,10 +5579,11 @@ public class BossAttackController {
 
 	            if ("DROP3".equals(type)) lightTotal = qty;
 	            else if ("DROP5".equals(type)) darkTotal = qty;
+	            else if ("DROP9".equals(type)) grayTotal = qty;
 	        }
 	    }
 
-	    if (lightTotal <= 0 && darkTotal <= 0) return "";
+	    if (lightTotal <= 0 && darkTotal <= 0 && grayTotal <= 0) return "";
 
 	    int[] thresholds = {1,10,50,100,300,500,700,1000,1300,1600,2000};
 	    StringBuilder sb = new StringBuilder();
@@ -5587,6 +5613,18 @@ public class BossAttackController {
 	                );
 	            }
 	        }
+	        if (grayTotal >= th) {
+	            String cmd = "ACHV_GRAY_ITEM_" + th;
+	            if (!achievedCmdSet.contains(cmd)) {
+	                sb.append(
+	                    grantOnceIfEligibleFast(
+	                        userName, roomName, cmd,
+	                        calcGrayItemReward(th),
+	                        achievedCmdSet
+	                    )
+	                );
+	            }
+	        }
 	    }
 
 	    return sb.toString();
@@ -5611,6 +5649,11 @@ public class BossAttackController {
 	    // 예시: 어둠템은 좀 더 희귀하다고 가정해서 빛템보다 1.5배 정도
 	    int base = calcLightItemReward(th);
 	    return (int)Math.round(base * 1.5);
+	}
+	private int calcGrayItemReward(int th) {
+		// 예시: 어둠템은 좀 더 희귀하다고 가정해서 빛템보다 1.5배 정도
+		int base = calcLightItemReward(th);
+		return (int)Math.round(base * 10);
 	}
 	
 	private String grantCelebrationClearBonus(
@@ -5758,6 +5801,8 @@ public class BossAttackController {
 	            Pattern.compile("^빛 아이템 획득 (\\d+)회 달성$");
 	    Pattern P_DARK_ITEM_GET =
 	            Pattern.compile("^어둠 아이템 획득 (\\d+)회 달성$");
+	    Pattern P_GRAY_ITEM_GET =
+	    		Pattern.compile("^음양 아이템 획득 (\\d+)회 달성$");
 	    Pattern P_ATTACK_COUNT =
 	            Pattern.compile("^통산 공격 (\\d+)회 달성$");
 	    Pattern P_JOB_SKILL =
@@ -5769,6 +5814,7 @@ public class BossAttackController {
 	    SortedSet<Integer> attackSteps   = new TreeSet<>();
 	    SortedSet<Integer> lightSteps    = new TreeSet<>();
 	    SortedSet<Integer> darkSteps     = new TreeSet<>();
+	    SortedSet<Integer> graySteps     = new TreeSet<>();
 
 	    Map<String, Integer> monsterKills = new LinkedHashMap<>();
 	    Map<String, SortedSet<Integer>> jobSkillSteps = new LinkedHashMap<>();
@@ -5809,6 +5855,10 @@ public class BossAttackController {
 	            darkSteps.add(parseIntSafe(m.group(1)));
 	            continue;
 	        }
+	        if ((m = P_GRAY_ITEM_GET.matcher(label)).matches()) {
+	        	graySteps.add(parseIntSafe(m.group(1)));
+	        	continue;
+	        }
 	        if ((m = P_JOB_SKILL.matcher(label)).matches()) {
 	            String job = m.group(1).trim();
 	            int v = parseIntSafe(m.group(2));
@@ -5845,6 +5895,8 @@ public class BossAttackController {
 	        sb.append("빛 획득: ").append(String.format("%,d", lightSteps.last())).append("회").append(NL);
 	    if (!darkSteps.isEmpty())
 	        sb.append("어둠 획득: ").append(String.format("%,d", darkSteps.last())).append("회").append(NL);
+	    if (!graySteps.isEmpty())
+	    	sb.append("음양 획득: ").append(String.format("%,d", graySteps.last())).append("회").append(NL);
 
 	    sb.append(NL);
 
@@ -5980,6 +6032,14 @@ public class BossAttackController {
 	    		return "어둠 아이템 획득 " + th + "회 달성";
 	    	} catch (Exception e) {
 	    		return "어둠 아이템 획득 ";
+	    	}
+	    }
+	    if (cmd.startsWith("ACHV_GRAY_ITEM_")) {
+	    	try {
+	    		int th = Integer.parseInt(cmd.substring("ACHV_GRAY_ITEM_".length()));
+	    		return "음양 아이템 획득 " + th + "회 달성";
+	    	} catch (Exception e) {
+	    		return "음양 아이템 획득 ";
 	    	}
 	    }
 	    
@@ -6521,21 +6581,22 @@ public class BossAttackController {
             else if (roll <= 55) multiplier = 10/2;
             else {
                 // ❌ 실패
-                baseAtk = 0;
+                //baseAtk = 0;
                 crit = false;
-                calc.jobSkillUsed = true;
-                out.dmgCalcMsg = "🎲 도박 실패! 공격이 빗나갔습니다!";
+                calc.jobSkillUsed = false;
+                out.dmgCalcMsg = "도박 실패!(크리티컬해제)";
             }
 
             // 🎯 성공
             int before = baseAtk;
             baseAtk = baseAtk * multiplier;
 
-            calc.jobSkillUsed = true;
+            if(roll<=10) {
+            	calc.jobSkillUsed = true;
+            }
             out.dmgCalcMsg =
-                "도박 성공! (" + roll + "%) "
-                + before + " × " + multiplier
-                + " ⇒ " + baseAtk + "!";
+                "도박 성공! (피해량 ×" + multiplier + ") "
+                + before + " ⇒ " + baseAtk + "!";
         }
 	    
 	    boolean isSnipe = false;
@@ -7011,26 +7072,27 @@ public class BossAttackController {
 		            int roll = ThreadLocalRandom.current().nextInt(1, 101); // 1~100
 		            String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
 	
-		            if (roll <= 33) {
+		            if (roll <= 11) {
 		                // 🌀 회피
 		                calc.monDmg = 0;
-		                calc.patternMsg = baseMsg + "공격을 회피했다!";
+		                calc.patternMsg = NL+baseMsg + "도박대성공! (회피판정 → "+0+")";
 		            }
-		            else if (roll <= 66) {
-		                // 🛡 그대로 맞음 (변경 없음)
-		                // 굳이 메시지 안 붙여도 됨
+		            else if (roll <= 44) {
+		            	int increased = calc.monDmg /2;
+		                calc.monDmg = increased;
+		                calc.patternMsg = NL+baseMsg + "도박성공! (받는 피해 50% → " + increased + ")";
 		            }
 		            else if (roll <= 88) {
 		                // 💥 2배 피해
 		                int increased = calc.monDmg * 2;
 		                calc.monDmg = increased;
-		                calc.patternMsg = baseMsg + "치명적인 공격! (2배 피해 → " + increased + ")";
+		                calc.patternMsg = NL+baseMsg + "도박실패! (받는 피해x2 → " + increased + ")";
 		            }
 		            else {
 		                // ☠ 3배 피해
 		                int increased = calc.monDmg * 3;
 		                calc.monDmg = increased;
-		                calc.patternMsg = baseMsg + "치명타! (3배 피해 → " + increased + ")";
+		                calc.patternMsg = NL+baseMsg + "도박대실패! (받는 피해x2 → " + increased + ")";
 		            }
 		        }
 	        }
@@ -7730,6 +7792,13 @@ public class BossAttackController {
     		+"◎선행조건 어둠사냥꾼, 복수자 직업으로 각 100회 공격"
 		));
 	    /*
+	    JOB_DEFS.put("음양사", new JobDef(
+    		"음양사",
+    		"▶ ???",
+    		"⚔ -???- "+NL
+    		+"◎선행조건 도사 직업으로 1000회 공격"
+		));*/
+	    /*
 	    JOB_DEFS.put("용투사", new JobDef(
 			"용투사",
 			"▶ 용족의 마지막 후예, 격투술로 상대를 제압한다",
@@ -7778,6 +7847,9 @@ public class BossAttackController {
     		new JobChangeReq("어둠사냥꾼", 100),
     		new JobChangeReq("복수자", 100)
 		));
+	    
+	    
+	    
 	    // 용사 = 전체 공격 1000회 이상
 	    JOB_CHANGE_TOTAL_REQS.put("궁사", 3000);
 	    
