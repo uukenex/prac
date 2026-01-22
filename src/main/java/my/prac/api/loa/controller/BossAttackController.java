@@ -176,7 +176,7 @@ public class BossAttackController {
 	        return ctx;
 	    }
 
-	    ctx.isReturnUser = botNewService.isReturnUser(targetUser);
+	    ctx.isReturnUser = false; //botNewService.isReturnUser(targetUser);
 	    
 	    ctx.user = u;
 	    ctx.job  = (u.job == null ? "" : u.job.trim());
@@ -1158,38 +1158,8 @@ public class BossAttackController {
 	      .append("   └ 아이템 (HP").append(formatSigned(bHpMaxRaw))
 	      .append(",5분당회복").append(formatSigned(bRegenRaw)).append(")").append(NL);
 
-	    if ("프리스트".equals(job) && (jobHpMaxBonus != 0 || jobRegenBonus != 0)) {
+	    if (jobHpMaxBonus != 0 || jobRegenBonus != 0) {
 	        sb.append("   └ 직업 (HP")
-	          .append(formatSigned(jobHpMaxBonus))
-	          .append(",5분당회복")
-	          .append(formatSigned(jobRegenBonus))
-	          .append(")").append(NL);
-	    }
-	    if ("어둠사냥꾼".equals(job) && (jobHpMaxBonus != 0 || jobRegenBonus != 0)) {
-	    	sb.append("   └ 직업 (HP")
-	    	.append(formatSigned(jobHpMaxBonus))
-	    	.append(",5분당회복")
-	    	.append(formatSigned(jobRegenBonus))
-	    	.append(")").append(NL);
-	    }
-	    if ("파이터".equals(job) && (jobHpMaxBonus != 0)) {
-	        sb.append("   └ 직업 (HP")
-	          .append(formatSigned(jobHpMaxBonus))
-	          .append(",5분당회복")
-	          .append(formatSigned(0))
-	          .append(")").append(NL);
-	    }
-
-	    /*
-	    if ("전사".equals(job)) {
-	        sb.append("   └ 직업 (HP+")
-	          .append(baseHpMax*10)
-	          .append(")").append(NL);
-	          
-	    }
-	    */
-	    if ("용사".equals(job)) {
-	    	sb.append("   └ 직업 (HP")
 	          .append(formatSigned(jobHpMaxBonus))
 	          .append(",5분당회복")
 	          .append(formatSigned(jobRegenBonus))
@@ -2148,6 +2118,8 @@ public class BossAttackController {
 	        jobDmgMul = 1.4;   
 	    } else if ("용사".equals(job)) {
 	        jobDmgMul = 1.4;   
+	    } else if ("복수자".equals(job)) {
+	        jobDmgMul = 1.8;   
 	    }
 
 	    // 직업 배율까지 반영된 실제 전투용 공격력 (구버전 공식과 동일)
@@ -2904,6 +2876,7 @@ public class BossAttackController {
                 }
                 
                 // 복귀자 보너스
+                
                 if (ctx.isReturnUser) {
                     gainSp *= 2;
                 }
@@ -6530,6 +6503,41 @@ public class BossAttackController {
 			}
 	    	
 	    }
+	    
+	    if ("도박사".equals(job)) {
+
+            int roll = ThreadLocalRandom.current().nextInt(1, 101); // 1~100
+            int multiplier = 0;
+
+            if (roll <= 1)       multiplier = 100/2;
+            else if (roll <= 3)  multiplier = 50/2;
+            else if (roll <= 6)  multiplier = 33/2;
+            else if (roll <= 10) multiplier = 25/2;
+            else if (roll <= 15) multiplier = 20/2;
+            else if (roll <= 21) multiplier = 16/2;
+            else if (roll <= 28) multiplier = 14/2;
+            else if (roll <= 36) multiplier = 12/2;
+            else if (roll <= 45) multiplier = 11/2;
+            else if (roll <= 55) multiplier = 10/2;
+            else {
+                // ❌ 실패
+                baseAtk = 0;
+                crit = false;
+                calc.jobSkillUsed = true;
+                out.dmgCalcMsg = "🎲 도박 실패! 공격이 빗나갔습니다!";
+            }
+
+            // 🎯 성공
+            int before = baseAtk;
+            baseAtk = baseAtk * multiplier;
+
+            calc.jobSkillUsed = true;
+            out.dmgCalcMsg =
+                "도박 성공! (" + roll + "%) "
+                + before + " × " + multiplier
+                + " ⇒ " + baseAtk + "!";
+        }
+	    
 	    boolean isSnipe = false;
 	    if ("궁수".equals(job)) {
 	        if (ThreadLocalRandom.current().nextDouble() < 0.13) {
@@ -6641,6 +6649,9 @@ public class BossAttackController {
 	    if("처단자".equals(job)) {
 	    	baseAtk = (int) Math.round(berserkMul * baseAtk);
 	    }
+	    
+	   
+
 	    
 	    
 	    int rawAtkDmg = crit ? (int) Math.round(baseAtk * critMultiplier) : baseAtk;
@@ -6979,6 +6990,49 @@ public class BossAttackController {
 			    calc.monDmg = 0;
 			    calc.endBattle = false;
 			    calc.patternMsg = "도망가는 적을 붙잡아 강력한 일격!" + rawAtkDmg*5 + " 피해";
+	        }
+	        
+	        if ("복수자".equals(job)) {
+		        if (calc.monDmg > 0 && flags.monPattern == 2 || flags.monPattern == 4) {
+		            int revengeDmg = (int) Math.round(calc.monDmg * 1.5);
+		            calc.atkDmg += revengeDmg;
+
+		            calc.patternMsg += NL
+		                + "어벤져의 분노! 받은 피해 "
+		                + calc.monDmg
+		                + " → 반격 데미지 +"
+		                + revengeDmg;
+		        }
+		    }
+	     // 몬스터 공격 변동 처리 (회피 / 증폭)
+	        if ("도박사".equals(job)) {
+		        if (calc.monDmg > 0 ) {
+	
+		            int roll = ThreadLocalRandom.current().nextInt(1, 101); // 1~100
+		            String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
+	
+		            if (roll <= 33) {
+		                // 🌀 회피
+		                calc.monDmg = 0;
+		                calc.patternMsg = baseMsg + "공격을 회피했다!";
+		            }
+		            else if (roll <= 66) {
+		                // 🛡 그대로 맞음 (변경 없음)
+		                // 굳이 메시지 안 붙여도 됨
+		            }
+		            else if (roll <= 88) {
+		                // 💥 2배 피해
+		                int increased = calc.monDmg * 2;
+		                calc.monDmg = increased;
+		                calc.patternMsg = baseMsg + "치명적인 공격! (2배 피해 → " + increased + ")";
+		            }
+		            else {
+		                // ☠ 3배 피해
+		                int increased = calc.monDmg * 3;
+		                calc.monDmg = increased;
+		                calc.patternMsg = baseMsg + "치명타! (3배 피해 → " + increased + ")";
+		            }
+		        }
 	        }
 
 	        
@@ -7660,7 +7714,20 @@ public class BossAttackController {
     		"어둠사냥꾼",
     		"▶ ???",
     		"⚔ 아이템 HP/리젠 효과 1.25배, 몬스터에게 받는 일반공격 피해 감소(30%), 언데드추가피해(+75%), -???- "+NL
-    		+"◎선행조건 프리스트,용기사 직업으로 300회 공격"
+    		+"◎선행조건 프리스트, 용기사 직업으로 각 300회 공격"
+		));
+	    JOB_DEFS.put("복수자", new JobDef(
+    		"복수자",
+    		"▶ ",
+    		"⚔ 기본공격 배율 1.8, 몬스터의 일반공격/필살 시 받은피해를 돌려줌  "+NL
+    		+"◎선행조건 전사, 제너럴 직업으로 각 300회 공격"
+		));
+	    
+	    JOB_DEFS.put("도박사", new JobDef(
+    		"워록",
+    		"▶ ???",
+    		"⚔ -???- "+NL
+    		+"◎선행조건 어둠사냥꾼, 복수자 직업으로 각 100회 공격"
 		));
 	    /*
 	    JOB_DEFS.put("용투사", new JobDef(
@@ -7702,6 +7769,14 @@ public class BossAttackController {
 	    JOB_CHANGE_REQS.put("어둠사냥꾼", Arrays.asList(
 	    	new JobChangeReq("프리스트", 300),
 	    	new JobChangeReq("용기사", 300)
+		));
+	    JOB_CHANGE_REQS.put("복수자", Arrays.asList(
+			new JobChangeReq("전사", 300),
+			new JobChangeReq("제너럴", 300)
+		));
+	    JOB_CHANGE_REQS.put("도박사", Arrays.asList(
+    		new JobChangeReq("어둠사냥꾼", 100),
+    		new JobChangeReq("복수자", 100)
 		));
 	    // 용사 = 전체 공격 1000회 이상
 	    JOB_CHANGE_TOTAL_REQS.put("궁사", 3000);
