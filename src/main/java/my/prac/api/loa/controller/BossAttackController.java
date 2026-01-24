@@ -912,6 +912,9 @@ public class BossAttackController {
 	                if ("DROP5".equals(gainType)) {
 	                	name = "어둠"+name;
 	                }
+	                if ("DROP9".equals(gainType)) {
+	                	name = "음양"+name;
+	                }
 
 	                if (line.length() > 0) {
 	                    line.append(" / ");
@@ -4741,7 +4744,10 @@ public class BossAttackController {
 	            		gainType = "DROP3";
 	            	}else if ("5".equals(res.dropCode)) {
 	            		gainType = "DROP5";
+	            	}else if ("9".equals(res.dropCode)) {
+	            		gainType = "DROP9";
 	            	}
+	            	
 	            	
 	            	int qty=1;
 	            	if ("2".equals(res.dropCode)) {
@@ -4771,8 +4777,22 @@ public class BossAttackController {
 	    }
 
 	    // 7) BattleLog 저장 (전투 당시 정보 기준)
-	    int dropAsInt = "3".equals(res.dropCode) ? 3
-	                 : ("1".equals(res.dropCode) ? 1 : 0);
+	    
+	    
+	    int dropAsInt = 0; 
+	    if( res.dropCode == "9") {
+	    	dropAsInt = 9;
+	    }else if( res.dropCode == "5") {
+	    	dropAsInt = 5;
+	    }if( res.dropCode == "3") {
+	    	dropAsInt = 3;
+	    }if( res.dropCode == "2") {
+	    	dropAsInt = 2;
+	    }if( res.dropCode == "1") {
+	    	dropAsInt = 1;
+	    }else {
+	    	dropAsInt = 0;
+	    }
 
 	    
 	    int buffYn = 0;
@@ -4931,7 +4951,9 @@ public class BossAttackController {
 	    if (res.killed && !"0".equals(res.dropCode)) {
 	        String dropName = (m.monDrop == null ? "" : m.monDrop.trim());
 	        if (!dropName.isEmpty()) {
-	        	if ("5".equals(res.dropCode)) {
+	        	if ("9".equals(res.dropCode)) {
+	                sb.append("✨ 드랍 획득: 음양").append(dropName).append(NL);
+	            }else if ("5".equals(res.dropCode)) {
 	                sb.append("✨ 드랍 획득: 어둠").append(dropName).append(NL);
 	            } else if ("3".equals(res.dropCode)) {
 	                sb.append("✨ 드랍 획득: 빛").append(dropName).append(NL);
