@@ -2597,6 +2597,7 @@ public class BossAttackController {
 	                .setLuckyYn(0)
 	                .setJobSkillYn(0)
 	                .setJob(job)
+	                .setNightmareYn(nightmare?1:0)
 	        );
 
 	        deathAchvMsg = grantDeathAchievements(userName, roomName);
@@ -2807,7 +2808,7 @@ public class BossAttackController {
 	    
 
 	    // 14) DB 반영 + 레벨업 처리
-	    LevelUpResult up = persist(userName, roomName, u, m, flags, calc, res, effHpMax,ctx.isReturnUser);
+	    LevelUpResult up = persist(userName, roomName, u, m, flags, calc, res, effHpMax,ctx.isReturnUser,nightmare);
 	    String bonusMsg = "";
 	    String blessMsg = "";
 
@@ -4772,7 +4773,7 @@ public class BossAttackController {
 	private LevelUpResult persist(String userName, String roomName,
 	                              User u, Monster m,
 	                              Flags f, AttackCalc c, Resolve res,int effHpMax,
-	                              boolean isReturnUser ) {
+	                              boolean isReturnUser,boolean nightmare ) {
 
 	    // 1) 최종 HP 계산 (전투 데미지 반영)
 	    u.hpCur = Math.max(0, u.hpCur - c.monDmg);
@@ -4904,7 +4905,8 @@ public class BossAttackController {
 	        .setDropYn(dropAsInt)
 	    	.setBuffYn(buffYn)
 	    	.setJobSkillYn(c.jobSkillUsed ? 1 : 0)
-	    	.setJob(u.job);
+	    	.setJob(u.job)
+	    	.setNightmareYn(nightmare?1:0);
 
 	    botNewService.insertBattleLogTx(log);
 

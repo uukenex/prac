@@ -180,13 +180,13 @@
       (USER_NAME, ROOM_NAME, LV, TARGET_MON_LV,
        GAIN_EXP, ATK_DMG, MON_DMG, ATK_CRIT_YN,
        MON_PATTEN, INSERT_DATE, KILL_YN, NOW_YN, DROP_YN, DEATH_YN, LUCKY_YN, BUFF_YN
-       ,JOB_SKILL_YN,JOB
+       ,JOB_SKILL_YN,JOB,NIGHTMARE_YN
        )
     VALUES
       (#{userName}, #{roomName}, #{lv}, #{targetMonLv},
        #{gainExp}, #{atkDmg}, #{monDmg}, #{atkCritYn},
        #{monPatten}, SYSTIMESTAMP, #{killYn}, #{nowYn}, #{dropYn}, #{deathYn}, #{luckyYn},#{buffYn}
-       ,#{jobSkillYn},#{job}
+       ,#{jobSkillYn},#{job},#{nightmareYn}
        )
   </insert>
 

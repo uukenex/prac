@@ -24,6 +24,7 @@ public class BattleLog {
 	private int buffYn; // 0/1 (또는 null)
 	private int jobSkillYn; // 0/1 (또는 null)
 	private String job; 
+	private int nightmareYn;
 
 	public BattleLog setUserName(String v) {
 		this.userName = v;
@@ -105,6 +106,10 @@ public class BattleLog {
 	}
 	public BattleLog setJob(String v) {
 		this.job = v;
+		return this;
+	}
+	public BattleLog setNightmareYn(int v) {
+		this.nightmareYn = v;
 		return this;
 	}
 
