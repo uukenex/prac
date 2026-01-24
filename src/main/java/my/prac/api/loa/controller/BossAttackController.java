@@ -2425,10 +2425,10 @@ public class BossAttackController {
 	    DosaBuffEffect buffEff_room = loadRoomDosaBuffAndBuild(roomName);
 	    if (buffEff_room != null) {
 	        effAtkMin   += buffEff_room.addAtkMin;
-	        effAtkMax   += buffEff_room.addAtkMax*2;
+	        effAtkMax   += buffEff_room.addAtkMax;
 	        effCritRate += buffEff_room.addCritRate;
 	        effCriDmg   += buffEff_room.addCritDmg;
-	        u.hpCur     += buffEff_room.addHp*2;
+	        u.hpCur     += buffEff_room.addHp;
 	        botNewService.clearRoomBuff(roomName);
 	    }
 	    String dosabuffMsg = "";
@@ -6195,10 +6195,10 @@ public class BossAttackController {
 	    	dosaLvBonus = (int) Math.round(dosaLv * 0.5);
 	    	dosaCriDmg = (int) Math.round(dosaAtkMax * 0.1);
 	    	eff.addAtkMin   = dosaLvBonus;
-		    eff.addAtkMax   = dosaLvBonus;
+		    eff.addAtkMax   = dosaLvBonus*3;
 		    eff.addCritRate = dosaLvBonus;
 		    eff.addCritDmg  = dosaCriDmg/2;
-		    eff.addHp       = dosaCriDmg*5;
+		    eff.addHp       = dosaCriDmg*10;
 	    }
 	    return eff;
 	}
