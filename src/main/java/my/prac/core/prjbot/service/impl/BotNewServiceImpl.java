@@ -3,6 +3,7 @@ package my.prac.core.prjbot.service.impl;
 import java.sql.Timestamp;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 import javax.annotation.Resource;
@@ -528,4 +529,18 @@ public class BotNewServiceImpl implements BotNewService {
     public List<HashMap<String, Object>> selectTotalDropItems(String userName){
     	 return botNewDAO.selectTotalDropItems(userName);
     }
+    
+    public boolean isNightmareMode(String userName, String roomName) {
+	    Integer v = botNewDAO.selectNightmareYn(userName, roomName);
+	    return v != null && v == 1;
+	}
+    
+    public int setNightmareMode(String userName, String roomName, boolean enable) {
+    	HashMap<String,Object> p = new HashMap<>();
+        p.put("userName", userName);
+        p.put("roomName", roomName);
+        p.put("nightmareYn", enable ? "1" : "0");
+        return botNewDAO.updateNightmareYn(p);
+    }
+
 }

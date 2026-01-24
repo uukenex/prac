@@ -66,6 +66,33 @@ public class BossAttackController {
 	@Resource(name = "core.prjbot.BotNewService")     BotNewService botNewService;
 	@Resource(name = "core.prjbot.BotSettleService")  BotSettleService botSettleService;
 	
+	
+	
+	
+	public String changeMode(HashMap<String, Object> map) {
+		final String roomName = Objects.toString(map.get("roomName"), "");
+	    final String userName = Objects.toString(map.get("userName"), "");
+	    final String selRaw  = Objects.toString(map.get("param1"), "").trim();
+
+	    String msg = "";
+	    if (roomName.isEmpty() || userName.isEmpty())
+	        return "방/유저 정보가 누락되었습니다.";
+
+	    User u = botNewService.selectUser(userName, null);
+	    if (u == null)
+	        return "유저 정보를 찾을 수 없습니다.";
+
+	    if(selRaw.equals("나이트메어")||selRaw.equals("나메")) {
+	    	botNewService.setNightmareMode(userName,roomName,true);
+	    	msg ="나이트메어";
+	    }else {
+	    	botNewService.setNightmareMode(userName,roomName,false);
+	    	msg="일반";
+	    }
+	    botNewService.closeOngoingBattleTx(userName, roomName);
+		return msg+" 모드로 변경완료"+NL+"[일반/나이트메어] 선택가능";
+	}
+	
 	public String roulette(HashMap<String, Object> map) {
 	    final String roomName = Objects.toString(map.get("roomName"), "");
 	    final String userName = Objects.toString(map.get("userName"), "");
@@ -478,6 +505,7 @@ public class BossAttackController {
 	    }
 
 	    // 🔹 여기서 "공격 로직"에서 쓰는 진행중 전투 계산 재사용
+	    boolean nightmare = botNewService.isNightmareMode(targetUser, roomName);
 	    try {
 	        OngoingBattle ob = botNewService.selectOngoingBattle(targetUser, roomName);
 	        if (ob != null) {
@@ -486,15 +514,26 @@ public class BossAttackController {
 	                int monMaxHp    = m.monHp;
 	                int monHpRemain = Math.max(0, m.monHp - ob.totalDealtDmg);
 
+	                if(nightmare) {
+	                	monMaxHp *=100;
+	                }
+	                
+	                
 	                sb.append(NL)
 	                  .append("▶ 전투중인 몬스터").append(NL)
-	                  .append(m.monName)
-	                  .append(" (").append(monHpRemain).append(" / ").append(monMaxHp).append(")")
+	                  .append(m.monName);
+                    if(nightmare) {
+                    	sb.append("[나이트메어]");
+	                }
+	                sb.append(" (").append(monHpRemain).append(" / ").append(monMaxHp).append(")")
 	                  .append(NL);
 	            }
 	        } else {
 	            // 진행중 전투는 없지만 타겟몬은 있을 수 있음 (선택)
 	            Monster m = botNewService.selectMonsterByNo(u.targetMon);
+	            if(nightmare) {
+                	m.monHp *=100;
+                }
 	            if (m != null) {
 	                sb.append(NL)
 	                  .append("▶ 타겟 몬스터").append(NL)
@@ -1381,7 +1420,8 @@ public class BossAttackController {
 		final String roomName = Objects.toString(map.get("roomName"), "");
 		final String userName = Objects.toString(map.get("userName"), "");
 		final String input = Objects.toString(map.get("monNo"), "").trim();
-		
+		boolean nightmare = botNewService.isNightmareMode(userName, roomName);
+	    
 		if (roomName.isEmpty() || userName.isEmpty()) return "방/유저 정보가 누락되었습니다.";
 		if (input.isEmpty()) {
 		    User u = botNewService.selectUser(userName, null);
@@ -1393,7 +1433,7 @@ public class BossAttackController {
 		      .append("▶ 선택 가능한 몬스터").append(ALL_SEE_STR);
 
 		    for (Monster mm : monsters) {
-		        sb.append(renderMonsterCompactLine(mm, userLv)); // ★ 레벨 비례 EXP 반영됨!
+		        sb.append(renderMonsterCompactLine(mm, userLv,nightmare)); // ★ 레벨 비례 EXP 반영됨!
 		    }
 		    
 		    return sb.toString();
@@ -1423,7 +1463,7 @@ public class BossAttackController {
 		      .append("▶ 선택 가능한 몬스터").append(ALL_SEE_STR);
 
 		    for (Monster mm : monsters) {
-		        sb.append(renderMonsterCompactLine(mm, userLv));
+		        sb.append(renderMonsterCompactLine(mm, userLv,nightmare));
 		    }
 		    return sb.toString();
 		}
@@ -1432,7 +1472,7 @@ public class BossAttackController {
 		if (u == null) {
 		    botNewService.insertUserWithTargetTx(userName, roomName, m.monNo);
 		    return userName + "님, 공격 타겟을 " + m.monName + "(MON_NO=" + m.monNo + ") 으로 설정했습니다." + NL
-		         + "▶ 선택: " + renderMonsterCompactLine(m, 1);
+		         + "▶ 선택: " + renderMonsterCompactLine(m, 1,nightmare);
 		}
 		if (u.targetMon == m.monNo) return "현재 타겟이 이미 " + m.monName + "(MON_NO=" + m.monNo + ") 입니다.";
 
@@ -1475,7 +1515,7 @@ public class BossAttackController {
 		botNewService.updateUserTargetMonTx(userName, roomName, m.monNo);
 		int userLvForView = (u != null ? u.lv : 1);
 		return userName + "님, 공격 타겟을 " + m.monName + "(MON_NO=" + m.monNo + ") 으로 설정했습니다." + NL
-		     + "▶ 선택: " + NL + renderMonsterCompactLine(m, userLvForView);
+		     + "▶ 선택: " + NL + renderMonsterCompactLine(m, userLvForView,nightmare);
 	}
 	// 엔트리 포인트: 기존 /구매 명령이 들어오는 곳
 	public String buyItem(HashMap<String, Object> map) {
@@ -2016,6 +2056,7 @@ public class BossAttackController {
 	    return token;
 	}
 	
+	
 	public String monsterAttack(HashMap<String, Object> map) {
 	    map.put("cmd", "monster_attack");
 
@@ -2162,7 +2203,12 @@ public class BossAttackController {
 	    // 6) 진행중 전투 / 신규 전투 + LUCKY 유지 (구버전 그대로)
 	    OngoingBattle ob = botNewService.selectOngoingBattle(userName, roomName);
 	    Monster m;
-	    int monMaxHp, monHpRemainBefore;
+	    int monMaxHp = 0, monHpRemainBefore;
+	    
+	 // ✅ 나이트메어 모드 확인
+	    boolean nightmare = botNewService.isNightmareMode(userName, roomName);
+	    int nightmareMul = nightmare ? 100 : 1;
+	    
 	    boolean lucky = false;
 	    boolean dark = false; // 어둠몬스터 여부
 	    boolean gray = false; 
@@ -2175,6 +2221,13 @@ public class BossAttackController {
 	        beforeJobSkillYn = ob.beforeJobSkillYn;
 	        
 	        monMaxHp = m.monHp;
+	        
+	     // 🔥 나이트메어 증폭
+	        if (nightmare) {
+	            monMaxHp *= nightmareMul;
+	            m.monAtk *= nightmareMul;
+	            m.monLv +=100;
+	        }
 	        
 	        lucky = (ob.luckyYn != null && ob.luckyYn == 1);
 	        dark  = (ob.luckyYn != null && ob.luckyYn == 2);
@@ -2220,7 +2273,13 @@ public class BossAttackController {
 	        
 	        monMaxHp = m.monHp;
 	        monHpRemainBefore = m.monHp;
-
+	     // 🔥 나이트메어 증폭
+	        if (nightmare) {
+	            monMaxHp *= nightmareMul;
+	            m.monAtk *= nightmareMul;
+	            m.monLv +=100;
+	        }
+	        
 	        // ★ 이 유저의 해당 몬스터 누적 킬 수 조회
 	        killCountForThisMon = 0;
 	        try {
@@ -2291,6 +2350,11 @@ public class BossAttackController {
 	        	dark = false;
 	        }
 	        
+	        if (nightmare) {
+	        	dark = false;
+	        	gray = false;
+	        }
+	        
 	        
 	        if (dark) {
 	        	if(m.monNo <15) {
@@ -2309,6 +2373,9 @@ public class BossAttackController {
 	        }
 
 	    }
+	    
+	    
+	    
 
 	    // 7) 쿨타임 체크 (param1 그대로 사용)
 	    CooldownCheck cd = checkCooldown(userName, roomName, param1, job);
@@ -2480,7 +2547,8 @@ public class BossAttackController {
 	            effHpMax,               // 표시용 HP_MAX
 	            null,
 	            null,
-	            ctx.isReturnUser
+	            ctx.isReturnUser,
+	            nightmare
 	        );
 	    }
 	    
@@ -2547,6 +2615,10 @@ public class BossAttackController {
 	    String newPoint ="";
 	    String stealPoint ="";
 	 
+	    if (nightmare && res.gainExp > 0) {
+	        res.gainExp *= 50;
+	    }
+	    
 	    
 	    // 궁수: 획득 EXP +25%
 	    if ("궁수".equals(u.job)) {
@@ -2589,7 +2661,7 @@ public class BossAttackController {
 	                        stealMsg = "✨ " + m.monName + "의 아이템을 훔쳤습니다! (" + dropName + "조각)";
 	                        calc.jobSkillUsed = true;
 	                    }
-	                    stealPoint += " +"+baroSellItem(dropName,itemId,res,userName,roomName,ctx,u,"STEAL",1);
+	                    stealPoint += " +"+baroSellItem(dropName,itemId,res,userName,roomName,ctx,u,"STEAL",1,nightmare);
 	                } catch (Exception ignore) {}
 	                
 	            }
@@ -2634,7 +2706,7 @@ public class BossAttackController {
 
 	                            calc.jobSkillUsed = true;
 	                        }
-	                        stealPoint += " +"+baroSellItem(dropName,itemId,res,userName,roomName,ctx,u,"STEAL",1);
+	                        stealPoint += " +"+baroSellItem(dropName,itemId,res,userName,roomName,ctx,u,"STEAL",1,nightmare);
 	                    } catch (Exception ignore) {}
 	                    
 	                }
@@ -2666,7 +2738,7 @@ public class BossAttackController {
 	                        stealMsg = "✨ 날카로운 처단으로 추가획득 (+" + dropName + ")";
 	                        calc.jobSkillUsed = true;
 	                    }
-	                    stealPoint += " +" +baroSellItem(dropName,itemId,res,userName,roomName,ctx,u,"STEAL",2);
+	                    stealPoint += " +" +baroSellItem(dropName,itemId,res,userName,roomName,ctx,u,"STEAL",2,nightmare);
 	                    
 	                    
 	                } catch (Exception ignore) {}
@@ -2698,7 +2770,7 @@ public class BossAttackController {
 	                        calc.jobSkillUsed = true;
 	                    }
 	                    
-	                    stealPoint += " +"+baroSellItem(dropName,itemId,res,userName,roomName,ctx,u,"STEAL",1);
+	                    stealPoint += " +"+baroSellItem(dropName,itemId,res,userName,roomName,ctx,u,"STEAL",1,nightmare);
 	                    
 	                } catch (Exception ignore) {}
 	            }
@@ -2729,7 +2801,7 @@ public class BossAttackController {
 	        String dropName = (m.monDrop == null ? "" : m.monDrop.trim());
 	        if (!dropName.isEmpty()) {
 
-	            newPoint += " +"+baroSellItem(dropName,0,res,userName,roomName,ctx,u,"DROP",1);
+	            newPoint += " +"+baroSellItem(dropName,0,res,userName,roomName,ctx,u,"DROP",1,nightmare);
 	        }
 	    }
 	    
@@ -2808,7 +2880,8 @@ public class BossAttackController {
 	            effHpMax,
 	            midExtra.toString(),
 	            botExtra.toString(),
-	            ctx.isReturnUser
+	            ctx.isReturnUser,
+	            nightmare
 	    );
 
 	    if (!bonusMsg.isEmpty()) {
@@ -2862,7 +2935,7 @@ public class BossAttackController {
 	    return msg;
 	}
 	
-	public String baroSellItem(String dropName,Integer itemId,Resolve res,String userName,String roomName,UserBattleContext ctx,User u,String gainType,int qty) {
+	public String baroSellItem(String dropName,Integer itemId,Resolve res,String userName,String roomName,UserBattleContext ctx,User u,String gainType,int qty,boolean nightmare) {
 		String newPoint="";
 		try {
 			if(0 == itemId) {
@@ -2896,6 +2969,10 @@ public class BossAttackController {
                 }
                 
                 // 복귀자 보너스
+                
+                if(nightmare) {
+                	gainSp *=50;
+                }
                 
                 if (ctx.isReturnUser) {
                     gainSp *= 2;
@@ -4344,7 +4421,7 @@ public class BossAttackController {
 	      .append("예) /공격타겟 1   또는   /공격타겟 토끼").append(NL).append(NL)
 	      .append("▶ 선택 가능한 몬스터").append(ALL_SEE_STR);
 	    for (Monster m : monsters) {
-	        sb.append(renderMonsterCompactLine(m,1)).append(NL);
+	        sb.append(renderMonsterCompactLine(m,1,false)).append(NL);
 	    }
 	    return sb.toString();
 	}
@@ -4896,13 +4973,17 @@ public class BossAttackController {
 	        int displayHpMax, // ← 표시용 HP Max(아이템 포함)
 	        String midExtraLines,
 	        String botExtraLines,
-	        boolean isReturnUser
+	        boolean isReturnUser,
+	        boolean nightmare
 	) {
 	    StringBuilder sb = new StringBuilder();
 
 	    // 헤더
 	    sb.append("⚔ ").append(userName).append("님, ").append(NL)
-	      .append("▶ ").append(m.monName).append("을(를) 공격!").append(NL).append(NL);
+	      .append("▶ ").append(m.monName);
+	    if(nightmare) sb.append("[나이트메어]");
+	    
+	    sb.append("을(를) 공격!").append(NL).append(NL);
 
 	    if (res.gray) {
 	    	sb.append("✨ LIGHT&DARK MONSTER! (처치시 경험치×15, 음양 드랍)").append(NL);
@@ -5333,10 +5414,17 @@ public class BossAttackController {
 	    }
 	}
 	/** 몬스터 요약 한 줄 UI */
-	private String renderMonsterCompactLine(Monster m, int userLv) {
+	private String renderMonsterCompactLine(Monster m, int userLv,boolean nightmare) {
+
 		// 드랍 아이템명 및 판매가격
 	    String dropName = (m.monDrop != null ? m.monDrop : "-");
 	    int dropPrice = getDropPriceByName(dropName);
+
+	    if(nightmare) {
+	    	m.monAtk = m.monAtk*100;
+	    	m.monHp = m.monHp*100;
+	    	dropPrice = dropPrice*50;
+	    }
 
 	    // ATK 범위 계산 (50% ~ 100%)
 	    int atkMin = (int) Math.floor(m.monAtk * 0.5);
@@ -5359,6 +5447,9 @@ public class BossAttackController {
 	    boolean hasPenalty = (levelGap >= 0 && expMultiplier < 1.0);
 	    boolean hasBonus   = (levelGap < 0  && expMultiplier > 1.0);
 
+	    
+	    
+	    
 	    StringBuilder sb = new StringBuilder();
 
 	    // 1행: 기본 정보

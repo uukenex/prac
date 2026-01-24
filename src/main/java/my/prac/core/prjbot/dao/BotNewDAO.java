@@ -225,5 +225,8 @@ public interface BotNewDAO {
     
     int selectBagRewardCap(HashMap<String, Object> map);
     List<HashMap<String, Object>> selectTotalDropItems(String userName);
+    
+    Integer selectNightmareYn(@Param("userName") String userName, @Param("roomName") String roomName);
+    public int updateNightmareYn(HashMap<String,Object> map);
 
 }

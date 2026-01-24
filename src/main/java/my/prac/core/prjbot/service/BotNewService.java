@@ -166,7 +166,8 @@ public interface BotNewService {
     int selectBagRewardCap(String userName);
     
     List<HashMap<String, Object>> selectTotalDropItems(String userName);
-
+    public boolean isNightmareMode(String userName, String roomName);
+    public int setNightmareMode(String userName, String roomName, boolean nightmareYn);
 } 
 
 	

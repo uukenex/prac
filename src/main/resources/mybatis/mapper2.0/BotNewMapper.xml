@@ -1505,5 +1505,17 @@
 	    GROUP BY I.ITEM_ID, IT.ITEM_NAME, I.GAIN_TYPE
 	    ORDER BY I.ITEM_ID DESC, I.GAIN_TYPE
 	</select>
-
+	<select id="selectNightmareYn" parameterType="map" resultType="int">
+		SELECT NVL(NIGHTMARE_YN, '0') AS NIGHTMARE_YN
+		  FROM TBOT_POINT_NEW_USER
+		 WHERE USER_NAME = #{userName}
+		   AND ROOM_NAME = #{roomName}
+	</select>
+	
+	<update id="updateNightmareYn" parameterType="map">
+	    UPDATE TBOT_POINT_NEW_USER
+	       SET NIGHTMARE_YN = #{nightmareYn}
+	     WHERE USER_NAME = #{userName}
+	       AND ROOM_NAME = #{roomName}
+	</update>
 </mapper>
