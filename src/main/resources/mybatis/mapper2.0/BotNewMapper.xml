@@ -50,7 +50,7 @@
 	          FROM TBOT_POINT_NEW_INVENTORY A
 	               JOIN TBOT_POINT_NEW_ITEM B
 	                 ON A.ITEM_ID = B.ITEM_ID
-	          WHERE A.GAIN_TYPE NOT IN ('DROP', 'DROP3', 'DROP5', 'STEAL')
+	          WHERE A.GAIN_TYPE NOT IN ('DROP', 'DROP3', 'DROP5','DROP9', 'STEAL')
 	            AND A.DEL_YN = '0'
 	          GROUP BY A.USER_NAME
 	      ) SP_SUM
@@ -307,6 +307,8 @@
 	         THEN '빛' || NVL(t.ITEM_NAME, '알 수 없음')
 	         WHEN x.GAIN_TYPE = 'DROP5'
 	         THEN '어둠' || NVL(t.ITEM_NAME, '알 수 없음')
+	         WHEN x.GAIN_TYPE = 'DROP9'
+	         THEN '음양' || NVL(t.ITEM_NAME, '알 수 없음')
 	         WHEN x.GAIN_TYPE = 'STEAL'
     		 THEN NVL(t.ITEM_NAME, '알 수 없음') || '조각'
 	         ELSE NVL(t.ITEM_NAME, '알 수 없음')
@@ -341,6 +343,8 @@
 	        THEN '빛' || NVL(i.item_name, '알 수 없음')
 	      WHEN NVL(inv.gain_type,'DROP') = 'DROP5'
 	        THEN '어둠' || NVL(i.item_name, '알 수 없음')
+	      WHEN NVL(inv.gain_type,'DROP') = 'DROP9'
+	        THEN '음양' || NVL(i.item_name, '알 수 없음')
 	      WHEN NVL(inv.gain_type,'DROP') = 'STEAL'
 	        THEN NVL(i.item_name, '알 수 없음') || '조각'
 	      ELSE NVL(i.item_name, '알 수 없음')
@@ -376,6 +380,8 @@
 	        THEN '빛' || NVL(i.item_name, '알 수 없음')
 	      WHEN NVL(inv.gain_type,'DROP') = 'DROP5'
 	        THEN '어둠' || NVL(i.item_name, '알 수 없음')
+	      WHEN NVL(inv.gain_type,'DROP') = 'DROP9'
+	        THEN '음양' || NVL(i.item_name, '알 수 없음')
 	      WHEN NVL(inv.gain_type,'DROP') = 'STEAL'
 	        THEN NVL(i.item_name, '알 수 없음') || '조각'
 	      ELSE NVL(i.item_name, '알 수 없음')
@@ -938,7 +944,7 @@
 	      FROM TBOT_POINT_NEW_INVENTORY A,
 	           TBOT_POINT_NEW_ITEM      B,
 	           TBOT_POINT_NEW_USER      C
-	     WHERE A.GAIN_TYPE NOT IN ('DROP', 'DROP3', 'DROP5', 'STEAL')
+	     WHERE A.GAIN_TYPE NOT IN ('DROP', 'DROP3', 'DROP5','DROP9', 'STEAL')
 	       AND A.ITEM_ID   = B.ITEM_ID
 	       AND A.DEL_YN    = '0'
 	       AND C.USER_NAME = A.USER_NAME
@@ -1042,7 +1048,7 @@
 	           AND ROOM_NAME = #{roomName}
 	         </if>
 	          -->
-	           AND A.GAIN_TYPE NOT IN ('DROP', 'DROP3','DROP5', 'STEAL')
+	           AND A.GAIN_TYPE NOT IN ('DROP', 'DROP3','DROP5','DROP9', 'STEAL')
 	           AND A.ITEM_ID = B.ITEM_ID
 	           AND DEL_YN = '0')
 	  FROM DUAL
@@ -1270,7 +1276,7 @@
 	    AND ROOM_NAME = #{roomName}
 	  </if>
 	   -->
-	  AND GAIN_TYPE IN ('DROP','DROP3','DROP5','STEAL')
+	  AND GAIN_TYPE IN ('DROP','DROP3','DROP5','DROP9','STEAL')
 	  AND NVL(DEL_YN, '0') = '1'
 	</select>
 	
@@ -1283,7 +1289,7 @@
 	    <!-- 
 	      AND  ROOM_NAME = #{roomName}
 	       -->
-	      AND  GAIN_TYPE IN ('DROP3', 'DROP5')
+	      AND  GAIN_TYPE IN ('DROP3', 'DROP5','DROP9')
 	    GROUP BY GAIN_TYPE
 	</select>
 	
@@ -1465,7 +1471,7 @@
 	                FROM TBOT_POINT_NEW_INVENTORY A
 	                     JOIN TBOT_POINT_NEW_ITEM B
 	                       ON A.ITEM_ID = B.ITEM_ID
-	                WHERE A.GAIN_TYPE NOT IN ('DROP', 'DROP3', 'DROP5', 'STEAL')
+	                WHERE A.GAIN_TYPE NOT IN ('DROP', 'DROP3', 'DROP5','DROP9', 'STEAL')
 	                  AND A.DEL_YN = '0'
 	                  AND A.USER_NAME = #{userName}
 	            ),
@@ -1494,7 +1500,7 @@
 	    JOIN TBOT_POINT_NEW_ITEM IT
 	      ON I.ITEM_ID = IT.ITEM_ID
 	    WHERE I.USER_NAME = #{userName}
-	      AND I.GAIN_TYPE IN ('DROP','DROP2','DROP3','DROP5','STEAL')
+	      AND I.GAIN_TYPE IN ('DROP','DROP2','DROP3','DROP5','DROP9','STEAL')
 	      AND I.ITEM_ID &lt; 50
 	    GROUP BY I.ITEM_ID, IT.ITEM_NAME, I.GAIN_TYPE
 	    ORDER BY I.ITEM_ID DESC, I.GAIN_TYPE
