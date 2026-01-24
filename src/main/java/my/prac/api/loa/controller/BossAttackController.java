@@ -2120,6 +2120,8 @@ public class BossAttackController {
 	        jobDmgMul = 1.4;   
 	    } else if ("복수자".equals(job)) {
 	        jobDmgMul = 1.8;   
+	    } else if ("음양사".equals(job)) {
+	        jobDmgMul = 1.8;   
 	    }
 
 	    // 직업 배율까지 반영된 실제 전투용 공격력 (구버전 공식과 동일)
@@ -2350,6 +2352,9 @@ public class BossAttackController {
 	    if ("처단자".equals(job) && lucky ) {
 	    	berserkMul = 1.5;
 	    }
+	    if ("음양사".equals(job) && lucky || dark ) {
+	    	berserkMul = 1.5;
+	    }
 	    
 	    /*
 	    if ("궁사".equals(job)) {
@@ -2408,7 +2413,7 @@ public class BossAttackController {
 
 	    // 10) 도사 버프 (본인 + 방 전체)
 	    DosaBuffEffect buffEff_self = null;
-	    if ("도사".equals(job)) {
+	    if ("도사".equals(job) || "음양사".equals(job) ) {
 	        buffEff_self = buildDosaBuffEffect(u, u.lv, roomName, 1);
 	        effAtkMin   += buffEff_self.addAtkMin;
 	        effAtkMax   += buffEff_self.addAtkMax;
@@ -2420,10 +2425,10 @@ public class BossAttackController {
 	    DosaBuffEffect buffEff_room = loadRoomDosaBuffAndBuild(roomName);
 	    if (buffEff_room != null) {
 	        effAtkMin   += buffEff_room.addAtkMin;
-	        effAtkMax   += buffEff_room.addAtkMax;
+	        effAtkMax   += buffEff_room.addAtkMax*2;
 	        effCritRate += buffEff_room.addCritRate;
 	        effCriDmg   += buffEff_room.addCritDmg;
-	        u.hpCur     += buffEff_room.addHp;
+	        u.hpCur     += buffEff_room.addHp*2;
 	        botNewService.clearRoomBuff(roomName);
 	    }
 	    String dosabuffMsg = "";
@@ -2699,8 +2704,8 @@ public class BossAttackController {
 	    
 
 	    String dosaCastMsg = null;
-	    if ("도사".equals(job)) {
-	        dosaCastMsg = "✨ 도사의 기원! 다음 공격자 강화!";
+	    if ("도사".equals(job)||"음양사".equals(job)) {
+	        dosaCastMsg = "✨ "+job+"의 기원! 다음 공격자 강화!";
 	    }
 	    
 	    
@@ -4772,7 +4777,7 @@ public class BossAttackController {
 	    
 	    int buffYn = 0;
 	    
-	    if (u.job !=null && "도사".equals(u.job.trim())) {   // job 은 u.job.trim()
+	    if (u.job !=null && "도사".equals(u.job.trim()) || "도사".equals(u.job.trim())) {   // job 은 u.job.trim()
 	        buffYn = 1;
 	    }
 
@@ -6192,7 +6197,7 @@ public class BossAttackController {
 	    	eff.addAtkMin   = dosaLvBonus;
 		    eff.addAtkMax   = dosaLvBonus;
 		    eff.addCritRate = dosaLvBonus;
-		    eff.addCritDmg  = dosaCriDmg;
+		    eff.addCritDmg  = dosaCriDmg/2;
 		    eff.addHp       = dosaCriDmg*5;
 	    }
 	    return eff;
@@ -7238,7 +7243,7 @@ public class BossAttackController {
 	        hp   += room.addHp;
 	    }
 
-	    StringBuilder sb = new StringBuilder("※도사의 버프 효과: ");
+	    StringBuilder sb = new StringBuilder("※버프 효과: ");
 
 	    List<String> parts = new ArrayList<>();
 
@@ -7791,13 +7796,13 @@ public class BossAttackController {
     		"⚔ -???- "+NL
     		+"◎선행조건 어둠사냥꾼, 복수자 직업으로 각 100회 공격"
 		));
-	    /*
+	    
 	    JOB_DEFS.put("음양사", new JobDef(
     		"음양사",
     		"▶ ???",
     		"⚔ -???- "+NL
     		+"◎선행조건 도사 직업으로 1000회 공격"
-		));*/
+		));
 	    /*
 	    JOB_DEFS.put("용투사", new JobDef(
 			"용투사",
@@ -7846,6 +7851,9 @@ public class BossAttackController {
 	    JOB_CHANGE_REQS.put("도박사", Arrays.asList(
     		new JobChangeReq("어둠사냥꾼", 100),
     		new JobChangeReq("복수자", 100)
+		));
+	    JOB_CHANGE_REQS.put("음양사", Arrays.asList(
+	    	new JobChangeReq("도사", 1000)
 		));
 	    
 	    
