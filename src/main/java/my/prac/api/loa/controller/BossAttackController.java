@@ -4777,7 +4777,7 @@ public class BossAttackController {
 	    
 	    int buffYn = 0;
 	    
-	    if (u.job !=null && "도사".equals(u.job.trim()) || "도사".equals(u.job.trim())) {   // job 은 u.job.trim()
+	    if (u.job !=null && "도사".equals(u.job.trim()) || "음양사".equals(u.job.trim())) {   // job 은 u.job.trim()
 	        buffYn = 1;
 	    }
 
