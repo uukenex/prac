@@ -2617,7 +2617,7 @@ public class BossAttackController {
 	    String newPoint ="";
 	    String stealPoint ="";
 	 
-	    if (nightmare && res.gainExp > 0) {
+	    if (res.killed &&nightmare) {
 	        res.gainExp *= 50;
 	    }
 	    
