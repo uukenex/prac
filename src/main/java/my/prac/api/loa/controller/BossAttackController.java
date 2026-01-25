@@ -2276,6 +2276,7 @@ public class BossAttackController {
 	     // 🔥 나이트메어 증폭
 	        if (nightmare) {
 	            monMaxHp *= nightmareMul;
+	            monHpRemainBefore *= nightmareMul;
 	            m.monAtk *= nightmareMul;
 	            m.monLv +=100;
 	        }
