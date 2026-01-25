@@ -6688,7 +6688,7 @@ public class BossAttackController {
 	    if ("도박사".equals(job)) {
 
             int roll = ThreadLocalRandom.current().nextInt(1, 101); // 1~100
-            int multiplier = 0;
+            int multiplier = 1;
 
             if (roll <= 1)       multiplier = 100/2;
             else if (roll <= 3)  multiplier = 50/2;
@@ -6706,6 +6706,7 @@ public class BossAttackController {
                 crit = false;
                 calc.jobSkillUsed = false;
                 out.dmgCalcMsg = "도박 실패!(크리티컬해제)";
+                multiplier=1;
             }
 
             // 🎯 성공
@@ -6715,9 +6716,11 @@ public class BossAttackController {
             if(roll<=10) {
             	calc.jobSkillUsed = true;
             }
-            out.dmgCalcMsg =
-                "도박 성공! (피해량 ×" + multiplier + ") "
-                + before + " ⇒ " + baseAtk + "!";
+            if(roll <=55 ) {
+	            out.dmgCalcMsg =
+	                "도박 성공! (피해량 ×" + multiplier + ") "
+	                + before + " ⇒ " + baseAtk + "!";
+            }
         }
 	    
 	    boolean isSnipe = false;
