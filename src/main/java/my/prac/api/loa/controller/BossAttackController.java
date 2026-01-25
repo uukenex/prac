@@ -6817,20 +6817,16 @@ public class BossAttackController {
 	        	out.dmgCalcMsg += baseAtk;
 	        }
 	    }
-	    
+	    /*
 	    if("파이터".equals(job)) {
 	    	baseAtk = (int) Math.round(berserkMul * baseAtk);
 	    	effCritRate = -100;
 	        effCriDmg = 0;
 	        crit = false;
 	    }
-	    
-	    if("용사".equals(job)) {
-	    	baseAtk = (int) Math.round(berserkMul * baseAtk);
-	    }
-	    if("처단자".equals(job)) {
-	    	baseAtk = (int) Math.round(berserkMul * baseAtk);
-	    }
+	    */
+	    //모든직업 berserk 는 상위에서 계산하도록 
+    	baseAtk = (int) Math.round(berserkMul * baseAtk);
 	    
 	   
 
