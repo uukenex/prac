@@ -2423,7 +2423,7 @@ public class BossAttackController {
 	    if ("처단자".equals(job) && lucky ) {
 	    	berserkMul = 1.5;
 	    }
-	    if ("음양사".equals(job) && lucky || dark ) {
+	    if ("음양사".equals(job) && (lucky || dark )) {
 	    	berserkMul = 1.5;
 	    }
 	    
