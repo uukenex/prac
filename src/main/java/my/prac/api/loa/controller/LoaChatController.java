@@ -336,7 +336,7 @@ public class LoaChatController {
 		String playYn ; 
 		
 		HashMap<String,Object> saveMap = new HashMap<>();
-		
+		List<HashMap<String,Object>> hs;
 		try {
 			if(fulltxt.length()>300) {
 				val = "너무길어요!";
@@ -985,8 +985,8 @@ public class LoaChatController {
 				}
 				
 				int count=0;
-				for(HashMap<String,Object> hs:list2) {
-					val += hs.get("BASE")+" : "+hs.get("MIN_PRICE")+" ~ "+hs.get("MAX_PRICE") +enterStr;
+				for(HashMap<String,Object> h:list2) {
+					val += h.get("BASE")+" : "+h.get("MIN_PRICE")+" ~ "+h.get("MAX_PRICE") +enterStr;
 					count++;
 					if(count > 12) {
 						break;
@@ -1087,11 +1087,11 @@ public class LoaChatController {
 						val = errorCodeMng(e,reqMap);
 						val+=enterStr+param1+" 으로 조회됨";
 						
-						HashMap<String,Object> hs = botService.selectIssueCase(reqMap);
-						if(hs !=null && hs.size()>0) {
-							val+= enterStr+hs.get("INSERT_DATE")+ "에 최종조회된 내용 불러오기입니다.";
+						HashMap<String,Object> h = botService.selectIssueCase(reqMap);
+						if(h !=null && h.size()>0) {
+							val+= enterStr+h.get("INSERT_DATE")+ "에 최종조회된 내용 불러오기입니다.";
 							val+= enterStr;
-							val+= hs.get("RES");
+							val+= h.get("RES");
 						}
 					}
 				}else {
@@ -1216,11 +1216,11 @@ public class LoaChatController {
 						val = errorCodeMng(e,reqMap);
 						val+=enterStr+param1+" 으로 조회됨";
 						
-						HashMap<String,Object> hs = botService.selectIssueCase(reqMap);
-						if(hs !=null && hs.size()>0) {
-							val+= enterStr+hs.get("INSERT_DATE")+ "에 최종조회된 내용 불러오기입니다.";
+						HashMap<String,Object> h = botService.selectIssueCase(reqMap);
+						if(h !=null && h.size()>0) {
+							val+= enterStr+h.get("INSERT_DATE")+ "에 최종조회된 내용 불러오기입니다.";
 							val+= enterStr;
-							val+= hs.get("RES");
+							val+= h.get("RES");
 						}
 					}
 				}else {
@@ -1251,11 +1251,11 @@ public class LoaChatController {
 						val = errorCodeMng(e,reqMap);
 						val+=enterStr+param1+" 으로 조회됨";
 						
-						HashMap<String,Object> hs = botService.selectIssueCase(reqMap);
-						if(hs !=null && hs.size()>0) {
-							val+= enterStr+hs.get("INSERT_DATE")+ "에 최종조회된 내용 불러오기입니다.";
+						HashMap<String,Object> h = botService.selectIssueCase(reqMap);
+						if(h !=null && h.size()>0) {
+							val+= enterStr+h.get("INSERT_DATE")+ "에 최종조회된 내용 불러오기입니다.";
 							val+= enterStr;
-							val+= hs.get("RES");
+							val+= h.get("RES");
 						}
 					}
 				}else {
@@ -1363,11 +1363,11 @@ public class LoaChatController {
 						val = errorCodeMng(e,reqMap);
 						val+=enterStr+param1+" 으로 조회됨";
 						
-						HashMap<String,Object> hs = botService.selectIssueCase(reqMap);
-						if(hs !=null && hs.size()>0) {
-							val+= enterStr+hs.get("INSERT_DATE")+ "에 최종조회된 내용 불러오기입니다.";
+						HashMap<String,Object> h = botService.selectIssueCase(reqMap);
+						if(h !=null && h.size()>0) {
+							val+= enterStr+h.get("INSERT_DATE")+ "에 최종조회된 내용 불러오기입니다.";
 							val+= anotherMsgStr;
-							val+= hs.get("RES");
+							val+= h.get("RES");
 						}
 					}
 				}else {
@@ -1396,11 +1396,11 @@ public class LoaChatController {
 						val = errorCodeMng(e,reqMap);
 						val+=enterStr+param1+" 으로 조회됨";
 						
-						HashMap<String,Object> hs = botService.selectIssueCase(reqMap);
-						if(hs !=null && hs.size()>0) {
-							val+= enterStr+hs.get("INSERT_DATE")+ "에 최종조회된 내용 불러오기입니다.";
+						HashMap<String,Object> h = botService.selectIssueCase(reqMap);
+						if(h !=null && h.size()>0) {
+							val+= enterStr+h.get("INSERT_DATE")+ "에 최종조회된 내용 불러오기입니다.";
 							val+= anotherMsgStr;
-							val+= hs.get("RES");
+							val+= h.get("RES");
 						}
 					}
 				}else {
@@ -1436,11 +1436,11 @@ public class LoaChatController {
 						val = errorCodeMng(e,reqMap);
 						val+=enterStr+param1+" 으로 조회됨";
 						
-						HashMap<String,Object> hs = botService.selectIssueCase(reqMap);
-						if(hs !=null && hs.size()>0) {
-							val+= enterStr+hs.get("INSERT_DATE")+ "에 최종조회된 내용 불러오기입니다.";
+						HashMap<String,Object> h = botService.selectIssueCase(reqMap);
+						if(h !=null && h.size()>0) {
+							val+= enterStr+h.get("INSERT_DATE")+ "에 최종조회된 내용 불러오기입니다.";
 							val+= anotherMsgStr;
-							val+= hs.get("RES");
+							val+= h.get("RES");
 						}
 					}
 				}else {
@@ -1469,11 +1469,11 @@ public class LoaChatController {
 						val = errorCodeMng(e,reqMap);
 						val+=enterStr+param1+" 으로 조회됨";
 						
-						HashMap<String,Object> hs = botService.selectIssueCase(reqMap);
-						if(hs !=null && hs.size()>0) {
-							val+= enterStr+hs.get("INSERT_DATE")+ "에 최종조회된 내용 불러오기입니다.";
+						HashMap<String,Object> h = botService.selectIssueCase(reqMap);
+						if(h !=null && h.size()>0) {
+							val+= enterStr+h.get("INSERT_DATE")+ "에 최종조회된 내용 불러오기입니다.";
 							val+= anotherMsgStr;
-							val+= hs.get("RES");
+							val+= h.get("RES");
 						}
 					}
 				}else {
@@ -1501,11 +1501,11 @@ public class LoaChatController {
 						val = errorCodeMng(e,reqMap);
 						val+=enterStr+param1+" 으로 조회됨";
 						
-						HashMap<String,Object> hs = botService.selectIssueCase(reqMap);
-						if(hs !=null && hs.size()>0) {
-							val+= enterStr+hs.get("INSERT_DATE")+ "에 최종조회된 내용 불러오기입니다.";
+						HashMap<String,Object> h = botService.selectIssueCase(reqMap);
+						if(h !=null && h.size()>0) {
+							val+= enterStr+h.get("INSERT_DATE")+ "에 최종조회된 내용 불러오기입니다.";
 							val+= anotherMsgStr;
-							val+= hs.get("RES");
+							val+= h.get("RES");
 						}
 					}
 				}else {
@@ -1513,6 +1513,7 @@ public class LoaChatController {
 				}
 				break;
 			
+				/*
 			case "/전투력":
 			case "/ㅈㅌㄹ":
 				param0="/ㅈㅌㄹ";
@@ -1603,8 +1604,10 @@ public class LoaChatController {
 					System.out.println("전투력 저장만안됨");
 				}
 				break;
+				*/
+				/*
 			case "/랭킹": case "/ㄹㅋ":
-				List<HashMap<String,Object>> hs;
+				
 				String guildName ="";
 				switch (roomName) {
 					case "로아냥떼":
@@ -1672,9 +1675,11 @@ public class LoaChatController {
 				}
 				
 				val +=enterStr;
-				val +="원정대 점수 갱신: /전투력"+enterStr;
-				val +="캐릭터 점수 갱신: /정보"+enterStr;
+				//val +="원정대 점수 갱신: /전투력"+enterStr;
+				//val +="캐릭터 점수 갱신: /정보"+enterStr;
 				break;
+				*/
+				/*
 			case "/랭킹2": case "/ㄹㅋ2":
 				List<HashMap<String,Object>> hs2;
 
@@ -4040,6 +4045,7 @@ public class LoaChatController {
 		/*전투력 들어갈곳*/
 		HashMap<String,Object> saveMap = new HashMap<>();
 		
+		/*
 		try {
 			sub.sumTotalPowerSearchByMainChar(rtnMap,saveMap);
 			saveMap.put("charName", ordUserId);
@@ -4064,10 +4070,11 @@ public class LoaChatController {
 		}catch(Exception e) {
 			System.out.println("전투력 저장만안됨");
 		}
+		*/
 		
 		if(!combatPower.equals("")) {
 			resMsg += enterStr;
-			resMsg += "⭐인게임전투력 : "+ combatPower+enterStr;
+			resMsg += "⭐전투력 : "+ combatPower+enterStr;
 		}
 		
 		if(!nakwonMsg.equals("")) {
