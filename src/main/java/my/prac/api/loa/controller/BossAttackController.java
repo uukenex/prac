@@ -5615,6 +5615,26 @@ public class BossAttackController {
 	        case 18000: return 300000;
 	        case 19000: return 300000;
 	        case 20000: return 300000;
+	        case 21000: return 400000;
+	        case 22000: return 400000;
+	        case 23000: return 450000;
+	        case 24000: return 450000;
+	        case 25000: return 500000;
+	        case 26000: return 500000;
+	        case 27000: return 550000;
+	        case 28000: return 550000;
+	        case 29000: return 600000;
+	        case 30000: return 600000;
+	        case 31000: return 700000;
+	        case 32000: return 700000;
+	        case 33000: return 750000;
+	        case 34000: return 750000;
+	        case 35000: return 800000;
+	        case 36000: return 800000;
+	        case 37000: return 850000;
+	        case 38000: return 850000;
+	        case 39000: return 900000;
+	        case 40000: return 900000;
 	        default:   return 0;
 	    }
 	}
@@ -5659,8 +5679,10 @@ public class BossAttackController {
 
 	    int[] totalThresholds = {
 	        50,100,300,500,1000,2000,3000,4000,5000,
-	        6000,7000,8000,9000,10000,11000,12000,
-	        13000,14000,15000,16000,17000,18000,19000,20000
+	        6000,7000,8000,9000,10000
+	        ,11000,12000,13000,14000,15000,16000,17000,18000,19000,20000
+	        ,21000,22000,23000,24000,25000,26000,27000,28000,29000,30000
+	        ,31000,32000,33000,34000,35000,36000,37000,38000,39000,40000
 	    };
 
 	    for (int th : totalThresholds) {
@@ -5706,7 +5728,8 @@ public class BossAttackController {
 
 	    if (lightTotal <= 0 && darkTotal <= 0 && grayTotal <= 0) return "";
 
-	    int[] thresholds = {1,10,50,100,300,500,700,1000,1300,1600,2000};
+	    int[] thresholds = {1,10,50,100,300,500,700,1000,1300,1600,2000
+	    		,2400,2800,3300,3800,4300,4900,5500,6100};
 	    StringBuilder sb = new StringBuilder();
 
 	    for (int th : thresholds) {
@@ -5763,6 +5786,11 @@ public class BossAttackController {
 	    if (th <= 500) return 12000;
 	    if (th <= 1500)return 20000;
 	    if (th <= 2000)return 30000;
+	    if (th <= 3000)return 40000;
+	    if (th <= 4000)return 50000;
+	    if (th <= 5000)return 100000;
+	    if (th <= 6000)return 200000;
+	    if (th <= 7000)return 300000;
 	    return 0;
 	}
 
