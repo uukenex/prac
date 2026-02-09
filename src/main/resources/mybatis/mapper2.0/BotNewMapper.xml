@@ -85,7 +85,8 @@
   /*selectKillStats*/
     SELECT bl.TARGET_MON_LV AS MON_NO,
            m.MON_NAME AS MON_NAME,
-           COUNT(*) AS KILL_COUNT
+           COUNT(*) AS KILL_COUNT,
+           SUM(DECODE(BL.NIGHTMARE_YN,'1',1,0)) AS NM_KILL_COUNT
     FROM TBOT_POINT_NEW_BATTLE_LOG bl
     JOIN TBOT_POINT_NEW_MON_INFO m ON m.MON_NO = bl.TARGET_MON_LV
     WHERE bl.USER_NAME = #{userName}
@@ -1516,4 +1517,12 @@
 	       SET NIGHTMARE_YN = #{nightmareYn}
 	     WHERE USER_NAME = #{userName}
 	</update>
+	
+	<update id="lockMacroUser" statementType="CALLABLE">
+        { CALL SP_BOT_MACRO_LOCK(
+            #{userName, mode=IN, jdbcType=VARCHAR},
+            #{outCode, mode=OUT, jdbcType=INTEGER},
+            #{outMsg,  mode=OUT, jdbcType=VARCHAR}
+        )}
+    </update>
 </mapper>

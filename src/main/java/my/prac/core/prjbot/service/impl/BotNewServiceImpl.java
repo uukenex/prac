@@ -542,5 +542,15 @@ public class BotNewServiceImpl implements BotNewService {
         p.put("nightmareYn", enable ? "1" : "0");
         return botNewDAO.updateNightmareYn(p);
     }
+    
+    @Override
+    public int lockMacroUser(String userName) {
+    	HashMap <String, Object> param = new HashMap<>();
+        param.put("userName", userName);
+
+        botNewDAO.lockMacroUser(param);
+
+        return (Integer) param.get("outCode");
+    }
 
 }

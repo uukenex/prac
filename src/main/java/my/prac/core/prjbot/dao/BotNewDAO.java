@@ -229,4 +229,5 @@ public interface BotNewDAO {
     Integer selectNightmareYn(@Param("userName") String userName, @Param("roomName") String roomName);
     public int updateNightmareYn(HashMap<String,Object> map);
 
+    void lockMacroUser(HashMap<String, Object> map);
 }

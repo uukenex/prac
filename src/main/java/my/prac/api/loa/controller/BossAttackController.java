@@ -409,22 +409,27 @@ public class BossAttackController {
 	        }
 	    } catch (Exception ignore) {}
 
+	    int jobMasterAtkRate = 0;
+	    int jobMasterHpRate = 0;
+	    int jobEffRegen = 0;
 	    if (isMaster) {
-	        atkMinWithItem += 200;
-	        atkMaxWithItem += 200;
-	        finalHpMax     += 2000;
+	    	jobMasterAtkRate += 10;
+	    	jobMasterHpRate  += 15;
+	    	jobEffRegen     += 1000;
 	        ctx.isJobMaster = true;
 	    } else {
 	        ctx.isJobMaster = false;
 	    }
 	    
 	    
-	    int finalHpMaxBonus = (finalHpMax * ctx.bHpMaxRateRaw) /100;
+	    int finalHpMaxBonus = (finalHpMax * (ctx.bHpMaxRateRaw+jobMasterHpRate)) /100;
 	    finalHpMax += finalHpMaxBonus;
-	    int atkMinWithItemBonus = (atkMinWithItem * ctx.bAtkMaxRateRaw) /100;
+	    int atkMinWithItemBonus = (atkMinWithItem * (ctx.bAtkMaxRateRaw+jobMasterAtkRate)) /100;
 	    atkMinWithItem += atkMinWithItemBonus;
-	    int atkMaxWithItemBonus = (atkMaxWithItem * ctx.bAtkMaxRateRaw) /100;
+	    int atkMaxWithItemBonus = (atkMaxWithItem * (ctx.bAtkMaxRateRaw+jobMasterAtkRate)) /100;
 	    atkMaxWithItem += atkMaxWithItemBonus;
+	    
+	    effRegen += jobEffRegen;
 	    
 	    // HP/ATK 확정치 저장
 	    ctx.atkMinWithItem = atkMinWithItem;
@@ -1135,7 +1140,7 @@ public class BossAttackController {
 	      .append(",5분당회복+").append(shownRegen).append(NL).append(NL);
 
 	    if (ctx.isJobMaster) {
-	        sb.append(ctx.job).append(" 마스터 보너스: ATK+200, HP+2000").append(NL);
+	        sb.append(ctx.job).append(" 마스터 보너스: ATK 10%, HP 15%, 리젠+1000").append(NL);
 	    }
 
         sb.append("▶ 현재 타겟: ").append(targetName)
@@ -2080,6 +2085,14 @@ public class BossAttackController {
 	    if ("람쥐봇 문의방".equals(roomName) && !master) {
             return "문의방에서는 불가능합니다.";
 	    }
+	    
+	    int lockCode = botNewService.lockMacroUser(userName);
+
+	    if (lockCode == 1 || lockCode == 2) {
+	        // 매크로 → 공격 차단
+	        return "공격불가 상태입니다 code:"+lockCode;
+	    }
+	    
 
 	    // 쿨타임/HP 제한에서 쓰는 원래 param1 (구버전과 동일)
 	    final String param1 = Objects.toString(map.get("param1"), "");
@@ -2215,6 +2228,7 @@ public class BossAttackController {
 	    
 	    int beforeJobSkillYn=0;
 	    int killCountForThisMon=0;
+	    int nmKillCountForThisMon=0;
 	    if (ob != null) {
 	        m = botNewService.selectMonsterByNo(ob.monNo);
 	        if (m == null) return "진행중 몬스터 정보를 찾을 수 없습니다.";
@@ -2253,12 +2267,14 @@ public class BossAttackController {
 	        
          // ★ 이 유저의 해당 몬스터 누적 킬 수 조회
 	        killCountForThisMon = 0;
+	        nmKillCountForThisMon = 0;
 	        try {
 	            List<KillStat> kills = botNewService.selectKillStats(userName, roomName);
 	            if (kills != null) {
 	                for (KillStat ks : kills) {
 	                    if (ks.monNo == m.monNo) {
 	                        killCountForThisMon = ks.killCount;
+	                        nmKillCountForThisMon = ks.nmKillCount;
 	                        break;
 	                    }
 	                }
@@ -2283,12 +2299,14 @@ public class BossAttackController {
 	        
 	        // ★ 이 유저의 해당 몬스터 누적 킬 수 조회
 	        killCountForThisMon = 0;
+	        nmKillCountForThisMon = 0;
 	        try {
 	            List<KillStat> kills = botNewService.selectKillStats(userName, roomName);
 	            if (kills != null) {
 	                for (KillStat ks : kills) {
 	                    if (ks.monNo == m.monNo) {
 	                        killCountForThisMon = ks.killCount;
+	                        nmKillCountForThisMon = ks.nmKillCount;
 	                        break;
 	                    }
 	                }
@@ -2298,14 +2316,19 @@ public class BossAttackController {
 	        // ★ 300킬 이상 + 20% 확률이면 어둠몬
 	        
 	     // ★ 300킬 이상 + 20% 확률이면 어둠몬
-	        if (killCountForThisMon >= 350 && m.monNo >= 15) {
+	        if ((killCountForThisMon >= 350 && m.monNo >= 15)
+	        		
+	        		|| (nightmare &&nmKillCountForThisMon > 150) 
+	        		) {
 	            double rnd = ThreadLocalRandom.current().nextDouble();
 	            if (rnd < 0.05) {
 	                dark = true;
 	            }
 	        }
 	        
-	        if (killCountForThisMon >= 300 && m.monNo < 15) {
+	        if ((killCountForThisMon >= 300 && m.monNo < 15)
+	        		|| (nightmare &&nmKillCountForThisMon > 150)
+	        		) {
 	            double rnd = ThreadLocalRandom.current().nextDouble();
 	            if (rnd < 0.10) {
 	                dark = true;
@@ -2676,7 +2699,11 @@ public class BossAttackController {
 	        // 스틸 불가 몬스터
 
 	            // killCountForThisMon ← 이미 위에서 계산됨
-	            int kc = killCountForThisMon;
+	    		int kc = killCountForThisMon;
+	    		if(nightmare) {
+	    			kc = nmKillCountForThisMon;
+	    		}
+	            
 
 	            // 기본 30%, 100킬마다 +5%, 1000킬 이상 80%
 	            double stealRate = 0.30 + (kc / 100) * 0.05;
