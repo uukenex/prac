@@ -1018,8 +1018,9 @@ public class BossAttackController {
 	    final int jobHpMaxBonus   = ctx.jobHpMaxBonus;   // 없으면 0
 	    final int jobRegenBonus   = ctx.jobRegenBonus;   // 없으면 0
 
-	    final String pointStr   = String.format("%,d sp", ctx.currentPoint);
+	    final String pointStr   = formatSpShort(ctx.currentPoint);
 	    final int lifetimeSp    = ctx.lifetimeSp;
+	    final String lifetimeSpStr    = formatSpShort(ctx.lifetimeSp);
 
 	    final String allSeeStr  = NL + "===" + NL;  // 구분선
 
@@ -1132,7 +1133,7 @@ public class BossAttackController {
 	    }
 	    sb.append(", EXP ").append(u.expCur).append("/").append(u.expNext).append(NL);
 	    sb.append("포인트: ").append(pointStr).append(NL);
-	    sb.append("누적 획득 포인트: ").append(String.format("%,d", lifetimeSp)).append("sp").append(NL).append(NL);
+	    sb.append("누적 획득 포인트: ").append(lifetimeSpStr).append(NL).append(NL);
 
 	    sb.append("⚔ATK: ").append(finalAtkMin).append(" ~ ").append(finalAtkMax).append(NL);
 	    sb.append("⚔CRIT: ").append(shownCrit).append("%  CDMG ").append(shownCritDmg).append("%").append(NL);
@@ -2164,9 +2165,9 @@ public class BossAttackController {
 	    if ("궁수".equals(job)) {
 	        jobDmgMul = 1.6;   // 궁수: 데미지 1.6배
 	    } else if ("전사".equals(job)) {
-	        jobDmgMul = 1.2;   // 전사: 데미지 1.2배
+	        jobDmgMul = 1.4;   // 전사: 데미지 1.2배
 	    } else if ("검성".equals(job)) {
-	        jobDmgMul = 2.0;   // 
+	        jobDmgMul = 2.5;   // 
 	    } else if ("어쎄신".equals(job)) {
 	        jobDmgMul = 1.3;   // 
 	    } else if ("제너럴".equals(job)) {
@@ -2809,18 +2810,18 @@ public class BossAttackController {
 
 	    String dosaCastMsg = null;
 	    if ("도사".equals(job)||"음양사".equals(job)) {
-	        dosaCastMsg = "✨ "+job+"의 기원! 다음 공격자 강화!";
+	        dosaCastMsg = "✨"+job+"의 기원! 다음 공격자 강화!";
 	    }
 	    
 	    
 	    boolean flag1 =false;
 	    boolean flag2 =false;
 	    
-	    if(ctx.lifetimeSp < 10000000) {
+	    if(ctx.lifetimeSp < 200000000) {
 	    	flag1=true;
-	    }else if(ctx.lifetimeSp < 25000000) {
+	    }/*else if(ctx.lifetimeSp < 25000000) {
 	    	flag2=true;
-	    }
+	    }*/
 	    
 	 // 🔥 드랍 즉시 SP 지급
 	   
@@ -2931,7 +2932,7 @@ public class BossAttackController {
 	        Integer p = botNewService.selectCurrentPoint(userName, roomName);
 	        curPoint = (p == null ? 0 : p.intValue());
 	    } catch (Exception ignore) {}
-	    String curSpStr = formatSp(curPoint);
+	    String curSpStr = formatSpShort(curPoint);
 	    if (!stealPoint.isEmpty()) {
 	    	msg += "✨추가획득" + stealPoint ;
     		msg +=NL;
@@ -2940,11 +2941,11 @@ public class BossAttackController {
 	    if (!newPoint.isEmpty()) {
 	    	msg += "✨전투획득" + newPoint;
 	    	if(flag1) {
-	    		msg+="(누적 1000만sp 이하 2배 적용)";
-	    	}
+	    		msg+="(누적 200m sp 이하 2배 적용)";
+	    	}/*
     		if(flag2) {
     			msg+="(누적 2500만sp 이하 1.5배 적용)";
-    		}
+    		}*/
     		msg +=NL;
 	    }
 	    msg += "✨포인트: " + curSpStr;
@@ -3007,10 +3008,8 @@ public class BossAttackController {
                     gainSp *= 2;
                 }
                 
-                if(ctx.lifetimeSp < 10000000) {
+                if(ctx.lifetimeSp < 200000000) {
                 	gainSp *= 2;
-                }else if(ctx.lifetimeSp < 25000000) {
-                	gainSp *= 1.5;
                 }
 
     	        
@@ -3023,7 +3022,7 @@ public class BossAttackController {
 
                 botNewService.insertPointRank(pr);
 
-                newPoint = formatSp(gainSp);
+                newPoint = formatSpShort(gainSp);
                 
                 
                 // 메시지용
@@ -3392,13 +3391,13 @@ public class BossAttackController {
 	            unitPrice = (int)Math.floor(unitPrice * 0.5);
 	        }
 	        
-	        if (!isEquip && u.totalSp < 10000000) {
+	        if (!isEquip && u.totalSp < 200000000) {
 	        	unitPrice *= 2;
 	        	flag1 = true;
-	        }else if (!isEquip && u.totalSp < 25000000) {
+	        }/*else if (!isEquip && u.totalSp < 25000000) {
 	            unitPrice *= 1.5;
 	            flag2 = true;
-	        }
+	        }*/
 	        
 	        
 
@@ -3620,14 +3619,14 @@ public class BossAttackController {
 	        if (isStealRow) unitPrice = (int)Math.floor(unitPrice * 0.5);
 
 	        
-	        if (!isEquip && u.totalSp < 10000000) {
+	        if (!isEquip && u.totalSp < 200000000) {
 	        	unitPrice *= 2;
 	        	flag1 = true;
 	        	
-	        }else if (!isEquip && u.totalSp < 25000000) {
+	        }/*else if (!isEquip && u.totalSp < 25000000) {
 	            unitPrice *= 1.5;
 	            flag2 = true;
-	        }
+	        }*/
 	        
 	        int take = qty;
 	        botNewService.updateInventoryDelByRowId(rid);
@@ -3676,13 +3675,14 @@ public class BossAttackController {
 
 	    if (flag1) {
 	        sb.append(NL)
-	          .append("✨지원보너스 적용! (10,000,000sp 까지 기타 아이템 판매가 x2)");
+	          .append("✨지원보너스 적용! (200m sp 까지 기타 아이템 판매가 x2)");
 	    }
+	    /*
 	    if (flag2) {
 	    	sb.append(NL)
 	    	  .append("✨지원보너스 적용! (25,000,000sp 까지 기타 아이템 판매가 x1.5)");
 	    }
-	    
+	    */
 	    
 	    if (soldNormal > 0) sb.append(NL).append("  · 일반 아이템: ").append(soldNormal).append("개");
 	    if (soldShiny  > 0) sb.append(NL).append("  · 빛 아이템: ").append(soldShiny).append("개");
@@ -3818,7 +3818,7 @@ public class BossAttackController {
 		             sb.append(rank).append("위 ")
 		               .append(userName2)
 		               .append(" (Lv.").append(lv).append(")")
-		               .append(" - SP ").append(String.format("%,d", totSp)).append("sp")
+		               .append(" - SP ").append(formatSpShort(totSp))
 		               .append(NL);
 	
 		             if (++rank > 5) break;
@@ -4216,7 +4216,7 @@ public class BossAttackController {
 	        sb.append("✨ 상점 판매 ")
 	          .append(threshold)
 	          .append("회 달성 보상 +")
-	          .append(rewardSp)
+	          .append(formatSpShort(rewardSp))
 	          .append("sp 지급!♬")
 	          .append(NL);
 	    }
@@ -5574,7 +5574,7 @@ public class BossAttackController {
 	    }
 
 	    return "✨ 업적 달성! [" + m.monName + "] 최초 토벌자 보상 +"
-	            + rewardSp + "sp 지급되었습니다." + NL;
+	            + formatSpShort(rewardSp) + "sp 지급되었습니다." + NL;
 	}
 
 	
@@ -5603,7 +5603,7 @@ public class BossAttackController {
 	    // ✅ 즉시 Set 갱신 (같은 공격 내 중복 방지)
 	    achievedCmdSet.add(achvCmd);
 
-	    return "✨ 업적 달성! [" + achvCmd + "] 보상 +" + rewardSp + "sp 지급되었습니다." + NL;
+	    return "✨ 업적 달성! [" + achvCmd + "] 보상 +" + formatSpShort(rewardSp) + "sp 지급되었습니다." + NL;
 	}
 	
 
@@ -7811,6 +7811,25 @@ public class BossAttackController {
 		return sb.toString();
 	}
 	
+	public static String formatSpShort(long sp) {
+	    if (sp < 1_000) {
+	        return sp + "sp";
+	    } else if (sp < 1_000_000) {
+	        return trimDecimal(sp / 1_000.0) + "k sp";
+	    } else if (sp < 1_000_000_000) {
+	        return trimDecimal(sp / 1_000_000.0) + "m sp";
+	    } else {
+	        return trimDecimal(sp / 1_000_000_000.0) + "b sp";
+	    }
+	}
+
+	private static String trimDecimal(double v) {
+	    if (v == (long) v) {
+	        return String.valueOf((long) v);
+	    }
+	    return String.format("%.2f", v).replaceAll("\\.?0+$", "");
+	}
+	
 	private static String formatDateYMD(Date d) {
 	    if (d == null) return "-";
 	    return new java.text.SimpleDateFormat("yyyy-MM-dd").format(d);
@@ -7830,7 +7849,7 @@ public class BossAttackController {
 	    JOB_DEFS.put("전사", new JobDef(
 	        "전사",
 	        "▶ 육체능력이 변경되며, 패링 스킬 추가 ",
-	        "⚔ 몬스터레벨에 따라 방어도 추가, 적의 필살기를 반격(20%),모든 적에게 데미지 추가(+20%)"
+	        "⚔ 몬스터레벨에 따라 방어도 추가, 적의 필살기를 반격(20%),모든 적에게 데미지 추가(+40%)"
 	    ));
 
 	    /*
@@ -7937,7 +7956,7 @@ public class BossAttackController {
 	    JOB_DEFS.put("검성", new JobDef(
 	        "검성",
 	        "▶ 검으로 세상 끝에 닿았다",
-	        "⚔ 기본 HP*2만큼 추가 증가, 적의 공격 반격(15%),기본데미지*2"+NL
+	        "⚔ 기본 HP*2만큼 추가 증가, 적의 공격 반격(15%),기본데미지*2.5"+NL
 	        +"◎선행조건 전사 직업으로 1000회 공격"
 	    ));
 	    JOB_DEFS.put("어쎄신", new JobDef(
