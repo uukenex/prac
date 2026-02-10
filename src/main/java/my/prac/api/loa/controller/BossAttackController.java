@@ -3956,7 +3956,7 @@ public class BossAttackController {
 	            int kills       = safeInt(k.get("KILL_COUNT"));
 
 	            if (!java.util.Objects.equals(lastMonNo, monNo)) {
-	            	sb.append(monNo).append("No ").append(monName).append(" 학살자");
+	            	sb.append(monNo).append(".No ").append(monName).append(" 학살자");
 	                lastMonNo = monNo;
 	            }
 	            sb.append(" ▶ ").append(uName)
@@ -3983,7 +3983,7 @@ public class BossAttackController {
 
 	            clearedMonSet.add(monNo);
 
-	            sb.append("No ").append(monNo).append(" ").append(monName).append(monLv).append("Lv")
+	            sb.append(monNo).append(".No ").append(" ").append(monName).append(monLv).append("Lv")
 	              .append(" ▶ ").append(firstUser);
 
 	            if (!firstJob.isEmpty() && !"null".equalsIgnoreCase(firstJob)) {
