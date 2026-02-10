@@ -2227,7 +2227,7 @@ public class BossAttackController {
 	    // 6) 진행중 전투 / 신규 전투 + LUCKY 유지 (구버전 그대로)
 	    OngoingBattle ob = botNewService.selectOngoingBattle(userName, roomName);
 	    Monster m;
-	    int monMaxHp = 0,monAtk =0, monHpRemainBefore;
+	    int monMaxHp = 0, monHpRemainBefore;
 	    
 	 // ✅ 나이트메어 모드 확인
 	    boolean nightmare = botNewService.isNightmareMode(userName, roomName);
@@ -2246,11 +2246,10 @@ public class BossAttackController {
 	        beforeJobSkillYn = ob.beforeJobSkillYn;
 	        
 	        monMaxHp = m.monHp;
-	        monAtk = m.monAtk;
 	     // 🔥 나이트메어 증폭
 	        if (nightmare) {
 	            monMaxHp *= nightmareMul;
-	            monAtk *= nightmareMul;
+	            m.monAtk *= nightmareMul;
 	            m.monLv +=100;
 	        }
 	        
@@ -2260,13 +2259,13 @@ public class BossAttackController {
 	        if (dark) {
 	        	if(m.monNo <15) {
 	        		monMaxHp = monMaxHp * 5;
-	        		monAtk = monAtk * 2;
+	        		m.monAtk = m.monAtk * 2;
 	        	}else if(m.monNo>=25) {
 	        		monMaxHp = monMaxHp * 2;
-	        		monAtk = (int)Math.round( monAtk * 1.25);
+	        		m.monAtk = (int)Math.round( m.monAtk * 1.25);
 	        	}else if(m.monNo>=15) {
 	        		monMaxHp = monMaxHp * 3;
-	        		monAtk = (int)Math.round( monAtk * 1.5);
+	        		m.monAtk = (int)Math.round( m.monAtk * 1.5);
 	        	}else{
 	        		
 	        	}
@@ -2300,12 +2299,11 @@ public class BossAttackController {
 	        
 	        monMaxHp = m.monHp;
 	        monHpRemainBefore = m.monHp;
-	        monAtk = m.monAtk;
 	     // 🔥 나이트메어 증폭
 	        if (nightmare) {
 	            monMaxHp *= nightmareMul;
 	            monHpRemainBefore *= nightmareMul;
-	            monAtk *= nightmareMul;
+	            m.monAtk *= nightmareMul;
 	            m.monLv +=100;
 	        }
 	        
@@ -2396,15 +2394,15 @@ public class BossAttackController {
 	        if (dark) {
 	        	if(m.monNo <15) {
 	        		monMaxHp = monMaxHp * 5;
-	        		monAtk = monAtk * 2;
+	        		m.monAtk = m.monAtk * 2;
 	        		monHpRemainBefore = monMaxHp;
 	        	}else if(m.monNo>=25) {
 	        		monMaxHp = monMaxHp * 2;
-	        		monAtk = (int)Math.round( monAtk * 1.25);
+	        		m.monAtk = (int)Math.round( m.monAtk * 1.25);
 	        		monHpRemainBefore = monMaxHp;
 	        	}else if(m.monNo>=15) {
 	        		monMaxHp = monMaxHp * 3;
-	        		monAtk = (int)Math.round( monAtk * 1.5);
+	        		m.monAtk = (int)Math.round( m.monAtk * 1.5);
 	        		monHpRemainBefore = monMaxHp;
 	        	}
 	        }
