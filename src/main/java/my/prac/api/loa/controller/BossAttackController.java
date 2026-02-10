@@ -308,15 +308,15 @@ public class BossAttackController {
 	    HashMap<String, Object> wm = new HashMap<>();
 	    wm.put("userName", targetUser);
 	    wm.put("roomName", roomName);
-	    int weaponLv = 0;
+	    //int weaponLv = 0;
 	    
-	    int weaponBonus = getWeaponAtkBonus(weaponLv); // 25강부터 +1
+	    //int weaponBonus = getWeaponAtkBonus(weaponLv); // 25강부터 +1
 
-	    ctx.weaponLv     = weaponLv;
-	    ctx.weaponBonus  = weaponBonus;
+	    //ctx.weaponLv     = weaponLv;
+	    //ctx.weaponBonus  = weaponBonus;
 
 	    int atkMinWithItem = baseMin + bAtkMinRaw;
-	    int atkMaxWithItem = baseMax + weaponBonus + bAtkMaxRaw;
+	    int atkMaxWithItem = baseMax + bAtkMaxRaw;
 
 	    // 3) 운영자의 축복
 	    /*
@@ -924,56 +924,69 @@ public class BossAttackController {
 	                botNewService.selectTotalDropItems(userName);
 
 	        if (drops != null && !drops.isEmpty()) {
-	            sb.append(NL).append("▶ 누적 획득 드랍 아이템").append(NL);
 
-	            StringBuilder line = new StringBuilder();
-	            Integer prevItemId = null;
-	            
+	            sb.append(NL)
+	              .append("▶ 누적 획득 드랍 아이템").append(NL)
+	              .append("{ 일반 / 조각 / 빛 / 어둠 / 음양 }").append(NL);
+
+	            Map<String, DropSummary> summaryMap = new LinkedHashMap<>();
+
 	            for (HashMap<String,Object> row : drops) {
-	            	int itemId = safeInt(row.get("ITEM_ID"));
-	                String name = Objects.toString(row.get("ITEM_NAME"), "");
+
+	                String rawName  = Objects.toString(row.get("ITEM_NAME"), "");
 	                String gainType = Objects.toString(row.get("GAIN_TYPE"), "");
-	                int qty = safeInt(row.get("TOTAL_QTY"));
+	                int qty         = safeInt(row.get("TOTAL_QTY"));
 
-	                if (qty <= 0 || name.isEmpty()) continue;
+	                if (qty <= 0 || rawName.isEmpty()) continue;
 
-	                if (prevItemId != null && prevItemId != itemId) {
-	                    if (line.length() > 0) {
-	                        sb.append(line).append(NL);
-	                        line.setLength(0);
-	                    }
-	                }
-	                prevItemId = itemId;
+	                // 🔹 아이템명 정규화 (접두/접미 제거)
+	                String itemName = rawName
+	                        .replace("조각", "")
+	                        .replace("빛", "")
+	                        .replace("어둠", "")
+	                        .replace("음양", "");
 
-	                
-	                // 🔹 조각 처리
-	                if ("STEAL".equals(gainType)) {
-	                    name = name + "조각";
-	                }
-	                if ("DROP3".equals(gainType)) {
-	                	name = "빛"+name ;
-	                }
-	                if ("DROP5".equals(gainType)) {
-	                	name = "어둠"+name;
-	                }
-	                if ("DROP9".equals(gainType)) {
-	                	name = "음양"+name;
-	                }
+	                DropSummary s = summaryMap.computeIfAbsent(itemName, k -> new DropSummary());
 
-	                if (line.length() > 0) {
-	                    line.append(" / ");
+	                switch (gainType) {
+	                    case "DROP":   // 일반 드랍
+	                        s.normal += qty;
+	                        break;
+	                    case "STEAL":  // 조각
+	                        s.fragment += qty;
+	                        break;
+	                    case "DROP3":  // 빛
+	                        s.light += qty;
+	                        break;
+	                    case "DROP5":  // 어둠
+	                        s.dark += qty;
+	                        break;
+	                    case "DROP9":  // 음양
+	                        s.gray += qty;
+	                        break;
 	                }
-	                line.append(name).append("x").append(qty);
-	                
 	            }
 
-	            if (line.length() > 0) {
-	                sb.append(line).append(NL);
+	            // 출력
+	            for (Map.Entry<String, DropSummary> e : summaryMap.entrySet()) {
+	                DropSummary s = e.getValue();
+
+	                sb.append(e.getKey())
+	                  .append(" : { ")
+	                  .append(s.normal).append(" / ")
+	                  .append(s.fragment).append(" / ")
+	                  .append(s.light).append(" / ")
+	                  .append(s.dark).append(" / ")
+	                  .append(s.gray)
+	                  .append(" }")
+	                  .append(NL);
 	            }
 	        }
+
 	    } catch (Exception ignore) {
 	        ignore.printStackTrace();
 	    }
+
 	    
 	    return sb.toString();
 	}
@@ -1002,9 +1015,6 @@ public class BossAttackController {
 	    final int baseMin       = ctx.baseMin;
 	    final int baseMax       = ctx.baseMax;
 	    final int baseHpMax     = ctx.baseHpMax;
-
-	    final int weaponLv      = ctx.weaponLv;
-	    final int weaponBonus   = ctx.weaponBonus;
 
 	    final int bAtkMinRaw    = ctx.bAtkMinRaw;
 	    final int bAtkMaxRaw    = ctx.bAtkMaxRaw;
@@ -2816,7 +2826,6 @@ public class BossAttackController {
 	    
 	    
 	    boolean flag1 =false;
-	    boolean flag2 =false;
 	    
 	    if(ctx.lifetimeSp < 200000000) {
 	    	flag1=true;
@@ -3543,7 +3552,6 @@ public class BossAttackController {
 	    final String NL = BossAttackController.NL;
 	    
 	    boolean flag1 = false;
-	    boolean flag2 = false;
 	    
 
 	    List<HashMap<String, Object>> rows = botNewService.selectAllInventoryRowsForSale(userName, roomName);
@@ -4221,7 +4229,7 @@ public class BossAttackController {
 	          .append(threshold)
 	          .append("회 달성 보상 +")
 	          .append(formatSpShort(rewardSp))
-	          .append("sp 지급!♬")
+	          .append(" 지급!♬")
 	          .append(NL);
 	    }
 
@@ -4754,7 +4762,8 @@ public class BossAttackController {
 		int bonus = 0;
 	    if (lv >= 50)  bonus += (lv - 49) * 20;   
 	    if (lv >= 100) bonus += (lv - 99) * 40;  
-	    if (lv >= 150) bonus += (lv - 149) * 80; 
+	    if (lv >= 150) bonus += (lv - 149) * 80;
+	    if (lv >= 200) bonus += (lv - 199) * 120; 
 		
 	    return base+bonus;
 	}
@@ -4765,6 +4774,7 @@ public class BossAttackController {
 		int bonus = 0;
 	    if (lv >= 80)  bonus += (lv - 79) * 1;
 	    if (lv >= 150) bonus += (lv - 149) * 2;
+	    if (lv >= 190) bonus += (lv - 189) * 3;
 
 	    return base + bonus;
 	}
@@ -4777,6 +4787,8 @@ public class BossAttackController {
 	    if (lv >= 80)  bonus += (lv - 79) * 2;
 	    if (lv >= 120)  bonus += (lv - 119) * 3;
 	    if (lv >= 150) bonus += (lv - 149) * 4;
+	    if (lv >= 180) bonus += (lv - 179) * 5;
+	    if (lv >= 210) bonus += (lv - 209) * 6;
 
 	    return base + bonus;
 	}
@@ -4797,6 +4809,21 @@ public class BossAttackController {
 		if (lv >= 120) bonus += (lv - 119) * 15;
 		if (lv >= 130) bonus += (lv - 129) * 20;
 		if (lv >= 150) bonus += (lv - 149) * 30;
+		if (lv >= 160) bonus += (lv - 159) * 35;
+		if (lv >= 170) bonus += (lv - 169) * 40;
+		if (lv >= 180) bonus += (lv - 179) * 45;
+		if (lv >= 190) bonus += (lv - 189) * 50;
+		if (lv >= 200) bonus += (lv - 199) * 55;
+		if (lv >= 210) bonus += (lv - 209) * 60;
+		if (lv >= 220) bonus += (lv - 219) * 65;
+		if (lv >= 230) bonus += (lv - 229) * 70;
+		if (lv >= 240) bonus += (lv - 239) * 75;
+		if (lv >= 250) bonus += (lv - 249) * 80;
+		if (lv >= 260) bonus += (lv - 259) * 85;
+		if (lv >= 270) bonus += (lv - 269) * 90;
+		if (lv >= 280) bonus += (lv - 279) * 95;
+		if (lv >= 290) bonus += (lv - 289) * 100;
+		if (lv >= 300) bonus += (lv - 299) * 105;
 
 	    return base+bonus;
 	}
@@ -4941,61 +4968,15 @@ public class BossAttackController {
 	    	.setNightmareYn(nightmare?1:0);
 
 	    botNewService.insertBattleLogTx(log);
-
-	    
-	    
-	    res.levelUpCount = up.levelUpCount;
 	    return up;
 	}
 
-
-	 
-    private String grantBlessLevelBonus(String userName, String roomName, int beforeLv, int afterLv) {
-    	int total = 0;
-        StringBuilder sb = new StringBuilder();
-    	
-    	if (afterLv <= beforeLv) return "";
-
-        int[] targetLv = {2, 3, 4, 5, 6, 7};
-        for (int lv : targetLv) {
-            if (beforeLv < lv && afterLv >= lv) {
-                String cmd = "ADMIN_BLESS_LV" + lv;
-
-                int already = 0;
-                try {
-                    already = botNewService.selectPointRankCountByCmdUserInRoom(roomName, userName, cmd);
-                } catch (Exception ignore) {}
-
-                if (already == 0) {
-                    HashMap<String,Object> p = new HashMap<>();
-                    p.put("userName", userName);
-                    p.put("roomName", roomName);
-                    p.put("score", 200);
-                    p.put("cmd", cmd);
-                    botNewService.insertPointRank(p);
-                    
-                    sb.append("✨ 운영자의 축복! Lv")
-                    .append(lv)
-                    .append(" 달성 보너스 :")
-                    .append("200 sp 지급").append(NL);
-                    total++;
-                }
-            }
-        }
-        
-        if(total>0) {
-        	return sb.toString();
-        }else {
-        	
-        	return "";
-        }
-        
-    }
-
-	/** 무기강화 효과 (25강부터 +1, 상한 없음) */
-	private int getWeaponAtkBonus(int weaponLv) {
-	    if (weaponLv < 25) return 0;
-	    return weaponLv - 24;
+	class DropSummary {
+	    int normal;
+	    int fragment;
+	    int light;
+	    int dark;
+	    int gray;
 	}
 
 	private String buildAttackMessage(
@@ -5242,7 +5223,7 @@ public class BossAttackController {
 		    return result.isEmpty() ? null : result;
 		}
 	private static class Resolve {
-		boolean killed; String dropCode; int gainExp; int levelUpCount; boolean lucky; boolean dark; boolean gray;
+		boolean killed; String dropCode; int gainExp; boolean lucky; boolean dark; boolean gray;
 	}
 	private static class CooldownCheck {
 	    final boolean ok; final int remainMinutes; final long remainSeconds;
@@ -5578,7 +5559,7 @@ public class BossAttackController {
 	    }
 
 	    return "✨ 업적 달성! [" + m.monName + "] 최초 토벌자 보상 +"
-	            + formatSpShort(rewardSp) + "sp 지급되었습니다." + NL;
+	            + formatSpShort(rewardSp) + " 지급되었습니다." + NL;
 	}
 
 	
@@ -5607,7 +5588,7 @@ public class BossAttackController {
 	    // ✅ 즉시 Set 갱신 (같은 공격 내 중복 방지)
 	    achievedCmdSet.add(achvCmd);
 
-	    return "✨ 업적 달성! [" + achvCmd + "] 보상 +" + formatSpShort(rewardSp) + "sp 지급되었습니다." + NL;
+	    return "✨ 업적 달성! [" + achvCmd + "] 보상 +" + formatSpShort(rewardSp) + " 지급되었습니다." + NL;
 	}
 	
 
@@ -5945,7 +5926,7 @@ public class BossAttackController {
 	        sb.append("✨ [")
 	          .append(m.monName)
 	          .append("] 최초토벌 축하 보상 +")
-	          .append(rewardShared).append("sp 지급되었습니다!")
+	          .append( formatSpShort(rewardShared) ).append(" 지급되었습니다!")
 	          .append(NL);
 	    }
 
@@ -6354,8 +6335,8 @@ public class BossAttackController {
 	                    botNewService.insertPointRank(p);
 
 	                    sb.append("✨ 죽음 ").append(threshold)
-	                      .append("회 달성 보상 +").append(rewardSp)
-	                      .append("sp 지급!♬");
+	                      .append("회 달성 보상 +").append( formatSpShort(rewardSp))
+	                      .append(" 지급!♬");
 	                } catch (Exception ignore) {}
 	            }
 	        }
@@ -6440,9 +6421,9 @@ public class BossAttackController {
 
 	    atkMax += bAtkMax;
 
-	    int weaponBonus = getWeaponAtkBonus(0); // 25강부터 +1
+	    //int weaponBonus = getWeaponAtkBonus(0); // 25강부터 +1
 	    // 네 구조: max ATK 는 무기레벨 만큼 +1 per level
-	    atkMax += weaponBonus;
+	    //atkMax += weaponBonus;
 
 	    // -------------------------------
 	    // 6) 최소 하한선
@@ -7506,12 +7487,6 @@ public class BossAttackController {
 
 	    int span = max - min;
 	    return min + (int)Math.round(span * biased);
-	}
-
-
-	private String formatSp(int v) {
-	    if (v < 0) v = 0;
-	    return String.format("%dsp", v);  
 	}
 
 	private String buildUnifiedDosaBuffMessage(DosaBuffEffect self, DosaBuffEffect room) {
