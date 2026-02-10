@@ -230,4 +230,6 @@ public interface BotNewDAO {
     public int updateNightmareYn(HashMap<String,Object> map);
 
     void lockMacroUser(HashMap<String, Object> map);
+    
+    int selectTotalBagAcquireCount(String userName);
 }

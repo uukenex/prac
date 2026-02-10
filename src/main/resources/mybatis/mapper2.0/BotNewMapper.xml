@@ -1525,4 +1525,13 @@
             #{outMsg,  mode=OUT, jdbcType=VARCHAR}
         )}
     </update>
+    
+    <select id="selectTotalBagAcquireCount"
+	        parameterType="map"
+	        resultType="int">
+	    SELECT NVL(SUM(QTY), 0) AS TOTAL_QTY
+	      FROM TBOT_POINT_NEW_INVENTORY
+	     WHERE USER_NAME = #{userName}
+	       AND ITEM_ID   IN ('91','92','93')
+	</select>
 </mapper>

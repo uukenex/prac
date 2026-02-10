@@ -143,7 +143,7 @@ public class BossAttackController {
 
 		// 1) 가방 획득 로그 (기존)
 		if (logs != null && !logs.isEmpty()) {
-			sb.append("최근 가방 획득 로그 (최대 5건)").append(NL);
+			sb.append("최근 가방 획득 로그 ").append(NL);
 			for (BagLog log : logs) {
 				String when = (log.getInsertDate() != null ? fmt.format(log.getInsertDate()) : "-");
 				sb.append("- ").append(when).append(" : ").append(log.getUserName()).append("님이 가방을 획득~!").append(NL);
@@ -153,7 +153,7 @@ public class BossAttackController {
 
 		// 2) 가방 보상 로그 (SP/아이템)
 		if (rewards != null && !rewards.isEmpty()) {
-			sb.append("최근 가방 보상 로그 (최대 5건)").append(NL);
+			sb.append("최근 가방 보상 로그 ").append(NL);
 			for (BagRewardLog r : rewards) {
 				String when = (r.getInsertDate() != null ? fmt.format(r.getInsertDate()) : "-");
 				sb.append("- ").append(when).append(" : ").append(r.getUserName()).append("님이 ").append(r.getGain())
@@ -2317,9 +2317,9 @@ public class BossAttackController {
 	        // ★ 300킬 이상 + 20% 확률이면 어둠몬
 	        
 	     // ★ 300킬 이상 + 20% 확률이면 어둠몬
-	        if ((killCountForThisMon >= 350 && m.monNo >= 15)
+	        if ((!nightmare && killCountForThisMon >= 350 && m.monNo >= 15)
 	        		
-	        		|| (nightmare &&nmKillCountForThisMon > 150) 
+	        		|| (nightmare &&nmKillCountForThisMon > 150 && m.monNo >= 15 ) 
 	        		) {
 	            double rnd = ThreadLocalRandom.current().nextDouble();
 	            if (rnd < 0.05) {
@@ -2327,8 +2327,8 @@ public class BossAttackController {
 	            }
 	        }
 	        
-	        if ((killCountForThisMon >= 300 && m.monNo < 15)
-	        		|| (nightmare &&nmKillCountForThisMon > 150)
+	        if ((!nightmare && killCountForThisMon >= 300 && m.monNo < 15)
+	        		|| (nightmare && nmKillCountForThisMon > 150 && m.monNo < 15)
 	        		) {
 	            double rnd = ThreadLocalRandom.current().nextDouble();
 	            if (rnd < 0.10) {
@@ -2375,11 +2375,12 @@ public class BossAttackController {
 	        	dark = false;
 	        }
 	        
+	        /*
 	        if (nightmare) {
 	        	dark = false;
 	        	gray = false;
 	        }
-	        
+	        */
 	        
 	        if (dark) {
 	        	if(m.monNo <15) {
@@ -2853,6 +2854,7 @@ public class BossAttackController {
 	        String firstClearMsg = grantFirstClearIfEligible(userName, roomName, m, globalAchvMap);
 	        String killAchvMsg   = grantKillAchievements(userName, roomName,achievedCmdSet);
 	        String itemAchvMsg   = grantLightDarkItemAchievements(userName, roomName,achievedCmdSet);
+	        String bagAchvMsg    = grantBagAcquireAchievementsFast(userName, roomName,achievedCmdSet);
 	        String attackAchvMsg = grantAttackCountAchievements(userName, roomName,achievedCmdSet);
 	        String jobSkillAchvMsg = grantJobSkillUseAchievementsAllJobs(userName, roomName,achievedCmdSet);
 	        String shopSellAchvMsg = grantShopSellAchievementsFast(userName, roomName, achievedCmdSet);
@@ -2868,6 +2870,7 @@ public class BossAttackController {
 	                || (jobSkillAchvMsg != null && !jobSkillAchvMsg.isEmpty())
 	                || (shopSellAchvMsg  != null && !shopSellAchvMsg.isEmpty())
 	                || (achvRewardMsg  != null && !achvRewardMsg.isEmpty())
+	                || (bagAchvMsg   != null && !bagAchvMsg .isEmpty())
 	        		) {
 
 	                   bonusMsg = NL
@@ -2877,7 +2880,8 @@ public class BossAttackController {
 	                           + attackAchvMsg
 	                           + jobSkillAchvMsg
 	                           + shopSellAchvMsg
-	                           + achvRewardMsg;
+	                           + achvRewardMsg
+	                           + bagAchvMsg ;
 	               }
 
 	        bagDropMsg = tryDropBag(userName, roomName, m);
@@ -3818,7 +3822,7 @@ public class BossAttackController {
 		             sb.append(rank).append("위 ")
 		               .append(userName2)
 		               .append(" (Lv.").append(lv).append(")")
-		               .append(" - SP ").append(formatSpShort(totSp))
+		               .append(" - ").append(formatSpShort(totSp))
 		               .append(NL);
 	
 		             if (++rank > 5) break;
@@ -5618,52 +5622,62 @@ public class BossAttackController {
 	}
 	
 	/** 통산 킬수 업적 보상 */
-	private int calcTotalKillReward(int threshold) {
+	private int calcTotalKillReward(int threshold,boolean nightmareYn) {
+		
+		int val = 0;
+		
 	    switch (threshold) {
-	        case 300:  return 100;
-	        case 500:  return 300;
-	        case 1000: return 500;
-	        case 2000: return 1000;
-	        case 3000: return 3000;
-	        case 4000: return 10000;
-	        case 5000: return 50000;
-	        case 6000: return 50000;
-	        case 7000: return 100000;
-	        case 8000: return 100000;
-	        case 9000: return 150000;
-	        case 10000: return 150000;
-	        case 11000: return 200000;
-	        case 12000: return 200000;
-	        case 13000: return 250000;
-	        case 14000: return 250000;
-	        case 15000: return 300000;
-	        case 16000: return 300000;
-	        case 17000: return 300000;
-	        case 18000: return 300000;
-	        case 19000: return 300000;
-	        case 20000: return 300000;
-	        case 21000: return 400000;
-	        case 22000: return 400000;
-	        case 23000: return 450000;
-	        case 24000: return 450000;
-	        case 25000: return 500000;
-	        case 26000: return 500000;
-	        case 27000: return 550000;
-	        case 28000: return 550000;
-	        case 29000: return 600000;
-	        case 30000: return 600000;
-	        case 31000: return 700000;
-	        case 32000: return 700000;
-	        case 33000: return 750000;
-	        case 34000: return 750000;
-	        case 35000: return 800000;
-	        case 36000: return 800000;
-	        case 37000: return 850000;
-	        case 38000: return 850000;
-	        case 39000: return 900000;
-	        case 40000: return 900000;
-	        default:   return 0;
+	    	case 1:  val = 50; break;
+	        case 300:  val = 100; break;
+	        case 500:  val = 300; break;
+	        case 1000: val = 500; break;
+	        case 2000: val = 1000; break;
+	        case 3000: val = 3000; break;
+	        case 4000: val = 10000; break;
+	        case 5000: val = 50000; break;
+	        case 6000: val = 50000; break;
+	        case 7000: val = 100000; break;
+	        case 8000: val = 100000; break;
+	        case 9000: val = 150000; break;
+	        case 10000: val = 150000; break;
+	        case 11000: val = 200000; break;
+	        case 12000: val = 200000; break;
+	        case 13000: val = 250000; break;
+	        case 14000: val = 250000; break;
+	        case 15000: val = 300000; break;
+	        case 16000: val = 300000; break;
+	        case 17000: val = 300000; break;
+	        case 18000: val = 300000; break;
+	        case 19000: val = 300000; break;
+	        case 20000: val = 300000; break;
+	        case 21000: val = 400000; break;
+	        case 22000: val = 400000; break;
+	        case 23000: val = 450000; break;
+	        case 24000: val = 450000; break;
+	        case 25000: val = 500000; break;
+	        case 26000: val = 500000; break;
+	        case 27000: val = 550000; break;
+	        case 28000: val = 550000; break;
+	        case 29000: val = 600000; break;
+	        case 30000: val = 600000; break;
+	        case 31000: val = 700000; break;
+	        case 32000: val = 700000; break;
+	        case 33000: val = 750000; break;
+	        case 34000: val = 750000; break;
+	        case 35000: val = 800000; break;
+	        case 36000: val = 800000; break;
+	        case 37000: val = 850000; break;
+	        case 38000: val = 850000; break;
+	        case 39000: val = 900000; break;
+	        case 40000: val = 900000; break;
+	        default:   val = 0;
 	    }
+	    
+	    if(nightmareYn) {
+	    	val *= 20;
+	    }
+	    
+	    return val;
 	}
 	/**
 	 * 몬스터별(50/100킬) + 통산 킬 업적 처리
@@ -5680,14 +5694,16 @@ public class BossAttackController {
 
 	    StringBuilder sb = new StringBuilder();
 	    int totalKills = 0;
+	    int totalNmKills = 0;
 
-	    int[] perMonThresholds = {50,100,300,500,1000,2000,3000,4000,5000,6000,7000,8000,9000,10000};
+	    int[] perMonThresholds = {1,50,100,300,500,1000,2000,3000,4000,5000,6000,7000,8000,9000,10000};
 
 	    for (KillStat ks : ksList) {
 	        int monNo = ks.monNo;
 	        int kills = ks.killCount;
 	        totalKills += kills;
-
+	        totalNmKills += ks.nmKillCount;
+	        
 	        for (int th : perMonThresholds) {
 	            if (kills < th) break;
 
@@ -5705,7 +5721,7 @@ public class BossAttackController {
 	    }
 
 	    int[] totalThresholds = {
-	        50,100,300,500,1000,2000,3000,4000,5000,
+	        1,50,100,300,500,1000,2000,3000,4000,5000,
 	        6000,7000,8000,9000,10000
 	        ,11000,12000,13000,14000,15000,16000,17000,18000,19000,20000
 	        ,21000,22000,23000,24000,25000,26000,27000,28000,29000,30000
@@ -5718,7 +5734,22 @@ public class BossAttackController {
 	        String cmd = "ACHV_KILL_TOTAL_" + th;
 	        if (achievedCmdSet.contains(cmd)) continue;
 
-	        int reward = calcTotalKillReward(th);
+	        int reward = calcTotalKillReward(th,false);
+
+	        sb.append(
+	            grantOnceIfEligibleFast(
+	                userName, roomName, cmd, reward, achievedCmdSet
+	            )
+	        );
+	    }
+	    
+	    for (int th : totalThresholds) {
+	        if (totalNmKills < th) break;
+
+	        String cmd = "ACHV_KILL_NIGHTMARE_TOTAL_" + th;
+	        if (achievedCmdSet.contains(cmd)) continue;
+
+	        int reward = calcTotalKillReward(th,true);
 
 	        sb.append(
 	            grantOnceIfEligibleFast(
@@ -5967,8 +5998,12 @@ public class BossAttackController {
 	        Map<Integer, Monster> monMap) {
 
 	    // ===== 패턴 =====
+		Pattern P_BAG_GET =
+				Pattern.compile("^가방 획득 (\\d+)회 달성$");
 	    Pattern P_TOTAL_KILL =
 	            Pattern.compile("^통산 처치 (\\d+)회 달성$");
+	    Pattern P_TOTAL_NIGHTMARE_KILL =
+	    		Pattern.compile("^나이트메어 통산 처치 (\\d+)회 달성$");
 	    Pattern P_DEATH_OVERCOME =
 	            Pattern.compile("^죽음 극복 (\\d+)회 달성$");
 	    Pattern P_MONSTER_KILL =
@@ -5985,7 +6020,9 @@ public class BossAttackController {
 	            Pattern.compile("^(.+?) 스킬 사용 (\\d+)회 달성$");
 
 	    // ===== 집계용 =====
+	    SortedSet<Integer> bagGetSteps = new TreeSet<>();
 	    SortedSet<Integer> totalKillSteps = new TreeSet<>();
+	    SortedSet<Integer> totalNmKillSteps = new TreeSet<>();
 	    SortedSet<Integer> deathSteps     = new TreeSet<>();
 	    SortedSet<Integer> attackSteps   = new TreeSet<>();
 	    SortedSet<Integer> lightSteps    = new TreeSet<>();
@@ -6011,9 +6048,17 @@ public class BossAttackController {
 
 	        Matcher m;
 
+	        if ((m = P_BAG_GET.matcher(label)).matches()) {
+	        	bagGetSteps.add(parseIntSafe(m.group(1)));
+	        	continue;
+	        }
 	        if ((m = P_TOTAL_KILL.matcher(label)).matches()) {
 	            totalKillSteps.add(parseIntSafe(m.group(1)));
 	            continue;
+	        }
+	        if ((m = P_TOTAL_NIGHTMARE_KILL.matcher(label)).matches()) {
+	        	totalNmKillSteps.add(parseIntSafe(m.group(1)));
+	        	continue;
 	        }
 	        if ((m = P_DEATH_OVERCOME.matcher(label)).matches()) {
 	            deathSteps.add(parseIntSafe(m.group(1)));
@@ -6061,10 +6106,13 @@ public class BossAttackController {
 	    // 1️⃣ 통산 기록 (최대값만)
 	    sb.append("✨통산기록").append(NL);
 
+	    
 	    if (!attackSteps.isEmpty())
 	        sb.append("공격: ").append(String.format("%,d", attackSteps.last())).append("회").append(NL);
 	    if (!totalKillSteps.isEmpty())
 	        sb.append("처치: ").append(String.format("%,d", totalKillSteps.last())).append("마리").append(NL);
+	    if (!totalNmKillSteps.isEmpty())
+	    	sb.append("나이트메어 처치: ").append(String.format("%,d", totalNmKillSteps.last())).append("마리").append(NL);
 	    if (!deathSteps.isEmpty())
 	        sb.append("죽음 극복: ").append(String.format("%,d", deathSteps.last())).append("회").append(NL);
 	    if (!lightSteps.isEmpty())
@@ -6073,7 +6121,8 @@ public class BossAttackController {
 	        sb.append("어둠 획득: ").append(String.format("%,d", darkSteps.last())).append("회").append(NL);
 	    if (!graySteps.isEmpty())
 	    	sb.append("음양 획득: ").append(String.format("%,d", graySteps.last())).append("회").append(NL);
-
+	    if (!bagGetSteps.isEmpty())
+	    	sb.append("가방 획득: ").append(String.format("%,d", bagGetSteps.last())).append("회").append(NL);
 	    sb.append(NL);
 
 	    // 2️⃣ 스킬 숙련 (3개씩)
@@ -6176,6 +6225,14 @@ public class BossAttackController {
 	            return "통산 업적";
 	        }
 	    }
+	    if (cmd.startsWith("ACHV_KILL_NIGHTMARE_TOTAL_")) {
+	    	try {
+	    		int th = Integer.parseInt(cmd.substring("ACHV_KILL_NIGHTMARE_TOTAL_".length()));
+	    		return "나이트메어 통산 처치 " + th + "회 달성";
+	    	} catch (Exception e) {
+	    		return "나이트메어 통산 업적";
+	    	}
+	    }
 
 	    // 🔹 데스 업적
 	    if (cmd.startsWith("ACHV_DEATH_")) {
@@ -6226,6 +6283,14 @@ public class BossAttackController {
 	        } catch (Exception e) {
 	            return "통산 공격 업적";
 	        }
+	    }
+	    if (cmd.startsWith("ACHV_BAG_")) {
+	    	try {
+	    		int th = Integer.parseInt(cmd.substring("ACHV_BAG_".length()));
+	    		return "가방 획득 " + th + "회 달성";
+	    	} catch (Exception e) {
+	    		return "가방 획득 업적";
+	    	}
 	    }
 
 	    if (cmd.startsWith("ACHV_JOB_SKILL_")) {
@@ -6297,6 +6362,62 @@ public class BossAttackController {
 	    }
 	    return sb.toString();
 	}
+	
+	private String grantBagAcquireAchievementsFast(
+	        String userName,
+	        String roomName,
+	        Set<String> achievedCmdSet
+	) {
+	    // 🎒 가방 아이템 ID
+	    int bagTotal =
+	            botNewService.selectTotalBagAcquireCount(userName);
+
+	    if (bagTotal <= 0) return "";
+
+	    // 기존 업적 스타일과 동일한 threshold
+	    int[] thresholds = {
+	            1, 5, 10, 30, 50, 100,
+	            200, 300, 500, 700,
+	            1000, 1500, 2000
+	    };
+
+	    StringBuilder sb = new StringBuilder();
+
+	    for (int th : thresholds) {
+	        if (bagTotal >= th) {
+	            String cmd = "ACHV_BAG_" + th;
+
+	            if (!achievedCmdSet.contains(cmd)) {
+	                sb.append(
+	                    grantOnceIfEligibleFast(
+	                        userName,
+	                        roomName,
+	                        cmd,
+	                        calcBagAchvReward(th),
+	                        achievedCmdSet
+	                    )
+	                );
+	            }
+	        }
+	    }
+
+	    return sb.toString();
+	}
+
+	private int calcBagAchvReward(int th) {
+	    if (th >= 2000) return 20000;
+	    if (th >= 1500) return 15000;
+	    if (th >= 1000) return 12000;
+	    if (th >= 700)  return 8000;
+	    if (th >= 500)  return 6000;
+	    if (th >= 300)  return 4000;
+	    if (th >= 100)  return 2500;
+	    if (th >= 50)   return 1500;
+	    if (th >= 10)   return 800;
+	    if (th >= 5)    return 400;
+	    return 200;
+	}
+
 	
 	private int calcUserEffectiveAtkMax(User u, String roomName) {
 

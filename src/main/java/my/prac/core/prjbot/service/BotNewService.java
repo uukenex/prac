@@ -170,6 +170,8 @@ public interface BotNewService {
     public int setNightmareMode(String userName, String roomName, boolean nightmareYn);
     
     int lockMacroUser(String userName);
+    
+    int selectTotalBagAcquireCount(String userName);
 } 
 
 	

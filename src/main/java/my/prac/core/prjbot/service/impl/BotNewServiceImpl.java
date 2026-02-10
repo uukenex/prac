@@ -552,5 +552,9 @@ public class BotNewServiceImpl implements BotNewService {
 
         return (Integer) param.get("outCode");
     }
+    @Override
+    public int selectTotalBagAcquireCount(String userName) {
+    	return botNewDAO.selectTotalBagAcquireCount(userName);
+    }
 
 }
