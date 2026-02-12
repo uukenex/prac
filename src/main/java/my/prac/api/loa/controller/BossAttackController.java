@@ -2182,12 +2182,14 @@ public class BossAttackController {
 	        jobDmgMul = 1.3;   // 
 	    } else if ("제너럴".equals(job)) {
 	        jobDmgMul = 1.2;   //
+	    } else if ("저격수".equals(job)) {
+	        jobDmgMul = 2;   //
 	    } else if ("처단자".equals(job)) {
 	        jobDmgMul = 1.4;   
 	    } else if ("용사".equals(job)) {
 	        jobDmgMul = 1.4;   
 	    } else if ("복수자".equals(job)) {
-	        jobDmgMul = 1.8;   
+	        jobDmgMul = 0.2;   
 	    } else if ("음양사".equals(job)) {
 	        jobDmgMul = 1.8;   
 	    }
@@ -7336,13 +7338,15 @@ public class BossAttackController {
 		        if (calc.monDmg > 0 && flags.monPattern == 2 || flags.monPattern == 4) {
 		        	//flags.monPattern =2 이면 2배 , 4이면 4배 
 		            int revengeDmg = (int) Math.round(calc.monDmg * flags.monPattern);
+		            int orgDmg = calc.monDmg ;
 		            calc.atkDmg += revengeDmg;
 
+		            calc.monDmg = (int) Math.round(calc.monDmg*0.75);
+		            
 		            calc.patternMsg += NL
-		                + "어벤져의 분노! 받은 피해 "
-		                + calc.monDmg
+		                + "받은 피해 " + calc.monDmg 
 		                + " → 반격 데미지 +"
-		                + revengeDmg;
+		                + orgDmg +"*"+flags.monPattern+"(합:"+ revengeDmg+")";
 		        }
 		    }
 	     // 몬스터 공격 변동 처리 (회피 / 증폭)
@@ -8017,7 +8021,7 @@ public class BossAttackController {
         JOB_DEFS.put("저격수", new JobDef(
     		"저격수",
     		"▶ 숨어서 급소를 노리는 암살자, 극강의 공격력을 선사한다",
-    		"⚔ 공격력이 항상 중간값으로 고정, 최대체력-50%"+NL+
+    		"⚔ 기본공격데미지(+100%), 공격력이 항상 중간값으로 고정, 최대체력-50%"+NL+
     		  "*조우 은엄폐 이후, *저격 - *이동 패턴을 반복"+NL+
     		  "*조우 은엄폐, *저격(13% headShot) 시 모든 행동 무시, *이동 시 20%확률 모든 행동 무시"
         ));
@@ -8070,28 +8074,28 @@ public class BossAttackController {
 	    */
 	    JOB_DEFS.put("어둠사냥꾼", new JobDef(
     		"어둠사냥꾼",
-    		"▶ ???",
-    		"⚔ 아이템 HP/리젠 효과 1.25배, 몬스터에게 받는 일반공격 피해 감소(30%), 언데드추가피해(+75%), -???- "+NL
+    		"▶ 어둠이 있기에 그가 있다",
+    		"⚔ 아이템 HP/리젠 효과 1.25배, 몬스터에게 받는 일반공격 피해 감소(30%), 언데드추가피해(+75%), 몬스터의 강제전투종료패턴 무시 후 추가데미지, 어둠몬스터에 추가데미지(+150%) "+NL
     		+"◎선행조건 프리스트, 용기사 직업으로 각 150회 공격"
 		));
 	    JOB_DEFS.put("복수자", new JobDef(
     		"복수자",
-    		"▶ ",
-    		"⚔ 기본공격 배율 1.8, 몬스터의 일반공격/필살 시 받은피해를 돌려줌  "+NL
+    		"▶ 원념에 의한 복수자",
+    		"⚔ 기본공격 배율 0.2, 반사공격시 받는피해감소(75%), 몬스터의 일반공격/필살 시 받은피해를 돌려줌  "+NL
     		+"◎선행조건 전사, 저격수 직업으로 각 100회 공격"
 		));
 	    
 	    JOB_DEFS.put("도박사", new JobDef(
     		"도박사",
     		"▶ ???",
-    		"⚔ -???- "+NL
+    		"⚔ 공격시 도박하여 배율 공격, 피격시 도박하여 회피 "+NL
     		+"◎선행조건 어둠사냥꾼, 복수자 직업으로 각 100회 공격"
 		));
 	    
 	    JOB_DEFS.put("음양사", new JobDef(
     		"음양사",
-    		"▶ ???",
-    		"⚔ -???- "+NL
+    		"▶ 음양의 이치를 깨달은 도사",
+    		"⚔ 기본공격 배율 1.8, 다음 공격하는 아군 강화, 매턴 공격시 자신 회복, 음양몬스터 출연 "+NL
     		+"◎선행조건 도사 직업으로 1000회 공격"
 		));
 	    /*
