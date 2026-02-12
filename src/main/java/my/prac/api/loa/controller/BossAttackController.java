@@ -2460,6 +2460,9 @@ public class BossAttackController {
 	    if ("음양사".equals(job) && (lucky || dark )) {
 	    	berserkMul = 1.5;
 	    }
+	    if ("어둠사냥꾼".equals(job) && dark ) {
+	    	berserkMul = 2.5;
+	    }
 	    
 	    /*
 	    if ("궁사".equals(job)) {
@@ -4757,12 +4760,12 @@ public class BossAttackController {
 	}
 	
 	private int calcBaseHpMax(int lv) {
-		int base = lv * 20;
+		int base = lv * 30;
 		int bonus = 0;
-	    if (lv >= 50)  bonus += (lv - 49) * 20;   
-	    if (lv >= 100) bonus += (lv - 99) * 40;  
-	    if (lv >= 150) bonus += (lv - 149) * 80;
-	    if (lv >= 200) bonus += (lv - 199) * 120; 
+	    if (lv >= 50)  bonus += (lv - 49) * 30;   
+	    if (lv >= 100) bonus += (lv - 99) * 60;  
+	    if (lv >= 150) bonus += (lv - 149) * 120;
+	    if (lv >= 200) bonus += (lv - 199) * 200; 
 		
 	    return base+bonus;
 	}
@@ -7331,7 +7334,8 @@ public class BossAttackController {
 	        
 	        if ("복수자".equals(job)) {
 		        if (calc.monDmg > 0 && flags.monPattern == 2 || flags.monPattern == 4) {
-		            int revengeDmg = (int) Math.round(calc.monDmg * 1.5);
+		        	//flags.monPattern =2 이면 2배 , 4이면 4배 
+		            int revengeDmg = (int) Math.round(calc.monDmg * flags.monPattern);
 		            calc.atkDmg += revengeDmg;
 
 		            calc.patternMsg += NL
@@ -7368,7 +7372,7 @@ public class BossAttackController {
 		                // ☠ 3배 피해
 		                int increased = calc.monDmg * 3;
 		                calc.monDmg = increased;
-		                calc.patternMsg = NL+baseMsg + "도박대실패! (받는 피해x2 → " + increased + ")";
+		                calc.patternMsg = NL+baseMsg + "도박대실패! (받는 피해x3 → " + increased + ")";
 		            }
 		        }
 	        }
@@ -8018,6 +8022,7 @@ public class BossAttackController {
     		  "*조우 은엄폐, *저격(13% headShot) 시 모든 행동 무시, *이동 시 20%확률 모든 행동 무시"
         ));
         
+        
         JOB_DEFS.put("궁사", new JobDef(
     		"궁사",
     		"▶ 연속공격의 달인, 최대데미지와 최소공격력 차이가 클수록 연속공격한다",
@@ -8030,7 +8035,7 @@ public class BossAttackController {
 	        "용사",
 	        "▶ 선택 받은 자",//어둠몹에 피해두배 ,언데드추뎀25% ,스틸30%, 10%확률 완전회복
 	        "⚔ 기본 HP*2 만큼 추가 증가, 어둠몬스터에 추가피해(+50%), 언데드 추가피해(+25%), 공격시 steal(30%), 정령의가호(10%), 기본데미지 * 1.4"+NL
-	        +"◎선행조건 전사,도적,도사,프리스트 직업으로 각 300회 공격"
+	        +"◎선행조건 전사,도적,도사,프리스트 직업으로 각 150회 공격"
 	    ));
 	     
 	    
@@ -8038,15 +8043,16 @@ public class BossAttackController {
 	        "처단자",
 	        "▶ 신을 모독하는 자는 그의 손에서 살아남을수 없다, 물론 모독을 안했어도 말이지..! ",
 	        "⚔ 방어를 무시하고 피해 2.5배를 줌, 몬스터의 기본공격 80%회피 [회피 no22부터 5%씩 감소] , 처치시 추가드랍(30%), 빛몬스터에 추가피해(+50%), 기본데미지 *1.4 "+NL
-	        +"◎선행조건 마법사,도적 직업으로 각 300회 공격"
+	        +"◎선행조건 마법사,도적 직업으로 각 150회 공격"
 	    ));
+	    /*
 	    JOB_DEFS.put("제너럴", new JobDef(
 	        "제너럴",
 	        "▶ 블랙필드에서는 누구도 따라잡을자가 없다!",
 	        "⚔ 조우시 (*은엄폐-저격 or *회피기동전술) 이후 *회피기동전술을 다회 반복"+NL
 	        +"*조우 은엄폐(공격x or 폭격[hidden]), *저격(13% headShot) 시 모든 행동 무시, *회피기동전술 시 - hidden -,기본공격력 * 1.2"+NL
-	        +"◎선행조건 저격수,전사 직업으로 각 300회 공격"
-	    ));
+	        +"◎선행조건 저격수,전사 직업으로 각 150회 공격"
+	    ));*/
 	    
 	    JOB_DEFS.put("검성", new JobDef(
 	        "검성",
@@ -8054,24 +8060,25 @@ public class BossAttackController {
 	        "⚔ 기본 HP*2만큼 추가 증가, 적의 공격 반격(15%),기본데미지*2.5"+NL
 	        +"◎선행조건 전사 직업으로 1000회 공격"
 	    ));
+	    /*
 	    JOB_DEFS.put("어쎄신", new JobDef(
     		"어쎄신",
     		"▶ 그의 암습은 누구도 피할수없다.상대가 누구일 지라도",
     		"⚔ 공격 시 STEAL(30%,100킬 당 5%씩 증가,max 80%), 몬스터 기본 공격 회피, 필살기를 확률 회피, 기본데미지*1.3"+NL
     		+"◎선행조건 도적 직업으로 1000회 공격"
 		));
-	    
+	    */
 	    JOB_DEFS.put("어둠사냥꾼", new JobDef(
     		"어둠사냥꾼",
     		"▶ ???",
     		"⚔ 아이템 HP/리젠 효과 1.25배, 몬스터에게 받는 일반공격 피해 감소(30%), 언데드추가피해(+75%), -???- "+NL
-    		+"◎선행조건 프리스트, 용기사 직업으로 각 300회 공격"
+    		+"◎선행조건 프리스트, 용기사 직업으로 각 150회 공격"
 		));
 	    JOB_DEFS.put("복수자", new JobDef(
     		"복수자",
     		"▶ ",
     		"⚔ 기본공격 배율 1.8, 몬스터의 일반공격/필살 시 받은피해를 돌려줌  "+NL
-    		+"◎선행조건 전사, 제너럴 직업으로 각 300회 공격"
+    		+"◎선행조건 전사, 저격수 직업으로 각 100회 공격"
 		));
 	    
 	    JOB_DEFS.put("도박사", new JobDef(
@@ -8105,32 +8112,34 @@ public class BossAttackController {
 	static {
 	    // 용사 = 전사 300회 + 도적 300회 공격해야 전직 가능
 	    JOB_CHANGE_REQS.put("용사", Arrays.asList(
-	        new JobChangeReq("전사", 300),
-	        new JobChangeReq("도적", 300),
-	        new JobChangeReq("도사", 300),
-	        new JobChangeReq("프리스트", 300)
+	        new JobChangeReq("전사", 150),
+	        new JobChangeReq("도적", 150),
+	        new JobChangeReq("도사", 150),
+	        new JobChangeReq("프리스트", 150)
 	    ));
 	    JOB_CHANGE_REQS.put("처단자", Arrays.asList(
-    		new JobChangeReq("마법사", 300),
-    		new JobChangeReq("도적", 300)
+    		new JobChangeReq("마법사", 150),
+    		new JobChangeReq("도적", 150)
 		));
+	    /*
 	    JOB_CHANGE_REQS.put("제너럴", Arrays.asList(
-    		new JobChangeReq("저격수", 300),
-    		new JobChangeReq("전사", 300)
-		));
+    		new JobChangeReq("저격수", 150),
+    		new JobChangeReq("전사", 150)
+		));*/
 	    JOB_CHANGE_REQS.put("검성", Arrays.asList(
     		new JobChangeReq("전사", 1000)
 		));
+	    /*
 	    JOB_CHANGE_REQS.put("어쎄신", Arrays.asList(
 	    	new JobChangeReq("도적", 1000)
-		));
+		));*/
 	    JOB_CHANGE_REQS.put("어둠사냥꾼", Arrays.asList(
-	    	new JobChangeReq("프리스트", 300),
-	    	new JobChangeReq("용기사", 300)
+	    	new JobChangeReq("프리스트", 150),
+	    	new JobChangeReq("용기사", 150)
 		));
 	    JOB_CHANGE_REQS.put("복수자", Arrays.asList(
-			new JobChangeReq("전사", 300),
-			new JobChangeReq("제너럴", 300)
+			new JobChangeReq("전사", 100),
+			new JobChangeReq("저격수", 100)
 		));
 	    JOB_CHANGE_REQS.put("도박사", Arrays.asList(
     		new JobChangeReq("어둠사냥꾼", 100),
