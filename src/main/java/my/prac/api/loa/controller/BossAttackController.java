@@ -7337,16 +7337,17 @@ public class BossAttackController {
 	        if ("복수자".equals(job)) {
 		        if (calc.monDmg > 0 && flags.monPattern == 2 || flags.monPattern == 4) {
 		        	//flags.monPattern =2 이면 2배 , 4이면 4배 
-		            int revengeDmg = (int) Math.round(calc.monDmg * flags.monPattern);
-		            int orgDmg = calc.monDmg ;
+		            int revengeDmg = (int) Math.round(calc.monDmg * (flags.monPattern+1));
+		            int orgMonDmg = calc.monDmg ;
+		            int newMonDmg = (int) Math.round(calc.monDmg*0.25) ;
 		            calc.atkDmg += revengeDmg;
 
-		            calc.monDmg = (int) Math.round(calc.monDmg*0.75);
+		            calc.monDmg = newMonDmg ;
 		            
 		            calc.patternMsg += NL
 		                + "받은 피해 " + calc.monDmg 
 		                + " → 반격 데미지 +"
-		                + orgDmg +"*"+flags.monPattern+"(합:"+ revengeDmg+")";
+		                + orgMonDmg +"*"+flags.monPattern+"(합:"+ revengeDmg+")";
 		        }
 		    }
 	     // 몬스터 공격 변동 처리 (회피 / 증폭)
