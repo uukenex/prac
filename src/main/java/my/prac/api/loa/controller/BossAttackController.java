@@ -7346,8 +7346,7 @@ public class BossAttackController {
 		            
 		            calc.patternMsg += NL
 		                + "받은 피해 " + calc.monDmg 
-		                + " → 반격 데미지 +"
-		                + orgMonDmg +"*"+flags.monPattern+"(합:"+ revengeDmg+")";
+		                + " → 반격 데미지 "+revengeDmg;
 		        }
 		    }
 	     // 몬스터 공격 변동 처리 (회피 / 증폭)
