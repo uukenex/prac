@@ -2191,7 +2191,7 @@ public class BossAttackController {
 	    } else if ("복수자".equals(job)) {
 	        jobDmgMul = 0.2;   
 	    } else if ("음양사".equals(job)) {
-	        jobDmgMul = 1.8;   
+	        jobDmgMul = 1.5;   
 	    }
 
 	    // 직업 배율까지 반영된 실제 전투용 공격력 (구버전 공식과 동일)
@@ -8098,7 +8098,7 @@ public class BossAttackController {
 	    JOB_DEFS.put("음양사", new JobDef(
     		"음양사",
     		"▶ 음양의 이치를 깨달은 도사",
-    		"⚔ 기본공격 배율 1.8, 다음 공격하는 아군 강화, 매턴 공격시 자신 회복, 음양몬스터 출연 "+NL
+    		"⚔ 기본공격 배율 1.5, 다음 공격하는 아군 강화, 매턴 공격시 자신 회복, 음양몬스터 출연 "+NL
     		+"◎선행조건 도사 직업으로 1000회 공격"
 		));
 	    /*
