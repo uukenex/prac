@@ -2361,14 +2361,14 @@ public class BossAttackController {
 	        gray  = (ob.luckyYn != null && ob.luckyYn == 3);
 	        if (dark) {
 	        	if(m.monNo <15) {
-	        		monMaxHp = monMaxHp * 5;
-	        		m.monAtk = m.monAtk * 2;
-	        	}else if(m.monNo>=25) {
-	        		monMaxHp = monMaxHp * 2;
-	        		m.monAtk = (int)Math.round( m.monAtk * 1.25);
-	        	}else if(m.monNo>=15) {
-	        		monMaxHp = monMaxHp * 3;
+	        		monMaxHp = monMaxHp * 3; //0~15
 	        		m.monAtk = (int)Math.round( m.monAtk * 1.5);
+	        	}else if(m.monNo>=25) { //25~30
+	        		monMaxHp = (int)Math.round( monMaxHp * 1.75);
+	        		m.monAtk = (int)Math.round( m.monAtk * 1.1);
+	        	}else if(m.monNo>=15) { //15~25
+	        		monMaxHp = (int)Math.round( monMaxHp * 2.5);
+	        		m.monAtk = (int)Math.round( m.monAtk * 1.25);
 	        	}else{
 	        		
 	        	}
@@ -2496,16 +2496,16 @@ public class BossAttackController {
 	        
 	        if (dark) {
 	        	if(m.monNo <15) {
-	        		monMaxHp = monMaxHp * 5;
-	        		m.monAtk = m.monAtk * 2;
-	        		monHpRemainBefore = monMaxHp;
-	        	}else if(m.monNo>=25) {
-	        		monMaxHp = monMaxHp * 2;
-	        		m.monAtk = (int)Math.round( m.monAtk * 1.25);
-	        		monHpRemainBefore = monMaxHp;
-	        	}else if(m.monNo>=15) {
 	        		monMaxHp = monMaxHp * 3;
 	        		m.monAtk = (int)Math.round( m.monAtk * 1.5);
+	        		monHpRemainBefore = monMaxHp;
+	        	}else if(m.monNo>=25) {
+	        		monMaxHp = (int)Math.round( monMaxHp * 1.75);
+	        		m.monAtk = (int)Math.round( m.monAtk * 1.1);
+	        		monHpRemainBefore = monMaxHp;
+	        	}else if(m.monNo>=15) {
+	        		monMaxHp = (int)Math.round( monMaxHp * 2.5);
+	        		m.monAtk = (int)Math.round( m.monAtk * 1.25);
 	        		monHpRemainBefore = monMaxHp;
 	        	}
 	        }
