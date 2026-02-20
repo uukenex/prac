@@ -324,52 +324,8 @@ public class BossAttackController {
 
 	            // ───── 등급 점수 계산 ─────
 	            String hunterGrade;
-
-	            if (totalAttacks >= 50000
-	                    && totalDrops >= 100000
-	                    && totalDeaths >= 2000) {
-
-	                hunterGrade = "SSS";
-
-	            } else if (totalAttacks >= 40000
-	                    && totalDrops >= 50000
-	                    && totalDeaths >= 1000) {
-
-	                hunterGrade = "SS";
-
-	            } else if (totalAttacks >= 30000
-	                    && totalDrops >= 30000
-	                    && totalDeaths >= 700) {
-
-	                hunterGrade = "S";
-
-	            } else if (totalAttacks >= 20000
-	                    && totalDrops >= 20000
-	                    && totalDeaths >= 500) {
-
-	                hunterGrade = "A";
-
-	            } else if (totalAttacks >= 10000
-	                    && totalDrops >= 10000
-	                    && totalDeaths >= 200) {
-
-	                hunterGrade = "B";
-
-	            } else if (totalAttacks >= 5000
-	                    && totalDrops >= 5000
-	                    && totalDeaths >= 100) {
-
-	                hunterGrade = "C";
-
-	            } else if (totalAttacks >= 1000
-	                    && totalDrops >= 1000
-	                    && totalDeaths >= 50) {
-
-	                hunterGrade = "D";
-
-	            } else {
-	                hunterGrade = "F";
-	            }
+	            
+	            hunterGrade = calculateHunterGrade(totalAttacks, totalDrops, totalDeaths);
 
 	            // ───── 등급별 상한 ─────
 	            int atkCap, hpCap, regenCap, criCap;
@@ -594,6 +550,60 @@ public class BossAttackController {
 
 	    
 	    return ctx;
+	}
+	
+	private String calculateHunterGrade(int totalAttacks, int totalDrops, int totalDeaths) {
+
+// ---------------- 상위 단독 등급 ----------------
+		if (totalAttacks >= 50000 && totalDrops >= 100000 && totalDeaths >= 1200) {
+			return "SSS";
+		}
+
+		if (totalAttacks >= 40000 && totalDrops >= 50000 && totalDeaths >= 700) {
+			return "SS";
+		}
+
+		if (totalAttacks >= 30000 && totalDrops >= 30000 && totalDeaths >= 500) {
+			return "S";
+		}
+
+// ---------------- A/B/C/D 처리 ----------------
+		String grade = checkPlusGrade(totalAttacks, totalDrops, totalDeaths, 20000, 20000, 400, "A");
+		if (grade != null)
+			return grade;
+
+		grade = checkPlusGrade(totalAttacks, totalDrops, totalDeaths, 10000, 10000, 200, "B");
+		if (grade != null)
+			return grade;
+
+		grade = checkPlusGrade(totalAttacks, totalDrops, totalDeaths, 5000, 5000, 100, "C");
+		if (grade != null)
+			return grade;
+
+		grade = checkPlusGrade(totalAttacks, totalDrops, totalDeaths, 1000, 1000, 50, "D");
+		if (grade != null)
+			return grade;
+
+		return "F";
+	}
+	
+	private String checkPlusGrade(int atk, int drop, int death, int atkReq, int dropReq, int deathReq,
+			String baseGrade) {
+
+		int match = 0;
+		if (atk >= atkReq)
+			match++;
+		if (drop >= dropReq)
+			match++;
+		if (death >= deathReq)
+			match++;
+
+		if (match == 3)
+			return baseGrade + "+";
+		if (match == 2)
+			return baseGrade;
+
+		return null;
 	}
 	/** 
 	 */
@@ -6676,14 +6686,18 @@ public class BossAttackController {
 	        double convertRate;
 
 	        switch (u.hunterGrade) {
-	            case "SSS": convertRate = 1.00; break;
-	            case "SS":  convertRate = 0.90; break;
-	            case "S":   convertRate = 0.75; break;
-	            case "A":   convertRate = 0.60; break;
-	            case "B":   convertRate = 0.50; break;
-	            case "C":   convertRate = 0.40; break;
-	            case "D":   convertRate = 0.30; break;
-	            default:    convertRate = 0.20;
+	            case "SSS":  convertRate = 1.20; break;
+	            case "SS":   convertRate = 1.10; break;
+	            case "S" :   convertRate = 1.00; break;
+	            case "A+":   convertRate = 0.85; break;
+	            case "A" :   convertRate = 0.80; break;
+	            case "B+":   convertRate = 0.75; break;
+	            case "B" :   convertRate = 0.70; break;
+	            case "C+":   convertRate = 0.65; break;
+	            case "C" :   convertRate = 0.60; break;
+	            case "D+":   convertRate = 0.55; break;
+	            case "D" :   convertRate = 0.50; break;
+	            default:     convertRate = 0.40;
 	        }
 
 	        int converted = (int)Math.floor(overflow * convertRate);
