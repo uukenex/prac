@@ -279,7 +279,108 @@ public class BossAttackController {
 	    	bHpMaxRaw  = (int) Math.round(bHpMaxRaw * 2);
 	        bRegenRaw  = (int) Math.round(bRegenRaw * 2);
 	    }
+	    
+	    if ("헌터".equals(job)) {
 
+	        try {
+
+	            // 1️⃣ 처치 수
+	            List<KillStat> kills =
+	                    botNewService.selectKillStats(targetUser, roomName);
+
+	            int totalKills = 0;
+	            if (kills != null) {
+	                for (KillStat ks : kills) {
+	                    totalKills += ks.killCount;
+	                }
+	            }
+
+	            // 2️⃣ 공격 / 사망 통계
+	            AttackDeathStat ads =
+	                    botNewService.selectAttackDeathStats(targetUser, roomName);
+
+	            int totalAttacks = (ads == null ? 0 : ads.totalAttacks);
+	            int totalDeaths  = (ads == null ? 0 : ads.totalDeaths);
+
+	            // 3️⃣ 드랍 수
+	            List<HashMap<String,Object>> drops =
+	                    botNewService.selectTotalDropItems(targetUser);
+
+	            int totalDrops = 0;
+	            if (drops != null) {
+	                for (HashMap<String,Object> d : drops) {
+	                    Object v = d.get("QTY");
+	                    if (v instanceof Number) {
+	                        totalDrops += ((Number)v).intValue();
+	                    }
+	                }
+	            }
+
+	            // ───── 기본 변환 ─────
+	            int hunterAtkBonus    = totalAttacks / 10;
+	            int hunterHpBonus     = totalDrops;
+	            int hunterRegenBonus  = totalDrops / 10;
+	            int hunterCriDmgBonus = totalDeaths / 10;
+
+	            // ───── 등급 점수 계산 ─────
+	            int hunterScore =
+	                    (totalAttacks / 100)
+	                  + (totalDrops   / 50)
+	                  + (totalDeaths  / 5);
+
+	            String hunterGrade;
+
+	            if (hunterScore >= 700)      hunterGrade = "S";
+	            else if (hunterScore >= 500) hunterGrade = "A";
+	            else if (hunterScore >= 300) hunterGrade = "B";
+	            else if (hunterScore >= 150) hunterGrade = "C";
+	            else if (hunterScore >= 50)  hunterGrade = "D";
+	            else                         hunterGrade = "F";
+
+	            // ───── 등급별 상한 ─────
+	            int atkCap, hpCap, regenCap, criCap;
+
+	            switch (hunterGrade) {
+	                case "S":
+	                    atkCap = 4000; hpCap = 30000; regenCap = 3000; criCap = 30;
+	                    break;
+	                case "A":
+	                    atkCap = 3000; hpCap = 20000; regenCap = 2000; criCap = 25;
+	                    break;
+	                case "B":
+	                    atkCap = 2000; hpCap = 15000; regenCap = 1500; criCap = 20;
+	                    break;
+	                case "C":
+	                    atkCap = 1200; hpCap = 8000;  regenCap = 800;  criCap = 15;
+	                    break;
+	                case "D":
+	                    atkCap = 600;  hpCap = 4000;  regenCap = 400;  criCap = 10;
+	                    break;
+	                default:
+	                    atkCap = 200;  hpCap = 1000;  regenCap = 100;  criCap = 5;
+	            }
+
+	            // ───── 상한 적용 ─────
+	            hunterAtkBonus    = Math.min(hunterAtkBonus, atkCap);
+	            hunterHpBonus     = Math.min(hunterHpBonus, hpCap);
+	            hunterRegenBonus  = Math.min(hunterRegenBonus, regenCap);
+	            hunterCriDmgBonus = Math.min(hunterCriDmgBonus, criCap);
+
+	            // ───── 직업 보너스 레이어 반영 (base 수정 X) ─────
+	            bAtkMinRaw  += hunterAtkBonus;
+	            bAtkMaxRaw  += hunterAtkBonus;
+
+	            jobHpMaxBonus += hunterHpBonus;
+	            jobRegenBonus += hunterRegenBonus;
+
+	            bCriDmgRaw += hunterCriDmgBonus;
+
+	            // (선택) ctx에 등급 저장해서 attackInfo에서 표시 가능
+	            ctx.hunterGrade = hunterGrade;
+
+	        } catch (Exception ignore) {}
+	    }
+	    
 	    // 기본 스탯
 	    int baseMin     = u.atkMin;
 	    int baseMax     = u.atkMax;
@@ -2191,7 +2292,7 @@ public class BossAttackController {
 	    } else if ("복수자".equals(job)) {
 	        jobDmgMul = 0.2;   
 	    } else if ("음양사".equals(job)) {
-	        jobDmgMul = 1.5;   
+	        jobDmgMul = 1.3;   
 	    }
 
 	    // 직업 배율까지 반영된 실제 전투용 공격력 (구버전 공식과 동일)
@@ -6522,6 +6623,19 @@ public class BossAttackController {
 	    StringBuilder extraMsg = new StringBuilder();
 	    out.dmgCalcMsg="";
 
+	    
+	    if ("헌터".equals(job) && effCritRate > 100) {
+
+	        int overflow = effCritRate - 100;
+
+	        effCritRate = 100;       // 크리 확률은 100%로 제한
+	        effCriDmg  += overflow;  // 초과분을 크리데미지로 전환
+
+	        // 필요하면 메시지 표시
+	        // out.dmgCalcMsg += "헌터 특성 발동! 치명타 초과 "
+	        //        + overflow + "% → 치명타데미지 전환" + NL;
+	    }
+	    
 	    // -----------------------------
 	    // 1) 공격력 굴림 + 크리티컬
 	    // -----------------------------
@@ -8098,17 +8212,18 @@ public class BossAttackController {
 	    JOB_DEFS.put("음양사", new JobDef(
     		"음양사",
     		"▶ 음양의 이치를 깨달은 도사",
-    		"⚔ 기본공격 배율 1.5, 다음 공격하는 아군 강화, 매턴 공격시 자신 회복, 음양몬스터 출연 "+NL
+    		"⚔ 기본공격 배율 1.3, 다음 공격하는 아군 강화, 매턴 공격시 자신 회복, 음양몬스터 출연 "+NL
     		+"◎선행조건 도사 직업으로 1000회 공격"
 		));
-	    /*
-	    JOB_DEFS.put("용투사", new JobDef(
-			"용투사",
-			"▶ 용족의 마지막 후예, 격투술로 상대를 제압한다",
-			"⚔ 용 "+NL
-			+"◎선행조건 마법사,도적 직업으로 각 300회 공격"
+	    
+	    JOB_DEFS.put("헌터", new JobDef(
+			"헌터",
+			"▶ 이세계에서 넘어온 실력자, 그들은 랭크에 따라 강력한 능력을 가진다",
+			"⚔ 공격횟수의 10% 만큼 공격력증가, 아이템드랍획득수의 10%만큼 체력,1%만큼 리젠증가, 죽음횟수의 10%만큼 치명데미지증가"+NL
+			+"치명타확률 100%초과시 치명타데미지로 전환증가"
+			
 		));
-        */
+        
 	}
 	
 	// 목표직업 -> 요구조건 리스트

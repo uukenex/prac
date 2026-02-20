@@ -69,4 +69,5 @@ public class UserBattleContext {
 	public int dropCritBonus;
 	public int dropCritDmgBonus;
 
+	public String hunterGrade;
 }
