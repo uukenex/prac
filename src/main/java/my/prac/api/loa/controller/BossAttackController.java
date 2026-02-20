@@ -309,7 +309,7 @@ public class BossAttackController {
 	            int totalDrops = 0;
 	            if (drops != null) {
 	                for (HashMap<String,Object> d : drops) {
-	                    Object v = d.get("QTY");
+	                    Object v = d.get("TOTAL_QTY");
 	                    if (v instanceof Number) {
 	                        totalDrops += ((Number)v).intValue();
 	                    }
@@ -323,24 +323,64 @@ public class BossAttackController {
 	            int hunterCriDmgBonus = totalDeaths / 10;
 
 	            // ───── 등급 점수 계산 ─────
-	            int hunterScore =
-	                    (totalAttacks / 100)
-	                  + (totalDrops   / 50)
-	                  + (totalDeaths  / 5);
-
 	            String hunterGrade;
 
-	            if (hunterScore >= 700)      hunterGrade = "S";
-	            else if (hunterScore >= 500) hunterGrade = "A";
-	            else if (hunterScore >= 300) hunterGrade = "B";
-	            else if (hunterScore >= 150) hunterGrade = "C";
-	            else if (hunterScore >= 50)  hunterGrade = "D";
-	            else                         hunterGrade = "F";
+	            if (totalAttacks >= 50000
+	                    && totalDrops >= 100000
+	                    && totalDeaths >= 2000) {
+
+	                hunterGrade = "SSS";
+
+	            } else if (totalAttacks >= 40000
+	                    && totalDrops >= 50000
+	                    && totalDeaths >= 1000) {
+
+	                hunterGrade = "SS";
+
+	            } else if (totalAttacks >= 30000
+	                    && totalDrops >= 30000
+	                    && totalDeaths >= 700) {
+
+	                hunterGrade = "S";
+
+	            } else if (totalAttacks >= 20000
+	                    && totalDrops >= 20000
+	                    && totalDeaths >= 500) {
+
+	                hunterGrade = "A";
+
+	            } else if (totalAttacks >= 10000
+	                    && totalDrops >= 10000
+	                    && totalDeaths >= 200) {
+
+	                hunterGrade = "B";
+
+	            } else if (totalAttacks >= 5000
+	                    && totalDrops >= 5000
+	                    && totalDeaths >= 100) {
+
+	                hunterGrade = "C";
+
+	            } else if (totalAttacks >= 1000
+	                    && totalDrops >= 1000
+	                    && totalDeaths >= 50) {
+
+	                hunterGrade = "D";
+
+	            } else {
+	                hunterGrade = "F";
+	            }
 
 	            // ───── 등급별 상한 ─────
 	            int atkCap, hpCap, regenCap, criCap;
 
 	            switch (hunterGrade) {
+		            case "SSS":
+		                atkCap = 8000; hpCap = 80000; regenCap = 8000; criCap = 60;
+		                break;
+		            case "SS":
+		                atkCap = 6000; hpCap = 60000; regenCap = 6000; criCap = 45;
+		                break;
 	                case "S":
 	                    atkCap = 4000; hpCap = 30000; regenCap = 3000; criCap = 30;
 	                    break;
@@ -1241,6 +1281,11 @@ public class BossAttackController {
 	      .append("Lv: ").append(u.lv);
 	    if (!job.isEmpty()) {
 	        sb.append(" (").append(job).append(")");
+	        
+	        if ("헌터".equals(ctx.job) ) {
+	        	sb.append("( "+ctx.hunterGrade+" )");
+	        }
+	        
 	    }
 	    sb.append(", EXP ").append(u.expCur).append("/").append(u.expNext).append(NL);
 	    sb.append("포인트: ").append(pointStr).append(NL);
@@ -2292,7 +2337,7 @@ public class BossAttackController {
 	    } else if ("복수자".equals(job)) {
 	        jobDmgMul = 0.2;   
 	    } else if ("음양사".equals(job)) {
-	        jobDmgMul = 1.3;   
+	        jobDmgMul = 1.6;   
 	    }
 
 	    // 직업 배율까지 반영된 실제 전투용 공격력 (구버전 공식과 동일)
@@ -2647,6 +2692,7 @@ public class BossAttackController {
 	        dosabuffMsg = buildUnifiedDosaBuffMessage(buffEff_self, buffEff_room);
 	    }
 
+	    u.hunterGrade = ctx.hunterGrade;
 	    // 11) 데미지 계산 (A형 완전 분리 버전)
 	    DamageOutcome dmg = calculateDamage(
 	            u,
@@ -3103,7 +3149,7 @@ public class BossAttackController {
                 if(!"STEAL".equals(gainType)) {
                 	// 빛 / 어둠 보정
                 	if ("9".equals(res.dropCode)) {
-                		gainSp *=15;
+                		gainSp *=9;
                 	}
                     if ("3".equals(res.dropCode) || "5".equals(res.dropCode)) {
                         gainSp *= 5;
@@ -4775,7 +4821,7 @@ public class BossAttackController {
 
 	    if (willKill) {
 	    	if(gray) {
-	    		baseKillExp *= 15;
+	    		baseKillExp *= 9;
 	    	}else if(dark) {
 	    		baseKillExp *= 5;
 	    	}else if(lucky) {
@@ -5106,7 +5152,7 @@ public class BossAttackController {
 	    sb.append("을(를) 공격!").append(NL).append(NL);
 
 	    if (res.gray) {
-	    	sb.append("✨ LIGHT&DARK MONSTER! (처치시 경험치×15, 음양 드랍)").append(NL);
+	    	sb.append("✨ LIGHT&DARK MONSTER! (처치시 경험치×9, 음양 드랍)").append(NL);
 	    }
 	    if (res.dark) {
 	    	sb.append("✨ DARK MONSTER! (처치시 경험치×5, 어둠 드랍)").append(NL);
@@ -6625,15 +6671,30 @@ public class BossAttackController {
 
 	    
 	    if ("헌터".equals(job) && effCritRate > 100) {
-
 	        int overflow = effCritRate - 100;
 
-	        effCritRate = 100;       // 크리 확률은 100%로 제한
-	        effCriDmg  += overflow;  // 초과분을 크리데미지로 전환
+	        double convertRate;
 
-	        // 필요하면 메시지 표시
-	        // out.dmgCalcMsg += "헌터 특성 발동! 치명타 초과 "
-	        //        + overflow + "% → 치명타데미지 전환" + NL;
+	        switch (u.hunterGrade) {
+	            case "SSS": convertRate = 1.00; break;
+	            case "SS":  convertRate = 0.90; break;
+	            case "S":   convertRate = 0.75; break;
+	            case "A":   convertRate = 0.60; break;
+	            case "B":   convertRate = 0.50; break;
+	            case "C":   convertRate = 0.40; break;
+	            case "D":   convertRate = 0.30; break;
+	            default:    convertRate = 0.20;
+	        }
+
+	        int converted = (int)Math.floor(overflow * convertRate);
+
+	        effCritRate = 100;
+	        effCriDmg  += converted;
+
+	        // 디버그용
+	         out.dmgCalcMsg += "헌터(" + u.hunterGrade + ") "
+	                + "overCRIT " + overflow + "% → "
+	               + converted + "% chgCDMG (" + (convertRate*100) + "%)" + NL;
 	    }
 	    
 	    // -----------------------------
@@ -8212,14 +8273,14 @@ public class BossAttackController {
 	    JOB_DEFS.put("음양사", new JobDef(
     		"음양사",
     		"▶ 음양의 이치를 깨달은 도사",
-    		"⚔ 기본공격 배율 1.3, 다음 공격하는 아군 강화, 매턴 공격시 자신 회복, 음양몬스터 출연 "+NL
+    		"⚔ 기본공격 배율 1.6, 다음 공격하는 아군 강화, 매턴 공격시 자신 회복, 음양몬스터 출연 "+NL
     		+"◎선행조건 도사 직업으로 1000회 공격"
 		));
 	    
 	    JOB_DEFS.put("헌터", new JobDef(
 			"헌터",
 			"▶ 이세계에서 넘어온 실력자, 그들은 랭크에 따라 강력한 능력을 가진다",
-			"⚔ 공격횟수의 10% 만큼 공격력증가, 아이템드랍획득수의 10%만큼 체력,1%만큼 리젠증가, 죽음횟수의 10%만큼 치명데미지증가"+NL
+			"⚔ 공격횟수의 최대 10% 만큼 공격력증가, 아이템드랍획득수의 최대 10%만큼 체력,1%만큼 리젠증가, 죽음횟수의 최대 10%만큼 치명데미지증가"+NL
 			+"치명타확률 100%초과시 치명타데미지로 전환증가"
 			
 		));

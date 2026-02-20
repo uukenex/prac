@@ -26,4 +26,5 @@ public  class User {
 	public String job;
 	public Timestamp jobChangeDate;
 	public long totalSp; 
+	public String hunterGrade;
 }
