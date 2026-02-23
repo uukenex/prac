@@ -6650,6 +6650,9 @@ public class LoaChatController {
 				hs.put("char_name", ordUserId);
 				hs.put("req", imgUrl);
 				hs.put("res", randKey);
+				
+				title = title.replaceAll("<[^>]*>", "").trim();
+				
 				hs.put("title", title);
 				hs.put("class_name", className);
 				
