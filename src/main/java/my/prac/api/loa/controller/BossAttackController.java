@@ -2339,6 +2339,8 @@ public class BossAttackController {
 
 	    if ("궁수".equals(job)) {
 	        jobDmgMul = 1.6;   // 궁수: 데미지 1.6배
+	    } else if ("궁사".equals(job)) {
+	        jobDmgMul = 1.2;   
 	    } else if ("전사".equals(job)) {
 	        jobDmgMul = 1.4;   // 전사: 데미지 1.2배
 	    } else if ("검성".equals(job)) {
@@ -6833,8 +6835,8 @@ public class BossAttackController {
 	                : 0.0;
 
 	        // 2~마지막샷까지 개별 최대 70%
-	        if (perHitRateRaw > 75.0) {
-	            perHitRateRaw = 75.0;
+	        if (perHitRateRaw > 80.0) {
+	            perHitRateRaw = 80.0;
 	        }
 	        double perHitRate = perHitRateRaw; // 0.0 ~ 80.0
 
@@ -6867,7 +6869,7 @@ public class BossAttackController {
 	                }
 	            }
 	            
-	            double minFactor = 0.3; // 마지막 타 최소 비율 (원하면 0.2~0.4 사이로 튜닝)
+	            double minFactor = 0.4; // 마지막 타 최소 비율 (원하면 0.2~0.4 사이로 튜닝)
 
 	            int maxIdx = (hitCount > 1 ? hitCount - 1 : 1);
 	            double factor = 1.0;
@@ -6888,7 +6890,7 @@ public class BossAttackController {
 	            }
 
 	            int shotDmg = shotCrit
-	                    ? (int) Math.round(shotAtk * critMultiplier*0.65)
+	                    ? (int) Math.round(shotAtk * critMultiplier*0.70)
 	                    : shotAtk;
 
 	            totalDmg += shotDmg;
@@ -8256,12 +8258,12 @@ public class BossAttackController {
 	        "▶ 도를 닦아 깨달음을 얻은 위인",
 	        "⚔ 다음 공격하는 아군 강화(레벨*0.5만큼 능력강화,맥뎀*0.1만큼 치명뎀강화,"+NL+"매턴 공격시 자신 회복,자신의 럭키몬스터 등장 확률 증가"
 	    ));
-	    
+	    /*
         JOB_DEFS.put("사신", new JobDef(
             "사신",
             "▶ 이름하야 죽음의 신, 죽지않는다",
             "⚔ 드랍율-30%, 체력 0에서도 죽지 않음, 다크 몬스터 조우 불가"
-        ));
+        ));*/
         
         JOB_DEFS.put("흡혈귀", new JobDef(
             "흡혈귀",
@@ -8301,7 +8303,7 @@ public class BossAttackController {
         JOB_DEFS.put("궁사", new JobDef(
     		"궁사",
     		"▶ 연속공격의 달인, 최대데미지와 최소공격력 차이가 클수록 연속공격한다",
-    		"⚔ 최대-최소 데미지 차이 최대데미지의10%마다(최소280) 1연사 추가공격(각 구간 별 공격은 개별치명타율 최대75%)"+NL
+    		"⚔ 기본공격 배율 1.2, 최대-최소 데미지 차이 최대데미지의10%마다(최소280) 1연사 추가공격(각 구간 별 공격은 개별치명타율 최대80%)"+NL
  	         +"◎선행조건 : 공격횟수 3000회 "
         ));
 
