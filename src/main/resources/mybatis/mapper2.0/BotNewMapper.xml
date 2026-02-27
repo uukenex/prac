@@ -1571,7 +1571,6 @@
 	    SELECT NVL(SUM(QTY),0)
 	      FROM TBOT_POINT_NEW_INVENTORY
 	     WHERE USER_NAME = #{userName}
-	       AND ROOM_NAME = #{roomName}
 	       AND ITEM_ID   = #{itemId}
 	       AND DEL_YN    = '0'
 	
@@ -1582,7 +1581,6 @@
 	    UPDATE TBOT_POINT_NEW_INVENTORY
 	       SET QTY = QTY - #{count}
 	     WHERE USER_NAME = #{userName}
-	       AND ROOM_NAME = #{roomName}
 	       AND ITEM_ID   = #{itemId}
 	       AND DEL_YN    = '0'
 	
