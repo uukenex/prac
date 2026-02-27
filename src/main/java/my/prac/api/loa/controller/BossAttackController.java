@@ -3423,8 +3423,15 @@ public class BossAttackController {
 	        return ""; // 드랍 실패 → 메시지 없음
 	    }
 
-	    int bagItemId = nightmare ? BAG_NM_ITEM_ID : BAG_ITEM_ID;
+	    
+	    
+	    int bagItemId = BAG_ITEM_ID;
 
+	    double rnd = ThreadLocalRandom.current().nextDouble();
+        if (rnd < 0.20) {
+        	 bagItemId = nightmare ? BAG_NM_ITEM_ID : BAG_ITEM_ID;
+        }
+	    
 	    
 	    // 인벤토리에 가방 1개 추가
 	    try {
@@ -3438,7 +3445,14 @@ public class BossAttackController {
 
 	        botNewService.insertInventoryLogTx(inv);
 
-	        return "" + m.monName + "이(가) 수상한 가방을 떨어뜨렸습니다! (/가방열기 로 열 수 있습니다.)";
+	        String ment = "";
+	        if(bagItemId == BAG_NM_ITEM_ID) {
+	        	ment = "복주머니가방";
+	        }else {
+	        	ment = "세티노의비밀가방";
+	        }
+	        
+	        return "" + m.monName + "이(가) "+ment+"을 떨어뜨렸습니다! (/가방열기 로 열 수 있습니다.)";
 	    } catch (Exception e) {
 	        // 실패해도 전투 진행은 깨지 않게
 	        // log.error("bag drop error", e);
