@@ -1577,12 +1577,11 @@
 	</select>
 	<update id="consumeBagBulkByItemId"
 	        parameterType="hashmap">
-	
-	    UPDATE TBOT_POINT_NEW_INVENTORY
-	       SET QTY = QTY - #{count}
+		UPDATE TBOT_POINT_NEW_INVENTORY
+	       SET DEL_YN = '1'
 	     WHERE USER_NAME = #{userName}
 	       AND ITEM_ID   = #{itemId}
 	       AND DEL_YN    = '0'
-	
+	       AND ROWNUM &lt;=  #{count}
 	</update>
 </mapper>
