@@ -531,7 +531,7 @@
 	   </if>
 	   -->
 	    AND inv.del_yn = '0'
-	    AND i.item_type in ('MARKET','BAG_OPEN','MASTER','ACHV')
+	    AND i.item_type in ('MARKET','BAG_OPEN','BAG_OPEN_NM','MASTER','ACHV')
 	</select>
 	
 	<!-- 구매 가능한 MARKET 아이템 목록 + 보유여부 -->
@@ -1138,7 +1138,7 @@
        <!-- 
        AND ROOM_NAME = #{roomName}
         -->
-       AND ITEM_ID   = #{itemId}
+       AND ITEM_ID   in ('91','92')
        AND DEL_YN    = '0'
 	</select>
 	
@@ -1150,7 +1150,7 @@
 	     <!-- 
 	       AND ROOM_NAME = #{roomName}
 	        -->
-	       AND ITEM_ID   = #{itemId}
+	       AND ITEM_ID   in ('91','92')
 	       AND DEL_YN    = '0'
 	       AND ROWNUM    = 1
 	</update>
@@ -1170,7 +1170,7 @@
 	<select id="selectBagRewardItemIds" resultType="int">
 	    SELECT ITEM_ID
 	      FROM TBOT_POINT_NEW_ITEM
-	     WHERE ITEM_TYPE = 'SELL'
+	     WHERE ITEM_TYPE = 'BAG_OPEN'
 	</select>
 	
 	<!-- 4) 아이템 이름 조회 -->
@@ -1183,7 +1183,12 @@
 	<select id="selectBagRewardItemIdsUserNotOwned" parameterType="hashmap" resultType="int">
     SELECT ITEM_ID
       FROM TBOT_POINT_NEW_ITEM I
-     WHERE I.ITEM_TYPE = 'BAG_OPEN'
+     WHERE (
+     		I.ITEM_TYPE = 'BAG_OPEN'
+      		 <if test="bagItemId == 92">
+        	OR I.ITEM_TYPE = 'BAG_OPEN_NM'
+            </if>
+            )
        AND I.ITEM_ID NOT IN (
            SELECT DISTINCT ITEM_ID
              FROM TBOT_POINT_NEW_INVENTORY
@@ -1233,7 +1238,7 @@
 	              FROM TBOT_POINT_NEW_INVENTORY A
 	              JOIN TBOT_POINT_NEW_ITEM      B
 	                ON A.ITEM_ID   = B.ITEM_ID
-	             WHERE A.GAIN_TYPE = 'BAG_OPEN'
+	             WHERE A.GAIN_TYPE in ('BAG_OPEN','BAG_OPEN_NM')
 	        )
 	        ORDER BY insertDate DESC
 	    )
@@ -1557,5 +1562,29 @@
 	    UPDATE TBOT_POINT_NEW_USER
 	       SET BLESS_YN = 0
 	     WHERE USER_NAME = #{userName}
+	</update>
+	
+	<select id="selectBagCountByItemId"
+	        parameterType="hashmap"
+	        resultType="int">
+	
+	    SELECT NVL(SUM(QTY),0)
+	      FROM TBOT_POINT_NEW_INVENTORY
+	     WHERE USER_NAME = #{userName}
+	       AND ROOM_NAME = #{roomName}
+	       AND ITEM_ID   = #{itemId}
+	       AND DEL_YN    = '0'
+	
+	</select>
+	<update id="consumeBagBulkByItemId"
+	        parameterType="hashmap">
+	
+	    UPDATE TBOT_POINT_NEW_INVENTORY
+	       SET QTY = QTY - #{count}
+	     WHERE USER_NAME = #{userName}
+	       AND ROOM_NAME = #{roomName}
+	       AND ITEM_ID   = #{itemId}
+	       AND DEL_YN    = '0'
+	
 	</update>
 </mapper>

@@ -401,11 +401,8 @@ public class BotNewServiceImpl implements BotNewService {
     }
 
     @Override
-    public List<Integer> selectBagRewardItemIdsUserNotOwned(String userName, String roomName) {
-        HashMap<String,Object> p = new HashMap<>();
-        p.put("userName", userName);
-        p.put("roomName", roomName);
-        return botNewDAO.selectBagRewardItemIdsUserNotOwned(p);
+    public List<Integer> selectBagRewardItemIdsUserNotOwned(HashMap<String,Object> param ) {
+        return botNewDAO.selectBagRewardItemIdsUserNotOwned(param);
     }
 
     @Override
@@ -585,5 +582,33 @@ public class BotNewServiceImpl implements BotNewService {
     public void clearBlessYn(String userName) {
         botNewDAO.clearBlessYn(userName);
     }
+
+
+    @Override
+    public int selectBagCountByItemId(String userName, String roomName, int itemId) {
+
+        HashMap<String,Object> param = new HashMap<>();
+        param.put("userName", userName);
+        param.put("roomName", roomName);
+        param.put("itemId", itemId);
+
+        return botNewDAO.selectBagCountByItemId(param);
+    }
+
+    @Override
+    public int consumeBagBulkByItemIdTx(String userName,
+                                        String roomName,
+                                        int itemId,
+                                        int count) {
+
+        HashMap<String,Object> param = new HashMap<>();
+        param.put("userName", userName);
+        param.put("roomName", roomName);
+        param.put("itemId", itemId);
+        param.put("count", count);
+
+        return botNewDAO.consumeBagBulkByItemId(param);
+    }
+
 
 }

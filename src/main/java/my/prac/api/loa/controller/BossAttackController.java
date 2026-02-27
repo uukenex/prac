@@ -709,6 +709,7 @@ public class BossAttackController {
 	
 
 	public String openBag(HashMap<String,Object> map) {
+
 	    final String roomName = Objects.toString(map.get("roomName"), "");
 	    final String userName = Objects.toString(map.get("userName"), "");
 
@@ -716,43 +717,54 @@ public class BossAttackController {
 	        return "방/유저 정보가 누락되었습니다.";
 	    }
 
-	    // 1) 가방 개수 확인
-	    int bagCount = botNewService.selectBagCount(userName, roomName);
-	    if (bagCount <= 0) {
+	    // 91 / 92 각각 개수 조회
+	    int normalCount    = botNewService.selectBagCountByItemId(userName, roomName, 91);
+	    int nightmareCount = botNewService.selectBagCountByItemId(userName, roomName, 92);
+
+	    if (normalCount + nightmareCount <= 0) {
 	        return "열 수 있는 가방이 없습니다.";
 	    }
-	 // 🔹 한 번에 모두 소비
-	    int updated = botNewService.consumeBagBulkTx(userName, roomName, bagCount);
-	    if (updated <= 0) {
-	        return "가방을 사용하는 중 오류가 발생했습니다.";
+
+	    // 각각 소비
+	    if (normalCount > 0) {
+	        botNewService.consumeBagBulkByItemIdTx(userName, roomName, 91, normalCount);
 	    }
-	    
-	    
+	    if (nightmareCount > 0) {
+	        botNewService.consumeBagBulkByItemIdTx(userName, roomName, 92, nightmareCount);
+	    }
+
 	    int totalSp = 0;
 	    List<String> detail = new ArrayList<>();
 	    List<String> itemSummary = new ArrayList<>();
-	    
-	    for (int i = 1; i <= bagCount; i++) {
+
+	    // ===============================
+	    // 🔹 91 일반 가방 처리
+	    // ===============================
+	    for (int i = 1; i <= normalCount; i++) {
 
 	        double roll = ThreadLocalRandom.current().nextDouble();
 
 	        if (roll < 0.90) {
+
 	            int sp = rollBagSpWithCeiling(userName, roomName);
 	            totalSp += sp;
 	            detail.add("가방" + i + ": " + sp + "sp");
+
 	        } else {
 
+	            HashMap<String,Object> param = new HashMap<>();
+	            param.put("userName", userName);
+	            param.put("roomName", roomName);
+	            param.put("bagItemId", 91);
+
 	            List<Integer> rewardItemIds =
-	                    botNewService.selectBagRewardItemIdsUserNotOwned(userName, roomName);
+	                    botNewService.selectBagRewardItemIdsUserNotOwned(param);
 
 	            if (rewardItemIds == null || rewardItemIds.isEmpty()) {
-	                rewardItemIds = botNewService.selectBagRewardItemIds();
+	                rewardItemIds = botNewService.selectBagRewardItemIds(); // fallback
 	            }
 
 	            if (rewardItemIds == null || rewardItemIds.isEmpty()) {
-	                int sp = rollBagSpWithCeiling(userName, roomName);
-	                totalSp += sp;
-	                detail.add("가방" + i + ": " + sp + "sp");
 	                continue;
 	            }
 
@@ -760,30 +772,53 @@ public class BossAttackController {
 	                    ThreadLocalRandom.current().nextInt(rewardItemIds.size())
 	            );
 
-	            HashMap<String,Object> inv = new HashMap<>();
-	            inv.put("userName", userName);
-	            inv.put("roomName", roomName);
-	            inv.put("itemId", itemId);
-	            inv.put("qty", 1);
-	            inv.put("delYn", "0");
-	            inv.put("gainType", "BAG_OPEN");
-	            botNewService.insertInventoryLogTx(inv);
-
-	            HashMap<String,Object> info = botNewService.selectItemDetailById(itemId);
-	            String itemName = Objects.toString(info.get("ITEM_NAME"), "");
-
-	            String label = itemName;
-	            if (itemId >= 9000 && itemId < 10000) {
-	                String opt = buildEnhancedOptionLine(info, 1);
-	                if (!opt.isEmpty()) label += opt;
-	            }
-
-	            itemSummary.add(label);
-	            detail.add("가방" + i + ": " + label + " 획득");
+	            giveBagItem(userName, roomName, itemId, itemSummary);
+	            detail.add("가방" + i + ": 아이템 획득");
 	        }
 	    }
 
-	    // 🔹 SP는 합산해서 1번만 저장
+	    // ===============================
+	    // 🔹 92 나이트메어 가방 처리
+	    // ===============================
+	    for (int i = 1; i <= nightmareCount; i++) {
+
+	        double roll = ThreadLocalRandom.current().nextDouble();
+
+	        if (roll < 0.98) {
+
+	            int sp = rollBagSpWithCeiling(userName, roomName);
+	            sp *= 20;  // 🔥 20배
+	            totalSp += sp;
+	            detail.add("가방" + i + ": " + sp + "sp");
+
+	        } else {
+
+	            HashMap<String,Object> param = new HashMap<>();
+	            param.put("userName", userName);
+	            param.put("roomName", roomName);
+	            param.put("bagItemId", 92);
+
+	            List<Integer> rewardItemIds =
+	                    botNewService.selectBagRewardItemIdsUserNotOwned(param);
+
+	            if (rewardItemIds == null || rewardItemIds.isEmpty()) {
+	                rewardItemIds = botNewService.selectBagRewardItemIds(); // fallback
+	            }
+
+	            if (rewardItemIds == null || rewardItemIds.isEmpty()) {
+	                continue;
+	            }
+
+	            int itemId = rewardItemIds.get(
+	                    ThreadLocalRandom.current().nextInt(rewardItemIds.size())
+	            );
+
+	            giveBagItem(userName, roomName, itemId, itemSummary);
+	            detail.add("가방" + i + ": 나이트메어 보상 획득");
+	        }
+	    }
+
+	    // 🔹 SP 저장
 	    if (totalSp > 0) {
 	        HashMap<String,Object> pr = new HashMap<>();
 	        pr.put("userName", userName);
@@ -793,16 +828,18 @@ public class BossAttackController {
 	        botNewService.insertPointRank(pr);
 	    }
 
-	    // 🔹 메시지 조립
+	    // 🔹 메시지
 	    StringBuilder sb = new StringBuilder();
-	    sb.append("가방 ").append(bagCount).append("개를 열었습니다!").append(NL);
+	    sb.append("가방 총 ").append(normalCount + nightmareCount)
+	      .append("개를 열었습니다!").append(NL);
 
 	    if (totalSp > 0) {
 	        sb.append("✨ 총 획득: ").append(totalSp).append("sp").append(NL);
 	    }
 
 	    if (!itemSummary.isEmpty()) {
-	        sb.append("✨ 아이템 획득: ").append(String.join(", ", itemSummary)).append(NL);
+	        sb.append("✨ 아이템 획득: ")
+	          .append(String.join(", ", itemSummary)).append(NL);
 	    }
 
 	    sb.append(NL).append("▶ 상세 내역").append(NL);
@@ -811,6 +848,24 @@ public class BossAttackController {
 	    }
 
 	    return sb.toString();
+	}
+
+	private void giveBagItem(String userName, String roomName, int itemId, List<String> itemSummary) {
+
+		HashMap<String, Object> inv = new HashMap<>();
+		inv.put("userName", userName);
+		inv.put("roomName", roomName);
+		inv.put("itemId", itemId);
+		inv.put("qty", 1);
+		inv.put("delYn", "0");
+		inv.put("gainType", "BAG_OPEN");
+
+		botNewService.insertInventoryLogTx(inv);
+
+		HashMap<String, Object> info = botNewService.selectItemDetailById(itemId);
+
+		String itemName = Objects.toString(info.get("ITEM_NAME"), "");
+		itemSummary.add(itemName);
 	}
 	
 	private int rollBagSpWithCeiling(String userName, String roomName) {
@@ -3368,7 +3423,7 @@ public class BossAttackController {
 	        return ""; // 드랍 실패 → 메시지 없음
 	    }
 
-	    //int bagItemId = nightmare ? BAG_NM_ITEM_ID : BAG_ITEM_ID;
+	    int bagItemId = nightmare ? BAG_NM_ITEM_ID : BAG_ITEM_ID;
 
 	    
 	    // 인벤토리에 가방 1개 추가
@@ -3376,7 +3431,7 @@ public class BossAttackController {
 	        HashMap<String,Object> inv = new HashMap<>();
 	        inv.put("userName", userName);
 	        inv.put("roomName", roomName);
-	        inv.put("itemId", BAG_ITEM_ID);
+	        inv.put("itemId", bagItemId);
 	        inv.put("qty", 1);
 	        inv.put("delYn", "0");
 	        inv.put("gainType", "BAG_DROP");

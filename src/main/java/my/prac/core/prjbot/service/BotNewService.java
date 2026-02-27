@@ -139,7 +139,7 @@ public interface BotNewService {
 
     String selectItemNameById(int itemId);
     
-    List<Integer> selectBagRewardItemIdsUserNotOwned(String userName, String roomName);
+    List<Integer> selectBagRewardItemIdsUserNotOwned( HashMap<String,Object> param );
     
     List<BagLog> selectRecentBagDrops();
     List<BagRewardLog> selectRecentBagRewards();
@@ -175,6 +175,12 @@ public interface BotNewService {
     
     public int updateRandomBlessUser(String attacker,int count) ;
     public void clearBlessYn(String userName) ;
+    
+    int selectBagCountByItemId(String userName, String roomName, int itemId);
+    int consumeBagBulkByItemIdTx(String userName, String roomName, int itemId, int count);
+    
+    
+    
 } 
 
 	
