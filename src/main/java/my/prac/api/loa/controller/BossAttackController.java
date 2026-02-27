@@ -790,7 +790,7 @@ public class BossAttackController {
 	            int sp = rollBagSpWithCeiling(userName, roomName);
 	            sp *= 20;  // 🔥 20배
 	            totalSp += sp;
-	            detail.add("가방" + i + ": " + sp + "sp");
+	            detail.add("[나메]가방" + i + ": " + sp + "sp");
 
 	        } else {
 
@@ -816,7 +816,7 @@ public class BossAttackController {
 	            );
 
 	            giveBagItem(userName, roomName, itemId, itemSummary);
-	            detail.add("가방" + i + ": 나이트메어 보상 획득");
+	            detail.add("[나메]가방" + i + ": 보상 획득");
 	        }
 	    }
 
