@@ -1541,7 +1541,7 @@
 	       AND ITEM_ID   IN ('91','92','93')
 	</select>
 	
-	<select id="selectRandomBlessTarget" parameterType="map" resultType="string">
+	<select id="selectRandomBlessTargets" parameterType="map" resultType="string">
 	      SELECT USER_NAME
 		    FROM (
 		        SELECT A.USER_NAME
