@@ -58,6 +58,7 @@ public class BossAttackController {
 	private static final double LUCKY_RATE_DOSA = 0.20;
 	private static final String ALL_SEE_STR = "===";
 	private static final int BAG_ITEM_ID = 91;
+	private static final int BAG_NM_ITEM_ID = 92;
 	
 	/* ===== DI ===== */
 	@Autowired LoaPlayController play;
@@ -720,13 +721,6 @@ public class BossAttackController {
 	    if (bagCount <= 0) {
 	        return "열 수 있는 가방이 없습니다.";
 	    }
-	    /*
-	    // 2) 가방 1개 소비
-	    int updated = botNewService.consumeOneBagTx(userName, roomName);
-	    if (updated <= 0) {
-	        return "가방을 사용하는 중 오류가 발생했습니다. 다시 시도해주세요.";
-	    }
-	     */    
 	 // 🔹 한 번에 모두 소비
 	    int updated = botNewService.consumeBagBulkTx(userName, roomName, bagCount);
 	    if (updated <= 0) {
@@ -901,6 +895,21 @@ public class BossAttackController {
 	    // 4) 동일 직업으로 변경 시도
 	    if (!curJob.isEmpty() && newJob.equals(curJob)) {
 	        return "이미 [" + curJob + "] 직업입니다.";
+	    }
+	    
+	    // ─────────────────────────────
+	    if ("축복술사".equals(curJob) && u.procDate != null) {
+
+	        long now = System.currentTimeMillis();
+	        long lastChange = u.procDate.getTime();
+
+	        long diffMinutes = (now - lastChange) / (1000 * 60);
+
+	        if (diffMinutes < 30) {
+	            long remain = 30 - diffMinutes;
+	            return "🌟 축복술사는 축복의 여운이 남아 "
+	                    + remain + "분 동안 직업 변경이 불가능합니다.";
+	        }
 	    }
 
 	    if(!master) {
@@ -2719,9 +2728,69 @@ public class BossAttackController {
 	            beforeJobSkillYn
 	    );
 
-	    AttackCalc calc = dmg.calc;
-	    flags = dmg.flags;
-	    boolean willKill = dmg.willKill;
+		if ("축복술사".equals(job) && dmg.calc.atkDmg > 0) {
+
+			String blessTarget = botNewService.updateRandomBlessUser(userName);
+
+			if (blessTarget != null) {
+				dmg.dmgCalcMsg += NL + "✨ " + blessTarget + "에게 축복이 내려졌습니다!";
+			}
+		}
+
+		AttackCalc calc = dmg.calc;
+		flags = dmg.flags;
+		boolean willKill = dmg.willKill;
+
+		// ─────────────────────────────
+		// 🌟 축복 효과 적용 (1회성, 최종 데미지 1.5배)
+		// ─────────────────────────────
+		if (u.blessYn == 1) {
+
+		    boolean used = false;
+
+		    // 1️⃣ 사망 상태면 부활
+		    if (u.hpCur <= 0) {
+
+		        int reviveHp = (int)Math.round(effHpMax * 0.5);
+		        u.hpCur = reviveHp;
+
+		        botNewService.updateUserHpOnlyTx(userName, roomName, reviveHp);
+
+		        dmg.dmgCalcMsg += NL + "✨ 축복의 기적! 부활 (" 
+		                + reviveHp + "/" + effHpMax + ")";
+
+		        used = true;
+		    }
+
+		    // 2️⃣ 살아있으면 체력 회복
+		    else {
+
+		        int heal = (int)Math.round(effHpMax * 0.3);
+		        int beforeHp = u.hpCur;
+
+		        u.hpCur = Math.min(effHpMax, u.hpCur + heal);
+
+		        dmg.dmgCalcMsg += NL + "✨ 축복의 치유! "
+		                + (u.hpCur - beforeHp)
+		                + " 회복 (" + beforeHp + " → " + u.hpCur + ")";
+
+		        used = true;
+		    }
+
+		    // 3️⃣ 공격력 강화
+		    if (calc.atkDmg > 0) {
+		        int beforeDmg = calc.atkDmg;
+		        calc.atkDmg = (int)Math.round(calc.atkDmg * 1.5);
+
+		        dmg.dmgCalcMsg += NL + "✨ 축복 강화! "
+		                + beforeDmg + " → " + calc.atkDmg + " (1.5배)";
+		    }
+
+		    // 4️⃣ 1회성 소비
+		    if (used) {
+		        botNewService.clearBlessYn(userName);
+		    }
+		}
 	    
 	 // 🔥 전투 종료 패턴 처리 (패턴 6)
 	    if (calc.endBattle) {
@@ -2986,6 +3055,9 @@ public class BossAttackController {
 	    }
 	    
 	    
+	    
+	    
+	    
 	    boolean flag1 =false;
 	    
 	    if(ctx.lifetimeSp < 200000000) {
@@ -3054,7 +3126,7 @@ public class BossAttackController {
 	                           + bagAchvMsg ;
 	               }
 
-	        bagDropMsg = tryDropBag(userName, roomName, m);
+	        bagDropMsg = tryDropBag(userName, roomName, m, nightmare);
 	    }
 
 	    // 15) 메시지 구성
@@ -3277,7 +3349,7 @@ public class BossAttackController {
 	    return 1.0;
 	}
 	
-	private String tryDropBag(String userName, String roomName, Monster m) {
+	private String tryDropBag(String userName, String roomName, Monster m, boolean nightmare) {
 
 	    // 몬스터에 따른 가방 드랍 확률 (예시)
 	    double baseRate = getBagDropRate(m.monNo);
@@ -3293,6 +3365,9 @@ public class BossAttackController {
 	        return ""; // 드랍 실패 → 메시지 없음
 	    }
 
+	    //int bagItemId = nightmare ? BAG_NM_ITEM_ID : BAG_ITEM_ID;
+
+	    
 	    // 인벤토리에 가방 1개 추가
 	    try {
 	        HashMap<String,Object> inv = new HashMap<>();
@@ -4632,6 +4707,10 @@ public class BossAttackController {
 	    if ("test".equals(param1)) return CooldownCheck.ok();
 
 	    int baseCd = COOLDOWN_SECONDS; // 2분
+	    
+	    if ("축복술사".equals(job)) {
+	    	baseCd = 30 * 60; // 30분
+	    }
 	    
 	    Timestamp last = botNewService.selectLastAttackTime(userName, roomName);
 	    if (last == null) return CooldownCheck.ok();
@@ -8296,9 +8375,14 @@ public class BossAttackController {
 			"▶ 이세계에서 넘어온 실력자, 그들은 랭크에 따라 강력한 능력을 가진다",
 			"⚔ 공격횟수의 최대 10% 만큼 공격력증가, 아이템드랍획득수의 최대 10%만큼 체력,1%만큼 리젠증가, 죽음횟수의 최대 10%만큼 치명데미지증가"+NL
 			+"치명타확률 100%초과시 치명타데미지로 전환증가"
-			
 		));
         
+	    JOB_DEFS.put("축복술사", new JobDef(
+			"축복술사",
+			"▶ 당신을 축복합니다",
+			"⚔ 공격 시 플레이어 무작위한명에게 축복(부활.회복.주는피해증가)"+NL
+			+"공격 쿨타임30분, 공격 후 직업변경 불가시간 30분"
+		));
 	}
 	
 	// 목표직업 -> 요구조건 리스트

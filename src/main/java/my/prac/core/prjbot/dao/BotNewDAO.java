@@ -232,4 +232,10 @@ public interface BotNewDAO {
     void lockMacroUser(HashMap<String, Object> map);
     
     int selectTotalBagAcquireCount(String userName);
+    
+    String selectRandomBlessTarget(String attacker);
+
+    int updateBlessYn(String userName);
+
+    public int clearBlessYn(String userName) ;
 }

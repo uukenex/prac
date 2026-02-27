@@ -556,5 +556,24 @@ public class BotNewServiceImpl implements BotNewService {
     public int selectTotalBagAcquireCount(String userName) {
     	return botNewDAO.selectTotalBagAcquireCount(userName);
     }
+    
+    public String updateRandomBlessUser(String attacker) {
+    	String target = botNewDAO.selectRandomBlessTarget(attacker);
+
+        if (target == null) {
+            return null;
+        }
+
+        int updated = botNewDAO.updateBlessYn(target);
+
+        if (updated > 0) {
+            return target;
+        }
+
+        return null;
+    }
+    public void clearBlessYn(String userName) {
+        botNewDAO.clearBlessYn(userName);
+    }
 
 }

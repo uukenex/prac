@@ -23,7 +23,8 @@
 	          U.INSERT_DATE,
 	          U.JOB,
 	          U.JOB_CHANGE_DATE,
-	
+			  U.BLESS_YN,
+			  U.PROC_DATE,
 	          /* 🔥 전체 누적 SP */
 	          NVL(SP_SUM.TOTAL_SP, 0) AS TOTAL_SP
 	
@@ -1534,4 +1535,26 @@
 	     WHERE USER_NAME = #{userName}
 	       AND ITEM_ID   IN ('91','92','93')
 	</select>
+	
+	<select id="selectRandomBlessTarget" parameterType="string" resultType="string">
+	    SELECT USER_NAME
+	    FROM (
+	        SELECT A.USER_NAME
+	        FROM TBOT_POINT_NEW_USER A
+	        WHERE A.PROC_DATE > SYSDATE - 1
+	          AND A.USER_NAME != #{attacker}
+	        ORDER BY DBMS_RANDOM.VALUE
+	    )
+	    WHERE ROWNUM = 1
+	</select>
+	<update id="updateBlessYn">
+	    UPDATE TBOT_POINT_NEW_USER
+	       SET BLESS_YN = 1
+	     WHERE USER_NAME = #{userName}
+	</update>
+	<update id="clearBlessYn">
+	    UPDATE TBOT_POINT_NEW_USER
+	       SET BLESS_YN = 0
+	     WHERE USER_NAME = #{userName}
+	</update>
 </mapper>

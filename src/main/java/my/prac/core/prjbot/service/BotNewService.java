@@ -172,6 +172,9 @@ public interface BotNewService {
     int lockMacroUser(String userName);
     
     int selectTotalBagAcquireCount(String userName);
+    
+    public String updateRandomBlessUser(String attacker) ;
+    public void clearBlessYn(String userName) ;
 } 
 
 	
