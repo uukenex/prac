@@ -1536,16 +1536,17 @@
 	       AND ITEM_ID   IN ('91','92','93')
 	</select>
 	
-	<select id="selectRandomBlessTarget" parameterType="string" resultType="string">
-	    SELECT USER_NAME
-	    FROM (
-	        SELECT A.USER_NAME
-	        FROM TBOT_POINT_NEW_USER A
-	        WHERE A.PROC_DATE > SYSDATE - 1
-	          AND A.USER_NAME != #{attacker}
-	        ORDER BY DBMS_RANDOM.VALUE
-	    )
-	    WHERE ROWNUM = 1
+	<select id="selectRandomBlessTarget" parameterType="map" resultType="string">
+	      SELECT USER_NAME
+		    FROM (
+		        SELECT A.USER_NAME
+		        FROM TBOT_POINT_NEW_USER A
+		        WHERE A.PROC_DATE > SYSDATE - 1
+		          AND A.USER_NAME != #{attacker}
+		          AND NVL(A.BLESS_YN,0) = 0
+		        ORDER BY DBMS_RANDOM.VALUE
+		    )
+		    WHERE ROWNUM &lt;= #{count}
 	</select>
 	<update id="updateBlessYn">
 	    UPDATE TBOT_POINT_NEW_USER

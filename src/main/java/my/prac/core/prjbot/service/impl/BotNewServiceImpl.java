@@ -557,20 +557,30 @@ public class BotNewServiceImpl implements BotNewService {
     	return botNewDAO.selectTotalBagAcquireCount(userName);
     }
     
-    public String updateRandomBlessUser(String attacker) {
-    	String target = botNewDAO.selectRandomBlessTarget(attacker);
+    public int updateRandomBlessUser(String attacker,int count) {
+    	HashMap<String,Object> param = new HashMap<>();
+        param.put("attacker", attacker);
+        param.put("count", count);
 
-        if (target == null) {
-            return null;
+        List<String> targets =
+                botNewDAO.selectRandomBlessTargets(param);
+
+        if (targets == null || targets.isEmpty()) {
+            return 0;
         }
 
-        int updated = botNewDAO.updateBlessYn(target);
+        int successCount = 0;
 
-        if (updated > 0) {
-            return target;
+        for (String target : targets) {
+
+            int updated = botNewDAO.updateBlessYn(target);
+
+            if (updated > 0) {
+                successCount++;
+            }
         }
 
-        return null;
+        return successCount;
     }
     public void clearBlessYn(String userName) {
         botNewDAO.clearBlessYn(userName);

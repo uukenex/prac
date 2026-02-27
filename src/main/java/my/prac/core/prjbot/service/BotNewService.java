@@ -173,7 +173,7 @@ public interface BotNewService {
     
     int selectTotalBagAcquireCount(String userName);
     
-    public String updateRandomBlessUser(String attacker) ;
+    public int updateRandomBlessUser(String attacker,int count) ;
     public void clearBlessYn(String userName) ;
 } 
 

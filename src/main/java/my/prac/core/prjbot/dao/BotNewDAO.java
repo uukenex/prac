@@ -233,7 +233,7 @@ public interface BotNewDAO {
     
     int selectTotalBagAcquireCount(String userName);
     
-    String selectRandomBlessTarget(String attacker);
+    List<String> selectRandomBlessTargets(HashMap<String, Object> map);
 
     int updateBlessYn(String userName);
 

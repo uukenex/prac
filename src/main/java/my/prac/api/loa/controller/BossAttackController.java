@@ -2732,10 +2732,11 @@ public class BossAttackController {
 
 		if ("축복술사".equals(job) && dmg.calc.atkDmg > 0) {
 
-			String blessTarget = botNewService.updateRandomBlessUser(userName);
+			int blessCount = (u.lv / 100) + 1;  // 0~99=1, 100~199=2 ...
+			int blessTargetCount = botNewService.updateRandomBlessUser(userName,blessCount);
 
-			if (blessTarget != null) {
-				dmg.dmgCalcMsg += NL + "✨ " + blessTarget + "에게 축복이 내려졌습니다!";
+			if (blessTargetCount > 0) {
+				dmg.dmgCalcMsg += NL + "✨랜덤한 " + blessCount + "명에게 축복이 내려졌습니다!";
 			}
 		}
 
