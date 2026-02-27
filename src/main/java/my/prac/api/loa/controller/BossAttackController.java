@@ -760,9 +760,10 @@ public class BossAttackController {
 	            List<Integer> rewardItemIds =
 	                    botNewService.selectBagRewardItemIdsUserNotOwned(param);
 
+	            /*
 	            if (rewardItemIds == null || rewardItemIds.isEmpty()) {
 	                rewardItemIds = botNewService.selectBagRewardItemIds(); // fallback
-	            }
+	            }*/
 
 	            if (rewardItemIds == null || rewardItemIds.isEmpty()) {
 	                continue;
@@ -801,10 +802,11 @@ public class BossAttackController {
 	            List<Integer> rewardItemIds =
 	                    botNewService.selectBagRewardItemIdsUserNotOwned(param);
 
+	            /*
 	            if (rewardItemIds == null || rewardItemIds.isEmpty()) {
 	                rewardItemIds = botNewService.selectBagRewardItemIds(); // fallback
 	            }
-
+	             */
 	            if (rewardItemIds == null || rewardItemIds.isEmpty()) {
 	                continue;
 	            }
