@@ -955,6 +955,7 @@ public class BossAttackController {
 	    }
 	    
 	    // ─────────────────────────────
+	    
 	    if ("축복술사".equals(curJob) && u.procDate != null) {
 
 	        long now = System.currentTimeMillis();
@@ -2796,34 +2797,23 @@ public class BossAttackController {
 				dmg.dmgCalcMsg += NL + "✨랜덤한 " + blessCount + "명에게 축복이 내려졌습니다!";
 			}
 		}
-
-		AttackCalc calc = dmg.calc;
-		flags = dmg.flags;
-		boolean willKill = dmg.willKill;
-
-		// ─────────────────────────────
-		// 🌟 축복 효과 적용 (1회성, 최종 데미지 1.5배)
-		// ─────────────────────────────
+		
 		if (u.blessYn == 1) {
 
 		    boolean used = false;
 
-		    // 1️⃣ 사망 상태면 부활
 		    if (u.hpCur <= 0) {
 
 		        int reviveHp = (int)Math.round(effHpMax * 0.5);
 		        u.hpCur = reviveHp;
-
 		        botNewService.updateUserHpOnlyTx(userName, roomName, reviveHp);
 
 		        dmg.dmgCalcMsg += NL + "✨ 축복의 기적! 부활 (" 
 		                + reviveHp + "/" + effHpMax + ")";
 
 		        used = true;
-		    }
 
-		    // 2️⃣ 살아있으면 체력 회복
-		    else {
+		    } else {
 
 		        int heal = (int)Math.round(effHpMax * 0.3);
 		        int beforeHp = u.hpCur;
@@ -2837,21 +2827,29 @@ public class BossAttackController {
 		        used = true;
 		    }
 
-		    // 3️⃣ 공격력 강화
-		    if (calc.atkDmg > 0) {
-		        int beforeDmg = calc.atkDmg;
-		        calc.atkDmg = (int)Math.round(calc.atkDmg * 1.5);
+		    if (dmg.calc.atkDmg > 0) {
+
+		        int beforeDmg = dmg.calc.atkDmg;
+		        dmg.calc.atkDmg = (int)Math.round(dmg.calc.atkDmg * 1.5);
 
 		        dmg.dmgCalcMsg += NL + "✨ 축복 강화! "
-		                + beforeDmg + " → " + calc.atkDmg + " (1.5배)";
+		                + beforeDmg + " → " + dmg.calc.atkDmg + " (1.5배)";
 		    }
 
-		    // 4️⃣ 1회성 소비
 		    if (used) {
 		        botNewService.clearBlessYn(userName);
 		    }
+		    
+		    dmg.willKill = (dmg.calc.atkDmg >= monHpRemainBefore);
 		}
-	    
+		
+
+		AttackCalc calc = dmg.calc;
+		flags = dmg.flags;
+		boolean willKill = dmg.willKill;
+
+		// ─────────────────────────────
+		
 	 // 🔥 전투 종료 패턴 처리 (패턴 6)
 	    if (calc.endBattle) {
 

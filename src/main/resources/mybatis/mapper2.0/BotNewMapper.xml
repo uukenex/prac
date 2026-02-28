@@ -1208,7 +1208,7 @@
 		          ROOM_NAME AS roomName,
 		          INSERT_DATE AS insertDate
 		      FROM TBOT_POINT_NEW_INVENTORY
-		      WHERE ITEM_ID = 91     -- 가방
+		      WHERE ITEM_ID in ( '91' , '92' )     -- 가방
 		      ORDER BY INSERT_DATE DESC
 		  )
 		  WHERE ROWNUM &lt;= 5
