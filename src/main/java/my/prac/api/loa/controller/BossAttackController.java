@@ -2819,10 +2819,12 @@ public class BossAttackController {
 		        int beforeHp = u.hpCur;
 
 		        u.hpCur = Math.min(effHpMax, u.hpCur + heal);
-
-		        dmg.dmgCalcMsg += NL + "✨ 축복의 치유! "
-		                + (u.hpCur - beforeHp)
-		                + " 회복 (" + beforeHp + " → " + u.hpCur + ")";
+		        
+		        if(u.hpCur - beforeHp > 0) {
+		        	dmg.dmgCalcMsg += NL + "✨ 축복의 치유! "
+			                + (u.hpCur - beforeHp)
+			                + " 회복 (" + beforeHp + " → " + u.hpCur + ")";
+		        }
 
 		        used = true;
 		    }
