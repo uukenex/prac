@@ -3361,6 +3361,7 @@ public class BossAttackController {
 
 	    // 1) 최근 가방 먹은 사람인지 확인
 		
+		/*
 	    try {
 	        List<BagLog> lastDrops = botNewService.selectRecentBagDrops();
 	        if (lastDrops != null) {
@@ -3374,8 +3375,8 @@ public class BossAttackController {
 	            }
 	        }
 	    } catch (Exception ignore) {}
-		 	    
-	    boolean isRising = false;
+ 	    */
+	    //boolean isRising = false;
 
 	    // 2) 최근 6시간 라이징 스타(Top7)인지 확인
 	    try {
@@ -3388,20 +3389,20 @@ public class BossAttackController {
 	                String un = Objects.toString(row.get("USER_NAME"), "");
 
 	                if (roomName.equals(rn) && userName.equals(un)) {
-	                    isRising = true;
-	                    break;
+	                    //isRising = true;
+	                    return 1.5;
 	                }
 	            }
 	        }
 	    } catch (Exception ignore) {}
 
 	    
-	    
+	    /*
 	    if (isRising) {
 	        // 열심히 때렸는데 최근 가방 기록은 없는 사람 → 드랍율 4배
 	        return 5.0;
 	    }
-	    
+	    */
 	    
 	    
 
