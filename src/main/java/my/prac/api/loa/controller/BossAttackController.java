@@ -3078,7 +3078,7 @@ public class BossAttackController {
 	    }
 	    
 	    if ("용사".equals(job) && !(m.monNo > 50)) {
-	        double stealRate = 0.30;
+	        double stealRate = 0.60;
 	        if (ThreadLocalRandom.current().nextDouble() < stealRate) {
 	            String dropName = (m.monDrop == null ? "" : m.monDrop.trim());
 	            if (!dropName.isEmpty()) {
@@ -7654,7 +7654,13 @@ public class BossAttackController {
 	                calc.monDmg = 0;
 	            }
 	        }
-
+	        if ("용사".equals(job) && calc.monDmg > 0 && !flags.finisher) {
+	            int reduced = (int) Math.floor(calc.monDmg * 0.5);
+	            if (reduced < 1) reduced = 1;
+	            String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
+	            calc.patternMsg = baseMsg + "(받는 피해 50% 감소 → " + reduced + ")";
+	            calc.monDmg = reduced;
+	        }
 	        if ("프리스트".equals(job) && calc.monDmg > 0 && !flags.finisher) {
 	            int reduced = (int) Math.floor(calc.monDmg * 0.8);
 	            if (reduced < 1) reduced = 1;
@@ -7730,6 +7736,7 @@ public class BossAttackController {
 	        
 	    }
 
+	    /*
 	    if ("용사".equals(job)) {
 	    	double rnd = ThreadLocalRandom.current().nextDouble();
             if (rnd < 0.10) {
@@ -7744,6 +7751,7 @@ public class BossAttackController {
 	            calc.jobSkillUsed = true;
             }
 	    }
+	    */
 	    // -----------------------------
 	    // 5) 흡혈귀: 이번 턴 실제 입힌 피해의 20% 회복
 	    // -----------------------------
@@ -8384,7 +8392,7 @@ public class BossAttackController {
         JOB_DEFS.put("용사", new JobDef(
 	        "용사",
 	        "▶ 선택 받은 자",//어둠몹에 피해두배 ,언데드추뎀25% ,스틸30%, 10%확률 완전회복
-	        "⚔ 기본 HP*2 만큼 추가 증가, 어둠몬스터에 추가피해(+50%), 언데드 추가피해(+25%), 공격시 steal(30%), 정령의가호(10%), 기본데미지 * 1.4"+NL
+	        "⚔ 기본 HP*2 만큼 추가 증가, 어둠몬스터에 추가피해(+50%), 언데드 추가피해(+25%), 공격시 steal(60%), 데미지감소(50%), 기본데미지 * 1.4"+NL
 	        +"◎선행조건 전사,도적,도사,프리스트 직업으로 각 150회 공격"
 	    ));
 	     
