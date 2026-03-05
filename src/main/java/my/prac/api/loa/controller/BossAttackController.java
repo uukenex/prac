@@ -3,6 +3,9 @@ package my.prac.api.loa.controller;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -38,6 +41,7 @@ import my.prac.core.game.dto.Flags;
 import my.prac.core.game.dto.KillStat;
 import my.prac.core.game.dto.Monster;
 import my.prac.core.game.dto.OngoingBattle;
+import my.prac.core.game.dto.SpecialBuffResult;
 import my.prac.core.game.dto.User;
 import my.prac.core.game.dto.UserBattleContext;
 import my.prac.core.prjbot.dao.BotDAO;
@@ -2772,6 +2776,9 @@ public class BossAttackController {
 	    }
 
 	    u.hunterGrade = ctx.hunterGrade;
+	    
+	    SpecialBuffResult buff = handleSpecialBuff();
+	    
 	    // 11) 데미지 계산 (A형 완전 분리 버전)
 	    DamageOutcome dmg = calculateDamage(
 	            u,
@@ -3149,6 +3156,7 @@ public class BossAttackController {
 	        blessMsg = grantBlessLevelBonus(userName, roomName, up.beforeLv, up.afterLv);
 	    }
 	     */
+	    
 	    String bagDropMsg = "";
 	    if (res.killed) {
 	        botNewService.closeOngoingBattleTx(userName, roomName);
@@ -3260,6 +3268,14 @@ public class BossAttackController {
 	        msg += NL + bagDropMsg;
 	    }
 	    
+	    if (buff.started) {
+	    	msg += NL + buff.startMsg;
+	    }else if(buff.runningMsg != null) {
+	        msg += NL + buff.runningMsg;
+	    }
+	    
+	    
+	    
 
 	    try {
 	        botNewService.execSPMsgTest(map);
@@ -3357,6 +3373,100 @@ public class BossAttackController {
 	}
 	
 
+	private SpecialBuffResult handleSpecialBuff() {
+
+	    SpecialBuffResult result = new SpecialBuffResult();
+
+	    // 🔹 1. 현재 활성 버프 조회 (딱 1번만)
+	    HashMap<String,Object> activeBuff =
+	            botNewService.selectActiveSpecialBuff();
+
+	    // 🔹 2. 활성 버프 없으면 → 확률 발동 시도
+	    if (activeBuff == null) {
+
+	        double chance = 0.03;
+
+	        if (ThreadLocalRandom.current().nextDouble() < chance) {
+
+	            String flagCode = "가방";
+	            String effectType = "배율";
+	            double effectValue = 5.0;
+	            int durationMin = ThreadLocalRandom.current().nextInt(2, 21);
+
+	            HashMap<String,Object> param = new HashMap<>();
+	            param.put("flagCode", flagCode);
+	            param.put("effectType", effectType);
+	            param.put("effectValue", effectValue);
+	            param.put("durationMin", durationMin);
+
+	            botNewService.insertSpecialBuff(param);
+
+	            // 🔥 새로 발동했으니 activeBuff 재구성 (메모리상)
+	            activeBuff = new HashMap<>();
+	            activeBuff.put("FLAG_CODE", flagCode);
+	            activeBuff.put("EFFECT_TYPE", effectType);
+	            activeBuff.put("EFFECT_VALUE", effectValue);
+
+	            LocalDateTime now = LocalDateTime.now()
+	                    .withSecond(0).withNano(0);
+	            LocalDateTime end = now.plusMinutes(durationMin);
+
+	            activeBuff.put("END_TIME",
+	                    Date.from(end.atZone(ZoneId.systemDefault()).toInstant()));
+
+	            String desc = buildBuffDescription(flagCode, effectType, effectValue);
+
+	            result.started = true;
+	            result.startMsg =
+	                    "✨스페셜타임 발동! [" + desc + ", " + durationMin + "분]";
+	        }
+	    }
+
+	    // 🔹 3. 활성 버프가 있으면 진행 메시지 생성
+	    if (activeBuff != null) {
+
+	        String flagCode = (String) activeBuff.get("FLAG_CODE");
+	        String effectType = (String) activeBuff.get("EFFECT_TYPE");
+	        double effectValue =
+	                Double.parseDouble(activeBuff.get("EFFECT_VALUE").toString());
+
+	        Date endTime = (Date) activeBuff.get("END_TIME");
+
+	        LocalDateTime end = endTime.toInstant()
+	                .atZone(ZoneId.systemDefault())
+	                .toLocalDateTime();
+
+	        String endStr = end.format(DateTimeFormatter.ofPattern("HH:mm"));
+
+	        String desc = buildBuffDescription(flagCode, effectType, effectValue);
+
+	        result.runningMsg =
+	                "✨스페셜타임 진행중! [" + desc + ", " + endStr + "까지]";
+	    }
+
+	    return result;
+	}
+
+	private String buildBuffDescription(String flagCode, String effectType, double effectValue) {
+
+		String valueStr;
+
+		if ("배율".equals(effectType)) {
+			valueStr = ((int) effectValue) + "배";
+		} else {
+			valueStr = "+" + ((int) effectValue);
+		}
+
+		if ("가방".equals(flagCode)) {
+			return "가방확률 " + valueStr;
+		} else if ("공격력".equals(flagCode)) {
+			return "공격력 " + valueStr;
+		}
+
+		return flagCode + " " + valueStr;
+	}
+	
+	
 	private double computeBagPityMultiplier(String userName, String roomName) {
 
 	    // 1) 최근 가방 먹은 사람인지 확인
@@ -3396,7 +3506,24 @@ public class BossAttackController {
 	        }
 	    } catch (Exception ignore) {}
 
-	    
+	    try {
+	    	HashMap<String,Object> specialBuff = botNewService.selectActiveSpecialBuff();
+	    	if (specialBuff != null) {
+	    	    String flag = (String) specialBuff.get("FLAG_CODE");
+	    	    if ("가방".equals(flag)) {
+
+	    	        String type = (String) specialBuff.get("EFFECT_TYPE");
+	    	        double value =
+	    	            Double.parseDouble(specialBuff.get("EFFECT_VALUE").toString());
+
+	    	        if ("배율".equals(type)) {
+	    	            return value;
+	    	        } else {
+	    	            //finalRate += value;
+	    	        }
+	    	    }
+	    	}
+	    } catch (Exception ignore) {}
 	    /*
 	    if (isRising) {
 	        // 열심히 때렸는데 최근 가방 기록은 없는 사람 → 드랍율 4배
@@ -8185,6 +8312,10 @@ public class BossAttackController {
 	    // 예상 밖 타입이면 null
 	    return null;
 	}
+	
+	
+	
+	
 
 	private String buildRelicSummaryLine(List<HashMap<String, Object>> bag,int number) {
 		int sumAtkMin = 0;

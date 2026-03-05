@@ -611,4 +611,12 @@ public class BotNewServiceImpl implements BotNewService {
     }
 
 
+    public HashMap<String,Object> selectActiveSpecialBuff(){
+    	return botNewDAO.selectActiveSpecialBuff();
+    }
+
+    public int insertSpecialBuff(HashMap<String,Object> param) {
+    	return botNewDAO.insertSpecialBuff(param);
+    }
+    
 }

@@ -1584,4 +1584,35 @@
 	       AND DEL_YN    = '0'
 	       AND ROWNUM &lt;=  #{count}
 	</update>
+	
+	<select id="selectActiveSpecialBuff"
+	        resultType="hashmap">
+	
+	    SELECT *
+	      FROM tbot_point_new_special_buff
+	     WHERE SYSDATE BETWEEN START_TIME AND END_TIME
+		   AND ROWNUM = 1
+	</select>
+	
+	<insert id="insertSpecialBuff"
+        parameterType="hashmap">
+	
+	    INSERT INTO tbot_point_new_special_buff (
+	        FLAG_CODE,
+	        EFFECT_TYPE,
+	        EFFECT_VALUE,
+	        START_TIME,
+	        END_TIME,
+	        INSERT_DATE
+	    )
+	    VALUES (
+	        #{flagCode},
+	        #{effectType},
+	        #{effectValue},
+	        SYSDATE,
+	        TRUNC(SYSDATE, 'MI') + (#{durationMin} / 1440),
+	        SYSDATE
+	    )
+	
+	</insert>
 </mapper>
