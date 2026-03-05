@@ -63,6 +63,7 @@ public class BossAttackController {
 	private static final String ALL_SEE_STR = "===";
 	private static final int BAG_ITEM_ID = 91;
 	private static final int BAG_NM_ITEM_ID = 92;
+	private static final double BAG_DROP_RATE = 0.035;//3.5%
 	
 	/* ===== DI ===== */
 	@Autowired LoaPlayController play;
@@ -3196,7 +3197,7 @@ public class BossAttackController {
 	                           + bagAchvMsg ;
 	               }
 
-	        bagDropMsg = tryDropBag(userName, roomName, m, nightmare);
+	        bagDropMsg = tryDropBag(userName, roomName, m, nightmare,buff);
 	    }
 
 	    // 15) 메시지 구성
@@ -3392,8 +3393,16 @@ public class BossAttackController {
 
 	            String flagCode = "가방";
 	            String effectType = "배율";
-	            double effectValue = 5.0;
-	            int durationMin = ThreadLocalRandom.current().nextInt(2, 21);
+	            
+	            int effectValue = ThreadLocalRandom.current().nextInt(3, 11);
+
+	            double bias = 1 + (effectValue - 3) * 0.2;
+	            double r = Math.pow(ThreadLocalRandom.current().nextDouble(), bias);
+
+	            int durationMin = 4 + (int)(r * 16); // 4~20
+	            
+	            
+	            
 
 	            HashMap<String,Object> param = new HashMap<>();
 	            param.put("flagCode", flagCode);
@@ -3469,10 +3478,15 @@ public class BossAttackController {
 	}
 	
 	
-	private double computeBagPityMultiplier(String userName, String roomName) {
+	private double computeBagPityMultiplier(String userName, String roomName,SpecialBuffResult buff) {
 
 	    // 1) 최근 가방 먹은 사람인지 확인
 		double rtn_value = 1;
+		
+		//스페셜버프준사람은 획득함 ,100%획득
+		if(buff.started) {
+	    	return 1/BAG_DROP_RATE ;
+	    }
 
 	    // 2) 최근 6시간 라이징 스타(Top7)인지 확인
 	    try {
@@ -3517,19 +3531,17 @@ public class BossAttackController {
 	    }
 	    */
 	    
-	    
-
 	    // 기본값: 보정 없음
 	    return rtn_value;
 	}
 	
-	private String tryDropBag(String userName, String roomName, Monster m, boolean nightmare) {
+	private String tryDropBag(String userName, String roomName, Monster m, boolean nightmare,SpecialBuffResult buff) {
 
 	    // 몬스터에 따른 가방 드랍 확률 (예시)
 	    double baseRate = getBagDropRate(m.monNo);
 	    
 	    // 2) 최근 가방/라이징스타 기반 보정 배율
-	    double pityMul = computeBagPityMultiplier(userName, roomName);
+	    double pityMul = computeBagPityMultiplier(userName, roomName,buff);
 
 	    // 3) 최종 드랍율 (상한 50% 정도로 캡)
 	    double finalRate = baseRate * pityMul;
@@ -3577,7 +3589,7 @@ public class BossAttackController {
 	}
 	
 	private double getBagDropRate(int monNo) {
-		return 0.035; //3.5%
+		return BAG_DROP_RATE; //3.5%
 		
 	    // 예시: 초반 몹은 5%, 후반 보스는 15%
 		/*
