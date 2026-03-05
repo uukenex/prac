@@ -3396,12 +3396,12 @@ public class BossAttackController {
 	            
 	            int effectValue = ThreadLocalRandom.current().nextInt(3, 11);
 
-	            double bias = 1 + (effectValue - 3) * 0.2;
+	            int maxDuration = (int)(20 - (effectValue - 3) * 1.4);
+
+	            double bias = 1 + (effectValue - 3) * 0.3;
 	            double r = Math.pow(ThreadLocalRandom.current().nextDouble(), bias);
 
-	            int durationMin = 4 + (int)(r * 16); // 4~20
-	            
-	            
+	            int durationMin = 4 + (int)(r * (maxDuration - 4));
 	            
 
 	            HashMap<String,Object> param = new HashMap<>();
