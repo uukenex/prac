@@ -789,7 +789,7 @@ public class BossAttackController {
 
 	        double roll = ThreadLocalRandom.current().nextDouble();
 
-	        if (roll < 0.98) {
+	        if (roll < 0.94) {
 
 	            int sp = rollBagSpWithCeiling(userName, roomName);
 	            sp *= 20;  // 🔥 20배
@@ -1102,6 +1102,7 @@ public class BossAttackController {
 	        if ("MARKET".equalsIgnoreCase(type)
 	            || "MASTER".equalsIgnoreCase(type)
 	            || "BAG_OPEN".equalsIgnoreCase(type)
+	            || "BAG_OPEN_NM".equalsIgnoreCase(type)
 	            || "ACHV".equalsIgnoreCase(type)
 	        		) {
 	        	
@@ -1522,6 +1523,7 @@ public class BossAttackController {
 	                boolean isEquipType =
 	                        "MARKET".equalsIgnoreCase(typeStr) ||
 	                        "BAG_OPEN".equalsIgnoreCase(typeStr) ||
+	                        "BAG_OPEN_NM".equalsIgnoreCase(typeStr) ||
 	                        "MASTER".equalsIgnoreCase(typeStr) || 
 	                        "ACHV".equalsIgnoreCase(typeStr) 
 	                        ;
