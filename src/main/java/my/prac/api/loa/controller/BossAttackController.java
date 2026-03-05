@@ -3470,23 +3470,7 @@ public class BossAttackController {
 	private double computeBagPityMultiplier(String userName, String roomName) {
 
 	    // 1) 최근 가방 먹은 사람인지 확인
-		
-		/*
-	    try {
-	        List<BagLog> lastDrops = botNewService.selectRecentBagDrops();
-	        if (lastDrops != null) {
-	            for (BagLog b : lastDrops) {
-	                if (b == null) continue;
-	                String u = b.getUserName();
-	                if (userName.equals(u)) {
-	                    // 최근 5개 가방 로그 안에 있으면 → 이미 먹은 사람
-	                    return 0.3; //3.5->1.05퍼로 강등 
-	                }
-	            }
-	        }
-	    } catch (Exception ignore) {}
- 	    */
-	    //boolean isRising = false;
+		double rtn_value = 1;
 
 	    // 2) 최근 6시간 라이징 스타(Top7)인지 확인
 	    try {
@@ -3500,7 +3484,7 @@ public class BossAttackController {
 
 	                if (roomName.equals(rn) && userName.equals(un)) {
 	                    //isRising = true;
-	                    return 1.5;
+	                	rtn_value *=1.5; //1.5배
 	                }
 	            }
 	        }
@@ -3517,7 +3501,7 @@ public class BossAttackController {
 	    	            Double.parseDouble(specialBuff.get("EFFECT_VALUE").toString());
 
 	    	        if ("배율".equals(type)) {
-	    	            return value;
+	    	        	rtn_value *=value;
 	    	        } else {
 	    	            //finalRate += value;
 	    	        }
@@ -3534,7 +3518,7 @@ public class BossAttackController {
 	    
 
 	    // 기본값: 보정 없음
-	    return 1.0;
+	    return rtn_value;
 	}
 	
 	private String tryDropBag(String userName, String roomName, Monster m, boolean nightmare) {
