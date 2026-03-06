@@ -5498,7 +5498,10 @@ public class BossAttackController {
 	    }
 
 	    // 치명타
-	    if (flags.atkCrit) sb.append("✨ 치명타!").append(NL);
+	    if (flags.atkCrit) sb.append("✨ 치명타!");
+	    if (u.blessYn==1) sb.append("✨축복(x1.5)!");
+	    
+	    sb.append(NL);
 	    
 	    // 데미지
 	    sb.append("⚔ 데미지: (").append(shownAtkMin).append("~").append(shownAtkMax).append(" ⇒ ");
