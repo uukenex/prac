@@ -3425,8 +3425,7 @@ public class BossAttackController {
 	                // ⚔ 공격력 10~50% 증가 (1.1 ~ 1.5배)
 	                case 2:
 	                    flagCode = "공격력";
-	                    effectValue =
-	                            1.1 + (ThreadLocalRandom.current().nextDouble() * 0.4);
+	                    effectValue = Math.round((1.1 + ThreadLocalRandom.current().nextDouble() * 0.4) * 100.0) / 100.0;
 	                    durationMin = randomDuration(effectValue);
 	                    break;
 	                // 💥 치명타 피해 +100~500%
