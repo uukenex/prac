@@ -873,4 +873,8 @@ public class BotServiceImpl implements BotService {
 		}
 		return outMsg;
 	}
+	
+	public void mergeCharacterPower(HashMap<String,Object> map) {
+		botDAO.mergeCharacterPower(map);
+	}
 }

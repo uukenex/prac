@@ -1889,4 +1889,47 @@
 		}
 	</update>
 	
+	<update id="mergeCharacterPower" parameterType="hashMap">
+		MERGE INTO TBOT_CHARACTER_POWER A
+		USING (
+		    SELECT
+		        #{characterName} AS CHARACTER_NAME,
+		        #{serverName}    AS SERVER_NAME,
+		        #{className}     AS CLASS_NAME,
+		        #{itemLevel}     AS ITEM_LEVEL,
+		        #{combatPower}   AS COMBAT_POWER
+		    FROM DUAL
+		) B
+		ON (A.CHARACTER_NAME = B.CHARACTER_NAME)
+		
+		WHEN MATCHED THEN
+		UPDATE SET
+		    A.SERVER_NAME  = B.SERVER_NAME,
+		    A.CLASS_NAME   = B.CLASS_NAME,
+		    A.ITEM_LEVEL   = B.ITEM_LEVEL,
+		    A.COMBAT_POWER = B.COMBAT_POWER,
+		    A.UPDATE_DATE  = SYSDATE
+		WHERE B.COMBAT_POWER > A.COMBAT_POWER
+		
+		WHEN NOT MATCHED THEN
+		INSERT
+		(
+		    CHARACTER_NAME,
+		    SERVER_NAME,
+		    CLASS_NAME,
+		    ITEM_LEVEL,
+		    COMBAT_POWER,
+		    INSERT_DATE
+		)
+		VALUES
+		(
+		    B.CHARACTER_NAME,
+		    B.SERVER_NAME,
+		    B.CLASS_NAME,
+		    B.ITEM_LEVEL,
+		    B.COMBAT_POWER,
+		    SYSDATE
+		)
+	</update>
+	
 </mapper>

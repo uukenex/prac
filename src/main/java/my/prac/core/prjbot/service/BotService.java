@@ -178,6 +178,8 @@ public interface BotService {
 	
 	
 	public String execSPProcTest(HashMap<String,Object> map) throws Exception;
+	
+	void mergeCharacterPower(HashMap<String,Object> map);
 } 
 
 	

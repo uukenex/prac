@@ -103,6 +103,133 @@ public class LoaChatController {
 	
 	final String[] unable_save_list = {enterStr,spaceStr,tabStr,allSeeStr,anotherMsgStr,listSeparatorStr,"\\"};
 	
+	@RequestMapping(value = "/loa/apiCombatPower/{param0}", method = RequestMethod.GET)
+	public @ResponseBody Map<String, Object> apiCombatPower(@PathVariable String param0) {
+		
+		Map<String,Object> map =new HashMap<String,Object>();
+		try {
+			map = apiCallCombatPower(param0);
+		} catch (Exception e) {
+		}
+		return map;
+	}
+	
+	
+	public Map<String,Object> apiCallCombatPower(String userId) throws Exception {
+
+	    Map<String,Object> result = new HashMap<>();
+	    List<Map<String,Object>> characters = new ArrayList<>();
+
+	    String ordUserId = userId;
+
+	    // 캐릭터명 URL 인코딩
+	    userId = URLEncoder.encode(userId, "UTF-8");
+
+	    String paramUrl = lostArkAPIurl + "/characters/" + userId + "/siblings";
+
+	    String returnData = "";
+
+	    try {
+	        returnData = LoaApiUtils.connect_process(paramUrl);
+	    } catch(Exception e) {
+	        e.printStackTrace();
+	        throw new Exception("E0004");
+	    }
+
+	    ObjectMapper mapper = new ObjectMapper();
+
+	    List<HashMap<String, Object>> rtnMap =
+	            mapper.readValue(returnData,
+	                    new TypeReference<List<Map<String, Object>>>() {});
+
+	    if(rtnMap == null || rtnMap.isEmpty()) {
+	        result.put("server", "");
+	        result.put("characters", characters);
+	        return result;
+		}
+
+		List<HashMap<String, Object>> sortedList = rtnMap.stream()
+				.filter(x -> Double.parseDouble(x.get("ItemAvgLevel").toString().replaceAll(",", "")) >= 1640)
+				.sorted(Comparator
+						.comparingDouble(x -> Double.parseDouble(x.get("ItemAvgLevel").toString().replaceAll(",", ""))))
+				.collect(toReversedList());
+
+	    if(sortedList.isEmpty()) {
+	        result.put("server", "");
+	        result.put("characters", characters);
+	        return result;
+	    }
+
+	    // 메인 서버
+	    String mainServer = sortedList.get(0).get("ServerName").toString();
+
+	    int charCnt = 0;
+
+	    for(HashMap<String,Object> charInfo : sortedList) {
+
+	        if(charCnt >= 6) break;
+
+	        if(!mainServer.equals(charInfo.get("ServerName").toString())) continue;
+
+	        String characterName = charInfo.get("CharacterName").toString();
+	        String className = charInfo.get("CharacterClassName").toString();
+
+	        double level = Double.parseDouble(
+	                charInfo.get("ItemAvgLevel").toString().replaceAll(",", "")
+	        );
+
+	        Map<String,Object> resMap = new HashMap<>();
+
+	        try {
+	            resMap = sub.sumTotalPowerSearch2(characterName);
+	        } catch(Exception e) {
+	            System.out.println(characterName + " API error");
+	            continue;
+	        }
+
+	        Map<String,Object> armoryProfile = new HashMap<>();
+
+	        try {
+	            armoryProfile = (Map<String, Object>) resMap.get("ArmoryProfile");
+	        } catch(Exception e){
+	            System.out.println(characterName + " ArmoryProfile parse error");
+	        }
+
+	        String combatPower = "0";
+
+	        if(armoryProfile != null && armoryProfile.get("CombatPower") != null) {
+	            combatPower = armoryProfile.get("CombatPower").toString();
+	            combatPower = combatPower.replaceAll(",", "");
+	        }
+
+	        Map<String,Object> charMap = new HashMap<>();
+
+	        charMap.put("name", characterName);
+	        charMap.put("class", className);
+	        charMap.put("level", level);
+	        charMap.put("combatPower", combatPower);
+
+	        characters.add(charMap);
+	        
+	        HashMap<String,Object> dbMap = new HashMap<>();
+
+	        dbMap.put("characterName", characterName);
+	        dbMap.put("serverName", mainServer);
+	        dbMap.put("className", className);
+	        dbMap.put("itemLevel", level);
+	        dbMap.put("combatPower", Double.parseDouble(combatPower));
+
+	        botService.mergeCharacterPower(dbMap);
+
+	        charCnt++;
+	    }
+
+	    //result.put("server", mainServer);
+	    result.put("characters", characters);
+
+	    return result;
+	}
+	
 	@RequestMapping(value = "/loa/manual", method = RequestMethod.GET)
 	public @ResponseBody String manualPage() {
 		
@@ -5034,13 +5161,13 @@ public class LoaChatController {
 		
 		
 		
-		String resMsg=ordUserId+" 1540이상 부캐 정보" + enterStr;
+		String resMsg=ordUserId+" 1640이상 부캐 정보" + enterStr;
 		resMsg += "4T 7보석↑,3T 10보석↑ 표기"+enterStr;
 		
 		List<HashMap<String, Object>> rtnMap = new ObjectMapper().readValue(returnData,new TypeReference<List<Map<String, Object>>>() {});
 		if(rtnMap.isEmpty()) return "";
 		List<HashMap<String, Object>> sortedList = rtnMap.stream()
-				.filter(x->  Double.parseDouble(x.get("ItemAvgLevel").toString().replaceAll(",", "")) >= 1540)
+				.filter(x->  Double.parseDouble(x.get("ItemAvgLevel").toString().replaceAll(",", "")) >= 1640)
 				.sorted(Comparator.comparingDouble(x-> Double.parseDouble(x.get("ItemAvgLevel").toString().replaceAll(",", ""))))
 				.collect(toReversedList());
 		
@@ -5078,7 +5205,7 @@ public class LoaChatController {
 				
 				
 				
-				if(Double.parseDouble(charList.get("ItemAvgLevel").toString().replaceAll(",", "")) >= 1600) {
+				if(Double.parseDouble(charList.get("ItemAvgLevel").toString().replaceAll(",", "")) >= 1640) {
 					//resMsg += miniLimitSearch(resMap,charList.get("CharacterName").toString());
 					String combatPower ="";
 					if(armoryProfile.get("CombatPower") != null) {
