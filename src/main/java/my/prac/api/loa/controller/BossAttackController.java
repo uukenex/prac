@@ -771,6 +771,10 @@ public class BossAttackController {
 	            }*/
 
 	            if (rewardItemIds == null || rewardItemIds.isEmpty()) {
+	            	int sp = rollBagSpWithCeiling(userName, roomName);
+	                totalSp += sp;
+
+	                detail.add("가방" + (i+1) + ": " + sp + "sp");
 	                continue;
 	            }
 
@@ -813,6 +817,12 @@ public class BossAttackController {
 	            }
 	             */
 	            if (rewardItemIds == null || rewardItemIds.isEmpty()) {
+	            	int sp = rollBagSpWithCeiling(userName, roomName);
+	                sp *= 20;
+
+	                totalSp += sp;
+
+	                detail.add("[나메]가방" + (i+1) + ": " + sp + "sp");
 	                continue;
 	            }
 
