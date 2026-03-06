@@ -745,7 +745,7 @@ public class BossAttackController {
 	    // ===============================
 	    // 🔹 91 일반 가방 처리
 	    // ===============================
-	    for (int i = 1; i <= normalCount; i++) {
+	    for (int i = 0; i < normalCount; i++) {
 
 	        double roll = ThreadLocalRandom.current().nextDouble();
 
@@ -753,7 +753,7 @@ public class BossAttackController {
 
 	            int sp = rollBagSpWithCeiling(userName, roomName);
 	            totalSp += sp;
-	            detail.add("가방" + i + ": " + sp + "sp");
+	            detail.add("가방" + (i+1) + ": " + sp + "sp");
 
 	        } else {
 
@@ -779,14 +779,14 @@ public class BossAttackController {
 	            );
 
 	            giveBagItem(userName, roomName, itemId, itemSummary);
-	            detail.add("가방" + i + ": 아이템 획득");
+	            detail.add("가방" + (i+1) + ": 아이템 획득");
 	        }
 	    }
 
 	    // ===============================
 	    // 🔹 92 나이트메어 가방 처리
 	    // ===============================
-	    for (int i = 1; i <= nightmareCount; i++) {
+	    for (int i = 0; i < nightmareCount; i++) {
 
 	        double roll = ThreadLocalRandom.current().nextDouble();
 
@@ -795,7 +795,7 @@ public class BossAttackController {
 	            int sp = rollBagSpWithCeiling(userName, roomName);
 	            sp *= 20;  // 🔥 20배
 	            totalSp += sp;
-	            detail.add("[나메]가방" + i + ": " + sp + "sp");
+	            detail.add("[나메]가방" + (i+1) + ": " + sp + "sp");
 
 	        } else {
 
@@ -821,7 +821,7 @@ public class BossAttackController {
 	            );
 
 	            giveBagItem(userName, roomName, itemId, itemSummary);
-	            detail.add("[나메]가방" + i + ": 보상 획득");
+	            detail.add("[나메]가방" + (i+1) + ": 보상 획득");
 	        }
 	    }
 
@@ -2782,6 +2782,43 @@ public class BossAttackController {
 	    
 	    SpecialBuffResult buff = handleSpecialBuff();
 	    
+	    
+	    HashMap<String,Object> activeBuff = buff.activeBuff;
+	    if (activeBuff != null) {
+	    	if( "공격력".equals(activeBuff.get("FLAG_CODE"))){
+
+		        String effectType = (String) activeBuff.get("EFFECT_TYPE");
+		        double value =
+		                Double.parseDouble(activeBuff.get("EFFECT_VALUE").toString());
+
+		        if ("배율".equals(effectType)) {
+
+		            effAtkMin = (int)Math.round(effAtkMin * value);
+		            effAtkMax = (int)Math.round(effAtkMax * value);
+
+		        } else {
+		            effAtkMin += (int)value;
+		            effAtkMax += (int)value;
+		        }
+	    	}
+	    	if( "치피".equals(activeBuff.get("FLAG_CODE"))){
+
+	    		double value =
+		                Double.parseDouble(activeBuff.get("EFFECT_VALUE").toString());
+
+		        effCriDmg += (int)value;
+	    	}
+	    }
+	    
+	    boolean hasBless = (u.blessYn == 1);
+
+	    if (hasBless) {
+
+	        // 공격력 1.5배를 전투 전 적용
+	        effAtkMin = (int)Math.round(effAtkMin * 1.5);
+	        effAtkMax = (int)Math.round(effAtkMax * 1.5);
+	    }
+	    
 	    // 11) 데미지 계산 (A형 완전 분리 버전)
 	    DamageOutcome dmg = calculateDamage(
 	            u,
@@ -2797,7 +2834,10 @@ public class BossAttackController {
 	            effHpMax,
 	            beforeJobSkillYn
 	    );
-
+		AttackCalc calc = dmg.calc;
+		flags = dmg.flags;
+		boolean willKill = dmg.willKill;
+		
 		if ("축복술사".equals(job) && dmg.calc.atkDmg > 0) {
 
 			int blessCount = (u.lv / 100) + 1;  // 0~99=1, 100~199=2 ...
@@ -2808,57 +2848,22 @@ public class BossAttackController {
 			}
 		}
 		
-		if (u.blessYn == 1) {
+		if (hasBless) {
+	        int heal = (int)Math.round(effHpMax * 0.3);
+	        int beforeHp = u.hpCur;
 
-		    boolean used = false;
+	        u.hpCur = Math.min(effHpMax, u.hpCur + heal);
 
-		    if (u.hpCur <= 0) {
+	        if (u.hpCur > beforeHp) {
+	            dmg.dmgCalcMsg += NL + "✨ 축복의 치유! "
+	                    + (u.hpCur - beforeHp)
+	                    + " 회복";
+	        }
 
-		        int reviveHp = (int)Math.round(effHpMax * 0.5);
-		        u.hpCur = reviveHp;
-		        botNewService.updateUserHpOnlyTx(userName, roomName, reviveHp);
-
-		        dmg.dmgCalcMsg += NL + "✨ 축복의 기적! 부활 (" 
-		                + reviveHp + "/" + effHpMax + ")";
-
-		        used = true;
-
-		    } else {
-
-		        int heal = (int)Math.round(effHpMax * 0.3);
-		        int beforeHp = u.hpCur;
-
-		        u.hpCur = Math.min(effHpMax, u.hpCur + heal);
-		        
-		        if(u.hpCur - beforeHp > 0) {
-		        	dmg.dmgCalcMsg += NL + "✨ 축복의 치유! "
-			                + (u.hpCur - beforeHp)
-			                + " 회복 (" + beforeHp + " → " + u.hpCur + ")";
-		        }
-
-		        used = true;
-		    }
-
-		    if (dmg.calc.atkDmg > 0) {
-
-		        int beforeDmg = dmg.calc.atkDmg;
-		        dmg.calc.atkDmg = (int)Math.round(dmg.calc.atkDmg * 1.5);
-
-		        dmg.dmgCalcMsg += NL + "✨ 축복 강화! "
-		                + beforeDmg + " → " + dmg.calc.atkDmg + " (1.5배)";
-		    }
-
-		    if (used) {
-		        botNewService.clearBlessYn(userName);
-		    }
-		    
-		    dmg.willKill = (dmg.calc.atkDmg >= monHpRemainBefore);
+	        botNewService.clearBlessYn(userName);
 		}
 		
 
-		AttackCalc calc = dmg.calc;
-		flags = dmg.flags;
-		boolean willKill = dmg.willKill;
 
 		// ─────────────────────────────
 		
@@ -3391,17 +3396,42 @@ public class BossAttackController {
 
 	        if (ThreadLocalRandom.current().nextDouble() < chance) {
 
-	            String flagCode = "가방";
+	        	// 🔥 1️⃣ 랜덤 버프 타입 선택
+	            int type = ThreadLocalRandom.current().nextInt(1, 4);
+	            String flagCode;
 	            String effectType = "배율";
+	            double effectValue;
+	            int durationMin;
 	            
-	            int effectValue = ThreadLocalRandom.current().nextInt(3, 11);
-
-	            int maxDuration = (int)(20 - (effectValue - 3) * 1.4);
-
-	            double bias = 1 + (effectValue - 3) * 0.3;
-	            double r = Math.pow(ThreadLocalRandom.current().nextDouble(), bias);
-
-	            int durationMin = 4 + (int)(r * (maxDuration - 4));
+	            switch (type) {
+	
+	                // 👜 가방 확률 3~10배
+	                case 1:
+	                    flagCode = "가방";
+	                    effectValue = ThreadLocalRandom.current().nextInt(3, 11);
+	                    durationMin = randomDuration(effectValue);
+	                    break;
+	
+	                // ⚔ 공격력 10~50% 증가 (1.1 ~ 1.5배)
+	                case 2:
+	                    flagCode = "공격력";
+	                    effectValue =
+	                            1.1 + (ThreadLocalRandom.current().nextDouble() * 0.4);
+	                    durationMin = randomDuration(effectValue);
+	                    break;
+	                // 💥 치명타 피해 +100~500%
+	                case 3:
+	                    flagCode = "치피";
+	                    effectType = "고정값";
+	                    effectValue =
+	                            ThreadLocalRandom.current().nextInt(100, 501);
+	                    durationMin = randomDuration(effectValue);
+	                    break;
+	
+	                default:
+	                    return result;
+	            }
+	            
 	            
 
 	            HashMap<String,Object> param = new HashMap<>();
@@ -3430,6 +3460,7 @@ public class BossAttackController {
 	            result.started = true;
 	            result.startMsg =
 	                    "✨스페셜타임 발동! [" + desc + ", " + durationMin + "분]";
+	            result.activeBuff = activeBuff;
 	        }
 	    }
 
@@ -3453,28 +3484,44 @@ public class BossAttackController {
 
 	        result.runningMsg =
 	                "✨스페셜타임 진행중! [" + desc + ", " + endStr + "까지]";
+	        result.activeBuff = activeBuff;
 	    }
 
 	    return result;
 	}
+	
+	private int randomDuration(double effectValue) {
+
+	    int min = 4;
+	    int max = 20;
+
+	    double normalized = Math.min(effectValue / 10.0, 1.0);
+
+	    int adjustedMax = (int)(max - (normalized * 8));
+
+	    return ThreadLocalRandom.current()
+	            .nextInt(min, Math.max(min + 1, adjustedMax + 1));
+	}
 
 	private String buildBuffDescription(String flagCode, String effectType, double effectValue) {
 
-		String valueStr;
-
-		if ("배율".equals(effectType)) {
-			valueStr = ((int) effectValue) + "배";
-		} else {
-			valueStr = "+" + ((int) effectValue);
-		}
-
 		if ("가방".equals(flagCode)) {
-			return "가방확률 " + valueStr;
-		} else if ("공격력".equals(flagCode)) {
-			return "공격력 " + valueStr;
+			return "가방확률 " + (int) effectValue + "배";
 		}
 
-		return flagCode + " " + valueStr;
+		if ("공격력".equals(flagCode)) {
+			return "공격력 " + (int) ((effectValue - 1) * 100) + "% 증가";
+		}
+
+		if ("SP".equals(flagCode)) {
+			return "SP획득 " + String.format("%.1f", effectValue) + "배";
+		}
+
+		if ("치피".equals(flagCode)) {
+			return "치명타피해 +" + (int) effectValue + "%";
+		}
+
+		return flagCode;
 	}
 	
 	

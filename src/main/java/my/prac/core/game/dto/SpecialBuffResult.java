@@ -1,6 +1,6 @@
 package my.prac.core.game.dto;
 
-import java.sql.Timestamp;
+import java.util.HashMap;
 
 /**
  * 사용자 모델 클래스.
@@ -12,4 +12,6 @@ public  class SpecialBuffResult {
 	public boolean started;     // 이번에 새로 발동했는지
     public String startMsg;     // 발동 메시지
     public String runningMsg;   // 진행중 메시지
+    
+    public HashMap<String,Object> activeBuff; 
 }
