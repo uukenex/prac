@@ -8457,22 +8457,30 @@ public class BossAttackController {
 	}
 	
 	public static String formatSpShort(long sp) {
-	    if (sp < 1_000) {
-	        return sp + "sp";
-	    } else if (sp < 1_000_000) {
-	        return trimDecimal(sp / 1_000.0) + "k sp";
-	    } else if (sp < 1_000_000_000) {
-	        return trimDecimal(sp / 1_000_000.0) + "m sp";
-	    } else {
-	        return trimDecimal(sp / 1_000_000_000.0) + "b sp";
+		if (sp < 10_000) {
+	        return String.format("%,dsp", sp);
 	    }
+
+	    double unit = 10_000.0;
+	    int index = 0;
+
+	    while (sp >= unit * 10_000) {
+	        unit *= 10_000;
+	        index++;
+	    }
+
+	    double result = sp / unit;
+	    char suffix = (char) ('a' + index);
+
+	    return trimDecimal(result) + suffix + " sp";
 	}
 
 	private static String trimDecimal(double v) {
-	    if (v == (long) v) {
-	        return String.valueOf((long) v);
+		if (v == (long) v) {
+	        return String.format("%,d", (long) v);
+	    } else {
+	        return String.format("%,.2f", v);
 	    }
-	    return String.format("%.2f", v).replaceAll("\\.?0+$", "");
 	}
 	
 	private static String formatDateYMD(Date d) {
