@@ -1984,7 +1984,7 @@ public class BossAttackController {
 	    
 	    if (curPoint < price) {
 	        return userName + "님, [" + itemName + "] 구매에 필요한 포인트가 부족합니다."
-	             + " (가격: " + price + "sp, 보유: " + curPoint + "sp)";
+	             + " (가격: " + price + "sp, 보유: " + formatSpShort(curPoint) + ")";
 	    }
 
 
@@ -4728,6 +4728,7 @@ public class BossAttackController {
 	    return sb.toString();
 	}
 
+	
 	/**
 	 * 상점/소비로 삭제된 인벤토리 누적 수량 기준 업적 지급
 	 * - 기준: TBOT_POINT_NEW_INVENTORY의 DEL_YN='1' QTY 합계
@@ -4751,9 +4752,15 @@ public class BossAttackController {
 	        int    itemId   = safeInt(it.get("ITEM_ID"));
 	        String name     = String.valueOf(it.get("ITEM_NAME"));
 	        int    price    = safeInt(it.get("ITEM_SELL_PRICE"));
+	        String ext    = String.valueOf(it.get("ITEM_SELL_PRICE_EXT"));
 	        String ownedYn  = String.valueOf(it.get("OWNED_YN"));
 	        String itemType = String.valueOf(it.get("ITEM_TYPE"));
-
+	        
+	        String display = price+"";
+	        
+	        if (ext != null && !ext.equals("") && !ext.equals("null")) {
+	            display = price + ext + "";
+	        } 
 	        // 인벤 쿼리에서 OWN_QTY, MAXED_YN 을 내려주고 있다고 가정
 	        int ownQty      = safeInt(it.get("OWN_QTY"));          // 없으면 0
 	        String maxedYn  = String.valueOf(it.get("MAXED_YN"));  // 없으면 "null"
@@ -4808,7 +4815,7 @@ public class BossAttackController {
 	        sb.append(NL);
 
 	        // 2행: 가격
-	        sb.append("↘가격: ").append(price).append("sp").append(NL);
+	        sb.append("↘가격: ").append(display).append("sp").append(NL);
 
 	        // 3행 이후: 옵션
 	        if (isEquipType && upgradable) {
@@ -8200,17 +8207,18 @@ public class BossAttackController {
 	}
 	
 	private String resolveItemCategory(int itemId) {
-	    if (itemId >= 100 && itemId < 200)  return "※무기";   // 100번대
-	    if (itemId >= 200 && itemId < 300)  return "※투구";   // 200번대
-	    if (itemId >= 300 && itemId < 400)  return "※행운";   // 300번대
-	    if (itemId >= 400 && itemId < 500)  return "※갑옷";   // 400번대
-	    if (itemId >= 500 && itemId < 600)  return "※반지";   // 500번대
-	    if (itemId >= 600 && itemId < 700)  return "※토템";   // 600번대
-	    if (itemId >= 700 && itemId < 800)  return "※전설";   // 700번대
-	    if (itemId >= 800 && itemId < 900)  return "※날개";   // 800번대
-	    if (itemId >= 900 && itemId < 1000) return "※선물";   // 900번대
-	    if (itemId >= 8000 && itemId < 9000) return "※업적"; // 9000번대 
-	    if (itemId >= 9000 && itemId < 10000) return "※유물"; // 9000번대 
+	    if (itemId > 100  && itemId <= 200)  return "※무기";   // 100번대
+	    if (itemId > 1100 && itemId <= 1200)  return "※무기";   // 1100번대
+	    if (itemId > 200  && itemId <= 300)  return "※투구";   // 200번대
+	    if (itemId > 300  && itemId <= 400)  return "※행운";   // 300번대
+	    if (itemId > 400  && itemId <= 500)  return "※갑옷";   // 400번대
+	    if (itemId > 500  && itemId <= 600)  return "※반지";   // 500번대
+	    if (itemId > 600  && itemId <= 700)  return "※토템";   // 600번대
+	    if (itemId > 700  && itemId <= 800)  return "※전설";   // 700번대
+	    if (itemId > 800  && itemId <= 900)  return "※날개";   // 800번대
+	    if (itemId > 900  && itemId <= 1000) return "※선물";   // 900번대
+	    if (itemId > 8000 && itemId <= 9000) return "※업적"; // 9000번대 
+	    if (itemId > 9000 && itemId <= 10000) return "※유물"; // 9000번대 
 	    return "※기타";
 	}
 	// 카테고리명 또는 숫자로 범위를 구하는 함수
@@ -8223,6 +8231,7 @@ public class BossAttackController {
 	    // 1) 문자 카테고리 먼저 처리
 	    switch (s) {
 	        case "무기": return new int[]{100, 200};
+	        case "진무기": return new int[]{1100, 1200};
 	        case "투구": return new int[]{200, 300};
 	        case "행운": return new int[]{300, 400};
 	        case "갑옷": return new int[]{400, 500};
@@ -8455,6 +8464,7 @@ public class BossAttackController {
 
 		return sb.toString();
 	}
+	
 	
 	public static String formatSpShort(long sp) {
 		if (sp < 10_000) {
