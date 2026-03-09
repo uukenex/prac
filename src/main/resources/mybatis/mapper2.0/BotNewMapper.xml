@@ -429,14 +429,7 @@
 
 
   <select id="selectCurrentPoint" resultType="hashMap">
-    SELECT
-	    ROUND(total_sp / POWER(10000, unit_idx),2) AS score,
-	    CASE
-	        WHEN unit_idx = 0 THEN ''
-	        ELSE CHR(ASCII('a') + unit_idx - 1)
-	    END AS score_ext
-	FROM
-	(
+    WITH SP_SUM AS (
 	    SELECT
 	        SUM(
 	            score * POWER(
@@ -446,26 +439,27 @@
 	                    ELSE ASCII(score_ext) - ASCII('a') + 1
 	                END
 	            )
-	        ) AS total_sp,
-	
-	        FLOOR(
-	            LOG(
-	                10000,
-	                SUM(
-	                    score * POWER(
-	                        10000,
-	                        CASE
-	                            WHEN score_ext IS NULL OR score_ext='' THEN 0
-	                            ELSE ASCII(score_ext) - ASCII('a') + 1
-	                        END
-	                    )
-	                )
-	            )
-	        ) AS unit_idx
-	
+	        ) AS total_sp
 	    FROM TBOT_POINT_RANK
 	    WHERE user_name = #{userName}
 	    AND new_yn='1'
+	)
+	
+	SELECT
+	    ROUND(SIGN(total_sp) * ABS(total_sp) / POWER(10000, unit_idx),2) AS score,
+	    CASE
+	        WHEN unit_idx=0 THEN ''
+	        ELSE CHR(ASCII('a') + unit_idx - 1)
+	    END AS score_ext
+	FROM
+	(
+	    SELECT
+	        total_sp,
+	        CASE
+	            WHEN total_sp=0 THEN 0
+	            ELSE FLOOR(LOG(10000, ABS(total_sp)))
+	        END unit_idx
+	    FROM SP_SUM
 	)
   </select>
 
@@ -1149,7 +1143,10 @@
 	<select id="selectTotalEarnedSp" resultType="hashMap">
 		/* selectTotalEarnedSp */
 	SELECT
-	    ROUND(total_sp / POWER(10000, unit_idx),2) AS score,
+	    ROUND(
+	        SIGN(total_sp) * ABS(total_sp) / POWER(10000, unit_idx),
+	        2
+	    ) AS score,
 	    CASE
 	        WHEN unit_idx = 0 THEN ''
 	        ELSE CHR(ASCII('a') + unit_idx - 1)
@@ -1158,7 +1155,10 @@
 	(
 	    SELECT
 	        total_sp,
-	        FLOOR(LOG(10000, total_sp)) AS unit_idx
+	        CASE
+	            WHEN total_sp = 0 THEN 0
+	            ELSE FLOOR(LOG(10000, ABS(total_sp)))
+	        END AS unit_idx
 	    FROM
 	    (
 	        SELECT
