@@ -218,7 +218,7 @@ public class BossAttackController {
 	    // (선택) 현재 포인트 / 누적 SP도 여기서 같이 조회해두고 싶으면:
 	    try {
 	    	HashMap<String,Object> pointRow =
-		            botNewService.selectCurrentPoint(userName, roomName);
+		            botNewService.selectCurrentPoint(targetUser, "");
 
 		    double curValue = Double.parseDouble(
 		        Objects.toString(pointRow.get("SCORE"), "0")
@@ -236,7 +236,7 @@ public class BossAttackController {
 
 	    try {
 	    	HashMap<String,Object> row =
-	    	        botNewService.selectTotalEarnedSp(userName,"");
+	    	        botNewService.selectTotalEarnedSp(targetUser,"");
 
 	    	double value = Double.parseDouble(
 	    	        Objects.toString(row.get("SCORE"),"0")
