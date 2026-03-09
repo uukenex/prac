@@ -50,7 +50,9 @@ public class UserBattleContext {
 
 	// 필요하면 누적 SP, 현재 SP도 여기에 추가 가능
 	public int currentPoint;
+	public String currentPointStr;
 	public int lifetimeSp;
+	public String lifetimeSpStr;
 
 	// 직업 보너스(표시용)
 	public int jobHpMaxBonus; // 직업으로 인해 추가된 HP (프리스트/파이터)

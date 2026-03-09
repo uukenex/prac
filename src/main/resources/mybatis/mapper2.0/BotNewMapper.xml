@@ -4,68 +4,102 @@
 
   <!-- 1) 유저 -->
   <select id="selectUser" resultType="my.prac.core.game.dto.User">
-	 SELECT *
-	  FROM (
-	      SELECT
-	          U.USER_NAME,
-	          U.ROOM_NAME,
-	          U.LV,
-	          U.EXP_CUR,
-	          U.EXP_NEXT,
-	          U.HP_CUR,
-	          U.HP_MAX,
-	          U.HP_REGEN,
-	          U.ATK_MIN,
-	          U.ATK_MAX,
-	          U.CRIT_RATE,
-	          U.CRIT_DMG,
-	          U.TARGET_MON,
-	          U.INSERT_DATE,
-	          U.JOB,
-	          U.JOB_CHANGE_DATE,
-			  U.BLESS_YN,
-			  U.PROC_DATE,
-	          /* 🔥 전체 누적 SP */
-	          NVL(SP_SUM.TOTAL_SP, 0) AS TOTAL_SP
+	/*selectUser*/
+	SELECT *
+	FROM (
+	    SELECT
+	        U.USER_NAME,
+	        U.ROOM_NAME,
+	        U.LV,
+	        U.EXP_CUR,
+	        U.EXP_NEXT,
+	        U.HP_CUR,
+	        U.HP_MAX,
+	        U.HP_REGEN,
+	        U.ATK_MIN,
+	        U.ATK_MAX,
+	        U.CRIT_RATE,
+	        U.CRIT_DMG,
+	        U.TARGET_MON,
+	        U.INSERT_DATE,
+	        U.JOB,
+	        U.JOB_CHANGE_DATE,
+	        U.BLESS_YN,
+	        U.PROC_DATE,
 	
-	      FROM TBOT_POINT_NEW_USER U
+	        NVL(SP_SUM.TOTAL_SP,0) AS TOTAL_SP
 	
-	      /* 🔥 누적 SP 집계 */
-	      LEFT JOIN (
-	          SELECT
-	              A.USER_NAME,
-	              SUM(
-	                  CASE
-	                      WHEN A.GAIN_TYPE = 'BUY_MERCHANT' THEN
-	                          ROUND(B.ITEM_SELL_PRICE * 0.9) * A.QTY
-	                      ELSE
-	                          B.ITEM_SELL_PRICE * A.QTY
-	                  END
-	              )
-	              + NVL((
-	                  SELECT SUM(R.SCORE)
-	                  FROM TBOT_POINT_RANK R
-	                  WHERE R.NEW_YN = '1'
-	                    AND R.USER_NAME = A.USER_NAME
-	              ), 0) AS TOTAL_SP
-	          FROM TBOT_POINT_NEW_INVENTORY A
-	               JOIN TBOT_POINT_NEW_ITEM B
-	                 ON A.ITEM_ID = B.ITEM_ID
-	          WHERE A.GAIN_TYPE NOT IN ('DROP', 'DROP3', 'DROP5','DROP9', 'STEAL')
-	            AND A.DEL_YN = '0'
-	          GROUP BY A.USER_NAME
-	      ) SP_SUM
-	        ON SP_SUM.USER_NAME = U.USER_NAME
+	    FROM TBOT_POINT_NEW_USER U
 	
-	      WHERE U.USER_NAME = #{userName}
-		  
-	      ORDER BY
-	          U.PROC_DATE DESC NULLS LAST,
-	          U.INSERT_DATE DESC NULLS LAST,
-	          U.LV DESC,
-	          U.EXP_CUR DESC
-	  )
-	  WHERE ROWNUM = 1
+	    LEFT JOIN
+	    (
+	        SELECT
+	            USER_NAME,
+	            SUM(SP_VAL) AS TOTAL_SP
+	        FROM
+	        (
+	            /* INVENTORY SP */
+	            SELECT
+	                A.USER_NAME,
+	                (
+	                    CASE
+	                        WHEN A.GAIN_TYPE='BUY_MERCHANT'
+	                        THEN ROUND(B.ITEM_SELL_PRICE*0.9)
+	                        ELSE B.ITEM_SELL_PRICE
+	                    END
+	                )
+	                *
+	                POWER(
+	                    10000,
+	                    CASE
+	                        WHEN B.ITEM_SELL_PRICE_EXT IS NULL OR B.ITEM_SELL_PRICE_EXT=''
+	                        THEN 0
+	                        ELSE ASCII(B.ITEM_SELL_PRICE_EXT)-ASCII('a')+1
+	                    END
+	                )
+	                * A.QTY AS SP_VAL
+	
+	            FROM TBOT_POINT_NEW_INVENTORY A
+	            JOIN TBOT_POINT_NEW_ITEM B
+	              ON A.ITEM_ID=B.ITEM_ID
+	
+	            WHERE A.GAIN_TYPE NOT IN ('DROP','DROP3','DROP5','DROP9','STEAL')
+	            AND A.DEL_YN='0'
+	
+	            UNION ALL
+	
+	            /* POINT LOG SP */
+	            SELECT
+	                R.USER_NAME,
+	                R.SCORE
+	                *
+	                POWER(
+	                    10000,
+	                    CASE
+	                        WHEN R.SCORE_EXT IS NULL OR R.SCORE_EXT=''
+	                        THEN 0
+	                        ELSE ASCII(R.SCORE_EXT)-ASCII('a')+1
+	                    END
+	                )
+	
+	            FROM TBOT_POINT_RANK R
+	            WHERE R.NEW_YN='1'
+	
+	        )
+	        GROUP BY USER_NAME
+	    ) SP_SUM
+	    ON SP_SUM.USER_NAME=U.USER_NAME
+	
+	    WHERE U.USER_NAME=#{userName}
+	
+	    ORDER BY
+	        U.PROC_DATE DESC NULLS LAST,
+	        U.INSERT_DATE DESC NULLS LAST,
+	        U.LV DESC,
+	        U.EXP_CUR DESC
+	)
+	WHERE ROWNUM=1
+	
 	</select>
 
   <select id="selectAttackDeathStats" resultType="my.prac.core.game.dto.AttackDeathStat">
@@ -356,6 +390,7 @@
 	
 	    /* 🔹 기존 컬럼 */
 	    NVL(MAX(i.item_sell_price), 0) AS ITEM_SELL_PRICE,
+	    NVL(MAX(i.item_sell_price_EXT), '') AS ITEM_SELL_PRICE_EXT,
 	    NVL(MAX(i.item_type), '')      AS ITEM_TYPE,
 	
 	    /* 🔥 아이템 상세 옵션 (추가) */
@@ -393,17 +428,51 @@
 	</select>
 
 
-  <select id="selectCurrentPoint" resultType="int">
-    SELECT NVL(SUM(score), 0)
-      FROM TBOT_POINT_RANK
-     WHERE user_name = #{userName}
-       
-       AND new_yn = '1'
+  <select id="selectCurrentPoint" resultType="hashMap">
+    SELECT
+	    ROUND(total_sp / POWER(10000, unit_idx),2) AS score,
+	    CASE
+	        WHEN unit_idx = 0 THEN ''
+	        ELSE CHR(ASCII('a') + unit_idx - 1)
+	    END AS score_ext
+	FROM
+	(
+	    SELECT
+	        SUM(
+	            score * POWER(
+	                10000,
+	                CASE
+	                    WHEN score_ext IS NULL OR score_ext='' THEN 0
+	                    ELSE ASCII(score_ext) - ASCII('a') + 1
+	                END
+	            )
+	        ) AS total_sp,
+	
+	        FLOOR(
+	            LOG(
+	                10000,
+	                SUM(
+	                    score * POWER(
+	                        10000,
+	                        CASE
+	                            WHEN score_ext IS NULL OR score_ext='' THEN 0
+	                            ELSE ASCII(score_ext) - ASCII('a') + 1
+	                        END
+	                    )
+	                )
+	            )
+	        ) AS unit_idx
+	
+	    FROM TBOT_POINT_RANK
+	    WHERE user_name = #{userName}
+	    AND new_yn='1'
+	)
   </select>
 
   <!-- 판매 대상 행(FIFO) : 빛나는 제외 -->
   <select id="selectInventoryRowsForSale" resultType="hashmap">
-    SELECT ROWID AS RID, QTY, NVL(GAIN_TYPE,'DROP') AS GAIN_TYPE
+    SELECT /* selectInventoryRowsForSale */
+    	   ROWID AS RID, QTY, NVL(GAIN_TYPE,'DROP') AS GAIN_TYPE
       FROM TBOT_POINT_NEW_INVENTORY
      WHERE USER_NAME = #{userName}
      <!-- 
@@ -411,6 +480,7 @@
         -->
        AND ITEM_ID   = #{itemId}
        AND NVL(DEL_YN,'0') != '1'
+       AND ITEM_ID BETWEEN 101 AND 2000
      ORDER BY INSERT_DATE ASC, ROWID
   </select>
   <!-- 판매 대상 행(FIFO) : 빛나는 제외 -->
@@ -422,6 +492,7 @@
        AND ROOM_NAME = #{roomName}
         -->
        AND NVL(DEL_YN,'0') != '1'
+       AND ITEM_ID BETWEEN 101 AND 2000
      ORDER BY INSERT_DATE ASC, ROWID
   </select>
 
@@ -434,8 +505,8 @@
   </update>
 
 
-  <select id="selectItemSellPriceById" resultType="int">
-    SELECT NVL(ITEM_SELL_PRICE,0)
+  <select id="selectItemSellPriceById" resultType="hashMap">
+    SELECT ITEM_SELL_PRICE ,ITEM_SELL_PRICE_EXT
       FROM TBOT_POINT_NEW_ITEM
      WHERE ITEM_ID = #{itemId}
   </select>
@@ -443,13 +514,13 @@
   <!-- 포인트 적립 -->
   <insert id="insertPointRank" parameterType="hashmap">
     INSERT INTO TBOT_POINT_RANK
-      (USER_NAME, ROOM_NAME, SCORE, INSERT_DATE, CMD, NEW_YN)
+      (USER_NAME, ROOM_NAME, SCORE,SCORE_EXT, INSERT_DATE, CMD, NEW_YN)
     VALUES
-      (#{userName}, #{roomName}, #{score}, SYSDATE, #{cmd}, '1')
+      (#{userName}, #{roomName}, #{score},#{scoreExt}, SYSDATE, #{cmd}, '1')
   </insert>
 
   <select id="selectItemPriceByName" parameterType="string" resultType="int">
-    SELECT NVL(item_sell_price,0)
+    SELECT item_sell_price
       FROM TBOT_POINT_NEW_ITEM
      WHERE item_name = #{itemName}
   </select>
@@ -531,7 +602,7 @@
 	   </if>
 	   -->
 	    AND inv.del_yn = '0'
-	    AND i.item_type in ('MARKET','BAG_OPEN','BAG_OPEN_NM','MASTER','ACHV')
+	    AND i.item_type in ('MARKET2','MARKET','BAG_OPEN','BAG_OPEN_NM','MASTER','ACHV')
 	</select>
 	
 	<!-- 구매 가능한 MARKET 아이템 목록 + 보유여부 -->
@@ -559,7 +630,7 @@
 	        ) THEN 'Y' ELSE 'N'
 	      END AS owned_yn
 	  FROM TBOT_POINT_NEW_ITEM i
-	  WHERE i.item_type = 'MARKET'
+	  WHERE i.item_type in ( 'MARKET','MARKET2')
 	  ORDER BY i.item_id
 	</select>
 	
@@ -576,7 +647,7 @@
 	      i.hp_max,
 	      i.cri_dmg
 	  FROM TBOT_POINT_NEW_ITEM i
-	  WHERE i.item_type = 'MARKET'
+	  WHERE i.item_type in ('MARKET','MARKET2')
 	    AND i.item_id   = #{itemId}
 	</select>
 	
@@ -608,7 +679,7 @@
 	        NVL(i.HP_MAX_RATE,   0) AS HP_MAX_RATE,
 	        NVL(i.ATK_MAX_RATE,   0) AS ATK_MAX_RATE
 	    FROM TBOT_POINT_NEW_ITEM i
-	    WHERE i.ITEM_TYPE = 'MARKET'
+	    WHERE i.ITEM_TYPE in ('MARKET','MARKET2')
 	    ORDER BY i.ITEM_ID
 	</select>
 	
@@ -619,6 +690,7 @@
 	        i.ITEM_ID,
 	        i.ITEM_NAME,
 	        i.ITEM_SELL_PRICE,
+	        i.ITEM_SELL_PRICE_EXT,
 	        i.ITEM_TYPE,
 	        NVL(i.ATK_MIN,   0) AS ATK_MIN,
 	        NVL(i.ATK_MAX,   0) AS ATK_MAX,
@@ -702,7 +774,7 @@
 	       AND inv.ROOM_NAME = #{roomName}
 	     </if>
 	 	-->
-	    WHERE i.ITEM_TYPE = 'MARKET'
+	    WHERE i.ITEM_TYPE in ( 'MARKET','MARKET2')
 	    ORDER BY i.ITEM_ID desc
 	</select>
 
@@ -917,42 +989,89 @@
 	</select>
 	
 	<select id="selectSpAndAtkRanking" resultType="hashmap">
-	    SELECT SUM(
-	               CASE
-	                   WHEN A.GAIN_TYPE = 'BUY_MERCHANT' THEN
-	                       ROUND(B.ITEM_SELL_PRICE * 0.9) * A.QTY
-	                   ELSE
-	                       B.ITEM_SELL_PRICE * A.QTY
-	               END
-	           )
-	           + (
-	               SELECT SUM(A1.SCORE)
-	                 FROM TBOT_POINT_RANK A1
-	                WHERE A1.NEW_YN    = '1'
-	                  AND A1.USER_NAME = A.USER_NAME
-	             ) AS TOT_SP,
-	           A.USER_NAME,
-	           (
-	               SELECT COUNT(1)
-	                 FROM TBOT_POINT_NEW_BATTLE_LOG A2
-	                WHERE A2.USER_NAME = A.USER_NAME
-	           ) AS ATK_CNT,
-	           (
-	                 SELECT COUNT(1)
-	                   FROM TBOT_POINT_NEW_BATTLE_LOG A2
-	                  WHERE A2.USER_NAME = A.USER_NAME
-	                    AND A2.DEATH_YN = '1'
-	            ) AS DEATH_CNT,
-	           C.LV
-	      FROM TBOT_POINT_NEW_INVENTORY A,
-	           TBOT_POINT_NEW_ITEM      B,
-	           TBOT_POINT_NEW_USER      C
-	     WHERE A.GAIN_TYPE NOT IN ('DROP', 'DROP3', 'DROP5','DROP9', 'STEAL')
-	       AND A.ITEM_ID   = B.ITEM_ID
-	       AND A.DEL_YN    = '0'
-	       AND C.USER_NAME = A.USER_NAME
-	     GROUP BY A.USER_NAME, C.LV
-	     ORDER BY TOT_SP DESC
+	   SELECT
+		       NVL(I.INV_SP,0) + NVL(P.POINT_SP,0) AS TOT_SP,
+		       U.USER_NAME,
+		       NVL(B.ATK_CNT,0)   AS ATK_CNT,
+		       NVL(B.DEATH_CNT,0) AS DEATH_CNT,
+		       U.LV
+		
+		FROM TBOT_POINT_NEW_USER U
+		
+		LEFT JOIN
+		(
+		    /* INVENTORY SP 계산 */
+		    SELECT
+		           A.USER_NAME,
+		           SUM(
+		               CASE
+		                   WHEN A.GAIN_TYPE = 'BUY_MERCHANT'
+		                   THEN ROUND(B.ITEM_SELL_PRICE * 0.9)
+		                   ELSE B.ITEM_SELL_PRICE
+		               END
+		               *
+		               POWER(
+		                   10000,
+		                   CASE
+		                       WHEN B.ITEM_SELL_PRICE_EXT IS NULL OR B.ITEM_SELL_PRICE_EXT=''
+		                       THEN 0
+		                       ELSE ASCII(B.ITEM_SELL_PRICE_EXT)-ASCII('a')+1
+		                   END
+		               )
+		               * A.QTY
+		           ) AS INV_SP
+		
+		    FROM TBOT_POINT_NEW_INVENTORY A
+		    JOIN TBOT_POINT_NEW_ITEM B
+		      ON A.ITEM_ID = B.ITEM_ID
+		
+		    WHERE A.GAIN_TYPE NOT IN ('DROP','DROP3','DROP5','DROP9','STEAL')
+		    AND   A.DEL_YN='0'
+		
+		    GROUP BY A.USER_NAME
+		
+		) I
+		ON U.USER_NAME = I.USER_NAME
+		
+		LEFT JOIN
+		(
+		    /* POINT LOG SP 계산 */
+		    SELECT
+		           USER_NAME,
+		           SUM(
+		               SCORE *
+		               POWER(
+		                   10000,
+		                   CASE
+		                       WHEN SCORE_EXT IS NULL OR SCORE_EXT=''
+		                       THEN 0
+		                       ELSE ASCII(SCORE_EXT)-ASCII('a')+1
+		                   END
+		               )
+		           ) AS POINT_SP
+		
+		    FROM TBOT_POINT_RANK
+		    WHERE NEW_YN='1'
+		
+		    GROUP BY USER_NAME
+		
+		) P
+		ON U.USER_NAME = P.USER_NAME
+		
+		LEFT JOIN
+		(
+		    /* 전투 통계 */
+		    SELECT
+		           USER_NAME,
+		           COUNT(*) AS ATK_CNT,
+		           SUM(CASE WHEN DEATH_YN='1' THEN 1 ELSE 0 END) AS DEATH_CNT
+		    FROM TBOT_POINT_NEW_BATTLE_LOG
+		    GROUP BY USER_NAME
+		
+		) B
+		ON U.USER_NAME = B.USER_NAME
+		
+		ORDER BY TOT_SP DESC
 	</select>
 	
 	<select id="selectOngoingChallengesForUnclearedBosses" resultType="hashmap">
@@ -1027,35 +1146,73 @@
 	     WHERE ROWID = #{rid}
 	</select>
 	
-	<select id="selectTotalEarnedSp" resultType="int">
-	SELECT (SELECT SUM(A.SCORE)
-	          FROM TBOT_POINT_RANK A
-	         WHERE A.NEW_YN = '1'
-	           AND A.USER_NAME = #{userName}
-	           <!-- 
-	           <if test="roomName != null and roomName != '람쥐봇 문의방'">
-	           AND ROOM_NAME = #{roomName}
-	           </if>
-	            -->
-	           ) +
-	       (SELECT SUM(CASE
-	                     WHEN A.GAIN_TYPE = 'BUY_MERCHANT' THEN
-	                      ROUND(B.ITEM_SELL_PRICE * 0.9)*A.QTY
-	                     ELSE
-	                      B.ITEM_SELL_PRICE*A.QTY
-	                   END)
-	          FROM TBOT_POINT_NEW_INVENTORY A, TBOT_POINT_NEW_ITEM B
-	         WHERE A.USER_NAME LIKE #{userName}
-	         <!-- 
-	         <if test="roomName != null and roomName != '람쥐봇 문의방'">
-	           AND ROOM_NAME = #{roomName}
-	         </if>
-	          -->
-	           AND A.GAIN_TYPE NOT IN ('DROP', 'DROP3','DROP5','DROP9', 'STEAL')
-	           AND A.ITEM_ID = B.ITEM_ID
-	           AND DEL_YN = '0')
-	  FROM DUAL
-	  </select>
+	<select id="selectTotalEarnedSp" resultType="hashMap">
+		/* selectTotalEarnedSp */
+	SELECT
+	    ROUND(total_sp / POWER(10000, unit_idx),2) AS score,
+	    CASE
+	        WHEN unit_idx = 0 THEN ''
+	        ELSE CHR(ASCII('a') + unit_idx - 1)
+	    END AS score_ext
+	FROM
+	(
+	    SELECT
+	        total_sp,
+	        FLOOR(LOG(10000, total_sp)) AS unit_idx
+	    FROM
+	    (
+	        SELECT
+	            NVL(
+	                (
+	                    SELECT SUM(
+	                        A.SCORE *
+	                        POWER(
+	                            10000,
+	                            CASE
+	                                WHEN A.SCORE_EXT IS NULL OR A.SCORE_EXT=''
+	                                THEN 0
+	                                ELSE ASCII(A.SCORE_EXT)-ASCII('a')+1
+	                            END
+	                        )
+	                    )
+	                    FROM TBOT_POINT_RANK A
+	                    WHERE A.NEW_YN='1'
+	                    AND A.USER_NAME=#{userName}
+	                ),0
+	            )
+	            +
+	            NVL(
+	                (
+	                    SELECT SUM(
+	                        CASE
+	                            WHEN A.GAIN_TYPE='BUY_MERCHANT'
+	                            THEN ROUND(B.ITEM_SELL_PRICE*0.9)
+	                            ELSE B.ITEM_SELL_PRICE
+	                        END
+	                        *
+	                        POWER(
+	                            10000,
+	                            CASE
+	                                WHEN B.ITEM_SELL_PRICE_EXT IS NULL OR B.ITEM_SELL_PRICE_EXT=''
+	                                THEN 0
+	                                ELSE ASCII(B.ITEM_SELL_PRICE_EXT)-ASCII('a')+1
+	                            END
+	                        )
+	                        * A.QTY
+	                    )
+	                    FROM TBOT_POINT_NEW_INVENTORY A
+	                    JOIN TBOT_POINT_NEW_ITEM B
+	                    ON A.ITEM_ID=B.ITEM_ID
+	                    WHERE A.USER_NAME=#{userName}
+	                    AND A.GAIN_TYPE NOT IN ('DROP','DROP3','DROP5','DROP9','STEAL')
+	                    AND A.DEL_YN='0'
+	                ),0
+	            ) AS total_sp
+	        FROM DUAL
+	    )
+	)
+	
+	</select>
 	  
 	  <select id="selectThiefKingRanking" parameterType="string" resultType="hashmap">
 	    SELECT *
@@ -1224,7 +1381,7 @@
 	               roomName,
 	               insertDate
 	        FROM (
-	            SELECT TO_CHAR(C.SCORE) || ' sp' AS gain,
+	            SELECT TO_CHAR(C.SCORE)  || ' ' || NVL(C.SCORE_EXT,'')|| '' AS gain,
 	                   C.USER_NAME               AS userName,
 	                   C.ROOM_NAME               AS roomName,
 	                   C.INSERT_DATE             AS insertDate
@@ -1453,45 +1610,67 @@
 	    )
 	</select>
 	
-	<select id="selectBagRewardCap" parameterType="map" resultType="int">
+	<select id="selectBagRewardCap" parameterType="map" resultType="long">
+
+	SELECT
+	    CASE
+	        WHEN total_sp &lt; 5000000 THEN 50000
+	        ELSE
+	            50000 + ROUND((total_sp - 5000000)/1000000,2)*10000
+	    END AS BAG_REWARD_CAP
+	FROM
+	(
 	    SELECT
-	        CASE
-	            WHEN total_sp &lt; 5000000 THEN 50000
-	            ELSE
-	                50000
-	                + TRUNC((total_sp - 5000000) / 1000000) * 10000
-	        END AS BAG_REWARD_CAP
-	    FROM (
+	        NVL(inv_sp,0) + NVL(rank_sp,0) AS total_sp
+	    FROM
+	    (
 	        SELECT
-	            NVL(inv_sp, 0) + NVL(rank_sp, 0) AS total_sp
-	        FROM
-	            (
-	                /* 인벤토리 기반 누적 SP */
-	                SELECT
-	                    SUM(
-	                        CASE
-	                            WHEN A.GAIN_TYPE = 'BUY_MERCHANT' THEN
-	                                ROUND(B.ITEM_SELL_PRICE * 0.9) * A.QTY
-	                            ELSE
-	                                B.ITEM_SELL_PRICE * A.QTY
-	                        END
-	                    ) AS inv_sp
-	                FROM TBOT_POINT_NEW_INVENTORY A
-	                     JOIN TBOT_POINT_NEW_ITEM B
-	                       ON A.ITEM_ID = B.ITEM_ID
-	                WHERE A.GAIN_TYPE NOT IN ('DROP', 'DROP3', 'DROP5','DROP9', 'STEAL')
-	                  AND A.DEL_YN = '0'
-	                  AND A.USER_NAME = #{userName}
-	            ),
-	            (
-	                /* 랭킹 기반 누적 SP */
-	                SELECT
-	                    SUM(A1.SCORE) AS rank_sp
-	                FROM TBOT_POINT_RANK A1
-	                WHERE A1.NEW_YN = '1'
-	                  AND A1.USER_NAME = #{userName}
-	            )
+	            SUM(
+	                (
+	                    CASE
+	                        WHEN A.GAIN_TYPE='BUY_MERCHANT'
+	                        THEN ROUND(B.ITEM_SELL_PRICE*0.9)
+	                        ELSE B.ITEM_SELL_PRICE
+	                    END
+	                )
+	                *
+	                POWER(
+	                    10000,
+	                    CASE
+	                        WHEN B.ITEM_SELL_PRICE_EXT IS NULL OR B.ITEM_SELL_PRICE_EXT=''
+	                        THEN 0
+	                        ELSE ASCII(B.ITEM_SELL_PRICE_EXT)-ASCII('a')+1
+	                    END
+	                )
+	                * A.QTY
+	            ) AS inv_sp
+	        FROM TBOT_POINT_NEW_INVENTORY A
+	        JOIN TBOT_POINT_NEW_ITEM B
+	          ON A.ITEM_ID=B.ITEM_ID
+	        WHERE A.GAIN_TYPE NOT IN ('DROP','DROP3','DROP5','DROP9','STEAL')
+	        AND A.DEL_YN='0'
+	        AND A.USER_NAME=#{userName}
+	    ),
+	    (
+	        SELECT
+	            SUM(
+	                A1.SCORE
+	                *
+	                POWER(
+	                    10000,
+	                    CASE
+	                        WHEN A1.SCORE_EXT IS NULL OR A1.SCORE_EXT=''
+	                        THEN 0
+	                        ELSE ASCII(A1.SCORE_EXT)-ASCII('a')+1
+	                    END
+	                )
+	            ) AS rank_sp
+	        FROM TBOT_POINT_RANK A1
+	        WHERE A1.NEW_YN='1'
+	        AND A1.USER_NAME=#{userName}
 	    )
+	)
+	
 	</select>
 	
 	<!-- 누적 드랍 아이템 집계 -->

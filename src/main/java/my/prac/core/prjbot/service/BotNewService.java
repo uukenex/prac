@@ -54,10 +54,10 @@ public interface BotNewService {
 
     List<HashMap<String,Object>> selectInventorySummary(String userName, String roomName);
     
-    Integer selectCurrentPoint(String userName, String roomName);
-    Integer selectTotalEarnedSp(String userName, String roomName);
+    HashMap<String,Object>  selectCurrentPoint(String userName, String roomName);
+    HashMap<String,Object>  selectTotalEarnedSp(String userName, String roomName);
     int insertPointRank(HashMap<String, Object> p);
-    Integer selectItemSellPriceById(int itemId);
+    HashMap<String,Object> selectItemSellPriceById(int itemId);
     List<HashMap<String, Object>> selectInventoryRowsForSale(String u, String r, int id);
     List<HashMap<String, Object>> selectAllInventoryRowsForSale(String u, String R);
     
@@ -163,7 +163,7 @@ public interface BotNewService {
     List<HashMap<String, Object>> selectTodayJobMastersAll();
     
     boolean isReturnUser(String userName);
-    int selectBagRewardCap(String userName);
+    long selectBagRewardCap(String userName);
     
     List<HashMap<String, Object>> selectTotalDropItems(String userName);
     public boolean isNightmareMode(String userName, String roomName);

@@ -60,12 +60,12 @@ public interface BotNewDAO {
 
     List<HashMap<String,Object>> selectInventorySummary(@Param("userName") String userName, @Param("roomName") String roomName);
 
-    Integer selectCurrentPoint(@Param("userName") String userName, @Param("roomName") String roomName);
-    Integer selectTotalEarnedSp(@Param("userName") String userName, @Param("roomName") String roomName);
+    HashMap<String,Object>  selectCurrentPoint(@Param("userName") String userName, @Param("roomName") String roomName);
+    HashMap<String,Object>  selectTotalEarnedSp(@Param("userName") String userName, @Param("roomName") String roomName);
 
     int insertPointRank(HashMap<String,Object> p);
 
-    Integer selectItemSellPriceById(@Param("itemId") int itemId);
+    HashMap<String,Object> selectItemSellPriceById(@Param("itemId") int itemId);
 
     List<HashMap<String,Object>> selectInventoryRowsForSale(
         @Param("userName") String userName, @Param("roomName") String roomName, @Param("itemId") int itemId);
@@ -223,7 +223,7 @@ public interface BotNewDAO {
 	
     String selectIsReturnUser(HashMap<String, Object> map);
     
-    int selectBagRewardCap(HashMap<String, Object> map);
+    long selectBagRewardCap(HashMap<String, Object> map);
     List<HashMap<String, Object>> selectTotalDropItems(String userName);
     
     Integer selectNightmareYn(@Param("userName") String userName, @Param("roomName") String roomName);

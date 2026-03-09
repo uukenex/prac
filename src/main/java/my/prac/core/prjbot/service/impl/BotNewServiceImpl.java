@@ -140,11 +140,11 @@ public class BotNewServiceImpl implements BotNewService {
 	}
 	
 	@Override
-	public Integer selectCurrentPoint(String userName, String roomName) {
+	public HashMap<String,Object>  selectCurrentPoint(String userName, String roomName) {
 	    return botNewDAO.selectCurrentPoint(userName, roomName);
 	}
 	@Override
-	public Integer selectTotalEarnedSp(String userName, String roomName) {
+	public HashMap<String,Object>  selectTotalEarnedSp(String userName, String roomName) {
 		return botNewDAO.selectTotalEarnedSp(userName, roomName);
 	}
 
@@ -154,7 +154,7 @@ public class BotNewServiceImpl implements BotNewService {
 	}
 
 	@Override
-	public Integer selectItemSellPriceById(int itemId) {
+	public HashMap<String,Object> selectItemSellPriceById(int itemId) {
 		return botNewDAO.selectItemSellPriceById(itemId);
 	}
 
@@ -509,7 +509,7 @@ public class BotNewServiceImpl implements BotNewService {
     }
     
     @Override
-    public int selectBagRewardCap(String userName) {
+    public long selectBagRewardCap(String userName) {
 
         HashMap<String, Object> map = new HashMap<>();
         map.put("userName", userName);

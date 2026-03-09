@@ -49,6 +49,7 @@ import my.prac.core.prjbot.service.BotNewService;
 import my.prac.core.prjbot.service.BotService;
 import my.prac.core.prjbot.service.BotSettleService;
 import my.prac.core.util.MiniGameUtil;
+import my.prac.core.util.SP;
 
 @Controller
 public class BossAttackController {
@@ -216,17 +217,43 @@ public class BossAttackController {
 
 	    // (선택) 현재 포인트 / 누적 SP도 여기서 같이 조회해두고 싶으면:
 	    try {
-	        Integer p = botNewService.selectCurrentPoint(targetUser, roomName);
-	        ctx.currentPoint = (p == null ? 0 : p);
+	    	HashMap<String,Object> pointRow =
+		            botNewService.selectCurrentPoint(userName, roomName);
+
+		    double curValue = Double.parseDouble(
+		        Objects.toString(pointRow.get("SCORE"), "0")
+		    );
+
+		    String curExt = Objects.toString(pointRow.get("SCORE_EXT"), "");
+
+		    SP userPoint = new SP(curValue, curExt);
+		    
+	    	ctx.currentPointStr = userPoint.toString();
+	        //ctx.currentPoint = (p == null ? 0 : p);
 	    } catch (Exception ignore) {
-	        ctx.currentPoint = 0;
+	        //ctx.currentPoint = 0;
 	    }
 
 	    try {
+	    	HashMap<String,Object> row =
+	    	        botNewService.selectTotalEarnedSp(userName,"");
+
+	    	double value = Double.parseDouble(
+	    	        Objects.toString(row.get("SCORE"),"0")
+	    	);
+
+	    	String ext = Objects.toString(
+	    	        row.get("SCORE_EXT"),""
+	    	);
+
+	    	SP total = new SP(value, ext);
+	    	/*
 	        Integer t = botNewService.selectTotalEarnedSp(targetUser, roomName);
 	        ctx.lifetimeSp = (t == null ? 0 : t);
+	        */
+	    	ctx.lifetimeSpStr = total.toString();
 	    } catch (Exception ignore) {
-	        ctx.lifetimeSp = 0;
+	        ctx.lifetimeSpStr = "";
 	    }
 
 	    final String job = ctx.job;
@@ -751,7 +778,7 @@ public class BossAttackController {
 
 	        if (roll < 0.90) {
 
-	            int sp = rollBagSpWithCeiling(userName, roomName);
+	            long sp = rollBagSpWithCeiling(userName, roomName);
 	            totalSp += sp;
 	            detail.add("가방" + (i+1) + ": " + sp + "sp");
 
@@ -771,7 +798,7 @@ public class BossAttackController {
 	            }*/
 
 	            if (rewardItemIds == null || rewardItemIds.isEmpty()) {
-	            	int sp = rollBagSpWithCeiling(userName, roomName);
+	            	long sp = rollBagSpWithCeiling(userName, roomName);
 	                totalSp += sp;
 
 	                detail.add("가방" + (i+1) + ": " + sp + "sp");
@@ -796,7 +823,7 @@ public class BossAttackController {
 
 	        if (roll < 0.94) {
 
-	            int sp = rollBagSpWithCeiling(userName, roomName);
+	        	long sp = rollBagSpWithCeiling(userName, roomName);
 	            sp *= 20;  // 🔥 20배
 	            totalSp += sp;
 	            detail.add("[나메]가방" + (i+1) + ": " + sp + "sp");
@@ -817,7 +844,7 @@ public class BossAttackController {
 	            }
 	             */
 	            if (rewardItemIds == null || rewardItemIds.isEmpty()) {
-	            	int sp = rollBagSpWithCeiling(userName, roomName);
+	            	long sp = rollBagSpWithCeiling(userName, roomName);
 	                sp *= 20;
 
 	                totalSp += sp;
@@ -837,10 +864,14 @@ public class BossAttackController {
 
 	    // 🔹 SP 저장
 	    if (totalSp > 0) {
+	    	SP sp = SP.fromSp(totalSp);
+	    	
+	    	//SP userPoint = new SP(score, ext);
 	        HashMap<String,Object> pr = new HashMap<>();
 	        pr.put("userName", userName);
 	        pr.put("roomName", roomName);
-	        pr.put("score", totalSp);
+	        pr.put("score", sp.getValue());
+	        pr.put("scoreExt", sp.getUnit());
 	        pr.put("cmd", "BAG_OPEN_SP");
 	        botNewService.insertPointRank(pr);
 	    }
@@ -885,14 +916,14 @@ public class BossAttackController {
 		itemSummary.add(itemName);
 	}
 	
-	private int rollBagSpWithCeiling(String userName, String roomName) {
+	private long rollBagSpWithCeiling(String userName, String roomName) {
 		 // ① 유저의 BAG_OPEN_SP 기록 개수 조회
 	    int totalCount = botNewService.selectBagOpenSpCount(userName, roomName);
 
 	    
 
 	    // 🔥 누적 SP 기반 상한 적용
-		int cap = botNewService.selectBagRewardCap(userName);
+		long cap = botNewService.selectBagRewardCap(userName);
 	    cap = (int) Math.round(cap/2);
 	    if(cap <50000) {
 	    	cap = 100000;
@@ -1262,9 +1293,9 @@ public class BossAttackController {
 	    final int jobHpMaxBonus   = ctx.jobHpMaxBonus;   // 없으면 0
 	    final int jobRegenBonus   = ctx.jobRegenBonus;   // 없으면 0
 
-	    final String pointStr   = formatSpShort(ctx.currentPoint);
+	    final String pointStr   = ctx.currentPointStr;
 	    final int lifetimeSp    = ctx.lifetimeSp;
-	    final String lifetimeSpStr    = formatSpShort(ctx.lifetimeSp);
+	    final String lifetimeSpStr    = ctx.lifetimeSpStr;//formatSpShort(ctx.lifetimeSp);
 
 	    final String allSeeStr  = NL + "===" + NL;  // 구분선
 
@@ -1963,7 +1994,7 @@ public class BossAttackController {
 	    } catch (Exception ignore) {}
 	    String itemType = (item == null) ? "" : Objects.toString(item.get("ITEM_TYPE"), "");
 
-	    if (item == null || !"MARKET".equalsIgnoreCase(itemType)) {
+	    if (item == null || !("MARKET".equalsIgnoreCase(itemType) || "MARKET2".equalsIgnoreCase(itemType))) {
 	        return "구매할 수 없는 아이템입니다. (MARKET 유형만 구매 가능)";
 	    }
 
@@ -1971,22 +2002,54 @@ public class BossAttackController {
 
 	    // 단가
 	    Integer tmpPrice = null;
+	    HashMap<String,Object> priceRow =null;
+	    try {
+	    priceRow = botNewService.selectItemSellPriceById(itemId);
+	    }catch(Exception e) {}
+	    long priceValue = Long.parseLong(
+	        Objects.toString(priceRow.get("ITEM_SELL_PRICE"), "0")
+	    );
+	    String priceExt = Objects.toString(priceRow.get("ITEM_SELL_PRICE_EXT"), "");
+	    
+	    SP itemPrice = new SP(priceValue, priceExt);
+	    
+	    /*
 	    try { tmpPrice = botNewService.selectItemSellPriceById(itemId); } catch (Exception ignore) {}
 	    int price = (tmpPrice == null ? 0 : tmpPrice.intValue());
 	    if (price <= 0) {
 	        return "구매 가격 정보가 없습니다. 관리자에게 문의해주세요.";
-	    }
+	    }*/
 
 	    // 포인트 확인
+	    
+	    HashMap<String,Object> pointRow =
+	            botNewService.selectCurrentPoint(userName, roomName);
+
+	    double curValue = Double.parseDouble(
+	        Objects.toString(pointRow.get("SCORE"), "0")
+	    );
+
+	    String curExt = Objects.toString(pointRow.get("SCORE_EXT"), "");
+
+	    SP userPoint = new SP(curValue, curExt);
+	    
+	    /*
 	    Integer tmpPoint = null;
 	    try { tmpPoint = botNewService.selectCurrentPoint(userName, roomName); } catch (Exception ignore) {}
 	    int curPoint = (tmpPoint == null ? 0 : tmpPoint.intValue());
+	    */
 	    
+	    
+	    if (!userPoint.canAfford(itemPrice)) {
+	    	return userName + "님, [" + itemName + "] 구매에 필요한 포인트가 부족합니다."
+		             + " (가격: " + itemPrice + "sp, 보유: " + userPoint + ")";
+	    }
+	    /*
 	    if (curPoint < price) {
 	        return userName + "님, [" + itemName + "] 구매에 필요한 포인트가 부족합니다."
 	             + " (가격: " + price + "sp, 보유: " + formatSpShort(curPoint) + ")";
 	    }
-
+	     */
 
 	    // ============================
 	    // 인벤토리 적재 (장비는 중복구매 시 QTY 증가)
@@ -1997,7 +2060,7 @@ public class BossAttackController {
 	    int itemIdInt = itemId; // 위에서 구한 itemId 그대로 사용
 	    boolean upgradeOk = false;// isUpgradableEquip(itemIdInt);
 
-	    if ("MARKET".equalsIgnoreCase(itemType)) {
+	    if ("MARKET".equalsIgnoreCase(itemType)||"MARKET2".equalsIgnoreCase(itemType)) {
 	        // 장비: 같은 ITEM_ID 가진 행이 있으면 QTY만 증가
 	        List<HashMap<String, Object>> rows =
 	                botNewService.selectInventoryRowsForSale(userName, roomName, itemId);
@@ -2091,14 +2154,30 @@ public class BossAttackController {
 	    HashMap<String, Object> pr = new HashMap<>();
 	    pr.put("userName", userName);
 	    pr.put("roomName", roomName);
-	    pr.put("score", -price);
+	    pr.put("score", -itemPrice.getValue());
+	    pr.put("scoreExt", itemPrice.getUnit());
 	    pr.put("cmd", "BUY");
 	    botNewService.insertPointRank(pr);
 
 	    // 구매 후 포인트
 	    Integer tmpAfter = null;
-	    try { tmpAfter = botNewService.selectCurrentPoint(userName, roomName); } catch (Exception ignore) {}
-	    int afterPoint = (tmpAfter == null ? 0 : tmpAfter.intValue());
+	    
+	    
+	    SP afterUserPoint=null;
+	    try { 
+	    HashMap<String,Object> tmpAfterRow =
+	            botNewService.selectCurrentPoint(userName, roomName);
+
+	    double afterCurValue = Double.parseDouble(
+	        Objects.toString(tmpAfterRow.get("SCORE"), "0")
+	    );
+
+	    String afterCurExt = Objects.toString(tmpAfterRow.get("SCORE_EXT"), "");
+
+	    afterUserPoint = new SP(afterCurValue, afterCurExt);
+	    
+	    
+	    } catch (Exception ignore) {}
 
 	    int upgradeLevel = 0;
 	    if ("MARKET".equalsIgnoreCase(itemType)) {
@@ -2130,9 +2209,9 @@ public class BossAttackController {
 	    StringBuilder sb = new StringBuilder();
 	    sb.append("▶ 구매 완료").append(NL)
 	      .append(userName).append("님, ").append(shownName).append("을(를) 구매했습니다.").append(NL)
-	      .append("↘가격: ").append(price).append("sp").append(NL)
+	      .append("↘가격: ").append(itemPrice.toString()).append("").append(NL)
 	      .append("↘옵션: ").append(optionStr).append(NL)
-	      .append("✨포인트: ").append(afterPoint).append("sp");
+	      .append("✨포인트: ").append(afterUserPoint.toString()).append("");
 
 	    try {
 	        botNewService.closeOngoingBattleTx(userName, roomName);
@@ -3145,9 +3224,13 @@ public class BossAttackController {
 	    
 	    boolean flag1 =false;
 	    
+	    if(SP.parse(ctx.lifetimeSpStr).lessThan(new SP(200000000,""))){
+	        flag1 = true;
+	    }
+	    /*
 	    if(ctx.lifetimeSp < 200000000) {
 	    	flag1=true;
-	    }/*else if(ctx.lifetimeSp < 25000000) {
+	    }*//*else if(ctx.lifetimeSp < 25000000) {
 	    	flag2=true;
 	    }*/
 	    
@@ -3260,17 +3343,33 @@ public class BossAttackController {
 
 	    // 16) 현재 포인트
 	    int curPoint = 0;
+	    String curSpStr="";
 	    try {
-	        Integer p = botNewService.selectCurrentPoint(userName, roomName);
-	        curPoint = (p == null ? 0 : p.intValue());
+	    	HashMap<String,Object> pointRow =
+		            botNewService.selectCurrentPoint(userName, roomName);
+
+		    double curValue = Double.parseDouble(
+		        Objects.toString(pointRow.get("SCORE"), "0")
+		    );
+
+		    String curExt = Objects.toString(pointRow.get("SCORE_EXT"), "");
+
+		    SP userPoint = new SP(curValue, curExt);
+	    	
+	        //Integer p = botNewService.selectCurrentPoint(userName, roomName);
+	        //curPoint = (p == null ? 0 : p.intValue());
+		    
+		    curSpStr = userPoint.toString();
 	    } catch (Exception ignore) {}
-	    String curSpStr = formatSpShort(curPoint);
+	    
 	    if (!stealPoint.isEmpty()) {
 	    	msg += "✨추가획득" + stealPoint ;
     		msg +=NL;
 	    }
 	    
 	    if (!newPoint.isEmpty()) {
+	    	
+	    	
 	    	msg += "✨전투획득" + newPoint;
 	    	if(flag1) {
 	    		msg+="(누적 200m sp 이하 2배 적용)";
@@ -3306,75 +3405,89 @@ public class BossAttackController {
 	}
 	
 	public String baroSellItem(String dropName,Integer itemId,Resolve res,String userName,String roomName,UserBattleContext ctx,User u,String gainType,int qty,boolean nightmare) {
-		String newPoint="";
-		try {
-			if(0 == itemId) {
-				itemId = botNewService.selectItemIdByName(dropName);
-			}
-            Integer basePrice = botNewService.selectItemSellPriceById(itemId);
 
-            if (basePrice != null && basePrice > 0) {
+	    String newPoint="";
 
-                int gainSp = basePrice;
+	    try {
 
-                if("STEAL".equals(gainType)) {
-                	gainSp /= 2;
-                	gainSp *= qty;
-                }
-                
-                if(!"STEAL".equals(gainType)) {
-                	// 빛 / 어둠 보정
-                	if ("9".equals(res.dropCode)) {
-                		gainSp *=9;
-                	}
-                    if ("3".equals(res.dropCode) || "5".equals(res.dropCode)) {
-                        gainSp *= 5;
-                    }
-                    if ("2".equals(res.dropCode)) {
-                        gainSp *= 2;
-                    }
+	        if(0 == itemId) {
+	            itemId = botNewService.selectItemIdByName(dropName);
+	        }
 
-                   
+	        HashMap<String,Object> priceRow = botNewService.selectItemSellPriceById(itemId);
 
-                }
-                
-                // 복귀자 보너스
-                
-                if(nightmare) {
-                	gainSp *=50;
-                }
-                
-                if (ctx.isReturnUser) {
-                    gainSp *= 2;
-                }
-                
-                if(ctx.lifetimeSp < 200000000) {
-                	gainSp *= 2;
-                }
+	        long basePrice = Long.parseLong(
+	                Objects.toString(priceRow.get("ITEM_SELL_PRICE"), "0")
+	        );
 
-    	        
-                // SP 즉시 지급
-                HashMap<String, Object> pr = new HashMap<>();
-                pr.put("userName", userName);
-                pr.put("roomName", roomName);
-                pr.put("score", (int) gainSp);
-                pr.put("cmd", "DROP_SP_"+gainType);
+	        String priceExt = Objects.toString(
+	                priceRow.get("ITEM_SELL_PRICE_EXT"), ""
+	        );
 
-                botNewService.insertPointRank(pr);
+	        if (basePrice > 0) {
 
-                newPoint = formatSpShort(gainSp);
-                
-                
-                // 메시지용
-                //stealMsg += NL + "SP 즉시 획득: +" + formatSp(gainSp);
+	            long gainSp = basePrice;
 
-            }
+	            if("STEAL".equals(gainType)) {
+	                gainSp /= 2;
+	                gainSp *= qty;
+	            }
 
-        } catch (Exception ignore) {}
-		
-		return newPoint;
+	            if(!"STEAL".equals(gainType)) {
+
+	                if ("9".equals(res.dropCode)) {
+	                    gainSp *= 9;
+	                }
+
+	                if ("3".equals(res.dropCode) || "5".equals(res.dropCode)) {
+	                    gainSp *= 5;
+	                }
+
+	                if ("2".equals(res.dropCode)) {
+	                    gainSp *= 2;
+	                }
+	            }
+
+	            // 복귀자 보너스
+	            if(nightmare) {
+	                gainSp *= 50;
+	            }
+
+	            if (ctx.isReturnUser) {
+	                gainSp *= 2;
+	            }
+
+	            if(SP.parse(ctx.lifetimeSpStr).lessThan(new SP(200000000,""))){
+	            	gainSp *= 2;
+	            }
+
+	            // --------------------------
+	            // SP 변환
+	            // --------------------------
+
+	            SP gain = new SP(gainSp, priceExt);
+
+	            // --------------------------
+	            // DB insert
+	            // --------------------------
+
+	            HashMap<String, Object> pr = new HashMap<>();
+
+	            pr.put("userName", userName);
+	            pr.put("roomName", roomName);
+	            pr.put("score", gain.getValue());
+	            pr.put("scoreExt", gain.getUnit());
+	            pr.put("cmd", "DROP_SP_"+gainType);
+
+	            botNewService.insertPointRank(pr);
+
+	            newPoint = gain.toString();
+	        }
+
+	    } catch (Exception ignore) {}
+
+	    return newPoint;
 	}
-	
 	
 	
 	public String patchNote(HashMap<String,Object> map) {
@@ -3741,9 +3854,6 @@ public class BossAttackController {
 	    // 숫자로만 들어온 경우: ITEM_ID 로 직접 판매 (/판매 10001)
 	    boolean isNumericId = itemNameRaw.matches("\\d+");
 
-	    boolean wantShinyOnly = false;
-	    boolean wantDarkOnly  = false;
-	    boolean stealOnly     = false;
 
 	    String baseName = itemNameRaw;   // 화면 표기용 기본 이름
 	    Integer itemId = null;
@@ -3754,20 +3864,9 @@ public class BossAttackController {
 	            itemId = Integer.valueOf(itemNameRaw);
 	        } catch (Exception ignore) {}
 
-	        // 빛/어둠/조각 모드는 번호 모드에서는 사용하지 않음
-	        wantShinyOnly = false;
-	        wantDarkOnly  = false;
-	        stealOnly     = false;
 	    } else {
-	        // 🔹 이름으로 들어온 경우 → 기존 빛/어둠/조각 규칙 유지
-	        wantShinyOnly = itemNameRaw.startsWith("빛");
-	        wantDarkOnly  = itemNameRaw.startsWith("어둠");
-	        stealOnly     = itemNameRaw.endsWith("조각");
 	        
-	        baseName = itemNameRaw.replace("빛", "").replace("어둠", "");
-	        if (stealOnly && baseName.endsWith("조각")) {
-	            baseName = baseName.substring(0, baseName.length() - 2); // "조각" 두 글자 제거
-	        }
+	        baseName = itemNameRaw;
 
 	        try {
 	            itemId = botNewService.selectItemIdByName(baseName);
@@ -3782,39 +3881,37 @@ public class BossAttackController {
 	    if (rows == null || rows.isEmpty()) return "인벤토리에 보유 중인 [" + itemNameRaw + "]이(가) 없습니다.";
 
 	    // ★ 조각 수량 추가
-	    int normalQty = 0, shinyQty = 0, fragQty = 0, darkQty=0;
+	    int normalQty = 0;
 	    for (HashMap<String, Object> row : rows) {
 	        String gainType = Objects.toString(row.get("GAIN_TYPE"), "DROP");
 	        int qty = parseIntSafe(Objects.toString(row.get("QTY"), "0"));
 	        qty = Math.max(0, qty);
 
-	        if ("STEAL".equalsIgnoreCase(gainType)) {
-	            fragQty += qty;
-	        } else if ("DROP3".equalsIgnoreCase(gainType)) {
-	            shinyQty += qty;
-	        } else if ("DROP5".equalsIgnoreCase(gainType)) {
-	            darkQty += qty;
-	        } else {
+	        
 	            normalQty += qty;
-	        }
+	        
 	    }
 
 	 // ★ 판매 대상 수량 계산: 조각 모드 vs 일반 모드
-	    int haveTotal;
-	    if (stealOnly) {
-	        haveTotal = fragQty;
-	    } else {
-	        haveTotal = normalQty + shinyQty + darkQty;
-	    }
+	    int haveTotal= normalQty ;
 
 	    if (haveTotal <= 0) {
 	        return "인벤토리에 보유 중인 [" + itemNameRaw + "]이(가) 없습니다.";
 	    }
 
 	    Integer basePriceObj = null;
-	    try { basePriceObj = botNewService.selectItemSellPriceById(itemId); } catch (Exception ignore) {}
-	    int basePrice = (basePriceObj == null ? 0 : basePriceObj);
-	    if (basePrice <= 0) return "해당 아이템은 판매가 설정이 없어 판매할 수 없습니다: " + itemNameRaw;
+	    String basePriceExt = "";
+	    HashMap<String,Object> priceRow = null;
+	    try {
+	        priceRow = botNewService.selectItemSellPriceById(itemId);
+
+	        if(priceRow != null){
+	            basePriceObj = parseIntSafe(Objects.toString(priceRow.get("ITEM_SELL_PRICE"), "0"));
+	            basePriceExt = Objects.toString(priceRow.get("ITEM_SELL_PRICE_EXT"), "");
+	        }
+
+	    }catch (Exception ignore) {}
+
 
 	 // ✅ 아이템 정보 조회 (장비 여부 확인)
 	    HashMap<String, Object> itemDetail = null;
@@ -3840,7 +3937,7 @@ public class BossAttackController {
 	        need = Math.min(reqQty, haveTotal);
 	    }
 
-	    int sold = 0, soldNormal = 0, soldShiny = 0,soldDark=0, soldFrag = 0;
+	    int sold = 0;
 	    long totalSp = 0L;
 	    
 	    
@@ -3849,30 +3946,7 @@ public class BossAttackController {
 	    for (HashMap<String, Object> row : rows) {
 	        if (need <= 0) break;
 
-	        String gainType = Objects.toString(row.get("GAIN_TYPE"), "DROP");
-	        boolean isShinyRow = "DROP3".equalsIgnoreCase(gainType);
-	        boolean isDarkRow  = "DROP5".equalsIgnoreCase(gainType);
-	        boolean isStealRow = "STEAL".equalsIgnoreCase(gainType);   // ★ 추가
-
-
-	        // ★ 모드에 따라 행 필터링
-	        // 행 종류 분류
-	        boolean isNormalRow = !isShinyRow && !isDarkRow && !isStealRow;
-
-	        if (stealOnly) {
-	            // /판매 도토리조각 → STEAL만
-	            if (!isStealRow) continue;
-	        } else if (wantShinyOnly) {
-	            // /판매 빛도토리 → DROP3(빛도토리)만
-	            if (!isShinyRow) continue;
-	        } else if (wantDarkOnly) {
-	            // /판매 어둠도토리 → DROP5(어둠도토리)만
-	            if (!isDarkRow) continue;
-	        } else {
-	            // /판매 도토리 → 일반도토리만
-	            if (!isNormalRow) continue;
-	        }
-	        
+	       
 
 	        String rid = (row.get("RID") != null ? row.get("RID").toString() : null);
 	        int qty = parseIntSafe(Objects.toString(row.get("QTY"), "0"));
@@ -3881,44 +3955,11 @@ public class BossAttackController {
 	        int take = Math.min(qty, need);
 	        if (take <= 0) continue;
 
-	        int unitPrice;
-
-	        if (isShinyRow || isDarkRow) {
-	            // ✨빛드랍 기본 5배
-	            unitPrice = basePrice * SHINY_MULTIPLIER;
-	        } else {
-	            // 기본은 아이템 판매가
-	            unitPrice = basePrice;
-	        }
-
-	        // ★ 조각(STEAL)은 절반 가격
-	        if (isStealRow) {
-	            unitPrice = (int)Math.floor(unitPrice * 0.5);
-	        }
-	        
-	        if (!isEquip && u.totalSp < 200000000) {
-	        	unitPrice *= 2;
-	        	flag1 = true;
-	        }/*else if (!isEquip && u.totalSp < 25000000) {
-	            unitPrice *= 1.5;
-	            flag2 = true;
-	        }*/
-	        
-	        
+	        int unitPrice= basePriceObj;
 
 	        if (qty == take) botNewService.updateInventoryDelByRowId(rid);
 	        else botNewService.updateInventoryQtyByRowId(rid, qty - take);
 
-	     // 판매 카운트
-	        if (isStealRow) {
-	            soldFrag += take;
-	        } else if (isShinyRow) {
-	            soldShiny += take;
-	        } else if (isDarkRow) {
-	            soldDark += take;
-	        } else {
-	            soldNormal += take;
-	        }
 	        sold += take;
 	        need -= take;
 	        totalSp += (long) take * (long) unitPrice;
@@ -3926,101 +3967,47 @@ public class BossAttackController {
 
 	    if (sold <= 0) {
 	        // ★ 보유 안내도 모드별 분리
-	        String preStock;
-	        if (stealOnly) {
-	            preStock = "보유: " + baseName + "조각 " + fragQty + "개";
-	        } else {
-	            preStock = "보유: " + baseName + " " + normalQty + "개"
-	                    + (shinyQty > 0 ? ", 빛" + baseName + " " + shinyQty + "개" : "")
-	                    + (darkQty > 0 ? ", 어둠" + baseName + " " + darkQty + "개" : "")
-	                    + (fragQty  > 0 ? ", " + baseName + "조각 " + fragQty + "개" : "");
-	        }
+	        String preStock = "보유: " + baseName + " " + normalQty + "개";
 	        return "판매 가능한 재고가 없습니다." + NL + preStock;
 	    }
 
 	    HashMap<String, Object> pr = new HashMap<>();
 	    pr.put("userName", userName);
 	    pr.put("roomName", roomName);
-	    pr.put("score", (int) totalSp);
-	    if (isEquip) {
-	        pr.put("cmd", "SELL_EQUIP");  // 장비 판매
-	    } else {
-	        pr.put("cmd", "SELL_JUNK");   // 잡템 판매
-	    }
-	    //pr.put("cmd", "SELL");
+	    pr.put("score", basePriceObj);
+	    pr.put("scoreExt", basePriceExt);
+	    pr.put("cmd", "SELL_EQUIP"); 
 	    botNewService.insertPointRank(pr);
 
+	    SP curPoint = new SP(0,"");
+
+		try {
+			HashMap<String, Object> p = botNewService.selectCurrentPoint(userName, roomName);
+			double v = Double.parseDouble(Objects.toString(p.get("SCORE"), "0"));
+			String e = Objects.toString(p.get("SCORE_EXT"), "");
+			curPoint = new SP(v, e);
+	    }catch(Exception ignore){}
+	    /*
 	    int curPoint = 0;
 	    try {
 	        Integer curP = botNewService.selectCurrentPoint(userName, roomName);
 	        curPoint = (curP == null ? 0 : Math.max(0, curP));
 	    } catch (Exception ignore) {}
-	    String curPointStr = String.format("%,d sp", curPoint);
+	    */
+	    String curPointStr = curPoint.toString();
 
-	    int remainNormal = Math.max(0, normalQty - soldNormal);
-	    int remainShiny  = Math.max(0, shinyQty  - soldShiny);
-	    int remainDark  = Math.max(0, darkQty  - soldDark);
-	    int remainFrag   = Math.max(0, fragQty   - soldFrag);  // ★
-	    
 
-	    StringBuilder remainSb = new StringBuilder("남은 재고: ");
-	    boolean printed = false;
-	    
-        if (remainNormal > 0) {
-            remainSb.append(baseName).append(" ").append(remainNormal).append("개");
-            printed = true;
-        }
-        if (remainShiny > 0) {
-            if (printed) remainSb.append(", ");
-            remainSb.append("빛").append(baseName).append(" ").append(remainShiny).append("개");
-            printed = true;
-        }
-        if (remainDark > 0) {
-        	if (printed) remainSb.append(", ");
-        	remainSb.append("어둠").append(baseName).append(" ").append(remainDark).append("개");
-        	printed = true;
-        }
-     // ★ 여기 추가: 조각도 같이 보여주기
-        if (remainFrag > 0) {
-            if (printed) remainSb.append(", ");
-            remainSb.append(baseName).append("조각 ").append(remainFrag).append("개");
-            printed = true;
-        }
-	    
-	    if (!printed) remainSb = new StringBuilder("남은 재고: 없음");
-
-	 // 표시용 이름
-	    String dispName;
-	    if (stealOnly) {
-	        dispName = baseName + "조각";                         // ★ /판매 모피조각
-	    } else if(wantShinyOnly){
-	        dispName = "빛" + baseName;
-	    } else if(wantDarkOnly){
-	        dispName = "어둠" + baseName;
-	    }else {
-	    	dispName = baseName;
-	    }
-	    
 	    StringBuilder sb = new StringBuilder();
 	    sb.append("⚔ ").append(userName).append("님,").append(NL)
 	      .append("▶ 판매 완료!").append(NL)
-	      .append("- 아이템: ").append(dispName).append(NL)
+	      .append("- 아이템: ").append(itemNameRaw).append(NL)
 	      .append("- 판매 수량: ").append(sold).append("개").append(NL)
-	      .append("- 합계 적립: ").append(totalSp).append("sp").append(NL)
-	      .append("- 현재 포인트: ").append(curPointStr).append(NL)
-	      .append(remainSb.toString());
-
-	    if (flag1) {
-	        sb.append(NL)
-	          .append("✨지원보너스 적용! (10,000,000sp 까지 기타 아이템 판매가 x2)");
-	    }
-	    if (flag2) {
-	    	sb.append(NL)
-	    	  .append("✨지원보너스 적용! (25,000,000sp 까지 기타 아이템 판매가 x1.5)");
-	    }
+	      .append("- 합계 적립: ").append(basePriceObj).append(basePriceExt).append(NL)
+	      .append("- 현재 포인트: ").append(curPointStr).append(NL);
+	      //.append(remainSb.toString());
 	    
 		 // 👇 여기 추가
-		 if (soldMerchantDiscount) {
+		if (soldMerchantDiscount) {
 		     sb.append(NL)
 		       .append("※ 상인 할인으로 구매한 아이템은 할인가(90%) 기준으로 판매되었습니다.");
 		 }
@@ -4029,22 +4016,10 @@ public class BossAttackController {
 	          .append("(요청 ").append(reqQty).append("개 → 실제 ").append(sold).append("개 판매)");
 	    }
 
-	    /*
-	    String achvMsg = grantShopSellAchievements(userName, roomName);
-	    if (achvMsg != null && !achvMsg.isEmpty()) {
-	        sb.append(NL).append("업적").append(NL)
-	          .append(achvMsg);
-	    }
-	    */
 	    return sb.toString();
 	}
 	
 	private String sellAllByCategoryFiltered(String userName, String roomName, User u, boolean equipOnly, String slotKey) {
-	    final int SHINY_MULTIPLIER = 5;
-	    final String NL = BossAttackController.NL;
-	    
-	    boolean flag1 = false;
-	    
 
 	    List<HashMap<String, Object>> rows = botNewService.selectAllInventoryRowsForSale(userName, roomName);
 	    if (rows == null || rows.isEmpty()) {
@@ -4053,11 +4028,13 @@ public class BossAttackController {
 	    }
 
 	    Map<Integer, Boolean> equipCache = new HashMap<>();
-	    Map<Integer, Integer> priceCache = new HashMap<>();
+	    Map<Integer, Long> priceCache = new HashMap<>();
+	    Map<Integer, String>  priceExtCache = new HashMap<>();
 	    Map<Integer, String>  catCache   = new HashMap<>(); // NEW: itemId -> 카테고리(※무기 등)
+	    
 
-	    int sold = 0, soldNormal = 0, soldShiny = 0, soldDark = 0, soldFrag = 0;
-	    long totalSp = 0L;
+	    int sold = 0;
+	    SP totalSp = SP.of(0,"");
 	    boolean soldMerchantDiscount = false;
 
 	    for (HashMap<String, Object> row : rows) {
@@ -4067,11 +4044,6 @@ public class BossAttackController {
 
 	        int qty = parseIntSafe(Objects.toString(row.get("QTY"), "0"));
 	        if (qty <= 0) continue;
-
-	        String gainType = Objects.toString(row.get("GAIN_TYPE"), "DROP");
-	        boolean isShinyRow = "DROP3".equalsIgnoreCase(gainType);
-	        boolean isDarkRow  = "DROP5".equalsIgnoreCase(gainType);
-	        boolean isStealRow = "STEAL".equalsIgnoreCase(gainType);
 
 	        Integer itemId = null;
 	        try { itemId = botNewService.selectItemIdByRowId(rid); } catch (Exception ignore) {}
@@ -4083,7 +4055,7 @@ public class BossAttackController {
 	            HashMap<String, Object> itemDetail = null;
 	            try { itemDetail = botNewService.selectItemDetailById(itemId); } catch (Exception ignore) {}
 	            String itemType = (itemDetail == null) ? "" : Objects.toString(itemDetail.get("ITEM_TYPE"), "");
-	            isEquipObj = "MARKET".equalsIgnoreCase(itemType);
+	            isEquipObj = "MARKET".equalsIgnoreCase(itemType) ||  "MARKET2".equalsIgnoreCase(itemType) ;
 	            equipCache.put(itemId, isEquipObj);
 	        }
 	        boolean isEquip = Boolean.TRUE.equals(isEquipObj);
@@ -4108,40 +4080,33 @@ public class BossAttackController {
 	        }
 
 	        // 가격 캐시
-	        Integer basePriceObj = priceCache.get(itemId);
-	        if (basePriceObj == null) {
-	            Integer tmpPrice = null;
-	            try { tmpPrice = botNewService.selectItemSellPriceById(itemId); } catch (Exception ignore) {}
-	            basePriceObj = (tmpPrice == null ? 0 : tmpPrice.intValue());
-	            priceCache.put(itemId, basePriceObj);
-	        }
-	        int basePrice = basePriceObj;
-	        if (basePrice <= 0) continue;
+	        Long basePrice = priceCache.get(itemId);
+	        String priceExt = priceExtCache.get(itemId);
 
-	        int unitPrice = basePrice;
-	        if (isShinyRow || isDarkRow) unitPrice = basePrice * SHINY_MULTIPLIER;
-	        if (isStealRow) unitPrice = (int)Math.floor(unitPrice * 0.5);
-
+			if (basePrice == null) {
+				try {
+					HashMap<String, Object> priceRow = botNewService.selectItemSellPriceById(itemId);
+					if (priceRow != null) {
+						basePrice = Long.parseLong(Objects.toString(priceRow.get("ITEM_SELL_PRICE"), "0"));
+						priceExt = Objects.toString(priceRow.get("ITEM_SELL_PRICE_EXT"), "");
+					}
+				} catch (Exception ignore) {
+				}
+				if (basePrice == null)
+					basePrice = 0L;
+				priceCache.put(itemId, basePrice);
+				priceExtCache.put(itemId, priceExt);
+			}
 	        
-	        if (!isEquip && u.totalSp < 200000000) {
-	        	unitPrice *= 2;
-	        	flag1 = true;
-	        	
-	        }/*else if (!isEquip && u.totalSp < 25000000) {
-	            unitPrice *= 1.5;
-	            flag2 = true;
-	        }*/
 	        
-	        int take = qty;
-	        botNewService.updateInventoryDelByRowId(rid);
+			if (basePrice <= 0) continue;
 
-	        if (isStealRow) soldFrag += take;
-	        else if (isShinyRow) soldShiny += take;
-	        else if (isDarkRow) soldDark += take;
-	        else soldNormal += take;
-
-	        sold += take;
-	        totalSp += (long) take * (long) unitPrice;
+			SP unitSp = SP.of(basePrice, priceExt);
+			int take = qty;
+			botNewService.updateInventoryDelByRowId(rid);
+			SP gain = unitSp.multiply(take);
+			totalSp = totalSp.add(gain);
+			sold += take;
 	        
 	    }
 
@@ -4149,20 +4114,26 @@ public class BossAttackController {
 	        if (slotKey != null) return "판매 가능한 " + slotKey + " 아이템이 없습니다.";
 	        return equipOnly ? "판매 가능한 장비가 없습니다." : "판매 가능한 잡템이 없습니다.";
 	    }
+	    
+	    SP gain = totalSp;
 
 	    HashMap<String, Object> pr = new HashMap<>();
 	    pr.put("userName", userName);
 	    pr.put("roomName", roomName);
-	    pr.put("score", (int) totalSp);
+	    pr.put("score", gain.getValue());
+	    pr.put("scoreExt", gain.getUnit());
 	    pr.put("cmd", equipOnly ? "SELL_EQUIP" : "SELL_JUNK");
 	    botNewService.insertPointRank(pr);
 
-	    int curPoint = 0;
-	    try {
-	        Integer curP = botNewService.selectCurrentPoint(userName, roomName);
-	        curPoint = (curP == null ? 0 : Math.max(0, curP));
-	    } catch (Exception ignore) {}
-	    String curPointStr = String.format("%,d sp", curPoint);
+	    SP curPoint = new SP(0,"");
+		try {
+			HashMap<String, Object> p = botNewService.selectCurrentPoint(userName, roomName);
+			double v = Double.parseDouble(Objects.toString(p.get("SCORE"), "0"));
+			String e = Objects.toString(p.get("SCORE_EXT"), "");
+			curPoint = new SP(v, e);
+		} catch (Exception ignore) {
+		}
+	    String curPointStr = curPoint.toString();
 
 	    String title = (slotKey != null)
 	            ? ("- 대상: " + slotKey + " 전체 판매" + NL)
@@ -4174,34 +4145,13 @@ public class BossAttackController {
 	      .append("▶ 전체 판매 완료!").append(NL)
 	      .append(title)
 	      .append("- 총 판매 수량: ").append(sold).append("개").append(NL)
-	      .append("- 합계 적립: ").append(totalSp).append("sp").append(NL)
+	      .append("- 합계 적립: ").append(gain.toString()).append(NL)
 	      .append("- 현재 포인트: ").append(curPointStr);
 
-	    if (flag1) {
-	        sb.append(NL)
-	          .append("✨지원보너스 적용! (200m sp 까지 기타 아이템 판매가 x2)");
-	    }
-	    /*
-	    if (flag2) {
-	    	sb.append(NL)
-	    	  .append("✨지원보너스 적용! (25,000,000sp 까지 기타 아이템 판매가 x1.5)");
-	    }
-	    */
-	    
-	    if (soldNormal > 0) sb.append(NL).append("  · 일반 아이템: ").append(soldNormal).append("개");
-	    if (soldShiny  > 0) sb.append(NL).append("  · 빛 아이템: ").append(soldShiny).append("개");
-	    if (soldDark   > 0) sb.append(NL).append("  · 어둠 아이템: ").append(soldDark).append("개");
-	    if (soldFrag   > 0) sb.append(NL).append("  · 조각: ").append(soldFrag).append("개");
 
 	    if (soldMerchantDiscount) {
 	        sb.append(NL).append("※ 상인 할인으로 구매한 아이템은 할인가(90%) 기준으로 판매되었습니다.");
 	    }
-
-	    /*
-	    String achvMsg = grantShopSellAchievements(userName, roomName);
-	    if (achvMsg != null && !achvMsg.isEmpty()) {
-	        sb.append(NL).append("업적").append(NL).append(achvMsg);
-	    }*/
 
 	    return sb.toString();
 	}
@@ -4267,7 +4217,7 @@ public class BossAttackController {
 	        }
 	    }
 	    
-	    
+	    /*
 	    List<HashMap<String,Object>> ongoing = botNewService.selectOngoingChallengesForUnclearedBosses();
 	    if (ongoing != null && !ongoing.isEmpty()) {
 	    	sb.append(NL);
@@ -4290,7 +4240,7 @@ public class BossAttackController {
 	              .append(NL);
 	        }
 	    }
-	    
+	    */
 	    sb.append(allSeeStr);
 	    
 	    
@@ -4458,6 +4408,7 @@ public class BossAttackController {
 	    sb.append(NL);
 
 	    /* === ⚔ 최초토벌 === */
+	    /*
 	    sb.append("⚔ 최초토벌").append(NL);
 
 	 // 1) 이미 토벌된 몬스터
@@ -4487,6 +4438,7 @@ public class BossAttackController {
 	            sb.append(NL);
 	        }
 	    }
+	    */
 
 	    return sb.toString();
 	}
@@ -4578,6 +4530,8 @@ public class BossAttackController {
 	        18000,19000,20000,21000,22000,23000,24000,25000,
 	        26000,27000,28000,29000,30000,31000,32000,33000,
 	        34000,35000,36000,37000,38000,39000,40000
+	        /*,41000,
+	        42000,43000,44000,45000,46000,47000,48000,49000,50000*/
 	    };
 
 	    StringBuilder sb = new StringBuilder();
@@ -4712,6 +4666,7 @@ public class BossAttackController {
 	        p.put("userName", userName);
 	        p.put("roomName", roomName);
 	        p.put("score", rewardSp);
+	        p.put("scoreExt", "");
 	        p.put("cmd", cmd);
 
 	        botNewService.insertPointRank(p);
@@ -6056,6 +6011,7 @@ public class BossAttackController {
 	    pr.put("userName", userName);
 	    pr.put("roomName", roomName);
 	    pr.put("score", rewardSp);
+	    pr.put("scoreExt", "");
 	    pr.put("cmd", achvCmd);
 	    botNewService.insertPointRank(pr);
 
@@ -6087,6 +6043,7 @@ public class BossAttackController {
 	    pr.put("userName", userName);
 	    pr.put("roomName", roomName);
 	    pr.put("score", rewardSp);
+	    pr.put("scoreExt", "");
 	    pr.put("cmd", achvCmd);
 
 	    botNewService.insertPointRank(pr);
@@ -6136,7 +6093,7 @@ public class BossAttackController {
 	        case 17000: val = 300000; break;
 	        case 18000: val = 300000; break;
 	        case 19000: val = 300000; break;
-	        case 20000: val = 300000; break;
+	        case 20000: val = 400000; break;
 	        case 21000: val = 400000; break;
 	        case 22000: val = 400000; break;
 	        case 23000: val = 450000; break;
@@ -6156,7 +6113,18 @@ public class BossAttackController {
 	        case 37000: val = 850000; break;
 	        case 38000: val = 850000; break;
 	        case 39000: val = 900000; break;
-	        case 40000: val = 900000; break;
+	        case 40000: val = 900000; break;/*
+	        case 41000: val = 1000000; break;
+	        case 42000: val = 1000000; break;
+	        case 43000: val = 1100000; break;
+	        case 44000: val = 1200000; break;
+	        case 45000: val = 1200000; break;
+	        case 46000: val = 1300000; break;
+	        case 47000: val = 1300000; break;
+	        case 48000: val = 1400000; break;
+	        case 49000: val = 1400000; break;
+	        case 50000: val = 1500000; break;
+	        */
 	        default:   val = 0;
 	    }
 	    
@@ -6421,6 +6389,7 @@ public class BossAttackController {
 	        pr.put("userName", userName);
 	        pr.put("roomName", roomName);
 	        pr.put("score", rewardShared);
+	        pr.put("scoreExt", "");
 	        pr.put("cmd", userCmd);
 	        botNewService.insertPointRank(pr);
 
@@ -6837,6 +6806,7 @@ public class BossAttackController {
 	                    p.put("userName", userName);
 	                    p.put("roomName", roomName);
 	                    p.put("score", rewardSp);
+	                    p.put("scoreExt", "");
 	                    p.put("cmd", cmd);
 	                    botNewService.insertPointRank(p);
 
@@ -8033,11 +8003,11 @@ public class BossAttackController {
 	    }
 	}
 	
-	private int pickBiasedSp(int min, int max) {
+	private long pickBiasedSp(long min, long max) {
 	    double r = ThreadLocalRandom.current().nextDouble(); // 0~1
 	    double biased = Math.pow(r, 8); // 극단적으로 0쪽으로 치우침
 
-	    int span = max - min;
+	    long span = max - min;
 	    return min + (int)Math.round(span * biased);
 	}
 
@@ -8079,22 +8049,25 @@ public class BossAttackController {
 	// ===== 장비 카테고리별 최대 소지 수량 =====
 	private int getEquipCategoryMax(int itemId) {
 	    // 무기 (100번대): 최대 5개
-	    if (itemId >= 100 && itemId < 200) return 5;
+	    if ( 
+	    		(itemId > 100 && itemId <= 200) 
+	    	|| 	(itemId > 1100 && itemId <= 1200) 
+	    		) return 5;
 	    // 투구 (200번대): 1개
-	    if (itemId >= 200 && itemId < 300) return 1;
+	    if (itemId > 200 && itemId <= 300) return 1;
 	    // 갑옷 (400번대): 1개
-	    if (itemId >= 400 && itemId < 500) return 1;
+	    if (itemId > 400 && itemId <= 500) return 1;
 	    // 전설 (700번대): 1개
-	    if (itemId >= 700 && itemId < 800) return 1;
+	    if (itemId > 700 && itemId <= 800) return 1;
 	    // 날개 (800번대): 1개
-	    if (itemId >= 800 && itemId < 900) return 1;
+	    if (itemId > 800 && itemId <= 900) return 1;
 
 	    // 나머지는 제한 없음
 	    return Integer.MAX_VALUE;
 	}
 
 	private int getMaxAllowedByCategoryLabel(String label) {
-	    if (label.contains("무기"))  return 5;    // 100번대
+	    if (label.contains("무기"))  return 5;    // 100번대 , 1100번대 
 	    if (label.contains("투구"))  return 1;    // 200번대
 	    if (label.contains("갑옷"))  return 1;    // 400번대
 	    if (label.contains("날개"))  return 1;    // 800번대
@@ -8110,8 +8083,12 @@ public class BossAttackController {
 	 */
 	private boolean isSameEquipCategory(int baseItemId, int otherItemId) {
 	    // 무기
-	    if (baseItemId >= 100 && baseItemId < 200) {
-	        return (otherItemId >= 100 && otherItemId < 200);
+	    if (	(baseItemId > 100  && baseItemId <= 200)
+	    	||	(baseItemId > 1100 && baseItemId <= 1200)
+	    		) {
+	        return (  (otherItemId >  100 && otherItemId <= 200)
+	        		||(otherItemId > 1100 && otherItemId <= 1200)
+	        		);
 	    }
 	    // 투구
 	    if (baseItemId >= 200 && baseItemId < 300) {
@@ -8157,7 +8134,7 @@ public class BossAttackController {
 
 // 장비인지 한 번 더 필터 (ITEM_TYPE 이 MARKET 인 것만)
 			String itemType = Objects.toString(row.get("ITEM_TYPE"), "");
-			if (!"MARKET".equalsIgnoreCase(itemType))
+			if (!("MARKET".equalsIgnoreCase(itemType)||"MARKET2".equalsIgnoreCase(itemType) ))
 				continue;
 
 // TOTAL_QTY 가 0 이면 사실상 미보유로 간주

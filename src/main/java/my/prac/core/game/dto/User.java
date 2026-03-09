@@ -26,6 +26,7 @@ public  class User {
 	public String job;
 	public Timestamp jobChangeDate;
 	public long totalSp; 
+	public String totalSpStr; 
 	public String hunterGrade;
 	public int blessYn;
 	public Timestamp procDate;
