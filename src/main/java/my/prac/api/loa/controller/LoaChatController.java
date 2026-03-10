@@ -2819,7 +2819,11 @@ public class LoaChatController {
 		msg += enterStr+" ↳ [나메 **,000G]";
 		*/
 		msg += enterStr ;
+		msg += enterStr + "⭐어비스 던전⭐";
+		msg += enterStr + "✓지평의 성당-아르세너스"+enterStr+" ↳ [1단계 30,000G(귀속)/2단계 40,000G(귀속)]";
+		msg += enterStr+" ↳ [3단계 50,000G(귀속)]";
 		
+		msg += enterStr ;
 		msg += enterStr + "⭐카제로스 레이드⭐";
 		msg += enterStr + "✓종막-카제로스"+enterStr+" ↳ [노 40,000G/하 52,000G]";
 		msg += enterStr + "✓4막-아르모체"+enterStr+" ↳ [노 33,000G/하 42,000G]";
@@ -5099,7 +5103,9 @@ public class LoaChatController {
 				
 				double lv = Double.parseDouble(charList.get("ItemAvgLevel").toString().replaceAll(",", ""));
 				partial_gold = 0;
-				if(lv >= 1740 ) {
+				if(lv >= 1750 ) {
+					partial_gold = 156000;
+				}else if(lv >= 1740 ) {
 					partial_gold = 148000;
 				}else if(lv >= 1730) {
 					partial_gold = 138000;
