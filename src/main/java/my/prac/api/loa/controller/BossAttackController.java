@@ -8036,6 +8036,7 @@ public class BossAttackController {
 	    if ( 
 	    		(itemId > 100 && itemId <= 200) 
 	    	|| 	(itemId > 1100 && itemId <= 1200) 
+	    	|| 	(itemId > 2100 && itemId <= 2200)
 	    		) return 5;
 	    // 투구 (200번대): 1개
 	    if (itemId > 200 && itemId <= 300) return 1;
@@ -8069,9 +8070,11 @@ public class BossAttackController {
 	    // 무기
 	    if (	(baseItemId > 100  && baseItemId <= 200)
 	    	||	(baseItemId > 1100 && baseItemId <= 1200)
+	    	||	(baseItemId > 2100 && baseItemId <= 2200)
 	    		) {
 	        return (  (otherItemId >  100 && otherItemId <= 200)
 	        		||(otherItemId > 1100 && otherItemId <= 1200)
+	        		||(otherItemId > 2100 && otherItemId <= 2200)
 	        		);
 	    }
 	    // 투구
@@ -8170,6 +8173,7 @@ public class BossAttackController {
 	private String resolveItemCategory(int itemId) {
 	    if (itemId > 100  && itemId <= 200)  return "※무기";   // 100번대
 	    if (itemId > 1100 && itemId <= 1200)  return "※무기";   // 1100번대
+	    if (itemId > 2100 && itemId <= 2200)  return "※무기";   // 2100번대
 	    if (itemId > 200  && itemId <= 300)  return "※투구";   // 200번대
 	    if (itemId > 300  && itemId <= 400)  return "※행운";   // 300번대
 	    if (itemId > 400  && itemId <= 500)  return "※갑옷";   // 400번대
@@ -8193,6 +8197,7 @@ public class BossAttackController {
 	    switch (s) {
 	        case "무기": return new int[]{100, 200};
 	        case "진무기": return new int[]{1100, 1200};
+	        case "극무기": return new int[]{2100, 2200};
 	        case "투구": return new int[]{200, 300};
 	        case "행운": return new int[]{300, 400};
 	        case "갑옷": return new int[]{400, 500};
