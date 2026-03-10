@@ -5513,7 +5513,7 @@ public class BossAttackController {
 
 	    sb.append("✨ EXP +").append(res.gainExp)
 	      .append("(").append(String.format("%.1f", gainPercent)).append("%)")
-	      .append(NL).append("EXP: ").append(String.format("%.1f", curPercent)).append("%/100%")
+	      .append("[").append(String.format("%.1f", curPercent)).append("%/100%]")
 	      .append(NL);
 	    // EXP
 	    /*
