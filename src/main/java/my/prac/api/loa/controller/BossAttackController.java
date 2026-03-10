@@ -318,15 +318,17 @@ public class BossAttackController {
 	        try {
 
 	            // 1️⃣ 처치 수
+	        	/*
 	            List<KillStat> kills =
 	                    botNewService.selectKillStats(targetUser, roomName);
-
+	            */
+	            /*
 	            int totalKills = 0;
 	            if (kills != null) {
 	                for (KillStat ks : kills) {
 	                    totalKills += ks.killCount;
 	                }
-	            }
+	            }*/
 
 	            // 2️⃣ 공격 / 사망 통계
 	            AttackDeathStat ads =
@@ -792,11 +794,6 @@ public class BossAttackController {
 	            List<Integer> rewardItemIds =
 	                    botNewService.selectBagRewardItemIdsUserNotOwned(param);
 
-	            /*
-	            if (rewardItemIds == null || rewardItemIds.isEmpty()) {
-	                rewardItemIds = botNewService.selectBagRewardItemIds(); // fallback
-	            }*/
-
 	            if (rewardItemIds == null || rewardItemIds.isEmpty()) {
 	            	long sp = rollBagSpWithCeiling(userName, roomName);
 	                totalSp += sp;
@@ -838,11 +835,6 @@ public class BossAttackController {
 	            List<Integer> rewardItemIds =
 	                    botNewService.selectBagRewardItemIdsUserNotOwned(param);
 
-	            /*
-	            if (rewardItemIds == null || rewardItemIds.isEmpty()) {
-	                rewardItemIds = botNewService.selectBagRewardItemIds(); // fallback
-	            }
-	             */
 	            if (rewardItemIds == null || rewardItemIds.isEmpty()) {
 	            	long sp = rollBagSpWithCeiling(userName, roomName);
 	                sp *= 20;
@@ -862,7 +854,14 @@ public class BossAttackController {
 	        }
 	    }
 
-	    // 🔹 SP 저장
+	    
+
+	    // 🔹 메시지
+	    StringBuilder sb = new StringBuilder();
+	    sb.append("가방 총 ").append(normalCount + nightmareCount)
+	      .append("개를 열었습니다!").append(NL);
+
+	 // 🔹 SP 저장
 	    if (totalSp > 0) {
 	    	SP sp = SP.fromSp(totalSp);
 	    	
@@ -874,15 +873,8 @@ public class BossAttackController {
 	        pr.put("scoreExt", sp.getUnit());
 	        pr.put("cmd", "BAG_OPEN_SP");
 	        botNewService.insertPointRank(pr);
-	    }
-
-	    // 🔹 메시지
-	    StringBuilder sb = new StringBuilder();
-	    sb.append("가방 총 ").append(normalCount + nightmareCount)
-	      .append("개를 열었습니다!").append(NL);
-
-	    if (totalSp > 0) {
-	        sb.append("✨ 총 획득: ").append(totalSp).append("sp").append(NL);
+	        
+	        sb.append("✨ 총 획득: ").append(sp.toString()).append("").append(NL);
 	    }
 
 	    if (!itemSummary.isEmpty()) {
@@ -1294,7 +1286,6 @@ public class BossAttackController {
 	    final int jobRegenBonus   = ctx.jobRegenBonus;   // 없으면 0
 
 	    final String pointStr   = ctx.currentPointStr;
-	    final int lifetimeSp    = ctx.lifetimeSp;
 	    final String lifetimeSpStr    = ctx.lifetimeSpStr;//formatSpShort(ctx.lifetimeSp);
 
 	    final String allSeeStr  = NL + "===" + NL;  // 구분선
@@ -2001,7 +1992,6 @@ public class BossAttackController {
 	    String itemName = Objects.toString(item.get("ITEM_NAME"), String.valueOf(itemId));
 
 	    // 단가
-	    Integer tmpPrice = null;
 	    HashMap<String,Object> priceRow =null;
 	    try {
 	    priceRow = botNewService.selectItemSellPriceById(itemId);
@@ -2013,12 +2003,6 @@ public class BossAttackController {
 	    
 	    SP itemPrice = new SP(priceValue, priceExt);
 	    
-	    /*
-	    try { tmpPrice = botNewService.selectItemSellPriceById(itemId); } catch (Exception ignore) {}
-	    int price = (tmpPrice == null ? 0 : tmpPrice.intValue());
-	    if (price <= 0) {
-	        return "구매 가격 정보가 없습니다. 관리자에게 문의해주세요.";
-	    }*/
 
 	    // 포인트 확인
 	    
@@ -3224,7 +3208,7 @@ public class BossAttackController {
 	    
 	    boolean flag1 =false;
 	    
-	    if(SP.parse(ctx.lifetimeSpStr).lessThan(new SP(200000000,""))){
+	    if(SP.parse(ctx.lifetimeSpStr).lessThan(new SP(10,"b"))){
 	        flag1 = true;
 	    }
 	    /*
@@ -3372,7 +3356,7 @@ public class BossAttackController {
 	    	
 	    	msg += "✨전투획득" + newPoint;
 	    	if(flag1) {
-	    		msg+="(누적 200m sp 이하 2배 적용)";
+	    		msg+="(누적 10b 이하 3배 적용)";
 	    	}/*
     		if(flag2) {
     			msg+="(누적 2500만sp 이하 1.5배 적용)";
@@ -3448,24 +3432,24 @@ public class BossAttackController {
 	                }
 	            }
 
-	            // 복귀자 보너스
 	            if(nightmare) {
 	                gainSp *= 50;
 	            }
-
+	            /*
 	            if (ctx.isReturnUser) {
 	                gainSp *= 2;
 	            }
+	            */
 
-	            if(SP.parse(ctx.lifetimeSpStr).lessThan(new SP(200000000,""))){
-	            	gainSp *= 2;
+	            if(SP.parse(ctx.lifetimeSpStr).lessThan(new SP(10,"b"))){
+	            	gainSp *= 3;
 	            }
 
 	            // --------------------------
 	            // SP 변환
 	            // --------------------------
 
-	            SP gain = new SP(gainSp, priceExt);
+	            SP gain = SP.fromSp(gainSp);
 
 	            // --------------------------
 	            // DB insert
@@ -3788,14 +3772,8 @@ public class BossAttackController {
 	
 
 	public String sellItem(HashMap<String, Object> map) {
-	    final int SHINY_MULTIPLIER = 5; // ✨ 빛템 5배
-
 	    final String userName = Objects.toString(map.get("userName"), "");
 	    final String roomName = Objects.toString(map.get("roomName"), "");
-	    
-	    
-	    boolean flag1 = false;
-	    boolean flag2 = false;
 	    
 	    if(roomName.equals("람쥐봇 문의방")) {
 			
@@ -3816,8 +3794,6 @@ public class BossAttackController {
 	    }
 
 	    User u = botNewService.selectUser(userName, null);
-	    //String job = (u == null || u.job == null) ? "" : u.job.trim();
-	    //boolean isMerchant = true;
 
 	 // 🔥 여기부터 추가: param1 으로 전체판매 모드 제어
 	    if ("기타".equals(itemNameRaw)) {
@@ -3969,7 +3945,7 @@ public class BossAttackController {
 	        // ★ 보유 안내도 모드별 분리
 	        String preStock = "보유: " + baseName + " " + normalQty + "개";
 	        return "판매 가능한 재고가 없습니다." + NL + preStock;
-	    }
+	    } 
 
 	    HashMap<String, Object> pr = new HashMap<>();
 	    pr.put("userName", userName);
@@ -5528,10 +5504,18 @@ public class BossAttackController {
 	        }
 	    }
 
+	    double gainPercent = (double) res.gainExp / u.expNext * 100;
+	    double curPercent = (double) u.expCur / u.expNext * 100;
+
+	    sb.append("✨ EXP +").append(res.gainExp)
+	      .append("(").append(String.format("%.1f", gainPercent)).append("%), EXP: ")
+	      .append(String.format("%.1f", curPercent)).append("%/100%")
+	      .append(NL);
 	    // EXP
+	    /*
 	    sb.append("✨ EXP+").append(res.gainExp)
 	      .append(" , EXP: ").append(u.expCur).append(" / ").append(u.expNext).append(NL);
-
+	     */
 	    if (up != null && up.levelUpCount > 0) {
 	        sb.append(NL)
 	          .append("✨ 레벨업! Lv ").append(up.beforeLv)
