@@ -4682,7 +4682,7 @@ public class BossAttackController {
 	    for (HashMap<String,Object> it : items) {
 	        int    itemId   = safeInt(it.get("ITEM_ID"));
 	        String name     = String.valueOf(it.get("ITEM_NAME"));
-	        int    price    = safeInt(it.get("ITEM_SELL_PRICE"));
+	        double price    = safeDouble(it.get("ITEM_SELL_PRICE"));
 	        String ext    = String.valueOf(it.get("ITEM_SELL_PRICE_EXT"));
 	        String ownedYn  = String.valueOf(it.get("OWNED_YN"));
 	        String itemType = String.valueOf(it.get("ITEM_TYPE"));
@@ -5081,6 +5081,10 @@ public class BossAttackController {
 	private int safeInt(Object v) {
 	    try { return v == null ? 0 : Integer.parseInt(String.valueOf(v)); }
 	    catch (Exception e) { return 0; }
+	}
+	private double safeDouble(Object v) {
+		try { return v == null ? 0 : Double.parseDouble(String.valueOf(v)); }
+		catch (Exception e) { return 0.0; }
 	}
 
 	private Resolve resolveKillAndDrop(Monster m, AttackCalc c, boolean willKill, User u, boolean lucky,boolean dark,boolean gray) {
@@ -5508,8 +5512,8 @@ public class BossAttackController {
 	    double curPercent = (double) u.expCur / u.expNext * 100;
 
 	    sb.append("✨ EXP +").append(res.gainExp)
-	      .append("(").append(String.format("%.1f", gainPercent)).append("%), EXP: ")
-	      .append(String.format("%.1f", curPercent)).append("%/100%")
+	      .append("(").append(String.format("%.1f", gainPercent)).append("%)")
+	      .append(NL).append("EXP: ").append(String.format("%.1f", curPercent)).append("%/100%")
 	      .append(NL);
 	    // EXP
 	    /*

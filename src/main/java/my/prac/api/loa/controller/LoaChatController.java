@@ -2820,8 +2820,10 @@ public class LoaChatController {
 		*/
 		msg += enterStr ;
 		msg += enterStr + "⭐어비스 던전⭐";
-		msg += enterStr + "✓지평의 성당-아르세너스"+enterStr+" ↳ [1단계 30,000G(귀속)/2단계 40,000G(귀속)]";
-		msg += enterStr+" ↳ [3단계 50,000G(귀속)]";
+		msg += enterStr + "✓지평의 성당-아르세너스";
+		msg += enterStr + " ↳ [1단계 30,000G(귀속)]";
+		msg += enterStr + " ↳ [2단계 40,000G(귀속)]";
+		msg += enterStr + " ↳ [3단계 50,000G(귀속)]";
 		
 		msg += enterStr ;
 		msg += enterStr + "⭐카제로스 레이드⭐";
