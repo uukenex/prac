@@ -1,9 +1,10 @@
 package my.prac.core.prjbot.service.impl;
 
 import java.sql.Timestamp;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 
 import javax.annotation.Resource;
@@ -619,4 +620,11 @@ public class BotNewServiceImpl implements BotNewService {
     	return botNewDAO.insertSpecialBuff(param);
     }
     
+    @Override
+    public List<Integer> selectInventoryItemsByIds(String userName, String roomName, Collection<Integer> itemIds) {
+        if (itemIds == null || itemIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return botNewDAO.selectInventoryItemsByIds(userName, roomName, itemIds);
+    }
 }

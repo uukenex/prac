@@ -79,7 +79,7 @@ public class SP {
 		return SP.of(v.doubleValue(), this.unit);
 	}
 
-	public static SP fromSp(long sp) {
+	public static SP fromSp(double sp) {
 
 		BigDecimal v = BigDecimal.valueOf(sp);
 		BigDecimal base = BigDecimal.valueOf(10000);

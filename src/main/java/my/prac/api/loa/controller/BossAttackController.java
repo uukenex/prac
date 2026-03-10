@@ -1996,9 +1996,7 @@ public class BossAttackController {
 	    try {
 	    priceRow = botNewService.selectItemSellPriceById(itemId);
 	    }catch(Exception e) {}
-	    long priceValue = Long.parseLong(
-	        Objects.toString(priceRow.get("ITEM_SELL_PRICE"), "0")
-	    );
+	    double priceValue = safeDouble(priceRow.get("ITEM_SELL_PRICE"));
 	    String priceExt = Objects.toString(priceRow.get("ITEM_SELL_PRICE_EXT"), "");
 	    
 	    SP itemPrice = new SP(priceValue, priceExt);
@@ -3400,9 +3398,7 @@ public class BossAttackController {
 
 	        HashMap<String,Object> priceRow = botNewService.selectItemSellPriceById(itemId);
 
-	        long basePrice = Long.parseLong(
-	                Objects.toString(priceRow.get("ITEM_SELL_PRICE"), "0")
-	        );
+	        double basePrice =safeDouble(priceRow.get("ITEM_SELL_PRICE")); 
 
 	        String priceExt = Objects.toString(
 	                priceRow.get("ITEM_SELL_PRICE_EXT"), ""
@@ -3410,7 +3406,7 @@ public class BossAttackController {
 
 	        if (basePrice > 0) {
 
-	            long gainSp = basePrice;
+	            double gainSp = basePrice;
 
 	            if("STEAL".equals(gainType)) {
 	                gainSp /= 2;
@@ -3875,14 +3871,14 @@ public class BossAttackController {
 	        return "인벤토리에 보유 중인 [" + itemNameRaw + "]이(가) 없습니다.";
 	    }
 
-	    Integer basePriceObj = null;
+	    double basePriceObj = 0.0;
 	    String basePriceExt = "";
 	    HashMap<String,Object> priceRow = null;
 	    try {
 	        priceRow = botNewService.selectItemSellPriceById(itemId);
 
 	        if(priceRow != null){
-	            basePriceObj = parseIntSafe(Objects.toString(priceRow.get("ITEM_SELL_PRICE"), "0"));
+	            basePriceObj = safeDouble(priceRow.get("ITEM_SELL_PRICE"));
 	            basePriceExt = Objects.toString(priceRow.get("ITEM_SELL_PRICE_EXT"), "");
 	        }
 
@@ -3931,7 +3927,7 @@ public class BossAttackController {
 	        int take = Math.min(qty, need);
 	        if (take <= 0) continue;
 
-	        int unitPrice= basePriceObj;
+	        double unitPrice= basePriceObj;
 
 	        if (qty == take) botNewService.updateInventoryDelByRowId(rid);
 	        else botNewService.updateInventoryQtyByRowId(rid, qty - take);
@@ -4004,7 +4000,7 @@ public class BossAttackController {
 	    }
 
 	    Map<Integer, Boolean> equipCache = new HashMap<>();
-	    Map<Integer, Long> priceCache = new HashMap<>();
+	    Map<Integer, Double> priceCache = new HashMap<>();
 	    Map<Integer, String>  priceExtCache = new HashMap<>();
 	    Map<Integer, String>  catCache   = new HashMap<>(); // NEW: itemId -> 카테고리(※무기 등)
 	    
@@ -4056,19 +4052,19 @@ public class BossAttackController {
 	        }
 
 	        // 가격 캐시
-	        Long basePrice = priceCache.get(itemId);
+	        double basePrice = priceCache.get(itemId);
 	        String priceExt = priceExtCache.get(itemId);
 
-			if (basePrice == null) {
+			if (basePrice == 0) {
 				try {
 					HashMap<String, Object> priceRow = botNewService.selectItemSellPriceById(itemId);
 					if (priceRow != null) {
-						basePrice = Long.parseLong(Objects.toString(priceRow.get("ITEM_SELL_PRICE"), "0"));
+						basePrice = safeDouble(priceRow.get("ITEM_SELL_PRICE"));
 						priceExt = Objects.toString(priceRow.get("ITEM_SELL_PRICE_EXT"), "");
 					}
 				} catch (Exception ignore) {
 				}
-				if (basePrice == null)
+				if (basePrice == 0)
 					basePrice = 0L;
 				priceCache.put(itemId, basePrice);
 				priceExtCache.put(itemId, priceExt);
@@ -4424,6 +4420,7 @@ public class BossAttackController {
 	        String roomName,
 	        List<AchievementCount> achievements
 	) {
+
 	    if (achievements == null || achievements.isEmpty()) {
 	        return "";
 	    }
@@ -4432,39 +4429,30 @@ public class BossAttackController {
 	    for (AchievementCount ac : achievements) {
 	        achvCnt += ac.getCnt();
 	    }
+
 	    StringBuilder msg = new StringBuilder();
 
 	    try {
-	        // 업적 개수 → 지급 아이템 (고정)
-	        LinkedHashMap<Integer, Integer> rewardMap = new LinkedHashMap<>();
-	        rewardMap.put(50 ,8001);
-	        rewardMap.put(80 ,8002);
-	        rewardMap.put(100,8003);
-	        rewardMap.put(120,8004);
-	        rewardMap.put(150,8005);
-	        rewardMap.put(170,8006);
-	        rewardMap.put(200,8007);
-	        rewardMap.put(220,8008);
-	        rewardMap.put(250,8009);
-	        rewardMap.put(300,8010);
-	        rewardMap.put(320,8011);
-	        rewardMap.put(350,8012);
-	        rewardMap.put(400,8013);
-	        rewardMap.put(500,8014);
 
-	        for (Map.Entry<Integer, Integer> e : rewardMap.entrySet()) {
+	        // 한번만 조회
+	        List<Integer> ownedItems =
+	                botNewService.selectInventoryItemsByIds(userName, roomName, MiniGameUtil.ACHV_REWARD_MAP.values());
+
+	        Set<Integer> ownedSet = new HashSet<>(ownedItems);
+
+	        for (Map.Entry<Integer, Integer> e : MiniGameUtil.ACHV_REWARD_MAP.entrySet()) {
+
 	            int needCnt = e.getKey();
 	            int itemId  = e.getValue();
 
-	            if (achvCnt < needCnt) continue;
+	            if (achvCnt < needCnt) {
+	                break; // LinkedHashMap이므로 이후도 필요 없음
+	            }
 
-	            // 이미 지급했는지 체크 (보유 여부)
-	            Integer alreadyHave =
-	                    botNewService.selectInventoryQty(userName, roomName, itemId);
+	            if (ownedSet.contains(itemId)) {
+	                continue;
+	            }
 
-	            if (alreadyHave != null && alreadyHave > 0) continue;
-
-	            // 지급
 	            HashMap<String,Object> inv = new HashMap<>();
 	            inv.put("userName", userName);
 	            inv.put("roomName", roomName);
@@ -4477,10 +4465,12 @@ public class BossAttackController {
 
 	            msg.append("업적 ")
 	               .append(needCnt)
-	               .append("개 달성 보상 획득! (")
-	               .append("아이템#").append(itemId)
-	               .append(")").append(NL);
+	               .append("개 달성 보상 획득! (아이템#")
+	               .append(itemId)
+	               .append(")")
+	               .append(NL);
 	        }
+
 	    } catch (Exception e) {
 	        e.printStackTrace();
 	    }

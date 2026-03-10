@@ -1,6 +1,7 @@
 package my.prac.core.prjbot.dao;
 
 import java.sql.Timestamp;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 
@@ -246,4 +247,10 @@ public interface BotNewDAO {
     HashMap<String,Object> selectActiveSpecialBuff();
 
     int insertSpecialBuff(HashMap<String,Object> param);
+    
+    List<Integer> selectInventoryItemsByIds(
+            @Param("userName") String userName,
+            @Param("roomName") String roomName,
+            @Param("itemIds") Collection<Integer> itemIds
+    );
 }

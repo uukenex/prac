@@ -1,7 +1,7 @@
 package my.prac.core.util;
 
 import java.util.HashMap;
-import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class MiniGameUtil {
@@ -12,6 +12,26 @@ public class MiniGameUtil {
 	public static String[] hideRules = { "아침","점심", "저녁", "새벽" };
 	public static String[] PatternRules = { "대기","공격", "방어", "필살기" };
 	public static final Map<Integer, int[]> MON_PATTERN_WEIGHTS = new HashMap<>();
+	
+	public static final LinkedHashMap<Integer, Integer> ACHV_REWARD_MAP = new LinkedHashMap<>();
+
+	static {
+	    ACHV_REWARD_MAP.put(50 ,8001);
+	    ACHV_REWARD_MAP.put(80 ,8002);
+	    ACHV_REWARD_MAP.put(100,8003);
+	    ACHV_REWARD_MAP.put(120,8004);
+	    ACHV_REWARD_MAP.put(150,8005);
+	    ACHV_REWARD_MAP.put(170,8006);
+	    ACHV_REWARD_MAP.put(200,8007);
+	    ACHV_REWARD_MAP.put(220,8008);
+	    ACHV_REWARD_MAP.put(250,8009);
+	    ACHV_REWARD_MAP.put(300,8010);
+	    ACHV_REWARD_MAP.put(320,8011);
+	    ACHV_REWARD_MAP.put(350,8012);
+	    ACHV_REWARD_MAP.put(400,8013);
+	    ACHV_REWARD_MAP.put(500,8014);
+	}
+	
 	static {
 		//대기,공격,방어,필살,히든
 	    MON_PATTERN_WEIGHTS.put(1, new int[]{100});

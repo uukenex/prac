@@ -1,6 +1,7 @@
 package my.prac.core.prjbot.service;
 
 import java.sql.Timestamp;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 
@@ -183,6 +184,7 @@ public interface BotNewService {
 
     int insertSpecialBuff(HashMap<String,Object> param);
     
+    List<Integer> selectInventoryItemsByIds(String userName, String roomName, Collection<Integer> itemIds);
 } 
 
 	
