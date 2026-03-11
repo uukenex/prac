@@ -313,6 +313,10 @@ public class LoaChatController {
 		
 	}
 	
+	public static boolean shouldSkip2() {
+	    LocalTime now = LocalTime.now();
+	    return !now.isBefore(LocalTime.of(21, 45)) && now.isBefore(LocalTime.of(21, 50));
+	}
 	
 	public static boolean shouldSkip() {
         // 현재 날짜와 시간 가져오기
@@ -810,6 +814,12 @@ public class LoaChatController {
 				break;*/
 				
 			case "/ㄱㄱㄱ": case "/ㄱ": case "/R": case "/r": 
+				if (shouldSkip2()) {
+					val = "매일9시45분~50분은 일시중단입니다.(테스트)";
+					passYn = true;
+		            return val;
+		        }
+				
 				val = boss.monsterAttack(reqMap);
 				break;
 			case "/ㄱㄱㅌㄱ":case "/공격타겟":
