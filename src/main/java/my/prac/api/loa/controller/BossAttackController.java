@@ -780,7 +780,7 @@ public class BossAttackController {
 
 	        if (roll < 0.90) {
 
-	            long sp = rollBagSpWithCeiling(userName, roomName);
+	            long sp = rollBagSpWithCeiling(userName, roomName,0);
 	            totalSp += sp;
 	            detail.add("가방" + (i+1) + ": " + sp + "sp");
 
@@ -795,7 +795,7 @@ public class BossAttackController {
 	                    botNewService.selectBagRewardItemIdsUserNotOwned(param);
 
 	            if (rewardItemIds == null || rewardItemIds.isEmpty()) {
-	            	long sp = rollBagSpWithCeiling(userName, roomName);
+	            	long sp = rollBagSpWithCeiling(userName, roomName,0);
 	                totalSp += sp;
 
 	                detail.add("가방" + (i+1) + ": " + sp + "sp");
@@ -820,8 +820,7 @@ public class BossAttackController {
 
 	        if (roll < 0.94) {
 
-	        	long sp = rollBagSpWithCeiling(userName, roomName);
-	            sp *= 20;  // 🔥 20배
+	        	long sp = rollBagSpWithCeiling(userName, roomName,1);
 	            totalSp += sp;
 	            detail.add("[나메]가방" + (i+1) + ": " + sp + "sp");
 
@@ -836,8 +835,7 @@ public class BossAttackController {
 	                    botNewService.selectBagRewardItemIdsUserNotOwned(param);
 
 	            if (rewardItemIds == null || rewardItemIds.isEmpty()) {
-	            	long sp = rollBagSpWithCeiling(userName, roomName);
-	                sp *= 20;
+	            	long sp = rollBagSpWithCeiling(userName, roomName,1);
 
 	                totalSp += sp;
 
@@ -908,37 +906,21 @@ public class BossAttackController {
 		itemSummary.add(itemName);
 	}
 	
-	private long rollBagSpWithCeiling(String userName, String roomName) {
+	private long rollBagSpWithCeiling(String userName, String roomName, int nightmareYn) {
 		 // ① 유저의 BAG_OPEN_SP 기록 개수 조회
-	    int totalCount = botNewService.selectBagOpenSpCount(userName, roomName);
+	    //int totalCount = botNewService.selectBagOpenSpCount(userName, roomName);
 
-	    
-
-	    // 🔥 누적 SP 기반 상한 적용
-		long cap = botNewService.selectBagRewardCap(userName);
-	    cap = (int) Math.round(cap/2);
-	    if(cap <50000) {
-	    	cap = 100000;
+	    switch (nightmareYn) {
+	    case	0:
+	    	return pickBiasedSp(10000, 1000000);
+	    case	1:
+	    	return pickBiasedSp(300000, 100000000);
+	    case	2:
+	    	break;
+	    default:
+	    	break;
 	    }
-	    
-	    // ② 10개 미만이면 천장 적용 안 함 → 기본 200~100000 룰렛
-	    if (totalCount < 10) {
-	        return pickBiasedSp(5000, cap);
-	    }
-
-	    // ③ 최근 10개 SP 합계 조회
-	    int recentSum = botNewService.selectRecentBagSpSum(userName, roomName);
-
-	    // ④ 최근 10개 합계가 5만 미만일 때만 천장 발동
-	    int minSp;
-
-	    if (recentSum < 150000) {
-	        minSp = 100000;   // 천장 발동: 50,000 ~ 100,000 룰렛
-	    } else {
-	        minSp = 5000;     // 평소 확률
-	    }
-
-	    return pickBiasedSp(minSp, cap);
+	    return pickBiasedSp(10000, 1000000);
 	}
 
 	/* ===== Public APIs ===== */
