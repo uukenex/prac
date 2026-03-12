@@ -3669,7 +3669,7 @@ public class BossAttackController {
 	private String tryDropBag(String userName, String roomName, Monster m, boolean nightmare,SpecialBuffResult buff) {
 
 	    // 몬스터에 따른 가방 드랍 확률 (예시)
-	    double baseRate = getBagDropRate(m.monNo);
+	    double baseRate = BAG_DROP_RATE;
 	    
 	    // 2) 최근 가방/라이징스타 기반 보정 배율
 	    double pityMul = computeBagPityMultiplier(userName, roomName,buff);
@@ -3719,37 +3719,7 @@ public class BossAttackController {
 	    }
 	}
 	
-	private double getBagDropRate(int monNo) {
-		return BAG_DROP_RATE; //3.5%
-		
-	    // 예시: 초반 몹은 5%, 후반 보스는 15%
-		/*
-	    switch (monNo) {
-	    
-	        case 1: case 2: case 3: case 4: case 5:
-	        case 6: case 7: case 8: case 9: case 10:
-	            return 0.007;  // 0.7%
-	        case 11: case 12: case 13:case 14: case 15:
-	            return 0.012;  // 1.2%
-	        case 16: case 17: case 18: case 19: case 20:
-	            return 0.015;  // 1.5
-	        case 21: case 22: case 23: case 24: case 25:
-	        	return 0.015;  // 1.5
-	        case 26: case 27: case 28: case 29: case 30:
-	        	return 0.015;  // 1.5
-	        case 51: case 52: case 53: case 61: case 62: case 63:
-	        	return 0.005;  // 0.5%
-	        case 91:
-	        	return 0.02;  // 2%
-	        default:
-	            return 0;
-	    }
-	    */
-	}
-
-	
-
-	public String sellItem(HashMap<String, Object> map) {
+	public String sellItem(HashMap<String, Object> map) throws Exception {
 	    final String userName = Objects.toString(map.get("userName"), "");
 	    final String roomName = Objects.toString(map.get("roomName"), "");
 	    
@@ -3774,12 +3744,6 @@ public class BossAttackController {
 	    User u = botNewService.selectUser(userName, null);
 
 	 // 🔥 여기부터 추가: param1 으로 전체판매 모드 제어
-	    if ("기타".equals(itemNameRaw)) {
-	        return sellAllByCategory(userName, roomName, u, false); // 잡템 전체판매
-	    }
-	    if ("장비".equals(itemNameRaw)) {
-	        return sellAllByCategory(userName, roomName, u, true);  // 장비 전체판매
-	    }
 	    if ("무기".equals(itemNameRaw)) {
 	        return sellAllBySlot(userName, roomName, u, "※무기"); // 또는 "무기"
 	    }
@@ -3973,151 +3937,159 @@ public class BossAttackController {
 	    return sb.toString();
 	}
 	
-	private String sellAllByCategoryFiltered(String userName, String roomName, User u, boolean equipOnly, String slotKey) {
+	
+	private String sellAllByCategoryFiltered(String userName, String roomName, User u, String slotKey) throws Exception {
 
-	    List<HashMap<String, Object>> rows = botNewService.selectAllInventoryRowsForSale(userName, roomName);
+	    List<HashMap<String,Object>> rows = botNewService.selectAllInventoryRowsForSale(userName, roomName);
+
 	    if (rows == null || rows.isEmpty()) {
-	        if (slotKey != null) return "판매 가능한 " + slotKey + " 아이템이 없습니다.";
-	        return equipOnly ? "판매 가능한 장비가 없습니다." : "판매 가능한 잡템이 없습니다.";
+	        return slotKey != null ?
+	                "판매 가능한 " + slotKey + " 아이템이 없습니다." :
+	                "판매 가능한 장비가 없습니다.";
 	    }
 
-	    Map<Integer, Boolean> equipCache = new HashMap<>();
-	    Map<Integer, Double> priceCache = new HashMap<>();
-	    Map<Integer, String>  priceExtCache = new HashMap<>();
-	    Map<Integer, String>  catCache   = new HashMap<>(); // NEW: itemId -> 카테고리(※무기 등)
+	    /* -----------------------------
+	       1️⃣ ITEM_ID 수집
+	    ----------------------------- */
+	    Set<Integer> itemIds = new HashSet<>(rows.size());
+	    for (HashMap<String,Object> r : rows) {
+
+	        int id = parseIntSafe(Objects.toString(r.get("ITEM_ID"), "0"));
+
+	        if (id > 0) itemIds.add(id);
+	    }
+
+	    /* -----------------------------
+	       2️⃣ 가격 조회 (IN)
+	    ----------------------------- */
+
+	    Map<String,Object> param = new HashMap<>();
+	    param.put("itemIds", itemIds);
+
+	    List<HashMap<String,Object>> priceRows = botNewService.selectItemSellPriceList(param);
+
+	    List<String> ridList = new ArrayList<>(rows.size());
+	    Map<Integer,String> catCache = new HashMap<>(itemIds.size());
+	    Map<Integer,Double> priceMap = new HashMap<>(itemIds.size());
+	    Map<Integer,String> extMap = new HashMap<>(itemIds.size());
 	    
+	    
+	    for (HashMap<String,Object> p : priceRows) {
+
+	        int id = parseIntSafe(Objects.toString(p.get("ITEM_ID"), "0"));
+
+	        priceMap.put(id, safeDouble(p.get("ITEM_SELL_PRICE")));
+	        extMap.put(id, Objects.toString(p.get("ITEM_SELL_PRICE_EXT"), ""));
+	    }
+
+	    /* -----------------------------
+	       3️⃣ 판매 루프
+	    ----------------------------- */
+
+	   
 
 	    int sold = 0;
-	    SP totalSp = SP.of(0,"");
-	    boolean soldMerchantDiscount = false;
+	    SP total = SP.of(0,"");
 
-	    for (HashMap<String, Object> row : rows) {
+	    for (HashMap<String,Object> r : rows) {
 
-	        String rid = (row.get("RID") != null ? row.get("RID").toString() : null);
+	        String rid = Objects.toString(r.get("RID"), null);
 	        if (rid == null) continue;
 
-	        int qty = parseIntSafe(Objects.toString(row.get("QTY"), "0"));
-	        if (qty <= 0) continue;
+	        int qty = parseIntSafe(Objects.toString(r.get("QTY"), "0"));
+	        int itemId = parseIntSafe(Objects.toString(r.get("ITEM_ID"), "0"));
 
-	        Integer itemId = null;
-	        try { itemId = botNewService.selectItemIdByRowId(rid); } catch (Exception ignore) {}
-	        if (itemId == null || itemId <= 0) continue;
+	        if (qty <= 0 || itemId <= 0) continue;
 
-	        // 장비 여부 캐시
-	        Boolean isEquipObj = equipCache.get(itemId);
-	        if (isEquipObj == null) {
-	            HashMap<String, Object> itemDetail = null;
-	            try { itemDetail = botNewService.selectItemDetailById(itemId); } catch (Exception ignore) {}
-	            String itemType = (itemDetail == null) ? "" : Objects.toString(itemDetail.get("ITEM_TYPE"), "");
-	            isEquipObj = "MARKET".equalsIgnoreCase(itemType) ||  "MARKET2".equalsIgnoreCase(itemType) ;
-	            equipCache.put(itemId, isEquipObj);
-	        }
-	        boolean isEquip = Boolean.TRUE.equals(isEquipObj);
+	        /* 슬롯 필터 */
 
-	        // 기존 필터(장비 전체/잡템 전체)
-	        if (equipOnly && !isEquip) continue;
-	        if (!equipOnly && isEquip) continue;
-
-	        // ✅ NEW: 슬롯(카테고리) 필터
 	        if (slotKey != null) {
-	            String cat = catCache.get(itemId);
-	            if (cat == null) {
-	                // 기존 attackInfo에서 쓰던 resolveItemCategory(itemId) 재사용 가능
-	                // 여기서 "※무기" 같은 문자열을 반환한다고 가정
-	                cat = resolveItemCategory(itemId);
-	                catCache.put(itemId, cat);
-	            }
 
-	            // slotKey를 "※무기" 형태로 맞추는 걸 추천 (제일 안전)
-	            // 예: slotKey="※무기"
+	            String cat = catCache.computeIfAbsent(
+	                    itemId,
+	                    k -> resolveItemCategory(k)
+	            );
+
 	            if (!slotKey.equals(cat)) continue;
 	        }
 
-	        // 가격 캐시
-	        double basePrice = priceCache.get(itemId);
-	        String priceExt = priceExtCache.get(itemId);
+	        double price = priceMap.getOrDefault(itemId, 0d);
+	        if (price <= 0) continue;
 
-			if (basePrice == 0) {
-				try {
-					HashMap<String, Object> priceRow = botNewService.selectItemSellPriceById(itemId);
-					if (priceRow != null) {
-						basePrice = safeDouble(priceRow.get("ITEM_SELL_PRICE"));
-						priceExt = Objects.toString(priceRow.get("ITEM_SELL_PRICE_EXT"), "");
-					}
-				} catch (Exception ignore) {
-				}
-				if (basePrice == 0)
-					basePrice = 0L;
-				priceCache.put(itemId, basePrice);
-				priceExtCache.put(itemId, priceExt);
-			}
-	        
-	        
-			if (basePrice <= 0) continue;
+	        SP gain = SP.of(price, extMap.getOrDefault(itemId,"")).multiply(qty);
 
-			SP unitSp = SP.of(basePrice, priceExt);
-			int take = qty;
-			botNewService.updateInventoryDelByRowId(rid);
-			SP gain = unitSp.multiply(take);
-			totalSp = totalSp.add(gain);
-			sold += take;
-	        
+	        ridList.add(rid);
+
+	        total = total.add(gain);
+	        sold += qty;
 	    }
 
 	    if (sold <= 0) {
-	        if (slotKey != null) return "판매 가능한 " + slotKey + " 아이템이 없습니다.";
-	        return equipOnly ? "판매 가능한 장비가 없습니다." : "판매 가능한 잡템이 없습니다.";
+	        return slotKey != null ?
+	                "판매 가능한 " + slotKey + " 아이템이 없습니다." :
+	                "판매 가능한 장비가 없습니다.";
 	    }
-	    
-	    SP gain = totalSp;
 
-	    HashMap<String, Object> pr = new HashMap<>();
+	    /* -----------------------------
+	       4️⃣ 인벤 삭제 batch
+	    ----------------------------- */
+
+	    Map<String,Object> delParam = new HashMap<>();
+	    delParam.put("ridList", ridList);
+
+	    botNewService.updateInventoryDelBatch(delParam);
+
+	    /* -----------------------------
+	       5️⃣ 포인트 지급
+	    ----------------------------- */
+
+	    HashMap<String,Object> pr = new HashMap<>();
 	    pr.put("userName", userName);
 	    pr.put("roomName", roomName);
-	    pr.put("score", gain.getValue());
-	    pr.put("scoreExt", gain.getUnit());
-	    pr.put("cmd", equipOnly ? "SELL_EQUIP" : "SELL_JUNK");
+	    pr.put("score", total.getValue());
+	    pr.put("scoreExt", total.getUnit());
+	    pr.put("cmd", "SELL_EQUIP");
+
 	    botNewService.insertPointRank(pr);
 
+	    /* -----------------------------
+	       6️⃣ 현재 포인트 조회
+	    ----------------------------- */
+
 	    SP curPoint = new SP(0,"");
-		try {
-			HashMap<String, Object> p = botNewService.selectCurrentPoint(userName, roomName);
-			double v = Double.parseDouble(Objects.toString(p.get("SCORE"), "0"));
-			String e = Objects.toString(p.get("SCORE_EXT"), "");
-			curPoint = new SP(v, e);
-		} catch (Exception ignore) {
-		}
-	    String curPointStr = curPoint.toString();
+
+	    try {
+
+	        HashMap<String,Object> p =
+	                botNewService.selectCurrentPoint(userName, roomName);
+
+	        curPoint = new SP(
+	                Double.parseDouble(Objects.toString(p.get("SCORE"), "0")),
+	                Objects.toString(p.get("SCORE_EXT"), "")
+	        );
+
+	    } catch (Exception ignore) {}
+
+	    /* -----------------------------
+	       7️⃣ 결과 메시지
+	    ----------------------------- */
 
 	    String title = (slotKey != null)
-	            ? ("- 대상: " + slotKey + " 전체 판매" + NL)
-	            : (equipOnly ? "- 대상: 장비 아이템 전체(MARKET)" + NL
-	                        : "- 대상: 잡템 전체(장비 제외)" + NL);
+	            ? "- 대상: " + slotKey + " 전체 판매"
+	            : "- 대상: 장비 아이템 전체(MARKET)";
 
-	    StringBuilder sb = new StringBuilder();
-	    sb.append("⚔ ").append(userName).append("님,").append(NL)
-	      .append("▶ 전체 판매 완료!").append(NL)
-	      .append(title)
-	      .append("- 총 판매 수량: ").append(sold).append("개").append(NL)
-	      .append("- 합계 적립: ").append(gain.toString()).append(NL)
-	      .append("- 현재 포인트: ").append(curPointStr);
-
-
-	    if (soldMerchantDiscount) {
-	        sb.append(NL).append("※ 상인 할인으로 구매한 아이템은 할인가(90%) 기준으로 판매되었습니다.");
-	    }
-
-	    return sb.toString();
+	    return "⚔ " + userName + "님," + NL +
+	            "▶ 전체 판매 완료!" + NL +
+	            title + NL +
+	            "- 총 판매 수량: " + sold + "개" + NL +
+	            "- 합계 적립: " + total + NL +
+	            "- 현재 포인트: " + curPoint;
 	}
 	
-	private String sellAllBySlot(String userName, String roomName, User u, String slotKey) {
+	private String sellAllBySlot(String userName, String roomName, User u, String slotKey) throws Exception {
 	    // equipOnly = true 로 두고, 슬롯 필터까지 적용
-	    return sellAllByCategoryFiltered(userName, roomName, u, true, slotKey);
+	    return sellAllByCategoryFiltered(userName, roomName, u, slotKey);
 	}
-	private String sellAllByCategory(String userName, String roomName, User u, boolean equipOnly) {
-	    return sellAllByCategoryFiltered(userName, roomName, u, equipOnly, null);
-	}
-
 	
 	public String showAttackRanking(HashMap<String,Object> map) {
 	    final String NL = "♬";

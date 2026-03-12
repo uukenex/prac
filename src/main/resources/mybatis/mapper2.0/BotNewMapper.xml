@@ -474,33 +474,50 @@
         -->
        AND ITEM_ID   = #{itemId}
        AND NVL(DEL_YN,'0') != '1'
-       AND ITEM_ID BETWEEN 101 AND 2000
+       AND ITEM_ID BETWEEN 101 AND 3000
      ORDER BY INSERT_DATE ASC, ROWID
   </select>
   <!-- 판매 대상 행(FIFO) : 빛나는 제외 -->
   <select id="selectAllInventoryRowsForSale" resultType="hashmap">
-    SELECT ROWID AS RID, QTY, NVL(GAIN_TYPE,'DROP') AS GAIN_TYPE
+    SELECT ROWID AS RID,ITEM_ID, QTY, NVL(GAIN_TYPE,'DROP') AS GAIN_TYPE
       FROM TBOT_POINT_NEW_INVENTORY
      WHERE USER_NAME = #{userName}
      <!-- 
        AND ROOM_NAME = #{roomName}
         -->
        AND NVL(DEL_YN,'0') != '1'
-       AND ITEM_ID BETWEEN 101 AND 2000
+       AND ITEM_ID BETWEEN 101 AND 3000
      ORDER BY INSERT_DATE ASC, ROWID
   </select>
 
   <update id="updateInventoryDelByRowId">
     UPDATE TBOT_POINT_NEW_INVENTORY SET DEL_YN = '1' WHERE ROWID = #{rid}
   </update>
+	<update id="updateInventoryDelBatch">
+		UPDATE TBOT_POINT_NEW_INVENTORY
+		   SET DEL_YN = '1'
+		 WHERE ROWID IN
+		<foreach item="rid" collection="ridList" open="(" separator="," close=")">
+	    	#{rid}
+	</foreach>
+	</update>
 
   <update id="updateInventoryQtyByRowId">
     UPDATE TBOT_POINT_NEW_INVENTORY SET QTY = #{newQty} WHERE ROWID = #{rid}
   </update>
 
-
+	<select id="selectItemSellPriceList" resultType="hashMap">
+	SELECT ITEM_ID
+	     , ITEM_SELL_PRICE
+	     , ITEM_SELL_PRICE_EXT
+	  FROM TBOT_POINT_NEW_ITEM
+	 WHERE ITEM_ID IN
+		<foreach item="id" collection="itemIds" open="(" separator="," close=")">
+	    	#{id}
+		</foreach>
+	</select>
   <select id="selectItemSellPriceById" resultType="hashMap">
-    SELECT ITEM_SELL_PRICE ,ITEM_SELL_PRICE_EXT
+    SELECT ITEM_ID,ITEM_SELL_PRICE ,ITEM_SELL_PRICE_EXT
       FROM TBOT_POINT_NEW_ITEM
      WHERE ITEM_ID = #{itemId}
   </select>

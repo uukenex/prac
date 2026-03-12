@@ -4,6 +4,7 @@ import java.sql.Timestamp;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.ibatis.annotations.Param;
 import org.springframework.stereotype.Repository;
@@ -73,6 +74,11 @@ public interface BotNewDAO {
     List<HashMap<String,Object>> selectAllInventoryRowsForSale(
     		@Param("userName") String userName, @Param("roomName") String roomName);
 
+    
+    List<HashMap<String, Object>> selectItemSellPriceList(Map<String, Object> param);
+    
+    
+    void updateInventoryDelBatch(Map<String, Object> param);
     int updateInventoryDelByRowId(@Param("rid") String rid);
     int updateInventoryQtyByRowId(@Param("rid") String rid, @Param("newQty") int newQty);
 

@@ -5,6 +5,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 import javax.annotation.Resource;
@@ -167,7 +168,16 @@ public class BotNewServiceImpl implements BotNewService {
 	public List<HashMap<String, Object>> selectAllInventoryRowsForSale(String u, String r) {
 		return botNewDAO.selectAllInventoryRowsForSale(u, r);
 	}
+	
+	@Override
+	public List<HashMap<String, Object>> selectItemSellPriceList(Map<String, Object> param) throws Exception {
+	    return botNewDAO.selectItemSellPriceList(param);
+	}
 
+	@Override
+	public void updateInventoryDelBatch(Map<String, Object> param) throws Exception{
+		botNewDAO.updateInventoryDelBatch(param);
+	}
 	@Override
 	public int updateInventoryDelByRowId(String rowid) {
 		return botNewDAO.updateInventoryDelByRowId(rowid);

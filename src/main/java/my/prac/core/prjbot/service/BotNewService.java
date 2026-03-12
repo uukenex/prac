@@ -4,6 +4,7 @@ import java.sql.Timestamp;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import my.prac.core.game.dto.AchievementCount;
 import my.prac.core.game.dto.AttackDeathStat;
@@ -62,7 +63,9 @@ public interface BotNewService {
     List<HashMap<String, Object>> selectInventoryRowsForSale(String u, String r, int id);
     List<HashMap<String, Object>> selectAllInventoryRowsForSale(String u, String R);
     
+    List<HashMap<String, Object>> selectItemSellPriceList(Map<String, Object> param) throws Exception;
     
+    void updateInventoryDelBatch(Map<String, Object> param) throws Exception;
     int updateInventoryDelByRowId(String rowid) ;
     int updateInventoryQtyByRowId(String rowid, int newQty) ;
     Integer selectInventoryQty(String userName, String roomName, Integer itemId);
