@@ -248,6 +248,10 @@ public class BotNewServiceImpl implements BotNewService {
     public Timestamp selectLastDamagedTime(String userName, String roomName) {
         return botNewDAO.selectLastDamagedTime(userName, roomName);
     }
+    @Override
+    public HashMap<String,Object> selectLastBattleLog(HashMap<String,Object> map) throws Exception{
+    	return botNewDAO.selectLastBattleLog(map);
+    }
 
     
 

@@ -580,11 +580,6 @@
 	  JOIN TBOT_POINT_NEW_ITEM i
 	    ON i.item_id = inv.item_id
 	  WHERE inv.user_name = #{userName}
-	  <!-- 
-	    <if test="roomName != null and roomName != '람쥐봇 문의방'">
-	    AND inv.room_name = #{roomName}
-	   </if>
-	   -->
 	    AND inv.del_yn = '0'
 	    AND i.item_type in ('MARKET2','MARKET','BAG_OPEN','BAG_OPEN_NM','MASTER','ACHV')
 	</select>
@@ -700,6 +695,7 @@
 	</select>
 	<!-- MARKET 아이템 전체 + 보유여부(OWNED_YN) -->
 	<select id="selectMarketItemsWithOwned" resultType="hashmap">
+		/* selectMarketItemsWithOwned */
 	    SELECT
 	        i.ITEM_ID,
 	        i.ITEM_NAME,
@@ -750,8 +746,10 @@
 	    ) inv
 	      ON inv.ITEM_ID   = i.ITEM_ID
 	     AND inv.USER_NAME = #{userName}
-	    WHERE i.ITEM_TYPE in ( 'MARKET','MARKET2')
-	    ORDER BY i.ITEM_ID desc
+	    WHERE i.ITEM_TYPE in ( 'MARKET','MARKET2','POTION')
+	    ORDER BY CASE WHEN i.ITEM_ID >= 1000 THEN 1 ELSE 0 END,
+			     CASE WHEN i.ITEM_ID >= 1000 THEN i.ITEM_ID END ASC,
+			     CASE WHEN i.ITEM_ID &lt; 1000 THEN i.ITEM_ID END DESC
 	</select>
 
 	
@@ -764,17 +762,29 @@
 	    AND inv.DEL_YN    = '0'
 	</select>
 	
+	
+	<select id="selectLastBattleLog" resultType="hashmap">
+		/* selectLastBattleLog */
+		SELECT /*+ INDEX_DESC(B PK_TBOT_POINT_NEW_BATLLE_LOG) */
+		       B.DEATH_YN,
+		       B.TARGET_MON_LV
+		FROM TBOT_POINT_NEW_BATTLE_LOG B
+		WHERE B.USER_NAME = #{userName}
+		  AND B.INSERT_DATE >= SYSDATE - (5 / 24 / 60)
+		AND ROWNUM = 1
+	</select>
+	
 	<!-- 마지막으로 '피해를 받은' 시각: MON_DMG>0 또는 DEATH_YN='1' -->
 	<select id="selectLastDamagedTime" resultType="java.sql.Timestamp">
 	  SELECT MAX(
 	           INSERT_DATE
 	           + CASE 
 	               WHEN DEATH_YN = '1' 
-	                 THEN (5 / 24 / 60)  -- 10분 = 10/24/60 일
+	                 THEN (5 / 24 / 60)  
 	               ELSE 0
 	             END
 	         )
-	    FROM TBOT_POINT_NEW_BATTLE_LOG
+	    FROM TBOT_POINT_NEW_BATTLE_LOG B
 	   WHERE USER_NAME = #{userName}
 	     AND (MON_DMG > 0 OR DEATH_YN = '1')
 	</select>

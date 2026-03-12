@@ -4,6 +4,8 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import my.prac.core.game.dto.UserBattleContext;
+
 public class MiniGameUtil {
 	public static final Map<Integer, Double[]> RATE_MAP_WEAPON = new HashMap<>();
 	public static final Map<Integer, Double[]> RATE_MAP_ACC = new HashMap<>();
@@ -15,39 +17,76 @@ public class MiniGameUtil {
 	
 	public static final LinkedHashMap<Integer, Integer> ACHV_REWARD_MAP = new LinkedHashMap<>();
 	public static final Map<String,String> SLOT_MAP = new HashMap<>();
+	
+	public static String getPotionOptionText(int itemId, int userLv){
 
-	private static final Map<Integer, String> POTION_MAP = new HashMap<>();
+	    SP price = getPotionPrice(itemId, userLv);
+	    String priceStr = price.toString();
 
-    static {
-    	POTION_MAP.put(1001, "HP_PERCENT_10");
-        POTION_MAP.put(1002, "HP_PERCENT_50");
-        POTION_MAP.put(1003, "HP_PERCENT_100");
+	    switch(itemId){
 
-        POTION_MAP.put(1004, "HP_FIXED_10000");
-        POTION_MAP.put(1005, "HP_FIXED_100000");
-        POTION_MAP.put(1006, "HP_FIXED_1000000");
+	        case 1001:
+	            return "부활 (HP 10% 회복) / 가격: 레벨×1a ("+priceStr+")";
 
-    }
+	        case 1002:
+	            return "HP 50% 회복 / 가격: 레벨×100a ("+priceStr+")";
 
+	        case 1003:
+	            return "HP 100% 회복 / 가격: 레벨×200a ("+priceStr+")";
+
+	        case 1004:
+	            return "HP 10000 회복 / 가격: 레벨×1a ("+priceStr+")";
+
+	        case 1005:
+	            return "HP 100000 회복 / 가격: 레벨×10a ("+priceStr+")";
+
+	        case 1006:
+	            return "HP 1000000 회복 / 가격: 레벨×100a ("+priceStr+")";
+	    }
+
+	    return "";
+	}
+	
+	public static SP getPotionPrice(int itemId, int userLv){
+
+	    switch(itemId){
+
+	        case 1001: // 부활
+	            return SP.of(userLv * 1, "a");
+
+	        case 1002: // 50%
+	            return SP.of(userLv * 100, "a");
+
+	        case 1003: // 100%
+	            return SP.of(userLv * 200, "a");
+
+	        case 1004: // +10000
+	            return SP.of(userLv * 1, "a");
+
+	        case 1005: // +100000
+	            return SP.of(userLv * 10, "a");
+
+	        case 1006: // +1000000
+	            return SP.of(userLv * 100, "a");
+	    }
+
+	    return new SP(0,"");
+	}
+	
     public static long getPotionHeal(int itemId, long maxHp){
 
-        String type = POTION_MAP.get(itemId);
-
-        if(type == null){
-            return 0;
-        }
-        switch(type){
-	        case "HP_PERCENT_10":
+        switch(itemId){
+	        case 1001:
 	        	return (long)(maxHp * 0.1);
-            case "HP_PERCENT_50":
+            case 1002:
                 return (long)(maxHp * 0.5);
-            case "HP_PERCENT_100":
+            case 1003:
                 return maxHp;
-            case "HP_FIXED_10000":
+            case 1004:
                 return 10000;
-            case "HP_FIXED_100000":
+            case 1005:
                 return 100000;
-            case "HP_FIXED_1000000":
+            case 1006:
                 return 1000000;
         }
         return 0;

@@ -31,6 +31,7 @@ public interface BotNewService {
     Monster selectMonsterByNo(int monNo);
     Monster selectMonsterByName(String monName);
 
+    HashMap<String,Object> selectLastBattleLog(HashMap<String,Object> map) throws Exception;
     Timestamp selectLastAttackTime(String userName, String roomName);
 
     int updateUserAfterBattleTx(String userName, String roomName,

@@ -667,10 +667,6 @@ public class BossAttackController {
 	      .append("현재 체력: ").append(effHp).append(" / ").append(finalHpMax).append(NL)
 	      .append("5분당 회복: +").append(effRegen).append(NL);
 
-	    if (hasBless) {
-	        sb.append("✨ 운영자의 축복 포함되어있음 (Lv 15 이하): 5분당 회복 +5").append(NL);
-	    }
-
 	    if (effHp <= finalHpMax * 0.05) {
 	        sb.append("⚠️ 현재 공격 불가").append(NL);
 	    } else if (effHp >= finalHpMax) {
@@ -2054,32 +2050,48 @@ public class BossAttackController {
 
 
 	    }else if ("POTION".equalsIgnoreCase(itemType)) {
-	    	HashMap<String, Object> inv = new HashMap<>();
-            inv.put("userName", userName);
-            inv.put("roomName", roomName);
-            inv.put("itemId",  itemIdInt);
-            inv.put("qty",     1);
-            inv.put("delYn",   "1");
-            inv.put("gainType","BUY");
-            botNewService.insertInventoryLogTx(inv);
-            
-            potionMsg = usePotion(userName,itemId);
-            
-	    }
-	    /*
-	    else {
-	        finalQty = buyQty;
-	        // 장비가 아닌 경우 → 기존처럼 바로 insert
+	    	HashMap<String,Object> map = new HashMap<>();
+	        map.put("userName", userName);
+
+	        UserBattleContext ctx = calcUserBattleContext(map);
+
+	        int userLv = ctx.user.lv;
+
+	        // 가격 계산
+	        itemPrice = MiniGameUtil.getPotionPrice(itemId, userLv);
+
+	        // 포인트 확인
+	        if (!userPoint.canAfford(itemPrice)) {
+	            return userName + "님, 포인트가 부족합니다. (가격: " + itemPrice + ")";
+	        }
+
+	        boolean isDead = isDeadState(userName);
+
+	        if (itemId == 1001) {
+	            if (!isDead) {
+	                return "이그드라실의씨앗은 플레이어 데스 상태에서만 구매할 수 있습니다.";
+	            }
+	        } else {
+	            if (isDead) {
+	                return "플레이어 데스 상태에서는 해당 포션을 사용할 수 없습니다.";
+	            }
+	        }
+
+	        // 인벤토리 기록
 	        HashMap<String, Object> inv = new HashMap<>();
 	        inv.put("userName", userName);
 	        inv.put("roomName", roomName);
-	        inv.put("itemId",  itemId);
-	        inv.put("qty",     buyQty);
-	        inv.put("delYn",   "0");
-	        inv.put("gainType","BUY");
+	        inv.put("itemId", itemIdInt);
+	        inv.put("qty", 1);
+	        inv.put("delYn", "1");
+	        inv.put("gainType", "BUY");
+
 	        botNewService.insertInventoryLogTx(inv);
+	        // 포션 사용
+	        potionMsg = usePotion(ctx, userName, roomName, itemId);
+	    	
 	    }
-	    */
+	   
 
 	    // 결제 (포인트 차감)
 	    HashMap<String, Object> pr = new HashMap<>();
@@ -2121,7 +2133,12 @@ public class BossAttackController {
 	    // 결과 메시지
 	    StringBuilder sb = new StringBuilder();
 	    if(MiniGameUtil.isInstantUseItem(itemId)) {
-	    	 sb.append(potionMsg);
+	    	sb.append("▶ 포션 사용").append(NL)
+	        .append(userName).append("님이 ").append(shownName).append("을(를) 사용했습니다.").append(NL)
+	        .append("↘가격: ").append(itemPrice.toString()).append("sp").append(NL)
+	        .append(potionMsg).append(NL)
+	        .append("✨포인트: ").append(afterUserPoint.toString());
+	    	
 	    }else {
 	    	sb.append("▶ 구매 완료").append(NL)
 		      .append(userName).append("님, ").append(shownName).append("을(를) 구매했습니다.").append(NL)
@@ -2191,23 +2208,79 @@ public class BossAttackController {
 	    return diff <= (5 * 60 * 1000);
 	}
 	*/
-	private String usePotion(String userName, int itemId){
-		HashMap<String,Object> map = new HashMap<>();
-		map.put("userName", userName);
-		UserBattleContext ctx = calcUserBattleContext(map);
+	private String usePotion(UserBattleContext ctx,String userName,String roomName, int itemId){
 		User u = ctx.user;
+		
+		
+		
+		
 	    long heal = MiniGameUtil.getPotionHeal(itemId, ctx.finalHpMax);
-
 	    long newHp = u.hpCur + heal;
-
 	    if(newHp > ctx.finalHpMax){
 	        newHp = ctx.finalHpMax;
 	    }
-
+	    
 	    botNewService.updateUserHpOnlyTx(userName, "", (int)newHp);
+	    if(itemId == 1001) {
+	    	botNewService.insertBattleLogTx(new BattleLog()
+	                .setUserName(userName)
+	                .setRoomName(roomName)
+	                .setLv(u.lv)
+	                .setTargetMonLv(0)
+	                .setGainExp(0)
+	                .setAtkDmg(0)
+	                .setMonDmg(0)
+	                .setAtkCritYn(0)
+	                .setMonPatten(0)
+	                .setKillYn(0)
+	                .setNowYn(0)
+	                .setDropYn(0)
+	                .setDeathYn(0)
+	                .setLuckyYn(0)
+	                .setJobSkillYn(0)
+	                .setJob(u.job)
+	                .setNightmareYn(0)
+	        );
+	    	 return userName+"님, 부활했습니다. (+" + heal + ")"+NL
+		    		 +u.hpCur +" → "+newHp;
+	    }else {
+	    	 return userName+"님, 체력이 회복되었습니다. (+" + heal + ")"+NL
+		    		 +u.hpCur +" → "+newHp;
+	    }
+	}
+	
+	public boolean isDeadState(String userName){
 
-	    return userName+"님, 체력이 회복되었습니다. (+" + heal + ")"+NL
-	    		 +u.hpCur +" → "+newHp;
+	    HashMap<String,Object> map = new HashMap<>();
+	    map.put("userName", userName);
+
+	    HashMap<String,Object> row = null;
+
+	    try{
+	    	//5분내 죽었엇는지, 부활기록이 있는지 최근로그가져옴
+	        row = botNewService.selectLastBattleLog(map);
+	    }catch(Exception e){
+	        return false;//에러시 살아있는상태 (보통 NULL)
+	    }
+
+	    if(row == null){
+	        return false;
+	    }
+
+	    int targetMonLv = safeInt(row.get("TARGET_MON_LV"));
+	    String deathYn  = Objects.toString(row.get("DEATH_YN"), "0");
+
+	    // 부활 포션 사용
+	    if(targetMonLv == 0){
+	        return false;
+	    }
+
+	    // 사망 상태
+	    if("1".equals(deathYn)){
+	        return true;
+	    }
+
+	    return false;
 	}
 	
 	private void applyDropBonusToContext(
@@ -2319,20 +2392,30 @@ public class BossAttackController {
 	private String buildCustomMarketAllMessage(String userName, String roomName) {
 
 
-	    // 기본(키워드 없음 또는 기타)
 	    StringBuilder sb = new StringBuilder();
-	    sb.append("▶ 람쥐 상점 전체 안내").append(NL)
-	      .append("- /구매 100 or /구매 무기: 무기 카테고리").append(NL)
-	      .append("- /구매 200 or /구매 투구: 투구 카테고리").append(NL)
-	      .append("- /구매 000 or /구매 신규: 최근 등록 아이템").append(NL)
-	      .append("- 입력 가능 카테고리 ").append(NL)
-	      .append("- 신규 무기 투구 행운 갑옷 반지 토템 전설 날개 선물 ").append(NL)
-	      .append("- 000 100 200 300 400 500 600 700 800 900").append(NL);
-
-	    // 필요하면 여기서 전체 상품 일부만 보여줘도 됨
-	    // List<HashMap<String,Object>> list = botNewService.selectMarketItemsWithOwned(userName, roomName);
-	    // sb.append(NL).append(renderMarketListForBuy(list, userName, true));
-
+	      sb.append("■ 람쥐봇 게임즈 시즌2 상점 안내").append(NL)
+		    .append("────────────────").append(NL)
+		    .append("■ 구매 방법").append(NL)
+		    .append(" - /구매 [아이템ID]").append(NL)
+		    .append(" - /구매 [카테고리]").append(NL)
+		    .append(NL)
+	
+		    .append("■ 카테고리 바로가기").append(NL)
+		    .append(" - 신규 / 무기 / 투구 / 갑옷 / 반지 / 토템 / 행운 / 전설 / 날개 / 선물 / 물약").append(NL)
+		    .append(NL)
+	
+		    .append("■ ID 범위 안내").append(NL)
+		    .append(" - 000 : 신규 아이템").append(NL)
+		    .append(" - 100/1100/2100 : 무기").append(NL)
+		    .append(" - 200 : 투구").append(NL)
+		    .append(" - 300 : 갑옷").append(NL)
+		    .append(" - 400 : 반지").append(NL)
+		    .append(" - 500 : 토템").append(NL)
+		    .append(" - 600 : 행운").append(NL)
+		    .append(" - 700 : 전설").append(NL)
+		    .append(" - 800 : 날개").append(NL)
+		    .append(" - 900 : 선물").append(NL)
+		    .append(" - 1000 : 물약").append(NL).append(NL);
 	    return sb.toString();
 	}
 	// 멀티 구매 출력용: "101" → "목검" 같은 ITEM_NAME으로 바꿔줌
@@ -3737,8 +3820,6 @@ public class BossAttackController {
 	        
 	        return "" + m.monName + "이(가) "+ment+"을 떨어뜨렸습니다! (/가방열기 로 열 수 있습니다.)";
 	    } catch (Exception e) {
-	        // 실패해도 전투 진행은 깨지 않게
-	        // log.error("bag drop error", e);
 	        return "";
 	    }
 	}
@@ -3768,6 +3849,7 @@ public class BossAttackController {
 
 	    List<HashMap<String,Object>> rows =
 	            botNewService.selectInventoryRowsForSale(userName, roomName, itemId);
+	    itemNameRaw = resolveItemLabel(itemNameRaw);
 
 	    if (rows == null || rows.isEmpty()) {
 	        return "인벤토리에 보유 중인 [" + itemNameRaw + "]이(가) 없습니다.";
@@ -4463,126 +4545,119 @@ public class BossAttackController {
 	}
 
 	
-	/**
-	 * 상점/소비로 삭제된 인벤토리 누적 수량 기준 업적 지급
-	 * - 기준: TBOT_POINT_NEW_INVENTORY의 DEL_YN='1' QTY 합계
-	 * - 업적 CMD: ACHV_SHOP_SELL_{threshold}
-	 */
 	private String renderMarketListForBuy(List<HashMap<String,Object>> items, String userName, boolean hiddenYn) {
+
 	    if (items == null || items.isEmpty()) {
-	        return "▶ " + userName + "님, 구매 가능 아이템" + NL + "- (없음)";
+	        return "▶ " + userName + "님, 구매 가능 아이템이 없습니다.";
 	    }
-	    final String allSeeStr = "===";
 
 	    StringBuilder sb = new StringBuilder();
-	    sb.append("▶ ").append(userName).append("님").append(NL);
-	    sb.append("더보기 리스트에서 선택 후 구매해주세요").append(NL);
-	    sb.append("/구매 전체 < 설명보기, /구매 [카테고리]< 카테고리 전체 보기").append(NL);
-	    sb.append("/구매 목검  또는  /구매 102").append(NL);
-	    sb.append("다중구매: /구매 101,102,401  또는 /구매 목검,도씨검");
-	    sb.append(allSeeStr);
 
+	    sb.append("■").append(userName).append("님 상점 목록").append(NL)
+	      .append("────────────────").append(NL)
+	      .append("구매 방법").append(NL)
+	      .append(" - /구매 [아이템명]").append(NL)
+	      .append(" - /구매 [아이템ID]").append(NL)
+	      .append(NL)
+	      .append("다중 구매").append(NL)
+	      .append(" - /구매 101,102,401").append(NL)
+	      .append(" - /구매 목검,도씨검").append(NL)
+	      .append(NL)
+	      .append("카테고리 보기").append(NL)
+	      .append(" - /구매 전체").append(NL)
+	      .append(" - /구매 무기 / 투구 / 갑옷 / 반지 / 물약").append(NL)
+	      .append("────────────────")
+	      .append(ALL_SEE_STR);
+
+	 // 🔹 포션 가격 계산용 컨텍스트 (1회만)
+	    int userLv = 0;
+
+	    boolean hasPotion = items.stream()
+	            .anyMatch(it -> "POTION".equalsIgnoreCase(String.valueOf(it.get("ITEM_TYPE"))));
+
+	    if (hasPotion) {
+	        HashMap<String,Object> map = new HashMap<>();
+	        map.put("userName", userName);
+	        UserBattleContext ctx = calcUserBattleContext(map);
+	        userLv = ctx.user.lv;
+	    }
+
+	    // 🔹 아이템 목록 출력
 	    for (HashMap<String,Object> it : items) {
-	        int    itemId   = safeInt(it.get("ITEM_ID"));
-	        String name     = String.valueOf(it.get("ITEM_NAME"));
-	        double price    = safeDouble(it.get("ITEM_SELL_PRICE"));
-	        String ext    = String.valueOf(it.get("ITEM_SELL_PRICE_EXT"));
-	        String ownedYn  = String.valueOf(it.get("OWNED_YN"));
+
+	        int itemId = safeInt(it.get("ITEM_ID"));
+	        String name = String.valueOf(it.get("ITEM_NAME"));
 	        String itemType = String.valueOf(it.get("ITEM_TYPE"));
-	        
-	        String display = price+"";
-	        
-	        if (ext != null && !ext.equals("") && !ext.equals("null")) {
-	            display = price + ext + "";
-	        } 
-	        // 인벤 쿼리에서 OWN_QTY, MAXED_YN 을 내려주고 있다고 가정
-	        int ownQty      = safeInt(it.get("OWN_QTY"));          // 없으면 0
-	        String maxedYn  = String.valueOf(it.get("MAXED_YN"));  // 없으면 "null"
 
-	      
+	        String ownedYn = String.valueOf(it.get("OWNED_YN"));
+	        int ownQty = safeInt(it.get("OWN_QTY"));
+	        String maxedYn = String.valueOf(it.get("MAXED_YN"));
 
-	        boolean isEquipType =
-	                "MARKET".equalsIgnoreCase(itemType);
-	        boolean upgradable = false;
-	        /*        
-	        (itemId >= 100 && itemId < 200) ||   // 무기
-	                (itemId >= 200 && itemId < 300) ||   // 투구
-	                (itemId >= 400 && itemId < 500);     // 갑옷
-	                */
-	        boolean isMaxed = "Y".equalsIgnoreCase(maxedYn);
-	     // 🔥 보유템 제외 모드일 때 필터링
-	        if (hiddenYn && "Y".equalsIgnoreCase(ownedYn)) {
-	            // 👉 강화 가능한 장비이고, 아직 MAX가 아니라면 예외로 보여준다
-	            boolean showForUpgrade = isEquipType && upgradable && !isMaxed;
-	            if (!showForUpgrade) {
-	                // 강화도 안 되고 / 이미 MAX면 숨김
-	                continue;
-	            }
-	        }
-	        
-	        // 표시용 이름에 (+n) 붙이기 (업그레이드 장비만)
-	        String dispName = name;
-	        if (isEquipType && upgradable && ownQty > 1) {
-	            int plus = ownQty - 1;      // QTY 2 → +1, QTY 3 → +2 ...
-	            if (plus > 0) {
-	                dispName = name + "(+" + plus + ")";
-	            }
-	        }
+	        boolean isEquip = "MARKET".equalsIgnoreCase(itemType);
+	        boolean isPotion = "POTION".equalsIgnoreCase(itemType);
 
-	        // 1행: [ID] 이름 (상태)
+	        // 🔹 가격 계산
+	        String displayPrice = buildDisplayPrice(it, isPotion, itemId, userLv);
+
+	        // 🔹 아이템 이름
 	        sb.append("[")
 	          .append(itemId)
 	          .append("] ")
-	          .append(dispName);
+	          .append(name);
 
 	        if ("Y".equalsIgnoreCase(ownedYn)) {
-	            if (isEquipType && upgradable) {
-	                if ("Y".equalsIgnoreCase(maxedYn)) {
-	                    //sb.append(" (최대강화)");
-	                } else {
-	                    sb.append(" (보유중)");
-	                }
+	            if (isEquip && !"Y".equalsIgnoreCase(maxedYn)) {
+	                sb.append(" (보유중)");
 	            } else {
 	                sb.append(" (구매완료)");
 	            }
 	        }
+
 	        sb.append(NL);
 
-	        // 2행: 가격
-	        sb.append("↘가격: ").append(display).append("sp").append(NL);
+	        // 🔹 가격
+	        sb.append("↘가격: ").append(displayPrice).append("sp").append(NL);
 
-	        // 3행 이후: 옵션
-	        if (isEquipType && upgradable) {
-	            // 🔹 업그레이드 가능한 장비: 현재/다음 옵션 둘 다 보여주기
-
-	            // 현재 기준 QTY (0이면 아직 미보유 → 1개 기준으로 표시)
-	            int curQty = (ownQty <= 0 ? 1 : ownQty);
-	            
-	            String curOpt = buildEnhancedOptionLine(it, curQty);
-	            sb.append("↘옵션: ").append(curOpt).append(NL);
-
-	            // 다음 구매시 옵션 (MAX가 아니라면)
-	            if (!"Y".equalsIgnoreCase(maxedYn)) {
-	                int nextQty = curQty + 1;
-	                if (nextQty > 4) nextQty = 4;  // 안전 캡
-	                String nextOpt = buildEnhancedOptionLine(it, nextQty);
-	                sb.append("↘다음 구매시: ").append(nextOpt).append(NL);
-	            } else {
-	               //sb.append("↘다음 구매시: (최대 강화 상태입니다)").append(NL);
-	            }
-
-	            sb.append(NL);
-	        } else {
-	            // 🔹 그 외 아이템: 기존 옵션 포맷 그대로
-	            sb.append("↘옵션: ")
-	              .append(buildEnhancedOptionLine(it, 1))
-	              .append(NL).append(NL);
-	        }
+	        // 🔹 옵션
+	        sb.append("↘옵션: ").append(buildOptionText(it, isEquip, isPotion, ownQty, itemId, userLv)).append(NL)
+	          .append(NL);
 	    }
+
 	    return sb.toString();
 	}
 
 
+	private String buildDisplayPrice(HashMap<String,Object> it, boolean isPotion, int itemId, int userLv){
+
+	    if(isPotion){
+	        SP potionPrice = MiniGameUtil.getPotionPrice(itemId, userLv);
+	        return potionPrice.toString();
+	    }
+
+	    double price = safeDouble(it.get("ITEM_SELL_PRICE"));
+	    String ext = String.valueOf(it.get("ITEM_SELL_PRICE_EXT"));
+
+	    if(ext != null && !ext.equals("") && !ext.equals("null")){
+	        return price + ext;
+	    }
+
+	    return price + "";
+	}
+
+	private String buildOptionText(HashMap<String, Object> it, boolean isEquip, boolean isPotion, int ownQty,
+			int itemId, int userLv) {
+
+		if (isPotion) {
+			return MiniGameUtil.getPotionOptionText(itemId, userLv);
+		}
+
+		if (isEquip) {
+			int curQty = (ownQty <= 0 ? 1 : ownQty);
+			return buildEnhancedOptionLine(it, curQty);
+		}
+
+		return buildEnhancedOptionLine(it, 1);
+	}
 	
 
 	/**
@@ -4595,7 +4670,7 @@ public class BossAttackController {
 	    // 살아있으면 관여 안 함
 	    if (u.hpCur > 0) return null;
 
-	    Timestamp baseline = getLastDamageBaseline(userName, roomName);
+	    Timestamp baseline = botNewService.selectLastDamagedTime(userName, roomName);
 
 	    // 기준 이벤트가 전혀 없으면: 보수적으로 10%로 세팅 후 조용히 복구
 	    if (baseline == null) {
@@ -5603,9 +5678,7 @@ public class BossAttackController {
 	    return (int) next;
 	}
 
-	private Timestamp getLastDamageBaseline(String userName, String roomName) {
-		return botNewService.selectLastDamagedTime(userName, roomName);
-	}
+	
 	private String buildRegenScheduleSnippetEnhanced2(String userName, String roomName, User u, int horizonMinutes, int currentHp, int hpMax, int effRegen, int minutesSpan) {
 
 		if (horizonMinutes <= 0 || effRegen <= 0 || currentHp >= hpMax) return null;
@@ -7982,19 +8055,20 @@ public class BossAttackController {
 	}
 	
 	private String resolveItemCategory(int itemId) {
-	    if (itemId > 100  && itemId <= 200)  return "※무기";   // 100번대
-	    if (itemId > 1100 && itemId <= 1200)  return "※무기";   // 1100번대
-	    if (itemId > 2100 && itemId <= 2200)  return "※무기";   // 2100번대
-	    if (itemId > 200  && itemId <= 300)  return "※투구";   // 200번대
-	    if (itemId > 300  && itemId <= 400)  return "※행운";   // 300번대
-	    if (itemId > 400  && itemId <= 500)  return "※갑옷";   // 400번대
-	    if (itemId > 500  && itemId <= 600)  return "※반지";   // 500번대
-	    if (itemId > 600  && itemId <= 700)  return "※토템";   // 600번대
-	    if (itemId > 700  && itemId <= 800)  return "※전설";   // 700번대
-	    if (itemId > 800  && itemId <= 900)  return "※날개";   // 800번대
-	    if (itemId > 900  && itemId <= 1000) return "※선물";   // 900번대
-	    if (itemId > 8000 && itemId <= 9000) return "※업적"; // 9000번대 
-	    if (itemId > 9000 && itemId <= 10000) return "※유물"; // 9000번대 
+	    if (itemId > 100  && itemId < 200)  return "※무기";   // 100번대
+	    if (itemId > 1100 && itemId < 1200)  return "※무기";   // 1100번대
+	    if (itemId > 2100 && itemId < 2200)  return "※무기";   // 2100번대
+	    if (itemId > 200  && itemId < 300)  return "※투구";   // 200번대
+	    if (itemId > 300  && itemId < 400)  return "※행운";   // 300번대
+	    if (itemId > 400  && itemId < 500)  return "※갑옷";   // 400번대
+	    if (itemId > 500  && itemId < 600)  return "※반지";   // 500번대
+	    if (itemId > 600  && itemId < 700)  return "※토템";   // 600번대
+	    if (itemId > 700  && itemId < 800)  return "※전설";   // 700번대
+	    if (itemId > 800  && itemId < 900)  return "※날개";   // 800번대
+	    if (itemId > 900  && itemId < 1000) return "※선물";   // 900번대
+	    if (itemId > 1000  && itemId < 1100) return "※물약";   // 900번대
+	    if (itemId > 8000 && itemId < 9000) return "※업적"; // 9000번대 
+	    if (itemId > 9000 && itemId < 10000) return "※유물"; // 9000번대 
 	    return "※기타";
 	}
 	// 카테고리명 또는 숫자로 범위를 구하는 함수
@@ -8017,6 +8091,7 @@ public class BossAttackController {
 	        case "전설": return new int[]{700, 800};
 	        case "날개": return new int[]{800, 900};
 	        case "선물": return new int[]{900, 1000};
+	        case "물약": return new int[]{1000, 1100};
 	        //case "유물": return new int[]{9000, 10000};
 	    }
 

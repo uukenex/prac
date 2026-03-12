@@ -140,6 +140,7 @@ public interface BotNewDAO {
     
     Timestamp selectLastDamagedTime(@Param("userName") String userName,
             @Param("roomName") String roomName);
+    HashMap<String,Object> selectLastBattleLog(HashMap<String,Object> map);
     
  // Top 3 레벨 랭킹
     List<HashMap<String,Object>> selectTopLevelUsers();
