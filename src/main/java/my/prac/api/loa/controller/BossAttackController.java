@@ -175,17 +175,17 @@ public class BossAttackController {
 	private UserBattleContext calcUserBattleContext(HashMap<String, Object> map) {
 	    UserBattleContext ctx = new UserBattleContext();
 
-	    final String roomName = Objects.toString(map.get("roomName"), "");
+	    //final String roomName = Objects.toString(map.get("roomName"), "");
 	    final String userName = Objects.toString(map.get("userName"), "");
 	    final String param1   = Objects.toString(map.get("param1"), "").trim();
 
-	    ctx.roomName = roomName;
+	    //ctx.roomName = roomName;
 	    ctx.userName = userName;
 	    ctx.param1   = param1;
 
-	    if (roomName.isEmpty() || userName.isEmpty()) {
+	    if (userName.isEmpty()) {
 	        ctx.success = false;
-	        ctx.errorMessage = "방/유저 정보가 누락되었습니다.";
+	        ctx.errorMessage = "유저 정보가 누락되었습니다.";
 	        return ctx;
 	    }
 
@@ -262,7 +262,7 @@ public class BossAttackController {
 	    // 1) MARKET 장비 버프 raw
 	    HashMap<String, Number> buffs = null;
 	    try {
-	        buffs = botNewService.selectOwnedMarketBuffTotals(targetUser, roomName);
+	        buffs = botNewService.selectOwnedMarketBuffTotals(targetUser, "");
 	    } catch (Exception ignore) {}
 
 	    
@@ -333,7 +333,7 @@ public class BossAttackController {
 
 	            // 2️⃣ 공격 / 사망 통계
 	            AttackDeathStat ads =
-	                    botNewService.selectAttackDeathStats(targetUser, roomName);
+	                    botNewService.selectAttackDeathStats(targetUser, "");
 
 	            int totalAttacks = (ads == null ? 0 : ads.totalAttacks);
 	            int totalDeaths  = (ads == null ? 0 : ads.totalDeaths);
@@ -438,9 +438,9 @@ public class BossAttackController {
 	    ctx.bAtkMaxRateRaw  = bAtkMaxRateRaw;
 
 	    // ② 무기강/보너스 조회
-	    HashMap<String, Object> wm = new HashMap<>();
-	    wm.put("userName", targetUser);
-	    wm.put("roomName", roomName);
+	    //HashMap<String, Object> wm = new HashMap<>();
+	    //wm.put("userName", targetUser);
+	    //wm.put("roomName", roomName);
 	    //int weaponLv = 0;
 	    
 	    //int weaponBonus = getWeaponAtkBonus(weaponLv); // 25강부터 +1
@@ -515,7 +515,7 @@ public class BossAttackController {
 	    int dailyAtkBonus  = 0;
 	    int dailyCdmgBonus = 0;
 	    try {
-	        HashMap<String,Object> b = botNewService.selectTodayDailyBuff(targetUser, roomName);
+	        HashMap<String,Object> b = botNewService.selectTodayDailyBuff(targetUser, "");
 	        if (b != null && !b.isEmpty()) {
 	            dailyAtkBonus  = safeInt(b.get("ATK_BONUS"));
 	            dailyCdmgBonus = safeInt(b.get("CRI_DMG_BONUS"));
@@ -582,7 +582,7 @@ public class BossAttackController {
 	    ctx.success = true;
 	    
 	    
-	    applyDropBonusToContext(ctx, targetUser, roomName);
+	    applyDropBonusToContext(ctx, targetUser, "");
 
 	    
 	    return ctx;
@@ -1916,9 +1916,9 @@ public class BossAttackController {
 
 	    return sb.toString();
 	}
-	// 실제 단일 아이템 구매 로직 (기존 buyItem의 본체 부분)
-	private String buySingleItem(String roomName, String userName, String raw) {
 
+	private String buySingleItem(String roomName, String userName, String raw) {
+		String potionMsg = null;
 	    // 입력 → itemId 해석
 	    Integer itemId = null;
 	    if (raw != null && raw.matches("\\d+")) {
@@ -1968,7 +1968,7 @@ public class BossAttackController {
 	    } catch (Exception ignore) {}
 	    String itemType = (item == null) ? "" : Objects.toString(item.get("ITEM_TYPE"), "");
 
-	    if (item == null || !("MARKET".equalsIgnoreCase(itemType) || "MARKET2".equalsIgnoreCase(itemType))) {
+	    if (item == null || !("POTION".equalsIgnoreCase(itemType) || "MARKET".equalsIgnoreCase(itemType) || "MARKET2".equalsIgnoreCase(itemType))) {
 	        return "구매할 수 없는 아이템입니다. (MARKET 유형만 구매 가능)";
 	    }
 
@@ -1998,32 +1998,16 @@ public class BossAttackController {
 
 	    SP userPoint = new SP(curValue, curExt);
 	    
-	    /*
-	    Integer tmpPoint = null;
-	    try { tmpPoint = botNewService.selectCurrentPoint(userName, roomName); } catch (Exception ignore) {}
-	    int curPoint = (tmpPoint == null ? 0 : tmpPoint.intValue());
-	    */
-	    
-	    
 	    if (!userPoint.canAfford(itemPrice)) {
 	    	return userName + "님, [" + itemName + "] 구매에 필요한 포인트가 부족합니다."
 		             + " (가격: " + itemPrice + "sp, 보유: " + userPoint + ")";
 	    }
-	    /*
-	    if (curPoint < price) {
-	        return userName + "님, [" + itemName + "] 구매에 필요한 포인트가 부족합니다."
-	             + " (가격: " + price + "sp, 보유: " + formatSpShort(curPoint) + ")";
-	    }
-	     */
-
-	    // ============================
-	    // 인벤토리 적재 (장비는 중복구매 시 QTY 증가)
-	    // ============================
+	    
+	    
 	    int buyQty = 1; // 현재 /구매는 1개씩 구매
 	    int finalQty = 1; // 👉 이 값을 나중에 옵션 표시에 사용
 
 	    int itemIdInt = itemId; // 위에서 구한 itemId 그대로 사용
-	    boolean upgradeOk = false;// isUpgradableEquip(itemIdInt);
 
 	    if ("MARKET".equalsIgnoreCase(itemType)||"MARKET2".equalsIgnoreCase(itemType)) {
 	        // 장비: 같은 ITEM_ID 가진 행이 있으면 QTY만 증가
@@ -2053,55 +2037,37 @@ public class BossAttackController {
 	            }
 	        }
 
-	        if (!upgradeOk) {
-	            // ❌ 업그레이드 불가 장비 (100/200/400번대 외 MARKET)
-	            // → 기존처럼 1개만 보유 가능
-	            if (currentQty > 0) {
-	                return "⚠ 이미 보유중인 아이템입니다. [" + itemName + "] 은(는) 1개만 보유 가능합니다.";
-	            }
+            if (currentQty > 0) {
+                return "⚠ 이미 보유중인 아이템입니다. [" + itemName + "] 은(는) 1개만 보유 가능합니다.";
+            }
 
-	            // 최초 구매만 허용 (QTY=1)
-	            finalQty = buyQty;
-	            HashMap<String, Object> inv = new HashMap<>();
-	            inv.put("userName", userName);
-	            inv.put("roomName", roomName);
-	            inv.put("itemId",  itemIdInt);
-	            inv.put("qty",     buyQty);
-	            inv.put("delYn",   "0");
-	            inv.put("gainType","BUY");
-	            botNewService.insertInventoryLogTx(inv);
+            // 최초 구매만 허용 (QTY=1)
+            finalQty = buyQty;
+            HashMap<String, Object> inv = new HashMap<>();
+            inv.put("userName", userName);
+            inv.put("roomName", roomName);
+            inv.put("itemId",  itemIdInt);
+            inv.put("qty",     buyQty);
+            inv.put("delYn",   "0");
+            inv.put("gainType","BUY");
+            botNewService.insertInventoryLogTx(inv);
 
-	        } else {
-	            // ✅ 업그레이드 가능 장비(100/200/400번대)
-	            int newQty = currentQty + buyQty;
 
-	            // 최대 4단계(QTY=4)까지 허용
-	            if (newQty > 1) {
-	            //if (newQty > 4) {
-	                int plus = Math.max(0, currentQty - 1);
-	                return "⚠ [" + itemName + "] 은(는) 최대 (+3) 까지 업그레이드 가능합니다."
-	                     + NL + "현재 보유 상태: " + itemName
-	                     + (plus > 0 ? "(+" + plus + ")" : "")
-	                     + " (현재 갯수=" + currentQty + ")";
-	            }
-
-	            if (targetRowId != null) {
-	                finalQty = newQty;
-	                botNewService.updateInventoryQtyByRowId(targetRowId, newQty);
-	            } else {
-	                finalQty = buyQty;
-	                HashMap<String, Object> inv = new HashMap<>();
-	                inv.put("userName", userName);
-	                inv.put("roomName", roomName);
-	                inv.put("itemId",  itemIdInt);
-	                inv.put("qty",     buyQty);
-	                inv.put("delYn",   "0");
-	                inv.put("gainType","BUY");
-	                botNewService.insertInventoryLogTx(inv);
-	            }
-	        }
-
-	    } else {
+	    }else if ("POTION".equalsIgnoreCase(itemType)) {
+	    	HashMap<String, Object> inv = new HashMap<>();
+            inv.put("userName", userName);
+            inv.put("roomName", roomName);
+            inv.put("itemId",  itemIdInt);
+            inv.put("qty",     1);
+            inv.put("delYn",   "1");
+            inv.put("gainType","BUY");
+            botNewService.insertInventoryLogTx(inv);
+            
+            potionMsg = usePotion(userName,itemId);
+            
+	    }
+	    /*
+	    else {
 	        finalQty = buyQty;
 	        // 장비가 아닌 경우 → 기존처럼 바로 insert
 	        HashMap<String, Object> inv = new HashMap<>();
@@ -2113,7 +2079,7 @@ public class BossAttackController {
 	        inv.put("gainType","BUY");
 	        botNewService.insertInventoryLogTx(inv);
 	    }
-	    
+	    */
 
 	    // 결제 (포인트 차감)
 	    HashMap<String, Object> pr = new HashMap<>();
@@ -2144,49 +2110,106 @@ public class BossAttackController {
 	    
 	    } catch (Exception ignore) {}
 
-	    int upgradeLevel = 0;
-	    if ("MARKET".equalsIgnoreCase(itemType)) {
-	        upgradeLevel = Math.max(0, finalQty - 1); // qty=2 → +1, qty=3 → +2 ...
-	    }
-
 	    // 표시용 이름
 	    String shownName = itemName;
-	    if (upgradeLevel > 0) {
-	        shownName = itemName + "(+" + upgradeLevel + ")";
-	    }
-
 	    // 옵션 문자열 결정
 	    String optionStr;
-	    
-	    /*
-	    if ("MARKET".equalsIgnoreCase(itemType)) {
-	        // 장비: 강화 수량 기반 옵션 (공격력 1(+1)~1(+1) 형태)
-	        optionStr = buildEnhancedOptionLine(item, finalQty);
-	    } else {
-	        // 기타: 기존 옵션 포맷 유지
-	        optionStr = buildOptionTokensFromMap(item);
-	    }*/
 	    
 	    optionStr = buildEnhancedOptionLine(item, 1); 
 	    //buildOptionTokensFromMap(item);
 
 	    // 결과 메시지
 	    StringBuilder sb = new StringBuilder();
-	    sb.append("▶ 구매 완료").append(NL)
-	      .append(userName).append("님, ").append(shownName).append("을(를) 구매했습니다.").append(NL)
-	      .append("↘가격: ").append(itemPrice.toString()).append("").append(NL)
-	      .append("↘옵션: ").append(optionStr).append(NL)
-	      .append("✨포인트: ").append(afterUserPoint.toString()).append("");
-
-	    try {
-	        botNewService.closeOngoingBattleTx(userName, roomName);
-	    } catch(Exception e) {
-	        // 무시
+	    if(MiniGameUtil.isInstantUseItem(itemId)) {
+	    	 sb.append(potionMsg);
+	    }else {
+	    	sb.append("▶ 구매 완료").append(NL)
+		      .append(userName).append("님, ").append(shownName).append("을(를) 구매했습니다.").append(NL)
+		      .append("↘가격: ").append(itemPrice.toString()).append("").append(NL)
+		      .append("↘옵션: ").append(optionStr).append(NL)
+		      .append("✨포인트: ").append(afterUserPoint.toString()).append("");
+	    	
+	    	try {
+	    		botNewService.closeOngoingBattleTx(userName, roomName);
+	    	} catch(Exception e) {
+	    		// 무시
+	    	}
 	    }
 
 	    return sb.toString();
 	}
+	
+	/*
+	private String useRevivePotion(String userName,String roomName){
+		HashMap<String,Object> map = new HashMap<>();
+		map.put("userName", userName);
+		UserBattleContext ctx = calcUserBattleContext(map);
+		User u = ctx.user;
+	    //int hpCur = u.hpCur;
+	    int hpMax = ctx.finalHpMax;
 
+	    if(!canRevive(userName)){
+	        return "이미 부활상태입니다.";
+	    }
+
+	    int reviveHp = (int)Math.ceil(hpMax * 0.1);
+
+	    botNewService.updateUserHpOnlyTx(userName, null, reviveHp);
+
+	    botNewService.insertBattleLogTx(new BattleLog()
+                .setUserName(userName)
+                .setRoomName(roomName)
+                .setLv(u.lv)
+                .setTargetMonLv(0)
+                .setGainExp(0)
+                .setAtkDmg(0)
+                .setMonDmg(0)
+                .setAtkCritYn(0)
+                .setMonPatten(0)
+                .setKillYn(0)
+                .setNowYn(0)
+                .setDropYn(0)
+                .setDeathYn(0)
+                .setLuckyYn(0)
+                .setJobSkillYn(0)
+                .setJob(u.job)
+                .setNightmareYn(0)
+        );
+	    return "부활의 성수를 사용했습니다. (체력 10% 부활)"; 
+	}
+	
+	private boolean canRevive(String userName){
+
+	    Timestamp baseline = botNewService.selectLastDamagedTime(userName, "");
+
+	    if(baseline == null){
+	        return false;
+	    }
+
+	    long diff = System.currentTimeMillis() - baseline.getTime();
+
+	    return diff <= (5 * 60 * 1000);
+	}
+	*/
+	private String usePotion(String userName, int itemId){
+		HashMap<String,Object> map = new HashMap<>();
+		map.put("userName", userName);
+		UserBattleContext ctx = calcUserBattleContext(map);
+		User u = ctx.user;
+	    long heal = MiniGameUtil.getPotionHeal(itemId, ctx.finalHpMax);
+
+	    long newHp = u.hpCur + heal;
+
+	    if(newHp > ctx.finalHpMax){
+	        newHp = ctx.finalHpMax;
+	    }
+
+	    botNewService.updateUserHpOnlyTx(userName, "", (int)newHp);
+
+	    return userName+"님, 체력이 회복되었습니다. (+" + heal + ")"+NL
+	    		 +u.hpCur +" → "+newHp;
+	}
+	
 	private void applyDropBonusToContext(
 	        UserBattleContext ctx,
 	        String userName,
@@ -4029,7 +4052,7 @@ public class BossAttackController {
 		         for (HashMap<String, Object> row : bySp) {
 		             String userName2 = Objects.toString(row.get("USER_NAME"), "-");
 		             int lv          = safeInt(row.get("LV"));
-		             int totSp       = safeInt(row.get("TOT_SP"));
+		             long totSp       = safeLong(row.get("TOT_SP"));
 	
 		             sb.append(rank).append("위 ")
 		               .append(userName2)
@@ -4858,6 +4881,10 @@ public class BossAttackController {
 	    return (v >= 0 ? "+" + v : String.valueOf(v));
 	}
 
+	private long safeLong(Object v) {
+		try { return v == null ? 0 : Long.parseLong(String.valueOf(v)); }
+		catch (Exception e) { return 0; }
+	}
 	private int safeInt(Object v) {
 	    try { return v == null ? 0 : Integer.parseInt(String.valueOf(v)); }
 	    catch (Exception e) { return 0; }

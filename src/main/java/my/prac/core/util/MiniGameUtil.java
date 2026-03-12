@@ -16,6 +16,48 @@ public class MiniGameUtil {
 	public static final LinkedHashMap<Integer, Integer> ACHV_REWARD_MAP = new LinkedHashMap<>();
 	public static final Map<String,String> SLOT_MAP = new HashMap<>();
 
+	private static final Map<Integer, String> POTION_MAP = new HashMap<>();
+
+    static {
+    	POTION_MAP.put(1001, "HP_PERCENT_10");
+        POTION_MAP.put(1002, "HP_PERCENT_50");
+        POTION_MAP.put(1003, "HP_PERCENT_100");
+
+        POTION_MAP.put(1004, "HP_FIXED_10000");
+        POTION_MAP.put(1005, "HP_FIXED_100000");
+        POTION_MAP.put(1006, "HP_FIXED_1000000");
+
+    }
+
+    public static long getPotionHeal(int itemId, long maxHp){
+
+        String type = POTION_MAP.get(itemId);
+
+        if(type == null){
+            return 0;
+        }
+        switch(type){
+	        case "HP_PERCENT_10":
+	        	return (long)(maxHp * 0.1);
+            case "HP_PERCENT_50":
+                return (long)(maxHp * 0.5);
+            case "HP_PERCENT_100":
+                return maxHp;
+            case "HP_FIXED_10000":
+                return 10000;
+            case "HP_FIXED_100000":
+                return 100000;
+            case "HP_FIXED_1000000":
+                return 1000000;
+        }
+        return 0;
+    }
+
+	
+	public static boolean isInstantUseItem(int itemId){
+	    return itemId >= 1001 && itemId <= 1100;
+	}
+	
 	static {
 
 	    SLOT_MAP.put("무기","※무기");

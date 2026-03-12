@@ -109,11 +109,6 @@
       SUM(CASE WHEN DEATH_YN = '1' THEN 1 ELSE 0 END) AS TOTAL_DEATHS
     FROM TBOT_POINT_NEW_BATTLE_LOG
     WHERE USER_NAME = #{userName}
-    <!-- 
-    <if test="roomName != null and roomName != '람쥐봇 문의방'">
-      AND ROOM_NAME = #{roomName}
-    </if>
-    -->
   </select>
 
   <select id="selectKillStats" resultType="my.prac.core.game.dto.KillStat">
@@ -125,11 +120,6 @@
     FROM TBOT_POINT_NEW_BATTLE_LOG bl
     JOIN TBOT_POINT_NEW_MON_INFO m ON m.MON_NO = bl.TARGET_MON_LV
     WHERE bl.USER_NAME = #{userName}
-    <!-- 
-      <if test="roomName != null and roomName != '람쥐봇 문의방'">
-	    AND bl.ROOM_NAME = #{roomName}
-	  </if>
-	   -->
       AND bl.KILL_YN = 1
     GROUP BY bl.TARGET_MON_LV, m.MON_NAME
     ORDER BY MON_NO DESC
@@ -168,9 +158,6 @@
                MAX(INSERT_DATE) AS lastTime
         FROM TBOT_POINT_NEW_BATTLE_LOG
         WHERE USER_NAME = #{userName}
-        <!-- 
-          AND ROOM_NAME = #{roomName}
-           -->
           AND NOW_YN    = '1'
         GROUP BY TARGET_MON_LV
         ORDER BY lastTime DESC
@@ -184,9 +171,6 @@
     SELECT MAX(INSERT_DATE)
     FROM TBOT_POINT_NEW_BATTLE_LOG
     WHERE USER_NAME = #{userName}
-    <!-- 
-      AND ROOM_NAME = #{roomName}
-       -->
   </select>
 
   <!-- 5) 전투 후 유저 업데이트 -->
@@ -244,9 +228,6 @@
     UPDATE TBOT_POINT_NEW_USER
        SET HP_CUR = #{newHpCur}
      WHERE USER_NAME = #{userName}
-     <!-- 
-       AND ROOM_NAME = #{roomName}
-        -->
   </update>
 
   <update id="updateUserTargetMon">
@@ -307,9 +288,6 @@
         SELECT bl.lucky_yn
           FROM TBOT_POINT_NEW_BATTLE_LOG bl
          WHERE bl.user_name = #{userName}
-         <!-- 
-           AND bl.room_name = #{roomName}
-            -->
            AND bl.now_yn    = '1'
          ORDER BY bl.insert_date DESC
       )
@@ -772,11 +750,6 @@
 	    ) inv
 	      ON inv.ITEM_ID   = i.ITEM_ID
 	     AND inv.USER_NAME = #{userName}
-	     <!-- 
-	     <if test="roomName != null and roomName != '람쥐봇 문의방'">
-	       AND inv.ROOM_NAME = #{roomName}
-	     </if>
-	 	-->
 	    WHERE i.ITEM_TYPE in ( 'MARKET','MARKET2')
 	    ORDER BY i.ITEM_ID desc
 	</select>
@@ -787,11 +760,6 @@
 	  SELECT COUNT(1)
 	  FROM TBOT_POINT_NEW_INVENTORY inv
 	  WHERE inv.USER_NAME = #{userName}
-	  <!-- 
-	 	<if test="roomName != null and roomName != '람쥐봇 문의방'">
-	    AND inv.ROOM_NAME = #{roomName}
-	   </if>
-	    -->
 	    AND inv.ITEM_ID   = #{itemId}
 	    AND inv.DEL_YN    = '0'
 	</select>
@@ -808,11 +776,6 @@
 	         )
 	    FROM TBOT_POINT_NEW_BATTLE_LOG
 	   WHERE USER_NAME = #{userName}
-	   <!-- 
-	   <if test="roomName != null and roomName != '람쥐봇 문의방'">
-	     AND ROOM_NAME = #{roomName}
-	   </if>
-	    -->
 	     AND (MON_DMG > 0 OR DEATH_YN = '1')
 	</select>
 	
@@ -1263,9 +1226,6 @@
 	          JOIN TBOT_POINT_NEW_MON_INFO mi
 	            ON b.TARGET_MON_LV = mi.MON_NO     <!-- 몬스터 레벨/번호 매핑 -->
 	         WHERE b.USER_NAME = #{userName}
-	           <!-- 
-	           AND b.ROOM_NAME = #{roomName}
-	            -->
 	           AND NVL(b.NOW_YN, '1') = '1'        <!-- 현재 진행중 전투 -->
 	           AND NVL(b.KILL_YN, '0') = '0'       <!-- 아직 안 죽은 몬스터 -->
 	         ORDER BY b.INSERT_DATE DESC           <!-- 가장 최근 전투 로그 -->
@@ -1473,9 +1433,6 @@
 	    SELECT NVL(SUM(job_skill_yn), 0) AS totalSkillUse
 	      FROM TBOT_POINT_NEW_BATTLE_LOG
 	     WHERE USER_NAME = #{userName}
-	     <!-- 
-	       AND ROOM_NAME = #{roomName}
-	        -->
 	       AND JOB       = #{job}
 	</select>
 	
@@ -1487,9 +1444,6 @@
 	        NVL(SUM(job_skill_yn), 0) AS TOTAL_SKILL_USE
 	    FROM TBOT_POINT_NEW_BATTLE_LOG
 	    WHERE USER_NAME = #{userName}
-	    <!-- 
-	      AND ROOM_NAME = #{roomName}
-	       -->
 	    GROUP BY JOB
 	</select>
 	
