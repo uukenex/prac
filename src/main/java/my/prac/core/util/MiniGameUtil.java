@@ -14,7 +14,20 @@ public class MiniGameUtil {
 	public static final Map<Integer, int[]> MON_PATTERN_WEIGHTS = new HashMap<>();
 	
 	public static final LinkedHashMap<Integer, Integer> ACHV_REWARD_MAP = new LinkedHashMap<>();
+	public static final Map<String,String> SLOT_MAP = new HashMap<>();
 
+	static {
+
+	    SLOT_MAP.put("무기","※무기");
+	    SLOT_MAP.put("투구","※투구");
+	    SLOT_MAP.put("갑옷","※갑옷");
+	    SLOT_MAP.put("반지","※반지");
+	    SLOT_MAP.put("토템","※토템");
+	    SLOT_MAP.put("행운","※행운");
+	    SLOT_MAP.put("날개","※날개");
+	    SLOT_MAP.put("전설","※전설");
+
+	}
 	static {
 	    ACHV_REWARD_MAP.put(50 ,8001);
 	    ACHV_REWARD_MAP.put(80 ,8002);

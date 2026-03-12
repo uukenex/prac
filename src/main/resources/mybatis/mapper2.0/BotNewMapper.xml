@@ -466,12 +466,9 @@
   <!-- 판매 대상 행(FIFO) : 빛나는 제외 -->
   <select id="selectInventoryRowsForSale" resultType="hashmap">
     SELECT /* selectInventoryRowsForSale */
-    	   ROWID AS RID, QTY, NVL(GAIN_TYPE,'DROP') AS GAIN_TYPE
+    	   ROWID AS RID,ITEM_ID, QTY, NVL(GAIN_TYPE,'DROP') AS GAIN_TYPE
       FROM TBOT_POINT_NEW_INVENTORY
      WHERE USER_NAME = #{userName}
-     <!-- 
-       AND ROOM_NAME = #{roomName}
-        -->
        AND ITEM_ID   = #{itemId}
        AND NVL(DEL_YN,'0') != '1'
        AND ITEM_ID BETWEEN 101 AND 3000
@@ -482,9 +479,6 @@
     SELECT ROWID AS RID,ITEM_ID, QTY, NVL(GAIN_TYPE,'DROP') AS GAIN_TYPE
       FROM TBOT_POINT_NEW_INVENTORY
      WHERE USER_NAME = #{userName}
-     <!-- 
-       AND ROOM_NAME = #{roomName}
-        -->
        AND NVL(DEL_YN,'0') != '1'
        AND ITEM_ID BETWEEN 101 AND 3000
      ORDER BY INSERT_DATE ASC, ROWID
@@ -507,6 +501,7 @@
   </update>
 
 	<select id="selectItemSellPriceList" resultType="hashMap">
+			/*selectItemSellPriceList*/
 	SELECT ITEM_ID
 	     , ITEM_SELL_PRICE
 	     , ITEM_SELL_PRICE_EXT
