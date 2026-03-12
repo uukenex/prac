@@ -4210,12 +4210,7 @@ public class BossAttackController {
 		     if (spAtkList == null || spAtkList.isEmpty()) {
 		         sb.append("- 데이터가 없습니다.").append(NL);
 		     } else {
-		         // SP 순위 정렬 (이미 TOT_SP DESC 이지만, 방어용으로 한 번 더 정렬)
 		         List<HashMap<String, Object>> bySp = new ArrayList<>(spAtkList);
-		         bySp.sort((a, b) -> Integer.compare(
-		                 safeInt(b.get("TOT_SP")),
-		                 safeInt(a.get("TOT_SP"))
-		         ));
 	
 		         int rank = 1;
 		         for (HashMap<String, Object> row : bySp) {
@@ -4226,7 +4221,7 @@ public class BossAttackController {
 		             sb.append(rank).append("위 ")
 		               .append(userName2)
 		               .append(" (Lv.").append(lv).append(")")
-		               .append(" - ").append(formatSpShort(totSp))
+		               .append(" - ").append(SP.fromSp(totSp))
 		               .append(NL);
 	
 		             if (++rank > 5) break;
