@@ -230,7 +230,8 @@ public class BossAttackController {
 		    SP userPoint = new SP(curValue, curExt);
 		    
 	    	ctx.currentPointStr = userPoint.toString();
-	        //ctx.currentPoint = (p == null ? 0 : p);
+	    	
+	        ctx.currentPoint = userPoint;
 	    } catch (Exception ignore) {
 	        //ctx.currentPoint = 0;
 	    }
@@ -253,6 +254,7 @@ public class BossAttackController {
 	        ctx.lifetimeSp = (t == null ? 0 : t);
 	        */
 	    	ctx.lifetimeSpStr = total.toString();
+	    	ctx.lifetimeSp = total;
 	    } catch (Exception ignore) {
 	        ctx.lifetimeSpStr = "";
 	    }
@@ -2055,10 +2057,10 @@ public class BossAttackController {
 
 	        UserBattleContext ctx = calcUserBattleContext(map);
 
-	        int userLv = ctx.user.lv;
+	        //int userLv = ctx.user.lv;
 
 	        // 가격 계산
-	        itemPrice = MiniGameUtil.getPotionPrice(itemId, userLv);
+	        itemPrice = MiniGameUtil.getPotionPrice(itemId, ctx.lifetimeSp);
 
 	        // 포인트 확인
 	        if (!userPoint.canAfford(itemPrice)) {
@@ -4570,16 +4572,17 @@ public class BossAttackController {
 	      .append(ALL_SEE_STR);
 
 	 // 🔹 포션 가격 계산용 컨텍스트 (1회만)
-	    int userLv = 0;
 
 	    boolean hasPotion = items.stream()
 	            .anyMatch(it -> "POTION".equalsIgnoreCase(String.valueOf(it.get("ITEM_TYPE"))));
 
+	    SP userPoint = new SP(0, "");
+	    
 	    if (hasPotion) {
 	        HashMap<String,Object> map = new HashMap<>();
 	        map.put("userName", userName);
 	        UserBattleContext ctx = calcUserBattleContext(map);
-	        userLv = ctx.user.lv;
+	        userPoint = ctx.lifetimeSp;
 	    }
 
 	    // 🔹 아이템 목록 출력
@@ -4596,8 +4599,14 @@ public class BossAttackController {
 	        boolean isEquip = "MARKET".equalsIgnoreCase(itemType);
 	        boolean isPotion = "POTION".equalsIgnoreCase(itemType);
 
+	        
+	        
+
+		    
+		    
+	        
 	        // 🔹 가격 계산
-	        String displayPrice = buildDisplayPrice(it, isPotion, itemId, userLv);
+	        String displayPrice = buildDisplayPrice(it, isPotion, itemId, userPoint);
 
 	        // 🔹 아이템 이름
 	        sb.append("[")
@@ -4619,7 +4628,7 @@ public class BossAttackController {
 	        sb.append("↘가격: ").append(displayPrice).append("sp").append(NL);
 
 	        // 🔹 옵션
-	        sb.append("↘옵션: ").append(buildOptionText(it, isEquip, isPotion, ownQty, itemId, userLv)).append(NL)
+	        sb.append("↘옵션: ").append(buildOptionText(it, isEquip, isPotion, ownQty, itemId)).append(NL)
 	          .append(NL);
 	    }
 
@@ -4627,10 +4636,10 @@ public class BossAttackController {
 	}
 
 
-	private String buildDisplayPrice(HashMap<String,Object> it, boolean isPotion, int itemId, int userLv){
+	private String buildDisplayPrice(HashMap<String,Object> it, boolean isPotion, int itemId, SP userPoint){
 
 	    if(isPotion){
-	        SP potionPrice = MiniGameUtil.getPotionPrice(itemId, userLv);
+	        SP potionPrice = MiniGameUtil.getPotionPrice(itemId, userPoint);
 	        return potionPrice.toString();
 	    }
 
@@ -4645,10 +4654,10 @@ public class BossAttackController {
 	}
 
 	private String buildOptionText(HashMap<String, Object> it, boolean isEquip, boolean isPotion, int ownQty,
-			int itemId, int userLv) {
+			int itemId) {
 
 		if (isPotion) {
-			return MiniGameUtil.getPotionOptionText(itemId, userLv);
+			return MiniGameUtil.getPotionOptionText(itemId);
 		}
 
 		if (isEquip) {

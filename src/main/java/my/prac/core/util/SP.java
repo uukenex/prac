@@ -69,6 +69,24 @@ public class SP {
 
 		return SP.of(v.doubleValue(), this.unit);
 	}
+	public SP multiplyRate(double rate) {
+
+	    double baseValue = toBaseValue(this);
+
+	    double result = baseValue * rate;
+
+	    return SP.fromSp(result);
+	}
+	public static long toBaseValue(SP sp) {
+
+	    double v = sp.value;
+
+	    int idx = (sp.unit == null || sp.unit.isEmpty())
+	            ? 0
+	            : sp.unit.charAt(0) - 'a' + 1;
+
+	    return (long) (v * Math.pow(10000, idx));
+	}
 
 	public SP divide(double d) {
 

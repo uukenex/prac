@@ -1,5 +1,7 @@
 package my.prac.core.game.dto;
 
+import my.prac.core.util.SP;
+
 public class UserBattleContext {
 	// 공통 입력/기본 정보
 	public boolean success;
@@ -49,9 +51,9 @@ public class UserBattleContext {
 	public int shownCritDmg; // 표시용 크리뎀
 
 	// 필요하면 누적 SP, 현재 SP도 여기에 추가 가능
-	public int currentPoint;
+	public SP currentPoint;
 	public String currentPointStr;
-	public int lifetimeSp;
+	public SP lifetimeSp;
 	public String lifetimeSpStr;
 
 	// 직업 보너스(표시용)

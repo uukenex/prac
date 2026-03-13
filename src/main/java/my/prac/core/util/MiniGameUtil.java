@@ -18,59 +18,79 @@ public class MiniGameUtil {
 	public static final LinkedHashMap<Integer, Integer> ACHV_REWARD_MAP = new LinkedHashMap<>();
 	public static final Map<String,String> SLOT_MAP = new HashMap<>();
 	
-	public static String getPotionOptionText(int itemId, int userLv){
+	public static String getPotionOptionText(int itemId){
 
-	    SP price = getPotionPrice(itemId, userLv);
-	    String priceStr = price.toString();
+	    //SP price = getPotionPrice(itemId, totalSP);
+	    //String priceStr = price.toString();
 
 	    switch(itemId){
 
 	        case 1001:
-	            return "부활 (HP 10% 회복) / 가격: 레벨×1a ("+priceStr+")";
+	            return "부활 (HP 10% 회복)";
 
 	        case 1002:
-	            return "HP 50% 회복 / 가격: 레벨×100a ("+priceStr+")";
+	            return "HP 50% 회복";
 
 	        case 1003:
-	            return "HP 100% 회복 / 가격: 레벨×200a ("+priceStr+")";
+	            return "HP 100% 회복";
 
 	        case 1004:
-	            return "HP 10000 회복 / 가격: 레벨×1a ("+priceStr+")";
+	            return "HP 10000 회복)";
 
 	        case 1005:
-	            return "HP 100000 회복 / 가격: 레벨×10a ("+priceStr+")";
+	            return "HP 100000 회복";
 
 	        case 1006:
-	            return "HP 1000000 회복 / 가격: 레벨×100a ("+priceStr+")";
+	            return "HP 1000000 회복";
 	    }
 
 	    return "";
 	}
+
+
+	private static final SP MIN_PRICE = SP.of(1, "a"); // 1a
+	private static final SP MAX_PRICE = SP.of(1, "b"); // 1b
+
+
+	private static final double RATE_REVIVE   = 0.0000001667; // 1001
+	private static final double RATE_HP50     = 0.0000006667; // 1002
+	private static final double RATE_HP100    = 0.0000013333; // 1003
+	private static final double RATE_PLUS10K  = 0.00000001;   // 1004
+	private static final double RATE_PLUS100K = 0.0000001;    // 1005
+	private static final double RATE_PLUS1M   = 0.000001;     // 1006
 	
-	public static SP getPotionPrice(int itemId, int userLv){
+	public static SP getPotionPrice(int itemId, SP totalSp){
+
+	    long basePrice;
 
 	    switch(itemId){
-
-	        case 1001: // 부활
-	            return SP.of(userLv * 1, "a");
-
-	        case 1002: // 50%
-	            return SP.of(userLv * 100, "a");
-
-	        case 1003: // 100%
-	            return SP.of(userLv * 200, "a");
-
-	        case 1004: // +10000
-	            return SP.of(userLv * 1, "a");
-
-	        case 1005: // +100000
-	            return SP.of(userLv * 10, "a");
-
-	        case 1006: // +1000000
-	            return SP.of(userLv * 100, "a");
+		    case 1001: basePrice = 50;  break;  // 부활   (누적SP의 약 0.0000167%)
+		    case 1002: basePrice = 200; break;  // 50%    (누적SP의 약 0.0000667%)
+		    case 1003: basePrice = 400; break;  // 100%   (누적SP의 약 0.0001333%)
+		    case 1004: basePrice = 3;   break;  // +10000 (누적SP의 약 0.000001%)
+		    case 1005: basePrice = 30;  break;  // +100000 (누적SP의 약 0.00001%)
+		    case 1006: basePrice = 300; break;  // +1000000 (누적SP의 약 0.0001%)
+	        default:
+	            return SP.of(0, "");
 	    }
 
-	    return new SP(0,"");
+	    // SP → 절대값
+	    long total = SP.toBaseValue(totalSp);
+
+	    // 정수 기반 계산
+	    long price = (long)(total * basePrice / 300_000_000L);
+
+	    SP result = SP.of(price,"a");
+
+	    // 최소 가격
+	    if(result.lessThan(SP.of(1,"a")))
+	        return SP.of(1,"a");
+
+	    // 최대 가격
+	    if(result.compare(SP.of(1,"b")) > 0)
+	        return SP.of(1,"b");
+
+	    return result;
 	}
 	
     public static long getPotionHeal(int itemId, long maxHp){
