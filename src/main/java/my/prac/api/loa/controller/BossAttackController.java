@@ -2646,7 +2646,7 @@ public class BossAttackController {
 	        if (nightmare) {
 	            monMaxHp *= nightmareMul;
 	            m.monAtk *= nightmareMul;
-	            m.monLv +=100;
+	            m.monLv +=150;
 	        }
 	        
 	        lucky = (ob.luckyYn != null && ob.luckyYn == 1);
@@ -2700,7 +2700,7 @@ public class BossAttackController {
 	            monMaxHp *= nightmareMul;
 	            monHpRemainBefore *= nightmareMul;
 	            m.monAtk *= nightmareMul;
-	            m.monLv +=100;
+	            m.monLv +=150;
 	        }
 	        
 	        // ★ 이 유저의 해당 몬스터 누적 킬 수 조회
@@ -4144,7 +4144,7 @@ public class BossAttackController {
 		               .append(" - ").append(SP.fromSp(totSp))
 		               .append(NL);
 	
-		             if (++rank > 5) break;
+		             if (++rank > 10) break;
 		         }
 		     }
 	

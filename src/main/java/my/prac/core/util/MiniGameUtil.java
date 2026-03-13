@@ -19,10 +19,6 @@ public class MiniGameUtil {
 	public static final Map<String,String> SLOT_MAP = new HashMap<>();
 	
 	public static String getPotionOptionText(int itemId){
-
-	    //SP price = getPotionPrice(itemId, totalSP);
-	    //String priceStr = price.toString();
-
 	    switch(itemId){
 
 	        case 1001:
@@ -48,17 +44,6 @@ public class MiniGameUtil {
 	}
 
 
-	private static final SP MIN_PRICE = SP.of(1, "a"); // 1a
-	private static final SP MAX_PRICE = SP.of(1, "b"); // 1b
-
-
-	private static final double RATE_REVIVE   = 0.0000001667; // 1001
-	private static final double RATE_HP50     = 0.0000006667; // 1002
-	private static final double RATE_HP100    = 0.0000013333; // 1003
-	private static final double RATE_PLUS10K  = 0.00000001;   // 1004
-	private static final double RATE_PLUS100K = 0.0000001;    // 1005
-	private static final double RATE_PLUS1M   = 0.000001;     // 1006
-	
 	public static SP getPotionPrice(int itemId, SP totalSp){
 
 	    long basePrice;
