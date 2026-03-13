@@ -8404,12 +8404,13 @@ public class BossAttackController {
 	        "⚔ 공격 시 40% 확률 추가 드랍(STEAL), 몬스터 기본 공격 80% 회피, [스틸,회피 no22부터 5%씩 감소] "
 	    ));
 	    
+	    /*
 	    JOB_DEFS.put("프리스트", new JobDef(
     		"프리스트",
     		"▶ 대사제의 축복을 받아 신성의힘으로 적을 물리친다",
     		"⚔ 아이템 HP/리젠 효과 1.25배, 몬스터에게 받는 일반공격 피해 감소(20%), 언데드추가피해(+25%)"
 		));
-	    
+	    */
 	    JOB_DEFS.put("도사", new JobDef(
 	        "도사",
 	        "▶ 도를 닦아 깨달음을 얻은 위인",
@@ -8469,7 +8470,7 @@ public class BossAttackController {
 	        "용사",
 	        "▶ 선택 받은 자",//어둠몹에 피해두배 ,언데드추뎀25% ,스틸30%, 10%확률 완전회복
 	        "⚔ 기본 HP*2 만큼 추가 증가, 어둠몬스터에 추가피해(+50%), 언데드 추가피해(+25%), 공격시 steal(60%), 데미지감소(50%), 기본데미지 * 1.4"+NL
-	        +"◎선행조건 전사,도적,도사,프리스트 직업으로 각 150회 공격"
+	        +"◎선행조건 전사,도적,도사 직업으로 각 150회 공격"
 	    ));
 	     
 	    
@@ -8506,7 +8507,7 @@ public class BossAttackController {
     		"어둠사냥꾼",
     		"▶ 어둠이 있기에 그가 있다",
     		"⚔ 아이템 HP/리젠 효과 1.25배, 몬스터에게 받는 일반공격 피해 감소(30%), 언데드추가피해(+75%), 몬스터의 강제전투종료패턴 무시 후 추가데미지, 어둠몬스터에 추가데미지(+150%) "+NL
-    		+"◎선행조건 프리스트, 용기사 직업으로 각 150회 공격"
+    		+"◎선행조건 용기사 직업으로 각 150회 공격"
 		));
 	    JOB_DEFS.put("복수자", new JobDef(
     		"복수자",
@@ -8554,8 +8555,8 @@ public class BossAttackController {
 	    JOB_CHANGE_REQS.put("용사", Arrays.asList(
 	        new JobChangeReq("전사", 150),
 	        new JobChangeReq("도적", 150),
-	        new JobChangeReq("도사", 150),
-	        new JobChangeReq("프리스트", 150)
+	        new JobChangeReq("도사", 150)
+	        //new JobChangeReq("프리스트", 150)
 	    ));
 	    JOB_CHANGE_REQS.put("처단자", Arrays.asList(
     		new JobChangeReq("마법사", 150),
@@ -8574,7 +8575,7 @@ public class BossAttackController {
 	    	new JobChangeReq("도적", 1000)
 		));*/
 	    JOB_CHANGE_REQS.put("어둠사냥꾼", Arrays.asList(
-	    	new JobChangeReq("프리스트", 150),
+	    	//new JobChangeReq("프리스트", 150),
 	    	new JobChangeReq("용기사", 150)
 		));
 	    JOB_CHANGE_REQS.put("복수자", Arrays.asList(
