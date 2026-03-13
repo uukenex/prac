@@ -2565,7 +2565,7 @@ public class BossAttackController {
 	    // 여기서는 데미지 배율만 적용
 
 	    if ("궁수".equals(job)) {
-	        jobDmgMul = 1.6;   // 궁수: 데미지 1.6배
+	        jobDmgMul = 3.0;   // 궁수: 데미지 1.6배
 	    } else if ("궁사".equals(job)) {
 	        jobDmgMul = 1.2;   
 	    } else if ("전사".equals(job)) {
@@ -3127,7 +3127,7 @@ public class BossAttackController {
 	    // 궁수: 획득 EXP +25%
 	    if ("궁수".equals(u.job)) {
 	        int baseExp = res.gainExp;
-	        int bonus   = (int)Math.floor(res.gainExp * 0.25);
+	        int bonus   = (int)Math.floor(res.gainExp * 1.00);
 	        res.gainExp = baseExp + bonus;
 	    }
 
@@ -3228,30 +3228,33 @@ public class BossAttackController {
 	        }
 	    
 	    if ("처단자".equals(job) && !(m.monNo > 50) && willKill) {
-	        double stealRate = 0.3;
-	        if (ThreadLocalRandom.current().nextDouble() < stealRate) {
-	            String dropName = (m.monDrop == null ? "" : m.monDrop.trim());
-	            if (!dropName.isEmpty()) {
-	                try {
-	                    Integer itemId = botNewService.selectItemIdByName(dropName);
-	                    if (itemId != null) {
-	                        HashMap<String, Object> inv = new HashMap<>();
-	                        inv.put("userName", userName);
-	                        inv.put("roomName", roomName);
-	                        inv.put("itemId", itemId);
-	                        inv.put("qty", 2);
-	                        inv.put("delYn", "1");
-	                        inv.put("gainType", "STEAL");
-	                        botNewService.insertInventoryLogTx(inv);
-	                        stealMsg = "✨ 날카로운 처단으로 추가획득 (+" + dropName + ")";
-	                        calc.jobSkillUsed = true;
-	                    }
-	                    stealPoint += " +" +baroSellItem(dropName,itemId,res,userName,roomName,ctx,u,"STEAL",2,nightmare);
-	                    
-	                    
-	                } catch (Exception ignore) {}
-	            }
-	        }
+	        int monsterHp = m.monHp;
+	        int extraDrop = (calc.atkDmg / monsterHp) - 1;
+
+	        // 최대 추가 드랍 제한
+	        extraDrop = Math.min(extraDrop, 5);
+
+            String dropName = (m.monDrop == null ? "" : m.monDrop.trim());
+            if (!dropName.isEmpty()) {
+                try {
+                    Integer itemId = botNewService.selectItemIdByName(dropName);
+                    if (itemId != null) {
+                        HashMap<String, Object> inv = new HashMap<>();
+                        inv.put("userName", userName);
+                        inv.put("roomName", roomName);
+                        inv.put("itemId", itemId);
+                        inv.put("qty", 1+extraDrop);
+                        inv.put("delYn", "1");
+                        inv.put("gainType", "STEAL");
+                        botNewService.insertInventoryLogTx(inv);
+                        stealMsg = "✨ 날카로운 처단으로 추가획득 (+" + dropName +"조각"+(1+extraDrop)+ ")";
+                        calc.jobSkillUsed = true;
+                    }
+                    stealPoint += " +" +baroSellItem(dropName,itemId,res,userName,roomName,ctx,u,"STEAL",(1+extraDrop),nightmare);
+                    
+                    
+                } catch (Exception ignore) {}
+            }
 	    }
 	    
 	    if ("용사".equals(job) && !(m.monNo > 50)) {
@@ -4791,6 +4794,9 @@ public class BossAttackController {
 	    
 	    if ("축복술사".equals(job)) {
 	    	baseCd = 30 * 60; // 30분
+	    }
+	    if ("궁수".equals(job)) {
+	    	baseCd = 10 * 60; // 10분
 	    }
 	    
 	    Timestamp last = botNewService.selectLastAttackTime(userName, roomName);
@@ -7267,9 +7273,9 @@ public class BossAttackController {
 	    
 	    boolean isSnipe = false;
 	    if ("궁수".equals(job)) {
-	        if (ThreadLocalRandom.current().nextDouble() < 0.13) {
+	        if (ThreadLocalRandom.current().nextDouble() < 0.07) {
 	            isSnipe = true;
-	            baseAtk = baseAtk * 20;
+	            baseAtk = baseAtk * 7;
 	            calc.jobSkillUsed = true;
 	            crit = false;
 	        }
@@ -7661,6 +7667,7 @@ public class BossAttackController {
 	            }
 	        }
 	        
+	        /*
 	        if ("처단자".equals(job) && calc.monDmg > 0 && !flags.finisher) {
 
 	            int monLv = m.monNo;
@@ -7692,6 +7699,7 @@ public class BossAttackController {
 	                calc.monDmg = 0;
 	            }
 	        }
+	        */
 	        if ("용사".equals(job) && calc.monDmg > 0 && !flags.finisher) {
 	            int reduced = (int) Math.floor(calc.monDmg * 0.5);
 	            if (reduced < 1) reduced = 1;
@@ -8376,13 +8384,14 @@ public class BossAttackController {
 	        "⚔ 몬스터레벨에 따라 방어도 추가, 적의 필살기를 반격(20%),모든 적에게 데미지 추가(+40%)"
 	    ));
 
-	    /*
+	    
 	    JOB_DEFS.put("궁수", new JobDef(
 	        "궁수",
 	        "▶ 사냥감을 조준하는 집요한 추적자, 강력한 한방을 선사한다",
-	        "⚔ 최종 데미지 ×1.6, EXP +25%, 공격시 13%확률로 강력한공격(dmg*20)"
+	        "⚔ 기본공격 배율 3, EXP +100%, 공격시 7%확률로 강력한공격(dmg*7)"+NL
+	        +"- 쿨타임 10분으로 조정"
 	    ));
-	     */
+	     
 	    JOB_DEFS.put("마법사", new JobDef(
 	        "마법사",
 	        "▶ 강력한 마법공격으로 몬스터의 방어태세를 무력화한다",
@@ -8467,7 +8476,7 @@ public class BossAttackController {
 	    JOB_DEFS.put("처단자", new JobDef(
 	        "처단자",
 	        "▶ 신을 모독하는 자는 그의 손에서 살아남을수 없다, 물론 모독을 안했어도 말이지..! ",
-	        "⚔ 방어를 무시하고 피해 2.5배를 줌, 몬스터의 기본공격 80%회피 [회피 no22부터 5%씩 감소] , 처치시 추가드랍(30%), 빛몬스터에 추가피해(+50%), 기본데미지 *1.4 "+NL
+	        "⚔ 기본공격 배율 1.4, 방어파괴(파괴시 dmg+150%), 처치시 스틸(100%, OVERKILL 시 추가획득), 빛몬스터에 추가피해(+50%)"+NL
 	        +"◎선행조건 마법사,도적 직업으로 각 150회 공격"
 	    ));
 	    /*
