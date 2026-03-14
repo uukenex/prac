@@ -1388,9 +1388,6 @@
 	     WHERE NEW_YN = '1'
 	       AND CMD = 'BAG_OPEN_SP'
 	       AND USER_NAME = #{userName}
-	       <!-- 
-	       AND ROOM_NAME = #{roomName}
-	        -->
 	</select>
 
 	<!-- 최근 5개의 BAG_OPEN_SP 합계 -->
@@ -1737,6 +1734,17 @@
 	       AND DEL_YN    = '0'
 	       AND ROWNUM &lt;=  #{count}
 	</update>
+	
+	<select id="selectTodayBagCount"
+	        resultType="int">
+	
+	    SELECT count(1)
+	      FROM TBOT_POINT_NEW_INVENTORY A
+	     WHERE INSERT_DATE BETWEEN TRUNC(SYSDATE) AND SYSDATE
+	       AND A.ITEM_ID IN (91,92)
+		   AND ROWNUM = 1
+	</select>
+	
 	
 	<select id="selectActiveSpecialBuff"
 	        resultType="hashmap">

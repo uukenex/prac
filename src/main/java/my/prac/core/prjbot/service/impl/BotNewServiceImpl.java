@@ -626,6 +626,9 @@ public class BotNewServiceImpl implements BotNewService {
     }
 
 
+    public int selectTodayBagCount(String userName){
+    	return botNewDAO.selectTodayBagCount(userName);
+    }
     public HashMap<String,Object> selectActiveSpecialBuff(){
     	return botNewDAO.selectActiveSpecialBuff();
     }

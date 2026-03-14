@@ -46,36 +46,34 @@ public class MiniGameUtil {
 
 	public static SP getPotionPrice(int itemId, SP totalSp){
 
-	    long basePrice;
+		long total = SP.toBaseValue(totalSp);
 
 	    switch(itemId){
-		    case 1001: basePrice = 50;  break;  // 부활   (누적SP의 약 0.0000167%)
-		    case 1002: basePrice = 200; break;  // 50%    (누적SP의 약 0.0000667%)
-		    case 1003: basePrice = 400; break;  // 100%   (누적SP의 약 0.0001333%)
-		    case 1004: basePrice = 3;   break;  // +10000 (누적SP의 약 0.000001%)
-		    case 1005: basePrice = 30;  break;  // +100000 (누적SP의 약 0.00001%)
-		    case 1006: basePrice = 300; break;  // +1000000 (누적SP의 약 0.0001%)
-	        default:
-	            return SP.of(0, "");
+
+	        case 1001:
+	        case 1002:
+	        case 1003:
+
+	            long base;
+
+	            switch(itemId){
+	                case 1001: base = 50;  break;
+	                case 1002: base = 200; break;
+	                default:   base = 400; break;
+	            }
+
+	            double ratio = Math.sqrt((double)total / 600_000_000D);
+
+	            long price = (long)(base * ratio);
+
+	            return SP.of(price,"a");
+
+	        case 1004: return SP.of(3,"a");
+	        case 1005: return SP.of(30,"a");
+	        case 1006: return SP.of(300,"a");
 	    }
 
-	    // SP → 절대값
-	    long total = SP.toBaseValue(totalSp);
-
-	    // 정수 기반 계산
-	    long price = (long)(total * basePrice / 300_000_000L);
-
-	    SP result = SP.of(price,"a");
-
-	    // 최소 가격
-	    if(result.lessThan(SP.of(1,"a")))
-	        return SP.of(1,"a");
-
-	    // 최대 가격
-	    if(result.compare(SP.of(1,"b")) > 0)
-	        return SP.of(1,"b");
-
-	    return result;
+	    return SP.of(0,"");
 	}
 	
     public static long getPotionHeal(int itemId, long maxHp){

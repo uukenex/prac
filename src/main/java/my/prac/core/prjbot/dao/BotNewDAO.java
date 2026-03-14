@@ -251,6 +251,7 @@ public interface BotNewDAO {
 
     int consumeBagBulkByItemId(HashMap<String,Object> param);
     
+    int selectTodayBagCount(String userName);
     HashMap<String,Object> selectActiveSpecialBuff();
 
     int insertSpecialBuff(HashMap<String,Object> param);

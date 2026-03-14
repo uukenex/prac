@@ -665,7 +665,7 @@ public class BossAttackController {
 
 	    final int finalHpMax = ctx.finalHpMax;  // 최종 HP
 	    final int effRegen   = ctx.effRegen;    // 실제 적용 리젠(축복 포함/흡혈귀 처리 포함)
-	    final boolean hasBless = ctx.hasBless;  // 운영자 축복 여부
+	    //final boolean hasBless = ctx.hasBless;  // 운영자 축복 여부
 
 	    // 6) 유효 체력 계산 (attackInfo와 동일 함수 사용)
 	    int effHp = computeEffectiveHpFromLastAttack(targetUser, roomName, u, finalHpMax, effRegen);
@@ -913,7 +913,7 @@ public class BossAttackController {
 	}
 	
 	private long rollBagSpWithCeiling(String userName, String roomName, int nightmareYn) {
-		 // ① 유저의 BAG_OPEN_SP 기록 개수 조회
+		//유저의 BAG_OPEN_SP 기록 개수 조회
 	    //int totalCount = botNewService.selectBagOpenSpCount(userName, roomName);
 
 	    switch (nightmareYn) {
@@ -2010,8 +2010,6 @@ public class BossAttackController {
 	    
 	    
 	    int buyQty = 1; // 현재 /구매는 1개씩 구매
-	    int finalQty = 1; // 👉 이 값을 나중에 옵션 표시에 사용
-
 	    int itemIdInt = itemId; // 위에서 구한 itemId 그대로 사용
 
 	    if ("MARKET".equalsIgnoreCase(itemType)||"MARKET2".equalsIgnoreCase(itemType)) {
@@ -2019,7 +2017,6 @@ public class BossAttackController {
 	        List<HashMap<String, Object>> rows =
 	                botNewService.selectInventoryRowsForSale(userName, roomName, itemId);
 
-	        String targetRowId = null;
 	        int currentQty = 0;
 
 	        if (rows != null) {
@@ -2036,7 +2033,6 @@ public class BossAttackController {
 	                if (q <= 0) continue;
 
 	                // 같은 ITEM_ID 한 줄만 관리한다고 가정 → 첫 행 사용
-	                targetRowId = rid;
 	                currentQty = q;
 	                break;
 	            }
@@ -2047,7 +2043,6 @@ public class BossAttackController {
             }
 
             // 최초 구매만 허용 (QTY=1)
-            finalQty = buyQty;
             HashMap<String, Object> inv = new HashMap<>();
             inv.put("userName", userName);
             inv.put("roomName", roomName);
@@ -2112,9 +2107,6 @@ public class BossAttackController {
 	    botNewService.insertPointRank(pr);
 
 	    // 구매 후 포인트
-	    Integer tmpAfter = null;
-	    
-	    
 	    SP afterUserPoint=null;
 	    try { 
 	    HashMap<String,Object> tmpAfterRow =
@@ -2402,18 +2394,19 @@ public class BossAttackController {
 
 
 	    StringBuilder sb = new StringBuilder();
-	      sb.append("■ 람쥐봇 게임즈 시즌2 상점 안내").append(NL)
+	      sb.append("■ 람쥐봇 게임즈 시즌2 상점").append(NL)
 		    .append("────────────────").append(NL)
 		    .append("■ 구매 방법").append(NL)
 		    .append(" - /구매 [아이템ID]").append(NL)
 		    .append(" - /구매 [카테고리]").append(NL)
-		    .append(NL)
-	
+		    .append("■ 다중 구매").append(NL)
+	        .append(" - /구매 101,102,401").append(NL)
+	        .append(" - /구매 목검,도씨검").append(NL)
+	        .append(NL)
 		    .append("■ 카테고리 바로가기").append(NL)
-		    .append(" - 신규 / 무기 / 투구 / 갑옷 / 반지 / 토템 / 행운 / 전설 / 날개 / 선물 / 물약").append(NL)
+		    .append(" - /구매 [전체, 신규 , 무기 , 투구 , 갑옷 , 반지 , 토템 , 행운 , 전설 , 날개 , 선물 , 물약]").append(NL)
 		    .append(NL)
-	
-		    .append("■ ID 범위 안내").append(NL)
+		    .append("■ 카테고리 범위").append(NL)
 		    .append(" - 000 : 신규 아이템").append(NL)
 		    .append(" - 100/1100/2100 : 무기").append(NL)
 		    .append(" - 200 : 투구").append(NL)
@@ -3426,7 +3419,6 @@ public class BossAttackController {
 	    }
 
 	    // 16) 현재 포인트
-	    int curPoint = 0;
 	    String curSpStr="";
 	    try {
 	    	HashMap<String,Object> pointRow =
@@ -3435,14 +3427,8 @@ public class BossAttackController {
 		    double curValue = Double.parseDouble(
 		        Objects.toString(pointRow.get("SCORE"), "0")
 		    );
-
 		    String curExt = Objects.toString(pointRow.get("SCORE_EXT"), "");
-
 		    SP userPoint = new SP(curValue, curExt);
-	    	
-	        //Integer p = botNewService.selectCurrentPoint(userName, roomName);
-	        //curPoint = (p == null ? 0 : p.intValue());
-		    
 		    curSpStr = userPoint.toString();
 	    } catch (Exception ignore) {}
 	    
@@ -3740,6 +3726,7 @@ public class BossAttackController {
 	    }
 
 	    // 2) 최근 6시간 라이징 스타(Top7)인지 확인
+		/*
 	    try {
 	        List<HashMap<String,Object>> rising = botNewService.selectRisingStarsTop5Last6h();
 	        if (rising != null) {
@@ -3756,7 +3743,31 @@ public class BossAttackController {
 	            }
 	        }
 	    } catch (Exception ignore) {}
+	    */
 
+		int bagCountToday = 0;
+
+	    try {
+	        bagCountToday = botNewService.selectTodayBagCount(userName);
+	    } catch (Exception ignore) {}
+
+	    // 🔹 일일 획득량 기반 확률 보정
+	    if (bagCountToday < 10) {
+	    	rtn_value *= 4.0;     // 14%
+	    }
+	    else if (bagCountToday < 20) {
+	    	rtn_value *= 3.0;     // 10.5%
+	    }
+	    else if (bagCountToday < 30) {
+	    	rtn_value *= 2.0;     // 7%
+	    }
+	    else if (bagCountToday < 40) {
+	    	rtn_value *= 0.3;    // 약 1%
+	    }else {
+	    	rtn_value *= 0;
+	    }
+		
+		
 	    try {
 	    	HashMap<String,Object> specialBuff = botNewService.selectActiveSpecialBuff();
 	    	if (specialBuff != null) {
@@ -3791,12 +3802,9 @@ public class BossAttackController {
 	    // 몬스터에 따른 가방 드랍 확률 (예시)
 	    double baseRate = BAG_DROP_RATE;
 	    
-	    // 2) 최근 가방/라이징스타 기반 보정 배율
 	    double pityMul = computeBagPityMultiplier(userName, roomName,buff);
 
-	    // 3) 최종 드랍율 (상한 50% 정도로 캡)
 	    double finalRate = baseRate * pityMul;
-	    //if (finalRate > 0.5) finalRate = 0.5;
 
 	    if (ThreadLocalRandom.current().nextDouble() >= finalRate) {
 	        return ""; // 드랍 실패 → 메시지 없음
@@ -4557,7 +4565,6 @@ public class BossAttackController {
 	    return sb.toString();
 	}
 
-	
 	private String renderMarketListForBuy(List<HashMap<String,Object>> items, String userName, boolean hiddenYn) {
 
 	    if (items == null || items.isEmpty()) {
@@ -4567,28 +4574,14 @@ public class BossAttackController {
 	    StringBuilder sb = new StringBuilder();
 
 	    sb.append("■").append(userName).append("님 상점 목록").append(NL)
-	      .append("────────────────").append(NL)
-	      .append("구매 방법").append(NL)
-	      .append(" - /구매 [아이템명]").append(NL)
-	      .append(" - /구매 [아이템ID]").append(NL)
-	      .append(NL)
-	      .append("다중 구매").append(NL)
-	      .append(" - /구매 101,102,401").append(NL)
-	      .append(" - /구매 목검,도씨검").append(NL)
-	      .append(NL)
-	      .append("카테고리 보기").append(NL)
-	      .append(" - /구매 전체").append(NL)
-	      .append(" - /구매 무기 / 투구 / 갑옷 / 반지 / 물약").append(NL)
-	      .append("────────────────")
-	      .append(ALL_SEE_STR);
+	      .append("────────────────").append(NL);
 
-	 // 🔹 포션 가격 계산용 컨텍스트 (1회만)
-
+	    // 🔹 포션 가격 계산용 컨텍스트
 	    boolean hasPotion = items.stream()
 	            .anyMatch(it -> "POTION".equalsIgnoreCase(String.valueOf(it.get("ITEM_TYPE"))));
 
 	    SP userPoint = new SP(0, "");
-	    
+
 	    if (hasPotion) {
 	        HashMap<String,Object> map = new HashMap<>();
 	        map.put("userName", userName);
@@ -4596,8 +4589,15 @@ public class BossAttackController {
 	        userPoint = ctx.lifetimeSp;
 	    }
 
-	    // 🔹 아이템 목록 출력
-	    for (HashMap<String,Object> it : items) {
+	    int splitIndex = 4;
+
+	    for (int i = 0; i < items.size(); i++) {
+
+	        if (!hiddenYn && i == splitIndex) {
+	            sb.append(NL).append("더보기..").append(ALL_SEE_STR).append(NL);
+	        }
+
+	        HashMap<String,Object> it = items.get(i);
 
 	        int itemId = safeInt(it.get("ITEM_ID"));
 	        String name = String.valueOf(it.get("ITEM_NAME"));
@@ -4610,16 +4610,8 @@ public class BossAttackController {
 	        boolean isEquip = "MARKET".equalsIgnoreCase(itemType);
 	        boolean isPotion = "POTION".equalsIgnoreCase(itemType);
 
-	        
-	        
-
-		    
-		    
-	        
-	        // 🔹 가격 계산
 	        String displayPrice = buildDisplayPrice(it, isPotion, itemId, userPoint);
 
-	        // 🔹 아이템 이름
 	        sb.append("[")
 	          .append(itemId)
 	          .append("] ")
@@ -4635,17 +4627,16 @@ public class BossAttackController {
 
 	        sb.append(NL);
 
-	        // 🔹 가격
 	        sb.append("↘가격: ").append(displayPrice).append("sp").append(NL);
 
-	        // 🔹 옵션
-	        sb.append("↘옵션: ").append(buildOptionText(it, isEquip, isPotion, ownQty, itemId)).append(NL)
+	        sb.append("↘옵션: ")
+	          .append(buildOptionText(it, isEquip, isPotion, ownQty, itemId))
+	          .append(NL)
 	          .append(NL);
 	    }
 
 	    return sb.toString();
 	}
-
 
 	private String buildDisplayPrice(HashMap<String,Object> it, boolean isPotion, int itemId, SP userPoint){
 
@@ -5793,6 +5784,8 @@ public class BossAttackController {
 	    	dropPrice = dropPrice*50;
 	    	m.monLv += NM_ADD_MON_LV;
 	    }
+	    
+	    SP dropSp= SP.fromSp(dropPrice);
 
 	    // ATK 범위 계산 (50% ~ 100%)
 	    int atkMin = (int) Math.floor(m.monAtk * 0.5);
@@ -5860,7 +5853,7 @@ public class BossAttackController {
 	    sb.append("▶ 보상: EXP ").append(effExp);
 	    if (hasPenalty) sb.append("▼");
 	    else if (hasBonus) sb.append("▲");
-	    sb.append(" / ").append(dropName).append(" ").append(dropPrice).append("sp")
+	    sb.append(" / ").append(dropName).append(" ").append(dropSp.toString()).append("sp")
 	      .append(NL);
 
 
@@ -7745,7 +7738,7 @@ public class BossAttackController {
 		        if (calc.monDmg > 0 && flags.monPattern == 2 || flags.monPattern == 4) {
 		        	//flags.monPattern =2 이면 2배 , 4이면 4배 
 		            int revengeDmg = (int) Math.round(calc.monDmg * flags.monPattern);
-		            int orgMonDmg = calc.monDmg ;
+		            //int orgMonDmg = calc.monDmg ;
 		            int newMonDmg = (int) Math.round(calc.monDmg*0.25) ;
 		            int revengeDmg2 =(int) Math.round((u.hpCur-newMonDmg) * calc.critMultiplier *0.2); 
 		            calc.atkDmg += revengeDmg;
