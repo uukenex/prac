@@ -31,7 +31,7 @@ public class MiniGameUtil {
 	            return "HP 100% 회복";
 
 	        case 1004:
-	            return "HP 10000 회복)";
+	            return "HP 10000 회복";
 
 	        case 1005:
 	            return "HP 100000 회복";

@@ -2244,10 +2244,10 @@ public class BossAttackController {
 	                .setNightmareYn(0)
 	        );
 	    	 return userName+"님, 부활했습니다. (+" + heal + ")"+NL
-		    		 +u.hpCur +" → "+newHp;
+		    		 +u.hpCur +" → "+newHp+" / "+ctx.finalHpMax;
 	    }else {
 	    	 return userName+"님, 체력이 회복되었습니다. (+" + heal + ")"+NL
-		    		 +u.hpCur +" → "+newHp;
+		    		 +u.hpCur +" → "+newHp +" / "+ ctx.finalHpMax;
 	    }
 	}
 	
@@ -3229,6 +3229,9 @@ public class BossAttackController {
 	    
 	    if ("처단자".equals(job) && !(m.monNo > 50) && willKill) {
 	        int monsterHp = m.monHp;
+	        if(nightmare) {
+	        	monsterHp *= 100;
+	        }
 	        int extraDrop = (calc.atkDmg / monsterHp) - 1;
 
 	        // 최대 추가 드랍 제한
