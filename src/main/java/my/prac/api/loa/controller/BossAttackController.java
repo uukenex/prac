@@ -67,6 +67,10 @@ public class BossAttackController {
 	private static final int BAG_NM_ITEM_ID = 92;
 	private static final double BAG_DROP_RATE = 0.035;//3.5%
 	
+	private static final int NM_MUL_HP_ATK = 100;
+	private static final int NM_MUL_EXP = 50;
+	private static final int NM_ADD_MON_LV = 150;
+	
 	/* ===== DI ===== */
 	@Autowired LoaPlayController play;
 	@Resource(name = "core.prjbot.BotService")        BotService botService;
@@ -101,6 +105,8 @@ public class BossAttackController {
 		return msg+" 모드로 변경완료"+NL+"[일반/나이트메어] 선택가능";
 	}
 	
+	
+	/*
 	public String roulette(HashMap<String, Object> map) {
 	    final String roomName = Objects.toString(map.get("roomName"), "");
 	    final String userName = Objects.toString(map.get("userName"), "");
@@ -137,6 +143,7 @@ public class BossAttackController {
 	        return "룰렛 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.";
 	    }
 	}
+	*/
 
 	public String bagLog(HashMap<String, Object> map) {
 		List<BagLog> logs = botNewService.selectRecentBagDrops();
@@ -705,7 +712,7 @@ public class BossAttackController {
 	                int monHpRemain = Math.max(0, m.monHp - ob.totalDealtDmg);
 
 	                if(nightmare) {
-	                	monMaxHp *=100;
+	                	monMaxHp *=NM_MUL_HP_ATK;
 	                }
 	                
 	                
@@ -722,7 +729,7 @@ public class BossAttackController {
 	            // 진행중 전투는 없지만 타겟몬은 있을 수 있음 (선택)
 	            Monster m = botNewService.selectMonsterByNo(u.targetMon);
 	            if(nightmare) {
-                	m.monHp *=100;
+                	m.monHp *=NM_MUL_HP_ATK;
                 }
 	            if (m != null) {
 	                sb.append(NL)
@@ -2644,9 +2651,9 @@ public class BossAttackController {
 	        monMaxHp = m.monHp;
 	     // 🔥 나이트메어 증폭
 	        if (nightmare) {
-	            monMaxHp *= nightmareMul;
-	            m.monAtk *= nightmareMul;
-	            m.monLv +=150;
+	            monMaxHp *= NM_MUL_HP_ATK;
+	            m.monAtk *= NM_MUL_HP_ATK;
+	            m.monLv +=NM_ADD_MON_LV;
 	        }
 	        
 	        lucky = (ob.luckyYn != null && ob.luckyYn == 1);
@@ -2697,10 +2704,10 @@ public class BossAttackController {
 	        monHpRemainBefore = m.monHp;
 	     // 🔥 나이트메어 증폭
 	        if (nightmare) {
-	            monMaxHp *= nightmareMul;
-	            monHpRemainBefore *= nightmareMul;
-	            m.monAtk *= nightmareMul;
-	            m.monLv +=150;
+	            monMaxHp *= NM_MUL_HP_ATK;
+	            monHpRemainBefore *= NM_MUL_HP_ATK;
+	            m.monAtk *= NM_MUL_HP_ATK;
+	            m.monLv +=NM_ADD_MON_LV;
 	        }
 	        
 	        // ★ 이 유저의 해당 몬스터 누적 킬 수 조회
@@ -3120,15 +3127,13 @@ public class BossAttackController {
 	    String stealPoint ="";
 	 
 	    if (res.killed &&nightmare) {
-	        res.gainExp *= 50;
+	        res.gainExp *= NM_MUL_EXP;
 	    }
 	    
 	    
-	    // 궁수: 획득 EXP +25%
+	    // 궁수: 획득 EXP +100%
 	    if ("궁수".equals(u.job)) {
-	        int baseExp = res.gainExp;
-	        int bonus   = (int)Math.floor(res.gainExp * 1.00);
-	        res.gainExp = baseExp + bonus;
+	        res.gainExp *= 2; 
 	    }
 
 	    // 도적: 훔치기
@@ -3230,7 +3235,7 @@ public class BossAttackController {
 	    if ("처단자".equals(job) && !(m.monNo > 50) && willKill) {
 	        int monsterHp = m.monHp;
 	        if(nightmare) {
-	        	monsterHp *= 100;
+	        	monsterHp *= NM_MUL_HP_ATK;
 	        }
 	        int extraDrop = (calc.atkDmg / monsterHp) - 1;
 
@@ -5783,9 +5788,10 @@ public class BossAttackController {
 	    int dropPrice = getDropPriceByName(dropName);
 
 	    if(nightmare) {
-	    	m.monAtk = m.monAtk*100;
-	    	m.monHp = m.monHp*100;
+	    	m.monAtk *= NM_MUL_HP_ATK;
+	    	m.monHp *= NM_MUL_HP_ATK;
 	    	dropPrice = dropPrice*50;
+	    	m.monLv += NM_ADD_MON_LV;
 	    }
 
 	    // ATK 범위 계산 (50% ~ 100%)
@@ -5806,6 +5812,9 @@ public class BossAttackController {
 	    }
 
 	    int effExp = (int)Math.round(baseExp * expMultiplier);
+	    if(nightmare) {
+	    	effExp *= NM_MUL_EXP; 
+	    }
 	    boolean hasPenalty = (levelGap >= 0 && expMultiplier < 1.0);
 	    boolean hasBonus   = (levelGap < 0  && expMultiplier > 1.0);
 
