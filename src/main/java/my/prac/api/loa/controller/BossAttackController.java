@@ -517,6 +517,24 @@ public class BossAttackController {
 	        ctx.shownCritDmg = 0;
 	    }
 	    
+	    if ("곰".equals(job)) {
+
+	        int atkSum = atkMinWithItem+atkMaxWithItem;
+	        int critMultiplier = baseCritDmg + bCriDmgRaw;
+
+	        finalHpMax = finalHpMax + (atkSum * critMultiplier/100);
+
+	        // 공격력은 의미 없음 → HP 기반으로 통일
+	        atkMinWithItem = finalHpMax;
+	        atkMaxWithItem = finalHpMax;
+
+	        // 곰은 크리 사용 안함
+	        ctx.shownCrit = 0;
+	        ctx.shownCritDmg = 0;
+	        baseCritDmg= 0;
+	        bCriDmgRaw=0;
+	        
+	    }
 
 	  
 
@@ -2994,7 +3012,8 @@ public class BossAttackController {
 	            berserkMul,
 	            monHpRemainBefore,
 	            effHpMax,
-	            beforeJobSkillYn
+	            beforeJobSkillYn,
+	            nightmare
 	    );
 		AttackCalc calc = dmg.calc;
 		flags = dmg.flags;
@@ -6873,7 +6892,8 @@ public class BossAttackController {
 	        double berserkMul,
 	        int monHpRemainBefore,
 	        int effHpMax,
-	        int beforeJobSkillYn
+	        int beforeJobSkillYn,
+	        boolean nightmareYn
 	) {
 	    DamageOutcome out = new DamageOutcome();
 	    AttackCalc calc = new AttackCalc();
@@ -7383,13 +7403,64 @@ public class BossAttackController {
 	    */
 	    //모든직업 berserk 는 상위에서 계산하도록 
     	baseAtk = (int) Math.round(berserkMul * baseAtk);
-	    
-	   
-
-	    
-	    
 	    int rawAtkDmg = crit ? (int) Math.round(baseAtk * critMultiplier) : baseAtk;
 
+	    if ("곰".equals(job)) {
+	    	// 🐻 공격 시 최대체력 10% 소모
+	        int hpCost = (int)Math.round(effHpMax * 0.10);
+	        int beforeHp = u.hpCur;
+	        u.hpCur = Math.max(1, u.hpCur - hpCost);
+
+	        out.dmgCalcMsg += "곰의 야성! 체력 -" + hpCost +
+	                " (" + beforeHp + " → " + u.hpCur + ")" + NL;
+
+	        if(nightmareYn) {
+	        	m.monHp *= NM_MUL_HP_ATK;
+	        }
+	        
+	        if (effHpMax < m.monHp) {
+
+	            baseAtk = 0;
+	            rawAtkDmg = 0;
+
+	            out.dmgCalcMsg += "곰의 힘이 부족하다... 공격 실패!" + NL;
+
+	        }else {
+
+	            double rnd = ThreadLocalRandom.current().nextDouble();
+
+	            // 2️⃣ 거짓 이벤트 (10%)
+	            if (rnd < 0.10) {
+
+	                baseAtk = 0;
+	                rawAtkDmg = 0;
+
+	                out.dmgCalcMsg += "달의 힘을 받아 문이 되었습니다... 공격 실패!" + NL;
+
+	            } else {
+
+	                // 3️⃣ 공격 성공 (즉사)
+	                baseAtk = monHpRemainBefore;
+	                rawAtkDmg = monHpRemainBefore;
+
+	                out.dmgCalcMsg += "곰은 몬스터를 찢었다!" + NL;
+
+	                // 4️⃣ 달의 힘 (10%)
+	                if (rnd < 0.20) {
+
+	                    int before = u.hpCur;
+	                    u.hpCur = effHpMax;
+
+	                    out.dmgCalcMsg += "달의 힘을 받아 체력 회복! "
+	                            + "(" + before + " → " + u.hpCur + "/" + effHpMax + ")" + NL;
+	                }
+	            }
+	        }
+
+	        
+	        
+	    }
+	    
 	    // -----------------------------
 	    // 3) 원턴킬 선판정
 	    // -----------------------------
@@ -8545,8 +8616,15 @@ public class BossAttackController {
 	    JOB_DEFS.put("축복술사", new JobDef(
 			"축복술사",
 			"▶ 당신을 축복합니다",
-			"⚔ 공격 시 플레이어 무작위한명에게 축복(부활.회복.주는피해증가)"+NL
+			"⚔ 공격 시 플레이어 무작위한명에게 축복(회복.데미지증가)"+NL
 			+"공격 쿨타임30분, 공격 후 직업변경 불가시간 30분"
+		));
+	    
+	    JOB_DEFS.put("곰", new JobDef(
+			"곰",
+			"▶ 만나면 도망가시오",
+			"⚔ 공격력,치명데미지가 체력으로변환, 공격 시 최대체력의 10%소모, 자신의체력보다 낮은체력 몬스터 즉사, 달의힘을 받는다(10%)"
+			
 		));
 	}
 	
