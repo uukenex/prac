@@ -3412,10 +3412,9 @@ public class BossAttackController {
 	                           + achvRewardMsg
 	                           + bagAchvMsg ;
 	               }
-
-	        bagDropMsg = tryDropBag(userName, roomName, m, nightmare,buff);
 	    }
-
+	    bagDropMsg = tryDropBag(userName, roomName, m, nightmare,buff);
+	    
 	    // 15) 메시지 구성
 	    int shownMin = effAtkMin;
 	    int shownMax = effAtkMax;
@@ -8146,6 +8145,9 @@ public class BossAttackController {
 	}
 	
 	private String resolveItemCategory(int itemId) {
+		if (itemId > 9000 && itemId < 10000) return "※유물";
+		if (itemId > 8000 && itemId < 90000) return "※업적";
+
 		for (EquipCategory c : MiniGameUtil.EQUIP_CATEGORIES) {
 	        if (c.contains(itemId)) {
 	            return "※" + c.name;
