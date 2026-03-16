@@ -37,6 +37,7 @@ import my.prac.core.game.dto.BagLog;
 import my.prac.core.game.dto.BagRewardLog;
 import my.prac.core.game.dto.BattleLog;
 import my.prac.core.game.dto.DamageOutcome;
+import my.prac.core.game.dto.EquipCategory;
 import my.prac.core.game.dto.Flags;
 import my.prac.core.game.dto.KillStat;
 import my.prac.core.game.dto.Monster;
@@ -2424,7 +2425,27 @@ public class BossAttackController {
 		    .append("■ 카테고리 바로가기").append(NL)
 		    .append(" - /구매 [전체, 신규 , 무기 , 투구 , 갑옷 , 반지 , 토템 , 행운 , 전설 , 날개 , 선물 , 물약]").append(NL)
 		    .append(NL)
-		    .append("■ 카테고리 범위").append(NL)
+		    .append("■ 카테고리 범위").append(NL);
+	      
+	      
+	      for (EquipCategory c : MiniGameUtil.EQUIP_CATEGORIES) {
+
+	    	  sb.append(" - ");
+
+	    	    for (int i = 0; i < c.ranges.length; i++) {
+
+	    	        int[] r = c.ranges[i];
+
+	    	        sb.append(r[0]);   // 시작값만 출력
+
+	    	        if (i < c.ranges.length - 1) {
+	    	            sb.append(",");
+	    	        }
+	    	    }
+
+	    	    sb.append(" : ").append(c.name).append(NL);
+	      }
+	      /*
 		    .append(" - 000 : 신규 아이템").append(NL)
 		    .append(" - 100/1100/2100 : 무기").append(NL)
 		    .append(" - 200 : 투구").append(NL)
@@ -2436,6 +2457,7 @@ public class BossAttackController {
 		    .append(" - 800 : 날개").append(NL)
 		    .append(" - 900 : 선물").append(NL)
 		    .append(" - 1000 : 물약").append(NL).append(NL);
+		    */
 	    return sb.toString();
 	}
 	// 멀티 구매 출력용: "101" → "목검" 같은 ITEM_NAME으로 바꿔줌
@@ -3263,14 +3285,14 @@ public class BossAttackController {
                         inv.put("userName", userName);
                         inv.put("roomName", roomName);
                         inv.put("itemId", itemId);
-                        inv.put("qty", 1+extraDrop);
+                        inv.put("qty", 2+extraDrop);
                         inv.put("delYn", "1");
                         inv.put("gainType", "STEAL");
                         botNewService.insertInventoryLogTx(inv);
-                        stealMsg = "✨ 날카로운 처단으로 추가획득 (+" + dropName +"조각"+(1+extraDrop)+ ")";
+                        stealMsg = "✨ 날카로운 처단으로 추가획득 (+" + dropName +"조각"+(2+extraDrop)+ ")";
                         calc.jobSkillUsed = true;
                     }
-                    stealPoint += " +" +baroSellItem(dropName,itemId,res,userName,roomName,ctx,u,"STEAL",(1+extraDrop),nightmare);
+                    stealPoint += " +" +baroSellItem(dropName,itemId,res,userName,roomName,ctx,u,"STEAL",(2+extraDrop),nightmare);
                     
                     
                 } catch (Exception ignore) {}
@@ -7777,19 +7799,20 @@ public class BossAttackController {
 	        }
 	        */
 	        if ("용사".equals(job) && calc.monDmg > 0 && !flags.finisher) {
-	            int reduced = (int) Math.floor(calc.monDmg * 0.5);
+	            int reduced = (int) Math.floor(calc.monDmg * 0.3);
 	            if (reduced < 1) reduced = 1;
 	            String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
-	            calc.patternMsg = baseMsg + "(받는 피해 50% 감소 → " + reduced + ")";
+	            calc.patternMsg = baseMsg + "(받는 피해 70% 감소 → " + reduced + ")";
 	            calc.monDmg = reduced;
 	        }
+	        /*
 	        if ("프리스트".equals(job) && calc.monDmg > 0 && !flags.finisher) {
 	            int reduced = (int) Math.floor(calc.monDmg * 0.8);
 	            if (reduced < 1) reduced = 1;
 	            String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
 	            calc.patternMsg = baseMsg + "(받는 피해 20% 감소 → " + reduced + ")";
 	            calc.monDmg = reduced;
-	        }
+	        }*/
 	        if ("어둠사냥꾼".equals(job) && calc.monDmg > 0 && !flags.finisher) {
 	        	int reduced = (int) Math.floor(calc.monDmg * 0.7);
 	        	if (reduced < 1) reduced = 1;
@@ -8009,22 +8032,12 @@ public class BossAttackController {
 	
 	// ===== 장비 카테고리별 최대 소지 수량 =====
 	private int getEquipCategoryMax(int itemId) {
-	    // 무기 (100번대): 최대 5개
-	    if ( 
-	    		(itemId > 100 && itemId <= 200) 
-	    	|| 	(itemId > 1100 && itemId <= 1200) 
-	    	|| 	(itemId > 2100 && itemId <= 2200)
-	    		) return 5;
-	    // 투구 (200번대): 1개
-	    if (itemId > 200 && itemId <= 300) return 1;
-	    // 갑옷 (400번대): 1개
-	    if (itemId > 400 && itemId <= 500) return 1;
-	    // 전설 (700번대): 1개
-	    if (itemId > 700 && itemId <= 800) return 1;
-	    // 날개 (800번대): 1개
-	    if (itemId > 800 && itemId <= 900) return 1;
+		for (EquipCategory c : MiniGameUtil.EQUIP_CATEGORIES) {
+	        if (c.contains(itemId)) {
+	            return c.max;
+	        }
+	    }
 
-	    // 나머지는 제한 없음
 	    return Integer.MAX_VALUE;
 	}
 
@@ -8044,32 +8057,12 @@ public class BossAttackController {
 	 *  - 여기서 말하는 카테고리는 위 제한이 걸리는 4개(무기/투구/갑옷/전설)
 	 */
 	private boolean isSameEquipCategory(int baseItemId, int otherItemId) {
-	    // 무기
-	    if (	(baseItemId > 100  && baseItemId <= 200)
-	    	||	(baseItemId > 1100 && baseItemId <= 1200)
-	    	||	(baseItemId > 2100 && baseItemId <= 2200)
-	    		) {
-	        return (  (otherItemId >  100 && otherItemId <= 200)
-	        		||(otherItemId > 1100 && otherItemId <= 1200)
-	        		||(otherItemId > 2100 && otherItemId <= 2200)
-	        		);
+		for (EquipCategory c : MiniGameUtil.EQUIP_CATEGORIES) {
+	        if (c.contains(baseItemId) && c.contains(otherItemId)) {
+	            return true;
+	        }
 	    }
-	    // 투구
-	    if (baseItemId >= 200 && baseItemId < 300) {
-	        return (otherItemId >= 200 && otherItemId < 300);
-	    }
-	    // 갑옷
-	    if (baseItemId >= 400 && baseItemId < 500) {
-	        return (otherItemId >= 400 && otherItemId < 500);
-	    }
-	    // 날개
-	    if (baseItemId >= 800 && baseItemId < 900) {
-	    	return (otherItemId >= 800 && otherItemId < 900);
-	    }
-	    // 전설
-	    if (baseItemId >= 700 && baseItemId < 800) {
-	        return (otherItemId >= 700 && otherItemId < 800);
-	    }
+
 	    return false;
 	}
 
@@ -8148,61 +8141,31 @@ public class BossAttackController {
 	}
 	
 	private String resolveItemCategory(int itemId) {
-	    if (itemId > 100  && itemId < 200)  return "※무기";   // 100번대
-	    if (itemId > 1100 && itemId < 1200)  return "※무기";   // 1100번대
-	    if (itemId > 2100 && itemId < 2200)  return "※무기";   // 2100번대
-	    if (itemId > 200  && itemId < 300)  return "※투구";   // 200번대
-	    if (itemId > 300  && itemId < 400)  return "※행운";   // 300번대
-	    if (itemId > 400  && itemId < 500)  return "※갑옷";   // 400번대
-	    if (itemId > 500  && itemId < 600)  return "※반지";   // 500번대
-	    if (itemId > 600  && itemId < 700)  return "※토템";   // 600번대
-	    if (itemId > 700  && itemId < 800)  return "※전설";   // 700번대
-	    if (itemId > 800  && itemId < 900)  return "※날개";   // 800번대
-	    if (itemId > 900  && itemId < 1000) return "※선물";   // 900번대
-	    if (itemId > 1000  && itemId < 1100) return "※물약";   // 900번대
-	    if (itemId > 8000 && itemId < 9000) return "※업적"; // 9000번대 
-	    if (itemId > 9000 && itemId < 10000) return "※유물"; // 9000번대 
+		for (EquipCategory c : MiniGameUtil.EQUIP_CATEGORIES) {
+	        if (c.contains(itemId)) {
+	            return "※" + c.name;
+	        }
+	    }
+
 	    return "※기타";
 	}
 	// 카테고리명 또는 숫자로 범위를 구하는 함수
 	private int[] resolveCategoryRange(String raw) {
-	    if (raw == null) return null;
+		if (raw == null) return null;
 	    String s = raw.trim();
 
 	    if (s.isEmpty()) return null;
 
-	    // 1) 문자 카테고리 먼저 처리
-	    switch (s) {
-	        case "무기": return new int[]{100, 200};
-	        case "진무기": return new int[]{1100, 1200};
-	        case "극무기": return new int[]{2100, 2200};
-	        case "투구": return new int[]{200, 300};
-	        case "행운": return new int[]{300, 400};
-	        case "갑옷": return new int[]{400, 500};
-	        case "반지": return new int[]{500, 600};
-	        case "토템": return new int[]{600, 700};
-	        case "전설": return new int[]{700, 800};
-	        case "날개": return new int[]{800, 900};
-	        case "선물": return new int[]{900, 1000};
-	        case "물약": return new int[]{1000, 1100};
-	        //case "유물": return new int[]{9000, 10000};
+	    // 문자 카테고리
+	    for (EquipCategory c : MiniGameUtil.EQUIP_CATEGORIES) {
+	        if (c.matchAlias(s)) {
+	            return c.firstRange();
+	        }
 	    }
 
-	    // 2) 숫자인 경우: "100", "200", "9000" 같이 "00"으로 끝나는 것만 카테고리로 취급
-	    if (s.matches("\\d+")) {
-	        // 끝이 "00"이 아니면 카테고리 아님 → 단일 구매로 내려가게 null 리턴
-	        if (!s.endsWith("00")) {
-	            return null;
-	        }
-
-	        int num;
-	        try {
-	            num = Integer.parseInt(s);
-	        } catch (NumberFormatException e) {
-	            return null;
-	        }
-
-	        // 100 → [100,200), 200 → [200,300), 9000 → [9000,9100) (원하면 여기 커스텀 가능)
+	    // 숫자 카테고리
+	    if (s.matches("\\d+") && s.endsWith("00")) {
+	        int num = Integer.parseInt(s);
 	        return new int[]{num, num + 100};
 	    }
 

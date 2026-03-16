@@ -1,10 +1,12 @@
 package my.prac.core.util;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
-import my.prac.core.game.dto.UserBattleContext;
+import my.prac.core.game.dto.EquipCategory;
 
 public class MiniGameUtil {
 	public static final Map<Integer, Double[]> RATE_MAP_WEAPON = new HashMap<>();
@@ -17,6 +19,80 @@ public class MiniGameUtil {
 	
 	public static final LinkedHashMap<Integer, Integer> ACHV_REWARD_MAP = new LinkedHashMap<>();
 	public static final Map<String,String> SLOT_MAP = new HashMap<>();
+	public static final List<EquipCategory> EQUIP_CATEGORIES = new ArrayList<>();
+
+	static {
+
+		EQUIP_CATEGORIES.add(
+		        new EquipCategory("무기", 5,
+		            new int[][]{{100,200},{1100,1200},{2100,2200}},
+		            "무기","진무기","극무기"
+		        )
+		    );
+
+		    EQUIP_CATEGORIES.add(
+		        new EquipCategory("투구", 1,
+		            new int[][]{{200,300},{1200,1300}},
+		            "투구","진투구"
+		        )
+		    );
+
+		    EQUIP_CATEGORIES.add(
+		        new EquipCategory("행운", Integer.MAX_VALUE,
+		            new int[][]{{300,400}},
+		            "행운"
+		        )
+		    );
+
+		    EQUIP_CATEGORIES.add(
+		        new EquipCategory("갑옷", 1,
+		            new int[][]{{400,500},{1400,1500}},
+		            "갑옷","진갑옷"
+		        )
+		    );
+
+		    EQUIP_CATEGORIES.add(
+		        new EquipCategory("반지", Integer.MAX_VALUE,
+		            new int[][]{{500,600}},
+		            "반지"
+		        )
+		    );
+
+		    EQUIP_CATEGORIES.add(
+		        new EquipCategory("토템", Integer.MAX_VALUE,
+		            new int[][]{{600,700}},
+		            "토템"
+		        )
+		    );
+
+		    EQUIP_CATEGORIES.add(
+		        new EquipCategory("전설", 1,
+		            new int[][]{{700,800}},
+		            "전설"
+		        )
+		    );
+
+		    EQUIP_CATEGORIES.add(
+		        new EquipCategory("날개", 1,
+		            new int[][]{{800,900}},
+		            "날개"
+		        )
+		    );
+		    
+		    EQUIP_CATEGORIES.add(
+		        new EquipCategory("선물", 1,
+		            new int[][]{{900,1000}},
+		            "선물"
+		        )
+		    );
+		    EQUIP_CATEGORIES.add(
+		        new EquipCategory("물약", 1,
+		            new int[][]{{1000,1100}},
+		            "물약"
+		        )
+		    );
+
+	}
 	
 	public static String getPotionOptionText(int itemId){
 	    switch(itemId){
