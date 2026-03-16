@@ -5139,6 +5139,7 @@ public class BossAttackController {
 	    if (lv >= 100) bonus += (lv - 99) * 60;  
 	    if (lv >= 150) bonus += (lv - 149) * 120;
 	    if (lv >= 200) bonus += (lv - 199) * 200; 
+	    if (lv >= 250) bonus += (lv - 249) * 270; 
 		
 	    return base+bonus;
 	}
@@ -5150,6 +5151,8 @@ public class BossAttackController {
 	    if (lv >= 80)  bonus += (lv - 79) * 1;
 	    if (lv >= 150) bonus += (lv - 149) * 2;
 	    if (lv >= 190) bonus += (lv - 189) * 3;
+	    if (lv >= 230) bonus += (lv - 229) * 4;
+	    if (lv >= 270) bonus += (lv - 269) * 5;
 
 	    return base + bonus;
 	}
@@ -5164,6 +5167,8 @@ public class BossAttackController {
 	    if (lv >= 150) bonus += (lv - 149) * 4;
 	    if (lv >= 180) bonus += (lv - 179) * 5;
 	    if (lv >= 210) bonus += (lv - 209) * 6;
+	    if (lv >= 240) bonus += (lv - 239) * 7;
+	    if (lv >= 270) bonus += (lv - 269) * 8;
 
 	    return base + bonus;
 	}
