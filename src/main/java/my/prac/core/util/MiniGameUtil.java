@@ -80,7 +80,7 @@ public class MiniGameUtil {
 		    );
 		    
 		    EQUIP_CATEGORIES.add(
-		        new EquipCategory("선물", 1,
+		        new EquipCategory("선물", Integer.MAX_VALUE,
 		            new int[][]{{900,1000}},
 		            "선물"
 		        )
