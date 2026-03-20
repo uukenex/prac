@@ -2846,10 +2846,19 @@ public class BossAttackController {
 	    }
 	    
 	    
-	    
+	    SpecialBuffResult buff = handleSpecialBuff();
 
+	    int cooldownBuff = 0;
+	    HashMap<String,Object> activeBuff = buff.activeBuff;
+	    if (activeBuff != null) {
+	    	if( "쿨타임".equals(activeBuff.get("FLAG_CODE"))){
+	    		cooldownBuff = Integer.parseInt(activeBuff.get("EFFECT_VALUE").toString());
+	    	}
+	    }
+	    
+	    
 	    // 7) 쿨타임 체크 (param1 그대로 사용)
-	    CooldownCheck cd = checkCooldown(userName, roomName, param1, job);
+	    CooldownCheck cd = checkCooldown(userName, roomName, param1, job,cooldownBuff);
 	    if (!cd.ok) {
 	        long min = cd.remainSeconds / 60;
 	        long sec = cd.remainSeconds % 60;
@@ -2982,10 +2991,7 @@ public class BossAttackController {
 
 	    u.hunterGrade = ctx.hunterGrade;
 	    
-	    SpecialBuffResult buff = handleSpecialBuff();
-	    
-	    
-	    HashMap<String,Object> activeBuff = buff.activeBuff;
+	    //HashMap<String,Object> activeBuff = buff.activeBuff;
 	    if (activeBuff != null) {
 	    	if( "공격력".equals(activeBuff.get("FLAG_CODE"))){
 
@@ -3657,7 +3663,17 @@ public class BossAttackController {
 	                            ThreadLocalRandom.current().nextInt(100, 501);
 	                    durationMin = randomDuration(effectValue);
 	                    break;
-	
+	                case 4:
+	                    flagCode = "쿨타임";
+	                    effectType = "고정값";
+	                    effectValue = 1;
+	                    durationMin = 10;
+	                    break;
+	                case 5:
+	                    flagCode = "나메가방";
+	                    effectValue = 1;
+	                    durationMin = 3;
+	                    break;
 	                default:
 	                    return result;
 	            }
@@ -3738,6 +3754,10 @@ public class BossAttackController {
 		if ("가방".equals(flagCode)) {
 			return "가방확률 " + (int) effectValue + "배";
 		}
+		
+		if ("나메가방".equals(flagCode)) {
+			return "나메가방확정 타임";
+		}
 
 		if ("공격력".equals(flagCode)) {
 			return "공격력 " + (int) ((effectValue - 1) * 100) + "% 증가";
@@ -3750,20 +3770,22 @@ public class BossAttackController {
 		if ("치피".equals(flagCode)) {
 			return "치명타피해 +" + (int) effectValue + "%";
 		}
+		
+		if ("쿨타임".equals(flagCode)) {
+			return "공격쿨타임 +" + (int) effectValue + "분 감소";
+		}
 
 		return flagCode;
 	}
 	
 	
-	private double computeBagPityMultiplier(String userName, String roomName,SpecialBuffResult buff) {
+	private double computeBagPityMultiplier(String userName, String roomName,double buffRate) {
 
 	    // 1) 최근 가방 먹은 사람인지 확인
 		double rtn_value = 1;
 		
 		//스페셜버프준사람은 획득함 ,100%획득
-		if(buff.started) {
-	    	return 1/BAG_DROP_RATE ;
-	    }
+		
 
 	    // 2) 최근 6시간 라이징 스타(Top7)인지 확인
 		/*
@@ -3807,62 +3829,61 @@ public class BossAttackController {
 	    	rtn_value *= 0;
 	    }
 		
-		
-	    try {
-	    	HashMap<String,Object> specialBuff = botNewService.selectActiveSpecialBuff();
-	    	if (specialBuff != null) {
-	    	    String flag = (String) specialBuff.get("FLAG_CODE");
-	    	    if ("가방".equals(flag)) {
-
-	    	        String type = (String) specialBuff.get("EFFECT_TYPE");
-	    	        double value =
-	    	            Double.parseDouble(specialBuff.get("EFFECT_VALUE").toString());
-
-	    	        if ("배율".equals(type)) {
-	    	        	rtn_value *=value;
-	    	        } else {
-	    	            //finalRate += value;
-	    	        }
-	    	    }
-	    	}
-	    } catch (Exception ignore) {}
-	    /*
-	    if (isRising) {
-	        // 열심히 때렸는데 최근 가방 기록은 없는 사람 → 드랍율 4배
-	        return 5.0;
+	    if(buffRate >0) {
+	    	rtn_value *= buffRate; 
 	    }
-	    */
 	    
 	    // 기본값: 보정 없음
 	    return rtn_value;
 	}
 	
-	private String tryDropBag(String userName, String roomName, Monster m, boolean nightmare,SpecialBuffResult buff) {
+	
+	private String tryDropBag(String userName, String roomName, Monster m, boolean nightmare, SpecialBuffResult buff) {
+	    double buffRate = 0.0;
+	    boolean forceNmBagDrop = false;
 
-	    // 몬스터에 따른 가방 드랍 확률 (예시)
-	    double baseRate = BAG_DROP_RATE;
-	    
-	    double pityMul = computeBagPityMultiplier(userName, roomName,buff);
-
-	    double finalRate = baseRate * pityMul;
-
-	    if (ThreadLocalRandom.current().nextDouble() >= finalRate) {
-	        return ""; // 드랍 실패 → 메시지 없음
+	    // 개별 버프: 확정 드랍 + 나메 가방
+	    if (buff != null && buff.started) {
+	        forceNmBagDrop = true;
 	    }
 
-	    
-	    
-	    int bagItemId = BAG_ITEM_ID;
-
-	    double rnd = ThreadLocalRandom.current().nextDouble();
-        if (rnd < 0.20) {
-        	 bagItemId = nightmare ? BAG_NM_ITEM_ID : BAG_ITEM_ID;
-        }
-	    
-	    
-	    // 인벤토리에 가방 1개 추가
+	    // 전체 특수 버프
 	    try {
-	        HashMap<String,Object> inv = new HashMap<>();
+	        HashMap<String, Object> specialBuff = botNewService.selectActiveSpecialBuff();
+	        if (specialBuff != null) {
+	            String flagCode = String.valueOf(specialBuff.get("FLAG_CODE"));
+	            Object effectValueObj = specialBuff.get("EFFECT_VALUE");
+
+	            if ("가방".equals(flagCode)) {
+	                if (effectValueObj != null) {
+	                    buffRate = Double.parseDouble(String.valueOf(effectValueObj));
+	                }
+	            } else if ("나메가방".equals(flagCode)) {
+	                forceNmBagDrop = true;
+	            }
+	        }
+	    } catch (Exception ignore) {
+	    }
+
+	    // 강제 드랍이 아닐 때만 확률 계산
+	    if (!forceNmBagDrop) {
+	        double pityMul = computeBagPityMultiplier(userName, roomName, buffRate);
+	        double finalRate = BAG_DROP_RATE * pityMul;
+
+	        if (ThreadLocalRandom.current().nextDouble() >= finalRate) {
+	            return "";
+	        }
+	    }
+
+	    int bagItemId = BAG_ITEM_ID;
+	    if (forceNmBagDrop) {
+	        bagItemId = BAG_NM_ITEM_ID;
+	    } else if (nightmare && ThreadLocalRandom.current().nextDouble() < 0.20) {
+	        bagItemId = BAG_NM_ITEM_ID;
+	    }
+	    
+	    try {
+	        HashMap<String, Object> inv = new HashMap<>();
 	        inv.put("userName", userName);
 	        inv.put("roomName", roomName);
 	        inv.put("itemId", bagItemId);
@@ -3872,18 +3893,13 @@ public class BossAttackController {
 
 	        botNewService.insertInventoryLogTx(inv);
 
-	        String ment = "";
-	        if(bagItemId == BAG_NM_ITEM_ID) {
-	        	ment = "복주머니가방";
-	        }else {
-	        	ment = "세티노의비밀가방";
-	        }
-	        
-	        return "" + m.monName + "이(가) "+ment+"을 떨어뜨렸습니다! (/가방열기 로 열 수 있습니다.)";
+	        String bagName = (bagItemId == BAG_NM_ITEM_ID) ? "복주머니가방" : "세티노의비밀가방";
+	        return m.monName + "이(가) " + bagName + "을 떨어뜨렸습니다! (/가방열기 로 열 수 있습니다.)";
 	    } catch (Exception e) {
 	        return "";
 	    }
 	}
+
 	
 	public String sellItem(HashMap<String, Object> map) throws Exception {
 
@@ -4826,10 +4842,14 @@ public class BossAttackController {
 	    return sb.toString();
 	}
 	
-	private CooldownCheck checkCooldown(String userName, String roomName, String param1, String job) {
+	private CooldownCheck checkCooldown(String userName, String roomName, String param1, String job, int buffTime) {
 	    if ("test".equals(param1)) return CooldownCheck.ok();
 
 	    int baseCd = COOLDOWN_SECONDS; // 2분
+	    
+	    if(buffTime > 0) {
+	    	baseCd -= 1 * 60;
+	    }
 	    
 	    if ("축복술사".equals(job)) {
 	    	baseCd = 30 * 60; // 30분
@@ -5537,7 +5557,7 @@ public class BossAttackController {
 	    if ("test".equals(param1)) return null; // 테스트 모드 패스
 
 	    int regenWaitMin = minutesUntilReach30(u, userName, roomName);
-	    CooldownCheck cd = checkCooldown(userName, roomName, param1, u.job);
+	    CooldownCheck cd = checkCooldown(userName, roomName, param1, u.job ,0);
 
 	    long remainMin = cd.remainSeconds / 60;
 	    long remainSec = cd.remainSeconds % 60;
