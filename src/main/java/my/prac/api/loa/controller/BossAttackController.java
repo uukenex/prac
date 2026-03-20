@@ -3653,7 +3653,7 @@ public class BossAttackController {
 
 	        	switch (flagCode) {
 	        	    case "가방":
-	        	        effectValue = ThreadLocalRandom.current().nextInt(3, 11);
+	        	        effectValue = ThreadLocalRandom.current().nextInt(3, 8); //3~7
 	        	        durationMin = randomDuration(effectValue);
 	        	        break;
 
@@ -7422,7 +7422,7 @@ public class BossAttackController {
 
 	                baseAtk = 0;
 	                rawAtkDmg = 0;
-
+	                calc.jobSkillUsed = true;
 	                out.dmgCalcMsg += "달의 힘을 받아 문이 되었습니다... 공격 실패!" + NL;
 
 	            } else {
@@ -7438,7 +7438,7 @@ public class BossAttackController {
 
 	                    int before = u.hpCur;
 	                    u.hpCur = effHpMax;
-
+	                    calc.jobSkillUsed = true;
 	                    out.dmgCalcMsg += "달의 힘을 받아 체력 회복! "
 	                            + "(" + before + " → " + u.hpCur + "/" + effHpMax + ")" + NL;
 	                }
@@ -7501,28 +7501,8 @@ public class BossAttackController {
 	        		break;
 	        	case 1:
 	        		if(!flags.finisher && calc.monDmg > 0) {
-	        			int monLv = m.monNo;
 	        			double evadeRate = 0.90;
-	    	            switch (monLv) {
-		    	            case 30:
-		    	            	evadeRate -= 0.05;
-		    	            case 29:
-		    	            	evadeRate -= 0.05;
-	    		            case 28:
-	    		            	evadeRate -= 0.05;
-	    		            case 27:
-	    		            	evadeRate -= 0.05;
-	    		            case 26:
-	    		            	evadeRate -= 0.05;
-	    		            case 25:
-	    		            	evadeRate -= 0.05;
-	    		            case 24:
-	    		            	evadeRate -= 0.05;
-	    		            case 23:
-	    		            	evadeRate -= 0.05;
-	    		            case 22:
-	    		            	evadeRate -= 0.05;    
-	    	            }
+	    	            
 
 	    	            if (ThreadLocalRandom.current().nextDouble() < evadeRate) {
 	    	                String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
