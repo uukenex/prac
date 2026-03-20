@@ -5,6 +5,15 @@ import java.io.Serializable;
 public class AttackDeathStat {
 	public int totalAttacks;
 	public int totalDeaths;
+	public int hunterAttacks;
+
+	public int getHunterAttacks() {
+		return hunterAttacks;
+	}
+
+	public void setHunterAttacks(int hunterAttacks) {
+		this.hunterAttacks = hunterAttacks;
+	}
 
 	public int getTotalAttacks() {
         return totalAttacks;

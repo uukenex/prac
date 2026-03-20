@@ -346,8 +346,11 @@ public class BossAttackController {
 	                    botNewService.selectAttackDeathStats(targetUser, "");
 
 	            int totalAttacks = (ads == null ? 0 : ads.totalAttacks);
+	            int hunterAttacks = (ads == null ? 0 : ads.hunterAttacks);
 	            int totalDeaths  = (ads == null ? 0 : ads.totalDeaths);
-
+	            totalAttacks +=hunterAttacks*2;
+	            totalDeaths  += hunterAttacks;
+	            
 	            // 3️⃣ 드랍 수
 	            List<HashMap<String,Object>> drops =
 	                    botNewService.selectTotalDropItems(targetUser);
@@ -363,10 +366,10 @@ public class BossAttackController {
 	            }
 
 	            // ───── 기본 변환 ─────
-	            int hunterAtkBonus    = totalAttacks / 10;
-	            int hunterHpBonus     = totalDrops;
-	            int hunterRegenBonus  = totalDrops / 10;
-	            int hunterCriDmgBonus = totalDeaths / 10;
+	            int hunterAtkBonus    = totalAttacks / 5;
+	            int hunterHpBonus     = totalDrops /5; //20%
+	            int hunterRegenBonus  = totalDrops / 50; //2%
+	            int hunterCriDmgBonus = totalDeaths / 5;
 
 	            // ───── 등급 점수 계산 ─────
 	            String hunterGrade;
@@ -6019,73 +6022,46 @@ public class BossAttackController {
 	}
 	
 	/** 통산 킬수 업적 보상 */
-	private int calcTotalKillReward(int threshold,boolean nightmareYn) {
-		
-		int val = 0;
-		
-	    switch (threshold) {
-	    	case 1:  val = 50; break;
-	        case 300:  val = 100; break;
-	        case 500:  val = 300; break;
-	        case 1000: val = 500; break;
-	        case 2000: val = 1000; break;
-	        case 3000: val = 3000; break;
-	        case 4000: val = 10000; break;
-	        case 5000: val = 50000; break;
-	        case 6000: val = 50000; break;
-	        case 7000: val = 100000; break;
-	        case 8000: val = 100000; break;
-	        case 9000: val = 150000; break;
-	        case 10000: val = 150000; break;
-	        case 11000: val = 200000; break;
-	        case 12000: val = 200000; break;
-	        case 13000: val = 250000; break;
-	        case 14000: val = 250000; break;
-	        case 15000: val = 300000; break;
-	        case 16000: val = 300000; break;
-	        case 17000: val = 300000; break;
-	        case 18000: val = 300000; break;
-	        case 19000: val = 300000; break;
-	        case 20000: val = 400000; break;
-	        case 21000: val = 400000; break;
-	        case 22000: val = 400000; break;
-	        case 23000: val = 450000; break;
-	        case 24000: val = 450000; break;
-	        case 25000: val = 500000; break;
-	        case 26000: val = 500000; break;
-	        case 27000: val = 550000; break;
-	        case 28000: val = 550000; break;
-	        case 29000: val = 600000; break;
-	        case 30000: val = 600000; break;
-	        case 31000: val = 700000; break;
-	        case 32000: val = 700000; break;
-	        case 33000: val = 750000; break;
-	        case 34000: val = 750000; break;
-	        case 35000: val = 800000; break;
-	        case 36000: val = 800000; break;
-	        case 37000: val = 850000; break;
-	        case 38000: val = 850000; break;
-	        case 39000: val = 900000; break;
-	        case 40000: val = 900000; break;/*
-	        case 41000: val = 1000000; break;
-	        case 42000: val = 1000000; break;
-	        case 43000: val = 1100000; break;
-	        case 44000: val = 1200000; break;
-	        case 45000: val = 1200000; break;
-	        case 46000: val = 1300000; break;
-	        case 47000: val = 1300000; break;
-	        case 48000: val = 1400000; break;
-	        case 49000: val = 1400000; break;
-	        case 50000: val = 1500000; break;
-	        */
-	        default:   val = 0;
+	private int calcTotalKillReward(int threshold, boolean nightmareYn) {
+
+	    int val;
+
+	    // 특별 보너스 구간
+	    if (threshold == 1) {
+	        val = 10000;
+	    } else if (threshold == 1000) {
+	        val = 1000000;
+	    } else if (threshold == 10000) {
+	        val = 10000000;
+	    } else if (threshold == 50000) {
+	        val = 100000000;
+	    } else {
+	        // 기본 보상 (천 단위 포함 전부 여기로)
+	        val = threshold * 255;
 	    }
-	    
-	    if(nightmareYn) {
-	    	val *= 20;
+
+	    return nightmareYn ? val * 3 : val;
+	}
+	
+	
+	private int[] buildKillThresholds(int maxThreshold) {
+	    List<Integer> list = new ArrayList<>();
+
+	    list.add(1);
+	    list.add(50);
+	    list.add(100);
+	    list.add(300);
+	    list.add(500);
+
+	    for (int th = 1000; th <= maxThreshold; th += 1000) {
+	        list.add(th);
 	    }
-	    
-	    return val;
+
+	    int[] arr = new int[list.size()];
+	    for (int i = 0; i < list.size(); i++) {
+	        arr[i] = list.get(i);
+	    }
+	    return arr;
 	}
 	/**
 	 * 몬스터별(50/100킬) + 통산 킬 업적 처리
@@ -6104,7 +6080,7 @@ public class BossAttackController {
 	    int totalKills = 0;
 	    int totalNmKills = 0;
 
-	    int[] perMonThresholds = {1,50,100,300,500,1000,2000,3000,4000,5000,6000,7000,8000,9000,10000};
+	    int[] perMonThresholds = buildKillThresholds(50000);
 
 	    for (KillStat ks : ksList) {
 	        int monNo = ks.monNo;
@@ -6128,13 +6104,7 @@ public class BossAttackController {
 	        }
 	    }
 
-	    int[] totalThresholds = {
-	        1,50,100,300,500,1000,2000,3000,4000,5000,
-	        6000,7000,8000,9000,10000
-	        ,11000,12000,13000,14000,15000,16000,17000,18000,19000,20000
-	        ,21000,22000,23000,24000,25000,26000,27000,28000,29000,30000
-	        ,31000,32000,33000,34000,35000,36000,37000,38000,39000,40000
-	    };
+	    int[] totalThresholds =buildKillThresholds(100000);
 
 	    for (int th : totalThresholds) {
 	        if (totalKills < th) break;
@@ -8599,7 +8569,7 @@ public class BossAttackController {
 	    JOB_DEFS.put("헌터", new JobDef(
 			"헌터",
 			"▶ 이세계에서 넘어온 실력자, 그들은 랭크에 따라 강력한 능력을 가진다",
-			"⚔ 공격횟수의 최대 10% 만큼 공격력증가, 아이템드랍획득수의 최대 10%만큼 체력,1%만큼 리젠증가, 죽음횟수의 최대 10%만큼 치명데미지증가"+NL
+			"⚔ 공격횟수의 최대 20% 만큼 공격력증가, 아이템드랍획득수의 최대 20%만큼 체력,2%만큼 리젠증가, 죽음횟수의 최대 20%만큼 치명데미지증가"+NL
 			+"치명타확률 100%초과시 치명타데미지로 전환증가"
 		));
         
