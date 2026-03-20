@@ -2955,7 +2955,7 @@ public class BossAttackController {
 	    
 	    
 	    try {
-	        String hpMsg = buildBelowHalfMsg(userName, roomName, u, param1);
+	        String hpMsg = buildBelowHalfMsg(userName, roomName, u, param1, cooldownBuff);
 	        if (!"사신".equals(job)) {
 	        	if (hpMsg != null) {
 		        	return hpMsg;
@@ -5556,11 +5556,11 @@ public class BossAttackController {
 
 	    return toNextTick + (ticksNeeded - 1) * 5;
 	}
-	private String buildBelowHalfMsg(String userName, String roomName, User u, String param1) {
+	private String buildBelowHalfMsg(String userName, String roomName, User u, String param1, int cooldownBuff) {
 	    if ("test".equals(param1)) return null; // 테스트 모드 패스
 
 	    int regenWaitMin = minutesUntilReach30(u, userName, roomName);
-	    CooldownCheck cd = checkCooldown(userName, roomName, param1, u.job ,0);
+	    CooldownCheck cd = checkCooldown(userName, roomName, param1, u.job ,cooldownBuff);
 
 	    long remainMin = cd.remainSeconds / 60;
 	    long remainSec = cd.remainSeconds % 60;
