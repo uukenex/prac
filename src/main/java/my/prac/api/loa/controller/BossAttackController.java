@@ -3634,7 +3634,7 @@ public class BossAttackController {
 	        if (ThreadLocalRandom.current().nextDouble() < chance) {
 
 	        	// 🔥 1️⃣ 랜덤 버프 타입 선택
-	            int type = ThreadLocalRandom.current().nextInt(1, 4);
+	            int type = ThreadLocalRandom.current().nextInt(1, 6); //1~5
 	            String flagCode;
 	            String effectType = "배율";
 	            double effectValue;
