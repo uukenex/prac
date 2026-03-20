@@ -781,6 +781,7 @@ public class LoaChatController {
 					passYn = true;
 		            return val;
 		        }
+				passYn = true;
 				val = boss.buyItem(reqMap);
 				break;
 			case "/판매": case "/ㅍㅁ":
@@ -797,6 +798,7 @@ public class LoaChatController {
 					passYn = true;
 		            return val;
 		        }
+				passYn = true;
 				val = boss.changeJob(reqMap);
 				break;
 			case "/모드": case "/ㅁㄷ":
@@ -822,6 +824,7 @@ public class LoaChatController {
 					passYn = true;
 		            return val;
 		        }
+				passYn = true;
 				val = boss.bagLog(reqMap);
 				break;
 			case "/ㄱㅂㅇㅍ": case "/ㄱㅂㅇㄱ":
@@ -839,6 +842,7 @@ public class LoaChatController {
 					passYn = true;
 		            return val;
 		        }
+				passYn = true;
 				val = boss.showAttackRanking(reqMap);
 				break;
 			case "/공격정보": case "/ㄱㄱㅈㅂ": case "/가방": case "/ㄱㅂ":
@@ -855,6 +859,7 @@ public class LoaChatController {
 					passYn = true;
 		            return val;
 		        }
+				passYn = true;
 				val = boss.invenInfo(reqMap);
 				break;
 			case "/ㄱㄱㄱㅈ": case "/공격공지": case "/공지": 
@@ -863,6 +868,7 @@ public class LoaChatController {
 					passYn = true;
 		            return val;
 		        }
+				passYn = true;
 				val = boss.patchNote(reqMap);
 				break;
 				/*
@@ -886,6 +892,7 @@ public class LoaChatController {
 					passYn = true;
 		            return val;
 		        }
+				passYn = true;
 				reqMap.put("monNo", param1);
 				val = boss.changeTarget(reqMap);
 				break;
