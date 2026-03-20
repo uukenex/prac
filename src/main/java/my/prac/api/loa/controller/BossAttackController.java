@@ -39,6 +39,8 @@ import my.prac.core.game.dto.BattleLog;
 import my.prac.core.game.dto.DamageOutcome;
 import my.prac.core.game.dto.EquipCategory;
 import my.prac.core.game.dto.Flags;
+import my.prac.core.game.dto.JobChangeReq;
+import my.prac.core.game.dto.JobDef;
 import my.prac.core.game.dto.KillStat;
 import my.prac.core.game.dto.Monster;
 import my.prac.core.game.dto.OngoingBattle;
@@ -556,7 +558,6 @@ public class BossAttackController {
 
 	    
 	    
-	    // ctx에 저장(attackInfo 노출용)
 	    ctx.dailyAtkBonus     = dailyAtkBonus;
 	    ctx.dailyCriDmgBonus  = dailyCdmgBonus;
 
@@ -690,7 +691,6 @@ public class BossAttackController {
 	    final int effRegen   = ctx.effRegen;    // 실제 적용 리젠(축복 포함/흡혈귀 처리 포함)
 	    //final boolean hasBless = ctx.hasBless;  // 운영자 축복 여부
 
-	    // 6) 유효 체력 계산 (attackInfo와 동일 함수 사용)
 	    int effHp = computeEffectiveHpFromLastAttack(targetUser, roomName, u, finalHpMax, effRegen);
 	    if (effHp > finalHpMax) effHp = finalHpMax;
 
@@ -1039,7 +1039,7 @@ public class BossAttackController {
 		    }
 
 		    // 5-1) 직업별 전직 조건 체크 (전사 100, 도적 100 같은 것들)
-		    List<JobChangeReq> reqList = JOB_CHANGE_REQS.get(newJob);
+		    List<JobChangeReq> reqList = MiniGameUtil.JOB_CHANGE_REQS.get(newJob);
 		    if (reqList != null && !reqList.isEmpty()) {
 		        StringBuilder sb = new StringBuilder();
 
@@ -1065,7 +1065,7 @@ public class BossAttackController {
 		    }
 
 		    // 5-2) 전체 공격 횟수 조건 체크
-		    Integer totalReq = JOB_CHANGE_TOTAL_REQS.get(newJob);
+		    Integer totalReq = MiniGameUtil.JOB_CHANGE_TOTAL_REQS.get(newJob);
 		    if (totalReq != null) {
 		        if (totalCnt < totalReq) {
 		            return "[" + newJob + "] 직업은 전체 공격 횟수 "
@@ -1432,52 +1432,45 @@ public class BossAttackController {
 	    // 누적 전투
 	    sb.append(allSeeStr);
 
-	    JobDef jobDef = JOB_DEFS.get(job);
+	    JobDef jobDef = MiniGameUtil.JOB_DEFS.get(job);
 	    if (jobDef != null && jobDef.attackLine != null && !jobDef.attackLine.isEmpty()) {
 	        sb.append(jobDef.attackLine).append(NL).append(NL);
 	    }
 	    // ─ ATK 상세 ─
-	    sb.append("⚔ATK: ").append(finalAtkMin).append(" ~ ").append(finalAtkMax).append(NL)
-	      .append("   └ 기본 (").append(baseMin).append("~").append(baseMax).append(")").append(NL)
-	      /*
-	      .append("   └ 시즌1 강화: ").append(weaponLv).append("강 (max+").append(weaponBonus).append(")").append(NL)
-	      */
-	      .append("   └ 아이템 (min").append(formatSigned(bAtkMinRaw))
-	      .append(", max").append(formatSigned(bAtkMaxRaw)).append(")").append(NL);
-	      
-	    
-	    if(ctx.dailyAtkBonus > 0) {
-	    	sb.append("   └ 룰렛 버프: ATK +").append(ctx.dailyAtkBonus).append(NL);
-	    }
-	    if(bAtkMaxRateRaw > 0) {
-	    	sb.append("   └ 최종공격력 (").append(formatSigned(bAtkMaxRateRaw)).append("%)").append(NL);
-	    }
-	    // ─ CRIT 상세 ─
-	    sb.append("⚔CRIT: ").append(shownCrit).append("%  CDMG ").append(shownCritDmg).append("%").append(NL)
-	      .append("   └ 기본 (").append(u.critRate).append("%, ").append(u.critDmg).append("%)").append(NL);
-	      
-
-	    if ("파이터".equals(job)) {
-	        sb.append("   └ 아이템 (CRIT")
-	          .append(formatSigned(bCriRaw))
-	          .append("%, CDMG ")
-	          .append(formatSigned(bCriDmgRaw))
-	          .append("%) [미적용]").append(NL);
-	    } else {
-	        sb.append("   └ 아이템 (CRIT")
-	          .append(formatSigned(bCriRaw))
-	          .append("%, CDMG ")
-	          .append(formatSigned(bCriDmgRaw))
-	          .append("%)").append(NL);
+	    if("곰".equals(job)) {
+	    	sb.append("⚔ATK: ").append("최대체력으로 공격").append(NL);
+	    }else {
+	    	sb.append("⚔ATK: ").append(finalAtkMin).append(" ~ ").append(finalAtkMax).append(NL)
+		      .append("   └ 기본 (").append(baseMin).append("~").append(baseMax).append(")").append(NL)
+		      /*
+		      .append("   └ 시즌1 강화: ").append(weaponLv).append("강 (max+").append(weaponBonus).append(")").append(NL)
+		      */
+		      .append("   └ 아이템 (min").append(formatSigned(bAtkMinRaw))
+		      .append(", max").append(formatSigned(bAtkMaxRaw)).append(")").append(NL);
+	    	 if(ctx.dailyAtkBonus > 0) {
+	 	    	sb.append("   └ 룰렛 버프: ATK +").append(ctx.dailyAtkBonus).append(NL);
+	 	    }
+	 	    if(bAtkMaxRateRaw > 0) {
+	 	    	sb.append("   └ 최종공격력 (").append(formatSigned(bAtkMaxRateRaw)).append("%)").append(NL);
+	 	    }
+		      
 	    }
 	    
-	    if(ctx.dailyCriDmgBonus > 0) {
-	    	sb.append("   └ 룰렛 버프 (CRIT")
-	        .append(formatSigned(0))
-	        .append("%, CDMG ")
-	        .append(formatSigned(ctx.dailyCriDmgBonus))
-	        .append("%)").append(NL);
-		    
+	    if("곰".equals(job)) {
+	    	
+	    }else {
+	    	// ─ CRIT 상세 ─
+		    sb.append("⚔CRIT: ").append(shownCrit).append("%  CDMG ").append(shownCritDmg).append("%").append(NL)
+		      .append("   └ 기본 (").append(u.critRate).append("%, ").append(u.critDmg).append("%)").append(NL);
+			sb.append("   └ 아이템 (CRIT").append(formatSigned(bCriRaw)).append("%, CDMG ").append(formatSigned(bCriDmgRaw)).append("%)").append(NL);
+			if(ctx.dailyCriDmgBonus > 0) {
+		    	sb.append("   └ 룰렛 버프 (CRIT")
+		        .append(formatSigned(0))
+		        .append("%, CDMG ")
+		        .append(formatSigned(ctx.dailyCriDmgBonus))
+		        .append("%)").append(NL);
+			    
+		    }
 	    }
 	    
 	    // ─ HP 상세 ─
@@ -2647,6 +2640,7 @@ public class BossAttackController {
 	    // -----------------------------
 	    // 5) 부활 처리만 (리젠 X) - 구버전 그대로
 	    // -----------------------------
+	    
 	    String reviveMsg = reviveAfter1hIfDead(userName, roomName, u, effHpMax, effRegen);
 	    boolean revivedThisTurn = false;
 	    if (reviveMsg != null) {
@@ -2671,7 +2665,6 @@ public class BossAttackController {
 	    
 	 // ✅ 나이트메어 모드 확인
 	    boolean nightmare = botNewService.isNightmareMode(userName, roomName);
-	    int nightmareMul = nightmare ? 100 : 1;
 	    
 	    boolean lucky = false;
 	    boolean dark = false; // 어둠몬스터 여부
@@ -3128,7 +3121,8 @@ public class BossAttackController {
 	            null,
 	            null,
 	            ctx.isReturnUser,
-	            nightmare
+	            nightmare,
+	            ctx
 	        );
 	    }
 	    
@@ -3479,7 +3473,8 @@ public class BossAttackController {
 	            midExtra.toString(),
 	            botExtra.toString(),
 	            ctx.isReturnUser,
-	            nightmare
+	            nightmare,
+	            ctx
 	    );
 
 	    if (!bonusMsg.isEmpty()) {
@@ -5375,7 +5370,8 @@ public class BossAttackController {
 	        String midExtraLines,
 	        String botExtraLines,
 	        boolean isReturnUser,
-	        boolean nightmare
+	        boolean nightmare,
+	        UserBattleContext ctx
 	) {
 	    StringBuilder sb = new StringBuilder();
 
@@ -5396,20 +5392,28 @@ public class BossAttackController {
 	        sb.append("✨ LUCKY MONSTER! (처치시 경험치×3, 빛 드랍)").append(NL);
 	    }
 
-	    // 치명타
-	    if (flags.atkCrit) sb.append("✨ 치명타!");
-	    if (u.blessYn==1) sb.append("✨축복(x1.5)!");
-	    
-	    sb.append(NL);
-	    
-	    // 데미지
-	    sb.append("⚔ 데미지: (").append(shownAtkMin).append("~").append(shownAtkMax).append(" ⇒ ");
-	    if (flags.atkCrit && calc.baseAtk > 0 && calc.critMultiplier >= 1.0) {
-	        sb.append(calc.baseAtk).append("*").append(trimDouble(calc.critMultiplier)).append("=>").append(calc.atkDmg);
-	    } else {
-	        sb.append(calc.atkDmg);
+	    if(u.job.equals("곰")) {
+	    	
+	    	sb.append(calc.atkDmg);
+		    sb.append(NL);
+	    }else {
+	    	// 치명타
+		    if (flags.atkCrit) sb.append("✨ 치명타!");
+		    if (u.blessYn==1) sb.append("✨축복(x1.5)!");
+		    sb.append(NL);
+		 // 데미지
+		    sb.append("⚔ 데미지: (").append(shownAtkMin).append("~").append(shownAtkMax).append(" ⇒ ");
+		    if (flags.atkCrit && calc.baseAtk > 0 && calc.critMultiplier >= 1.0) {
+		        sb.append(calc.baseAtk).append("*").append(trimDouble(calc.critMultiplier)).append("=>").append(calc.atkDmg);
+		    } else {
+		        sb.append(calc.atkDmg);
+		    }
+		    sb.append(")").append(NL);
 	    }
-	    sb.append(")").append(NL);
+	    
+	    
+	    
+	    
 
 	    if (midExtraLines != null && !midExtraLines.isEmpty()) {
 	        sb.append(midExtraLines).append(NL).append(NL);
@@ -5515,6 +5519,10 @@ public class BossAttackController {
 	// 이름은 기존 그대로 두고, 현재는 20% 기준으로 동작
 	private int minutesUntilReach30(User u, String userName, String roomName) {
 	    int threshold = (int)Math.ceil(u.hpMax * 0.05); // ✅ 5% 기준
+	    
+	    if(u.job.equals("곰")) {
+	    	threshold = (int)Math.ceil(u.hpMax * 0.05);
+	    }
 	    if (u.hpCur >= threshold) return 0;
 	    if (u.hpRegen <= 0) return Integer.MAX_VALUE;
 
@@ -6852,8 +6860,8 @@ public class BossAttackController {
 	    	dosaCriDmg = (int) Math.round(dosaAtkMax * 0.1);
 	    	eff.addAtkMin   = dosaLvBonus;
 		    eff.addAtkMax   = dosaLvBonus*3;
-		    eff.addCritRate = dosaLvBonus;
-		    eff.addCritDmg  = dosaCriDmg/2;
+		    eff.addCritRate = dosaLvBonus*2;
+		    eff.addCritDmg  = dosaCriDmg/10;
 		    eff.addHp       = dosaCriDmg*10;
 	    }
 	    return eff;
@@ -7903,7 +7911,7 @@ public class BossAttackController {
 		StringBuilder sb = new StringBuilder();
 		sb.append("♬ /직업 [직업명] 으로 전직 가능합니다.");
 	    sb.append("♬♬ 전직 가능한 직업 목록").append(ALL_SEE_STR);
-	    for (JobDef def : JOB_DEFS.values()) {
+	    for (JobDef def : MiniGameUtil.JOB_DEFS.values()) {
 	    	sb.append(def.name).append(":");
 	        sb.append(def.listLine).append(NL);
 	        sb.append(def.attackLine).append(NL).append(NL);
@@ -7918,32 +7926,11 @@ public class BossAttackController {
 		 if (raw == null) return null;
 		    String s = raw.trim();
 
-		    JobDef def = JOB_DEFS.get(s);
+		    JobDef def = MiniGameUtil.JOB_DEFS.get(s);
 		    return (def != null ? def.name : null);
 	}
 
 
-	private static class JobChangeReq {
-	    final String baseJob;   // 어떤 직업으로
-	    final int minCount;     // 몇 회 이상 공격해야 하는지
-
-	    JobChangeReq(String baseJob, int minCount) {
-	        this.baseJob = baseJob;
-	        this.minCount = minCount;
-	    }
-	}
-	// 직업 공통 정의
-	private static final class JobDef {
-	    final String name;       
-	    final String listLine;   
-	    final String attackLine; 
-
-	    JobDef(String name, String listLine, String attackLine) {
-	        this.name = name;
-	        this.listLine = listLine;
-	        this.attackLine = attackLine;
-	    }
-	}
 	
 	private long pickBiasedSp(long min, long max) {
 	    double r = ThreadLocalRandom.current().nextDouble(); // 0~1
@@ -8373,236 +8360,7 @@ public class BossAttackController {
 	}
 	
 	
-	// 직업 메타데이터 맵 (등록 순서 유지 위해 LinkedHashMap)
-	private static final Map<String, JobDef> JOB_DEFS = new LinkedHashMap<>();
-
-	static {
-	    // NL은 클래스에 이미 있는 상수라고 가정하고 그대로 사용
-	    JOB_DEFS.put("전사", new JobDef(
-	        "전사",
-	        "▶ 육체능력이 변경되며, 패링 스킬 추가 ",
-	        "⚔ 몬스터레벨에 따라 방어도 추가, 적의 필살기를 반격(20%),모든 적에게 데미지 추가(+40%)"
-	    ));
-
-	    
-	    JOB_DEFS.put("궁수", new JobDef(
-	        "궁수",
-	        "▶ 사냥감을 조준하는 집요한 추적자, 강력한 한방을 선사한다",
-	        "⚔ 기본공격 배율 3, EXP +100%, 공격시 7%확률로 강력한공격(dmg*7)"+NL
-	        +"- 쿨타임 10분으로 조정"
-	    ));
-	     
-	    JOB_DEFS.put("마법사", new JobDef(
-	        "마법사",
-	        "▶ 강력한 마법공격으로 몬스터의 방어태세를 무력화한다",
-	        "⚔ 몬스터가 방어시 방어를 무시하고 피해 2배를 줌, 보스의 필살기를 마나실드로 방어(30%데미지감소)"
-	    ));
-
-	    JOB_DEFS.put("도적", new JobDef(
-	        "도적",
-	        "▶ 날렵한 손놀림으로 적의공격을 피하며,아이템을 강탈한다",
-	        "⚔ 공격 시 40% 확률 추가 드랍(STEAL), 몬스터 기본 공격 80% 회피, [스틸,회피 no22부터 5%씩 감소] "
-	    ));
-	    
-	    /*
-	    JOB_DEFS.put("프리스트", new JobDef(
-    		"프리스트",
-    		"▶ 대사제의 축복을 받아 신성의힘으로 적을 물리친다",
-    		"⚔ 아이템 HP/리젠 효과 1.25배, 몬스터에게 받는 일반공격 피해 감소(20%), 언데드추가피해(+25%)"
-		));
-	    */
-	    JOB_DEFS.put("도사", new JobDef(
-	        "도사",
-	        "▶ 도를 닦아 깨달음을 얻은 위인",
-	        "⚔ 다음 공격하는 아군 강화(레벨*0.5만큼 능력강화,맥뎀*0.1만큼 치명뎀강화,"+NL+"매턴 공격시 자신 회복,자신의 럭키몬스터 등장 확률 증가"
-	    ));
-	    /*
-        JOB_DEFS.put("사신", new JobDef(
-            "사신",
-            "▶ 이름하야 죽음의 신, 죽지않는다",
-            "⚔ 드랍율-30%, 체력 0에서도 죽지 않음, 다크 몬스터 조우 불가"
-        ));*/
-        /*
-        JOB_DEFS.put("흡혈귀", new JobDef(
-            "흡혈귀",
-            "▶ 배가고프다, 나는 배가 고프다!",
-            "⚔ 공격시 준피해의 20% 흡혈(공격&흡혈 선계산, 후피해)[max: 최대체력의20%], hp리젠 아이템의 증감처리 미적용"
-        ));
-        */
-        JOB_DEFS.put("용기사", new JobDef(
-    		"용기사",
-    		"▶ 용족의 마지막 후예, 배신당한 아픔을 가지고 있다",
-    		"⚔ 아이템 HP/리젠 효과 2배, 100% 초과 치명타확률, 기본 치명타 데미지 초과분을 공격력으로 전환,치명타가 발생하지않음, 용족에 5배의 피해"
-        ));
-        
-        /*
-        JOB_DEFS.put("파이터", new JobDef(
-    		"파이터",
-    		"▶ 강인한 체력의 소유자, 체력이 낮아지면 적의 행동을 저지시킨다",
-    		"⚔ 공격력 최대치, 치명타 배율 및 치명타데미지 증가가 체력으로 전환(3배수,치명 미발생)"+NL+"본인의 체력이 낮아질수록 데미지 증가(추가 50%까지), 체력이 30%이하 일 때 적 행동저지(40%)"
-        ));
-        */
-        /*
-        JOB_DEFS.put("궁사2", new JobDef(
-    		"궁사2",
-    		"▶ 연속공격의 달인, 최대데미지와 최소공격력 차이가 클수록 연속공격한다(테스트모드)",
-    		"⚔ 최대-최소 데미지 차이 280 마다 1연사 추가공격(추가공격데미지 고정)"
-		));
-        */
-        JOB_DEFS.put("저격수", new JobDef(
-    		"저격수",
-    		"▶ 숨어서 급소를 노리는 암살자, 극강의 공격력을 선사한다",
-    		"⚔ 기본공격데미지(+100%), 공격력이 항상 중간값으로 고정, 최대체력-50%"+NL+
-    		  "*조우 은엄폐 이후, *저격 - *이동 패턴을 반복"+NL+
-    		  "*조우 은엄폐, *저격(13% headShot) 시 모든 행동 무시, *이동 시 20%확률 모든 행동 무시"
-        ));
-        
-        
-        JOB_DEFS.put("궁사", new JobDef(
-    		"궁사",
-    		"▶ 연속공격의 달인, 최대데미지와 최소공격력 차이가 클수록 연속공격한다",
-    		"⚔ 기본공격 배율 1.2, 최대-최소 데미지 차이 최대데미지의10%마다(최소280) 1연사 추가공격(각 구간 별 공격은 개별치명타율 최대80%)"+NL
- 	         +"◎선행조건 : 공격횟수 3000회 "
-        ));
-
-        
-        JOB_DEFS.put("용사", new JobDef(
-	        "용사",
-	        "▶ 선택 받은 자",//어둠몹에 피해두배 ,언데드추뎀25% ,스틸30%, 10%확률 완전회복
-	        "⚔ 기본 HP*2 만큼 추가 증가, 어둠몬스터에 추가피해(+50%), 언데드 추가피해(+25%), 공격시 steal(60%), 데미지감소(50%), 기본데미지 * 1.4"+NL
-	        +"◎선행조건 전사,도적,도사 직업으로 각 150회 공격"
-	    ));
-	     
-	    
-	    JOB_DEFS.put("처단자", new JobDef(
-	        "처단자",
-	        "▶ 신을 모독하는 자는 그의 손에서 살아남을수 없다, 물론 모독을 안했어도 말이지..! ",
-	        "⚔ 기본공격 배율 1.4, 방어파괴(파괴시 dmg+150%), 처치시 스틸(100%, OVERKILL 시 추가획득), 빛몬스터에 추가피해(+50%)"+NL
-	        +"◎선행조건 마법사,도적 직업으로 각 150회 공격"
-	    ));
-	    /*
-	    JOB_DEFS.put("제너럴", new JobDef(
-	        "제너럴",
-	        "▶ 블랙필드에서는 누구도 따라잡을자가 없다!",
-	        "⚔ 조우시 (*은엄폐-저격 or *회피기동전술) 이후 *회피기동전술을 다회 반복"+NL
-	        +"*조우 은엄폐(공격x or 폭격[hidden]), *저격(13% headShot) 시 모든 행동 무시, *회피기동전술 시 - hidden -,기본공격력 * 1.2"+NL
-	        +"◎선행조건 저격수,전사 직업으로 각 150회 공격"
-	    ));*/
-	    
-	    JOB_DEFS.put("검성", new JobDef(
-	        "검성",
-	        "▶ 검으로 세상 끝에 닿았다",
-	        "⚔ 기본 HP*2만큼 추가 증가, 적의 공격 반격(15%),기본데미지*2.5"+NL
-	        +"◎선행조건 전사 직업으로 1000회 공격"
-	    ));
-	    /*
-	    JOB_DEFS.put("어쎄신", new JobDef(
-    		"어쎄신",
-    		"▶ 그의 암습은 누구도 피할수없다.상대가 누구일 지라도",
-    		"⚔ 공격 시 STEAL(30%,100킬 당 5%씩 증가,max 80%), 몬스터 기본 공격 회피, 필살기를 확률 회피, 기본데미지*1.3"+NL
-    		+"◎선행조건 도적 직업으로 1000회 공격"
-		));
-	    */
-	    JOB_DEFS.put("어둠사냥꾼", new JobDef(
-    		"어둠사냥꾼",
-    		"▶ 어둠이 있기에 그가 있다",
-    		"⚔ 아이템 HP/리젠 효과 1.25배, 몬스터에게 받는 일반공격 피해 감소(30%), 언데드추가피해(+75%), 몬스터의 강제전투종료패턴 무시 후 추가데미지, 어둠몬스터에 추가데미지(+150%) "+NL
-    		+"◎선행조건 용기사 직업으로 각 150회 공격"
-		));
-	    JOB_DEFS.put("복수자", new JobDef(
-    		"복수자",
-    		"▶ 원념에 의한 복수자",
-    		"⚔ 기본공격 배율 0.2, 반사공격시 받는피해감소(75%), 몬스터의 일반공격/필살 시 받은피해를 돌려줌  "+NL
-    		+"◎선행조건 전사, 저격수 직업으로 각 100회 공격"
-		));
-	    
-	    JOB_DEFS.put("도박사", new JobDef(
-    		"도박사",
-    		"▶ ???",
-    		"⚔ 공격시 도박하여 배율 공격, 피격시 도박하여 회피 "+NL
-    		+"◎선행조건 어둠사냥꾼, 복수자 직업으로 각 100회 공격"
-		));
-	    
-	    JOB_DEFS.put("음양사", new JobDef(
-    		"음양사",
-    		"▶ 음양의 이치를 깨달은 도사",
-    		"⚔ 기본공격 배율 1.6, 다음 공격하는 아군 강화, 매턴 공격시 자신 회복, 음양몬스터 출연 "+NL
-    		+"◎선행조건 도사 직업으로 1000회 공격"
-		));
-	    
-	    JOB_DEFS.put("헌터", new JobDef(
-			"헌터",
-			"▶ 이세계에서 넘어온 실력자, 그들은 랭크에 따라 강력한 능력을 가진다",
-			"⚔ 공격횟수의 최대 20% 만큼 공격력증가, 아이템드랍획득수의 최대 20%만큼 체력,2%만큼 리젠증가, 죽음횟수의 최대 20%만큼 치명데미지증가"+NL
-			+"치명타확률 100%초과시 치명타데미지로 전환증가, 헌터로 공격횟수만큼 등급산정 배율증가 "+NL
-		));
-        
-	    JOB_DEFS.put("축복술사", new JobDef(
-			"축복술사",
-			"▶ 당신을 축복합니다",
-			"⚔ 공격 시 플레이어 무작위한명에게 축복(회복.데미지증가),100레벨당 축복인원1명추가증가"+NL
-			+"공격 쿨타임30분, 공격 후 직업변경 불가시간 30분"
-		));
-	    
-	    JOB_DEFS.put("곰", new JobDef(
-			"곰",
-			"▶ 만나면 도망가시오",
-			"⚔ 공격력,치명데미지가 체력으로변환, 공격 시 최대체력의 10%소모, 자신의체력보다 낮은체력 몬스터 즉사, 달의힘을 받는다(10%)"
-			
-		));
-	}
 	
-	// 목표직업 -> 요구조건 리스트
-	private static final Map<String, List<JobChangeReq>> JOB_CHANGE_REQS = new HashMap<>();
-	// 목표직업 -> 전체 공격 횟수 요구
-	private static final Map<String, Integer> JOB_CHANGE_TOTAL_REQS = new HashMap<>();
-	
-	static {
-	    // 용사 = 전사 300회 + 도적 300회 공격해야 전직 가능
-	    JOB_CHANGE_REQS.put("용사", Arrays.asList(
-	        new JobChangeReq("전사", 150),
-	        new JobChangeReq("도적", 150),
-	        new JobChangeReq("도사", 150)
-	        //new JobChangeReq("프리스트", 150)
-	    ));
-	    JOB_CHANGE_REQS.put("처단자", Arrays.asList(
-    		new JobChangeReq("마법사", 150),
-    		new JobChangeReq("도적", 150)
-		));
-	    /*
-	    JOB_CHANGE_REQS.put("제너럴", Arrays.asList(
-    		new JobChangeReq("저격수", 150),
-    		new JobChangeReq("전사", 150)
-		));*/
-	    JOB_CHANGE_REQS.put("검성", Arrays.asList(
-    		new JobChangeReq("전사", 1000)
-		));
-	    /*
-	    JOB_CHANGE_REQS.put("어쎄신", Arrays.asList(
-	    	new JobChangeReq("도적", 1000)
-		));*/
-	    JOB_CHANGE_REQS.put("어둠사냥꾼", Arrays.asList(
-	    	//new JobChangeReq("프리스트", 150),
-	    	new JobChangeReq("용기사", 150)
-		));
-	    JOB_CHANGE_REQS.put("복수자", Arrays.asList(
-			new JobChangeReq("전사", 100),
-			new JobChangeReq("저격수", 100)
-		));
-	    JOB_CHANGE_REQS.put("도박사", Arrays.asList(
-    		new JobChangeReq("어둠사냥꾼", 100),
-    		new JobChangeReq("복수자", 100)
-		));
-	    JOB_CHANGE_REQS.put("음양사", Arrays.asList(
-	    	new JobChangeReq("도사", 1000)
-		));
-	    
-	    
-	    
-	    // 용사 = 전체 공격 1000회 이상
-	    JOB_CHANGE_TOTAL_REQS.put("궁사", 3000);
-	    
-	}
 }
 
 

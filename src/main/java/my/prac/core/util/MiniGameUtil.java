@@ -9,9 +9,12 @@ import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
 import my.prac.core.game.dto.EquipCategory;
+import my.prac.core.game.dto.JobChangeReq;
+import my.prac.core.game.dto.JobDef;
 import my.prac.core.game.dto.SpecialBuffOption;
 
 public class MiniGameUtil {
+	private static final String NL = "♬";
 	public static final Map<Integer, Double[]> RATE_MAP_WEAPON = new HashMap<>();
 	public static final Map<Integer, Double[]> RATE_MAP_ACC = new HashMap<>();
 	public static final Map<Integer, int[]> POW_MAP_ACC = new HashMap<>();
@@ -24,6 +27,266 @@ public class MiniGameUtil {
 	public static final Map<String,String> SLOT_MAP = new HashMap<>();
 	public static final List<EquipCategory> EQUIP_CATEGORIES = new ArrayList<>();
 
+// 직업 메타데이터 맵 (등록 순서 유지 위해 LinkedHashMap)
+	public static final Map<String, JobDef> JOB_DEFS = new LinkedHashMap<>();
+
+	static {
+	    JOB_DEFS.put("전사", new JobDef(
+	        "전사",
+	        "⚔용감한 전사, 누구보다 앞서 싸운다",
+	        "▶[기본기강화] 공격 배율 140%"+NL
+	       +"▶[방어태세] 몬스터레벨에 따라 방어도 추가"+NL
+	       +"▶[패링] 적의 필살기를 반격(20%)"+NL
+	    ));
+	    
+	    JOB_DEFS.put("궁수", new JobDef(
+    	    "궁수",
+    	    "🏹사냥감을 조준하는 집요한 추적자",
+    	    "▶[기본기강화] 공격배율 300%"+NL
+    	   +"▶[사냥꾼의경험] EXP +100%"+NL
+    	   +"▶[저격] 공격 시 7% 확률 강력한 공격 (7배 데미지)"+NL
+    	   +"▶[재장전] 공격 쿨타임 2분 -> 10분"
+    	));
+
+    	JOB_DEFS.put("마법사", new JobDef(
+    	    "마법사",
+    	    "🧙강력한 마법으로 적의 방어를 무력화한다",
+    	    "▶[화염구] 몬스터 방어시 방어를 무시하고 100% 추가데미지"+NL
+    	   +"▶[마나실드] 몬스터 필살기 시 피해 30% 감소"+NL
+    	));
+
+    	JOB_DEFS.put("도적", new JobDef(
+    	    "도적",
+    	    "🗡날렵하게 공격을 회피하고 아이템을 훔친다",
+    	    "▶[스틸] 공격 시 40% 확률 추가 드랍"+NL
+    	   +"▶[도적의회피] 몬스터 기본 공격 80% 회피"+NL
+    	));
+	    
+        JOB_DEFS.put("궁사", new JobDef(
+    	    "궁사",
+    	    "🏹연속공격의 달인",
+    	    "▶[기본기강화] 공격배율 120%"+NL
+    	   +"▶[연사] (최대데미지-최소데미지)/10(최소280) 마다 연사(최대10연사)"+NL
+    	   +"▶[정밀연사] 연사 화살 전체크리시 추가데미지 30%(개별치명타율 최대 80%)"+NL
+    	   +"◎선행조건 : 공격횟수 3000회"
+    	));
+
+        JOB_DEFS.put("용사", new JobDef(
+    	    "용사",
+    	    "🛡선택 받은 자",
+    	    "▶[기본기강화] 공격배율 140%, HP배율 200%"+NL
+    	   +"▶[빛의용사] 어둠 몬스터 추가피해 +50%, 언데드 몬스터 추가피해 +25%, 받는 데미지 50% 감소"+NL
+    	   +"▶[가난한용사] 공격 시 60% 확률 추가 드랍"+NL
+    	   +"◎선행조건 : 전사, 도적 직업으로 각 150회 공격"
+    	));
+	    
+        JOB_DEFS.put("처단자", new JobDef(
+    	    "처단자",
+    	    "⚔신을 모독하는 자, 처단한다",
+    	    "▶[기본기강화] 공격 배율 140%"+NL
+    	   +"▶[화염철퇴] 몬스터 방어시 방어를 무시하고 150% 추가데미지"+NL
+    	   +"▶[처단] 처치 시 추가드랍(OVERKILL 시 추가 획득,최대7개)"+NL
+    	   +"▶[이단심문] 빛 몬스터 추가피해 +50%"+NL
+    	   +"◎선행조건 : 마법사, 도적 직업으로 각 150회 공격"
+    	));
+        
+        JOB_DEFS.put("검성", new JobDef(
+    	    "검성",
+    	    "🗡검으로 세상 끝에 닿은 자",
+    	    "▶[기본기강화] 공격배율 250%, HP배율 200%"+NL
+    	   +"▶[패링] 적의 모든공격을 반격(15%)"+NL
+    	   +"◎선행조건 : 전사 직업으로 1000회 공격"
+    	));
+	    
+        JOB_DEFS.put("어둠사냥꾼", new JobDef(
+    	    "어둠사냥꾼",
+    	    "🌑어둠이 있기에 그가 있다",
+    	    "▶[기본기강화] 아이템으로상승하는 HP/리젠 효과 +25%"+NL
+    	   +"▶[기척차단] 몬스터 일반공격 받는 피해 30% 감소"+NL
+    	   +"▶[어둠사냥] 언데드 몬스터 추가피해 +75%"+NL
+    	   +"▶[어둠사냥II] 어둠 몬스터 추가피해 +150%"+NL
+    	   +"▶[기습] 강제 전투종료 패턴 무시 후 추가데미지"+NL
+    	));
+        
+        JOB_DEFS.put("복수자", new JobDef(
+    	    "복수자",
+    	    "🔥원념으로 되돌려주는 복수자",
+    	    "▶[기본기강화] 공격배율 20%"+NL
+    	   +"▶[강화육체] 받는 피해 75% 감소"+NL
+    	   +"▶[베르그아베스타] 몬스터 일반,필살 공격 피해반사, 남은체력 추가데미지"+NL
+    	   +"◎선행조건 : 전사 직업으로 100회 공격"
+    	));
+	    
+        JOB_DEFS.put("도박사", new JobDef(
+    	    "도박사",
+    	    "🎲모든 것을 운에 건 승부사",
+    	    "▶[도박] 공격,피격 시 도박하여 공격,회피"+NL
+    	   +"◎선행조건 : 어둠사냥꾼, 복수자 직업으로 각 100회 공격"
+    	));
+	    
+        JOB_DEFS.put("음양사", new JobDef(
+    	    "음양사",
+    	    "☯음양의 이치를 깨달은 도사",
+    	    "▶[기본기강화] 공격 배율 160%"+NL
+    	   +"▶[강화] 공격 시 다음 아군 1명 강화"+NL
+    	   +"▶[회복] 공격 시 자신에게 힐 회복"+NL
+    	   +"▶[음양조화] 음양 몬스터 출현"+NL
+    	   +"◎선행조건 : 직업으로 1000회 공격"
+    	));
+
+        JOB_DEFS.put("헌터", new JobDef(
+    	    "헌터",
+    	    "🎯이세계에서 넘어온 실력자",
+    	    "▶[헌터의힘] 공격횟수의 최대 20%만큼 공격력 증가"+NL
+    	   +"▶[헌터의체력] 아이템 드랍 획득 수의 최대 20%만큼 체력 증가"+NL
+    	   +"▶[헌터의회복] 아이템 드랍 획득 수의 최대 2%만큼 리젠 증가"+NL
+    	   +"▶[헌터의죽음] 죽음횟수의 최대 20%만큼 치명타데미지 증가"+NL
+    	   +"▶[헌터의치명] 치명타확률 100% 초과분은 치명타데미지로 전환"+NL
+    	   +"▶[헌터의자격] 헌터 공격횟수에 따라 등급산정 시 하향적용"
+    	));
+        
+        JOB_DEFS.put("축복술사", new JobDef(
+    	    "축복술사",
+    	    "✨당신을 축복합니다",
+    	    "▶[축복] 공격 시 플레이어 무작위 1명에게 축복 부여 : 회복&데미지증가"+NL
+    	   +"▶[추가축복] 100레벨마다 축복 대상 1명 추가"+NL
+    	   +"▶[축복휴유증] 공격 쿨타임 30분, 직업변경 불가시간 30분"+NL
+    	));
+
+    	JOB_DEFS.put("곰", new JobDef(
+    	    "곰",
+    	    "🐻만나면 도망가시오",
+    	    "▶[곰의힘] 공격력과 치명타데미지를 체력으로 전환"+NL
+    	   +"▶[괴력] 자신보다 체력이 낮은 몬스터 즉사"+NL
+    	   +"▶[출혈] 공격 시 최대체력의 10% 소모"+NL
+    	   +"▶[달의힘] 공격 시 10% 확률로 달의힘을 받아 특수한 힘을 발현"
+    	));
+	    
+	    /*
+	    JOB_DEFS.put("프리스트", new JobDef(
+    		"프리스트",
+    		"▶ 대사제의 축복을 받아 신성의힘으로 적을 물리친다",
+    		"⚔ 아이템 HP/리젠 효과 1.25배, 몬스터에게 받는 일반공격 피해 감소(20%), 언데드추가피해(+25%)"
+		));
+	    */
+	    /*
+	    JOB_DEFS.put("도사", new JobDef(
+	        "도사",
+	        "▶ 도를 닦아 깨달음을 얻은 위인",
+	        "⚔ 다음 공격하는 아군 강화(레벨*0.5만큼 능력강화,맥뎀*0.1만큼 치명뎀강화,"+NL+"매턴 공격시 자신 회복,자신의 럭키몬스터 등장 확률 증가"
+	    ));
+	    */
+	    /*
+        JOB_DEFS.put("사신", new JobDef(
+            "사신",
+            "▶ 이름하야 죽음의 신, 죽지않는다",
+            "⚔ 드랍율-30%, 체력 0에서도 죽지 않음, 다크 몬스터 조우 불가"
+        ));*/
+        /*
+        JOB_DEFS.put("흡혈귀", new JobDef(
+            "흡혈귀",
+            "▶ 배가고프다, 나는 배가 고프다!",
+            "⚔ 공격시 준피해의 20% 흡혈(공격&흡혈 선계산, 후피해)[max: 최대체력의20%], hp리젠 아이템의 증감처리 미적용"
+        ));
+        */
+	    /*
+        JOB_DEFS.put("용기사", new JobDef(
+    		"용기사",
+    		"▶ 용족의 마지막 후예, 배신당한 아픔을 가지고 있다",
+    		"⚔ 아이템 HP/리젠 효과 2배, 100% 초과 치명타확률, 기본 치명타 데미지 초과분을 공격력으로 전환,치명타가 발생하지않음, 용족에 5배의 피해"
+        ));
+        */
+        /*
+        JOB_DEFS.put("파이터", new JobDef(
+    		"파이터",
+    		"▶ 강인한 체력의 소유자, 체력이 낮아지면 적의 행동을 저지시킨다",
+    		"⚔ 공격력 최대치, 치명타 배율 및 치명타데미지 증가가 체력으로 전환(3배수,치명 미발생)"+NL+"본인의 체력이 낮아질수록 데미지 증가(추가 50%까지), 체력이 30%이하 일 때 적 행동저지(40%)"
+        ));
+        */
+        /*
+        JOB_DEFS.put("궁사2", new JobDef(
+    		"궁사2",
+    		"▶ 연속공격의 달인, 최대데미지와 최소공격력 차이가 클수록 연속공격한다(테스트모드)",
+    		"⚔ 최대-최소 데미지 차이 280 마다 1연사 추가공격(추가공격데미지 고정)"
+		));
+        */
+	    /*
+        JOB_DEFS.put("저격수", new JobDef(
+    		"저격수",
+    		"▶ 숨어서 급소를 노리는 암살자, 극강의 공격력을 선사한다",
+    		"⚔ 기본공격데미지(+100%), 공격력이 항상 중간값으로 고정, 최대체력-50%"+NL+
+    		  "*조우 은엄폐 이후, *저격 - *이동 패턴을 반복"+NL+
+    		  "*조우 은엄폐, *저격(13% headShot) 시 모든 행동 무시, *이동 시 20%확률 모든 행동 무시"
+        ));
+        */
+    	/*
+	    JOB_DEFS.put("제너럴", new JobDef(
+	        "제너럴",
+	        "▶ 블랙필드에서는 누구도 따라잡을자가 없다!",
+	        "⚔ 조우시 (*은엄폐-저격 or *회피기동전술) 이후 *회피기동전술을 다회 반복"+NL
+	        +"*조우 은엄폐(공격x or 폭격[hidden]), *저격(13% headShot) 시 모든 행동 무시, *회피기동전술 시 - hidden -,기본공격력 * 1.2"+NL
+	        +"◎선행조건 저격수,전사 직업으로 각 150회 공격"
+	    ));*/
+    	/*
+	    JOB_DEFS.put("어쎄신", new JobDef(
+    		"어쎄신",
+    		"▶ 그의 암습은 누구도 피할수없다.상대가 누구일 지라도",
+    		"⚔ 공격 시 STEAL(30%,100킬 당 5%씩 증가,max 80%), 몬스터 기본 공격 회피, 필살기를 확률 회피, 기본데미지*1.3"+NL
+    		+"◎선행조건 도적 직업으로 1000회 공격"
+		));
+	    */
+	}
+		
+	// 목표직업 -> 요구조건 리스트
+	public static final Map<String, List<JobChangeReq>> JOB_CHANGE_REQS = new HashMap<>();
+	// 목표직업 -> 전체 공격 횟수 요구
+	public static final Map<String, Integer> JOB_CHANGE_TOTAL_REQS = new HashMap<>();
+	
+	static {
+	    // 용사 = 전사 300회 + 도적 300회 공격해야 전직 가능
+	    JOB_CHANGE_REQS.put("용사", Arrays.asList(
+	        new JobChangeReq("전사", 150),
+	        new JobChangeReq("도적", 150)
+	        //new JobChangeReq("도사", 150)
+	        //new JobChangeReq("프리스트", 150)
+	    ));
+	    JOB_CHANGE_REQS.put("처단자", Arrays.asList(
+    		new JobChangeReq("마법사", 150),
+    		new JobChangeReq("도적", 150)
+		));
+	    /*
+	    JOB_CHANGE_REQS.put("제너럴", Arrays.asList(
+    		new JobChangeReq("저격수", 150),
+    		new JobChangeReq("전사", 150)
+		));*/
+	    JOB_CHANGE_REQS.put("검성", Arrays.asList(
+    		new JobChangeReq("전사", 1000)
+		));
+	    /*
+	    JOB_CHANGE_REQS.put("어쎄신", Arrays.asList(
+	    	new JobChangeReq("도적", 1000)
+		));*/
+	    JOB_CHANGE_REQS.put("어둠사냥꾼", Arrays.asList(
+	    	//new JobChangeReq("프리스트", 150),
+	    	//new JobChangeReq("용기사", 150)
+		));
+	    JOB_CHANGE_REQS.put("복수자", Arrays.asList(
+			new JobChangeReq("전사", 100)
+			//new JobChangeReq("저격수", 100)
+		));
+	    JOB_CHANGE_REQS.put("도박사", Arrays.asList(
+    		new JobChangeReq("어둠사냥꾼", 100),
+    		new JobChangeReq("복수자", 100)
+		));
+	    JOB_CHANGE_REQS.put("음양사", Arrays.asList(
+	    	//new JobChangeReq("도사", 1000)
+		));
+	    
+	    // 용사 = 전체 공격 1000회 이상
+	    JOB_CHANGE_TOTAL_REQS.put("궁사", 3000);
+	    
+	}
+		
 	public static final List<SpecialBuffOption> SPECIAL_BUFF_OPTIONS = Arrays.asList(
 		    new SpecialBuffOption(10, "가방", "배율"),
 		    new SpecialBuffOption(30, "공격력", "배율"),
