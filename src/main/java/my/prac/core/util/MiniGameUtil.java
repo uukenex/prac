@@ -203,6 +203,8 @@ public class MiniGameUtil {
 	    ACHV_REWARD_MAP.put(350,8012);
 	    ACHV_REWARD_MAP.put(400,8013);
 	    ACHV_REWARD_MAP.put(500,8014);
+	    ACHV_REWARD_MAP.put(550,8015);
+	    ACHV_REWARD_MAP.put(600,8016);
 	}
 	
 	static {
