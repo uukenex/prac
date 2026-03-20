@@ -42,6 +42,7 @@ import my.prac.core.game.dto.Flags;
 import my.prac.core.game.dto.KillStat;
 import my.prac.core.game.dto.Monster;
 import my.prac.core.game.dto.OngoingBattle;
+import my.prac.core.game.dto.SpecialBuffOption;
 import my.prac.core.game.dto.SpecialBuffResult;
 import my.prac.core.game.dto.User;
 import my.prac.core.game.dto.UserBattleContext;
@@ -3019,6 +3020,13 @@ public class BossAttackController {
 
 		        effCriDmg += (int)value;
 	    	}
+	    	if( "치확".equals(activeBuff.get("FLAG_CODE"))){
+
+	    		double value =
+		                Double.parseDouble(activeBuff.get("EFFECT_VALUE").toString());
+
+		        effCritRate += (int)value;
+	    	}
 	    }
 	    
 	    boolean hasBless = (u.blessYn == 1);
@@ -3636,50 +3644,47 @@ public class BossAttackController {
 
 	        if (ThreadLocalRandom.current().nextDouble() < chance) {
 
-	        	// 🔥 1️⃣ 랜덤 버프 타입 선택
-	            int type = ThreadLocalRandom.current().nextInt(1, 6); //1~5
-	            String flagCode;
-	            String effectType = "배율";
-	            double effectValue;
-	            int durationMin;
-	            
-	            switch (type) {
-	
-	                // 👜 가방 확률 3~10배
-	                case 1:
-	                    flagCode = "가방";
-	                    effectValue = ThreadLocalRandom.current().nextInt(3, 11);
-	                    durationMin = randomDuration(effectValue);
-	                    break;
-	
-	                // ⚔ 공격력 10~50% 증가 (1.1 ~ 1.5배)
-	                case 2:
-	                    flagCode = "공격력";
-	                    effectValue = Math.round((1.1 + ThreadLocalRandom.current().nextDouble() * 0.4) * 100.0) / 100.0;
-	                    durationMin = randomDuration(effectValue);
-	                    break;
-	                // 💥 치명타 피해 +100~500%
-	                case 3:
-	                    flagCode = "치피";
-	                    effectType = "고정값";
-	                    effectValue =
-	                            ThreadLocalRandom.current().nextInt(100, 501);
-	                    durationMin = randomDuration(effectValue);
-	                    break;
-	                case 4:
-	                    flagCode = "쿨타임";
-	                    effectType = "고정값";
-	                    effectValue = 1;
-	                    durationMin = 10;
-	                    break;
-	                case 5:
-	                    flagCode = "나메가방";
-	                    effectValue = 1;
-	                    durationMin = 3;
-	                    break;
-	                default:
-	                    return result;
-	            }
+	        	SpecialBuffOption selected = MiniGameUtil.pickWeightedBuff(MiniGameUtil.SPECIAL_BUFF_OPTIONS);
+
+	        	String flagCode = selected.flagCode;
+	        	String effectType = selected.effectType;
+	        	double effectValue;
+	        	int durationMin;
+
+	        	switch (flagCode) {
+	        	    case "가방":
+	        	        effectValue = ThreadLocalRandom.current().nextInt(3, 11);
+	        	        durationMin = randomDuration(effectValue);
+	        	        break;
+
+	        	    case "공격력":
+	        	        effectValue = Math.round((1.1 + ThreadLocalRandom.current().nextDouble() * 0.4) * 100.0) / 100.0;
+	        	        durationMin = randomDuration(effectValue);
+	        	        break;
+
+	        	    case "치피":
+	        	        effectValue = ThreadLocalRandom.current().nextInt(100, 501);
+	        	        durationMin = randomDuration(effectValue);
+	        	        break;
+
+	        	    case "치확":
+	        	        effectValue = ThreadLocalRandom.current().nextInt(50, 301); // 예: 5~20
+	        	        durationMin = randomDuration(effectValue);
+	        	        break;
+	        	        
+	        	    case "쿨타임":
+	        	        effectValue = 1;
+	        	        durationMin = 10;
+	        	        break;
+
+	        	    case "나메가방":
+	        	        effectValue = 1;
+	        	        durationMin = 3;
+	        	        break;
+
+	        	    default:
+	        	        return result;
+	        	}
 	            
 	            
 
@@ -3773,6 +3778,9 @@ public class BossAttackController {
 		if ("치피".equals(flagCode)) {
 			return "치명타피해 +" + (int) effectValue + "%";
 		}
+		if ("치확".equals(flagCode)) {
+			return "치명타확률 +" + (int) effectValue + "%";
+		}
 		
 		if ("쿨타임".equals(flagCode)) {
 			return "공격쿨타임 +" + (int) effectValue + "분 감소";
@@ -3783,33 +3791,7 @@ public class BossAttackController {
 	
 	
 	private double computeBagPityMultiplier(String userName, String roomName,double buffRate) {
-
-	    // 1) 최근 가방 먹은 사람인지 확인
 		double rtn_value = 1;
-		
-		//스페셜버프준사람은 획득함 ,100%획득
-		
-
-	    // 2) 최근 6시간 라이징 스타(Top7)인지 확인
-		/*
-	    try {
-	        List<HashMap<String,Object>> rising = botNewService.selectRisingStarsTop5Last6h();
-	        if (rising != null) {
-	            for (HashMap<String,Object> row : rising) {
-	                if (row == null) continue;
-
-	                String rn = Objects.toString(row.get("ROOM_NAME"), "");
-	                String un = Objects.toString(row.get("USER_NAME"), "");
-
-	                if (roomName.equals(rn) && userName.equals(un)) {
-	                    //isRising = true;
-	                	rtn_value *=1.5; //1.5배
-	                }
-	            }
-	        }
-	    } catch (Exception ignore) {}
-	    */
-
 		int bagCountToday = 0;
 
 	    try {
@@ -3817,18 +3799,16 @@ public class BossAttackController {
 	    } catch (Exception ignore) {}
 
 	    // 🔹 일일 획득량 기반 확률 보정
-	    if (bagCountToday < 10) {
-	    	rtn_value *= 4.0;     // 14%
+	    if (bagCountToday < 5) {
+	    	rtn_value *= 3.0;     // drop *3
+	    }
+	    else if (bagCountToday < 10) {
+	    	rtn_value *= 2.0;     // drop *2
 	    }
 	    else if (bagCountToday < 20) {
-	    	rtn_value *= 3.0;     // 10.5%
+	    	rtn_value *= 1.5;     // drop *1.5
 	    }
-	    else if (bagCountToday < 30) {
-	    	rtn_value *= 2.0;     // 7%
-	    }
-	    else if (bagCountToday < 40) {
-	    	rtn_value *= 0.3;    // 약 1%
-	    }else {
+	    else {
 	    	rtn_value *= 0;
 	    }
 		
@@ -4465,15 +4445,7 @@ public class BossAttackController {
 	    int totalAttacks = ads.totalAttacks;
 	    if (totalAttacks <= 0) return "";
 
-	    int[] thresholds = {
-	        1000,2000,3000,4000,5000,6000,7000,8000,9000,
-	        10000,11000,12000,13000,14000,15000,16000,17000,
-	        18000,19000,20000,21000,22000,23000,24000,25000,
-	        26000,27000,28000,29000,30000,31000,32000,33000,
-	        34000,35000,36000,37000,38000,39000,40000
-	        /*,41000,
-	        42000,43000,44000,45000,46000,47000,48000,49000,50000*/
-	    };
+	    int[] thresholds = buildKillThresholds(100000);
 
 	    StringBuilder sb = new StringBuilder();
 
@@ -4483,7 +4455,7 @@ public class BossAttackController {
 	        String cmd = "ACHV_ATTACK_TOTAL_" + th;
 	        if (achievedCmdSet.contains(cmd)) continue;
 
-	        int rewardSp = th * 10;
+	        int rewardSp = calcTotalKillReward(th,false);
 
 	        sb.append(
 	            grantOnceIfEligibleFast(

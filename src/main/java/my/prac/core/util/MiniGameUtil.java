@@ -1,12 +1,15 @@
 package my.prac.core.util;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
 
 import my.prac.core.game.dto.EquipCategory;
+import my.prac.core.game.dto.SpecialBuffOption;
 
 public class MiniGameUtil {
 	public static final Map<Integer, Double[]> RATE_MAP_WEAPON = new HashMap<>();
@@ -21,6 +24,33 @@ public class MiniGameUtil {
 	public static final Map<String,String> SLOT_MAP = new HashMap<>();
 	public static final List<EquipCategory> EQUIP_CATEGORIES = new ArrayList<>();
 
+	public static final List<SpecialBuffOption> SPECIAL_BUFF_OPTIONS = Arrays.asList(
+		    new SpecialBuffOption(10, "가방", "배율"),
+		    new SpecialBuffOption(30, "공격력", "배율"),
+		    new SpecialBuffOption(20, "치피", "고정값"),
+		    new SpecialBuffOption(15, "치확", "고정값"),
+		    new SpecialBuffOption(7,  "쿨타임", "고정값"),
+		    new SpecialBuffOption(3,  "나메가방", "고정값")
+		);
+	
+	public static  SpecialBuffOption pickWeightedBuff(List<SpecialBuffOption> options) {
+	    int totalWeight = 0;
+	    for (SpecialBuffOption opt : options) {
+	        totalWeight += opt.weight;
+	    }
+
+	    int r = ThreadLocalRandom.current().nextInt(totalWeight);
+
+	    for (SpecialBuffOption opt : options) {
+	        r -= opt.weight;
+	        if (r < 0) {
+	            return opt;
+	        }
+	    }
+
+	    return options.get(0);
+	}
+	
 	static {
 
 		EQUIP_CATEGORIES.add(
