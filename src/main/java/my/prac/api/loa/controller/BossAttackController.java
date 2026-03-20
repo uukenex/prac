@@ -350,7 +350,7 @@ public class BossAttackController {
 	            int hunterAttacks = (ads == null ? 0 : ads.hunterAttacks);
 	            int totalDeaths  = (ads == null ? 0 : ads.totalDeaths);
 	            totalAttacks +=hunterAttacks*2;
-	            totalDeaths  += hunterAttacks;
+	            totalDeaths  +=hunterAttacks/2;
 	            
 	            // 3️⃣ 드랍 수
 	            List<HashMap<String,Object>> drops =
@@ -4420,8 +4420,8 @@ public class BossAttackController {
 
 	            msg.append("업적 ")
 	               .append(needCnt)
-	               .append("개 달성 보상 획득! (아이템#")
-	               .append(itemId)
+	               .append("개 달성 보상 획득! (아이템_업적_")
+	               .append(needCnt)
 	               .append(")")
 	               .append(NL);
 	        }
@@ -5176,28 +5176,13 @@ public class BossAttackController {
 		
 		int bonus = 0;
 		
-		if (lv >= 50)  bonus += (lv - 49) * 3;
-		if (lv >= 80)  bonus += (lv - 79) * 5;
-		if (lv >= 100) bonus += (lv - 99) * 8;
-		if (lv >= 110) bonus += (lv - 109) * 10;
-		if (lv >= 120) bonus += (lv - 119) * 15;
-		if (lv >= 130) bonus += (lv - 129) * 20;
-		if (lv >= 150) bonus += (lv - 149) * 30;
-		if (lv >= 160) bonus += (lv - 159) * 35;
-		if (lv >= 170) bonus += (lv - 169) * 40;
-		if (lv >= 180) bonus += (lv - 179) * 45;
-		if (lv >= 190) bonus += (lv - 189) * 50;
-		if (lv >= 200) bonus += (lv - 199) * 55;
-		if (lv >= 210) bonus += (lv - 209) * 60;
-		if (lv >= 220) bonus += (lv - 219) * 65;
-		if (lv >= 230) bonus += (lv - 229) * 70;
-		if (lv >= 240) bonus += (lv - 239) * 75;
-		if (lv >= 250) bonus += (lv - 249) * 80;
-		if (lv >= 260) bonus += (lv - 259) * 85;
-		if (lv >= 270) bonus += (lv - 269) * 90;
-		if (lv >= 280) bonus += (lv - 279) * 95;
-		if (lv >= 290) bonus += (lv - 289) * 100;
-		if (lv >= 300) bonus += (lv - 299) * 105;
+		if (lv >= 50)  bonus += (lv - 49) * 10;
+		if (lv >= 80)  bonus += (lv - 79) * 20;
+		if (lv >= 100) bonus += (lv - 99) * 30;
+		if (lv >= 150) bonus += (lv - 149) * 50;
+		if (lv >= 200) bonus += (lv - 199) * 70;
+		if (lv >= 240) bonus += (lv - 239) * 130;
+		if (lv >= 280) bonus += (lv - 279) * 200;
 
 	    return base+bonus;
 	}
@@ -8522,13 +8507,13 @@ public class BossAttackController {
 			"헌터",
 			"▶ 이세계에서 넘어온 실력자, 그들은 랭크에 따라 강력한 능력을 가진다",
 			"⚔ 공격횟수의 최대 20% 만큼 공격력증가, 아이템드랍획득수의 최대 20%만큼 체력,2%만큼 리젠증가, 죽음횟수의 최대 20%만큼 치명데미지증가"+NL
-			+"치명타확률 100%초과시 치명타데미지로 전환증가"
+			+"치명타확률 100%초과시 치명타데미지로 전환증가, 헌터로 공격횟수만큼 등급산정 배율증가 "+NL
 		));
         
 	    JOB_DEFS.put("축복술사", new JobDef(
 			"축복술사",
 			"▶ 당신을 축복합니다",
-			"⚔ 공격 시 플레이어 무작위한명에게 축복(회복.데미지증가)"+NL
+			"⚔ 공격 시 플레이어 무작위한명에게 축복(회복.데미지증가),100레벨당 축복인원1명추가증가"+NL
 			+"공격 쿨타임30분, 공격 후 직업변경 불가시간 30분"
 		));
 	    
