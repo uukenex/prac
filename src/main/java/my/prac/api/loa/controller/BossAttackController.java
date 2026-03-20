@@ -3083,6 +3083,25 @@ public class BossAttackController {
 	        botNewService.clearBlessYn(userName);
 		}
 		
+		if (activeBuff != null) {
+	    	if( "회복".equals(activeBuff.get("FLAG_CODE"))){
+	    		double value = Double.parseDouble(activeBuff.get("EFFECT_VALUE").toString());
+	    		
+		        int heal = (int)Math.round(effHpMax * value);
+		        int beforeHp = u.hpCur;
+	
+		        u.hpCur = Math.min(effHpMax, u.hpCur + heal);
+
+		        
+
+		        
+		        
+		        if (u.hpCur > beforeHp) {
+		            dmg.dmgCalcMsg += NL + "✨ 스페셜버프-회복! "
+		                    + (u.hpCur - beforeHp);
+		        }
+	    	}
+	    }
 
 
 		// ─────────────────────────────
@@ -3672,6 +3691,11 @@ public class BossAttackController {
 	        	        durationMin = randomDuration(effectValue);
 	        	        break;
 	        	        
+	        	    case "회복":
+	        	        effectValue = ThreadLocalRandom.current().nextInt(30, 101); // 예: 5~20
+	        	        durationMin = randomDuration(effectValue);
+	        	        break;
+	        	        
 	        	    case "쿨타임":
 	        	        effectValue = 1;
 	        	        durationMin = 10;
@@ -3777,6 +3801,9 @@ public class BossAttackController {
 
 		if ("치피".equals(flagCode)) {
 			return "치명타피해 +" + (int) effectValue + "%";
+		}
+		if ("회복".equals(flagCode)) {
+			return "HP회복 +" + (int) effectValue + "%";
 		}
 		if ("치확".equals(flagCode)) {
 			return "치명타확률 +" + (int) effectValue + "%";
