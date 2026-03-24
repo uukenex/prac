@@ -131,7 +131,6 @@ public class MiniGameUtil {
     	   +"▶[강화] 공격 시 다음 아군 1명 강화"+NL
     	   +"▶[회복] 공격 시 자신에게 힐 회복"+NL
     	   +"▶[음양조화] 음양 몬스터 출현"+NL
-    	   +"◎선행조건 : 직업으로 1000회 공격"
     	));
 
         JOB_DEFS.put("헌터", new JobDef(

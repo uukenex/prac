@@ -2817,6 +2817,11 @@ public class BossAttackController {
 	        	dark = false;
 	        }
 	        
+	        if("곰".equals(job)) {
+	        	lucky = false;
+	        	dark = false;
+	        }
+	        
 	        /*
 	        if (nightmare) {
 	        	dark = false;
