@@ -3401,14 +3401,6 @@ public class BossAttackController {
 	    
 
 	    // 14) DB 반영 + 레벨업 처리
-	    // 곰 직업: 공격 시 최대체력의 10% HP 차감
-	    String bearHpCostMsg = "";
-	    if ("곰".equals(job)) {
-	        int bearCost = (int)Math.ceil(effHpMax * 0.10);
-	        int hpAfterCost = Math.max(0, u.hpCur - bearCost);
-	        bearHpCostMsg = NL + "곰: HP -" + bearCost + " (공격 소모) " + u.hpCur + " → " + hpAfterCost;
-	        u.hpCur = hpAfterCost;
-	    }
 	    LevelUpResult up = persist(userName, roomName, u, m, flags, calc, res, effHpMax,ctx.isReturnUser,nightmare);
 	    String bonusMsg = "";
 	    String blessMsg = "";
@@ -3553,10 +3545,6 @@ public class BossAttackController {
 	        msg += NL + Objects.toString(map.get("outMsg"), "");
 	    } catch (Exception e) {
 	        e.printStackTrace();
-	    }
-
-	    if (!bearHpCostMsg.isEmpty()) {
-	        msg += bearHpCostMsg;
 	    }
 
 	    return msg;
@@ -5538,7 +5526,7 @@ public class BossAttackController {
 	    int threshold = (int)Math.ceil(u.hpMax * 0.05); // ✅ 5% 기준
 	    
 	    if(u.job.equals("곰")) {
-	    	threshold = (int)Math.ceil(u.hpMax * 0.10); // 곰: 10% 미만이면 공격불가
+	    	threshold = (int)Math.ceil(u.hpMax * 0.05);
 	    }
 	    if (u.hpCur >= threshold) return 0;
 	    if (u.hpRegen <= 0) return Integer.MAX_VALUE;
@@ -5579,7 +5567,7 @@ public class BossAttackController {
 
 	    StringBuilder sb = new StringBuilder();
 	    sb.append(userName).append("님, 약 ").append(waitMin).append("분 후 공격 가능").append(NL)
-	      .append("곰".equals(u.job) ? "(최대체력의 10%까지 회복 필요 " : "(최대체력의 5%까지 회복 필요 ").append(regenWaitMin).append("분, ")
+	      .append("(최대체력의 5%까지 회복 필요 ").append(regenWaitMin).append("분, ")
 	      .append("쿨타임 ").append(remainMin).append("분 ").append(remainSec).append("초)").append(NL)
 	      .append("현재 체력: ").append(u.hpCur).append(" / ").append(u.hpMax)
 	      .append(", 5분당 회복 +").append(u.hpRegen).append(NL);
