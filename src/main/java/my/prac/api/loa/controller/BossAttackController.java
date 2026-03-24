@@ -1290,6 +1290,7 @@ public class BossAttackController {
 	    final int bCriRaw       = ctx.bCriRaw;
 	    final int bCriDmgRaw    = ctx.bCriDmgRaw;
 	    final int bHpMaxRaw     = ctx.bHpMaxRaw;
+	    final int bHpMaxRateRaw = ctx.bHpMaxRateRaw;
 	    final int bRegenRaw     = ctx.bRegenRaw;
 
 	    // 직업 보너스 분리해서 보고 싶으면 calcUserBattleContext 에서 채워두었다고 가정
@@ -1480,6 +1481,9 @@ public class BossAttackController {
 	      .append(",5분당회복+").append(u.hpRegen).append(")").append(NL)
 	      .append("   └ 아이템 (HP").append(formatSigned(bHpMaxRaw))
 	      .append(",5분당회복").append(formatSigned(bRegenRaw)).append(")").append(NL);
+	    if (bHpMaxRateRaw > 0) {
+	    	sb.append("   └ 최종체력 (").append(formatSigned(bHpMaxRateRaw)).append("%)").append(NL);
+	    }
 
 	    if (jobHpMaxBonus != 0 || jobRegenBonus != 0) {
 	        sb.append("   └ 직업 (HP")
