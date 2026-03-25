@@ -1103,16 +1103,18 @@ public class BossAttackController {
 	    final String roomName = ctx.roomName;
 
 	    StringBuilder sb = new StringBuilder();
-	    sb.append("✨").append(userName).append(" 인벤토리");
-
-	    sb.append(ALL_SEE_STR);
 	    List<HashMap<String, Object>> bag =
 	            botNewService.selectInventorySummaryAll(userName, roomName);
 
 	    if (bag == null || bag.isEmpty()) {
+	        sb.append("✨").append(userName).append(" 인벤토리");
+	        sb.append(ALL_SEE_STR);
 	        sb.append("- 인벤토리가 비어있습니다.");
 	        return sb.toString();
 	    }
+
+	    sb.append("✨").append(userName).append(" 인벤토리 (총 ").append(bag.size()).append("개)");
+	    sb.append(ALL_SEE_STR);
 
 	    // 카테고리 버킷
 	    Map<String, List<String>> catMap = new LinkedHashMap<>();
