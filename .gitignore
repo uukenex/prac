@@ -1,1 +1,12 @@
 /target/
+
+# Eclipse IDE
+.classpath
+.factorypath
+.settings/
+
+# Claude Code
+.claude/
+
+# Tomcat
+catalina.base_IS_UNDEFINED/
