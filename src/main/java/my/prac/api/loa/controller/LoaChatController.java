@@ -75,6 +75,9 @@ public class LoaChatController {
 	@Autowired
 	BossAttackController boss;
 
+	@Autowired
+	BossAttackS3Controller bossS3; // [시즌3] 보스 공격 전담 컨트롤러
+
 	@Resource(name = "core.prjbot.BotService")
 	BotService botService;
 	@Resource(name = "core.prjbot.BotSettleService")
@@ -914,6 +917,22 @@ public class LoaChatController {
 				}
 				break;
 				*/
+
+				// =====================================================
+				// [시즌3] 보스 공격 라우팅 안내
+				// =====================================================
+				// TODO: 기존 /공격 case 내부(monsterAttack 호출 전) 아래 분기 추가 예정
+				//   User u = botNewService.selectUser(sender, null);
+				//   if ("BOSS".equals(String.valueOf(u.targetMon))) {
+				//       val = bossS3.attackBoss(reqMap);   // [시즌3] 보스 전투
+				//   } else {
+				//       val = boss.monsterAttack(reqMap);  // 기존 시즌2 몬스터 전투
+				//   }
+				//
+				// TODO: 보스 정보 조회 명령어 추가 예정
+				//   case "/보스정보": case "/ㅂㅅ":
+				//       val = bossS3.bossInfo(reqMap);
+				//       break;
 				/*
 			case "/포인트사용": 
 				val = play.usePoint(reqMap);
