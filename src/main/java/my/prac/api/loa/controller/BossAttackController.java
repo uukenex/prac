@@ -1103,16 +1103,18 @@ public class BossAttackController {
 	    final String roomName = ctx.roomName;
 
 	    StringBuilder sb = new StringBuilder();
-	    sb.append("✨").append(userName).append(" 인벤토리");
-
-	    sb.append(ALL_SEE_STR);
 	    List<HashMap<String, Object>> bag =
 	            botNewService.selectInventorySummaryAll(userName, roomName);
 
 	    if (bag == null || bag.isEmpty()) {
+	        sb.append("✨").append(userName).append(" 인벤토리");
+	        sb.append(ALL_SEE_STR);
 	        sb.append("- 인벤토리가 비어있습니다.");
 	        return sb.toString();
 	    }
+
+	    sb.append("✨").append(userName).append(" 인벤토리 (총 ").append(bag.size()).append("개)");
+	    sb.append(ALL_SEE_STR);
 
 	    // 카테고리 버킷
 	    Map<String, List<String>> catMap = new LinkedHashMap<>();
@@ -2729,6 +2731,16 @@ public class BossAttackController {
 	        } catch (Exception ignore) {}
 
 	    } else {
+
+	        // ===== [시즌3] 보스 공격 분기 =====
+	        // TODO: u.targetMon이 보스 타겟임을 나타내는 값(예: -1 또는 별도 필드)일 경우
+	        //       여기서 bossAttackS3Controller.attackBoss(map, ctx) 를 호출하고 return
+	        //       ctx에는 이미 유저 스탯/직업/버프 등 전체 정보가 담겨있으므로 그대로 전달 가능
+	        // if (u.targetMon == BOSS_TARGET_FLAG) {
+	        //     return bossAttackS3.attackBoss(map, ctx);
+	        // }
+	        // ===================================
+
 	        m = botNewService.selectMonsterByNo(u.targetMon);
 	        if (m == null) return "대상 몬스터가 지정되어 있지 않습니다. (TARGET_MON 없음)";
 
