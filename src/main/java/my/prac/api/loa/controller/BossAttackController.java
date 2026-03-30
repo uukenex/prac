@@ -1195,9 +1195,7 @@ public class BossAttackController {
 
 	        if (drops != null && !drops.isEmpty()) {
 
-	            sb.append(NL)
-	              .append("▶ 누적 획득 드랍 아이템").append(NL)
-	              .append("{ 일반 / 조각 / 빛 / 어둠 / 음양 }").append(NL);
+	            sb.append(NL);
 
 	            Map<String, DropSummary> summaryMap = new LinkedHashMap<>();
 
@@ -1236,6 +1234,13 @@ public class BossAttackController {
 	                        break;
 	                }
 	            }
+
+	            // 잡템 총 갯수 계산
+	            long totalDropQty = summaryMap.values().stream()
+	                    .mapToLong(s -> s.normal + s.fragment + s.light + s.dark + s.gray)
+	                    .sum();
+	            sb.append("▶ 누적 획득 드랍 아이템 : 총 ").append(totalDropQty).append("개").append(NL)
+	              .append("{ 일반 / 조각 / 빛 / 어둠 / 음양 }").append(NL);
 
 	            // 출력
 	            for (Map.Entry<String, DropSummary> e : summaryMap.entrySet()) {
