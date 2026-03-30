@@ -3808,7 +3808,7 @@ public class BossAttackController {
 		}
 
 		if ("공격력".equals(flagCode)) {
-			return "공격력 " + (int) ((effectValue - 1) * 100) + "% 증가";
+			return "공격력 " + Math.round((effectValue - 1) * 100) + "% 증가";
 		}
 
 		if ("SP".equals(flagCode)) {
@@ -6960,7 +6960,7 @@ public class BossAttackController {
 	        // 디버그용
 	         out.dmgCalcMsg += "헌터(" + u.hunterGrade + ") "
 	                + "overCRIT " + overflow + "% → "
-	               + converted + "% chgCDMG (" + (convertRate*100) + "%)" + NL;
+	               + converted + "% chgCDMG (" + Math.round(convertRate*100) + "%)" + NL;
 	    }
 	    
 	    // -----------------------------
