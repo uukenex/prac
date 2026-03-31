@@ -5374,16 +5374,16 @@ public class BossAttackController {
 	    // 궁사 분할 화살 추가 로그 (공격횟수 증가용, 2번째 화살부터 개별 insert)
 	    if (c.arrowShots != null && c.arrowShots.size() > 1) {
 	        for (int i = 1; i < c.arrowShots.size(); i++) {
-	            int[] shot = c.arrowShots.get(i);
+	            //int[] shot = c.arrowShots.get(i);
 	            BattleLog arrowLog = new BattleLog()
 	                .setUserName(userName)
 	                .setRoomName(roomName)
 	                .setLv(up.beforeLv)
 	                .setTargetMonLv(m.monNo)
 	                .setGainExp(-1)
-	                .setAtkDmg(shot[0])
+	                .setAtkDmg(0)
 	                .setMonDmg(0)
-	                .setAtkCritYn(shot[1])
+	                .setAtkCritYn(0)
 	                .setMonPatten(0)
 	                .setKillYn(0)
 	                .setNowYn(1)
