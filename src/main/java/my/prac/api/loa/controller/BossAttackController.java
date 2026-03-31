@@ -7010,14 +7010,11 @@ public class BossAttackController {
 	    // -----------------------------
 	    
 	    if ("궁사".equals(job)) {
-	        int step = (int)Math.round(effAtkMax * 0.10);
-	        step = Math.max(step, 280); // 최소 200 단위
-	        
-	        // 1) 연사 횟수 계산
-	        int range    = Math.max(0, effAtkMax - effAtkMin); // 최대뎀 - 최소뎀
-	        int segments = range / step;
-	        int hitCount = Math.max(1, segments + 1);          // 구간+1이 실제 발사 수
-        hitCount = Math.min(hitCount, 5);               // 최대 5연사 제한
+	           // 1) 연사 횟수 계산 (최소데미지 비율 기반, 최소 2연사 ~ 최대 5연사)
+	        // range/max 비율이 클수록 연사 증가 (ex. max=130000,min=65000 → 50% → 5연사)
+	        int range     = Math.max(0, effAtkMax - effAtkMin);
+	        double rangeRatio = (effAtkMax > 0) ? (double) range / effAtkMax : 0.0;
+	        int hitCount  = Math.max(2, Math.min(5, (int)(rangeRatio * 10) + 1));
 
 	        calc.arrowShots = new ArrayList<>();
 	        int totalDmg = 0;
@@ -7043,22 +7040,20 @@ public class BossAttackController {
 	        double perHitRate = perHitRateRaw; // 0.0 ~ 80.0
 
 	        boolean allCrit = true; // 전탄 크리 체크용
+	        int shotStep = (hitCount > 1) ? range / (hitCount - 1) : 0; // 화살 간격
 
 	        for (int i = 1; i <= hitCount; i++) {
 	            int shotAtk;
 
 	            if (i < hitCount) {
 	                // 1샷 ~ (hitCount-1)샷: 구간별 고정값
-	                // 1샷: effAtkMin
-	                // 2샷: effAtkMin + 280
-	                // 3샷: effAtkMin + 560 ...
-	                shotAtk = effAtkMin + 280 * (i - 1);
+	                shotAtk = effAtkMin + shotStep * (i - 1);
 	                if (shotAtk > effAtkMax) {
 	                    shotAtk = effAtkMax;
 	                }
 	            } else {
 	                // 마지막 샷: [startLast ~ effAtkMax] 랜덤
-	                int startLast = effAtkMin + 280 * (hitCount - 1);
+	                int startLast = effAtkMin + shotStep * (hitCount - 1);
 	                if (startLast > effAtkMax) {
 	                    startLast = effAtkMax;
 	                }
