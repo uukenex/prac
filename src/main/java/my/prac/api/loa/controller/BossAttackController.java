@@ -5625,7 +5625,7 @@ public class BossAttackController {
 
 	    if(u.job.equals("곰")) {
 	    	
-	    	sb.append(calc.atkDmg);
+	    	sb.append("최대체력 "+calc.atkDmg+" 이하에게 괴력!");
 		    sb.append(NL);
 	    }else {
 	    	// 치명타
@@ -7656,7 +7656,7 @@ public class BossAttackController {
 	        int beforeHp = u.hpCur;
 	        u.hpCur = Math.max(1, u.hpCur - hpCost);
 
-	        out.dmgCalcMsg += "곰의 야성! 체력 -" + hpCost +
+	        out.dmgCalcMsg += "곰의 괴력! 체력 -" + hpCost +
 	                " (" + beforeHp + " → " + u.hpCur + ")" + NL;
 
 	        int monHp = m.monHp;
