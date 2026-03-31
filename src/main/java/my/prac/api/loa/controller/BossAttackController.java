@@ -3617,8 +3617,12 @@ public class BossAttackController {
 	            }
 	            */
 
-	            if(SP.parse(ctx.lifetimeSpStr).lessThan(new SP(10,"b"))){
+	            if(SP.parse(ctx.lifetimeSpStr).lessThan(new SP(30,"b"))){
 	            	gainSp *= 3;
+	            }
+
+	            if ("용사".equals(ctx.job)) {
+	                gainSp *= 5;
 	            }
 
 	            // --------------------------
