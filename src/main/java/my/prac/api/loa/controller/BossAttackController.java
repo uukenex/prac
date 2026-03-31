@@ -4028,6 +4028,16 @@ public class BossAttackController {
 	    return null;
 	}
 	
+	public String refreshCache() {
+	    MiniGameUtil.MONSTER_CACHE.clear();
+	    MiniGameUtil.ACHV_GLOBAL_CACHE = null;
+	    MiniGameUtil.ITEM_ID_CACHE.clear();
+	    initCache();
+	    return "✅ 캐시 갱신 완료" + NL
+	         + "몬스터: " + MiniGameUtil.MONSTER_CACHE.size() + "건" + NL
+	         + "아이템ID: " + MiniGameUtil.ITEM_ID_CACHE.size() + "건" + NL
+	         + "업적: " + (MiniGameUtil.ACHV_GLOBAL_CACHE != null ? MiniGameUtil.ACHV_GLOBAL_CACHE.size() : 0) + "건";
+	}
 	@PostConstruct
 	public void initCache() {
 	    try {
