@@ -5380,7 +5380,7 @@ public class BossAttackController {
 	                .setRoomName(roomName)
 	                .setLv(up.beforeLv)
 	                .setTargetMonLv(m.monNo)
-	                .setGainExp(0)
+	                .setGainExp(-1)
 	                .setAtkDmg(shot[0])
 	                .setMonDmg(0)
 	                .setAtkCritYn(shot[1])
@@ -5391,10 +5391,10 @@ public class BossAttackController {
 	                .setLuckyYn(0)
 	                .setDropYn(0)
 	                .setBuffYn(0)
-	                .setJobSkillYn(1)
+	                .setJobSkillYn(0)
 	                .setJob(u.job)
 	                .setNightmareYn(nightmare ? 1 : 0)
-	                .setShotIndex(i * 10);
+	                .setShotIndex(i);
 	            botNewService.insertBattleLogTx(arrowLog);
 	        }
 	    }

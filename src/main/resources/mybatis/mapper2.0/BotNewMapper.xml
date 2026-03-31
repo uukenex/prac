@@ -206,7 +206,7 @@
     VALUES
       (#{userName}, #{roomName}, #{lv}, #{targetMonLv},
        #{gainExp}, #{atkDmg}, #{monDmg}, #{atkCritYn},
-       #{monPatten}, SYSTIMESTAMP + NUMTODSINTERVAL(#{shotIndex} / 1000.0, 'SECOND'), #{killYn}, #{nowYn}, #{dropYn}, #{deathYn}, #{luckyYn},#{buffYn}
+       #{monPatten}, SYSTIMESTAMP - NUMTODSINTERVAL(#{shotIndex}, 'SECOND'), #{killYn}, #{nowYn}, #{dropYn}, #{deathYn}, #{luckyYn},#{buffYn}
        ,#{jobSkillYn},#{job},#{nightmareYn}
        )
   </insert>
@@ -959,7 +959,7 @@
 	        FROM TBOT_POINT_NEW_BATTLE_LOG A
 	        WHERE INSERT_DATE >= SYSDATE - (3/24)
 	          AND ROOM_NAME NOT IN ('람쥐봇 문의방','test123')
-	          AND NOT (JOB_SKILL_YN = 1 AND GAIN_EXP = 0)
+	          AND GAIN_EXP >= 0
 	        GROUP BY USER_NAME
 	        HAVING COUNT(*) >= 10
 	        ORDER BY ATK_CNT DESC, LAST_ATTACK DESC
