@@ -12,9 +12,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.ComponentScan.Filter;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.FilterType;
 import org.springframework.context.annotation.Import;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.stereotype.Controller;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.jdbc.datasource.lookup.DataSourceLookupFailureException;
 import org.springframework.jdbc.datasource.lookup.JndiDataSourceLookup;
@@ -24,7 +27,8 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 //Spring core에 대한 설정
 @Configuration
 // @PropertySource("classpath:/config/app.properties")
-@ComponentScan({ "my.prac.api.*", "my.prac.core.*" })
+@ComponentScan(basePackages = { "my.prac.api", "my.prac.core" },
+    excludeFilters = @Filter(type = FilterType.ANNOTATION, classes = Controller.class))
 @MapperScan({ "my.prac" })
 @Import({ TransactionConfig.class })
 @EnableTransactionManagement
