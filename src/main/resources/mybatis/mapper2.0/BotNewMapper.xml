@@ -206,7 +206,7 @@
     VALUES
       (#{userName}, #{roomName}, #{lv}, #{targetMonLv},
        #{gainExp}, #{atkDmg}, #{monDmg}, #{atkCritYn},
-       #{monPatten}, SYSTIMESTAMP + NUMTODSINTERVAL(#{shotIndex}, 'MILLISECOND'), #{killYn}, #{nowYn}, #{dropYn}, #{deathYn}, #{luckyYn},#{buffYn}
+       #{monPatten}, SYSTIMESTAMP + NUMTODSINTERVAL(#{shotIndex} / 1000.0, 'SECOND'), #{killYn}, #{nowYn}, #{dropYn}, #{deathYn}, #{luckyYn},#{buffYn}
        ,#{jobSkillYn},#{job},#{nightmareYn}
        )
   </insert>
