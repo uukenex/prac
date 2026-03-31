@@ -330,23 +330,7 @@ public class BossAttackController {
 	    if ("헌터".equals(job)) {
 
 	        try {
-
-	            // 1️⃣ 처치 수
-	        	/*
-	            List<KillStat> kills =
-	                    botNewService.selectKillStats(targetUser, roomName);
-	            */
-	            /*
-	            int totalKills = 0;
-	            if (kills != null) {
-	                for (KillStat ks : kills) {
-	                    totalKills += ks.killCount;
-	                }
-	            }*/
-
-	            // 2️⃣ 공격 / 사망 통계
-	            AttackDeathStat ads =
-	                    botNewService.selectAttackDeathStats(targetUser, "");
+	            AttackDeathStat ads = botNewService.selectAttackDeathStats(targetUser, "");
 
 	            int totalAttacks = (ads == null ? 0 : ads.totalAttacks);
 	            int hunterAttacks = (ads == null ? 0 : ads.hunterAttacks);
@@ -354,9 +338,8 @@ public class BossAttackController {
 	            totalAttacks +=hunterAttacks*2;
 	            totalDeaths  +=hunterAttacks/2;
 	            
-	            // 3️⃣ 드랍 수
-	            List<HashMap<String,Object>> drops =
-	                    botNewService.selectTotalDropItems(targetUser);
+	            
+	            List<HashMap<String,Object>> drops = botNewService.selectTotalDropItems(targetUser);
 
 	            int totalDrops = 0;
 	            if (drops != null) {
@@ -420,6 +403,8 @@ public class BossAttackController {
 
 	            jobHpMaxBonus += hunterHpBonus;
 	            jobRegenBonus += hunterRegenBonus;
+	            bHpMaxRaw += hunterHpBonus;
+	            bRegenRaw += hunterRegenBonus;
 
 	            bCriDmgRaw += hunterCriDmgBonus;
 
@@ -1416,9 +1401,8 @@ public class BossAttackController {
 	    if (!job.isEmpty()) {
 	        sb.append(" (").append(job).append(")");
 	        
-	        if ("헌터".equals(ctx.job) ) {
-	        	sb.append("( "+ctx.hunterGrade+" )");
-	        }
+	        //헌터랭크추가
+        	sb.append("(hunter"+ctx.hunterGrade+")");
 	        
 	    }
 	    sb.append(", EXP ").append(u.expCur).append("/").append(u.expNext).append(NL);
@@ -2929,7 +2913,7 @@ public class BossAttackController {
 	    	berserkMul = 1.5;
 	    }
 	    if ("어둠사냥꾼".equals(job) && dark ) {
-	    	berserkMul = 2.5;
+	    	berserkMul = 3;
 	    }
 	    
 	    /*
@@ -2948,6 +2932,7 @@ public class BossAttackController {
 	        
 	    }
 	    */
+	    /*
 	    if ("사신".equals(job)) {
 	        String firstCmd = "ACHV_FIRST_CLEAR_MON_" + m.monNo;
 
@@ -2961,7 +2946,7 @@ public class BossAttackController {
 	            return "최초 토벌에 도전불가 직업!";
 	        }
 	        
-	    }
+	    }*/
 
 	    Flags flags = rollFlags(u, m);
 
@@ -3157,6 +3142,7 @@ public class BossAttackController {
 	    int newHpPreview = Math.max(0, u.hpCur - calc.monDmg);
 	    
 	 // ☠ 사신: 체력이 0이 되어도 죽지 않고, 대신 공격에 실패
+	    /*
  		 if ("사신".equals(job) && newHpPreview <= 0) {
 		     // HP는 1 남기고 버틴다고 가정
 		     newHpPreview = 1;
@@ -3170,7 +3156,7 @@ public class BossAttackController {
 		     // ★ 여기서 바로 리턴하지 않고, 아래 persist() 로직을 타면서
 		     //    HP 1, atkDmg=0 상태로 저장되도록 둔다.
 		 }
-	 
+	 */
 	    String deathAchvMsg = "";
 	    if (!"사신".equals(job) && newHpPreview <= 0) {
 	    	
@@ -3336,19 +3322,21 @@ public class BossAttackController {
             if (!dropName.isEmpty()) {
                 try {
                     Integer itemId = botNewService.selectItemIdByName(dropName);
+                    int stealQty = 2 + extraDrop;
+                    
                     if (itemId != null) {
                         HashMap<String, Object> inv = new HashMap<>();
                         inv.put("userName", userName);
                         inv.put("roomName", roomName);
                         inv.put("itemId", itemId);
-                        int stealQty = 2 + extraDrop;
+                        
                         boolean bonusSteal = ThreadLocalRandom.current().nextDouble() < 0.10;
                         if (bonusSteal) stealQty *= 2;
                         inv.put("qty", stealQty);
                         inv.put("delYn", "1");
                         inv.put("gainType", "STEAL");
                         botNewService.insertInventoryLogTx(inv);
-                        stealMsg = "✨ 날카로운 처단으로 추가획득 (+" + dropName +"조각"+ stealQty + ")" + (bonusSteal ? " 🎲보너스!" : "");
+                        stealMsg = "✨ 날카로운 처단으로 추가획득 (+" + dropName +"조각"+ stealQty + ")" + (bonusSteal ? "✨ 보너스!" : "");
                         calc.jobSkillUsed = true;
                     }
                     stealPoint += " +" +baroSellItem(dropName,itemId,res,userName,roomName,ctx,u,"STEAL",stealQty,nightmare);
@@ -5128,11 +5116,12 @@ public class BossAttackController {
 	    
 	    
 	    
-	    
+	    /*
 	    boolean normalDrop =
 	            ThreadLocalRandom.current().nextDouble(0, 100) < 70;
-	    
+	    */
 	    // 30% 감소 
+	    /*
 	    if("사신".equals(u.job)) {
 	    	if(normalDrop) {
 	    		r.dropCode = "1";
@@ -5140,7 +5129,7 @@ public class BossAttackController {
 	    		r.dropCode = "0";
 	    	}
 	    }
-	    
+	    */
 
 	    if(!"사신".equals(u.job)) {
 	    	 double extraDropRate = getDropRateByNo(m.monNo);  // ← 새 메서드 사용
@@ -7384,7 +7373,7 @@ public class BossAttackController {
 	    	baseAtk = (int) Math.round(baseAtk * 1.25);
 	    }
 	    if ("어둠사냥꾼".equals(job) && isSkeleton(m)) {
-	    	baseAtk = (int) Math.round(baseAtk * 1.75);
+	    	baseAtk = (int) Math.round(baseAtk * 2.00);
 	    }
 	    if ("용사".equals(job) && isSkeleton(m)) {
 	    	baseAtk = (int) Math.round(baseAtk * 1.25);
