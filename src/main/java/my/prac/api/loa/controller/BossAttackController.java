@@ -3381,7 +3381,7 @@ public class BossAttackController {
 	    
 	    boolean flag1 =false;
 	    
-	    if(SP.parse(ctx.lifetimeSpStr).lessThan(new SP(10,"b"))){
+	    if(SP.parse(ctx.lifetimeSpStr).lessThan(new SP(30,"b"))){
 	        flag1 = true;
 	    }
 	    /*
