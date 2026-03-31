@@ -531,16 +531,14 @@ public class BossAttackController {
 
 	  
 
-	 // ✅ 오늘 룰렛 버프(개인형, 00시 초기화: TRUNC(SYSDATE) 기준)
+	 // ✅ 오늘 룰렛 버프(개인형, 00시 초기화: TRUNC(SYSDATE) 기준) - 캐시 사용
 	    int dailyAtkBonus  = 0;
 	    int dailyCdmgBonus = 0;
-	    try {
-	        HashMap<String,Object> b = botNewService.selectTodayDailyBuff(targetUser, "");
-	        if (b != null && !b.isEmpty()) {
-	            dailyAtkBonus  = safeInt(b.get("ATK_BONUS"));
-	            dailyCdmgBonus = safeInt(b.get("CRI_DMG_BONUS"));
-	        }
-	    } catch (Exception ignore) {}
+	    HashMap<String,Object> b = getDailyBuffCached(targetUser);
+	    if (b != null && !b.isEmpty()) {
+	        dailyAtkBonus  = safeInt(b.get("ATK_BONUS"));
+	        dailyCdmgBonus = safeInt(b.get("CRI_DMG_BONUS"));
+	    }
 
 	    
 	    
@@ -553,13 +551,8 @@ public class BossAttackController {
 	    bCriDmgRaw     += dailyCdmgBonus; // shownCritDmg 계산에 자연스럽게 포함
 	    
 
-	 // ✅ 직업 마스터 보너스(오늘) : ATK+100, HP+1000
-	    boolean isMaster = false;
-	    try {
-	        if (job != null && !job.trim().isEmpty()) {
-	            isMaster = botNewService.selectIsTodayJobMasterAll(targetUser, job) > 0;
-	        }
-	    } catch (Exception ignore) {}
+	 // ✅ 직업 마스터 보너스(오늘) - 캐시 사용
+	    boolean isMaster = isJobMasterCached(targetUser, job);
 
 	    int jobMasterAtkRate = 0;
 	    int jobMasterHpRate = 0;
@@ -2537,14 +2530,18 @@ public class BossAttackController {
 	    HashMap<String, Object> statMap = new HashMap<>(map);
 	    statMap.put("param1", "");   // calcUserBattleContext 에서 다른 유저 검색 못 하게 막는 용도
 
-	 // ✅ 크론 없이: 오늘 첫 공격이면 전일 배틀로그로 오늘 마스터 생성(전체방 기준)
-	    try {
-	        int todayCnt = botNewService.countTodayJobMasterAll();
-	        if (todayCnt == 0) {
-	            botNewService.createTodayJobMastersFromYesterdayAll();
-	        }
-	    } catch (Exception ignore) {}
-	    
+	 // ✅ 크론 없이: 날짜가 바뀐 경우에만 오늘 마스터 생성 (캐시로 중복 DB 조회 방지)
+	    String todayDate = todayKey();
+	    if (!todayDate.equals(MiniGameUtil.TODAY_MASTER_CREATED_DATE)) {
+	        try {
+	            int todayCnt = botNewService.countTodayJobMasterAll();
+	            if (todayCnt == 0) {
+	                botNewService.createTodayJobMastersFromYesterdayAll();
+	            }
+	        } catch (Exception ignore) {}
+	        MiniGameUtil.TODAY_MASTER_CREATED_DATE = todayDate;
+	    }
+
 	    // 2) 공통 스탯 계산
 	    UserBattleContext ctx = calcUserBattleContext(statMap);
 	    if (!ctx.success) {
@@ -3390,7 +3387,7 @@ public class BossAttackController {
 	    
 	    boolean flag1 =false;
 	    
-	    if(SP.parse(ctx.lifetimeSpStr).lessThan(new SP(10,"b"))){
+	    if(SP.parse(ctx.lifetimeSpStr).lessThan(new SP(30,"b"))){
 	        flag1 = true;
 	    }
 	    /*
@@ -4035,6 +4032,9 @@ public class BossAttackController {
 	    MiniGameUtil.ITEM_DETAIL_CACHE.clear();
 	    MiniGameUtil.ITEM_PRICE_CACHE.clear();
 	    MiniGameUtil.MARKET_OWNED_CACHE.clear();
+	    MiniGameUtil.TODAY_MASTER_CREATED_DATE = null;
+	    MiniGameUtil.JOB_MASTER_CACHE.clear();
+	    MiniGameUtil.DAILY_BUFF_CACHE.clear();
 	    initCache();
 	    return "✅ 캐시 갱신 완료" + NL
 	         + "몬스터: " + MiniGameUtil.MONSTER_CACHE.size() + "건" + NL
@@ -4144,6 +4144,32 @@ public class BossAttackController {
 	    List<HashMap<String,Object>> list = botNewService.selectMarketItemsWithOwned(userName, roomName);
 	    MiniGameUtil.MARKET_OWNED_CACHE.put(key, new Object[]{now, list});
 	    return list;
+	}
+	private static String todayKey() {
+	    return new java.text.SimpleDateFormat("yyyyMMdd").format(new java.util.Date());
+	}
+
+	private boolean isJobMasterCached(String userName, String job) {
+	    if (job == null || job.isEmpty()) return false;
+	    String key = todayKey() + "|" + userName + "|" + job;
+	    Boolean cached = MiniGameUtil.JOB_MASTER_CACHE.get(key);
+	    if (cached != null) return cached;
+	    try {
+	        boolean result = botNewService.selectIsTodayJobMasterAll(userName, job) > 0;
+	        MiniGameUtil.JOB_MASTER_CACHE.put(key, result);
+	        return result;
+	    } catch (Exception e) { return false; }
+	}
+
+	private HashMap<String,Object> getDailyBuffCached(String userName) {
+	    String key = todayKey() + "|" + userName;
+	    HashMap<String,Object> cached = MiniGameUtil.DAILY_BUFF_CACHE.get(key);
+	    if (cached != null) return cached;
+	    try {
+	        HashMap<String,Object> buff = botNewService.selectTodayDailyBuff(userName, "");
+	        if (buff != null) MiniGameUtil.DAILY_BUFF_CACHE.put(key, buff);
+	        return buff;
+	    } catch (Exception e) { return null; }
 	}
 	// ─────────────────────────────────────────────────────────────────────────
 	private Integer resolveItemId(String itemName) throws Exception {
