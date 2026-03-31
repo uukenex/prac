@@ -75,6 +75,11 @@ public class BossAttackController {
 	private static final int NM_MUL_HP_ATK = 100;
 	private static final int NM_MUL_EXP = 50;
 	private static final int NM_ADD_MON_LV = 150;
+
+	// [FIX4] selectActiveSpecialBuff 단기 캐시 (서버 전역 버프는 15초간 재사용)
+	private static volatile HashMap<String,Object> SPECIAL_BUFF_CACHE = null;
+	private static volatile long SPECIAL_BUFF_CACHE_TS = 0L;
+	private static final long SPECIAL_BUFF_CACHE_TTL_MS = 15_000L;
 	
 	/* ===== DI ===== */
 	@Autowired LoaPlayController play;
@@ -229,24 +234,8 @@ public class BossAttackController {
 	    ctx.job  = (u.job == null ? "" : u.job.trim());
 
 	    // (선택) 현재 포인트 / 누적 SP도 여기서 같이 조회해두고 싶으면:
-	    try {
-	    	HashMap<String,Object> pointRow =
-		            botNewService.selectCurrentPoint(targetUser, "");
-
-		    double curValue = Double.parseDouble(
-		        Objects.toString(pointRow.get("SCORE"), "0")
-		    );
-
-		    String curExt = Objects.toString(pointRow.get("SCORE_EXT"), "");
-
-		    SP userPoint = new SP(curValue, curExt);
-		    
-	    	ctx.currentPointStr = userPoint.toString();
-	    	
-	        ctx.currentPoint = userPoint;
-	    } catch (Exception ignore) {
-	        //ctx.currentPoint = 0;
-	    }
+	    // [FIX3] selectCurrentPoint는 attackInfo에서만 사용 → calcUserBattleContext에서 제거
+	    // ctx.currentPoint / ctx.currentPointStr 는 attackInfo()에서 직접 채움
 
 	    try {
 	    	HashMap<String,Object> row =
@@ -1286,6 +1275,15 @@ public class BossAttackController {
 	    final int jobHpMaxBonus   = ctx.jobHpMaxBonus;   // 없으면 0
 	    final int jobRegenBonus   = ctx.jobRegenBonus;   // 없으면 0
 
+	    // [FIX3] calcUserBattleContext에서 제거된 selectCurrentPoint를 여기서 직접 조회
+	    try {
+	        HashMap<String,Object> pointRow = botNewService.selectCurrentPoint(targetUser, "");
+	        double curValue = Double.parseDouble(Objects.toString(pointRow.get("SCORE"), "0"));
+	        String curExt = Objects.toString(pointRow.get("SCORE_EXT"), "");
+	        SP userPoint = new SP(curValue, curExt);
+	        ctx.currentPointStr = userPoint.toString();
+	        ctx.currentPoint = userPoint;
+	    } catch (Exception ignore) {}
 	    final String pointStr   = ctx.currentPointStr;
 	    final String lifetimeSpStr    = ctx.lifetimeSpStr;//formatSpShort(ctx.lifetimeSp);
 
@@ -2663,6 +2661,11 @@ public class BossAttackController {
 	    int beforeJobSkillYn=0;
 	    int killCountForThisMon=0;
 	    int nmKillCountForThisMon=0;
+
+	    // [FIX2] selectKillStats 중복 제거 — if/else 양쪽에서 동일하게 호출하던 것을 한 번으로 통합
+	    List<KillStat> cachedKillStats = null;
+	    try { cachedKillStats = botNewService.selectKillStats(userName, roomName); } catch (Exception ignore) {}
+
 	    if (ob != null) {
 	        m = getMonsterCached(ob.monNo);
 	        if (m == null) return "진행중 몬스터 정보를 찾을 수 없습니다.";
@@ -2700,21 +2703,16 @@ public class BossAttackController {
 	        
             monHpRemainBefore = Math.max(0, monMaxHp - ob.totalDealtDmg);
 	        
-         // ★ 이 유저의 해당 몬스터 누적 킬 수 조회
-	        killCountForThisMon = 0;
-	        nmKillCountForThisMon = 0;
-	        try {
-	            List<KillStat> kills = botNewService.selectKillStats(userName, roomName);
-	            if (kills != null) {
-	                for (KillStat ks : kills) {
-	                    if (ks.monNo == m.monNo) {
-	                        killCountForThisMon = ks.killCount;
-	                        nmKillCountForThisMon = ks.nmKillCount;
-	                        break;
-	                    }
+         // ★ 이 유저의 해당 몬스터 누적 킬 수 조회 [FIX2] cachedKillStats 재사용
+	        if (cachedKillStats != null) {
+	            for (KillStat ks : cachedKillStats) {
+	                if (ks.monNo == m.monNo) {
+	                    killCountForThisMon = ks.killCount;
+	                    nmKillCountForThisMon = ks.nmKillCount;
+	                    break;
 	                }
 	            }
-	        } catch (Exception ignore) {}
+	        }
 
 	    } else {
 
@@ -2744,21 +2742,16 @@ public class BossAttackController {
 	            monLv +=NM_ADD_MON_LV;
 	        }
 	        
-	        // ★ 이 유저의 해당 몬스터 누적 킬 수 조회
-	        killCountForThisMon = 0;
-	        nmKillCountForThisMon = 0;
-	        try {
-	            List<KillStat> kills = botNewService.selectKillStats(userName, roomName);
-	            if (kills != null) {
-	                for (KillStat ks : kills) {
-	                    if (ks.monNo == m.monNo) {
-	                        killCountForThisMon = ks.killCount;
-	                        nmKillCountForThisMon = ks.nmKillCount;
-	                        break;
-	                    }
+	        // ★ 이 유저의 해당 몬스터 누적 킬 수 조회 [FIX2] cachedKillStats 재사용
+	        if (cachedKillStats != null) {
+	            for (KillStat ks : cachedKillStats) {
+	                if (ks.monNo == m.monNo) {
+	                    killCountForThisMon = ks.killCount;
+	                    nmKillCountForThisMon = ks.nmKillCount;
+	                    break;
 	                }
 	            }
-	        } catch (Exception ignore) {}
+	        }
 
 	        // ★ 300킬 이상 + 20% 확률이면 어둠몬
 	        
@@ -2864,7 +2857,9 @@ public class BossAttackController {
 	    
 	    
 	    // 7) 쿨타임 체크 (param1 그대로 사용)
-	    CooldownCheck cd = checkCooldown(userName, roomName, param1, job,cooldownBuff);
+	    // [FIX1] selectLastAttackTime 1회 조회 → checkCooldown + computeEffectiveHpFromLastAttack 공유
+	    Timestamp cachedLastAtk = botNewService.selectLastAttackTime(userName, roomName);
+	    CooldownCheck cd = checkCooldown(userName, roomName, param1, job, cooldownBuff, cachedLastAtk);
 	    if (!cd.ok) {
 	        long min = cd.remainSeconds / 60;
 	        long sec = cd.remainSeconds % 60;
@@ -2874,7 +2869,7 @@ public class BossAttackController {
 	    // 8) 현재 체력 확정 (이전 전투 로그 기준 + 리젠)
 	    int effectiveHp = revivedThisTurn
 	            ? u.hpCur
-	            : computeEffectiveHpFromLastAttack(userName, roomName, u, effHpMax, effRegen);
+	            : computeEffectiveHpFromLastAttack(userName, roomName, u, effHpMax, effRegen, cachedLastAtk);
 	    u.hpCur = effectiveHp;
 
 	    // 유저별 업적 카운트
@@ -3665,9 +3660,16 @@ public class BossAttackController {
 
 	    SpecialBuffResult result = new SpecialBuffResult();
 
-	    // 🔹 1. 현재 활성 버프 조회 (딱 1번만)
-	    HashMap<String,Object> activeBuff =
-	            botNewService.selectActiveSpecialBuff();
+	    // 🔹 1. 현재 활성 버프 조회 — [FIX4] 15초 단기 캐시로 DB 조회 절감
+	    HashMap<String,Object> activeBuff;
+	    long nowMs = System.currentTimeMillis();
+	    if (nowMs - SPECIAL_BUFF_CACHE_TS < SPECIAL_BUFF_CACHE_TTL_MS) {
+	        activeBuff = SPECIAL_BUFF_CACHE;
+	    } else {
+	        activeBuff = botNewService.selectActiveSpecialBuff();
+	        SPECIAL_BUFF_CACHE = activeBuff;
+	        SPECIAL_BUFF_CACHE_TS = nowMs;
+	    }
 
 	    // 🔹 2. 활성 버프 없으면 → 확률 발동 시도
 	    if (activeBuff == null) {
@@ -3733,7 +3735,7 @@ public class BossAttackController {
 
 	            botNewService.insertSpecialBuff(param);
 
-	            // 🔥 새로 발동했으니 activeBuff 재구성 (메모리상)
+	            // 🔥 새로 발동했으니 activeBuff 재구성 (메모리상) + [FIX4] 캐시 무효화
 	            activeBuff = new HashMap<>();
 	            activeBuff.put("FLAG_CODE", flagCode);
 	            activeBuff.put("EFFECT_TYPE", effectType);
@@ -3752,6 +3754,9 @@ public class BossAttackController {
 	            result.startMsg =
 	                    "✨스페셜타임 발동! [" + desc + ", " + durationMin + "분]";
 	            result.activeBuff = activeBuff;
+	            // [FIX4] 새 버프 캐시 즉시 갱신
+	            SPECIAL_BUFF_CACHE = activeBuff;
+	            SPECIAL_BUFF_CACHE_TS = System.currentTimeMillis();
 	        }
 	    }
 
@@ -4030,6 +4035,8 @@ public class BossAttackController {
 	    MiniGameUtil.TODAY_MASTER_CREATED_DATE = null;
 	    MiniGameUtil.JOB_MASTER_CACHE.clear();
 	    MiniGameUtil.DAILY_BUFF_CACHE.clear();
+	    SPECIAL_BUFF_CACHE = null; // [FIX4]
+	    SPECIAL_BUFF_CACHE_TS = 0L;
 	    initCache();
 	    return "✅ 캐시 갱신 완료" + NL
 	         + "몬스터: " + MiniGameUtil.MONSTER_CACHE.size() + "건" + NL
@@ -4936,6 +4943,11 @@ public class BossAttackController {
 	}
 
 	private int computeEffectiveHpFromLastAttack(String userName, String roomName, User u, int effHpMax, int effRegen) {
+	    return computeEffectiveHpFromLastAttack(userName, roomName, u, effHpMax, effRegen, null);
+	}
+
+	// [FIX1] cachedLastAtk 가 null 이 아니면 selectLastAttackTime DB 조회 생략
+	private int computeEffectiveHpFromLastAttack(String userName, String roomName, User u, int effHpMax, int effRegen, Timestamp cachedLastAtk) {
 
 	    // 0) 이미 풀피이거나 리젠 수치가 0 이하면 그대로 반환
 	    if (u.hpCur >= effHpMax || effRegen <= 0) {
@@ -4965,7 +4977,7 @@ public class BossAttackController {
 
 	    // 3) 마지막 공격 시각을 이용해, "이미 리젠에 반영된 틱" 계산
 	    long prevTicks = 0L;
-	    Timestamp lastAtk = botNewService.selectLastAttackTime(userName, roomName);
+	    Timestamp lastAtk = (cachedLastAtk != null) ? cachedLastAtk : botNewService.selectLastAttackTime(userName, roomName);
 	    if (lastAtk != null && lastAtk.after(damaged)) {
 	        long minutesUntilLastAtk = java.time.Duration.between(damagedAt, lastAtk.toInstant()).toMinutes();
 	        if (minutesUntilLastAtk > 0) {
@@ -5005,22 +5017,27 @@ public class BossAttackController {
 	}
 	
 	private CooldownCheck checkCooldown(String userName, String roomName, String param1, String job, int buffTime) {
+	    return checkCooldown(userName, roomName, param1, job, buffTime, null);
+	}
+
+	// [FIX1] cachedLastAtk 가 null 이 아니면 DB 조회 생략
+	private CooldownCheck checkCooldown(String userName, String roomName, String param1, String job, int buffTime, Timestamp cachedLastAtk) {
 	    if ("test".equals(param1)) return CooldownCheck.ok();
 
 	    int baseCd = COOLDOWN_SECONDS; // 2분
-	    
+
 	    if(buffTime > 0) {
 	    	baseCd -= 1 * 60;
 	    }
-	    
+
 	    if ("축복술사".equals(job)) {
 	    	baseCd = 30 * 60; // 30분
 	    }
 	    if ("궁수".equals(job)) {
 	    	baseCd = 10 * 60; // 10분
 	    }
-	    
-	    Timestamp last = botNewService.selectLastAttackTime(userName, roomName);
+
+	    Timestamp last = (cachedLastAtk != null) ? cachedLastAtk : botNewService.selectLastAttackTime(userName, roomName);
 	    if (last == null) return CooldownCheck.ok();
 
 	    long sec = Duration.between(last.toInstant(), Instant.now()).getSeconds();
