@@ -44,6 +44,10 @@ public interface BotNewDAO {
 
     int insertBattleLog(BattleLog log);
 
+    int insertBattleLogBatch(List<BattleLog> logs);
+
+    List<HashMap<String, Object>> selectAllItemIdMappings();
+
     int closeOngoingBattle(@Param("userName") String userName, @Param("roomName") String roomName);
 
     int updateUserHpOnly(@Param("userName") String userName, @Param("roomName") String roomName, @Param("newHpCur") int newHpCur);

@@ -211,6 +211,26 @@
        )
   </insert>
 
+  <!-- 궁사 분할화살 배치 INSERT (Oracle INSERT ALL) -->
+  <insert id="insertBattleLogBatch" parameterType="java.util.List">
+  /*insertBattleLogBatch*/
+    INSERT ALL
+    <foreach collection="list" item="log">
+      INTO TBOT_POINT_NEW_BATTLE_LOG
+        (USER_NAME, ROOM_NAME, LV, TARGET_MON_LV,
+         GAIN_EXP, ATK_DMG, MON_DMG, ATK_CRIT_YN,
+         MON_PATTEN, INSERT_DATE, KILL_YN, NOW_YN, DROP_YN, DEATH_YN, LUCKY_YN, BUFF_YN,
+         JOB_SKILL_YN, JOB, NIGHTMARE_YN)
+      VALUES
+        (#{log.userName}, #{log.roomName}, #{log.lv}, #{log.targetMonLv},
+         #{log.gainExp}, #{log.atkDmg}, #{log.monDmg}, #{log.atkCritYn},
+         #{log.monPatten}, SYSTIMESTAMP - NUMTODSINTERVAL(#{log.shotIndex}+1, 'SECOND'),
+         #{log.killYn}, #{log.nowYn}, #{log.dropYn}, #{log.deathYn}, #{log.luckyYn}, #{log.buffYn},
+         #{log.jobSkillYn}, #{log.job}, #{log.nightmareYn})
+    </foreach>
+    SELECT 1 FROM DUAL
+  </insert>
+
   <!-- 7) 전투 종료 -->
   <update id="closeOngoingBattle">
   /*closeOngoingBattle*/
@@ -298,6 +318,10 @@
   <!-- (중복 제거하고 이 한 개만 남김) -->
   <select id="selectItemIdByName" parameterType="string" resultType="int">
     SELECT ITEM_ID FROM TBOT_POINT_NEW_ITEM WHERE ITEM_NAME = #{itemName}
+  </select>
+
+  <select id="selectAllItemIdMappings" resultType="hashmap">
+    SELECT ITEM_ID, ITEM_NAME FROM TBOT_POINT_NEW_ITEM
   </select>
 
   <insert id="insertInventoryLog" parameterType="hashmap">
@@ -645,10 +669,11 @@
 	
 	
 	<select id="selectMarketItems" resultType="hashmap">
-	    SELECT 
+	    SELECT
 	        i.ITEM_ID,
 	        i.ITEM_NAME,
 	        i.ITEM_SELL_PRICE,
+	        i.ITEM_SELL_PRICE_EXT,
 	        i.ITEM_TYPE,
 	        NVL(i.ATK_MIN,   0) AS ATK_MIN,
 	        NVL(i.ATK_MAX,   0) AS ATK_MAX,

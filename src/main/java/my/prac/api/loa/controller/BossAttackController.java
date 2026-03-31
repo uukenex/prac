@@ -25,6 +25,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -714,7 +715,7 @@ public class BossAttackController {
 	    try {
 	        OngoingBattle ob = botNewService.selectOngoingBattle(targetUser, roomName);
 	        if (ob != null) {
-	            Monster m = botNewService.selectMonsterByNo(ob.monNo);
+	            Monster m = getMonsterCached(ob.monNo);
 	            if (m != null) {
 	                int monMaxHp    = m.monHp;
 	                int monHpRemain = Math.max(0, m.monHp - ob.totalDealtDmg);
@@ -735,7 +736,7 @@ public class BossAttackController {
 	            }
 	        } else {
 	            // 진행중 전투는 없지만 타겟몬은 있을 수 있음 (선택)
-	            Monster m = botNewService.selectMonsterByNo(u.targetMon);
+	            Monster m = getMonsterCached(u.targetMon);
 	            if(nightmare) {
                 	m.monHp *=NM_MUL_HP_ATK;
                 }
@@ -1725,7 +1726,7 @@ public class BossAttackController {
 		}
 
 		Monster m = input.matches("\\d+")
-		        ? botNewService.selectMonsterByNo(Integer.parseInt(input))
+		        ? getMonsterCached(Integer.parseInt(input))
 		        : botNewService.selectMonsterByName(input);
 
 		if (m == null) {
@@ -1779,7 +1780,7 @@ public class BossAttackController {
 			// 3) 조건 미달 시 거부
 			if(!master) {
 				if (killsOnPrev < 5 ) {
-				    Monster prev = botNewService.selectMonsterByNo(prevMonNo);
+				    Monster prev = getMonsterCached(prevMonNo);
 				    String prevName = (prev == null ? ("Lv " + prevMonNo) : prev.monName);
 				    return "상위 등급으로 올리려면 [" + prevName + "]을(를) 최소 5마리 처치해야 합니다. (현재 "
 				         + killsOnPrev + "마리)";
@@ -1812,8 +1813,8 @@ public class BossAttackController {
 	    
 	    // 2) /구매 신규  (또는 /구매 000 같이 쓰고 싶으면 OR 유지)
 	    if ("신규".equals(rawParam) || "000".equals(rawParam)) {
-	        // 전체 목록 조회 (기존에 쓰던 쿼리)
-	        List<HashMap<String,Object>> list = botNewService.selectMarketItemsWithOwned(userName, roomName);
+	        // 전체 목록 조회 (캐시 사용)
+	        List<HashMap<String,Object>> list = getMarketItemsWithOwnedCached(userName, roomName);
 	        if (list == null || list.isEmpty()) {
 	            return "신규 등록 아이템이 없습니다.";
 	        }
@@ -1848,8 +1849,8 @@ public class BossAttackController {
 	        int min = range[0];
 	        int max = range[1];
 
-	        // DB에서 모든 아이템 가져온 뒤 100~199 사이만 필터
-	        List<HashMap<String,Object>> list = botNewService.selectMarketItemsWithOwned(userName, roomName);
+	        // 캐시에서 아이템 목록 가져온 뒤 ID 범위로 필터
+	        List<HashMap<String,Object>> list = getMarketItemsWithOwnedCached(userName, roomName);
 
 	        List<HashMap<String,Object>> filtered = new ArrayList<>();
 	        for (HashMap<String,Object> row : list) {
@@ -1941,7 +1942,7 @@ public class BossAttackController {
 	        try { itemId = Integer.valueOf(raw); } catch (Exception ignore) {}
 	    }
 	    if (itemId == null) {
-	        try { itemId = botNewService.selectItemIdByName(raw); } catch (Exception ignore) {}
+	        try { itemId = getItemIdCached(raw); } catch (Exception ignore) {}
 	    }
 	    
 	    if (itemId == null) {
@@ -1978,10 +1979,7 @@ public class BossAttackController {
 	    }
 
 	    // 아이템 상세 조회
-	    HashMap<String, Object> item = null;
-	    try {
-	        item = botNewService.selectItemDetailById(itemId);
-	    } catch (Exception ignore) {}
+	    HashMap<String, Object> item = getItemDetailCached(itemId);
 	    String itemType = (item == null) ? "" : Objects.toString(item.get("ITEM_TYPE"), "");
 
 	    if (item == null || !("POTION".equalsIgnoreCase(itemType) || "MARKET".equalsIgnoreCase(itemType) || "MARKET2".equalsIgnoreCase(itemType))) {
@@ -1991,12 +1989,9 @@ public class BossAttackController {
 	    String itemName = Objects.toString(item.get("ITEM_NAME"), String.valueOf(itemId));
 
 	    // 단가
-	    HashMap<String,Object> priceRow =null;
-	    try {
-	    priceRow = botNewService.selectItemSellPriceById(itemId);
-	    }catch(Exception e) {}
-	    double priceValue = safeDouble(priceRow.get("ITEM_SELL_PRICE"));
-	    String priceExt = Objects.toString(priceRow.get("ITEM_SELL_PRICE_EXT"), "");
+	    HashMap<String,Object> priceRow = getItemPriceCached(itemId);
+	    double priceValue = safeDouble(priceRow == null ? null : priceRow.get("ITEM_SELL_PRICE"));
+	    String priceExt = Objects.toString(priceRow == null ? null : priceRow.get("ITEM_SELL_PRICE_EXT"), "");
 	    
 	    SP itemPrice = new SP(priceValue, priceExt);
 	    
@@ -2468,7 +2463,7 @@ public class BossAttackController {
 
 	    // 2) 이름으로 시도
 	    if (itemId == null) {
-	        try { itemId = botNewService.selectItemIdByName(token); } catch (Exception ignore) {}
+	        try { itemId = getItemIdCached(token); } catch (Exception ignore) {}
 	    }
 
 	    // 3) 코드로 시도
@@ -2644,7 +2639,7 @@ public class BossAttackController {
 	    }
 
 	    // 🔹 글로벌(서버 전체) 기준 ACHV 카운트
-	    List<AchievementCount> globalList = botNewService.selectAchvCountsGlobalAll();
+	    List<AchievementCount> globalList = getAchvGlobalCached();
 	    Map<String, Integer> globalAchvMap = new HashMap<>();
 	    if (globalList != null) {
 	        for (AchievementCount ac : globalList) {
@@ -2669,7 +2664,7 @@ public class BossAttackController {
 	    int killCountForThisMon=0;
 	    int nmKillCountForThisMon=0;
 	    if (ob != null) {
-	        m = botNewService.selectMonsterByNo(ob.monNo);
+	        m = getMonsterCached(ob.monNo);
 	        if (m == null) return "진행중 몬스터 정보를 찾을 수 없습니다.";
 	        beforeJobSkillYn = ob.beforeJobSkillYn;
 	        
@@ -2730,7 +2725,7 @@ public class BossAttackController {
 	        // }
 	        // ===================================
 
-	        m = botNewService.selectMonsterByNo(u.targetMon);
+	        m = getMonsterCached(u.targetMon);
 	        if (m == null) return "대상 몬스터가 지정되어 있지 않습니다. (TARGET_MON 없음)";
 
 	        beforeJobSkillYn = -1;
@@ -3233,7 +3228,7 @@ public class BossAttackController {
 	            String dropName = (m.monDrop == null ? "" : m.monDrop.trim());
 	            if (!dropName.isEmpty()) {
 	                try {
-	                    Integer itemId = botNewService.selectItemIdByName(dropName);
+	                    Integer itemId = getItemIdCached(dropName);
 	                    if (itemId != null) {
 	                        HashMap<String, Object> inv = new HashMap<>();
 	                        inv.put("userName", userName);
@@ -3278,7 +3273,7 @@ public class BossAttackController {
 	                String dropName = (m.monDrop == null ? "" : m.monDrop.trim());
 	                if (!dropName.isEmpty()) {
 	                    try {
-	                        Integer itemId = botNewService.selectItemIdByName(dropName);
+	                        Integer itemId = getItemIdCached(dropName);
 	                        if (itemId != null) {
 	                            HashMap<String, Object> inv = new HashMap<>();
 	                            inv.put("userName", userName);
@@ -3321,7 +3316,7 @@ public class BossAttackController {
             String dropName = (m.monDrop == null ? "" : m.monDrop.trim());
             if (!dropName.isEmpty()) {
                 try {
-                    Integer itemId = botNewService.selectItemIdByName(dropName);
+                    Integer itemId = getItemIdCached(dropName);
                     int stealQty = 2 + extraDrop;
                     
                     if (itemId != null) {
@@ -3352,7 +3347,7 @@ public class BossAttackController {
 	            String dropName = (m.monDrop == null ? "" : m.monDrop.trim());
 	            if (!dropName.isEmpty()) {
 	                try {
-	                    Integer itemId = botNewService.selectItemIdByName(dropName);
+	                    Integer itemId = getItemIdCached(dropName);
 	                    if (itemId != null) {
 	                        HashMap<String, Object> inv = new HashMap<>();
 	                        inv.put("userName", userName);
@@ -3569,12 +3564,12 @@ public class BossAttackController {
 	    try {
 
 	        if(0 == itemId) {
-	            itemId = botNewService.selectItemIdByName(dropName);
+	            itemId = getItemIdCached(dropName);
 	        }
 
-	        HashMap<String,Object> priceRow = botNewService.selectItemSellPriceById(itemId);
+	        HashMap<String,Object> priceRow = getItemPriceCached(itemId);
 
-	        double basePrice =safeDouble(priceRow.get("ITEM_SELL_PRICE")); 
+	        double basePrice = safeDouble(priceRow == null ? null : priceRow.get("ITEM_SELL_PRICE"));
 
 	        /*
 	        String priceExt = Objects.toString(
@@ -4027,6 +4022,124 @@ public class BossAttackController {
 	    return null;
 	}
 	
+	public String refreshCache() {
+	    MiniGameUtil.MONSTER_CACHE.clear();
+	    MiniGameUtil.ACHV_GLOBAL_CACHE = null;
+	    MiniGameUtil.ITEM_ID_CACHE.clear();
+	    MiniGameUtil.ITEM_DETAIL_CACHE.clear();
+	    MiniGameUtil.ITEM_PRICE_CACHE.clear();
+	    MiniGameUtil.MARKET_OWNED_CACHE.clear();
+	    initCache();
+	    return "✅ 캐시 갱신 완료" + NL
+	         + "몬스터: " + MiniGameUtil.MONSTER_CACHE.size() + "건" + NL
+	         + "아이템ID: " + MiniGameUtil.ITEM_ID_CACHE.size() + "건" + NL
+	         + "아이템상세: " + MiniGameUtil.ITEM_DETAIL_CACHE.size() + "건" + NL
+	         + "아이템가격: " + MiniGameUtil.ITEM_PRICE_CACHE.size() + "건" + NL
+	         + "업적: " + (MiniGameUtil.ACHV_GLOBAL_CACHE != null ? MiniGameUtil.ACHV_GLOBAL_CACHE.size() : 0) + "건";
+	}
+	@PostConstruct
+	public void initCache() {
+	    try {
+	        // 몬스터 전체 로드
+	        List<Monster> monsters = botNewService.selectAllMonsters();
+	        if (monsters != null) {
+	            for (Monster m : monsters) {
+	                MiniGameUtil.MONSTER_CACHE.put(m.monNo, m);
+	            }
+	        }
+	        // 업적 글로벌 카운트 로드
+	        MiniGameUtil.ACHV_GLOBAL_CACHE = botNewService.selectAchvCountsGlobalAll();
+	        // 아이템ID 전체 로드
+	        List<HashMap<String, Object>> items = botNewService.selectAllItemIdMappings();
+	        if (items != null) {
+	            for (HashMap<String, Object> row : items) {
+	                String name = String.valueOf(row.get("ITEM_NAME"));
+	                Object id   = row.get("ITEM_ID");
+	                if (name != null && id != null) {
+	                    MiniGameUtil.ITEM_ID_CACHE.put(name, ((Number) id).intValue());
+	                }
+	            }
+	        }
+	        // 아이템 상세 + 가격 전체 프리로드 (MARKET/POTION 포함 전체)
+	        List<HashMap<String,Object>> marketItems = botNewService.selectMarketItems();
+	        if (marketItems != null) {
+	            for (HashMap<String,Object> row : marketItems) {
+	                Object idObj = row.get("ITEM_ID");
+	                if (idObj == null) continue;
+	                int id2 = ((Number) idObj).intValue();
+	                MiniGameUtil.ITEM_DETAIL_CACHE.put(id2, row);
+	                HashMap<String,Object> priceRow = new HashMap<>();
+	                priceRow.put("ITEM_SELL_PRICE",     row.get("ITEM_SELL_PRICE"));
+	                priceRow.put("ITEM_SELL_PRICE_EXT", row.get("ITEM_SELL_PRICE_EXT"));
+	                MiniGameUtil.ITEM_PRICE_CACHE.put(id2, priceRow);
+	            }
+	        }
+	    } catch (Exception e) {
+	        System.out.println("[initCache] 캐시 초기화 실패: " + e.getMessage());
+	    }
+	}
+	// ─── 캐시 헬퍼 ─────────────────────────────────────────────────────────
+	private Monster getMonsterCached(int monNo) {
+	    Monster m = MiniGameUtil.MONSTER_CACHE.get(monNo);
+	    if (m != null) return m;
+	    m = botNewService.selectMonsterByNo(monNo);
+	    if (m != null) MiniGameUtil.MONSTER_CACHE.put(monNo, m);
+	    return m;
+	}
+
+	private List<AchievementCount> getAchvGlobalCached() {
+	    if (MiniGameUtil.ACHV_GLOBAL_CACHE != null) {
+	        return MiniGameUtil.ACHV_GLOBAL_CACHE;
+	    }
+	    List<AchievementCount> list = botNewService.selectAchvCountsGlobalAll();
+	    MiniGameUtil.ACHV_GLOBAL_CACHE = list;
+	    return list;
+	}
+
+	private Integer getItemIdCached(String itemName) {
+	    if (itemName == null || itemName.isEmpty()) return null;
+	    Integer cached = MiniGameUtil.ITEM_ID_CACHE.get(itemName);
+	    if (cached != null) return cached;
+	    try {
+	        Integer id = botNewService.selectItemIdByName(itemName);
+	        if (id != null) MiniGameUtil.ITEM_ID_CACHE.put(itemName, id);
+	        return id;
+	    } catch (Exception e) { return null; }
+	}
+
+	private HashMap<String,Object> getItemDetailCached(int itemId) {
+	    HashMap<String,Object> cached = MiniGameUtil.ITEM_DETAIL_CACHE.get(itemId);
+	    if (cached != null) return cached;
+	    try {
+	        HashMap<String,Object> item = botNewService.selectItemDetailById(itemId);
+	        if (item != null) MiniGameUtil.ITEM_DETAIL_CACHE.put(itemId, item);
+	        return item;
+	    } catch (Exception e) { return null; }
+	}
+
+	private HashMap<String,Object> getItemPriceCached(int itemId) {
+	    HashMap<String,Object> cached = MiniGameUtil.ITEM_PRICE_CACHE.get(itemId);
+	    if (cached != null) return cached;
+	    try {
+	        HashMap<String,Object> price = botNewService.selectItemSellPriceById(itemId);
+	        if (price != null) MiniGameUtil.ITEM_PRICE_CACHE.put(itemId, price);
+	        return price;
+	    } catch (Exception e) { return null; }
+	}
+
+	@SuppressWarnings("unchecked")
+	private List<HashMap<String,Object>> getMarketItemsWithOwnedCached(String userName, String roomName) {
+	    String key = userName + "|" + roomName;
+	    Object[] entry = MiniGameUtil.MARKET_OWNED_CACHE.get(key);
+	    long now = System.currentTimeMillis();
+	    if (entry != null && (now - (long) entry[0]) < MiniGameUtil.MARKET_OWNED_TTL_MS) {
+	        return (List<HashMap<String,Object>>) entry[1];
+	    }
+	    List<HashMap<String,Object>> list = botNewService.selectMarketItemsWithOwned(userName, roomName);
+	    MiniGameUtil.MARKET_OWNED_CACHE.put(key, new Object[]{now, list});
+	    return list;
+	}
+	// ─────────────────────────────────────────────────────────────────────────
 	private Integer resolveItemId(String itemName) throws Exception {
 
 	    if (itemName.matches("\\d+")) {
@@ -5299,7 +5412,7 @@ public class BossAttackController {
 	            	}
 
 	            	
-	                Integer itemId = botNewService.selectItemIdByName(dropName);
+	                Integer itemId = getItemIdCached(dropName);
 	                if (itemId != null) {
 	                    HashMap<String, Object> inv = new HashMap<>();
 	                    inv.put("userName",  userName);
@@ -5378,8 +5491,9 @@ public class BossAttackController {
 
 	    // 궁사 분할 화살 추가 로그 (공격횟수 증가용, 2번째 화살부터 개별 insert)
 	    if (c.multiAttack > 1) {
+	        List<BattleLog> arrowLogs = new ArrayList<>();
 	        for (int i = 1; i < c.multiAttack; i++) {
-	            BattleLog arrowLog = new BattleLog()
+	            arrowLogs.add(new BattleLog()
 	                .setUserName(userName)
 	                .setRoomName(roomName)
 	                .setLv(up.beforeLv)
@@ -5398,9 +5512,9 @@ public class BossAttackController {
 	                .setJobSkillYn(0)
 	                .setJob(u.job)
 	                .setNightmareYn(nightmare ? 1 : 0)
-	                .setShotIndex(i);
-	            botNewService.insertBattleLogTx(arrowLog);
+	                .setShotIndex(i));
 	        }
+	        botNewService.insertBattleLogsBatch(arrowLogs);
 	    }
 
 	    return up;

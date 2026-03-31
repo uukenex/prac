@@ -41,6 +41,10 @@ public interface BotNewService {
 
     int insertBattleLogTx(BattleLog log);
 
+    int insertBattleLogsBatch(List<BattleLog> logs);
+
+    List<HashMap<String, Object>> selectAllItemIdMappings();
+
     /** 처치 시 진행중 전투 종료: NOW_YN=1 → 0 */
     int closeOngoingBattleTx(String userName, String roomName);
 	

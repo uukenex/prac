@@ -865,7 +865,12 @@ public class LoaChatController {
 				passYn = true;
 				val = boss.invenInfo(reqMap);
 				break;
-			case "/ㄱㄱㄱㅈ": case "/공격공지": case "/공지": 
+			case "/갱신":
+				passYn = true;
+				val = boss.refreshCache();
+				break;
+
+			case "/ㄱㄱㄱㅈ": case "/공격공지": case "/공지":
 				if (shouldSkip2()) {
 					val = "매일9시45분~50분은 일시중단입니다.";
 					passYn = true;
