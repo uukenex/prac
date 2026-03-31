@@ -320,6 +320,10 @@
     SELECT ITEM_ID FROM TBOT_POINT_NEW_ITEM WHERE ITEM_NAME = #{itemName}
   </select>
 
+  <select id="selectAllItemIdMappings" resultType="hashmap">
+    SELECT ITEM_ID, ITEM_NAME FROM TBOT_POINT_NEW_ITEM
+  </select>
+
   <insert id="insertInventoryLog" parameterType="hashmap">
     INSERT INTO TBOT_POINT_NEW_INVENTORY
       (USER_NAME, ROOM_NAME, ITEM_ID, QTY, DEL_YN, GAIN_TYPE, INSERT_DATE)

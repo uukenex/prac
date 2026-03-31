@@ -99,6 +99,11 @@ public class BotNewServiceImpl implements BotNewService {
     }
 
     @Override
+    public List<HashMap<String, Object>> selectAllItemIdMappings() {
+        return botNewDAO.selectAllItemIdMappings();
+    }
+
+    @Override
     public int closeOngoingBattleTx(String userName, String roomName) {
         return botNewDAO.closeOngoingBattle(userName, roomName);
     }

@@ -25,6 +25,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -4027,6 +4028,33 @@ public class BossAttackController {
 	    return null;
 	}
 	
+	@PostConstruct
+	public void initCache() {
+	    try {
+	        // 몬스터 전체 로드
+	        List<Monster> monsters = botNewService.selectAllMonsters();
+	        if (monsters != null) {
+	            for (Monster m : monsters) {
+	                MiniGameUtil.MONSTER_CACHE.put(m.monNo, m);
+	            }
+	        }
+	        // 업적 글로벌 카운트 로드
+	        MiniGameUtil.ACHV_GLOBAL_CACHE = botNewService.selectAchvCountsGlobalAll();
+	        // 아이템ID 전체 로드
+	        List<HashMap<String, Object>> items = botNewService.selectAllItemIdMappings();
+	        if (items != null) {
+	            for (HashMap<String, Object> row : items) {
+	                String name = String.valueOf(row.get("ITEM_NAME"));
+	                Object id   = row.get("ITEM_ID");
+	                if (name != null && id != null) {
+	                    MiniGameUtil.ITEM_ID_CACHE.put(name, ((Number) id).intValue());
+	                }
+	            }
+	        }
+	    } catch (Exception e) {
+	        System.out.println("[initCache] 캐시 초기화 실패: " + e.getMessage());
+	    }
+	}
 	// ─── 캐시 헬퍼 ─────────────────────────────────────────────────────────
 	private Monster getMonsterCached(int monNo) {
 	    Monster m = MiniGameUtil.MONSTER_CACHE.get(monNo);
