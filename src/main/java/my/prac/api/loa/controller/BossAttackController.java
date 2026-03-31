@@ -7062,14 +7062,18 @@ public class BossAttackController {
 	    if (dosaBuff == null) return null;
 
 	    String dosaName = (String)dosaBuff.get("USER_NAME");
-	    User dosaUser   = botNewService.selectUser(dosaName, roomName);
+
+	    // [FIX] selectUser 제거 — ATK_MAX는 selectDosaBuffInfo SQL에서 JOIN으로 직접 조회
+	    User dosaUser = new User();
+	    dosaUser.userName = dosaName;
+	    dosaUser.atkMax   = safeInt(dosaBuff.get("ATK_MAX"));
 
 	    int dosaLv = 1;
 	    try {
 	        dosaLv = Integer.parseInt(dosaBuff.get("LV").toString());
 	    } catch (Exception ignore) {}
 
-	    return buildDosaBuffEffect(dosaUser, dosaLv, roomName,0);
+	    return buildDosaBuffEffect(dosaUser, dosaLv, roomName, 0);
 	}
 	//도사
 	private DosaBuffEffect buildDosaBuffEffect(User dosaUser, int dosaLv, String roomName, int selfYn) {

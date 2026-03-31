@@ -1134,14 +1134,17 @@
 	
 	<select id="selectDosaBuffInfo" parameterType="string" resultType="hashmap">
 	    /*selectDosaBuffInfo*/
-	    SELECT USER_NAME,
-	           LV,
-	           INSERT_DATE
-	      FROM TBOT_POINT_NEW_BATTLE_LOG
-	     WHERE ROOM_NAME = #{roomName}
-	       AND BUFF_YN = '1'
-	       and rownum=1
-	     ORDER BY INSERT_DATE DESC
+	    SELECT B.USER_NAME,
+	           B.LV,
+	           B.INSERT_DATE,
+	           NVL(U.ATK_MAX, 0) AS ATK_MAX
+	      FROM TBOT_POINT_NEW_BATTLE_LOG B
+	      LEFT JOIN TBOT_POINT_NEW_USER U
+	        ON U.USER_NAME = B.USER_NAME
+	     WHERE B.ROOM_NAME = #{roomName}
+	       AND B.BUFF_YN = '1'
+	       AND ROWNUM = 1
+	     ORDER BY B.INSERT_DATE DESC
 	</select>
 	
 	<select id="selectItemIdByRowId" parameterType="string" resultType="int">
