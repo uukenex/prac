@@ -1,6 +1,7 @@
 package my.prac.core.game.dto;
 
 import java.io.Serializable;
+import java.util.List;
 
 /**
  * 사용자 모델 클래스.
@@ -29,4 +30,5 @@ public  class AttackCalc {
 	public int targetMon;
 	public boolean jobSkillUsed;
 	public boolean endBattle = false;
+	public List<int[]> arrowShots; // 궁사 분할 화살 로그용 [atkDmg, critYn]
 }
