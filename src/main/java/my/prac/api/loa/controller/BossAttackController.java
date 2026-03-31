@@ -737,14 +737,17 @@ public class BossAttackController {
 	        } else {
 	            // 진행중 전투는 없지만 타겟몬은 있을 수 있음 (선택)
 	            Monster m = getMonsterCached(u.targetMon);
+	            
+	            int monMaxHp    = m.monHp;
+	            
 	            if(nightmare) {
-                	m.monHp *=NM_MUL_HP_ATK;
+                	monMaxHp *=NM_MUL_HP_ATK;
                 }
 	            if (m != null) {
 	                sb.append(NL)
 	                  .append("▶ 타겟 몬스터").append(NL)
 	                  .append(m.monName)
-	                  .append(" (").append(m.monHp).append(" / ").append(m.monHp).append(")")
+	                  .append(" (").append(monMaxHp).append(" / ").append(monMaxHp).append(")")
 	                  .append(NL);
 	            }
 	        }
@@ -2652,7 +2655,7 @@ public class BossAttackController {
 	    OngoingBattle ob = botNewService.selectOngoingBattle(userName, roomName);
 	    Monster m;
 	    int monMaxHp = 0, monHpRemainBefore;
-	    
+	    int monAtk, monLv;
 	 // ✅ 나이트메어 모드 확인
 	    boolean nightmare = botNewService.isNightmareMode(userName, roomName);
 	    
@@ -2669,11 +2672,13 @@ public class BossAttackController {
 	        beforeJobSkillYn = ob.beforeJobSkillYn;
 	        
 	        monMaxHp = m.monHp;
+	        monAtk = m.monAtk;
+	        monLv = m.monLv;
 	     // 🔥 나이트메어 증폭
 	        if (nightmare) {
 	            monMaxHp *= NM_MUL_HP_ATK;
-	            m.monAtk *= NM_MUL_HP_ATK;
-	            m.monLv +=NM_ADD_MON_LV;
+	            monAtk *= NM_MUL_HP_ATK;
+	            monLv +=NM_ADD_MON_LV;
 	        }
 	        
 	        lucky = (ob.luckyYn != null && ob.luckyYn == 1);
@@ -2682,13 +2687,13 @@ public class BossAttackController {
 	        if (dark) {
 	        	if(m.monNo <15) {
 	        		monMaxHp = monMaxHp * 3; //0~15
-	        		m.monAtk = (int)Math.round( m.monAtk * 1.5);
+	        		monAtk = (int)Math.round( monAtk * 1.5);
 	        	}else if(m.monNo>=25) { //25~30
 	        		monMaxHp = (int)Math.round( monMaxHp * 1.75);
-	        		m.monAtk = (int)Math.round( m.monAtk * 1.1);
+	        		monAtk = (int)Math.round( monAtk * 1.1);
 	        	}else if(m.monNo>=15) { //15~25
 	        		monMaxHp = (int)Math.round( monMaxHp * 2.5);
-	        		m.monAtk = (int)Math.round( m.monAtk * 1.25);
+	        		monAtk = (int)Math.round( monAtk * 1.25);
 	        	}else{
 	        		
 	        	}
@@ -2732,12 +2737,14 @@ public class BossAttackController {
 	        
 	        monMaxHp = m.monHp;
 	        monHpRemainBefore = m.monHp;
+	        monAtk = m.monAtk;
+	        monLv = m.monLv;
 	     // 🔥 나이트메어 증폭
 	        if (nightmare) {
 	            monMaxHp *= NM_MUL_HP_ATK;
 	            monHpRemainBefore *= NM_MUL_HP_ATK;
-	            m.monAtk *= NM_MUL_HP_ATK;
-	            m.monLv +=NM_ADD_MON_LV;
+	            monAtk *= NM_MUL_HP_ATK;
+	            monLv +=NM_ADD_MON_LV;
 	        }
 	        
 	        // ★ 이 유저의 해당 몬스터 누적 킬 수 조회
@@ -2832,15 +2839,15 @@ public class BossAttackController {
 	        if (dark) {
 	        	if(m.monNo <15) {
 	        		monMaxHp = monMaxHp * 3;
-	        		m.monAtk = (int)Math.round( m.monAtk * 1.5);
+	        		monAtk = (int)Math.round( monAtk * 1.5);
 	        		monHpRemainBefore = monMaxHp;
 	        	}else if(m.monNo>=25) {
 	        		monMaxHp = (int)Math.round( monMaxHp * 1.75);
-	        		m.monAtk = (int)Math.round( m.monAtk * 1.1);
+	        		monAtk = (int)Math.round( monAtk * 1.1);
 	        		monHpRemainBefore = monMaxHp;
 	        	}else if(m.monNo>=15) {
 	        		monMaxHp = (int)Math.round( monMaxHp * 2.5);
-	        		m.monAtk = (int)Math.round( m.monAtk * 1.25);
+	        		monAtk = (int)Math.round( monAtk * 1.25);
 	        		monHpRemainBefore = monMaxHp;
 	        	}
 	        }
@@ -3211,7 +3218,6 @@ public class BossAttackController {
 	    String stealMsg = "";
 	    if ("도적".equals(job) && !(m.monNo > 50)) {
 	        double stealRate = 0.40;
-	        int monLv  = m.monNo;
 	        switch (monLv) {
 		        case 30: stealRate -= 0.05;
 		        case 29: stealRate -= 0.05;
@@ -6006,22 +6012,26 @@ public class BossAttackController {
 	    String dropName = (m.monDrop != null ? m.monDrop : "-");
 	    int dropPrice = getDropPriceByName(dropName);
 
+	    int monAtk = m.monAtk;
+	    int monHp = m.monHp;
+	    int monLv = m.monLv;
+	    
 	    if(nightmare) {
-	    	m.monAtk *= NM_MUL_HP_ATK;
-	    	m.monHp *= NM_MUL_HP_ATK;
+	    	monAtk *= NM_MUL_HP_ATK;
+	    	monHp *= NM_MUL_HP_ATK;
 	    	dropPrice = dropPrice*50;
-	    	m.monLv += NM_ADD_MON_LV;
+	    	monLv += NM_ADD_MON_LV;
 	    }
 	    
 	    SP dropSp= SP.fromSp(dropPrice);
 
 	    // ATK 범위 계산 (50% ~ 100%)
-	    int atkMin = (int) Math.floor(m.monAtk * 0.5);
-	    int atkMax = m.monAtk;
+	    int atkMin = (int) Math.floor(monAtk * 0.5);
+	    int atkMax = monAtk;
 
 	 // EXP 보정 계산 (resolveKillAndDrop 과 동일)
 	    int baseExp = Math.max(0, m.monExp);
-	    int levelGap = userLv - m.monLv;
+	    int levelGap = userLv - monLv;
 	    double expMultiplier;
 
 	    if (levelGap >= 0) {
@@ -6045,8 +6055,8 @@ public class BossAttackController {
 	    StringBuilder sb = new StringBuilder();
 
 	    // 1행: 기본 정보
-	    sb.append(m.monNo).append(". ").append(m.monName).append(" [").append(m.monLv).append("lv]")
-	      .append(" ❤️HP ").append(m.monHp)
+	    sb.append(m.monNo).append(". ").append(m.monName).append(" [").append(monLv).append("lv]")
+	      .append(" ❤️HP ").append(monHp)
 	      .append(" ⚔ATK ").append(atkMin).append("~").append(atkMax)
 	      .append(NL);
 
