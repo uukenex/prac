@@ -7014,7 +7014,11 @@ public class BossAttackController {
 	        // range/max 비율이 클수록 연사 증가 (ex. max=130000,min=65000 → 50% → 5연사)
 	        int range     = Math.max(0, effAtkMax - effAtkMin);
 	        double rangeRatio = (effAtkMax > 0) ? (double) range / effAtkMax : 0.0;
-	        int hitCount  = Math.max(2, Math.min(5, (int)(rangeRatio * 10) + 1));
+	        int hitCount;
+	        if      (rangeRatio >= 0.50) hitCount = 5; // 50%이상 → 5연사
+	        else if (rangeRatio >= 0.30) hitCount = 4; // 30~49% → 4연사
+	        else if (rangeRatio >= 0.10) hitCount = 3; // 10~29% → 3연사
+	        else                         hitCount = 2; //  0~9%  → 2연사
 
 	        calc.arrowShots = new ArrayList<>();
 	        int totalDmg = 0;
