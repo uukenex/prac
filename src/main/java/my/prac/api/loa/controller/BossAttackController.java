@@ -3336,14 +3336,17 @@ public class BossAttackController {
                         inv.put("userName", userName);
                         inv.put("roomName", roomName);
                         inv.put("itemId", itemId);
-                        inv.put("qty", 2+extraDrop);
+                        int stealQty = 2 + extraDrop;
+                        boolean bonusSteal = ThreadLocalRandom.current().nextDouble() < 0.10;
+                        if (bonusSteal) stealQty *= 2;
+                        inv.put("qty", stealQty);
                         inv.put("delYn", "1");
                         inv.put("gainType", "STEAL");
                         botNewService.insertInventoryLogTx(inv);
-                        stealMsg = "✨ 날카로운 처단으로 추가획득 (+" + dropName +"조각"+(2+extraDrop)+ ")";
+                        stealMsg = "✨ 날카로운 처단으로 추가획득 (+" + dropName +"조각"+ stealQty + ")" + (bonusSteal ? " 🎲보너스!" : "");
                         calc.jobSkillUsed = true;
                     }
-                    stealPoint += " +" +baroSellItem(dropName,itemId,res,userName,roomName,ctx,u,"STEAL",(2+extraDrop),nightmare);
+                    stealPoint += " +" +baroSellItem(dropName,itemId,res,userName,roomName,ctx,u,"STEAL",stealQty,nightmare);
                     
                     
                 } catch (Exception ignore) {}
@@ -3623,6 +3626,9 @@ public class BossAttackController {
 
 	            if ("용사".equals(ctx.job)) {
 	                gainSp *= 5;
+	                if (ThreadLocalRandom.current().nextDouble() < 0.10) {
+	                    gainSp *= 2;
+	                }
 	            }
 
 	            // --------------------------
