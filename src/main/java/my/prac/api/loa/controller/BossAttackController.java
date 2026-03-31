@@ -3576,9 +3576,10 @@ public class BossAttackController {
 
 	        double basePrice =safeDouble(priceRow.get("ITEM_SELL_PRICE")); 
 
+	        /*
 	        String priceExt = Objects.toString(
 	                priceRow.get("ITEM_SELL_PRICE_EXT"), ""
-	        );
+	        );*/
 
 	        if (basePrice > 0) {
 
