@@ -3415,13 +3415,25 @@ public class BossAttackController {
 	    if (res.killed) {
 	        botNewService.closeOngoingBattleTx(userName, roomName);
 
-	        String firstClearMsg = grantFirstClearIfEligible(userName, roomName, m, globalAchvMap);
-	        String killAchvMsg   = grantKillAchievements(userName, roomName,achievedCmdSet);
-	        String itemAchvMsg   = grantLightDarkItemAchievements(userName, roomName,achievedCmdSet);
-	        String bagAchvMsg    = grantBagAcquireAchievementsFast(userName, roomName,achievedCmdSet);
-	        String attackAchvMsg = grantAttackCountAchievements(userName, roomName,achievedCmdSet);
-	        String jobSkillAchvMsg = grantJobSkillUseAchievementsAllJobs(userName, roomName,achievedCmdSet);
-	        String shopSellAchvMsg = grantShopSellAchievementsFast(userName, roomName, achievedCmdSet);
+	        // [PERF] 업적 판정용 데이터 킬 시점에 일괄 프리로드 (grant* 메서드 내부 DB 호출 제거)
+	        List<HashMap<String, Object>> achvGainRows = null;
+	        try { achvGainRows = botNewService.selectTotalGainCountByGainType(userName, roomName); } catch (Exception ignore) {}
+	        int achvBagTotal = 0;
+	        try { achvBagTotal = botNewService.selectTotalBagAcquireCount(userName); } catch (Exception ignore) {}
+	        AttackDeathStat achvAds = null;
+	        try { achvAds = botNewService.selectAttackDeathStats(userName, roomName); } catch (Exception ignore) {}
+	        List<HashMap<String,Object>> achvJobSkillRows = null;
+	        try { achvJobSkillRows = botNewService.selectJobSkillUseCountAllJobs(userName, roomName); } catch (Exception ignore) {}
+	        int achvSoldCount = 0;
+	        try { achvSoldCount = botNewService.selectInventorySoldCount(userName, roomName); } catch (Exception ignore) {}
+
+	        String firstClearMsg  = grantFirstClearIfEligible(userName, roomName, m, globalAchvMap);
+	        String killAchvMsg    = grantKillAchievements(userName, roomName, achievedCmdSet, cachedKillStats);           // [PERF] cachedKillStats 재사용
+	        String itemAchvMsg    = grantLightDarkItemAchievements(userName, roomName, achievedCmdSet, achvGainRows);     // [PERF] 프리로드
+	        String bagAchvMsg     = grantBagAcquireAchievementsFast(userName, roomName, achievedCmdSet, achvBagTotal);   // [PERF] 프리로드
+	        String attackAchvMsg  = grantAttackCountAchievements(userName, roomName, achievedCmdSet, achvAds);           // [PERF] 프리로드
+	        String jobSkillAchvMsg = grantJobSkillUseAchievementsAllJobs(userName, roomName, achievedCmdSet, achvJobSkillRows); // [PERF] 프리로드
+	        String shopSellAchvMsg = grantShopSellAchievementsFast(userName, roomName, achievedCmdSet, achvSoldCount);   // [PERF] 프리로드
 	        
 	        String achvRewardMsg = grantAchievementBasedReward(userName, roomName, userAchvList);
 	        
@@ -3489,7 +3501,7 @@ public class BossAttackController {
 	        msg += blessMsg;
 	    }
 
-	    String celebrationMsg = grantCelebrationClearBonus(userName, roomName, globalAchvMap, userAchvMap);
+	    String celebrationMsg = grantCelebrationClearBonus(userName, roomName, globalAchvMap, userAchvMap, u.lv); // [PERF] selectUser 재사용
 	    if (celebrationMsg != null && !celebrationMsg.isEmpty()) {
 	        msg += NL + celebrationMsg;
 	    }
@@ -4631,9 +4643,9 @@ public class BossAttackController {
 	private String grantAttackCountAchievements(
 	        String userName,
 	        String roomName,
-	        Set<String> achievedCmdSet
+	        Set<String> achievedCmdSet,
+	        AttackDeathStat ads   // [PERF] 호출부에서 프리로드
 	) {
-	    AttackDeathStat ads = botNewService.selectAttackDeathStats(userName, roomName);
 	    if (ads == null) return "";
 
 	    int totalAttacks = ads.totalAttacks;
@@ -4666,12 +4678,9 @@ public class BossAttackController {
 	private String grantJobSkillUseAchievementsAllJobs(
 	        String userName,
 	        String roomName,
-	        Set<String> achievedCmdSet
+	        Set<String> achievedCmdSet,
+	        List<HashMap<String,Object>> rows   // [PERF] 호출부에서 프리로드
 	) {
-
-	    // 1️⃣ 직업별 스킬 사용 누적 수 (쿼리 1회)
-	    List<HashMap<String,Object>> rows =
-	            botNewService.selectJobSkillUseCountAllJobs(userName, roomName);
 	    if (rows == null || rows.isEmpty()) return "";
 
 	    // 2️⃣ 공통 임계치
@@ -4730,7 +4739,9 @@ public class BossAttackController {
 	private String grantShopSellAchievementsFast(
 	        String userName,
 	        String roomName,
-	        Set<String> achvCmdSet) {
+	        Set<String> achvCmdSet,
+	        int soldCount   // [PERF] 호출부에서 프리로드
+	) {
 
 	    final int[][] rules = {
 	    	{500,   5000},
@@ -4745,13 +4756,6 @@ public class BossAttackController {
 	        {9000,  20000},
 	        {10000, 30000}
 	    };
-
-	    int soldCount;
-	    try {
-	        soldCount = botNewService.selectInventorySoldCount(userName, roomName);
-	    } catch (Exception e) {
-	        return "";
-	    }
 
 	    if (soldCount <= 0) return "";
 
@@ -6297,9 +6301,9 @@ public class BossAttackController {
 	private String grantKillAchievements(
 	        String userName,
 	        String roomName,
-	        Set<String> achievedCmdSet
+	        Set<String> achievedCmdSet,
+	        List<KillStat> ksList   // [PERF] selectKillStats 제거 — monsterAttack의 cachedKillStats 재사용
 	) {
-	    List<KillStat> ksList = botNewService.selectKillStats(userName, roomName);
 	    if (ksList == null || ksList.isEmpty()) return "";
 
 	    StringBuilder sb = new StringBuilder();
@@ -6368,14 +6372,12 @@ public class BossAttackController {
 	private String grantLightDarkItemAchievements(
 	        String userName,
 	        String roomName,
-	        Set<String> achievedCmdSet
+	        Set<String> achievedCmdSet,
+	        List<HashMap<String, Object>> gainRows   // [PERF] 호출부에서 프리로드
 	) {
 	    int lightTotal = 0;
 	    int darkTotal  = 0;
 	    int grayTotal  = 0;
-
-	    List<HashMap<String, Object>> gainRows =
-	            botNewService.selectTotalGainCountByGainType(userName, roomName);
 
 	    if (gainRows != null) {
 	        for (HashMap<String, Object> row : gainRows) {
@@ -6471,16 +6473,13 @@ public class BossAttackController {
 	        String userName,
 	        String roomName,
 	        Map<String, Integer> globalAchvMap,
-	        Map<String, Integer> userAchvMap
+	        Map<String, Integer> userAchvMap,
+	        int myLv   // [PERF] selectUser 제거 — 호출부에서 ctx.user.lv 전달
 	) {
 
 	    StringBuilder sb = new StringBuilder();
 
 	    List<Monster> mons = botNewService.selectAllMonsters();
-	    
-	    // ⭐ NEW: 내 레벨 한 번만 조회
-	    User u = botNewService.selectUser(userName, null);
-	    int myLv = (u == null ? 0 : u.lv);
 
 	    for (Monster m : mons) {
 
@@ -6972,11 +6971,9 @@ public class BossAttackController {
 	private String grantBagAcquireAchievementsFast(
 	        String userName,
 	        String roomName,
-	        Set<String> achievedCmdSet
+	        Set<String> achievedCmdSet,
+	        int bagTotal   // [PERF] 호출부에서 프리로드
 	) {
-	    // 🎒 가방 아이템 ID
-	    int bagTotal =
-	            botNewService.selectTotalBagAcquireCount(userName);
 
 	    if (bagTotal <= 0) return "";
 
