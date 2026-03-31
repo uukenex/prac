@@ -52,6 +52,15 @@ public class MiniGameUtil {
 	// 마켓 아이템+보유 캐시 (userName|roomName → Object[]{timestamp, list}, TTL 30초)
 	public static final ConcurrentHashMap<String, Object[]> MARKET_OWNED_CACHE = new ConcurrentHashMap<>();
 	public static final long MARKET_OWNED_TTL_MS = 30_000L;
+
+	// 오늘 마스터 생성 완료 날짜 (yyyyMMdd, 날짜 바뀌면 자동 무효)
+	public static volatile String TODAY_MASTER_CREATED_DATE = null;
+
+	// 직업마스터 여부 캐시 (yyyyMMdd|userName|job → Boolean, 일 단위 자동만료)
+	public static final ConcurrentHashMap<String, Boolean> JOB_MASTER_CACHE = new ConcurrentHashMap<>();
+
+	// 데일리버프 캐시 (yyyyMMdd|userName → HashMap, 일 단위 자동만료)
+	public static final ConcurrentHashMap<String, HashMap<String,Object>> DAILY_BUFF_CACHE = new ConcurrentHashMap<>();
 	// ─────────────────────────────────────────────────────────────────────────
 
 	static {
