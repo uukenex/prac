@@ -1038,41 +1038,41 @@ public class BossAttackController {
 		        }
 		    }
 
-		    // 5-1) 직업별 전직 조건 체크 (전사 100, 도적 100 같은 것들)
-		    List<JobChangeReq> reqList = MiniGameUtil.JOB_CHANGE_REQS.get(newJob);
-		    if (reqList != null && !reqList.isEmpty()) {
-		        StringBuilder sb = new StringBuilder();
-
-		        for (JobChangeReq req : reqList) {
-		            int curCnt = jobCntMap.getOrDefault(req.baseJob, 0);
-
-		            if (curCnt < req.minCount) {
-		                sb.append("- [")
-		                  .append(req.baseJob)
-		                  .append("] 직업으로 ")
-		                  .append(req.minCount)
-		                  .append("회 이상 공격 필요 (현재: ")
-		                  .append(curCnt)
-		                  .append("회)")
-		                  .append(NL);
-		            }
-		        }
-
-		        if (sb.length() > 0) {
-		            return "[" + newJob + "] 직업은 아래 조건을 모두 만족해야 전직 가능합니다." + NL
-		                 + sb.toString().trim();
-		        }
-		    }
-
-		    // 5-2) 전체 공격 횟수 조건 체크
-		    Integer totalReq = MiniGameUtil.JOB_CHANGE_TOTAL_REQS.get(newJob);
-		    if (totalReq != null) {
-		        if (totalCnt < totalReq) {
-		            return "[" + newJob + "] 직업은 전체 공격 횟수 "
-		                 + totalReq + "회를 달성해야 전직 가능합니다. (현재: "
-		                 + totalCnt + "회)";
-		        }
-		    }
+		    // // 5-1) 직업별 전직 조건 체크 (전사 100, 도적 100 같은 것들)
+// 		    List<JobChangeReq> reqList = MiniGameUtil.JOB_CHANGE_REQS.get(newJob);
+// 		    if (reqList != null && !reqList.isEmpty()) {
+// 		        StringBuilder sb = new StringBuilder();
+// 
+// 		        for (JobChangeReq req : reqList) {
+// 		            int curCnt = jobCntMap.getOrDefault(req.baseJob, 0);
+// 
+// 		            if (curCnt < req.minCount) {
+// 		                sb.append("- [")
+// 		                  .append(req.baseJob)
+// 		                  .append("] 직업으로 ")
+// 		                  .append(req.minCount)
+// 		                  .append("회 이상 공격 필요 (현재: ")
+// 		                  .append(curCnt)
+// 		                  .append("회)")
+// 		                  .append(NL);
+// 		            }
+// 		        }
+// 
+// 		        if (sb.length() > 0) {
+// 		            return "[" + newJob + "] 직업은 아래 조건을 모두 만족해야 전직 가능합니다." + NL
+// 		                 + sb.toString().trim();
+// 		        }
+// 		    }
+// 
+// 		    // 5-2) 전체 공격 횟수 조건 체크
+// 		    Integer totalReq = MiniGameUtil.JOB_CHANGE_TOTAL_REQS.get(newJob);
+// 		    if (totalReq != null) {
+// 		        if (totalCnt < totalReq) {
+// 		            return "[" + newJob + "] 직업은 전체 공격 횟수 "
+// 		                 + totalReq + "회를 달성해야 전직 가능합니다. (현재: "
+// 		                 + totalCnt + "회)";
+// 		        }
+// 		    }
 	    }
 	    
 	    
@@ -3542,7 +3542,7 @@ public class BossAttackController {
 	    	
 	    	msg += "✨전투획득" + newPoint;
 	    	if(flag1) {
-	    		msg+="(누적 10b 이하 3배 적용)";
+	    		msg+="(누적 30b 이하 3배 적용)";
 	    	}/*
     		if(flag2) {
     			msg+="(누적 2500만sp 이하 1.5배 적용)";
@@ -5378,13 +5378,41 @@ public class BossAttackController {
 	        .setNowYn(1)
 	        .setDeathYn(deathYn)
 	        .setLuckyYn(luckyYn)
-	        .setDropYn(dropAsInt)
+	        .setDropYn(res.killed ? dropAsInt : 0)
 	    	.setBuffYn(buffYn)
 	    	.setJobSkillYn(c.jobSkillUsed ? 1 : 0)
 	    	.setJob(u.job)
 	    	.setNightmareYn(nightmare?1:0);
 
 	    botNewService.insertBattleLogTx(log);
+
+	    // 궁사 분할 화살 추가 로그 (공격횟수 증가용, 2번째 화살부터 개별 insert)
+	    if (c.multiAttack > 1) {
+	        for (int i = 1; i < c.multiAttack; i++) {
+	            BattleLog arrowLog = new BattleLog()
+	                .setUserName(userName)
+	                .setRoomName(roomName)
+	                .setLv(up.beforeLv)
+	                .setTargetMonLv(m.monNo)
+	                .setGainExp(-1)
+	                .setAtkDmg(0)
+	                .setMonDmg(0)
+	                .setAtkCritYn(0)
+	                .setMonPatten(0)
+	                .setKillYn(0)
+	                .setNowYn(1)
+	                .setDeathYn(0)
+	                .setLuckyYn(0)
+	                .setDropYn(0)
+	                .setBuffYn(0)
+	                .setJobSkillYn(0)
+	                .setJob(u.job)
+	                .setNightmareYn(nightmare ? 1 : 0)
+	                .setShotIndex(i);
+	            botNewService.insertBattleLogTx(arrowLog);
+	        }
+	    }
+
 	    return up;
 	}
 
@@ -6996,14 +7024,18 @@ public class BossAttackController {
 	    // -----------------------------
 	    
 	    if ("궁사".equals(job)) {
-	        int step = (int)Math.round(effAtkMax * 0.10);
-	        step = Math.max(step, 280); // 최소 200 단위
-	        
-	        // 1) 연사 횟수 계산
-	        int range    = Math.max(0, effAtkMax - effAtkMin); // 최대뎀 - 최소뎀
-	        int segments = range / step;
-	        int hitCount = Math.max(1, segments + 1);          // 구간+1이 실제 발사 수
+	           // 1) 연사 횟수 계산 (최소데미지 비율 기반, 최소 2연사 ~ 최대 5연사)
+	        // range/max 비율이 클수록 연사 증가 (ex. max=130000,min=65000 → 50% → 5연사)
+	        int range     = Math.max(0, effAtkMax - effAtkMin);
+	        double rangeRatio = (effAtkMax > 0) ? (double) range / effAtkMax : 0.0;
+	        int hitCount;
+	        if      (rangeRatio >= 0.50) hitCount = 5; // 50%이상 → 5연사
+	        else if (rangeRatio >= 0.30) hitCount = 4; // 30~49% → 4연사
+	        else if (rangeRatio >= 0.10) hitCount = 3; // 10~29% → 3연사
+	        else                         hitCount = 2; //  0~9%  → 2연사
 
+	        
+	        calc.multiAttack =hitCount;
 	        int totalDmg = 0;
 	        StringBuilder multiMsg = new StringBuilder();
 
@@ -7020,29 +7052,27 @@ public class BossAttackController {
 	                ? (double) remainingCritBudget / (hitCount - 1)
 	                : 0.0;
 
-	        // 2~마지막샷까지 개별 최대 70%
+	        // 2~마지막샷까지 개별 최대 80%
 	        if (perHitRateRaw > 80.0) {
 	            perHitRateRaw = 80.0;
 	        }
 	        double perHitRate = perHitRateRaw; // 0.0 ~ 80.0
 
 	        boolean allCrit = true; // 전탄 크리 체크용
+	        int shotStep = (hitCount > 1) ? range / (hitCount - 1) : 0; // 화살 간격
 
 	        for (int i = 1; i <= hitCount; i++) {
 	            int shotAtk;
 
 	            if (i < hitCount) {
 	                // 1샷 ~ (hitCount-1)샷: 구간별 고정값
-	                // 1샷: effAtkMin
-	                // 2샷: effAtkMin + 280
-	                // 3샷: effAtkMin + 560 ...
-	                shotAtk = effAtkMin + 280 * (i - 1);
+	                shotAtk = effAtkMin + shotStep * (i - 1);
 	                if (shotAtk > effAtkMax) {
 	                    shotAtk = effAtkMax;
 	                }
 	            } else {
 	                // 마지막 샷: [startLast ~ effAtkMax] 랜덤
-	                int startLast = effAtkMin + 280 * (hitCount - 1);
+	                int startLast = effAtkMin + shotStep * (hitCount - 1);
 	                if (startLast > effAtkMax) {
 	                    startLast = effAtkMax;
 	                }
@@ -7055,7 +7085,7 @@ public class BossAttackController {
 	                }
 	            }
 	            
-	            double minFactor = 0.4; // 마지막 타 최소 비율 (원하면 0.2~0.4 사이로 튜닝)
+	            double minFactor = 0.7; // 마지막 타 최소 비율 (원하면 0.2~0.4 사이로 튜닝)
 
 	            int maxIdx = (hitCount > 1 ? hitCount - 1 : 1);
 	            double factor = 1.0;
@@ -7529,8 +7559,10 @@ public class BossAttackController {
 	        // 4) 보스 패턴 포함 실제 데미지 계산
 	        // -----------------------------
 	    	boolean beforeCalc = calc.jobSkillUsed;
+	    	int beforeMultiAttackCnt = calc.multiAttack;
 	        calc = calcDamage(u, m, flags, baseAtk, crit, critMultiplier);
 	        calc.jobSkillUsed = beforeCalc;
+	        calc.multiAttack = beforeMultiAttackCnt;
 	        
 	        flags.atkCrit = crit;
 	        flags.snipe = isSnipe;

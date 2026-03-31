@@ -25,6 +25,7 @@ public class BattleLog {
 	private int jobSkillYn; // 0/1 (또는 null)
 	private String job; 
 	private int nightmareYn;
+	private int shotIndex; // 궁사 분할 화살용 ms 오프셋 (0=기본)
 
 	public BattleLog setUserName(String v) {
 		this.userName = v;
@@ -110,6 +111,11 @@ public class BattleLog {
 	}
 	public BattleLog setNightmareYn(int v) {
 		this.nightmareYn = v;
+		return this;
+	}
+
+	public BattleLog setShotIndex(int v) {
+		this.shotIndex = v;
 		return this;
 	}
 
