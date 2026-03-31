@@ -37,10 +37,8 @@ public class MiniGameUtil {
 	// 몬스터 캐시 (서버 기동 후 영구 유지, invalidateMonsterCache()로 초기화)
 	public static final ConcurrentHashMap<Integer, Monster> MONSTER_CACHE = new ConcurrentHashMap<>();
 
-	// 업적 글로벌 카운트 캐시 (2분 TTL)
+	// 업적 글로벌 카운트 캐시 (영구)
 	public static volatile List<AchievementCount> ACHV_GLOBAL_CACHE = null;
-	public static volatile long ACHV_CACHE_TIME  = 0L;
-	public static final  long  ACHV_CACHE_TTL_MS = 120_000L; // 2분
 
 	// 아이템 이름 → ID 캐시 (영구)
 	public static final ConcurrentHashMap<String, Integer> ITEM_ID_CACHE = new ConcurrentHashMap<>();

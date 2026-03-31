@@ -4037,14 +4037,11 @@ public class BossAttackController {
 	}
 
 	private List<AchievementCount> getAchvGlobalCached() {
-	    long now = System.currentTimeMillis();
-	    if (MiniGameUtil.ACHV_GLOBAL_CACHE != null &&
-	            (now - MiniGameUtil.ACHV_CACHE_TIME) < MiniGameUtil.ACHV_CACHE_TTL_MS) {
+	    if (MiniGameUtil.ACHV_GLOBAL_CACHE != null) {
 	        return MiniGameUtil.ACHV_GLOBAL_CACHE;
 	    }
 	    List<AchievementCount> list = botNewService.selectAchvCountsGlobalAll();
 	    MiniGameUtil.ACHV_GLOBAL_CACHE = list;
-	    MiniGameUtil.ACHV_CACHE_TIME   = now;
 	    return list;
 	}
 
