@@ -3534,7 +3534,7 @@ public class BossAttackController {
 	    	
 	    	msg += "✨전투획득" + newPoint;
 	    	if(flag1) {
-	    		msg+="(누적 10b 이하 3배 적용)";
+	    		msg+="(누적 30b 이하 3배 적용)";
 	    	}/*
     		if(flag2) {
     			msg+="(누적 2500만sp 이하 1.5배 적용)";
