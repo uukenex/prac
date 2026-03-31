@@ -42,6 +42,16 @@ public class MiniGameUtil {
 
 	// 아이템 이름 → ID 캐시 (영구)
 	public static final ConcurrentHashMap<String, Integer> ITEM_ID_CACHE = new ConcurrentHashMap<>();
+
+	// 아이템 상세 캐시 (itemId → detail map, 영구)
+	public static final ConcurrentHashMap<Integer, HashMap<String,Object>> ITEM_DETAIL_CACHE = new ConcurrentHashMap<>();
+
+	// 아이템 가격 캐시 (itemId → price map, 영구)
+	public static final ConcurrentHashMap<Integer, HashMap<String,Object>> ITEM_PRICE_CACHE = new ConcurrentHashMap<>();
+
+	// 마켓 아이템+보유 캐시 (userName|roomName → Object[]{timestamp, list}, TTL 30초)
+	public static final ConcurrentHashMap<String, Object[]> MARKET_OWNED_CACHE = new ConcurrentHashMap<>();
+	public static final long MARKET_OWNED_TTL_MS = 30_000L;
 	// ─────────────────────────────────────────────────────────────────────────
 
 	static {

@@ -1813,8 +1813,8 @@ public class BossAttackController {
 	    
 	    // 2) /구매 신규  (또는 /구매 000 같이 쓰고 싶으면 OR 유지)
 	    if ("신규".equals(rawParam) || "000".equals(rawParam)) {
-	        // 전체 목록 조회 (기존에 쓰던 쿼리)
-	        List<HashMap<String,Object>> list = botNewService.selectMarketItemsWithOwned(userName, roomName);
+	        // 전체 목록 조회 (캐시 사용)
+	        List<HashMap<String,Object>> list = getMarketItemsWithOwnedCached(userName, roomName);
 	        if (list == null || list.isEmpty()) {
 	            return "신규 등록 아이템이 없습니다.";
 	        }
@@ -1849,8 +1849,8 @@ public class BossAttackController {
 	        int min = range[0];
 	        int max = range[1];
 
-	        // DB에서 모든 아이템 가져온 뒤 100~199 사이만 필터
-	        List<HashMap<String,Object>> list = botNewService.selectMarketItemsWithOwned(userName, roomName);
+	        // 캐시에서 아이템 목록 가져온 뒤 ID 범위로 필터
+	        List<HashMap<String,Object>> list = getMarketItemsWithOwnedCached(userName, roomName);
 
 	        List<HashMap<String,Object>> filtered = new ArrayList<>();
 	        for (HashMap<String,Object> row : list) {
@@ -1979,10 +1979,7 @@ public class BossAttackController {
 	    }
 
 	    // 아이템 상세 조회
-	    HashMap<String, Object> item = null;
-	    try {
-	        item = botNewService.selectItemDetailById(itemId);
-	    } catch (Exception ignore) {}
+	    HashMap<String, Object> item = getItemDetailCached(itemId);
 	    String itemType = (item == null) ? "" : Objects.toString(item.get("ITEM_TYPE"), "");
 
 	    if (item == null || !("POTION".equalsIgnoreCase(itemType) || "MARKET".equalsIgnoreCase(itemType) || "MARKET2".equalsIgnoreCase(itemType))) {
@@ -1992,12 +1989,9 @@ public class BossAttackController {
 	    String itemName = Objects.toString(item.get("ITEM_NAME"), String.valueOf(itemId));
 
 	    // 단가
-	    HashMap<String,Object> priceRow =null;
-	    try {
-	    priceRow = botNewService.selectItemSellPriceById(itemId);
-	    }catch(Exception e) {}
-	    double priceValue = safeDouble(priceRow.get("ITEM_SELL_PRICE"));
-	    String priceExt = Objects.toString(priceRow.get("ITEM_SELL_PRICE_EXT"), "");
+	    HashMap<String,Object> priceRow = getItemPriceCached(itemId);
+	    double priceValue = safeDouble(priceRow == null ? null : priceRow.get("ITEM_SELL_PRICE"));
+	    String priceExt = Objects.toString(priceRow == null ? null : priceRow.get("ITEM_SELL_PRICE_EXT"), "");
 	    
 	    SP itemPrice = new SP(priceValue, priceExt);
 	    
@@ -3573,9 +3567,9 @@ public class BossAttackController {
 	            itemId = getItemIdCached(dropName);
 	        }
 
-	        HashMap<String,Object> priceRow = botNewService.selectItemSellPriceById(itemId);
+	        HashMap<String,Object> priceRow = getItemPriceCached(itemId);
 
-	        double basePrice =safeDouble(priceRow.get("ITEM_SELL_PRICE")); 
+	        double basePrice = safeDouble(priceRow == null ? null : priceRow.get("ITEM_SELL_PRICE"));
 
 	        /*
 	        String priceExt = Objects.toString(
@@ -4032,10 +4026,15 @@ public class BossAttackController {
 	    MiniGameUtil.MONSTER_CACHE.clear();
 	    MiniGameUtil.ACHV_GLOBAL_CACHE = null;
 	    MiniGameUtil.ITEM_ID_CACHE.clear();
+	    MiniGameUtil.ITEM_DETAIL_CACHE.clear();
+	    MiniGameUtil.ITEM_PRICE_CACHE.clear();
+	    MiniGameUtil.MARKET_OWNED_CACHE.clear();
 	    initCache();
 	    return "✅ 캐시 갱신 완료" + NL
 	         + "몬스터: " + MiniGameUtil.MONSTER_CACHE.size() + "건" + NL
 	         + "아이템ID: " + MiniGameUtil.ITEM_ID_CACHE.size() + "건" + NL
+	         + "아이템상세: " + MiniGameUtil.ITEM_DETAIL_CACHE.size() + "건" + NL
+	         + "아이템가격: " + MiniGameUtil.ITEM_PRICE_CACHE.size() + "건" + NL
 	         + "업적: " + (MiniGameUtil.ACHV_GLOBAL_CACHE != null ? MiniGameUtil.ACHV_GLOBAL_CACHE.size() : 0) + "건";
 	}
 	@PostConstruct
@@ -4059,6 +4058,20 @@ public class BossAttackController {
 	                if (name != null && id != null) {
 	                    MiniGameUtil.ITEM_ID_CACHE.put(name, ((Number) id).intValue());
 	                }
+	            }
+	        }
+	        // 아이템 상세 + 가격 전체 프리로드 (MARKET/POTION 포함 전체)
+	        List<HashMap<String,Object>> marketItems = botNewService.selectMarketItems();
+	        if (marketItems != null) {
+	            for (HashMap<String,Object> row : marketItems) {
+	                Object idObj = row.get("ITEM_ID");
+	                if (idObj == null) continue;
+	                int id2 = ((Number) idObj).intValue();
+	                MiniGameUtil.ITEM_DETAIL_CACHE.put(id2, row);
+	                HashMap<String,Object> priceRow = new HashMap<>();
+	                priceRow.put("ITEM_SELL_PRICE",     row.get("ITEM_SELL_PRICE"));
+	                priceRow.put("ITEM_SELL_PRICE_EXT", row.get("ITEM_SELL_PRICE_EXT"));
+	                MiniGameUtil.ITEM_PRICE_CACHE.put(id2, priceRow);
 	            }
 	        }
 	    } catch (Exception e) {
@@ -4092,6 +4105,39 @@ public class BossAttackController {
 	        if (id != null) MiniGameUtil.ITEM_ID_CACHE.put(itemName, id);
 	        return id;
 	    } catch (Exception e) { return null; }
+	}
+
+	private HashMap<String,Object> getItemDetailCached(int itemId) {
+	    HashMap<String,Object> cached = MiniGameUtil.ITEM_DETAIL_CACHE.get(itemId);
+	    if (cached != null) return cached;
+	    try {
+	        HashMap<String,Object> item = botNewService.selectItemDetailById(itemId);
+	        if (item != null) MiniGameUtil.ITEM_DETAIL_CACHE.put(itemId, item);
+	        return item;
+	    } catch (Exception e) { return null; }
+	}
+
+	private HashMap<String,Object> getItemPriceCached(int itemId) {
+	    HashMap<String,Object> cached = MiniGameUtil.ITEM_PRICE_CACHE.get(itemId);
+	    if (cached != null) return cached;
+	    try {
+	        HashMap<String,Object> price = botNewService.selectItemSellPriceById(itemId);
+	        if (price != null) MiniGameUtil.ITEM_PRICE_CACHE.put(itemId, price);
+	        return price;
+	    } catch (Exception e) { return null; }
+	}
+
+	@SuppressWarnings("unchecked")
+	private List<HashMap<String,Object>> getMarketItemsWithOwnedCached(String userName, String roomName) {
+	    String key = userName + "|" + roomName;
+	    Object[] entry = MiniGameUtil.MARKET_OWNED_CACHE.get(key);
+	    long now = System.currentTimeMillis();
+	    if (entry != null && (now - (long) entry[0]) < MiniGameUtil.MARKET_OWNED_TTL_MS) {
+	        return (List<HashMap<String,Object>>) entry[1];
+	    }
+	    List<HashMap<String,Object>> list = botNewService.selectMarketItemsWithOwned(userName, roomName);
+	    MiniGameUtil.MARKET_OWNED_CACHE.put(key, new Object[]{now, list});
+	    return list;
 	}
 	// ─────────────────────────────────────────────────────────────────────────
 	private Integer resolveItemId(String itemName) throws Exception {

@@ -669,10 +669,11 @@
 	
 	
 	<select id="selectMarketItems" resultType="hashmap">
-	    SELECT 
+	    SELECT
 	        i.ITEM_ID,
 	        i.ITEM_NAME,
 	        i.ITEM_SELL_PRICE,
+	        i.ITEM_SELL_PRICE_EXT,
 	        i.ITEM_TYPE,
 	        NVL(i.ATK_MIN,   0) AS ATK_MIN,
 	        NVL(i.ATK_MAX,   0) AS ATK_MAX,
