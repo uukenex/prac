@@ -1073,7 +1073,7 @@ public class BossAttackController {
 // 		                 + totalCnt + "회)";
 // 		        }
 // 		    }
-// 	    }
+	    }
 	    
 	    
 	    // 6) 직업 변경 수행 (JOB + JOB_CHANGE_DATE = SYSDATE)
