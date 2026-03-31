@@ -30,5 +30,5 @@ public  class AttackCalc {
 	public int targetMon;
 	public boolean jobSkillUsed;
 	public boolean endBattle = false;
-	public List<int[]> arrowShots; // 궁사 분할 화살 로그용 [atkDmg, critYn]
+	public int multiAttack; // 궁사 분할 화살 로그용 
 }

@@ -5363,7 +5363,7 @@ public class BossAttackController {
 	        .setNowYn(1)
 	        .setDeathYn(deathYn)
 	        .setLuckyYn(luckyYn)
-	        .setDropYn(dropAsInt)
+	        .setDropYn(res.killed ? dropAsInt : 0)
 	    	.setBuffYn(buffYn)
 	    	.setJobSkillYn(c.jobSkillUsed ? 1 : 0)
 	    	.setJob(u.job)
@@ -5372,9 +5372,8 @@ public class BossAttackController {
 	    botNewService.insertBattleLogTx(log);
 
 	    // 궁사 분할 화살 추가 로그 (공격횟수 증가용, 2번째 화살부터 개별 insert)
-	    if (c.arrowShots != null && c.arrowShots.size() > 1) {
-	        for (int i = 1; i < c.arrowShots.size(); i++) {
-	            //int[] shot = c.arrowShots.get(i);
+	    if (c.multiAttack > 1) {
+	        for (int i = 1; i < c.multiAttack; i++) {
 	            BattleLog arrowLog = new BattleLog()
 	                .setUserName(userName)
 	                .setRoomName(roomName)
@@ -7020,7 +7019,8 @@ public class BossAttackController {
 	        else if (rangeRatio >= 0.10) hitCount = 3; // 10~29% → 3연사
 	        else                         hitCount = 2; //  0~9%  → 2연사
 
-	        calc.arrowShots = new ArrayList<>();
+	        
+	        calc.multiAttack =hitCount;
 	        int totalDmg = 0;
 	        StringBuilder multiMsg = new StringBuilder();
 
@@ -7037,7 +7037,7 @@ public class BossAttackController {
 	                ? (double) remainingCritBudget / (hitCount - 1)
 	                : 0.0;
 
-	        // 2~마지막샷까지 개별 최대 70%
+	        // 2~마지막샷까지 개별 최대 80%
 	        if (perHitRateRaw > 80.0) {
 	            perHitRateRaw = 80.0;
 	        }
@@ -7070,7 +7070,7 @@ public class BossAttackController {
 	                }
 	            }
 	            
-	            double minFactor = 0.4; // 마지막 타 최소 비율 (원하면 0.2~0.4 사이로 튜닝)
+	            double minFactor = 0.7; // 마지막 타 최소 비율 (원하면 0.2~0.4 사이로 튜닝)
 
 	            int maxIdx = (hitCount > 1 ? hitCount - 1 : 1);
 	            double factor = 1.0;
@@ -7095,7 +7095,6 @@ public class BossAttackController {
 	                    : shotAtk;
 
 	            totalDmg += shotDmg;
-	            calc.arrowShots.add(new int[]{shotDmg, shotCrit ? 1 : 0});
 	            if (!shotCrit) {
 	                allCrit = false;
 	            }
@@ -7545,8 +7544,10 @@ public class BossAttackController {
 	        // 4) 보스 패턴 포함 실제 데미지 계산
 	        // -----------------------------
 	    	boolean beforeCalc = calc.jobSkillUsed;
+	    	int beforeMultiAttackCnt = calc.multiAttack;
 	        calc = calcDamage(u, m, flags, baseAtk, crit, critMultiplier);
 	        calc.jobSkillUsed = beforeCalc;
+	        calc.multiAttack = beforeMultiAttackCnt;
 	        
 	        flags.atkCrit = crit;
 	        flags.snipe = isSnipe;
