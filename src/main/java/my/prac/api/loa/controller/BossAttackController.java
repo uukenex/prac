@@ -5215,7 +5215,9 @@ public class BossAttackController {
 	    r.lucky  = lucky;
 	    r.dark = dark;
 	    r.gray = gray;
-	    int levelGap = u.lv - m.monLv;
+	    
+	    int monLv = m.monLv;
+	    int levelGap = u.lv - monLv;
 	    double expMultiplier;
 	    
 	    if (levelGap >= 0) {
