@@ -5217,6 +5217,13 @@ public class BossAttackController {
 	    r.gray = gray;
 	    
 	    int monLv = m.monLv;
+	    int monExp = m.monExp;
+	    
+	    if(nightmareYn) {
+	    	monExp *= NM_MUL_EXP;
+	    	monLv += NM_ADD_MON_LV;
+	    }
+	    
 	    int levelGap = u.lv - monLv;
 	    double expMultiplier;
 	    
@@ -5229,11 +5236,7 @@ public class BossAttackController {
 	    }
 
 	    
-	    int monExp = m.monExp;
 	    
-	    if(nightmareYn) {
-	    	monExp *= NM_MUL_EXP;
-	    }
 	    int baseKillExp = (int)Math.round(monExp * expMultiplier);
 
 	    if (willKill) {
