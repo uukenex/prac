@@ -4042,7 +4042,7 @@ public class BossAttackController {
 	            (now - MiniGameUtil.ACHV_CACHE_TIME) < MiniGameUtil.ACHV_CACHE_TTL_MS) {
 	        return MiniGameUtil.ACHV_GLOBAL_CACHE;
 	    }
-	    List<AchievementCount> list = getAchvGlobalCached();
+	    List<AchievementCount> list = botNewService.selectAchvCountsGlobalAll();
 	    MiniGameUtil.ACHV_GLOBAL_CACHE = list;
 	    MiniGameUtil.ACHV_CACHE_TIME   = now;
 	    return list;
