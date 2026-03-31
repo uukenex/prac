@@ -93,6 +93,12 @@ public class BotNewServiceImpl implements BotNewService {
     }
 
     @Override
+    public int insertBattleLogsBatch(List<BattleLog> logs) {
+        if (logs == null || logs.isEmpty()) return 0;
+        return botNewDAO.insertBattleLogBatch(logs);
+    }
+
+    @Override
     public int closeOngoingBattleTx(String userName, String roomName) {
         return botNewDAO.closeOngoingBattle(userName, roomName);
     }

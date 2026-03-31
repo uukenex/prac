@@ -6,10 +6,13 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 
+import my.prac.core.game.dto.AchievementCount;
 import my.prac.core.game.dto.EquipCategory;
 import my.prac.core.game.dto.JobChangeReq;
+import my.prac.core.game.dto.Monster;
 import my.prac.core.game.dto.JobDef;
 import my.prac.core.game.dto.SpecialBuffOption;
 
@@ -29,6 +32,19 @@ public class MiniGameUtil {
 
 // 직업 메타데이터 맵 (등록 순서 유지 위해 LinkedHashMap)
 	public static final Map<String, JobDef> JOB_DEFS = new LinkedHashMap<>();
+
+	// ─── 인메모리 캐시 ───────────────────────────────────────────────────────
+	// 몬스터 캐시 (서버 기동 후 영구 유지, invalidateMonsterCache()로 초기화)
+	public static final ConcurrentHashMap<Integer, Monster> MONSTER_CACHE = new ConcurrentHashMap<>();
+
+	// 업적 글로벌 카운트 캐시 (2분 TTL)
+	public static volatile List<AchievementCount> ACHV_GLOBAL_CACHE = null;
+	public static volatile long ACHV_CACHE_TIME  = 0L;
+	public static final  long  ACHV_CACHE_TTL_MS = 120_000L; // 2분
+
+	// 아이템 이름 → ID 캐시 (영구)
+	public static final ConcurrentHashMap<String, Integer> ITEM_ID_CACHE = new ConcurrentHashMap<>();
+	// ─────────────────────────────────────────────────────────────────────────
 
 	static {
 		/*
