@@ -1195,9 +1195,7 @@ public class BossAttackController {
 
 	        if (drops != null && !drops.isEmpty()) {
 
-	            sb.append(NL)
-	              .append("▶ 누적 획득 드랍 아이템").append(NL)
-	              .append("{ 일반 / 조각 / 빛 / 어둠 / 음양 }").append(NL);
+	            sb.append(NL);
 
 	            Map<String, DropSummary> summaryMap = new LinkedHashMap<>();
 
@@ -1236,6 +1234,13 @@ public class BossAttackController {
 	                        break;
 	                }
 	            }
+
+	            // 잡템 총 갯수 계산
+	            long totalDropQty = summaryMap.values().stream()
+	                    .mapToLong(s -> s.normal + s.fragment + s.light + s.dark + s.gray)
+	                    .sum();
+	            sb.append("▶ 누적 획득 드랍 아이템 : 총 ").append(totalDropQty).append("개").append(NL)
+	              .append("{ 일반 / 조각 / 빛 / 어둠 / 음양 }").append(NL);
 
 	            // 출력
 	            for (Map.Entry<String, DropSummary> e : summaryMap.entrySet()) {
@@ -3336,14 +3341,17 @@ public class BossAttackController {
                         inv.put("userName", userName);
                         inv.put("roomName", roomName);
                         inv.put("itemId", itemId);
-                        inv.put("qty", 2+extraDrop);
+                        int stealQty = 2 + extraDrop;
+                        boolean bonusSteal = ThreadLocalRandom.current().nextDouble() < 0.10;
+                        if (bonusSteal) stealQty *= 2;
+                        inv.put("qty", stealQty);
                         inv.put("delYn", "1");
                         inv.put("gainType", "STEAL");
                         botNewService.insertInventoryLogTx(inv);
-                        stealMsg = "✨ 날카로운 처단으로 추가획득 (+" + dropName +"조각"+(2+extraDrop)+ ")";
+                        stealMsg = "✨ 날카로운 처단으로 추가획득 (+" + dropName +"조각"+ stealQty + ")" + (bonusSteal ? " 🎲보너스!" : "");
                         calc.jobSkillUsed = true;
                     }
-                    stealPoint += " +" +baroSellItem(dropName,itemId,res,userName,roomName,ctx,u,"STEAL",(2+extraDrop),nightmare);
+                    stealPoint += " +" +baroSellItem(dropName,itemId,res,userName,roomName,ctx,u,"STEAL",stealQty,nightmare);
                     
                     
                 } catch (Exception ignore) {}
@@ -3617,8 +3625,15 @@ public class BossAttackController {
 	            }
 	            */
 
-	            if(SP.parse(ctx.lifetimeSpStr).lessThan(new SP(10,"b"))){
+	            if(SP.parse(ctx.lifetimeSpStr).lessThan(new SP(30,"b"))){
 	            	gainSp *= 3;
+	            }
+
+	            if ("용사".equals(ctx.job)) {
+	                gainSp *= 5;
+	                if (ThreadLocalRandom.current().nextDouble() < 0.10) {
+	                    gainSp *= 2;
+	                }
 	            }
 
 	            // --------------------------
@@ -3808,7 +3823,7 @@ public class BossAttackController {
 		}
 
 		if ("공격력".equals(flagCode)) {
-			return "공격력 " + (int) ((effectValue - 1) * 100) + "% 증가";
+			return "공격력 " + Math.round((effectValue - 1) * 100) + "% 증가";
 		}
 
 		if ("SP".equals(flagCode)) {
@@ -6988,7 +7003,7 @@ public class BossAttackController {
 	        // 디버그용
 	         out.dmgCalcMsg += "헌터(" + u.hunterGrade + ") "
 	                + "overCRIT " + overflow + "% → "
-	               + converted + "% chgCDMG (" + (convertRate*100) + "%)" + NL;
+	               + converted + "% chgCDMG (" + Math.round(convertRate*100) + "%)" + NL;
 	    }
 	    
 	    // -----------------------------
