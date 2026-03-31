@@ -3197,7 +3197,7 @@ public class BossAttackController {
 	    }
 
 	    // 13) 처치/드랍 판단
-	    Resolve res = resolveKillAndDrop(m, calc, willKill, u, lucky, dark, gray);
+	    Resolve res = resolveKillAndDrop(m, calc, willKill, u, lucky, dark, gray,nightmare);
 	    String newPoint ="";
 	    String stealPoint ="";
 	 
@@ -5103,20 +5103,24 @@ public class BossAttackController {
 	}
 
 
-	private AttackCalc calcDamage(User u, Monster m, Flags f, int baseAtk, boolean crit, double critMultiplier) {
+	private AttackCalc calcDamage(User u, Monster m, Flags f, int baseAtk, boolean crit, double critMultiplier,boolean nightmareYn) {
 		AttackCalc c = new AttackCalc();
 		c.baseAtk = baseAtk;
 		c.critMultiplier = critMultiplier;
 		c.atkDmg = crit ? (int) Math.round(baseAtk * critMultiplier) : baseAtk;
 
+		int monAtk = m.monAtk;
 
+		if(nightmareYn) {
+			monAtk = monAtk * NM_MUL_HP_ATK;
+		}
 		
 		String name = m.monName;
 		switch (f.monPattern) {
 		case 1: c.monDmg = 0; c.patternMsg = name + "이(가) 당신을 바라봅니다"; break;
 		case 2:
-			int minDmg = Math.max(1, (int) Math.floor(m.monAtk * 0.5));
-			int maxDmg = m.monAtk;
+			int minDmg = Math.max(1, (int) Math.floor(monAtk * 0.5));
+			int maxDmg = monAtk;
 			c.monDmg = ThreadLocalRandom.current().nextInt(minDmg, maxDmg + 1);
 			c.patternMsg = name + "이(가) " + c.monDmg + " 의 데미지로 반격합니다!"; break;
 		case 3:
@@ -5125,8 +5129,8 @@ public class BossAttackController {
 		    int original = c.atkDmg; // 이전 단계(크리 포함) 데미지
 		    int reduced = (int) Math.round(original * 0.5); // 방어 패턴으로 1차 감소
 
-		    int minDef = Math.max(1, (int) Math.floor(m.monAtk * 0.5)); // 예: 22라면 11
-		    int maxDef = m.monAtk;                                      // 예: 22
+		    int minDef = Math.max(1, (int) Math.floor(monAtk * 0.5)); // 예: 22라면 11
+		    int maxDef = monAtk;                                      // 예: 22
 		    int defPower = ThreadLocalRandom.current().nextInt(minDef, maxDef + 1);
 
 		    if (defPower >= reduced) {
@@ -5146,7 +5150,7 @@ public class BossAttackController {
 		                + " → 최종 " + finalDmg + ")";
 		    }
 		    break;
-		case 4: c.monDmg = (int) Math.round(m.monAtk * 1.5); c.patternMsg = name + "의 필살기! (피해 " + c.monDmg + ")"; break;
+		case 4: c.monDmg = (int) Math.round(monAtk * 1.5); c.patternMsg = name + "의 필살기! (피해 " + c.monDmg + ")"; break;
 		case 5:  
 
             double rnd = ThreadLocalRandom.current().nextDouble();
@@ -5159,7 +5163,7 @@ public class BossAttackController {
             } else {
             	// 🔥 보스 흡혈 패턴
                 // 1) 플레이어에게 들어갈 피해 = 보스 ATK의 20%
-                int lifeDmg = Math.max(1, (int)Math.round(m.monAtk * 0.2));
+                int lifeDmg = Math.max(1, (int)Math.round(monAtk * 0.2));
 
                 // 2) 플레이어 공격은 0으로 취급 (보스에게 데미지 못 줌)
                 //    내부적으로는 보스 회복량을 기록하기 위해 ATK_DMG를 음수로 넣는다.
@@ -5210,7 +5214,7 @@ public class BossAttackController {
 		catch (Exception e) { return 0.0; }
 	}
 
-	private Resolve resolveKillAndDrop(Monster m, AttackCalc c, boolean willKill, User u, boolean lucky,boolean dark,boolean gray) {
+	private Resolve resolveKillAndDrop(Monster m, AttackCalc c, boolean willKill, User u, boolean lucky,boolean dark,boolean gray,boolean nightmareYn) {
 	    Resolve r = new Resolve();
 	    r.killed = willKill;
 	    r.lucky  = lucky;
@@ -5227,7 +5231,13 @@ public class BossAttackController {
 	        expMultiplier = 1.0 + Math.min(-levelGap, 5) * 0.05; // 레벨 차이 1당 5% 보너스, 최대 25%
 	    }
 
-	    int baseKillExp = (int)Math.round(m.monExp * expMultiplier);
+	    
+	    int monExp = m.monExp;
+	    
+	    if(nightmareYn) {
+	    	monExp *= NM_MUL_EXP;
+	    }
+	    int baseKillExp = (int)Math.round(monExp * expMultiplier);
 
 	    if (willKill) {
 	    	if(gray) {
@@ -6041,12 +6051,13 @@ public class BossAttackController {
 	    int monAtk = m.monAtk;
 	    int monHp = m.monHp;
 	    int monLv = m.monLv;
-	    
+	    int monExp = m.monExp;
 	    if(nightmare) {
 	    	monAtk *= NM_MUL_HP_ATK;
 	    	monHp *= NM_MUL_HP_ATK;
 	    	dropPrice = dropPrice*50;
 	    	monLv += NM_ADD_MON_LV;
+	    	monExp *= NM_MUL_EXP;
 	    }
 	    
 	    SP dropSp= SP.fromSp(dropPrice);
@@ -6056,7 +6067,9 @@ public class BossAttackController {
 	    int atkMax = monAtk;
 
 	 // EXP 보정 계산 (resolveKillAndDrop 과 동일)
-	    int baseExp = Math.max(0, m.monExp);
+	    
+	    
+	    int baseExp = Math.max(0, monExp);
 	    int levelGap = userLv - monLv;
 	    double expMultiplier;
 
@@ -7628,11 +7641,12 @@ public class BossAttackController {
 	        out.dmgCalcMsg += "곰의 야성! 체력 -" + hpCost +
 	                " (" + beforeHp + " → " + u.hpCur + ")" + NL;
 
+	        int monHp = m.monHp;
 	        if(nightmareYn) {
-	        	m.monHp *= NM_MUL_HP_ATK;
+	        	monHp *= NM_MUL_HP_ATK;
 	        }
 	        
-	        if (effHpMax < m.monHp) {
+	        if (effHpMax < monHp) {
 
 	            baseAtk = 0;
 	            rawAtkDmg = 0;
@@ -7700,7 +7714,7 @@ public class BossAttackController {
 	        // -----------------------------
 	    	boolean beforeCalc = calc.jobSkillUsed;
 	    	int beforeMultiAttackCnt = calc.multiAttack;
-	        calc = calcDamage(u, m, flags, baseAtk, crit, critMultiplier);
+	        calc = calcDamage(u, m, flags, baseAtk, crit, critMultiplier, nightmareYn);
 	        calc.jobSkillUsed = beforeCalc;
 	        calc.multiAttack = beforeMultiAttackCnt;
 	        
