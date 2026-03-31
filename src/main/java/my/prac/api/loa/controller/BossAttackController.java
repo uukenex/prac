@@ -5393,7 +5393,8 @@ public class BossAttackController {
 	                .setBuffYn(0)
 	                .setJobSkillYn(1)
 	                .setJob(u.job)
-	                .setNightmareYn(nightmare ? 1 : 0);
+	                .setNightmareYn(nightmare ? 1 : 0)
+	                .setShotIndex(i * 10);
 	            botNewService.insertBattleLogTx(arrowLog);
 	        }
 	    }
