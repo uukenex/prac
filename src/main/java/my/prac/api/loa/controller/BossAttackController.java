@@ -3200,11 +3200,6 @@ public class BossAttackController {
 	    Resolve res = resolveKillAndDrop(m, calc, willKill, u, lucky, dark, gray,nightmare);
 	    String newPoint ="";
 	    String stealPoint ="";
-	 
-	    if (res.killed &&nightmare) {
-	        res.gainExp *= NM_MUL_EXP;
-	    }
-	    
 	    
 	    // 궁수: 획득 EXP +100%
 	    if ("궁수".equals(u.job)) {
