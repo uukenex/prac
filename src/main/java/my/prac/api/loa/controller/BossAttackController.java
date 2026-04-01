@@ -1051,13 +1051,21 @@ public class BossAttackController {
 
 	public String invenInfo(HashMap<String, Object> map) {
 
-	    UserBattleContext ctx = calcUserBattleContext(map);
-	    if (!ctx.success) {
-	        return ctx.errorMessage;
+	    // [OPT-INVEN] calcUserBattleContext 대신 targetUser/roomName 만 경량 추출
+	    final String _uName = Objects.toString(map.get("userName"), "");
+	    if (_uName.isEmpty()) return "유저 정보가 누락되었습니다.";
+	    String _target = _uName;
+	    final String _p1 = Objects.toString(map.get("param1"), "").trim();
+	    if (!_p1.isEmpty()) {
+	        List<String> found = botNewService.selectParam1ToNewUserSearch(map);
+	        if (found != null && !found.isEmpty()) {
+	            _target = found.get(0);
+	        } else {
+	            return "해당 유저(" + _p1 + ")를 찾을 수 없습니다.";
+	        }
 	    }
-
-	    final String userName = ctx.targetUser;
-	    final String roomName = ctx.roomName;
+	    final String userName = _target;
+	    final String roomName = Objects.toString(map.get("roomName"), "");
 
 	    StringBuilder sb = new StringBuilder();
 	    List<HashMap<String, Object>> bag =
@@ -1275,17 +1283,39 @@ public class BossAttackController {
 
 	    final String allSeeStr  = NL + "===" + NL;  // 구분선
 
-	    // ① 유효 체력 계산 (attackInfo 이전 로직과 동일, 리젠은 표시용 리젠 사용)
-	    int effHp = computeEffectiveHpFromLastAttack(targetUser, roomName, u, finalHpMax, shownRegen);
+	    // [OPT-ATK] selectAttackDeathStats + selectBattleCountByUser → selectBattleStatsByJob 1회 통합
+	    List<HashMap<String,Object>> battleStatRows = null;
+	    try {
+	        battleStatRows = botNewService.selectBattleStatsByJob(targetUser);
+	    } catch (Exception ignore) { ignore.printStackTrace(); }
+
+	    int totalAttacks = 0;
+	    int totalDeaths  = 0;
+	    java.sql.Timestamp _lastAtkTs = null;
+	    Map<String, Integer> jobAtkMap = new HashMap<>();
+	    if (battleStatRows != null) {
+	        for (HashMap<String,Object> r : battleStatRows) {
+	            int cnt = safeInt(r.get("CNT"));
+	            int dc  = safeInt(r.get("DEATH_CNT"));
+	            String j = Objects.toString(r.get("JOB"), "").trim();
+	            Object dtObj = r.get("MAX_DATE");
+	            java.sql.Timestamp dt = (dtObj instanceof java.sql.Timestamp) ? (java.sql.Timestamp) dtObj : null;
+	            totalAttacks += cnt;
+	            totalDeaths  += dc;
+	            if (!j.isEmpty()) jobAtkMap.put(j, cnt);
+	            if (dt != null && (_lastAtkTs == null || dt.after(_lastAtkTs))) _lastAtkTs = dt;
+	        }
+	    }
+	    final java.sql.Timestamp lastAtkTs = _lastAtkTs;
+
+	    // ① 유효 체력 계산 — lastAtkTs 재사용으로 selectLastAttackTime DB 조회 생략
+	    int effHp = computeEffectiveHpFromLastAttack(targetUser, roomName, u, finalHpMax, shownRegen, lastAtkTs);
 	    if (effHp > finalHpMax) effHp = finalHpMax;
 
-	    // ⑧ 누적 통계/타겟
+	    // ⑧ 킬 통계
 	    List<KillStat> kills = botNewService.selectKillStats(targetUser, roomName);
 	    int totalKills = 0;
 	    for (KillStat ks : kills) totalKills += ks.killCount;
-	    AttackDeathStat ads = botNewService.selectAttackDeathStats(targetUser, roomName);
-	    int totalAttacks = (ads == null ? 0 : ads.totalAttacks);
-	    int totalDeaths  = (ads == null ? 0 : ads.totalDeaths);
 
 	    
 	    
@@ -1351,15 +1381,6 @@ public class BossAttackController {
 	    } catch (Exception ignore) {
 	        ignore.printStackTrace();
 	    }
-	 // === NEW: 직업별 공격 횟수 ===
-	    Map<String, Integer> jobAtkMap = Collections.emptyMap();
-	    try {
-	        jobAtkMap = botNewService.selectBattleCountByUser(targetUser, roomName);
-	    } catch (Exception ignore) {
-	        ignore.printStackTrace();
-	        jobAtkMap = new HashMap<>();
-	    }
-	    
 	    // 🔹 몬스터 전체 캐시
 	    List<Monster> monList = botNewService.selectAllMonsters();
 	    Map<Integer, Monster> monMap = new HashMap<>();

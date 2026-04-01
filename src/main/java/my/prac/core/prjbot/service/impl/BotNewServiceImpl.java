@@ -265,6 +265,15 @@ public class BotNewServiceImpl implements BotNewService {
         }
         return map;
     }
+
+    @Override
+    // [OPT-ATK] selectAttackDeathStats + selectBattleCountByUser 통합 (BATTLE_LOG 1회 스캔)
+    public List<HashMap<String,Object>> selectBattleStatsByJob(String userName) {
+        HashMap<String,Object> param = new HashMap<>();
+        param.put("userName", userName);
+        return botNewDAO.selectBattleStatsByJob(param);
+    }
+
     @Override
     public int updateUserJobAndChangeDate(String userName, String roomName, String job) {
         return botNewDAO.updateUserJobAndChangeDate(userName, roomName, job);

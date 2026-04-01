@@ -846,7 +846,20 @@
 	    WHERE USER_NAME = #{userName}
 	    GROUP BY JOB
 	</select>
- 
+
+	<!-- [OPT-ATK] selectAttackDeathStats + selectBattleCountByUser 통합 (BATTLE_LOG 1회 스캔) -->
+	<select id="selectBattleStatsByJob" parameterType="hashmap" resultType="hashmap">
+		/*selectBattleStatsByJob*/
+	    SELECT
+	        NVL(JOB,'초보자') AS JOB,
+	        COUNT(1) AS CNT,
+	        SUM(CASE WHEN DEATH_YN = '1' THEN 1 ELSE 0 END) AS DEATH_CNT,
+	        MAX(INSERT_DATE) AS MAX_DATE
+	    FROM TBOT_POINT_NEW_BATTLE_LOG
+	    WHERE USER_NAME = #{userName}
+	    GROUP BY JOB
+	</select>
+
 	<update id="updateUserJobAndChangeDate">
 	/*updateUserJobAndChangeDate*/
 	    UPDATE TBOT_POINT_NEW_USER
