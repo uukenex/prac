@@ -26,7 +26,8 @@
 	        U.JOB_CHANGE_DATE,
 	        U.BLESS_YN,
 	        U.PROC_DATE,
-	
+	        NVL(U.NIGHTMARE_YN, 0) AS NIGHTMARE_YN,
+
 	        NVL(SP_SUM.TOTAL_SP,0) AS TOTAL_SP
 	
 	    FROM TBOT_POINT_NEW_USER U
@@ -107,7 +108,8 @@
     SELECT
       COUNT(*) AS TOTAL_ATTACKS,
       SUM(CASE WHEN JOB = '헌터' THEN 1 ELSE 0 END) AS HUNTER_ATTACKS,
-      SUM(CASE WHEN DEATH_YN = '1' THEN 1 ELSE 0 END) AS TOTAL_DEATHS
+      SUM(CASE WHEN DEATH_YN = '1' THEN 1 ELSE 0 END) AS TOTAL_DEATHS,
+      MAX(INSERT_DATE) AS LAST_ATTACK_TIME
     FROM TBOT_POINT_NEW_BATTLE_LOG
     WHERE USER_NAME = #{userName}
   </select>
@@ -1441,6 +1443,20 @@
 	       AND ITEM_ID   IN ('91','92','93')
 	</select>
 	
+	<!-- [OPT3] INVENTORY 3개 쿼리 통합 - selectTotalGainCountByGainType + selectTotalBagAcquireCount + selectInventorySoldCount -->
+	<select id="selectAchievementInventoryCounts" resultType="hashmap">
+	    /* selectAchievementInventoryCounts */
+	    SELECT
+	        NVL(SUM(CASE WHEN GAIN_TYPE='DROP3'  THEN QTY ELSE 0 END), 0) AS DROP3_QTY,
+	        NVL(SUM(CASE WHEN GAIN_TYPE='DROP5'  THEN QTY ELSE 0 END), 0) AS DROP5_QTY,
+	        NVL(SUM(CASE WHEN GAIN_TYPE='DROP9'  THEN QTY ELSE 0 END), 0) AS DROP9_QTY,
+	        NVL(SUM(CASE WHEN ITEM_ID IN (91,92,93) THEN QTY ELSE 0 END), 0) AS BAG_COUNT,
+	        NVL(SUM(CASE WHEN GAIN_TYPE IN ('DROP','DROP3','DROP5','DROP9','STEAL')
+	                          AND NVL(DEL_YN,'0')='1' THEN QTY ELSE 0 END), 0) AS SOLD_COUNT
+	    FROM TBOT_POINT_NEW_INVENTORY
+	    WHERE USER_NAME = #{userName}
+	</select>
+
 	<select id="selectRandomBlessTargets" parameterType="map" resultType="string">
 	      /* selectRandomBlessTargets */
 	      SELECT USER_NAME

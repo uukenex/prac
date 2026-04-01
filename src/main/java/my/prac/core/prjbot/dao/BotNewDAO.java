@@ -187,7 +187,10 @@ public interface BotNewDAO {
     void lockMacroUser(HashMap<String, Object> map);
     
     int selectTotalBagAcquireCount(String userName);
-    
+
+    // [OPT3] INVENTORY 3개 쿼리 통합
+    HashMap<String,Object> selectAchievementInventoryCounts(@Param("userName") String userName);
+
     List<String> selectRandomBlessTargets(HashMap<String, Object> map);
 
     int updateBlessYn(String userName);
