@@ -127,6 +127,7 @@
   </select>
 
   <select id="selectAllMonsters" resultType="my.prac.core.game.dto.Monster">
+    /* selectAllMonsters */
     SELECT MON_NO, MON_NAME, MON_HP, MON_ATK, MON_EXP, MON_DROP, MON_PATTEN, MON_LV,MON_NOTE
     FROM TBOT_POINT_NEW_MON_INFO
     ORDER BY MON_NO
@@ -262,6 +263,7 @@
   </update>
 
   <insert id="insertUserWithTarget">
+    /* insertUserWithTarget */
     INSERT INTO TBOT_POINT_NEW_USER
       (USER_NAME, ROOM_NAME, LV, EXP_CUR, EXP_NEXT,
        HP_CUR, HP_MAX, HP_REGEN, ATK_MIN, ATK_MAX,
@@ -303,14 +305,17 @@
 
   <!-- (중복 제거하고 이 한 개만 남김) -->
   <select id="selectItemIdByName" parameterType="string" resultType="int">
+    /* selectItemIdByName */
     SELECT ITEM_ID FROM TBOT_POINT_NEW_ITEM WHERE ITEM_NAME = #{itemName}
   </select>
 
   <select id="selectAllItemIdMappings" resultType="hashmap">
+    /* selectAllItemIdMappings */
     SELECT ITEM_ID, ITEM_NAME FROM TBOT_POINT_NEW_ITEM
   </select>
 
   <insert id="insertInventoryLog" parameterType="hashmap">
+    /* insertInventoryLog */
     INSERT INTO TBOT_POINT_NEW_INVENTORY
       (USER_NAME, ROOM_NAME, ITEM_ID, QTY, DEL_YN, GAIN_TYPE, INSERT_DATE)
     VALUES
@@ -384,6 +389,7 @@
 
 
   <select id="selectCurrentPoint" resultType="hashMap">
+    /* selectCurrentPoint */
     WITH SP_SUM AS (
 	    SELECT
 	        SUM(
@@ -431,6 +437,7 @@
   </select>
   <!-- 판매 대상 행(FIFO) : 빛나는 제외 -->
   <select id="selectAllInventoryRowsForSale" resultType="hashmap">
+    /* selectAllInventoryRowsForSale */
     SELECT ROWID AS RID,ITEM_ID, QTY, NVL(GAIN_TYPE,'DROP') AS GAIN_TYPE
       FROM TBOT_POINT_NEW_INVENTORY
      WHERE USER_NAME = #{userName}
@@ -440,6 +447,7 @@
   </select>
 
 	<update id="updateInventoryDelBatch">
+		/* updateInventoryDelBatch */
 		UPDATE TBOT_POINT_NEW_INVENTORY
 		   SET DEL_YN = '1'
 		 WHERE ROWID IN
@@ -449,6 +457,7 @@
 	</update>
 
   <update id="updateInventoryQtyByRowId">
+    /* updateInventoryQtyByRowId */
     UPDATE TBOT_POINT_NEW_INVENTORY SET QTY = #{newQty} WHERE ROWID = #{rid}
   </update>
 
@@ -464,6 +473,7 @@
 		</foreach>
 	</select>
   <select id="selectItemSellPriceById" resultType="hashMap">
+    /* selectItemSellPriceById */
     SELECT ITEM_ID,ITEM_SELL_PRICE ,ITEM_SELL_PRICE_EXT
       FROM TBOT_POINT_NEW_ITEM
      WHERE ITEM_ID = #{itemId}
@@ -471,6 +481,7 @@
 
   <!-- 포인트 적립 -->
   <insert id="insertPointRank" parameterType="hashmap">
+    /* insertPointRank */
     INSERT INTO TBOT_POINT_RANK
       (USER_NAME, ROOM_NAME, SCORE,SCORE_EXT, INSERT_DATE, CMD, NEW_YN)
     VALUES
@@ -478,6 +489,7 @@
   </insert>
 
   <select id="selectItemPriceByName" parameterType="string" resultType="int">
+    /* selectItemPriceByName */
     SELECT item_sell_price
       FROM TBOT_POINT_NEW_ITEM
      WHERE item_name = #{itemName}
@@ -485,6 +497,7 @@
 
   
   <select id="selectOwnedMarketBuffTotals" resultType="map">
+	  /* selectOwnedMarketBuffTotals */
 	  SELECT
 	      	NVL(SUM( ROUND(i.atk_min  * 
 		        CASE 
@@ -559,6 +572,7 @@
 	</select>
 	
 	<select id="selectMarketItems" resultType="hashmap">
+	    /* selectMarketItems */
 	    SELECT
 	        i.ITEM_ID,
 	        i.ITEM_NAME,
@@ -673,6 +687,7 @@
 	
 	<!-- 마지막으로 '피해를 받은' 시각: MON_DMG>0 또는 DEATH_YN='1' -->
 	<select id="selectLastDamagedTime" resultType="java.sql.Timestamp">
+	  /* selectLastDamagedTime */
 	  SELECT MAX(
 	           INSERT_DATE
 	           + CASE 
@@ -687,6 +702,7 @@
 	</select>
 	
 	<select id="selectTopLevelUsers" resultType="hashmap">
+	  /* selectTopLevelUsers */
 	  SELECT USER_NAME, LV, EXP_CUR, EXP_NEXT, JOB
 	  FROM (
 	    SELECT u.USER_NAME, u.LV, u.EXP_CUR, u.EXP_NEXT, U.JOB,
@@ -700,6 +716,7 @@
 	
 	<!-- ② 몬스터별 학살자 (킬 50 이상, 동률 허용) -->
 	<select id="selectKillLeadersByMonster" resultType="hashmap">
+	  /* selectKillLeadersByMonster */
 	  SELECT MON_NO, MON_NAME, USER_NAME, KILL_COUNT
 	  FROM (
 	    SELECT
@@ -724,6 +741,7 @@
 	
 	<!-- ③ 최초 토벌자 정보 -->
 	<select id="selectFirstClearInfo" resultType="hashmap">
+	  /* selectFirstClearInfo */
 	  SELECT
 	      m.MON_NO,
 	      m.MON_NAME,
@@ -753,6 +771,7 @@
 	
 		<!-- 특정 방에서 특정 유저가 특정 업적 CMD로 이미 보상받았는지 -->
 	<select id="selectPointRankCountByCmdUserInRoom" parameterType="hashMap" resultType="int">
+	    /* selectPointRankCountByCmdUserInRoom */
 	    SELECT COUNT(1)
 	    FROM TBOT_POINT_RANK
 	    WHERE USER_NAME = #{userName}
@@ -857,6 +876,7 @@
 	</select>
 	
 	<select id="selectSpAndAtkRanking" resultType="hashmap">
+	   /* selectSpAndAtkRanking */
 	   SELECT
 		       NVL(I.INV_SP,0) + NVL(P.POINT_SP,0) AS TOT_SP,
 		       U.USER_NAME,
@@ -982,6 +1002,7 @@
 	
 	<!-- 도사 버프 리셋 (1회 사용 후 0으로 초기화) -->
 	<update id="clearRoomBuff" parameterType="string">
+	    /* clearRoomBuff */
 	    UPDATE TBOT_POINT_NEW_BATTLE_LOG
 	       SET BUFF_YN = '0'
 	     WHERE ROOM_NAME = #{roomName}
@@ -1078,6 +1099,7 @@
 	</select>
 	  
 		<select id="selectAchievementCountRanking" parameterType="string" resultType="hashmap">
+	    /* selectAchievementCountRanking */
 	    SELECT *
 		    FROM (
 		        SELECT USER_NAME,
@@ -1103,12 +1125,14 @@
 	</select>
 	
 	<update id="execSPMsgTest" statementType="CALLABLE" parameterType="hashMap">
+		/* execSPMsgTest */
 		{call SP_MSG_TEST ( #{outCode  , jdbcType=NUMERIC,mode=INOUT},
 						 	#{outMsg   , jdbcType=VARCHAR,mode=INOUT}
 							)
 		}
 	</update>
 	<update id="execSPPatchNoteTest" statementType="CALLABLE" parameterType="hashMap">
+		/* execSPPatchNoteTest */
 		{call SP_PATCH_NOTE_TEST ( #{outCode  , jdbcType=NUMERIC,mode=INOUT},
 								   #{outMsg   , jdbcType=VARCHAR,mode=INOUT}
 								  )
@@ -1117,6 +1141,7 @@
 		
 		
 	<select id="selectBagRewardItemIdsUserNotOwned" parameterType="hashmap" resultType="int">
+    /* selectBagRewardItemIdsUserNotOwned */
     SELECT ITEM_ID
       FROM TBOT_POINT_NEW_ITEM I
      WHERE (
@@ -1137,6 +1162,7 @@
 	</select>
 
 	<select id="selectRecentBagDrops" resultType="my.prac.core.game.dto.BagLog">
+	    /* selectRecentBagDrops */
 	    SELECT *
 		  FROM (
 		      SELECT 
@@ -1152,6 +1178,7 @@
 	
 	<select id="selectRecentBagRewards"
         resultType="my.prac.core.game.dto.BagRewardLog">
+	    /* selectRecentBagRewards */
 	    SELECT *
 	    FROM (
 	        SELECT gain,
@@ -1182,6 +1209,7 @@
 	</select>
 	
 	<select id="selectBagOpenSpCount" parameterType="hashmap" resultType="int">
+	    /* selectBagOpenSpCount */
 	    SELECT COUNT(*)
 	      FROM TBOT_POINT_RANK
 	     WHERE NEW_YN = '1'
@@ -1191,6 +1219,7 @@
 
 	<!-- DEL_YN='1' 인 인벤토리 누적 수량(판매/사용 포함) -->
 	<select id="selectInventorySoldCount" resultType="int">
+	  /* selectInventorySoldCount */
 	  SELECT NVL(SUM(QTY), 0)
 	  FROM TBOT_POINT_NEW_INVENTORY
 	  WHERE USER_NAME = #{userName}
@@ -1205,6 +1234,7 @@
 	
 	<select id="selectTotalGainCountByGainType"
 	        resultType="hashmap">
+	    /* selectTotalGainCountByGainType */
 	    SELECT GAIN_TYPE,
 	           SUM(QTY) AS TOTAL_QTY
 	    FROM   TBOT_POINT_NEW_INVENTORY
@@ -1219,7 +1249,8 @@
 	<select id="selectJobSkillUseCountAllJobs"
 	        parameterType="map"
 	        resultType="hashmap">
-	    SELECT 
+	    /* selectJobSkillUseCountAllJobs */
+	    SELECT
 	        JOB                 AS JOB,
 	        NVL(SUM(job_skill_yn), 0) AS TOTAL_SKILL_USE
 	    FROM TBOT_POINT_NEW_BATTLE_LOG
@@ -1228,6 +1259,7 @@
 	</select>
 	
 	<select id="selectTodayDailyBuff" parameterType="hashmap" resultType="hashmap">
+	    /* selectTodayDailyBuff */
 	    SELECT ATK_BONUS,
 	           CRI_DMG_BONUS
 	      FROM TBOT_POINT_NEW_DAILY_BUFF
@@ -1241,6 +1273,7 @@
 	</select>
 	
 	<update id="upsertTodayDailyBuff" parameterType="hashmap">
+	    /* upsertTodayDailyBuff */
 	    MERGE INTO TBOT_POINT_NEW_DAILY_BUFF T
 	    USING (
 	        SELECT #{roomName} AS ROOM_NAME,
@@ -1261,12 +1294,14 @@
 	</update>
 	
 	<select id="countTodayJobMasterAll" resultType="int">
+	    /* countTodayJobMasterAll */
 	    SELECT COUNT(1)
 	      FROM TBOT_POINT_NEW_JOB_MASTER
 	     WHERE MASTER_DATE = TRUNC(SYSDATE)
 	</select>
 	
 	<update id="createTodayJobMastersFromYesterdayAll">
+	    /* createTodayJobMastersFromYesterdayAll */
 	    MERGE INTO TBOT_POINT_NEW_JOB_MASTER M
 	    USING (
 	        SELECT JOB,
@@ -1318,6 +1353,7 @@
 	</select>
 	
 	<select id="selectIsReturnUser" parameterType="map" resultType="string">
+	    /* selectIsReturnUser */
 	    SELECT CASE
 	             WHEN past_cnt >= 500
 	              AND recent_cnt &lt;= 500
@@ -1373,18 +1409,21 @@
 	    ORDER BY I.ITEM_ID DESC, I.GAIN_TYPE
 	</select>
 	<select id="selectNightmareYn" parameterType="map" resultType="int">
+		/* selectNightmareYn */
 		SELECT NVL(NIGHTMARE_YN, '0') AS NIGHTMARE_YN
 		  FROM TBOT_POINT_NEW_USER
 		 WHERE USER_NAME = #{userName}
 	</select>
 	
 	<update id="updateNightmareYn" parameterType="map">
+	    /* updateNightmareYn */
 	    UPDATE TBOT_POINT_NEW_USER
 	       SET NIGHTMARE_YN = #{nightmareYn}
 	     WHERE USER_NAME = #{userName}
 	</update>
 	
 	<update id="lockMacroUser" statementType="CALLABLE">
+        /* lockMacroUser */
         { CALL SP_BOT_MACRO_LOCK(
             #{userName, mode=IN, jdbcType=VARCHAR},
             #{outCode, mode=OUT, jdbcType=INTEGER},
@@ -1395,6 +1434,7 @@
     <select id="selectTotalBagAcquireCount"
 	        parameterType="map"
 	        resultType="int">
+	    /* selectTotalBagAcquireCount */
 	    SELECT NVL(SUM(QTY), 0) AS TOTAL_QTY
 	      FROM TBOT_POINT_NEW_INVENTORY
 	     WHERE USER_NAME = #{userName}
@@ -1402,6 +1442,7 @@
 	</select>
 	
 	<select id="selectRandomBlessTargets" parameterType="map" resultType="string">
+	      /* selectRandomBlessTargets */
 	      SELECT USER_NAME
 		    FROM (
 		        SELECT A.USER_NAME
@@ -1414,11 +1455,13 @@
 		    WHERE ROWNUM &lt;= #{count}
 	</select>
 	<update id="updateBlessYn">
+	    /* updateBlessYn */
 	    UPDATE TBOT_POINT_NEW_USER
 	       SET BLESS_YN = 1
 	     WHERE USER_NAME = #{userName}
 	</update>
 	<update id="clearBlessYn">
+	    /* clearBlessYn */
 	    UPDATE TBOT_POINT_NEW_USER
 	       SET BLESS_YN = 0
 	     WHERE USER_NAME = #{userName}
@@ -1427,7 +1470,7 @@
 	<select id="selectBagCountByItemId"
 	        parameterType="hashmap"
 	        resultType="int">
-	
+	    /* selectBagCountByItemId */
 	    SELECT NVL(SUM(QTY),0)
 	      FROM TBOT_POINT_NEW_INVENTORY
 	     WHERE USER_NAME = #{userName}
@@ -1437,6 +1480,7 @@
 	</select>
 	<update id="consumeBagBulkByItemId"
 	        parameterType="hashmap">
+		/* consumeBagBulkByItemId */
 		UPDATE TBOT_POINT_NEW_INVENTORY
 	       SET DEL_YN = '1'
 	     WHERE USER_NAME = #{userName}
@@ -1447,7 +1491,7 @@
 	
 	<select id="selectTodayBagCount"
 	        resultType="int">
-	
+	    /* selectTodayBagCount */
 	    SELECT count(1)
 	      FROM TBOT_POINT_NEW_INVENTORY A
 	     WHERE INSERT_DATE BETWEEN TRUNC(SYSDATE) AND SYSDATE
@@ -1458,7 +1502,7 @@
 	
 	<select id="selectActiveSpecialBuff"
 	        resultType="hashmap">
-	
+	    /* selectActiveSpecialBuff */
 	    SELECT *
 	      FROM tbot_point_new_special_buff
 	     WHERE SYSDATE BETWEEN START_TIME AND END_TIME
@@ -1467,7 +1511,7 @@
 	
 	<insert id="insertSpecialBuff"
         parameterType="hashmap">
-	
+	    /* insertSpecialBuff */
 	    INSERT INTO tbot_point_new_special_buff (
 	        FLAG_CODE,
 	        EFFECT_TYPE,
