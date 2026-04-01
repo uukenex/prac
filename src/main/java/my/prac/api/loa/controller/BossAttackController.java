@@ -3195,7 +3195,9 @@ public class BossAttackController {
 	    Resolve res = resolveKillAndDrop(m, calc, willKill, u, lucky, dark, gray,nightmare);
 	    String newPoint ="";
 	    String stealPoint ="";
-	    
+	    String newBonus ="";    // DROP SP 보너스 설명 (용사 5배, 30b 3배, 크리 ×2)
+	    String stealBonus ="";  // STEAL SP 보너스 설명
+
 	    // 궁수: 획득 EXP +100%
 	    if ("궁수".equals(u.job)) {
 	        res.gainExp *= 2; 
@@ -3234,13 +3236,13 @@ public class BossAttackController {
 	                        stealMsg = "✨ " + m.monName + "의 아이템을 훔쳤습니다! (" + dropName + "조각)";
 	                        calc.jobSkillUsed = true;
 	                    }
-	                    stealPoint += " +"+baroSellItem(dropName,itemId,res,userName,roomName,ctx,u,"STEAL",1,nightmare);
+	                    String[] _sb1={""}; stealPoint+=" +"+baroSellItem(dropName,itemId,res,userName,roomName,ctx,u,"STEAL",1,nightmare,_sb1); stealBonus+=_sb1[0];
 	                } catch (Exception ignore) {}
-	                
+
 	            }
 	        }
 	    }
-	    
+
 	 // 어쎄신 스틸 (신규 전투 시작 시)
 	    if ("어쎄신".equals(job) && m.monNo <= 50) {
 
@@ -3283,9 +3285,9 @@ public class BossAttackController {
 
 	                            calc.jobSkillUsed = true;
 	                        }
-	                        stealPoint += " +"+baroSellItem(dropName,itemId,res,userName,roomName,ctx,u,"STEAL",1,nightmare);
+	                        String[] _sb2={""}; stealPoint+=" +"+baroSellItem(dropName,itemId,res,userName,roomName,ctx,u,"STEAL",1,nightmare,_sb2); stealBonus+=_sb2[0];
 	                    } catch (Exception ignore) {}
-	                    
+
 	                }
 	            }else {
 	            	stealMsg =
@@ -3327,9 +3329,8 @@ public class BossAttackController {
                         stealMsg = "✨ 날카로운 처단으로 추가획득 (+" + dropName +"조각"+ stealQty + ")" + (bonusSteal ? "✨ 보너스!" : "");
                         calc.jobSkillUsed = true;
                     }
-                    stealPoint += " +" +baroSellItem(dropName,itemId,res,userName,roomName,ctx,u,"STEAL",stealQty,nightmare);
-                    
-                    
+                    String[] _sb3={""}; stealPoint+=" +"+baroSellItem(dropName,itemId,res,userName,roomName,ctx,u,"STEAL",stealQty,nightmare,_sb3); stealBonus+=_sb3[0];
+
                 } catch (Exception ignore) {}
             }
 	    }
@@ -3357,14 +3358,13 @@ public class BossAttackController {
 	                        }
 	                        calc.jobSkillUsed = true;
 	                    }
-	                    
-	                    stealPoint += " +"+baroSellItem(dropName,itemId,res,userName,roomName,ctx,u,"STEAL",1,nightmare);
-	                    
+	                    String[] _sb4={""}; stealPoint+=" +"+baroSellItem(dropName,itemId,res,userName,roomName,ctx,u,"STEAL",1,nightmare,_sb4); stealBonus+=_sb4[0];
+
 	                } catch (Exception ignore) {}
 	            }
 	        }
 	    }
-	    
+
 
 	    String dosaCastMsg = null;
 	    if ("도사".equals(job)||"음양사".equals(job)) {
@@ -3395,7 +3395,7 @@ public class BossAttackController {
 	        String dropName = (m.monDrop == null ? "" : m.monDrop.trim());
 	        if (!dropName.isEmpty()) {
 
-	            newPoint += " +"+baroSellItem(dropName,0,res,userName,roomName,ctx,u,"DROP",1,nightmare);
+	            String[] _nb={""}; newPoint+=" +"+baroSellItem(dropName,0,res,userName,roomName,ctx,u,"DROP",1,nightmare,_nb); newBonus+=_nb[0];
 	        }
 	    }
 	    
@@ -3521,20 +3521,14 @@ public class BossAttackController {
 	    } catch (Exception ignore) {}
 	    
 	    if (!stealPoint.isEmpty()) {
-	    	msg += "✨추가획득" + stealPoint ;
+	    	msg += "✨추가획득" + stealPoint;
+	    	if (!stealBonus.isEmpty()) msg += stealBonus;
     		msg +=NL;
 	    }
-	    
+
 	    if (!newPoint.isEmpty()) {
-	    	
-	    	
 	    	msg += "✨전투획득" + newPoint;
-	    	if(flag1) {
-	    		msg+="(누적 30b 이하 3배 적용)";
-	    	}/*
-    		if(flag2) {
-    			msg+="(누적 2500만sp 이하 1.5배 적용)";
-    		}*/
+	    	if (!newBonus.isEmpty()) msg += newBonus;
     		msg +=NL;
 	    }
 	    msg += "✨포인트: " + curSpStr;
@@ -3562,7 +3556,17 @@ public class BossAttackController {
 	    return msg;
 	}
 	
+	/** 기존 호환용 오버로드 — 보너스 설명 불필요한 호출에서 사용 */
 	public String baroSellItem(String dropName,Integer itemId,Resolve res,String userName,String roomName,UserBattleContext ctx,User u,String gainType,int qty,boolean nightmare) {
+	    return baroSellItem(dropName,itemId,res,userName,roomName,ctx,u,gainType,qty,nightmare,null);
+	}
+
+	/**
+	 * SP 지급 + 보너스 설명 반환
+	 * @param outBonus null 허용. null이 아니면 outBonus[0]에 보너스 설명 문자열을 설정.
+	 *                 예: "(30b 이하 3배)(용사 5배)(크리! ×2)"
+	 */
+	public String baroSellItem(String dropName,Integer itemId,Resolve res,String userName,String roomName,UserBattleContext ctx,User u,String gainType,int qty,boolean nightmare,String[] outBonus) {
 
 	    String newPoint="";
 
@@ -3576,14 +3580,10 @@ public class BossAttackController {
 
 	        double basePrice = safeDouble(priceRow == null ? null : priceRow.get("ITEM_SELL_PRICE"));
 
-	        /*
-	        String priceExt = Objects.toString(
-	                priceRow.get("ITEM_SELL_PRICE_EXT"), ""
-	        );*/
-
 	        if (basePrice > 0) {
 
 	            double gainSp = basePrice;
+	            StringBuilder bonusDesc = new StringBuilder();
 
 	            if("STEAL".equals(gainType)) {
 	                gainSp /= 2;
@@ -3608,21 +3608,24 @@ public class BossAttackController {
 	            if(nightmare) {
 	                gainSp *= 50;
 	            }
-	            /*
-	            if (ctx.isReturnUser) {
-	                gainSp *= 2;
-	            }
-	            */
 
 	            if(SP.parse(ctx.lifetimeSpStr).lessThan(new SP(30,"b"))){
 	            	gainSp *= 3;
+	            	bonusDesc.append("(30b 이하 3배)");
 	            }
 
 	            if ("용사".equals(ctx.job)) {
 	                gainSp *= 5;
+	                bonusDesc.append("(용사 5배)");
 	                if (ThreadLocalRandom.current().nextDouble() < 0.10) {
 	                    gainSp *= 2;
+	                    bonusDesc.append("(크리! ×2)");
 	                }
+	            }
+
+	            // outBonus 설정
+	            if (outBonus != null && outBonus.length > 0) {
+	                outBonus[0] = bonusDesc.toString();
 	            }
 
 	            // --------------------------
