@@ -579,7 +579,13 @@ public class BotNewServiceImpl implements BotNewService {
     public int selectTotalBagAcquireCount(String userName) {
     	return botNewDAO.selectTotalBagAcquireCount(userName);
     }
-    
+
+    // [OPT3] INVENTORY 3개 쿼리 통합
+    @Override
+    public HashMap<String,Object> selectAchievementInventoryCounts(String userName) {
+        return botNewDAO.selectAchievementInventoryCounts(userName);
+    }
+
     public int updateRandomBlessUser(String attacker,int count) {
     	HashMap<String,Object> param = new HashMap<>();
         param.put("attacker", attacker);

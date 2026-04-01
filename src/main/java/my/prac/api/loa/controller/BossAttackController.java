@@ -238,22 +238,8 @@ public class BossAttackController {
 	    // ctx.currentPoint / ctx.currentPointStr 는 attackInfo()에서 직접 채움
 
 	    try {
-	    	HashMap<String,Object> row =
-	    	        botNewService.selectTotalEarnedSp(targetUser,"");
-
-	    	double value = Double.parseDouble(
-	    	        Objects.toString(row.get("SCORE"),"0")
-	    	);
-
-	    	String ext = Objects.toString(
-	    	        row.get("SCORE_EXT"),""
-	    	);
-
-	    	SP total = new SP(value, ext);
-	    	/*
-	        Integer t = botNewService.selectTotalEarnedSp(targetUser, roomName);
-	        ctx.lifetimeSp = (t == null ? 0 : t);
-	        */
+	    	// [OPT5] selectTotalEarnedSp DB 호출 제거 → selectUser에서 이미 계산된 TOTAL_SP 재사용
+	    	SP total = SP.fromSp((double) u.totalSp);
 	    	ctx.lifetimeSpStr = total.toString();
 	    	ctx.lifetimeSp = total;
 	    } catch (Exception ignore) {
@@ -2651,8 +2637,8 @@ public class BossAttackController {
 	    Monster m;
 	    int monMaxHp = 0, monHpRemainBefore;
 	    int monAtk, monLv;
-	 // ✅ 나이트메어 모드 확인
-	    boolean nightmare = botNewService.isNightmareMode(userName, roomName);
+	 // ✅ 나이트메어 모드 확인 — [OPT2] selectUser에서 이미 읽어온 NIGHTMARE_YN 재사용 (DB 호출 제거)
+	    boolean nightmare = ctx.user.nightmareYn == 1;
 	    
 	    boolean lucky = false;
 	    boolean dark = false; // 어둠몬스터 여부
@@ -2857,8 +2843,11 @@ public class BossAttackController {
 	    
 	    
 	    // 7) 쿨타임 체크 (param1 그대로 사용)
-	    // [FIX1] selectLastAttackTime 1회 조회 → checkCooldown + computeEffectiveHpFromLastAttack 공유
-	    Timestamp cachedLastAtk = botNewService.selectLastAttackTime(userName, roomName);
+	    // [OPT4] selectLastAttackTime + selectAttackDeathStats(업적용) → 1번 쿼리로 통합
+	    //        selectAttackDeathStats에 MAX(INSERT_DATE) AS LAST_ATTACK_TIME 추가됨
+	    AttackDeathStat cachedAds = null;
+	    try { cachedAds = botNewService.selectAttackDeathStats(userName, roomName); } catch (Exception ignore) {}
+	    Timestamp cachedLastAtk = (cachedAds != null) ? cachedAds.lastAttackTime : null;
 	    CooldownCheck cd = checkCooldown(userName, roomName, param1, job, cooldownBuff, cachedLastAtk);
 	    if (!cd.ok) {
 	        long min = cd.remainSeconds / 60;
@@ -3415,17 +3404,17 @@ public class BossAttackController {
 	    if (res.killed) {
 	        botNewService.closeOngoingBattleTx(userName, roomName);
 
-	        // [PERF] 업적 판정용 데이터 킬 시점에 일괄 프리로드 (grant* 메서드 내부 DB 호출 제거)
-	        List<HashMap<String, Object>> achvGainRows = null;
-	        try { achvGainRows = botNewService.selectTotalGainCountByGainType(userName, roomName); } catch (Exception ignore) {}
-	        int achvBagTotal = 0;
-	        try { achvBagTotal = botNewService.selectTotalBagAcquireCount(userName); } catch (Exception ignore) {}
-	        AttackDeathStat achvAds = null;
-	        try { achvAds = botNewService.selectAttackDeathStats(userName, roomName); } catch (Exception ignore) {}
+	        // [OPT3] INVENTORY 3개 쿼리 → 1개로 통합 (selectAchievementInventoryCounts)
+	        HashMap<String,Object> achvInvCounts = null;
+	        try { achvInvCounts = botNewService.selectAchievementInventoryCounts(userName); } catch (Exception ignore) {}
+	        List<HashMap<String,Object>> achvGainRows = buildGainRowsFromCounts(achvInvCounts);
+	        int achvBagTotal  = achvInvCounts != null ? ((Number) achvInvCounts.getOrDefault("BAG_COUNT",  0)).intValue() : 0;
+	        int achvSoldCount = achvInvCounts != null ? ((Number) achvInvCounts.getOrDefault("SOLD_COUNT", 0)).intValue() : 0;
+
+	        // [OPT4] 쿨타임 체크에서 이미 조회한 cachedAds 재사용 → selectAttackDeathStats 중복 제거
+	        AttackDeathStat achvAds = cachedAds;
 	        List<HashMap<String,Object>> achvJobSkillRows = null;
 	        try { achvJobSkillRows = botNewService.selectJobSkillUseCountAllJobs(userName, roomName); } catch (Exception ignore) {}
-	        int achvSoldCount = 0;
-	        try { achvSoldCount = botNewService.selectInventorySoldCount(userName, roomName); } catch (Exception ignore) {}
 
 	        String firstClearMsg  = grantFirstClearIfEligible(userName, roomName, m, globalAchvMap);
 	        String killAchvMsg    = grantKillAchievements(userName, roomName, achievedCmdSet, cachedKillStats);           // [PERF] cachedKillStats 재사용
@@ -3887,9 +3876,12 @@ public class BossAttackController {
 	        forceNmBagDrop = true;
 	    }
 
-	    // 전체 특수 버프
+	    // 전체 특수 버프 — [OPT1] SPECIAL_BUFF_CACHE 재사용 (tryDropBag도 캐시 적용)
 	    try {
-	        HashMap<String, Object> specialBuff = botNewService.selectActiveSpecialBuff();
+	        long _nowMs = System.currentTimeMillis();
+	        HashMap<String, Object> specialBuff = (_nowMs - SPECIAL_BUFF_CACHE_TS < SPECIAL_BUFF_CACHE_TTL_MS)
+	                ? SPECIAL_BUFF_CACHE
+	                : botNewService.selectActiveSpecialBuff();
 	        if (specialBuff != null) {
 	            String flagCode = String.valueOf(specialBuff.get("FLAG_CODE"));
 	            Object effectValueObj = specialBuff.get("EFFECT_VALUE");
@@ -6367,6 +6359,22 @@ public class BossAttackController {
 	    }
 
 	    return sb.toString();
+	}
+
+	// [OPT3] selectAchievementInventoryCounts 결과(HashMap) → grantLightDarkItemAchievements 호환 List 변환
+	private List<HashMap<String,Object>> buildGainRowsFromCounts(HashMap<String,Object> counts) {
+	    List<HashMap<String,Object>> list = new java.util.ArrayList<>();
+	    if (counts == null) return list;
+	    for (String type : new String[]{"DROP3","DROP5","DROP9"}) {
+	        int qty = ((Number) counts.getOrDefault(type + "_QTY", 0)).intValue();
+	        if (qty > 0) {
+	            HashMap<String,Object> row = new HashMap<>();
+	            row.put("GAIN_TYPE", type);
+	            row.put("TOTAL_QTY", qty);
+	            list.add(row);
+	        }
+	    }
+	    return list;
 	}
 
 	private String grantLightDarkItemAchievements(

@@ -181,6 +181,9 @@ public interface BotNewService {
     int lockMacroUser(String userName);
     
     int selectTotalBagAcquireCount(String userName);
+
+    // [OPT3] INVENTORY 3개 쿼리 통합
+    HashMap<String,Object> selectAchievementInventoryCounts(String userName);
     
     public int updateRandomBlessUser(String attacker,int count) ;
     public void clearBlessYn(String userName) ;

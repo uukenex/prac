@@ -30,4 +30,5 @@ public  class User {
 	public String hunterGrade;
 	public int blessYn;
 	public Timestamp procDate;
+	public int nightmareYn; // [OPT2] selectNightmareYn DB 호출 제거용
 }
