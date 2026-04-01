@@ -133,7 +133,10 @@ public interface BotNewDAO {
     List<HashMap<String,Object>> selectDailyAttackCounts(HashMap<String,Object> param) throws Exception;
     
     List<HashMap<String,Object>>  selectBattleCountByUser(HashMap<String,Object> param) throws Exception;
-    
+
+    // [OPT-ATK] selectAttackDeathStats + selectBattleCountByUser 통합
+    List<HashMap<String,Object>> selectBattleStatsByJob(HashMap<String,Object> param);
+
     int updateUserJobAndChangeDate(@Param("userName") String userName,
              @Param("roomName") String roomName,
              @Param("job") String job);
