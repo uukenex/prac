@@ -53,14 +53,11 @@ public interface BotNewService {
     int updateUserTargetMonTx(String userName, String roomName, int newMonNo);
     
     int insertUserWithTargetTx(String userName, String roomName, int targetMonNo);
-    Integer selectLatestLuckyYn(String userName, String roomName);
     Integer selectItemIdByCode(String itemCode);
     Integer selectItemIdByName(String itemName);
 
     int insertInventoryLogTx(HashMap<String, Object> p);  // 트랜잭션 메서드 권장
 
-    List<HashMap<String,Object>> selectInventorySummary(String userName, String roomName);
-    
     HashMap<String,Object>  selectCurrentPoint(String userName, String roomName);
     HashMap<String,Object>  selectTotalEarnedSp(String userName, String roomName);
     int insertPointRank(HashMap<String, Object> p);
@@ -71,9 +68,7 @@ public interface BotNewService {
     List<HashMap<String, Object>> selectItemSellPriceList(Map<String, Object> param) throws Exception;
     
     void updateInventoryDelBatch(Map<String, Object> param) throws Exception;
-    int updateInventoryDelByRowId(String rowid) ;
     int updateInventoryQtyByRowId(String rowid, int newQty) ;
-    Integer selectInventoryQty(String userName, String roomName, Integer itemId);
     Integer selectItemPriceByName(String itemName);
 
     /** 아이템 보너스 총합 */
@@ -83,18 +78,11 @@ public interface BotNewService {
 
     HashMap<String, Number> selectOwnedMarketBuffTotals(String user, String room);
     
-    List<HashMap<String,Object>> selectMarketItemsForSale(String userName, String roomName);
-    HashMap<String,Object> selectMarketItemById(Integer itemId);
-    HashMap<String,Object> selectMarketItemByNameOrCode(String token);
-    Integer countOwnedMarketItem(String userName, String roomName, Integer itemId);
-    
     List<HashMap<String, Object>> selectMarketItems();
     HashMap<String, Object> selectItemDetailById(int itemId);
     
  // BotNewService
     List<HashMap<String,Object>> selectMarketItemsWithOwned(String userName, String roomName);
-    Integer selectHasOwnedMarketItem(String userName, String roomName, Integer itemId);
-
     Timestamp selectLastDamagedTime(String userName, String roomName) ;
     
  // Top 3 레벨 랭킹
@@ -106,8 +94,6 @@ public interface BotNewService {
     // 최초 토벌자
     List<HashMap<String,Object>> selectFirstClearInfo();
     
-    int selectPointRankCountByCmdGlobal(String cmd);
-
     int selectPointRankCountByCmdUserInRoom(String roomName, String userName, String cmd);
     
     public List<HashMap<String,Object>> selectAchievementsByUser(String userName,String roomName);
@@ -121,46 +107,27 @@ public interface BotNewService {
     List<HashMap<String,Object>> selectOngoingChallengesForUnclearedBosses();
     List<HashMap<String,Object>> selectSpAndAtkRanking() throws Exception;
     
-    int selectRoomBuffCount(String roomName);
     void clearRoomBuff(String roomName);
     
     HashMap<String,Object> selectDosaBuffInfo(String roomName);
     
-    int selectItemIdByRowId(String rid);
-    
-    List<HashMap<String, Object>> selectThiefKingRanking();
-
     List<HashMap<String, Object>> selectAchievementCountRanking();
     List<AchievementCount> selectAchvCountsGlobal(String userName,String roomName);
     List<AchievementCount> selectAchvCountsGlobalAll();
-    HashMap<String, Object> selectActiveMonster(String userName, String roomName);
-    
     public void execSPMsgTest(HashMap<String,Object> map) throws Exception;
     public void execSPPatchNoteTest(HashMap<String,Object> map) throws Exception;
     
-    
-    int selectBagCount(String userName, String roomName);
-
-    int consumeOneBagTx(String userName, String roomName);
-    int consumeBagBulkTx(String userName, String roomName,int bagCount);
-
-    List<Integer> selectBagRewardItemIds();
-
-    String selectItemNameById(int itemId);
     
     List<Integer> selectBagRewardItemIdsUserNotOwned( HashMap<String,Object> param );
     
     List<BagLog> selectRecentBagDrops();
     List<BagRewardLog> selectRecentBagRewards();
     int selectBagOpenSpCount(String userName, String roomName);
-    int selectRecentBagSpSum(String userName, String roomName);
-    
- // 상점/소비로 삭제된 인벤토리 누적 수량
+    // 상점/소비로 삭제된 인벤토리 누적 수량
     int selectInventorySoldCount(String userName, String roomName);
     
     List<HashMap<String, Object>> selectTotalGainCountByGainType(String userName, String roomName);
     
-    Integer selectJobSkillUseCount(String userName, String roomName, String job);
     List<HashMap<String,Object>> selectJobSkillUseCountAllJobs(String userName, String roomName);
     
     HashMap<String, Object> selectTodayDailyBuff(String userName, String roomName) throws Exception;
@@ -172,8 +139,7 @@ public interface BotNewService {
     List<HashMap<String, Object>> selectTodayJobMastersAll();
     
     boolean isReturnUser(String userName);
-    long selectBagRewardCap(String userName);
-    
+
     List<HashMap<String, Object>> selectTotalDropItems(String userName);
     public boolean isNightmareMode(String userName, String roomName);
     public int setNightmareMode(String userName, String roomName, boolean nightmareYn);

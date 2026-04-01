@@ -121,17 +121,6 @@ public class BotNewServiceImpl implements BotNewService {
     	return botNewDAO.insertUserWithTarget(userName, roomName,targetMonNo);
     }
     
-    @Override
-    public Integer selectLatestLuckyYn(String userName, String roomName) {
-        if (userName == null || roomName == null) return null;
-        try {
-            return botNewDAO.selectLatestLuckyYn(userName, roomName);
-        } catch (Exception e) {
-            // 안정성: 실패 시 null
-            return null;
-        }
-    }
-    
 	@Override
 	public Integer selectItemIdByCode(String itemCode) {
 		return botNewDAO.selectItemIdByCode(itemCode);
@@ -147,11 +136,6 @@ public class BotNewServiceImpl implements BotNewService {
 		return botNewDAO.insertInventoryLog(p);
 	}
 
-	@Override
-	public List<HashMap<String, Object>> selectInventorySummary(String userName, String roomName) {
-		return botNewDAO.selectInventorySummary(userName, roomName);
-	}
-	
 	@Override
 	public HashMap<String,Object>  selectCurrentPoint(String userName, String roomName) {
 	    return botNewDAO.selectCurrentPoint(userName, roomName);
@@ -190,20 +174,9 @@ public class BotNewServiceImpl implements BotNewService {
 		botNewDAO.updateInventoryDelBatch(param);
 	}
 	@Override
-	public int updateInventoryDelByRowId(String rowid) {
-		return botNewDAO.updateInventoryDelByRowId(rowid);
-	}
-
-	@Override
 	public int updateInventoryQtyByRowId(String rowid, int newQty) {
 		return botNewDAO.updateInventoryQtyByRowId(rowid, newQty);
 	}
-	@Override
-	public Integer selectInventoryQty(String userName, String roomName, Integer itemId) {
-	    return botNewDAO.selectInventoryQty(userName, roomName, itemId);
-	}
-
-	
 	@Override
 	public List<HashMap<String, Object>> selectInventorySummaryAll(String user, String room) {
 	    return botNewDAO.selectInventorySummaryAll(user, room);
@@ -218,23 +191,6 @@ public class BotNewServiceImpl implements BotNewService {
 	public HashMap<String, Number> selectOwnedMarketBuffTotals(String user, String room) {
 	    return botNewDAO.selectOwnedMarketBuffTotals(user, room);
 	}
-	@Override
-    public List<HashMap<String, Object>> selectMarketItemsForSale(String userName, String roomName) {
-        return botNewDAO.selectMarketItemsForSale(userName, roomName);
-    }
-    @Override
-    public HashMap<String, Object> selectMarketItemById(Integer itemId) {
-        return botNewDAO.selectMarketItemById(itemId);
-    }
-    @Override
-    public HashMap<String, Object> selectMarketItemByNameOrCode(String token) {
-        return botNewDAO.selectMarketItemByNameOrCode(token);
-    }
-    @Override
-    public Integer countOwnedMarketItem(String userName, String roomName, Integer itemId) {
-        return botNewDAO.countOwnedMarketItem(userName, roomName, itemId);
-    }
-    
     @Override
     public List<HashMap<String, Object>> selectMarketItems() {
         return botNewDAO.selectMarketItems();
@@ -250,11 +206,6 @@ public class BotNewServiceImpl implements BotNewService {
     public List<HashMap<String,Object>> selectMarketItemsWithOwned(String userName, String roomName) {
         return botNewDAO.selectMarketItemsWithOwned(userName, roomName);
     }
-    @Override
-    public Integer selectHasOwnedMarketItem(String userName, String roomName, Integer itemId) {
-        return botNewDAO.selectHasOwnedMarketItem(userName, roomName, itemId);
-    }
-    
     @Override
     public Timestamp selectLastDamagedTime(String userName, String roomName) {
         return botNewDAO.selectLastDamagedTime(userName, roomName);
@@ -279,11 +230,6 @@ public class BotNewServiceImpl implements BotNewService {
         return botNewDAO.selectFirstClearInfo();
     }
     
-    @Override
-    public int selectPointRankCountByCmdGlobal(String cmd) {
-    	return botNewDAO.selectPointRankCountByCmdGlobal(cmd);
-    }
-
     @Override
     public int selectPointRankCountByCmdUserInRoom(String roomName, String userName, String cmd) {
     	return botNewDAO.selectPointRankCountByCmdUserInRoom(roomName, userName, cmd);
@@ -339,11 +285,6 @@ public class BotNewServiceImpl implements BotNewService {
     }
     
     @Override
-    public int selectRoomBuffCount(String roomName) {
-        return botNewDAO.selectRoomBuffCount(roomName);
-    }
-
-    @Override
     public void clearRoomBuff(String roomName) {
         botNewDAO.clearRoomBuff(roomName);
     }
@@ -354,22 +295,8 @@ public class BotNewServiceImpl implements BotNewService {
     }
     
     @Override
-    public int selectItemIdByRowId(String rid) {
-    	return botNewDAO.selectItemIdByRowId(rid);
-    }
-    
-    @Override
-    public List<HashMap<String, Object>> selectThiefKingRanking(){
-    	return botNewDAO.selectThiefKingRanking();
-    }
-
-    @Override
     public List<HashMap<String, Object>> selectAchievementCountRanking(){
     	return botNewDAO.selectAchievementCountRanking();
-    }
-    @Override
-    public HashMap<String, Object> selectActiveMonster(String userName, String roomName){
-    	return botNewDAO.selectActiveMonster(userName,roomName);
     }
     @Override
     public List<AchievementCount> selectAchvCountsGlobal(String userName,String roomName){
@@ -394,39 +321,6 @@ public class BotNewServiceImpl implements BotNewService {
     
     
     @Override
-    public int selectBagCount(String userName, String roomName) {
-        return botNewDAO.selectBagCount(userName, roomName, 91);
-    }
-
-    @Override
-    public int consumeOneBagTx(String userName, String roomName) {
-        HashMap<String,Object> p = new HashMap<>();
-        p.put("userName", userName);
-        p.put("roomName", roomName);
-        p.put("itemId", 91);
-        return botNewDAO.consumeOneBag(p);
-    }
-    @Override
-    public int consumeBagBulkTx(String userName, String roomName,int bagCount) {
-    	HashMap<String,Object> p = new HashMap<>();
-    	p.put("userName", userName);
-    	p.put("roomName", roomName);
-    	p.put("itemId", 91);
-    	p.put("bagCount", bagCount);
-    	return botNewDAO.consumeBagBulk(p);
-    }
-
-    @Override
-    public List<Integer> selectBagRewardItemIds() {
-        return botNewDAO.selectBagRewardItemIds();
-    }
-
-    @Override
-    public String selectItemNameById(int itemId) {
-        return botNewDAO.selectItemNameById(itemId);
-    }
-
-    @Override
     public List<Integer> selectBagRewardItemIdsUserNotOwned(HashMap<String,Object> param ) {
         return botNewDAO.selectBagRewardItemIdsUserNotOwned(param);
     }
@@ -447,14 +341,6 @@ public class BotNewServiceImpl implements BotNewService {
         return botNewDAO.selectBagOpenSpCount(param);
     }
     @Override
-    public int selectRecentBagSpSum(String userName, String roomName) {
-    	HashMap<String,Object> p = new HashMap<>();
-        p.put("userName", userName);
-        p.put("roomName", roomName);
-    	return botNewDAO.selectRecentBagSpSum(p);
-    }
-    
-    @Override
     public int selectInventorySoldCount(String userName, String roomName) {
         return botNewDAO.selectInventorySoldCount(userName, roomName);
     }
@@ -464,14 +350,6 @@ public class BotNewServiceImpl implements BotNewService {
         return botNewDAO.selectTotalGainCountByGainType(userName, roomName);
     }
     
-    @Override
-    public Integer selectJobSkillUseCount(String userName, String roomName, String job) {
-        HashMap<String,Object> p = new HashMap<>();
-        p.put("userName", userName);
-        p.put("roomName", roomName);
-        p.put("job", job);
-        return botNewDAO.selectJobSkillUseCount(p);
-    }
     @Override
     public List<HashMap<String,Object>> selectJobSkillUseCountAllJobs(String userName, String roomName) {
         HashMap<String,Object> p = new HashMap<>();
@@ -531,20 +409,6 @@ public class BotNewServiceImpl implements BotNewService {
         } catch (Exception e) {
             // 복귀자 판정 실패 시 보너스 미적용
             return false;
-        }
-    }
-    
-    @Override
-    public long selectBagRewardCap(String userName) {
-
-        HashMap<String, Object> map = new HashMap<>();
-        map.put("userName", userName);
-
-        try {
-            return botNewDAO.selectBagRewardCap(map);
-        } catch (Exception e) {
-            // 가방 보상 계산 실패 시 안전 상한
-            return 50000;
         }
     }
     
