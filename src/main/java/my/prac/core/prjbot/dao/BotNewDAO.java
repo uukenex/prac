@@ -56,15 +56,11 @@ public interface BotNewDAO {
 
     int insertUserWithTarget(@Param("userName") String userName, @Param("roomName") String roomName, @Param("targetMonNo") int targetMonNo);
 
-    Integer selectLatestLuckyYn(@Param("userName") String userName, @Param("roomName") String roomName);
-
     // Inventory & Items
     Integer selectItemIdByCode(@Param("itemCode") String itemCode);
     Integer selectItemIdByName(@Param("itemName") String itemName);
 
     int insertInventoryLog(HashMap<String,Object> p);
-
-    List<HashMap<String,Object>> selectInventorySummary(@Param("userName") String userName, @Param("roomName") String roomName);
 
     HashMap<String,Object>  selectCurrentPoint(@Param("userName") String userName, @Param("roomName") String roomName);
     HashMap<String,Object>  selectTotalEarnedSp(@Param("userName") String userName, @Param("roomName") String roomName);
@@ -83,10 +79,7 @@ public interface BotNewDAO {
     
     
     void updateInventoryDelBatch(Map<String, Object> param);
-    int updateInventoryDelByRowId(@Param("rid") String rid);
     int updateInventoryQtyByRowId(@Param("rid") String rid, @Param("newQty") int newQty);
-
-    Integer selectInventoryQty(@Param("userName") String userName, @Param("roomName") String roomName, @Param("itemId") Integer itemId);
 
     // 공격정보용 인벤토리 요약 (일반+MARKET+빛나는)
     List<HashMap<String,Object>> selectInventorySummaryAll(
@@ -104,26 +97,7 @@ public interface BotNewDAO {
         @Param("roomName") String roomName
     );
 
-    
-    /** 내 계정 기준으로 구매 가능한 MARKET 아이템 목록 + 보유 여부 */
-    List<HashMap<String, Object>> selectMarketItemsForSale(
-        @Param("userName") String userName,
-        @Param("roomName") String roomName
-    );
 
-    /** ITEM_ID로 단일 아이템 조회 (MARKET 한정) */
-    HashMap<String, Object> selectMarketItemById(@Param("itemId") Integer itemId);
-
-    /** 이름/코드로 단일 아이템 조회 (MARKET 한정) */
-    HashMap<String, Object> selectMarketItemByNameOrCode(@Param("token") String token);
-
-    /** 보유 여부(활성 재고) */
-    Integer countOwnedMarketItem(
-        @Param("userName") String userName,
-        @Param("roomName") String roomName,
-        @Param("itemId") Integer itemId
-    );
-    
     /** ITEM_TYPE='MARKET' 목록 (구매 리스트 노출용) */
     List<HashMap<String, Object>> selectMarketItems();
 
@@ -135,13 +109,6 @@ public interface BotNewDAO {
         @Param("roomName") String roomName
     );
 
-    // 이미 소유한 MARKET 아이템인가? (del_yn='0' 남아있는지)
-    Integer selectHasOwnedMarketItem(
-        @Param("userName") String userName,
-        @Param("roomName") String roomName,
-        @Param("itemId")   Integer itemId
-    );
-    
     Timestamp selectLastDamagedTime(@Param("userName") String userName,
             @Param("roomName") String roomName);
     HashMap<String,Object> selectLastBattleLog(HashMap<String,Object> map);
@@ -156,9 +123,6 @@ public interface BotNewDAO {
     List<HashMap<String,Object>> selectFirstClearInfo();
     
     
-    int selectPointRankCountByCmdGlobal(
-            @Param("cmd") String cmd);
-
     int selectPointRankCountByCmdUserInRoom(
             @Param("roomName") String roomName,
             @Param("userName") String userName,
@@ -179,49 +143,29 @@ public interface BotNewDAO {
     List<HashMap<String,Object>> selectOngoingChallengesForUnclearedBosses();
     public List<HashMap<String,Object>> selectSpAndAtkRanking();
     
-    int selectRoomBuffCount(@Param("roomName")String roomName);
     void clearRoomBuff(@Param("roomName")String roomName);
     
     HashMap<String,Object> selectDosaBuffInfo(@Param("roomName")String roomName);
     
-    int selectItemIdByRowId(String rid);
-    
-    List<HashMap<String, Object>> selectThiefKingRanking();
-
     List<HashMap<String, Object>> selectAchievementCountRanking();
     List<AchievementCount> selectAchvCountsGlobal(@Param("userName")String userName,@Param("roomName") String roomName);
     List<AchievementCount> selectAchvCountsGlobalAll();
 
-    HashMap<String, Object> selectActiveMonster(@Param("userName")String userName,@Param("roomName") String roomName);
-    
     public int execSPMsgTest(HashMap<String,Object> map) throws Exception;
     public int execSPPatchNoteTest(HashMap<String,Object> map) throws Exception;
     
-    int selectBagCount(@Param("userName") String userName,
-            @Param("roomName") String roomName,
-            @Param("itemId") int itemId);
-
-	int consumeOneBag(HashMap<String,Object> map);
-	int consumeBagBulk(HashMap<String,Object> map);
-	
-	List<Integer> selectBagRewardItemIds();
-	
-	String selectItemNameById(@Param("itemId") int itemId);
-	
-	List<Integer> selectBagRewardItemIdsUserNotOwned(HashMap<String,Object> map);
+    List<Integer> selectBagRewardItemIdsUserNotOwned(HashMap<String,Object> map);
     
 	List<BagLog> selectRecentBagDrops();
 	List<BagRewardLog> selectRecentBagRewards();
 	int selectBagOpenSpCount(HashMap<String, Object> map);
-	int selectRecentBagSpSum(HashMap<String, Object> map);
-	
+
 	int selectInventorySoldCount(
 	        @Param("userName") String userName,
 	        @Param("roomName") String roomName);
 	
 	List<HashMap<String, Object>> selectTotalGainCountByGainType(@Param("userName") String userName,
 	        @Param("roomName") String roomName);
-	public Integer selectJobSkillUseCount(HashMap<String,Object> param);
 	public List<HashMap<String,Object>> selectJobSkillUseCountAllJobs(HashMap<String,Object> param);
 	
 	HashMap<String, Object> selectTodayDailyBuff(HashMap<String, Object> param) throws Exception;
@@ -235,7 +179,6 @@ public interface BotNewDAO {
 	
     String selectIsReturnUser(HashMap<String, Object> map);
     
-    long selectBagRewardCap(HashMap<String, Object> map);
     List<HashMap<String, Object>> selectTotalDropItems(String userName);
     
     Integer selectNightmareYn(@Param("userName") String userName, @Param("roomName") String roomName);

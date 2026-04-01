@@ -301,20 +301,6 @@
 	   ORDER BY CASE WHEN LENGTH(#{param1,jdbcType=VARCHAR}) = LENGTH(A.USER_NAME) THEN 1 ELSE 0 END DESC
 	</select>
 
-  <!-- 최근 lucky -->
-  <select id="selectLatestLuckyYn" parameterType="map" resultType="int">
-  /*selectLatestLuckyYn*/
-    SELECT TO_NUMBER(lucky_yn) AS lucky_yn
-      FROM (
-        SELECT bl.lucky_yn
-          FROM TBOT_POINT_NEW_BATTLE_LOG bl
-         WHERE bl.user_name = #{userName}
-           AND bl.now_yn    = '1'
-         ORDER BY bl.insert_date DESC
-      )
-     WHERE ROWNUM = 1
-  </select>
-
   <!-- (중복 제거하고 이 한 개만 남김) -->
   <select id="selectItemIdByName" parameterType="string" resultType="int">
     SELECT ITEM_ID FROM TBOT_POINT_NEW_ITEM WHERE ITEM_NAME = #{itemName}
@@ -336,40 +322,6 @@
        #{gainType,jdbcType=VARCHAR},
        SYSDATE)
   </insert>
-
-  <!-- 일반 요약(판매가능/불가 분리 용) -->
-  <select id="selectInventorySummary" resultType="hashmap">
-    /*selectInventorySummary*/
-    SELECT
-	    x.ITEM_ID,
-	    CASE WHEN x.GAIN_TYPE = 'DROP3'
-	         THEN '빛' || NVL(t.ITEM_NAME, '알 수 없음')
-	         WHEN x.GAIN_TYPE = 'DROP5'
-	         THEN '어둠' || NVL(t.ITEM_NAME, '알 수 없음')
-	         WHEN x.GAIN_TYPE = 'DROP9'
-	         THEN '음양' || NVL(t.ITEM_NAME, '알 수 없음')
-	         WHEN x.GAIN_TYPE = 'STEAL'
-    		 THEN NVL(t.ITEM_NAME, '알 수 없음') || '조각'
-	         ELSE NVL(t.ITEM_NAME, '알 수 없음')
-	    END AS ITEM_NAME,
-	    '1' AS SELLABLE_YN,             -- 빛템도 판매 가능
-	    x.TOTAL_QTY
-	  FROM (
-	    SELECT ITEM_ID, GAIN_TYPE, SUM(QTY) AS TOTAL_QTY
-	      FROM TBOT_POINT_NEW_INVENTORY
-	     WHERE USER_NAME = #{userName}
-	     <!-- 
-	       <if test="roomName != null and roomName != '람쥐봇 문의방'">
-		    AND ROOM_NAME = #{roomName}
-		   </if>
-		    -->
-	       AND DEL_YN    = '0'
-	     GROUP BY ITEM_ID, GAIN_TYPE
-	  ) x
-	  LEFT JOIN TBOT_POINT_NEW_ITEM t ON t.ITEM_ID = x.ITEM_ID
-	 WHERE x.TOTAL_QTY > 0
-	 ORDER BY NVL(t.ITEM_NAME, 'ZZZ'), x.ITEM_ID
-  </select>
 
   <select id="selectInventorySummaryAll" resultType="hashmap">
 	/* selectInventorySummaryAll */
@@ -487,9 +439,6 @@
      ORDER BY INSERT_DATE ASC, ROWID
   </select>
 
-  <update id="updateInventoryDelByRowId">
-    UPDATE TBOT_POINT_NEW_INVENTORY SET DEL_YN = '1' WHERE ROWID = #{rid}
-  </update>
 	<update id="updateInventoryDelBatch">
 		UPDATE TBOT_POINT_NEW_INVENTORY
 		   SET DEL_YN = '1'
@@ -609,65 +558,6 @@
 	    AND i.item_type in ('MARKET2','MARKET','BAG_OPEN','BAG_OPEN_NM','MASTER','ACHV')
 	</select>
 	
-	<!-- 구매 가능한 MARKET 아이템 목록 + 보유여부 -->
-	<select id="selectMarketItemsForSale" resultType="hashmap">
-	  SELECT
-	      i.item_id,
-	      i.item_name,
-	      i.item_sell_price,
-	      i.atk_min,
-	      i.atk_max,
-	      i.atk_cri,
-	      i.hp_regen,
-	      i.hp_max,
-	      i.cri_dmg,
-	      CASE
-	        WHEN EXISTS (
-	          SELECT 1
-	            FROM TBOT_POINT_NEW_INVENTORY inv
-	           WHERE inv.user_name = #{userName}
-	           <!-- 
-	             AND inv.room_name = #{roomName}
-	              -->
-	             AND inv.item_id   = i.item_id
-	             AND inv.del_yn    = '0'
-	        ) THEN 'Y' ELSE 'N'
-	      END AS owned_yn
-	  FROM TBOT_POINT_NEW_ITEM i
-	  WHERE i.item_type in ( 'MARKET','MARKET2')
-	  ORDER BY i.item_id
-	</select>
-	
-	<!-- MARKET 단일: ITEM_ID 기준 -->
-	<select id="selectMarketItemById" resultType="hashmap">
-	  SELECT
-	      i.item_id,
-	      i.item_name,
-	      i.item_sell_price,
-	      i.atk_min,
-	      i.atk_max,
-	      i.atk_cri,
-	      i.hp_regen,
-	      i.hp_max,
-	      i.cri_dmg
-	  FROM TBOT_POINT_NEW_ITEM i
-	  WHERE i.item_type in ('MARKET','MARKET2')
-	    AND i.item_id   = #{itemId}
-	</select>
-	
-	<!-- 보유중인 MARKET 인벤토리 수량(활성행) -->
-	<select id="countOwnedMarketItem" resultType="int">
-	  SELECT NVL(SUM(inv.qty),0)
-	  FROM TBOT_POINT_NEW_INVENTORY inv
-	  WHERE inv.user_name = #{userName}
-	  <!-- 
-	    AND inv.room_name = #{roomName}
-	     -->
-	    AND inv.item_id   = #{itemId}
-	    AND inv.del_yn    = '0'
-	</select>
-	
-	
 	<select id="selectMarketItems" resultType="hashmap">
 	    SELECT
 	        i.ITEM_ID,
@@ -710,15 +600,6 @@
 	</select>
 	
 	
-	<!--  D. 인벤토리 보유 수량 합(DEL_YN='0'만)  -->
-	<select id="selectInventoryQty" resultType="int">
-		/*selectInventoryQty*/
-	    SELECT NVL(SUM(n.QTY), 0)
-	    FROM TBOT_POINT_NEW_INVENTORY n
-	    WHERE n.USER_NAME = #{userName}
-	      AND n.ITEM_ID   = #{itemId}
-	      AND NVL(n.DEL_YN, '0') = '0'
-	</select>
 	<!-- MARKET 아이템 전체 + 보유여부(OWNED_YN) -->
 	<select id="selectMarketItemsWithOwned" resultType="hashmap">
 		/* selectMarketItemsWithOwned */
@@ -778,16 +659,6 @@
 			     CASE WHEN i.ITEM_ID &lt; 1000 THEN i.ITEM_ID END DESC
 	</select>
 
-	
-	<!-- 이미 소유한 MARKET 아이템인지 확인 -->
-	<select id="selectHasOwnedMarketItem" resultType="int">
-	  SELECT COUNT(1)
-	  FROM TBOT_POINT_NEW_INVENTORY inv
-	  WHERE inv.USER_NAME = #{userName}
-	    AND inv.ITEM_ID   = #{itemId}
-	    AND inv.DEL_YN    = '0'
-	</select>
-	
 	
 	<select id="selectLastBattleLog" resultType="hashmap">
 		/* selectLastBattleLog */
@@ -892,13 +763,6 @@
 	      AND NEW_YN = '1'
 	</select>
 	
-	<select id="selectPointRankCountByCmdGlobal" resultType="int">
-	/*selectPointRankCountByCmdGlobal*/
-	   SELECT COUNT(1)
-	     FROM TBOT_POINT_RANK
-	    WHERE CMD = #{cmd}
-	      AND NEW_YN = '1'
-	</select>
 	<select id="selectAchvCountsGlobalAll" resultType="my.prac.core.game.dto.AchievementCount">
 	    /*selectAchvCountsGlobalAll*/
 	    SELECT CMD,
@@ -1116,14 +980,6 @@
 	  ORDER BY m.MON_NO, ob.START_TIME, ob.USER_NAME
 	</select>
 	
-	<!-- 도사 버프 확인 (방 전체 1회용 버프 존재 여부) -->
-	<select id="selectRoomBuffCount" parameterType="string" resultType="int">
-	    SELECT COUNT(1)
-	    FROM TBOT_POINT_NEW_BATTLE_LOG
-	    WHERE ROOM_NAME = #{roomName}
-	      AND BUFF_YN = '1'
-	</select>
-	
 	<!-- 도사 버프 리셋 (1회 사용 후 0으로 초기화) -->
 	<update id="clearRoomBuff" parameterType="string">
 	    UPDATE TBOT_POINT_NEW_BATTLE_LOG
@@ -1145,12 +1001,6 @@
 	       AND B.BUFF_YN = '1'
 	       AND ROWNUM = 1
 	     ORDER BY B.INSERT_DATE DESC
-	</select>
-	
-	<select id="selectItemIdByRowId" parameterType="string" resultType="int">
-	    SELECT ITEM_ID
-	      FROM TBOT_POINT_NEW_INVENTORY
-	     WHERE ROWID = #{rid}
 	</select>
 	
 	<select id="selectTotalEarnedSp" resultType="hashMap">
@@ -1227,22 +1077,7 @@
 	
 	</select>
 	  
-	  <select id="selectThiefKingRanking" parameterType="string" resultType="hashmap">
-	    SELECT *
-	    FROM (
-	        SELECT USER_NAME,
-	               ROOM_NAME,
-	               SUM(QTY) AS STEAL_QTY
-	          FROM TBOT_POINT_NEW_INVENTORY
-	         WHERE NVL(GAIN_TYPE, 'DROP') = 'STEAL'
-	         GROUP BY USER_NAME, ROOM_NAME
-	         ORDER BY SUM(QTY) DESC, USER_NAME
-	    )
-	    WHERE ROWNUM &lt;= 5
-	</select>
-	
-	
-	<select id="selectAchievementCountRanking" parameterType="string" resultType="hashmap">
+		<select id="selectAchievementCountRanking" parameterType="string" resultType="hashmap">
 	    SELECT *
 		    FROM (
 		        SELECT USER_NAME,
@@ -1254,24 +1089,6 @@
 		         ORDER BY COUNT(*) DESC, USER_NAME
 		    )
 		    WHERE ROWNUM &lt;= 5
-	</select>
-	
-	<select id="selectActiveMonster" parameterType="hashmap" resultType="hashmap">
-	  SELECT *
-	    FROM (
-	        SELECT 
-	               b.TARGET_MON_LV,
-	               mi.MON_NAME,
-	               mi.MON_HP       AS MON_MAX_HP
-	          FROM TBOT_POINT_NEW_BATTLE_LOG b
-	          JOIN TBOT_POINT_NEW_MON_INFO mi
-	            ON b.TARGET_MON_LV = mi.MON_NO     <!-- 몬스터 레벨/번호 매핑 -->
-	         WHERE b.USER_NAME = #{userName}
-	           AND NVL(b.NOW_YN, '1') = '1'        <!-- 현재 진행중 전투 -->
-	           AND NVL(b.KILL_YN, '0') = '0'       <!-- 아직 안 죽은 몬스터 -->
-	         ORDER BY b.INSERT_DATE DESC           <!-- 가장 최근 전투 로그 -->
-	    )
-	    WHERE ROWNUM = 1
 	</select>
 	
 	<select id="selectAchvCountsGlobal" resultType="my.prac.core.game.dto.AchievementCount">
@@ -1299,55 +1116,6 @@
 	</update>
 		
 		
-	<select id="selectBagCount" resultType="int">
-    SELECT NVL(SUM(QTY), 0)
-      FROM TBOT_POINT_NEW_INVENTORY
-     WHERE USER_NAME = #{userName}
-       <!-- 
-       AND ROOM_NAME = #{roomName}
-        -->
-       AND ITEM_ID   in ('91','92')
-       AND DEL_YN    = '0'
-	</select>
-	
-	<!-- 2) 가방 1개 소비: 가장 먼저 들어온 1개를 del_yn='1'로 -->
-	<update id="consumeOneBag" parameterType="hashmap">
-	    UPDATE TBOT_POINT_NEW_INVENTORY
-	       SET DEL_YN = '1'
-	     WHERE USER_NAME = #{userName}
-	     <!-- 
-	       AND ROOM_NAME = #{roomName}
-	        -->
-	       AND ITEM_ID   in ('91','92')
-	       AND DEL_YN    = '0'
-	       AND ROWNUM    = 1
-	</update>
-	
-	
-	<!-- 2) 가방 1개 소비: 가장 먼저 들어온 1개를 del_yn='1'로 -->
-	<update id="consumeBagBulk" parameterType="hashmap">
-	    UPDATE TBOT_POINT_NEW_INVENTORY
-	       SET DEL_YN = '1'
-	     WHERE USER_NAME = #{userName}
-	       AND ITEM_ID   = #{itemId}
-	       AND DEL_YN    = '0'
-	       AND ROWNUM &lt;=  #{bagCount}
-	</update>
-	
-	
-	<select id="selectBagRewardItemIds" resultType="int">
-	    SELECT ITEM_ID
-	      FROM TBOT_POINT_NEW_ITEM
-	     WHERE ITEM_TYPE = 'BAG_OPEN'
-	</select>
-	
-	<!-- 4) 아이템 이름 조회 -->
-	<select id="selectItemNameById" resultType="string">
-	    SELECT ITEM_NAME
-	      FROM TBOT_POINT_NEW_ITEM
-	     WHERE ITEM_ID = #{itemId}
-	</select>
-	
 	<select id="selectBagRewardItemIdsUserNotOwned" parameterType="hashmap" resultType="int">
     SELECT ITEM_ID
       FROM TBOT_POINT_NEW_ITEM I
@@ -1421,23 +1189,6 @@
 	       AND USER_NAME = #{userName}
 	</select>
 
-	<!-- 최근 5개의 BAG_OPEN_SP 합계 -->
-	<select id="selectRecentBagSpSum" parameterType="hashmap" resultType="int">
-	    SELECT NVL(SUM(x.SCORE), 0) AS sumScore
-	      FROM (
-	            SELECT SCORE
-	              FROM TBOT_POINT_RANK
-	             WHERE NEW_YN   = '1'
-	               AND CMD      = 'BAG_OPEN_SP'
-	               AND USER_NAME = #{userName}
-	               <!-- 
-	               AND ROOM_NAME = #{roomName}
-	                -->
-	             ORDER BY INSERT_DATE DESC
-	          ) x
-	     WHERE ROWNUM &lt;= 10
-	</select>
-	
 	<!-- DEL_YN='1' 인 인벤토리 누적 수량(판매/사용 포함) -->
 	<select id="selectInventorySoldCount" resultType="int">
 	  SELECT NVL(SUM(QTY), 0)
@@ -1463,15 +1214,6 @@
 	       -->
 	      AND  GAIN_TYPE IN ('DROP3', 'DROP5','DROP9')
 	    GROUP BY GAIN_TYPE
-	</select>
-	
-	<select id="selectJobSkillUseCount"
-	        parameterType="map"
-	        resultType="int">
-	    SELECT NVL(SUM(job_skill_yn), 0) AS totalSkillUse
-	      FROM TBOT_POINT_NEW_BATTLE_LOG
-	     WHERE USER_NAME = #{userName}
-	       AND JOB       = #{job}
 	</select>
 	
 	<select id="selectJobSkillUseCountAllJobs"
@@ -1609,69 +1351,6 @@
 	            ) AS today_cnt
 	        FROM dual
 	    )
-	</select>
-	
-	<select id="selectBagRewardCap" parameterType="map" resultType="long">
-
-	SELECT
-	    CASE
-	        WHEN total_sp &lt; 5000000 THEN 50000
-	        ELSE
-	            50000 + ROUND((total_sp - 5000000)/1000000,2)*10000
-	    END AS BAG_REWARD_CAP
-	FROM
-	(
-	    SELECT
-	        NVL(inv_sp,0) + NVL(rank_sp,0) AS total_sp
-	    FROM
-	    (
-	        SELECT
-	            SUM(
-	                (
-	                    CASE
-	                        WHEN A.GAIN_TYPE='BUY_MERCHANT'
-	                        THEN ROUND(B.ITEM_SELL_PRICE*0.9)
-	                        ELSE B.ITEM_SELL_PRICE
-	                    END
-	                )
-	                *
-	                POWER(
-	                    10000,
-	                    CASE
-	                        WHEN B.ITEM_SELL_PRICE_EXT IS NULL OR B.ITEM_SELL_PRICE_EXT=''
-	                        THEN 0
-	                        ELSE ASCII(B.ITEM_SELL_PRICE_EXT)-ASCII('a')+1
-	                    END
-	                )
-	                * A.QTY
-	            ) AS inv_sp
-	        FROM TBOT_POINT_NEW_INVENTORY A
-	        JOIN TBOT_POINT_NEW_ITEM B
-	          ON A.ITEM_ID=B.ITEM_ID
-	        WHERE A.GAIN_TYPE NOT IN ('DROP','DROP3','DROP5','DROP9','STEAL')
-	        AND A.DEL_YN='0'
-	        AND A.USER_NAME=#{userName}
-	    ),
-	    (
-	        SELECT
-	            SUM(
-	                A1.SCORE
-	                *
-	                POWER(
-	                    10000,
-	                    CASE
-	                        WHEN A1.SCORE_EXT IS NULL OR A1.SCORE_EXT=''
-	                        THEN 0
-	                        ELSE ASCII(A1.SCORE_EXT)-ASCII('a')+1
-	                    END
-	                )
-	            ) AS rank_sp
-	        FROM TBOT_POINT_RANK A1
-	        WHERE A1.NEW_YN='1'
-	        AND A1.USER_NAME=#{userName}
-	    )
-	)
-	
 	</select>
 	
 	<!-- 누적 드랍 아이템 집계 -->
