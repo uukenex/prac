@@ -6238,8 +6238,7 @@ public class BossAttackController {
 	    }
 
 	    // baseExp에 이미 monExp *= NM_MUL_EXP 반영됨 → 여기서 추가 곱 없음
-	    long effExpL = Math.round((long)baseExp * expMultiplier);
-	    int effExp = (int)Math.min(effExpL, Integer.MAX_VALUE);
+	    long effExp = Math.round((long)baseExp * expMultiplier);
 	    boolean hasPenalty = (levelGap >= 0 && expMultiplier < 1.0);
 	    boolean hasBonus   = (levelGap < 0  && expMultiplier > 1.0);
 
