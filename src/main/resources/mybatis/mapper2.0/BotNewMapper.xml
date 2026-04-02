@@ -1805,6 +1805,37 @@
 	
 	</insert>
 	
+	<!-- 전체 아이템 + 유저 보유여부 (item_view 페이지용) -->
+	<select id="selectAllItemsWithOwned" resultType="hashmap">
+		/* selectAllItemsWithOwned */
+		SELECT
+		    i.ITEM_ID,
+		    i.ITEM_NAME,
+		    NVL(i.ITEM_TYPE, '') AS ITEM_TYPE,
+		    NVL(i.ITEM_SELL_PRICE, 0) AS ITEM_SELL_PRICE,
+		    NVL(i.ITEM_SELL_PRICE_EXT, '') AS ITEM_SELL_PRICE_EXT,
+		    NVL(i.ATK_MIN,      0) AS ATK_MIN,
+		    NVL(i.ATK_MAX,      0) AS ATK_MAX,
+		    NVL(i.ATK_CRI,      0) AS ATK_CRI,
+		    NVL(i.HP_REGEN,     0) AS HP_REGEN,
+		    NVL(i.HP_MAX,       0) AS HP_MAX,
+		    NVL(i.CRI_DMG,      0) AS CRI_DMG,
+		    NVL(i.HP_MAX_RATE,  0) AS HP_MAX_RATE,
+		    NVL(i.ATK_MAX_RATE, 0) AS ATK_MAX_RATE,
+		    NVL(inv.OWN_QTY, 0) AS OWN_QTY,
+		    CASE WHEN NVL(inv.OWN_QTY, 0) > 0 THEN 'Y' ELSE 'N' END AS OWNED_YN
+		FROM TBOT_POINT_NEW_ITEM i
+		LEFT JOIN (
+		    SELECT ITEM_ID, SUM(QTY) AS OWN_QTY
+		    FROM TBOT_POINT_NEW_INVENTORY
+		    WHERE USER_NAME = #{userName}
+		      AND ROOM_NAME = #{roomName}
+		      AND DEL_YN    = '0'
+		    GROUP BY ITEM_ID
+		) inv ON inv.ITEM_ID = i.ITEM_ID
+		ORDER BY i.ITEM_TYPE, i.ITEM_ID
+	</select>
+
 	<select id="selectInventoryItemsByIds" resultType="int">
 	    /* selectInventoryItemsByIds */
 	    SELECT n.ITEM_ID

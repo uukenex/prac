@@ -265,4 +265,10 @@ public interface BotNewDAO {
             @Param("roomName") String roomName,
             @Param("itemIds") Collection<Integer> itemIds
     );
+
+    /** 전체 아이템 + 유저 보유여부 (item_view 페이지용) */
+    List<HashMap<String, Object>> selectAllItemsWithOwned(
+            @Param("userName") String userName,
+            @Param("roomName") String roomName
+    );
 }
