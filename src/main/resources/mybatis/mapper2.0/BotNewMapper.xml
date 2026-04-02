@@ -847,7 +847,7 @@
 	    GROUP BY JOB
 	</select>
 
-	<!-- [OPT-ATK] selectAttackDeathStats + selectBattleCountByUser 통합 (BATTLE_LOG 1회 스캔) -->
+	<!-- [OPT-HUNTER] selectAttackDeathStats + selectBattleCountByUser 통합 (BATTLE_LOG 1회 스캔) -->
 	<select id="selectBattleStatsByJob" parameterType="hashmap" resultType="hashmap">
 		/*selectBattleStatsByJob*/
 	    SELECT
