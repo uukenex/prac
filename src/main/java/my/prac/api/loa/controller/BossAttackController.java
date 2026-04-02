@@ -4912,6 +4912,7 @@ public class BossAttackController {
 	    StringBuilder sb = new StringBuilder();
 
 	    sb.append("■").append(userName).append("님 상점 목록").append(NL)
+	      .append("http://rgb-tns.dev-apc.com/loa/item-view").append(NL)
 	      .append("────────────────").append(NL);
 
 	    // 유저 레벨 (TARGET_LV 체크용, 1회 조회)
