@@ -1097,17 +1097,13 @@ public class BossAttackController {
 	    sb.append("✨").append(userName).append(" 인벤토리 (총 ").append(bag.size()).append("개)");
 	    sb.append(ALL_SEE_STR);
 
-	    // 카테고리 버킷
+	    // 카테고리 버킷 (행운/반지/토템/선물은 합계 표기로 통합)
 	    Map<String, List<String>> catMap = new LinkedHashMap<>();
 	    catMap.put("※무기", new ArrayList<>());
 	    catMap.put("※갑옷", new ArrayList<>());
 	    catMap.put("※투구", new ArrayList<>());
 	    catMap.put("※전설", new ArrayList<>());
 	    catMap.put("※날개", new ArrayList<>());
-	    catMap.put("※토템", new ArrayList<>());
-	    catMap.put("※행운", new ArrayList<>());
-	    catMap.put("※반지", new ArrayList<>());
-	    catMap.put("※선물", new ArrayList<>());
 	    catMap.put("※유물", new ArrayList<>());
 	    catMap.put("※업적", new ArrayList<>());
 	    catMap.put("※기타", new ArrayList<>());
@@ -1120,6 +1116,9 @@ public class BossAttackController {
 	        int qty = safeInt(row.get("TOTAL_QTY"));
 
 	        if (itemName.isEmpty()) continue;
+
+	        // 행운/반지/토템/선물 → 합계 표기, 개별 나열 생략
+	        if ((itemId >= 300 && itemId < 400) || (itemId >= 500 && itemId < 700) || (itemId >= 900 && itemId < 1000)) continue;
 
 	        String cat = resolveItemCategory(itemId);
 	        String label = itemName;
@@ -1168,6 +1167,13 @@ public class BossAttackController {
 	            sb.append(", ").append(s).append(NL);
 	        }
 	    }
+
+        // 행운/반지/토템/선물 합계 표기
+        for (int[] gr : new int[][]{{300,400},{500,600},{600,700},{900,1000}}) {
+            String gl = gr[0]==300?"행운":gr[0]==500?"반지":gr[0]==600?"토템":"선물";
+            String line = buildGroupSummaryLine(bag, gr[0], gr[1], gl);
+            if (line != null) sb.append(line).append(NL);
+        }
 
 	    sb.append(NL);
 	    try {
@@ -1601,13 +1607,9 @@ public class BossAttackController {
 	            Map<String, List<String>> catMap = new LinkedHashMap<>();
 	            catMap.put("※무기", new ArrayList<>());
 	            catMap.put("※투구", new ArrayList<>());
-	            catMap.put("※행운", new ArrayList<>());
 	            catMap.put("※갑옷", new ArrayList<>());
-	            catMap.put("※반지", new ArrayList<>());
-	            catMap.put("※토템", new ArrayList<>());
 	            catMap.put("※전설", new ArrayList<>());
 	            catMap.put("※날개", new ArrayList<>());
-	            catMap.put("※선물", new ArrayList<>());
 	            catMap.put("※유물", new ArrayList<>());
 	            catMap.put("※업적", new ArrayList<>());
 	            catMap.put("※기타", new ArrayList<>());
@@ -1622,6 +1624,9 @@ public class BossAttackController {
 	                int itemId      = parseIntSafe(Objects.toString(row.get("ITEM_ID"), "0"));
 
 	                if (itemName == null || itemName.trim().isEmpty()) continue;
+
+	                // 행운/반지/토템/선물 → 합계 표기, 개별 나열 생략
+	                if ((itemId >= 300 && itemId < 400) || (itemId >= 500 && itemId < 700) || (itemId >= 900 && itemId < 1000)) continue;
 
 	                // 수량 파싱
 	                int qtyVal = parseIntSafe(qtyStr);
@@ -1668,6 +1673,13 @@ public class BossAttackController {
 
 	                sb.append(String.join(", ", list));
 	                sb.append(NL);
+	            }
+
+	            // 행운/반지/토템/선물 합계 표기
+	            for (int[] gr : new int[][]{{300,400},{500,600},{600,700},{900,1000}}) {
+	                String gl = gr[0]==300?"행운":gr[0]==500?"반지":gr[0]==600?"토템":"선물";
+	                String line = buildGroupSummaryLine(bag, gr[0], gr[1], gl);
+	                if (line != null) sb.append(line).append(NL);
 	            }
 
 	            sb.append(NL);
@@ -2025,7 +2037,7 @@ public class BossAttackController {
 	             + "(/구매 입력만으로 목록을 확인하세요)";
 	    }
 
-	    // 이미 소유 여부 체크
+	    // 이미 소유 여부 체크 (실시간 조회)
 	    boolean alreadyOwnedThisItem = false;
 	    try {
 	        List<HashMap<String,Object>> inv = botNewService.selectInventorySummaryAll(userName, roomName);
@@ -2039,8 +2051,8 @@ public class BossAttackController {
 	                int q = parseIntSafe(Objects.toString(row.get("TOTAL_QTY"), "0"));
 	                if (q > 0) {
 	                    alreadyOwnedThisItem = true;  // 이미 이 아이템은 가지고 있음 → 업그레이드 구매
-	                    break;
 	                }
+	                break;
 	            }
 	        }
 	    } catch (Exception ignore) {}
@@ -2062,6 +2074,18 @@ public class BossAttackController {
 	    }
 
 	    String itemName = Objects.toString(item.get("ITEM_NAME"), String.valueOf(itemId));
+
+	    // 레벨 제한 체크
+	    int targetLv = parseIntSafe(Objects.toString(item.get("TARGET_LV"), "0"));
+	    if (targetLv > 0) {
+	        try {
+	            User u = botNewService.selectUser(userName, roomName);
+	            int userLv = (u == null) ? 0 : u.lv;
+	            if (userLv < targetLv) {
+	                return "⚠ [" + itemName + "] 구매 불가 — Lv." + targetLv + " 이상 필요 (현재 Lv." + userLv + ")";
+	            }
+	        } catch (Exception ignore) {}
+	    }
 
 	    // 단가
 	    HashMap<String,Object> priceRow = getItemPriceCached(itemId);
@@ -4039,6 +4063,12 @@ public class BossAttackController {
 
 	    Integer itemId = resolveItemId(itemNameRaw);
 
+	    // 300/500/600/900번대 판매 불가
+	    if (itemId != null &&
+	        ((itemId >= 300 && itemId < 400) || (itemId >= 500 && itemId < 700) || (itemId >= 900 && itemId < 1000))) {
+	        return "[" + itemNameRaw + "]은(는) 판매할 수 없는 아이템입니다.";
+	    }
+
 	    if (itemId == null) {
 	        return "해당 아이템을 찾을 수 없습니다: " + itemNameRaw;
 	    }
@@ -4884,6 +4914,13 @@ public class BossAttackController {
 	    sb.append("■").append(userName).append("님 상점 목록").append(NL)
 	      .append("────────────────").append(NL);
 
+	    // 유저 레벨 (TARGET_LV 체크용, 1회 조회)
+	    int userLv = 0;
+	    try {
+	        User uForLv = botNewService.selectUser(userName, "");
+	        if (uForLv != null) userLv = uForLv.lv;
+	    } catch (Exception ignore) {}
+
 	    // 🔹 포션 가격 계산용 컨텍스트
 	    boolean hasPotion = items.stream()
 	            .anyMatch(it -> "POTION".equalsIgnoreCase(String.valueOf(it.get("ITEM_TYPE"))));
@@ -4918,6 +4955,18 @@ public class BossAttackController {
 	        boolean isEquip = "MARKET".equalsIgnoreCase(itemType);
 	        boolean isPotion = "POTION".equalsIgnoreCase(itemType);
 
+	        // 300/500/600/900번대(행운/반지/토템/선물): 이미 보유 시 목록에서 숨김
+	        boolean isSummaryGroup = (itemId >= 300 && itemId < 400)
+	                || (itemId >= 500 && itemId < 700)
+	                || (itemId >= 900 && itemId < 1000);
+	        if (isSummaryGroup && "Y".equalsIgnoreCase(ownedYn)) {
+	            continue;
+	        }
+
+	        // 레벨 제한
+	        int reqLv = parseIntSafe(Objects.toString(it.get("TARGET_LV"), "0"));
+	        boolean lvLocked = (reqLv > 0 && userLv < reqLv);
+
 	        String displayPrice = buildDisplayPrice(it, isPotion, itemId, userPoint);
 
 	        sb.append("[")
@@ -4925,7 +4974,9 @@ public class BossAttackController {
 	          .append("] ")
 	          .append(name);
 
-	        if ("Y".equalsIgnoreCase(ownedYn)) {
+	        if (lvLocked) {
+	            sb.append(" (Lv.").append(reqLv).append(" 필요)");
+	        } else if ("Y".equalsIgnoreCase(ownedYn)) {
 	            if (isEquip && !"Y".equalsIgnoreCase(maxedYn)) {
 	                sb.append(" (보유중)");
 	            } else {
@@ -8655,8 +8706,57 @@ public class BossAttackController {
 
 		return sb.toString();
 	}
-	
-	
+
+	private String buildGroupSummaryLine(List<HashMap<String, Object>> bag, int minId, int maxId, String label) {
+		int sumAtkMin = 0, sumAtkMax = 0, sumHp = 0, sumRegen = 0;
+		int sumCrit = 0, sumCritDmg = 0, sumAtkRate = 0, sumHpRate = 0;
+		int count = 0;
+		if (bag == null) return null;
+		for (HashMap<String, Object> row : bag) {
+			int itemId = safeInt(row.get("ITEM_ID"));
+			if (itemId < minId || itemId >= maxId) continue;
+			count++;
+			sumAtkMin  += safeInt(row.get("ATK_MIN"));
+			sumAtkMax  += safeInt(row.get("ATK_MAX"));
+			sumHp      += safeInt(row.get("HP_MAX"));
+			sumRegen   += safeInt(row.get("HP_REGEN"));
+			sumCrit    += safeInt(row.get("ATK_CRI"));
+			sumCritDmg += safeInt(row.get("CRI_DMG"));
+			sumAtkRate += safeInt(row.get("ATK_MAX_RATE"));
+			sumHpRate  += safeInt(row.get("HP_MAX_RATE"));
+		}
+		if (count == 0) return null;
+		StringBuilder sb = new StringBuilder();
+		sb.append(label).append("합계(").append(count).append("개): ");
+		boolean first = true;
+		if (sumAtkMin != 0 || sumAtkMax != 0) {
+			sb.append("ATK ").append(sumAtkMin).append("~").append(sumAtkMax); first = false;
+		}
+		if (sumAtkRate != 0) {
+			if (!first) sb.append(", ");
+			sb.append("최종ATK +").append(sumAtkRate).append("%"); first = false;
+		}
+		if (sumHp != 0) {
+			if (!first) sb.append(", ");
+			sb.append("HP +").append(sumHp); first = false;
+		}
+		if (sumHpRate != 0) {
+			if (!first) sb.append(", ");
+			sb.append("체력% +").append(sumHpRate); first = false;
+		}
+		if (sumRegen != 0) {
+			if (!first) sb.append(", ");
+			sb.append("체젠 +").append(sumRegen); first = false;
+		}
+		if (sumCrit != 0 || sumCritDmg != 0) {
+			if (!first) sb.append(", ");
+			sb.append("치확 +").append(sumCrit).append("% / 치뎀 +").append(sumCritDmg).append("%");
+		}
+		return sb.toString();
+	}
+
+
+
 	public static String formatSpShort(long sp) {
 		if (sp < 10_000) {
 	        return String.format("%,dsp", sp);
