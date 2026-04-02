@@ -62,7 +62,9 @@
     .card-stats { margin-top: 8px; font-size: 11px; color: #888; border-top: 1px solid #f0ece4; padding-top: 7px; }
     .stat-line  { display: flex; justify-content: space-between; padding: 1px 0; }
     .stat-line span:last-child { color: #5a9e6f; font-weight: 600; }
-    .card-qty   { font-size: 11px; color: #81b0d4; margin-top: 5px; }
+    .card-qty     { font-size: 11px; color: #81b0d4; margin-top: 5px; }
+    .card-formula { font-size: 11px; color: #9c7c3a; background: #fffaee; border-radius: 6px; padding: 4px 8px; margin-top: 7px; line-height: 1.5; }
+    .formula-lbl  { color: #bbb; font-size: 10px; display: block; margin-bottom: 1px; }
 
     .empty   { text-align: center; padding: 60px 0; color: #ccc; }
     .empty .ico { font-size: 34px; margin-bottom: 10px; }
@@ -120,9 +122,18 @@
       <div class="card-icon">{{ item._cat.icon }}</div>
       <div class="card-id">#{{ item.ITEM_ID }}</div>
       <div class="card-name">{{ item.ITEM_NAME }}</div>
-      <div class="card-price" :class="{'no-price': item.ITEM_SELL_PRICE <= 0}">
-        {{ item.ITEM_SELL_PRICE > 0 ? item.ITEM_SELL_PRICE.toLocaleString() + (item.ITEM_SELL_PRICE_EXT ? ' ' + item.ITEM_SELL_PRICE_EXT : '') + ' SP' : '—' }}
-      </div>
+      <!-- 포션: 공식 표시 / 그 외: 고정가 표시 -->
+      <template v-if="potionFormulas[String(item.ITEM_ID)]">
+        <div class="card-formula">
+          <span class="formula-lbl">💰 가격 공식</span>
+          {{ potionFormulas[String(item.ITEM_ID)].formulaDesc }}
+        </div>
+      </template>
+      <template v-else>
+        <div class="card-price" :class="{'no-price': item.ITEM_SELL_PRICE <= 0}">
+          {{ item.ITEM_SELL_PRICE > 0 ? item.ITEM_SELL_PRICE.toLocaleString() + (item.ITEM_SELL_PRICE_EXT ? ' ' + item.ITEM_SELL_PRICE_EXT : '') + ' SP' : '—' }}
+        </div>
+      </template>
       <span class="card-type-tag">{{ item._cat.label }}</span>
       <div class="card-stats" v-if="hasStats(item)">
         <div class="stat-line" v-if="item.ATK_MIN > 0 || item.ATK_MAX > 0"><span>공격력</span><span>{{ item.ATK_MIN }}~{{ item.ATK_MAX }}</span></div>
@@ -176,6 +187,7 @@
       userName: '',
       keyword: '',
       items: [],
+      potionFormulas: {},   // { "1001": { priceType, formulaDesc }, ... }
       loading: false,
       searchedUser: '',
       activeTab: '',
@@ -239,7 +251,14 @@
           .finally(function() { self.loading = false; });
       }
     },
-    mounted: function() { this.fetchItems(); }
+    mounted: function() {
+      var self = this;
+      // 포션 공식 로드 (서버 POTION_CONFIGS 에서 읽음 → 포션 추가 시 자동 반영)
+      fetch('<%=request.getContextPath()%>/loa/api/potion-formulas')
+        .then(function(r) { return r.json(); })
+        .then(function(data) { self.potionFormulas = data; });
+      self.fetchItems();
+    }
   });
 </script>
 </body>
