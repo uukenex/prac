@@ -4934,13 +4934,10 @@ public class BossAttackController {
 	        userPoint = ctx.lifetimeSp;
 	    }
 
-	    int splitIndex = 4;
-
+	    if(!hasPotion) {
+	    	sb.append(NL).append("더보기..").append(ALL_SEE_STR).append(NL);
+	    }
 	    for (int i = 0; i < items.size(); i++) {
-
-	        if (!hiddenYn && i == splitIndex) {
-	            sb.append(NL).append("더보기..").append(ALL_SEE_STR).append(NL);
-	        }
 
 	        HashMap<String,Object> it = items.get(i);
 
@@ -8727,7 +8724,7 @@ public class BossAttackController {
 		}
 		if (count == 0) return null;
 		StringBuilder sb = new StringBuilder();
-		sb.append(label).append("합계(").append(count).append("개): ");
+		sb.append("※").append(label).append("합계(").append(count).append("개): ");
 		boolean first = true;
 		if (sumAtkMin != 0 || sumAtkMax != 0) {
 			sb.append("ATK ").append(sumAtkMin).append("~").append(sumAtkMax); first = false;
