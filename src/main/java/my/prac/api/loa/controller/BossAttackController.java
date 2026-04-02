@@ -1446,14 +1446,15 @@ public class BossAttackController {
 	    } catch (Exception ignore) {
 	        ignore.printStackTrace();
 	    }
-	    // 🔹 몬스터 전체 캐시
-	    List<Monster> monList = botNewService.selectAllMonsters();
-	    Map<Integer, Monster> monMap = new HashMap<>();
-	    if (monList != null) {
-	        for (Monster mm : monList) {
-	            monMap.put(mm.monNo, mm);
+	    // 🔹 몬스터 캐시 — MONSTER_CACHE 직접 사용 (selectAllMonsters DB 조회 제거)
+	    if (MiniGameUtil.MONSTER_CACHE.isEmpty()) {
+	        // 서버 기동 시 initCache 미실행 대비 fallback
+	        List<Monster> monList = botNewService.selectAllMonsters();
+	        if (monList != null) {
+	            for (Monster mm : monList) MiniGameUtil.MONSTER_CACHE.put(mm.monNo, mm);
 	        }
 	    }
+	    Map<Integer, Monster> monMap = MiniGameUtil.MONSTER_CACHE;
 
 	    Monster target = (u.targetMon > 0) ? monMap.get(u.targetMon) : null;
 	    String targetName = (target == null) ? "-" : target.monName;
