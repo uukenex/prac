@@ -4969,9 +4969,8 @@ public class BossAttackController {
 
 	        // 포션: 한 줄 표기
 	        if (isPotion) {
-	            sb.append(itemId).append(" :: [").append(name).append("] -")
-	              .append(MiniGameUtil.getPotionOptionText(itemId))
-	              .append(", ").append(displayPrice).append("sp").append(NL);
+	            sb.append(itemId).append(" :: [").append(name).append("] -").append(displayPrice).append("sp").append(NL)
+	              .append(MiniGameUtil.getPotionOptionText(itemId)).append(NL);
 	            continue;
 	        }
 
