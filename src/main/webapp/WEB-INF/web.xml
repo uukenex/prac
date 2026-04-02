@@ -18,7 +18,9 @@
 		<!-- <param-value>classpath:spring/application-config.xml</param-value> -->
 		<param-value>my.prac.config.ApplicationConfig</param-value>
 	</context-param>
-
+	<listener>
+        <listener-class>my.prac.config.JulToSlf4jBridgeListener</listener-class>
+    </listener>
 	<listener>
 		<listener-class>org.springframework.web.context.ContextLoaderListener</listener-class>
 	</listener>

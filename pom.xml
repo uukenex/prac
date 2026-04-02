@@ -287,6 +287,11 @@
 		    <artifactId>gson</artifactId>
 		    <version>2.8.9</version>
 		</dependency>
+		<dependency>
+		    <groupId>org.slf4j</groupId>
+		    <artifactId>jul-to-slf4j</artifactId>
+		    <version>1.7.36</version>
+		</dependency>
 	</dependencies>
 	<build>
 		<plugins>
@@ -308,13 +313,13 @@
 					<path>/${project.build.finalName}</path>
 				</configuration>
 			</plugin>
-			<!-- 개발시는 이걸 살려야함 local eclipse-->
-			<!--
+			<!--개발시는 이걸 살려야함 local eclipse-->
+			
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-war-plugin</artifactId>
 				<version>3.3.1</version>
-			</plugin> -->
+			</plugin> 
 		</plugins>
 	</build>
 </project>
