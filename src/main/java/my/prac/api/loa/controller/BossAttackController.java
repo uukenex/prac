@@ -3962,11 +3962,14 @@ public class BossAttackController {
 	    double buffRate = 0.0;
 	    boolean forceNmBagDrop = false;
 
-	    // [FIX-BUFF] handleSpecialBuff에서 이미 결정된 activeBuff를 직접 사용
-	    // 기존 버그:
-	    //   1) buff.started만 체크 → flagCode 무관하게 forceNmBagDrop=true (가방/공격력 발동 시에도 잘못 적용)
-	    //   2) SPECIAL_BUFF_CACHE 재조회 → handleSpecialBuff 결과와 불일치 가능
-	    // 수정: buff.activeBuff의 flagCode를 직접 확인 → 재조회 불필요, 일관성 보장
+	    // 버프 발동 시: 어떤 버프든 발동자는 나메가방 확정 (의도된 기능)
+	    if (buff != null && buff.started) {
+	        forceNmBagDrop = true;
+	    }
+
+	    // [FIX-BUFF] 버프 진행 중: SPECIAL_BUFF_CACHE 재조회 대신 buff.activeBuff 직접 사용
+	    // 기존 버그: SPECIAL_BUFF_CACHE 재조회 타이밍에 따라 null을 읽어 나메가방 미적용
+	    // 수정: handleSpecialBuff에서 이미 결정한 activeBuff를 그대로 참조 → 일관성 보장
 	    try {
 	        HashMap<String,Object> activeBuff = (buff != null) ? buff.activeBuff : null;
 	        if (activeBuff != null) {
