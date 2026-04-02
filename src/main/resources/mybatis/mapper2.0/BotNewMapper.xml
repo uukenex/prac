@@ -1832,7 +1832,8 @@
 		      AND DEL_YN    = '0'
 		    GROUP BY ITEM_ID
 		) inv ON inv.ITEM_ID = i.ITEM_ID
-		ORDER BY i.ITEM_TYPE, i.ITEM_ID
+		WHERE i.ITEM_TYPE NOT IN ('DROP0', 'MARKET0', 'MASTER')
+		ORDER BY i.ITEM_ID
 	</select>
 
 	<select id="selectInventoryItemsByIds" resultType="int">
