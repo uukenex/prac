@@ -1067,13 +1067,21 @@ public class BossAttackController {
 
 	public String invenInfo(HashMap<String, Object> map) {
 
-	    UserBattleContext ctx = calcUserBattleContext(map);
-	    if (!ctx.success) {
-	        return ctx.errorMessage;
+	    // [OPT-INVEN] calcUserBattleContext 대신 targetUser/roomName 만 경량 추출
+	    final String _uName = Objects.toString(map.get("userName"), "");
+	    if (_uName.isEmpty()) return "유저 정보가 누락되었습니다.";
+	    String _target = _uName;
+	    final String _p1 = Objects.toString(map.get("param1"), "").trim();
+	    if (!_p1.isEmpty()) {
+	        List<String> found = botNewService.selectParam1ToNewUserSearch(map);
+	        if (found != null && !found.isEmpty()) {
+	            _target = found.get(0);
+	        } else {
+	            return "해당 유저(" + _p1 + ")를 찾을 수 없습니다.";
+	        }
 	    }
-
-	    final String userName = ctx.targetUser;
-	    final String roomName = ctx.roomName;
+	    final String userName = _target;
+	    final String roomName = Objects.toString(map.get("roomName"), "");
 
 	    StringBuilder sb = new StringBuilder();
 	    List<HashMap<String, Object>> bag =
