@@ -2075,6 +2075,18 @@ public class BossAttackController {
 
 	    String itemName = Objects.toString(item.get("ITEM_NAME"), String.valueOf(itemId));
 
+	    // 레벨 제한 체크
+	    int targetLv = parseIntSafe(Objects.toString(item.get("TARGET_LV"), "0"));
+	    if (targetLv > 0) {
+	        try {
+	            User u = botNewService.selectUser(userName, roomName);
+	            int userLv = (u == null) ? 0 : u.lv;
+	            if (userLv < targetLv) {
+	                return "⚠ [" + itemName + "] 구매 불가 — Lv." + targetLv + " 이상 필요 (현재 Lv." + userLv + ")";
+	            }
+	        } catch (Exception ignore) {}
+	    }
+
 	    // 단가
 	    HashMap<String,Object> priceRow = getItemPriceCached(itemId);
 	    double priceValue = safeDouble(priceRow == null ? null : priceRow.get("ITEM_SELL_PRICE"));
@@ -4902,6 +4914,13 @@ public class BossAttackController {
 	    sb.append("■").append(userName).append("님 상점 목록").append(NL)
 	      .append("────────────────").append(NL);
 
+	    // 유저 레벨 (TARGET_LV 체크용, 1회 조회)
+	    int userLv = 0;
+	    try {
+	        User uForLv = botNewService.selectUser(userName, "");
+	        if (uForLv != null) userLv = uForLv.lv;
+	    } catch (Exception ignore) {}
+
 	    // 🔹 포션 가격 계산용 컨텍스트
 	    boolean hasPotion = items.stream()
 	            .anyMatch(it -> "POTION".equalsIgnoreCase(String.valueOf(it.get("ITEM_TYPE"))));
@@ -4944,6 +4963,10 @@ public class BossAttackController {
 	            continue;
 	        }
 
+	        // 레벨 제한
+	        int reqLv = parseIntSafe(Objects.toString(it.get("TARGET_LV"), "0"));
+	        boolean lvLocked = (reqLv > 0 && userLv < reqLv);
+
 	        String displayPrice = buildDisplayPrice(it, isPotion, itemId, userPoint);
 
 	        sb.append("[")
@@ -4951,7 +4974,9 @@ public class BossAttackController {
 	          .append("] ")
 	          .append(name);
 
-	        if ("Y".equalsIgnoreCase(ownedYn)) {
+	        if (lvLocked) {
+	            sb.append(" (Lv.").append(reqLv).append(" 필요)");
+	        } else if ("Y".equalsIgnoreCase(ownedYn)) {
 	            if (isEquip && !"Y".equalsIgnoreCase(maxedYn)) {
 	                sb.append(" (보유중)");
 	            } else {

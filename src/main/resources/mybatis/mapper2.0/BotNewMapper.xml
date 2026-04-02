@@ -597,7 +597,7 @@
 	<!--  B. 아이템 단건 상세  -->
 	<select id="selectItemDetailById" resultType="hashmap">
 		/*selectItemDetailById*/
-	    SELECT 
+	    SELECT
 	        i.ITEM_ID,
 	        i.ITEM_NAME,
 	        i.ITEM_SELL_PRICE,
@@ -610,7 +610,8 @@
 	        NVL(i.HP_MAX,    0) AS HP_MAX,
 	        NVL(i.CRI_DMG,   0) AS CRI_DMG,
 	        NVL(i.HP_MAX_RATE,   0) AS HP_MAX_RATE,
-	        NVL(i.ATK_MAX_RATE,   0) AS ATK_MAX_RATE
+	        NVL(i.ATK_MAX_RATE,   0) AS ATK_MAX_RATE,
+	        i.TARGET_LV
 	    FROM TBOT_POINT_NEW_ITEM i
 	    WHERE i.ITEM_ID = #{itemId}
 	</select>
@@ -633,7 +634,8 @@
 	        NVL(i.CRI_DMG,0)   AS CRI_DMG,
 	        NVL(i.HP_MAX_RATE,0)   AS HP_MAX_RATE,
 	        NVL(i.ATK_MAX_RATE,0)   AS ATK_MAX_RATE,
-	
+	        i.TARGET_LV,
+
 	        NVL(inv.OWN_QTY, 0) AS OWN_QTY,
 	
 	        CASE WHEN NVL(inv.OWN_QTY, 0) > 0 THEN 'Y' ELSE 'N' END AS OWNED_YN,
