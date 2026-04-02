@@ -220,6 +220,13 @@ public class BossAttackController {
 	    }
 	    ctx.targetUser = targetUser;
 
+	    // [OPT-HUNTER] attackInfo에서 미리 조회한 dropRows를 ctx에 저장 (applyDropBonusToContext 재사용)
+	    if (map.containsKey("_preDropRows")) {
+	        @SuppressWarnings("unchecked")
+	        List<HashMap<String,Object>> preDropRows = (List<HashMap<String,Object>>) map.get("_preDropRows");
+	        ctx.preDropRows = preDropRows;
+	    }
+
 	    // ② 유저 조회
 	    User u = botNewService.selectUser(targetUser,null);
 	    if (u == null) {
@@ -306,16 +313,25 @@ public class BossAttackController {
 	    if ("헌터".equals(job)) {
 
 	        try {
-	            AttackDeathStat ads = botNewService.selectAttackDeathStats(targetUser, "");
+	            int totalAttacks, totalDeaths;
 
-	            int totalAttacks = (ads == null ? 0 : ads.totalAttacks);
-	            int hunterAttacks = (ads == null ? 0 : ads.hunterAttacks);
-	            int totalDeaths  = (ads == null ? 0 : ads.totalDeaths);
-	            totalAttacks +=hunterAttacks*2;
-	            totalDeaths  +=hunterAttacks/2;
-	            
-	            
-	            List<HashMap<String,Object>> drops = botNewService.selectTotalDropItems(targetUser);
+	            // [OPT-HUNTER] attackInfo에서 미리 계산된 값이 있으면 DB 조회 생략
+	            if (map.containsKey("_preHunterAdjAttacks")) {
+	                totalAttacks = ((Number) map.get("_preHunterAdjAttacks")).intValue();
+	                totalDeaths  = ((Number) map.get("_preHunterAdjDeaths")).intValue();
+	            } else {
+	                AttackDeathStat ads = botNewService.selectAttackDeathStats(targetUser, "");
+	                totalAttacks = (ads == null ? 0 : ads.totalAttacks);
+	                int hunterAttacks = (ads == null ? 0 : ads.hunterAttacks);
+	                totalDeaths  = (ads == null ? 0 : ads.totalDeaths);
+	                totalAttacks += hunterAttacks * 2;
+	                totalDeaths  += hunterAttacks / 2;
+	            }
+
+	            // preDropRows가 있으면 재사용, 없으면 DB 조회
+	            List<HashMap<String,Object>> drops = (ctx.preDropRows != null)
+	                    ? ctx.preDropRows
+	                    : botNewService.selectTotalDropItems(targetUser);
 
 	            int totalDrops = 0;
 	            if (drops != null) {
@@ -1225,6 +1241,46 @@ public class BossAttackController {
 
 	
 	public String attackInfo(HashMap<String, Object> map) {
+
+	    // [OPT-HUNTER] calcUserBattleContext 호출 전에 targetUser 해석 + 통계/드랍 미리 조회
+	    // - selectBattleStatsByJob 1회로 totalAttacks/totalDeaths/jobAtkMap/lastAtkTime 모두 확보
+	    // - selectTotalDropItems 1회로 헌터 bonus + applyDropBonusToContext 공유
+	    // → calcUserBattleContext 내부의 중복 DB 조회(selectAttackDeathStats, selectTotalDropItems×2) 제거
+	    {
+	        final String _uName = Objects.toString(map.get("userName"), "");
+	        String _target = _uName;
+	        final String _p1 = Objects.toString(map.get("param1"), "").trim();
+	        if (!_uName.isEmpty()) {
+	            if (!_p1.isEmpty()) {
+	                List<String> found = botNewService.selectParam1ToNewUserSearch(map);
+	                if (found != null && !found.isEmpty()) _target = found.get(0);
+	            }
+	            // 통합 전투 통계 미리 조회 (1회 스캔)
+	            List<HashMap<String,Object>> statRows = null;
+	            try { statRows = botNewService.selectBattleStatsByJob(_target); } catch (Exception ignore) {}
+	            int _totalAtk = 0, _totalDth = 0;
+	            int _hunterCnt = 0;
+	            if (statRows != null) {
+	                for (HashMap<String,Object> r : statRows) {
+	                    int cnt = safeInt(r.get("CNT"));
+	                    String j = Objects.toString(r.get("JOB"), "").trim();
+	                    _totalAtk += cnt;
+	                    _totalDth += safeInt(r.get("DEATH_CNT"));
+	                    if ("헌터".equals(j)) _hunterCnt = cnt;
+	                }
+	            }
+	            // 헌터 bonus 계산용 조정값 (calcUserBattleContext에서 selectAttackDeathStats 대체)
+	            map.put("_preHunterAdjAttacks", _totalAtk + _hunterCnt * 2);
+	            map.put("_preHunterAdjDeaths",  _totalDth + _hunterCnt / 2);
+	            // statRows 자체도 저장 (attackInfo에서 totalAttacks/jobAtkMap/lastAtkTs 도출용)
+	            map.put("_preStatRows", statRows);
+	            // 드랍 아이템 미리 조회 (헌터 bonus + applyDropBonusToContext 공유)
+	            List<HashMap<String,Object>> preDropRows = null;
+	            try { preDropRows = botNewService.selectTotalDropItems(_target); } catch (Exception ignore) {}
+	            map.put("_preDropRows", preDropRows);
+	        }
+	    }
+
 	    UserBattleContext ctx = calcUserBattleContext(map);
 	    if (!ctx.success) {
 	        return ctx.errorMessage;
@@ -1275,17 +1331,56 @@ public class BossAttackController {
 
 	    final String allSeeStr  = NL + "===" + NL;  // 구분선
 
-	    // ① 유효 체력 계산 (attackInfo 이전 로직과 동일, 리젠은 표시용 리젠 사용)
-	    int effHp = computeEffectiveHpFromLastAttack(targetUser, roomName, u, finalHpMax, shownRegen);
+	    // [OPT-HUNTER] pre-fetched statRows에서 totalAttacks/totalDeaths/jobAtkMap/lastAtkTs 도출
+	    // (selectAttackDeathStats + selectBattleCountByUser 2회 → 0회)
+	    int totalAttacks = 0;
+	    int totalDeaths  = 0;
+	    java.sql.Timestamp lastAtkTs = null;
+	    Map<String, Integer> jobAtkMap = new HashMap<>();
+	    {
+	        @SuppressWarnings("unchecked")
+	        List<HashMap<String,Object>> statRows = (List<HashMap<String,Object>>) map.get("_preStatRows");
+	        if (statRows != null) {
+	            for (HashMap<String,Object> r : statRows) {
+	                int cnt = safeInt(r.get("CNT"));
+	                totalAttacks += cnt;
+	                totalDeaths  += safeInt(r.get("DEATH_CNT"));
+	                String j = Objects.toString(r.get("JOB"), "").trim();
+	                if (!j.isEmpty()) jobAtkMap.put(j, cnt);
+	                Object dtObj = r.get("MAX_DATE");
+	                if (dtObj instanceof java.sql.Timestamp) {
+	                    java.sql.Timestamp dt = (java.sql.Timestamp) dtObj;
+	                    if (lastAtkTs == null || dt.after(lastAtkTs)) lastAtkTs = dt;
+	                }
+	            }
+	        }
+	    }
+
+	    // [OPT-HUNTER] 전체 직업 hunterGrade 계산 (헌터가 아닌 직업도 표시)
+	    if (ctx.hunterGrade == null) {
+	        int _hunterCnt = jobAtkMap.getOrDefault("헌터", 0);
+	        int _adjAtk = totalAttacks + _hunterCnt * 2;
+	        int _adjDth = totalDeaths  + _hunterCnt / 2;
+	        int _totalDrops = 0;
+	        @SuppressWarnings("unchecked")
+	        List<HashMap<String,Object>> _drops = (List<HashMap<String,Object>>) map.get("_preDropRows");
+	        if (_drops != null) {
+	            for (HashMap<String,Object> d : _drops) {
+	                Object v = d.get("TOTAL_QTY");
+	                if (v instanceof Number) _totalDrops += ((Number)v).intValue();
+	            }
+	        }
+	        ctx.hunterGrade = calculateHunterGrade(_adjAtk, _totalDrops, _adjDth);
+	    }
+
+	    // ① 유효 체력 계산 — lastAtkTs 재사용으로 selectLastAttackTime DB 조회 생략
+	    int effHp = computeEffectiveHpFromLastAttack(targetUser, roomName, u, finalHpMax, shownRegen, lastAtkTs);
 	    if (effHp > finalHpMax) effHp = finalHpMax;
 
-	    // ⑧ 누적 통계/타겟
+	    // ⑧ 킬 통계
 	    List<KillStat> kills = botNewService.selectKillStats(targetUser, roomName);
 	    int totalKills = 0;
 	    for (KillStat ks : kills) totalKills += ks.killCount;
-	    AttackDeathStat ads = botNewService.selectAttackDeathStats(targetUser, roomName);
-	    int totalAttacks = (ads == null ? 0 : ads.totalAttacks);
-	    int totalDeaths  = (ads == null ? 0 : ads.totalDeaths);
 
 	    
 	    
@@ -1351,15 +1446,6 @@ public class BossAttackController {
 	    } catch (Exception ignore) {
 	        ignore.printStackTrace();
 	    }
-	 // === NEW: 직업별 공격 횟수 ===
-	    Map<String, Integer> jobAtkMap = Collections.emptyMap();
-	    try {
-	        jobAtkMap = botNewService.selectBattleCountByUser(targetUser, roomName);
-	    } catch (Exception ignore) {
-	        ignore.printStackTrace();
-	        jobAtkMap = new HashMap<>();
-	    }
-	    
 	    // 🔹 몬스터 전체 캐시
 	    List<Monster> monList = botNewService.selectAllMonsters();
 	    Map<Integer, Monster> monMap = new HashMap<>();
@@ -2276,8 +2362,10 @@ public class BossAttackController {
 	        String roomName
 	) {
 
-	    List<HashMap<String,Object>> drops =
-	            botNewService.selectTotalDropItems(userName);
+	    // [OPT-HUNTER] attackInfo에서 미리 조회한 dropRows 재사용 (중복 DB 조회 방지)
+	    List<HashMap<String,Object>> drops = (ctx.preDropRows != null)
+	            ? ctx.preDropRows
+	            : botNewService.selectTotalDropItems(userName);
 
 	    if (drops == null || drops.isEmpty()) return;
 
@@ -3874,20 +3962,16 @@ public class BossAttackController {
 	    double buffRate = 0.0;
 	    boolean forceNmBagDrop = false;
 
-	    // 개별 버프: 확정 드랍 + 나메 가방
-	    if (buff != null && buff.started) {
-	        forceNmBagDrop = true;
-	    }
-
-	    // 전체 특수 버프 — [OPT1] SPECIAL_BUFF_CACHE 재사용 (tryDropBag도 캐시 적용)
+	    // [FIX-BUFF] handleSpecialBuff에서 이미 결정된 activeBuff를 직접 사용
+	    // 기존 버그:
+	    //   1) buff.started만 체크 → flagCode 무관하게 forceNmBagDrop=true (가방/공격력 발동 시에도 잘못 적용)
+	    //   2) SPECIAL_BUFF_CACHE 재조회 → handleSpecialBuff 결과와 불일치 가능
+	    // 수정: buff.activeBuff의 flagCode를 직접 확인 → 재조회 불필요, 일관성 보장
 	    try {
-	        long _nowMs = System.currentTimeMillis();
-	        HashMap<String, Object> specialBuff = (_nowMs - SPECIAL_BUFF_CACHE_TS < SPECIAL_BUFF_CACHE_TTL_MS)
-	                ? SPECIAL_BUFF_CACHE
-	                : botNewService.selectActiveSpecialBuff();
-	        if (specialBuff != null) {
-	            String flagCode = String.valueOf(specialBuff.get("FLAG_CODE"));
-	            Object effectValueObj = specialBuff.get("EFFECT_VALUE");
+	        HashMap<String,Object> activeBuff = (buff != null) ? buff.activeBuff : null;
+	        if (activeBuff != null) {
+	            String flagCode = String.valueOf(activeBuff.get("FLAG_CODE"));
+	            Object effectValueObj = activeBuff.get("EFFECT_VALUE");
 
 	            if ("가방".equals(flagCode)) {
 	                if (effectValueObj != null) {

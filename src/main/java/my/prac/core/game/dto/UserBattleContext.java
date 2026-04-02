@@ -1,5 +1,7 @@
 package my.prac.core.game.dto;
 
+import java.util.HashMap;
+import java.util.List;
 import my.prac.core.util.SP;
 
 public class UserBattleContext {
@@ -74,4 +76,7 @@ public class UserBattleContext {
 	public int dropCritDmgBonus;
 
 	public String hunterGrade;
+
+	// [OPT-HUNTER] attackInfo 에서 미리 조회한 dropsRows 공유용 (applyDropBonusToContext 중복 조회 방지)
+	public List<HashMap<String,Object>> preDropRows = null;
 }

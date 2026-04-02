@@ -101,6 +101,8 @@ public interface BotNewService {
     
     List<HashMap<String,Object>> selectDailyAttackCounts(String userName, String roomName) throws Exception;
     HashMap<String,Integer> selectBattleCountByUser(String userName, String roomName) throws Exception;
+    // [OPT-HUNTER] selectAttackDeathStats + selectBattleCountByUser 통합
+    List<HashMap<String,Object>> selectBattleStatsByJob(String userName);
     int updateUserJobAndChangeDate(String userName, String roomName, String job);
     
     List<HashMap<String,Object>> selectRisingStarsTop5Last6h();
