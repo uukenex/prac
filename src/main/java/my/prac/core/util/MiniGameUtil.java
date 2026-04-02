@@ -446,36 +446,57 @@ public class MiniGameUtil {
 	}
 
 
-	public static SP getPotionPrice(int itemId, SP totalSp){
+	// ── 포션 가격 설정 ────────────────────────────────────────────────────────
+	// 포션 추가 시 이 맵에만 한 줄 추가하면 계산 + 뷰 표시 모두 자동 반영됨.
+	public static class PotionConfig {
+	    public final int    itemId;
+	    public final String priceType;  // "FIXED" | "DYNAMIC_SQRT"
+	    public final long   base;       // FIXED: 고정가격, DYNAMIC_SQRT: 기본 계수
+	    public final String unit;
 
-		long total = SP.toBaseValue(totalSp);
-
-	    switch(itemId){
-
-	        case 1001:
-	        case 1002:
-	        case 1003:
-
-	            long base;
-
-	            switch(itemId){
-	                case 1001: base = 50;  break;
-	                case 1002: base = 200; break;
-	                default:   base = 400; break;
-	            }
-
-	            double ratio = Math.sqrt((double)total / 600_000_000D);
-
-	            long price = (long)(base * ratio);
-
-	            return SP.of(price,"a");
-
-	        case 1004: return SP.of(3,"a");
-	        case 1005: return SP.of(30,"a");
-	        case 1006: return SP.of(300,"a");
+	    public PotionConfig(int itemId, String priceType, long base, String unit) {
+	        this.itemId    = itemId;
+	        this.priceType = priceType;
+	        this.base      = base;
+	        this.unit      = unit;
 	    }
 
-	    return SP.of(0,"");
+	    /** 뷰에 표시할 가격 공식 설명 */
+	    public String formulaDesc() {
+	        if ("DYNAMIC_SQRT".equals(priceType)) {
+	            return base + " × √(누적SP ÷ 6억) " + unit;
+	        }
+	        return SP.of(base, unit).toString();
+	    }
+	}
+
+	private static final Map<Integer, PotionConfig> POTION_CONFIGS;
+	static {
+	    Map<Integer, PotionConfig> m = new LinkedHashMap<>();
+	    m.put(1001, new PotionConfig(1001, "DYNAMIC_SQRT",  50,  "a"));
+	    m.put(1002, new PotionConfig(1002, "DYNAMIC_SQRT",  200, "a"));
+	    m.put(1003, new PotionConfig(1003, "DYNAMIC_SQRT",  400, "a"));
+	    m.put(1004, new PotionConfig(1004, "FIXED",         3,   "a"));
+	    m.put(1005, new PotionConfig(1005, "FIXED",         30,  "a"));
+	    m.put(1006, new PotionConfig(1006, "FIXED",         300, "a"));
+	    POTION_CONFIGS = java.util.Collections.unmodifiableMap(m);
+	}
+
+	public static Map<Integer, PotionConfig> getPotionConfigs() {
+	    return POTION_CONFIGS;
+	}
+
+	public static SP getPotionPrice(int itemId, SP totalSp){
+	    PotionConfig cfg = POTION_CONFIGS.get(itemId);
+	    if (cfg == null) return SP.of(0, "");
+
+	    if ("DYNAMIC_SQRT".equals(cfg.priceType)) {
+	        long total = SP.toBaseValue(totalSp);
+	        double ratio = Math.sqrt((double) total / 600_000_000D);
+	        long price = (long)(cfg.base * ratio);
+	        return SP.of(price, cfg.unit);
+	    }
+	    return SP.of(cfg.base, cfg.unit);
 	}
 	
     public static long getPotionHeal(int itemId, long maxHp){
