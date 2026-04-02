@@ -65,6 +65,9 @@
     .card-qty     { font-size: 11px; color: #81b0d4; margin-top: 5px; }
     .card-formula { font-size: 11px; color: #9c7c3a; background: #fffaee; border-radius: 6px; padding: 4px 8px; margin-top: 7px; line-height: 1.5; }
     .formula-lbl  { color: #bbb; font-size: 10px; display: block; margin-bottom: 1px; }
+    .card-lv      { display: inline-block; font-size: 10px; color: #e07a5f; background: #fff3f0; border-radius: 6px; padding: 2px 7px; margin-top: 5px; }
+    .btn-sort     { padding: 4px 13px; border-radius: 16px; border: 1.5px solid #e0d9ce; background: #fff; color: #888; font-size: 12px; cursor: pointer; transition: all .15s; display: flex; align-items: center; gap: 4px; }
+    .btn-sort:hover { border-color: #c9a96e; color: #c9a96e; }
 
     .empty   { text-align: center; padding: 60px 0; color: #ccc; }
     .empty .ico { font-size: 34px; margin-bottom: 10px; }
@@ -109,7 +112,13 @@
       <button class="own-tab" :class="{active: ownFilter==='notOwned'}" @click="ownFilter='notOwned'">미보유</button>
     </div>
     <div v-else></div>
-    <div class="count-label">현재 표시 <strong>{{ filteredItems.length }}</strong> 개</div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <button class="btn-sort" @click="toggleSort">
+        <span>번호순</span>
+        <span>{{ sortDir === 'asc' ? '▲' : '▼' }}</span>
+      </button>
+      <div class="count-label">현재 표시 <strong>{{ filteredItems.length }}</strong> 개</div>
+    </div>
   </div>
 
   <div class="loading" v-if="loading"><i class="fa fa-spinner fa-spin"></i> 불러오는 중...</div>
@@ -144,6 +153,7 @@
         <div class="stat-line" v-if="item.HP_REGEN > 0"><span>HP회복</span><span>+{{ item.HP_REGEN }}</span></div>
         <div class="stat-line" v-if="item.ATK_MAX_RATE > 0"><span>공격력%</span><span>+{{ item.ATK_MAX_RATE }}%</span></div>
       </div>
+      <div class="card-lv" v-if="item.TARGET_LV > 0">🔒 Lv.{{ item.TARGET_LV }} 이상</div>
       <div class="card-qty" v-if="item.OWN_QTY > 0">📦 보유 {{ item.OWN_QTY }}개</div>
     </div>
   </div>
@@ -191,7 +201,8 @@
       loading: false,
       searchedUser: '',
       activeTab: '',
-      ownFilter: 'all'
+      ownFilter: 'all',
+      sortDir: 'asc'
     },
     computed: {
       totalCount: function() { return this.items.length; },
@@ -210,7 +221,7 @@
       },
       filteredItems: function() {
         var self = this;
-        return this.items.filter(function(item) {
+        var filtered = this.items.filter(function(item) {
           var tabOk = !self.activeTab || item._cat.label === self.activeTab;
           var kwOk  = !self.keyword   || item.ITEM_NAME.indexOf(self.keyword) !== -1;
           var ownOk = self.ownFilter === 'all'
@@ -218,9 +229,17 @@
                    || (self.ownFilter === 'notOwned' && item.OWNED_YN !== 'Y');
           return tabOk && kwOk && ownOk;
         });
+        var dir = self.sortDir === 'asc' ? 1 : -1;
+        return filtered.slice().sort(function(a, b) {
+          if (a._cat.order !== b._cat.order) return a._cat.order - b._cat.order;
+          return dir * (parseInt(a.ITEM_ID) - parseInt(b.ITEM_ID));
+        });
       }
     },
     methods: {
+      toggleSort: function() {
+        this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
+      },
       hasStats: function(item) {
         return item.ATK_MIN>0||item.ATK_MAX>0||item.ATK_CRI>0
             || item.CRI_DMG>0||item.HP_MAX>0||item.HP_MAX_RATE>0
