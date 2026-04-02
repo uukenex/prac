@@ -3272,7 +3272,7 @@ public class BossAttackController {
 	    Resolve res = resolveKillAndDrop(m, calc, willKill, u, lucky, dark, gray,nightmare);
 	    String newPoint ="";
 	    String stealPoint ="";
-	    String newBonus ="";    // DROP SP 보너스 설명 (용사 5배, 30b 3배, 크리 ×2)
+	    String newBonus ="";    // DROP SP 보너스 설명 (용사 5배, 100b 3배, 크리 ×2)
 	    String stealBonus ="";  // STEAL SP 보너스 설명
 
 	    // 궁수: 획득 EXP +100%
@@ -3454,7 +3454,7 @@ public class BossAttackController {
 	    
 	    boolean flag1 =false;
 	    
-	    if(SP.parse(ctx.lifetimeSpStr).lessThan(new SP(30,"b"))){
+	    if(SP.parse(ctx.lifetimeSpStr).lessThan(new SP(100,"b"))){
 	        flag1 = true;
 	    }
 	    /*
@@ -3686,9 +3686,9 @@ public class BossAttackController {
 	                gainSp *= 50;
 	            }
 
-	            if(SP.parse(ctx.lifetimeSpStr).lessThan(new SP(30,"b"))){
+	            if(SP.parse(ctx.lifetimeSpStr).lessThan(new SP(100,"b"))){
 	            	gainSp *= 3;
-	            	bonusDesc.append("(30b 이하 3배)");
+	            	bonusDesc.append("(100b 이하 3배)");
 	            }
 
 	            if ("용사".equals(ctx.job)) {
