@@ -1829,7 +1829,6 @@
 		    SELECT ITEM_ID, SUM(QTY) AS OWN_QTY
 		    FROM TBOT_POINT_NEW_INVENTORY
 		    WHERE USER_NAME = #{userName}
-		      AND ROOM_NAME = #{roomName}
 		      AND DEL_YN    = '0'
 		    GROUP BY ITEM_ID
 		) inv ON inv.ITEM_ID = i.ITEM_ID

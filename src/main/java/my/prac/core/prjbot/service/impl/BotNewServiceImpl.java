@@ -657,7 +657,7 @@ public class BotNewServiceImpl implements BotNewService {
     }
 
     @Override
-    public List<HashMap<String, Object>> selectAllItemsWithOwned(String userName, String roomName) {
-        return botNewDAO.selectAllItemsWithOwned(userName, roomName);
+    public List<HashMap<String, Object>> selectAllItemsWithOwned(String userName) {
+        return botNewDAO.selectAllItemsWithOwned(userName);
     }
 }

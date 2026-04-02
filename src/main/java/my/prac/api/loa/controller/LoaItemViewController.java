@@ -31,15 +31,13 @@ public class LoaItemViewController {
     @GetMapping("/api/items")
     @ResponseBody
     public ResponseEntity<?> getItemsWithOwned(
-            @RequestParam(value = "userName", defaultValue = "") String userName,
-            @RequestParam(value = "roomName",  defaultValue = "") String roomName) {
+            @RequestParam(value = "userName", defaultValue = "") String userName) {
 
-        List<HashMap<String, Object>> items = botNewService.selectAllItemsWithOwned(userName, roomName);
+        List<HashMap<String, Object>> items = botNewService.selectAllItemsWithOwned(userName);
 
         HashMap<String, Object> result = new HashMap<>();
         result.put("items", items);
         result.put("userName", userName);
-        result.put("roomName", roomName);
         result.put("total", items.size());
 
         return ResponseEntity.ok(result);
