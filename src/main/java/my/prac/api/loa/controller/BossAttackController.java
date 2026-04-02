@@ -2037,10 +2037,10 @@ public class BossAttackController {
 	             + "(/구매 입력만으로 목록을 확인하세요)";
 	    }
 
-	    // 이미 소유 여부 체크
+	    // 이미 소유 여부 체크 (실시간 조회)
 	    boolean alreadyOwnedThisItem = false;
 	    try {
-	        List<HashMap<String,Object>> inv = getMarketItemsWithOwnedCached(userName, roomName);
+	        List<HashMap<String,Object>> inv = botNewService.selectInventorySummaryAll(userName, roomName);
 	        if (inv != null) {
 	            for (HashMap<String,Object> row : inv) {
 	                if (row == null) continue;
@@ -2048,7 +2048,7 @@ public class BossAttackController {
 	                int rowItemId = parseIntSafe(Objects.toString(row.get("ITEM_ID"), "0"));
 	                if (rowItemId != itemId) continue;
 
-	                int q = parseIntSafe(Objects.toString(row.get("OWN_QTY"), "0"));
+	                int q = parseIntSafe(Objects.toString(row.get("TOTAL_QTY"), "0"));
 	                if (q > 0) {
 	                    alreadyOwnedThisItem = true;  // 이미 이 아이템은 가지고 있음 → 업그레이드 구매
 	                }
@@ -4935,6 +4935,14 @@ public class BossAttackController {
 
 	        boolean isEquip = "MARKET".equalsIgnoreCase(itemType);
 	        boolean isPotion = "POTION".equalsIgnoreCase(itemType);
+
+	        // 300/500/600/900번대(행운/반지/토템/선물): 이미 보유 시 목록에서 숨김
+	        boolean isSummaryGroup = (itemId >= 300 && itemId < 400)
+	                || (itemId >= 500 && itemId < 700)
+	                || (itemId >= 900 && itemId < 1000);
+	        if (isSummaryGroup && "Y".equalsIgnoreCase(ownedYn)) {
+	            continue;
+	        }
 
 	        String displayPrice = buildDisplayPrice(it, isPotion, itemId, userPoint);
 
