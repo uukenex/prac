@@ -121,14 +121,13 @@
       <div class="card-id">#{{ item.ITEM_ID }}</div>
       <div class="card-name">{{ item.ITEM_NAME }}</div>
       <div class="card-price" :class="{'no-price': item.ITEM_SELL_PRICE <= 0}">
-        {{ item.ITEM_SELL_PRICE > 0 ? item.ITEM_SELL_PRICE.toLocaleString() + ' SP' : '—' }}
-        <span v-if="item.ITEM_SELL_PRICE_EXT" style="font-size:11px;color:#bbb"> / {{ item.ITEM_SELL_PRICE_EXT }}</span>
+        {{ item.ITEM_SELL_PRICE > 0 ? item.ITEM_SELL_PRICE.toLocaleString() + (item.ITEM_SELL_PRICE_EXT ? ' ' + item.ITEM_SELL_PRICE_EXT : '') + ' SP' : '—' }}
       </div>
       <span class="card-type-tag">{{ item._cat.label }}</span>
       <div class="card-stats" v-if="hasStats(item)">
         <div class="stat-line" v-if="item.ATK_MIN > 0 || item.ATK_MAX > 0"><span>공격력</span><span>{{ item.ATK_MIN }}~{{ item.ATK_MAX }}</span></div>
         <div class="stat-line" v-if="item.ATK_CRI > 0"><span>치명타율</span><span>+{{ item.ATK_CRI }}</span></div>
-        <div class="stat-line" v-if="item.CRI_DMG > 0"><span>치명타피해</span><span>+{{ item.CRI_DMG }}</span></div>
+        <div class="stat-line" v-if="item.CRI_DMG > 0"><span>치명타피해</span><span>+{{ item.CRI_DMG }}%</span></div>
         <div class="stat-line" v-if="item.HP_MAX > 0"><span>HP최대</span><span>+{{ item.HP_MAX }}</span></div>
         <div class="stat-line" v-if="item.HP_MAX_RATE > 0"><span>HP최대%</span><span>+{{ item.HP_MAX_RATE }}%</span></div>
         <div class="stat-line" v-if="item.HP_REGEN > 0"><span>HP회복</span><span>+{{ item.HP_REGEN }}</span></div>
@@ -149,18 +148,18 @@
 <script>
   // ID 범위 → 카테고리 매핑 (order 순서대로 탭 표시)
   const CAT_RULES = [
-    { label: '무기',    icon: '⚔️',  order:  1, test: function(id) { var b=id%1000; return b>=100&&b<200; } },
-    { label: '투구',    icon: '🪖',  order:  2, test: function(id) { var b=id%1000; return b>=200&&b<300; } },
-    { label: '방패',    icon: '🛡️', order:  3, test: function(id) { var b=id%1000; return b>=300&&b<400; } },
-    { label: '갑옷',    icon: '🥋',  order:  4, test: function(id) { var b=id%1000; return b>=400&&b<500; } },
-    { label: '신발',    icon: '👟',  order:  5, test: function(id) { var b=id%1000; return b>=500&&b<600; } },
-    { label: '장갑',    icon: '🧤',  order:  6, test: function(id) { var b=id%1000; return b>=600&&b<700; } },
-    { label: '목걸이',  icon: '📿',  order:  7, test: function(id) { var b=id%1000; return b>=700&&b<800; } },
-    { label: '반지',    icon: '💍',  order:  8, test: function(id) { var b=id%1000; return b>=800&&b<900; } },
-    { label: '소모품',  icon: '🧪',  order:  9, test: function(id, type) { return type==='POTION' || (id%1000>=900&&id%1000<1000); } },
-    { label: '업적',    icon: '🏆',  order: 10, test: function(id) { return id>=8000&&id<9000; } },
-    { label: '유물',    icon: '🏺',  order: 11, test: function(id) { return id>=9000; } },
-    { label: '기타',    icon: '🎁',  order: 99, test: function()  { return true; } }
+    { label: '무기',    icon: '⚔️',  order:  1, test: function(id)       { var b=id%1000; return b>=100&&b<200; } },
+    { label: '투구',    icon: '🪖',  order:  2, test: function(id)       { var b=id%1000; return b>=200&&b<300; } },
+    { label: '행운',    icon: '🍀',  order:  3, test: function(id)       { var b=id%1000; return b>=300&&b<400; } },
+    { label: '갑옷',    icon: '🥋',  order:  4, test: function(id)       { var b=id%1000; return b>=400&&b<500; } },
+    { label: '악세사리', icon: '💎', order:  5, test: function(id)       { var b=id%1000; return b>=500&&b<600; } },
+    { label: '토템',    icon: '🗿',  order:  6, test: function(id)       { var b=id%1000; return b>=600&&b<700; } },
+    { label: '전설',    icon: '🌟',  order:  7, test: function(id)       { var b=id%1000; return b>=700&&b<800; } },
+    { label: '날개',    icon: '🪽',  order:  8, test: function(id)       { var b=id%1000; return b>=800&&b<900; } },
+    { label: '선물',    icon: '🎁',  order:  9, test: function(id)       { var b=id%1000; return b>=900&&b<1000; } },
+    { label: '소모품',  icon: '🧪',  order: 10, test: function(id, type) { return type==='POTION'; } },
+    { label: '업적',    icon: '🏆',  order: 11, test: function(id)       { return id>=8000&&id<9000; } },
+    { label: '유물',    icon: '🏺',  order: 12, test: function(id)       { return id>=9000; } }
   ];
 
   function getCategory(itemId, itemType) {
