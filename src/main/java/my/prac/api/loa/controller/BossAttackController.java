@@ -3452,18 +3452,6 @@ public class BossAttackController {
 	    
 	    
 	    
-	    boolean flag1 =false;
-	    
-	    if(SP.parse(ctx.lifetimeSpStr).lessThan(new SP(100,"b"))){
-	        flag1 = true;
-	    }
-	    /*
-	    if(ctx.lifetimeSp < 200000000) {
-	    	flag1=true;
-	    }*//*else if(ctx.lifetimeSp < 25000000) {
-	    	flag2=true;
-	    }*/
-	    
 	 // 🔥 드랍 즉시 SP 지급
 	   
 	    
