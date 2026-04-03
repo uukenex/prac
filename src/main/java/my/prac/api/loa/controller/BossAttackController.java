@@ -76,7 +76,7 @@ public class BossAttackController {
 	private static final int NM_MUL_EXP = 50;
 	private static final int NM_ADD_MON_LV = 150;
 
-	private static final double HEL_NERF_BASE = 0.10; // 헬모드 기본 삭감 배율 (90% 삭감, 헌터랭크로 완화)
+	private static final double HEL_NERF_BASE = 0.05; // 헬모드 기본 삭감 배율 (90% 삭감, 헌터랭크로 완화)
 	private static final int HEL_ADD_MON_LV = 500; // 사자(120) + 500 = 620lv
 	private static final int HEL_MUL_EXP = 50;     // 헬 추가 배율 (나메에 추가 x50), 총 base*NM*HEL
 	private static final long HEL_SP_MULT = 5_000_000L; // 토끼(10sp) * 5000000 = 50000000sp = 5000a
@@ -611,17 +611,17 @@ public class BossAttackController {
 	private double getHellNerfMult(String grade) {
 	    if (grade == null) return HEL_NERF_BASE;
 	    switch (grade) {
-	        case "SSS": return 0.50;
-	        case "SS":  return 0.40;
-	        case "S":   return 0.33;
-	        case "A+":  return 0.28;
-	        case "A":   return 0.25;
-	        case "B+":  return 0.22;
-	        case "B":   return 0.20;
-	        case "C+":  return 0.18;
-	        case "C":   return 0.16;
-	        case "D+":  return 0.14;
-	        case "D":   return 0.12;
+	        case "SSS": return 0.25;
+	        case "SS":  return 0.20;
+	        case "S":   return 0.17;
+	        case "A+":  return 0.14;
+	        case "A":   return 0.14;
+	        case "B+":  return 0.12;
+	        case "B":   return 0.12;
+	        case "C+":  return 0.10;
+	        case "C":   return 0.10;
+	        case "D+":  return 0.05;
+	        case "D":   return 0.05;
 	        default:    return HEL_NERF_BASE; // F
 	    }
 	}
