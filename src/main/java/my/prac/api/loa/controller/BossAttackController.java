@@ -77,8 +77,8 @@ public class BossAttackController {
 	private static final int NM_ADD_MON_LV = 150;
 
 	private static final double HEL_NERF_BASE = 0.05; // 헬모드 기본 삭감 배율 (90% 삭감, 헌터랭크로 완화)
-	private static final int HEL_ADD_MON_LV = 500; // 사자(120) + 500 = 620lv
-	private static final int HEL_MUL_EXP = 50;     // 헬 추가 배율 (나메에 추가 x50), 총 base*NM*HEL
+	private static final int HEL_ADD_MON_LV = 400; // 
+	private static final int HEL_MUL_EXP = 3;     // 헬 추가 배율 (나메에 추가 *3), 총 base*NM*HEL
 	private static final long HEL_SP_MULT = 2000; // 토끼(10sp) * 50 * 2000 =  = 100a
 
 	// [FIX4] selectActiveSpecialBuff 단기 캐시 (서버 전역 버프는 15초간 재사용)
@@ -573,6 +573,7 @@ public class BossAttackController {
 	    
 
 	 // ✅ 직업 마스터 보너스(오늘) - 캐시 사용
+	    /*
 	    boolean isMaster = isJobMasterCached(targetUser, job);
 
 	    int jobMasterAtkRate = 0;
@@ -586,17 +587,18 @@ public class BossAttackController {
 	    } else {
 	        ctx.isJobMaster = false;
 	    }
+	    */
 	    
-	    
+	    /*
 	    int finalHpMaxBonus = (finalHpMax * (ctx.bHpMaxRateRaw+jobMasterHpRate)) /100;
 	    finalHpMax += finalHpMaxBonus;
 	    int atkMinWithItemBonus = (atkMinWithItem * (ctx.bAtkMaxRateRaw+jobMasterAtkRate)) /100;
 	    atkMinWithItem += atkMinWithItemBonus;
 	    int atkMaxWithItemBonus = (atkMaxWithItem * (ctx.bAtkMaxRateRaw+jobMasterAtkRate)) /100;
 	    atkMaxWithItem += atkMaxWithItemBonus;
-	    
+	   
 	    effRegen += jobEffRegen;
-	    
+	     */
 	    // HP/ATK 확정치 저장
 	    ctx.atkMinWithItem = atkMinWithItem;
 	    ctx.atkMaxWithItem = atkMaxWithItem;
@@ -1563,10 +1565,11 @@ public class BossAttackController {
 	    }
 	    sb.append(NL);
 
+	    /*
 	    if (ctx.isJobMaster) {
 	        sb.append(ctx.job).append(" 마스터 보너스: ATK 10%, HP 15%, 리젠+1000").append(NL);
 	    }
-
+	     */
         sb.append("▶ 현재 타겟: ").append(targetName)
 	      .append(" (MON_NO=").append(u.targetMon).append(")");
 
@@ -2702,6 +2705,7 @@ public class BossAttackController {
 	    statMap.put("param1", "");   // calcUserBattleContext 에서 다른 유저 검색 못 하게 막는 용도
 
 	 // ✅ 크론 없이: 날짜가 바뀐 경우에만 오늘 마스터 생성 (캐시로 중복 DB 조회 방지)
+	    /*
 	    String todayDate = todayKey();
 	    if (!todayDate.equals(MiniGameUtil.TODAY_MASTER_CREATED_DATE)) {
 	        try {
@@ -2712,7 +2716,7 @@ public class BossAttackController {
 	        } catch (Exception ignore) {}
 	        MiniGameUtil.TODAY_MASTER_CREATED_DATE = todayDate;
 	    }
-
+	     */
 	    // 2) 공통 스탯 계산
 	    UserBattleContext ctx = calcUserBattleContext(statMap);
 	    if (!ctx.success) {
@@ -4357,6 +4361,7 @@ public class BossAttackController {
 	    return new java.text.SimpleDateFormat("yyyyMMdd").format(new java.util.Date());
 	}
 
+	/*
 	private boolean isJobMasterCached(String userName, String job) {
 	    if (job == null || job.isEmpty()) return false;
 	    String key = todayKey() + "|" + userName + "|" + job;
@@ -4367,7 +4372,7 @@ public class BossAttackController {
 	        MiniGameUtil.JOB_MASTER_CACHE.put(key, result);
 	        return result;
 	    } catch (Exception e) { return false; }
-	}
+	}*/
 
 	private HashMap<String,Object> getDailyBuffCached(String userName) {
 	    String key = todayKey() + "|" + userName;
@@ -4526,6 +4531,7 @@ public class BossAttackController {
 	    }
 	    sb.append(NL);
 	    
+	    /*
 	    List<HashMap<String,Object>> masters = botNewService.selectTodayJobMastersAll();
 
 	    sb.append("✨ Today 직업 마스터").append(NL);
@@ -4548,7 +4554,7 @@ public class BossAttackController {
 	              .append(NL);
 	        }
 	    }
-	    
+	    */
 	    /*
 	    List<HashMap<String,Object>> ongoing = botNewService.selectOngoingChallengesForUnclearedBosses();
 	    if (ongoing != null && !ongoing.isEmpty()) {
@@ -5458,7 +5464,7 @@ public class BossAttackController {
 	    r.gray = gray;
 
 	    int monLv = m.monLv;
-	    int monExp = m.monExp;
+	    long monExp = m.monExp;
 
 	    if(nightmareYnVal >= 1) {
 	    	monExp *= NM_MUL_EXP;
@@ -6280,9 +6286,7 @@ public class BossAttackController {
 	private int getDropPriceByName(String dropName) {
 	    if (dropName == null || dropName.trim().isEmpty()) return 0;
 	    try {
-	        Integer itemId = getItemIdCached(dropName.trim());
-	        HashMap<String,Object> priceRow = getItemPriceCached(itemId);
-	        Integer p = priceRow == null ? null : (Integer) priceRow.get("ITEM_SELL_PRICE");
+	        Integer p = botNewService.selectItemPriceByName(dropName.trim());
 	        return (p == null ? 0 : Math.max(0, p));
 	    } catch (Exception ignore) {
 	        return 0;
@@ -6332,7 +6336,10 @@ public class BossAttackController {
 	    }
 
 	    long effExp = Math.round(baseExp * expMultiplier);
-	    // 주의: monExp에서 이미 NM/HEL 배율 적용됨, 여기서 중복 적용 X
+	    if(nmActive) {
+	    	effExp *= NM_MUL_EXP;
+	    	if(hellActive) effExp *= HEL_MUL_EXP;
+	    }
 	    boolean hasPenalty = (levelGap >= 0 && expMultiplier < 1.0);
 	    boolean hasBonus   = (levelGap < 0  && expMultiplier > 1.0);
 
