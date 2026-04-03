@@ -3217,29 +3217,41 @@ public class BossAttackController {
 
 	    // 10) 도사 버프 (본인 + 방 전체)
 	    DosaBuffEffect buffEff_self = null;
-	    if ("도사".equals(job) || "음양사".equals(job) ) {
-	        buffEff_self = buildDosaBuffEffect(u, u.lv, roomName, 1);
-	        effAtkMin   += buffEff_self.addAtkMin;
-	        effAtkMax   += buffEff_self.addAtkMax;
-	        effCritRate += buffEff_self.addCritRate;
-	        effCriDmg   += buffEff_self.addCritDmg;
-	        u.hpCur     += buffEff_self.addHp;
-	    }
-
-	    DosaBuffEffect buffEff_room = loadRoomDosaBuffAndBuild(roomName);
-	    if (buffEff_room != null) {
-	        effAtkMin   += buffEff_room.addAtkMin;
-	        effAtkMax   += buffEff_room.addAtkMax;
-	        effCritRate += buffEff_room.addCritRate;
-	        effCriDmg   += buffEff_room.addCritDmg;
-	        u.hpCur     += buffEff_room.addHp;
-	        botNewService.clearRoomBuff(roomName);
-	    }
 	    String dosabuffMsg = "";
-	    if (buffEff_room != null || buffEff_self != null) {
-	        dosabuffMsg = buildUnifiedDosaBuffMessage(buffEff_self, buffEff_room);
+	    if (!hell) {
+	    	//헬에선 도사버프 못받게 처리
+		        /*double hellMult = getHellNerfMult(ctx.hunterGrade);
+		        effAtkMin   = Math.max(1, (int) Math.round(effAtkMin   * hellMult));
+		        effAtkMax   = Math.max(1, (int) Math.round(effAtkMax   * hellMult));
+		        effCritRate = (int) Math.round(effCritRate * hellMult);
+		        effCriDmg   = (int) Math.round(effCriDmg   * hellMult);
+		        effHpMax	= (int) Math.round(effHpMax * hellMult);*/
+		    
+		    if ("도사".equals(job) || "음양사".equals(job) ) {
+		        buffEff_self = buildDosaBuffEffect(u, u.lv, roomName, 1);
+		        effAtkMin   += buffEff_self.addAtkMin;
+		        effAtkMax   += buffEff_self.addAtkMax;
+		        effCritRate += buffEff_self.addCritRate;
+		        effCriDmg   += buffEff_self.addCritDmg;
+		        u.hpCur     += buffEff_self.addHp;
+		        
+		    }
+	
+		    DosaBuffEffect buffEff_room = loadRoomDosaBuffAndBuild(roomName);
+		    if (buffEff_room != null) {
+		        effAtkMin   += buffEff_room.addAtkMin;
+		        effAtkMax   += buffEff_room.addAtkMax;
+		        effCritRate += buffEff_room.addCritRate;
+		        effCriDmg   += buffEff_room.addCritDmg;
+		        u.hpCur     += buffEff_room.addHp;
+		        botNewService.clearRoomBuff(roomName);
+		    }
+		   
+		    if (buffEff_room != null || buffEff_self != null) {
+		        dosabuffMsg = buildUnifiedDosaBuffMessage(buffEff_self, buffEff_room);
+		    }
 	    }
-
+	    
 	    u.hunterGrade = ctx.hunterGrade;
 	    
 	    //HashMap<String,Object> activeBuff = buff.activeBuff;
@@ -3260,21 +3272,29 @@ public class BossAttackController {
 		            effAtkMax += (int)value;
 		        }
 	    	}
-	    	if( "치피".equals(activeBuff.get("FLAG_CODE"))){
+			if ("치피".equals(activeBuff.get("FLAG_CODE"))) {
 
-	    		double value =
-		                Double.parseDouble(activeBuff.get("EFFECT_VALUE").toString());
+				double value = Double.parseDouble(activeBuff.get("EFFECT_VALUE").toString());
 
-		        effCriDmg += (int)value;
-	    	}
-	    	if( "치확".equals(activeBuff.get("FLAG_CODE"))){
+				if (hell) {
+					double hellMult = getHellNerfMult(ctx.hunterGrade);
+					value = Math.max(0, (int) Math.round(value * hellMult));
 
-	    		double value =
-		                Double.parseDouble(activeBuff.get("EFFECT_VALUE").toString());
+				}
+				effCriDmg += (int) value;
+			}
+			if ("치확".equals(activeBuff.get("FLAG_CODE"))) {
 
-		        effCritRate += (int)value;
-	    	}
+				double value = Double.parseDouble(activeBuff.get("EFFECT_VALUE").toString());
+				if (hell) {
+					double hellMult = getHellNerfMult(ctx.hunterGrade);
+					value = Math.max(0, (int) Math.round(value * hellMult));
+
+				}
+				effCritRate += (int) value;
+			}
 	    }
+	    
 	    
 	    boolean hasBless = (u.blessYn == 1);
 
