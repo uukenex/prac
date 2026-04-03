@@ -96,9 +96,10 @@
 
     /* 킬 통계 블록 */
     .kill-block { margin-top: 8px; border-top: 1px solid #f0f0f0; padding-top: 7px; }
-    .kill-title { font-size: 10px; color: #aaa; margin-bottom: 4px; }
-    .kill-rows  { display: flex; flex-wrap: wrap; gap: 4px; }
-    .kill-tag   { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 10px; }
+    .kill-title { font-size: 10px; color: #aaa; margin-bottom: 5px; }
+    .kill-diff-row { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; font-size: 11px; }
+    .kill-diff-label { min-width: 54px; color: #999; font-weight: 600; }
+    .kill-tag   { font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 10px; }
     .kill-tag.total   { background: #eaf0fb; color: #2c5282; }
     .kill-tag.normal  { background: #f0f4f8; color: #4a5568; }
     .kill-tag.light   { background: #fffde7; color: #b7791f; }
@@ -230,13 +231,18 @@
 
       <!-- 킬 통계 -->
       <div class="kill-block" v-if="searchedUser && killOf(m)">
-        <div class="kill-title">{{ searchedUser }} 킬수</div>
-        <div class="kill-rows">
-          <span class="kill-tag total">🗡️ {{ num(killOf(m).KILL_TOTAL) }}</span>
-          <span class="kill-tag normal"  v-if="killOf(m).KILL_NORMAL  > 0">⚔️ {{ num(killOf(m).KILL_NORMAL) }}</span>
-          <span class="kill-tag light"   v-if="killOf(m).KILL_LIGHT   > 0">✨ {{ num(killOf(m).KILL_LIGHT) }}</span>
-          <span class="kill-tag dark"    v-if="killOf(m).KILL_DARK    > 0">🌑 {{ num(killOf(m).KILL_DARK) }}</span>
-          <span class="kill-tag yinyang" v-if="killOf(m).KILL_YINYANG > 0">☯️ {{ num(killOf(m).KILL_YINYANG) }}</span>
+        <div class="kill-title">🗡️ {{ searchedUser }} 킬 {{ num(killOf(m).KILL_TOTAL) }}마리</div>
+        <div class="kill-diff-row" v-if="killOf(m).KILL_DIFF_NORMAL > 0">
+          <span class="kill-diff-label">⚔️ 일반</span>
+          <span class="kill-tag total">{{ num(killOf(m).KILL_DIFF_NORMAL) }}</span>
+        </div>
+        <div class="kill-diff-row" v-if="killOf(m).KILL_DIFF_NM > 0">
+          <span class="kill-diff-label">💜 나메</span>
+          <span class="kill-tag total">{{ num(killOf(m).KILL_DIFF_NM) }}</span>
+        </div>
+        <div class="kill-diff-row" v-if="killOf(m).KILL_DIFF_HELL > 0">
+          <span class="kill-diff-label">🔥 헬</span>
+          <span class="kill-tag total">{{ num(killOf(m).KILL_DIFF_HELL) }}</span>
         </div>
       </div>
       <div class="kill-block" v-else-if="searchedUser">
