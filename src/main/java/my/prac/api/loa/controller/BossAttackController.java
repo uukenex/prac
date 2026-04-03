@@ -76,10 +76,10 @@ public class BossAttackController {
 	private static final int NM_MUL_EXP = 50;
 	private static final int NM_ADD_MON_LV = 150;
 
-	private static final double HEL_ATK_MULT = 0.2;       // 공격력 80% 삭감
+	private static final double HEL_ATK_MULT = 0.0027;    // 헬 공격력 보정 (토끼 원킬, 다람쥐 2hit)
 	private static final double HEL_CRIT_RATE_MULT = 0.2; // 크리율 80% 삭감
 	private static final double HEL_CRIT_DMG_MULT = 0.2;  // 크리뎀 80% 삭감
-	private static final int HEL_ADD_MON_LV = 780; // 사자(120) + 780 = 900lv
+	private static final int HEL_ADD_MON_LV = 500; // 사자(120) + 500 = 620lv
 	private static final int HEL_MUL_EXP = 50;     // 헬 추가 배율 (나메에 추가 x50), 총 base*NM*HEL
 	private static final long HEL_SP_MULT = 5_000_000L; // 토끼(10sp) * 5000000 = 50000000sp = 5000a
 
@@ -1900,7 +1900,7 @@ public class BossAttackController {
 		botNewService.updateUserTargetMonTx(userName, roomName, m.monNo);
 		int userLvForView = (u != null ? u.lv : 1);
 		return userName + "님, 공격 타겟을 " + m.monName + "(MON_NO=" + m.monNo + ") 으로 설정했습니다." + NL
-		     + "▶ 선택: " + NL + renderMonsterCompactLine(m, userLvForView,nightmare);
+		     + "▶ 선택: " + NL + renderMonsterCompactLine(m, userLvForView, nightmareYnVal);
 	}
 	// 엔트리 포인트: 기존 /구매 명령이 들어오는 곳
 	public String buyItem(HashMap<String, Object> map) {
@@ -5180,7 +5180,7 @@ public class BossAttackController {
 	      .append("예) /공격타겟 1   또는   /공격타겟 토끼").append(NL).append(NL)
 	      .append("▶ 선택 가능한 몬스터").append(ALL_SEE_STR);
 	    for (Monster m : monsters) {
-	        sb.append(renderMonsterCompactLine(m,1,false)).append(NL);
+	        sb.append(renderMonsterCompactLine(m,1,0)).append(NL);
 	    }
 	    return sb.toString();
 	}
