@@ -56,6 +56,14 @@
     .kill-chip.dark    { background: #f9f0ff; color: #6b46c1; }
     .kill-chip.yinyang { background: #e8f8f0; color: #276749; }
 
+    .exp-base    { text-decoration: line-through; color: #ccc; font-size: 11px; margin-right: 4px; }
+    .exp-adj     { font-weight: 700; }
+    .exp-bonus   { color: #27ae60; }
+    .exp-penalty { color: #e67e22; }
+    .exp-zero    { color: #e74c3c; }
+    .exp-arrow   { font-size: 11px; color: #bbb; margin: 0 2px; }
+    .exp-pct     { font-size: 10px; margin-left: 3px; }
+
     /* 난이도 탭 */
     .diff-tabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
     .diff-tab  { padding: 8px 22px; border-radius: 22px; border: 2px solid #d4dde6; background: #fff; color: #888; font-size: 13px; font-weight: 700; cursor: pointer; transition: all .18s; white-space: nowrap; }
@@ -242,7 +250,13 @@
         </div>
         <div class="stat-row">
           <span class="stat-label">EXP</span>
-          <span class="stat-val exp">{{ calcExp(m).toLocaleString() }}</span>
+          <span class="stat-val exp" v-if="!searchedUser || !userInfo.lv">{{ calcExp(m).toLocaleString() }}</span>
+          <span v-else style="display:flex;align-items:center;gap:2px;">
+            <span class="exp-base">{{ calcExp(m).toLocaleString() }}</span>
+            <span class="exp-arrow">→</span>
+            <span class="exp-adj" :class="expAdjClass(m)">{{ expAdj(m).toLocaleString() }}</span>
+            <span class="exp-pct" :class="expAdjClass(m)">{{ expAdjLabel(m) }}</span>
+          </span>
         </div>
         <div class="stat-row" v-if="calcDropSp(m) > 0">
           <span class="stat-label">드랍SP</span>
@@ -402,6 +416,31 @@
           dark:    parseInt(k[pfx + '_DARK']    || 0),
           yinyang: parseInt(k[pfx + '_YINYANG'] || 0)
         };
+      },
+      // 레벨차 EXP 보정 (BossAttackController.renderMonsterCompactLine 동일 로직)
+      expMult: function(m) {
+        if (!this.userInfo || !this.userInfo.lv) return 1.0;
+        var monLv   = this.calcLv(m);
+        var userLv  = parseInt(this.userInfo.lv);
+        var gap     = userLv - monLv;
+        if (gap >= 0) return Math.max(0.1, 1.0 - gap * 0.1);
+        return 1.0 + Math.min(-gap, 5) * 0.05;
+      },
+      expAdj: function(m) {
+        return Math.round(this.calcExp(m) * this.expMult(m));
+      },
+      expAdjClass: function(m) {
+        var mult = this.expMult(m);
+        if (mult <= 0.1) return 'exp-zero';
+        if (mult < 1.0)  return 'exp-penalty';
+        if (mult > 1.0)  return 'exp-bonus';
+        return 'exp';
+      },
+      expAdjLabel: function(m) {
+        var mult = this.expMult(m);
+        if (Math.abs(mult - 1.0) < 0.001) return '';
+        var pct = Math.round((mult - 1.0) * 100);
+        return pct > 0 ? '(+' + pct + '%)' : '(' + pct + '%)';
       },
       calcLv:     function(m) { return parseInt(m.MON_LV)  + DIFF[this.diff].lvAdd; },
       calcHp:     function(m) { return parseInt(m.MON_HP)  * DIFF[this.diff].hpAtk; },
