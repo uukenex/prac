@@ -598,6 +598,40 @@ public class BossAttackController {
 	    int atkMaxWithItemBonus = (atkMaxWithItem * (ctx.bAtkMaxRateRaw)) /100;
 	    atkMaxWithItem += atkMaxWithItemBonus;
 	    
+	    int effCrit =baseCrit + bCriRaw;
+	    int effCritDmg = baseCritDmg + bCriDmgRaw;
+	    
+	    int modMinusAtkMin =0;
+	    int modMinusAtkMax =0;
+	    int modMinusAtkHp =0;
+	    int modMinusAtkCrit =0;
+	    int modMinusAtkCritDmg =0;
+	    
+	    if(u.nightmareYn==2) {
+	    	double hellMult = getHellNerfMult(ctx.hunterGrade);
+	    	
+	    	modMinusAtkMin = Math.max(0, (int) Math.round(atkMinWithItem   * (1-hellMult) ));
+	    	modMinusAtkMax = Math.max(0, (int) Math.round(atkMaxWithItem   * (1-hellMult) ));
+	    	modMinusAtkHp = Math.max(0, (int) Math.round(finalHpMax   * (1-hellMult) ));
+	    	modMinusAtkCrit = Math.max(0, (int) Math.round(effCrit   * (1-hellMult) ));
+	    	modMinusAtkCritDmg = Math.max(0, (int) Math.round(effCritDmg   * (1-hellMult) ));
+	    	
+	        atkMinWithItem   -= modMinusAtkMin;
+	        atkMaxWithItem   -= modMinusAtkMax;
+	        finalHpMax -= modMinusAtkHp;
+	        effCrit -= modMinusAtkCrit;
+	        effCritDmg -= modMinusAtkCritDmg;
+	        
+	        
+	    }
+	    
+	    ctx.modMinusAtkMin = modMinusAtkMin;
+	    ctx.modMinusAtkMax = modMinusAtkMax;
+	    ctx.modMinusAtkHp = modMinusAtkHp;
+	    ctx.modMinusAtkCrit = modMinusAtkCrit;
+	    ctx.modMinusAtkCritDmg = modMinusAtkCritDmg;
+	    
+	    
 	    // HP/ATK 확정치 저장
 	    ctx.atkMinWithItem = atkMinWithItem;
 	    ctx.atkMaxWithItem = atkMaxWithItem;
@@ -605,9 +639,9 @@ public class BossAttackController {
 	    ctx.effRegen    = effRegen;
 	    
 	    // 표시용 스탯 (1번 메서드에서 쓰던 값)
-	    ctx.shownCrit     = baseCrit + bCriRaw;
+	    ctx.shownCrit     = effCrit;
 	    ctx.shownRegen    = effRegen;                // 축복 포함 리젠을 그대로 표시하고 싶으면 이렇게
-	    ctx.shownCritDmg  = baseCritDmg + bCriDmgRaw;
+	    ctx.shownCritDmg  = effCritDmg;
 
 	    // 🔹 직업 보너스(표시용) 저장
 	    ctx.jobHpMaxBonus = jobHpMaxBonus;
@@ -1384,6 +1418,11 @@ public class BossAttackController {
 	    final int jobHpMaxBonus   = ctx.jobHpMaxBonus;   // 없으면 0
 	    final int jobRegenBonus   = ctx.jobRegenBonus;   // 없으면 0
 
+	    final int modMinusAtkMin   = ctx.modMinusAtkMin;   // 없으면 0
+	    final int modMinusAtkMax   = ctx.modMinusAtkMax;   // 없으면 0
+	    final int modMinusAtkHp   = ctx.modMinusAtkHp;   // 없으면 0
+	    final int modMinusAtkCrit   = ctx.modMinusAtkCrit;   // 없으면 0
+	    final int modMinusAtkCritDmg   = ctx.modMinusAtkCritDmg;   // 없으면 0
 	    // [FIX3] calcUserBattleContext에서 제거된 selectCurrentPoint를 여기서 직접 조회
 	    try {
 	        HashMap<String,Object> pointRow = botNewService.selectCurrentPoint(targetUser, "");
@@ -1579,25 +1618,26 @@ public class BossAttackController {
 	    if (jobDef != null && jobDef.attackLine != null && !jobDef.attackLine.isEmpty()) {
 	        sb.append(jobDef.attackLine).append(NL).append(NL);
 	    }
-	    // ─ ATK 상세 ─
-	    if("곰".equals(job)) {
-	    	sb.append("⚔ATK: ").append("최대체력으로 공격").append(NL);
-	    }else {
-	    	sb.append("⚔ATK: ").append(finalAtkMin).append(" ~ ").append(finalAtkMax).append(NL)
-		      .append("   └ 기본 (").append(baseMin).append("~").append(baseMax).append(")").append(NL)
-		      /*
-		      .append("   └ 시즌1 강화: ").append(weaponLv).append("강 (max+").append(weaponBonus).append(")").append(NL)
-		      */
-		      .append("   └ 아이템 (min").append(formatSigned(bAtkMinRaw))
-		      .append(", max").append(formatSigned(bAtkMaxRaw)).append(")").append(NL);
-	    	 if(ctx.dailyAtkBonus > 0) {
-	 	    	sb.append("   └ 룰렛 버프: ATK +").append(ctx.dailyAtkBonus).append(NL);
-	 	    }
-	 	    if(bAtkMaxRateRaw > 0) {
-	 	    	sb.append("   └ 최종공격력 (").append(formatSigned(bAtkMaxRateRaw)).append("%)").append(NL);
-	 	    }
-		      
-	    }
+		// ─ ATK 상세 ─
+		if ("곰".equals(job)) {
+			sb.append("⚔ATK: ").append("최대체력으로 공격").append(NL);
+		} else {
+			sb.append("⚔ATK: ").append(finalAtkMin).append(" ~ ").append(finalAtkMax).append(NL).append("   └ 기본 (")
+					.append(baseMin).append("~").append(baseMax).append(")").append(NL)
+					.append("   └ 아이템 (min").append(formatSigned(bAtkMinRaw)).append(", max")
+					.append(formatSigned(bAtkMaxRaw)).append(")").append(NL);
+			if (ctx.dailyAtkBonus > 0) {
+				sb.append("   └ 룰렛 버프: ATK +").append(ctx.dailyAtkBonus).append(NL);
+			}
+			if (bAtkMaxRateRaw > 0) {
+				sb.append("   └ 최종공격력 (").append(formatSigned(bAtkMaxRateRaw)).append("%)").append(NL);
+			}
+			if (modMinusAtkMax > 0) {
+				sb.append("   └ 모드 (min-").append(modMinusAtkMin).append("~, max-").append(modMinusAtkMax).append(")")
+						.append(NL);
+			}
+
+		}
 	    
 	    if("곰".equals(job)) {
 	    	
@@ -1612,7 +1652,9 @@ public class BossAttackController {
 		        .append("%, CDMG ")
 		        .append(formatSigned(ctx.dailyCriDmgBonus))
 		        .append("%)").append(NL);
-			    
+		    }
+			if (modMinusAtkCrit != 0 ) {
+				sb.append("   └ 모드 (CRIT-").append(modMinusAtkCrit).append("%, CDMG -").append(modMinusAtkCritDmg).append("%)").append(NL);
 		    }
 	    }
 	    
@@ -1632,6 +1674,11 @@ public class BossAttackController {
 	          .append(formatSigned(jobHpMaxBonus))
 	          .append(",5분당회복")
 	          .append(formatSigned(jobRegenBonus))
+	          .append(")").append(NL);
+	    }
+	    if (modMinusAtkHp != 0 ) {
+	        sb.append("   └ 모드 (HP -")
+	          .append(modMinusAtkHp)
 	          .append(")").append(NL);
 	    }
 	    
@@ -3239,6 +3286,7 @@ public class BossAttackController {
 	    }
 	    
 	    // 헬모드 너프: 공격력/크리율/크리뎀 90% 삭감 (헌터등급으로 완화)
+	    /*
 	    if (hell) {
 	        double hellMult = getHellNerfMult(ctx.hunterGrade);
 	        effAtkMin   = Math.max(1, (int) Math.round(effAtkMin   * hellMult));
@@ -3246,7 +3294,7 @@ public class BossAttackController {
 	        effCritRate = (int) Math.round(effCritRate * hellMult);
 	        effCriDmg   = (int) Math.round(effCriDmg   * hellMult);
 	        effHpMax	= (int) Math.round(effHpMax * hellMult);
-	    }
+	    }*/
 
 	    // 11) 데미지 계산 (A형 완전 분리 버전)
 	    DamageOutcome dmg = calculateDamage(

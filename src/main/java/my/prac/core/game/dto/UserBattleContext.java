@@ -77,6 +77,12 @@ public class UserBattleContext {
 
 	public String hunterGrade;
 
+	public int modMinusAtkMin; 
+    public int modMinusAtkMax; 
+    public int modMinusAtkHp ;
+    public int modMinusAtkCrit; 
+    public int modMinusAtkCritDmg; 
+    
 	// [OPT-HUNTER] attackInfo 에서 미리 조회한 dropsRows 공유용 (applyDropBonusToContext 중복 조회 방지)
 	public List<HashMap<String,Object>> preDropRows = null;
 }
