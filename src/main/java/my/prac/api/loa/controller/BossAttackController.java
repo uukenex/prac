@@ -79,6 +79,8 @@ public class BossAttackController {
 	private static final int HEL_DIV_ATK = 10000;
 	private static final double HEL_CRIT_RATE_MULT = 0.1;
 	private static final double HEL_CRIT_DMG_MULT = 0.1;
+	private static final int HEL_ADD_MON_LV = 250;
+	private static final int HEL_MUL_EXP = 100;
 
 	// [FIX4] selectActiveSpecialBuff 단기 캐시 (서버 전역 버프는 15초간 재사용)
 	private static volatile HashMap<String,Object> SPECIAL_BUFF_CACHE = null;
@@ -702,7 +704,8 @@ public class BossAttackController {
 	    }
 
 	    // 🔹 여기서 "공격 로직"에서 쓰는 진행중 전투 계산 재사용
-	    boolean nightmare = botNewService.isNightmareMode(targetUser, roomName);
+	    boolean nightmare = u.nightmareYn >= 1;
+	    boolean hell = u.nightmareYn == 2;
 	    try {
 	        OngoingBattle ob = botNewService.selectOngoingBattle(targetUser, roomName);
 	        if (ob != null) {
@@ -720,7 +723,8 @@ public class BossAttackController {
 	                  .append("▶ 전투중인 몬스터").append(NL)
 	                  .append(m.monName);
                     if(nightmare) {
-                    	sb.append("[나이트메어]");
+                    	if(hell) sb.append("[헬]");
+                    	else sb.append("[나이트메어]");
 	                }
 	                sb.append(" (").append(monHpRemain).append(" / ").append(monMaxHp).append(")")
 	                  .append(NL);
@@ -1792,8 +1796,8 @@ public class BossAttackController {
 		final String roomName = Objects.toString(map.get("roomName"), "");
 		final String userName = Objects.toString(map.get("userName"), "");
 		final String input = Objects.toString(map.get("monNo"), "").trim();
-		boolean nightmare = botNewService.isNightmareMode(userName, roomName);
-	    
+		int nightmareYnVal = botNewService.getNightmareYn(userName, roomName);
+
 		if (roomName.isEmpty() || userName.isEmpty()) return "방/유저 정보가 누락되었습니다.";
 		if (input.isEmpty()) {
 		    User u = botNewService.selectUser(userName, null);
@@ -1805,14 +1809,14 @@ public class BossAttackController {
 		      .append("▶ 선택 가능한 몬스터").append(ALL_SEE_STR);
 
 		    for (Monster mm : monsters) {
-		        sb.append(renderMonsterCompactLine(mm, userLv,nightmare)); // ★ 레벨 비례 EXP 반영됨!
+		        sb.append(renderMonsterCompactLine(mm, userLv, nightmareYnVal));
 		    }
-		    
+
 		    return sb.toString();
 		}
 
 		if(roomName.equals("람쥐봇 문의방")) {
-			
+
 			if(userName.equals("일어난다람쥐/카단")) {
 			}else {
 				return "문의방에서는 불가능합니다.";
@@ -1835,16 +1839,16 @@ public class BossAttackController {
 		      .append("▶ 선택 가능한 몬스터").append(ALL_SEE_STR);
 
 		    for (Monster mm : monsters) {
-		        sb.append(renderMonsterCompactLine(mm, userLv,nightmare));
+		        sb.append(renderMonsterCompactLine(mm, userLv, nightmareYnVal));
 		    }
 		    return sb.toString();
 		}
-		
+
 		User u = botNewService.selectUser(userName, null);
 		if (u == null) {
 		    botNewService.insertUserWithTargetTx(userName, roomName, m.monNo);
 		    return userName + "님, 공격 타겟을 " + m.monName + "(MON_NO=" + m.monNo + ") 으로 설정했습니다." + NL
-		         + "▶ 선택: " + renderMonsterCompactLine(m, 1,nightmare);
+		         + "▶ 선택: " + renderMonsterCompactLine(m, 1, nightmareYnVal);
 		}
 		if (u.targetMon == m.monNo) return "현재 타겟이 이미 " + m.monName + "(MON_NO=" + m.monNo + ") 입니다.";
 
@@ -2789,13 +2793,13 @@ public class BossAttackController {
 	        monMaxHp = m.monHp;
 	        monAtk = m.monAtk;
 	        monLv = m.monLv;
-	     // 🔥 나이트메어 증폭
+	     // 🔥 나이트메어/헬 증폭
 	        if (nightmare) {
 	            monMaxHp *= NM_MUL_HP_ATK;
 	            monAtk *= NM_MUL_HP_ATK;
-	            monLv +=NM_ADD_MON_LV;
+	            monLv += hell ? HEL_ADD_MON_LV : NM_ADD_MON_LV;
 	        }
-	        
+
 	        lucky = (ob.luckyYn != null && ob.luckyYn == 1);
 	        dark  = (ob.luckyYn != null && ob.luckyYn == 2);
 	        gray  = (ob.luckyYn != null && ob.luckyYn == 3);
@@ -2849,12 +2853,12 @@ public class BossAttackController {
 	        monHpRemainBefore = m.monHp;
 	        monAtk = m.monAtk;
 	        monLv = m.monLv;
-	     // 🔥 나이트메어 증폭
+	     // 🔥 나이트메어/헬 증폭
 	        if (nightmare) {
 	            monMaxHp *= NM_MUL_HP_ATK;
 	            monHpRemainBefore *= NM_MUL_HP_ATK;
 	            monAtk *= NM_MUL_HP_ATK;
-	            monLv +=NM_ADD_MON_LV;
+	            monLv += hell ? HEL_ADD_MON_LV : NM_ADD_MON_LV;
 	        }
 	        
 	        // ★ 이 유저의 해당 몬스터 누적 킬 수 조회 [FIX2] cachedKillStats 재사용
@@ -3296,7 +3300,7 @@ public class BossAttackController {
 	                .setLuckyYn(0)
 	                .setJobSkillYn(0)
 	                .setJob(job)
-	                .setNightmareYn(nightmare?1:0)
+	                .setNightmareYn(ctx.user.nightmareYn)
 	        );
 
 	        deathAchvMsg = grantDeathAchievements(userName, roomName);
@@ -3311,7 +3315,7 @@ public class BossAttackController {
 	    }
 
 	    // 13) 처치/드랍 판단
-	    Resolve res = resolveKillAndDrop(m, calc, willKill, u, lucky, dark, gray,nightmare);
+	    Resolve res = resolveKillAndDrop(m, calc, willKill, u, lucky, dark, gray, ctx.user.nightmareYn);
 	    String newPoint ="";
 	    String stealPoint ="";
 	    String newBonus ="";    // DROP SP 보너스 설명 (용사 5배, 100b 3배, 크리 ×2)
@@ -5366,19 +5370,19 @@ public class BossAttackController {
 		catch (Exception e) { return 0.0; }
 	}
 
-	private Resolve resolveKillAndDrop(Monster m, AttackCalc c, boolean willKill, User u, boolean lucky,boolean dark,boolean gray,boolean nightmareYn) {
+	private Resolve resolveKillAndDrop(Monster m, AttackCalc c, boolean willKill, User u, boolean lucky,boolean dark,boolean gray,int nightmareYnVal) {
 	    Resolve r = new Resolve();
 	    r.killed = willKill;
 	    r.lucky  = lucky;
 	    r.dark = dark;
 	    r.gray = gray;
-	    
+
 	    int monLv = m.monLv;
 	    int monExp = m.monExp;
-	    
-	    if(nightmareYn) {
-	    	monExp *= NM_MUL_EXP;
-	    	monLv += NM_ADD_MON_LV;
+
+	    if(nightmareYnVal >= 1) {
+	    	monExp *= (nightmareYnVal == 2) ? HEL_MUL_EXP : NM_MUL_EXP;
+	    	monLv  += (nightmareYnVal == 2) ? HEL_ADD_MON_LV : NM_ADD_MON_LV;
 	    }
 	    
 	    int levelGap = u.lv - monLv;
@@ -5684,7 +5688,7 @@ public class BossAttackController {
 	    	.setBuffYn(buffYn)
 	    	.setJobSkillYn(c.jobSkillUsed ? 1 : 0)
 	    	.setJob(u.job)
-	    	.setNightmareYn(nightmare?1:0);
+	    	.setNightmareYn(u.nightmareYn);
 
 	    botNewService.insertBattleLogTx(log);
 
@@ -5710,7 +5714,7 @@ public class BossAttackController {
 	                .setBuffYn(0)
 	                .setJobSkillYn(0)
 	                .setJob(u.job)
-	                .setNightmareYn(nightmare ? 1 : 0)
+	                .setNightmareYn(u.nightmareYn)
 	                .setShotIndex(i));
 	        }
 	        botNewService.insertBattleLogsBatch(arrowLogs);
@@ -5745,7 +5749,10 @@ public class BossAttackController {
 	    // 헤더
 	    sb.append("⚔ ").append(userName).append("님, ").append(NL)
 	      .append("▶ ").append(m.monName);
-	    if(nightmare) sb.append("[나이트메어]");
+	    if(nightmare) {
+	    	if(ctx.user.nightmareYn == 2) sb.append("[헬]");
+	    	else sb.append("[나이트메어]");
+	    }
 	    
 	    sb.append("을(를) 공격!").append(NL).append(NL);
 
@@ -6199,24 +6206,27 @@ public class BossAttackController {
 	    }
 	}
 	/** 몬스터 요약 한 줄 UI */
-	private String renderMonsterCompactLine(Monster m, int userLv,boolean nightmare) {
+	private String renderMonsterCompactLine(Monster m, int userLv, int nightmareYnVal) {
 
 		// 드랍 아이템명 및 판매가격
 	    String dropName = (m.monDrop != null ? m.monDrop : "-");
 	    int dropPrice = getDropPriceByName(dropName);
 
+	    boolean nmActive = nightmareYnVal >= 1;
+	    boolean hellActive = nightmareYnVal == 2;
+
 	    int monAtk = m.monAtk;
 	    int monHp = m.monHp;
 	    int monLv = m.monLv;
 	    int monExp = m.monExp;
-	    if(nightmare) {
+	    if(nmActive) {
 	    	monAtk *= NM_MUL_HP_ATK;
 	    	monHp *= NM_MUL_HP_ATK;
 	    	dropPrice = dropPrice*50;
-	    	monLv += NM_ADD_MON_LV;
-	    	monExp *= NM_MUL_EXP;
+	    	monLv += hellActive ? HEL_ADD_MON_LV : NM_ADD_MON_LV;
+	    	monExp *= hellActive ? HEL_MUL_EXP : NM_MUL_EXP;
 	    }
-	    
+
 	    SP dropSp= SP.fromSp(dropPrice);
 
 	    // ATK 범위 계산 (50% ~ 100%)
@@ -6224,8 +6234,6 @@ public class BossAttackController {
 	    int atkMax = monAtk;
 
 	 // EXP 보정 계산 (resolveKillAndDrop 과 동일)
-	    
-	    
 	    int baseExp = Math.max(0, monExp);
 	    int levelGap = userLv - monLv;
 	    double expMultiplier;
@@ -6239,8 +6247,8 @@ public class BossAttackController {
 	    }
 
 	    int effExp = (int)Math.round(baseExp * expMultiplier);
-	    if(nightmare) {
-	    	effExp *= NM_MUL_EXP; 
+	    if(nmActive) {
+	    	effExp *= hellActive ? HEL_MUL_EXP : NM_MUL_EXP;
 	    }
 	    boolean hasPenalty = (levelGap >= 0 && expMultiplier < 1.0);
 	    boolean hasBonus   = (levelGap < 0  && expMultiplier > 1.0);

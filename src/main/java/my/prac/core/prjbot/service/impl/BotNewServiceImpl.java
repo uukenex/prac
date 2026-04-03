@@ -428,7 +428,12 @@ public class BotNewServiceImpl implements BotNewService {
     
     public boolean isNightmareMode(String userName, String roomName) {
 	    Integer v = botNewDAO.selectNightmareYn(userName, roomName);
-	    return v != null && v == 1;
+	    return v != null && v >= 1;
+	}
+
+	public int getNightmareYn(String userName, String roomName) {
+	    Integer v = botNewDAO.selectNightmareYn(userName, roomName);
+	    return v != null ? v : 0;
 	}
     
     public int setNightmareMode(String userName, String roomName, int nightmareYn) {
