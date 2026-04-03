@@ -779,74 +779,31 @@ public class LoaChatController {
 				break;
 				*/
 			case "/구매": case "/ㄱㅁ":
-				/*
-				if (shouldSkip2()) {
-					val = "매일9시45분~50분은 일시중단입니다.";
-					passYn = true;
-		            return val;
-		        }
-				passYn = true;
-				*/
 				val = boss.buyItem(reqMap);
 				break;
 			case "/판매": case "/ㅍㅁ":
-				if (shouldSkip2()) {
-					val = "매일9시45분~50분은 일시중단입니다.";
-					passYn = true;
-		            return val;
-		        }
 				val = boss.sellItem(reqMap);
 				break;
 			case "/직업": case "/전직":
-				if (shouldSkip2()) {
-					val = "매일9시45분~50분은 일시중단입니다.";
-					passYn = true;
-		            return val;
-		        }
 				passYn = true;
 				val = boss.changeJob(reqMap);
 				break;
 			case "/모드": case "/ㅁㄷ":
-				if (shouldSkip2()) {
-					val = "매일9시45분~50분은 일시중단입니다.";
-					passYn = true;
-		            return val;
-		        }
 				val = boss.changeMode(reqMap);
 				break;
 			case "/체력": case "/ㅊㄹ":
-				if (shouldSkip2()) {
-					val = "매일9시45분~50분은 일시중단입니다.";
-					passYn = true;
-		            return val;
-		        }
 				val = boss.getHpStatus(reqMap);
 				break;
 			case "/ㄱㅂㄹㄱ": case "/ㄱㅂㄺ":
 			case "/가방로그":
-				if (shouldSkip2()) {
-					val = "매일9시45분~50분은 일시중단입니다.";
-					passYn = true;
-		            return val;
-		        }
 				passYn = true;
 				val = boss.bagLog(reqMap);
 				break;
 			case "/ㄱㅂㅇㅍ": case "/ㄱㅂㅇㄱ":
 			case "/가방오픈": case "/가방열기":
-				if (shouldSkip2()) {
-					val = "매일9시45분~50분은 일시중단입니다.";
-					passYn = true;
-		            return val;
-		        }
 				val = boss.openBag(reqMap);
 				break;
 			case "/공격랭킹": case "/ㄱㄱㄹㅋ":
-				if (shouldSkip2()) {
-					val = "매일9시45분~50분은 일시중단입니다.";
-					passYn = true;
-		            return val;
-		        }
 				passYn = true;
 				val = boss.showAttackRanking(reqMap);
 				break;
@@ -863,11 +820,6 @@ public class LoaChatController {
 				break;
 			case "/가방상세": case "/ㄱㅂㅅㅅ": case "/ㄱㅄㅅ": case "/ㅇㅂ":case "/인벤":case "/인벤토리":
 				param0="/ㅇㅂ";
-				if (shouldSkip2()) {
-					val = "매일9시45분~50분은 일시중단입니다.";
-					passYn = true;
-		            return val;
-		        }
 				passYn = true;
 				val = boss.invenInfo(reqMap);
 				break;
@@ -877,11 +829,6 @@ public class LoaChatController {
 				break;
 
 			case "/ㄱㄱㄱㅈ": case "/공격공지": case "/공지":
-				if (shouldSkip2()) {
-					val = "매일9시45분~50분은 일시중단입니다.";
-					passYn = true;
-		            return val;
-		        }
 				passYn = true;
 				val = boss.patchNote(reqMap);
 				break;
@@ -892,21 +839,10 @@ public class LoaChatController {
 				
 			case "/ㄱㄱㄱ": case "/ㄱ": case "/R": case "/r": 
 				
-				if (shouldSkip2()) {
-					val = "매일9시45분~50분은 일시중단입니다.";
-					passYn = true;
-		            return val;
-		        }
-				
 				val = boss.monsterAttack(reqMap);
 				break;
 			case "/ㄱㄱㅌㄱ":case "/공격타겟":
 			case "/ㄱㄱㄷㅅ":case "/공격대상": 
-				if (shouldSkip2()) {
-					val = "매일9시45분~50분은 일시중단입니다.";
-					passYn = true;
-		            return val;
-		        }
 				passYn = true;
 				reqMap.put("monNo", param1);
 				val = boss.changeTarget(reqMap);

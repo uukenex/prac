@@ -287,6 +287,10 @@ public class BotNewServiceImpl implements BotNewService {
     public List<HashMap<String,Object>> selectRisingStarsTop5Last6h() {
         return botNewDAO.selectRisingStarsTop5Last6h();
     }
+    @Override
+    public List<HashMap<String,Object>> selectMaxDamageTop5() {
+    	return botNewDAO.selectMaxDamageTop5();
+    }
 
     @Override
     public List<HashMap<String,Object>> selectOngoingChallengesForUnclearedBosses() {

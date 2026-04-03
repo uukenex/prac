@@ -1862,11 +1862,12 @@ public class BossAttackController {
 		    List<Monster> monsters = botNewService.selectAllMonsters();
 		    StringBuilder sb = new StringBuilder();
 		    sb.append("공격 타겟 목록입니다:").append(NL).append(NL)
-		      .append("http://rgb-tns.dev-apc.com/loa/monster-view").append(NL)
+		      .append("http://rgb-tns.dev-apc.com/loa/monster-view").append(NL).append(NL)
+		      .append("/ㄱㄱㅌㄱ 1 또는 /ㄱㄱㅌㄱ 토끼 로 설정").append(NL)
 		      .append("▶ 선택 가능한 몬스터").append(ALL_SEE_STR);
 
 		    for (Monster mm : monsters) {
-		        sb.append(renderMonsterCompactLine(mm, userLv, nightmareYnVal));
+		        sb.append(renderMonsterSelectLine(mm, nightmareYnVal));
 		    }
 
 		    return sb.toString();
@@ -1896,7 +1897,7 @@ public class BossAttackController {
 		      .append("▶ 선택 가능한 몬스터").append(ALL_SEE_STR);
 
 		    for (Monster mm : monsters) {
-		        sb.append(renderMonsterCompactLine(mm, userLv, nightmareYnVal));
+		        sb.append(renderMonsterSelectLine(mm,  nightmareYnVal));
 		    }
 		    return sb.toString();
 		}
@@ -1905,7 +1906,7 @@ public class BossAttackController {
 		if (u == null) {
 		    botNewService.insertUserWithTargetTx(userName, roomName, m.monNo);
 		    return userName + "님, 공격 타겟을 " + m.monName + "(MON_NO=" + m.monNo + ") 으로 설정했습니다." + NL
-		         + "▶ 선택: " + renderMonsterCompactLine(m, 1, nightmareYnVal);
+		         + "▶ 선택: " + renderMonsterSelectLine(m,  nightmareYnVal);
 		}
 		if (u.targetMon == m.monNo) return "현재 타겟이 이미 " + m.monName + "(MON_NO=" + m.monNo + ") 입니다.";
 
@@ -1948,7 +1949,7 @@ public class BossAttackController {
 		botNewService.updateUserTargetMonTx(userName, roomName, m.monNo);
 		int userLvForView = (u != null ? u.lv : 1);
 		return userName + "님, 공격 타겟을 " + m.monName + "(MON_NO=" + m.monNo + ") 으로 설정했습니다." + NL
-		     + "▶ 선택: " + NL + renderMonsterCompactLine(m, userLvForView, nightmareYnVal);
+		     + "▶ 선택: " + NL + renderMonsterSelectLine(m, nightmareYnVal);
 	}
 	// 엔트리 포인트: 기존 /구매 명령이 들어오는 곳
 	public String buyItem(HashMap<String, Object> map) {
@@ -4532,6 +4533,24 @@ public class BossAttackController {
 	    }
 	    sb.append(NL);
 	    
+	    List<HashMap<String,Object>> maxs = botNewService.selectMaxDamageTop5();
+	    
+	    sb.append("✨ MAX 데미지 랭킹 (TOP5)").append(NL);
+	    
+	    if (maxs == null || maxs.isEmpty()) {
+	    	sb.append("- 데이터 없음").append(NL);
+	    } else {
+	    	for (HashMap<String,Object> row : maxs) {
+	    		String max  = String.valueOf(row.get("MAX_DAMAGE"));
+	    		String name = String.valueOf(row.get("USER_NAME"));
+	    		
+	    		sb.append("• ")
+	    		.append(max)
+	    		.append(" : ")
+	    		.append(name)
+	    		.append(NL);
+	    	}
+	    }
 	    /*
 	    List<HashMap<String,Object>> masters = botNewService.selectTodayJobMastersAll();
 
@@ -5242,7 +5261,7 @@ public class BossAttackController {
 	      .append("예) /공격타겟 1   또는   /공격타겟 토끼").append(NL).append(NL)
 	      .append("▶ 선택 가능한 몬스터").append(ALL_SEE_STR);
 	    for (Monster m : monsters) {
-	        sb.append(renderMonsterCompactLine(m,1,0)).append(NL);
+	        sb.append(renderMonsterSelectLine(m,0)).append(NL);
 	    }
 	    return sb.toString();
 	}
@@ -6294,6 +6313,7 @@ public class BossAttackController {
 	    }
 	}
 	/** 몬스터 요약 한 줄 UI */
+	/*
 	private String renderMonsterCompactLine(Monster m, int userLv, int nightmareYnVal) {
 
 		// 드랍 아이템명 및 판매가격
@@ -6398,6 +6418,34 @@ public class BossAttackController {
 	    sb.append(NL);
 
 	    return sb.toString();
+	}
+	*/
+	
+	private String renderMonsterSelectLine(Monster m, int nightmareYnVal) {
+
+	    boolean nmActive = nightmareYnVal >= 1;
+	    boolean hellActive = nightmareYnVal == 2;
+
+	    int monAtk = m.monAtk;
+	    int monHp = m.monHp;
+	    int monLv = m.monLv;
+
+	    if (nmActive) {
+	        monAtk *= NM_MUL_HP_ATK;
+	        monHp *= NM_MUL_HP_ATK;
+	        monLv += hellActive ? HEL_ADD_MON_LV : NM_ADD_MON_LV;
+	    }
+
+	    int atkMin = (int) Math.floor(monAtk * 0.5);
+	    int atkMax = monAtk;
+
+	    return new StringBuilder()
+	    	.append("no.").append(m.monNo).append(" ")
+	        .append(m.monName)
+	        .append(" Lv").append(monLv)
+	        .append("  ❤️").append(monHp)
+	        .append(" ⚔").append(atkMin).append("~").append(atkMax).append(NL)
+	        .toString();
 	}
 	
 	/** 몬스터 최초 토벌 보상 (방별 1명만)

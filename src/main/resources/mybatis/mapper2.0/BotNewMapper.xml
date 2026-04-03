@@ -925,6 +925,22 @@
 	    WHERE ROWNUM &lt;= 10
 	</select>
 	
+	<select id="selectMaxDamageTop5" resultType="hashmap">
+	/*selectMaxDamageTop5*/
+	    SELECT *
+			FROM (
+			    SELECT 
+			        USER_NAME,
+			        MAX(ATK_DMG) AS MAX_DAMAGE,
+			        ROW_NUMBER() OVER (ORDER BY MAX(ATK_DMG) DESC) AS RN
+			    FROM TBOT_POINT_NEW_BATTLE_LOG a
+			    WHERE KILL_YN = 1
+			    and a.user_name not in ('일어난다람쥐/카단')
+			    GROUP BY USER_NAME
+			)
+			WHERE RN &lt;= 5
+	</select>
+	
 	<select id="selectSpAndAtkRanking" resultType="hashmap">
 	   /* selectSpAndAtkRanking */
 	   SELECT
