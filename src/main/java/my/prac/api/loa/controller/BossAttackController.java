@@ -67,6 +67,7 @@ public class BossAttackController {
 	// 🍀 Lucky: 전투 시작 시 10% 확률 고정(신규 전투에서만 결정)
 	private static final double LUCKY_RATE = 0.15;
 	private static final double LUCKY_RATE_DOSA = 0.20;
+	private static final double DARK_RATE_DARK = 0.20;
 	private static final String ALL_SEE_STR = "===";
 	private static final int BAG_ITEM_ID = 91;
 	private static final int BAG_NM_ITEM_ID = 92;
@@ -2937,12 +2938,22 @@ public class BossAttackController {
 
 	        // ★ 300킬 이상 + 20% 확률이면 어둠몬
 	        
-	     // ★ 300킬 이상 + 20% 확률이면 어둠몬
+	        int levelGap = monLv - u.lv;
+	        int bonusStep = Math.max(0, levelGap / 100);
+	        double levelBonus = bonusStep * 0.20;
+	        
+	        // ★ 300킬 이상 + 20% 확률이면 어둠몬
 	        if ((!nightmare && killCountForThisMon >= 350 && m.monNo >= 15)
 	        		
 	        		|| (nightmare &&nmKillCountForThisMon > 150 && m.monNo >= 15 ) 
 	        		) {
 	            double rnd = ThreadLocalRandom.current().nextDouble();
+	            
+	            rnd -= levelBonus;
+	            if("어둠사냥꾼".equals(job)) {
+	            	rnd -= DARK_RATE_DARK;
+	            }
+	            
 	            if (rnd < 0.05) {
 	                dark = true;
 	            }
@@ -2952,6 +2963,12 @@ public class BossAttackController {
 	        		|| (nightmare && nmKillCountForThisMon > 150 && m.monNo < 15)
 	        		) {
 	            double rnd = ThreadLocalRandom.current().nextDouble();
+	            
+	            rnd -= levelBonus;
+	            if("어둠사냥꾼".equals(job)) {
+	            	rnd -= DARK_RATE_DARK;
+	            }
+	            
 	            if (rnd < 0.10) {
 	                dark = true;
 	            }
