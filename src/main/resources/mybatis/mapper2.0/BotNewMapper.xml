@@ -1620,27 +1620,7 @@
 		ORDER BY i.ITEM_ID
 	</select>
 
-	<!-- 전체 몬스터 + 드랍아이템 가격 (monster_view 페이지용) -->
-	<select id="selectAllMonstersForView" resultType="hashmap">
-		/* selectAllMonstersForView */
-		SELECT
-		    m.MON_NO,
-		    m.MON_NAME,
-		    m.MON_LV,
-		    m.MON_HP,
-		    m.MON_ATK,
-		    m.MON_EXP,
-		    NVL(m.MON_DROP, '') AS MON_DROP,
-		    NVL(m.MON_PATTEN, 0) AS MON_PATTEN,
-		    NVL(m.MON_NOTE, '') AS MON_NOTE,
-		    NVL(i.ITEM_SELL_PRICE, 0) AS DROP_SP,
-		    NVL(i.ITEM_SELL_PRICE_EXT, '') AS DROP_SP_EXT
-		FROM TBOT_POINT_NEW_MON_INFO m
-		LEFT JOIN TBOT_POINT_NEW_ITEM i ON i.ITEM_NAME = m.MON_DROP
-		ORDER BY m.MON_NO
-	</select>
-
-	<select id="selectInventoryItemsByIds" resultType="int">
+<select id="selectInventoryItemsByIds" resultType="int">
 	    /* selectInventoryItemsByIds */
 	    SELECT n.ITEM_ID
 	    FROM TBOT_POINT_NEW_INVENTORY n

@@ -30,7 +30,6 @@ public interface BotNewService {
     List<Monster> selectAllMonsters();
     Monster selectMonsterByNo(int monNo);
     Monster selectMonsterByName(String monName);
-    List<HashMap<String, Object>> selectAllMonstersForView();
 
     HashMap<String,Object> selectLastBattleLog(HashMap<String,Object> map) throws Exception;
     Timestamp selectLastAttackTime(String userName, String roomName);
