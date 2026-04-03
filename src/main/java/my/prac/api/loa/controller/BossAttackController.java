@@ -76,6 +76,10 @@ public class BossAttackController {
 	private static final int NM_MUL_EXP = 50;
 	private static final int NM_ADD_MON_LV = 150;
 
+	private static final int HEL_DIV_ATK = 10000;
+	private static final double HEL_CRIT_RATE_MULT = 0.1;
+	private static final double HEL_CRIT_DMG_MULT = 0.1;
+
 	// [FIX4] selectActiveSpecialBuff 단기 캐시 (서버 전역 버프는 15초간 재사용)
 	private static volatile HashMap<String,Object> SPECIAL_BUFF_CACHE = null;
 	private static volatile long SPECIAL_BUFF_CACHE_TS = 0L;
@@ -105,14 +109,17 @@ public class BossAttackController {
 	        return "유저 정보를 찾을 수 없습니다.";
 
 	    if(selRaw.equals("나이트메어")||selRaw.equals("나메")) {
-	    	botNewService.setNightmareMode(userName,roomName,true);
+	    	botNewService.setNightmareMode(userName,roomName,1);
 	    	msg ="나이트메어";
+	    }else if(selRaw.equals("헬")||selRaw.equals("헬모드")) {
+	    	botNewService.setNightmareMode(userName,roomName,2);
+	    	msg ="헬";
 	    }else {
-	    	botNewService.setNightmareMode(userName,roomName,false);
+	    	botNewService.setNightmareMode(userName,roomName,0);
 	    	msg="일반";
 	    }
 	    botNewService.closeOngoingBattleTx(userName, roomName);
-		return msg+" 모드로 변경완료"+NL+"[일반/나이트메어] 선택가능";
+		return msg+" 모드로 변경완료"+NL+"[일반/나이트메어/헬] 선택가능";
 	}
 	
 	
@@ -2759,8 +2766,9 @@ public class BossAttackController {
 	    int monMaxHp = 0, monHpRemainBefore;
 	    int monAtk, monLv;
 	 // ✅ 나이트메어 모드 확인 — [OPT2] selectUser에서 이미 읽어온 NIGHTMARE_YN 재사용 (DB 호출 제거)
-	    boolean nightmare = ctx.user.nightmareYn == 1;
-	    
+	    boolean nightmare = ctx.user.nightmareYn >= 1; // 나이트메어(1) + 헬(2) 모두 몬스터 강화 적용
+	    boolean hell = ctx.user.nightmareYn == 2;
+
 	    boolean lucky = false;
 	    boolean dark = false; // 어둠몬스터 여부
 	    boolean gray = false; 
@@ -3160,7 +3168,8 @@ public class BossAttackController {
 	            monHpRemainBefore,
 	            effHpMax,
 	            beforeJobSkillYn,
-	            nightmare
+	            nightmare,
+	            hell
 	    );
 		AttackCalc calc = dmg.calc;
 		flags = dmg.flags;
@@ -7279,7 +7288,8 @@ public class BossAttackController {
 	        int monHpRemainBefore,
 	        int effHpMax,
 	        int beforeJobSkillYn,
-	        boolean nightmareYn
+	        boolean nightmareYn,
+	        boolean hellYn
 	) {
 	    DamageOutcome out = new DamageOutcome();
 	    AttackCalc calc = new AttackCalc();
@@ -7320,6 +7330,16 @@ public class BossAttackController {
 	               + converted + "% chgCDMG (" + Math.round(convertRate*100) + "%)" + NL;
 	    }
 	    
+	    // -----------------------------
+	    // 헬모드: 공격력 /10000, 크리율/크리뎀 10%
+	    // -----------------------------
+	    if (hellYn) {
+	        effAtkMin  = Math.max(1, effAtkMin  / HEL_DIV_ATK);
+	        effAtkMax  = Math.max(1, effAtkMax  / HEL_DIV_ATK);
+	        effCritRate = (int) Math.round(effCritRate * HEL_CRIT_RATE_MULT);
+	        effCriDmg   = (int) Math.round(effCriDmg   * HEL_CRIT_DMG_MULT);
+	    }
+
 	    // -----------------------------
 	    // 1) 공격력 굴림 + 크리티컬
 	    // -----------------------------

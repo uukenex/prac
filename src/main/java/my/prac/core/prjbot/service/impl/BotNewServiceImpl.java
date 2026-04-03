@@ -431,11 +431,11 @@ public class BotNewServiceImpl implements BotNewService {
 	    return v != null && v == 1;
 	}
     
-    public int setNightmareMode(String userName, String roomName, boolean enable) {
+    public int setNightmareMode(String userName, String roomName, int nightmareYn) {
     	HashMap<String,Object> p = new HashMap<>();
         p.put("userName", userName);
         p.put("roomName", roomName);
-        p.put("nightmareYn", enable ? "1" : "0");
+        p.put("nightmareYn", String.valueOf(nightmareYn));
         return botNewDAO.updateNightmareYn(p);
     }
     
