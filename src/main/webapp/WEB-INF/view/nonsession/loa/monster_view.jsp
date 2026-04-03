@@ -29,6 +29,23 @@
     .btn-query { background: #5b8dd9; color: #fff; border: none; padding: 10px 20px; border-radius: 24px; font-size: 13px; font-weight: 700; cursor: pointer; }
     .btn-query:hover { background: #3a6fc4; }
 
+    /* 유저 정보 패널 */
+    .user-panel { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 14px; padding: 14px 18px; background: #fff; border-radius: 12px; box-shadow: 0 1px 6px rgba(0,0,0,.06); align-items: center; }
+    .user-panel .up-name { font-size: 15px; font-weight: 800; color: #1a2a3a; }
+    .user-panel .up-job  { font-size: 12px; color: #888; margin-left: 4px; }
+    .user-panel .up-mode { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 8px; }
+    .up-mode.nm0 { background: #edf2f7; color: #4a5568; }
+    .up-mode.nm1 { background: #f5eeff; color: #7d3c98; }
+    .up-mode.nm2 { background: #fff0f0; color: #a93226; }
+    .up-lv-block { display: flex; flex-direction: column; gap: 4px; min-width: 180px; }
+    .up-lv-row   { display: flex; align-items: center; gap: 8px; }
+    .up-lv-num   { font-size: 20px; font-weight: 900; color: #2980b9; line-height: 1; }
+    .up-lv-arrow { font-size: 13px; color: #aaa; }
+    .up-lv-next  { font-size: 13px; color: #27ae60; font-weight: 700; }
+    .exp-bar-wrap { position: relative; background: #e8f0fe; border-radius: 8px; height: 10px; overflow: hidden; }
+    .exp-bar-fill { height: 100%; background: linear-gradient(90deg, #5b8dd9, #3a6fc4); border-radius: 8px; transition: width .4s; }
+    .exp-bar-text { font-size: 10px; color: #5b8dd9; margin-top: 2px; text-align: right; }
+
     /* 유저 킬 요약 */
     .kill-summary { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; padding: 12px 16px; background: #fff; border-radius: 12px; box-shadow: 0 1px 6px rgba(0,0,0,.06); align-items: center; }
     .kill-summary .ks-label { font-size: 12px; color: #999; margin-right: 4px; }
@@ -134,6 +151,28 @@
     <div class="user-wrap">
       <input v-model="userName" placeholder="유저명 (선택)" @keyup.enter="fetchKills">
       <button class="btn-query" @click="fetchKills">조회</button>
+    </div>
+  </div>
+
+  <!-- 유저 정보 패널 -->
+  <div class="user-panel" v-if="searchedUser && userInfo.lv">
+    <div>
+      <span class="up-name">{{ searchedUser }}</span>
+      <span class="up-job">{{ userInfo.job }}</span>
+      <span class="up-mode" :class="'nm' + userInfo.nightmareYn" style="margin-left:6px;">
+        {{ ['일반','나이트메어','헬'][userInfo.nightmareYn] }}
+      </span>
+    </div>
+    <div class="up-lv-block">
+      <div class="up-lv-row">
+        <span class="up-lv-num">Lv.{{ userInfo.lv }}</span>
+        <span class="up-lv-arrow">→</span>
+        <span class="up-lv-next">Lv.{{ userInfo.lv + 1 }} 까지 {{ expRemain.toLocaleString() }} EXP</span>
+      </div>
+      <div class="exp-bar-wrap">
+        <div class="exp-bar-fill" :style="{width: expPct + '%'}"></div>
+      </div>
+      <div class="exp-bar-text">{{ userInfo.expCur.toLocaleString() }} / {{ userInfo.expNext.toLocaleString() }} EXP ({{ expPct }}%)</div>
     </div>
   </div>
 
@@ -294,8 +333,9 @@
     el: '#app',
     data: {
       monsters: [],
-      killMap: {},       // { "monNo": { KILL_TOTAL, KILL_NORMAL, KILL_LIGHT, KILL_DARK, KILL_YINYANG } }
+      killMap: {},
       totalKills: 0,
+      userInfo: {},   // { lv, expCur, expNext, job, nightmareYn }
       loading: false,
       userName: '',
       searchedUser: '',
@@ -306,6 +346,17 @@
     computed: {
       diffLabel: function() {
         return { normal: '일반', nightmare: '나이트메어', hell: '헬' }[this.diff];
+      },
+      expPct: function() {
+        var cur = parseInt(this.userInfo.expCur || 0);
+        var next = parseInt(this.userInfo.expNext || 1);
+        if (next <= 0) return 0;
+        return Math.min(100, Math.round(cur / next * 1000) / 10);
+      },
+      expRemain: function() {
+        var cur = parseInt(this.userInfo.expCur || 0);
+        var next = parseInt(this.userInfo.expNext || 0);
+        return Math.max(0, next - cur);
       },
       // 현재 탭 난이도 기준 전체 합산
       killSummary: function() {
@@ -373,6 +424,7 @@
             self.killMap      = data.kills      || {};
             self.totalKills   = data.totalKills || 0;
             self.searchedUser = data.userName   || un;
+            self.userInfo     = data.userInfo   || {};
           })
           .catch(function() { alert('킬 통계 조회 중 오류가 발생했습니다.'); });
       },

@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 import my.prac.core.game.dto.Monster;
+import my.prac.core.game.dto.User;
 import my.prac.core.prjbot.service.BotNewService;
 import my.prac.core.util.MiniGameUtil;
 
@@ -102,7 +103,8 @@ public class LoaMonsterViewController {
             return ResponseEntity.ok(new HashMap<>());
         }
 
-        List<HashMap<String, Object>> rows = botNewService.selectMonsterKillsForView(userName.trim());
+        String un = userName.trim();
+        List<HashMap<String, Object>> rows = botNewService.selectMonsterKillsForView(un);
 
         // MON_NO → 통계 맵으로 변환
         Map<String, Object> killMap = new HashMap<>();
@@ -114,10 +116,22 @@ public class LoaMonsterViewController {
             if (t != null) totalKills += ((Number) t).longValue();
         }
 
+        // 유저 레벨/경험치 정보
+        HashMap<String, Object> userInfo = new HashMap<>();
+        User u = botNewService.selectUser(un, null);
+        if (u != null) {
+            userInfo.put("lv",      u.lv);
+            userInfo.put("expCur",  u.expCur);
+            userInfo.put("expNext", u.expNext);
+            userInfo.put("job",     u.job != null ? u.job : "");
+            userInfo.put("nightmareYn", u.nightmareYn);
+        }
+
         HashMap<String, Object> result = new HashMap<>();
         result.put("kills",      killMap);
         result.put("totalKills", totalKills);
-        result.put("userName",   userName.trim());
+        result.put("userName",   un);
+        result.put("userInfo",   userInfo);
         return ResponseEntity.ok(result);
     }
 }
