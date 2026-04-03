@@ -2769,7 +2769,7 @@ public class BossAttackController {
 	    if ("궁수".equals(job)) {
 	        jobDmgMul = 3.0;   // 궁수: 데미지 1.6배
 	    } else if ("궁사".equals(job)) {
-	        jobDmgMul = 1.2;   
+	        jobDmgMul = 1.0;   
 	    } else if ("전사".equals(job)) {
 	        jobDmgMul = 1.4;   // 전사: 데미지 1.2배
 	    } else if ("검성".equals(job)) {
@@ -3803,11 +3803,11 @@ public class BossAttackController {
 	            }
 
 	            if ("용사".equals(ctx.job)) {
-	                gainSp *= 5;
-	                bonusDesc.append("(용사 5배)");
+	                gainSp *= 3;
+	                bonusDesc.append("(용사 3배)");
 	                if (ThreadLocalRandom.current().nextDouble() < 0.10) {
-	                    gainSp *= 2;
-	                    bonusDesc.append("(크리! ×2)");
+	                    gainSp *= 3;
+	                    bonusDesc.append("(크리! ×3)");
 	                }
 	            }
 
