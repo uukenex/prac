@@ -8474,11 +8474,11 @@ public class BossAttackController {
 
 		            if (newMonDmg > 0 && calc.atkDmg >= monHpRemainBefore) {//willkill, 복수로죽였을때만 적용
 		            	int heal = (int) Math.round(effHpMax * 0.10);
-		            	int before = u.hpCur;
-			            u.hpCur = Math.min(effHpMax, u.hpCur + heal);
+		            	int before =u.hpCur-newMonDmg;
+			            u.hpCur = Math.min(effHpMax, u.hpCur-newMonDmg+ heal);
 
 			            calc.patternMsg = "복수에 성공했다..! " + heal +
-			                    " 회복 (HP " + before + " → " + u.hpCur + "/" + effHpMax + ")";
+			                    " 회복 (HP " + before + " → " + (u.hpCur-newMonDmg) + "/" + effHpMax + ")";
 			            calc.jobSkillUsed = true;
 		            }
 		        }
