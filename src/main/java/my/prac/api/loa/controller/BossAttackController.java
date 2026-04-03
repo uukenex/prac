@@ -589,16 +589,14 @@ public class BossAttackController {
 	    }
 	    */
 	    
-	    /*
-	    int finalHpMaxBonus = (finalHpMax * (ctx.bHpMaxRateRaw+jobMasterHpRate)) /100;
+	    
+	    int finalHpMaxBonus = (finalHpMax * (ctx.bHpMaxRateRaw)) /100;
 	    finalHpMax += finalHpMaxBonus;
-	    int atkMinWithItemBonus = (atkMinWithItem * (ctx.bAtkMaxRateRaw+jobMasterAtkRate)) /100;
+	    int atkMinWithItemBonus = (atkMinWithItem * (ctx.bAtkMaxRateRaw)) /100;
 	    atkMinWithItem += atkMinWithItemBonus;
-	    int atkMaxWithItemBonus = (atkMaxWithItem * (ctx.bAtkMaxRateRaw+jobMasterAtkRate)) /100;
+	    int atkMaxWithItemBonus = (atkMaxWithItem * (ctx.bAtkMaxRateRaw)) /100;
 	    atkMaxWithItem += atkMaxWithItemBonus;
-	   
-	    effRegen += jobEffRegen;
-	     */
+	    
 	    // HP/ATK 확정치 저장
 	    ctx.atkMinWithItem = atkMinWithItem;
 	    ctx.atkMaxWithItem = atkMaxWithItem;
