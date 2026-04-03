@@ -114,6 +114,23 @@
     WHERE USER_NAME = #{userName}
   </select>
 
+  <!-- 몬스터별 킬 통계 - 타입(일반/빛/다크/음양)별 집계 (monster_view 페이지용) -->
+  <select id="selectMonsterKillsForView" resultType="hashmap">
+    /* selectMonsterKillsForView */
+    SELECT
+        bl.TARGET_MON_LV AS MON_NO,
+        COUNT(*) AS KILL_TOTAL,
+        SUM(DECODE(TO_NUMBER(bl.LUCKY_YN), 0, 1, 0)) AS KILL_NORMAL,
+        SUM(DECODE(TO_NUMBER(bl.LUCKY_YN), 1, 1, 0)) AS KILL_LIGHT,
+        SUM(DECODE(TO_NUMBER(bl.LUCKY_YN), 2, 1, 0)) AS KILL_DARK,
+        SUM(DECODE(TO_NUMBER(bl.LUCKY_YN), 3, 1, 0)) AS KILL_YINYANG
+    FROM TBOT_POINT_NEW_BATTLE_LOG bl
+    WHERE bl.USER_NAME = #{userName}
+      AND bl.KILL_YN = 1
+    GROUP BY bl.TARGET_MON_LV
+    ORDER BY MON_NO
+  </select>
+
   <select id="selectKillStats" resultType="my.prac.core.game.dto.KillStat">
   /*selectKillStats*/
     SELECT bl.TARGET_MON_LV AS MON_NO,

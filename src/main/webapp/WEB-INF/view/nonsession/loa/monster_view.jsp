@@ -18,14 +18,30 @@
 
     /* 검색 */
     .top-controls { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
-    .search-wrap  { flex: 1; min-width: 200px; position: relative; }
+    .search-wrap  { flex: 1; min-width: 180px; position: relative; }
     .search-wrap input { width: 100%; padding: 10px 14px 10px 36px; border: 1.5px solid #d4dde6; border-radius: 24px; background: #fff; font-size: 14px; color: #333; outline: none; transition: border-color .2s; }
     .search-wrap input:focus { border-color: #5b8dd9; }
     .search-wrap .fa { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: #bbb; font-size: 13px; }
+    .user-wrap { display: flex; gap: 8px; align-items: center; }
+    .user-wrap input { padding: 10px 14px; border: 1.5px solid #d4dde6; border-radius: 24px; background: #fff; font-size: 14px; color: #333; outline: none; width: 145px; }
+    .user-wrap input:focus { border-color: #5b8dd9; }
+    .user-wrap input::placeholder { color: #bbb; }
+    .btn-query { background: #5b8dd9; color: #fff; border: none; padding: 10px 20px; border-radius: 24px; font-size: 13px; font-weight: 700; cursor: pointer; }
+    .btn-query:hover { background: #3a6fc4; }
+
+    /* 유저 킬 요약 */
+    .kill-summary { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; padding: 12px 16px; background: #fff; border-radius: 12px; box-shadow: 0 1px 6px rgba(0,0,0,.06); align-items: center; }
+    .kill-summary .ks-label { font-size: 12px; color: #999; margin-right: 4px; }
+    .kill-chip { display: flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 700; padding: 4px 12px; border-radius: 14px; }
+    .kill-chip.total   { background: #eaf0fb; color: #2c5282; }
+    .kill-chip.normal  { background: #f0f4f8; color: #4a5568; }
+    .kill-chip.light   { background: #fffde7; color: #b7791f; }
+    .kill-chip.dark    { background: #f9f0ff; color: #6b46c1; }
+    .kill-chip.yinyang { background: #e8f8f0; color: #276749; }
 
     /* 난이도 탭 */
-    .diff-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
-    .diff-tab  { padding: 8px 22px; border-radius: 22px; border: 2px solid #d4dde6; background: #fff; color: #888; font-size: 13px; font-weight: 700; cursor: pointer; transition: all .18s; }
+    .diff-tabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+    .diff-tab  { padding: 8px 22px; border-radius: 22px; border: 2px solid #d4dde6; background: #fff; color: #888; font-size: 13px; font-weight: 700; cursor: pointer; transition: all .18s; white-space: nowrap; }
     .diff-tab:hover { border-color: #5b8dd9; color: #5b8dd9; }
     .diff-tab.normal.active   { background: #5b8dd9; border-color: #5b8dd9; color: #fff; }
     .diff-tab.nightmare.active{ background: #9b59b6; border-color: #9b59b6; color: #fff; }
@@ -39,7 +55,7 @@
     .btn-sort:hover { border-color: #5b8dd9; color: #5b8dd9; }
 
     /* 그리드 */
-    .mon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 13px; }
+    .mon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(205px, 1fr)); gap: 13px; }
 
     /* 카드 */
     .mon-card { background: #fff; border-radius: 14px; padding: 15px 13px 13px; box-shadow: 0 2px 8px rgba(0,0,0,.06); border: 2px solid transparent; transition: box-shadow .18s, border-color .18s; }
@@ -47,9 +63,10 @@
     .mon-card.diff-normal    { border-color: transparent; }
     .mon-card.diff-nightmare { border-color: #c39bd3; background: #fdf9ff; }
     .mon-card.diff-hell      { border-color: #f1948a; background: #fff8f8; }
+    .mon-card.has-kill       { border-color: #68d391 !important; }
 
     .card-no   { font-size: 10px; color: #ccc; font-family: monospace; margin-bottom: 3px; }
-    .card-name { font-size: 14px; font-weight: 800; color: #1a2a3a; margin-bottom: 8px; line-height: 1.3; display: flex; align-items: center; gap: 6px; }
+    .card-name { font-size: 14px; font-weight: 800; color: #1a2a3a; margin-bottom: 8px; line-height: 1.3; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
     .diff-badge { font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 6px; }
     .badge-nm  { background: #e8d5f5; color: #9b59b6; }
     .badge-hel { background: #fde8e8; color: #e74c3c; }
@@ -74,15 +91,24 @@
     .drop-block { margin-top: 6px; font-size: 12px; }
     .drop-label { color: #bbb; font-size: 10px; display: block; margin-bottom: 2px; }
     .drop-name  { font-weight: 600; color: #5b8dd9; }
-    .drop-sp    { color: #c9a96e; font-weight: 700; margin-left: 6px; }
 
     .note-block { margin-top: 8px; font-size: 11px; color: #888; background: #f8f9fa; border-radius: 6px; padding: 5px 8px; line-height: 1.5; }
+
+    /* 킬 통계 블록 */
+    .kill-block { margin-top: 8px; border-top: 1px solid #f0f0f0; padding-top: 7px; }
+    .kill-title { font-size: 10px; color: #aaa; margin-bottom: 4px; }
+    .kill-rows  { display: flex; flex-wrap: wrap; gap: 4px; }
+    .kill-tag   { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 10px; }
+    .kill-tag.total   { background: #eaf0fb; color: #2c5282; }
+    .kill-tag.normal  { background: #f0f4f8; color: #4a5568; }
+    .kill-tag.light   { background: #fffde7; color: #b7791f; }
+    .kill-tag.dark    { background: #f9f0ff; color: #6b46c1; }
+    .kill-tag.yinyang { background: #e8f8f0; color: #276749; }
 
     .empty   { text-align: center; padding: 60px 0; color: #ccc; }
     .empty .ico { font-size: 34px; margin-bottom: 10px; }
     .loading { text-align: center; padding: 60px; color: #ccc; font-size: 15px; }
 
-    /* 난이도별 note */
     .diff-note { font-size: 12px; padding: 8px 14px; border-radius: 8px; margin-bottom: 14px; }
     .diff-note.nightmare { background: #f5eeff; color: #7d3c98; }
     .diff-note.hell      { background: #fff0f0; color: #a93226; }
@@ -93,7 +119,9 @@
 
   <div class="page-header">
     <div class="page-title">👾 람쥐봇 몬스터 도감</div>
-    <div class="page-subtitle">총 {{ monsters.length }}마리 · 현재 표시 <strong>{{ filteredMonsters.length }}</strong>마리</div>
+    <div class="page-subtitle">총 {{ monsters.length }}마리
+      <span v-if="searchedUser"> &nbsp;·&nbsp; {{ searchedUser }} 킬 현황</span>
+    </div>
   </div>
 
   <div class="top-controls">
@@ -101,6 +129,23 @@
       <i class="fa fa-search"></i>
       <input v-model="keyword" placeholder="몬스터 이름 검색...">
     </div>
+    <div class="user-wrap">
+      <input v-model="userName" placeholder="유저명 (선택)" @keyup.enter="fetchKills">
+      <button class="btn-query" @click="fetchKills">조회</button>
+    </div>
+  </div>
+
+  <!-- 유저 킬 요약 -->
+  <div class="kill-summary" v-if="searchedUser && totalKills > 0">
+    <span class="ks-label">{{ searchedUser }} 총 킬</span>
+    <span class="kill-chip total">🗡️ {{ totalKills.toLocaleString() }}</span>
+    <span class="kill-chip normal" v-if="killSummary.normal > 0">⚔️ 일반 {{ killSummary.normal.toLocaleString() }}</span>
+    <span class="kill-chip light"  v-if="killSummary.light  > 0">✨ 빛 {{ killSummary.light.toLocaleString() }}</span>
+    <span class="kill-chip dark"   v-if="killSummary.dark   > 0">🌑 다크 {{ killSummary.dark.toLocaleString() }}</span>
+    <span class="kill-chip yinyang" v-if="killSummary.yinyang > 0">☯️ 음양 {{ killSummary.yinyang.toLocaleString() }}</span>
+  </div>
+  <div class="kill-summary" v-else-if="searchedUser && totalKills === 0">
+    <span style="color:#ccc;font-size:13px;">{{ searchedUser }}님의 킬 기록이 없습니다.</span>
   </div>
 
   <!-- 난이도 탭 -->
@@ -132,7 +177,7 @@
 
   <div class="mon-grid" v-else-if="filteredMonsters.length > 0">
     <div class="mon-card" v-for="m in filteredMonsters" :key="m.MON_NO"
-         :class="'diff-' + diff">
+         :class="['diff-' + diff, killOf(m) && killOf(m).KILL_TOTAL > 0 ? 'has-kill' : '']">
 
       <div class="card-no">#{{ m.MON_NO }}</div>
       <div class="card-name">
@@ -182,6 +227,21 @@
 
       <!-- 노트 -->
       <div class="note-block" v-if="m.MON_NOTE">{{ m.MON_NOTE }}</div>
+
+      <!-- 킬 통계 -->
+      <div class="kill-block" v-if="searchedUser && killOf(m)">
+        <div class="kill-title">{{ searchedUser }} 킬수</div>
+        <div class="kill-rows">
+          <span class="kill-tag total">🗡️ {{ num(killOf(m).KILL_TOTAL) }}</span>
+          <span class="kill-tag normal"  v-if="killOf(m).KILL_NORMAL  > 0">⚔️ {{ num(killOf(m).KILL_NORMAL) }}</span>
+          <span class="kill-tag light"   v-if="killOf(m).KILL_LIGHT   > 0">✨ {{ num(killOf(m).KILL_LIGHT) }}</span>
+          <span class="kill-tag dark"    v-if="killOf(m).KILL_DARK    > 0">🌑 {{ num(killOf(m).KILL_DARK) }}</span>
+          <span class="kill-tag yinyang" v-if="killOf(m).KILL_YINYANG > 0">☯️ {{ num(killOf(m).KILL_YINYANG) }}</span>
+        </div>
+      </div>
+      <div class="kill-block" v-else-if="searchedUser">
+        <div style="font-size:11px;color:#ddd;">미처치</div>
+      </div>
     </div>
   </div>
 
@@ -194,22 +254,17 @@
 
 <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
 <script>
-  // 난이도 배율 상수 (BossAttackController 와 동일)
   var DIFF = {
-    normal:    { hpAtk: 1,   lvAdd: 0,   exp: 1,   sp: 1        },
-    nightmare: { hpAtk: 100, lvAdd: 150, exp: 50,  sp: 50       },
-    hell:      { hpAtk: 100, lvAdd: 400, exp: 150, sp: 100000   }
+    normal:    { hpAtk: 1,   lvAdd: 0,   exp: 1,   sp: 1       },
+    nightmare: { hpAtk: 100, lvAdd: 150, exp: 50,  sp: 50      },
+    hell:      { hpAtk: 100, lvAdd: 400, exp: 150, sp: 100000  }
   };
 
   var PATTERNS = {
-    1: '1:주시',
-    2: '2:공격',
-    3: '3:방어',
-    4: '4:필살기(×1.5)',
-    5: '5:흡혈/즉사'
+    1: '1:주시', 2: '2:공격', 3: '3:방어',
+    4: '4:필살기(×1.5)', 5: '5:흡혈/즉사'
   };
 
-  // SP 단위 포맷 (1a = 10000, 1b = 10000^2, ...)
   function formatSp(val) {
     if (val <= 0) return '0';
     var units = ['', 'a', 'b', 'c', 'd'];
@@ -224,9 +279,6 @@
     return val.toLocaleString() + ' SP';
   }
 
-  var MON_ICONS = {
-    boss: ['dragon', 'demon', 'titan', 'leviathan', 'golem'],
-  };
   function monIcon(m) {
     if (m.MON_LV >= 100) return '🐲';
     if (m.MON_LV >= 50)  return '👿';
@@ -239,12 +291,26 @@
     el: '#app',
     data: {
       monsters: [],
+      killMap: {},       // { "monNo": { KILL_TOTAL, KILL_NORMAL, KILL_LIGHT, KILL_DARK, KILL_YINYANG } }
+      totalKills: 0,
       loading: false,
+      userName: '',
+      searchedUser: '',
       keyword: '',
       diff: 'normal',
       sortDir: 'asc'
     },
     computed: {
+      killSummary: function() {
+        var s = { normal: 0, light: 0, dark: 0, yinyang: 0 };
+        Object.values(this.killMap).forEach(function(k) {
+          s.normal  += parseInt(k.KILL_NORMAL  || 0);
+          s.light   += parseInt(k.KILL_LIGHT   || 0);
+          s.dark    += parseInt(k.KILL_DARK    || 0);
+          s.yinyang += parseInt(k.KILL_YINYANG || 0);
+        });
+        return s;
+      },
       filteredMonsters: function() {
         var self = this;
         var kw = self.keyword.trim();
@@ -261,18 +327,31 @@
       toggleSort: function() { this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc'; },
       monIcon: monIcon,
       formatSp: formatSp,
-      calcLv:  function(m) { return parseInt(m.MON_LV)  + DIFF[this.diff].lvAdd; },
-      calcHp:  function(m) { return parseInt(m.MON_HP)  * DIFF[this.diff].hpAtk; },
-      calcAtk: function(m) { return parseInt(m.MON_ATK) * DIFF[this.diff].hpAtk; },
+      num: function(v) { return parseInt(v || 0).toLocaleString(); },
+      killOf: function(m) { return this.killMap[String(m.MON_NO)] || null; },
+      calcLv:     function(m) { return parseInt(m.MON_LV)  + DIFF[this.diff].lvAdd; },
+      calcHp:     function(m) { return parseInt(m.MON_HP)  * DIFF[this.diff].hpAtk; },
+      calcAtk:    function(m) { return parseInt(m.MON_ATK) * DIFF[this.diff].hpAtk; },
       calcAtkMin: function(m) { return Math.floor(this.calcAtk(m) * 0.5); },
-      calcExp: function(m) { return parseInt(m.MON_EXP) * DIFF[this.diff].exp; },
+      calcExp:    function(m) { return parseInt(m.MON_EXP) * DIFF[this.diff].exp; },
       calcDropSp: function(m) { return parseInt(m.DROP_SP || 0) * DIFF[this.diff].sp; },
       patternList: function(maxPat) {
         var list = [];
-        for (var i = 1; i <= maxPat; i++) {
-          list.push({ no: i, label: PATTERNS[i] || (i + ':?') });
-        }
+        for (var i = 1; i <= maxPat; i++) list.push({ no: i, label: PATTERNS[i] || (i + ':?') });
         return list;
+      },
+      fetchKills: function() {
+        var self = this;
+        var un = self.userName.trim();
+        if (!un) { self.killMap = {}; self.totalKills = 0; self.searchedUser = ''; return; }
+        fetch('<%=request.getContextPath()%>/loa/api/monster-kills?userName=' + encodeURIComponent(un))
+          .then(function(r) { return r.json(); })
+          .then(function(data) {
+            self.killMap      = data.kills      || {};
+            self.totalKills   = data.totalKills || 0;
+            self.searchedUser = data.userName   || un;
+          })
+          .catch(function() { alert('킬 통계 조회 중 오류가 발생했습니다.'); });
       },
       fetchMonsters: function() {
         var self = this;
