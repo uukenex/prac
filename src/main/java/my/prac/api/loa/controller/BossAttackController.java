@@ -8376,15 +8376,26 @@ public class BossAttackController {
 		            //int orgMonDmg = calc.monDmg ;
 		            int newMonDmg = (int) Math.round(calc.monDmg*0.25) ;
 		            int revengeDmg2 =(int) Math.round((u.hpCur-newMonDmg) * calc.critMultiplier *0.2); 
+		            
+		            
 		            calc.atkDmg += revengeDmg;
 		            calc.atkDmg += revengeDmg2;
-		            
-
 		            calc.monDmg = newMonDmg ;
 		            
 		            calc.patternMsg += NL
 		                + " → 반격 데미지 "+revengeDmg
 		                + " → 현재체력&크리보너스 "+revengeDmg2;
+		            
+
+		            if (newMonDmg > 0 && calc.atkDmg >= monHpRemainBefore) {//willkill, 복수로죽였을때만 적용
+		            	int heal = (int) Math.round(effHpMax * 0.10);
+		            	int before = u.hpCur;
+			            u.hpCur = Math.min(effHpMax, u.hpCur + heal);
+
+			            calc.patternMsg = "복수에 성공했다..! " + heal +
+			                    " 회복 (HP " + before + " → " + u.hpCur + "/" + effHpMax + ")";
+			            calc.jobSkillUsed = true;
+		            }
 		        }
 		    }
 	     // 몬스터 공격 변동 처리 (회피 / 증폭)
@@ -8465,6 +8476,7 @@ public class BossAttackController {
 	            calc.jobSkillUsed = true;
 	        }
 	    }
+	    
 
 	    out.calc = calc;
 	    out.flags = flags;
