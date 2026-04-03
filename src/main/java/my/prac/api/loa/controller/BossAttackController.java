@@ -76,9 +76,7 @@ public class BossAttackController {
 	private static final int NM_MUL_EXP = 50;
 	private static final int NM_ADD_MON_LV = 150;
 
-	private static final double HEL_ATK_MULT = 0.0027;    // 헬 공격력 보정 (토끼 원킬, 다람쥐 2hit)
-	private static final double HEL_CRIT_RATE_MULT = 0.2; // 크리율 80% 삭감
-	private static final double HEL_CRIT_DMG_MULT = 0.2;  // 크리뎀 80% 삭감
+	private static final double HEL_NERF_BASE = 0.10; // 헬모드 기본 삭감 배율 (90% 삭감, 헌터랭크로 완화)
 	private static final int HEL_ADD_MON_LV = 500; // 사자(120) + 500 = 620lv
 	private static final int HEL_MUL_EXP = 50;     // 헬 추가 배율 (나메에 추가 x50), 총 base*NM*HEL
 	private static final long HEL_SP_MULT = 5_000_000L; // 토끼(10sp) * 5000000 = 50000000sp = 5000a
@@ -609,6 +607,25 @@ public class BossAttackController {
 	    return ctx;
 	}
 	
+	/** 헬모드 너프 배율 반환 (헌터등급 높을수록 삭감 완화) */
+	private double getHellNerfMult(String grade) {
+	    if (grade == null) return HEL_NERF_BASE;
+	    switch (grade) {
+	        case "SSS": return 0.50;
+	        case "SS":  return 0.40;
+	        case "S":   return 0.33;
+	        case "A+":  return 0.28;
+	        case "A":   return 0.25;
+	        case "B+":  return 0.22;
+	        case "B":   return 0.20;
+	        case "C+":  return 0.18;
+	        case "C":   return 0.16;
+	        case "D+":  return 0.14;
+	        case "D":   return 0.12;
+	        default:    return HEL_NERF_BASE; // F
+	    }
+	}
+
 	private String calculateHunterGrade(int totalAttacks, int totalDrops, int totalDeaths) {
 
 // ---------------- 상위 단독 등급 ----------------
@@ -1514,7 +1531,22 @@ public class BossAttackController {
 	    sb.append("⚔ATK: ").append(finalAtkMin).append(" ~ ").append(finalAtkMax).append(NL);
 	    sb.append("⚔CRIT: ").append(shownCrit).append("%  CDMG ").append(shownCritDmg).append("%").append(NL);
 	    sb.append("❤️HP: ").append(effHp).append(" / ").append(finalHpMax)
-	      .append(",5분당회복+").append(shownRegen).append(NL).append(NL);
+	      .append(",5분당회복+").append(shownRegen).append(NL);
+
+	    // 헬모드 삭감 정보 표시
+	    if (u.nightmareYn == 2) {
+	        double hellMult = getHellNerfMult(ctx.hunterGrade);
+	        int reductionPct = (int) Math.round((1.0 - hellMult) * 100);
+	        int basePct = (int) Math.round((1.0 - HEL_NERF_BASE) * 100);
+	        sb.append("[헬모드] 능력치 삭감 ").append(reductionPct).append("%");
+	        if (Math.abs(hellMult - HEL_NERF_BASE) > 0.001) {
+	            sb.append(" (hunter").append(ctx.hunterGrade).append(", 기본 ").append(basePct).append("%)");
+	        } else {
+	            sb.append(" (hunter").append(ctx.hunterGrade).append(")");
+	        }
+	        sb.append(NL);
+	    }
+	    sb.append(NL);
 
 	    if (ctx.isJobMaster) {
 	        sb.append(ctx.job).append(" 마스터 보너스: ATK 10%, HP 15%, 리젠+1000").append(NL);
@@ -3170,12 +3202,13 @@ public class BossAttackController {
 	        effAtkMax = (int)Math.round(effAtkMax * 1.5);
 	    }
 	    
-	    // 헬모드 너프: 공격력/크리율/크리뎀 80% 삭감 (context에서 처리)
+	    // 헬모드 너프: 공격력/크리율/크리뎀 90% 삭감 (헌터등급으로 완화)
 	    if (hell) {
-	        effAtkMin   = Math.max(1, (int) Math.round(effAtkMin   * HEL_ATK_MULT));
-	        effAtkMax   = Math.max(1, (int) Math.round(effAtkMax   * HEL_ATK_MULT));
-	        effCritRate = (int) Math.round(effCritRate * HEL_CRIT_RATE_MULT);
-	        effCriDmg   = (int) Math.round(effCriDmg   * HEL_CRIT_DMG_MULT);
+	        double hellMult = getHellNerfMult(ctx.hunterGrade);
+	        effAtkMin   = Math.max(1, (int) Math.round(effAtkMin   * hellMult));
+	        effAtkMax   = Math.max(1, (int) Math.round(effAtkMax   * hellMult));
+	        effCritRate = (int) Math.round(effCritRate * hellMult);
+	        effCriDmg   = (int) Math.round(effCriDmg   * hellMult);
 	    }
 
 	    // 11) 데미지 계산 (A형 완전 분리 버전)
