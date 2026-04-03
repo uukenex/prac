@@ -242,7 +242,7 @@
         </div>
         <div class="stat-row">
           <span class="stat-label">HP</span>
-          <span class="stat-val hp">{{ calcHp(m).toLocaleString() }}</span>
+          <span class="stat-val hp">{{ formatKr(calcHp(m)) }}</span>
         </div>
         <div class="stat-row">
           <span class="stat-label">ATK</span>
@@ -250,11 +250,11 @@
         </div>
         <div class="stat-row">
           <span class="stat-label">EXP</span>
-          <span class="stat-val exp" v-if="!searchedUser || !userInfo.lv">{{ calcExp(m).toLocaleString() }}</span>
+          <span class="stat-val exp" v-if="!searchedUser || !userInfo.lv">{{ formatKr(calcExp(m)) }}</span>
           <span v-else style="display:flex;align-items:center;gap:2px;">
-            <span class="exp-base">{{ calcExp(m).toLocaleString() }}</span>
+            <span class="exp-base">{{ formatKr(calcExp(m)) }}</span>
             <span class="exp-arrow">→</span>
-            <span class="exp-adj" :class="expAdjClass(m)">{{ expAdj(m).toLocaleString() }}</span>
+            <span class="exp-adj" :class="expAdjClass(m)">{{ formatKr(expAdj(m)) }}</span>
             <span class="exp-pct" :class="expAdjClass(m)">{{ expAdjLabel(m) }}</span>
           </span>
         </div>
@@ -320,6 +320,16 @@
     1: '1:주시', 2: '2:공격', 3: '3:방어',
     4: '4:필살기(×1.5)', 5: '5:흡혈/즉사'
   };
+
+  // 만/억 단위 포맷 (35732500 → 3573만, 153500000 → 1억5350만)
+  function formatKr(val) {
+    if (!val || val < 10000) return val.toLocaleString();
+    var eok = Math.floor(val / 100000000);
+    var man = Math.floor((val % 100000000) / 10000);
+    if (eok > 0 && man > 0) return eok + '억' + man + '만';
+    if (eok > 0)             return eok + '억';
+    return man + '만';
+  }
 
   function formatSp(val) {
     if (val <= 0) return '0';
@@ -402,6 +412,7 @@
       toggleSort: function() { this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc'; },
       monIcon: monIcon,
       formatSp: formatSp,
+      formatKr: formatKr,
       num: function(v) { return parseInt(v || 0).toLocaleString(); },
       killOf: function(m) { return this.killMap[String(m.MON_NO)] || null; },
       // 현재 탭 난이도의 킬 통계 반환
