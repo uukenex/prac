@@ -80,7 +80,7 @@ public class BossAttackController {
 	private static final double HEL_CRIT_RATE_MULT = 0.2; // 크리율 80% 삭감
 	private static final double HEL_CRIT_DMG_MULT = 0.2;  // 크리뎀 80% 삭감
 	private static final int HEL_ADD_MON_LV = 780; // 사자(120) + 780 = 900lv
-	private static final int HEL_MUL_EXP = 100;    // NM(50) + 50
+	private static final int HEL_MUL_EXP = 50;     // 헬 추가 배율 (나메에 추가 x50), 총 base*NM*HEL
 	private static final long HEL_SP_MULT = 5_000_000L; // 토끼(10sp) * 5000000 = 50000000sp = 5000a
 
 	// [FIX4] selectActiveSpecialBuff 단기 캐시 (서버 전역 버프는 15초간 재사용)
@@ -3170,6 +3170,14 @@ public class BossAttackController {
 	        effAtkMax = (int)Math.round(effAtkMax * 1.5);
 	    }
 	    
+	    // 헬모드 너프: 공격력/크리율/크리뎀 80% 삭감 (context에서 처리)
+	    if (hell) {
+	        effAtkMin   = Math.max(1, (int) Math.round(effAtkMin   * HEL_ATK_MULT));
+	        effAtkMax   = Math.max(1, (int) Math.round(effAtkMax   * HEL_ATK_MULT));
+	        effCritRate = (int) Math.round(effCritRate * HEL_CRIT_RATE_MULT);
+	        effCriDmg   = (int) Math.round(effCriDmg   * HEL_CRIT_DMG_MULT);
+	    }
+
 	    // 11) 데미지 계산 (A형 완전 분리 버전)
 	    DamageOutcome dmg = calculateDamage(
 	            u,
@@ -3184,8 +3192,7 @@ public class BossAttackController {
 	            monHpRemainBefore,
 	            effHpMax,
 	            beforeJobSkillYn,
-	            nightmare,
-	            hell
+	            nightmare
 	    );
 		AttackCalc calc = dmg.calc;
 		flags = dmg.flags;
@@ -5399,7 +5406,8 @@ public class BossAttackController {
 	    int monExp = m.monExp;
 
 	    if(nightmareYnVal >= 1) {
-	    	monExp *= (nightmareYnVal == 2) ? HEL_MUL_EXP : NM_MUL_EXP;
+	    	monExp *= NM_MUL_EXP;
+	    	if(nightmareYnVal == 2) monExp *= HEL_MUL_EXP; // 헬 = 나메*HEL_MUL_EXP
 	    	monLv  += (nightmareYnVal == 2) ? HEL_ADD_MON_LV : NM_ADD_MON_LV;
 	    }
 	    
@@ -6242,7 +6250,8 @@ public class BossAttackController {
 	    	monHp *= NM_MUL_HP_ATK;
 	    	dropPrice = dropPrice*50;
 	    	monLv += hellActive ? HEL_ADD_MON_LV : NM_ADD_MON_LV;
-	    	monExp *= hellActive ? HEL_MUL_EXP : NM_MUL_EXP;
+	    	monExp *= NM_MUL_EXP;
+	    	if(hellActive) monExp *= HEL_MUL_EXP;
 	    }
 
 	    SP dropSp= SP.fromSp(dropPrice);
@@ -6266,7 +6275,8 @@ public class BossAttackController {
 
 	    int effExp = (int)Math.round(baseExp * expMultiplier);
 	    if(nmActive) {
-	    	effExp *= hellActive ? HEL_MUL_EXP : NM_MUL_EXP;
+	    	effExp *= NM_MUL_EXP;
+	    	if(hellActive) effExp *= HEL_MUL_EXP;
 	    }
 	    boolean hasPenalty = (levelGap >= 0 && expMultiplier < 1.0);
 	    boolean hasBonus   = (levelGap < 0  && expMultiplier > 1.0);
@@ -7339,8 +7349,7 @@ public class BossAttackController {
 	        int monHpRemainBefore,
 	        int effHpMax,
 	        int beforeJobSkillYn,
-	        boolean nightmareYn,
-	        boolean hellYn
+	        boolean nightmareYn
 	) {
 	    DamageOutcome out = new DamageOutcome();
 	    AttackCalc calc = new AttackCalc();
@@ -7381,15 +7390,6 @@ public class BossAttackController {
 	               + converted + "% chgCDMG (" + Math.round(convertRate*100) + "%)" + NL;
 	    }
 	    
-	    // -----------------------------
-	    // 헬모드: 공격력/크리율/크리뎀 80% 삭감 (x0.2)
-	    // -----------------------------
-	    if (hellYn) {
-	        effAtkMin  = Math.max(1, (int) Math.round(effAtkMin  * HEL_ATK_MULT));
-	        effAtkMax  = Math.max(1, (int) Math.round(effAtkMax  * HEL_ATK_MULT));
-	        effCritRate = (int) Math.round(effCritRate * HEL_CRIT_RATE_MULT);
-	        effCriDmg   = (int) Math.round(effCriDmg   * HEL_CRIT_DMG_MULT);
-	    }
 
 	    // -----------------------------
 	    // 1) 공격력 굴림 + 크리티컬
