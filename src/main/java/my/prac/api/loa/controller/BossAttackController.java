@@ -80,7 +80,7 @@ public class BossAttackController {
 	private static final double HEL_NERF_BASE = 0.05; // 헬모드 기본 삭감 배율 (90% 삭감, 헌터랭크로 완화)
 	private static final int HEL_ADD_MON_LV = 400; // 
 	private static final int HEL_MUL_EXP = 3;     // 헬 추가 배율 (나메에 추가 *3), 총 base*NM*HEL
-	private static final long HEL_SP_MULT = 2000; // 토끼(10sp) * 50 * 2000 =  = 100a
+	private static final long HEL_SP_MULT = 200; // 토끼(10sp) * 50 * 200 =  = 10a
 
 	// [FIX4] selectActiveSpecialBuff 단기 캐시 (서버 전역 버프는 15초간 재사용)
 	private static volatile HashMap<String,Object> SPECIAL_BUFF_CACHE = null;

@@ -208,7 +208,7 @@
     💜 나이트메어: HP·ATK ×100 / Lv +150 / EXP ×50 / 드랍SP ×50
   </div>
   <div class="diff-note hell" v-if="diff==='hell'">
-    🔥 헬: HP·ATK ×100 / Lv +400 / EXP ×150 / 드랍SP ×100,000 &nbsp;|&nbsp; ⚠️ 유저 능력치 대폭 삭감 (헌터등급으로 완화)
+    🔥 헬: HP·ATK ×100 / Lv +400 / EXP ×150 / 드랍SP ×10,000 &nbsp;|&nbsp; ⚠️ 유저 능력치 대폭 삭감 (헌터등급으로 완화)
   </div>
 
   <div class="bar">
@@ -313,7 +313,7 @@
   var DIFF = {
     normal:    { hpAtk: 1,   lvAdd: 0,   exp: 1,   sp: 1       },
     nightmare: { hpAtk: 100, lvAdd: 150, exp: 50,  sp: 50      },
-    hell:      { hpAtk: 100, lvAdd: 400, exp: 150, sp: 100000  }
+    hell:      { hpAtk: 100, lvAdd: 400, exp: 150, sp: 10000   }
   };
 
   var PATTERNS = {
