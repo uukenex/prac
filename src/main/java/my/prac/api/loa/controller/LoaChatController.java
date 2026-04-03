@@ -849,11 +849,13 @@ public class LoaChatController {
 				val = boss.showAttackRanking(reqMap);
 				break;
 			case "/공격정보": case "/ㄱㄱㅈㅂ": case "/가방": case "/ㄱㅂ":
+				/*
 				if (shouldSkip2()) {
 					val = "매일9시45분~50분은 일시중단입니다.";
 					passYn = true;
 		            return val;
 		        }
+		        */
 				val = boss.attackInfo(reqMap);
 				break;
 			case "/가방상세": case "/ㄱㅂㅅㅅ": case "/ㄱㅄㅅ": case "/ㅇㅂ":case "/인벤":case "/인벤토리":
@@ -885,6 +887,7 @@ public class LoaChatController {
 				break;*/
 				
 			case "/ㄱㄱㄱ": case "/ㄱ": case "/R": case "/r": 
+				
 				if (shouldSkip2()) {
 					val = "매일9시45분~50분은 일시중단입니다.";
 					passYn = true;
