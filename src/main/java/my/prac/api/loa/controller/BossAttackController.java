@@ -2686,11 +2686,12 @@ public class BossAttackController {
             return "문의방에서는 불가능합니다.";
 	    }
 	    
-	    int lockCode = botNewService.lockMacroUser(userName);
+	    HashMap<String,Object> lockParam = botNewService.lockMacroUser(userName);
+	    int lockCode = (Integer) lockParam.get("outCode");
 
 	    if (lockCode == 1 || lockCode == 2) {
 	        // 매크로 → 공격 차단
-	        return "공격불가 상태입니다 code:"+lockCode;
+	        return "공격불가 상태입니다 code:"+lockParam.get("outMsg");
 	    }
 	    
 

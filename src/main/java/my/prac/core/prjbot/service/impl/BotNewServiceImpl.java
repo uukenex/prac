@@ -459,13 +459,13 @@ public class BotNewServiceImpl implements BotNewService {
     }
 
     @Override
-    public int lockMacroUser(String userName) {
+    public HashMap<String, Object> lockMacroUser(String userName) {
     	HashMap <String, Object> param = new HashMap<>();
         param.put("userName", userName);
 
         botNewDAO.lockMacroUser(param);
 
-        return (Integer) param.get("outCode");
+        return param ;//(Integer) param.get("outCode");
     }
     @Override
     public int selectTotalBagAcquireCount(String userName) {

@@ -149,7 +149,7 @@ public interface BotNewService {
     public boolean isNightmareUnlocked(String userName);
     public boolean isHellUnlocked(String userName);
     
-    int lockMacroUser(String userName);
+    HashMap<String,Object> lockMacroUser(String userName);
     
     int selectTotalBagAcquireCount(String userName);
 
