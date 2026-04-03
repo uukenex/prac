@@ -779,12 +779,14 @@ public class LoaChatController {
 				break;
 				*/
 			case "/구매": case "/ㄱㅁ":
+				/*
 				if (shouldSkip2()) {
 					val = "매일9시45분~50분은 일시중단입니다.";
 					passYn = true;
 		            return val;
 		        }
 				passYn = true;
+				*/
 				val = boss.buyItem(reqMap);
 				break;
 			case "/판매": case "/ㅍㅁ":
@@ -849,6 +851,7 @@ public class LoaChatController {
 				val = boss.showAttackRanking(reqMap);
 				break;
 			case "/공격정보": case "/ㄱㄱㅈㅂ": case "/가방": case "/ㄱㅂ":
+				param0="/ㄱㅂ";
 				if (shouldSkip2()) {
 					val = "매일9시45분~50분은 일시중단입니다.";
 					passYn = true;
@@ -857,6 +860,7 @@ public class LoaChatController {
 				val = boss.attackInfo(reqMap);
 				break;
 			case "/가방상세": case "/ㄱㅂㅅㅅ": case "/ㄱㅄㅅ": case "/ㅇㅂ":case "/인벤":case "/인벤토리":
+				param0="/ㅇㅂ";
 				if (shouldSkip2()) {
 					val = "매일9시45분~50분은 일시중단입니다.";
 					passYn = true;
@@ -2570,7 +2574,7 @@ public class LoaChatController {
 				reqMap.put("req", org_fulltxt);
 				
 				String db_input_val =val;
-				if(param0.equals("/ㅈㅂ")) {
+				if(param0.equals("/ㅈㅂ") || param0.equals("/ㄱㅂ") || param0.equals("/ㅇㅂ")) {
 					try{
 						db_input_val = val.split(allSeeStr)[0];
 					}catch(Exception e) {
