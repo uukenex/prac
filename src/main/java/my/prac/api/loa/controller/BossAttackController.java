@@ -79,7 +79,7 @@ public class BossAttackController {
 	private static final int HEL_DIV_ATK = 10000;
 	private static final double HEL_CRIT_RATE_MULT = 0.1;
 	private static final double HEL_CRIT_DMG_MULT = 0.1;
-	private static final int HEL_ADD_MON_LV = 300;
+	private static final int HEL_ADD_MON_LV = 780; // 사자(120) + 780 = 900lv
 	private static final int HEL_MUL_EXP = 150;
 
 	// [FIX4] selectActiveSpecialBuff 단기 캐시 (서버 전역 버프는 15초간 재사용)
