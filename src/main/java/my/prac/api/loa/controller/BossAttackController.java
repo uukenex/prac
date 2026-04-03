@@ -3032,7 +3032,7 @@ public class BossAttackController {
 	    HashMap<String,Object> activeBuff = buff.activeBuff;
 	    if (activeBuff != null) {
 	    	if( "쿨타임".equals(activeBuff.get("FLAG_CODE"))){
-	    		cooldownBuff = Integer.parseInt(activeBuff.get("EFFECT_VALUE").toString());
+	    		cooldownBuff = (int) Double.parseDouble(activeBuff.get("EFFECT_VALUE").toString());
 	    	}
 	    }
 	    
