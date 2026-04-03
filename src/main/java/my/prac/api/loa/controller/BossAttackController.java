@@ -3228,6 +3228,7 @@ public class BossAttackController {
 	        effAtkMax   = Math.max(1, (int) Math.round(effAtkMax   * hellMult));
 	        effCritRate = (int) Math.round(effCritRate * hellMult);
 	        effCriDmg   = (int) Math.round(effCriDmg   * hellMult);
+	        effHpMax	= (int) Math.round(effHpMax * hellMult);
 	    }
 
 	    // 11) 데미지 계산 (A형 완전 분리 버전)
