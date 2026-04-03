@@ -144,7 +144,10 @@ public interface BotNewService {
 
     List<HashMap<String, Object>> selectTotalDropItems(String userName);
     public boolean isNightmareMode(String userName, String roomName);
-    public int setNightmareMode(String userName, String roomName, boolean nightmareYn);
+    public int getNightmareYn(String userName, String roomName);
+    public int setNightmareMode(String userName, String roomName, int nightmareYn);
+    public boolean isNightmareUnlocked(String userName);
+    public boolean isHellUnlocked(String userName);
     
     int lockMacroUser(String userName);
     
@@ -165,6 +168,9 @@ public interface BotNewService {
     int insertSpecialBuff(HashMap<String,Object> param);
     
     List<Integer> selectInventoryItemsByIds(String userName, String roomName, Collection<Integer> itemIds);
-} 
+
+    /** 전체 아이템 + 유저 보유여부 (item_view 페이지용) */
+    List<HashMap<String, Object>> selectAllItemsWithOwned(String userName);
+}
 
 	

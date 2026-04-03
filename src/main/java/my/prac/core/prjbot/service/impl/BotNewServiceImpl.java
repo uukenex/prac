@@ -428,17 +428,36 @@ public class BotNewServiceImpl implements BotNewService {
     
     public boolean isNightmareMode(String userName, String roomName) {
 	    Integer v = botNewDAO.selectNightmareYn(userName, roomName);
-	    return v != null && v == 1;
+	    return v != null && v >= 1;
+	}
+
+	public int getNightmareYn(String userName, String roomName) {
+	    Integer v = botNewDAO.selectNightmareYn(userName, roomName);
+	    return v != null ? v : 0;
 	}
     
-    public int setNightmareMode(String userName, String roomName, boolean enable) {
+    public int setNightmareMode(String userName, String roomName, int nightmareYn) {
     	HashMap<String,Object> p = new HashMap<>();
         p.put("userName", userName);
         p.put("roomName", roomName);
-        p.put("nightmareYn", enable ? "1" : "0");
+        p.put("nightmareYn", String.valueOf(nightmareYn));
         return botNewDAO.updateNightmareYn(p);
     }
-    
+
+    public boolean isNightmareUnlocked(String userName) {
+        // 일반모드에서 15번, 25번, 30번 몬스터 각 10킬 이상
+        int[] required = {15, 25, 30};
+        for (int monNo : required) {
+            if (botNewDAO.selectNormalKillCountByMonNo(userName, monNo) < 10) return false;
+        }
+        return true;
+    }
+
+    public boolean isHellUnlocked(String userName) {
+        // 나메모드에서 1~30번 몬스터 dark킬 각 1회씩 = 30종 모두 달성
+        return botNewDAO.selectNmDarkKillMonCount(userName) >= 30;
+    }
+
     @Override
     public int lockMacroUser(String userName) {
     	HashMap <String, Object> param = new HashMap<>();
@@ -533,5 +552,10 @@ public class BotNewServiceImpl implements BotNewService {
             return Collections.emptyList();
         }
         return botNewDAO.selectInventoryItemsByIds(userName, roomName, itemIds);
+    }
+
+    @Override
+    public List<HashMap<String, Object>> selectAllItemsWithOwned(String userName) {
+        return botNewDAO.selectAllItemsWithOwned(userName);
     }
 }

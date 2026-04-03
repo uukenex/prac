@@ -186,6 +186,8 @@ public interface BotNewDAO {
     
     Integer selectNightmareYn(@Param("userName") String userName, @Param("roomName") String roomName);
     public int updateNightmareYn(HashMap<String,Object> map);
+    int selectNormalKillCountByMonNo(@Param("userName") String userName, @Param("monNo") int monNo);
+    int selectNmDarkKillMonCount(@Param("userName") String userName);
 
     void lockMacroUser(HashMap<String, Object> map);
     
@@ -213,5 +215,10 @@ public interface BotNewDAO {
             @Param("userName") String userName,
             @Param("roomName") String roomName,
             @Param("itemIds") Collection<Integer> itemIds
+    );
+
+    /** 전체 아이템 + 유저 보유여부 (item_view 페이지용) */
+    List<HashMap<String, Object>> selectAllItemsWithOwned(
+            @Param("userName") String userName
     );
 }

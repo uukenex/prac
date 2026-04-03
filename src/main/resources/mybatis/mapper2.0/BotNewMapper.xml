@@ -119,7 +119,8 @@
     SELECT bl.TARGET_MON_LV AS MON_NO,
            m.MON_NAME AS MON_NAME,
            COUNT(*) AS KILL_COUNT,
-           SUM(DECODE(BL.NIGHTMARE_YN,'1',1,0)) AS NM_KILL_COUNT
+           SUM(DECODE(BL.NIGHTMARE_YN,'1',1,0)) AS NM_KILL_COUNT,
+           SUM(DECODE(BL.NIGHTMARE_YN,'2',1,0)) AS HELL_KILL_COUNT
     FROM TBOT_POINT_NEW_BATTLE_LOG bl
     JOIN TBOT_POINT_NEW_MON_INFO m ON m.MON_NO = bl.TARGET_MON_LV
     WHERE bl.USER_NAME = #{userName}
@@ -1432,6 +1433,29 @@
 		  FROM TBOT_POINT_NEW_USER
 		 WHERE USER_NAME = #{userName}
 	</select>
+
+	<!-- 나메 해금 조건: 일반모드에서 특정 몬스터 N킬 이상인지 확인 -->
+	<select id="selectNormalKillCountByMonNo" parameterType="map" resultType="int">
+		/* selectNormalKillCountByMonNo */
+		SELECT COUNT(1)
+		  FROM TBOT_POINT_NEW_BATTLE_LOG
+		 WHERE USER_NAME = #{userName}
+		   AND TARGET_MON_LV = #{monNo}
+		   AND KILL_YN = 1
+		   AND NIGHTMARE_YN = '0'
+	</select>
+
+	<!-- 헬 해금 조건: 나메모드에서 1~30번 몬스터 dark킬(LUCKY_YN=2) 보유 monNo 수 -->
+	<select id="selectNmDarkKillMonCount" parameterType="map" resultType="int">
+		/* selectNmDarkKillMonCount */
+		SELECT COUNT(DISTINCT TARGET_MON_LV)
+		  FROM TBOT_POINT_NEW_BATTLE_LOG
+		 WHERE USER_NAME = #{userName}
+		   AND KILL_YN = 1
+		   AND LUCKY_YN = 2
+		   AND NIGHTMARE_YN = '1'
+		   AND TARGET_MON_LV BETWEEN 1 AND 30
+	</select>
 	
 	<update id="updateNightmareYn" parameterType="map">
 	    /* updateNightmareYn */
@@ -1563,6 +1587,39 @@
 	
 	</insert>
 	
+	<!-- 전체 아이템 + 유저 보유여부 (item_view 페이지용) -->
+	<select id="selectAllItemsWithOwned" resultType="hashmap">
+		/* selectAllItemsWithOwned */
+		SELECT
+		    i.ITEM_ID,
+		    i.ITEM_NAME,
+		    NVL(i.ITEM_TYPE, '') AS ITEM_TYPE,
+		    NVL(i.ITEM_SELL_PRICE, 0) AS ITEM_SELL_PRICE,
+		    NVL(i.ITEM_SELL_PRICE_EXT, '') AS ITEM_SELL_PRICE_EXT,
+		    NVL(i.ATK_MIN,      0) AS ATK_MIN,
+		    NVL(i.ATK_MAX,      0) AS ATK_MAX,
+		    NVL(i.ATK_CRI,      0) AS ATK_CRI,
+		    NVL(i.HP_REGEN,     0) AS HP_REGEN,
+		    NVL(i.HP_MAX,       0) AS HP_MAX,
+		    NVL(i.CRI_DMG,      0) AS CRI_DMG,
+		    NVL(i.HP_MAX_RATE,  0) AS HP_MAX_RATE,
+		    NVL(i.ATK_MAX_RATE, 0) AS ATK_MAX_RATE,
+		    NVL(inv.OWN_QTY, 0) AS OWN_QTY,
+		    CASE WHEN NVL(inv.OWN_QTY, 0) > 0 THEN 'Y' ELSE 'N' END AS OWNED_YN,
+		    NVL(i.TARGET_LV, 0) AS TARGET_LV
+		FROM TBOT_POINT_NEW_ITEM i
+		LEFT JOIN (
+		    SELECT ITEM_ID, SUM(QTY) AS OWN_QTY
+		    FROM TBOT_POINT_NEW_INVENTORY
+		    WHERE USER_NAME = #{userName}
+		      AND DEL_YN    = '0'
+		    GROUP BY ITEM_ID
+		) inv ON inv.ITEM_ID = i.ITEM_ID
+		WHERE i.ITEM_TYPE NOT IN ('DROP0', 'MARKET0', 'MASTER')
+		  AND i.ITEM_ID > 100
+		ORDER BY i.ITEM_ID
+	</select>
+
 	<select id="selectInventoryItemsByIds" resultType="int">
 	    /* selectInventoryItemsByIds */
 	    SELECT n.ITEM_ID
