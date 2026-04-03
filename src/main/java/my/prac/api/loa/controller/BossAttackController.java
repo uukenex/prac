@@ -79,7 +79,7 @@ public class BossAttackController {
 	private static final double HEL_NERF_BASE = 0.05; // 헬모드 기본 삭감 배율 (90% 삭감, 헌터랭크로 완화)
 	private static final int HEL_ADD_MON_LV = 500; // 사자(120) + 500 = 620lv
 	private static final int HEL_MUL_EXP = 50;     // 헬 추가 배율 (나메에 추가 x50), 총 base*NM*HEL
-	private static final long HEL_SP_MULT = 5_000_000L; // 토끼(10sp) * 5000000 = 50000000sp = 5000a
+	private static final long HEL_SP_MULT = 2000; // 토끼(10sp) * 50 * 2000 =  = 100a
 
 	// [FIX4] selectActiveSpecialBuff 단기 캐시 (서버 전역 버프는 15초간 재사용)
 	private static volatile HashMap<String,Object> SPECIAL_BUFF_CACHE = null;
@@ -109,21 +109,35 @@ public class BossAttackController {
 	    if (u == null)
 	        return "유저 정보를 찾을 수 없습니다.";
 
+	    
+	    boolean master = false;
+	    if(roomName.equals("람쥐봇 문의방")) {
+			
+			if(userName.equals("일어난다람쥐/카단")) {
+				master =true;
+			}else {
+				return "문의방에서는 불가능합니다.";
+			}
+		}
+	    
+	    
 	    if(selRaw.equals("나이트메어")||selRaw.equals("나메")) {
-	    	if(!botNewService.isNightmareUnlocked(userName)) {
+	    	
+	    	
+	    	if(!master && !botNewService.isNightmareUnlocked(userName)) {
 	    		return "나이트메어 모드 해금 조건 미달성!" + NL
 	    		     + "조건: 일반모드에서 15번/25번/30번 몬스터 각 10마리 처치";
 	    	}
 	    	botNewService.setNightmareMode(userName,roomName,1);
 	    	msg ="나이트메어";
 	    }else if(selRaw.equals("헬")||selRaw.equals("헬모드")) {
-	    	if(!botNewService.isHellUnlocked(userName)) {
+	    	if(!master && !botNewService.isHellUnlocked(userName)) {
 	    		return "헬 모드 해금 조건 미달성!" + NL
 	    		     + "조건: 나이트메어 모드에서 1~30번 몬스터 다크몹 각 1회씩 처치";
 	    	}
 	    	botNewService.setNightmareMode(userName,roomName,2);
 	    	msg ="헬";
-	    }else {
+	    }else if(selRaw.equals("일반")){
 	    	botNewService.setNightmareMode(userName,roomName,0);
 	    	msg="일반";
 	    }
@@ -3772,7 +3786,7 @@ public class BossAttackController {
 
 	            if(nightmare) {
 	                if(u.nightmareYn == 2) {
-	                    gainSp *= HEL_SP_MULT; // 헬: 토끼(10sp) * 5000000 = 5000a
+	                    gainSp *= 50*HEL_SP_MULT; // 헬: 토끼(10sp) * 5000000 = 5000a
 	                } else {
 	                    gainSp *= 50; // 나메
 	                }
@@ -6266,7 +6280,9 @@ public class BossAttackController {
 	private int getDropPriceByName(String dropName) {
 	    if (dropName == null || dropName.trim().isEmpty()) return 0;
 	    try {
-	        Integer p = botNewService.selectItemPriceByName(dropName.trim());
+	        Integer itemId = getItemIdCached(dropName.trim());
+	        HashMap<String,Object> priceRow = getItemPriceCached(itemId);
+	        Integer p = priceRow == null ? null : (Integer) priceRow.get("ITEM_SELL_PRICE");
 	        return (p == null ? 0 : Math.max(0, p));
 	    } catch (Exception ignore) {
 	        return 0;
@@ -6277,7 +6293,7 @@ public class BossAttackController {
 
 		// 드랍 아이템명 및 판매가격
 	    String dropName = (m.monDrop != null ? m.monDrop : "-");
-	    int dropPrice = getDropPriceByName(dropName);
+	    long dropPrice = getDropPriceByName(dropName);
 
 	    boolean nmActive = nightmareYnVal >= 1;
 	    boolean hellActive = nightmareYnVal == 2;
@@ -6285,11 +6301,12 @@ public class BossAttackController {
 	    int monAtk = m.monAtk;
 	    int monHp = m.monHp;
 	    int monLv = m.monLv;
-	    int monExp = m.monExp;
+	    long monExp = m.monExp;
 	    if(nmActive) {
 	    	monAtk *= NM_MUL_HP_ATK;
 	    	monHp *= NM_MUL_HP_ATK;
-	    	dropPrice = dropPrice*50;
+	    	dropPrice = dropPrice * 50;
+	    	if(hellActive) dropPrice *= HEL_SP_MULT; //토끼기준 100a
 	    	monLv += hellActive ? HEL_ADD_MON_LV : NM_ADD_MON_LV;
 	    	monExp *= NM_MUL_EXP;
 	    	if(hellActive) monExp *= HEL_MUL_EXP;
@@ -6302,7 +6319,7 @@ public class BossAttackController {
 	    int atkMax = monAtk;
 
 	 // EXP 보정 계산 (resolveKillAndDrop 과 동일)
-	    int baseExp = Math.max(0, monExp);
+	    long baseExp = Math.max(0, monExp);
 	    int levelGap = userLv - monLv;
 	    double expMultiplier;
 
@@ -6314,7 +6331,7 @@ public class BossAttackController {
 	        expMultiplier = 1.0 + Math.min(-levelGap, 5) * 0.05; // 레벨 차 1당 5%, 최대 25%
 	    }
 
-	    int effExp = (int)Math.round(baseExp * expMultiplier);
+	    long effExp = Math.round(baseExp * expMultiplier);
 	    if(nmActive) {
 	    	effExp *= NM_MUL_EXP;
 	    	if(hellActive) effExp *= HEL_MUL_EXP;
