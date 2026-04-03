@@ -79,8 +79,8 @@ public class BossAttackController {
 	private static final int HEL_DIV_ATK = 10000;
 	private static final double HEL_CRIT_RATE_MULT = 0.1;
 	private static final double HEL_CRIT_DMG_MULT = 0.1;
-	private static final int HEL_ADD_MON_LV = 250;
-	private static final int HEL_MUL_EXP = 100;
+	private static final int HEL_ADD_MON_LV = 300;
+	private static final int HEL_MUL_EXP = 150;
 
 	// [FIX4] selectActiveSpecialBuff 단기 캐시 (서버 전역 버프는 15초간 재사용)
 	private static volatile HashMap<String,Object> SPECIAL_BUFF_CACHE = null;
@@ -111,9 +111,17 @@ public class BossAttackController {
 	        return "유저 정보를 찾을 수 없습니다.";
 
 	    if(selRaw.equals("나이트메어")||selRaw.equals("나메")) {
+	    	if(!botNewService.isNightmareUnlocked(userName)) {
+	    		return "나이트메어 모드 해금 조건 미달성!" + NL
+	    		     + "조건: 일반모드에서 15번/25번/30번 몬스터 각 10마리 처치";
+	    	}
 	    	botNewService.setNightmareMode(userName,roomName,1);
 	    	msg ="나이트메어";
 	    }else if(selRaw.equals("헬")||selRaw.equals("헬모드")) {
+	    	if(!botNewService.isHellUnlocked(userName)) {
+	    		return "헬 모드 해금 조건 미달성!" + NL
+	    		     + "조건: 나이트메어 모드에서 1~30번 몬스터 다크몹 각 1회씩 처치";
+	    	}
 	    	botNewService.setNightmareMode(userName,roomName,2);
 	    	msg ="헬";
 	    }else {
@@ -2780,6 +2788,7 @@ public class BossAttackController {
 	    int beforeJobSkillYn=0;
 	    int killCountForThisMon=0;
 	    int nmKillCountForThisMon=0;
+	    int hellKillCountForThisMon=0;
 
 	    // [FIX2] selectKillStats 중복 제거 — if/else 양쪽에서 동일하게 호출하던 것을 한 번으로 통합
 	    List<KillStat> cachedKillStats = null;
@@ -2828,6 +2837,7 @@ public class BossAttackController {
 	                if (ks.monNo == m.monNo) {
 	                    killCountForThisMon = ks.killCount;
 	                    nmKillCountForThisMon = ks.nmKillCount;
+	                    hellKillCountForThisMon = ks.hellKillCount;
 	                    break;
 	                }
 	            }
@@ -2867,6 +2877,7 @@ public class BossAttackController {
 	                if (ks.monNo == m.monNo) {
 	                    killCountForThisMon = ks.killCount;
 	                    nmKillCountForThisMon = ks.nmKillCount;
+	                    hellKillCountForThisMon = ks.hellKillCount;
 	                    break;
 	                }
 	            }
@@ -3373,7 +3384,9 @@ public class BossAttackController {
 
 	            // killCountForThisMon ← 이미 위에서 계산됨
 	    		int kc = killCountForThisMon;
-	    		if(nightmare) {
+	    		if(hell) {
+	    			kc = hellKillCountForThisMon;
+	    		} else if(nightmare) {
 	    			kc = nmKillCountForThisMon;
 	    		}
 	            
@@ -6453,6 +6466,7 @@ public class BossAttackController {
 	    StringBuilder sb = new StringBuilder();
 	    int totalKills = 0;
 	    int totalNmKills = 0;
+	    int totalHellKills = 0;
 
 	    int[] perMonThresholds = buildKillThresholds(50000);
 
@@ -6461,7 +6475,8 @@ public class BossAttackController {
 	        int kills = ks.killCount;
 	        totalKills += kills;
 	        totalNmKills += ks.nmKillCount;
-	        
+	        totalHellKills += ks.hellKillCount;
+
 	        for (int th : perMonThresholds) {
 	            if (kills < th) break;
 
@@ -6478,7 +6493,7 @@ public class BossAttackController {
 	        }
 	    }
 
-	    int[] totalThresholds =buildKillThresholds(100000);
+	    int[] totalThresholds = buildKillThresholds(100000);
 
 	    for (int th : totalThresholds) {
 	        if (totalKills < th) break;
@@ -6486,7 +6501,7 @@ public class BossAttackController {
 	        String cmd = "ACHV_KILL_TOTAL_" + th;
 	        if (achievedCmdSet.contains(cmd)) continue;
 
-	        int reward = calcTotalKillReward(th,false);
+	        int reward = calcTotalKillReward(th, false);
 
 	        sb.append(
 	            grantOnceIfEligibleFast(
@@ -6494,14 +6509,29 @@ public class BossAttackController {
 	            )
 	        );
 	    }
-	    
+
 	    for (int th : totalThresholds) {
 	        if (totalNmKills < th) break;
 
 	        String cmd = "ACHV_KILL_NIGHTMARE_TOTAL_" + th;
 	        if (achievedCmdSet.contains(cmd)) continue;
 
-	        int reward = calcTotalKillReward(th,true);
+	        int reward = calcTotalKillReward(th, true);
+
+	        sb.append(
+	            grantOnceIfEligibleFast(
+	                userName, roomName, cmd, reward, achievedCmdSet
+	            )
+	        );
+	    }
+
+	    for (int th : totalThresholds) {
+	        if (totalHellKills < th) break;
+
+	        String cmd = "ACHV_KILL_HELL_TOTAL_" + th;
+	        if (achievedCmdSet.contains(cmd)) continue;
+
+	        int reward = calcTotalKillReward(th, true) * 2;
 
 	        sb.append(
 	            grantOnceIfEligibleFast(
@@ -6995,6 +7025,14 @@ public class BossAttackController {
 	    		return "나이트메어 통산 처치 " + th + "회 달성";
 	    	} catch (Exception e) {
 	    		return "나이트메어 통산 업적";
+	    	}
+	    }
+	    if (cmd.startsWith("ACHV_KILL_HELL_TOTAL_")) {
+	    	try {
+	    		int th = Integer.parseInt(cmd.substring("ACHV_KILL_HELL_TOTAL_".length()));
+	    		return "헬 통산 처치 " + th + "회 달성";
+	    	} catch (Exception e) {
+	    		return "헬 통산 업적";
 	    	}
 	    }
 
