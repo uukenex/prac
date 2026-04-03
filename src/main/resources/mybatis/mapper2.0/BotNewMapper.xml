@@ -119,7 +119,8 @@
     SELECT bl.TARGET_MON_LV AS MON_NO,
            m.MON_NAME AS MON_NAME,
            COUNT(*) AS KILL_COUNT,
-           SUM(DECODE(BL.NIGHTMARE_YN,'1',1,0)) AS NM_KILL_COUNT
+           SUM(DECODE(BL.NIGHTMARE_YN,'1',1,0)) AS NM_KILL_COUNT,
+           SUM(DECODE(BL.NIGHTMARE_YN,'2',1,0)) AS HELL_KILL_COUNT
     FROM TBOT_POINT_NEW_BATTLE_LOG bl
     JOIN TBOT_POINT_NEW_MON_INFO m ON m.MON_NO = bl.TARGET_MON_LV
     WHERE bl.USER_NAME = #{userName}
@@ -1431,6 +1432,29 @@
 		SELECT NVL(NIGHTMARE_YN, '0') AS NIGHTMARE_YN
 		  FROM TBOT_POINT_NEW_USER
 		 WHERE USER_NAME = #{userName}
+	</select>
+
+	<!-- 나메 해금 조건: 일반모드에서 특정 몬스터 N킬 이상인지 확인 -->
+	<select id="selectNormalKillCountByMonNo" parameterType="map" resultType="int">
+		/* selectNormalKillCountByMonNo */
+		SELECT COUNT(1)
+		  FROM TBOT_POINT_NEW_BATTLE_LOG
+		 WHERE USER_NAME = #{userName}
+		   AND TARGET_MON_LV = #{monNo}
+		   AND KILL_YN = 1
+		   AND NIGHTMARE_YN = '0'
+	</select>
+
+	<!-- 헬 해금 조건: 나메모드에서 1~30번 몬스터 dark킬(LUCKY_YN=2) 보유 monNo 수 -->
+	<select id="selectNmDarkKillMonCount" parameterType="map" resultType="int">
+		/* selectNmDarkKillMonCount */
+		SELECT COUNT(DISTINCT TARGET_MON_LV)
+		  FROM TBOT_POINT_NEW_BATTLE_LOG
+		 WHERE USER_NAME = #{userName}
+		   AND KILL_YN = 1
+		   AND LUCKY_YN = 2
+		   AND NIGHTMARE_YN = '1'
+		   AND TARGET_MON_LV BETWEEN 1 AND 30
 	</select>
 	
 	<update id="updateNightmareYn" parameterType="map">

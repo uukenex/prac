@@ -144,7 +144,10 @@ public interface BotNewService {
 
     List<HashMap<String, Object>> selectTotalDropItems(String userName);
     public boolean isNightmareMode(String userName, String roomName);
-    public int setNightmareMode(String userName, String roomName, boolean nightmareYn);
+    public int getNightmareYn(String userName, String roomName);
+    public int setNightmareMode(String userName, String roomName, int nightmareYn);
+    public boolean isNightmareUnlocked(String userName);
+    public boolean isHellUnlocked(String userName);
     
     int lockMacroUser(String userName);
     

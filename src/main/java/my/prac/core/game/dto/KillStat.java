@@ -7,7 +7,8 @@ public class KillStat {
     public String monName;
     public int killCount;
     public int nmKillCount;
-    
+    public int hellKillCount;
+
     public KillStat() {}
     public KillStat(int monNo, String monName, int killCount, int nmKillCount) {
         this.monNo = monNo;

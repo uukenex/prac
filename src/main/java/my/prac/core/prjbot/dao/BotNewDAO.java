@@ -186,6 +186,8 @@ public interface BotNewDAO {
     
     Integer selectNightmareYn(@Param("userName") String userName, @Param("roomName") String roomName);
     public int updateNightmareYn(HashMap<String,Object> map);
+    int selectNormalKillCountByMonNo(@Param("userName") String userName, @Param("monNo") int monNo);
+    int selectNmDarkKillMonCount(@Param("userName") String userName);
 
     void lockMacroUser(HashMap<String, Object> map);
     
