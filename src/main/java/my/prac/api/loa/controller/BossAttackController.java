@@ -1862,6 +1862,7 @@ public class BossAttackController {
 		    List<Monster> monsters = botNewService.selectAllMonsters();
 		    StringBuilder sb = new StringBuilder();
 		    sb.append("공격 타겟 목록입니다:").append(NL).append(NL)
+		      .append("http://rgb-tns.dev-apc.com/loa/monster-view").append(NL)
 		      .append("▶ 선택 가능한 몬스터").append(ALL_SEE_STR);
 
 		    for (Monster mm : monsters) {

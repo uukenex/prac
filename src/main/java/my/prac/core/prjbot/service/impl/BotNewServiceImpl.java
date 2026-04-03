@@ -67,6 +67,10 @@ public class BotNewServiceImpl implements BotNewService {
     	return botNewDAO.selectAllMonsters();
     }
     @Override
+    public List<HashMap<String, Object>> selectMonsterKillsForView(String userName) {
+        return botNewDAO.selectMonsterKillsForView(userName);
+    }
+    @Override
     public Monster selectMonsterByNo(int monNo) {
         return botNewDAO.selectMonsterByNo(monNo);
     }
