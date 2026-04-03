@@ -96,7 +96,8 @@
 
     /* 킬 통계 블록 */
     .kill-block { margin-top: 8px; border-top: 1px solid #f0f0f0; padding-top: 7px; }
-    .kill-title { font-size: 10px; color: #aaa; margin-bottom: 5px; }
+    .kill-title { font-size: 10px; color: #aaa; margin-bottom: 5px; font-weight: 700; }
+    .kill-rows  { display: flex; flex-wrap: wrap; gap: 4px; }
     .kill-diff-row { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; font-size: 11px; }
     .kill-diff-label { min-width: 54px; color: #999; font-weight: 600; }
     .kill-tag   { font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 10px; }
@@ -136,13 +137,13 @@
     </div>
   </div>
 
-  <!-- 유저 킬 요약 -->
+  <!-- 유저 킬 요약 (현재 탭 기준) -->
   <div class="kill-summary" v-if="searchedUser && totalKills > 0">
-    <span class="ks-label">{{ searchedUser }} 총 킬</span>
-    <span class="kill-chip total">🗡️ {{ totalKills.toLocaleString() }}</span>
-    <span class="kill-chip normal" v-if="killSummary.normal > 0">⚔️ 일반 {{ killSummary.normal.toLocaleString() }}</span>
-    <span class="kill-chip light"  v-if="killSummary.light  > 0">✨ 빛 {{ killSummary.light.toLocaleString() }}</span>
-    <span class="kill-chip dark"   v-if="killSummary.dark   > 0">🌑 다크 {{ killSummary.dark.toLocaleString() }}</span>
+    <span class="ks-label">{{ searchedUser }} · {{ diffLabel }} 총 킬</span>
+    <span class="kill-chip total">🗡️ {{ killSummary.total.toLocaleString() }}</span>
+    <span class="kill-chip normal"  v-if="killSummary.normal  > 0">⚔️ 일반 {{ killSummary.normal.toLocaleString() }}</span>
+    <span class="kill-chip light"   v-if="killSummary.light   > 0">✨ 빛 {{ killSummary.light.toLocaleString() }}</span>
+    <span class="kill-chip dark"    v-if="killSummary.dark    > 0">🌑 다크 {{ killSummary.dark.toLocaleString() }}</span>
     <span class="kill-chip yinyang" v-if="killSummary.yinyang > 0">☯️ 음양 {{ killSummary.yinyang.toLocaleString() }}</span>
   </div>
   <div class="kill-summary" v-else-if="searchedUser && totalKills === 0">
@@ -229,25 +230,21 @@
       <!-- 노트 -->
       <div class="note-block" v-if="m.MON_NOTE">{{ m.MON_NOTE }}</div>
 
-      <!-- 킬 통계 -->
-      <div class="kill-block" v-if="searchedUser && killOf(m)">
-        <div class="kill-title">🗡️ {{ searchedUser }} 킬 {{ num(killOf(m).KILL_TOTAL) }}마리</div>
-        <div class="kill-diff-row" v-if="killOf(m).KILL_DIFF_NORMAL > 0">
-          <span class="kill-diff-label">⚔️ 일반</span>
-          <span class="kill-tag total">{{ num(killOf(m).KILL_DIFF_NORMAL) }}</span>
+      <!-- 킬 통계: 현재 탭 난이도 기준 -->
+      <template v-if="searchedUser">
+        <div class="kill-block" v-if="killOf(m) && diffKill(m).total > 0">
+          <div class="kill-title">🗡️ {{ diffKill(m).total.toLocaleString() }}마리</div>
+          <div class="kill-rows">
+            <span class="kill-tag normal"  v-if="diffKill(m).normal  > 0">⚔️ {{ num(diffKill(m).normal) }}</span>
+            <span class="kill-tag light"   v-if="diffKill(m).light   > 0">✨ {{ num(diffKill(m).light) }}</span>
+            <span class="kill-tag dark"    v-if="diffKill(m).dark    > 0">🌑 {{ num(diffKill(m).dark) }}</span>
+            <span class="kill-tag yinyang" v-if="diffKill(m).yinyang > 0">☯️ {{ num(diffKill(m).yinyang) }}</span>
+          </div>
         </div>
-        <div class="kill-diff-row" v-if="killOf(m).KILL_DIFF_NM > 0">
-          <span class="kill-diff-label">💜 나메</span>
-          <span class="kill-tag total">{{ num(killOf(m).KILL_DIFF_NM) }}</span>
+        <div class="kill-block" v-else>
+          <div style="font-size:11px;color:#ddd;">미처치</div>
         </div>
-        <div class="kill-diff-row" v-if="killOf(m).KILL_DIFF_HELL > 0">
-          <span class="kill-diff-label">🔥 헬</span>
-          <span class="kill-tag total">{{ num(killOf(m).KILL_DIFF_HELL) }}</span>
-        </div>
-      </div>
-      <div class="kill-block" v-else-if="searchedUser">
-        <div style="font-size:11px;color:#ddd;">미처치</div>
-      </div>
+      </template>
     </div>
   </div>
 
@@ -307,13 +304,20 @@
       sortDir: 'asc'
     },
     computed: {
+      diffLabel: function() {
+        return { normal: '일반', nightmare: '나이트메어', hell: '헬' }[this.diff];
+      },
+      // 현재 탭 난이도 기준 전체 합산
       killSummary: function() {
-        var s = { normal: 0, light: 0, dark: 0, yinyang: 0 };
-        Object.values(this.killMap).forEach(function(k) {
-          s.normal  += parseInt(k.KILL_NORMAL  || 0);
-          s.light   += parseInt(k.KILL_LIGHT   || 0);
-          s.dark    += parseInt(k.KILL_DARK    || 0);
-          s.yinyang += parseInt(k.KILL_YINYANG || 0);
+        var self = this;
+        var pfx = { normal: 'NM0', nightmare: 'NM1', hell: 'NM2' }[self.diff];
+        var s = { total: 0, normal: 0, light: 0, dark: 0, yinyang: 0 };
+        Object.values(self.killMap).forEach(function(k) {
+          s.total   += parseInt(k[pfx + '_TOTAL']   || 0);
+          s.normal  += parseInt(k[pfx + '_NORMAL']  || 0);
+          s.light   += parseInt(k[pfx + '_LIGHT']   || 0);
+          s.dark    += parseInt(k[pfx + '_DARK']    || 0);
+          s.yinyang += parseInt(k[pfx + '_YINYANG'] || 0);
         });
         return s;
       },
@@ -335,6 +339,19 @@
       formatSp: formatSp,
       num: function(v) { return parseInt(v || 0).toLocaleString(); },
       killOf: function(m) { return this.killMap[String(m.MON_NO)] || null; },
+      // 현재 탭 난이도의 킬 통계 반환
+      diffKill: function(m) {
+        var k = this.killOf(m);
+        if (!k) return { total: 0, normal: 0, light: 0, dark: 0, yinyang: 0 };
+        var pfx = { normal: 'NM0', nightmare: 'NM1', hell: 'NM2' }[this.diff];
+        return {
+          total:   parseInt(k[pfx + '_TOTAL']   || 0),
+          normal:  parseInt(k[pfx + '_NORMAL']  || 0),
+          light:   parseInt(k[pfx + '_LIGHT']   || 0),
+          dark:    parseInt(k[pfx + '_DARK']    || 0),
+          yinyang: parseInt(k[pfx + '_YINYANG'] || 0)
+        };
+      },
       calcLv:     function(m) { return parseInt(m.MON_LV)  + DIFF[this.diff].lvAdd; },
       calcHp:     function(m) { return parseInt(m.MON_HP)  * DIFF[this.diff].hpAtk; },
       calcAtk:    function(m) { return parseInt(m.MON_ATK) * DIFF[this.diff].hpAtk; },
