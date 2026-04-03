@@ -623,7 +623,7 @@
 	        NVL(i.ATK_MAX_RATE,   0) AS ATK_MAX_RATE,
 	        i.TARGET_LV
 	    FROM TBOT_POINT_NEW_ITEM i
-	    WHERE i.ITEM_TYPE in ('MARKET','MARKET2')
+	    --WHERE i.ITEM_TYPE in ('MARKET','MARKET2')
 	    ORDER BY i.ITEM_ID
 	</select>
 	
