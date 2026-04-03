@@ -76,11 +76,12 @@ public class BossAttackController {
 	private static final int NM_MUL_EXP = 50;
 	private static final int NM_ADD_MON_LV = 150;
 
-	private static final int HEL_DIV_ATK = 10000;
-	private static final double HEL_CRIT_RATE_MULT = 0.1;
-	private static final double HEL_CRIT_DMG_MULT = 0.1;
+	private static final double HEL_ATK_MULT = 0.2;       // 공격력 80% 삭감
+	private static final double HEL_CRIT_RATE_MULT = 0.2; // 크리율 80% 삭감
+	private static final double HEL_CRIT_DMG_MULT = 0.2;  // 크리뎀 80% 삭감
 	private static final int HEL_ADD_MON_LV = 780; // 사자(120) + 780 = 900lv
-	private static final int HEL_MUL_EXP = 150;
+	private static final int HEL_MUL_EXP = 100;    // NM(50) + 50
+	private static final long HEL_SP_MULT = 5_000_000L; // 토끼(10sp) * 5000000 = 50000000sp = 5000a
 
 	// [FIX4] selectActiveSpecialBuff 단기 캐시 (서버 전역 버프는 15초간 재사용)
 	private static volatile HashMap<String,Object> SPECIAL_BUFF_CACHE = null;
@@ -3730,7 +3731,11 @@ public class BossAttackController {
 	            }
 
 	            if(nightmare) {
-	                gainSp *= 50;
+	                if(u.nightmareYn == 2) {
+	                    gainSp *= HEL_SP_MULT; // 헬: 토끼(10sp) * 5000000 = 5000a
+	                } else {
+	                    gainSp *= 50; // 나메
+	                }
 	            }
 
 	            if(SP.parse(ctx.lifetimeSpStr).lessThan(new SP(100,"b"))){
@@ -7377,11 +7382,11 @@ public class BossAttackController {
 	    }
 	    
 	    // -----------------------------
-	    // 헬모드: 공격력 /10000, 크리율/크리뎀 10%
+	    // 헬모드: 공격력/크리율/크리뎀 80% 삭감 (x0.2)
 	    // -----------------------------
 	    if (hellYn) {
-	        effAtkMin  = Math.max(1, effAtkMin  / HEL_DIV_ATK);
-	        effAtkMax  = Math.max(1, effAtkMax  / HEL_DIV_ATK);
+	        effAtkMin  = Math.max(1, (int) Math.round(effAtkMin  * HEL_ATK_MULT));
+	        effAtkMax  = Math.max(1, (int) Math.round(effAtkMax  * HEL_ATK_MULT));
 	        effCritRate = (int) Math.round(effCritRate * HEL_CRIT_RATE_MULT);
 	        effCriDmg   = (int) Math.round(effCriDmg   * HEL_CRIT_DMG_MULT);
 	    }
