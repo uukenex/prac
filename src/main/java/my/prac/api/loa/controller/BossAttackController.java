@@ -2990,7 +2990,7 @@ public class BossAttackController {
 	        double rnd = ThreadLocalRandom.current().nextDouble();
 
 	        // 기본 확률
-	        double darkRate = (m.monNo >= 15) ? 0.05 : 0.10;
+	        double darkRate = 0;
 
 	        // 레벨차 보너스
 	        darkRate += levelBonus;
@@ -3003,7 +3003,7 @@ public class BossAttackController {
 	        // 킬수 보너스
 	        if ((!nightmare && killCountForThisMon >= 350 && m.monNo >= 15) ||
 	            (nightmare && nmKillCountForThisMon > 150 && m.monNo >= 15)) {
-	            darkRate += 0.10;
+	            darkRate += 0.05;
 	        }
 
 	        if ((!nightmare && killCountForThisMon >= 300 && m.monNo < 15) ||
