@@ -327,7 +327,8 @@ public class MiniGameUtil {
 		    new SpecialBuffOption(20, "치피", "고정값"),
 		    new SpecialBuffOption(15, "치확", "고정값"),
 		    new SpecialBuffOption(7,  "쿨타임", "고정값"),
-		    new SpecialBuffOption(3,  "나메가방", "고정값")
+		    new SpecialBuffOption(3,  "나메가방", "고정값"),
+		    new SpecialBuffOption(10,  "회복", "고정값")
 		);
 	
 	public static  SpecialBuffOption pickWeightedBuff(List<SpecialBuffOption> options) {

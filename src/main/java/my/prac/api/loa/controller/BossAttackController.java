@@ -2983,43 +2983,39 @@ public class BossAttackController {
 	            }
 	        }
 
-	        // ★ 300킬 이상 + 20% 확률이면 어둠몬
-	        
 	        int levelGap = monLv - u.lv;
 	        int bonusStep = Math.max(0, levelGap / 100);
 	        double levelBonus = bonusStep * 0.20;
-	        
-	        // ★ 300킬 이상 + 20% 확률이면 어둠몬
-	        if ((!nightmare && killCountForThisMon >= 350 && m.monNo >= 15)
-	        		
-	        		|| (nightmare &&nmKillCountForThisMon > 150 && m.monNo >= 15 ) 
-	        		) {
-	            double rnd = ThreadLocalRandom.current().nextDouble();
-	            
-	            rnd -= levelBonus;
-	            if("어둠사냥꾼".equals(job)) {
-	            	rnd -= DARK_RATE_DARK;
-	            }
-	            
-	            if (rnd < 0.05) {
-	                dark = true;
-	            }
+
+	        double rnd = ThreadLocalRandom.current().nextDouble();
+
+	        // 기본 확률
+	        double darkRate = (m.monNo >= 15) ? 0.05 : 0.10;
+
+	        // 레벨차 보너스
+	        darkRate += levelBonus;
+
+	        // 직업 보너스
+	        if ("어둠사냥꾼".equals(job)) {
+	            darkRate += DARK_RATE_DARK;
+	        }
+
+	        // 킬수 보너스
+	        if ((!nightmare && killCountForThisMon >= 350 && m.monNo >= 15) ||
+	            (nightmare && nmKillCountForThisMon > 150 && m.monNo >= 15)) {
+	            darkRate += 0.10;
+	        }
+
+	        if ((!nightmare && killCountForThisMon >= 300 && m.monNo < 15) ||
+	            (nightmare && nmKillCountForThisMon > 150 && m.monNo < 15)) {
+	            darkRate += 0.10;
+	        }
+
+	        // 최종 판정
+	        if (rnd < darkRate) {
+	            dark = true;
 	        }
 	        
-	        if ((!nightmare && killCountForThisMon >= 300 && m.monNo < 15)
-	        		|| (nightmare && nmKillCountForThisMon > 150 && m.monNo < 15)
-	        		) {
-	            double rnd = ThreadLocalRandom.current().nextDouble();
-	            
-	            rnd -= levelBonus;
-	            if("어둠사냥꾼".equals(job)) {
-	            	rnd -= DARK_RATE_DARK;
-	            }
-	            
-	            if (rnd < 0.10) {
-	                dark = true;
-	            }
-	        }
 
 	        if ("도사".equals(job)) {
                 lucky = ThreadLocalRandom.current().nextDouble() < LUCKY_RATE_DOSA;
@@ -3370,12 +3366,8 @@ public class BossAttackController {
 	
 		        u.hpCur = Math.min(effHpMax, u.hpCur + heal);
 
-		        
-
-		        
-		        
 		        if (u.hpCur > beforeHp) {
-		            dmg.dmgCalcMsg += NL + "✨ 스페셜버프-회복! "
+		            dmg.dmgCalcMsg += NL + "✨ 스페셜타임-회복! "
 		                    + (u.hpCur - beforeHp);
 		        }
 	    	}
@@ -3997,7 +3989,7 @@ public class BossAttackController {
 	        	        
 	        	    case "회복":
 	        	        effectValue = ThreadLocalRandom.current().nextInt(30, 101); // 예: 5~20
-	        	        durationMin = randomDuration(effectValue);
+	        	        durationMin = 4;
 	        	        break;
 	        	        
 	        	    case "쿨타임":
