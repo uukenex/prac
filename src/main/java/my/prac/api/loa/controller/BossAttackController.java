@@ -86,6 +86,11 @@ public class BossAttackController {
 	private static volatile HashMap<String,Object> SPECIAL_BUFF_CACHE = null;
 	private static volatile long SPECIAL_BUFF_CACHE_TS = 0L;
 	private static final long SPECIAL_BUFF_CACHE_TTL_MS = 15_000L;
+
+	// 누적SP 1위 캐시 (1시간마다 갱신, 가방 최대금액 계산용)
+	private static volatile long TOP1_SP_CACHE = 0L;
+	private static volatile long TOP1_SP_CACHE_TS = 0L;
+	private static final long TOP1_SP_CACHE_TTL_MS = 3_600_000L;
 	
 	/* ===== DI ===== */
 	@Autowired LoaPlayController play;
@@ -994,21 +999,38 @@ public class BossAttackController {
 		itemSummary.add(itemName);
 	}
 	
+	private long getTop1SpCached() {
+	    long now = System.currentTimeMillis();
+	    if (now - TOP1_SP_CACHE_TS > TOP1_SP_CACHE_TTL_MS) {
+	        try {
+	            List<HashMap<String, Object>> list = botNewService.selectSpAndAtkRanking();
+	            if (list != null && !list.isEmpty()) {
+	                TOP1_SP_CACHE = safeLong(list.get(0).get("TOT_SP"));
+	            }
+	        } catch (Exception e) { /* 캐시 유지 */ }
+	        TOP1_SP_CACHE_TS = now;
+	    }
+	    return TOP1_SP_CACHE;
+	}
+
 	private long rollBagSpWithCeiling(String userName, String roomName, int nightmareYn) {
 		//유저의 BAG_OPEN_SP 기록 개수 조회
 	    //int totalCount = botNewService.selectBagOpenSpCount(userName, roomName);
 
+	    long top1Sp = getTop1SpCached();
+	    long top1Ceiling = top1Sp > 0 ? top1Sp / 100 : 0; // 1등 누적SP의 1%
+
 	    switch (nightmareYn) {
 	    case	0:
-	    	return pickBiasedSp(10000, 1000000);
+	    	return pickBiasedSp(10000, top1Ceiling > 0 ? top1Ceiling : 1000000);
 	    case	1:
-	    	return pickBiasedSp(300000, 100000000);
+	    	return pickBiasedSp(300000, top1Ceiling > 0 ? top1Ceiling : 100000000);
 	    case	2:
 	    	break;
 	    default:
 	    	break;
 	    }
-	    return pickBiasedSp(10000, 1000000);
+	    return pickBiasedSp(10000, top1Ceiling > 0 ? top1Ceiling : 1000000);
 	}
 
 	/* ===== Public APIs ===== */
