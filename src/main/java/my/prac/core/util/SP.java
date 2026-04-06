@@ -161,23 +161,34 @@ public class SP {
 	// -----------------------------
 	public SP add(SP other) {
 
-		int idx1 = unitIndex(this.unit);
-		int idx2 = unitIndex(other.unit);
+	    int idx1 = unitIndex(this.unit);
+	    int idx2 = unitIndex(other.unit);
 
-		BigDecimal v1 = BigDecimal.valueOf(this.value);
-		BigDecimal v2 = BigDecimal.valueOf(other.value);
+	    BigDecimal v1 = BigDecimal.valueOf(this.value);
+	    BigDecimal v2 = BigDecimal.valueOf(other.value);
 
-		BigDecimal base = BigDecimal.valueOf(10000);
+	    BigDecimal base = BigDecimal.valueOf(10000);
 
-		if (idx1 > idx2) {
-			v2 = v2.divide(base.pow(idx1 - idx2));
-			BigDecimal r = v1.add(v2).setScale(6, RoundingMode.HALF_UP);;
-			return SP.of(r.doubleValue(), this.unit);
-		} else {
-			v1 = v1.divide(base.pow(idx2 - idx1));
-			BigDecimal r = v1.add(v2).setScale(6, RoundingMode.HALF_UP);;
-			return SP.of(r.doubleValue(), other.unit);
-		}
+	    BigDecimal result;
+	    int resultIdx;
+
+	    if (idx1 > idx2) {
+	        v2 = v2.divide(base.pow(idx1 - idx2));
+	        result = v1.add(v2);
+	        resultIdx = idx1;
+	    } else {
+	        v1 = v1.divide(base.pow(idx2 - idx1));
+	        result = v1.add(v2);
+	        resultIdx = idx2;
+	    }
+
+	    result = result.setScale(6, RoundingMode.HALF_UP);
+
+	    // 결과를 현재 객체에 반영
+	    this.value = result.doubleValue();
+	    this.unit = resultIdx == 0 ? "" : String.valueOf((char) ('a' + resultIdx - 1));
+
+	    return this.normalize();
 	}
 
 	// -----------------------------

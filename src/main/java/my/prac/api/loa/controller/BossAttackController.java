@@ -40,7 +40,6 @@ import my.prac.core.game.dto.BattleLog;
 import my.prac.core.game.dto.DamageOutcome;
 import my.prac.core.game.dto.EquipCategory;
 import my.prac.core.game.dto.Flags;
-import my.prac.core.game.dto.JobChangeReq;
 import my.prac.core.game.dto.JobDef;
 import my.prac.core.game.dto.KillStat;
 import my.prac.core.game.dto.Monster;
@@ -860,7 +859,8 @@ public class BossAttackController {
 	        botNewService.consumeBagBulkByItemIdTx(userName, roomName, 92, nightmareCount);
 	    }
 
-	    int totalSp = 0;
+	    //int totalSp = 0;
+	    SP totalSP = new SP(0,"");
 	    List<String> detail = new ArrayList<>();
 	    List<String> itemSummary = new ArrayList<>();
 
@@ -873,9 +873,11 @@ public class BossAttackController {
 
 	        if (roll < 0.90) {
 
-	            long sp = rollBagSpWithCeiling(userName, roomName,0);
-	            totalSp += sp;
+	            SP sp = rollBagSpWithCeiling(0);
+	            totalSP.add(sp);
 	            detail.add("가방" + (i+1) + ": " + sp + "sp");
+	            //totalS += sp;
+	            
 
 	        } else {
 
@@ -888,8 +890,10 @@ public class BossAttackController {
 	                    botNewService.selectBagRewardItemIdsUserNotOwned(param);
 
 	            if (rewardItemIds == null || rewardItemIds.isEmpty()) {
-	            	long sp = rollBagSpWithCeiling(userName, roomName,0);
-	                totalSp += sp;
+	            	SP sp = rollBagSpWithCeiling(0);
+	            	//long sp = rollBagSpWithCeiling(0);
+	            	totalSP.add(sp);
+	                //totalSp += sp;
 
 	                detail.add("가방" + (i+1) + ": " + sp + "sp");
 	                continue;
@@ -913,8 +917,8 @@ public class BossAttackController {
 
 	        if (roll < 0.94) {
 
-	        	long sp = rollBagSpWithCeiling(userName, roomName,1);
-	            totalSp += sp;
+	        	SP sp = rollBagSpWithCeiling(1);
+	        	totalSP.add(sp);
 	            detail.add("[나메]가방" + (i+1) + ": " + sp + "sp");
 
 	        } else {
@@ -928,9 +932,8 @@ public class BossAttackController {
 	                    botNewService.selectBagRewardItemIdsUserNotOwned(param);
 
 	            if (rewardItemIds == null || rewardItemIds.isEmpty()) {
-	            	long sp = rollBagSpWithCeiling(userName, roomName,1);
-
-	                totalSp += sp;
+	            	SP sp = rollBagSpWithCeiling(1);
+		        	totalSP.add(sp);
 
 	                detail.add("[나메]가방" + (i+1) + ": " + sp + "sp");
 	                continue;
@@ -953,20 +956,18 @@ public class BossAttackController {
 	      .append("개를 열었습니다!").append(NL);
 
 	 // 🔹 SP 저장
-	    if (totalSp > 0) {
-	    	SP sp = SP.fromSp(totalSp);
-	    	
-	    	//SP userPoint = new SP(score, ext);
-	        HashMap<String,Object> pr = new HashMap<>();
-	        pr.put("userName", userName);
-	        pr.put("roomName", roomName);
-	        pr.put("score", sp.getValue());
-	        pr.put("scoreExt", sp.getUnit());
-	        pr.put("cmd", "BAG_OPEN_SP");
-	        botNewService.insertPointRank(pr);
-	        
-	        sb.append("✨ 총 획득: ").append(sp.toString()).append("").append(NL);
-	    }
+    	//SP sp = SP.fromSp(totalSp);
+    	
+    	//SP userPoint = new SP(score, ext);
+        HashMap<String,Object> pr = new HashMap<>();
+        pr.put("userName", userName);
+        pr.put("roomName", roomName);
+        pr.put("score", totalSP.getValue());
+        pr.put("scoreExt", totalSP.getUnit());
+        pr.put("cmd", "BAG_OPEN_SP");
+        botNewService.insertPointRank(pr);
+        
+        sb.append("✨ 총 획득: ").append(totalSP.toString()).append("").append(NL);
 
 	    if (!itemSummary.isEmpty()) {
 	        sb.append("✨ 아이템 획득: ")
@@ -1013,16 +1014,14 @@ public class BossAttackController {
 	    return TOP1_SP_CACHE;
 	}
 
-	private long rollBagSpWithCeiling(String userName, String roomName, int nightmareYn) {
-		//유저의 BAG_OPEN_SP 기록 개수 조회
-	    //int totalCount = botNewService.selectBagOpenSpCount(userName, roomName);
-
+	private SP rollBagSpWithCeiling(int nightmareYn) {
 	    long top1Sp = getTop1SpCached();
 	    long top1Ceiling = top1Sp > 0 ? top1Sp / 100 : 0; // 1등 누적SP의 1%
+	    long top1Ceiling2 = top1Sp > 0 ? top1Sp / 500 : 0; // 1등 누적SP의 0.2%
 
 	    switch (nightmareYn) {
 	    case	0:
-	    	return pickBiasedSp(10000, top1Ceiling > 0 ? top1Ceiling : 1000000);
+	    	return pickBiasedSp(10000, top1Ceiling2 > 0 ? top1Ceiling2 : 1000000);
 	    case	1:
 	    	return pickBiasedSp(300000, top1Ceiling > 0 ? top1Ceiling : 100000000);
 	    case	2:
@@ -1030,7 +1029,7 @@ public class BossAttackController {
 	    default:
 	    	break;
 	    }
-	    return pickBiasedSp(10000, top1Ceiling > 0 ? top1Ceiling : 1000000);
+	    return pickBiasedSp(10000, top1Ceiling2 > 0 ? top1Ceiling2 : 1000000);
 	}
 
 	/* ===== Public APIs ===== */
@@ -8620,12 +8619,14 @@ public class BossAttackController {
 
 
 	
-	private long pickBiasedSp(long min, long max) {
+	private SP pickBiasedSp(long min, long max) {
 	    double r = ThreadLocalRandom.current().nextDouble(); // 0~1
-	    double biased = Math.pow(r, 8); // 극단적으로 0쪽으로 치우침
+	    double biased = Math.pow(r, 6); // 극단적으로 0쪽으로 치우침
 
 	    long span = max - min;
-	    return min + (int)Math.round(span * biased);
+	    long value = min + (int)Math.round(span * biased);
+	    SP sp = SP.fromSp(value);
+	    return sp;
 	}
 
 	private String buildUnifiedDosaBuffMessage(DosaBuffEffect self, DosaBuffEffect room) {
