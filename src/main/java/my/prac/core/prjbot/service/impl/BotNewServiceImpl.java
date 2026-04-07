@@ -486,6 +486,11 @@ public class BotNewServiceImpl implements BotNewService {
         return botNewDAO.selectAchievementInventoryCounts(userName);
     }
 
+    @Override
+    public int selectPotionUseCount(String userName) {
+        return botNewDAO.selectPotionUseCount(userName);
+    }
+
     public int updateRandomBlessUser(String attacker,int count) {
     	HashMap<String,Object> param = new HashMap<>();
         param.put("attacker", attacker);

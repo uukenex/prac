@@ -1714,9 +1714,19 @@ public class BossAttackController {
 	        ignore.printStackTrace();
 	    }
 
+	    // 물약 사용 횟수 (캐시 우선, 없으면 DB)
+	    int potionUseCount = 0;
+	    try {
+	        potionUseCount = MiniGameUtil.POTION_USE_CACHE.containsKey(targetUser)
+	                ? MiniGameUtil.POTION_USE_CACHE.get(targetUser)
+	                : botNewService.selectPotionUseCount(targetUser);
+	        MiniGameUtil.POTION_USE_CACHE.putIfAbsent(targetUser, potionUseCount);
+	    } catch (Exception ignore) {}
+
 	    sb.append("누적 전투 기록").append(NL)
 	      .append("- 총 공격 횟수: ").append(totalAttacks).append("회").append(NL)
-	      .append("- 총 사망 횟수: ").append(totalDeaths).append("회").append(NL).append(NL);
+	      .append("- 총 사망 횟수: ").append(totalDeaths).append("회").append(NL)
+	      .append("- 물약 사용 횟수: ").append(potionUseCount).append("회").append(NL).append(NL);
 
 	    if (firstAttackDay != null) {
 	        sb.append("시작일: ")
@@ -2226,7 +2236,21 @@ public class BossAttackController {
 	        botNewService.insertInventoryLogTx(inv);
 	        // 포션 사용
 	        potionMsg = usePotion(ctx, userName, roomName, itemId);
-	    	
+
+	        // 물약 사용 횟수 캐시 갱신 + 업적 즉시 체크
+	        try {
+	            int newPotionCnt = MiniGameUtil.POTION_USE_CACHE.compute(
+	                    userName, (k, v) -> (v == null ? 1 : v + 1));
+	            List<AchievementCount> potionAchvList = botNewService.selectAchvCountsGlobal(userName, roomName);
+	            Set<String> potionAchvSet = new HashSet<>();
+	            if (potionAchvList != null) {
+	                for (AchievementCount ac : potionAchvList) potionAchvSet.add(ac.getCmd());
+	            }
+	            String potionAchvMsg = grantPotionUseAchievements(userName, roomName, potionAchvSet, newPotionCnt);
+	            if (potionAchvMsg != null && !potionAchvMsg.isEmpty()) {
+	                potionMsg = potionMsg + NL + potionAchvMsg;
+	            }
+	        } catch (Exception ignore) {}
 	    }
 	   
 
@@ -3465,8 +3489,10 @@ public class BossAttackController {
 	        HashMap<String,Object> achvInvCounts = null;
 	        try { achvInvCounts = botNewService.selectAchievementInventoryCounts(userName); } catch (Exception ignore) {}
 	        List<HashMap<String,Object>> achvGainRows = buildGainRowsFromCounts(achvInvCounts);
-	        int achvBagTotal  = achvInvCounts != null ? ((Number) achvInvCounts.getOrDefault("BAG_COUNT",  0)).intValue() : 0;
-	        int achvSoldCount = achvInvCounts != null ? ((Number) achvInvCounts.getOrDefault("SOLD_COUNT", 0)).intValue() : 0;
+	        int achvBagTotal   = achvInvCounts != null ? ((Number) achvInvCounts.getOrDefault("BAG_COUNT",   0)).intValue() : 0;
+	        int achvSoldCount  = achvInvCounts != null ? ((Number) achvInvCounts.getOrDefault("SOLD_COUNT",  0)).intValue() : 0;
+	        int achvPotionCount = achvInvCounts != null ? ((Number) achvInvCounts.getOrDefault("POTION_COUNT",0)).intValue() : 0;
+	        MiniGameUtil.POTION_USE_CACHE.put(userName, achvPotionCount);
 
 	        AttackDeathStat achvAds = cachedAds;
 	        List<HashMap<String,Object>> achvJobSkillRows = null;
@@ -3478,8 +3504,9 @@ public class BossAttackController {
 	        String bagAchvMsg     = grantBagAcquireAchievementsFast(userName, roomName, achievedCmdSet, achvBagTotal);   // [PERF] 프리로드
 	        String attackAchvMsg  = grantAttackCountAchievements(userName, roomName, achievedCmdSet, achvAds);           // [PERF] 프리로드
 	        String jobSkillAchvMsg = grantJobSkillUseAchievementsAllJobs(userName, roomName, achievedCmdSet, achvJobSkillRows); // [PERF] 프리로드
-	        String shopSellAchvMsg = grantShopSellAchievementsFast(userName, roomName, achievedCmdSet, achvSoldCount);   // [PERF] 프리로드
-	        
+	        String shopSellAchvMsg  = grantShopSellAchievementsFast(userName, roomName, achievedCmdSet, achvSoldCount);    // [PERF] 프리로드
+	        String potionAchvMsg    = grantPotionUseAchievements(userName, roomName, achievedCmdSet, achvPotionCount);    // [PERF] 프리로드
+
 	        String achvRewardMsg = grantAchievementBasedReward(userName, roomName, userAchvList);
 	        
 	        if ((firstClearMsg   != null && !firstClearMsg.isEmpty())
@@ -3487,9 +3514,10 @@ public class BossAttackController {
 	                || (itemAchvMsg     != null && !itemAchvMsg.isEmpty())
 	                || (attackAchvMsg   != null && !attackAchvMsg.isEmpty())
 	                || (jobSkillAchvMsg != null && !jobSkillAchvMsg.isEmpty())
-	                || (shopSellAchvMsg  != null && !shopSellAchvMsg.isEmpty())
-	                || (achvRewardMsg  != null && !achvRewardMsg.isEmpty())
-	                || (bagAchvMsg   != null && !bagAchvMsg .isEmpty())
+	                || (shopSellAchvMsg != null && !shopSellAchvMsg.isEmpty())
+	                || (potionAchvMsg   != null && !potionAchvMsg.isEmpty())
+	                || (achvRewardMsg   != null && !achvRewardMsg.isEmpty())
+	                || (bagAchvMsg      != null && !bagAchvMsg.isEmpty())
 	        		) {
 
 	                   bonusMsg = NL
@@ -3499,8 +3527,9 @@ public class BossAttackController {
 	                           + attackAchvMsg
 	                           + jobSkillAchvMsg
 	                           + shopSellAchvMsg
+	                           + potionAchvMsg
 	                           + achvRewardMsg
-	                           + bagAchvMsg ;
+	                           + bagAchvMsg;
 	               }
 	    }
 	    bagDropMsg = tryDropBag(userName, roomName, m, nightmare,buff);
@@ -4084,6 +4113,7 @@ public class BossAttackController {
 	    MiniGameUtil.ITEM_DETAIL_CACHE.clear();
 	    MiniGameUtil.ITEM_PRICE_CACHE.clear();
 	    MiniGameUtil.MARKET_OWNED_CACHE.clear();
+	    MiniGameUtil.POTION_USE_CACHE.clear();
 	    initCache();
 	    return "✅ 캐시 갱신 완료" + NL
 	         + "몬스터: " + MiniGameUtil.MONSTER_CACHE.size() + "건" + NL
@@ -4675,6 +4705,55 @@ public class BossAttackController {
 	          .append("회 달성 보상 +")
 	          .append(formatSpShort(rewardSp))
 	          .append(" 지급!♬")
+	          .append(NL);
+	    }
+
+	    return sb.toString();
+	}
+
+	private String grantPotionUseAchievements(
+	        String userName,
+	        String roomName,
+	        Set<String> achvCmdSet,
+	        int potionUseCnt
+	) {
+	    final int[][] rules = {
+	        {10,   1000},
+	        {50,   3000},
+	        {100,  8000},
+	        {300,  15000},
+	        {500,  25000},
+	        {1000, 50000}
+	    };
+
+	    if (potionUseCnt <= 0) return "";
+
+	    StringBuilder sb = new StringBuilder();
+
+	    for (int[] r : rules) {
+	        int threshold = r[0];
+	        int rewardSp  = r[1];
+
+	        if (potionUseCnt < threshold) continue;
+
+	        String cmd = "ACHV_POTION_USE_" + threshold;
+	        if (achvCmdSet.contains(cmd)) continue;
+
+	        HashMap<String,Object> p = new HashMap<>();
+	        p.put("userName", userName);
+	        p.put("roomName", roomName);
+	        p.put("score", rewardSp);
+	        p.put("scoreExt", "");
+	        p.put("cmd", cmd);
+
+	        botNewService.insertPointRank(p);
+	        achvCmdSet.add(cmd);
+
+	        sb.append("✨ 물약 사용 ")
+	          .append(threshold)
+	          .append("회 달성 보상 +")
+	          .append(formatSpShort(rewardSp))
+	          .append(" 지급!")
 	          .append(NL);
 	    }
 

@@ -1539,9 +1539,18 @@
 	        NVL(SUM(CASE WHEN GAIN_TYPE='DROP9'  THEN QTY ELSE 0 END), 0) AS DROP9_QTY,
 	        NVL(SUM(CASE WHEN ITEM_ID IN (91,92,93) THEN QTY ELSE 0 END), 0) AS BAG_COUNT,
 	        NVL(SUM(CASE WHEN GAIN_TYPE IN ('DROP','DROP3','DROP5','DROP9','STEAL')
-	                          AND NVL(DEL_YN,'0')='1' THEN QTY ELSE 0 END), 0) AS SOLD_COUNT
+	                          AND NVL(DEL_YN,'0')='1' THEN QTY ELSE 0 END), 0) AS SOLD_COUNT,
+	        NVL(SUM(CASE WHEN ITEM_ID BETWEEN 1001 AND 1006 THEN 1 ELSE 0 END), 0) AS POTION_COUNT
 	    FROM TBOT_POINT_NEW_INVENTORY
 	    WHERE USER_NAME = #{userName}
+	</select>
+
+	<select id="selectPotionUseCount" resultType="int">
+	    /* selectPotionUseCount */
+	    SELECT NVL(COUNT(*), 0)
+	    FROM TBOT_POINT_NEW_INVENTORY
+	    WHERE USER_NAME = #{userName}
+	      AND ITEM_ID BETWEEN 1001 AND 1006
 	</select>
 
 	<select id="selectRandomBlessTargets" parameterType="map" resultType="string">

@@ -157,6 +157,9 @@ public interface BotNewService {
 
     // [OPT3] INVENTORY 3개 쿼리 통합
     HashMap<String,Object> selectAchievementInventoryCounts(String userName);
+
+    /** 물약 사용 횟수 조회 */
+    int selectPotionUseCount(String userName);
     
     public int updateRandomBlessUser(String attacker,int count) ;
     public void clearBlessYn(String userName) ;

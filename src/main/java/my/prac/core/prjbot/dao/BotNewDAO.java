@@ -198,6 +198,9 @@ public interface BotNewDAO {
     // [OPT3] INVENTORY 3개 쿼리 통합
     HashMap<String,Object> selectAchievementInventoryCounts(@Param("userName") String userName);
 
+    /** 물약 사용 횟수 조회 */
+    int selectPotionUseCount(@Param("userName") String userName);
+
     List<String> selectRandomBlessTargets(HashMap<String, Object> map);
 
     int updateBlessYn(String userName);
