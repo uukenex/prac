@@ -6988,6 +6988,7 @@ public class BossAttackController {
 	    StringBuilder extraMsg = new StringBuilder();
 	    out.dmgCalcMsg="";
 
+	    int orgCritRateForGungsa = effCritRate;
 	    if (effCritRate > 100) {
 	    	int overflow = effCritRate - 100;
 	    	double convertRate = MiniGameUtil.getHunterConvertRate(u.hunterGrade);
@@ -7045,7 +7046,7 @@ public class BossAttackController {
 	        // 2) 크리티컬 분배
 	        //  - 1타는 무조건 크리
 	        //  - 나머지 (2~hitCount) 샷에 대해 남은 크리율을 균등 분배
-	        int remainingCritBudget = Math.max(0, effCritRate); // 100은 1타 확정크리용
+	        int remainingCritBudget = Math.max(0, orgCritRateForGungsa); // 100은 1타 확정크리용
 	        double perHitRateRaw = (hitCount > 1)
 	                ? (double) remainingCritBudget / (hitCount - 1)
 	                : 0.0;
@@ -7057,41 +7058,10 @@ public class BossAttackController {
 	        double perHitRate = perHitRateRaw; // 0.0 ~ 80.0
 
 	        boolean allCrit = true; // 전탄 크리 체크용
-	        int shotStep = (hitCount > 1) ? range / (hitCount - 1) : 0; // 화살 간격
 
 	        for (int i = 1; i <= hitCount; i++) {
 	            int shotAtk;
-
-	            if (i < hitCount) {
-	                // 1샷 ~ (hitCount-1)샷: 구간별 고정값
-	                shotAtk = effAtkMin + shotStep * (i - 1);
-	                if (shotAtk > effAtkMax) {
-	                    shotAtk = effAtkMax;
-	                }
-	            } else {
-	                // 마지막 샷: [startLast ~ effAtkMax] 랜덤
-	                int startLast = effAtkMin + shotStep * (hitCount - 1);
-	                if (startLast > effAtkMax) {
-	                    startLast = effAtkMax;
-	                }
-
-	                if (effAtkMax <= startLast) {
-	                    shotAtk = effAtkMax;
-	                } else {
-	                    shotAtk = ThreadLocalRandom.current()
-	                            .nextInt(startLast, effAtkMax + 1);
-	                }
-	            }
-	            
-	            double minFactor = 0.7; // 마지막 타 최소 비율 (원하면 0.2~0.4 사이로 튜닝)
-
-	            int maxIdx = (hitCount > 1 ? hitCount - 1 : 1);
-	            double factor = 1.0;
-	            if (hitCount > 1) {
-	                factor = 1.0 - (1.0 - minFactor) * (i - 1) / maxIdx;
-	            }
-	            shotAtk = (int)Math.round(shotAtk * factor);
-	            
+	            shotAtk = (int)Math.round(ThreadLocalRandom.current().nextInt(effAtkMin, effAtkMax + 1) *0.7);
 	            
 	            // 3) 크리 판정
 	            boolean shotCrit;
