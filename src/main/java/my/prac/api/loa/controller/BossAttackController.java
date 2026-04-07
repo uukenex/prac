@@ -6988,7 +6988,7 @@ public class BossAttackController {
 	    StringBuilder extraMsg = new StringBuilder();
 	    out.dmgCalcMsg="";
 
-	    if (effCritRate > 100) {
+	    if (!"곰".equals(u.job) && effCritRate > 100) {
 	    	int overflow = effCritRate - 100;
 	    	double convertRate = MiniGameUtil.getHunterConvertRate(u.hunterGrade);
 	    	int converted = (int)Math.floor(overflow * convertRate);
@@ -7138,7 +7138,7 @@ public class BossAttackController {
 	        crit = false;           // 샷별로 이미 크리 반영했으므로 여기서는 의미없음
 
 	        // 궁사 전용 계산 메시지를 out에 남김
-	        out.dmgCalcMsg = multiMsg.toString();
+	        out.dmgCalcMsg += multiMsg.toString();
 	    }
 	    
 	    if ("검성".equals(u.job)) {
@@ -7173,7 +7173,7 @@ public class BossAttackController {
                 //baseAtk = 0;
                 crit = false;
                 calc.jobSkillUsed = false;
-                out.dmgCalcMsg = "도박 실패!(크리티컬해제)";
+                out.dmgCalcMsg += "도박 실패!(크리티컬해제)";
                 multiplier=1;
             }
 
@@ -7185,7 +7185,7 @@ public class BossAttackController {
             	calc.jobSkillUsed = true;
             }
             if(roll <=55 ) {
-	            out.dmgCalcMsg =
+	            out.dmgCalcMsg +=
 	                "도박 성공! (피해량 ×" + multiplier + ") "
 	                + before + " ⇒ " + baseAtk + "!";
             }
