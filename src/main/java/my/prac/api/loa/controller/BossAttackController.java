@@ -228,6 +228,7 @@ public class BossAttackController {
 
 	    //final String roomName = Objects.toString(map.get("roomName"), "");
 	    final String userName = Objects.toString(map.get("userName"), "");
+	    final String param0   = Objects.toString(map.get("param0"), "").trim();
 	    final String param1   = Objects.toString(map.get("param1"), "").trim();
 
 	    //ctx.roomName = roomName;
@@ -242,16 +243,20 @@ public class BossAttackController {
 
 	    // ① param1으로 다른 유저 조회 시도 (두 메서드 동일 로직)
 	    String targetUser = userName;
-	    if (!param1.isEmpty()) {
-	        List<String> newUserName = botNewService.selectParam1ToNewUserSearch(map);
-	        if (newUserName != null && !newUserName.isEmpty()) {
-	            targetUser = newUserName.get(0);
-	        } else {
-	            ctx.success = false;
-	            ctx.errorMessage = "해당 유저(" + param1 + ")를 찾을 수 없습니다.";
-	            return ctx;
-	        }
+	    
+	    if(!"/직업".equals(param0)) {
+	    	if (!param1.isEmpty()) {
+		        List<String> newUserName = botNewService.selectParam1ToNewUserSearch(map);
+		        if (newUserName != null && !newUserName.isEmpty()) {
+		            targetUser = newUserName.get(0);
+		        } else {
+		            ctx.success = false;
+		            ctx.errorMessage = "해당 유저(" + param1 + ")를 찾을 수 없습니다.";
+		            return ctx;
+		        }
+		    }
 	    }
+	    
 	    ctx.targetUser = targetUser;
 
 	    // [OPT-HUNTER] attackInfo에서 미리 조회한 dropRows를 ctx에 저장 (applyDropBonusToContext 재사용)
@@ -966,6 +971,8 @@ public class BossAttackController {
 	    if (u == null)
 	        return "유저 정보를 찾을 수 없습니다.";
 
+	    UserBattleContext ctx = calcUserBattleContext(map);
+	    
 	    String curJob = (u.job == null ? "" : u.job.trim());
 	    String sel = selRaw;
 
@@ -1074,7 +1081,10 @@ public class BossAttackController {
 // 		        }
 // 		    }
 	    }
-	    
+	 // 변경 전 HP 비율 저장
+	    double hpRatio = 1.0;
+	    int effHp = computeEffectiveHpFromLastAttack(userName, roomName, u, ctx.finalHpMax, ctx.effRegen);
+        hpRatio = (double) effHp / (double) ctx.finalHpMax;
 	    
 	    // 6) 직업 변경 수행 (JOB + JOB_CHANGE_DATE = SYSDATE)
 	    int updated = botNewService.updateUserJobAndChangeDate(userName, roomName, newJob);
@@ -1087,7 +1097,13 @@ public class BossAttackController {
 	    	
 	    }
 	    
+	    UserBattleContext ctx2 = calcUserBattleContext(map);
 
+	    // HP 비율 유지
+	    long newHp = (long)Math.max(1, Math.floor(ctx2.finalHpMax * hpRatio));
+	    botNewService.updateUserHpOnlyTx(userName, roomName, (int) newHp);
+	    
+	    
 	    // 7) 완료 메시지
 	    return "✨ " + userName + "님, [" + newJob + "] 으로 직업이 변경되었습니다." + NL;
 	}
@@ -2104,6 +2120,10 @@ public class BossAttackController {
 	    SP unitPrice = MiniGameUtil.getPotionPrice(itemId, ctx.lifetimeSp);
 	    SP totalCost = unitPrice.multiply(qty);
 
+	    int effHp = computeEffectiveHpFromLastAttack(userName, roomName, ctx.user, ctx.finalHpMax , ctx.effRegen);
+	    if(effHp >= ctx.finalHpMax ) {
+	    	return "최대체력에선 포션구매불가!";
+	    }
 	    // 데스 상태 체크 1회
 	    boolean isDead = isDeadState(userName);
 	    if (itemId == 1001) {
@@ -2142,16 +2162,18 @@ public class BossAttackController {
 
 	        currentHp = newHp;
 
-	        // 인벤토리 로그 삽입 (경량 INSERT, qty회 실행)
-	        HashMap<String, Object> inv = new HashMap<>();
-	        inv.put("userName", userName);
-	        inv.put("roomName", roomName);
-	        inv.put("itemId",   itemId);
-	        inv.put("qty",      1);
-	        inv.put("delYn",    "1");
-	        inv.put("gainType", "BUY");
-	        botNewService.insertInventoryLogTx(inv);
+	        
 	    }
+	    
+	 // 인벤토리 로그 삽입 (경량 INSERT, qty회 실행)
+        HashMap<String, Object> inv = new HashMap<>();
+        inv.put("userName", userName);
+        inv.put("roomName", roomName);
+        inv.put("itemId",   itemId);
+        inv.put("qty",      qty);
+        inv.put("delYn",    "1");
+        inv.put("gainType", "BUY");
+        botNewService.insertInventoryLogTx(inv);
 
 	    // ── 최종 HP 반영 1회 ────────────────────────────────────────────
 	    botNewService.updateUserHpOnlyTx(userName, "", (int) currentHp);
@@ -2349,6 +2371,10 @@ public class BossAttackController {
 	            return userName + "님, 포인트가 부족합니다. (가격: " + itemPrice + ")";
 	        }
 
+	        int effHp = computeEffectiveHpFromLastAttack(userName, roomName, ctx.user, ctx.finalHpMax , ctx.effRegen);
+		    if(effHp >= ctx.finalHpMax ) {
+		    	return "최대체력에선 포션구매불가!";
+		    }
 	        boolean isDead = isDeadState(userName);
 
 	        if (itemId == 1001) {

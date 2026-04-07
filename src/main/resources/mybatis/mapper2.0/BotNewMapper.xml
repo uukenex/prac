@@ -1547,7 +1547,7 @@
 
 	<select id="selectPotionUseCount" resultType="int">
 	    /* selectPotionUseCount */
-	    SELECT NVL(COUNT(*), 0)
+	    SELECT NVL(SUM(qty), 0)
 	    FROM TBOT_POINT_NEW_INVENTORY
 	    WHERE USER_NAME = #{userName}
 	      AND ITEM_ID BETWEEN 1001 AND 1006
