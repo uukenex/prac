@@ -6992,10 +6992,10 @@ public class BossAttackController {
 	    if (effCritRate > 100) {
 	    	int overflow = effCritRate - 100;
 	    	double convertRate = MiniGameUtil.getHunterConvertRate(u.hunterGrade);
-	    	int converted = (int)Math.floor(overflow * convertRate);
 	    	if(!"헌터".equals(u.job)) {
-	    		converted /= 10;
+	    		convertRate /= 10;
 	    	}
+	    	int converted = (int)Math.floor(overflow * convertRate);
 	        effCritRate = 100;
 	        effCriDmg  += converted;
 
@@ -7108,7 +7108,7 @@ public class BossAttackController {
 	        crit = false;           // 샷별로 이미 크리 반영했으므로 여기서는 의미없음
 
 	        // 궁사 전용 계산 메시지를 out에 남김
-	        out.dmgCalcMsg = multiMsg.toString();
+	        out.dmgCalcMsg += multiMsg.toString();
 	    }
 	    
 	    if ("검성".equals(u.job)) {
