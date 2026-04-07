@@ -130,6 +130,7 @@
   </style>
 </head>
 <body>
+<%@ include file="_loa_nav.jsp" %>
 <div id="app" class="wrap">
 
   <div class="page-header">
@@ -431,6 +432,7 @@ new Vue({
           self.inventory      = data.inventory      || [];
           self.potionUseCount = data.potionUseCount || 0;
           self.loading = false;
+          sessionStorage.setItem('loaUserName', self.userName);
         })
         .catch(function() { self.loading = false; });
     }
