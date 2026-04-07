@@ -129,7 +129,9 @@ z-index: 1;
 					</div>
 					
 					<!-- footer -->
+					<!-- 
 						<jsp:include page="../../nonsession/layout/footer.jsp" />
+						 -->
 				</div>
 			</div>
 		</div>
