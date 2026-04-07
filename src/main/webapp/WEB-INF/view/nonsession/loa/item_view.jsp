@@ -44,7 +44,7 @@
     .count-label strong { color: #3d2b1f; }
 
     /* 그리드 */
-    .item-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(185px, 1fr)); gap: 13px; }
+    .item-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(185px, 1fr)); gap: 8px; }
 
     /* 카드 */
     .item-card { background: #fff; border-radius: 14px; padding: 15px 13px 13px; box-shadow: 0 2px 8px rgba(0,0,0,.06); border: 1.5px solid transparent; transition: box-shadow .18s, border-color .18s; position: relative; }

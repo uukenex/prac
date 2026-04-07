@@ -437,7 +437,33 @@ public class BossAttackController {
 
 	        } catch (Exception ignore) {}
 	    }
-	    
+
+	    // 헌터 외 직업에서도 hunterGrade 계산 (헬 삭감·치초과 변환 등에서 사용)
+	    if (ctx.hunterGrade == null) {
+	        try {
+	            int _atk, _dth;
+	            if (map.containsKey("_preHunterAdjAttacks")) {
+	                _atk = ((Number) map.get("_preHunterAdjAttacks")).intValue();
+	                _dth = ((Number) map.get("_preHunterAdjDeaths")).intValue();
+	            } else {
+	                AttackDeathStat _ads = botNewService.selectAttackDeathStats(targetUser, "");
+	                _atk = (_ads == null ? 0 : _ads.totalAttacks + _ads.hunterAttacks * 2);
+	                _dth = (_ads == null ? 0 : _ads.totalDeaths  + _ads.hunterAttacks / 2);
+	            }
+	            List<HashMap<String,Object>> _drops = (ctx.preDropRows != null)
+	                    ? ctx.preDropRows
+	                    : botNewService.selectTotalDropItems(targetUser);
+	            int _totalDrops = 0;
+	            if (_drops != null) {
+	                for (HashMap<String,Object> d : _drops) {
+	                    Object v = d.get("TOTAL_QTY");
+	                    if (v instanceof Number) _totalDrops += ((Number)v).intValue();
+	                }
+	            }
+	            ctx.hunterGrade = calculateHunterGrade(_atk, _totalDrops, _dth);
+	        } catch (Exception ignore) {}
+	    }
+
 	    // 기본 스탯
 	    int baseMin     = u.atkMin;
 	    int baseMax     = u.atkMax;
@@ -1372,22 +1398,7 @@ public class BossAttackController {
 	        }
 	    }
 
-	    // [OPT-HUNTER] 전체 직업 hunterGrade 계산 (헌터가 아닌 직업도 표시)
-	    if (ctx.hunterGrade == null) {
-	        int _hunterCnt = jobAtkMap.getOrDefault("헌터", 0);
-	        int _adjAtk = totalAttacks + _hunterCnt * 2;
-	        int _adjDth = totalDeaths  + _hunterCnt / 2;
-	        int _totalDrops = 0;
-	        @SuppressWarnings("unchecked")
-	        List<HashMap<String,Object>> _drops = (List<HashMap<String,Object>>) map.get("_preDropRows");
-	        if (_drops != null) {
-	            for (HashMap<String,Object> d : _drops) {
-	                Object v = d.get("TOTAL_QTY");
-	                if (v instanceof Number) _totalDrops += ((Number)v).intValue();
-	            }
-	        }
-	        ctx.hunterGrade = calculateHunterGrade(_adjAtk, _totalDrops, _adjDth);
-	    }
+	    // hunterGrade는 calcUserBattleContext에서 이미 계산됨 (헌터·비헌터 모두)
 
 	    // ① 유효 체력 계산 — lastAtkTs 재사용으로 selectLastAttackTime DB 조회 생략
 	    int effHp = computeEffectiveHpFromLastAttack(targetUser, roomName, u, finalHpMax, shownRegen, lastAtkTs);
@@ -5416,8 +5427,8 @@ public class BossAttackController {
 	    }
 
 	    if(u.job.equals("곰")) {
-	    	
-	    	sb.append("최대체력 "+calc.atkDmg+" 이하에게 괴력!");
+
+	    	sb.append("최대체력 "+formatWan(calc.atkDmg)+" 이하에게 괴력!");
 		    sb.append(NL);
 	    }else {
 	    	// 치명타
@@ -5425,26 +5436,22 @@ public class BossAttackController {
 		    if (u.blessYn==1) sb.append("✨축복(x1.5)!");
 		    sb.append(NL);
 		 // 데미지
-		    sb.append("⚔ 데미지: (").append(shownAtkMin).append("~").append(shownAtkMax).append(" ⇒ ");
+		    sb.append("⚔ 데미지: (").append(formatWan(shownAtkMin)).append("~").append(formatWan(shownAtkMax)).append(" ⇒ ");
 		    if (flags.atkCrit && calc.baseAtk > 0 && calc.critMultiplier >= 1.0) {
-		        sb.append(calc.baseAtk).append("*").append(trimDouble(calc.critMultiplier)).append("=>").append(calc.atkDmg);
+		        sb.append(formatWan(calc.baseAtk)).append("*").append(trimDouble(calc.critMultiplier)).append("=>").append(formatWan(calc.atkDmg));
 		    } else {
-		        sb.append(calc.atkDmg);
+		        sb.append(formatWan(calc.atkDmg));
 		    }
 		    sb.append(")").append(NL);
 	    }
-	    
-	    
-	    
-	    
 
 	    if (midExtraLines != null && !midExtraLines.isEmpty()) {
 	        sb.append(midExtraLines).append(NL).append(NL);
 	    }
-	    
+
 	    // 몬스터 HP
 	    int monHpAfter = Math.max(0, monHpRemainBefore - calc.atkDmg);
-	    sb.append("❤️ 몬스터 HP: ").append(monHpAfter).append(" / ").append(monMaxHp).append(NL);
+	    sb.append("❤️ 몬스터 HP: ").append(formatWan(monHpAfter)).append(" / ").append(formatWan(monMaxHp)).append(NL);
 
 	    // 반격
 	    if (calc.patternMsg != null && !calc.patternMsg.isEmpty()) {
@@ -5453,10 +5460,10 @@ public class BossAttackController {
 
 	    // 현재 체력(표시 Max 사용)
 	    if (calc.monDmg > 0) {
-	        sb.append("❤️ 받은 피해: ").append(calc.monDmg)
-	          .append(",  현재 체력: ").append(u.hpCur).append(" / ").append(displayHpMax).append(NL);
+	        sb.append("❤️ 받은 피해: ").append(formatWan(calc.monDmg))
+	          .append(",  현재 체력: ").append(formatWan(u.hpCur)).append(" / ").append(formatWan(displayHpMax)).append(NL);
 	    } else {
-	        sb.append("❤️ 현재 체력: ").append(u.hpCur).append(" / ").append(displayHpMax).append(NL);
+	        sb.append("❤️ 현재 체력: ").append(formatWan(u.hpCur)).append(" / ").append(formatWan(displayHpMax)).append(NL);
 	    }
 
 	    // 드랍
@@ -5483,7 +5490,7 @@ public class BossAttackController {
 	    double gainPercent = (double) res.gainExp / u.expNext * 100;
 	    double curPercent = (double) u.expCur / u.expNext * 100;
 
-	    sb.append("✨ EXP +").append(res.gainExp)
+	    sb.append("✨ EXP +").append(formatWan(res.gainExp))
 	      .append("(").append(String.format("%.1f", gainPercent)).append("%)")
 	      .append("[").append(String.format("%.1f", curPercent)).append("%/100%]")
 	      .append(NL);
@@ -5502,8 +5509,8 @@ public class BossAttackController {
 
 	        // ❤️ HP
 	        sb.append("└:❤️HP ")
-	          .append(up.beforeHpMax).append("→").append(up.afterHpMax)
-	          .append(" (+").append(up.hpMaxDelta).append(")").append(NL);
+	          .append(formatWan(up.beforeHpMax)).append("→").append(formatWan(up.afterHpMax))
+	          .append(" (+").append(formatWan(up.hpMaxDelta)).append(")").append(NL);
 
 	        // ⚔ ATK
 	        sb.append("└:⚔ATK ")
@@ -5530,6 +5537,12 @@ public class BossAttackController {
 	}
 
 	/* ===== utils ===== */
+
+	/** 10,000,000(천만) 이상이면 만 단위로 표시. 예: 12345678 → "1234만" */
+	private String formatWan(int v) {
+	    if (v >= 10_000_000) return (v / 10_000) + "만";
+	    return String.valueOf(v);
+	}
 
 	private String trimDouble(double v) {
 		return String.format("%.2f", v);

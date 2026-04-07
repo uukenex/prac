@@ -80,7 +80,7 @@
     .btn-sort:hover { border-color: #5b8dd9; color: #5b8dd9; }
 
     /* 그리드 */
-    .mon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(205px, 1fr)); gap: 13px; }
+    .mon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(205px, 1fr)); gap: 8px; }
 
     /* 카드 */
     .mon-card { background: #fff; border-radius: 14px; padding: 15px 13px 13px; box-shadow: 0 2px 8px rgba(0,0,0,.06); border: 2px solid transparent; transition: box-shadow .18s, border-color .18s; }
