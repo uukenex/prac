@@ -6,15 +6,17 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 
 import my.prac.core.game.dto.AchievementCount;
 import my.prac.core.game.dto.EquipCategory;
 import my.prac.core.game.dto.JobChangeReq;
-import my.prac.core.game.dto.Monster;
 import my.prac.core.game.dto.JobDef;
+import my.prac.core.game.dto.Monster;
 import my.prac.core.game.dto.SpecialBuffOption;
+import my.prac.core.game.dto.User;
 
 public class MiniGameUtil {
 	private static final String NL = "♬";
@@ -29,6 +31,7 @@ public class MiniGameUtil {
 	public static final LinkedHashMap<Integer, Integer> ACHV_REWARD_MAP = new LinkedHashMap<>();
 	public static final Map<String,String> SLOT_MAP = new HashMap<>();
 	public static final List<EquipCategory> EQUIP_CATEGORIES = new ArrayList<>();
+	public static final double HEL_NERF_BASE = 0.05;
 
 // 직업 메타데이터 맵 (등록 순서 유지 위해 LinkedHashMap)
 	public static final Map<String, JobDef> JOB_DEFS = new LinkedHashMap<>();
@@ -716,9 +719,213 @@ public class MiniGameUtil {
 		GOLD_MAP_ACC.put(14,  new int[]{400});
 		GOLD_MAP_ACC.put(15,  new int[]{450});
 	}
+	
+	public static double getHunterConvertRate(String grade) {
 
+	    if (grade == null) {
+	        return 0.40;
+	    }
+
+	    switch (grade) {
+	        case "SSS": return 1.20;
+	        case "SS":  return 1.10;
+	        case "S":   return 1.00;
+	        case "A+":  return 0.85;
+	        case "A":   return 0.80;
+	        case "B+":  return 0.75;
+	        case "B":   return 0.70;
+	        case "C+":  return 0.65;
+	        case "C":   return 0.60;
+	        case "D+":  return 0.55;
+	        case "D":   return 0.50;
+	        default:    return 0.40;
+	    }
+	}
+	/** 헬모드 너프 배율 반환 (헌터등급 높을수록 삭감 완화) */
+	public static double getHellNerfMult(String grade) {
+	    if (grade == null) return HEL_NERF_BASE;
+	    switch (grade) {
+	        case "SSS": return 0.15;
+	        case "SS":  return 0.15;
+	        case "S":   return 0.12;
+	        case "A+":  return 0.10;
+	        case "A":   return 0.10;
+	        case "B+":  return 0.09;
+	        case "B":   return 0.09;
+	        case "C+":  return 0.07;
+	        case "C":   return 0.07;
+	        case "D+":  return HEL_NERF_BASE;
+	        case "D":   return HEL_NERF_BASE;
+	        default:    return HEL_NERF_BASE; // F
+	    }
+	}
 	
+	public static double getDropRateByNo(int monNo) {
+	    switch (monNo) {
+	        case 1:  case 2:  case 3:  case 4:  
+	        case 5:  case 6:  case 7:  case 8:  
+	        case 9:  case 10: case 11: case 12:
+	        	return 30;
+	        case 13: case 14: case 16: case 17: 
+	        case 18: case 19: case 20: case 21:
+	        case 22: case 23: case 24: case 26:
+	        case 27: case 28: case 29: case 30:
+	        	return 20;
+	        	
+	        case 15: case 25:
+	        	return 25;
+	        	
+	        case 51: case 52: case 53: 
+	        	return 80;
+	        case 61: case 62: case 63: 
+	        	return 0;
+	        case 91: 
+	        	return 0;
+	        default: 
+	        	return 0;
+	    }
+	}
 	
+	public static int calcBaseHpMax(int lv) {
+		int base = lv * 30;
+		int bonus = 0;
+	    if (lv >= 50)  bonus += (lv - 49) * 30;   
+	    if (lv >= 100) bonus += (lv - 99) * 60;  
+	    if (lv >= 150) bonus += (lv - 149) * 120;
+	    if (lv >= 200) bonus += (lv - 199) * 200; 
+	    if (lv >= 250) bonus += (lv - 249) * 270;
+	    if (lv >= 300) bonus += (lv - 299) * 500; 
+	    if (lv >= 350) bonus += (lv - 349) * 1000; 
+	    if (lv >= 400) bonus += (lv - 399) * 1500; 
+		
+	    return base+bonus;
+	}
+
+	public static int calcBaseAtkMin(int lv) {
+		int base = lv;
+
+		int bonus = 0;
+	    if (lv >= 80)  bonus += (lv - 79) * 1;
+	    if (lv >= 150) bonus += (lv - 149) * 2;
+	    if (lv >= 190) bonus += (lv - 189) * 3;
+	    if (lv >= 230) bonus += (lv - 229) * 4;
+	    if (lv >= 270) bonus += (lv - 269) * 5;
+	    if (lv >= 300) bonus += (lv - 299) * 10;
+	    if (lv >= 350) bonus += (lv - 349) * 15;
+	    if (lv >= 400) bonus += (lv - 399) * 20;
+
+	    return base + bonus;
+	}
+
+	public static int calcBaseAtkMax(int lv) {
+		int base = lv * 3;
+
+	    int bonus = 0;
+	    if (lv >= 60)  bonus += (lv - 59) * 1;
+	    if (lv >= 80)  bonus += (lv - 79) * 2;
+	    if (lv >= 120)  bonus += (lv - 119) * 3;
+	    if (lv >= 150) bonus += (lv - 149) * 4;
+	    if (lv >= 180) bonus += (lv - 179) * 5;
+	    if (lv >= 210) bonus += (lv - 209) * 6;
+	    if (lv >= 240) bonus += (lv - 239) * 7;
+	    if (lv >= 270) bonus += (lv - 269) * 8;
+	    if (lv >= 300) bonus += (lv - 299) * 12;
+	    if (lv >= 350) bonus += (lv - 349) * 20;
+	    if (lv >= 400) bonus += (lv - 399) * 30;
+
+	    return base + bonus;
+	}
+
+	public static int calcBaseCritRate(int lv) {
+	    return 10 + (lv - 1) * 2;
+	}
+
+	public static int calcBaseHpRegen(int lv) {
+		int base = lv * 3;
+		
+		int bonus = 0;
+		
+		if (lv >= 50)  bonus += (lv - 49) * 10;
+		if (lv >= 80)  bonus += (lv - 79) * 20;
+		if (lv >= 100) bonus += (lv - 99) * 30;
+		if (lv >= 150) bonus += (lv - 149) * 50;
+		if (lv >= 200) bonus += (lv - 199) * 70;
+		if (lv >= 240) bonus += (lv - 239) * 130;
+		if (lv >= 280) bonus += (lv - 279) * 200;
+		if (lv >= 320) bonus += (lv - 319) * 400;
+
+	    return base+bonus;
+	}
 	
+	public static String buildEnhancedOptionLine(HashMap<String,Object> item, int qty) {
+	    if (item == null) return "";
+
+	    int baseMin     = parseIntSafe(Objects.toString(item.get("ATK_MIN"), "0"));
+	    int baseMax     = parseIntSafe(Objects.toString(item.get("ATK_MAX"), "0"));
+	    int baseHp      = parseIntSafe(Objects.toString(item.get("HP_MAX"), "0"));
+	    int baseRegen   = parseIntSafe(Objects.toString(item.get("HP_REGEN"), "0"));
+	    int baseCri     = parseIntSafe(Objects.toString(item.get("ATK_CRI"), "0"));    // 치확
+	    int baseCriDmg  = parseIntSafe(Objects.toString(item.get("CRI_DMG"), "0"));    // 치피
+	    int baseHpRate  = parseIntSafe(Objects.toString(item.get("HP_MAX_RATE"), "0"));// 체력%
+	    int baseAtkRate = parseIntSafe(Objects.toString(item.get("ATK_MAX_RATE"), "0"));// 최종공격력%
+
+	    StringBuilder sb = new StringBuilder();
+
+	    // 공격력
+	    if (baseMin != 0 || baseMax != 0) {
+	        sb.append("[공격력 ")
+	          .append(baseMin)
+	          .append("~")
+	          .append(baseMax)
+	          .append("] ");
+	    }
+
+	    // 최종 공격력 %
+	    if (baseAtkRate != 0) {
+	        sb.append("[최종공격력 ")
+	          .append(baseAtkRate)
+	          .append("%] ");
+	    }
+
+	    // HP
+	    if (baseHp != 0) {
+	        sb.append("[체력+ ")
+	          .append(baseHp)
+	          .append("] ");
+	    }
+
+	    // HP %
+	    if (baseHpRate != 0) {
+	        sb.append("[체력% ")
+	          .append(baseHpRate)
+	          .append("] ");
+	    }
+
+	    // 체젠
+	    if (baseRegen != 0) {
+	        sb.append("[체젠 ")
+	          .append(baseRegen)
+	          .append("] ");
+	    }
+
+	    // 치확
+	    if (baseCri != 0) {
+	        sb.append("[치확 ")
+	          .append(baseCri)
+	          .append("] ");
+	    }
+
+	    // 치피
+	    if (baseCriDmg != 0) {
+	        sb.append("[치피 ")
+	          .append(baseCriDmg)
+	          .append("] ");
+	    }
+
+	    return sb.toString().trim();
+	}
 	
+	public static int parseIntSafe(String s) {
+	    try { return Integer.parseInt(s); } catch (Exception e) { return 0; }
+	}
 }

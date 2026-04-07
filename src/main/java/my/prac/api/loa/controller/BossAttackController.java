@@ -76,7 +76,6 @@ public class BossAttackController {
 	private static final int NM_MUL_EXP = 50;
 	private static final int NM_ADD_MON_LV = 150;
 
-	private static final double HEL_NERF_BASE = 0.05; // 헬모드 기본 삭감 배율 (90% 삭감, 헌터랭크로 완화)
 	private static final int HEL_ADD_MON_LV = 400; // 
 	private static final int HEL_MUL_EXP = 3;     // 헬 추가 배율 (나메에 추가 *3), 총 base*NM*HEL
 	private static final long HEL_SP_MULT = 200; // 토끼(10sp) * 50 * 200 =  = 10a
@@ -270,8 +269,6 @@ public class BossAttackController {
 	        return ctx;
 	    }
 
-	    ctx.isReturnUser = false; //botNewService.isReturnUser(targetUser);
-	    
 	    ctx.user = u;
 	    ctx.job  = (u.job == null ? "" : u.job.trim());
 
@@ -465,28 +462,9 @@ public class BossAttackController {
 	    ctx.bHpMaxRateRaw  = bHpMaxRateRaw;
 	    ctx.bAtkMaxRateRaw  = bAtkMaxRateRaw;
 
-	    // ② 무기강/보너스 조회
-	    //HashMap<String, Object> wm = new HashMap<>();
-	    //wm.put("userName", targetUser);
-	    //wm.put("roomName", roomName);
-	    //int weaponLv = 0;
-	    
-	    //int weaponBonus = getWeaponAtkBonus(weaponLv); // 25강부터 +1
-
-	    //ctx.weaponLv     = weaponLv;
-	    //ctx.weaponBonus  = weaponBonus;
-
 	    int atkMinWithItem = baseMin + bAtkMinRaw;
 	    int atkMaxWithItem = baseMax + bAtkMaxRaw;
 
-	    // 3) 운영자의 축복
-	    /*
-	    boolean hasBless = (u.lv <= 15);
-	    int blessRegenBonus = hasBless ? 5 : 0;
-	    ctx.hasBless          = hasBless;
-	    ctx.blessRegenBonus   = blessRegenBonus;
-	     */
-	    // 🩸 흡혈귀: monsterAttack 캐논 기준으로 "아이템 리젠만" 무효
 	    if ("흡혈귀".equals(job)) {
 	        bRegenRaw = 0;
 	    }
@@ -505,37 +483,12 @@ public class BossAttackController {
 
 	        jobHpMaxBonus = baseHpMax*2;
 	    }
-	    if ("저격수".equals(job)) {
-	        finalHpMax = finalHpMax/2; // 기본 HP 추가
-	    }
 	    if (finalHpMax <= 0) finalHpMax = 1;
 
 	    // 5) 최종 리젠 (기본+아이템+축복)
 	    int effRegen = finalRegen + jobRegenBonus;
 	    if (effRegen < 0) effRegen = 0;
 
-	    // 6) 파이터: HP 추가 보정
-	    if ("파이터".equals(job)) {
-	        finalHpMax += atkMaxWithItem * 3;
-	        finalHpMax += effRegen * 3;
-	        finalHpMax += (baseCritDmg + bCriDmgRaw) * 3;
-	    }
-	    // 7) 파이터: 증가된 HP 기반 공격력 재보정 ★ 새로 추가 ★
-	    if ("파이터".equals(job)) {
-
-	        int shownCrit    = baseCrit + bCriRaw;
-	        int shownCritDmg = baseCritDmg + bCriDmgRaw;
-
-	        int fighterAtkBonus = (atkMaxWithItem + shownCrit + shownCritDmg) * 3;
-
-	        atkMinWithItem += fighterAtkBonus;
-	        atkMaxWithItem += fighterAtkBonus;
-
-	        // 파이터는 크리 기반 능력 삭제
-	        ctx.shownCrit    = 0;
-	        ctx.shownCritDmg = 0;
-	    }
-	    
 	    if ("곰".equals(job)) {
 
 	        int atkSum = atkMinWithItem+atkMaxWithItem;
@@ -555,46 +508,6 @@ public class BossAttackController {
 	        
 	    }
 
-	  
-
-	 // ✅ 오늘 룰렛 버프(개인형, 00시 초기화: TRUNC(SYSDATE) 기준) - 캐시 사용
-	    int dailyAtkBonus  = 0;
-	    int dailyCdmgBonus = 0;
-	    HashMap<String,Object> b = getDailyBuffCached(targetUser);
-	    if (b != null && !b.isEmpty()) {
-	        dailyAtkBonus  = safeInt(b.get("ATK_BONUS"));
-	        dailyCdmgBonus = safeInt(b.get("CRI_DMG_BONUS"));
-	    }
-
-	    
-	    
-	    ctx.dailyAtkBonus     = dailyAtkBonus;
-	    ctx.dailyCriDmgBonus  = dailyCdmgBonus;
-
-	    // 실제 스탯에 반영 (공격력 +, 크리뎀 +)
-	    atkMinWithItem += dailyAtkBonus;
-	    atkMaxWithItem += dailyAtkBonus;
-	    bCriDmgRaw     += dailyCdmgBonus; // shownCritDmg 계산에 자연스럽게 포함
-	    
-
-	 // ✅ 직업 마스터 보너스(오늘) - 캐시 사용
-	    /*
-	    boolean isMaster = isJobMasterCached(targetUser, job);
-
-	    int jobMasterAtkRate = 0;
-	    int jobMasterHpRate = 0;
-	    int jobEffRegen = 0;
-	    if (isMaster) {
-	    	jobMasterAtkRate += 10;
-	    	jobMasterHpRate  += 15;
-	    	jobEffRegen     += 1000;
-	        ctx.isJobMaster = true;
-	    } else {
-	        ctx.isJobMaster = false;
-	    }
-	    */
-	    
-	    
 	    int finalHpMaxBonus = (finalHpMax * (ctx.bHpMaxRateRaw)) /100;
 	    finalHpMax += finalHpMaxBonus;
 	    int atkMinWithItemBonus = (atkMinWithItem * (ctx.bAtkMaxRateRaw)) /100;
@@ -612,7 +525,7 @@ public class BossAttackController {
 	    int modMinusAtkCritDmg =0;
 	    
 	    if(u.nightmareYn==2) {
-	    	double hellMult = getHellNerfMult(ctx.hunterGrade);
+	    	double hellMult = MiniGameUtil.getHellNerfMult(ctx.hunterGrade);
 	    	
 	    	modMinusAtkMin = Math.max(0, (int) Math.round(atkMinWithItem   * (1-hellMult) ));
 	    	modMinusAtkMax = Math.max(0, (int) Math.round(atkMaxWithItem   * (1-hellMult) ));
@@ -660,25 +573,6 @@ public class BossAttackController {
 	    return ctx;
 	}
 	
-	/** 헬모드 너프 배율 반환 (헌터등급 높을수록 삭감 완화) */
-	private double getHellNerfMult(String grade) {
-	    if (grade == null) return HEL_NERF_BASE;
-	    switch (grade) {
-	        case "SSS": return 0.25;
-	        case "SS":  return 0.20;
-	        case "S":   return 0.17;
-	        case "A+":  return 0.14;
-	        case "A":   return 0.14;
-	        case "B+":  return 0.12;
-	        case "B":   return 0.12;
-	        case "C+":  return 0.10;
-	        case "C":   return 0.10;
-	        case "D+":  return 0.05;
-	        case "D":   return 0.05;
-	        default:    return HEL_NERF_BASE; // F
-	    }
-	}
-
 	private String calculateHunterGrade(int totalAttacks, int totalDrops, int totalDeaths) {
 
 // ---------------- 상위 단독 등급 ----------------
@@ -1241,12 +1135,7 @@ public class BossAttackController {
 	        		) {
 	        	
 	        	
-	        	/*
-	        	HashMap<String, Object> info =
-	                    botNewService.selectItemDetailById(itemId);
-	            */
-	        	//String opt = buildEnhancedOptionLine(info, 1);
-	        	String opt = buildEnhancedOptionLine(row, 1);
+	        	String opt = MiniGameUtil.buildEnhancedOptionLine(row, 1);
 	            if (!opt.isEmpty()) {
 	                label += opt;
 	            }
@@ -1611,11 +1500,11 @@ public class BossAttackController {
 
 	    // 헬모드 삭감 정보 표시
 	    if (u.nightmareYn == 2) {
-	        double hellMult = getHellNerfMult(ctx.hunterGrade);
+	        double hellMult = MiniGameUtil.getHellNerfMult(ctx.hunterGrade);
 	        int reductionPct = (int) Math.round((1.0 - hellMult) * 100);
-	        int basePct = (int) Math.round((1.0 - HEL_NERF_BASE) * 100);
+	        int basePct = (int) Math.round((1.0 - MiniGameUtil.HEL_NERF_BASE) * 100);
 	        sb.append("[헬모드] 능력치 삭감 ").append(reductionPct).append("%");
-	        if (Math.abs(hellMult - HEL_NERF_BASE) > 0.001) {
+	        if (Math.abs(hellMult - MiniGameUtil.HEL_NERF_BASE) > 0.001) {
 	            sb.append(" (hunter").append(ctx.hunterGrade).append(", 기본 ").append(basePct).append("%)");
 	        } else {
 	            sb.append(" (hunter").append(ctx.hunterGrade).append(")");
@@ -1647,9 +1536,6 @@ public class BossAttackController {
 					.append(baseMin).append("~").append(baseMax).append(")").append(NL)
 					.append("   └ 아이템 (min").append(formatSigned(bAtkMinRaw)).append(", max")
 					.append(formatSigned(bAtkMaxRaw)).append(")").append(NL);
-			if (ctx.dailyAtkBonus > 0) {
-				sb.append("   └ 룰렛 버프: ATK +").append(ctx.dailyAtkBonus).append(NL);
-			}
 			if (bAtkMaxRateRaw > 0) {
 				sb.append("   └ 최종공격력 (").append(formatSigned(bAtkMaxRateRaw)).append("%)").append(NL);
 			}
@@ -1667,13 +1553,6 @@ public class BossAttackController {
 		    sb.append("⚔CRIT: ").append(shownCrit).append("%  CDMG ").append(shownCritDmg).append("%").append(NL)
 		      .append("   └ 기본 (").append(u.critRate).append("%, ").append(u.critDmg).append("%)").append(NL);
 			sb.append("   └ 아이템 (CRIT").append(formatSigned(bCriRaw)).append("%, CDMG ").append(formatSigned(bCriDmgRaw)).append("%)").append(NL);
-			if(ctx.dailyCriDmgBonus > 0) {
-		    	sb.append("   └ 룰렛 버프 (CRIT")
-		        .append(formatSigned(0))
-		        .append("%, CDMG ")
-		        .append(formatSigned(ctx.dailyCriDmgBonus))
-		        .append("%)").append(NL);
-		    }
 			if (modMinusAtkCrit != 0 ) {
 				sb.append("   └ 모드 (CRIT-").append(modMinusAtkCrit).append("%, CDMG -").append(modMinusAtkCritDmg).append("%)").append(NL);
 		    }
@@ -1735,8 +1614,8 @@ public class BossAttackController {
 	        } else {
 	            // 1) ITEM_ID ASC 정렬
 	            bag.sort((a, b) -> {
-	                int noA = parseIntSafe(Objects.toString(a.get("ITEM_ID"), "0"));
-	                int noB = parseIntSafe(Objects.toString(b.get("ITEM_ID"), "0"));
+	                int noA = MiniGameUtil.parseIntSafe(Objects.toString(a.get("ITEM_ID"), "0"));
+	                int noB = MiniGameUtil.parseIntSafe(Objects.toString(b.get("ITEM_ID"), "0"));
 	                return Integer.compare(noA, noB);
 	            });
 
@@ -1758,7 +1637,7 @@ public class BossAttackController {
 	                String itemName = Objects.toString(row.get("ITEM_NAME"), "-");
 	                String qtyStr   = Objects.toString(row.get("TOTAL_QTY"), "0");
 	                String typeStr  = Objects.toString(row.get("ITEM_TYPE"), "");
-	                int itemId      = parseIntSafe(Objects.toString(row.get("ITEM_ID"), "0"));
+	                int itemId      = MiniGameUtil.parseIntSafe(Objects.toString(row.get("ITEM_ID"), "0"));
 
 	                if (itemName == null || itemName.trim().isEmpty()) continue;
 
@@ -1766,7 +1645,7 @@ public class BossAttackController {
 	                if ((itemId >= 300 && itemId < 400) || (itemId >= 500 && itemId < 700) || (itemId >= 900 && itemId < 1000)) continue;
 
 	                // 수량 파싱
-	                int qtyVal = parseIntSafe(qtyStr);
+	                int qtyVal = MiniGameUtil.parseIntSafe(qtyStr);
 	                if (qtyVal < 1) qtyVal = 1; // 최소 1
 
 	                String label = itemName;
@@ -2079,7 +1958,7 @@ public class BossAttackController {
 
 	        List<HashMap<String,Object>> filtered = new ArrayList<>();
 	        for (HashMap<String,Object> row : list) {
-	            int id = parseIntSafe(Objects.toString(row.get("ITEM_ID"), "0"));
+	            int id = MiniGameUtil.parseIntSafe(Objects.toString(row.get("ITEM_ID"), "0"));
 	            if (id >= min && id < max) {
 	                filtered.add(row);
 	            }
@@ -2133,7 +2012,7 @@ public class BossAttackController {
 
 	        if (m.matches()) {
 	            itemToken = m.group(1).trim();
-	            qty = parseIntSafe(m.group(2));
+	            qty = MiniGameUtil.parseIntSafe(m.group(2));
 	            if (qty <= 0) qty = 1;
 	        }
 
@@ -2183,10 +2062,10 @@ public class BossAttackController {
 	            for (HashMap<String,Object> row : inv) {
 	                if (row == null) continue;
 
-	                int rowItemId = parseIntSafe(Objects.toString(row.get("ITEM_ID"), "0"));
+	                int rowItemId = MiniGameUtil.parseIntSafe(Objects.toString(row.get("ITEM_ID"), "0"));
 	                if (rowItemId != itemId) continue;
 
-	                int q = parseIntSafe(Objects.toString(row.get("TOTAL_QTY"), "0"));
+	                int q = MiniGameUtil.parseIntSafe(Objects.toString(row.get("TOTAL_QTY"), "0"));
 	                if (q > 0) {
 	                    alreadyOwnedThisItem = true;  // 이미 이 아이템은 가지고 있음 → 업그레이드 구매
 	                }
@@ -2214,7 +2093,7 @@ public class BossAttackController {
 	    String itemName = Objects.toString(item.get("ITEM_NAME"), String.valueOf(itemId));
 
 	    // 레벨 제한 체크
-	    int targetLv = parseIntSafe(Objects.toString(item.get("TARGET_LV"), "0"));
+	    int targetLv = MiniGameUtil.parseIntSafe(Objects.toString(item.get("TARGET_LV"), "0"));
 	    if (targetLv > 0) {
 	        try {
 	            User u = botNewService.selectUser(userName, roomName);
@@ -2272,7 +2151,7 @@ public class BossAttackController {
 	                String rid = (row.get("RID") != null ? row.get("RID").toString() : null);
 	                if (rid == null) continue;
 
-	                int q = parseIntSafe(Objects.toString(row.get("QTY"), "0"));
+	                int q = MiniGameUtil.parseIntSafe(Objects.toString(row.get("QTY"), "0"));
 	                if (q <= 0) continue;
 
 	                // 같은 ITEM_ID 한 줄만 관리한다고 가정 → 첫 행 사용
@@ -2371,7 +2250,7 @@ public class BossAttackController {
 	    // 옵션 문자열 결정
 	    String optionStr;
 	    
-	    optionStr = buildEnhancedOptionLine(item, 1); 
+	    optionStr = MiniGameUtil.buildEnhancedOptionLine(item, 1); 
 	    //buildOptionTokensFromMap(item);
 
 	    // 결과 메시지
@@ -2802,19 +2681,7 @@ public class BossAttackController {
 	    // ─────────────────────────────
 	    // 3) calcUserBattleContext 에서 가져오는 스탯들
 	    // ─────────────────────────────
-	    final int baseMin   = ctx.baseMin;
-	    final int baseMax   = ctx.baseMax;
-	    final int baseHpMax = ctx.baseHpMax;
 
-	    final int bAtkMin   = ctx.bAtkMinRaw;
-	    final int bAtkMax   = ctx.bAtkMaxRaw;
-	    final int bHpMax    = ctx.bHpMaxRaw;
-	    final int bRegen    = ctx.bRegenRaw;
-	    final int bCri      = ctx.bCriRaw;
-	    final int bCriDmg   = ctx.bCriDmgRaw;
-
-	    final int weaponLv    = ctx.weaponLv;
-	    final int weaponBonus = ctx.weaponBonus;
 
 	    // 아이템/강화 포함 전투용 기본 ATK (직업 배율 적용 전)
 	    final int atkMinWithItem = ctx.atkMinWithItem; // baseMin + bAtkMin
@@ -3294,7 +3161,7 @@ public class BossAttackController {
 				double value = Double.parseDouble(activeBuff.get("EFFECT_VALUE").toString());
 
 				if (hell) {
-					double hellMult = getHellNerfMult(ctx.hunterGrade);
+					double hellMult = MiniGameUtil.getHellNerfMult(ctx.hunterGrade);
 					value = Math.max(0, (int) Math.round(value * hellMult));
 
 				}
@@ -3304,7 +3171,7 @@ public class BossAttackController {
 
 				double value = Double.parseDouble(activeBuff.get("EFFECT_VALUE").toString());
 				if (hell) {
-					double hellMult = getHellNerfMult(ctx.hunterGrade);
+					double hellMult = MiniGameUtil.getHellNerfMult(ctx.hunterGrade);
 					value = Math.max(0, (int) Math.round(value * hellMult));
 
 				}
@@ -3322,22 +3189,10 @@ public class BossAttackController {
 	        effAtkMax = (int)Math.round(effAtkMax * 1.5);
 	    }
 	    
-	    // 헬모드 너프: 공격력/크리율/크리뎀 90% 삭감 (헌터등급으로 완화)
-	    /*
-	    if (hell) {
-	        double hellMult = getHellNerfMult(ctx.hunterGrade);
-	        effAtkMin   = Math.max(1, (int) Math.round(effAtkMin   * hellMult));
-	        effAtkMax   = Math.max(1, (int) Math.round(effAtkMax   * hellMult));
-	        effCritRate = (int) Math.round(effCritRate * hellMult);
-	        effCriDmg   = (int) Math.round(effCriDmg   * hellMult);
-	        effHpMax	= (int) Math.round(effHpMax * hellMult);
-	    }*/
-
 	    // 11) 데미지 계산 (A형 완전 분리 버전)
 	    DamageOutcome dmg = calculateDamage(
 	            u,
 	            m,
-	            job,
 	            flags,
 	            effAtkMin,
 	            effAtkMax,
@@ -3413,12 +3268,10 @@ public class BossAttackController {
 	            userName, u, m, flags, calc,
 	            emptyResolve, null,
 	            monHpRemainBefore, monMaxHp,
-	            effAtkMin, effAtkMax,   // 표시용 공격력
-	            weaponLv, weaponBonus,
-	            effHpMax,               // 표시용 HP_MAX
+	            effAtkMin, effAtkMax,  
+	            effHpMax,              
 	            null,
 	            null,
-	            ctx.isReturnUser,
 	            nightmare,
 	            ctx
 	        );
@@ -3428,24 +3281,8 @@ public class BossAttackController {
 	    // 12) 사망 처리
 	    int newHpPreview = Math.max(0, u.hpCur - calc.monDmg);
 	    
-	 // ☠ 사신: 체력이 0이 되어도 죽지 않고, 대신 공격에 실패
-	    /*
- 		 if ("사신".equals(job) && newHpPreview <= 0) {
-		     // HP는 1 남기고 버틴다고 가정
-		     newHpPreview = 1;
-		     // 실제로는 1만 남도록 몬스터 피해 조정
-		     calc.monDmg = Math.max(0, u.hpCur - newHpPreview);
-		     calc.atkDmg = (int) Math.round(calc.atkDmg*0.5) ;
-		     calc.jobSkillUsed = true;  
-		     String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
-		     calc.patternMsg = baseMsg + "사신은 죽음을 거부하고 버텼지만, 약화된 피해를 주었습니다.(50%)";
-	
-		     // ★ 여기서 바로 리턴하지 않고, 아래 persist() 로직을 타면서
-		     //    HP 1, atkDmg=0 상태로 저장되도록 둔다.
-		 }
-	 */
 	    String deathAchvMsg = "";
-	    if (!"사신".equals(job) && newHpPreview <= 0) {
+	    if (newHpPreview <= 0) {
 	    	
 	    	 // ✅ 이번에 준 피해 / 몬스터 남은 체력 표시
 	        int dealtThisTurn = Math.max(0, calc.atkDmg);
@@ -3499,18 +3336,8 @@ public class BossAttackController {
 	    // 도적: 훔치기
 	    String stealMsg = "";
 	    if ("도적".equals(job) && !(m.monNo > 50)) {
+	    	//TODO 도적 재편예정(더블어택으로)
 	        double stealRate = 0.40;
-	        switch (monLv) {
-		        case 30: stealRate -= 0.05;
-		        case 29: stealRate -= 0.05;
-		        case 28: stealRate -= 0.05;
-		        case 27: stealRate -= 0.05;
-		        case 26: stealRate -= 0.05;
-		        case 25: stealRate -= 0.05;
-		        case 24: stealRate -= 0.05;
-		        case 23: stealRate -= 0.05;
-		        case 22: stealRate -= 0.05;
-	        }
 
 	        if (ThreadLocalRandom.current().nextDouble() < stealRate) {
 	            String dropName = (m.monDrop == null ? "" : m.monDrop.trim());
@@ -3535,63 +3362,6 @@ public class BossAttackController {
 	            }
 	        }
 	    }
-
-	 // 어쎄신 스틸 (신규 전투 시작 시)
-	    if ("어쎄신".equals(job) && m.monNo <= 50) {
-
-	        // 스틸 불가 몬스터
-
-	            // killCountForThisMon ← 이미 위에서 계산됨
-	    		int kc = killCountForThisMon;
-	    		if(hell) {
-	    			kc = hellKillCountForThisMon;
-	    		} else if(nightmare) {
-	    			kc = nmKillCountForThisMon;
-	    		}
-	            
-
-	            // 기본 30%, 100킬마다 +5%, 1000킬 이상 80%
-	            double stealRate = 0.30 + (kc / 100) * 0.05;
-	            if (kc >= 1000) {
-	                stealRate = 0.8;
-	            }
-	            if (stealRate > 0.8) {
-	                stealRate = 0.8;
-	            }
-
-	            if (ThreadLocalRandom.current().nextDouble() < stealRate) {
-	                String dropName = (m.monDrop == null ? "" : m.monDrop.trim());
-	                if (!dropName.isEmpty()) {
-	                    try {
-	                        Integer itemId = getItemIdCached(dropName);
-	                        if (itemId != null) {
-	                            HashMap<String, Object> inv = new HashMap<>();
-	                            inv.put("userName", userName);
-	                            inv.put("roomName", roomName);
-	                            inv.put("itemId", itemId);
-	                            inv.put("qty", 1);
-	                            inv.put("delYn", "1");
-	                            inv.put("gainType", "STEAL");
-	                            botNewService.insertInventoryLogTx(inv);
-
-	                            stealMsg =
-	                                "어쎄신의 조용한 수확..!"+ dropName+
-	                                 "조각 획득! ( "+kc +"킬 / "+ (int)(stealRate * 100) + "%) " ;
-
-	                            calc.jobSkillUsed = true;
-	                        }
-	                        String[] _sb2={""}; stealPoint+=" +"+baroSellItem(dropName,itemId,res,userName,roomName,ctx,u,"STEAL",1,nightmare,_sb2); stealBonus+=_sb2[0];
-	                    } catch (Exception ignore) {}
-
-	                }
-	            }else {
-	            	stealMsg =
-                            "어쎄신의 수확! (" +
-                            kc + "킬 / " +
-                            (int)(stealRate * 100) + "%) " +
-                            "실패!";
-	            }
-	        }
 	    
 	    if ("처단자".equals(job) && !(m.monNo > 50) && willKill) {
 	        int monsterHp = m.monHp;
@@ -3660,52 +3430,33 @@ public class BossAttackController {
 	        }
 	    }
 
-
 	    String dosaCastMsg = null;
-	    if ("도사".equals(job)||"음양사".equals(job)) {
+	    if ("음양사".equals(job)) {
 	        dosaCastMsg = "✨"+job+"의 기원! 다음 공격자 강화!";
 	    }
 	    
-	    
-	    
-	    
-	    
-	 // 🔥 드랍 즉시 SP 지급
-	   
-	    
 	    if (res.killed && !"0".equals(res.dropCode)) {
-
 	        String dropName = (m.monDrop == null ? "" : m.monDrop.trim());
 	        if (!dropName.isEmpty()) {
-
 	            String[] _nb={""}; newPoint+=" +"+baroSellItem(dropName,0,res,userName,roomName,ctx,u,"DROP",1,nightmare,_nb); newBonus+=_nb[0];
 	        }
 	    }
-	    
 
 	    // 14) DB 반영 + 레벨업 처리
-	    LevelUpResult up = persist(userName, roomName, u, m, flags, calc, res, effHpMax,ctx.isReturnUser,nightmare);
+	    LevelUpResult up = persist(userName, roomName, u, m, flags, calc, res, effHpMax,nightmare);
 	    String bonusMsg = "";
 	    String blessMsg = "";
-
-	    /*
-	    if (u.lv < 8) {
-	        blessMsg = grantBlessLevelBonus(userName, roomName, up.beforeLv, up.afterLv);
-	    }
-	     */
 	    
 	    String bagDropMsg = "";
 	    if (res.killed) {
 	        botNewService.closeOngoingBattleTx(userName, roomName);
 
-	        // [OPT3] INVENTORY 3개 쿼리 → 1개로 통합 (selectAchievementInventoryCounts)
 	        HashMap<String,Object> achvInvCounts = null;
 	        try { achvInvCounts = botNewService.selectAchievementInventoryCounts(userName); } catch (Exception ignore) {}
 	        List<HashMap<String,Object>> achvGainRows = buildGainRowsFromCounts(achvInvCounts);
 	        int achvBagTotal  = achvInvCounts != null ? ((Number) achvInvCounts.getOrDefault("BAG_COUNT",  0)).intValue() : 0;
 	        int achvSoldCount = achvInvCounts != null ? ((Number) achvInvCounts.getOrDefault("SOLD_COUNT", 0)).intValue() : 0;
 
-	        // [OPT4] 쿨타임 체크에서 이미 조회한 cachedAds 재사용 → selectAttackDeathStats 중복 제거
 	        AttackDeathStat achvAds = cachedAds;
 	        List<HashMap<String,Object>> achvJobSkillRows = null;
 	        try { achvJobSkillRows = botNewService.selectJobSkillUseCountAllJobs(userName, roomName); } catch (Exception ignore) {}
@@ -3719,8 +3470,6 @@ public class BossAttackController {
 	        String shopSellAchvMsg = grantShopSellAchievementsFast(userName, roomName, achievedCmdSet, achvSoldCount);   // [PERF] 프리로드
 	        
 	        String achvRewardMsg = grantAchievementBasedReward(userName, roomName, userAchvList);
-	        
-	        // 🔹 새로 추가: 직업별 스킬 사용 업적 (이번 턴에 스킬 썼을 때만)
 	        
 	        if ((firstClearMsg   != null && !firstClearMsg.isEmpty())
 	                || (killAchvMsg     != null && !killAchvMsg.isEmpty())
@@ -3768,11 +3517,9 @@ public class BossAttackController {
 	            userName, u, m, flags, calc, res, up,
 	            monHpRemainBefore, monMaxHp,
 	            shownMin, shownMax,
-	            weaponLv, weaponBonus,
 	            effHpMax,
 	            midExtra.toString(),
 	            botExtra.toString(),
-	            ctx.isReturnUser,
 	            nightmare,
 	            ctx
 	    );
@@ -3825,9 +3572,6 @@ public class BossAttackController {
 	    }else if(buff.runningMsg != null) {
 	        msg += NL + buff.runningMsg;
 	    }
-	    
-	    
-	    
 
 	    try {
 	        botNewService.execSPMsgTest(map);
@@ -3850,21 +3594,14 @@ public class BossAttackController {
 	 *                 예: "(30b 이하 3배)(용사 5배)(크리! ×2)"
 	 */
 	public String baroSellItem(String dropName,Integer itemId,Resolve res,String userName,String roomName,UserBattleContext ctx,User u,String gainType,int qty,boolean nightmare,String[] outBonus) {
-
 	    String newPoint="";
-
 	    try {
-
 	        if(0 == itemId) {
 	            itemId = getItemIdCached(dropName);
 	        }
-
 	        HashMap<String,Object> priceRow = getItemPriceCached(itemId);
-
 	        double basePrice = safeDouble(priceRow == null ? null : priceRow.get("ITEM_SELL_PRICE"));
-
 	        if (basePrice > 0) {
-
 	            double gainSp = basePrice;
 	            StringBuilder bonusDesc = new StringBuilder();
 
@@ -3954,9 +3691,7 @@ public class BossAttackController {
 	        e.printStackTrace();
 	    }
 		return msg;
-		
 	}
-	
 
 	private SpecialBuffResult handleSpecialBuff() {
 
@@ -4056,7 +3791,6 @@ public class BossAttackController {
 	            result.startMsg =
 	                    "✨스페셜타임 발동! [" + desc + ", " + durationMin + "분]";
 	            result.activeBuff = activeBuff;
-	            // [FIX4] 새 버프 캐시 즉시 갱신
 	            SPECIAL_BUFF_CACHE = activeBuff;
 	            SPECIAL_BUFF_CACHE_TS = System.currentTimeMillis();
 	        }
@@ -4177,9 +3911,6 @@ public class BossAttackController {
 	        forceNmBagDrop = true;
 	    }
 
-	    // [FIX-BUFF] 버프 진행 중: SPECIAL_BUFF_CACHE 재조회 대신 buff.activeBuff 직접 사용
-	    // 기존 버그: SPECIAL_BUFF_CACHE 재조회 타이밍에 따라 null을 읽어 나메가방 미적용
-	    // 수정: handleSpecialBuff에서 이미 결정한 activeBuff를 그대로 참조 → 일관성 보장
 	    try {
 	        HashMap<String,Object> activeBuff = (buff != null) ? buff.activeBuff : null;
 	        if (activeBuff != null) {
@@ -4238,7 +3969,7 @@ public class BossAttackController {
 	    String userName = Objects.toString(map.get("userName"), "");
 	    String roomName = Objects.toString(map.get("roomName"), "");
 	    String itemNameRaw = Objects.toString(map.get("param1"), "").trim();
-	    int reqQty = Math.max(1, parseIntSafe(Objects.toString(map.get("param2"), "1")));
+	    int reqQty = Math.max(1, MiniGameUtil.parseIntSafe(Objects.toString(map.get("param2"), "1")));
 
 	    String roomCheck = checkRoomPermission(userName, roomName);
 	    if (roomCheck != null) return roomCheck;
@@ -4342,11 +4073,6 @@ public class BossAttackController {
 	    MiniGameUtil.ITEM_DETAIL_CACHE.clear();
 	    MiniGameUtil.ITEM_PRICE_CACHE.clear();
 	    MiniGameUtil.MARKET_OWNED_CACHE.clear();
-	    MiniGameUtil.TODAY_MASTER_CREATED_DATE = null;
-	    MiniGameUtil.JOB_MASTER_CACHE.clear();
-	    MiniGameUtil.DAILY_BUFF_CACHE.clear();
-	    SPECIAL_BUFF_CACHE = null; // [FIX4]
-	    SPECIAL_BUFF_CACHE_TS = 0L;
 	    initCache();
 	    return "✅ 캐시 갱신 완료" + NL
 	         + "몬스터: " + MiniGameUtil.MONSTER_CACHE.size() + "건" + NL
@@ -4457,33 +4183,7 @@ public class BossAttackController {
 	    MiniGameUtil.MARKET_OWNED_CACHE.put(key, new Object[]{now, list});
 	    return list;
 	}
-	private static String todayKey() {
-	    return new java.text.SimpleDateFormat("yyyyMMdd").format(new java.util.Date());
-	}
 
-	/*
-	private boolean isJobMasterCached(String userName, String job) {
-	    if (job == null || job.isEmpty()) return false;
-	    String key = todayKey() + "|" + userName + "|" + job;
-	    Boolean cached = MiniGameUtil.JOB_MASTER_CACHE.get(key);
-	    if (cached != null) return cached;
-	    try {
-	        boolean result = botNewService.selectIsTodayJobMasterAll(userName, job) > 0;
-	        MiniGameUtil.JOB_MASTER_CACHE.put(key, result);
-	        return result;
-	    } catch (Exception e) { return false; }
-	}*/
-
-	private HashMap<String,Object> getDailyBuffCached(String userName) {
-	    String key = todayKey() + "|" + userName;
-	    HashMap<String,Object> cached = MiniGameUtil.DAILY_BUFF_CACHE.get(key);
-	    if (cached != null) return cached;
-	    try {
-	        HashMap<String,Object> buff = botNewService.selectTodayDailyBuff(userName, "");
-	        if (buff != null) MiniGameUtil.DAILY_BUFF_CACHE.put(key, buff);
-	        return buff;
-	    } catch (Exception e) { return null; }
-	}
 	// ─────────────────────────────────────────────────────────────────────────
 	private Integer resolveItemId(String itemName) throws Exception {
 
@@ -4504,7 +4204,7 @@ public class BossAttackController {
 		Set<Integer> itemIds = new HashSet<>(rows.size());
 
 		for (HashMap<String, Object> r : rows) {
-			int id = parseIntSafe(Objects.toString(r.get("ITEM_ID"), "0"));
+			int id = MiniGameUtil.parseIntSafe(Objects.toString(r.get("ITEM_ID"), "0"));
 			if (id > 0)
 				itemIds.add(id);
 		}
@@ -4519,7 +4219,7 @@ public class BossAttackController {
 
 		for (HashMap<String, Object> p : priceRows) {
 
-			int id = parseIntSafe(Objects.toString(p.get("ITEM_ID"), "0"));
+			int id = MiniGameUtil.parseIntSafe(Objects.toString(p.get("ITEM_ID"), "0"));
 
 			priceMap.put(id, safeDouble(p.get("ITEM_SELL_PRICE")));
 			extMap.put(id, Objects.toString(p.get("ITEM_SELL_PRICE_EXT"), ""));
@@ -4539,8 +4239,8 @@ public class BossAttackController {
 			if (rid == null)
 				continue;
 
-			int qty = parseIntSafe(Objects.toString(r.get("QTY"), "0"));
-			int itemId = parseIntSafe(Objects.toString(r.get("ITEM_ID"), "0"));
+			int qty = MiniGameUtil.parseIntSafe(Objects.toString(r.get("QTY"), "0"));
+			int itemId = MiniGameUtil.parseIntSafe(Objects.toString(r.get("ITEM_ID"), "0"));
 
 			if (qty <= 0 || itemId <= 0)
 				continue;
@@ -4598,10 +4298,6 @@ public class BossAttackController {
 		return new SellResult(sold, total);
 	}
 
-	
-	
-	
-	
 	public String showAttackRanking(HashMap<String,Object> map) {
 	    final String NL = "♬";
 	    final String allSeeStr = "===";
@@ -4649,58 +4345,8 @@ public class BossAttackController {
 	    		.append(NL);
 	    	}
 	    }
-	    /*
-	    List<HashMap<String,Object>> masters = botNewService.selectTodayJobMastersAll();
-
-	    sb.append("✨ Today 직업 마스터").append(NL);
-
-	    if (masters == null || masters.isEmpty()) {
-	        sb.append("- 데이터 없음").append(NL);
-	    } else {
-	        for (HashMap<String,Object> row : masters) {
-	            String job  = String.valueOf(row.get("JOB"));
-	            String name = String.valueOf(row.get("USER_NAME"));
-	            int cnt     = Integer.parseInt(String.valueOf(row.get("ATK_CNT")));
-
-	            sb.append("• ")
-	              .append(job)
-	              .append(" : ")
-	              .append(name)
-	              .append(" (")
-	              .append(cnt)
-	              .append("회)")
-	              .append(NL);
-	        }
-	    }
-	    */
-	    /*
-	    List<HashMap<String,Object>> ongoing = botNewService.selectOngoingChallengesForUnclearedBosses();
-	    if (ongoing != null && !ongoing.isEmpty()) {
-	    	sb.append(NL);
-	        sb.append(NL).append("⚔ 최초토벌 도전중").append(NL);
-	        for (HashMap<String,Object> row : ongoing) {
-	            String monName   = String.valueOf(row.get("MON_NAME"));
-	            String userName2 = String.valueOf(row.get("USER_NAME"));
-	            String job       = Objects.toString(row.get("JOB"), "");
-	            int lv           = safeInt(row.get("LV"));
-	            String startTime = String.valueOf(row.get("START_TIME"));
-	            int monHp        = safeInt(row.get("MON_HP"));
-	            int remainHp     = safeInt(row.get("REMAIN_HP"));
-	            
-	            sb.append(" ").append(monName)
-	              .append(" ").append(remainHp).append(" / ").append(monHp).append(NL)
-	              .append(" ▶[도전 중] ").append(userName2);
-	            if (!job.isEmpty()) sb.append("/").append(job);
-	            sb.append("(Lv.").append(lv).append(")")
-	              .append(" (").append(startTime).append(")")
-	              .append(NL);
-	        }
-	    }
-	    */
+	    
 	    sb.append(allSeeStr);
-	    
-	    
-	    
 	    
 		 // =========================
 		 // SP / 공격횟수 랭킹
@@ -4758,33 +4404,6 @@ public class BossAttackController {
 		         }
 		     }
 		     
-		     /*
-		     sb.append(NL).append("◆ 죽음 극복 랭킹 (TOP7)").append(NL);
-		 	
-		     if (spAtkList == null || spAtkList.isEmpty()) {
-		         sb.append("- 데이터가 없습니다.").append(NL);
-		     } else {
-		         // 공격 횟수 순위 정렬
-		         List<HashMap<String, Object>> byDeath = new ArrayList<>(spAtkList);
-		         byDeath.sort((a, b) -> Integer.compare(
-		                 safeInt(b.get("DEATH_CNT")),
-		                 safeInt(a.get("DEATH_CNT"))
-		         ));
-	
-		         int rank = 1;
-		         for (HashMap<String, Object> row : byDeath) {
-		             String userName2 = Objects.toString(row.get("USER_NAME"), "-");
-		             int deathCnt      = safeInt(row.get("DEATH_CNT"));
-	
-		             sb.append(rank).append("위 ")
-		               .append(userName2)
-		               .append(" - 죽음 ").append(String.format("%,d", deathCnt)).append("회")
-		               .append(NL);
-	
-		             if (++rank > 7) break;
-		         }
-		     }
-		     */
 		 } catch (Exception ignore) {}
 	    // =========================
 	    // 업적 갯수 랭킹
@@ -4798,7 +4417,7 @@ public class BossAttackController {
 	            int rank = 1;
 	            for (HashMap<String, Object> row : achvRank) {
 	                String userName = Objects.toString(row.get("USER_NAME"), "-");
-	                int cnt = parseIntSafe(Objects.toString(row.get("ACHV_CNT"), "0"));
+	                int cnt = MiniGameUtil.parseIntSafe(Objects.toString(row.get("ACHV_CNT"), "0"));
 	                sb.append(rank).append("위 ").append(userName)
 	                  .append(" - 업적 ").append(cnt).append("개").append(NL);
 	                rank++;
@@ -4807,33 +4426,6 @@ public class BossAttackController {
 	    } catch (Exception ignore) {}
 
 	    
-	    
-	    /* === ⚔ 공격 랭킹 (기존 Top3) === */
-	    /*
-	    sb.append(NL).append("⚔ 공격 레벨 랭킹").append(NL);
-	    List<HashMap<String,Object>> top3 = botNewService.selectTopLevelUsers();
-	    if (top3 == null || top3.isEmpty()) {
-	        sb.append("데이터 없음").append(NL);
-	    } else {
-	        int rank = 1;
-	        for (HashMap<String,Object> row : top3) {
-	            String name    = String.valueOf(row.get("USER_NAME"));
-	            int lv         = safeInt(row.get("LV"));
-	            int expCur     = safeInt(row.get("EXP_CUR"));
-	            int expNext    = safeInt(row.get("EXP_NEXT"));
-	            String job	   = String.valueOf(row.get("JOB"));
-
-	            sb.append(rank).append("위 ")
-	              .append("▶ Lv.").append(lv)
-	              .append(", EXP ").append(expCur).append("/").append(expNext).append(" ")
-	              .append(name).append("(").append(job).append(")")
-	              .append(NL);
-	            rank++;
-	            if (rank > 7) break;
-	        }
-	    }
-	    sb.append(NL);
-	     */
 	    sb.append(NL);
 	    /* === ⚔ 몬스터 학살자 (기존) === */
 	    sb.append("⚔ 몬스터 학살자").append(NL);
@@ -4857,40 +4449,6 @@ public class BossAttackController {
 	        }
 	    }
 	    sb.append(NL);
-
-	    /* === ⚔ 최초토벌 === */
-	    /*
-	    sb.append("⚔ 최초토벌").append(NL);
-
-	 // 1) 이미 토벌된 몬스터
-	    List<HashMap<String,Object>> firsts = botNewService.selectFirstClearInfo();
-	    Set<Integer> clearedMonSet = new HashSet<>();
-
-	    if (firsts != null && !firsts.isEmpty()) {
-	        for (HashMap<String,Object> fc : firsts) {
-	            int monNo        = safeInt(fc.get("MON_NO"));
-	            int monLv        = safeInt(fc.get("MON_LV"));
-	            String monName   = String.valueOf(fc.get("MON_NAME"));
-	            String firstUser = String.valueOf(fc.get("FIRST_CLEAR_USER"));
-	            String firstJob  = Objects.toString(fc.get("FIRST_CLEAR_JOB"), "");
-	            String firstTime = Objects.toString(fc.get("FIRST_CLEAR_DATE"), "");
-
-	            clearedMonSet.add(monNo);
-
-	            sb.append(monNo).append(".No ").append(" ").append(monName).append(monLv).append("Lv")
-	              .append(" ▶ ").append(firstUser);
-
-	            if (!firstJob.isEmpty() && !"null".equalsIgnoreCase(firstJob)) {
-	                sb.append("/").append(firstJob);
-	            }
-	            if (!firstTime.isEmpty() && !"null".equalsIgnoreCase(firstTime)) {
-	                sb.append(" (").append(firstTime).append(")");
-	            }
-	            sb.append(NL);
-	        }
-	    }
-	    */
-
 	    return sb.toString();
 	}
 
@@ -5022,7 +4580,7 @@ public class BossAttackController {
 	        if (v instanceof Number) {
 	            totalSkillUse = ((Number) v).intValue();
 	        } else {
-	            totalSkillUse = parseIntSafe(Objects.toString(v, "0"));
+	            totalSkillUse = MiniGameUtil.parseIntSafe(Objects.toString(v, "0"));
 	        }
 
 	        if (totalSkillUse <= 0) continue;
@@ -5171,7 +4729,7 @@ public class BossAttackController {
 	        }
 
 	        // 레벨 제한
-	        int reqLv = parseIntSafe(Objects.toString(it.get("TARGET_LV"), "0"));
+	        int reqLv = MiniGameUtil.parseIntSafe(Objects.toString(it.get("TARGET_LV"), "0"));
 	        boolean lvLocked = (reqLv > 0 && userLv < reqLv);
 
 	        String displayPrice = buildDisplayPrice(it, isPotion, itemId, userPoint);
@@ -5237,10 +4795,10 @@ public class BossAttackController {
 
 		if (isEquip) {
 			int curQty = (ownQty <= 0 ? 1 : ownQty);
-			return buildEnhancedOptionLine(it, curQty);
+			return MiniGameUtil.buildEnhancedOptionLine(it, curQty);
 		}
 
-		return buildEnhancedOptionLine(it, 1);
+		return MiniGameUtil.buildEnhancedOptionLine(it, 1);
 	}
 	
 
@@ -5574,203 +5132,85 @@ public class BossAttackController {
 		catch (Exception e) { return 0.0; }
 	}
 
-	private Resolve resolveKillAndDrop(Monster m, AttackCalc c, boolean willKill, User u, boolean lucky,boolean dark,boolean gray,int nightmareYnVal) {
-	    Resolve r = new Resolve();
-	    r.killed = willKill;
-	    r.lucky  = lucky;
-	    r.dark = dark;
-	    r.gray = gray;
+	private Resolve resolveKillAndDrop(Monster m, AttackCalc c, boolean willKill, User u, boolean lucky, boolean dark,
+			boolean gray, int nightmareYnVal) {
+		Resolve r = new Resolve();
+		r.killed = willKill;
+		r.lucky = lucky;
+		r.dark = dark;
+		r.gray = gray;
 
-	    int monLv = m.monLv;
-	    long monExp = m.monExp;
+		int monLv = m.monLv;
+		long monExp = m.monExp;
 
-	    if(nightmareYnVal >= 1) {
-	    	monExp *= NM_MUL_EXP;
-	    	if(nightmareYnVal == 2) monExp *= HEL_MUL_EXP; // 헬 = 나메*HEL_MUL_EXP
-	    	monLv  += (nightmareYnVal == 2) ? HEL_ADD_MON_LV : NM_ADD_MON_LV;
-	    }
-	    
-	    int levelGap = u.lv - monLv;
-	    double expMultiplier;
-	    
-	    if (levelGap >= 0) {
-	        // 플레이어가 몬스터보다 높을 때
-	        expMultiplier = Math.max(0.1, 1.0 - levelGap * 0.1);
-	    } else {
-	        // 몬스터가 더 강할 때 (보너스)
-	        expMultiplier = 1.0 + Math.min(-levelGap, 5) * 0.05; // 레벨 차이 1당 5% 보너스, 최대 25%
-	    }
+		if (nightmareYnVal >= 1) {
+			monExp *= NM_MUL_EXP;
+			if (nightmareYnVal == 2)
+				monExp *= HEL_MUL_EXP; // 헬 = 나메*HEL_MUL_EXP
+			monLv += (nightmareYnVal == 2) ? HEL_ADD_MON_LV : NM_ADD_MON_LV;
+		}
 
-	    
-	    
-	    int baseKillExp = (int)Math.round(monExp * expMultiplier);
+		int levelGap = u.lv - monLv;
+		double expMultiplier;
 
-	    if (willKill) {
-	    	if(gray) {
-	    		baseKillExp *= 9;
-	    	}else if(dark) {
-	    		baseKillExp *= 5;
-	    	}else if(lucky) {
-	    		baseKillExp *= 3;
-	    	}
-	    	
-	    	r.gainExp = baseKillExp;
-	    }else if(c.atkDmg >0){
-	    	r.gainExp = (int)Math.round(baseKillExp/20)+1;  //
-	    }
+		if (levelGap >= 0) {
+			// 플레이어가 몬스터보다 높을 때
+			expMultiplier = Math.max(0.1, 1.0 - levelGap * 0.1);
+		} else {
+			// 몬스터가 더 강할 때 (보너스)
+			expMultiplier = 1.0 + Math.min(-levelGap, 5) * 0.05; // 레벨 차이 1당 5% 보너스, 최대 25%
+		}
 
-	    if ( gray && willKill ) {
-	    	r.dropCode = "9";
-	    	return r;
-	    }
-	    if ( lucky && willKill ) {
-	        r.dropCode = "3";
-	        return r;
-	    }
-	    if ( dark && willKill ) {
-	        r.dropCode = "5";
-	        return r;
-	    }
-	    
-	    
-	  //기본드랍 100%
-	    r.dropCode = "1";
-	    
-	    
-	    
-	    /*
-	    boolean normalDrop =
-	            ThreadLocalRandom.current().nextDouble(0, 100) < 70;
-	    */
-	    // 30% 감소 
-	    /*
-	    if("사신".equals(u.job)) {
-	    	if(normalDrop) {
-	    		r.dropCode = "1";
-	    	}else {
-	    		r.dropCode = "0";
-	    	}
-	    }
-	    */
+		int baseKillExp = (int) Math.round(monExp * expMultiplier);
 
-	    if(!"사신".equals(u.job)) {
-	    	 double extraDropRate = getDropRateByNo(m.monNo);  // ← 새 메서드 사용
-	 	    
-	 	    boolean extraDrop =
-	 	            ThreadLocalRandom.current().nextDouble(0, 100) < extraDropRate;
+		if (willKill) {
+			if (gray) {
+				baseKillExp *= 9;
+			} else if (dark) {
+				baseKillExp *= 5;
+			} else if (lucky) {
+				baseKillExp *= 3;
+			}
 
-	 	        if (extraDrop) {
-	 	            r.dropCode = "2"; // 🔥 기본 + 추가 드랍
-	 	        }
-	 	        
-	    }
-	   
-	    //boolean drop = willKill && ThreadLocalRandom.current().nextDouble(0, 100) < dropRate;
-	    //r.dropCode = drop ? "1" : "0";
-	    return r;
-	}
-	private double getDropRateByNo(int monNo) {
-	    switch (monNo) {
-	        case 1:  case 2:  case 3:  case 4:  
-	        case 5:  case 6:  case 7:  case 8:  
-	        case 9:  case 10: case 11: case 12:
-	        	return 30;
-	        case 13: case 14: case 16: case 17: 
-	        case 18: case 19: case 20: case 21:
-	        case 22: case 23: case 24: case 26:
-	        case 27: case 28: case 29: case 30:
-	        	return 20;
-	        	
-	        case 15: case 25:
-	        	return 25;
-	        	
-	        case 51: case 52: case 53: 
-	        	return 80;
-	        case 61: case 62: case 63: 
-	        	return 0;
-	        case 91: 
-	        	return 0;
-	        default: 
-	        	return 0;
-	    }
+			r.gainExp = baseKillExp;
+		} else if (c.atkDmg > 0) {
+			r.gainExp = (int) Math.round(baseKillExp / 20) + 1; //
+		}
+
+		if (gray && willKill) {
+			r.dropCode = "9";
+			return r;
+		}
+		if (lucky && willKill) {
+			r.dropCode = "3";
+			return r;
+		}
+		if (dark && willKill) {
+			r.dropCode = "5";
+			return r;
+		}
+
+		// 기본드랍 100%
+		r.dropCode = "1";
+
+		double extraDropRate = MiniGameUtil.getDropRateByNo(m.monNo); // ← 새 메서드 사용
+
+		boolean extraDrop = ThreadLocalRandom.current().nextDouble(0, 100) < extraDropRate;
+
+		if (extraDrop) {
+			r.dropCode = "2"; // 🔥 기본 + 추가 드랍
+		}
+
+		return r;
 	}
 	
-	private int calcBaseHpMax(int lv) {
-		int base = lv * 30;
-		int bonus = 0;
-	    if (lv >= 50)  bonus += (lv - 49) * 30;   
-	    if (lv >= 100) bonus += (lv - 99) * 60;  
-	    if (lv >= 150) bonus += (lv - 149) * 120;
-	    if (lv >= 200) bonus += (lv - 199) * 200; 
-	    if (lv >= 250) bonus += (lv - 249) * 270;
-	    if (lv >= 300) bonus += (lv - 299) * 500; 
-	    if (lv >= 350) bonus += (lv - 349) * 1000; 
-	    if (lv >= 400) bonus += (lv - 399) * 1500; 
-		
-	    return base+bonus;
-	}
-
-	private int calcBaseAtkMin(int lv) {
-		int base = lv;
-
-		int bonus = 0;
-	    if (lv >= 80)  bonus += (lv - 79) * 1;
-	    if (lv >= 150) bonus += (lv - 149) * 2;
-	    if (lv >= 190) bonus += (lv - 189) * 3;
-	    if (lv >= 230) bonus += (lv - 229) * 4;
-	    if (lv >= 270) bonus += (lv - 269) * 5;
-	    if (lv >= 300) bonus += (lv - 299) * 10;
-	    if (lv >= 350) bonus += (lv - 349) * 15;
-	    if (lv >= 400) bonus += (lv - 399) * 20;
-
-	    return base + bonus;
-	}
-
-	private int calcBaseAtkMax(int lv) {
-		int base = lv * 3;
-
-	    int bonus = 0;
-	    if (lv >= 60)  bonus += (lv - 59) * 1;
-	    if (lv >= 80)  bonus += (lv - 79) * 2;
-	    if (lv >= 120)  bonus += (lv - 119) * 3;
-	    if (lv >= 150) bonus += (lv - 149) * 4;
-	    if (lv >= 180) bonus += (lv - 179) * 5;
-	    if (lv >= 210) bonus += (lv - 209) * 6;
-	    if (lv >= 240) bonus += (lv - 239) * 7;
-	    if (lv >= 270) bonus += (lv - 269) * 8;
-	    if (lv >= 300) bonus += (lv - 299) * 12;
-	    if (lv >= 350) bonus += (lv - 349) * 20;
-	    if (lv >= 400) bonus += (lv - 399) * 30;
-
-	    return base + bonus;
-	}
-
-	private int calcBaseCritRate(int lv) {
-	    return 10 + (lv - 1) * 2;
-	}
-
-	private int calcBaseHpRegen(int lv) {
-		int base = lv * 3;
-		
-		int bonus = 0;
-		
-		if (lv >= 50)  bonus += (lv - 49) * 10;
-		if (lv >= 80)  bonus += (lv - 79) * 20;
-		if (lv >= 100) bonus += (lv - 99) * 30;
-		if (lv >= 150) bonus += (lv - 149) * 50;
-		if (lv >= 200) bonus += (lv - 199) * 70;
-		if (lv >= 240) bonus += (lv - 239) * 130;
-		if (lv >= 280) bonus += (lv - 279) * 200;
-		if (lv >= 320) bonus += (lv - 319) * 400;
-
-	    return base+bonus;
-	}
+	
 	
 	/** HP/EXP/LV + 로그 저장 (DB에는 '순수 레벨 기반 스탯'만 반영) */
 	private LevelUpResult persist(String userName, String roomName,
 	                              User u, Monster m,
 	                              Flags f, AttackCalc c, Resolve res,int effHpMax,
-	                              boolean isReturnUser,boolean nightmare ) {
+	                              boolean nightmare ) {
 
 	    // 1) 최종 HP 계산 (전투 데미지 반영)
 	    u.hpCur = Math.max(0, u.hpCur - c.monDmg);
@@ -5784,11 +5224,11 @@ public class BossAttackController {
 	    }
 
 	    // 3) 순수 레벨 기준 스탯 계산
-	    int baseHpMax    = calcBaseHpMax(u.lv);
-	    int baseAtkMin   = calcBaseAtkMin(u.lv);
-	    int baseAtkMax   = calcBaseAtkMax(u.lv);
-	    int baseCritRate = calcBaseCritRate(u.lv);
-	    int baseHpRegen  = calcBaseHpRegen(u.lv);
+	    int baseHpMax    = MiniGameUtil.calcBaseHpMax(u.lv);
+	    int baseAtkMin   = MiniGameUtil.calcBaseAtkMin(u.lv);
+	    int baseAtkMax   = MiniGameUtil.calcBaseAtkMax(u.lv);
+	    int baseCritRate = MiniGameUtil.calcBaseCritRate(u.lv);
+	    int baseHpRegen  = MiniGameUtil.calcBaseHpRegen(u.lv);
 	    
 	    // 4) 유저 테이블 업데이트: **항상 '순수 레벨 스탯'만 저장**
 	    botNewService.updateUserAfterBattleTx(
@@ -5836,11 +5276,7 @@ public class BossAttackController {
 	                    inv.put("userName",  userName);
 	                    inv.put("roomName",  roomName);
 	                    inv.put("itemId",    itemId);
-	                    if (isReturnUser) {
-	                    	inv.put("qty",qty*2);
-	                    }else {
-	                    	inv.put("qty",qty);
-	                    }
+                    	inv.put("qty",qty);
 	                    inv.put("delYn",     "1");
 	                    inv.put("gainType", gainType);
 	                    botNewService.insertInventoryLogTx(inv);
@@ -5951,11 +5387,9 @@ public class BossAttackController {
 	        Resolve res, LevelUpResult up,
 	        int monHpRemainBefore, int monMaxHp,
 	        int shownAtkMin, int shownAtkMax,
-	        int weaponLv, int weaponBonus,
 	        int displayHpMax, // ← 표시용 HP Max(아이템 포함)
 	        String midExtraLines,
 	        String botExtraLines,
-	        boolean isReturnUser,
 	        boolean nightmare,
 	        UserBattleContext ctx
 	) {
@@ -6041,9 +5475,6 @@ public class BossAttackController {
 	                sb.append("✨ 드랍 획득: ").append(dropName).append(NL);
 	            }
 	        	
-	        	if(isReturnUser) {
-        	    	sb.append("x2 (복귀bonus) ");
-	        	}
 	        	sb.append(NL);
 	        	
 	        }
@@ -6280,11 +5711,11 @@ public class BossAttackController {
 	        expNext = calcNextExp(lv, expNext);
 
 	     // 🔥 핵심: 레벨 기준 재계산
-	        int newHpMax   = calcBaseHpMax(lv);
-	        int newAtkMin = calcBaseAtkMin(lv);
-	        int newAtkMax = calcBaseAtkMax(lv);
-	        int newCrit   = calcBaseCritRate(lv);
-	        int newRegen  = calcBaseHpRegen(lv);
+	        int newHpMax   = MiniGameUtil.calcBaseHpMax(lv);
+	        int newAtkMin = MiniGameUtil.calcBaseAtkMin(lv);
+	        int newAtkMax = MiniGameUtil.calcBaseAtkMax(lv);
+	        int newCrit   = MiniGameUtil.calcBaseCritRate(lv);
+	        int newRegen  = MiniGameUtil.calcBaseHpRegen(lv);
 
 	        hpDelta     += (newHpMax   - hpMax);
 	        atkMinDelta += (newAtkMin - atkMin);
@@ -6406,20 +5837,9 @@ public class BossAttackController {
 	}
 	
 
-	private static int parseIntSafe(String s) {
-	    try { return Integer.parseInt(s); } catch (Exception e) { return 0; }
-	}
 	
-	/** 드랍 아이템 이름 → 판매가 조회 (없으면 0) */
-	private int getDropPriceByName(String dropName) {
-	    if (dropName == null || dropName.trim().isEmpty()) return 0;
-	    try {
-	        Integer p = botNewService.selectItemPriceByName(dropName.trim());
-	        return (p == null ? 0 : Math.max(0, p));
-	    } catch (Exception ignore) {
-	        return 0;
-	    }
-	}
+	
+	
 	/** 몬스터 요약 한 줄 UI */
 	/*
 	private String renderMonsterCompactLine(Monster m, int userLv, int nightmareYnVal) {
@@ -6806,7 +6226,7 @@ public class BossAttackController {
 	    if (gainRows != null) {
 	        for (HashMap<String, Object> row : gainRows) {
 	            String type = Objects.toString(row.get("GAIN_TYPE"), "");
-	            int qty = parseIntSafe(Objects.toString(row.get("TOTAL_QTY"), "0"));
+	            int qty = MiniGameUtil.parseIntSafe(Objects.toString(row.get("TOTAL_QTY"), "0"));
 
 	            if ("DROP3".equals(type)) lightTotal = qty;
 	            else if ("DROP5".equals(type)) darkTotal = qty;
@@ -7077,40 +6497,40 @@ public class BossAttackController {
 	        Matcher m;
 
 	        if ((m = P_BAG_GET.matcher(label)).matches()) {
-	        	bagGetSteps.add(parseIntSafe(m.group(1)));
+	        	bagGetSteps.add(MiniGameUtil.parseIntSafe(m.group(1)));
 	        	continue;
 	        }
 	        if ((m = P_TOTAL_KILL.matcher(label)).matches()) {
-	            totalKillSteps.add(parseIntSafe(m.group(1)));
+	            totalKillSteps.add(MiniGameUtil.parseIntSafe(m.group(1)));
 	            continue;
 	        }
 	        if ((m = P_TOTAL_NIGHTMARE_KILL.matcher(label)).matches()) {
-	        	totalNmKillSteps.add(parseIntSafe(m.group(1)));
+	        	totalNmKillSteps.add(MiniGameUtil.parseIntSafe(m.group(1)));
 	        	continue;
 	        }
 	        if ((m = P_DEATH_OVERCOME.matcher(label)).matches()) {
-	            deathSteps.add(parseIntSafe(m.group(1)));
+	            deathSteps.add(MiniGameUtil.parseIntSafe(m.group(1)));
 	            continue;
 	        }
 	        if ((m = P_ATTACK_COUNT.matcher(label)).matches()) {
-	            attackSteps.add(parseIntSafe(m.group(1)));
+	            attackSteps.add(MiniGameUtil.parseIntSafe(m.group(1)));
 	            continue;
 	        }
 	        if ((m = P_LIGHT_ITEM_GET.matcher(label)).matches()) {
-	            lightSteps.add(parseIntSafe(m.group(1)));
+	            lightSteps.add(MiniGameUtil.parseIntSafe(m.group(1)));
 	            continue;
 	        }
 	        if ((m = P_DARK_ITEM_GET.matcher(label)).matches()) {
-	            darkSteps.add(parseIntSafe(m.group(1)));
+	            darkSteps.add(MiniGameUtil.parseIntSafe(m.group(1)));
 	            continue;
 	        }
 	        if ((m = P_GRAY_ITEM_GET.matcher(label)).matches()) {
-	        	graySteps.add(parseIntSafe(m.group(1)));
+	        	graySteps.add(MiniGameUtil.parseIntSafe(m.group(1)));
 	        	continue;
 	        }
 	        if ((m = P_JOB_SKILL.matcher(label)).matches()) {
 	            String job = m.group(1).trim();
-	            int v = parseIntSafe(m.group(2));
+	            int v = MiniGameUtil.parseIntSafe(m.group(2));
 	            jobSkillSteps
 	                .computeIfAbsent(job, k -> new TreeSet<>())
 	                .add(v);
@@ -7118,7 +6538,7 @@ public class BossAttackController {
 	        }
 	        if ((m = P_MONSTER_KILL.matcher(label)).matches()) {
 	            String mon = m.group(1).trim();
-	            int v = parseIntSafe(m.group(2));
+	            int v = MiniGameUtil.parseIntSafe(m.group(2));
 	            monsterKills.put(mon, Math.max(monsterKills.getOrDefault(mon, 0), v));
 	            continue;
 	        }
@@ -7169,15 +6589,6 @@ public class BossAttackController {
 	        }
 	        sb.append(NL);
 	    }
-
-	    // 3️⃣ 최초 토벌 (한 줄)
-	    /*
-	    if (!firstClears.isEmpty()) {
-	        sb.append("✨최초 토벌: ").append(firstClears.size()).append("종").append(NL);
-	        sb.append(String.join(", ", firstClears)).append(NL).append(NL);
-	    }
-	    */
-	    
 
 	    // 4️⃣ 몬스터 처치 (3개씩)
 	    if (!monsterKills.isEmpty()) {
@@ -7543,22 +6954,9 @@ public class BossAttackController {
 	    public String msg;
 	}
 
-
-	/**
-	 * 데미지 전체 처리 전용 메서드 (A형: 완전 분리형)
-	 * - 공격력 굴림, 크리티컬, 원턴킬 판정
-	 * - calcDamage 호출
-	 * - 마법사 패턴3 무력화
-	 * - 전사 필살기 패링
-	 * - 도적 회피
-	 * - 프리스트 피해 감소
-	 * - 전사 방패
-	 * - 흡혈귀 흡혈
-	 */
 	private DamageOutcome calculateDamage(
 	        User u,
 	        Monster m,
-	        String job,
 	        Flags flags,
 	        int effAtkMin,
 	        int effAtkMax,
@@ -7577,38 +6975,21 @@ public class BossAttackController {
 	    StringBuilder extraMsg = new StringBuilder();
 	    out.dmgCalcMsg="";
 
-	    
-	    if ("헌터".equals(job) && effCritRate > 100) {
-	        int overflow = effCritRate - 100;
-
-	        double convertRate;
-
-	        switch (u.hunterGrade) {
-	            case "SSS":  convertRate = 1.20; break;
-	            case "SS":   convertRate = 1.10; break;
-	            case "S" :   convertRate = 1.00; break;
-	            case "A+":   convertRate = 0.85; break;
-	            case "A" :   convertRate = 0.80; break;
-	            case "B+":   convertRate = 0.75; break;
-	            case "B" :   convertRate = 0.70; break;
-	            case "C+":   convertRate = 0.65; break;
-	            case "C" :   convertRate = 0.60; break;
-	            case "D+":   convertRate = 0.55; break;
-	            case "D" :   convertRate = 0.50; break;
-	            default:     convertRate = 0.40;
-	        }
-
-	        int converted = (int)Math.floor(overflow * convertRate);
-
+	    if (effCritRate > 100) {
+	    	int overflow = effCritRate - 100;
+	    	double convertRate = MiniGameUtil.getHunterConvertRate(u.hunterGrade);
+	    	int converted = (int)Math.floor(overflow * convertRate);
+	    	if(!"헌터".equals(u.job)) {
+	    		converted /= 10;
+	    	}
 	        effCritRate = 100;
 	        effCriDmg  += converted;
 
 	        // 디버그용
-	         out.dmgCalcMsg += "헌터(" + u.hunterGrade + ") "
-	                + "overCRIT " + overflow + "% → "
-	               + converted + "% chgCDMG (" + Math.round(convertRate*100) + "%)" + NL;
+	        out.dmgCalcMsg += "헌터(" + u.hunterGrade + ") "
+			               + "overCRIT " + overflow + "% → "
+			               + converted + "% chgCDMG (" + Math.round(convertRate*100) + "%)" + NL;
 	    }
-	    
 
 	    // -----------------------------
 	    // 1) 공격력 굴림 + 크리티컬
@@ -7627,7 +7008,7 @@ public class BossAttackController {
 	    // 2) 추가데미지 로직
 	    // -----------------------------
 	    
-	    if ("궁사".equals(job)) {
+	    if ("궁사".equals(u.job)) {
 	           // 1) 연사 횟수 계산 (최소데미지 비율 기반, 최소 2연사 ~ 최대 5연사)
 	        // range/max 비율이 클수록 연사 증가 (ex. max=130000,min=65000 → 50% → 5연사)
 	        int range     = Math.max(0, effAtkMax - effAtkMin);
@@ -7747,173 +7128,7 @@ public class BossAttackController {
 	        out.dmgCalcMsg = multiMsg.toString();
 	    }
 	    
-	    if ("궁사2".equals(job)) {
-
-	        // 1) 연사 횟수 계산 (280 차이마다 1연타 증가)
-	        int range    = Math.max(0, effAtkMax - effAtkMin); // 최대뎀 - 최소뎀
-	        int segments = range / 280;                        // 280 차이마다 1구간
-	        int hitCount = Math.max(1, segments + 1);          // 구간+1이 실제 발사 수
-
-	        // 2) 기존 한 번 공격했을 때 데미지(크리 포함)
-	        int singleDmg = crit
-	                ? (int)Math.round(baseAtk * critMultiplier)
-	                : baseAtk;
-
-	        // 3) 연타 보너스: 1타 추가될 때마다 +20%
-	        //    hitCount=1 → 1.0배, 2 → 1.2배, 3 → 1.4배, ...
-	        double bonusRate = 1.0 + 0.2 * (hitCount - 1);
-	        int totalDmg = (int)Math.round(singleDmg * bonusRate);
-
-	        // 4) totalDmg를 hitCount개로 랜덤 분배 (합은 항상 totalDmg)
-	        int[] parts = new int[hitCount];
-	        int remain = totalDmg;
-
-	        for (int i = 0; i < hitCount; i++) {
-	            int slotsLeft = hitCount - i;
-
-	            if (slotsLeft == 1) {
-	                // 마지막 타는 남은 데미지 전부
-	                parts[i] = remain;
-	            } else {
-	                // 최소 1은 남기고 랜덤 분배
-	                int minVal = 1;
-	                int maxVal = remain - (slotsLeft - 1); // 뒤 타들 최소 1씩은 남겨야 함
-	                if (maxVal < minVal) {
-	                    maxVal = minVal;
-	                }
-	                int val = ThreadLocalRandom.current().nextInt(minVal, maxVal + 1);
-	                parts[i] = val;
-	                remain  -= val;
-	            }
-	        }
-
-	        // 5) 표시용 메시지 구성
-	        StringBuilder multiMsg = new StringBuilder();
-	        if (hitCount > 1) {
-	            multiMsg.append("궁사의 연사 발동! ")
-	                    .append(hitCount).append("연타").append(NL);
-	        }
-
-	        if (hitCount > 1) {
-	            for (int i = 0; i < hitCount; i++) {
-	                multiMsg.append(i + 1).append("타: ")
-	                        .append(parts[i]).append(NL);
-	            }
-	            multiMsg.append("총합 데미지: ")
-	                    .append(totalDmg).append(NL);
-	            //calc.jobSkillUsed = true;
-	        }
-
-	        // 6) 실제 전투용 데미지는 totalDmg 한 번만 사용
-	        baseAtk = totalDmg;
-	        crit    = false;           // 크리티컬은 singleDmg 안에 이미 반영 끝
-	        out.dmgCalcMsg = multiMsg.toString();
-	    }
-
-
-	    if ("저격수".equals(job)) {
-	    	
-	    	baseAtk = (effAtkMin + effAtkMax + 1) /2;
-	    	
-	    	switch(beforeJobSkillYn) {
-	    		case 0:
-	    			
-		        	if (ThreadLocalRandom.current().nextDouble() < 0.13) {
-		        		out.dmgCalcMsg += "[헤드샷] 보너스 DMG "+baseAtk+"→";
-		        		baseAtk = (int)Math.round(baseAtk * 3.75);
-		        		out.dmgCalcMsg += baseAtk+NL;
-		        		calc.jobSkillUsed = true;
-		        		
-		        	}else {
-		        		out.dmgCalcMsg += "조준 보너스 DMG "+baseAtk+"→";
-		        		baseAtk = (int)Math.round(baseAtk * 2.25);
-		        		out.dmgCalcMsg += baseAtk+NL;
-						calc.jobSkillUsed = true;
-		        	}
-		        	flags.monPattern = 1;
-		        	
-	    			break;
-	    		case 1:
-	    			if (ThreadLocalRandom.current().nextDouble() < 0.20) {
-	    				flags.monPattern = 1;
-	    				out.dmgCalcMsg += "몬스터를 따돌려 숨었다.."+NL;
-	    			}else {
-	    				out.dmgCalcMsg += "다음 공격 준비 중.."+NL;
-	    			}
-	    			baseAtk=0;
-	    			break;
-    			default:
-    				baseAtk=0;
-    				crit=false;
-	            	out.dmgCalcMsg += "저격 위치 확보 중.. ";
-		        	baseAtk =0;
-		        	flags.monPattern = 1;
-	    			
-    				
-    				break;
-	    	}
-	    }
-	    
-	    if ("제너럴".equals(job)) {
-	    	switch(beforeJobSkillYn) {
-	    		case 0:
-	    			baseAtk = (effAtkMin + effAtkMax + 1) /2;
-		        	if (ThreadLocalRandom.current().nextDouble() < 0.15) {
-		        		out.dmgCalcMsg += "[헤드샷] 보너스 DMG "+baseAtk+"→";
-		        		baseAtk = (int)Math.round(baseAtk * 3.25);
-		        		out.dmgCalcMsg += baseAtk+NL;
-		        		
-		        	}else {
-		        		out.dmgCalcMsg += "조준 보너스 DMG "+baseAtk+"→";
-		        		baseAtk = (int)Math.round(baseAtk * 1.85);
-		        		out.dmgCalcMsg += baseAtk+NL;
-		        	}
-		        	calc.jobSkillUsed = true;
-		        	flags.monPattern = 1;
-		        	
-	    			break;
-	    		case 1:
-	    			if (ThreadLocalRandom.current().nextDouble() < 0.15) {
-		        		out.dmgCalcMsg += "[헤드샷] 보너스 DMG "+baseAtk+"→";
-		        		baseAtk = (int)Math.round(baseAtk * 1.65);
-		        		out.dmgCalcMsg += baseAtk+NL;
-	    			}
-	    			out.dmgCalcMsg += "회피기동타격..!"+NL;
-	    			
-	    			calc.jobSkillUsed = true;
-	    			break;
-    			default:
-    				
-    				if (ThreadLocalRandom.current().nextDouble() < 0.50) {
-    					//회피기동타격 
-    					if (ThreadLocalRandom.current().nextDouble() < 0.15) {
-    		        		out.dmgCalcMsg += "[헤드샷] 보너스 DMG "+baseAtk+"→";
-    		        		baseAtk = (int)Math.round(baseAtk * 1.65);
-    		        		out.dmgCalcMsg += baseAtk+NL;
-    	    			}
-    	    			out.dmgCalcMsg += "회피기동타격..!"+NL;
-    	    			
-    	    			calc.jobSkillUsed = true;
-    				}else {
-    					//저격모드
-    					if (ThreadLocalRandom.current().nextDouble() < 0.10) {
-        					out.dmgCalcMsg += "폭격 지원 요청 중.. 몬스터의 무력화..!";
-        		        	baseAtk =(int)Math.round(baseAtk * 3);
-        		        	flags.monPattern = 1;
-        				}else {
-        					baseAtk=0;
-            				crit=false;
-        					out.dmgCalcMsg += "저격 위치 확보 중.. ";
-        		        	baseAtk =0;
-        		        	flags.monPattern = 1;
-        				}
-    				}
-    				
-    				
-    				break;
-	    	}
-	    }
-	    if ("검성".equals(job)) {
+	    if ("검성".equals(u.job)) {
 	    	if (ThreadLocalRandom.current().nextDouble() < 0.065) {
         		out.dmgCalcMsg += "바람가르기! "+baseAtk+"→";
         		baseAtk = (int)Math.round(baseAtk * 4);
@@ -7924,19 +7139,8 @@ public class BossAttackController {
 			}
 	    	
 	    }
-	    if ("어쎄신".equals(job)) {
-	    	if (ThreadLocalRandom.current().nextDouble() < 0.065) {
-        		out.dmgCalcMsg += "그림투스! "+baseAtk+"→";
-        		baseAtk = (int)Math.round(baseAtk * 4);
-        		out.dmgCalcMsg += baseAtk+NL;
-        		out.dmgCalcMsg += "몬스터가 기습에 당해 행동불가가 됨!";
-        		calc.jobSkillUsed = true;
-            	flags.monPattern = 1;
-			}
-	    	
-	    }
 	    
-	    if ("도박사".equals(job)) {
+	    if ("도박사".equals(u.job)) {
 
             int roll = ThreadLocalRandom.current().nextInt(1, 101); // 1~100
             int multiplier = 1;
@@ -7975,7 +7179,7 @@ public class BossAttackController {
         }
 	    
 	    boolean isSnipe = false;
-	    if ("궁수".equals(job)) {
+	    if ("궁수".equals(u.job)) {
 	        if (ThreadLocalRandom.current().nextDouble() < 0.07) {
 	            isSnipe = true;
 	            baseAtk = baseAtk * 7;
@@ -7984,106 +7188,18 @@ public class BossAttackController {
 	        }
 	    }
 
-	    if ("프리스트".equals(job) && isSkeleton(m)) {
-	    	baseAtk = (int) Math.round(baseAtk * 1.25);
-	    }
-	    if ("어둠사냥꾼".equals(job) && isSkeleton(m)) {
+	    if ("어둠사냥꾼".equals(u.job) && isSkeleton(m)) {
 	    	baseAtk = (int) Math.round(baseAtk * 2.00);
 	    }
-	    if ("용사".equals(job) && isSkeleton(m)) {
+	    if ("용사".equals(u.job) && isSkeleton(m)) {
 	    	baseAtk = (int) Math.round(baseAtk * 1.25);
 	    }
 	    
-	    if ("용기사".equals(job)) {
-	        /*
-	    	if (u.hpCur >= effHpMax) {
-	        	out.dmgCalcMsg += "풀HP DMG "+baseAtk+"→";
-	        	baseAtk = (int)Math.round(baseAtk * 1.5);
-	        	out.dmgCalcMsg += baseAtk+NL;
-	        }
-	        */
-	    	if(effCritRate > 500) {
-	    		int bonus = (int)Math.round(effCritRate*21); 
-	            out.dmgCalcMsg += "크리율 보너스 ("+bonus+") "+baseAtk+"→";
-	            baseAtk += bonus;
-	            out.dmgCalcMsg += baseAtk+NL;
-	    	}else if(effCritRate > 400) {
-	    		int bonus = (int)Math.round(effCritRate*17); 
-	            out.dmgCalcMsg += "크리율 보너스 ("+bonus+") "+baseAtk+"→";
-	            baseAtk += bonus;
-	            out.dmgCalcMsg += baseAtk+NL;
-	    	}else if(effCritRate > 300) {
-	    		int bonus = (int)Math.round(effCritRate*13); 
-	            out.dmgCalcMsg += "크리율 보너스 ("+bonus+") "+baseAtk+"→";
-	            baseAtk += bonus;
-	            out.dmgCalcMsg += baseAtk+NL;
-	    	}else if(effCritRate > 200) {
-	    		int bonus = (int)Math.round(effCritRate*9); 
-	            out.dmgCalcMsg += "크리율 보너스 ("+bonus+") "+baseAtk+"→";
-	            baseAtk += bonus;
-	            out.dmgCalcMsg += baseAtk+NL;
-	    	}else if(effCritRate > 100) {
-	    		int bonus = (int)Math.round(effCritRate*5); 
-	            out.dmgCalcMsg += "크리율 보너스 ("+bonus+") "+baseAtk+"→";
-	            baseAtk += bonus;
-	            out.dmgCalcMsg += baseAtk+NL;
-	    	}else {
-	    		int bonus = (int)Math.round(effCritRate*3); 
-	            out.dmgCalcMsg += "크리율 보너스 ("+bonus+") "+baseAtk+"→";
-	            baseAtk += bonus;
-	            out.dmgCalcMsg += baseAtk+NL;
-	    	}
-	    	
-	    	
-	    	if(effCriDmg > 1700) {
-	    		int bonus = (int)Math.round(effCriDmg*21); 
-	        	out.dmgCalcMsg += "크리뎀 보너스 ("+bonus+") "+baseAtk+"→";
-	        	baseAtk += bonus;
-	        	out.dmgCalcMsg += baseAtk+NL;
-	    	}else if(effCriDmg > 1300) {
-	    		int bonus = (int)Math.round(effCriDmg*17); 
-	        	out.dmgCalcMsg += "크리뎀 보너스 ("+bonus+") "+baseAtk+"→";
-	        	baseAtk += bonus;
-	        	out.dmgCalcMsg += baseAtk+NL;
-	    	}else if(effCriDmg > 1000) {
-	    		int bonus = (int)Math.round(effCriDmg*13); 
-	        	out.dmgCalcMsg += "크리뎀 보너스 ("+bonus+") "+baseAtk+"→";
-	        	baseAtk += bonus;
-	        	out.dmgCalcMsg += baseAtk+NL;
-	    	}else if(effCriDmg > 700) {
-	    		int bonus = (int)Math.round(effCriDmg*9); 
-	        	out.dmgCalcMsg += "크리뎀 보너스 ("+bonus+") "+baseAtk+"→";
-	        	baseAtk += bonus;
-	        	out.dmgCalcMsg += baseAtk+NL;
-	    	}else {
-	    		int bonus = (int)Math.round(effCriDmg*5); 
-	        	out.dmgCalcMsg += "크리뎀 보너스 ("+bonus+") "+baseAtk+"→";
-	        	baseAtk += bonus;
-	        	out.dmgCalcMsg += baseAtk+NL;
-	    	}
-	        
-	        effCritRate = 0;
-	        effCriDmg = 0;
-	        crit = false;
-	        if (m.monNo==13 || m.monNo==20 || m.monNo==29) {
-	        	out.dmgCalcMsg += "용족 보너스 "+baseAtk+"→";
-	        	baseAtk = (int)Math.round(baseAtk * 5);
-	        	out.dmgCalcMsg += baseAtk;
-	        }
-	    }
-	    /*
-	    if("파이터".equals(job)) {
-	    	baseAtk = (int) Math.round(berserkMul * baseAtk);
-	    	effCritRate = -100;
-	        effCriDmg = 0;
-	        crit = false;
-	    }
-	    */
 	    //모든직업 berserk 는 상위에서 계산하도록 
     	baseAtk = (int) Math.round(berserkMul * baseAtk);
 	    int rawAtkDmg = crit ? (int) Math.round(baseAtk * critMultiplier) : baseAtk;
 
-	    if ("곰".equals(job)) {
+	    if ("곰".equals(u.job)) {
 	    	// 🐻 공격 시 최대체력 10% 소모
 	        int hpCost = (int)Math.round(effHpMax * 0.10);
 	        int beforeHp = u.hpCur;
@@ -8173,105 +7289,9 @@ public class BossAttackController {
 	        flags.snipe = isSnipe;
 	        flags.finisher = (flags.monPattern >= 4); // 패턴4=필살기
 	        
-	        if ("저격수".equals(job) ) {
-	        	
-	        	switch(beforeJobSkillYn) {
-		    		case 0:
-		    			calc.patternMsg = m.monName + " (이)가 표적을 찾고 있습니다.";
-		    			break;
-		    		case 1:
-		    			break;
-	    			default:
-		    			calc.patternMsg = m.monName + " (이)가 배회합니다";
-	    				break;
-	        	}
-	        }
-	        if ("제너럴".equals(job) ) {
-	        	
-	        	switch(beforeJobSkillYn) {
-	        	case 0:
-	        		calc.patternMsg = m.monName + " (이)가 표적을 찾고 있습니다.";
-	        		break;
-	        	case 1:
-	        		if(!flags.finisher && calc.monDmg > 0) {
-	        			double evadeRate = 0.90;
-	    	            
-
-	    	            if (ThreadLocalRandom.current().nextDouble() < evadeRate) {
-	    	                String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
-	    	                calc.patternMsg = baseMsg + "제너럴의 회피! 피해를 받지 않았습니다.";
-	    	                calc.monDmg = 0;
-	    	            }
-	        		}else if(flags.finisher && calc.monDmg > 0) {
-	        			if (ThreadLocalRandom.current().nextDouble() < 0.20) {
-
-			                int bossSkillDmg = calc.monDmg;             // 보스 필살기 데미지
-			                int reflectTotal = calc.atkDmg + bossSkillDmg; // 되돌려줄 총 피해
-
-			                calc.atkDmg += bossSkillDmg;  // 되받아친 만큼 공격에 누적
-			                calc.monDmg = 0;              // 나는 피해 없음
-
-			                String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
-			                calc.patternMsg = baseMsg
-			                        + "패링! 보스의 필살기를 되받아쳐 총 "
-			                        + reflectTotal + " 피해를 입히고 피해를 받지 않았습니다.";
-
-			                calc.jobSkillUsed = true;
-			            }
-	        		}
-	        		
-	        		break;
-	        	default:
-	        		if(!calc.jobSkillUsed) {
-	        			if(baseAtk>0) {
-	        				calc.patternMsg = m.monName + " (이)가 날벼락에 맞았습니다!";
-	        			}else {
-	        				calc.patternMsg = m.monName + " (이)가 배회합니다";
-	        			}
-	        		}
-	        		break;
-	        	}
-	        }
-	    	if ("파이터".equals(job) ) {
-	    		if(u.hpCur < effHpMax*0.3) {
-	    			if (ThreadLocalRandom.current().nextDouble() < 0.40) {
-	    				flags.monPattern = 1;
-		    			calc.monDmg = 0;  // 방어 패턴이었으니 몬스터 피해는 0 유지
-		    			calc.patternMsg = m.monName + "의 패턴파훼! 몬스터가 모든행동을 멈춥니다";
-		    			
-			            calc.atkDmg = calc.baseAtk;
-		    		}
-	    		}
-	        }
-	        // 🔥 마법사: 패턴3 방어를 깨뜨리고 1.5배 피해
-	        if ("마법사".equals(job) ) {
-	        	if(flags.monPattern == 3) {
-		        	// 패턴3 → 방어 대신 무행동 취급
-		            flags.monPattern = 1;
-	
-		            // ✅ 방어 적용 전 기준( baseAtk * critMultiplier )으로 다시 계산
-		            int originalDmg = (int) Math.round(calc.baseAtk * calc.critMultiplier);
-	
-		            int newDmg = (int) Math.round(originalDmg * 2.0);
-		            calc.atkDmg = newDmg;
-		            calc.monDmg = 0;  // 방어 패턴이었으니 몬스터 피해는 0 유지
-	
-		            // 디버그용 계수도 실제 데미지에 맞게 재계산
-		            if (calc.baseAtk > 0) {
-		                calc.critMultiplier = (double) newDmg / calc.baseAtk;
-		            }
-	
-		            calc.patternMsg = m.monName + "의 방어가 마법사의 힘에 의해 무너졌습니다! (피해 2배)";
-	        	}else if(flags.monPattern == 4) {
-	        		int reduced = (int) Math.floor(calc.monDmg * 0.7);
-		            if (reduced < 1) reduced = 1;
-		            String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
-		            calc.patternMsg = baseMsg + "(마나실드 필살피해 30% 감소 → " + reduced + ")";
-		            calc.monDmg = reduced;
-	        	}
-	        }
 	        
-	        if ("처단자".equals(job) ) {
+	        
+	        if ("처단자".equals(u.job) ) {
 	        	if(flags.monPattern == 3) {
 		        	// 패턴3 → 방어 대신 무행동 취급
 		            flags.monPattern = 1;
@@ -8293,7 +7313,7 @@ public class BossAttackController {
 	        }
 
 	        // 🛡 전사: 보스 필살기 패링 (20% 확률)
-	        if ("검성".equals(job)) {
+	        if ("검성".equals(u.job)) {
 	        	if (flags.finisher && calc.monDmg > 0) {
 		            if (ThreadLocalRandom.current().nextDouble() < 0.15) {
 
@@ -8328,74 +7348,9 @@ public class BossAttackController {
 		        }
 	        }
 	        
-	        if("전사".equals(job)) {
-	        	if (flags.finisher && calc.monDmg > 0) {
-		            if (ThreadLocalRandom.current().nextDouble() < 0.20) {
-
-		                int bossSkillDmg = calc.monDmg;             // 보스 필살기 데미지
-		                int reflectTotal = calc.atkDmg + bossSkillDmg; // 되돌려줄 총 피해
-
-		                calc.atkDmg += bossSkillDmg;  // 되받아친 만큼 공격에 누적
-		                calc.monDmg = 0;              // 나는 피해 없음
-
-		                String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
-		                calc.patternMsg = baseMsg
-		                        + "패링! 보스의 필살기를 되받아쳐 총 "
-		                        + reflectTotal + " 피해를 입히고 피해를 받지 않았습니다.";
-
-		                calc.jobSkillUsed = true;
-		            }
-		        }else if (!flags.finisher && calc.monDmg > 0) {
-		            int reduce = (int) Math.round(u.lv * 10)+m.monLv*10;
-		            int after = Math.max(0, calc.monDmg - reduce); // 최소 0
-		            String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
-		            calc.patternMsg = baseMsg
-		                    + "(전사의방패 효과로 " + reduce + " 피해 감소 → " + after + ")";
-		            calc.monDmg = after;
-		        }
-	        }
-	        
-	        if ("어쎄신".equals(job) && calc.monDmg > 0 ) {
-	        	double evadeRate = 1;
-	        	if(flags.finisher) {
-	        		evadeRate = 0.20;
-	        	}
-	        	
-	        	if (ThreadLocalRandom.current().nextDouble() < evadeRate) {
-	                String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
-	                calc.patternMsg = baseMsg + NL+"어쎄신의 날렵한 회피! 피해를 받지 않았습니다.";
-	                calc.monDmg = 0;
-	            }
-
-	            
-	        }
-	        
-	        
 	        // 🌀 도적: 회피 (고레벨 보스일수록 회피율 감소, 필살기 제외)
-	        if ("도적".equals(job) && calc.monDmg > 0 && !flags.finisher) {
-
-	            int monLv = m.monNo;
+	        if ("도적".equals(u.job) && calc.monDmg > 0 && !flags.finisher) {
 	            double evadeRate = 0.80;
-	            switch (monLv) {
-		            case 30:
-		            	evadeRate -= 0.05;
-		            case 29:
-		            	evadeRate -= 0.05;
-		            case 28:
-		            	evadeRate -= 0.05;
-		            case 27:
-		            	evadeRate -= 0.05;
-		            case 26:
-		            	evadeRate -= 0.05;
-		            case 25:
-		            	evadeRate -= 0.05;
-		            case 24:
-		            	evadeRate -= 0.05;
-		            case 23:
-		            	evadeRate -= 0.05;
-		            case 22:
-		            	evadeRate -= 0.05;  
-	            }
 
 	            if (ThreadLocalRandom.current().nextDouble() < evadeRate) {
 	                String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
@@ -8404,55 +7359,15 @@ public class BossAttackController {
 	            }
 	        }
 	        
-	        /*
-	        if ("처단자".equals(job) && calc.monDmg > 0 && !flags.finisher) {
-
-	            int monLv = m.monNo;
-	            double evadeRate = 0.80;
-	            switch (monLv) {
-		            case 30:
-		            	evadeRate -= 0.05;
-		            case 29:
-		            	evadeRate -= 0.05;
-		            case 28:
-		            	evadeRate -= 0.05;
-		            case 27:
-		            	evadeRate -= 0.05;
-		            case 26:
-		            	evadeRate -= 0.05;
-		            case 25:
-		            	evadeRate -= 0.05;
-		            case 24:
-		            	evadeRate -= 0.05;
-		            case 23:
-		            	evadeRate -= 0.05;
-		            case 22:
-		            	evadeRate -= 0.05;
-	            }
-
-	            if (ThreadLocalRandom.current().nextDouble() < evadeRate) {
-	                String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
-	                calc.patternMsg = baseMsg + "적의 공격이 처단자에게 닿지않습니다";
-	                calc.monDmg = 0;
-	            }
-	        }
-	        */
-	        if ("용사".equals(job) && calc.monDmg > 0 && !flags.finisher) {
+	        if ("용사".equals(u.job) && calc.monDmg > 0 && !flags.finisher) {
 	            int reduced = (int) Math.floor(calc.monDmg * 0.3);
 	            if (reduced < 1) reduced = 1;
 	            String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
 	            calc.patternMsg = baseMsg + "(받는 피해 70% 감소 → " + reduced + ")";
 	            calc.monDmg = reduced;
 	        }
-	        /*
-	        if ("프리스트".equals(job) && calc.monDmg > 0 && !flags.finisher) {
-	            int reduced = (int) Math.floor(calc.monDmg * 0.8);
-	            if (reduced < 1) reduced = 1;
-	            String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
-	            calc.patternMsg = baseMsg + "(받는 피해 20% 감소 → " + reduced + ")";
-	            calc.monDmg = reduced;
-	        }*/
-	        if ("어둠사냥꾼".equals(job) && calc.monDmg > 0 && !flags.finisher) {
+	        
+	        if ("어둠사냥꾼".equals(u.job) && calc.monDmg > 0 && !flags.finisher) {
 	        	int reduced = (int) Math.floor(calc.monDmg * 0.7);
 	        	if (reduced < 1) reduced = 1;
 	        	String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
@@ -8460,14 +7375,14 @@ public class BossAttackController {
 	        	calc.monDmg = reduced;
 	        }
 	        
-	        if ("어둠사냥꾼".equals(job) && flags.finisher && flags.monPattern==6 ) {
+	        if ("어둠사냥꾼".equals(u.job) && flags.finisher && flags.monPattern==6 ) {
 	        	calc.atkDmg = rawAtkDmg*5;
 			    calc.monDmg = 0;
 			    calc.endBattle = false;
 			    calc.patternMsg = "도망가는 적을 붙잡아 강력한 일격!" + rawAtkDmg*5 + " 피해";
 	        }
 	        
-	        if ("복수자".equals(job)) {
+	        if ("복수자".equals(u.job)) {
 		        if (calc.monDmg > 0 && flags.monPattern == 2 || flags.monPattern == 4) {
 		        	//flags.monPattern =2 이면 2배 , 4이면 4배 
 		            int revengeDmg = (int) Math.round(calc.monDmg * flags.monPattern);
@@ -8499,7 +7414,7 @@ public class BossAttackController {
 		        }
 		    }
 	     // 몬스터 공격 변동 처리 (회피 / 증폭)
-	        if ("도박사".equals(job)) {
+	        if ("도박사".equals(u.job)) {
 		        if (calc.monDmg > 0 ) {
 	
 		            int roll = ThreadLocalRandom.current().nextInt(1, 101); // 1~100
@@ -8529,55 +7444,7 @@ public class BossAttackController {
 		            }
 		        }
 	        }
-
-	        
 	    }
-
-	    /*
-	    if ("용사".equals(job)) {
-	    	double rnd = ThreadLocalRandom.current().nextDouble();
-            if (rnd < 0.10) {
-            	int heal = (int) Math.round(effHpMax * 1);
-
-	            int before = u.hpCur;
-	            u.hpCur = Math.min(effHpMax, u.hpCur + heal);
-
-	            String base = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
-	            calc.patternMsg = base + "정령의 가호 효과! " + 
-	                    "fullHp 회복 (HP " + before + " → " + u.hpCur + "/" + effHpMax + ")";
-	            calc.jobSkillUsed = true;
-            }
-	    }
-	    */
-	    // -----------------------------
-	    // 5) 흡혈귀: 이번 턴 실제 입힌 피해의 20% 회복
-	    // -----------------------------
-	    if ("흡혈귀".equals(job) && calc.atkDmg > 0) {
-
-	        if (m.monNo == 10 || m.monNo == 14 || m.monNo == 28) {
-	            String base = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
-	            calc.patternMsg = base + "언데드는 흡혈 불가";
-	        } else {
-	            // 몬스터가 실제로 잃은 체력만큼만 흡혈 가능
-	            int realDamage = Math.min(calc.atkDmg, monHpRemainBefore);
-	            int heal = (int) Math.round(realDamage * 0.20);
-	            if (heal < 1) heal = 1;
-	            
-	            int maxHeal = (int) Math.round(effHpMax * 0.20);
-	            if (heal > maxHeal) heal = maxHeal;
-	            
-
-	            int before = u.hpCur;
-	            u.hpCur = Math.min(effHpMax, u.hpCur + heal);
-
-	            String base = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
-	            calc.patternMsg = base + "흡혈 효과! " + heal +
-	                    " 회복 (HP " + before + " → " + u.hpCur + "/" + effHpMax + ")";
-	            calc.jobSkillUsed = true;
-	        }
-	    }
-	    
-
 	    out.calc = calc;
 	    out.flags = flags;
 	    out.willKill = (calc.atkDmg >= monHpRemainBefore);
@@ -8620,8 +7487,8 @@ public class BossAttackController {
 
 	
 	private SP pickBiasedSp(long min, long max) {
-	    double r = ThreadLocalRandom.current().nextDouble(); // 0~1
-	    double biased = Math.pow(r, 6); // 극단적으로 0쪽으로 치우침
+	    double r = ThreadLocalRandom.current().nextDouble(); 
+	    double biased = Math.pow(r, 6); 
 
 	    long span = max - min;
 	    long value = min + (int)Math.round(span * biased);
@@ -8810,73 +7677,7 @@ public class BossAttackController {
 	}
 	
 	
-	private String buildEnhancedOptionLine(HashMap<String,Object> item, int qty) {
-	    if (item == null) return "";
-
-	    int baseMin     = parseIntSafe(Objects.toString(item.get("ATK_MIN"), "0"));
-	    int baseMax     = parseIntSafe(Objects.toString(item.get("ATK_MAX"), "0"));
-	    int baseHp      = parseIntSafe(Objects.toString(item.get("HP_MAX"), "0"));
-	    int baseRegen   = parseIntSafe(Objects.toString(item.get("HP_REGEN"), "0"));
-	    int baseCri     = parseIntSafe(Objects.toString(item.get("ATK_CRI"), "0"));    // 치확
-	    int baseCriDmg  = parseIntSafe(Objects.toString(item.get("CRI_DMG"), "0"));    // 치피
-	    int baseHpRate  = parseIntSafe(Objects.toString(item.get("HP_MAX_RATE"), "0"));// 체력%
-	    int baseAtkRate = parseIntSafe(Objects.toString(item.get("ATK_MAX_RATE"), "0"));// 최종공격력%
-
-	    StringBuilder sb = new StringBuilder();
-
-	    // 공격력
-	    if (baseMin != 0 || baseMax != 0) {
-	        sb.append("[공격력 ")
-	          .append(baseMin)
-	          .append("~")
-	          .append(baseMax)
-	          .append("] ");
-	    }
-
-	    // 최종 공격력 %
-	    if (baseAtkRate != 0) {
-	        sb.append("[최종공격력 ")
-	          .append(baseAtkRate)
-	          .append("%] ");
-	    }
-
-	    // HP
-	    if (baseHp != 0) {
-	        sb.append("[체력+ ")
-	          .append(baseHp)
-	          .append("] ");
-	    }
-
-	    // HP %
-	    if (baseHpRate != 0) {
-	        sb.append("[체력% ")
-	          .append(baseHpRate)
-	          .append("] ");
-	    }
-
-	    // 체젠
-	    if (baseRegen != 0) {
-	        sb.append("[체젠 ")
-	          .append(baseRegen)
-	          .append("] ");
-	    }
-
-	    // 치확
-	    if (baseCri != 0) {
-	        sb.append("[치확 ")
-	          .append(baseCri)
-	          .append("] ");
-	    }
-
-	    // 치피
-	    if (baseCriDmg != 0) {
-	        sb.append("[치피 ")
-	          .append(baseCriDmg)
-	          .append("] ");
-	    }
-
-	    return sb.toString().trim();
-	}
+	
 
 
 	private Date truncateToDate(Date d) {
