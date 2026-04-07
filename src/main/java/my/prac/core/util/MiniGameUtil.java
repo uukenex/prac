@@ -64,6 +64,9 @@ public class MiniGameUtil {
 
 	// 데일리버프 캐시 (yyyyMMdd|userName → HashMap, 일 단위 자동만료)
 	public static final ConcurrentHashMap<String, HashMap<String,Object>> DAILY_BUFF_CACHE = new ConcurrentHashMap<>();
+
+	// 물약 사용 횟수 캐시 (userName → 총 사용 횟수)
+	public static final ConcurrentHashMap<String, Integer> POTION_USE_CACHE = new ConcurrentHashMap<>();
 	// ─────────────────────────────────────────────────────────────────────────
 
 	static {
