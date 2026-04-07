@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="<%=request.getContextPath()%>/assets/css/font-awesome.min.css">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: #f0f4f8; font-family: 'Segoe UI', 'Malgun Gothic', sans-serif; color: #333; }
+    body { background: #f0f4f8; font-family: 'Segoe UI', 'Malgun Gothic', sans-serif; color: #333; margin-left: 120px; }
 
     .wrap { max-width: 1100px; margin: 0 auto; padding: 28px 16px 60px; }
 
@@ -142,6 +142,7 @@
   </style>
 </head>
 <body>
+<%@ include file="_loa_nav.jsp" %>
 <div id="app" class="wrap">
 
   <div class="page-header">
@@ -474,6 +475,7 @@
             self.killMap      = data.kills      || {};
             self.totalKills   = data.totalKills || 0;
             self.searchedUser = data.userName   || un;
+            sessionStorage.setItem('loaUserName', self.searchedUser);
             self.userInfo     = data.userInfo   || {};
           })
           .catch(function() { alert('킬 통계 조회 중 오류가 발생했습니다.'); });
@@ -488,7 +490,12 @@
           .finally(function() { self.loading = false; });
       }
     },
-    mounted: function() { this.fetchMonsters(); }
+    mounted: function() {
+      this.fetchMonsters();
+      var params = new URLSearchParams(window.location.search);
+      var u = (params.get('userName') || params.get('user') || '').trim();
+      if (u) { this.userName = u; this.fetchKills(); }
+    }
   });
 </script>
 </body>

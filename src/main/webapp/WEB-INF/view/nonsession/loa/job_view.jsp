@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="<%=request.getContextPath()%>/assets/css/font-awesome.min.css">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: #f0f4f8; font-family: 'Segoe UI', 'Malgun Gothic', sans-serif; color: #333; }
+    body { background: #f0f4f8; font-family: 'Segoe UI', 'Malgun Gothic', sans-serif; color: #333; margin-left: 120px; }
 
     .wrap { max-width: 1100px; margin: 0 auto; padding: 28px 16px 60px; }
 
@@ -51,6 +51,7 @@
   </style>
 </head>
 <body>
+<%@ include file="_loa_nav.jsp" %>
 <div id="app" class="wrap">
 
   <div class="page-header">

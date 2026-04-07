@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="<%=request.getContextPath()%>/assets/css/font-awesome.min.css">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: #f5f3ee; font-family: 'Segoe UI', 'Malgun Gothic', sans-serif; color: #333; }
+    body { background: #f5f3ee; font-family: 'Segoe UI', 'Malgun Gothic', sans-serif; color: #333; margin-left: 120px; }
 
     .shop-wrap { max-width: 1000px; margin: 0 auto; padding: 28px 16px 60px; }
 
@@ -75,6 +75,7 @@
   </style>
 </head>
 <body>
+<%@ include file="_loa_nav.jsp" %>
 <div id="app" class="shop-wrap">
 
   <div class="shop-header">
@@ -265,6 +266,7 @@
             });
             self.items = list;
             self.searchedUser = (data.userName || '').trim();
+            if (self.searchedUser) sessionStorage.setItem('loaUserName', self.searchedUser);
           })
           .catch(function() { alert('조회 중 오류가 발생했습니다.'); })
           .finally(function() { self.loading = false; });
@@ -272,7 +274,9 @@
     },
     mounted: function() {
       var self = this;
-      // 포션 공식 로드 (서버 POTION_CONFIGS 에서 읽음 → 포션 추가 시 자동 반영)
+      var params = new URLSearchParams(window.location.search);
+      var u = (params.get('userName') || params.get('user') || '').trim();
+      if (u) self.userName = u;
       fetch('<%=request.getContextPath()%>/loa/api/potion-formulas')
         .then(function(r) { return r.json(); })
         .then(function(data) { self.potionFormulas = data; });

@@ -1371,8 +1371,6 @@ public class BossAttackController {
 	    final String pointStr   = ctx.currentPointStr;
 	    final String lifetimeSpStr    = ctx.lifetimeSpStr;//formatSpShort(ctx.lifetimeSp);
 
-	    final String allSeeStr  = NL + "===" + NL;  // 구분선
-
 	    // [OPT-HUNTER] pre-fetched statRows에서 totalAttacks/totalDeaths/jobAtkMap/lastAtkTs 도출
 	    // (selectAttackDeathStats + selectBattleCountByUser 2회 → 0회)
 	    int totalAttacks = 0;
@@ -1530,10 +1528,11 @@ public class BossAttackController {
 	    }
 	     */
         sb.append("▶ 현재 타겟: ").append(targetName)
-	      .append(" (MON_NO=").append(u.targetMon).append(")");
+	      .append(" (MON_NO=").append(u.targetMon).append(")").append(NL);
 
 	    // 누적 전투
-	    sb.append(allSeeStr);
+        sb.append("http://rgb-tns.dev-apc.com/loa/user-info-view?userName="+targetUser);
+	    sb.append( ALL_SEE_STR);
 
 	    JobDef jobDef = MiniGameUtil.JOB_DEFS.get(job);
 	    if (jobDef != null && jobDef.attackLine != null && !jobDef.attackLine.isEmpty()) {
@@ -1831,7 +1830,7 @@ public class BossAttackController {
 		    List<Monster> monsters = botNewService.selectAllMonsters();
 		    StringBuilder sb = new StringBuilder();
 		    sb.append("공격 타겟 목록입니다:").append(NL).append(NL)
-		      .append("http://rgb-tns.dev-apc.com/loa/monster-view").append(NL).append(NL)
+		      .append("http://rgb-tns.dev-apc.com/loa/monster-view?userName="+userName).append(NL).append(NL)
 		      .append("/ㄱㄱㅌㄱ 1 또는 /ㄱㄱㅌㄱ 토끼 로 설정").append(NL)
 		      .append("▶ 선택 가능한 몬스터").append(ALL_SEE_STR);
 
@@ -4769,7 +4768,7 @@ public class BossAttackController {
 	    StringBuilder sb = new StringBuilder();
 
 	    sb.append("■").append(userName).append("님 상점 목록").append(NL)
-	      .append("http://rgb-tns.dev-apc.com/loa/item-view").append(NL)
+	      .append("http://rgb-tns.dev-apc.com/loa/item-view?userName="+userName).append(NL)
 	      .append("────────────────").append(NL);
 
 	    // 유저 레벨 (TARGET_LV 체크용, 1회 조회)
