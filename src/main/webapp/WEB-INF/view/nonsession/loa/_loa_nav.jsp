@@ -1,4 +1,4 @@
-<%--
+<%@ page pageEncoding="UTF-8" %><%--
   공통 좌측 네비게이션 사이드바
   각 페이지에서 <body> 바로 아래에 <%@ include file="_loa_nav.jsp" %> 로 포함
 --%>
