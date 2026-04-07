@@ -25,72 +25,84 @@
     .empty   { text-align: center; padding: 60px; color: #bbb; }
 
     /* ── 장비 화면 레이아웃 ── */
-    .equip-screen { display: grid; grid-template-columns: 140px 1fr 140px; gap: 10px; min-height: 420px; }
+    .equip-screen { display: grid; grid-template-columns: 1fr 190px; gap: 14px; align-items: start; }
 
-    /* 좌우 슬롯 패널 */
-    .slot-col { display: flex; flex-direction: column; gap: 8px; }
-
-    /* 캐릭터 중앙 영역 */
+    /* 캐릭터 왼쪽 영역 */
     .char-area { display: flex; flex-direction: column; align-items: center; gap: 8px; }
 
-    /* 귀여운 캐릭터 박스 */
+    /* 귀여운 캐릭터 박스 (세로 portrait) */
     .char-box {
-      background: linear-gradient(135deg, #fff0fa 0%, #ede0ff 50%, #ddf0ff 100%);
+      background: linear-gradient(160deg, #fff0fa 0%, #ede0ff 55%, #ddf0ff 100%);
       border: 3px solid #e8c0da;
-      border-radius: 50%;
-      width: 140px;
-      height: 140px;
+      border-radius: 24px;
+      width: 100%;
+      max-width: 280px;
+      height: 300px;
       display: flex;
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
-      box-shadow: 0 6px 20px rgba(200,140,180,.25), 0 0 0 5px rgba(232,192,218,.2);
+      box-shadow: 0 6px 24px rgba(200,140,180,.22), 0 0 0 5px rgba(232,192,218,.15);
       transition: transform .2s;
       overflow: hidden;
-      padding: 6px;
+      padding: 10px;
     }
-    .char-box:hover { transform: scale(1.04); }
+    .char-box:hover { transform: scale(1.02); }
 
-    .char-name { font-size: 14px; font-weight: 800; color: #3d2b1f; text-align: center; }
+    .char-name { font-size: 15px; font-weight: 800; color: #3d2b1f; text-align: center; }
     .char-job  { font-size: 12px; color: #a07858; text-align: center; }
-    .char-lv   { font-size: 20px; font-weight: 900; color: #c9a96e; text-align: center; }
+    .char-lv   { font-size: 22px; font-weight: 900; color: #c9a96e; text-align: center; }
 
-    /* 상단/하단 슬롯 (가로 배치) */
-    .slot-row  { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+    /* 합계 칩 */
+    .summary-row { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; margin-top: 4px; }
+    .sum-chip { background: #fff; border: 1px solid #e8ddd0; border-radius: 8px; padding: 4px 10px; font-size: 11px; color: #888; box-shadow: 0 1px 3px rgba(0,0,0,.04); }
+    .sum-chip strong { color: #c9a96e; margin-left: 3px; }
 
-    /* 개별 슬롯 */
+    /* 물약 사용 뱃지 */
+    .potion-badge { background: #fff; border: 1px solid #e8ddd0; border-radius: 8px; padding: 4px 12px; font-size: 11px; color: #a07858; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,.04); }
+
+    /* ── 오른쪽 슬롯 패널 ── */
+    .slot-panel { display: flex; flex-direction: column; gap: 7px; }
+
+    /* 개별 슬롯 (가로 행) */
     .slot {
       background: #fff;
       border: 1.5px solid #e8ddd0;
       border-radius: 12px;
-      padding: 8px 10px;
-      min-height: 68px;
+      padding: 7px 10px;
       cursor: default;
       transition: border-color .2s, background .2s, box-shadow .2s;
-      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 9px;
       box-shadow: 0 1px 4px rgba(0,0,0,.05);
+      min-height: 52px;
     }
     .slot.has-item { border-color: #c9a96e; cursor: pointer; }
     .slot.has-item:hover { background: #fffbf5; border-color: #b8935a; box-shadow: 0 3px 10px rgba(180,120,60,.12); }
-    .slot.slot-sm { min-height: 56px; }
 
     /* 특별 아이템 (기본 티어): 금테 강조 */
     .slot.special-item { border-color: #c9a96e; background: #fffdf7; }
     .slot.special-item:hover { background: #fff8e8; border-color: #b8935a; }
 
-    .slot-label { font-size: 9px; color: #c0b0a0; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 2px; }
-    .slot-icon  { font-size: 20px; line-height: 1; }
-    .slot-name  { font-size: 10px; color: #888; margin-top: 3px; line-height: 1.3; }
-    .slot-qty   { font-size: 9px; color: #c9a96e; margin-top: 2px; }
-    .slot-empty { font-size: 11px; color: #ddd; margin-top: 4px; }
+    /* 슬롯 아이콘 박스 */
+    .slot-icon-box {
+      width: 42px; height: 42px;
+      background: linear-gradient(135deg, #f5f0e8, #ede4d4);
+      border: 1.5px solid #e0d0b8;
+      border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; flex-shrink: 0;
+    }
+    .slot.has-item    .slot-icon-box { background: linear-gradient(135deg, #fff8e8, #f5e8cc); border-color: #c9a96e; }
+    .slot.special-item .slot-icon-box { background: linear-gradient(135deg, #fff3cc, #ffe090); border-color: #c9a96e; box-shadow: 0 0 6px rgba(201,169,110,.3); }
 
-    /* 합계 칸 (행운/반지/토템/선물) */
-    .summary-row { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; margin-top: 6px; }
-    .sum-chip { background: #fff; border: 1px solid #e8ddd0; border-radius: 8px; padding: 4px 10px; font-size: 11px; color: #888; box-shadow: 0 1px 3px rgba(0,0,0,.04); }
-    .sum-chip strong { color: #c9a96e; margin-left: 3px; }
-
-    /* 물약 사용 뱃지 */
-    .potion-badge { background: #fff; border: 1px solid #e8ddd0; border-radius: 8px; padding: 4px 12px; font-size: 11px; color: #a07858; text-align: center; margin-top: 4px; box-shadow: 0 1px 3px rgba(0,0,0,.04); }
+    /* 슬롯 텍스트 */
+    .slot-info   { flex: 1; min-width: 0; }
+    .slot-label  { font-size: 9px; color: #c0b0a0; letter-spacing: .4px; margin-bottom: 1px; }
+    .slot-name   { font-size: 11px; color: #555; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .slot-qty    { font-size: 9px; color: #c9a96e; margin-top: 1px; }
+    .slot-empty  { font-size: 11px; color: #ccc; }
 
     /* ── 툴팁/모달 ── */
     .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 100; display: flex; align-items: center; justify-content: center; }
@@ -135,78 +147,34 @@
     <!-- ── 장비 화면 ── -->
     <div class="equip-screen">
 
-      <!-- 좌측 슬롯: 무기, 갑옷 -->
-      <div class="slot-col">
-        <div v-for="slot in leftSlots" :key="slot.cat"
-             class="slot" :class="slotClass(slot)"
-             @click="openModal(slot)">
-          <div class="slot-label">{{ slot.cat }}</div>
-          <template v-if="slot.item">
-            <div class="slot-icon">{{ catIcon(slot.cat) }}</div>
-            <div class="slot-name">{{ slot.item.ITEM_NAME }}</div>
-            <div class="slot-qty" v-if="slot.item.TOTAL_QTY > 1">×{{ slot.item.TOTAL_QTY }}</div>
-          </template>
-          <div class="slot-empty" v-else>-</div>
-        </div>
-      </div>
-
-      <!-- 중앙: 캐릭터 + 상/하 슬롯 -->
+      <!-- 왼쪽: 캐릭터 -->
       <div class="char-area">
-        <!-- 상단: 투구 -->
-        <div class="slot-row">
-          <div v-for="slot in topSlots" :key="slot.cat"
-               class="slot slot-sm" :class="slotClass(slot)"
-               @click="openModal(slot)">
-            <div class="slot-label">{{ slot.cat }}</div>
-            <template v-if="slot.item">
-              <div class="slot-icon">{{ catIcon(slot.cat) }}</div>
-              <div class="slot-name">{{ slot.item.ITEM_NAME }}</div>
-            </template>
-            <div class="slot-empty" v-else>-</div>
-          </div>
-        </div>
-
-        <!-- 캐릭터 -->
         <div class="char-box" v-html="charSvg"></div>
         <div class="char-lv" v-if="userLv > 0">Lv {{ userLv }}</div>
         <div class="char-name">{{ userName }}</div>
         <div class="char-job" v-if="userJob">{{ userJob }}</div>
-
-        <!-- 하단: 날개, 물약 -->
-        <div class="slot-row">
-          <div v-for="slot in bottomSlots" :key="slot.cat"
-               class="slot slot-sm" :class="slotClass(slot)"
-               @click="openModal(slot)">
-            <div class="slot-label">{{ slot.cat }}</div>
-            <template v-if="slot.item">
-              <div class="slot-icon">{{ catIcon(slot.cat) }}</div>
-              <div class="slot-name">{{ slot.item.ITEM_NAME }}</div>
-            </template>
-            <div class="slot-empty" v-else>-</div>
-          </div>
-        </div>
-
-        <!-- 합계 요약 (행운/반지/토템/선물) -->
         <div class="summary-row">
           <div class="sum-chip" v-for="g in groupSummary" :key="g.label">
             {{ g.label }} <strong>{{ g.total }}</strong>
           </div>
         </div>
-        <!-- 물약 사용 -->
         <div class="potion-badge">🧪 물약 사용: {{ potionUseCount }}회</div>
       </div>
 
-      <!-- 우측 슬롯: 전설, 유물 -->
-      <div class="slot-col">
-        <div v-for="slot in rightSlots" :key="slot.cat"
+      <!-- 오른쪽: 장비 슬롯 세로 목록 -->
+      <div class="slot-panel">
+        <div v-for="slot in allSlots" :key="slot.cat"
              class="slot" :class="slotClass(slot)"
              @click="openModal(slot)">
-          <div class="slot-label">{{ slot.cat }}</div>
-          <template v-if="slot.item">
-            <div class="slot-icon">{{ catIcon(slot.cat) }}</div>
-            <div class="slot-name">{{ slot.item.ITEM_NAME }}</div>
-          </template>
-          <div class="slot-empty" v-else>-</div>
+          <div class="slot-icon-box">{{ catIcon(slot.cat) }}</div>
+          <div class="slot-info">
+            <div class="slot-label">{{ slot.cat }}</div>
+            <template v-if="slot.item">
+              <div class="slot-name">{{ slot.item.ITEM_NAME }}</div>
+              <div class="slot-qty" v-if="slot.item.TOTAL_QTY > 1">×{{ slot.item.TOTAL_QTY }}</div>
+            </template>
+            <div class="slot-empty" v-else>비어있음</div>
+          </div>
         </div>
       </div>
     </div>
@@ -377,10 +345,9 @@ new Vue({
       return map;
     },
 
-    leftSlots:   function() { return [this.mkSlot('무기'), this.mkSlot('갑옷')]; },
-    topSlots:    function() { return [this.mkSlot('투구')]; },
-    bottomSlots: function() { return [this.mkSlot('날개')]; },
-    rightSlots:  function() { return [this.mkSlot('전설')]; },
+    allSlots: function() {
+      return ['투구','무기','갑옷','전설','날개'].map(this.mkSlot);
+    },
 
     groupSummary: function() {
       var inv = this.inventory;
