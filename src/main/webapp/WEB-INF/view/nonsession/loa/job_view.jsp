@@ -29,7 +29,7 @@
     .count-label strong { color: #1a2a3a; }
 
     /* 그리드 */
-    .job-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px; }
+    .job-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 5px; }
 
     /* 카드 */
     .job-card { background: #fff; border-radius: 14px; padding: 16px 15px 14px; box-shadow: 0 2px 8px rgba(0,0,0,.06); border: 1.5px solid transparent; transition: box-shadow .18s, border-color .18s; }
@@ -129,7 +129,7 @@ new Vue({
 
 function parseSkills(attackLine) {
   if (!attackLine) return [];
-  return attackLine.split('\n')
+  return attackLine.split('♬')
     .map(s => s.trim())
     .filter(s => s.length > 0)
     .map(s => {
