@@ -2007,55 +2007,193 @@ public class BossAttackController {
 	
 	// 콤마 기반 멀티 구매 + x / * 수량 지원
 	// 예) "101,102,백화검*3,200x2"
+	// 동일 아이템이 여러 번 등장하면 합산 후 배치 처리 (SQL 중복 방지)
 	private String buyMultiItems(String roomName, String userName, String raw) {
 	    String[] tokens = raw.split(",");
-	    StringBuilder sb = new StringBuilder();
-	    sb.append("▶ 일괄 구매 결과").append(NL);
 
-	    boolean hasAny = false;
-
+	    // 1) 토큰 파싱 & 동일 아이템 합산 (LinkedHashMap으로 입력 순서 유지)
+	    java.util.LinkedHashMap<String, Integer> itemQtyMap = new java.util.LinkedHashMap<>();
 	    for (String t : tokens) {
 	        String token = (t == null ? "" : t.trim());
-	        if (token.isEmpty()) {
-	            continue;
-	        }
-	        hasAny = true;
+	        if (token.isEmpty()) continue;
 
-	        // 수량 파싱: 123x2, 123*2, 백화검*3 등
 	        int qty = 1;
 	        String itemToken = token;
-
 	        java.util.regex.Matcher m =
-	            java.util.regex.Pattern
-	                .compile("(.+?)[xX\\*](\\d+)$")
-	                .matcher(token);
-
+	            java.util.regex.Pattern.compile("(.+?)[xX\\*](\\d+)$").matcher(token);
 	        if (m.matches()) {
 	            itemToken = m.group(1).trim();
 	            qty = MiniGameUtil.parseIntSafe(m.group(2));
 	            if (qty <= 0) qty = 1;
 	        }
+	        itemQtyMap.merge(itemToken, qty, Integer::sum);
+	    }
 
-	        for (int i = 0; i < qty; i++) {
-	            String oneResult = buySingleItem(roomName, userName, itemToken);
+	    if (itemQtyMap.isEmpty()) return "구매할 대상이 없습니다.";
 
-	            String label = resolveItemLabel(itemToken);   // 🔹 여기서 아이템 이름으로 변환
+	    StringBuilder sb = new StringBuilder("▶ 일괄 구매 결과").append(NL);
 
-	            sb.append(NL)
-	              .append("[").append(label);                 // 🔹 itemToken 대신 label 사용
-	            if (qty > 1) {
-	                sb.append(" #").append(i + 1).append("/").append(qty);
-	            }
-	            sb.append("]").append(NL)
-	              .append(oneResult).append(NL);
+	    // 2) 아이템별 처리: qty=1이면 기존 단일 구매, qty>1이면 배치 구매
+	    for (java.util.Map.Entry<String, Integer> entry : itemQtyMap.entrySet()) {
+	        String itemToken = entry.getKey();
+	        int qty = entry.getValue();
+	        String label = resolveItemLabel(itemToken);
+
+	        sb.append(NL).append("[").append(label);
+	        if (qty > 1) sb.append(" ×").append(qty);
+	        sb.append("]").append(NL);
+
+	        if (qty == 1) {
+	            sb.append(buySingleItem(roomName, userName, itemToken)).append(NL);
+	        } else {
+	            sb.append(buyBatch(roomName, userName, itemToken, qty)).append(NL);
 	        }
 	    }
 
-	    if (!hasAny) {
-	        return "구매할 대상이 없습니다.";
+	    return sb.toString();
+	}
+
+	/**
+	 * 동일 아이템 qty개 일괄 구매.
+	 * calcUserBattleContext, selectCurrentPoint, selectAchvCountsGlobal 등 무거운 SQL을 1회만 실행.
+	 * - POTION : qty번 사용 효과 누적 후 HP/SP를 한 번에 반영
+	 * - MARKET : 1개 초과 구매 불가 → 단일 구매로 위임
+	 */
+	private String buyBatch(String roomName, String userName, String itemToken, int qty) {
+	    // ── 아이템 ID 해석 ──────────────────────────────────────────────
+	    Integer itemId = null;
+	    if (itemToken != null && itemToken.matches("\\d+")) {
+	        try { itemId = Integer.valueOf(itemToken); } catch (Exception ignore) {}
+	    }
+	    if (itemId == null) {
+	        try { itemId = getItemIdCached(itemToken); } catch (Exception ignore) {}
+	    }
+	    if (itemId == null) {
+	        return "해당 아이템을 찾을 수 없습니다: " + itemToken;
 	    }
 
-	    return sb.toString();
+	    // ── 아이템 상세 (캐시) ─────────────────────────────────────────
+	    HashMap<String, Object> item = getItemDetailCached(itemId);
+	    String itemType = (item == null) ? "" : Objects.toString(item.get("ITEM_TYPE"), "");
+	    String itemName = (item == null) ? String.valueOf(itemId) : Objects.toString(item.get("ITEM_NAME"), String.valueOf(itemId));
+
+	    // MARKET 아이템은 1개 초과 구매 불가 → 단건으로 위임
+	    if ("MARKET".equalsIgnoreCase(itemType) || "MARKET2".equalsIgnoreCase(itemType)) {
+	        return buySingleItem(roomName, userName, itemToken);
+	    }
+
+	    // POTION 외 미지원 타입
+	    if (!"POTION".equalsIgnoreCase(itemType)) {
+	        return "구매할 수 없는 아이템입니다. (MARKET/POTION 유형만 구매 가능)";
+	    }
+
+	    // ── 공통 조회 1회 ────────────────────────────────────────────────
+	    // UserBattleContext (유저 정보, 장비, HP 등) - 가장 무거운 SQL, 1회만
+	    HashMap<String, Object> ctxMap = new HashMap<>();
+	    ctxMap.put("userName", userName);
+	    UserBattleContext ctx = calcUserBattleContext(ctxMap);
+
+	    // 현재 포인트 1회 조회
+	    HashMap<String, Object> pointRow = botNewService.selectCurrentPoint(userName, roomName);
+	    SP userPoint = new SP(
+	        Double.parseDouble(Objects.toString(pointRow.get("SCORE"), "0")),
+	        Objects.toString(pointRow.get("SCORE_EXT"), "")
+	    );
+
+	    // 단가 계산 (lifetimeSp 기반, 배치 중 불변)
+	    SP unitPrice = MiniGameUtil.getPotionPrice(itemId, ctx.lifetimeSp);
+	    SP totalCost = unitPrice.multiply(qty);
+
+	    // 데스 상태 체크 1회
+	    boolean isDead = isDeadState(userName);
+	    if (itemId == 1001) {
+	        if (!isDead) return "이그드라실의씨앗은 플레이어 데스 상태에서만 구매할 수 있습니다.";
+	    } else {
+	        if (isDead) return "플레이어 데스 상태에서는 해당 포션을 사용할 수 없습니다.";
+	    }
+
+	    // 전체 비용 감당 가능 여부 체크
+	    if (!userPoint.canAfford(totalCost)) {
+	        // 몇 개까지 살 수 있는지 계산
+	        int affordable = 0;
+	        SP acc = new SP(0, unitPrice.getUnit());
+	        for (int i = 0; i < qty; i++) {
+	            acc = acc.add(unitPrice);
+	            if (userPoint.canAfford(acc)) affordable++;
+	            else break;
+	        }
+	        return userName + "님, 포인트가 부족합니다."
+	            + " (필요: " + totalCost + "sp, 보유: " + userPoint + ")"
+	            + (affordable > 0 ? "\n※ " + affordable + "개는 구매 가능합니다." : "");
+	    }
+
+	    // ── 배치 처리 (HP 계산 + 인벤토리 로그 삽입만 qty회) ───────────
+	    long currentHp = ctx.user.hpCur;
+	    StringBuilder healSb = new StringBuilder();
+
+	    for (int i = 0; i < qty; i++) {
+	        long heal = MiniGameUtil.getPotionHeal(itemId, ctx.finalHpMax);
+	        long newHp = Math.min(currentHp + heal, ctx.finalHpMax);
+
+	        if (i > 0) healSb.append(NL);
+	        healSb.append("#").append(i + 1).append(" ")
+	              .append(currentHp).append(" → ").append(newHp)
+	              .append(" (+").append(newHp - currentHp).append(")");
+
+	        currentHp = newHp;
+
+	        // 인벤토리 로그 삽입 (경량 INSERT, qty회 실행)
+	        HashMap<String, Object> inv = new HashMap<>();
+	        inv.put("userName", userName);
+	        inv.put("roomName", roomName);
+	        inv.put("itemId",   itemId);
+	        inv.put("qty",      1);
+	        inv.put("delYn",    "1");
+	        inv.put("gainType", "BUY");
+	        botNewService.insertInventoryLogTx(inv);
+	    }
+
+	    // ── 최종 HP 반영 1회 ────────────────────────────────────────────
+	    botNewService.updateUserHpOnlyTx(userName, "", (int) currentHp);
+
+	    // ── SP 차감 1회 ─────────────────────────────────────────────────
+	    HashMap<String, Object> pr = new HashMap<>();
+	    pr.put("userName", userName);
+	    pr.put("roomName", roomName);
+	    pr.put("score",    -totalCost.getValue());
+	    pr.put("scoreExt", totalCost.getUnit());
+	    pr.put("cmd",      "BUY");
+	    botNewService.insertPointRank(pr);
+
+	    // ── 물약 사용 업적 체크 1회 ─────────────────────────────────────
+	    String achvMsg = "";
+	    try {
+	        int newPotionCnt = MiniGameUtil.POTION_USE_CACHE.compute(
+	                userName, (k, v) -> (v == null ? qty : v + qty));
+	        List<AchievementCount> achvList = botNewService.selectAchvCountsGlobal(userName, roomName);
+	        Set<String> achvSet = new HashSet<>();
+	        if (achvList != null) for (AchievementCount ac : achvList) achvSet.add(ac.getCmd());
+	        String msg = grantPotionUseAchievements(userName, roomName, achvSet, newPotionCnt);
+	        if (msg != null && !msg.isEmpty()) achvMsg = NL + msg;
+	    } catch (Exception ignore) {}
+
+	    // ── 잔여 포인트 조회 1회 ────────────────────────────────────────
+	    SP afterPoint = userPoint.subtract(totalCost);
+	    try {
+	        HashMap<String, Object> afterRow = botNewService.selectCurrentPoint(userName, roomName);
+	        afterPoint = new SP(
+	            Double.parseDouble(Objects.toString(afterRow.get("SCORE"), "0")),
+	            Objects.toString(afterRow.get("SCORE_EXT"), "")
+	        );
+	    } catch (Exception ignore) {}
+
+	    return "▶ 포션 일괄 사용 (×" + qty + ")" + NL
+	         + userName + "님이 " + itemName + "을(를) " + qty + "개 사용했습니다." + NL
+	         + "↘단가: " + unitPrice + "sp  합계: " + totalCost + "sp" + NL
+	         + healSb + NL
+	         + "HP: " + ctx.user.hpCur + " → " + currentHp + " / " + ctx.finalHpMax + NL
+	         + "✨포인트: " + afterPoint
+	         + achvMsg;
 	}
 
 	private String buySingleItem(String roomName, String userName, String raw) {
