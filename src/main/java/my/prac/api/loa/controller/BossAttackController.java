@@ -7476,7 +7476,8 @@ public class BossAttackController {
 
 	private String buildJobDescriptionList() {
 		StringBuilder sb = new StringBuilder();
-		sb.append("♬ /직업 [직업명] 으로 전직 가능합니다.");
+		sb.append("♬ /직업 [직업명] 으로 전직 가능합니다.").append(NL);
+		sb.append("http://rgb-tns.dev-apc.com/loa/job-view").append(NL);
 	    sb.append("♬♬ 전직 가능한 직업 목록").append(ALL_SEE_STR);
 	    for (JobDef def : MiniGameUtil.JOB_DEFS.values()) {
 	    	sb.append(def.name).append(":");
