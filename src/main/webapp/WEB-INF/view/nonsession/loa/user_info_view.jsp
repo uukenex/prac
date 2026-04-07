@@ -253,21 +253,20 @@ var SLOT_DEFS = {
   '투구': [{ min: 200,  max: 300  }, { min: 1200, max: 1300 }],
   '갑옷': [{ min: 400,  max: 500  }, { min: 1400, max: 1500 }],
   '전설': [{ min: 700,  max: 800  }],
-  '날개': [{ min: 800,  max: 900  }],
-  '물약': [{ min: 1000, max: 1100 }],
-  '유물': [{ min: 9000, max: 99999}]
+  '날개': [{ min: 800,  max: 900  }]
 };
 
 // 각 티어의 기본(시작) 아이템 ID → 금테 강조
-var SPECIAL_ITEM_IDS = [100, 200, 400, 700, 800, 1000, 1100, 1200, 1400, 2100];
+var SPECIAL_ITEM_IDS = [100, 200, 400, 700, 800, 1100, 1200, 1400, 2100];
 
-// 합계 표시 범위 (행운/반지/토템/선물/업적)
+// 합계 표시 범위 (행운/반지/토템/선물/업적/유물)
 var GROUP_DEFS = [
   { label: '행운', min: 300,  max: 400  },
   { label: '반지', min: 500,  max: 600  },
   { label: '토템', min: 600,  max: 700  },
   { label: '선물', min: 900,  max: 1000 },
-  { label: '업적', min: 8000, max: 9000 }
+  { label: '업적', min: 8000, max: 9000 },
+  { label: '유물', min: 9000, max: 99999 }
 ];
 
 var CAT_ICONS = {
@@ -380,8 +379,8 @@ new Vue({
 
     leftSlots:   function() { return [this.mkSlot('무기'), this.mkSlot('갑옷')]; },
     topSlots:    function() { return [this.mkSlot('투구')]; },
-    bottomSlots: function() { return [this.mkSlot('날개'), this.mkSlot('물약')]; },
-    rightSlots:  function() { return [this.mkSlot('전설'), this.mkSlot('유물')]; },
+    bottomSlots: function() { return [this.mkSlot('날개')]; },
+    rightSlots:  function() { return [this.mkSlot('전설')]; },
 
     groupSummary: function() {
       var inv = this.inventory;
@@ -467,6 +466,14 @@ new Vue({
           self.loading = false;
         })
         .catch(function() { self.loading = false; });
+    }
+  },
+  mounted: function() {
+    var params = new URLSearchParams(window.location.search);
+    var u = (params.get('userName') || params.get('user') || '').trim();
+    if (u) {
+      this.inputUser = u;
+      this.fetchInfo();
     }
   }
 });
