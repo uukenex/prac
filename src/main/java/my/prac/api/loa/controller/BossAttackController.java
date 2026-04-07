@@ -4912,7 +4912,7 @@ public class BossAttackController {
 	        botNewService.insertPointRank(p);
 	        achvCmdSet.add(cmd);
 
-	        sb.append("✨ 물약 사용 ")
+	        sb.append("✨ 업적 달성! 물약 사용 ")
 	          .append(threshold)
 	          .append("회 달성 보상 +")
 	          .append(formatSpShort(rewardSp))
