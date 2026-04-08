@@ -227,9 +227,9 @@ public class BossAttackController {
 	    UserBattleContext ctx = new UserBattleContext();
 
 	    //final String roomName = Objects.toString(map.get("roomName"), "");
-	    final String userName = Objects.toString(map.get("userName"), "");
-	    final String param0   = Objects.toString(map.get("param0"), "").trim();
-	    final String param1   = Objects.toString(map.get("param1"), "").trim();
+	    String userName = Objects.toString(map.get("userName"), "");
+	    String param0   = Objects.toString(map.get("param0"), "").trim();
+	    String param1   = Objects.toString(map.get("param1"), "").trim();
 
 	    //ctx.roomName = roomName;
 	    ctx.userName = userName;
@@ -244,17 +244,24 @@ public class BossAttackController {
 	    // ① param1으로 다른 유저 조회 시도 (두 메서드 동일 로직)
 	    String targetUser = userName;
 	    
-	    if(!"/직업".equals(param0)) {
-	    	if (!param1.isEmpty()) {
-		        List<String> newUserName = botNewService.selectParam1ToNewUserSearch(map);
-		        if (newUserName != null && !newUserName.isEmpty()) {
-		            targetUser = newUserName.get(0);
-		        } else {
-		            ctx.success = false;
-		            ctx.errorMessage = "해당 유저(" + param1 + ")를 찾을 수 없습니다.";
-		            return ctx;
-		        }
-		    }
+	    switch(param0) {
+	    case "/직업" :
+	    case "/ㄱ" :
+	    case "/ㄱㅁ" :	
+	    case "/ㅍㅁ" :	
+	    case "/ㅁㄷ" :	
+	    	param1 ="";
+	    }
+	    
+    	if (!param1.isEmpty()) {
+	        List<String> newUserName = botNewService.selectParam1ToNewUserSearch(map);
+	        if (newUserName != null && !newUserName.isEmpty()) {
+	            targetUser = newUserName.get(0);
+	        } else {
+	            ctx.success = false;
+	            ctx.errorMessage = "해당 유저(" + param1 + ")를 찾을 수 없습니다.";
+	            return ctx;
+	        }
 	    }
 	    
 	    ctx.targetUser = targetUser;
@@ -312,25 +319,6 @@ public class BossAttackController {
 	    int jobHp = 0;
 	    int jobRegen = 0;
 	    
-	    // 사신: 아이템으로 인한 크리/크리뎀 효과 미적용
-	    /*
-	    if ("사신".equals(job)) {
-	        mktCrit    = 0;
-	        mktCritDmg = 0;
-	        // (주석상 HP까지 막고 싶으면 mktHpMax = 0; 도 여기서 처리)
-	    }
-	     */
-	    // 프리스트: 아이템 HP/리젠 1.25배 (monsterAttack 기준으로 맞춤)
-	    if ("프리스트".equals(job)) {
-	    	int hpBase   = mktHpMax;
-	        int regenBase= mktRegen;
-
-	        mktHpMax  = (int) Math.round(mktHpMax * 1.25);
-	        mktRegen  = (int) Math.round(mktRegen * 1.25);
-
-	        jobHp = mktHpMax  - hpBase;
-	        jobRegen = mktRegen  - regenBase;
-	    }
 	    if ("어둠사냥꾼".equals(job)) {
 	    	int hpBase   = mktHpMax;
 	        int regenBase= mktRegen;
@@ -340,11 +328,6 @@ public class BossAttackController {
 
 	        jobHp = mktHpMax  - hpBase;
 	        jobRegen = mktRegen  - regenBase;
-	    }
-	    
-	    if ("용기사".equals(job)) {
-	    	mktHpMax  = (int) Math.round(mktHpMax * 2);
-	        mktRegen  = (int) Math.round(mktRegen * 2);
 	    }
 	    
 	    if ("헌터".equals(job)) {
@@ -1484,8 +1467,13 @@ public class BossAttackController {
 	    sb.append("포인트: ").append(ctx.currentPointStr).append(NL);
 	    sb.append("누적 획득 포인트: ").append(ctx.lifetimeSpStr).append(NL).append(NL);
 
-	    sb.append("⚔ATK: ").append(ctx.atkMin).append(" ~ ").append(ctx.atkMax).append(NL);
-	    sb.append("⚔CRIT: ").append(ctx.crit).append("%  CDMG ").append(ctx.critDmg).append("%").append(NL);
+	    if ("곰".equals(ctx.job)) {
+			sb.append("⚔ATK: ").append("최대체력으로 공격").append(NL);
+		}else {
+			sb.append("⚔ATK: ").append(ctx.atkMin).append(" ~ ").append(ctx.atkMax).append(NL);
+			sb.append("⚔CRIT: ").append(ctx.crit).append("%  CDMG ").append(ctx.critDmg).append("%").append(NL);
+		}
+	    
 	    sb.append("❤️HP: ").append(ctx.hpCur).append(" / ").append(ctx.hpMax)
 	      .append(",5분당회복+").append(ctx.regen).append(NL);
 
@@ -1543,7 +1531,7 @@ public class BossAttackController {
 	    }else {
 	    	// ─ CRIT 상세 ─
 		    sb.append("⚔CRIT: ").append(ctx.crit).append("%  CDMG ").append(ctx.critDmg).append("%").append(NL)
-		      .append("   └ 기본 (").append(u.critRate).append("%, ").append(u.ctx.critDmg).append("%)").append(NL);
+		      .append("   └ 기본 (").append(u.critRate).append("%, ").append(ctx.critDmg).append("%)").append(NL);
 			sb.append("   └ 아이템 (CRIT").append(formatSigned(ctx.mktCrit)).append("%, CDMG ").append(formatSigned(ctx.mktCritDmg)).append("%)").append(NL);
 			if (ctx.hellNerfCrit != 0 ) {
 				sb.append("   └ 모드 (CRIT-").append(ctx.hellNerfCrit).append("%, CDMG -").append(ctx.hellNerfCritDmg).append("%)").append(NL);
@@ -6024,29 +6012,23 @@ public class BossAttackController {
 	    StringBuilder sb = new StringBuilder();
 	    final String NL = "♬";
 
-	    int curHp = currentHp;
-	    int maxHp = hpMax;
-	    int regen = regen;
-
-	    // 5분 단위로 예측 표시
-	    
 	    int msg_cnt =0;
 	    for (int t = toNextTick; t <= horizonMinutes; t += 5) {
 	        int ticksAdded = (int)(((minutesPassed + t) / 5) - ticksSoFar);
 	        if (ticksAdded <= 0) continue;
 
-	        int proj = Math.min(maxHp, curHp + ticksAdded * regen);
+	        int proj = Math.min(hpMax, currentHp + ticksAdded * regen);
 	        sb.append("- ").append(t).append("분 뒤: HP ").append(proj)
-	          .append(" / ").append(maxHp).append(NL);
+	          .append(" / ").append(hpMax).append(NL);
 
 	        msg_cnt++;
 	        if(msg_cnt > 5) break;
 	        
-	        if (proj >= maxHp) break; // 풀피 도달 시 중단
+	        if (proj >= hpMax) break; // 풀피 도달 시 중단
 	    }
 
 	    // === 풀 HP까지 남은 시간 계산 ===
-	    int hpNeeded = maxHp - curHp;
+	    int hpNeeded = hpMax - currentHp;
 	    int ticksNeeded = (int)Math.ceil(hpNeeded / (double)regen);
 	    int minutesToFull = (toNextTick + (ticksNeeded - 1) * 5);
 	    if (minutesToFull < 0) minutesToFull = 0;
@@ -7210,9 +7192,9 @@ public class BossAttackController {
 	        critDmg  += converted;
 
 	        // 디버그용
-	        out.dmgCalcMsg += "헌터(" + u.hunterGrade + ") "
-			               + "overCRIT " + overflow + "% → "
-			               + converted + "% chgCDMG (" + Math.round(convertRate*100) + "%)" + NL;
+	        out.dmgCalcMsg += "헌터랭크(" + u.hunterGrade + ")보너스 "
+			               + "over치명률 " + overflow + "% → 치피"
+			               + converted + "%로 변환(" + Math.round(convertRate*100) + "%)" + NL;
 	    }
 
 	    // -----------------------------

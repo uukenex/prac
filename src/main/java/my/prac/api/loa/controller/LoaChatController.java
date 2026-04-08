@@ -779,16 +779,19 @@ public class LoaChatController {
 				break;
 				*/
 			case "/구매": case "/ㄱㅁ":
+				param0="/ㄱㅁ";
 				val = boss.buyItem(reqMap);
 				break;
 			case "/판매": case "/ㅍㅁ":
+				param0="/ㅍㅁ";
 				val = boss.sellItem(reqMap);
 				break;
-			case "/직업": case "/전직":
+			case "/직업":
 				passYn = true;
 				val = boss.changeJob(reqMap);
 				break;
 			case "/모드": case "/ㅁㄷ":
+				param0="/ㅁㄷ";
 				val = boss.changeMode(reqMap);
 				break;
 			case "/체력": case "/ㅊㄹ":
@@ -838,11 +841,12 @@ public class LoaChatController {
 				break;*/
 				
 			case "/ㄱㄱㄱ": case "/ㄱ": case "/R": case "/r": 
-				
+				param0="/ㄱ";
 				val = boss.monsterAttack(reqMap);
 				break;
 			case "/ㄱㄱㅌㄱ":case "/공격타겟":
 			case "/ㄱㄱㄷㅅ":case "/공격대상": 
+				param0="/ㄱㄱㅌㄱ";
 				passYn = true;
 				reqMap.put("monNo", param1);
 				val = boss.changeTarget(reqMap);
