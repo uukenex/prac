@@ -1297,7 +1297,7 @@ public class BossAttackController {
 	
 	public String attackInfo(HashMap<String, Object> map) {
 
-	    // [OPT-HUNTER] calcUserBattleContext 호출 전에 targetUser 해석 + 통계/드랍 미리 조회
+	    // [OPT-HUNTER] calcUserBattleContext 호출 전에 ctx.targetUser 해석 + 통계/드랍 미리 조회
 	    // - selectBattleStatsByJob 1회로 totalAttacks/totalDeaths/jobAtkMap/lastAtkTime 모두 확보
 	    // - selectTotalDropItems 1회로 헌터 bonus + applyDropBonusToContext 공유
 	    // → calcUserBattleContext 내부의 중복 DB 조회(selectAttackDeathStats, selectTotalDropItems×2) 제거
@@ -1368,61 +1368,24 @@ public class BossAttackController {
 	        return ctx.errorMessage;
 	    }
 
-	    // 🔹 calcUserBattleContext 에서 가져오는 공통 값들
-	    final String targetUser = ctx.targetUser;
-	    final String roomName   = ctx.roomName;
 	    final User   u          = ctx.user;
-	    final String job        = ctx.job;
 
-	    final int hpMax    = ctx.hpMax;
-	    final int regen    = ctx.regen;
-	    final int crit     = ctx.crit;
-	    final int critDmg  = ctx.critDmg;
 
-	    final int atkMin   = ctx.atkMin;  // 아이템/무기 적용 ATK min
-	    final int atkMax   = ctx.atkMax;  // 아이템/무기 적용 ATK max
 
-	    final int baseAtkMin       = ctx.baseAtkMin;
-	    final int baseAtkMax       = ctx.baseAtkMax;
-	    final int baseHpMax     = ctx.baseHpMax;
-
-	    final int mktAtkMin    = ctx.mktAtkMin;
-	    final int mktAtkMax    = ctx.mktAtkMax;
-	    final int mktAtkMaxRate    = ctx.mktAtkMaxRate;
-	    final int mktCrit       = ctx.mktCrit;
-	    final int mktCritDmg    = ctx.mktCritDmg;
-	    final int mktHpMax     = ctx.mktHpMax;
-	    final int mktHpMaxRate = ctx.mktHpMaxRate;
-	    final int mktRegen     = ctx.mktRegen;
-
-	    // 직업 보너스 분리해서 보고 싶으면 calcUserBattleContext 에서 채워두었다고 가정
-	    final int jobHp   = ctx.jobHp;   // 없으면 0
-	    final int jobRegen   = ctx.jobRegen;   // 없으면 0
-
-	    final int hellNerfAtkMin   = ctx.hellNerfAtkMin;   // 없으면 0
-	    final int hellNerfAtkMax   = ctx.hellNerfAtkMax;   // 없으면 0
-	    final int hellNerfHp   = ctx.hellNerfHp;   // 없으면 0
-	    final int hellNerfCrit   = ctx.hellNerfCrit;   // 없으면 0
-	    final int hellNerfCritDmg   = ctx.hellNerfCritDmg;   // 없으면 0
 	    // [FIX3] calcUserBattleContext에서 제거된 selectCurrentPoint를 여기서 직접 조회
 	    try {
-	        HashMap<String,Object> pointRow = botNewService.selectCurrentPoint(targetUser, "");
+	        HashMap<String,Object> pointRow = botNewService.selectCurrentPoint(ctx.targetUser, "");
 	        double curValue = Double.parseDouble(Objects.toString(pointRow.get("SCORE"), "0"));
 	        String curExt = Objects.toString(pointRow.get("SCORE_EXT"), "");
 	        SP userPoint = new SP(curValue, curExt);
 	        ctx.currentPointStr = userPoint.toString();
 	        ctx.currentPoint = userPoint;
 	    } catch (Exception ignore) {}
-	    final String pointStr   = ctx.currentPointStr;
-	    final String lifetimeSpStr    = ctx.lifetimeSpStr;//formatSpShort(ctx.lifetimeSp);
 
-	    // hunterGrade는 calcUserBattleContext에서 이미 계산됨 (헌터·비헌터 모두)
 
-	    // ① 유효 체력 (calcUserBattleContext에서 lastAtkTs 활용해 계산됨)
-	    int hpCur = ctx.hpCur;
 
 	    // ⑧ 킬 통계
-	    List<KillStat> kills = botNewService.selectKillStats(targetUser, roomName);
+	    List<KillStat> kills = botNewService.selectKillStats(ctx.targetUser, ctx.roomName);
 	    int totalKills = 0;
 	    for (KillStat ks : kills) totalKills += ks.killCount;
 
@@ -1439,7 +1402,7 @@ public class BossAttackController {
 
 	    try {
 	        List<HashMap<String,Object>> dailyList =
-	                botNewService.selectDailyAttackCounts(targetUser, roomName);
+	                botNewService.selectDailyAttackCounts(ctx.targetUser, ctx.roomName);
 
 	        if (dailyList != null && !dailyList.isEmpty()) {
 	            int totalAtkBeforeToday = 0;
@@ -1504,27 +1467,27 @@ public class BossAttackController {
 	    String targetName = (target == null) ? "-" : target.monName;
 
 	    
-	    List<HashMap<String, Object>> bag = botNewService.selectInventorySummaryAll(targetUser, roomName);
+	    List<HashMap<String, Object>> bag = botNewService.selectInventorySummaryAll(ctx.targetUser, ctx.roomName);
 	    
 	    // ⑨ 출력
 	    StringBuilder sb = new StringBuilder();
-	    sb.append("✨").append(targetUser).append(" 공격 정보").append(NL)
+	    sb.append("✨").append(ctx.targetUser).append(" 공격 정보").append(NL)
 	      .append("Lv: ").append(u.lv);
-	    if (!job.isEmpty()) {
-	        sb.append(" (").append(job).append(")");
+	    if (!ctx.job.isEmpty()) {
+	        sb.append(" (").append(ctx.job).append(")");
 	        
 	        //헌터랭크추가
         	sb.append("(hunter"+ctx.hunterGrade+")");
 	        
 	    }
 	    sb.append(", EXP ").append(u.expCur).append("/").append(u.expNext).append(NL);
-	    sb.append("포인트: ").append(pointStr).append(NL);
-	    sb.append("누적 획득 포인트: ").append(lifetimeSpStr).append(NL).append(NL);
+	    sb.append("포인트: ").append(ctx.currentPointStr).append(NL);
+	    sb.append("누적 획득 포인트: ").append(ctx.lifetimeSpStr).append(NL).append(NL);
 
-	    sb.append("⚔ATK: ").append(atkMin).append(" ~ ").append(atkMax).append(NL);
-	    sb.append("⚔CRIT: ").append(crit).append("%  CDMG ").append(critDmg).append("%").append(NL);
-	    sb.append("❤️HP: ").append(hpCur).append(" / ").append(hpMax)
-	      .append(",5분당회복+").append(regen).append(NL);
+	    sb.append("⚔ATK: ").append(ctx.atkMin).append(" ~ ").append(ctx.atkMax).append(NL);
+	    sb.append("⚔CRIT: ").append(ctx.crit).append("%  CDMG ").append(ctx.critDmg).append("%").append(NL);
+	    sb.append("❤️HP: ").append(ctx.hpCur).append(" / ").append(ctx.hpMax)
+	      .append(",5분당회복+").append(ctx.regen).append(NL);
 
 	    // 헬모드 삭감 정보 표시
 	    if (u.nightmareYn == 2) {
@@ -1550,64 +1513,64 @@ public class BossAttackController {
 	      .append(" (MON_NO=").append(u.targetMon).append(")").append(NL);
 
 	    // 누적 전투
-        sb.append("http://rgb-tns.dev-apc.com/loa/user-info-view?userName="+targetUser);
+        sb.append("http://rgb-tns.dev-apc.com/loa/user-info-view?userName="+ctx.targetUser);
 	    sb.append( ALL_SEE_STR);
 
-	    JobDef jobDef = MiniGameUtil.JOB_DEFS.get(job);
+	    JobDef jobDef = MiniGameUtil.JOB_DEFS.get(ctx.job);
 	    if (jobDef != null && jobDef.attackLine != null && !jobDef.attackLine.isEmpty()) {
 	        sb.append(jobDef.attackLine).append(NL).append(NL);
 	    }
 		// ─ ATK 상세 ─
-		if ("곰".equals(job)) {
+		if ("곰".equals(ctx.job)) {
 			sb.append("⚔ATK: ").append("최대체력으로 공격").append(NL);
 		} else {
-			sb.append("⚔ATK: ").append(atkMin).append(" ~ ").append(atkMax).append(NL).append("   └ 기본 (")
-					.append(baseAtkMin).append("~").append(baseAtkMax).append(")").append(NL)
-					.append("   └ 아이템 (min").append(formatSigned(mktAtkMin)).append(", max")
-					.append(formatSigned(mktAtkMax)).append(")").append(NL);
-			if (mktAtkMaxRate > 0) {
-				sb.append("   └ 최종공격력 (").append(formatSigned(mktAtkMaxRate)).append("%)").append(NL);
+			sb.append("⚔ATK: ").append(ctx.atkMin).append(" ~ ").append(ctx.atkMax).append(NL).append("   └ 기본 (")
+					.append(ctx.baseAtkMin).append("~").append(ctx.baseAtkMax).append(")").append(NL)
+					.append("   └ 아이템 (min").append(formatSigned(ctx.mktAtkMin)).append(", max")
+					.append(formatSigned(ctx.mktAtkMax)).append(")").append(NL);
+			if (ctx.mktAtkMaxRate > 0) {
+				sb.append("   └ 최종공격력 (").append(formatSigned(ctx.mktAtkMaxRate)).append("%)").append(NL);
 			}
-			if (hellNerfAtkMax > 0) {
-				sb.append("   └ 모드 (min-").append(hellNerfAtkMin).append("~, max-").append(hellNerfAtkMax).append(")")
+			if (ctx.hellNerfAtkMax > 0) {
+				sb.append("   └ 모드 (min-").append(ctx.hellNerfAtkMin).append("~, max-").append(ctx.hellNerfAtkMax).append(")")
 						.append(NL);
 			}
 
 		}
 	    
-	    if("곰".equals(job)) {
+	    if("곰".equals(ctx.job)) {
 	    	
 	    }else {
 	    	// ─ CRIT 상세 ─
-		    sb.append("⚔CRIT: ").append(crit).append("%  CDMG ").append(critDmg).append("%").append(NL)
-		      .append("   └ 기본 (").append(u.critRate).append("%, ").append(u.critDmg).append("%)").append(NL);
-			sb.append("   └ 아이템 (CRIT").append(formatSigned(mktCrit)).append("%, CDMG ").append(formatSigned(mktCritDmg)).append("%)").append(NL);
-			if (hellNerfCrit != 0 ) {
-				sb.append("   └ 모드 (CRIT-").append(hellNerfCrit).append("%, CDMG -").append(hellNerfCritDmg).append("%)").append(NL);
+		    sb.append("⚔CRIT: ").append(ctx.crit).append("%  CDMG ").append(ctx.critDmg).append("%").append(NL)
+		      .append("   └ 기본 (").append(u.critRate).append("%, ").append(u.ctx.critDmg).append("%)").append(NL);
+			sb.append("   └ 아이템 (CRIT").append(formatSigned(ctx.mktCrit)).append("%, CDMG ").append(formatSigned(ctx.mktCritDmg)).append("%)").append(NL);
+			if (ctx.hellNerfCrit != 0 ) {
+				sb.append("   └ 모드 (CRIT-").append(ctx.hellNerfCrit).append("%, CDMG -").append(ctx.hellNerfCritDmg).append("%)").append(NL);
 		    }
 	    }
 	    
 	    // ─ HP 상세 ─
-	    sb.append("❤️HP: ").append(hpCur).append(" / ").append(hpMax)
-	      .append(",5분당회복+").append(regen).append(NL)
-	      .append("   └ 기본 (HP+").append(baseHpMax)
+	    sb.append("❤️HP: ").append(ctx.hpCur).append(" / ").append(ctx.hpMax)
+	      .append(",5분당회복+").append(ctx.regen).append(NL)
+	      .append("   └ 기본 (HP+").append(ctx.baseHpMax)
 	      .append(",5분당회복+").append(u.hpRegen).append(")").append(NL)
-	      .append("   └ 아이템 (HP").append(formatSigned(mktHpMax))
-	      .append(",5분당회복").append(formatSigned(mktRegen)).append(")").append(NL);
-	    if (mktHpMaxRate > 0) {
-	    	sb.append("   └ 최종체력 (").append(formatSigned(mktHpMaxRate)).append("%)").append(NL);
+	      .append("   └ 아이템 (HP").append(formatSigned(ctx.mktHpMax))
+	      .append(",5분당회복").append(formatSigned(ctx.mktRegen)).append(")").append(NL);
+	    if (ctx.mktHpMaxRate > 0) {
+	    	sb.append("   └ 최종체력 (").append(formatSigned(ctx.mktHpMaxRate)).append("%)").append(NL);
 	    }
 
-	    if (jobHp != 0 || jobRegen != 0) {
+	    if (ctx.jobHp != 0 || ctx.jobRegen != 0) {
 	        sb.append("   └ 직업 (HP")
-	          .append(formatSigned(jobHp))
+	          .append(formatSigned(ctx.jobHp))
 	          .append(",5분당회복")
-	          .append(formatSigned(jobRegen))
+	          .append(formatSigned(ctx.jobRegen))
 	          .append(")").append(NL);
 	    }
-	    if (hellNerfHp != 0 ) {
+	    if (ctx.hellNerfHp != 0 ) {
 	        sb.append("   └ 모드 (HP -")
-	          .append(hellNerfHp)
+	          .append(ctx.hellNerfHp)
 	          .append(")").append(NL);
 	    }
 	    
@@ -1735,10 +1698,10 @@ public class BossAttackController {
 	    // 물약 사용 횟수 (캐시 우선, 없으면 DB)
 	    int potionUseCount = 0;
 	    try {
-	        potionUseCount = MiniGameUtil.POTION_USE_CACHE.containsKey(targetUser)
-	                ? MiniGameUtil.POTION_USE_CACHE.get(targetUser)
-	                : botNewService.selectPotionUseCount(targetUser);
-	        MiniGameUtil.POTION_USE_CACHE.putIfAbsent(targetUser, potionUseCount);
+	        potionUseCount = MiniGameUtil.POTION_USE_CACHE.containsKey(ctx.targetUser)
+	                ? MiniGameUtil.POTION_USE_CACHE.get(ctx.targetUser)
+	                : botNewService.selectPotionUseCount(ctx.targetUser);
+	        MiniGameUtil.POTION_USE_CACHE.putIfAbsent(ctx.targetUser, potionUseCount);
 	    } catch (Exception ignore) {}
 
 	    sb.append("누적 전투 기록").append(NL)
@@ -1817,7 +1780,7 @@ public class BossAttackController {
 	    // 업적
 	    int achvCnt = 0;
 	    try {
-	        List<HashMap<String,Object>> achv = botNewService.selectAchievementsByUser(targetUser, roomName);
+	        List<HashMap<String,Object>> achv = botNewService.selectAchievementsByUser(ctx.targetUser, ctx.roomName);
 	        achvCnt = (achv == null ? 0 : achv.size());
 	        
 	        sb.append(NL).append("▶ 업적").append(" [").append(achvCnt).append("개]").append(NL);
