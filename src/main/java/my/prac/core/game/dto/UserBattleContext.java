@@ -18,36 +18,35 @@ public class UserBattleContext {
 	public String job;
 
 	// MARKET 버프 (raw)
-	public int bAtkMinRaw;
-	public int bAtkMaxRaw;
-	public int bCriRaw;
-	public int bRegenRaw;
-	public int bHpMaxRaw;
-	public int bCriDmgRaw;
-	public int bHpMaxRateRaw;
-	public int bAtkMaxRateRaw;
+	public int mktAtkMin;
+	public int mktAtkMax;
+	public int mktCrit;
+	public int mktRegen;
+	public int mktHpMax;
+	public int mktCritDmg;
+	public int mktHpMaxRate;
+	public int mktAtkMaxRate;
 
 	// 기본 스탯
-	public int baseMin;
-	public int baseMax;
+	public int baseAtkMin;
+	public int baseAtkMax;
 	public int baseHpMax;
 	public int baseRegen;
-	public int baseCritRate;
+	public int baseCrit;
 	public int baseCritDmg;
 
 	// 축복/최종 스탯
 	public boolean hasBless;
 	public int blessRegenBonus;
 
-	public int atkMinWithItem;
-	public int atkMaxWithItem;
-	public int finalHpMax;
-	public int effRegen;
-	public int effHp;   // computeEffectiveHpFromLastAttack 결과 (리젠 반영 현재 체력)
+	public int atkMin;
+	public int atkMax;
+	public int hpMax;
+	public int regen;
+	public int hpCur;   // computeEffectiveHpFromLastAttack 결과 (리젠 반영 현재 체력)
 
-	public int shownCrit; // 표시용 크리율
-	public int shownRegen; // 표시용 리젠 (축복 포함)
-	public int shownCritDmg; // 표시용 크리뎀
+	public int crit;
+	public int critDmg;
 
 	// 필요하면 누적 SP, 현재 SP도 여기에 추가 가능
 	public SP currentPoint;
@@ -56,23 +55,23 @@ public class UserBattleContext {
 	public String lifetimeSpStr;
 
 	// 직업 보너스(표시용)
-	public int jobHpMaxBonus; // 직업으로 인해 추가된 HP (프리스트/파이터)
-	public int jobRegenBonus; // 직업으로 인해 추가된 리젠 (프리스트용)
+	public int jobHp; // 직업으로 인해 추가된 HP (프리스트/파이터)
+	public int jobRegen; // 직업으로 인해 추가된 리젠 (프리스트용)
 
-	public int dropMinAtkBonus;
-	public int dropMaxAtkBonus;
-	public int dropHpBonus;
-	public int dropRegenBonus;
-	public int dropCritBonus;
-	public int dropCritDmgBonus;
+	public int dropAtkMin;
+	public int dropAtkMax;
+	public int dropHp;
+	public int dropRegen;
+	public int dropCrit;
+	public int dropCritDmg;
 
 	public String hunterGrade;
 
-	public int modMinusAtkMin; 
-    public int modMinusAtkMax; 
-    public int modMinusAtkHp ;
-    public int modMinusAtkCrit; 
-    public int modMinusAtkCritDmg; 
+	public int hellNerfAtkMin; 
+    public int hellNerfAtkMax; 
+    public int hellNerfHp ;
+    public int hellNerfCrit; 
+    public int hellNerfCritDmg; 
     
 	// [OPT-HUNTER] attackInfo 에서 미리 조회한 dropsRows 공유용 (applyDropBonusToContext 중복 조회 방지)
 	public List<HashMap<String,Object>> preDropRows = null;
