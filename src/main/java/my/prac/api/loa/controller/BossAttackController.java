@@ -330,127 +330,65 @@ public class BossAttackController {
 	        jobRegen = mktRegen  - regenBase;
 	    }
 	    
-	    if ("헌터".equals(job)) {
+	    // ── 헌터 등급 계산 (전 직업 공통) + 헌터 직업이면 스탯 보너스 적용 ──
+	    try {
+	        int totalAttacks, totalDeaths;
 
-	        try {
-	            int totalAttacks, totalDeaths;
+	        // [OPT-HUNTER] attackInfo에서 미리 계산된 값이 있으면 DB 조회 생략
+	        if (map.containsKey("_preHunterAdjAttacks")) {
+	            totalAttacks = ((Number) map.get("_preHunterAdjAttacks")).intValue();
+	            totalDeaths  = ((Number) map.get("_preHunterAdjDeaths")).intValue();
+	        } else {
+	            AttackDeathStat ads = botNewService.selectAttackDeathStats(targetUser, "");
+	            totalAttacks = (ads == null ? 0 : ads.totalAttacks);
+	            int hunterAttacks = (ads == null ? 0 : ads.hunterAttacks);
+	            totalDeaths  = (ads == null ? 0 : ads.totalDeaths);
+	            totalAttacks += hunterAttacks * 2;
+	            totalDeaths  += hunterAttacks / 2;
+	        }
 
-	            // [OPT-HUNTER] attackInfo에서 미리 계산된 값이 있으면 DB 조회 생략
-	            if (map.containsKey("_preHunterAdjAttacks")) {
-	                totalAttacks = ((Number) map.get("_preHunterAdjAttacks")).intValue();
-	                totalDeaths  = ((Number) map.get("_preHunterAdjDeaths")).intValue();
-	            } else {
-	                AttackDeathStat ads = botNewService.selectAttackDeathStats(targetUser, "");
-	                totalAttacks = (ads == null ? 0 : ads.totalAttacks);
-	                int hunterAttacks = (ads == null ? 0 : ads.hunterAttacks);
-	                totalDeaths  = (ads == null ? 0 : ads.totalDeaths);
-	                totalAttacks += hunterAttacks * 2;
-	                totalDeaths  += hunterAttacks / 2;
+	        List<HashMap<String,Object>> drops = (ctx.preDropRows != null)
+	                ? ctx.preDropRows
+	                : botNewService.selectTotalDropItems(targetUser);
+	        int totalDrops = 0;
+	        if (drops != null) {
+	            for (HashMap<String,Object> d : drops) {
+	                Object v = d.get("TOTAL_QTY");
+	                if (v instanceof Number) totalDrops += ((Number)v).intValue();
 	            }
+	        }
 
-	            // preDropRows가 있으면 재사용, 없으면 DB 조회
-	            List<HashMap<String,Object>> drops = (ctx.preDropRows != null)
-	                    ? ctx.preDropRows
-	                    : botNewService.selectTotalDropItems(targetUser);
+	        ctx.hunterGrade = calculateHunterGrade(totalAttacks, totalDrops, totalDeaths);
 
-	            int totalDrops = 0;
-	            if (drops != null) {
-	                for (HashMap<String,Object> d : drops) {
-	                    Object v = d.get("TOTAL_QTY");
-	                    if (v instanceof Number) {
-	                        totalDrops += ((Number)v).intValue();
-	                    }
-	                }
-	            }
-
-	            // ───── 기본 변환 ─────
-	            int hunterAtkBonus    = totalAttacks / 5;
-	            int hunterHpBonus     = totalDrops /5; //20%
-	            int hunterRegenBonus  = totalDrops / 50; //2%
-	            int hunterCriDmgBonus = totalDeaths / 5;
-
-	            // ───── 등급 점수 계산 ─────
-	            String hunterGrade;
-	            
-	            hunterGrade = calculateHunterGrade(totalAttacks, totalDrops, totalDeaths);
-
-	            // ───── 등급별 상한 ─────
+	        // 헌터 직업이면 등급 기반 스탯 보너스 적용
+	        if ("헌터".equals(job)) {
 	            int atkCap, hpCap, regenCap, criCap;
-
-	            switch (hunterGrade) {
-		            case "SSS":
-		                atkCap = 8000; hpCap = 80000; regenCap = 8000; criCap = 60;
-		                break;
-		            case "SS":
-		                atkCap = 6000; hpCap = 60000; regenCap = 6000; criCap = 45;
-		                break;
-	                case "S":
-	                    atkCap = 4000; hpCap = 30000; regenCap = 3000; criCap = 30;
-	                    break;
-	                case "A":
-	                    atkCap = 3000; hpCap = 20000; regenCap = 2000; criCap = 25;
-	                    break;
-	                case "B":
-	                    atkCap = 2000; hpCap = 15000; regenCap = 1500; criCap = 20;
-	                    break;
-	                case "C":
-	                    atkCap = 1200; hpCap = 8000;  regenCap = 800;  criCap = 15;
-	                    break;
-	                case "D":
-	                    atkCap = 600;  hpCap = 4000;  regenCap = 400;  criCap = 10;
-	                    break;
-	                default:
-	                    atkCap = 200;  hpCap = 1000;  regenCap = 100;  criCap = 5;
+	            switch (ctx.hunterGrade) {
+	                case "SSS": atkCap = 8000; hpCap = 80000; regenCap = 8000; criCap = 60; break;
+	                case "SS":  atkCap = 6000; hpCap = 60000; regenCap = 6000; criCap = 45; break;
+	                case "S":   atkCap = 4000; hpCap = 30000; regenCap = 3000; criCap = 30; break;
+	                case "A":   atkCap = 3000; hpCap = 20000; regenCap = 2000; criCap = 25; break;
+	                case "B":   atkCap = 2000; hpCap = 15000; regenCap = 1500; criCap = 20; break;
+	                case "C":   atkCap = 1200; hpCap = 8000;  regenCap = 800;  criCap = 15; break;
+	                case "D":   atkCap = 600;  hpCap = 4000;  regenCap = 400;  criCap = 10; break;
+	                default:    atkCap = 200;  hpCap = 1000;  regenCap = 100;  criCap = 5;
 	            }
 
-	            // ───── 상한 적용 ─────
-	            hunterAtkBonus    = Math.min(hunterAtkBonus, atkCap);
-	            hunterHpBonus     = Math.min(hunterHpBonus, hpCap);
-	            hunterRegenBonus  = Math.min(hunterRegenBonus, regenCap);
-	            hunterCriDmgBonus = Math.min(hunterCriDmgBonus, criCap);
+	            int hunterAtkBonus    = Math.min(totalAttacks / 5,  atkCap);
+	            int hunterHpBonus     = Math.min(totalDrops   / 5,  hpCap);
+	            int hunterRegenBonus  = Math.min(totalDrops   / 50, regenCap);
+	            int hunterCriDmgBonus = Math.min(totalDeaths  / 5,  criCap);
 
-	            // ───── 직업 보너스 레이어 반영 (base 수정 X) ─────
 	            mktAtkMin  += hunterAtkBonus;
 	            mktAtkMax  += hunterAtkBonus;
-
-	            jobHp += hunterHpBonus;
-	            jobRegen += hunterRegenBonus;
-	            mktHpMax += hunterHpBonus;
-	            mktRegen += hunterRegenBonus;
-
+	            jobHp      += hunterHpBonus;
+	            jobRegen   += hunterRegenBonus;
+	            mktHpMax   += hunterHpBonus;
+	            mktRegen   += hunterRegenBonus;
 	            mktCritDmg += hunterCriDmgBonus;
+	        }
+	    } catch (Exception ignore) {}
 
-	            // (선택) ctx에 등급 저장해서 attackInfo에서 표시 가능
-	            ctx.hunterGrade = hunterGrade;
-
-	        } catch (Exception ignore) {}
-	    }
-
-	    // 헌터 외 직업에서도 hunterGrade 계산 (헬 삭감·치초과 변환 등에서 사용)
-	    if (ctx.hunterGrade == null) {
-	        try {
-	            int _atk, _dth;
-	            if (map.containsKey("_preHunterAdjAttacks")) {
-	                _atk = ((Number) map.get("_preHunterAdjAttacks")).intValue();
-	                _dth = ((Number) map.get("_preHunterAdjDeaths")).intValue();
-	            } else {
-	                AttackDeathStat _ads = botNewService.selectAttackDeathStats(targetUser, "");
-	                _atk = (_ads == null ? 0 : _ads.totalAttacks + _ads.hunterAttacks * 2);
-	                _dth = (_ads == null ? 0 : _ads.totalDeaths  + _ads.hunterAttacks / 2);
-	            }
-	            List<HashMap<String,Object>> _drops = (ctx.preDropRows != null)
-	                    ? ctx.preDropRows
-	                    : botNewService.selectTotalDropItems(targetUser);
-	            int _totalDrops = 0;
-	            if (_drops != null) {
-	                for (HashMap<String,Object> d : _drops) {
-	                    Object v = d.get("TOTAL_QTY");
-	                    if (v instanceof Number) _totalDrops += ((Number)v).intValue();
-	                }
-	            }
-	            ctx.hunterGrade = calculateHunterGrade(_atk, _totalDrops, _dth);
-	        } catch (Exception ignore) {}
-	    }
 
 	    // 기본 스탯
 	    int baseAtkMin     = u.atkMin;
