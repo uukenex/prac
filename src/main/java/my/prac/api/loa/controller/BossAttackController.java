@@ -596,11 +596,17 @@ public class BossAttackController {
 	    ctx.jobRegenBonus = jobRegenBonus;
 	    
 	    ctx.success = true;
-	    
-	    
+
+
 	    applyDropBonusToContext(ctx, targetUser, "");
 
-	    
+	    // effHp: 리젠 반영 현재 체력 (cachedLastAtk는 _cachedLastAtk 키로 map에 미리 넣어도 됨)
+	    final String ctxRoomName = Objects.toString(map.get("roomName"), "");
+	    Timestamp ctxCachedLastAtk = (map.get("_cachedLastAtk") instanceof Timestamp)
+	            ? (Timestamp) map.get("_cachedLastAtk") : null;
+	    ctx.effHp = computeEffectiveHpFromLastAttack(targetUser, ctxRoomName, u, finalHpMax, effRegen, ctxCachedLastAtk);
+	    if (ctx.effHp > finalHpMax) ctx.effHp = finalHpMax;
+
 	    return ctx;
 	}
 	
@@ -674,8 +680,7 @@ public class BossAttackController {
 	    final int effRegen   = ctx.effRegen;    // 실제 적용 리젠(축복 포함/흡혈귀 처리 포함)
 	    //final boolean hasBless = ctx.hasBless;  // 운영자 축복 여부
 
-	    int effHp = computeEffectiveHpFromLastAttack(targetUser, roomName, u, finalHpMax, effRegen);
-	    if (effHp > finalHpMax) effHp = finalHpMax;
+	    int effHp = ctx.effHp;
 
 	    StringBuilder sb = new StringBuilder();
 	    sb.append("❤️ ").append(targetUser).append("님의 체력 상태").append(NL)
@@ -1082,9 +1087,7 @@ public class BossAttackController {
 // 		    }
 	    }
 	 // 변경 전 HP 비율 저장
-	    double hpRatio = 1.0;
-	    int effHp = computeEffectiveHpFromLastAttack(userName, roomName, u, ctx.finalHpMax, ctx.effRegen);
-        hpRatio = (double) effHp / (double) ctx.finalHpMax;
+	    double hpRatio = (double) ctx.effHp / (double) ctx.finalHpMax;
 	    
 	    // 6) 직업 변경 수행 (JOB + JOB_CHANGE_DATE = SYSDATE)
 	    int updated = botNewService.updateUserJobAndChangeDate(userName, roomName, newJob);
@@ -1334,6 +1337,33 @@ public class BossAttackController {
 	        }
 	    }
 
+	    // [OPT-HUNTER] pre-fetched statRows에서 totalAttacks/totalDeaths/jobAtkMap/lastAtkTs 도출
+	    // (selectAttackDeathStats + selectBattleCountByUser 2회 → 0회)
+	    int totalAttacks = 0;
+	    int totalDeaths  = 0;
+	    java.sql.Timestamp lastAtkTs = null;
+	    Map<String, Integer> jobAtkMap = new HashMap<>();
+	    {
+	        @SuppressWarnings("unchecked")
+	        List<HashMap<String,Object>> statRows = (List<HashMap<String,Object>>) map.get("_preStatRows");
+	        if (statRows != null) {
+	            for (HashMap<String,Object> r : statRows) {
+	                int cnt = safeInt(r.get("CNT"));
+	                totalAttacks += cnt;
+	                totalDeaths  += safeInt(r.get("DEATH_CNT"));
+	                String j = Objects.toString(r.get("JOB"), "").trim();
+	                if (!j.isEmpty()) jobAtkMap.put(j, cnt);
+	                Object dtObj = r.get("MAX_DATE");
+	                if (dtObj instanceof java.sql.Timestamp) {
+	                    java.sql.Timestamp dt = (java.sql.Timestamp) dtObj;
+	                    if (lastAtkTs == null || dt.after(lastAtkTs)) lastAtkTs = dt;
+	                }
+	            }
+	        }
+	    }
+	    // lastAtkTs를 map에 넣어 calcUserBattleContext 내 computeEffectiveHpFromLastAttack에서 활용
+	    if (lastAtkTs != null) map.put("_cachedLastAtk", lastAtkTs);
+
 	    UserBattleContext ctx = calcUserBattleContext(map);
 	    if (!ctx.success) {
 	        return ctx.errorMessage;
@@ -1387,36 +1417,10 @@ public class BossAttackController {
 	    final String pointStr   = ctx.currentPointStr;
 	    final String lifetimeSpStr    = ctx.lifetimeSpStr;//formatSpShort(ctx.lifetimeSp);
 
-	    // [OPT-HUNTER] pre-fetched statRows에서 totalAttacks/totalDeaths/jobAtkMap/lastAtkTs 도출
-	    // (selectAttackDeathStats + selectBattleCountByUser 2회 → 0회)
-	    int totalAttacks = 0;
-	    int totalDeaths  = 0;
-	    java.sql.Timestamp lastAtkTs = null;
-	    Map<String, Integer> jobAtkMap = new HashMap<>();
-	    {
-	        @SuppressWarnings("unchecked")
-	        List<HashMap<String,Object>> statRows = (List<HashMap<String,Object>>) map.get("_preStatRows");
-	        if (statRows != null) {
-	            for (HashMap<String,Object> r : statRows) {
-	                int cnt = safeInt(r.get("CNT"));
-	                totalAttacks += cnt;
-	                totalDeaths  += safeInt(r.get("DEATH_CNT"));
-	                String j = Objects.toString(r.get("JOB"), "").trim();
-	                if (!j.isEmpty()) jobAtkMap.put(j, cnt);
-	                Object dtObj = r.get("MAX_DATE");
-	                if (dtObj instanceof java.sql.Timestamp) {
-	                    java.sql.Timestamp dt = (java.sql.Timestamp) dtObj;
-	                    if (lastAtkTs == null || dt.after(lastAtkTs)) lastAtkTs = dt;
-	                }
-	            }
-	        }
-	    }
-
 	    // hunterGrade는 calcUserBattleContext에서 이미 계산됨 (헌터·비헌터 모두)
 
-	    // ① 유효 체력 계산 — lastAtkTs 재사용으로 selectLastAttackTime DB 조회 생략
-	    int effHp = computeEffectiveHpFromLastAttack(targetUser, roomName, u, finalHpMax, shownRegen, lastAtkTs);
-	    if (effHp > finalHpMax) effHp = finalHpMax;
+	    // ① 유효 체력 (calcUserBattleContext에서 lastAtkTs 활용해 계산됨)
+	    int effHp = ctx.effHp;
 
 	    // ⑧ 킬 통계
 	    List<KillStat> kills = botNewService.selectKillStats(targetUser, roomName);
@@ -2107,6 +2111,7 @@ public class BossAttackController {
 	    // UserBattleContext (유저 정보, 장비, HP 등) - 가장 무거운 SQL, 1회만
 	    HashMap<String, Object> ctxMap = new HashMap<>();
 	    ctxMap.put("userName", userName);
+	    ctxMap.put("roomName", roomName);
 	    UserBattleContext ctx = calcUserBattleContext(ctxMap);
 
 	    // 현재 포인트 1회 조회
@@ -2120,7 +2125,7 @@ public class BossAttackController {
 	    SP unitPrice = MiniGameUtil.getPotionPrice(itemId, ctx.lifetimeSp);
 	    SP totalCost = unitPrice.multiply(qty);
 
-	    int effHp = computeEffectiveHpFromLastAttack(userName, roomName, ctx.user, ctx.finalHpMax , ctx.effRegen);
+	    int effHp = ctx.effHp;
 	    if(effHp >= ctx.finalHpMax ) {
 	    	return "최대체력에선 포션구매불가!";
 	    }
@@ -2358,6 +2363,7 @@ public class BossAttackController {
 	    }else if ("POTION".equalsIgnoreCase(itemType)) {
 	    	HashMap<String,Object> map = new HashMap<>();
 	        map.put("userName", userName);
+	        map.put("roomName", roomName);
 
 	        UserBattleContext ctx = calcUserBattleContext(map);
 
@@ -2371,7 +2377,7 @@ public class BossAttackController {
 	            return userName + "님, 포인트가 부족합니다. (가격: " + itemPrice + ")";
 	        }
 
-	        int effHp = computeEffectiveHpFromLastAttack(userName, roomName, ctx.user, ctx.finalHpMax , ctx.effRegen);
+	        int effHp = ctx.effHp;
 		    if(effHp >= ctx.finalHpMax ) {
 		    	return "최대체력에선 포션구매불가!";
 		    }

@@ -43,6 +43,7 @@ public class UserBattleContext {
 	public int atkMaxWithItem;
 	public int finalHpMax;
 	public int effRegen;
+	public int effHp;   // computeEffectiveHpFromLastAttack 결과 (리젠 반영 현재 체력)
 
 	public int shownCrit; // 표시용 크리율
 	public int shownRegen; // 표시용 리젠 (축복 포함)
