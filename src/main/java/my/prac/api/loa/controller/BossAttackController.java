@@ -223,7 +223,7 @@ public class BossAttackController {
 		return sb.toString();
 	}
 	
-	private UserBattleContext calcUserBattleContext(HashMap<String, Object> map) {
+	UserBattleContext calcUserBattleContext(HashMap<String, Object> map) {
 	    UserBattleContext ctx = new UserBattleContext();
 
 	    //final String roomName = Objects.toString(map.get("roomName"), "");

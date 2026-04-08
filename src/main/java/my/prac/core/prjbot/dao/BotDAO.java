@@ -168,7 +168,7 @@ public interface BotDAO {
 	public int insertBossHitLog(HashMap<String,Object> map);
 	
 	public List<HashMap<String, Object>> selectTop3Contributors(HashMap<String, Object> hashMap);
-	
+
 	//신규보스
 	public HashMap<String,Object> selectBotPointBoss(HashMap<String,Object> map);
 	public int updateBotPointBoss(HashMap<String,Object> map);
