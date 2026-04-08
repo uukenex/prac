@@ -45,9 +45,8 @@ public class UserBattleContext {
 	public int regen;
 	public int hpCur;   // computeEffectiveHpFromLastAttack 결과 (리젠 반영 현재 체력)
 
-	public int dispCrit; // 표시용 크리율
-	public int dispRegen; // 표시용 리젠 (축복 포함)
-	public int dispCritDmg; // 표시용 크리뎀
+	public int crit;
+	public int critDmg;
 
 	// 필요하면 누적 SP, 현재 SP도 여기에 추가 가능
 	public SP currentPoint;

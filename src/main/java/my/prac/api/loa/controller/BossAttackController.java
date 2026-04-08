@@ -532,8 +532,8 @@ public class BossAttackController {
 	        atkMax = hpMax;
 
 	        // 곰은 크리 사용 안함
-	        ctx.dispCrit = 0;
-	        ctx.dispCritDmg = 0;
+	        ctx.crit = 0;
+	        ctx.critDmg = 0;
 	        baseCritDmg= 0;
 	        mktCritDmg=0;
 	        
@@ -546,8 +546,8 @@ public class BossAttackController {
 	    int atkMaxBonus = (atkMax * (ctx.mktAtkMaxRate)) /100;
 	    atkMax += atkMaxBonus;
 	    
-	    int effCrit =baseCrit + mktCrit;
-	    int effCritDmg = baseCritDmg + mktCritDmg;
+	    int crit =baseCrit + mktCrit;
+	    int critDmg = baseCritDmg + mktCritDmg;
 	    
 	    int hellNerfAtkMin =0;
 	    int hellNerfAtkMax =0;
@@ -561,14 +561,14 @@ public class BossAttackController {
 	    	hellNerfAtkMin = Math.max(0, (int) Math.round(atkMin   * (1-hellMult) ));
 	    	hellNerfAtkMax = Math.max(0, (int) Math.round(atkMax   * (1-hellMult) ));
 	    	hellNerfHp = Math.max(0, (int) Math.round(hpMax   * (1-hellMult) ));
-	    	hellNerfCrit = Math.max(0, (int) Math.round(effCrit   * (1-hellMult) ));
-	    	hellNerfCritDmg = Math.max(0, (int) Math.round(effCritDmg   * (1-hellMult) ));
+	    	hellNerfCrit = Math.max(0, (int) Math.round(crit   * (1-hellMult) ));
+	    	hellNerfCritDmg = Math.max(0, (int) Math.round(critDmg   * (1-hellMult) ));
 	    	
 	        atkMin   -= hellNerfAtkMin;
 	        atkMax   -= hellNerfAtkMax;
 	        hpMax -= hellNerfHp;
-	        effCrit -= hellNerfCrit;
-	        effCritDmg -= hellNerfCritDmg;
+	        crit -= hellNerfCrit;
+	        critDmg -= hellNerfCritDmg;
 	        
 	        
 	    }
@@ -587,9 +587,8 @@ public class BossAttackController {
 	    ctx.regen    = regen;
 	    
 	    // 표시용 스탯 (1번 메서드에서 쓰던 값)
-	    ctx.dispCrit     = effCrit;
-	    ctx.dispRegen    = regen;                // 축복 포함 리젠을 그대로 표시하고 싶으면 이렇게
-	    ctx.dispCritDmg  = effCritDmg;
+	    ctx.crit          = crit;
+	    	    ctx.critDmg       = critDmg;
 
 	    // 🔹 직업 보너스(표시용) 저장
 	    ctx.jobHp = jobHp;
@@ -1375,13 +1374,13 @@ public class BossAttackController {
 	    final User   u          = ctx.user;
 	    final String job        = ctx.job;
 
-	    final int hpMax    = ctx.hpMax;      // 최종 HP
-	    final int dispRegen    = ctx.dispRegen;      // 표시용 리젠(축복/흡혈귀 반영)
-	    final int dispCrit     = ctx.dispCrit;       // 표시용 크리율
-	    final int dispCritDmg  = ctx.dispCritDmg;    // 표시용 크리뎀
+	    final int hpMax    = ctx.hpMax;
+	    final int regen    = ctx.regen;
+	    final int crit     = ctx.crit;
+	    final int critDmg  = ctx.critDmg;
 
-	    final int finalAtkMin   = ctx.atkMin;  // 아이템/무기 적용 ATK min
-	    final int finalAtkMax   = ctx.atkMax;  // 아이템/무기 적용 ATK max
+	    final int atkMin   = ctx.atkMin;  // 아이템/무기 적용 ATK min
+	    final int atkMax   = ctx.atkMax;  // 아이템/무기 적용 ATK max
 
 	    final int baseAtkMin       = ctx.baseAtkMin;
 	    final int baseAtkMax       = ctx.baseAtkMax;
@@ -1522,10 +1521,10 @@ public class BossAttackController {
 	    sb.append("포인트: ").append(pointStr).append(NL);
 	    sb.append("누적 획득 포인트: ").append(lifetimeSpStr).append(NL).append(NL);
 
-	    sb.append("⚔ATK: ").append(finalAtkMin).append(" ~ ").append(finalAtkMax).append(NL);
-	    sb.append("⚔CRIT: ").append(dispCrit).append("%  CDMG ").append(dispCritDmg).append("%").append(NL);
+	    sb.append("⚔ATK: ").append(atkMin).append(" ~ ").append(atkMax).append(NL);
+	    sb.append("⚔CRIT: ").append(crit).append("%  CDMG ").append(critDmg).append("%").append(NL);
 	    sb.append("❤️HP: ").append(hpCur).append(" / ").append(hpMax)
-	      .append(",5분당회복+").append(dispRegen).append(NL);
+	      .append(",5분당회복+").append(regen).append(NL);
 
 	    // 헬모드 삭감 정보 표시
 	    if (u.nightmareYn == 2) {
@@ -1562,7 +1561,7 @@ public class BossAttackController {
 		if ("곰".equals(job)) {
 			sb.append("⚔ATK: ").append("최대체력으로 공격").append(NL);
 		} else {
-			sb.append("⚔ATK: ").append(finalAtkMin).append(" ~ ").append(finalAtkMax).append(NL).append("   └ 기본 (")
+			sb.append("⚔ATK: ").append(atkMin).append(" ~ ").append(atkMax).append(NL).append("   └ 기본 (")
 					.append(baseAtkMin).append("~").append(baseAtkMax).append(")").append(NL)
 					.append("   └ 아이템 (min").append(formatSigned(mktAtkMin)).append(", max")
 					.append(formatSigned(mktAtkMax)).append(")").append(NL);
@@ -1580,7 +1579,7 @@ public class BossAttackController {
 	    	
 	    }else {
 	    	// ─ CRIT 상세 ─
-		    sb.append("⚔CRIT: ").append(dispCrit).append("%  CDMG ").append(dispCritDmg).append("%").append(NL)
+		    sb.append("⚔CRIT: ").append(crit).append("%  CDMG ").append(critDmg).append("%").append(NL)
 		      .append("   └ 기본 (").append(u.critRate).append("%, ").append(u.critDmg).append("%)").append(NL);
 			sb.append("   └ 아이템 (CRIT").append(formatSigned(mktCrit)).append("%, CDMG ").append(formatSigned(mktCritDmg)).append("%)").append(NL);
 			if (hellNerfCrit != 0 ) {
@@ -1590,7 +1589,7 @@ public class BossAttackController {
 	    
 	    // ─ HP 상세 ─
 	    sb.append("❤️HP: ").append(hpCur).append(" / ").append(hpMax)
-	      .append(",5분당회복+").append(dispRegen).append(NL)
+	      .append(",5분당회복+").append(regen).append(NL)
 	      .append("   └ 기본 (HP+").append(baseHpMax)
 	      .append(",5분당회복+").append(u.hpRegen).append(")").append(NL)
 	      .append("   └ 아이템 (HP").append(formatSigned(mktHpMax))
@@ -2702,10 +2701,10 @@ public class BossAttackController {
 	    ctx.atkMax += bonusMaxAtk;
 
 	    ctx.hpMax     += bonusHp;
-	    ctx.dispRegen     += bonusRegen;
+	    ctx.regen         += bonusRegen;
 
-	    ctx.dispCrit      += bonusCrit;
-	    ctx.dispCritDmg   += bonusCritDmg;
+	    ctx.crit          += bonusCrit;
+	    ctx.critDmg       += bonusCritDmg;
 
 	    // 표시용 (선택)
 	    ctx.dropAtkMin     = bonusMinAtk;
@@ -2894,9 +2893,9 @@ public class BossAttackController {
 
 	    // 리젠/HP, 크리 (calcUserBattleContext에서 직업 패시브/축복/흡혈귀 등 반영한 값)
 	    int regen    = ctx.regen;
-	    int effHpMax    = ctx.hpMax;  // 최종 전투용 HP_MAX (전사/파이터 HP 보너스 포함이라고 가정)
-	    int effCritRate = ctx.dispCrit;
-	    int effCriDmg   = ctx.dispCritDmg;
+	    int hpMax    = ctx.hpMax;  // 최종 전투용 HP_MAX (전사/파이터 HP 보너스 포함이라고 가정)
+	    int critRate = ctx.crit;
+	    int critDmg   = ctx.critDmg;
 
 	    // ─────────────────────────────
 	    // 4) 직업별 데미지 배율 (궁수 / 전사) - 구버전 로직 복원
@@ -2938,7 +2937,7 @@ public class BossAttackController {
 
 	    // 추가로 HP를 덮어쓰고 싶다면 아래처럼 쓸 수도 있지만,
 	    // 현재는 calcUserBattleContext.hpMax 를 신뢰:
-	    // int effHpMax = hpMaxWithItem + jobBonusHp;
+	    // int hpMax = hpMaxWithItem + jobBonusHp;
 
 	    // 광전사/버서크 배수 (파이터 등에서 사용)
 	    double berserkMul = 1.0;
@@ -2947,7 +2946,7 @@ public class BossAttackController {
 	    // 5) 부활 처리만 (리젠 X) - 구버전 그대로
 	    // -----------------------------
 	    
-	    String reviveMsg = reviveAfter1hIfDead(userName, roomName, u, effHpMax, regen);
+	    String reviveMsg = reviveAfter1hIfDead(userName, roomName, u, hpMax, regen);
 	    boolean revivedThisTurn = false;
 	    if (reviveMsg != null) {
 	        if (!reviveMsg.isEmpty()) return reviveMsg;
@@ -3206,7 +3205,7 @@ public class BossAttackController {
 	    // 8) 현재 체력 확정 (이전 전투 로그 기준 + 리젠)
 	    int effectiveHp = revivedThisTurn
 	            ? u.hpCur
-	            : computeEffectiveHpFromLastAttack(userName, roomName, u, effHpMax, regen, cachedLastAtk);
+	            : computeEffectiveHpFromLastAttack(userName, roomName, u, hpMax, regen, cachedLastAtk);
 	    u.hpCur = effectiveHp;
 
 	    // 유저별 업적 카운트
@@ -3227,8 +3226,8 @@ public class BossAttackController {
 	        }
 	    }
 
-	    if ("파이터".equals(job) && effHpMax > 0) {
-	    	double hpRatio = (double) u.hpCur / effHpMax;
+	    if ("파이터".equals(job) && hpMax > 0) {
+	    	double hpRatio = (double) u.hpCur / hpMax;
 	        if (hpRatio < 1) {
 	            berserkMul = 1.0 + (1 - hpRatio) * 0.5;   // 최대 3배
 	        }
@@ -3285,7 +3284,7 @@ public class BossAttackController {
 	    int origHpMax = u.hpMax;
 	    int origRegen = u.hpRegen;
 
-	    u.hpMax   = effHpMax;
+	    u.hpMax   = hpMax;
 	    u.hpRegen = regen;
 
 	    
@@ -3311,16 +3310,16 @@ public class BossAttackController {
 		        /*double hellMult = getHellNerfMult(ctx.hunterGrade);
 		        effAtkMin   = Math.max(1, (int) Math.round(effAtkMin   * hellMult));
 		        effAtkMax   = Math.max(1, (int) Math.round(effAtkMax   * hellMult));
-		        effCritRate = (int) Math.round(effCritRate * hellMult);
-		        effCriDmg   = (int) Math.round(effCriDmg   * hellMult);
-		        effHpMax	= (int) Math.round(effHpMax * hellMult);*/
+		        critRate = (int) Math.round(critRate * hellMult);
+		        critDmg   = (int) Math.round(critDmg   * hellMult);
+		        hpMax	= (int) Math.round(hpMax * hellMult);*/
 		    
 		    if ("도사".equals(job) || "음양사".equals(job) ) {
 		        buffEff_self = buildDosaBuffEffect(u, u.lv, roomName, 1);
 		        effAtkMin   += buffEff_self.addAtkMin;
 		        effAtkMax   += buffEff_self.addAtkMax;
-		        effCritRate += buffEff_self.addCritRate;
-		        effCriDmg   += buffEff_self.addCritDmg;
+		        critRate += buffEff_self.addCritRate;
+		        critDmg   += buffEff_self.addCritDmg;
 		        u.hpCur     += buffEff_self.addHp;
 		        
 		    }
@@ -3329,8 +3328,8 @@ public class BossAttackController {
 		    if (buffEff_room != null) {
 		        effAtkMin   += buffEff_room.addAtkMin;
 		        effAtkMax   += buffEff_room.addAtkMax;
-		        effCritRate += buffEff_room.addCritRate;
-		        effCriDmg   += buffEff_room.addCritDmg;
+		        critRate += buffEff_room.addCritRate;
+		        critDmg   += buffEff_room.addCritDmg;
 		        u.hpCur     += buffEff_room.addHp;
 		        botNewService.clearRoomBuff(roomName);
 		    }
@@ -3369,7 +3368,7 @@ public class BossAttackController {
 					value = Math.max(0, (int) Math.round(value * hellMult));
 
 				}
-				effCriDmg += (int) value;
+				critDmg += (int) value;
 			}
 			if ("치확".equals(activeBuff.get("FLAG_CODE"))) {
 
@@ -3379,7 +3378,7 @@ public class BossAttackController {
 					value = Math.max(0, (int) Math.round(value * hellMult));
 
 				}
-				effCritRate += (int) value;
+				critRate += (int) value;
 			}
 	    }
 	    
@@ -3400,11 +3399,11 @@ public class BossAttackController {
 	            flags,
 	            effAtkMin,
 	            effAtkMax,
-	            effCritRate,
-	            effCriDmg,
+	            critRate,
+	            critDmg,
 	            berserkMul,
 	            monHpRemainBefore,
-	            effHpMax,
+	            hpMax,
 	            beforeJobSkillYn,
 	            nightmare
 	    );
@@ -3423,10 +3422,10 @@ public class BossAttackController {
 		}
 		
 		if (hasBless) {
-	        int heal = (int)Math.round(effHpMax * 0.3);
+	        int heal = (int)Math.round(hpMax * 0.3);
 	        int beforeHp = u.hpCur;
 
-	        u.hpCur = Math.min(effHpMax, u.hpCur + heal);
+	        u.hpCur = Math.min(hpMax, u.hpCur + heal);
 
 	        if (u.hpCur > beforeHp) {
 	            dmg.dmgCalcMsg += NL + "✨ 축복의 치유! "
@@ -3441,10 +3440,10 @@ public class BossAttackController {
 	    	if( "회복".equals(activeBuff.get("FLAG_CODE"))){
 	    		double value = Double.parseDouble(activeBuff.get("EFFECT_VALUE").toString());
 	    		
-		        int heal = (int)Math.round(effHpMax * value);
+		        int heal = (int)Math.round(hpMax * value);
 		        int beforeHp = u.hpCur;
 	
-		        u.hpCur = Math.min(effHpMax, u.hpCur + heal);
+		        u.hpCur = Math.min(hpMax, u.hpCur + heal);
 
 		        if (u.hpCur > beforeHp) {
 		            dmg.dmgCalcMsg += NL + "✨ 스페셜타임-회복! "
@@ -3473,7 +3472,7 @@ public class BossAttackController {
 	            emptyResolve, null,
 	            monHpRemainBefore, monMaxHp,
 	            effAtkMin, effAtkMax,  
-	            effHpMax,              
+	            hpMax,              
 	            null,
 	            null,
 	            nightmare,
@@ -3519,7 +3518,7 @@ public class BossAttackController {
 	                + calc.monDmg + " 피해로 사망!" + NL
 	                + "▶ 이번에 준 피해: " + dealtThisTurn + NL
 	                + "▶ 몬스터 남은 체력: " + monRemainAfter + " / " + monMaxHp + NL
-	                + "현재 체력: 0 / " + effHpMax + NL
+	                + "현재 체력: 0 / " + hpMax + NL
 	                + "5분 뒤 최대 체력의 10%로 부활하며," + NL
 	                + "이후 5분마다 HP_REGEN 만큼 서서히 회복됩니다." + NL
 	                + deathAchvMsg;
@@ -3647,7 +3646,7 @@ public class BossAttackController {
 	    }
 
 	    // 14) DB 반영 + 레벨업 처리
-	    LevelUpResult up = persist(userName, roomName, u, m, flags, calc, res, effHpMax,nightmare);
+	    LevelUpResult up = persist(userName, roomName, u, m, flags, calc, res, hpMax,nightmare);
 	    String bonusMsg = "";
 	    String blessMsg = "";
 	    
@@ -3726,7 +3725,7 @@ public class BossAttackController {
 	            userName, u, m, flags, calc, res, up,
 	            monHpRemainBefore, monMaxHp,
 	            shownMin, shownMax,
-	            effHpMax,
+	            hpMax,
 	            midExtra.toString(),
 	            botExtra.toString(),
 	            nightmare,
@@ -5067,7 +5066,7 @@ public class BossAttackController {
 	 * - 이후 경과 시간에 따라 5분마다 regen 만큼 추가 회복
 	 */
 	private String reviveAfter1hIfDead(String userName, String roomName, User u,
-	                                   int effHpMax, int regen) {
+	                                   int hpMax, int regen) {
 	    // 살아있으면 관여 안 함
 	    if (u.hpCur > 0) return null;
 
@@ -5075,7 +5074,7 @@ public class BossAttackController {
 
 	    // 기준 이벤트가 전혀 없으면: 보수적으로 10%로 세팅 후 조용히 복구
 	    if (baseline == null) {
-	        int startHp = (int) Math.ceil(effHpMax * 0.10); // 10%
+	        int startHp = (int) Math.ceil(hpMax * 0.10); // 10%
 	        botNewService.updateUserHpOnlyTx(userName, roomName, startHp);
 	        u.hpCur = startHp;
 	        return "";
@@ -5091,14 +5090,14 @@ public class BossAttackController {
 	    }
 
 	    // 부활 시간 경과: 10%에서 시작
-	    int startHp = (int) Math.ceil(effHpMax * 0.1);
+	    int startHp = (int) Math.ceil(hpMax * 0.1);
 
 	    // 부활 시점 이후 경과 시간만큼 5분마다 회복 적용
 	    long afterMin = Duration.between(reviveAt, now).toMinutes();
 	    long healedTicks = Math.max(0, afterMin) / 5;
 	    long healed = healedTicks * Math.max(0, (long) regen);
 
-	    int effective = (int) Math.min((long) effHpMax, (long) startHp + healed);
+	    int effective = (int) Math.min((long) hpMax, (long) startHp + healed);
 
 	    botNewService.updateUserHpOnlyTx(userName, roomName, effective);
 	    u.hpCur = effective;
@@ -5107,23 +5106,23 @@ public class BossAttackController {
 	    return "";
 	}
 
-	private int computeEffectiveHpFromLastAttack(String userName, String roomName, User u, int effHpMax, int regen) {
-	    return computeEffectiveHpFromLastAttack(userName, roomName, u, effHpMax, regen, null);
+	private int computeEffectiveHpFromLastAttack(String userName, String roomName, User u, int hpMax, int regen) {
+	    return computeEffectiveHpFromLastAttack(userName, roomName, u, hpMax, regen, null);
 	}
 
 	// [FIX1] cachedLastAtk 가 null 이 아니면 selectLastAttackTime DB 조회 생략
-	private int computeEffectiveHpFromLastAttack(String userName, String roomName, User u, int effHpMax, int regen, Timestamp cachedLastAtk) {
+	private int computeEffectiveHpFromLastAttack(String userName, String roomName, User u, int hpMax, int regen, Timestamp cachedLastAtk) {
 
 	    // 0) 이미 풀피이거나 리젠 수치가 0 이하면 그대로 반환
-	    if (u.hpCur >= effHpMax || regen <= 0) {
-	        return Math.min(u.hpCur, effHpMax);
+	    if (u.hpCur >= hpMax || regen <= 0) {
+	        return Math.min(u.hpCur, hpMax);
 	    }
 
 	    // 1) 마지막으로 "맞은" 시각 (몬스터에게 데미지 혹은 즉사 시점)
 	    Timestamp damaged = botNewService.selectLastDamagedTime(userName, roomName);
 	    if (damaged == null) {
 	        // 아직 한 번도 맞은 적이 없다면 피격 기반 리젠 없음
-	        return Math.min(u.hpCur, effHpMax);
+	        return Math.min(u.hpCur, hpMax);
 	    }
 
 	    Instant damagedAt = damaged.toInstant();
@@ -5132,12 +5131,12 @@ public class BossAttackController {
 	    // 2) damaged 이후 현재까지 경과 시간(분) → 지금까지 총 리젠 틱 수
 	    long minutesFromDamaged = java.time.Duration.between(damagedAt, now).toMinutes();
 	    if (minutesFromDamaged <= 0) {
-	        return Math.min(u.hpCur, effHpMax);
+	        return Math.min(u.hpCur, hpMax);
 	    }
 
 	    long totalTicksNow = minutesFromDamaged / 5L;  // 5분당 1틱
 	    if (totalTicksNow <= 0) {
-	        return Math.min(u.hpCur, effHpMax);
+	        return Math.min(u.hpCur, hpMax);
 	    }
 
 	    // 3) 마지막 공격 시각을 이용해, "이미 리젠에 반영된 틱" 계산
@@ -5154,14 +5153,14 @@ public class BossAttackController {
 	    long newTicks = totalTicksNow - prevTicks;
 	    if (newTicks <= 0) {
 	        // 아직 "이전에 공격했을 때까지"보다 더 많은 5분 구간이 지나지 않았다면 추가 리젠 없음
-	        return Math.min(u.hpCur, effHpMax);
+	        return Math.min(u.hpCur, hpMax);
 	    }
 
 	    long heal = newTicks * (long) regen;
 	    long effective = (long) u.hpCur + heal;
 
-	    if (effective > effHpMax) {
-	        effective = effHpMax;
+	    if (effective > hpMax) {
+	        effective = hpMax;
 	    }
 
 	    return (int) effective;
@@ -5468,7 +5467,7 @@ public class BossAttackController {
 	/** HP/EXP/LV + 로그 저장 (DB에는 '순수 레벨 기반 스탯'만 반영) */
 	private LevelUpResult persist(String userName, String roomName,
 	                              User u, Monster m,
-	                              Flags f, AttackCalc c, Resolve res,int effHpMax,
+	                              Flags f, AttackCalc c, Resolve res,int hpMax,
 	                              boolean nightmare ) {
 
 	    // 1) 최종 HP 계산 (전투 데미지 반영)
@@ -5478,8 +5477,8 @@ public class BossAttackController {
 	    LevelUpResult up = applyExpAndLevelUp(u, res.gainExp);
 	    
 	 // 3) 레벨업이 발생했고, 죽은 게 아니라면 → 실전투 HPMax 기준으로 풀피 회복
-	    if (up.levelUpCount > 0 && u.hpCur > 0 && effHpMax > 0) {
-	        u.hpCur = effHpMax; // 여기서 109 같은 값으로 올려줌
+	    if (up.levelUpCount > 0 && u.hpCur > 0 && hpMax > 0) {
+	        u.hpCur = hpMax; // 여기서 109 같은 값으로 올려줌
 	    }
 
 	    // 3) 순수 레벨 기준 스탯 계산
@@ -7221,11 +7220,11 @@ public class BossAttackController {
 	        Flags flags,
 	        int effAtkMin,
 	        int effAtkMax,
-	        int effCritRate,
-	        int effCriDmg,
+	        int critRate,
+	        int critDmg,
 	        double berserkMul,
 	        int monHpRemainBefore,
-	        int effHpMax,
+	        int hpMax,
 	        int beforeJobSkillYn,
 	        boolean nightmareYn
 	) {
@@ -7236,16 +7235,16 @@ public class BossAttackController {
 	    StringBuilder extraMsg = new StringBuilder();
 	    out.dmgCalcMsg="";
 
-	    int orgCritRateForGungsa = effCritRate;
-	    if (effCritRate > 100) {
-	    	int overflow = effCritRate - 100;
+	    int orgCritRateForGungsa = critRate;
+	    if (critRate > 100) {
+	    	int overflow = critRate - 100;
 	    	double convertRate = MiniGameUtil.getHunterConvertRate(u.hunterGrade);
 	    	if(!"헌터".equals(u.job)) {
 	    		convertRate /= 10;
 	    	}
 	    	int converted = (int)Math.floor(overflow * convertRate);
-	        effCritRate = 100;
-	        effCriDmg  += converted;
+	        critRate = 100;
+	        critDmg  += converted;
 
 	        // 디버그용
 	        out.dmgCalcMsg += "헌터(" + u.hunterGrade + ") "
@@ -7257,14 +7256,14 @@ public class BossAttackController {
 	    // 1) 공격력 굴림 + 크리티컬
 	    // -----------------------------
 	    int critRoll = ThreadLocalRandom.current().nextInt(0, 101);
-	    int critThreshold = effAtkRateLimit(effCritRate); // 안전빵 방어
+	    int critThreshold = effAtkRateLimit(critRate); // 안전빵 방어
 	    boolean crit = (critRoll <= critThreshold);
 
 	    int baseAtk = (effAtkMax <= effAtkMin)
 	            ? effAtkMin
 	            : ThreadLocalRandom.current().nextInt(effAtkMin, effAtkMax + 1);
 
-	    double critMultiplier = Math.max(1.0, effCriDmg / 100.0);
+	    double critMultiplier = Math.max(1.0, critDmg / 100.0);
 	    
 	    // -----------------------------
 	    // 2) 추가데미지 로직
@@ -7432,7 +7431,7 @@ public class BossAttackController {
 
 	    if ("곰".equals(u.job)) {
 	    	// 🐻 공격 시 최대체력 10% 소모
-	        int hpCost = (int)Math.round(effHpMax * 0.10);
+	        int hpCost = (int)Math.round(hpMax * 0.10);
 	        int beforeHp = u.hpCur;
 	        u.hpCur = Math.max(1, u.hpCur - hpCost);
 
@@ -7444,7 +7443,7 @@ public class BossAttackController {
 	        	monHp *= NM_MUL_HP_ATK;
 	        }
 	        
-	        if (effHpMax < monHp) {
+	        if (hpMax < monHp) {
 
 	            baseAtk = 0;
 	            rawAtkDmg = 0;
@@ -7475,10 +7474,10 @@ public class BossAttackController {
 	                if (rnd < 0.20) {
 
 	                    int before = u.hpCur;
-	                    u.hpCur = effHpMax;
+	                    u.hpCur = hpMax;
 	                    calc.jobSkillUsed = true;
 	                    out.dmgCalcMsg += "달의 힘을 받아 체력 회복! "
-	                            + "(" + before + " → " + u.hpCur + "/" + effHpMax + ")" + NL;
+	                            + "(" + before + " → " + u.hpCur + "/" + hpMax + ")" + NL;
 	                }
 	            }
 	        }
@@ -7633,12 +7632,12 @@ public class BossAttackController {
 		            
 
 		            if (newMonDmg > 0 && calc.atkDmg >= monHpRemainBefore) {//willkill, 복수로죽였을때만 적용
-		            	int heal = (int) Math.round(effHpMax * 0.10);
+		            	int heal = (int) Math.round(hpMax * 0.10);
 		            	int before =u.hpCur-newMonDmg;
-			            u.hpCur = Math.min(effHpMax, before + heal);
+			            u.hpCur = Math.min(hpMax, before + heal);
 
 			            calc.patternMsg = "복수에 성공했다..! " + heal +
-			                    " 회복 (HP " + before + " → " + u.hpCur + "/" + effHpMax + ")";
+			                    " 회복 (HP " + before + " → " + u.hpCur + "/" + hpMax + ")";
 			            calc.jobSkillUsed = true;
 			            calc.monDmg = 0;
 		            }
