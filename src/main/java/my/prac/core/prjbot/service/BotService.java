@@ -145,7 +145,6 @@ public interface BotService {
 	public HashMap<String,Object> selectBossHit(HashMap<String,Object> map) throws Exception;
 	public void updateBossHitTx(HashMap<String, Object> hashMap)  throws Exception;
 	public List<HashMap<String, Object>> selectTop3Contributors(HashMap<String, Object> hashMap);
-	public List<HashMap<String, Object>> selectHellTop3Contributors(HashMap<String, Object> hashMap);
 
 	//신보스
 	public HashMap<String,Object> selectBotPointBoss(HashMap<String,Object> map) throws Exception;

@@ -16,6 +16,7 @@ import org.springframework.stereotype.Controller;
 import my.prac.core.game.dto.User;
 import my.prac.core.game.dto.UserBattleContext;
 import my.prac.core.prjbot.service.BotNewService;
+import my.prac.core.prjbot.service.BotS3Service;
 import my.prac.core.prjbot.service.BotService;
 
 /**
@@ -45,6 +46,7 @@ public class BossAttackS3Controller {
     @Autowired BossAttackController bossAttackController;
     @Resource(name = "core.prjbot.BotNewService") BotNewService botNewService;
     @Resource(name = "core.prjbot.BotService")    BotService    botService;
+    @Resource(name = "core.prjbot.BotS3Service")  BotS3Service  botS3Service;
 
 
     // =========================================================
@@ -259,7 +261,7 @@ public class BossAttackS3Controller {
             HashMap<String, Object> q = new HashMap<>();
             q.put("roomName", roomName);
             q.put("seq",      seq);
-            contributors = botService.selectHellTop3Contributors(q);
+            contributors = botS3Service.selectHellTop3Contributors(q);
         } catch (Exception e) {
             return "";
         }
@@ -374,7 +376,7 @@ public class BossAttackS3Controller {
             HashMap<String, Object> q = new HashMap<>();
             q.put("roomName", roomName);
             q.put("seq",      seq);
-            contributors = botService.selectHellTop3Contributors(q);
+            contributors = botS3Service.selectHellTop3Contributors(q);
         } catch (Exception e) {
             contributors = new ArrayList<>();
         }

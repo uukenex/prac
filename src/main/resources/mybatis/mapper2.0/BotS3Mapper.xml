@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="my.prac.core.prjbot.dao.BotS3DAO">
+
+	<!-- =====================================================
+	     [S3 헬보스] 기여도 TOP 조회 (TBOT_BOSS_HIT_LOG 기반)
+	     - 횟수(CNT), 합산데미지(SCORE), 전체참여횟수(TOT_CNT) 반환
+	     ===================================================== -->
+	<select id="selectHellTop3Contributors" parameterType="HashMap" resultType="HashMap">
+		SELECT sum(cnt) over() as tot_cnt, A.*
+		  FROM (
+		    SELECT user_name
+		         , count(user_name) as cnt
+		         , SUM(score)       AS score
+		      FROM TBOT_BOSS_HIT_LOG
+		     WHERE room_name = #{roomName, jdbcType=VARCHAR}
+		       AND seq       = #{seq, jdbcType=NUMERIC}
+		       AND score     > 0
+		     GROUP BY user_name
+		     ORDER BY count(user_name) DESC
+		  ) A
+		 WHERE ROWNUM &lt;= 20
+	</select>
+
+</mapper>
