@@ -1481,6 +1481,21 @@
 		 WHERE ROWNUM &lt;= 10
 	</select>
 	
+	<!-- [S3 헬보스] 기여도 TOP 조회 (TBOT_BOSS_HIT_LOG 기반) -->
+	<select id="selectHellTop3Contributors" parameterType="HashMap" resultType="HashMap">
+		SELECT sum(cnt) over() as tot_cnt , A.*
+		  FROM (
+		    SELECT user_name, count(user_name) as cnt, SUM(score) AS score
+		      FROM TBOT_BOSS_HIT_LOG
+		     WHERE room_name = #{roomName, jdbcType=VARCHAR}
+		       AND seq = #{seq, jdbcType=NUMERIC}
+		       AND SCORE > 0
+		     GROUP BY user_name
+		     ORDER BY count(user_name) DESC
+		  ) A
+		 WHERE ROWNUM &lt;= 20
+	</select>
+
 	<insert  id="insertPointNewBoxOpen" parameterType="HashMap">
 		INSERT INTO TBOT_POINT_ITEM_USER
 			 (USER_NAME

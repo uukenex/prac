@@ -754,11 +754,15 @@ public class BotServiceImpl implements BotService {
 	}
 	
 	public List<HashMap<String, Object>> selectTop3Contributors(HashMap<String, Object> hashMap){
-		
+
 		return botDAO.selectTop3Contributors(hashMap);
 	}
-	
-	
+
+	public List<HashMap<String, Object>> selectHellTop3Contributors(HashMap<String, Object> hashMap){
+		return botDAO.selectHellTop3Contributors(hashMap);
+	}
+
+
 	public List<HashMap<String,Object>> selectPointItemUserList(HashMap<String,Object> map) throws Exception{
 		return botDAO.selectPointItemUserList(map);
 	}
