@@ -29,6 +29,7 @@ import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Controller;
 
 import my.prac.core.game.dto.AchievementCount;
@@ -91,6 +92,7 @@ public class BossAttackController {
 	private static final long TOP1_SP_CACHE_TTL_MS = 3_600_000L;
 	
 	/* ===== DI ===== */
+	@Lazy @Autowired BossAttackS3Controller bossAttackS3Controller;
 	@Autowired LoaPlayController play;
 	@Resource(name = "core.prjbot.BotService")        BotService botService;
 	@Resource(name = "core.prjbot.BotDAO")            BotDAO botDAO;
@@ -2925,15 +2927,12 @@ public class BossAttackController {
 
 	    } else {
 
-	        // ===== [시즌3] 보스 공격 분기 =====
-	        // TODO: u.targetMon이 보스 타겟임을 나타내는 값(예: -1 또는 별도 필드)일 경우
-	        //       여기서 bossAttackS3Controller.attackBoss(map, ctx) 를 호출하고 return
-	        //       ctx에는 이미 유저 스탯/직업/버프 등 전체 정보가 담겨있으므로 그대로 전달 가능
-	        // if (u.targetMon == BOSS_TARGET_FLAG) {
-	        //     return bossAttackS3.attackBoss(map, ctx);
-	        // }
-	        // ===================================
-
+	        // ===== [S3] 헬보스 분기: targetMon==99 =====
+	        // 쿨타임/HP확정은 이후 공통 로직에서 처리 후 분기
+	        if (u.targetMon == 99) {
+	            m = null;
+	            monMaxHp = 0; monHpRemainBefore = 0; monAtk = 0; monLv = 0;
+	        } else {
 	        m = getMonsterCached(u.targetMon);
 	        if (m == null) return "대상 몬스터가 지정되어 있지 않습니다. (TARGET_MON 없음)";
 
@@ -3065,6 +3064,7 @@ public class BossAttackController {
 	        }
 
 	    }
+	        }
 	    
 	    
 	    SpecialBuffResult buff = handleSpecialBuff();
@@ -3096,6 +3096,11 @@ public class BossAttackController {
 	            ? u.hpCur
 	            : computeEffectiveHpFromLastAttack(userName, roomName, u, hpMax, regen, cachedLastAtk);
 	    u.hpCur = effectiveHp;
+
+	    // ===== [S3] 헬보스 분기: 쿨타임/HP확정 완료 후 =====
+	    if (u.targetMon == 99) {
+	        return bossAttackS3Controller.attackBossS3(map, ctx);
+	    }
 
 	    // 유저별 업적 카운트
 	    List<AchievementCount> userAchvList = botNewService.selectAchvCountsGlobal(userName, roomName);
