@@ -25,22 +25,20 @@ import my.prac.core.prjbot.service.BotService;
  * 특징:
  *   - 헬모드(nightmareYn=2) 유저만 도전 가능
  *   - 유저 스탯은 S2 BossAttackController.calcUserBattleContext 기반
- *   - 보스 체력은 모든 유저가 공유 (TBOT_BOSS_HIT 테이블)
- *   - 보스 처치 시 7000번대 아이템 중 1개를 기여도 1위에게 지급
- *
- * TODO: S3 전용 보스 테이블 설계/생성 후 selectBossHit → S3 전용 쿼리로 교체
+ *   - 보스 체력은 전역 공유 (TBOT_POINT_NEW_BOSS, ROOM_NAME 없음)
+ *   - 공격 로그는 TBOT_POINT_NEW_BATTLE_LOG (S2 형식, NIGHTMARE_YN='2')
+ *   - 처치 시 7000번대 아이템 중 1개를 기여도 1위에게 지급
  */
 @Controller
 public class BossAttackS3Controller {
 
     private static final String NL = "♬";
 
-    // 7000번대 헬보스 보상 아이템 목록
-    // TODO: 실제 아이템 ID 확정 후 업데이트
+    /** 7000번대 헬보스 보상 아이템 목록 (확정 후 업데이트) */
     private static final List<Integer> HELL_REWARD_ITEMS = Arrays.asList(7001, 7002, 7003);
 
-    // 아이템 ID 상수
-    private static final int ITEM_HEAVEN = 7001; // 천벌
+    /** 천벌 아이템 ID */
+    private static final int ITEM_HEAVEN = 7001;
 
     /* ===== DI ===== */
     @Autowired BossAttackController bossAttackController;
@@ -50,12 +48,8 @@ public class BossAttackS3Controller {
 
 
     // =========================================================
-    // 진입점: LoaChatController /공격 → 이 메서드 호출
+    // 진입점: /공격 → 이 메서드 호출 (TARGET_MON == "BOSS_HELL")
     // =========================================================
-    /**
-     * 헬보스 공격 메인
-     * 호출 조건: 유저 TARGET_MON == "BOSS_HELL" (or 별도 라우팅)
-     */
     public String attackBossS3(HashMap<String, Object> map) {
         final String roomName = Objects.toString(map.get("roomName"), "");
         final String userName = Objects.toString(map.get("userName"), "");
@@ -76,18 +70,31 @@ public class BossAttackS3Controller {
             return userName + "님," + NL + "헬모드 유저만 도전 가능한 보스입니다.";
         }
 
-        // 3. 보스 정보 조회 (공유 HP)
-        // TODO: S3 전용 테이블 생성 후 selectBossHit → selectHellBoss 로 교체
+        // 3. 보스 정보 조회 (전역 공유, ROOM_NAME 없음)
         HashMap<String, Object> boss;
         int hp, orgHp, seq;
+        int bossAtkRate, bossAtkPower, bossDefRate, bossDefPower, bossEvadeRate, critDefRate;
+        int debuff, debuff1;
         try {
-            boss = botService.selectBossHit(map);
+            boss = botS3Service.selectHellBoss();
             if (boss == null || boss.get("HP") == null) {
-                return "현재 출현한 헬보스가 없습니다." + NL + "/헬보스정보 로 확인하세요.";
+                String lastReward = botS3Service.getLastKillRewardMsg();
+                if (lastReward != null && !lastReward.isEmpty()) {
+                    return "현재 출현한 헬보스가 없습니다." + NL + NL + lastReward;
+                }
+                return "현재 출현한 헬보스가 없습니다.";
             }
-            hp    = Integer.parseInt(boss.get("HP").toString());
-            orgHp = Integer.parseInt(boss.get("ORG_HP").toString());
-            seq   = Integer.parseInt(boss.get("SEQ").toString());
+            hp           = Integer.parseInt(boss.get("HP").toString());
+            orgHp        = Integer.parseInt(boss.get("ORG_HP").toString());
+            seq          = Integer.parseInt(boss.get("SEQ").toString());
+            bossAtkRate  = boss.get("ATK_RATE")    != null ? Integer.parseInt(boss.get("ATK_RATE").toString())    : 20;
+            bossAtkPower = boss.get("ATK_POWER")   != null ? Integer.parseInt(boss.get("ATK_POWER").toString())   : 100;
+            bossDefRate  = boss.get("DEF_RATE")    != null ? Integer.parseInt(boss.get("DEF_RATE").toString())    : 20;
+            bossDefPower = boss.get("DEF_POWER")   != null ? Integer.parseInt(boss.get("DEF_POWER").toString())   : 100;
+            bossEvadeRate= boss.get("EVADE_RATE")  != null ? Integer.parseInt(boss.get("EVADE_RATE").toString())  : 10;
+            critDefRate  = boss.get("CRIT_DEF_RATE")!= null? Integer.parseInt(boss.get("CRIT_DEF_RATE").toString()): 0;
+            debuff       = boss.get("DEBUFF")      != null ? Integer.parseInt(boss.get("DEBUFF").toString())      : 0;
+            debuff1      = boss.get("DEBUFF1")     != null ? Integer.parseInt(boss.get("DEBUFF1").toString())     : 0;
         } catch (Exception e) {
             return "보스 정보를 가져오는데 실패했습니다.";
         }
@@ -100,16 +107,7 @@ public class BossAttackS3Controller {
             return userName + "님, " + ctx.errorMessage;
         }
 
-        // 5. 아이템 조회 (천벌 보유 여부)
-        boolean hasHeavenItem = false;
-        try {
-            List<Integer> owned = botNewService.selectInventoryItemsByIds(userName, roomName, Arrays.asList(ITEM_HEAVEN));
-            hasHeavenItem = owned != null && owned.contains(ITEM_HEAVEN);
-        } catch (Exception e) {
-            // 아이템 조회 실패 시 없는 것으로 처리
-        }
-
-        // 6. 쿨타임 체크 (15초)
+        // 5. 쿨타임 체크 (15초)
         map.put("timeDelay", 15);
         map.put("timeDelayMsg", "");
         String cooldown = botService.selectHourCheck(map);
@@ -117,51 +115,76 @@ public class BossAttackS3Controller {
             return userName + "님," + NL + cooldown + " 이후 재시도 가능합니다.";
         }
 
+        // 6. 천벌 아이템 보유 여부 확인
+        boolean hasHeavenItem = false;
+        try {
+            List<Integer> owned = botNewService.selectInventoryItemsByIds(userName, roomName, Arrays.asList(ITEM_HEAVEN));
+            hasHeavenItem = owned != null && owned.contains(ITEM_HEAVEN);
+        } catch (Exception e) {
+            // 조회 실패 시 미보유 처리
+        }
+
         Random rand = new Random();
 
-        // 7. 천벌 발동 체크 (5%)
+        // 7. 천벌 발동 체크 (5%, 디버프 상태이면 발동 불가)
         boolean heavensPunishment = false;
         String punishMsg = "";
-        if (hasHeavenItem) {
+        if (hasHeavenItem && debuff == 0) {
             if (rand.nextInt(100) < 5) {
                 heavensPunishment = true;
-                punishMsg = "[천벌] 효과! 보스회피/방어를 무시하고 초강력치명타 피해!" + NL;
+                punishMsg = "[천벌] 효과! 보스회피/방어를 무시하고 초강력치명타!" + NL;
             }
         }
 
-        // 보스 기본 스탯 (TODO: S3 전용 테이블 생성 후 DB 값으로 교체)
-        int bossEvadeRate  = 10;  // 회피율 10%
-        int bossDefRate    = 20;  // 방어 발동률 20%
-        int bossDefPower   = (int)(ctx.hpMax * 0.05); // 유저 최대체력 5% 방어
-        int bossAtkRate    = 20;  // 반격 발동률 20%
-        int bossAtkPower   = (int)(ctx.hpMax * 0.10); // 유저 최대체력 10% 반격
+        // 8. 디버프 상태이면 보스 스탯 무력화 (S1 로직 동일)
+        boolean flag_boss_debuff  = debuff  > 0;
+        boolean flag_boss_debuff1 = debuff1 > 0;
+        boolean debuff1_start = false;
+        String debuff1Msg = "";
 
-        // 8. 보스 회피 판정 (천벌이면 무시)
+        if (flag_boss_debuff) {
+            bossAtkRate   = 0;
+            bossDefRate   = 0;
+            bossEvadeRate = 0;
+        }
+
+        // debuff1 (저주받은인형 류): 치명저항 감소
+        if (flag_boss_debuff1) {
+            critDefRate = Math.max(0, critDefRate - 5);
+            debuff1Msg = "[디버프1] 보스 치명저항 감소 적용" + NL;
+        }
+
+        // 9. 보스 회피 판정
         boolean isEvade = !heavensPunishment && (Math.random() < bossEvadeRate / 100.0);
 
-        // 9. 데미지 계산
+        // 10. 데미지 계산
         int damage = 0;
         boolean isCritical = false;
         boolean isSuperCritical = false;
         String dmgMsg = "";
         String bossDefMsg = "";
+        int appliedDefPower = 0;
 
         if (!isEvade) {
             int atkRange = Math.max(1, ctx.atkMax - ctx.atkMin + 1);
             int baseAtk  = ctx.atkMin + rand.nextInt(atkRange);
             String atkRangeStr = "(" + ctx.atkMin + "~" + ctx.atkMax + ") ";
 
-            // 치명타 판정
+            // 치명타 확률 계산
+            int totalCritPercent = ctx.crit;
+            totalCritPercent -= critDefRate;
+
             if (heavensPunishment) {
                 isCritical      = true;
                 isSuperCritical = true;
             } else {
-                isCritical = Math.random() < ctx.crit / 100.0;
+                isCritical = totalCritPercent > 0 && Math.random() < totalCritPercent / 100.0;
                 if (isCritical) {
                     isSuperCritical = Math.random() < 0.10;
                 }
             }
 
+            // 디버프 상태이면 데미지 2배 (S1 천벌 디버프 동일)
             double critMultiplier = Math.max(1.0, ctx.critDmg / 100.0);
 
             if (isSuperCritical) {
@@ -175,49 +198,70 @@ public class BossAttackS3Controller {
                 dmgMsg = atkRangeStr + baseAtk + " 로 공격!";
             }
 
+            // 디버프(천벌) 상태이면 데미지 2배
+            if (flag_boss_debuff) {
+                punishMsg = "[천벌디버프](+" + damage + "), " + (debuff - 1) + "회 남음" + NL;
+                damage = damage * 2;
+            }
+
             // 보스 방어 적용 (천벌이면 무시)
-            if (!heavensPunishment && Math.random() < bossDefRate / 100.0) {
-                int defAmt = Math.max(1, ThreadLocalRandom.current().nextInt(1, bossDefPower + 1));
-                damage = Math.max(0, damage - defAmt);
-                bossDefMsg = "보스가 방어하였습니다! 데미지 " + defAmt + " 상쇄!" + NL;
+            if (!heavensPunishment && !flag_boss_debuff && Math.random() < bossDefRate / 100.0) {
+                appliedDefPower = ThreadLocalRandom.current().nextInt(1, bossDefPower + 1);
+                damage = Math.max(0, damage - appliedDefPower);
+                bossDefMsg = "보스가 방어하였습니다! 데미지 " + appliedDefPower + " 상쇄!" + NL;
             }
         }
 
-        // 10. 보스 HP 차감 및 킬 판정
+        // 11. 보스 HP 차감 및 킬 판정
         int newHp  = Math.max(0, hp - damage);
         boolean isKill = (newHp <= 0);
         int score  = Math.max(1, damage / 4);
 
-        // 11. DB 저장 (HP 업데이트 + 기여 로그)
-        map.put("hp",       hp);
-        map.put("newHp",    newHp);
-        map.put("seq",      seq);
-        map.put("damage",   damage);
-        map.put("score",    score);
-        map.put("endYn",    isKill ? "1" : "0");
-        map.put("atkPower", 0);
-        map.put("defPower", 0);
+        // 12. DB 저장 (HP 업데이트 + 배틀 로그)
+        int bossAtkApplied = 0;
+        boolean flag_boss_attack = !isKill && !heavensPunishment && Math.random() < bossAtkRate / 100.0;
+        if (flag_boss_attack) {
+            bossAtkApplied = Math.max(1, ThreadLocalRandom.current().nextInt(1, bossAtkPower + 1));
+        }
+
+        map.put("hp",            hp);
+        map.put("newHp",         newHp);
+        map.put("seq",           seq);
+        map.put("damage",        damage);
+        map.put("score",         score);
+        map.put("endYn",         isKill ? "1" : "0");
+        // 배틀 로그용
+        map.put("lv",            user.lv);
+        map.put("atkDmg",        damage);
+        map.put("monDmg",        bossAtkApplied);
+        map.put("atkCritYn",     isCritical ? "1" : "0");
+        map.put("killYn",        isKill ? "1" : "0");
+        map.put("job",           ctx.job);
+        // 디버프 처리
+        if (heavensPunishment)  map.put("heavensPunishment", 1);
+        if (flag_boss_debuff)   map.put("useDebuff",  1);
+        if (debuff1_start)      map.put("debuff1_start", 1);
+        if (flag_boss_debuff1 && !debuff1_start) map.put("useDebuff1", 1);
 
         try {
-            botService.updateBossHitTx(map);
+            botS3Service.updateHellBossTx(map);
         } catch (Exception e) {
             return "저장 중 오류가 발생했습니다.";
         }
 
-        // 12. 보스 처치 처리
+        // 13. 보스 처치 처리
         String killMsg = "";
         if (isKill) {
-            killMsg = calcHellBossReward(roomName, seq, orgHp);
+            killMsg = calcHellBossReward(roomName, seq);
         }
 
-        // 13. 보스 반격 (처치 및 천벌이면 없음)
+        // 14. 보스 반격 메시지
         String bossAtkMsg = "";
-        if (!isKill && !heavensPunishment && Math.random() < bossAtkRate / 100.0) {
-            int bossAtk = Math.max(1, ThreadLocalRandom.current().nextInt(1, bossAtkPower + 1));
-            bossAtkMsg = "▶ 보스의 반격! " + bossAtk + " 의 피해!" + NL;
+        if (flag_boss_attack && bossAtkApplied > 0) {
+            bossAtkMsg = "▶ 보스의 반격! " + bossAtkApplied + " 의 피해!" + NL;
         }
 
-        // 14. 결과 메시지 조합
+        // 15. 결과 메시지
         StringBuilder msg = new StringBuilder();
         msg.append(userName).append("님이 [헬보스]를 공격했습니다!").append(NL);
 
@@ -225,6 +269,7 @@ public class BossAttackS3Controller {
             msg.append("▶ 입힌 데미지: ").append(damage).append(NL);
             msg.append(dmgMsg).append(NL);
             if (!punishMsg.isEmpty())  msg.append(punishMsg);
+            if (!debuff1Msg.isEmpty()) msg.append(debuff1Msg);
             if (!bossDefMsg.isEmpty()) msg.append(bossDefMsg);
         } else {
             msg.append("보스가 공격을 회피했습니다! 데미지 0!").append(NL);
@@ -247,20 +292,17 @@ public class BossAttackS3Controller {
 
 
     // =========================================================
-    // 헬보스 처치 보상 처리
+    // 헬보스 처치 보상
     // =========================================================
     /**
-     * 보스 HP <= 0 시 호출.
-     * 기여도(횟수 70% + 데미지 30%) 가중 랜덤으로 1명 선정 후
-     * 보유하지 않은 7000번대 아이템 1개 지급.
+     * 보스 처치 시 기여도 가중 랜덤으로 1명 선정 후 7000번대 아이템 1개 지급.
+     * 기여도: 공격 횟수 70% + 데미지 30%
      */
-    private String calcHellBossReward(String roomName, int seq, int orgHp) {
-        // 기여도 조회
+    private String calcHellBossReward(String roomName, int seq) {
         List<HashMap<String, Object>> contributors;
         try {
             HashMap<String, Object> q = new HashMap<>();
-            q.put("roomName", roomName);
-            q.put("seq",      seq);
+            q.put("seq", seq);
             contributors = botS3Service.selectHellTop3Contributors(q);
         } catch (Exception e) {
             return "";
@@ -274,20 +316,20 @@ public class BossAttackS3Controller {
             totDmg += Integer.parseInt(row.get("SCORE").toString());
         }
 
-        // 기여도 가중치 산정 (횟수 70% + 데미지 30%)
+        // 기여도 가중치 (횟수 70% + 데미지 30%)
         double[] weights = new double[contributors.size()];
         double weightSum = 0;
         for (int i = 0; i < contributors.size(); i++) {
             HashMap<String, Object> row = contributors.get(i);
             int cnt   = Integer.parseInt(row.get("CNT").toString());
             int score = Integer.parseInt(row.get("SCORE").toString());
-            double cntRatio   = totCnt > 0 ? (double) cnt   / totCnt  : 0;
-            double scoreRatio = totDmg > 0 ? (double) score / totDmg  : 0;
+            double cntRatio   = totCnt > 0 ? (double) cnt   / totCnt : 0;
+            double scoreRatio = totDmg > 0 ? (double) score / totDmg : 0;
             weights[i] = cntRatio * 0.7 + scoreRatio * 0.3;
             weightSum += weights[i];
         }
 
-        // 가중 랜덤 선택
+        // 가중 랜덤 선정
         double r = Math.random() * weightSum;
         double cum = 0;
         int winnerIdx = 0;
@@ -297,7 +339,7 @@ public class BossAttackS3Controller {
         }
         String winner = contributors.get(winnerIdx).get("USER_NAME").toString();
 
-        // 승자가 보유하지 않은 7000번대 아이템 추출
+        // 미보유 7000번대 아이템 추출
         List<Integer> ownedIds;
         try {
             ownedIds = botNewService.selectInventoryItemsByIds(winner, roomName, HELL_REWARD_ITEMS);
@@ -338,7 +380,7 @@ public class BossAttackS3Controller {
             int    cnt   = Integer.parseInt(row.get("CNT").toString());
             int    dmg   = Integer.parseInt(row.get("SCORE").toString());
             msg.append(name)
-               .append(" - ").append(cnt).append("회 / 데미지 ").append(dmg * 4)
+               .append(" - ").append(cnt).append("회 / 데미지 ").append(dmg)
                .append(NL);
         }
 
@@ -349,20 +391,19 @@ public class BossAttackS3Controller {
     // =========================================================
     // 보스 정보 조회
     // =========================================================
-    /**
-     * /헬보스정보 명령어
-     * 현재 활성 헬보스 HP, 기여도 TOP 표시
-     */
+    /** /헬보스정보 — 현재 활성 헬보스 HP + 기여도 TOP 표시 */
     public String bossInfo(HashMap<String, Object> map) {
-        final String roomName = Objects.toString(map.get("roomName"), "");
-
         HashMap<String, Object> boss;
         try {
-            boss = botService.selectBossHit(map);
+            boss = botS3Service.selectHellBoss();
         } catch (Exception e) {
             return "보스 정보 조회에 실패했습니다.";
         }
         if (boss == null || boss.get("HP") == null) {
+            String lastReward = botS3Service.getLastKillRewardMsg();
+            if (lastReward != null && !lastReward.isEmpty()) {
+                return "현재 출현한 헬보스가 없습니다." + NL + NL + lastReward;
+            }
             return "현재 출현한 헬보스가 없습니다.";
         }
 
@@ -374,8 +415,7 @@ public class BossAttackS3Controller {
         List<HashMap<String, Object>> contributors;
         try {
             HashMap<String, Object> q = new HashMap<>();
-            q.put("roomName", roomName);
-            q.put("seq",      seq);
+            q.put("seq", seq);
             contributors = botS3Service.selectHellTop3Contributors(q);
         } catch (Exception e) {
             contributors = new ArrayList<>();
@@ -393,7 +433,7 @@ public class BossAttackS3Controller {
                 int    cnt   = Integer.parseInt(row.get("CNT").toString());
                 int    score = Integer.parseInt(row.get("SCORE").toString());
                 msg.append(name)
-                   .append(" - ").append(cnt).append("회 / 데미지 ").append(score * 4)
+                   .append(" - ").append(cnt).append("회 / 데미지 ").append(score)
                    .append(NL);
             }
         } else {
