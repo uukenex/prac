@@ -1,15 +1,8 @@
 package my.prac.config;
 
-import java.nio.charset.StandardCharsets;
-import java.util.List;
-
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.MediaType;
-import org.springframework.http.converter.HttpMessageConverter;
-import org.springframework.http.converter.StringHttpMessageConverter;
-import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.web.multipart.commons.CommonsMultipartResolver;
 import org.springframework.web.servlet.ViewResolver;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
@@ -18,9 +11,6 @@ import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry
 import org.springframework.web.servlet.config.annotation.ViewControllerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter;
 import org.springframework.web.servlet.view.InternalResourceViewResolver;
-
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Configuration
 // 페이지호출에 대한 scan
@@ -78,19 +68,6 @@ public class MvcConfig extends WebMvcConfigurerAdapter {
 		CommonsMultipartResolver resolver = new CommonsMultipartResolver();
 		resolver.setDefaultEncoding("utf-8");
 		return resolver;
-	}
-
-	@Override
-	public void configureMessageConverters(List<HttpMessageConverter<?>> converters) {
-		// 이모지 등 BMP 초과 문자가 깨지지 않도록 JSON 변환기를 명시적으로 UTF-8 + 서로게이트 허용으로 설정
-		ObjectMapper mapper = new ObjectMapper();
-		mapper.getFactory().configure(JsonGenerator.Feature.ESCAPE_NON_ASCII, false);
-		MappingJackson2HttpMessageConverter jacksonConverter = new MappingJackson2HttpMessageConverter(mapper);
-		jacksonConverter.setSupportedMediaTypes(
-			java.util.Arrays.asList(new MediaType("application", "json", StandardCharsets.UTF_8))
-		);
-		converters.add(jacksonConverter);
-		converters.add(new StringHttpMessageConverter(StandardCharsets.UTF_8));
 	}
 
 	@Override
