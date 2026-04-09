@@ -3,23 +3,149 @@
 <mapper namespace="my.prac.core.prjbot.dao.BotS3DAO">
 
 	<!-- =====================================================
-	     [S3 헬보스] 기여도 TOP 조회 (TBOT_BOSS_HIT_LOG 기반)
-	     - 횟수(CNT), 합산데미지(SCORE), 전체참여횟수(TOT_CNT) 반환
+	     [S3 헬보스] 현재 활성 보스 조회 (TBOT_POINT_NEW_BOSS)
+	     - ROOM_NAME 없음: 전역 공유 보스
+	     ===================================================== -->
+	<select id="selectHellBoss" resultType="HashMap">
+		SELECT SEQ
+		     , HP
+		     , HP_EXT
+		     , ORG_HP
+		     , REWARD
+		     , ATK_RATE
+		     , ATK_POWER
+		     , DEF_RATE
+		     , DEF_POWER
+		     , EVADE_RATE
+		     , CRIT_DEF_RATE
+		     , DEBUFF
+		     , DEBUFF1
+		     , DEBUFF2
+		     , HIDE_RULE
+		     , to_char(INSERT_DATE, 'yyyymmdd hh24miss') AS START_DATE
+		  FROM TBOT_POINT_NEW_BOSS
+		 WHERE END_YN = '0'
+		   AND ROWNUM = 1
+		 ORDER BY INSERT_DATE DESC
+	</select>
+
+	<!-- =====================================================
+	     [S3 헬보스] HP 업데이트 (낙관적 잠금)
+	     - PROC_DATE: S1의 MODIFY_DATE에 해당
+	     ===================================================== -->
+	<update id="updateHellBoss" parameterType="HashMap">
+		UPDATE TBOT_POINT_NEW_BOSS
+		   SET HP        = #{newHp, jdbcType=NUMERIC}
+		     , END_YN    = #{endYn, jdbcType=VARCHAR}
+		     , PROC_DATE = SYSDATE
+		     <if test="heavensPunishment == 1">
+		     , DEBUFF = DEBUFF + 10
+		     </if>
+		     <if test="useDebuff == 1">
+		     , DEBUFF = DEBUFF - 1
+		     </if>
+		     <if test="debuff1_start == 1">
+		     , DEBUFF1 = DEBUFF1 + 5
+		     </if>
+		     <if test="useDebuff1 == 1">
+		     , DEBUFF1 = DEBUFF1 - 1
+		     </if>
+		 WHERE SEQ    = #{seq, jdbcType=NUMERIC}
+		   AND HP     = #{hp, jdbcType=NUMERIC}
+		   AND END_YN = '0'
+	</update>
+
+	<!-- =====================================================
+	     [S3 헬보스] 공격 로그 INSERT (TBOT_POINT_NEW_BATTLE_LOG, S2 형식)
+	     - NIGHTMARE_YN='2', TARGET_MON_LV=SEQ 로 보스 식별
+	     ===================================================== -->
+	<insert id="insertHellBattleLog" parameterType="HashMap">
+		INSERT INTO TBOT_POINT_NEW_BATTLE_LOG
+		    (USER_NAME
+		    ,ROOM_NAME
+		    ,LV
+		    ,TARGET_MON_LV
+		    ,GAIN_EXP
+		    ,ATK_DMG
+		    ,MON_DMG
+		    ,ATK_CRIT_YN
+		    ,MON_PATTEN
+		    ,KILL_YN
+		    ,NOW_YN
+		    ,DROP_YN
+		    ,DEATH_YN
+		    ,LUCKY_YN
+		    ,BUFF_YN
+		    ,JOB_SKILL_YN
+		    ,JOB
+		    ,NIGHTMARE_YN)
+		VALUES
+		    (#{userName, jdbcType=VARCHAR}
+		    ,#{roomName, jdbcType=VARCHAR}
+		    ,#{lv, jdbcType=NUMERIC}
+		    ,#{seq, jdbcType=NUMERIC}
+		    ,0
+		    ,#{atkDmg, jdbcType=NUMERIC}
+		    ,#{monDmg, jdbcType=NUMERIC}
+		    ,#{atkCritYn, jdbcType=VARCHAR}
+		    ,'0'
+		    ,#{killYn, jdbcType=VARCHAR}
+		    ,'0'
+		    ,'0'
+		    ,'0'
+		    ,'0'
+		    ,'0'
+		    ,'0'
+		    ,#{job, jdbcType=VARCHAR}
+		    ,'2')
+	</insert>
+
+	<!-- =====================================================
+	     [S3 헬보스] 기여도 TOP 조회 (TBOT_POINT_NEW_BATTLE_LOG 기반)
+	     - NIGHTMARE_YN='2' + TARGET_MON_LV=SEQ 로 해당 보스 필터
 	     ===================================================== -->
 	<select id="selectHellTop3Contributors" parameterType="HashMap" resultType="HashMap">
 		SELECT sum(cnt) over() as tot_cnt, A.*
 		  FROM (
 		    SELECT user_name
-		         , count(user_name) as cnt
-		         , SUM(score)       AS score
-		      FROM TBOT_BOSS_HIT_LOG
-		     WHERE room_name = #{roomName, jdbcType=VARCHAR}
-		       AND seq       = #{seq, jdbcType=NUMERIC}
-		       AND score     > 0
+		         , count(user_name)  as cnt
+		         , SUM(atk_dmg)      AS score
+		      FROM TBOT_POINT_NEW_BATTLE_LOG
+		     WHERE nightmare_yn  = '2'
+		       AND target_mon_lv = #{seq, jdbcType=NUMERIC}
+		       AND atk_dmg       > 0
 		     GROUP BY user_name
 		     ORDER BY count(user_name) DESC
 		  ) A
 		 WHERE ROWNUM &lt;= 20
+	</select>
+
+	<!-- =====================================================
+	     [S3 헬보스] 마지막 처치된 보스 조회 (리워드 표시용)
+	     ===================================================== -->
+	<select id="selectLastKilledHellBoss" resultType="HashMap">
+		SELECT SEQ
+		     , ORG_HP
+		     , to_char(INSERT_DATE, 'yyyymmdd hh24miss') AS START_DATE
+		     , to_char(PROC_DATE,   'yyyymmdd hh24miss') AS END_DATE
+		  FROM TBOT_POINT_NEW_BOSS
+		 WHERE END_YN = '1'
+		   AND ROWNUM = 1
+		 ORDER BY PROC_DATE DESC
+	</select>
+
+	<!-- =====================================================
+	     [S3 헬보스] 마지막 보상 수령자 조회 (TBOT_POINT_NEW_INVENTORY)
+	     ===================================================== -->
+	<select id="selectLastHellRewardRecipient" resultType="HashMap">
+		SELECT USER_NAME
+		     , ITEM_ID
+		     , to_char(INSERT_DATE, 'mm/dd hh24:mi') AS REWARD_DATE
+		  FROM TBOT_POINT_NEW_INVENTORY
+		 WHERE GAIN_TYPE          = 'BOSS_HELL'
+		   AND NVL(DEL_YN, '0')   = '0'
+		   AND ROWNUM              = 1
+		 ORDER BY INSERT_DATE DESC
 	</select>
 
 </mapper>
