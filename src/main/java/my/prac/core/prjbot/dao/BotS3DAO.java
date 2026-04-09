@@ -14,6 +14,9 @@ public interface BotS3DAO {
 	/** [헬보스] HP 업데이트 (낙관적 잠금) */
 	int updateHellBoss(HashMap<String, Object> map);
 
+	/** [헬보스] 보스 재생성 INSERT (처치 후 자동 부활) */
+	int insertHellBoss(HashMap<String, Object> map);
+
 	/** [헬보스] 공격 로그 INSERT (TBOT_POINT_NEW_BATTLE_LOG, TARGET_MON_LV=999) */
 	int insertHellBattleLog(HashMap<String, Object> map);
 
