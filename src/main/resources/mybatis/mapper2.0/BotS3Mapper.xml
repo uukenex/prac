@@ -8,9 +8,10 @@
 	     ===================================================== -->
 	<select id="selectHellBoss" resultType="HashMap">
 		SELECT SEQ
-		     , HP
-		     , HP_EXT
-		     , ORG_HP
+		     , CUR_HP
+		     , CUR_HP_EXT
+		     , MAX_HP
+		     , MAX_HP_EXT
 		     , REWARD
 		     , ATK_RATE
 		     , ATK_POWER
@@ -35,7 +36,7 @@
 	     ===================================================== -->
 	<update id="updateHellBoss" parameterType="HashMap">
 		UPDATE TBOT_POINT_NEW_BOSS
-		   SET HP        = #{newHp, jdbcType=NUMERIC}
+		   SET CUR_HP   = #{newHp, jdbcType=NUMERIC}
 		     , END_YN    = #{endYn, jdbcType=VARCHAR}
 		     , PROC_DATE = SYSDATE
 		     <if test="heavensPunishment == 1">
@@ -51,9 +52,50 @@
 		     , DEBUFF1 = DEBUFF1 - 1
 		     </if>
 		 WHERE SEQ    = #{seq, jdbcType=NUMERIC}
-		   AND HP     = #{hp, jdbcType=NUMERIC}
+		   AND CUR_HP  = #{hp, jdbcType=NUMERIC}
 		   AND END_YN = '0'
 	</update>
+
+	<!-- =====================================================
+	     [S3 헬보스] 보스 재생성 INSERT (처치 후 자동 부활)
+	     - 능력치는 컨트롤러에서 랜덤 산정 후 전달
+	     ===================================================== -->
+	<insert id="insertHellBoss" parameterType="HashMap">
+		INSERT INTO TBOT_POINT_NEW_BOSS
+		    (INSERT_DATE
+		    ,END_YN
+		    ,ATK_RATE
+		    ,ATK_POWER
+		    ,DEF_RATE
+		    ,DEF_POWER
+		    ,EVADE_RATE
+		    ,CRIT_DEF_RATE
+		    ,DEBUFF
+		    ,DEBUFF1
+		    ,DEBUFF2
+		    ,MAX_HP
+		    ,MAX_HP_EXT
+		    ,CUR_HP
+		    ,CUR_HP_EXT
+		    ,HIDE_RULE)
+		VALUES
+		    (SYSDATE
+		    ,'0'
+		    ,#{atkRate,     jdbcType=NUMERIC}
+		    ,#{atkPower,    jdbcType=NUMERIC}
+		    ,#{defRate,     jdbcType=NUMERIC}
+		    ,#{defPower,    jdbcType=NUMERIC}
+		    ,#{evadeRate,   jdbcType=NUMERIC}
+		    ,#{critDefRate, jdbcType=NUMERIC}
+		    ,0
+		    ,0
+		    ,0
+		    ,#{maxHp,       jdbcType=NUMERIC}
+		    ,#{maxHpExt,    jdbcType=VARCHAR}
+		    ,#{maxHp,       jdbcType=NUMERIC}
+		    ,#{maxHpExt,    jdbcType=VARCHAR}
+		    ,'0')
+	</insert>
 
 	<!-- =====================================================
 	     [S3 헬보스] 공격 로그 INSERT (TBOT_POINT_NEW_BATTLE_LOG, S2 형식)
@@ -152,7 +194,8 @@
 	     ===================================================== -->
 	<select id="selectLastKilledHellBoss" resultType="HashMap">
 		SELECT SEQ
-		     , ORG_HP
+		     , MAX_HP
+		     , MAX_HP_EXT
 		     , to_char(INSERT_DATE, 'yyyymmdd hh24miss') AS START_DATE
 		     , to_char(PROC_DATE,   'yyyymmdd hh24miss') AS END_DATE
 		  FROM TBOT_POINT_NEW_BOSS
