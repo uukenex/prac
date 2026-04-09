@@ -35,15 +35,20 @@ public class BotS3ServiceImpl implements BotS3Service {
 	}
 
 	@Override
+	public List<HashMap<String, Object>> selectHellEligibleContributors(HashMap<String, Object> map) {
+		return botS3DAO.selectHellEligibleContributors(map);
+	}
+
+	@Override
 	public String getLastKillRewardMsg() {
 		try {
 			HashMap<String, Object> lastBoss = botS3DAO.selectLastKilledHellBoss();
 			if (lastBoss == null) return "";
 
-			int seq = Integer.parseInt(lastBoss.get("SEQ").toString());
-
+			String startDate = lastBoss.get("START_DATE").toString();
 			HashMap<String, Object> q = new HashMap<>();
-			q.put("seq", seq);
+			q.put("bossStartDate", startDate);
+
 			List<HashMap<String, Object>> contributors = botS3DAO.selectHellTop3Contributors(q);
 			HashMap<String, Object> rewardRow = botS3DAO.selectLastHellRewardRecipient();
 

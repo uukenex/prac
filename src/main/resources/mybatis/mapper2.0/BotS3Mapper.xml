@@ -57,7 +57,7 @@
 
 	<!-- =====================================================
 	     [S3 헬보스] 공격 로그 INSERT (TBOT_POINT_NEW_BATTLE_LOG, S2 형식)
-	     - NIGHTMARE_YN='2', TARGET_MON_LV=SEQ 로 보스 식별
+	     - NIGHTMARE_YN='2', TARGET_MON_LV=999 고정 (헬보스 식별)
 	     ===================================================== -->
 	<insert id="insertHellBattleLog" parameterType="HashMap">
 		INSERT INTO TBOT_POINT_NEW_BATTLE_LOG
@@ -83,7 +83,7 @@
 		    (#{userName, jdbcType=VARCHAR}
 		    ,#{roomName, jdbcType=VARCHAR}
 		    ,#{lv, jdbcType=NUMERIC}
-		    ,#{seq, jdbcType=NUMERIC}
+		    ,999
 		    ,0
 		    ,#{atkDmg, jdbcType=NUMERIC}
 		    ,#{monDmg, jdbcType=NUMERIC}
@@ -101,8 +101,7 @@
 	</insert>
 
 	<!-- =====================================================
-	     [S3 헬보스] 기여도 TOP 조회 (TBOT_POINT_NEW_BATTLE_LOG 기반)
-	     - NIGHTMARE_YN='2' + TARGET_MON_LV=SEQ 로 해당 보스 필터
+	     [S3 헬보스] 전체 기여도 조회 (표시용)
 	     ===================================================== -->
 	<select id="selectHellTop3Contributors" parameterType="HashMap" resultType="HashMap">
 		SELECT sum(cnt) over() as tot_cnt, A.*
@@ -112,8 +111,36 @@
 		         , SUM(atk_dmg)      AS score
 		      FROM TBOT_POINT_NEW_BATTLE_LOG
 		     WHERE nightmare_yn  = '2'
-		       AND target_mon_lv = #{seq, jdbcType=NUMERIC}
+		       AND target_mon_lv = 999
 		       AND atk_dmg       > 0
+		       AND insert_date   >= to_date(#{bossStartDate}, 'yyyymmdd hh24miss')
+		     GROUP BY user_name
+		     ORDER BY count(user_name) DESC
+		  ) A
+		 WHERE ROWNUM &lt;= 20
+	</select>
+
+	<!-- =====================================================
+	     [S3 헬보스] 보상 대상 기여도 조회 (7000번대 미소지자만)
+	     ===================================================== -->
+	<select id="selectHellEligibleContributors" parameterType="HashMap" resultType="HashMap">
+		SELECT sum(cnt) over() as tot_cnt, A.*
+		  FROM (
+		    SELECT user_name
+		         , count(user_name)  as cnt
+		         , SUM(atk_dmg)      AS score
+		      FROM TBOT_POINT_NEW_BATTLE_LOG b
+		     WHERE nightmare_yn  = '2'
+		       AND target_mon_lv = 999
+		       AND atk_dmg       > 0
+		       AND insert_date   >= to_date(#{bossStartDate}, 'yyyymmdd hh24miss')
+		       AND NOT EXISTS (
+		           SELECT 1
+		             FROM TBOT_POINT_NEW_INVENTORY i
+		            WHERE i.user_name        = b.user_name
+		              AND i.item_id          BETWEEN 7000 AND 7999
+		              AND NVL(i.del_yn, '0') = '0'
+		       )
 		     GROUP BY user_name
 		     ORDER BY count(user_name) DESC
 		  ) A
