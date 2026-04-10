@@ -28,21 +28,19 @@
     .loading { text-align: center; padding: 60px; color: #ccc; font-size: 15px; }
     .empty   { text-align: center; padding: 60px; color: #ccc; }
 
-    /* 총 업적 배지 */
     .achv-total { font-size: 42px; font-weight: 900; color: #c9a96e; text-align: center;
                   padding: 18px; background: #fff; border-radius: 14px;
                   box-shadow: 0 2px 8px rgba(0,0,0,.06); border: 1.5px solid #e8ddd0;
                   margin-bottom: 12px; }
     .achv-total span { font-size: 14px; color: #aaa; font-weight: 400; display: block; margin-top: 4px; }
 
-    /* 카드 */
     .card { background: #fff; border-radius: 14px; padding: 16px; margin-bottom: 12px;
             box-shadow: 0 2px 8px rgba(0,0,0,.06); border: 1.5px solid #e8ddd0; }
-    .card-title { font-size: 13px; font-weight: 700; color: #a07858; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+    .card-title { font-size: 13px; font-weight: 700; color: #a07858; margin-bottom: 12px;
+                  display: flex; align-items: center; gap: 6px; }
     .card-title .achv-cnt { font-size: 11px; font-weight: 600; background: #f4ebe0; color: #a07858;
                              border-radius: 10px; padding: 1px 8px; }
 
-    /* 업적 그리드 */
     .achv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
     .achv-item { background: #f8f3ec; border: 1.5px solid #e8ddd0; border-radius: 10px;
                  padding: 10px 12px; display: flex; align-items: center; gap: 8px; }
@@ -53,20 +51,36 @@
     .achv-val  { font-size: 15px; font-weight: 700; color: #3d2b1f; }
     .achv-sub  { font-size: 11px; color: #a07858; }
 
-    /* 시즌/목록 카드 그리드 */
     .season-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
     .season-item { background: #fffbe8; border: 1.5px solid #e8c870; border-radius: 10px;
                    padding: 10px 12px; display: flex; align-items: center; gap: 8px; }
+    .season-item.clickable { cursor: pointer; }
+    .season-item.clickable:hover { background: #fff5d0; border-color: #d4a830; }
     .season-icon { font-size: 18px; flex-shrink: 0; }
     .season-info .s-name { font-size: 11px; color: #888; }
     .season-info .s-val  { font-size: 13px; font-weight: 700; color: #3d2b1f; }
 
-    /* 텍스트 목록 */
+    /* 팝업 모달 */
+    .modal-backdrop { position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                      background: rgba(0,0,0,.45); z-index: 1000;
+                      display: flex; align-items: center; justify-content: center; }
+    .modal-box { background: #fff; border-radius: 16px; padding: 24px; max-width: 420px; width: 90%;
+                 box-shadow: 0 8px 32px rgba(0,0,0,.18); max-height: 80vh; overflow-y: auto; }
+    .modal-title { font-size: 15px; font-weight: 800; color: #3d2b1f; margin-bottom: 14px; }
+    .modal-list  { list-style: none; }
+    .modal-list li { padding: 5px 0; font-size: 13px; color: #555; border-bottom: 1px solid #f4efe8; }
+    .modal-list li:last-child { border-bottom: none; }
+    .modal-close { margin-top: 16px; width: 100%; padding: 10px; background: #c9a96e; color: #fff;
+                   border: none; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; }
+    .modal-close:hover { background: #b8935a; }
+
     .raw-toggle { background: none; border: 1.5px solid #e8ddd0; border-radius: 8px; padding: 6px 14px;
                   font-size: 12px; color: #a07858; cursor: pointer; margin-bottom: 8px; }
     .raw-toggle:hover { background: #f8f3ec; }
     .raw-list { background: #f8f3ec; border-radius: 10px; padding: 12px; font-size: 11px; font-family: monospace;
                 color: #555; max-height: 320px; overflow-y: auto; line-height: 1.8; }
+    .raw-list .rl-label { color: #3d2b1f; font-weight: 600; }
+    .raw-list .rl-cmd   { color: #aaa; font-size: 10px; margin-left: 4px; }
   </style>
 </head>
 <body>
@@ -154,7 +168,7 @@
         <div class="season-item" v-for="m in data.monKillList" :key="m.monNo">
           <div class="season-icon">⚔</div>
           <div class="season-info">
-            <div class="s-name">몬스터 #{{ m.monNo }}</div>
+            <div class="s-name">#{{ m.monNo }} {{ m.monName }}</div>
             <div class="s-val">{{ fmt(m.maxKill) }}킬</div>
           </div>
         </div>
@@ -168,11 +182,11 @@
         <span class="achv-cnt">업적 {{ data.grouped.firstClear }}개</span>
       </div>
       <div class="season-grid">
-        <div class="season-item" v-for="monNo in data.firstClearList" :key="monNo">
+        <div class="season-item" v-for="item in data.firstClearList" :key="item.monNo">
           <div class="season-icon">🏅</div>
           <div class="season-info">
-            <div class="s-name">몬스터 #{{ monNo }}</div>
-            <div class="s-val">최초 토벌</div>
+            <div class="s-name">#{{ item.monNo }}</div>
+            <div class="s-val">{{ item.monName }}</div>
           </div>
         </div>
       </div>
@@ -185,11 +199,11 @@
         <span class="achv-cnt">업적 {{ data.grouped.broadcast }}개</span>
       </div>
       <div class="season-grid">
-        <div class="season-item" v-for="monNo in data.broadcastList" :key="monNo">
+        <div class="season-item" v-for="item in data.broadcastList" :key="item.monNo">
           <div class="season-icon">📡</div>
           <div class="season-info">
-            <div class="s-name">몬스터 #{{ monNo }}</div>
-            <div class="s-val">방송 처치</div>
+            <div class="s-name">#{{ item.monNo }}</div>
+            <div class="s-val">{{ item.monName }}</div>
           </div>
         </div>
       </div>
@@ -230,6 +244,7 @@
           <div class="achv-icon">🎒</div>
           <div class="achv-info">
             <div class="achv-name">가방 획득</div>
+            <div class="achv-val">{{ fmt(data.stats.bagTotal) }}개</div>
             <div class="achv-sub">업적 {{ data.grouped.bags }}개 달성</div>
           </div>
         </div>
@@ -360,14 +375,17 @@
       </div>
     </div>
 
-    <!-- ⑪ 몬스터 학살자 달성 기록 -->
+    <!-- ⑪ 몬스터 학살자 달성 기록 (카드 클릭 → 팝업) -->
     <div class="card" v-if="data.slayerSeasons && data.slayerSeasons.length > 0">
       <div class="card-title">
         🔪 몬스터 학살자 달성 기록
         <span class="achv-cnt">업적 {{ data.grouped.slayer }}개</span>
       </div>
       <div class="season-grid">
-        <div class="season-item" v-for="s in data.slayerSeasons" :key="s.season">
+        <div class="season-item clickable"
+             v-for="s in data.slayerSeasons"
+             :key="s.season"
+             @click="openSlayerPopup(s)">
           <div class="season-icon">🗡</div>
           <div class="season-info">
             <div class="s-name">{{ formatSeason(s.season) }} 시즌</div>
@@ -387,11 +405,28 @@
         {{ showRaw ? '▲ 접기' : '▼ 펼치기' }}
       </button>
       <div class="raw-list" v-if="showRaw">
-        <div v-for="cmd in data.allCmds" :key="cmd">{{ cmd }}</div>
+        <div v-for="entry in data.allCmds" :key="entry.cmd">
+          <span class="rl-label">{{ entry.label }}</span>
+          <span class="rl-cmd">({{ entry.cmd }})</span>
+        </div>
       </div>
     </div>
 
   </template>
+
+  <!-- 학살자 팝업 모달 -->
+  <div class="modal-backdrop" v-if="popup.show" @click.self="popup.show = false">
+    <div class="modal-box">
+      <div class="modal-title">🗡 {{ formatSeason(popup.season) }} 시즌 학살자</div>
+      <ul class="modal-list">
+        <li v-for="m in popup.mons" :key="m.monNo">
+          #{{ m.monNo }} {{ m.monName }}
+        </li>
+      </ul>
+      <button class="modal-close" @click="popup.show = false">닫기</button>
+    </div>
+  </div>
+
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
@@ -402,7 +437,8 @@ new Vue({
     inputUser: '',
     loading: false,
     data: null,
-    showRaw: false
+    showRaw: false,
+    popup: { show: false, season: '', mons: [] }
   },
   mounted: function() {
     var params = new URLSearchParams(window.location.search);
@@ -425,10 +461,12 @@ new Vue({
     fmt: function(n) { return (n || 0).toLocaleString('ko-KR'); },
     formatSeason: function(season) {
       if (!season) return '';
-      var y = season.substring(0, 4);
-      var m = season.substring(4, 6);
-      var d = season.substring(6, 8);
-      return y + '-' + m + '-' + d;
+      return season.substring(0,4) + '-' + season.substring(4,6) + '-' + season.substring(6,8);
+    },
+    openSlayerPopup: function(s) {
+      this.popup.season = s.season;
+      this.popup.mons   = s.mons || [];
+      this.popup.show   = true;
     }
   }
 });
