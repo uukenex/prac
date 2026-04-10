@@ -133,6 +133,10 @@ public class BossAttackS3Controller {
         // 보스 정보 조회 (전역, ROOM_NAME 없음)
         HashMap<String, Object> boss;
         long hp, maxHp;
+        // try 블록 밖에서 사용해야 하므로 미리 선언
+        double curHpNum = 0;
+        String curHpExt = "";
+        SP curHpSp = null;
         int seq;
         int bossAtkRate, bossAtkPower, bossDefRate, bossDefPower, bossEvadeRate, critDefRate;
         int debuff, debuff1;
@@ -146,12 +150,13 @@ public class BossAttackS3Controller {
                 }
                 return "현재 출현한 헬보스가 없습니다.";
             }
-            // HP: CUR_HP + CUR_HP_EXT 조합으로 raw 값 계산 (SP 단위 변환 활용)
-            long curHpNum = Long.parseLong(boss.get("CUR_HP").toString());
-            String curHpExt = boss.get("CUR_HP_EXT") != null ? boss.get("CUR_HP_EXT").toString() : "";
-            hp = SP.toBaseValue(SP.of(curHpNum, curHpExt));
+            // HP: CUR_HP(소수 가능) + CUR_HP_EXT 조합 → SP로 raw 계산
+            curHpNum = Double.parseDouble(boss.get("CUR_HP").toString());
+            curHpExt = boss.get("CUR_HP_EXT") != null ? boss.get("CUR_HP_EXT").toString() : "";
+            curHpSp  = SP.of(curHpNum, curHpExt);
+            hp       = SP.toBaseValue(curHpSp);
 
-            long maxHpNum = Long.parseLong(boss.get("MAX_HP").toString());
+            double maxHpNum = Double.parseDouble(boss.get("MAX_HP").toString());
             String maxHpExt = boss.get("MAX_HP_EXT") != null ? boss.get("MAX_HP_EXT").toString() : "";
             maxHp = SP.toBaseValue(SP.of(maxHpNum, maxHpExt));
 
@@ -256,9 +261,12 @@ public class BossAttackS3Controller {
             }
         }
 
-        // HP 차감
-        long newHp  = Math.max(0, hp - damage);
-        boolean isKill = (newHp <= 0);
+        // HP 차감: SP.subtract → 단위 자동 변환 (예: 3b - 16.8a = 2.99832b)
+        SP newHpSp = isEvade || damage <= 0
+                ? SP.of(curHpNum, curHpExt)
+                : SP.of(curHpNum, curHpExt).subtract(SP.fromSp(damage));
+        boolean isKill = SP.toBaseValue(newHpSp) <= 0;
+        long newHp = isKill ? 0 : SP.toBaseValue(newHpSp);
 
         // 보스 반격
         int bossAtkApplied = 0;
@@ -268,13 +276,14 @@ public class BossAttackS3Controller {
         }
 
         // DB 저장 (HP 업데이트 + 배틀 로그)
-        // hp  : 낙관적 잠금 WHERE 절용 → DB에서 읽은 원본 CUR_HP 값 그대로 전달
-        // newHp: SET 절용 → 현재 EXT 단위 기준으로 역변환 (EXT 없으면 raw 그대로)
-        long newHpDb = "b".equalsIgnoreCase(curHpExt) ? newHp / 100_000_000L
-                     : "a".equalsIgnoreCase(curHpExt) ? newHp / 10_000L
-                     : newHp;
-        map.put("hp",           curHpNum);
-        map.put("newHp",        newHpDb);
+        // hp    : 낙관적 잠금 WHERE 절용 → DB 원본값 그대로 (double)
+        // newHp : SP 변환 결과 소수값 (예: 2.99832)
+        // newHpExt: SP 변환 결과 단위 (예: "b"), 없으면 null
+        double newHpDbVal = isKill ? 0.0 : newHpSp.getValue();
+        String newHpDbExt = isKill || newHpSp.getUnit().isEmpty() ? null : newHpSp.getUnit();
+        map.put("hp",       curHpNum);
+        map.put("newHp",    newHpDbVal);
+        map.put("newHpExt", newHpDbExt);
         map.put("seq",          seq);
         map.put("endYn",        isKill ? "1" : "0");
         map.put("lv",           user.lv);
@@ -465,11 +474,11 @@ public class BossAttackS3Controller {
             return "현재 출현한 헬보스가 없습니다.";
         }
 
-        long curHpNum = Long.parseLong(boss.get("CUR_HP").toString());
+        double curHpNum = Double.parseDouble(boss.get("CUR_HP").toString());
         String curHpExt = boss.get("CUR_HP_EXT") != null ? boss.get("CUR_HP_EXT").toString() : "";
         long hp = SP.toBaseValue(SP.of(curHpNum, curHpExt));
 
-        long maxHpNum = Long.parseLong(boss.get("MAX_HP").toString());
+        double maxHpNum = Double.parseDouble(boss.get("MAX_HP").toString());
         String maxHpExt = boss.get("MAX_HP_EXT") != null ? boss.get("MAX_HP_EXT").toString() : "";
         long maxHp = SP.toBaseValue(SP.of(maxHpNum, maxHpExt));
 

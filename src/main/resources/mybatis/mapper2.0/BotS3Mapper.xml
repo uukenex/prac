@@ -36,9 +36,10 @@
 	     ===================================================== -->
 	<update id="updateHellBoss" parameterType="HashMap">
 		UPDATE TBOT_POINT_NEW_BOSS
-		   SET CUR_HP   = #{newHp, jdbcType=NUMERIC}
-		     , END_YN    = #{endYn, jdbcType=VARCHAR}
-		     , PROC_DATE = SYSDATE
+		   SET CUR_HP     = #{newHp,    jdbcType=NUMERIC}
+		     , CUR_HP_EXT = #{newHpExt, jdbcType=VARCHAR}
+		     , END_YN     = #{endYn,    jdbcType=VARCHAR}
+		     , PROC_DATE  = SYSDATE
 		     <if test="heavensPunishment == 1">
 		     , DEBUFF = DEBUFF + 10
 		     </if>
