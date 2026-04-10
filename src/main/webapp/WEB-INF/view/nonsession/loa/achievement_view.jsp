@@ -53,26 +53,25 @@
 
     .season-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
     .season-item { background: #fffbe8; border: 1.5px solid #e8c870; border-radius: 10px;
-                   padding: 10px 12px; display: flex; align-items: center; gap: 8px; }
-    .season-item.clickable { cursor: pointer; }
-    .season-item.clickable:hover { background: #fff5d0; border-color: #d4a830; }
-    .season-icon { font-size: 18px; flex-shrink: 0; }
+                   padding: 10px 12px; display: flex; align-items: flex-start; gap: 8px; }
+    .season-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
     .season-info .s-name { font-size: 11px; color: #888; }
     .season-info .s-val  { font-size: 13px; font-weight: 700; color: #3d2b1f; }
+    .season-info .s-sub  { font-size: 10px; color: #b89a60; margin-top: 2px; }
 
-    /* 팝업 모달 */
-    .modal-backdrop { position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-                      background: rgba(0,0,0,.45); z-index: 1000;
-                      display: flex; align-items: center; justify-content: center; }
-    .modal-box { background: #fff; border-radius: 16px; padding: 24px; max-width: 420px; width: 90%;
-                 box-shadow: 0 8px 32px rgba(0,0,0,.18); max-height: 80vh; overflow-y: auto; }
-    .modal-title { font-size: 15px; font-weight: 800; color: #3d2b1f; margin-bottom: 14px; }
-    .modal-list  { list-style: none; }
-    .modal-list li { padding: 5px 0; font-size: 13px; color: #555; border-bottom: 1px solid #f4efe8; }
-    .modal-list li:last-child { border-bottom: none; }
-    .modal-close { margin-top: 16px; width: 100%; padding: 10px; background: #c9a96e; color: #fff;
-                   border: none; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; }
-    .modal-close:hover { background: #b8935a; }
+    /* 학살자 인라인 몬스터 목록 */
+    .s-mons { margin-top: 5px; display: flex; flex-direction: column; gap: 1px; }
+    .s-mon-item { font-size: 10px; color: #666; padding: 1px 0; border-top: 1px solid #f0e8d0; }
+
+    /* 몬스터별 킬 상세 칩 */
+    .s-kill-chips { margin-top: 4px; display: flex; flex-wrap: wrap; gap: 3px; }
+    .kc { font-size: 10px; padding: 1px 5px; border-radius: 6px; font-weight: 600; }
+    .kc-n  { background: #f0f4f8; color: #4a5568; }
+    .kc-l  { background: #fffde7; color: #b7791f; }
+    .kc-d  { background: #f9f0ff; color: #6b46c1; }
+    .kc-yy { background: #e8f8f0; color: #276749; }
+    .kc-nm { background: #f5eeff; color: #7d3c98; }
+    .kc-h  { background: #fff0f0; color: #a93226; }
 
     .raw-toggle { background: none; border: 1.5px solid #e8ddd0; border-radius: 8px; padding: 6px 14px;
                   font-size: 12px; color: #a07858; cursor: pointer; margin-bottom: 8px; }
@@ -112,56 +111,72 @@
     <div class="card">
       <div class="card-title">
         ⚔ 전투 통산 업적
-        <span class="achv-cnt">업적 {{ data.grouped.attacks + data.grouped.totalKills + data.grouped.nmKills + data.grouped.hellKills + data.grouped.deaths }}개</span>
+        <span class="achv-cnt">업적 {{ data.grouped.attacks + data.grouped.totalKills + data.grouped.nmKills + data.grouped.hellKills + data.grouped.deaths + data.grouped.hellAtk + data.grouped.hellClear }}개</span>
       </div>
       <div class="achv-grid">
-        <div class="achv-item" :class="data.grouped.maxAttack > 0 ? 'done' : ''">
+        <div class="achv-item" :class="data.stats.realAttacks > 0 ? 'done' : ''">
           <div class="achv-icon">🗡</div>
           <div class="achv-info">
             <div class="achv-name">통산 공격</div>
-            <div class="achv-val">{{ fmt(data.stats.attacks) }}회</div>
+            <div class="achv-val">{{ fmt(data.stats.realAttacks) }}회</div>
             <div class="achv-sub">업적 {{ data.grouped.attacks }}개 달성</div>
           </div>
         </div>
-        <div class="achv-item" :class="data.grouped.maxTotalKill > 0 ? 'done' : ''">
+        <div class="achv-item" :class="data.stats.realKills > 0 ? 'done' : ''">
           <div class="achv-icon">💀</div>
           <div class="achv-info">
             <div class="achv-name">통산 킬</div>
-            <div class="achv-val">{{ fmt(data.stats.kills) }}마리</div>
+            <div class="achv-val">{{ fmt(data.stats.realKills) }}마리</div>
             <div class="achv-sub">업적 {{ data.grouped.totalKills }}개 달성</div>
           </div>
         </div>
-        <div class="achv-item" :class="data.grouped.maxNmKill > 0 ? 'done' : ''">
+        <div class="achv-item" :class="data.stats.realNmKills > 0 ? 'done' : ''">
           <div class="achv-icon">🌙</div>
           <div class="achv-info">
             <div class="achv-name">나이트메어 킬</div>
-            <div class="achv-val">{{ fmt(data.grouped.maxNmKill) }}킬</div>
+            <div class="achv-val">{{ fmt(data.stats.realNmKills) }}킬</div>
             <div class="achv-sub">업적 {{ data.grouped.nmKills }}개 달성</div>
           </div>
         </div>
-        <div class="achv-item" :class="data.grouped.maxHellKill > 0 ? 'done' : ''">
+        <div class="achv-item" :class="data.stats.realHellKills > 0 ? 'done' : ''">
           <div class="achv-icon">🔥</div>
           <div class="achv-info">
-            <div class="achv-name">헬 킬</div>
-            <div class="achv-val">{{ fmt(data.grouped.maxHellKill) }}킬</div>
+            <div class="achv-name">헬 몬스터 킬</div>
+            <div class="achv-val">{{ fmt(data.stats.realHellKills) }}킬</div>
             <div class="achv-sub">업적 {{ data.grouped.hellKills }}개 달성</div>
           </div>
         </div>
-        <div class="achv-item" :class="data.grouped.maxDeath > 0 ? 'done' : ''">
+        <div class="achv-item" :class="data.stats.realDeaths > 0 ? 'done' : ''">
           <div class="achv-icon">💔</div>
           <div class="achv-info">
             <div class="achv-name">죽음 극복</div>
-            <div class="achv-val">{{ fmt(data.grouped.maxDeath) }}회</div>
+            <div class="achv-val">{{ fmt(data.stats.realDeaths) }}회</div>
             <div class="achv-sub">업적 {{ data.grouped.deaths }}개 달성</div>
+          </div>
+        </div>
+        <div class="achv-item" :class="data.hellBoss.atkCount > 0 ? 'done' : ''">
+          <div class="achv-icon">👹</div>
+          <div class="achv-info">
+            <div class="achv-name">헬보스 공격</div>
+            <div class="achv-val">{{ fmt(data.hellBoss.atkCount) }}회</div>
+            <div class="achv-sub">업적 {{ data.grouped.hellAtk }}개 달성</div>
+          </div>
+        </div>
+        <div class="achv-item" :class="data.hellBoss.clearCount > 0 ? 'done' : ''">
+          <div class="achv-icon">🏆</div>
+          <div class="achv-info">
+            <div class="achv-name">헬보스 처치 참여</div>
+            <div class="achv-val">{{ fmt(data.hellBoss.clearCount) }}회</div>
+            <div class="achv-sub">업적 {{ data.grouped.hellClear }}개 달성</div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- ② 몬스터별 킬 업적 -->
+    <!-- ② 몬스터별 킬 -->
     <div class="card" v-if="data.monKillList && data.monKillList.length > 0">
       <div class="card-title">
-        👾 몬스터별 킬 업적
+        👾 몬스터별 킬
         <span class="achv-cnt">업적 {{ data.grouped.monKills }}개</span>
       </div>
       <div class="season-grid">
@@ -169,7 +184,16 @@
           <div class="season-icon">⚔</div>
           <div class="season-info">
             <div class="s-name">#{{ m.monNo }} {{ m.monName }}</div>
-            <div class="s-val">{{ fmt(m.maxKill) }}킬</div>
+            <div class="s-val">{{ fmt(m.killTotal) }}킬</div>
+            <div class="s-kill-chips">
+              <span class="kc kc-n" v-if="m.nm0Normal > 0">{{ fmt(m.nm0Normal) }}</span>
+              <span class="kc kc-l" v-if="m.nm0Light  > 0">빛 {{ fmt(m.nm0Light) }}</span>
+              <span class="kc kc-d" v-if="m.nm0Dark   > 0">어둠 {{ fmt(m.nm0Dark) }}</span>
+              <span class="kc kc-yy" v-if="m.nm0Yinyang > 0">음양 {{ fmt(m.nm0Yinyang) }}</span>
+              <span class="kc kc-nm" v-if="m.nm1Total  > 0">나메 {{ fmt(m.nm1Total) }}</span>
+              <span class="kc kc-h"  v-if="m.nm2Total  > 0">헬 {{ fmt(m.nm2Total) }}</span>
+            </div>
+            <div class="s-sub" v-if="m.maxKill > 0">업적 {{ fmt(m.maxKill) }}킬 달성</div>
           </div>
         </div>
       </div>
@@ -282,41 +306,7 @@
       </div>
     </div>
 
-    <!-- ⑦ 헬보스 업적 -->
-    <div class="card">
-      <div class="card-title">
-        👹 헬보스 업적
-        <span class="achv-cnt">업적 {{ data.grouped.hellAtk + data.grouped.hellClear + data.grouped.hellKills }}개</span>
-      </div>
-      <div class="achv-grid">
-        <div class="achv-item" :class="data.hellBoss.atkCount > 0 ? 'done' : ''">
-          <div class="achv-icon">⚔</div>
-          <div class="achv-info">
-            <div class="achv-name">헬보스 공격</div>
-            <div class="achv-val">{{ fmt(data.hellBoss.atkCount) }}회</div>
-            <div class="achv-sub">업적 {{ data.grouped.hellAtk }}개 달성</div>
-          </div>
-        </div>
-        <div class="achv-item" :class="data.hellBoss.clearCount > 0 ? 'done' : ''">
-          <div class="achv-icon">🏆</div>
-          <div class="achv-info">
-            <div class="achv-name">헬보스 처치 참여</div>
-            <div class="achv-val">{{ fmt(data.hellBoss.clearCount) }}회</div>
-            <div class="achv-sub">업적 {{ data.grouped.hellClear }}개 달성</div>
-          </div>
-        </div>
-        <div class="achv-item" :class="data.grouped.maxHellKill > 0 ? 'done' : ''">
-          <div class="achv-icon">🔥</div>
-          <div class="achv-info">
-            <div class="achv-name">헬 몬스터 킬</div>
-            <div class="achv-val">{{ fmt(data.grouped.maxHellKill) }}킬</div>
-            <div class="achv-sub">업적 {{ data.grouped.hellKills }}개 달성</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ⑧ 룰렛 업적 -->
+    <!-- ⑦ 룰렛 업적 -->
     <div class="card">
       <div class="card-title">
         🎲 룰렛 업적
@@ -375,21 +365,23 @@
       </div>
     </div>
 
-    <!-- ⑪ 몬스터 학살자 달성 기록 (카드 클릭 → 팝업) -->
+    <!-- ⑪ 몬스터 학살자 달성 기록 -->
     <div class="card" v-if="data.slayerSeasons && data.slayerSeasons.length > 0">
       <div class="card-title">
         🔪 몬스터 학살자 달성 기록
         <span class="achv-cnt">업적 {{ data.grouped.slayer }}개</span>
       </div>
       <div class="season-grid">
-        <div class="season-item clickable"
-             v-for="s in data.slayerSeasons"
-             :key="s.season"
-             @click="openSlayerPopup(s)">
+        <div class="season-item" v-for="s in data.slayerSeasons" :key="s.season">
           <div class="season-icon">🗡</div>
           <div class="season-info">
             <div class="s-name">{{ formatSeason(s.season) }} 시즌</div>
             <div class="s-val">{{ s.monCount }}종 달성</div>
+            <div class="s-mons" v-if="s.mons && s.mons.length">
+              <div class="s-mon-item" v-for="m in s.mons" :key="m.monNo">
+                #{{ m.monNo }} {{ m.monName }}
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -414,18 +406,6 @@
 
   </template>
 
-  <!-- 학살자 팝업 모달 -->
-  <div class="modal-backdrop" v-if="popup.show" @click.self="popup.show = false">
-    <div class="modal-box">
-      <div class="modal-title">🗡 {{ formatSeason(popup.season) }} 시즌 학살자</div>
-      <ul class="modal-list">
-        <li v-for="m in popup.mons" :key="m.monNo">
-          #{{ m.monNo }} {{ m.monName }}
-        </li>
-      </ul>
-      <button class="modal-close" @click="popup.show = false">닫기</button>
-    </div>
-  </div>
 
 </div>
 
@@ -437,8 +417,7 @@ new Vue({
     inputUser: '',
     loading: false,
     data: null,
-    showRaw: false,
-    popup: { show: false, season: '', mons: [] }
+    showRaw: false
   },
   mounted: function() {
     var params = new URLSearchParams(window.location.search);
@@ -462,11 +441,6 @@ new Vue({
     formatSeason: function(season) {
       if (!season) return '';
       return season.substring(0,4) + '-' + season.substring(4,6) + '-' + season.substring(6,8);
-    },
-    openSlayerPopup: function(s) {
-      this.popup.season = s.season;
-      this.popup.mons   = s.mons || [];
-      this.popup.show   = true;
     }
   }
 });

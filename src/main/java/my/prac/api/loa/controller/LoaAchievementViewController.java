@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
+import my.prac.core.game.dto.AttackDeathStat;
 import my.prac.core.game.dto.Monster;
 import my.prac.core.prjbot.service.BotNewService;
 import my.prac.core.util.MiniGameUtil;
@@ -113,13 +114,60 @@ public class LoaAchievementViewController {
         if (specialList    == null) specialList    = new ArrayList<>();
         if (allCmds        == null) allCmds        = new ArrayList<>();
 
-        // 9. 결과 조합
+        // 9. 실제 전투 통계 (BATTLE_LOG 기반)
+        AttackDeathStat ads = null;
+        try { ads = botNewService.selectAttackDeathStats(userName, ""); } catch (Exception ignore) {}
+        int realAttacks = ads != null ? ads.totalAttacks : 0;
+        int realDeaths  = ads != null ? ads.totalDeaths  : 0;
+
+        // 10. 몬스터별 실제 킬 (일반/빛/어둠 상세) - 기존 selectMonsterKillsForView
+        List<HashMap<String, Object>> killViewRows = new ArrayList<>();
+        try {
+            List<HashMap<String, Object>> tmp = botNewService.selectMonsterKillsForView(userName);
+            if (tmp != null) killViewRows = tmp;
+        } catch (Exception ignore) {}
+
+        // achievement lookup (monNo → maxKill threshold)
+        Map<Integer, Integer> achvKillMap = new HashMap<>();
+        for (HashMap<String, Object> item : monKillList) {
+            achvKillMap.put(toInt(item.get("monNo")), toInt(item.get("maxKill")));
+        }
+
+        // monKillList를 실제 킬 데이터로 재구성 (업적 없는 몬스터도 포함)
+        int realKills = 0, realNmKills = 0, realHellKills = 0;
+        monKillList = new ArrayList<>();
+        for (HashMap<String, Object> row : killViewRows) {
+            int monNo     = toInt(row.get("MON_NO"));
+            int killTotal = toInt(row.get("KILL_TOTAL"));
+            int nm1Total  = toInt(row.get("NM1_TOTAL"));
+            int nm2Total  = toInt(row.get("NM2_TOTAL"));
+            realKills     += killTotal;
+            realNmKills   += nm1Total;
+            realHellKills += nm2Total;
+            HashMap<String, Object> item = new HashMap<>();
+            item.put("monNo",      monNo);
+            item.put("monName",    getMonName(monNo, monMap));
+            item.put("killTotal",  killTotal);
+            item.put("nm0Normal",  toInt(row.get("NM0_NORMAL")));
+            item.put("nm0Light",   toInt(row.get("NM0_LIGHT")));
+            item.put("nm0Dark",    toInt(row.get("NM0_DARK")));
+            item.put("nm0Yinyang", toInt(row.get("NM0_YINYANG")));
+            item.put("nm1Total",   nm1Total);
+            item.put("nm2Total",   nm2Total);
+            item.put("maxKill",    achvKillMap.getOrDefault(monNo, 0));
+            monKillList.add(item);
+        }
+
+        // 11. 결과 조합
         result.put("userName",       userName);
         result.put("totalAchv",      achvList.size());
         result.put("grouped",        grouped);
-        result.put("stats",          mapOf("kills", totalKills, "attacks", totalAttacks,
-                                           "drops", totalDrops, "bagTotal", bagTotal,
-                                           "lightQty", lightQty, "darkQty", darkQty, "grayQty", grayQty));
+        result.put("stats",          mapOf(
+                "kills",        totalKills,   "attacks",       totalAttacks,
+                "drops",        totalDrops,   "bagTotal",      bagTotal,
+                "lightQty",     lightQty,     "darkQty",       darkQty,      "grayQty",       grayQty,
+                "realAttacks",  realAttacks,  "realDeaths",    realDeaths,
+                "realKills",    realKills,    "realNmKills",   realNmKills,  "realHellKills", realHellKills));
         result.put("hellBoss",       mapOf("atkCount", hellAtkCount, "clearCount", hellClearCount));
         result.put("roulette",       mapOf("atkSuccessCnt", atkSuccessCnt, "criSuccessCnt", criSuccessCnt));
         result.put("monKillList",    monKillList);
