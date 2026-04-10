@@ -13,10 +13,10 @@ import javax.annotation.Resource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 
-import my.prac.core.game.dto.HellBossHp;
 import my.prac.core.game.dto.User;
 import my.prac.core.game.dto.UserBattleContext;
 import my.prac.core.prjbot.service.BotNewService;
+import my.prac.core.util.SP;
 import my.prac.core.prjbot.service.BotS3Service;
 import my.prac.core.prjbot.service.BotService;
 
@@ -146,14 +146,14 @@ public class BossAttackS3Controller {
                 }
                 return "현재 출현한 헬보스가 없습니다.";
             }
-            // HP: CUR_HP + CUR_HP_EXT 조합으로 raw 값 계산
+            // HP: CUR_HP + CUR_HP_EXT 조합으로 raw 값 계산 (SP 단위 변환 활용)
             long curHpNum = Long.parseLong(boss.get("CUR_HP").toString());
-            String curHpExt = boss.get("CUR_HP_EXT") != null ? boss.get("CUR_HP_EXT").toString() : null;
-            hp = new HellBossHp(curHpNum, curHpExt).getRaw();
+            String curHpExt = boss.get("CUR_HP_EXT") != null ? boss.get("CUR_HP_EXT").toString() : "";
+            hp = SP.toBaseValue(SP.of(curHpNum, curHpExt));
 
             long maxHpNum = Long.parseLong(boss.get("MAX_HP").toString());
-            String maxHpExt = boss.get("MAX_HP_EXT") != null ? boss.get("MAX_HP_EXT").toString() : null;
-            maxHp = new HellBossHp(maxHpNum, maxHpExt).getRaw();
+            String maxHpExt = boss.get("MAX_HP_EXT") != null ? boss.get("MAX_HP_EXT").toString() : "";
+            maxHp = SP.toBaseValue(SP.of(maxHpNum, maxHpExt));
 
             seq           = Integer.parseInt(boss.get("SEQ").toString());
             bossAtkRate   = boss.get("ATK_RATE")     != null ? Integer.parseInt(boss.get("ATK_RATE").toString())     : 20;
@@ -268,9 +268,13 @@ public class BossAttackS3Controller {
         }
 
         // DB 저장 (HP 업데이트 + 배틀 로그)
-        // 낙관적 잠금용: 현재 CUR_HP(raw→DB num) 전달
-        map.put("hp",           HellBossHp.toDbNum(hp));
-        map.put("newHp",        HellBossHp.toDbNum(newHp));
+        // hp  : 낙관적 잠금 WHERE 절용 → DB에서 읽은 원본 CUR_HP 값 그대로 전달
+        // newHp: SET 절용 → 현재 EXT 단위 기준으로 역변환 (EXT 없으면 raw 그대로)
+        long newHpDb = "b".equalsIgnoreCase(curHpExt) ? newHp / 100_000_000L
+                     : "a".equalsIgnoreCase(curHpExt) ? newHp / 10_000L
+                     : newHp;
+        map.put("hp",           curHpNum);
+        map.put("newHp",        newHpDb);
         map.put("seq",          seq);
         map.put("endYn",        isKill ? "1" : "0");
         map.put("lv",           user.lv);
@@ -320,8 +324,8 @@ public class BossAttackS3Controller {
             msg.append("✨헬보스를 처치했습니다!").append(NL).append(killMsg);
             msg.append(NL).append("새로운 헬보스가 출현했습니다!").append(NL);
         } else {
-            String curHpDisp = HellBossHp.toDisplay(newHp);
-            String maxHpDisp = HellBossHp.toDisplay(maxHp);
+            String curHpDisp = SP.fromSp(newHp).toString();
+            String maxHpDisp = SP.fromSp(maxHp).toString();
             double hpPct = maxHp > 0 ? (newHp * 100.0) / maxHp : 0;
             msg.append("보스 체력: ").append(curHpDisp).append("/").append(maxHpDisp)
                .append(" (").append(String.format("%.1f", hpPct)).append("%)").append(NL);
@@ -346,8 +350,9 @@ public class BossAttackS3Controller {
             bossMap.put("defPower",    randInt(rand, BOSS_DEF_POWER_MIN,  BOSS_DEF_POWER_MAX));
             bossMap.put("evadeRate",   randInt(rand, BOSS_EVADE_RATE_MIN, BOSS_EVADE_RATE_MAX));
             bossMap.put("critDefRate", randInt(rand, BOSS_CRIT_DEF_MIN,   BOSS_CRIT_DEF_MAX));
-            bossMap.put("maxHp",       HellBossHp.toDbNum(rawHp));
-            bossMap.put("maxHpExt",    HellBossHp.toDbExt(rawHp));
+            SP hpSp = SP.fromSp(rawHp);
+            bossMap.put("maxHp",    (long) hpSp.getValue());
+            bossMap.put("maxHpExt", hpSp.getUnit().isEmpty() ? null : hpSp.getUnit());
             botS3Service.insertHellBoss(bossMap);
         } catch (Exception e) {
             // 재생성 실패는 무시 (처치 결과 메시지에 영향 없음)
@@ -461,12 +466,12 @@ public class BossAttackS3Controller {
         }
 
         long curHpNum = Long.parseLong(boss.get("CUR_HP").toString());
-        String curHpExt = boss.get("CUR_HP_EXT") != null ? boss.get("CUR_HP_EXT").toString() : null;
-        long hp = new HellBossHp(curHpNum, curHpExt).getRaw();
+        String curHpExt = boss.get("CUR_HP_EXT") != null ? boss.get("CUR_HP_EXT").toString() : "";
+        long hp = SP.toBaseValue(SP.of(curHpNum, curHpExt));
 
         long maxHpNum = Long.parseLong(boss.get("MAX_HP").toString());
-        String maxHpExt = boss.get("MAX_HP_EXT") != null ? boss.get("MAX_HP_EXT").toString() : null;
-        long maxHp = new HellBossHp(maxHpNum, maxHpExt).getRaw();
+        String maxHpExt = boss.get("MAX_HP_EXT") != null ? boss.get("MAX_HP_EXT").toString() : "";
+        long maxHp = SP.toBaseValue(SP.of(maxHpNum, maxHpExt));
 
         String startDate = boss.get("START_DATE") != null ? boss.get("START_DATE").toString() : "";
         double hpPct = maxHp > 0 ? (hp * 100.0) / maxHp : 0;
@@ -484,7 +489,7 @@ public class BossAttackS3Controller {
 
         StringBuilder msg = new StringBuilder();
         msg.append("[ 헬보스 정보 ]").append(NL);
-        msg.append("체력: ").append(HellBossHp.toDisplay(hp)).append("/").append(HellBossHp.toDisplay(maxHp))
+        msg.append("체력: ").append(SP.fromSp(hp)).append("/").append(SP.fromSp(maxHp))
            .append(" (").append(String.format("%.1f", hpPct)).append("%)").append(NL);
 
         if (!contributors.isEmpty()) {
