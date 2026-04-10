@@ -32,6 +32,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Controller;
 
+import my.prac.core.game.dto.AchievementConfig;
 import my.prac.core.game.dto.AchievementCount;
 import my.prac.core.game.dto.AttackCalc;
 import my.prac.core.game.dto.AttackDeathStat;
@@ -353,12 +354,27 @@ public class BossAttackController {
 	                ? ctx.preDropRows
 	                : botNewService.selectTotalDropItems(targetUser);
 	        int totalDrops = 0;
+	        int darkQty    = 0;  // 어둠(DROP5) 수량
+	        int grayQty    = 0;  // 음양(DROP9) 수량
 	        if (drops != null) {
 	            for (HashMap<String,Object> d : drops) {
-	                Object v = d.get("TOTAL_QTY");
-	                if (v instanceof Number) totalDrops += ((Number)v).intValue();
+	                Object v    = d.get("TOTAL_QTY");
+	                String type = Objects.toString(d.get("GAIN_TYPE"), "");
+	                if (v instanceof Number) {
+	                    int qty = ((Number) v).intValue();
+	                    totalDrops += qty;
+	                    if (AchievementConfig.ITEM_TYPE_DARK.equals(type)) darkQty = qty;
+	                    else if (AchievementConfig.ITEM_TYPE_GRAY.equals(type)) grayQty = qty;
+	                }
 	            }
 	        }
+
+	        // 음양/다크 아이템 보유량 → 헌터 조건(타격/아이템/죽음) 부가점수
+	        // 어둠: 각 조건 +1/개, 음양: 각 조건 +3/개
+	        int itemBonus = darkQty * 1 + grayQty * 3;
+	        totalAttacks += itemBonus;
+	        totalDrops   += itemBonus;
+	        totalDeaths  += itemBonus;
 
 	        ctx.hunterGrade = calculateHunterGrade(totalAttacks, totalDrops, totalDeaths);
 
@@ -4662,12 +4678,8 @@ public class BossAttackController {
 	) {
 	    if (rows == null || rows.isEmpty()) return "";
 
-	    // 2️⃣ 공통 임계치
-	    final int[] thresholds = {
-	        1, 10, 30, 50, 100, 150,
-	        200, 250, 300, 350, 400, 450,
-	        500, 600, 700, 800, 900, 1000,1200,1400,1600,1800,2000,2300,2600,3000
-	    };
+	    // 2️⃣ 공통 임계치 (AchievementConfig 중앙 관리)
+	    final int[] thresholds = AchievementConfig.JOB_SKILL_THRESHOLDS;
 
 	    StringBuilder sb = new StringBuilder();
 
@@ -4697,7 +4709,7 @@ public class BossAttackController {
 	            // 이미 달성한 업적이면 스킵 (메모리)
 	            if (achievedCmdSet.contains(cmd)) continue;
 
-	            int rewardSp = th * 10; // 기존 정책 유지
+	            int rewardSp = AchievementConfig.jobSkillReward(th);
 
 	            sb.append(
 	                grantOnceIfEligibleFast(
@@ -4722,25 +4734,11 @@ public class BossAttackController {
 	        int soldCount   // [PERF] 호출부에서 프리로드
 	) {
 
-	    final int[][] rules = {
-	    	{500,   5000},
-	        {1000,  5000},
-	        {2000,  10000},
-	        {3000,  10000},
-	        {4000,  10000},
-	        {5000,  20000},
-	        {6000,  20000},
-	        {7000,  20000},
-	        {8000,  20000},
-	        {9000,  20000},
-	        {10000, 30000}
-	    };
-
 	    if (soldCount <= 0) return "";
 
 	    StringBuilder sb = new StringBuilder();
 
-	    for (int[] r : rules) {
+	    for (int[] r : AchievementConfig.SHOP_SELL) {
 	        int threshold = r[0];
 	        int rewardSp  = r[1];
 
@@ -4779,20 +4777,11 @@ public class BossAttackController {
 	        Set<String> achvCmdSet,
 	        int potionUseCnt
 	) {
-	    final int[][] rules = {
-	        {10,   1000},
-	        {50,   3000},
-	        {100,  8000},
-	        {300,  15000},
-	        {500,  25000},
-	        {1000, 50000}
-	    };
-
 	    if (potionUseCnt <= 0) return "";
 
 	    StringBuilder sb = new StringBuilder();
 
-	    for (int[] r : rules) {
+	    for (int[] r : AchievementConfig.POTION_USE) {
 	        int threshold = r[0];
 	        int rewardSp  = r[1];
 
@@ -6212,45 +6201,11 @@ public class BossAttackController {
 	
 	/** 통산 킬수 업적 보상 */
 	private int calcTotalKillReward(int threshold, boolean nightmareYn) {
-
-	    int val;
-
-	    // 특별 보너스 구간
-	    if (threshold == 1) {
-	        val = 10000;
-	    } else if (threshold == 1000) {
-	        val = 1000000;
-	    } else if (threshold == 10000) {
-	        val = 10000000;
-	    } else if (threshold == 50000) {
-	        val = 100000000;
-	    } else {
-	        // 기본 보상 (천 단위 포함 전부 여기로)
-	        val = threshold * 255;
-	    }
-
-	    return nightmareYn ? val * 3 : val;
+	    return AchievementConfig.killTotalReward(threshold, nightmareYn);
 	}
-	
-	
+
 	private int[] buildKillThresholds(int maxThreshold) {
-	    List<Integer> list = new ArrayList<>();
-
-	    list.add(1);
-	    list.add(50);
-	    list.add(100);
-	    list.add(300);
-	    list.add(500);
-
-	    for (int th = 1000; th <= maxThreshold; th += 1000) {
-	        list.add(th);
-	    }
-
-	    int[] arr = new int[list.size()];
-	    for (int i = 0; i < list.size(); i++) {
-	        arr[i] = list.get(i);
-	    }
-	    return arr;
+	    return AchievementConfig.buildKillThresholds(maxThreshold);
 	}
 	/**
 	 * 몬스터별(50/100킬) + 통산 킬 업적 처리
@@ -6367,99 +6322,40 @@ public class BossAttackController {
 	        Set<String> achievedCmdSet,
 	        List<HashMap<String, Object>> gainRows   // [PERF] 호출부에서 프리로드
 	) {
-	    int lightTotal = 0;
-	    int darkTotal  = 0;
-	    int grayTotal  = 0;
-
+	    // 타입별 획득 수량 집계
+	    int lightTotal = 0, darkTotal = 0, grayTotal = 0;
 	    if (gainRows != null) {
 	        for (HashMap<String, Object> row : gainRows) {
 	            String type = Objects.toString(row.get("GAIN_TYPE"), "");
 	            int qty = MiniGameUtil.parseIntSafe(Objects.toString(row.get("TOTAL_QTY"), "0"));
-
-	            if ("DROP3".equals(type)) lightTotal = qty;
-	            else if ("DROP5".equals(type)) darkTotal = qty;
-	            else if ("DROP9".equals(type)) grayTotal = qty;
+	            if (AchievementConfig.ITEM_TYPE_LIGHT.equals(type)) lightTotal = qty;
+	            else if (AchievementConfig.ITEM_TYPE_DARK.equals(type)) darkTotal = qty;
+	            else if (AchievementConfig.ITEM_TYPE_GRAY.equals(type)) grayTotal = qty;
 	        }
 	    }
-
 	    if (lightTotal <= 0 && darkTotal <= 0 && grayTotal <= 0) return "";
 
-	    int[] thresholds = {1,10,50,100,300,500,700,1000,1300,1600,2000
-	    		,2400,2800,3300,3800,4300,4900,5500,6100};
+	    // AchievementConfig.ITEM_ACHIEVEMENTS 기반으로 미달성 업적 부여
 	    StringBuilder sb = new StringBuilder();
+	    for (AchievementConfig.ItemEntry def : AchievementConfig.ITEM_ACHIEVEMENTS) {
+	        if (achievedCmdSet.contains(def.cmd)) continue;
 
-	    for (int th : thresholds) {
-	        if (lightTotal >= th) {
-	            String cmd = "ACHV_LIGHT_ITEM_" + th;
-	            if (!achievedCmdSet.contains(cmd)) {
-	                sb.append(
-	                    grantOnceIfEligibleFast(
-	                        userName, roomName, cmd,
-	                        calcLightItemReward(th),
-	                        achievedCmdSet
-	                    )
-	                );
-	            }
-	        }
-	        if (darkTotal >= th) {
-	            String cmd = "ACHV_DARK_ITEM_" + th;
-	            if (!achievedCmdSet.contains(cmd)) {
-	                sb.append(
-	                    grantOnceIfEligibleFast(
-	                        userName, roomName, cmd,
-	                        calcDarkItemReward(th),
-	                        achievedCmdSet
-	                    )
-	                );
-	            }
-	        }
-	        if (grayTotal >= th) {
-	            String cmd = "ACHV_GRAY_ITEM_" + th;
-	            if (!achievedCmdSet.contains(cmd)) {
-	                sb.append(
-	                    grantOnceIfEligibleFast(
-	                        userName, roomName, cmd,
-	                        calcGrayItemReward(th),
-	                        achievedCmdSet
-	                    )
-	                );
-	            }
+	        int total;
+	        if      (AchievementConfig.ITEM_TYPE_LIGHT.equals(def.gainType)) total = lightTotal;
+	        else if (AchievementConfig.ITEM_TYPE_DARK.equals(def.gainType))  total = darkTotal;
+	        else if (AchievementConfig.ITEM_TYPE_GRAY.equals(def.gainType))  total = grayTotal;
+	        else continue;
+
+	        if (total >= def.threshold) {
+	            sb.append(grantOnceIfEligibleFast(
+	                userName, roomName, def.cmd, def.rewardSp, achievedCmdSet
+	            ));
 	        }
 	    }
-
 	    return sb.toString();
 	}
 
 	
-	private int calcLightItemReward(int th) {
-	    // 예시: 빛템은 kill 업적보다 살짝 약하게
-	    // th = 1,10,50, ... 기준
-	    if (th <= 1)   return 100;
-	    if (th <= 10)  return 500;
-	    if (th <= 50)  return 2000;
-	    if (th <= 100) return 4000;
-	    if (th <= 300) return 8000;
-	    if (th <= 500) return 12000;
-	    if (th <= 1500)return 20000;
-	    if (th <= 2000)return 30000;
-	    if (th <= 3000)return 40000;
-	    if (th <= 4000)return 50000;
-	    if (th <= 5000)return 100000;
-	    if (th <= 6000)return 200000;
-	    if (th <= 7000)return 300000;
-	    return 0;
-	}
-
-	private int calcDarkItemReward(int th) {
-	    // 예시: 어둠템은 좀 더 희귀하다고 가정해서 빛템보다 1.5배 정도
-	    int base = calcLightItemReward(th);
-	    return (int)Math.round(base * 1.5);
-	}
-	private int calcGrayItemReward(int th) {
-		// 예시: 어둠템은 좀 더 희귀하다고 가정해서 빛템보다 1.5배 정도
-		int base = calcLightItemReward(th);
-		return (int)Math.round(base * 10);
-	}
 	
 	private String grantCelebrationClearBonus(
 	        String userName,
@@ -6910,16 +6806,6 @@ public class BossAttackController {
 
 	
 	private String grantDeathAchievements(String userName, String roomName) {
-	    // 규칙: {사망누적, 보상SP}
-	    final int[][] rules = new int[][]{
-	        {1,   100},
-	        {10,  200},
-	        {50,  500},
-	        {100, 1000},
-	        {300, 3000},
-	        {500, 10000}
-	    };
-
 	    StringBuilder sb = new StringBuilder();
 	    int deaths = 0;
 
@@ -6928,7 +6814,7 @@ public class BossAttackController {
 	        deaths = (stat == null ? 0 : stat.getTotalDeaths());
 	    } catch (Exception ignore) { /* 안전무시 */ }
 
-	    for (int[] r : rules) {
+	    for (int[] r : AchievementConfig.DEATH) {
 	        int threshold = r[0];
 	        int rewardSp  = r[1];
 
