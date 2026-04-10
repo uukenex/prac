@@ -352,7 +352,7 @@
     <div class="card" v-if="data.masterSeasons && data.masterSeasons.length > 0">
       <div class="card-title">
         📚 직업 마스터 달성 기록
-        <span class="achv-cnt">업적 {{ data.grouped.master }}개</span>
+        <span class="achv-cnt">업적 {{ data.masterSeasons.length }}개</span>
       </div>
       <div class="season-grid">
         <div class="season-item" v-for="s in data.masterSeasons" :key="s.season">

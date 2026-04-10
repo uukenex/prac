@@ -352,7 +352,16 @@ public class LoaAchievementViewController {
         g.put("lightItems",   lightItems.size());
         g.put("darkItems",    darkItems.size());
         g.put("grayItems",    grayItems.size());
-        g.put("skills",       skills.size());
+        
+        int skillCount = skills.values()
+                .stream()
+                .mapToInt(Map::size)
+                .sum();
+
+        g.put("skills", skillCount);
+        
+        //g.put("skills",       skills.size());
+        
         g.put("sells",        sells.size());
         g.put("potions",      potions.size());
         g.put("bags",         bags.size());
