@@ -46,7 +46,7 @@ public class HellBossHp {
     // --------------------------------------------------------
 
     /**
-     * raw HP → DB 저장 숫자값
+     * raw HP → DB 저장 숫자값 (신규 보스 INSERT용: 자동 단위 선택)
      * 예: 50_000 → 5 (단위 'a')
      */
     public static long toDbNum(long rawHp) {
@@ -56,13 +56,27 @@ public class HellBossHp {
     }
 
     /**
-     * raw HP → DB 저장 EXT 문자 (없으면 null)
+     * raw HP → DB 저장 EXT 문자 (신규 보스 INSERT용, 없으면 null)
      * 예: 50_000 → "a"
      */
     public static String toDbExt(long rawHp) {
         if (rawHp >= UNIT * UNIT) return "b";
         if (rawHp >= UNIT)        return "a";
         return null;
+    }
+
+    /**
+     * raw HP → DB 저장 숫자값 (UPDATE용: 현재 EXT 단위 유지)
+     * 기존 보스 CUR_HP 갱신 시 사용. EXT 컬럼은 변경하지 않으므로
+     * 같은 단위계로 역변환해야 낙관적 잠금 WHERE 절과 일치.
+     *
+     * 예: rawHp=49_000, ext="a"  → 49_000 / 10_000 = 4
+     *     rawHp=49_000, ext=null → 49_000 (그대로)
+     */
+    public static long toDbNumWithExt(long rawHp, String ext) {
+        if ("b".equalsIgnoreCase(ext)) return rawHp / (UNIT * UNIT);
+        if ("a".equalsIgnoreCase(ext)) return rawHp / UNIT;
+        return rawHp;
     }
 
     // --------------------------------------------------------

@@ -268,9 +268,10 @@ public class BossAttackS3Controller {
         }
 
         // DB 저장 (HP 업데이트 + 배틀 로그)
-        // 낙관적 잠금용: 현재 CUR_HP(raw→DB num) 전달
-        map.put("hp",           HellBossHp.toDbNum(hp));
-        map.put("newHp",        HellBossHp.toDbNum(newHp));
+        // hp  : 낙관적 잠금 WHERE 절용 → DB에서 읽은 원본 CUR_HP 값 그대로 전달
+        // newHp: SET 절용 → 현재 EXT 단위 기준으로 역변환 (EXT=null이면 raw 그대로)
+        map.put("hp",           curHpNum);
+        map.put("newHp",        HellBossHp.toDbNumWithExt(newHp, curHpExt));
         map.put("seq",          seq);
         map.put("endYn",        isKill ? "1" : "0");
         map.put("lv",           user.lv);
