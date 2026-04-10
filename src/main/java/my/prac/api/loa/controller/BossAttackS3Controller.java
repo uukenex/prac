@@ -222,8 +222,9 @@ public class BossAttackS3Controller {
         String bossDefMsg = "";
 
         if (!isEvade) {
-            int baseAtk = ctx.atkMin + rand.nextInt(Math.max(1, ctx.atkMax - ctx.atkMin + 1));
-            String atkRangeStr = "(" + ctx.atkMin + "~" + ctx.atkMax + ") ";
+            int baseAtk = (ctx.atkMin + rand.nextInt(Math.max(1, ctx.atkMax - ctx.atkMin + 1))) / 100;
+            if (baseAtk < 1) baseAtk = 1;
+            String atkRangeStr = "(" + (ctx.atkMin / 100) + "~" + (ctx.atkMax / 100) + ") ";
 
             int totalCritPercent = ctx.crit - critDefRate;
 
@@ -303,6 +304,24 @@ public class BossAttackS3Controller {
             return "저장 중 오류가 발생했습니다.";
         }
 
+        // 공격 SP 보상: 준 데미지 × 1000 raw SP (100 데미지 → 10a)
+        String spRewardMsg = "";
+        if (!isEvade && damage > 0) {
+            try {
+                SP spReward = SP.fromSp(damage * 1000L);
+                HashMap<String, Object> pr = new HashMap<>();
+                pr.put("userName", userName);
+                pr.put("roomName", roomName);
+                pr.put("score",    spReward.getValue());
+                pr.put("scoreExt", spReward.getUnit());
+                pr.put("cmd",      "BOSS_HELL_ATK");
+                botNewService.insertPointRank(pr);
+                spRewardMsg = "💰 획득 SP: " + spReward + NL;
+            } catch (Exception e) {
+                // SP 지급 실패는 무시
+            }
+        }
+
         // 처치 보상 + 보스 재생성
         String killMsg = "";
         if (isKill) {
@@ -317,9 +336,10 @@ public class BossAttackS3Controller {
         if (!isEvade) {
             msg.append("▶ 입힌 데미지: ").append(damage).append(NL);
             msg.append(dmgMsg).append(NL);
-            if (!punishMsg.isEmpty())  msg.append(punishMsg);
-            if (!debuff1Msg.isEmpty()) msg.append(debuff1Msg);
-            if (!bossDefMsg.isEmpty()) msg.append(bossDefMsg);
+            if (!spRewardMsg.isEmpty()) msg.append(spRewardMsg);
+            if (!punishMsg.isEmpty())   msg.append(punishMsg);
+            if (!debuff1Msg.isEmpty())  msg.append(debuff1Msg);
+            if (!bossDefMsg.isEmpty())  msg.append(bossDefMsg);
         } else {
             msg.append("보스가 공격을 회피했습니다! 데미지 0!").append(NL);
         }

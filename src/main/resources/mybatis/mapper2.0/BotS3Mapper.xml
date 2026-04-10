@@ -24,10 +24,29 @@
 		     , DEBUFF2
 		     , HIDE_RULE
 		     , to_char(INSERT_DATE, 'yyyymmdd hh24miss') AS START_DATE
-		  FROM TBOT_POINT_NEW_BOSS
-		 WHERE END_YN = '0'
-		   AND ROWNUM = 1
-		 ORDER BY INSERT_DATE DESC
+		  FROM (
+		    SELECT SEQ
+		         , CUR_HP
+		         , CUR_HP_EXT
+		         , MAX_HP
+		         , MAX_HP_EXT
+		         , REWARD
+		         , ATK_RATE
+		         , ATK_POWER
+		         , DEF_RATE
+		         , DEF_POWER
+		         , EVADE_RATE
+		         , CRIT_DEF_RATE
+		         , DEBUFF
+		         , DEBUFF1
+		         , DEBUFF2
+		         , HIDE_RULE
+		         , INSERT_DATE
+		      FROM TBOT_POINT_NEW_BOSS
+		     WHERE END_YN = '0'
+		     ORDER BY INSERT_DATE DESC
+		  )
+		 WHERE ROWNUM = 1
 	</select>
 
 	<!-- =====================================================
@@ -63,7 +82,8 @@
 	     ===================================================== -->
 	<insert id="insertHellBoss" parameterType="HashMap">
 		INSERT INTO TBOT_POINT_NEW_BOSS
-		    (INSERT_DATE
+		    (SEQ
+		    ,INSERT_DATE
 		    ,END_YN
 		    ,ATK_RATE
 		    ,ATK_POWER
@@ -74,28 +94,31 @@
 		    ,DEBUFF
 		    ,DEBUFF1
 		    ,DEBUFF2
+		    ,REWARD
 		    ,MAX_HP
 		    ,MAX_HP_EXT
 		    ,CUR_HP
 		    ,CUR_HP_EXT
 		    ,HIDE_RULE)
-		VALUES
-		    (SYSDATE
-		    ,'0'
-		    ,#{atkRate,     jdbcType=NUMERIC}
-		    ,#{atkPower,    jdbcType=NUMERIC}
-		    ,#{defRate,     jdbcType=NUMERIC}
-		    ,#{defPower,    jdbcType=NUMERIC}
-		    ,#{evadeRate,   jdbcType=NUMERIC}
-		    ,#{critDefRate, jdbcType=NUMERIC}
-		    ,0
-		    ,0
-		    ,0
-		    ,#{maxHp,       jdbcType=NUMERIC}
-		    ,#{maxHpExt,    jdbcType=VARCHAR}
-		    ,#{maxHp,       jdbcType=NUMERIC}
-		    ,#{maxHpExt,    jdbcType=VARCHAR}
-		    ,'0')
+		SELECT NVL(MAX(SEQ), 0) + 1
+		      ,SYSDATE
+		      ,'0'
+		      ,#{atkRate,     jdbcType=NUMERIC}
+		      ,#{atkPower,    jdbcType=NUMERIC}
+		      ,#{defRate,     jdbcType=NUMERIC}
+		      ,#{defPower,    jdbcType=NUMERIC}
+		      ,#{evadeRate,   jdbcType=NUMERIC}
+		      ,#{critDefRate, jdbcType=NUMERIC}
+		      ,0
+		      ,0
+		      ,0
+		      ,0
+		      ,#{maxHp,       jdbcType=NUMERIC}
+		      ,#{maxHpExt,    jdbcType=VARCHAR}
+		      ,#{maxHp,       jdbcType=NUMERIC}
+		      ,#{maxHpExt,    jdbcType=VARCHAR}
+		      ,'0'
+		  FROM TBOT_POINT_NEW_BOSS
 	</insert>
 
 	<!-- =====================================================
