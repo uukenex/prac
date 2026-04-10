@@ -240,7 +240,8 @@
       </div>
     </div>
 
-    <!-- 몬스터 학살자 시즌 -->
+    <!-- 몬스터 학살자 시즌 (TODO: 몬스터별 1위 구조로 재설계 예정) -->
+    <!--
     <div class="card" v-if="data.slayerSeasons && data.slayerSeasons.length > 0">
       <div class="card-title">🔪 몬스터 학살자 시즌 (1위+30종 달성)</div>
       <table class="season-table">
@@ -258,6 +259,7 @@
         </tbody>
       </table>
     </div>
+    -->
 
     <!-- 직업마스터 시즌 -->
     <div class="card" v-if="data.jobMasterSeasons && data.jobMasterSeasons.length > 0">
