@@ -204,15 +204,25 @@ public class SP {
 
 		BigDecimal base = BigDecimal.valueOf(10000);
 
+		BigDecimal result;
+		int resultIdx;
+
 		if (idx1 > idx2) {
 			v2 = v2.divide(base.pow(idx1 - idx2));
-			BigDecimal r = v1.subtract(v2).setScale(6, RoundingMode.HALF_UP);;
-			return SP.of(r.doubleValue(), this.unit);
+			result = v1.subtract(v2);
+			resultIdx = idx1;
 		} else {
 			v1 = v1.divide(base.pow(idx2 - idx1));
-			BigDecimal r = v1.subtract(v2).setScale(6, RoundingMode.HALF_UP);;
-			return SP.of(r.doubleValue(), other.unit);
+			result = v1.subtract(v2);
+			resultIdx = idx2;
 		}
+
+		result = result.setScale(6, RoundingMode.HALF_UP);
+
+		this.value = result.doubleValue();
+		this.unit = resultIdx == 0 ? "" : String.valueOf((char) ('a' + resultIdx - 1));
+
+		return this.normalize();
 	}
 
 	public static SP parse(String str) {
