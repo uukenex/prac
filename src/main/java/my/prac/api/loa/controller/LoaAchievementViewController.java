@@ -84,9 +84,9 @@ public class LoaAchievementViewController {
             if (v instanceof Number) {
                 int qty = ((Number) v).intValue();
                 totalDrops += qty;
-                if ("DROP3".equals(type)) lightQty = qty;
-                else if ("DROP5".equals(type)) darkQty = qty;
-                else if ("DROP9".equals(type)) grayQty = qty;
+                if (AchievementConfig.ITEM_TYPE_LIGHT.equals(type)) lightQty += qty; // DROP3
+                else if (AchievementConfig.ITEM_TYPE_DARK.equals(type)) darkQty += qty;  // DROP5
+                else if (AchievementConfig.ITEM_TYPE_GRAY.equals(type)) grayQty += qty;  // DROP9
             }
         }
 
@@ -144,12 +144,12 @@ public class LoaAchievementViewController {
         Pattern P_MON_KILL     = Pattern.compile("^ACHV_KILL_MON_(\\d+)_(\\d+)$");
         Pattern P_DEATH        = Pattern.compile("^ACHV_DEATH_(\\d+)$");
         Pattern P_ATTACK       = Pattern.compile("^ACHV_ATTACK_TOTAL_(\\d+)$");
-        Pattern P_LIGHT        = Pattern.compile("^ACHV_ITEM_DROP3_(\\d+)$");
-        Pattern P_DARK         = Pattern.compile("^ACHV_ITEM_DROP5_(\\d+)$");
-        Pattern P_GRAY         = Pattern.compile("^ACHV_ITEM_DROP9_(\\d+)$");
-        Pattern P_SKILL        = Pattern.compile("^ACHV_SKILL_(.+)_(\\d+)$");
-        Pattern P_SELL         = Pattern.compile("^ACHV_SELL_(\\d+)$");
-        Pattern P_POTION       = Pattern.compile("^ACHV_POTION_(\\d+)$");
+        Pattern P_LIGHT        = Pattern.compile("^ACHV_LIGHT_ITEM_(\\d+)$");
+        Pattern P_DARK         = Pattern.compile("^ACHV_DARK_ITEM_(\\d+)$");
+        Pattern P_GRAY         = Pattern.compile("^ACHV_GRAY_ITEM_(\\d+)$");
+        Pattern P_SKILL        = Pattern.compile("^ACHV_JOB_SKILL_(.+)_(\\d+)$");
+        Pattern P_SELL         = Pattern.compile("^ACHV_SHOP_SELL_(\\d+)$");
+        Pattern P_POTION       = Pattern.compile("^ACHV_POTION_USE_(\\d+)$");
         Pattern P_BAG          = Pattern.compile("^ACHV_BAG_(\\d+)$");
         Pattern P_HELL_ATK     = Pattern.compile("^ACHV_HELL_ATK_(\\d+)$");
         Pattern P_HELL_CLEAR   = Pattern.compile("^ACHV_HELL_CLEAR_(\\d+)$");

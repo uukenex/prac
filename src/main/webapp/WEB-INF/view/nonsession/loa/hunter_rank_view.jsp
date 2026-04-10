@@ -87,8 +87,8 @@
   <div class="page-header">
     <div class="page-title">🎯 헌터 랭크 달성율</div>
     <div class="search-row">
-      <input v-model="inputUser" placeholder="유저명 입력" @keyup.enter="fetch">
-      <button class="btn-search" @click="fetch">조회</button>
+      <input v-model="inputUser" placeholder="유저명 입력" @keyup.enter="loadData">
+      <button class="btn-search" @click="loadData">조회</button>
     </div>
   </div>
 
@@ -276,19 +276,20 @@ new Vue({
   mounted() {
     var p = new URLSearchParams(window.location.search);
     var u = p.get('userName') || p.get('user') || sessionStorage.getItem('loaUserName') || '';
-    if (u) { this.inputUser = u; this.fetch(); }
+    if (u) { this.inputUser = u; this.loadData(); }
   },
   methods: {
-    fetch() {
+    loadData() {
       var u = this.inputUser.trim();
       if (!u) return;
       this.userName = u;
       sessionStorage.setItem('loaUserName', u);
       this.loading = true;
+      var self = this;
       fetch('<%=request.getContextPath()%>/loa/api/hunter-rank?userName=' + encodeURIComponent(u))
-        .then(r => r.json())
-        .then(d => { this.data = d; this.loading = false; })
-        .catch(() => { this.loading = false; });
+        .then(function(r) { return r.json(); })
+        .then(function(d) { self.data = d; self.loading = false; })
+        .catch(function() { self.loading = false; });
     },
     fmt(n) { return (n || 0).toLocaleString('ko-KR'); },
     pct(v, max) { return max > 0 ? Math.round(v / max * 1000) / 10 : 0; }
