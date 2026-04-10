@@ -93,7 +93,7 @@
           <div class="achv-icon">🗡</div>
           <div class="achv-info">
             <div class="achv-name">통산 공격</div>
-            <div class="achv-val">{{ fmt(data.stats.kills) }}회</div>
+            <div class="achv-val">{{ fmt(data.stats.attacks) }}회</div>
             <div class="achv-sub">업적 {{ data.grouped.attacks }}개 달성</div>
           </div>
         </div>
@@ -123,7 +123,7 @@
           <div class="achv-icon">💔</div>
           <div class="achv-info">
             <div class="achv-name">죽음 극복</div>
-            <div class="achv-val">{{ fmt(data.stats.deaths) }}회</div>
+            <div class="achv-val">{{ fmt(data.grouped.maxDeath) }}회</div>
             <div class="achv-sub">업적 {{ data.grouped.deaths }}개 달성</div>
           </div>
         </div>
@@ -238,26 +238,30 @@
       </div>
     </div>
 
-    <!-- 몬스터 학살자 시즌 (TODO: 몬스터별 1위 구조로 재설계 예정) -->
-    <!--
+    <!-- 몬스터 학살자 시즌 -->
     <div class="card" v-if="data.slayerSeasons && data.slayerSeasons.length > 0">
-      <div class="card-title">🔪 몬스터 학살자 시즌 (1위+30종 달성)</div>
-      <table class="season-table">
-        <thead>
-          <tr><th>시즌</th><th>1위</th><th>킬수</th><th>종류</th><th>달성</th></tr>
-        </thead>
-        <tbody>
-          <tr v-for="s in data.slayerSeasons" :key="s.season" :class="s.achieved ? 'achieved' : ''">
-            <td>{{ s.season }}</td>
-            <td>{{ s.top }}</td>
-            <td>{{ fmt(s.killCnt) }}</td>
-            <td>{{ s.monTypes }}</td>
-            <td><span :class="s.achieved ? 'badge-ok' : 'badge-no'">{{ s.achieved ? '달성' : '-' }}</span></td>
-          </tr>
-        </tbody>
-      </table>
+      <div class="card-title">🔪 몬스터 학살자 달성 기록</div>
+
+      <div class="achv-grid">
+        <div class="achv-item done"
+             v-for="s in data.slayerSeasons"
+             :key="s.season">
+
+          <div class="achv-icon">🗡</div>
+
+          <div class="achv-info">
+            <div class="achv-name">
+              {{ formatSeason(s.season) }} 시즌
+            </div>
+
+            <div class="achv-val">
+              {{ s.monCount }}종 달성
+            </div>
+          </div>
+
+        </div>
+      </div>
     </div>
-    -->
 
     <!-- 직업마스터 시즌 -->
     <!-- 직업마스터 시즌 -->

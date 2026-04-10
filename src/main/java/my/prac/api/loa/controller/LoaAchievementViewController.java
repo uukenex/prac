@@ -1,7 +1,5 @@
 package my.prac.api.loa.controller;
 
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -21,7 +19,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 import my.prac.core.game.dto.AchievementConfig;
-import my.prac.core.game.dto.AttackDeathStat;
 import my.prac.core.prjbot.service.BotNewService;
 
 /**
@@ -35,8 +32,6 @@ public class LoaAchievementViewController {
 
     @Resource(name = "core.prjbot.BotNewService")
     BotNewService botNewService;
-
-    private static final DateTimeFormatter YYYYMMDD = DateTimeFormatter.ofPattern("yyyyMMdd");
 
     @GetMapping("/achievement-view")
     public String achievementViewPage() {
@@ -64,12 +59,10 @@ public class LoaAchievementViewController {
         // 2. 업적 파싱 및 그룹화
         HashMap<String, Object> grouped = parseAchievements(achvList);
 
-        // 3. 기본 통계
-        AttackDeathStat ads = null;
-        try { ads = botNewService.selectAttackDeathStats(userName, ""); } catch (Exception ignore) {}
-
-        int totalKills  = ads == null ? 0 : ads.totalAttacks;
-        int totalDeaths = ads == null ? 0 : ads.totalDeaths;
+        // 3. 기본 통계 - ACHV 업적 최대 임계값에서 도출 (kills/attacks/deaths 분리)
+        int totalKills   = toInt(grouped.get("maxTotalKill"));
+        int totalAttacks = toInt(grouped.get("maxAttack"));
+        int totalDeaths  = toInt(grouped.get("maxDeath"));
 
         List<HashMap<String, Object>> drops = new ArrayList<>();
         try {
@@ -133,15 +126,15 @@ public class LoaAchievementViewController {
 
         result.put("jobMasterSeasons", jobMasterSeasons);
 
-        // 7. 몬스터 학살자 시즌 달성 목록 (6-1)
-        List<HashMap<String, Object>> slayerSeasons = buildSlayerSeasons(userName);
+        // 7. 몬스터 학살자 시즌 달성 목록 - TBOT_POINT_RANK ACHV_SLAYER_SEASON 항목에서 직접 추출
+        List<HashMap<String, Object>> slayerSeasons = buildSlayerSeasonsFromAchv(achvList);
 
         // 결과 조합
         result.put("userName",   userName);
         result.put("totalAchv",  achvList.size());
         result.put("grouped",    grouped);
-        result.put("stats",      mapOf("kills", totalKills, "drops", totalDrops, "deaths", totalDeaths,
-                                       "lightQty", lightQty, "darkQty", darkQty, "grayQty", grayQty));
+        result.put("stats",      mapOf("kills", totalKills, "attacks", totalAttacks, "drops", totalDrops,
+                                       "deaths", totalDeaths, "lightQty", lightQty, "darkQty", darkQty, "grayQty", grayQty));
         result.put("hellBoss",   mapOf("atkCount", hellAtkCount, "clearCount", hellClearCount));
         result.put("roulette",   mapOf("atkSuccessCnt", atkSuccessCnt, "criSuccessCnt", criSuccessCnt));  
 		result.put("jobMasterSeasons",  jobMasterSeasons);
@@ -167,7 +160,7 @@ public class LoaAchievementViewController {
         Pattern P_BAG          = Pattern.compile("^ACHV_BAG_(\\d+)$");
         Pattern P_HELL_ATK     = Pattern.compile("^ACHV_HELL_ATK_(\\d+)$");
         Pattern P_HELL_CLEAR   = Pattern.compile("^ACHV_HELL_CLEAR_(\\d+)$");
-        Pattern P_SLAYER       = Pattern.compile("^ACHV_SLAYER_SEASON_(\\d+)$");
+        Pattern P_SLAYER       = Pattern.compile("^ACHV_SLAYER_SEASON_(\\d{8})_(\\d+)$");
         Pattern P_MASTER       = Pattern.compile("^ACHV_JOB_MASTER_SEASON_(\\d+)_(.+)$");
         Pattern P_ROULETTE_ATK = Pattern.compile("^ACHV_ROULETTE_ATK_(\\d+)$");
         Pattern P_ROULETTE_CRI = Pattern.compile("^ACHV_ROULETTE_CRI_(\\d+)$");
@@ -210,7 +203,7 @@ public class LoaAchievementViewController {
             if ((m = P_BAG.matcher(cmd)).matches())         { bags.put(m.group(1), 1); continue; }
             if ((m = P_HELL_ATK.matcher(cmd)).matches())   { hellAtk.put(m.group(1), 1); continue; }
             if ((m = P_HELL_CLEAR.matcher(cmd)).matches()) { hellClear.put(m.group(1), 1); continue; }
-            if ((m = P_SLAYER.matcher(cmd)).matches())      { slayer.put(m.group(1), 1); continue; }
+            if ((m = P_SLAYER.matcher(cmd)).matches())      { slayer.merge(m.group(1), 1, Integer::sum); continue; }
             if ((m = P_MASTER.matcher(cmd)).matches())      { master.put(m.group(1)+"_"+m.group(2), 1); continue; }
             if ((m = P_ROULETTE_ATK.matcher(cmd)).matches()){ rouletteAtk.put(m.group(1), 1); continue; }
             if ((m = P_ROULETTE_CRI.matcher(cmd)).matches()){ rouletteCri.put(m.group(1), 1); continue; }
@@ -232,7 +225,7 @@ public class LoaAchievementViewController {
         g.put("bags",        bags.size());
         g.put("hellAtk",     hellAtk.size());
         g.put("hellClear",   hellClear.size());
-        g.put("slayer",      slayer.size());
+        g.put("slayer",      slayer.values().stream().mapToInt(Integer::intValue).sum());
         g.put("master",      master.size());
         g.put("rouletteAtk", rouletteAtk.size());
         g.put("rouletteCri", rouletteCri.size());
@@ -253,49 +246,23 @@ public class LoaAchievementViewController {
         return g;
     }
 
-    /** 몬스터 학살자 시즌 달성 목록 (2026.03.01 기준 15일 단위) */
-    private List<HashMap<String, Object>> buildSlayerSeasons(String userName) {
-        List<HashMap<String, Object>> result = new ArrayList<>();
-        LocalDate start = LocalDate.of(2026, 3, 1);
-        LocalDate today = LocalDate.now();
-
-        LocalDate seasonStart = start;
-        while (seasonStart.isBefore(today)) {
-            // 15일 단위 시즌 끝
-            LocalDate mid = LocalDate.of(seasonStart.getYear(), seasonStart.getMonthValue(), 15);
-            LocalDate endOfMonth = seasonStart.withDayOfMonth(seasonStart.lengthOfMonth());
-            LocalDate seasonEnd = seasonStart.getDayOfMonth() <= 15 ? mid : endOfMonth;
-
-            if (seasonEnd.isBefore(today)) {
-                // 종료된 시즌 → 1위 조회
-                String sKey = seasonStart.format(YYYYMMDD);
-                String eKey = seasonEnd.format(YYYYMMDD);
-                try {
-                    HashMap<String, Object> q = new HashMap<>();
-                    q.put("seasonStart", sKey);
-                    q.put("seasonEnd",   eKey);
-                    List<HashMap<String, Object>> ranks = botNewService.selectSlayerSeasonRank(q);
-                    if (ranks != null && !ranks.isEmpty()) {
-                        HashMap<String, Object> top = ranks.get(0);
-                        String topUser = Objects.toString(top.get("USER_NAME"), "");
-                        int    killCnt = toInt(top.get("KILL_CNT"));
-                        int    monTypes = toInt(top.get("MON_TYPES"));
-                        boolean isMine = userName.equalsIgnoreCase(topUser);
-                        boolean achieved = isMine && monTypes >= 30;
-                        HashMap<String, Object> row = new HashMap<>();
-                        row.put("season",    sKey + "~" + eKey);
-                        row.put("top",       topUser);
-                        row.put("killCnt",   killCnt);
-                        row.put("monTypes",  monTypes);
-                        row.put("isMine",    isMine);
-                        row.put("achieved",  achieved);
-                        result.add(row);
-                    }
-                } catch (Exception ignore) {}
+    /** 몬스터 학살자 시즌 달성 목록 - TBOT_POINT_RANK ACHV_SLAYER_SEASON 항목에서 직접 추출 */
+    private List<HashMap<String, Object>> buildSlayerSeasonsFromAchv(List<HashMap<String, Object>> achvList) {
+        Map<String, Integer> seasonMonCount = new java.util.TreeMap<>();
+        Pattern P = Pattern.compile("^ACHV_SLAYER_SEASON_(\\d{8})_(\\d+)$");
+        for (HashMap<String, Object> row : achvList) {
+            String cmd = Objects.toString(row.get("CMD"), "");
+            Matcher m = P.matcher(cmd);
+            if (m.matches()) {
+                seasonMonCount.merge(m.group(1), 1, Integer::sum);
             }
-
-            // 다음 시즌
-            seasonStart = seasonEnd.plusDays(1);
+        }
+        List<HashMap<String, Object>> result = new ArrayList<>();
+        for (Map.Entry<String, Integer> e : seasonMonCount.entrySet()) {
+            HashMap<String, Object> s = new HashMap<>();
+            s.put("season",   e.getKey());   // YYYYMMDD
+            s.put("monCount", e.getValue()); // 달성 몬스터 종류 수
+            result.add(s);
         }
         return result;
     }
