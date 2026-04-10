@@ -338,11 +338,12 @@ public class BossAttackController {
 	        int totalAttacks, totalDeaths;
 
 	        // [OPT-HUNTER] attackInfo에서 미리 계산된 값이 있으면 DB 조회 생략
+	        AttackDeathStat ads = null;
 	        if (map.containsKey("_preHunterAdjAttacks")) {
 	            totalAttacks = ((Number) map.get("_preHunterAdjAttacks")).intValue();
 	            totalDeaths  = ((Number) map.get("_preHunterAdjDeaths")).intValue();
 	        } else {
-	            AttackDeathStat ads = botNewService.selectAttackDeathStats(targetUser, "");
+	            ads = botNewService.selectAttackDeathStats(targetUser, "");
 	            totalAttacks = (ads == null ? 0 : ads.totalAttacks);
 	            int hunterAttacks = (ads == null ? 0 : ads.hunterAttacks);
 	            totalDeaths  = (ads == null ? 0 : ads.totalDeaths);
@@ -371,11 +372,16 @@ public class BossAttackController {
 
 	        // 음양/다크 아이템 보유량 → 헌터 조건(타격/아이템/죽음) 부가점수
 	        // 어둠: 각 조건 +1/개, 음양: 각 조건 +3/개
+	        // 음양/다크 아이템 보유량 → 헌터 조건 부가점수 (S 이하에만 적용, SS이상은 제외)
+	        // 어둠: 각 조건 +1/개, 음양: 각 조건 +3/개
 	        int itemBonus = darkQty * 1 + grayQty * 3;
-	        totalAttacks += itemBonus;
-	        totalDrops   += itemBonus;
-	        totalDeaths  += itemBonus;
-
+	        String gradeWithoutBonus = calculateHunterGrade(totalAttacks, totalDrops, totalDeaths);
+	        boolean bonusEligible = !"SSS".equals(gradeWithoutBonus) && !gradeWithoutBonus.startsWith("SS");
+	        if (bonusEligible) {
+	            totalAttacks += itemBonus;
+	            totalDrops   += itemBonus;
+	            totalDeaths  += itemBonus;
+	        }
 	        ctx.hunterGrade = calculateHunterGrade(totalAttacks, totalDrops, totalDeaths);
 
 	        // 헌터 직업이면 등급 기반 스탯 보너스 적용
@@ -520,6 +526,14 @@ public class BossAttackController {
 	    
 	    
 	    // HP/ATK 확정치 저장
+	    // 은둔자: 마지막 공격 후 경과시간(분) 비례 데미지 증가
+	    if ("은둔자".equals(job) && ads != null && ads.lastAttackTime != null) {
+	        long elapsedMin = (System.currentTimeMillis() - ads.lastAttackTime.getTime()) / 60000L;
+	        // 1분당 +10%, 최대 +200% (20분 이상 미공격 시 3배)
+	        double timeMult = Math.min(3.0, 1.0 + elapsedMin * 0.10);
+	        atkMin = (int)(atkMin * timeMult);
+	        atkMax = (int)(atkMax * timeMult);
+	    }
 	    ctx.atkMin = atkMin;
 	    ctx.atkMax = atkMax;
 	    ctx.hpMax  = hpMax;
@@ -1721,12 +1735,20 @@ public class BossAttackController {
 			}
 		}
 
+	    // 특별 업적 일괄 체크 (룰렛/직업마스터/학살자) - 업적 조회 시 소급 지급
+	    try {
+	        String specialAchvMsg = grantSpecialHistoricalAchievements(ctx.targetUser, ctx.roomName);
+	        if (specialAchvMsg != null && !specialAchvMsg.isEmpty()) {
+	            sb.append(NL).append(specialAchvMsg);
+	        }
+	    } catch (Exception ignore) {}
+
 	    // 업적
 	    int achvCnt = 0;
 	    try {
 	        List<HashMap<String,Object>> achv = botNewService.selectAchievementsByUser(ctx.targetUser, ctx.roomName);
 	        achvCnt = (achv == null ? 0 : achv.size());
-	        
+
 	        sb.append(NL).append("▶ 업적").append(" [").append(achvCnt).append("개]").append(NL);
 	        if (achv == null || achv.isEmpty()) {
 	            sb.append("- 달성된 업적이 없습니다.").append(NL);
@@ -1738,6 +1760,103 @@ public class BossAttackController {
 	    } catch (Exception ignore) {}
 
 	    return sb.toString();
+	}
+
+	/**
+	 * 특별 업적 소급 지급 (룰렛/직업마스터/학살자)
+	 * - 업적 조회(/업적) 시 호출되어 아직 지급되지 않은 업적을 체크하고 지급
+	 */
+	private String grantSpecialHistoricalAchievements(String userName, String roomName) {
+	    StringBuilder msg = new StringBuilder();
+
+	    // 기달성 CMD 목록 로드
+	    Set<String> doneCmds = new HashSet<>();
+	    try {
+	        List<HashMap<String,Object>> achvList = botNewService.selectAchievementsByUser(userName, roomName);
+	        if (achvList != null) {
+	            for (HashMap<String,Object> a : achvList) {
+	                Object cmd = a.get("CMD");
+	                if (cmd != null) doneCmds.add(cmd.toString());
+	            }
+	        }
+	    } catch (Exception ignore) {}
+
+	    final int ONE_A_SP   = 10_000;          // 1a
+	    final int SLAYER_SP  = 10_000 * 1_000;  // 1000a
+
+	    // ── 1. 룰렛 업적 ──────────────────────────────────────────
+	    try {
+	        HashMap<String,Object> buffStats = botNewService.selectMaxDailyBuffStats(userName);
+	        if (buffStats != null) {
+	            int maxAtk = toSafeInt(buffStats.get("MAX_ATK_BONUS"));
+	            int maxCri = toSafeInt(buffStats.get("MAX_CRI_DMG_BONUS"));
+	            if (maxAtk >= 100 && !doneCmds.contains("ACHV_ROULETTE_ATK_100")) {
+	                String r = grantOnceIfEligibleFast(userName, roomName, "ACHV_ROULETTE_ATK_100", ONE_A_SP, doneCmds);
+	                if (r != null) msg.append(r).append(NL);
+	            }
+	            if (maxCri >= 300 && !doneCmds.contains("ACHV_ROULETTE_CRI_300")) {
+	                String r = grantOnceIfEligibleFast(userName, roomName, "ACHV_ROULETTE_CRI_300", ONE_A_SP, doneCmds);
+	                if (r != null) msg.append(r).append(NL);
+	            }
+	        }
+	    } catch (Exception ignore) {}
+
+	    // ── 2. 직업마스터 시즌 업적 ────────────────────────────────
+	    try {
+	        List<HashMap<String,Object>> seasons = botNewService.selectJobMasterSeasons(userName);
+	        if (seasons != null) {
+	            for (HashMap<String,Object> s : seasons) {
+	                String seasonKey = Objects.toString(s.get("SEASON_KEY"), "");
+	                String job       = Objects.toString(s.get("JOB"), "");
+	                if (seasonKey.isEmpty() || job.isEmpty()) continue;
+	                String cmd = "ACHV_JOB_MASTER_SEASON_" + seasonKey + "_" + job;
+	                if (!doneCmds.contains(cmd)) {
+	                    String r = grantOnceIfEligibleFast(userName, roomName, cmd, ONE_A_SP, doneCmds);
+	                    if (r != null) msg.append(r).append(NL);
+	                }
+	            }
+	        }
+	    } catch (Exception ignore) {}
+
+	    // ── 3. 학살자 시즌 업적 ─────────────────────────────────────
+	    // 2026.03.01 기준 15일 단위, 현재 진행 중인 시즌 제외
+	    try {
+	        java.time.LocalDate seasonBase = java.time.LocalDate.of(2026, 3, 1);
+	        java.time.LocalDate today      = java.time.LocalDate.now();
+	        java.time.LocalDate cur        = seasonBase;
+	        while (cur.isBefore(today)) {
+	            java.time.LocalDate next = cur.plusDays(15);
+	            if (next.isAfter(today)) break; // 진행중 시즌 제외
+	            String seasonId = cur.format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd"));
+	            String cmd = "ACHV_SLAYER_SEASON_" + seasonId;
+	            if (!doneCmds.contains(cmd)) {
+	                // 해당 시즌 랭킹 조회
+	                HashMap<String,Object> rankParam = new HashMap<>();
+	                rankParam.put("seasonStart", cur.format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd")));
+	                rankParam.put("seasonEnd",   next.minusDays(1).format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd")));
+	                List<HashMap<String,Object>> ranking = botNewService.selectSlayerSeasonRank(rankParam);
+	                if (ranking != null && !ranking.isEmpty()) {
+	                    HashMap<String,Object> top = ranking.get(0);
+	                    String topUser   = Objects.toString(top.get("USER_NAME"), "");
+	                    int topKill      = toSafeInt(top.get("KILL_CNT"));
+	                    int monTypes     = toSafeInt(top.get("MON_TYPES"));
+	                    if (userName.equals(topUser) && topKill >= 1 && monTypes >= 30) {
+	                        String r = grantOnceIfEligibleFast(userName, roomName, cmd, SLAYER_SP, doneCmds);
+	                        if (r != null) msg.append(r).append(NL);
+	                    }
+	                }
+	            }
+	            cur = next;
+	        }
+	    } catch (Exception ignore) {}
+
+	    return msg.toString().trim();
+	}
+
+	/** 안전한 int 변환 */
+	private int toSafeInt(Object o) {
+	    if (o == null) return 0;
+	    try { return Integer.parseInt(o.toString()); } catch (Exception e) { return 0; }
 	}
 
 

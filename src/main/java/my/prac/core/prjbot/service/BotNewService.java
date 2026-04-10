@@ -145,6 +145,14 @@ public interface BotNewService {
     boolean isReturnUser(String userName);
 
     List<HashMap<String, Object>> selectTotalDropItems(String userName);
+
+    // [6-1] 헬보스/직업마스터/룰렛/학살자 업적 관련
+    int selectHellBossAttackCount(String userName);
+    int selectHellBossClearCount(String userName);
+    List<HashMap<String, Object>> selectJobMasterSeasons(String userName);
+    HashMap<String, Object> selectMaxDailyBuffStats(String userName);
+    List<HashMap<String, Object>> selectSlayerSeasonRank(HashMap<String, Object> params);
+
     public boolean isNightmareMode(String userName, String roomName);
     public int getNightmareYn(String userName, String roomName);
     public int setNightmareMode(String userName, String roomName, int nightmareYn);
