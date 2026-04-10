@@ -332,13 +332,13 @@ public class BossAttackController {
 	        jobHp = mktHpMax  - hpBase;
 	        jobRegen = mktRegen  - regenBase;
 	    }
-	    
+	    AttackDeathStat ads = null;
 	    // ── 헌터 등급 계산 (전 직업 공통) + 헌터 직업이면 스탯 보너스 적용 ──
 	    try {
 	        int totalAttacks, totalDeaths;
 
 	        // [OPT-HUNTER] attackInfo에서 미리 계산된 값이 있으면 DB 조회 생략
-	        AttackDeathStat ads = null;
+	        
 	        if (map.containsKey("_preHunterAdjAttacks")) {
 	            totalAttacks = ((Number) map.get("_preHunterAdjAttacks")).intValue();
 	            totalDeaths  = ((Number) map.get("_preHunterAdjDeaths")).intValue();
