@@ -1818,19 +1818,18 @@ public class BossAttackController {
 	        }
 	    } catch (Exception ignore) {}
 
-	    // ── 3. 학살자 시즌 업적 ─────────────────────────────────────
-	    // 2026.03.01 기준 15일 단위, 현재 진행 중인 시즌 제외
+	    // ── 3. 학살자 시즌 업적 (TODO: 몬스터별 1위 구조로 재설계 예정 - 공격 시 체크로 이동)
+	    /*
 	    try {
 	        java.time.LocalDate seasonBase = java.time.LocalDate.of(2026, 3, 1);
 	        java.time.LocalDate today      = java.time.LocalDate.now();
 	        java.time.LocalDate cur        = seasonBase;
 	        while (cur.isBefore(today)) {
 	            java.time.LocalDate next = cur.plusDays(15);
-	            if (next.isAfter(today)) break; // 진행중 시즌 제외
+	            if (next.isAfter(today)) break;
 	            String seasonId = cur.format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd"));
 	            String cmd = "ACHV_SLAYER_SEASON_" + seasonId;
 	            if (!doneCmds.contains(cmd)) {
-	                // 해당 시즌 랭킹 조회
 	                HashMap<String,Object> rankParam = new HashMap<>();
 	                rankParam.put("seasonStart", cur.format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd")));
 	                rankParam.put("seasonEnd",   next.minusDays(1).format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd")));
@@ -1849,6 +1848,7 @@ public class BossAttackController {
 	            cur = next;
 	        }
 	    } catch (Exception ignore) {}
+	    */
 
 	    return msg.toString().trim();
 	}

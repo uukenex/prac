@@ -6,29 +6,36 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>람쥐봇 업적</title>
   <link rel="stylesheet" href="<%=request.getContextPath()%>/assets/css/font-awesome.min.css">
-  <script src="<%=request.getContextPath()%>/assets/js/vue.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: #f8f5f0; font-family: 'Segoe UI', 'Malgun Gothic', sans-serif; color: #333; }
-    .wrap { max-width: 900px; margin: 0 auto; padding: 20px 12px 60px 140px; }
+    body { background: #f5f3ee; font-family: 'Segoe UI', 'Malgun Gothic', sans-serif; color: #333; margin-left: 120px; }
 
-    .page-header { margin-bottom: 18px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
-    .page-title  { font-size: 20px; font-weight: 800; color: #3d2b1f; }
-    .search-row  { display: flex; gap: 8px; }
-    .search-row input { padding: 8px 14px; border: 1.5px solid #e0d9ce; border-radius: 20px; background: #fff; font-size: 13px; width: 160px; outline: none; }
-    .search-row input:focus { border-color: #c9a96e; }
-    .btn-search { background: #c9a96e; color: #fff; border: none; padding: 8px 18px; border-radius: 20px; font-size: 13px; font-weight: 700; cursor: pointer; }
-    .btn-search:hover { background: #b8935a; }
-    .loading, .empty { text-align: center; padding: 60px; color: #bbb; }
+    .wrap { max-width: 900px; margin: 0 auto; padding: 28px 16px 60px; }
+
+    .page-header { margin-bottom: 22px; }
+    .page-title  { font-size: 22px; font-weight: 800; color: #3d2b1f; display: flex; align-items: center; gap: 8px; }
+
+    .top-controls { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+    .user-wrap { display: flex; gap: 8px; align-items: center; }
+    .user-wrap input { padding: 10px 14px; border: 1.5px solid #e0d9ce; border-radius: 24px; background: #fff; font-size: 14px; color: #333; outline: none; width: 160px; }
+    .user-wrap input:focus { border-color: #c9a96e; }
+    .user-wrap input::placeholder { color: #bbb; }
+    .btn-query { background: #c9a96e; color: #fff; border: none; padding: 10px 20px; border-radius: 24px; font-size: 13px; font-weight: 700; cursor: pointer; }
+    .btn-query:hover { background: #b8935a; }
+
+    .loading { text-align: center; padding: 60px; color: #ccc; font-size: 15px; }
+    .empty   { text-align: center; padding: 60px; color: #ccc; }
 
     /* 총 업적 배지 */
     .achv-total { font-size: 42px; font-weight: 900; color: #c9a96e; text-align: center;
-                  padding: 18px; background: #fff8ee; border: 2px solid #e8c870;
-                  border-radius: 14px; margin-bottom: 14px; }
+                  padding: 18px; background: #fff; border-radius: 14px;
+                  box-shadow: 0 2px 8px rgba(0,0,0,.06); border: 1.5px solid #e8ddd0;
+                  margin-bottom: 12px; }
     .achv-total span { font-size: 14px; color: #aaa; font-weight: 400; display: block; margin-top: 4px; }
 
     /* 카드 */
-    .card { background: #fff; border: 1.5px solid #e8ddd0; border-radius: 14px; padding: 16px; margin-bottom: 12px; }
+    .card { background: #fff; border-radius: 14px; padding: 16px; margin-bottom: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,.06); border: 1.5px solid #e8ddd0; }
     .card-title { font-size: 13px; font-weight: 700; color: #a07858; margin-bottom: 12px; }
 
     /* 업적 그리드 */
@@ -43,9 +50,6 @@
     .achv-name { font-size: 12px; color: #555; }
     .achv-val  { font-size: 15px; font-weight: 700; color: #3d2b1f; }
     .achv-sub  { font-size: 11px; color: #a07858; }
-
-    /* 섹션 나눔 */
-    .section-divider { font-size: 11px; color: #bbb; margin: 6px 0 10px; border-top: 1px solid #f0ebe4; padding-top: 8px; }
 
     /* 학살자/직업마스터 테이블 */
     .season-table { width: 100%; border-collapse: collapse; font-size: 12px; }
@@ -62,14 +66,17 @@
 
   <div class="page-header">
     <div class="page-title">🏆 람쥐봇 업적</div>
-    <div class="search-row">
+  </div>
+
+  <div class="top-controls">
+    <div class="user-wrap">
       <input v-model="inputUser" placeholder="유저명 입력" @keyup.enter="loadData">
-      <button class="btn-search" @click="loadData">조회</button>
+      <button class="btn-query" @click="loadData">조회</button>
     </div>
   </div>
 
   <div class="loading" v-if="loading"><i class="fa fa-spinner fa-spin"></i> 불러오는 중...</div>
-  <div class="empty"   v-else-if="!userName">유저명을 입력해 조회하세요.</div>
+  <div class="empty"   v-else-if="!data">유저명을 입력해 조회하세요.</div>
 
   <template v-else>
 
@@ -187,7 +194,7 @@
       </div>
     </div>
 
-    <!-- 헬보스 업적 (6-1) -->
+    <!-- 헬보스 업적 -->
     <div class="card">
       <div class="card-title">👹 헬보스 업적</div>
       <div class="achv-grid">
@@ -210,7 +217,7 @@
       </div>
     </div>
 
-    <!-- 룰렛 업적 (6-1) -->
+    <!-- 룰렛 업적 -->
     <div class="card">
       <div class="card-title">🎲 룰렛 업적</div>
       <div class="achv-grid">
@@ -233,7 +240,8 @@
       </div>
     </div>
 
-    <!-- 몬스터 학살자 시즌 (6-1) -->
+    <!-- 몬스터 학살자 시즌 (TODO: 몬스터별 1위 구조로 재설계 예정) -->
+    <!--
     <div class="card" v-if="data.slayerSeasons && data.slayerSeasons.length > 0">
       <div class="card-title">🔪 몬스터 학살자 시즌 (1위+30종 달성)</div>
       <table class="season-table">
@@ -251,8 +259,9 @@
         </tbody>
       </table>
     </div>
+    -->
 
-    <!-- 직업마스터 시즌 (6-1) -->
+    <!-- 직업마스터 시즌 -->
     <div class="card" v-if="data.jobMasterSeasons && data.jobMasterSeasons.length > 0">
       <div class="card-title">📚 직업 마스터 달성 기록</div>
       <div class="achv-grid">
@@ -269,34 +278,33 @@
   </template>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
 <script>
 new Vue({
   el: '#app',
   data: {
     inputUser: '',
-    userName: '',
     loading: false,
     data: null
   },
-  mounted() {
-    var p = new URLSearchParams(window.location.search);
-    var u = p.get('userName') || p.get('user') || sessionStorage.getItem('loaUserName') || '';
+  mounted: function() {
+    var params = new URLSearchParams(window.location.search);
+    var u = (params.get('userName') || params.get('user') || sessionStorage.getItem('loaUserName') || '').trim();
     if (u) { this.inputUser = u; this.loadData(); }
   },
   methods: {
-    loadData() {
-      var u = this.inputUser.trim();
-      if (!u) return;
-      this.userName = u;
-      sessionStorage.setItem('loaUserName', u);
-      this.loading = true;
+    loadData: function() {
       var self = this;
+      var u = self.inputUser.trim();
+      if (!u) return;
+      sessionStorage.setItem('loaUserName', u);
+      self.loading = true;
       fetch('<%=request.getContextPath()%>/loa/api/achievements?userName=' + encodeURIComponent(u))
         .then(function(r) { return r.json(); })
         .then(function(d) { self.data = d; self.loading = false; })
         .catch(function() { self.loading = false; });
     },
-    fmt(n) { return (n || 0).toLocaleString('ko-KR'); }
+    fmt: function(n) { return (n || 0).toLocaleString('ko-KR'); }
   }
 });
 </script>
