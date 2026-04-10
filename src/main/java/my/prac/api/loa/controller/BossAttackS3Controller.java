@@ -263,7 +263,7 @@ public class BossAttackS3Controller {
             double critMultiplier = Math.max(1.0, ctx.critDmg / 100.0);
 
             if (isSuperCritical) {
-                damage = (long)(baseAtk * 5 * critMultiplier);
+                damage = (long)(baseAtk * 3 * critMultiplier);
                 dmgMsg = "[✨초강력 치명타!!] " + atkRangeStr + baseAtk + " → " + damage;
             } else if (isCritical) {
                 damage = (long)(baseAtk * critMultiplier);
@@ -341,7 +341,7 @@ public class BossAttackS3Controller {
                 pr.put("scoreExt", spReward.getUnit());
                 pr.put("cmd",      "BOSS_HELL_ATK");
                 botNewService.insertPointRank(pr);
-                spRewardMsg = "💰 획득 SP: " + spReward + NL;
+                spRewardMsg = " 획득 SP: " + spReward + NL;
             } catch (Exception e) {
                 // SP 지급 실패는 무시
             }

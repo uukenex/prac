@@ -964,7 +964,7 @@ public class BossAttackController {
 
 	        if (diffMinutes < 30) {
 	            long remain = 30 - diffMinutes;
-	            return "🌟 축복술사는 축복의 여운이 남아 "
+	            return "축복술사는 축복의 여운이 남아 "
 	                    + remain + "분 동안 직업 변경이 불가능합니다.";
 	        }
 	    }
@@ -4646,7 +4646,7 @@ public class BossAttackController {
 	    int totalAttacks = ads.totalAttacks;
 	    if (totalAttacks <= 0) return "";
 
-	    int[] thresholds = buildKillThresholds(100000);
+	    int[] thresholds = buildKillThresholds(AchievementConfig.KILL_TOTAL_MAX);
 
 	    StringBuilder sb = new StringBuilder();
 
@@ -6225,7 +6225,7 @@ public class BossAttackController {
 	    int totalNmKills = 0;
 	    int totalHellKills = 0;
 
-	    int[] perMonThresholds = buildKillThresholds(50000);
+	    int[] perMonThresholds = buildKillThresholds(AchievementConfig.KILL_PER_MON_MAX);
 
 	    for (KillStat ks : ksList) {
 	        int monNo = ks.monNo;
@@ -6250,7 +6250,7 @@ public class BossAttackController {
 	        }
 	    }
 
-	    int[] totalThresholds = buildKillThresholds(100000);
+	    int[] totalThresholds = buildKillThresholds(AchievementConfig.KILL_TOTAL_MAX);
 
 	    for (int th : totalThresholds) {
 	        if (totalKills < th) break;
