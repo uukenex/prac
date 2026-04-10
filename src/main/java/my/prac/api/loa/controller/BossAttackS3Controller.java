@@ -1,5 +1,8 @@
 package my.prac.api.loa.controller;
 
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -141,6 +144,7 @@ public class BossAttackS3Controller {
         int bossAtkRate, bossAtkPower, bossDefRate, bossDefPower, bossEvadeRate, critDefRate;
         int debuff, debuff1;
         String bossStartDate;
+        String hideRule;
         try {
             boss = botS3Service.selectHellBoss();
             if (boss == null || boss.get("CUR_HP") == null) {
@@ -170,8 +174,21 @@ public class BossAttackS3Controller {
             debuff        = boss.get("DEBUFF")       != null ? Integer.parseInt(boss.get("DEBUFF").toString())       : 0;
             debuff1       = boss.get("DEBUFF1")      != null ? Integer.parseInt(boss.get("DEBUFF1").toString())      : 0;
             bossStartDate = boss.get("START_DATE")   != null ? boss.get("START_DATE").toString() : "";
+            hideRule      = boss.get("HIDE_RULE")    != null ? boss.get("HIDE_RULE").toString()    : "0";
         } catch (Exception e) {
             return "보스 정보를 가져오는데 실패했습니다.";
+        }
+
+        // 재생성 쿨타임 체크 (INSERT_DATE가 미래면 아직 등장 전)
+        if (!bossStartDate.isEmpty()) {
+            try {
+                LocalDateTime spawnTime = LocalDateTime.parse(bossStartDate,
+                        DateTimeFormatter.ofPattern("yyyyMMdd HHmmss"));
+                if (LocalDateTime.now().isBefore(spawnTime)) {
+                    String dispTime = spawnTime.format(DateTimeFormatter.ofPattern("MM/dd HH:mm"));
+                    return userName + "님," + NL + "헬보스가 재정비 중입니다." + NL + "등장 예정: " + dispTime;
+                }
+            } catch (Exception ignored) {}
         }
 
         // 천벌 아이템 보유 여부 확인
@@ -220,10 +237,12 @@ public class BossAttackS3Controller {
         boolean isSuperCritical = false;
         String dmgMsg = "";
         String bossDefMsg = "";
+        String hideMsg = "";
 
         if (!isEvade) {
-            int baseAtk = ctx.atkMin + rand.nextInt(Math.max(1, ctx.atkMax - ctx.atkMin + 1));
-            String atkRangeStr = "(" + ctx.atkMin + "~" + ctx.atkMax + ") ";
+            int baseAtk = (ctx.atkMin + rand.nextInt(Math.max(1, ctx.atkMax - ctx.atkMin + 1))) / 100;
+            if (baseAtk < 1) baseAtk = 1;
+            String atkRangeStr = "(" + (ctx.atkMin / 100) + "~" + (ctx.atkMax / 100) + ") ";
 
             int totalCritPercent = ctx.crit - critDefRate;
 
@@ -232,6 +251,13 @@ public class BossAttackS3Controller {
             } else {
                 isCritical = totalCritPercent > 0 && Math.random() < totalCritPercent / 100.0;
                 if (isCritical) isSuperCritical = Math.random() < 0.10;
+            }
+
+            // HIDE_RULE: 특정 시간대 치명타 불가 (천벌/디버프 중엔 무시)
+            hideMsg = applyHideRule(hideRule, heavensPunishment || flag_boss_debuff);
+            if (!hideMsg.isEmpty()) {
+                isCritical = false;
+                isSuperCritical = false;
             }
 
             double critMultiplier = Math.max(1.0, ctx.critDmg / 100.0);
@@ -303,6 +329,24 @@ public class BossAttackS3Controller {
             return "저장 중 오류가 발생했습니다.";
         }
 
+        // 공격 SP 보상: 준 데미지 × 1000 raw SP (100 데미지 → 10a)
+        String spRewardMsg = "";
+        if (!isEvade && damage > 0) {
+            try {
+                SP spReward = SP.fromSp(damage * 1000L);
+                HashMap<String, Object> pr = new HashMap<>();
+                pr.put("userName", userName);
+                pr.put("roomName", roomName);
+                pr.put("score",    spReward.getValue());
+                pr.put("scoreExt", spReward.getUnit());
+                pr.put("cmd",      "BOSS_HELL_ATK");
+                botNewService.insertPointRank(pr);
+                spRewardMsg = "💰 획득 SP: " + spReward + NL;
+            } catch (Exception e) {
+                // SP 지급 실패는 무시
+            }
+        }
+
         // 처치 보상 + 보스 재생성
         String killMsg = "";
         if (isKill) {
@@ -317,9 +361,11 @@ public class BossAttackS3Controller {
         if (!isEvade) {
             msg.append("▶ 입힌 데미지: ").append(damage).append(NL);
             msg.append(dmgMsg).append(NL);
-            if (!punishMsg.isEmpty())  msg.append(punishMsg);
-            if (!debuff1Msg.isEmpty()) msg.append(debuff1Msg);
-            if (!bossDefMsg.isEmpty()) msg.append(bossDefMsg);
+            if (!hideMsg.isEmpty())     msg.append(hideMsg);
+            if (!spRewardMsg.isEmpty()) msg.append(spRewardMsg);
+            if (!punishMsg.isEmpty())   msg.append(punishMsg);
+            if (!debuff1Msg.isEmpty())  msg.append(debuff1Msg);
+            if (!bossDefMsg.isEmpty())  msg.append(bossDefMsg);
         } else {
             msg.append("보스가 공격을 회피했습니다! 데미지 0!").append(NL);
         }
@@ -347,6 +393,10 @@ public class BossAttackS3Controller {
     // =========================================================
     // 보스 재생성: 처치 후 랜덤 능력치로 새 보스 INSERT
     // =========================================================
+    private static final String[] HIDE_RULES = {"아침", "점심", "저녁", "새벽"};
+    private static final DateTimeFormatter SPAWN_DATE_FMT =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
     private void respawnHellBoss() {
         try {
             Random rand = new Random();
@@ -359,6 +409,9 @@ public class BossAttackS3Controller {
             bossMap.put("defPower",    randInt(rand, BOSS_DEF_POWER_MIN,  BOSS_DEF_POWER_MAX));
             bossMap.put("evadeRate",   randInt(rand, BOSS_EVADE_RATE_MIN, BOSS_EVADE_RATE_MAX));
             bossMap.put("critDefRate", randInt(rand, BOSS_CRIT_DEF_MIN,   BOSS_CRIT_DEF_MAX));
+            // 24시간 후 등장
+            bossMap.put("startDate",   LocalDateTime.now().plusHours(24).format(SPAWN_DATE_FMT));
+            bossMap.put("hideRule",    HIDE_RULES[rand.nextInt(HIDE_RULES.length)]);
             SP hpSp = SP.fromSp(rawHp);
             bossMap.put("maxHp",    (long) hpSp.getValue());
             bossMap.put("maxHpExt", hpSp.getUnit().isEmpty() ? null : hpSp.getUnit());
@@ -370,6 +423,33 @@ public class BossAttackS3Controller {
 
     private int randInt(Random rand, int min, int max) {
         return min + rand.nextInt(max - min + 1);
+    }
+
+    /**
+     * HIDE_RULE 시간대 체크 (S1 동일 방식)
+     * @param skip 천벌/디버프 활성 시 무시
+     * @return 활성 시 메시지, 비활성 시 빈 문자열
+     */
+    private String applyHideRule(String hideRule, boolean skip) {
+        if (skip) return "";
+        LocalTime now = LocalTime.now();
+        LocalTime s, e;
+        String msg;
+        switch (hideRule) {
+            case "아침":
+                s = LocalTime.of(6,  0); e = LocalTime.of(10, 0);
+                msg = "보스가 안개에 숨었습니다 (치명타 불가, 06~10시)" + NL; break;
+            case "점심":
+                s = LocalTime.of(10, 0); e = LocalTime.of(15, 0);
+                msg = "보스가 구름에 숨었습니다 (치명타 불가, 10~15시)" + NL; break;
+            case "저녁":
+                s = LocalTime.of(15, 0); e = LocalTime.of(19, 0);
+                msg = "보스가 퇴근길에 숨었습니다 (치명타 불가, 15~19시)" + NL; break;
+            default: // 새벽
+                s = LocalTime.of(2,  0); e = LocalTime.of(6,  0);
+                msg = "보스가 어둠에 숨었습니다 (치명타 불가, 02~06시)" + NL; break;
+        }
+        return (!now.isBefore(s) && now.isBefore(e)) ? msg : "";
     }
 
 
