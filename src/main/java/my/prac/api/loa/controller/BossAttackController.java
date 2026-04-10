@@ -3576,7 +3576,7 @@ public class BossAttackController {
 	        List<HashMap<String,Object>> achvJobSkillRows = null;
 	        try { achvJobSkillRows = botNewService.selectJobSkillUseCountAllJobs(userName, roomName); } catch (Exception ignore) {}
 
-	        String firstClearMsg  = grantFirstClearIfEligible(userName, roomName, m, globalAchvMap);
+	        //String firstClearMsg  = grantFirstClearIfEligible(userName, roomName, m, globalAchvMap);
 	        String killAchvMsg    = grantKillAchievements(userName, roomName, achievedCmdSet, cachedKillStats);           // [PERF] cachedKillStats 재사용
 	        String itemAchvMsg    = grantLightDarkItemAchievements(userName, roomName, achievedCmdSet, achvGainRows);     // [PERF] 프리로드
 	        String bagAchvMsg     = grantBagAcquireAchievementsFast(userName, roomName, achievedCmdSet, achvBagTotal);   // [PERF] 프리로드
@@ -3587,8 +3587,8 @@ public class BossAttackController {
 
 	        String achvRewardMsg = grantAchievementBasedReward(userName, roomName, userAchvList);
 	        
-	        if ((firstClearMsg   != null && !firstClearMsg.isEmpty())
-	                || (killAchvMsg     != null && !killAchvMsg.isEmpty())
+	        if (/*(firstClearMsg   != null && !firstClearMsg.isEmpty())*/
+	                 (killAchvMsg     != null && !killAchvMsg.isEmpty())
 	                || (itemAchvMsg     != null && !itemAchvMsg.isEmpty())
 	                || (attackAchvMsg   != null && !attackAchvMsg.isEmpty())
 	                || (jobSkillAchvMsg != null && !jobSkillAchvMsg.isEmpty())
@@ -3599,7 +3599,7 @@ public class BossAttackController {
 	        		) {
 
 	                   bonusMsg = NL
-	                           + firstClearMsg
+	                         //  + firstClearMsg
 	                           + killAchvMsg
 	                           + itemAchvMsg
 	                           + attackAchvMsg
@@ -3649,10 +3649,11 @@ public class BossAttackController {
 	        msg += blessMsg;
 	    }
 
+	    /*
 	    String celebrationMsg = grantCelebrationClearBonus(userName, roomName, globalAchvMap, userAchvMap, u.lv); // [PERF] selectUser 재사용
 	    if (celebrationMsg != null && !celebrationMsg.isEmpty()) {
 	        msg += NL + celebrationMsg;
-	    }
+	    }*/
 
 	    // 16) 현재 포인트
 	    String curSpStr="";
@@ -6117,6 +6118,8 @@ public class BossAttackController {
 	 *  - 이미 해당 ROOM_NAME에 ACHV_FIRST_CLEAR_MON_{monNo}가 존재하면 스킵
 	 *  - 없으면: 해당 유저에게 rewardSp 지급 + CMD 기록
 	 */
+	
+	/*
 	private String grantFirstClearIfEligible(
 	        String userName,
 	        String roomName,
@@ -6157,7 +6160,7 @@ public class BossAttackController {
 	    return "✨ 업적 달성! [" + m.monName + "] 최초 토벌자 보상 +"
 	            + formatSpShort(rewardSp) + " 지급되었습니다." + NL;
 	}
-
+*/
 	
 	private String grantOnceIfEligibleFast(
 	        String userName,
@@ -6356,7 +6359,7 @@ public class BossAttackController {
 	}
 
 	
-	
+	/*
 	private String grantCelebrationClearBonus(
 	        String userName,
 	        String roomName,
@@ -6476,6 +6479,8 @@ public class BossAttackController {
 	    }
 	    return 0;
 	}
+	
+	*/
 	
 	/**
 	 * 업적 리스트를:
