@@ -221,20 +221,18 @@
     <div class="card">
       <div class="card-title">🎲 룰렛 업적</div>
       <div class="achv-grid">
-        <div class="achv-item" :class="data.roulette.maxAtkBonus >= 100 ? 'done' : ''">
+        <div class="achv-item" :class="data.roulette.atkSuccessCnt > 0 ? 'done' : ''">
           <div class="achv-icon">🎯</div>
           <div class="achv-info">
             <div class="achv-name">공격력 100% 달성</div>
-            <div class="achv-val">최대 {{ data.roulette.maxAtkBonus }}%</div>
-            <div class="achv-sub">업적 {{ data.grouped.rouletteAtk }}개 달성</div>
+            <div class="achv-val">{{ data.roulette.atkSuccessCnt }}회 성공</div>
           </div>
         </div>
-        <div class="achv-item" :class="data.roulette.maxCriDmgBonus >= 300 ? 'done' : ''">
+        <div class="achv-item" :class="data.roulette.criSuccessCnt > 0 ? 'done' : ''">
           <div class="achv-icon">💥</div>
           <div class="achv-info">
             <div class="achv-name">치명타 300% 달성</div>
-            <div class="achv-val">최대 {{ data.roulette.maxCriDmgBonus }}%</div>
-            <div class="achv-sub">업적 {{ data.grouped.rouletteCri }}개 달성</div>
+            <div class="achv-val">{{ data.roulette.criSuccessCnt }}회 성공</div>
           </div>
         </div>
       </div>
@@ -262,15 +260,27 @@
     -->
 
     <!-- 직업마스터 시즌 -->
+    <!-- 직업마스터 시즌 -->
     <div class="card" v-if="data.jobMasterSeasons && data.jobMasterSeasons.length > 0">
       <div class="card-title">📚 직업 마스터 달성 기록</div>
+
       <div class="achv-grid">
-        <div class="achv-item done" v-for="s in data.jobMasterSeasons" :key="s">
+        <div class="achv-item done"
+             v-for="s in data.jobMasterSeasons"
+             :key="s.season">
+
           <div class="achv-icon">🎓</div>
+
           <div class="achv-info">
-            <div class="achv-name">직업 마스터</div>
-            <div class="achv-sub">{{ s.replace('_', ' / ') }}</div>
+            <div class="achv-name">
+              {{ formatSeason(s.season) }} 시즌
+            </div>
+
+            <div class="achv-val">
+              마스터 {{ s.count }}회
+            </div>
           </div>
+
         </div>
       </div>
     </div>
@@ -304,7 +314,16 @@ new Vue({
         .then(function(d) { self.data = d; self.loading = false; })
         .catch(function() { self.loading = false; });
     },
-    fmt: function(n) { return (n || 0).toLocaleString('ko-KR'); }
+    fmt: function(n) { return (n || 0).toLocaleString('ko-KR'); },
+	  formatSeason(season) {
+	    if (!season) return "";
+	
+	    const y = season.substring(0,4)
+	    const m = season.substring(4,6)
+	    const d = season.substring(6,8)
+	
+	    return `${y}-${m}-${d}`
+	  }
   }
 });
 </script>

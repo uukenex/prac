@@ -97,27 +97,41 @@ public class LoaAchievementViewController {
         try { hellClearCount = botNewService.selectHellBossClearCount(userName);  } catch (Exception ignore) {}
 
         // 5. 룰렛 업적 (6-1)
-        int maxAtkBonus    = 0;
-        int maxCriDmgBonus = 0;
+        int atkSuccessCnt    = 0;
+        int criSuccessCnt = 0;
         try {
             HashMap<String, Object> buff = botNewService.selectMaxDailyBuffStats(userName);
             if (buff != null) {
-                maxAtkBonus    = toInt(buff.get("MAX_ATK_BONUS"));
-                maxCriDmgBonus = toInt(buff.get("MAX_CRI_DMG_BONUS"));
+            	atkSuccessCnt    = toInt(buff.get("ATK_FULL_CNT"));
+            	criSuccessCnt = toInt(buff.get("CRI_FULL_CNT"));
             }
         } catch (Exception ignore) {}
 
         // 6. 직업마스터 업적 시즌 목록 (6-1)
-        List<String> jobMasterSeasons = new ArrayList<>();
+        List<HashMap<String,Object>> jobMasterSeasons = new ArrayList<>();
+
         try {
             List<HashMap<String, Object>> masterRows = botNewService.selectJobMasterSeasons(userName);
+
             if (masterRows != null) {
                 for (HashMap<String, Object> row : masterRows) {
-                    String d = Objects.toString(row.get("SEASON_KEY"), "");
-                    if (!d.isEmpty()) jobMasterSeasons.add(d + "_" + row.get("JOB"));
+
+                    String season = Objects.toString(row.get("SEASON_KEY"), "");
+                    int cnt = toInt(row.get("MASTER_CNT"));
+
+                    if (!season.isEmpty()) {
+                        HashMap<String,Object> m = new HashMap<>();
+                        m.put("season", season);
+                        m.put("count", cnt);
+
+                        jobMasterSeasons.add(m);
+                    }
                 }
             }
+
         } catch (Exception ignore) {}
+
+        result.put("jobMasterSeasons", jobMasterSeasons);
 
         // 7. 몬스터 학살자 시즌 달성 목록 (6-1)
         List<HashMap<String, Object>> slayerSeasons = buildSlayerSeasons(userName);
@@ -129,8 +143,8 @@ public class LoaAchievementViewController {
         result.put("stats",      mapOf("kills", totalKills, "drops", totalDrops, "deaths", totalDeaths,
                                        "lightQty", lightQty, "darkQty", darkQty, "grayQty", grayQty));
         result.put("hellBoss",   mapOf("atkCount", hellAtkCount, "clearCount", hellClearCount));
-        result.put("roulette",   mapOf("maxAtkBonus", maxAtkBonus, "maxCriDmgBonus", maxCriDmgBonus));
-        result.put("jobMasterSeasons",  jobMasterSeasons);
+        result.put("roulette",   mapOf("atkSuccessCnt", atkSuccessCnt, "criSuccessCnt", criSuccessCnt));  
+		result.put("jobMasterSeasons",  jobMasterSeasons);
         result.put("slayerSeasons",     slayerSeasons);
 
         return ResponseEntity.ok(result);

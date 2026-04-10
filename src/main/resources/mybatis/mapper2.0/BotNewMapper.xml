@@ -1693,6 +1693,7 @@
 	     [6-1] 헬보스 공격 횟수 (TARGET_MON_LV=999)
 	     ===================================================== -->
 	<select id="selectHellBossAttackCount" parameterType="string" resultType="int">
+	    /*selectHellBossAttackCount*/
 	    SELECT COUNT(1)
 	      FROM TBOT_POINT_NEW_BATTLE_LOG
 	     WHERE USER_NAME      = #{userName}
@@ -1705,6 +1706,7 @@
 	         보스 처치 기간 동안 battle_log가 있는 보스 건수
 	     ===================================================== -->
 	<select id="selectHellBossClearCount" parameterType="string" resultType="int">
+		/*selectHellBossClearCount*/
 	    SELECT COUNT(DISTINCT B.SEQ)
 	      FROM TBOT_POINT_NEW_BOSS B
 	     WHERE B.END_YN = '1'
@@ -1723,22 +1725,34 @@
 	     [6-1] 직업마스터 달성한 15일 시즌 목록 (12.15 기준 반기분할)
 	     ===================================================== -->
 	<select id="selectJobMasterSeasons" parameterType="string" resultType="hashmap">
-	    SELECT TO_CHAR(MASTER_DATE, 'YYYYMMDD') AS SEASON_KEY
-	         , JOB
-	         , ATK_CNT
-	      FROM TBOT_POINT_NEW_JOB_MASTER
-	     WHERE USER_NAME = #{userName}
-	     ORDER BY MASTER_DATE ASC
+	    /*selectJobMasterSeasons*/
+	    SELECT 
+		       CASE 
+		           WHEN TO_NUMBER(SUBSTR(TO_CHAR(MASTER_DATE,'YYYYMMDD'),7,2)) &lt;= 15
+		                THEN SUBSTR(TO_CHAR(MASTER_DATE,'YYYYMMDD'),1,6) || '01'
+		           ELSE SUBSTR(TO_CHAR(MASTER_DATE,'YYYYMMDD'),1,6) || '16'
+		       END AS SEASON_KEY,
+		       COUNT(*) AS MASTER_CNT
+		FROM TBOT_POINT_NEW_JOB_MASTER
+		WHERE USER_NAME = #{userName}
+		GROUP BY 
+		       CASE 
+		           WHEN TO_NUMBER(SUBSTR(TO_CHAR(MASTER_DATE,'YYYYMMDD'),7,2)) &lt;= 15
+		                THEN SUBSTR(TO_CHAR(MASTER_DATE,'YYYYMMDD'),1,6) || '01'
+		           ELSE SUBSTR(TO_CHAR(MASTER_DATE,'YYYYMMDD'),1,6) || '16'
+		       END
+		ORDER BY SEASON_KEY
 	</select>
 
 	<!-- =====================================================
 	     [6-1] 룰렛(데일리버프) 달성 최대치 조회
 	     ===================================================== -->
 	<select id="selectMaxDailyBuffStats" parameterType="string" resultType="hashmap">
-	    SELECT NVL(MAX(ATK_BONUS),     0) AS MAX_ATK_BONUS
-	         , NVL(MAX(CRI_DMG_BONUS), 0) AS MAX_CRI_DMG_BONUS
-	      FROM TBOT_POINT_NEW_DAILY_BUFF
-	     WHERE USER_NAME = #{userName}
+	  /*selectMaxDailyBuffStats*/
+	  SELECT SUM(CASE WHEN ATK_BONUS = 100 THEN 1 ELSE 0 END) AS ATK_FULL_CNT,
+		     SUM(CASE WHEN CRI_DMG_BONUS = 300 THEN 1 ELSE 0 END) AS CRI_FULL_CNT
+		FROM TBOT_POINT_NEW_DAILY_BUFF
+	   WHERE USER_NAME = #{userName}
 	</select>
 
 	<!-- =====================================================
@@ -1746,16 +1760,28 @@
 	     시즌: 2026.03.01~ 각 월 1~15, 16~말일
 	     ===================================================== -->
 	<select id="selectSlayerSeasonRank" parameterType="hashmap" resultType="hashmap">
-	    SELECT A.USER_NAME
-	         , COUNT(1)                       AS KILL_CNT
-	         , COUNT(DISTINCT A.TARGET_MON_LV) AS MON_TYPES
-	      FROM TBOT_POINT_NEW_BATTLE_LOG A
-	     WHERE A.KILL_YN    = '1'
-	       AND A.INSERT_DATE >= TO_DATE(#{seasonStart}, 'YYYYMMDD')
-	       AND A.INSERT_DATE &lt; TO_DATE(#{seasonEnd},   'YYYYMMDD') + 1
-	       AND A.ROOM_NAME NOT IN ('람쥐봇 문의방','test123')
-	     GROUP BY A.USER_NAME
-	     ORDER BY COUNT(1) DESC
-	</select>
+		/*selectSlayerSeasonRank*/
+		SELECT TARGET_MON_LV
+		     , USER_NAME
+		     , KILL_CNT
+		FROM (
+		    SELECT A.TARGET_MON_LV
+		         , A.USER_NAME
+		         , COUNT(1) AS KILL_CNT
+		         , ROW_NUMBER() OVER (
+		               PARTITION BY A.TARGET_MON_LV
+		               ORDER BY COUNT(1) DESC
+		           ) AS RN
+		      FROM TBOT_POINT_NEW_BATTLE_LOG A
+		     WHERE A.KILL_YN = '1'
+		       AND A.TARGET_MON_LV BETWEEN 1 AND 30
+		       AND A.INSERT_DATE >= TO_DATE(#{seasonStart}, 'YYYYMMDD')
+		       AND A.INSERT_DATE &lt;  TO_DATE(#{seasonEnd}, 'YYYYMMDD') + 1
+		       AND A.ROOM_NAME NOT IN ('람쥐봇 문의방','test123')
+		     GROUP BY A.TARGET_MON_LV, A.USER_NAME
+		     HAVING COUNT(1) >= 100
+		)
+		WHERE RN = 1
+		</select>
 
 </mapper>

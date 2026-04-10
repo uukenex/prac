@@ -3,6 +3,7 @@ package my.prac.api.loa.controller;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -391,9 +392,13 @@ public class BossAttackController {
 	                case "SSS": atkCap = 8000; hpCap = 80000; regenCap = 8000; criCap = 60; break;
 	                case "SS":  atkCap = 6000; hpCap = 60000; regenCap = 6000; criCap = 45; break;
 	                case "S":   atkCap = 4000; hpCap = 30000; regenCap = 3000; criCap = 30; break;
+	                case "A+":  atkCap = 3300; hpCap = 22000; regenCap = 2200; criCap = 27; break;
 	                case "A":   atkCap = 3000; hpCap = 20000; regenCap = 2000; criCap = 25; break;
+	                case "B+":  atkCap = 2200; hpCap = 16000; regenCap = 1700; criCap = 22; break;
 	                case "B":   atkCap = 2000; hpCap = 15000; regenCap = 1500; criCap = 20; break;
+	                case "C+":  atkCap = 1300; hpCap = 9000;  regenCap = 900;  criCap = 16; break;
 	                case "C":   atkCap = 1200; hpCap = 8000;  regenCap = 800;  criCap = 15; break;
+	                case "D+":  atkCap = 700;  hpCap = 5000;  regenCap = 500;  criCap = 11; break;
 	                case "D":   atkCap = 600;  hpCap = 4000;  regenCap = 400;  criCap = 10; break;
 	                default:    atkCap = 200;  hpCap = 1000;  regenCap = 100;  criCap = 5;
 	            }
@@ -1735,14 +1740,6 @@ public class BossAttackController {
 			}
 		}
 
-	    // 특별 업적 일괄 체크 (룰렛/직업마스터/학살자) - 업적 조회 시 소급 지급
-	    try {
-	        String specialAchvMsg = grantSpecialHistoricalAchievements(ctx.targetUser, ctx.roomName);
-	        if (specialAchvMsg != null && !specialAchvMsg.isEmpty()) {
-	            sb.append(NL).append(specialAchvMsg);
-	        }
-	    } catch (Exception ignore) {}
-
 	    // 업적
 	    int achvCnt = 0;
 	    try {
@@ -1788,14 +1785,14 @@ public class BossAttackController {
 	    try {
 	        HashMap<String,Object> buffStats = botNewService.selectMaxDailyBuffStats(userName);
 	        if (buffStats != null) {
-	            int maxAtk = toSafeInt(buffStats.get("MAX_ATK_BONUS"));
-	            int maxCri = toSafeInt(buffStats.get("MAX_CRI_DMG_BONUS"));
-	            if (maxAtk >= 100 && !doneCmds.contains("ACHV_ROULETTE_ATK_100")) {
-	                String r = grantOnceIfEligibleFast(userName, roomName, "ACHV_ROULETTE_ATK_100", ONE_A_SP, doneCmds);
+	            int rullet_max_atk_cnt = toSafeInt(buffStats.get("ATK_FULL_CNT"));
+	            int rullet_max_cri_cnt = toSafeInt(buffStats.get("CRI_FULL_CNT"));
+	            if (rullet_max_atk_cnt > 0 && !doneCmds.contains("ACHV_ROULETTE_ATK_100_"+rullet_max_atk_cnt)) {
+	                String r = grantOnceIfEligibleFast(userName, roomName, "ACHV_ROULETTE_ATK_100_"+rullet_max_atk_cnt, ONE_A_SP, doneCmds);
 	                if (r != null) msg.append(r).append(NL);
 	            }
-	            if (maxCri >= 300 && !doneCmds.contains("ACHV_ROULETTE_CRI_300")) {
-	                String r = grantOnceIfEligibleFast(userName, roomName, "ACHV_ROULETTE_CRI_300", ONE_A_SP, doneCmds);
+	            if (rullet_max_cri_cnt > 0 && !doneCmds.contains("ACHV_ROULETTE_CRI_300_"+rullet_max_cri_cnt)) {
+	                String r = grantOnceIfEligibleFast(userName, roomName, "ACHV_ROULETTE_CRI_300_"+rullet_max_cri_cnt, ONE_A_SP, doneCmds);
 	                if (r != null) msg.append(r).append(NL);
 	            }
 	        }
@@ -1803,52 +1800,96 @@ public class BossAttackController {
 
 	    // ── 2. 직업마스터 시즌 업적 ────────────────────────────────
 	    try {
-	        List<HashMap<String,Object>> seasons = botNewService.selectJobMasterSeasons(userName);
-	        if (seasons != null) {
-	            for (HashMap<String,Object> s : seasons) {
-	                String seasonKey = Objects.toString(s.get("SEASON_KEY"), "");
-	                String job       = Objects.toString(s.get("JOB"), "");
-	                if (seasonKey.isEmpty() || job.isEmpty()) continue;
-	                String cmd = "ACHV_JOB_MASTER_SEASON_" + seasonKey + "_" + job;
-	                if (!doneCmds.contains(cmd)) {
-	                    String r = grantOnceIfEligibleFast(userName, roomName, cmd, ONE_A_SP, doneCmds);
-	                    if (r != null) msg.append(r).append(NL);
-	                }
-	            }
-	        }
+	    	 List<HashMap<String,Object>> seasons = botNewService.selectJobMasterSeasons(userName);
+	    	    if (seasons != null) {
+	    	        for (HashMap<String,Object> s : seasons) {
+	    	            String seasonKey = Objects.toString(s.get("SEASON_KEY"), "");
+	    	            int masterCnt = Integer.parseInt(Objects.toString(s.get("MASTER_CNT"), "0"));
+	    	            if (seasonKey.isEmpty()) continue;
+	    	            String cmd = "ACHV_MASTER_SEASON_" + seasonKey+"_"+masterCnt;
+	    	            if (!doneCmds.contains(cmd)) {
+							String r = grantOnceIfEligibleFast(userName, roomName, cmd, ONE_A_SP, doneCmds);
+
+	    	                if (r != null) msg.append(r).append(NL);
+	    	            }
+	    	        }
+	    	    }
 	    } catch (Exception ignore) {}
 
 	    // ── 3. 학살자 시즌 업적 (TODO: 몬스터별 1위 구조로 재설계 예정 - 공격 시 체크로 이동)
-	    /*
 	    try {
-	        java.time.LocalDate seasonBase = java.time.LocalDate.of(2026, 3, 1);
-	        java.time.LocalDate today      = java.time.LocalDate.now();
-	        java.time.LocalDate cur        = seasonBase;
-	        while (cur.isBefore(today)) {
-	            java.time.LocalDate next = cur.plusDays(15);
-	            if (next.isAfter(today)) break;
-	            String seasonId = cur.format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd"));
-	            String cmd = "ACHV_SLAYER_SEASON_" + seasonId;
-	            if (!doneCmds.contains(cmd)) {
-	                HashMap<String,Object> rankParam = new HashMap<>();
-	                rankParam.put("seasonStart", cur.format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd")));
-	                rankParam.put("seasonEnd",   next.minusDays(1).format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd")));
-	                List<HashMap<String,Object>> ranking = botNewService.selectSlayerSeasonRank(rankParam);
-	                if (ranking != null && !ranking.isEmpty()) {
-	                    HashMap<String,Object> top = ranking.get(0);
-	                    String topUser   = Objects.toString(top.get("USER_NAME"), "");
-	                    int topKill      = toSafeInt(top.get("KILL_CNT"));
-	                    int monTypes     = toSafeInt(top.get("MON_TYPES"));
-	                    if (userName.equals(topUser) && topKill >= 1 && monTypes >= 30) {
-	                        String r = grantOnceIfEligibleFast(userName, roomName, cmd, SLAYER_SP, doneCmds);
-	                        if (r != null) msg.append(r).append(NL);
-	                    }
-	                }
-	            }
-	            cur = next;
+
+	        LocalDate today = LocalDate.now();
+
+	        if (today.isBefore(LocalDate.of(2026,4,16))) {
+	            return msg.toString().trim();
 	        }
+	        //이전데이터강제생성용
+	        //if (today.getDayOfMonth() == 1 || today.getDayOfMonth() == 16) {
+
+            LocalDate seasonStart;
+            LocalDate seasonEnd;
+
+            if (today.getDayOfMonth() >= 16) {
+                // 16일~말일 실행 → 이번달 1~15 조회
+                seasonStart = today.withDayOfMonth(1);
+                seasonEnd = today.withDayOfMonth(15);
+            } else {
+                // 1일~15일 실행 → 전달 16~말일 조회
+                LocalDate prevMonth = today.minusMonths(1);
+                seasonStart = prevMonth.withDayOfMonth(16);
+                seasonEnd = prevMonth.withDayOfMonth(prevMonth.lengthOfMonth());
+            }
+
+            String seasonId = seasonStart.format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+
+            // 이미 생성된 시즌인지 체크 (몬스터1 기준)
+            boolean seasonAlreadyDone = false;
+
+            for (String c : doneCmds) {
+                if (c.startsWith("ACHV_SLAYER_SEASON_" + seasonId + "_")) {
+                    seasonAlreadyDone = true;
+                    break;
+                }
+            }
+
+            if (!seasonAlreadyDone) {
+
+                HashMap<String,Object> param = new HashMap<>();
+                param.put("seasonStart", seasonId);
+                param.put("seasonEnd", seasonEnd.format(DateTimeFormatter.ofPattern("yyyyMMdd")));
+
+                List<HashMap<String,Object>> ranking =
+                    botNewService.selectSlayerSeasonRank(param);
+
+                if (ranking != null) {
+
+                    for (HashMap<String,Object> row : ranking) {
+
+                        int monLv = toSafeInt(row.get("TARGET_MON_LV"));
+                        String topUser = Objects.toString(row.get("USER_NAME"), "");
+
+                        if (!userName.equals(topUser)) continue;
+
+                        String cmd = "ACHV_SLAYER_SEASON_" + seasonId + "_" + monLv;
+
+                        if (!doneCmds.contains(cmd)) {
+
+                            String r = grantOnceIfEligibleFast(
+                                userName,
+                                roomName,
+                                cmd,
+                                SLAYER_SP,
+                                doneCmds
+                            );
+
+                            if (r != null) msg.append(r).append(NL);
+                        }
+                    }
+                }
+            }
+
 	    } catch (Exception ignore) {}
-	    */
 
 	    return msg.toString().trim();
 	}
@@ -3705,7 +3746,8 @@ public class BossAttackController {
 	        String potionAchvMsg    = grantPotionUseAchievements(userName, roomName, achievedCmdSet, achvPotionCount);    // [PERF] 프리로드
 
 	        String achvRewardMsg = grantAchievementBasedReward(userName, roomName, userAchvList);
-	        
+	        String specialAchvMsg = grantSpecialHistoricalAchievements(userName, roomName);
+
 	        if (/*(firstClearMsg   != null && !firstClearMsg.isEmpty())*/
 	                 (killAchvMsg     != null && !killAchvMsg.isEmpty())
 	                || (itemAchvMsg     != null && !itemAchvMsg.isEmpty())
@@ -3715,6 +3757,7 @@ public class BossAttackController {
 	                || (potionAchvMsg   != null && !potionAchvMsg.isEmpty())
 	                || (achvRewardMsg   != null && !achvRewardMsg.isEmpty())
 	                || (bagAchvMsg      != null && !bagAchvMsg.isEmpty())
+	                || (specialAchvMsg  != null && !specialAchvMsg.isEmpty())
 	        		) {
 
 	                   bonusMsg = NL
@@ -3726,7 +3769,8 @@ public class BossAttackController {
 	                           + shopSellAchvMsg
 	                           + potionAchvMsg
 	                           + achvRewardMsg
-	                           + bagAchvMsg;
+	                           + bagAchvMsg
+	                           + specialAchvMsg;
 	               }
 	    }
 	    bagDropMsg = tryDropBag(userName, roomName, m, nightmare,buff);
