@@ -582,7 +582,38 @@ public class BossAttackS3Controller {
             }
             String winner = eligible.get(winnerIdx).get("USER_NAME").toString();
 
-            // 아이템 지급 (7000번대 중 랜덤 1개)
+            // ── 1단계: 참여자 기여도 + 당첨 확률 ──────────────────────
+            msg.append(NL).append("-- 추첨 대상 (").append(eligible.size()).append("명) --").append(NL);
+            double[] cumPcts = new double[eligible.size()];
+            double runPct = 0;
+            for (int i = 0; i < eligible.size(); i++) {
+                String uName = eligible.get(i).get("USER_NAME").toString();
+                int    cnt   = Integer.parseInt(eligible.get(i).get("CNT").toString());
+                long   score = Long.parseLong(eligible.get(i).get("SCORE").toString());
+                double pct   = weightSum > 0 ? weights[i] / weightSum * 100 : 0;
+                cumPcts[i] = runPct;
+                runPct += pct;
+                msg.append("  ").append(uName)
+                   .append("  ").append(cnt).append("회/")
+                   .append(String.format("%,d", score)).append("dmg")
+                   .append("  (").append(String.format("%.1f", pct)).append("%)").append(NL);
+            }
+
+            // ── 2단계: 주사위 추첨 과정 ──────────────────────────────
+            double rollPct = r / weightSum * 100; // 0~100 정규화
+            msg.append(NL).append("🎲 주사위: ").append(String.format("%.2f", rollPct)).append("% →").append(NL);
+            for (int i = 0; i < eligible.size(); i++) {
+                String uName   = eligible.get(i).get("USER_NAME").toString();
+                double pct     = weightSum > 0 ? weights[i] / weightSum * 100 : 0;
+                double rEnd    = cumPcts[i] + pct;
+                boolean isWin  = (i == winnerIdx);
+                msg.append(isWin ? "★" : "  ")
+                   .append(String.format("[%5.1f~%5.1f%%]", cumPcts[i], rEnd))
+                   .append(" ").append(uName)
+                   .append(isWin ? " ← 당첨!" : "").append(NL);
+            }
+
+            // ── 3단계: 아이템 지급 (7000번대 중 랜덤 1개) ───────────
             int giveItemId = HELL_REWARD_ITEMS.get(new Random().nextInt(HELL_REWARD_ITEMS.size()));
             try {
                 HashMap<String, Object> inv = new HashMap<>();
@@ -592,26 +623,9 @@ public class BossAttackS3Controller {
                 inv.put("qty",      1);
                 inv.put("gainType", "BOSS_HELL");
                 botNewService.insertInventoryLogTx(inv);
-                msg.append("★ 보상: [").append(winner).append("] item#").append(giveItemId).append(NL);
+                msg.append(NL).append("★ 보상: [").append(winner).append("] item#").append(giveItemId).append(NL);
             } catch (Exception e) {
                 // 지급 실패 무시
-            }
-
-            // 기여도 상세: 참여자별 비율/배율 표시
-            msg.append(NL).append("-- 참여자 기여도 배율 (보상대상) --").append(NL);
-            for (int i = 0; i < eligible.size(); i++) {
-                String uName = eligible.get(i).get("USER_NAME").toString();
-                int    cnt   = Integer.parseInt(eligible.get(i).get("CNT").toString());
-                long   score = Long.parseLong(eligible.get(i).get("SCORE").toString());
-                double pct   = weightSum > 0 ? weights[i] / weightSum * 100 : 0;
-                boolean isWinner = (i == winnerIdx);
-                msg.append(isWinner ? "→" : "  ")
-                   .append(uName)
-                   .append(" ").append(cnt).append("회/")
-                   .append(String.format("%,d", score)).append("dmg")
-                   .append(" [").append(String.format("%.1f", pct)).append("%]")
-                   .append(isWinner ? " ★" : "")
-                   .append(NL);
             }
         }
 

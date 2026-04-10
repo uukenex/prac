@@ -52,6 +52,14 @@
     .bar-drop  { background: linear-gradient(90deg, #60b060, #80d080); }
     .bar-death { background: linear-gradient(90deg, #8060c0, #a080e0); }
     .bar-done  { background: linear-gradient(90deg, #c9a96e, #ffd700); }
+    /* SS이상 미공개 빗금 */
+    .bar-secret {
+      width: 100% !important; height: 100%;
+      background: repeating-linear-gradient(
+        45deg, #ccc 0px, #ccc 4px, #e8e8e8 4px, #e8e8e8 9px
+      );
+    }
+    .val-secret { color: #bbb !important; letter-spacing: 2px; }
 
     /* 보정 뱃지 */
     .bonus-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
@@ -103,11 +111,13 @@
       <div class="metric-row">
         <div class="metric-label">
           <span class="metric-name">⚔ 통산 킬수</span>
-          <span class="metric-val">{{ fmt(data.adjusted.kills) }} / {{ fmt(nextKills) }}</span>
+          <span v-if="!isHidden" class="metric-val">{{ fmt(data.adjusted.kills) }} / {{ fmt(nextKills) }}</span>
+          <span v-else class="metric-val val-secret">??? / ???</span>
         </div>
         <div class="bar-wrap">
-          <div class="bar-fill" :class="pct(data.adjusted.kills, nextKills) >= 100 ? 'bar-done' : 'bar-kill'"
+          <div v-if="!isHidden" class="bar-fill" :class="pct(data.adjusted.kills, nextKills) >= 100 ? 'bar-done' : 'bar-kill'"
                :style="{width: Math.min(100, pct(data.adjusted.kills, nextKills)) + '%'}"></div>
+          <div v-else class="bar-secret"></div>
         </div>
       </div>
 
@@ -115,11 +125,13 @@
       <div class="metric-row">
         <div class="metric-label">
           <span class="metric-name">🎒 아이템 드랍수</span>
-          <span class="metric-val">{{ fmt(data.adjusted.drops) }} / {{ fmt(nextDrops) }}</span>
+          <span v-if="!isHidden" class="metric-val">{{ fmt(data.adjusted.drops) }} / {{ fmt(nextDrops) }}</span>
+          <span v-else class="metric-val val-secret">??? / ???</span>
         </div>
         <div class="bar-wrap">
-          <div class="bar-fill" :class="pct(data.adjusted.drops, nextDrops) >= 100 ? 'bar-done' : 'bar-drop'"
+          <div v-if="!isHidden" class="bar-fill" :class="pct(data.adjusted.drops, nextDrops) >= 100 ? 'bar-done' : 'bar-drop'"
                :style="{width: Math.min(100, pct(data.adjusted.drops, nextDrops)) + '%'}"></div>
+          <div v-else class="bar-secret"></div>
         </div>
       </div>
 
@@ -127,15 +139,20 @@
       <div class="metric-row">
         <div class="metric-label">
           <span class="metric-name">💀 죽음 횟수</span>
-          <span class="metric-val">{{ fmt(data.adjusted.deaths) }} / {{ fmt(nextDeaths) }}</span>
+          <span v-if="!isHidden" class="metric-val">{{ fmt(data.adjusted.deaths) }} / {{ fmt(nextDeaths) }}</span>
+          <span v-else class="metric-val val-secret">??? / ???</span>
         </div>
         <div class="bar-wrap">
-          <div class="bar-fill" :class="pct(data.adjusted.deaths, nextDeaths) >= 100 ? 'bar-done' : 'bar-death'"
+          <div v-if="!isHidden" class="bar-fill" :class="pct(data.adjusted.deaths, nextDeaths) >= 100 ? 'bar-done' : 'bar-death'"
                :style="{width: Math.min(100, pct(data.adjusted.deaths, nextDeaths)) + '%'}"></div>
+          <div v-else class="bar-secret"></div>
         </div>
       </div>
 
-      <div class="next-grade-box" v-if="data.nextGrade !== 'MAX'">
+      <div class="next-grade-box" v-if="isHidden" style="color:#bbb">
+        🔒 SS 랭크 이상의 달성 조건은 공개되지 않습니다
+      </div>
+      <div class="next-grade-box" v-else-if="data.nextGrade !== 'MAX'">
         다음 등급: <strong>{{ data.nextGrade }}</strong>
         (킬 {{ fmt(nextKills) }} / 드랍 {{ fmt(nextDrops) }} / 죽음 {{ fmt(nextDeaths) }} 필요)
       </div>
@@ -205,10 +222,18 @@
           <tr v-for="g in gradeTable" :key="g.name"
               :style="g.name === gradeBase ? 'background:#fff8ee;font-weight:700' : ''">
             <td><span :class="'grade-' + g.name">{{ g.name }}</span></td>
-            <td class="num">{{ fmt(g.k) }}</td>
-            <td class="num">{{ fmt(g.d) }}</td>
-            <td class="num">{{ fmt(g.de) }}</td>
-            <td class="num">{{ g.name === gradeBase ? '✓ 현재' : (data.adjusted.kills >= g.k && data.adjusted.drops >= g.d && data.adjusted.deaths >= g.de ? '✓' : '') }}</td>
+            <template v-if="g.secret">
+              <td class="num val-secret" style="letter-spacing:2px">???</td>
+              <td class="num val-secret" style="letter-spacing:2px">???</td>
+              <td class="num val-secret" style="letter-spacing:2px">???</td>
+              <td class="num val-secret">🔒</td>
+            </template>
+            <template v-else>
+              <td class="num">{{ fmt(g.k) }}</td>
+              <td class="num">{{ fmt(g.d) }}</td>
+              <td class="num">{{ fmt(g.de) }}</td>
+              <td class="num">{{ g.name === gradeBase ? '✓ 현재' : (data.adjusted.kills >= g.k && data.adjusted.drops >= g.d && data.adjusted.deaths >= g.de ? '✓' : '') }}</td>
+            </template>
           </tr>
         </tbody>
       </table>
@@ -226,8 +251,8 @@ new Vue({
     loading: false,
     data: null,
     gradeTable: [
-      {name:'SSS', k:50000, d:100000, de:1200},
-      {name:'SS',  k:40000, d:50000,  de:700},
+      {name:'SSS', k:0, d:0, de:0, secret:true},
+      {name:'SS',  k:0, d:0, de:0, secret:true},
       {name:'S',   k:30000, d:30000,  de:500},
       {name:'A',   k:20000, d:20000,  de:400},
       {name:'B',   k:10000, d:10000,  de:200},
@@ -239,6 +264,10 @@ new Vue({
     gradeBase() {
       if (!this.data) return 'F';
       return (this.data.grade || 'F').replace('+','');
+    },
+    isHidden() {
+      // SS 이상이면 다음 달성 조건 미공개
+      return this.gradeBase === 'SS' || this.gradeBase === 'SSS';
     },
     nextKills()  { return this.data && this.data.nextReqs ? this.data.nextReqs.kills  : 0; },
     nextDrops()  { return this.data && this.data.nextReqs ? this.data.nextReqs.drops  : 0; },
