@@ -101,7 +101,7 @@
 		    ,CUR_HP_EXT
 		    ,HIDE_RULE)
 		SELECT NVL(MAX(SEQ), 0) + 1
-		      ,SYSDATE
+		      ,TO_DATE(#{startDate, jdbcType=VARCHAR},'yyyy-mm-dd hh24:mi:ss')
 		      ,'0'
 		      ,#{atkRate,     jdbcType=NUMERIC}
 		      ,#{atkPower,    jdbcType=NUMERIC}
@@ -117,7 +117,7 @@
 		      ,#{maxHpExt,    jdbcType=VARCHAR}
 		      ,#{maxHp,       jdbcType=NUMERIC}
 		      ,#{maxHpExt,    jdbcType=VARCHAR}
-		      ,'0'
+      ,#{hideRule,   jdbcType=VARCHAR}
 		  FROM TBOT_POINT_NEW_BOSS
 	</insert>
 
