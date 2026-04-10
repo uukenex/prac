@@ -433,7 +433,23 @@ public class BotNewServiceImpl implements BotNewService {
     public List<HashMap<String, Object>> selectTotalDropItems(String userName){
     	 return botNewDAO.selectTotalDropItems(userName);
     }
-    
+
+    public int selectHellBossAttackCount(String userName) {
+        return botNewDAO.selectHellBossAttackCount(userName);
+    }
+    public int selectHellBossClearCount(String userName) {
+        return botNewDAO.selectHellBossClearCount(userName);
+    }
+    public List<HashMap<String, Object>> selectJobMasterSeasons(String userName) {
+        return botNewDAO.selectJobMasterSeasons(userName);
+    }
+    public HashMap<String, Object> selectMaxDailyBuffStats(String userName) {
+        return botNewDAO.selectMaxDailyBuffStats(userName);
+    }
+    public List<HashMap<String, Object>> selectSlayerSeasonRank(HashMap<String, Object> params) {
+        return botNewDAO.selectSlayerSeasonRank(params);
+    }
+
     public boolean isNightmareMode(String userName, String roomName) {
 	    Integer v = botNewDAO.selectNightmareYn(userName, roomName);
 	    return v != null && v >= 1;

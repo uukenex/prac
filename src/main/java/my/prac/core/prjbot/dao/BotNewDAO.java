@@ -185,7 +185,13 @@ public interface BotNewDAO {
     String selectIsReturnUser(HashMap<String, Object> map);
     
     List<HashMap<String, Object>> selectTotalDropItems(String userName);
-    
+
+    int selectHellBossAttackCount(String userName);
+    int selectHellBossClearCount(String userName);
+    List<HashMap<String, Object>> selectJobMasterSeasons(String userName);
+    HashMap<String, Object> selectMaxDailyBuffStats(String userName);
+    List<HashMap<String, Object>> selectSlayerSeasonRank(HashMap<String, Object> params);
+
     Integer selectNightmareYn(@Param("userName") String userName, @Param("roomName") String roomName);
     public int updateNightmareYn(HashMap<String,Object> map);
     int selectNormalKillCountByMonNo(@Param("userName") String userName, @Param("monNo") int monNo);

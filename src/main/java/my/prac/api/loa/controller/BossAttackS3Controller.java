@@ -6,9 +6,11 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Random;
+import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 
 import javax.annotation.Resource;
@@ -186,7 +188,12 @@ public class BossAttackS3Controller {
                         DateTimeFormatter.ofPattern("yyyyMMdd HHmmss"));
                 if (LocalDateTime.now().isBefore(spawnTime)) {
                     String dispTime = spawnTime.format(DateTimeFormatter.ofPattern("MM/dd HH:mm"));
-                    return userName + "님," + NL + "헬보스가 재정비 중입니다." + NL + "등장 예정: " + dispTime;
+                    String lastReward = botS3Service.getLastKillRewardMsg();
+                    String msg = userName + "님," + NL + "헬보스가 재정비 중입니다." + NL + "등장 예정: " + dispTime;
+                    if (lastReward != null && !lastReward.isEmpty()) {
+                        msg += NL + NL + lastReward;
+                    }
+                    return msg;
                 }
             } catch (Exception ignored) {}
         }
@@ -347,6 +354,9 @@ public class BossAttackS3Controller {
             }
         }
 
+        // 헬보스 업적 체크 (공격 업적, 클리어 참여 업적)
+        String hellAchvMsg = grantHellBossAchievements(userName, roomName, isKill, bossStartDate);
+
         // 처치 보상 + 보스 재생성
         String killMsg = "";
         if (isKill) {
@@ -363,6 +373,7 @@ public class BossAttackS3Controller {
             msg.append(dmgMsg).append(NL);
             if (!hideMsg.isEmpty())     msg.append(hideMsg);
             if (!spRewardMsg.isEmpty()) msg.append(spRewardMsg);
+            if (!hellAchvMsg.isEmpty()) msg.append(hellAchvMsg);
             if (!punishMsg.isEmpty())   msg.append(punishMsg);
             if (!debuff1Msg.isEmpty())  msg.append(debuff1Msg);
             if (!bossDefMsg.isEmpty())  msg.append(bossDefMsg);
@@ -423,6 +434,69 @@ public class BossAttackS3Controller {
 
     private int randInt(Random rand, int min, int max) {
         return min + rand.nextInt(max - min + 1);
+    }
+
+    // =====================================================
+    // 헬보스 업적 체크 및 지급
+    // =====================================================
+    private static final int[] HELL_ATK_THRESHOLDS   = {10, 50, 100, 300, 500, 1000, 2000, 5000};
+    private static final int[] HELL_CLEAR_THRESHOLDS = {1, 3, 5, 10, 20, 30, 50};
+    /** 1a = 10000 raw SP */
+    private static final long HELL_ACHV_REWARD_SP = 10_000L;
+
+    private String grantHellBossAchievements(String userName, String roomName,
+                                              boolean isKill, String bossStartDate) {
+        StringBuilder sb = new StringBuilder();
+        try {
+            // 기달성 CMD 로드
+            Set<String> achieved = new HashSet<>();
+            List<HashMap<String, Object>> achvRows = botNewService.selectAchievementsByUser(userName, roomName);
+            if (achvRows != null) {
+                for (HashMap<String, Object> r : achvRows) {
+                    String cmd = Objects.toString(r.get("CMD"), "");
+                    if (cmd.startsWith("ACHV_HELL_ATK_") || cmd.startsWith("ACHV_HELL_CLEAR_")) {
+                        achieved.add(cmd);
+                    }
+                }
+            }
+
+            // 공격 횟수 업적
+            int atkCount = botNewService.selectHellBossAttackCount(userName);
+            for (int th : HELL_ATK_THRESHOLDS) {
+                if (atkCount < th) break;
+                String cmd = "ACHV_HELL_ATK_" + th;
+                if (achieved.contains(cmd)) continue;
+                sb.append(grantHellAchv(userName, roomName, cmd, HELL_ACHV_REWARD_SP));
+                achieved.add(cmd);
+            }
+
+            // 클리어 참여 횟수 업적
+            int clearCount = botNewService.selectHellBossClearCount(userName);
+            for (int th : HELL_CLEAR_THRESHOLDS) {
+                if (clearCount < th) break;
+                String cmd = "ACHV_HELL_CLEAR_" + th;
+                if (achieved.contains(cmd)) continue;
+                sb.append(grantHellAchv(userName, roomName, cmd, HELL_ACHV_REWARD_SP));
+                achieved.add(cmd);
+            }
+        } catch (Exception ignore) {}
+        return sb.toString();
+    }
+
+    private String grantHellAchv(String userName, String roomName, String cmd, long rewardRawSp) {
+        try {
+            SP sp = SP.fromSp(rewardRawSp);
+            HashMap<String, Object> pr = new HashMap<>();
+            pr.put("userName", userName);
+            pr.put("roomName", roomName);
+            pr.put("score",    sp.getValue());
+            pr.put("scoreExt", sp.getUnit());
+            pr.put("cmd",      cmd);
+            botNewService.insertPointRank(pr);
+            return "✨ 헬보스 업적! [" + cmd + "] +" + sp + " 지급" + NL;
+        } catch (Exception e) {
+            return "";
+        }
     }
 
     /**
@@ -492,8 +566,9 @@ public class BossAttackS3Controller {
             for (int i = 0; i < eligible.size(); i++) {
                 int cnt    = Integer.parseInt(eligible.get(i).get("CNT").toString());
                 long score = Long.parseLong(eligible.get(i).get("SCORE").toString());
-                weights[i] = (totCnt > 0 ? (double)cnt / totCnt : 0) * 0.7
-                           + (totDmg > 0 ? (double)score / totDmg : 0) * 0.3;
+                double cntPct  = totCnt > 0 ? (double)cnt  / totCnt  : 0;
+                double dmgPct  = totDmg > 0 ? (double)score / totDmg : 0;
+                weights[i] = cntPct * 0.7 + dmgPct * 0.3;
                 weightSum += weights[i];
             }
 
@@ -521,14 +596,31 @@ public class BossAttackS3Controller {
             } catch (Exception e) {
                 // 지급 실패 무시
             }
+
+            // 기여도 상세: 참여자별 비율/배율 표시
+            msg.append(NL).append("-- 참여자 기여도 배율 (보상대상) --").append(NL);
+            for (int i = 0; i < eligible.size(); i++) {
+                String uName = eligible.get(i).get("USER_NAME").toString();
+                int    cnt   = Integer.parseInt(eligible.get(i).get("CNT").toString());
+                long   score = Long.parseLong(eligible.get(i).get("SCORE").toString());
+                double pct   = weightSum > 0 ? weights[i] / weightSum * 100 : 0;
+                boolean isWinner = (i == winnerIdx);
+                msg.append(isWinner ? "→" : "  ")
+                   .append(uName)
+                   .append(" ").append(cnt).append("회/")
+                   .append(String.format("%,d", score)).append("dmg")
+                   .append(" [").append(String.format("%.1f", pct)).append("%]")
+                   .append(isWinner ? " ★" : "")
+                   .append(NL);
+            }
         }
 
-        // 기여도 TOP 표시
+        // 전체 참여자 기여도 TOP (7000번대 보유자 포함)
         if (!allContributors.isEmpty()) {
-            msg.append(NL).append("-- 기여도 TOP --").append(NL);
+            msg.append(NL).append("-- 전체 기여도 TOP --").append(NL);
             for (HashMap<String, Object> row : allContributors) {
                 msg.append(row.get("USER_NAME"))
-                   .append(" - ").append(row.get("CNT")).append("회 / 데미지 ").append(row.get("SCORE"))
+                   .append(" - ").append(row.get("CNT")).append("회 / ").append(row.get("SCORE")).append("dmg")
                    .append(NL);
             }
         }
