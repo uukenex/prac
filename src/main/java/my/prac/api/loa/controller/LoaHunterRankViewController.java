@@ -76,8 +76,8 @@ public class LoaHunterRankViewController {
                     if (v instanceof Number) {
                         int qty = ((Number) v).intValue();
                         rawDrops += qty;
-                        if (AchievementConfig.ITEM_TYPE_DARK.equals(type)) darkQty = qty;
-                        else if (AchievementConfig.ITEM_TYPE_GRAY.equals(type)) grayQty = qty;
+                        if (AchievementConfig.ITEM_TYPE_DARK.equals(type)) darkQty += qty;
+                        else if (AchievementConfig.ITEM_TYPE_GRAY.equals(type)) grayQty += qty;
                     }
                 }
             }

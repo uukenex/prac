@@ -365,8 +365,8 @@ public class BossAttackController {
 	                if (v instanceof Number) {
 	                    int qty = ((Number) v).intValue();
 	                    totalDrops += qty;
-	                    if (AchievementConfig.ITEM_TYPE_DARK.equals(type)) darkQty = qty;
-	                    else if (AchievementConfig.ITEM_TYPE_GRAY.equals(type)) grayQty = qty;
+	                    if (AchievementConfig.ITEM_TYPE_DARK.equals(type)) darkQty += qty;
+	                    else if (AchievementConfig.ITEM_TYPE_GRAY.equals(type)) grayQty += qty;
 	                }
 	            }
 	        }

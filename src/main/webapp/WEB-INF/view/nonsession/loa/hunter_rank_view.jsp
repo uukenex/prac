@@ -114,7 +114,7 @@
 
       <div class="metric-row">
         <div class="metric-label">
-          <span class="metric-name">⚔ 통산 킬수</span>
+          <span class="metric-name">⚔ 통산 공격수</span>
           <span v-if="!isHidden" class="metric-val">{{ fmt(data.adjusted.kills) }} / {{ fmt(nextKills) }}</span>
           <span v-else class="metric-val val-secret">??? / ???</span>
         </div>
@@ -156,7 +156,7 @@
       </div>
       <div class="next-grade-box" v-else-if="data.nextGrade !== 'MAX'">
         다음 등급: <strong>{{ data.nextGrade }}</strong>
-        (킬 {{ fmt(nextKills) }} / 드랍 {{ fmt(nextDrops) }} / 죽음 {{ fmt(nextDeaths) }} 필요)
+        (공격 {{ fmt(nextKills) }} / 드랍 {{ fmt(nextDrops) }} / 죽음 {{ fmt(nextDeaths) }} 필요)
       </div>
       <div class="next-grade-box" v-else>
         <strong>SSS</strong> 최고 등급 달성!
@@ -170,7 +170,7 @@
         <thead>
           <tr>
             <th>항목</th>
-            <th style="text-align:right">킬/공격</th>
+            <th style="text-align:right">공격</th>
             <th style="text-align:right">드랍</th>
             <th style="text-align:right">죽음</th>
           </tr>
@@ -215,7 +215,7 @@
       <div class="card-title">📋 등급 기준표</div>
       <table class="comp-table">
         <thead>
-          <tr><th>등급</th><th style="text-align:right">킬</th><th style="text-align:right">드랍</th><th style="text-align:right">죽음</th><th style="text-align:right">달성</th></tr>
+          <tr><th>등급</th><th style="text-align:right">공격</th><th style="text-align:right">드랍</th><th style="text-align:right">죽음</th><th style="text-align:right">달성</th></tr>
         </thead>
         <tbody>
           <tr v-for="g in gradeTable" :key="g.name"
