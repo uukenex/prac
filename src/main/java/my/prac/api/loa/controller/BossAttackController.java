@@ -378,12 +378,30 @@ public class BossAttackController {
 	        int itemBonus = darkQty * 1 + grayQty * 3;
 	        String gradeWithoutBonus = calculateHunterGrade(totalAttacks, totalDrops, totalDeaths);
 	        boolean bonusEligible = !"SSS".equals(gradeWithoutBonus) && !gradeWithoutBonus.startsWith("SS");
+
+	        String grade;
+
 	        if (bonusEligible) {
-	            totalAttacks += itemBonus;
-	            totalDrops   += itemBonus;
-	            totalDeaths  += itemBonus;
+	            int atk = totalAttacks + itemBonus;
+	            int drp = totalDrops   + itemBonus;
+	            int dth = totalDeaths  + itemBonus;
+
+	            String gradeWithBonus = calculateHunterGrade(atk, drp, dth);
+
+	            if ("SSS".equals(gradeWithBonus)) {
+	                gradeWithBonus = "SS";
+	            } else {
+	                totalAttacks = atk;
+	                totalDrops   = drp;
+	                totalDeaths  = dth;
+	            }
+
+	            grade = gradeWithBonus;
+	        } else {
+	            grade = gradeWithoutBonus;
 	        }
-	        ctx.hunterGrade = calculateHunterGrade(totalAttacks, totalDrops, totalDeaths);
+
+	        ctx.hunterGrade = grade;
 
 	        // 헌터 직업이면 등급 기반 스탯 보너스 적용
 	        if ("헌터".equals(job)) {

@@ -94,11 +94,24 @@ public class LoaHunterRankViewController {
         boolean bonusEligible = !"SSS".equals(gradeWithout) && !gradeWithout.startsWith("SS");
 
         if (bonusEligible) {
-            adjKills  += itemBonusVal;
-            adjDrops  += itemBonusVal;
-            adjDeaths += itemBonusVal;
+            int k  = adjKills  + itemBonusVal;
+            int dr = adjDrops  + itemBonusVal;
+            int de = adjDeaths + itemBonusVal;
+
+            String gradeWith = calcGrade(k, dr, de);
+
+            if ("SSS".equals(gradeWith)) {
+                gradeWith = "SS";
+            } else {
+                adjKills  = k;
+                adjDrops  = dr;
+                adjDeaths = de;
+            }
+
+            gradeWithout = gradeWith;
         }
-        String grade = calcGrade(adjKills, adjDrops, adjDeaths);
+
+        String grade = gradeWithout;
 
         // 4. 다음 등급 요건 계산
         int[][] gradeReqs = {
