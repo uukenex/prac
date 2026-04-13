@@ -3266,8 +3266,11 @@ public class BossAttackController {
 	    int cooldownBuff = 0;
 	    HashMap<String,Object> activeBuff = buff.activeBuff;
 	    if (activeBuff != null) {
-	    	if( "쿨타임".equals(activeBuff.get("FLAG_CODE"))){
+	    	if ("쿨타임".equals(activeBuff.get("FLAG_CODE"))) {
 	    		cooldownBuff = (int) Double.parseDouble(activeBuff.get("EFFECT_VALUE").toString());
+	    	}
+	    	if ("쿨타임감소".equals(activeBuff.get("FLAG_CODE"))) {
+	    		cooldownBuff = -1; // 음수 = 쿨타임 50% 감소
 	    	}
 	    }
 	    
@@ -3736,6 +3739,12 @@ public class BossAttackController {
 	        }
 	    }
 
+	    // 경험치 스페셜버프 적용
+	    if (activeBuff != null && "경험치".equals(activeBuff.get("FLAG_CODE"))) {
+	        double buffPct = Double.parseDouble(activeBuff.get("EFFECT_VALUE").toString());
+	        res.gainExp = (int)(res.gainExp * (1 + buffPct / 100.0));
+	    }
+
 	    // 14) DB 반영 + 레벨업 처리
 	    LevelUpResult up = persist(userName, roomName, u, m, flags, calc, res, hpMax,nightmare);
 	    String bonusMsg = "";
@@ -3956,6 +3965,14 @@ public class BossAttackController {
 	            }
 
 	            // --------------------------
+	            // SP 스페셜버프 적용
+	            HashMap<String,Object> _spBuff = SPECIAL_BUFF_CACHE;
+	            if (_spBuff != null && "SP".equals(_spBuff.get("FLAG_CODE"))) {
+	                double buffPct = Double.parseDouble(_spBuff.get("EFFECT_VALUE").toString());
+	                gainSp *= (1 + buffPct / 100.0);
+	                bonusDesc.append("(SP버프 +").append((int)buffPct).append("%)");
+	            }
+
 	            // SP 변환
 	            // --------------------------
 
@@ -4056,6 +4073,21 @@ public class BossAttackController {
 	        	        durationMin = 10;
 	        	        break;
 
+	        	    case "쿨타임감소":
+	        	        effectValue = 2; // 배율 2 = 50% 감소
+	        	        durationMin = 10;
+	        	        break;
+
+	        	    case "SP":
+	        	        effectValue = ThreadLocalRandom.current().nextInt(50, 301); // 50~300%
+	        	        durationMin = randomDuration(effectValue / 30.0);
+	        	        break;
+
+	        	    case "경험치":
+	        	        effectValue = ThreadLocalRandom.current().nextInt(50, 301); // 50~300%
+	        	        durationMin = randomDuration(effectValue / 30.0);
+	        	        break;
+
 	        	    case "나메가방":
 	        	        effectValue = 1;
 	        	        durationMin = 3;
@@ -4153,7 +4185,7 @@ public class BossAttackController {
 		}
 
 		if ("SP".equals(flagCode)) {
-			return "SP획득 " + String.format("%.1f", effectValue) + "배";
+			return "SP획득 +" + (int) effectValue + "%";
 		}
 
 		if ("치피".equals(flagCode)) {
@@ -4168,6 +4200,14 @@ public class BossAttackController {
 		
 		if ("쿨타임".equals(flagCode)) {
 			return "공격쿨타임 +" + (int) effectValue + "분 감소";
+		}
+
+		if ("쿨타임감소".equals(flagCode)) {
+			return "공격쿨타임 50% 감소";
+		}
+
+		if ("경험치".equals(flagCode)) {
+			return "경험치획득 +" + (int) effectValue + "%";
 		}
 
 		return flagCode;
@@ -5268,8 +5308,10 @@ public class BossAttackController {
 	    	baseCd = 10 * 60; // 10분
 	    }
 	    
-	    if(buffTime > 0) {
+	    if (buffTime > 0) {
 	    	baseCd -= 1 * 60;
+	    } else if (buffTime < 0) {
+	    	baseCd = baseCd / 2; // 쿨타임감소 버프: 50% 감소
 	    }
 
 	    
