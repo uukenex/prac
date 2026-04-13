@@ -13,5 +13,6 @@ public class DamageOutcome {
 	public boolean willKill;  // 이번 공격으로 몹 죽는지
 	public String extraMsg; // 패턴/직업 스킬 메시지
 	public String dmgCalcMsg; // 패턴/직업 스킬 메시지
+	public String hunterMsg; //
 	
 }

@@ -3563,6 +3563,7 @@ public class BossAttackController {
 	            hpMax,              
 	            null,
 	            null,
+	            null,
 	            nightmare,
 	            ctx
 	        );
@@ -3801,6 +3802,7 @@ public class BossAttackController {
 	    int shownMax = effAtkMax;
 
 	    StringBuilder midExtra = new StringBuilder();
+	    StringBuilder hunterMsg = new StringBuilder();
 	    StringBuilder botExtra = new StringBuilder();
 	    if (dmg.dmgCalcMsg != null && !dmg.dmgCalcMsg.isEmpty()) {
 	        midExtra.append(dmg.dmgCalcMsg);
@@ -3821,6 +3823,7 @@ public class BossAttackController {
 	            shownMin, shownMax,
 	            hpMax,
 	            midExtra.toString(),
+	            hunterMsg.toString(),
 	            botExtra.toString(),
 	            nightmare,
 	            ctx
@@ -5720,6 +5723,7 @@ public class BossAttackController {
 	        int shownAtkMin, int shownAtkMax,
 	        int displayHpMax, // ← 표시용 HP Max(아이템 포함)
 	        String midExtraLines,
+	        String hunterMsg,
 	        String botExtraLines,
 	        boolean nightmare,
 	        UserBattleContext ctx
@@ -5748,7 +5752,7 @@ public class BossAttackController {
 
 	    if(u.job.equals("곰")) {
 
-	    	sb.append("최대체력 "+formatWan(calc.atkDmg)+" 이하에게 괴력!");
+	    	sb.append("최대체력 "+formatWan(displayHpMax)+" 이하에게 괴력!");
 		    sb.append(NL);
 	    }else {
 	    	// 치명타
@@ -5765,6 +5769,11 @@ public class BossAttackController {
 		    sb.append(")").append(NL);
 	    }
 
+	    if(!u.job.equals("곰")) {
+		    if (hunterMsg != null && !hunterMsg.isEmpty()) {
+		    	sb.append(hunterMsg).append(NL).append(NL);
+		    }
+	    }
 	    if (midExtraLines != null && !midExtraLines.isEmpty()) {
 	        sb.append(midExtraLines).append(NL).append(NL);
 	    }
@@ -7215,6 +7224,7 @@ public class BossAttackController {
 
 	    StringBuilder extraMsg = new StringBuilder();
 	    out.dmgCalcMsg="";
+	    out.hunterMsg="";
 
 	    int orgCritRateForGungsa = critRate;
 	    if (critRate > 100) {
@@ -7228,7 +7238,7 @@ public class BossAttackController {
 	        critDmg  += converted;
 
 	        // 디버그용
-	        out.dmgCalcMsg += "헌터랭크(" + u.hunterGrade + ")보너스 "
+	        out.hunterMsg += "헌터랭크(" + u.hunterGrade + ")보너스 "
 			               + "over치명률 " + overflow + "% → 치피"
 			               + converted + "%로 변환(" + Math.round(convertRate*100) + "%)" + NL;
 	    }
