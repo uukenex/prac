@@ -778,7 +778,7 @@ public class BossAttackController {
 
 	        double roll = ThreadLocalRandom.current().nextDouble();
 
-	        if (remain <= 0 || roll > itemChance) {
+	        if (remain <= 0 || rewardItemIds.isEmpty() || roll > itemChance) {
 
 	            SP sp = rollBagSpWithCeiling(spMode);
 	            totalSP.add(sp);
