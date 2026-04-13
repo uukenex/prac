@@ -737,7 +737,67 @@ public class BossAttackController {
 	    return sb.toString();
 	}
 	
-	
+	private void processBagOpen(
+	        int bagItemId,
+	        int bagCount,
+	        int spMode,
+	        String userName,
+	        String roomName,
+	        SP totalSP,
+	        List<String> detail,
+	        List<String> itemSummary
+	) {
+
+	    if (bagCount <= 0) return;
+
+	    HashMap<String,Object> param = new HashMap<>();
+	    param.put("userName", userName);
+	    param.put("roomName", roomName);
+	    param.put("bagItemId", bagItemId);
+
+	    List<Integer> rewardItemIds =
+	            botNewService.selectBagRewardItemIdsUserNotOwned(param);
+
+	    boolean isNightmare = bagItemId == 92;
+	    String prefix = isNightmare ? "[나메]" : "";
+
+	    for (int i = 0; i < bagCount; i++) {
+
+	        int remain = (rewardItemIds == null) ? 0 : rewardItemIds.size();
+
+	        // 확률 계산
+	        double itemChance;
+
+	        if (isNightmare) {
+	            // 나메 가방
+	            itemChance = Math.min(0.10, Math.max(0.005, remain * 0.005));
+	        } else {
+	            // 일반 가방
+	            itemChance = Math.min(0.50, Math.max(0.05, remain * 0.03));
+	        }
+
+	        double roll = ThreadLocalRandom.current().nextDouble();
+
+	        if (remain <= 0 || roll > itemChance) {
+
+	            SP sp = rollBagSpWithCeiling(spMode);
+	            totalSP.add(sp);
+	            detail.add(prefix + "가방" + (i+1) + ": " + sp + "sp");
+
+	        } else {
+
+	            int idx = ThreadLocalRandom.current().nextInt(rewardItemIds.size());
+	            int itemId = rewardItemIds.get(idx);
+
+	            giveBagItem(userName, roomName, itemId, itemSummary);
+
+	            // 중복 방지
+	            rewardItemIds.remove(idx);
+
+	            detail.add(prefix + "가방" + (i+1) + ": 아이템 획득");
+	        }
+	    }
+	}
 
 	public String openBag(HashMap<String,Object> map) {
 
@@ -769,90 +829,28 @@ public class BossAttackController {
 	    List<String> detail = new ArrayList<>();
 	    List<String> itemSummary = new ArrayList<>();
 
-	    // ===============================
-	    // 🔹 91 일반 가방 처리
-	    // ===============================
-	    for (int i = 0; i < normalCount; i++) {
+	    processBagOpen(
+	            91,
+	            normalCount,
+	            0,
+	            userName,
+	            roomName,
+	            totalSP,
+	            detail,
+	            itemSummary
+	    );
 
-	        double roll = ThreadLocalRandom.current().nextDouble();
-
-	        if (roll < 0.90) {
-
-	            SP sp = rollBagSpWithCeiling(0);
-	            totalSP.add(sp);
-	            detail.add("가방" + (i+1) + ": " + sp + "sp");
-	            //totalS += sp;
-	            
-
-	        } else {
-
-	            HashMap<String,Object> param = new HashMap<>();
-	            param.put("userName", userName);
-	            param.put("roomName", roomName);
-	            param.put("bagItemId", 91);
-
-	            List<Integer> rewardItemIds =
-	                    botNewService.selectBagRewardItemIdsUserNotOwned(param);
-
-	            if (rewardItemIds == null || rewardItemIds.isEmpty()) {
-	            	SP sp = rollBagSpWithCeiling(0);
-	            	//long sp = rollBagSpWithCeiling(0);
-	            	totalSP.add(sp);
-	                //totalSp += sp;
-
-	                detail.add("가방" + (i+1) + ": " + sp + "sp");
-	                continue;
-	            }
-
-	            int itemId = rewardItemIds.get(
-	                    ThreadLocalRandom.current().nextInt(rewardItemIds.size())
-	            );
-
-	            giveBagItem(userName, roomName, itemId, itemSummary);
-	            detail.add("가방" + (i+1) + ": 아이템 획득");
-	        }
-	    }
-
-	    // ===============================
-	    // 🔹 92 나이트메어 가방 처리
-	    // ===============================
-	    for (int i = 0; i < nightmareCount; i++) {
-
-	        double roll = ThreadLocalRandom.current().nextDouble();
-
-	        if (roll < 0.94) {
-
-	        	SP sp = rollBagSpWithCeiling(1);
-	        	totalSP.add(sp);
-	            detail.add("[나메]가방" + (i+1) + ": " + sp + "sp");
-
-	        } else {
-
-	            HashMap<String,Object> param = new HashMap<>();
-	            param.put("userName", userName);
-	            param.put("roomName", roomName);
-	            param.put("bagItemId", 92);
-
-	            List<Integer> rewardItemIds =
-	                    botNewService.selectBagRewardItemIdsUserNotOwned(param);
-
-	            if (rewardItemIds == null || rewardItemIds.isEmpty()) {
-	            	SP sp = rollBagSpWithCeiling(1);
-		        	totalSP.add(sp);
-
-	                detail.add("[나메]가방" + (i+1) + ": " + sp + "sp");
-	                continue;
-	            }
-
-	            int itemId = rewardItemIds.get(
-	                    ThreadLocalRandom.current().nextInt(rewardItemIds.size())
-	            );
-
-	            giveBagItem(userName, roomName, itemId, itemSummary);
-	            detail.add("[나메]가방" + (i+1) + ": 보상 획득");
-	        }
-	    }
-
+	    processBagOpen(
+	            92,
+	            nightmareCount,
+	            1,
+	            userName,
+	            roomName,
+	            totalSP,
+	            detail,
+	            itemSummary
+	    );
+	    
 	    
 
 	    // 🔹 메시지
