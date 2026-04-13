@@ -4082,7 +4082,7 @@ public class BossAttackController {
 	        	        break;
 
 	        	    case "SP":
-	        	        effectValue = ThreadLocalRandom.current().nextInt(50, 301); // 50~300%
+	        	        effectValue = ThreadLocalRandom.current().nextInt(30, 101); // 30~100%
 	        	        durationMin = randomDuration(effectValue / 30.0);
 	        	        break;
 
