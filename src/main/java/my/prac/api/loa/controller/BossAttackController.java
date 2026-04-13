@@ -2990,13 +2990,15 @@ public class BossAttackController {
 	    // 여기서는 데미지 배율만 적용
 
 	    if ("궁수".equals(job)) {
-	        jobDmgMul = 3.0;   // 궁수: 데미지 1.6배
+	        jobDmgMul = 3.0;   // 궁수: 데미지 3배
+	    } else if ("사냥꾼".equals(job)) {
+	    	jobDmgMul = 3.0;   
 	    } else if ("궁사".equals(job)) {
 	        jobDmgMul = 1.0;   
 	    } else if ("전사".equals(job)) {
-	        jobDmgMul = 1.4;   // 전사: 데미지 1.2배
+	        jobDmgMul = 1.4;   // 전사: 데미지 1.4배
 	    } else if ("검성".equals(job)) {
-	        jobDmgMul = 2.5;   // 
+	        jobDmgMul = 2.2;   // 
 	    } else if ("어쎄신".equals(job)) {
 	        jobDmgMul = 1.3;   // 
 	    } else if ("제너럴".equals(job)) {
@@ -3617,11 +3619,14 @@ public class BossAttackController {
 	    String newBonus ="";    // DROP SP 보너스 설명 (용사 5배, 100b 3배, 크리 ×2)
 	    String stealBonus ="";  // STEAL SP 보너스 설명
 
-	    // 궁수: 획득 EXP +100%
+	    // 궁수: 획득 EXP +200%
 	    if ("궁수".equals(u.job)) {
-	        res.gainExp *= 2; 
+	        res.gainExp *= 3; 
 	    }
-
+	    if ("사냥꾼".equals(u.job)) {
+	    	res.gainExp *= 3; 
+	    }
+	    
 	    // 도적: 훔치기
 	    String stealMsg = "";
 	    if ("도적".equals(job) && !(m.monNo > 50)) {
@@ -5253,16 +5258,21 @@ public class BossAttackController {
 
 	    int baseCd = COOLDOWN_SECONDS; // 2분
 
-	    if(buffTime > 0) {
-	    	baseCd -= 1 * 60;
-	    }
-
 	    if ("축복술사".equals(job)) {
 	    	baseCd = 30 * 60; // 30분
 	    }
 	    if ("궁수".equals(job)) {
 	    	baseCd = 10 * 60; // 10분
 	    }
+	    if ("사냥꾼".equals(job)) {
+	    	baseCd = 10 * 60; // 10분
+	    }
+	    
+	    if(buffTime > 0) {
+	    	baseCd -= 1 * 60;
+	    }
+
+	    
 
 	    Timestamp last = (cachedLastAtk != null) ? cachedLastAtk : botNewService.selectLastAttackTime(userName, roomName);
 	    if (last == null) return CooldownCheck.ok();
@@ -6380,6 +6390,19 @@ public class BossAttackController {
 	    }
 	    return false;
 	}
+	private boolean isAnimal(Monster m) {
+		switch(m.monNo) {
+			case 1: case 2: case 3: case 4: case 5:
+			case 6: case 7: case 8: case 9: /*case 10:*/
+			case 11: case 12: case 13: /*case 14: case 15:*/
+			case 16: case 17: case 18: case 19: case 20:
+			case 21: case 22: case 23: case 24: /*case 25:*/
+			case 26: case 27: /*case 28:*/ case 29: case 30:
+				return true;
+			default:
+				return false;
+		}
+	}
 	
 	/** 통산 킬수 업적 보상 */
 	private int calcTotalKillReward(int threshold, boolean nightmareYn) {
@@ -7375,6 +7398,9 @@ public class BossAttackController {
 	            crit = false;
 	        }
 	    }
+	    if ("사냥꾼".equals(u.job) && isAnimal(m)) {
+	    	baseAtk = (int) Math.round(baseAtk * 2.00);
+	    }
 
 	    if ("어둠사냥꾼".equals(u.job) && isSkeleton(m)) {
 	    	baseAtk = (int) Math.round(baseAtk * 2.00);
@@ -7563,6 +7589,12 @@ public class BossAttackController {
 	        	calc.monDmg = reduced;
 	        }
 	        
+	        if ("사냥꾼".equals(u.job) && flags.finisher && flags.monPattern==6 ) {
+	        	calc.atkDmg = rawAtkDmg*5;
+	        	calc.monDmg = 0;
+	        	calc.endBattle = false;
+	        	calc.patternMsg = "도망가는 적을 붙잡아 강력한 일격!" + rawAtkDmg*5 + " 피해";
+	        }
 	        if ("어둠사냥꾼".equals(u.job) && flags.finisher && flags.monPattern==6 ) {
 	        	calc.atkDmg = rawAtkDmg*5;
 			    calc.monDmg = 0;
