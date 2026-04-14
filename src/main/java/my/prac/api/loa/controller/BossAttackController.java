@@ -2589,7 +2589,7 @@ public class BossAttackController {
                 .setRoomName(roomName)
                 .setLv(u.lv)
                 .setTargetMonLv(0)
-                .setGainExp(0)
+                .setGainExp(-1)  // 물약로그 구분용 (쿨타임/부활시간 계산 제외)
                 .setAtkDmg(0)
                 .setMonDmg(0)
                 .setAtkCritYn(0)
