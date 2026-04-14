@@ -3278,7 +3278,9 @@ public class BossAttackController {
 	    AttackDeathStat cachedAds = null;
 	    try { cachedAds = botNewService.selectAttackDeathStats(userName, roomName); } catch (Exception ignore) {}
 	    Timestamp cachedLastAtk = (cachedAds != null) ? cachedAds.lastAttackTime : null;
-	    CooldownCheck cd = checkCooldown(userName, roomName, param1, job, cooldownBuff, cachedLastAtk);
+	    // 쿨타임은 직업 변경과 무관하게 마지막 공격 시점의 직업 기준으로 계산
+	    String cdJob = (cachedAds != null && cachedAds.lastAttackJob != null) ? cachedAds.lastAttackJob : job;
+	    CooldownCheck cd = checkCooldown(userName, roomName, param1, cdJob, cooldownBuff, cachedLastAtk);
 	    if (!cd.ok) {
 	        long min = cd.remainSeconds / 60;
 	        long sec = cd.remainSeconds % 60;
@@ -3378,7 +3380,7 @@ public class BossAttackController {
 	    
 	    
 	    try {
-	        String hpMsg = buildBelowHalfMsg(userName, roomName, u, param1, cooldownBuff);
+	        String hpMsg = buildBelowHalfMsg(userName, roomName, u, param1, cooldownBuff, cdJob);
 	        if (!"사신".equals(job)) {
 	        	if (hpMsg != null) {
 		        	return hpMsg;
@@ -5893,11 +5895,11 @@ public class BossAttackController {
 
 	    return toNextTick + (ticksNeeded - 1) * 5;
 	}
-	private String buildBelowHalfMsg(String userName, String roomName, User u, String param1, int cooldownBuff) {
+	private String buildBelowHalfMsg(String userName, String roomName, User u, String param1, int cooldownBuff, String cdJob) {
 	    if ("test".equals(param1)) return null; // 테스트 모드 패스
 
 	    int regenWaitMin = minutesUntilReach30(u, userName, roomName);
-	    CooldownCheck cd = checkCooldown(userName, roomName, param1, u.job ,cooldownBuff);
+	    CooldownCheck cd = checkCooldown(userName, roomName, param1, cdJob, cooldownBuff);
 
 	    long remainMin = cd.remainSeconds / 60;
 	    long remainSec = cd.remainSeconds % 60;
