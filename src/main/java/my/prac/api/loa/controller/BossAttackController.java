@@ -3816,6 +3816,9 @@ public class BossAttackController {
 	    if (dmg.dmgCalcMsg != null && !dmg.dmgCalcMsg.isEmpty()) {
 	        midExtra.append(dmg.dmgCalcMsg);
 	    }
+	    if (dmg.hunterMsg != null && !dmg.hunterMsg.isEmpty()) {
+	    	hunterMsg.append(dmg.hunterMsg);
+	    }
 	    if (dosabuffMsg != null && !dosabuffMsg.isEmpty()) {
 	        midExtra.append(NL).append(dosabuffMsg);
 	    }
