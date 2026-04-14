@@ -226,4 +226,29 @@ public class AchievementConfig {
     public static int killPerMonReward(int th, int monNo) {
         return th * monNo / 2;
     }
+
+    // ============================================================
+    // 8. 스페셜버프 업적
+    //    발동 : ACHV_SBUFF_TRIGGER_{flagCode}_{N}
+    //    진행중공격 : ACHV_SBUFF_ING_{flagCode}_{N}
+    //    진행중킬 : ACHV_SBUFF_KILL_{flagCode}_{N}
+    // ============================================================
+
+    /** 버프 발동 횟수 임계값 */
+    public static final int[] SBUFF_TRIGGER_THRESHOLDS = { 1, 3, 5, 10, 20, 30, 50 };
+
+    /** 버프 진행중 공격 횟수 임계값 */
+    public static final int[] SBUFF_ING_THRESHOLDS = { 1, 5, 10, 20, 50, 100, 200, 500 };
+
+    /** 버프 진행중 킬 횟수 임계값 */
+    public static final int[] SBUFF_KILL_THRESHOLDS = { 1, 3, 5, 10, 20, 50 };
+
+    /** 보상 SP: 발동횟수 (임계값 × 1000) */
+    public static int sbuffTriggerReward(int th) { return th * 1000; }
+
+    /** 보상 SP: 진행중 공격 (임계값 × 200) */
+    public static int sbuffIngReward(int th) { return th * 200; }
+
+    /** 보상 SP: 진행중 킬 (임계값 × 500) */
+    public static int sbuffKillReward(int th) { return th * 500; }
 }

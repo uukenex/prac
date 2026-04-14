@@ -28,6 +28,7 @@ public class BattleLog {
 	private int shotIndex; // 궁사 분할 화살용 ms 오프셋 (0=기본)
 	private int specialBuffStart; // 1 = 이 공격이 스페셜버프를 발동시킴
 	private int specialBuffIng;   // 1 = 스페셜버프 진행중 공격
+	private String specialBuffCode; // 진행중 버프 FLAG_CODE
 
 	public BattleLog setUserName(String v) {
 		this.userName = v;
@@ -128,6 +129,11 @@ public class BattleLog {
 
 	public BattleLog setSpecialBuffIng(int v) {
 		this.specialBuffIng = v;
+		return this;
+	}
+
+	public BattleLog setSpecialBuffCode(String v) {
+		this.specialBuffCode = v;
 		return this;
 	}
 

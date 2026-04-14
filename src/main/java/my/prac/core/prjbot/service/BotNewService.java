@@ -133,7 +133,8 @@ public interface BotNewService {
     List<HashMap<String, Object>> selectTotalGainCountByGainType(String userName, String roomName);
     
     List<HashMap<String,Object>> selectJobSkillUseCountAllJobs(String userName, String roomName);
-    
+    List<HashMap<String,Object>> selectSpecialBuffAchvStats(String userName);
+
     HashMap<String, Object> selectTodayDailyBuff(String userName, String roomName) throws Exception;
     int upsertTodayDailyBuff(String userName, String roomName, int atkBonus, int criDmgBonus) throws Exception;
     

@@ -172,7 +172,8 @@ public interface BotNewDAO {
 	List<HashMap<String, Object>> selectTotalGainCountByGainType(@Param("userName") String userName,
 	        @Param("roomName") String roomName);
 	public List<HashMap<String,Object>> selectJobSkillUseCountAllJobs(HashMap<String,Object> param);
-	
+	public List<HashMap<String,Object>> selectSpecialBuffAchvStats(String userName);
+
 	HashMap<String, Object> selectTodayDailyBuff(HashMap<String, Object> param) throws Exception;
 	int upsertTodayDailyBuff(HashMap<String, Object> param) throws Exception;
 	
