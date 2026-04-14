@@ -4786,8 +4786,8 @@ public class BossAttackController {
 
 	    
 	    sb.append(NL);
-	    /* === ⚔ 몬스터 학살자 (기존) === */
-	    sb.append("⚔ 몬스터 학살자").append(NL);
+	    /* === ⚔ 몬스터 학살자 (전체) === */
+	    sb.append("⚔ 몬스터 학살자 (전체)").append(NL);
 	    List<HashMap<String,Object>> killers = botNewService.selectKillLeadersByMonster();
 	    if (killers == null || killers.isEmpty()) {
 	        sb.append("데이터 없음").append(NL);
@@ -4807,6 +4807,82 @@ public class BossAttackController {
 	              .append(" (").append(kills).append("마리)").append(NL);
 	        }
 	    }
+
+	    /* === ⚔ 시즌 학살자 (이전 시즌 / 현재 시즌) === */
+	    {
+	        LocalDate today = LocalDate.now();
+	        java.time.format.DateTimeFormatter yyyyMMdd = java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd");
+	        java.time.format.DateTimeFormatter mmdd     = java.time.format.DateTimeFormatter.ofPattern("M/d");
+
+	        // 이전 시즌
+	        LocalDate prevStart, prevEnd;
+	        // 현재 시즌
+	        LocalDate curStart, curEnd;
+
+	        if (today.getDayOfMonth() >= 16) {
+	            prevStart = today.withDayOfMonth(1);
+	            prevEnd   = today.withDayOfMonth(15);
+	            curStart  = today.withDayOfMonth(16);
+	            curEnd    = today.withDayOfMonth(today.lengthOfMonth());
+	        } else {
+	            LocalDate prev = today.minusMonths(1);
+	            prevStart = prev.withDayOfMonth(16);
+	            prevEnd   = prev.withDayOfMonth(prev.lengthOfMonth());
+	            curStart  = today.withDayOfMonth(1);
+	            curEnd    = today.withDayOfMonth(15);
+	        }
+
+	        // 이전 시즌 출력
+	        sb.append(NL).append("⚔ 학살자 [").append(prevStart.format(mmdd)).append("~").append(prevEnd.format(mmdd)).append(" 시즌]").append(NL);
+	        try {
+	            HashMap<String,Object> p = new HashMap<>();
+	            p.put("seasonStart", prevStart.format(yyyyMMdd));
+	            p.put("seasonEnd",   prevEnd.format(yyyyMMdd));
+	            List<HashMap<String,Object>> prevKillers = botNewService.selectKillLeadersByMonsterSeason(p);
+	            if (prevKillers == null || prevKillers.isEmpty()) {
+	                sb.append("기록 없음").append(NL);
+	            } else {
+	                Integer last = null;
+	                for (HashMap<String,Object> k : prevKillers) {
+	                    int monNo      = safeInt(k.get("MON_NO"));
+	                    String monName = String.valueOf(k.get("MON_NAME"));
+	                    String uName   = String.valueOf(k.get("USER_NAME"));
+	                    int kills      = safeInt(k.get("KILL_COUNT"));
+	                    if (!java.util.Objects.equals(last, monNo)) {
+	                        sb.append(monNo).append(".").append(monName).append(" 학살자");
+	                        last = monNo;
+	                    }
+	                    sb.append(" ▶ ").append(uName).append(" (").append(kills).append("마리)").append(NL);
+	                }
+	            }
+	        } catch (Exception ignore) { sb.append("조회 오류").append(NL); }
+
+	        // 현재 시즌 출력
+	        sb.append(NL).append("⚔ 학살자 [").append(curStart.format(mmdd)).append("~").append(curEnd.format(mmdd)).append(" 시즌 현황]").append(NL);
+	        try {
+	            HashMap<String,Object> p = new HashMap<>();
+	            p.put("seasonStart", curStart.format(yyyyMMdd));
+	            p.put("seasonEnd",   today.format(yyyyMMdd)); // 오늘까지만
+	            List<HashMap<String,Object>> curKillers = botNewService.selectKillLeadersByMonsterSeason(p);
+	            if (curKillers == null || curKillers.isEmpty()) {
+	                sb.append("기록 없음").append(NL);
+	            } else {
+	                Integer last = null;
+	                for (HashMap<String,Object> k : curKillers) {
+	                    int monNo      = safeInt(k.get("MON_NO"));
+	                    String monName = String.valueOf(k.get("MON_NAME"));
+	                    String uName   = String.valueOf(k.get("USER_NAME"));
+	                    int kills      = safeInt(k.get("KILL_COUNT"));
+	                    if (!java.util.Objects.equals(last, monNo)) {
+	                        sb.append(monNo).append(".").append(monName).append(" 학살자");
+	                        last = monNo;
+	                    }
+	                    sb.append(" ▶ ").append(uName).append(" (").append(kills).append("마리)").append(NL);
+	                }
+	            }
+	        } catch (Exception ignore) { sb.append("조회 오류").append(NL); }
+	    }
+
 	    sb.append(NL);
 	    return sb.toString();
 	}

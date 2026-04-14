@@ -192,6 +192,7 @@ public interface BotNewDAO {
     List<HashMap<String, Object>> selectJobMasterSeasons(String userName);
     HashMap<String, Object> selectMaxDailyBuffStats(String userName);
     List<HashMap<String, Object>> selectSlayerSeasonRank(HashMap<String, Object> params);
+    List<HashMap<String, Object>> selectKillLeadersByMonsterSeason(HashMap<String, Object> params);
 
     Integer selectNightmareYn(@Param("userName") String userName, @Param("roomName") String roomName);
     public int updateNightmareYn(HashMap<String,Object> map);

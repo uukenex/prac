@@ -1777,6 +1777,35 @@
 	</select>
 
 	<!-- =====================================================
+	     [6-2] 몬스터별 시즌 학살자 랭킹 (랭킹뷰 표시용, 킬수 1 이상)
+	     ===================================================== -->
+	<select id="selectKillLeadersByMonsterSeason" parameterType="hashmap" resultType="hashmap">
+	  /* selectKillLeadersByMonsterSeason */
+	  SELECT MON_NO, MON_NAME, USER_NAME, KILL_COUNT
+	  FROM (
+	    SELECT
+	      bl.TARGET_MON_LV AS MON_NO,
+	      m.MON_NAME       AS MON_NAME,
+	      bl.USER_NAME     AS USER_NAME,
+	      COUNT(*)         AS KILL_COUNT,
+	      DENSE_RANK() OVER (
+	        PARTITION BY bl.TARGET_MON_LV
+	        ORDER BY COUNT(*) DESC
+	      ) AS RNK
+	    FROM TBOT_POINT_NEW_BATTLE_LOG bl
+	    JOIN TBOT_POINT_NEW_MON_INFO m
+	      ON m.MON_NO = bl.TARGET_MON_LV
+	    WHERE bl.KILL_YN = 1
+	      AND bl.INSERT_DATE >= TO_DATE(#{seasonStart}, 'YYYYMMDD')
+	      AND bl.INSERT_DATE &lt;  TO_DATE(#{seasonEnd},  'YYYYMMDD') + 1
+	      AND bl.ROOM_NAME NOT IN ('람쥐봇 문의방','test123')
+	    GROUP BY bl.TARGET_MON_LV, m.MON_NAME, bl.USER_NAME
+	  )
+	  WHERE RNK = 1
+	  ORDER BY MON_NO, USER_NAME
+	</select>
+
+	<!-- =====================================================
 	     [6-1] 몬스터 학살자: 15일 시즌별 킬 1위 + 30종 달성 여부
 	     시즌: 2026.03.01~ 각 월 1~15, 16~말일
 	     ===================================================== -->
