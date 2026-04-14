@@ -990,17 +990,17 @@ public class BossAttackController {
 	    
 	    // ─────────────────────────────
 	    
-	    if ("축복술사".equals(curJob) && u.procDate != null) {
+	    if ("축복술사".equals(curJob)) {
+	        // 실제로 축복술사로 공격한 경우에만 여운 적용 (공격 안 하면 즉시 변경 가능)
+	        AttackDeathStat blessAds = null;
+	        try { blessAds = botNewService.selectAttackDeathStats(userName, roomName); } catch (Exception ignore) {}
 
-	        long now = System.currentTimeMillis();
-	        long lastChange = u.procDate.getTime();
-
-	        long diffMinutes = (now - lastChange) / (1000 * 60);
-
-	        if (diffMinutes < 30) {
-	            long remain = 30 - diffMinutes;
-	            return "축복술사는 축복의 여운이 남아 "
-	                    + remain + "분 동안 직업 변경이 불가능합니다.";
+	        if (blessAds != null && "축복술사".equals(blessAds.lastAttackJob) && blessAds.lastAttackTime != null) {
+	            long diffMinutes = (System.currentTimeMillis() - blessAds.lastAttackTime.getTime()) / (1000 * 60);
+	            if (diffMinutes < 30) {
+	                long remain = 30 - diffMinutes;
+	                return "축복술사는 축복의 여운이 남아 " + remain + "분 동안 직업 변경이 불가능합니다.";
+	            }
 	        }
 	    }
 
@@ -2587,7 +2587,7 @@ public class BossAttackController {
                 .setRoomName(roomName)
                 .setLv(u.lv)
                 .setTargetMonLv(0)
-                .setGainExp(0)
+                .setGainExp(-1)  // 물약로그 구분용 (쿨타임/부활시간 계산 제외)
                 .setAtkDmg(0)
                 .setMonDmg(0)
                 .setAtkCritYn(0)
@@ -3281,7 +3281,9 @@ public class BossAttackController {
 	    AttackDeathStat cachedAds = null;
 	    try { cachedAds = botNewService.selectAttackDeathStats(userName, roomName); } catch (Exception ignore) {}
 	    Timestamp cachedLastAtk = (cachedAds != null) ? cachedAds.lastAttackTime : null;
-	    CooldownCheck cd = checkCooldown(userName, roomName, param1, job, cooldownBuff, cachedLastAtk);
+	    // 쿨타임은 직업 변경과 무관하게 마지막 공격 시점의 직업 기준으로 계산
+	    String cdJob = (cachedAds != null && cachedAds.lastAttackJob != null) ? cachedAds.lastAttackJob : job;
+	    CooldownCheck cd = checkCooldown(userName, roomName, param1, cdJob, cooldownBuff, cachedLastAtk);
 	    if (!cd.ok) {
 	        long min = cd.remainSeconds / 60;
 	        long sec = cd.remainSeconds % 60;
@@ -3381,7 +3383,7 @@ public class BossAttackController {
 	    
 	    
 	    try {
-	        String hpMsg = buildBelowHalfMsg(userName, roomName, u, param1, cooldownBuff);
+	        String hpMsg = buildBelowHalfMsg(userName, roomName, u, param1, cooldownBuff, cdJob);
 	        if (!"사신".equals(job)) {
 	        	if (hpMsg != null) {
 		        	return hpMsg;
@@ -6098,11 +6100,11 @@ public class BossAttackController {
 
 	    return toNextTick + (ticksNeeded - 1) * 5;
 	}
-	private String buildBelowHalfMsg(String userName, String roomName, User u, String param1, int cooldownBuff) {
+	private String buildBelowHalfMsg(String userName, String roomName, User u, String param1, int cooldownBuff, String cdJob) {
 	    if ("test".equals(param1)) return null; // 테스트 모드 패스
 
 	    int regenWaitMin = minutesUntilReach30(u, userName, roomName);
-	    CooldownCheck cd = checkCooldown(userName, roomName, param1, u.job ,cooldownBuff);
+	    CooldownCheck cd = checkCooldown(userName, roomName, param1, cdJob, cooldownBuff);
 
 	    long remainMin = cd.remainSeconds / 60;
 	    long remainSec = cd.remainSeconds % 60;

@@ -8,6 +8,7 @@ public class AttackDeathStat {
 	public int totalDeaths;
 	public int hunterAttacks;
 	public Timestamp lastAttackTime; // [OPT4] selectLastAttackTime 쿼리 통합용
+	public String lastAttackJob;     // 마지막 공격 시의 직업 (쿨타임 계산용)
 
 	public int getHunterAttacks() {
 		return hunterAttacks;
