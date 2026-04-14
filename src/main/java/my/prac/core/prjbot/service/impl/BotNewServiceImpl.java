@@ -492,7 +492,7 @@ public class BotNewServiceImpl implements BotNewService {
         try { s = botNewDAO.selectHellUnlockStats(userName); } catch (Exception e) { return false; }
         if (s == null) return false;
 
-        long lifetimeSp  = ((Number) s.getOrDefault("LIFETIME_SP",  0)).longValue();
+        //long lifetimeSp  = ((Number) s.getOrDefault("LIFETIME_SP",  0)).longValue();
         int  mon25Kills  = ((Number) s.getOrDefault("MON25_KILLS",  0)).intValue();
         int  achvCount   = ((Number) s.getOrDefault("ACHV_COUNT",   0)).intValue();
         int  relicCount  = ((Number) s.getOrDefault("RELIC_COUNT",  0)).intValue();
@@ -501,13 +501,13 @@ public class BotNewServiceImpl implements BotNewService {
         int  totalDeath  = ((Number) s.getOrDefault("TOTAL_DEATH",  0)).intValue();
 
         // 누적 SP 200b 이상 (1b = 10000 * 10000 sp = 100,000,000 sp → 200b = 20,000,000,000)
-        if (lifetimeSp >= 20_000_000_000L) return true;
+        //if (lifetimeSp >= 20_000_000_000L) return true;
 
         // 25번 몬스터 5마리 이상 처치
         if (mon25Kills >= 5) return true;
 
-        // 업적 400개 이상 보유
-        if (achvCount >= 400) return true;
+        // 업적 400개 아이템 보유
+        if (achvCount >= 1) return true;
 
         // 유물 아이템 27개 이상 보유
         if (relicCount >= 27) return true;

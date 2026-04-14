@@ -142,7 +142,7 @@ public class BossAttackController {
 	    	if(!botNewService.isHellUnlocked(userName)) {
 	    		return "헬 모드 해금 조건 미달성!" + NL
 	    		     + "[아래 중 하나 충족 시 해금]" + NL
-	    		     + "- 누적 SP 획득 200b 이상" + NL
+	    		     //+ "- 누적 SP 획득 200b 이상" + NL
 	    		     + "- 25번 몬스터 5마리 이상 처치" + NL
 	    		     + "- 업적 400개 이상 보유" + NL
 	    		     + "- 유물 아이템 27개 이상 보유" + NL
