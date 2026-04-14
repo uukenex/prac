@@ -3261,7 +3261,7 @@ public class BossAttackController {
 	        }
 	    
 	    
-	    SpecialBuffResult buff = handleSpecialBuff();
+	    SpecialBuffResult buff = handleSpecialBuff(userName);
 
 	    int cooldownBuff = 0;
 	    HashMap<String,Object> activeBuff = buff.activeBuff;
@@ -3747,7 +3747,10 @@ public class BossAttackController {
 	    }
 
 	    // 14) DB 반영 + 레벨업 처리
-	    LevelUpResult up = persist(userName, roomName, u, m, flags, calc, res, hpMax,nightmare);
+	    int buffStart      = buff.started ? 1 : 0;
+	    int buffIng        = activeBuff != null ? 1 : 0;
+	    String buffCode    = activeBuff != null ? (String) activeBuff.get("FLAG_CODE") : null;
+	    LevelUpResult up = persist(userName, roomName, u, m, flags, calc, res, hpMax, nightmare, buffStart, buffIng, buffCode);
 	    String bonusMsg = "";
 	    String blessMsg = "";
 	    
@@ -3766,6 +3769,8 @@ public class BossAttackController {
 	        AttackDeathStat achvAds = cachedAds;
 	        List<HashMap<String,Object>> achvJobSkillRows = null;
 	        try { achvJobSkillRows = botNewService.selectJobSkillUseCountAllJobs(userName, roomName); } catch (Exception ignore) {}
+	        List<HashMap<String,Object>> achvBuffRows = null;
+	        try { achvBuffRows = botNewService.selectSpecialBuffAchvStats(userName); } catch (Exception ignore) {}
 
 	        //String firstClearMsg  = grantFirstClearIfEligible(userName, roomName, m, globalAchvMap);
 	        String killAchvMsg    = grantKillAchievements(userName, roomName, achievedCmdSet, cachedKillStats);           // [PERF] cachedKillStats 재사용
@@ -3775,6 +3780,7 @@ public class BossAttackController {
 	        String jobSkillAchvMsg = grantJobSkillUseAchievementsAllJobs(userName, roomName, achievedCmdSet, achvJobSkillRows); // [PERF] 프리로드
 	        String shopSellAchvMsg  = grantShopSellAchievementsFast(userName, roomName, achievedCmdSet, achvSoldCount);    // [PERF] 프리로드
 	        String potionAchvMsg    = grantPotionUseAchievements(userName, roomName, achievedCmdSet, achvPotionCount);    // [PERF] 프리로드
+	        String buffAchvMsg      = grantSpecialBuffAchievements(userName, roomName, achievedCmdSet, achvBuffRows);      // [PERF] 프리로드
 
 	        String achvRewardMsg = grantAchievementBasedReward(userName, roomName, userAchvList);
 	        String specialAchvMsg = grantSpecialHistoricalAchievements(userName, roomName);
@@ -3789,6 +3795,7 @@ public class BossAttackController {
 	                || (achvRewardMsg   != null && !achvRewardMsg.isEmpty())
 	                || (bagAchvMsg      != null && !bagAchvMsg.isEmpty())
 	                || (specialAchvMsg  != null && !specialAchvMsg.isEmpty())
+	                || (buffAchvMsg     != null && !buffAchvMsg.isEmpty())
 	        		) {
 
 	                   bonusMsg = NL
@@ -3801,7 +3808,8 @@ public class BossAttackController {
 	                           + potionAchvMsg
 	                           + achvRewardMsg
 	                           + bagAchvMsg
-	                           + specialAchvMsg;
+	                           + specialAchvMsg
+	                           + buffAchvMsg;
 	               }
 	    }
 	    bagDropMsg = tryDropBag(userName, roomName, m, nightmare,buff);
@@ -4019,7 +4027,7 @@ public class BossAttackController {
 		return msg;
 	}
 
-	private SpecialBuffResult handleSpecialBuff() {
+	private SpecialBuffResult handleSpecialBuff(String userName) {
 
 	    SpecialBuffResult result = new SpecialBuffResult();
 
@@ -4110,6 +4118,7 @@ public class BossAttackController {
 	            param.put("effectType", effectType);
 	            param.put("effectValue", effectValue);
 	            param.put("durationMin", durationMin);
+	            param.put("insertId", userName);
 
 	            botNewService.insertSpecialBuff(param);
 
@@ -4957,7 +4966,55 @@ public class BossAttackController {
 	    return sb.toString();
 	}
 
-	
+	private String grantSpecialBuffAchievements(
+	        String userName,
+	        String roomName,
+	        Set<String> achievedCmdSet,
+	        List<HashMap<String,Object>> rows
+	) {
+	    if (rows == null || rows.isEmpty()) return "";
+
+	    StringBuilder sb = new StringBuilder();
+
+	    for (HashMap<String,Object> row : rows) {
+	        if (row == null) continue;
+
+	        String flagCode = Objects.toString(row.get("FLAG_CODE"), "").trim();
+	        if (flagCode.isEmpty()) continue;
+
+	        int triggerCnt = row.get("TRIGGER_CNT") instanceof Number ? ((Number) row.get("TRIGGER_CNT")).intValue() : 0;
+	        int ingCnt     = row.get("ING_CNT")     instanceof Number ? ((Number) row.get("ING_CNT")    ).intValue() : 0;
+	        int killCnt    = row.get("KILL_CNT")    instanceof Number ? ((Number) row.get("KILL_CNT")   ).intValue() : 0;
+
+	        // 발동 횟수
+	        for (int th : AchievementConfig.SBUFF_TRIGGER_THRESHOLDS) {
+	            if (triggerCnt < th) break;
+	            String cmd = "ACHV_SBUFF_TRIGGER_" + flagCode + "_" + th;
+	            if (achievedCmdSet.contains(cmd)) continue;
+	            sb.append(grantOnceIfEligibleFast(userName, roomName, cmd, AchievementConfig.sbuffTriggerReward(th), achievedCmdSet));
+	        }
+
+	        // 진행중 공격
+	        for (int th : AchievementConfig.SBUFF_ING_THRESHOLDS) {
+	            if (ingCnt < th) break;
+	            String cmd = "ACHV_SBUFF_ING_" + flagCode + "_" + th;
+	            if (achievedCmdSet.contains(cmd)) continue;
+	            sb.append(grantOnceIfEligibleFast(userName, roomName, cmd, AchievementConfig.sbuffIngReward(th), achievedCmdSet));
+	        }
+
+	        // 진행중 킬
+	        for (int th : AchievementConfig.SBUFF_KILL_THRESHOLDS) {
+	            if (killCnt < th) break;
+	            String cmd = "ACHV_SBUFF_KILL_" + flagCode + "_" + th;
+	            if (achievedCmdSet.contains(cmd)) continue;
+	            sb.append(grantOnceIfEligibleFast(userName, roomName, cmd, AchievementConfig.sbuffKillReward(th), achievedCmdSet));
+	        }
+	    }
+
+	    return sb.toString();
+	}
+
+
 	private String grantShopSellAchievementsFast(
 	        String userName,
 	        String roomName,
@@ -5588,8 +5645,8 @@ public class BossAttackController {
 	/** HP/EXP/LV + 로그 저장 (DB에는 '순수 레벨 기반 스탯'만 반영) */
 	private LevelUpResult persist(String userName, String roomName,
 	                              User u, Monster m,
-	                              Flags f, AttackCalc c, Resolve res,int hpMax,
-	                              boolean nightmare ) {
+	                              Flags f, AttackCalc c, Resolve res, int hpMax,
+	                              boolean nightmare, int specialBuffStart, int specialBuffIng, String specialBuffCode) {
 
 	    // 1) 최종 HP 계산 (전투 데미지 반영)
 	    u.hpCur = Math.max(0, u.hpCur - c.monDmg);
@@ -5718,7 +5775,10 @@ public class BossAttackController {
 	    	.setBuffYn(buffYn)
 	    	.setJobSkillYn(c.jobSkillUsed ? 1 : 0)
 	    	.setJob(u.job)
-	    	.setNightmareYn(u.nightmareYn);
+	    	.setNightmareYn(u.nightmareYn)
+	    	.setSpecialBuffStart(specialBuffStart)
+	    	.setSpecialBuffIng(specialBuffIng)
+	    	.setSpecialBuffCode(specialBuffCode);
 
 	    botNewService.insertBattleLogTx(log);
 
@@ -5745,6 +5805,9 @@ public class BossAttackController {
 	                .setJobSkillYn(0)
 	                .setJob(u.job)
 	                .setNightmareYn(u.nightmareYn)
+	                .setSpecialBuffStart(0)
+	                .setSpecialBuffIng(0)
+	                .setSpecialBuffCode(null)
 	                .setShotIndex(i));
 	        }
 	        botNewService.insertBattleLogsBatch(arrowLogs);

@@ -374,7 +374,12 @@ public class BotNewServiceImpl implements BotNewService {
         p.put("roomName", roomName);
         return botNewDAO.selectJobSkillUseCountAllJobs(p);
     }
-    
+
+    @Override
+    public List<HashMap<String,Object>> selectSpecialBuffAchvStats(String userName) {
+        return botNewDAO.selectSpecialBuffAchvStats(userName);
+    }
+
     @Override
     public HashMap<String, Object> selectTodayDailyBuff(String userName, String roomName) throws Exception {
         HashMap<String,Object> p = new HashMap<>();

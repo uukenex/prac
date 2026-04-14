@@ -237,12 +237,14 @@
        GAIN_EXP, ATK_DMG, MON_DMG, ATK_CRIT_YN,
        MON_PATTEN, INSERT_DATE, KILL_YN, NOW_YN, DROP_YN, DEATH_YN, LUCKY_YN, BUFF_YN
        ,JOB_SKILL_YN,JOB,NIGHTMARE_YN
+       ,SPECIAL_BUFF_START,SPECIAL_BUFF_ING,SPECIAL_BUFF_CODE
        )
     VALUES
       (#{userName}, #{roomName}, #{lv}, #{targetMonLv},
        #{gainExp}, #{atkDmg}, #{monDmg}, #{atkCritYn},
        #{monPatten}, SYSDATE, #{killYn}, #{nowYn}, #{dropYn}, #{deathYn}, #{luckyYn},#{buffYn}
        ,#{jobSkillYn},#{job},#{nightmareYn}
+       ,#{specialBuffStart},#{specialBuffIng},#{specialBuffCode}
        )
   </insert>
 
@@ -255,13 +257,15 @@
         (USER_NAME, ROOM_NAME, LV, TARGET_MON_LV,
          GAIN_EXP, ATK_DMG, MON_DMG, ATK_CRIT_YN,
          MON_PATTEN, INSERT_DATE, KILL_YN, NOW_YN, DROP_YN, DEATH_YN, LUCKY_YN, BUFF_YN,
-         JOB_SKILL_YN, JOB, NIGHTMARE_YN)
+         JOB_SKILL_YN, JOB, NIGHTMARE_YN,
+         SPECIAL_BUFF_START, SPECIAL_BUFF_ING, SPECIAL_BUFF_CODE)
       VALUES
         (#{log.userName}, #{log.roomName}, #{log.lv}, #{log.targetMonLv},
          #{log.gainExp}, #{log.atkDmg}, #{log.monDmg}, #{log.atkCritYn},
          #{log.monPatten}, SYSTIMESTAMP - NUMTODSINTERVAL(#{log.shotIndex}+2, 'SECOND'),
          #{log.killYn}, #{log.nowYn}, #{log.dropYn}, #{log.deathYn}, #{log.luckyYn}, #{log.buffYn},
-         #{log.jobSkillYn}, #{log.job}, #{log.nightmareYn})
+         #{log.jobSkillYn}, #{log.job}, #{log.nightmareYn},
+         0, 0, null)
     </foreach>
     SELECT 1 FROM DUAL
   </insert>
@@ -1323,6 +1327,21 @@
 	    WHERE USER_NAME = #{userName}
 	    GROUP BY JOB
 	</select>
+
+	<select id="selectSpecialBuffAchvStats"
+	        parameterType="string"
+	        resultType="hashmap">
+	    /* selectSpecialBuffAchvStats */
+	    SELECT
+	        SPECIAL_BUFF_CODE AS FLAG_CODE,
+	        SUM(CASE WHEN SPECIAL_BUFF_START = '1' THEN 1 ELSE 0 END) AS TRIGGER_CNT,
+	        SUM(CASE WHEN SPECIAL_BUFF_ING   = '1' THEN 1 ELSE 0 END) AS ING_CNT,
+	        SUM(CASE WHEN SPECIAL_BUFF_ING   = '1' AND KILL_YN = 1 THEN 1 ELSE 0 END) AS KILL_CNT
+	    FROM TBOT_POINT_NEW_BATTLE_LOG
+	    WHERE USER_NAME = #{userName}
+	      AND SPECIAL_BUFF_CODE IS NOT NULL
+	    GROUP BY SPECIAL_BUFF_CODE
+	</select>
 	
 	<select id="selectTodayDailyBuff" parameterType="hashmap" resultType="hashmap">
 	    /* selectTodayDailyBuff */
@@ -1630,7 +1649,8 @@
 	        EFFECT_VALUE,
 	        START_TIME,
 	        END_TIME,
-	        INSERT_DATE
+	        INSERT_DATE,
+	        INSERT_ID
 	    )
 	    VALUES (
 	        #{flagCode},
@@ -1638,7 +1658,8 @@
 	        #{effectValue},
 	        SYSDATE,
 	        TRUNC(SYSDATE, 'MI') + (#{durationMin} / 1440),
-	        SYSDATE
+	        SYSDATE,
+	        #{insertId}
 	    )
 	
 	</insert>
