@@ -160,6 +160,8 @@ public interface BotNewService {
     public int setNightmareMode(String userName, String roomName, int nightmareYn);
     public boolean isNightmareUnlocked(String userName);
     public boolean isHellUnlocked(String userName);
+    HashMap<String,Object> selectHeavenItemBuff(String userName);
+    List<Integer> selectItemIdsByType(String itemType);
     
     HashMap<String,Object> lockMacroUser(String userName);
     

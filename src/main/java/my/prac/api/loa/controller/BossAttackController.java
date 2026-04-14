@@ -141,7 +141,13 @@ public class BossAttackController {
 	    }else if(selRaw.equals("헬")||selRaw.equals("헬모드")) {
 	    	if(!master && !botNewService.isHellUnlocked(userName)) {
 	    		return "헬 모드 해금 조건 미달성!" + NL
-	    		     + "조건: 나이트메어 모드에서 1~30번 몬스터 다크몹 각 1회씩 처치";
+	    		     + "[아래 중 하나 충족 시 해금]" + NL
+	    		     + "① 나메모드 1~30번 다크몹 각 1회 처치" + NL
+	    		     + "② 누적 SP 획득 200b 이상" + NL
+	    		     + "③ 25번 몬스터 5마리 이상 처치" + NL
+	    		     + "④ 업적 400개 이상 보유" + NL
+	    		     + "⑤ 유물 아이템 27개 이상 보유" + NL
+	    		     + "⑥ 헌터 S급 이상";
 	    	}
 	    	botNewService.setNightmareMode(userName,roomName,2);
 	    	msg ="헬";
@@ -309,6 +315,12 @@ public class BossAttackController {
 	        buffs = botNewService.selectOwnedMarketBuffTotals(targetUser, "");
 	    } catch (Exception ignore) {}
 
+	    // 2) 천벌 아이템(7001) 스탯 추가 (보유 시에만 적용)
+	    HashMap<String,Object> heavenBuff = null;
+	    try {
+	        heavenBuff = botNewService.selectHeavenItemBuff(targetUser);
+	    } catch (Exception ignore) {}
+
 	    
 	    int mktAtkMin = (buffs != null && buffs.get("ATK_MIN")  != null) ? buffs.get("ATK_MIN").intValue()  : 0;
 	    int mktAtkMax = (buffs != null && buffs.get("ATK_MAX")  != null) ? buffs.get("ATK_MAX").intValue()  : 0;
@@ -318,6 +330,18 @@ public class BossAttackController {
 	    int mktCritDmg = (buffs != null && buffs.get("CRI_DMG")  != null) ? buffs.get("CRI_DMG").intValue()  : 0;
 	    int mktHpMaxRate  = (buffs != null && buffs.get("HP_MAX_RATE")   != null) ? buffs.get("HP_MAX_RATE").intValue()   : 0;
 	    int mktAtkMaxRate  = (buffs != null && buffs.get("ATK_MAX_RATE")   != null) ? buffs.get("ATK_MAX_RATE").intValue()   : 0;
+
+	    // 천벌 아이템(7001) 스탯 합산
+	    if (heavenBuff != null) {
+	        mktAtkMin    += heavenBuff.get("ATK_MIN")      != null ? ((Number) heavenBuff.get("ATK_MIN")).intValue()      : 0;
+	        mktAtkMax    += heavenBuff.get("ATK_MAX")      != null ? ((Number) heavenBuff.get("ATK_MAX")).intValue()      : 0;
+	        mktCrit      += heavenBuff.get("ATK_CRI")      != null ? ((Number) heavenBuff.get("ATK_CRI")).intValue()      : 0;
+	        mktRegen     += heavenBuff.get("HP_REGEN")     != null ? ((Number) heavenBuff.get("HP_REGEN")).intValue()     : 0;
+	        mktHpMax     += heavenBuff.get("HP_MAX")       != null ? ((Number) heavenBuff.get("HP_MAX")).intValue()       : 0;
+	        mktCritDmg   += heavenBuff.get("CRI_DMG")      != null ? ((Number) heavenBuff.get("CRI_DMG")).intValue()      : 0;
+	        mktHpMaxRate += heavenBuff.get("HP_MAX_RATE")  != null ? ((Number) heavenBuff.get("HP_MAX_RATE")).intValue()  : 0;
+	        mktAtkMaxRate+= heavenBuff.get("ATK_MAX_RATE") != null ? ((Number) heavenBuff.get("ATK_MAX_RATE")).intValue() : 0;
+	    }
 
 	    // 🔹 직업 보너스 표시용 변수
 	    int jobHp = 0;
@@ -1161,6 +1185,11 @@ public class BossAttackController {
 	        // ─────────────────
 	        // 기타
 	        // ─────────────────
+	        else if ("BOSS_HELL".equalsIgnoreCase(type)) {
+	            if (qty > 1) label += "x" + qty;
+	            String desc = Objects.toString(row.get("ITEM_DESC"), "").trim();
+	            if (!desc.isEmpty()) label += " [" + desc + "]";
+	        }
 	        else {
 	            if (qty > 1) {
 	                label += "x" + qty;
