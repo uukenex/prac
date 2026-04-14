@@ -487,9 +487,6 @@ public class BotNewServiceImpl implements BotNewService {
     }
 
     public boolean isHellUnlocked(String userName) {
-        // 기존 조건: 나메모드에서 1~30번 몬스터 dark킬 각 1회씩 = 30종 모두 달성
-        if (botNewDAO.selectNmDarkKillMonCount(userName) >= 30) return true;
-
         // OR 조건 통합 조회
         HashMap<String,Object> s;
         try { s = botNewDAO.selectHellUnlockStats(userName); } catch (Exception e) { return false; }
