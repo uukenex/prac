@@ -26,6 +26,8 @@ public class BattleLog {
 	private String job; 
 	private int nightmareYn;
 	private int shotIndex; // 궁사 분할 화살용 ms 오프셋 (0=기본)
+	private int specialBuffStart; // 1 = 이 공격이 스페셜버프를 발동시킴
+	private int specialBuffIng;   // 1 = 스페셜버프 진행중 공격
 
 	public BattleLog setUserName(String v) {
 		this.userName = v;
@@ -116,6 +118,16 @@ public class BattleLog {
 
 	public BattleLog setShotIndex(int v) {
 		this.shotIndex = v;
+		return this;
+	}
+
+	public BattleLog setSpecialBuffStart(int v) {
+		this.specialBuffStart = v;
+		return this;
+	}
+
+	public BattleLog setSpecialBuffIng(int v) {
+		this.specialBuffIng = v;
 		return this;
 	}
 

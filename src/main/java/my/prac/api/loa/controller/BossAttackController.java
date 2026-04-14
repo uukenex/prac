@@ -3261,7 +3261,7 @@ public class BossAttackController {
 	        }
 	    
 	    
-	    SpecialBuffResult buff = handleSpecialBuff();
+	    SpecialBuffResult buff = handleSpecialBuff(userName);
 
 	    int cooldownBuff = 0;
 	    HashMap<String,Object> activeBuff = buff.activeBuff;
@@ -3747,7 +3747,9 @@ public class BossAttackController {
 	    }
 
 	    // 14) DB 반영 + 레벨업 처리
-	    LevelUpResult up = persist(userName, roomName, u, m, flags, calc, res, hpMax,nightmare);
+	    int buffStart = buff.started ? 1 : 0;
+	    int buffIng   = activeBuff != null ? 1 : 0;
+	    LevelUpResult up = persist(userName, roomName, u, m, flags, calc, res, hpMax, nightmare, buffStart, buffIng);
 	    String bonusMsg = "";
 	    String blessMsg = "";
 	    
@@ -4019,7 +4021,7 @@ public class BossAttackController {
 		return msg;
 	}
 
-	private SpecialBuffResult handleSpecialBuff() {
+	private SpecialBuffResult handleSpecialBuff(String userName) {
 
 	    SpecialBuffResult result = new SpecialBuffResult();
 
@@ -4110,6 +4112,7 @@ public class BossAttackController {
 	            param.put("effectType", effectType);
 	            param.put("effectValue", effectValue);
 	            param.put("durationMin", durationMin);
+	            param.put("insertId", userName);
 
 	            botNewService.insertSpecialBuff(param);
 
@@ -5588,8 +5591,8 @@ public class BossAttackController {
 	/** HP/EXP/LV + 로그 저장 (DB에는 '순수 레벨 기반 스탯'만 반영) */
 	private LevelUpResult persist(String userName, String roomName,
 	                              User u, Monster m,
-	                              Flags f, AttackCalc c, Resolve res,int hpMax,
-	                              boolean nightmare ) {
+	                              Flags f, AttackCalc c, Resolve res, int hpMax,
+	                              boolean nightmare, int specialBuffStart, int specialBuffIng) {
 
 	    // 1) 최종 HP 계산 (전투 데미지 반영)
 	    u.hpCur = Math.max(0, u.hpCur - c.monDmg);
@@ -5718,7 +5721,9 @@ public class BossAttackController {
 	    	.setBuffYn(buffYn)
 	    	.setJobSkillYn(c.jobSkillUsed ? 1 : 0)
 	    	.setJob(u.job)
-	    	.setNightmareYn(u.nightmareYn);
+	    	.setNightmareYn(u.nightmareYn)
+	    	.setSpecialBuffStart(specialBuffStart)
+	    	.setSpecialBuffIng(specialBuffIng);
 
 	    botNewService.insertBattleLogTx(log);
 
@@ -5745,6 +5750,8 @@ public class BossAttackController {
 	                .setJobSkillYn(0)
 	                .setJob(u.job)
 	                .setNightmareYn(u.nightmareYn)
+	                .setSpecialBuffStart(0)
+	                .setSpecialBuffIng(specialBuffIng)
 	                .setShotIndex(i));
 	        }
 	        botNewService.insertBattleLogsBatch(arrowLogs);
