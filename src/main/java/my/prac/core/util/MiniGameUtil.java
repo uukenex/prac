@@ -760,18 +760,18 @@ public class MiniGameUtil {
 	public static double getHellNerfMult(String grade) {
 	    if (grade == null) return HEL_NERF_BASE;
 	    switch (grade) {
-	        case "SSS": return 0.15;
-	        case "SS":  return 0.15;
-	        case "S":   return 0.12;
-	        case "A+":  return 0.10;
-	        case "A":   return 0.10;
-	        case "B+":  return 0.09;
-	        case "B":   return 0.09;
-	        case "C+":  return 0.07;
-	        case "C":   return 0.07;
-	        case "D+":  return HEL_NERF_BASE;
-	        case "D":   return HEL_NERF_BASE;
-	        default:    return HEL_NERF_BASE; // F
+	        case "SSS": return 0.12;
+	        case "SS":  return 0.11;
+	        case "S":   return 0.10;
+	        case "A+":  return 0.085;
+	        case "A":   return 0.080;
+	        case "B+":  return 0.075;
+	        case "B":   return 0.070;
+	        case "C+":  return 0.065;
+	        case "C":   return 0.06;
+	        case "D+":  return 0.055;
+	        case "D":   return 0.05;
+	        default:    return 0.04; // F
 	    }
 	}
 	
