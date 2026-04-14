@@ -139,10 +139,19 @@ public class BossAttackController {
 	    	botNewService.setNightmareMode(userName,roomName,1);
 	    	msg ="나이트메어";
 	    }else if(selRaw.equals("헬")||selRaw.equals("헬모드")) {
+	    	LocalDate today = LocalDate.now();
+	    	
+	    	if (today.isBefore(LocalDate.of(2026,4,16))) {
+	    		return "헬 모드 해금 조건 미달성!" + NL
+		    		     + "[4/16 00시 이후 아래 중 하나 충족 시 해금]" + NL
+		    		     + "- 25번 몬스터 5마리 이상 처치" + NL
+		    		     + "- 업적 400개 이상 보유" + NL
+		    		     + "- 유물 아이템 27개 이상 보유" + NL
+		    		     + "- 헌터 S급 이상";
+	        }
+	    	
 	    	if(!botNewService.isHellUnlocked(userName)) {
 	    		return "헬 모드 해금 조건 미달성!" + NL
-	    		     + "[아래 중 하나 충족 시 해금]" + NL
-	    		     //+ "- 누적 SP 획득 200b 이상" + NL
 	    		     + "- 25번 몬스터 5마리 이상 처치" + NL
 	    		     + "- 업적 400개 이상 보유" + NL
 	    		     + "- 유물 아이템 27개 이상 보유" + NL
