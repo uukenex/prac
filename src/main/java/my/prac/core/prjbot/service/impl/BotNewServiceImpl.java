@@ -455,6 +455,10 @@ public class BotNewServiceImpl implements BotNewService {
         return botNewDAO.selectSlayerSeasonRank(params);
     }
 
+    public List<HashMap<String, Object>> selectKillLeadersByMonsterSeason(HashMap<String, Object> params) {
+        return botNewDAO.selectKillLeadersByMonsterSeason(params);
+    }
+
     public boolean isNightmareMode(String userName, String roomName) {
 	    Integer v = botNewDAO.selectNightmareYn(userName, roomName);
 	    return v != null && v >= 1;

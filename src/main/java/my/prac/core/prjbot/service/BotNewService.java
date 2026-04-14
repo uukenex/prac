@@ -153,6 +153,7 @@ public interface BotNewService {
     List<HashMap<String, Object>> selectJobMasterSeasons(String userName);
     HashMap<String, Object> selectMaxDailyBuffStats(String userName);
     List<HashMap<String, Object>> selectSlayerSeasonRank(HashMap<String, Object> params);
+    List<HashMap<String, Object>> selectKillLeadersByMonsterSeason(HashMap<String, Object> params);
 
     public boolean isNightmareMode(String userName, String roomName);
     public int getNightmareYn(String userName, String roomName);
