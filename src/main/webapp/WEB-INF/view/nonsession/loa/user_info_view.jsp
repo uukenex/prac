@@ -150,7 +150,11 @@
 
       <!-- 왼쪽: 캐릭터 -->
       <div class="char-area">
-        <div class="char-box" v-html="charSvg"></div>
+        <div class="char-box">
+          <img v-if="charImgUrl" :src="charImgUrl"
+               style="width:100%;height:100%;object-fit:cover;border-radius:18px;" alt="캐릭터">
+          <span v-else style="font-size:48px;">🧙</span>
+        </div>
         <div class="char-lv" v-if="userLv > 0">Lv {{ userLv }}</div>
         <div class="char-name">{{ userName }}</div>
         <div class="char-job" v-if="userJob">{{ userJob }}</div>
@@ -244,66 +248,26 @@ var CAT_ICONS = {
   '토템': '🗿', '선물': '🎁', '기타': '📦'
 };
 
-// job → 머리카락 색상
-var HAIR_COLORS = {
-  '전사': '#E8B84B', '마법사': '#A78BFA', '궁수': '#34D399',
-  '도적': '#374151', '성직자': '#E2D9F3', '헌터': '#F87171',
-  '사무라이': '#60A5FA', '마검사': '#C084FC'
-};
+// nekos.best 캐릭터 이미지 (localStorage 캐싱)
+var CHAR_IMG_KEY_PREFIX = 'loaCharImg_';
 
-// 귀여운 애니 얼굴 SVG 생성
-function makeCharSvg(job) {
-  var hair = HAIR_COLORS[job] || '#F9A8D4';
-  // 눈 색상 (직업별)
-  var eyeColors = {
-    '전사': '#92400E', '마법사': '#5B21B6', '궁수': '#065F46',
-    '도적': '#1F2937', '성직자': '#6D28D9', '헌터': '#991B1B',
-    '사무라이': '#1E40AF', '마검사': '#7C3AED'
-  };
-  var eye = eyeColors[job] || '#3B3B8A';
-  return '<svg viewBox="0 0 100 108" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">'
-    // 머리카락 뒤쪽
-    + '<ellipse cx="50" cy="42" rx="38" ry="32" fill="' + hair + '"/>'
-    // 귀
-    + '<ellipse cx="16" cy="62" rx="9" ry="12" fill="#FFD8B0"/>'
-    + '<ellipse cx="84" cy="62" rx="9" ry="12" fill="#FFD8B0"/>'
-    + '<ellipse cx="16" cy="62" rx="5.5" ry="8" fill="#FFB8A0" opacity="0.6"/>'
-    + '<ellipse cx="84" cy="62" rx="5.5" ry="8" fill="#FFB8A0" opacity="0.6"/>'
-    // 얼굴
-    + '<ellipse cx="50" cy="66" rx="35" ry="36" fill="#FFE4C4"/>'
-    // 머리카락 앞쪽
-    + '<ellipse cx="50" cy="34" rx="38" ry="24" fill="' + hair + '"/>'
-    // 앞머리 (삼각형 스트랜드)
-    + '<polygon points="22,50 30,36 38,52" fill="' + hair + '"/>'
-    + '<polygon points="78,50 70,36 62,52" fill="' + hair + '"/>'
-    + '<ellipse cx="50" cy="48" rx="14" ry="8" fill="' + hair + '"/>'
-    // 흰자 왼쪽
-    + '<ellipse cx="37" cy="64" rx="8.5" ry="9.5" fill="white"/>'
-    // 동공 왼쪽
-    + '<ellipse cx="37" cy="65" rx="6" ry="7" fill="' + eye + '"/>'
-    + '<ellipse cx="37" cy="65.5" rx="4" ry="5.5" fill="#111"/>'
-    // 눈빛 반사 왼쪽
-    + '<circle cx="39.5" cy="61.5" r="2.2" fill="white"/>'
-    + '<circle cx="36" cy="69" r="1" fill="white" opacity="0.6"/>'
-    // 흰자 오른쪽
-    + '<ellipse cx="63" cy="64" rx="8.5" ry="9.5" fill="white"/>'
-    // 동공 오른쪽
-    + '<ellipse cx="63" cy="65" rx="6" ry="7" fill="' + eye + '"/>'
-    + '<ellipse cx="63" cy="65.5" rx="4" ry="5.5" fill="#111"/>'
-    // 눈빛 반사 오른쪽
-    + '<circle cx="65.5" cy="61.5" r="2.2" fill="white"/>'
-    + '<circle cx="62" cy="69" r="1" fill="white" opacity="0.6"/>'
-    // 눈썹
-    + '<path d="M 29 54 Q 37 50 45 54" stroke="' + hair + '" stroke-width="2.5" fill="none" stroke-linecap="round"/>'
-    + '<path d="M 55 54 Q 63 50 71 54" stroke="' + hair + '" stroke-width="2.5" fill="none" stroke-linecap="round"/>'
-    // 볼터치
-    + '<ellipse cx="24" cy="76" rx="10" ry="6" fill="#FFB3C6" opacity="0.5"/>'
-    + '<ellipse cx="76" cy="76" rx="10" ry="6" fill="#FFB3C6" opacity="0.5"/>'
-    // 코
-    + '<path d="M 47 78 Q 50 81 53 78" stroke="#E8A090" stroke-width="1.5" fill="none" stroke-linecap="round" opacity="0.7"/>'
-    // 입 (W 모양 귀여운 입)
-    + '<path d="M 42 87 Q 46 92 50 88 Q 54 92 58 87" stroke="#E07090" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>'
-    + '</svg>';
+function getCharImgUrl(userName) {
+  return localStorage.getItem(CHAR_IMG_KEY_PREFIX + userName) || null;
+}
+
+function fetchAndCacheCharImg(userName, callback) {
+  var cached = getCharImgUrl(userName);
+  if (cached) { callback(cached); return; }
+  fetch('https://nekos.best/api/v2/neko')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      var url = data.results && data.results[0] ? data.results[0].url : null;
+      if (url) {
+        localStorage.setItem(CHAR_IMG_KEY_PREFIX + userName, url);
+        callback(url);
+      }
+    })
+    .catch(function() { /* 실패 시 무시 */ });
 }
 
 function inSlotRanges(id, cat) {
@@ -324,12 +288,10 @@ new Vue({
     loading: false,
     inventory: [],
     potionUseCount: 0,
-    modal: null
+    modal: null,
+    charImgUrl: null
   },
   computed: {
-    charSvg: function() {
-      return makeCharSvg(this.userJob);
-    },
 
     // 슬롯별 대표 아이템 (같은 카테고리 내 보유 중 가장 높은 티어)
     slotMap: function() {
@@ -433,6 +395,13 @@ new Vue({
           self.potionUseCount = data.potionUseCount || 0;
           self.loading = false;
           sessionStorage.setItem('loaUserName', self.userName);
+          // 캐릭터 이미지 (localStorage 캐싱)
+          self.charImgUrl = getCharImgUrl(self.userName);
+          if (!self.charImgUrl) {
+            fetchAndCacheCharImg(self.userName, function(url) {
+              self.charImgUrl = url;
+            });
+          }
         })
         .catch(function() { self.loading = false; });
     }
