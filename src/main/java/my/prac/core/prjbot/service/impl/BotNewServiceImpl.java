@@ -487,8 +487,43 @@ public class BotNewServiceImpl implements BotNewService {
     }
 
     public boolean isHellUnlocked(String userName) {
-        // 나메모드에서 1~30번 몬스터 dark킬 각 1회씩 = 30종 모두 달성
-        return botNewDAO.selectNmDarkKillMonCount(userName) >= 30;
+        // 기존 조건: 나메모드에서 1~30번 몬스터 dark킬 각 1회씩 = 30종 모두 달성
+        if (botNewDAO.selectNmDarkKillMonCount(userName) >= 30) return true;
+
+        // OR 조건 통합 조회
+        HashMap<String,Object> s;
+        try { s = botNewDAO.selectHellUnlockStats(userName); } catch (Exception e) { return false; }
+        if (s == null) return false;
+
+        long lifetimeSp  = ((Number) s.getOrDefault("LIFETIME_SP",  0)).longValue();
+        int  mon25Kills  = ((Number) s.getOrDefault("MON25_KILLS",  0)).intValue();
+        int  achvCount   = ((Number) s.getOrDefault("ACHV_COUNT",   0)).intValue();
+        int  relicCount  = ((Number) s.getOrDefault("RELIC_COUNT",  0)).intValue();
+        int  totalAtk    = ((Number) s.getOrDefault("TOTAL_ATK",    0)).intValue();
+        int  totalDrop   = ((Number) s.getOrDefault("TOTAL_DROP",   0)).intValue();
+        int  totalDeath  = ((Number) s.getOrDefault("TOTAL_DEATH",  0)).intValue();
+
+        // 누적 SP 200b 이상 (1b = 10000 * 10000 sp = 100,000,000 sp → 200b = 20,000,000,000)
+        if (lifetimeSp >= 20_000_000_000L) return true;
+
+        // 25번 몬스터 5마리 이상 처치
+        if (mon25Kills >= 5) return true;
+
+        // 업적 400개 이상 보유
+        if (achvCount >= 400) return true;
+
+        // 유물 아이템 27개 이상 보유
+        if (relicCount >= 27) return true;
+
+        // 헌터 S급 이상: 공격 30000 + 드랍 30000 + 사망 500 모두 충족
+        if (totalAtk >= 30000 && totalDrop >= 30000 && totalDeath >= 500) return true;
+
+        return false;
+    }
+
+    @Override
+    public HashMap<String,Object> selectHeavenItemBuff(String userName) {
+        return botNewDAO.selectHeavenItemBuff(userName);
     }
 
     @Override

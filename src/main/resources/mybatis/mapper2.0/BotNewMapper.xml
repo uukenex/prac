@@ -1525,6 +1525,60 @@
 		   AND TARGET_MON_LV BETWEEN 1 AND 30
 	</select>
 	
+	<!-- 헬모드 해금 조건 통합 조회 (OR 조건 다수 체크용) -->
+	<select id="selectHellUnlockStats" parameterType="string" resultType="hashmap">
+		/* selectHellUnlockStats */
+		SELECT
+		    (SELECT NVL(TOTAL_SP, 0)
+		       FROM TBOT_POINT_NEW_USER
+		      WHERE USER_NAME = #{userName}) AS LIFETIME_SP,
+		    (SELECT COUNT(1)
+		       FROM TBOT_POINT_NEW_BATTLE_LOG
+		      WHERE USER_NAME = #{userName}
+		        AND TARGET_MON_LV = 25
+		        AND KILL_YN = 1
+		        AND NIGHTMARE_YN = '0') AS MON25_KILLS,
+		    (SELECT NVL(SUM(QTY), 0)
+		       FROM TBOT_POINT_NEW_INVENTORY
+		      WHERE USER_NAME = #{userName}
+		        AND NVL(DEL_YN,'0') = '0'
+		        AND ITEM_ID BETWEEN 8001 AND 9000) AS ACHV_COUNT,
+		    (SELECT NVL(SUM(QTY), 0)
+		       FROM TBOT_POINT_NEW_INVENTORY
+		      WHERE USER_NAME = #{userName}
+		        AND NVL(DEL_YN,'0') = '0'
+		        AND ITEM_ID BETWEEN 9001 AND 9999) AS RELIC_COUNT,
+		    (SELECT COUNT(1)
+		       FROM TBOT_POINT_NEW_BATTLE_LOG
+		      WHERE USER_NAME = #{userName}) AS TOTAL_ATK,
+		    (SELECT NVL(SUM(CASE WHEN LUCKY_YN = 1 THEN 1 ELSE 0 END), 0)
+		       FROM TBOT_POINT_NEW_BATTLE_LOG
+		      WHERE USER_NAME = #{userName}) AS TOTAL_DROP,
+		    (SELECT NVL(SUM(CASE WHEN DEATH_YN = '1' THEN 1 ELSE 0 END), 0)
+		       FROM TBOT_POINT_NEW_BATTLE_LOG
+		      WHERE USER_NAME = #{userName}) AS TOTAL_DEATH
+		FROM DUAL
+	</select>
+
+	<!-- 헬모드 해금: 아이템 7001(천벌) 스탯 조회 (S2 공격력 적용용) -->
+	<select id="selectHeavenItemBuff" parameterType="string" resultType="map">
+		/* selectHeavenItemBuff */
+		SELECT
+		    NVL(SUM(i.ATK_MIN), 0)       AS ATK_MIN,
+		    NVL(SUM(i.ATK_MAX), 0)       AS ATK_MAX,
+		    NVL(SUM(i.ATK_CRI), 0)       AS ATK_CRI,
+		    NVL(SUM(i.HP_MAX), 0)        AS HP_MAX,
+		    NVL(SUM(i.HP_REGEN), 0)      AS HP_REGEN,
+		    NVL(SUM(i.CRI_DMG), 0)       AS CRI_DMG,
+		    NVL(SUM(i.HP_MAX_RATE), 0)   AS HP_MAX_RATE,
+		    NVL(SUM(i.ATK_MAX_RATE), 0)  AS ATK_MAX_RATE
+		FROM TBOT_POINT_NEW_INVENTORY inv
+		JOIN TBOT_POINT_NEW_ITEM i ON i.ITEM_ID = inv.ITEM_ID
+		WHERE inv.USER_NAME = #{userName}
+		  AND NVL(inv.DEL_YN,'0') = '0'
+		  AND inv.ITEM_ID = 7001
+	</select>
+
 	<update id="updateNightmareYn" parameterType="map">
 	    /* updateNightmareYn */
 	    UPDATE TBOT_POINT_NEW_USER

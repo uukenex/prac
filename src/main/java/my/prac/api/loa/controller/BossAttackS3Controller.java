@@ -48,16 +48,16 @@ public class BossAttackS3Controller {
     // =========================================================
     /** 보스 공격 발동률 (%) */
     static final int BOSS_ATK_RATE_MIN   = 15,  BOSS_ATK_RATE_MAX   = 30;
-    /** 보스 공격 데미지 최대값 */
-    static final int BOSS_ATK_POWER_MIN  = 80,  BOSS_ATK_POWER_MAX  = 200;
+    /** 보스 공격 데미지: 유저 최대HP의 X% (체력비례 퍼센트 데미지) */
+    static final int BOSS_ATK_POWER_MIN  = 10,  BOSS_ATK_POWER_MAX  = 99;
     /** 보스 방어 발동률 (%) */
     static final int BOSS_DEF_RATE_MIN   = 10,  BOSS_DEF_RATE_MAX   = 25;
-    /** 보스 방어 데미지 감소 최대값 */
-    static final int BOSS_DEF_POWER_MIN  = 50,  BOSS_DEF_POWER_MAX  = 150;
+    /** 보스 방어: 유저 공격의 X% 감소 */
+    static final int BOSS_DEF_POWER_MIN  = 10,  BOSS_DEF_POWER_MAX  = 100;
     /** 보스 회피율 (%) */
     static final int BOSS_EVADE_RATE_MIN = 5,   BOSS_EVADE_RATE_MAX = 20;
-    /** 보스 치명 저항 (%) */
-    static final int BOSS_CRIT_DEF_MIN   = 0,   BOSS_CRIT_DEF_MAX   = 30;
+    /** 보스 치명 저항: 제거 (0 고정) */
+    static final int BOSS_CRIT_DEF_MIN   = 0,   BOSS_CRIT_DEF_MAX   = 0;
     /** 보스 최대 HP (raw) */
     static final long BOSS_MAX_HP_MIN    = 50_000L;
     static final long BOSS_MAX_HP_MAX    = 200_000L;
@@ -286,11 +286,12 @@ public class BossAttackS3Controller {
                 damage *= 2;
             }
 
-            // 보스 방어 (천벌/디버프 무시)
+            // 보스 방어 (천벌/디버프 무시, 방어력: 데미지의 X% 감소)
             if (!heavensPunishment && !flag_boss_debuff && Math.random() < bossDefRate / 100.0) {
-                int defAmt = ThreadLocalRandom.current().nextInt(1, bossDefPower + 1);
+                int defPct = ThreadLocalRandom.current().nextInt(BOSS_DEF_POWER_MIN, bossDefPower + 1);
+                long defAmt = damage * defPct / 100;
                 damage = Math.max(0, damage - defAmt);
-                bossDefMsg = "보스가 방어하였습니다! 데미지 " + defAmt + " 상쇄!" + NL;
+                bossDefMsg = "보스가 방어하였습니다! 데미지 " + defPct + "% 감소 (-" + defAmt + ")!" + NL;
             }
         }
 
@@ -301,11 +302,12 @@ public class BossAttackS3Controller {
         boolean isKill = SP.toBaseValue(newHpSp) <= 0;
         long newHp = isKill ? 0 : SP.toBaseValue(newHpSp);
 
-        // 보스 반격
+        // 보스 반격 (유저 최대HP × bossAtkPower% 비례 데미지)
         int bossAtkApplied = 0;
         boolean flag_boss_attack = !isKill && !heavensPunishment && Math.random() < bossAtkRate / 100.0;
         if (flag_boss_attack) {
-            bossAtkApplied = Math.max(1, ThreadLocalRandom.current().nextInt(1, bossAtkPower + 1));
+            int atkPct = ThreadLocalRandom.current().nextInt(BOSS_ATK_POWER_MIN, bossAtkPower + 1);
+            bossAtkApplied = Math.max(1, (int)(ctx.hpMax * atkPct / 100.0));
         }
 
         // DB 저장 (HP 업데이트 + 배틀 로그)
@@ -382,7 +384,7 @@ public class BossAttackS3Controller {
         }
 
         if (flag_boss_attack && bossAtkApplied > 0) {
-            msg.append("▶ 보스의 반격! ").append(bossAtkApplied).append(" 의 피해!").append(NL);
+            msg.append("▶ 보스의 반격! 최대HP의 피해! (").append(bossAtkApplied).append(")").append(NL);
         }
 
         msg.append(NL);
