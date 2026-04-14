@@ -1185,6 +1185,11 @@ public class BossAttackController {
 	        // ─────────────────
 	        // 기타
 	        // ─────────────────
+	        else if ("BOSS_HELL".equalsIgnoreCase(type)) {
+	            if (qty > 1) label += "x" + qty;
+	            String desc = Objects.toString(row.get("ITEM_DESC"), "").trim();
+	            if (!desc.isEmpty()) label += " [" + desc + "]";
+	        }
 	        else {
 	            if (qty > 1) {
 	                label += "x" + qty;

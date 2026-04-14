@@ -200,6 +200,7 @@ public interface BotNewDAO {
     int selectNmDarkKillMonCount(@Param("userName") String userName);
     HashMap<String,Object> selectHellUnlockStats(@Param("userName") String userName);
     HashMap<String,Object> selectHeavenItemBuff(@Param("userName") String userName);
+    List<Integer> selectItemIdsByType(@Param("itemType") String itemType);
 
     void lockMacroUser(HashMap<String, Object> map);
     

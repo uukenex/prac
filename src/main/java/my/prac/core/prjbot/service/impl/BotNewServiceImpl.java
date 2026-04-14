@@ -527,6 +527,11 @@ public class BotNewServiceImpl implements BotNewService {
     }
 
     @Override
+    public List<Integer> selectItemIdsByType(String itemType) {
+        return botNewDAO.selectItemIdsByType(itemType);
+    }
+
+    @Override
     public HashMap<String, Object> lockMacroUser(String userName) {
     	HashMap <String, Object> param = new HashMap<>();
         param.put("userName", userName);

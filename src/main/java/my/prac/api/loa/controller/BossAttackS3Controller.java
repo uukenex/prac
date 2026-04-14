@@ -62,11 +62,21 @@ public class BossAttackS3Controller {
     static final long BOSS_MAX_HP_MIN    = 50_000L;
     static final long BOSS_MAX_HP_MAX    = 200_000L;
 
-    /** 헬보스 보상 아이템 목록 (7000번대, 확정 후 업데이트) */
-    private static final List<Integer> HELL_REWARD_ITEMS = Arrays.asList(7001, 7002, 7003);
+    /** 헬보스 보상 아이템 타입 */
+    private static final String HELL_ITEM_TYPE = "BOSS_HELL";
 
-    /** 천벌 아이템 ID */
-    private static final int ITEM_HEAVEN = 7001;
+    /** 헬보스 보상 아이템 목록 (BOSS_HELL 타입 기반 동적 로드, 캐시) */
+    private volatile List<Integer> hellRewardItemsCache = null;
+
+    private List<Integer> getHellRewardItems() {
+        if (hellRewardItemsCache == null || hellRewardItemsCache.isEmpty()) {
+            try {
+                List<Integer> ids = botNewService.selectItemIdsByType(HELL_ITEM_TYPE);
+                if (ids != null && !ids.isEmpty()) hellRewardItemsCache = ids;
+            } catch (Exception ignore) {}
+        }
+        return hellRewardItemsCache != null ? hellRewardItemsCache : Arrays.asList(7001, 7002, 7003);
+    }
 
     /* ===== DI ===== */
     @Autowired BossAttackController bossAttackController;
@@ -198,11 +208,12 @@ public class BossAttackS3Controller {
             } catch (Exception ignored) {}
         }
 
-        // 천벌 아이템 보유 여부 확인
+        // 천벌 아이템(BOSS_HELL 타입) 보유 여부 확인
         boolean hasHeavenItem = false;
         try {
-            List<Integer> owned = botNewService.selectInventoryItemsByIds(userName, roomName, Arrays.asList(ITEM_HEAVEN));
-            hasHeavenItem = owned != null && owned.contains(ITEM_HEAVEN);
+            List<Integer> hellIds = getHellRewardItems();
+            List<Integer> owned = botNewService.selectInventoryItemsByIds(userName, roomName, hellIds);
+            hasHeavenItem = owned != null && !owned.isEmpty();
         } catch (Exception e) {
             // 조회 실패 시 미보유 처리
         }
@@ -616,7 +627,8 @@ public class BossAttackS3Controller {
             }
 
             // ── 3단계: 아이템 지급 (7000번대 중 랜덤 1개) ───────────
-            int giveItemId = HELL_REWARD_ITEMS.get(new Random().nextInt(HELL_REWARD_ITEMS.size()));
+            List<Integer> hellItems = getHellRewardItems();
+            int giveItemId = hellItems.get(new Random().nextInt(hellItems.size()));
             try {
                 HashMap<String, Object> inv = new HashMap<>();
                 inv.put("userName", winner);
