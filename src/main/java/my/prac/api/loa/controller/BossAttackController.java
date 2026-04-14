@@ -4787,6 +4787,7 @@ public class BossAttackController {
 	    
 	    sb.append(NL);
 	    /* === ⚔ 몬스터 학살자 (전체) === */
+	    /*
 	    sb.append("⚔ 몬스터 학살자 (전체)").append(NL);
 	    List<HashMap<String,Object>> killers = botNewService.selectKillLeadersByMonster();
 	    if (killers == null || killers.isEmpty()) {
@@ -4807,6 +4808,7 @@ public class BossAttackController {
 	              .append(" (").append(kills).append("마리)").append(NL);
 	        }
 	    }
+	    */
 
 	    /* === ⚔ 시즌 학살자 (이전 시즌 / 현재 시즌) === */
 	    {
@@ -4838,6 +4840,7 @@ public class BossAttackController {
 	            HashMap<String,Object> p = new HashMap<>();
 	            p.put("seasonStart", prevStart.format(yyyyMMdd));
 	            p.put("seasonEnd",   prevEnd.format(yyyyMMdd));
+	            p.put("minKill", 100);
 	            List<HashMap<String,Object>> prevKillers = botNewService.selectKillLeadersByMonsterSeason(p);
 	            if (prevKillers == null || prevKillers.isEmpty()) {
 	                sb.append("기록 없음").append(NL);
@@ -4863,6 +4866,7 @@ public class BossAttackController {
 	            HashMap<String,Object> p = new HashMap<>();
 	            p.put("seasonStart", curStart.format(yyyyMMdd));
 	            p.put("seasonEnd",   today.format(yyyyMMdd)); // 오늘까지만
+	            p.put("minKill", 1);
 	            List<HashMap<String,Object>> curKillers = botNewService.selectKillLeadersByMonsterSeason(p);
 	            if (curKillers == null || curKillers.isEmpty()) {
 	                sb.append("기록 없음").append(NL);

@@ -1802,6 +1802,7 @@
 	    GROUP BY bl.TARGET_MON_LV, m.MON_NAME, bl.USER_NAME
 	  )
 	  WHERE RNK = 1
+	    AND KILL_COUNT >= #{minKill}
 	  ORDER BY MON_NO, USER_NAME
 	</select>
 
