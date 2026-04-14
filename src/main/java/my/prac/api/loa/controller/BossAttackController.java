@@ -139,7 +139,7 @@ public class BossAttackController {
 	    	botNewService.setNightmareMode(userName,roomName,1);
 	    	msg ="나이트메어";
 	    }else if(selRaw.equals("헬")||selRaw.equals("헬모드")) {
-	    	if(!master && !botNewService.isHellUnlocked(userName)) {
+	    	if(!botNewService.isHellUnlocked(userName)) {
 	    		return "헬 모드 해금 조건 미달성!" + NL
 	    		     + "[아래 중 하나 충족 시 해금]" + NL
 	    		     + "- 누적 SP 획득 200b 이상" + NL
