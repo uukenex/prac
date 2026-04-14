@@ -77,7 +77,7 @@ public class BossAttackController {
 	
 	private static final int NM_MUL_HP_ATK = 100;
 	private static final int NM_MUL_EXP = 50;
-	private static final int NM_ADD_MON_LV = 150;
+	private static final int NM_ADD_MON_LV = 200;
 
 	private static final int HEL_ADD_MON_LV = 400; // 
 	private static final int HEL_MUL_EXP = 3;     // 헬 추가 배율 (나메에 추가 *3), 총 base*NM*HEL
