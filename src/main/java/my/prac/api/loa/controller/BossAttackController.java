@@ -3266,6 +3266,10 @@ public class BossAttackController {
 	        	dark = false;
 	        }
 	        
+	        if(hell) {
+	        	dark = false;
+	        }
+	        
 	        if("곰".equals(job)) {
 	        	lucky = false;
 	        	dark = false;
@@ -4004,11 +4008,11 @@ public class BossAttackController {
 	            }
 
 	            if ("용사".equals(ctx.job)) {
-	                gainSp *= 3;
-	                bonusDesc.append("(용사 3배)");
+	                gainSp *= 2;
+	                bonusDesc.append("(용사 2배)");
 	                if (ThreadLocalRandom.current().nextDouble() < 0.10) {
-	                    gainSp *= 3;
-	                    bonusDesc.append("(크리! ×3)");
+	                    gainSp *= 2;
+	                    bonusDesc.append("(크리! ×2)");
 	                }
 	            }
 
