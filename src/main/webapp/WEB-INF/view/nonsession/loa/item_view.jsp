@@ -66,6 +66,7 @@
     .card-formula { font-size: 11px; color: #9c7c3a; background: #fffaee; border-radius: 6px; padding: 4px 8px; margin-top: 7px; line-height: 1.5; }
     .formula-lbl  { color: #bbb; font-size: 10px; display: block; margin-bottom: 1px; }
     .card-lv      { display: inline-block; font-size: 10px; color: #e07a5f; background: #fff3f0; border-radius: 6px; padding: 2px 7px; margin-top: 5px; }
+    .card-desc    { font-size: 11px; color: #7a6652; background: #fdf8f2; border-radius: 6px; padding: 5px 8px; margin-top: 7px; line-height: 1.55; border-left: 3px solid #e8c98a; }
     .btn-sort     { padding: 4px 13px; border-radius: 16px; border: 1.5px solid #e0d9ce; background: #fff; color: #888; font-size: 12px; cursor: pointer; transition: all .15s; display: flex; align-items: center; gap: 4px; }
     .btn-sort:hover { border-color: #c9a96e; color: #c9a96e; }
 
@@ -163,6 +164,7 @@
         <div class="stat-line" v-if="item.ATK_MAX_RATE > 0"><span>공격력%</span><span>+{{ item.ATK_MAX_RATE }}%</span></div>
       </div>
       <div class="card-lv" v-if="item.TARGET_LV > 0">🔒 Lv.{{ item.TARGET_LV }} 이상</div>
+      <div class="card-desc" v-if="isBossItem(item) && !isBlurred(item) && item.ITEM_DESC">{{ item.ITEM_DESC }}</div>
       <div class="card-qty" v-if="item.OWN_QTY > 0">📦 보유 {{ item.OWN_QTY }}개</div>
       <span class="blur-hint">🔒 미발견 아이템</span>
     </div>
@@ -250,6 +252,10 @@
     methods: {
       toggleSort: function() {
         this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
+      },
+      isBossItem: function(item) {
+        var id = parseInt(item.ITEM_ID);
+        return id >= 7000 && id < 8000;
       },
       isBlurred: function(item) {
         var id = parseInt(item.ITEM_ID);

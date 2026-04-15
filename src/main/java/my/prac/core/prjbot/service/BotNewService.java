@@ -162,6 +162,7 @@ public interface BotNewService {
     public boolean isHellUnlocked(String userName);
     HashMap<String,Object> selectHeavenItemBuff(String userName);
     List<Integer> selectItemIdsByType(String itemType);
+    List<HashMap<String, Object>> selectHellRewardItemsWithOwnCount();
     
     HashMap<String,Object> lockMacroUser(String userName);
     

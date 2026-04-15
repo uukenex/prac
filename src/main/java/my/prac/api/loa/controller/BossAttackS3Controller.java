@@ -664,9 +664,30 @@ public class BossAttackS3Controller {
                    .append(isWin ? " ← 당첨!" : "").append(NL);
             }
 
-            // ── 3단계: 아이템 지급 (7000번대 중 랜덤 1개) ───────────
-            List<Integer> hellItems = getHellRewardItems();
-            int giveItemId = hellItems.get(new Random().nextInt(hellItems.size()));
+            // ── 3단계: 아이템 지급 (미발견 아이템 우선, 없으면 전체 중 랜덤) ─
+            List<Integer> givePool;
+            boolean isFirstDiscovery = false;
+            try {
+                List<HashMap<String, Object>> rewardMeta = botNewService.selectHellRewardItemsWithOwnCount();
+                List<Integer> undiscovered = new ArrayList<>();
+                List<Integer> allItems     = new ArrayList<>();
+                for (HashMap<String, Object> row : rewardMeta) {
+                    int iid  = Integer.parseInt(row.get("ITEM_ID").toString());
+                    long cnt = Long.parseLong(row.get("GLOBAL_OWN_CNT").toString());
+                    allItems.add(iid);
+                    if (cnt == 0) undiscovered.add(iid);
+                }
+                if (!undiscovered.isEmpty()) {
+                    givePool = undiscovered;
+                    isFirstDiscovery = true;
+                } else {
+                    givePool = allItems;
+                }
+            } catch (Exception e) {
+                givePool = new ArrayList<>(getHellRewardItems()); // fallback
+            }
+            if (givePool.isEmpty()) givePool = new ArrayList<>(getHellRewardItems());
+            int giveItemId = givePool.get(new Random().nextInt(givePool.size()));
             try {
                 HashMap<String, Object> inv = new HashMap<>();
                 inv.put("userName", winner);
@@ -675,7 +696,9 @@ public class BossAttackS3Controller {
                 inv.put("qty",      1);
                 inv.put("gainType", "BOSS_HELL");
                 botNewService.insertInventoryLogTx(inv);
-                msg.append(NL).append("★ 보상: [").append(winner).append("] item#").append(giveItemId).append(NL);
+                msg.append(NL).append(isFirstDiscovery ? "🌟 최초 발견! " : "★ 보상: ")
+                   .append("[").append(winner).append("] item#").append(giveItemId)
+                   .append(isFirstDiscovery ? " (서버 최초 획득!)" : "").append(NL);
             } catch (Exception e) {
                 // 지급 실패 무시
             }
