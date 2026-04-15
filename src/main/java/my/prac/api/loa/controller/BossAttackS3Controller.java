@@ -306,10 +306,43 @@ public class BossAttackS3Controller {
             }
         }
 
+        // [도적] 2타 계산 (20% 확률, 회피 시 발동 안함, 드랍 없음)
+        long damage2 = 0;
+        boolean thiefHit2 = false;
+        String dmgMsg2 = "", bossDefMsg2 = "";
+        boolean isCritical2 = false, isSuperCritical2 = false;
+        if (!isEvade && "도적".equals(ctx.job) && Math.random() < 0.20) {
+            thiefHit2 = true;
+            int baseAtk2 = (ctx.atkMin + rand.nextInt(Math.max(1, ctx.atkMax - ctx.atkMin + 1))) / 100;
+            if (baseAtk2 < 1) baseAtk2 = 1;
+            String atkRangeStr2 = "(" + (ctx.atkMin / 100) + "~" + (ctx.atkMax / 100) + ") ";
+            int totalCrit2 = ctx.crit - critDefRate;
+            isCritical2 = totalCrit2 > 0 && Math.random() < totalCrit2 / 100.0;
+            if (isCritical2) isSuperCritical2 = Math.random() < 0.10;
+            double critMul2 = Math.max(1.0, ctx.critDmg / 100.0);
+            if (isSuperCritical2) {
+                damage2 = (long)(baseAtk2 * 3 * critMul2);
+                dmgMsg2 = "[✨초강력 치명타!!] " + atkRangeStr2 + baseAtk2 + " → " + damage2;
+            } else if (isCritical2) {
+                damage2 = (long)(baseAtk2 * critMul2);
+                dmgMsg2 = "[✨치명타!] " + atkRangeStr2 + baseAtk2 + " → " + damage2;
+            } else {
+                damage2 = baseAtk2;
+                dmgMsg2 = atkRangeStr2 + baseAtk2 + " 로 공격!";
+            }
+            if (!heavensPunishment && !flag_boss_debuff && Math.random() < bossDefRate / 100.0) {
+                int defPct2 = ThreadLocalRandom.current().nextInt(BOSS_DEF_POWER_MIN, bossDefPower + 1);
+                long defAmt2 = damage2 * defPct2 / 100;
+                damage2 = Math.max(0, damage2 - defAmt2);
+                bossDefMsg2 = "보스가 2타 방어! 데미지 " + defPct2 + "% 감소 (-" + defAmt2 + ")!" + NL;
+            }
+        }
+        long totalDamage = damage + damage2;
+
         // HP 차감: SP.subtract → 단위 자동 변환 (예: 3b - 16.8a = 2.99832b)
-        SP newHpSp = isEvade || damage <= 0
+        SP newHpSp = isEvade || totalDamage <= 0
                 ? SP.of(curHpNum, curHpExt)
-                : SP.of(curHpNum, curHpExt).subtract(SP.fromSp(damage));
+                : SP.of(curHpNum, curHpExt).subtract(SP.fromSp(totalDamage));
         boolean isKill = SP.toBaseValue(newHpSp) <= 0;
         long newHp = isKill ? 0 : SP.toBaseValue(newHpSp);
 
@@ -333,7 +366,7 @@ public class BossAttackS3Controller {
         map.put("seq",          seq);
         map.put("endYn",        isKill ? "1" : "0");
         map.put("lv",           user.lv);
-        map.put("atkDmg",       damage);
+        map.put("atkDmg",       totalDamage);
         map.put("monDmg",       bossAtkApplied);
         map.put("atkCritYn",    isCritical ? "1" : "0");
         map.put("killYn",       isKill ? "1" : "0");
@@ -353,7 +386,7 @@ public class BossAttackS3Controller {
         String spRewardMsg = "";
         if (!isEvade && damage > 0) {
             try {
-                SP spReward = SP.fromSp(damage * 1000L);
+                SP spReward = SP.fromSp(totalDamage * 1000L);
                 HashMap<String, Object> pr = new HashMap<>();
                 pr.put("userName", userName);
                 pr.put("roomName", roomName);
@@ -384,6 +417,11 @@ public class BossAttackS3Controller {
         if (!isEvade) {
             msg.append("▶ 입힌 데미지: ").append(damage).append(NL);
             msg.append(dmgMsg).append(NL);
+            if (thiefHit2) {
+                msg.append("⚔ 2타 데미지: ").append(damage2).append(NL);
+                msg.append(dmgMsg2).append(NL);
+                if (!bossDefMsg2.isEmpty()) msg.append(bossDefMsg2);
+            }
             if (!hideMsg.isEmpty())     msg.append(hideMsg);
             if (!spRewardMsg.isEmpty()) msg.append(spRewardMsg);
             if (!hellAchvMsg.isEmpty()) msg.append(hellAchvMsg);

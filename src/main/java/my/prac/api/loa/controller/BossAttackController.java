@@ -3367,9 +3367,8 @@ public class BossAttackController {
 
 	// ─ [도적] 2타 사전 계산 ──────────────────────────────────────────
 	private void ma_thiefDoubleAtkPreCalc(AttackSession s) {
-		if (!"도적".equals(s.job) || s.m.monNo > 50) return;
-		double dRate = 0.30 + ThreadLocalRandom.current().nextDouble() * 0.20;
-		s.thiefDoubleAtk = ThreadLocalRandom.current().nextDouble() < dRate;
+		if (!"도적".equals(s.job)) return;
+		s.thiefDoubleAtk = ThreadLocalRandom.current().nextDouble() < 0.20;
 		if (s.thiefDoubleAtk) {
 			Flags f2 = rollFlags(s.u, s.m);
 			s.dmg2  = calculateDamage(s.u, s.m, f2, s.effAtkMin, s.effAtkMax, s.critRate, s.critDmg,
