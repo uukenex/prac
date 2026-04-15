@@ -2934,1097 +2934,691 @@ public class BossAttackController {
 	
 	
 	public String monsterAttack(HashMap<String, Object> map) {
-	    map.put("cmd", "monster_attack");
+		map.put("cmd", "monster_attack");
+		AttackSession s = new AttackSession(map);
+		String earlyMsg;
 
-	    // 0) 방/유저 기본 검증 (구버전 그대로)
-	    final String roomName = Objects.toString(map.get("roomName"), "");
-	    final String userName = Objects.toString(map.get("userName"), "");
-	    
-	    boolean master = false;
-	    
-	    if (roomName.isEmpty() || userName.isEmpty())
-	        return "방/유저 정보가 누락되었습니다.";
+		// 0~1) 입력 검증 / 매크로 잠금
+		if ((earlyMsg = ma_validate(s)) != null) return earlyMsg;
 
-	    // 문의방 제한 (구버전 그대로)
-	    if ("람쥐봇 문의방".equals(roomName) && "일어난다람쥐/카단".equals(userName) ) {
-	    	master =  true;
-	    }
-	    if (master) {
-	    	map.put("param1","test");
-	    }
-	    
-	    if ("람쥐봇 문의방".equals(roomName) && !master) {
-            return "문의방에서는 불가능합니다.";
-	    }
-	    
-	    HashMap<String,Object> lockParam = botNewService.lockMacroUser(userName);
-	    int lockCode = (Integer) lockParam.get("outCode");
+		// 2~4) 공통 스탯 + 직업 공격배율
+		if ((earlyMsg = ma_calcStats(s)) != null) return earlyMsg;
 
-	    if (lockCode == 1 || lockCode == 2) {
-	        // 매크로 → 공격 차단
-	        return "공격불가 상태입니다 code:"+lockParam.get("outMsg");
-	    }
-	    
+		// 5~6) 부활 처리 / 진행중·신규 몬스터 설정
+		if ((earlyMsg = ma_resolveMonster(s)) != null) return earlyMsg;
 
-	    // 쿨타임/HP 제한에서 쓰는 원래 param1 (구버전과 동일)
-	    final String param1 = Objects.toString(map.get("param1"), "");
+		// 7) 쿨타임·8) HP 확정 / [S3] 헰보스 분기
+		if ((earlyMsg = ma_cooldownAndHp(s)) != null) return earlyMsg;
 
-	    // ─────────────────────────────
-	    // 1) 스탯 계산용 map 복사본 → param1 비워서 "타 유저 조회" 방지만 막음
-	    //    (실제 전투 로직에서의 param1 사용은 위에서 받은 값으로 계속 진행)
-	    // ─────────────────────────────
-	    HashMap<String, Object> statMap = new HashMap<>(map);
-	    statMap.put("param1", "");   // calcUserBattleContext 에서 다른 유저 검색 못 하게 막는 용도
+		// 8-후) berserkMul + Flags 롤
+		ma_preDmgJobBuffs(s);
 
-	 // ✅ 크론 없이: 날짜가 바뀐 경우에만 오늘 마스터 생성 (캐시로 중복 DB 조회 방지)
-	    /*
-	    String todayDate = todayKey();
-	    if (!todayDate.equals(MiniGameUtil.TODAY_MASTER_CREATED_DATE)) {
-	        try {
-	            int todayCnt = botNewService.countTodayJobMasterAll();
-	            if (todayCnt == 0) {
-	                botNewService.createTodayJobMastersFromYesterdayAll();
-	            }
-	        } catch (Exception ignore) {}
-	        MiniGameUtil.TODAY_MASTER_CREATED_DATE = todayDate;
-	    }
-	     */
-	    // 2) 공통 스탯 계산
-	    UserBattleContext ctx = calcUserBattleContext(statMap);
-	    if (!ctx.success) {
-	        return ctx.errorMessage;
-	    }
+		// 9~11) HP5% 제한 / 도사버프 / 스페셀버프 / 데미지 계산
+		if ((earlyMsg = ma_applyBuffsAndCalcDmg(s)) != null) return earlyMsg;
 
-	    final User u = ctx.user;
-	    String job   = (u.job == null ? "" : u.job.trim());
-	    if (job.isEmpty()) {
-	        return userName + " 님, /직업 을 통해 먼저 전직해주세요."+NL+"12/15 업데이트 이후 가방으로 능력치 변경을 확인해주세요.";
-	    }
+		// [도적] 2타 사전 계산
+		ma_thiefDoubleAtkPreCalc(s);
 
-	    // ─────────────────────────────
-	    // 3) calcUserBattleContext 에서 가져오는 스탯들
-	    // ─────────────────────────────
+		// 12) 사망 처리
+		if ((earlyMsg = ma_deathCheck(s)) != null) return earlyMsg;
 
+		// 13) 처치·드랍 판단 + 직업별 스킬
+		ma_resolveKillAndJobSkills(s);
 
-	    // 아이템/강화 포함 전투용 기본 ATK (직업 배율 적용 전)
-	    final int atkMin = ctx.atkMin; // baseAtkMin + bAtkMin
-	    final int atkMax = ctx.atkMax; // baseAtkMax + weaponBonus + bAtkMax
+		// 14) DB 반영 + 업적 부여
+		ma_persistAndAchv(s);
 
-
-	    // 리젠/HP, 크리 (calcUserBattleContext에서 직업 패시브/축복/흡혈귀 등 반영한 값)
-	    int regen    = ctx.regen;
-	    int hpMax    = ctx.hpMax;  // 최종 전투용 HP_MAX (전사/파이터 HP 보너스 포함이라고 가정)
-	    int critRate = ctx.crit;
-	    int critDmg   = ctx.critDmg;
-
-	    // ─────────────────────────────
-	    // 4) 직업별 데미지 배율 (궁수 / 전사) - 구버전 로직 복원
-	    // ─────────────────────────────
-	    double jobDmgMul = 1.0;
-	    int jobBonusMin  = 0;
-	    int jobBonusMax  = 0;
-	    // 전사 HP 보너스는 calcUserBattleContext.hpMax 에서 이미 처리했다고 보고
-	    // 여기서는 데미지 배율만 적용
-
-	    if ("궁수".equals(job)) {
-	        jobDmgMul = 3.0;   // 궁수: 데미지 3배
-	    } else if ("사냥꾼".equals(job)) {
-	    	jobDmgMul = 3.0;   
-	    } else if ("궁사".equals(job)) {
-	        jobDmgMul = 1.0;   
-	    } else if ("전사".equals(job)) {
-	        jobDmgMul = 1.4;   // 전사: 데미지 1.4배
-	    } else if ("검성".equals(job)) {
-	        jobDmgMul = 2.2;   // 
-	    } else if ("어쎄신".equals(job)) {
-	        jobDmgMul = 1.3;   // 
-	    } else if ("제너럴".equals(job)) {
-	        jobDmgMul = 1.2;   //
-	    } else if ("저격수".equals(job)) {
-	        jobDmgMul = 2;   //
-	    } else if ("처단자".equals(job)) {
-	        jobDmgMul = 1.4;   
-	    } else if ("용사".equals(job)) {
-	        jobDmgMul = 1.4;   
-	    } else if ("복수자".equals(job)) {
-	        jobDmgMul = 0.2;   
-	    } else if ("음양사".equals(job)) {
-	        jobDmgMul = 1.6;   
-	    }
-
-	    // 직업 배율까지 반영된 실제 전투용 공격력 (구버전 공식과 동일)
-	    int effAtkMin = (int)Math.round(atkMin * jobDmgMul + jobBonusMin);
-	    int effAtkMax = (int)Math.round(atkMax * jobDmgMul + jobBonusMax);
-	    if (effAtkMax < effAtkMin) effAtkMax = effAtkMin;
-
-	    // 추가로 HP를 덮어쓰고 싶다면 아래처럼 쓸 수도 있지만,
-	    // 현재는 calcUserBattleContext.hpMax 를 신뢰:
-	    // int hpMax = hpMaxWithItem + jobBonusHp;
-
-	    // 광전사/버서크 배수 (파이터 등에서 사용)
-	    double berserkMul = 1.0;
-
-	    // -----------------------------
-	    // 5) 부활 처리만 (리젠 X) - 구버전 그대로
-	    // -----------------------------
-	    
-	    String reviveMsg = reviveAfter1hIfDead(userName, roomName, u, hpMax, regen);
-	    boolean revivedThisTurn = false;
-	    if (reviveMsg != null) {
-	        if (!reviveMsg.isEmpty()) return reviveMsg;
-	        revivedThisTurn = true;
-	    }
-
-	    // 🔹 글로벌(서버 전체) 기준 ACHV 카운트
-	    List<AchievementCount> globalList = getAchvGlobalCached();
-	    Map<String, Integer> globalAchvMap = new HashMap<>();
-	    if (globalList != null) {
-	        for (AchievementCount ac : globalList) {
-	            if (ac == null || ac.getCmd() == null) continue;
-	            globalAchvMap.put(ac.getCmd(), ac.getCnt());
-	        }
-	    }
-
-	    // 6) 진행중 전투 / 신규 전투 + LUCKY 유지 (구버전 그대로)
-	    OngoingBattle ob = botNewService.selectOngoingBattle(userName, roomName);
-	    Monster m;
-	    int monMaxHp = 0, monHpRemainBefore;
-	    int monAtk, monLv;
-	 // ✅ 나이트메어 모드 확인 — [OPT2] selectUser에서 이미 읽어온 NIGHTMARE_YN 재사용 (DB 호출 제거)
-	    boolean nightmare = ctx.user.nightmareYn >= 1; // 나이트메어(1) + 헬(2) 모두 몬스터 강화 적용
-	    boolean hell = ctx.user.nightmareYn == 2;
-
-	    boolean lucky = false;
-	    boolean dark = false; // 어둠몬스터 여부
-	    boolean gray = false; 
-	    
-	    int beforeJobSkillYn=0;
-	    int killCountForThisMon=0;
-	    int nmKillCountForThisMon=0;
-	    int hellKillCountForThisMon=0;
-
-	    // [FIX2] selectKillStats 중복 제거 — if/else 양쪽에서 동일하게 호출하던 것을 한 번으로 통합
-	    List<KillStat> cachedKillStats = null;
-	    try { cachedKillStats = botNewService.selectKillStats(userName, roomName); } catch (Exception ignore) {}
-
-	    if (ob != null) {
-	        m = getMonsterCached(ob.monNo);
-	        if (m == null) return "진행중 몬스터 정보를 찾을 수 없습니다.";
-	        beforeJobSkillYn = ob.beforeJobSkillYn;
-	        
-	        monMaxHp = m.monHp;
-	        monAtk = m.monAtk;
-	        monLv = m.monLv;
-	     // 🔥 나이트메어/헬 증폭
-	        if (nightmare) {
-	            monMaxHp *= NM_MUL_HP_ATK;
-	            monAtk *= NM_MUL_HP_ATK;
-	            monLv += hell ? HEL_ADD_MON_LV : NM_ADD_MON_LV;
-	        }
-
-	        lucky = (ob.luckyYn != null && ob.luckyYn == 1);
-	        dark  = (ob.luckyYn != null && ob.luckyYn == 2);
-	        gray  = (ob.luckyYn != null && ob.luckyYn == 3);
-	        if (dark) {
-	        	if(m.monNo <15) {
-	        		monMaxHp = monMaxHp * 3; //0~15
-	        		monAtk = (int)Math.round( monAtk * 1.5);
-	        	}else if(m.monNo>=25) { //25~30
-	        		monMaxHp = (int)Math.round( monMaxHp * 1.75);
-	        		monAtk = (int)Math.round( monAtk * 1.1);
-	        	}else if(m.monNo>=15) { //15~25
-	        		monMaxHp = (int)Math.round( monMaxHp * 2.5);
-	        		monAtk = (int)Math.round( monAtk * 1.25);
-	        	}else{
-	        		
-	        	}
-	        	
-	        } 
-	        
-	        
-            monHpRemainBefore = Math.max(0, monMaxHp - ob.totalDealtDmg);
-	        
-         // ★ 이 유저의 해당 몬스터 누적 킬 수 조회 [FIX2] cachedKillStats 재사용
-	        if (cachedKillStats != null) {
-	            for (KillStat ks : cachedKillStats) {
-	                if (ks.monNo == m.monNo) {
-	                    killCountForThisMon = ks.killCount;
-	                    nmKillCountForThisMon = ks.nmKillCount;
-	                    hellKillCountForThisMon = ks.hellKillCount;
-	                    break;
-	                }
-	            }
-	        }
-
-	    } else {
-
-	        // ===== [S3] 헬보스 분기: targetMon==99 =====
-	        // 쿨타임/HP확정은 이후 공통 로직에서 처리 후 분기
-	        if (u.targetMon == 99) {
-	            m = null;
-	            monMaxHp = 0; monHpRemainBefore = 0; monAtk = 0; monLv = 0;
-	        } else {
-	        m = getMonsterCached(u.targetMon);
-	        if (m == null) return "대상 몬스터가 지정되어 있지 않습니다. (TARGET_MON 없음)";
-
-	        beforeJobSkillYn = -1;
-	        
-	        monMaxHp = m.monHp;
-	        monHpRemainBefore = m.monHp;
-	        monAtk = m.monAtk;
-	        monLv = m.monLv;
-	     // 🔥 나이트메어/헬 증폭
-	        if (nightmare) {
-	            monMaxHp *= NM_MUL_HP_ATK;
-	            monHpRemainBefore *= NM_MUL_HP_ATK;
-	            monAtk *= NM_MUL_HP_ATK;
-	            monLv += hell ? HEL_ADD_MON_LV : NM_ADD_MON_LV;
-	        }
-	        
-	        // ★ 이 유저의 해당 몬스터 누적 킬 수 조회 [FIX2] cachedKillStats 재사용
-	        if (cachedKillStats != null) {
-	            for (KillStat ks : cachedKillStats) {
-	                if (ks.monNo == m.monNo) {
-	                    killCountForThisMon = ks.killCount;
-	                    nmKillCountForThisMon = ks.nmKillCount;
-	                    hellKillCountForThisMon = ks.hellKillCount;
-	                    break;
-	                }
-	            }
-	        }
-
-	        int levelGap = monLv - u.lv;
-	        int bonusStep = Math.max(0, levelGap / 100);
-	        double levelBonus = bonusStep * 0.20;
-
-	        double rnd = ThreadLocalRandom.current().nextDouble();
-
-	        // 기본 확률
-	        double darkRate = 0;
-
-	        // 레벨차 보너스
-	        darkRate += levelBonus;
-
-	        // 직업 보너스
-	        if ("어둠사냥꾼".equals(job)) {
-	            darkRate += DARK_RATE_DARK;
-	        }
-
-	        // 킬수 보너스
-	        if ((!nightmare && killCountForThisMon >= 350 && m.monNo >= 15) ||
-	            (nightmare && nmKillCountForThisMon > 150 && m.monNo >= 15)) {
-	            darkRate += 0.05;
-	        }
-
-	        if ((!nightmare && killCountForThisMon >= 300 && m.monNo < 15) ||
-	            (nightmare && nmKillCountForThisMon > 150 && m.monNo < 15)) {
-	            darkRate += 0.10;
-	        }
-
-	        // 최종 판정
-	        if (rnd < darkRate) {
-	            dark = true;
-	        }
-	        
-
-	        if ("도사".equals(job)) {
-                lucky = ThreadLocalRandom.current().nextDouble() < LUCKY_RATE_DOSA;
-	        } else {
-                lucky = ThreadLocalRandom.current().nextDouble() < LUCKY_RATE ;
-	        }
-	        boolean able_to_lucky_yn = false;
-	        if (killCountForThisMon >= 50) {
-	            able_to_lucky_yn = true;
-	        }
-	        
-
-	        if (!able_to_lucky_yn) {
-	            lucky = false;
-	        }
-
-	       
-	        int globalCnt = 0;
-	        if (globalAchvMap != null) {
-	            Integer v = globalAchvMap.get("ACHV_FIRST_CLEAR_MON_" + m.monNo);
-	            if (v != null) globalCnt = v.intValue();
-	        }
-
-	        if (dark || globalCnt == 0 ||m.monNo > 50) {
-	            lucky = false;
-	        } 
-	        
-	        if (lucky || globalCnt == 0 || m.monNo > 50 ||"사신".equals(job)) {
-	        	dark = false;
-	        }
-	       
-	        if ("음양사".equals(job)) {
-	        	gray = ThreadLocalRandom.current().nextDouble() < 0.05;
-	        }
-	        
-	        if(gray) {
-	        	lucky = false;
-	        	dark = false;
-	        }
-	        
-	        if("곰".equals(job)) {
-	        	lucky = false;
-	        	dark = false;
-	        }
-	        
-	        /*
-	        if (nightmare) {
-	        	dark = false;
-	        	gray = false;
-	        }
-	        */
-	        
-	        if (dark) {
-	        	if(m.monNo <15) {
-	        		monMaxHp = monMaxHp * 3;
-	        		monAtk = (int)Math.round( monAtk * 1.5);
-	        		monHpRemainBefore = monMaxHp;
-	        	}else if(m.monNo>=25) {
-	        		monMaxHp = (int)Math.round( monMaxHp * 1.75);
-	        		monAtk = (int)Math.round( monAtk * 1.1);
-	        		monHpRemainBefore = monMaxHp;
-	        	}else if(m.monNo>=15) {
-	        		monMaxHp = (int)Math.round( monMaxHp * 2.5);
-	        		monAtk = (int)Math.round( monAtk * 1.25);
-	        		monHpRemainBefore = monMaxHp;
-	        	}
-	        }
-
-	    }
-	        }
-	    
-	    
-	    SpecialBuffResult buff = handleSpecialBuff(userName);
-
-	    int cooldownBuff = 0;
-	    HashMap<String,Object> activeBuff = buff.activeBuff;
-	    if (activeBuff != null) {
-	    	if ("쿨타임".equals(activeBuff.get("FLAG_CODE"))) {
-	    		cooldownBuff = (int) Double.parseDouble(activeBuff.get("EFFECT_VALUE").toString());
-	    	}
-	    	if ("쿨타임감소".equals(activeBuff.get("FLAG_CODE"))) {
-	    		cooldownBuff = -1; // 음수 = 쿨타임 50% 감소
-	    	}
-	    }
-	    
-	    
-	    // 7) 쿨타임 체크 (param1 그대로 사용)
-	    // [OPT4] selectLastAttackTime + selectAttackDeathStats(업적용) → 1번 쿼리로 통합
-	    //        selectAttackDeathStats에 MAX(INSERT_DATE) AS LAST_ATTACK_TIME 추가됨
-	    AttackDeathStat cachedAds = null;
-	    try { cachedAds = botNewService.selectAttackDeathStats(userName, roomName); } catch (Exception ignore) {}
-	    Timestamp cachedLastAtk = (cachedAds != null) ? cachedAds.lastAttackTime : null;
-	    // 쿨타임은 직업 변경과 무관하게 마지막 공격 시점의 직업 기준으로 계산
-	    String cdJob = (cachedAds != null && cachedAds.lastAttackJob != null) ? cachedAds.lastAttackJob : job;
-	    CooldownCheck cd = checkCooldown(userName, roomName, param1, cdJob, cooldownBuff, cachedLastAtk);
-	    if (!cd.ok) {
-	        long min = cd.remainSeconds / 60;
-	        long sec = cd.remainSeconds % 60;
-	        return String.format("%s님, 공격 쿨타임 %d분 %d초 남았습니다.", userName, min, sec);
-	    }
-
-	    // 8) 현재 체력 확정 (이전 전투 로그 기준 + 리젠)
-	    int effectiveHp = revivedThisTurn
-	            ? u.hpCur
-	            : computeEffectiveHpFromLastAttack(userName, roomName, u, hpMax, regen, cachedLastAtk);
-	    u.hpCur = effectiveHp;
-
-	    // ===== [S3] 헬보스 분기: 쿨타임/HP확정 완료 후 =====
-	    if (u.targetMon == 99) {
-	        return bossAttackS3Controller.attackBossS3(map, ctx);
-	    }
-
-	    // 유저별 업적 카운트
-	    List<AchievementCount> userAchvList = botNewService.selectAchvCountsGlobal(userName, roomName);
-	    
-	    Set<String> achievedCmdSet = new HashSet<>();
-	    if (userAchvList != null) {
-	        for (AchievementCount ac : userAchvList) {
-	            achievedCmdSet.add(ac.getCmd());
-	        }
-	    }
-	    
-	    Map<String, Integer> userAchvMap = new HashMap<>();
-	    if (userAchvList != null) {
-	        for (AchievementCount ac : userAchvList) {
-	            if (ac == null || ac.getCmd() == null) continue;
-	            userAchvMap.put(ac.getCmd(), ac.getCnt());
-	        }
-	    }
-
-	    if ("파이터".equals(job) && hpMax > 0) {
-	    	double hpRatio = (double) u.hpCur / hpMax;
-	        if (hpRatio < 1) {
-	            berserkMul = 1.0 + (1 - hpRatio) * 0.5;   // 최대 3배
-	        }
-	    }
-	    
-	    if ("용사".equals(job) && dark ) {
-	        berserkMul = 1.5;
-	    }
-	    if ("처단자".equals(job) && lucky ) {
-	    	berserkMul = 1.5;
-	    }
-	    if ("음양사".equals(job) && (lucky || dark )) {
-	    	berserkMul = 1.5;
-	    }
-	    if ("어둠사냥꾼".equals(job) && dark ) {
-	    	berserkMul = 3;
-	    }
-	    
-	    /*
-	    if ("궁사".equals(job)) {
-	        String firstCmd = "ACHV_FIRST_CLEAR_MON_" + m.monNo;
-
-	        int globalCnt = 0;
-	        if (globalAchvMap != null) {
-	            Integer v = globalAchvMap.get(firstCmd);
-	            if (v != null) globalCnt = v.intValue();
-	        }
-
-	        if (globalCnt == 0) {
-	            return "궁사 최초 토벌에 도전불가!";
-	        }
-	        
-	    }
-	    */
-	    /*
-	    if ("사신".equals(job)) {
-	        String firstCmd = "ACHV_FIRST_CLEAR_MON_" + m.monNo;
-
-	        int globalCnt = 0;
-	        if (globalAchvMap != null) {
-	            Integer v = globalAchvMap.get(firstCmd);
-	            if (v != null) globalCnt = v.intValue();
-	        }
-
-	        if (globalCnt == 0) {
-	            return "최초 토벌에 도전불가 직업!";
-	        }
-	        
-	    }*/
-
-	    Flags flags = rollFlags(u, m);
-
-	    // 9) HP 5% 제한 체크
-	    int origHpMax = u.hpMax;
-	    int origRegen = u.hpRegen;
-
-	    u.hpMax   = hpMax;
-	    u.hpRegen = regen;
-
-	    
-	    
-	    try {
-	        String hpMsg = buildBelowHalfMsg(userName, roomName, u, param1, cooldownBuff, cdJob);
-	        if (!"사신".equals(job)) {
-	        	if (hpMsg != null) {
-		        	return hpMsg;
-		        }
-	    	}
-	        
-	    } finally {
-	        u.hpMax   = origHpMax;
-	        u.hpRegen = origRegen;
-	    }
-
-	    // 10) 도사 버프 (본인 + 방 전체)
-	    DosaBuffEffect buffEff_self = null;
-	    String dosabuffMsg = "";
-	    if (!hell) {
-	    	//헬에선 도사버프 못받게 처리
-		        /*double hellMult = getHellNerfMult(ctx.hunterGrade);
-		        effAtkMin   = Math.max(1, (int) Math.round(effAtkMin   * hellMult));
-		        effAtkMax   = Math.max(1, (int) Math.round(effAtkMax   * hellMult));
-		        critRate = (int) Math.round(critRate * hellMult);
-		        critDmg   = (int) Math.round(critDmg   * hellMult);
-		        hpMax	= (int) Math.round(hpMax * hellMult);*/
-		    
-		    if ("도사".equals(job) || "음양사".equals(job) ) {
-		        buffEff_self = buildDosaBuffEffect(u, u.lv, roomName, 1);
-		        effAtkMin   += buffEff_self.addAtkMin;
-		        effAtkMax   += buffEff_self.addAtkMax;
-		        critRate += buffEff_self.addCritRate;
-		        critDmg   += buffEff_self.addCritDmg;
-		        u.hpCur     += buffEff_self.addHp;
-		        
-		    }
-	
-		    DosaBuffEffect buffEff_room = loadRoomDosaBuffAndBuild(roomName);
-		    if (buffEff_room != null) {
-		        effAtkMin   += buffEff_room.addAtkMin;
-		        effAtkMax   += buffEff_room.addAtkMax;
-		        critRate += buffEff_room.addCritRate;
-		        critDmg   += buffEff_room.addCritDmg;
-		        u.hpCur     += buffEff_room.addHp;
-		        botNewService.clearRoomBuff(roomName);
-		    }
-		   
-		    if (buffEff_room != null || buffEff_self != null) {
-		        dosabuffMsg = buildUnifiedDosaBuffMessage(buffEff_self, buffEff_room);
-		    }
-	    }
-	    
-	    u.hunterGrade = ctx.hunterGrade;
-	    
-	    //HashMap<String,Object> activeBuff = buff.activeBuff;
-	    if (activeBuff != null) {
-	    	if( "공격력".equals(activeBuff.get("FLAG_CODE"))){
-
-		        String effectType = (String) activeBuff.get("EFFECT_TYPE");
-		        double value =
-		                Double.parseDouble(activeBuff.get("EFFECT_VALUE").toString());
-
-		        if ("배율".equals(effectType)) {
-
-		            effAtkMin = (int)Math.round(effAtkMin * value);
-		            effAtkMax = (int)Math.round(effAtkMax * value);
-
-		        } else {
-		            effAtkMin += (int)value;
-		            effAtkMax += (int)value;
-		        }
-	    	}
-			if ("치피".equals(activeBuff.get("FLAG_CODE"))) {
-
-				double value = Double.parseDouble(activeBuff.get("EFFECT_VALUE").toString());
-
-				if (hell) {
-					double hellMult = MiniGameUtil.getHellNerfMult(ctx.hunterGrade);
-					value = Math.max(0, (int) Math.round(value * hellMult));
-
-				}
-				critDmg += (int) value;
-			}
-			if ("치확".equals(activeBuff.get("FLAG_CODE"))) {
-
-				double value = Double.parseDouble(activeBuff.get("EFFECT_VALUE").toString());
-				if (hell) {
-					double hellMult = MiniGameUtil.getHellNerfMult(ctx.hunterGrade);
-					value = Math.max(0, (int) Math.round(value * hellMult));
-
-				}
-				critRate += (int) value;
-			}
-	    }
-	    
-	    
-	    boolean hasBless = (u.blessYn == 1);
-
-	    if (hasBless) {
-
-	        // 공격력 1.5배를 전투 전 적용
-	        effAtkMin = (int)Math.round(effAtkMin * 1.5);
-	        effAtkMax = (int)Math.round(effAtkMax * 1.5);
-	    }
-	    
-	    // 11) 데미지 계산 (A형 완전 분리 버전)
-	    DamageOutcome dmg = calculateDamage(
-	            u,
-	            m,
-	            flags,
-	            effAtkMin,
-	            effAtkMax,
-	            critRate,
-	            critDmg,
-	            berserkMul,
-	            monHpRemainBefore,
-	            hpMax,
-	            beforeJobSkillYn,
-	            nightmare
-	    );
-		AttackCalc calc = dmg.calc;
-		flags = dmg.flags;
-		boolean willKill = dmg.willKill;
-		
-		if ("축복술사".equals(job) && dmg.calc.atkDmg > 0) {
-
-			int blessCount = (u.lv / 100) + 1;  // 0~99=1, 100~199=2 ...
-			int blessTargetCount = botNewService.updateRandomBlessUser(userName,blessCount);
-
-			if (blessTargetCount > 0) {
-				dmg.dmgCalcMsg += NL + "✨랜덤한 " + blessCount + "명에게 축복이 내려졌습니다!";
-			}
-		}
-		
-		if (hasBless) {
-	        int heal = (int)Math.round(hpMax * 0.3);
-	        int beforeHp = u.hpCur;
-
-	        u.hpCur = Math.min(hpMax, u.hpCur + heal);
-
-	        if (u.hpCur > beforeHp) {
-	            dmg.dmgCalcMsg += NL + "✨ 축복의 치유! "
-	                    + (u.hpCur - beforeHp)
-	                    + " 회복";
-	        }
-
-	        botNewService.clearBlessYn(userName);
-		}
-		
-		if (activeBuff != null) {
-	    	if( "회복".equals(activeBuff.get("FLAG_CODE"))){
-	    		double value = Double.parseDouble(activeBuff.get("EFFECT_VALUE").toString());
-	    		
-		        int heal = (int)Math.round(hpMax * value);
-		        int beforeHp = u.hpCur;
-	
-		        u.hpCur = Math.min(hpMax, u.hpCur + heal);
-
-		        if (u.hpCur > beforeHp) {
-		            dmg.dmgCalcMsg += NL + "✨ 스페셜타임-회복! "
-		                    + (u.hpCur - beforeHp);
-		        }
-	    	}
-	    }
-
-
-		// ─────────────────────────────
-		
-	 // 🔥 전투 종료 패턴 처리 (패턴 6)
-	    if (calc.endBattle) {
-
-	        // ✅ 기존 캐논 전투 종료 로직 재사용
-	        botNewService.closeOngoingBattleTx(userName, roomName);
-
-	        // EXP / 드랍 없는 빈 Resolve
-	        Resolve emptyResolve = new Resolve();
-	        emptyResolve.killed   = false;
-	        emptyResolve.gainExp  = 0;
-	        emptyResolve.dropCode = "0";
-
-	        return buildAttackMessage(
-	            userName, u, m, flags, calc,
-	            emptyResolve, null,
-	            monHpRemainBefore, monMaxHp,
-	            effAtkMin, effAtkMax,  
-	            hpMax,              
-	            null,
-	            null,
-	            null,
-	            nightmare,
-	            ctx
-	        );
-	    }
-	    
-
-	    // ===== [도적] 2타 사전 계산 =====
-	    boolean thiefDoubleAtk = false;
-	    DamageOutcome dmg2 = null;
-	    AttackCalc calc2 = null;
-	    if ("도적".equals(job) && !(m.monNo > 50)) {
-	        double dRate = 0.30 + ThreadLocalRandom.current().nextDouble() * 0.20; // 30~50%
-	        thiefDoubleAtk = ThreadLocalRandom.current().nextDouble() < dRate;
-	        if (thiefDoubleAtk) {
-	            Flags flags2tmp = rollFlags(u, m);
-	            dmg2 = calculateDamage(u, m, flags2tmp, effAtkMin, effAtkMax, critRate, critDmg,
-	                    berserkMul, monHpRemainBefore, hpMax, beforeJobSkillYn, nightmare);
-	            calc2 = dmg2.calc;
-	        }
-	    }
-
-	    // 12) 사망 처리
-	    int newHpPreview = Math.max(0, u.hpCur - calc.monDmg);
-	    
-	    String deathAchvMsg = "";
-	    if (newHpPreview <= 0) {
-	    	
-	    	 // ✅ 이번에 준 피해 / 몬스터 남은 체력 표시
-	        int dealtThisTurn = Math.max(0, calc.atkDmg);
-	        int monRemainAfter = Math.max(0, monHpRemainBefore - dealtThisTurn);
-	    	
-	        botNewService.closeOngoingBattleTx(userName, roomName);
-	        botNewService.updateUserHpOnlyTx(userName, roomName, 0);
-	        botNewService.insertBattleLogTx(new BattleLog()
-	                .setUserName(userName)
-	                .setRoomName(roomName)
-	                .setLv(u.lv)
-	                .setTargetMonLv(m.monNo)
-	                .setGainExp(0)
-	                .setAtkDmg(calc.atkDmg)
-	                .setMonDmg(calc.monDmg)
-	                .setAtkCritYn(flags.atkCrit ? 1 : 0)
-	                .setMonPatten(flags.monPattern)
-	                .setKillYn(0)
-	                .setNowYn(0)
-	                .setDropYn(0)
-	                .setDeathYn(1)
-	                .setLuckyYn(0)
-	                .setJobSkillYn(0)
-	                .setJob(job)
-	                .setNightmareYn(ctx.user.nightmareYn)
-	        );
-
-	        deathAchvMsg = grantDeathAchievements(userName, roomName);
-	        return userName + "님, 이번전투에서 패배하여, 전투 불능이 되었습니다." + NL
-	                + calc.monDmg + " 피해로 사망!" + NL
-	                + "▶ 이번에 준 피해: " + dealtThisTurn + NL
-	                + "▶ 몬스터 남은 체력: " + monRemainAfter + " / " + monMaxHp + NL
-	                + "현재 체력: 0 / " + hpMax + NL
-	                + "5분 뒤 최대 체력의 10%로 부활하며," + NL
-	                + "이후 5분마다 HP_REGEN 만큼 서서히 회복됩니다." + NL
-	                + deathAchvMsg;
-	    }
-
-	    // 13) 처치/드랍 판단
-	    Resolve res = resolveKillAndDrop(m, calc, willKill, u, lucky, dark, gray, ctx.user.nightmareYn);
-	    String newPoint ="";
-	    String stealPoint ="";
-	    String newBonus ="";    // DROP SP 보너스 설명 (용사 5배, 100b 3배, 크리 ×2)
-	    String stealBonus ="";  // STEAL SP 보너스 설명
-
-	    // 궁수: 획득 EXP +200%
-	    if ("궁수".equals(u.job)) {
-	        res.gainExp *= 3; 
-	    }
-	    if ("사냥꾼".equals(u.job)) {
-	    	res.gainExp *= 3; 
-	    }
-	    
-	    // ===== [도적] 더블어택 + 스틸 =====
-	    String stealMsg = "";
-	    if ("도적".equals(job) && !(m.monNo > 50)) {
-	        // 1타 스틸 (50%)
-	        if (ThreadLocalRandom.current().nextDouble() < 0.50) {
-	            String dropName = (m.monDrop == null ? "" : m.monDrop.trim());
-	            if (!dropName.isEmpty()) {
-	                try {
-	                    Integer itemId = getItemIdCached(dropName);
-	                    if (itemId != null) {
-	                        HashMap<String, Object> inv = new HashMap<>();
-	                        inv.put("userName", userName);
-	                        inv.put("roomName", roomName);
-	                        inv.put("itemId", itemId);
-	                        inv.put("qty", 1);
-	                        inv.put("delYn", "1");
-	                        inv.put("gainType", "STEAL");
-	                        botNewService.insertInventoryLogTx(inv);
-	                        stealMsg += "✨ [1타] " + m.monName + "의 아이템을 훔쳤습니다! (" + dropName + "조각)";
-	                        calc.jobSkillUsed = true;
-	                    }
-	                    String[] _sb1={""}; stealPoint+=" +"+baroSellItem(dropName,itemId,res,userName,roomName,ctx,u,"STEAL",1,nightmare,_sb1); stealBonus+=_sb1[0];
-	                } catch (Exception ignore) {}
-	            }
-	        }
-	        // 2타 스틸 (50%, 2타 발동 시)
-	        if (thiefDoubleAtk && calc2 != null) {
-	            if (ThreadLocalRandom.current().nextDouble() < 0.50) {
-	                String dropName = (m.monDrop == null ? "" : m.monDrop.trim());
-	                if (!dropName.isEmpty()) {
-	                    try {
-	                        Integer itemId = getItemIdCached(dropName);
-	                        if (itemId != null) {
-	                            HashMap<String, Object> inv = new HashMap<>();
-	                            inv.put("userName", userName);
-	                            inv.put("roomName", roomName);
-	                            inv.put("itemId", itemId);
-	                            inv.put("qty", 1);
-	                            inv.put("delYn", "1");
-	                            inv.put("gainType", "STEAL");
-	                            botNewService.insertInventoryLogTx(inv);
-	                            stealMsg += (stealMsg.isEmpty() ? "" : NL) + "✨ [2타] " + m.monName + "의 아이템을 훔쳤습니다! (" + dropName + "조각)";
-	                            calc2.jobSkillUsed = true;
-	                        }
-	                        String[] _sb2={""}; stealPoint+=" +"+baroSellItem(dropName,itemId,res,userName,roomName,ctx,u,"STEAL",1,nightmare,_sb2); stealBonus+=_sb2[0];
-	                    } catch (Exception ignore) {}
-	                }
-	            }
-	        }
-	    }
-	    
-	    if ("처단자".equals(job) && !(m.monNo > 50) && willKill) {
-	        int monsterHp = m.monHp;
-	        if(nightmare) {
-	        	monsterHp *= NM_MUL_HP_ATK;
-	        }
-	        int extraDrop = (calc.atkDmg / monsterHp) - 1;
-
-	        // 최대 추가 드랍 제한
-	        extraDrop = Math.min(extraDrop, 5);
-
-            String dropName = (m.monDrop == null ? "" : m.monDrop.trim());
-            if (!dropName.isEmpty()) {
-                try {
-                    Integer itemId = getItemIdCached(dropName);
-                    int stealQty = 2 + extraDrop;
-                    
-                    if (itemId != null) {
-                        HashMap<String, Object> inv = new HashMap<>();
-                        inv.put("userName", userName);
-                        inv.put("roomName", roomName);
-                        inv.put("itemId", itemId);
-                        
-                        boolean bonusSteal = ThreadLocalRandom.current().nextDouble() < 0.10;
-                        if (bonusSteal) stealQty *= 2;
-                        inv.put("qty", stealQty);
-                        inv.put("delYn", "1");
-                        inv.put("gainType", "STEAL");
-                        botNewService.insertInventoryLogTx(inv);
-                        stealMsg = "✨ 날카로운 처단으로 추가획득 (+" + dropName +"조각"+ stealQty + ")" + (bonusSteal ? "✨ 보너스!" : "");
-                        calc.jobSkillUsed = true;
-                    }
-                    String[] _sb3={""}; stealPoint+=" +"+baroSellItem(dropName,itemId,res,userName,roomName,ctx,u,"STEAL",stealQty,nightmare,_sb3); stealBonus+=_sb3[0];
-
-                } catch (Exception ignore) {}
-            }
-	    }
-	    
-	    if ("용사".equals(job) && !(m.monNo > 50)) {
-	        double stealRate = 0.60;
-	        if (ThreadLocalRandom.current().nextDouble() < stealRate) {
-	            String dropName = (m.monDrop == null ? "" : m.monDrop.trim());
-	            if (!dropName.isEmpty()) {
-	                try {
-	                    Integer itemId = getItemIdCached(dropName);
-	                    if (itemId != null) {
-	                        HashMap<String, Object> inv = new HashMap<>();
-	                        inv.put("userName", userName);
-	                        inv.put("roomName", roomName);
-	                        inv.put("itemId", itemId);
-	                        inv.put("qty", 1);
-	                        inv.put("delYn", "1");
-	                        inv.put("gainType", "STEAL");
-	                        botNewService.insertInventoryLogTx(inv);
-	                        if(ThreadLocalRandom.current().nextDouble() < 0.5) {
-	                        	stealMsg += "✨ " + m.monName + "과  싸우던 마을주민에게서 약탈했다! (" + dropName + "조각)";
-	                        }else {
-	                        	stealMsg += "✨ 촌장 집에서 " + m.monName + "의 아이템을 발견했다! (" + dropName + "조각)";
-	                        }
-	                        calc.jobSkillUsed = true;
-	                    }
-	                    String[] _sb4={""}; stealPoint+=" +"+baroSellItem(dropName,itemId,res,userName,roomName,ctx,u,"STEAL",1,nightmare,_sb4); stealBonus+=_sb4[0];
-
-	                } catch (Exception ignore) {}
-	            }
-	        }
-	    }
-
-	    String dosaCastMsg = null;
-	    if ("음양사".equals(job)) {
-	        dosaCastMsg = "✨"+job+"의 기원! 다음 공격자 강화!";
-	    }
-	    
-	    if (res.killed && !"0".equals(res.dropCode)) {
-	        String dropName = (m.monDrop == null ? "" : m.monDrop.trim());
-	        if (!dropName.isEmpty()) {
-	            String[] _nb={""}; newPoint+=" +"+baroSellItem(dropName,0,res,userName,roomName,ctx,u,"DROP",1,nightmare,_nb); newBonus+=_nb[0];
-	        }
-	    }
-
-	    // 경험치 스페셜버프 적용
-	    if (activeBuff != null && "경험치".equals(activeBuff.get("FLAG_CODE"))) {
-	        double buffPct = Double.parseDouble(activeBuff.get("EFFECT_VALUE").toString());
-	        res.gainExp = (int)(res.gainExp * (1 + buffPct / 100.0));
-	    }
-
-	    // 14) DB 반영 + 레벨업 처리
-	    int buffStart      = buff.started ? 1 : 0;
-	    int buffIng        = activeBuff != null ? 1 : 0;
-	    String buffCode    = activeBuff != null ? (String) activeBuff.get("FLAG_CODE") : null;
-	    LevelUpResult up = persist(userName, roomName, u, m, flags, calc, res, hpMax, nightmare, buffStart, buffIng, buffCode);
-	    // [도적] 2타 배틀로그 (PK 충돌 방지: shotIndex=1)
-	    if (thiefDoubleAtk && calc2 != null && m != null) {
-	        try {
-	            botNewService.insertBattleLogTx(new BattleLog()
-	                .setUserName(userName)
-	                .setRoomName(roomName)
-	                .setLv(up.beforeLv)
-	                .setTargetMonLv(m.monNo)
-	                .setGainExp(0)
-	                .setAtkDmg(calc2.atkDmg)
-	                .setMonDmg(0)
-	                .setAtkCritYn(dmg2.flags != null && dmg2.flags.atkCrit ? 1 : 0)
-	                .setMonPatten(0)
-	                .setKillYn(0)
-	                .setNowYn(1)
-	                .setDropYn(0)
-	                .setDeathYn(0)
-	                .setLuckyYn(0)
-	                .setJobSkillYn(calc2.jobSkillUsed ? 1 : 0)
-	                .setJob(job)
-	                .setNightmareYn(ctx.user.nightmareYn)
-	                .setSpecialBuffStart(0)
-	                .setSpecialBuffIng(buffIng)
-	                .setSpecialBuffCode(buffCode)
-	                .setShotIndex(1));
-	        } catch (Exception ignore) {}
-	    }
-	    String bonusMsg = "";
-	    String blessMsg = "";
-	    
-	    String bagDropMsg = "";
-	    if (res.killed) {
-	        botNewService.closeOngoingBattleTx(userName, roomName);
-
-	        HashMap<String,Object> achvInvCounts = null;
-	        try { achvInvCounts = botNewService.selectAchievementInventoryCounts(userName); } catch (Exception ignore) {}
-	        List<HashMap<String,Object>> achvGainRows = buildGainRowsFromCounts(achvInvCounts);
-	        int achvBagTotal   = achvInvCounts != null ? ((Number) achvInvCounts.getOrDefault("BAG_COUNT",   0)).intValue() : 0;
-	        int achvSoldCount  = achvInvCounts != null ? ((Number) achvInvCounts.getOrDefault("SOLD_COUNT",  0)).intValue() : 0;
-	        int achvPotionCount = achvInvCounts != null ? ((Number) achvInvCounts.getOrDefault("POTION_COUNT",0)).intValue() : 0;
-	        MiniGameUtil.POTION_USE_CACHE.put(userName, achvPotionCount);
-
-	        AttackDeathStat achvAds = cachedAds;
-	        List<HashMap<String,Object>> achvJobSkillRows = null;
-	        try { achvJobSkillRows = botNewService.selectJobSkillUseCountAllJobs(userName, roomName); } catch (Exception ignore) {}
-	        List<HashMap<String,Object>> achvBuffRows = null;
-	        try { achvBuffRows = botNewService.selectSpecialBuffAchvStats(userName); } catch (Exception ignore) {}
-
-	        //String firstClearMsg  = grantFirstClearIfEligible(userName, roomName, m, globalAchvMap);
-	        String killAchvMsg    = grantKillAchievements(userName, roomName, achievedCmdSet, cachedKillStats);           // [PERF] cachedKillStats 재사용
-	        String itemAchvMsg    = grantLightDarkItemAchievements(userName, roomName, achievedCmdSet, achvGainRows);     // [PERF] 프리로드
-	        String bagAchvMsg     = grantBagAcquireAchievementsFast(userName, roomName, achievedCmdSet, achvBagTotal);   // [PERF] 프리로드
-	        String attackAchvMsg  = grantAttackCountAchievements(userName, roomName, achievedCmdSet, achvAds);           // [PERF] 프리로드
-	        String jobSkillAchvMsg = grantJobSkillUseAchievementsAllJobs(userName, roomName, achievedCmdSet, achvJobSkillRows); // [PERF] 프리로드
-	        String shopSellAchvMsg  = grantShopSellAchievementsFast(userName, roomName, achievedCmdSet, achvSoldCount);    // [PERF] 프리로드
-	        String potionAchvMsg    = grantPotionUseAchievements(userName, roomName, achievedCmdSet, achvPotionCount);    // [PERF] 프리로드
-	        String buffAchvMsg      = grantSpecialBuffAchievements(userName, roomName, achievedCmdSet, achvBuffRows);      // [PERF] 프리로드
-
-	        String achvRewardMsg = grantAchievementBasedReward(userName, roomName, userAchvList);
-	        String specialAchvMsg = grantSpecialHistoricalAchievements(userName, roomName);
-
-	        if (/*(firstClearMsg   != null && !firstClearMsg.isEmpty())*/
-	                 (killAchvMsg     != null && !killAchvMsg.isEmpty())
-	                || (itemAchvMsg     != null && !itemAchvMsg.isEmpty())
-	                || (attackAchvMsg   != null && !attackAchvMsg.isEmpty())
-	                || (jobSkillAchvMsg != null && !jobSkillAchvMsg.isEmpty())
-	                || (shopSellAchvMsg != null && !shopSellAchvMsg.isEmpty())
-	                || (potionAchvMsg   != null && !potionAchvMsg.isEmpty())
-	                || (achvRewardMsg   != null && !achvRewardMsg.isEmpty())
-	                || (bagAchvMsg      != null && !bagAchvMsg.isEmpty())
-	                || (specialAchvMsg  != null && !specialAchvMsg.isEmpty())
-	                || (buffAchvMsg     != null && !buffAchvMsg.isEmpty())
-	        		) {
-
-	                   bonusMsg = NL
-	                         //  + firstClearMsg
-	                           + killAchvMsg
-	                           + itemAchvMsg
-	                           + attackAchvMsg
-	                           + jobSkillAchvMsg
-	                           + shopSellAchvMsg
-	                           + potionAchvMsg
-	                           + achvRewardMsg
-	                           + bagAchvMsg
-	                           + specialAchvMsg
-	                           + buffAchvMsg;
-	               }
-	    }
-	    bagDropMsg = tryDropBag(userName, roomName, m, nightmare,buff);
-	    // [도적] 2타 가방 드락 추가 기회
-	    if (thiefDoubleAtk && m != null) {
-	        String bag2 = tryDropBag(userName, roomName, m, nightmare, buff);
-	        if (bag2 != null && !bag2.isEmpty()) {
-	            bagDropMsg = (bagDropMsg == null || bagDropMsg.isEmpty()) ? bag2 : bagDropMsg + NL + bag2;
-	        }
-	    }
-	    
-	    // 15) 메시지 구성
-	    int shownMin = effAtkMin;
-	    int shownMax = effAtkMax;
-
-	    StringBuilder midExtra = new StringBuilder();
-	    StringBuilder hunterMsg = new StringBuilder();
-	    StringBuilder botExtra = new StringBuilder();
-	    if (dmg.dmgCalcMsg != null && !dmg.dmgCalcMsg.isEmpty()) {
-	        midExtra.append(dmg.dmgCalcMsg);
-	    }
-	    if (dmg.hunterMsg != null && !dmg.hunterMsg.isEmpty()) {
-	    	hunterMsg.append(dmg.hunterMsg);
-	    }
-	    if (dosabuffMsg != null && !dosabuffMsg.isEmpty()) {
-	        midExtra.append(NL).append(dosabuffMsg);
-	    }
-	    if (dosaCastMsg != null && !dosaCastMsg.isEmpty()) {
-	        botExtra.append(NL).append(dosaCastMsg);
-	    }
-	    // [도적] 2타 데미지 표시
-	    if (thiefDoubleAtk && calc2 != null) {
-	        botExtra.append(NL).append("⚔2타 데미지: ").append(formatWan(calc2.atkDmg));
-	        if (dmg2 != null && dmg2.flags != null && dmg2.flags.atkCrit) {
-	            botExtra.append(" ✨크리!");
-	        }
-	    }
-	    if (stealMsg != null && !stealMsg.isEmpty()) {
-	        botExtra.append(NL).append(stealMsg);
-	    }
-	    
-	    String msg = buildAttackMessage(
-	            userName, u, m, flags, calc, res, up,
-	            monHpRemainBefore, monMaxHp,
-	            shownMin, shownMax,
-	            hpMax,
-	            midExtra.toString(),
-	            hunterMsg.toString(),
-	            botExtra.toString(),
-	            nightmare,
-	            ctx
-	    );
-
-	    if (!bonusMsg.isEmpty()) {
-	        msg += bonusMsg;
-	    }
-	    if (!blessMsg.isEmpty()) {
-	        msg += blessMsg;
-	    }
-
-	    /*
-	    String celebrationMsg = grantCelebrationClearBonus(userName, roomName, globalAchvMap, userAchvMap, u.lv); // [PERF] selectUser 재사용
-	    if (celebrationMsg != null && !celebrationMsg.isEmpty()) {
-	        msg += NL + celebrationMsg;
-	    }*/
-
-	    // 16) 현재 포인트
-	    String curSpStr="";
-	    try {
-	    	HashMap<String,Object> pointRow =
-		            botNewService.selectCurrentPoint(userName, roomName);
-
-		    double curValue = Double.parseDouble(
-		        Objects.toString(pointRow.get("SCORE"), "0")
-		    );
-		    String curExt = Objects.toString(pointRow.get("SCORE_EXT"), "");
-		    SP userPoint = new SP(curValue, curExt);
-		    curSpStr = userPoint.toString();
-	    } catch (Exception ignore) {}
-	    
-	    if (!stealPoint.isEmpty()) {
-	    	msg += "✨추가획득" + stealPoint;
-	    	if (!stealBonus.isEmpty()) msg += stealBonus;
-    		msg +=NL;
-	    }
-
-	    if (!newPoint.isEmpty()) {
-	    	msg += "✨전투획득" + newPoint;
-	    	if (!newBonus.isEmpty()) msg += newBonus;
-    		msg +=NL;
-	    }
-	    msg += "✨포인트: " + curSpStr;
-
-	    if (bagDropMsg != null && !bagDropMsg.isEmpty()) {
-	        msg += NL + bagDropMsg;
-	    }
-	    
-	    if (buff.started) {
-	    	msg += NL + buff.startMsg;
-	    }else if(buff.runningMsg != null) {
-	        msg += NL + buff.runningMsg;
-	    }
-
-	    try {
-	        botNewService.execSPMsgTest(map);
-	        msg += NL + Objects.toString(map.get("outMsg"), "");
-	    } catch (Exception e) {
-	        e.printStackTrace();
-	    }
-
-	    return msg;
+		// 15~16) 메시지 구성 + 포인트 출력
+		return ma_buildMessage(s);
 	}
-	
+
+	// ────────────────────────────────────────────────────────────
+	//  AttackSession — monsterAttack 섬션 간 공유 상태
+	// ────────────────────────────────────────────────────────────
+	private static class AttackSession {
+		/* 입력 */
+		HashMap<String,Object> map;
+		String userName, roomName, param1;
+		boolean master;
+
+		/* 스탯 / 직업 */
+		UserBattleContext ctx;
+		User u;
+		String job;
+		int effAtkMin, effAtkMax, critRate, critDmg, hpMax, regen;
+		double berserkMul = 1.0;
+
+		/* 몬스터 */
+		Monster m;
+		int monMaxHp, monHpRemainBefore, monAtk, monLv;
+		boolean lucky, dark, gray, nightmare, hell;
+		int beforeJobSkillYn;
+		int killCountForThisMon, nmKillCountForThisMon, hellKillCountForThisMon;
+
+		/* 버프 / 쿨타임 */
+		HashMap<String,Object> activeBuff;
+		SpecialBuffResult buff;
+		int cooldownBuff;
+		String cdJob;
+		AttackDeathStat cachedAds;
+		boolean revivedThisTurn;
+
+		/* 데미지 */
+		Flags flags;
+		DamageOutcome dmg, dmg2;
+		AttackCalc calc, calc2;
+		boolean willKill, thiefDoubleAtk;
+
+		/* 처치 / 보상 */
+		Resolve res;
+		LevelUpResult up;
+		int buffStart, buffIng;
+		String buffCode;
+
+		/* 업적 */
+		List<KillStat> cachedKillStats;
+		List<AchievementCount> userAchvList;
+		Set<String>         achievedCmdSet = new HashSet<>();
+		Map<String,Integer> globalAchvMap  = new HashMap<>();
+		Map<String,Integer> userAchvMap    = new HashMap<>();
+
+		/* 메시지 조각 */
+		String dosabuffMsg = "";
+		String stealMsg = "", stealPoint = "", stealBonus = "";
+		String newPoint = "", newBonus  = "";
+		String dosaCastMsg = null;
+		String bagDropMsg  = "";
+		String bonusMsg    = "";
+
+		AttackSession(HashMap<String,Object> map) {
+			this.map      = map;
+			this.userName = Objects.toString(map.get("userName"), "");
+			this.roomName = Objects.toString(map.get("roomName"), "");
+		}
+	}
+
+	// ─ 0~1) 입력 검증 / 매크로 잠금 ──────────────────────────────────
+	private String ma_validate(AttackSession s) {
+		if (s.roomName.isEmpty() || s.userName.isEmpty())
+			return "방/유저 정보가 누락되었습니다.";
+
+		s.master = "람쾴봇 문의방".equals(s.roomName) && "일어난다람쾴/카단".equals(s.userName);
+		if (s.master) s.map.put("param1", "test");
+
+		if ("람쾴봇 문의방".equals(s.roomName) && !s.master)
+			return "문의방에서는 불가능합니다.";
+
+		HashMap<String,Object> lockParam = botNewService.lockMacroUser(s.userName);
+		int lockCode = (Integer) lockParam.get("outCode");
+		if (lockCode == 1 || lockCode == 2)
+			return "공격불가 상태입니다 code:" + lockParam.get("outMsg");
+
+		s.param1 = Objects.toString(s.map.get("param1"), "");
+		return null;
+	}
+
+	// ─ 2~4) 공통 스탯 + 직업 공격배율 ────────────────────────────
+	private String ma_calcStats(AttackSession s) {
+		HashMap<String,Object> statMap = new HashMap<>(s.map);
+		statMap.put("param1", "");
+		s.ctx = calcUserBattleContext(statMap);
+		if (!s.ctx.success) return s.ctx.errorMessage;
+
+		s.u   = s.ctx.user;
+		s.job = (s.u.job == null ? "" : s.u.job.trim());
+		if (s.job.isEmpty())
+			return s.userName + " 님, /직업 을 통해 먼저 전직해주세요." + NL
+				 + "12/15 업데이트 이후 가방으로 능력치 변경을 확인해주세요.";
+
+		int atkMin = s.ctx.atkMin;
+		int atkMax = s.ctx.atkMax;
+		s.regen   = s.ctx.regen;
+		s.hpMax   = s.ctx.hpMax;
+		s.critRate = s.ctx.crit;
+		s.critDmg  = s.ctx.critDmg;
+
+		double jobDmgMul  = 1.0;
+		int    jobBonusMin = 0, jobBonusMax = 0;
+		if      ("궁수".equals(s.job))   jobDmgMul = 3.0;
+		else if ("사낙꼼".equals(s.job))  jobDmgMul = 3.0;
+		else if ("궁사".equals(s.job))   jobDmgMul = 1.0;
+		else if ("전사".equals(s.job))   jobDmgMul = 1.4;
+		else if ("검성".equals(s.job))   jobDmgMul = 2.2;
+		else if ("어쓰신".equals(s.job))  jobDmgMul = 1.3;
+		else if ("제너럴".equals(s.job))  jobDmgMul = 1.2;
+		else if ("저격수".equals(s.job))  jobDmgMul = 2.0;
+		else if ("처단자".equals(s.job))  jobDmgMul = 1.4;
+		else if ("용사".equals(s.job))   jobDmgMul = 1.4;
+		else if ("복수자".equals(s.job))  jobDmgMul = 0.2;
+		else if ("음양사".equals(s.job))  jobDmgMul = 1.6;
+
+		s.effAtkMin = (int)Math.round(atkMin * jobDmgMul + jobBonusMin);
+		s.effAtkMax = (int)Math.round(atkMax * jobDmgMul + jobBonusMax);
+		if (s.effAtkMax < s.effAtkMin) s.effAtkMax = s.effAtkMin;
+		return null;
+	}
+
+	// ─ 5~6) 부활 / 진행중·신규 몬스터 ────────────────────────────────
+	private String ma_resolveMonster(AttackSession s) {
+		String reviveMsg = reviveAfter1hIfDead(s.userName, s.roomName, s.u, s.hpMax, s.regen);
+		if (reviveMsg != null) {
+			if (!reviveMsg.isEmpty()) return reviveMsg;
+			s.revivedThisTurn = true;
+		}
+
+		List<AchievementCount> globalList = getAchvGlobalCached();
+		if (globalList != null) {
+			for (AchievementCount ac : globalList) {
+				if (ac == null || ac.getCmd() == null) continue;
+				s.globalAchvMap.put(ac.getCmd(), ac.getCnt());
+			}
+		}
+
+		s.nightmare = s.ctx.user.nightmareYn >= 1;
+		s.hell      = s.ctx.user.nightmareYn == 2;
+
+		try { s.cachedKillStats = botNewService.selectKillStats(s.userName, s.roomName); } catch (Exception ignore) {}
+
+		OngoingBattle ob = botNewService.selectOngoingBattle(s.userName, s.roomName);
+		return (ob != null) ? ma_resolveOngoing(s, ob) : ma_resolveNew(s);
+	}
+
+	private String ma_resolveOngoing(AttackSession s, OngoingBattle ob) {
+		s.m = getMonsterCached(ob.monNo);
+		if (s.m == null) return "진행중 몬스터 정보를 찾을 수 없습니다.";
+		s.beforeJobSkillYn = ob.beforeJobSkillYn;
+		s.monMaxHp = s.m.monHp;  s.monAtk = s.m.monAtk;  s.monLv = s.m.monLv;
+		if (s.nightmare) {
+			s.monMaxHp *= NM_MUL_HP_ATK;
+			s.monAtk   *= NM_MUL_HP_ATK;
+			s.monLv    += s.hell ? HEL_ADD_MON_LV : NM_ADD_MON_LV;
+		}
+		s.lucky = (ob.luckyYn != null && ob.luckyYn == 1);
+		s.dark  = (ob.luckyYn != null && ob.luckyYn == 2);
+		s.gray  = (ob.luckyYn != null && ob.luckyYn == 3);
+		if (s.dark) applyDarkMonsterScale(s);
+		s.monHpRemainBefore = Math.max(0, s.monMaxHp - ob.totalDealtDmg);
+		resolveKillCounts(s);
+		return null;
+	}
+
+	private String ma_resolveNew(AttackSession s) {
+		if (s.u.targetMon == 99) {
+			s.m = null; s.monMaxHp = 0; s.monHpRemainBefore = 0; s.monAtk = 0; s.monLv = 0;
+			return null;
+		}
+		s.m = getMonsterCached(s.u.targetMon);
+		if (s.m == null) return "대상 몬스터가 지정되어 있지 않습니다. (TARGET_MON 없음)";
+		s.beforeJobSkillYn  = -1;
+		s.monMaxHp          = s.m.monHp;
+		s.monHpRemainBefore = s.m.monHp;
+		s.monAtk            = s.m.monAtk;
+		s.monLv             = s.m.monLv;
+		if (s.nightmare) {
+			s.monMaxHp          *= NM_MUL_HP_ATK;
+			s.monHpRemainBefore *= NM_MUL_HP_ATK;
+			s.monAtk            *= NM_MUL_HP_ATK;
+			s.monLv             += s.hell ? HEL_ADD_MON_LV : NM_ADD_MON_LV;
+		}
+		resolveKillCounts(s);
+		rollDarkAndLucky(s);
+		return null;
+	}
+
+	private void resolveKillCounts(AttackSession s) {
+		if (s.cachedKillStats == null || s.m == null) return;
+		for (KillStat ks : s.cachedKillStats) {
+			if (ks.monNo == s.m.monNo) {
+				s.killCountForThisMon     = ks.killCount;
+				s.nmKillCountForThisMon   = ks.nmKillCount;
+				s.hellKillCountForThisMon = ks.hellKillCount;
+				break;
+			}
+		}
+	}
+
+	private void applyDarkMonsterScale(AttackSession s) {
+		if      (s.m.monNo < 15)  { s.monMaxHp = s.monMaxHp * 3;                              s.monAtk = (int)Math.round(s.monAtk * 1.50); }
+		else if (s.m.monNo >= 25) { s.monMaxHp = (int)Math.round(s.monMaxHp * 1.75); s.monAtk = (int)Math.round(s.monAtk * 1.10); }
+		else if (s.m.monNo >= 15) { s.monMaxHp = (int)Math.round(s.monMaxHp * 2.50); s.monAtk = (int)Math.round(s.monAtk * 1.25); }
+	}
+
+	private void rollDarkAndLucky(AttackSession s) {
+		Monster m = s.m;
+		int levelGap = s.monLv - s.u.lv;
+		double darkRate = Math.max(0, levelGap / 100) * 0.20;
+		if ("어둡사낙꼼".equals(s.job)) darkRate += DARK_RATE_DARK;
+		if ((!s.nightmare && s.killCountForThisMon   >= 350 && m.monNo >= 15) || (s.nightmare && s.nmKillCountForThisMon > 150 && m.monNo >= 15)) darkRate += 0.05;
+		if ((!s.nightmare && s.killCountForThisMon   >= 300 && m.monNo <  15) || (s.nightmare && s.nmKillCountForThisMon > 150 && m.monNo <  15)) darkRate += 0.10;
+		if (ThreadLocalRandom.current().nextDouble() < darkRate) s.dark = true;
+
+		double luckyRate = "도사".equals(s.job) ? LUCKY_RATE_DOSA : LUCKY_RATE;
+		s.lucky = (s.killCountForThisMon >= 50) && ThreadLocalRandom.current().nextDouble() < luckyRate;
+
+		int globalCnt = s.globalAchvMap.getOrDefault("ACHV_FIRST_CLEAR_MON_" + m.monNo, 0);
+		if (s.dark  || globalCnt == 0 || m.monNo > 50)                         s.lucky = false;
+		if (s.lucky || globalCnt == 0 || m.monNo > 50 || "사신".equals(s.job)) s.dark  = false;
+
+		if ("음양사".equals(s.job)) s.gray = ThreadLocalRandom.current().nextDouble() < 0.05;
+		if (s.gray) { s.lucky = false; s.dark = false; }
+		if ("곰".equals(s.job))  { s.lucky = false; s.dark = false; }
+
+		if (s.dark) { applyDarkMonsterScale(s); s.monHpRemainBefore = s.monMaxHp; }
+	}
+
+	// ─ 7) 쿨타임 / 8) HP 확정 / [S3] 분기 ───────────────────────────────
+	private String ma_cooldownAndHp(AttackSession s) {
+		s.buff = handleSpecialBuff(s.userName);
+		s.activeBuff   = s.buff.activeBuff;
+		s.cooldownBuff = 0;
+		if (s.activeBuff != null) {
+			if ("쿨타임".equals(s.activeBuff.get("FLAG_CODE")))
+				s.cooldownBuff = (int)Double.parseDouble(s.activeBuff.get("EFFECT_VALUE").toString());
+			if ("쿨타임감소".equals(s.activeBuff.get("FLAG_CODE")))
+				s.cooldownBuff = -1;
+		}
+
+		try { s.cachedAds = botNewService.selectAttackDeathStats(s.userName, s.roomName); } catch (Exception ignore) {}
+		Timestamp cachedLastAtk = (s.cachedAds != null) ? s.cachedAds.lastAttackTime : null;
+		s.cdJob = (s.cachedAds != null && s.cachedAds.lastAttackJob != null) ? s.cachedAds.lastAttackJob : s.job;
+
+		CooldownCheck cd = checkCooldown(s.userName, s.roomName, s.param1, s.cdJob, s.cooldownBuff, cachedLastAtk);
+		if (!cd.ok) {
+			long min = cd.remainSeconds / 60;
+			long sec = cd.remainSeconds % 60;
+			return String.format("%s님, 공격 쿨타임 %d분 %d초 남았습니다.", s.userName, min, sec);
+		}
+
+		int effectiveHp = s.revivedThisTurn
+				? s.u.hpCur
+				: computeEffectiveHpFromLastAttack(s.userName, s.roomName, s.u, s.hpMax, s.regen, cachedLastAtk);
+		s.u.hpCur = effectiveHp;
+
+		if (s.u.targetMon == 99) return bossAttackS3Controller.attackBossS3(s.map, s.ctx);
+
+		s.userAchvList = botNewService.selectAchvCountsGlobal(s.userName, s.roomName);
+		if (s.userAchvList != null) {
+			for (AchievementCount ac : s.userAchvList) {
+				s.achievedCmdSet.add(ac.getCmd());
+				if (ac.getCmd() != null) s.userAchvMap.put(ac.getCmd(), ac.getCnt());
+			}
+		}
+		return null;
+	}
+
+	// ─ 8-후) berserkMul + Flags 롤 ──────────────────────────────────────────
+	private void ma_preDmgJobBuffs(AttackSession s) {
+		if ("파이터".equals(s.job) && s.hpMax > 0) {
+			double hpRatio = (double) s.u.hpCur / s.hpMax;
+			if (hpRatio < 1) s.berserkMul = 1.0 + (1 - hpRatio) * 0.5;
+		}
+		if ("용사".equals(s.job)    && s.dark)              s.berserkMul = 1.5;
+		if ("처단자".equals(s.job)  && s.lucky)             s.berserkMul = 1.5;
+		if ("음양사".equals(s.job)  && (s.lucky || s.dark)) s.berserkMul = 1.5;
+		if ("어둑사낙꼼".equals(s.job) && s.dark)   s.berserkMul = 3.0;
+		s.flags = rollFlags(s.u, s.m);
+	}
+
+	// ─ 9~11) HP5% 제한 / 도사버프 / 스페셀버프 / 데미지 계산 ──────────
+	private String ma_applyBuffsAndCalcDmg(AttackSession s) {
+		// 9) HP 5% 제한 체크
+		int origHpMax  = s.u.hpMax;
+		int origRegen  = s.u.hpRegen;
+		s.u.hpMax   = s.hpMax;
+		s.u.hpRegen = s.regen;
+		try {
+			String hpMsg = buildBelowHalfMsg(s.userName, s.roomName, s.u, s.param1, s.cooldownBuff, s.cdJob);
+			if (!"사신".equals(s.job) && hpMsg != null) return hpMsg;
+		} finally {
+			s.u.hpMax   = origHpMax;
+			s.u.hpRegen = origRegen;
+		}
+
+		// 10) 도사 버프 (본인 + 방 전체, 헰 제외)
+		if (!s.hell) {
+			DosaBuffEffect self = null;
+			if ("도사".equals(s.job) || "음양사".equals(s.job)) {
+				self = buildDosaBuffEffect(s.u, s.u.lv, s.roomName, 1);
+				s.effAtkMin += self.addAtkMin;  s.effAtkMax += self.addAtkMax;
+				s.critRate  += self.addCritRate; s.critDmg   += self.addCritDmg;
+				s.u.hpCur   += self.addHp;
+			}
+			DosaBuffEffect room = loadRoomDosaBuffAndBuild(s.roomName);
+			if (room != null) {
+				s.effAtkMin += room.addAtkMin;  s.effAtkMax += room.addAtkMax;
+				s.critRate  += room.addCritRate; s.critDmg   += room.addCritDmg;
+				s.u.hpCur   += room.addHp;
+				botNewService.clearRoomBuff(s.roomName);
+			}
+			if (room != null || self != null) s.dosabuffMsg = buildUnifiedDosaBuffMessage(self, room);
+		}
+
+		s.u.hunterGrade = s.ctx.hunterGrade;
+
+		// 스페셀버프 적용 (공격력/치피/치확)
+		if (s.activeBuff != null) {
+			if ("공격력".equals(s.activeBuff.get("FLAG_CODE"))) {
+				String effectType = (String) s.activeBuff.get("EFFECT_TYPE");
+				double value = Double.parseDouble(s.activeBuff.get("EFFECT_VALUE").toString());
+				if ("배율".equals(effectType)) { s.effAtkMin = (int)Math.round(s.effAtkMin * value); s.effAtkMax = (int)Math.round(s.effAtkMax * value); }
+				else                                   { s.effAtkMin += (int)value; s.effAtkMax += (int)value; }
+			}
+			if ("치피".equals(s.activeBuff.get("FLAG_CODE"))) {
+				double value = Double.parseDouble(s.activeBuff.get("EFFECT_VALUE").toString());
+				if (s.hell) value = Math.max(0, (int)Math.round(value * MiniGameUtil.getHellNerfMult(s.ctx.hunterGrade)));
+				s.critDmg += (int)value;
+			}
+			if ("치확".equals(s.activeBuff.get("FLAG_CODE"))) {
+				double value = Double.parseDouble(s.activeBuff.get("EFFECT_VALUE").toString());
+				if (s.hell) value = Math.max(0, (int)Math.round(value * MiniGameUtil.getHellNerfMult(s.ctx.hunterGrade)));
+				s.critRate += (int)value;
+			}
+		}
+
+		boolean hasBless = (s.u.blessYn == 1);
+		if (hasBless) {
+			s.effAtkMin = (int)Math.round(s.effAtkMin * 1.5);
+			s.effAtkMax = (int)Math.round(s.effAtkMax * 1.5);
+		}
+
+		// 11) 데미지 계산
+		s.dmg = calculateDamage(s.u, s.m, s.flags,
+				s.effAtkMin, s.effAtkMax, s.critRate, s.critDmg,
+				s.berserkMul, s.monHpRemainBefore, s.hpMax, s.beforeJobSkillYn, s.nightmare);
+		s.calc     = s.dmg.calc;
+		s.flags    = s.dmg.flags;
+		s.willKill = s.dmg.willKill;
+
+		// 11-후) 축복술사
+		if ("축복술사".equals(s.job) && s.dmg.calc.atkDmg > 0) {
+			int blessCount = (s.u.lv / 100) + 1;
+			int cnt = botNewService.updateRandomBlessUser(s.userName, blessCount);
+			if (cnt > 0) s.dmg.dmgCalcMsg += NL + "✨랜덤한 " + blessCount + "명에게 축복이 내려졌습니다!";
+		}
+
+		// 11-후) 축복 힐
+		if (hasBless) {
+			int heal = (int)Math.round(s.hpMax * 0.3);
+			int beforeHp = s.u.hpCur;
+			s.u.hpCur = Math.min(s.hpMax, s.u.hpCur + heal);
+			if (s.u.hpCur > beforeHp) s.dmg.dmgCalcMsg += NL + "✨ 축복의 치유! " + (s.u.hpCur - beforeHp) + " 회복";
+			botNewService.clearBlessYn(s.userName);
+		}
+
+		// 11-후) 스페셀버프 회복
+		if (s.activeBuff != null && "회복".equals(s.activeBuff.get("FLAG_CODE"))) {
+			double value = Double.parseDouble(s.activeBuff.get("EFFECT_VALUE").toString());
+			int heal = (int)Math.round(s.hpMax * value);
+			int beforeHp = s.u.hpCur;
+			s.u.hpCur = Math.min(s.hpMax, s.u.hpCur + heal);
+			if (s.u.hpCur > beforeHp) s.dmg.dmgCalcMsg += NL + "✨ 스페셀타임-회복! " + (s.u.hpCur - beforeHp);
+		}
+
+		// 패턴 6: 전투 종료
+		if (s.calc.endBattle) {
+			botNewService.closeOngoingBattleTx(s.userName, s.roomName);
+			Resolve empty = new Resolve(); empty.killed = false; empty.gainExp = 0; empty.dropCode = "0";
+			return buildAttackMessage(s.userName, s.u, s.m, s.flags, s.calc,
+					empty, null, s.monHpRemainBefore, s.monMaxHp,
+					s.effAtkMin, s.effAtkMax, s.hpMax, null, null, null, s.nightmare, s.ctx);
+		}
+		return null;
+	}
+
+	// ─ [도적] 2타 사전 계산 ──────────────────────────────────────────
+	private void ma_thiefDoubleAtkPreCalc(AttackSession s) {
+		if (!"도적".equals(s.job) || s.m.monNo > 50) return;
+		double dRate = 0.30 + ThreadLocalRandom.current().nextDouble() * 0.20;
+		s.thiefDoubleAtk = ThreadLocalRandom.current().nextDouble() < dRate;
+		if (s.thiefDoubleAtk) {
+			Flags f2 = rollFlags(s.u, s.m);
+			s.dmg2  = calculateDamage(s.u, s.m, f2, s.effAtkMin, s.effAtkMax, s.critRate, s.critDmg,
+					s.berserkMul, s.monHpRemainBefore, s.hpMax, s.beforeJobSkillYn, s.nightmare);
+			s.calc2 = s.dmg2.calc;
+		}
+	}
+
+	// ─ 12) 사망 처리 ───────────────────────────────────────────────────
+	private String ma_deathCheck(AttackSession s) {
+		int newHpPreview = Math.max(0, s.u.hpCur - s.calc.monDmg);
+		if (newHpPreview > 0) return null;
+
+		int dealtThisTurn  = Math.max(0, s.calc.atkDmg);
+		int monRemainAfter = Math.max(0, s.monHpRemainBefore - dealtThisTurn);
+
+		botNewService.closeOngoingBattleTx(s.userName, s.roomName);
+		botNewService.updateUserHpOnlyTx(s.userName, s.roomName, 0);
+		botNewService.insertBattleLogTx(new BattleLog()
+				.setUserName(s.userName).setRoomName(s.roomName).setLv(s.u.lv)
+				.setTargetMonLv(s.m.monNo).setGainExp(0)
+				.setAtkDmg(s.calc.atkDmg).setMonDmg(s.calc.monDmg)
+				.setAtkCritYn(s.flags.atkCrit ? 1 : 0).setMonPatten(s.flags.monPattern)
+				.setKillYn(0).setNowYn(0).setDropYn(0).setDeathYn(1).setLuckyYn(0)
+				.setJobSkillYn(0).setJob(s.job).setNightmareYn(s.ctx.user.nightmareYn));
+
+		String deathAchvMsg = grantDeathAchievements(s.userName, s.roomName);
+		return s.userName + "님, 이번전투에서 패배하여, 전투 불능이 되었습니다." + NL
+				+ s.calc.monDmg + " 피해로 사망!" + NL
+				+ "▶ 이번에 준 피해: " + dealtThisTurn + NL
+				+ "▶ 몬스터 남은 체력: " + monRemainAfter + " / " + s.monMaxHp + NL
+				+ "현재 체력: 0 / " + s.hpMax + NL
+				+ "5분 뒤 최대 체력의 10%로 부활하며," + NL
+				+ "이후 5분마다 HP_REGEN 만큼 서서히 회복됩니다." + NL
+				+ deathAchvMsg;
+	}
+
+	// ─ 13) 처치·드랍 판단 + 직업별 스킬 ─────────────────────────────
+	private void ma_resolveKillAndJobSkills(AttackSession s) {
+		s.res = resolveKillAndDrop(s.m, s.calc, s.willKill, s.u, s.lucky, s.dark, s.gray, s.ctx.user.nightmareYn);
+		if ("궁수".equals(s.u.job) || "사낙꼼".equals(s.u.job)) s.res.gainExp *= 3;
+
+		// —— 도적: 더블어택 + 스틸 ——
+		if ("도적".equals(s.job) && !(s.m.monNo > 50)) {
+			if (ThreadLocalRandom.current().nextDouble() < 0.50) {
+				String dn = (s.m.monDrop == null ? "" : s.m.monDrop.trim());
+				if (!dn.isEmpty()) try {
+					Integer id = getItemIdCached(dn);
+					if (id != null) {
+						botNewService.insertInventoryLogTx(buildStealInv(s.userName, s.roomName, id));
+						s.stealMsg += "✨ [1타] " + s.m.monName + "의 아이템을 훔쳤습니다! (" + dn + "조각)";
+						s.calc.jobSkillUsed = true;
+					}
+					String[] b={""}; s.stealPoint += " +" + baroSellItem(dn, id, s.res, s.userName, s.roomName, s.ctx, s.u, "STEAL", 1, s.nightmare, b); s.stealBonus += b[0];
+				} catch (Exception ignore) {}
+			}
+			if (s.thiefDoubleAtk && s.calc2 != null && ThreadLocalRandom.current().nextDouble() < 0.50) {
+				String dn = (s.m.monDrop == null ? "" : s.m.monDrop.trim());
+				if (!dn.isEmpty()) try {
+					Integer id = getItemIdCached(dn);
+					if (id != null) {
+						botNewService.insertInventoryLogTx(buildStealInv(s.userName, s.roomName, id));
+						s.stealMsg += (s.stealMsg.isEmpty() ? "" : NL) + "✨ [2타] " + s.m.monName + "의 아이템을 훔쳤습니다! (" + dn + "조각)";
+						s.calc2.jobSkillUsed = true;
+					}
+					String[] b={""}; s.stealPoint += " +" + baroSellItem(dn, id, s.res, s.userName, s.roomName, s.ctx, s.u, "STEAL", 1, s.nightmare, b); s.stealBonus += b[0];
+				} catch (Exception ignore) {}
+			}
+		}
+
+		// —— 처단자: 추가 드랍 ——
+		if ("처단자".equals(s.job) && !(s.m.monNo > 50) && s.willKill) {
+			int monHp = s.m.monHp * (s.nightmare ? NM_MUL_HP_ATK : 1);
+			int extra = Math.min((s.calc.atkDmg / monHp) - 1, 5);
+			String dn = (s.m.monDrop == null ? "" : s.m.monDrop.trim());
+			if (!dn.isEmpty()) try {
+				Integer id = getItemIdCached(dn);
+				int qty = 2 + extra;
+				if (id != null) {
+					boolean bonus = ThreadLocalRandom.current().nextDouble() < 0.10;
+					if (bonus) qty *= 2;
+					HashMap<String,Object> inv = buildStealInv(s.userName, s.roomName, id);
+					inv.put("qty", qty);
+					botNewService.insertInventoryLogTx(inv);
+					s.stealMsg = "✨ 날카로운 처단으로 추가획득 (+" + dn + "조각" + qty + ")" + (bonus ? "✨ 보너스!" : "");
+					s.calc.jobSkillUsed = true;
+				}
+				String[] b={""}; s.stealPoint += " +" + baroSellItem(dn, id, s.res, s.userName, s.roomName, s.ctx, s.u, "STEAL", qty, s.nightmare, b); s.stealBonus += b[0];
+			} catch (Exception ignore) {}
+		}
+
+		// —— 용사: 스틸 ——
+		if ("용사".equals(s.job) && !(s.m.monNo > 50) && ThreadLocalRandom.current().nextDouble() < 0.60) {
+			String dn = (s.m.monDrop == null ? "" : s.m.monDrop.trim());
+			if (!dn.isEmpty()) try {
+				Integer id = getItemIdCached(dn);
+				if (id != null) {
+					botNewService.insertInventoryLogTx(buildStealInv(s.userName, s.roomName, id));
+					s.stealMsg += ThreadLocalRandom.current().nextDouble() < 0.5
+						? "✨ " + s.m.monName + "와  싸우던 마을주민에게서 약탈했다! (" + dn + "조각)"
+						: "✨ 초장 집에서 " + s.m.monName + "의 아이템을 발견했다! (" + dn + "조각)";
+					s.calc.jobSkillUsed = true;
+				}
+				String[] b={""}; s.stealPoint += " +" + baroSellItem(dn, id, s.res, s.userName, s.roomName, s.ctx, s.u, "STEAL", 1, s.nightmare, b); s.stealBonus += b[0];
+			} catch (Exception ignore) {}
+		}
+
+		// —— 음양사: 기원 메시지 ——
+		if ("음양사".equals(s.job)) s.dosaCastMsg = "✨" + s.job + "의 기원! 다음 공격자 강화!";
+
+		// DROP SP
+		if (s.res.killed && !"0".equals(s.res.dropCode)) {
+			String dn = (s.m.monDrop == null ? "" : s.m.monDrop.trim());
+			if (!dn.isEmpty()) {
+				String[] nb={""}; s.newPoint += " +" + baroSellItem(dn, 0, s.res, s.userName, s.roomName, s.ctx, s.u, "DROP", 1, s.nightmare, nb); s.newBonus += nb[0];
+			}
+		}
+
+		// 경험치 스페셀버프
+		if (s.activeBuff != null && "경험치".equals(s.activeBuff.get("FLAG_CODE"))) {
+			double pct = Double.parseDouble(s.activeBuff.get("EFFECT_VALUE").toString());
+			s.res.gainExp = (int)(s.res.gainExp * (1 + pct / 100.0));
+		}
+	}
+
+	/** buildStealInv 헬퍼 */
+	private HashMap<String,Object> buildStealInv(String userName, String roomName, Integer itemId) {
+		HashMap<String,Object> inv = new HashMap<>();
+		inv.put("userName", userName); inv.put("roomName", roomName);
+		inv.put("itemId", itemId);     inv.put("qty", 1);
+		inv.put("delYn", "1");         inv.put("gainType", "STEAL");
+		return inv;
+	}
+
+	// ─ 14) DB 반영 + 업적 부여 ────────────────────────────────────────
+	private void ma_persistAndAchv(AttackSession s) {
+		s.buffStart = s.buff.started ? 1 : 0;
+		s.buffIng   = s.activeBuff != null ? 1 : 0;
+		s.buffCode  = s.activeBuff != null ? (String) s.activeBuff.get("FLAG_CODE") : null;
+		s.up = persist(s.userName, s.roomName, s.u, s.m, s.flags, s.calc, s.res, s.hpMax, s.nightmare, s.buffStart, s.buffIng, s.buffCode);
+
+		// [도적] 2타 배틀로그 (PK 충돌 방지: shotIndex=1)
+		if (s.thiefDoubleAtk && s.calc2 != null && s.m != null) {
+			try {
+				botNewService.insertBattleLogTx(new BattleLog()
+						.setUserName(s.userName).setRoomName(s.roomName).setLv(s.up.beforeLv)
+						.setTargetMonLv(s.m.monNo).setGainExp(0)
+						.setAtkDmg(s.calc2.atkDmg).setMonDmg(0)
+						.setAtkCritYn(s.dmg2.flags != null && s.dmg2.flags.atkCrit ? 1 : 0)
+						.setMonPatten(0).setKillYn(0).setNowYn(1).setDropYn(0)
+						.setDeathYn(0).setLuckyYn(0)
+						.setJobSkillYn(s.calc2.jobSkillUsed ? 1 : 0).setJob(s.job)
+						.setNightmareYn(s.ctx.user.nightmareYn)
+						.setSpecialBuffStart(0).setSpecialBuffIng(s.buffIng)
+						.setSpecialBuffCode(s.buffCode).setShotIndex(1));
+			} catch (Exception ignore) {}
+		}
+
+		if (s.res.killed) {
+			botNewService.closeOngoingBattleTx(s.userName, s.roomName);
+			HashMap<String,Object> achvInvCounts = null;
+			try { achvInvCounts = botNewService.selectAchievementInventoryCounts(s.userName); } catch (Exception ignore) {}
+			List<HashMap<String,Object>> achvGainRows = buildGainRowsFromCounts(achvInvCounts);
+			int achvBagTotal    = achvInvCounts != null ? ((Number)achvInvCounts.getOrDefault("BAG_COUNT",    0)).intValue() : 0;
+			int achvSoldCount   = achvInvCounts != null ? ((Number)achvInvCounts.getOrDefault("SOLD_COUNT",   0)).intValue() : 0;
+			int achvPotionCount = achvInvCounts != null ? ((Number)achvInvCounts.getOrDefault("POTION_COUNT", 0)).intValue() : 0;
+			MiniGameUtil.POTION_USE_CACHE.put(s.userName, achvPotionCount);
+
+			List<HashMap<String,Object>> achvJobSkillRows = null;
+			try { achvJobSkillRows = botNewService.selectJobSkillUseCountAllJobs(s.userName, s.roomName); } catch (Exception ignore) {}
+			List<HashMap<String,Object>> achvBuffRows = null;
+			try { achvBuffRows = botNewService.selectSpecialBuffAchvStats(s.userName); } catch (Exception ignore) {}
+
+			String killAchvMsg     = grantKillAchievements(s.userName, s.roomName, s.achievedCmdSet, s.cachedKillStats);
+			String itemAchvMsg     = grantLightDarkItemAchievements(s.userName, s.roomName, s.achievedCmdSet, achvGainRows);
+			String bagAchvMsg      = grantBagAcquireAchievementsFast(s.userName, s.roomName, s.achievedCmdSet, achvBagTotal);
+			String attackAchvMsg   = grantAttackCountAchievements(s.userName, s.roomName, s.achievedCmdSet, s.cachedAds);
+			String jobSkillAchvMsg = grantJobSkillUseAchievementsAllJobs(s.userName, s.roomName, s.achievedCmdSet, achvJobSkillRows);
+			String shopSellAchvMsg = grantShopSellAchievementsFast(s.userName, s.roomName, s.achievedCmdSet, achvSoldCount);
+			String potionAchvMsg   = grantPotionUseAchievements(s.userName, s.roomName, s.achievedCmdSet, achvPotionCount);
+			String buffAchvMsg     = grantSpecialBuffAchievements(s.userName, s.roomName, s.achievedCmdSet, achvBuffRows);
+			String achvRewardMsg   = grantAchievementBasedReward(s.userName, s.roomName, s.userAchvList);
+			String specialAchvMsg  = grantSpecialHistoricalAchievements(s.userName, s.roomName);
+
+			if (isAnyNonEmpty(killAchvMsg, itemAchvMsg, attackAchvMsg, jobSkillAchvMsg, shopSellAchvMsg, potionAchvMsg, achvRewardMsg, bagAchvMsg, specialAchvMsg, buffAchvMsg)) {
+				s.bonusMsg = NL + killAchvMsg + itemAchvMsg + attackAchvMsg + jobSkillAchvMsg
+						 + shopSellAchvMsg + potionAchvMsg + achvRewardMsg + bagAchvMsg + specialAchvMsg + buffAchvMsg;
+			}
+		}
+
+		s.bagDropMsg = tryDropBag(s.userName, s.roomName, s.m, s.nightmare, s.buff);
+		if (s.thiefDoubleAtk && s.m != null) {
+			String bag2 = tryDropBag(s.userName, s.roomName, s.m, s.nightmare, s.buff);
+			if (bag2 != null && !bag2.isEmpty())
+				s.bagDropMsg = (s.bagDropMsg == null || s.bagDropMsg.isEmpty()) ? bag2 : s.bagDropMsg + NL + bag2;
+		}
+	}
+
+	// ─ 15~16) 메시지 구성 + 포인트 ────────────────────────────────
+	private String ma_buildMessage(AttackSession s) {
+		StringBuilder mid    = new StringBuilder();
+		StringBuilder hunter = new StringBuilder();
+		StringBuilder bot    = new StringBuilder();
+
+		if (s.dmg.dmgCalcMsg != null && !s.dmg.dmgCalcMsg.isEmpty()) mid.append(s.dmg.dmgCalcMsg);
+		if (s.dmg.hunterMsg  != null && !s.dmg.hunterMsg.isEmpty())  hunter.append(s.dmg.hunterMsg);
+		if (s.dosabuffMsg    != null && !s.dosabuffMsg.isEmpty())     mid.append(NL).append(s.dosabuffMsg);
+		if (s.dosaCastMsg    != null && !s.dosaCastMsg.isEmpty())     bot.append(NL).append(s.dosaCastMsg);
+		if (s.thiefDoubleAtk && s.calc2 != null) {
+			bot.append(NL).append("⚔️2타 데미지: ").append(formatWan(s.calc2.atkDmg));
+			if (s.dmg2 != null && s.dmg2.flags != null && s.dmg2.flags.atkCrit) bot.append(" ✨크리!");
+		}
+		if (s.stealMsg != null && !s.stealMsg.isEmpty()) bot.append(NL).append(s.stealMsg);
+
+		String msg = buildAttackMessage(s.userName, s.u, s.m, s.flags, s.calc, s.res, s.up,
+				s.monHpRemainBefore, s.monMaxHp, s.effAtkMin, s.effAtkMax, s.hpMax,
+				mid.toString(), hunter.toString(), bot.toString(), s.nightmare, s.ctx);
+
+		if (!s.bonusMsg.isEmpty()) msg += s.bonusMsg;
+
+		String curSpStr = "";
+		try {
+			HashMap<String,Object> pointRow = botNewService.selectCurrentPoint(s.userName, s.roomName);
+			double cv = Double.parseDouble(Objects.toString(pointRow.get("SCORE"), "0"));
+			String  ce = Objects.toString(pointRow.get("SCORE_EXT"), "");
+			curSpStr = new SP(cv, ce).toString();
+		} catch (Exception ignore) {}
+
+		if (!s.stealPoint.isEmpty()) { msg += "✨추가획득" + s.stealPoint; if (!s.stealBonus.isEmpty()) msg += s.stealBonus; msg += NL; }
+		if (!s.newPoint.isEmpty())   { msg += "✨전투획득" + s.newPoint;   if (!s.newBonus.isEmpty())   msg += s.newBonus;   msg += NL; }
+		msg += "✨포인트: " + curSpStr;
+
+		if (s.bagDropMsg != null && !s.bagDropMsg.isEmpty()) msg += NL + s.bagDropMsg;
+		if (s.buff.started)                msg += NL + s.buff.startMsg;
+		else if (s.buff.runningMsg != null) msg += NL + s.buff.runningMsg;
+
+		try {
+			botNewService.execSPMsgTest(s.map);
+			msg += NL + Objects.toString(s.map.get("outMsg"), "");
+		} catch (Exception e) { e.printStackTrace(); }
+
+		return msg;
+	}
+
+	/** isAnyNonEmpty 헬퍼 */
+	private static boolean isAnyNonEmpty(String... strs) {
+		for (String s : strs) if (s != null && !s.isEmpty()) return true;
+		return false;
+	}
 	/** 기존 호환용 오버로드 — 보너스 설명 불필요한 호출에서 사용 */
 	public String baroSellItem(String dropName,Integer itemId,Resolve res,String userName,String roomName,UserBattleContext ctx,User u,String gainType,int qty,boolean nightmare) {
 	    return baroSellItem(dropName,itemId,res,userName,roomName,ctx,u,gainType,qty,nightmare,null);
