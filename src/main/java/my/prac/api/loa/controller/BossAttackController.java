@@ -3612,6 +3612,21 @@ public class BossAttackController {
 	    }
 	    
 
+	    // ===== [도적] 2타 사전 계산 =====
+	    boolean thiefDoubleAtk = false;
+	    DamageOutcome dmg2 = null;
+	    AttackCalc calc2 = null;
+	    if ("도적".equals(job) && !(m.monNo > 50)) {
+	        double dRate = 0.30 + ThreadLocalRandom.current().nextDouble() * 0.20; // 30~50%
+	        thiefDoubleAtk = ThreadLocalRandom.current().nextDouble() < dRate;
+	        if (thiefDoubleAtk) {
+	            Flags flags2tmp = rollFlags(u, m);
+	            dmg2 = calculateDamage(u, m, flags2tmp, effAtkMin, effAtkMax, critRate, critDmg,
+	                    berserkMul, monHpRemainBefore, hpMax, beforeJobSkillYn, nightmare);
+	            calc2 = dmg2.calc;
+	        }
+	    }
+
 	    // 12) 사망 처리
 	    int newHpPreview = Math.max(0, u.hpCur - calc.monDmg);
 	    
@@ -3670,13 +3685,11 @@ public class BossAttackController {
 	    	res.gainExp *= 3; 
 	    }
 	    
-	    // 도적: 훔치기
+	    // ===== [도적] 더블어택 + 스틸 =====
 	    String stealMsg = "";
 	    if ("도적".equals(job) && !(m.monNo > 50)) {
-	    	//TODO 도적 재편예정(더블어택으로)
-	        double stealRate = 0.40;
-
-	        if (ThreadLocalRandom.current().nextDouble() < stealRate) {
+	        // 1타 스틸 (50%)
+	        if (ThreadLocalRandom.current().nextDouble() < 0.50) {
 	            String dropName = (m.monDrop == null ? "" : m.monDrop.trim());
 	            if (!dropName.isEmpty()) {
 	                try {
@@ -3690,12 +3703,35 @@ public class BossAttackController {
 	                        inv.put("delYn", "1");
 	                        inv.put("gainType", "STEAL");
 	                        botNewService.insertInventoryLogTx(inv);
-	                        stealMsg = "✨ " + m.monName + "의 아이템을 훔쳤습니다! (" + dropName + "조각)";
+	                        stealMsg += "✨ [1타] " + m.monName + "의 아이템을 훔쳤습니다! (" + dropName + "조각)";
 	                        calc.jobSkillUsed = true;
 	                    }
 	                    String[] _sb1={""}; stealPoint+=" +"+baroSellItem(dropName,itemId,res,userName,roomName,ctx,u,"STEAL",1,nightmare,_sb1); stealBonus+=_sb1[0];
 	                } catch (Exception ignore) {}
-
+	            }
+	        }
+	        // 2타 스틸 (50%, 2타 발동 시)
+	        if (thiefDoubleAtk && calc2 != null) {
+	            if (ThreadLocalRandom.current().nextDouble() < 0.50) {
+	                String dropName = (m.monDrop == null ? "" : m.monDrop.trim());
+	                if (!dropName.isEmpty()) {
+	                    try {
+	                        Integer itemId = getItemIdCached(dropName);
+	                        if (itemId != null) {
+	                            HashMap<String, Object> inv = new HashMap<>();
+	                            inv.put("userName", userName);
+	                            inv.put("roomName", roomName);
+	                            inv.put("itemId", itemId);
+	                            inv.put("qty", 1);
+	                            inv.put("delYn", "1");
+	                            inv.put("gainType", "STEAL");
+	                            botNewService.insertInventoryLogTx(inv);
+	                            stealMsg += (stealMsg.isEmpty() ? "" : NL) + "✨ [2타] " + m.monName + "의 아이템을 훔쳤습니다! (" + dropName + "조각)";
+	                            calc2.jobSkillUsed = true;
+	                        }
+	                        String[] _sb2={""}; stealPoint+=" +"+baroSellItem(dropName,itemId,res,userName,roomName,ctx,u,"STEAL",1,nightmare,_sb2); stealBonus+=_sb2[0];
+	                    } catch (Exception ignore) {}
+	                }
 	            }
 	        }
 	    }
@@ -3790,6 +3826,33 @@ public class BossAttackController {
 	    int buffIng        = activeBuff != null ? 1 : 0;
 	    String buffCode    = activeBuff != null ? (String) activeBuff.get("FLAG_CODE") : null;
 	    LevelUpResult up = persist(userName, roomName, u, m, flags, calc, res, hpMax, nightmare, buffStart, buffIng, buffCode);
+	    // [도적] 2타 배틀로그 (PK 충돌 방지: shotIndex=1)
+	    if (thiefDoubleAtk && calc2 != null && m != null) {
+	        try {
+	            botNewService.insertBattleLogTx(new BattleLog()
+	                .setUserName(userName)
+	                .setRoomName(roomName)
+	                .setLv(up.beforeLv)
+	                .setTargetMonLv(m.monNo)
+	                .setGainExp(0)
+	                .setAtkDmg(calc2.atkDmg)
+	                .setMonDmg(0)
+	                .setAtkCritYn(dmg2.flags != null && dmg2.flags.atkCrit ? 1 : 0)
+	                .setMonPatten(0)
+	                .setKillYn(0)
+	                .setNowYn(1)
+	                .setDropYn(0)
+	                .setDeathYn(0)
+	                .setLuckyYn(0)
+	                .setJobSkillYn(calc2.jobSkillUsed ? 1 : 0)
+	                .setJob(job)
+	                .setNightmareYn(ctx.user.nightmareYn)
+	                .setSpecialBuffStart(0)
+	                .setSpecialBuffIng(buffIng)
+	                .setSpecialBuffCode(buffCode)
+	                .setShotIndex(1));
+	        } catch (Exception ignore) {}
+	    }
 	    String bonusMsg = "";
 	    String blessMsg = "";
 	    
@@ -3852,6 +3915,13 @@ public class BossAttackController {
 	               }
 	    }
 	    bagDropMsg = tryDropBag(userName, roomName, m, nightmare,buff);
+	    // [도적] 2타 가방 드락 추가 기회
+	    if (thiefDoubleAtk && m != null) {
+	        String bag2 = tryDropBag(userName, roomName, m, nightmare, buff);
+	        if (bag2 != null && !bag2.isEmpty()) {
+	            bagDropMsg = (bagDropMsg == null || bagDropMsg.isEmpty()) ? bag2 : bagDropMsg + NL + bag2;
+	        }
+	    }
 	    
 	    // 15) 메시지 구성
 	    int shownMin = effAtkMin;
@@ -3871,6 +3941,13 @@ public class BossAttackController {
 	    }
 	    if (dosaCastMsg != null && !dosaCastMsg.isEmpty()) {
 	        botExtra.append(NL).append(dosaCastMsg);
+	    }
+	    // [도적] 2타 데미지 표시
+	    if (thiefDoubleAtk && calc2 != null) {
+	        botExtra.append(NL).append("⚔2타 데미지: ").append(formatWan(calc2.atkDmg));
+	        if (dmg2 != null && dmg2.flags != null && dmg2.flags.atkCrit) {
+	            botExtra.append(" ✨크리!");
+	        }
 	    }
 	    if (stealMsg != null && !stealMsg.isEmpty()) {
 	        botExtra.append(NL).append(stealMsg);
