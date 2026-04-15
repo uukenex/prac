@@ -3042,10 +3042,10 @@ public class BossAttackController {
 		if (s.roomName.isEmpty() || s.userName.isEmpty())
 			return "방/유저 정보가 누락되었습니다.";
 
-		s.master = "람쾴봇 문의방".equals(s.roomName) && "일어난다람쾴/카단".equals(s.userName);
+		s.master = "람쥐봇 문의방".equals(s.roomName) && "일어난다람쥐/카단".equals(s.userName);
 		if (s.master) s.map.put("param1", "test");
 
-		if ("람쾴봇 문의방".equals(s.roomName) && !s.master)
+		if ("람쥐봇 문의방".equals(s.roomName) && !s.master)
 			return "문의방에서는 불가능합니다.";
 
 		HashMap<String,Object> lockParam = botNewService.lockMacroUser(s.userName);
@@ -3080,7 +3080,7 @@ public class BossAttackController {
 		double jobDmgMul  = 1.0;
 		int    jobBonusMin = 0, jobBonusMax = 0;
 		if      ("궁수".equals(s.job))   jobDmgMul = 3.0;
-		else if ("사낙꼼".equals(s.job))  jobDmgMul = 3.0;
+		else if ("사냥꾼".equals(s.job))  jobDmgMul = 3.0;
 		else if ("궁사".equals(s.job))   jobDmgMul = 1.0;
 		else if ("전사".equals(s.job))   jobDmgMul = 1.4;
 		else if ("검성".equals(s.job))   jobDmgMul = 2.2;
@@ -3187,7 +3187,7 @@ public class BossAttackController {
 		Monster m = s.m;
 		int levelGap = s.monLv - s.u.lv;
 		double darkRate = Math.max(0, levelGap / 100) * 0.20;
-		if ("어둡사낙꼼".equals(s.job)) darkRate += DARK_RATE_DARK;
+		if ("어둠사냥꾼".equals(s.job)) darkRate += DARK_RATE_DARK;
 		if ((!s.nightmare && s.killCountForThisMon   >= 350 && m.monNo >= 15) || (s.nightmare && s.nmKillCountForThisMon > 150 && m.monNo >= 15)) darkRate += 0.05;
 		if ((!s.nightmare && s.killCountForThisMon   >= 300 && m.monNo <  15) || (s.nightmare && s.nmKillCountForThisMon > 150 && m.monNo <  15)) darkRate += 0.10;
 		if (ThreadLocalRandom.current().nextDouble() < darkRate) s.dark = true;
@@ -3255,7 +3255,7 @@ public class BossAttackController {
 		if ("용사".equals(s.job)    && s.dark)              s.berserkMul = 1.5;
 		if ("처단자".equals(s.job)  && s.lucky)             s.berserkMul = 1.5;
 		if ("음양사".equals(s.job)  && (s.lucky || s.dark)) s.berserkMul = 1.5;
-		if ("어둑사낙꼼".equals(s.job) && s.dark)   s.berserkMul = 3.0;
+		if ("어둠사냥꾼".equals(s.job) && s.dark)   s.berserkMul = 3.0;
 		s.flags = rollFlags(s.u, s.m);
 	}
 
@@ -3410,7 +3410,7 @@ public class BossAttackController {
 	// ─ 13) 처치·드랍 판단 + 직업별 스킬 ─────────────────────────────
 	private void ma_resolveKillAndJobSkills(AttackSession s) {
 		s.res = resolveKillAndDrop(s.m, s.calc, s.willKill, s.u, s.lucky, s.dark, s.gray, s.ctx.user.nightmareYn);
-		if ("궁수".equals(s.u.job) || "사낙꼼".equals(s.u.job)) s.res.gainExp *= 3;
+		if ("궁수".equals(s.u.job) || "사냥꾼".equals(s.u.job)) s.res.gainExp *= 3;
 
 		// —— 도적: 더블어택 + 스틸 ——
 		if ("도적".equals(s.job) && !(s.m.monNo > 50)) {
@@ -3470,7 +3470,7 @@ public class BossAttackController {
 					botNewService.insertInventoryLogTx(buildStealInv(s.userName, s.roomName, id));
 					s.stealMsg += ThreadLocalRandom.current().nextDouble() < 0.5
 						? "✨ " + s.m.monName + "와  싸우던 마을주민에게서 약탈했다! (" + dn + "조각)"
-						: "✨ 초장 집에서 " + s.m.monName + "의 아이템을 발견했다! (" + dn + "조각)";
+						: "✨ 촌장 집에서 " + s.m.monName + "의 아이템을 발견했다! (" + dn + "조각)";
 					s.calc.jobSkillUsed = true;
 				}
 				String[] b={""}; s.stealPoint += " +" + baroSellItem(dn, id, s.res, s.userName, s.roomName, s.ctx, s.u, "STEAL", 1, s.nightmare, b); s.stealBonus += b[0];
