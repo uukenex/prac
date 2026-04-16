@@ -48,6 +48,15 @@
     .empty   { text-align: center; padding: 60px 0; color: #ccc; }
     .empty .ico { font-size: 34px; margin-bottom: 10px; }
     .loading { text-align: center; padding: 60px; color: #ccc; font-size: 15px; }
+
+    @media (max-width: 360px) {
+      .search-wrap   { min-width: 0; }
+      .job-grid      { grid-template-columns: 1fr; }
+      .job-card      { padding: 12px 12px 10px; }
+      .card-name     { font-size: 13px; }
+      .card-subtitle { font-size: 11px; margin-bottom: 7px; }
+      .skill-line    { font-size: 11px; }
+    }
   </style>
 </head>
 <body>

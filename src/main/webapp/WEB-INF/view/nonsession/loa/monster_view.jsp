@@ -139,6 +139,21 @@
     .diff-note { font-size: 12px; padding: 8px 14px; border-radius: 8px; margin-bottom: 14px; }
     .diff-note.nightmare { background: #f5eeff; color: #7d3c98; }
     .diff-note.hell      { background: #fff0f0; color: #a93226; }
+
+    @media (max-width: 360px) {
+      .search-wrap  { min-width: 0; }
+      .user-wrap input { width: 100px; font-size: 12px; padding: 8px 10px; }
+      .btn-query    { padding: 8px 12px; font-size: 12px; }
+      .user-panel   { padding: 10px 12px; gap: 8px; }
+      .up-lv-block  { min-width: 0; width: 100%; }
+      .up-lv-num    { font-size: 16px; }
+      .kill-summary { padding: 8px 12px; gap: 5px; }
+      .kill-chip    { font-size: 11px; padding: 3px 9px; }
+      .diff-tabs    { gap: 5px; }
+      .diff-tab     { padding: 6px 14px; font-size: 12px; }
+      .mon-grid     { grid-template-columns: 1fr; }
+      .mon-card     { padding: 12px 10px 10px; }
+    }
   </style>
 </head>
 <body>

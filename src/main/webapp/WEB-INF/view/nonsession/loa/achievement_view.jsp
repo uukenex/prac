@@ -80,6 +80,26 @@
                 color: #555; max-height: 320px; overflow-y: auto; line-height: 1.8; }
     .raw-list .rl-label { color: #3d2b1f; font-weight: 600; }
     .raw-list .rl-cmd   { color: #aaa; font-size: 10px; margin-left: 4px; }
+
+    @media (max-width: 360px) {
+      .user-wrap input { width: 110px; font-size: 12px; padding: 8px 10px; }
+      .btn-query { padding: 8px 12px; font-size: 12px; }
+      .achv-total  { font-size: 30px; padding: 12px; }
+      .card        { padding: 12px 10px; }
+      .card-title  { font-size: 12px; margin-bottom: 9px; }
+      .achv-grid   { grid-template-columns: 1fr 1fr; gap: 5px; }
+      .achv-item   { padding: 7px 8px; gap: 5px; }
+      .achv-icon   { font-size: 17px; }
+      .achv-name   { font-size: 10px; }
+      .achv-val    { font-size: 13px; }
+      .achv-sub    { font-size: 9px; }
+      .season-grid { grid-template-columns: 1fr 1fr; gap: 5px; }
+      .season-item { padding: 7px 8px; gap: 5px; }
+      .season-icon { font-size: 14px; }
+      .season-info .s-name { font-size: 10px; }
+      .season-info .s-val  { font-size: 12px; }
+      .season-info .s-sub  { font-size: 9px; }
+    }
   </style>
 </head>
 <body>

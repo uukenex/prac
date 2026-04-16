@@ -241,6 +241,7 @@ public class BossAttackS3Controller {
         String dmgMsg = "";
         String bossDefMsg = "";
         String hideMsg = "";
+        String windSlashMsg = "";
 
         if (!isEvade) {
             String atkRangeStr = "(" + (ctx.atkMin / 100) + "~" + (ctx.atkMax / 100) + ") ";
@@ -301,6 +302,16 @@ public class BossAttackS3Controller {
                 // 직업 추가 데미지: 상급악마(악마 속성)
                 if ("어둠사냥꾼".equals(ctx.job))      baseAtk = (int) Math.round(baseAtk * 2.0);
                 else if ("용사".equals(ctx.job)) baseAtk = (int) Math.round(baseAtk * 1.25);
+
+                // [검성] 바람가르기 (기본 6.5% + 7006 보유 시 +15%)
+                if ("검성".equals(ctx.job)) {
+                    double windProb = 0.065 + (ownedBoss.contains(7006) ? 0.15 : 0.0);
+                    if (Math.random() < windProb) {
+                        windSlashMsg = "[바람가르기] " + baseAtk + "→";
+                        baseAtk = (int) Math.round(baseAtk * 4);
+                        windSlashMsg += baseAtk + " (4배 데미지!)" + NL;
+                    }
+                }
 
                 if (heavensPunishment) {
                     isCritical = true; isSuperCritical = true;
@@ -468,6 +479,7 @@ public class BossAttackS3Controller {
         if (!isEvade) {
             msg.append("▶ 입힌 데미지: ").append(damage).append(NL);
             msg.append(dmgMsg).append(NL);
+            if (!windSlashMsg.isEmpty()) msg.append(windSlashMsg);
             if (thiefHit2) {
                 msg.append("⚔ 2타 데미지: ").append(damage2).append(NL);
                 msg.append(dmgMsg2).append(NL);
