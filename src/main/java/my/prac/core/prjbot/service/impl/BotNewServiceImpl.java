@@ -529,6 +529,26 @@ public class BotNewServiceImpl implements BotNewService {
     }
 
     @Override
+    public List<HashMap<String, Object>> selectHellRewardItemsWithOwnCount() {
+        return botNewDAO.selectHellRewardItemsWithOwnCount();
+    }
+
+    @Override
+    public List<Integer> selectBossItemIds() {
+        return botNewDAO.selectItemIdsByType("BOSS_HELL");
+    }
+
+    @Override
+    public void insertGpRecord(HashMap<String, Object> param) {
+        botNewDAO.insertGpRecord(param);
+    }
+
+    @Override
+    public int selectGpBalance(String userName) {
+        return botNewDAO.selectGpBalance(userName);
+    }
+
+    @Override
     public HashMap<String, Object> lockMacroUser(String userName) {
     	HashMap <String, Object> param = new HashMap<>();
         param.put("userName", userName);
