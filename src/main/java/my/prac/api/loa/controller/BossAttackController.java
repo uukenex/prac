@@ -1487,7 +1487,10 @@ public class BossAttackController {
 	    Map<Integer, Monster> monMap = MiniGameUtil.MONSTER_CACHE;
 
 	    Monster target = (u.targetMon > 0) ? monMap.get(u.targetMon) : null;
-	    String targetName = (target == null) ? "-" : target.monName;
+	    String targetName;
+	    if (u.targetMon == 99)       targetName = "상급악마 (헬보스)";
+	    else if (target == null)     targetName = "-";
+	    else                         targetName = target.monName;
 
 	    
 	    List<HashMap<String, Object>> bag = botNewService.selectInventorySummaryAll(ctx.targetUser, ctx.roomName);
@@ -2004,10 +2007,14 @@ public class BossAttackController {
 			}
 		}
 
-		// 헬보스(상급악마) 타겟 설정: 헬모드 전용
+		// 헬보스(상급악마) 타겟 설정: 헬모드 전용, 곰 불가
 		if ("99".equals(input) || "보스".equals(input) || "상급악마".equals(input)) {
 		    if (nightmareYnVal != 2)
 		        return userName + "님, [상급악마]는 헬모드 유저만 타겟으로 설정할 수 있습니다.";
+		    User uForJob = botNewService.selectUser(userName, roomName);
+		    String jobVal = (uForJob != null && uForJob.job != null) ? uForJob.job.trim() : "";
+		    if ("곰".equals(jobVal))
+		        return userName + "님, [곰]은 상급악마를 공격할 수 없습니다.";
 		    botNewService.closeOngoingBattleTx(userName, roomName);
 		    botNewService.updateUserTargetMonTx(userName, roomName, 99);
 		    return userName + "님, 공격 타겟을 [상급악마](MON_NO=99) 으로 설정했습니다." + NL
@@ -3249,7 +3256,8 @@ public class BossAttackController {
 		Timestamp cachedLastAtk = (s.cachedAds != null) ? s.cachedAds.lastAttackTime : null;
 		s.cdJob = (s.cachedAds != null && s.cachedAds.lastAttackJob != null) ? s.cachedAds.lastAttackJob : s.job;
 
-		CooldownCheck cd = checkCooldown(s.userName, s.roomName, s.param1, s.cdJob, s.cooldownBuff, cachedLastAtk);
+		int itemCdReduction = s.ctx.ownedBossItems.contains(7004) ? 20 : 0; // [7004] 쿨타임 20초 감소
+		CooldownCheck cd = checkCooldown(s.userName, s.roomName, s.param1, s.cdJob, s.cooldownBuff, cachedLastAtk, itemCdReduction);
 		if (!cd.ok) {
 			long min = cd.remainSeconds / 60;
 			long sec = cd.remainSeconds % 60;
@@ -3261,7 +3269,10 @@ public class BossAttackController {
 				: computeEffectiveHpFromLastAttack(s.userName, s.roomName, s.u, s.hpMax, s.regen, cachedLastAtk);
 		s.u.hpCur = effectiveHp;
 
-		if (s.u.targetMon == 99) return bossAttackS3Controller.attackBossS3(s.map, s.ctx);
+		if (s.u.targetMon == 99) {
+			if ("곰".equals(s.job)) return s.userName + "님, [곰]은 상급악마를 공격할 수 없습니다.";
+			return bossAttackS3Controller.attackBossS3(s.map, s.ctx);
+		}
 
 		s.userAchvList = botNewService.selectAchvCountsGlobal(s.userName, s.roomName);
 		if (s.userAchvList != null) {
@@ -5265,11 +5276,16 @@ public class BossAttackController {
 	}
 	
 	private CooldownCheck checkCooldown(String userName, String roomName, String param1, String job, int buffTime) {
-	    return checkCooldown(userName, roomName, param1, job, buffTime, null);
+	    return checkCooldown(userName, roomName, param1, job, buffTime, null, 0);
+	}
+
+	private CooldownCheck checkCooldown(String userName, String roomName, String param1, String job, int buffTime, Timestamp cachedLastAtk) {
+	    return checkCooldown(userName, roomName, param1, job, buffTime, cachedLastAtk, 0);
 	}
 
 	// [FIX1] cachedLastAtk 가 null 이 아니면 DB 조회 생략
-	private CooldownCheck checkCooldown(String userName, String roomName, String param1, String job, int buffTime, Timestamp cachedLastAtk) {
+	// itemCdReduction: 보스 아이템(7004 등)에 의한 추가 쿨타임 감소(초)
+	private CooldownCheck checkCooldown(String userName, String roomName, String param1, String job, int buffTime, Timestamp cachedLastAtk, int itemCdReduction) {
 	    if ("test".equals(param1)) return CooldownCheck.ok();
 
 	    int baseCd = COOLDOWN_SECONDS; // 2분
@@ -5283,14 +5299,16 @@ public class BossAttackController {
 	    if ("사냥꾼".equals(job)) {
 	    	baseCd = 10 * 60; // 10분
 	    }
-	    
+
 	    if (buffTime > 0) {
 	    	baseCd -= 1 * 60;
 	    } else if (buffTime < 0) {
 	    	baseCd = baseCd / 2; // 쿨타임감소 버프: 50% 감소
 	    }
 
-	    
+	    if (itemCdReduction > 0) {
+	        baseCd = Math.max(10, baseCd - itemCdReduction); // [7004] 아이템 쿨타임 감소 (최소 10초)
+	    }
 
 	    Timestamp last = (cachedLastAtk != null) ? cachedLastAtk : botNewService.selectLastAttackTime(userName, roomName);
 	    if (last == null) return CooldownCheck.ok();
@@ -7674,6 +7692,14 @@ public class BossAttackController {
 		            }
 		        }
 		    }
+	        // [7005] 가시갑옷: 받은 피해의 10% 반사
+	        if (ownedBossItems.contains(7005) && calc.monDmg > 0) {
+	            int reflect = Math.max(1, (int)Math.round(calc.monDmg * 0.10));
+	            calc.atkDmg += reflect;
+	            String baseMsg7005 = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
+	            calc.patternMsg = baseMsg7005 + "[가시갑옷] " + reflect + " 반사!";
+	        }
+
 	     // 몬스터 공격 변동 처리 (회피 / 증폭)
 	        if ("도박사".equals(u.job)) {
 		        if (calc.monDmg > 0 ) {

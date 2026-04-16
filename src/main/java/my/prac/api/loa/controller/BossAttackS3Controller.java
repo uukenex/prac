@@ -24,7 +24,6 @@ import my.prac.core.game.dto.UserBattleContext;
 import my.prac.core.prjbot.service.BotNewService;
 import my.prac.core.util.SP;
 import my.prac.core.prjbot.service.BotS3Service;
-import my.prac.core.prjbot.service.BotService;
 
 /**
  * [시즌3] 헬모드 전용 보스 컨트롤러
@@ -82,7 +81,6 @@ public class BossAttackS3Controller {
     /* ===== DI ===== */
     @Autowired BossAttackController bossAttackController;
     @Resource(name = "core.prjbot.BotNewService") BotNewService botNewService;
-    @Resource(name = "core.prjbot.BotService")    BotService    botService;   // 직접 호출 시 쿨타임용
     @Resource(name = "core.prjbot.BotS3Service")  BotS3Service  botS3Service;
 
 
@@ -120,15 +118,7 @@ public class BossAttackS3Controller {
             return userName + "님," + NL + "헬모드 유저만 도전 가능한 보스입니다.";
         }
 
-        // 3. 쿨타임 체크 (15초)
-        map.put("timeDelay", 15);
-        map.put("timeDelayMsg", "");
-        String cooldown = botService.selectHourCheck(map);
-        if (cooldown != null) {
-            return userName + "님," + NL + cooldown + " 이후 재시도 가능합니다.";
-        }
-
-        // 4. 유저 전투 컨텍스트 (S2 스탯 기반)
+        // 3. 유저 전투 컨텍스트 (S2 calcUserBattleContext 재사용)
         map.put("param0", "/ㄱ");
         map.put("param1", "");
         UserBattleContext ctx = bossAttackController.calcUserBattleContext(map);
@@ -254,7 +244,8 @@ public class BossAttackS3Controller {
 
         if (!isEvade) {
             String atkRangeStr = "(" + (ctx.atkMin / 100) + "~" + (ctx.atkMax / 100) + ") ";
-            int totalCritPercent = ctx.crit - critDefRate;
+            // 보스 기본 크리율 10% 고정 (S2 크리율 미적용), 초강력치명타는 크리 발동 시 10% 확률
+            int totalCritPercent = Math.max(0, 10 - critDefRate);
 
             // HIDE_RULE: 특정 시간대 치명타 불가 (천벌/디버프 중엔 무시)
             hideMsg = applyHideRule(hideRule, heavensPunishment || flag_boss_debuff);
@@ -364,7 +355,7 @@ public class BossAttackS3Controller {
             // 직업 추가 데미지 (2타)
             if ("어둠사냥꾼".equals(ctx.job))      baseAtk2 = (int) Math.round(baseAtk2 * 2.0);
             else if ("용사".equals(ctx.job)) baseAtk2 = (int) Math.round(baseAtk2 * 1.25);
-            int totalCrit2 = ctx.crit - critDefRate;
+            int totalCrit2 = Math.max(0, 10 - critDefRate); // 보스 기본 크리율 10% 고정
             isCritical2 = totalCrit2 > 0 && Math.random() < totalCrit2 / 100.0;
             if (isCritical2) isSuperCritical2 = Math.random() < 0.10;
             double critMul2 = Math.max(1.0, ctx.critDmg / 100.0);
@@ -387,7 +378,7 @@ public class BossAttackS3Controller {
         }
         long totalDamage = damage + damage2;
 
-        // HP 차감: SP.subtract → 단위 자동 변환 (예: 3b - 16.8a = 2.99832b)
+        // HP 차감 (1차)
         SP newHpSp = isEvade || totalDamage <= 0
                 ? SP.of(curHpNum, curHpExt)
                 : SP.of(curHpNum, curHpExt).subtract(SP.fromSp(totalDamage));
@@ -400,6 +391,18 @@ public class BossAttackS3Controller {
         if (flag_boss_attack) {
             int atkPct = ThreadLocalRandom.current().nextInt(BOSS_ATK_POWER_MIN, bossAtkPower + 1);
             bossAtkApplied = Math.max(1, (int)(ctx.hpMax * atkPct / 100.0));
+        }
+
+        // [7005] 가시갑옷: 받은 피해의 10% 반사 → totalDamage에 추가 후 HP 재계산
+        int reflectDmg = 0;
+        String reflectMsg = "";
+        if (ownedBoss.contains(7005) && bossAtkApplied > 0 && !isEvade) {
+            reflectDmg = Math.max(1, (int)Math.round(bossAtkApplied * 0.10));
+            totalDamage += reflectDmg;
+            newHpSp = SP.of(curHpNum, curHpExt).subtract(SP.fromSp(totalDamage));
+            isKill = SP.toBaseValue(newHpSp) <= 0;
+            newHp = isKill ? 0 : SP.toBaseValue(newHpSp);
+            reflectMsg = "[가시갑옷] 반사 +" + reflectDmg + "!" + NL;
         }
 
         // DB 저장 (HP 업데이트 + 배틀 로그)
@@ -471,6 +474,7 @@ public class BossAttackS3Controller {
                 if (!bossDefMsg2.isEmpty()) msg.append(bossDefMsg2);
             }
             if (!hideMsg.isEmpty())     msg.append(hideMsg);
+            if (!reflectMsg.isEmpty())  msg.append(reflectMsg);
             if (!spRewardMsg.isEmpty()) msg.append(spRewardMsg);
             if (!hellAchvMsg.isEmpty()) msg.append(hellAchvMsg);
             if (!punishMsg.isEmpty())   msg.append(punishMsg);

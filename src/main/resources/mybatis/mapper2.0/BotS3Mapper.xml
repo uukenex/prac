@@ -220,12 +220,19 @@
 		SELECT SEQ
 		     , MAX_HP
 		     , MAX_HP_EXT
-		     , to_char(INSERT_DATE, 'yyyymmdd hh24miss') AS START_DATE
-		     , to_char(PROC_DATE,   'yyyymmdd hh24miss') AS END_DATE
-		  FROM TBOT_POINT_NEW_BOSS
-		 WHERE END_YN = '1'
-		   AND ROWNUM = 1
-		 ORDER BY PROC_DATE DESC
+		     , START_DATE
+		     , END_DATE
+		  FROM (
+		    SELECT SEQ
+		         , MAX_HP
+		         , MAX_HP_EXT
+		         , to_char(INSERT_DATE, 'yyyymmdd hh24miss') AS START_DATE
+		         , to_char(PROC_DATE,   'yyyymmdd hh24miss') AS END_DATE
+		      FROM TBOT_POINT_NEW_BOSS
+		     WHERE END_YN = '1'
+		     ORDER BY PROC_DATE DESC
+		  )
+		 WHERE ROWNUM = 1
 	</select>
 
 	<!-- =====================================================
@@ -234,12 +241,16 @@
 	<select id="selectLastHellRewardRecipient" resultType="HashMap">
 		SELECT USER_NAME
 		     , ITEM_ID
-		     , to_char(INSERT_DATE, 'mm/dd hh24:mi') AS REWARD_DATE
-		  FROM TBOT_POINT_NEW_INVENTORY
-		 WHERE GAIN_TYPE          = 'BOSS_HELL'
-		   AND NVL(DEL_YN, '0')   = '0'
-		   AND ROWNUM              = 1
-		 ORDER BY INSERT_DATE DESC
+		     , REWARD_DATE
+		  FROM (
+		    SELECT USER_NAME
+		         , ITEM_ID
+		         , to_char(INSERT_DATE, 'mm/dd hh24:mi') AS REWARD_DATE
+		      FROM TBOT_POINT_NEW_INVENTORY
+		     WHERE GAIN_TYPE        = 'BOSS_HELL'
+		     ORDER BY INSERT_DATE DESC
+		  )
+		 WHERE ROWNUM = 1
 	</select>
 
 </mapper>
