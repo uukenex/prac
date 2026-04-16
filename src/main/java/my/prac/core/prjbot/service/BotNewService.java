@@ -162,6 +162,10 @@ public interface BotNewService {
     public boolean isHellUnlocked(String userName);
     HashMap<String,Object> selectHeavenItemBuff(String userName);
     List<Integer> selectItemIdsByType(String itemType);
+    List<HashMap<String, Object>> selectHellRewardItemsWithOwnCount();
+    void insertGpRecord(HashMap<String, Object> param);
+    int selectGpBalance(String userName);
+    List<Integer> selectBossItemIds();
     
     HashMap<String,Object> lockMacroUser(String userName);
     

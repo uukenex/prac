@@ -529,6 +529,33 @@
       (#{userName}, #{roomName}, #{score},#{scoreExt}, SYSDATE, #{cmd}, '1')
   </insert>
 
+  <!-- GP(new_yn='2') 기록 삽입 -->
+  <insert id="insertGpRecord" parameterType="hashmap">
+    /* insertGpRecord */
+    INSERT INTO TBOT_POINT_RANK
+      (USER_NAME, ROOM_NAME, SCORE, SCORE_EXT, INSERT_DATE, CMD, NEW_YN)
+    VALUES
+      (#{userName}, #{roomName}, #{score}, NULL, SYSDATE, #{cmd}, '2')
+  </insert>
+
+  <!-- GP 잔액 조회 (new_yn='2' 합계) -->
+  <select id="selectGpBalance" parameterType="string" resultType="int">
+    /* selectGpBalance */
+    SELECT NVL(SUM(SCORE), 0)
+    FROM TBOT_POINT_RANK
+    WHERE USER_NAME = #{userName}
+      AND NEW_YN = '2'
+  </select>
+
+  <!-- 보스 뽑기용 7000번대 아이템 ID 목록 -->
+  <select id="selectBossItemIds" resultType="int">
+    /* selectBossItemIds */
+    SELECT ITEM_ID
+    FROM TBOT_POINT_NEW_ITEM
+    WHERE ITEM_ID >= 7000 AND ITEM_ID < 8000
+    ORDER BY ITEM_ID
+  </select>
+
   <select id="selectItemPriceByName" parameterType="string" resultType="int">
     /* selectItemPriceByName */
     SELECT item_sell_price
@@ -1590,6 +1617,18 @@
 		ORDER BY ITEM_ID
 	</select>
 
+	<!-- 헬보스 보상 아이템 전체소유자수 포함 조회 (미발견 우선 지급용) -->
+	<select id="selectHellRewardItemsWithOwnCount" resultType="map">
+		/* selectHellRewardItemsWithOwnCount */
+		SELECT
+		    i.ITEM_ID,
+		    (SELECT COUNT(*) FROM TBOT_POINT_NEW_INVENTORY g
+		     WHERE g.ITEM_ID = i.ITEM_ID AND NVL(g.DEL_YN,'0') = '0' AND NVL(g.QTY,0) > 0) AS GLOBAL_OWN_CNT
+		FROM TBOT_POINT_NEW_ITEM i
+		WHERE i.ITEM_TYPE = 'BOSS_HELL'
+		ORDER BY GLOBAL_OWN_CNT ASC, i.ITEM_ID ASC
+	</select>
+
 	<update id="updateNightmareYn" parameterType="map">
 	    /* updateNightmareYn */
 	    UPDATE TBOT_POINT_NEW_USER
@@ -1750,7 +1789,12 @@
 		    NVL(i.ATK_MAX_RATE, 0) AS ATK_MAX_RATE,
 		    NVL(inv.OWN_QTY, 0) AS OWN_QTY,
 		    CASE WHEN NVL(inv.OWN_QTY, 0) > 0 THEN 'Y' ELSE 'N' END AS OWNED_YN,
-		    NVL(i.TARGET_LV, 0) AS TARGET_LV
+		    NVL(i.TARGET_LV, 0) AS TARGET_LV,
+		    NVL(i.ITEM_DESC, '') AS ITEM_DESC,
+		    (SELECT COUNT(*) FROM TBOT_POINT_NEW_INVENTORY g
+		     WHERE g.ITEM_ID = i.ITEM_ID AND NVL(g.DEL_YN,'0') = '0' AND NVL(g.QTY,0) > 0) AS GLOBAL_OWN_CNT,
+		    (SELECT COUNT(*) FROM TBOT_POINT_NEW_INVENTORY g
+		     WHERE g.ITEM_ID = i.ITEM_ID) AS EVER_OBTAINED_CNT
 		FROM TBOT_POINT_NEW_ITEM i
 		LEFT JOIN (
 		    SELECT ITEM_ID, SUM(QTY) AS OWN_QTY

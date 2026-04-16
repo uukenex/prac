@@ -66,8 +66,17 @@
     .card-formula { font-size: 11px; color: #9c7c3a; background: #fffaee; border-radius: 6px; padding: 4px 8px; margin-top: 7px; line-height: 1.5; }
     .formula-lbl  { color: #bbb; font-size: 10px; display: block; margin-bottom: 1px; }
     .card-lv      { display: inline-block; font-size: 10px; color: #e07a5f; background: #fff3f0; border-radius: 6px; padding: 2px 7px; margin-top: 5px; }
+    .card-desc    { font-size: 11px; color: #7a6652; background: #fdf8f2; border-radius: 6px; padding: 5px 8px; margin-top: 7px; line-height: 1.55; border-left: 3px solid #e8c98a; }
     .btn-sort     { padding: 4px 13px; border-radius: 16px; border: 1.5px solid #e0d9ce; background: #fff; color: #888; font-size: 12px; cursor: pointer; transition: all .15s; display: flex; align-items: center; gap: 4px; }
     .btn-sort:hover { border-color: #c9a96e; color: #c9a96e; }
+
+    /* blur: 아무도 소유하지 않은 보스/업적/유물 아이템 */
+    .card-blurred .card-name,
+    .card-blurred .card-stats,
+    .card-blurred .card-price,
+    .card-blurred .card-lv     { filter: blur(4px); user-select: none; }
+    .card-blurred .blur-hint   { display: block; }
+    .blur-hint { display: none; font-size: 10px; color: #bbb; margin-top: 6px; text-align: center; }
 
     .empty   { text-align: center; padding: 60px 0; color: #ccc; }
     .empty .ico { font-size: 34px; margin-bottom: 10px; }
@@ -126,12 +135,12 @@
 
   <div class="item-grid" v-else-if="filteredItems.length > 0">
     <div class="item-card" v-for="item in filteredItems" :key="item.ITEM_ID"
-         :class="{owned: item.OWNED_YN === 'Y'}">
+         :class="{owned: item.OWNED_YN === 'Y', 'card-blurred': isBlurred(item)}">
       <span class="card-badge badge-owned" v-if="searchedUser && item.OWNED_YN === 'Y'">보유</span>
       <span class="card-badge badge-no"    v-else-if="searchedUser">미보유</span>
       <div class="card-icon">{{ item._cat.icon }}</div>
       <div class="card-id">#{{ item.ITEM_ID }}</div>
-      <div class="card-name">{{ item.ITEM_NAME }}</div>
+      <div class="card-name">{{ isBlurred(item) ? '???' : item.ITEM_NAME }}</div>
       <!-- 포션: 공식 표시 / 그 외: 고정가 표시 -->
       <template v-if="potionFormulas[String(item.ITEM_ID)]">
         <div class="card-formula">
@@ -155,7 +164,9 @@
         <div class="stat-line" v-if="item.ATK_MAX_RATE > 0"><span>공격력%</span><span>+{{ item.ATK_MAX_RATE }}%</span></div>
       </div>
       <div class="card-lv" v-if="item.TARGET_LV > 0">🔒 Lv.{{ item.TARGET_LV }} 이상</div>
+      <div class="card-desc" v-if="isBossItem(item) && !isBlurred(item) && item.ITEM_DESC">{{ item.ITEM_DESC }}</div>
       <div class="card-qty" v-if="item.OWN_QTY > 0">📦 보유 {{ item.OWN_QTY }}개</div>
+      <span class="blur-hint">🔒 미발견 아이템</span>
     </div>
   </div>
 
@@ -180,8 +191,9 @@
     { label: '날개',    icon: '🪽',  order:  8, test: function(id)       { var b=id%1000; return b>=800&&b<900; } },
     { label: '선물',    icon: '🎁',  order:  9, test: function(id)       { var b=id%1000; return b>=900&&b<1000; } },
     { label: '소모품',  icon: '🧪',  order: 10, test: function(id, type) { return type==='POTION'; } },
-    { label: '업적',    icon: '🏆',  order: 11, test: function(id)       { return id>=8000&&id<9000; } },
-    { label: '유물',    icon: '🏺',  order: 12, test: function(id)       { return id>=9000; } }
+    { label: '보스',    icon: '👹',  order: 11, test: function(id)       { return id>=7000&&id<8000; } },
+    { label: '업적',    icon: '🏆',  order: 12, test: function(id)       { return id>=8000&&id<9000; } },
+    { label: '유물',    icon: '🏺',  order: 13, test: function(id)       { return id>=9000; } }
   ];
 
   function getCategory(itemId, itemType) {
@@ -240,6 +252,16 @@
     methods: {
       toggleSort: function() {
         this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
+      },
+      isBossItem: function(item) {
+        var id = parseInt(item.ITEM_ID);
+        return id >= 7000 && id < 8000;
+      },
+      isBlurred: function(item) {
+        var id = parseInt(item.ITEM_ID);
+        if (id < 7000) return false;
+        // 한 번이라도 획득 이력이 있으면 blur 해제 (판매 후에도 유지)
+        return !item.EVER_OBTAINED_CNT || parseInt(item.EVER_OBTAINED_CNT) === 0;
       },
       hasStats: function(item) {
         return item.ATK_MIN>0||item.ATK_MAX>0||item.ATK_CRI>0
