@@ -75,7 +75,8 @@ public class BossAttackS3Controller {
                 if (ids != null && !ids.isEmpty()) hellRewardItemsCache = ids;
             } catch (Exception ignore) {}
         }
-        return hellRewardItemsCache != null ? hellRewardItemsCache : Arrays.asList(7001, 7002, 7003);
+        return hellRewardItemsCache != null ? hellRewardItemsCache
+                : Arrays.asList(7001, 7002, 7003, 7004, 7005, 7006, 7007, 7008, 7009, 7010);
     }
 
     /* ===== DI ===== */
@@ -208,15 +209,9 @@ public class BossAttackS3Controller {
             } catch (Exception ignored) {}
         }
 
-        // 천벌 아이템(BOSS_HELL 타입) 보유 여부 확인
-        boolean hasHeavenItem = false;
-        try {
-            List<Integer> hellIds = getHellRewardItems();
-            List<Integer> owned = botNewService.selectInventoryItemsByIds(userName, roomName, hellIds);
-            hasHeavenItem = owned != null && !owned.isEmpty();
-        } catch (Exception e) {
-            // 조회 실패 시 미보유 처리
-        }
+        // 보스 아이템 보유 여부: calcUserBattleContext에서 이미 로드된 ctx.ownedBossItems 재사용
+        Set<Integer> ownedBoss = ctx.ownedBossItems;
+        boolean hasHeavenItem = ownedBoss.contains(7001); // 7001: 천벌 발동
 
         Random rand = new Random();
 
@@ -258,41 +253,86 @@ public class BossAttackS3Controller {
         String hideMsg = "";
 
         if (!isEvade) {
-            int baseAtk = (ctx.atkMin + rand.nextInt(Math.max(1, ctx.atkMax - ctx.atkMin + 1))) / 100;
-            if (baseAtk < 1) baseAtk = 1;
             String atkRangeStr = "(" + (ctx.atkMin / 100) + "~" + (ctx.atkMax / 100) + ") ";
-
             int totalCritPercent = ctx.crit - critDefRate;
-
-            // 직업 추가 데미지: 상급악마(악마 속성)
-            if ("어둠사냥꾼".equals(ctx.job))      baseAtk = (int) Math.round(baseAtk * 2.0);
-            else if ("용사".equals(ctx.job)) baseAtk = (int) Math.round(baseAtk * 1.25);
-
-            if (heavensPunishment) {
-                isCritical = true; isSuperCritical = true;
-            } else {
-                isCritical = totalCritPercent > 0 && Math.random() < totalCritPercent / 100.0;
-                if (isCritical) isSuperCritical = Math.random() < 0.10;
-            }
 
             // HIDE_RULE: 특정 시간대 치명타 불가 (천벌/디버프 중엔 무시)
             hideMsg = applyHideRule(hideRule, heavensPunishment || flag_boss_debuff);
-            if (!hideMsg.isEmpty()) {
-                isCritical = false;
-                isSuperCritical = false;
-            }
 
             double critMultiplier = Math.max(1.0, ctx.critDmg / 100.0);
 
-            if (isSuperCritical) {
-                damage = (long)(baseAtk * 3 * critMultiplier);
-                dmgMsg = "[✨초강력 치명타!!] " + atkRangeStr + baseAtk + " → " + damage;
-            } else if (isCritical) {
-                damage = (long)(baseAtk * critMultiplier);
-                dmgMsg = "[✨치명타!] " + atkRangeStr + baseAtk + " → " + damage;
+            if ("궁사".equals(ctx.job)) {
+                // [궁사] 연사 로직 (S2와 동일 구조)
+                int range = Math.max(0, ctx.atkMax - ctx.atkMin);
+                double rangeRatio = ctx.atkMax > 0 ? (double) range / ctx.atkMax : 0.0;
+                int hitCount;
+                if      (rangeRatio >= 0.50) hitCount = 5;
+                else if (rangeRatio >= 0.30) hitCount = 4;
+                else if (rangeRatio >= 0.10) hitCount = 3;
+                else                         hitCount = 2;
+                if (ownedBoss.contains(7003)) hitCount = Math.min(hitCount + 1, 6); // [7003] 연사수 +1
+
+                int remainCrit = Math.max(0, heavensPunishment ? 100 : totalCritPercent);
+                double perHitRate = hitCount > 1 ? Math.min(80.0, (double) remainCrit / (hitCount - 1)) : 0.0;
+
+                long totalMultiDmg = 0;
+                boolean allCrit = true;
+                StringBuilder multiMsg = new StringBuilder();
+                multiMsg.append("궁사의 연사 발동! ").append(hitCount).append("연사").append(NL);
+
+                for (int i = 1; i <= hitCount; i++) {
+                    int shotAtk = (ctx.atkMin + rand.nextInt(Math.max(1, ctx.atkMax - ctx.atkMin + 1))) / 100;
+                    if (shotAtk < 1) shotAtk = 1;
+                    shotAtk = (int) Math.round(shotAtk * 0.7);
+                    boolean shotCrit = (i == 1) || (!hideMsg.isEmpty() ? false : ThreadLocalRandom.current().nextInt(0, 101) <= perHitRate);
+                    long shotDmg = shotCrit ? (long)(shotAtk * critMultiplier * 0.70) : shotAtk;
+                    totalMultiDmg += shotDmg;
+                    if (!shotCrit) allCrit = false;
+                    multiMsg.append(i).append("타: ").append(shotDmg);
+                    if (shotCrit) multiMsg.append(" (치명!)");
+                    multiMsg.append(NL);
+                }
+                if (allCrit) {
+                    long before = totalMultiDmg;
+                    totalMultiDmg = (long)(totalMultiDmg * 1.3);
+                    multiMsg.append("ALL 치명! ").append(before).append(" → ").append(totalMultiDmg).append(" (+30%)").append(NL);
+                } else {
+                    multiMsg.append("총합 데미지: ").append(totalMultiDmg).append("!").append(NL);
+                }
+                isCritical = allCrit;
+                damage = totalMultiDmg;
+                dmgMsg = atkRangeStr + multiMsg;
             } else {
-                damage = baseAtk;
-                dmgMsg = atkRangeStr + baseAtk + " 로 공격!";
+                // 일반 단타 로직
+                int baseAtk = (ctx.atkMin + rand.nextInt(Math.max(1, ctx.atkMax - ctx.atkMin + 1))) / 100;
+                if (baseAtk < 1) baseAtk = 1;
+
+                // 직업 추가 데미지: 상급악마(악마 속성)
+                if ("어둠사냥꾼".equals(ctx.job))      baseAtk = (int) Math.round(baseAtk * 2.0);
+                else if ("용사".equals(ctx.job)) baseAtk = (int) Math.round(baseAtk * 1.25);
+
+                if (heavensPunishment) {
+                    isCritical = true; isSuperCritical = true;
+                } else {
+                    isCritical = totalCritPercent > 0 && Math.random() < totalCritPercent / 100.0;
+                    if (isCritical) isSuperCritical = Math.random() < 0.10;
+                }
+
+                if (!hideMsg.isEmpty()) {
+                    isCritical = false;
+                    isSuperCritical = false;
+                }
+
+                if (isSuperCritical) {
+                    damage = (long)(baseAtk * 3 * critMultiplier);
+                    dmgMsg = "[✨초강력 치명타!!] " + atkRangeStr + baseAtk + " → " + damage;
+                } else if (isCritical) {
+                    damage = (long)(baseAtk * critMultiplier);
+                    dmgMsg = "[✨치명타!] " + atkRangeStr + baseAtk + " → " + damage;
+                } else {
+                    damage = baseAtk;
+                    dmgMsg = atkRangeStr + baseAtk + " 로 공격!";
+                }
             }
 
             // 천벌 디버프 상태이면 데미지 2배
@@ -310,12 +350,13 @@ public class BossAttackS3Controller {
             }
         }
 
-        // [도적] 2타 계산 (20% 확률, 회피 시 발동 안함, 드랍 없음)
+        // [도적] 2타 계산 (기본 20% / 7002 보유 시 35% 확률, 회피 시 발동 안함)
         long damage2 = 0;
         boolean thiefHit2 = false;
         String dmgMsg2 = "", bossDefMsg2 = "";
         boolean isCritical2 = false, isSuperCritical2 = false;
-        if (!isEvade && "도적".equals(ctx.job) && Math.random() < 0.20) {
+        double thiefProb = ownedBoss.contains(7002) ? 0.35 : 0.20;
+        if (!isEvade && "도적".equals(ctx.job) && Math.random() < thiefProb) {
             thiefHit2 = true;
             int baseAtk2 = (ctx.atkMin + rand.nextInt(Math.max(1, ctx.atkMax - ctx.atkMin + 1))) / 100;
             if (baseAtk2 < 1) baseAtk2 = 1;

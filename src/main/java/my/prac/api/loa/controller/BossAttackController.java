@@ -354,6 +354,13 @@ public class BossAttackController {
 	        mktAtkMaxRate+= heavenBuff.get("ATK_MAX_RATE") != null ? ((Number) heavenBuff.get("ATK_MAX_RATE")).intValue() : 0;
 	    }
 
+	    // 보스 아이템(7001~7010) 보유 목록 조회 → ctx.ownedBossItems
+	    try {
+	        List<Integer> bossRange = Arrays.asList(7001,7002,7003,7004,7005,7006,7007,7008,7009,7010);
+	        List<Integer> ownedBoss = botNewService.selectInventoryItemsByIds(targetUser, "", bossRange);
+	        if (ownedBoss != null) ctx.ownedBossItems.addAll(ownedBoss);
+	    } catch (Exception ignore) {}
+
 	    // 🔹 직업 보너스 표시용 변수
 	    int jobHp = 0;
 	    int jobRegen = 0;
@@ -3342,7 +3349,8 @@ public class BossAttackController {
 		// 11) 데미지 계산
 		s.dmg = calculateDamage(s.u, s.m, s.flags,
 				s.effAtkMin, s.effAtkMax, s.critRate, s.critDmg,
-				s.berserkMul, s.monHpRemainBefore, s.hpMax, s.beforeJobSkillYn, s.nightmare);
+				s.berserkMul, s.monHpRemainBefore, s.hpMax, s.beforeJobSkillYn, s.nightmare,
+				s.ctx.ownedBossItems.contains(7003));
 		s.calc     = s.dmg.calc;
 		s.flags    = s.dmg.flags;
 		s.willKill = s.dmg.willKill;
@@ -3386,11 +3394,12 @@ public class BossAttackController {
 	// ─ [도적] 2타 사전 계산 ──────────────────────────────────────────
 	private void ma_thiefDoubleAtkPreCalc(AttackSession s) {
 		if (!"도적".equals(s.job)) return;
-		s.thiefDoubleAtk = ThreadLocalRandom.current().nextDouble() < 0.20;
+		double thiefProb = s.ctx.ownedBossItems.contains(7002) ? 0.35 : 0.20;
+		s.thiefDoubleAtk = ThreadLocalRandom.current().nextDouble() < thiefProb;
 		if (s.thiefDoubleAtk) {
 			Flags f2 = rollFlags(s.u, s.m);
 			s.dmg2  = calculateDamage(s.u, s.m, f2, s.effAtkMin, s.effAtkMax, s.critRate, s.critDmg,
-					s.berserkMul, s.monHpRemainBefore, s.hpMax, s.beforeJobSkillYn, s.nightmare);
+					s.berserkMul, s.monHpRemainBefore, s.hpMax, s.beforeJobSkillYn, s.nightmare, false);
 			s.calc2 = s.dmg2.calc;
 		}
 	}
@@ -7227,6 +7236,25 @@ public class BossAttackController {
 	        int beforeJobSkillYn,
 	        boolean nightmareYn
 	) {
+	    return calculateDamage(u, m, flags, effAtkMin, effAtkMax, critRate, critDmg,
+	            berserkMul, monHpRemainBefore, hpMax, beforeJobSkillYn, nightmareYn, false);
+	}
+
+	private DamageOutcome calculateDamage(
+	        User u,
+	        Monster m,
+	        Flags flags,
+	        int effAtkMin,
+	        int effAtkMax,
+	        int critRate,
+	        int critDmg,
+	        double berserkMul,
+	        int monHpRemainBefore,
+	        int hpMax,
+	        int beforeJobSkillYn,
+	        boolean nightmareYn,
+	        boolean has7003
+	) {
 	    DamageOutcome out = new DamageOutcome();
 	    AttackCalc calc = new AttackCalc();
 	    calc.jobSkillUsed = false;
@@ -7279,6 +7307,7 @@ public class BossAttackController {
 	        else if (rangeRatio >= 0.30) hitCount = 4; // 30~49% → 4연사
 	        else if (rangeRatio >= 0.10) hitCount = 3; // 10~29% → 3연사
 	        else                         hitCount = 2; //  0~9%  → 2연사
+	        if (has7003) hitCount = Math.min(hitCount + 1, 6); // [7003] 연사수 +1 (최대 6연사)
 
 	        
 	        calc.multiAttack =hitCount;
