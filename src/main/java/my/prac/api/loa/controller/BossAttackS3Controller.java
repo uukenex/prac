@@ -393,7 +393,7 @@ public class BossAttackS3Controller {
         String spRewardMsg = "";
         if (!isEvade && damage > 0) {
             try {
-                SP spReward = SP.fromSp(totalDamage * 1000L);
+                SP spReward = SP.fromSp(totalDamage * 10000L);
                 HashMap<String, Object> pr = new HashMap<>();
                 pr.put("userName", userName);
                 pr.put("roomName", roomName);
@@ -660,7 +660,7 @@ public class BossAttackS3Controller {
 
             // ── 2단계: 주사위 추첨 과정 ──────────────────────────────
             double rollPct = r / weightSum * 100; // 0~100 정규화
-            msg.append(NL).append("🎲 주사위: ").append(String.format("%.2f", rollPct)).append("% →").append(NL);
+            msg.append(NL).append("⚅ 주사위: ").append(String.format("%.2f", rollPct)).append("% →").append(NL);
             for (int i = 0; i < eligible.size(); i++) {
                 String uName   = eligible.get(i).get("USER_NAME").toString();
                 double pct     = weightSum > 0 ? weights[i] / weightSum * 100 : 0;
@@ -704,7 +704,7 @@ public class BossAttackS3Controller {
                 inv.put("qty",      1);
                 inv.put("gainType", "BOSS_HELL");
                 botNewService.insertInventoryLogTx(inv);
-                msg.append(NL).append(isFirstDiscovery ? "🌟 최초 발견! " : "★ 보상: ")
+                msg.append(NL).append(isFirstDiscovery ? "✨최초 발견! " : "✨ 보상: ")
                    .append("[").append(winner).append("] item#").append(giveItemId)
                    .append(isFirstDiscovery ? " (서버 최초 획득!)" : "").append(NL);
             } catch (Exception e) {

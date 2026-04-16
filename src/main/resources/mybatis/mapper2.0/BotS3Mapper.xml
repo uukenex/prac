@@ -208,7 +208,6 @@
 		              AND NVL(i.del_yn, '0') = '0'
 		       )
 		     GROUP BY user_name
-		    HAVING SUM(atk_dmg) >= #{maxHp} * 0.01
 		     ORDER BY count(user_name) DESC
 		  ) A
 		 WHERE ROWNUM &lt;= 20

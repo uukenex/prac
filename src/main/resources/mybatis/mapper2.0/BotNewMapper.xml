@@ -473,7 +473,7 @@
      WHERE USER_NAME = #{userName}
        AND ITEM_ID   = #{itemId}
        AND NVL(DEL_YN,'0') != '1'
-       AND ITEM_ID BETWEEN 101 AND 3000
+       AND ITEM_ID BETWEEN 101 AND 8000
      ORDER BY INSERT_DATE ASC, ROWID
   </select>
   <!-- 판매 대상 행(FIFO) : 빛나는 제외 -->
@@ -483,7 +483,7 @@
       FROM TBOT_POINT_NEW_INVENTORY
      WHERE USER_NAME = #{userName}
        AND NVL(DEL_YN,'0') != '1'
-       AND ITEM_ID BETWEEN 101 AND 3000
+       AND ITEM_ID BETWEEN 101 AND 8000
      ORDER BY INSERT_DATE ASC, ROWID
   </select>
 
