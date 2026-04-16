@@ -3249,7 +3249,8 @@ public class BossAttackController {
 		Timestamp cachedLastAtk = (s.cachedAds != null) ? s.cachedAds.lastAttackTime : null;
 		s.cdJob = (s.cachedAds != null && s.cachedAds.lastAttackJob != null) ? s.cachedAds.lastAttackJob : s.job;
 
-		CooldownCheck cd = checkCooldown(s.userName, s.roomName, s.param1, s.cdJob, s.cooldownBuff, cachedLastAtk);
+		int itemCdReduction = s.ctx.ownedBossItems.contains(7004) ? 20 : 0; // [7004] 쿨타임 20초 감소
+		CooldownCheck cd = checkCooldown(s.userName, s.roomName, s.param1, s.cdJob, s.cooldownBuff, cachedLastAtk, itemCdReduction);
 		if (!cd.ok) {
 			long min = cd.remainSeconds / 60;
 			long sec = cd.remainSeconds % 60;
@@ -5265,11 +5266,16 @@ public class BossAttackController {
 	}
 	
 	private CooldownCheck checkCooldown(String userName, String roomName, String param1, String job, int buffTime) {
-	    return checkCooldown(userName, roomName, param1, job, buffTime, null);
+	    return checkCooldown(userName, roomName, param1, job, buffTime, null, 0);
+	}
+
+	private CooldownCheck checkCooldown(String userName, String roomName, String param1, String job, int buffTime, Timestamp cachedLastAtk) {
+	    return checkCooldown(userName, roomName, param1, job, buffTime, cachedLastAtk, 0);
 	}
 
 	// [FIX1] cachedLastAtk 가 null 이 아니면 DB 조회 생략
-	private CooldownCheck checkCooldown(String userName, String roomName, String param1, String job, int buffTime, Timestamp cachedLastAtk) {
+	// itemCdReduction: 보스 아이템(7004 등)에 의한 추가 쿨타임 감소(초)
+	private CooldownCheck checkCooldown(String userName, String roomName, String param1, String job, int buffTime, Timestamp cachedLastAtk, int itemCdReduction) {
 	    if ("test".equals(param1)) return CooldownCheck.ok();
 
 	    int baseCd = COOLDOWN_SECONDS; // 2분
@@ -5283,14 +5289,16 @@ public class BossAttackController {
 	    if ("사냥꾼".equals(job)) {
 	    	baseCd = 10 * 60; // 10분
 	    }
-	    
+
 	    if (buffTime > 0) {
 	    	baseCd -= 1 * 60;
 	    } else if (buffTime < 0) {
 	    	baseCd = baseCd / 2; // 쿨타임감소 버프: 50% 감소
 	    }
 
-	    
+	    if (itemCdReduction > 0) {
+	        baseCd = Math.max(10, baseCd - itemCdReduction); // [7004] 아이템 쿨타임 감소 (최소 10초)
+	    }
 
 	    Timestamp last = (cachedLastAtk != null) ? cachedLastAtk : botNewService.selectLastAttackTime(userName, roomName);
 	    if (last == null) return CooldownCheck.ok();

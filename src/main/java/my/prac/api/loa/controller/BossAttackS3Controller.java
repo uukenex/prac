@@ -120,19 +120,20 @@ public class BossAttackS3Controller {
             return userName + "님," + NL + "헬모드 유저만 도전 가능한 보스입니다.";
         }
 
-        // 3. 쿨타임 체크 (15초)
-        map.put("timeDelay", 15);
+        // 3. 유저 전투 컨텍스트 (쿨타임 감소 아이템 확인을 위해 쿨타임 체크 전 로딩)
+        map.put("param0", "/ㄱ");
+        map.put("param1", "");
+        UserBattleContext ctx = bossAttackController.calcUserBattleContext(map);
+        if (!ctx.success) return userName + "님, " + ctx.errorMessage;
+
+        // 4. 쿨타임 체크 (기본 15초 / 7004 보유 시 20초 감소, 최소 5초)
+        int bossDelay = ctx.ownedBossItems.contains(7004) ? Math.max(5, 15 - 20) : 15;
+        map.put("timeDelay", bossDelay);
         map.put("timeDelayMsg", "");
         String cooldown = botService.selectHourCheck(map);
         if (cooldown != null) {
             return userName + "님," + NL + cooldown + " 이후 재시도 가능합니다.";
         }
-
-        // 4. 유저 전투 컨텍스트 (S2 스탯 기반)
-        map.put("param0", "/ㄱ");
-        map.put("param1", "");
-        UserBattleContext ctx = bossAttackController.calcUserBattleContext(map);
-        if (!ctx.success) return userName + "님, " + ctx.errorMessage;
 
         return doBossAttack(map, ctx);
     }
