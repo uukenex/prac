@@ -181,8 +181,7 @@
 		       AND atk_dmg       > 0
 		       AND insert_date   >= to_date(#{bossStartDate}, 'yyyymmdd hh24miss')
 		     GROUP BY user_name
-		    HAVING SUM(atk_dmg) >= #{maxHp} * 0.01
-		     ORDER BY count(user_name) DESC
+		     ORDER BY SUM(atk_dmg) DESC
 		  ) A
 		 WHERE ROWNUM &lt;= 20
 	</select>

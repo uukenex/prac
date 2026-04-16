@@ -164,7 +164,7 @@
         <div class="stat-line" v-if="item.ATK_MAX_RATE > 0"><span>공격력%</span><span>+{{ item.ATK_MAX_RATE }}%</span></div>
       </div>
       <div class="card-lv" v-if="item.TARGET_LV > 0">🔒 Lv.{{ item.TARGET_LV }} 이상</div>
-      <div class="card-desc" v-if="isBossItem(item) && !isBlurred(item) && item.ITEM_DESC">{{ item.ITEM_DESC }}</div>
+      <div class="card-desc" v-if="isBossItem(item) && !isBlurred(item) && item.ITEM_DESC" v-html="formatDesc(item.ITEM_DESC)"></div>
       <div class="card-qty" v-if="item.OWN_QTY > 0">📦 보유 {{ item.OWN_QTY }}개</div>
       <span class="blur-hint">🔒 미발견 아이템</span>
     </div>
@@ -252,6 +252,10 @@
     methods: {
       toggleSort: function() {
         this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
+      },
+      formatDesc: function(desc) {
+        if (!desc) return '';
+        return desc.split('♬').join('<br>');
       },
       isBossItem: function(item) {
         var id = parseInt(item.ITEM_ID);
