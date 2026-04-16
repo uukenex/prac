@@ -5,6 +5,7 @@ import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -75,8 +76,7 @@ public class BossAttackS3Controller {
                 if (ids != null && !ids.isEmpty()) hellRewardItemsCache = ids;
             } catch (Exception ignore) {}
         }
-        return hellRewardItemsCache != null ? hellRewardItemsCache
-                : Arrays.asList(7001, 7002, 7003, 7004, 7005, 7006, 7007, 7008, 7009, 7010);
+        return hellRewardItemsCache != null ? hellRewardItemsCache : Collections.emptyList();
     }
 
     /* ===== DI ===== */
