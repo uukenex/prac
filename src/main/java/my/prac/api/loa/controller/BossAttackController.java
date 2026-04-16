@@ -1487,7 +1487,10 @@ public class BossAttackController {
 	    Map<Integer, Monster> monMap = MiniGameUtil.MONSTER_CACHE;
 
 	    Monster target = (u.targetMon > 0) ? monMap.get(u.targetMon) : null;
-	    String targetName = (target == null) ? "-" : target.monName;
+	    String targetName;
+	    if (u.targetMon == 99)       targetName = "상급악마 (헬보스)";
+	    else if (target == null)     targetName = "-";
+	    else                         targetName = target.monName;
 
 	    
 	    List<HashMap<String, Object>> bag = botNewService.selectInventorySummaryAll(ctx.targetUser, ctx.roomName);
@@ -2004,10 +2007,14 @@ public class BossAttackController {
 			}
 		}
 
-		// 헬보스(상급악마) 타겟 설정: 헬모드 전용
+		// 헬보스(상급악마) 타겟 설정: 헬모드 전용, 곰 불가
 		if ("99".equals(input) || "보스".equals(input) || "상급악마".equals(input)) {
 		    if (nightmareYnVal != 2)
 		        return userName + "님, [상급악마]는 헬모드 유저만 타겟으로 설정할 수 있습니다.";
+		    User uForJob = botNewService.selectUser(userName, roomName);
+		    String jobVal = (uForJob != null && uForJob.job != null) ? uForJob.job.trim() : "";
+		    if ("곰".equals(jobVal))
+		        return userName + "님, [곰]은 상급악마를 공격할 수 없습니다.";
 		    botNewService.closeOngoingBattleTx(userName, roomName);
 		    botNewService.updateUserTargetMonTx(userName, roomName, 99);
 		    return userName + "님, 공격 타겟을 [상급악마](MON_NO=99) 으로 설정했습니다." + NL
@@ -3262,7 +3269,10 @@ public class BossAttackController {
 				: computeEffectiveHpFromLastAttack(s.userName, s.roomName, s.u, s.hpMax, s.regen, cachedLastAtk);
 		s.u.hpCur = effectiveHp;
 
-		if (s.u.targetMon == 99) return bossAttackS3Controller.attackBossS3(s.map, s.ctx);
+		if (s.u.targetMon == 99) {
+			if ("곰".equals(s.job)) return s.userName + "님, [곰]은 상급악마를 공격할 수 없습니다.";
+			return bossAttackS3Controller.attackBossS3(s.map, s.ctx);
+		}
 
 		s.userAchvList = botNewService.selectAchvCountsGlobal(s.userName, s.roomName);
 		if (s.userAchvList != null) {
