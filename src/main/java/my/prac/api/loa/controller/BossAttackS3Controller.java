@@ -520,7 +520,7 @@ public class BossAttackS3Controller {
             bossMap.put("evadeRate",   randInt(rand, BOSS_EVADE_RATE_MIN, BOSS_EVADE_RATE_MAX));
             bossMap.put("critDefRate", randInt(rand, BOSS_CRIT_DEF_MIN,   BOSS_CRIT_DEF_MAX));
             // 24시간 후 등장
-            bossMap.put("startDate",   LocalDateTime.now().plusHours(24).format(SPAWN_DATE_FMT));
+            bossMap.put("startDate",   LocalDateTime.now().plusHours(36).format(SPAWN_DATE_FMT));
             bossMap.put("hideRule",    HIDE_RULES[rand.nextInt(HIDE_RULES.length)]);
             SP hpSp = SP.fromSp(rawHp);
             bossMap.put("maxHp",    (long) hpSp.getValue());
