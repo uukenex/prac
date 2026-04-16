@@ -3216,6 +3216,7 @@ public class BossAttackController {
 		if ("음양사".equals(s.job)) s.gray = ThreadLocalRandom.current().nextDouble() < 0.05;
 		if (s.gray) { s.lucky = false; s.dark = false; }
 		if ("곰".equals(s.job))  { s.lucky = false; s.dark = false; }
+		if (s.hell)  { s.dark = false; }
 
 		if (s.dark) { applyDarkMonsterScale(s); s.monHpRemainBefore = s.monMaxHp; }
 	}
@@ -3689,7 +3690,7 @@ public class BossAttackController {
 
 	            if ("용사".equals(ctx.job)) {
 	                gainSp *= 3;
-	                bonusDesc.append("(용사 3배)");
+	                bonusDesc.append("(용사 2배)");
 	                if (ThreadLocalRandom.current().nextDouble() < 0.10) {
 	                    gainSp *= 3;
 	                    bonusDesc.append("(크리! ×3)");
