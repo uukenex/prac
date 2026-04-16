@@ -407,7 +407,7 @@ public class BossAttackS3Controller {
         // [7005] 가시갑옷: 받은 피해의 10% 반사 → totalDamage에 추가 후 HP 재계산
         int reflectDmg = 0;
         String reflectMsg = "";
-        if (ownedBoss.contains(7005) && bossAtkApplied > 0 && !isEvade) {
+        if (ownedBoss.contains(7005) && bossAtkApplied > 0) {
             reflectDmg = Math.max(1, (int)Math.round(bossAtkApplied * 0.10));
             totalDamage += reflectDmg;
             newHpSp = SP.of(curHpNum, curHpExt).subtract(SP.fromSp(totalDamage));
@@ -781,6 +781,41 @@ public class BossAttackS3Controller {
         return msg.toString();
     }
 
+
+    // =========================================================
+    // 헬보스 출현 알림 (BossAttackController.ma_buildMessage 에서 호출)
+    // =========================================================
+    public String getHellBossStatusMsg() {
+        try {
+            HashMap<String, Object> boss = botS3Service.selectHellBoss();
+            if (boss == null || boss.get("CUR_HP") == null) return "";
+            String startDateStr = boss.get("START_DATE") != null ? boss.get("START_DATE").toString() : "";
+            if (startDateStr.isEmpty()) return "";
+            LocalDateTime spawnTime = LocalDateTime.parse(startDateStr,
+                    DateTimeFormatter.ofPattern("yyyyMMdd HHmmss"));
+            LocalDateTime now = LocalDateTime.now();
+            if (now.isBefore(spawnTime)) {
+                // 미래: 남은 분 계산
+                long remainMin = java.time.Duration.between(now, spawnTime).toMinutes();
+                if (remainMin >= 55 && remainMin <= 65) return "🔔상급악마 1시간 후 출현 예정!" + NL;
+                if (remainMin >= 8  && remainMin <= 12) return "🔔상급악마 10분 후 출현 예정!" + NL;
+                if (remainMin >= 3  && remainMin <= 7)  return "🔔상급악마 5분 후 출현 예정!" + NL;
+                return "";
+            } else {
+                // 과거: 이미 출현 중 → 체력% 계산
+                double curHpNum = Double.parseDouble(boss.get("CUR_HP").toString());
+                String curHpExt = boss.get("CUR_HP_EXT") != null ? boss.get("CUR_HP_EXT").toString() : "";
+                long hp = SP.toBaseValue(SP.of(curHpNum, curHpExt));
+                double maxHpNum = Double.parseDouble(boss.get("MAX_HP").toString());
+                String maxHpExt = boss.get("MAX_HP_EXT") != null ? boss.get("MAX_HP_EXT").toString() : "";
+                long maxHp = SP.toBaseValue(SP.of(maxHpNum, maxHpExt));
+                int pct = maxHp > 0 ? (int)Math.round(hp * 100.0 / maxHp) : 0;
+                return "👹현재 상급악마 출현! [체력 " + pct + "%]" + NL;
+            }
+        } catch (Exception e) {
+            return "";
+        }
+    }
 
     // =========================================================
     // 보스 정보 조회: /헬보스정보
