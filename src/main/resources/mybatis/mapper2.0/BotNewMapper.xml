@@ -552,7 +552,7 @@
     /* selectBossItemIds */
     SELECT ITEM_ID
     FROM TBOT_POINT_NEW_ITEM
-    WHERE ITEM_ID >= 7000 AND ITEM_ID < 8000
+    WHERE ITEM_ID >= 7000 AND ITEM_ID &lt; 8000
     ORDER BY ITEM_ID
   </select>
 
@@ -1771,6 +1771,7 @@
 	</insert>
 	
 	<!-- 전체 아이템 + 유저 보유여부 (item_view 페이지용) -->
+	<!-- GLOBAL_OWN_CNT / EVER_OBTAINED_CNT: 7000번대 이상만 집계 (blur 판단용) -->
 	<select id="selectAllItemsWithOwned" resultType="hashmap">
 		/* selectAllItemsWithOwned */
 		SELECT
@@ -1791,10 +1792,8 @@
 		    CASE WHEN NVL(inv.OWN_QTY, 0) > 0 THEN 'Y' ELSE 'N' END AS OWNED_YN,
 		    NVL(i.TARGET_LV, 0) AS TARGET_LV,
 		    NVL(i.ITEM_DESC, '') AS ITEM_DESC,
-		    (SELECT COUNT(*) FROM TBOT_POINT_NEW_INVENTORY g
-		     WHERE g.ITEM_ID = i.ITEM_ID AND NVL(g.DEL_YN,'0') = '0' AND NVL(g.QTY,0) > 0) AS GLOBAL_OWN_CNT,
-		    (SELECT COUNT(*) FROM TBOT_POINT_NEW_INVENTORY g
-		     WHERE g.ITEM_ID = i.ITEM_ID) AS EVER_OBTAINED_CNT
+		    NVL(gown.GLOBAL_OWN_CNT, 0) AS GLOBAL_OWN_CNT,
+		    NVL(ever.EVER_OBTAINED_CNT, 0) AS EVER_OBTAINED_CNT
 		FROM TBOT_POINT_NEW_ITEM i
 		LEFT JOIN (
 		    SELECT ITEM_ID, SUM(QTY) AS OWN_QTY
@@ -1803,6 +1802,20 @@
 		      AND DEL_YN    = '0'
 		    GROUP BY ITEM_ID
 		) inv ON inv.ITEM_ID = i.ITEM_ID
+		LEFT JOIN (
+		    SELECT ITEM_ID, COUNT(*) AS GLOBAL_OWN_CNT
+		    FROM TBOT_POINT_NEW_INVENTORY
+		    WHERE NVL(DEL_YN,'0') = '0'
+		      AND NVL(QTY, 0) > 0
+		      AND ITEM_ID >= 7000
+		    GROUP BY ITEM_ID
+		) gown ON gown.ITEM_ID = i.ITEM_ID
+		LEFT JOIN (
+		    SELECT ITEM_ID, COUNT(*) AS EVER_OBTAINED_CNT
+		    FROM TBOT_POINT_NEW_INVENTORY
+		    WHERE ITEM_ID >= 7000
+		    GROUP BY ITEM_ID
+		) ever ON ever.ITEM_ID = i.ITEM_ID
 		WHERE i.ITEM_TYPE NOT IN ('DROP0', 'MARKET0', 'MASTER')
 		  AND i.ITEM_ID > 100
 		ORDER BY i.ITEM_ID
