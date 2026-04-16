@@ -3401,7 +3401,8 @@ public class BossAttackController {
 		if (s.thiefDoubleAtk) {
 			Flags f2 = rollFlags(s.u, s.m);
 			s.dmg2  = calculateDamage(s.u, s.m, f2, s.effAtkMin, s.effAtkMax, s.critRate, s.critDmg,
-					s.berserkMul, s.monHpRemainBefore, s.hpMax, s.beforeJobSkillYn, s.nightmare, false);
+					s.berserkMul, s.monHpRemainBefore, s.hpMax, s.beforeJobSkillYn, s.nightmare,
+					s.ctx.ownedBossItems);
 			s.calc2 = s.dmg2.calc;
 		}
 	}
