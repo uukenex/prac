@@ -569,7 +569,8 @@ public class BossAttackController {
 	    
 	    if(u.nightmareYn==2) {
 	    	double hellMult = MiniGameUtil.getHellNerfMult(ctx.hunterGrade);
-	    	
+	    	if (ctx.ownedBossItems.contains(7007)) hellMult = Math.max(0.0, hellMult - 0.06);
+
 	    	hellNerfAtkMin = Math.max(0, (int) Math.round(atkMin   * (1-hellMult) ));
 	    	hellNerfAtkMax = Math.max(0, (int) Math.round(atkMax   * (1-hellMult) ));
 	    	hellNerfHp = Math.max(0, (int) Math.round(hpMax   * (1-hellMult) ));
@@ -600,6 +601,12 @@ public class BossAttackController {
 	        double timeMult = Math.min(3.0, 1.0 + elapsedMin * 0.10);
 	        atkMin = (int)(atkMin * timeMult);
 	        atkMax = (int)(atkMax * timeMult);
+	    }
+	    // [7009] 진화형 무기: 레벨당 공격력 +150
+	    if (ctx.ownedBossItems.contains(7009)) {
+	        int evolveBonus = u.lv * 150;
+	        atkMin += evolveBonus;
+	        atkMax += evolveBonus;
 	    }
 	    ctx.atkMin = atkMin;
 	    ctx.atkMax = atkMax;
@@ -3449,7 +3456,7 @@ public class BossAttackController {
 
 	// ─ 13) 처치·드랍 판단 + 직업별 스킬 ─────────────────────────────
 	private void ma_resolveKillAndJobSkills(AttackSession s) {
-		s.res = resolveKillAndDrop(s.m, s.calc, s.willKill, s.u, s.lucky, s.dark, s.gray, s.ctx.user.nightmareYn);
+		s.res = resolveKillAndDrop(s.m, s.calc, s.willKill, s.u, s.lucky, s.dark, s.gray, s.ctx.user.nightmareYn, s.ctx.ownedBossItems);
 		if ("궁수".equals(s.u.job) || "사냥꾼".equals(s.u.job)) s.res.gainExp *= 3;
 
 		// —— 도적: 더블어택 + 스틸 ——
@@ -3551,6 +3558,12 @@ public class BossAttackController {
 		s.buffCode  = s.activeBuff != null ? (String) s.activeBuff.get("FLAG_CODE") : null;
 		s.up = persist(s.userName, s.roomName, s.u, s.m, s.flags, s.calc, s.res, s.hpMax, s.nightmare, s.buffStart, s.buffIng, s.buffCode);
 
+		// 레벨 업적 (레벨업 시 체크)
+		if (s.up != null && s.up.levelUpCount > 0) {
+			String lvAchvMsg = grantLevelAchievements(s.userName, s.roomName, s.achievedCmdSet, s.up.afterLv);
+			if (lvAchvMsg != null && !lvAchvMsg.isEmpty()) s.bonusMsg += NL + lvAchvMsg;
+		}
+
 		// [도적] 2타 배틀로그 (PK 충돌 방지: shotIndex=1)
 		if (s.thiefDoubleAtk && s.calc2 != null && s.m != null) {
 			try {
@@ -3650,6 +3663,12 @@ public class BossAttackController {
 			botNewService.execSPMsgTest(s.map);
 			msg += NL + Objects.toString(s.map.get("outMsg"), "");
 		} catch (Exception e) { e.printStackTrace(); }
+
+		// 헬모드 유저에게 헬보스 출현 알림
+		if (s.hell) {
+			String hellNotify = bossAttackS3Controller.getHellBossStatusMsg();
+			if (hellNotify != null && !hellNotify.isEmpty()) msg += NL + hellNotify;
+		}
 
 		return msg;
 	}
@@ -5501,6 +5520,11 @@ public class BossAttackController {
 
 	private Resolve resolveKillAndDrop(Monster m, AttackCalc c, boolean willKill, User u, boolean lucky, boolean dark,
 			boolean gray, int nightmareYnVal) {
+		return resolveKillAndDrop(m, c, willKill, u, lucky, dark, gray, nightmareYnVal, null);
+	}
+
+	private Resolve resolveKillAndDrop(Monster m, AttackCalc c, boolean willKill, User u, boolean lucky, boolean dark,
+			boolean gray, int nightmareYnVal, Set<Integer> ownedBossItems) {
 		Resolve r = new Resolve();
 		r.killed = willKill;
 		r.lucky = lucky;
@@ -5566,6 +5590,12 @@ public class BossAttackController {
 
 		if (extraDrop) {
 			r.dropCode = "2"; // 🔥 기본 + 추가 드랍
+		}
+
+		// [7008] 일반 드랍+1 (빛/어둠/음양 제외)
+		if (ownedBossItems != null && ownedBossItems.contains(7008)
+				&& ("1".equals(r.dropCode) || "2".equals(r.dropCode))) {
+			r.bonusNormalDrop = true;
 		}
 
 		return r;
@@ -5635,8 +5665,9 @@ public class BossAttackController {
 	            	if ("2".equals(res.dropCode)) {
 	            	    qty = 2; // 기본 1 + 추가 1
 	            	}
+	            	if (res.bonusNormalDrop) qty++; // [7008] 일반 드랍+1
 
-	            	
+
 	                Integer itemId = getItemIdCached(dropName);
 	                if (itemId != null) {
 	                    HashMap<String, Object> inv = new HashMap<>();
@@ -6030,6 +6061,7 @@ public class BossAttackController {
 		}
 	private static class Resolve {
 		boolean killed; String dropCode; int gainExp; boolean lucky; boolean dark; boolean gray;
+		boolean bonusNormalDrop; // [7008] 일반 드랍 +1
 	}
 	private static class CooldownCheck {
 	    final boolean ok; final int remainMinutes; final long remainSeconds;
@@ -6399,6 +6431,29 @@ public class BossAttackController {
 	}
 */
 	
+	private static final long LEVEL_ACHV_REWARD_SP = 50_000L; // 5a
+
+	private String grantLevelAchievements(String userName, String roomName,
+			Set<String> achievedCmdSet, int afterLv) {
+		// 임계값: 10, 50, 100, 150, 200, 이후 100단위
+		StringBuilder sb = new StringBuilder();
+		try {
+			int[] fixed = {10, 50, 100, 150, 200};
+			for (int th : fixed) {
+				if (afterLv < th) return sb.toString();
+				String cmd = "ACHV_LEVEL_" + th;
+				if (achievedCmdSet.contains(cmd)) continue;
+				sb.append(grantOnceIfEligibleFast(userName, roomName, cmd, (int)LEVEL_ACHV_REWARD_SP, achievedCmdSet));
+			}
+			for (int th = 300; th <= afterLv; th += 100) {
+				String cmd = "ACHV_LEVEL_" + th;
+				if (achievedCmdSet.contains(cmd)) continue;
+				sb.append(grantOnceIfEligibleFast(userName, roomName, cmd, (int)LEVEL_ACHV_REWARD_SP, achievedCmdSet));
+			}
+		} catch (Exception ignore) {}
+		return sb.toString();
+	}
+
 	private String grantOnceIfEligibleFast(
 	        String userName,
 	        String roomName,

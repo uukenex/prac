@@ -419,6 +419,10 @@ public class LoaAchievementViewController {
                 int monNo     = Integer.parseInt(parts[1]);
                 return getMonName(monNo, monMap) + " " + threshold + "킬 달성";
             }
+            if (cmd.startsWith("ACHV_LEVEL_")) {
+                int lv = Integer.parseInt(cmd.substring("ACHV_LEVEL_".length()));
+                return "레벨 달성 Lv." + lv;
+            }
             if (cmd.startsWith("ACHV_KILL_TOTAL_")) {
                 int th = Integer.parseInt(cmd.substring("ACHV_KILL_TOTAL_".length()));
                 return "통산 처치 " + th + "마리 달성";
