@@ -23,4 +23,7 @@ public interface BotS3Service {
 	/** [헬보스] 마지막 처치 보스 + 보상 수령자 메시지 (보스 없을 때 표시용) */
 	String getLastKillRewardMsg();
 
+	/** [헬보스] 최근 200회 공격의 평균 데미지 */
+	Long selectRecentHellAvgDmg() throws Exception;
+
 }

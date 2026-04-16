@@ -32,4 +32,7 @@ public interface BotS3DAO {
 	/** [헬보스] 마지막 보상 수령자 조회 */
 	HashMap<String, Object> selectLastHellRewardRecipient();
 
+	/** [헬보스] 최근 200회 공격의 평균 데미지 */
+	Long selectRecentHellAvgDmg() throws Exception;
+
 }

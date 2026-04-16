@@ -253,4 +253,18 @@
 		 WHERE ROWNUM = 1
 	</select>
 
+	<!-- [S3 헬보스] 최근 200회 공격의 평균 데미지 -->
+	<select id="selectRecentHellAvgDmg" resultType="java.lang.Long">
+	    SELECT NVL(ROUND(AVG(ATK_DMG)), 0)
+	      FROM (
+	        SELECT ATK_DMG
+	          FROM TBOT_POINT_NEW_BATTLE_LOG
+	         WHERE NIGHTMARE_YN  = '2'
+	           AND TARGET_MON_LV = 999
+	           AND ATK_DMG       > 0
+	         ORDER BY INSERT_DATE DESC
+	      )
+	     WHERE ROWNUM &lt;= 200
+	</select>
+
 </mapper>

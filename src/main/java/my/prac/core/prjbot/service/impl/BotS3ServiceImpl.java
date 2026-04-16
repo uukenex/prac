@@ -49,6 +49,11 @@ public class BotS3ServiceImpl implements BotS3Service {
 	}
 
 	@Override
+	public Long selectRecentHellAvgDmg() throws Exception {
+		return botS3DAO.selectRecentHellAvgDmg();
+	}
+
+	@Override
 	public String getLastKillRewardMsg() {
 		try {
 			HashMap<String, Object> lastBoss = botS3DAO.selectLastKilledHellBoss();

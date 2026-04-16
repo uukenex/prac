@@ -526,7 +526,20 @@ public class BossAttackS3Controller {
     private void respawnHellBoss() {
         try {
             Random rand = new Random();
-            long rawHp = BOSS_MAX_HP_MIN + (long)(rand.nextDouble() * (BOSS_MAX_HP_MAX - BOSS_MAX_HP_MIN + 1));
+            // 최근 공격 평균 데미지 기반으로 120~150회 분량 HP 산정
+            long rawHp;
+            try {
+                Long avgDmg = botS3Service.selectRecentHellAvgDmg();
+                if (avgDmg != null && avgDmg > 0) {
+                    int hitTarget = 120 + rand.nextInt(31); // 120~150 랜덤
+                    rawHp = avgDmg * hitTarget;
+                } else {
+                    // 데이터 없을 때 기본값
+                    rawHp = BOSS_MAX_HP_MIN + (long)(rand.nextDouble() * (BOSS_MAX_HP_MAX - BOSS_MAX_HP_MIN + 1));
+                }
+            } catch (Exception e) {
+                rawHp = BOSS_MAX_HP_MIN + (long)(rand.nextDouble() * (BOSS_MAX_HP_MAX - BOSS_MAX_HP_MIN + 1));
+            }
 
             HashMap<String, Object> bossMap = new HashMap<>();
             bossMap.put("atkRate",     randInt(rand, BOSS_ATK_RATE_MIN,   BOSS_ATK_RATE_MAX));
@@ -536,7 +549,7 @@ public class BossAttackS3Controller {
             bossMap.put("evadeRate",   randInt(rand, BOSS_EVADE_RATE_MIN, BOSS_EVADE_RATE_MAX));
             bossMap.put("critDefRate", randInt(rand, BOSS_CRIT_DEF_MIN,   BOSS_CRIT_DEF_MAX));
             // 24시간 후 등장
-            bossMap.put("startDate",   LocalDateTime.now().plusHours(36).format(SPAWN_DATE_FMT));
+            bossMap.put("startDate",   LocalDateTime.now().plusHours(18).format(SPAWN_DATE_FMT));
             bossMap.put("hideRule",    HIDE_RULES[rand.nextInt(HIDE_RULES.length)]);
             SP hpSp = SP.fromSp(rawHp);
             bossMap.put("maxHp",    (long) hpSp.getValue());
@@ -646,6 +659,29 @@ public class BossAttackS3Controller {
     // 보상: 7000번대 미소지자 중 기여도 가중 랜덤 1명에게 1개 지급
     // =========================================================
     private String calcHellBossReward(String roomName, String bossStartDate, long maxHp) {
+        // 30% 확률로만 보상 지급
+        if (Math.random() >= 0.30) {
+            // 70% → 보상 없음 (기여도 표시는 유지)
+            // 전체 기여도만 조회해서 표시
+            List<HashMap<String, Object>> allCont;
+            try {
+                HashMap<String, Object> q = new HashMap<>();
+                q.put("bossStartDate", bossStartDate);
+                allCont = botS3Service.selectHellTop3Contributors(q);
+            } catch (Exception e) { allCont = new ArrayList<>(); }
+            StringBuilder noRewardMsg = new StringBuilder();
+            noRewardMsg.append("이번 상급악마 처치에는 보상이 없습니다. (30% 확률)").append(NL);
+            if (!allCont.isEmpty()) {
+                noRewardMsg.append(NL).append("-- 전체 기여도 TOP --").append(NL);
+                for (HashMap<String, Object> row : allCont) {
+                    noRewardMsg.append(row.get("USER_NAME"))
+                       .append(" - ").append(row.get("CNT")).append("회 / ").append(row.get("SCORE")).append("dmg")
+                       .append(NL);
+                }
+            }
+            return noRewardMsg.toString();
+        }
+
         // 보상 대상: 7000번대 미소지자 중 기여도 상위
         List<HashMap<String, Object>> eligible;
         try {
