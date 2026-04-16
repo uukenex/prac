@@ -7682,6 +7682,14 @@ public class BossAttackController {
 		            }
 		        }
 		    }
+	        // [7005] 가시갑옷: 받은 피해의 10% 반사
+	        if (ownedBossItems.contains(7005) && calc.monDmg > 0) {
+	            int reflect = Math.max(1, (int)Math.round(calc.monDmg * 0.10));
+	            calc.atkDmg += reflect;
+	            String baseMsg7005 = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
+	            calc.patternMsg = baseMsg7005 + "[가시갑옷] " + reflect + " 반사!";
+	        }
+
 	     // 몬스터 공격 변동 처리 (회피 / 증폭)
 	        if ("도박사".equals(u.job)) {
 		        if (calc.monDmg > 0 ) {
