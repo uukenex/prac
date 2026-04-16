@@ -50,8 +50,12 @@
     .loading { text-align: center; padding: 60px; color: #ccc; font-size: 15px; }
 
     @media (max-width: 360px) {
-      .job-grid    { grid-template-columns: 1fr; }
-      .search-wrap { min-width: 0; }
+      .search-wrap   { min-width: 0; }
+      .job-grid      { grid-template-columns: 1fr; }
+      .job-card      { padding: 12px 12px 10px; }
+      .card-name     { font-size: 13px; }
+      .card-subtitle { font-size: 11px; margin-bottom: 7px; }
+      .skill-line    { font-size: 11px; }
     }
   </style>
 </head>

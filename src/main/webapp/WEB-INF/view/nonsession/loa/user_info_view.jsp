@@ -129,7 +129,40 @@
     }
 
     @media (max-width: 360px) {
-      .equip-screen { grid-template-columns: 1fr; }
+      /* 전체 레이아웃: 세로 스택 */
+      .equip-screen { grid-template-columns: 1fr; gap: 8px; }
+
+      /* 캐릭터 영역: 가로 헤더 카드로 전환 */
+      .char-area {
+        flex-direction: row;
+        align-items: center;
+        gap: 10px;
+        background: linear-gradient(135deg, #fff0fa 0%, #ede0ff 55%, #ddf0ff 100%);
+        border: 1.5px solid #e8c0da;
+        border-radius: 12px;
+        padding: 8px 10px;
+      }
+      .char-box {
+        width: 52px; height: 52px; min-width: 52px; max-width: 52px;
+        border-radius: 12px; font-size: 26px; flex-shrink: 0;
+      }
+      .char-meta { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+      .char-lv   { font-size: 18px; font-weight: 900; text-align: left; }
+      .char-name { font-size: 12px; font-weight: 800; text-align: left; }
+      .char-job  { font-size: 10px; text-align: left; }
+      .summary-row { justify-content: flex-start; margin-top: 3px; }
+      .sum-chip  { font-size: 8px; padding: 1px 5px; }
+      .potion-badge { font-size: 9px; padding: 2px 8px; text-align: left; }
+
+      /* 슬롯 패널: 2열 그리드 */
+      .slot-panel { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+      .slot { padding: 5px 7px; min-height: 36px; gap: 5px; }
+      .slot-icon-box { width: 26px; height: 26px; font-size: 13px; border-radius: 6px; }
+      .slot-label { font-size: 7.5px; }
+      .slot-name  { font-size: 9px; }
+      .slot-empty { font-size: 9px; }
+
+      /* 모달 / 검색 */
       .modal-box { min-width: 0; width: 92vw; box-sizing: border-box; }
       .search-row input { width: 100px; font-size: 12px; padding: 7px 10px; }
       .btn-search { padding: 7px 12px; font-size: 12px; }
@@ -162,15 +195,17 @@
                style="width:100%;height:100%;object-fit:cover;border-radius:18px;" alt="캐릭터">
           <span v-else style="font-size:48px;">🧙</span>
         </div>
-        <div class="char-lv" v-if="userLv > 0">Lv {{ userLv }}</div>
-        <div class="char-name">{{ userName }}</div>
-        <div class="char-job" v-if="userJob">{{ userJob }}</div>
-        <div class="summary-row">
-          <div class="sum-chip" v-for="g in groupSummary" :key="g.label">
-            {{ g.label }} <strong>{{ g.total }}</strong>
+        <div class="char-meta">
+          <div class="char-lv" v-if="userLv > 0">Lv {{ userLv }}</div>
+          <div class="char-name">{{ userName }}</div>
+          <div class="char-job" v-if="userJob">{{ userJob }}</div>
+          <div class="summary-row">
+            <div class="sum-chip" v-for="g in groupSummary" :key="g.label">
+              {{ g.label }} <strong>{{ g.total }}</strong>
+            </div>
           </div>
+          <div class="potion-badge">🧪 물약 사용: {{ potionUseCount }}회</div>
         </div>
-        <div class="potion-badge">🧪 물약 사용: {{ potionUseCount }}회</div>
       </div>
 
       <!-- 오른쪽: 장비 슬롯 세로 목록 -->
