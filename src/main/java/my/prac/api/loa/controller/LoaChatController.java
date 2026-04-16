@@ -786,6 +786,9 @@ public class LoaChatController {
 				param0="/ㅍㅁ";
 				val = boss.sellItem(reqMap);
 				break;
+			case "/보스뽑기": case "/gp뽑기":
+				val = boss.gpGacha(reqMap);
+				break;
 			case "/직업":
 				passYn = true;
 				val = boss.changeJob(reqMap);

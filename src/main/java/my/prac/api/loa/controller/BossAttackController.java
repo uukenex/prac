@@ -4080,7 +4080,69 @@ public class BossAttackController {
 	    return buildSellMessage(userName, itemNameRaw, reqQty, result);
 	}
 
-	private String sellCategoryItem(String userName, String roomName, String slotKey) throws Exception {
+	public String gpGacha(HashMap<String, Object> map) {
+		String userName = Objects.toString(map.get("userName"), "");
+		String roomName = Objects.toString(map.get("roomName"), "");
+		String roomCheck = checkRoomPermission(userName, roomName);
+		if (roomCheck != null) return roomCheck;
+
+		int gp;
+		try { gp = botNewService.selectGpBalance(userName); }
+		catch (Exception e) { return "GP 조회 중 오류가 발생했습니다."; }
+
+		if (gp < 10) {
+			return userName + "님," + NL + "보스뽑기에는 10 GP가 필요합니다." + NL
+				+ "현재 GP: " + gp + " GP" + NL
+				+ "(7000번대 보스 아이템 판매 시 1개당 1 GP 획득)";
+		}
+
+		// 7000번대 아이템 목록 조회
+		List<Integer> bossItems;
+		try { bossItems = botNewService.selectBossItemIds(); }
+		catch (Exception e) { return "뽑기 목록 조회 중 오류가 발생했습니다."; }
+		if (bossItems == null || bossItems.isEmpty())
+			return "현재 뽑기 가능한 보스 아이템이 없습니다.";
+
+		// GP 10 차감
+		try {
+			HashMap<String, Object> gpDeduct = new HashMap<>();
+			gpDeduct.put("userName", userName);
+			gpDeduct.put("roomName", roomName);
+			gpDeduct.put("score",   -10.0);
+			gpDeduct.put("cmd",     "BOSS_GACHA");
+			botNewService.insertGpRecord(gpDeduct);
+		} catch (Exception e) { return "GP 차감 중 오류가 발생했습니다."; }
+
+		// 랜덤 아이템 지급
+		int giveItemId = bossItems.get(ThreadLocalRandom.current().nextInt(bossItems.size()));
+		try {
+			HashMap<String, Object> inv = new HashMap<>();
+			inv.put("userName", userName);
+			inv.put("roomName", roomName);
+			inv.put("itemId",   giveItemId);
+			inv.put("qty",      1);
+			inv.put("gainType", "BOSS_GACHA");
+			botNewService.insertInventoryLogTx(inv);
+		} catch (Exception e) {
+			// 지급 실패 시 GP 복구
+			try {
+				HashMap<String, Object> gpRestore = new HashMap<>();
+				gpRestore.put("userName", userName);
+				gpRestore.put("roomName", roomName);
+				gpRestore.put("score",   10.0);
+				gpRestore.put("cmd",     "BOSS_GACHA_RESTORE");
+				botNewService.insertGpRecord(gpRestore);
+			} catch (Exception ignore) {}
+			return "아이템 지급 중 오류가 발생했습니다.";
+		}
+
+		return userName + "님," + NL
+				+ "🎰 보스뽑기! (-10 GP)" + NL
+				+ "▶ 획득 아이템: #" + giveItemId + NL
+				+ "- 잔여 GP: " + (gp - 10) + " GP";
+	}
+
+		private String sellCategoryItem(String userName, String roomName, String slotKey) throws Exception {
 
 		List<HashMap<String, Object>> rows = botNewService.selectAllInventoryRowsForSale(userName, roomName);
 
@@ -4110,8 +4172,17 @@ public class BossAttackController {
 		} catch (Exception ignore) {
 		}
 
-		return "⚔ " + userName + "님," + NL + "▶ 판매 완료!" + NL + "- 대상: " + name + NL + "- 판매 수량: " + r.sold + "개" + NL
-				+ "- 합계 적립: " + r.total + NL + "- 현재 포인트: " + curPoint;
+		StringBuilder sb = new StringBuilder();
+		sb.append("⚔ ").append(userName).append("님,").append(NL)
+		  .append("▶ 판매 완료!").append(NL)
+		  .append("- 대상: ").append(name).append(NL)
+		  .append("- 판매 수량: ").append(r.sold).append("개").append(NL);
+		if (r.total.getValue() > 0)
+			sb.append("- 합계 적립: ").append(r.total).append(NL);
+		if (r.gpGranted > 0)
+			sb.append("- GP 획득: ").append(r.gpGranted).append(" GP").append(NL);
+		sb.append("- 현재 포인트: ").append(curPoint);
+		return sb.toString();
 	}
 	
 	private String checkRoomPermission(String userName, String roomName) {
@@ -4298,6 +4369,7 @@ public class BossAttackController {
 
 		int sold = 0;
 		SP total = SP.of(0, "");
+		int gpCount = 0; // 7000번대 보스 아이템 판매 GP
 
 		int need = reqQty;
 
@@ -4319,6 +4391,17 @@ public class BossAttackController {
 
 				if (!slotKey.equals(cat))
 					continue;
+			}
+
+			// [보스 아이템] 7000번대: SP 없이 GP 처리
+			if (itemId >= 7000 && itemId < 8000) {
+				int take2 = sellAll ? qty : Math.min(qty, need);
+				if (take2 == qty) ridList.add(rid);
+				else botNewService.updateInventoryQtyByRowId(rid, qty - take2);
+				gpCount += take2;
+				sold += take2;
+				if (!sellAll) { need -= take2; if (need <= 0) break; }
+				continue;
 			}
 
 			double price = priceMap.getOrDefault(itemId, 0d);
@@ -4361,9 +4444,20 @@ public class BossAttackController {
 		pr.put("scoreExt", total.getUnit());
 		pr.put("cmd", "SELL_EQUIP");
 
-		botNewService.insertPointRank(pr);
+		if (total.getValue() > 0 || total.getUnit().length() > 0)
+			botNewService.insertPointRank(pr);
 
-		return new SellResult(sold, total);
+		// GP 지급 (7000번대 보스 아이템 판매)
+		if (gpCount > 0) {
+			HashMap<String, Object> gp = new HashMap<>();
+			gp.put("userName", userName);
+			gp.put("roomName", roomName);
+			gp.put("score",   (double) gpCount);
+			gp.put("cmd",     "BOSS_SELL");
+			try { botNewService.insertGpRecord(gp); } catch (Exception ignore) {}
+		}
+
+		return new SellResult(sold, total, gpCount);
 	}
 
 	public String showAttackRanking(HashMap<String,Object> map) {

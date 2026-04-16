@@ -260,7 +260,8 @@
       isBlurred: function(item) {
         var id = parseInt(item.ITEM_ID);
         if (id < 7000) return false;
-        return !item.GLOBAL_OWN_CNT || parseInt(item.GLOBAL_OWN_CNT) === 0;
+        // 한 번이라도 획득 이력이 있으면 blur 해제 (판매 후에도 유지)
+        return !item.EVER_OBTAINED_CNT || parseInt(item.EVER_OBTAINED_CNT) === 0;
       },
       hasStats: function(item) {
         return item.ATK_MIN>0||item.ATK_MAX>0||item.ATK_CRI>0
