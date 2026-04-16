@@ -7613,16 +7613,6 @@ public class BossAttackController {
 		        }
 	        }
 	        
-	        // 🌀 도적: 회피 (고레벨 보스일수록 회피율 감소, 필살기 제외)
-	        if ("도적".equals(u.job) && calc.monDmg > 0 && !flags.finisher) {
-	            double evadeRate = 0.80;
-
-	            if (ThreadLocalRandom.current().nextDouble() < evadeRate) {
-	                String baseMsg = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
-	                calc.patternMsg = baseMsg + "도적의 회피! 피해를 받지 않았습니다.";
-	                calc.monDmg = 0;
-	            }
-	        }
 	        
 	        if ("용사".equals(u.job) && calc.monDmg > 0 && !flags.finisher) {
 	            int reduced = (int) Math.floor(calc.monDmg * 0.3);
