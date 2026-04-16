@@ -162,9 +162,9 @@ public class BossAttackS3Controller {
             if (boss == null || boss.get("CUR_HP") == null) {
                 String lastReward = botS3Service.getLastKillRewardMsg();
                 if (lastReward != null && !lastReward.isEmpty()) {
-                    return "현재 출현한 헬보스가 없습니다." + NL + NL + lastReward;
+                    return "현재 출현한 상급악마가 없습니다." + NL + NL + lastReward;
                 }
-                return "현재 출현한 헬보스가 없습니다.";
+                return "현재 출현한 상급악마가 없습니다.";
             }
             // HP: CUR_HP(소수 가능) + CUR_HP_EXT 조합 → SP로 raw 계산
             curHpNum = Double.parseDouble(boss.get("CUR_HP").toString());
@@ -199,7 +199,7 @@ public class BossAttackS3Controller {
                 if (LocalDateTime.now().isBefore(spawnTime)) {
                     String dispTime = spawnTime.format(DateTimeFormatter.ofPattern("MM/dd HH:mm"));
                     String lastReward = botS3Service.getLastKillRewardMsg();
-                    String msg = userName + "님," + NL + "헬보스가 재정비 중입니다." + NL + "등장 예정: " + dispTime;
+                    String msg = userName + "님," + NL + "상급악마가 재정비 중입니다." + NL + "등장 예정: " + dispTime;
                     if (lastReward != null && !lastReward.isEmpty()) {
                         msg += NL + NL + lastReward;
                     }
@@ -264,6 +264,10 @@ public class BossAttackS3Controller {
 
             int totalCritPercent = ctx.crit - critDefRate;
 
+            // 직업 추가 데미지: 상급악마(악마 속성)
+            if ("어둠사냥꾼".equals(ctx.job))      baseAtk = (int) Math.round(baseAtk * 2.0);
+            else if ("용사".equals(ctx.job)) baseAtk = (int) Math.round(baseAtk * 1.25);
+
             if (heavensPunishment) {
                 isCritical = true; isSuperCritical = true;
             } else {
@@ -316,6 +320,9 @@ public class BossAttackS3Controller {
             int baseAtk2 = (ctx.atkMin + rand.nextInt(Math.max(1, ctx.atkMax - ctx.atkMin + 1))) / 100;
             if (baseAtk2 < 1) baseAtk2 = 1;
             String atkRangeStr2 = "(" + (ctx.atkMin / 100) + "~" + (ctx.atkMax / 100) + ") ";
+            // 직업 추가 데미지 (2타)
+            if ("어둠사냥꾼".equals(ctx.job))      baseAtk2 = (int) Math.round(baseAtk2 * 2.0);
+            else if ("용사".equals(ctx.job)) baseAtk2 = (int) Math.round(baseAtk2 * 1.25);
             int totalCrit2 = ctx.crit - critDefRate;
             isCritical2 = totalCrit2 > 0 && Math.random() < totalCrit2 / 100.0;
             if (isCritical2) isSuperCritical2 = Math.random() < 0.10;
@@ -406,13 +413,13 @@ public class BossAttackS3Controller {
         // 처치 보상 + 보스 재생성
         String killMsg = "";
         if (isKill) {
-            killMsg = calcHellBossReward(roomName, bossStartDate);
+            killMsg = calcHellBossReward(roomName, bossStartDate, maxHp);
             respawnHellBoss();
         }
 
         // 결과 메시지
         StringBuilder msg = new StringBuilder();
-        msg.append(userName).append("님이 [헬보스]를 공격했습니다!").append(NL);
+        msg.append(userName).append("님이 [상급악마]를 공격했습니다!").append(NL);
 
         if (!isEvade) {
             msg.append("▶ 입힌 데미지: ").append(damage).append(NL);
@@ -438,8 +445,8 @@ public class BossAttackS3Controller {
 
         msg.append(NL);
         if (isKill) {
-            msg.append("✨헬보스를 처치했습니다!").append(NL).append(killMsg);
-            msg.append(NL).append("새로운 헬보스가 출현했습니다!").append(NL);
+            msg.append("✨상급악마를 처치했습니다!").append(NL).append(killMsg);
+            msg.append(NL).append("새로운 상급악마가 출현했습니다!").append(NL);
         } else {
             String curHpDisp = SP.fromSp(newHp).toString();
             String maxHpDisp = SP.fromSp(maxHp).toString();
@@ -581,12 +588,13 @@ public class BossAttackS3Controller {
     // =========================================================
     // 보상: 7000번대 미소지자 중 기여도 가중 랜덤 1명에게 1개 지급
     // =========================================================
-    private String calcHellBossReward(String roomName, String bossStartDate) {
+    private String calcHellBossReward(String roomName, String bossStartDate, long maxHp) {
         // 보상 대상: 7000번대 미소지자 중 기여도 상위
         List<HashMap<String, Object>> eligible;
         try {
             HashMap<String, Object> q = new HashMap<>();
             q.put("bossStartDate", bossStartDate);
+                q.put("maxHp", maxHp);
             eligible = botS3Service.selectHellEligibleContributors(q);
         } catch (Exception e) {
             eligible = new ArrayList<>();
@@ -730,9 +738,9 @@ public class BossAttackS3Controller {
         if (boss == null || boss.get("CUR_HP") == null) {
             String lastReward = botS3Service.getLastKillRewardMsg();
             if (lastReward != null && !lastReward.isEmpty()) {
-                return "현재 출현한 헬보스가 없습니다." + NL + NL + lastReward;
+                return "현재 출현한 상급악마가 없습니다." + NL + NL + lastReward;
             }
-            return "현재 출현한 헬보스가 없습니다.";
+            return "현재 출현한 상급악마가 없습니다.";
         }
 
         double curHpNum = Double.parseDouble(boss.get("CUR_HP").toString());
@@ -758,7 +766,7 @@ public class BossAttackS3Controller {
         }
 
         StringBuilder msg = new StringBuilder();
-        msg.append("[ 헬보스 정보 ]").append(NL);
+        msg.append("[ 상급악마 정보 ]").append(NL);
         msg.append("체력: ").append(SP.fromSp(hp)).append("/").append(SP.fromSp(maxHp))
            .append(" (").append(String.format("%.1f", hpPct)).append("%)").append(NL);
 

@@ -1976,6 +1976,10 @@ public class BossAttackController {
 		    for (Monster mm : monsters) {
 		        sb.append(renderMonsterSelectLine(mm, nightmareYnVal));
 		    }
+		    if (nightmareYnVal == 2) {
+		        sb.append(ALL_SEE_STR).append(NL)
+		          .append("▶ [헬전용] 99 또는 보스 → [상급악마]").append(NL);
+		    }
 
 		    return sb.toString();
 		}
@@ -1986,6 +1990,16 @@ public class BossAttackController {
 			}else {
 				return "문의방에서는 불가능합니다.";
 			}
+		}
+
+		// 헬보스(상급악마) 타겟 설정: 헬모드 전용
+		if ("99".equals(input) || "보스".equals(input) || "상급악마".equals(input)) {
+		    if (nightmareYnVal != 2)
+		        return userName + "님, [상급악마]는 헬모드 유저만 타겟으로 설정할 수 있습니다.";
+		    botNewService.closeOngoingBattleTx(userName, roomName);
+		    botNewService.updateUserTargetMonTx(userName, roomName, 99);
+		    return userName + "님, 공격 타겟을 [상급악마](MON_NO=99) 으로 설정했습니다." + NL
+		         + "※ /ㄱ 으로 헬보스를 공격합니다.";
 		}
 
 		Monster m = input.matches("\\d+")
@@ -6383,7 +6397,7 @@ public class BossAttackController {
 
 	private boolean isSkeleton(Monster m) {
 	    if (m == null) return false;
-	    if (m.monNo == 10||m.monNo ==14||m.monNo ==15||m.monNo ==25||m.monNo ==28) return true;
+	    if (m.monNo == 10||m.monNo ==14||m.monNo ==15||m.monNo ==25||m.monNo ==28||m.monNo ==99) return true;
 	    if (m.monName.equals("해골")||m.monName.equals("리치")||m.monName.equals("하급악마")
 	    		||m.monName.equals("중급악마")||m.monName.equals("미이라")) {
 	    	return true;
