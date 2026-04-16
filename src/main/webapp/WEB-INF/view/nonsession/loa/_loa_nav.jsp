@@ -46,12 +46,61 @@
   /* 사이드바 너비만큼 본문 밀기 */
   body { margin-left: 120px !important; }
 
+  /* 햄버거 버튼 (기본 숨김) */
+  .loa-nav-toggle {
+    display: none;
+    position: fixed;
+    top: 8px; left: 8px;
+    z-index: 300;
+    background: #0e0c1a;
+    border: 1px solid #2a2040;
+    border-radius: 8px;
+    color: #c9a96e;
+    font-size: 20px;
+    width: 38px; height: 38px;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+
+  /* 오버레이 backdrop */
+  .loa-nav-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.5);
+    z-index: 190;
+  }
+  .loa-nav-backdrop.on { display: block; }
+
   @media (max-width: 600px) {
     .loa-nav { width: 80px; }
     .loa-nav-item { font-size: 10px; padding: 10px 6px; }
     body { margin-left: 80px !important; }
   }
+
+  /* ── 초소형 화면 (폴드 접힘 등, ≤360px) ── */
+  @media (max-width: 360px) {
+    body { margin-left: 0 !important; padding-top: 50px; }
+
+    .loa-nav {
+      width: 140px;
+      transform: translateX(-141px);
+      transition: transform .22s ease;
+      z-index: 210;
+    }
+    .loa-nav.open { transform: translateX(0); }
+
+    .loa-nav-item { font-size: 12px; padding: 13px 14px; }
+
+    .loa-nav-toggle { display: flex; }
+  }
 </style>
+
+<!-- 햄버거 버튼 (소형 화면에서만 표시) -->
+<button class="loa-nav-toggle" id="loaNavToggle" aria-label="메뉴">☰</button>
+<div class="loa-nav-backdrop" id="loaNavBackdrop"></div>
 
 <nav class="loa-nav" id="loaNav">
   <div class="loa-nav-title">람쥐봇</div>
@@ -87,6 +136,23 @@
       var el = document.querySelector('.loa-nav-item[data-page="' + page + '"]');
       if (el) el.classList.add('active');
     }
+  });
+
+  // 햄버거 토글
+  var nav      = document.getElementById('loaNav');
+  var toggle   = document.getElementById('loaNavToggle');
+  var backdrop = document.getElementById('loaNavBackdrop');
+
+  function openNav()  { nav.classList.add('open'); backdrop.classList.add('on'); }
+  function closeNav() { nav.classList.remove('open'); backdrop.classList.remove('on'); }
+
+  toggle.addEventListener('click', function () {
+    nav.classList.contains('open') ? closeNav() : openNav();
+  });
+  backdrop.addEventListener('click', closeNav);
+  // 메뉴 항목 클릭 시 nav 닫기
+  document.querySelectorAll('.loa-nav-item').forEach(function (a) {
+    a.addEventListener('click', closeNav);
   });
 })();
 </script>

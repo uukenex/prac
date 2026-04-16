@@ -80,6 +80,16 @@
     .comp-table td { padding: 7px 10px; border-bottom: 1px solid #f0ebe4; }
     .comp-table td.num  { text-align: right; font-weight: 600; color: #3d2b1f; }
     .comp-table td.plus { text-align: right; color: #60a060; font-size: 12px; }
+
+    @media (max-width: 360px) {
+      .user-wrap input { width: 110px; font-size: 12px; padding: 8px 10px; }
+      .btn-query { padding: 8px 12px; font-size: 12px; }
+      .grade-badge { font-size: 36px; padding: 14px; }
+      .card { padding: 12px 10px; }
+      .comp-table { font-size: 11px; display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      .comp-table th, .comp-table td { padding: 5px 6px; }
+      .card-title { font-size: 12px; }
+    }
   </style>
 </head>
 <body>

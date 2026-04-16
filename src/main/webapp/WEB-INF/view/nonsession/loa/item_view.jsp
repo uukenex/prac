@@ -81,6 +81,22 @@
     .empty   { text-align: center; padding: 60px 0; color: #ccc; }
     .empty .ico { font-size: 34px; margin-bottom: 10px; }
     .loading { text-align: center; padding: 60px; color: #ccc; font-size: 15px; }
+
+    /* ── 초소형 화면 (갤럭시 폴드 접힘 등) ── */
+    @media (max-width: 360px) {
+      .shop-wrap { padding: 12px 8px 50px; }
+      .shop-title { font-size: 17px; }
+      .top-controls { gap: 6px; }
+      .search-wrap { min-width: 0; }
+      .user-wrap input { width: 100px; font-size: 12px; padding: 8px 10px; }
+      .btn-query { padding: 8px 12px; font-size: 12px; }
+      .cat-tab { padding: 5px 10px; font-size: 11px; }
+      .item-grid { grid-template-columns: 1fr 1fr; gap: 6px; }
+      .item-card { padding: 10px 9px 10px; }
+      .card-icon  { font-size: 20px; }
+      .card-name  { font-size: 12px; }
+      .card-price { font-size: 12px; }
+    }
   </style>
 </head>
 <body>

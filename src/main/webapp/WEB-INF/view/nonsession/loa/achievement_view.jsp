@@ -80,6 +80,11 @@
                 color: #555; max-height: 320px; overflow-y: auto; line-height: 1.8; }
     .raw-list .rl-label { color: #3d2b1f; font-weight: 600; }
     .raw-list .rl-cmd   { color: #aaa; font-size: 10px; margin-left: 4px; }
+
+    @media (max-width: 360px) {
+      .achv-grid   { grid-template-columns: 1fr 1fr; gap: 6px; }
+      .season-grid { grid-template-columns: 1fr 1fr; gap: 5px; }
+    }
   </style>
 </head>
 <body>

@@ -127,6 +127,13 @@
       .equip-screen { grid-template-columns: 110px 1fr 110px; gap: 6px; }
       .char-box { width: 110px; height: 110px; font-size: 50px; }
     }
+
+    @media (max-width: 360px) {
+      .equip-screen { grid-template-columns: 1fr; }
+      .modal-box { min-width: 0; width: 92vw; box-sizing: border-box; }
+      .search-row input { width: 100px; font-size: 12px; padding: 7px 10px; }
+      .btn-search { padding: 7px 12px; font-size: 12px; }
+    }
   </style>
 </head>
 <body>

@@ -48,6 +48,11 @@
     .empty   { text-align: center; padding: 60px 0; color: #ccc; }
     .empty .ico { font-size: 34px; margin-bottom: 10px; }
     .loading { text-align: center; padding: 60px; color: #ccc; font-size: 15px; }
+
+    @media (max-width: 360px) {
+      .job-grid    { grid-template-columns: 1fr; }
+      .search-wrap { min-width: 0; }
+    }
   </style>
 </head>
 <body>

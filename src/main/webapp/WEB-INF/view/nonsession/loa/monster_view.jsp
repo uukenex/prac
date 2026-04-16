@@ -139,6 +139,12 @@
     .diff-note { font-size: 12px; padding: 8px 14px; border-radius: 8px; margin-bottom: 14px; }
     .diff-note.nightmare { background: #f5eeff; color: #7d3c98; }
     .diff-note.hell      { background: #fff0f0; color: #a93226; }
+
+    @media (max-width: 360px) {
+      .mon-grid    { grid-template-columns: 1fr; }
+      .up-lv-block { min-width: 0; }
+      .search-wrap { min-width: 0; }
+    }
   </style>
 </head>
 <body>
