@@ -248,7 +248,6 @@
 		         , to_char(INSERT_DATE, 'mm/dd hh24:mi') AS REWARD_DATE
 		      FROM TBOT_POINT_NEW_INVENTORY
 		     WHERE GAIN_TYPE        = 'BOSS_HELL'
-		       AND NVL(DEL_YN, '0') = '0'
 		     ORDER BY INSERT_DATE DESC
 		  )
 		 WHERE ROWNUM = 1
