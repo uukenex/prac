@@ -1,7 +1,9 @@
 package my.prac.core.game.dto;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import my.prac.core.util.SP;
 
 public class UserBattleContext {
@@ -75,4 +77,7 @@ public class UserBattleContext {
     
 	// [OPT-HUNTER] attackInfo 에서 미리 조회한 dropsRows 공유용 (applyDropBonusToContext 중복 조회 방지)
 	public List<HashMap<String,Object>> preDropRows = null;
+
+	// 보스 아이템(7001~7010) 보유 목록 (calcUserBattleContext에서 채워짐)
+	public Set<Integer> ownedBossItems = new HashSet<>();
 }
