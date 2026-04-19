@@ -246,7 +246,7 @@ public class BossAttackS3Controller {
         if (!isEvade) {
             String atkRangeStr = "(" + (ctx.atkMin / 100) + "~" + (ctx.atkMax / 100) + ") ";
             // 보스 기본 크리율 10% 고정 (S2 크리율 미적용), 초강력치명타는 크리 발동 시 10% 확률
-            int totalCritPercent = Math.max(0, 10 - critDefRate);
+            int totalCritPercent = Math.max(0, 100 - critDefRate);
 
             // HIDE_RULE: 특정 시간대 치명타 불가 (천벌/디버프 중엔 무시)
             hideMsg = applyHideRule(hideRule, heavensPunishment || flag_boss_debuff);
