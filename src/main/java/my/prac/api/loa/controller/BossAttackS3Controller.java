@@ -659,18 +659,61 @@ public class BossAttackS3Controller {
     // 보상: 7000번대 미소지자 중 기여도 가중 랜덤 1명에게 1개 지급
     // =========================================================
     private String calcHellBossReward(String roomName, String bossStartDate, long maxHp) {
-        // 30% 확률로만 보상 지급
+        // 30% 확률로만 아이템 보상 지급
         if (Math.random() >= 0.30) {
-            // 70% → 보상 없음 (기여도 표시는 유지)
-            // 전체 기여도만 조회해서 표시
+            // 70% → 아이템 보상 없음, 대신 전체 참여자에게 GP 지급
             List<HashMap<String, Object>> allCont;
             try {
                 HashMap<String, Object> q = new HashMap<>();
                 q.put("bossStartDate", bossStartDate);
                 allCont = botS3Service.selectHellTop3Contributors(q);
             } catch (Exception e) { allCont = new ArrayList<>(); }
+
             StringBuilder noRewardMsg = new StringBuilder();
-            noRewardMsg.append("이번 상급악마 처치에는 보상이 없습니다. (30% 확률)").append(NL);
+            noRewardMsg.append("이번 상급악마 처치에는 아이템 보상이 없습니다. (30% 확률)").append(NL);
+
+            // GP 지급: 총 0.5~1 GP를 참여자 기여도 비율로 분배
+            if (!allCont.isEmpty()) {
+                double totalGp = 0.5 + Math.random() * 0.5; // 0.5 ~ 1.0 GP
+
+                // 가중치 산정 (횟수 70% + 데미지 30%)
+                int totCnt = Integer.parseInt(allCont.get(0).get("TOT_CNT").toString());
+                long totScore = 0;
+                for (HashMap<String, Object> row : allCont)
+                    totScore += Long.parseLong(row.get("SCORE").toString());
+
+                double[] weights = new double[allCont.size()];
+                double weightSum = 0;
+                for (int i = 0; i < allCont.size(); i++) {
+                    int cnt   = Integer.parseInt(allCont.get(i).get("CNT").toString());
+                    long score = Long.parseLong(allCont.get(i).get("SCORE").toString());
+                    double cntPct   = totCnt   > 0 ? (double) cnt   / totCnt   : 0;
+                    double scorePct = totScore > 0 ? (double) score / totScore : 0;
+                    weights[i] = cntPct * 0.7 + scorePct * 0.3;
+                    weightSum += weights[i];
+                }
+
+                noRewardMsg.append(NL)
+                           .append(String.format("🪙 GP 보상 (총 %.2f GP 분배)", totalGp)).append(NL);
+                for (int i = 0; i < allCont.size(); i++) {
+                    String uName = allCont.get(i).get("USER_NAME").toString();
+                    double gpShare = weightSum > 0
+                            ? Math.round(totalGp * weights[i] / weightSum * 100.0) / 100.0
+                            : Math.round(totalGp / allCont.size() * 100.0) / 100.0;
+                    if (gpShare <= 0) continue;
+                    try {
+                        HashMap<String, Object> gpMap = new HashMap<>();
+                        gpMap.put("userName", uName);
+                        gpMap.put("roomName", roomName);
+                        gpMap.put("score",    gpShare);
+                        gpMap.put("cmd",      "BOSS_HELL_KILL_GP");
+                        botNewService.insertGpRecord(gpMap);
+                        noRewardMsg.append("  ").append(uName)
+                                   .append(" +").append(String.format("%.2f", gpShare)).append(" GP").append(NL);
+                    } catch (Exception ignore) {}
+                }
+            }
+
             if (!allCont.isEmpty()) {
                 noRewardMsg.append(NL).append("-- 전체 기여도 TOP --").append(NL);
                 for (HashMap<String, Object> row : allCont) {
