@@ -583,7 +583,7 @@ public class BossAttackController {
 	    
 	    if(u.nightmareYn==2) {
 	    	double hellMult = MiniGameUtil.getHellNerfMult(ctx.hunterGrade);
-	    	if (ctx.ownedBossItems.contains(7007)) hellMult = Math.max(0.0, hellMult + 0.06);
+	    	if (ctx.ownedBossItems.contains(7007)) hellMult = Math.max(0.0, hellMult + 0.03);
 
 	    	hellNerfAtkMin = Math.max(0, (int) Math.round(atkMin   * (1-hellMult) ));
 	    	hellNerfAtkMax = Math.max(0, (int) Math.round(atkMax   * (1-hellMult) ));
@@ -1550,13 +1550,9 @@ public class BossAttackController {
 	    if (u.nightmareYn == 2) {
 	        double hellMult = MiniGameUtil.getHellNerfMult(ctx.hunterGrade);
 	        int reductionPct = (int) Math.round((1.0 - hellMult) * 100);
-	        int basePct = (int) Math.round((1.0 - MiniGameUtil.HEL_NERF_BASE) * 100);
+	        //int basePct = (int) Math.round((1.0 - MiniGameUtil.HEL_NERF_BASE) * 100);
 	        sb.append("[헬모드] 능력치 삭감 ").append(reductionPct).append("%");
-	        if (Math.abs(hellMult - MiniGameUtil.HEL_NERF_BASE) > 0.001) {
-	            sb.append(" (hunter").append(ctx.hunterGrade).append(", 기본 ").append(basePct).append("%)");
-	        } else {
-	            sb.append(" (hunter").append(ctx.hunterGrade).append(")");
-	        }
+	        sb.append(" (hunter").append(ctx.hunterGrade).append(")");
 	        sb.append(NL);
 	    }
 	    sb.append(NL);

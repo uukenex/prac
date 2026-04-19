@@ -770,10 +770,10 @@ public class BossAttackS3Controller {
             //   - 미당첨자 전원: 0.2 GP
             //   - MVP(데미지 1위): +0.2 GP 추가 보너스
             // ────────────────────────────────────────────────────
-            msg.append("이번 상급악마 처치에는 아이템 보상이 없습니다. (30% 확률)").append(NL);
+            msg.append("이번 상급악마 처치에는 아이템 보상이 없습니다.").append(NL);
 
             if (qualified.isEmpty()) {
-                msg.append("🪙 GP 지급 대상 없음 (2% 이상 기여자 없음)").append(NL);
+                msg.append("GP 지급 대상 없음 (2% 이상 기여자 없음)").append(NL);
             } else {
                 double randomGp = 0.5 + rand.nextDouble() * 0.5; // 0.5 ~ 1.0
                 String gpWinner = qualified.get(rand.nextInt(qualified.size()));
@@ -809,7 +809,7 @@ public class BossAttackS3Controller {
                         gpMap.put("cmd",      isWin ? "BOSS_HELL_KILL_GP" : "BOSS_HELL_PART_GP");
                         botNewService.insertGpRecord(gpMap);
                         StringBuilder gpLabel = new StringBuilder();
-                        gpLabel.append("[").append(uName).append("] 🪙 ");
+                        gpLabel.append("[").append(uName).append("] ");
                         if (isWin) gpLabel.append(String.format("+%.2f GP (랜덤당첨)", randomGp));
                         else       gpLabel.append("+0.20 GP");
                         if (isMvp) gpLabel.append(" +0.20 GP (MVP)");
@@ -863,7 +863,7 @@ public class BossAttackS3Controller {
                 String maxHpExt = boss.get("MAX_HP_EXT") != null ? boss.get("MAX_HP_EXT").toString() : "";
                 long maxHp = SP.toBaseValue(SP.of(maxHpNum, maxHpExt));
                 int pct = maxHp > 0 ? (int)Math.round(hp * 100.0 / maxHp) : 0;
-                return "👹현재 상급악마 출현! [체력 " + pct + "%]" + NL;
+                return "현재 상급악마 출현! [체력 " + pct + "%]" + NL;
             }
         } catch (Exception e) {
             return "";
