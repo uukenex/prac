@@ -29,8 +29,11 @@ public interface BotS3DAO {
 	/** [헬보스] 마지막 처치된 보스 조회 (리워드 표시용) */
 	HashMap<String, Object> selectLastKilledHellBoss();
 
-	/** [헬보스] 마지막 보상 수령자 조회 */
+	/** [헬보스] 마지막 보상 수령자 조회 (TBOT_POINT_NEW_INVENTORY) */
 	HashMap<String, Object> selectLastHellRewardRecipient();
+
+	/** [헬보스] 마지막 GP 보상 수령자 조회 (TBOT_POINT_RANK, KILL_GP/NO_ITEM_GP) */
+	HashMap<String, Object> selectLastHellGpRecipient();
 
 	/** [헬보스] 최근 200회 공격의 평균 데미지 */
 	Long selectRecentHellAvgDmg() throws Exception;
