@@ -748,19 +748,33 @@ public class BossAttackS3Controller {
                     givePool = new ArrayList<>(getHellRewardItems());
                 }
                 if (givePool.isEmpty()) givePool = new ArrayList<>(getHellRewardItems());
-                int giveItemId = givePool.get(rand.nextInt(givePool.size()));
-                try {
-                    HashMap<String, Object> inv = new HashMap<>();
-                    inv.put("userName", winner);
-                    inv.put("roomName", roomName);
-                    inv.put("itemId",   giveItemId);
-                    inv.put("qty",      1);
-                    inv.put("gainType", "BOSS_HELL");
-                    botNewService.insertInventoryLogTx(inv);
-                    msg.append(NL).append(isFirstDiscovery ? "✨최초 발견! " : "✨ 보상: ")
-                       .append("[").append(winner).append("] item#").append(giveItemId)
-                       .append(isFirstDiscovery ? " (서버 최초 획득!)" : "").append(NL);
-                } catch (Exception e) { /* 지급 실패 무시 */ }
+
+                if (givePool.isEmpty()) {
+                    // 지급할 아이템 없음 → 1 GP 지급 (아이템과 중복 불가)
+                    try {
+                        HashMap<String, Object> gpFallback = new HashMap<>();
+                        gpFallback.put("userName", winner);
+                        gpFallback.put("roomName", roomName);
+                        gpFallback.put("score",    1.0);
+                        gpFallback.put("cmd",      "BOSS_HELL_NO_ITEM_GP");
+                        botNewService.insertGpRecord(gpFallback);
+                        msg.append(NL).append("✨ [").append(winner).append("] 지급 아이템 없음 → 1 GP 지급!").append(NL);
+                    } catch (Exception e) { /* 지급 실패 무시 */ }
+                } else {
+                    int giveItemId = givePool.get(rand.nextInt(givePool.size()));
+                    try {
+                        HashMap<String, Object> inv = new HashMap<>();
+                        inv.put("userName", winner);
+                        inv.put("roomName", roomName);
+                        inv.put("itemId",   giveItemId);
+                        inv.put("qty",      1);
+                        inv.put("gainType", "BOSS_HELL");
+                        botNewService.insertInventoryLogTx(inv);
+                        msg.append(NL).append(isFirstDiscovery ? "✨최초 발견! " : "✨ 보상: ")
+                           .append("[").append(winner).append("] item#").append(giveItemId)
+                           .append(isFirstDiscovery ? " (서버 최초 획득!)" : "").append(NL);
+                    } catch (Exception e) { /* 지급 실패 무시 */ }
+                }
             }
 
         } else {
