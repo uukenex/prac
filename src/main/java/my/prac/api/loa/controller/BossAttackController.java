@@ -83,6 +83,11 @@ public class BossAttackController {
 	private static final int HEL_MUL_EXP = 3;     // 헬 추가 배율 (나메에 추가 *3), 총 base*NM*HEL
 	private static final long HEL_SP_MULT = 200; // 토끼(10sp) * 50 * 200 =  = 10a
 
+    // [7000번대 보스 아이템 헬너프 면제]
+    // true  = 7000번대 아이템(7001 천벌 등) ATK 스탯이 헬너프 적용 후 합산됨 (헬너프 미적용)
+    // false = 기존 동작 (헬너프 이전 합산, 헬너프 영향받음)
+    private static final boolean BOSS_ITEM_HELL_NERF_EXEMPT = false;
+
 	// [FIX4] selectActiveSpecialBuff 단기 캐시 (서버 전역 버프는 15초간 재사용)
 	private static volatile HashMap<String,Object> SPECIAL_BUFF_CACHE = null;
 	private static volatile long SPECIAL_BUFF_CACHE_TS = 0L;
@@ -343,9 +348,18 @@ public class BossAttackController {
 	    int mktAtkMaxRate  = (buffs != null && buffs.get("ATK_MAX_RATE")   != null) ? buffs.get("ATK_MAX_RATE").intValue()   : 0;
 
 	    // 천벌 아이템(7001) 스탯 합산
+	    // BOSS_ITEM_HELL_NERF_EXEMPT=true 이면 ATK만 분리해 헬너프 이후 합산
+	    int heavenAtkMin = 0, heavenAtkMax = 0; // 헬너프 면제 시 후합산 버퍼
 	    if (heavenBuff != null) {
-	        mktAtkMin    += heavenBuff.get("ATK_MIN")      != null ? ((Number) heavenBuff.get("ATK_MIN")).intValue()      : 0;
-	        mktAtkMax    += heavenBuff.get("ATK_MAX")      != null ? ((Number) heavenBuff.get("ATK_MAX")).intValue()      : 0;
+	        int hbAtkMin = heavenBuff.get("ATK_MIN") != null ? ((Number) heavenBuff.get("ATK_MIN")).intValue() : 0;
+	        int hbAtkMax = heavenBuff.get("ATK_MAX") != null ? ((Number) heavenBuff.get("ATK_MAX")).intValue() : 0;
+	        if (BOSS_ITEM_HELL_NERF_EXEMPT) {
+	            heavenAtkMin = hbAtkMin; // 헬너프 이후에 합산
+	            heavenAtkMax = hbAtkMax;
+	        } else {
+	            mktAtkMin += hbAtkMin;
+	            mktAtkMax += hbAtkMax;
+	        }
 	        mktCrit      += heavenBuff.get("ATK_CRI")      != null ? ((Number) heavenBuff.get("ATK_CRI")).intValue()      : 0;
 	        mktRegen     += heavenBuff.get("HP_REGEN")     != null ? ((Number) heavenBuff.get("HP_REGEN")).intValue()     : 0;
 	        mktHpMax     += heavenBuff.get("HP_MAX")       != null ? ((Number) heavenBuff.get("HP_MAX")).intValue()       : 0;
@@ -591,8 +605,13 @@ public class BossAttackController {
 	    ctx.hellNerfHp = hellNerfHp;
 	    ctx.hellNerfCrit = hellNerfCrit;
 	    ctx.hellNerfCritDmg = hellNerfCritDmg;
-	    
-	    
+
+	    // [7000번대 헬너프 면제] 헬너프 이후 7001 천벌 ATK 합산
+	    if (BOSS_ITEM_HELL_NERF_EXEMPT && (heavenAtkMin > 0 || heavenAtkMax > 0)) {
+	        atkMin += heavenAtkMin;
+	        atkMax += heavenAtkMax;
+	    }
+
 	    // HP/ATK 확정치 저장
 	    // 은둔자: 마지막 공격 후 경과시간(분) 비례 데미지 증가
 	    if ("은둔자".equals(job) && ads != null && ads.lastAttackTime != null) {
