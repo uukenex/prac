@@ -253,6 +253,26 @@
 		 WHERE ROWNUM = 1
 	</select>
 
+	<!-- =====================================================
+	     [S3 헬보스] 마지막 GP 보상 수령자 조회 (TBOT_POINT_RANK)
+	     BOSS_HELL_KILL_GP: 랜덤당첨 / BOSS_HELL_NO_ITEM_GP: 아이템없음 대체GP
+	     ===================================================== -->
+	<select id="selectLastHellGpRecipient" resultType="HashMap">
+		SELECT USER_NAME
+		     , SCORE
+		     , REWARD_DATE
+		  FROM (
+		    SELECT USER_NAME
+		         , SCORE
+		         , to_char(INSERT_DATE, 'mm/dd hh24:mi') AS REWARD_DATE
+		      FROM TBOT_POINT_RANK
+		     WHERE CMD    IN ('BOSS_HELL_KILL_GP', 'BOSS_HELL_NO_ITEM_GP')
+		       AND NEW_YN  = '2'
+		     ORDER BY INSERT_DATE DESC
+		  )
+		 WHERE ROWNUM = 1
+	</select>
+
 	<!-- [S3 헬보스] 최근 200회 공격의 평균 데미지 -->
 	<select id="selectRecentHellAvgDmg" resultType="java.lang.Long">
 	    SELECT NVL(ROUND(AVG(ATK_DMG)), 0)

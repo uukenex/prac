@@ -64,15 +64,25 @@ public class BotS3ServiceImpl implements BotS3Service {
 			q.put("bossStartDate", startDate);
 
 			List<HashMap<String, Object>> contributors = botS3DAO.selectHellTop3Contributors(q);
-			HashMap<String, Object> rewardRow = botS3DAO.selectLastHellRewardRecipient();
+
+			// 아이템 보상과 GP 보상 중 더 최근 것을 표시
+			HashMap<String, Object> itemRow = botS3DAO.selectLastHellRewardRecipient();
+			HashMap<String, Object> gpRow   = botS3DAO.selectLastHellGpRecipient();
 
 			StringBuilder sb = new StringBuilder();
 			sb.append("[ 최근 처치된 헬보스 결과 ]").append(NL);
-			if (rewardRow != null) {
-				sb.append("★ 보상: [").append(rewardRow.get("USER_NAME"))
-				  .append("] item#").append(rewardRow.get("ITEM_ID"))
-				  .append(" (").append(rewardRow.get("REWARD_DATE")).append(")").append(NL);
+
+			if (itemRow != null) {
+				sb.append("★ 보상(아이템): [").append(itemRow.get("USER_NAME"))
+				  .append("] item#").append(itemRow.get("ITEM_ID"))
+				  .append(" (").append(itemRow.get("REWARD_DATE")).append(")").append(NL);
 			}
+			if (gpRow != null) {
+				sb.append("★ 보상(GP): [").append(gpRow.get("USER_NAME"))
+				  .append("] +").append(String.format("%.2f", Double.parseDouble(gpRow.get("SCORE").toString()))).append(" GP")
+				  .append(" (").append(gpRow.get("REWARD_DATE")).append(")").append(NL);
+			}
+
 			if (contributors != null && !contributors.isEmpty()) {
 				sb.append(NL).append("-- 기여도 TOP --").append(NL);
 				for (HashMap<String, Object> row : contributors) {

@@ -469,7 +469,7 @@ public class BossAttackS3Controller {
         String killMsg = "";
         if (isKill) {
             killMsg = calcHellBossReward(roomName, bossStartDate, maxHp);
-            respawnHellBoss();
+            respawnHellBoss(bossStartDate);
         }
 
         // 결과 메시지
@@ -498,6 +498,8 @@ public class BossAttackS3Controller {
 
         if (flag_boss_attack && bossAtkApplied > 0) {
             msg.append("▶ 보스의 반격! 최대HP의 피해! (").append(bossAtkApplied).append(")").append(NL);
+            int remainHp = Math.max(0, ctx.hpMax - bossAtkApplied);
+            msg.append("  └ 남은체력: ").append(remainHp).append("/").append(ctx.hpMax).append(NL);
         }
 
         msg.append(NL);
@@ -523,9 +525,25 @@ public class BossAttackS3Controller {
     private static final DateTimeFormatter SPAWN_DATE_FMT =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
-    private void respawnHellBoss() {
+    /**
+     * 보스 재생성 — 참여 인원수에 따라 쿨타임을 동적 산정
+     *   6명 이하 → 18시간(1080분), 30명 이상 → 6시간(360분)
+     *   수식: cooldownMin = max(360, min(1080, 1080 - (n-6) * 30))
+     */
+    private void respawnHellBoss(String bossStartDate) {
         try {
             Random rand = new Random();
+
+            // 참여 인원수 조회 (쿨타임 산정)
+            int participantCount = 6; // 기본값 (조회 실패 시)
+            try {
+                HashMap<String, Object> q = new HashMap<>();
+                q.put("bossStartDate", bossStartDate);
+                List<HashMap<String, Object>> participants = botS3Service.selectHellTop3Contributors(q);
+                if (participants != null && !participants.isEmpty()) participantCount = participants.size();
+            } catch (Exception ignored) {}
+            long cooldownMin = Math.max(360, Math.min(1080, 1080 - (long)(participantCount - 6) * 30));
+
             // 최근 공격 평균 데미지 기반으로 120~150회 분량 HP 산정
             long rawHp;
             try {
@@ -548,8 +566,8 @@ public class BossAttackS3Controller {
             bossMap.put("defPower",    randInt(rand, BOSS_DEF_POWER_MIN,  BOSS_DEF_POWER_MAX));
             bossMap.put("evadeRate",   randInt(rand, BOSS_EVADE_RATE_MIN, BOSS_EVADE_RATE_MAX));
             bossMap.put("critDefRate", randInt(rand, BOSS_CRIT_DEF_MIN,   BOSS_CRIT_DEF_MAX));
-            // 24시간 후 등장
-            bossMap.put("startDate",   LocalDateTime.now().plusHours(18).format(SPAWN_DATE_FMT));
+            // 참여 인원수 기반 쿨타임 후 등장
+            bossMap.put("startDate",   LocalDateTime.now().plusMinutes(cooldownMin).format(SPAWN_DATE_FMT));
             bossMap.put("hideRule",    HIDE_RULES[rand.nextInt(HIDE_RULES.length)]);
             SP hpSp = SP.fromSp(rawHp);
             bossMap.put("maxHp",    (long) hpSp.getValue());
@@ -686,7 +704,13 @@ public class BossAttackS3Controller {
 
         StringBuilder msg = new StringBuilder();
 
-        if (rand.nextDouble() < 0.30) {
+        // 보상 주사위 (30% 아이템 / 70% GP)
+        double diceRoll = rand.nextDouble();
+        boolean isItemReward = diceRoll < 0.30;
+        msg.append("⚅ 보상 주사위: ").append(String.format("%.1f%%", diceRoll * 100))
+           .append(" → ").append(isItemReward ? "아이템 보상" : "GP 보상").append(NL);
+
+        if (isItemReward) {
             // ────────────────────────────────────────────────────
             // 30% : 2%이상 + 7000번대 미소지자 중 등확률 랜덤 아이템 지급
             // ────────────────────────────────────────────────────
@@ -784,8 +808,6 @@ public class BossAttackS3Controller {
             //   - 미당첨자 전원: 0.2 GP
             //   - MVP(데미지 1위): +0.2 GP 추가 보너스
             // ────────────────────────────────────────────────────
-            msg.append("이번 상급악마 처치에는 아이템 보상이 없습니다.").append(NL);
-
             if (qualified.isEmpty()) {
                 msg.append("GP 지급 대상 없음 (2% 이상 기여자 없음)").append(NL);
             } else {
