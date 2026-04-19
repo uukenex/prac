@@ -765,16 +765,21 @@ public class BossAttackS3Controller {
 
         } else {
             // ────────────────────────────────────────────────────
-            // 70% : 2%이상 기여자 중 등확률 랜덤 GP 지급 (7000번대 무관)
+            // 70% : GP 지급 (7000번대 무관)
+            //   - 랜덤 1명: 0.5~1 GP
+            //   - 미당첨자 전원: 0.2 GP
+            //   - MVP(데미지 1위): +0.2 GP 추가 보너스
             // ────────────────────────────────────────────────────
             msg.append("이번 상급악마 처치에는 아이템 보상이 없습니다. (30% 확률)").append(NL);
 
             if (qualified.isEmpty()) {
                 msg.append("🪙 GP 지급 대상 없음 (2% 이상 기여자 없음)").append(NL);
             } else {
-                double totalGp = 0.5 + rand.nextDouble() * 0.5; // 0.5 ~ 1.0
+                double randomGp = 0.5 + rand.nextDouble() * 0.5; // 0.5 ~ 1.0
                 String gpWinner = qualified.get(rand.nextInt(qualified.size()));
                 int winIdx = qualified.indexOf(gpWinner) + 1;
+                // MVP: allContributors는 SCORE DESC 정렬 → 첫 번째가 데미지 1위
+                String mvpName = allContributors.isEmpty() ? "" : allContributors.get(0).get("USER_NAME").toString();
 
                 msg.append(NL).append("-- GP 추첨 (2%이상 ").append(qualified.size()).append("명) --").append(NL);
                 msg.append("⚅ 주사위 1~").append(qualified.size())
@@ -782,21 +787,35 @@ public class BossAttackS3Controller {
                 for (int i = 0; i < qualified.size(); i++) {
                     String uName = qualified.get(i);
                     boolean isWin = uName.equals(gpWinner);
+                    boolean isMvp = uName.equals(mvpName);
                     msg.append(isWin ? "★" : "  ")
                        .append(i + 1).append(". ").append(uName)
+                       .append(isMvp ? " [MVP]" : "")
                        .append(isWin ? " ← 당첨!" : "").append(NL);
                 }
 
-                try {
-                    HashMap<String, Object> gpMap = new HashMap<>();
-                    gpMap.put("userName", gpWinner);
-                    gpMap.put("roomName", roomName);
-                    gpMap.put("score",    totalGp);
-                    gpMap.put("cmd",      "BOSS_HELL_KILL_GP");
-                    botNewService.insertGpRecord(gpMap);
-                    msg.append(NL)
-                       .append(String.format("🪙 [%s] +%.2f GP 지급!", gpWinner, totalGp)).append(NL);
-                } catch (Exception ignore) {}
+                msg.append(NL);
+                // 개인별 GP 지급
+                for (String uName : qualified) {
+                    boolean isWin = uName.equals(gpWinner);
+                    boolean isMvp = uName.equals(mvpName);
+                    double gp = isWin ? randomGp : 0.2;
+                    if (isMvp) gp += 0.2; // MVP 추가 보너스
+                    try {
+                        HashMap<String, Object> gpMap = new HashMap<>();
+                        gpMap.put("userName", uName);
+                        gpMap.put("roomName", roomName);
+                        gpMap.put("score",    gp);
+                        gpMap.put("cmd",      isWin ? "BOSS_HELL_KILL_GP" : "BOSS_HELL_PART_GP");
+                        botNewService.insertGpRecord(gpMap);
+                        StringBuilder gpLabel = new StringBuilder();
+                        gpLabel.append("[").append(uName).append("] 🪙 ");
+                        if (isWin) gpLabel.append(String.format("+%.2f GP (랜덤당첨)", randomGp));
+                        else       gpLabel.append("+0.20 GP");
+                        if (isMvp) gpLabel.append(" +0.20 GP (MVP)");
+                        msg.append(gpLabel).append(NL);
+                    } catch (Exception ignore) {}
+                }
             }
         }
 
