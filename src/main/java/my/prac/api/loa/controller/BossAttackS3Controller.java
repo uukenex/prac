@@ -656,162 +656,179 @@ public class BossAttackS3Controller {
 
 
     // =========================================================
-    // 보상: 7000번대 미소지자 중 기여도 가중 랜덤 1명에게 1개 지급
+    // 보상: 2% 이상 데미지 기여자 중 등확률 랜덤 지급
+    //   30% → 아이템 (7000번대 미소지자만)
+    //   70% → GP 0.5~1 (7000번대 무관)
     // =========================================================
     private String calcHellBossReward(String roomName, String bossStartDate, long maxHp) {
-        // 30% 확률로만 보상 지급
-        if (Math.random() >= 0.30) {
-            // 70% → 보상 없음 (기여도 표시는 유지)
-            // 전체 기여도만 조회해서 표시
-            List<HashMap<String, Object>> allCont;
-            try {
-                HashMap<String, Object> q = new HashMap<>();
-                q.put("bossStartDate", bossStartDate);
-                allCont = botS3Service.selectHellTop3Contributors(q);
-            } catch (Exception e) { allCont = new ArrayList<>(); }
-            StringBuilder noRewardMsg = new StringBuilder();
-            noRewardMsg.append("이번 상급악마 처치에는 보상이 없습니다. (30% 확률)").append(NL);
-            if (!allCont.isEmpty()) {
-                noRewardMsg.append(NL).append("-- 전체 기여도 TOP --").append(NL);
-                for (HashMap<String, Object> row : allCont) {
-                    noRewardMsg.append(row.get("USER_NAME"))
-                       .append(" - ").append(row.get("CNT")).append("회 / ").append(row.get("SCORE")).append("dmg")
-                       .append(NL);
-                }
-            }
-            return noRewardMsg.toString();
-        }
+        Random rand = new Random();
 
-        // 보상 대상: 7000번대 미소지자 중 기여도 상위
-        List<HashMap<String, Object>> eligible;
-        try {
-            HashMap<String, Object> q = new HashMap<>();
-            q.put("bossStartDate", bossStartDate);
-                q.put("maxHp", maxHp);
-            eligible = botS3Service.selectHellEligibleContributors(q);
-        } catch (Exception e) {
-            eligible = new ArrayList<>();
-        }
-
-        // 전체 기여도 (표시용)
+        // ── 전체 참여자 조회 (데미지% 계산용) ──
         List<HashMap<String, Object>> allContributors;
         try {
             HashMap<String, Object> q = new HashMap<>();
             q.put("bossStartDate", bossStartDate);
             allContributors = botS3Service.selectHellTop3Contributors(q);
-        } catch (Exception e) {
-            allContributors = new ArrayList<>();
+        } catch (Exception e) { allContributors = new ArrayList<>(); }
+
+        // 전체 데미지 합산
+        long totScore = 0;
+        for (HashMap<String, Object> row : allContributors)
+            totScore += Long.parseLong(row.get("SCORE").toString());
+
+        // 2% 이상 데미지 기여자 목록 (순서 유지)
+        List<String> qualified = new ArrayList<>();
+        for (HashMap<String, Object> row : allContributors) {
+            long score = Long.parseLong(row.get("SCORE").toString());
+            double dmgPct = totScore > 0 ? score * 100.0 / totScore : 0;
+            if (dmgPct >= 2.0) qualified.add(row.get("USER_NAME").toString());
         }
 
         StringBuilder msg = new StringBuilder();
 
-        if (eligible == null || eligible.isEmpty()) {
-            msg.append("★ 보상 대상 없음 (모든 참여자가 이미 7000번대 아이템 보유)").append(NL);
+        if (rand.nextDouble() < 0.30) {
+            // ────────────────────────────────────────────────────
+            // 30% : 2%이상 + 7000번대 미소지자 중 등확률 랜덤 아이템 지급
+            // ────────────────────────────────────────────────────
+            List<HashMap<String, Object>> eligibleFromDB;
+            try {
+                HashMap<String, Object> q = new HashMap<>();
+                q.put("bossStartDate", bossStartDate);
+                eligibleFromDB = botS3Service.selectHellEligibleContributors(q);
+            } catch (Exception e) { eligibleFromDB = new ArrayList<>(); }
+
+            Set<String> noItemNames = new HashSet<>();
+            for (HashMap<String, Object> row : eligibleFromDB)
+                noItemNames.add(row.get("USER_NAME").toString());
+
+            // 2%이상 기여자 중 7000번대 미소지자
+            List<String> itemCandidates = new ArrayList<>();
+            for (String uName : qualified) {
+                if (noItemNames.contains(uName)) itemCandidates.add(uName);
+            }
+
+            msg.append(NL).append("-- 아이템 추첨 (2%이상/7000미소지 ")
+               .append(itemCandidates.size()).append("명) --").append(NL);
+
+            if (itemCandidates.isEmpty()) {
+                msg.append("★ 보상 대상 없음 (2%이상 기여자 전원 7000번대 보유)").append(NL);
+            } else {
+                String winner = itemCandidates.get(rand.nextInt(itemCandidates.size()));
+                int winIdx = itemCandidates.indexOf(winner) + 1;
+                msg.append("⚅ 주사위 1~").append(itemCandidates.size())
+                   .append(" → ").append(winIdx).append("번 [").append(winner).append("]").append(NL);
+                for (int i = 0; i < itemCandidates.size(); i++) {
+                    String uName = itemCandidates.get(i);
+                    boolean isWin = uName.equals(winner);
+                    msg.append(isWin ? "★" : "  ")
+                       .append(i + 1).append(". ").append(uName)
+                       .append(isWin ? " ← 당첨!" : "").append(NL);
+                }
+
+                // 아이템 지급 (미발견 아이템 우선)
+                List<Integer> givePool;
+                boolean isFirstDiscovery = false;
+                try {
+                    List<HashMap<String, Object>> rewardMeta = botNewService.selectHellRewardItemsWithOwnCount();
+                    List<Integer> undiscovered = new ArrayList<>();
+                    List<Integer> allItems     = new ArrayList<>();
+                    for (HashMap<String, Object> row : rewardMeta) {
+                        int iid  = Integer.parseInt(row.get("ITEM_ID").toString());
+                        long cnt = Long.parseLong(row.get("GLOBAL_OWN_CNT").toString());
+                        allItems.add(iid);
+                        if (cnt == 0) undiscovered.add(iid);
+                    }
+                    if (!undiscovered.isEmpty()) {
+                        givePool = undiscovered;
+                        isFirstDiscovery = true;
+                    } else {
+                        givePool = allItems;
+                    }
+                } catch (Exception e) {
+                    givePool = new ArrayList<>(getHellRewardItems());
+                }
+                if (givePool.isEmpty()) givePool = new ArrayList<>(getHellRewardItems());
+                int giveItemId = givePool.get(rand.nextInt(givePool.size()));
+                try {
+                    HashMap<String, Object> inv = new HashMap<>();
+                    inv.put("userName", winner);
+                    inv.put("roomName", roomName);
+                    inv.put("itemId",   giveItemId);
+                    inv.put("qty",      1);
+                    inv.put("gainType", "BOSS_HELL");
+                    botNewService.insertInventoryLogTx(inv);
+                    msg.append(NL).append(isFirstDiscovery ? "✨최초 발견! " : "✨ 보상: ")
+                       .append("[").append(winner).append("] item#").append(giveItemId)
+                       .append(isFirstDiscovery ? " (서버 최초 획득!)" : "").append(NL);
+                } catch (Exception e) { /* 지급 실패 무시 */ }
+            }
+
         } else {
-            // 가중치 산정 (횟수 70% + 데미지 30%)
-            int totCnt = Integer.parseInt(eligible.get(0).get("TOT_CNT").toString());
-            long totDmg = 0;
-            for (HashMap<String, Object> row : eligible) totDmg += Long.parseLong(row.get("SCORE").toString());
+            // ────────────────────────────────────────────────────
+            // 70% : GP 지급 (7000번대 무관)
+            //   - 랜덤 1명: 0.5~1 GP
+            //   - 미당첨자 전원: 0.2 GP
+            //   - MVP(데미지 1위): +0.2 GP 추가 보너스
+            // ────────────────────────────────────────────────────
+            msg.append("이번 상급악마 처치에는 아이템 보상이 없습니다.").append(NL);
 
-            double[] weights = new double[eligible.size()];
-            double weightSum = 0;
-            for (int i = 0; i < eligible.size(); i++) {
-                int cnt    = Integer.parseInt(eligible.get(i).get("CNT").toString());
-                long score = Long.parseLong(eligible.get(i).get("SCORE").toString());
-                double cntPct  = totCnt > 0 ? (double)cnt  / totCnt  : 0;
-                double dmgPct  = totDmg > 0 ? (double)score / totDmg : 0;
-                weights[i] = cntPct * 0.7 + dmgPct * 0.3;
-                weightSum += weights[i];
-            }
+            if (qualified.isEmpty()) {
+                msg.append("GP 지급 대상 없음 (2% 이상 기여자 없음)").append(NL);
+            } else {
+                double randomGp = 0.5 + rand.nextDouble() * 0.5; // 0.5 ~ 1.0
+                String gpWinner = qualified.get(rand.nextInt(qualified.size()));
+                int winIdx = qualified.indexOf(gpWinner) + 1;
+                // MVP: allContributors는 SCORE DESC 정렬 → 첫 번째가 데미지 1위
+                String mvpName = allContributors.isEmpty() ? "" : allContributors.get(0).get("USER_NAME").toString();
 
-            // 가중 랜덤 선정
-            double r = Math.random() * weightSum;
-            double cum = 0;
-            int winnerIdx = 0;
-            for (int i = 0; i < weights.length; i++) {
-                cum += weights[i];
-                if (r <= cum) { winnerIdx = i; break; }
-            }
-            String winner = eligible.get(winnerIdx).get("USER_NAME").toString();
-
-            // ── 1단계: 참여자 기여도 + 당첨 확률 ──────────────────────
-            msg.append(NL).append("-- 추첨 대상 (").append(eligible.size()).append("명) --").append(NL);
-            double[] cumPcts = new double[eligible.size()];
-            double runPct = 0;
-            for (int i = 0; i < eligible.size(); i++) {
-                String uName = eligible.get(i).get("USER_NAME").toString();
-                int    cnt   = Integer.parseInt(eligible.get(i).get("CNT").toString());
-                long   score = Long.parseLong(eligible.get(i).get("SCORE").toString());
-                double pct   = weightSum > 0 ? weights[i] / weightSum * 100 : 0;
-                cumPcts[i] = runPct;
-                runPct += pct;
-                msg.append("  ").append(uName)
-                   .append("  ").append(cnt).append("회/")
-                   .append(String.format("%,d", score)).append("dmg")
-                   .append("  (").append(String.format("%.1f", pct)).append("%)").append(NL);
-            }
-
-            // ── 2단계: 주사위 추첨 과정 ──────────────────────────────
-            double rollPct = r / weightSum * 100; // 0~100 정규화
-            msg.append(NL).append("⚅ 주사위: ").append(String.format("%.2f", rollPct)).append("% →").append(NL);
-            for (int i = 0; i < eligible.size(); i++) {
-                String uName   = eligible.get(i).get("USER_NAME").toString();
-                double pct     = weightSum > 0 ? weights[i] / weightSum * 100 : 0;
-                double rEnd    = cumPcts[i] + pct;
-                boolean isWin  = (i == winnerIdx);
-                msg.append(isWin ? "★" : "  ")
-                   .append(String.format("[%5.1f~%5.1f%%]", cumPcts[i], rEnd))
-                   .append(" ").append(uName)
-                   .append(isWin ? " ← 당첨!" : "").append(NL);
-            }
-
-            // ── 3단계: 아이템 지급 (미발견 아이템 우선, 없으면 전체 중 랜덤) ─
-            List<Integer> givePool;
-            boolean isFirstDiscovery = false;
-            try {
-                List<HashMap<String, Object>> rewardMeta = botNewService.selectHellRewardItemsWithOwnCount();
-                List<Integer> undiscovered = new ArrayList<>();
-                List<Integer> allItems     = new ArrayList<>();
-                for (HashMap<String, Object> row : rewardMeta) {
-                    int iid  = Integer.parseInt(row.get("ITEM_ID").toString());
-                    long cnt = Long.parseLong(row.get("GLOBAL_OWN_CNT").toString());
-                    allItems.add(iid);
-                    if (cnt == 0) undiscovered.add(iid);
+                msg.append(NL).append("-- GP 추첨 (2%이상 ").append(qualified.size()).append("명) --").append(NL);
+                msg.append("⚅ 주사위 1~").append(qualified.size())
+                   .append(" → ").append(winIdx).append("번 [").append(gpWinner).append("]").append(NL);
+                for (int i = 0; i < qualified.size(); i++) {
+                    String uName = qualified.get(i);
+                    boolean isWin = uName.equals(gpWinner);
+                    boolean isMvp = uName.equals(mvpName);
+                    msg.append(isWin ? "★" : "  ")
+                       .append(i + 1).append(". ").append(uName)
+                       .append(isMvp ? " [MVP]" : "")
+                       .append(isWin ? " ← 당첨!" : "").append(NL);
                 }
-                if (!undiscovered.isEmpty()) {
-                    givePool = undiscovered;
-                    isFirstDiscovery = true;
-                } else {
-                    givePool = allItems;
+
+                msg.append(NL);
+                // 개인별 GP 지급
+                for (String uName : qualified) {
+                    boolean isWin = uName.equals(gpWinner);
+                    boolean isMvp = uName.equals(mvpName);
+                    double gp = isWin ? randomGp : 0.2;
+                    if (isMvp) gp += 0.2; // MVP 추가 보너스
+                    try {
+                        HashMap<String, Object> gpMap = new HashMap<>();
+                        gpMap.put("userName", uName);
+                        gpMap.put("roomName", roomName);
+                        gpMap.put("score",    gp);
+                        gpMap.put("cmd",      isWin ? "BOSS_HELL_KILL_GP" : "BOSS_HELL_PART_GP");
+                        botNewService.insertGpRecord(gpMap);
+                        StringBuilder gpLabel = new StringBuilder();
+                        gpLabel.append("[").append(uName).append("] ");
+                        if (isWin) gpLabel.append(String.format("+%.2f GP (랜덤당첨)", randomGp));
+                        else       gpLabel.append("+0.20 GP");
+                        if (isMvp) gpLabel.append(" +0.20 GP (MVP)");
+                        msg.append(gpLabel).append(NL);
+                    } catch (Exception ignore) {}
                 }
-            } catch (Exception e) {
-                givePool = new ArrayList<>(getHellRewardItems()); // fallback
-            }
-            if (givePool.isEmpty()) givePool = new ArrayList<>(getHellRewardItems());
-            int giveItemId = givePool.get(new Random().nextInt(givePool.size()));
-            try {
-                HashMap<String, Object> inv = new HashMap<>();
-                inv.put("userName", winner);
-                inv.put("roomName", roomName);
-                inv.put("itemId",   giveItemId);
-                inv.put("qty",      1);
-                inv.put("gainType", "BOSS_HELL");
-                botNewService.insertInventoryLogTx(inv);
-                msg.append(NL).append(isFirstDiscovery ? "✨최초 발견! " : "✨ 보상: ")
-                   .append("[").append(winner).append("] item#").append(giveItemId)
-                   .append(isFirstDiscovery ? " (서버 최초 획득!)" : "").append(NL);
-            } catch (Exception e) {
-                // 지급 실패 무시
             }
         }
 
-        // 전체 참여자 기여도 TOP (7000번대 보유자 포함)
+        // 전체 기여도 TOP (데미지% 포함)
         if (!allContributors.isEmpty()) {
             msg.append(NL).append("-- 전체 기여도 TOP --").append(NL);
             for (HashMap<String, Object> row : allContributors) {
+                long score = Long.parseLong(row.get("SCORE").toString());
+                double dmgPct = totScore > 0 ? score * 100.0 / totScore : 0;
                 msg.append(row.get("USER_NAME"))
-                   .append(" - ").append(row.get("CNT")).append("회 / ").append(row.get("SCORE")).append("dmg")
-                   .append(NL);
+                   .append(" - ").append(row.get("CNT")).append("회 / ")
+                   .append(row.get("SCORE")).append("dmg")
+                   .append(String.format(" (%.1f%%)", dmgPct)).append(NL);
             }
         }
         return msg.toString();
@@ -846,7 +863,7 @@ public class BossAttackS3Controller {
                 String maxHpExt = boss.get("MAX_HP_EXT") != null ? boss.get("MAX_HP_EXT").toString() : "";
                 long maxHp = SP.toBaseValue(SP.of(maxHpNum, maxHpExt));
                 int pct = maxHp > 0 ? (int)Math.round(hp * 100.0 / maxHp) : 0;
-                return "👹현재 상급악마 출현! [체력 " + pct + "%]" + NL;
+                return "현재 상급악마 출현! [체력 " + pct + "%]" + NL;
             }
         } catch (Exception e) {
             return "";
