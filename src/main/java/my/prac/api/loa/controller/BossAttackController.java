@@ -347,7 +347,8 @@ public class BossAttackController {
 	    int mktHpMaxRate  = (buffs != null && buffs.get("HP_MAX_RATE")   != null) ? buffs.get("HP_MAX_RATE").intValue()   : 0;
 	    int mktAtkMaxRate  = (buffs != null && buffs.get("ATK_MAX_RATE")   != null) ? buffs.get("ATK_MAX_RATE").intValue()   : 0;
 
-	    // 천벌 아이템(7001) 스탯 합산
+	    // 7000번대 보스 아이템(BOSS_HELL 전체) ATK 스탯 합산
+	    // selectHeavenItemBuff: ITEM_TYPE='BOSS_HELL' 전체 합산 (7001~7999 모두 포함)
 	    // BOSS_ITEM_HELL_NERF_EXEMPT=true 이면 ATK만 분리해 헬너프 이후 합산
 	    int heavenAtkMin = 0, heavenAtkMax = 0; // 헬너프 면제 시 후합산 버퍼
 	    if (heavenBuff != null) {
