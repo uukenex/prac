@@ -1562,7 +1562,7 @@
 		      WHERE USER_NAME = #{userName}
 		        AND TARGET_MON_LV = 25
 		        AND KILL_YN = 1
-		        AND NIGHTMARE_YN = '0') AS MON25_KILLS,
+		        AND NIGHTMARE_YN = '1') AS MON25_KILLS,
 		    (SELECT NVL(SUM(QTY), 0)
 		       FROM TBOT_POINT_NEW_INVENTORY
 		      WHERE USER_NAME = #{userName}
