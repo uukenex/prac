@@ -3758,9 +3758,10 @@ public class BossAttackController {
 
 		StringBuilder sb = new StringBuilder();
 
-		// Line 1: 유저님! 데미지 X으로 처치! / 전투 진행중!
-		sb.append(s.userName).append("님! 데미지 ")
-		  .append(String.format("%,d", s.calc.atkDmg));
+		// Line 1: 유저님!
+		// Line 2: ⚔ 데미지 X으로 처치! / 전투 진행중!
+		sb.append(s.userName).append("님!").append(NL);
+		sb.append("⚔ 데미지 ").append(String.format("%,d", s.calc.atkDmg));
 		if (s.res.killed) {
 			sb.append("으로 처치!");
 		} else {
@@ -3768,39 +3769,44 @@ public class BossAttackController {
 		}
 		sb.append(NL);
 
-		// Line 2: 체력 퍼센트 (전투중이면 몬스터 HP도 표기)
+		// Line 3: ❤ 체력 (전투중이면 몬스터 HP도 표기)
 		int hpPct = s.hpMax > 0 ? (int) Math.round((double) s.u.hpCur / s.hpMax * 100) : 0;
 		if (!s.res.killed) {
 			int monHpAfter = Math.max(0, s.monHpRemainBefore - s.calc.atkDmg);
-			sb.append("몬스터 HP: ").append(String.format("%,d", monHpAfter))
+			sb.append("❤ 몬스터 HP: ").append(String.format("%,d", monHpAfter))
 			  .append("/").append(String.format("%,d", s.monMaxHp))
 			  .append(" | 체력: ").append(hpPct).append("%");
 		} else {
-			sb.append("체력: ").append(hpPct).append("%");
+			sb.append("❤ 체력: ").append(hpPct).append("%");
 		}
 		sb.append(NL);
 
-		// Line 3: EXP + 레벨업 (처치 시만)
+		// Line 4: EXP % + 레벨업 + 보유SP (처치 시만)
 		if (s.res.killed) {
 			double gainPct = s.u.expNext > 0 ? (double) s.res.gainExp / s.u.expNext * 100 : 0;
 			double curPct  = s.u.expNext > 0 ? (double) s.u.expCur    / s.u.expNext * 100 : 0;
-			sb.append("EXP +").append(formatWan(s.res.gainExp))
-			  .append("(").append(String.format("%.1f", gainPct)).append("%)")
-			  .append("[").append(String.format("%.1f", curPct)).append("%/100%]");
+			sb.append("EXP +").append(String.format("%.1f", gainPct)).append("%")
+			  .append(" [").append(String.format("%.1f", curPct)).append("%/100%]");
 			if (s.up != null && s.up.levelUpCount > 0) {
 				sb.append(" ★Lv").append(s.up.beforeLv).append("→").append(s.up.afterLv);
 			}
+			// 보유 SP
+			try {
+				HashMap<String,Object> pointRow = botNewService.selectCurrentPoint(s.userName, s.roomName);
+				double cv = Double.parseDouble(Objects.toString(pointRow.get("SCORE"), "0"));
+				String  ce = Objects.toString(pointRow.get("SCORE_EXT"), "");
+				sb.append(" | SP: ").append(new SP(cv, ce).toString());
+			} catch (Exception ignore) {}
 			sb.append(NL);
 		}
 
-		// Line 4: 업적달성! | 가방드랍! | 공지
-		StringBuilder line4 = new StringBuilder();
-		if (!s.achievedCmdSet.isEmpty()) line4.append("업적달성! | ");
-		if (s.bagDropMsg != null && !s.bagDropMsg.isEmpty()) line4.append("가방드랍! | ");
-		// 공지 (execSPMsgTest가 ma_buildMessage 에서 이미 호출됨 → s.map["outMsg"] 에 값 있음)
+		// Line 5: 업적달성!(있을 때만) | 가방드랍! | 공지
+		StringBuilder line5 = new StringBuilder();
+		if (!s.achievedCmdSet.isEmpty()) line5.append("업적달성! | ");
+		if (s.bagDropMsg != null && !s.bagDropMsg.isEmpty()) line5.append("가방드랍! | ");
 		String noticeStr = Objects.toString(s.map.get("outMsg"), "");
-		if (!noticeStr.isEmpty()) line4.append(noticeStr);
-		if (line4.length() > 0) sb.append(line4).append(NL);
+		if (!noticeStr.isEmpty()) line5.append(noticeStr);
+		if (line5.length() > 0) sb.append(line5).append(NL);
 
 		// === + 원문
 		sb.append(ALL_SEE_STR).append(NL);
