@@ -1535,6 +1535,10 @@ public class BossAttackController {
 	    }
 	    sb.append(", EXP ").append(u.expCur).append("/").append(u.expNext).append(NL);
 	    sb.append("포인트: ").append(ctx.currentPointStr).append(NL);
+	    try {
+	        double _gp = botNewService.selectGpBalance(ctx.targetUser);
+	        sb.append("GP: ").append(String.format("%.2f", _gp)).append(NL);
+	    } catch (Exception ignore) {}
 	    sb.append("누적 획득 포인트: ").append(ctx.lifetimeSpStr).append(NL).append(NL);
 
 	    if ("곰".equals(ctx.job)) {
@@ -4169,7 +4173,7 @@ public class BossAttackController {
 		String roomCheck = checkRoomPermission(userName, roomName);
 		if (roomCheck != null) return roomCheck;
 
-		int gp;
+		double gp;
 		try { gp = botNewService.selectGpBalance(userName); }
 		catch (Exception e) { return "GP 조회 중 오류가 발생했습니다."; }
 

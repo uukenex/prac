@@ -544,7 +544,7 @@ public class BotNewServiceImpl implements BotNewService {
     }
 
     @Override
-    public int selectGpBalance(String userName) {
+    public double selectGpBalance(String userName) {
         return botNewDAO.selectGpBalance(userName);
     }
 

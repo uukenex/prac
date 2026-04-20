@@ -203,7 +203,7 @@ public interface BotNewDAO {
     List<Integer> selectItemIdsByType(@Param("itemType") String itemType);
     List<HashMap<String, Object>> selectHellRewardItemsWithOwnCount();
     void insertGpRecord(HashMap<String, Object> param);
-    int selectGpBalance(@Param("userName") String userName);
+    double selectGpBalance(@Param("userName") String userName);
 
     void lockMacroUser(HashMap<String, Object> map);
     

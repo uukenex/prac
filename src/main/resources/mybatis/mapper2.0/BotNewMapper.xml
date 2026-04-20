@@ -539,7 +539,7 @@
   </insert>
 
   <!-- GP 잔액 조회 (new_yn='2' 합계) -->
-  <select id="selectGpBalance" parameterType="string" resultType="int">
+  <select id="selectGpBalance" parameterType="string" resultType="double">
     /* selectGpBalance */
     SELECT NVL(SUM(SCORE), 0)
     FROM TBOT_POINT_RANK
