@@ -845,7 +845,7 @@ public class LoaChatController {
 				
 			case "/ㄱㄱㄱ": case "/ㄱ": case "/R": case "/r":
 				param0="/ㄱ";
-				val = boss.monsterAttackCompact(reqMap);
+				val = boss.monsterAttack(reqMap);
 				break;
 			case "/ㄱㄱㅌㄱ":case "/공격타겟":
 			case "/ㄱㄱㄷㅅ":case "/공격대상": 
