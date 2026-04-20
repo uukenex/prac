@@ -731,11 +731,11 @@ public class BossAttackS3Controller {
                 if (noItemNames.contains(uName)) itemCandidates.add(uName);
             }
 
-            msg.append(NL).append("-- 아이템 추첨 (2%이상/7000미소지 ")
+            msg.append(NL).append("-- 아이템 추첨  ")
                .append(itemCandidates.size()).append("명) --").append(NL);
 
             if (itemCandidates.isEmpty()) {
-                msg.append("★ 보상 대상 없음 (2%이상 기여자 전원 7000번대 보유)").append(NL);
+                msg.append("★ 보상 대상 없음").append(NL);
             } else {
                 String winner = itemCandidates.get(rand.nextInt(itemCandidates.size()));
                 int winIdx = itemCandidates.indexOf(winner) + 1;
@@ -809,7 +809,7 @@ public class BossAttackS3Controller {
             //   - MVP(데미지 1위): +0.2 GP 추가 보너스
             // ────────────────────────────────────────────────────
             if (qualified.isEmpty()) {
-                msg.append("GP 지급 대상 없음 (2% 이상 기여자 없음)").append(NL);
+                msg.append("GP 지급 대상 없음").append(NL);
             } else {
                 double randomGp = 0.5 + rand.nextDouble() * 0.5; // 0.5 ~ 1.0
                 String gpWinner = qualified.get(rand.nextInt(qualified.size()));
@@ -817,7 +817,7 @@ public class BossAttackS3Controller {
                 // MVP: allContributors는 SCORE DESC 정렬 → 첫 번째가 데미지 1위
                 String mvpName = allContributors.isEmpty() ? "" : allContributors.get(0).get("USER_NAME").toString();
 
-                msg.append(NL).append("-- GP 추첨 (2%이상 ").append(qualified.size()).append("명) --").append(NL);
+                msg.append(NL).append("-- GP 추첨 ").append(qualified.size()).append("--").append(NL);
                 msg.append("⚅ 주사위 1~").append(qualified.size())
                    .append(" → ").append(winIdx).append("번 [").append(gpWinner).append("]").append(NL);
                 for (int i = 0; i < qualified.size(); i++) {
@@ -886,9 +886,9 @@ public class BossAttackS3Controller {
             if (now.isBefore(spawnTime)) {
                 // 미래: 남은 분 계산
                 long remainMin = java.time.Duration.between(now, spawnTime).toMinutes();
-                if (remainMin >= 55 && remainMin <= 65) return "🔔상급악마 1시간 후 출현 예정!" + NL;
-                if (remainMin >= 8  && remainMin <= 12) return "🔔상급악마 10분 후 출현 예정!" + NL;
-                if (remainMin >= 3  && remainMin <= 7)  return "🔔상급악마 5분 후 출현 예정!" + NL;
+                if (remainMin >= 55 && remainMin <= 65) return "※상급악마 1시간 후 출현 예정!" + NL;
+                if (remainMin >= 8  && remainMin <= 12) return "※상급악마 10분 후 출현 예정!" + NL;
+                if (remainMin >= 3  && remainMin <= 7)  return "※상급악마 5분 후 출현 예정!" + NL;
                 return "";
             } else {
                 // 과거: 이미 출현 중 → 체력% 계산
