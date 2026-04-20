@@ -469,6 +469,7 @@ public class BossAttackS3Controller {
         String killMsg = "";
         if (isKill) {
             killMsg = calcHellBossReward(roomName, bossStartDate, maxHp);
+            botS3Service.saveLastKillMsg(killMsg); // 대기화면 표시용 캐시
             respawnHellBoss(bossStartDate);
         }
 
@@ -831,7 +832,8 @@ public class BossAttackS3Controller {
                 }
 
                 msg.append(NL);
-                // 개인별 GP 지급
+                // GP 지급 (당첨자/MVP는 이름 표시, 나머지 참여자는 일괄 표시)
+                int nonWinnerCount = 0;
                 for (String uName : qualified) {
                     boolean isWin = uName.equals(gpWinner);
                     boolean isMvp = uName.equals(mvpName);
@@ -844,13 +846,23 @@ public class BossAttackS3Controller {
                         gpMap.put("score",    gp);
                         gpMap.put("cmd",      isWin ? "BOSS_HELL_KILL_GP" : "BOSS_HELL_PART_GP");
                         botNewService.insertGpRecord(gpMap);
-                        StringBuilder gpLabel = new StringBuilder();
-                        gpLabel.append("[").append(uName).append("] ");
-                        if (isWin) gpLabel.append(String.format("+%.2f GP (랜덤당첨)", randomGp));
-                        else       gpLabel.append("+0.20 GP");
-                        if (isMvp) gpLabel.append(" +0.20 GP (MVP)");
-                        msg.append(gpLabel).append(NL);
                     } catch (Exception ignore) {}
+                    if (isWin) {
+                        msg.append("[").append(uName).append("] ")
+                           .append(String.format("+%.2f GP (랜덤당첨)", randomGp));
+                        if (isMvp) msg.append(" +0.20 GP (MVP)");
+                        msg.append(NL);
+                    } else {
+                        if (isMvp) {
+                            // MVP이면서 비당첨자: MVP 보너스 표시
+                            msg.append("[MVP] +0.20 GP +0.20 GP (MVP)").append(NL);
+                        } else {
+                            nonWinnerCount++;
+                        }
+                    }
+                }
+                if (nonWinnerCount > 0) {
+                    msg.append("참여자 전체 +0.20 GP").append(NL);
                 }
             }
         }
