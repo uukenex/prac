@@ -4190,6 +4190,19 @@ public class BossAttackController {
 		if (bossItems == null || bossItems.isEmpty())
 			return "현재 뽑기 가능한 보스 아이템이 없습니다.";
 
+		// 이미 보유한 아이템(어떤 경로든)은 가챠 풀에서 제외 (드랍템/가챠템 중복 방지)
+		try {
+			List<Integer> owned = botNewService.selectInventoryItemsByIds(userName, "", bossItems);
+			if (owned != null && !owned.isEmpty()) {
+				bossItems = new ArrayList<>(bossItems);
+				bossItems.removeAll(new HashSet<>(owned));
+			}
+		} catch (Exception ignore) {}
+
+		if (bossItems.isEmpty())
+			return userName + "님," + NL + "현재 모든 보스 아이템을 보유 중입니다." + NL
+				+ "잔여 GP: " + String.format("%.2f", gp) + " GP";
+
 		// GP 10 차감
 		try {
 			HashMap<String, Object> gpDeduct = new HashMap<>();
@@ -4480,8 +4493,10 @@ public class BossAttackController {
 					continue;
 			}
 
-			// [보스 아이템] 7000번대: SP 없이 GP 처리
+			// [보스 아이템] 7000번대: BOSS_HELL 타입만 GP 판매 가능, BOSS_GACHA는 판매 불가
 			if (itemId >= 7000 && itemId < 8000) {
+				String gainType = Objects.toString(r.get("GAIN_TYPE"), "");
+				if ("BOSS_GACHA".equalsIgnoreCase(gainType)) continue;
 				int take2 = sellAll ? qty : Math.min(qty, need);
 				if (take2 == qty) ridList.add(rid);
 				else botNewService.updateInventoryQtyByRowId(rid, qty - take2);
