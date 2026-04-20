@@ -1833,6 +1833,13 @@ public class BossAttackController {
 
 	    // 업적
 	    int achvCnt = 0;
+	    int _nmBagCount = 0;
+	    try {
+	        HashMap<String,Object> invCounts = botNewService.selectAchievementInventoryCounts(ctx.targetUser);
+	        if (invCounts != null) {
+	            _nmBagCount = ((Number) invCounts.getOrDefault("NM_BAG_COUNT", 0)).intValue();
+	        }
+	    } catch (Exception ignore) {}
 	    try {
 	        List<HashMap<String,Object>> achv = botNewService.selectAchievementsByUser(ctx.targetUser, ctx.roomName);
 	        achvCnt = (achv == null ? 0 : achv.size());
@@ -1843,7 +1850,7 @@ public class BossAttackController {
 	        } else {
 	        	//renderAchievementSummary(sb, achv);
 	        	//sb.append("(상세: /가방상세)").append(NL);
-	            renderAchievementLinesCompact(sb, achv, monMap);
+	            renderAchievementLinesCompact(sb, achv, monMap, _nmBagCount);
 	        }
 	    } catch (Exception ignore) {}
 
@@ -6814,6 +6821,14 @@ public class BossAttackController {
 	        StringBuilder sb,
 	        List<HashMap<String, Object>> achv,
 	        Map<Integer, Monster> monMap) {
+		renderAchievementLinesCompact(sb, achv, monMap, 0);
+	}
+
+	private void renderAchievementLinesCompact(
+	        StringBuilder sb,
+	        List<HashMap<String, Object>> achv,
+	        Map<Integer, Monster> monMap,
+	        int nmBagCount) {
 
 	    // ===== 패턴 =====
 		Pattern P_BAG_GET =
@@ -6822,6 +6837,8 @@ public class BossAttackController {
 	            Pattern.compile("^통산 처치 (\\d+)회 달성$");
 	    Pattern P_TOTAL_NIGHTMARE_KILL =
 	    		Pattern.compile("^나이트메어 통산 처치 (\\d+)회 달성$");
+	    Pattern P_TOTAL_HELL_KILL =
+	    		Pattern.compile("^헬 통산 처치 (\\d+)회 달성$");
 	    Pattern P_DEATH_OVERCOME =
 	            Pattern.compile("^죽음 극복 (\\d+)회 달성$");
 	    Pattern P_MONSTER_KILL =
@@ -6841,6 +6858,7 @@ public class BossAttackController {
 	    SortedSet<Integer> bagGetSteps = new TreeSet<>();
 	    SortedSet<Integer> totalKillSteps = new TreeSet<>();
 	    SortedSet<Integer> totalNmKillSteps = new TreeSet<>();
+	    SortedSet<Integer> hellKillSteps = new TreeSet<>();
 	    SortedSet<Integer> deathSteps     = new TreeSet<>();
 	    SortedSet<Integer> attackSteps   = new TreeSet<>();
 	    SortedSet<Integer> lightSteps    = new TreeSet<>();
@@ -6876,6 +6894,10 @@ public class BossAttackController {
 	        }
 	        if ((m = P_TOTAL_NIGHTMARE_KILL.matcher(label)).matches()) {
 	        	totalNmKillSteps.add(MiniGameUtil.parseIntSafe(m.group(1)));
+	        	continue;
+	        }
+	        if ((m = P_TOTAL_HELL_KILL.matcher(label)).matches()) {
+	        	hellKillSteps.add(MiniGameUtil.parseIntSafe(m.group(1)));
 	        	continue;
 	        }
 	        if ((m = P_DEATH_OVERCOME.matcher(label)).matches()) {
@@ -6925,22 +6947,26 @@ public class BossAttackController {
 	    sb.append("✨통산기록").append(NL);
 
 	    
-	    if (!attackSteps.isEmpty())
-	        sb.append("공격: ").append(String.format("%,d", attackSteps.last())).append("회").append(NL);
-	    if (!totalKillSteps.isEmpty())
-	        sb.append("처치: ").append(String.format("%,d", totalKillSteps.last())).append("마리").append(NL);
-	    if (!totalNmKillSteps.isEmpty())
-	    	sb.append("나이트메어 처치: ").append(String.format("%,d", totalNmKillSteps.last())).append("마리").append(NL);
-	    if (!deathSteps.isEmpty())
-	        sb.append("죽음 극복: ").append(String.format("%,d", deathSteps.last())).append("회").append(NL);
-	    if (!lightSteps.isEmpty())
-	        sb.append("빛 획득: ").append(String.format("%,d", lightSteps.last())).append("회").append(NL);
-	    if (!darkSteps.isEmpty())
-	        sb.append("어둠 획득: ").append(String.format("%,d", darkSteps.last())).append("회").append(NL);
-	    if (!graySteps.isEmpty())
-	    	sb.append("음양 획득: ").append(String.format("%,d", graySteps.last())).append("회").append(NL);
-	    if (!bagGetSteps.isEmpty())
-	    	sb.append("가방 획득: ").append(String.format("%,d", bagGetSteps.last())).append("회").append(NL);
+	    // 줄1: 공격/죽음
+	    int _atk = attackSteps.isEmpty() ? 0 : attackSteps.last();
+	    int _dth = deathSteps.isEmpty() ? 0 : deathSteps.last();
+	    sb.append("공격 ").append(String.format("%,d", _atk)).append("회")
+	      .append(" / 죽음 ").append(String.format("%,d", _dth)).append("회").append(NL);
+	    // 줄2: 일반/나메/헬 처치
+	    int _kill = totalKillSteps.isEmpty() ? 0 : totalKillSteps.last();
+	    int _nmKill = totalNmKillSteps.isEmpty() ? 0 : totalNmKillSteps.last();
+	    int _hellKill = hellKillSteps.isEmpty() ? 0 : hellKillSteps.last();
+	    sb.append("처치 ").append(String.format("%,d", _kill)).append("마리")
+	      .append(" / 나메 ").append(String.format("%,d", _nmKill)).append("마리")
+	      .append(" / 헬 ").append(_hellKill).append("마리").append(NL);
+	    // 줄3: 빛/어둠/음양
+	    int _lt = lightSteps.isEmpty() ? 0 : lightSteps.last();
+	    int _dk = darkSteps.isEmpty() ? 0 : darkSteps.last();
+	    int _gy = graySteps.isEmpty() ? 0 : graySteps.last();
+	    sb.append("빛 ").append(_lt).append(" / 어둠 ").append(_dk).append(" / 음양 ").append(_gy).append(NL);
+	    // 줄4: 가방/나메가방
+	    int _bag = bagGetSteps.isEmpty() ? 0 : bagGetSteps.last();
+	    sb.append("가방 ").append(_bag).append(" / 나메가방 ").append(nmBagCount).append(NL);
 	    sb.append(NL);
 
 	    // 2️⃣ 스킬 숙련 (3개씩)
