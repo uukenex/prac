@@ -3800,9 +3800,9 @@ public class BossAttackController {
 			sb.append(NL);
 		}
 
-		// Line 5: 업적달성!(있을 때만) | 가방드랍! | 공지
+		// Line 5: 업적달성!(이번 턴에 달성 시만) | 가방드랍! | 공지
 		StringBuilder line5 = new StringBuilder();
-		if (!s.achievedCmdSet.isEmpty()) line5.append("업적달성! | ");
+		if (s.bonusMsg != null && !s.bonusMsg.isEmpty()) line5.append("업적달성! | ");
 		if (s.bagDropMsg != null && !s.bagDropMsg.isEmpty()) line5.append("가방드랍! | ");
 		String noticeStr = Objects.toString(s.map.get("outMsg"), "");
 		if (!noticeStr.isEmpty()) line5.append(noticeStr);
