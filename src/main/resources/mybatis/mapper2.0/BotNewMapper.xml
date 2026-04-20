@@ -1909,13 +1909,14 @@
 	  SELECT MON_NO, MON_NAME, USER_NAME, KILL_COUNT
 	  FROM (
 	    SELECT
-	      bl.TARGET_MON_LV AS MON_NO,
-	      m.MON_NAME       AS MON_NAME,
-	      bl.USER_NAME     AS USER_NAME,
-	      COUNT(*)         AS KILL_COUNT,
-	      DENSE_RANK() OVER (
+	      bl.TARGET_MON_LV   AS MON_NO,
+	      m.MON_NAME         AS MON_NAME,
+	      bl.USER_NAME       AS USER_NAME,
+	      COUNT(*)           AS KILL_COUNT,
+	      MIN(bl.INSERT_DATE) AS FIRST_KILL_DATE,
+	      ROW_NUMBER() OVER (
 	        PARTITION BY bl.TARGET_MON_LV
-	        ORDER BY COUNT(*) DESC
+	        ORDER BY COUNT(*) DESC, MIN(bl.INSERT_DATE) ASC
 	      ) AS RNK
 	    FROM TBOT_POINT_NEW_BATTLE_LOG bl
 	    JOIN TBOT_POINT_NEW_MON_INFO m
@@ -1928,7 +1929,7 @@
 	  )
 	  WHERE RNK = 1
 	    AND KILL_COUNT >= #{minKill}
-	  ORDER BY MON_NO, USER_NAME
+	  ORDER BY MON_NO
 	</select>
 
 	<!-- =====================================================
