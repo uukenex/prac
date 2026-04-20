@@ -164,7 +164,7 @@ public interface BotNewService {
     List<Integer> selectItemIdsByType(String itemType);
     List<HashMap<String, Object>> selectHellRewardItemsWithOwnCount();
     void insertGpRecord(HashMap<String, Object> param);
-    int selectGpBalance(String userName);
+    double selectGpBalance(String userName);
     List<Integer> selectBossItemIds();
     
     HashMap<String,Object> lockMacroUser(String userName);
