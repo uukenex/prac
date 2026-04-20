@@ -3039,6 +3039,35 @@ public class BossAttackController {
 		return ma_buildMessage(s);
 	}
 
+	/**
+	 * [COMPACT] 축약 메시지 버전 — 원본 monsterAttack 유지, 비교용 신규 메서드
+	 * 상단 4줄 요약 + === + 원문 전체
+	 */
+	public String monsterAttackCompact(HashMap<String, Object> map) {
+		map.put("cmd", "monster_attack");
+		AttackSession s = new AttackSession(map);
+		String earlyMsg;
+
+		if ((earlyMsg = ma_validate(s))              != null) return earlyMsg;
+		if ((earlyMsg = ma_calcStats(s))             != null) return earlyMsg;
+		if ((earlyMsg = ma_resolveMonster(s))        != null) return earlyMsg;
+		if ((earlyMsg = ma_cooldownAndHp(s))         != null) return earlyMsg;
+		ma_preDmgJobBuffs(s);
+		if ((earlyMsg = ma_applyBuffsAndCalcDmg(s))  != null) return earlyMsg;
+		ma_thiefDoubleAtkPreCalc(s);
+
+		// 12) 사망 처리
+		if ((earlyMsg = ma_deathCheck(s)) != null)
+			return ma_deathMsgShort(s, earlyMsg);
+
+		// 13~14) 처치·드랍 + DB 반영 + 업적
+		ma_resolveKillAndJobSkills(s);
+		ma_persistAndAchv(s);
+
+		// 15~16) 축약 메시지
+		return ma_buildMessageShort(s);
+	}
+
 	// ────────────────────────────────────────────────────────────
 	//  AttackSession — monsterAttack 섬션 간 공유 상태
 	// ────────────────────────────────────────────────────────────
@@ -3698,6 +3727,85 @@ public class BossAttackController {
 		}
 
 		return msg;
+	}
+
+	// ─ [COMPACT] 사망 축약 메시지 래퍼 ───────────────────────────────
+	private String ma_deathMsgShort(AttackSession s, String fullDeathMsg) {
+		// 공지 조회 (ma_buildMessage 를 거치지 않으므로 직접 호출)
+		String noticeStr = "";
+		try {
+			botNewService.execSPMsgTest(s.map);
+			noticeStr = Objects.toString(s.map.get("outMsg"), "");
+		} catch (Exception ignore) {}
+
+		StringBuilder sb = new StringBuilder();
+		// Line 1
+		sb.append(s.userName).append("님! 전투 패배!").append(NL);
+		// Line 2
+		sb.append("5분 뒤 공격 가능!").append(NL);
+		// Line 3: 공지
+		if (!noticeStr.isEmpty()) sb.append(noticeStr).append(NL);
+
+		sb.append(ALL_SEE_STR).append(NL);
+		sb.append(fullDeathMsg);
+		return sb.toString();
+	}
+
+	// ─ [COMPACT] 처치/진행중 축약 메시지 ────────────────────────────
+	private String ma_buildMessageShort(AttackSession s) {
+		// 원문 먼저 생성 (execSPMsgTest 포함)
+		String fullMsg = ma_buildMessage(s);
+
+		StringBuilder sb = new StringBuilder();
+
+		// Line 1: 유저님! 데미지 X으로 처치! / 전투 진행중!
+		sb.append(s.userName).append("님! 데미지 ")
+		  .append(String.format("%,d", s.calc.atkDmg));
+		if (s.res.killed) {
+			sb.append("으로 처치!");
+		} else {
+			sb.append("으로 전투 진행중!");
+		}
+		sb.append(NL);
+
+		// Line 2: 체력 퍼센트 (전투중이면 몬스터 HP도 표기)
+		int hpPct = s.hpMax > 0 ? (int) Math.round((double) s.u.hpCur / s.hpMax * 100) : 0;
+		if (!s.res.killed) {
+			int monHpAfter = Math.max(0, s.monHpRemainBefore - s.calc.atkDmg);
+			sb.append("몬스터 HP: ").append(String.format("%,d", monHpAfter))
+			  .append("/").append(String.format("%,d", s.monMaxHp))
+			  .append(" | 체력: ").append(hpPct).append("%");
+		} else {
+			sb.append("체력: ").append(hpPct).append("%");
+		}
+		sb.append(NL);
+
+		// Line 3: EXP + 레벨업 (처치 시만)
+		if (s.res.killed) {
+			double gainPct = s.u.expNext > 0 ? (double) s.res.gainExp / s.u.expNext * 100 : 0;
+			double curPct  = s.u.expNext > 0 ? (double) s.u.expCur    / s.u.expNext * 100 : 0;
+			sb.append("EXP +").append(formatWan(s.res.gainExp))
+			  .append("(").append(String.format("%.1f", gainPct)).append("%)")
+			  .append("[").append(String.format("%.1f", curPct)).append("%/100%]");
+			if (s.up != null && s.up.levelUpCount > 0) {
+				sb.append(" ★Lv").append(s.up.beforeLv).append("→").append(s.up.afterLv);
+			}
+			sb.append(NL);
+		}
+
+		// Line 4: 업적달성! | 가방드랍! | 공지
+		StringBuilder line4 = new StringBuilder();
+		if (!s.achievedCmdSet.isEmpty()) line4.append("업적달성! | ");
+		if (s.bagDropMsg != null && !s.bagDropMsg.isEmpty()) line4.append("가방드랍! | ");
+		// 공지 (execSPMsgTest가 ma_buildMessage 에서 이미 호출됨 → s.map["outMsg"] 에 값 있음)
+		String noticeStr = Objects.toString(s.map.get("outMsg"), "");
+		if (!noticeStr.isEmpty()) line4.append(noticeStr);
+		if (line4.length() > 0) sb.append(line4).append(NL);
+
+		// === + 원문
+		sb.append(ALL_SEE_STR).append(NL);
+		sb.append(fullMsg);
+		return sb.toString();
 	}
 
 	/** isAnyNonEmpty 헬퍼 */

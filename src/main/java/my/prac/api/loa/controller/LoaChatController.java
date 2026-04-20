@@ -843,9 +843,9 @@ public class LoaChatController {
 				val = boss.roulette(reqMap);
 				break;*/
 				
-			case "/ㄱㄱㄱ": case "/ㄱ": case "/R": case "/r": 
+			case "/ㄱㄱㄱ": case "/ㄱ": case "/R": case "/r":
 				param0="/ㄱ";
-				val = boss.monsterAttack(reqMap);
+				val = boss.monsterAttackCompact(reqMap);
 				break;
 			case "/ㄱㄱㅌㄱ":case "/공격타겟":
 			case "/ㄱㄱㄷㅅ":case "/공격대상": 
