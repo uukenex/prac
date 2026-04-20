@@ -5676,7 +5676,8 @@ public class BossAttackController {
 	}
 
 	private long safeLong(Object v) {
-		try { return v == null ? 0 : Long.parseLong(String.valueOf(v)); }
+		// Double 경유로 파싱해 "32661315485.5" 같은 소수점 값도 정상 처리
+		try { return v == null ? 0 : (long) Double.parseDouble(String.valueOf(v)); }
 		catch (Exception e) { return 0; }
 	}
 	private int safeInt(Object v) {
