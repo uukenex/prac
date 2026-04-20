@@ -3757,32 +3757,26 @@ public class BossAttackController {
 		String fullMsg = ma_buildMessage(s);
 
 		StringBuilder sb = new StringBuilder();
+		int hpPct = s.hpMax > 0 ? (int) Math.round((double) s.u.hpCur / s.hpMax * 100) : 0;
 
-		// Line 1: 유저님!
-		// Line 2: ⚔ 데미지 X으로 처치! / 전투 진행중!
-		sb.append(s.userName).append("님!").append(NL);
+		// Line 1: 유저님! ❤️체력: X%
+		sb.append(s.userName).append("님! ❤️체력: ").append(hpPct).append("%").append(NL);
+
+		// Line 2: ⚔ 데미지 X으로 처치! / 전투 진행중! (비처치 시 몬HP 인라인)
 		sb.append("⚔ 데미지 ").append(String.format("%,d", s.calc.atkDmg));
 		if (s.res.killed) {
 			sb.append("으로 처치!");
 		} else {
 			sb.append("으로 전투 진행중!");
-		}
-		sb.append(NL);
-
-		// Line 3: ❤ 체력 (전투중이면 몬스터 HP도 표기)
-		int hpPct = s.hpMax > 0 ? (int) Math.round((double) s.u.hpCur / s.hpMax * 100) : 0;
-		if (!s.res.killed) {
 			int monHpAfter = Math.max(0, s.monHpRemainBefore - s.calc.atkDmg);
-			sb.append("❤몬스터 HP: ").append(String.format("%,d", monHpAfter))
-			  .append("/").append(String.format("%,d", s.monMaxHp))
-			  .append("❤️체력: ").append(hpPct).append("%");
-		} else {
-			sb.append("❤️체력: ").append(hpPct).append("%");
+			sb.append(" [몬HP:").append(String.format("%,d", monHpAfter))
+			  .append("/").append(String.format("%,d", s.monMaxHp)).append("]");
 		}
 		sb.append(NL);
 
-		// Line 4: EXP % + 레벨업 + 보유SP (처치 시만)
+		// Kill 전용: EXP / SP
 		if (s.res.killed) {
+			// Line 3: EXP (레벨업 포함)
 			double gainPct = s.u.expNext > 0 ? (double) s.res.gainExp / s.u.expNext * 100 : 0;
 			double curPct  = s.u.expNext > 0 ? (double) s.u.expCur    / s.u.expNext * 100 : 0;
 			sb.append("EXP +").append(String.format("%.1f", gainPct)).append("%")
@@ -3790,24 +3784,43 @@ public class BossAttackController {
 			if (s.up != null && s.up.levelUpCount > 0) {
 				sb.append(" ✨Lv").append(s.up.beforeLv).append("→").append(s.up.afterLv);
 			}
-			// 보유 SP
+			sb.append(NL);
+
+			// Line 4: SP 획득량 + 현재 잔액
 			try {
 				HashMap<String,Object> pointRow = botNewService.selectCurrentPoint(s.userName, s.roomName);
 				double cv = Double.parseDouble(Objects.toString(pointRow.get("SCORE"), "0"));
 				String  ce = Objects.toString(pointRow.get("SCORE_EXT"), "");
-				sb.append(" ✨SP: ").append(new SP(cv, ce).toString());
+				String curSpStr = new SP(cv, ce).toString();
+				String gainStr  = s.newPoint.trim(); // " +0.13b" → "+0.13b"
+				if (!gainStr.isEmpty()) {
+					sb.append("✨SP: ").append(gainStr).append(" [ ").append(curSpStr).append("]");
+				} else {
+					sb.append("✨SP: ").append(curSpStr);
+				}
 			} catch (Exception ignore) {}
 			sb.append(NL);
 		}
 
-		// Line 5: 업적달성!(이번 턴에 달성 시만) | 가방드랍! | 공지
+		// Line 5: 업적달성! + 가방획득! (스페셜타임은 별도 줄)
 		StringBuilder line5 = new StringBuilder();
-		if (s.bonusMsg != null && !s.bonusMsg.isEmpty()) line5.append("업적달성!");
-		if (s.bagDropMsg != null && !s.bagDropMsg.isEmpty()) line5.append("가방드랍!");
-		if (s.activeBuff != null && !s.activeBuff.isEmpty()) line5.append("스페셜타임!");
-		String noticeStr = Objects.toString(s.map.get("outMsg"), "");
-		if (!noticeStr.isEmpty()) line5.append(noticeStr);
+		if (s.bonusMsg  != null && !s.bonusMsg.isEmpty())  line5.append("업적달성!");
+		if (s.bagDropMsg != null && !s.bagDropMsg.isEmpty()) line5.append("가방획득!");
 		if (line5.length() > 0) sb.append(line5).append(NL);
+
+		// Line 6: 스페셜타임![효과 설명] (단독 줄)
+		if (s.activeBuff != null && !s.activeBuff.isEmpty()) {
+			String flagCode   = Objects.toString(s.activeBuff.get("FLAG_CODE"),   "");
+			String effectType = Objects.toString(s.activeBuff.get("EFFECT_TYPE"), "");
+			double effectVal  = 0;
+			try { effectVal = Double.parseDouble(Objects.toString(s.activeBuff.get("EFFECT_VALUE"), "0")); } catch (Exception ignore) {}
+			String desc = buildBuffDescription(flagCode, effectType, effectVal);
+			sb.append("스페셜타임![").append(desc).append("]").append(NL);
+		}
+
+		// Line 7: 공지
+		String noticeStr = Objects.toString(s.map.get("outMsg"), "");
+		if (!noticeStr.isEmpty()) sb.append(noticeStr).append(NL);
 
 		// === + 원문
 		sb.append(ALL_SEE_STR).append(NL);
