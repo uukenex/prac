@@ -815,32 +815,38 @@ public class BossAttackS3Controller {
         } else {
             // ────────────────────────────────────────────────────
             // 70% : GP 지급 (7000번대 무관)
-            //   - 랜덤 1명: 0.5~1 GP
-            //   - 미당첨자 전원: 0.2 GP
+            //   - 당첨자 추첨 풀: 2%이상 기여자(qualified) 중 등확률 1명 → 0.5~1 GP
+            //   - 0.2 GP: 전체 참여자(allContributors) 전원 (당첨자 포함, 당첨자는 randomGp로 대체)
             //   - MVP(데미지 1위): +0.2 GP 추가 보너스
             // ────────────────────────────────────────────────────
-            if (qualified.isEmpty()) {
+            if (allContributors.isEmpty()) {
                 msg.append("GP 지급 대상 없음").append(NL);
             } else {
                 double randomGp = 0.5 + rand.nextDouble() * 0.5; // 0.5 ~ 1.0
-                String gpWinner = qualified.get(rand.nextInt(qualified.size()));
-                // MVP: allContributors는 SCORE DESC 정렬 → 첫 번째가 데미지 1위
-                String mvpName = allContributors.isEmpty() ? "" : allContributors.get(0).get("USER_NAME").toString();
+                // MVP: SCORE DESC 정렬 → 첫 번째가 데미지 1위
+                String mvpName = allContributors.get(0).get("USER_NAME").toString();
+                // 당첨자: 2%이상 기여자 중 추첨 (없으면 당첨자 없음)
+                String gpWinner = qualified.isEmpty() ? "" : qualified.get(rand.nextInt(qualified.size()));
 
-                for (int i = 0; i < qualified.size(); i++) {
-                    String uName = qualified.get(i);
-                    boolean isWin = uName.equals(gpWinner);
-                    boolean isMvp = uName.equals(mvpName);
-                    msg.append(isWin ? "★" : "  ")
-                       .append(i + 1).append(". ").append(uName)
-                       .append(isMvp ? " [MVP]" : "")
-                       .append(isWin ? " ← 당첨!" : "").append(NL);
+                // 추첨 대상 목록 표시 (2%이상만)
+                if (!qualified.isEmpty()) {
+                    msg.append("-- 추첨 대상 (2%이상 ").append(qualified.size()).append("명) --").append(NL);
+                    for (int i = 0; i < qualified.size(); i++) {
+                        String uName = qualified.get(i);
+                        boolean isWin = uName.equals(gpWinner);
+                        boolean isMvp = uName.equals(mvpName);
+                        msg.append(isWin ? "★" : "  ")
+                           .append(i + 1).append(". ").append(uName)
+                           .append(isMvp ? " [MVP]" : "")
+                           .append(isWin ? " ← 당첨!" : "").append(NL);
+                    }
+                    msg.append(NL);
                 }
 
-                msg.append(NL);
-                // GP 지급 (당첨자/MVP는 이름 표시, 나머지 참여자는 일괄 표시)
-                int nonWinnerCount = 0;
-                for (String uName : qualified) {
+                // GP 지급: 전체 참여자 대상
+                int baseCount = 0;
+                for (HashMap<String, Object> row : allContributors) {
+                    String uName = row.get("USER_NAME").toString();
                     boolean isWin = uName.equals(gpWinner);
                     boolean isMvp = uName.equals(mvpName);
                     double gp = isWin ? randomGp : 0.2;
@@ -853,22 +859,21 @@ public class BossAttackS3Controller {
                         gpMap.put("cmd",      isWin ? "BOSS_HELL_KILL_GP" : "BOSS_HELL_PART_GP");
                         botNewService.insertGpRecord(gpMap);
                     } catch (Exception ignore) {}
+
+                    // 메시지: 당첨자/MVP는 개별 표시, 나머지는 카운트
                     if (isWin) {
                         msg.append("[").append(uName).append("] ")
                            .append(String.format("+%.2f GP (랜덤당첨)", randomGp));
-                        if (isMvp) msg.append(" +0.20 GP (MVP)");
+                        if (isMvp) msg.append(String.format(" +0.20 GP (MVP) → 합계 +%.2f GP", gp));
                         msg.append(NL);
+                    } else if (isMvp) {
+                        msg.append("[").append(uName).append("] +0.20 GP +0.20 GP (MVP보너스) → 합계 +0.40 GP").append(NL);
                     } else {
-                        if (isMvp) {
-                            // MVP이면서 비당첨자: MVP 보너스 이름 포함 표시
-                            msg.append("[").append(mvpName).append("] +0.20 GP (MVP보너스)").append(NL);
-                        } else {
-                            nonWinnerCount++;
-                        }
+                        baseCount++;
                     }
                 }
-                if (nonWinnerCount > 0) {
-                    msg.append("참여자 전체 +0.20 GP").append(NL);
+                if (baseCount > 0) {
+                    msg.append("참여자 ").append(baseCount).append("명 +0.20 GP").append(NL);
                 }
             }
         }
@@ -893,6 +898,10 @@ public class BossAttackS3Controller {
     // =========================================================
     // 헬보스 출현 알림 (BossAttackController.ma_buildMessage 에서 호출)
     // =========================================================
+    /**
+     * 일반 몬스터 공격 메시지 하단에 붙는 헬보스 상태 한 줄 알림.
+     * 이력/추첨 결과는 보스 직접 공격(doBossAttack) 에서만 표시 — 여기선 절대 포함하지 않음.
+     */
     public String getHellBossStatusMsg() {
         try {
             HashMap<String, Object> boss = botS3Service.selectHellBoss();
@@ -903,7 +912,7 @@ public class BossAttackS3Controller {
                     DateTimeFormatter.ofPattern("yyyyMMdd HHmmss"));
             LocalDateTime now = LocalDateTime.now();
             if (now.isBefore(spawnTime)) {
-                // 미래: 재정비 중 → 남은 시간 항상 표시
+                // 재정비 중: 남은 시간만 한 줄로
                 long remainMin = java.time.Duration.between(now, spawnTime).toMinutes();
                 String remainStr;
                 if (remainMin >= 60) {
@@ -912,17 +921,9 @@ public class BossAttackS3Controller {
                 } else {
                     remainStr = remainMin + "분";
                 }
-                StringBuilder sb = new StringBuilder();
-                sb.append("※상급악마 재정비 중 (").append(remainStr).append(" 후 출현)").append(NL);
-                try {
-                    String lastReward = botS3Service.getLastKillRewardMsg();
-                    if (lastReward != null && !lastReward.isEmpty()) {
-                        sb.append(NL).append("[이전 클리어 이력]").append(NL).append(lastReward);
-                    }
-                } catch (Exception ignored) {}
-                return sb.toString();
+                return "※상급악마 재정비 중 (" + remainStr + " 후 출현)" + NL;
             } else {
-                // 과거: 이미 출현 중 → 체력% 계산
+                // 출현 중: 체력% 한 줄로
                 double curHpNum = Double.parseDouble(boss.get("CUR_HP").toString());
                 String curHpExt = boss.get("CUR_HP_EXT") != null ? boss.get("CUR_HP_EXT").toString() : "";
                 long hp = SP.toBaseValue(SP.of(curHpNum, curHpExt));
