@@ -2867,7 +2867,7 @@ public class LoaChatController {
 		String msg = "";
 		//msg += enterStr + "종막[ "+enterStr+"[하 0G/노 0G]";
 		msg += enterStr + "⭐그림자 레이드⭐";
-		msg += enterStr + "✓고통-세르카"+enterStr+" ↳ [노 35,000G/하 44,000G]";
+		msg += enterStr + "✓고통-세르카"+enterStr+" ↳ [노 17,500G(+17,500G)/하 44,000G]";
 		msg += enterStr+" ↳ [나메 54,000G]";
 		/*
 		msg += enterStr + "✓절망-****"+enterStr+" ↳ [노 **,000G/하 **,000G]";
@@ -2882,15 +2882,15 @@ public class LoaChatController {
 		
 		msg += enterStr ;
 		msg += enterStr + "⭐카제로스 레이드⭐";
-		msg += enterStr + "✓종막-카제로스"+enterStr+" ↳ [노 40,000G/하 52,000G]";
-		msg += enterStr + "✓4막-아르모체"+enterStr+" ↳ [노 33,000G/하 42,000G]";
-		msg += enterStr + "✓3막-모르둠"+enterStr+" ↳ [노 21,000G/하 27,000G]";
+		msg += enterStr + "✓종막-카제로스"+enterStr+" ↳ [노 20,000G(+20,000G)/하 52,000G]";
+		msg += enterStr + "✓4막-아르모체"+enterStr+" ↳ [노 16,500G(+16,500G)/하 42,000G]";
+		msg += enterStr + "✓3막-모르둠"+enterStr+" ↳ [노 10,500G(+10,500G)/하 13,500G(+13,500G)]";
 		//msg += enterStr + " ↳ (구)[노 28,000G/하 38,000G]";
-		msg += enterStr + "✓2막-아브렐슈드"+enterStr+" ↳ [노 16,500G/하 23,000G]";
+		msg += enterStr + "✓2막-아브렐슈드"+enterStr+" ↳ [노 8,250G(+8,250G)/하 23,000G(+11,500G)]";
 		//msg += enterStr + " ↳ (구)[노 21,500G/하 30,500G]";
-		msg += enterStr + "✓1막-에기르"+enterStr+" ↳ [노 11,500G/하 18,000G]";
+		msg += enterStr + "✓1막-에기르"+enterStr+" ↳ [노 5,750G(+5,750G)/하 9,000G(+9,000G)]";
 		//msg += enterStr + " ↳ (구) [노 15,500G/하 24,500G]";
-		msg += enterStr + "✓서막-에키드나"+enterStr+" ↳ [노 6,100(*귀속)/하 7,200G]";
+		msg += enterStr + "✓서막-에키드나"+enterStr+" ↳ [노 6,100(*귀속)/하 3,600G(+3,600G)]";
 		//msg += enterStr + " ↳ (구) [노 3,650G (+3,650G)] [하 8,800G]";
 		
 		/*
@@ -2900,7 +2900,7 @@ public class LoaChatController {
 		*/
 		msg += enterStr ;
 		msg += enterStr + "⭐에픽 레이드⭐";
-		msg += enterStr + "✓베히모스 (신)[ 7,200G ]";
+		msg += enterStr + "✓베히모스 [ 3,600G(+3,600G) ]";
 		//msg += enterStr + " ↳(구) [ 8,800G ]";
 		
 		
@@ -2935,7 +2935,7 @@ public class LoaChatController {
 		
 		
 		msg += enterStr;
-		msg += enterStr + "⭐싱글 모드⭐(싱글골드:미확정)";
+		msg += enterStr + "⭐싱글 모드⭐";
 		msg += enterStr + "✓모르둠 [10,500G (+10,500G)]";
 		msg += enterStr + "✓아브렐슈드 [8,250G (+8,250G)]";
 		msg += enterStr + "✓에기르 [5,750G (+5,750G)]";
