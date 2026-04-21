@@ -1,4 +1,4 @@
-package my.prac.api.loa.controller;
+﻿package my.prac.api.loa.controller;
 
 import java.sql.Timestamp;
 import java.time.Duration;
@@ -5010,7 +5010,7 @@ public class BossAttackController {
 	            inv.put("gainType", "ACHV");
 
 	            botNewService.insertInventoryLogTx(inv);
-t            invalidateInvBuff(userName); // 업적 보상 아이템
+	            invalidateInvBuff(userName); // 업적 보상 아이템
 
 	            msg.append("업적 ")
 	               .append(needCnt)
