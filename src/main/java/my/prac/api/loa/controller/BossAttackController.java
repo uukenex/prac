@@ -324,17 +324,12 @@ public class BossAttackController {
 
 	    final String job = ctx.job;
 
-	    // 1) MARKET 장비 버프 raw
-	    HashMap<String, Number> buffs = null;
-	    try {
-	        buffs = botNewService.selectOwnedMarketBuffTotals(targetUser, "");
-	    } catch (Exception ignore) {}
-
-	    // 2) 천벌 아이템(7001) 스탯 추가 (보유 시에만 적용)
-	    HashMap<String,Object> heavenBuff = null;
-	    try {
-	        heavenBuff = botNewService.selectHeavenItemBuff(targetUser);
-	    } catch (Exception ignore) {}
+	    // 1~2) 인벤토리 버프 캐시 (TTL 60초, 인벤토리 변경 시 invalidateInvBuff로 무효화)
+	    HashMap<String,Object> invBuffData = getInvBuffCached(targetUser);
+	    @SuppressWarnings("unchecked")
+	    HashMap<String, Number> buffs      = (HashMap<String,Number>) invBuffData.get("market");
+	    @SuppressWarnings("unchecked")
+	    HashMap<String, Object> heavenBuff = (HashMap<String,Object>) invBuffData.get("heaven");
 
 	    
 	    int mktAtkMin = (buffs != null && buffs.get("ATK_MIN")  != null) ? buffs.get("ATK_MIN").intValue()  : 0;
@@ -368,14 +363,10 @@ public class BossAttackController {
 	        mktAtkMaxRate+= heavenBuff.get("ATK_MAX_RATE") != null ? ((Number) heavenBuff.get("ATK_MAX_RATE")).intValue() : 0;
 	    }
 
-	    // 보스 아이템(7000번대) 보유 목록 조회 → ctx.ownedBossItems
-	    try {
-	        List<Integer> bossItemIds = botNewService.selectBossItemIds();
-	        if (bossItemIds != null && !bossItemIds.isEmpty()) {
-	            List<Integer> ownedBoss = botNewService.selectInventoryItemsByIds(targetUser, "", bossItemIds);
-	            if (ownedBoss != null) ctx.ownedBossItems.addAll(ownedBoss);
-	        }
-	    } catch (Exception ignore) {}
+	    // 보스 아이템(7000번대) 보유 목록 (캐시에서 로드)
+	    @SuppressWarnings("unchecked")
+	    List<Integer> ownedBossFromCache = (List<Integer>) invBuffData.get("bossItems");
+	    if (ownedBossFromCache != null) ctx.ownedBossItems.addAll(ownedBossFromCache);
 
 	    // GP 잔액 조회 → ctx.gpBalance
 	    try {
@@ -415,9 +406,10 @@ public class BossAttackController {
 	            totalDeaths  += hunterAttacks / 2;
 	        }
 
+	        @SuppressWarnings("unchecked")
 	        List<HashMap<String,Object>> drops = (ctx.preDropRows != null)
 	                ? ctx.preDropRows
-	                : botNewService.selectTotalDropItems(targetUser);
+	                : (List<HashMap<String,Object>>) invBuffData.get("drops");
 	        int totalDrops = 0;
 	        int darkQty    = 0;  // 어둠(DROP5) 수량
 	        int grayQty    = 0;  // 음양(DROP9) 수량
@@ -969,6 +961,7 @@ public class BossAttackController {
 		inv.put("gainType", "BAG_OPEN");
 
 		botNewService.insertInventoryLogTx(inv);
+		invalidateInvBuff(userName); // 가방 오픈 아이템 획득
 
 		HashMap<String, Object> info = botNewService.selectItemDetailById(itemId);
 
@@ -989,6 +982,34 @@ public class BossAttackController {
 	    }
 	    return TOP1_SP_CACHE;
 	}
+
+	// ── 인벤토리 버프 캐시 ─────────────────────────────────────────────────────
+	// 유저별 TTL 60초. 인벤토리 변경 시 invalidateInvBuff(userName) 호출로 즉시 무효화.
+	@SuppressWarnings("unchecked")
+	private HashMap<String,Object> getInvBuffCached(String userName) {
+	    long now = System.currentTimeMillis();
+	    Object[] cached = MiniGameUtil.INV_BUFF_CACHE.get(userName);
+	    if (cached != null && (now - (Long) cached[0]) < MiniGameUtil.INV_BUFF_TTL_MS) {
+	        return (HashMap<String,Object>) cached[1];
+	    }
+	    HashMap<String,Object> data = new HashMap<>();
+	    try { data.put("market", botNewService.selectOwnedMarketBuffTotals(userName, "")); } catch (Exception ignore) {}
+	    try { data.put("heaven", botNewService.selectHeavenItemBuff(userName)); } catch (Exception ignore) {}
+	    try {
+	        List<Integer> bossItemIds = botNewService.selectBossItemIds();
+	        if (bossItemIds != null && !bossItemIds.isEmpty())
+	            data.put("bossItems", botNewService.selectInventoryItemsByIds(userName, "", bossItemIds));
+	    } catch (Exception ignore) {}
+	    try { data.put("drops", botNewService.selectTotalDropItems(userName)); } catch (Exception ignore) {}
+	    MiniGameUtil.INV_BUFF_CACHE.put(userName, new Object[]{now, data});
+	    return data;
+	}
+
+	/** 아이템 획득/판매/소비 후 호출 → 해당 유저의 인벤토리 버프 캐시 즉시 무효화 */
+	private void invalidateInvBuff(String userName) {
+	    if (userName != null) MiniGameUtil.INV_BUFF_CACHE.remove(userName);
+	}
+	// ─────────────────────────────────────────────────────────────────────────
 
 	private SP rollBagSpWithCeiling(int nightmareYn) {
 	    long top1Sp = getTop1SpCached();
@@ -2368,6 +2389,7 @@ public class BossAttackController {
         inv.put("delYn",    "1");
         inv.put("gainType", "BUY");
         botNewService.insertInventoryLogTx(inv);
+        invalidateInvBuff(userName); // 아이템 판매(BUY del_yn=1)
 
 	    // ── 최종 HP 반영 1회 ────────────────────────────────────────────
 	    botNewService.updateUserHpOnlyTx(userName, "", (int) currentHp);
@@ -2547,7 +2569,7 @@ public class BossAttackController {
             inv.put("delYn",   "0");
             inv.put("gainType","BUY");
             botNewService.insertInventoryLogTx(inv);
-
+            invalidateInvBuff(userName); // 마켓 아이템 구매
 
 	    }else if ("POTION".equalsIgnoreCase(itemType)) {
 	    	HashMap<String,Object> map = new HashMap<>();
@@ -3644,6 +3666,8 @@ public class BossAttackController {
 		}
 
 		if (s.res.killed) {
+			// 처치 후 드랍 아이템이 인벤토리에 추가되므로 캐시 무효화
+			invalidateInvBuff(s.userName);
 			botNewService.closeOngoingBattleTx(s.userName, s.roomName);
 			HashMap<String,Object> achvInvCounts = null;
 			try { achvInvCounts = botNewService.selectAchievementInventoryCounts(s.userName); } catch (Exception ignore) {}
@@ -4249,6 +4273,7 @@ public class BossAttackController {
 	        inv.put("gainType", "BAG_DROP");
 
 	        botNewService.insertInventoryLogTx(inv);
+	        invalidateInvBuff(userName);
 
 	        String bagName = (bagItemId == BAG_NM_ITEM_ID) ? "복주머니가방" : "세티노의비밀가방";
 	        return m.monName + "이(가) " + bagName + "을 떨어뜨렸습니다! (/가방열기 로 열 수 있습니다.)";
@@ -4363,6 +4388,7 @@ public class BossAttackController {
 			inv.put("qty",      1);
 			inv.put("gainType", "BOSS_GACHA");
 			botNewService.insertInventoryLogTx(inv);
+			invalidateInvBuff(userName); // 보스 가챠 아이템 획득
 		} catch (Exception e) {
 			// 지급 실패 시 GP 복구
 			try {
@@ -4452,6 +4478,7 @@ public class BossAttackController {
 	    MiniGameUtil.ITEM_PRICE_CACHE.clear();
 	    MiniGameUtil.MARKET_OWNED_CACHE.clear();
 	    MiniGameUtil.POTION_USE_CACHE.clear();
+	    MiniGameUtil.INV_BUFF_CACHE.clear();
 	    initCache();
 	    return "✅ 캐시 갱신 완료" + NL
 	         + "몬스터: " + MiniGameUtil.MONSTER_CACHE.size() + "건" + NL
@@ -4983,6 +5010,7 @@ public class BossAttackController {
 	            inv.put("gainType", "ACHV");
 
 	            botNewService.insertInventoryLogTx(inv);
+t            invalidateInvBuff(userName); // 업적 보상 아이템
 
 	            msg.append("업적 ")
 	               .append(needCnt)
