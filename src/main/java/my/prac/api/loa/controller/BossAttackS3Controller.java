@@ -893,6 +893,10 @@ public class BossAttackS3Controller {
     // =========================================================
     // 헬보스 출현 알림 (BossAttackController.ma_buildMessage 에서 호출)
     // =========================================================
+    /**
+     * 일반 몬스터 공격 메시지 하단에 붙는 헬보스 상태 한 줄 알림.
+     * 이력/추첨 결과는 보스 직접 공격(doBossAttack) 에서만 표시 — 여기선 절대 포함하지 않음.
+     */
     public String getHellBossStatusMsg() {
         try {
             HashMap<String, Object> boss = botS3Service.selectHellBoss();
@@ -903,7 +907,7 @@ public class BossAttackS3Controller {
                     DateTimeFormatter.ofPattern("yyyyMMdd HHmmss"));
             LocalDateTime now = LocalDateTime.now();
             if (now.isBefore(spawnTime)) {
-                // 미래: 재정비 중 → 남은 시간 항상 표시
+                // 재정비 중: 남은 시간만 한 줄로
                 long remainMin = java.time.Duration.between(now, spawnTime).toMinutes();
                 String remainStr;
                 if (remainMin >= 60) {
@@ -912,17 +916,9 @@ public class BossAttackS3Controller {
                 } else {
                     remainStr = remainMin + "분";
                 }
-                StringBuilder sb = new StringBuilder();
-                sb.append("※상급악마 재정비 중 (").append(remainStr).append(" 후 출현)").append(NL);
-                try {
-                    String lastReward = botS3Service.getLastKillRewardMsg();
-                    if (lastReward != null && !lastReward.isEmpty()) {
-                        sb.append(NL).append("[이전 클리어 이력]").append(NL).append(lastReward);
-                    }
-                } catch (Exception ignored) {}
-                return sb.toString();
+                return "※상급악마 재정비 중 (" + remainStr + " 후 출현)" + NL;
             } else {
-                // 과거: 이미 출현 중 → 체력% 계산
+                // 출현 중: 체력% 한 줄로
                 double curHpNum = Double.parseDouble(boss.get("CUR_HP").toString());
                 String curHpExt = boss.get("CUR_HP_EXT") != null ? boss.get("CUR_HP_EXT").toString() : "";
                 long hp = SP.toBaseValue(SP.of(curHpNum, curHpExt));
