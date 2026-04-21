@@ -3624,10 +3624,11 @@ public class BossAttackController {
 			if (lvAchvMsg != null && !lvAchvMsg.isEmpty()) s.bonusMsg += NL + lvAchvMsg;
 		}
 
-		// [도적] 2타 배틀로그 (PK 충돌 방지: shotIndex=1)
+		// [도적] 2타 배틀로그 (PK 충돌 방지: Batch INSERT → SYSTIMESTAMP - (shotIndex+2)초)
 		if (s.thiefDoubleAtk && s.calc2 != null && s.m != null) {
 			try {
-				botNewService.insertBattleLogTx(new BattleLog()
+				List<BattleLog> thiefLogs = new ArrayList<>();
+				thiefLogs.add(new BattleLog()
 						.setUserName(s.userName).setRoomName(s.roomName).setLv(s.up.beforeLv)
 						.setTargetMonLv(s.m.monNo).setGainExp(0)
 						.setAtkDmg(s.calc2.atkDmg).setMonDmg(0)
@@ -3638,6 +3639,7 @@ public class BossAttackController {
 						.setNightmareYn(s.ctx.user.nightmareYn)
 						.setSpecialBuffStart(0).setSpecialBuffIng(s.buffIng)
 						.setSpecialBuffCode(s.buffCode).setShotIndex(1));
+				botNewService.insertBattleLogsBatch(thiefLogs);
 			} catch (Exception ignore) {}
 		}
 
