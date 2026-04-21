@@ -159,10 +159,9 @@ public class BossAttackController {
 	    	if(!master) {
 	    		if(!botNewService.isHellUnlocked(userName)) {
 		    		return "헬 모드 해금 조건 미달성!" + NL
-		    		     + "- 25번 몬스터 5마리 이상 처치" + NL
-		    		     + "- 업적 400개 이상 보유" + NL
-		    		     + "- 유물 아이템 27개 이상 보유" + NL
-		    		     + "- 헌터 S급 이상";
+		    		     + "- 25번 몬스터 1마리 처치" + NL
+		    		     + "- 업적 350개 이상 보유" + NL
+		    		     + "- 유물 아이템 25개 이상 보유";
 		    	}
 	    	}
 	    	botNewService.setNightmareMode(userName,roomName,2);
@@ -376,6 +375,11 @@ public class BossAttackController {
 	            List<Integer> ownedBoss = botNewService.selectInventoryItemsByIds(targetUser, "", bossItemIds);
 	            if (ownedBoss != null) ctx.ownedBossItems.addAll(ownedBoss);
 	        }
+	    } catch (Exception ignore) {}
+
+	    // GP 잔액 조회 → ctx.gpBalance
+	    try {
+	        ctx.gpBalance = botNewService.selectGpBalance(targetUser);
 	    } catch (Exception ignore) {}
 
 	    // 🔹 직업 보너스 표시용 변수
@@ -1535,10 +1539,9 @@ public class BossAttackController {
 	    }
 	    sb.append(", EXP ").append(u.expCur).append("/").append(u.expNext).append(NL);
 	    sb.append("포인트: ").append(ctx.currentPointStr).append(NL);
-	    try {
-	        double _gp = botNewService.selectGpBalance(ctx.targetUser);
-	        sb.append("GP: ").append(String.format("%.2f", _gp)).append(NL);
-	    } catch (Exception ignore) {}
+	    if (ctx.gpBalance > 0) {
+	        sb.append("GP: ").append(String.format("%.2f", ctx.gpBalance)).append(NL);
+	    }
 	    sb.append("누적 획득 포인트: ").append(ctx.lifetimeSpStr).append(NL).append(NL);
 
 	    if ("곰".equals(ctx.job)) {
@@ -3144,11 +3147,12 @@ public class BossAttackController {
 		if ("람쥐봇 문의방".equals(s.roomName) && !s.master)
 			return "문의방에서는 불가능합니다.";
 
+		/*
 		HashMap<String,Object> lockParam = botNewService.lockMacroUser(s.userName);
 		int lockCode = (Integer) lockParam.get("outCode");
 		if (lockCode == 1 || lockCode == 2)
 			return "공격불가 상태입니다 code:" + lockParam.get("outMsg");
-
+		 */
 		s.param1 = Objects.toString(s.map.get("param1"), "");
 		return null;
 	}

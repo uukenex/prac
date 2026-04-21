@@ -80,4 +80,7 @@ public class UserBattleContext {
 
 	// 보스 아이템(7001~7010) 보유 목록 (calcUserBattleContext에서 채워짐)
 	public Set<Integer> ownedBossItems = new HashSet<>();
+
+	// GP 잔액 (calcUserBattleContext에서 채워짐, 0이면 미보유)
+	public double gpBalance = 0.0;
 }
