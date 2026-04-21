@@ -865,9 +865,10 @@ public class BossAttackS3Controller {
             }
         }
 
-        // 전체 기여도 TOP (데미지% 포함) + 더보기 구분자
+        // 전체 기여도 TOP (데미지% 포함) — 더보기 구분자 이후에 표시
         if (!allContributors.isEmpty()) {
-            msg.append(NL).append("-- 전체 기여도 TOP --").append(NL);
+            msg.append(NL).append(ALL_SEE_STR).append(NL);
+            msg.append("-- 전체 기여도 TOP --").append(NL);
             for (HashMap<String, Object> row : allContributors) {
                 long score = Long.parseLong(row.get("SCORE").toString());
                 double dmgPct = totScore > 0 ? score * 100.0 / totScore : 0;
@@ -876,7 +877,6 @@ public class BossAttackS3Controller {
                    .append(row.get("SCORE")).append("dmg")
                    .append(String.format(" (%.1f%%)", dmgPct)).append(NL);
             }
-            msg.append(NL).append(ALL_SEE_STR);
         }
         return msg.toString();
     }
