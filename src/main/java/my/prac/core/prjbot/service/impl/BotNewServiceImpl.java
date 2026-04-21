@@ -504,9 +504,9 @@ public class BotNewServiceImpl implements BotNewService {
         //if (lifetimeSp >= 20_000_000_000L) return true;
 
         // 25번 몬스터 5마리 이상 처치
-        if (mon25Kills >= 5) return true;
+        if (mon25Kills >= 1) return true;
 
-        // 업적 400개 아이템 보유
+        // 업적 350개 아이템 보유
         if (achvCount >= 1) return true;
 
         // 유물 아이템 27개 이상 보유

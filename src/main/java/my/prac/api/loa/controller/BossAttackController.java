@@ -159,8 +159,8 @@ public class BossAttackController {
 	    	if(!master) {
 	    		if(!botNewService.isHellUnlocked(userName)) {
 		    		return "헬 모드 해금 조건 미달성!" + NL
-		    		     + "- 25번 몬스터 5마리 이상 처치" + NL
-		    		     + "- 업적 400개 이상 보유" + NL
+		    		     + "- 25번 몬스터 1마리 처치" + NL
+		    		     + "- 업적 350개 이상 보유" + NL
 		    		     + "- 유물 아이템 27개 이상 보유" + NL
 		    		     + "- 헌터 S급 이상";
 		    	}

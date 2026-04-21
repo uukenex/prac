@@ -1567,7 +1567,7 @@
 		       FROM TBOT_POINT_NEW_INVENTORY
 		      WHERE USER_NAME = #{userName}
 		        AND NVL(DEL_YN,'0') = '0'
-		        AND ITEM_ID = 8013) AS ACHV_COUNT,
+		        AND ITEM_ID = 8012) AS ACHV_COUNT,
 		    (SELECT NVL(SUM(QTY), 0)
 		       FROM TBOT_POINT_NEW_INVENTORY
 		      WHERE USER_NAME = #{userName}
