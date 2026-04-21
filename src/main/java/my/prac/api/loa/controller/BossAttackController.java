@@ -378,6 +378,11 @@ public class BossAttackController {
 	        }
 	    } catch (Exception ignore) {}
 
+	    // GP 잔액 조회 → ctx.gpBalance
+	    try {
+	        ctx.gpBalance = botNewService.selectGpBalance(targetUser);
+	    } catch (Exception ignore) {}
+
 	    // 🔹 직업 보너스 표시용 변수
 	    int jobHp = 0;
 	    int jobRegen = 0;
@@ -1535,10 +1540,9 @@ public class BossAttackController {
 	    }
 	    sb.append(", EXP ").append(u.expCur).append("/").append(u.expNext).append(NL);
 	    sb.append("포인트: ").append(ctx.currentPointStr).append(NL);
-	    try {
-	        double _gp = botNewService.selectGpBalance(ctx.targetUser);
-	        sb.append("GP: ").append(String.format("%.2f", _gp)).append(NL);
-	    } catch (Exception ignore) {}
+	    if (ctx.gpBalance > 0) {
+	        sb.append("GP: ").append(String.format("%.2f", ctx.gpBalance)).append(NL);
+	    }
 	    sb.append("누적 획득 포인트: ").append(ctx.lifetimeSpStr).append(NL).append(NL);
 
 	    if ("곰".equals(ctx.job)) {
