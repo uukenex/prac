@@ -399,6 +399,7 @@ public class BossAttackController {
 	            totalDeaths  = ((Number) map.get("_preHunterAdjDeaths")).intValue();
 	        } else {
 	            ads = botNewService.selectAttackDeathStats(targetUser, "");
+	            ctx.ads = ads; // ma_cooldownAndHp에서 재사용 (2번째 DB 조회 생략)
 	            totalAttacks = (ads == null ? 0 : ads.totalAttacks);
 	            int hunterAttacks = (ads == null ? 0 : ads.hunterAttacks);
 	            totalDeaths  = (ads == null ? 0 : ads.totalDeaths);
@@ -1009,6 +1010,7 @@ public class BossAttackController {
 	private void invalidateInvBuff(String userName) {
 	    if (userName != null) MiniGameUtil.INV_BUFF_CACHE.remove(userName);
 	}
+
 	// ─────────────────────────────────────────────────────────────────────────
 
 	private SP rollBagSpWithCeiling(int nightmareYn) {
@@ -3341,7 +3343,10 @@ public class BossAttackController {
 				s.cooldownBuff = -1;
 		}
 
-		try { s.cachedAds = botNewService.selectAttackDeathStats(s.userName, s.roomName); } catch (Exception ignore) {}
+		// ctx.ads에 calcUserBattleContext에서 이미 조회한 값 재사용 (DB 중복 조회 방지)
+		s.cachedAds = (s.ctx != null && s.ctx.ads != null)
+		        ? s.ctx.ads
+		        : botNewService.selectAttackDeathStats(s.userName, s.roomName);
 		Timestamp cachedLastAtk = (s.cachedAds != null) ? s.cachedAds.lastAttackTime : null;
 		s.cdJob = (s.cachedAds != null && s.cachedAds.lastAttackJob != null) ? s.cachedAds.lastAttackJob : s.job;
 

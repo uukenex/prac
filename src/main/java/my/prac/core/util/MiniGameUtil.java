@@ -72,6 +72,7 @@ public class MiniGameUtil {
 	// InvBuffData: marketBuffs(HashMap), heavenBuff(HashMap), bossItems(List<Integer>), dropItems(List<HashMap>)
 	public static final ConcurrentHashMap<String, Object[]> INV_BUFF_CACHE = new ConcurrentHashMap<>();
 	public static final long INV_BUFF_TTL_MS = 60_000L;
+
 	// ─────────────────────────────────────────────────────────────────────────
 
 	static {

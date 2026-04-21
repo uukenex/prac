@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import my.prac.core.game.dto.AttackDeathStat;
 import my.prac.core.util.SP;
 
 public class UserBattleContext {
@@ -83,4 +84,7 @@ public class UserBattleContext {
 
 	// GP 잔액 (calcUserBattleContext에서 채워짐, 0이면 미보유)
 	public double gpBalance = 0.0;
+
+	// 공격/사망 통계 (calcUserBattleContext에서 채워짐, ma_cooldownAndHp에서 재사용)
+	public AttackDeathStat ads = null;
 }
