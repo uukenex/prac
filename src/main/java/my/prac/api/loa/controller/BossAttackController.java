@@ -650,11 +650,9 @@ public class BossAttackController {
 
 	    applyDropBonusToContext(ctx, targetUser, "");
 
-	    // hpCur: 리젠 반영 현재 체력 (cachedLastAtk는 _cachedLastAtk 키로 map에 미리 넣어도 됨)
+	    // hpCur: 리젠 반영 현재 체력 (항상 실시간 DB 조회)
 	    final String ctxRoomName = Objects.toString(map.get("roomName"), "");
-	    Timestamp ctxCachedLastAtk = (map.get("_cachedLastAtk") instanceof Timestamp)
-	            ? (Timestamp) map.get("_cachedLastAtk") : null;
-	    ctx.hpCur = computeEffectiveHpFromLastAttack(targetUser, ctxRoomName, u, hpMax, regen, ctxCachedLastAtk);
+	    ctx.hpCur = computeEffectiveHpFromLastAttack(targetUser, ctxRoomName, u, hpMax, regen);
 	    if (ctx.hpCur > hpMax) ctx.hpCur = hpMax;
 
 	    return ctx;
@@ -1414,9 +1412,6 @@ public class BossAttackController {
 	            }
 	        }
 	    }
-	    // lastAtkTs를 map에 넣어 calcUserBattleContext 내 computeEffectiveHpFromLastAttack에서 활용
-	    if (lastAtkTs != null) map.put("_cachedLastAtk", lastAtkTs);
-
 	    UserBattleContext ctx = calcUserBattleContext(map);
 	    if (!ctx.success) {
 	        return ctx.errorMessage;
@@ -2294,6 +2289,11 @@ public class BossAttackController {
 	    // POTION 외 미지원 타입
 	    if (!"POTION".equalsIgnoreCase(itemType)) {
 	        return "구매할 수 없는 아이템입니다. (MARKET/POTION 유형만 구매 가능)";
+	    }
+
+	    // 물약 한 번에 최대 10개 제한
+	    if (qty > 10) {
+	        return "물약은 한 번에 최대 10개까지만 사용 가능합니다. (요청: " + qty + "개)";
 	    }
 
 	    // ── 공통 조회 1회 ────────────────────────────────────────────────
@@ -3333,7 +3333,7 @@ public class BossAttackController {
 
 		int effectiveHp = s.revivedThisTurn
 				? s.u.hpCur
-				: computeEffectiveHpFromLastAttack(s.userName, s.roomName, s.u, s.hpMax, s.regen, cachedLastAtk);
+				: computeEffectiveHpFromLastAttack(s.userName, s.roomName, s.u, s.hpMax, s.regen);
 		s.u.hpCur = effectiveHp;
 
 		if (s.u.targetMon == 99) {
@@ -3697,9 +3697,10 @@ public class BossAttackController {
 		}
 		if (s.stealMsg != null && !s.stealMsg.isEmpty()) bot.append(NL).append(s.stealMsg);
 
+		StringBuilder detailOut = new StringBuilder();
 		String msg = buildAttackMessage(s.userName, s.u, s.m, s.flags, s.calc, s.res, s.up,
 				s.monHpRemainBefore, s.monMaxHp, s.effAtkMin, s.effAtkMax, s.hpMax,
-				mid.toString(), hunter.toString(), bot.toString(), s.nightmare, s.ctx);
+				mid.toString(), hunter.toString(), bot.toString(), s.nightmare, s.ctx, detailOut);
 
 		if (!s.bonusMsg.isEmpty()) msg += s.bonusMsg;
 
@@ -3728,6 +3729,11 @@ public class BossAttackController {
 		if (s.hell) {
 			String hellNotify = bossAttackS3Controller.getHellBossStatusMsg();
 			if (hellNotify != null && !hellNotify.isEmpty()) msg += NL + hellNotify;
+		}
+
+		// 더보기(===) — 데미지 계산식 / 헌터랭크 / 연사계산 / 레벨업 상세
+		if (detailOut.length() > 0) {
+			msg += NL + ALL_SEE_STR + NL + detailOut.toString();
 		}
 
 		return msg;
@@ -5395,28 +5401,22 @@ public class BossAttackController {
 	}
 
 	private int computeEffectiveHpFromLastAttack(String userName, String roomName, User u, int hpMax, int regen) {
-	    return computeEffectiveHpFromLastAttack(userName, roomName, u, hpMax, regen, null);
-	}
-
-	// [FIX1] cachedLastAtk 가 null 이 아니면 selectLastAttackTime DB 조회 생략
-	private int computeEffectiveHpFromLastAttack(String userName, String roomName, User u, int hpMax, int regen, Timestamp cachedLastAtk) {
 
 	    // 0) 이미 풀피이거나 리젠 수치가 0 이하면 그대로 반환
 	    if (u.hpCur >= hpMax || regen <= 0) {
 	        return Math.min(u.hpCur, hpMax);
 	    }
 
-	    // 1) 마지막으로 "맞은" 시각 (몬스터에게 데미지 혹은 즉사 시점)
+	    // 1) 마지막으로 "맞은" 시각
 	    Timestamp damaged = botNewService.selectLastDamagedTime(userName, roomName);
 	    if (damaged == null) {
-	        // 아직 한 번도 맞은 적이 없다면 피격 기반 리젠 없음
 	        return Math.min(u.hpCur, hpMax);
 	    }
 
 	    Instant damagedAt = damaged.toInstant();
 	    Instant now = Instant.now();
 
-	    // 2) damaged 이후 현재까지 경과 시간(분) → 지금까지 총 리젠 틱 수
+	    // 2) damaged 이후 현재까지 총 리젠 틱 수
 	    long minutesFromDamaged = java.time.Duration.between(damagedAt, now).toMinutes();
 	    if (minutesFromDamaged <= 0) {
 	        return Math.min(u.hpCur, hpMax);
@@ -5427,9 +5427,9 @@ public class BossAttackController {
 	        return Math.min(u.hpCur, hpMax);
 	    }
 
-	    // 3) 마지막 공격 시각을 이용해, "이미 리젠에 반영된 틱" 계산
+	    // 3) 마지막 공격 시각으로 "이미 반영된 틱" 계산 (항상 실시간 DB 조회)
 	    long prevTicks = 0L;
-	    Timestamp lastAtk = (cachedLastAtk != null) ? cachedLastAtk : botNewService.selectLastAttackTime(userName, roomName);
+	    Timestamp lastAtk = botNewService.selectLastAttackTime(userName, roomName);
 	    if (lastAtk != null && lastAtk.after(damaged)) {
 	        long minutesUntilLastAtk = java.time.Duration.between(damagedAt, lastAtk.toInstant()).toMinutes();
 	        if (minutesUntilLastAtk > 0) {
@@ -5437,20 +5437,13 @@ public class BossAttackController {
 	        }
 	    }
 
-	    // 4) 이번에 새로 발생한 틱만 회복에 사용
+	    // 4) 이번에 새로 발생한 틱만 회복
 	    long newTicks = totalTicksNow - prevTicks;
 	    if (newTicks <= 0) {
-	        // 아직 "이전에 공격했을 때까지"보다 더 많은 5분 구간이 지나지 않았다면 추가 리젠 없음
 	        return Math.min(u.hpCur, hpMax);
 	    }
 
-	    long heal = newTicks * (long) regen;
-	    long effective = (long) u.hpCur + heal;
-
-	    if (effective > hpMax) {
-	        effective = hpMax;
-	    }
-
+	    long effective = Math.min((long) u.hpCur + newTicks * (long) regen, (long) hpMax);
 	    return (int) effective;
 	}
 
@@ -5966,13 +5959,37 @@ public class BossAttackController {
 	        Resolve res, LevelUpResult up,
 	        int monHpRemainBefore, int monMaxHp,
 	        int shownAtkMin, int shownAtkMax,
-	        int displayHpMax, // ← 표시용 HP Max(아이템 포함)
+	        int displayHpMax,
 	        String midExtraLines,
 	        String hunterMsg,
 	        String botExtraLines,
 	        boolean nightmare,
 	        UserBattleContext ctx
 	) {
+	    return buildAttackMessage(userName, u, m, flags, calc, res, up,
+	            monHpRemainBefore, monMaxHp, shownAtkMin, shownAtkMax,
+	            displayHpMax, midExtraLines, hunterMsg, botExtraLines, nightmare, ctx, null);
+	}
+
+	/**
+	 * @param detailOut null이면 기존 동작(단일 메시지).
+	 *                  non-null이면 데미지 계산식·헌터랭크·연사계산·레벨업 상세를 detailOut에 수집.
+	 *                  호출부에서 포인트/공지 출력 후 NL + === + NL + detailOut 을 붙임.
+	 */
+	private String buildAttackMessage(
+	        String userName, User u, Monster m, Flags flags, AttackCalc calc,
+	        Resolve res, LevelUpResult up,
+	        int monHpRemainBefore, int monMaxHp,
+	        int shownAtkMin, int shownAtkMax,
+	        int displayHpMax,
+	        String midExtraLines,
+	        String hunterMsg,
+	        String botExtraLines,
+	        boolean nightmare,
+	        UserBattleContext ctx,
+	        StringBuilder detailOut
+	) {
+	    final boolean split = (detailOut != null);
 	    StringBuilder sb = new StringBuilder();
 
 	    // 헤더
@@ -5982,57 +5999,67 @@ public class BossAttackController {
 	    	if(ctx.user.nightmareYn == 2) sb.append("[헬]");
 	    	else sb.append("[나이트메어]");
 	    }
-	    
 	    sb.append("을(를) 공격!").append(NL).append(NL);
 
-	    if (res.gray) {
-	    	sb.append("✨ LIGHT&DARK MONSTER! (처치시 경험치×9, 음양 드랍)").append(NL);
-	    }
-	    if (res.dark) {
-	    	sb.append("✨ DARK MONSTER! (처치시 경험치×5, 어둠 드랍)").append(NL);
-	    }
-	    if (res.lucky) {
-	        sb.append("✨ LUCKY MONSTER! (처치시 경험치×3, 빛 드랍)").append(NL);
+	    if (res.gray) sb.append("✨ LIGHT&DARK MONSTER! (처치시 경험치×9, 음양 드랍)").append(NL);
+	    if (res.dark) sb.append("✨ DARK MONSTER! (처치시 경험치×5, 어둠 드랍)").append(NL);
+	    if (res.lucky) sb.append("✨ LUCKY MONSTER! (처치시 경험치×3, 빛 드랍)").append(NL);
+
+	    if (u.job.equals("곰")) {
+	        if (split) {
+	            // 더보기 없이 그대로 표기 (곰은 계산식 없음)
+	            sb.append("최대체력 ").append(formatWan(displayHpMax)).append(" 이하에게 괴력!").append(NL);
+	        } else {
+	            sb.append("최대체력 ").append(formatWan(displayHpMax)).append(" 이하에게 괴력!").append(NL);
+	        }
+	    } else {
+	        // 치명타/축복 (항상 main)
+	        if (flags.atkCrit) sb.append("✨ 치명타!");
+	        if (u.blessYn == 1) sb.append("✨축복(x1.5)!");
+	        sb.append(NL);
+
+	        if (split) {
+	            // [main] 최종 데미지만 표기
+	            sb.append("⚔ 데미지: ").append(formatWan(calc.atkDmg)).append(NL);
+
+	            // [detail] 계산 상세
+	            detailOut.append("⚔ 데미지: (").append(formatWan(shownAtkMin)).append("~").append(formatWan(shownAtkMax)).append(" ⇒ ");
+	            if (flags.atkCrit && calc.baseAtk > 0 && calc.critMultiplier >= 1.0) {
+	                detailOut.append(formatWan(calc.baseAtk)).append("*").append(trimDouble(calc.critMultiplier)).append("=>").append(formatWan(calc.atkDmg));
+	            } else {
+	                detailOut.append(formatWan(calc.atkDmg));
+	            }
+	            detailOut.append(")").append(NL);
+	            if (hunterMsg != null && !hunterMsg.isEmpty())
+	                detailOut.append(hunterMsg).append(NL);
+	            if (midExtraLines != null && !midExtraLines.isEmpty())
+	                detailOut.append(midExtraLines).append(NL);
+	        } else {
+	            // 기존 동작
+	            sb.append("⚔ 데미지: (").append(formatWan(shownAtkMin)).append("~").append(formatWan(shownAtkMax)).append(" ⇒ ");
+	            if (flags.atkCrit && calc.baseAtk > 0 && calc.critMultiplier >= 1.0) {
+	                sb.append(formatWan(calc.baseAtk)).append("*").append(trimDouble(calc.critMultiplier)).append("=>").append(formatWan(calc.atkDmg));
+	            } else {
+	                sb.append(formatWan(calc.atkDmg));
+	            }
+	            sb.append(")").append(NL);
+	            if (hunterMsg != null && !hunterMsg.isEmpty())
+	                sb.append(hunterMsg).append(NL).append(NL);
+	            if (midExtraLines != null && !midExtraLines.isEmpty())
+	                sb.append(midExtraLines).append(NL).append(NL);
+	        }
 	    }
 
-	    if(u.job.equals("곰")) {
-
-	    	sb.append("최대체력 "+formatWan(displayHpMax)+" 이하에게 괴력!");
-		    sb.append(NL);
-	    }else {
-	    	// 치명타
-		    if (flags.atkCrit) sb.append("✨ 치명타!");
-		    if (u.blessYn==1) sb.append("✨축복(x1.5)!");
-		    sb.append(NL);
-		 // 데미지
-		    sb.append("⚔ 데미지: (").append(formatWan(shownAtkMin)).append("~").append(formatWan(shownAtkMax)).append(" ⇒ ");
-		    if (flags.atkCrit && calc.baseAtk > 0 && calc.critMultiplier >= 1.0) {
-		        sb.append(formatWan(calc.baseAtk)).append("*").append(trimDouble(calc.critMultiplier)).append("=>").append(formatWan(calc.atkDmg));
-		    } else {
-		        sb.append(formatWan(calc.atkDmg));
-		    }
-		    sb.append(")").append(NL);
-	    }
-
-	    if(!u.job.equals("곰")) {
-		    if (hunterMsg != null && !hunterMsg.isEmpty()) {
-		    	sb.append(hunterMsg).append(NL).append(NL);
-		    }
-	    }
-	    if (midExtraLines != null && !midExtraLines.isEmpty()) {
-	        sb.append(midExtraLines).append(NL).append(NL);
-	    }
-
-	    // 몬스터 HP
+	    // 몬스터 HP (항상 main)
 	    int monHpAfter = Math.max(0, monHpRemainBefore - calc.atkDmg);
 	    sb.append("❤️ 몬스터 HP: ").append(formatWan(monHpAfter)).append(" / ").append(formatWan(monMaxHp)).append(NL);
 
-	    // 반격
+	    // 반격 알림 (항상 main — 게임 이벤트)
 	    if (calc.patternMsg != null && !calc.patternMsg.isEmpty()) {
 	        sb.append(NL).append("⚅ ").append(calc.patternMsg).append(NL);
 	    }
 
-	    // 현재 체력(표시 Max 사용)
+	    // 현재 체력 (항상 main)
 	    if (calc.monDmg > 0) {
 	        sb.append("❤️ 받은 피해: ").append(formatWan(calc.monDmg))
 	          .append(",  현재 체력: ").append(formatWan(u.hpCur)).append(" / ").append(formatWan(displayHpMax)).append(NL);
@@ -6040,73 +6067,62 @@ public class BossAttackController {
 	        sb.append("❤️ 현재 체력: ").append(formatWan(u.hpCur)).append(" / ").append(formatWan(displayHpMax)).append(NL);
 	    }
 
-	    // 드랍
+	    // 드랍 (항상 main)
 	    if (res.killed && !"0".equals(res.dropCode)) {
 	        String dropName = (m.monDrop == null ? "" : m.monDrop.trim());
 	        if (!dropName.isEmpty()) {
-	        	if ("9".equals(res.dropCode)) {
-	                sb.append("✨ 드랍 획득: 음양").append(dropName).append(NL);
-	            }else if ("5".equals(res.dropCode)) {
-	                sb.append("✨ 드랍 획득: 어둠").append(dropName).append(NL);
-	            } else if ("3".equals(res.dropCode)) {
-	                sb.append("✨ 드랍 획득: 빛").append(dropName).append(NL);
-	            } else if ("2".equals(res.dropCode)) {
-	                sb.append("✨ 드랍 획득: ").append(dropName).append(" x2");
-	            } else {
-	                sb.append("✨ 드랍 획득: ").append(dropName).append(NL);
-	            }
-	        	
-	        	sb.append(NL);
-	        	
+	            if      ("9".equals(res.dropCode)) sb.append("✨ 드랍 획득: 음양").append(dropName).append(NL);
+	            else if ("5".equals(res.dropCode)) sb.append("✨ 드랍 획득: 어둠").append(dropName).append(NL);
+	            else if ("3".equals(res.dropCode)) sb.append("✨ 드랍 획득: 빛").append(dropName).append(NL);
+	            else if ("2".equals(res.dropCode)) sb.append("✨ 드랍 획득: ").append(dropName).append(" x2");
+	            else                               sb.append("✨ 드랍 획득: ").append(dropName).append(NL);
+	            sb.append(NL);
 	        }
 	    }
 
+	    // EXP (항상 main)
 	    double gainPercent = (double) res.gainExp / u.expNext * 100;
-	    double curPercent = (double) u.expCur / u.expNext * 100;
-
+	    double curPercent  = (double) u.expCur    / u.expNext * 100;
 	    sb.append("✨ EXP +").append(formatWan(res.gainExp))
 	      .append("(").append(String.format("%.1f", gainPercent)).append("%)")
 	      .append("[").append(String.format("%.1f", curPercent)).append("%/100%]")
 	      .append(NL);
-	    // EXP
-	    /*
-	    sb.append("✨ EXP+").append(res.gainExp)
-	      .append(" , EXP: ").append(u.expCur).append(" / ").append(u.expNext).append(NL);
-	     */
+
+	    // 레벨업
 	    if (up != null && up.levelUpCount > 0) {
-	        sb.append(NL)
-	          .append("✨ 레벨업! Lv ").append(up.beforeLv)
-	          .append(" → ").append(up.afterLv);
-	        if (up.levelUpCount > 1)
-	            sb.append(" ( +").append(up.levelUpCount).append(" )");
+	        sb.append(NL).append("✨ 레벨업! Lv ").append(up.beforeLv).append(" → ").append(up.afterLv);
+	        if (up.levelUpCount > 1) sb.append(" ( +").append(up.levelUpCount).append(" )");
 	        sb.append(NL);
 
-	        // ❤️ HP
-	        sb.append("└:❤️HP ")
-	          .append(formatWan(up.beforeHpMax)).append("→").append(formatWan(up.afterHpMax))
-	          .append(" (+").append(formatWan(up.hpMaxDelta)).append(")").append(NL);
-
-	        // ⚔ ATK
-	        sb.append("└:⚔ATK ")
-	          .append(up.beforeAtkMin).append("~").append(up.beforeAtkMax)
-	          .append("→").append(up.afterAtkMin).append("~").append(up.afterAtkMax)
-	          .append(" (+").append(up.atkMinDelta).append("~+").append(up.atkMaxDelta).append(")").append(NL);
-
-	        // CRIT
-	        sb.append("└: CRIT ")
-	          .append(up.beforeCrit).append("%→").append(up.afterCrit).append("%")
-	          .append(" (+").append(up.critDelta).append("%)").append(NL);
-
-	        // HP_REGEN
-	        sb.append("└: 5분당회복 ")
-	          .append(up.beforeHpRegen).append("→").append(up.afterHpRegen)
-	          .append(" (+").append(up.hpRegenDelta).append(")").append(NL);
+	        if (split) {
+	            // [detail] 상세 수치
+	            detailOut.append("└:❤️HP ").append(formatWan(up.beforeHpMax)).append("→").append(formatWan(up.afterHpMax))
+	                     .append(" (+").append(formatWan(up.hpMaxDelta)).append(")").append(NL);
+	            detailOut.append("└:⚔ATK ").append(up.beforeAtkMin).append("~").append(up.beforeAtkMax)
+	                     .append("→").append(up.afterAtkMin).append("~").append(up.afterAtkMax)
+	                     .append(" (+").append(up.atkMinDelta).append("~+").append(up.atkMaxDelta).append(")").append(NL);
+	            detailOut.append("└: CRIT ").append(up.beforeCrit).append("%→").append(up.afterCrit).append("%")
+	                     .append(" (+").append(up.critDelta).append("%)").append(NL);
+	            detailOut.append("└: 5분당회복 ").append(up.beforeHpRegen).append("→").append(up.afterHpRegen)
+	                     .append(" (+").append(up.hpRegenDelta).append(")").append(NL);
+	        } else {
+	            // 기존 동작
+	            sb.append("└:❤️HP ").append(formatWan(up.beforeHpMax)).append("→").append(formatWan(up.afterHpMax))
+	              .append(" (+").append(formatWan(up.hpMaxDelta)).append(")").append(NL);
+	            sb.append("└:⚔ATK ").append(up.beforeAtkMin).append("~").append(up.beforeAtkMax)
+	              .append("→").append(up.afterAtkMin).append("~").append(up.afterAtkMax)
+	              .append(" (+").append(up.atkMinDelta).append("~+").append(up.atkMaxDelta).append(")").append(NL);
+	            sb.append("└: CRIT ").append(up.beforeCrit).append("%→").append(up.afterCrit).append("%")
+	              .append(" (+").append(up.critDelta).append("%)").append(NL);
+	            sb.append("└: 5분당회복 ").append(up.beforeHpRegen).append("→").append(up.afterHpRegen)
+	              .append(" (+").append(up.hpRegenDelta).append(")").append(NL);
+	        }
 	    }
-	    
+
 	    if (botExtraLines != null && !botExtraLines.isEmpty()) {
 	        sb.append(botExtraLines).append(NL);
 	    }
-	    
+
 	    return sb.toString();
 	}
 
