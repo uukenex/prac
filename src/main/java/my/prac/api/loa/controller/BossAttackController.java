@@ -6090,7 +6090,8 @@ public class BossAttackController {
 
 	    // 레벨업
 	    if (up != null && up.levelUpCount > 0) {
-	        sb.append(NL).append("✨ 레벨업! Lv ").append(up.beforeLv).append(" → ").append(up.afterLv);
+	        sb.append(NL).append("★★★ ✨레벨업!✨ ★★★").append(NL);
+	        sb.append("Lv ").append(up.beforeLv).append(" → ").append(up.afterLv);
 	        if (up.levelUpCount > 1) sb.append(" ( +").append(up.levelUpCount).append(" )");
 	        sb.append(NL);
 
