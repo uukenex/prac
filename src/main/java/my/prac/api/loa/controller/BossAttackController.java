@@ -161,8 +161,7 @@ public class BossAttackController {
 		    		return "헬 모드 해금 조건 미달성!" + NL
 		    		     + "- 25번 몬스터 1마리 처치" + NL
 		    		     + "- 업적 350개 이상 보유" + NL
-		    		     + "- 유물 아이템 27개 이상 보유" + NL
-		    		     + "- 헌터 S급 이상";
+		    		     + "- 유물 아이템 25개 이상 보유";
 		    	}
 	    	}
 	    	botNewService.setNightmareMode(userName,roomName,2);
@@ -3148,11 +3147,12 @@ public class BossAttackController {
 		if ("람쥐봇 문의방".equals(s.roomName) && !s.master)
 			return "문의방에서는 불가능합니다.";
 
+		/*
 		HashMap<String,Object> lockParam = botNewService.lockMacroUser(s.userName);
 		int lockCode = (Integer) lockParam.get("outCode");
 		if (lockCode == 1 || lockCode == 2)
 			return "공격불가 상태입니다 code:" + lockParam.get("outMsg");
-
+		 */
 		s.param1 = Objects.toString(s.map.get("param1"), "");
 		return null;
 	}

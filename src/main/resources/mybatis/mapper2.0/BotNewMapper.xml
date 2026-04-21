@@ -1572,20 +1572,7 @@
 		       FROM TBOT_POINT_NEW_INVENTORY
 		      WHERE USER_NAME = #{userName}
 		        AND NVL(DEL_YN,'0') = '0'
-		        AND ITEM_ID BETWEEN 9001 AND 9999) AS RELIC_COUNT,
-		    /* 헌터 등급 계산용: 헌터공격은 2배 가중, 사망에 1/2 기여 */
-		    (SELECT NVL(COUNT(*),0) + NVL(SUM(CASE WHEN JOB='헌터' THEN 1 ELSE 0 END),0)*2
-		       FROM TBOT_POINT_NEW_BATTLE_LOG
-		      WHERE USER_NAME = #{userName}) AS TOTAL_ATK,
-		    (SELECT NVL(SUM(QTY), 0)
-		       FROM TBOT_POINT_NEW_INVENTORY
-		      WHERE USER_NAME = #{userName}
-		        AND GAIN_TYPE IN ('DROP','DROP2','DROP3','DROP5','DROP9','STEAL')
-		        AND ITEM_ID &lt; 50) AS TOTAL_DROP,
-		    (SELECT NVL(SUM(CASE WHEN DEATH_YN='1' THEN 1 ELSE 0 END),0)
-		              + NVL(SUM(CASE WHEN JOB='헌터' THEN 1 ELSE 0 END),0)/2
-		       FROM TBOT_POINT_NEW_BATTLE_LOG
-		      WHERE USER_NAME = #{userName}) AS TOTAL_DEATH
+		        AND ITEM_ID BETWEEN 9001 AND 9999) AS RELIC_COUNT
 		FROM DUAL
 	</select>
 
