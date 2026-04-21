@@ -68,10 +68,9 @@ public class MiniGameUtil {
 	// 물약 사용 횟수 캐시 (userName → 총 사용 횟수)
 	public static final ConcurrentHashMap<String, Integer> POTION_USE_CACHE = new ConcurrentHashMap<>();
 
-	// 유저별 인벤토리 버프 캐시 (userName → Object[]{Long timestamp, InvBuffData data}, TTL 60초)
-	// InvBuffData: marketBuffs(HashMap), heavenBuff(HashMap), bossItems(List<Integer>), dropItems(List<HashMap>)
-	public static final ConcurrentHashMap<String, Object[]> INV_BUFF_CACHE = new ConcurrentHashMap<>();
-	public static final long INV_BUFF_TTL_MS = 60_000L;
+	// 유저별 인벤토리 버프 캐시 (userName → HashMap{market, heaven, bossItems, drops})
+	// TTL 없음 — 아이템 변경(획득/구매/판매) 시 invalidateInvBuff()로 즉시 무효화
+	public static final ConcurrentHashMap<String, HashMap<String,Object>> INV_BUFF_CACHE = new ConcurrentHashMap<>();
 
 	// ─────────────────────────────────────────────────────────────────────────
 

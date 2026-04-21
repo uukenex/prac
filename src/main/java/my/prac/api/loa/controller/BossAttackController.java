@@ -985,14 +985,10 @@ public class BossAttackController {
 	}
 
 	// ── 인벤토리 버프 캐시 ─────────────────────────────────────────────────────
-	// 유저별 TTL 60초. 인벤토리 변경 시 invalidateInvBuff(userName) 호출로 즉시 무효화.
-	@SuppressWarnings("unchecked")
+	// TTL 없음. 아이템 변경(획득/구매/판매) 시 invalidateInvBuff()로 무효화.
 	private HashMap<String,Object> getInvBuffCached(String userName) {
-	    long now = System.currentTimeMillis();
-	    Object[] cached = MiniGameUtil.INV_BUFF_CACHE.get(userName);
-	    if (cached != null && (now - (Long) cached[0]) < MiniGameUtil.INV_BUFF_TTL_MS) {
-	        return (HashMap<String,Object>) cached[1];
-	    }
+	    HashMap<String,Object> cached = MiniGameUtil.INV_BUFF_CACHE.get(userName);
+	    if (cached != null) return cached;
 	    HashMap<String,Object> data = new HashMap<>();
 	    try { data.put("market", botNewService.selectOwnedMarketBuffTotals(userName, "")); } catch (Exception ignore) {}
 	    try { data.put("heaven", botNewService.selectHeavenItemBuff(userName)); } catch (Exception ignore) {}
@@ -1002,7 +998,7 @@ public class BossAttackController {
 	            data.put("bossItems", botNewService.selectInventoryItemsByIds(userName, "", bossItemIds));
 	    } catch (Exception ignore) {}
 	    try { data.put("drops", botNewService.selectTotalDropItems(userName)); } catch (Exception ignore) {}
-	    MiniGameUtil.INV_BUFF_CACHE.put(userName, new Object[]{now, data});
+	    MiniGameUtil.INV_BUFF_CACHE.put(userName, data);
 	    return data;
 	}
 
