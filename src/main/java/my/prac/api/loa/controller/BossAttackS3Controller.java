@@ -189,13 +189,21 @@ public class BossAttackS3Controller {
                 LocalDateTime spawnTime = LocalDateTime.parse(bossStartDate,
                         DateTimeFormatter.ofPattern("yyyyMMdd HHmmss"));
                 if (LocalDateTime.now().isBefore(spawnTime)) {
-                    String dispTime = spawnTime.format(DateTimeFormatter.ofPattern("MM/dd HH:mm"));
-                    String lastReward = botS3Service.getLastKillRewardMsg();
-                    String msg = userName + "님," + NL + "상급악마가 재정비 중입니다." + NL + "등장 예정: " + dispTime;
-                    if (lastReward != null && !lastReward.isEmpty()) {
-                        msg += NL + NL + lastReward;
-                    }
-                    return msg;
+                    long remainMin = java.time.Duration.between(LocalDateTime.now(), spawnTime).toMinutes();
+                    String remainStr = remainMin >= 60
+                            ? (remainMin / 60) + "시간 " + (remainMin % 60) + "분"
+                            : remainMin + "분";
+                    StringBuilder sb = new StringBuilder();
+                    sb.append(userName).append("님,").append(NL)
+                      .append("상급악마가 재정비 중입니다.").append(NL)
+                      .append("등장까지 ").append(remainStr).append(" 남았습니다.");
+                    try {
+                        String lastReward = botS3Service.getLastKillRewardMsg();
+                        if (lastReward != null && !lastReward.isEmpty()) {
+                            sb.append(NL).append(NL).append("[이전 클리어 이력]").append(NL).append(lastReward);
+                        }
+                    } catch (Exception ignored) {}
+                    return sb.toString();
                 }
             } catch (Exception ignored) {}
         }
@@ -895,12 +903,24 @@ public class BossAttackS3Controller {
                     DateTimeFormatter.ofPattern("yyyyMMdd HHmmss"));
             LocalDateTime now = LocalDateTime.now();
             if (now.isBefore(spawnTime)) {
-                // 미래: 남은 분 계산
+                // 미래: 재정비 중 → 남은 시간 항상 표시
                 long remainMin = java.time.Duration.between(now, spawnTime).toMinutes();
-                if (remainMin >= 55 && remainMin <= 65) return "※상급악마 1시간 후 출현 예정!" + NL;
-                if (remainMin >= 8  && remainMin <= 12) return "※상급악마 10분 후 출현 예정!" + NL;
-                if (remainMin >= 3  && remainMin <= 7)  return "※상급악마 5분 후 출현 예정!" + NL;
-                return "";
+                String remainStr;
+                if (remainMin >= 60) {
+                    long h = remainMin / 60, m = remainMin % 60;
+                    remainStr = h + "시간 " + m + "분";
+                } else {
+                    remainStr = remainMin + "분";
+                }
+                StringBuilder sb = new StringBuilder();
+                sb.append("※상급악마 재정비 중 (").append(remainStr).append(" 후 출현)").append(NL);
+                try {
+                    String lastReward = botS3Service.getLastKillRewardMsg();
+                    if (lastReward != null && !lastReward.isEmpty()) {
+                        sb.append(NL).append("[이전 클리어 이력]").append(NL).append(lastReward);
+                    }
+                } catch (Exception ignored) {}
+                return sb.toString();
             } else {
                 // 과거: 이미 출현 중 → 체력% 계산
                 double curHpNum = Double.parseDouble(boss.get("CUR_HP").toString());
