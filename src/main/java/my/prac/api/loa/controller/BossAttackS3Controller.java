@@ -41,7 +41,8 @@ import my.prac.core.prjbot.service.BotS3Service;
 @Controller
 public class BossAttackS3Controller {
 
-    private static final String NL = "♬";
+    private static final String NL          = "♬";
+    private static final String ALL_SEE_STR = "===";
 
     // =========================================================
     // 헬보스 능력치 랜덤 범위 설정 (필요 시 수정)
@@ -705,11 +706,10 @@ public class BossAttackS3Controller {
 
         StringBuilder msg = new StringBuilder();
 
-        // 보상 주사위 (30% 아이템 / 70% GP)
+        // 보상 타입 결정 (30% 아이템 / 70% GP)
         double diceRoll = rand.nextDouble();
         boolean isItemReward = diceRoll < 0.30;
-        msg.append("⚅ 보상 주사위: ").append(String.format("%.1f%%", diceRoll * 100))
-           .append(" → ").append(isItemReward ? "아이템 보상" : "GP 보상").append(NL);
+        msg.append("이번 클리어 보상은 ").append(isItemReward ? "아이템" : "GP").append(" 입니다!").append(NL);
 
         if (isItemReward) {
             // ────────────────────────────────────────────────────
@@ -732,16 +732,10 @@ public class BossAttackS3Controller {
                 if (noItemNames.contains(uName)) itemCandidates.add(uName);
             }
 
-            msg.append(NL).append("-- 아이템 추첨  ")
-               .append(itemCandidates.size()).append("명) --").append(NL);
-
             if (itemCandidates.isEmpty()) {
                 msg.append("★ 보상 대상 없음").append(NL);
             } else {
                 String winner = itemCandidates.get(rand.nextInt(itemCandidates.size()));
-                int winIdx = itemCandidates.indexOf(winner) + 1;
-                msg.append("⚅ 주사위 1~").append(itemCandidates.size())
-                   .append(" → ").append(winIdx).append("번 [").append(winner).append("]").append(NL);
                 for (int i = 0; i < itemCandidates.size(); i++) {
                     String uName = itemCandidates.get(i);
                     boolean isWin = uName.equals(winner);
@@ -750,16 +744,20 @@ public class BossAttackS3Controller {
                        .append(isWin ? " ← 당첨!" : "").append(NL);
                 }
 
-                // 아이템 지급 (미발견 아이템 우선)
+                // 아이템 지급 (미발견 아이템 우선) + 아이템 정보 맵 구성
                 List<Integer> givePool;
                 boolean isFirstDiscovery = false;
+                HashMap<Integer, String[]> itemInfoMap = new HashMap<>(); // itemId → {name, desc}
                 try {
                     List<HashMap<String, Object>> rewardMeta = botNewService.selectHellRewardItemsWithOwnCount();
                     List<Integer> undiscovered = new ArrayList<>();
                     List<Integer> allItems     = new ArrayList<>();
                     for (HashMap<String, Object> row : rewardMeta) {
-                        int iid  = Integer.parseInt(row.get("ITEM_ID").toString());
-                        long cnt = Long.parseLong(row.get("GLOBAL_OWN_CNT").toString());
+                        int iid      = Integer.parseInt(row.get("ITEM_ID").toString());
+                        long cnt     = Long.parseLong(row.get("GLOBAL_OWN_CNT").toString());
+                        String iName = Objects.toString(row.get("ITEM_NAME"), "아이템#" + iid);
+                        String iDesc = Objects.toString(row.get("ITEM_DESC"), "");
+                        itemInfoMap.put(iid, new String[]{iName, iDesc});
                         allItems.add(iid);
                         if (cnt == 0) undiscovered.add(iid);
                     }
@@ -787,6 +785,10 @@ public class BossAttackS3Controller {
                     } catch (Exception e) { /* 지급 실패 무시 */ }
                 } else {
                     int giveItemId = givePool.get(rand.nextInt(givePool.size()));
+                    String[] info  = itemInfoMap.getOrDefault(giveItemId, new String[]{"아이템#" + giveItemId, ""});
+                    String iName   = info[0];
+                    String iDesc   = info[1];
+                    String displayName = (iDesc == null || iDesc.isEmpty()) ? iName : iName + " (" + iDesc + ")";
                     try {
                         HashMap<String, Object> inv = new HashMap<>();
                         inv.put("userName", winner);
@@ -796,7 +798,7 @@ public class BossAttackS3Controller {
                         inv.put("gainType", "BOSS_HELL");
                         botNewService.insertInventoryLogTx(inv);
                         msg.append(NL).append(isFirstDiscovery ? "✨최초 발견! " : "✨ 보상: ")
-                           .append("[").append(winner).append("] item#").append(giveItemId)
+                           .append("[").append(winner).append("] ").append(displayName)
                            .append(isFirstDiscovery ? " (서버 최초 획득!)" : "").append(NL);
                     } catch (Exception e) { /* 지급 실패 무시 */ }
                 }
@@ -814,13 +816,9 @@ public class BossAttackS3Controller {
             } else {
                 double randomGp = 0.5 + rand.nextDouble() * 0.5; // 0.5 ~ 1.0
                 String gpWinner = qualified.get(rand.nextInt(qualified.size()));
-                int winIdx = qualified.indexOf(gpWinner) + 1;
                 // MVP: allContributors는 SCORE DESC 정렬 → 첫 번째가 데미지 1위
                 String mvpName = allContributors.isEmpty() ? "" : allContributors.get(0).get("USER_NAME").toString();
 
-                msg.append(NL).append("-- GP 추첨 ").append(qualified.size()).append("--").append(NL);
-                msg.append("⚅ 주사위 1~").append(qualified.size())
-                   .append(" → ").append(winIdx).append("번 [").append(gpWinner).append("]").append(NL);
                 for (int i = 0; i < qualified.size(); i++) {
                     String uName = qualified.get(i);
                     boolean isWin = uName.equals(gpWinner);
@@ -854,8 +852,8 @@ public class BossAttackS3Controller {
                         msg.append(NL);
                     } else {
                         if (isMvp) {
-                            // MVP이면서 비당첨자: MVP 보너스 표시
-                            msg.append("[MVP] +0.20 GP +0.20 GP (MVP)").append(NL);
+                            // MVP이면서 비당첨자: MVP 보너스 이름 포함 표시
+                            msg.append("[").append(mvpName).append("] +0.20 GP (MVP보너스)").append(NL);
                         } else {
                             nonWinnerCount++;
                         }
@@ -867,9 +865,10 @@ public class BossAttackS3Controller {
             }
         }
 
-        // 전체 기여도 TOP (데미지% 포함)
+        // 전체 기여도 TOP (데미지% 포함) — 더보기 구분자 이후에 표시
         if (!allContributors.isEmpty()) {
-            msg.append(NL).append("-- 전체 기여도 TOP --").append(NL);
+            msg.append(NL).append(ALL_SEE_STR).append(NL);
+            msg.append("-- 전체 기여도 TOP --").append(NL);
             for (HashMap<String, Object> row : allContributors) {
                 long score = Long.parseLong(row.get("SCORE").toString());
                 double dmgPct = totScore > 0 ? score * 100.0 / totScore : 0;

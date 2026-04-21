@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="my.prac.core.prjbot.dao.BotNewDAO">
 
@@ -1609,6 +1609,8 @@
 		/* selectHellRewardItemsWithOwnCount */
 		SELECT
 		    i.ITEM_ID,
+		    i.ITEM_NAME,
+		    NVL(i.ITEM_DESC, '') AS ITEM_DESC,
 		    (SELECT COUNT(*) FROM TBOT_POINT_NEW_INVENTORY g
 		     WHERE g.ITEM_ID = i.ITEM_ID AND NVL(g.DEL_YN,'0') = '0' AND NVL(g.QTY,0) > 0) AS GLOBAL_OWN_CNT
 		FROM TBOT_POINT_NEW_ITEM i
