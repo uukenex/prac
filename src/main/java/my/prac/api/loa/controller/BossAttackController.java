@@ -650,11 +650,9 @@ public class BossAttackController {
 
 	    applyDropBonusToContext(ctx, targetUser, "");
 
-	    // hpCur: 리젠 반영 현재 체력 (cachedLastAtk는 _cachedLastAtk 키로 map에 미리 넣어도 됨)
+	    // hpCur: 리젠 반영 현재 체력 (항상 실시간 DB 조회)
 	    final String ctxRoomName = Objects.toString(map.get("roomName"), "");
-	    Timestamp ctxCachedLastAtk = (map.get("_cachedLastAtk") instanceof Timestamp)
-	            ? (Timestamp) map.get("_cachedLastAtk") : null;
-	    ctx.hpCur = computeEffectiveHpFromLastAttack(targetUser, ctxRoomName, u, hpMax, regen, ctxCachedLastAtk);
+	    ctx.hpCur = computeEffectiveHpFromLastAttack(targetUser, ctxRoomName, u, hpMax, regen);
 	    if (ctx.hpCur > hpMax) ctx.hpCur = hpMax;
 
 	    return ctx;
@@ -1414,9 +1412,6 @@ public class BossAttackController {
 	            }
 	        }
 	    }
-	    // lastAtkTs를 map에 넣어 calcUserBattleContext 내 computeEffectiveHpFromLastAttack에서 활용
-	    if (lastAtkTs != null) map.put("_cachedLastAtk", lastAtkTs);
-
 	    UserBattleContext ctx = calcUserBattleContext(map);
 	    if (!ctx.success) {
 	        return ctx.errorMessage;
@@ -2294,6 +2289,11 @@ public class BossAttackController {
 	    // POTION 외 미지원 타입
 	    if (!"POTION".equalsIgnoreCase(itemType)) {
 	        return "구매할 수 없는 아이템입니다. (MARKET/POTION 유형만 구매 가능)";
+	    }
+
+	    // 물약 한 번에 최대 10개 제한
+	    if (qty > 10) {
+	        return "물약은 한 번에 최대 10개까지만 사용 가능합니다. (요청: " + qty + "개)";
 	    }
 
 	    // ── 공통 조회 1회 ────────────────────────────────────────────────
@@ -3333,7 +3333,7 @@ public class BossAttackController {
 
 		int effectiveHp = s.revivedThisTurn
 				? s.u.hpCur
-				: computeEffectiveHpFromLastAttack(s.userName, s.roomName, s.u, s.hpMax, s.regen, cachedLastAtk);
+				: computeEffectiveHpFromLastAttack(s.userName, s.roomName, s.u, s.hpMax, s.regen);
 		s.u.hpCur = effectiveHp;
 
 		if (s.u.targetMon == 99) {
@@ -5395,28 +5395,22 @@ public class BossAttackController {
 	}
 
 	private int computeEffectiveHpFromLastAttack(String userName, String roomName, User u, int hpMax, int regen) {
-	    return computeEffectiveHpFromLastAttack(userName, roomName, u, hpMax, regen, null);
-	}
-
-	// [FIX1] cachedLastAtk 가 null 이 아니면 selectLastAttackTime DB 조회 생략
-	private int computeEffectiveHpFromLastAttack(String userName, String roomName, User u, int hpMax, int regen, Timestamp cachedLastAtk) {
 
 	    // 0) 이미 풀피이거나 리젠 수치가 0 이하면 그대로 반환
 	    if (u.hpCur >= hpMax || regen <= 0) {
 	        return Math.min(u.hpCur, hpMax);
 	    }
 
-	    // 1) 마지막으로 "맞은" 시각 (몬스터에게 데미지 혹은 즉사 시점)
+	    // 1) 마지막으로 "맞은" 시각
 	    Timestamp damaged = botNewService.selectLastDamagedTime(userName, roomName);
 	    if (damaged == null) {
-	        // 아직 한 번도 맞은 적이 없다면 피격 기반 리젠 없음
 	        return Math.min(u.hpCur, hpMax);
 	    }
 
 	    Instant damagedAt = damaged.toInstant();
 	    Instant now = Instant.now();
 
-	    // 2) damaged 이후 현재까지 경과 시간(분) → 지금까지 총 리젠 틱 수
+	    // 2) damaged 이후 현재까지 총 리젠 틱 수
 	    long minutesFromDamaged = java.time.Duration.between(damagedAt, now).toMinutes();
 	    if (minutesFromDamaged <= 0) {
 	        return Math.min(u.hpCur, hpMax);
@@ -5427,9 +5421,9 @@ public class BossAttackController {
 	        return Math.min(u.hpCur, hpMax);
 	    }
 
-	    // 3) 마지막 공격 시각을 이용해, "이미 리젠에 반영된 틱" 계산
+	    // 3) 마지막 공격 시각으로 "이미 반영된 틱" 계산 (항상 실시간 DB 조회)
 	    long prevTicks = 0L;
-	    Timestamp lastAtk = (cachedLastAtk != null) ? cachedLastAtk : botNewService.selectLastAttackTime(userName, roomName);
+	    Timestamp lastAtk = botNewService.selectLastAttackTime(userName, roomName);
 	    if (lastAtk != null && lastAtk.after(damaged)) {
 	        long minutesUntilLastAtk = java.time.Duration.between(damagedAt, lastAtk.toInstant()).toMinutes();
 	        if (minutesUntilLastAtk > 0) {
@@ -5437,20 +5431,13 @@ public class BossAttackController {
 	        }
 	    }
 
-	    // 4) 이번에 새로 발생한 틱만 회복에 사용
+	    // 4) 이번에 새로 발생한 틱만 회복
 	    long newTicks = totalTicksNow - prevTicks;
 	    if (newTicks <= 0) {
-	        // 아직 "이전에 공격했을 때까지"보다 더 많은 5분 구간이 지나지 않았다면 추가 리젠 없음
 	        return Math.min(u.hpCur, hpMax);
 	    }
 
-	    long heal = newTicks * (long) regen;
-	    long effective = (long) u.hpCur + heal;
-
-	    if (effective > hpMax) {
-	        effective = hpMax;
-	    }
-
+	    long effective = Math.min((long) u.hpCur + newTicks * (long) regen, (long) hpMax);
 	    return (int) effective;
 	}
 
