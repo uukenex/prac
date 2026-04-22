@@ -1,4 +1,4 @@
-﻿package my.prac.api.loa.controller;
+package my.prac.api.loa.controller;
 
 import java.sql.Timestamp;
 import java.time.Duration;
