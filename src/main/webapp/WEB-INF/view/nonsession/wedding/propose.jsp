@@ -11,7 +11,7 @@
 
         body {
             min-height: 100vh;
-            background: linear-gradient(135deg, #fffbf0 0%, #fff5fb 30%, #f0f8ff 60%, #f5fff8 100%);
+            background: linear-gradient(135deg, #fdf8ef 0%, #f9f2e3 40%, #fdf5e6 100%);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -30,14 +30,14 @@
         .particle {
             position: absolute;
             border-radius: 50% 0 50% 0;
-            background: rgba(255, 140, 180, 0.45);
+            background: rgba(200, 165, 100, 0.40);
             animation: floatPetal linear infinite;
         }
 
         @keyframes floatPetal {
             0%   { transform: translateY(100vh) rotate(0deg);   opacity: 0; }
-            10%  { opacity: 0.7; }
-            90%  { opacity: 0.4; }
+            10%  { opacity: 0.6; }
+            90%  { opacity: 0.3; }
             100% { transform: translateY(-40px) rotate(540deg); opacity: 0; }
         }
 
@@ -63,7 +63,7 @@
             transform-origin: left center;
             transform-style: preserve-3d;
             border-radius: 0 14px 14px 0;
-            box-shadow: 3px 3px 24px rgba(255, 150, 200, 0.30), 8px 8px 40px rgba(0,0,0,0.08);
+            box-shadow: 3px 3px 24px rgba(160, 120, 70, 0.20), 8px 8px 40px rgba(0,0,0,0.08);
         }
 
         .page-face {
@@ -77,7 +77,7 @@
 
         .page-back {
             transform: rotateY(180deg);
-            background: linear-gradient(145deg, #fff9f0 0%, #fff0f9 100%);
+            background: linear-gradient(145deg, #fdf7ea 0%, #f7edd8 100%);
         }
 
         .page-back-inner {
@@ -91,8 +91,8 @@
                 45deg,
                 transparent,
                 transparent 14px,
-                rgba(255, 180, 220, 0.10) 14px,
-                rgba(255, 180, 220, 0.10) 28px
+                rgba(200, 160, 100, 0.08) 14px,
+                rgba(200, 160, 100, 0.08) 28px
             );
         }
 
@@ -102,7 +102,7 @@
             position: absolute;
             top: 0; left: 0; bottom: 0;
             width: 20px;
-            background: linear-gradient(to right, rgba(255,150,200,0.12), transparent);
+            background: linear-gradient(to right, rgba(160,120,70,0.10), transparent);
             z-index: 2;
             pointer-events: none;
         }
@@ -112,10 +112,10 @@
             position: fixed;
             top: 50%;
             transform: translateY(-50%);
-            background: rgba(255, 130, 190, 0.18);
+            background: rgba(180, 145, 90, 0.18);
             backdrop-filter: blur(4px);
-            border: 1px solid rgba(255, 130, 190, 0.35);
-            color: #ff4090;
+            border: 1px solid rgba(180, 145, 90, 0.35);
+            color: #8b6840;
             font-size: 28px;
             width: 50px;
             height: 50px;
@@ -128,7 +128,7 @@
             z-index: 100;
         }
 
-        .nav-btn:hover  { background: rgba(255, 130, 190, 0.32); }
+        .nav-btn:hover  { background: rgba(180, 145, 90, 0.32); }
         .nav-btn:disabled { opacity: 0.2; cursor: default; pointer-events: none; }
         .nav-btn.prev { left: 16px; }
         .nav-btn.next { right: 16px; }
@@ -146,18 +146,18 @@
         .dot {
             width: 8px; height: 8px;
             border-radius: 50%;
-            background: rgba(255, 150, 200, 0.35);
+            background: rgba(180, 145, 90, 0.30);
             transition: background 0.3s, transform 0.3s;
         }
 
         .dot.active {
-            background: rgba(255, 60, 140, 0.85);
+            background: rgba(150, 100, 50, 0.80);
             transform: scale(1.4);
         }
 
-        /* ===== 페이지 1 : 커버 / 로그인 ===== */
+        /* ===== 페이지 1 : 커버 ===== */
         .p1-front {
-            background: linear-gradient(160deg, #fff0fa 0%, #ffd6ee 45%, #ffb8dd 100%);
+            background: linear-gradient(160deg, #fdf5e3 0%, #f5e6c8 45%, #ecddb0 100%);
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -180,14 +180,14 @@
         .p1-title {
             font-family: 'Dancing Script', cursive;
             font-size: 40px;
-            color: #d4006a;
+            color: #7a4f2e;
             text-shadow: 0 2px 16px rgba(255,255,255,0.8);
             margin-bottom: 6px;
         }
 
         .p1-subtitle {
             font-size: 11px;
-            color: rgba(200, 20, 100, 0.65);
+            color: rgba(120, 80, 40, 0.65);
             letter-spacing: 3px;
             margin-bottom: 36px;
         }
@@ -197,7 +197,7 @@
         .p1-label {
             display: block;
             font-size: 10px;
-            color: rgba(200, 20, 100, 0.70);
+            color: rgba(120, 80, 40, 0.70);
             letter-spacing: 2px;
             margin-bottom: 6px;
         }
@@ -205,10 +205,10 @@
         .p1-input {
             width: 100%;
             padding: 13px 16px;
-            background: rgba(255, 255, 255, 0.75);
-            border: 1px solid rgba(255, 80, 150, 0.30);
+            background: rgba(255, 255, 255, 0.70);
+            border: 1px solid rgba(180, 140, 80, 0.30);
             border-radius: 8px;
-            color: #cc005a;
+            color: #6b4c2c;
             font-size: 14px;
             font-family: 'Noto Serif KR', serif;
             outline: none;
@@ -216,75 +216,74 @@
         }
 
         .p1-input:focus {
-            border-color: rgba(255, 60, 130, 0.65);
-            background: rgba(255, 255, 255, 0.92);
+            border-color: rgba(180, 140, 80, 0.60);
+            background: rgba(255, 255, 255, 0.90);
         }
 
-        .p1-input::placeholder { color: rgba(220, 60, 130, 0.35); }
+        .p1-input::placeholder { color: rgba(140, 100, 60, 0.35); }
 
         .p1-btn {
             width: 100%;
             padding: 14px;
-            background: linear-gradient(135deg, #ff4090, #e91e80);
+            background: linear-gradient(135deg, #c09060, #9a7040);
             border: none;
             border-radius: 8px;
             color: white;
             font-size: 15px;
             font-family: 'Noto Serif KR', serif;
             cursor: pointer;
-            box-shadow: 0 4px 20px rgba(255, 60, 140, 0.45);
+            box-shadow: 0 4px 20px rgba(160, 110, 50, 0.40);
             transition: transform 0.2s, box-shadow 0.2s;
             margin-top: 6px;
         }
 
         .p1-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 7px 26px rgba(255, 60, 140, 0.60);
+            box-shadow: 0 7px 26px rgba(160, 110, 50, 0.55);
         }
 
         .p1-hint {
             position: absolute;
             bottom: 22px;
             font-size: 10px;
-            color: rgba(220, 40, 110, 0.45);
+            color: rgba(140, 100, 50, 0.45);
             letter-spacing: 2px;
         }
 
         /* ===== 사진 페이지 ===== */
         .photo-page {
-            background: linear-gradient(150deg, #fffdf0 0%, #fff5fa 50%, #f0fbff 100%);
-            padding: 26px 22px 20px;
+            background: linear-gradient(150deg, #fefaf2 0%, #f8f1e2 50%, #f5edd6 100%);
+            padding: 22px 18px 14px;
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 10px;
         }
 
         .photo-page-label {
             text-align: center;
             font-size: 10px;
-            color: #ff5090;
+            color: #9a7040;
             letter-spacing: 4px;
         }
 
         .photo-grid-2 {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 10px;
+            gap: 8px;
             flex: 1;
             min-height: 0;
         }
 
         .photo-slot {
-            background: linear-gradient(135deg, #fff0f8, #ffe8f5);
-            border: 2px dashed #ffb0d0;
+            background: linear-gradient(135deg, #fdf5e3, #f5e8cc);
+            border: 2px dashed #c8a870;
             border-radius: 10px;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            color: #ff5090;
+            color: #9a7040;
             font-size: 11px;
-            letter-spacing: 1px;
             overflow: hidden;
             width: 100%;
             height: 100%;
@@ -296,20 +295,33 @@
             object-fit: cover;
         }
 
-        .photo-slot-icon { font-size: 26px; opacity: 0.55; margin-bottom: 5px; }
+        .photo-slot-large {
+            background: linear-gradient(135deg, #fdf5e3, #f5e8cc);
+            border: 2px dashed #c8a870;
+            border-radius: 10px;
+            overflow: hidden;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .photo-slot-large img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
 
         .photo-caption {
             font-size: 11px;
-            color: #ff70a0;
+            color: #a08050;
             text-align: center;
             font-style: italic;
         }
 
-        .photo-deco { text-align: center; font-size: 16px; color: #ffb0d0; }
+        .photo-deco { text-align: center; font-size: 16px; color: #c8a870; }
 
         /* ===== 마지막 페이지 : 프로포즈 ===== */
         .propose-front {
-            background: linear-gradient(155deg, #fffbf0 0%, #fff0f8 45%, #ffd6ee 100%);
+            background: linear-gradient(155deg, #fef9f0 0%, #f8f0de 45%, #f0e5c8 100%);
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -331,7 +343,7 @@
 
         .propose-title {
             font-size: 28px;
-            color: #e0006a;
+            color: #7a4f2e;
             font-weight: 600;
             margin-bottom: 20px;
             line-height: 1.4;
@@ -339,7 +351,7 @@
 
         .propose-msg {
             font-size: 14px;
-            color: #c03070;
+            color: #8b6040;
             line-height: 2;
             font-weight: 300;
             margin-bottom: 36px;
@@ -349,28 +361,28 @@
 
         .btn-yes {
             padding: 14px 34px;
-            background: linear-gradient(135deg, #ff4090, #e91e80);
+            background: linear-gradient(135deg, #c09060, #9a7040);
             border: none;
             border-radius: 50px;
             color: white;
             font-size: 16px;
             font-family: 'Noto Serif KR', serif;
             cursor: pointer;
-            box-shadow: 0 6px 24px rgba(255, 60, 140, 0.50);
+            box-shadow: 0 6px 24px rgba(160, 110, 50, 0.45);
             transition: transform 0.2s, box-shadow 0.2s;
         }
 
         .btn-yes:hover {
             transform: scale(1.06);
-            box-shadow: 0 8px 30px rgba(255, 60, 140, 0.70);
+            box-shadow: 0 8px 30px rgba(160, 110, 50, 0.65);
         }
 
         .btn-no {
             padding: 12px 26px;
             background: transparent;
-            border: 2px solid #ffb0cc;
+            border: 2px solid #c8a870;
             border-radius: 50px;
-            color: #ff70a0;
+            color: #a08050;
             font-size: 14px;
             font-family: 'Noto Serif KR', serif;
             cursor: pointer;
@@ -386,8 +398,13 @@
             gap: 14px;
         }
 
-        .yes-emoji {
-            font-size: 64px;
+        .totoro-img {
+            width: 150px;
+            height: 150px;
+            object-fit: cover;
+            border-radius: 50%;
+            border: 4px solid #c8a870;
+            box-shadow: 0 4px 20px rgba(160, 120, 60, 0.30);
             animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
 
@@ -398,13 +415,13 @@
 
         .yes-text {
             font-size: 20px;
-            color: #e0006a;
+            color: #7a4f2e;
             font-weight: 600;
         }
 
         .yes-sub {
             font-size: 13px;
-            color: #ff5090;
+            color: #9a6840;
             line-height: 1.9;
         }
     </style>
@@ -420,7 +437,7 @@
 <div class="book-scene">
   <div class="book-container" id="bookContainer">
 
-    <!-- 페이지 1 : 커버 / 로그인 -->
+    <!-- 페이지 1 : 커버 -->
     <div class="page" id="page-0">
       <div class="page-face p1-front">
         <div class="p1-heart">💌</div>
@@ -444,33 +461,25 @@
       </div>
     </div>
 
-    <!-- 페이지 2 : 사진 -->
+    <!-- 페이지 2 : 사진 1~4 -->
     <div class="page" id="page-1">
       <div class="page-face photo-page">
         <div class="photo-page-label">✦ OUR MOMENTS ✦</div>
         <div class="photo-grid-2" style="flex:1; min-height:0;">
           <div class="photo-slot">
-            <!-- 사진 교체: <img src="/img_wedding/propose1.jpg" alt=""> -->
-            <div class="photo-slot-icon">📷</div>
-            <div>사진 1</div>
+            <img src="/img_bom/1.jpg" alt="">
           </div>
           <div class="photo-slot">
-            <!-- 사진 교체: <img src="/img_wedding/propose2.jpg" alt=""> -->
-            <div class="photo-slot-icon">📷</div>
-            <div>사진 2</div>
+            <img src="/img_bom/2.jpg" alt="">
           </div>
         </div>
         <div class="photo-caption">우리가 함께한 소중한 순간</div>
         <div class="photo-grid-2" style="flex:1; min-height:0;">
           <div class="photo-slot">
-            <!-- 사진 교체: <img src="/img_wedding/propose3.jpg" alt=""> -->
-            <div class="photo-slot-icon">📷</div>
-            <div>사진 3</div>
+            <img src="/img_bom/3.jpg" alt="">
           </div>
           <div class="photo-slot">
-            <!-- 사진 교체: <img src="/img_wedding/propose4.jpg" alt=""> -->
-            <div class="photo-slot-icon">📷</div>
-            <div>사진 4</div>
+            <img src="/img_bom/4.jpg" alt="">
           </div>
         </div>
         <div class="photo-deco">❧</div>
@@ -480,8 +489,30 @@
       </div>
     </div>
 
-    <!-- 페이지 3 : 프로포즈 -->
+    <!-- 페이지 3 : 사진 5~7 -->
     <div class="page" id="page-2">
+      <div class="page-face photo-page">
+        <div class="photo-page-label">✦ MORE MEMORIES ✦</div>
+        <div class="photo-slot-large">
+          <img src="/img_bom/5.jpg" alt="">
+        </div>
+        <div class="photo-grid-2" style="height:38%; min-height:0;">
+          <div class="photo-slot">
+            <img src="/img_bom/6.jpg" alt="">
+          </div>
+          <div class="photo-slot">
+            <img src="/img_bom/7.jpg" alt="">
+          </div>
+        </div>
+        <div class="photo-deco">❧</div>
+      </div>
+      <div class="page-face page-back">
+        <div class="page-back-inner">🌸</div>
+      </div>
+    </div>
+
+    <!-- 페이지 4 : 프로포즈 -->
+    <div class="page" id="page-3">
       <div class="page-face propose-front">
         <div id="proposeMain">
           <div class="propose-icon">💍</div>
@@ -498,7 +529,7 @@
           </div>
         </div>
         <div class="yes-response" id="yesResponse">
-          <div class="yes-emoji">🥰</div>
+          <img src="/img_bom/totoro.jpg" class="totoro-img" alt="">
           <div class="yes-text">사랑해요! 💕</div>
           <div class="yes-sub">
             행복하게 해줄게요.<br>
@@ -535,7 +566,7 @@
     }
 
     // ===== 페이지 플립 =====
-    var TOTAL   = 3;
+    var TOTAL   = 4;
     var current = 0;
     var busy    = false;
     var pages   = [];
@@ -602,19 +633,19 @@
 
     updateUI();
 
-    // ===== 아니요 버튼 : 마우스 근접 시 도망 =====
+    // ===== 아니요 버튼 : 마지막 페이지에서만 도망 =====
     var noBtn   = document.getElementById('noBtn');
     var escaped = false;
 
     function runAway() {
         if (!noBtn || noBtn.style.display === 'none') return;
+        if (current !== TOTAL - 1) return;
 
         if (!escaped) {
             escaped = true;
             noBtn.style.position   = 'fixed';
             noBtn.style.zIndex     = '9998';
             noBtn.style.transition = 'left 0.15s ease, top 0.15s ease';
-            // 초기 위치 잡기
             var r = noBtn.getBoundingClientRect();
             noBtn.style.left = r.left + 'px';
             noBtn.style.top  = r.top  + 'px';
@@ -638,9 +669,9 @@
         noBtn.style.top  = ny + 'px';
     }
 
-    // 마우스가 100px 이내 접근하면 도망
     document.addEventListener('mousemove', function (e) {
         if (!noBtn || noBtn.style.display === 'none') return;
+        if (current !== TOTAL - 1) return;
         var rect = noBtn.getBoundingClientRect();
         var cx   = rect.left + rect.width  / 2;
         var cy   = rect.top  + rect.height / 2;
@@ -648,13 +679,11 @@
         if (dist < 100) runAway();
     });
 
-    // 모바일 터치 시 도망
     noBtn.addEventListener('touchstart', function (e) {
         e.preventDefault();
         runAway();
     }, { passive: false });
 
-    // 혹시 click이 발생해도 차단
     noBtn.addEventListener('click', function (e) { e.preventDefault(); runAway(); });
 
     // ===== YES 응답 =====
