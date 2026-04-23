@@ -5,15 +5,15 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 
 @Controller
-@RequestMapping("/wedding")
+@RequestMapping("/bom")
 public class WeddingController {
 
-    @GetMapping("/propose")
+    @GetMapping("/invite")
     public String propose() {
         return "nonsession/wedding/propose";
     }
 
-    @GetMapping("/invite")
+    @GetMapping("/link")
     public String invite() {
         return "nonsession/wedding/invite";
     }

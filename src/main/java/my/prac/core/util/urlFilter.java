@@ -54,6 +54,7 @@ public class urlFilter implements Filter {
 	    			 || httpServletRequest.getServletPath().indexOf("/free") >= 0
 	    			 || httpServletRequest.getServletPath().indexOf("/share") >= 0
 	    			 || httpServletRequest.getServletPath().indexOf("/game") >= 0
+	    			 || httpServletRequest.getServletPath().indexOf("/bom") >= 0
 	    			) {
 	        			httpServletResponse.sendError(600);
 	    			}
@@ -75,6 +76,7 @@ public class urlFilter implements Filter {
 	    			 || httpServletRequest.getServletPath().indexOf("/free") >= 0
 	    			 || httpServletRequest.getServletPath().indexOf("/share") >= 0
 	    			 || httpServletRequest.getServletPath().indexOf("/wedding") >= 0
+	    			 || httpServletRequest.getServletPath().indexOf("/bom") >= 0
 	    			) {
 	        			httpServletResponse.sendError(600);
 	    			}
@@ -82,20 +84,20 @@ public class urlFilter implements Filter {
 
 	        	case "http://prd-web.dev-apc.com":
 	        	case "prd-web.dev-apc.com":
-	        		if (httpServletRequest.getServletPath().indexOf("/wedding") >= 0) {
+	        		if (httpServletRequest.getServletPath().indexOf("/bom") >= 0) {
 	        			httpServletResponse.sendError(600);
 	        		}
         		break;
 
 	        	case "http://bomin.dev-apc.com":
 	        	case "bomin.dev-apc.com":
-	        		if (httpServletRequest.getServletPath().indexOf("/wedding") < 0) {
+	        		if (httpServletRequest.getServletPath().indexOf("/bom") < 0) {
 	        			httpServletResponse.sendError(600);
 	        		}
         		break;
 
         		default:
-        			if (httpServletRequest.getServletPath().indexOf("/wedding") >= 0) {
+        			if (httpServletRequest.getServletPath().indexOf("/bom") >= 0) {
         				httpServletResponse.sendError(600);
         			}
         		break;
