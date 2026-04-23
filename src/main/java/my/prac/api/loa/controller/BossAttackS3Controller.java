@@ -8,7 +8,9 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
@@ -712,6 +714,10 @@ public class BossAttackS3Controller {
             if (dmgPct >= 2.0) qualified.add(row.get("USER_NAME").toString());
         }
 
+        // 참여자 수에 따라 추첨 인원 결정 (1~9명→1명, 10~17명→2명, 18명+→3명)
+        int participantCount = allContributors.size();
+        int winnerCount = participantCount >= 18 ? 3 : participantCount >= 10 ? 2 : 1;
+
         StringBuilder msg = new StringBuilder();
 
         // 보상 타입 결정 (30% 아이템 / 70% GP)
@@ -743,16 +749,17 @@ public class BossAttackS3Controller {
             if (itemCandidates.isEmpty()) {
                 msg.append("★ 보상 대상 없음").append(NL);
             } else {
-                String winner = itemCandidates.get(rand.nextInt(itemCandidates.size()));
+                List<String> itemWinners = pickWinners(itemCandidates, winnerCount, rand);
+                Set<String> itemWinnerSet = new HashSet<>(itemWinners);
                 for (int i = 0; i < itemCandidates.size(); i++) {
                     String uName = itemCandidates.get(i);
-                    boolean isWin = uName.equals(winner);
+                    boolean isWin = itemWinnerSet.contains(uName);
                     msg.append(isWin ? "★" : "  ")
                        .append(i + 1).append(". ").append(uName)
                        .append(isWin ? " ← 당첨!" : "").append(NL);
                 }
 
-                // 아이템 지급 (미발견 아이템 우선) + 아이템 정보 맵 구성
+                // 아이템 지급 풀 구성 (미발견 아이템 우선)
                 List<Integer> givePool;
                 boolean isFirstDiscovery = false;
                 HashMap<Integer, String[]> itemInfoMap = new HashMap<>(); // itemId → {name, desc}
@@ -780,60 +787,67 @@ public class BossAttackS3Controller {
                 }
                 if (givePool.isEmpty()) givePool = new ArrayList<>(getHellRewardItems());
 
-                if (givePool.isEmpty()) {
-                    // 지급할 아이템 없음 → 1 GP 지급 (아이템과 중복 불가)
-                    try {
-                        HashMap<String, Object> gpFallback = new HashMap<>();
-                        gpFallback.put("userName", winner);
-                        gpFallback.put("roomName", roomName);
-                        gpFallback.put("score",    1.0);
-                        gpFallback.put("cmd",      "BOSS_HELL_NO_ITEM_GP");
-                        botNewService.insertGpRecord(gpFallback);
-                        msg.append(NL).append("✨ [").append(winner).append("] 지급 아이템 없음 → 1 GP 지급!").append(NL);
-                    } catch (Exception e) { /* 지급 실패 무시 */ }
-                } else {
-                    int giveItemId = givePool.get(rand.nextInt(givePool.size()));
-                    String[] info  = itemInfoMap.getOrDefault(giveItemId, new String[]{"아이템#" + giveItemId, ""});
-                    String iName   = info[0];
-                    String iDesc   = info[1];
-                    String displayName = (iDesc == null || iDesc.isEmpty()) ? iName : iName + " (" + iDesc + ")";
-                    try {
-                        HashMap<String, Object> inv = new HashMap<>();
-                        inv.put("userName", winner);
-                        inv.put("roomName", roomName);
-                        inv.put("itemId",   giveItemId);
-                        inv.put("qty",      1);
-                        inv.put("gainType", "BOSS_HELL");
-                        botNewService.insertInventoryLogTx(inv);
-                        msg.append(NL).append(isFirstDiscovery ? "✨최초 발견! " : "✨ 보상: ")
-                           .append("[").append(winner).append("] ").append(displayName)
-                           .append(isFirstDiscovery ? " (서버 최초 획득!)" : "").append(NL);
-                    } catch (Exception e) { /* 지급 실패 무시 */ }
+                // 당첨자 각각 아이템 지급 (풀에서 중복 제거하며 뽑기)
+                for (String winner : itemWinners) {
+                    if (givePool.isEmpty()) {
+                        // 지급할 아이템 없음 → 1 GP 지급
+                        try {
+                            HashMap<String, Object> gpFallback = new HashMap<>();
+                            gpFallback.put("userName", winner);
+                            gpFallback.put("roomName", roomName);
+                            gpFallback.put("score",    1.0);
+                            gpFallback.put("cmd",      "BOSS_HELL_NO_ITEM_GP");
+                            botNewService.insertGpRecord(gpFallback);
+                            msg.append(NL).append("✨ [").append(winner).append("] 지급 아이템 없음 → 1 GP 지급!").append(NL);
+                        } catch (Exception e) { /* 지급 실패 무시 */ }
+                    } else {
+                        int idx        = rand.nextInt(givePool.size());
+                        int giveItemId = givePool.remove(idx); // 중복 방지
+                        String[] info  = itemInfoMap.getOrDefault(giveItemId, new String[]{"아이템#" + giveItemId, ""});
+                        String iName   = info[0];
+                        String iDesc   = info[1];
+                        String displayName = (iDesc == null || iDesc.isEmpty()) ? iName : iName + " (" + iDesc + ")";
+                        try {
+                            HashMap<String, Object> inv = new HashMap<>();
+                            inv.put("userName", winner);
+                            inv.put("roomName", roomName);
+                            inv.put("itemId",   giveItemId);
+                            inv.put("qty",      1);
+                            inv.put("gainType", "BOSS_HELL");
+                            botNewService.insertInventoryLogTx(inv);
+                            msg.append(NL).append(isFirstDiscovery ? "✨최초 발견! " : "✨ 보상: ")
+                               .append("[").append(winner).append("] ").append(displayName)
+                               .append(isFirstDiscovery ? " (서버 최초 획득!)" : "").append(NL);
+                        } catch (Exception e) { /* 지급 실패 무시 */ }
+                    }
                 }
             }
 
         } else {
             // ────────────────────────────────────────────────────
             // 70% : GP 지급 (7000번대 무관)
-            //   - 당첨자 추첨 풀: 2%이상 기여자(qualified) 중 등확률 1명 → 0.5~1 GP
+            //   - 당첨자 추첨 풀: 2%이상 기여자(qualified) 중 winnerCount명 추첨 → 각 0.5~1 GP
             //   - 0.2 GP: 전체 참여자(allContributors) 전원 (당첨자 포함, 당첨자는 randomGp로 대체)
             //   - MVP(데미지 1위): +0.2 GP 추가 보너스
             // ────────────────────────────────────────────────────
             if (allContributors.isEmpty()) {
                 msg.append("GP 지급 대상 없음").append(NL);
             } else {
-                double randomGp = 0.5 + rand.nextDouble() * 0.5; // 0.5 ~ 1.0
                 // MVP: SCORE DESC 정렬 → 첫 번째가 데미지 1위
                 String mvpName = allContributors.get(0).get("USER_NAME").toString();
-                // 당첨자: 2%이상 기여자 중 추첨 (없으면 당첨자 없음)
-                String gpWinner = qualified.isEmpty() ? "" : qualified.get(rand.nextInt(qualified.size()));
+                // 당첨자: 2%이상 기여자 중 winnerCount명 추첨 (각각 독립 GP 추첨)
+                List<String> gpWinnerList = pickWinners(qualified, winnerCount, rand);
+                Map<String, Double> gpWinnerMap = new LinkedHashMap<>();
+                for (String w : gpWinnerList) {
+                    gpWinnerMap.put(w, 0.5 + rand.nextDouble() * 0.5); // 0.5 ~ 1.0
+                }
 
                 // 추첨 대상 목록 표시 (2%이상만)
                 if (!qualified.isEmpty()) {
                     msg.append("-- 추첨 대상 (2%이상 ").append(qualified.size()).append("명) --").append(NL);
                     for (int i = 0; i < qualified.size(); i++) {
                         String uName = qualified.get(i);
-                        boolean isWin = uName.equals(gpWinner);
+                        boolean isWin = gpWinnerMap.containsKey(uName);
                         boolean isMvp = uName.equals(mvpName);
                         msg.append(isWin ? "★" : "  ")
                            .append(i + 1).append(". ").append(uName)
@@ -847,9 +861,10 @@ public class BossAttackS3Controller {
                 int baseCount = 0;
                 for (HashMap<String, Object> row : allContributors) {
                     String uName = row.get("USER_NAME").toString();
-                    boolean isWin = uName.equals(gpWinner);
+                    boolean isWin = gpWinnerMap.containsKey(uName);
                     boolean isMvp = uName.equals(mvpName);
-                    double gp = isWin ? randomGp : 0.2;
+                    double winGp = isWin ? gpWinnerMap.get(uName) : 0.0;
+                    double gp = isWin ? winGp : 0.2;
                     if (isMvp) gp += 0.2; // MVP 추가 보너스
                     try {
                         HashMap<String, Object> gpMap = new HashMap<>();
@@ -863,7 +878,7 @@ public class BossAttackS3Controller {
                     // 메시지: 당첨자/MVP는 개별 표시, 나머지는 카운트
                     if (isWin) {
                         msg.append("[").append(uName).append("] ")
-                           .append(String.format("+%.2f GP (랜덤당첨)", randomGp));
+                           .append(String.format("+%.2f GP (랜덤당첨)", winGp));
                         if (isMvp) msg.append(String.format(" +0.20 GP (MVP) → 합계 +%.2f GP", gp));
                         msg.append(NL);
                     } else if (isMvp) {
@@ -894,6 +909,20 @@ public class BossAttackS3Controller {
         return msg.toString();
     }
 
+
+    /**
+     * 리스트에서 중복 없이 최대 count명 랜덤 추첨.
+     * pool 크기가 count보다 작으면 pool 전체 반환.
+     */
+    private List<String> pickWinners(List<String> pool, int count, Random rand) {
+        List<String> copy    = new ArrayList<>(pool);
+        List<String> winners = new ArrayList<>();
+        for (int i = 0; i < count && !copy.isEmpty(); i++) {
+            int idx = rand.nextInt(copy.size());
+            winners.add(copy.remove(idx));
+        }
+        return winners;
+    }
 
     // =========================================================
     // 헬보스 출현 알림 (BossAttackController.ma_buildMessage 에서 호출)

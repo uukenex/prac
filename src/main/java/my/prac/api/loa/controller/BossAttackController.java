@@ -74,6 +74,8 @@ public class BossAttackController {
 	private static final int BAG_ITEM_ID = 91;
 	private static final int BAG_NM_ITEM_ID = 92;
 	private static final double BAG_DROP_RATE = 0.035;//3.5%
+	/** 가방 최대 보유 개수 설정 — 이 개수 이상 보유 중이면 드랍 즉시 자동 오픈 */
+	private static final int BAG_MAX_HOLD = 5;
 	
 	private static final int NM_MUL_HP_ATK = 100;
 	private static final int NM_MUL_EXP = 50;
@@ -4277,6 +4279,35 @@ public class BossAttackController {
 	        invalidateInvBuff(userName);
 
 	        String bagName = (bagItemId == BAG_NM_ITEM_ID) ? "복주머니가방" : "세티노의비밀가방";
+
+	        // ── 가방 보유 한도 초과 시 자동 오픈 ──────────────────────────────
+	        try {
+	            int totalBags = botNewService.selectBagCountByItemId(userName, roomName, BAG_ITEM_ID)
+	                          + botNewService.selectBagCountByItemId(userName, roomName, BAG_NM_ITEM_ID);
+	            if (totalBags >= BAG_MAX_HOLD) {
+	                botNewService.consumeBagBulkByItemIdTx(userName, roomName, bagItemId, 1);
+	                SP autoSP = new SP(0, "");
+	                List<String> autoDetail = new ArrayList<>();
+	                List<String> autoItems  = new ArrayList<>();
+	                int autoSpMode = (bagItemId == BAG_NM_ITEM_ID) ? 1 : 0;
+	                processBagOpen(bagItemId, 1, autoSpMode, userName, roomName, autoSP, autoDetail, autoItems);
+	                HashMap<String,Object> pr = new HashMap<>();
+	                pr.put("userName",  userName);
+	                pr.put("roomName",  roomName);
+	                pr.put("score",     autoSP.getValue());
+	                pr.put("scoreExt",  autoSP.getUnit());
+	                pr.put("cmd",       "BAG_OPEN_SP");
+	                botNewService.insertPointRank(pr);
+	                invalidateInvBuff(userName);
+	                StringBuilder autoMsg = new StringBuilder();
+	                autoMsg.append(m.monName).append("이(가) ").append(bagName).append("을 떨어뜨렸습니다!").append(NL);
+	                autoMsg.append("🎒 가방 한도(").append(BAG_MAX_HOLD).append("개) 초과 → 자동 오픈!").append(NL);
+	                autoMsg.append("✨ 획득: ").append(autoSP);
+	                if (!autoItems.isEmpty()) autoMsg.append(" / 아이템: ").append(String.join(", ", autoItems));
+	                return autoMsg.toString();
+	            }
+	        } catch (Exception ignore) {}
+
 	        return m.monName + "이(가) " + bagName + "을 떨어뜨렸습니다! (/가방열기 로 열 수 있습니다.)";
 	    } catch (Exception e) {
 	        return "";
