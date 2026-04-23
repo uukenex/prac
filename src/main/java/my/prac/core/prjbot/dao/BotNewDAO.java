@@ -33,6 +33,9 @@ public interface BotNewDAO {
     Monster selectMonsterByName(@Param("monName") String monName);
     List<HashMap<String, Object>> selectMonsterKillsForView(@Param("userName") String userName);
 
+    List<HashMap<String, Object>> selectUserBattleLog(HashMap<String, Object> params);
+    int selectUserBattleLogCount(HashMap<String, Object> params);
+
     Timestamp selectLastAttackTime(@Param("userName") String userName, @Param("roomName") String roomName);
 
     int updateUserAfterBattle(
