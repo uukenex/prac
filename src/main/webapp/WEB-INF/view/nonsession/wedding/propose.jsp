@@ -515,14 +515,14 @@
     <div class="page" id="page-3">
       <div class="page-face propose-front">
         <div id="proposeMain">
-          <div class="propose-icon">🥺</div>
-          <div class="propose-title">우리 결혼할래?</div>
+          <div class="propose-icon"></div>
+          <div class="propose-title">나와 결혼해줄래?</div>
           <div class="propose-msg">
-            있잖아, 솔직하게 말할게.<br><br>
-            너랑 있으면 그냥 좋아.<br>
-            특별한 이유 같은 거 없어도<br>
-            옆에 있는 것만으로 다 돼.<br><br>
-            평생 내 사람 해줄 수 있어?
+            지금 이시간도, 당신과 있어서<br><br>
+            행복해<br>
+            앞으로도 같이<br>
+            행복하자<br><br>
+            같이 행복할래?
           </div>
           <div class="propose-btns">
             <button class="btn-yes" onclick="onYes()">응, 당연하지! 💛</button>
@@ -531,10 +531,9 @@
         </div>
         <div class="yes-response" id="yesResponse">
           <img src="/img_bom/totoro.jpg" class="totoro-img" alt="">
-          <div class="yes-text">진짜?! 😭💕</div>
+          <div class="yes-text">😭💕</div>
           <div class="yes-sub">
-            나 너무 행복해.<br>
-            우리 앞으로 되게 잘하자.
+            이제 옆을 봐!
           </div>
         </div>
       </div>
