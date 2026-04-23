@@ -1965,7 +1965,7 @@
 		            bl.TARGET_MON_LV,
 		            CASE
 		                WHEN bl.TARGET_MON_LV = 0  THEN '부활물약'
-		                WHEN bl.TARGET_MON_LV = 99 THEN '상급악마'
+		                WHEN bl.TARGET_MON_LV IN (99, 999) THEN '상급악마'
 		                ELSE NVL(m.MON_NAME, '몬스터#' || bl.TARGET_MON_LV)
 		            END AS MON_NAME,
 		            bl.ATK_DMG,
