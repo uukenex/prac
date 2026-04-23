@@ -1950,4 +1950,59 @@
 		WHERE RN = 1
 		</select>
 
+
+	<!-- ============================================================
+	     배틀로그 유저별 조회 (battle_log_view 페이지용)
+	     ============================================================ -->
+	<select id="selectUserBattleLog" resultType="hashmap" parameterType="map">
+		/* selectUserBattleLog */
+		SELECT *
+		FROM (
+		    SELECT a.*, ROWNUM AS RN
+		    FROM (
+		        SELECT
+		            TO_CHAR(bl.INSERT_DATE, 'YYYY-MM-DD HH24:MI:SS') AS INSERT_DATE,
+		            bl.TARGET_MON_LV,
+		            CASE
+		                WHEN bl.TARGET_MON_LV = 0  THEN '부활물약'
+		                WHEN bl.TARGET_MON_LV IN (99, 999) THEN '상급악마'
+		                ELSE NVL(m.MON_NAME, '몬스터#' || bl.TARGET_MON_LV)
+		            END AS MON_NAME,
+		            bl.ATK_DMG,
+		            bl.MON_DMG,
+		            bl.ATK_CRIT_YN,
+		            bl.KILL_YN,
+		            bl.DEATH_YN,
+		            bl.DROP_YN,
+		            bl.GAIN_EXP,
+		            bl.NIGHTMARE_YN,
+		            bl.LUCKY_YN,
+		            bl.JOB,
+		            bl.LV,
+		            bl.JOB_SKILL_YN,
+		            bl.NOW_YN
+		        FROM TBOT_POINT_NEW_BATTLE_LOG bl
+		        LEFT JOIN TBOT_POINT_NEW_MON_INFO m
+		               ON m.MON_NO = bl.TARGET_MON_LV
+		              AND bl.TARGET_MON_LV NOT IN (0, 99)
+		        WHERE bl.USER_NAME = #{userName}
+		        <if test="days != null and days > 0">
+		          AND bl.INSERT_DATE >= SYSDATE - #{days}
+		        </if>
+		        ORDER BY bl.INSERT_DATE DESC
+		    ) a
+		    WHERE ROWNUM &lt;= #{endRow}
+		)
+		WHERE RN &gt; #{startRow}
+	</select>
+
+	<select id="selectUserBattleLogCount" resultType="int" parameterType="map">
+		/* selectUserBattleLogCount */
+		SELECT COUNT(*)
+		FROM TBOT_POINT_NEW_BATTLE_LOG
+		WHERE USER_NAME = #{userName}
+		<if test="days != null and days > 0">
+		  AND INSERT_DATE >= SYSDATE - #{days}
+		</if>
+	</select>
 </mapper>

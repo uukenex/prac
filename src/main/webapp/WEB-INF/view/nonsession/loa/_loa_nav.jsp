@@ -110,6 +110,7 @@
   <a class="loa-nav-item" data-page="job"          href="#">📚 직업도감</a>
   <a class="loa-nav-item" data-page="hunter-rank"  href="#">🎯 헌터랭크</a>
   <a class="loa-nav-item" data-page="achievement"  href="#">🏆 업적</a>
+  <a class="loa-nav-item" data-page="battle-log"  href="#">📜 배틀로그</a>
 </nav>
 
 <script>
@@ -131,7 +132,7 @@
 
   // 현재 페이지 하이라이트
   var path = window.location.pathname;
-  ['user-info', 'monster', 'item', 'job', 'hunter-rank', 'achievement'].forEach(function (page) {
+  ['user-info', 'monster', 'item', 'job', 'hunter-rank', 'achievement', 'battle-log'].forEach(function (page) {
     if (path.indexOf(page) !== -1) {
       var el = document.querySelector('.loa-nav-item[data-page="' + page + '"]');
       if (el) el.classList.add('active');
