@@ -515,25 +515,25 @@
     <div class="page" id="page-3">
       <div class="page-face propose-front">
         <div id="proposeMain">
-          <div class="propose-icon">💍</div>
-          <div class="propose-title">결혼해줄래요?</div>
+          <div class="propose-icon"></div>
+          <div class="propose-title">나와 결혼해줄래?</div>
           <div class="propose-msg">
-            당신과 함께한 모든 순간이<br>
-            내 인생 최고의 선물이었어요.<br><br>
-            앞으로도 영원히<br>
-            당신 곁에 있고 싶어요.
+            지금 이시간도, 당신과 있어서<br><br>
+            행복해<br>
+            앞으로도 같이<br>
+            행복하자<br><br>
+            같이 행복할래?
           </div>
           <div class="propose-btns">
-            <button class="btn-yes" onclick="onYes()">💕 응, 할게요!</button>
-            <button class="btn-no" id="noBtn">아니요...</button>
+            <button class="btn-yes" onclick="onYes()">응, 당연하지! 💛</button>
+            <button class="btn-no" id="noBtn">싫어요ㅠ</button>
           </div>
         </div>
         <div class="yes-response" id="yesResponse">
           <img src="/img_bom/totoro.jpg" class="totoro-img" alt="">
-          <div class="yes-text">사랑해요! 💕</div>
+          <div class="yes-text">😭💕</div>
           <div class="yes-sub">
-            행복하게 해줄게요.<br>
-            영원히 함께해요.
+            이제 옆을 봐!
           </div>
         </div>
       </div>
@@ -645,26 +645,30 @@
             escaped = true;
             noBtn.style.position   = 'fixed';
             noBtn.style.zIndex     = '9998';
-            noBtn.style.transition = 'left 0.15s ease, top 0.15s ease';
+            noBtn.style.transition = 'left 0.55s cubic-bezier(0.25, 0.46, 0.45, 0.94), top 0.55s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
             var r = noBtn.getBoundingClientRect();
             noBtn.style.left = r.left + 'px';
             noBtn.style.top  = r.top  + 'px';
         }
 
-        var bw = noBtn.offsetWidth  || 90;
-        var bh = noBtn.offsetHeight || 42;
-        var margin = 50;
+        var bw     = noBtn.offsetWidth  || 90;
+        var bh     = noBtn.offsetHeight || 42;
+        var margin = 20;
+        var maxX   = window.innerWidth  - bw - margin;
+        var maxY   = window.innerHeight - bh - margin;
         var rect   = noBtn.getBoundingClientRect();
         var attempts = 0;
         var nx, ny;
         do {
-            nx = margin + Math.random() * (window.innerWidth  - bw - margin * 2);
-            ny = margin + Math.random() * (window.innerHeight - bh - margin * 2);
+            nx = margin + Math.random() * Math.max(0, maxX - margin);
+            ny = margin + Math.random() * Math.max(0, maxY - margin);
             attempts++;
         } while (attempts < 15 &&
                  Math.abs(nx - rect.left) < 130 &&
                  Math.abs(ny - rect.top)  < 100);
 
+        nx = Math.max(margin, Math.min(nx, maxX));
+        ny = Math.max(margin, Math.min(ny, maxY));
         noBtn.style.left = nx + 'px';
         noBtn.style.top  = ny + 'px';
     }
