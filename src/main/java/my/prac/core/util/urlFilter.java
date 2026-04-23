@@ -74,13 +74,17 @@ public class urlFilter implements Filter {
 	        		if(httpServletRequest.getServletPath().indexOf("/index") >= 0
 	    			 || httpServletRequest.getServletPath().indexOf("/free") >= 0
 	    			 || httpServletRequest.getServletPath().indexOf("/share") >= 0
+	    			 || httpServletRequest.getServletPath().indexOf("/wedding") >= 0
 	    			) {
 	        			httpServletResponse.sendError(600);
 	    			}
         		break;
-	        	
+
 	        	case "http://prd-web.dev-apc.com":
 	        	case "prd-web.dev-apc.com":
+	        		if (httpServletRequest.getServletPath().indexOf("/wedding") >= 0) {
+	        			httpServletResponse.sendError(600);
+	        		}
         		break;
 
 	        	case "http://bomin.dev-apc.com":
