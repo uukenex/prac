@@ -6037,12 +6037,10 @@ public class BossAttackController {
 	    if (res.lucky) sb.append("✨ LUCKY MONSTER! (처치시 경험치×3, 빛 드랍)").append(NL);
 
 	    if (u.job.equals("곰")) {
-	        if (split) {
-	            // 더보기 없이 그대로 표기 (곰은 계산식 없음)
-	            sb.append("최대체력 ").append(formatWan(displayHpMax)).append(" 이하에게 괴력!").append(NL);
-	        } else {
-	            sb.append("최대체력 ").append(formatWan(displayHpMax)).append(" 이하에게 괴력!").append(NL);
-	        }
+	        // 더보기 없이 그대로 표기 (곰은 계산식 없음 — dmgCalcMsg 는 항상 main에 출력)
+	        sb.append("최대체력 ").append(formatWan(displayHpMax)).append(" 이하에게 괴력!").append(NL);
+	        if (midExtraLines != null && !midExtraLines.isEmpty())
+	            sb.append(midExtraLines).append(NL);
 	    } else {
 	        // 치명타/축복 (항상 main)
 	        if (flags.atkCrit) sb.append("✨ 치명타!");
