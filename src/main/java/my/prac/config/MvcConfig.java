@@ -59,6 +59,7 @@ public class MvcConfig extends WebMvcConfigurerAdapter {
 		registry.addResourceHandler("/w/**").addResourceLocations("file:///img/img_loa_cp/");
 		registry.addResourceHandler("/c/**").addResourceLocations("file:///img/img_loa_cr/");
 
+		registry.addResourceHandler("/img_wedding/**").addResourceLocations("/WEB-INF/img_wedding/");
 		registry.addResourceHandler("/game_set/**").addResourceLocations("/WEB-INF/game_set/");
 		registry.addResourceHandler("/robots.txt").addResourceLocations("robots.txt");
 	}
