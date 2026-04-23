@@ -11,7 +11,7 @@
 
         body {
             min-height: 100vh;
-            background: linear-gradient(135deg, #fff0f5 0%, #fde8f0 35%, #fff5f0 65%, #fef0f8 100%);
+            background: linear-gradient(135deg, #fffbf0 0%, #fff5fb 30%, #f0f8ff 60%, #f5fff8 100%);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -30,7 +30,7 @@
         .particle {
             position: absolute;
             border-radius: 50% 0 50% 0;
-            background: rgba(220, 100, 140, 0.25);
+            background: rgba(255, 140, 180, 0.45);
             animation: floatPetal linear infinite;
         }
 
@@ -63,7 +63,7 @@
             transform-origin: left center;
             transform-style: preserve-3d;
             border-radius: 0 14px 14px 0;
-            box-shadow: 3px 3px 24px rgba(180, 80, 120, 0.18), 8px 8px 40px rgba(0,0,0,0.10);
+            box-shadow: 3px 3px 24px rgba(255, 150, 200, 0.30), 8px 8px 40px rgba(0,0,0,0.08);
         }
 
         .page-face {
@@ -77,7 +77,7 @@
 
         .page-back {
             transform: rotateY(180deg);
-            background: linear-gradient(145deg, #fdf0f4 0%, #f8e4ec 100%);
+            background: linear-gradient(145deg, #fff9f0 0%, #fff0f9 100%);
         }
 
         .page-back-inner {
@@ -91,8 +91,8 @@
                 45deg,
                 transparent,
                 transparent 14px,
-                rgba(220, 140, 160, 0.07) 14px,
-                rgba(220, 140, 160, 0.07) 28px
+                rgba(255, 180, 220, 0.10) 14px,
+                rgba(255, 180, 220, 0.10) 28px
             );
         }
 
@@ -102,7 +102,7 @@
             position: absolute;
             top: 0; left: 0; bottom: 0;
             width: 20px;
-            background: linear-gradient(to right, rgba(180,80,120,0.10), transparent);
+            background: linear-gradient(to right, rgba(255,150,200,0.12), transparent);
             z-index: 2;
             pointer-events: none;
         }
@@ -112,10 +112,10 @@
             position: fixed;
             top: 50%;
             transform: translateY(-50%);
-            background: rgba(200, 80, 130, 0.12);
+            background: rgba(255, 130, 190, 0.18);
             backdrop-filter: blur(4px);
-            border: 1px solid rgba(200, 80, 130, 0.22);
-            color: #c0406a;
+            border: 1px solid rgba(255, 130, 190, 0.35);
+            color: #ff4090;
             font-size: 28px;
             width: 50px;
             height: 50px;
@@ -128,7 +128,7 @@
             z-index: 100;
         }
 
-        .nav-btn:hover  { background: rgba(200, 80, 130, 0.22); }
+        .nav-btn:hover  { background: rgba(255, 130, 190, 0.32); }
         .nav-btn:disabled { opacity: 0.2; cursor: default; pointer-events: none; }
         .nav-btn.prev { left: 16px; }
         .nav-btn.next { right: 16px; }
@@ -146,18 +146,18 @@
         .dot {
             width: 8px; height: 8px;
             border-radius: 50%;
-            background: rgba(200, 100, 140, 0.25);
+            background: rgba(255, 150, 200, 0.35);
             transition: background 0.3s, transform 0.3s;
         }
 
         .dot.active {
-            background: rgba(200, 60, 110, 0.75);
+            background: rgba(255, 60, 140, 0.85);
             transform: scale(1.4);
         }
 
         /* ===== 페이지 1 : 커버 / 로그인 ===== */
         .p1-front {
-            background: linear-gradient(160deg, #fce4ec 0%, #f8bbd0 45%, #f48fb1 100%);
+            background: linear-gradient(160deg, #fff0fa 0%, #ffd6ee 45%, #ffb8dd 100%);
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -180,14 +180,14 @@
         .p1-title {
             font-family: 'Dancing Script', cursive;
             font-size: 40px;
-            color: #7b1040;
-            text-shadow: 0 2px 16px rgba(255,255,255,0.6);
+            color: #d4006a;
+            text-shadow: 0 2px 16px rgba(255,255,255,0.8);
             margin-bottom: 6px;
         }
 
         .p1-subtitle {
             font-size: 11px;
-            color: rgba(100, 20, 50, 0.6);
+            color: rgba(200, 20, 100, 0.65);
             letter-spacing: 3px;
             margin-bottom: 36px;
         }
@@ -197,7 +197,7 @@
         .p1-label {
             display: block;
             font-size: 10px;
-            color: rgba(100, 20, 50, 0.65);
+            color: rgba(200, 20, 100, 0.70);
             letter-spacing: 2px;
             margin-bottom: 6px;
         }
@@ -205,10 +205,10 @@
         .p1-input {
             width: 100%;
             padding: 13px 16px;
-            background: rgba(255, 255, 255, 0.65);
-            border: 1px solid rgba(180, 60, 100, 0.25);
+            background: rgba(255, 255, 255, 0.75);
+            border: 1px solid rgba(255, 80, 150, 0.30);
             border-radius: 8px;
-            color: #4a1030;
+            color: #cc005a;
             font-size: 14px;
             font-family: 'Noto Serif KR', serif;
             outline: none;
@@ -216,43 +216,43 @@
         }
 
         .p1-input:focus {
-            border-color: rgba(180, 60, 100, 0.55);
-            background: rgba(255, 255, 255, 0.85);
+            border-color: rgba(255, 60, 130, 0.65);
+            background: rgba(255, 255, 255, 0.92);
         }
 
-        .p1-input::placeholder { color: rgba(100, 40, 60, 0.35); }
+        .p1-input::placeholder { color: rgba(220, 60, 130, 0.35); }
 
         .p1-btn {
             width: 100%;
             padding: 14px;
-            background: linear-gradient(135deg, #e91e63, #880e4f);
+            background: linear-gradient(135deg, #ff4090, #e91e80);
             border: none;
             border-radius: 8px;
             color: white;
             font-size: 15px;
             font-family: 'Noto Serif KR', serif;
             cursor: pointer;
-            box-shadow: 0 4px 20px rgba(233, 30, 99, 0.35);
+            box-shadow: 0 4px 20px rgba(255, 60, 140, 0.45);
             transition: transform 0.2s, box-shadow 0.2s;
             margin-top: 6px;
         }
 
         .p1-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 7px 26px rgba(233, 30, 99, 0.5);
+            box-shadow: 0 7px 26px rgba(255, 60, 140, 0.60);
         }
 
         .p1-hint {
             position: absolute;
             bottom: 22px;
             font-size: 10px;
-            color: rgba(100, 20, 50, 0.35);
+            color: rgba(220, 40, 110, 0.45);
             letter-spacing: 2px;
         }
 
         /* ===== 사진 페이지 ===== */
         .photo-page {
-            background: linear-gradient(150deg, #fff8f9 0%, #fef0f4 50%, #fff5f8 100%);
+            background: linear-gradient(150deg, #fffdf0 0%, #fff5fa 50%, #f0fbff 100%);
             padding: 26px 22px 20px;
             display: flex;
             flex-direction: column;
@@ -262,7 +262,7 @@
         .photo-page-label {
             text-align: center;
             font-size: 10px;
-            color: #c06080;
+            color: #ff5090;
             letter-spacing: 4px;
         }
 
@@ -275,14 +275,14 @@
         }
 
         .photo-slot {
-            background: linear-gradient(135deg, #fde8ee, #f8d8e4);
-            border: 2px dashed #e0a0b8;
+            background: linear-gradient(135deg, #fff0f8, #ffe8f5);
+            border: 2px dashed #ffb0d0;
             border-radius: 10px;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            color: #b07888;
+            color: #ff5090;
             font-size: 11px;
             letter-spacing: 1px;
             overflow: hidden;
@@ -296,20 +296,20 @@
             object-fit: cover;
         }
 
-        .photo-slot-icon { font-size: 26px; opacity: 0.45; margin-bottom: 5px; }
+        .photo-slot-icon { font-size: 26px; opacity: 0.55; margin-bottom: 5px; }
 
         .photo-caption {
             font-size: 11px;
-            color: #b08090;
+            color: #ff70a0;
             text-align: center;
             font-style: italic;
         }
 
-        .photo-deco { text-align: center; font-size: 16px; color: #e0a0b8; }
+        .photo-deco { text-align: center; font-size: 16px; color: #ffb0d0; }
 
         /* ===== 마지막 페이지 : 프로포즈 ===== */
         .propose-front {
-            background: linear-gradient(155deg, #fff0f5 0%, #fce4ec 45%, #f8bbd0 100%);
+            background: linear-gradient(155deg, #fffbf0 0%, #fff0f8 45%, #ffd6ee 100%);
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -331,7 +331,7 @@
 
         .propose-title {
             font-size: 28px;
-            color: #8b1040;
+            color: #e0006a;
             font-weight: 600;
             margin-bottom: 20px;
             line-height: 1.4;
@@ -339,7 +339,7 @@
 
         .propose-msg {
             font-size: 14px;
-            color: #5a2838;
+            color: #c03070;
             line-height: 2;
             font-weight: 300;
             margin-bottom: 36px;
@@ -349,28 +349,28 @@
 
         .btn-yes {
             padding: 14px 34px;
-            background: linear-gradient(135deg, #e91e63, #880e4f);
+            background: linear-gradient(135deg, #ff4090, #e91e80);
             border: none;
             border-radius: 50px;
             color: white;
             font-size: 16px;
             font-family: 'Noto Serif KR', serif;
             cursor: pointer;
-            box-shadow: 0 6px 24px rgba(233, 30, 99, 0.4);
+            box-shadow: 0 6px 24px rgba(255, 60, 140, 0.50);
             transition: transform 0.2s, box-shadow 0.2s;
         }
 
         .btn-yes:hover {
             transform: scale(1.06);
-            box-shadow: 0 8px 30px rgba(233, 30, 99, 0.6);
+            box-shadow: 0 8px 30px rgba(255, 60, 140, 0.70);
         }
 
         .btn-no {
             padding: 12px 26px;
             background: transparent;
-            border: 2px solid #d4a0b8;
+            border: 2px solid #ffb0cc;
             border-radius: 50px;
-            color: #b08098;
+            color: #ff70a0;
             font-size: 14px;
             font-family: 'Noto Serif KR', serif;
             cursor: pointer;
@@ -398,13 +398,13 @@
 
         .yes-text {
             font-size: 20px;
-            color: #8b1040;
+            color: #e0006a;
             font-weight: 600;
         }
 
         .yes-sub {
             font-size: 13px;
-            color: #9b4060;
+            color: #ff5090;
             line-height: 1.9;
         }
     </style>
