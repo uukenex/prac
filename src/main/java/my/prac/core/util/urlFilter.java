@@ -97,9 +97,6 @@ public class urlFilter implements Filter {
         		break;
 
         		default:
-        			if (httpServletRequest.getServletPath().indexOf("/bom") >= 0) {
-        				httpServletResponse.sendError(600);
-        			}
         		break;
 
         	}
