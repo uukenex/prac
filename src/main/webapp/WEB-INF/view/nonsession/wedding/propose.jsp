@@ -691,34 +691,36 @@
 
         if (!escaped) {
             escaped = true;
-            noBtn.style.position   = 'fixed';
-            noBtn.style.zIndex     = '9998';
-            noBtn.style.transition = 'left 0.55s cubic-bezier(0.25, 0.46, 0.45, 0.94), top 0.55s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
             var r = noBtn.getBoundingClientRect();
-            noBtn.style.left = r.left + 'px';
-            noBtn.style.top  = r.top  + 'px';
+            noBtn.style.position = 'fixed';
+            noBtn.style.zIndex   = '9998';
+            noBtn.style.left     = r.left + 'px';
+            noBtn.style.top      = r.top  + 'px';
+            // position 적용 후 다음 프레임에 transition 설정 (초기 점프 방지)
+            requestAnimationFrame(function () {
+                noBtn.style.transition = 'left 0.55s cubic-bezier(0.25, 0.46, 0.45, 0.94), top 0.55s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+            });
         }
 
-        var bw     = noBtn.offsetWidth  || 90;
-        var bh     = noBtn.offsetHeight || 42;
-        var margin = 20;
-        var maxX   = window.innerWidth  - bw - margin;
-        var maxY   = window.innerHeight - bh - margin;
-        var rect   = noBtn.getBoundingClientRect();
+        var rect = noBtn.getBoundingClientRect();
+        var bw   = rect.width  || 90;
+        var bh   = rect.height || 42;
+        var pad  = 12;
+        var maxX = window.innerWidth  - bw - pad;
+        var maxY = window.innerHeight - bh - pad;
         var attempts = 0;
         var nx, ny;
         do {
-            nx = margin + Math.random() * Math.max(0, maxX - margin);
-            ny = margin + Math.random() * Math.max(0, maxY - margin);
+            nx = pad + Math.random() * Math.max(1, maxX - pad);
+            ny = pad + Math.random() * Math.max(1, maxY - pad);
             attempts++;
-        } while (attempts < 15 &&
-                 Math.abs(nx - rect.left) < 130 &&
-                 Math.abs(ny - rect.top)  < 100);
+        } while (attempts < 20 &&
+                 Math.abs(nx - rect.left) < 120 &&
+                 Math.abs(ny - rect.top)  < 80);
 
-        nx = Math.max(margin, Math.min(nx, maxX));
-        ny = Math.max(margin, Math.min(ny, maxY));
-        noBtn.style.left = nx + 'px';
-        noBtn.style.top  = ny + 'px';
+        // 화면 밖으로 절대 나가지 않도록 clamp
+        noBtn.style.left = Math.max(pad, Math.min(nx, maxX)) + 'px';
+        noBtn.style.top  = Math.max(pad, Math.min(ny, maxY)) + 'px';
     }
 
     document.addEventListener('mousemove', function (e) {
