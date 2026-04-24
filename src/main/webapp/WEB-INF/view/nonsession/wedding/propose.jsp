@@ -17,6 +17,18 @@
             justify-content: center;
             font-family: 'Noto Serif KR', serif;
             overflow: hidden;
+            transition: background 3s ease;
+        }
+
+        /* YES 클릭 시 배경 오버레이 */
+        #yesOverlay {
+            position: fixed;
+            inset: 0;
+            opacity: 0;
+            background: linear-gradient(135deg, #1e4a2e 0%, #2d6040 35%, #3a7050 65%, #2a5838 100%);
+            transition: opacity 3.5s ease;
+            z-index: 0;
+            pointer-events: none;
         }
 
         /* 꽃잎 파티클 */
@@ -155,15 +167,44 @@
             transform: scale(1.4);
         }
 
+        /* ===== 초대장 이중 테두리 프레임 ===== */
+        .invite-frame {
+            position: absolute;
+            inset: 14px;
+            border: 1px solid rgba(140, 105, 55, 0.38);
+            border-radius: 2px;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .invite-frame::before {
+            content: '';
+            position: absolute;
+            inset: 5px;
+            border: 1px solid rgba(140, 105, 55, 0.20);
+            border-radius: 1px;
+        }
+        .invite-frame::after {
+            content: '✦';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 12px;
+            color: rgba(140, 105, 55, 0.40);
+            background: inherit;
+            padding: 0 6px;
+        }
+
         /* ===== 페이지 1 : 커버 ===== */
         .p1-front {
-            background: linear-gradient(160deg, #fdf5e3 0%, #f5e6c8 45%, #ecddb0 100%);
+            background: linear-gradient(160deg, #f8edd5 0%, #ede0c0 45%, #e4d0a8 100%);
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             padding: 40px 32px;
             gap: 0;
+            position: relative;
         }
 
         .p1-heart {
@@ -321,13 +362,15 @@
 
         /* ===== 마지막 페이지 : 프로포즈 ===== */
         .propose-front {
-            background: linear-gradient(155deg, #fef9f0 0%, #f8f0de 45%, #f0e5c8 100%);
+            background: linear-gradient(155deg, #f8edd5 0%, #ede0c0 45%, #e4d0a8 100%);
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             padding: 38px 32px;
             text-align: center;
+            position: relative;
+            transition: background 3s ease;
         }
 
         .propose-icon {
@@ -415,19 +458,22 @@
 
         .yes-text {
             font-size: 20px;
-            color: #7a4f2e;
+            color: #f5e8c8;
             font-weight: 600;
+            transition: color 3s ease;
         }
 
         .yes-sub {
             font-size: 13px;
-            color: #9a6840;
+            color: #d4c8a0;
             line-height: 1.9;
+            transition: color 3s ease;
         }
     </style>
 </head>
 <body>
 
+<div id="yesOverlay"></div>
 <div class="particles" id="particles"></div>
 
 <button class="nav-btn prev" id="prevBtn" onclick="goPrev()" disabled>&#8249;</button>
@@ -440,9 +486,10 @@
     <!-- 페이지 1 : 커버 -->
     <div class="page" id="page-0">
       <div class="page-face p1-front">
-        <div class="p1-heart">💌</div>
+        <div class="invite-frame"></div>
+        <div class="p1-heart">🎫</div>
         <div class="p1-title">For You</div>
-        <div class="p1-subtitle">당신에게 전하는 이야기</div>
+        <div class="p1-subtitle">함께 떠나는 여행으로 초대합니다</div>
         <div class="p1-form">
           <div>
             <label class="p1-label">이름</label>
@@ -452,9 +499,9 @@
             <label class="p1-label">비밀번호</label>
             <input class="p1-input" type="password" placeholder="••••••••">
           </div>
-          <button class="p1-btn" onclick="goNext()">열어보기 💌</button>
+          <button class="p1-btn" onclick="goNext()">초대장 열기 🎫</button>
         </div>
-        <div class="p1-hint">→ 눌러서 열어보세요</div>
+        <div class="p1-hint">✦ 펼쳐서 확인하세요 ✦</div>
       </div>
       <div class="page-face page-back">
         <div class="page-back-inner">🌸</div>
@@ -514,8 +561,9 @@
     <!-- 페이지 4 : 프로포즈 -->
     <div class="page" id="page-3">
       <div class="page-face propose-front">
+        <div class="invite-frame"></div>
         <div id="proposeMain">
-          <div class="propose-icon"></div>
+          <div class="propose-icon">🗺️</div>
           <div class="propose-title">나와 결혼해줄래?</div>
           <div class="propose-msg">
             지금 이시간도, 당신과 있어서<br><br>
@@ -643,34 +691,36 @@
 
         if (!escaped) {
             escaped = true;
-            noBtn.style.position   = 'fixed';
-            noBtn.style.zIndex     = '9998';
-            noBtn.style.transition = 'left 0.55s cubic-bezier(0.25, 0.46, 0.45, 0.94), top 0.55s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
             var r = noBtn.getBoundingClientRect();
-            noBtn.style.left = r.left + 'px';
-            noBtn.style.top  = r.top  + 'px';
+            noBtn.style.position = 'fixed';
+            noBtn.style.zIndex   = '9998';
+            noBtn.style.left     = r.left + 'px';
+            noBtn.style.top      = r.top  + 'px';
+            // position 적용 후 다음 프레임에 transition 설정 (초기 점프 방지)
+            requestAnimationFrame(function () {
+                noBtn.style.transition = 'left 0.55s cubic-bezier(0.25, 0.46, 0.45, 0.94), top 0.55s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+            });
         }
 
-        var bw     = noBtn.offsetWidth  || 90;
-        var bh     = noBtn.offsetHeight || 42;
-        var margin = 20;
-        var maxX   = window.innerWidth  - bw - margin;
-        var maxY   = window.innerHeight - bh - margin;
-        var rect   = noBtn.getBoundingClientRect();
+        var rect = noBtn.getBoundingClientRect();
+        var bw   = rect.width  || 90;
+        var bh   = rect.height || 42;
+        var pad  = 12;
+        var maxX = window.innerWidth  - bw - pad;
+        var maxY = window.innerHeight - bh - pad;
         var attempts = 0;
         var nx, ny;
         do {
-            nx = margin + Math.random() * Math.max(0, maxX - margin);
-            ny = margin + Math.random() * Math.max(0, maxY - margin);
+            nx = pad + Math.random() * Math.max(1, maxX - pad);
+            ny = pad + Math.random() * Math.max(1, maxY - pad);
             attempts++;
-        } while (attempts < 15 &&
-                 Math.abs(nx - rect.left) < 130 &&
-                 Math.abs(ny - rect.top)  < 100);
+        } while (attempts < 20 &&
+                 Math.abs(nx - rect.left) < 120 &&
+                 Math.abs(ny - rect.top)  < 80);
 
-        nx = Math.max(margin, Math.min(nx, maxX));
-        ny = Math.max(margin, Math.min(ny, maxY));
-        noBtn.style.left = nx + 'px';
-        noBtn.style.top  = ny + 'px';
+        // 화면 밖으로 절대 나가지 않도록 clamp
+        noBtn.style.left = Math.max(pad, Math.min(nx, maxX)) + 'px';
+        noBtn.style.top  = Math.max(pad, Math.min(ny, maxY)) + 'px';
     }
 
     document.addEventListener('mousemove', function (e) {
@@ -696,6 +746,12 @@
         var yr = document.getElementById('yesResponse');
         yr.style.display = 'flex';
         if (escaped) noBtn.style.display = 'none';
+
+        // 배경을 토토로 숲 색으로 서서히 동화
+        document.getElementById('yesOverlay').style.opacity = '1';
+        document.body.style.background = 'linear-gradient(135deg, #1e4a2e 0%, #2d6040 35%, #3a7050 65%, #2a5838 100%)';
+        document.querySelector('.propose-front').style.background = 'linear-gradient(155deg, #2a5a3a 0%, #3a7050 50%, #2d6040 100%)';
+
         launchHearts();
     };
 
