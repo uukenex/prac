@@ -151,9 +151,9 @@ public interface BotNewDAO {
     List<HashMap<String,Object>> selectOngoingChallengesForUnclearedBosses();
     public List<HashMap<String,Object>> selectSpAndAtkRanking();
     
-    void clearRoomBuff(@Param("roomName")String roomName);
-    
-    HashMap<String,Object> selectDosaBuffInfo(@Param("roomName")String roomName);
+    void clearRoomBuff();
+
+    HashMap<String,Object> selectDosaBuffInfo();
     
     List<HashMap<String, Object>> selectAchievementCountRanking();
     List<AchievementCount> selectAchvCountsGlobal(@Param("userName")String userName,@Param("roomName") String roomName);

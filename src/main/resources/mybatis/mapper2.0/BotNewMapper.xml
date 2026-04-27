@@ -1103,16 +1103,15 @@
 	  ORDER BY m.MON_NO, ob.START_TIME, ob.USER_NAME
 	</select>
 	
-	<!-- 도사 버프 리셋 (1회 사용 후 0으로 초기화) -->
-	<update id="clearRoomBuff" parameterType="string">
+	<!-- 도사 버프 리셋 (1회 사용 후 0으로 초기화, 전체방 기준) -->
+	<update id="clearRoomBuff">
 	    /* clearRoomBuff */
 	    UPDATE TBOT_POINT_NEW_BATTLE_LOG
 	       SET BUFF_YN = '0'
-	     WHERE ROOM_NAME = #{roomName}
-	       AND BUFF_YN = '1'
+	     WHERE BUFF_YN = '1'
 	</update>
-	
-	<select id="selectDosaBuffInfo" parameterType="string" resultType="hashmap">
+
+	<select id="selectDosaBuffInfo" resultType="hashmap">
 	    /*selectDosaBuffInfo*/
 	    SELECT B.USER_NAME,
 	           B.LV,
@@ -1121,8 +1120,7 @@
 	      FROM TBOT_POINT_NEW_BATTLE_LOG B
 	      LEFT JOIN TBOT_POINT_NEW_USER U
 	        ON U.USER_NAME = B.USER_NAME
-	     WHERE B.ROOM_NAME = #{roomName}
-	       AND B.BUFF_YN = '1'
+	     WHERE B.BUFF_YN = '1'
 	       AND ROWNUM = 1
 	     ORDER BY B.INSERT_DATE DESC
 	</select>
