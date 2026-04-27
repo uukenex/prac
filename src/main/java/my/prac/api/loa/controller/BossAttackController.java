@@ -1719,7 +1719,7 @@ public class BossAttackController {
 	    boolean hasSetEffect = ctx.setCooldownReduce > 0 || ctx.setAtkFinalRate > 0 || ctx.setCritFinalRate > 0
 	            || (ctx.activeSetSpecials != null && !ctx.activeSetSpecials.isEmpty());
 	    if (hasSetEffect) {
-	        sb.append(NL).append("💠 세트 효과:").append(NL);
+	        sb.append(NL).append("※ 세트 효과:").append(NL);
 	        if (ctx.setAtkFinalRate > 0)
 	            sb.append("  └ 최종공격력 +").append(ctx.setAtkFinalRate).append("%").append(NL);
 	        if (ctx.setCritFinalRate > 0)
@@ -2751,7 +2751,7 @@ public class BossAttackController {
 	    	            int requiredCnt = b.get("REQUIRED_CNT") != null ? ((Number) b.get("REQUIRED_CNT")).intValue() : 0;
 	    	            // 보유 수 == 발동 조건 = 이번 구매로 새로 달성
 	    	            if (ownedCnt == requiredCnt) {
-	    	                sb.append(NL).append("💠 [").append(setId).append("] ").append(requiredCnt).append("세트 효과 달성!");
+	    	                sb.append(NL).append("※ [").append(setId).append("] ").append(requiredCnt).append("세트 효과 달성!");
 	    	                String desc = Objects.toString(b.get("BONUS_DESC"), "");
 	    	                if (!desc.isEmpty()) sb.append(NL).append("  ▸ ").append(desc);
 	    	            }
