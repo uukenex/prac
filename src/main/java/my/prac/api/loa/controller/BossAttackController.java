@@ -3199,6 +3199,7 @@ public class BossAttackController {
 		HashMap<String,Object> activeBuff;
 		SpecialBuffResult buff;
 		int cooldownBuff;
+		int itemCdReduction = 0; // [7004] + 세트효과 쿨타임 감소 합산값
 		String cdJob;
 		AttackDeathStat cachedAds;
 		boolean revivedThisTurn;
@@ -3427,9 +3428,9 @@ public class BossAttackController {
 		Timestamp cachedLastAtk = (s.cachedAds != null) ? s.cachedAds.lastAttackTime : null;
 		s.cdJob = (s.cachedAds != null && s.cachedAds.lastAttackJob != null) ? s.cachedAds.lastAttackJob : s.job;
 
-		int itemCdReduction = s.ctx.ownedBossItems.contains(7004) ? 20 : 0; // [7004] 쿨타임 20초 감소
-		itemCdReduction += s.ctx.setCooldownReduce; // 세트 효과 쿨타임 감소
-		CooldownCheck cd = checkCooldown(s.userName, s.roomName, s.param1, s.cdJob, s.cooldownBuff, cachedLastAtk, itemCdReduction);
+		s.itemCdReduction  = s.ctx.ownedBossItems.contains(7004) ? 20 : 0; // [7004] 쿨타임 20초 감소
+		s.itemCdReduction += s.ctx.setCooldownReduce; // 세트 효과 쿨타임 감소
+		CooldownCheck cd = checkCooldown(s.userName, s.roomName, s.param1, s.cdJob, s.cooldownBuff, cachedLastAtk, s.itemCdReduction);
 		if (!cd.ok) {
 			long min = cd.remainSeconds / 60;
 			long sec = cd.remainSeconds % 60;
@@ -3477,7 +3478,7 @@ public class BossAttackController {
 		s.u.hpMax   = s.hpMax;
 		s.u.hpRegen = s.regen;
 		try {
-			String hpMsg = buildBelowHalfMsg(s.userName, s.roomName, s.u, s.param1, s.cooldownBuff, s.cdJob);
+			String hpMsg = buildBelowHalfMsg(s.userName, s.roomName, s.u, s.param1, s.cooldownBuff, s.cdJob, s.itemCdReduction);
 			if (!"사신".equals(s.job) && hpMsg != null) return hpMsg;
 		} finally {
 			s.u.hpMax   = origHpMax;
@@ -6328,11 +6329,11 @@ public class BossAttackController {
 
 	    return toNextTick + (ticksNeeded - 1) * 5;
 	}
-	private String buildBelowHalfMsg(String userName, String roomName, User u, String param1, int cooldownBuff, String cdJob) {
+	private String buildBelowHalfMsg(String userName, String roomName, User u, String param1, int cooldownBuff, String cdJob, int itemCdReduction) {
 	    if ("test".equals(param1)) return null; // 테스트 모드 패스
 
 	    int regenWaitMin = minutesUntilReach30(u, userName, roomName);
-	    CooldownCheck cd = checkCooldown(userName, roomName, param1, cdJob, cooldownBuff);
+	    CooldownCheck cd = checkCooldown(userName, roomName, param1, cdJob, cooldownBuff, null, itemCdReduction);
 
 	    long remainMin = cd.remainSeconds / 60;
 	    long remainSec = cd.remainSeconds % 60;
