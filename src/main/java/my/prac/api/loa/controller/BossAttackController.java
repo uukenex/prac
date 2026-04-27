@@ -365,6 +365,34 @@ public class BossAttackController {
 	        mktAtkMaxRate+= heavenBuff.get("ATK_MAX_RATE") != null ? ((Number) heavenBuff.get("ATK_MAX_RATE")).intValue() : 0;
 	    }
 
+	    // ── 세트 효과 적용 (flat 보너스) ─────────────────────────────────────────
+	    @SuppressWarnings("unchecked")
+	    List<HashMap<String,Object>> setBonus = (List<HashMap<String,Object>>) invBuffData.get("setBonus");
+	    int setAtkFinalRate = 0, setCritFinalRate = 0, setCooldownReduce = 0;
+	    if (setBonus != null) {
+	        for (HashMap<String,Object> b : setBonus) {
+	            String bt = Objects.toString(b.get("BONUS_TYPE"), "");
+	            int    bv = b.get("BONUS_VALUE") != null ? ((Number) b.get("BONUS_VALUE")).intValue() : 0;
+	            switch (bt) {
+	                case "ATK_MIN":         mktAtkMin        += bv; break;
+	                case "ATK_MAX":         mktAtkMax        += bv; break;
+	                case "HP_MAX":          mktHpMax         += bv; break;
+	                case "ATK_CRI":         mktCrit          += bv; break;
+	                case "CRI_DMG":         mktCritDmg       += bv; break;
+	                case "HP_REGEN":        mktRegen         += bv; break;
+	                case "ATK_FINAL_RATE":  setAtkFinalRate  += bv; break;
+	                case "CRIT_FINAL_RATE": setCritFinalRate += bv; break;
+	                case "COOLDOWN_REDUCE": setCooldownReduce += bv; break;
+	                default:
+	                    if (bt.startsWith("SPECIAL_")) {
+	                        if (ctx.activeSetSpecials == null) ctx.activeSetSpecials = new ArrayList<>();
+	                        ctx.activeSetSpecials.add(bt);
+	                    }
+	                    break;
+	            }
+	        }
+	    }
+
 	    // 보스 아이템(7000번대) 보유 목록 (캐시에서 로드)
 	    @SuppressWarnings("unchecked")
 	    List<Integer> ownedBossFromCache = (List<Integer>) invBuffData.get("bossItems");
@@ -627,11 +655,22 @@ public class BossAttackController {
 	        atkMin += evolveBonus;
 	        atkMax += evolveBonus;
 	    }
+	    // ── 세트 효과: 최종 비율 보너스 (헬너프 포함 최종 수치 기준) ──────────────
+	    if (setAtkFinalRate > 0) {
+	        atkMin += (int) Math.round(atkMin * setAtkFinalRate / 100.0);
+	        atkMax += (int) Math.round(atkMax * setAtkFinalRate / 100.0);
+	    }
+	    if (setCritFinalRate > 0) {
+	        crit += (int) Math.round(crit * setCritFinalRate / 100.0);
+	    }
+	    ctx.setAtkFinalRate   = setAtkFinalRate;
+	    ctx.setCritFinalRate  = setCritFinalRate;
+	    ctx.setCooldownReduce = setCooldownReduce;
 	    ctx.atkMin = atkMin;
 	    ctx.atkMax = atkMax;
 	    ctx.hpMax  = hpMax;
 	    ctx.regen    = regen;
-	    
+
 	    // 표시용 스탯 (1번 메서드에서 쓰던 값)
 	    ctx.crit          = crit;
 	    	    ctx.critDmg       = critDmg;
@@ -1000,6 +1039,7 @@ public class BossAttackController {
 	            data.put("bossItems", botNewService.selectInventoryItemsByIds(userName, "", bossItemIds));
 	    } catch (Exception ignore) {}
 	    try { data.put("drops", botNewService.selectTotalDropItems(userName)); } catch (Exception ignore) {}
+	    try { data.put("setBonus", botNewService.selectActiveSetBonuses(userName)); } catch (Exception ignore) {}
 	    MiniGameUtil.INV_BUFF_CACHE.put(userName, data);
 	    return data;
 	}
@@ -2683,7 +2723,26 @@ public class BossAttackController {
 		      .append("↘가격: ").append(itemPrice.toString()).append("").append(NL)
 		      .append("↘옵션: ").append(optionStr).append(NL)
 		      .append("✨포인트: ").append(afterUserPoint.toString()).append("");
-	    	
+
+	    	// ── 세트 효과 달성 알림 ───────────────────────────────────────────────
+	    	String setId = Objects.toString(item.get("SET_ID"), "");
+	    	if (!setId.isEmpty()) {
+	    	    try {
+	    	        List<HashMap<String,Object>> activeBonus = botNewService.selectActiveSetBonuses(userName);
+	    	        for (HashMap<String,Object> b : activeBonus) {
+	    	            if (!setId.equals(Objects.toString(b.get("SET_ID"), ""))) continue;
+	    	            int ownedCnt    = b.get("OWNED_CNT")    != null ? ((Number) b.get("OWNED_CNT")).intValue()    : 0;
+	    	            int requiredCnt = b.get("REQUIRED_CNT") != null ? ((Number) b.get("REQUIRED_CNT")).intValue() : 0;
+	    	            // 보유 수 == 발동 조건 = 이번 구매로 새로 달성
+	    	            if (ownedCnt == requiredCnt) {
+	    	                sb.append(NL).append("💠 [").append(setId).append("] ").append(requiredCnt).append("세트 효과 달성!");
+	    	                String desc = Objects.toString(b.get("BONUS_DESC"), "");
+	    	                if (!desc.isEmpty()) sb.append(NL).append("  ▸ ").append(desc);
+	    	            }
+	    	        }
+	    	    } catch (Exception ignore) {}
+	    	}
+
 	    	try {
 	    		botNewService.closeOngoingBattleTx(userName, roomName);
 	    	} catch(Exception e) {
@@ -3349,6 +3408,7 @@ public class BossAttackController {
 		s.cdJob = (s.cachedAds != null && s.cachedAds.lastAttackJob != null) ? s.cachedAds.lastAttackJob : s.job;
 
 		int itemCdReduction = s.ctx.ownedBossItems.contains(7004) ? 20 : 0; // [7004] 쿨타임 20초 감소
+		itemCdReduction += s.ctx.setCooldownReduce; // 세트 효과 쿨타임 감소
 		CooldownCheck cd = checkCooldown(s.userName, s.roomName, s.param1, s.cdJob, s.cooldownBuff, cachedLastAtk, itemCdReduction);
 		if (!cd.ok) {
 			long min = cd.remainSeconds / 60;

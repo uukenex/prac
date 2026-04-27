@@ -42,6 +42,13 @@ public class LoaItemViewController {
         result.put("userName", userName);
         result.put("total", items.size());
 
+        // 세트 보너스 전체 목록 (유저가 있으면 보유 현황 포함, 없으면 빈 리스트)
+        if (userName != null && !userName.trim().isEmpty()) {
+            try {
+                result.put("setBonus", botNewService.selectActiveSetBonuses(userName));
+            } catch (Exception ignore) {}
+        }
+
         return ResponseEntity.ok(result);
     }
 

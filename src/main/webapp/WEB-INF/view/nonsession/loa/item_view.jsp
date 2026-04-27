@@ -78,6 +78,20 @@
     .card-blurred .blur-hint   { display: block; }
     .blur-hint { display: none; font-size: 10px; color: #bbb; margin-top: 6px; text-align: center; }
 
+    /* 세트 뱃지 */
+    .card-set-badge { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 8px; background: #e8d9f7; color: #7c3d9e; margin-top: 4px; }
+    /* 세트 효과 패널 */
+    .set-panel { background: #faf5ff; border: 1.5px solid #d4b8f0; border-radius: 12px; padding: 14px 16px; margin-bottom: 18px; }
+    .set-panel-title { font-size: 13px; font-weight: 800; color: #6b2d99; margin-bottom: 10px; }
+    .set-group { margin-bottom: 12px; }
+    .set-group:last-child { margin-bottom: 0; }
+    .set-group-name { font-size: 12px; font-weight: 700; color: #5a2880; margin-bottom: 5px; }
+    .set-tier { display: flex; align-items: center; gap: 6px; font-size: 11px; padding: 3px 0; }
+    .set-tier-label { background: #7c3d9e; color: #fff; border-radius: 6px; padding: 1px 7px; font-size: 10px; font-weight: 700; white-space: nowrap; }
+    .set-tier.active .set-tier-label { background: #4caf50; }
+    .set-tier-desc { color: #555; }
+    .set-tier.active .set-tier-desc { color: #2e7d32; font-weight: 600; }
+
     .empty   { text-align: center; padding: 60px 0; color: #ccc; }
     .empty .ico { font-size: 34px; margin-bottom: 10px; }
     .loading { text-align: center; padding: 60px; color: #ccc; font-size: 15px; }
@@ -122,6 +136,19 @@
     </div>
   </div>
 
+  <!-- 세트 효과 패널 (세트 아이템이 있을 때만 표시) -->
+  <div class="set-panel" v-if="setGroups.length > 0">
+    <div class="set-panel-title">💠 세트 효과</div>
+    <div class="set-group" v-for="grp in setGroups" :key="grp.setId">
+      <div class="set-group-name">{{ grp.setId }} 세트 ({{ grp.ownedCnt }}/{{ grp.totalItems }})</div>
+      <div class="set-tier" v-for="tier in grp.tiers" :key="tier.cnt"
+           :class="{active: grp.ownedCnt >= tier.cnt}">
+        <span class="set-tier-label">{{ tier.cnt }}세트</span>
+        <span class="set-tier-desc">{{ tier.desc }}</span>
+      </div>
+    </div>
+  </div>
+
   <!-- 카테고리 탭 -->
   <div class="cat-tabs">
     <button class="cat-tab" :class="{active: activeTab===''}" @click="activeTab=''">전체</button>
@@ -129,6 +156,7 @@
             :class="{active: activeTab===cat.label}" @click="activeTab=cat.label">
       {{ cat.icon }} {{ cat.label }}
     </button>
+    <button class="cat-tab" v-if="hasSetItems" :class="{active: activeTab==='세트'}" @click="activeTab='세트'">💠 세트</button>
   </div>
 
   <div class="bar">
@@ -180,6 +208,7 @@
         <div class="stat-line" v-if="item.ATK_MAX_RATE > 0"><span>공격력%</span><span>+{{ item.ATK_MAX_RATE }}%</span></div>
       </div>
       <div class="card-lv" v-if="item.TARGET_LV > 0">🔒 Lv.{{ item.TARGET_LV }} 이상</div>
+      <span class="card-set-badge" v-if="item.SET_ID">💠 {{ item.SET_ID }}</span>
       <div class="card-desc" v-if="isBossItem(item) && !isBlurred(item) && item.ITEM_DESC" v-html="formatDesc(item.ITEM_DESC)"></div>
       <div class="card-qty" v-if="item.OWN_QTY > 0">📦 보유 {{ item.OWN_QTY }}개</div>
       <span class="blur-hint">🔒 미발견 아이템</span>
@@ -227,6 +256,7 @@
       keyword: '',
       items: [],
       potionFormulas: {},   // { "1001": { priceType, formulaDesc }, ... }
+      setBonus: [],         // 활성 세트 보너스 목록 (서버에서 받음)
       loading: false,
       searchedUser: '',
       activeTab: '',
@@ -248,10 +278,50 @@
         list.sort(function(a, b) { return a.order - b.order; });
         return list;
       },
+      hasSetItems: function() {
+        return this.items.some(function(item) { return item.SET_ID && item.SET_ID !== ''; });
+      },
+      // 세트별 보유 현황 및 효과 목록 계산
+      setGroups: function() {
+        var self = this;
+        // 1) 세트별 총 아이템 수, 보유 수 집계
+        var groupMap = {};
+        self.items.forEach(function(item) {
+          if (!item.SET_ID || item.SET_ID === '') return;
+          var g = groupMap[item.SET_ID];
+          if (!g) {
+            g = { setId: item.SET_ID, totalItems: 0, ownedCnt: 0, tiers: [] };
+            groupMap[item.SET_ID] = g;
+          }
+          g.totalItems++;
+          if (item.OWNED_YN === 'Y') g.ownedCnt++;
+        });
+        // 2) setBonus에서 세트별 발동 단계 목록 구성 (중복 제거)
+        var tierMap = {};
+        self.setBonus.forEach(function(b) {
+          var key = b.SET_ID + '_' + b.REQUIRED_CNT;
+          if (!tierMap[key]) tierMap[key] = { cnt: parseInt(b.REQUIRED_CNT), descs: [] };
+          if (b.BONUS_DESC) tierMap[key].descs.push(b.BONUS_DESC);
+        });
+        // 3) 세트그룹에 tier 주입
+        Object.keys(groupMap).forEach(function(setId) {
+          var tiers = [];
+          Object.keys(tierMap).forEach(function(key) {
+            if (key.indexOf(setId + '_') === 0) {
+              var tier = tierMap[key];
+              tiers.push({ cnt: tier.cnt, desc: tier.descs.join(', ') });
+            }
+          });
+          tiers.sort(function(a, b) { return a.cnt - b.cnt; });
+          groupMap[setId].tiers = tiers;
+        });
+        return Object.values(groupMap).sort(function(a, b) { return a.setId.localeCompare(b.setId); });
+      },
       filteredItems: function() {
         var self = this;
         var filtered = this.items.filter(function(item) {
-          var tabOk = !self.activeTab || item._cat.label === self.activeTab;
+          var tabOk = !self.activeTab
+            || (self.activeTab === '세트' ? (item.SET_ID && item.SET_ID !== '') : item._cat.label === self.activeTab);
           var kwOk  = !self.keyword   || item.ITEM_NAME.indexOf(self.keyword) !== -1;
           var ownOk = self.ownFilter === 'all'
                    || (self.ownFilter === 'owned'    && item.OWNED_YN === 'Y')
@@ -307,6 +377,7 @@
               return parseInt(a.ITEM_ID) - parseInt(b.ITEM_ID);
             });
             self.items = list;
+            self.setBonus = data.setBonus || [];
             self.searchedUser = (data.userName || '').trim();
             if (self.searchedUser) sessionStorage.setItem('loaUserName', self.searchedUser);
           })

@@ -1,5 +1,6 @@
 package my.prac.core.game.dto;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -87,4 +88,12 @@ public class UserBattleContext {
 
 	// 공격/사망 통계 (calcUserBattleContext에서 채워짐, ma_cooldownAndHp에서 재사용)
 	public AttackDeathStat ads = null;
+
+	// 세트 효과 - SPECIAL_* 타입 활성 세트 보너스 목록
+	public List<String> activeSetSpecials = null;
+
+	// 세트 효과 - 최종 비율 보너스 및 쿨타임 감소
+	public int setAtkFinalRate   = 0; // 최종 공격력 증가율 (%)
+	public int setCritFinalRate  = 0; // 최종 크리율 증가율 (%)
+	public int setCooldownReduce = 0; // 쿨타임 감소 (초)
 }
