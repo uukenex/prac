@@ -245,6 +245,13 @@ public class BossAttackS3Controller {
         // 보스 회피 판정
         boolean isEvade = !heavensPunishment && (Math.random() < bossEvadeRate / 100.0);
 
+        // [7010] 회피무시 유물: 보스가 회피해도 공격 관통
+        String bossEvadeIgnoreMsg = "";
+        if (isEvade && ownedBoss.contains(7010)) {
+            isEvade = false;
+            bossEvadeIgnoreMsg = "[회피무시] 보스가 회피했지만 공격했다!" + NL;
+        }
+
         // 데미지 계산
         long damage = 0;
         boolean isCritical = false;
@@ -252,6 +259,7 @@ public class BossAttackS3Controller {
         String dmgMsg = "";
         String bossDefMsg = "";
         String hideMsg = "";
+        String hideIgnoreMsg = "";
         String windSlashMsg = "";
 
         if (!isEvade) {
@@ -259,8 +267,14 @@ public class BossAttackS3Controller {
             // 보스 기본 크리율 10% 고정 (S2 크리율 미적용), 초강력치명타는 크리 발동 시 10% 확률
             int totalCritPercent = Math.max(0, 100 - critDefRate);
 
-            // HIDE_RULE: 특정 시간대 치명타 불가 (천벌/디버프 중엔 무시)
-            hideMsg = applyHideRule(hideRule, heavensPunishment || flag_boss_debuff);
+            // HIDE_RULE: 특정 시간대 치명타 불가 (천벌/디버프/7011 중엔 무시)
+            // [7011] 꿰뚫는 눈: 보스가 숨어있어도 온전한 데미지
+            boolean has7011 = ownedBoss.contains(7011);
+            String rawHideMsg = applyHideRule(hideRule, false); // 7011 없이 체크
+            if (has7011 && !rawHideMsg.isEmpty()) {
+                hideIgnoreMsg = "[꿰뚫는 눈] 보스가 숨어있지만 온전한 데미지!" + NL;
+            }
+            hideMsg = applyHideRule(hideRule, heavensPunishment || flag_boss_debuff || has7011);
 
             double critMultiplier = Math.max(1.0, ctx.critDmg / 100.0);
 
@@ -415,6 +429,15 @@ public class BossAttackS3Controller {
             bossAtkApplied = Math.max(1, (int)(ctx.hpMax * atkPct / 100.0));
         }
 
+        // 세트 회피: 보스 반격 회피 판정
+        String bossAtkEvadeMsg = "";
+        if (flag_boss_attack && bossAtkApplied > 0 && ctx.setEvasionRate > 0
+                && ThreadLocalRandom.current().nextInt(100) < ctx.setEvasionRate) {
+            bossAtkApplied = 0;
+            flag_boss_attack = false;
+            bossAtkEvadeMsg = "[회피!] 보스의 반격을 피했습니다!" + NL;
+        }
+
         // [7005] 가시갑옷: 받은 피해의 10% 반사 → totalDamage에 추가 후 HP 재계산
         int reflectDmg = 0;
         String reflectMsg = "";
@@ -491,12 +514,14 @@ public class BossAttackS3Controller {
         if (!isEvade) {
             msg.append("▶ 입힌 데미지: ").append(damage).append(NL);
             msg.append(dmgMsg).append(NL);
+            if (!bossEvadeIgnoreMsg.isEmpty()) msg.append(bossEvadeIgnoreMsg);
             if (!windSlashMsg.isEmpty()) msg.append(windSlashMsg);
             if (thiefHit2) {
                 msg.append("⚔ 2타 데미지: ").append(damage2).append(NL);
                 msg.append(dmgMsg2).append(NL);
                 if (!bossDefMsg2.isEmpty()) msg.append(bossDefMsg2);
             }
+            if (!hideIgnoreMsg.isEmpty()) msg.append(hideIgnoreMsg);
             if (!hideMsg.isEmpty())     msg.append(hideMsg);
             if (!reflectMsg.isEmpty())  msg.append(reflectMsg);
             if (!spRewardMsg.isEmpty()) msg.append(spRewardMsg);
@@ -508,6 +533,7 @@ public class BossAttackS3Controller {
             msg.append("보스가 공격을 회피했습니다! 데미지 0!").append(NL);
         }
 
+        if (!bossAtkEvadeMsg.isEmpty()) msg.append(bossAtkEvadeMsg);
         if (flag_boss_attack && bossAtkApplied > 0) {
             msg.append("▶ 보스의 반격! 최대HP의 피해! (").append(bossAtkApplied).append(")").append(NL);
             int remainHp = Math.max(0, ctx.hpMax - bossAtkApplied);
