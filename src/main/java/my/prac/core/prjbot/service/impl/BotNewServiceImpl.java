@@ -310,13 +310,13 @@ public class BotNewServiceImpl implements BotNewService {
     }
     
     @Override
-    public void clearRoomBuff(String roomName) {
-        botNewDAO.clearRoomBuff(roomName);
+    public void clearRoomBuff() {
+        botNewDAO.clearRoomBuff();
     }
-    
+
     @Override
-    public HashMap<String,Object> selectDosaBuffInfo(String roomName) {
-        return botNewDAO.selectDosaBuffInfo(roomName);
+    public HashMap<String,Object> selectDosaBuffInfo() {
+        return botNewDAO.selectDosaBuffInfo();
     }
     
     @Override

@@ -3484,23 +3484,14 @@ public class BossAttackController {
 			s.u.hpRegen = origRegen;
 		}
 
-		// 10) 도사 버프 (본인 + 방 전체, 헰 제외)
-		if (!s.hell) {
-			DosaBuffEffect self = null;
-			if ("도사".equals(s.job) || "음양사".equals(s.job)) {
-				self = buildDosaBuffEffect(s.u, s.u.lv, s.roomName, 1);
-				s.effAtkMin += self.addAtkMin;  s.effAtkMax += self.addAtkMax;
-				s.critRate  += self.addCritRate; s.critDmg   += self.addCritDmg;
-				s.u.hpCur   += self.addHp;
-			}
-			DosaBuffEffect room = loadRoomDosaBuffAndBuild(s.roomName);
-			if (room != null) {
-				s.effAtkMin += room.addAtkMin;  s.effAtkMax += room.addAtkMax;
-				s.critRate  += room.addCritRate; s.critDmg   += room.addCritDmg;
-				s.u.hpCur   += room.addHp;
-				botNewService.clearRoomBuff(s.roomName);
-			}
-			if (room != null || self != null) s.dosabuffMsg = buildUnifiedDosaBuffMessage(self, room);
+		// 10) 도사 버프 감지 (적용은 데미지 계산 이후 — 헬/나메 구분 없음, 전체방 기준)
+		DosaBuffEffect dosaSelf = null, dosaRoom = null;
+		if ("도사".equals(s.job) || "음양사".equals(s.job)) {
+			dosaSelf = new DosaBuffEffect();
+		}
+		dosaRoom = loadGlobalDosaBuffAndBuild();
+		if (dosaRoom != null) {
+			botNewService.clearRoomBuff();
 		}
 
 		s.u.hunterGrade = s.ctx.hunterGrade;
@@ -3539,6 +3530,19 @@ public class BossAttackController {
 		s.calc     = s.dmg.calc;
 		s.flags    = s.dmg.flags;
 		s.willKill = s.dmg.willKill;
+
+		// 11-후) 도사 버프 최종 데미지 적용 (+1000 flat, +5%, 최대체력 5% 회복)
+		if (dosaSelf != null || dosaRoom != null) {
+		    int buffCount = (dosaSelf != null ? 1 : 0) + (dosaRoom != null ? 1 : 0);
+		    if (s.calc.atkDmg > 0) {
+		        s.calc.atkDmg += buffCount * 1000;
+		        s.calc.atkDmg += (int) Math.round(s.calc.atkDmg * (buffCount * 5) / 100.0);
+		    }
+		    int heal = (int) Math.round(s.hpMax * (buffCount * 5) / 100.0);
+		    int beforeHpDosa = s.u.hpCur;
+		    s.u.hpCur = Math.min(s.hpMax, s.u.hpCur + heal);
+		    s.dosabuffMsg = buildUnifiedDosaBuffMessage(dosaSelf, dosaRoom, s.u.hpCur - beforeHpDosa);
+		}
 
 		// ── 세트 회피: monPattern 1,4,5,6 회피 판정 ──────────────────────────────
 		if (s.ctx.setEvasionRate > 0) {
@@ -7604,61 +7608,16 @@ public class BossAttackController {
 
 	    return atkMax;
 	}
-	private DosaBuffEffect loadRoomDosaBuffAndBuild(String roomName) {
-	    HashMap<String,Object> dosaBuff = botNewService.selectDosaBuffInfo(roomName);
+	// 전체방 기준 도사 버프 존재 여부 확인 (방 제한 없음)
+	private DosaBuffEffect loadGlobalDosaBuffAndBuild() {
+	    HashMap<String,Object> dosaBuff = botNewService.selectDosaBuffInfo();
 	    if (dosaBuff == null) return null;
-
-	    String dosaName = (String)dosaBuff.get("USER_NAME");
-
-	    // [FIX] selectUser 제거 — ATK_MAX는 selectDosaBuffInfo SQL에서 JOIN으로 직접 조회
-	    User dosaUser = new User();
-	    dosaUser.userName = dosaName;
-	    dosaUser.atkMax   = safeInt(dosaBuff.get("ATK_MAX"));
-
-	    int dosaLv = 1;
-	    try {
-	        dosaLv = Integer.parseInt(dosaBuff.get("LV").toString());
-	    } catch (Exception ignore) {}
-
-	    return buildDosaBuffEffect(dosaUser, dosaLv, roomName, 0);
+	    return new DosaBuffEffect();
 	}
-	//도사
-	private DosaBuffEffect buildDosaBuffEffect(User dosaUser, int dosaLv, String roomName, int selfYn) {
-	    DosaBuffEffect eff = new DosaBuffEffect();
 
-	    int dosaAtkMax = calcUserEffectiveAtkMax(dosaUser, roomName);
-
-	    int dosaLvBonus = 0;
-	    int dosaCriDmg  = 0;
-
-	    if(selfYn==1) {
-	    	dosaLvBonus = (int) Math.round(dosaLv);
-	    	dosaCriDmg = (int) Math.round(dosaAtkMax * 0.1);
-	    	//dosaCriDmg = (int) Math.round(dosaAtkMax * 0.05);
-	    	//eff.addAtkMin   = dosaLvBonus;
-	 	    //eff.addAtkMax   = dosaLvBonus;
-	 	    //eff.addCritRate = dosaLvBonus;
-	 	    //eff.addCritDmg  = dosaCriDmg;
-	 	    eff.addHp       = dosaCriDmg*2;
-	    }else {
-	    	dosaLvBonus = (int) Math.round(dosaLv * 0.5);
-	    	dosaCriDmg = (int) Math.round(dosaAtkMax * 0.1);
-	    	eff.addAtkMin   = dosaLvBonus;
-		    eff.addAtkMax   = dosaLvBonus*3;
-		    eff.addCritRate = dosaLvBonus*2;
-		    eff.addCritDmg  = dosaCriDmg/10;
-		    eff.addHp       = dosaCriDmg*10;
-	    }
-	    return eff;
-	}
-	
 	public static class DosaBuffEffect {
-	    public int addAtkMin;
-	    public int addAtkMax;
-	    public int addCritRate;
-	    public int addCritDmg;
-	    public int addHp;
-	    public String msg;
+	    // 효과는 고정값: 최종 데미지 +1000 flat, +5%, 최대체력 5% 회복
+	    // (필드는 메시지 빌더용으로 유지)
 	}
 
 	private DamageOutcome calculateDamage(
@@ -8202,38 +8161,13 @@ public class BossAttackController {
 	    return sp;
 	}
 
-	private String buildUnifiedDosaBuffMessage(DosaBuffEffect self, DosaBuffEffect room) {
-
-	    double min= 0, max = 0, crit = 0, cdmg = 0, hp = 0;
-
-	    if (self != null) {
-	    	min  += self.addAtkMin; 
-	    	max  += self.addAtkMax;
-	        crit += self.addCritRate;
-	        cdmg += self.addCritDmg;
-	        hp   += self.addHp;
-	    }
-
-	    if (room != null) {
-	    	min  += room.addAtkMin; 
-	    	max  += room.addAtkMax;
-	        crit += room.addCritRate;
-	        cdmg += room.addCritDmg;
-	        hp   += room.addHp;
-	    }
-
-	    StringBuilder sb = new StringBuilder("※버프 효과: ");
-
-	    List<String> parts = new ArrayList<>();
-
-	    if (min != 0)  parts.add("MIN "  + (min >= 0 ? "+" : "") + (int)min);
-	    if (max != 0)  parts.add("MAX "  + (max >= 0 ? "+" : "") + (int)max);
-	    if (crit != 0) parts.add("CRIT " + (crit>= 0 ? "+" : "") + (int)crit + "%");
-	    if (cdmg != 0) parts.add("CDMG " + (cdmg>= 0 ? "+" : "") + (int)cdmg + "%");
-	    if (hp   != 0) parts.add("HP "   + (hp  >= 0 ? "+" : "") + (int)hp);
-
-	    sb.append(String.join(", ", parts));
-
+	private String buildUnifiedDosaBuffMessage(DosaBuffEffect self, DosaBuffEffect room, int actualHeal) {
+	    int buffCount = (self != null ? 1 : 0) + (room != null ? 1 : 0);
+	    int flatBonus = buffCount * 1000;
+	    int rateBonus = buffCount * 5;
+	    StringBuilder sb = new StringBuilder("※도사 기원: 최종 데미지 +").append(flatBonus);
+	    if (rateBonus > 0) sb.append(", +").append(rateBonus).append("%");
+	    if (actualHeal > 0) sb.append(", HP +").append(actualHeal).append(" 회복");
 	    return sb.toString();
 	}
 	

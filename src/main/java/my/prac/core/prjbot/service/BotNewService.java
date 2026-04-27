@@ -114,9 +114,9 @@ public interface BotNewService {
     List<HashMap<String,Object>> selectOngoingChallengesForUnclearedBosses();
     List<HashMap<String,Object>> selectSpAndAtkRanking() throws Exception;
     
-    void clearRoomBuff(String roomName);
-    
-    HashMap<String,Object> selectDosaBuffInfo(String roomName);
+    void clearRoomBuff();
+
+    HashMap<String,Object> selectDosaBuffInfo();
     
     List<HashMap<String, Object>> selectAchievementCountRanking();
     List<AchievementCount> selectAchvCountsGlobal(String userName,String roomName);
