@@ -655,7 +655,8 @@
 	        NVL(i.CRI_DMG,   0) AS CRI_DMG,
 	        NVL(i.HP_MAX_RATE,   0) AS HP_MAX_RATE,
 	        NVL(i.ATK_MAX_RATE,   0) AS ATK_MAX_RATE,
-	        i.TARGET_LV
+	        i.TARGET_LV,
+	        NVL(i.SET_ID, '') AS SET_ID
 	    FROM TBOT_POINT_NEW_ITEM i
 	    --WHERE i.ITEM_TYPE in ('MARKET','MARKET2')
 	    ORDER BY i.ITEM_ID

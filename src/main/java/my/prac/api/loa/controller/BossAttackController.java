@@ -1715,6 +1715,22 @@ public class BossAttackController {
         }
 
 
+	    // ─ 세트 효과 ─
+	    boolean hasSetEffect = ctx.setCooldownReduce > 0 || ctx.setAtkFinalRate > 0 || ctx.setCritFinalRate > 0
+	            || (ctx.activeSetSpecials != null && !ctx.activeSetSpecials.isEmpty());
+	    if (hasSetEffect) {
+	        sb.append(NL).append("💠 세트 효과:").append(NL);
+	        if (ctx.setAtkFinalRate > 0)
+	            sb.append("  └ 최종공격력 +").append(ctx.setAtkFinalRate).append("%").append(NL);
+	        if (ctx.setCritFinalRate > 0)
+	            sb.append("  └ 최종크리율 +").append(ctx.setCritFinalRate).append("%").append(NL);
+	        if (ctx.setCooldownReduce > 0)
+	            sb.append("  └ 쿨타임 -").append(ctx.setCooldownReduce).append("초").append(NL);
+	        if (ctx.activeSetSpecials != null) {
+	            for (String sp : ctx.activeSetSpecials) sb.append("  └ ").append(sp).append(NL);
+	        }
+	    }
+
 	    // ─ 인벤토리 ─
 	    try {
 	        sb.append(NL).append("▶ 인벤토리<옵션:/인벤>").append(NL);
