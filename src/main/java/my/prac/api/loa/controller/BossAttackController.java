@@ -368,7 +368,7 @@ public class BossAttackController {
 	    // ── 세트 효과 적용 (flat 보너스) ─────────────────────────────────────────
 	    @SuppressWarnings("unchecked")
 	    List<HashMap<String,Object>> setBonus = (List<HashMap<String,Object>>) invBuffData.get("setBonus");
-	    int setAtkFinalRate = 0, setCritFinalRate = 0, setCooldownReduce = 0;
+	    int setAtkFinalRate = 0, setCritFinalRate = 0, setCooldownReduce = 0, setEvasionRate = 0;
 	    if (setBonus != null) {
 	        for (HashMap<String,Object> b : setBonus) {
 	            String bt = Objects.toString(b.get("BONUS_TYPE"), "");
@@ -383,6 +383,7 @@ public class BossAttackController {
 	                case "ATK_FINAL_RATE":  setAtkFinalRate  += bv; break;
 	                case "CRIT_FINAL_RATE": setCritFinalRate += bv; break;
 	                case "COOLDOWN_REDUCE": setCooldownReduce += bv; break;
+	                case "EVASION_RATE":    setEvasionRate   += bv; break;
 	                default:
 	                    if (bt.startsWith("SPECIAL_")) {
 	                        if (ctx.activeSetSpecials == null) ctx.activeSetSpecials = new ArrayList<>();
@@ -666,6 +667,7 @@ public class BossAttackController {
 	    ctx.setAtkFinalRate   = setAtkFinalRate;
 	    ctx.setCritFinalRate  = setCritFinalRate;
 	    ctx.setCooldownReduce = setCooldownReduce;
+	    ctx.setEvasionRate    = setEvasionRate;
 	    ctx.atkMin = atkMin;
 	    ctx.atkMax = atkMax;
 	    ctx.hpMax  = hpMax;
@@ -1717,7 +1719,7 @@ public class BossAttackController {
 
 	    // ─ 세트 효과 ─
 	    boolean hasSetEffect = ctx.setCooldownReduce > 0 || ctx.setAtkFinalRate > 0 || ctx.setCritFinalRate > 0
-	            || (ctx.activeSetSpecials != null && !ctx.activeSetSpecials.isEmpty());
+	            || ctx.setEvasionRate > 0 || (ctx.activeSetSpecials != null && !ctx.activeSetSpecials.isEmpty());
 	    if (hasSetEffect) {
 	        sb.append(NL).append("※ 세트 효과:").append(NL);
 	        if (ctx.setAtkFinalRate > 0)
@@ -1726,6 +1728,8 @@ public class BossAttackController {
 	            sb.append("  └ 최종크리율 +").append(ctx.setCritFinalRate).append("%").append(NL);
 	        if (ctx.setCooldownReduce > 0)
 	            sb.append("  └ 쿨타임 -").append(ctx.setCooldownReduce).append("초").append(NL);
+	        if (ctx.setEvasionRate > 0)
+	            sb.append("  └ 회피율 ").append(ctx.setEvasionRate).append("%").append(NL);
 	        if (ctx.activeSetSpecials != null) {
 	            for (String sp : ctx.activeSetSpecials) sb.append("  └ ").append(sp).append(NL);
 	        }
@@ -3535,6 +3539,18 @@ public class BossAttackController {
 		s.calc     = s.dmg.calc;
 		s.flags    = s.dmg.flags;
 		s.willKill = s.dmg.willKill;
+
+		// ── 세트 회피: monPattern 1,4,5,6 회피 판정 ──────────────────────────────
+		if (s.ctx.setEvasionRate > 0) {
+		    int mp = s.flags.monPattern;
+		    if ((mp == 1 || mp == 4 || mp == 5 || mp == 6)
+		            && ThreadLocalRandom.current().nextInt(100) < s.ctx.setEvasionRate) {
+		        String origMsg = s.calc.patternMsg != null ? s.calc.patternMsg : "";
+		        s.calc.monDmg   = 0;
+		        s.calc.endBattle = false;
+		        s.calc.patternMsg = origMsg + " → [회피!]";
+		    }
+		}
 
 		// 11-후) 축복술사
 		if ("축복술사".equals(s.job) && s.dmg.calc.atkDmg > 0) {
