@@ -1783,7 +1783,8 @@
 		    NVL(i.TARGET_LV, 0) AS TARGET_LV,
 		    NVL(i.ITEM_DESC, '') AS ITEM_DESC,
 		    NVL(gown.GLOBAL_OWN_CNT, 0) AS GLOBAL_OWN_CNT,
-		    NVL(ever.EVER_OBTAINED_CNT, 0) AS EVER_OBTAINED_CNT
+		    NVL(ever.EVER_OBTAINED_CNT, 0) AS EVER_OBTAINED_CNT,
+		    NVL(i.SET_ID, '') AS SET_ID
 		FROM TBOT_POINT_NEW_ITEM i
 		LEFT JOIN (
 		    SELECT ITEM_ID, SUM(QTY) AS OWN_QTY
@@ -1809,6 +1810,26 @@
 		WHERE i.ITEM_TYPE NOT IN ('DROP0', 'MARKET0', 'MASTER')
 		  AND i.ITEM_ID > 100
 		ORDER BY i.ITEM_ID
+	</select>
+
+	<!-- 유저의 활성 세트 보너스 조회 (보유 아이템 수 >= 발동조건) -->
+	<select id="selectActiveSetBonuses" resultType="hashmap" parameterType="String">
+		/* selectActiveSetBonuses */
+		SELECT sb.SET_ID, sb.REQUIRED_CNT, sb.BONUS_TYPE, sb.BONUS_VALUE, sb.BONUS_DESC,
+		       owned.OWNED_CNT
+		FROM TBOT_POINT_NEW_ITEM_SET_BONUS sb
+		JOIN (
+		    SELECT i.SET_ID, COUNT(DISTINCT inv.ITEM_ID) AS OWNED_CNT
+		    FROM TBOT_POINT_NEW_ITEM i
+		    JOIN TBOT_POINT_NEW_INVENTORY inv ON inv.ITEM_ID = i.ITEM_ID
+		    WHERE inv.USER_NAME = #{userName}
+		      AND inv.DEL_YN = '0'
+		      AND NVL(inv.QTY, 0) > 0
+		      AND i.SET_ID IS NOT NULL
+		    GROUP BY i.SET_ID
+		) owned ON owned.SET_ID = sb.SET_ID
+		WHERE owned.OWNED_CNT >= sb.REQUIRED_CNT
+		ORDER BY sb.SET_ID, sb.REQUIRED_CNT
 	</select>
 
 <select id="selectInventoryItemsByIds" resultType="int">

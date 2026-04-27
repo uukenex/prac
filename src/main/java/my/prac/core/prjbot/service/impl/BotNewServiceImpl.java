@@ -447,6 +447,11 @@ public class BotNewServiceImpl implements BotNewService {
     	 return botNewDAO.selectTotalDropItems(userName);
     }
 
+    @Override
+    public List<HashMap<String,Object>> selectActiveSetBonuses(String userName) {
+        return botNewDAO.selectActiveSetBonuses(userName);
+    }
+
     public int selectHellBossAttackCount(String userName) {
         return botNewDAO.selectHellBossAttackCount(userName);
     }

@@ -150,6 +150,8 @@ public interface BotNewService {
 
     List<HashMap<String, Object>> selectTotalDropItems(String userName);
 
+    List<HashMap<String,Object>> selectActiveSetBonuses(String userName);
+
     // [6-1] 헬보스/직업마스터/룰렛/학살자 업적 관련
     int selectHellBossAttackCount(String userName);
     int selectHellBossClearCount(String userName);
