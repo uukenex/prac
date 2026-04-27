@@ -2723,7 +2723,26 @@ public class BossAttackController {
 		      .append("↘가격: ").append(itemPrice.toString()).append("").append(NL)
 		      .append("↘옵션: ").append(optionStr).append(NL)
 		      .append("✨포인트: ").append(afterUserPoint.toString()).append("");
-	    	
+
+	    	// ── 세트 효과 달성 알림 ───────────────────────────────────────────────
+	    	String setId = Objects.toString(item.get("SET_ID"), "");
+	    	if (!setId.isEmpty()) {
+	    	    try {
+	    	        List<HashMap<String,Object>> activeBonus = botNewService.selectActiveSetBonuses(userName);
+	    	        for (HashMap<String,Object> b : activeBonus) {
+	    	            if (!setId.equals(Objects.toString(b.get("SET_ID"), ""))) continue;
+	    	            int ownedCnt    = b.get("OWNED_CNT")    != null ? ((Number) b.get("OWNED_CNT")).intValue()    : 0;
+	    	            int requiredCnt = b.get("REQUIRED_CNT") != null ? ((Number) b.get("REQUIRED_CNT")).intValue() : 0;
+	    	            // 보유 수 == 발동 조건 = 이번 구매로 새로 달성
+	    	            if (ownedCnt == requiredCnt) {
+	    	                sb.append(NL).append("💠 [").append(setId).append("] ").append(requiredCnt).append("세트 효과 달성!");
+	    	                String desc = Objects.toString(b.get("BONUS_DESC"), "");
+	    	                if (!desc.isEmpty()) sb.append(NL).append("  ▸ ").append(desc);
+	    	            }
+	    	        }
+	    	    } catch (Exception ignore) {}
+	    	}
+
 	    	try {
 	    		botNewService.closeOngoingBattleTx(userName, roomName);
 	    	} catch(Exception e) {
