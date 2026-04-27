@@ -1060,6 +1060,7 @@
 		) B
 		ON U.USER_NAME = B.USER_NAME
 		WHERE NVL(I.INV_SP, 0) + NVL(P.POINT_SP, 0) > 100000000
+		  AND U.USER_NAME NOT IN ('일어난다람쥐/카단')
 		ORDER BY TOT_SP DESC
 	</select>
 	
