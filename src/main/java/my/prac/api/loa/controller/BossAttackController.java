@@ -4471,8 +4471,8 @@ public class BossAttackController {
 		try { gp = botNewService.selectGpBalance(userName); }
 		catch (Exception e) { return "GP 조회 중 오류가 발생했습니다."; }
 
-		if (gp < 10) {
-			return userName + "님," + NL + "보스뽑기에는 10 GP가 필요합니다." + NL
+		if (gp < 6) {
+			return userName + "님," + NL + "보스뽑기에는 6 GP가 필요합니다." + NL
 				+ "현재 GP: " + gp + " GP" + NL
 				+ "(7000번대 보스 아이템 판매 시 1개당 1 GP 획득)";
 		}
@@ -4497,12 +4497,12 @@ public class BossAttackController {
 			return userName + "님," + NL + "현재 모든 보스 아이템을 보유 중입니다." + NL
 				+ "잔여 GP: " + String.format("%.2f", gp) + " GP";
 
-		// GP 10 차감
+		// GP 6 차감
 		try {
 			HashMap<String, Object> gpDeduct = new HashMap<>();
 			gpDeduct.put("userName", userName);
 			gpDeduct.put("roomName", roomName);
-			gpDeduct.put("score",   -10.0);
+			gpDeduct.put("score",   -6.0);
 			gpDeduct.put("cmd",     "BOSS_GACHA");
 			botNewService.insertGpRecord(gpDeduct);
 		} catch (Exception e) { return "GP 차감 중 오류가 발생했습니다."; }
@@ -4524,7 +4524,7 @@ public class BossAttackController {
 				HashMap<String, Object> gpRestore = new HashMap<>();
 				gpRestore.put("userName", userName);
 				gpRestore.put("roomName", roomName);
-				gpRestore.put("score",   10.0);
+				gpRestore.put("score",   6.0);
 				gpRestore.put("cmd",     "BOSS_GACHA_RESTORE");
 				botNewService.insertGpRecord(gpRestore);
 			} catch (Exception ignore) {}
@@ -4532,9 +4532,9 @@ public class BossAttackController {
 		}
 
 		return userName + "님," + NL
-				+ "🎰 보스뽑기! (-10 GP)" + NL
+				+ "🎰 보스뽑기! (-6 GP)" + NL
 				+ "▶ 획득 아이템: #" + giveItemId + NL
-				+ "- 잔여 GP: " + (gp - 10) + " GP";
+				+ "- 잔여 GP: " + (gp - 6) + " GP";
 	}
 
 		private String sellCategoryItem(String userName, String roomName, String slotKey) throws Exception {
