@@ -4534,7 +4534,7 @@ public class BossAttackController {
 		return userName + "님," + NL
 				+ "🎰 보스뽑기! (-6 GP)" + NL
 				+ "▶ 획득 아이템: #" + giveItemId + NL
-				+ "- 잔여 GP: " + (gp - 6) + " GP";
+				+ "- 잔여 GP: " + String.format("%.2f", gp - 6) + " GP";
 	}
 
 		private String sellCategoryItem(String userName, String roomName, String slotKey) throws Exception {
@@ -4985,7 +4985,30 @@ public class BossAttackController {
 	        }
 	    } catch (Exception ignore) {}
 
-	    
+    // =========================
+    // GP 랭킹
+    // =========================
+    try {
+        List<HashMap<String, Object>> gpList = botNewService.selectGpRanking();
+        sb.append(NL).append("◆ GP 랭킹 (보스뽑기: 6 GP)").append(NL);
+        if (gpList == null || gpList.isEmpty()) {
+            sb.append("- 데이터가 없습니다.").append(NL);
+        } else {
+            int rank = 1;
+            for (HashMap<String, Object> row : gpList) {
+                String uName    = Objects.toString(row.get("USER_NAME"), "-");
+                double curGp    = row.get("CURRENT_GP")     != null ? ((Number)row.get("CURRENT_GP")).doubleValue()     : 0;
+                double totalGp  = row.get("TOTAL_EARNED_GP") != null ? ((Number)row.get("TOTAL_EARNED_GP")).doubleValue() : 0;
+                sb.append(rank).append("위 ").append(uName)
+                  .append(" - 보유 ").append(String.format("%.2f", curGp)).append(" GP")
+                  .append(" / 누적 ").append(String.format("%.2f", totalGp)).append(" GP")
+                  .append(NL);
+                if (++rank > 10) break;
+            }
+        }
+    } catch (Exception ignore) {}
+
+
 	    sb.append(NL);
 	    /* === ⚔ 몬스터 학살자 (전체) === */
 	    /*

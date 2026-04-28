@@ -209,6 +209,7 @@ public interface BotNewDAO {
     List<HashMap<String, Object>> selectHellRewardItemsWithOwnCount();
     void insertGpRecord(HashMap<String, Object> param);
     double selectGpBalance(@Param("userName") String userName);
+    List<HashMap<String, Object>> selectGpRanking();
 
     void lockMacroUser(HashMap<String, Object> map);
     

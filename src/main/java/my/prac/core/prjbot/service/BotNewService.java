@@ -170,6 +170,7 @@ public interface BotNewService {
     List<HashMap<String, Object>> selectHellRewardItemsWithOwnCount();
     void insertGpRecord(HashMap<String, Object> param);
     double selectGpBalance(String userName);
+    List<HashMap<String, Object>> selectGpRanking();
     List<Integer> selectBossItemIds();
     
     HashMap<String,Object> lockMacroUser(String userName);

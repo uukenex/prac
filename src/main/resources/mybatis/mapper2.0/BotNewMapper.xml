@@ -547,6 +547,21 @@
       AND NEW_YN = '2'
   </select>
 
+  <!-- GP 랭킹 (현재 GP / 누적 획득 GP, 현재 GP > 0 기준 TOP10) -->
+  <!-- TOTAL_EARNED_GP: 실제 획득분만 합산 (BOSS_GACHA_RESTORE 환급 제외) -->
+  <select id="selectGpRanking" resultType="hashmap">
+    /* selectGpRanking */
+    SELECT USER_NAME,
+           ROUND(NVL(SUM(SCORE), 0), 2)  AS CURRENT_GP,
+           ROUND(NVL(SUM(CASE WHEN SCORE > 0 AND NVL(CMD,'') != 'BOSS_GACHA_RESTORE'
+                              THEN SCORE ELSE 0 END), 0), 2)  AS TOTAL_EARNED_GP
+      FROM TBOT_POINT_RANK
+     WHERE NEW_YN = '2'
+     GROUP BY USER_NAME
+    HAVING NVL(SUM(SCORE), 0) > 0
+     ORDER BY CURRENT_GP DESC, TOTAL_EARNED_GP DESC
+  </select>
+
   <!-- 보스 뽑기용 7000번대 아이템 ID 목록 -->
   <select id="selectBossItemIds" resultType="int">
     /* selectBossItemIds */

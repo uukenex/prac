@@ -554,6 +554,11 @@ public class BotNewServiceImpl implements BotNewService {
     }
 
     @Override
+    public List<HashMap<String, Object>> selectGpRanking() {
+        return botNewDAO.selectGpRanking();
+    }
+
+    @Override
     public HashMap<String, Object> lockMacroUser(String userName) {
     	HashMap <String, Object> param = new HashMap<>();
         param.put("userName", userName);
