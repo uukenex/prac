@@ -1,7 +1,6 @@
 package my.prac.api.loa.controller;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 import javax.annotation.Resource;
 
@@ -21,20 +20,15 @@ public class LoaEquipSimViewController {
     @Resource(name = "core.prjbot.BotNewService")
     BotNewService botNewService;
 
-    // ── 직업 목록 (드롭다운용) ─────────────────────────────────
-    private static final List<String> JOB_LIST = Arrays.asList(
-        "전사","검성","용사","파이터","도적","저격수","궁수","궁사",
-        "사냥꾼","어둠사냥꾼","헌터","곰","도사","음양사","제너럴",
-        "어쓰신","복수자","사신","처단자","축복술사","은둔자","흡혈귀"
-    );
-
     /** JSP 뷰 페이지 */
     @GetMapping("/equip-sim-view")
     public String equipSimPage() {
         return "nonsession/loa/equip_sim_view";
     }
 
-    /** 초기 데이터: 유저 기본 스탯 + 보유 아이템 목록 */
+    /**
+     * 초기 데이터: 유저 기본 스탯 + 전체 아이템(보유/미보유 포함) + jobList(JOB_DEFS 기준)
+     */
     @GetMapping("/api/equip-sim-init")
     @ResponseBody
     public ResponseEntity<?> getEquipSimInit(
@@ -56,16 +50,14 @@ public class LoaEquipSimViewController {
         String hunterGrade  = resolveHunterGrade(userName);
         double hellNerfMult = MiniGameUtil.getHellNerfMult(hunterGrade);
 
-        // 보유 아이템만 필터
-        List<HashMap<String,Object>> ownedItems = new ArrayList<>();
+        // 전체 아이템 (보유 + 미보유 모두)
+        List<HashMap<String,Object>> allItems = new ArrayList<>();
         try {
-            for (HashMap<String,Object> item : botNewService.selectAllItemsWithOwned(userName)) {
-                Object qty = item.get("OWN_QTY");
-                if (qty instanceof Number && ((Number)qty).intValue() > 0) {
-                    ownedItems.add(item);
-                }
-            }
+            allItems = botNewService.selectAllItemsWithOwned(userName);
         } catch (Exception ignore) {}
+
+        // JOB_DEFS 기준 활성 직업 목록
+        List<String> jobList = new ArrayList<>(MiniGameUtil.JOB_DEFS.keySet());
 
         Map<String,Object> userMap = new LinkedHashMap<>();
         userMap.put("userName",    userName);
@@ -79,11 +71,11 @@ public class LoaEquipSimViewController {
         userMap.put("job",         u.job == null ? "" : u.job.trim());
         userMap.put("nightmareYn", u.nightmareYn);
 
-        result.put("user",        userMap);
-        result.put("hunterGrade", hunterGrade);
+        result.put("user",         userMap);
+        result.put("hunterGrade",  hunterGrade);
         result.put("hellNerfMult", hellNerfMult);
-        result.put("ownedItems",  ownedItems);
-        result.put("jobList",     JOB_LIST);
+        result.put("allItems",     allItems);
+        result.put("jobList",      jobList);
 
         return ResponseEntity.ok(result);
     }
@@ -228,12 +220,21 @@ public class LoaEquipSimViewController {
             atkMax += u.lv * 150;
         }
 
+        // ── 헌터: 치피전환율 (치명타 100% 초과분 → 치명타 데미지 전환) ──
+        int criConvert = 0;
+        if ("헌터".equals(job) && crit > 100) {
+            criConvert = crit - 100;
+            critDmg   += criConvert;
+            crit       = 100;
+        }
+
         result.put("atkMin",      atkMin);
         result.put("atkMax",      atkMax);
         result.put("hpMax",       hpMax);
         result.put("regen",       regen);
         result.put("crit",        crit);
         result.put("critDmg",     critDmg);
+        result.put("criConvert",  criConvert);
         result.put("hunterGrade", hunterGrade);
         result.put("job",         job);
 
