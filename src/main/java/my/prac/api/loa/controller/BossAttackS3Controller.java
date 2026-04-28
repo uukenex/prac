@@ -732,13 +732,10 @@ public class BossAttackS3Controller {
         for (HashMap<String, Object> row : allContributors)
             totScore += Long.parseLong(row.get("SCORE").toString());
 
-        // 2% 이상 데미지 기여자 목록 (순서 유지)
-        List<String> qualified = new ArrayList<>();
-        for (HashMap<String, Object> row : allContributors) {
-            long score = Long.parseLong(row.get("SCORE").toString());
-            double dmgPct = totScore > 0 ? score * 100.0 / totScore : 0;
-            if (dmgPct >= 2.0) qualified.add(row.get("USER_NAME").toString());
-        }
+        // 전체 참여자 이름 목록 (순서 유지 — 2% 제한 없음)
+        List<String> allNames = new ArrayList<>();
+        for (HashMap<String, Object> row : allContributors)
+            allNames.add(row.get("USER_NAME").toString());
 
         // 참여자 수에 따라 추첨 인원 결정 (1~9명→1명, 10~17명→2명, 18명+→3명)
         int participantCount = allContributors.size();
@@ -766,9 +763,9 @@ public class BossAttackS3Controller {
             for (HashMap<String, Object> row : eligibleFromDB)
                 noItemNames.add(row.get("USER_NAME").toString());
 
-            // 2%이상 기여자 중 7000번대 미소지자
+            // 전체 참여자 중 7000번대 미소지자
             List<String> itemCandidates = new ArrayList<>();
-            for (String uName : qualified) {
+            for (String uName : allNames) {
                 if (noItemNames.contains(uName)) itemCandidates.add(uName);
             }
 
@@ -861,18 +858,18 @@ public class BossAttackS3Controller {
             } else {
                 // MVP: SCORE DESC 정렬 → 첫 번째가 데미지 1위
                 String mvpName = allContributors.get(0).get("USER_NAME").toString();
-                // 당첨자: 2%이상 기여자 중 winnerCount명 추첨 (각각 독립 GP 추첨)
-                List<String> gpWinnerList = pickWinners(qualified, winnerCount, rand);
+                // 당첨자: 전체 참여자 중 winnerCount명 추첨 (각각 독립 GP 추첨)
+                List<String> gpWinnerList = pickWinners(allNames, winnerCount, rand);
                 Map<String, Double> gpWinnerMap = new LinkedHashMap<>();
                 for (String w : gpWinnerList) {
                     gpWinnerMap.put(w, 0.5 + rand.nextDouble() * 0.5); // 0.5 ~ 1.0
                 }
 
-                // 추첨 대상 목록 표시 (2%이상만)
-                if (!qualified.isEmpty()) {
-                    msg.append("-- 추첨 대상 (2%이상 ").append(qualified.size()).append("명) --").append(NL);
-                    for (int i = 0; i < qualified.size(); i++) {
-                        String uName = qualified.get(i);
+                // 추첨 대상 목록 표시 (전체 참여자)
+                if (!allNames.isEmpty()) {
+                    msg.append("-- 추첨 대상 (전체 ").append(allNames.size()).append("명) --").append(NL);
+                    for (int i = 0; i < allNames.size(); i++) {
+                        String uName = allNames.get(i);
                         boolean isWin = gpWinnerMap.containsKey(uName);
                         boolean isMvp = uName.equals(mvpName);
                         msg.append(isWin ? "★" : "  ")
