@@ -438,11 +438,11 @@ public class BossAttackS3Controller {
             bossAtkEvadeMsg = "[회피!] 보스의 반격을 피했습니다!" + NL;
         }
 
-        // [7005] 가시갑옷: 받은 피해의 10% 반사 → totalDamage에 추가 후 HP 재계산
+        // [7005] 가시갑옷: 보스전에서는 기존(10%) 대비 10% 성능 → 받은 피해의 1% 반사
         int reflectDmg = 0;
         String reflectMsg = "";
         if (ownedBoss.contains(7005) && bossAtkApplied > 0) {
-            reflectDmg = Math.max(1, (int)Math.round(bossAtkApplied * 0.10));
+            reflectDmg = Math.max(1, (int)Math.round(bossAtkApplied * 0.01));
             totalDamage += reflectDmg;
             newHpSp = SP.of(curHpNum, curHpExt).subtract(SP.fromSp(totalDamage));
             isKill = SP.toBaseValue(newHpSp) <= 0;
