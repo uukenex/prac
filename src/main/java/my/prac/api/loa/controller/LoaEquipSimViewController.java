@@ -228,13 +228,25 @@ public class LoaEquipSimViewController {
             crit       = 100;
         }
 
+        // ── 직업 데미지 배율 (BossAttackController와 동일 값) ────────
+        double jobDmgMul = getJobDmgMul(job);
+        int effAtkMin = (int) Math.round(atkMin * jobDmgMul);
+        int effAtkMax = (int) Math.round(atkMax * jobDmgMul);
+
+        // ── 헌터 등급별 criCap (치명타 → 치피전환 상한 안내용) ────────
+        int criCap = getCriCapForGrade(hunterGrade);
+
         result.put("atkMin",      atkMin);
         result.put("atkMax",      atkMax);
+        result.put("effAtkMin",   effAtkMin);
+        result.put("effAtkMax",   effAtkMax);
+        result.put("jobDmgMul",   jobDmgMul);
         result.put("hpMax",       hpMax);
         result.put("regen",       regen);
         result.put("crit",        crit);
         result.put("critDmg",     critDmg);
         result.put("criConvert",  criConvert);
+        result.put("criCap",      criCap);
         result.put("hunterGrade", hunterGrade);
         result.put("job",         job);
 
@@ -244,6 +256,44 @@ public class LoaEquipSimViewController {
     // ════════════════════════════════════════════════════════════
     // Private helpers
     // ════════════════════════════════════════════════════════════
+
+    /** BossAttackController의 jobDmgMul 값과 동일하게 유지 */
+    private double getJobDmgMul(String job) {
+        if (job == null) return 1.0;
+        switch (job) {
+            case "궁수":    return 3.0;
+            case "사냥꾼":  return 3.0;
+            case "검성":    return 2.2;
+            case "저격수":  return 2.0;
+            case "음양사":  return 1.6;
+            case "처단자":  return 1.4;
+            case "용사":    return 1.4;
+            case "전사":    return 1.4;
+            case "어쎄신":  return 1.3;
+            case "제너럴":  return 1.2;
+            case "복수자":  return 0.2;
+            default:        return 1.0;
+        }
+    }
+
+    /** 헌터 등급별 전생(죽음) 기반 치명타 데미지 상한 */
+    private int getCriCapForGrade(String grade) {
+        if (grade == null) return 5;
+        switch (grade) {
+            case "SSS": return 60;
+            case "SS":  return 45;
+            case "S":   return 30;
+            case "A+":  return 27;
+            case "A":   return 25;
+            case "B+":  return 22;
+            case "B":   return 20;
+            case "C+":  return 16;
+            case "C":   return 15;
+            case "D+":  return 11;
+            case "D":   return 10;
+            default:    return 5;
+        }
+    }
 
     private String resolveHunterGrade(String userName) {
         try {
