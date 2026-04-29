@@ -99,6 +99,11 @@ public class BossAttackController {
 	private static volatile long TOP1_SP_CACHE = 0L;
 	private static volatile long TOP1_SP_CACHE_TS = 0L;
 	private static final long TOP1_SP_CACHE_TTL_MS = 3_600_000L;
+
+	// 다중 구매 시 insertPointRank 합산용 ThreadLocal (합산 모드일 때만 non-null)
+	private static final ThreadLocal<SP[]> MULTI_BUY_COST_TL = new ThreadLocal<>();
+	// 다중 판매 시 insertPointRank 합산용 ThreadLocal (합산 모드일 때만 non-null)
+	private static final ThreadLocal<SP[]> MULTI_SELL_TOTAL_TL = new ThreadLocal<>();
 	
 	/* ===== DI ===== */
 	@Lazy @Autowired BossAttackS3Controller bossAttackS3Controller;
@@ -2281,12 +2286,17 @@ public class BossAttackController {
 	    }
 
 	    // 멀티 구매: 콤마 포함 시
-	    if (rawParam.contains(",")) {
-	        return buyMultiItems(roomName, userName, rawParam);
+	    if (!botNewService.tryAcquireUserActionLock(userName)) {
+	        return "⏳ 처리 중입니다. 잠시 후 다시 시도해 주세요.";
 	    }
-
-	    // 단일 구매
-	    return buySingleItem(roomName, userName, rawParam);
+	    try {
+	        if (rawParam.contains(",")) {
+	            return buyMultiItems(roomName, userName, rawParam);
+	        }
+	        return buySingleItem(roomName, userName, rawParam);
+	    } finally {
+	        botNewService.releaseUserActionLock(userName);
+	    }
 	}
 
 	
@@ -2318,21 +2328,40 @@ public class BossAttackController {
 
 	    StringBuilder sb = new StringBuilder("▶ 일괄 구매 결과").append(NL);
 
-	    // 2) 아이템별 처리: qty=1이면 기존 단일 구매, qty>1이면 배치 구매
-	    for (java.util.Map.Entry<String, Integer> entry : itemQtyMap.entrySet()) {
-	        String itemToken = entry.getKey();
-	        int qty = entry.getValue();
-	        String label = resolveItemLabel(itemToken);
+	    // ThreadLocal 설정: 각 buySingleItem/buyBatch 가 insertPointRank 를 직접 호출하지 않고
+	    // 여기서 한 번만 합산하여 PK 충돌 방지
+	    MULTI_BUY_COST_TL.set(new SP[]{new SP(0, "")});
+	    try {
+	        // 2) 아이템별 처리: qty=1이면 기존 단일 구매, qty>1이면 배치 구매
+	        for (java.util.Map.Entry<String, Integer> entry : itemQtyMap.entrySet()) {
+	            String itemToken = entry.getKey();
+	            int qty = entry.getValue();
+	            String label = resolveItemLabel(itemToken);
 
-	        sb.append(NL).append("[").append(label);
-	        if (qty > 1) sb.append(" ×").append(qty);
-	        sb.append("]").append(NL);
+	            sb.append(NL).append("[").append(label);
+	            if (qty > 1) sb.append(" ×").append(qty);
+	            sb.append("]").append(NL);
 
-	        if (qty == 1) {
-	            sb.append(buySingleItem(roomName, userName, itemToken)).append(NL);
-	        } else {
-	            sb.append(buyBatch(roomName, userName, itemToken, qty)).append(NL);
+	            if (qty == 1) {
+	                sb.append(buySingleItem(roomName, userName, itemToken)).append(NL);
+	            } else {
+	                sb.append(buyBatch(roomName, userName, itemToken, qty)).append(NL);
+	            }
 	        }
+
+	        // 합산 비용 한 번에 차감
+	        SP totalCost = MULTI_BUY_COST_TL.get()[0];
+	        if (totalCost.getValue() > 0 || totalCost.getUnit().length() > 0) {
+	            HashMap<String, Object> pr = new HashMap<>();
+	            pr.put("userName", userName);
+	            pr.put("roomName", roomName);
+	            pr.put("score",    -totalCost.getValue());
+	            pr.put("scoreExt", totalCost.getUnit());
+	            pr.put("cmd",      "BUY");
+	            botNewService.insertPointRank(pr);
+	        }
+	    } finally {
+	        MULTI_BUY_COST_TL.remove();
 	    }
 
 	    return sb.toString();
@@ -2454,14 +2483,19 @@ public class BossAttackController {
 	    // ── 최종 HP 반영 1회 ────────────────────────────────────────────
 	    botNewService.updateUserHpOnlyTx(userName, "", (int) currentHp);
 
-	    // ── SP 차감 1회 ─────────────────────────────────────────────────
-	    HashMap<String, Object> pr = new HashMap<>();
-	    pr.put("userName", userName);
-	    pr.put("roomName", roomName);
-	    pr.put("score",    -totalCost.getValue());
-	    pr.put("scoreExt", totalCost.getUnit());
-	    pr.put("cmd",      "BUY");
-	    botNewService.insertPointRank(pr);
+	    // ── SP 차감 1회 (다중구매 모드이면 ThreadLocal 에 누적, 단건이면 즉시 처리) ────
+	    SP[] buyTl = MULTI_BUY_COST_TL.get();
+	    if (buyTl != null) {
+	        buyTl[0] = buyTl[0].add(totalCost);
+	    } else {
+	        HashMap<String, Object> pr = new HashMap<>();
+	        pr.put("userName", userName);
+	        pr.put("roomName", roomName);
+	        pr.put("score",    -totalCost.getValue());
+	        pr.put("scoreExt", totalCost.getUnit());
+	        pr.put("cmd",      "BUY");
+	        botNewService.insertPointRank(pr);
+	    }
 
 	    // ── 물약 사용 업적 체크 1회 ─────────────────────────────────────
 	    String achvMsg = "";
@@ -2694,14 +2728,19 @@ public class BossAttackController {
 	    }
 	   
 
-	    // 결제 (포인트 차감)
-	    HashMap<String, Object> pr = new HashMap<>();
-	    pr.put("userName", userName);
-	    pr.put("roomName", roomName);
-	    pr.put("score", -itemPrice.getValue());
-	    pr.put("scoreExt", itemPrice.getUnit());
-	    pr.put("cmd", "BUY");
-	    botNewService.insertPointRank(pr);
+	    // 결제 (포인트 차감 — 다중구매 모드이면 ThreadLocal 에 누적, 단건이면 즉시 처리)
+	    SP[] singleBuyTl = MULTI_BUY_COST_TL.get();
+	    if (singleBuyTl != null) {
+	        singleBuyTl[0] = singleBuyTl[0].add(itemPrice);
+	    } else {
+	        HashMap<String, Object> pr = new HashMap<>();
+	        pr.put("userName", userName);
+	        pr.put("roomName", roomName);
+	        pr.put("score", -itemPrice.getValue());
+	        pr.put("scoreExt", itemPrice.getUnit());
+	        pr.put("cmd", "BUY");
+	        botNewService.insertPointRank(pr);
+	    }
 
 	    // 구매 후 포인트
 	    SP afterUserPoint=null;
@@ -4426,39 +4465,137 @@ public class BossAttackController {
 	        return "판매할 아이템명을 입력해주세요." + NL + "예) /판매 도토리 5";
 	    }
 
-	    String slotResult = checkSlotSell(userName, roomName, itemNameRaw);
-	    if (slotResult != null) return slotResult;
+	    if (!botNewService.tryAcquireUserActionLock(userName)) {
+	        return "⏳ 처리 중입니다. 잠시 후 다시 시도해 주세요.";
+	    }
+	    try {
+	        // 콤마 기반 다중 판매
+	        if (itemNameRaw.contains(",")) {
+	            return sellMultiItems(userName, roomName, itemNameRaw);
+	        }
 
-	    Integer itemId = resolveItemId(itemNameRaw);
+	        String slotResult = checkSlotSell(userName, roomName, itemNameRaw);
+	        if (slotResult != null) return slotResult;
 
-	    // 300/500/600/900번대 판매 불가
-	    if (itemId != null &&
-	        ((itemId >= 300 && itemId < 400) || (itemId >= 500 && itemId < 700) || (itemId >= 900 && itemId < 1000))) {
-	        return "[" + itemNameRaw + "]은(는) 판매할 수 없는 아이템입니다.";
+	        Integer itemId = resolveItemId(itemNameRaw);
+
+	        // 300/500/600/900번대 판매 불가
+	        if (itemId != null &&
+	            ((itemId >= 300 && itemId < 400) || (itemId >= 500 && itemId < 700) || (itemId >= 900 && itemId < 1000))) {
+	            return "[" + itemNameRaw + "]은(는) 판매할 수 없는 아이템입니다.";
+	        }
+
+	        if (itemId == null) {
+	            return "해당 아이템을 찾을 수 없습니다: " + itemNameRaw;
+	        }
+
+	        List<HashMap<String,Object>> rows =
+	                botNewService.selectInventoryRowsForSale(userName, roomName, itemId);
+	        itemNameRaw = resolveItemLabel(itemNameRaw);
+
+	        if (rows == null || rows.isEmpty()) {
+	            return "인벤토리에 보유 중인 [" + itemNameRaw + "]이(가) 없습니다.";
+	        }
+
+	        SellResult result = executeSell(
+	                userName,
+	                roomName,
+	                rows,
+	                null,
+	                reqQty,
+	                false
+	        );
+
+	        return buildSellMessage(userName, itemNameRaw, reqQty, result);
+	    } finally {
+	        botNewService.releaseUserActionLock(userName);
+	    }
+	}
+
+	// 콤마 기반 다중 판매: PK 충돌 방지를 위해 insertPointRank 를 단 1회만 호출
+	private String sellMultiItems(String userName, String roomName, String raw) throws Exception {
+	    String[] tokens = raw.split(",");
+
+	    StringBuilder sb = new StringBuilder("▶ 일괄 판매 결과").append(NL);
+
+	    MULTI_SELL_TOTAL_TL.set(new SP[]{SP.of(0, "")});
+	    int totalSold = 0;
+	    int totalGp = 0;
+	    try {
+	        for (String t : tokens) {
+	            String token = (t == null ? "" : t.trim());
+	            if (token.isEmpty()) continue;
+
+	            int qty = Integer.MAX_VALUE;
+	            String itemToken = token;
+	            java.util.regex.Matcher m =
+	                java.util.regex.Pattern.compile("(.+?)[xX\\*](\\d+)$").matcher(token);
+	            if (m.matches()) {
+	                itemToken = m.group(1).trim();
+	                qty = Math.max(1, MiniGameUtil.parseIntSafe(m.group(2)));
+	            }
+
+	            String label = resolveItemLabel(itemToken);
+	            sb.append(NL).append("[").append(label).append("]").append(NL);
+
+	            // 카테고리 키워드 체크
+	            String slotKey = MiniGameUtil.SLOT_MAP.get(itemToken);
+	            List<HashMap<String,Object>> rows;
+	            boolean sellAll;
+	            String slotFilter;
+	            if (slotKey != null) {
+	                rows = botNewService.selectAllInventoryRowsForSale(userName, roomName);
+	                sellAll = true;
+	                slotFilter = slotKey;
+	            } else {
+	                Integer itemId;
+	                try { itemId = resolveItemId(itemToken); } catch (Exception e) { itemId = null; }
+	                if (itemId == null) { sb.append("아이템을 찾을 수 없습니다.").append(NL); continue; }
+	                if ((itemId >= 300 && itemId < 400) || (itemId >= 500 && itemId < 700) || (itemId >= 900 && itemId < 1000)) {
+	                    sb.append("판매 불가 아이템입니다.").append(NL); continue;
+	                }
+	                rows = botNewService.selectInventoryRowsForSale(userName, roomName, itemId);
+	                sellAll = (qty == Integer.MAX_VALUE);
+	                slotFilter = null;
+	            }
+
+	            if (rows == null || rows.isEmpty()) { sb.append("보유 재고 없음").append(NL); continue; }
+
+	            SellResult r = executeSell(userName, roomName, rows, slotFilter, qty, sellAll);
+	            totalSold += r.sold;
+	            totalGp += r.gpGranted;
+	            if (r.sold > 0) sb.append("판매: ").append(r.sold).append("개 / ").append(r.total).append(NL);
+	            else sb.append("판매 가능한 재고 없음").append(NL);
+	        }
+
+	        // 합산 금액 한 번에 차감
+	        SP totalSp = MULTI_SELL_TOTAL_TL.get()[0];
+	        if (totalSold > 0 && (totalSp.getValue() > 0 || totalSp.getUnit().length() > 0)) {
+	            HashMap<String, Object> pr = new HashMap<>();
+	            pr.put("userName", userName);
+	            pr.put("roomName", roomName);
+	            pr.put("score",    totalSp.getValue());
+	            pr.put("scoreExt", totalSp.getUnit());
+	            pr.put("cmd",      "SELL_EQUIP");
+	            botNewService.insertPointRank(pr);
+	        }
+	    } finally {
+	        MULTI_SELL_TOTAL_TL.remove();
 	    }
 
-	    if (itemId == null) {
-	        return "해당 아이템을 찾을 수 없습니다: " + itemNameRaw;
-	    }
+	    if (totalSold <= 0) return "판매 가능한 재고가 없습니다.";
 
-	    List<HashMap<String,Object>> rows =
-	            botNewService.selectInventoryRowsForSale(userName, roomName, itemId);
-	    itemNameRaw = resolveItemLabel(itemNameRaw);
+	    SP curPoint = SP.of(0, "");
+	    try {
+	        HashMap<String,Object> p = botNewService.selectCurrentPoint(userName, null);
+	        curPoint = new SP(Double.parseDouble(Objects.toString(p.get("SCORE"), "0")),
+	                Objects.toString(p.get("SCORE_EXT"), ""));
+	    } catch (Exception ignore) {}
 
-	    if (rows == null || rows.isEmpty()) {
-	        return "인벤토리에 보유 중인 [" + itemNameRaw + "]이(가) 없습니다.";
-	    }
-	    
-	    SellResult result = executeSell(
-	            userName,
-	            roomName,
-	            rows,
-	            null,
-	            reqQty,
-	            false
-	    );
-
-	    return buildSellMessage(userName, itemNameRaw, reqQty, result);
+	    sb.append(NL).append("- 총 판매 수량: ").append(totalSold).append("개");
+	    if (totalGp > 0) sb.append(NL).append("- GP 획득: ").append(totalGp).append(" GP");
+	    sb.append(NL).append("- 현재 포인트: ").append(curPoint);
+	    return sb.toString();
 	}
 
 	public String gpGacha(HashMap<String, Object> map) {
@@ -4835,15 +4972,19 @@ public class BossAttackController {
 
 		botNewService.updateInventoryDelBatch(delParam);
 
-		HashMap<String, Object> pr = new HashMap<>();
-		pr.put("userName", userName);
-		pr.put("roomName", roomName);
-		pr.put("score", total.getValue());
-		pr.put("scoreExt", total.getUnit());
-		pr.put("cmd", "SELL_EQUIP");
-
-		if (total.getValue() > 0 || total.getUnit().length() > 0)
-			botNewService.insertPointRank(pr);
+		// 다중판매 모드이면 ThreadLocal에 누적, 단건이면 즉시 처리
+		SP[] sellTl = MULTI_SELL_TOTAL_TL.get();
+		if (sellTl != null) {
+		    sellTl[0] = sellTl[0].add(total);
+		} else if (total.getValue() > 0 || total.getUnit().length() > 0) {
+		    HashMap<String, Object> pr = new HashMap<>();
+		    pr.put("userName", userName);
+		    pr.put("roomName", roomName);
+		    pr.put("score", total.getValue());
+		    pr.put("scoreExt", total.getUnit());
+		    pr.put("cmd", "SELL_EQUIP");
+		    botNewService.insertPointRank(pr);
+		}
 
 		// GP 지급 (7000번대 보스 아이템 판매)
 		if (gpCount > 0) {

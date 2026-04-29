@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
 import javax.annotation.Resource;
 
@@ -450,6 +451,23 @@ public class BotNewServiceImpl implements BotNewService {
     @Override
     public List<HashMap<String,Object>> selectActiveSetBonuses(String userName) {
         return botNewDAO.selectActiveSetBonuses(userName);
+    }
+
+    @Override
+    public List<HashMap<String,Object>> selectAllSetBonusDefs() {
+        return botNewDAO.selectAllSetBonusDefs();
+    }
+
+    private static final ConcurrentHashMap<String, Boolean> USER_ACTION_LOCKS = new ConcurrentHashMap<>();
+
+    @Override
+    public boolean tryAcquireUserActionLock(String userName) {
+        return USER_ACTION_LOCKS.putIfAbsent(userName, Boolean.TRUE) == null;
+    }
+
+    @Override
+    public void releaseUserActionLock(String userName) {
+        USER_ACTION_LOCKS.remove(userName);
     }
 
     public int selectHellBossAttackCount(String userName) {
