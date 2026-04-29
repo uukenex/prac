@@ -192,6 +192,8 @@ public interface BotNewDAO {
 
     List<HashMap<String,Object>> selectActiveSetBonuses(@Param("userName") String userName);
 
+    List<HashMap<String,Object>> selectAllSetBonusDefs();
+
     int selectHellBossAttackCount(String userName);
     int selectHellBossClearCount(String userName);
     List<HashMap<String, Object>> selectJobMasterSeasons(String userName);

@@ -152,6 +152,12 @@ public interface BotNewService {
 
     List<HashMap<String,Object>> selectActiveSetBonuses(String userName);
 
+    List<HashMap<String,Object>> selectAllSetBonusDefs();
+
+    /** 유저별 중복 액션(구매/판매) 방지용 락 */
+    boolean tryAcquireUserActionLock(String userName);
+    void releaseUserActionLock(String userName);
+
     // [6-1] 헬보스/직업마스터/룰렛/학살자 업적 관련
     int selectHellBossAttackCount(String userName);
     int selectHellBossClearCount(String userName);

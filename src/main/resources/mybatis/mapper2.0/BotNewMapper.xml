@@ -1828,6 +1828,14 @@
 		ORDER BY i.ITEM_ID
 	</select>
 
+	<!-- 전체 세트 보너스 정의 조회 (시뮬레이션용, 유저 무관) -->
+	<select id="selectAllSetBonusDefs" resultType="hashmap">
+		/* selectAllSetBonusDefs */
+		SELECT SET_ID, REQUIRED_CNT, BONUS_TYPE, BONUS_VALUE, BONUS_DESC
+		FROM TBOT_POINT_NEW_ITEM_SET_BONUS
+		ORDER BY SET_ID, REQUIRED_CNT
+	</select>
+
 	<!-- 유저의 활성 세트 보너스 조회 (보유 아이템 수 >= 발동조건) -->
 	<select id="selectActiveSetBonuses" resultType="hashmap" parameterType="String">
 		/* selectActiveSetBonuses */

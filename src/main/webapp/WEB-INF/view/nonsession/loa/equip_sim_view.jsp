@@ -193,6 +193,16 @@
       .stat-grid { grid-template-columns:repeat(2,1fr); }
       .item-grid { grid-template-columns:repeat(2,1fr); }
     }
+    .set-effect-bar {
+      display:flex; flex-wrap:wrap; align-items:center; gap:6px;
+      margin-top:10px; padding:6px 10px;
+      background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px;
+    }
+    .set-effect-title { font-size:12px; font-weight:700; color:#166534; margin-right:4px; }
+    .set-chip {
+      padding:2px 9px; border-radius:10px; font-size:11px; font-weight:600;
+      background:#dcfce7; color:#15803d;
+    }
   </style>
 </head>
 <body>
@@ -271,6 +281,15 @@
           <div class="stat-value conv">{{ stats.criConvert > 0 ? '+' + stats.criConvert + '%' : '-' }}</div>
           <div class="stat-sub">{{ hunterGrade }}등급 전생상한 {{ stats.criCap }}%</div>
         </div>
+      </div>
+
+      <!-- 세트 효과 요약 -->
+      <div v-if="stats.setAtkFinalRate||stats.setCritFinalRate||stats.setCooldown||stats.setEvasion" class="set-effect-bar">
+        <span class="set-effect-title">🔗 세트효과</span>
+        <span v-if="stats.setAtkFinalRate"  class="set-chip">최종공격 +{{ stats.setAtkFinalRate }}%</span>
+        <span v-if="stats.setCritFinalRate" class="set-chip">최종크리율 +{{ stats.setCritFinalRate }}%</span>
+        <span v-if="stats.setCooldown"      class="set-chip">쿨타임 -{{ stats.setCooldown }}초</span>
+        <span v-if="stats.setEvasion"       class="set-chip">회피 {{ stats.setEvasion }}%</span>
       </div>
     </div>
 
@@ -403,7 +422,8 @@
       simJob:      '',
       activeCat:   '전체',
       stats: { atkMin:0,atkMax:0,effAtkMin:0,effAtkMax:0,jobDmgMul:1,
-               hpMax:0,regen:0,crit:0,critDmg:0,criConvert:0,criCap:5 },
+               hpMax:0,regen:0,crit:0,critDmg:0,criConvert:0,criCap:5,
+               setAtkFinalRate:0,setCritFinalRate:0,setCooldown:0,setEvasion:0 },
       calcTimer:   null,
       equipCats:   EQUIP_CATS,
       specialCats: SPECIAL_CATS,
@@ -561,17 +581,21 @@
           .then(function (data) {
             if (!data.error) {
               vm.stats = {
-                atkMin:     data.atkMin     || 0,
-                atkMax:     data.atkMax     || 0,
-                effAtkMin:  data.effAtkMin  || 0,
-                effAtkMax:  data.effAtkMax  || 0,
-                jobDmgMul:  data.jobDmgMul  || 1,
-                hpMax:      data.hpMax      || 0,
-                regen:      data.regen      || 0,
-                crit:       data.crit       || 0,
-                critDmg:    data.critDmg    || 0,
-                criConvert: data.criConvert || 0,
-                criCap:     data.criCap     || 5,
+                atkMin:          data.atkMin          || 0,
+                atkMax:          data.atkMax          || 0,
+                effAtkMin:       data.effAtkMin       || 0,
+                effAtkMax:       data.effAtkMax       || 0,
+                jobDmgMul:       data.jobDmgMul       || 1,
+                hpMax:           data.hpMax           || 0,
+                regen:           data.regen           || 0,
+                crit:            data.crit            || 0,
+                critDmg:         data.critDmg         || 0,
+                criConvert:      data.criConvert      || 0,
+                criCap:          data.criCap          || 5,
+                setAtkFinalRate: data.setAtkFinalRate || 0,
+                setCritFinalRate:data.setCritFinalRate|| 0,
+                setCooldown:     data.setCooldown     || 0,
+                setEvasion:      data.setEvasion      || 0,
               };
               vm.hunterGrade = data.hunterGrade || vm.hunterGrade;
             }
