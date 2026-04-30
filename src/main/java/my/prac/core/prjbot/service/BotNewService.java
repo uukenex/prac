@@ -205,6 +205,9 @@ public interface BotNewService {
 
     /** 전체 아이템 + 유저 보유여부 (item_view 페이지용) */
     List<HashMap<String, Object>> selectAllItemsWithOwned(String userName);
+
+    /** 부캐 리스트 조회 */
+    List<String> selectAltCharList();
 }
 
 	

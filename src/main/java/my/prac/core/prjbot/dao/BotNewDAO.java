@@ -250,4 +250,7 @@ public interface BotNewDAO {
     List<HashMap<String, Object>> selectAllItemsWithOwned(
             @Param("userName") String userName
     );
+
+    /** 부캐 리스트 조회 */
+    List<String> selectAltCharList();
 }

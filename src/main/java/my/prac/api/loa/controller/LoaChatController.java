@@ -811,7 +811,15 @@ public class LoaChatController {
 				break;
 			case "/공격랭킹": case "/ㄱㄱㄹㅋ":
 				passYn = true;
-				val = boss.showAttackRanking(reqMap);
+				val = "http://rgb-tns.dev-apc.com/loa/ranking-view" + enterStr + boss.showAttackRanking(reqMap);
+				break;
+			case "/공격로그": case "/ㄱㄱㄹㄱ":
+				passYn = true;
+				try {
+					val = "http://rgb-tns.dev-apc.com/loa/battle-log-view?userName=" + URLEncoder.encode(sender, "UTF-8");
+				} catch (Exception e) {
+					val = "http://rgb-tns.dev-apc.com/loa/battle-log-view?userName=" + sender;
+				}
 				break;
 			case "/공격정보": case "/ㄱㄱㅈㅂ": case "/가방": case "/ㄱㅂ":
 				param0="/ㄱㅂ";
