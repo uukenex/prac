@@ -38,6 +38,8 @@ public interface BotNewDAO {
 
     Timestamp selectLastAttackTime(@Param("userName") String userName, @Param("roomName") String roomName);
 
+    int selectYesterdayAttackerCount();
+
     int updateUserAfterBattle(
         @Param("userName") String userName, @Param("roomName") String roomName,
         @Param("newLv") int newLv, @Param("newExpCur") int newExpCur, @Param("newExpNext") int newExpNext,
@@ -248,4 +250,7 @@ public interface BotNewDAO {
     List<HashMap<String, Object>> selectAllItemsWithOwned(
             @Param("userName") String userName
     );
+
+    /** 부캐 리스트 조회 */
+    List<String> selectAltCharList();
 }

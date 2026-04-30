@@ -94,6 +94,11 @@ public class BotNewServiceImpl implements BotNewService {
     }
 
     @Override
+    public int selectYesterdayAttackerCount() {
+        return botNewDAO.selectYesterdayAttackerCount();
+    }
+
+    @Override
     public int updateUserAfterBattleTx(String userName, String roomName, int newLv, int newExpCur, int newExpNext,
                                      int newHpCur, int newHpMax, int newAtkMin, int newAtkMax,int critRate,int hpRegen ) {
         return botNewDAO.updateUserAfterBattle(userName, roomName, newLv, newExpCur, newExpNext,
@@ -680,5 +685,10 @@ public class BotNewServiceImpl implements BotNewService {
     @Override
     public List<HashMap<String, Object>> selectAllItemsWithOwned(String userName) {
         return botNewDAO.selectAllItemsWithOwned(userName);
+    }
+
+    @Override
+    public List<String> selectAltCharList() {
+        return botNewDAO.selectAltCharList();
     }
 }

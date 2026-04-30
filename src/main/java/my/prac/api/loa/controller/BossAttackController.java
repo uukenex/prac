@@ -64,6 +64,18 @@ public class BossAttackController {
 
 	/* ===== Config / Const ===== */
 	private static final int COOLDOWN_SECONDS = 120; // 2분
+
+	// [7013] 어제 공격자 수 일별 캐시
+	private volatile int   _yestAttackerCount    = 0;
+	private volatile String _yestAttackerDate     = "";
+	private int getYesterdayAttackerCountCached() {
+	    String today = new java.text.SimpleDateFormat("yyyyMMdd").format(new java.util.Date());
+	    if (!today.equals(_yestAttackerDate)) {
+	        try { _yestAttackerCount = botNewService.selectYesterdayAttackerCount(); } catch (Exception e) { _yestAttackerCount = 0; }
+	        _yestAttackerDate = today;
+	    }
+	    return _yestAttackerCount;
+	}
 	private static final int REVIVE_WAIT_MINUTES = 0;//쿼리에서계산함
 	private static final String NL = "♬";
 	// 🍀 Lucky: 전투 시작 시 10% 확률 고정(신규 전투에서만 결정)
@@ -660,6 +672,13 @@ public class BossAttackController {
 	        int evolveBonus = u.lv * 150;
 	        atkMin += evolveBonus;
 	        atkMax += evolveBonus;
+	    }
+	    // [7013] 어제의 전사들: 어제 공격자 수 × 공격력 +1000, 치명타 데미지 +10
+	    if (ctx.ownedBossItems.contains(7013)) {
+	        int yestCount = getYesterdayAttackerCountCached();
+	        atkMin  += yestCount * 1000;
+	        atkMax  += yestCount * 1000;
+	        critDmg += yestCount * 10;
 	    }
 	    // ── 세트 효과: 최종 비율 보너스 (헬너프 포함 최종 수치 기준) ──────────────
 	    if (setAtkFinalRate > 0) {
@@ -1732,7 +1751,7 @@ public class BossAttackController {
 	        if (ctx.setCritFinalRate > 0)
 	            sb.append("  └ 최종크리율 +").append(ctx.setCritFinalRate).append("%").append(NL);
 	        if (ctx.setCooldownReduce > 0)
-	            sb.append("  └ 쿨타임 -").append(ctx.setCooldownReduce).append("초").append(NL);
+	            sb.append("  └ 쿨타임 -").append(ctx.setCooldownReduce).append("%").append(NL);
 	        if (ctx.setEvasionRate > 0)
 	            sb.append("  └ 회피율 ").append(ctx.setEvasionRate).append("%").append(NL);
 	        if (ctx.activeSetSpecials != null) {
@@ -3467,8 +3486,9 @@ public class BossAttackController {
 		Timestamp cachedLastAtk = (s.cachedAds != null) ? s.cachedAds.lastAttackTime : null;
 		s.cdJob = (s.cachedAds != null && s.cachedAds.lastAttackJob != null) ? s.cachedAds.lastAttackJob : s.job;
 
-		s.itemCdReduction  = s.ctx.ownedBossItems.contains(7004) ? 20 : 0; // [7004] 쿨타임 20초 감소
-		s.itemCdReduction += s.ctx.setCooldownReduce; // 세트 효과 쿨타임 감소
+		// [7004] 모래시계: 쿨타임 20% 감소 / 세트: DB값(%) 직접 합산
+		s.itemCdReduction  = s.ctx.ownedBossItems.contains(7004) ? 20 : 0;
+		s.itemCdReduction += s.ctx.setCooldownReduce; // DB BONUS_VALUE 그대로 % 적용 (2세트+3세트 각 10%)
 		CooldownCheck cd = checkCooldown(s.userName, s.roomName, s.param1, s.cdJob, s.cooldownBuff, cachedLastAtk, s.itemCdReduction);
 		if (!cd.ok) {
 			long min = cd.remainSeconds / 60;
@@ -3574,11 +3594,13 @@ public class BossAttackController {
 		// 11-후) 도사 버프 최종 데미지 적용 (+1000 flat, +5%, 최대체력 5% 회복)
 		if (dosaSelf != null || dosaRoom != null) {
 		    int buffCount = (dosaSelf != null ? 1 : 0) + (dosaRoom != null ? 1 : 0);
+		    // [7012] 도사의 가르침: 도사/음양사 버프 계수 3배
+		    int coef = s.ctx.ownedBossItems.contains(7012) ? 3 : 1;
 		    if (s.calc.atkDmg > 0) {
-		        s.calc.atkDmg += buffCount * 1000;
-		        s.calc.atkDmg += (int) Math.round(s.calc.atkDmg * (buffCount * 5) / 100.0);
+		        s.calc.atkDmg += buffCount * 1000 * coef;
+		        s.calc.atkDmg += (int) Math.round(s.calc.atkDmg * (buffCount * 5 * coef) / 100.0);
 		    }
-		    int heal = (int) Math.round(s.hpMax * (buffCount * 5) / 100.0);
+		    int heal = (int) Math.round(s.hpMax * (buffCount * 5 * coef) / 100.0);
 		    int beforeHpDosa = s.u.hpCur;
 		    s.u.hpCur = Math.min(s.hpMax, s.u.hpCur + heal);
 		    s.dosabuffMsg = buildUnifiedDosaBuffMessage(dosaSelf, dosaRoom, s.u.hpCur - beforeHpDosa);
@@ -5816,7 +5838,8 @@ public class BossAttackController {
 	    }
 
 	    if (itemCdReduction > 0) {
-	        baseCd = Math.max(10, baseCd - itemCdReduction); // [7004] 아이템 쿨타임 감소 (최소 10초)
+	        // itemCdReduction은 % 단위 (예: 20 = 20% 감소)
+	        baseCd = Math.max(10, (int) Math.round(baseCd * (100 - itemCdReduction) / 100.0));
 	    }
 
 	    Timestamp last = (cachedLastAtk != null) ? cachedLastAtk : botNewService.selectLastAttackTime(userName, roomName);
