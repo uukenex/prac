@@ -1751,7 +1751,7 @@ public class BossAttackController {
 	        if (ctx.setCritFinalRate > 0)
 	            sb.append("  └ 최종크리율 +").append(ctx.setCritFinalRate).append("%").append(NL);
 	        if (ctx.setCooldownReduce > 0)
-	            sb.append("  └ 쿨타임 -20%").append(NL);
+	            sb.append("  └ 쿨타임 -").append(ctx.setCooldownReduce).append("%").append(NL);
 	        if (ctx.setEvasionRate > 0)
 	            sb.append("  └ 회피율 ").append(ctx.setEvasionRate).append("%").append(NL);
 	        if (ctx.activeSetSpecials != null) {
@@ -3486,9 +3486,9 @@ public class BossAttackController {
 		Timestamp cachedLastAtk = (s.cachedAds != null) ? s.cachedAds.lastAttackTime : null;
 		s.cdJob = (s.cachedAds != null && s.cachedAds.lastAttackJob != null) ? s.cachedAds.lastAttackJob : s.job;
 
-		// [7004] 모래시계: 쿨타임 20% 감소 / 세트(SPEED1): 쿨타임 20% 감소 (각 소스당 +20%, 합산 퍼센트)
+		// [7004] 모래시계: 쿨타임 20% 감소 / 세트: DB값(%) 직접 합산
 		s.itemCdReduction  = s.ctx.ownedBossItems.contains(7004) ? 20 : 0;
-		if (s.ctx.setCooldownReduce > 0) s.itemCdReduction += 20;
+		s.itemCdReduction += s.ctx.setCooldownReduce; // DB BONUS_VALUE 그대로 % 적용 (2세트+3세트 각 10%)
 		CooldownCheck cd = checkCooldown(s.userName, s.roomName, s.param1, s.cdJob, s.cooldownBuff, cachedLastAtk, s.itemCdReduction);
 		if (!cd.ok) {
 			long min = cd.remainSeconds / 60;
