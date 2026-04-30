@@ -997,7 +997,7 @@
 			    and a.user_name not in ('일어난다람쥐/카단')
 			    GROUP BY USER_NAME
 			)
-			WHERE RN &lt;= 5
+			WHERE RN &lt;= 20
 	</select>
 	
 	<select id="selectSpAndAtkRanking" resultType="hashmap">
@@ -1234,9 +1234,9 @@
 		         GROUP BY USER_NAME
 		         ORDER BY COUNT(*) DESC, USER_NAME
 		    )
-		    WHERE ROWNUM &lt;= 5
+		    WHERE ROWNUM &lt;= 20
 	</select>
-	
+
 	<select id="selectAchvCountsGlobal" resultType="my.prac.core.game.dto.AchievementCount">
 	    /*selectAchvCountsGlobal*/
 	    SELECT CMD,
