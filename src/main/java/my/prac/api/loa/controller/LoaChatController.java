@@ -282,11 +282,27 @@ public class LoaChatController {
 		case "c2":
 			org_fulltxt = "/ㄸㅅㅋㄹㄹ";
 			try {
-				// 1) 캐시된 JSON 가져오기 (하루 1번만 API 호출하도록 만들어둔 메서드)
-				String json = ext.fetchMerchantServer5();
+				// 1) 이미 해당 시간대 데이터가 있으면 스킵
+				if (botExtService.hasMerchantReport(5)) {
+					break;
+				}
 
-				// 2) DB 저장 (server=5: 카단)
-				botExtService.saveLatestMerchantReports(json, 5);
+				// 2) API 크롤링 & DB 저장 (server=5: 카단)
+				String json = ext.fetchMerchantServer5();
+				int saved = botExtService.saveLatestMerchantReports(json, 5);
+
+				// 3) 저장 0건이면 백그라운드에서 1분 후 재시도
+				if (saved == 0) {
+					new Thread(() -> {
+						try {
+							Thread.sleep(60_000);
+							String retryJson = ext.fetchMerchantServer5();
+							botExtService.saveLatestMerchantReports(retryJson, 5);
+						} catch (Exception ex) {
+							ex.printStackTrace();
+						}
+					}, "merchant-retry").start();
+				}
 			} catch (Exception e1) {
 				e1.printStackTrace();
 			}

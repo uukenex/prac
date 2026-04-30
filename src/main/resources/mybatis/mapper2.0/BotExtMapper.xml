@@ -31,6 +31,13 @@
 	    FROM TBOT_MERCHANT_M
 	</select>
 	
+	<select id="selectMerchantReportCount" parameterType="map" resultType="int">
+	    SELECT COUNT(*)
+	    FROM TBOT_MERCHANT_REPORT
+	    WHERE SERVER_ID = #{serverId}
+	      AND TIME_VAL  = #{timeVal}
+	</select>
+
 	<select id="selectMerchantByTimeVal" parameterType="map" resultType="map">
 	    SELECT B.ITEM_NAME,
 	           B.REGION_NAME
