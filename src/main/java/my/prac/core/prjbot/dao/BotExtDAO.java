@@ -13,6 +13,7 @@ import my.prac.core.ext.dto.MerchantReportVO;
 public interface BotExtDAO {
 	  int insertMerchantReport(MerchantReportVO vo);
 	  List<MerchantMasterVO> selectMerchantMasterAll();  // ★ 기준데이터 전체 조회
+	  int selectMerchantReportCount(HashMap<String, Object> param);
 	  List<HashMap<String, Object>> selectMerchantByTimeVal(HashMap<String, Object> param);
 }
 

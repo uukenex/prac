@@ -125,6 +125,7 @@ public class BotExtServiceImpl implements BotExtService {
 
                 try {
                 	botExtDAO.insertMerchantReport(vo);
+                	insertCount++;
                 }catch(Exception e) { continue;}
             }
         }
@@ -175,6 +176,19 @@ public class BotExtServiceImpl implements BotExtService {
         return sb.toString().trim();
     }
     
+    @Override
+    public boolean hasMerchantReport(int serverId) throws Exception {
+        String timeVal = resolveTimeVal();
+        if (timeVal == null) return false; // 조회 불가 시간대
+
+        HashMap<String, Object> param = new HashMap<>();
+        param.put("serverId", serverId);
+        param.put("timeVal", timeVal);
+
+        int cnt = botExtDAO.selectMerchantReportCount(param);
+        return cnt > 0;
+    }
+
     private String makeTimeVal(Date startTimeKst) {
         java.text.SimpleDateFormat fmt = new java.text.SimpleDateFormat("yyyyMMdd_HH");
         fmt.setTimeZone(java.util.TimeZone.getTimeZone("Asia/Seoul")); // 안전하게 KST 고정
