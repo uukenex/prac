@@ -211,6 +211,14 @@
       AND GAIN_EXP >= 0
   </select>
 
+  <!-- 4-1) 어제 공격자 수 (DISTINCT USER_NAME) -->
+  <select id="selectYesterdayAttackerCount" resultType="int">
+  /*selectYesterdayAttackerCount*/
+    SELECT COUNT(DISTINCT USER_NAME)
+    FROM TBOT_POINT_NEW_BATTLE_LOG
+    WHERE TRUNC(INSERT_DATE) = TRUNC(SYSDATE - 1)
+  </select>
+
   <!-- 5) 전투 후 유저 업데이트 -->
   <update id="updateUserAfterBattle">
   /*updateUserAfterBattle*/
