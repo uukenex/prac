@@ -282,27 +282,8 @@ public class LoaChatController {
 		case "c2":
 			org_fulltxt = "/ㄸㅅㅋㄹㄹ";
 			try {
-				// 1) 이미 해당 시간대 데이터가 있으면 스킵
-				if (botExtService.hasMerchantReport(5)) {
-					break;
-				}
-
-				// 2) API 크롤링 & DB 저장 (server=5: 카단)
 				String json = ext.fetchMerchantServer5();
-				int saved = botExtService.saveLatestMerchantReports(json, 5);
-
-				// 3) 저장 0건이면 백그라운드에서 1분 후 재시도
-				if (saved == 0) {
-					new Thread(() -> {
-						try {
-							Thread.sleep(60_000);
-							String retryJson = ext.fetchMerchantServer5();
-							botExtService.saveLatestMerchantReports(retryJson, 5);
-						} catch (Exception ex) {
-							ex.printStackTrace();
-						}
-					}, "merchant-retry").start();
-				}
+				botExtService.saveLatestMerchantReports(json, 5);
 			} catch (Exception e1) {
 				e1.printStackTrace();
 			}
@@ -1473,7 +1454,12 @@ public class LoaChatController {
 			case "/떠상": case "/ㄸㅅ":
 				int serverId = 5; // 카단
 				try {
-					val= botExtService.buildMerchantMessage(serverId);
+					// 해당 시간대 데이터 없으면 즉시 크롤링 후 저장
+					if (!botExtService.hasMerchantReport(serverId)) {
+						String merchantJson = ext.fetchMerchantServer5();
+						botExtService.saveLatestMerchantReports(merchantJson, serverId);
+					}
+					val = botExtService.buildMerchantMessage(serverId);
 				}catch(Exception e) {
 					e.printStackTrace();
 				}
