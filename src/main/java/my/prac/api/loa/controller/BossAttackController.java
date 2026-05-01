@@ -3775,6 +3775,12 @@ public class BossAttackController {
 			String dn = (s.m.monDrop == null ? "" : s.m.monDrop.trim());
 			if (!dn.isEmpty()) {
 				String[] nb={""}; s.newPoint += " +" + baroSellItem(dn, 0, s.res, s.userName, s.roomName, s.ctx, s.u, "DROP", 1, s.nightmare, nb); s.newBonus += nb[0];
+				// [7008] 추가 드랍 +1 → 기본 드랍코드 1로 SP 추가 지급
+				if (s.res.bonusNormalDrop) {
+					Resolve bonusRes = new Resolve();
+					bonusRes.dropCode = "1";
+					String[] nb2={""}; s.newPoint += " +" + baroSellItem(dn, 0, bonusRes, s.userName, s.roomName, s.ctx, s.u, "DROP", 1, s.nightmare, nb2); s.newBonus += nb2[0];
+				}
 			}
 		}
 
