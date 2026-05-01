@@ -1,4 +1,4 @@
-package my.prac.api.loa.controller;
+﻿package my.prac.api.loa.controller;
 
 import java.sql.Timestamp;
 import java.time.Duration;
@@ -116,6 +116,8 @@ public class BossAttackController {
 	private static final ThreadLocal<SP[]> MULTI_BUY_COST_TL = new ThreadLocal<>();
 	// 다중 판매 시 insertPointRank 합산용 ThreadLocal (합산 모드일 때만 non-null)
 	private static final ThreadLocal<SP[]> MULTI_SELL_TOTAL_TL = new ThreadLocal<>();
+	// 한 번의 공격에서 DROP SP를 합산 후 단건 INSERT (PK 충돌 방지)
+	private static final ThreadLocal<SP[]> DROP_SP_TL = new ThreadLocal<>();
 	
 	/* ===== DI ===== */
 	@Lazy @Autowired BossAttackS3Controller bossAttackS3Controller;
@@ -3770,16 +3772,32 @@ public class BossAttackController {
 		// —— 음양사: 기원 메시지 ——
 		if ("음양사".equals(s.job)) s.dosaCastMsg = "✨" + s.job + "의 기원! 다음 공격자 강화!";
 
-		// DROP SP
+		// DROP SP (합산 후 단건 INSERT — PK 충돌 방지)
 		if (s.res.killed && !"0".equals(s.res.dropCode)) {
 			String dn = (s.m.monDrop == null ? "" : s.m.monDrop.trim());
 			if (!dn.isEmpty()) {
-				String[] nb={""}; s.newPoint += " +" + baroSellItem(dn, 0, s.res, s.userName, s.roomName, s.ctx, s.u, "DROP", 1, s.nightmare, nb); s.newBonus += nb[0];
-				// [7008] 추가 드랍 +1 → 기본 드랍코드 1로 SP 추가 지급
-				if (s.res.bonusNormalDrop) {
-					Resolve bonusRes = new Resolve();
-					bonusRes.dropCode = "1";
-					String[] nb2={""}; s.newPoint += " +" + baroSellItem(dn, 0, bonusRes, s.userName, s.roomName, s.ctx, s.u, "DROP", 1, s.nightmare, nb2); s.newBonus += nb2[0];
+				DROP_SP_TL.set(new SP[]{new SP(0, "")});
+				try {
+					String[] nb={""}; s.newPoint += " +" + baroSellItem(dn, 0, s.res, s.userName, s.roomName, s.ctx, s.u, "DROP", 1, s.nightmare, nb); s.newBonus += nb[0];
+					// [7008] 추가 드랍 +1 → 기본 드랍코드 1로 SP 추가 지급
+					if (s.res.bonusNormalDrop) {
+						Resolve bonusRes = new Resolve();
+						bonusRes.dropCode = "1";
+						String[] nb2={""}; s.newPoint += " +" + baroSellItem(dn, 0, bonusRes, s.userName, s.roomName, s.ctx, s.u, "DROP", 1, s.nightmare, nb2); s.newBonus += nb2[0];
+					}
+					// 합산 SP 단건 INSERT
+					SP totalDrop = DROP_SP_TL.get()[0];
+					if (totalDrop.getValue() > 0 || !totalDrop.getUnit().isEmpty()) {
+						HashMap<String, Object> pr = new HashMap<>();
+						pr.put("userName", s.userName);
+						pr.put("roomName", s.roomName);
+						pr.put("score",    totalDrop.getValue());
+						pr.put("scoreExt", totalDrop.getUnit());
+						pr.put("cmd",      "DROP_SP_DROP");
+						botNewService.insertPointRank(pr);
+					}
+				} finally {
+					DROP_SP_TL.remove();
 				}
 			}
 		}
@@ -4120,18 +4138,20 @@ public class BossAttackController {
 	            SP gain = SP.fromSp(gainSp);
 
 	            // --------------------------
-	            // DB insert
+	            // DB insert (DROP 타입이고 합산 모드면 TL에 누적, 아니면 즉시 INSERT)
 	            // --------------------------
-
-	            HashMap<String, Object> pr = new HashMap<>();
-
-	            pr.put("userName", userName);
-	            pr.put("roomName", roomName);
-	            pr.put("score", gain.getValue());
-	            pr.put("scoreExt", gain.getUnit());
-	            pr.put("cmd", "DROP_SP_"+gainType);
-
-	            botNewService.insertPointRank(pr);
+	            SP[] dropTl = DROP_SP_TL.get();
+	            if ("DROP".equals(gainType) && dropTl != null) {
+	                dropTl[0] = dropTl[0].add(gain);
+	            } else {
+	                HashMap<String, Object> pr = new HashMap<>();
+	                pr.put("userName", userName);
+	                pr.put("roomName", roomName);
+	                pr.put("score", gain.getValue());
+	                pr.put("scoreExt", gain.getUnit());
+	                pr.put("cmd", "DROP_SP_"+gainType);
+	                botNewService.insertPointRank(pr);
+	            }
 
 	            newPoint = gain.toString();
 	        }
