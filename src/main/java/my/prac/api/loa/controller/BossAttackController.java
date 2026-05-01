@@ -1,4 +1,4 @@
-package my.prac.api.loa.controller;
+﻿package my.prac.api.loa.controller;
 
 import java.sql.Timestamp;
 import java.time.Duration;
@@ -3702,6 +3702,10 @@ public class BossAttackController {
 		s.res = resolveKillAndDrop(s.m, s.calc, s.willKill, s.u, s.lucky, s.dark, s.gray, s.ctx.user.nightmareYn, s.ctx.ownedBossItems);
 		if ("궁수".equals(s.u.job) || "사냥꾼".equals(s.u.job)) s.res.gainExp *= 3;
 
+		// SP 누적용 — baroSellItem은 INSERT 없이 outSp만 반환, 여기서 합산 후 단건 INSERT
+		SP stealSpTotal = new SP(0, "");
+		SP dropSpTotal  = new SP(0, "");
+
 		// —— 도적: 더블어택 + 스틸 ——
 		if ("도적".equals(s.job) && !(s.m.monNo > 50)) {
 			if (ThreadLocalRandom.current().nextDouble() < 0.50) {
@@ -3713,7 +3717,8 @@ public class BossAttackController {
 						s.stealMsg += "✨ [1타] " + s.m.monName + "의 아이템을 훔쳤습니다! (" + dn + "조각)";
 						s.calc.jobSkillUsed = true;
 					}
-					String[] b={""}; s.stealPoint += " +" + baroSellItem(dn, id, s.res, s.userName, s.roomName, s.ctx, s.u, "STEAL", 1, s.nightmare, b); s.stealBonus += b[0];
+					SP[] sp=new SP[1]; String[] b={""}; s.stealPoint += " +" + baroSellItem(dn, id, s.res, s.userName, s.roomName, s.ctx, s.u, "STEAL", 1, s.nightmare, b, sp); s.stealBonus += b[0];
+					if (sp[0] != null) stealSpTotal = stealSpTotal.add(sp[0]);
 				} catch (Exception ignore) {}
 			}
 			if (s.thiefDoubleAtk && s.calc2 != null && ThreadLocalRandom.current().nextDouble() < 0.50) {
@@ -3725,7 +3730,8 @@ public class BossAttackController {
 						s.stealMsg += (s.stealMsg.isEmpty() ? "" : NL) + "✨ [2타] " + s.m.monName + "의 아이템을 훔쳤습니다! (" + dn + "조각)";
 						s.calc2.jobSkillUsed = true;
 					}
-					String[] b={""}; s.stealPoint += " +" + baroSellItem(dn, id, s.res, s.userName, s.roomName, s.ctx, s.u, "STEAL", 1, s.nightmare, b); s.stealBonus += b[0];
+					SP[] sp=new SP[1]; String[] b={""}; s.stealPoint += " +" + baroSellItem(dn, id, s.res, s.userName, s.roomName, s.ctx, s.u, "STEAL", 1, s.nightmare, b, sp); s.stealBonus += b[0];
+					if (sp[0] != null) stealSpTotal = stealSpTotal.add(sp[0]);
 				} catch (Exception ignore) {}
 			}
 		}
@@ -3747,7 +3753,8 @@ public class BossAttackController {
 					s.stealMsg = "✨ 날카로운 처단으로 추가획득 (+" + dn + "조각" + qty + ")" + (bonus ? "✨ 보너스!" : "");
 					s.calc.jobSkillUsed = true;
 				}
-				String[] b={""}; s.stealPoint += " +" + baroSellItem(dn, id, s.res, s.userName, s.roomName, s.ctx, s.u, "STEAL", qty, s.nightmare, b); s.stealBonus += b[0];
+				SP[] sp=new SP[1]; String[] b={""}; s.stealPoint += " +" + baroSellItem(dn, id, s.res, s.userName, s.roomName, s.ctx, s.u, "STEAL", qty, s.nightmare, b, sp); s.stealBonus += b[0];
+				if (sp[0] != null) stealSpTotal = stealSpTotal.add(sp[0]);
 			} catch (Exception ignore) {}
 		}
 
@@ -3763,7 +3770,19 @@ public class BossAttackController {
 						: "✨ 촌장 집에서 " + s.m.monName + "의 아이템을 발견했다! (" + dn + "조각)";
 					s.calc.jobSkillUsed = true;
 				}
-				String[] b={""}; s.stealPoint += " +" + baroSellItem(dn, id, s.res, s.userName, s.roomName, s.ctx, s.u, "STEAL", 1, s.nightmare, b); s.stealBonus += b[0];
+				SP[] sp=new SP[1]; String[] b={""}; s.stealPoint += " +" + baroSellItem(dn, id, s.res, s.userName, s.roomName, s.ctx, s.u, "STEAL", 1, s.nightmare, b, sp); s.stealBonus += b[0];
+				if (sp[0] != null) stealSpTotal = stealSpTotal.add(sp[0]);
+			} catch (Exception ignore) {}
+		}
+
+		// STEAL SP 단건 INSERT
+		if (stealSpTotal.getValue() > 0 || !stealSpTotal.getUnit().isEmpty()) {
+			try {
+				HashMap<String, Object> pr = new HashMap<>();
+				pr.put("userName", s.userName); pr.put("roomName", s.roomName);
+				pr.put("score", stealSpTotal.getValue()); pr.put("scoreExt", stealSpTotal.getUnit());
+				pr.put("cmd", "DROP_SP_STEAL");
+				botNewService.insertPointRank(pr);
 			} catch (Exception ignore) {}
 		}
 
@@ -3774,12 +3793,24 @@ public class BossAttackController {
 		if (s.res.killed && !"0".equals(s.res.dropCode)) {
 			String dn = (s.m.monDrop == null ? "" : s.m.monDrop.trim());
 			if (!dn.isEmpty()) {
-				String[] nb={""}; s.newPoint += " +" + baroSellItem(dn, 0, s.res, s.userName, s.roomName, s.ctx, s.u, "DROP", 1, s.nightmare, nb); s.newBonus += nb[0];
+				SP[] sp=new SP[1]; String[] nb={""}; s.newPoint += " +" + baroSellItem(dn, 0, s.res, s.userName, s.roomName, s.ctx, s.u, "DROP", 1, s.nightmare, nb, sp); s.newBonus += nb[0];
+				if (sp[0] != null) dropSpTotal = dropSpTotal.add(sp[0]);
 				// [7008] 추가 드랍 +1 → 기본 드랍코드 1로 SP 추가 지급
 				if (s.res.bonusNormalDrop) {
 					Resolve bonusRes = new Resolve();
 					bonusRes.dropCode = "1";
-					String[] nb2={""}; s.newPoint += " +" + baroSellItem(dn, 0, bonusRes, s.userName, s.roomName, s.ctx, s.u, "DROP", 1, s.nightmare, nb2); s.newBonus += nb2[0];
+					SP[] sp2=new SP[1]; String[] nb2={""}; s.newPoint += " +" + baroSellItem(dn, 0, bonusRes, s.userName, s.roomName, s.ctx, s.u, "DROP", 1, s.nightmare, nb2, sp2); s.newBonus += nb2[0];
+					if (sp2[0] != null) dropSpTotal = dropSpTotal.add(sp2[0]);
+				}
+				// DROP SP 단건 INSERT
+				if (dropSpTotal.getValue() > 0 || !dropSpTotal.getUnit().isEmpty()) {
+					try {
+						HashMap<String, Object> pr = new HashMap<>();
+						pr.put("userName", s.userName); pr.put("roomName", s.roomName);
+						pr.put("score", dropSpTotal.getValue()); pr.put("scoreExt", dropSpTotal.getUnit());
+						pr.put("cmd", "DROP_SP_DROP");
+						botNewService.insertPointRank(pr);
+					} catch (Exception ignore) {}
 				}
 			}
 		}
@@ -4038,15 +4069,20 @@ public class BossAttackController {
 	}
 	/** 기존 호환용 오버로드 — 보너스 설명 불필요한 호출에서 사용 */
 	public String baroSellItem(String dropName,Integer itemId,Resolve res,String userName,String roomName,UserBattleContext ctx,User u,String gainType,int qty,boolean nightmare) {
-	    return baroSellItem(dropName,itemId,res,userName,roomName,ctx,u,gainType,qty,nightmare,null);
+	    return baroSellItem(dropName,itemId,res,userName,roomName,ctx,u,gainType,qty,nightmare,null,null);
+	}
+
+	/** 11-param 호환 오버로드 */
+	public String baroSellItem(String dropName,Integer itemId,Resolve res,String userName,String roomName,UserBattleContext ctx,User u,String gainType,int qty,boolean nightmare,String[] outBonus) {
+	    return baroSellItem(dropName,itemId,res,userName,roomName,ctx,u,gainType,qty,nightmare,outBonus,null);
 	}
 
 	/**
-	 * SP 지급 + 보너스 설명 반환
+	 * SP 계산 + 보너스 설명 반환. INSERT는 수행하지 않음. 호출부에서 outSp를 누적 후 단건 INSERT 처리.
 	 * @param outBonus null 허용. null이 아니면 outBonus[0]에 보너스 설명 문자열을 설정.
-	 *                 예: "(30b 이하 3배)(용사 5배)(크리! ×2)"
+	 * @param outSp    null 허용. null이 아니면 outSp[0]에 계산된 SP 객체를 설정.
 	 */
-	public String baroSellItem(String dropName,Integer itemId,Resolve res,String userName,String roomName,UserBattleContext ctx,User u,String gainType,int qty,boolean nightmare,String[] outBonus) {
+	public String baroSellItem(String dropName,Integer itemId,Resolve res,String userName,String roomName,UserBattleContext ctx,User u,String gainType,int qty,boolean nightmare,String[] outBonus,SP[] outSp) {
 	    String newPoint="";
 	    try {
 	        if(0 == itemId) {
@@ -4100,7 +4136,7 @@ public class BossAttackController {
 	                }
 	            }
 
-	            // outBonus 설정
+	            // outBonus / outSp 설정
 	            if (outBonus != null && outBonus.length > 0) {
 	                outBonus[0] = bonusDesc.toString();
 	            }
@@ -4119,19 +4155,10 @@ public class BossAttackController {
 
 	            SP gain = SP.fromSp(gainSp);
 
-	            // --------------------------
-	            // DB insert
-	            // --------------------------
-
-	            HashMap<String, Object> pr = new HashMap<>();
-
-	            pr.put("userName", userName);
-	            pr.put("roomName", roomName);
-	            pr.put("score", gain.getValue());
-	            pr.put("scoreExt", gain.getUnit());
-	            pr.put("cmd", "DROP_SP_"+gainType);
-
-	            botNewService.insertPointRank(pr);
+	            // INSERT는 호출부에서 처리 — 여기서는 outSp에만 세팅
+	            if (outSp != null && outSp.length > 0) {
+	                outSp[0] = gain;
+	            }
 
 	            newPoint = gain.toString();
 	        }
