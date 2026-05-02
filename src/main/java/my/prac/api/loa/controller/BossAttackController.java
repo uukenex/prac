@@ -8374,11 +8374,11 @@ public class BossAttackController {
 
 	
 	private SP pickBiasedSp(long min, long max) {
-	    double r = ThreadLocalRandom.current().nextDouble(); 
-	    double biased = Math.pow(r, 6); 
+	    double r = ThreadLocalRandom.current().nextDouble();
+	    double biased = Math.pow(r, 6);
 
 	    long span = max - min;
-	    long value = min + (int)Math.round(span * biased);
+	    long value = min + Math.round(span * biased); // (int) 캐스팅 제거 — int 범위 초과 시 오버플로우 방지
 	    SP sp = SP.fromSp(value);
 	    return sp;
 	}
