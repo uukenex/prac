@@ -598,7 +598,7 @@ public class BossAttackController {
 	        int atkSum = atkMin+atkMax;
 	        int critMultiplier = baseCritDmg + mktCritDmg;
 
-	        hpMax = hpMax + (atkSum * critMultiplier/100);
+	        hpMax = (int) Math.min((long)hpMax + (long)atkSum * critMultiplier / 100, Integer.MAX_VALUE);
 
 	        // 공격력은 의미 없음 → HP 기반으로 통일
 	        atkMin = hpMax;
@@ -612,11 +612,11 @@ public class BossAttackController {
 	        
 	    }
 
-	    int hpMaxBonus = (hpMax * (ctx.mktHpMaxRate)) /100;
+	    int hpMaxBonus = (int)((long)hpMax * ctx.mktHpMaxRate / 100);
 	    hpMax += hpMaxBonus;
-	    int atkMinBonus = (atkMin * (ctx.mktAtkMaxRate)) /100;
+	    int atkMinBonus = (int)((long)atkMin * ctx.mktAtkMaxRate / 100);
 	    atkMin += atkMinBonus;
-	    int atkMaxBonus = (atkMax * (ctx.mktAtkMaxRate)) /100;
+	    int atkMaxBonus = (int)((long)atkMax * ctx.mktAtkMaxRate / 100);
 	    atkMax += atkMaxBonus;
 	    
 	    int crit =baseCrit + mktCrit;
@@ -683,8 +683,8 @@ public class BossAttackController {
 	    }
 	    // ── 세트 효과: 최종 비율 보너스 (헬너프 포함 최종 수치 기준) ──────────────
 	    if (setAtkFinalRate > 0) {
-	        atkMin += (int) Math.round(atkMin * setAtkFinalRate / 100.0);
-	        atkMax += (int) Math.round(atkMax * setAtkFinalRate / 100.0);
+	        atkMin += (int) Math.round((long)atkMin * setAtkFinalRate / 100.0);
+	        atkMax += (int) Math.round((long)atkMax * setAtkFinalRate / 100.0);
 	    }
 	    if (setCritFinalRate > 0) {
 	        crit += (int) Math.round(crit * setCritFinalRate / 100.0);
