@@ -3604,7 +3604,7 @@ public class BossAttackController {
 		    int heal = (int) Math.round(s.hpMax * (buffCount * 5 * coef) / 100.0);
 		    int beforeHpDosa = s.u.hpCur;
 		    s.u.hpCur = Math.min(s.hpMax, s.u.hpCur + heal);
-		    s.dosabuffMsg = buildUnifiedDosaBuffMessage(dosaSelf, dosaRoom, s.u.hpCur - beforeHpDosa);
+		    s.dosabuffMsg = buildUnifiedDosaBuffMessage(dosaSelf, dosaRoom, s.u.hpCur - beforeHpDosa, coef);
 		}
 
 		// ── 세트 회피: monPattern 1,4,5,6 회피 판정 ──────────────────────────────
@@ -8384,11 +8384,15 @@ public class BossAttackController {
 	}
 
 	private String buildUnifiedDosaBuffMessage(DosaBuffEffect self, DosaBuffEffect room, int actualHeal) {
+	    return buildUnifiedDosaBuffMessage(self, room, actualHeal, 1);
+	}
+	private String buildUnifiedDosaBuffMessage(DosaBuffEffect self, DosaBuffEffect room, int actualHeal, int coef) {
 	    int buffCount = (self != null ? 1 : 0) + (room != null ? 1 : 0);
-	    int flatBonus = buffCount * 1000;
-	    int rateBonus = buffCount * 5;
+	    int flatBonus = buffCount * 1000 * coef;
+	    int rateBonus = buffCount * 5 * coef;
 	    StringBuilder sb = new StringBuilder("※도사 기원: 최종 데미지 +").append(flatBonus);
 	    if (rateBonus > 0) sb.append(", +").append(rateBonus).append("%");
+	    if (coef > 1) sb.append(" [7012 ×").append(coef).append("]");
 	    if (actualHeal > 0) sb.append(", HP +").append(actualHeal).append(" 회복");
 	    return sb.toString();
 	}
