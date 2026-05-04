@@ -413,11 +413,12 @@
 	    NVL(MAX(i.ITEM_DESC), '')     AS ITEM_DESC
 
 	FROM (
-	    /* 현재 인벤 전체 (마이그레이션 이전 데이터 포함) */
+	    /* 현재 인벤 (item_id > 90) */
 	    SELECT ITEM_ID, GAIN_TYPE, QTY
 	      FROM TBOT_POINT_NEW_INVENTORY
 	     WHERE USER_NAME = #{userName}
 	       AND DEL_YN = '0'
+	       AND ITEM_ID > 90
 	    UNION ALL
 	    /* 통계 테이블 (item_id &lt; 100, 마이그레이션 후 데이터) */
 	    SELECT ITEM_ID, GAIN_TYPE, QTY
