@@ -412,16 +412,25 @@
 	    NVL(MAX(i.ATK_MAX_RATE), 0)   AS ATK_MAX_RATE,
 	    NVL(MAX(i.ITEM_DESC), '')     AS ITEM_DESC
 
-	FROM TBOT_POINT_NEW_INVENTORY inv
+	FROM (
+	    /* 현재 인벤 전체 (마이그레이션 이전 데이터 포함) */
+	    SELECT ITEM_ID, GAIN_TYPE, QTY
+	      FROM TBOT_POINT_NEW_INVENTORY
+	     WHERE USER_NAME = #{userName}
+	       AND DEL_YN = '0'
+	    UNION ALL
+	    /* 통계 테이블 (item_id &lt; 100, 마이그레이션 후 데이터) */
+	    SELECT ITEM_ID, GAIN_TYPE, QTY
+	      FROM TBOT_POINT_NEW_INVENTORY_OLD
+	     WHERE USER_NAME = #{userName}
+	       AND DEL_YN = '0'
+	) inv
 	LEFT JOIN TBOT_POINT_NEW_ITEM i
 	  ON i.item_id = inv.item_id
-	
-	WHERE inv.user_name = #{userName}
-	  AND inv.del_yn = '0'
-	  AND inv.item_id > 90
+
 	GROUP BY
 	    i.item_id, -1,
-	    CASE 
+	    CASE
 	      WHEN NVL(inv.gain_type,'DROP') = 'DROP3'
 	        THEN '빛' || NVL(i.item_name, '알 수 없음')
 	      WHEN NVL(inv.gain_type,'DROP') = 'DROP5'
@@ -432,7 +441,7 @@
 	        THEN NVL(i.item_name, '알 수 없음') || '조각'
 	      ELSE NVL(i.item_name, '알 수 없음')
 	    END
-	
+
 	ORDER BY i.item_id
 	</select>
 
@@ -1361,12 +1370,15 @@
 	    /* selectTotalGainCountByGainType */
 	    SELECT GAIN_TYPE,
 	           SUM(QTY) AS TOTAL_QTY
-	    FROM   TBOT_POINT_NEW_INVENTORY
-	    WHERE  USER_NAME = #{userName}
-	    <!-- 
-	      AND  ROOM_NAME = #{roomName}
-	       -->
-	      AND  GAIN_TYPE IN ('DROP3', 'DROP5','DROP9')
+	    FROM (
+	        SELECT GAIN_TYPE, QTY FROM TBOT_POINT_NEW_INVENTORY
+	         WHERE USER_NAME = #{userName}
+	           AND GAIN_TYPE IN ('DROP3', 'DROP5','DROP9')
+	        UNION ALL
+	        SELECT GAIN_TYPE, QTY FROM TBOT_POINT_NEW_INVENTORY_OLD
+	         WHERE USER_NAME = #{userName}
+	           AND GAIN_TYPE IN ('DROP3', 'DROP5','DROP9')
+	    )
 	    GROUP BY GAIN_TYPE
 	</select>
 	
@@ -1538,12 +1550,18 @@
 	        IT.ITEM_NAME,
 	        I.GAIN_TYPE,
 	        SUM(I.QTY) AS TOTAL_QTY
-	    FROM TBOT_POINT_NEW_INVENTORY I
-	    JOIN TBOT_POINT_NEW_ITEM IT
-	      ON I.ITEM_ID = IT.ITEM_ID
-	    WHERE I.USER_NAME = #{userName}
-	      AND I.GAIN_TYPE IN ('DROP','DROP2','DROP3','DROP5','DROP9','STEAL')
-	      AND I.ITEM_ID &lt; 50
+	    FROM (
+	        SELECT ITEM_ID, GAIN_TYPE, QTY FROM TBOT_POINT_NEW_INVENTORY
+	         WHERE USER_NAME = #{userName}
+	           AND GAIN_TYPE IN ('DROP','DROP2','DROP3','DROP5','DROP9','STEAL')
+	           AND ITEM_ID &lt; 50
+	        UNION ALL
+	        SELECT ITEM_ID, GAIN_TYPE, QTY FROM TBOT_POINT_NEW_INVENTORY_OLD
+	         WHERE USER_NAME = #{userName}
+	           AND GAIN_TYPE IN ('DROP','DROP2','DROP3','DROP5','DROP9','STEAL')
+	           AND ITEM_ID &lt; 50
+	    ) I
+	    JOIN TBOT_POINT_NEW_ITEM IT ON I.ITEM_ID = IT.ITEM_ID
 	    GROUP BY I.ITEM_ID, IT.ITEM_NAME, I.GAIN_TYPE
 	    ORDER BY I.ITEM_ID DESC, I.GAIN_TYPE
 	</select>
@@ -1663,9 +1681,15 @@
 	        resultType="int">
 	    /* selectTotalBagAcquireCount */
 	    SELECT NVL(SUM(QTY), 0) AS TOTAL_QTY
-	      FROM TBOT_POINT_NEW_INVENTORY
-	     WHERE USER_NAME = #{userName}
-	       AND ITEM_ID   IN ('91','92','93')
+	      FROM (
+	          SELECT QTY FROM TBOT_POINT_NEW_INVENTORY
+	           WHERE USER_NAME = #{userName}
+	             AND ITEM_ID   IN ('91','92','93')
+	          UNION ALL
+	          SELECT QTY FROM TBOT_POINT_NEW_INVENTORY_OLD
+	           WHERE USER_NAME = #{userName}
+	             AND ITEM_ID   IN ('91','92','93')
+	      )
 	</select>
 	
 	<!-- [OPT3] INVENTORY 3개 쿼리 통합 - selectTotalGainCountByGainType + selectTotalBagAcquireCount + selectInventorySoldCount -->
@@ -1676,12 +1700,19 @@
 	        NVL(SUM(CASE WHEN GAIN_TYPE='DROP5'  THEN QTY ELSE 0 END), 0) AS DROP5_QTY,
 	        NVL(SUM(CASE WHEN GAIN_TYPE='DROP9'  THEN QTY ELSE 0 END), 0) AS DROP9_QTY,
 	        NVL(SUM(CASE WHEN ITEM_ID IN (91,92,93) THEN QTY ELSE 0 END), 0) AS BAG_COUNT,
-        NVL(SUM(CASE WHEN ITEM_ID = 92          THEN QTY ELSE 0 END), 0) AS NM_BAG_COUNT,
+	        NVL(SUM(CASE WHEN ITEM_ID = 92          THEN QTY ELSE 0 END), 0) AS NM_BAG_COUNT,
 	        NVL(SUM(CASE WHEN GAIN_TYPE IN ('DROP','DROP3','DROP5','DROP9','STEAL')
 	                          AND NVL(DEL_YN,'0')='1' THEN QTY ELSE 0 END), 0) AS SOLD_COUNT,
 	        NVL(SUM(CASE WHEN ITEM_ID BETWEEN 1001 AND 1006 THEN QTY ELSE 0 END), 0) AS POTION_COUNT
-	    FROM TBOT_POINT_NEW_INVENTORY
-	    WHERE USER_NAME = #{userName}
+	    FROM (
+	        /* 현재 인벤 (DEL_YN='1' 판매분 포함) */
+	        SELECT GAIN_TYPE, ITEM_ID, QTY, DEL_YN FROM TBOT_POINT_NEW_INVENTORY
+	         WHERE USER_NAME = #{userName}
+	        UNION ALL
+	        /* 통계 테이블 (item_id &lt; 100, DEL_YN='0'만 존재) */
+	        SELECT GAIN_TYPE, ITEM_ID, QTY, DEL_YN FROM TBOT_POINT_NEW_INVENTORY_OLD
+	         WHERE USER_NAME = #{userName}
+	    )
 	</select>
 
 	<select id="selectPotionUseCount" resultType="int">
@@ -1723,11 +1754,18 @@
 	        resultType="int">
 	    /* selectBagCountByItemId */
 	    SELECT NVL(SUM(QTY),0)
-	      FROM TBOT_POINT_NEW_INVENTORY
-	     WHERE USER_NAME = #{userName}
-	       AND ITEM_ID   = #{itemId}
-	       AND DEL_YN    = '0'
-	
+	      FROM (
+	          SELECT QTY FROM TBOT_POINT_NEW_INVENTORY
+	           WHERE USER_NAME = #{userName}
+	             AND ITEM_ID   = #{itemId}
+	             AND DEL_YN    = '0'
+	          UNION ALL
+	          SELECT QTY FROM TBOT_POINT_NEW_INVENTORY_OLD
+	           WHERE USER_NAME = #{userName}
+	             AND ITEM_ID   = #{itemId}
+	             AND DEL_YN    = '0'
+	      )
+
 	</select>
 	<update id="consumeBagBulkByItemId"
 	        parameterType="hashmap">
@@ -1866,16 +1904,23 @@
 
 <select id="selectInventoryItemsByIds" resultType="int">
 	    /* selectInventoryItemsByIds */
-	    SELECT n.ITEM_ID
-	    FROM TBOT_POINT_NEW_INVENTORY n
-	    WHERE n.USER_NAME = #{userName}
-	      AND NVL(n.DEL_YN,'0') = '0'
-	      AND NVL(n.QTY, 0) > 0
-	      AND n.ITEM_ID IN
-	      <foreach collection="itemIds" item="id" open="(" separator="," close=")">
-	          #{id}
-	      </foreach>
-	    GROUP BY n.ITEM_ID
+	    SELECT ITEM_ID
+	    FROM (
+	        SELECT n.ITEM_ID FROM TBOT_POINT_NEW_INVENTORY n
+	         WHERE n.USER_NAME = #{userName}
+	           AND NVL(n.DEL_YN,'0') = '0'
+	           AND NVL(n.QTY, 0) > 0
+	           AND n.ITEM_ID IN
+	           <foreach collection="itemIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+	        UNION ALL
+	        SELECT o.ITEM_ID FROM TBOT_POINT_NEW_INVENTORY_OLD o
+	         WHERE o.USER_NAME = #{userName}
+	           AND NVL(o.DEL_YN,'0') = '0'
+	           AND NVL(o.QTY, 0) > 0
+	           AND o.ITEM_ID IN
+	           <foreach collection="itemIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+	    )
+	    GROUP BY ITEM_ID
 	</select>
 
 	<!-- =====================================================
