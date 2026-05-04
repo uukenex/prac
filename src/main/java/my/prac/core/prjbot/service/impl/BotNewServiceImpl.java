@@ -1,6 +1,7 @@
 package my.prac.core.prjbot.service.impl;
 
 import java.sql.Timestamp;
+import java.time.LocalDate;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -690,5 +691,46 @@ public class BotNewServiceImpl implements BotNewService {
     @Override
     public List<String> selectAltCharList() {
         return botNewDAO.selectAltCharList();
+    }
+
+    @Override
+    public int migrateInventoryToOld() throws Exception {
+
+        // 이번달 1일 기준 (그 이전 데이터만 이관)
+        LocalDate firstOfMonth = LocalDate.now().withDayOfMonth(1);
+        java.sql.Date cutoffDate = java.sql.Date.valueOf(firstOfMonth);
+
+        HashMap<String, Object> param = new HashMap<>();
+        param.put("cutoffDate", cutoffDate);
+
+        // 1. 이관 대상 그룹 조회
+        List<HashMap<String, Object>> targets = botNewDAO.selectInventoryOldMigrateTarget(param);
+        if (targets == null || targets.isEmpty()) {
+            return 0;
+        }
+
+        int migratedCount = 0;
+
+        // 2. 각 그룹별 UPDATE or INSERT
+        for (HashMap<String, Object> row : targets) {
+            HashMap<String, Object> upsertParam = new HashMap<>();
+            upsertParam.put("userName", Objects.toString(row.get("USER_NAME"), ""));
+            upsertParam.put("itemId",   row.get("ITEM_ID"));
+            upsertParam.put("delYn",    Objects.toString(row.get("DEL_YN"), "1"));
+            upsertParam.put("gainType", row.get("GAIN_TYPE"));
+            upsertParam.put("qty",      row.get("QTY"));
+
+            int updated = botNewDAO.updateInventoryOldQty(upsertParam);
+            if (updated == 0) {
+                // 기존 레코드 없으면 INSERT
+                botNewDAO.insertInventoryOld(upsertParam);
+            }
+            migratedCount++;
+        }
+
+        // 3. 이관 완료된 메인 테이블 데이터 삭제
+        botNewDAO.deleteInventoryMigrated(param);
+
+        return migratedCount;
     }
 }

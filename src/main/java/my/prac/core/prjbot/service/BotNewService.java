@@ -208,6 +208,15 @@ public interface BotNewService {
 
     /** 부캐 리스트 조회 */
     List<String> selectAltCharList();
+
+    /**
+     * 인벤토리 OLD 이관 (매월 5일 배치)
+     * - item_id < 100, del_yn='1', insert_date < 이번달 1일
+     * - OLD 기존 레코드 있으면 UPDATE, 없으면 INSERT
+     * - 이관 후 메인 테이블에서 DELETE
+     * @return 이관된 레코드 수
+     */
+    int migrateInventoryToOld() throws Exception;
 }
 
 	

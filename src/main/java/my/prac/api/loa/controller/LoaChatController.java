@@ -288,6 +288,18 @@ public class LoaChatController {
 				e1.printStackTrace();
 			}
 			break;
+		case "c5":
+			// 매월 5~7일: 인벤토리 OLD 이관 (item_id < 100, del_yn='1')
+			int dom = LocalDate.now().getDayOfMonth();
+			if (dom >= 5 && dom <= 7) {
+				try {
+					int cnt = botNewService.migrateInventoryToOld();
+					System.out.println("[CRON-c5] 인벤 OLD 이관 완료: " + cnt + "건");
+				} catch (Exception e1) {
+					e1.printStackTrace();
+				}
+			}
+			break;
 		case "test":
 			try {
 				market.search_c2();

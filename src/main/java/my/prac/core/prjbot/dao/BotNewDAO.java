@@ -253,4 +253,17 @@ public interface BotNewDAO {
 
     /** 부캐 리스트 조회 */
     List<String> selectAltCharList();
+
+    // ── 인벤토리 OLD 이관 (매월 배치) ──────────────────────────────
+    /** 이관 대상 그룹 조회 (item_id < 100, del_yn='1', insert_date < cutoff) */
+    List<HashMap<String, Object>> selectInventoryOldMigrateTarget(HashMap<String, Object> param);
+
+    /** OLD 테이블 QTY 증가 UPDATE */
+    int updateInventoryOldQty(HashMap<String, Object> param);
+
+    /** OLD 테이블 신규 INSERT */
+    int insertInventoryOld(HashMap<String, Object> param);
+
+    /** 이관 완료된 메인 테이블 데이터 삭제 */
+    int deleteInventoryMigrated(HashMap<String, Object> param);
 }

@@ -2112,4 +2112,50 @@
 		SELECT USER_NAME FROM TBOT_LOA_ALT_CHAR ORDER BY INSERT_DATE
 	</select>
 
+	<!-- =====================================================
+	     인벤토리 OLD 이관 (매월 5일 배치)
+	     item_id < 100, del_yn='1', insert_date < cutoffDate
+	     ===================================================== -->
+
+	<!-- 이관 대상 그룹 조회 -->
+	<select id="selectInventoryOldMigrateTarget" resultType="hashmap" parameterType="hashmap">
+		/* selectInventoryOldMigrateTarget */
+		SELECT USER_NAME, ITEM_ID, DEL_YN, GAIN_TYPE, SUM(QTY) AS QTY
+		  FROM TBOT_POINT_NEW_INVENTORY
+		 WHERE ITEM_ID &lt; 100
+		   AND DEL_YN = '1'
+		   AND INSERT_DATE &lt; #{cutoffDate}
+		 GROUP BY USER_NAME, ITEM_ID, DEL_YN, GAIN_TYPE
+	</select>
+
+	<!-- OLD 테이블 QTY 증가 UPDATE (기존 레코드가 있을 때) -->
+	<update id="updateInventoryOldQty" parameterType="hashmap">
+		/* updateInventoryOldQty */
+		UPDATE TBOT_POINT_NEW_INVENTORY_OLD
+		   SET QTY = QTY + #{qty},
+		       INSERT_DATE = SYSDATE
+		 WHERE USER_NAME = #{userName}
+		   AND ITEM_ID   = #{itemId}
+		   AND NVL(DEL_YN,'0') = NVL(#{delYn},'0')
+		   AND NVL(GAIN_TYPE,'NULL') = NVL(#{gainType},'NULL')
+	</update>
+
+	<!-- OLD 테이블 신규 INSERT -->
+	<insert id="insertInventoryOld" parameterType="hashmap">
+		/* insertInventoryOld */
+		INSERT INTO TBOT_POINT_NEW_INVENTORY_OLD
+		    (USER_NAME, ITEM_ID, QTY, DEL_YN, GAIN_TYPE, INSERT_DATE)
+		VALUES
+		    (#{userName}, #{itemId}, #{qty}, #{delYn}, #{gainType}, SYSDATE)
+	</insert>
+
+	<!-- 이관 완료된 메인 테이블 데이터 삭제 -->
+	<delete id="deleteInventoryMigrated" parameterType="hashmap">
+		/* deleteInventoryMigrated */
+		DELETE FROM TBOT_POINT_NEW_INVENTORY
+		 WHERE ITEM_ID &lt; 100
+		   AND DEL_YN = '1'
+		   AND INSERT_DATE &lt; #{cutoffDate}
+	</delete>
+
 </mapper>
