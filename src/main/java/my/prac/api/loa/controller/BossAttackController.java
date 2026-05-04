@@ -5091,6 +5091,7 @@ public class BossAttackController {
 	    if (maxs == null || maxs.isEmpty()) {
 	    	sb.append("- 데이터 없음").append(NL);
 	    } else {
+	    	int rank = 1;
 	    	for (HashMap<String,Object> row : maxs) {
 	    		String max  = String.valueOf(row.get("MAX_DAMAGE"));
 	    		String name = String.valueOf(row.get("USER_NAME"));
@@ -5100,6 +5101,8 @@ public class BossAttackController {
 	    		.append(" : ")
 	    		.append(name)
 	    		.append(NL);
+	    		
+	    		if (rank++ >= 5) break;
 	    	}
 	    }
 	    
@@ -5129,10 +5132,11 @@ public class BossAttackController {
 		               .append(" - ").append(SP.fromSp(totSp))
 		               .append(NL);
 	
-		             if (++rank > 10) break;
+		             if (++rank > 5) break;
 		         }
 		     }
 	
+		     /*
 		     sb.append(NL).append("◆ 공격 횟수 랭킹 (TOP10)").append(NL);
 	
 		     if (spAtkList == null || spAtkList.isEmpty()) {
@@ -5160,11 +5164,13 @@ public class BossAttackController {
 		             if (++rank > 10) break;
 		         }
 		     }
+		     */
 		     
 		 } catch (Exception ignore) {}
 	    // =========================
 	    // 업적 갯수 랭킹
 	    // =========================
+		 /*
 	    try {
 	        List<HashMap<String, Object>> achvRank = botNewService.selectAchievementCountRanking();
 	        sb.append(NL).append("◆ 업적 갯수 랭킹 (TOP5)").append(NL);
@@ -5181,10 +5187,12 @@ public class BossAttackController {
 	            }
 	        }
 	    } catch (Exception ignore) {}
+	    */
 
     // =========================
     // GP 랭킹
     // =========================
+		 /*
     try {
         List<HashMap<String, Object>> gpList = botNewService.selectGpRanking();
         sb.append(NL).append("◆ GP 랭킹 (보스뽑기: 6 GP)").append(NL);
@@ -5205,7 +5213,7 @@ public class BossAttackController {
         }
     } catch (Exception ignore) {}
 
-
+		  */
 	    sb.append(NL);
 	    /* === ⚔ 몬스터 학살자 (전체) === */
 	    /*
