@@ -593,25 +593,6 @@ public class BossAttackController {
 	    int regen = finalRegen + jobRegen;
 	    if (regen < 0) regen = 0;
 
-	    if ("곰".equals(job)) {
-
-	        int atkSum = atkMin+atkMax;
-	        int critMultiplier = baseCritDmg + mktCritDmg;
-
-	        hpMax = (int) Math.min((long)hpMax + (long)atkSum * critMultiplier / 100, Integer.MAX_VALUE);
-
-	        // 공격력은 의미 없음 → HP 기반으로 통일
-	        atkMin = hpMax;
-	        atkMax = hpMax;
-
-	        // 곰은 크리 사용 안함
-	        ctx.crit = 0;
-	        ctx.critDmg = 0;
-	        baseCritDmg= 0;
-	        mktCritDmg=0;
-	        
-	    }
-
 	    int hpMaxBonus = (int)((long)hpMax * ctx.mktHpMaxRate / 100);
 	    hpMax += hpMaxBonus;
 	    int atkMinBonus = (int)((long)atkMin * ctx.mktAtkMaxRate / 100);
@@ -665,21 +646,30 @@ public class BossAttackController {
 	    ctx.hellNerfCrit = hellNerfCrit;
 	    ctx.hellNerfCritDmg = hellNerfCritDmg;
 
+	    if ("곰".equals(job)) {
+
+	        int atkSum = atkMin+atkMax;
+	        int critMultiplier = baseCritDmg + mktCritDmg;
+
+	        hpMax = (int) Math.min((long)hpMax + (long)atkSum * critMultiplier / 100, Integer.MAX_VALUE);
+
+	        // 공격력은 의미 없음 → HP 기반으로 통일
+	        atkMin = hpMax;
+	        atkMax = hpMax;
+
+	        // 곰은 크리 사용 안함
+	        ctx.crit = 0;
+	        ctx.critDmg = 0;
+	        baseCritDmg= 0;
+	        mktCritDmg=0;
+	        
+	    }
+	    /*
 	    // [7000번대 헬너프 면제] 헬너프 이후 7001 천벌 ATK 합산
 	    if (BOSS_ITEM_HELL_NERF_EXEMPT && (heavenAtkMin > 0 || heavenAtkMax > 0)) {
 	        atkMin += heavenAtkMin;
 	        atkMax += heavenAtkMax;
-	    }
-
-	    // HP/ATK 확정치 저장
-	    // 은둔자: 마지막 공격 후 경과시간(분) 비례 데미지 증가
-	    if ("은둔자".equals(job) && ads != null && ads.lastAttackTime != null) {
-	        long elapsedMin = (System.currentTimeMillis() - ads.lastAttackTime.getTime()) / 60000L;
-	        // 1분당 +10%, 최대 +200% (20분 이상 미공격 시 3배)
-	        double timeMult = Math.min(3.0, 1.0 + elapsedMin * 0.10);
-	        atkMin = (int)(atkMin * timeMult);
-	        atkMax = (int)(atkMax * timeMult);
-	    }
+	    }*/
 	    // ── 세트 효과: 최종 비율 보너스 (헬너프 포함 최종 수치 기준) ──────────────
 	    if (setAtkFinalRate > 0) {
 	        atkMin += (int) Math.round((long)atkMin * setAtkFinalRate / 100.0);
@@ -699,7 +689,7 @@ public class BossAttackController {
 
 	    // 표시용 스탯 (1번 메서드에서 쓰던 값)
 	    ctx.crit          = crit;
-	    	    ctx.critDmg       = critDmg;
+	    ctx.critDmg       = critDmg;
 
 	    // 🔹 직업 보너스(표시용) 저장
 	    ctx.jobHp = jobHp;
