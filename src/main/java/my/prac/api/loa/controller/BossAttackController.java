@@ -622,12 +622,26 @@ public class BossAttackController {
 	    int crit =baseCrit + mktCrit;
 	    int critDmg = baseCritDmg + mktCritDmg;
 	    
+	    // [7009] 진화형 무기: 레벨당 공격력 +150 (헬너프 적용 전 합산)
+	    if (ctx.ownedBossItems.contains(7009)) {
+	        int evolveBonus = u.lv * 150;
+	        atkMin += evolveBonus;
+	        atkMax += evolveBonus;
+	    }
+	    // [7013] 어제의 전사들: 어제 공격자 수 × 공격력 +1000, 치명타 데미지 +10 (헬너프 적용 전 합산)
+	    if (ctx.ownedBossItems.contains(7013)) {
+	        int yestCount = getYesterdayAttackerCountCached();
+	        atkMin  += yestCount * 1000;
+	        atkMax  += yestCount * 1000;
+	        critDmg += yestCount * 10;
+	    }
+
 	    int hellNerfAtkMin =0;
 	    int hellNerfAtkMax =0;
 	    int hellNerfHp =0;
 	    int hellNerfCrit =0;
 	    int hellNerfCritDmg =0;
-	    
+
 	    if(u.nightmareYn==2) {
 	    	double hellMult = MiniGameUtil.getHellNerfMult(ctx.hunterGrade);
 	    	if (ctx.ownedBossItems.contains(7007)) hellMult = Math.max(0.0, hellMult + 0.03);
@@ -637,16 +651,14 @@ public class BossAttackController {
 	    	hellNerfHp = Math.max(0, (int) Math.round(hpMax   * (1-hellMult) ));
 	    	hellNerfCrit = Math.max(0, (int) Math.round(crit   * (1-hellMult) ));
 	    	hellNerfCritDmg = Math.max(0, (int) Math.round(critDmg   * (1-hellMult) ));
-	    	
+
 	        atkMin   -= hellNerfAtkMin;
 	        atkMax   -= hellNerfAtkMax;
 	        hpMax -= hellNerfHp;
 	        crit -= hellNerfCrit;
 	        critDmg -= hellNerfCritDmg;
-	        
-	        
 	    }
-	    
+
 	    ctx.hellNerfAtkMin = hellNerfAtkMin;
 	    ctx.hellNerfAtkMax = hellNerfAtkMax;
 	    ctx.hellNerfHp = hellNerfHp;
@@ -667,19 +679,6 @@ public class BossAttackController {
 	        double timeMult = Math.min(3.0, 1.0 + elapsedMin * 0.10);
 	        atkMin = (int)(atkMin * timeMult);
 	        atkMax = (int)(atkMax * timeMult);
-	    }
-	    // [7009] 진화형 무기: 레벨당 공격력 +150
-	    if (ctx.ownedBossItems.contains(7009)) {
-	        int evolveBonus = u.lv * 150;
-	        atkMin += evolveBonus;
-	        atkMax += evolveBonus;
-	    }
-	    // [7013] 어제의 전사들: 어제 공격자 수 × 공격력 +1000, 치명타 데미지 +10
-	    if (ctx.ownedBossItems.contains(7013)) {
-	        int yestCount = getYesterdayAttackerCountCached();
-	        atkMin  += yestCount * 1000;
-	        atkMax  += yestCount * 1000;
-	        critDmg += yestCount * 10;
 	    }
 	    // ── 세트 효과: 최종 비율 보너스 (헬너프 포함 최종 수치 기준) ──────────────
 	    if (setAtkFinalRate > 0) {
