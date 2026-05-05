@@ -301,13 +301,20 @@ public class BossAttackS3Controller {
                     int shotAtk = (ctx.atkMin + rand.nextInt(Math.max(1, ctx.atkMax - ctx.atkMin + 1))) / 100;
                     if (shotAtk < 1) shotAtk = 1;
                     shotAtk = (int) Math.round(shotAtk * 0.7);
-                    boolean shotCrit = (i == 1) || (!hideMsg.isEmpty() ? false : ThreadLocalRandom.current().nextInt(0, 101) <= perHitRate);
-                    long shotDmg = shotCrit ? (long)(shotAtk * critMultiplier * 0.70) : shotAtk;
+                    boolean shotCrit = heavensPunishment || (i == 1) || (!hideMsg.isEmpty() ? false : ThreadLocalRandom.current().nextInt(0, 101) <= perHitRate);
+                    long shotDmg;
+                    if (heavensPunishment) {
+                        // 천벌: 초강력치명타 (×3 × critMultiplier)
+                        shotDmg = (long)(shotAtk * 3 * critMultiplier * 0.70);
+                        multiMsg.append(i).append("타: ").append(shotDmg).append(" (✨초강력치명타!)").append(NL);
+                    } else {
+                        shotDmg = shotCrit ? (long)(shotAtk * critMultiplier * 0.70) : shotAtk;
+                        multiMsg.append(i).append("타: ").append(shotDmg);
+                        if (shotCrit) multiMsg.append(" (치명!)");
+                        multiMsg.append(NL);
+                    }
                     totalMultiDmg += shotDmg;
                     if (!shotCrit) allCrit = false;
-                    multiMsg.append(i).append("타: ").append(shotDmg);
-                    if (shotCrit) multiMsg.append(" (치명!)");
-                    multiMsg.append(NL);
                 }
                 if (allCrit) {
                     long before = totalMultiDmg;
@@ -317,6 +324,7 @@ public class BossAttackS3Controller {
                     multiMsg.append("총합 데미지: ").append(totalMultiDmg).append("!").append(NL);
                 }
                 isCritical = allCrit;
+                isSuperCritical = heavensPunishment;
                 damage = totalMultiDmg;
                 dmgMsg = atkRangeStr + multiMsg;
             } else {
@@ -392,8 +400,14 @@ public class BossAttackS3Controller {
             if ("어둠사냥꾼".equals(ctx.job))      baseAtk2 = (int) Math.round(baseAtk2 * 2.0);
             else if ("용사".equals(ctx.job)) baseAtk2 = (int) Math.round(baseAtk2 * 1.25);
             int totalCrit2 = Math.max(0, 10 - critDefRate); // 보스 기본 크리율 10% 고정
-            isCritical2 = totalCrit2 > 0 && Math.random() < totalCrit2 / 100.0;
-            if (isCritical2) isSuperCritical2 = Math.random() < 0.10;
+            if (heavensPunishment) {
+                // 천벌: 2타도 초강력치명타
+                isCritical2 = true;
+                isSuperCritical2 = true;
+            } else {
+                isCritical2 = totalCrit2 > 0 && Math.random() < totalCrit2 / 100.0;
+                if (isCritical2) isSuperCritical2 = Math.random() < 0.10;
+            }
             double critMul2 = Math.max(1.0, ctx.critDmg / 100.0);
             if (isSuperCritical2) {
                 damage2 = (long)(baseAtk2 * 3 * critMul2);
