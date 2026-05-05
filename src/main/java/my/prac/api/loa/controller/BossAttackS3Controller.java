@@ -370,10 +370,9 @@ public class BossAttackS3Controller {
                 }
             }
 
-            // 천벌 디버프 상태이면 데미지 2배
+            // 천벌 디버프 상태 표시 (데미지 2배 효과 제거)
             if (flag_boss_debuff) {
-                punishMsg = "[천벌디버프](+" + damage + "), " + (debuff - 1) + "회 남음" + NL;
-                damage *= 2;
+                punishMsg = "[천벌디버프] " + (debuff - 1) + "회 남음" + NL;
             }
 
             // 보스 방어 (천벌/디버프 무시, 방어력: 데미지의 X% 감소)
@@ -578,15 +577,16 @@ public class BossAttackS3Controller {
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     /**
-     * 보스 재생성 — 참여 인원수에 따라 쿨타임을 동적 산정
-     *   6명 이하 → 18시간(1080분), 30명 이상 → 6시간(360분)
-     *   수식: cooldownMin = max(360, min(1080, 1080 - (n-6) * 30))
+     * 보스 재생성 — 참여 인원수에 따라 쿨타임/HP를 동적 산정
+     *   쿨타임: 6명 이하 → 18시간(1080분), 13명 → 8시간(480분), 최대 단축 5시간(300분)
+     *   수식: cooldownMin = max(300, min(1080, round(1080 - (n-6) * 600/7)))
+     *   HP: 참여자 수 비례 보너스 배율 적용, 최대 50a(500,000 raw) 상한
      */
     private void respawnHellBoss(String bossStartDate) {
         try {
             Random rand = new Random();
 
-            // 참여 인원수 조회 (쿨타임 산정)
+            // 참여 인원수 조회 (쿨타임/HP 산정)
             int participantCount = 6; // 기본값 (조회 실패 시)
             try {
                 HashMap<String, Object> q = new HashMap<>();
@@ -594,7 +594,10 @@ public class BossAttackS3Controller {
                 List<HashMap<String, Object>> participants = botS3Service.selectHellTop3Contributors(q);
                 if (participants != null && !participants.isEmpty()) participantCount = participants.size();
             } catch (Exception ignored) {}
-            long cooldownMin = Math.max(360, Math.min(1080, 1080 - (long)(participantCount - 6) * 30));
+
+            // 6명 이하 → 1080분(18h), 13명 → 480분(8h), 최대 단축 300분(5h)
+            long cooldownMin = (long) Math.max(300, Math.min(1080,
+                    Math.round(1080.0 - Math.max(0, participantCount - 6) * 600.0 / 7.0)));
 
             // 최근 공격 평균 데미지 기반으로 120~150회 분량 HP 산정
             long rawHp;
@@ -610,6 +613,13 @@ public class BossAttackS3Controller {
             } catch (Exception e) {
                 rawHp = BOSS_MAX_HP_MIN + (long)(rand.nextDouble() * (BOSS_MAX_HP_MAX - BOSS_MAX_HP_MIN + 1));
             }
+
+            // 참여 인원수 기반 HP 보너스 배율 적용 (최대 50a = 500,000 raw 상한)
+            if (participantCount > 6) {
+                double participantMult = 1.0 + (participantCount - 6) * 0.1; // 1인당 +10%
+                rawHp = (long)(rawHp * participantMult);
+            }
+            rawHp = Math.min(rawHp, 500_000L); // 최대 50a
 
             HashMap<String, Object> bossMap = new HashMap<>();
             bossMap.put("atkRate",     randInt(rand, BOSS_ATK_RATE_MIN,   BOSS_ATK_RATE_MAX));
