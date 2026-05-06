@@ -612,9 +612,9 @@ public class BossAttackController {
 	    // [7013] 어제의 전사들: 어제 공격자 수 × 공격력 +1000, 치명타 데미지 +10 (헬너프 적용 전 합산)
 	    if (ctx.ownedBossItems.contains(7013)) {
 	        int yestCount = getYesterdayAttackerCountCached();
-	        atkMin  += yestCount * 1000;
-	        atkMax  += yestCount * 1000;
-	        critDmg += yestCount * 10;
+	        atkMin  += yestCount * 500;
+	        atkMax  += yestCount * 500;
+	        critDmg += yestCount * 5;
 	    }
 
 	    int hellNerfAtkMin =0;
