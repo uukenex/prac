@@ -704,6 +704,8 @@ public class BotNewServiceImpl implements BotNewService {
     @Override
     public List<HashMap<String, Object>> selectCurrentBossRecentLog() {
         return botNewDAO.selectCurrentBossRecentLog();
+    }
+    @Override
     public int migrateInventoryToOld() throws Exception {
 
         // 이번달 1일 기준 (그 이전 데이터만 이관)
