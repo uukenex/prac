@@ -80,6 +80,9 @@
 
     /* 세트 뱃지 */
     .card-set-badge { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 8px; background: #e8d9f7; color: #7c3d9e; margin-top: 4px; }
+    /* 보스아이템 획득경로 뱃지 */
+    .boss-gacha-badge  { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 8px; background: #fff3e0; color: #e65100; margin-top: 4px; }
+    .boss-kill-badge   { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 8px; background: #fce4ec; color: #880e4f; margin-top: 4px; }
     /* 세트 효과 패널 */
     .set-panel { background: #faf5ff; border: 1.5px solid #d4b8f0; border-radius: 12px; padding: 14px 16px; margin-bottom: 18px; }
     .set-panel-title { font-size: 13px; font-weight: 800; color: #6b2d99; margin-bottom: 10px; }
@@ -209,6 +212,8 @@
       </div>
       <div class="card-lv" v-if="item.TARGET_LV > 0">🔒 Lv.{{ item.TARGET_LV }} 이상</div>
       <span class="card-set-badge" v-if="item.SET_ID">💠 {{ item.SET_ID }}</span>
+      <span class="boss-gacha-badge" v-if="item.ITEM_TYPE === 'BOSS_GACHA'">🎰 뽑기</span>
+      <span class="boss-kill-badge"  v-if="item.ITEM_TYPE === 'BOSS_HELL'">💀 보스처치</span>
       <div class="card-desc" v-if="isBossItem(item) && !isBlurred(item) && item.ITEM_DESC" v-html="formatDesc(item.ITEM_DESC)"></div>
       <div class="card-qty" v-if="item.OWN_QTY > 0">📦 보유 {{ item.OWN_QTY }}개</div>
       <span class="blur-hint">🔒 미발견 아이템</span>

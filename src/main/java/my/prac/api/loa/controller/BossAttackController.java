@@ -1328,6 +1328,7 @@ public class BossAttackController {
 	            if (!opt.isEmpty()) label += opt;
 	            String desc = Objects.toString(row.get("ITEM_DESC"), "").trim();
 	            if (!desc.isEmpty()) label += " (" + desc + ")";
+	            label += "BOSS_GACHA".equalsIgnoreCase(type) ? " [뽑기]" : " [보스처치]";
 	        }
 	        else {
 	            if (qty > 1) {
@@ -1783,6 +1784,7 @@ public class BossAttackController {
 	            catMap.put("※전설", new ArrayList<>());
 	            catMap.put("※유물", new ArrayList<>());
 	            catMap.put("※날개", new ArrayList<>());
+	            catMap.put("※보스", new ArrayList<>());
 	            catMap.put("※업적", new ArrayList<>());
 	            catMap.put("※기타", new ArrayList<>());
 
@@ -1813,7 +1815,14 @@ public class BossAttackController {
 	                        "ACHV".equalsIgnoreCase(typeStr) 
 	                        ;
 
-	                if (isEquipType) {
+	                if ("BOSS_HELL".equalsIgnoreCase(typeStr) || "BOSS_GACHA".equalsIgnoreCase(typeStr)) {
+	                    if (qtyVal > 1) label += "x" + qtyVal;
+	                    String opt = MiniGameUtil.buildEnhancedOptionLine(row, 1);
+	                    if (!opt.isEmpty()) label += opt;
+	                    String bossDesc = Objects.toString(row.get("ITEM_DESC"), "").trim();
+	                    if (!bossDesc.isEmpty()) label += " (" + bossDesc + ")";
+	                    label += "BOSS_GACHA".equalsIgnoreCase(typeStr) ? " [뽑기]" : " [보스처치]";
+	                } else if (isEquipType) {
 	                	
 	                } else {
 	                    if (qtyVal > 1) {
