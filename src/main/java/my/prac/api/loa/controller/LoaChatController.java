@@ -282,13 +282,22 @@ public class LoaChatController {
 		case "c2":
 			org_fulltxt = "/ㄸㅅㅋㄹㄹ";
 			try {
-				// 1) 캐시된 JSON 가져오기 (하루 1번만 API 호출하도록 만들어둔 메서드)
 				String json = ext.fetchMerchantServer5();
-
-				// 2) DB 저장 (server=5: 카단)
 				botExtService.saveLatestMerchantReports(json, 5);
 			} catch (Exception e1) {
 				e1.printStackTrace();
+			}
+			break;
+		case "c3":
+			// 매월 5~7일: 인벤토리 OLD 이관 (item_id < 100, del_yn='1')
+			int dom = LocalDate.now().getDayOfMonth();
+			if (dom >= 5 && dom <= 7) {
+				try {
+					int cnt = botNewService.migrateInventoryToOld();
+					System.out.println("[CRON-c3] 인벤 OLD 이관 완료: " + cnt + "건");
+				} catch (Exception e1) {
+					e1.printStackTrace();
+				}
 			}
 			break;
 		case "test":
@@ -1457,7 +1466,12 @@ public class LoaChatController {
 			case "/떠상": case "/ㄸㅅ":
 				int serverId = 5; // 카단
 				try {
-					val= botExtService.buildMerchantMessage(serverId);
+					// 해당 시간대 데이터 없으면 즉시 크롤링 후 저장
+					if (!botExtService.hasMerchantReport(serverId)) {
+						String merchantJson = ext.fetchMerchantServer5();
+						botExtService.saveLatestMerchantReports(merchantJson, serverId);
+					}
+					val = botExtService.buildMerchantMessage(serverId);
 				}catch(Exception e) {
 					e.printStackTrace();
 				}

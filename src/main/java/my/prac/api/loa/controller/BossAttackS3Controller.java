@@ -301,13 +301,20 @@ public class BossAttackS3Controller {
                     int shotAtk = (ctx.atkMin + rand.nextInt(Math.max(1, ctx.atkMax - ctx.atkMin + 1))) / 100;
                     if (shotAtk < 1) shotAtk = 1;
                     shotAtk = (int) Math.round(shotAtk * 0.7);
-                    boolean shotCrit = (i == 1) || (!hideMsg.isEmpty() ? false : ThreadLocalRandom.current().nextInt(0, 101) <= perHitRate);
-                    long shotDmg = shotCrit ? (long)(shotAtk * critMultiplier * 0.70) : shotAtk;
+                    boolean shotCrit = heavensPunishment || (i == 1) || (!hideMsg.isEmpty() ? false : ThreadLocalRandom.current().nextInt(0, 101) <= perHitRate);
+                    long shotDmg;
+                    if (heavensPunishment) {
+                        // 천벌: 초강력치명타 (×3 × critMultiplier)
+                        shotDmg = (long)(shotAtk * 3 * critMultiplier * 0.70);
+                        multiMsg.append(i).append("타: ").append(shotDmg).append(" (✨초강력치명타!)").append(NL);
+                    } else {
+                        shotDmg = shotCrit ? (long)(shotAtk * critMultiplier * 0.70) : shotAtk;
+                        multiMsg.append(i).append("타: ").append(shotDmg);
+                        if (shotCrit) multiMsg.append(" (치명!)");
+                        multiMsg.append(NL);
+                    }
                     totalMultiDmg += shotDmg;
                     if (!shotCrit) allCrit = false;
-                    multiMsg.append(i).append("타: ").append(shotDmg);
-                    if (shotCrit) multiMsg.append(" (치명!)");
-                    multiMsg.append(NL);
                 }
                 if (allCrit) {
                     long before = totalMultiDmg;
@@ -317,6 +324,7 @@ public class BossAttackS3Controller {
                     multiMsg.append("총합 데미지: ").append(totalMultiDmg).append("!").append(NL);
                 }
                 isCritical = allCrit;
+                isSuperCritical = heavensPunishment;
                 damage = totalMultiDmg;
                 dmgMsg = atkRangeStr + multiMsg;
             } else {
@@ -362,10 +370,9 @@ public class BossAttackS3Controller {
                 }
             }
 
-            // 천벌 디버프 상태이면 데미지 2배
+            // 천벌 디버프 상태 표시 (데미지 2배 효과 제거)
             if (flag_boss_debuff) {
-                punishMsg = "[천벌디버프](+" + damage + "), " + (debuff - 1) + "회 남음" + NL;
-                damage *= 2;
+                punishMsg = "[천벌디버프] " + (debuff - 1) + "회 남음" + NL;
             }
 
             // 보스 방어 (천벌/디버프 무시, 방어력: 데미지의 X% 감소)
@@ -392,8 +399,14 @@ public class BossAttackS3Controller {
             if ("어둠사냥꾼".equals(ctx.job))      baseAtk2 = (int) Math.round(baseAtk2 * 2.0);
             else if ("용사".equals(ctx.job)) baseAtk2 = (int) Math.round(baseAtk2 * 1.25);
             int totalCrit2 = Math.max(0, 10 - critDefRate); // 보스 기본 크리율 10% 고정
-            isCritical2 = totalCrit2 > 0 && Math.random() < totalCrit2 / 100.0;
-            if (isCritical2) isSuperCritical2 = Math.random() < 0.10;
+            if (heavensPunishment) {
+                // 천벌: 2타도 초강력치명타
+                isCritical2 = true;
+                isSuperCritical2 = true;
+            } else {
+                isCritical2 = totalCrit2 > 0 && Math.random() < totalCrit2 / 100.0;
+                if (isCritical2) isSuperCritical2 = Math.random() < 0.10;
+            }
             double critMul2 = Math.max(1.0, ctx.critDmg / 100.0);
             if (isSuperCritical2) {
                 damage2 = (long)(baseAtk2 * 3 * critMul2);
@@ -564,15 +577,16 @@ public class BossAttackS3Controller {
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     /**
-     * 보스 재생성 — 참여 인원수에 따라 쿨타임을 동적 산정
-     *   6명 이하 → 18시간(1080분), 30명 이상 → 6시간(360분)
-     *   수식: cooldownMin = max(360, min(1080, 1080 - (n-6) * 30))
+     * 보스 재생성 — 참여 인원수에 따라 쿨타임/HP를 동적 산정
+     *   쿨타임: 6명 이하 → 18시간(1080분), 13명 → 8시간(480분), 최대 단축 5시간(300분)
+     *   수식: cooldownMin = max(300, min(1080, round(1080 - (n-6) * 600/7)))
+     *   HP: 참여자 수 비례 보너스 배율 적용, 최대 50a(500,000 raw) 상한
      */
     private void respawnHellBoss(String bossStartDate) {
         try {
             Random rand = new Random();
 
-            // 참여 인원수 조회 (쿨타임 산정)
+            // 참여 인원수 조회 (쿨타임/HP 산정)
             int participantCount = 6; // 기본값 (조회 실패 시)
             try {
                 HashMap<String, Object> q = new HashMap<>();
@@ -580,7 +594,10 @@ public class BossAttackS3Controller {
                 List<HashMap<String, Object>> participants = botS3Service.selectHellTop3Contributors(q);
                 if (participants != null && !participants.isEmpty()) participantCount = participants.size();
             } catch (Exception ignored) {}
-            long cooldownMin = Math.max(360, Math.min(1080, 1080 - (long)(participantCount - 6) * 30));
+
+            // 6명 이하 → 1080분(18h), 13명 → 480분(8h), 최대 단축 300분(5h)
+            long cooldownMin = (long) Math.max(300, Math.min(1080,
+                    Math.round(1080.0 - Math.max(0, participantCount - 6) * 600.0 / 7.0)));
 
             // 최근 공격 평균 데미지 기반으로 120~150회 분량 HP 산정
             long rawHp;
@@ -596,6 +613,13 @@ public class BossAttackS3Controller {
             } catch (Exception e) {
                 rawHp = BOSS_MAX_HP_MIN + (long)(rand.nextDouble() * (BOSS_MAX_HP_MAX - BOSS_MAX_HP_MIN + 1));
             }
+
+            // 참여 인원수 기반 HP 보너스 배율 적용 (최대 50a = 500,000 raw 상한)
+            if (participantCount > 6) {
+                double participantMult = 1.0 + (participantCount - 6) * 0.1; // 1인당 +10%
+                rawHp = (long)(rawHp * participantMult);
+            }
+            rawHp = Math.min(rawHp, 500_000L); // 최대 50a
 
             HashMap<String, Object> bossMap = new HashMap<>();
             bossMap.put("atkRate",     randInt(rand, BOSS_ATK_RATE_MIN,   BOSS_ATK_RATE_MAX));
