@@ -1284,6 +1284,7 @@ public class BossAttackController {
 	    catMap.put("※전설", new ArrayList<>());
 	    catMap.put("※유물", new ArrayList<>());
 	    catMap.put("※날개", new ArrayList<>());
+	    catMap.put("※보스", new ArrayList<>());
 	    catMap.put("※업적", new ArrayList<>());
 	    catMap.put("※기타", new ArrayList<>());
 
@@ -1319,12 +1320,14 @@ public class BossAttackController {
 	            }
 	        }
 	        // ─────────────────
-	        // 기타
+	        // 보스 아이템 (7000번대)
 	        // ─────────────────
-	        else if ("BOSS_HELL".equalsIgnoreCase(type)) {
+	        else if ("BOSS_HELL".equalsIgnoreCase(type) || "BOSS_GACHA".equalsIgnoreCase(type)) {
 	            if (qty > 1) label += "x" + qty;
+	            String opt = MiniGameUtil.buildEnhancedOptionLine(row, 1);
+	            if (!opt.isEmpty()) label += opt;
 	            String desc = Objects.toString(row.get("ITEM_DESC"), "").trim();
-	            if (!desc.isEmpty()) label += " [" + desc + "]";
+	            if (!desc.isEmpty()) label += " (" + desc + ")";
 	        }
 	        else {
 	            if (qty > 1) {
@@ -8471,7 +8474,8 @@ public class BossAttackController {
 	
 	private String resolveItemCategory(int itemId) {
 		if (itemId > 9000 && itemId < 10000) return "※유물";
-		if (itemId > 8000 && itemId < 90000) return "※업적";
+		if (itemId > 8000 && itemId < 9000)  return "※업적";
+		if (itemId >= 7000 && itemId < 8000) return "※보스";
 
 		for (EquipCategory c : MiniGameUtil.EQUIP_CATEGORIES) {
 	        if (c.contains(itemId)) {

@@ -2060,6 +2060,50 @@
 		</if>
 	</select>
 
+	<!-- 보스현황: 현재 진행중 보스 글로벌 누적 데미지 -->
+	<select id="selectCurrentBossState" resultType="hashmap">
+		/*selectCurrentBossState*/
+		SELECT * FROM (
+		    SELECT TARGET_MON_LV AS MON_NO,
+		           NVL(SUM(ATK_DMG), 0)      AS TOTAL_DEALT,
+		           COUNT(DISTINCT USER_NAME)  AS ATTACKER_CNT,
+		           MAX(INSERT_DATE)           AS LAST_ATTACK
+		      FROM TBOT_POINT_NEW_BATTLE_LOG
+		     WHERE NOW_YN = '1'
+		     GROUP BY TARGET_MON_LV
+		     ORDER BY MAX(INSERT_DATE) DESC
+		) WHERE ROWNUM = 1
+	</select>
+
+	<!-- 보스현황: 마지막으로 죽은 보스 시간 (보스 사망 여부 판단용) -->
+	<select id="selectLastBossKillTime" resultType="hashmap">
+		/*selectLastBossKillTime*/
+		SELECT * FROM (
+		    SELECT TARGET_MON_LV AS MON_NO,
+		           MAX(INSERT_DATE) AS KILL_TIME
+		      FROM TBOT_POINT_NEW_BATTLE_LOG
+		     WHERE KILL_YN = 1
+		     GROUP BY TARGET_MON_LV
+		     ORDER BY MAX(INSERT_DATE) DESC
+		) WHERE ROWNUM = 1
+	</select>
+
+	<!-- 보스현황: 현재 진행 중 보스 최근 배틀로그 (글로벌, TOP20) -->
+	<select id="selectCurrentBossRecentLog" resultType="hashmap">
+		/*selectCurrentBossRecentLog*/
+		SELECT * FROM (
+		    SELECT USER_NAME,
+		           ATK_DMG,
+		           INSERT_DATE,
+		           JOB,
+		           KILL_YN,
+		           MON_PATTEN
+		      FROM TBOT_POINT_NEW_BATTLE_LOG
+		     WHERE NOW_YN = '1'
+		     ORDER BY INSERT_DATE DESC
+		) WHERE ROWNUM &lt;= 20
+	</select>
+
 	<!-- 부캐 리스트 조회 -->
 	<select id="selectAltCharList" resultType="string">
 		/*selectAltCharList*/

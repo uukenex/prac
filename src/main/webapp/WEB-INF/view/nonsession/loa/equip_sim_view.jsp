@@ -10,8 +10,9 @@
     body {
       background: linear-gradient(135deg, #f0edff 0%, #fdf6ff 50%, #fff0f5 100%);
       color: #2d2446; font-family: 'Segoe UI', 'Malgun Gothic', sans-serif; min-height: 100vh;
+      overflow-x: hidden;
     }
-    .wrap { max-width: 1100px; margin: 0 auto; padding: 20px 14px 80px; }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 20px 14px 80px; overflow-x: hidden; }
 
     /* ── 헤더 ── */
     .page-header { margin-bottom: 20px; }
@@ -59,7 +60,7 @@
     .hell-check input { width:15px; height:15px; cursor:pointer; accent-color:#dc2626; }
     .hell-check.active { background:#fef2f2; border-color:#f87171; }
 
-    .stat-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(155px,1fr)); gap:10px; }
+    .stat-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:10px; }
     .stat-box { border-radius:14px; padding:12px 14px; text-align:center; border:1.5px solid transparent; }
     .stat-box.atk   { background:#fff7ed; border-color:#fed7aa; }
     .stat-box.atk2  { background:#fff3e0; border-color:#ffb74d; }  /* 유효 공격 */
@@ -70,7 +71,7 @@
     .stat-box.conv  { background:#fefce8; border-color:#fde68a; }
     .stat-label { font-size:11px; font-weight:600; color:#6b7280; margin-bottom:4px; }
     .stat-sub   { font-size:10px; color:#9ca3af; margin-top:2px; }
-    .stat-value { font-size:20px; font-weight:900; }
+    .stat-value { font-size:clamp(14px,3.5vw,20px); font-weight:900; word-break:break-all; }
     .stat-value.atk  { color:#ea580c; }
     .stat-value.atk2 { color:#d97706; }
     .stat-value.hp   { color:#16a34a; }
@@ -159,7 +160,7 @@
     .undiscovered .toggle-icon { color:#e5e7eb; }
 
     .item-card-top { display:flex; align-items:flex-start; gap:6px; margin-bottom:5px; padding-right:22px; }
-    .item-name { font-size:12px; font-weight:700; color:#1e1b4b; line-height:1.3; flex:1; }
+    .item-name { font-size:12px; font-weight:700; color:#1e1b4b; line-height:1.3; flex:1; min-width:0; word-break:break-word; }
     .item-qty  { font-size:11px; font-weight:700; color:#7c3aed; white-space:nowrap; }
     .item-qty.sim { color:#f59e0b; }
 
@@ -192,6 +193,8 @@
     @media (max-width:600px) {
       .stat-grid { grid-template-columns:repeat(2,1fr); }
       .item-grid { grid-template-columns:repeat(2,1fr); }
+      .search-row input { width:140px; }
+      .stat-panel { padding:14px 12px; }
     }
     .set-effect-bar {
       display:flex; flex-wrap:wrap; align-items:center; gap:6px;

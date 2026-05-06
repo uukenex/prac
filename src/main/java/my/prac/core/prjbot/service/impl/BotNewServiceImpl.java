@@ -691,4 +691,17 @@ public class BotNewServiceImpl implements BotNewService {
     public List<String> selectAltCharList() {
         return botNewDAO.selectAltCharList();
     }
+
+    @Override
+    public HashMap<String, Object> selectCurrentBossState() {
+        return botNewDAO.selectCurrentBossState();
+    }
+    @Override
+    public HashMap<String, Object> selectLastBossKillTime() {
+        return botNewDAO.selectLastBossKillTime();
+    }
+    @Override
+    public List<HashMap<String, Object>> selectCurrentBossRecentLog() {
+        return botNewDAO.selectCurrentBossRecentLog();
+    }
 }

@@ -113,6 +113,7 @@
   <a class="loa-nav-item" data-page="battle-log"  href="#">📜 배틀로그</a>
   <a class="loa-nav-item" data-page="ranking"     href="#">🏆 랭킹</a>
   <a class="loa-nav-item" data-page="equip-sim"   href="#">🔬 장비시뮬</a>
+  <a class="loa-nav-item" data-page="boss-status" href="#">🐉 보스현황</a>
 </nav>
 
 <script>
@@ -134,7 +135,7 @@
 
   // 현재 페이지 하이라이트
   var path = window.location.pathname;
-  ['user-info', 'monster', 'item', 'job', 'hunter-rank', 'achievement', 'battle-log', 'ranking', 'equip-sim'].forEach(function (page) {
+  ['user-info', 'monster', 'item', 'job', 'hunter-rank', 'achievement', 'battle-log', 'ranking', 'equip-sim', 'boss-status'].forEach(function (page) {
     if (path.indexOf(page) !== -1) {
       var el = document.querySelector('.loa-nav-item[data-page="' + page + '"]');
       if (el) el.classList.add('active');
