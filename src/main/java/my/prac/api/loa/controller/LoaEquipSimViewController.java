@@ -271,15 +271,15 @@ public class LoaEquipSimViewController {
         if ("곰".equals(job)) {
             int atkSum  = atkMin + atkMax;
             int critMul = baseCritDmg + mktCritDmg;
-            hpMax   = hpMax + (atkSum * critMul / 100);
+            hpMax   = (int) Math.min((long)hpMax + (long)atkSum * critMul / 100, Integer.MAX_VALUE);
             atkMin  = hpMax; atkMax = hpMax;
             crit    = 0; critDmg = 0;
         }
 
         // ── 8. 비율 보너스 ────────────────────────────────────────────────
-        hpMax  += (int) Math.round(hpMax  * mktHpMaxRate  / 100.0);
-        atkMin += (int) Math.round(atkMin * mktAtkMaxRate  / 100.0);
-        atkMax += (int) Math.round(atkMax * mktAtkMaxRate  / 100.0);
+        hpMax  += (int) Math.round((long)hpMax  * mktHpMaxRate  / 100.0);
+        atkMin += (int) Math.round((long)atkMin * mktAtkMaxRate / 100.0);
+        atkMax += (int) Math.round((long)atkMax * mktAtkMaxRate / 100.0);
 
         // ── 9. 헬너프 ─────────────────────────────────────────────────────
         if (hellMode) {
@@ -300,8 +300,8 @@ public class LoaEquipSimViewController {
 
         // ── 11. 세트 효과: 최종 비율 보너스 (헬너프 이후, BossAttackController 동일) ──
         if (setAtkFinalRate > 0) {
-            atkMin += (int) Math.round(atkMin * setAtkFinalRate / 100.0);
-            atkMax += (int) Math.round(atkMax * setAtkFinalRate / 100.0);
+            atkMin += (int) Math.round((long)atkMin * setAtkFinalRate / 100.0);
+            atkMax += (int) Math.round((long)atkMax * setAtkFinalRate / 100.0);
         }
         if (setCritFinalRate > 0) {
             crit += (int) Math.round(crit * setCritFinalRate / 100.0);

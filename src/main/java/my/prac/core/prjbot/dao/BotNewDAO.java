@@ -254,6 +254,12 @@ public interface BotNewDAO {
     /** 부캐 리스트 조회 */
     List<String> selectAltCharList();
 
+    /** 보스현황: 현재 진행중 보스 글로벌 누적 데미지 */
+    HashMap<String, Object> selectCurrentBossState();
+    /** 보스현황: 마지막으로 죽은 보스 시간 */
+    HashMap<String, Object> selectLastBossKillTime();
+    /** 보스현황: 최근 배틀로그 (글로벌 TOP20) */
+    List<HashMap<String, Object>> selectCurrentBossRecentLog();
     // ── 인벤토리 OLD 이관 (매월 배치) ──────────────────────────────
     /** 이관 대상 그룹 조회 (item_id < 100, del_yn='1', insert_date < cutoff) */
     List<HashMap<String, Object>> selectInventoryOldMigrateTarget(HashMap<String, Object> param);

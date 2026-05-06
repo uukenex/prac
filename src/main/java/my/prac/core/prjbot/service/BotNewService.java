@@ -209,6 +209,10 @@ public interface BotNewService {
     /** 부캐 리스트 조회 */
     List<String> selectAltCharList();
 
+    /** 보스현황 */
+    HashMap<String, Object> selectCurrentBossState();
+    HashMap<String, Object> selectLastBossKillTime();
+    List<HashMap<String, Object>> selectCurrentBossRecentLog();
     /**
      * 인벤토리 OLD 이관 (매월 5일 배치)
      * - item_id < 100, del_yn='1', insert_date < 이번달 1일
