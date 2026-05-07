@@ -491,13 +491,13 @@ public class BossAttackS3Controller {
             return "저장 중 오류가 발생했습니다.";
         }
 
-        // 공격 SP 보상: 준 데미지 × 10000 raw SP / 최소 200a, 최대 2000a
+        // 공격 SP 보상: 준 데미지 × 10000 raw SP / 최소 1000a, 최대 1b
         String spRewardMsg = "";
         try {
             long rawSpVal = totalDamage * 10000L;
-            boolean spCapped = rawSpVal > 20_000_000L;
-            boolean spMin    = rawSpVal < 2_000_000L;
-            rawSpVal = Math.max(Math.min(rawSpVal, 20_000_000L), 2_000_000L);
+            boolean spCapped = rawSpVal > 100_000_000L;
+            boolean spMin    = rawSpVal < 10_000_000L;
+            rawSpVal = Math.max(Math.min(rawSpVal, 100_000_000L), 10_000_000L);
             SP spReward = SP.fromSp(rawSpVal);
             HashMap<String, Object> pr = new HashMap<>();
             pr.put("userName", userName);
@@ -539,7 +539,6 @@ public class BossAttackS3Controller {
             if (!hideIgnoreMsg.isEmpty()) msg.append(hideIgnoreMsg);
             if (!hideMsg.isEmpty())     msg.append(hideMsg);
             if (!reflectMsg.isEmpty())  msg.append(reflectMsg);
-            if (!spRewardMsg.isEmpty()) msg.append(spRewardMsg);
             if (!hellAchvMsg.isEmpty()) msg.append(hellAchvMsg);
             if (!punishMsg.isEmpty())   msg.append(punishMsg);
             if (!debuff1Msg.isEmpty())  msg.append(debuff1Msg);
@@ -547,6 +546,7 @@ public class BossAttackS3Controller {
         } else {
             msg.append("보스가 공격을 회피했습니다! 데미지 0!").append(NL);
         }
+        if (!spRewardMsg.isEmpty()) msg.append(spRewardMsg);
 
         if (!bossAtkEvadeMsg.isEmpty()) msg.append(bossAtkEvadeMsg);
         if (flag_boss_attack && bossAtkApplied > 0) {
