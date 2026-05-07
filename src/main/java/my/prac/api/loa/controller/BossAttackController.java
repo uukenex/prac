@@ -60,7 +60,14 @@ import my.prac.core.util.MiniGameUtil;
 import my.prac.core.util.SP;
 import my.prac.core.util.SellResult;
 
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
+
 @Controller
+@RequestMapping("/loa")
 public class BossAttackController {
 
 	/* ===== Config / Const ===== */
@@ -8777,9 +8784,173 @@ public class BossAttackController {
 	
 	
 	
+
+
+	// ─── 데미지 시뮬레이터 API ──────────────────────────────────────────
+	@GetMapping("/api/dmg-sim")
+	@ResponseBody
+	public ResponseEntity<?> getDmgSim(
+	        @RequestParam(defaultValue = "") String userName) {
+
+	    HashMap<String, Object> map = new HashMap<>();
+	    map.put("userName", userName);
+	    map.put("roomName", "");
+	    map.put("param1",   "");
+
+	    UserBattleContext ctx = calcUserBattleContext(map);
+	    if (!ctx.success) {
+	        HashMap<String, Object> err = new HashMap<>();
+	        err.put("error", ctx.errorMessage);
+	        return ResponseEntity.ok(err);
+	    }
+
+	    String job = (ctx.job == null ? "" : ctx.job.trim());
+	    double jobDmgMul = getJobDmgMulForSim(job);
+
+	    // ─ 공격력 단계별 계산 ───────────────────────────────────────────
+	    List<Map<String, Object>> atkSteps = new ArrayList<>();
+
+	    int curMin = ctx.baseAtkMin;
+	    int curMax = ctx.baseAtkMax;
+	    atkSteps.add(simStep("기본 공격력", ctx.baseAtkMin, ctx.baseAtkMax, curMin, curMax, "캐릭터 기본 스탯"));
+
+	    if (ctx.mktAtkMin != 0 || ctx.mktAtkMax != 0) {
+	        curMin += ctx.mktAtkMin;
+	        curMax += ctx.mktAtkMax;
+	        atkSteps.add(simStep("아이템/버프 합산", ctx.mktAtkMin, ctx.mktAtkMax, curMin, curMax, "장비 · 천벌 · 세트(가산) · 헌터보너스 포함"));
+	    }
+
+	    if (ctx.mktAtkMaxRate > 0) {
+	        int rMin = (int)((long)curMin * ctx.mktAtkMaxRate / 100);
+	        int rMax = (int)((long)curMax * ctx.mktAtkMaxRate / 100);
+	        curMin += rMin; curMax += rMax;
+	        atkSteps.add(simStep("ATK 비율 보너스", rMin, rMax, curMin, curMax, "+" + ctx.mktAtkMaxRate + "%"));
+	    }
+
+	    int bossMin = 0, bossMax = 0;
+	    List<String> bossNotes = new ArrayList<>();
+	    if (ctx.ownedBossItems.contains(7009)) {
+	        int b = ctx.user.lv * 150;
+	        bossMin += b; bossMax += b;
+	        bossNotes.add("[7009] 진화무기 Lv" + ctx.user.lv + " × 150 = +" + b);
+	    }
+	    if (ctx.ownedBossItems.contains(7013)) {
+	        int yest = getYesterdayAttackerCountCached();
+	        int b = yest * 1000;
+	        bossMin += b; bossMax += b;
+	        bossNotes.add("[7013] 어제의전사들 " + yest + "명 × 1000 = +" + b);
+	    }
+	    if (bossMin > 0) {
+	        curMin += bossMin; curMax += bossMax;
+	        atkSteps.add(simStep("보스 아이템", bossMin, bossMax, curMin, curMax, String.join(" / ", bossNotes)));
+	    }
+
+	    if (ctx.hellNerfAtkMin > 0 || ctx.hellNerfAtkMax > 0) {
+	        double hellMult = MiniGameUtil.getHellNerfMult(ctx.hunterGrade);
+	        if (ctx.ownedBossItems.contains(7007)) hellMult = Math.max(0.0, hellMult + 0.03);
+	        curMin -= ctx.hellNerfAtkMin; curMax -= ctx.hellNerfAtkMax;
+	        atkSteps.add(simStep("헬 너프",
+	            -ctx.hellNerfAtkMin, -ctx.hellNerfAtkMax, curMin, curMax,
+	            String.format("등급 %s → %.0f%% 너프", ctx.hunterGrade, hellMult * 100)));
+	    }
+
+	    if (ctx.setAtkFinalRate > 0) {
+	        int sfMin = (int)Math.round((long)curMin * ctx.setAtkFinalRate / 100.0);
+	        int sfMax = (int)Math.round((long)curMax * ctx.setAtkFinalRate / 100.0);
+	        curMin += sfMin; curMax += sfMax;
+	        atkSteps.add(simStep("세트 최종 비율", sfMin, sfMax, curMin, curMax, "+" + ctx.setAtkFinalRate + "%"));
+	    }
+
+	    if (ctx.dropAtkMin > 0 || ctx.dropAtkMax > 0) {
+	        curMin += ctx.dropAtkMin; curMax += ctx.dropAtkMax;
+	        atkSteps.add(simStep("드랍 보너스", ctx.dropAtkMin, ctx.dropAtkMax, curMin, curMax, "필드 드랍 아이템 보너스"));
+	    }
+
+	    // 직업 배율 후 실전 공격 범위
+	    boolean isBear = "곰".equals(job);
+	    int effMin, effMax;
+	    if (isBear) {
+	        effMin = ctx.atkMin; effMax = ctx.atkMax;
+	        atkSteps.add(simStep("직업 특수 (곰)", 0, 0, effMin, effMax, "곰: HP 기반 공격력으로 전환"));
+	    } else {
+	        effMin = (int)Math.round((long)ctx.atkMin * 100 * jobDmgMul / 100);
+	        effMax = (int)Math.round((long)ctx.atkMax * 100 * jobDmgMul / 100);
+	        atkSteps.add(simStep(String.format("직업 배율 ×%.1f (%s)", jobDmgMul, job),
+	            effMin - ctx.atkMin, effMax - ctx.atkMax, effMin, effMax, ""));
+	    }
+
+	    double critMul = Math.max(1.0, ctx.critDmg / 100.0);
+	    int critMin = (int)Math.round(effMin * critMul);
+	    int critMax = (int)Math.round(effMax * critMul);
+
+	    // ─ 응답 조립 ─────────────────────────────────────────────────────
+	    HashMap<String, Object> result = new HashMap<>();
+	    HashMap<String, Object> userInfo = new HashMap<>();
+	    userInfo.put("userName",    ctx.userName);
+	    userInfo.put("job",         job);
+	    userInfo.put("lv",          ctx.user.lv);
+	    userInfo.put("nightmareYn", ctx.user.nightmareYn);
+	    userInfo.put("hunterGrade", ctx.hunterGrade);
+	    userInfo.put("bossItems",   new ArrayList<>(ctx.ownedBossItems));
+	    result.put("user", userInfo);
+
+	    result.put("atkSteps", atkSteps);
+
+	    HashMap<String, Object> eff = new HashMap<>();
+	    eff.put("min", effMin); eff.put("max", effMax);
+	    result.put("eff", eff);
+
+	    HashMap<String, Object> crit = new HashMap<>();
+	    crit.put("rate", ctx.crit);
+	    crit.put("dmg",  ctx.critDmg);
+	    crit.put("mul",  String.format("%.2f", critMul));
+	    crit.put("min",  critMin);
+	    crit.put("max",  critMax);
+	    result.put("crit", crit);
+
+	    HashMap<String, Object> hp = new HashMap<>();
+	    hp.put("base",    ctx.baseHpMax);
+	    hp.put("mkt",     ctx.mktHpMax);
+	    hp.put("rateBonus", ctx.mktHpMaxRate);
+	    hp.put("jobBonus",  ctx.jobHp);
+	    hp.put("hellNerf",  ctx.hellNerfHp);
+	    hp.put("total",     ctx.hpMax);
+	    hp.put("regen",     ctx.regen);
+	    hp.put("hpCur",     ctx.hpCur);
+	    result.put("hp", hp);
+
+	    return ResponseEntity.ok(result);
+	}
+
+	@GetMapping("/dmg-sim-view")
+	public String dmgSimView() {
+	    return "nonsession/loa/dmg_sim_view";
+	}
+
+	private double getJobDmgMulForSim(String job) {
+	    switch (job) {
+	        case "궁수":  case "사냥꾼": return 3.0;
+	        case "궁사":                 return 1.0;
+	        case "전사":  case "처단자": case "용사": return 1.4;
+	        case "검성":                 return 2.2;
+	        case "어쓰신":               return 1.3;
+	        case "제너럴":               return 1.2;
+	        case "저격수":               return 2.0;
+	        case "복수자":               return 0.2;
+	        case "음양사":               return 1.6;
+	        default:                     return 1.0;
+	    }
+	}
+
+	private Map<String, Object> simStep(String label, int bonusMin, int bonusMax,
+	                                    int totalMin, int totalMax, String note) {
+	    LinkedHashMap<String, Object> m = new LinkedHashMap<>();
+	    m.put("label",    label);
+	    m.put("bonusMin", bonusMin);
+	    m.put("bonusMax", bonusMax);
+	    m.put("totalMin", totalMin);
+	    m.put("totalMax", totalMax);
+	    m.put("note",     note);
+	    return m;
+	}
 }
-
-
-
-
-

@@ -58,6 +58,11 @@ public class BotS3ServiceImpl implements BotS3Service {
 	}
 
 	@Override
+	public List<HashMap<String, Object>> selectHellBossRecentLog(HashMap<String, Object> map) {
+		return botS3DAO.selectHellBossRecentLog(map);
+	}
+
+	@Override
 	public void saveLastKillMsg(String msg) {
 		CACHED_KILL_MSG = (msg == null ? "" : msg.trim());
 	}

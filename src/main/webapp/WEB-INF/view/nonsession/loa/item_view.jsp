@@ -212,8 +212,8 @@
       </div>
       <div class="card-lv" v-if="item.TARGET_LV > 0">🔒 Lv.{{ item.TARGET_LV }} 이상</div>
       <span class="card-set-badge" v-if="item.SET_ID">💠 {{ item.SET_ID }}</span>
-      <span class="boss-gacha-badge" v-if="item.ITEM_TYPE === 'BOSS_GACHA'">🎰 뽑기</span>
-      <span class="boss-kill-badge"  v-if="item.ITEM_TYPE === 'BOSS_HELL'">💀 보스처치</span>
+      <span class="boss-gacha-badge" v-if="item.OWN_GAIN_TYPE === 'BOSS_GACHA'">🎰 뽑기</span>
+      <span class="boss-kill-badge"  v-if="item.OWN_GAIN_TYPE === 'BOSS_HELL'">💀 보스처치</span>
       <div class="card-desc" v-if="isBossItem(item) && !isBlurred(item) && item.ITEM_DESC" v-html="formatDesc(item.ITEM_DESC)"></div>
       <div class="card-qty" v-if="item.OWN_QTY > 0">📦 보유 {{ item.OWN_QTY }}개</div>
       <span class="blur-hint">🔒 미발견 아이템</span>

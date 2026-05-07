@@ -237,6 +237,27 @@
 	</select>
 
 	<!-- =====================================================
+	     [S3 헬보스] 현재 보스 최근 공격 로그 (TOP50, 시간 역순)
+	     bossStartDate: 'yyyymmdd hh24miss' 형식
+	     ===================================================== -->
+	<select id="selectHellBossRecentLog" parameterType="HashMap" resultType="HashMap">
+		SELECT * FROM (
+		    SELECT USER_NAME,
+		           ATK_DMG,
+		           MON_DMG,
+		           ATK_CRIT_YN,
+		           KILL_YN,
+		           JOB,
+		           INSERT_DATE
+		      FROM TBOT_POINT_NEW_BATTLE_LOG
+		     WHERE NIGHTMARE_YN  = '2'
+		       AND TARGET_MON_LV = 999
+		       AND INSERT_DATE   >= TO_DATE(#{bossStartDate}, 'yyyymmdd hh24miss')
+		     ORDER BY INSERT_DATE DESC
+		) WHERE ROWNUM &lt;= 50
+	</select>
+
+	<!-- =====================================================
 	     [S3 헬보스] 마지막 보상 수령자 조회 (TBOT_POINT_NEW_INVENTORY)
 	     ===================================================== -->
 	<select id="selectLastHellRewardRecipient" resultType="HashMap">

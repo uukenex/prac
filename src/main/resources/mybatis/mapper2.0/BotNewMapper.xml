@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="my.prac.core.prjbot.dao.BotNewDAO">
 
@@ -1847,10 +1847,16 @@
 		    NVL(i.ITEM_DESC, '') AS ITEM_DESC,
 		    NVL(gown.GLOBAL_OWN_CNT, 0) AS GLOBAL_OWN_CNT,
 		    NVL(ever.EVER_OBTAINED_CNT, 0) AS EVER_OBTAINED_CNT,
-		    NVL(i.SET_ID, '') AS SET_ID
+		    NVL(i.SET_ID, '') AS SET_ID,
+		    CASE WHEN NVL(inv.GAIN_PRIO, 0) = 2 THEN 'BOSS_GACHA'
+		         WHEN NVL(inv.GAIN_PRIO, 0) = 1 THEN 'BOSS_HELL'
+		         ELSE '' END AS OWN_GAIN_TYPE
 		FROM TBOT_POINT_NEW_ITEM i
 		LEFT JOIN (
-		    SELECT ITEM_ID, SUM(QTY) AS OWN_QTY
+		    SELECT ITEM_ID, SUM(QTY) AS OWN_QTY,
+		           MAX(CASE WHEN GAIN_TYPE = 'BOSS_GACHA' THEN 2
+		                    WHEN GAIN_TYPE = 'BOSS_HELL'  THEN 1
+		                    ELSE 0 END) AS GAIN_PRIO
 		    FROM TBOT_POINT_NEW_INVENTORY
 		    WHERE USER_NAME = #{userName}
 		      AND DEL_YN    = '0'

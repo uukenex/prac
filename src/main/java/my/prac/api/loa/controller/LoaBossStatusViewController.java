@@ -1,5 +1,7 @@
 package my.prac.api.loa.controller;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -12,16 +14,17 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 
-import my.prac.core.game.dto.Monster;
-import my.prac.core.prjbot.service.BotNewService;
-import my.prac.core.util.MiniGameUtil;
+import my.prac.core.prjbot.service.BotS3Service;
 
 @Controller
 @RequestMapping("/loa")
 public class LoaBossStatusViewController {
 
-    @Resource(name = "core.prjbot.BotNewService")
-    BotNewService botNewService;
+    private static final DateTimeFormatter BOSS_DATE_FMT =
+            DateTimeFormatter.ofPattern("yyyyMMdd HHmmss");
+
+    @Resource(name = "core.prjbot.BotS3Service")
+    BotS3Service botS3Service;
 
     /** JSP 뷰 페이지 */
     @GetMapping("/boss-status-view")
@@ -30,11 +33,15 @@ public class LoaBossStatusViewController {
     }
 
     /**
-     * REST API: 보스현황 데이터
-     * - 현재 보스 기본정보(MONSTER_CACHE)
-     * - 현재 보스 누적 데미지 (NOW_YN=1)
-     * - 마지막 보스 사망 시각 (KILL_YN=1)
-     * - 최근 배틀로그 TOP20
+     * REST API: 헬보스 현황
+     *
+     * 반환 구조:
+     *   status       : "ALIVE" | "WAITING" | "NONE"
+     *   boss         : 현재(또는 예정) 보스 스탯 (MAX_HP, CUR_HP, ATK_POWER, EVADE_RATE, CRIT_DEF_RATE, ...)
+     *   startDate    : 보스 스폰 시각 (ISO 문자열)
+     *   spawnRemainMs: 등장까지 남은 밀리초 (WAITING 때만 양수)
+     *   recentLog    : 공격 로그 리스트 (ALIVE 때 채워짐, 시간 역순)
+     *   lastKillMsg  : 마지막 처치 결과 메시지 (WAITING/NONE 때 표시용)
      */
     @GetMapping("/api/boss-status")
     @ResponseBody
@@ -42,61 +49,56 @@ public class LoaBossStatusViewController {
 
         HashMap<String, Object> result = new HashMap<>();
 
-        // ── 1. 현재 진행중 보스 DB 집계 ──────────────────────────────
-        HashMap<String, Object> bossState = null;
-        try {
-            bossState = botNewService.selectCurrentBossState();
-        } catch (Exception ignore) {}
+        // ── 1. 활성 보스 조회 ─────────────────────────────────────────
+        HashMap<String, Object> boss = null;
+        try { boss = botS3Service.selectHellBoss(); } catch (Exception ignore) {}
 
-        // ── 2. 마지막 보스 사망 시각 ──────────────────────────────────
-        HashMap<String, Object> lastKill = null;
-        try {
-            lastKill = botNewService.selectLastBossKillTime();
-        } catch (Exception ignore) {}
-
-        // ── 3. 최근 배틀로그 TOP20 ────────────────────────────────────
-        List<HashMap<String, Object>> recentLog = new ArrayList<>();
-        try {
-            recentLog = botNewService.selectCurrentBossRecentLog();
-            if (recentLog == null) recentLog = new ArrayList<>();
-        } catch (Exception ignore) {}
-
-        // ── 4. 현재 보스 기본정보 (MONSTER_CACHE) ────────────────────
-        HashMap<String, Object> bossInfo = new HashMap<>();
-        if (bossState != null && bossState.get("MON_NO") != null) {
-            int monNo = ((Number) bossState.get("MON_NO")).intValue();
-            Monster m = MiniGameUtil.MONSTER_CACHE.get(monNo);
-            if (m == null) {
-                // 캐시 미스 시 DB 재조회
-                try {
-                    List<Monster> monList = botNewService.selectAllMonsters();
-                    if (monList != null) {
-                        for (Monster mx : monList) MiniGameUtil.MONSTER_CACHE.put(mx.monNo, mx);
-                    }
-                    m = MiniGameUtil.MONSTER_CACHE.get(monNo);
-                } catch (Exception ignore) {}
-            }
-            if (m != null) {
-                bossInfo.put("MON_NO",     m.monNo);
-                bossInfo.put("MON_NAME",   m.monName  != null ? m.monName  : "");
-                bossInfo.put("MON_LV",     m.monLv);
-                bossInfo.put("MON_HP",     m.monHp);
-                bossInfo.put("MON_ATK",    m.monAtk);
-                bossInfo.put("MON_NOTE",   m.monNote  != null ? m.monNote  : "");
-                bossInfo.put("MON_PATTEN", m.monPatten);
-            }
+        if (boss == null || boss.get("CUR_HP") == null) {
+            // 보스 레코드 자체가 없는 경우
+            result.put("status",       "NONE");
+            result.put("boss",         new HashMap<>());
+            result.put("recentLog",    new ArrayList<>());
+            result.put("lastKillMsg",  safeStr(botS3Service.getLastKillRewardMsg()));
+            return ResponseEntity.ok(result);
         }
 
-        // ── 5. 보스 생존/사망 여부 판단 ──────────────────────────────
-        // NOW_YN=1 로그가 있으면 보스 생존, 없으면 마지막 사망시각 기준으로 다음 등장 시간 계산
-        boolean isAlive = (bossState != null && !bossState.isEmpty());
+        // ── 2. 스폰 시각 파싱 ─────────────────────────────────────────
+        String startDateStr = safeStr(boss.get("START_DATE")); // "yyyyMMdd HHmmss"
+        LocalDateTime spawnTime = null;
+        try {
+            spawnTime = LocalDateTime.parse(startDateStr, BOSS_DATE_FMT);
+        } catch (Exception ignore) {}
 
-        result.put("isAlive",    isAlive);
-        result.put("bossInfo",   bossInfo);
-        result.put("bossState",  bossState  != null ? bossState  : new HashMap<>());
-        result.put("lastKill",   lastKill   != null ? lastKill   : new HashMap<>());
-        result.put("recentLog",  recentLog);
+        boolean isWaiting = spawnTime != null && LocalDateTime.now().isBefore(spawnTime);
+        long spawnRemainMs = 0L;
+        if (isWaiting && spawnTime != null) {
+            spawnRemainMs = java.time.Duration
+                    .between(LocalDateTime.now(), spawnTime).toMillis();
+        }
+
+        // ── 3. 공격 로그 (ALIVE 때만) ────────────────────────────────
+        List<HashMap<String, Object>> recentLog = new ArrayList<>();
+        if (!isWaiting && !startDateStr.isEmpty()) {
+            try {
+                HashMap<String, Object> logParam = new HashMap<>();
+                logParam.put("bossStartDate", startDateStr);
+                List<HashMap<String, Object>> rows =
+                        botS3Service.selectHellBossRecentLog(logParam);
+                if (rows != null) recentLog = rows;
+            } catch (Exception ignore) {}
+        }
+
+        result.put("status",       isWaiting ? "WAITING" : "ALIVE");
+        result.put("boss",         boss);
+        result.put("startDate",    startDateStr);
+        result.put("spawnRemainMs", spawnRemainMs);
+        result.put("recentLog",    recentLog);
+        result.put("lastKillMsg",  isWaiting ? safeStr(botS3Service.getLastKillRewardMsg()) : "");
 
         return ResponseEntity.ok(result);
+    }
+
+    private String safeStr(Object o) {
+        return o == null ? "" : o.toString().trim();
     }
 }
