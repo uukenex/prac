@@ -8959,6 +8959,85 @@ public class BossAttackController {
 	    return "nonsession/loa/dmg_sim_view";
 	}
 
+	// ─────────────────────────────────────────────────────────────────────────
+	// 장비 랭킹 API + View
+	// ─────────────────────────────────────────────────────────────────────────
+	@ResponseBody
+	@GetMapping("/api/equip-rank")
+	public Object getEquipRank() {
+	    List<HashMap<String, Object>> users;
+	    try {
+	        users = botNewService.selectAllUsersForRank();
+	    } catch (Exception e) {
+	        return Collections.singletonMap("error", "유저 목록 조회 실패: " + e.getMessage());
+	    }
+
+	    List<HashMap<String, Object>> result = new ArrayList<>();
+
+	    for (HashMap<String, Object> row : users) {
+	        String uName = Objects.toString(row.get("USER_NAME"), "");
+	        if (uName.isEmpty()) continue;
+
+	        // calcUserBattleContext 로 ctx 전체 계산 (동일한 공식 재사용)
+	        HashMap<String, Object> ctxMap = new HashMap<>();
+	        ctxMap.put("userName", uName);
+	        ctxMap.put("roomName", "");
+	        UserBattleContext ctx;
+	        try {
+	            ctx = calcUserBattleContext(ctxMap);
+	        } catch (Exception e) { continue; }
+	        if (!ctx.success) continue;
+
+	        int lv = ctx.user != null ? ctx.user.lv : 0;
+
+	        // ctx.atkMin/Max = 직업 배율 미적용 최종 ATK (보스템 포함, 헬너프 포함)
+	        // 보스템 기여분 별도 계산 (맥스치 기준)
+	        int bossBonus = 0;
+	        boolean has7009 = ctx.ownedBossItems.contains(7009);
+	        boolean has7013 = ctx.ownedBossItems.contains(7013);
+	        if (has7009) bossBonus += Math.min(lv, 300) * 150; // 최대 45,000
+	        if (has7013) bossBonus += 30 * 500;                // 최대 15,000
+
+	        // 세트 효과 텍스트 요약
+	        List<String> setDesc = new ArrayList<>();
+	        if (ctx.setAtkFinalRate  > 0) setDesc.add("ATK+" + ctx.setAtkFinalRate + "%");
+	        if (ctx.setCritFinalRate > 0) setDesc.add("크리+" + ctx.setCritFinalRate + "%");
+	        if (ctx.setCooldownReduce> 0) setDesc.add("쿨-"  + ctx.setCooldownReduce + "s");
+	        if (ctx.setEvasionRate   > 0) setDesc.add("회피+" + ctx.setEvasionRate + "%");
+	        if (ctx.activeSetSpecials != null) {
+	            for (String sp : ctx.activeSetSpecials) setDesc.add(sp.replace("SPECIAL_", ""));
+	        }
+
+	        HashMap<String, Object> entry = new HashMap<>();
+	        entry.put("userName",   uName);
+	        entry.put("lv",         lv);
+	        entry.put("atkMin",     ctx.atkMin);
+	        entry.put("atkMax",     ctx.atkMax);
+	        entry.put("crit",       ctx.crit);
+	        entry.put("critDmg",    ctx.critDmg);
+	        entry.put("darkAtkMin", ctx.dropAtkMin);
+	        entry.put("darkAtkMax", ctx.dropAtkMax);
+	        entry.put("setInfo",    String.join(" / ", setDesc));
+	        entry.put("bossBonus",  bossBonus);
+	        entry.put("has7009",    has7009);
+	        entry.put("has7013",    has7013);
+	        entry.put("bossEstMin", ctx.atkMin + ctx.dropAtkMin + bossBonus);
+	        entry.put("bossEstMax", ctx.atkMax + ctx.dropAtkMax + bossBonus);
+	        result.add(entry);
+	    }
+
+	    result.sort((a, b) -> Integer.compare(
+	        b.get("bossEstMax") != null ? ((Number) b.get("bossEstMax")).intValue() : 0,
+	        a.get("bossEstMax") != null ? ((Number) a.get("bossEstMax")).intValue() : 0
+	    ));
+	    return result;
+	}
+
+	@GetMapping("/equip-rank-view")
+	public String equipRankView() {
+	    return "nonsession/loa/equip_rank_view";
+	}
+
 	private double getJobDmgMulForSim(String job) {
 	    switch (job) {
 	        case "궁수":  case "사냥꾼": return 3.0;

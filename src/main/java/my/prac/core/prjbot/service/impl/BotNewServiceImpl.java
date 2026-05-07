@@ -745,4 +745,9 @@ public class BotNewServiceImpl implements BotNewService {
 
         return migratedCount;
     }
+
+    @Override
+    public List<HashMap<String, Object>> selectAllUsersForRank() {
+        return botNewDAO.selectAllUsersForRank();
+    }
 }

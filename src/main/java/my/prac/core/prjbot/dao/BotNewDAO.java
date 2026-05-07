@@ -272,4 +272,7 @@ public interface BotNewDAO {
 
     /** 이관 완료된 메인 테이블 데이터 삭제 */
     int deleteInventoryMigrated(HashMap<String, Object> param);
+
+    /** 장비 랭킹용 전체 유저 기본 스탯 조회 */
+    List<HashMap<String, Object>> selectAllUsersForRank();
 }
