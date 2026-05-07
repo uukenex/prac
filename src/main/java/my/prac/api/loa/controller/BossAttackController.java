@@ -4733,9 +4733,35 @@ public class BossAttackController {
 			return "아이템 지급 중 오류가 발생했습니다.";
 		}
 
+		// 아이템 이름/옵션 조회
+		String itemLine = "#" + giveItemId;
+		try {
+			HashMap<String, Object> detail = botNewService.selectItemDetailById(giveItemId);
+			if (detail != null) {
+				String iName = Objects.toString(detail.get("ITEM_NAME"), "#" + giveItemId);
+				StringBuilder opts = new StringBuilder();
+				int atkMin = detail.get("ATK_MIN") != null ? ((Number) detail.get("ATK_MIN")).intValue() : 0;
+				int atkMax = detail.get("ATK_MAX") != null ? ((Number) detail.get("ATK_MAX")).intValue() : 0;
+				int cri    = detail.get("ATK_CRI") != null ? ((Number) detail.get("ATK_CRI")).intValue() : 0;
+				int criDmg = detail.get("CRI_DMG") != null ? ((Number) detail.get("CRI_DMG")).intValue() : 0;
+				int hp     = detail.get("HP_MAX")  != null ? ((Number) detail.get("HP_MAX")).intValue()  : 0;
+				int regen  = detail.get("HP_REGEN")!= null ? ((Number) detail.get("HP_REGEN")).intValue(): 0;
+				int hpRate = detail.get("HP_MAX_RATE") != null ? ((Number) detail.get("HP_MAX_RATE")).intValue() : 0;
+				int atkRate= detail.get("ATK_MAX_RATE")!= null ? ((Number) detail.get("ATK_MAX_RATE")).intValue(): 0;
+				if (atkMin > 0 || atkMax > 0) opts.append(" ATK+").append(atkMin).append("~").append(atkMax);
+				if (cri    > 0) opts.append(" 크리+").append(cri);
+				if (criDmg > 0) opts.append(" 크리뎀+").append(criDmg);
+				if (hp     > 0) opts.append(" HP+").append(hp);
+				if (regen  > 0) opts.append(" 리젠+").append(regen);
+				if (hpRate > 0) opts.append(" HP+").append(hpRate).append("%");
+				if (atkRate> 0) opts.append(" ATK+").append(atkRate).append("%");
+				itemLine = iName + (opts.length() > 0 ? " [" + opts.toString().trim() + "]" : "");
+			}
+		} catch (Exception ignore) {}
+
 		return userName + "님," + NL
 				+ "🎰 보스뽑기! (-6 GP)" + NL
-				+ "▶ 획득 아이템: #" + giveItemId + NL
+				+ "▶ 획득 아이템: " + itemLine + NL
 				+ "- 잔여 GP: " + String.format("%.2f", gp - 6) + " GP";
 	}
 
