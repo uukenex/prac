@@ -795,7 +795,7 @@ public class LoaChatController {
 				param0="/ㅍㅁ";
 				val = boss.sellItem(reqMap);
 				break;
-			case "/보스":
+			case "/보스": case "/ㅂㅅ":
 				passYn = true;
 				val = "http://rgb-tns.dev-apc.com/loa/boss-status-view";
 				break;
