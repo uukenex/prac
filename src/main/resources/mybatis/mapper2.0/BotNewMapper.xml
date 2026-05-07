@@ -2209,4 +2209,18 @@
 		   AND INSERT_DATE &lt; #{cutoffDate}
 	</delete>
 
+	<select id="selectAllUsersForRank" resultType="hashmap">
+		/* selectAllUsersForRank */
+		SELECT USER_NAME, LV,
+		       NVL(ATK_MIN,   0) AS ATK_MIN,
+		       NVL(ATK_MAX,   0) AS ATK_MAX,
+		       NVL(CRIT_RATE, 0) AS CRIT_RATE,
+		       NVL(CRIT_DMG,  0) AS CRIT_DMG,
+		       NVL(JOB, '')       AS JOB,
+		       NVL(NIGHTMARE_YN, 0) AS NIGHTMARE_YN
+		FROM TBOT_POINT_NEW_USER
+		WHERE LV > 0
+		ORDER BY USER_NAME
+	</select>
+
 </mapper>

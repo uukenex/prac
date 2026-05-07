@@ -221,6 +221,9 @@ public interface BotNewService {
      * @return 이관된 레코드 수
      */
     int migrateInventoryToOld() throws Exception;
+
+    /** 장비 랭킹용 전체 유저 기본 스탯 조회 */
+    List<HashMap<String, Object>> selectAllUsersForRank();
 }
 
 	
