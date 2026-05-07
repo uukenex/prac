@@ -76,6 +76,7 @@ h1 { font-size: 1.4rem; font-weight: 700; color: #e8c97a; margin-bottom: 18px; }
 </style>
 </head>
 <body>
+<%@ include file="_loa_nav.jsp" %>
 <div id="app" class="container">
   <h1>⚔️ 데미지 시뮬레이터</h1>
 
