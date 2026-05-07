@@ -701,6 +701,7 @@
 	    SELECT
 	        i.ITEM_ID,
 	        i.ITEM_NAME,
+	        NVL(i.ITEM_DESC, '') AS ITEM_DESC,
 	        i.ITEM_SELL_PRICE,
 	        i.ITEM_SELL_PRICE_EXT,
 	        i.ITEM_TYPE,

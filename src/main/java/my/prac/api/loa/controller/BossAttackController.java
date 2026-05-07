@@ -4733,12 +4733,13 @@ public class BossAttackController {
 			return "아이템 지급 중 오류가 발생했습니다.";
 		}
 
-		// 아이템 이름/옵션 조회
+		// 아이템 이름/설명/옵션 조회
 		String itemLine = "#" + giveItemId;
 		try {
 			HashMap<String, Object> detail = botNewService.selectItemDetailById(giveItemId);
 			if (detail != null) {
 				String iName = Objects.toString(detail.get("ITEM_NAME"), "#" + giveItemId);
+				String iDesc = Objects.toString(detail.get("ITEM_DESC"), "");
 				StringBuilder opts = new StringBuilder();
 				int atkMin = detail.get("ATK_MIN") != null ? ((Number) detail.get("ATK_MIN")).intValue() : 0;
 				int atkMax = detail.get("ATK_MAX") != null ? ((Number) detail.get("ATK_MAX")).intValue() : 0;
@@ -4755,7 +4756,9 @@ public class BossAttackController {
 				if (regen  > 0) opts.append(" 리젠+").append(regen);
 				if (hpRate > 0) opts.append(" HP+").append(hpRate).append("%");
 				if (atkRate> 0) opts.append(" ATK+").append(atkRate).append("%");
-				itemLine = iName + (opts.length() > 0 ? " [" + opts.toString().trim() + "]" : "");
+				itemLine = iName
+					+ (!iDesc.isEmpty() ? " (" + iDesc + ")" : "")
+					+ (opts.length() > 0 ? " [" + opts.toString().trim() + "]" : "");
 			}
 		} catch (Exception ignore) {}
 
