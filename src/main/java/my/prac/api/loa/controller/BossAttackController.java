@@ -610,18 +610,18 @@ public class BossAttackController {
 	    int crit =baseCrit + mktCrit;
 	    int critDmg = baseCritDmg + mktCritDmg;
 	    
-	    // [7009] 진화형 무기: 레벨당 공격력 +150 (헬너프 적용 전 합산)
+	    // [7009] 진화형 무기: 레벨당 공격력 +150 (헬너프 적용 전 합산)  추후 맥스치 지정 
 	    if (ctx.ownedBossItems.contains(7009)) {
 	        int evolveBonus = u.lv * 150;
 	        atkMin += evolveBonus;
 	        atkMax += evolveBonus;
 	    }
-	    // [7013] 어제의 전사들: 어제 공격자 수 × 공격력 +1000, 치명타 데미지 +10 (헬너프 적용 전 합산)
+	    // [7013] 어제 공격자 수 × 공격력 +500, 치명타 데미지 +5 (헬너프 적용 전 합산) 추후 맥스치 지정 
 	    if (ctx.ownedBossItems.contains(7013)) {
 	        int yestCount = getYesterdayAttackerCountCached();
-	        atkMin  += yestCount * 1000;
-	        atkMax  += yestCount * 1000;
-	        critDmg += yestCount * 10;
+	        atkMin  += yestCount * 500;
+	        atkMax  += yestCount * 500;
+	        critDmg += yestCount * 5;
 	    }
 
 	    int hellNerfAtkMin =0;
