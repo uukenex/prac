@@ -8978,125 +8978,51 @@ public class BossAttackController {
 	        String uName = Objects.toString(row.get("USER_NAME"), "");
 	        if (uName.isEmpty()) continue;
 
-	        int lv         = row.get("LV")        != null ? ((Number) row.get("LV")).intValue()        : 0;
-	        int baseAtkMin = row.get("ATK_MIN")    != null ? ((Number) row.get("ATK_MIN")).intValue()   : 0;
-	        int baseAtkMax = row.get("ATK_MAX")    != null ? ((Number) row.get("ATK_MAX")).intValue()   : 0;
-	        int baseCrit   = row.get("CRIT_RATE")  != null ? ((Number) row.get("CRIT_RATE")).intValue() : 0;
-	        int baseCritDmg= row.get("CRIT_DMG")   != null ? ((Number) row.get("CRIT_DMG")).intValue()  : 0;
+	        // calcUserBattleContext 로 ctx 전체 계산 (동일한 공식 재사용)
+	        HashMap<String, Object> ctxMap = new HashMap<>();
+	        ctxMap.put("userName", uName);
+	        ctxMap.put("roomName", "");
+	        UserBattleContext ctx;
+	        try {
+	            ctx = calcUserBattleContext(ctxMap);
+	        } catch (Exception e) { continue; }
+	        if (!ctx.success) continue;
 
-	        HashMap<String, Object> invBuff = getInvBuffCached(uName);
+	        int lv = ctx.user != null ? ctx.user.lv : 0;
 
-	        // 마켓 버프
-	        @SuppressWarnings("unchecked")
-	        HashMap<String, Object> mkt = (HashMap<String, Object>) invBuff.get("market");
-	        int mktAtkMin  = mkt != null && mkt.get("ATK_MIN")      != null ? ((Number) mkt.get("ATK_MIN")).intValue()      : 0;
-	        int mktAtkMax  = mkt != null && mkt.get("ATK_MAX")      != null ? ((Number) mkt.get("ATK_MAX")).intValue()      : 0;
-	        int mktCrit    = mkt != null && mkt.get("ATK_CRI")      != null ? ((Number) mkt.get("ATK_CRI")).intValue()      : 0;
-	        int mktCritDmg = mkt != null && mkt.get("CRI_DMG")      != null ? ((Number) mkt.get("CRI_DMG")).intValue()      : 0;
-	        int mktAtkRate = mkt != null && mkt.get("ATK_MAX_RATE") != null ? ((Number) mkt.get("ATK_MAX_RATE")).intValue() : 0;
-
-	        // 천상 버프
-	        @SuppressWarnings("unchecked")
-	        HashMap<String, Object> heaven = (HashMap<String, Object>) invBuff.get("heaven");
-	        if (heaven != null) {
-	            mktAtkMin  += heaven.get("ATK_MIN")      != null ? ((Number) heaven.get("ATK_MIN")).intValue()      : 0;
-	            mktAtkMax  += heaven.get("ATK_MAX")      != null ? ((Number) heaven.get("ATK_MAX")).intValue()      : 0;
-	            mktCrit    += heaven.get("ATK_CRI")      != null ? ((Number) heaven.get("ATK_CRI")).intValue()      : 0;
-	            mktCritDmg += heaven.get("CRI_DMG")      != null ? ((Number) heaven.get("CRI_DMG")).intValue()      : 0;
-	            mktAtkRate += heaven.get("ATK_MAX_RATE") != null ? ((Number) heaven.get("ATK_MAX_RATE")).intValue() : 0;
-	        }
-
-	        // 세트 효과
-	        int setAtkFinalRate = 0, setCritFinalRate = 0;
-	        java.util.Set<String> setIds = new java.util.LinkedHashSet<>();
-	        List<String> setDescList = new ArrayList<>();
-	        @SuppressWarnings("unchecked")
-	        List<HashMap<String, Object>> setBonus = (List<HashMap<String, Object>>) invBuff.get("setBonus");
-	        if (setBonus != null) {
-	            for (HashMap<String, Object> b : setBonus) {
-	                String bt = Objects.toString(b.get("BONUS_TYPE"), "");
-	                int    bv = b.get("BONUS_VALUE") != null ? ((Number) b.get("BONUS_VALUE")).intValue() : 0;
-	                String sid = Objects.toString(b.get("SET_ID"), "");
-	                String desc = Objects.toString(b.get("BONUS_DESC"), bt + "+" + bv);
-	                setIds.add(sid);
-	                switch (bt) {
-	                    case "ATK_MIN":         mktAtkMin   += bv; break;
-	                    case "ATK_MAX":         mktAtkMax   += bv; break;
-	                    case "ATK_CRI":         mktCrit     += bv; break;
-	                    case "CRI_DMG":         mktCritDmg  += bv; break;
-	                    case "ATK_FINAL_RATE":  setAtkFinalRate += bv; break;
-	                    case "CRIT_FINAL_RATE": setCritFinalRate+= bv; break;
-	                    default: break;
-	                }
-	                if (!desc.isEmpty()) setDescList.add(desc);
-	            }
-	        }
-
-	        // 보스 아이템
-	        @SuppressWarnings("unchecked")
-	        List<Integer> bossItems = (List<Integer>) invBuff.get("bossItems");
-	        boolean has7009 = bossItems != null && bossItems.contains(7009);
-	        boolean has7013 = bossItems != null && bossItems.contains(7013);
-
-	        // 기본 ATK 합산
-	        int atkMin = baseAtkMin + mktAtkMin;
-	        int atkMax = baseAtkMax + mktAtkMax;
-	        int crit    = baseCrit    + mktCrit;
-	        int critDmg = baseCritDmg + mktCritDmg;
-
-	        // ATK 비율 보너스
-	        if (mktAtkRate > 0) {
-	            atkMin += (int) ((long) atkMin * mktAtkRate / 100);
-	            atkMax += (int) ((long) atkMax * mktAtkRate / 100);
-	        }
-	        // 세트 최종 비율 보너스
-	        if (setAtkFinalRate > 0) {
-	            atkMin += (int) Math.round((long) atkMin * setAtkFinalRate / 100.0);
-	            atkMax += (int) Math.round((long) atkMax * setAtkFinalRate / 100.0);
-	        }
-	        if (setCritFinalRate > 0) {
-	            crit += (int) Math.round(crit * setCritFinalRate / 100.0);
-	        }
-
-	        // 어둠(DROP5) 부가 공격력
-	        int darkAtkMin = 0, darkAtkMax = 0;
-	        @SuppressWarnings("unchecked")
-	        List<HashMap<String, Object>> drops = (List<HashMap<String, Object>>) invBuff.get("drops");
-	        if (drops != null) {
-	            for (HashMap<String, Object> d : drops) {
-	                if (!"DROP5".equals(Objects.toString(d.get("GAIN_TYPE"), ""))) continue;
-	                int itemId = d.get("ITEM_ID")    != null ? ((Number) d.get("ITEM_ID")).intValue()    : 0;
-	                int qty    = d.get("TOTAL_QTY")  != null ? ((Number) d.get("TOTAL_QTY")).intValue()  : 0;
-	                if (qty <= 0) continue;
-	                switch (itemId) {
-	                    case 24:                        darkAtkMin += qty / 2; break;
-	                    case 2: case 3: case 5: case 16: darkAtkMin += qty / 10; break;
-	                    case 26: case 29:               darkAtkMax += qty / 2; break;
-	                    case 13: case 4: case 6: case 14: darkAtkMax += qty / 10; break;
-	                }
-	            }
-	        }
-
-	        // 보스템 추정 보너스 (맥스치 기준)
+	        // ctx.atkMin/Max = 직업 배율 미적용 최종 ATK (보스템 포함, 헬너프 포함)
+	        // 보스템 기여분 별도 계산 (맥스치 기준)
 	        int bossBonus = 0;
+	        boolean has7009 = ctx.ownedBossItems.contains(7009);
+	        boolean has7013 = ctx.ownedBossItems.contains(7013);
 	        if (has7009) bossBonus += Math.min(lv, 300) * 150; // 최대 45,000
 	        if (has7013) bossBonus += 30 * 500;                // 최대 15,000
+
+	        // 세트 효과 텍스트 요약
+	        List<String> setDesc = new ArrayList<>();
+	        if (ctx.setAtkFinalRate  > 0) setDesc.add("ATK+" + ctx.setAtkFinalRate + "%");
+	        if (ctx.setCritFinalRate > 0) setDesc.add("크리+" + ctx.setCritFinalRate + "%");
+	        if (ctx.setCooldownReduce> 0) setDesc.add("쿨-"  + ctx.setCooldownReduce + "s");
+	        if (ctx.setEvasionRate   > 0) setDesc.add("회피+" + ctx.setEvasionRate + "%");
+	        if (ctx.activeSetSpecials != null) {
+	            for (String sp : ctx.activeSetSpecials) setDesc.add(sp.replace("SPECIAL_", ""));
+	        }
 
 	        HashMap<String, Object> entry = new HashMap<>();
 	        entry.put("userName",   uName);
 	        entry.put("lv",         lv);
-	        entry.put("atkMin",     atkMin);
-	        entry.put("atkMax",     atkMax);
-	        entry.put("crit",       crit);
-	        entry.put("critDmg",    critDmg);
-	        entry.put("darkAtkMin", darkAtkMin);
-	        entry.put("darkAtkMax", darkAtkMax);
-	        entry.put("setInfo",    setDescList.isEmpty() ? "" : String.join(" / ", setDescList));
+	        entry.put("atkMin",     ctx.atkMin);
+	        entry.put("atkMax",     ctx.atkMax);
+	        entry.put("crit",       ctx.crit);
+	        entry.put("critDmg",    ctx.critDmg);
+	        entry.put("darkAtkMin", ctx.dropAtkMin);
+	        entry.put("darkAtkMax", ctx.dropAtkMax);
+	        entry.put("setInfo",    String.join(" / ", setDesc));
 	        entry.put("bossBonus",  bossBonus);
 	        entry.put("has7009",    has7009);
 	        entry.put("has7013",    has7013);
-	        entry.put("bossEstMin", atkMin + darkAtkMin + bossBonus);
-	        entry.put("bossEstMax", atkMax + darkAtkMax + bossBonus);
+	        entry.put("bossEstMin", ctx.atkMin + ctx.dropAtkMin + bossBonus);
+	        entry.put("bossEstMax", ctx.atkMax + ctx.dropAtkMax + bossBonus);
 	        result.add(entry);
 	    }
 
