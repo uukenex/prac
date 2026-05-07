@@ -491,24 +491,24 @@ public class BossAttackS3Controller {
             return "저장 중 오류가 발생했습니다.";
         }
 
-        // 공격 SP 보상: 준 데미지 × 1000 raw SP (100 데미지 → 10a)
+        // 공격 SP 보상: 준 데미지 × 10000 raw SP / 최소 200a, 최대 2000a
         String spRewardMsg = "";
-        if (!isEvade && damage > 0) {
-            try {
-                long rawSpVal = Math.min(totalDamage * 10000L, 20_000_000L);
-                boolean spCapped = totalDamage * 10000L > 20_000_000L;
-                SP spReward = SP.fromSp(rawSpVal);
-                HashMap<String, Object> pr = new HashMap<>();
-                pr.put("userName", userName);
-                pr.put("roomName", roomName);
-                pr.put("score",    spReward.getValue());
-                pr.put("scoreExt", spReward.getUnit());
-                pr.put("cmd",      "BOSS_HELL_ATK");
-                botNewService.insertPointRank(pr);
-                spRewardMsg = " 획득 SP: " + spReward + (spCapped ? " (max)" : "") + NL;
-            } catch (Exception e) {
-                // SP 지급 실패는 무시
-            }
+        try {
+            long rawSpVal = totalDamage * 10000L;
+            boolean spCapped = rawSpVal > 20_000_000L;
+            boolean spMin    = rawSpVal < 2_000_000L;
+            rawSpVal = Math.max(Math.min(rawSpVal, 20_000_000L), 2_000_000L);
+            SP spReward = SP.fromSp(rawSpVal);
+            HashMap<String, Object> pr = new HashMap<>();
+            pr.put("userName", userName);
+            pr.put("roomName", roomName);
+            pr.put("score",    spReward.getValue());
+            pr.put("scoreExt", spReward.getUnit());
+            pr.put("cmd",      "BOSS_HELL_ATK");
+            botNewService.insertPointRank(pr);
+            spRewardMsg = " 획득 SP: " + spReward + (spCapped ? " (max)" : spMin ? " (min)" : "") + NL;
+        } catch (Exception e) {
+            // SP 지급 실패는 무시
         }
 
         // 헬보스 업적 체크 (공격 업적, 클리어 참여 업적)
