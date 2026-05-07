@@ -29,4 +29,7 @@ public interface BotS3Service {
 	/** [헬보스] 최근 200회 공격의 평균 데미지 */
 	Long selectRecentHellAvgDmg() throws Exception;
 
+	/** [헬보스] 현재 보스 세션 최근 공격 로그 (TOP50) */
+	List<HashMap<String, Object>> selectHellBossRecentLog(HashMap<String, Object> map);
+
 }
