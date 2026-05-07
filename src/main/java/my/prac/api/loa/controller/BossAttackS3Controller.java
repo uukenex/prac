@@ -495,7 +495,9 @@ public class BossAttackS3Controller {
         String spRewardMsg = "";
         if (!isEvade && damage > 0) {
             try {
-                SP spReward = SP.fromSp(totalDamage * 10000L);
+                long rawSpVal = Math.min(totalDamage * 10000L, 20_000_000L);
+                boolean spCapped = totalDamage * 10000L > 20_000_000L;
+                SP spReward = SP.fromSp(rawSpVal);
                 HashMap<String, Object> pr = new HashMap<>();
                 pr.put("userName", userName);
                 pr.put("roomName", roomName);
@@ -503,7 +505,7 @@ public class BossAttackS3Controller {
                 pr.put("scoreExt", spReward.getUnit());
                 pr.put("cmd",      "BOSS_HELL_ATK");
                 botNewService.insertPointRank(pr);
-                spRewardMsg = " 획득 SP: " + spReward + NL;
+                spRewardMsg = " 획득 SP: " + spReward + (spCapped ? " (max)" : "") + NL;
             } catch (Exception e) {
                 // SP 지급 실패는 무시
             }

@@ -610,18 +610,18 @@ public class BossAttackController {
 	    int crit =baseCrit + mktCrit;
 	    int critDmg = baseCritDmg + mktCritDmg;
 	    
-	    // [7009] 진화형 무기: 레벨당 공격력 +150 (헬너프 적용 전 합산)  추후 맥스치 지정 
+	    // [7009] 진화형 무기: 레벨당 공격력 +150 (최대 Lv300 = +45,000)
 	    if (ctx.ownedBossItems.contains(7009)) {
-	        int evolveBonus = u.lv * 150;
+	        int evolveBonus = Math.min(u.lv, 300) * 150;
 	        atkMin += evolveBonus;
 	        atkMax += evolveBonus;
 	    }
-	    // [7013] 어제 공격자 수 × 공격력 +500, 치명타 데미지 +5 (헬너프 적용 전 합산) 추후 맥스치 지정 
+	    // [7013] 어제 공격자 수 × 공격력 +500, 치명타 데미지 +5 (최대 30명 = +15,000)
 	    if (ctx.ownedBossItems.contains(7013)) {
-	        int yestCount = getYesterdayAttackerCountCached();
-	        atkMin  += yestCount * 500;
-	        atkMax  += yestCount * 500;
-	        critDmg += yestCount * 5;
+	        int cappedYest = Math.min(getYesterdayAttackerCountCached(), 30);
+	        atkMin  += cappedYest * 500;
+	        atkMax  += cappedYest * 500;
+	        critDmg += cappedYest * 5;
 	    }
 
 	    int hellNerfAtkMin =0;
@@ -8830,15 +8830,16 @@ public class BossAttackController {
 	    int bossMin = 0, bossMax = 0;
 	    List<String> bossNotes = new ArrayList<>();
 	    if (ctx.ownedBossItems.contains(7009)) {
-	        int b = ctx.user.lv * 150;
+	        int effLv = Math.min(ctx.user.lv, 300);
+	        int b = effLv * 150;
 	        bossMin += b; bossMax += b;
-	        bossNotes.add("[7009] 진화무기 Lv" + ctx.user.lv + " × 150 = +" + b);
+	        bossNotes.add("[7009] 진화무기 Lv" + effLv + "(max300) × 150 = +" + b);
 	    }
 	    if (ctx.ownedBossItems.contains(7013)) {
-	        int yest = getYesterdayAttackerCountCached();
-	        int b = yest * 1000;
+	        int yest = Math.min(getYesterdayAttackerCountCached(), 30);
+	        int b = yest * 500;
 	        bossMin += b; bossMax += b;
-	        bossNotes.add("[7013] 어제의전사들 " + yest + "명 × 1000 = +" + b);
+	        bossNotes.add("[7013] 어제의전사들 " + yest + "명(max30) × 500 = +" + b);
 	    }
 	    if (bossMin > 0) {
 	        curMin += bossMin; curMax += bossMax;
