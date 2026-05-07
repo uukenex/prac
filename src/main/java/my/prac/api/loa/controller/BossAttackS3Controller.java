@@ -870,20 +870,35 @@ public class BossAttackS3Controller {
                         } catch (Exception e) { /* 지급 실패 무시 */ }
                     }
                 }
+
+                // 아이템 당첨자 제외 전체 참여자에게 0.2 GP 지급
+                int itemBaseCount = 0;
+                for (String uName : allNames) {
+                    if (itemWinnerSet.contains(uName)) continue;
+                    try {
+                        HashMap<String, Object> gpMap = new HashMap<>();
+                        gpMap.put("userName", uName);
+                        gpMap.put("roomName", roomName);
+                        gpMap.put("score",    0.2);
+                        gpMap.put("cmd",      "BOSS_HELL_PART_GP");
+                        botNewService.insertGpRecord(gpMap);
+                        itemBaseCount++;
+                    } catch (Exception ignore) {}
+                }
+                if (itemBaseCount > 0) {
+                    msg.append("참여자 ").append(itemBaseCount).append("명 +0.20 GP").append(NL);
+                }
             }
 
         } else {
             // ────────────────────────────────────────────────────
             // 70% : GP 지급 (7000번대 무관)
             //   - 당첨자 추첨 풀: 2%이상 기여자(qualified) 중 winnerCount명 추첨 → 각 0.5~1 GP
-            //   - 0.2 GP: 전체 참여자(allContributors) 전원 (당첨자 포함, 당첨자는 randomGp로 대체)
-            //   - MVP(데미지 1위): +0.2 GP 추가 보너스
+            //   - 0.3 GP: 전체 참여자(allContributors) 전원 (당첨자는 randomGp로 대체)
             // ────────────────────────────────────────────────────
             if (allContributors.isEmpty()) {
                 msg.append("GP 지급 대상 없음").append(NL);
             } else {
-                // MVP: SCORE DESC 정렬 → 첫 번째가 데미지 1위
-                String mvpName = allContributors.get(0).get("USER_NAME").toString();
                 // 당첨자: 전체 참여자 중 winnerCount명 추첨 (각각 독립 GP 추첨)
                 List<String> gpWinnerList = pickWinners(allNames, winnerCount, rand);
                 Map<String, Double> gpWinnerMap = new LinkedHashMap<>();
@@ -897,10 +912,8 @@ public class BossAttackS3Controller {
                     for (int i = 0; i < allNames.size(); i++) {
                         String uName = allNames.get(i);
                         boolean isWin = gpWinnerMap.containsKey(uName);
-                        boolean isMvp = uName.equals(mvpName);
                         msg.append(isWin ? "★" : "  ")
                            .append(i + 1).append(". ").append(uName)
-                           .append(isMvp ? " [MVP]" : "")
                            .append(isWin ? " ← 당첨!" : "").append(NL);
                     }
                     msg.append(NL);
@@ -911,10 +924,8 @@ public class BossAttackS3Controller {
                 for (HashMap<String, Object> row : allContributors) {
                     String uName = row.get("USER_NAME").toString();
                     boolean isWin = gpWinnerMap.containsKey(uName);
-                    boolean isMvp = uName.equals(mvpName);
                     double winGp = isWin ? gpWinnerMap.get(uName) : 0.0;
-                    double gp = isWin ? winGp : 0.2;
-                    if (isMvp) gp += 0.2; // MVP 추가 보너스
+                    double gp = isWin ? winGp : 0.3;
                     try {
                         HashMap<String, Object> gpMap = new HashMap<>();
                         gpMap.put("userName", uName);
@@ -924,20 +935,17 @@ public class BossAttackS3Controller {
                         botNewService.insertGpRecord(gpMap);
                     } catch (Exception ignore) {}
 
-                    // 메시지: 당첨자/MVP는 개별 표시, 나머지는 카운트
+                    // 메시지: 당첨자는 개별 표시, 나머지는 카운트
                     if (isWin) {
                         msg.append("[").append(uName).append("] ")
-                           .append(String.format("+%.2f GP (랜덤당첨)", winGp));
-                        if (isMvp) msg.append(String.format(" +0.20 GP (MVP) → 합계 +%.2f GP", gp));
-                        msg.append(NL);
-                    } else if (isMvp) {
-                        msg.append("[").append(uName).append("] +0.20 GP +0.20 GP (MVP보너스) → 합계 +0.40 GP").append(NL);
+                           .append(String.format("+%.2f GP (랜덤당첨)", winGp))
+                           .append(NL);
                     } else {
                         baseCount++;
                     }
                 }
                 if (baseCount > 0) {
-                    msg.append("참여자 ").append(baseCount).append("명 +0.20 GP").append(NL);
+                    msg.append("참여자 ").append(baseCount).append("명 +0.30 GP").append(NL);
                 }
             }
         }
