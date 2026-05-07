@@ -8870,8 +8870,9 @@ public class BossAttackController {
 	    boolean isBear = "곰".equals(job);
 	    int effMin, effMax;
 	    if (isBear) {
+	        // 곰: atkMin/Max 는 내부적으로 hpMax 로 교체됨 → 단계 테이블 의미 없음
 	        effMin = ctx.atkMin; effMax = ctx.atkMax;
-	        atkSteps.add(simStep("직업 특수 (곰)", 0, 0, effMin, effMax, "곰: HP 기반 공격력으로 전환"));
+	        atkSteps.clear();
 	    } else {
 	        effMin = (int)Math.round((long)ctx.atkMin * 100 * jobDmgMul / 100);
 	        effMax = (int)Math.round((long)ctx.atkMax * 100 * jobDmgMul / 100);
@@ -8895,6 +8896,7 @@ public class BossAttackController {
 	    result.put("user", userInfo);
 
 	    result.put("atkSteps", atkSteps);
+	    result.put("isBear", isBear);
 
 	    HashMap<String, Object> eff = new HashMap<>();
 	    eff.put("min", effMin); eff.put("max", effMax);

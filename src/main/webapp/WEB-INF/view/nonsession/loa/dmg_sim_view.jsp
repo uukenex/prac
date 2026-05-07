@@ -102,8 +102,16 @@ h1 { font-size: 1.4rem; font-weight: 700; color: #e8c97a; margin-bottom: 18px; }
       </span>
     </div>
 
-    <!-- 최종 공격범위 요약 -->
-    <div class="final-range">
+    <!-- 곰 공격 방식 안내 (곰 직업 전용) -->
+    <div class="final-range" v-if="data.isBear" style="border-color:#55efc4;">
+      <div class="title">🐻 곰 공격 방식</div>
+      <div class="range" style="color:#55efc4;">최대 HP = 실전 공격력</div>
+      <div class="meta" style="margin-top:8px;">공격력 · 크리티컬 미적용 — 최대 HP 수치로 직접 공격</div>
+      <div class="meta">HP {{ fmt(data.hp.total) }}  /  리젠 {{ fmt(data.hp.regen) }}</div>
+    </div>
+
+    <!-- 최종 공격범위 요약 (곰 제외) -->
+    <div class="final-range" v-if="!data.isBear">
       <div class="title">⚔️ 최종 실전 공격범위</div>
       <div class="range">{{ fmt(data.eff.min) }} ~ {{ fmt(data.eff.max) }}</div>
       <div class="crit-range" v-if="data.crit.rate > 0">
@@ -115,8 +123,8 @@ h1 { font-size: 1.4rem; font-weight: 700; color: #e8c97a; margin-bottom: 18px; }
       </div>
     </div>
 
-    <!-- 공격력 단계 테이블 -->
-    <div class="section">
+    <!-- 공격력 단계 테이블 (곰 제외) -->
+    <div class="section" v-if="!data.isBear && data.atkSteps.length > 0">
       <div class="section-title">📊 공격력 계산 단계</div>
       <table class="step-table">
         <thead>
@@ -158,13 +166,12 @@ h1 { font-size: 1.4rem; font-weight: 700; color: #e8c97a; margin-bottom: 18px; }
 
     <!-- 스탯 카드 -->
     <div class="result-grid">
-      <div class="result-card">
+      <div class="result-card" v-if="!data.isBear">
         <div class="rc-title">⚔️ 공격력</div>
-        <div class="rc-row"><span class="lbl">기본</span><span class="val val-atk">{{ fmt(data.user.baseAtkMinDisplay || 0) }}</span></div>
         <div class="rc-row" v-if="data.eff"><span class="lbl">실전 MIN</span><span class="val val-eff">{{ fmt(data.eff.min) }}</span></div>
         <div class="rc-row" v-if="data.eff"><span class="lbl">실전 MAX</span><span class="val val-eff">{{ fmt(data.eff.max) }}</span></div>
       </div>
-      <div class="result-card">
+      <div class="result-card" v-if="!data.isBear">
         <div class="rc-title">💥 크리티컬</div>
         <div class="rc-row"><span class="lbl">치명타 확률</span><span class="val val-crit">{{ data.crit.rate }}%</span></div>
         <div class="rc-row"><span class="lbl">치명타 데미지</span><span class="val val-crit">{{ data.crit.dmg }}%</span></div>
