@@ -346,10 +346,35 @@ public class BossAttackS3Controller {
                     }
                 }
 
+                // [도박사] 공격 도박
+                String gamblerAtkMsg = "";
+                if ("도박사".equals(ctx.job)) {
+                    int gRoll = ThreadLocalRandom.current().nextInt(1, 101);
+                    int gMul = 1;
+                    if      (gRoll <= 1)  gMul = 50;
+                    else if (gRoll <= 3)  gMul = 25;
+                    else if (gRoll <= 6)  gMul = 16;
+                    else if (gRoll <= 10) gMul = 12;
+                    else if (gRoll <= 15) gMul = 10;
+                    else if (gRoll <= 21) gMul = 8;
+                    else if (gRoll <= 28) gMul = 7;
+                    else if (gRoll <= 36) gMul = 6;
+                    else if (gRoll <= 45) gMul = 5;
+                    else if (gRoll <= 55) gMul = 5;
+                    if (gRoll > 55) {
+                        gamblerAtkMsg = "도박 실패! (크리티컬 해제)" + NL;
+                    } else {
+                        int before = baseAtk;
+                        baseAtk = baseAtk * gMul;
+                        gamblerAtkMsg = "도박 성공! (피해량 ×" + gMul + ") " + before + " ⇒ " + baseAtk + NL;
+                    }
+                }
+
                 if (heavensPunishment) {
                     isCritical = true; isSuperCritical = true;
                 } else {
-                    isCritical = totalCritPercent > 0 && Math.random() < totalCritPercent / 100.0;
+                    isCritical = "도박사".equals(ctx.job) && gamblerAtkMsg.startsWith("도박 실패") ? false
+                            : totalCritPercent > 0 && Math.random() < totalCritPercent / 100.0;
                     if (isCritical) isSuperCritical = Math.random() < 0.10;
                 }
 
@@ -368,6 +393,7 @@ public class BossAttackS3Controller {
                     damage = baseAtk;
                     dmgMsg = atkRangeStr + baseAtk + " 로 공격!";
                 }
+                if (!gamblerAtkMsg.isEmpty()) dmgMsg = gamblerAtkMsg + dmgMsg;
             }
 
             // 천벌 디버프 상태 표시 (데미지 2배 효과 제거)
@@ -427,6 +453,32 @@ public class BossAttackS3Controller {
         }
         long totalDamage = damage + damage2;
 
+        // [7012] 도사 버프 적용 (보스전)
+        String dosaBossBuffMsg = "";
+        {
+            boolean dosaSelf = "도사".equals(ctx.job) || "음양사".equals(ctx.job);
+            HashMap<String,Object> dosaRoomRaw = botNewService.selectDosaBuffInfo();
+            boolean dosaRoom = dosaRoomRaw != null;
+            int buffCount = (dosaSelf ? 1 : 0) + (dosaRoom ? 1 : 0);
+            if (buffCount > 0 && !isEvade) {
+                int coef = ownedBoss.contains(7012) ? 3 : 1;
+                long flatBonus = (long) buffCount * 1000 * coef;
+                totalDamage += flatBonus;
+                totalDamage += Math.round(totalDamage * (buffCount * 5 * coef) / 100.0);
+                int healAmt = (int) Math.round(ctx.hpMax * (buffCount * 5 * coef) / 100.0);
+                int beforeHp = user.hpCur;
+                user.hpCur = Math.min(ctx.hpMax, user.hpCur + healAmt);
+                int actualHeal = user.hpCur - beforeHp;
+                StringBuilder dosaSb = new StringBuilder("※도사 기원: 최종 데미지 +").append(flatBonus);
+                int rateBonus = buffCount * 5 * coef;
+                if (rateBonus > 0) dosaSb.append(", +").append(rateBonus).append("%");
+                if (coef > 1) dosaSb.append(" [7012 ×").append(coef).append("]");
+                if (actualHeal > 0) dosaSb.append(", HP +").append(actualHeal).append(" 회복");
+                dosaBossBuffMsg = dosaSb.toString() + NL;
+                if (dosaRoom) botNewService.clearRoomBuff();
+            }
+        }
+
         // HP 차감 (1차)
         SP newHpSp = isEvade || totalDamage <= 0
                 ? SP.of(curHpNum, curHpExt)
@@ -449,6 +501,29 @@ public class BossAttackS3Controller {
             bossAtkApplied = 0;
             flag_boss_attack = false;
             bossAtkEvadeMsg = "[회피!] 보스의 반격을 피했습니다!" + NL;
+        }
+
+        // [도박사] 보스 반격 도박 판정
+        String gamblerDefMsg = "";
+        if ("도박사".equals(ctx.job) && flag_boss_attack && bossAtkApplied > 0) {
+            int gRoll = ThreadLocalRandom.current().nextInt(1, 101);
+            if (gRoll <= 11) {
+                bossAtkApplied = 0;
+                flag_boss_attack = false;
+                gamblerDefMsg = "[도박대성공!] 보스 반격 완전 회피!" + NL;
+            } else if (gRoll <= 44) {
+                int reduced = bossAtkApplied / 2;
+                bossAtkApplied = reduced;
+                gamblerDefMsg = "[도박성공!] 보스 반격 50% 감소 → " + reduced + NL;
+            } else if (gRoll <= 88) {
+                int doubled = bossAtkApplied * 2;
+                bossAtkApplied = doubled;
+                gamblerDefMsg = "[도박실패!] 보스 반격 2배 → " + doubled + NL;
+            } else {
+                int tripled = bossAtkApplied * 3;
+                bossAtkApplied = tripled;
+                gamblerDefMsg = "[도박대실패!] 보스 반격 3배 → " + tripled + NL;
+            }
         }
 
         // [7005] 가시갑옷: 보스전에서는 기존(10%) 대비 10% 성능 → 받은 피해의 1% 반사
@@ -543,12 +618,14 @@ public class BossAttackS3Controller {
             if (!punishMsg.isEmpty())   msg.append(punishMsg);
             if (!debuff1Msg.isEmpty())  msg.append(debuff1Msg);
             if (!bossDefMsg.isEmpty())  msg.append(bossDefMsg);
+            if (!dosaBossBuffMsg.isEmpty()) msg.append(dosaBossBuffMsg);
         } else {
             msg.append("보스가 공격을 회피했습니다! 데미지 0!").append(NL);
         }
         if (!spRewardMsg.isEmpty()) msg.append(spRewardMsg);
 
         if (!bossAtkEvadeMsg.isEmpty()) msg.append(bossAtkEvadeMsg);
+        if (!gamblerDefMsg.isEmpty()) msg.append(gamblerDefMsg);
         if (flag_boss_attack && bossAtkApplied > 0) {
             msg.append("▶ 보스의 반격! 최대HP의 피해! (").append(bossAtkApplied).append(")").append(NL);
             int remainHp = Math.max(0, ctx.hpMax - bossAtkApplied);
