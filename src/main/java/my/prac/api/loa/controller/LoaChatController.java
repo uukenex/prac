@@ -300,6 +300,14 @@ public class LoaChatController {
 				}
 			}
 			break;
+		case "c4":
+			// 장비랭킹 캐시 갱신 (1시간마다 호출)
+			try {
+				boss.refreshEquipRankCache();
+			} catch (Exception e1) {
+				e1.printStackTrace();
+			}
+			break;
 		case "test":
 			try {
 				market.search_c2();
