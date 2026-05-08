@@ -68,7 +68,9 @@ td.left  { text-align: left; }
 <%@ include file="_loa_nav.jsp" %>
 <div id="app" class="container">
   <h1>🔬 장비 랭킹</h1>
-  <p class="subtitle">직업 배율 미적용 · 장비+레벨 기준 순수 스탯 비교 (어둠/보스템 맥스치 반영)</p>
+  <p class="subtitle">직업 배율 미적용 · 장비+레벨 기준 순수 스탯 비교 (어둠/보스템 맥스치 반영)
+    <span v-if="cachedAt"> · 기준: {{ cachedAtStr }}</span>
+  </p>
 
   <div class="toolbar">
     <button @click="load" :disabled="loading">{{ loading ? '로딩 중...' : '새로고침' }}</button>
@@ -139,6 +141,7 @@ new Vue({
     loading: false,
     error: '',
     rows: [],
+    cachedAt: null,
     search: '',
     sortKey: 'bossEstMax',
     sortAsc: false,
@@ -157,6 +160,11 @@ new Vue({
         return asc ? va - vb : vb - va;
       });
     },
+    cachedAtStr() {
+      if (!this.cachedAt) return '';
+      const d = new Date(this.cachedAt);
+      return d.toLocaleString('ko-KR', { hour12: false });
+    },
   },
   methods: {
     load() {
@@ -165,7 +173,7 @@ new Vue({
         .then(r => r.json())
         .then(d => {
           if (d.error) { this.error = d.error; }
-          else { this.rows = d; }
+          else { this.rows = d.list || []; this.cachedAt = d.cachedAt || null; }
         })
         .catch(() => { this.error = '서버 오류가 발생했습니다.'; })
         .finally(() => { this.loading = false; });

@@ -115,6 +115,10 @@ public class BossAttackController {
 	private static volatile long SPECIAL_BUFF_CACHE_TS = 0L;
 	private static final long SPECIAL_BUFF_CACHE_TTL_MS = 15_000L;
 
+	// 장비랭킹 배치 캐시 (1시간마다 크론으로 갱신)
+	private static volatile List<HashMap<String,Object>> EQUIP_RANK_CACHE = null;
+	private static volatile long EQUIP_RANK_CACHE_TS = 0L;
+
 	// 누적SP 1위 캐시 (1시간마다 갱신, 가방 최대금액 계산용)
 	private static volatile long TOP1_SP_CACHE = 0L;
 	private static volatile long TOP1_SP_CACHE_TS = 0L;
@@ -2163,8 +2167,28 @@ public class BossAttackController {
 		        return userName + "님, [곰]은 상급악마를 공격할 수 없습니다.";
 		    botNewService.closeOngoingBattleTx(userName, roomName);
 		    botNewService.updateUserTargetMonTx(userName, roomName, 99);
-		    return userName + "님, 공격 타겟을 [상급악마](MON_NO=99) 으로 설정했습니다." + NL
+		    // 현재 스페셜타임 정보 추가
+		    String hellTargetMsg = userName + "님, 공격 타겟을 [상급악마](MON_NO=99) 으로 설정했습니다." + NL
 		         + "※ /ㄱ 으로 헬보스를 공격합니다.";
+		    try {
+		        long nowMs2 = System.currentTimeMillis();
+		        HashMap<String,Object> spBuff = (nowMs2 - SPECIAL_BUFF_CACHE_TS < SPECIAL_BUFF_CACHE_TTL_MS)
+		                ? SPECIAL_BUFF_CACHE : botNewService.selectActiveSpecialBuff();
+		        if (spBuff != null) {
+		            String fc   = Objects.toString(spBuff.get("FLAG_CODE"), "");
+		            String et   = Objects.toString(spBuff.get("EFFECT_TYPE"), "");
+		            double ev   = spBuff.get("EFFECT_VALUE") != null
+		                    ? Double.parseDouble(spBuff.get("EFFECT_VALUE").toString()) : 0;
+		            java.util.Date endT = (java.util.Date) spBuff.get("END_TIME");
+		            String endStr = endT != null
+		                    ? endT.toInstant().atZone(java.time.ZoneId.systemDefault())
+		                        .toLocalDateTime()
+		                        .format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"))
+		                    : "?";
+		            hellTargetMsg += NL + "✨스페셜타임 진행중! [" + buildBuffDescription(fc, et, ev) + ", " + endStr + "까지]";
+		        }
+		    } catch (Exception ignore) {}
+		    return hellTargetMsg;
 		}
 
 		Monster m = input.matches("\\d+")
@@ -4341,6 +4365,29 @@ public class BossAttackController {
 	    }
 
 	    return result;
+	}
+
+	/** 현재 스페셜타임 진행중 메시지 반환 (없으면 빈 문자열). S3Controller 등 외부 호출용. */
+	public String getActiveSpecialTimeMsg() {
+	    try {
+	        long nowMs = System.currentTimeMillis();
+	        HashMap<String,Object> activeBuff = (nowMs - SPECIAL_BUFF_CACHE_TS < SPECIAL_BUFF_CACHE_TTL_MS)
+	                ? SPECIAL_BUFF_CACHE : botNewService.selectActiveSpecialBuff();
+	        if (activeBuff == null) return "";
+	        String fc  = Objects.toString(activeBuff.get("FLAG_CODE"), "");
+	        String et  = Objects.toString(activeBuff.get("EFFECT_TYPE"), "");
+	        double ev  = activeBuff.get("EFFECT_VALUE") != null
+	                ? Double.parseDouble(activeBuff.get("EFFECT_VALUE").toString()) : 0;
+	        java.util.Date endT = (java.util.Date) activeBuff.get("END_TIME");
+	        String endStr = endT != null
+	                ? endT.toInstant().atZone(ZoneId.systemDefault())
+	                    .toLocalDateTime()
+	                    .format(DateTimeFormatter.ofPattern("HH:mm"))
+	                : "?";
+	        return "✨스페셜타임 진행중! [" + buildBuffDescription(fc, et, ev) + ", " + endStr + "까지]";
+	    } catch (Exception ignore) {
+	        return "";
+	    }
 	}
 	
 	private int randomDuration(double effectValue) {
@@ -8980,10 +9027,83 @@ public class BossAttackController {
 	@ResponseBody
 	@GetMapping("/api/equip-rank")
 	public Object getEquipRank() {
-	    return Collections.singletonMap("error", "현재 서비스 점검 중입니다.");
+	    if (EQUIP_RANK_CACHE == null || EQUIP_RANK_CACHE.isEmpty()) {
+	        return Collections.singletonMap("error", "데이터 준비 중입니다. 잠시 후 다시 시도해주세요.");
+	    }
+	    HashMap<String, Object> resp = new HashMap<>();
+	    resp.put("list", EQUIP_RANK_CACHE);
+	    resp.put("cachedAt", EQUIP_RANK_CACHE_TS);
+	    return resp;
 	}
+
+	/** 크론 배치용: 장비랭킹 캐시 갱신 (1시간마다 호출) */
+	public void refreshEquipRankCache() {
+	    List<HashMap<String, Object>> users;
+	    try {
+	        users = botNewService.selectAllUsersForRank();
+	    } catch (Exception e) {
+	        System.out.println("[CRON-equip-rank] 유저 목록 조회 실패: " + e.getMessage());
+	        return;
+	    }
+
+	    List<HashMap<String, Object>> result = new ArrayList<>();
+	    for (HashMap<String, Object> row : users) {
+	        String uName = Objects.toString(row.get("USER_NAME"), "");
+	        if (uName.isEmpty()) continue;
+	        HashMap<String, Object> ctxMap = new HashMap<>();
+	        ctxMap.put("userName", uName);
+	        ctxMap.put("roomName", "");
+	        UserBattleContext ctx;
+	        try {
+	            ctx = calcUserBattleContext(ctxMap);
+	        } catch (Exception e) { continue; }
+	        if (!ctx.success) continue;
+
+	        int lv = ctx.user != null ? ctx.user.lv : 0;
+	        int bossBonus = 0;
+	        boolean has7009 = ctx.ownedBossItems.contains(7009);
+	        boolean has7013 = ctx.ownedBossItems.contains(7013);
+	        if (has7009) bossBonus += Math.min(lv, 300) * 150;
+	        if (has7013) bossBonus += 30 * 500;
+
+	        List<String> setDesc = new ArrayList<>();
+	        if (ctx.setAtkFinalRate  > 0) setDesc.add("ATK+" + ctx.setAtkFinalRate + "%");
+	        if (ctx.setCritFinalRate > 0) setDesc.add("크리+" + ctx.setCritFinalRate + "%");
+	        if (ctx.setCooldownReduce> 0) setDesc.add("쿨-"  + ctx.setCooldownReduce + "s");
+	        if (ctx.setEvasionRate   > 0) setDesc.add("회피+" + ctx.setEvasionRate + "%");
+	        if (ctx.activeSetSpecials != null) {
+	            for (String sp : ctx.activeSetSpecials) setDesc.add(sp.replace("SPECIAL_", ""));
+	        }
+
+	        HashMap<String, Object> entry = new HashMap<>();
+	        entry.put("userName",   uName);
+	        entry.put("lv",         lv);
+	        entry.put("atkMin",     ctx.atkMin);
+	        entry.put("atkMax",     ctx.atkMax);
+	        entry.put("crit",       ctx.crit);
+	        entry.put("critDmg",    ctx.critDmg);
+	        entry.put("darkAtkMin", ctx.dropAtkMin);
+	        entry.put("darkAtkMax", ctx.dropAtkMax);
+	        entry.put("setInfo",    String.join(" / ", setDesc));
+	        entry.put("bossBonus",  bossBonus);
+	        entry.put("has7009",    has7009);
+	        entry.put("has7013",    has7013);
+	        entry.put("bossEstMin", ctx.atkMin + ctx.dropAtkMin + bossBonus);
+	        entry.put("bossEstMax", ctx.atkMax + ctx.dropAtkMax + bossBonus);
+	        result.add(entry);
+	    }
+
+	    result.sort((a, b) -> Integer.compare(
+	        b.get("bossEstMax") != null ? ((Number) b.get("bossEstMax")).intValue() : 0,
+	        a.get("bossEstMax") != null ? ((Number) a.get("bossEstMax")).intValue() : 0
+	    ));
+	    EQUIP_RANK_CACHE = result;
+	    EQUIP_RANK_CACHE_TS = System.currentTimeMillis();
+	    System.out.println("[CRON-equip-rank] 갱신 완료: " + result.size() + "명");
+	}
+
 	@SuppressWarnings("unused")
-	private Object getEquipRankDisabled() {
+	private Object getEquipRankLegacy() {
 	    List<HashMap<String, Object>> users;
 	    try {
 	        users = botNewService.selectAllUsersForRank();
