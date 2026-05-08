@@ -8980,6 +8980,10 @@ public class BossAttackController {
 	@ResponseBody
 	@GetMapping("/api/equip-rank")
 	public Object getEquipRank() {
+	    return Collections.singletonMap("error", "현재 서비스 점검 중입니다.");
+	}
+	@SuppressWarnings("unused")
+	private Object getEquipRankDisabled() {
 	    List<HashMap<String, Object>> users;
 	    try {
 	        users = botNewService.selectAllUsersForRank();
