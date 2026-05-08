@@ -600,7 +600,7 @@
 	</insert>
 	<select id="selectBotPointRankOne" parameterType="HashMap" resultType="HashMap">
 	  SELECT (SELECT A.USER_NAME||'♬현재 포인트: ' || NVL(SUM(A.SCORE), 0) || ' p♬'
-		        FROM TBOT_POINT_RANK A
+		        FROM (SELECT * FROM TBOT_POINT_RANK UNION ALL SELECT * FROM TBOT_POINT_RANK_OLD) A
 		       WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 		         AND UPPER(A.USER_NAME) = UPPER(#{newUserName, jdbcType=VARCHAR})
 		         AND A.INSERT_DATE> TO_DATE('20250701','yyyymmdd')
@@ -609,7 +609,7 @@
 			
 			,(SELECT '출석: ' || NVL(SUM(A.SCORE), 0) || ' p (' ||
            			 DECODE(MAX(TO_CHAR(A.INSERT_DATE, 'mmdd')), TO_CHAR(SYSDATE, 'mmdd'), '완료', '미완료') || ')'
-				FROM TBOT_POINT_RANK A
+				FROM (SELECT * FROM TBOT_POINT_RANK UNION ALL SELECT * FROM TBOT_POINT_RANK_OLD) A
 			   WHERE A.CMD = 'attendance'
 				 AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 				 AND upper(A.USER_NAME) = upper(#{newUserName, jdbcType=VARCHAR})
@@ -622,7 +622,7 @@
 					   ELSE
 					    0
 				  END AS VALID_YN
-			    FROM TBOT_POINT_RANK A
+			    FROM (SELECT * FROM TBOT_POINT_RANK UNION ALL SELECT * FROM TBOT_POINT_RANK_OLD) A
 			   WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 			     AND UPPER(A.USER_NAME) = UPPER(#{newUserName, jdbcType=VARCHAR}) 
 			     AND A.INSERT_DATE> TO_DATE('20250701','yyyymmdd')
@@ -646,14 +646,14 @@
 			     AND INSERT_DATE > TO_DATE('20250701','yyyymmdd')
 			 ) AS WEAPON
 			,(SELECT ' (소모: ' || ABS(NVL(SUM(A.SCORE), 0)) || 'p)'
-			    FROM TBOT_POINT_RANK A
+			    FROM (SELECT * FROM TBOT_POINT_RANK UNION ALL SELECT * FROM TBOT_POINT_RANK_OLD) A
 			   WHERE ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 			     AND UPPER(USER_NAME) = UPPER(#{newUserName, jdbcType=VARCHAR})
 			     AND A.CMD = 'weapon_upgrade2'
 			     AND INSERT_DATE > TO_DATE('20250701','yyyymmdd')
 			 ) AS WEAPON_USE
 			,(SELECT ' (소모: ' || ABS(NVL(SUM(A.SCORE), 0)) || 'p)'
-			    FROM TBOT_POINT_RANK A
+			    FROM (SELECT * FROM TBOT_POINT_RANK UNION ALL SELECT * FROM TBOT_POINT_RANK_OLD) A
 			   WHERE ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 			     AND UPPER(USER_NAME) = UPPER(#{newUserName, jdbcType=VARCHAR})
 			     AND A.CMD = 'acc_upgrade'
@@ -667,7 +667,7 @@
 			) AS BOX_TOT
 			, (
 				SELECT NVL(SUM(DECODE(A.CMD, 'pointShop', -A.SCORE)),0) || 'p' || '/' || NVL(SUM(DECODE(A.CMD, 'pointBoxOpenDel', A.SCORE)),0) || 'p'
-				  FROM TBOT_POINT_RANK A
+				  FROM (SELECT * FROM TBOT_POINT_RANK UNION ALL SELECT * FROM TBOT_POINT_RANK_OLD) A
 				 WHERE ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 				   AND UPPER(USER_NAME) = UPPER(#{newUserName, jdbcType=VARCHAR})
 				   AND A.CMD IN ('pointShop', 'pointBoxOpenDel')
@@ -680,7 +680,7 @@
 			SELECT B.*
 			  FROM (SELECT A.USER_NAME AS USER_NAME
 					      ,SUM(A.SCORE) AS SCORE
-					  FROM TBOT_POINT_RANK A
+					  FROM (SELECT * FROM TBOT_POINT_RANK UNION ALL SELECT * FROM TBOT_POINT_RANK_OLD) A
 				     WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 				       AND A.INSERT_DATE> TO_DATE('20250701','yyyymmdd')
 				       AND A.NEW_YN = '0'
@@ -704,7 +704,7 @@
 			SELECT B.*
 			  FROM (SELECT A.USER_NAME AS USER_NAME
 					      ,SUM(A.SCORE) AS SCORE
-					  FROM TBOT_POINT_RANK A
+					  FROM (SELECT * FROM TBOT_POINT_RANK UNION ALL SELECT * FROM TBOT_POINT_RANK_OLD) A
 				     WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 					   AND CMD = 'attendance'
 					   AND INSERT_DATE BETWEEN TRUNC(SYSDATE) AND TRUNC(SYSDATE)+1 
@@ -714,7 +714,7 @@
 	
 	<select id="selectDailyCheck" parameterType="HashMap" resultType="int">
 			  SELECT COUNT(1)
-			    FROM TBOT_POINT_RANK A
+			    FROM (SELECT * FROM TBOT_POINT_RANK UNION ALL SELECT * FROM TBOT_POINT_RANK_OLD) A
 		       WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 			     AND CMD = #{cmd, jdbcType=VARCHAR}
 			     AND INSERT_DATE BETWEEN TRUNC(SYSDATE) AND TRUNC(SYSDATE)+1
@@ -724,7 +724,7 @@
 	
 	<select id="selectHourCheck" parameterType="HashMap" resultType="String">
 			  SELECT TO_CHAR(A.INSERT_DATE+#{timeDelay, jdbcType=NUMERIC}/60/24,'PM HH')||'시 ' ||TO_CHAR(A.INSERT_DATE+#{timeDelay, jdbcType=NUMERIC}/60/24,'MI')||'분'
-			    FROM TBOT_POINT_RANK A
+			    FROM (SELECT * FROM TBOT_POINT_RANK UNION ALL SELECT * FROM TBOT_POINT_RANK_OLD) A
 		       WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 			     AND CMD = #{cmd, jdbcType=VARCHAR}
 			     AND INSERT_DATE BETWEEN SYSDATE-#{timeDelay, jdbcType=NUMERIC}/60/24 AND TRUNC(SYSDATE)+1
@@ -734,7 +734,7 @@
 	</select>
 	<select id="selectHourCheckCount" parameterType="HashMap" resultType="String">
 			  SELECT COUNT(1)
-			    FROM TBOT_POINT_RANK A
+			    FROM (SELECT * FROM TBOT_POINT_RANK UNION ALL SELECT * FROM TBOT_POINT_RANK_OLD) A
 		       WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 			     AND CMD = #{cmd, jdbcType=VARCHAR}
 			     AND INSERT_DATE BETWEEN TRUNC(SYSDATE) AND TRUNC(SYSDATE)+1
@@ -743,7 +743,7 @@
 	</select>
 	<select id="selectHourCheckCountForPoint" parameterType="HashMap" resultType="String">
 			  SELECT COUNT(1)
-			    FROM TBOT_POINT_RANK A
+			    FROM (SELECT * FROM TBOT_POINT_RANK UNION ALL SELECT * FROM TBOT_POINT_RANK_OLD) A
 		       WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 			     AND CMD = #{cmd, jdbcType=VARCHAR}
 			     AND INSERT_DATE BETWEEN TRUNC(SYSDATE) AND TRUNC(SYSDATE)+1
@@ -752,7 +752,7 @@
 	</select>
 	<select id="selectHourCheckToday" parameterType="HashMap" resultType="String">
 			  SELECT TO_CHAR(A.INSERT_DATE, 'hh24"시"mi"분"') || ' 획득포인트: ' || A.SCORE AS INFO
-			    FROM TBOT_POINT_RANK A
+			    FROM (SELECT * FROM TBOT_POINT_RANK UNION ALL SELECT * FROM TBOT_POINT_RANK_OLD) A
 		       WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 			     AND CMD = #{cmd, jdbcType=VARCHAR}
 			     AND INSERT_DATE BETWEEN TRUNC(SYSDATE) AND TRUNC(SYSDATE)+1
@@ -770,7 +770,7 @@
 			SELECT B.*
 			  FROM (SELECT A.USER_NAME AS USER_NAME
 					      ,SUM(A.SCORE) AS SCORE
-					  FROM TBOT_POINT_RANK A
+					  FROM (SELECT * FROM TBOT_POINT_RANK UNION ALL SELECT * FROM TBOT_POINT_RANK_OLD) A
 				     WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 					   AND upper(A.USER_NAME) = TRIM(REGEXP_REPLACE(UPPER(#{userName, jdbcType=VARCHAR}), '[[:space:]]+', ' '))  
 					   AND A.INSERT_DATE> TO_DATE('20250701','yyyymmdd')
@@ -843,7 +843,7 @@
 		SELECT B.*
 		  FROM (SELECT A.USER_NAME AS USER_NAME
 				      ,SUM(A.SCORE) AS SCORE
-				  FROM TBOT_POINT_RANK A
+				  FROM (SELECT * FROM TBOT_POINT_RANK UNION ALL SELECT * FROM TBOT_POINT_RANK_OLD) A
 			     WHERE A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 				   AND upper(A.USER_NAME) IN ( upper(#{param1, jdbcType=VARCHAR}),upper(#{userName, jdbcType=VARCHAR}))
 				   AND A.INSERT_DATE> TO_DATE('20250701','yyyymmdd')
@@ -956,7 +956,7 @@
 	<select id="selectParam1ToNewUserSearch" parameterType="HashMap" resultType="String" >
 		/* selectParam1ToNewUserSearch */
 		SELECT A.USER_NAME
-		  FROM TBOT_POINT_RANK A
+		  FROM (SELECT * FROM TBOT_POINT_RANK UNION ALL SELECT * FROM TBOT_POINT_RANK_OLD) A
 		 WHERE upper(A.USER_NAME) LIKE upper(#{param1, jdbcType=VARCHAR}) || '%'
 		   AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 		   AND NOT EXISTS (SELECT *

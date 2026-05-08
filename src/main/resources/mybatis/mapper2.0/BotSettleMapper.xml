@@ -6,16 +6,16 @@
 <mapper namespace="my.prac.core.prjbot.dao.BotSettleDAO">
 	<select id="selectBotPointSumScore" parameterType="HashMap" resultType="int">
 		 SELECT NVL(SUM(A.SCORE),0) AS SUM_SCORE
-		   FROM TBOT_POINT_RANK A
+		   FROM (SELECT * FROM TBOT_POINT_RANK UNION ALL SELECT * FROM TBOT_POINT_RANK_OLD) A
 		  WHERE A.USER_NAME = #{userName, jdbcType=VARCHAR}
 		    AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 		    AND A.SCORE > 0
 		    and a.new_yn ='0'
 	</select>
-	
+
 	<select id="selectBotPointSumScoreForPoint" parameterType="HashMap" resultType="int">
 		SELECT NVL(SUM(A.SCORE),0) AS SUM_SCORE
-		   FROM TBOT_POINT_RANK A
+		   FROM (SELECT * FROM TBOT_POINT_RANK UNION ALL SELECT * FROM TBOT_POINT_RANK_OLD) A
 		  WHERE upper(USER_NAME) = upper(#{newUserName, jdbcType=VARCHAR})
 		    AND A.ROOM_NAME = #{roomName, jdbcType=VARCHAR}
 		    AND A.SCORE > 0
