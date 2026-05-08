@@ -8222,7 +8222,7 @@ public class BossAttackController {
 	                // 7014 달의부름: 50% 확률로 실패 → 성공 전환
 	                if (ownedBossItems != null && ownedBossItems.contains(7014)
 	                        && ThreadLocalRandom.current().nextDouble() < 0.50) {
-	                    out.dmgCalcMsg += "[달의부름] 달의 힘이 공격 실패를 막아냈다!" + NL;
+	                    out.dmgCalcMsg += "달의 힘을 받아 반달가슴곰이 되었습니다... " + NL;
 	                    baseAtk = monHpRemainBefore;
 	                    rawAtkDmg = monHpRemainBefore;
 	                    out.dmgCalcMsg += "곰은 몬스터를 찢었다!" + NL;
