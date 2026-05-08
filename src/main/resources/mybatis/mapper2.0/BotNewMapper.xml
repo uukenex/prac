@@ -1651,12 +1651,16 @@
 	<!-- 헬보스 보상 아이템 전체소유자수 포함 조회 (미발견 우선 지급용) -->
 	<select id="selectHellRewardItemsWithOwnCount" resultType="map">
 		/* selectHellRewardItemsWithOwnCount */
+		/* GLOBAL_OWN_CNT: 보스 드랍(BOSS_HELL)으로 획득한 사람만 카운트 (뽑기 BOSS_GACHA 제외) */
 		SELECT
 		    i.ITEM_ID,
 		    i.ITEM_NAME,
 		    NVL(i.ITEM_DESC, '') AS ITEM_DESC,
 		    (SELECT COUNT(*) FROM TBOT_POINT_NEW_INVENTORY g
-		     WHERE g.ITEM_ID = i.ITEM_ID AND NVL(g.DEL_YN,'0') = '0' AND NVL(g.QTY,0) > 0) AS GLOBAL_OWN_CNT
+		     WHERE g.ITEM_ID = i.ITEM_ID
+		       AND NVL(g.DEL_YN,'0') = '0'
+		       AND NVL(g.QTY,0) > 0
+		       AND g.GAIN_TYPE = 'BOSS_HELL') AS GLOBAL_OWN_CNT
 		FROM TBOT_POINT_NEW_ITEM i
 		WHERE i.ITEM_TYPE = 'BOSS_HELL'
 		ORDER BY GLOBAL_OWN_CNT ASC, i.ITEM_ID ASC
