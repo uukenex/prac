@@ -5294,7 +5294,7 @@ public class BossAttackController {
     // =========================
     // GP 랭킹
     // =========================
-		 /*
+		 
     try {
         List<HashMap<String, Object>> gpList = botNewService.selectGpRanking();
         sb.append(NL).append("◆ GP 랭킹 (보스뽑기: 6 GP)").append(NL);
@@ -5315,7 +5315,7 @@ public class BossAttackController {
         }
     } catch (Exception ignore) {}
 
-		  */
+		  
 	    sb.append(NL);
 	    /* === ⚔ 몬스터 학살자 (전체) === */
 	    /*
