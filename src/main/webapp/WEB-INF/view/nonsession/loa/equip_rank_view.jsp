@@ -62,13 +62,14 @@ td.left  { text-align: left; }
 .val-zero { color: #444; }
 
 .boss-badge { display: inline-block; background: #3d1515; color: #ff7675; border-radius: 4px; padding: 1px 5px; font-size: 0.7rem; margin-left: 2px; }
+.val-nerf { color: #fd9644; font-size: 0.78rem; }
 </style>
 </head>
 <body>
 <%@ include file="_loa_nav.jsp" %>
 <div id="app" class="container">
   <h1>🔬 장비 랭킹</h1>
-  <p class="subtitle">직업 배율 미적용 · 장비+레벨 기준 순수 스탯 비교 (어둠/보스템 맥스치 반영)
+  <p class="subtitle">직업 보너스 미적용 · 헬모드 너프 기준 · 최근 3일 활성 유저 (어둠/보스템 맥스치 반영)
     <span v-if="cachedAt"> · 기준: {{ cachedAtStr }}</span>
   </p>
 
@@ -96,7 +97,8 @@ td.left  { text-align: left; }
           <th @click="sort('darkAtkMax')">어둠 MAX <span class="arr">{{ arrow('darkAtkMax') }}</span></th>
           <th class="left" @click="sort('setInfo')">세트효과 <span class="arr">{{ arrow('setInfo') }}</span></th>
           <th @click="sort('bossBonus')">보스템 보너스 <span class="arr">{{ arrow('bossBonus') }}</span></th>
-          <th @click="sort('bossEstMax')">추정 MAX <span class="arr">{{ arrow('bossEstMax') }}</span></th>
+          <th @click="sort('bossEstMax')" class="sorted">추정 MAX <span class="arr">{{ arrow('bossEstMax') }}</span></th>
+          <th @click="sort('hellNerfPct')">헬너프율 <span class="arr">{{ arrow('hellNerfPct') }}</span></th>
         </tr>
       </thead>
       <tbody>
@@ -128,6 +130,10 @@ td.left  { text-align: left; }
             <span class="val-zero" v-if="r.bossBonus === 0">—</span>
           </td>
           <td class="right val-boss">{{ fmt(r.bossEstMax) }}</td>
+          <td class="right val-nerf">
+            <span v-if="r.hellNerfPct > 0">-{{ r.hellNerfPct }}%</span>
+            <span v-else class="val-zero">—</span>
+          </td>
         </tr>
       </tbody>
     </table>

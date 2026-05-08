@@ -353,7 +353,15 @@ public class BossAttackController {
 	        ctx.lifetimeSpStr = "";
 	    }
 
-	    final String job = ctx.job;
+	    String job = ctx.job;
+
+	    // _noJobBonus: 직업 보너스 무시 (랭킹 배치용 — 공평한 순수 장비 비교)
+	    boolean noJobBonus = Boolean.TRUE.equals(map.get("_noJobBonus"));
+	    if (noJobBonus) job = "";
+
+	    // _forceHell: 헬모드 강제 적용 (랭킹 배치용 — 헬너프 포함 기준)
+	    boolean forceHell = Boolean.TRUE.equals(map.get("_forceHell"));
+	    if (forceHell) u.nightmareYn = 2;
 
 	    // 1~2) 인벤토리 버프 캐시 (TTL 60초, 인벤토리 변경 시 invalidateInvBuff로 무효화)
 	    HashMap<String,Object> invBuffData = getInvBuffCached(targetUser);
@@ -637,6 +645,7 @@ public class BossAttackController {
 	    if(u.nightmareYn==2) {
 	    	double hellMult = MiniGameUtil.getHellNerfMult(ctx.hunterGrade);
 	    	if (ctx.ownedBossItems.contains(7007)) hellMult = Math.max(0.0, hellMult + 0.03);
+	    	ctx.hellNerfRate = hellMult;
 
 	    	hellNerfAtkMin = Math.max(0, (int) Math.round(atkMin   * (1-hellMult) ));
 	    	hellNerfAtkMax = Math.max(0, (int) Math.round(atkMax   * (1-hellMult) ));
@@ -9051,8 +9060,11 @@ public class BossAttackController {
 	        String uName = Objects.toString(row.get("USER_NAME"), "");
 	        if (uName.isEmpty()) continue;
 	        HashMap<String, Object> ctxMap = new HashMap<>();
-	        ctxMap.put("userName", uName);
-	        ctxMap.put("roomName", "");
+	        ctxMap.put("userName",    uName);
+	        ctxMap.put("roomName",    "");
+	        ctxMap.put("_rankMode",   Boolean.TRUE);  // GP/hpCur 쿼리 스킵
+	        ctxMap.put("_noJobBonus", Boolean.TRUE);  // 직업 보너스 제외 (공평 비교)
+	        ctxMap.put("_forceHell",  Boolean.TRUE);  // 헬모드 기준 너프 적용
 	        UserBattleContext ctx;
 	        try {
 	            ctx = calcUserBattleContext(ctxMap);
@@ -9075,21 +9087,25 @@ public class BossAttackController {
 	            for (String sp : ctx.activeSetSpecials) setDesc.add(sp.replace("SPECIAL_", ""));
 	        }
 
+	        // 헬너프율: 백분율 정수 (예: 5 → "5%")
+	        int hellNerfPct = (int) Math.round(ctx.hellNerfRate * 100);
+
 	        HashMap<String, Object> entry = new HashMap<>();
-	        entry.put("userName",   uName);
-	        entry.put("lv",         lv);
-	        entry.put("atkMin",     ctx.atkMin);
-	        entry.put("atkMax",     ctx.atkMax);
-	        entry.put("crit",       ctx.crit);
-	        entry.put("critDmg",    ctx.critDmg);
-	        entry.put("darkAtkMin", ctx.dropAtkMin);
-	        entry.put("darkAtkMax", ctx.dropAtkMax);
-	        entry.put("setInfo",    String.join(" / ", setDesc));
-	        entry.put("bossBonus",  bossBonus);
-	        entry.put("has7009",    has7009);
-	        entry.put("has7013",    has7013);
-	        entry.put("bossEstMin", ctx.atkMin + ctx.dropAtkMin + bossBonus);
-	        entry.put("bossEstMax", ctx.atkMax + ctx.dropAtkMax + bossBonus);
+	        entry.put("userName",    uName);
+	        entry.put("lv",          lv);
+	        entry.put("atkMin",      ctx.atkMin);
+	        entry.put("atkMax",      ctx.atkMax);
+	        entry.put("crit",        ctx.crit);
+	        entry.put("critDmg",     ctx.critDmg);
+	        entry.put("darkAtkMin",  ctx.dropAtkMin);
+	        entry.put("darkAtkMax",  ctx.dropAtkMax);
+	        entry.put("setInfo",     String.join(" / ", setDesc));
+	        entry.put("bossBonus",   bossBonus);
+	        entry.put("has7009",     has7009);
+	        entry.put("has7013",     has7013);
+	        entry.put("bossEstMin",  ctx.atkMin + ctx.dropAtkMin + bossBonus);
+	        entry.put("bossEstMax",  ctx.atkMax + ctx.dropAtkMax + bossBonus);
+	        entry.put("hellNerfPct", hellNerfPct);
 	        result.add(entry);
 	    }
 
