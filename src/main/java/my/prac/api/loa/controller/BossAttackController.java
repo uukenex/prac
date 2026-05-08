@@ -3457,8 +3457,17 @@ public class BossAttackController {
 		int levelGap = s.monLv - s.u.lv;
 		double darkRate = Math.max(0, levelGap / 100) * 0.20;
 		if ("어둠사냥꾼".equals(s.job)) darkRate += DARK_RATE_DARK;
-		if ((!s.nightmare && s.killCountForThisMon   >= 350 && m.monNo >= 15) || (s.nightmare && s.nmKillCountForThisMon > 150 && m.monNo >= 15)) darkRate += 0.05;
-		if ((!s.nightmare && s.killCountForThisMon   >= 300 && m.monNo <  15) || (s.nightmare && s.nmKillCountForThisMon > 150 && m.monNo <  15)) darkRate += 0.10;
+		// 일반: killCount 기준 / 나이트메어: nmKillCount 기준 / 헬: hellKillCount 기준
+		if (!s.nightmare) {
+		    if (s.killCountForThisMon >= 350 && m.monNo >= 15) darkRate += 0.05;
+		    if (s.killCountForThisMon >= 300 && m.monNo <  15) darkRate += 0.10;
+		} else if (s.hell) {
+		    if (s.hellKillCountForThisMon > 150 && m.monNo >= 15) darkRate += 0.05;
+		    if (s.hellKillCountForThisMon > 150 && m.monNo <  15) darkRate += 0.10;
+		} else {
+		    if (s.nmKillCountForThisMon > 150 && m.monNo >= 15) darkRate += 0.05;
+		    if (s.nmKillCountForThisMon > 150 && m.monNo <  15) darkRate += 0.10;
+		}
 		if (ThreadLocalRandom.current().nextDouble() < darkRate) s.dark = true;
 
 		double luckyRate = "도사".equals(s.job) ? LUCKY_RATE_DOSA : LUCKY_RATE;
@@ -3471,7 +3480,6 @@ public class BossAttackController {
 		if ("음양사".equals(s.job)) s.gray = ThreadLocalRandom.current().nextDouble() < 0.05;
 		if (s.gray) { s.lucky = false; s.dark = false; }
 		if ("곰".equals(s.job))  { s.lucky = false; s.dark = false; }
-		if (s.hell)  { s.dark = false; }
 
 		if (s.dark) { applyDarkMonsterScale(s); s.monHpRemainBefore = s.monMaxHp; }
 	}
@@ -8900,9 +8908,16 @@ public class BossAttackController {
 	    boolean isBear = "곰".equals(job);
 	    int effMin, effMax;
 	    if (isBear) {
-	        // 곰: atkMin/Max 는 내부적으로 hpMax 로 교체됨 → 단계 테이블 의미 없음
+	        // 곰: hpMax가 실전 공격력 → ATK 누적치와 차이(HP 기여분)를 마지막 스텝으로 표시
+	        int hpContribMin = ctx.atkMin - curMin;
+	        int hpContribMax = ctx.atkMax - curMax;
+	        if (hpContribMin != 0 || hpContribMax != 0) {
+	            curMin = ctx.atkMin; curMax = ctx.atkMax;
+	            atkSteps.add(simStep("곰 HP→ATK 전환",
+	                hpContribMin, hpContribMax, curMin, curMax,
+	                "기본HP + 아이템HP + 공격력×크리데미지% 합산 = 최대HP"));
+	        }
 	        effMin = ctx.atkMin; effMax = ctx.atkMax;
-	        atkSteps.clear();
 	    } else {
 	        effMin = (int)Math.round((long)ctx.atkMin * 100 * jobDmgMul / 100);
 	        effMax = (int)Math.round((long)ctx.atkMax * 100 * jobDmgMul / 100);
