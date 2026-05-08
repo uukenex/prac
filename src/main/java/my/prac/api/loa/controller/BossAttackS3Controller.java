@@ -846,9 +846,9 @@ public class BossAttackS3Controller {
         for (HashMap<String, Object> row : allContributors)
             allNames.add(row.get("USER_NAME").toString());
 
-        // 참여자 수에 따라 추첨 인원 결정 (1~9명→1명, 10~17명→2명, 18명+→3명)
+        // 참여자 수에 따라 추첨 인원 결정 (1~9명→1명, 10~14명→2명, 15명+→3명)
         int participantCount = allContributors.size();
-        int winnerCount = participantCount >= 18 ? 3 : participantCount >= 10 ? 2 : 1;
+        int winnerCount = participantCount >= 15 ? 3 : participantCount >= 10 ? 2 : 1;
 
         StringBuilder msg = new StringBuilder();
 
@@ -1023,21 +1023,13 @@ public class BossAttackS3Controller {
 
                 // 추첨 대상 목록 표시 (전체 참여자)
                 if (!allNames.isEmpty()) {
-                    // 당첨자 요약
-                    for (int w = 0; w < gpWinnerList.size(); w++) {
-                        msg.append(w + 1).append("번 당첨: ").append(gpWinnerList.get(w)).append(NL);
-                    }
-                    msg.append(NL);
-                    // 전체 참여자 목록
-                    Map<String, Integer> gpWinnerOrderMap = new LinkedHashMap<>();
-                    for (int w = 0; w < gpWinnerList.size(); w++) gpWinnerOrderMap.put(gpWinnerList.get(w), w + 1);
-                    msg.append("[참여자]").append(NL);
+                    msg.append("-- 추첨 대상 (전체 ").append(allNames.size()).append("명) --").append(NL);
                     for (int i = 0; i < allNames.size(); i++) {
-                        String uName   = allNames.get(i);
-                        Integer winOrder = gpWinnerOrderMap.get(uName);
-                        msg.append(i + 1).append(". ").append(uName);
-                        if (winOrder != null) msg.append(" < ").append(winOrder).append("번 당첨!");
-                        msg.append(NL);
+                        String uName = allNames.get(i);
+                        boolean isWin = gpWinnerMap.containsKey(uName);
+                        msg.append(isWin ? "★" : "  ")
+                           .append(i + 1).append(". ").append(uName)
+                           .append(isWin ? " ← 당첨!" : "").append(NL);
                     }
                     msg.append(NL);
                 }
