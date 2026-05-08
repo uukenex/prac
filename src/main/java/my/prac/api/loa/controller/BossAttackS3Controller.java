@@ -883,17 +883,34 @@ public class BossAttackS3Controller {
             } else {
                 List<String> itemWinners = pickWinners(itemCandidates, winnerCount, rand);
                 Set<String> itemWinnerSet = new HashSet<>(itemWinners);
-                for (int i = 0; i < itemCandidates.size(); i++) {
-                    String uName = itemCandidates.get(i);
-                    boolean isWin = itemWinnerSet.contains(uName);
-                    msg.append(isWin ? "★" : "  ")
-                       .append(i + 1).append(". ").append(uName)
-                       .append(isWin ? " ← 당첨!" : "").append(NL);
+
+                // ── 당첨자 요약 ──
+                msg.append("보스가 아이템을 드랍했습니다.").append(NL);
+                for (int w = 0; w < itemWinners.size(); w++) {
+                    msg.append(w + 1).append("번 보상: ").append(itemWinners.get(w)).append(NL);
                 }
+                msg.append(NL);
+
+                // ── 전체 참여자 목록 (당첨/제외 여부 표시) ──
+                Map<String, Integer> winnerOrderMap = new LinkedHashMap<>();
+                for (int w = 0; w < itemWinners.size(); w++) winnerOrderMap.put(itemWinners.get(w), w + 1);
+                msg.append("[참여자]").append(NL);
+                for (int i = 0; i < allNames.size(); i++) {
+                    String uName   = allNames.get(i);
+                    boolean excluded = !noItemNames.contains(uName);
+                    Integer winOrder = winnerOrderMap.get(uName);
+                    msg.append(i + 1).append(". ").append(uName);
+                    if (excluded) {
+                        msg.append(" (이미 보스드랍템 보유)");
+                    } else if (winOrder != null) {
+                        msg.append(" < ").append(winOrder).append("번 보상 당첨!");
+                    }
+                    msg.append(NL);
+                }
+                msg.append(NL);
 
                 // 아이템 지급 풀 구성 (미발견 아이템 우선)
                 List<Integer> givePool;
-                boolean isFirstDiscovery = false;
                 HashMap<Integer, String[]> itemInfoMap = new HashMap<>(); // itemId → {name, desc}
                 try {
                     List<HashMap<String, Object>> rewardMeta = botNewService.selectHellRewardItemsWithOwnCount();
@@ -908,12 +925,7 @@ public class BossAttackS3Controller {
                         allItems.add(iid);
                         if (cnt == 0) undiscovered.add(iid);
                     }
-                    if (!undiscovered.isEmpty()) {
-                        givePool = undiscovered;
-                        isFirstDiscovery = true;
-                    } else {
-                        givePool = allItems;
-                    }
+                    givePool = !undiscovered.isEmpty() ? undiscovered : allItems;
                 } catch (Exception e) {
                     givePool = new ArrayList<>(getHellRewardItems());
                 }
@@ -930,7 +942,7 @@ public class BossAttackS3Controller {
                             gpFallback.put("score",    1.0);
                             gpFallback.put("cmd",      "BOSS_HELL_NO_ITEM_GP");
                             botNewService.insertGpRecord(gpFallback);
-                            msg.append(NL).append("✨ [").append(winner).append("] 지급 아이템 없음 → 1 GP 지급!").append(NL);
+                            msg.append("✨아이템획득! [").append(winner).append("] 지급 아이템 없음 → 1 GP 지급!").append(NL);
                         } catch (Exception e) { /* 지급 실패 무시 */ }
                     } else {
                         int idx        = rand.nextInt(givePool.size());
@@ -939,18 +951,38 @@ public class BossAttackS3Controller {
                         String iName   = info[0];
                         String iDesc   = info[1];
                         String displayName = (iDesc == null || iDesc.isEmpty()) ? iName : iName + " (" + iDesc + ")";
+
+                        // 뽑기 등으로 이미 보유 중이면 1 GP 지급
+                        boolean alreadyOwned = false;
                         try {
-                            HashMap<String, Object> inv = new HashMap<>();
-                            inv.put("userName", winner);
-                            inv.put("roomName", roomName);
-                            inv.put("itemId",   giveItemId);
-                            inv.put("qty",      1);
-                            inv.put("gainType", "BOSS_HELL");
-                            botNewService.insertInventoryLogTx(inv);
-                            msg.append(NL).append(isFirstDiscovery ? "✨최초 발견! " : "✨ 보상: ")
-                               .append("[").append(winner).append("] ").append(displayName)
-                               .append(isFirstDiscovery ? " (서버 최초 획득!)" : "").append(NL);
-                        } catch (Exception e) { /* 지급 실패 무시 */ }
+                            List<Integer> owned = botNewService.selectInventoryItemsByIds(
+                                    winner, roomName, Collections.singleton(giveItemId));
+                            alreadyOwned = owned != null && !owned.isEmpty();
+                        } catch (Exception ignore) {}
+
+                        if (alreadyOwned) {
+                            try {
+                                HashMap<String, Object> gpFallback = new HashMap<>();
+                                gpFallback.put("userName", winner);
+                                gpFallback.put("roomName", roomName);
+                                gpFallback.put("score",    1.0);
+                                gpFallback.put("cmd",      "BOSS_HELL_DUP_ITEM_GP");
+                                botNewService.insertGpRecord(gpFallback);
+                                msg.append("✨아이템획득! [").append(winner).append("] ").append(displayName)
+                                   .append(" 이미 보유 → 1 GP 지급!").append(NL);
+                            } catch (Exception e) { /* 지급 실패 무시 */ }
+                        } else {
+                            try {
+                                HashMap<String, Object> inv = new HashMap<>();
+                                inv.put("userName", winner);
+                                inv.put("roomName", roomName);
+                                inv.put("itemId",   giveItemId);
+                                inv.put("qty",      1);
+                                inv.put("gainType", "BOSS_HELL");
+                                botNewService.insertInventoryLogTx(inv);
+                                msg.append("✨아이템획득! [").append(winner).append("] ").append(displayName).append(NL);
+                            } catch (Exception e) { /* 지급 실패 무시 */ }
+                        }
                     }
                 }
 
@@ -991,13 +1023,21 @@ public class BossAttackS3Controller {
 
                 // 추첨 대상 목록 표시 (전체 참여자)
                 if (!allNames.isEmpty()) {
-                    msg.append("-- 추첨 대상 (전체 ").append(allNames.size()).append("명) --").append(NL);
+                    // 당첨자 요약
+                    for (int w = 0; w < gpWinnerList.size(); w++) {
+                        msg.append(w + 1).append("번 당첨: ").append(gpWinnerList.get(w)).append(NL);
+                    }
+                    msg.append(NL);
+                    // 전체 참여자 목록
+                    Map<String, Integer> gpWinnerOrderMap = new LinkedHashMap<>();
+                    for (int w = 0; w < gpWinnerList.size(); w++) gpWinnerOrderMap.put(gpWinnerList.get(w), w + 1);
+                    msg.append("[참여자]").append(NL);
                     for (int i = 0; i < allNames.size(); i++) {
-                        String uName = allNames.get(i);
-                        boolean isWin = gpWinnerMap.containsKey(uName);
-                        msg.append(isWin ? "★" : "  ")
-                           .append(i + 1).append(". ").append(uName)
-                           .append(isWin ? " ← 당첨!" : "").append(NL);
+                        String uName   = allNames.get(i);
+                        Integer winOrder = gpWinnerOrderMap.get(uName);
+                        msg.append(i + 1).append(". ").append(uName);
+                        if (winOrder != null) msg.append(" < ").append(winOrder).append("번 당첨!");
+                        msg.append(NL);
                     }
                     msg.append(NL);
                 }
