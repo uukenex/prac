@@ -4366,6 +4366,29 @@ public class BossAttackController {
 
 	    return result;
 	}
+
+	/** 현재 스페셜타임 진행중 메시지 반환 (없으면 빈 문자열). S3Controller 등 외부 호출용. */
+	public String getActiveSpecialTimeMsg() {
+	    try {
+	        long nowMs = System.currentTimeMillis();
+	        HashMap<String,Object> activeBuff = (nowMs - SPECIAL_BUFF_CACHE_TS < SPECIAL_BUFF_CACHE_TTL_MS)
+	                ? SPECIAL_BUFF_CACHE : botNewService.selectActiveSpecialBuff();
+	        if (activeBuff == null) return "";
+	        String fc  = Objects.toString(activeBuff.get("FLAG_CODE"), "");
+	        String et  = Objects.toString(activeBuff.get("EFFECT_TYPE"), "");
+	        double ev  = activeBuff.get("EFFECT_VALUE") != null
+	                ? Double.parseDouble(activeBuff.get("EFFECT_VALUE").toString()) : 0;
+	        java.util.Date endT = (java.util.Date) activeBuff.get("END_TIME");
+	        String endStr = endT != null
+	                ? endT.toInstant().atZone(ZoneId.systemDefault())
+	                    .toLocalDateTime()
+	                    .format(DateTimeFormatter.ofPattern("HH:mm"))
+	                : "?";
+	        return "✨스페셜타임 진행중! [" + buildBuffDescription(fc, et, ev) + ", " + endStr + "까지]";
+	    } catch (Exception ignore) {
+	        return "";
+	    }
+	}
 	
 	private int randomDuration(double effectValue) {
 

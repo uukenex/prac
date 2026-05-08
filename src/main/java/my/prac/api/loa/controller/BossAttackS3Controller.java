@@ -567,6 +567,12 @@ public class BossAttackS3Controller {
                .append(" (").append(String.format("%.1f", hpPct)).append("%)").append(NL);
         }
 
+        // 스페셜타임 진행중이면 표기
+        String specialTimeMsg = bossAttackController.getActiveSpecialTimeMsg();
+        if (!specialTimeMsg.isEmpty()) {
+            msg.append(specialTimeMsg).append(NL);
+        }
+
         return msg.toString().trim();
     }
 
