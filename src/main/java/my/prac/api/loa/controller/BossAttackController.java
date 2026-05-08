@@ -9081,11 +9081,21 @@ public class BossAttackController {
 	        if (!ctx.success) continue;
 
 	        int lv = ctx.user != null ? ctx.user.lv : 0;
-	        int bossBonus = 0;
 	        boolean has7009 = ctx.ownedBossItems.contains(7009);
 	        boolean has7013 = ctx.ownedBossItems.contains(7013);
-	        if (has7009) bossBonus += Math.min(lv, 300) * 150;
-	        if (has7013) bossBonus += 30 * 500;
+
+	        // 표시용 보스템 보너스 (맥스치 기준, 너프 전 원본)
+	        int maxBossBonus = 0;
+	        if (has7009) maxBossBonus += Math.min(lv, 300) * 150;
+	        if (has7013) maxBossBonus += 30 * 500;
+
+	        // ctx.atkMax 에는 이미 7009(실제lv)+7013(실제cappedYest)가 헬너프 적용된 채로 포함됨.
+	        // 추정MAX = ctx.atkMax + [7013의 (max30-실제) 차분] × 헬너프유지율 + dropAtkMax
+	        int cappedYest = Math.min(getYesterdayAttackerCountCached(), 30);
+	        int extra7013  = has7013 ? (30 - cappedYest) * 500 : 0;
+	        // ctx.hellNerfRate = 유지비율(e.g. 0.1=10%유지). 헬너프 없으면 0 → 1.0 처리
+	        double keepFraction = ctx.hellNerfRate > 0 ? ctx.hellNerfRate : 1.0;
+	        int extra7013Nerfed = (int) Math.round(extra7013 * keepFraction);
 
 	        List<String> setDesc = new ArrayList<>();
 	        if (ctx.setAtkFinalRate  > 0) setDesc.add("ATK+" + ctx.setAtkFinalRate + "%");
@@ -9109,11 +9119,12 @@ public class BossAttackController {
 	        entry.put("darkAtkMin",  ctx.dropAtkMin);
 	        entry.put("darkAtkMax",  ctx.dropAtkMax);
 	        entry.put("setInfo",     String.join(" / ", setDesc));
-	        entry.put("bossBonus",   bossBonus);
+	        entry.put("bossBonus",   maxBossBonus);
 	        entry.put("has7009",     has7009);
 	        entry.put("has7013",     has7013);
-	        entry.put("bossEstMin",  ctx.atkMin + ctx.dropAtkMin + bossBonus);
-	        entry.put("bossEstMax",  ctx.atkMax + ctx.dropAtkMax + bossBonus);
+	        // bossEstMax: ctx.atkMax(7009+7013실제분 헬너프포함) + 7013차분(헬너프적용) + dropAtkMax
+	        entry.put("bossEstMin",  ctx.atkMin + ctx.dropAtkMin + extra7013Nerfed);
+	        entry.put("bossEstMax",  ctx.atkMax + ctx.dropAtkMax + extra7013Nerfed);
 	        entry.put("hellNerfPct", hellNerfPct);
 	        result.add(entry);
 	    }
@@ -9154,13 +9165,20 @@ public class BossAttackController {
 
 	        int lv = ctx.user != null ? ctx.user.lv : 0;
 
-	        // ctx.atkMin/Max = 직업 배율 미적용 최종 ATK (보스템 포함, 헬너프 포함)
-	        // 보스템 기여분 별도 계산 (맥스치 기준)
-	        int bossBonus = 0;
+	        // ctx.atkMax = (base+market+7009(lv)+7013(cappedYest)) × hellMult (헬너프 적용)
+	        // 추정MAX: ctx.atkMax + 7013차분(max30-실제) × hellMult + dropAtkMax
 	        boolean has7009 = ctx.ownedBossItems.contains(7009);
 	        boolean has7013 = ctx.ownedBossItems.contains(7013);
-	        if (has7009) bossBonus += Math.min(lv, 300) * 150; // 최대 45,000
-	        if (has7013) bossBonus += 30 * 500;                // 최대 15,000
+
+	        // 표시용 보스템 보너스 (맥스치 기준, 너프 전 원본)
+	        int maxBossBonus = 0;
+	        if (has7009) maxBossBonus += Math.min(lv, 300) * 150; // 최대 45,000
+	        if (has7013) maxBossBonus += 30 * 500;                // 최대 15,000
+
+	        int cappedYest = Math.min(getYesterdayAttackerCountCached(), 30);
+	        int extra7013  = has7013 ? (30 - cappedYest) * 500 : 0;
+	        double keepFraction = ctx.hellNerfRate > 0 ? ctx.hellNerfRate : 1.0;
+	        int extra7013Nerfed = (int) Math.round(extra7013 * keepFraction);
 
 	        // 세트 효과 텍스트 요약
 	        List<String> setDesc = new ArrayList<>();
@@ -9182,11 +9200,11 @@ public class BossAttackController {
 	        entry.put("darkAtkMin", ctx.dropAtkMin);
 	        entry.put("darkAtkMax", ctx.dropAtkMax);
 	        entry.put("setInfo",    String.join(" / ", setDesc));
-	        entry.put("bossBonus",  bossBonus);
+	        entry.put("bossBonus",  maxBossBonus);
 	        entry.put("has7009",    has7009);
 	        entry.put("has7013",    has7013);
-	        entry.put("bossEstMin", ctx.atkMin + ctx.dropAtkMin + bossBonus);
-	        entry.put("bossEstMax", ctx.atkMax + ctx.dropAtkMax + bossBonus);
+	        entry.put("bossEstMin", ctx.atkMin + ctx.dropAtkMin + extra7013Nerfed);
+	        entry.put("bossEstMax", ctx.atkMax + ctx.dropAtkMax + extra7013Nerfed);
 	        result.add(entry);
 	    }
 
