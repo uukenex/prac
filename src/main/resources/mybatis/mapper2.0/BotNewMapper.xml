@@ -2210,7 +2210,7 @@
 	</delete>
 
 	<select id="selectAllUsersForRank" resultType="hashmap">
-		/* selectAllUsersForRank */
+		/* selectAllUsersForRank - 최근 3일 활성 유저만 */
 		SELECT USER_NAME, LV,
 		       NVL(ATK_MIN,   0) AS ATK_MIN,
 		       NVL(ATK_MAX,   0) AS ATK_MAX,
@@ -2220,6 +2220,7 @@
 		       NVL(NIGHTMARE_YN, 0) AS NIGHTMARE_YN
 		FROM TBOT_POINT_NEW_USER
 		WHERE LV > 0
+		  AND PROC_DATE > TRUNC(SYSDATE) - 3
 		ORDER BY USER_NAME
 	</select>
 
