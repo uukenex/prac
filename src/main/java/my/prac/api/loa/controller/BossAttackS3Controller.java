@@ -883,35 +883,12 @@ public class BossAttackS3Controller {
             } else {
                 List<String> itemWinners = pickWinners(itemCandidates, winnerCount, rand);
                 Set<String> itemWinnerSet = new HashSet<>(itemWinners);
-
-                // ── 당첨자 요약 ──
-                msg.append("보스가 아이템을 드랍했습니다.").append(NL);
-                for (int w = 0; w < itemWinners.size(); w++) {
-                    msg.append(w + 1).append("번 보상: ").append(itemWinners.get(w)).append(NL);
-                }
-                msg.append(NL);
-
-                // ── 전체 참여자 목록 (당첨/제외 여부 표시) ──
                 Map<String, Integer> winnerOrderMap = new LinkedHashMap<>();
                 for (int w = 0; w < itemWinners.size(); w++) winnerOrderMap.put(itemWinners.get(w), w + 1);
-                msg.append("[참여자]").append(NL);
-                for (int i = 0; i < allNames.size(); i++) {
-                    String uName   = allNames.get(i);
-                    boolean excluded = !noItemNames.contains(uName);
-                    Integer winOrder = winnerOrderMap.get(uName);
-                    msg.append(i + 1).append(". ").append(uName);
-                    if (excluded) {
-                        msg.append(" (이미 보스드랍템 보유)");
-                    } else if (winOrder != null) {
-                        msg.append(" < ").append(winOrder).append("번 보상 당첨!");
-                    }
-                    msg.append(NL);
-                }
-                msg.append(NL);
 
-                // 아이템 지급 풀 구성 (미발견 아이템 우선)
+                // ── 아이템 지급 풀 구성 (미발견 우선) ──
                 List<Integer> givePool;
-                HashMap<Integer, String[]> itemInfoMap = new HashMap<>(); // itemId → {name, desc}
+                HashMap<Integer, String[]> itemInfoMap = new HashMap<>();
                 try {
                     List<HashMap<String, Object>> rewardMeta = botNewService.selectHellRewardItemsWithOwnCount();
                     List<Integer> undiscovered = new ArrayList<>();
@@ -931,63 +908,88 @@ public class BossAttackS3Controller {
                 }
                 if (givePool.isEmpty()) givePool = new ArrayList<>(getHellRewardItems());
 
-                // 당첨자 각각 아이템 지급 (풀에서 중복 제거하며 뽑기)
+                // ── 당첨자별 지급 아이템 미리 결정 (표시용 + DB 지급용) ──
+                // itemId: 양수=아이템, -1=풀없음GP, -2=이미보유GP
+                Map<String, String>  winnerDisplay = new LinkedHashMap<>();
+                Map<String, Integer> winnerItemId  = new LinkedHashMap<>();
                 for (String winner : itemWinners) {
                     if (givePool.isEmpty()) {
-                        // 지급할 아이템 없음 → 1 GP 지급
-                        try {
-                            HashMap<String, Object> gpFallback = new HashMap<>();
-                            gpFallback.put("userName", winner);
-                            gpFallback.put("roomName", roomName);
-                            gpFallback.put("score",    1.0);
-                            gpFallback.put("cmd",      "BOSS_HELL_NO_ITEM_GP");
-                            botNewService.insertGpRecord(gpFallback);
-                            msg.append("✨아이템획득! [").append(winner).append("] 지급 아이템 없음 → 1 GP 지급!").append(NL);
-                        } catch (Exception e) { /* 지급 실패 무시 */ }
+                        winnerDisplay.put(winner, "지급 아이템 없음 → 1 GP 지급");
+                        winnerItemId.put(winner, -1);
                     } else {
                         int idx        = rand.nextInt(givePool.size());
-                        int giveItemId = givePool.remove(idx); // 중복 방지
+                        int giveItemId = givePool.remove(idx);
                         String[] info  = itemInfoMap.getOrDefault(giveItemId, new String[]{"아이템#" + giveItemId, ""});
                         String iName   = info[0];
                         String iDesc   = info[1];
-                        String displayName = (iDesc == null || iDesc.isEmpty()) ? iName : iName + " (" + iDesc + ")";
-
-                        // 뽑기 등으로 이미 보유 중이면 1 GP 지급
+                        String displayName = (iDesc == null || iDesc.isEmpty()) ? iName : iName + "  (" + iDesc + ")";
                         boolean alreadyOwned = false;
                         try {
                             List<Integer> owned = botNewService.selectInventoryItemsByIds(
                                     winner, roomName, Collections.singleton(giveItemId));
                             alreadyOwned = owned != null && !owned.isEmpty();
                         } catch (Exception ignore) {}
-
                         if (alreadyOwned) {
-                            try {
-                                HashMap<String, Object> gpFallback = new HashMap<>();
-                                gpFallback.put("userName", winner);
-                                gpFallback.put("roomName", roomName);
-                                gpFallback.put("score",    1.0);
-                                gpFallback.put("cmd",      "BOSS_HELL_DUP_ITEM_GP");
-                                botNewService.insertGpRecord(gpFallback);
-                                msg.append("✨아이템획득! [").append(winner).append("] ").append(displayName)
-                                   .append(" 이미 보유 → 1 GP 지급!").append(NL);
-                            } catch (Exception e) { /* 지급 실패 무시 */ }
+                            winnerDisplay.put(winner, displayName + " 이미 보유 → 1 GP 지급");
+                            winnerItemId.put(winner, -2);
                         } else {
-                            try {
-                                HashMap<String, Object> inv = new HashMap<>();
-                                inv.put("userName", winner);
-                                inv.put("roomName", roomName);
-                                inv.put("itemId",   giveItemId);
-                                inv.put("qty",      1);
-                                inv.put("gainType", "BOSS_HELL");
-                                botNewService.insertInventoryLogTx(inv);
-                                msg.append("✨아이템획득! [").append(winner).append("] ").append(displayName).append(NL);
-                            } catch (Exception e) { /* 지급 실패 무시 */ }
+                            winnerDisplay.put(winner, displayName);
+                            winnerItemId.put(winner, giveItemId);
                         }
                     }
                 }
 
-                // 아이템 당첨자 제외 전체 참여자에게 0.2 GP 지급
-                int itemBaseCount = 0;
+                // ── 보상 요약: ✨N번 보상: 아이템명 ──
+                msg.append(NL);
+                for (int w = 0; w < itemWinners.size(); w++) {
+                    msg.append("✨").append(w + 1).append("번 보상: ")
+                       .append(winnerDisplay.get(itemWinners.get(w))).append(NL);
+                }
+                msg.append(NL);
+
+                // ── [추첨대상] 전체 참여자 목록 ──
+                msg.append("[추첨대상]").append(NL);
+                for (int i = 0; i < allNames.size(); i++) {
+                    String  uName    = allNames.get(i);
+                    boolean excluded = !noItemNames.contains(uName);
+                    Integer winOrder = winnerOrderMap.get(uName);
+                    msg.append(i + 1).append(". ").append(uName);
+                    if (winOrder != null) {
+                        msg.append(" < ").append(winOrder).append("번 보상 당첨!");
+                    } else if (excluded) {
+                        msg.append(" < 0.2GP (이미 보스드랍템 보유제외)");
+                    } else {
+                        msg.append(" < 0.2 GP");
+                    }
+                    msg.append(NL);
+                }
+
+                // ── DB 지급 처리 ──
+                // 아이템/GP 당첨자
+                for (String winner : itemWinners) {
+                    int itemId = winnerItemId.get(winner);
+                    if (itemId < 0) {
+                        try {
+                            HashMap<String, Object> gp = new HashMap<>();
+                            gp.put("userName", winner);
+                            gp.put("roomName", roomName);
+                            gp.put("score",    1.0);
+                            gp.put("cmd",      itemId == -1 ? "BOSS_HELL_NO_ITEM_GP" : "BOSS_HELL_DUP_ITEM_GP");
+                            botNewService.insertGpRecord(gp);
+                        } catch (Exception e) { /* 지급 실패 무시 */ }
+                    } else {
+                        try {
+                            HashMap<String, Object> inv = new HashMap<>();
+                            inv.put("userName", winner);
+                            inv.put("roomName", roomName);
+                            inv.put("itemId",   itemId);
+                            inv.put("qty",      1);
+                            inv.put("gainType", "BOSS_HELL");
+                            botNewService.insertInventoryLogTx(inv);
+                        } catch (Exception e) { /* 지급 실패 무시 */ }
+                    }
+                }
+                // 당첨자 제외 전체 참여자 0.2 GP
                 for (String uName : allNames) {
                     if (itemWinnerSet.contains(uName)) continue;
                     try {
@@ -997,11 +999,7 @@ public class BossAttackS3Controller {
                         gpMap.put("score",    0.2);
                         gpMap.put("cmd",      "BOSS_HELL_PART_GP");
                         botNewService.insertGpRecord(gpMap);
-                        itemBaseCount++;
                     } catch (Exception ignore) {}
-                }
-                if (itemBaseCount > 0) {
-                    msg.append("참여자 ").append(itemBaseCount).append("명 +0.20 GP").append(NL);
                 }
             }
 
