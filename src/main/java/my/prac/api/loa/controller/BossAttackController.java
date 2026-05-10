@@ -3487,7 +3487,7 @@ public class BossAttackController {
 
 	private void rollDarkAndLucky(AttackSession s) {
 		Monster m = s.m;
-		int levelGap = s.monLv - s.u.lv;
+		int levelGap = s.u.lv - s.monLv;
 		double darkRate = Math.max(0, levelGap / 100) * 0.20;
 		if ("어둠사냥꾼".equals(s.job)) darkRate += DARK_RATE_DARK;
 		// 일반: killCount 기준 / 나이트메어: nmKillCount 기준 / 헬: hellKillCount 기준
