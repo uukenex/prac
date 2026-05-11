@@ -3291,7 +3291,7 @@ public class BossAttackController {
 		/* 몬스터 */
 		Monster m;
 		int monMaxHp, monHpRemainBefore, monAtk, monLv;
-		boolean lucky, dark, gray, nightmare, hell;
+		boolean lucky, dark, gray, shadow, nightmare, hell;
 		int beforeJobSkillYn;
 		int killCountForThisMon, nmKillCountForThisMon, hellKillCountForThisMon;
 
@@ -3515,6 +3515,16 @@ public class BossAttackController {
 		if ("곰".equals(s.job))  { s.lucky = false; s.dark = false; }
 
 		if (s.dark) { applyDarkMonsterScale(s); s.monHpRemainBefore = s.monMaxHp; }
+
+		// 그림자 몬스터: 헬에서 해당 몬스터 500회+ 처치 시 10% 확률
+		if (s.hell && s.hellKillCountForThisMon >= 500
+		        && ThreadLocalRandom.current().nextDouble() < 0.10) {
+		    s.shadow = true;
+		    s.lucky = false;
+		    s.dark  = false;
+		    s.gray  = false;
+		    // 능력치는 원본 그대로 (스케일 없음)
+		}
 	}
 
 	// ─ 7) 쿨타임 / 8) HP 확정 / [S3] 분기 ───────────────────────────────
@@ -3749,7 +3759,7 @@ public class BossAttackController {
 
 	// ─ 13) 처치·드랍 판단 + 직업별 스킬 ─────────────────────────────
 	private void ma_resolveKillAndJobSkills(AttackSession s) {
-		s.res = resolveKillAndDrop(s.m, s.calc, s.willKill, s.u, s.lucky, s.dark, s.gray, s.ctx.user.nightmareYn, s.ctx.ownedBossItems);
+		s.res = resolveKillAndDrop(s.m, s.calc, s.willKill, s.u, s.lucky, s.dark, s.gray, s.shadow, s.ctx.user.nightmareYn, s.ctx.ownedBossItems);
 		if ("궁수".equals(s.u.job) || "사냥꾼".equals(s.u.job)) s.res.gainExp *= 3;
 
 		// SP 누적용 — baroSellItem은 INSERT 없이 outSp만 반환, 여기서 합산 후 단건 INSERT
@@ -6178,16 +6188,22 @@ public class BossAttackController {
 
 	private Resolve resolveKillAndDrop(Monster m, AttackCalc c, boolean willKill, User u, boolean lucky, boolean dark,
 			boolean gray, int nightmareYnVal) {
-		return resolveKillAndDrop(m, c, willKill, u, lucky, dark, gray, nightmareYnVal, null);
+		return resolveKillAndDrop(m, c, willKill, u, lucky, dark, gray, false, nightmareYnVal, null);
 	}
 
 	private Resolve resolveKillAndDrop(Monster m, AttackCalc c, boolean willKill, User u, boolean lucky, boolean dark,
 			boolean gray, int nightmareYnVal, Set<Integer> ownedBossItems) {
+		return resolveKillAndDrop(m, c, willKill, u, lucky, dark, gray, false, nightmareYnVal, ownedBossItems);
+	}
+
+	private Resolve resolveKillAndDrop(Monster m, AttackCalc c, boolean willKill, User u, boolean lucky, boolean dark,
+			boolean gray, boolean shadow, int nightmareYnVal, Set<Integer> ownedBossItems) {
 		Resolve r = new Resolve();
 		r.killed = willKill;
 		r.lucky = lucky;
 		r.dark = dark;
 		r.gray = gray;
+		r.shadow = shadow;
 
 		int monLv = m.monLv;
 		long monExp = m.monExp;
@@ -6213,7 +6229,9 @@ public class BossAttackController {
 		int baseKillExp = (int) Math.round(monExp * expMultiplier);
 
 		if (willKill) {
-			if (gray) {
+			if (shadow) {
+				baseKillExp *= 10; // 그림자 몬스터: 경험치 10배
+			} else if (gray) {
 				baseKillExp *= 9;
 			} else if (dark) {
 				baseKillExp *= 5;
@@ -6226,6 +6244,10 @@ public class BossAttackController {
 			r.gainExp = (int) Math.round(baseKillExp / 20) + 1; //
 		}
 
+		if (shadow && willKill) {
+			r.dropCode = "0"; // 그림자 몬스터: 드랍 없음
+			return r;
+		}
 		if (gray && willKill) {
 			r.dropCode = "9";
 			return r;
@@ -6491,6 +6513,7 @@ public class BossAttackController {
 	    }
 	    sb.append("을(를) 공격!").append(NL).append(NL);
 
+	    if (res.shadow) sb.append("👤 SHADOW MONSTER! (처치시 경험치×10, 드랍 없음)").append(NL);
 	    if (res.gray) sb.append("✨ LIGHT&DARK MONSTER! (처치시 경험치×9, 음양 드랍)").append(NL);
 	    if (res.dark) sb.append("✨ DARK MONSTER! (처치시 경험치×5, 어둠 드랍)").append(NL);
 	    if (res.lucky) sb.append("✨ LUCKY MONSTER! (처치시 경험치×3, 빛 드랍)").append(NL);
@@ -6741,6 +6764,7 @@ public class BossAttackController {
 		}
 	private static class Resolve {
 		boolean killed; String dropCode; int gainExp; boolean lucky; boolean dark; boolean gray;
+		boolean shadow; // 그림자 몬스터
 		boolean bonusNormalDrop; // [7008] 일반 드랍 +1
 	}
 	private static class CooldownCheck {
