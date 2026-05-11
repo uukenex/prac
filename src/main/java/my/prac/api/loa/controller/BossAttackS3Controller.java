@@ -261,6 +261,8 @@ public class BossAttackS3Controller {
         String hideMsg = "";
         String hideIgnoreMsg = "";
         String windSlashMsg = "";
+        // [7015] 무한의대검: 슈퍼크리티컬 확률 +10%
+        double superCritChance = 0.10 + (ownedBoss.contains(7015) ? 0.10 : 0.0);
 
         if (!isEvade) {
             String atkRangeStr = "(" + (ctx.atkMin / 100) + "~" + (ctx.atkMax / 100) + ") ";
@@ -277,8 +279,6 @@ public class BossAttackS3Controller {
             hideMsg = applyHideRule(hideRule, heavensPunishment || flag_boss_debuff || has7011);
 
             double critMultiplier = Math.max(1.0, ctx.critDmg / 100.0);
-            // [7015] 무한의대검: 슈퍼크리티컬 확률 +10%
-            double superCritChance = 0.10 + (ownedBoss.contains(7015) ? 0.10 : 0.0);
 
             if ("궁사".equals(ctx.job)) {
                 // [궁사] 연사 로직 (S2와 동일 구조)
