@@ -541,6 +541,28 @@ public class BossAttackS3Controller {
             reflectMsg = "[가시갑옷] 반사 +" + reflectDmg + "!" + NL;
         }
 
+        // 플레이어 HP 차감 + 사망 판정
+        boolean playerDead = false;
+        if (flag_boss_attack && bossAtkApplied > 0) {
+            user.hpCur = Math.max(0, user.hpCur - bossAtkApplied);
+            playerDead = (user.hpCur == 0);
+        }
+        // 플레이어 HP DB 저장 (레벨/스탯은 그대로, HP만 갱신)
+        if (flag_boss_attack && bossAtkApplied > 0) {
+            try {
+                int baseHpMax   = my.prac.core.util.MiniGameUtil.calcBaseHpMax(user.lv);
+                int baseAtkMin  = my.prac.core.util.MiniGameUtil.calcBaseAtkMin(user.lv);
+                int baseAtkMax  = my.prac.core.util.MiniGameUtil.calcBaseAtkMax(user.lv);
+                int baseCrit    = my.prac.core.util.MiniGameUtil.calcBaseCritRate(user.lv);
+                int baseHpRegen = my.prac.core.util.MiniGameUtil.calcBaseHpRegen(user.lv);
+                botNewService.updateUserAfterBattleTx(
+                    userName, roomName,
+                    user.lv, user.expCur, user.expNext,
+                    user.hpCur, baseHpMax, baseAtkMin, baseAtkMax, baseCrit, baseHpRegen
+                );
+            } catch (Exception ignored) {}
+        }
+
         // DB 저장 (HP 업데이트 + 배틀 로그)
         // hp    : 낙관적 잠금 WHERE 절용 → DB 원본값 그대로 (double)
         // newHp : SP 변환 결과 소수값 (예: 2.99832)
@@ -631,8 +653,8 @@ public class BossAttackS3Controller {
         if (!gamblerDefMsg.isEmpty()) msg.append(gamblerDefMsg);
         if (flag_boss_attack && bossAtkApplied > 0) {
             msg.append("▶ 보스의 반격! 최대HP의 피해! (").append(bossAtkApplied).append(")").append(NL);
-            int remainHp = Math.max(0, ctx.hpMax - bossAtkApplied);
-            msg.append("  └ 남은체력: ").append(remainHp).append("/").append(ctx.hpMax).append(NL);
+            msg.append("  └ 남은체력: ").append(user.hpCur).append("/").append(ctx.hpMax).append(NL);
+            if (playerDead) msg.append("  💀 체력이 0이 되었습니다!").append(NL);
         }
 
         msg.append(NL);
