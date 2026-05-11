@@ -62,8 +62,8 @@ public class BossAttackS3Controller {
     /** 보스 치명 저항: 제거 (0 고정) */
     static final int BOSS_CRIT_DEF_MIN   = 0,   BOSS_CRIT_DEF_MAX   = 0;
     /** 보스 최대 HP (raw) — 기존 대비 약 50% 감소 */
-    static final long BOSS_MAX_HP_MIN    = 25_000L;
-    static final long BOSS_MAX_HP_MAX    = 100_000L;
+    static final long BOSS_MAX_HP_MIN    = 37_500L;
+    static final long BOSS_MAX_HP_MAX    = 150_000L;
 
     /** 헬보스 보상 아이템 타입 */
     private static final String HELL_ITEM_TYPE = "BOSS_HELL";
@@ -277,6 +277,8 @@ public class BossAttackS3Controller {
             hideMsg = applyHideRule(hideRule, heavensPunishment || flag_boss_debuff || has7011);
 
             double critMultiplier = Math.max(1.0, ctx.critDmg / 100.0);
+            // [7015] 무한의대검: 슈퍼크리티컬 확률 +10%
+            double superCritChance = 0.10 + (ownedBoss.contains(7015) ? 0.10 : 0.0);
 
             if ("궁사".equals(ctx.job)) {
                 // [궁사] 연사 로직 (S2와 동일 구조)
@@ -375,7 +377,8 @@ public class BossAttackS3Controller {
                 } else {
                     isCritical = "도박사".equals(ctx.job) && gamblerAtkMsg.startsWith("도박 실패") ? false
                             : totalCritPercent > 0 && Math.random() < totalCritPercent / 100.0;
-                    if (isCritical) isSuperCritical = Math.random() < 0.10;
+                    // 도박사는 슈퍼크리티컬 불가 (7001 천벌 효과는 가능)
+                    if (isCritical) isSuperCritical = !"도박사".equals(ctx.job) && Math.random() < superCritChance;
                 }
 
                 if (!hideMsg.isEmpty()) {
@@ -431,7 +434,7 @@ public class BossAttackS3Controller {
                 isSuperCritical2 = true;
             } else {
                 isCritical2 = totalCrit2 > 0 && Math.random() < totalCrit2 / 100.0;
-                if (isCritical2) isSuperCritical2 = Math.random() < 0.10;
+                if (isCritical2) isSuperCritical2 = Math.random() < superCritChance;
             }
             double critMul2 = Math.max(1.0, ctx.critDmg / 100.0);
             if (isSuperCritical2) {
@@ -689,7 +692,7 @@ public class BossAttackS3Controller {
             try {
                 Long avgDmg = botS3Service.selectRecentHellAvgDmg();
                 if (avgDmg != null && avgDmg > 0) {
-                    int hitTarget = 60 + rand.nextInt(16); // 60~75 랜덤
+                    int hitTarget = 90 + rand.nextInt(23); // 90~112 랜덤 (1.5배)
                     rawHp = avgDmg * hitTarget;
                 } else {
                     // 데이터 없을 때 기본값
@@ -704,7 +707,7 @@ public class BossAttackS3Controller {
                 double participantMult = 1.0 + (participantCount - 6) * 0.1; // 1인당 +10%
                 rawHp = (long)(rawHp * participantMult);
             }
-            rawHp = Math.min(rawHp, 250_000L); // 최대 25a
+            rawHp = Math.min(rawHp, 375_000L); // 최대 37.5a
 
             HashMap<String, Object> bossMap = new HashMap<>();
             bossMap.put("atkRate",     randInt(rand, BOSS_ATK_RATE_MIN,   BOSS_ATK_RATE_MAX));
