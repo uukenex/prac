@@ -4837,7 +4837,7 @@ public class BossAttackController {
 		} catch (Exception ignore) {}
 
 		return userName + "님," + NL
-				+ "🎰 보스뽑기! (-6 GP)" + NL
+				+ "보스뽑기! (-6 GP)" + NL
 				+ "▶ 획득 아이템: " + itemLine + NL
 				+ "- 잔여 GP: " + String.format("%.2f", gp - 6) + " GP";
 	}
@@ -6513,7 +6513,7 @@ public class BossAttackController {
 	    }
 	    sb.append("을(를) 공격!").append(NL).append(NL);
 
-	    if (res.shadow) sb.append("👤 SHADOW MONSTER! (처치시 경험치×10, 드랍 없음)").append(NL);
+	    if (res.shadow) sb.append("✨ SHADOW MONSTER! (처치시 경험치×10, 드랍 없음)").append(NL);
 	    if (res.gray) sb.append("✨ LIGHT&DARK MONSTER! (처치시 경험치×9, 음양 드랍)").append(NL);
 	    if (res.dark) sb.append("✨ DARK MONSTER! (처치시 경험치×5, 어둠 드랍)").append(NL);
 	    if (res.lucky) sb.append("✨ LUCKY MONSTER! (처치시 경험치×3, 빛 드랍)").append(NL);

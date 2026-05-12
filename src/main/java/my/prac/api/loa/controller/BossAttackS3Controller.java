@@ -466,8 +466,8 @@ public class BossAttackS3Controller {
             if (buffCount > 0 && !isEvade) {
                 int coef = ownedBoss.contains(7012) ? 3 : 1;
                 long flatBonus = (long) buffCount * 1000 * coef;
-                totalDamage += flatBonus;
                 totalDamage += Math.round(totalDamage * (buffCount * 5 * coef) / 100.0);
+                totalDamage += flatBonus;
                 int healAmt = (int) Math.round(ctx.hpMax * (buffCount * 5 * coef) / 100.0);
                 int beforeHp = user.hpCur;
                 user.hpCur = Math.min(ctx.hpMax, user.hpCur + healAmt);
@@ -475,7 +475,7 @@ public class BossAttackS3Controller {
                 StringBuilder dosaSb = new StringBuilder("※도사 기원: 최종 데미지 +").append(flatBonus);
                 int rateBonus = buffCount * 5 * coef;
                 if (rateBonus > 0) dosaSb.append(", +").append(rateBonus).append("%");
-                if (coef > 1) dosaSb.append(" [7012 ×").append(coef).append("]");
+                if (coef > 1) dosaSb.append(" [수선도사의머리띠 ×").append(coef).append("]");
                 if (actualHeal > 0) dosaSb.append(", HP +").append(actualHeal).append(" 회복");
                 dosaBossBuffMsg = dosaSb.toString() + NL;
                 if (dosaRoom) botNewService.clearRoomBuff();
