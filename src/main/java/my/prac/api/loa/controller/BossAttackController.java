@@ -1020,8 +1020,10 @@ public class BossAttackController {
 	            itemSummary
 	    );
 
-	    totalSP.add(normalSP); totalSP.add(nmSP);
-	    openHellBag(userName, roomName, hellCount, new SP(0,""), detail, itemSummary);
+	    totalSP.add(normalSP); totalSP.add(nmSP); // hellSP는 openHellBag 후 합산
+	    SP hellSP = new SP(0, "");
+	    openHellBag(userName, roomName, hellCount, hellSP, detail, itemSummary);
+	    totalSP.add(hellSP);
 
 	    // 🔹 메시지
 	    StringBuilder sb = new StringBuilder();
@@ -1044,7 +1046,11 @@ public class BossAttackController {
 	        botNewService.insertPointRank(pr);
 	    }
         
-        sb.append("✨ 총 획득: ").append(totalSP.toString()).append("").append(NL);
+        // 가방별 SP 표시
+        if (normalCount > 0) sb.append("✨ 일반가방 획득: ").append(normalSP).append(NL);
+        if (nightmareCount > 0) sb.append("✨ 나메가방 획득: ").append(nmSP).append(NL);
+        if (hellCount > 0) sb.append("✨ 헬상자 획득: ").append(hellSP).append(NL);
+        sb.append("✨ 총 획득: ").append(totalSP).append(NL);
 
 	    if (!itemSummary.isEmpty()) {
 	        sb.append("✨ 아이템 획득: ")
@@ -1102,6 +1108,7 @@ public class BossAttackController {
 	                pr.put("cmd",       "HELL_BOX_SP");
 	                botNewService.insertPointRank(pr);
 	            } catch (Exception ignore) {}
+	            totalSP.add(sp); // 표시용 누적
 	            detail.add("[지옥의유물상자]" + (i+1) + ": " + sp + "sp");
 	        } else {
 	            // 5% → 영구 스탯 상자 (기본90%/황금9%/플래티넘1%)
