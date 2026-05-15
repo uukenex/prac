@@ -1004,10 +1004,11 @@ public class BossAttackController {
 	                    botNewService.confirmPendingHellBox(userName);
 	                    invalidateInvBuff(userName);
 	                    StringBuilder sb = new StringBuilder();
-	                    sb.append("✨ 황금상자 개봉!").append(NL);
+	                    sb.append("🔶 황금상자 개봉!").append(NL);
 	                    sb.append("━━━━━━━━━━━━━━━━━━━━━━━━").append(NL);
 	                    sb.append("✨ ").append(desc).append(" 획득!").append(NL);
-	                    sb.append("━━━━━━━━━━━━━━━━━━━━━━━━");
+	                    sb.append("━━━━━━━━━━━━━━━━━━━━━━━━").append(NL);
+	                    sb.append(buildHellBoxStatSummary(userName));
 	                    return sb.toString();
 	                }
 	            } else if ("3".equals(delYn)) {
@@ -1015,10 +1016,11 @@ public class BossAttackController {
 	                botNewService.confirmPendingHellBox(userName);
 	                invalidateInvBuff(userName);
 	                StringBuilder sb = new StringBuilder();
-	                sb.append("✨ 플래티넘상자 개봉!").append(NL);
+	                sb.append("💎 플래티넘상자 개봉!").append(NL);
 	                sb.append("━━━━━━━━━━━━━━━━━━━━━━━━").append(NL);
 	                sb.append("✨ ").append(desc).append(" 획득!").append(NL);
-	                sb.append("━━━━━━━━━━━━━━━━━━━━━━━━");
+	                sb.append("━━━━━━━━━━━━━━━━━━━━━━━━").append(NL);
+	                sb.append(buildHellBoxStatSummary(userName));
 	                return sb.toString();
 	            }
 	        }
@@ -1221,6 +1223,38 @@ public class BossAttackController {
 	        if (e.itemId == itemId) return e;
 	    }
 	    return null;
+	}
+
+	/**
+	 * 헬상자 각인 누적 현황 요약 문자열 (확정 후 메시지에 포함)
+	 */
+	private String buildHellBoxStatSummary(String userName) {
+	    try {
+	        List<HashMap<String,Object>> stats = botNewService.selectHellBoxStats(userName);
+	        if (stats == null || stats.isEmpty()) return "";
+	        StringBuilder sb = new StringBuilder();
+	        sb.append("[ 지옥 각인 누적 현황 ]").append(NL);
+	        for (HashMap<String,Object> row : stats) {
+	            int itemId = safeInt(row.get("ITEM_ID"));
+	            int qty    = safeInt(row.get("TOTAL_QTY"));
+	            if (qty <= 0) continue;
+	            String line;
+	            switch (itemId) {
+	                case 3001: line = "최소공격력 +" + qty;       break;
+	                case 3002: line = "최대공격력 +" + qty;       break;
+	                case 3003: line = "최소공격력 +" + qty + "%"; break;
+	                case 3004: line = "최대공격력 +" + qty + "%"; break;
+	                case 3005: line = "최대체력 +" + qty;         break;
+	                case 3006: line = "최대체력 +" + qty + "%";   break;
+	                case 3007: line = "치명타율 +" + qty + "%";   break;
+	                case 3008: line = "치명타피해 +" + qty + "%"; break;
+	                case 3009: line = "체력재생 +" + qty;         break;
+	                default:   line = null;                       break;
+	            }
+	            if (line != null) sb.append("  ").append(line).append(NL);
+	        }
+	        return sb.toString();
+	    } catch (Exception e) { return ""; }
 	}
 
 	/**
@@ -1503,6 +1537,7 @@ public class BossAttackController {
 	    catMap.put("※갑옷", new ArrayList<>());
 	    catMap.put("※전설", new ArrayList<>());
 	    catMap.put("※유물", new ArrayList<>());
+	    catMap.put("※지옥", new ArrayList<>());
 	    catMap.put("※날개", new ArrayList<>());
 	    catMap.put("※보스", new ArrayList<>());
 	    catMap.put("※업적", new ArrayList<>());
@@ -1549,6 +1584,12 @@ public class BossAttackController {
 	            String desc = Objects.toString(row.get("ITEM_DESC"), "").trim();
 	            if (!desc.isEmpty()) label += " (" + desc + ")";
 	            label += "BOSS_GACHA".equalsIgnoreCase(type) ? " [뽑기]" : " [보스처치]";
+	        }
+	        // ─────────────────
+	        // 지옥 각인 (3000번대)
+	        // ─────────────────
+	        else if ("HELL_BOX".equalsIgnoreCase(type) && itemId >= 3000 && itemId < 4000) {
+	            label += " +" + qty + " [지옥]";
 	        }
 	        else {
 	            if (qty > 1) {
@@ -2003,6 +2044,7 @@ public class BossAttackController {
 	            catMap.put("※갑옷", new ArrayList<>());
 	            catMap.put("※전설", new ArrayList<>());
 	            catMap.put("※유물", new ArrayList<>());
+	            catMap.put("※지옥", new ArrayList<>());
 	            catMap.put("※날개", new ArrayList<>());
 	            catMap.put("※보스", new ArrayList<>());
 	            catMap.put("※업적", new ArrayList<>());
@@ -2042,6 +2084,8 @@ public class BossAttackController {
 	                    String bossDesc = Objects.toString(row.get("ITEM_DESC"), "").trim();
 	                    if (!bossDesc.isEmpty()) label += " (" + bossDesc + ")";
 	                    label += "BOSS_GACHA".equalsIgnoreCase(typeStr) ? " [뽑기]" : " [보스처치]";
+	                } else if ("HELL_BOX".equalsIgnoreCase(typeStr) && itemId >= 3000 && itemId < 4000) {
+	                    label += " +" + qtyVal + " [지옥]";
 	                } else if (isEquipType) {
 	                	
 	                } else {
@@ -8888,6 +8932,7 @@ public class BossAttackController {
 	}
 	
 	private String resolveItemCategory(int itemId) {
+		if (itemId >= 3000 && itemId < 4000)  return "※지옥";
 		if (itemId > 9000 && itemId < 10000) return "※유물";
 		if (itemId > 8000 && itemId < 9000)  return "※업적";
 		if (itemId >= 7000 && itemId < 8000) return "※보스";
