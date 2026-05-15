@@ -134,6 +134,7 @@ public interface BotNewDAO {
             @Param("userName") String userName,
             @Param("cmd") String cmd);
     
+    int selectHasHellClearAchv(String userName);
     List<HashMap<String,Object>> selectAchievementsByUser(@Param("userName") String userName,@Param("roomName") String roomName);
     
     List<HashMap<String,Object>> selectDailyAttackCounts(HashMap<String,Object> param) throws Exception;

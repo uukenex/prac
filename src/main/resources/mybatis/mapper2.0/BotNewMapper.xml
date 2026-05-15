@@ -899,6 +899,19 @@
 	     GROUP BY CMD
 	</select>
 	
+	<select id="selectHasHellClearAchv" parameterType="String" resultType="int">
+		/* selectHasHellClearAchv: 헬보스1회처치 업적 보유 여부 (1=있음, 0=없음) */
+		SELECT COUNT(*) FROM (
+		    SELECT 1 FROM TBOT_POINT_RANK
+		     WHERE USER_NAME = #{userName}
+		       AND CMD = 'ACHV_HELL_CLEAR_1'
+		    UNION ALL
+		    SELECT 1 FROM TBOT_POINT_RANK_OLD
+		     WHERE USER_NAME = #{userName}
+		       AND CMD = 'ACHV_HELL_CLEAR_1'
+		) WHERE ROWNUM = 1
+	</select>
+
 	<select id="selectAchievementsByUser" resultType="hashMap" parameterType="string">
 	/*selectAchievementsByUser*/
 	  SELECT CMD, SCORE, USER_NAME, ROOM_NAME, INSERT_DATE

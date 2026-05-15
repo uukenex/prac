@@ -1031,6 +1031,18 @@ public class BossAttackController {
 	    int nightmareCount = botNewService.selectBagCountByItemId(userName, roomName, 92);
 	    int hellCount      = botNewService.selectBagCountByItemId(userName, roomName, BAG_HELL_ITEM_ID);
 
+	    // ── 헬상자 오픈 권한 체크 (헬보스1회처치 업적 필요) ──────────────────
+	    if (hellCount > 0) {
+	        try {
+	            if (!botNewService.hasHellClearAchv(userName)) {
+	                if (normalCount + nightmareCount <= 0) {
+	                    return "❌ 지옥의 유물상자는 헬보스를 1회 이상 처치해야 열 수 있습니다.";
+	                }
+	                hellCount = 0; // 업적 없으면 헬 가방 제외, 일반/나메만 오픈
+	            }
+	        } catch (Exception ignore) {}
+	    }
+
 	    if (normalCount + nightmareCount + hellCount <= 0) {
 	        return "열 수 있는 가방이 없습니다.";
 	    }

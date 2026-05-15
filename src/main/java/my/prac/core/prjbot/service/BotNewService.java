@@ -101,6 +101,7 @@ public interface BotNewService {
     
     int selectPointRankCountByCmdUserInRoom(String roomName, String userName, String cmd);
     
+    boolean hasHellClearAchv(String userName);
     public List<HashMap<String,Object>> selectAchievementsByUser(String userName,String roomName);
     
     

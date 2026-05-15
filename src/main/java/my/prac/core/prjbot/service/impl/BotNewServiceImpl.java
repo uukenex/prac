@@ -254,6 +254,11 @@ public class BotNewServiceImpl implements BotNewService {
     	return botNewDAO.selectPointRankCountByCmdUserInRoom(roomName, userName, cmd);
     }
     @Override
+    public boolean hasHellClearAchv(String userName) {
+        return botNewDAO.selectHasHellClearAchv(userName) > 0;
+    }
+
+    @Override
     public List<HashMap<String,Object>> selectAchievementsByUser(String userName,String roomName) {
         return botNewDAO.selectAchievementsByUser(userName, roomName);
     }
