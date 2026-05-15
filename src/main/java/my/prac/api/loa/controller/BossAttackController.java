@@ -994,9 +994,9 @@ public class BossAttackController {
 	                    botNewService.upgradePendingHellBox(upMap);
 	                    StringBuilder sb = new StringBuilder();
 	                    sb.append("✨ 기적!! 황금 각인이 더욱 빛을 발합니다!!").append(NL);
-	                    sb.append("━━━━━━━━━━━━━━━━━━━━━━━━").append(NL);
+	                    sb.append("━━━━━━━━━━━━").append(NL);
 	                    sb.append("✨ 플래티넘으로 진화하였습니다!! ✨").append(NL);
-	                    sb.append("━━━━━━━━━━━━━━━━━━━━━━━━").append(NL);
+	                    sb.append("━━━━━━━━━━━━").append(NL);
 	                    sb.append("/가방열기 로 개봉하세요!");
 	                    return sb.toString();
 	                } else {
@@ -1005,9 +1005,9 @@ public class BossAttackController {
 	                    invalidateInvBuff(userName);
 	                    StringBuilder sb = new StringBuilder();
 	                    sb.append("🔶 황금상자 개봉!").append(NL);
-	                    sb.append("━━━━━━━━━━━━━━━━━━━━━━━━").append(NL);
+	                    sb.append("━━━━━━━━━━━━").append(NL);
 	                    sb.append("✨ ").append(desc).append(" 획득!").append(NL);
-	                    sb.append("━━━━━━━━━━━━━━━━━━━━━━━━").append(NL);
+	                    sb.append("━━━━━━━━━━━━").append(NL);
 	                    sb.append(buildHellBoxStatSummary(userName));
 	                    return sb.toString();
 	                }
@@ -1017,9 +1017,9 @@ public class BossAttackController {
 	                invalidateInvBuff(userName);
 	                StringBuilder sb = new StringBuilder();
 	                sb.append("💎 플래티넘상자 개봉!").append(NL);
-	                sb.append("━━━━━━━━━━━━━━━━━━━━━━━━").append(NL);
+	                sb.append("━━━━━━━━━━━━").append(NL);
 	                sb.append("✨ ").append(desc).append(" 획득!").append(NL);
-	                sb.append("━━━━━━━━━━━━━━━━━━━━━━━━").append(NL);
+	                sb.append("━━━━━━━━━━━━").append(NL);
 	                sb.append(buildHellBoxStatSummary(userName));
 	                return sb.toString();
 	            }
