@@ -1158,8 +1158,8 @@ public class BossAttackController {
 	        SP totalSP, List<String> detail, List<String> itemSummary) {
 	    if (count <= 0) return;
 	    long top1Sp = getTop1SpCached();
-	    long spMin  = top1Sp > 0 ? top1Sp / 200 : 1_000_000L;         // 1등의 0.5%
-	    long spMax  = top1Sp > 0 ? top1Sp * 15 / 1000 : 5_000_000L;  // 1등의 1.5%
+	    long spMin  = top1Sp > 0 ? top1Sp * 3 / 1000 : 1_000_000L;                          // 1등의 0.3%
+	    long spMax  = top1Sp > 0 ? Math.min(top1Sp / 100, 100_000_000_000L) : 5_000_000L;   // 1등의 1%, 최대 1000b
 	    for (int i = 0; i < count; i++) {
 	        double roll = ThreadLocalRandom.current().nextDouble();
 	        if (roll < 0.95) {
@@ -1345,14 +1345,16 @@ public class BossAttackController {
 
 	private SP rollBagSpWithCeiling(int nightmareYn) {
 	    long top1Sp = getTop1SpCached();
-	    long top1Ceiling = top1Sp > 0 ? top1Sp / 100 : 0; // 1등 누적SP의 1%
 	    long top1Ceiling2 = top1Sp > 0 ? top1Sp / 500 : 0; // 1등 누적SP의 0.2%
 
 	    switch (nightmareYn) {
 	    case	0:
 	    	return pickBiasedSp(10000, top1Ceiling2 > 0 ? top1Ceiling2 : 1000000);
-	    case	1:
-	    	return pickBiasedSp(300000, top1Ceiling > 0 ? top1Ceiling : 100000000);
+	    case	1: {
+	    	// 나메상자: max = 1등SP의 0.5%, 최대 10b (1_000_000_000 raw)
+	    	long nmMax = top1Sp > 0 ? Math.min(top1Sp / 200, 1_000_000_000L) : 100_000_000L;
+	    	return pickBiasedSp(300000, nmMax);
+	    }
 	    case	2:
 	    	break;
 	    default:
