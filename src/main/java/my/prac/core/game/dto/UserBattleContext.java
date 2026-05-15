@@ -78,6 +78,14 @@ public class UserBattleContext {
     public int hellNerfCritDmg;
     public double hellNerfRate; // 헬너프 비율 (예: 0.05 = 5%)
     
+	// 헬박스 영구 스탯 보너스 표시용
+	public int hellBoxAtkMin;
+	public int hellBoxAtkMax;
+	public int hellBoxHp;
+	public int hellBoxRegen;
+	public int hellBoxCrit;
+	public int hellBoxCritDmg;
+    
 	// [OPT-HUNTER] attackInfo 에서 미리 조회한 dropsRows 공유용 (applyDropBonusToContext 중복 조회 방지)
 	public List<HashMap<String,Object>> preDropRows = null;
 
