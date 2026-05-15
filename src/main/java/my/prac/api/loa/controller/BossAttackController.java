@@ -1138,15 +1138,15 @@ public class BossAttackController {
 	            int qty    = safeInt(row.get("TOTAL_QTY"));
 	            if (qty <= 0) continue;
 	            switch (itemId) {
-	            case 200: atkMin  += qty; break;
-	            case 201: atkMax  += qty; break;
-	            case 202: atkMin  += (int) Math.round(ctx.atkMin * qty / 100.0); break;
-	            case 203: atkMax  += (int) Math.round(ctx.atkMax * qty / 100.0); break;
-	            case 204: hp      += qty; break;
-	            case 205: hp      += (int) Math.round(ctx.hpMax  * qty / 100.0); break;
-	            case 206: crit    += qty; break;
-	            case 207: critDmg += qty; break;
-	            case 208: regen   += qty; break;
+	            case 3001: atkMin  += qty; break;
+	            case 3002: atkMax  += qty; break;
+	            case 3003: atkMin  += (int) Math.round(ctx.atkMin * qty / 100.0); break;
+	            case 3004: atkMax  += (int) Math.round(ctx.atkMax * qty / 100.0); break;
+	            case 3005: hp      += qty; break;
+	            case 3006: hp      += (int) Math.round(ctx.hpMax  * qty / 100.0); break;
+	            case 3007: crit    += qty; break;
+	            case 3008: critDmg += qty; break;
+	            case 3009: regen   += qty; break;
 	            }
 	        }
 	        ctx.atkMin  += atkMin;  ctx.atkMax  += atkMax;
