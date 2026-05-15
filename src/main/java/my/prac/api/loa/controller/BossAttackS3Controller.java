@@ -847,8 +847,9 @@ public class BossAttackS3Controller {
 
     // =========================================================
     // 보상: 2% 이상 데미지 기여자 중 등확률 랜덤 지급
-    //   30% → 아이템 (7000번대 미소지자만)
-    //   70% → GP 0.5~1 (7000번대 무관)
+    //   40% → GP 0.5~1 (7000번대 무관)
+    //   40% → 93번 상자 (지옥의유물상자)
+    //   20% → 아이템 (7000번대 미소지자만)
     // =========================================================
     private String calcHellBossReward(String roomName, String bossStartDate, long maxHp) {
         Random rand = new Random();
@@ -871,20 +872,71 @@ public class BossAttackS3Controller {
         for (HashMap<String, Object> row : allContributors)
             allNames.add(row.get("USER_NAME").toString());
 
-        // 참여자 수에 따라 추첨 인원 결정 (1~9명→1명, 10~14명→2명, 15명+→3명)
+        // 참여자 수에 따라 추첨 인원 결정 (1~9명→1명, 10~14명→2명, 15~19명→3명, 20명+→4명)
         int participantCount = allContributors.size();
-        int winnerCount = participantCount >= 15 ? 3 : participantCount >= 10 ? 2 : 1;
+        int winnerCount = participantCount >= 20 ? 4 : participantCount >= 15 ? 3 : participantCount >= 10 ? 2 : 1;
 
         StringBuilder msg = new StringBuilder();
 
-        // 보상 타입 결정 (30% 아이템 / 70% GP)
+        // 보상 타입 결정 (20% 아이템 / 40% 상자 / 40% GP)
         double diceRoll = rand.nextDouble();
-        boolean isItemReward = diceRoll < 0.30;
-        msg.append("이번 클리어 보상은 ").append(isItemReward ? "아이템" : "GP").append(" 입니다!").append(NL);
+        boolean isItemReward = diceRoll >= 0.80;           // 20%
+        boolean isBoxReward  = diceRoll >= 0.40 && !isItemReward; // 40%
+        // else GP: diceRoll < 0.40 (40%)
+        String rewardTypeName = isItemReward ? "아이템" : isBoxReward ? "지옥의유물상자" : "GP";
+        msg.append("이번 클리어 보상은 ").append(rewardTypeName).append(" 입니다!").append(NL);
 
-        if (isItemReward) {
+        if (isBoxReward) {
             // ────────────────────────────────────────────────────
-            // 30% : 2%이상 + 7000번대 미소지자 중 등확률 랜덤 아이템 지급
+            // 40% : 지옥의유물상자(93번) — 전체 참여자 대상 추첨
+            // ────────────────────────────────────────────────────
+            List<String> boxWinners = pickWinners(allNames, winnerCount, rand);
+            Set<String> boxWinnerSet = new HashSet<>(boxWinners);
+
+            // 추첨 결과 표시
+            msg.append(NL);
+            for (int w = 0; w < boxWinners.size(); w++) {
+                msg.append("✨").append(w + 1).append("번 보상: [").append(boxWinners.get(w)).append("] 지옥의유물상자").append(NL);
+            }
+            msg.append(NL);
+
+            msg.append("[추첨대상]").append(NL);
+            for (int i = 0; i < allNames.size(); i++) {
+                String uName = allNames.get(i);
+                boolean isWin = boxWinnerSet.contains(uName);
+                msg.append(i + 1).append(". ").append(uName);
+                if (isWin) msg.append(" < 지옥의유물상자 당첨!");
+                else       msg.append(" < 0.2 GP");
+                msg.append(NL);
+            }
+
+            // DB 지급
+            for (String winner : boxWinners) {
+                try {
+                    HashMap<String, Object> inv = new HashMap<>();
+                    inv.put("userName", winner);
+                    inv.put("roomName", roomName);
+                    inv.put("itemId",   93);
+                    inv.put("qty",      1);
+                    inv.put("gainType", "BOSS_HELL");
+                    botNewService.insertInventoryLogTx(inv);
+                } catch (Exception e) { /* 지급 실패 무시 */ }
+            }
+            for (String uName : allNames) {
+                if (boxWinnerSet.contains(uName)) continue;
+                try {
+                    HashMap<String, Object> gpMap = new HashMap<>();
+                    gpMap.put("userName", uName);
+                    gpMap.put("roomName", roomName);
+                    gpMap.put("score",    0.2);
+                    gpMap.put("cmd",      "BOSS_HELL_PART_GP");
+                    botNewService.insertGpRecord(gpMap);
+                } catch (Exception ignore) {}
+            }
+
+        } else if (isItemReward) {
+            // ────────────────────────────────────────────────────
+            // 20% : 2%이상 + 7000번대 미소지자 중 등확률 랜덤 아이템 지급
             // ────────────────────────────────────────────────────
             List<HashMap<String, Object>> eligibleFromDB;
             try {
@@ -1030,7 +1082,7 @@ public class BossAttackS3Controller {
 
         } else {
             // ────────────────────────────────────────────────────
-            // 70% : GP 지급 (7000번대 무관)
+            // 40% : GP 지급 (7000번대 무관)
             //   - 당첨자 추첨 풀: 2%이상 기여자(qualified) 중 winnerCount명 추첨 → 각 0.5~1 GP
             //   - 0.3 GP: 전체 참여자(allContributors) 전원 (당첨자는 randomGp로 대체)
             // ────────────────────────────────────────────────────
