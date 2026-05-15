@@ -102,7 +102,7 @@ public class BossAttackController {
 	private static final int NM_MUL_EXP = 50;
 	private static final int NM_ADD_MON_LV = 200;
 
-	private static final int HEL_ADD_MON_LV = 400; // 
+	private static final int HEL_ADD_MON_LV = 500; // 
 	private static final int HEL_MUL_EXP = 3;     // 헬 추가 배율 (나메에 추가 *3), 총 base*NM*HEL
 	private static final long HEL_SP_MULT = 200; // 토끼(10sp) * 50 * 200 =  = 10a
 
@@ -3497,7 +3497,7 @@ public class BossAttackController {
 		else if ("사냥꾼".equals(s.job))  jobDmgMul = 3.0;
 		else if ("궁사".equals(s.job))   jobDmgMul = 1.0;
 		else if ("전사".equals(s.job))   jobDmgMul = 1.4;
-		else if ("검성".equals(s.job))   jobDmgMul = 2.2;
+		else if ("검성".equals(s.job))   jobDmgMul = 2.5;
 		else if ("어쓰신".equals(s.job))  jobDmgMul = 1.3;
 		else if ("제너럴".equals(s.job))  jobDmgMul = 1.2;
 		else if ("저격수".equals(s.job))  jobDmgMul = 2.0;
@@ -3829,7 +3829,7 @@ public class BossAttackController {
 	// ─ [도적] 2타 사전 계산 ──────────────────────────────────────────
 	private void ma_thiefDoubleAtkPreCalc(AttackSession s) {
 		if (!"도적".equals(s.job)) return;
-		double thiefProb = s.ctx.ownedBossItems.contains(7002) ? 0.35 : 0.20;
+		double thiefProb = s.ctx.ownedBossItems.contains(7002) ? 0.50 : 0.30;
 		s.thiefDoubleAtk = ThreadLocalRandom.current().nextDouble() < thiefProb;
 		if (s.thiefDoubleAtk) {
 			Flags f2 = rollFlags(s.u, s.m);
@@ -6101,7 +6101,7 @@ public class BossAttackController {
 	    	baseCd = 10 * 60; // 10분
 	    }
 	    if ("사냥꾼".equals(job)) {
-	    	baseCd = 10 * 60; // 10분
+	    	baseCd = 6 * 60; // 6분
 	    }
 
 	    if (buffTime > 0) {
@@ -8261,7 +8261,12 @@ public class BossAttackController {
 	    }
 	    
 	    if ("검성".equals(u.job)) {
-	    	if (ThreadLocalRandom.current().nextDouble() < 0.065) {
+	    	double skillRate = 0.065;
+	    	if(ownedBossItems.contains(7005)) {
+	    		skillRate += 0.15;
+	    	}
+	    	
+	    	if (ThreadLocalRandom.current().nextDouble() < skillRate) {
         		out.dmgCalcMsg += "바람가르기! "+baseAtk+"→";
         		baseAtk = (int)Math.round(baseAtk * 4);
         		out.dmgCalcMsg += baseAtk+NL;

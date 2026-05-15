@@ -88,9 +88,10 @@ public class MiniGameUtil {
 	    JOB_DEFS.put("검성", new JobDef(
     	    "검성",
     	    "⚔검으로 세상 끝에 닿은 자",
-    	    "▶[기본기강화] 공격배율 220%, HP배율 200%"+NL
+    	    "▶[기본기강화] 공격배율 250%, HP배율 200%"+NL
     	   +"▶[패링II] 적의 모든공격을 반격(15%)"+NL
     	   +"▶[바람가르기] 6.5%확률로 4배 데미지를 입히고 적을 행동불가로 만듦"+NL
+    	   +"▶[전용아이템] 바람가르기의 확률 15% 증가"+NL
     	));
 	    
 	    // 궁수: 신규 선택 불가 (사냥꾼으로 대체)
@@ -111,7 +112,7 @@ public class MiniGameUtil {
     		+"▶[사냥꾼의경험] EXP +200%"+NL
     		+"▶[사냥시작] 동물,인간형 몬스터 추가피해 +100%"+NL
     		+"▶[기습] 강제 전투종료 패턴 무시 후 5배 데미지를 줌"+NL
-    		+"▶[재장전] 공격 쿨타임 2분 -> 10분"+NL
+    		+"▶[재장전] 공격 쿨타임 2분 -> 6분"+NL
 		));
 
 	    /*
@@ -127,7 +128,8 @@ public class MiniGameUtil {
     	    "도적",
     	    "⚔날렵하게 공격하고 아이템을 훔친다",
     	    "▶[스틸] 공격 시 50% 확률 조각 추가 드랍"+NL
-    	   +"▶[더블어택] 몬스터 공격시 20% 확률로 두번 공격"+NL
+    	   +"▶[더블어택] 몬스터 공격시 30% 확률로 두번 공격"+NL
+    	   +"▶[전용아이템] 보유시 더블어택 20% 확률 추가"+NL
     	));
 	    
         JOB_DEFS.put("궁사", new JobDef(
@@ -980,32 +982,37 @@ public class MiniGameUtil {
 
 	/** 기본 상자 (90%) */
 	public static final List<HellBoxEntry> HELL_BOX_BASIC = Arrays.asList(
-		new HellBoxEntry(3001, 1,  3, "ATK_MIN",  "최소공격력 +3"),
-		new HellBoxEntry(3002, 1,  3, "ATK_MAX",  "최대공격력 +3"),
-		new HellBoxEntry(3005, 1, 30, "HP_MAX",   "최대체력 +30"),
-		new HellBoxEntry(3009, 1,  2, "HP_REGEN", "체력재생 +2")
+		new HellBoxEntry(3001, 1,  1, "ATK_MIN",  "최소공격력 +1"),
+		new HellBoxEntry(3002, 1,  1, "ATK_MAX",  "최대공격력 +1"),
+		new HellBoxEntry(3005, 1, 30, "HP_MAX",   "최대체력 +30")
 	);
 
 	/** 황금 상자 (9%) */
 	public static final List<HellBoxEntry> HELL_BOX_GOLD = Arrays.asList(
-		new HellBoxEntry(3001, 2,  8, "ATK_MIN",      "최소공격력 +8"),
-		new HellBoxEntry(3002, 2,  8, "ATK_MAX",      "최대공격력 +8"),
-		new HellBoxEntry(3003, 2,  2, "ATK_MIN_RATE", "최소공격력 +2%"),
-		new HellBoxEntry(3004, 2,  2, "ATK_MAX_RATE", "최대공격력 +2%"),
+		new HellBoxEntry(3001, 2,  5, "ATK_MIN",      "최소공격력 +5"),
+		new HellBoxEntry(3002, 2,  5, "ATK_MAX",      "최대공격력 +5"),
+		new HellBoxEntry(3003, 2,  1, "ATK_MIN_RATE", "최소공격력 +1%"),
+		new HellBoxEntry(3004, 2,  1, "ATK_MAX_RATE", "최대공격력 +1%"),
+		new HellBoxEntry(3005, 2, 50, "HP_MAX",       "최대체력 +50"),
 		new HellBoxEntry(3005, 2, 80, "HP_MAX",       "최대체력 +80"),
 		new HellBoxEntry(3007, 2,  2, "CRIT",         "치명타율 +2%"),
-		new HellBoxEntry(3008, 2,  3, "CRIT_DMG",     "치명타피해 +3%")
+		new HellBoxEntry(3008, 2,  1, "CRIT_DMG",     "치명타피해 +1%"),
+		new HellBoxEntry(3008, 2,  2, "CRIT_DMG",     "치명타피해 +2%")
 	);
 
 	/** 플래티넘 상자 (1%) */
 	public static final List<HellBoxEntry> HELL_BOX_PLAT = Arrays.asList(
 		new HellBoxEntry(3001, 3, 20, "ATK_MIN",      "최소공격력 +20"),
 		new HellBoxEntry(3002, 3, 20, "ATK_MAX",      "최대공격력 +20"),
-		new HellBoxEntry(3003, 3,  5, "ATK_MIN_RATE", "최소공격력 +5%"),
-		new HellBoxEntry(3004, 3,  5, "ATK_MAX_RATE", "최대공격력 +5%"),
+		new HellBoxEntry(3001, 3, 30, "ATK_MIN",      "최소공격력 +30"),
+		new HellBoxEntry(3002, 3, 30, "ATK_MAX",      "최대공격력 +30"),
+		new HellBoxEntry(3003, 3,  3, "ATK_MIN_RATE", "최소공격력 +3%"),
+		new HellBoxEntry(3004, 3,  3, "ATK_MAX_RATE", "최대공격력 +3%"),
+		new HellBoxEntry(3005, 3,100, "HP_MAX",       "최대체력 +100"),
 		new HellBoxEntry(3005, 3,200, "HP_MAX",       "최대체력 +200"),
-		new HellBoxEntry(3006, 3,  5, "HP_MAX_RATE",  "최대체력 +5%"),
+		new HellBoxEntry(3006, 3,  3, "HP_MAX_RATE",  "최대체력 +3%"),
 		new HellBoxEntry(3007, 3,  5, "CRIT",         "치명타율 +5%"),
-		new HellBoxEntry(3008, 3,  8, "CRIT_DMG",     "치명타피해 +8%")
+		new HellBoxEntry(3008, 3,  3, "CRIT_DMG",     "치명타피해 +3%"),
+		new HellBoxEntry(3008, 3,  5, "CRIT_DMG",     "치명타피해 +5%")
 	);
 }
