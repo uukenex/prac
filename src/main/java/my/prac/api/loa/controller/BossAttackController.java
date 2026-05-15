@@ -1004,7 +1004,7 @@ public class BossAttackController {
 	                    botNewService.confirmPendingHellBox(userName);
 	                    invalidateInvBuff(userName);
 	                    StringBuilder sb = new StringBuilder();
-	                    sb.append("🔶 황금상자 개봉!").append(NL);
+	                    sb.append("✨ 황금상자 개봉!").append(NL);
 	                    sb.append("━━━━━━━━━━━━").append(NL);
 	                    sb.append("✨ ").append(desc).append(" 획득!").append(NL);
 	                    sb.append("━━━━━━━━━━━━").append(NL);
@@ -1016,7 +1016,7 @@ public class BossAttackController {
 	                botNewService.confirmPendingHellBox(userName);
 	                invalidateInvBuff(userName);
 	                StringBuilder sb = new StringBuilder();
-	                sb.append("💎 플래티넘상자 개봉!").append(NL);
+	                sb.append("✨ 플래티넘상자 개봉!").append(NL);
 	                sb.append("━━━━━━━━━━━━").append(NL);
 	                sb.append("✨ ").append(desc).append(" 획득!").append(NL);
 	                sb.append("━━━━━━━━━━━━").append(NL);
@@ -1260,7 +1260,6 @@ public class BossAttackController {
 	                case 3006: line = "최대체력 +" + qty + "%";   break;
 	                case 3007: line = "치명타율 +" + qty + "%";   break;
 	                case 3008: line = "치명타피해 +" + qty + "%"; break;
-	                case 3009: line = "체력재생 +" + qty;         break;
 	                default:   line = null;                       break;
 	            }
 	            if (line != null) sb.append("  ").append(line).append(NL);
