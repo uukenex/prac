@@ -789,7 +789,8 @@ public class BossAttackS3Controller {
             }
 
             // 클리어 참여 횟수 업적
-            int clearCount = botNewService.selectHellBossClearCount(userName);
+            // isKill=true이면 이번 킬이 아직 DB에 미반영 상태일 수 있으므로 +1 오프셋 적용
+            int clearCount = botNewService.selectHellBossClearCount(userName) + (isKill ? 1 : 0);
             for (int th : HELL_CLEAR_THRESHOLDS) {
                 if (clearCount < th) break;
                 String cmd = "ACHV_HELL_CLEAR_" + th;
