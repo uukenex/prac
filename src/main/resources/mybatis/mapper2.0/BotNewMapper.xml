@@ -1805,7 +1805,7 @@
 	    SELECT count(1)
 	      FROM TBOT_POINT_NEW_INVENTORY A
 	     WHERE INSERT_DATE BETWEEN TRUNC(SYSDATE) AND SYSDATE
-	       AND A.ITEM_ID IN (92)
+	       AND A.ITEM_ID IN (93)
 	       AND A.USER_NAME = #{userName}
 	</select>
 	

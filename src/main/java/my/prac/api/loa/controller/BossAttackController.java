@@ -4587,13 +4587,13 @@ public class BossAttackController {
 	    } catch (Exception ignore) {}
 
 	    // 🔹 일일 획득량 기반 확률 보정
-	    if (bagCountToday < 5) {
+	    if (bagCountToday < 3) {
 	    	rtn_value *= 3.0;     // drop *3
 	    }
-	    else if (bagCountToday < 10) {
+	    else if (bagCountToday < 5) {
 	    	rtn_value *= 2.0;     // drop *2
 	    }
-	    else if (bagCountToday < 20) {
+	    else if (bagCountToday < 10) {
 	    	rtn_value *= 1.5;     // drop *1.5
 	    }
 	    else {
