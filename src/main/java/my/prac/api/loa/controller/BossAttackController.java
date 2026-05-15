@@ -1034,7 +1034,7 @@ public class BossAttackController {
 	    // ── 헬상자 오픈 권한 체크 (헬보스1회처치 업적 필요) ──────────────────
 	    if (hellCount > 0) {
 	        try {
-	            if (!botNewService.hasHellClearAchv(userName)) {
+	            if (!Boolean.TRUE.equals(getInvBuffCached(userName).get("hellClearAchv"))) {
 	                if (normalCount + nightmareCount <= 0) {
 	                    return "❌ 지옥의 유물상자는 헬보스를 1회 이상 처치해야 열 수 있습니다.";
 	                }
@@ -1332,6 +1332,7 @@ public class BossAttackController {
 	    } catch (Exception ignore) {}
 	    try { data.put("drops", botNewService.selectTotalDropItems(userName)); } catch (Exception ignore) {}
 	    try { data.put("setBonus", botNewService.selectActiveSetBonuses(userName)); } catch (Exception ignore) {}
+	    try { data.put("hellClearAchv", botNewService.hasHellClearAchv(userName)); } catch (Exception ignore) {}
 	    MiniGameUtil.INV_BUFF_CACHE.put(userName, data);
 	    return data;
 	}
