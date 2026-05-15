@@ -4655,7 +4655,9 @@ public class BossAttackController {
 
 	    int bagItemId = BAG_ITEM_ID;
 	    if (hell) {
-	        bagItemId = BAG_HELL_ITEM_ID; // 헬모드 → 지옥의유물상자만 드랍
+	        // 헬모드: 보유 10개 미만이면 지옥의유물상자, 이상이면 나메가방
+	        int hellBagCount = botNewService.selectBagCountByItemId(userName, roomName, BAG_HELL_ITEM_ID);
+	        bagItemId = hellBagCount < 10 ? BAG_HELL_ITEM_ID : BAG_NM_ITEM_ID;
 	    } else if (forceNmBagDrop) {
 	        bagItemId = BAG_NM_ITEM_ID;
 	    } else if (nightmare && ThreadLocalRandom.current().nextDouble() < 0.20) {
