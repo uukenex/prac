@@ -3700,7 +3700,7 @@ public class BossAttackController {
 			int heal = (int)Math.round(s.hpMax * value);
 			int beforeHp = s.u.hpCur;
 			s.u.hpCur = Math.min(s.hpMax, s.u.hpCur + heal);
-			if (s.u.hpCur > beforeHp) s.dmg.dmgCalcMsg += NL + "✨ 스페셀타임-회복! " + (s.u.hpCur - beforeHp);
+			if (s.u.hpCur > beforeHp) s.dmg.dmgCalcMsg += NL + "✨ 스페셜타임-회복! " + (s.u.hpCur - beforeHp);
 		}
 
 		// 패턴 6: 전투 종료
