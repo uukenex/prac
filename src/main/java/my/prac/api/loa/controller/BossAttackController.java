@@ -992,8 +992,9 @@ public class BossAttackController {
 	        botNewService.consumeBagBulkByItemIdTx(userName, roomName, BAG_HELL_ITEM_ID, hellCount);
 	    }
 
-	    //int totalSp = 0;
-	    SP totalSP = new SP(0,"");
+	    SP normalSP  = new SP(0, "");
+	    SP nmSP      = new SP(0, "");
+	    SP totalSP   = new SP(0, ""); // 표시용 합계 (헬 제외)
 	    List<String> detail = new ArrayList<>();
 	    List<String> itemSummary = new ArrayList<>();
 
@@ -1003,7 +1004,7 @@ public class BossAttackController {
 	            0,
 	            userName,
 	            roomName,
-	            totalSP,
+	            normalSP,
 	            detail,
 	            itemSummary
 	    );
@@ -1014,29 +1015,34 @@ public class BossAttackController {
 	            1,
 	            userName,
 	            roomName,
-	            totalSP,
+	            nmSP,
 	            detail,
 	            itemSummary
 	    );
 
-	    openHellBag(userName, roomName, hellCount, totalSP, detail, itemSummary);
+	    totalSP.add(normalSP); totalSP.add(nmSP);
+	    openHellBag(userName, roomName, hellCount, new SP(0,""), detail, itemSummary);
 
 	    // 🔹 메시지
 	    StringBuilder sb = new StringBuilder();
 	    sb.append("가방 총 ").append(normalCount + nightmareCount + hellCount)
 	      .append("개를 열었습니다!").append(NL);
 
-	 // 🔹 SP 저장
-    	//SP sp = SP.fromSp(totalSp);
-    	
-    	//SP userPoint = new SP(score, ext);
-        HashMap<String,Object> pr = new HashMap<>();
-        pr.put("userName", userName);
-        pr.put("roomName", roomName);
-        pr.put("score", totalSP.getValue());
-        pr.put("scoreExt", totalSP.getUnit());
-        pr.put("cmd", "BAG_OPEN_SP");
-        botNewService.insertPointRank(pr);
+	 // 🔹 SP 저장 (일반/나메 각각)
+	    if (normalSP.getValue() != 0 || !normalSP.getUnit().isEmpty()) {
+	        HashMap<String,Object> pr = new HashMap<>();
+	        pr.put("userName", userName); pr.put("roomName", roomName);
+	        pr.put("score", normalSP.getValue()); pr.put("scoreExt", normalSP.getUnit());
+	        pr.put("cmd", "BAG_OPEN_SP");
+	        botNewService.insertPointRank(pr);
+	    }
+	    if (nmSP.getValue() != 0 || !nmSP.getUnit().isEmpty()) {
+	        HashMap<String,Object> pr = new HashMap<>();
+	        pr.put("userName", userName); pr.put("roomName", roomName);
+	        pr.put("score", nmSP.getValue()); pr.put("scoreExt", nmSP.getUnit());
+	        pr.put("cmd", "BAG_OPEN_NM_SP");
+	        botNewService.insertPointRank(pr);
+	    }
         
         sb.append("✨ 총 획득: ").append(totalSP.toString()).append("").append(NL);
 
@@ -4699,7 +4705,10 @@ public class BossAttackController {
 	                pr.put("roomName",  roomName);
 	                pr.put("score",     autoSP.getValue());
 	                pr.put("scoreExt",  autoSP.getUnit());
-	                pr.put("cmd",       "BAG_OPEN_SP");
+	                String autoCmd = (bagItemId == BAG_HELL_ITEM_ID) ? "HELL_BOX_SP"
+	                               : (bagItemId == BAG_NM_ITEM_ID)   ? "BAG_OPEN_NM_SP"
+	                               :                                    "BAG_OPEN_SP";
+	                pr.put("cmd",       autoCmd);
 	                botNewService.insertPointRank(pr);
 	                invalidateInvBuff(userName);
 	                StringBuilder autoMsg = new StringBuilder();
