@@ -97,7 +97,19 @@ public class BossAttackController {
 	private static final double BAG_DROP_RATE = 0.035;//3.5%
 	/** 가방 최대 보유 개수 설정 — 이 개수 이상 보유 중이면 드랍 즉시 자동 오픈 */
 	private static final int BAG_MAX_HOLD = 300;
-	
+
+	/** 헬상자 황금/플래티넘 2스텝 연출용 pending 캐시 (10분 만료) */
+	private static final java.util.concurrent.ConcurrentHashMap<String, HellBoxPending>
+	        HELL_BOX_PENDING = new java.util.concurrent.ConcurrentHashMap<>();
+
+	private static class HellBoxPending {
+	    final String tierName;
+	    final my.prac.core.util.MiniGameUtil.HellBoxEntry entry;
+	    final long ts = System.currentTimeMillis();
+	    HellBoxPending(String t, my.prac.core.util.MiniGameUtil.HellBoxEntry e) { tierName=t; entry=e; }
+	    boolean expired() { return System.currentTimeMillis()-ts > 600_000L; } // 10분
+	}
+
 	private static final int NM_MUL_HP_ATK = 100;
 	private static final int NM_MUL_EXP = 50;
 	private static final int NM_ADD_MON_LV = 200;
@@ -972,6 +984,22 @@ public class BossAttackController {
 	        return "방/유저 정보가 누락되었습니다.";
 	    }
 
+	    // ── 헬상자 2스텝 pending 확인 ─────────────────────────────────
+	    HellBoxPending pending = HELL_BOX_PENDING.remove(userName);
+	    if (pending != null && !pending.expired()) {
+	        StringBuilder revealSb = new StringBuilder();
+	        revealSb.append("🌟 ").append(pending.tierName).append("상자 개봉!").append(NL);
+	        revealSb.append("━━━━━━━━━━━━━━━━━━━━━━━━").append(NL);
+	        revealSb.append("✨ ").append(pending.entry.desc).append(" 획득!").append(NL);
+	        revealSb.append("━━━━━━━━━━━━━━━━━━━━━━━━").append(NL);
+	        HashMap<String,Object> inv = new HashMap<>();
+	        inv.put("userName", userName); inv.put("roomName", roomName);
+	        inv.put("itemId", pending.entry.itemId); inv.put("qty", pending.entry.value);
+	        inv.put("delYn", "0"); inv.put("gainType", "HELL_BOX");
+	        try { botNewService.insertInventoryLogTx(inv); invalidateInvBuff(userName); } catch (Exception ignore) {}
+	        return revealSb.toString();
+	    }
+
 	    // 91 / 92 / 93 각각 개수 조회
 	    int normalCount    = botNewService.selectBagCountByItemId(userName, roomName, 91);
 	    int nightmareCount = botNewService.selectBagCountByItemId(userName, roomName, 92);
@@ -1128,19 +1156,26 @@ public class BossAttackController {
 	            if (pool != null && !pool.isEmpty()) {
 	                my.prac.core.util.MiniGameUtil.HellBoxEntry entry =
 	                        pool.get(ThreadLocalRandom.current().nextInt(pool.size()));
-	                HashMap<String,Object> inv = new HashMap<>();
-	                inv.put("userName", userName);
-	                inv.put("roomName", roomName);
-	                inv.put("itemId",   entry.itemId);
-	                inv.put("qty",      entry.value);
-	                inv.put("delYn",    "0");
-	                inv.put("gainType", "HELL_BOX");
-	                try {
-	                    botNewService.insertInventoryLogTx(inv);
-	                    invalidateInvBuff(userName);
-	                } catch (Exception ignore) {}
-	                detail.add("[지옥의유물상자]" + (i+1) + ": " + tierName + "상자 → " + entry.desc);
-	                itemSummary.add(tierName + "(" + entry.desc + ")");
+	                boolean isBasic = pool == my.prac.core.util.MiniGameUtil.HELL_BOX_BASIC;
+	                if (isBasic) {
+	                    // 기본상자: 즉시 지급
+	                    HashMap<String,Object> inv = new HashMap<>();
+	                    inv.put("userName", userName); inv.put("roomName", roomName);
+	                    inv.put("itemId",   entry.itemId); inv.put("qty", entry.value);
+	                    inv.put("delYn",    "0"); inv.put("gainType", "HELL_BOX");
+	                    try { botNewService.insertInventoryLogTx(inv); invalidateInvBuff(userName); } catch (Exception ignore) {}
+	                    detail.add("[지옥의유물상자]" + (i+1) + ": " + tierName + "상자 → " + entry.desc);
+	                    itemSummary.add(tierName + "(" + entry.desc + ")");
+	                } else {
+	                    // 황금/플래티넘: 2스텝 연출 — pending 저장 후 보류
+	                    HELL_BOX_PENDING.put(userName, new HellBoxPending(tierName, entry));
+	                    String dramatic = (pool == my.prac.core.util.MiniGameUtil.HELL_BOX_PLAT)
+	                            ? "💎💎💎 플래티넘 각인이 빛을 발하고 있습니다!! 💎💎💎"
+	                            : "🔶🔶 황금 각인이 빛나고 있습니다!! 🔶🔶";
+	                    detail.add("[지옥의유물상자]" + (i+1) + ": " + dramatic);
+	                    detail.add("/가방열기 로 개봉하세요!");
+	                    itemSummary.add(tierName + " 보류중 (/가방열기)");
+	                }
 	            }
 	        }
 	    }
