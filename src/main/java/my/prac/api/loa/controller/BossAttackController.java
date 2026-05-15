@@ -993,9 +993,9 @@ public class BossAttackController {
 	                    upMap.put("newQty",     platEntry.value);
 	                    botNewService.upgradePendingHellBox(upMap);
 	                    StringBuilder sb = new StringBuilder();
-	                    sb.append("🔥 기적!! 황금 각인이 더욱 빛을 발합니다!!").append(NL);
+	                    sb.append("✨ 기적!! 황금 각인이 더욱 빛을 발합니다!!").append(NL);
 	                    sb.append("━━━━━━━━━━━━━━━━━━━━━━━━").append(NL);
-	                    sb.append("💎💎💎 플래티넘으로 진화하였습니다!! 💎💎💎").append(NL);
+	                    sb.append("✨ 플래티넘으로 진화하였습니다!! ✨").append(NL);
 	                    sb.append("━━━━━━━━━━━━━━━━━━━━━━━━").append(NL);
 	                    sb.append("/가방열기 로 개봉하세요!");
 	                    return sb.toString();
@@ -1004,7 +1004,7 @@ public class BossAttackController {
 	                    botNewService.confirmPendingHellBox(userName);
 	                    invalidateInvBuff(userName);
 	                    StringBuilder sb = new StringBuilder();
-	                    sb.append("🔶 황금상자 개봉!").append(NL);
+	                    sb.append("✨ 황금상자 개봉!").append(NL);
 	                    sb.append("━━━━━━━━━━━━━━━━━━━━━━━━").append(NL);
 	                    sb.append("✨ ").append(desc).append(" 획득!").append(NL);
 	                    sb.append("━━━━━━━━━━━━━━━━━━━━━━━━");
@@ -1015,7 +1015,7 @@ public class BossAttackController {
 	                botNewService.confirmPendingHellBox(userName);
 	                invalidateInvBuff(userName);
 	                StringBuilder sb = new StringBuilder();
-	                sb.append("💎 플래티넘상자 개봉!").append(NL);
+	                sb.append("✨ 플래티넘상자 개봉!").append(NL);
 	                sb.append("━━━━━━━━━━━━━━━━━━━━━━━━").append(NL);
 	                sb.append("✨ ").append(desc).append(" 획득!").append(NL);
 	                sb.append("━━━━━━━━━━━━━━━━━━━━━━━━");
@@ -1169,10 +1169,10 @@ public class BossAttackController {
 	            String tierName;
 	            if (tierRoll < 0.01) {
 	                pool = my.prac.core.util.MiniGameUtil.HELL_BOX_PLAT;
-	                tierName = "🔷플래티넘";
+	                tierName = "✨플래티넘";
 	            } else if (tierRoll < 0.10) {
 	                pool = my.prac.core.util.MiniGameUtil.HELL_BOX_GOLD;
-	                tierName = "🔶황금";
+	                tierName = "✨황금";
 	            } else {
 	                pool = my.prac.core.util.MiniGameUtil.HELL_BOX_BASIC;
 	                tierName = "기본";
@@ -1199,8 +1199,8 @@ public class BossAttackController {
 	                    pInv.put("delYn",    pendingDelYn); pInv.put("gainType", "HELL_BOX");
 	                    try { botNewService.insertInventoryLogTx(pInv); } catch (Exception ignore) {}
 	                    String dramatic = (pool == my.prac.core.util.MiniGameUtil.HELL_BOX_PLAT)
-	                            ? "💎💎💎 플래티넘 각인이 빛을 발하고 있습니다!! 💎💎💎"
-	                            : "🔶🔶 황금 각인이 빛나고 있습니다!! 🔶🔶";
+	                            ? "✨ 플래티넘 각인이 빛을 발하고 있습니다!! ✨"
+	                            : "✨ 황금 각인이 빛나고 있습니다!! ✨";
 	                    detail.add("[지옥의유물상자]" + (i+1) + ": " + dramatic);
 	                    detail.add("/가방열기 로 개봉하세요!");
 	                    itemSummary.add(tierName + " 보류중 (/가방열기)");
