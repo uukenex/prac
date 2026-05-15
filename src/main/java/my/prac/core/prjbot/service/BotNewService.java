@@ -152,6 +152,10 @@ public interface BotNewService {
     List<HashMap<String, Object>> selectTotalDropItems(String userName);
     List<HashMap<String, Object>> selectHellBoxStats(String userName);
 
+    HashMap<String,Object> selectPendingHellBox(String userName);
+    void upgradePendingHellBox(HashMap<String,Object> map);
+    void confirmPendingHellBox(String userName);
+
     List<HashMap<String,Object>> selectActiveSetBonuses(String userName);
 
     List<HashMap<String,Object>> selectAllSetBonusDefs();

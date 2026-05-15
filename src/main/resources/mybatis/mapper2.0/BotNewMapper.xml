@@ -1337,7 +1337,8 @@
 	              JOIN TBOT_POINT_NEW_ITEM      B
 	                ON A.ITEM_ID   = B.ITEM_ID
 	             WHERE A.GAIN_TYPE = 'HELL_BOX'
-	             AND A.ITEM_ID >= 3000
+	               AND A.ITEM_ID  >= 3000
+	               AND A.DEL_YN   = '0'
 	        )
 	        ORDER BY insertDate DESC
 	    )
@@ -1583,6 +1584,51 @@
 		  )
 		 GROUP BY ITEM_ID
 	</select>
+	<select id="selectPendingHellBox" parameterType="String" resultType="hashmap">
+		/* selectPendingHellBox */
+		SELECT ITEM_ID, QTY, DEL_YN
+		  FROM (
+		      SELECT ITEM_ID, QTY, DEL_YN
+		        FROM TBOT_POINT_NEW_INVENTORY
+		       WHERE USER_NAME = #{userName}
+		         AND GAIN_TYPE = 'HELL_BOX'
+		         AND DEL_YN    IN ('2','3')
+		       ORDER BY INSERT_DATE ASC
+		  )
+		 WHERE ROWNUM = 1
+	</select>
+	<update id="upgradePendingHellBox" parameterType="hashmap">
+		/* upgradePendingHellBox: gold(DEL_YN=2) -> plat(DEL_YN=3) with new entry */
+		UPDATE TBOT_POINT_NEW_INVENTORY
+		   SET DEL_YN  = '3',
+		       ITEM_ID = #{newItemId},
+		       QTY     = #{newQty}
+		 WHERE ROWID = (
+		     SELECT RID FROM (
+		         SELECT ROWID AS RID
+		           FROM TBOT_POINT_NEW_INVENTORY
+		          WHERE USER_NAME = #{userName}
+		            AND GAIN_TYPE = 'HELL_BOX'
+		            AND DEL_YN    = '2'
+		          ORDER BY INSERT_DATE ASC
+		     ) WHERE ROWNUM = 1
+		 )
+	</update>
+	<update id="confirmPendingHellBox" parameterType="String">
+		/* confirmPendingHellBox: pending(2/3) -> confirmed(0) */
+		UPDATE TBOT_POINT_NEW_INVENTORY
+		   SET DEL_YN = '0'
+		 WHERE ROWID = (
+		     SELECT RID FROM (
+		         SELECT ROWID AS RID
+		           FROM TBOT_POINT_NEW_INVENTORY
+		          WHERE USER_NAME = #{userName}
+		            AND GAIN_TYPE = 'HELL_BOX'
+		            AND DEL_YN    IN ('2','3')
+		          ORDER BY INSERT_DATE ASC
+		     ) WHERE ROWNUM = 1
+		 )
+	</update>
 	<select id="selectNightmareYn" parameterType="map" resultType="int">
 		/* selectNightmareYn */
 		SELECT NVL(NIGHTMARE_YN, '0') AS NIGHTMARE_YN

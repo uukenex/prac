@@ -193,6 +193,10 @@ public interface BotNewDAO {
     List<HashMap<String, Object>> selectTotalDropItems(String userName);
     List<HashMap<String, Object>> selectHellBoxStats(String userName);
 
+    HashMap<String,Object> selectPendingHellBox(String userName);
+    int upgradePendingHellBox(HashMap<String,Object> map);
+    int confirmPendingHellBox(String userName);
+
     List<HashMap<String,Object>> selectActiveSetBonuses(@Param("userName") String userName);
 
     List<HashMap<String,Object>> selectAllSetBonusDefs();
