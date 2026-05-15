@@ -455,6 +455,11 @@ public class BotNewServiceImpl implements BotNewService {
     }
 
     @Override
+    public List<HashMap<String, Object>> selectHellBoxStats(String userName) {
+        return botNewDAO.selectHellBoxStats(userName);
+    }
+
+    @Override
     public List<HashMap<String,Object>> selectActiveSetBonuses(String userName) {
         return botNewDAO.selectActiveSetBonuses(userName);
     }

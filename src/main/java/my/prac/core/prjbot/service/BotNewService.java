@@ -150,6 +150,7 @@ public interface BotNewService {
     boolean isReturnUser(String userName);
 
     List<HashMap<String, Object>> selectTotalDropItems(String userName);
+    List<HashMap<String, Object>> selectHellBoxStats(String userName);
 
     List<HashMap<String,Object>> selectActiveSetBonuses(String userName);
 

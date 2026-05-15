@@ -191,6 +191,7 @@ public interface BotNewDAO {
     String selectIsReturnUser(HashMap<String, Object> map);
     
     List<HashMap<String, Object>> selectTotalDropItems(String userName);
+    List<HashMap<String, Object>> selectHellBoxStats(String userName);
 
     List<HashMap<String,Object>> selectActiveSetBonuses(@Param("userName") String userName);
 

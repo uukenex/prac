@@ -93,6 +93,7 @@ public class BossAttackController {
 	private static final String ALL_SEE_STR = "===";
 	private static final int BAG_ITEM_ID = 91;
 	private static final int BAG_NM_ITEM_ID = 92;
+	private static final int BAG_HELL_ITEM_ID = 93;
 	private static final double BAG_DROP_RATE = 0.035;//3.5%
 	/** 가방 최대 보유 개수 설정 — 이 개수 이상 보유 중이면 드랍 즉시 자동 오픈 */
 	private static final int BAG_MAX_HOLD = 300;
@@ -200,6 +201,25 @@ public class BossAttackController {
 	    }else if(selRaw.equals("일반")){
 	    	botNewService.setNightmareMode(userName,roomName,0);
 	    	msg="일반";
+	    }
+	    // ── 모드 전환 시 체력 비율 유지 ──────────────────────────────
+	    if (!msg.isEmpty()) {
+	        try {
+	            int baseHp = u.hpMax > 0 ? u.hpMax : my.prac.core.util.MiniGameUtil.calcBaseHpMax(u.lv);
+	            double hellMult = my.prac.core.util.MiniGameUtil.getHellNerfMult(u.hunterGrade);
+	            // 현재 모드의 유효 최대 체력
+	            int curEffMax  = (u.nightmareYn == 2)
+	                    ? Math.max(1, (int) Math.round(baseHp * hellMult))
+	                    : baseHp;
+	            double ratio = Math.min(1.0, Math.max(0.0, u.hpCur / (double) curEffMax));
+	            // 전환 후 모드의 유효 최대 체력
+	            int newMode    = "헬".equals(msg) ? 2 : ("나이트메어".equals(msg) ? 1 : 0);
+	            int newEffMax  = (newMode == 2)
+	                    ? Math.max(1, (int) Math.round(baseHp * hellMult))
+	                    : baseHp;
+	            int newHpCur = Math.min(newEffMax, Math.max(1, (int) Math.round(ratio * newEffMax)));
+	            botNewService.updateUserHpOnlyTx(userName, roomName, newHpCur);
+	        } catch (Exception ignore) {}
 	    }
 	    botNewService.closeOngoingBattleTx(userName, roomName);
 		return msg+" 모드로 변경완료"+NL+"[일반/나이트메어/헬] 선택가능";
@@ -719,6 +739,7 @@ public class BossAttackController {
 
 
 	    applyDropBonusToContext(ctx, targetUser, "");
+	    applyHellBoxBonusToContext(ctx, targetUser);
 
 	    // hpCur: 리젠 반영 현재 체력 (항상 실시간 DB 조회)
 	    final String ctxRoomName = Objects.toString(map.get("roomName"), "");
@@ -951,11 +972,12 @@ public class BossAttackController {
 	        return "방/유저 정보가 누락되었습니다.";
 	    }
 
-	    // 91 / 92 각각 개수 조회
+	    // 91 / 92 / 93 각각 개수 조회
 	    int normalCount    = botNewService.selectBagCountByItemId(userName, roomName, 91);
 	    int nightmareCount = botNewService.selectBagCountByItemId(userName, roomName, 92);
+	    int hellCount      = botNewService.selectBagCountByItemId(userName, roomName, BAG_HELL_ITEM_ID);
 
-	    if (normalCount + nightmareCount <= 0) {
+	    if (normalCount + nightmareCount + hellCount <= 0) {
 	        return "열 수 있는 가방이 없습니다.";
 	    }
 
@@ -965,6 +987,9 @@ public class BossAttackController {
 	    }
 	    if (nightmareCount > 0) {
 	        botNewService.consumeBagBulkByItemIdTx(userName, roomName, 92, nightmareCount);
+	    }
+	    if (hellCount > 0) {
+	        botNewService.consumeBagBulkByItemIdTx(userName, roomName, BAG_HELL_ITEM_ID, hellCount);
 	    }
 
 	    //int totalSp = 0;
@@ -993,12 +1018,12 @@ public class BossAttackController {
 	            detail,
 	            itemSummary
 	    );
-	    
-	    
+
+	    openHellBag(userName, roomName, hellCount, totalSP, detail, itemSummary);
 
 	    // 🔹 메시지
 	    StringBuilder sb = new StringBuilder();
-	    sb.append("가방 총 ").append(normalCount + nightmareCount)
+	    sb.append("가방 총 ").append(normalCount + nightmareCount + hellCount)
 	      .append("개를 열었습니다!").append(NL);
 
 	 // 🔹 SP 저장
@@ -1046,7 +1071,94 @@ public class BossAttackController {
 		String itemName = Objects.toString(info.get("ITEM_NAME"), "");
 		itemSummary.add(itemName);
 	}
-	
+
+	/**
+	 * 지옥의유물상자 오픈 처리
+	 * 95% SP / 5% 영구 스탯 상자 (기본90%/황금9%/플래티넘1%)
+	 */
+	private void openHellBag(String userName, String roomName, int count,
+	        SP totalSP, List<String> detail, List<String> itemSummary) {
+	    if (count <= 0) return;
+	    long top1Sp = getTop1SpCached();
+	    long spMin  = 1_000_000L;
+	    long spMax  = top1Sp > 0 ? Math.max(10_000_000L, top1Sp / 20) : 50_000_000L;
+	    for (int i = 0; i < count; i++) {
+	        double roll = ThreadLocalRandom.current().nextDouble();
+	        if (roll < 0.95) {
+	            // 95% → SP
+	            SP sp = pickBiasedSp(spMin, spMax);
+	            totalSP.add(sp);
+	            detail.add("[지옥의유물상자]" + (i+1) + ": " + sp + "sp");
+	        } else {
+	            // 5% → 영구 스탯 상자 (기본90%/황금9%/플래티넘1%)
+	            double tierRoll = ThreadLocalRandom.current().nextDouble();
+	            java.util.List<my.prac.core.util.MiniGameUtil.HellBoxEntry> pool;
+	            String tierName;
+	            if (tierRoll < 0.01) {
+	                pool = my.prac.core.util.MiniGameUtil.HELL_BOX_PLAT;
+	                tierName = "🔷플래티넘";
+	            } else if (tierRoll < 0.10) {
+	                pool = my.prac.core.util.MiniGameUtil.HELL_BOX_GOLD;
+	                tierName = "🔶황금";
+	            } else {
+	                pool = my.prac.core.util.MiniGameUtil.HELL_BOX_BASIC;
+	                tierName = "기본";
+	            }
+	            if (pool != null && !pool.isEmpty()) {
+	                my.prac.core.util.MiniGameUtil.HellBoxEntry entry =
+	                        pool.get(ThreadLocalRandom.current().nextInt(pool.size()));
+	                HashMap<String,Object> inv = new HashMap<>();
+	                inv.put("userName", userName);
+	                inv.put("roomName", roomName);
+	                inv.put("itemId",   entry.itemId);
+	                inv.put("qty",      entry.value);
+	                inv.put("delYn",    "0");
+	                inv.put("gainType", "HELL_BOX");
+	                try {
+	                    botNewService.insertInventoryLogTx(inv);
+	                    invalidateInvBuff(userName);
+	                } catch (Exception ignore) {}
+	                detail.add("[지옥의유물상자]" + (i+1) + ": " + tierName + "상자 → " + entry.desc);
+	                itemSummary.add(tierName + "(" + entry.desc + ")");
+	            }
+	        }
+	    }
+	}
+
+	/**
+	 * HELL_BOX gain_type 아이템을 ctx 스탯에 반영 (영구 보너스)
+	 */
+	private void applyHellBoxBonusToContext(UserBattleContext ctx, String userName) {
+	    try {
+	        List<HashMap<String,Object>> stats = botNewService.selectHellBoxStats(userName);
+	        if (stats == null || stats.isEmpty()) return;
+	        int atkMin = 0, atkMax = 0, hp = 0, regen = 0, crit = 0, critDmg = 0;
+	        for (HashMap<String,Object> row : stats) {
+	            int itemId = safeInt(row.get("ITEM_ID"));
+	            int qty    = safeInt(row.get("TOTAL_QTY"));
+	            if (qty <= 0) continue;
+	            switch (itemId) {
+	            case 3001: atkMin  += qty; break;
+	            case 3002: atkMax  += qty; break;
+	            case 3003: atkMin  += (int) Math.round(ctx.atkMin * qty / 100.0); break;
+	            case 3004: atkMax  += (int) Math.round(ctx.atkMax * qty / 100.0); break;
+	            case 3005: hp      += qty; break;
+	            case 3006: hp      += (int) Math.round(ctx.hpMax  * qty / 100.0); break;
+	            case 3007: crit    += qty; break;
+	            case 3008: critDmg += qty; break;
+	            case 3009: regen   += qty; break;
+	            }
+	        }
+	        ctx.atkMin  += atkMin;  ctx.atkMax  += atkMax;
+	        ctx.hpMax   += hp;      ctx.regen   += regen;
+	        ctx.crit    += crit;    ctx.critDmg += critDmg;
+	        // 표시용
+	        ctx.hellBoxAtkMin  = atkMin;  ctx.hellBoxAtkMax  = atkMax;
+	        ctx.hellBoxHp      = hp;      ctx.hellBoxRegen   = regen;
+	        ctx.hellBoxCrit    = crit;    ctx.hellBoxCritDmg = critDmg;
+	    } catch (Exception ignore) {}
+	}
+
 	private long getTop1SpCached() {
 	    long now = System.currentTimeMillis();
 	    if (now - TOP1_SP_CACHE_TS > TOP1_SP_CACHE_TTL_MS) {
@@ -3957,9 +4069,9 @@ public class BossAttackController {
 			}
 		}
 
-		s.bagDropMsg = tryDropBag(s.userName, s.roomName, s.m, s.nightmare, s.buff);
+		s.bagDropMsg = tryDropBag(s.userName, s.roomName, s.m, s.nightmare, s.hell, s.buff);
 		if (s.thiefDoubleAtk && s.m != null) {
-			String bag2 = tryDropBag(s.userName, s.roomName, s.m, s.nightmare, s.buff);
+			String bag2 = tryDropBag(s.userName, s.roomName, s.m, s.nightmare, s.hell, s.buff);
 			if (bag2 != null && !bag2.isEmpty())
 				s.bagDropMsg = (s.bagDropMsg == null || s.bagDropMsg.isEmpty()) ? bag2 : s.bagDropMsg + NL + bag2;
 		}
@@ -4497,7 +4609,7 @@ public class BossAttackController {
 	}
 	
 	
-	private String tryDropBag(String userName, String roomName, Monster m, boolean nightmare, SpecialBuffResult buff) {
+	private String tryDropBag(String userName, String roomName, Monster m, boolean nightmare, boolean hell, SpecialBuffResult buff) {
 	    double buffRate = 0.0;
 	    boolean forceNmBagDrop = false;
 
@@ -4534,7 +4646,9 @@ public class BossAttackController {
 	    }
 
 	    int bagItemId = BAG_ITEM_ID;
-	    if (forceNmBagDrop) {
+	    if (hell) {
+	        bagItemId = BAG_HELL_ITEM_ID; // 헬모드 → 지옥의유물상자만 드랍
+	    } else if (forceNmBagDrop) {
 	        bagItemId = BAG_NM_ITEM_ID;
 	    } else if (nightmare && ThreadLocalRandom.current().nextDouble() < 0.20) {
 	        bagItemId = BAG_NM_ITEM_ID;
@@ -4552,19 +4666,24 @@ public class BossAttackController {
 	        botNewService.insertInventoryLogTx(inv);
 	        invalidateInvBuff(userName);
 
-	        String bagName = (bagItemId == BAG_NM_ITEM_ID) ? "복주머니가방" : "세티노의비밀가방";
+	        String bagName = (bagItemId == BAG_HELL_ITEM_ID) ? "지옥의유물상자" : (bagItemId == BAG_NM_ITEM_ID) ? "복주머니가방" : "세티노의비밀가방";
 
 	        // ── 가방 보유 한도 초과 시 자동 오픈 ──────────────────────────────
 	        try {
 	            int totalBags = botNewService.selectBagCountByItemId(userName, roomName, BAG_ITEM_ID)
-	                          + botNewService.selectBagCountByItemId(userName, roomName, BAG_NM_ITEM_ID);
+	                          + botNewService.selectBagCountByItemId(userName, roomName, BAG_NM_ITEM_ID)
+	                          + botNewService.selectBagCountByItemId(userName, roomName, BAG_HELL_ITEM_ID);
 	            if (totalBags >= BAG_MAX_HOLD) {
 	                botNewService.consumeBagBulkByItemIdTx(userName, roomName, bagItemId, 1);
 	                SP autoSP = new SP(0, "");
 	                List<String> autoDetail = new ArrayList<>();
 	                List<String> autoItems  = new ArrayList<>();
 	                int autoSpMode = (bagItemId == BAG_NM_ITEM_ID) ? 1 : 0;
-	                processBagOpen(bagItemId, 1, autoSpMode, userName, roomName, autoSP, autoDetail, autoItems);
+	                if (bagItemId == BAG_HELL_ITEM_ID) {
+	                    openHellBag(userName, roomName, 1, autoSP, autoDetail, autoItems);
+	                } else {
+	                    processBagOpen(bagItemId, 1, autoSpMode, userName, roomName, autoSP, autoDetail, autoItems);
+	                }
 	                HashMap<String,Object> pr = new HashMap<>();
 	                pr.put("userName",  userName);
 	                pr.put("roomName",  roomName);

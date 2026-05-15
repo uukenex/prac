@@ -1567,6 +1567,21 @@
 	    GROUP BY I.ITEM_ID, IT.ITEM_NAME, I.GAIN_TYPE
 	    ORDER BY I.ITEM_ID DESC, I.GAIN_TYPE
 	</select>
+	<select id="selectHellBoxStats" parameterType="String" resultType="hashmap">
+		/* selectHellBoxStats */
+		SELECT ITEM_ID, SUM(QTY) AS TOTAL_QTY
+		  FROM (
+			SELECT ITEM_ID, QTY FROM TBOT_POINT_NEW_INVENTORY
+			 WHERE USER_NAME = #{userName}
+			   AND GAIN_TYPE = 'HELL_BOX'
+			   AND DEL_YN = '0'
+			UNION ALL
+			SELECT ITEM_ID, QTY FROM TBOT_POINT_NEW_INVENTORY_OLD
+			 WHERE USER_NAME = #{userName}
+			   AND GAIN_TYPE = 'HELL_BOX'
+		  )
+		 GROUP BY ITEM_ID
+	</select>
 	<select id="selectNightmareYn" parameterType="map" resultType="int">
 		/* selectNightmareYn */
 		SELECT NVL(NIGHTMARE_YN, '0') AS NIGHTMARE_YN
