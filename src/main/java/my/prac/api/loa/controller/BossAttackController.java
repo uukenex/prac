@@ -1085,9 +1085,17 @@ public class BossAttackController {
 	    for (int i = 0; i < count; i++) {
 	        double roll = ThreadLocalRandom.current().nextDouble();
 	        if (roll < 0.95) {
-	            // 95% → SP
+	            // 95% → SP (HELL_BOX_SP CMD로 직접 저장)
 	            SP sp = pickBiasedSp(spMin, spMax);
-	            totalSP.add(sp);
+	            try {
+	                HashMap<String,Object> pr = new HashMap<>();
+	                pr.put("userName",  userName);
+	                pr.put("roomName",  roomName);
+	                pr.put("score",     sp.getValue());
+	                pr.put("scoreExt",  sp.getUnit());
+	                pr.put("cmd",       "HELL_BOX_SP");
+	                botNewService.insertPointRank(pr);
+	            } catch (Exception ignore) {}
 	            detail.add("[지옥의유물상자]" + (i+1) + ": " + sp + "sp");
 	        } else {
 	            // 5% → 영구 스탯 상자 (기본90%/황금9%/플래티넘1%)
