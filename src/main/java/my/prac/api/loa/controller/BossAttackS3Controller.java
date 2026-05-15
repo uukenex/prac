@@ -789,8 +789,7 @@ public class BossAttackS3Controller {
             }
 
             // 클리어 참여 횟수 업적
-            // isKill=true이면 이번 킬이 아직 DB에 미반영 상태일 수 있으므로 +1 오프셋 적용
-            int clearCount = botNewService.selectHellBossClearCount(userName) + (isKill ? 1 : 0);
+            int clearCount = botNewService.selectHellBossClearCount(userName);
             for (int th : HELL_CLEAR_THRESHOLDS) {
                 if (clearCount < th) break;
                 String cmd = "ACHV_HELL_CLEAR_" + th;
@@ -1154,6 +1153,25 @@ public class BossAttackS3Controller {
                    .append(String.format(" (%.1f%%)", dmgPct)).append(NL);
             }
         }
+
+        // ── 전체 참가자 헬보스 클리어 업적 일괄 체크 ──────────────────────
+        // END_YN='1' 커밋 후 실행되므로 selectHellBossClearCount가 정확한 횟수 반환
+        // 킬러 포함 모든 참가자에게 즉시 업적 지급
+        if (!allNames.isEmpty()) {
+            StringBuilder achvSb = new StringBuilder();
+            for (String cName : allNames) {
+                try {
+                    String am = grantHellBossAchievements(cName, roomName, false, bossStartDate);
+                    if (am != null && !am.isEmpty()) {
+                        achvSb.append(cName).append(": ").append(am);
+                    }
+                } catch (Exception ignore) {}
+            }
+            if (achvSb.length() > 0) {
+                msg.append(NL).append("[ 업적 달성 ]").append(NL).append(achvSb);
+            }
+        }
+
         return msg.toString();
     }
 
