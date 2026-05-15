@@ -4649,6 +4649,17 @@ public class BossAttackController {
 	    } catch (Exception ignore) {
 	    }
 
+	    // 헬모드 + 헬상자 10개 이상 → pity 무시, 1% 고정으로 나메가방
+	    if (hell && !forceNmBagDrop) {
+	        int hellBagCount = 0;
+	        try { hellBagCount = botNewService.selectBagCountByItemId(userName, roomName, BAG_HELL_ITEM_ID); } catch (Exception ignore) {}
+	        if (hellBagCount >= 10) {
+	            if (ThreadLocalRandom.current().nextDouble() >= 0.01) return ""; // 1% 고정
+	            forceNmBagDrop = true; // 나메가방 확정
+	            hell = false;          // 아래 hell 분기 스킵
+	        }
+	    }
+
 	    // 강제 드랍이 아닐 때만 확률 계산
 	    if (!forceNmBagDrop) {
 	        double pityMul = computeBagPityMultiplier(userName, roomName, buffRate);
@@ -4661,9 +4672,8 @@ public class BossAttackController {
 
 	    int bagItemId = BAG_ITEM_ID;
 	    if (hell) {
-	        // 헬모드: 보유 10개 미만이면 지옥의유물상자, 이상이면 나메가방
-	        int hellBagCount = botNewService.selectBagCountByItemId(userName, roomName, BAG_HELL_ITEM_ID);
-	        bagItemId = hellBagCount < 10 ? BAG_HELL_ITEM_ID : BAG_NM_ITEM_ID;
+	        // 헬모드: 보유 10개 미만 → 지옥의유물상자 (10개 이상은 위에서 처리)
+	        bagItemId = BAG_HELL_ITEM_ID;
 	    } else if (forceNmBagDrop) {
 	        bagItemId = BAG_NM_ITEM_ID;
 	    } else if (nightmare && ThreadLocalRandom.current().nextDouble() < 0.20) {
