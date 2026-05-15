@@ -1080,8 +1080,8 @@ public class BossAttackController {
 	        SP totalSP, List<String> detail, List<String> itemSummary) {
 	    if (count <= 0) return;
 	    long top1Sp = getTop1SpCached();
-	    long spMin  = 1_000_000L;
-	    long spMax  = top1Sp > 0 ? Math.max(10_000_000L, top1Sp / 20) : 50_000_000L;
+	    long spMin  = top1Sp > 0 ? top1Sp / 200 : 1_000_000L;         // 1등의 0.5%
+	    long spMax  = top1Sp > 0 ? top1Sp * 15 / 1000 : 5_000_000L;  // 1등의 1.5%
 	    for (int i = 0; i < count; i++) {
 	        double roll = ThreadLocalRandom.current().nextDouble();
 	        if (roll < 0.95) {
