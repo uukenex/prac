@@ -2587,6 +2587,14 @@ public class BossAttackController {
 	    
 	    
 	 // ➊ 카테고리 목록 모드 체크
+	    // 가방 카테고리
+	    if ("가방".equals(rawParam)) {
+	        return buildBagShopMessage(userName, roomName);
+	    }
+	    // 보스 아이템 카테고리 (7000번대)
+	    if ("보스".equals(rawParam) || "7000".equals(rawParam)) {
+	        return buildBossItemShopMessage(userName, roomName);
+	    }
 	    int[] range = resolveCategoryRange(rawParam);  // ex) "무기" → [100, 200]
 	    if (range != null) {
 	        int min = range[0];
@@ -2905,8 +2913,9 @@ public class BossAttackController {
 	    HashMap<String, Object> item = getItemDetailCached(itemId);
 	    String itemType = (item == null) ? "" : Objects.toString(item.get("ITEM_TYPE"), "");
 
-	    boolean isBagShop = MiniGameUtil.isBagShopItem(itemId);
-	    if (item == null || !("POTION".equalsIgnoreCase(itemType) || "MARKET".equalsIgnoreCase(itemType) || "MARKET2".equalsIgnoreCase(itemType) || isBagShop)) {
+	    boolean isBagShop  = MiniGameUtil.isBagShopItem(itemId);
+	    boolean isBossShop = (itemId >= 7000 && itemId < 8000);
+	    if (item == null || !("POTION".equalsIgnoreCase(itemType) || "MARKET".equalsIgnoreCase(itemType) || "MARKET2".equalsIgnoreCase(itemType) || isBagShop || isBossShop)) {
 	        return "구매할 수 없는 아이템입니다. (MARKET 유형만 구매 가능)";
 	    }
 
@@ -3075,6 +3084,54 @@ public class BossAttackController {
 	        inv.put("gainType", "BUY");
 	        botNewService.insertInventoryLogTx(inv);
 	        invalidateInvBuff(userName);
+	    } else if (isBossShop) {
+	        // 보스 아이템 상점: 10 GP 소모, 이미 보유 시 불가
+	        List<Integer> bossItemList;
+	        try { bossItemList = botNewService.selectBossItemIds(); }
+	        catch (Exception e) { return "보스 아이템 목록 조회 중 오류가 발생했습니다."; }
+	        if (bossItemList == null || !bossItemList.contains(itemId))
+	            return "구매할 수 없는 보스 아이템입니다: " + itemId;
+
+	        if (alreadyOwnedThisItem)
+	            return "이미 보유 중인 아이템입니다. [" + itemName + "]";
+
+	        double gp;
+	        try { gp = botNewService.selectGpBalance(userName); }
+	        catch (Exception e) { return "GP 조회 중 오류가 발생했습니다."; }
+	        if (gp < 10)
+	            return userName + "님, 보스 아이템 직접 구매에는 10 GP가 필요합니다.\n현재 GP: " + String.format("%.2f", gp) + " GP";
+
+	        try {
+	            HashMap<String, Object> gpDeduct = new HashMap<>();
+	            gpDeduct.put("userName", userName);
+	            gpDeduct.put("roomName", roomName);
+	            gpDeduct.put("score",   -10.0);
+	            gpDeduct.put("cmd",     "BOSS_BUY");
+	            botNewService.insertGpRecord(gpDeduct);
+	        } catch (Exception e) { return "GP 차감 중 오류가 발생했습니다."; }
+
+	        try {
+	            HashMap<String, Object> inv = new HashMap<>();
+	            inv.put("userName", userName);
+	            inv.put("roomName", roomName);
+	            inv.put("itemId",   itemId);
+	            inv.put("qty",      1);
+	            inv.put("delYn",    "0");
+	            inv.put("gainType", "BOSS_BUY");
+	            botNewService.insertInventoryLogTx(inv);
+	            invalidateInvBuff(userName);
+	        } catch (Exception e) {
+	            // 지급 실패 시 GP 복구
+	            try {
+	                HashMap<String, Object> gpR = new HashMap<>();
+	                gpR.put("userName", userName); gpR.put("roomName", roomName);
+	                gpR.put("score", 10.0); gpR.put("cmd", "BOSS_BUY_RESTORE");
+	                botNewService.insertGpRecord(gpR);
+	            } catch (Exception ignore) {}
+	            return "아이템 지급 중 오류가 발생했습니다.";
+	        }
+	        double afterGp = gp - 10;
+	        return "▶ 구매 완료\n" + userName + "님이 [" + itemName + "]을(를) 구매했습니다.\n(10 GP 소모, 잔여 GP: " + String.format("%.2f", afterGp) + " GP)";
 	    }
 
 	    // 결제 (포인트 차감 — 다중구매 모드이면 ThreadLocal 에 누적, 단건이면 즉시 처리)
@@ -3396,6 +3453,64 @@ public class BossAttackController {
 
 	
 	
+
+	private String buildBagShopMessage(String userName, String roomName) {
+	    long top1SpRaw = getTop1SpCached();
+	    SP p91 = MiniGameUtil.getBagPrice(91, top1SpRaw);
+	    SP p92 = MiniGameUtil.getBagPrice(92, top1SpRaw);
+	    SP p93 = MiniGameUtil.getBagPrice(93, top1SpRaw);
+	    StringBuilder sb = new StringBuilder();
+	    sb.append("■ 가방 상점").append(NL)
+	      .append("────────────────").append(NL)
+	      .append("[91] 일반가방  - ").append(p91).append("sp").append(NL)
+	      .append("[92] 나메가방  - ").append(p92).append("sp").append(NL)
+	      .append("[93] 헬가방    - ").append(p93).append("sp").append(NL)
+	      .append("────────────────").append(NL)
+	      .append("/구매 [91/92/93] 으로 구매").append(NL);
+	    return sb.toString();
+	}
+
+	private String buildBossItemShopMessage(String userName, String roomName) {
+	    List<Integer> bossItemIds;
+	    try { bossItemIds = botNewService.selectBossItemIds(); }
+	    catch (Exception e) { return "보스 아이템 목록 조회 중 오류가 발생했습니다."; }
+	    if (bossItemIds == null || bossItemIds.isEmpty())
+	        return "현재 구매 가능한 보스 아이템이 없습니다.";
+
+	    // 보유 목록
+	    Set<Integer> ownedSet = new HashSet<>();
+	    try {
+	        List<Integer> owned = botNewService.selectInventoryItemsByIds(userName, "", bossItemIds);
+	        if (owned != null) ownedSet.addAll(owned);
+	    } catch (Exception ignore) {}
+
+	    double gp = 0;
+	    try { gp = botNewService.selectGpBalance(userName); }
+	    catch (Exception ignore) {}
+
+	    StringBuilder sb = new StringBuilder();
+	    sb.append("■ 보스 아이템 상점 (10 GP)").append(NL)
+	      .append("────────────────").append(NL)
+	      .append("현재 GP: ").append(String.format("%.2f", gp)).append(" GP").append(NL)
+	      .append(NL);
+
+	    for (int id : bossItemIds) {
+	        boolean owned = ownedSet.contains(id);
+	        String name = "#" + id;
+	        try {
+	            HashMap<String,Object> detail = botNewService.selectItemDetailById(id);
+	            if (detail != null) name = Objects.toString(detail.get("ITEM_NAME"), name);
+	        } catch (Exception ignore) {}
+	        sb.append("[").append(id).append("] ").append(name)
+	          .append(" - 10 GP")
+	          .append(owned ? " ✓보유" : "").append(NL);
+	    }
+
+	    sb.append("────────────────").append(NL)
+	      .append("/구매 [아이템ID] 로 구매 (미보유 아이템만 가능)").append(NL);
+	    return sb.toString();
+	}
+
 	private String buildCustomMarketAllMessage(String userName, String roomName) {
 
 
@@ -3410,7 +3525,7 @@ public class BossAttackController {
 	        .append(" - /구매 목검,도씨검").append(NL)
 	        .append(NL)
 		    .append("■ 카테고리 바로가기").append(NL)
-		    .append(" - /구매 [전체, 신규 , 무기 , 투구 , 갑옷 , 반지 , 토템 , 행운 , 전설 , 날개 , 선물 , 물약]").append(NL)
+		    .append(" - /구매 [전체, 신규 , 무기 , 투구 , 갑옷 , 반지 , 토템 , 행운 , 전설 , 날개 , 선물 , 물약 , 가방 , 보스]").append(NL)
 		    .append(NL)
 		    .append("■ 카테고리 범위").append(NL);
 	      
