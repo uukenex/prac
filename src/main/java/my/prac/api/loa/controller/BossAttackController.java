@@ -94,7 +94,9 @@ public class BossAttackController {
 	private static final int BAG_ITEM_ID = 91;
 	private static final int BAG_NM_ITEM_ID = 92;
 	private static final int BAG_HELL_ITEM_ID = 93;
-	private static final double BAG_DROP_RATE = 0.035;//3.5%
+	private static final double BAG_DROP_RATE = 0.03; // 3% 고정
+	/** 가방 하루 최대 드랍 개수 (91+92+93 합산) */
+	private static final int BAG_DAILY_LIMIT = 35;
 	/** 가방 최대 보유 개수 설정 — 이 개수 이상 보유 중이면 드랍 즉시 자동 오픈 */
 	private static final int BAG_MAX_HOLD = 300;
 
@@ -284,59 +286,36 @@ public class BossAttackController {
 		StringBuilder sb = new StringBuilder();
 		java.text.SimpleDateFormat fmt = new java.text.SimpleDateFormat("MM-dd HH:mm");
 
-		// 0) 요청자(userName) 기준 현재 가방 드랍 확률
-		if (!userName.isEmpty() && !roomName.isEmpty()) {
+		// 0) 대상 유저 가방 확률 + 오늘 획득 현황
+		if (!targetUser.isEmpty() && !roomName.isEmpty()) {
 			try {
-				int todayBagCnt = botNewService.selectTodayBagCount(userName);
-				double pityMul;
-				String pityDesc;
-				if      (todayBagCnt < 3)  { pityMul = 3.0; pityDesc = "×3 (오늘 " + todayBagCnt + "개)"; }
-				else if (todayBagCnt < 5)  { pityMul = 2.0; pityDesc = "×2 (오늘 " + todayBagCnt + "개)"; }
-				else if (todayBagCnt < 10) { pityMul = 1.5; pityDesc = "×1.5 (오늘 " + todayBagCnt + "개)"; }
-				else                       { pityMul = 0.0; pityDesc = "한도초과"; }
+				// 오늘 전체 획득 수 (91+92+93 합산)
+				int todayTotal = botNewService.selectTodayBagCount(targetUser);
 
-				User reqUser = botNewService.selectUser(userName, roomName);
-				boolean isHell      = (reqUser != null && reqUser.nightmareYn == 2);
-				boolean isNightmare = (reqUser != null && reqUser.nightmareYn >= 1);
+				User tgtUser   = botNewService.selectUser(targetUser, roomName);
+				boolean isHell      = (tgtUser != null && tgtUser.nightmareYn == 2);
+				boolean isNightmare = (tgtUser != null && tgtUser.nightmareYn >= 1);
 
 				boolean hellCapHit = false;
 				if (isHell) {
-					int hellHeld = botNewService.selectBagCountByItemId(userName, roomName, BAG_HELL_ITEM_ID);
+					int hellHeld = botNewService.selectBagCountByItemId(targetUser, roomName, BAG_HELL_ITEM_ID);
 					if (hellHeld >= 10) hellCapHit = true;
 				}
 
-				sb.append("[ ").append(userName).append(" 가방 확률 ]").append(NL);
-				if (hellCapHit) {
+				sb.append("[ ").append(targetUser).append(" 가방 현황 ]").append(NL);
+				sb.append("- 오늘 획득: ").append(todayTotal).append("/").append(BAG_DAILY_LIMIT).append("개 (하루제한)").append(NL);
+
+				if (todayTotal >= BAG_DAILY_LIMIT) {
+					sb.append("- 드랍 없음 (한도 초과)").append(NL);
+				} else if (hellCapHit) {
 					sb.append("- 헬상자 10개↑ 보유 → 나메가방 1% 고정").append(NL);
-					sb.append("- 100회 공격 시 평균 1.0개 예상").append(NL);
-				} else if (pityMul == 0.0) {
-					sb.append("- 오늘 한도 초과 (").append(todayBagCnt).append("개) → 드랍 없음").append(NL);
 				} else {
-					double finalRate = BAG_DROP_RATE * pityMul;
-					double pct = finalRate * 100;
 					String bagType = isHell ? "헬상자" : (isNightmare ? "일반/나메가방" : "일반가방");
-					sb.append("- 드랍률: ").append(String.format("%.1f", pct)).append("% ").append(pityDesc).append(NL);
-					sb.append("- 종류: ").append(bagType);
+					sb.append("- 드랍률: 3.0% / ").append(bagType);
 					if (isNightmare && !isHell) sb.append(" (20% 확률로 나메가방)");
 					sb.append(NL);
-					sb.append("- 100회 공격 시 평균 ").append(String.format("%.1f", pct)).append("개 예상").append(NL);
 				}
 				sb.append(NL);
-			} catch (Exception ignore) {}
-		}
-
-		// 1) 대상 유저 오늘 획득 가방 수
-		if (!targetUser.isEmpty() && !roomName.isEmpty()) {
-			try {
-				HashMap<String,Object> todayCounts = botNewService.selectTodayBagCounts(targetUser, roomName);
-				if (todayCounts != null) {
-					long normalCnt = ((Number) todayCounts.getOrDefault("NORMAL_CNT", 0)).longValue();
-					long nmCnt     = ((Number) todayCounts.getOrDefault("NM_CNT",     0)).longValue();
-					long hellCnt   = ((Number) todayCounts.getOrDefault("HELL_CNT",   0)).longValue();
-					sb.append("[").append(targetUser).append("] 오늘 획득한 가방").append(NL);
-					sb.append("- 일반: ").append(normalCnt).append("개 / 나메: ").append(nmCnt).append("개 / 헬: ").append(hellCnt).append("개").append(NL);
-					sb.append(NL);
-				}
 			} catch (Exception ignore) {}
 		}
 
@@ -347,7 +326,7 @@ public class BossAttackController {
 			return sb.toString();
 		}
 
-		// 2) 가방 획득 로그
+		// 1) 가방 획득 로그
 		if (logs != null && !logs.isEmpty()) {
 			sb.append("최근 가방 획득 로그 ").append(NL);
 			for (BagLog log : logs) {
@@ -357,7 +336,7 @@ public class BossAttackController {
 			sb.append(NL);
 		}
 
-		// 3) 가방 보상 로그 (헬상자 아이템)
+		// 2) 가방 보상 로그 (헬상자 아이템)
 		if (rewards != null && !rewards.isEmpty()) {
 			sb.append("최근 가방 보상 로그 ").append(NL);
 			for (BagRewardLog r : rewards) {
@@ -5012,12 +4991,13 @@ public class BossAttackController {
 	        }
 	    }
 
-	    // 강제 드랍이 아닐 때만 확률 계산
+	    // 강제 드랍이 아닐 때만 확률 계산 (3% 고정, 하루 35개 한도)
 	    if (!forceNmBagDrop) {
-	        double pityMul = computeBagPityMultiplier(userName, roomName, buffRate);
-	        double finalRate = BAG_DROP_RATE * pityMul;
+	        int todayBagTotal = 0;
+	        try { todayBagTotal = botNewService.selectTodayBagCount(userName); } catch (Exception ignore) {}
+	        if (todayBagTotal >= BAG_DAILY_LIMIT) return ""; // 하루 35개 한도 초과
 
-	        if (ThreadLocalRandom.current().nextDouble() >= finalRate) {
+	        if (ThreadLocalRandom.current().nextDouble() >= BAG_DROP_RATE) {
 	            return "";
 	        }
 	    }
