@@ -270,7 +270,16 @@ public class BossAttackController {
 		String userName   = Objects.toString(map.get("userName"), "");
 		String roomName   = Objects.toString(map.get("roomName"), "");
 		String param1     = Objects.toString(map.get("param1"),   "").trim();
-		String targetUser = param1.isEmpty() ? userName : param1;
+		// param1 초성 검색 (calcUserBattleContext와 동일 패턴)
+		String targetUser = userName;
+		if (!param1.isEmpty()) {
+		    List<String> found = botNewService.selectParam1ToNewUserSearch(map);
+		    if (found != null && !found.isEmpty()) {
+		        targetUser = found.get(0);
+		    } else {
+		        return param1 + " 유저를 찾을 수 없습니다.";
+		    }
+		}
 
 		List<BagLog> logs = botNewService.selectRecentBagDrops();
 		List<BagRewardLog> rewards = botNewService.selectRecentBagRewards();
