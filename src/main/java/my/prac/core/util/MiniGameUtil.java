@@ -555,31 +555,37 @@ public class MiniGameUtil {
 
 	// ── 가방 상점 가격 (각 가방 최대 드랍치 × 2) ────────────────────────────
 	// 노말(91): max = top1Sp/500 (0.2%)  → 가격 = top1Sp/500*2 = top1Sp/250
-	// 나메(92) : max = min(top1Sp/200, 10b) → 가격 = min(top1Sp/200*2, 20b) = min(top1Sp/100, 20b)
-	// 헬(93)  : max = min(top1Sp/100, 1000b) → 가격 = min(top1Sp/100*2, 200b) = min(top1Sp/50, 200b)
+	// =====================================================
+	// 가방 상점 가격 공식 및 상한 (여기서 조정)
+	//   가격 = min(top1Sp / DIVISOR, MAX_RAW)
+	//   1 bsp = 100,000,000 raw
+	// =====================================================
+	/** 91 일반가방: top1/250, 상한 10 bsp */
+	public static final long BAG_PRICE_91_DIV = 250;
+	public static final long BAG_PRICE_91_MAX = 1_000_000_000L;   // 10 bsp
+
+	/** 92 나메가방: top1/100, 상한 20 bsp */
+	public static final long BAG_PRICE_92_DIV = 100;
+	public static final long BAG_PRICE_92_MAX = 2_000_000_000L;   // 20 bsp
+
+	/** 93 헬가방: top1/50, 상한 1000 bsp (변동가격 위주) */
+	public static final long BAG_PRICE_93_DIV = 50;
+	public static final long BAG_PRICE_93_MAX = 100_000_000_000L; // 1000 bsp
+
 	public static SP getBagPrice(int itemId, long top1SpRaw) {
 	    if (top1SpRaw <= 0) {
 	        // 기본값 (1등 데이터 없을 때)
 	        switch (itemId) {
-	            case 91: return SP.of(2_000_000L,    "");
-	            case 92: return SP.of(200_000_000L,  "");
-	            case 93: return SP.of(10_000_000_000L,"");
+	            case 91: return SP.of(2_000_000L,      "");
+	            case 92: return SP.of(200_000_000L,    "");
+	            case 93: return SP.of(10_000_000_000L, "");
 	            default: return SP.of(0, "");
 	        }
 	    }
 	    switch (itemId) {
-	        case 91: {
-	            long price = top1SpRaw / 250;
-	            return SP.fromSp(Math.max(price, 1));
-	        }
-	        case 92: {
-	            long price = Math.min(top1SpRaw / 100, 2_000_000_000L);
-	            return SP.fromSp(Math.max(price, 1));
-	        }
-	        case 93: {
-	            long price = Math.min(top1SpRaw / 50, 20_000_000_000L);
-	            return SP.fromSp(Math.max(price, 1));
-	        }
+	        case 91: return SP.fromSp(Math.max(Math.min(top1SpRaw / BAG_PRICE_91_DIV, BAG_PRICE_91_MAX), 1));
+	        case 92: return SP.fromSp(Math.max(Math.min(top1SpRaw / BAG_PRICE_92_DIV, BAG_PRICE_92_MAX), 1));
+	        case 93: return SP.fromSp(Math.max(Math.min(top1SpRaw / BAG_PRICE_93_DIV, BAG_PRICE_93_MAX), 1));
 	        default: return SP.of(0, "");
 	    }
 	}
