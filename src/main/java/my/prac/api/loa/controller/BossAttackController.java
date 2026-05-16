@@ -2791,6 +2791,52 @@ public class BossAttackController {
 	        return "구매할 수 없는 아이템입니다. (MARKET/POTION 유형만 구매 가능)";
 	    }
 
+	    // 가방 상점 아이템: qty번 일괄 구매
+	    if (MiniGameUtil.isBagShopItem(itemId)) {
+	        if (qty > 10) return "가방은 한 번에 최대 10개까지 구매 가능합니다. (요청: " + qty + "개)";
+	        long top1SpRaw = getTop1SpCached();
+	        SP unitPrice   = MiniGameUtil.getBagPrice(itemId, top1SpRaw);
+	        SP totalCost   = unitPrice.multiply(qty);
+	        HashMap<String,Object> bagPointRow = botNewService.selectCurrentPoint(userName, roomName);
+	        SP bagUserPoint = new SP(
+	            Double.parseDouble(Objects.toString(bagPointRow.get("SCORE"), "0")),
+	            Objects.toString(bagPointRow.get("SCORE_EXT"), "")
+	        );
+	        if (!bagUserPoint.canAfford(totalCost)) {
+	            return userName + "님, 포인트가 부족합니다. (단가: " + unitPrice + "sp x " + qty + " = " + totalCost + "sp, 보유: " + bagUserPoint + "sp)";
+	        }
+	        for (int i = 0; i < qty; i++) {
+	            HashMap<String, Object> inv = new HashMap<>();
+	            inv.put("userName", userName);
+	            inv.put("roomName", roomName);
+	            inv.put("itemId",   itemId);
+	            inv.put("qty",      1);
+	            inv.put("delYn",    "0");
+	            inv.put("gainType", "BUY");
+	            botNewService.insertInventoryLogTx(inv);
+	        }
+	        invalidateInvBuff(userName);
+	        SP[] bagTl = MULTI_BUY_COST_TL.get();
+	        if (bagTl != null) {
+	            bagTl[0] = bagTl[0].add(totalCost);
+	        } else {
+	            HashMap<String, Object> pr = new HashMap<>();
+	            pr.put("userName", userName); pr.put("roomName", roomName);
+	            pr.put("score",    -totalCost.getValue());
+	            pr.put("scoreExt", totalCost.getUnit());
+	            pr.put("cmd",      "BUY");
+	            botNewService.insertPointRank(pr);
+	        }
+	        SP bagAfterPoint = bagUserPoint.subtract(totalCost);
+	        try {
+	            HashMap<String,Object> bagAfterRow = botNewService.selectCurrentPoint(userName, roomName);
+	            bagAfterPoint = new SP(Double.parseDouble(Objects.toString(bagAfterRow.get("SCORE"), "0")), Objects.toString(bagAfterRow.get("SCORE_EXT"), ""));
+	        } catch (Exception ignore) {}
+	        return "▶ 가방 일괄 구매 완료" + NL
+	             + userName + "님, " + itemName + " " + qty + "개 구매했습니다." + NL
+	             + "소모: " + totalCost + "sp  잔여: " + bagAfterPoint + "sp";
+	    }
+
 	    // 물약 한 번에 최대 10개 제한
 	    if (qty > 10) {
 	        return "물약은 한 번에 최대 10개까지만 사용 가능합니다. (요청: " + qty + "개)";
