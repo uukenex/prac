@@ -8721,12 +8721,6 @@ public class BossAttackController {
 			    calc.endBattle = false;
 			    calc.patternMsg = "도망가는 적을 붙잡아 강력한 일격!" + rawAtkDmg*5 + " 피해";
 	        }
-	        if ("곰".equals(u.job) && flags.monPattern == 6) {
-	            calc.atkDmg = 0;
-	            calc.monDmg = 0;
-	            calc.endBattle = false;
-	            calc.patternMsg = "기절했지만 곰의 야성으로 버텼습니다!";
-	        }
 	        
 	        if ("복수자".equals(u.job)) {
 		        if (calc.monDmg > 0 && flags.monPattern == 2 || flags.monPattern == 4) {
