@@ -1824,7 +1824,6 @@
 	         , NVL(SUM(CASE WHEN ITEM_ID = 93 THEN NVL(QTY,1) ELSE 0 END), 0) AS HELL_CNT
 	      FROM TBOT_POINT_NEW_INVENTORY
 	     WHERE USER_NAME  = #{userName}
-	       AND ROOM_NAME  = #{roomName}
 	       AND ITEM_ID   IN (91, 92, 93)
 	       AND INSERT_DATE >= TRUNC(SYSDATE)
 	</select>

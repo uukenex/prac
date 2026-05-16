@@ -268,7 +268,6 @@ public class BossAttackController {
 
 	public String bagLog(HashMap<String, Object> map) {
 		String userName = Objects.toString(map.get("userName"), "");
-		String roomName = Objects.toString(map.get("roomName"), "");
 
 		List<BagLog> logs = botNewService.selectRecentBagDrops();
 		List<BagRewardLog> rewards = botNewService.selectRecentBagRewards();
@@ -277,9 +276,9 @@ public class BossAttackController {
 		java.text.SimpleDateFormat fmt = new java.text.SimpleDateFormat("MM-dd HH:mm");
 
 		// 0) 본인 오늘 획득 가방 수
-		if (!userName.isEmpty() && !roomName.isEmpty()) {
+		if (!userName.isEmpty() ) {
 			try {
-				HashMap<String,Object> todayCounts = botNewService.selectTodayBagCounts(userName, roomName);
+				HashMap<String,Object> todayCounts = botNewService.selectTodayBagCounts(userName, null);
 				if (todayCounts != null) {
 					long normalCnt = ((Number) todayCounts.getOrDefault("NORMAL_CNT", 0)).longValue();
 					long nmCnt     = ((Number) todayCounts.getOrDefault("NM_CNT",     0)).longValue();
