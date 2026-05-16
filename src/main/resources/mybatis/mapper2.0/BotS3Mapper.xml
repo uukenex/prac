@@ -183,7 +183,6 @@
 		     GROUP BY user_name
 		     ORDER BY SUM(atk_dmg) DESC
 		  ) A
-		 WHERE ROWNUM &lt;= 20
 	</select>
 
 	<!-- =====================================================
@@ -211,7 +210,6 @@
 		     GROUP BY user_name
 		     ORDER BY count(user_name) DESC
 		  ) A
-		 WHERE ROWNUM &lt;= 20
 	</select>
 
 	<!-- =====================================================
