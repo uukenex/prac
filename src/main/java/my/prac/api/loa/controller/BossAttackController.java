@@ -2786,8 +2786,8 @@ public class BossAttackController {
 	        return buySingleItem(roomName, userName, itemToken);
 	    }
 
-	    // POTION 외 미지원 타입
-	    if (!"POTION".equalsIgnoreCase(itemType)) {
+	    // POTION/가방 외 미지원 타입
+	    if (!"POTION".equalsIgnoreCase(itemType) && !MiniGameUtil.isBagShopItem(itemId)) {
 	        return "구매할 수 없는 아이템입니다. (MARKET/POTION 유형만 구매 가능)";
 	    }
 
