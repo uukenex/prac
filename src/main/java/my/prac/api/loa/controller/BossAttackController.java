@@ -1,4 +1,4 @@
-package my.prac.api.loa.controller;
+﻿package my.prac.api.loa.controller;
 
 
 import java.sql.Timestamp;
@@ -309,7 +309,9 @@ public class BossAttackController {
 			sb.append("최근 가방 보상 로그 ").append(NL);
 			for (BagRewardLog r : rewards) {
 				String when = (r.getInsertDate() != null ? fmt.format(r.getInsertDate()) : "-");
-				sb.append("- ").append(when).append(" : ").append(r.getUserName()).append("님이 ").append(r.getGain())
+				String stars = my.prac.core.util.MiniGameUtil.getBagRewardStars(r.getGainType());
+					String starPrefix = stars.isEmpty() ? "" : stars + " ";
+					sb.append("- ").append(when).append(" : ").append(r.getUserName()).append("님이 ").append(starPrefix).append(r.getGain())
 						.append(" 획득!").append(NL);
 			}
 		}
@@ -971,7 +973,7 @@ public class BossAttackController {
 	            int idx = ThreadLocalRandom.current().nextInt(rewardItemIds.size());
 	            int itemId = rewardItemIds.get(idx);
 
-	            giveBagItem(userName, roomName, itemId, itemSummary);
+	            giveBagItem(userName, roomName, itemId, itemSummary, bagItemId);
 
 	            // 중복 방지
 	            rewardItemIds.remove(idx);
@@ -1148,7 +1150,7 @@ public class BossAttackController {
 	    return sb.toString();
 	}
 
-	private void giveBagItem(String userName, String roomName, int itemId, List<String> itemSummary) {
+	private void giveBagItem(String userName, String roomName, int itemId, List<String> itemSummary, int sourceBagId) {
 
 		HashMap<String, Object> inv = new HashMap<>();
 		inv.put("userName", userName);
@@ -1156,7 +1158,7 @@ public class BossAttackController {
 		inv.put("itemId", itemId);
 		inv.put("qty", 1);
 		inv.put("delYn", "0");
-		inv.put("gainType", "BAG_OPEN");
+		inv.put("gainType", "BAG_OPEN_" + sourceBagId);
 
 		botNewService.insertInventoryLogTx(inv);
 		invalidateInvBuff(userName); // 가방 오픈 아이템 획득

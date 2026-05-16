@@ -12,6 +12,7 @@ public class BagRewardLog {
 	private String userName;
     private String roomName;
     private String gain;       // "1000 sp" 또는 "꿈의대검"
+    private String gainType;   // "BAG_OPEN_91", "BAG_OPEN_92", "HELL_BOX" 등
     private Date insertDate;
 
     public String getUserName() { return userName; }
@@ -22,6 +23,9 @@ public class BagRewardLog {
 
     public String getGain() { return gain; }
     public void setGain(String gain) { this.gain = gain; }
+
+    public String getGainType() { return gainType; }
+    public void setGainType(String gainType) { this.gainType = gainType; }
 
     public Date getInsertDate() { return insertDate; }
     public void setInsertDate(Date insertDate) { this.insertDate = insertDate; }

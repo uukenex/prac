@@ -1329,14 +1329,15 @@
 	    /* selectRecentBagRewards */
 	    SELECT *
 	    FROM (
-	        SELECT B.ITEM_NAME  AS gain,
-	               A.USER_NAME  AS userName,
-	               A.ROOM_NAME  AS roomName,
+	        SELECT B.ITEM_NAME   AS gain,
+	               A.GAIN_TYPE   AS gainType,
+	               A.USER_NAME   AS userName,
+	               A.ROOM_NAME   AS roomName,
 	               A.INSERT_DATE AS insertDate
 	          FROM TBOT_POINT_NEW_INVENTORY A
 	          JOIN TBOT_POINT_NEW_ITEM      B
 	            ON A.ITEM_ID   = B.ITEM_ID
-	         WHERE A.GAIN_TYPE = 'HELL_BOX'
+	         WHERE A.GAIN_TYPE IN ('HELL_BOX', 'BAG_OPEN_91', 'BAG_OPEN_92')
 	           AND A.ITEM_ID  >= 3000
 	           AND A.DEL_YN   = '0'
 	        ORDER BY insertDate DESC

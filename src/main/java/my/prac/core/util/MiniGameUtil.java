@@ -587,6 +587,27 @@ public class MiniGameUtil {
 	public static boolean isBagShopItem(int itemId) {
 	    return itemId == 91 || itemId == 92 || itemId == 93;
 	}
+
+	// =====================================================
+	// 가방 보상 로그 별(★) 표기 설정
+	// gainType → 별 개수 (1~5). 여기서 자유롭게 조정 가능.
+	// =====================================================
+	public static final Map<String, Integer> BAG_REWARD_STARS = new LinkedHashMap<>();
+	static {
+	    BAG_REWARD_STARS.put("BAG_OPEN_91", 1); // 일반가방
+	    BAG_REWARD_STARS.put("BAG_OPEN_92", 3); // 나메가방
+	    BAG_REWARD_STARS.put("HELL_BOX",    5); // 헬상자
+	}
+
+	/** gainType에 해당하는 ★ 문자열 반환. 설정 없으면 빈 문자열. */
+	public static String getBagRewardStars(String gainType) {
+	    if (gainType == null) return "";
+	    int cnt = BAG_REWARD_STARS.getOrDefault(gainType, 0);
+	    if (cnt <= 0) return "";
+	    StringBuilder sb = new StringBuilder();
+	    for (int i = 0; i < cnt; i++) sb.append("★");
+	    return sb.toString();
+	}
 	
 	static {
 
