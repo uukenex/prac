@@ -2905,7 +2905,8 @@ public class BossAttackController {
 	    HashMap<String, Object> item = getItemDetailCached(itemId);
 	    String itemType = (item == null) ? "" : Objects.toString(item.get("ITEM_TYPE"), "");
 
-	    if (item == null || !("POTION".equalsIgnoreCase(itemType) || "MARKET".equalsIgnoreCase(itemType) || "MARKET2".equalsIgnoreCase(itemType) || "BAG_SHOP".equalsIgnoreCase(itemType))) {
+	    boolean isBagShop = MiniGameUtil.isBagShopItem(itemId);
+	    if (item == null || !("POTION".equalsIgnoreCase(itemType) || "MARKET".equalsIgnoreCase(itemType) || "MARKET2".equalsIgnoreCase(itemType) || isBagShop)) {
 	        return "구매할 수 없는 아이템입니다. (MARKET 유형만 구매 가능)";
 	    }
 
@@ -3054,7 +3055,7 @@ public class BossAttackController {
 	                potionMsg = potionMsg + NL + potionAchvMsg;
 	            }
 	        } catch (Exception ignore) {}
-	    } else if ("BAG_SHOP".equalsIgnoreCase(itemType)) {
+	    } else if (isBagShop) {
 	        // 가방 상점: 동적 가격 (각 가방 최대드랍치 × 4)
 	        long top1SpRaw = getTop1SpCached();
 	        itemPrice = MiniGameUtil.getBagPrice(itemId, top1SpRaw);
