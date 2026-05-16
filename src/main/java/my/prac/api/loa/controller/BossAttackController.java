@@ -267,7 +267,10 @@ public class BossAttackController {
 	*/
 
 	public String bagLog(HashMap<String, Object> map) {
-		String userName = Objects.toString(map.get("userName"), "");
+		String userName   = Objects.toString(map.get("userName"), "");
+		String roomName   = Objects.toString(map.get("roomName"), "");
+		String param1     = Objects.toString(map.get("param1"),   "").trim();
+		String targetUser = param1.isEmpty() ? userName : param1;
 
 		List<BagLog> logs = botNewService.selectRecentBagDrops();
 		List<BagRewardLog> rewards = botNewService.selectRecentBagRewards();
@@ -275,15 +278,15 @@ public class BossAttackController {
 		StringBuilder sb = new StringBuilder();
 		java.text.SimpleDateFormat fmt = new java.text.SimpleDateFormat("MM-dd HH:mm");
 
-		// 0) 본인 오늘 획득 가방 수
-		if (!userName.isEmpty() ) {
+		// 0) 오늘 획득 가방 수 (대상 유저)
+		if (!targetUser.isEmpty() && !roomName.isEmpty()) {
 			try {
-				HashMap<String,Object> todayCounts = botNewService.selectTodayBagCounts(userName, null);
+				HashMap<String,Object> todayCounts = botNewService.selectTodayBagCounts(targetUser, roomName);
 				if (todayCounts != null) {
 					long normalCnt = ((Number) todayCounts.getOrDefault("NORMAL_CNT", 0)).longValue();
 					long nmCnt     = ((Number) todayCounts.getOrDefault("NM_CNT",     0)).longValue();
 					long hellCnt   = ((Number) todayCounts.getOrDefault("HELL_CNT",   0)).longValue();
-					sb.append("[").append(userName).append("] 오늘 획득한 가방").append(NL);
+					sb.append("[").append(targetUser).append("] 오늘 획득한 가방").append(NL);
 					sb.append("- 일반: ").append(normalCnt).append("개 / 나메: ").append(nmCnt).append("개 / 헬: ").append(hellCnt).append("개").append(NL);
 					sb.append(NL);
 				}

@@ -893,10 +893,18 @@ public class BossAttackS3Controller {
             List<String> boxWinners = pickWinners(allNames, winnerCount, rand);
             Set<String> boxWinnerSet = new HashSet<>(boxWinners);
 
+            // 당첨자별 지급 수량 결정 (1~2개 랜덤)
+            Map<String, Integer> boxQtyMap = new LinkedHashMap<>();
+            for (String winner : boxWinners) {
+                boxQtyMap.put(winner, 1 + rand.nextInt(2)); // 1 또는 2
+            }
+
             // 추첨 결과 표시
             msg.append(NL);
             for (int w = 0; w < boxWinners.size(); w++) {
-                msg.append("✨").append(w + 1).append("번 보상: [").append(boxWinners.get(w)).append("] 지옥의유물상자").append(NL);
+                String winner = boxWinners.get(w);
+                int qty = boxQtyMap.get(winner);
+                msg.append("✨").append(w + 1).append("번 보상: [").append(winner).append("] 지옥의유물상자 ").append(qty).append("개").append(NL);
             }
             msg.append(NL);
 
@@ -905,7 +913,7 @@ public class BossAttackS3Controller {
                 String uName = allNames.get(i);
                 boolean isWin = boxWinnerSet.contains(uName);
                 msg.append(i + 1).append(". ").append(uName);
-                if (isWin) msg.append(" < 지옥의유물상자 당첨!");
+                if (isWin) msg.append(" < 지옥의유물상자 ").append(boxQtyMap.get(uName)).append("개 당첨!");
                 else       msg.append(" < 0.2 GP");
                 msg.append(NL);
             }
@@ -917,7 +925,7 @@ public class BossAttackS3Controller {
                     inv.put("userName", winner);
                     inv.put("roomName", roomName);
                     inv.put("itemId",   93);
-                    inv.put("qty",      1);
+                    inv.put("qty",      boxQtyMap.get(winner));
                     inv.put("gainType", "BOSS_HELL");
                     botNewService.insertInventoryLogTx(inv);
                 } catch (Exception e) { /* 지급 실패 무시 */ }
