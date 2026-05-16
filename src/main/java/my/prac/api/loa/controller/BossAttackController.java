@@ -267,15 +267,33 @@ public class BossAttackController {
 	*/
 
 	public String bagLog(HashMap<String, Object> map) {
+		String userName = Objects.toString(map.get("userName"), "");
+		String roomName = Objects.toString(map.get("roomName"), "");
+
 		List<BagLog> logs = botNewService.selectRecentBagDrops();
 		List<BagRewardLog> rewards = botNewService.selectRecentBagRewards();
 
-		if ((logs == null || logs.isEmpty()) && (rewards == null || rewards.isEmpty())) {
-			return "";
-		}
-
 		StringBuilder sb = new StringBuilder();
 		java.text.SimpleDateFormat fmt = new java.text.SimpleDateFormat("MM-dd HH:mm");
+
+		// 0) 본인 오늘 획득 가방 수
+		if (!userName.isEmpty() && !roomName.isEmpty()) {
+			try {
+				HashMap<String,Object> todayCounts = botNewService.selectTodayBagCounts(userName, roomName);
+				if (todayCounts != null) {
+					long normalCnt = ((Number) todayCounts.getOrDefault("NORMAL_CNT", 0)).longValue();
+					long nmCnt     = ((Number) todayCounts.getOrDefault("NM_CNT",     0)).longValue();
+					long hellCnt   = ((Number) todayCounts.getOrDefault("HELL_CNT",   0)).longValue();
+					sb.append("[").append(userName).append("] 오늘 획득한 가방").append(NL);
+					sb.append("- 일반: ").append(normalCnt).append("개 / 나메: ").append(nmCnt).append("개 / 헬: ").append(hellCnt).append("개").append(NL);
+					sb.append(NL);
+				}
+			} catch (Exception ignore) {}
+		}
+
+		if ((logs == null || logs.isEmpty()) && (rewards == null || rewards.isEmpty())) {
+			return sb.toString();
+		}
 
 		// 1) 가방 획득 로그 (기존)
 		if (logs != null && !logs.isEmpty()) {

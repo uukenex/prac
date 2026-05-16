@@ -199,6 +199,7 @@ public interface BotNewService {
     public int updateRandomBlessUser(String attacker,int count) ;
     public void clearBlessYn(String userName) ;
     
+    HashMap<String,Object> selectTodayBagCounts(String userName, String roomName);
     int selectBagCountByItemId(String userName, String roomName, int itemId);
     int consumeBagBulkByItemIdTx(String userName, String roomName, int itemId, int count);
     

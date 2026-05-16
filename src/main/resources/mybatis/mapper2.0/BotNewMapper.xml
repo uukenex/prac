@@ -1816,6 +1816,19 @@
 	     WHERE USER_NAME = #{userName}
 	</update>
 	
+	<!-- 오늘(TRUNC(SYSDATE)) 이후 획득한 가방(91/92/93) 종류별 합계 -->
+	<select id="selectTodayBagCounts" parameterType="hashmap" resultType="hashmap">
+	    /* selectTodayBagCounts */
+	    SELECT NVL(SUM(CASE WHEN ITEM_ID = 91 THEN NVL(QTY,1) ELSE 0 END), 0) AS NORMAL_CNT
+	         , NVL(SUM(CASE WHEN ITEM_ID = 92 THEN NVL(QTY,1) ELSE 0 END), 0) AS NM_CNT
+	         , NVL(SUM(CASE WHEN ITEM_ID = 93 THEN NVL(QTY,1) ELSE 0 END), 0) AS HELL_CNT
+	      FROM TBOT_POINT_NEW_INVENTORY
+	     WHERE USER_NAME  = #{userName}
+	       AND ROOM_NAME  = #{roomName}
+	       AND ITEM_ID   IN (91, 92, 93)
+	       AND INSERT_DATE >= TRUNC(SYSDATE)
+	</select>
+
 	<select id="selectBagCountByItemId"
 	        parameterType="hashmap"
 	        resultType="int">
