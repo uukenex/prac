@@ -594,9 +594,9 @@ public class MiniGameUtil {
 	// =====================================================
 	public static final Map<String, Integer> BAG_REWARD_STARS = new LinkedHashMap<>();
 	static {
-	    BAG_REWARD_STARS.put("BAG_OPEN_91", 1); // 일반가방
-	    BAG_REWARD_STARS.put("BAG_OPEN_92", 3); // 나메가방
-	    BAG_REWARD_STARS.put("HELL_BOX",    5); // 헬상자
+	    BAG_REWARD_STARS.put("HELL_BOX",      1); // 헬상자 기본
+	    BAG_REWARD_STARS.put("HELL_BOX_GOLD", 3); // 헬상자 황금
+	    BAG_REWARD_STARS.put("HELL_BOX_PLAT", 5); // 헬상자 플래티넘
 	}
 
 	/** gainType에 해당하는 ★ 문자열 반환. 설정 없으면 빈 문자열. */

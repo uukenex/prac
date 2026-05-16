@@ -973,7 +973,7 @@ public class BossAttackController {
 	            int idx = ThreadLocalRandom.current().nextInt(rewardItemIds.size());
 	            int itemId = rewardItemIds.get(idx);
 
-	            giveBagItem(userName, roomName, itemId, itemSummary, bagItemId);
+	            giveBagItem(userName, roomName, itemId, itemSummary);
 
 	            // 중복 방지
 	            rewardItemIds.remove(idx);
@@ -1150,7 +1150,7 @@ public class BossAttackController {
 	    return sb.toString();
 	}
 
-	private void giveBagItem(String userName, String roomName, int itemId, List<String> itemSummary, int sourceBagId) {
+	private void giveBagItem(String userName, String roomName, int itemId, List<String> itemSummary) {
 
 		HashMap<String, Object> inv = new HashMap<>();
 		inv.put("userName", userName);
@@ -1158,7 +1158,7 @@ public class BossAttackController {
 		inv.put("itemId", itemId);
 		inv.put("qty", 1);
 		inv.put("delYn", "0");
-		inv.put("gainType", "BAG_OPEN_" + sourceBagId);
+		inv.put("gainType", "BAG_OPEN");
 
 		botNewService.insertInventoryLogTx(inv);
 		invalidateInvBuff(userName); // 가방 오픈 아이템 획득
@@ -1229,7 +1229,8 @@ public class BossAttackController {
 	                    HashMap<String,Object> pInv = new HashMap<>();
 	                    pInv.put("userName", userName); pInv.put("roomName", roomName);
 	                    pInv.put("itemId",   entry.itemId); pInv.put("qty", entry.value);
-	                    pInv.put("delYn",    pendingDelYn); pInv.put("gainType", "HELL_BOX");
+		                             String hellTierType = (pool == my.prac.core.util.MiniGameUtil.HELL_BOX_PLAT) ? "HELL_BOX_PLAT" : "HELL_BOX_GOLD";
+	                             pInv.put("delYn",    pendingDelYn); pInv.put("gainType", hellTierType);
 	                    try { botNewService.insertInventoryLogTx(pInv); } catch (Exception ignore) {}
 	                    String dramatic = (pool == my.prac.core.util.MiniGameUtil.HELL_BOX_PLAT)
 	                            ? "✨ 플래티넘 각인이 빛을 발하고 있습니다!! ✨"

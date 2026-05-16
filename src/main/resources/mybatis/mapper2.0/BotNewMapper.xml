@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="my.prac.core.prjbot.dao.BotNewDAO">
 
@@ -1337,7 +1337,7 @@
 	          FROM TBOT_POINT_NEW_INVENTORY A
 	          JOIN TBOT_POINT_NEW_ITEM      B
 	            ON A.ITEM_ID   = B.ITEM_ID
-	         WHERE A.GAIN_TYPE IN ('HELL_BOX', 'BAG_OPEN_91', 'BAG_OPEN_92')
+	         WHERE A.GAIN_TYPE IN ('HELL_BOX', 'HELL_BOX_GOLD', 'HELL_BOX_PLAT')
 	           AND A.ITEM_ID  >= 3000
 	           AND A.DEL_YN   = '0'
 	        ORDER BY insertDate DESC
@@ -1575,12 +1575,12 @@
 		  FROM (
 			SELECT ITEM_ID, QTY FROM TBOT_POINT_NEW_INVENTORY
 			 WHERE USER_NAME = #{userName}
-			   AND GAIN_TYPE = 'HELL_BOX'
+			   AND GAIN_TYPE IN ('HELL_BOX', 'HELL_BOX_GOLD', 'HELL_BOX_PLAT')
 			   AND DEL_YN = '0'
 			UNION ALL
 			SELECT ITEM_ID, QTY FROM TBOT_POINT_NEW_INVENTORY_OLD
 			 WHERE USER_NAME = #{userName}
-			   AND GAIN_TYPE = 'HELL_BOX'
+			   AND GAIN_TYPE IN ('HELL_BOX', 'HELL_BOX_GOLD', 'HELL_BOX_PLAT')
 		  )
 		 GROUP BY ITEM_ID
 	</select>
