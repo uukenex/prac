@@ -553,31 +553,31 @@ public class MiniGameUtil {
 	    return itemId >= 1001 && itemId <= 1100;
 	}
 
-	// ── 가방 상점 가격 (각 가방 최대 드랍치 × 4) ────────────────────────────
-	// 노말(91): max = top1Sp/500 (0.2%)  → 가격 = top1Sp/125
-	// 나메(92) : max = min(top1Sp/200, 10b) → 가격 = min(top1Sp/50, 40b)
-	// 헬(93)  : max = min(top1Sp/100, 1000b) → 가격 = min(top1Sp/25, 4000b)
+	// ── 가방 상점 가격 (각 가방 최대 드랍치 × 2) ────────────────────────────
+	// 노말(91): max = top1Sp/500 (0.2%)  → 가격 = top1Sp/500*2 = top1Sp/250
+	// 나메(92) : max = min(top1Sp/200, 10b) → 가격 = min(top1Sp/200*2, 20b) = min(top1Sp/100, 20b)
+	// 헬(93)  : max = min(top1Sp/100, 1000b) → 가격 = min(top1Sp/100*2, 200b) = min(top1Sp/50, 200b)
 	public static SP getBagPrice(int itemId, long top1SpRaw) {
 	    if (top1SpRaw <= 0) {
 	        // 기본값 (1등 데이터 없을 때)
 	        switch (itemId) {
-	            case 91: return SP.of(4_000_000L,    "");
-	            case 92: return SP.of(400_000_000L,  "");
-	            case 93: return SP.of(20_000_000_000L,"");
+	            case 91: return SP.of(2_000_000L,    "");
+	            case 92: return SP.of(200_000_000L,  "");
+	            case 93: return SP.of(10_000_000_000L,"");
 	            default: return SP.of(0, "");
 	        }
 	    }
 	    switch (itemId) {
 	        case 91: {
-	            long price = top1SpRaw / 125;
+	            long price = top1SpRaw / 250;
 	            return SP.fromSp(Math.max(price, 1));
 	        }
 	        case 92: {
-	            long price = Math.min(top1SpRaw / 50, 40_000_000_000L);
+	            long price = Math.min(top1SpRaw / 100, 2_000_000_000L);
 	            return SP.fromSp(Math.max(price, 1));
 	        }
 	        case 93: {
-	            long price = Math.min(top1SpRaw / 25, 4_000_000_000_000L);
+	            long price = Math.min(top1SpRaw / 50, 20_000_000_000L);
 	            return SP.fromSp(Math.max(price, 1));
 	        }
 	        default: return SP.of(0, "");
