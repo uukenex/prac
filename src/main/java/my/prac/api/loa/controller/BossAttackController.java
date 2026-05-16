@@ -296,19 +296,11 @@ public class BossAttackController {
 				boolean isHell      = (tgtUser != null && tgtUser.nightmareYn == 2);
 				boolean isNightmare = (tgtUser != null && tgtUser.nightmareYn >= 1);
 
-				boolean hellCapHit = false;
-				if (isHell) {
-					int hellHeld = botNewService.selectBagCountByItemId(targetUser, roomName, BAG_HELL_ITEM_ID);
-					if (hellHeld >= 10) hellCapHit = true;
-				}
-
 				sb.append("[ ").append(targetUser).append(" 가방 현황 ]").append(NL);
 				sb.append("- 오늘 획득: ").append(todayTotal).append("/").append(BAG_DAILY_LIMIT).append("개 (하루제한)").append(NL);
 
 				if (todayTotal >= BAG_DAILY_LIMIT) {
 					sb.append("- 드랍 없음 (한도 초과)").append(NL);
-				} else if (hellCapHit) {
-					sb.append("- 헬상자 10개↑ 보유 → 나메가방 1% 고정").append(NL);
 				} else {
 					String bagType = isHell ? "헬상자" : (isNightmare ? "일반/나메가방" : "일반가방");
 					sb.append("- 드랍률: 3.0% / ").append(bagType);
@@ -5026,16 +5018,6 @@ public class BossAttackController {
 	    } catch (Exception ignore) {
 	    }
 
-	    // 헬모드 + 헬상자 10개 이상 → pity 무시, 1% 고정으로 나메가방
-	    if (hell && !forceNmBagDrop) {
-	        int hellBagCount = 0;
-	        try { hellBagCount = botNewService.selectBagCountByItemId(userName, roomName, BAG_HELL_ITEM_ID); } catch (Exception ignore) {}
-	        if (hellBagCount >= 10) {
-	            if (ThreadLocalRandom.current().nextDouble() >= 0.01) return ""; // 1% 고정
-	            forceNmBagDrop = true; // 나메가방 확정
-	            hell = false;          // 아래 hell 분기 스킵
-	        }
-	    }
 
 	    // 강제 드랍이 아닐 때만 확률 계산 (3% 고정, 하루 35개 한도)
 	    if (!forceNmBagDrop) {
@@ -5053,7 +5035,7 @@ public class BossAttackController {
 	        // 스페셜타임(나메가방 확정) → 헬모드여도 나메가방 우선
 	        bagItemId = BAG_NM_ITEM_ID;
 	    } else if (hell) {
-	        // 헬모드: 보유 10개 미만 → 지옥의유물상자 (10개 이상은 위에서 처리)
+	        // 헬모드: 지옥의유물상자
 	        bagItemId = BAG_HELL_ITEM_ID;
 	    } else if (nightmare && ThreadLocalRandom.current().nextDouble() < 0.20) {
 	        bagItemId = BAG_NM_ITEM_ID;
