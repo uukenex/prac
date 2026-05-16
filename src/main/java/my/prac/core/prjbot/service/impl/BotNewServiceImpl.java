@@ -663,7 +663,6 @@ public class BotNewServiceImpl implements BotNewService {
 
 
     @Override
-    @Override
     public HashMap<String,Object> selectTodayBagCounts(String userName, String roomName) {
         HashMap<String,Object> param = new HashMap<>();
         param.put("userName", userName);
