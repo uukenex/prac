@@ -552,6 +552,41 @@ public class MiniGameUtil {
 	public static boolean isInstantUseItem(int itemId){
 	    return itemId >= 1001 && itemId <= 1100;
 	}
+
+	// ── 가방 상점 가격 (각 가방 최대 드랍치 × 4) ────────────────────────────
+	// 노말(91): max = top1Sp/500 (0.2%)  → 가격 = top1Sp/125
+	// 나메(92) : max = min(top1Sp/200, 10b) → 가격 = min(top1Sp/50, 40b)
+	// 헬(93)  : max = min(top1Sp/100, 1000b) → 가격 = min(top1Sp/25, 4000b)
+	public static SP getBagPrice(int itemId, long top1SpRaw) {
+	    if (top1SpRaw <= 0) {
+	        // 기본값 (1등 데이터 없을 때)
+	        switch (itemId) {
+	            case 91: return SP.of(4_000_000L,    "");
+	            case 92: return SP.of(400_000_000L,  "");
+	            case 93: return SP.of(20_000_000_000L,"");
+	            default: return SP.of(0, "");
+	        }
+	    }
+	    switch (itemId) {
+	        case 91: {
+	            long price = top1SpRaw / 125;
+	            return SP.fromSp(Math.max(price, 1));
+	        }
+	        case 92: {
+	            long price = Math.min(top1SpRaw / 50, 40_000_000_000L);
+	            return SP.fromSp(Math.max(price, 1));
+	        }
+	        case 93: {
+	            long price = Math.min(top1SpRaw / 25, 4_000_000_000_000L);
+	            return SP.fromSp(Math.max(price, 1));
+	        }
+	        default: return SP.of(0, "");
+	    }
+	}
+
+	public static boolean isBagShopItem(int itemId) {
+	    return itemId == 91 || itemId == 92 || itemId == 93;
+	}
 	
 	static {
 
@@ -980,14 +1015,14 @@ public class MiniGameUtil {
 		}
 	}
 
-	/** 기본 상자 (90%) */
+	/** 기본 상자 (90%) */
 	public static final List<HellBoxEntry> HELL_BOX_BASIC = Arrays.asList(
 		new HellBoxEntry(3001, 1,  1, "ATK_MIN",  "최소공격력 +1"),
 		new HellBoxEntry(3002, 1,  1, "ATK_MAX",  "최대공격력 +1"),
 		new HellBoxEntry(3005, 1, 30, "HP_MAX",   "최대체력 +30")
 	);
 
-	/** 황금 상자 (9%) */
+	/** 황금 상자 (9%) */
 	public static final List<HellBoxEntry> HELL_BOX_GOLD = Arrays.asList(
 		new HellBoxEntry(3001, 2,  5, "ATK_MIN",      "최소공격력 +5"),
 		new HellBoxEntry(3002, 2,  5, "ATK_MAX",      "최대공격력 +5"),
@@ -1000,7 +1035,7 @@ public class MiniGameUtil {
 		new HellBoxEntry(3008, 2,  2, "CRIT_DMG",     "치명타피해 +2%")
 	);
 
-	/** 플래티넘 상자 (1%) */
+	/** 플래티넘 상자 (1%) */
 	public static final List<HellBoxEntry> HELL_BOX_PLAT = Arrays.asList(
 		new HellBoxEntry(3001, 3, 20, "ATK_MIN",      "최소공격력 +20"),
 		new HellBoxEntry(3002, 3, 20, "ATK_MAX",      "최대공격력 +20"),

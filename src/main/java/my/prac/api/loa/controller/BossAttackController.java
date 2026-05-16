@@ -2905,7 +2905,8 @@ public class BossAttackController {
 	    HashMap<String, Object> item = getItemDetailCached(itemId);
 	    String itemType = (item == null) ? "" : Objects.toString(item.get("ITEM_TYPE"), "");
 
-	    if (item == null || !("POTION".equalsIgnoreCase(itemType) || "MARKET".equalsIgnoreCase(itemType) || "MARKET2".equalsIgnoreCase(itemType))) {
+	    boolean isBagShop = MiniGameUtil.isBagShopItem(itemId);
+	    if (item == null || !("POTION".equalsIgnoreCase(itemType) || "MARKET".equalsIgnoreCase(itemType) || "MARKET2".equalsIgnoreCase(itemType) || isBagShop)) {
 	        return "구매할 수 없는 아이템입니다. (MARKET 유형만 구매 가능)";
 	    }
 
@@ -3054,8 +3055,27 @@ public class BossAttackController {
 	                potionMsg = potionMsg + NL + potionAchvMsg;
 	            }
 	        } catch (Exception ignore) {}
+	    } else if (isBagShop) {
+	        // 가방 상점: 동적 가격 (각 가방 최대드랍치 × 4)
+	        long top1SpRaw = getTop1SpCached();
+	        itemPrice = MiniGameUtil.getBagPrice(itemId, top1SpRaw);
+
+	        // 포인트 재확인 (동적 가격 기준)
+	        if (!userPoint.canAfford(itemPrice)) {
+	            return userName + "님, 포인트가 부족합니다. (가격: " + itemPrice + "sp, 보유: " + userPoint + "sp)";
+	        }
+
+	        // 인벤토리에 가방 추가
+	        HashMap<String, Object> inv = new HashMap<>();
+	        inv.put("userName", userName);
+	        inv.put("roomName", roomName);
+	        inv.put("itemId",   itemId);
+	        inv.put("qty",      1);
+	        inv.put("delYn",    "0");
+	        inv.put("gainType", "BUY");
+	        botNewService.insertInventoryLogTx(inv);
+	        invalidateInvBuff(userName);
 	    }
-	   
 
 	    // 결제 (포인트 차감 — 다중구매 모드이면 ThreadLocal 에 누적, 단건이면 즉시 처리)
 	    SP[] singleBuyTl = MULTI_BUY_COST_TL.get();
@@ -3703,9 +3723,10 @@ public class BossAttackController {
 			s.monAtk   *= NM_MUL_HP_ATK;
 			s.monLv    += s.hell ? HEL_ADD_MON_LV : NM_ADD_MON_LV;
 		}
-		s.lucky = (ob.luckyYn != null && ob.luckyYn == 1);
-		s.dark  = (ob.luckyYn != null && ob.luckyYn == 2);
-		s.gray  = (ob.luckyYn != null && ob.luckyYn == 3);
+		s.lucky  = (ob.luckyYn != null && ob.luckyYn == 1);
+		s.dark   = (ob.luckyYn != null && ob.luckyYn == 2);
+		s.gray   = (ob.luckyYn != null && ob.luckyYn == 3);
+		s.shadow = (ob.luckyYn != null && ob.luckyYn == 4);
 		if (s.dark) applyDarkMonsterScale(s);
 		s.monHpRemainBefore = Math.max(0, s.monMaxHp - ob.totalDealtDmg);
 		resolveKillCounts(s);
@@ -4813,11 +4834,12 @@ public class BossAttackController {
 	    }
 
 	    int bagItemId = BAG_ITEM_ID;
-	    if (hell) {
+	    if (forceNmBagDrop) {
+	        // 스페셜타임(나메가방 확정) → 헬모드여도 나메가방 우선
+	        bagItemId = BAG_NM_ITEM_ID;
+	    } else if (hell) {
 	        // 헬모드: 보유 10개 미만 → 지옥의유물상자 (10개 이상은 위에서 처리)
 	        bagItemId = BAG_HELL_ITEM_ID;
-	    } else if (forceNmBagDrop) {
-	        bagItemId = BAG_NM_ITEM_ID;
 	    } else if (nightmare && ThreadLocalRandom.current().nextDouble() < 0.20) {
 	        bagItemId = BAG_NM_ITEM_ID;
 	    }
@@ -6681,7 +6703,9 @@ public class BossAttackController {
 	    }
 
 	    int luckyYn=0;
-	    if(res.gray) {
+	    if(res.shadow) {
+	        luckyYn =4;
+	    }else if(res.gray) {
 	    	luckyYn =3;
 	    }else if(res.dark) {
 	    	luckyYn =2;

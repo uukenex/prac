@@ -1329,30 +1329,16 @@
 	    /* selectRecentBagRewards */
 	    SELECT *
 	    FROM (
-	        SELECT gain,
-	               userName,
-	               roomName,
-	               insertDate
-	        FROM (
-	            SELECT TO_CHAR(C.SCORE)  || ' ' || NVL(C.SCORE_EXT,'')|| '' AS gain,
-	                   C.USER_NAME               AS userName,
-	                   C.ROOM_NAME               AS roomName,
-	                   C.INSERT_DATE             AS insertDate
-	              FROM (SELECT USER_NAME, ROOM_NAME, SCORE, SCORE_EXT, INSERT_DATE, CMD, NEW_YN FROM TBOT_POINT_RANK UNION ALL SELECT USER_NAME, ROOM_NAME, SCORE, SCORE_EXT, INSERT_DATE, CMD, NEW_YN FROM TBOT_POINT_RANK_OLD) C
-	             WHERE C.NEW_YN = '1'
-	               AND C.CMD   = 'HELL_BOX_SP'
-	            UNION ALL
-	            SELECT B.ITEM_NAME              AS gain,
-	                   A.USER_NAME              AS userName,
-	                   A.ROOM_NAME              AS roomName,
-	                   A.INSERT_DATE            AS insertDate
-	              FROM TBOT_POINT_NEW_INVENTORY A
-	              JOIN TBOT_POINT_NEW_ITEM      B
-	                ON A.ITEM_ID   = B.ITEM_ID
-	             WHERE A.GAIN_TYPE = 'HELL_BOX'
-	               AND A.ITEM_ID  >= 3000
-	               AND A.DEL_YN   = '0'
-	        )
+	        SELECT B.ITEM_NAME  AS gain,
+	               A.USER_NAME  AS userName,
+	               A.ROOM_NAME  AS roomName,
+	               A.INSERT_DATE AS insertDate
+	          FROM TBOT_POINT_NEW_INVENTORY A
+	          JOIN TBOT_POINT_NEW_ITEM      B
+	            ON A.ITEM_ID   = B.ITEM_ID
+	         WHERE A.GAIN_TYPE = 'HELL_BOX'
+	           AND A.ITEM_ID  >= 3000
+	           AND A.DEL_YN   = '0'
 	        ORDER BY insertDate DESC
 	    )
 	    WHERE ROWNUM &lt;= 5
