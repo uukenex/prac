@@ -2797,16 +2797,14 @@ public class BossAttackController {
 	        if (!bagUserPoint.canAfford(totalCost)) {
 	            return userName + "님, 포인트가 부족합니다. (단가: " + unitPrice + "sp x " + qty + " = " + totalCost + "sp, 보유: " + bagUserPoint + "sp)";
 	        }
-	        for (int i = 0; i < qty; i++) {
-	            HashMap<String, Object> inv = new HashMap<>();
-	            inv.put("userName", userName);
-	            inv.put("roomName", roomName);
-	            inv.put("itemId",   itemId);
-	            inv.put("qty",      1);
-	            inv.put("delYn",    "0");
-	            inv.put("gainType", "BUY");
-	            botNewService.insertInventoryLogTx(inv);
-	        }
+	        HashMap<String, Object> inv = new HashMap<>();
+	        inv.put("userName", userName);
+	        inv.put("roomName", roomName);
+	        inv.put("itemId",   itemId);
+	        inv.put("qty",      qty);
+	        inv.put("delYn",    "0");
+	        inv.put("gainType", "BUY");
+	        botNewService.insertInventoryLogTx(inv);
 	        invalidateInvBuff(userName);
 	        SP[] bagTl = MULTI_BUY_COST_TL.get();
 	        if (bagTl != null) {
