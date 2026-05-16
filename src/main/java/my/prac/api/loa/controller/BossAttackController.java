@@ -2786,6 +2786,50 @@ public class BossAttackController {
 	        return buySingleItem(roomName, userName, itemToken);
 	    }
 
+	    // 가방 상점 아이템: qty번 일괄 구매
+	    if (MiniGameUtil.isBagShopItem(itemId)) {
+	        if (qty > 10) return "가방은 한 번에 최대 10개까지 구매 가능합니다. (요청: " + qty + "개)";
+	        long top1SpRaw = getTop1SpCached();
+	        SP unitPrice   = MiniGameUtil.getBagPrice(itemId, top1SpRaw);
+	        SP totalCost   = unitPrice.multiply(qty);
+	        // 포인트 확인
+	        HashMap<String,Object> bagPointRow = botNewService.selectCurrentPoint(userName, roomName);
+	        SP bagUserPoint = new SP(
+	            Double.parseDouble(Objects.toString(bagPointRow.get("SCORE"), "0")),
+	            Objects.toString(bagPointRow.get("SCORE_EXT"), "")
+	        );
+	        if (!bagUserPoint.canAfford(totalCost)) {
+	            return userName + "님, 포인트가 부족합니다.\n(단가: " + unitPrice + "sp × " + qty + " = " + totalCost + "sp, 보유: " + bagUserPoint + "sp)";
+	        }
+	        // qty번 인벤토리 추가
+	        for (int i = 0; i < qty; i++) {
+	            HashMap<String, Object> inv = new HashMap<>();
+	            inv.put("userName", userName);
+	            inv.put("roomName", roomName);
+	            inv.put("itemId",   itemId);
+	            inv.put("qty",      1);
+	            inv.put("delYn",    "0");
+	            inv.put("gainType", "BUY");
+	            botNewService.insertInventoryLogTx(inv);
+	        }
+	        invalidateInvBuff(userName);
+	        // 비용 누적 (다중구매 ThreadLocal) 또는 즉시 차감
+	        SP[] bagTl = MULTI_BUY_COST_TL.get();
+	        if (bagTl != null) {
+	            bagTl[0] = bagTl[0].add(totalCost);
+	        } else {
+	            HashMap<String, Object> pr = new HashMap<>();
+	            pr.put("userName", userName); pr.put("roomName", roomName);
+	            pr.put("score",    -totalCost.getValue());
+	            pr.put("scoreExt", totalCost.getUnit());
+	            pr.put("cmd",      "BUY");
+	            botNewService.insertPointRank(pr);
+	        }
+	        return "▶ 가방 일괄 구매 완료" + NL
+	             + userName + "님, " + itemName + " " + qty + "개 구매했습니다." + NL
+	             + "↘단가: " + unitPrice + "sp  합계: " + totalCost + "sp";
+	    }
+
 	    // POTION 외 미지원 타입
 	    if (!"POTION".equalsIgnoreCase(itemType)) {
 	        return "구매할 수 없는 아이템입니다. (MARKET/POTION 유형만 구매 가능)";
