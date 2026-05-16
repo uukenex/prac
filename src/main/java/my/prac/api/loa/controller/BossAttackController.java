@@ -2827,9 +2827,14 @@ public class BossAttackController {
 	            pr.put("cmd",      "BUY");
 	            botNewService.insertPointRank(pr);
 	        }
+	        SP bagAfterPoint = bagUserPoint.subtract(totalCost);
+	        try {
+	            HashMap<String,Object> bagAfterRow = botNewService.selectCurrentPoint(userName, roomName);
+	            bagAfterPoint = new SP(Double.parseDouble(Objects.toString(bagAfterRow.get("SCORE"), "0")), Objects.toString(bagAfterRow.get("SCORE_EXT"), ""));
+	        } catch (Exception ignore) {}
 	        return "▶ 가방 일괄 구매 완료" + NL
 	             + userName + "님, " + itemName + " " + qty + "개 구매했습니다." + NL
-	             + "단가: " + unitPrice + "sp  합계: " + totalCost + "sp";
+	             + "소모: " + totalCost + "sp  잔여: " + bagAfterPoint + "sp";
 	    }
 
 	    // 물약 한 번에 최대 10개 제한
