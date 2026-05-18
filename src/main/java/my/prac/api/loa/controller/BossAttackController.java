@@ -1032,33 +1032,89 @@ public class BossAttackController {
 	        return "❌ 출석 처리 중 오류가 발생했습니다.";
 	    }
 
-	    // 상자 2개 지급 (tier 결정: 플래티넘1%, 골드9%, 기본90%)
+	 // 상자 2개 지급 (tier 결정: 플래티넘1%, 골드9%, 기본90%)
 	    StringBuilder sb = new StringBuilder();
 	    sb.append(userName+"님, 출석체크 완료! 지옥의유물상자 2개 지급!").append(NL);
 	    sb.append("━━━━━━━━━━━━").append(NL);
 
-	    for (int i = 1; i <= 2; i++) {
-	        double roll = ThreadLocalRandom.current().nextDouble();
-	        String gainType;
-	        String tierLabel;
-	        if (roll < 0.01) {
-	            gainType  = "DROP_OPEN_P";
-	            tierLabel = "✨플래티넘각인상자 (개봉 대기)";
-	        } else if (roll < 0.10) {
-	            gainType  = "DROP_OPEN_G";
-	            tierLabel = "✨황금각인상자 (개봉 대기)";
-	        } else {
-	            gainType  = "ATTEND";
-	            tierLabel = "지옥의유물상자";
-	        }
-	        HashMap<String,Object> inv = new HashMap<>();
-	        inv.put("userName", userName); inv.put("roomName", roomName);
-	        inv.put("itemId", BAG_HELL_ITEM_ID); inv.put("qty", 1);
-	        inv.put("delYn", "0"); inv.put("gainType", gainType);
-	        try {
+	    // 1번째 상자
+	    double roll1 = ThreadLocalRandom.current().nextDouble();
+	    String gainType1;
+	    String tierLabel1;
+
+	    if (roll1 < 0.01) {
+	        gainType1  = "DROP_OPEN_P";
+	        tierLabel1 = "✨플래티넘각인상자 (개봉 대기)";
+	    } else if (roll1 < 0.10) {
+	        gainType1  = "DROP_OPEN_G";
+	        tierLabel1 = "✨황금각인상자 (개봉 대기)";
+	    } else {
+	        gainType1  = "ATTEND";
+	        tierLabel1 = "지옥의유물상자";
+	    }
+
+	    // 2번째 상자
+	    double roll2 = ThreadLocalRandom.current().nextDouble();
+	    String gainType2;
+	    String tierLabel2;
+
+	    if (roll2 < 0.01) {
+	        gainType2  = "DROP_OPEN_P";
+	        tierLabel2 = "✨플래티넘각인상자 (개봉 대기)";
+	    } else if (roll2 < 0.10) {
+	        gainType2  = "DROP_OPEN_G";
+	        tierLabel2 = "✨황금각인상자 (개봉 대기)";
+	    } else {
+	        gainType2  = "ATTEND";
+	        tierLabel2 = "지옥의유물상자";
+	    }
+
+	    // 출력
+	    sb.append("  상자1: ").append(tierLabel1).append(NL);
+	    sb.append("  상자2: ").append(tierLabel2).append(NL);
+
+	    try {
+
+	        // 같은 등급이면 qty=2
+	        if (gainType1.equals(gainType2)) {
+
+	            HashMap<String,Object> inv = new HashMap<>();
+	            inv.put("userName", userName);
+	            inv.put("roomName", roomName);
+	            inv.put("itemId", BAG_HELL_ITEM_ID);
+	            inv.put("qty", 2);
+	            inv.put("delYn", "0");
+	            inv.put("gainType", gainType1);
+
 	            botNewService.insertInventoryLogTx(inv);
-	        } catch (Exception e) { /* 지급 실패 무시 */ }
-	        sb.append("  상자").append(i).append(": ").append(tierLabel).append(NL);
+
+	        } else {
+
+	            // 첫번째
+	            HashMap<String,Object> inv1 = new HashMap<>();
+	            inv1.put("userName", userName);
+	            inv1.put("roomName", roomName);
+	            inv1.put("itemId", BAG_HELL_ITEM_ID);
+	            inv1.put("qty", 1);
+	            inv1.put("delYn", "0");
+	            inv1.put("gainType", gainType1);
+
+	            botNewService.insertInventoryLogTx(inv1);
+
+	            // 두번째
+	            HashMap<String,Object> inv2 = new HashMap<>();
+	            inv2.put("userName", userName);
+	            inv2.put("roomName", roomName);
+	            inv2.put("itemId", BAG_HELL_ITEM_ID);
+	            inv2.put("qty", 1);
+	            inv2.put("delYn", "0");
+	            inv2.put("gainType", gainType2);
+
+	            botNewService.insertInventoryLogTx(inv2);
+	        }
+
+	    } catch (Exception e) {
+	        /* 지급 실패 무시 */
 	    }
 
 	    sb.append("━━━━━━━━━━━━").append(NL);
