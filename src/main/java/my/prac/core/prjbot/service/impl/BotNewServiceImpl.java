@@ -696,6 +696,27 @@ public class BotNewServiceImpl implements BotNewService {
     }
 
 
+
+    @Override
+    public int selectBagCountByItemIdAndGainType(String userName, String roomName, int itemId, String gainType) {
+        HashMap<String,Object> param = new HashMap<>();
+        param.put("userName", userName);
+        param.put("roomName", roomName);
+        param.put("itemId",   itemId);
+        param.put("gainType", gainType);
+        return botNewDAO.selectBagCountByItemIdAndGainType(param);
+    }
+
+    @Override
+    public int consumeBagBulkByItemIdAndGainTypeTx(String userName, String roomName, int itemId, String gainType, int count) {
+        HashMap<String,Object> param = new HashMap<>();
+        param.put("userName", userName);
+        param.put("roomName", roomName);
+        param.put("itemId",   itemId);
+        param.put("gainType", gainType);
+        param.put("count",    count);
+        return botNewDAO.consumeBagBulkByItemIdAndGainType(param);
+    }
     public int selectTodayBagCount(String userName){
     	return botNewDAO.selectTodayBagCount(userName);
     }

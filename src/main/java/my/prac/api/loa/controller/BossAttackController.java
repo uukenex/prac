@@ -1066,6 +1066,8 @@ public class BossAttackController {
 	    int normalCount    = botNewService.selectBagCountByItemId(userName, roomName, 91);
 	    int nightmareCount = botNewService.selectBagCountByItemId(userName, roomName, 92);
 	    int hellCount      = botNewService.selectBagCountByItemId(userName, roomName, BAG_HELL_ITEM_ID);
+	    int hellEventCount = botNewService.selectBagCountByItemIdAndGainType(userName, roomName, BAG_HELL_ITEM_ID, "EVENT");
+	    int hellNormalCount = hellCount - hellEventCount;
 
 	    // ── 헬상자 오픈 권한 체크 (헬보스1회처치 업적 필요) ──────────────────
 	    if (hellCount > 0) {
@@ -1075,6 +1077,8 @@ public class BossAttackController {
 	                    return "❌ 지옥의 유물상자는 헬보스를 1회 이상 처치해야 열 수 있습니다.";
 	                }
 	                hellCount = 0; // 업적 없으면 헬 가방 제외, 일반/나메만 오픈
+	                hellEventCount = 0;
+	                hellNormalCount = 0;
 	            }
 	        } catch (Exception ignore) {}
 	    }
@@ -1090,8 +1094,12 @@ public class BossAttackController {
 	    if (nightmareCount > 0) {
 	        botNewService.consumeBagBulkByItemIdTx(userName, roomName, 92, nightmareCount);
 	    }
-	    if (hellCount > 0) {
-	        botNewService.consumeBagBulkByItemIdTx(userName, roomName, BAG_HELL_ITEM_ID, hellCount);
+	    // EVENT 타입 헬상자 먼저 소비 (그래야 일반 소비 시 겹치지 않음)
+	    if (hellEventCount > 0) {
+	        botNewService.consumeBagBulkByItemIdAndGainTypeTx(userName, roomName, BAG_HELL_ITEM_ID, "EVENT", hellEventCount);
+	    }
+	    if (hellNormalCount > 0) {
+	        botNewService.consumeBagBulkByItemIdTx(userName, roomName, BAG_HELL_ITEM_ID, hellNormalCount);
 	    }
 
 	    SP normalSP  = new SP(0, "");
@@ -1124,7 +1132,8 @@ public class BossAttackController {
 
 	    totalSP.add(normalSP); totalSP.add(nmSP); // hellSP는 openHellBag 후 합산
 	    SP hellSP = new SP(0, "");
-	    openHellBag(userName, roomName, hellCount, hellSP, detail, itemSummary);
+	    if (hellNormalCount > 0) openHellBag(userName, roomName, hellNormalCount, hellSP, detail, itemSummary, false);
+	    if (hellEventCount > 0)  openHellBag(userName, roomName, hellEventCount,  hellSP, detail, itemSummary, true);
 	    totalSP.add(hellSP);
 
 	    // 🔹 메시지
@@ -1191,14 +1200,14 @@ public class BossAttackController {
 	 * 95% SP / 5% 영구 스탯 상자 (기본90%/황금9%/플래티넘1%)
 	 */
 	private void openHellBag(String userName, String roomName, int count,
-	        SP totalSP, List<String> detail, List<String> itemSummary) {
+	        SP totalSP, List<String> detail, List<String> itemSummary, boolean noSp) {
 	    if (count <= 0) return;
 	    long top1Sp = getTop1SpCached();
 	    long spMin  = top1Sp > 0 ? top1Sp * 3 / 1000 : 1_000_000L;                          // 1등의 0.3%
 	    long spMax  = top1Sp > 0 ? Math.min(top1Sp / 100, 100_000_000_000L) : 5_000_000L;   // 1등의 1%, 최대 1000b
 	    for (int i = 0; i < count; i++) {
 	        double roll = ThreadLocalRandom.current().nextDouble();
-	        if (roll < 0.95) {
+	        if (!noSp && roll < 0.95) {
 	            // 95% → SP (HELL_BOX_SP CMD로 직접 저장)
 	            SP sp = pickBiasedSp(spMin, spMax);
 	            try {

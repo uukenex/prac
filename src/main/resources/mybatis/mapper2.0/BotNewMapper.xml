@@ -1868,6 +1868,29 @@
 	       AND NVL(GAIN_TYPE, 'DROP') NOT IN ('DROP_OPEN_G', 'DROP_OPEN_P')
 	       AND ROWNUM &lt;=  #{count}
 	</update>
+	<select id="selectBagCountByItemIdAndGainType"
+	        parameterType="hashmap"
+	        resultType="int">
+	    /* selectBagCountByItemIdAndGainType */
+	    SELECT NVL(SUM(QTY),0)
+	      FROM TBOT_POINT_NEW_INVENTORY
+	     WHERE USER_NAME = #{userName}
+	       AND ITEM_ID   = #{itemId}
+	       AND GAIN_TYPE = #{gainType}
+	       AND DEL_YN    = '0'
+	</select>
+	<update id="consumeBagBulkByItemIdAndGainType"
+	        parameterType="hashmap">
+	    /* consumeBagBulkByItemIdAndGainType */
+	    UPDATE TBOT_POINT_NEW_INVENTORY
+	       SET DEL_YN = '1'
+	     WHERE USER_NAME = #{userName}
+	       AND ITEM_ID   = #{itemId}
+	       AND GAIN_TYPE = #{gainType}
+	       AND DEL_YN    = '0'
+	       AND ROWNUM &lt;= #{count}
+	</update>
+	
 	
 	<select id="selectTodayBagCount"
 	        resultType="int">
