@@ -797,32 +797,32 @@ public class BossAttackController {
 	private String calculateHunterGrade(int totalAttacks, int totalDrops, int totalDeaths) {
 
 // ---------------- 상위 단독 등급 ----------------
-		if (totalAttacks >= 50000 && totalDrops >= 100000 && totalDeaths >= 1200) {
+		if (totalAttacks >= 50000 && totalDrops >= 50000 && totalDeaths >= 1000) {
 			return "SSS";
 		}
 
-		if (totalAttacks >= 40000 && totalDrops >= 50000 && totalDeaths >= 700) {
+		if (totalAttacks >= 30000 && totalDrops >= 30000 && totalDeaths >= 300) {
 			return "SS";
 		}
 
-		if (totalAttacks >= 30000 && totalDrops >= 30000 && totalDeaths >= 500) {
+		if (totalAttacks >= 20000 && totalDrops >= 20000 && totalDeaths >= 300) {
 			return "S";
 		}
 
 // ---------------- A/B/C/D 처리 ----------------
-		String grade = checkPlusGrade(totalAttacks, totalDrops, totalDeaths, 20000, 20000, 400, "A");
+		String grade = checkPlusGrade(totalAttacks, totalDrops, totalDeaths, 10000, 10000, 200, "A");
 		if (grade != null)
 			return grade;
 
-		grade = checkPlusGrade(totalAttacks, totalDrops, totalDeaths, 10000, 10000, 200, "B");
+		grade = checkPlusGrade(totalAttacks, totalDrops, totalDeaths, 5000, 5000, 100, "B");
 		if (grade != null)
 			return grade;
 
-		grade = checkPlusGrade(totalAttacks, totalDrops, totalDeaths, 5000, 5000, 100, "C");
+		grade = checkPlusGrade(totalAttacks, totalDrops, totalDeaths, 3000, 3000, 50, "C");
 		if (grade != null)
 			return grade;
 
-		grade = checkPlusGrade(totalAttacks, totalDrops, totalDeaths, 1000, 1000, 50, "D");
+		grade = checkPlusGrade(totalAttacks, totalDrops, totalDeaths, 1000, 1000, 30, "D");
 		if (grade != null)
 			return grade;
 
