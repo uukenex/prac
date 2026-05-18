@@ -112,7 +112,7 @@
   <a class="loa-nav-item" data-page="achievement"  href="#">🏆 업적</a>
   <a class="loa-nav-item" data-page="battle-log"  href="#">📜 배틀로그</a>
   <a class="loa-nav-item" data-page="ranking"     href="#">🏆 랭킹</a>
-  <a class="loa-nav-item" data-page="equip-sim"   href="#">🔬 장비시뮬</a>
+  <%-- <a class="loa-nav-item" data-page="equip-sim"   href="#">🔬 장비시뮬</a> --%>
   <a class="loa-nav-item" data-page="boss-status" href="#">🐉 보스현황</a>
   <a class="loa-nav-item" data-page="dmg-sim"    href="#">⚔️ 데미지시뮬</a>
   <a class="loa-nav-item" data-page="equip-rank" href="#">📊 장비랭킹</a>
@@ -137,7 +137,7 @@
 
   // 현재 페이지 하이라이트
   var path = window.location.pathname;
-  ['user-info', 'monster', 'item', 'job', 'hunter-rank', 'achievement', 'battle-log', 'ranking', 'equip-sim', 'boss-status', 'dmg-sim', 'equip-rank'].forEach(function (page) {
+  ['user-info', 'monster', 'item', 'job', 'hunter-rank', 'achievement', 'battle-log', 'ranking', 'boss-status', 'dmg-sim', 'equip-rank'].forEach(function (page) {
     if (path.indexOf(page) !== -1) {
       var el = document.querySelector('.loa-nav-item[data-page="' + page + '"]');
       if (el) el.classList.add('active');

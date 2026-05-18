@@ -383,6 +383,10 @@
 	
 	    /* 🔹 기존 이름 가공 로직 유지 */
 	    CASE 
+	      WHEN NVL(inv.gain_type,'DROP') = 'DROP_OPEN_P'
+	        THEN '✨플래티넘유물상자'
+	      WHEN NVL(inv.gain_type,'DROP') = 'DROP_OPEN_G'
+	        THEN '✨황금유물상자'
 	      WHEN NVL(inv.gain_type,'DROP') = 'DROP3'
 	        THEN '빛' || NVL(i.item_name, '알 수 없음')
 	      WHEN NVL(inv.gain_type,'DROP') = 'DROP5'
@@ -432,6 +436,10 @@
 	GROUP BY
 	    i.item_id, -1,
 	    CASE
+	      WHEN NVL(inv.gain_type,'DROP') = 'DROP_OPEN_P'
+	        THEN '✨플래티넘유물상자'
+	      WHEN NVL(inv.gain_type,'DROP') = 'DROP_OPEN_G'
+	        THEN '✨황금유물상자'
 	      WHEN NVL(inv.gain_type,'DROP') = 'DROP3'
 	        THEN '빛' || NVL(i.item_name, '알 수 없음')
 	      WHEN NVL(inv.gain_type,'DROP') = 'DROP5'
@@ -1586,45 +1594,46 @@
 	</select>
 	<select id="selectPendingHellBox" parameterType="String" resultType="hashmap">
 		/* selectPendingHellBox */
-		SELECT ITEM_ID, QTY, DEL_YN
+		SELECT ITEM_ID, QTY, DEL_YN, GAIN_TYPE
 		  FROM (
-		      SELECT ITEM_ID, QTY, DEL_YN
+		      SELECT ITEM_ID, QTY, DEL_YN, GAIN_TYPE
 		        FROM TBOT_POINT_NEW_INVENTORY
 		       WHERE USER_NAME = #{userName}
-		         AND GAIN_TYPE = 'HELL_BOX'
-		         AND DEL_YN    IN ('2','3')
+		         AND ITEM_ID   = 93
+		         AND GAIN_TYPE IN ('DROP_OPEN_G', 'DROP_OPEN_P')
+		         AND DEL_YN    = '0'
 		       ORDER BY INSERT_DATE ASC
 		  )
 		 WHERE ROWNUM = 1
 	</select>
 	<update id="upgradePendingHellBox" parameterType="hashmap">
-		/* upgradePendingHellBox: gold(DEL_YN=2) -> plat(DEL_YN=3) with new entry */
+		/* upgradePendingHellBox: gold(DROP_OPEN_G) -> plat(DROP_OPEN_P) */
 		UPDATE TBOT_POINT_NEW_INVENTORY
-		   SET DEL_YN  = '3',
-		       ITEM_ID = #{newItemId},
-		       QTY     = #{newQty}
+		   SET GAIN_TYPE = 'DROP_OPEN_P'
 		 WHERE ROWID = (
 		     SELECT RID FROM (
 		         SELECT ROWID AS RID
 		           FROM TBOT_POINT_NEW_INVENTORY
 		          WHERE USER_NAME = #{userName}
-		            AND GAIN_TYPE = 'HELL_BOX'
-		            AND DEL_YN    = '2'
+		            AND ITEM_ID   = 93
+		            AND GAIN_TYPE = 'DROP_OPEN_G'
+		            AND DEL_YN    = '0'
 		          ORDER BY INSERT_DATE ASC
 		     ) WHERE ROWNUM = 1
 		 )
 	</update>
 	<update id="confirmPendingHellBox" parameterType="String">
-		/* confirmPendingHellBox: pending(2/3) -> confirmed(0) */
+		/* confirmPendingHellBox: pending box 소비 (DEL_YN '0' -> '1') */
 		UPDATE TBOT_POINT_NEW_INVENTORY
-		   SET DEL_YN = '0'
+		   SET DEL_YN = '1'
 		 WHERE ROWID = (
 		     SELECT RID FROM (
 		         SELECT ROWID AS RID
 		           FROM TBOT_POINT_NEW_INVENTORY
 		          WHERE USER_NAME = #{userName}
-		            AND GAIN_TYPE = 'HELL_BOX'
-		            AND DEL_YN    IN ('2','3')
+		            AND ITEM_ID   = 93
+		            AND GAIN_TYPE IN ('DROP_OPEN_G', 'DROP_OPEN_P')
+		            AND DEL_YN    = '0'
 		          ORDER BY INSERT_DATE ASC
 		     ) WHERE ROWNUM = 1
 		 )
@@ -1839,6 +1848,7 @@
 	           WHERE USER_NAME = #{userName}
 	             AND ITEM_ID   = #{itemId}
 	             AND DEL_YN    = '0'
+	             AND NVL(GAIN_TYPE, 'DROP') NOT IN ('DROP_OPEN_G', 'DROP_OPEN_P')
 	          UNION ALL
 	          SELECT QTY FROM TBOT_POINT_NEW_INVENTORY_OLD
 	           WHERE USER_NAME = #{userName}
@@ -1855,6 +1865,7 @@
 	     WHERE USER_NAME = #{userName}
 	       AND ITEM_ID   = #{itemId}
 	       AND DEL_YN    = '0'
+	       AND NVL(GAIN_TYPE, 'DROP') NOT IN ('DROP_OPEN_G', 'DROP_OPEN_P')
 	       AND ROWNUM &lt;=  #{count}
 	</update>
 	
