@@ -7892,7 +7892,6 @@ public class BossAttackController {
 	    int totalKills = 0;
 	    int totalNmKills = 0;
 	    int totalHellKills = 0;
-    int totalShadowKills = 0;
 
 	    int[] perMonThresholds = buildKillThresholds(AchievementConfig.KILL_PER_MON_MAX);
 
@@ -7902,7 +7901,6 @@ public class BossAttackController {
 	        totalKills += kills;
 	        totalNmKills += ks.nmKillCount;
 	        totalHellKills += ks.hellKillCount;
-        totalShadowKills += ks.shadowKillCount;
 
 	        for (int th : perMonThresholds) {
 	            if (kills < th) break;
@@ -7967,22 +7965,6 @@ public class BossAttackController {
 	        );
 	    }
 
-
-    int[] shadowThresholds = buildKillThresholds(AchievementConfig.KILL_SHADOW_MAX);
-    for (int th : shadowThresholds) {
-        if (totalShadowKills < th) break;
-
-        String cmd = "ACHV_KILL_SHADOW_TOTAL_" + th;
-        if (achievedCmdSet.contains(cmd)) continue;
-
-        int reward = calcTotalKillReward(th, true);
-
-        sb.append(
-            grantOnceIfEligibleFast(
-                userName, roomName, cmd, reward, achievedCmdSet
-            )
-        );
-    }
 	    return sb.toString();
 	}
 
@@ -8000,6 +7982,12 @@ public class BossAttackController {
 	        }
 	    }
 	    /*
+	    int shadowQty = counts != null ? ((Number) counts.getOrDefault("SHADOW_KILL_COUNT", 0)).intValue() : 0;
+	    if (shadowQty > 0) {
+	        HashMap<String,Object> shadowRow = new HashMap<>();
+	        shadowRow.put("GAIN_TYPE", AchievementConfig.ITEM_TYPE_SHADOW);
+	        shadowRow.put("TOTAL_QTY", shadowQty);
+	        list.add(shadowRow);
 	    }
 	    */
 	    return list;
@@ -8012,7 +8000,7 @@ public class BossAttackController {
 	        List<HashMap<String, Object>> gainRows   // [PERF] 호출부에서 프리로드
 	) {
 	    // 타입별 획득 수량 집계
-    int lightTotal = 0, darkTotal = 0, grayTotal = 0;
+    int lightTotal = 0, darkTotal = 0, grayTotal = 0, shadowTotal = 0;
 	    if (gainRows != null) {
 	        for (HashMap<String, Object> row : gainRows) {
 	            String type = Objects.toString(row.get("GAIN_TYPE"), "");
@@ -8020,8 +8008,10 @@ public class BossAttackController {
 	            if (AchievementConfig.ITEM_TYPE_LIGHT.equals(type)) lightTotal = qty;
 	            else if (AchievementConfig.ITEM_TYPE_DARK.equals(type)) darkTotal = qty;
 	            else if (AchievementConfig.ITEM_TYPE_GRAY.equals(type)) grayTotal = qty;
+            else if (AchievementConfig.ITEM_TYPE_SHADOW.equals(type)) shadowTotal = qty;
 	        }
 	    }
+    if (lightTotal <= 0 && darkTotal <= 0 && grayTotal <= 0 && shadowTotal <= 0) return "";
 
 	    // AchievementConfig.ITEM_ACHIEVEMENTS 기반으로 미달성 업적 부여
 	    StringBuilder sb = new StringBuilder();
@@ -8032,6 +8022,7 @@ public class BossAttackController {
 	        if      (AchievementConfig.ITEM_TYPE_LIGHT.equals(def.gainType)) total = lightTotal;
 	        else if (AchievementConfig.ITEM_TYPE_DARK.equals(def.gainType))  total = darkTotal;
 	        else if (AchievementConfig.ITEM_TYPE_GRAY.equals(def.gainType))  total = grayTotal;
+        else if (AchievementConfig.ITEM_TYPE_SHADOW.equals(def.gainType)) total = shadowTotal;
 	        else continue;
 
 	        if (total >= def.threshold) {
@@ -8432,14 +8423,6 @@ public class BossAttackController {
 	    	} catch (Exception e) {
 	    		return "헬 통산 업적";
 	    	}
-    if (cmd.startsWith("ACHV_KILL_SHADOW_TOTAL_")) {
-    	try {
-    		int th = Integer.parseInt(cmd.substring("ACHV_KILL_SHADOW_TOTAL_".length()));
-    		return "그림자 몬스터 처치 " + th + "회 달성";
-    	} catch (Exception e) {
-    		return "그림자 몬스터 처치";
-    	}
-    }
 	    }
 
 	    // 🔹 데스 업적
@@ -8483,8 +8466,12 @@ public class BossAttackController {
 	    		return "음양 아이템 획득 ";
 	    	}
     }
+    if (cmd.startsWith("ACHV_SHADOW_ITEM_")) {
     	try {
+    		int th = Integer.parseInt(cmd.substring("ACHV_SHADOW_ITEM_".length()));
+    		return "그림자 몬스터 처치 " + th + "회 달성";
     	} catch (Exception e) {
+    		return "그림자 몬스터 처치";
     	}
 	    }
 	    
