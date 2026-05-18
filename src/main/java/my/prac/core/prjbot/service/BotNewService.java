@@ -202,6 +202,8 @@ public interface BotNewService {
     HashMap<String,Object> selectTodayBagCounts(String userName, String roomName);
     int selectBagCountByItemId(String userName, String roomName, int itemId);
     int consumeBagBulkByItemIdTx(String userName, String roomName, int itemId, int count);
+    int selectBagCountByItemIdAndGainType(String userName, String roomName, int itemId, String gainType);
+    int consumeBagBulkByItemIdAndGainTypeTx(String userName, String roomName, int itemId, String gainType, int count);
     
     int selectTodayBagCount(String userName);
     HashMap<String,Object> selectActiveSpecialBuff();
