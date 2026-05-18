@@ -5077,7 +5077,7 @@ public class BossAttackController {
 	                List<String> autoItems  = new ArrayList<>();
 	                int autoSpMode = (bagItemId == BAG_NM_ITEM_ID) ? 1 : 0;
 	                if (bagItemId == BAG_HELL_ITEM_ID) {
-	                    openHellBag(userName, roomName, 1, autoSP, autoDetail, autoItems);
+	                    openHellBag(userName, roomName, 1, autoSP, autoDetail, autoItems, false);
 	                } else {
 	                    processBagOpen(bagItemId, 1, autoSpMode, userName, roomName, autoSP, autoDetail, autoItems);
 	                }
