@@ -262,6 +262,11 @@ public interface BotNewDAO {
     );
 
     /** 부캐 리스트 조회 */
+
+    /** 출석체크: 오늘 출석 여부 (1=출석, 0=미출석) */
+    int selectTodayAttendYn(HashMap<String,Object> param);
+    /** 출석체크: 마지막 출석일 갱신 */
+    int updateLastAttendDate(HashMap<String,Object> param);
     List<String> selectAltCharList();
 
     /** 보스현황: 현재 진행중 보스 글로벌 누적 데미지 */

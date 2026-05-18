@@ -1008,6 +1008,65 @@ public class BossAttackController {
 	    }
 	}
 
+	/**
+	 * 출석체크 (/ㅊㅊ)
+	 * 하루 1회, 지옥의유물상자 2개 지급 (tier 1%/9%/90%, ATTEND gainType → noSp=true)
+	 */
+	public String attendCheck(HashMap<String,Object> map) {
+	    final String roomName = Objects.toString(map.get("roomName"), "");
+	    final String userName = Objects.toString(map.get("sender"), "").split("/")[0].trim();
+	    if (userName.isEmpty()) return "❌ 유저 정보를 찾을 수 없습니다.";
+
+	    // 오늘 이미 출석 여부 확인
+	    try {
+	        int already = botNewService.selectTodayAttendYn(userName, roomName);
+	        if (already > 0) return "✅ 오늘은 이미 출석하셨습니다! 내일 다시 해주세요.";
+	    } catch (Exception e) {
+	        return "❌ 출석 확인 중 오류가 발생했습니다.";
+	    }
+
+	    // 출석일 갱신
+	    try {
+	        botNewService.updateLastAttendDate(userName, roomName);
+	    } catch (Exception e) {
+	        return "❌ 출석 처리 중 오류가 발생했습니다.";
+	    }
+
+	    // 상자 2개 지급 (tier 결정: 플래티넘1%, 골드9%, 기본90%)
+	    StringBuilder sb = new StringBuilder();
+	    sb.append("🎁 출석체크 완료! 지옥의유물상자 2개를 드립니다!").append(NL);
+	    sb.append("━━━━━━━━━━━━").append(NL);
+
+	    for (int i = 1; i <= 2; i++) {
+	        double roll = ThreadLocalRandom.current().nextDouble();
+	        String gainType;
+	        String tierLabel;
+	        if (roll < 0.01) {
+	            gainType  = "DROP_OPEN_P";
+	            tierLabel = "✨플래티넘 각인 (개봉 대기)";
+	        } else if (roll < 0.10) {
+	            gainType  = "DROP_OPEN_G";
+	            tierLabel = "✨황금 각인 (개봉 대기)";
+	        } else {
+	            gainType  = "ATTEND";
+	            tierLabel = "지옥의유물상자";
+	        }
+	        HashMap<String,Object> inv = new HashMap<>();
+	        inv.put("userName", userName); inv.put("roomName", roomName);
+	        inv.put("itemId", BAG_HELL_ITEM_ID); inv.put("qty", 1);
+	        inv.put("delYn", "0"); inv.put("gainType", gainType);
+	        try {
+	            botNewService.insertInventoryLogTx(inv);
+	        } catch (Exception e) { /* 지급 실패 무시 */ }
+	        sb.append("  상자").append(i).append(": ").append(tierLabel).append(NL);
+	    }
+
+	    sb.append("━━━━━━━━━━━━").append(NL);
+	    sb.append("/가방열기 로 개봉하세요! (각인만 획득, SP 없음)").append(NL);
+	    invalidateInvBuff(userName);
+	    return sb.toString();
+	}
+
 	public String openBag(HashMap<String,Object> map) {
 
 	    final String roomName = Objects.toString(map.get("roomName"), "");
@@ -1056,6 +1115,20 @@ public class BossAttackController {
 	                sb.append("━━━━━━━━━━━━").append(NL);
 	                sb.append("✨ ").append(entry.desc).append(" 획득!").append(NL);
 	                sb.append("━━━━━━━━━━━━").append(NL);
+	                // ── 플래티넘 각인 첫 획득 업적 ──────────────────────────────────────
+	                if (!isGold) {
+	                    try {
+	                        int alreadyHas = botNewService.selectPointRankCountByCmdUserInRoom(roomName, userName, "ACHV_PLAT_BOX_1");
+	                        if (alreadyHas == 0) {
+	                            HashMap<String,Object> aPr = new HashMap<>();
+	                            aPr.put("userName", userName); aPr.put("roomName", roomName);
+	                            aPr.put("score", 10_000_000); aPr.put("scoreExt", "");
+	                            aPr.put("cmd", "ACHV_PLAT_BOX_1");
+	                            botNewService.insertPointRank(aPr);
+	                            sb.append("🏆 업적 달성! [플래티넘 각인 첫 획득] 보상 +1000a 지급!").append(NL);
+	                        }
+	                    } catch (Exception ignore3) {}
+	                }
 	                sb.append(buildHellBoxStatSummary(userName));
 	                return sb.toString();
 	            }
@@ -1068,7 +1141,8 @@ public class BossAttackController {
 	    int hellCount      = botNewService.selectBagCountByItemId(userName, roomName, BAG_HELL_ITEM_ID);
 	    int hellEventCount = botNewService.selectBagCountByItemIdAndGainType(userName, roomName, BAG_HELL_ITEM_ID, "EVENT");
 	    int hellBossCount  = botNewService.selectBagCountByItemIdAndGainType(userName, roomName, BAG_HELL_ITEM_ID, "BOSS_HELL");
-	    int hellNoSpCount  = hellEventCount + hellBossCount; // SP 지급 제외 타입 합산
+	    int hellAttendCount = botNewService.selectBagCountByItemIdAndGainType(userName, roomName, BAG_HELL_ITEM_ID, "ATTEND");
+	    int hellNoSpCount  = hellEventCount + hellBossCount + hellAttendCount; // SP 지급 제외 타입 합산
 	    int hellNormalCount = hellCount - hellNoSpCount;
 
 	    // ── 헬상자 오픈 권한 체크 (헬보스1회처치 업적 필요) ──────────────────
@@ -1081,6 +1155,7 @@ public class BossAttackController {
 	                hellCount = 0; // 업적 없으면 헬 가방 제외, 일반/나메만 오픈
 	                hellEventCount = 0;
 	                hellBossCount  = 0;
+	                hellAttendCount = 0;
 	                hellNoSpCount  = 0;
 	                hellNormalCount = 0;
 	            }
@@ -1104,6 +1179,9 @@ public class BossAttackController {
 	    }
 	    if (hellBossCount > 0) {
 	        botNewService.consumeBagBulkByItemIdAndGainTypeTx(userName, roomName, BAG_HELL_ITEM_ID, "BOSS_HELL", hellBossCount);
+	    }
+	    if (hellAttendCount > 0) {
+	        botNewService.consumeBagBulkByItemIdAndGainTypeTx(userName, roomName, BAG_HELL_ITEM_ID, "ATTEND", hellAttendCount);
 	    }
 	    if (hellNormalCount > 0) {
 	        botNewService.consumeBagBulkByItemIdTx(userName, roomName, BAG_HELL_ITEM_ID, hellNormalCount);
@@ -1654,8 +1732,8 @@ public class BossAttackController {
 	        // ─────────────────
 	        // 지옥 각인 (3000번대)
 	        // ─────────────────
-	        else if ("DROP_OPEN_G".equalsIgnoreCase(type) || "DROP_OPEN_P".equalsIgnoreCase(type)) {
-	            label = ("DROP_OPEN_P".equalsIgnoreCase(type) ? "플래티넘" : "황금") + "유물상자 (/가방열기 로 개봉)";
+	        else if ("DROP_OPEN_G".equalsIgnoreCase(type) || "DROP_OPEN_P".equalsIgnoreCase(type) || "ATTEND".equalsIgnoreCase(type)) {
+	            label = ("DROP_OPEN_P".equalsIgnoreCase(type) ? "✨플래티넘" : "ATTEND".equalsIgnoreCase(type) ? "🎁출첵" : "✨황금") + "유물상자 (/가방열기 로 개봉)";
 	        }
 	        else if (type != null && type.toUpperCase().startsWith("HELL_BOX") && itemId >= 3000 && itemId < 4000) {
 	            label += " +" + qty + " [지옥]";
@@ -2153,8 +2231,8 @@ public class BossAttackController {
 	                    String bossDesc = Objects.toString(row.get("ITEM_DESC"), "").trim();
 	                    if (!bossDesc.isEmpty()) label += " (" + bossDesc + ")";
 	                    label += "BOSS_GACHA".equalsIgnoreCase(typeStr) ? " [뽑기]" : " [보스처치]";
-	                } else if ("DROP_OPEN_G".equalsIgnoreCase(typeStr) || "DROP_OPEN_P".equalsIgnoreCase(typeStr)) {
-	                    label = ("DROP_OPEN_P".equalsIgnoreCase(typeStr) ? "플래티넘" : "황금") + "유물상자 (/가방열기 로 개봉)";
+	                } else if ("DROP_OPEN_G".equalsIgnoreCase(typeStr) || "DROP_OPEN_P".equalsIgnoreCase(typeStr) || "ATTEND".equalsIgnoreCase(typeStr)) {
+	                    label = ("DROP_OPEN_P".equalsIgnoreCase(typeStr) ? "✨플래티넘" : "ATTEND".equalsIgnoreCase(typeStr) ? "🎁출첵" : "✨황금") + "유물상자 (/가방열기 로 개봉)";
 	                } else if (typeStr != null && typeStr.toUpperCase().startsWith("HELL_BOX") && itemId >= 3000 && itemId < 4000) {
 	                    label += " +" + qtyVal + " [지옥]";
 	                } else if (isEquipType) {

@@ -742,6 +742,20 @@ public class BotNewServiceImpl implements BotNewService {
     }
 
     @Override
+
+    @Override
+    public int selectTodayAttendYn(String userName, String roomName) {
+        HashMap<String,Object> p = new HashMap<>();
+        p.put("userName", userName); p.put("roomName", roomName);
+        return botNewDAO.selectTodayAttendYn(p);
+    }
+
+    @Override
+    public int updateLastAttendDate(String userName, String roomName) {
+        HashMap<String,Object> p = new HashMap<>();
+        p.put("userName", userName); p.put("roomName", roomName);
+        return botNewDAO.updateLastAttendDate(p);
+    }
     public List<String> selectAltCharList() {
         return botNewDAO.selectAltCharList();
     }

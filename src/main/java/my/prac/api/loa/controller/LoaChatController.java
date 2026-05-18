@@ -818,6 +818,9 @@ public class LoaChatController {
 				param0="/ㅁㄷ";
 				val = boss.changeMode(reqMap);
 				break;
+			case "/ㅊㅊ": case "/출첵": case "/출석체크":
+				val = boss.attendCheck(reqMap);
+				break;
 			case "/체력": case "/ㅊㄹ":
 				val = boss.getHpStatus(reqMap);
 				break;
