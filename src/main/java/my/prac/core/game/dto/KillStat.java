@@ -8,6 +8,7 @@ public class KillStat {
     public int killCount;
     public int nmKillCount;
     public int hellKillCount;
+    public int shadowKillCount;
 
     public KillStat() {}
     public KillStat(int monNo, String monName, int killCount, int nmKillCount) {

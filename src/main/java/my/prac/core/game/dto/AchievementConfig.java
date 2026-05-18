@@ -30,7 +30,6 @@ public class AchievementConfig {
     public static final String ITEM_TYPE_LIGHT = "DROP3";  // 빛
     public static final String ITEM_TYPE_DARK  = "DROP5";  // 어둠
     public static final String ITEM_TYPE_GRAY  = "DROP9";  // 음양
-    public static final String ITEM_TYPE_SHADOW = "SHADOW_KILL";  // 그림자
 
     /** 빛/어둠/음양 공통 달성 임계값 */
     public static final int[] ITEM_THRESHOLDS = {
@@ -51,7 +50,6 @@ public class AchievementConfig {
         if (ITEM_TYPE_LIGHT.equals(gainType)) return "ACHV_LIGHT_ITEM_" + threshold;
         if (ITEM_TYPE_DARK.equals(gainType))  return "ACHV_DARK_ITEM_"  + threshold;
         if (ITEM_TYPE_GRAY.equals(gainType))  return "ACHV_GRAY_ITEM_"  + threshold;
-        if (ITEM_TYPE_SHADOW.equals(gainType)) return "ACHV_SHADOW_ITEM_" + threshold;
         return "ACHV_UNKNOWN_" + threshold;
     }
 
@@ -59,7 +57,6 @@ public class AchievementConfig {
         if (ITEM_TYPE_LIGHT.equals(gainType)) return "빛 아이템 "  + th + "개 획득";
         if (ITEM_TYPE_DARK.equals(gainType))  return "어둠 아이템 " + th + "개 획득";
         if (ITEM_TYPE_GRAY.equals(gainType))  return "음양 아이템 " + th + "개 획득";
-        if (ITEM_TYPE_SHADOW.equals(gainType)) return "그림자 몬스터 처치 " + th + "회";
         return "아이템 " + th + "개 획득";
     }
 
@@ -88,7 +85,6 @@ public class AchievementConfig {
             list.add(new ItemEntry(ITEM_TYPE_LIGHT, th));
             list.add(new ItemEntry(ITEM_TYPE_DARK,  th));
             list.add(new ItemEntry(ITEM_TYPE_GRAY,  th));
-            list.add(new ItemEntry(ITEM_TYPE_SHADOW, th));
         }
         ITEM_ACHIEVEMENTS = Collections.unmodifiableList(list);
     }
@@ -192,6 +188,8 @@ public class AchievementConfig {
     public static final int KILL_PER_MON_MAX = 100000;
     /** 총합 킬/공격 업적 최대 임계값 */
     public static final int KILL_TOTAL_MAX   = 200000;
+    /** 그림자 킬 업적 최대 임계값 */
+    public static final int KILL_SHADOW_MAX  = 10000;
 
     /**
      * 킬/공격 임계값 배열 생성
