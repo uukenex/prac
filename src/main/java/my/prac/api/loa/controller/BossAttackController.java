@@ -3615,57 +3615,57 @@ public class BossAttackController {
 	        
 	        switch(itemId) {
 	        case 1: 
-	        	bonusCritDmg += qty /10;
-	        	break;
-	        case 15: case 30:
 	        	bonusCritDmg += qty /5;
 	        	break;
+	        case 15: case 30:
+	        	bonusCritDmg += qty /2;
+	        	break;
 	        case 25:  
-	        	bonusCritDmg += qty ;
+	        	bonusCritDmg += qty*1.5 ;
 	        	break;
 	        	
 	        case 27:
-	        	bonusRegen+=qty/2;
+	        	bonusRegen+=qty;
 	        	break;
 	        case 20:  
-	        	bonusRegen+=qty/5;
+	        	bonusRegen+=qty/2;
 	        	break;
 	        case 12:  case 7: case 8:  
-	        	bonusRegen+=qty/10;
+	        	bonusRegen+=qty/5;
 	        	break;
 	        	
 	        case 23: case 28:
-	        	bonusCrit+=qty/5;
+	        	bonusCrit+=qty/2;
 	        	break;
 	        case 17: case 9: case 11: case 19:  
-	        	bonusCrit+=qty/10;
+	        	bonusCrit+=qty/5;
 	        	break;
 	        	
 	        case 24: 
-	        	bonusMinAtk+=qty/2;
+	        	bonusMinAtk+=qty;
 	        	break;
 	        case 2: case 3: case 5: case 16:  
-	        	bonusMinAtk+=qty/10;
+	        	bonusMinAtk+=qty/3;
 	        	break;
 	        	
 	        case 26: case 29:
-	        	bonusMaxAtk+=qty/2;
+	        	bonusMaxAtk+=qty*2;
 	        	break;
 	        case 13: case 4: case 6: case 14: 
-	        	bonusMaxAtk+=qty/10;
+	        	bonusMaxAtk+=qty/5;
 	        	break;
 	        	
 	        case 10: case 18: case 21: case 22: 
-	        	bonusHp += qty/2;
+	        	bonusHp += qty;
 	        	break;
 	        }
 	        
 	        
 	        //상한초과방지
-	        bonusCrit = Math.min(bonusCrit, 100);
-	        bonusCritDmg = Math.min(bonusCritDmg, 200);
-	        bonusMinAtk = Math.min(bonusMinAtk, 150);
-	        bonusMaxAtk = Math.min(bonusMaxAtk, 200);
+	        bonusCrit = Math.min(bonusCrit, 300);
+	        bonusCritDmg = Math.min(bonusCritDmg, 300);
+	        bonusMinAtk = Math.min(bonusMinAtk, 1000);
+	        bonusMaxAtk = Math.min(bonusMaxAtk, 1000);
 	    }
 
 	    // ctx 에 바로 반영
