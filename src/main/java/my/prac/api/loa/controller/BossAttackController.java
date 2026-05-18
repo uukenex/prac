@@ -1254,8 +1254,7 @@ public class BossAttackController {
 	                    HashMap<String,Object> pInv = new HashMap<>();
 	                    pInv.put("userName", userName); pInv.put("roomName", roomName);
 	                    pInv.put("itemId",   entry.itemId); pInv.put("qty", entry.value);
-		                             String hellTierType = (pool == my.prac.core.util.MiniGameUtil.HELL_BOX_PLAT) ? "HELL_BOX_PLAT" : "HELL_BOX_GOLD";
-	                             pInv.put("delYn",    pendingDelYn); pInv.put("gainType", hellTierType);
+	                    pInv.put("delYn",    pendingDelYn); pInv.put("gainType", "HELL_BOX");
 	                    try { botNewService.insertInventoryLogTx(pInv); } catch (Exception ignore) {}
 	                    String dramatic = (pool == my.prac.core.util.MiniGameUtil.HELL_BOX_PLAT)
 	                            ? "✨ 플래티넘 각인이 빛을 발하고 있습니다!! ✨"
