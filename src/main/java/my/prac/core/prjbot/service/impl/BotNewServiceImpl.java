@@ -742,8 +742,6 @@ public class BotNewServiceImpl implements BotNewService {
     }
 
     @Override
-
-    @Override
     public int selectTodayAttendYn(String userName, String roomName) {
         HashMap<String,Object> p = new HashMap<>();
         p.put("userName", userName); p.put("roomName", roomName);

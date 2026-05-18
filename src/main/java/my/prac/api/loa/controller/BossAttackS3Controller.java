@@ -654,7 +654,7 @@ public class BossAttackS3Controller {
         if (flag_boss_attack && bossAtkApplied > 0) {
             msg.append("▶ 보스의 반격! 최대HP의 피해! (").append(bossAtkApplied).append(")").append(NL);
             msg.append("  └ 남은체력: ").append(user.hpCur).append("/").append(ctx.hpMax).append(NL);
-            if (playerDead) msg.append("  💀 체력이 0이 되었습니다!").append(NL);
+            if (playerDead) msg.append("  체력이 0이 되었습니다!").append(NL);
         }
 
         msg.append(NL);
