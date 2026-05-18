@@ -1036,45 +1036,51 @@ public class MiniGameUtil {
 		public final int    value;      // 지급되는 스탯 수치
 		public final String effectCode; // ATK_MIN/ATK_MAX/ATK_MIN_RATE/ATK_MAX_RATE/HP_MAX/HP_MAX_RATE/CRIT/CRIT_DMG/HP_REGEN
 		public final String desc;
-		public HellBoxEntry(int itemId, int lv, int value, String effectCode, String desc) {
+		public final int    stars;      // ★ 등급 (1~5, 임의 설정)
+		public HellBoxEntry(int itemId, int lv, int value, String effectCode, String desc, int stars) {
 			this.itemId = itemId; this.lv = lv; this.value = value;
-			this.effectCode = effectCode; this.desc = desc;
+			this.effectCode = effectCode; this.desc = desc; this.stars = Math.max(1, Math.min(5, stars));
+		}
+		/** "★★★" 형태 문자열 반환 */
+		public String starsStr() {
+			StringBuilder sb = new StringBuilder();
+			for (int i = 0; i < stars; i++) sb.append("★");
+			return sb.toString();
 		}
 	}
-
 	/** 기본 상자 (90%) */
 	public static final List<HellBoxEntry> HELL_BOX_BASIC = Arrays.asList(
-		new HellBoxEntry(3001, 1,  1, "ATK_MIN",  "최소공격력 +1"),
-		new HellBoxEntry(3002, 1,  1, "ATK_MAX",  "최대공격력 +1"),
-		new HellBoxEntry(3005, 1, 30, "HP_MAX",   "최대체력 +30")
+		new HellBoxEntry(3001, 1,  1, "ATK_MIN",  "최소공격력 +1",  1),
+		new HellBoxEntry(3002, 1,  1, "ATK_MAX",  "최대공격력 +1",  1),
+		new HellBoxEntry(3005, 1, 30, "HP_MAX",   "최대체력 +30",   1)
 	);
 
 	/** 황금 상자 (9%) */
 	public static final List<HellBoxEntry> HELL_BOX_GOLD = Arrays.asList(
-		new HellBoxEntry(3001, 2,  5, "ATK_MIN",      "최소공격력 +5"),
-		new HellBoxEntry(3002, 2,  5, "ATK_MAX",      "최대공격력 +5"),
-		new HellBoxEntry(3003, 2,  1, "ATK_MIN_RATE", "최소공격력 +1%"),
-		new HellBoxEntry(3004, 2,  1, "ATK_MAX_RATE", "최대공격력 +1%"),
-		new HellBoxEntry(3005, 2, 50, "HP_MAX",       "최대체력 +50"),
-		new HellBoxEntry(3005, 2, 80, "HP_MAX",       "최대체력 +80"),
-		new HellBoxEntry(3007, 2,  2, "CRIT",         "치명타율 +2%"),
-		new HellBoxEntry(3008, 2,  1, "CRIT_DMG",     "치명타피해 +1%"),
-		new HellBoxEntry(3008, 2,  2, "CRIT_DMG",     "치명타피해 +2%")
+		new HellBoxEntry(3001, 2,  5, "ATK_MIN",      "최소공격력 +5",      2),
+		new HellBoxEntry(3002, 2,  5, "ATK_MAX",      "최대공격력 +5",      2),
+		new HellBoxEntry(3003, 2,  1, "ATK_MIN_RATE", "최소공격력 +1%",     3),
+		new HellBoxEntry(3004, 2,  1, "ATK_MAX_RATE", "최대공격력 +1%",     3),
+		new HellBoxEntry(3005, 2, 50, "HP_MAX",       "최대체력 +50",       2),
+		new HellBoxEntry(3005, 2, 80, "HP_MAX",       "최대체력 +80",       3),
+		new HellBoxEntry(3007, 2,  2, "CRIT",         "치명타율 +2%",       3),
+		new HellBoxEntry(3008, 2,  1, "CRIT_DMG",     "치명타피해 +1%",     2),
+		new HellBoxEntry(3008, 2,  2, "CRIT_DMG",     "치명타피해 +2%",     3)
 	);
 
 	/** 플래티넘 상자 (1%) */
 	public static final List<HellBoxEntry> HELL_BOX_PLAT = Arrays.asList(
-		new HellBoxEntry(3001, 3, 20, "ATK_MIN",      "최소공격력 +20"),
-		new HellBoxEntry(3002, 3, 20, "ATK_MAX",      "최대공격력 +20"),
-		new HellBoxEntry(3001, 3, 30, "ATK_MIN",      "최소공격력 +30"),
-		new HellBoxEntry(3002, 3, 30, "ATK_MAX",      "최대공격력 +30"),
-		new HellBoxEntry(3003, 3,  3, "ATK_MIN_RATE", "최소공격력 +3%"),
-		new HellBoxEntry(3004, 3,  3, "ATK_MAX_RATE", "최대공격력 +3%"),
-		new HellBoxEntry(3005, 3,100, "HP_MAX",       "최대체력 +100"),
-		new HellBoxEntry(3005, 3,200, "HP_MAX",       "최대체력 +200"),
-		new HellBoxEntry(3006, 3,  3, "HP_MAX_RATE",  "최대체력 +3%"),
-		new HellBoxEntry(3007, 3,  5, "CRIT",         "치명타율 +5%"),
-		new HellBoxEntry(3008, 3,  3, "CRIT_DMG",     "치명타피해 +3%"),
-		new HellBoxEntry(3008, 3,  5, "CRIT_DMG",     "치명타피해 +5%")
+		new HellBoxEntry(3001, 3, 20, "ATK_MIN",      "최소공격력 +20",     3),
+		new HellBoxEntry(3002, 3, 20, "ATK_MAX",      "최대공격력 +20",     3),
+		new HellBoxEntry(3001, 3, 30, "ATK_MIN",      "최소공격력 +30",     4),
+		new HellBoxEntry(3002, 3, 30, "ATK_MAX",      "최대공격력 +30",     4),
+		new HellBoxEntry(3003, 3,  3, "ATK_MIN_RATE", "최소공격력 +3%",     4),
+		new HellBoxEntry(3004, 3,  3, "ATK_MAX_RATE", "최대공격력 +3%",     4),
+		new HellBoxEntry(3005, 3,100, "HP_MAX",       "최대체력 +100",      3),
+		new HellBoxEntry(3005, 3,200, "HP_MAX",       "최대체력 +200",      4),
+		new HellBoxEntry(3006, 3,  3, "HP_MAX_RATE",  "최대체력 +3%",       4),
+		new HellBoxEntry(3007, 3,  5, "CRIT",         "치명타율 +5%",       5),
+		new HellBoxEntry(3008, 3,  3, "CRIT_DMG",     "치명타피해 +3%",     4),
+		new HellBoxEntry(3008, 3,  5, "CRIT_DMG",     "치명타피해 +5%",     5)
 	);
 }

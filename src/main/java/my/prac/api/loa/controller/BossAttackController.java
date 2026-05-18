@@ -1113,7 +1113,7 @@ public class BossAttackController {
 	                StringBuilder sb = new StringBuilder();
 	                sb.append("✨ " + tierLabel + "상자 개봉!").append(NL);
 	                sb.append("━━━━━━━━━━━━").append(NL);
-	                sb.append("✨ ").append(entry.desc).append(" 획득!").append(NL);
+	                sb.append("✨ ").append(entry.starsStr()).append(" ").append(entry.desc).append(" 획득!").append(NL);
 	                sb.append("━━━━━━━━━━━━").append(NL);
 	                // ── 플래티넘 각인 첫 획득 업적 ──────────────────────────────────────
 	                if (!isGold) {
@@ -1332,8 +1332,8 @@ public class BossAttackController {
 	                    inv.put("itemId",   entry.itemId); inv.put("qty", entry.value);
 	                    inv.put("delYn",    "0"); inv.put("gainType", "HELL_BOX");
 	                    try { botNewService.insertInventoryLogTx(inv); invalidateInvBuff(userName); } catch (Exception ignore) {}
-	                    detail.add("[지옥의유물상자]" + (i+1) + ": " + tierName + "상자 → " + entry.desc);
-	                    itemSummary.add(tierName + "(" + entry.desc + ")");
+	                    detail.add("[지옥의유물상자]" + (i+1) + ": " + tierName + "상자 → " + entry.starsStr() + " " + entry.desc);
+	                    itemSummary.add(tierName + "(" + entry.starsStr() + " " + entry.desc + ")");
 	                } else {
 	                    // 황금/플래티넘: item 93을 DROP_OPEN_G/P로 인벤에 보관 (아이템 롤링은 개봉 시)
 	                    String openGainType = (pool == my.prac.core.util.MiniGameUtil.HELL_BOX_PLAT) ? "DROP_OPEN_P" : "DROP_OPEN_G";
