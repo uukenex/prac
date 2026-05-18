@@ -1591,7 +1591,7 @@
 		      SELECT ITEM_ID, QTY, DEL_YN
 		        FROM TBOT_POINT_NEW_INVENTORY
 		       WHERE USER_NAME = #{userName}
-		         AND GAIN_TYPE = 'HELL_BOX'
+		         AND GAIN_TYPE IN ('HELL_BOX_GOLD', 'HELL_BOX_PLAT')
 		         AND DEL_YN    IN ('2','3')
 		       ORDER BY INSERT_DATE ASC
 		  )
@@ -1600,15 +1600,16 @@
 	<update id="upgradePendingHellBox" parameterType="hashmap">
 		/* upgradePendingHellBox: gold(DEL_YN=2) -> plat(DEL_YN=3) with new entry */
 		UPDATE TBOT_POINT_NEW_INVENTORY
-		   SET DEL_YN  = '3',
-		       ITEM_ID = #{newItemId},
-		       QTY     = #{newQty}
+		   SET DEL_YN   = '3',
+		       GAIN_TYPE = 'HELL_BOX_PLAT',
+		       ITEM_ID  = #{newItemId},
+		       QTY      = #{newQty}
 		 WHERE ROWID = (
 		     SELECT RID FROM (
 		         SELECT ROWID AS RID
 		           FROM TBOT_POINT_NEW_INVENTORY
 		          WHERE USER_NAME = #{userName}
-		            AND GAIN_TYPE = 'HELL_BOX'
+		            AND GAIN_TYPE IN ('HELL_BOX_GOLD', 'HELL_BOX_PLAT')
 		            AND DEL_YN    = '2'
 		          ORDER BY INSERT_DATE ASC
 		     ) WHERE ROWNUM = 1
@@ -1623,7 +1624,7 @@
 		         SELECT ROWID AS RID
 		           FROM TBOT_POINT_NEW_INVENTORY
 		          WHERE USER_NAME = #{userName}
-		            AND GAIN_TYPE = 'HELL_BOX'
+		            AND GAIN_TYPE IN ('HELL_BOX_GOLD', 'HELL_BOX_PLAT')
 		            AND DEL_YN    IN ('2','3')
 		          ORDER BY INSERT_DATE ASC
 		     ) WHERE ROWNUM = 1
