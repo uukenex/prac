@@ -1744,6 +1744,23 @@
 	     WHERE USER_NAME = #{userName}
 	</update>
 	
+	<!-- ── 출석체크: 오늘 출석 여부 조회 ── -->
+	<select id="selectTodayAttendYn" parameterType="hashmap" resultType="int">
+	    /* selectTodayAttendYn: 오늘 출석했으면 1, 아니면 0 */
+	    SELECT COUNT(*)
+	      FROM TBOT_POINT_NEW_USER
+	     WHERE USER_NAME = #{userName}
+	       AND ROOM_NAME = #{roomName}
+	       AND TRUNC(LAST_ATTEND_DATE) = TRUNC(SYSDATE)
+	</select>
+	<update id="updateLastAttendDate" parameterType="hashmap">
+	    /* updateLastAttendDate: 마지막 출석일 갱신 */
+	    UPDATE TBOT_POINT_NEW_USER
+	       SET LAST_ATTEND_DATE = TRUNC(SYSDATE)
+	     WHERE USER_NAME = #{userName}
+	       AND ROOM_NAME = #{roomName}
+	</update>
+	
 	<update id="lockMacroUser" statementType="CALLABLE">
         /* lockMacroUser */
         { CALL SP_BOT_MACRO_LOCK(

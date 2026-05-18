@@ -216,6 +216,11 @@ public interface BotNewService {
     List<HashMap<String, Object>> selectAllItemsWithOwned(String userName);
 
     /** 부캐 리스트 조회 */
+
+    /** 출석체크: 오늘 출석 여부 (1=출석, 0=미출석) */
+    int selectTodayAttendYn(String userName, String roomName);
+    /** 출석체크: 마지막 출석일 갱신 */
+    int updateLastAttendDate(String userName, String roomName);
     List<String> selectAltCharList();
 
     /** 보스현황 */
