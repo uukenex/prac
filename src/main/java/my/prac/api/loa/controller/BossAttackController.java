@@ -1279,6 +1279,7 @@ public class BossAttackController {
 
 	    // 🔹 메시지
 	    StringBuilder sb = new StringBuilder();
+	    sb.append(userName +"님,");
 	    sb.append("가방 총 ").append(normalCount + nightmareCount + hellCount)
 	      .append("개를 열었습니다!").append(NL);
 
