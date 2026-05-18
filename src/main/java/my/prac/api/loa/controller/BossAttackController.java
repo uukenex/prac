@@ -1014,7 +1014,7 @@ public class BossAttackController {
 	 */
 	public String attendCheck(HashMap<String,Object> map) {
 	    final String roomName = Objects.toString(map.get("roomName"), "");
-	    final String userName = Objects.toString(map.get("sender"), "").split("/")[0].trim();
+	    final String userName = Objects.toString(map.get("userName"), "");
 	    if (userName.isEmpty()) return "❌ 유저 정보를 찾을 수 없습니다.";
 
 	    // 오늘 이미 출석 여부 확인
