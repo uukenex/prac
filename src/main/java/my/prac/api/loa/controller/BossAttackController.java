@@ -1647,7 +1647,7 @@ public class BossAttackController {
 	        // ─────────────────
 	        // 지옥 각인 (3000번대)
 	        // ─────────────────
-	        else if ("HELL_BOX".equalsIgnoreCase(type) && itemId >= 3000 && itemId < 4000) {
+	        else if (type != null && type.toUpperCase().startsWith("HELL_BOX") && itemId >= 3000 && itemId < 4000) {
 	            label += " +" + qty + " [지옥]";
 	        }
 	        else {
@@ -2143,7 +2143,7 @@ public class BossAttackController {
 	                    String bossDesc = Objects.toString(row.get("ITEM_DESC"), "").trim();
 	                    if (!bossDesc.isEmpty()) label += " (" + bossDesc + ")";
 	                    label += "BOSS_GACHA".equalsIgnoreCase(typeStr) ? " [뽑기]" : " [보스처치]";
-	                } else if ("HELL_BOX".equalsIgnoreCase(typeStr) && itemId >= 3000 && itemId < 4000) {
+	                } else if (typeStr != null && typeStr.toUpperCase().startsWith("HELL_BOX") && itemId >= 3000 && itemId < 4000) {
 	                    label += " +" + qtyVal + " [지옥]";
 	                } else if (isEquipType) {
 	                	
