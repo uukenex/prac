@@ -1034,7 +1034,7 @@ public class BossAttackController {
 
 	    // 상자 2개 지급 (tier 결정: 플래티넘1%, 골드9%, 기본90%)
 	    StringBuilder sb = new StringBuilder();
-	    sb.append(userName+"님, 출석체크 완료! 지옥의유물상자 2개를 드립니다!").append(NL);
+	    sb.append(userName+"님, 출석체크 완료! 지옥의유물상자 2개 지급!").append(NL);
 	    sb.append("━━━━━━━━━━━━").append(NL);
 
 	    for (int i = 1; i <= 2; i++) {
@@ -1043,10 +1043,10 @@ public class BossAttackController {
 	        String tierLabel;
 	        if (roll < 0.01) {
 	            gainType  = "DROP_OPEN_P";
-	            tierLabel = "✨플래티넘 각인 (개봉 대기)";
+	            tierLabel = "✨플래티넘각인상자 (개봉 대기)";
 	        } else if (roll < 0.10) {
 	            gainType  = "DROP_OPEN_G";
-	            tierLabel = "✨황금 각인 (개봉 대기)";
+	            tierLabel = "✨황금각인상자 (개봉 대기)";
 	        } else {
 	            gainType  = "ATTEND";
 	            tierLabel = "지옥의유물상자";
@@ -1062,7 +1062,7 @@ public class BossAttackController {
 	    }
 
 	    sb.append("━━━━━━━━━━━━").append(NL);
-	    sb.append("/가방열기 로 개봉하세요! (각인만 획득, SP 없음)").append(NL);
+	    sb.append("/가방열기 로 개봉!").append(NL);
 	    invalidateInvBuff(userName);
 	    return sb.toString();
 	}
@@ -1319,7 +1319,7 @@ public class BossAttackController {
 	                tierName = "✨황금";
 	            } else {
 	                pool = my.prac.core.util.MiniGameUtil.HELL_BOX_BASIC;
-	                tierName = "기본";
+	                tierName = "";
 	            }
 	            if (pool != null && !pool.isEmpty()) {
 	                my.prac.core.util.MiniGameUtil.HellBoxEntry entry =
@@ -1332,7 +1332,7 @@ public class BossAttackController {
 	                    inv.put("itemId",   entry.itemId); inv.put("qty", entry.value);
 	                    inv.put("delYn",    "0"); inv.put("gainType", "HELL_BOX");
 	                    try { botNewService.insertInventoryLogTx(inv); invalidateInvBuff(userName); } catch (Exception ignore) {}
-	                    detail.add("[지옥의유물상자]" + (i+1) + ": " + tierName + "상자 → " + entry.starsStr() + " " + entry.desc);
+	                    detail.add("[지옥의유물상자]" + (i+1) + ": " + tierName + " → " + entry.starsStr() + " " + entry.desc);
 	                    itemSummary.add(tierName + "(" + entry.starsStr() + " " + entry.desc + ")");
 	                } else {
 	                    // 황금/플래티넘: item 93을 DROP_OPEN_G/P로 인벤에 보관 (아이템 롤링은 개봉 시)
