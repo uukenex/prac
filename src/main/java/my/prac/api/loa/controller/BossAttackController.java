@@ -1181,7 +1181,7 @@ public class BossAttackController {
 	                            aPr.put("score", 10_000_000); aPr.put("scoreExt", "");
 	                            aPr.put("cmd", "ACHV_PLAT_BOX_1");
 	                            botNewService.insertPointRank(aPr);
-	                            sb.append("🏆 업적 달성! [플래티넘 각인 첫 획득] 보상 +1000a 지급!").append(NL);
+	                            sb.append("업적 달성! [플래티넘 각인 첫 획득] 보상 +1000a 지급!").append(NL);
 	                        }
 	                    } catch (Exception ignore3) {}
 	                }
