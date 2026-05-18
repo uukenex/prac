@@ -7924,6 +7924,7 @@ public class BossAttackController {
 	            list.add(row);
 	        }
 	    }
+	    /*
 	    int shadowQty = counts != null ? ((Number) counts.getOrDefault("SHADOW_KILL_COUNT", 0)).intValue() : 0;
 	    if (shadowQty > 0) {
 	        HashMap<String,Object> shadowRow = new HashMap<>();
@@ -7931,6 +7932,7 @@ public class BossAttackController {
 	        shadowRow.put("TOTAL_QTY", shadowQty);
 	        list.add(shadowRow);
 	    }
+	    */
 	    return list;
 	}
 
