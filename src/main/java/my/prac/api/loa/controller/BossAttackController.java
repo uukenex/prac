@@ -1017,52 +1017,44 @@ public class BossAttackController {
 	        return "방/유저 정보가 누락되었습니다.";
 	    }
 
-	    // ── 헬상자 DB pending 확인 (DEL_YN='2'=황금, '3'=플래티넘) ──────────────
+	    // ── 헬상자 pending 확인 (GAIN_TYPE='DROP_OPEN_G'=황금대기, 'DROP_OPEN_P'=플래티나이트대기) ──────
 	    try {
 	        HashMap<String,Object> pendingRow = botNewService.selectPendingHellBox(userName);
 	        if (pendingRow != null) {
-	            String delYn  = Objects.toString(pendingRow.get("DEL_YN"), "");
-	            int    itemId = pendingRow.get("ITEM_ID") != null ? ((Number) pendingRow.get("ITEM_ID")).intValue() : 0;
-	            my.prac.core.util.MiniGameUtil.HellBoxEntry matchEntry = findPendingEntry(delYn, itemId);
-	            String desc = matchEntry != null ? matchEntry.desc : "스탯 " + itemId;
-	            if ("2".equals(delYn)) {
-	                // 황금 pending: 5% 플래티넘 진화
-	                if (ThreadLocalRandom.current().nextDouble() < 0.05) {
-	                    my.prac.core.util.MiniGameUtil.HellBoxEntry platEntry =
-	                        my.prac.core.util.MiniGameUtil.HELL_BOX_PLAT.get(
-	                            ThreadLocalRandom.current().nextInt(my.prac.core.util.MiniGameUtil.HELL_BOX_PLAT.size()));
-	                    HashMap<String,Object> upMap = new HashMap<>();
-	                    upMap.put("userName",   userName);
-	                    upMap.put("newItemId",  platEntry.itemId);
-	                    upMap.put("newQty",     platEntry.value);
-	                    botNewService.upgradePendingHellBox(upMap);
-	                    StringBuilder sb = new StringBuilder();
-	                    sb.append("✨ 기적!! 황금 각인이 더욱 빛을 발합니다!!").append(NL);
-	                    sb.append("━━━━━━━━━━━━").append(NL);
-	                    sb.append("✨ 플래티넘으로 진화하였습니다!! ✨").append(NL);
-	                    sb.append("━━━━━━━━━━━━").append(NL);
-	                    sb.append("/가방열기 로 개봉하세요!");
-	                    return sb.toString();
-	                } else {
-	                    // 황금 확정
-	                    botNewService.confirmPendingHellBox(userName);
-	                    invalidateInvBuff(userName);
-	                    StringBuilder sb = new StringBuilder();
-	                    sb.append("✨ 황금상자 개봉!").append(NL);
-	                    sb.append("━━━━━━━━━━━━").append(NL);
-	                    sb.append("✨ ").append(desc).append(" 획득!").append(NL);
-	                    sb.append("━━━━━━━━━━━━").append(NL);
-	                    sb.append(buildHellBoxStatSummary(userName));
-	                    return sb.toString();
-	                }
-	            } else if ("3".equals(delYn)) {
-	                // 플래티넘 확정
+	            String gainType = Objects.toString(pendingRow.get("GAIN_TYPE"), "");
+	            boolean isGold  = "DROP_OPEN_G".equals(gainType);
+	            if (isGold && ThreadLocalRandom.current().nextDouble() < 0.05) {
+	                // 황금 → 플래티나이트 진화 (GAIN_TYPE만 변경)
+	                HashMap<String,Object> upMap = new HashMap<>();
+	                upMap.put("userName", userName);
+	                botNewService.upgradePendingHellBox(upMap);
+	                StringBuilder sb = new StringBuilder();
+	                sb.append("✨ 기적!! 황금 각인이 더욱 빛을 발합니다!!").append(NL);
+	                sb.append("━━━━━━━━━━━━").append(NL);
+	                sb.append("✨ 플래티나이트로 진화하였습니다!! ✨").append(NL);
+	                sb.append("━━━━━━━━━━━━").append(NL);
+	                sb.append("/가방열기 로 개봉하세요!");
+	                return sb.toString();
+	            } else {
+	                // 확정: 이 시점에 아이템 롤링
+	                java.util.List<my.prac.core.util.MiniGameUtil.HellBoxEntry> pool =
+	                    isGold ? my.prac.core.util.MiniGameUtil.HELL_BOX_GOLD
+	                           : my.prac.core.util.MiniGameUtil.HELL_BOX_PLAT;
+	                my.prac.core.util.MiniGameUtil.HellBoxEntry entry =
+	                    pool.get(ThreadLocalRandom.current().nextInt(pool.size()));
+	                String hellGainType = isGold ? "HELL_BOX_GOLD" : "HELL_BOX_PLAT";
+	                String tierLabel    = isGold ? "황금" : "플래티나이트";
+	                HashMap<String,Object> inv = new HashMap<>();
+	                inv.put("userName", userName); inv.put("roomName", roomName);
+	                inv.put("itemId", entry.itemId); inv.put("qty", entry.value);
+	                inv.put("delYn", "0"); inv.put("gainType", hellGainType);
+	                try { botNewService.insertInventoryLogTx(inv); } catch (Exception ignore2) {}
 	                botNewService.confirmPendingHellBox(userName);
 	                invalidateInvBuff(userName);
 	                StringBuilder sb = new StringBuilder();
-	                sb.append("✨ 플래티넘상자 개봉!").append(NL);
+	                sb.append("✨ " + tierLabel + "상자 개봉!").append(NL);
 	                sb.append("━━━━━━━━━━━━").append(NL);
-	                sb.append("✨ ").append(desc).append(" 획득!").append(NL);
+	                sb.append("✨ ").append(entry.desc).append(" 획득!").append(NL);
 	                sb.append("━━━━━━━━━━━━").append(NL);
 	                sb.append(buildHellBoxStatSummary(userName));
 	                return sb.toString();
@@ -1249,13 +1241,12 @@ public class BossAttackController {
 	                    detail.add("[지옥의유물상자]" + (i+1) + ": " + tierName + "상자 → " + entry.desc);
 	                    itemSummary.add(tierName + "(" + entry.desc + ")");
 	                } else {
-	                    // 황금/플래티넘: DEL_YN='2'(황금) 또는 '3'(플래티넘)으로 DB INSERT (pending)
-	                    String pendingDelYn = (pool == my.prac.core.util.MiniGameUtil.HELL_BOX_PLAT) ? "3" : "2";
+	                    // 황금/플래티넘: item 93을 DROP_OPEN_G/P로 인벤에 보관 (아이템 롤링은 개봉 시)
+	                    String openGainType = (pool == my.prac.core.util.MiniGameUtil.HELL_BOX_PLAT) ? "DROP_OPEN_P" : "DROP_OPEN_G";
 	                    HashMap<String,Object> pInv = new HashMap<>();
 	                    pInv.put("userName", userName); pInv.put("roomName", roomName);
-	                    pInv.put("itemId",   entry.itemId); pInv.put("qty", entry.value);
-		                             String hellTierType = (pool == my.prac.core.util.MiniGameUtil.HELL_BOX_PLAT) ? "HELL_BOX_PLAT" : "HELL_BOX_GOLD";
-	                             pInv.put("delYn",    pendingDelYn); pInv.put("gainType", hellTierType);
+	                    pInv.put("itemId",   93); pInv.put("qty", 1);
+	                    pInv.put("delYn",    "0"); pInv.put("gainType", openGainType);
 	                    try { botNewService.insertInventoryLogTx(pInv); } catch (Exception ignore) {}
 	                    String dramatic = (pool == my.prac.core.util.MiniGameUtil.HELL_BOX_PLAT)
 	                            ? "✨ 플래티넘 각인이 빛을 발하고 있습니다!! ✨"
@@ -1647,6 +1638,9 @@ public class BossAttackController {
 	        // ─────────────────
 	        // 지옥 각인 (3000번대)
 	        // ─────────────────
+	        else if ("DROP_OPEN_G".equalsIgnoreCase(type) || "DROP_OPEN_P".equalsIgnoreCase(type)) {
+	            label = ("DROP_OPEN_P".equalsIgnoreCase(type) ? "✨플래티나이트" : "✨황금") + "유물상자 (/가방열기 로 개봉)";
+	        }
 	        else if (type != null && type.toUpperCase().startsWith("HELL_BOX") && itemId >= 3000 && itemId < 4000) {
 	            label += " +" + qty + " [지옥]";
 	        }
@@ -2143,6 +2137,8 @@ public class BossAttackController {
 	                    String bossDesc = Objects.toString(row.get("ITEM_DESC"), "").trim();
 	                    if (!bossDesc.isEmpty()) label += " (" + bossDesc + ")";
 	                    label += "BOSS_GACHA".equalsIgnoreCase(typeStr) ? " [뽑기]" : " [보스처치]";
+	                } else if ("DROP_OPEN_G".equalsIgnoreCase(typeStr) || "DROP_OPEN_P".equalsIgnoreCase(typeStr)) {
+	                    label = ("DROP_OPEN_P".equalsIgnoreCase(typeStr) ? "✨플래티나이트" : "✨황금") + "유물상자 (/가방열기 로 개봉)";
 	                } else if (typeStr != null && typeStr.toUpperCase().startsWith("HELL_BOX") && itemId >= 3000 && itemId < 4000) {
 	                    label += " +" + qtyVal + " [지옥]";
 	                } else if (isEquipType) {
