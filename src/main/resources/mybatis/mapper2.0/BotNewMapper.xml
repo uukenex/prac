@@ -384,9 +384,9 @@
 	    /* 🔹 기존 이름 가공 로직 유지 */
 	    CASE 
 	      WHEN NVL(inv.gain_type,'DROP') = 'DROP_OPEN_P'
-	        THEN '✨플래티넘유물상자'
+	        THEN '플래티넘유물상자'
 	      WHEN NVL(inv.gain_type,'DROP') = 'DROP_OPEN_G'
-	        THEN '✨황금유물상자'
+	        THEN '황금유물상자'
 	      WHEN NVL(inv.gain_type,'DROP') = 'DROP3'
 	        THEN '빛' || NVL(i.item_name, '알 수 없음')
 	      WHEN NVL(inv.gain_type,'DROP') = 'DROP5'
@@ -437,9 +437,9 @@
 	    i.item_id, -1,
 	    CASE
 	      WHEN NVL(inv.gain_type,'DROP') = 'DROP_OPEN_P'
-	        THEN '✨플래티넘유물상자'
+	        THEN '플래티넘유물상자'
 	      WHEN NVL(inv.gain_type,'DROP') = 'DROP_OPEN_G'
-	        THEN '✨황금유물상자'
+	        THEN '황금유물상자'
 	      WHEN NVL(inv.gain_type,'DROP') = 'DROP3'
 	        THEN '빛' || NVL(i.item_name, '알 수 없음')
 	      WHEN NVL(inv.gain_type,'DROP') = 'DROP5'
