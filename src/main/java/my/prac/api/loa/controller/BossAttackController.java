@@ -1067,7 +1067,9 @@ public class BossAttackController {
 	    int nightmareCount = botNewService.selectBagCountByItemId(userName, roomName, 92);
 	    int hellCount      = botNewService.selectBagCountByItemId(userName, roomName, BAG_HELL_ITEM_ID);
 	    int hellEventCount = botNewService.selectBagCountByItemIdAndGainType(userName, roomName, BAG_HELL_ITEM_ID, "EVENT");
-	    int hellNormalCount = hellCount - hellEventCount;
+	    int hellBossCount  = botNewService.selectBagCountByItemIdAndGainType(userName, roomName, BAG_HELL_ITEM_ID, "BOSS_HELL");
+	    int hellNoSpCount  = hellEventCount + hellBossCount; // SP 지급 제외 타입 합산
+	    int hellNormalCount = hellCount - hellNoSpCount;
 
 	    // ── 헬상자 오픈 권한 체크 (헬보스1회처치 업적 필요) ──────────────────
 	    if (hellCount > 0) {
@@ -1078,6 +1080,8 @@ public class BossAttackController {
 	                }
 	                hellCount = 0; // 업적 없으면 헬 가방 제외, 일반/나메만 오픈
 	                hellEventCount = 0;
+	                hellBossCount  = 0;
+	                hellNoSpCount  = 0;
 	                hellNormalCount = 0;
 	            }
 	        } catch (Exception ignore) {}
@@ -1097,6 +1101,9 @@ public class BossAttackController {
 	    // EVENT 타입 헬상자 먼저 소비 (그래야 일반 소비 시 겹치지 않음)
 	    if (hellEventCount > 0) {
 	        botNewService.consumeBagBulkByItemIdAndGainTypeTx(userName, roomName, BAG_HELL_ITEM_ID, "EVENT", hellEventCount);
+	    }
+	    if (hellBossCount > 0) {
+	        botNewService.consumeBagBulkByItemIdAndGainTypeTx(userName, roomName, BAG_HELL_ITEM_ID, "BOSS_HELL", hellBossCount);
 	    }
 	    if (hellNormalCount > 0) {
 	        botNewService.consumeBagBulkByItemIdTx(userName, roomName, BAG_HELL_ITEM_ID, hellNormalCount);
@@ -1133,7 +1140,7 @@ public class BossAttackController {
 	    totalSP.add(normalSP); totalSP.add(nmSP); // hellSP는 openHellBag 후 합산
 	    SP hellSP = new SP(0, "");
 	    if (hellNormalCount > 0) openHellBag(userName, roomName, hellNormalCount, hellSP, detail, itemSummary, false);
-	    if (hellEventCount > 0)  openHellBag(userName, roomName, hellEventCount,  hellSP, detail, itemSummary, true);
+	    if (hellNoSpCount > 0)    openHellBag(userName, roomName, hellNoSpCount,   hellSP, detail, itemSummary, true);
 	    totalSP.add(hellSP);
 
 	    // 🔹 메시지
