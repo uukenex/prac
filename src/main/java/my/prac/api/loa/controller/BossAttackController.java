@@ -1017,21 +1017,21 @@ public class BossAttackController {
 	        return "방/유저 정보가 누락되었습니다.";
 	    }
 
-	    // ── 헬상자 pending 확인 (GAIN_TYPE='DROP_OPEN_G'=황금대기, 'DROP_OPEN_P'=플래티나이트대기) ──────
+	    // ── 헬상자 pending 확인 (GAIN_TYPE='DROP_OPEN_G'=황금대기, 'DROP_OPEN_P'=플래티넘대기) ──────
 	    try {
 	        HashMap<String,Object> pendingRow = botNewService.selectPendingHellBox(userName);
 	        if (pendingRow != null) {
 	            String gainType = Objects.toString(pendingRow.get("GAIN_TYPE"), "");
 	            boolean isGold  = "DROP_OPEN_G".equals(gainType);
 	            if (isGold && ThreadLocalRandom.current().nextDouble() < 0.05) {
-	                // 황금 → 플래티나이트 진화 (GAIN_TYPE만 변경)
+	                // 황금 → 플래티넘 진화 (GAIN_TYPE만 변경)
 	                HashMap<String,Object> upMap = new HashMap<>();
 	                upMap.put("userName", userName);
 	                botNewService.upgradePendingHellBox(upMap);
 	                StringBuilder sb = new StringBuilder();
 	                sb.append("✨ 기적!! 황금 각인이 더욱 빛을 발합니다!!").append(NL);
 	                sb.append("━━━━━━━━━━━━").append(NL);
-	                sb.append("✨ 플래티나이트로 진화하였습니다!! ✨").append(NL);
+	                sb.append("✨ 플래티넘로 진화하였습니다!! ✨").append(NL);
 	                sb.append("━━━━━━━━━━━━").append(NL);
 	                sb.append("/가방열기 로 개봉하세요!");
 	                return sb.toString();
@@ -1043,7 +1043,7 @@ public class BossAttackController {
 	                my.prac.core.util.MiniGameUtil.HellBoxEntry entry =
 	                    pool.get(ThreadLocalRandom.current().nextInt(pool.size()));
 	                String hellGainType = isGold ? "HELL_BOX_GOLD" : "HELL_BOX_PLAT";
-	                String tierLabel    = isGold ? "황금" : "플래티나이트";
+	                String tierLabel    = isGold ? "황금" : "플래티넘";
 	                HashMap<String,Object> inv = new HashMap<>();
 	                inv.put("userName", userName); inv.put("roomName", roomName);
 	                inv.put("itemId", entry.itemId); inv.put("qty", entry.value);
@@ -1639,7 +1639,7 @@ public class BossAttackController {
 	        // 지옥 각인 (3000번대)
 	        // ─────────────────
 	        else if ("DROP_OPEN_G".equalsIgnoreCase(type) || "DROP_OPEN_P".equalsIgnoreCase(type)) {
-	            label = ("DROP_OPEN_P".equalsIgnoreCase(type) ? "✨플래티나이트" : "✨황금") + "유물상자 (/가방열기 로 개봉)";
+	            label = ("DROP_OPEN_P".equalsIgnoreCase(type) ? "✨플래티넘" : "✨황금") + "유물상자 (/가방열기 로 개봉)";
 	        }
 	        else if (type != null && type.toUpperCase().startsWith("HELL_BOX") && itemId >= 3000 && itemId < 4000) {
 	            label += " +" + qty + " [지옥]";
@@ -2138,7 +2138,7 @@ public class BossAttackController {
 	                    if (!bossDesc.isEmpty()) label += " (" + bossDesc + ")";
 	                    label += "BOSS_GACHA".equalsIgnoreCase(typeStr) ? " [뽑기]" : " [보스처치]";
 	                } else if ("DROP_OPEN_G".equalsIgnoreCase(typeStr) || "DROP_OPEN_P".equalsIgnoreCase(typeStr)) {
-	                    label = ("DROP_OPEN_P".equalsIgnoreCase(typeStr) ? "✨플래티나이트" : "✨황금") + "유물상자 (/가방열기 로 개봉)";
+	                    label = ("DROP_OPEN_P".equalsIgnoreCase(typeStr) ? "✨플래티넘" : "✨황금") + "유물상자 (/가방열기 로 개봉)";
 	                } else if (typeStr != null && typeStr.toUpperCase().startsWith("HELL_BOX") && itemId >= 3000 && itemId < 4000) {
 	                    label += " +" + qtyVal + " [지옥]";
 	                } else if (isEquipType) {
