@@ -1639,7 +1639,7 @@ public class BossAttackController {
 	        // 지옥 각인 (3000번대)
 	        // ─────────────────
 	        else if ("DROP_OPEN_G".equalsIgnoreCase(type) || "DROP_OPEN_P".equalsIgnoreCase(type)) {
-	            label = ("DROP_OPEN_P".equalsIgnoreCase(type) ? "✨플래티넘" : "✨황금") + "유물상자 (/가방열기 로 개봉)";
+	            label = ("DROP_OPEN_P".equalsIgnoreCase(type) ? "플래티넘" : "황금") + "유물상자 (/가방열기 로 개봉)";
 	        }
 	        else if (type != null && type.toUpperCase().startsWith("HELL_BOX") && itemId >= 3000 && itemId < 4000) {
 	            label += " +" + qty + " [지옥]";
@@ -2138,7 +2138,7 @@ public class BossAttackController {
 	                    if (!bossDesc.isEmpty()) label += " (" + bossDesc + ")";
 	                    label += "BOSS_GACHA".equalsIgnoreCase(typeStr) ? " [뽑기]" : " [보스처치]";
 	                } else if ("DROP_OPEN_G".equalsIgnoreCase(typeStr) || "DROP_OPEN_P".equalsIgnoreCase(typeStr)) {
-	                    label = ("DROP_OPEN_P".equalsIgnoreCase(typeStr) ? "✨플래티넘" : "✨황금") + "유물상자 (/가방열기 로 개봉)";
+	                    label = ("DROP_OPEN_P".equalsIgnoreCase(typeStr) ? "플래티넘" : "황금") + "유물상자 (/가방열기 로 개봉)";
 	                } else if (typeStr != null && typeStr.toUpperCase().startsWith("HELL_BOX") && itemId >= 3000 && itemId < 4000) {
 	                    label += " +" + qtyVal + " [지옥]";
 	                } else if (isEquipType) {
