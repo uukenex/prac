@@ -1020,7 +1020,7 @@ public class BossAttackController {
 	    // 오늘 이미 출석 여부 확인
 	    try {
 	        int already = botNewService.selectTodayAttendYn(userName, roomName);
-	        if (already > 0) return "✅ 오늘은 이미 출석하셨습니다! 내일 다시 해주세요.";
+	        if (already > 0) return "✅"+userName+"님, 오늘은 이미 출석하셨습니다! 내일 다시 해주세요.";
 	    } catch (Exception e) {
 	        return "❌ 출석 확인 중 오류가 발생했습니다.";
 	    }
@@ -1034,7 +1034,7 @@ public class BossAttackController {
 
 	    // 상자 2개 지급 (tier 결정: 플래티넘1%, 골드9%, 기본90%)
 	    StringBuilder sb = new StringBuilder();
-	    sb.append("🎁 출석체크 완료! 지옥의유물상자 2개를 드립니다!").append(NL);
+	    sb.append(userName+"님, 출석체크 완료! 지옥의유물상자 2개를 드립니다!").append(NL);
 	    sb.append("━━━━━━━━━━━━").append(NL);
 
 	    for (int i = 1; i <= 2; i++) {
