@@ -670,6 +670,12 @@ public class BotNewServiceImpl implements BotNewService {
         return botNewDAO.selectTodayBagCounts(param);
     }
 
+    @Override
+    public HashMap<String,Object> selectOpenBagCounts(String userName) {
+        return botNewDAO.selectOpenBagCounts(userName);
+    }
+
+    @Override
     public int selectBagCountByItemId(String userName, String roomName, int itemId) {
 
         HashMap<String,Object> param = new HashMap<>();

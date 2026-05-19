@@ -238,6 +238,8 @@ public interface BotNewDAO {
     public int clearBlessYn(String userName) ;
     
     HashMap<String,Object> selectTodayBagCounts(HashMap<String,Object> param);
+    HashMap<String,Object> selectOpenBagCounts(String userName);
+
     int selectBagCountByItemId(HashMap<String,Object> param);
 
     int consumeBagBulkByItemId(HashMap<String,Object> param);

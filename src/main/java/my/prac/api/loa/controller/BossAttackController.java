@@ -1191,13 +1191,14 @@ public class BossAttackController {
 	        }
 	    } catch (Exception ignore) {}
 
-	    // 91 / 92 / 93 각각 개수 조회
-	    int normalCount    = botNewService.selectBagCountByItemId(userName, roomName, 91);
-	    int nightmareCount = botNewService.selectBagCountByItemId(userName, roomName, 92);
-	    int hellCount      = botNewService.selectBagCountByItemId(userName, roomName, BAG_HELL_ITEM_ID);
-	    int hellEventCount = botNewService.selectBagCountByItemIdAndGainType(userName, roomName, BAG_HELL_ITEM_ID, "EVENT");
-	    int hellBossCount  = botNewService.selectBagCountByItemIdAndGainType(userName, roomName, BAG_HELL_ITEM_ID, "BOSS_HELL");
-	    int hellAttendCount = botNewService.selectBagCountByItemIdAndGainType(userName, roomName, BAG_HELL_ITEM_ID, "ATTEND");
+	    // ── 가방 개수 일괄 조회 (6 queries → 1) ───────────────────────────────────────
+	    HashMap<String,Object> bagCounts = botNewService.selectOpenBagCounts(userName);
+	    int normalCount     = bagCounts != null ? ((Number) bagCounts.getOrDefault("NORMAL_COUNT",      0)).intValue() : 0;
+	    int nightmareCount  = bagCounts != null ? ((Number) bagCounts.getOrDefault("NM_COUNT",          0)).intValue() : 0;
+	    int hellCount       = bagCounts != null ? ((Number) bagCounts.getOrDefault("HELL_COUNT",        0)).intValue() : 0;
+	    int hellEventCount  = bagCounts != null ? ((Number) bagCounts.getOrDefault("HELL_EVENT_COUNT",  0)).intValue() : 0;
+	    int hellBossCount   = bagCounts != null ? ((Number) bagCounts.getOrDefault("HELL_BOSS_COUNT",   0)).intValue() : 0;
+	    int hellAttendCount = bagCounts != null ? ((Number) bagCounts.getOrDefault("HELL_ATTEND_COUNT", 0)).intValue() : 0;
 	    int hellNoSpCount  = hellEventCount + hellBossCount + hellAttendCount; // SP 지급 제외 타입 합산
 	    int hellNormalCount = hellCount - hellNoSpCount;
 
@@ -1347,20 +1348,13 @@ public class BossAttackController {
 	    long top1Sp = getTop1SpCached();
 	    long spMin  = top1Sp > 0 ? top1Sp * 3 / 1000 : 1_000_000L;                          // 1등의 0.3%
 	    long spMax  = top1Sp > 0 ? Math.min(top1Sp / 100, 100_000_000_000L) : 5_000_000L;   // 1등의 1%, 최대 1000b
+	    SP hellSpLocal = new SP(0, ""); // SP 합산용 (루프 후 1회 INSERT)
 	    for (int i = 0; i < count; i++) {
 	        double roll = ThreadLocalRandom.current().nextDouble();
 	        if (!noSp && roll < 0.95) {
 	            // 95% → SP (HELL_BOX_SP CMD로 직접 저장)
 	            SP sp = pickBiasedSp(spMin, spMax);
-	            try {
-	                HashMap<String,Object> pr = new HashMap<>();
-	                pr.put("userName",  userName);
-	                pr.put("roomName",  roomName);
-	                pr.put("score",     sp.getValue());
-	                pr.put("scoreExt",  sp.getUnit());
-	                pr.put("cmd",       "HELL_BOX_SP");
-	                botNewService.insertPointRank(pr);
-	            } catch (Exception ignore) {}
+	            hellSpLocal.add(sp);
 	            totalSP.add(sp); // 표시용 누적
 	            detail.add("[지옥의유물상자]" + (i+1) + ": " + sp + "sp");
 	        } else {
@@ -1408,6 +1402,18 @@ public class BossAttackController {
 	                }
 	            }
 	        }
+	    }
+	    // ── SP 합산 후 1회 INSERT (동일금액 PK 충돌 방지) ─────────────────────
+	    if (hellSpLocal.getValue() != 0) {
+	        try {
+	            HashMap<String,Object> pr = new HashMap<>();
+	            pr.put("userName", userName);
+	            pr.put("roomName", roomName);
+	            pr.put("score",    hellSpLocal.getValue());
+	            pr.put("scoreExt", hellSpLocal.getUnit());
+	            pr.put("cmd",      "HELL_BOX_SP");
+	            botNewService.insertPointRank(pr);
+	        } catch (Exception ignore) {}
 	    }
 	}
 
