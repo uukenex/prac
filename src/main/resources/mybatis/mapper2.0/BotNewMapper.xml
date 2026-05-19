@@ -1855,6 +1855,25 @@
 	       AND INSERT_DATE >= TRUNC(SYSDATE)
 	</select>
 
+
+	<!-- selectBagCountByItemId x6 → 단일 통합 쿼리 -->
+	<select id="selectOpenBagCounts" parameterType="String" resultType="hashmap">
+	    /* selectOpenBagCounts */
+	    SELECT
+	        NVL(SUM(CASE WHEN ITEM_ID = 91  AND NVL(GAIN_TYPE,'DROP') NOT IN ('DROP_OPEN_G','DROP_OPEN_P') THEN QTY ELSE 0 END), 0) AS NORMAL_COUNT,
+	        NVL(SUM(CASE WHEN ITEM_ID = 92  AND NVL(GAIN_TYPE,'DROP') NOT IN ('DROP_OPEN_G','DROP_OPEN_P') THEN QTY ELSE 0 END), 0) AS NM_COUNT,
+	        NVL(SUM(CASE WHEN ITEM_ID = 93  AND NVL(GAIN_TYPE,'DROP') NOT IN ('DROP_OPEN_G','DROP_OPEN_P') THEN QTY ELSE 0 END), 0) AS HELL_COUNT,
+	        NVL(SUM(CASE WHEN ITEM_ID = 93  AND GAIN_TYPE = 'EVENT'     THEN QTY ELSE 0 END), 0) AS HELL_EVENT_COUNT,
+	        NVL(SUM(CASE WHEN ITEM_ID = 93  AND GAIN_TYPE = 'BOSS_HELL' THEN QTY ELSE 0 END), 0) AS HELL_BOSS_COUNT,
+	        NVL(SUM(CASE WHEN ITEM_ID = 93  AND GAIN_TYPE = 'ATTEND'    THEN QTY ELSE 0 END), 0) AS HELL_ATTEND_COUNT
+	    FROM (
+	        SELECT ITEM_ID, GAIN_TYPE, QTY FROM TBOT_POINT_NEW_INVENTORY
+	         WHERE USER_NAME = #{userName} AND DEL_YN = '0' AND ITEM_ID IN (91, 92, 93)
+	        UNION ALL
+	        SELECT ITEM_ID, GAIN_TYPE, QTY FROM TBOT_POINT_NEW_INVENTORY_OLD
+	         WHERE USER_NAME = #{userName} AND DEL_YN = '0' AND ITEM_ID IN (91, 92, 93)
+	    )
+	</select>
 	<select id="selectBagCountByItemId"
 	        parameterType="hashmap"
 	        resultType="int">
