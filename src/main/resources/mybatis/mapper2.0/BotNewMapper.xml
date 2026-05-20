@@ -1750,7 +1750,6 @@
 	    SELECT COUNT(*)
 	      FROM TBOT_POINT_NEW_USER
 	     WHERE USER_NAME = #{userName}
-	       AND ROOM_NAME = #{roomName}
 	       AND TRUNC(LAST_ATTEND_DATE) = TRUNC(SYSDATE)
 	</select>
 	<update id="updateLastAttendDate" parameterType="hashmap">
@@ -1758,7 +1757,6 @@
 	    UPDATE TBOT_POINT_NEW_USER
 	       SET LAST_ATTEND_DATE = TRUNC(SYSDATE)
 	     WHERE USER_NAME = #{userName}
-	       AND ROOM_NAME = #{roomName}
 	</update>
 	
 	<update id="lockMacroUser" statementType="CALLABLE">

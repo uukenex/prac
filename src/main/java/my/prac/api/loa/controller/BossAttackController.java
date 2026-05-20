@@ -1019,7 +1019,7 @@ public class BossAttackController {
 
 	    // 오늘 이미 출석 여부 확인
 	    try {
-	        int already = botNewService.selectTodayAttendYn(userName, roomName);
+	        int already = botNewService.selectTodayAttendYn(userName, null);
 	        if (already > 0) return "✅"+userName+"님, 오늘은 이미 출석하셨습니다! 내일 다시 해주세요.";
 	    } catch (Exception e) {
 	        return "❌ 출석 확인 중 오류가 발생했습니다.";
@@ -1027,7 +1027,7 @@ public class BossAttackController {
 
 	    // 출석일 갱신
 	    try {
-	        botNewService.updateLastAttendDate(userName, roomName);
+	        botNewService.updateLastAttendDate(userName, null);
 	    } catch (Exception e) {
 	        return "❌ 출석 처리 중 오류가 발생했습니다.";
 	    }
@@ -1796,7 +1796,7 @@ public class BossAttackController {
 	        // 지옥 각인 (3000번대)
 	        // ─────────────────
 	        else if ("DROP_OPEN_G".equalsIgnoreCase(type) || "DROP_OPEN_P".equalsIgnoreCase(type) || "ATTEND".equalsIgnoreCase(type)) {
-	            label = ("DROP_OPEN_P".equalsIgnoreCase(type) ? "✨플래티넘" : "ATTEND".equalsIgnoreCase(type) ? "🎁출첵" : "✨황금") + "유물상자 (/가방열기 로 개봉)";
+	            label = ("DROP_OPEN_P".equalsIgnoreCase(type) ? "✨플래티넘" : "ATTEND".equalsIgnoreCase(type) ? "출첵" : "✨황금") + "유물상자 (/가방열기 로 개봉)";
 	        }
 	        else if (type != null && type.toUpperCase().startsWith("HELL_BOX") && itemId >= 3000 && itemId < 4000) {
 	            label += " +" + qty + " [지옥]";
@@ -2295,7 +2295,7 @@ public class BossAttackController {
 	                    if (!bossDesc.isEmpty()) label += " (" + bossDesc + ")";
 	                    label += "BOSS_GACHA".equalsIgnoreCase(typeStr) ? " [뽑기]" : " [보스처치]";
 	                } else if ("DROP_OPEN_G".equalsIgnoreCase(typeStr) || "DROP_OPEN_P".equalsIgnoreCase(typeStr) || "ATTEND".equalsIgnoreCase(typeStr)) {
-	                    label = ("DROP_OPEN_P".equalsIgnoreCase(typeStr) ? "✨플래티넘" : "ATTEND".equalsIgnoreCase(typeStr) ? "🎁출첵" : "✨황금") + "유물상자 (/가방열기 로 개봉)";
+	                    label = ("DROP_OPEN_P".equalsIgnoreCase(typeStr) ? "✨플래티넘" : "ATTEND".equalsIgnoreCase(typeStr) ? "출첵" : "✨황금") + "유물상자 (/가방열기 로 개봉)";
 	                } else if (typeStr != null && typeStr.toUpperCase().startsWith("HELL_BOX") && itemId >= 3000 && itemId < 4000) {
 	                    label += " +" + qtyVal + " [지옥]";
 	                } else if (isEquipType) {
