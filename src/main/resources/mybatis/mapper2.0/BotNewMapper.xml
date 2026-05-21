@@ -1345,7 +1345,7 @@
 	          FROM TBOT_POINT_NEW_INVENTORY A
 	          JOIN TBOT_POINT_NEW_ITEM      B
 	            ON A.ITEM_ID   = B.ITEM_ID
-	         WHERE A.GAIN_TYPE IN ('HELL_BOX', 'HELL_BOX_GOLD', 'HELL_BOX_PLAT')
+	         WHERE A.GAIN_TYPE IN ('HELL_BOX_GOLD', 'HELL_BOX_PLAT')
 	           AND A.ITEM_ID  >= 3000
 	           AND A.DEL_YN   = '0'
 	        ORDER BY insertDate DESC
