@@ -174,9 +174,13 @@ public class BossAttackController {
 		}
 	    
 	    
+	    // ── 모드 전환 전 체력 기준 캡처 (아이템/버프 포함 실제 유효 최대 체력) ──
+	    UserBattleContext ctxBefore = null;
+	    try { ctxBefore = calcUserBattleContext(map); } catch (Exception ignore) {}
+
 	    if(selRaw.equals("나이트메어")||selRaw.equals("나메")) {
-	    	
-	    	
+
+
 	    	if(!master && !botNewService.isNightmareUnlocked(userName)) {
 	    		return "나이트메어 모드 해금 조건 미달성!" + NL
 	    		     + "조건: 일반모드에서 15번/25번/30번 몬스터 각 10마리 처치";
@@ -186,7 +190,7 @@ public class BossAttackController {
 	    }else if(selRaw.equals("헬")||selRaw.equals("헬모드")) {
 	    	/*
 	    	LocalDate today = LocalDate.now();
-	    	
+
 	    	if (today.isBefore(LocalDate.of(2026,4,16))) {
 	    		return "헬 모드 해금 조건 미달성!" + NL
 		    		     + "[4/16 00시 이후 아래 중 하나 충족 시 해금]" + NL
@@ -195,7 +199,7 @@ public class BossAttackController {
 		    		     + "- 유물 아이템 27개 이상 보유" + NL
 		    		     + "- 헌터 S급 이상";
 	        }*/
-	    	
+
 	    	if(!master) {
 	    		if(!botNewService.isHellUnlocked(userName)) {
 		    		return "헬 모드 해금 조건 미달성!" + NL
@@ -210,22 +214,15 @@ public class BossAttackController {
 	    	botNewService.setNightmareMode(userName,roomName,0);
 	    	msg="일반";
 	    }
-	    // ── 모드 전환 시 체력 비율 유지 ──────────────────────────────
-	    if (!msg.isEmpty()) {
+	    // ── 모드 전환 시 체력 비율 유지 (아이템 포함 컨텍스트 기준) ──────────
+	    if (!msg.isEmpty() && ctxBefore != null) {
 	        try {
-	            int baseHp = u.hpMax > 0 ? u.hpMax : my.prac.core.util.MiniGameUtil.calcBaseHpMax(u.lv);
-	            double hellMult = my.prac.core.util.MiniGameUtil.getHellNerfMult(u.hunterGrade);
-	            // 현재 모드의 유효 최대 체력
-	            int curEffMax  = (u.nightmareYn == 2)
-	                    ? Math.max(1, (int) Math.round(baseHp * hellMult))
-	                    : baseHp;
-	            double ratio = Math.min(1.0, Math.max(0.0, u.hpCur / (double) curEffMax));
-	            // 전환 후 모드의 유효 최대 체력
-	            int newMode    = "헬".equals(msg) ? 2 : ("나이트메어".equals(msg) ? 1 : 0);
-	            int newEffMax  = (newMode == 2)
-	                    ? Math.max(1, (int) Math.round(baseHp * hellMult))
-	                    : baseHp;
-	            int newHpCur = Math.min(newEffMax, Math.max(1, (int) Math.round(ratio * newEffMax)));
+	            int curEffMax = Math.max(1, ctxBefore.hpMax);
+	            double ratio  = Math.min(1.0, Math.max(0.0, u.hpCur / (double) curEffMax));
+	            // 전환 후 컨텍스트 재조회 (setNightmareMode가 DB 반영된 상태)
+	            UserBattleContext ctxAfter = calcUserBattleContext(map);
+	            int newEffMax = Math.max(1, ctxAfter.hpMax);
+	            int newHpCur  = Math.min(newEffMax, Math.max(1, (int) Math.round(ratio * newEffMax)));
 	            botNewService.updateUserHpOnlyTx(userName, roomName, newHpCur);
 	        } catch (Exception ignore) {}
 	    }
