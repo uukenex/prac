@@ -133,6 +133,18 @@ public class BossAttackController {
 	private static final int JOB_LV_KILL_OFFSET = 5;
 	private static final int JOB_MAX_LV         = 100;
 
+	/** 엘프 계열 야간 여부 (18~06시) */
+	private static boolean isElfNight() {
+	    int h = java.time.LocalTime.now().getHour();
+	    return h >= 18 || h < 6;
+	}
+	/** 야간이면 엘프 계열 직업명을 "다크엘프"로 반환, 그 외 그대로 반환 */
+	private static String elfDisplayJob(String job) {
+	    if (("엘프".equals(job) || "엘프궁수".equals(job) || "엘프마법사".equals(job)) && isElfNight())
+	        return "다크엘프";
+	    return job;
+	}
+
 	// 다중 구매 시 insertPointRank 합산용 ThreadLocal (합산 모드일 때만 non-null)
 	private static final ThreadLocal<SP[]> MULTI_BUY_COST_TL = new ThreadLocal<>();
 	// 다중 판매 시 insertPointRank 합산용 ThreadLocal (합산 모드일 때만 non-null)
@@ -1661,7 +1673,14 @@ public class BossAttackController {
 		        }
 		    }
 
-		    // 5-1) 엘프궁수/엘프마법사: 엘프 직업레벨 100 필요
+		    // 5-1) 야간(18~06시): 비엘프 계열 → 엘프 계열 전직 불가
+		    boolean isElfFamilyTarget = "엘프".equals(newJob) || "엘프궁수".equals(newJob) || "엘프마법사".equals(newJob);
+		    boolean isElfFamilyCur    = "엘프".equals(curJob) || "엘프궁수".equals(curJob) || "엘프마법사".equals(curJob);
+		    if (isElfFamilyTarget && !isElfFamilyCur && isElfNight()) {
+		        return "엘프 종족이 사라져 변경할 수 없습니다. (야간 18시~06시)";
+		    }
+
+		    // 5-2) 엘프궁수/엘프마법사: 엘프 직업레벨 100 필요
 		    if ("엘프궁수".equals(newJob) || "엘프마법사".equals(newJob)) {
 		        int elfLv = 0;
 		        try {
@@ -2128,7 +2147,7 @@ public class BossAttackController {
 	    sb.append("✨").append(ctx.targetUser).append(" 공격 정보").append(NL)
 	      .append("Lv: ").append(u.lv);
 	    if (!ctx.job.isEmpty()) {
-	        sb.append(" (").append(ctx.job).append(")");
+	        sb.append(" (").append(elfDisplayJob(ctx.job)).append(")");
 	        
 	        //헌터랭크추가
         	sb.append("(hunter"+ctx.hunterGrade+")");
@@ -4409,7 +4428,7 @@ public class BossAttackController {
 		    String origMsg = s.calc.patternMsg != null ? s.calc.patternMsg : "";
 		    s.calc.monDmg    = 0;
 		    s.calc.endBattle = false;
-		    s.calc.patternMsg = origMsg + " -> [엘프의 회피!]";
+		    s.calc.patternMsg = origMsg + " -> [" + elfDisplayJob(s.job) + "의 회피!]";
 		    s.calc.jobSkillUsed = true;
 		}
 
@@ -4630,19 +4649,19 @@ public class BossAttackController {
 		            if (newKll >= need && newLv < JOB_MAX_LV) {
 		                newLv  = Math.min(curLv + 1, JOB_MAX_LV);
 		                newKll = newKll - need;
-		                s.jobLevelUpMsg = "[" + s.job + "] 직업레벨 상승! Lv." + curLv + " -> Lv." + newLv;
+		                s.jobLevelUpMsg = "[" + elfDisplayJob(s.job) + "] 직업레벨 상승! Lv." + curLv + " -> Lv." + newLv;
 		                invalidateInvBuff(s.userName);
 		            }
 		            botNewService.upsertJobLevel(s.userName, s.job, newLv, newKll);
 		            // 직업레벨 진행도 메시지
 		            int displayNeed = newLv * JOB_LV_KILL_BASE + JOB_LV_KILL_OFFSET;
 		            if (newLv >= JOB_MAX_LV) {
-		                s.jobLvProgressMsg = "[" + s.job + "] Lv." + newLv + " (MAX)";
+		                s.jobLvProgressMsg = "[" + elfDisplayJob(s.job) + "] Lv." + newLv + " (MAX)";
 		            } else {
-		                s.jobLvProgressMsg = "[" + s.job + "] Lv." + newLv + " (" + newKll + "/" + displayNeed + "킬)";
+		                s.jobLvProgressMsg = "[" + elfDisplayJob(s.job) + "] Lv." + newLv + " (" + newKll + "/" + displayNeed + "킬)";
 		            }
 		        } else {
-		            s.jobLvProgressMsg = "[" + s.job + "] Lv." + curLv + " (MAX)";
+		            s.jobLvProgressMsg = "[" + elfDisplayJob(s.job) + "] Lv." + curLv + " (MAX)";
 		        }
 		    } catch (Exception ignore) {}
 		}
@@ -4656,7 +4675,7 @@ public class BossAttackController {
 		        if (curLv >= JOB_MAX_LV) {
 		            s.jobLvProgressMsg = "[" + s.job + "] Lv." + curLv + " (MAX)";
 		        } else {
-		            s.jobLvProgressMsg = "[" + s.job + "] Lv." + curLv + " (" + curKll + "/" + need + "킬)";
+		            s.jobLvProgressMsg = "[" + elfDisplayJob(s.job) + "] Lv." + curLv + " (" + curKll + "/" + need + "킬)";
 		        }
 		    } catch (Exception ignore) {}
 		}
@@ -9177,7 +9196,7 @@ public class BossAttackController {
 	            calc.atkDmg     = newDmg;
 	            calc.monDmg     = 0;
 	            if (calc.baseAtk > 0) calc.critMultiplier = (double) newDmg / calc.baseAtk;
-	            calc.patternMsg  = "[엘프마법사] 마법 관통! (피해 2배)";
+	            calc.patternMsg  = "[" + elfDisplayJob(u.job) + "] 마법 관통! (피해 2배)";
 	            calc.jobSkillUsed = true;
 	        }
 
