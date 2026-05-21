@@ -4617,7 +4617,8 @@ public class BossAttackController {
 		}
 
 		// ── 직업레벨 킬 누적 ──────────────────────────────────────────────
-		if (s.res.killed && s.job != null && !s.job.isEmpty()) {
+		boolean isElfJob = "엘프".equals(s.job) || "엘프궁수".equals(s.job) || "엘프마법사".equals(s.job);
+		if (isElfJob && s.res.killed) {
 		    try {
 		        HashMap<String,Object> jlRow = botNewService.selectJobLevel(s.userName, s.job);
 		        int curLv  = jlRow != null ? ((Number) jlRow.getOrDefault("JOB_LV",       0)).intValue() : 0;
@@ -4645,8 +4646,8 @@ public class BossAttackController {
 		        }
 		    } catch (Exception ignore) {}
 		}
-		// 킬 없을 때도 직업레벨 진행도 표시
-		if (s.job != null && !s.job.isEmpty() && s.jobLvProgressMsg.isEmpty()) {
+		// 킬 없을 때도 직업레벨 진행도 표시 (엘프 계열만)
+		if (isElfJob && s.jobLvProgressMsg.isEmpty()) {
 		    try {
 		        HashMap<String,Object> jlRow = botNewService.selectJobLevel(s.userName, s.job);
 		        int curLv  = jlRow != null ? ((Number) jlRow.getOrDefault("JOB_LV",       0)).intValue() : 0;
