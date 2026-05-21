@@ -2424,6 +2424,31 @@ public class BossAttackController {
 			sb.append(NL);
 		}
 
+		// ── 직업레벨 표기 ──
+		try {
+		    List<HashMap<String,Object>> jobLvRows = botNewService.selectJobLevels(ctx.targetUser);
+		    int totLv = ctx.totalJobLv;
+		    if (totLv > 0 || (jobLvRows != null && !jobLvRows.isEmpty())) {
+		        sb.append("⬆ 직업레벨 [합산 Lv.").append(totLv).append("]")
+		          .append(" → 데미지+").append(totLv * 10)
+		          .append(" 크리율+").append(totLv)
+		          .append("% 크리뎀+").append(totLv).append("%").append(NL);
+		        if (jobLvRows != null) {
+		            for (HashMap<String,Object> r : jobLvRows) {
+		                String jn  = Objects.toString(r.get("JOB_NAME"), "");
+		                int    jlv = ((Number) r.getOrDefault("JOB_LV", 0)).intValue();
+		                int    jkl = ((Number) r.getOrDefault("JOB_KILL_CNT", 0)).intValue();
+		                int    need = jlv * 10 + 5;
+		                sb.append("  └ [").append(jn).append("] Lv.").append(jlv);
+		                if (jlv < JOB_MAX_LV) sb.append("  (다음레벨: ").append(jkl).append("/").append(need).append("킬)");
+		                else                  sb.append("  (MAX)");
+		                sb.append(NL);
+		            }
+		        }
+		        sb.append(NL);
+		    }
+		} catch (Exception ignore) {}
+
 		// 누적 처치
 		sb.append("누적 처치 기록 (총 ").append(totalKills).append("마리)").append(NL);
 

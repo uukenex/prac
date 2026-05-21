@@ -823,6 +823,11 @@ public class BotNewServiceImpl implements BotNewService {
     }
 
     @Override
+    public List<HashMap<String,Object>> selectJobLevels(String userName) {
+        return botNewDAO.selectJobLevels(userName);
+    }
+
+    @Override
     public HashMap<String,Object> selectJobLevel(String userName, String jobName) {
         HashMap<String,Object> param = new HashMap<>();
         param.put("userName", userName);

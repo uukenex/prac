@@ -2379,6 +2379,15 @@
 		 WHERE USER_NAME = #{userName} AND JOB_NAME = #{jobName}
 	</select>
 
+	<!-- 유저의 전체 직업레벨 목록 조회 (공격정보 표기용) -->
+	<select id="selectJobLevels" parameterType="String" resultType="hashmap">
+		/* selectJobLevels */
+		SELECT JOB_NAME, JOB_LV, JOB_KILL_CNT
+		  FROM TBOT_JOB_LEVEL
+		 WHERE USER_NAME = #{userName} AND JOB_LV > 0
+		 ORDER BY JOB_LV DESC
+	</select>
+
 	<!-- 전 직업 레벨 합산 조회 (캐시용) -->
 	<select id="selectTotalJobLv" parameterType="String" resultType="int">
 		/* selectTotalJobLv */

@@ -243,6 +243,8 @@ public interface BotNewService {
 
     /** 직업레벨 단건 조회 */
     HashMap<String,Object> selectJobLevel(String userName, String jobName);
+    /** 유저의 전체 직업레벨 목록 조회 */
+    List<HashMap<String,Object>> selectJobLevels(String userName);
     /** 전 직업 레벨 합산 조회 */
     int selectTotalJobLv(String userName);
     /** 직업레벨/킬수 UPSERT */
