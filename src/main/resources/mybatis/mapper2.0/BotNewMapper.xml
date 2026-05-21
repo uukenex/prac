@@ -2371,4 +2371,42 @@
 		ORDER BY USER_NAME
 	</select>
 
+	<!-- 직업레벨 단건 조회 -->
+	<select id="selectJobLevel" parameterType="hashmap" resultType="hashmap">
+		/* selectJobLevel */
+		SELECT NVL(JOB_LV, 0) AS JOB_LV, NVL(JOB_KILL_CNT, 0) AS JOB_KILL_CNT
+		  FROM TBOT_JOB_LEVEL
+		 WHERE USER_NAME = #{userName} AND JOB_NAME = #{jobName}
+	</select>
+
+	<!-- 유저의 전체 직업레벨 목록 조회 (공격정보 표기용) -->
+	<select id="selectJobLevels" parameterType="String" resultType="hashmap">
+		/* selectJobLevels */
+		SELECT JOB_NAME, JOB_LV, JOB_KILL_CNT
+		  FROM TBOT_JOB_LEVEL
+		 WHERE USER_NAME = #{userName} AND JOB_LV > 0
+		 ORDER BY JOB_LV DESC
+	</select>
+
+	<!-- 전 직업 레벨 합산 조회 (캐시용) -->
+	<select id="selectTotalJobLv" parameterType="String" resultType="int">
+		/* selectTotalJobLv */
+		SELECT NVL(SUM(JOB_LV), 0)
+		  FROM TBOT_JOB_LEVEL
+		 WHERE USER_NAME = #{userName}
+	</select>
+
+	<!-- 직업레벨/킬수 UPSERT (Oracle MERGE) -->
+	<update id="upsertJobLevel" parameterType="hashmap">
+		/* upsertJobLevel */
+		MERGE INTO TBOT_JOB_LEVEL T
+		USING (SELECT #{userName} AS USER_NAME, #{jobName} AS JOB_NAME FROM DUAL) S
+		ON (T.USER_NAME = S.USER_NAME AND T.JOB_NAME = S.JOB_NAME)
+		WHEN MATCHED THEN
+		    UPDATE SET JOB_LV = #{jobLv}, JOB_KILL_CNT = #{jobKillCnt}, UPDATE_DATE = SYSDATE
+		WHEN NOT MATCHED THEN
+		    INSERT (USER_NAME, JOB_NAME, JOB_LV, JOB_KILL_CNT, UPDATE_DATE)
+		    VALUES (#{userName}, #{jobName}, #{jobLv}, #{jobKillCnt}, SYSDATE)
+	</update>
+
 </mapper>

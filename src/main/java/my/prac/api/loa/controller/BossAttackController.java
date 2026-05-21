@@ -128,6 +128,11 @@ public class BossAttackController {
 	private static volatile long TOP1_SP_CACHE_TS = 0L;
 	private static final long TOP1_SP_CACHE_TTL_MS = 3_600_000L;
 
+	// 직업레벨 시스템 상수
+	private static final int JOB_LV_KILL_BASE   = 10;  // N→N+1 필요 킬 = N * 10 + 5
+	private static final int JOB_LV_KILL_OFFSET = 5;
+	private static final int JOB_MAX_LV         = 100;
+
 	// 다중 구매 시 insertPointRank 합산용 ThreadLocal (합산 모드일 때만 non-null)
 	private static final ThreadLocal<SP[]> MULTI_BUY_COST_TL = new ThreadLocal<>();
 	// 다중 판매 시 insertPointRank 합산용 ThreadLocal (합산 모드일 때만 non-null)
@@ -169,9 +174,13 @@ public class BossAttackController {
 		}
 	    
 	    
+	    // ── 모드 전환 전 체력 기준 캡처 (아이템/버프 포함 실제 유효 최대 체력) ──
+	    UserBattleContext ctxBefore = null;
+	    try { ctxBefore = calcUserBattleContext(map); } catch (Exception ignore) {}
+
 	    if(selRaw.equals("나이트메어")||selRaw.equals("나메")) {
-	    	
-	    	
+
+
 	    	if(!master && !botNewService.isNightmareUnlocked(userName)) {
 	    		return "나이트메어 모드 해금 조건 미달성!" + NL
 	    		     + "조건: 일반모드에서 15번/25번/30번 몬스터 각 10마리 처치";
@@ -181,7 +190,7 @@ public class BossAttackController {
 	    }else if(selRaw.equals("헬")||selRaw.equals("헬모드")) {
 	    	/*
 	    	LocalDate today = LocalDate.now();
-	    	
+
 	    	if (today.isBefore(LocalDate.of(2026,4,16))) {
 	    		return "헬 모드 해금 조건 미달성!" + NL
 		    		     + "[4/16 00시 이후 아래 중 하나 충족 시 해금]" + NL
@@ -190,7 +199,7 @@ public class BossAttackController {
 		    		     + "- 유물 아이템 27개 이상 보유" + NL
 		    		     + "- 헌터 S급 이상";
 	        }*/
-	    	
+
 	    	if(!master) {
 	    		if(!botNewService.isHellUnlocked(userName)) {
 		    		return "헬 모드 해금 조건 미달성!" + NL
@@ -205,22 +214,15 @@ public class BossAttackController {
 	    	botNewService.setNightmareMode(userName,roomName,0);
 	    	msg="일반";
 	    }
-	    // ── 모드 전환 시 체력 비율 유지 ──────────────────────────────
-	    if (!msg.isEmpty()) {
+	    // ── 모드 전환 시 체력 비율 유지 (아이템 포함 컨텍스트 기준) ──────────
+	    if (!msg.isEmpty() && ctxBefore != null) {
 	        try {
-	            int baseHp = u.hpMax > 0 ? u.hpMax : my.prac.core.util.MiniGameUtil.calcBaseHpMax(u.lv);
-	            double hellMult = my.prac.core.util.MiniGameUtil.getHellNerfMult(u.hunterGrade);
-	            // 현재 모드의 유효 최대 체력
-	            int curEffMax  = (u.nightmareYn == 2)
-	                    ? Math.max(1, (int) Math.round(baseHp * hellMult))
-	                    : baseHp;
-	            double ratio = Math.min(1.0, Math.max(0.0, u.hpCur / (double) curEffMax));
-	            // 전환 후 모드의 유효 최대 체력
-	            int newMode    = "헬".equals(msg) ? 2 : ("나이트메어".equals(msg) ? 1 : 0);
-	            int newEffMax  = (newMode == 2)
-	                    ? Math.max(1, (int) Math.round(baseHp * hellMult))
-	                    : baseHp;
-	            int newHpCur = Math.min(newEffMax, Math.max(1, (int) Math.round(ratio * newEffMax)));
+	            int curEffMax = Math.max(1, ctxBefore.hpMax);
+	            double ratio  = Math.min(1.0, Math.max(0.0, u.hpCur / (double) curEffMax));
+	            // 전환 후 컨텍스트 재조회 (setNightmareMode가 DB 반영된 상태)
+	            UserBattleContext ctxAfter = calcUserBattleContext(map);
+	            int newEffMax = Math.max(1, ctxAfter.hpMax);
+	            int newHpCur  = Math.min(newEffMax, Math.max(1, (int) Math.round(ratio * newEffMax)));
 	            botNewService.updateUserHpOnlyTx(userName, roomName, newHpCur);
 	        } catch (Exception ignore) {}
 	    }
@@ -781,10 +783,12 @@ public class BossAttackController {
 	    ctx.jobRegen = jobRegen;
 	    
 	    ctx.success = true;
-
+	    ctx.totalJobLv = invBuffData != null
+	        ? ((Number) invBuffData.getOrDefault("totalJobLv", 0)).intValue() : 0;
 
 	    applyDropBonusToContext(ctx, targetUser, "");
 	    applyHellBoxBonusToContext(ctx, targetUser);
+	    applyJobLevelBonusToContext(ctx);
 
 	    // hpCur: 리젠 반영 현재 체력 (항상 실시간 DB 조회)
 	    final String ctxRoomName = Objects.toString(map.get("roomName"), "");
@@ -1495,6 +1499,18 @@ public class BossAttackController {
 	    } catch (Exception ignore) {}
 	}
 
+	/**
+	 * 직업레벨 보너스를 ctx 스탯에 반영 (전 직업 레벨 합산, 최후 적용)
+	 */
+	private void applyJobLevelBonusToContext(UserBattleContext ctx) {
+	    int lv = ctx.totalJobLv;
+	    if (lv <= 0) return;
+	    ctx.atkMin  += lv * 10;
+	    ctx.atkMax  += lv * 10;
+	    ctx.crit    += lv;
+	    ctx.critDmg += lv;
+	}
+
 	private long getTop1SpCached() {
 	    long now = System.currentTimeMillis();
 	    if (now - TOP1_SP_CACHE_TS > TOP1_SP_CACHE_TTL_MS) {
@@ -1525,6 +1541,7 @@ public class BossAttackController {
 	    try { data.put("drops", botNewService.selectTotalDropItems(userName)); } catch (Exception ignore) {}
 	    try { data.put("setBonus", botNewService.selectActiveSetBonuses(userName)); } catch (Exception ignore) {}
 	    try { data.put("hellClearAchv", botNewService.hasHellClearAchv(userName)); } catch (Exception ignore) {}
+	    try { data.put("totalJobLv", botNewService.selectTotalJobLv(userName)); } catch (Exception ignore) {}
 	    MiniGameUtil.INV_BUFF_CACHE.put(userName, data);
 	    return data;
 	}
@@ -1644,7 +1661,19 @@ public class BossAttackController {
 		        }
 		    }
 
-		    // // 5-1) 직업별 전직 조건 체크 (전사 100, 도적 100 같은 것들)
+		    // 5-1) 엘프궁수/엘프마법사: 엘프 직업레벨 100 필요
+		    if ("엘프궁수".equals(newJob) || "엘프마법사".equals(newJob)) {
+		        int elfLv = 0;
+		        try {
+		            HashMap<String,Object> elfRow = botNewService.selectJobLevel(userName, "엘프");
+		            elfLv = elfRow != null ? ((Number) elfRow.getOrDefault("JOB_LV", 0)).intValue() : 0;
+		        } catch (Exception ignore) {}
+		        if (elfLv < JOB_MAX_LV) {
+		            return "[" + newJob + "] 전직 조건 미충족: 엘프 직업레벨 100 달성 필요 (현재 Lv." + elfLv + ")";
+		        }
+		    }
+
+		    // // 5-2) 직업별 전직 조건 체크 (전사 100, 도적 100 같은 것들)
 // 		    List<JobChangeReq> reqList = MiniGameUtil.JOB_CHANGE_REQS.get(newJob);
 // 		    if (reqList != null && !reqList.isEmpty()) {
 // 		        StringBuilder sb = new StringBuilder();
@@ -1699,8 +1728,19 @@ public class BossAttackController {
 	    // HP 비율 유지
 	    long newHp = (long)Math.max(1, Math.floor(ctx2.hpMax * hpRatio));
 	    botNewService.updateUserHpOnlyTx(userName, roomName, (int) newHp);
-	    
-	    
+
+	    // 엘프 계열 최초 전직 시 직업레벨 1로 시작
+	    if ("엘프".equals(newJob) || "엘프궁수".equals(newJob) || "엘프마법사".equals(newJob)) {
+	        try {
+	            HashMap<String,Object> jlRow = botNewService.selectJobLevel(userName, newJob);
+	            int existingLv = jlRow != null ? ((Number) jlRow.getOrDefault("JOB_LV", 0)).intValue() : 0;
+	            if (existingLv <= 0) {
+	                botNewService.upsertJobLevel(userName, newJob, 1, 0);
+	            }
+	            invalidateInvBuff(userName);
+	        } catch (Exception ignore) {}
+	    }
+
 	    // 7) 완료 메시지
 	    return "✨ " + userName + "님, [" + newJob + "] 으로 직업이 변경되었습니다." + NL;
 	}
@@ -2402,6 +2442,31 @@ public class BossAttackController {
 
 			sb.append(NL);
 		}
+
+		// ── 직업레벨 표기 ──
+		try {
+		    List<HashMap<String,Object>> jobLvRows = botNewService.selectJobLevels(ctx.targetUser);
+		    int totLv = ctx.totalJobLv;
+		    if (totLv > 0 || (jobLvRows != null && !jobLvRows.isEmpty())) {
+		        sb.append("⬆ 직업레벨 [합산 Lv.").append(totLv).append("]")
+		          .append(" → 데미지+").append(totLv * 10)
+		          .append(" 크리율+").append(totLv)
+		          .append("% 크리뎀+").append(totLv).append("%").append(NL);
+		        if (jobLvRows != null) {
+		            for (HashMap<String,Object> r : jobLvRows) {
+		                String jn  = Objects.toString(r.get("JOB_NAME"), "");
+		                int    jlv = ((Number) r.getOrDefault("JOB_LV", 0)).intValue();
+		                int    jkl = ((Number) r.getOrDefault("JOB_KILL_CNT", 0)).intValue();
+		                int    need = jlv * 10 + 5;
+		                sb.append("  └ [").append(jn).append("] Lv.").append(jlv);
+		                if (jlv < JOB_MAX_LV) sb.append("  (다음레벨: ").append(jkl).append("/").append(need).append("킬)");
+		                else                  sb.append("  (MAX)");
+		                sb.append(NL);
+		            }
+		        }
+		        sb.append(NL);
+		    }
+		} catch (Exception ignore) {}
 
 		// 누적 처치
 		sb.append("누적 처치 기록 (총 ").append(totalKills).append("마리)").append(NL);
@@ -3975,6 +4040,9 @@ public class BossAttackController {
 		String dosaCastMsg = null;
 		String bagDropMsg  = "";
 		String bonusMsg    = "";
+		String jobLevelUpMsg = "";
+		boolean elfNightMode = false;
+		String jobLvProgressMsg = "";
 
 		AttackSession(HashMap<String,Object> map) {
 			this.map      = map;
@@ -4038,6 +4106,9 @@ public class BossAttackController {
 		else if ("용사".equals(s.job))   jobDmgMul = 1.4;
 		else if ("복수자".equals(s.job))  jobDmgMul = 0.2;
 		else if ("음양사".equals(s.job))  jobDmgMul = 1.6;
+		else if ("엘프".equals(s.job))       jobDmgMul = 2.0;
+		else if ("엘프궁수".equals(s.job))   jobDmgMul = 2.0;
+		else if ("엘프마법사".equals(s.job)) jobDmgMul = 2.0;
 
 		s.effAtkMin = (int)Math.round(atkMin * jobDmgMul + jobBonusMin);
 		s.effAtkMax = (int)Math.round(atkMax * jobDmgMul + jobBonusMax);
@@ -4163,7 +4234,7 @@ public class BossAttackController {
 		if (s.dark) { applyDarkMonsterScale(s); s.monHpRemainBefore = s.monMaxHp; }
 
 		// 그림자 몬스터: 헬에서 해당 몬스터 500회+ 처치 시 10% 확률
-		if (s.hell && s.hellKillCountForThisMon >= 500
+		if (s.hell && s.hellKillCountForThisMon >= 100
 		        && ThreadLocalRandom.current().nextDouble() < 0.10) {
 		    s.shadow = true;
 		    s.lucky = false;
@@ -4232,6 +4303,15 @@ public class BossAttackController {
 		if ("처단자".equals(s.job)  && s.lucky)             s.berserkMul = 1.5;
 		if ("음양사".equals(s.job)  && (s.lucky || s.dark)) s.berserkMul = 1.5;
 		if ("어둠사냥꾼".equals(s.job) && s.dark)   s.berserkMul = 3.0;
+		boolean isElfFamily = "엘프".equals(s.job) || "엘프궁수".equals(s.job) || "엘프마법사".equals(s.job);
+		if (isElfFamily) {
+		    int hour = java.time.LocalTime.now().getHour();
+		    boolean elfNight = (hour >= 18 || hour < 6);
+		    if (elfNight) {
+		        s.berserkMul = 1.5;     // 2.0 x 1.5 = 3.0배 (다크엘프 각성)
+		        s.elfNightMode = true;
+		    } 
+		}
 		s.flags = rollFlags(s.u, s.m);
 	}
 
@@ -4322,6 +4402,15 @@ public class BossAttackController {
 		        s.calc.endBattle = false;
 		        s.calc.patternMsg = origMsg + " → [회피!]";
 		    }
+		}
+
+		// ── 엘프궁수: 몬스터 공격 완전 회피 ──────────────────────────────────────
+		if ("엘프궁수".equals(s.job)) {
+		    String origMsg = s.calc.patternMsg != null ? s.calc.patternMsg : "";
+		    s.calc.monDmg    = 0;
+		    s.calc.endBattle = false;
+		    s.calc.patternMsg = origMsg + " -> [엘프의 회피!]";
+		    s.calc.jobSkillUsed = true;
 		}
 
 		// 11-후) 축복술사
@@ -4526,6 +4615,51 @@ public class BossAttackController {
 			double pct = Double.parseDouble(s.activeBuff.get("EFFECT_VALUE").toString());
 			s.res.gainExp = (int)(s.res.gainExp * (1 + pct / 100.0));
 		}
+
+		// ── 직업레벨 킬 누적 ──────────────────────────────────────────────
+		boolean isElfJob = "엘프".equals(s.job) || "엘프궁수".equals(s.job) || "엘프마법사".equals(s.job);
+		if (isElfJob && s.res.killed) {
+		    try {
+		        HashMap<String,Object> jlRow = botNewService.selectJobLevel(s.userName, s.job);
+		        int curLv  = jlRow != null ? ((Number) jlRow.getOrDefault("JOB_LV",       0)).intValue() : 0;
+		        int curKll = jlRow != null ? ((Number) jlRow.getOrDefault("JOB_KILL_CNT", 0)).intValue() : 0;
+		        if (curLv < JOB_MAX_LV) {
+		            int newKll = curKll + 1;
+		            int need   = curLv * JOB_LV_KILL_BASE + JOB_LV_KILL_OFFSET;
+		            int newLv  = curLv;
+		            if (newKll >= need && newLv < JOB_MAX_LV) {
+		                newLv  = Math.min(curLv + 1, JOB_MAX_LV);
+		                newKll = newKll - need;
+		                s.jobLevelUpMsg = "[" + s.job + "] 직업레벨 상승! Lv." + curLv + " -> Lv." + newLv;
+		                invalidateInvBuff(s.userName);
+		            }
+		            botNewService.upsertJobLevel(s.userName, s.job, newLv, newKll);
+		            // 직업레벨 진행도 메시지
+		            int displayNeed = newLv * JOB_LV_KILL_BASE + JOB_LV_KILL_OFFSET;
+		            if (newLv >= JOB_MAX_LV) {
+		                s.jobLvProgressMsg = "[" + s.job + "] Lv." + newLv + " (MAX)";
+		            } else {
+		                s.jobLvProgressMsg = "[" + s.job + "] Lv." + newLv + " (" + newKll + "/" + displayNeed + "킬)";
+		            }
+		        } else {
+		            s.jobLvProgressMsg = "[" + s.job + "] Lv." + curLv + " (MAX)";
+		        }
+		    } catch (Exception ignore) {}
+		}
+		// 킬 없을 때도 직업레벨 진행도 표시 (엘프 계열만)
+		if (isElfJob && s.jobLvProgressMsg.isEmpty()) {
+		    try {
+		        HashMap<String,Object> jlRow = botNewService.selectJobLevel(s.userName, s.job);
+		        int curLv  = jlRow != null ? ((Number) jlRow.getOrDefault("JOB_LV",       0)).intValue() : 0;
+		        int curKll = jlRow != null ? ((Number) jlRow.getOrDefault("JOB_KILL_CNT", 0)).intValue() : 0;
+		        int need   = curLv * JOB_LV_KILL_BASE + JOB_LV_KILL_OFFSET;
+		        if (curLv >= JOB_MAX_LV) {
+		            s.jobLvProgressMsg = "[" + s.job + "] Lv." + curLv + " (MAX)";
+		        } else {
+		            s.jobLvProgressMsg = "[" + s.job + "] Lv." + curLv + " (" + curKll + "/" + need + "킬)";
+		        }
+		    } catch (Exception ignore) {}
+		}
 	}
 
 	/** buildStealInv 헬퍼 */
@@ -4647,6 +4781,9 @@ public class BossAttackController {
 		msg += "✨포인트: " + curSpStr;
 
 		if (s.bagDropMsg != null && !s.bagDropMsg.isEmpty()) msg += NL + s.bagDropMsg;
+		if (s.elfNightMode) msg += NL + "[다크엘프 각성] 데미지 3배";
+		if (s.jobLevelUpMsg != null && !s.jobLevelUpMsg.isEmpty()) msg += NL + s.jobLevelUpMsg;
+		if (s.jobLvProgressMsg != null && !s.jobLvProgressMsg.isEmpty()) msg += NL + s.jobLvProgressMsg;
 		if (s.buff.started)                msg += NL + s.buff.startMsg;
 		else if (s.buff.runningMsg != null) msg += NL + s.buff.runningMsg;
 
@@ -8889,6 +9026,16 @@ public class BossAttackController {
 	    if ("사냥꾼".equals(u.job) && isAnimal(m)) {
 	    	baseAtk = (int) Math.round(baseAtk * 2.00);
 	    }
+	    
+	    if ("엘프".equals(u.job) && isAnimal(m)) {
+	    	baseAtk = (int) Math.round(baseAtk * 2.00);
+	    }
+	    if ("엘프마법사".equals(u.job) && isAnimal(m)) {
+	    	baseAtk = (int) Math.round(baseAtk * 2.00);
+	    }
+	    if ("엘프궁수".equals(u.job) && isAnimal(m)) {
+	    	baseAtk = (int) Math.round(baseAtk * 2.00);
+	    }
 
 	    if ("어둠사냥꾼".equals(u.job) && isSkeleton(m)) {
 	    	baseAtk = (int) Math.round(baseAtk * 2.00);
@@ -9021,6 +9168,17 @@ public class BossAttackController {
 	
 		            calc.patternMsg = "처단자의 방어파괴! (피해 2.5배)";
 	        	}
+	        }
+
+	        if ("엘프마법사".equals(u.job) && flags.monPattern == 3) {
+	            flags.monPattern = 1;
+	            int originalDmg = (int) Math.round(calc.baseAtk * calc.critMultiplier);
+	            int newDmg      = (int) Math.round(originalDmg * 2.0);
+	            calc.atkDmg     = newDmg;
+	            calc.monDmg     = 0;
+	            if (calc.baseAtk > 0) calc.critMultiplier = (double) newDmg / calc.baseAtk;
+	            calc.patternMsg  = "[엘프마법사] 마법 관통! (피해 2배)";
+	            calc.jobSkillUsed = true;
 	        }
 
 	        // 🛡 전사: 보스 필살기 패링 (20% 확률)

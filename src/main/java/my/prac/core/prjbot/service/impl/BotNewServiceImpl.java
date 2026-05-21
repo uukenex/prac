@@ -821,4 +821,32 @@ public class BotNewServiceImpl implements BotNewService {
     public List<HashMap<String, Object>> selectAllUsersForRank() {
         return botNewDAO.selectAllUsersForRank();
     }
+
+    @Override
+    public List<HashMap<String,Object>> selectJobLevels(String userName) {
+        return botNewDAO.selectJobLevels(userName);
+    }
+
+    @Override
+    public HashMap<String,Object> selectJobLevel(String userName, String jobName) {
+        HashMap<String,Object> param = new HashMap<>();
+        param.put("userName", userName);
+        param.put("jobName",  jobName);
+        return botNewDAO.selectJobLevel(param);
+    }
+
+    @Override
+    public int selectTotalJobLv(String userName) {
+        return botNewDAO.selectTotalJobLv(userName);
+    }
+
+    @Override
+    public int upsertJobLevel(String userName, String jobName, int jobLv, int jobKillCnt) {
+        HashMap<String,Object> param = new HashMap<>();
+        param.put("userName",   userName);
+        param.put("jobName",    jobName);
+        param.put("jobLv",      jobLv);
+        param.put("jobKillCnt", jobKillCnt);
+        return botNewDAO.upsertJobLevel(param);
+    }
 }
