@@ -1623,7 +1623,6 @@ public class BossAttackController {
 	    }
 
 	    // 3) 레벨 제한 (처음/변경 모두 공통 룰)
-	    // TODO: 전직 조건 체크 (엘프궁수/엘프마법사: 엘프 lv100 필요)
 
 	    // 4) 동일 직업으로 변경 시도
 	    if (!curJob.isEmpty() && newJob.equals(curJob)) {
@@ -1665,7 +1664,19 @@ public class BossAttackController {
 		        }
 		    }
 
-		    // // 5-1) 직업별 전직 조건 체크 (전사 100, 도적 100 같은 것들)
+		    // 5-1) 엘프궁수/엘프마법사: 엘프 직업레벨 100 필요
+		    if ("엘프궁수".equals(newJob) || "엘프마법사".equals(newJob)) {
+		        int elfLv = 0;
+		        try {
+		            HashMap<String,Object> elfRow = botNewService.selectJobLevel(userName, "엘프");
+		            elfLv = elfRow != null ? ((Number) elfRow.getOrDefault("JOB_LV", 0)).intValue() : 0;
+		        } catch (Exception ignore) {}
+		        if (elfLv < JOB_MAX_LV) {
+		            return "[" + newJob + "] 전직 조건 미충족: 엘프 직업레벨 100 달성 필요 (현재 Lv." + elfLv + ")";
+		        }
+		    }
+
+		    // // 5-2) 직업별 전직 조건 체크 (전사 100, 도적 100 같은 것들)
 // 		    List<JobChangeReq> reqList = MiniGameUtil.JOB_CHANGE_REQS.get(newJob);
 // 		    if (reqList != null && !reqList.isEmpty()) {
 // 		        StringBuilder sb = new StringBuilder();
@@ -4302,9 +4313,7 @@ public class BossAttackController {
 		    if (elfNight) {
 		        s.berserkMul = 1.5;     // 2.0 x 1.5 = 3.0배 (다크엘프 각성)
 		        s.elfNightMode = true;
-		    } else if (s.m.monNo <= 50) {
-		        s.berserkMul = 1.5;     // 2.0 x 1.5 = 3.0배 (야생보너스)
-		    }
+		    } 
 		}
 		s.flags = rollFlags(s.u, s.m);
 	}
@@ -9017,6 +9026,16 @@ public class BossAttackController {
 	        }
 	    }
 	    if ("사냥꾼".equals(u.job) && isAnimal(m)) {
+	    	baseAtk = (int) Math.round(baseAtk * 2.00);
+	    }
+	    
+	    if ("엘프".equals(u.job) && isAnimal(m)) {
+	    	baseAtk = (int) Math.round(baseAtk * 2.00);
+	    }
+	    if ("엘프마법사".equals(u.job) && isAnimal(m)) {
+	    	baseAtk = (int) Math.round(baseAtk * 2.00);
+	    }
+	    if ("엘프궁수".equals(u.job) && isAnimal(m)) {
 	    	baseAtk = (int) Math.round(baseAtk * 2.00);
 	    }
 
