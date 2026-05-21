@@ -129,8 +129,8 @@ public class BossAttackController {
 	private static final long TOP1_SP_CACHE_TTL_MS = 3_600_000L;
 
 	// 직업레벨 시스템 상수
-	private static final int JOB_LV_KILL_BASE   = 10;  // N→N+1 필요 킬 = N * 10 + 5
-	private static final int JOB_LV_KILL_OFFSET = 5;
+	private static final int JOB_LV_KILL_BASE   = 5;   // N→N+1 필요 킬 = N * 5 + 3
+	private static final int JOB_LV_KILL_OFFSET = 3;
 	private static final int JOB_MAX_LV         = 100;
 
 	/** 엘프 계열 야간 여부 (18~06시) */
