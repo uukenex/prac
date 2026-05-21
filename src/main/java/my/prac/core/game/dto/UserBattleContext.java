@@ -106,4 +106,7 @@ public class UserBattleContext {
 	public int setCritFinalRate  = 0; // 최종 크리율 증가율 (%)
 	public int setCooldownReduce = 0; // 쿨타임 감소 (초)
 	public int setEvasionRate    = 0; // 몬스터/보스 공격 회피율 (%)
+
+	// 직업레벨 보너스 (전 직업 레벨 합산)
+	public int totalJobLv = 0;
 }

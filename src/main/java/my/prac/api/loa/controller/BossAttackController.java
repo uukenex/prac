@@ -128,6 +128,11 @@ public class BossAttackController {
 	private static volatile long TOP1_SP_CACHE_TS = 0L;
 	private static final long TOP1_SP_CACHE_TTL_MS = 3_600_000L;
 
+	// 직업레벨 시스템 상수
+	private static final int JOB_LV_KILL_BASE   = 10;  // N→N+1 필요 킬 = N * 10 + 5
+	private static final int JOB_LV_KILL_OFFSET = 5;
+	private static final int JOB_MAX_LV         = 100;
+
 	// 다중 구매 시 insertPointRank 합산용 ThreadLocal (합산 모드일 때만 non-null)
 	private static final ThreadLocal<SP[]> MULTI_BUY_COST_TL = new ThreadLocal<>();
 	// 다중 판매 시 insertPointRank 합산용 ThreadLocal (합산 모드일 때만 non-null)
@@ -781,10 +786,12 @@ public class BossAttackController {
 	    ctx.jobRegen = jobRegen;
 	    
 	    ctx.success = true;
-
+	    ctx.totalJobLv = invBuffData != null
+	        ? ((Number) invBuffData.getOrDefault("totalJobLv", 0)).intValue() : 0;
 
 	    applyDropBonusToContext(ctx, targetUser, "");
 	    applyHellBoxBonusToContext(ctx, targetUser);
+	    applyJobLevelBonusToContext(ctx);
 
 	    // hpCur: 리젠 반영 현재 체력 (항상 실시간 DB 조회)
 	    final String ctxRoomName = Objects.toString(map.get("roomName"), "");
@@ -1495,6 +1502,18 @@ public class BossAttackController {
 	    } catch (Exception ignore) {}
 	}
 
+	/**
+	 * 직업레벨 보너스를 ctx 스탯에 반영 (전 직업 레벨 합산, 최후 적용)
+	 */
+	private void applyJobLevelBonusToContext(UserBattleContext ctx) {
+	    int lv = ctx.totalJobLv;
+	    if (lv <= 0) return;
+	    ctx.atkMin  += lv * 10;
+	    ctx.atkMax  += lv * 10;
+	    ctx.crit    += lv;
+	    ctx.critDmg += lv;
+	}
+
 	private long getTop1SpCached() {
 	    long now = System.currentTimeMillis();
 	    if (now - TOP1_SP_CACHE_TS > TOP1_SP_CACHE_TTL_MS) {
@@ -1525,6 +1544,7 @@ public class BossAttackController {
 	    try { data.put("drops", botNewService.selectTotalDropItems(userName)); } catch (Exception ignore) {}
 	    try { data.put("setBonus", botNewService.selectActiveSetBonuses(userName)); } catch (Exception ignore) {}
 	    try { data.put("hellClearAchv", botNewService.hasHellClearAchv(userName)); } catch (Exception ignore) {}
+	    try { data.put("totalJobLv", botNewService.selectTotalJobLv(userName)); } catch (Exception ignore) {}
 	    MiniGameUtil.INV_BUFF_CACHE.put(userName, data);
 	    return data;
 	}
@@ -1603,6 +1623,7 @@ public class BossAttackController {
 	    }
 
 	    // 3) 레벨 제한 (처음/변경 모두 공통 룰)
+	    // TODO: 전직 조건 체크 (엘프궁수/엘프마법사: 엘프 lv100 필요)
 
 	    // 4) 동일 직업으로 변경 시도
 	    if (!curJob.isEmpty() && newJob.equals(curJob)) {
@@ -3975,6 +3996,7 @@ public class BossAttackController {
 		String dosaCastMsg = null;
 		String bagDropMsg  = "";
 		String bonusMsg    = "";
+		String jobLevelUpMsg = "";
 
 		AttackSession(HashMap<String,Object> map) {
 			this.map      = map;
@@ -4526,6 +4548,27 @@ public class BossAttackController {
 			double pct = Double.parseDouble(s.activeBuff.get("EFFECT_VALUE").toString());
 			s.res.gainExp = (int)(s.res.gainExp * (1 + pct / 100.0));
 		}
+
+		// ── 직업레벨 킬 누적 ──────────────────────────────────────────────
+		if (s.res.killed && s.job != null && !s.job.isEmpty()) {
+		    try {
+		        HashMap<String,Object> jlRow = botNewService.selectJobLevel(s.userName, s.job);
+		        int curLv  = jlRow != null ? ((Number) jlRow.getOrDefault("JOB_LV",       0)).intValue() : 0;
+		        int curKll = jlRow != null ? ((Number) jlRow.getOrDefault("JOB_KILL_CNT", 0)).intValue() : 0;
+		        if (curLv < JOB_MAX_LV) {
+		            int newKll = curKll + 1;
+		            int need   = curLv * JOB_LV_KILL_BASE + JOB_LV_KILL_OFFSET;
+		            int newLv  = curLv;
+		            if (newKll >= need && newLv < JOB_MAX_LV) {
+		                newLv  = Math.min(curLv + 1, JOB_MAX_LV);
+		                newKll = newKll - need;
+		                s.jobLevelUpMsg = "⬆ [" + s.job + "] 직업레벨 상승! Lv." + curLv + " → Lv." + newLv;
+		                invalidateInvBuff(s.userName);
+		            }
+		            botNewService.upsertJobLevel(s.userName, s.job, newLv, newKll);
+		        }
+		    } catch (Exception ignore) {}
+		}
 	}
 
 	/** buildStealInv 헬퍼 */
@@ -4647,6 +4690,7 @@ public class BossAttackController {
 		msg += "✨포인트: " + curSpStr;
 
 		if (s.bagDropMsg != null && !s.bagDropMsg.isEmpty()) msg += NL + s.bagDropMsg;
+		if (s.jobLevelUpMsg != null && !s.jobLevelUpMsg.isEmpty()) msg += NL + s.jobLevelUpMsg;
 		if (s.buff.started)                msg += NL + s.buff.startMsg;
 		else if (s.buff.runningMsg != null) msg += NL + s.buff.runningMsg;
 

@@ -240,6 +240,13 @@ public interface BotNewService {
 
     /** 장비 랭킹용 전체 유저 기본 스탯 조회 */
     List<HashMap<String, Object>> selectAllUsersForRank();
+
+    /** 직업레벨 단건 조회 */
+    HashMap<String,Object> selectJobLevel(String userName, String jobName);
+    /** 전 직업 레벨 합산 조회 */
+    int selectTotalJobLv(String userName);
+    /** 직업레벨/킬수 UPSERT */
+    int upsertJobLevel(String userName, String jobName, int jobLv, int jobKillCnt);
 }
 
 	
