@@ -4234,7 +4234,7 @@ public class BossAttackController {
 		if (s.dark) { applyDarkMonsterScale(s); s.monHpRemainBefore = s.monMaxHp; }
 
 		// 그림자 몬스터: 헬에서 해당 몬스터 500회+ 처치 시 10% 확률
-		if (s.hell && s.hellKillCountForThisMon >= 500
+		if (s.hell && s.hellKillCountForThisMon >= 100
 		        && ThreadLocalRandom.current().nextDouble() < 0.10) {
 		    s.shadow = true;
 		    s.lucky = false;
