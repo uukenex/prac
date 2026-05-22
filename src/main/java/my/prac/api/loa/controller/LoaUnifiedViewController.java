@@ -676,6 +676,16 @@ public class LoaUnifiedViewController {
         // 3. 업적 파싱 및 그룹화 (monMap 전달 → 몬스터명 포함)
         HashMap<String, Object> grouped = parseAchievements(achvList, monMap);
 
+        // 3-1. 모든 업적 텍스트 리스트 (JSP의 "모든업적 텍스트" 섹션용)
+        List<HashMap<String, Object>> allCmds = new ArrayList<>();
+        for (HashMap<String, Object> achv : achvList) {
+            HashMap<String, Object> item = new HashMap<>();
+            item.put("cmd", achv.get("CMD"));
+            item.put("label", achv.get("label"));
+            allCmds.add(item);
+        }
+        grouped.put("_allCmds", allCmds);
+
         // 4. 기본 통계 - ACHV 업적 최대 임계값에서 도출
         int totalKills   = toInt(grouped.get("maxTotalKill"));
         int totalAttacks = toInt(grouped.get("maxAttack"));
@@ -990,7 +1000,6 @@ public class LoaUnifiedViewController {
         g.put("_firstClearList", firstClearList);
         g.put("_broadcastList",  broadcastList);
         g.put("_specialList",    specialList);
-        g.put("_allCmds",        new ArrayList<>());
         return g;
     }
 

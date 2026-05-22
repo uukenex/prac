@@ -4099,6 +4099,11 @@ public class BossAttackController {
 		s.ctx = calcUserBattleContext(statMap);
 		if (!s.ctx.success) return s.ctx.errorMessage;
 
+		// ─ DB 중복 조회 방지: calcUserBattleContext에서 조회한 ads 캐싱
+		if (s.ctx != null && s.ctx.ads != null) {
+			s.cachedAds = s.ctx.ads;
+		}
+
 		s.u   = s.ctx.user;
 		s.job = (s.u.job == null ? "" : s.u.job.trim());
 		if (s.job.isEmpty())
