@@ -8,8 +8,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import javax.annotation.Resource;
 
@@ -635,15 +633,12 @@ public class LoaUnifiedViewController {
         return ResponseEntity.ok(result);
     }
 
-    // ExecutorService 재사용 (스레드풀)
-    private static final ExecutorService executor = Executors.newFixedThreadPool(8);
-
     /**
      * GET /loa/api/achievements
      *
      * 업적 현황 (성능 최적화)
      * - CompletableFuture를 사용한 병렬 조회
-     * - 8개 DB 쿼리 동시 실행
+     * - 8개 DB 쿼리 동시 실행 (공용 ForkJoinPool 사용, 스레드 누수 방지)
      * - 5초 타임아웃으로 느린 응답 처리
      */
     @GetMapping("/api/achievements")
@@ -658,48 +653,48 @@ public class LoaUnifiedViewController {
         }
 
         try {
-            // CompletableFuture를 사용한 병렬 조회 (스레드풀 사용)
+            // CompletableFuture를 사용한 병렬 조회 (ForkJoinPool.commonPool() 사용, 스레드 누수 방지)
             CompletableFuture<List<HashMap<String, Object>>> f1 =
                 CompletableFuture.supplyAsync(() -> {
                     try { return botNewService.selectAchievementsByUser(userName, ""); }
                     catch (Exception e) { return new ArrayList<>(); }
-                }, executor);
+                });
 
             CompletableFuture<AttackDeathStat> f2 =
                 CompletableFuture.supplyAsync(() -> {
                     try { return botNewService.selectAttackDeathStats(userName, ""); }
                     catch (Exception e) { return null; }
-                }, executor);
+                });
 
             CompletableFuture<List<HashMap<String, Object>>> f3 =
                 CompletableFuture.supplyAsync(() -> {
                     try { return botNewService.selectTotalDropItems(userName); }
                     catch (Exception e) { return new ArrayList<>(); }
-                }, executor);
+                });
 
             CompletableFuture<HashMap<String, Object>> f4 =
                 CompletableFuture.supplyAsync(() -> {
                     try { return botNewService.selectAchievementInventoryCounts(userName); }
                     catch (Exception e) { return null; }
-                }, executor);
+                });
 
             CompletableFuture<Integer> f5 =
                 CompletableFuture.supplyAsync(() -> {
                     try { return botNewService.selectHellBossAttackCount(userName); }
                     catch (Exception e) { return 0; }
-                }, executor);
+                });
 
             CompletableFuture<Integer> f6 =
                 CompletableFuture.supplyAsync(() -> {
                     try { return botNewService.selectHellBossClearCount(userName); }
                     catch (Exception e) { return 0; }
-                }, executor);
+                });
 
             CompletableFuture<List<HashMap<String, Object>>> f7 =
                 CompletableFuture.supplyAsync(() -> {
                     try { return botNewService.selectMonsterKillsForView(userName); }
                     catch (Exception e) { return new ArrayList<>(); }
-                }, executor);
+                });
 
             // 모든 Future 완료 대기 (최대 5초)
             try {
