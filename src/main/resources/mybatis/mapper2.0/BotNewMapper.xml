@@ -1830,13 +1830,13 @@
 	
 	<select id="selectTodayBagCount"
 	        resultType="int">
-	    /* selectTodayBagCount - 전체 가방(91/92/93) 하루 드랍 합산 (구매 제외) */
+	    /* selectTodayBagCount - 전체 가방(91/92/93) 하루 드랍 합산 (일반 드롭만 포함) */
 	    SELECT NVL(SUM(NVL(QTY,1)), 0)
 	      FROM TBOT_POINT_NEW_INVENTORY A
 	     WHERE INSERT_DATE >= TRUNC(SYSDATE)
 	       AND A.ITEM_ID IN (91, 92, 93)
 	       AND A.USER_NAME = #{userName}
-	       AND NVL(A.GAIN_TYPE, '') != 'BUY'
+	       AND A.GAIN_TYPE = 'BAG_DROP'
 	</select>
 	
 	
