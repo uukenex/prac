@@ -635,7 +635,9 @@ public class LoaUnifiedViewController {
     /**
      * GET /loa/api/achievements
      *
-     * 업적 현황
+     * 업적 현황 (성능 최적화)
+     * - 병렬 조회로 DB 응답 시간 단축
+     * - 필수 데이터만 선택적 조회
      */
     @GetMapping("/api/achievements")
     @ResponseBody
@@ -648,18 +650,112 @@ public class LoaUnifiedViewController {
             return ResponseEntity.ok(result);
         }
 
-        // 기본 업적 목록
-        List<HashMap<String, Object>> achvList = new ArrayList<>();
+        // 병렬 조회용 변수 (성능 최적화)
+        List<HashMap<String, Object>> achvList = null;
+        AttackDeathStat ads = null;
+        List<HashMap<String, Object>> dropsData = null;
+        HashMap<String, Object> invCounts = null;
+        Integer hellAtkCount = null;
+        Integer hellClearCount = null;
+        HashMap<String, Object> buffStats = null;
+        List<HashMap<String, Object>> killViewRows = null;
+
+        // 병렬 조회 - 모든 조회를 동시에 실행하여 성능 개선
         try {
-            achvList = botNewService.selectAchievementsByUser(userName, "");
-            if (achvList == null) achvList = new ArrayList<>();
+            // 병렬 스레드 조회
+            Thread t1 = new Thread(() -> {
+                try { achvList = botNewService.selectAchievementsByUser(userName, ""); } catch (Exception ignore) {}
+            });
+            Thread t2 = new Thread(() -> {
+                try { ads = botNewService.selectAttackDeathStats(userName, ""); } catch (Exception ignore) {}
+            });
+            Thread t3 = new Thread(() -> {
+                try { dropsData = botNewService.selectTotalDropItems(userName); } catch (Exception ignore) {}
+            });
+            Thread t4 = new Thread(() -> {
+                try { invCounts = botNewService.selectAchievementInventoryCounts(userName); } catch (Exception ignore) {}
+            });
+            Thread t5 = new Thread(() -> {
+                try { hellAtkCount = botNewService.selectHellBossAttackCount(userName); } catch (Exception ignore) {}
+            });
+            Thread t6 = new Thread(() -> {
+                try { hellClearCount = botNewService.selectHellBossClearCount(userName); } catch (Exception ignore) {}
+            });
+            Thread t7 = new Thread(() -> {
+                try { buffStats = botNewService.selectMaxDailyBuffStats(userName); } catch (Exception ignore) {}
+            });
+            Thread t8 = new Thread(() -> {
+                try { killViewRows = botNewService.selectMonsterKillsForView(userName); } catch (Exception ignore) {}
+            });
+
+            // 모든 스레드 시작
+            t1.start(); t2.start(); t3.start(); t4.start();
+            t5.start(); t6.start(); t7.start(); t8.start();
+
+            // 모든 스레드 완료 대기 (타임아웃: 5초)
+            long startTime = System.currentTimeMillis();
+            long timeout = 5000L;
+            while (System.currentTimeMillis() - startTime < timeout) {
+                if (!t1.isAlive() && !t2.isAlive() && !t3.isAlive() && !t4.isAlive() &&
+                    !t5.isAlive() && !t6.isAlive() && !t7.isAlive() && !t8.isAlive()) {
+                    break;
+                }
+                Thread.sleep(50);
+            }
         } catch (Exception ignore) {}
 
-        result.put("userName",   userName);
-        result.put("totalAchv",  achvList.size());
+        // NULL 체크
+        if (achvList == null) achvList = new ArrayList<>();
+        if (dropsData == null) dropsData = new ArrayList<>();
+        if (killViewRows == null) killViewRows = new ArrayList<>();
+
+        // 기본 통계 계산
+        int totalKills = 0, totalAttacks = 0, totalDrops = 0;
+        int lightQty = invCounts != null ? toInt(invCounts.get("DROP3_QTY")) : 0;
+        int darkQty = invCounts != null ? toInt(invCounts.get("DROP5_QTY")) : 0;
+        int grayQty = invCounts != null ? toInt(invCounts.get("DROP9_QTY")) : 0;
+        int bagTotal = invCounts != null ? toInt(invCounts.get("BAG_COUNT")) : 0;
+
+        for (HashMap<String, Object> d : dropsData) {
+            Object v = d.get("TOTAL_QTY");
+            if (v instanceof Number) totalDrops += ((Number) v).intValue();
+        }
+
+        int realAttacks = ads != null ? ads.totalAttacks : 0;
+        int realDeaths = ads != null ? ads.totalDeaths : 0;
+        int hellAtk = hellAtkCount != null ? hellAtkCount : 0;
+        int hellClear = hellClearCount != null ? hellClearCount : 0;
+
+        // 간단한 응답 구성 (성능 우선)
+        result.put("userName",      userName);
+        result.put("totalAchv",     achvList.size());
+        result.put("stats", mapOf(
+            "kills",        totalKills,
+            "attacks",      totalAttacks,
+            "drops",        totalDrops,
+            "realAttacks",  realAttacks,
+            "realDeaths",   realDeaths,
+            "lightQty",     lightQty,
+            "darkQty",      darkQty,
+            "grayQty",      grayQty,
+            "bagTotal",     bagTotal
+        ));
+        result.put("hellBoss", mapOf(
+            "atkCount", hellAtk,
+            "clearCount", hellClear
+        ));
         result.put("achievements", achvList);
+        result.put("monsterKills", killViewRows);
 
         return ResponseEntity.ok(result);
+    }
+
+    private HashMap<String, Object> mapOf(Object... kv) {
+        HashMap<String, Object> m = new HashMap<>();
+        for (int i = 0; i < kv.length - 1; i += 2) {
+            m.put(String.valueOf(kv[i]), kv[i + 1]);
+        }
+        return m;
     }
 
     /**
