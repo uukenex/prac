@@ -425,8 +425,14 @@ public class BossAttackController {
 	    // ctx.currentPoint / ctx.currentPointStr 는 attackInfo()에서 직접 채움
 
 	    try {
-	    	// [OPT5] selectTotalEarnedSp DB 호출 제거 → selectUser에서 이미 계산된 TOTAL_SP 재사용
-	    	SP total = SP.fromSp((double) u.totalSp);
+	    	// [OPT5] TOTAL_SP Java 계산: selectUserTotalSpComponents에서 INV_SP + POINT_SP 받아서 계산
+	    	HashMap<String, Object> spComp = botNewService.selectUserTotalSpComponents(targetUser);
+	    	long invSp = (spComp != null && spComp.get("INV_SP") != null) ? ((Number) spComp.get("INV_SP")).longValue() : 0;
+	    	long pointSp = (spComp != null && spComp.get("POINT_SP") != null) ? ((Number) spComp.get("POINT_SP")).longValue() : 0;
+	    	long totalSp = invSp + pointSp;
+
+	    	u.totalSp = totalSp;
+	    	SP total = SP.fromSp((double) totalSp);
 	    	ctx.lifetimeSpStr = total.toString();
 	    	ctx.lifetimeSp = total;
 	    } catch (Exception ignore) {
@@ -1553,7 +1559,14 @@ public class BossAttackController {
 	    } catch (Exception ignore) {}
 	    // [OPT] selectTotalDropItems는 applyDropBonusToContext에서 ctx.preDropRows로 대체되므로 제거
 	    // 만약 필요하면 라인 561에서 invBuffData.get("drops")를 사용함
-	    try { data.put("setBonus", botNewService.selectActiveSetBonuses(userName)); } catch (Exception ignore) {}
+	    // [OPT] selectActiveSetBonuses: SET_BONUS_CACHE로 캐싱
+	    try {
+	        List<HashMap<String,Object>> setBonus = MiniGameUtil.SET_BONUS_CACHE.computeIfAbsent(
+	            userName,
+	            key -> botNewService.selectActiveSetBonuses(userName)
+	        );
+	        data.put("setBonus", setBonus);
+	    } catch (Exception ignore) {}
 	    try { data.put("hellClearAchv", botNewService.hasHellClearAchv(userName)); } catch (Exception ignore) {}
 	    try { data.put("totalJobLv", botNewService.selectTotalJobLv(userName)); } catch (Exception ignore) {}
 	    MiniGameUtil.INV_BUFF_CACHE.put(userName, data);
@@ -1562,7 +1575,10 @@ public class BossAttackController {
 
 	/** 아이템 획득/판매/소비 후 호출 → 해당 유저의 인벤토리 버프 캐시 즉시 무효화 */
 	private void invalidateInvBuff(String userName) {
-	    if (userName != null) MiniGameUtil.INV_BUFF_CACHE.remove(userName);
+	    if (userName != null) {
+	        MiniGameUtil.INV_BUFF_CACHE.remove(userName);
+	        MiniGameUtil.SET_BONUS_CACHE.remove(userName);  // [OPT] SET_BONUS_CACHE도 함께 무효화
+	    }
 	}
 
 	// ─────────────────────────────────────────────────────────────────────────
@@ -2637,6 +2653,7 @@ public class BossAttackController {
                 HashMap<String,Object> param = new HashMap<>();
                 param.put("seasonStart", seasonId);
                 param.put("seasonEnd", seasonEnd.format(DateTimeFormatter.ofPattern("yyyyMMdd")));
+                param.put("userName", userName);  // [OPT] SQL WHERE에서 필터링 (Java 필터링 제거)
 
                 List<HashMap<String,Object>> ranking =
                     botNewService.selectSlayerSeasonRank(param);

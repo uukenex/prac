@@ -65,6 +65,7 @@ public interface BotNewService {
 
     HashMap<String,Object>  selectCurrentPoint(String userName, String roomName);
     HashMap<String,Object>  selectTotalEarnedSp(String userName, String roomName);
+    HashMap<String,Object>  selectUserTotalSpComponents(String userName);
     int insertPointRank(HashMap<String, Object> p);
     HashMap<String,Object> selectItemSellPriceById(int itemId);
     List<HashMap<String, Object>> selectInventoryRowsForSale(String u, String r, int id);

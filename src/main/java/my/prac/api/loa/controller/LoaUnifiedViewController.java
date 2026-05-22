@@ -667,6 +667,30 @@ public class LoaUnifiedViewController {
             if (achvList == null) achvList = new ArrayList<>();
         } catch (Exception ignore) {}
 
+        // 2-0. Java에서 정렬: SQL ORDER BY를 Java Comparator로 구현
+        achvList.sort((a, b) -> {
+            String cmdA = Objects.toString(a.get("CMD"), "");
+            String cmdB = Objects.toString(b.get("CMD"), "");
+
+            // 1순위: 업적 타입별 정렬
+            int typeA = getAchievementTypeOrder(cmdA);
+            int typeB = getAchievementTypeOrder(cmdB);
+            if (typeA != typeB) return Integer.compare(typeA, typeB);
+
+            // 2순위: 몬스터 번호 또는 조건 숫자 (내림차순)
+            int numA = extractTrailingNumber(cmdA);
+            int numB = extractTrailingNumber(cmdB);
+            if (numA != numB) return Integer.compare(numB, numA); // 내림차순
+
+            // 3순위: 50킬 → 100킬 순
+            if (cmdA.contains("KILL50")) return -1;
+            if (cmdB.contains("KILL50")) return 1;
+            if (cmdA.contains("KILL100")) return -1;
+            if (cmdB.contains("KILL100")) return 1;
+
+            return 0;
+        });
+
         // 2-1. 업적에 한글 라벨 추가
         for (HashMap<String, Object> achv : achvList) {
             String cmd = Objects.toString(achv.get("CMD"), "");
@@ -1236,5 +1260,35 @@ public class LoaUnifiedViewController {
 
     private String safeStr(Object o) {
         return o == null ? "" : o.toString().trim();
+    }
+
+    // 업적 정렬용 헬퍼 메서드: 업적 타입별 순서 반환
+    private int getAchievementTypeOrder(String cmd) {
+        if (cmd.contains("ACHV_FIRST_CLEAR_MON_")) return 1;
+        if (cmd.contains("ACHV_KILL_TOTAL_")) return 2;
+        if (cmd.contains("ACHV_KILL") && cmd.contains("_MON_")) return 3;
+        if (cmd.contains("ACHV_DEATH")) return 4;
+        return 9;
+    }
+
+    // 업적 정렬용 헬퍼 메서드: CMD 끝에서 숫자 추출
+    private int extractTrailingNumber(String cmd) {
+        if (cmd == null || cmd.isEmpty()) return 0;
+        // 끝에서 숫자 추출
+        int lastDigitIndex = cmd.length() - 1;
+        while (lastDigitIndex >= 0 && !Character.isDigit(cmd.charAt(lastDigitIndex))) {
+            lastDigitIndex--;
+        }
+        if (lastDigitIndex < 0) return 0;
+
+        int firstDigitIndex = lastDigitIndex;
+        while (firstDigitIndex >= 0 && Character.isDigit(cmd.charAt(firstDigitIndex))) {
+            firstDigitIndex--;
+        }
+        try {
+            return Integer.parseInt(cmd.substring(firstDigitIndex + 1, lastDigitIndex + 1));
+        } catch (Exception e) {
+            return 0;
+        }
     }
 }

@@ -28,71 +28,12 @@
 	        U.PROC_DATE,
 	        NVL(U.NIGHTMARE_YN, 0) AS NIGHTMARE_YN,
 
-	        NVL(SP_SUM.TOTAL_SP,0) AS TOTAL_SP
-	
+	        0 AS TOTAL_SP
+
 	    FROM TBOT_POINT_NEW_USER U
-	
-	    LEFT JOIN
-	    (
-	        SELECT
-	            USER_NAME,
-	            SUM(SP_VAL) AS TOTAL_SP
-	        FROM
-	        (
-	            /* INVENTORY SP */
-	            SELECT
-	                A.USER_NAME,
-	                (
-	                    CASE
-	                        WHEN A.GAIN_TYPE='BUY_MERCHANT'
-	                        THEN ROUND(B.ITEM_SELL_PRICE*0.9)
-	                        ELSE B.ITEM_SELL_PRICE
-	                    END
-	                )
-	                *
-	                POWER(
-	                    10000,
-	                    CASE
-	                        WHEN B.ITEM_SELL_PRICE_EXT IS NULL OR B.ITEM_SELL_PRICE_EXT=''
-	                        THEN 0
-	                        ELSE ASCII(B.ITEM_SELL_PRICE_EXT)-ASCII('a')+1
-	                    END
-	                )
-	                * A.QTY AS SP_VAL
-	
-	            FROM TBOT_POINT_NEW_INVENTORY A
-	            JOIN TBOT_POINT_NEW_ITEM B
-	              ON A.ITEM_ID=B.ITEM_ID
-	
-	            WHERE A.GAIN_TYPE NOT IN ('DROP','DROP3','DROP5','DROP9','STEAL')
-	            AND A.DEL_YN='0'
-	
-	            UNION ALL
-	
-	            /* POINT LOG SP */
-	            SELECT
-	                R.USER_NAME,
-	                R.SCORE
-	                *
-	                POWER(
-	                    10000,
-	                    CASE
-	                        WHEN R.SCORE_EXT IS NULL OR R.SCORE_EXT=''
-	                        THEN 0
-	                        ELSE ASCII(R.SCORE_EXT)-ASCII('a')+1
-	                    END
-	                )
-	
-	            FROM (SELECT USER_NAME, ROOM_NAME, SCORE, SCORE_EXT, INSERT_DATE, CMD, NEW_YN FROM TBOT_POINT_RANK UNION ALL SELECT USER_NAME, ROOM_NAME, SCORE, SCORE_EXT, INSERT_DATE, CMD, NEW_YN FROM TBOT_POINT_RANK_OLD) R
-	            WHERE R.NEW_YN='1'
-	
-	        )
-	        GROUP BY USER_NAME
-	    ) SP_SUM
-	    ON SP_SUM.USER_NAME=U.USER_NAME
-	
+
 	    WHERE U.USER_NAME=#{userName}
-	
+
 	    ORDER BY
 	        U.PROC_DATE DESC NULLS LAST,
 	        U.INSERT_DATE DESC NULLS LAST,
@@ -100,8 +41,44 @@
 	        U.EXP_CUR DESC
 	)
 	WHERE ROWNUM=1
-	
+
 	</select>
+
+  <!-- 유저의 누적 SP 계산 (POWER/ASCII 계산 제거, Java에서 처리) -->
+  <select id="selectUserTotalSpComponents" resultType="hashmap" parameterType="string">
+  /*selectUserTotalSpComponents*/
+    SELECT
+        NVL(SUM(inv_sp), 0) AS INV_SP,
+        NVL(SUM(point_sp), 0) AS POINT_SP
+    FROM (
+        /* INVENTORY SP (단순 합산, 수량만) */
+        SELECT
+            SUM(
+                CASE
+                    WHEN A.GAIN_TYPE='BUY_MERCHANT'
+                    THEN ROUND(B.ITEM_SELL_PRICE*0.9) * A.QTY
+                    ELSE B.ITEM_SELL_PRICE * A.QTY
+                END
+            ) AS inv_sp,
+            0 AS point_sp
+        FROM TBOT_POINT_NEW_INVENTORY A
+        JOIN TBOT_POINT_NEW_ITEM B
+          ON A.ITEM_ID=B.ITEM_ID
+        WHERE A.USER_NAME = #{userName}
+          AND A.GAIN_TYPE NOT IN ('DROP','DROP3','DROP5','DROP9','STEAL')
+          AND A.DEL_YN='0'
+
+        UNION ALL
+
+        /* POINT LOG SP (단순 합산) */
+        SELECT
+            0 AS inv_sp,
+            SUM(R.SCORE) AS point_sp
+        FROM (SELECT USER_NAME, ROOM_NAME, SCORE, SCORE_EXT, INSERT_DATE, CMD, NEW_YN FROM TBOT_POINT_RANK UNION ALL SELECT USER_NAME, ROOM_NAME, SCORE, SCORE_EXT, INSERT_DATE, CMD, NEW_YN FROM TBOT_POINT_RANK_OLD) R
+        WHERE R.USER_NAME = #{userName}
+          AND R.NEW_YN='1'
+    )
+  </select>
 
   <select id="selectAttackDeathStats" resultType="my.prac.core.game.dto.AttackDeathStat">
   /*selectAttackDeathStats*/
@@ -608,70 +585,14 @@
   <select id="selectOwnedMarketBuffTotals" resultType="map">
 	  /* selectOwnedMarketBuffTotals */
 	  SELECT
-	      	NVL(SUM( ROUND(i.atk_min  * 
-		        CASE 
-		            WHEN inv.qty = 1 THEN 1.0
-		            WHEN inv.qty =  2 THEN 1.3
-		            WHEN inv.qty =  3 THEN 1.5
-		            ELSE 1.6            -- qty >= 4
-		        END
-		    )), 0) AS ATK_MIN,
-		    NVL(SUM( ROUND(i.atk_max  * 
-		        CASE 
-		            WHEN inv.qty = 1 THEN 1.0
-		            WHEN inv.qty =  2 THEN 1.3
-		            WHEN inv.qty =  3 THEN 1.5
-		            ELSE 1.6
-		        END
-		    )), 0) AS ATK_MAX,
-		    NVL(SUM( ROUND(i.atk_cri  *
-		        CASE 
-		            WHEN inv.qty = 1 THEN 1.0
-		            WHEN inv.qty =  2 THEN 1.3
-		            WHEN inv.qty =  3 THEN 1.5
-		            ELSE 1.6
-		        END
-		    )), 0) AS ATK_CRI,
-		    NVL(SUM( ROUND(i.hp_regen *
-		        CASE 
-		            WHEN inv.qty = 1 THEN 1.0
-		            WHEN inv.qty =  2 THEN 1.3
-		            WHEN inv.qty =  3 THEN 1.5
-		            ELSE 1.6
-		        END
-		    )), 0) AS HP_REGEN,
-		    NVL(SUM( ROUND(i.hp_max   *
-		        CASE 
-		            WHEN inv.qty = 1 THEN 1.0
-		            WHEN inv.qty =  2 THEN 1.3
-		            WHEN inv.qty =  3 THEN 1.5
-		            ELSE 1.6
-		        END
-		    )), 0) AS HP_MAX,
-		    NVL(SUM( ROUND(i.cri_dmg  *
-		        CASE 
-		            WHEN inv.qty = 1 THEN 1.0
-		            WHEN inv.qty =  2 THEN 1.3
-		            WHEN inv.qty =  3 THEN 1.5
-		            ELSE 1.6
-		        END
-		    )), 0) AS CRI_DMG,
-		    NVL(SUM( ROUND(i.hp_max_rate  *
-		        CASE 
-		            WHEN inv.qty = 1 THEN 1.0
-		            WHEN inv.qty =  2 THEN 1.3
-		            WHEN inv.qty =  3 THEN 1.5
-		            ELSE 1.6
-		        END
-		    )), 0) AS HP_MAX_RATE,
-		    NVL(SUM( ROUND(i.atk_max_rate  *
-		        CASE 
-		            WHEN inv.qty = 1 THEN 1.0
-		            WHEN inv.qty =  2 THEN 1.3
-		            WHEN inv.qty =  3 THEN 1.5
-		            ELSE 1.6
-		        END
-		    )), 0) AS ATK_MAX_RATE
+	      	NVL(SUM( ROUND(i.atk_min  * 1.0)), 0) AS ATK_MIN,
+		    NVL(SUM( ROUND(i.atk_max  * 1.0)), 0) AS ATK_MAX,
+		    NVL(SUM( ROUND(i.atk_cri  * 1.0)), 0) AS ATK_CRI,
+		    NVL(SUM( ROUND(i.hp_regen * 1.0)), 0) AS HP_REGEN,
+		    NVL(SUM( ROUND(i.hp_max   * 1.0)), 0) AS HP_MAX,
+		    NVL(SUM( ROUND(i.cri_dmg  * 1.0)), 0) AS CRI_DMG,
+		    NVL(SUM( ROUND(i.hp_max_rate  * 1.0)), 0) AS HP_MAX_RATE,
+		    NVL(SUM( ROUND(i.atk_max_rate  * 1.0)), 0) AS ATK_MAX_RATE
 	  FROM TBOT_POINT_NEW_INVENTORY inv
 	  JOIN TBOT_POINT_NEW_ITEM i
 	    ON i.item_id = inv.item_id
@@ -926,31 +847,6 @@
 	  FROM (SELECT USER_NAME, ROOM_NAME, SCORE, SCORE_EXT, INSERT_DATE, CMD, NEW_YN FROM TBOT_POINT_RANK UNION ALL SELECT USER_NAME, ROOM_NAME, SCORE, SCORE_EXT, INSERT_DATE, CMD, NEW_YN FROM TBOT_POINT_RANK_OLD)
 	  WHERE USER_NAME = #{userName}
 	    AND CMD LIKE 'ACHV_%'
-	  ORDER BY CASE
-			        WHEN CMD LIKE 'ACHV_FIRST_CLEAR_MON_%' THEN 1
-			        WHEN CMD LIKE 'ACHV_KILL_TOTAL_%'      THEN 2
-			        WHEN CMD LIKE 'ACHV_KILL%_MON_%'       THEN 3
-			        WHEN CMD LIKE 'ACHV_DEATH%'       	   THEN 4
-			        ELSE 9
-			    END,
-			    -- 2순위: 몬스터번호 or 총킬조건 숫자(각 패턴에 맞게)
-			    CASE
-			        WHEN CMD LIKE 'ACHV_FIRST_CLEAR_MON_%'
-			             THEN -TO_NUMBER(REGEXP_SUBSTR(CMD, '[0-9]+$'))
-			        WHEN CMD LIKE 'ACHV_KILL_TOTAL_%'
-			             THEN -TO_NUMBER(REGEXP_SUBSTR(CMD, '[0-9]+$'))
-			        WHEN CMD LIKE 'ACHV_KILL%_MON_%'
-			             THEN -TO_NUMBER(REGEXP_SUBSTR(CMD, '[0-9]+$'))  -- MON_뒤 숫자 (몬스터 번호)
-			        WHEN CMD LIKE 'ACHV_DEATH%'
-			             THEN -TO_NUMBER(REGEXP_SUBSTR(CMD, '[0-9]+$'))
-			        ELSE NULL
-			    END,
-			    -- 3순위: 같은 MON에서 50 → 100 순
-			    CASE
-			        WHEN CMD LIKE 'ACHV_KILL50_MON_%'  THEN 1
-			        WHEN CMD LIKE 'ACHV_KILL100_MON_%' THEN 2
-			        ELSE 0
-			    END
 	</select>
 	
 	<select id="selectDailyAttackCounts" parameterType="hashmap" resultType="hashmap">
@@ -2198,6 +2094,9 @@
 		       AND A.INSERT_DATE >= TO_DATE(#{seasonStart}, 'YYYYMMDD')
 		       AND A.INSERT_DATE &lt;  TO_DATE(#{seasonEnd}, 'YYYYMMDD') + 1
 		       AND A.ROOM_NAME NOT IN ('람쥐봇 문의방','test123')
+		       <if test="userName != null">
+		       AND A.USER_NAME = #{userName}
+		       </if>
 		     GROUP BY A.TARGET_MON_LV, A.USER_NAME
 		     HAVING COUNT(1) >= 100
 		)

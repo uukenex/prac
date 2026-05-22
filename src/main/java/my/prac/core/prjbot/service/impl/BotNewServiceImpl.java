@@ -165,6 +165,11 @@ public class BotNewServiceImpl implements BotNewService {
 	}
 
 	@Override
+	public HashMap<String,Object>  selectUserTotalSpComponents(String userName) {
+		return botNewDAO.selectUserTotalSpComponents(userName);
+	}
+
+	@Override
 	public int insertPointRank(HashMap<String, Object> p) {
 		return botNewDAO.insertPointRank(p);
 	}
