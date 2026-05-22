@@ -3202,7 +3202,7 @@ public class BossAttackController {
 	    }
 
 	    // ── 배치 처리 (HP 계산 + 인벤토리 로그 삽입만 qty회) ───────────
-	    long currentHp = ctx.user.hpCur;
+	    long currentHp = ctx.hpCur; // 리젠 적용된 현재 체력 (공격 결과와 동일 기준)
 	    StringBuilder healSb = new StringBuilder();
 
 	    for (int i = 0; i < qty; i++) {
@@ -3273,7 +3273,7 @@ public class BossAttackController {
 	         + userName + "님이 " + itemName + "을(를) " + qty + "개 사용했습니다." + NL
 	         + "↘단가: " + unitPrice + "sp  합계: " + totalCost + "sp" + NL
 	         + healSb + NL
-	         + "HP: " + ctx.user.hpCur + " → " + currentHp + " / " + ctx.hpMax + NL
+	         + "HP: " + hpCur + " → " + currentHp + " / " + ctx.hpMax + NL
 	         + "✨포인트: " + afterPoint
 	         + achvMsg;
 	}
@@ -3690,11 +3690,12 @@ public class BossAttackController {
 		
 		
 	    long heal = MiniGameUtil.getPotionHeal(itemId, ctx.hpMax);
-	    long newHp = u.hpCur + heal;
+	    long beforeHp = ctx.hpCur; // 리젠 적용된 현재 체력 (공격 결과와 동일 기준)
+	    long newHp = beforeHp + heal;
 	    if(newHp > ctx.hpMax){
 	        newHp = ctx.hpMax;
 	    }
-	    
+
 	    botNewService.updateUserHpOnlyTx(userName, "", (int)newHp);
 	    if(itemId == 1001) {
 	    	botNewService.insertBattleLogTx(new BattleLog()
@@ -3717,10 +3718,10 @@ public class BossAttackController {
 	                .setNightmareYn(0)
 	        );
 	    	 return userName+"님, 부활했습니다. (+" + heal + ")"+NL
-		    		 +u.hpCur +" → "+newHp+" / "+ctx.hpMax;
+		    		 +beforeHp +" → "+newHp+" / "+ctx.hpMax;
 	    }else {
 	    	 return userName+"님, 체력이 회복되었습니다. (+" + heal + ")"+NL
-		    		 +u.hpCur +" → "+newHp +" / "+ ctx.hpMax;
+		    		 +beforeHp +" → "+newHp +" / "+ ctx.hpMax;
 	    }
 	}
 	
