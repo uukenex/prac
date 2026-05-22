@@ -64,7 +64,9 @@ public interface BotNewService {
     int insertInventoryLogTx(HashMap<String, Object> p);  // 트랜잭션 메서드 권장
 
     HashMap<String,Object>  selectCurrentPoint(String userName, String roomName);
+    List<HashMap<String,Object>> selectPointLogRaw(String userName);
     HashMap<String,Object>  selectTotalEarnedSp(String userName, String roomName);
+    List<HashMap<String,Object>> selectUserTotalSpComponents(String userName);
     int insertPointRank(HashMap<String, Object> p);
     HashMap<String,Object> selectItemSellPriceById(int itemId);
     List<HashMap<String, Object>> selectInventoryRowsForSale(String u, String r, int id);

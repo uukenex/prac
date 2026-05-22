@@ -159,9 +159,19 @@ public class BotNewServiceImpl implements BotNewService {
 	public HashMap<String,Object>  selectCurrentPoint(String userName, String roomName) {
 	    return botNewDAO.selectCurrentPoint(userName, roomName);
 	}
+
+	@Override
+	public List<HashMap<String,Object>> selectPointLogRaw(String userName) {
+	    return botNewDAO.selectPointLogRaw(userName);
+	}
 	@Override
 	public HashMap<String,Object>  selectTotalEarnedSp(String userName, String roomName) {
 		return botNewDAO.selectTotalEarnedSp(userName, roomName);
+	}
+
+	@Override
+	public List<HashMap<String,Object>> selectUserTotalSpComponents(String userName) {
+		return botNewDAO.selectUserTotalSpComponents(userName);
 	}
 
 	@Override

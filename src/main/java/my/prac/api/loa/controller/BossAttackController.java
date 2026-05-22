@@ -23,6 +23,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -304,7 +305,7 @@ public class BossAttackController {
 		if (!targetUser.isEmpty() && !roomName.isEmpty()) {
 			try {
 				// 오늘 전체 획득 수 (91+92+93 합산)
-				int todayTotal = botNewService.selectTodayBagCount(targetUser);
+				int todayTotal = getTodayBagCount(targetUser);
 
 				User tgtUser   = botNewService.selectUser(targetUser, roomName);
 				boolean isHell      = (tgtUser != null && tgtUser.nightmareYn == 2);
@@ -424,8 +425,21 @@ public class BossAttackController {
 	    // ctx.currentPoint / ctx.currentPointStr 는 attackInfo()에서 직접 채움
 
 	    try {
-	    	// [OPT5] selectTotalEarnedSp DB 호출 제거 → selectUser에서 이미 계산된 TOTAL_SP 재사용
-	    	SP total = SP.fromSp((double) u.totalSp);
+	    	// [OPT5] TOTAL_SP Java 계산: ext별 합산 후 POWER(10000, exponent) 적용
+	    	List<HashMap<String,Object>> spRows = botNewService.selectUserTotalSpComponents(targetUser);
+	    	double rawSp = 0;
+	    	if (spRows != null) {
+	    		for (HashMap<String,Object> row : spRows) {
+	    			String ext = java.util.Objects.toString(row.get("SP_EXT"), "");
+	    			Number amt = (Number) row.get("SP_AMT");
+	    			if (amt != null) {
+	    				int exponent = ext.isEmpty() ? 0 : (ext.charAt(0) - 'a' + 1);
+	    				rawSp += amt.doubleValue() * Math.pow(10000, exponent);
+	    			}
+	    		}
+	    	}
+	    	u.totalSp = (long) rawSp;
+	    	SP total = SP.fromSp(rawSp);
 	    	ctx.lifetimeSpStr = total.toString();
 	    	ctx.lifetimeSp = total;
 	    } catch (Exception ignore) {
@@ -1408,7 +1422,7 @@ public class BossAttackController {
 	                    pInv.put("userName", userName); pInv.put("roomName", roomName);
 	                    pInv.put("itemId",   93); pInv.put("qty", 1);
 	                    pInv.put("delYn",    "0"); pInv.put("gainType", openGainType);
-	                    try { botNewService.insertInventoryLogTx(pInv); } catch (Exception ignore) {}
+	                    try { botNewService.insertInventoryLogTx(pInv); incrementTodayBagCache(userName, 1); } catch (Exception ignore) {}
 	                    String dramatic = (pool == my.prac.core.util.MiniGameUtil.HELL_BOX_PLAT)
 	                            ? "✨ 플래티넘 각인이 빛을 발하고 있습니다!! ✨"
 	                            : "✨ 황금 각인이 빛나고 있습니다!! ✨";
@@ -1550,8 +1564,16 @@ public class BossAttackController {
 	        if (bossItemIds != null && !bossItemIds.isEmpty())
 	            data.put("bossItems", botNewService.selectInventoryItemsByIds(userName, "", bossItemIds));
 	    } catch (Exception ignore) {}
-	    try { data.put("drops", botNewService.selectTotalDropItems(userName)); } catch (Exception ignore) {}
-	    try { data.put("setBonus", botNewService.selectActiveSetBonuses(userName)); } catch (Exception ignore) {}
+	    // [OPT] selectTotalDropItems는 applyDropBonusToContext에서 ctx.preDropRows로 대체되므로 제거
+	    // 만약 필요하면 라인 561에서 invBuffData.get("drops")를 사용함
+	    // [OPT] selectActiveSetBonuses: SET_BONUS_CACHE로 캐싱
+	    try {
+	        List<HashMap<String,Object>> setBonus = MiniGameUtil.SET_BONUS_CACHE.computeIfAbsent(
+	            userName,
+	            key -> botNewService.selectActiveSetBonuses(userName)
+	        );
+	        data.put("setBonus", setBonus);
+	    } catch (Exception ignore) {}
 	    try { data.put("hellClearAchv", botNewService.hasHellClearAchv(userName)); } catch (Exception ignore) {}
 	    try { data.put("totalJobLv", botNewService.selectTotalJobLv(userName)); } catch (Exception ignore) {}
 	    MiniGameUtil.INV_BUFF_CACHE.put(userName, data);
@@ -1560,7 +1582,71 @@ public class BossAttackController {
 
 	/** 아이템 획득/판매/소비 후 호출 → 해당 유저의 인벤토리 버프 캐시 즉시 무효화 */
 	private void invalidateInvBuff(String userName) {
-	    if (userName != null) MiniGameUtil.INV_BUFF_CACHE.remove(userName);
+	    if (userName != null) {
+	        MiniGameUtil.INV_BUFF_CACHE.remove(userName);
+	        MiniGameUtil.SET_BONUS_CACHE.remove(userName);  // [OPT] SET_BONUS_CACHE도 함께 무효화
+	    }
+	}
+
+	// ─────────────────────────────────────────────────────────────────────────
+
+	/**
+	 * [OPT] selectCurrentPoint 대체: score_ext별 합산을 Java에서 POWER 계산
+	 * SQL에서 POWER/ASCII/LOG 제거 → score_ext별 SUM(score)만 받아서 Java 처리
+	 * 결과 포맷: {score: 1.5, score_ext: 'a'} (기존 selectCurrentPoint와 동일)
+	 */
+	private HashMap<String,Object> getCurrentPoint(String userName) {
+	    List<HashMap<String,Object>> rows = null;
+	    try { rows = botNewService.selectPointLogRaw(userName); } catch (Exception ignore) {}
+	    double rawSp = 0;
+	    if (rows != null) {
+	        for (HashMap<String,Object> row : rows) {
+	            String ext = Objects.toString(row.get("SCORE_EXT"), "");
+	            Number total = (Number) row.get("TOTAL");
+	            if (total != null) {
+	                int exponent = ext.isEmpty() ? 0 : (ext.charAt(0) - 'a' + 1);
+	                rawSp += total.doubleValue() * Math.pow(10000, exponent);
+	            }
+	        }
+	    }
+	    // rawSp → {SCORE, SCORE_EXT} (대문자 키 — selectCurrentPoint 반환 형식과 동일)
+	    HashMap<String,Object> result = new HashMap<>();
+	    if (rawSp == 0) {
+	        result.put("SCORE", 0.0);
+	        result.put("SCORE_EXT", "");
+	        return result;
+	    }
+	    double absRaw = Math.abs(rawSp);
+	    int unitIdx = (int) Math.floor(Math.log(absRaw) / Math.log(10000));
+	    double score = Math.round(Math.signum(rawSp) * absRaw / Math.pow(10000, unitIdx) * 100.0) / 100.0;
+	    String scoreExt = unitIdx <= 0 ? "" : String.valueOf((char)('a' + unitIdx - 1));
+	    result.put("SCORE", score);
+	    result.put("SCORE_EXT", scoreExt);
+	    return result;
+	}
+
+	/**
+	 * [OPT] selectTodayBagCount 캐시: DAILY_BAG_CACHE 활용
+	 * 날짜(yyyyMMdd) 키로 자동 만료, 가방 획득 시 incrementTodayBagCache로 갱신
+	 */
+	private int getTodayBagCount(String userName) {
+	    int today = Integer.parseInt(java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd")));
+	    int[] cached = MiniGameUtil.DAILY_BAG_CACHE.get(userName);
+	    if (cached != null && cached[1] == today) return cached[0];
+	    // 캐시 만료 or 없음 → DB 조회
+	    int count = 0;
+	    try { count = botNewService.selectTodayBagCount(userName); } catch (Exception ignore) {}
+	    MiniGameUtil.DAILY_BAG_CACHE.put(userName, new int[]{count, today});
+	    return count;
+	}
+
+	/** 가방 획득 시 DAILY_BAG_CACHE 증가 (DB 조회 없이 캐시만 업데이트) */
+	private void incrementTodayBagCache(String userName, int delta) {
+	    int today = Integer.parseInt(java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd")));
+	    MiniGameUtil.DAILY_BAG_CACHE.merge(userName, new int[]{delta, today}, (old, add) -> {
+	        if (old[1] != today) return new int[]{add[0], today}; // 날짜 다르면 리셋
+	        return new int[]{old[0] + add[0], today};
+	    });
 	}
 
 	// ─────────────────────────────────────────────────────────────────────────
@@ -2044,7 +2130,7 @@ public class BossAttackController {
 
 	    // [FIX3] calcUserBattleContext에서 제거된 selectCurrentPoint를 여기서 직접 조회
 	    try {
-	        HashMap<String,Object> pointRow = botNewService.selectCurrentPoint(ctx.targetUser, "");
+	        HashMap<String,Object> pointRow = getCurrentPoint(ctx.targetUser);
 	        double curValue = Double.parseDouble(Objects.toString(pointRow.get("SCORE"), "0"));
 	        String curExt = Objects.toString(pointRow.get("SCORE_EXT"), "");
 	        SP userPoint = new SP(curValue, curExt);
@@ -2635,6 +2721,7 @@ public class BossAttackController {
                 HashMap<String,Object> param = new HashMap<>();
                 param.put("seasonStart", seasonId);
                 param.put("seasonEnd", seasonEnd.format(DateTimeFormatter.ofPattern("yyyyMMdd")));
+                param.put("userName", userName);  // [OPT] SQL WHERE에서 필터링 (Java 필터링 제거)
 
                 List<HashMap<String,Object>> ranking =
                     botNewService.selectSlayerSeasonRank(param);
@@ -3026,7 +3113,7 @@ public class BossAttackController {
 	        long top1SpRaw = getTop1SpCached();
 	        SP unitPrice   = MiniGameUtil.getBagPrice(itemId, top1SpRaw);
 	        SP totalCost   = unitPrice.multiply(qty);
-	        HashMap<String,Object> bagPointRow = botNewService.selectCurrentPoint(userName, roomName);
+	        HashMap<String,Object> bagPointRow = getCurrentPoint(userName);
 	        SP bagUserPoint = new SP(
 	            Double.parseDouble(Objects.toString(bagPointRow.get("SCORE"), "0")),
 	            Objects.toString(bagPointRow.get("SCORE_EXT"), "")
@@ -3056,7 +3143,7 @@ public class BossAttackController {
 	        }
 	        SP bagAfterPoint = bagUserPoint.subtract(totalCost);
 	        try {
-	            HashMap<String,Object> bagAfterRow = botNewService.selectCurrentPoint(userName, roomName);
+	            HashMap<String,Object> bagAfterRow = getCurrentPoint(userName);
 	            bagAfterPoint = new SP(Double.parseDouble(Objects.toString(bagAfterRow.get("SCORE"), "0")), Objects.toString(bagAfterRow.get("SCORE_EXT"), ""));
 	        } catch (Exception ignore) {}
 	        return "▶ 가방 일괄 구매 완료" + NL
@@ -3077,7 +3164,7 @@ public class BossAttackController {
 	    UserBattleContext ctx = calcUserBattleContext(ctxMap);
 
 	    // 현재 포인트 1회 조회
-	    HashMap<String, Object> pointRow = botNewService.selectCurrentPoint(userName, roomName);
+	    HashMap<String, Object> pointRow = getCurrentPoint(userName);
 	    SP userPoint = new SP(
 	        Double.parseDouble(Objects.toString(pointRow.get("SCORE"), "0")),
 	        Objects.toString(pointRow.get("SCORE_EXT"), "")
@@ -3175,7 +3262,7 @@ public class BossAttackController {
 	    // ── 잔여 포인트 조회 1회 ────────────────────────────────────────
 	    SP afterPoint = userPoint.subtract(totalCost);
 	    try {
-	        HashMap<String, Object> afterRow = botNewService.selectCurrentPoint(userName, roomName);
+	        HashMap<String, Object> afterRow = getCurrentPoint(userName);
 	        afterPoint = new SP(
 	            Double.parseDouble(Objects.toString(afterRow.get("SCORE"), "0")),
 	            Objects.toString(afterRow.get("SCORE_EXT"), "")
@@ -3270,7 +3357,7 @@ public class BossAttackController {
 	    // 포인트 확인
 	    
 	    HashMap<String,Object> pointRow =
-	            botNewService.selectCurrentPoint(userName, roomName);
+	            getCurrentPoint(userName);
 
 	    double curValue = Double.parseDouble(
 	        Objects.toString(pointRow.get("SCORE"), "0")
@@ -3478,7 +3565,7 @@ public class BossAttackController {
 	    SP afterUserPoint=null;
 	    try { 
 	    HashMap<String,Object> tmpAfterRow =
-	            botNewService.selectCurrentPoint(userName, roomName);
+	            getCurrentPoint(userName);
 
 	    double afterCurValue = Double.parseDouble(
 	        Objects.toString(tmpAfterRow.get("SCORE"), "0")
@@ -4095,8 +4182,19 @@ public class BossAttackController {
 	private String ma_calcStats(AttackSession s) {
 		HashMap<String,Object> statMap = new HashMap<>(s.map);
 		statMap.put("param1", "");
+
+		// ─ DB 중복 조회 방지: selectTotalDropItems 미리 조회해서 캐싱
+		List<HashMap<String,Object>> preDropRows = null;
+		try { preDropRows = botNewService.selectTotalDropItems(s.userName); } catch (Exception ignore) {}
+		statMap.put("_preDropRows", preDropRows);
+
 		s.ctx = calcUserBattleContext(statMap);
 		if (!s.ctx.success) return s.ctx.errorMessage;
+
+		// ─ DB 중복 조회 방지: calcUserBattleContext에서 조회한 ads 캐싱
+		if (s.ctx != null && s.ctx.ads != null) {
+			s.cachedAds = s.ctx.ads;
+		}
 
 		s.u   = s.ctx.user;
 		s.job = (s.u.job == null ? "" : s.u.job.trim());
@@ -4726,18 +4824,34 @@ public class BossAttackController {
 			// 처치 후 드랍 아이템이 인벤토리에 추가되므로 캐시 무효화
 			invalidateInvBuff(s.userName);
 			botNewService.closeOngoingBattleTx(s.userName, s.roomName);
-			HashMap<String,Object> achvInvCounts = null;
-			try { achvInvCounts = botNewService.selectAchievementInventoryCounts(s.userName); } catch (Exception ignore) {}
+
+			// Parallel CompletableFuture queries for achievement processing
+			CompletableFuture<HashMap<String,Object>> f1 = CompletableFuture.supplyAsync(() -> {
+				try { return botNewService.selectAchievementInventoryCounts(s.userName); }
+				catch (Exception ignore) { return null; }
+			});
+			CompletableFuture<List<HashMap<String,Object>>> f2 = CompletableFuture.supplyAsync(() -> {
+				try { return botNewService.selectJobSkillUseCountAllJobs(s.userName, s.roomName); }
+				catch (Exception ignore) { return null; }
+			});
+			CompletableFuture<List<HashMap<String,Object>>> f3 = CompletableFuture.supplyAsync(() -> {
+				try { return botNewService.selectSpecialBuffAchvStats(s.userName); }
+				catch (Exception ignore) { return null; }
+			});
+
+			try {
+				CompletableFuture.allOf(f1, f2, f3).get();
+			} catch (Exception ignore) {}
+
+			HashMap<String,Object> achvInvCounts = f1.getNow(null);
+			List<HashMap<String,Object>> achvJobSkillRows = f2.getNow(null);
+			List<HashMap<String,Object>> achvBuffRows = f3.getNow(null);
+
 			List<HashMap<String,Object>> achvGainRows = buildGainRowsFromCounts(achvInvCounts);
 			int achvBagTotal    = achvInvCounts != null ? ((Number)achvInvCounts.getOrDefault("BAG_COUNT",    0)).intValue() : 0;
 			int achvSoldCount   = achvInvCounts != null ? ((Number)achvInvCounts.getOrDefault("SOLD_COUNT",   0)).intValue() : 0;
 			int achvPotionCount = achvInvCounts != null ? ((Number)achvInvCounts.getOrDefault("POTION_COUNT", 0)).intValue() : 0;
 			MiniGameUtil.POTION_USE_CACHE.put(s.userName, achvPotionCount);
-
-			List<HashMap<String,Object>> achvJobSkillRows = null;
-			try { achvJobSkillRows = botNewService.selectJobSkillUseCountAllJobs(s.userName, s.roomName); } catch (Exception ignore) {}
-			List<HashMap<String,Object>> achvBuffRows = null;
-			try { achvBuffRows = botNewService.selectSpecialBuffAchvStats(s.userName); } catch (Exception ignore) {}
 
 			String killAchvMsg     = grantKillAchievements(s.userName, s.roomName, s.achievedCmdSet, s.cachedKillStats);
 			String itemAchvMsg     = grantLightDarkItemAchievements(s.userName, s.roomName, s.achievedCmdSet, achvGainRows);
@@ -4789,7 +4903,7 @@ public class BossAttackController {
 
 		String curSpStr = "";
 		try {
-			HashMap<String,Object> pointRow = botNewService.selectCurrentPoint(s.userName, s.roomName);
+			HashMap<String,Object> pointRow = getCurrentPoint(s.userName);
 			double cv = Double.parseDouble(Objects.toString(pointRow.get("SCORE"), "0"));
 			String  ce = Objects.toString(pointRow.get("SCORE_EXT"), "");
 			curSpStr = new SP(cv, ce).toString();
@@ -4884,7 +4998,7 @@ public class BossAttackController {
 
 			// Line 4: SP 획득량 + 현재 잔액
 			try {
-				HashMap<String,Object> pointRow = botNewService.selectCurrentPoint(s.userName, s.roomName);
+				HashMap<String,Object> pointRow = getCurrentPoint(s.userName);
 				double cv = Double.parseDouble(Objects.toString(pointRow.get("SCORE"), "0"));
 				String  ce = Objects.toString(pointRow.get("SCORE_EXT"), "");
 				String curSpStr = new SP(cv, ce).toString();
@@ -5273,7 +5387,7 @@ public class BossAttackController {
 		int bagCountToday = 0;
 
 	    try {
-	        bagCountToday = botNewService.selectTodayBagCount(userName);
+	        bagCountToday = getTodayBagCount(userName);
 	    } catch (Exception ignore) {}
 
 	    // 🔹 일일 획득량 기반 확률 보정
@@ -5329,7 +5443,7 @@ public class BossAttackController {
 	    // 강제 드랍이 아닐 때만 확률 계산 (3% 고정, 하루 35개 한도)
 	    if (!forceNmBagDrop) {
 	        int todayBagTotal = 0;
-	        try { todayBagTotal = botNewService.selectTodayBagCount(userName); } catch (Exception ignore) {}
+	        try { todayBagTotal = getTodayBagCount(userName); } catch (Exception ignore) {}
 	        if (todayBagTotal >= BAG_DAILY_LIMIT) return ""; // 하루 35개 한도 초과
 
 	        if (ThreadLocalRandom.current().nextDouble() >= BAG_DROP_RATE) {
@@ -5359,14 +5473,18 @@ public class BossAttackController {
 
 	        botNewService.insertInventoryLogTx(inv);
 	        invalidateInvBuff(userName);
+	        incrementTodayBagCache(userName, 1);  // [OPT] DAILY_BAG_CACHE 증가
 
 	        String bagName = (bagItemId == BAG_HELL_ITEM_ID) ? "지옥의유물상자" : (bagItemId == BAG_NM_ITEM_ID) ? "복주머니가방" : "세티노의비밀가방";
 
 	        // ── 가방 보유 한도 초과 시 자동 오픈 ──────────────────────────────
 	        try {
-	            int totalBags = botNewService.selectBagCountByItemId(userName, roomName, BAG_ITEM_ID)
-	                          + botNewService.selectBagCountByItemId(userName, roomName, BAG_NM_ITEM_ID)
-	                          + botNewService.selectBagCountByItemId(userName, roomName, BAG_HELL_ITEM_ID);
+	            // selectOpenBagCounts 1회로 3종 합산 (기존 selectBagCountByItemId×3 대체)
+	            HashMap<String,Object> _bagCnts = botNewService.selectOpenBagCounts(userName);
+	            int totalBags = _bagCnts == null ? 0 :
+	                ((Number) _bagCnts.getOrDefault("NORMAL_COUNT", 0)).intValue() +
+	                ((Number) _bagCnts.getOrDefault("NM_COUNT",     0)).intValue() +
+	                ((Number) _bagCnts.getOrDefault("HELL_COUNT",   0)).intValue();
 	            if (totalBags >= BAG_MAX_HOLD) {
 	                botNewService.consumeBagBulkByItemIdTx(userName, roomName, bagItemId, 1);
 	                SP autoSP = new SP(0, "");
@@ -5542,7 +5660,7 @@ public class BossAttackController {
 
 	    SP curPoint = SP.of(0, "");
 	    try {
-	        HashMap<String,Object> p = botNewService.selectCurrentPoint(userName, null);
+	        HashMap<String,Object> p = getCurrentPoint(userName);
 	        curPoint = new SP(Double.parseDouble(Objects.toString(p.get("SCORE"), "0")),
 	                Objects.toString(p.get("SCORE_EXT"), ""));
 	    } catch (Exception ignore) {}
@@ -5680,7 +5798,7 @@ public class BossAttackController {
 
 		try {
 
-			HashMap<String, Object> p = botNewService.selectCurrentPoint(userName, null);
+			HashMap<String, Object> p = getCurrentPoint(userName);
 
 			curPoint = new SP(Double.parseDouble(Objects.toString(p.get("SCORE"), "0")),
 					Objects.toString(p.get("SCORE_EXT"), ""));

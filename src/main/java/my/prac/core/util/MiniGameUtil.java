@@ -72,6 +72,14 @@ public class MiniGameUtil {
 	// TTL 없음 — 아이템 변경(획득/구매/판매) 시 invalidateInvBuff()로 즉시 무효화
 	public static final ConcurrentHashMap<String, HashMap<String,Object>> INV_BUFF_CACHE = new ConcurrentHashMap<>();
 
+	// 유저별 활성 세트 보너스 캐시 (userName → List<HashMap{SET_ID, REQUIRED_CNT, BONUS_TYPE, ...}>)
+	// TTL 없음 — 아이템 변경 시 SET_BONUS_CACHE.remove(userName)으로 무효화
+	public static final ConcurrentHashMap<String, List<HashMap<String,Object>>> SET_BONUS_CACHE = new ConcurrentHashMap<>();
+
+	// 유저별 오늘 가방 획득 수 캐시 (userName → int[]{count, yyyyMMdd})
+	// 날짜가 바뀌면 자동 만료(재조회), 가방 획득 시 count++ 업데이트
+	public static final ConcurrentHashMap<String, int[]> DAILY_BAG_CACHE = new ConcurrentHashMap<>();
+
 	// ─────────────────────────────────────────────────────────────────────────
 
 	static {
