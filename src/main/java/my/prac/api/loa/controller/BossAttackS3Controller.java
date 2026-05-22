@@ -337,6 +337,13 @@ public class BossAttackS3Controller {
                 // 직업 추가 데미지: 상급악마(악마 속성)
                 if ("어둠사냥꾼".equals(ctx.job))      baseAtk = (int) Math.round(baseAtk * 2.0);
                 else if ("용사".equals(ctx.job)) baseAtk = (int) Math.round(baseAtk * 1.25);
+                else if ("엘프".equals(ctx.job) || "엘프궁수".equals(ctx.job) || "엘프마법사".equals(ctx.job)) {
+                    int hour = java.time.LocalTime.now().getHour();
+                    boolean elfNight = (hour >= 18 || hour < 6);
+                    double elfMul = elfNight ? 3.0 : 2.0;
+                    baseAtk = (int) Math.round(baseAtk * elfMul);
+                    if (elfNight) windSlashMsg += "[다크엘프 각성] 데미지 3배" + NL;
+                }
 
                 // [검성] 바람가르기 (기본 6.5% + 7006 보유 시 +15%)
                 if ("검성".equals(ctx.job)) {
@@ -1042,7 +1049,7 @@ public class BossAttackS3Controller {
                     if (winOrder != null) {
                         msg.append(" < ").append(winOrder).append("번 보상 당첨!");
                     } else if (excluded) {
-                        msg.append(" < 0.2GP (이미 보스드랍템 보유제외)");
+                        msg.append(" < 0.2GP (보스드랍템 2개 보유로 제외)");
                     } else {
                         msg.append(" < 0.2 GP");
                     }

@@ -2572,7 +2572,7 @@ public class BossAttackController {
 		                String jn  = Objects.toString(r.get("JOB_NAME"), "");
 		                int    jlv = ((Number) r.getOrDefault("JOB_LV", 0)).intValue();
 		                int    jkl = ((Number) r.getOrDefault("JOB_KILL_CNT", 0)).intValue();
-		                int    need = jlv * 10 + 5;
+		                int    need = jlv * JOB_LV_KILL_BASE + JOB_LV_KILL_OFFSET;
 		                sb.append("  └ [").append(jn).append("] Lv.").append(jlv);
 		                if (jlv < JOB_MAX_LV) sb.append("  (다음레벨: ").append(jkl).append("/").append(need).append("킬)");
 		                else                  sb.append("  (MAX)");

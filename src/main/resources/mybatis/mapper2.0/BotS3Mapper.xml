@@ -199,14 +199,13 @@
 		       AND target_mon_lv = 999
 		       AND atk_dmg       > 0
 		       AND insert_date   >= to_date(#{bossStartDate}, 'yyyymmdd hh24miss')
-		       AND NOT EXISTS (
-		           SELECT 1
-		             FROM TBOT_POINT_NEW_INVENTORY i
-		            WHERE i.user_name        = b.user_name
-		              AND i.item_id          BETWEEN 7000 AND 7999
-		              AND NVL(i.del_yn, '0') = '0'
-		              AND NVL(i.gain_type, 'BOSS_HELL') = 'BOSS_HELL'
-		       )
+		       AND (SELECT COUNT(1)
+		              FROM TBOT_POINT_NEW_INVENTORY i
+		             WHERE i.user_name        = b.user_name
+		               AND i.item_id          BETWEEN 7000 AND 7999
+		               AND NVL(i.del_yn, '0') = '0'
+		               AND NVL(i.gain_type, 'BOSS_HELL') = 'BOSS_HELL'
+		           ) &lt; 2
 		     GROUP BY user_name
 		     ORDER BY count(user_name) DESC
 		  ) A
