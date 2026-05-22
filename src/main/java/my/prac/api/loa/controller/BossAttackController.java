@@ -3422,6 +3422,11 @@ public class BossAttackController {
 	        map.put("userName", userName);
 	        map.put("roomName", roomName);
 
+	        // 드롭 데이터 미리 로드 (공격 경로와 일관성 유지)
+	        List<HashMap<String,Object>> preDropRows = null;
+	        try { preDropRows = botNewService.selectTotalDropItems(userName); } catch (Exception ignore) {}
+	        map.put("_preDropRows", preDropRows);
+
 	        UserBattleContext ctx = calcUserBattleContext(map);
 
 	        //int userLv = ctx.user.lv;
