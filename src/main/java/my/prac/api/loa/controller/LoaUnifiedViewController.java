@@ -390,74 +390,108 @@ public class LoaUnifiedViewController {
     /**
      * GET /loa/api/battle-log
      *
-     * 최근 공격 로그
+     * 유저 배틀로그 (페이지네이션)
      */
     @GetMapping("/api/battle-log")
     @ResponseBody
     public ResponseEntity<?> getBattleLog(
-            @RequestParam(value = "limit", defaultValue = "20") int limit) {
+            @RequestParam(value = "userName",  defaultValue = "") String userName,
+            @RequestParam(value = "page",      defaultValue = "1")  int page,
+            @RequestParam(value = "size",      defaultValue = "50") int size,
+            @RequestParam(value = "days",      defaultValue = "0")  int days) {
 
         HashMap<String, Object> result = new HashMap<>();
-        List<HashMap<String, Object>> logs = new ArrayList<>();
-
-        try {
-            // BattleLog 테이블에서 최신 로그 조회
-            List<HashMap<String, Object>> rows = botNewService.selectBattleLogRecent(limit);
-            if (rows != null) logs = new ArrayList<>(rows);
-        } catch (Exception ignore) {}
-
-        result.put("logs", logs);
-        result.put("count", logs.size());
-        return ResponseEntity.ok(result);
-    }
-
-    /**
-     * GET /loa/api/ranking
-     *
-     * 전체 랭킹 (유저별 최고 캐릭터)
-     */
-    @GetMapping("/api/ranking")
-    @ResponseBody
-    public ResponseEntity<?> getRanking() {
-
-        HashMap<String, Object> result = new HashMap<>();
-        List<HashMap<String, Object>> rankings = new ArrayList<>();
-
-        try {
-            List<HashMap<String, Object>> rows = botNewService.selectUserMaxStatRanking();
-            if (rows != null) rankings = new ArrayList<>(rows);
-        } catch (Exception ignore) {}
-
-        result.put("rankings", rankings);
-        result.put("count", rankings.size());
-        return ResponseEntity.ok(result);
-    }
-
-    /**
-     * GET /loa/api/alt-chars
-     *
-     * 유저의 모든 캐릭터
-     */
-    @GetMapping("/api/alt-chars")
-    @ResponseBody
-    public ResponseEntity<?> getAltChars(
-            @RequestParam(value = "userName", defaultValue = "") String userName) {
-
-        HashMap<String, Object> result = new HashMap<>();
-        List<HashMap<String, Object>> chars = new ArrayList<>();
 
         if (userName.trim().isEmpty()) {
             result.put("error", "유저명을 입력하세요.");
             return ResponseEntity.ok(result);
         }
 
-        try {
-            List<HashMap<String, Object>> rows = botNewService.selectUserAllChars(userName);
-            if (rows != null) chars = new ArrayList<>(rows);
-        } catch (Exception ignore) {}
+        // 페이지네이션 범위 보정
+        if (page  < 1)   page  = 1;
+        if (size  < 1)   size  = 50;
+        if (size  > 100) size  = 100;
+        int startRow = (page - 1) * size;
+        int endRow   = page * size;
 
-        result.put("characters", chars);
-        result.put("userName", userName);
+        HashMap<String, Object> params = new HashMap<>();
+        params.put("userName", userName.trim());
+        params.put("startRow", startRow);
+        params.put("endRow",   endRow);
+        params.put("days",     days > 0 ? days : null);
+
+        List<HashMap<String, Object>> list = null;
+        int total = 0;
+        try {
+            list  = botNewService.selectUserBattleLog(params);
+            total = botNewService.selectUserBattleLogCount(params);
+        } catch (Exception e) {
+            result.put("error", "조회 중 오류가 발생했습니다.");
+            return ResponseEntity.ok(result);
+        }
+
+        result.put("list",     list != null ? list : new ArrayList<>());
+        result.put("total",    total);
+        result.put("page",     page);
+        result.put("size",     size);
+        result.put("userName", userName.trim());
+
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * GET /loa/api/ranking
+     *
+     * 전체 랭킹 데이터
+     */
+    @GetMapping("/api/ranking")
+    @ResponseBody
+    public ResponseEntity<?> getRanking() {
+        HashMap<String, Object> result = new HashMap<>();
+        try {
+            // 떠오르는 샛별 (최근 6시간 공격횟수)
+            List<HashMap<String, Object>> rising = safeList(() -> botNewService.selectRisingStarsTop5Last6h());
+            result.put("rising", rising);
+
+            // MAX 데미지 TOP5
+            List<HashMap<String, Object>> maxDmg = safeList(() -> botNewService.selectMaxDamageTop5());
+            result.put("maxDmg", maxDmg);
+
+            // SP + 공격횟수
+            List<HashMap<String, Object>> spAtk = safeList(() -> {
+                try { return botNewService.selectSpAndAtkRanking(); } catch (Exception e) { return null; }
+            });
+            result.put("spAtk", spAtk);
+
+            // 업적 갯수
+            List<HashMap<String, Object>> achv = safeList(() -> botNewService.selectAchievementCountRanking());
+            result.put("achv", achv);
+
+            // GP 랭킹
+            List<HashMap<String, Object>> gp = safeList(() -> botNewService.selectGpRanking());
+            result.put("gp", gp);
+
+        } catch (Exception e) {
+            result.put("error", "랭킹 조회 중 오류가 발생했습니다.");
+        }
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * GET /loa/api/alt-chars
+     *
+     * 부캐 리스트
+     */
+    @GetMapping("/api/alt-chars")
+    @ResponseBody
+    public ResponseEntity<?> getAltChars() {
+        HashMap<String, Object> result = new HashMap<>();
+        try {
+            List<String> list = botNewService.selectAltCharList();
+            result.put("list", list != null ? list : new ArrayList<>());
+        } catch (Exception e) {
+            result.put("list", new ArrayList<>());
+        }
         return ResponseEntity.ok(result);
     }
 
@@ -578,35 +612,34 @@ public class LoaUnifiedViewController {
     /**
      * GET /loa/api/items
      *
-     * 아이템 목록 (보유 여부 표시)
+     * 전체 아이템 + 유저 보유여부
      */
     @GetMapping("/api/items")
     @ResponseBody
     public ResponseEntity<?> getItems(
             @RequestParam(value = "userName", defaultValue = "") String userName) {
 
-        HashMap<String, Object> result = new HashMap<>();
+        List<HashMap<String, Object>> items = botNewService.selectAllItemsWithOwned(userName);
 
-        if (userName.trim().isEmpty()) {
-            result.put("error", "유저명을 입력하세요.");
-            return ResponseEntity.ok(result);
+        HashMap<String, Object> result = new HashMap<>();
+        result.put("items", items);
+        result.put("userName", userName);
+        result.put("total", items.size());
+
+        // 세트 보너스 전체 목록 (유저가 있으면 보유 현황 포함, 없으면 빈 리스트)
+        if (userName != null && !userName.trim().isEmpty()) {
+            try {
+                result.put("setBonus", botNewService.selectActiveSetBonuses(userName));
+            } catch (Exception ignore) {}
         }
 
-        List<HashMap<String, Object>> items = new ArrayList<>();
-        try {
-            List<HashMap<String, Object>> rows = botNewService.selectAllItemsWithOwned(userName);
-            if (rows != null) items = new ArrayList<>(rows);
-        } catch (Exception ignore) {}
-
-        result.put("items", items);
-        result.put("count", items.size());
         return ResponseEntity.ok(result);
     }
 
     /**
      * GET /loa/api/achievements
      *
-     * 업적 목록
+     * 업적 현황
      */
     @GetMapping("/api/achievements")
     @ResponseBody
@@ -614,20 +647,22 @@ public class LoaUnifiedViewController {
             @RequestParam(value = "userName", defaultValue = "") String userName) {
 
         HashMap<String, Object> result = new HashMap<>();
-
         if (userName.trim().isEmpty()) {
             result.put("error", "유저명을 입력하세요.");
             return ResponseEntity.ok(result);
         }
 
-        List<HashMap<String, Object>> achievements = new ArrayList<>();
+        // 기본 업적 목록
+        List<HashMap<String, Object>> achvList = new ArrayList<>();
         try {
-            List<HashMap<String, Object>> rows = botNewService.selectUserAchievements(userName);
-            if (rows != null) achievements = new ArrayList<>(rows);
+            achvList = botNewService.selectAchievementsByUser(userName, "");
+            if (achvList == null) achvList = new ArrayList<>();
         } catch (Exception ignore) {}
 
-        result.put("achievements", achievements);
-        result.put("userName", userName);
+        result.put("userName",   userName);
+        result.put("totalAchv",  achvList.size());
+        result.put("achievements", achvList);
+
         return ResponseEntity.ok(result);
     }
 
@@ -663,6 +698,21 @@ public class LoaUnifiedViewController {
     // ─────────────────────────────────────────────────────────────
     // 유틸 메서드
     // ─────────────────────────────────────────────────────────────
+
+    @FunctionalInterface
+    interface Supplier<T> {
+        T get() throws Exception;
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<HashMap<String, Object>> safeList(Supplier<List<?>> s) {
+        try {
+            List<?> r = s.get();
+            return r != null ? (List<HashMap<String, Object>>) r : new ArrayList<>();
+        } catch (Exception e) {
+            return new ArrayList<>();
+        }
+    }
 
     private String resolveCategory(int id) {
         if (id >= 100 && id < 200)  return "무기";
