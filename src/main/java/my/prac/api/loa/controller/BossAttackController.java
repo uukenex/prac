@@ -1609,19 +1609,19 @@ public class BossAttackController {
 	            }
 	        }
 	    }
-	    // rawSp → {score, score_ext}
+	    // rawSp → {SCORE, SCORE_EXT} (대문자 키 — selectCurrentPoint 반환 형식과 동일)
 	    HashMap<String,Object> result = new HashMap<>();
 	    if (rawSp == 0) {
-	        result.put("score", 0);
-	        result.put("score_ext", "");
+	        result.put("SCORE", 0.0);
+	        result.put("SCORE_EXT", "");
 	        return result;
 	    }
 	    double absRaw = Math.abs(rawSp);
 	    int unitIdx = (int) Math.floor(Math.log(absRaw) / Math.log(10000));
 	    double score = Math.round(Math.signum(rawSp) * absRaw / Math.pow(10000, unitIdx) * 100.0) / 100.0;
 	    String scoreExt = unitIdx <= 0 ? "" : String.valueOf((char)('a' + unitIdx - 1));
-	    result.put("score", score);
-	    result.put("score_ext", scoreExt);
+	    result.put("SCORE", score);
+	    result.put("SCORE_EXT", scoreExt);
 	    return result;
 	}
 
@@ -5479,9 +5479,12 @@ public class BossAttackController {
 
 	        // ── 가방 보유 한도 초과 시 자동 오픈 ──────────────────────────────
 	        try {
-	            int totalBags = botNewService.selectBagCountByItemId(userName, roomName, BAG_ITEM_ID)
-	                          + botNewService.selectBagCountByItemId(userName, roomName, BAG_NM_ITEM_ID)
-	                          + botNewService.selectBagCountByItemId(userName, roomName, BAG_HELL_ITEM_ID);
+	            // selectOpenBagCounts 1회로 3종 합산 (기존 selectBagCountByItemId×3 대체)
+	            HashMap<String,Object> _bagCnts = botNewService.selectOpenBagCounts(userName);
+	            int totalBags = _bagCnts == null ? 0 :
+	                ((Number) _bagCnts.getOrDefault("NORMAL_COUNT", 0)).intValue() +
+	                ((Number) _bagCnts.getOrDefault("NM_COUNT",     0)).intValue() +
+	                ((Number) _bagCnts.getOrDefault("HELL_COUNT",   0)).intValue();
 	            if (totalBags >= BAG_MAX_HOLD) {
 	                botNewService.consumeBagBulkByItemIdTx(userName, roomName, bagItemId, 1);
 	                SP autoSP = new SP(0, "");
