@@ -702,10 +702,12 @@ public class LoaUnifiedViewController {
                 }, executor);
 
             // 모든 Future 완료 대기 (최대 5초)
-            CompletableFuture.allOf(f1, f2, f3, f4, f5, f6, f7)
-                .orTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
-                .exceptionally(ex -> null)
-                .get();
+            try {
+                CompletableFuture.allOf(f1, f2, f3, f4, f5, f6, f7)
+                    .get(5, java.util.concurrent.TimeUnit.SECONDS);
+            } catch (java.util.concurrent.TimeoutException e) {
+                // 타임아웃 무시, getNow()로 현재까지의 결과만 반환
+            } catch (Exception ignore) {}
 
             // 결과 수집
             List<HashMap<String, Object>> achvList = f1.getNow(new ArrayList<>());
