@@ -80,6 +80,40 @@ public class MiniGameUtil {
 	// 날짜가 바뀌면 자동 만료(재조회), 가방 획득 시 count++ 업데이트
 	public static final ConcurrentHashMap<String, int[]> DAILY_BAG_CACHE = new ConcurrentHashMap<>();
 
+	// ─── 캐시 만료 (1시간 주기) ───────────────────────────────────────────────
+	// 모든 캐시를 1시간마다 초기화하여 일관성 유지
+	private static volatile long LAST_CACHE_CLEAR_TIME = System.currentTimeMillis();
+	private static final long CACHE_CLEAR_INTERVAL_MS = 3600_000L;  // 1시간
+
+	/**
+	 * 1시간 경과 시 모든 캐시 초기화
+	 * (각 캐시 접근 경로에서 주기적으로 호출)
+	 */
+	public static void clearCachesIfExpired() {
+		long now = System.currentTimeMillis();
+		if (now - LAST_CACHE_CLEAR_TIME >= CACHE_CLEAR_INTERVAL_MS) {
+			synchronized (MiniGameUtil.class) {
+				// 더블 체크 락
+				if (now - LAST_CACHE_CLEAR_TIME >= CACHE_CLEAR_INTERVAL_MS) {
+					LAST_CACHE_CLEAR_TIME = now;
+
+					// 모든 캐시 초기화
+					MONSTER_CACHE.clear();
+					ACHV_GLOBAL_CACHE = null;
+					ITEM_ID_CACHE.clear();
+					ITEM_DETAIL_CACHE.clear();
+					ITEM_PRICE_CACHE.clear();
+					MARKET_OWNED_CACHE.clear();
+					JOB_MASTER_CACHE.clear();
+					DAILY_BUFF_CACHE.clear();
+					POTION_USE_CACHE.clear();
+					INV_BUFF_CACHE.clear();
+					SET_BONUS_CACHE.clear();
+					DAILY_BAG_CACHE.clear();
+				}
+			}
+		}
+	}
 	// ─────────────────────────────────────────────────────────────────────────
 
 	static {
