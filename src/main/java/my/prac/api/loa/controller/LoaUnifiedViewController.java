@@ -7,6 +7,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import javax.annotation.Resource;
 
@@ -632,12 +635,16 @@ public class LoaUnifiedViewController {
         return ResponseEntity.ok(result);
     }
 
+    // ExecutorService 재사용 (스레드풀)
+    private static final ExecutorService executor = Executors.newFixedThreadPool(8);
+
     /**
      * GET /loa/api/achievements
      *
      * 업적 현황 (성능 최적화)
-     * - 병렬 조회로 DB 응답 시간 단축
-     * - 필수 데이터만 선택적 조회
+     * - CompletableFuture를 사용한 병렬 조회
+     * - 8개 DB 쿼리 동시 실행
+     * - 5초 타임아웃으로 느린 응답 처리
      */
     @GetMapping("/api/achievements")
     @ResponseBody
@@ -650,102 +657,107 @@ public class LoaUnifiedViewController {
             return ResponseEntity.ok(result);
         }
 
-        // 병렬 조회용 변수 (성능 최적화)
-        List<HashMap<String, Object>> achvList = null;
-        AttackDeathStat ads = null;
-        List<HashMap<String, Object>> dropsData = null;
-        HashMap<String, Object> invCounts = null;
-        Integer hellAtkCount = null;
-        Integer hellClearCount = null;
-        HashMap<String, Object> buffStats = null;
-        List<HashMap<String, Object>> killViewRows = null;
-
-        // 병렬 조회 - 모든 조회를 동시에 실행하여 성능 개선
         try {
-            // 병렬 스레드 조회
-            Thread t1 = new Thread(() -> {
-                try { achvList = botNewService.selectAchievementsByUser(userName, ""); } catch (Exception ignore) {}
-            });
-            Thread t2 = new Thread(() -> {
-                try { ads = botNewService.selectAttackDeathStats(userName, ""); } catch (Exception ignore) {}
-            });
-            Thread t3 = new Thread(() -> {
-                try { dropsData = botNewService.selectTotalDropItems(userName); } catch (Exception ignore) {}
-            });
-            Thread t4 = new Thread(() -> {
-                try { invCounts = botNewService.selectAchievementInventoryCounts(userName); } catch (Exception ignore) {}
-            });
-            Thread t5 = new Thread(() -> {
-                try { hellAtkCount = botNewService.selectHellBossAttackCount(userName); } catch (Exception ignore) {}
-            });
-            Thread t6 = new Thread(() -> {
-                try { hellClearCount = botNewService.selectHellBossClearCount(userName); } catch (Exception ignore) {}
-            });
-            Thread t7 = new Thread(() -> {
-                try { buffStats = botNewService.selectMaxDailyBuffStats(userName); } catch (Exception ignore) {}
-            });
-            Thread t8 = new Thread(() -> {
-                try { killViewRows = botNewService.selectMonsterKillsForView(userName); } catch (Exception ignore) {}
-            });
+            // CompletableFuture를 사용한 병렬 조회 (스레드풀 사용)
+            CompletableFuture<List<HashMap<String, Object>>> f1 =
+                CompletableFuture.supplyAsync(() -> {
+                    try { return botNewService.selectAchievementsByUser(userName, ""); }
+                    catch (Exception e) { return new ArrayList<>(); }
+                }, executor);
 
-            // 모든 스레드 시작
-            t1.start(); t2.start(); t3.start(); t4.start();
-            t5.start(); t6.start(); t7.start(); t8.start();
+            CompletableFuture<AttackDeathStat> f2 =
+                CompletableFuture.supplyAsync(() -> {
+                    try { return botNewService.selectAttackDeathStats(userName, ""); }
+                    catch (Exception e) { return null; }
+                }, executor);
 
-            // 모든 스레드 완료 대기 (타임아웃: 5초)
-            long startTime = System.currentTimeMillis();
-            long timeout = 5000L;
-            while (System.currentTimeMillis() - startTime < timeout) {
-                if (!t1.isAlive() && !t2.isAlive() && !t3.isAlive() && !t4.isAlive() &&
-                    !t5.isAlive() && !t6.isAlive() && !t7.isAlive() && !t8.isAlive()) {
-                    break;
-                }
-                Thread.sleep(50);
+            CompletableFuture<List<HashMap<String, Object>>> f3 =
+                CompletableFuture.supplyAsync(() -> {
+                    try { return botNewService.selectTotalDropItems(userName); }
+                    catch (Exception e) { return new ArrayList<>(); }
+                }, executor);
+
+            CompletableFuture<HashMap<String, Object>> f4 =
+                CompletableFuture.supplyAsync(() -> {
+                    try { return botNewService.selectAchievementInventoryCounts(userName); }
+                    catch (Exception e) { return null; }
+                }, executor);
+
+            CompletableFuture<Integer> f5 =
+                CompletableFuture.supplyAsync(() -> {
+                    try { return botNewService.selectHellBossAttackCount(userName); }
+                    catch (Exception e) { return 0; }
+                }, executor);
+
+            CompletableFuture<Integer> f6 =
+                CompletableFuture.supplyAsync(() -> {
+                    try { return botNewService.selectHellBossClearCount(userName); }
+                    catch (Exception e) { return 0; }
+                }, executor);
+
+            CompletableFuture<List<HashMap<String, Object>>> f7 =
+                CompletableFuture.supplyAsync(() -> {
+                    try { return botNewService.selectMonsterKillsForView(userName); }
+                    catch (Exception e) { return new ArrayList<>(); }
+                }, executor);
+
+            // 모든 Future 완료 대기 (최대 5초)
+            CompletableFuture.allOf(f1, f2, f3, f4, f5, f6, f7)
+                .orTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
+                .exceptionally(ex -> null)
+                .get();
+
+            // 결과 수집
+            List<HashMap<String, Object>> achvList = f1.getNow(new ArrayList<>());
+            AttackDeathStat ads = f2.getNow(null);
+            List<HashMap<String, Object>> dropsData = f3.getNow(new ArrayList<>());
+            HashMap<String, Object> invCounts = f4.getNow(null);
+            int hellAtkCount = f5.getNow(0);
+            int hellClearCount = f6.getNow(0);
+            List<HashMap<String, Object>> killViewRows = f7.getNow(new ArrayList<>());
+
+            // 기본 통계 계산
+            int totalDrops = 0;
+            for (HashMap<String, Object> d : dropsData) {
+                Object v = d.get("TOTAL_QTY");
+                if (v instanceof Number) totalDrops += ((Number) v).intValue();
             }
-        } catch (Exception ignore) {}
 
-        // NULL 체크
-        if (achvList == null) achvList = new ArrayList<>();
-        if (dropsData == null) dropsData = new ArrayList<>();
-        if (killViewRows == null) killViewRows = new ArrayList<>();
+            int lightQty = invCounts != null ? toInt(invCounts.get("DROP3_QTY")) : 0;
+            int darkQty = invCounts != null ? toInt(invCounts.get("DROP5_QTY")) : 0;
+            int grayQty = invCounts != null ? toInt(invCounts.get("DROP9_QTY")) : 0;
+            int bagTotal = invCounts != null ? toInt(invCounts.get("BAG_COUNT")) : 0;
 
-        // 기본 통계 계산
-        int totalKills = 0, totalAttacks = 0, totalDrops = 0;
-        int lightQty = invCounts != null ? toInt(invCounts.get("DROP3_QTY")) : 0;
-        int darkQty = invCounts != null ? toInt(invCounts.get("DROP5_QTY")) : 0;
-        int grayQty = invCounts != null ? toInt(invCounts.get("DROP9_QTY")) : 0;
-        int bagTotal = invCounts != null ? toInt(invCounts.get("BAG_COUNT")) : 0;
+            int realAttacks = ads != null ? ads.totalAttacks : 0;
+            int realDeaths = ads != null ? ads.totalDeaths : 0;
 
-        for (HashMap<String, Object> d : dropsData) {
-            Object v = d.get("TOTAL_QTY");
-            if (v instanceof Number) totalDrops += ((Number) v).intValue();
+            // 응답 구성
+            result.put("userName",      userName);
+            result.put("totalAchv",     achvList.size());
+            result.put("stats", mapOf(
+                "kills",        0,
+                "attacks",      0,
+                "drops",        totalDrops,
+                "realAttacks",  realAttacks,
+                "realDeaths",   realDeaths,
+                "lightQty",     lightQty,
+                "darkQty",      darkQty,
+                "grayQty",      grayQty,
+                "bagTotal",     bagTotal
+            ));
+            result.put("hellBoss", mapOf(
+                "atkCount", hellAtkCount,
+                "clearCount", hellClearCount
+            ));
+            result.put("achievements", achvList);
+            result.put("monsterKills", killViewRows);
+
+        } catch (Exception e) {
+            // 타임아웃 또는 기타 에러 시 기본 데이터만 반환
+            result.put("userName", userName);
+            result.put("error", "일부 데이터 조회 실패 (타임아웃)");
+            result.put("achievements", new ArrayList<>());
         }
-
-        int realAttacks = ads != null ? ads.totalAttacks : 0;
-        int realDeaths = ads != null ? ads.totalDeaths : 0;
-        int hellAtk = hellAtkCount != null ? hellAtkCount : 0;
-        int hellClear = hellClearCount != null ? hellClearCount : 0;
-
-        // 간단한 응답 구성 (성능 우선)
-        result.put("userName",      userName);
-        result.put("totalAchv",     achvList.size());
-        result.put("stats", mapOf(
-            "kills",        totalKills,
-            "attacks",      totalAttacks,
-            "drops",        totalDrops,
-            "realAttacks",  realAttacks,
-            "realDeaths",   realDeaths,
-            "lightQty",     lightQty,
-            "darkQty",      darkQty,
-            "grayQty",      grayQty,
-            "bagTotal",     bagTotal
-        ));
-        result.put("hellBoss", mapOf(
-            "atkCount", hellAtk,
-            "clearCount", hellClear
-        ));
-        result.put("achievements", achvList);
-        result.put("monsterKills", killViewRows);
 
         return ResponseEntity.ok(result);
     }
