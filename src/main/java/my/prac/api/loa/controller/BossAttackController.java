@@ -23,6 +23,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -4726,18 +4727,34 @@ public class BossAttackController {
 			// 처치 후 드랍 아이템이 인벤토리에 추가되므로 캐시 무효화
 			invalidateInvBuff(s.userName);
 			botNewService.closeOngoingBattleTx(s.userName, s.roomName);
-			HashMap<String,Object> achvInvCounts = null;
-			try { achvInvCounts = botNewService.selectAchievementInventoryCounts(s.userName); } catch (Exception ignore) {}
+
+			// Parallel CompletableFuture queries for achievement processing
+			CompletableFuture<HashMap<String,Object>> f1 = CompletableFuture.supplyAsync(() -> {
+				try { return botNewService.selectAchievementInventoryCounts(s.userName); }
+				catch (Exception ignore) { return null; }
+			});
+			CompletableFuture<List<HashMap<String,Object>>> f2 = CompletableFuture.supplyAsync(() -> {
+				try { return botNewService.selectJobSkillUseCountAllJobs(s.userName, s.roomName); }
+				catch (Exception ignore) { return null; }
+			});
+			CompletableFuture<List<HashMap<String,Object>>> f3 = CompletableFuture.supplyAsync(() -> {
+				try { return botNewService.selectSpecialBuffAchvStats(s.userName); }
+				catch (Exception ignore) { return null; }
+			});
+
+			try {
+				CompletableFuture.allOf(f1, f2, f3).get();
+			} catch (Exception ignore) {}
+
+			HashMap<String,Object> achvInvCounts = f1.getNow(null);
+			List<HashMap<String,Object>> achvJobSkillRows = f2.getNow(null);
+			List<HashMap<String,Object>> achvBuffRows = f3.getNow(null);
+
 			List<HashMap<String,Object>> achvGainRows = buildGainRowsFromCounts(achvInvCounts);
 			int achvBagTotal    = achvInvCounts != null ? ((Number)achvInvCounts.getOrDefault("BAG_COUNT",    0)).intValue() : 0;
 			int achvSoldCount   = achvInvCounts != null ? ((Number)achvInvCounts.getOrDefault("SOLD_COUNT",   0)).intValue() : 0;
 			int achvPotionCount = achvInvCounts != null ? ((Number)achvInvCounts.getOrDefault("POTION_COUNT", 0)).intValue() : 0;
 			MiniGameUtil.POTION_USE_CACHE.put(s.userName, achvPotionCount);
-
-			List<HashMap<String,Object>> achvJobSkillRows = null;
-			try { achvJobSkillRows = botNewService.selectJobSkillUseCountAllJobs(s.userName, s.roomName); } catch (Exception ignore) {}
-			List<HashMap<String,Object>> achvBuffRows = null;
-			try { achvBuffRows = botNewService.selectSpecialBuffAchvStats(s.userName); } catch (Exception ignore) {}
 
 			String killAchvMsg     = grantKillAchievements(s.userName, s.roomName, s.achievedCmdSet, s.cachedKillStats);
 			String itemAchvMsg     = grantLightDarkItemAchievements(s.userName, s.roomName, s.achievedCmdSet, achvGainRows);
