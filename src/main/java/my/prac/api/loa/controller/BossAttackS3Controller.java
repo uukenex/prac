@@ -1049,7 +1049,7 @@ public class BossAttackS3Controller {
                     if (winOrder != null) {
                         msg.append(" < ").append(winOrder).append("번 보상 당첨!");
                     } else if (excluded) {
-                        msg.append(" < 0.2GP (보스드랍템 3개 보유로 제외)");
+                        msg.append(" < 0.2GP (보스드랍템 2개 보유로 제외)");
                     } else {
                         msg.append(" < 0.2 GP");
                     }

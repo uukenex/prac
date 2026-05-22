@@ -205,7 +205,7 @@
 		               AND i.item_id          BETWEEN 7000 AND 7999
 		               AND NVL(i.del_yn, '0') = '0'
 		               AND NVL(i.gain_type, 'BOSS_HELL') = 'BOSS_HELL'
-		           ) &lt; 3
+		           ) &lt; 2
 		     GROUP BY user_name
 		     ORDER BY count(user_name) DESC
 		  ) A
