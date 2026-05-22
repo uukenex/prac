@@ -44,40 +44,34 @@
 
 	</select>
 
-  <!-- 유저의 누적 SP 계산 (POWER/ASCII 계산 제거, Java에서 처리) -->
+  <!-- 유저의 누적 SP 계산: EXT 단위별 합산 → Java에서 POWER 적용 -->
   <select id="selectUserTotalSpComponents" resultType="hashmap" parameterType="string">
   /*selectUserTotalSpComponents*/
-    SELECT
-        NVL(SUM(inv_sp), 0) AS INV_SP,
-        NVL(SUM(point_sp), 0) AS POINT_SP
+    SELECT NVL(SP_EXT,'') AS SP_EXT, SUM(SP_AMT) AS SP_AMT
     FROM (
-        /* INVENTORY SP (단순 합산, 수량만) */
+        /* INVENTORY SP: ext별 합산 */
         SELECT
-            SUM(
-                CASE
-                    WHEN A.GAIN_TYPE='BUY_MERCHANT'
-                    THEN ROUND(B.ITEM_SELL_PRICE*0.9) * A.QTY
-                    ELSE B.ITEM_SELL_PRICE * A.QTY
-                END
-            ) AS inv_sp,
-            0 AS point_sp
+            NVL(B.ITEM_SELL_PRICE_EXT,'') AS SP_EXT,
+            (CASE WHEN A.GAIN_TYPE='BUY_MERCHANT'
+                  THEN ROUND(B.ITEM_SELL_PRICE*0.9)
+                  ELSE B.ITEM_SELL_PRICE
+             END) * A.QTY AS SP_AMT
         FROM TBOT_POINT_NEW_INVENTORY A
-        JOIN TBOT_POINT_NEW_ITEM B
-          ON A.ITEM_ID=B.ITEM_ID
+        JOIN TBOT_POINT_NEW_ITEM B ON A.ITEM_ID=B.ITEM_ID
         WHERE A.USER_NAME = #{userName}
           AND A.GAIN_TYPE NOT IN ('DROP','DROP3','DROP5','DROP9','STEAL')
           AND A.DEL_YN='0'
 
         UNION ALL
 
-        /* POINT LOG SP (단순 합산) */
-        SELECT
-            0 AS inv_sp,
-            SUM(R.SCORE) AS point_sp
-        FROM (SELECT USER_NAME, ROOM_NAME, SCORE, SCORE_EXT, INSERT_DATE, CMD, NEW_YN FROM TBOT_POINT_RANK UNION ALL SELECT USER_NAME, ROOM_NAME, SCORE, SCORE_EXT, INSERT_DATE, CMD, NEW_YN FROM TBOT_POINT_RANK_OLD) R
+        /* POINT LOG SP: ext별 합산 */
+        SELECT NVL(R.SCORE_EXT,'') AS SP_EXT, R.SCORE AS SP_AMT
+        FROM (SELECT USER_NAME, SCORE, SCORE_EXT, NEW_YN FROM TBOT_POINT_RANK
+              UNION ALL SELECT USER_NAME, SCORE, SCORE_EXT, NEW_YN FROM TBOT_POINT_RANK_OLD) R
         WHERE R.USER_NAME = #{userName}
           AND R.NEW_YN='1'
     )
+    GROUP BY NVL(SP_EXT,'')
   </select>
 
   <select id="selectAttackDeathStats" resultType="my.prac.core.game.dto.AttackDeathStat">

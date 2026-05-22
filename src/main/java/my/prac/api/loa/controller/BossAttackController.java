@@ -425,14 +425,21 @@ public class BossAttackController {
 	    // ctx.currentPoint / ctx.currentPointStr 는 attackInfo()에서 직접 채움
 
 	    try {
-	    	// [OPT5] TOTAL_SP Java 계산: selectUserTotalSpComponents에서 INV_SP + POINT_SP 받아서 계산
-	    	HashMap<String, Object> spComp = botNewService.selectUserTotalSpComponents(targetUser);
-	    	long invSp = (spComp != null && spComp.get("INV_SP") != null) ? ((Number) spComp.get("INV_SP")).longValue() : 0;
-	    	long pointSp = (spComp != null && spComp.get("POINT_SP") != null) ? ((Number) spComp.get("POINT_SP")).longValue() : 0;
-	    	long totalSp = invSp + pointSp;
-
-	    	u.totalSp = totalSp;
-	    	SP total = SP.fromSp((double) totalSp);
+	    	// [OPT5] TOTAL_SP Java 계산: ext별 합산 후 POWER(10000, exponent) 적용
+	    	List<HashMap<String,Object>> spRows = botNewService.selectUserTotalSpComponents(targetUser);
+	    	double rawSp = 0;
+	    	if (spRows != null) {
+	    		for (HashMap<String,Object> row : spRows) {
+	    			String ext = java.util.Objects.toString(row.get("SP_EXT"), "");
+	    			Number amt = (Number) row.get("SP_AMT");
+	    			if (amt != null) {
+	    				int exponent = ext.isEmpty() ? 0 : (ext.charAt(0) - 'a' + 1);
+	    				rawSp += amt.doubleValue() * Math.pow(10000, exponent);
+	    			}
+	    		}
+	    	}
+	    	u.totalSp = (long) rawSp;
+	    	SP total = SP.fromSp(rawSp);
 	    	ctx.lifetimeSpStr = total.toString();
 	    	ctx.lifetimeSp = total;
 	    } catch (Exception ignore) {

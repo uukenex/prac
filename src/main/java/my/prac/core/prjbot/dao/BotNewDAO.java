@@ -71,7 +71,7 @@ public interface BotNewDAO {
     HashMap<String,Object>  selectCurrentPoint(@Param("userName") String userName, @Param("roomName") String roomName);
     List<HashMap<String,Object>> selectPointLogRaw(@Param("userName") String userName);
     HashMap<String,Object>  selectTotalEarnedSp(@Param("userName") String userName, @Param("roomName") String roomName);
-    HashMap<String,Object>  selectUserTotalSpComponents(@Param("userName") String userName);
+    List<HashMap<String,Object>> selectUserTotalSpComponents(@Param("userName") String userName);
 
     int insertPointRank(HashMap<String,Object> p);
 

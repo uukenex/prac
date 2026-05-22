@@ -170,7 +170,7 @@ public class BotNewServiceImpl implements BotNewService {
 	}
 
 	@Override
-	public HashMap<String,Object>  selectUserTotalSpComponents(String userName) {
+	public List<HashMap<String,Object>> selectUserTotalSpComponents(String userName) {
 		return botNewDAO.selectUserTotalSpComponents(userName);
 	}
 
