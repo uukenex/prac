@@ -1551,7 +1551,8 @@ public class BossAttackController {
 	        if (bossItemIds != null && !bossItemIds.isEmpty())
 	            data.put("bossItems", botNewService.selectInventoryItemsByIds(userName, "", bossItemIds));
 	    } catch (Exception ignore) {}
-	    try { data.put("drops", botNewService.selectTotalDropItems(userName)); } catch (Exception ignore) {}
+	    // [OPT] selectTotalDropItems는 applyDropBonusToContext에서 ctx.preDropRows로 대체되므로 제거
+	    // 만약 필요하면 라인 561에서 invBuffData.get("drops")를 사용함
 	    try { data.put("setBonus", botNewService.selectActiveSetBonuses(userName)); } catch (Exception ignore) {}
 	    try { data.put("hellClearAchv", botNewService.hasHellClearAchv(userName)); } catch (Exception ignore) {}
 	    try { data.put("totalJobLv", botNewService.selectTotalJobLv(userName)); } catch (Exception ignore) {}
@@ -4096,6 +4097,12 @@ public class BossAttackController {
 	private String ma_calcStats(AttackSession s) {
 		HashMap<String,Object> statMap = new HashMap<>(s.map);
 		statMap.put("param1", "");
+
+		// ─ DB 중복 조회 방지: selectTotalDropItems 미리 조회해서 캐싱
+		List<HashMap<String,Object>> preDropRows = null;
+		try { preDropRows = botNewService.selectTotalDropItems(s.userName); } catch (Exception ignore) {}
+		statMap.put("_preDropRows", preDropRows);
+
 		s.ctx = calcUserBattleContext(statMap);
 		if (!s.ctx.success) return s.ctx.errorMessage;
 
