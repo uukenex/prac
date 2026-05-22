@@ -3497,7 +3497,6 @@ public class BossAttackController {
 	        inv.put("gainType", "BUY");
 	        botNewService.insertInventoryLogTx(inv);
 	        invalidateInvBuff(userName);
-	        MiniGameUtil.DAILY_BAG_CACHE.remove(userName);  // [FIX] 가방 구매 시 캐시 무효화
 	    } else if (isBossShop) {
 	        // 보스 아이템 상점: 10 GP 소모, 이미 보유 시 불가
 	        List<Integer> bossItemList;
