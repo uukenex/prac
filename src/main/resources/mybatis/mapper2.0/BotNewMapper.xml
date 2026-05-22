@@ -468,6 +468,18 @@
 	)
   </select>
 
+  <!-- 현재 포인트 로그 RAW 데이터 (score_ext별 합산, POWER/ASCII는 Java에서 계산) -->
+  <select id="selectPointLogRaw" resultType="hashmap" parameterType="string">
+    /* selectPointLogRaw */
+    SELECT NVL(SCORE_EXT, '') AS SCORE_EXT, SUM(SCORE) AS TOTAL
+    FROM (SELECT USER_NAME, SCORE, SCORE_EXT, NEW_YN FROM TBOT_POINT_RANK
+          UNION ALL
+          SELECT USER_NAME, SCORE, SCORE_EXT, NEW_YN FROM TBOT_POINT_RANK_OLD)
+    WHERE USER_NAME = #{userName}
+      AND NEW_YN = '1'
+    GROUP BY NVL(SCORE_EXT, '')
+  </select>
+
   <!-- 판매 대상 행(FIFO) : 빛나는 제외 -->
   <select id="selectInventoryRowsForSale" resultType="hashmap">
     SELECT /* selectInventoryRowsForSale */

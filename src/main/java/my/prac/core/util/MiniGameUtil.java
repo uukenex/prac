@@ -76,6 +76,10 @@ public class MiniGameUtil {
 	// TTL 없음 — 아이템 변경 시 SET_BONUS_CACHE.remove(userName)으로 무효화
 	public static final ConcurrentHashMap<String, List<HashMap<String,Object>>> SET_BONUS_CACHE = new ConcurrentHashMap<>();
 
+	// 유저별 오늘 가방 획득 수 캐시 (userName → int[]{count, yyyyMMdd})
+	// 날짜가 바뀌면 자동 만료(재조회), 가방 획득 시 count++ 업데이트
+	public static final ConcurrentHashMap<String, int[]> DAILY_BAG_CACHE = new ConcurrentHashMap<>();
+
 	// ─────────────────────────────────────────────────────────────────────────
 
 	static {
