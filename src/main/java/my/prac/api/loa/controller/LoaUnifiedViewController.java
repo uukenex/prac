@@ -559,7 +559,7 @@ public class LoaUnifiedViewController {
     /**
      * GET /loa/api/monster-kills
      *
-     * 유저별 몬스터 킬 통계
+     * 유저별 몬스터 킬 통계 (일반/빛/어둠/음양 상세)
      */
     @GetMapping("/api/monster-kills")
     @ResponseBody
@@ -573,19 +573,15 @@ public class LoaUnifiedViewController {
             return ResponseEntity.ok(result);
         }
 
-        HashMap<String, Object> stats = new HashMap<>();
+        List<HashMap<String, Object>> killViewRows = new ArrayList<>();
         try {
-            List<HashMap<String, Object>> rows = botNewService.selectMonsterKillsByUser(userName);
-            if (rows != null) {
-                for (HashMap<String, Object> row : rows) {
-                    String type = Objects.toString(row.get("TYPE"), "normal");
-                    stats.put(type, row);
-                }
-            }
+            List<HashMap<String, Object>> rows = botNewService.selectMonsterKillsForView(userName);
+            if (rows != null) killViewRows = new ArrayList<>(rows);
         } catch (Exception ignore) {}
 
         result.put("userName", userName);
-        result.put("stats", stats);
+        result.put("stats", killViewRows);
+        result.put("count", killViewRows.size());
         return ResponseEntity.ok(result);
     }
 
