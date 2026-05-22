@@ -9,7 +9,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.TreeMap;
-import java.util.concurrent.CompletableFuture;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -25,6 +24,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import my.prac.core.game.dto.AchievementConfig;
 import my.prac.core.game.dto.AttackDeathStat;
 import my.prac.core.game.dto.JobDef;
+import my.prac.core.game.dto.Monster;
 import my.prac.core.prjbot.service.BotNewService;
 import my.prac.core.prjbot.service.BotS3Service;
 import my.prac.core.util.MiniGameUtil;
@@ -667,6 +667,12 @@ public class LoaUnifiedViewController {
             if (achvList == null) achvList = new ArrayList<>();
         } catch (Exception ignore) {}
 
+        // 2-1. 업적에 한글 라벨 추가
+        for (HashMap<String, Object> achv : achvList) {
+            String cmd = Objects.toString(achv.get("CMD"), "");
+            achv.put("label", formatAchievementLabel(cmd, monMap));
+        }
+
         // 3. 업적 파싱 및 그룹화 (monMap 전달 → 몬스터명 포함)
         HashMap<String, Object> grouped = parseAchievements(achvList, monMap);
 
@@ -1001,6 +1007,122 @@ public class LoaUnifiedViewController {
         return map.keySet().stream()
                 .mapToInt(k -> { try { return Integer.parseInt(k.replaceAll("[^0-9]", "")); } catch (Exception e) { return 0; } })
                 .max().orElse(0);
+    }
+
+    /** CMD → 한글 라벨 변환 */
+    private String formatAchievementLabel(String cmd, Map<Integer, Monster> monMap) {
+        if (cmd == null || cmd.isEmpty()) return "";
+        try {
+            if (cmd.startsWith("ACHV_FIRST_CLEAR_MON_")) {
+                int monNo = Integer.parseInt(cmd.substring("ACHV_FIRST_CLEAR_MON_".length()));
+                return "최초토벌: " + getMonName(monNo, monMap);
+            }
+            if (cmd.startsWith("ACHV_CLEAR_BROADCAST_MON_")) {
+                int monNo = Integer.parseInt(cmd.substring("ACHV_CLEAR_BROADCAST_MON_".length()));
+                return "축하방송: " + getMonName(monNo, monMap);
+            }
+            if (cmd.startsWith("ACHV_KILL") && cmd.contains("_MON_")) {
+                String[] parts = cmd.substring("ACHV_KILL".length()).split("_MON_");
+                int threshold = Integer.parseInt(parts[0]);
+                int monNo     = Integer.parseInt(parts[1]);
+                return getMonName(monNo, monMap) + " " + threshold + "킬 달성";
+            }
+            if (cmd.startsWith("ACHV_LEVEL_")) {
+                int lv = Integer.parseInt(cmd.substring("ACHV_LEVEL_".length()));
+                return "레벨 달성 Lv." + lv;
+            }
+            if (cmd.startsWith("ACHV_KILL_TOTAL_")) {
+                int th = Integer.parseInt(cmd.substring("ACHV_KILL_TOTAL_".length()));
+                return "통산 처치 " + th + "마리 달성";
+            }
+            if (cmd.startsWith("ACHV_KILL_NIGHTMARE_TOTAL_")) {
+                int th = Integer.parseInt(cmd.substring("ACHV_KILL_NIGHTMARE_TOTAL_".length()));
+                return "나이트메어 처치 " + th + "마리 달성";
+            }
+            if (cmd.startsWith("ACHV_KILL_HELL_TOTAL_")) {
+                int th = Integer.parseInt(cmd.substring("ACHV_KILL_HELL_TOTAL_".length()));
+                return "헬 처치 " + th + "마리 달성";
+            }
+            if (cmd.startsWith("ACHV_DEATH_")) {
+                int th = Integer.parseInt(cmd.substring("ACHV_DEATH_".length()));
+                return "죽음 극복 " + th + "회 달성";
+            }
+            if (cmd.startsWith("ACHV_ATTACK_TOTAL_")) {
+                int th = Integer.parseInt(cmd.substring("ACHV_ATTACK_TOTAL_".length()));
+                return "통산 공격 " + th + "회 달성";
+            }
+            if (cmd.startsWith("ACHV_SHOP_SELL_")) {
+                int th = Integer.parseInt(cmd.substring("ACHV_SHOP_SELL_".length()));
+                return "상점 판매 " + th + "회 달성";
+            }
+            if (cmd.startsWith("ACHV_LIGHT_ITEM_")) {
+                int th = Integer.parseInt(cmd.substring("ACHV_LIGHT_ITEM_".length()));
+                return "빛 아이템 획득 " + th + "회 달성";
+            }
+            if (cmd.startsWith("ACHV_DARK_ITEM_")) {
+                int th = Integer.parseInt(cmd.substring("ACHV_DARK_ITEM_".length()));
+                return "어둠 아이템 획득 " + th + "회 달성";
+            }
+            if (cmd.startsWith("ACHV_GRAY_ITEM_")) {
+                int th = Integer.parseInt(cmd.substring("ACHV_GRAY_ITEM_".length()));
+                return "음양 아이템 획득 " + th + "회 달성";
+            }
+            if (cmd.startsWith("ACHV_BAG_")) {
+                int th = Integer.parseInt(cmd.substring("ACHV_BAG_".length()));
+                return "가방 획득 " + th + "회 달성";
+            }
+            if (cmd.startsWith("ACHV_JOB_SKILL_")) {
+                String rest   = cmd.substring("ACHV_JOB_SKILL_".length());
+                String[] parts = rest.split("_");
+                if (parts.length >= 2) {
+                    String jobName = parts[0];
+                    int th = Integer.parseInt(parts[1]);
+                    return jobName + " 스킬 사용 " + th + "회 달성";
+                }
+            }
+            if (cmd.startsWith("ACHV_HELL_ATK_")) {
+                int th = Integer.parseInt(cmd.substring("ACHV_HELL_ATK_".length()));
+                return "헬보스 공격 " + th + "회 달성";
+            }
+            if (cmd.startsWith("ACHV_HELL_CLEAR_")) {
+                int th = Integer.parseInt(cmd.substring("ACHV_HELL_CLEAR_".length()));
+                return "헬보스 처치 " + th + "회 달성";
+            }
+            if (cmd.startsWith("ACHV_ROULETTE_ATK_")) {
+                String rest   = cmd.substring("ACHV_ROULETTE_ATK_".length());
+                String[] parts = rest.split("_");
+                return "공격력 " + parts[0] + "% 달성 " + parts[1] + "번째";
+            }
+            if (cmd.startsWith("ACHV_ROULETTE_CRI_")) {
+                String rest   = cmd.substring("ACHV_ROULETTE_CRI_".length());
+                String[] parts = rest.split("_");
+                return "치명타 " + parts[0] + "% 달성 " + parts[1] + "번째";
+            }
+            if (cmd.startsWith("ACHV_SLAYER_SEASON_")) {
+                String rest = cmd.substring("ACHV_SLAYER_SEASON_".length());
+                String[] parts = rest.split("_");
+                String date  = parts[0];
+                int monNo    = Integer.parseInt(parts[1]);
+                return "학살자 " + formatDate(date) + " 시즌: " + getMonName(monNo, monMap);
+            }
+            if (cmd.startsWith("ACHV_MASTER_SEASON_")) {
+                String rest = cmd.substring("ACHV_MASTER_SEASON_".length());
+                String[] parts = rest.split("_");
+                String date = parts[0];
+                int cnt     = Integer.parseInt(parts[1]);
+                return "직업마스터 " + formatDate(date) + " 시즌 " + cnt + "회 달성";
+            }
+            if (cmd.matches("^ACHV_\\d{4}$")) {
+                return "특수업적 #" + cmd.substring(5);
+            }
+        } catch (Exception ignore) {}
+        return cmd;
+    }
+
+    /** YYYYMMDD → YYYY-MM-DD */
+    private String formatDate(String d) {
+        if (d == null || d.length() < 8) return d;
+        return d.substring(0, 4) + "-" + d.substring(4, 6) + "-" + d.substring(6, 8);
     }
 
     private HashMap<String, Object> mapOf(Object... kv) {
