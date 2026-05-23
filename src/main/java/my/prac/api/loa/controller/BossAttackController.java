@@ -137,7 +137,7 @@ public class BossAttackController {
 	/** 엘프 계열 야간 여부 (18~06시) */
 	private static boolean isElfNight() {
 	    int h = java.time.LocalTime.now().getHour();
-	    return h >= 18 || h < 6;
+	    return h >= 22 || h < 4;
 	}
 	/** 야간이면 엘프 계열 직업명을 "다크엘프"로 반환, 그 외 그대로 반환 */
 	private static String elfDisplayJob(String job) {
@@ -1773,7 +1773,7 @@ public class BossAttackController {
 		    boolean isElfFamilyTarget = "엘프".equals(newJob) || "엘프궁수".equals(newJob) || "엘프마법사".equals(newJob);
 		    boolean isElfFamilyCur    = "엘프".equals(curJob) || "엘프궁수".equals(curJob) || "엘프마법사".equals(curJob);
 		    if (isElfFamilyTarget && !isElfFamilyCur && isElfNight()) {
-		        return "엘프 종족이 사라져 변경할 수 없습니다. (야간 18시~06시)";
+		        return "엘프 종족이 사라져 변경할 수 없습니다. (야간 22시~04시)";
 		    }
 
 		    // 5-2) 엘프궁수/엘프마법사: 엘프 직업레벨 30 필요
