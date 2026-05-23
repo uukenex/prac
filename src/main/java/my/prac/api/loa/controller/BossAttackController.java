@@ -3712,29 +3712,26 @@ public class BossAttackController {
 	    }
 
 	    botNewService.updateUserHpOnlyTx(userName, "", (int)newHp);
-
-	    // 전투 로그 삽입: 최종 공격 시각을 현재로 갱신 (selectLastAttackTime 기준)
-	    // -> 다중구매 시 다음 물약 계산에서 리젠이 중복 적용되는 것을 방지
-	    botNewService.insertBattleLogTx(new BattleLog()
-	            .setUserName(userName)
-	            .setRoomName(roomName)
-	            .setLv(u.lv)
-	            .setTargetMonLv(0)
-	            .setGainExp(0)
-	            .setAtkDmg(0)
-	            .setMonDmg(0)
-	            .setAtkCritYn(0)
-	            .setMonPatten(0)
-	            .setKillYn(0)
-	            .setNowYn(0)
-	            .setDropYn(0)
-	            .setDeathYn(0)
-	            .setLuckyYn(0)
-	            .setJobSkillYn(0)
-	            .setJob(u.job)
-	            .setNightmareYn(0));
-
 	    if(itemId == 1001) {
+	    	botNewService.insertBattleLogTx(new BattleLog()
+	                .setUserName(userName)
+	                .setRoomName(roomName)
+	                .setLv(u.lv)
+	                .setTargetMonLv(0)
+	                .setGainExp(0)
+	                .setAtkDmg(0)
+	                .setMonDmg(0)
+	                .setAtkCritYn(0)
+	                .setMonPatten(0)
+	                .setKillYn(0)
+	                .setNowYn(0)
+	                .setDropYn(0)
+	                .setDeathYn(0)
+	                .setLuckyYn(0)
+	                .setJobSkillYn(0)
+	                .setJob(u.job)
+	                .setNightmareYn(0)
+	        );
 	    	 return userName+"님, 부활했습니다. (+" + heal + ")"+NL
 		    		 +beforeHp +" → "+newHp+" / "+ctx.hpMax;
 	    }else {
