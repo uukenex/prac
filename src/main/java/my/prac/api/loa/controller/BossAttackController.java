@@ -4773,7 +4773,7 @@ public class BossAttackController {
 		                // 직업레벨 10단계마다 업적 부여
 		                if (newLv % 5 == 0) {
 		                    String achvCmd = "ACHV_ELF_JOB_LV_" + s.job + "_" + newLv;
-		                    String achvMsg = grantOnceIfEligibleFast(s.userName, s.roomName, achvCmd, ONE_A_SP, s.achievedCmdSet);
+		                    String achvMsg = grantOnceIfEligibleFast(s.userName, s.roomName, achvCmd, 10_000, s.achievedCmdSet);
 		                    if (!achvMsg.isEmpty()) s.jobLevelUpMsg += NL + achvMsg.trim();
 		                }
 		            }
