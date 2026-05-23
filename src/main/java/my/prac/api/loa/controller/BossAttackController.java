@@ -3171,6 +3171,11 @@ public class BossAttackController {
 	    HashMap<String, Object> ctxMap = new HashMap<>();
 	    ctxMap.put("userName", userName);
 	    ctxMap.put("roomName", roomName);
+	    // 드랍 데이터 미리 로드 (단건구매와 동일 방식, 곰의 hpMax 계산 및 헬너프에 영향)
+	    try {
+	        List<HashMap<String,Object>> preDropRows = botNewService.selectTotalDropItems(userName);
+	        if (preDropRows != null) ctxMap.put("_preDropRows", preDropRows);
+	    } catch (Exception ignore) {}
 	    UserBattleContext ctx = calcUserBattleContext(ctxMap);
 
 	    // 현재 포인트 1회 조회
