@@ -1776,15 +1776,15 @@ public class BossAttackController {
 		        return "엘프 종족이 사라져 변경할 수 없습니다. (야간 18시~06시)";
 		    }
 
-		    // 5-2) 엘프궁수/엘프마법사: 엘프 직업레벨 25 필요
+		    // 5-2) 엘프궁수/엘프마법사: 엘프 직업레벨 30 필요
 		    if ("엘프궁수".equals(newJob) || "엘프마법사".equals(newJob)) {
 		        int elfLv = 0;
 		        try {
 		            HashMap<String,Object> elfRow = botNewService.selectJobLevel(userName, "엘프");
 		            elfLv = elfRow != null ? ((Number) elfRow.getOrDefault("JOB_LV", 0)).intValue() : 0;
 		        } catch (Exception ignore) {}
-		        if (elfLv < 25) {
-		            return "[" + newJob + "] 전직 조건 미충족: 엘프 직업레벨 25 달성 필요 (현재 Lv." + elfLv + ")";
+		        if (elfLv < 30) {
+		            return "[" + newJob + "] 전직 조건 미충족: 엘프 직업레벨 30 달성 필요 (현재 Lv." + elfLv + ")";
 		        }
 		    }
 
@@ -4771,7 +4771,7 @@ public class BossAttackController {
 		                s.jobLevelUpMsg = "[" + elfDisplayJob(s.job) + "] 직업레벨 상승! Lv." + curLv + " -> Lv." + newLv;
 		                invalidateInvBuff(s.userName);
 		                // 직업레벨 10단계마다 업적 부여
-		                if (newLv % 10 == 0) {
+		                if (newLv % 5 == 0) {
 		                    String achvCmd = "ACHV_ELF_JOB_LV_" + s.job + "_" + newLv;
 		                    String achvMsg = grantOnceIfEligibleFast(s.userName, s.roomName, achvCmd, ONE_A_SP, s.achievedCmdSet);
 		                    if (!achvMsg.isEmpty()) s.jobLevelUpMsg += NL + achvMsg.trim();
