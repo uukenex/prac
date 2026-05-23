@@ -1776,15 +1776,15 @@ public class BossAttackController {
 		        return "엘프 종족이 사라져 변경할 수 없습니다. (야간 18시~06시)";
 		    }
 
-		    // 5-2) 엘프궁수/엘프마법사: 엘프 직업레벨 100 필요
+		    // 5-2) 엘프궁수/엘프마법사: 엘프 직업레벨 25 필요
 		    if ("엘프궁수".equals(newJob) || "엘프마법사".equals(newJob)) {
 		        int elfLv = 0;
 		        try {
 		            HashMap<String,Object> elfRow = botNewService.selectJobLevel(userName, "엘프");
 		            elfLv = elfRow != null ? ((Number) elfRow.getOrDefault("JOB_LV", 0)).intValue() : 0;
 		        } catch (Exception ignore) {}
-		        if (elfLv < JOB_MAX_LV) {
-		            return "[" + newJob + "] 전직 조건 미충족: 엘프 직업레벨 100 달성 필요 (현재 Lv." + elfLv + ")";
+		        if (elfLv < 25) {
+		            return "[" + newJob + "] 전직 조건 미충족: 엘프 직업레벨 25 달성 필요 (현재 Lv." + elfLv + ")";
 		        }
 		    }
 
@@ -4765,6 +4765,12 @@ public class BossAttackController {
 		                newKll = newKll - need;
 		                s.jobLevelUpMsg = "[" + elfDisplayJob(s.job) + "] 직업레벨 상승! Lv." + curLv + " -> Lv." + newLv;
 		                invalidateInvBuff(s.userName);
+		                // 직업레벨 10단계마다 업적 부여
+		                if (newLv % 10 == 0) {
+		                    String achvCmd = "ACHV_ELF_JOB_LV_" + s.job + "_" + newLv;
+		                    String achvMsg = grantOnceIfEligibleFast(s.userName, s.roomName, achvCmd, ONE_A_SP, s.achievedCmdSet);
+		                    if (!achvMsg.isEmpty()) s.jobLevelUpMsg += NL + achvMsg.trim();
+		                }
 		            }
 		            botNewService.upsertJobLevel(s.userName, s.job, newLv, newKll);
 		            // 직업레벨 진행도 메시지
@@ -8804,6 +8810,18 @@ public class BossAttackController {
 	        }
 	    }
 	    
+
+	    if (cmd.startsWith("ACHV_ELF_JOB_LV_")) {
+	        try {
+	            String rest = cmd.substring("ACHV_ELF_JOB_LV_".length());
+	            int lastUs = rest.lastIndexOf('_');
+	            String jobName = rest.substring(0, lastUs);
+	            int lv = Integer.parseInt(rest.substring(lastUs + 1));
+	            return jobName + " 직업레벨 Lv." + lv + " 달성";
+	        } catch (Exception e) {
+	            return "엘프 직업레벨 업적";
+	        }
+	    }
 
 	    return cmd;
 	}
