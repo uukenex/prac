@@ -2572,7 +2572,7 @@ public class BossAttackController {
 		                String jn  = Objects.toString(r.get("JOB_NAME"), "");
 		                int    jlv = ((Number) r.getOrDefault("JOB_LV", 0)).intValue();
 		                int    jkl = ((Number) r.getOrDefault("JOB_KILL_CNT", 0)).intValue();
-		                int    need = jlv * 10 + 5;
+		                int    need = jlv * JOB_LV_KILL_BASE + JOB_LV_KILL_OFFSET;
 		                sb.append("  └ [").append(jn).append("] Lv.").append(jlv);
 		                if (jlv < JOB_MAX_LV) sb.append("  (다음레벨: ").append(jkl).append("/").append(need).append("킬)");
 		                else                  sb.append("  (MAX)");
@@ -4364,9 +4364,6 @@ public class BossAttackController {
 		if (s.gray) { s.lucky = false; s.dark = false; }
 		if ("곰".equals(s.job))  { s.lucky = false; s.dark = false; }
 
-		if (s.dark) { applyDarkMonsterScale(s); s.monHpRemainBefore = s.monMaxHp; }
-
-		// 그림자 몬스터: 헬에서 해당 몬스터 500회+ 처치 시 10% 확률
 		if (s.hell && s.hellKillCountForThisMon >= 100
 		        && ThreadLocalRandom.current().nextDouble() < 0.10) {
 		    s.shadow = true;
@@ -4375,6 +4372,9 @@ public class BossAttackController {
 		    s.gray  = false;
 		    // 능력치는 원본 그대로 (스케일 없음)
 		}
+		
+		if (s.dark) { applyDarkMonsterScale(s); s.monHpRemainBefore = s.monMaxHp; }
+
 	}
 
 	// ─ 7) 쿨타임 / 8) HP 확정 / [S3] 분기 ───────────────────────────────
