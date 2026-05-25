@@ -2795,7 +2795,7 @@ public class BossAttackController {
 		      .append("▶ 선택 가능한 몬스터").append(ALL_SEE_STR);
 
 		    for (Monster mm : monsters) {
-		        sb.append(renderMonsterSelectLine(mm, nightmareYnVal));
+		        sb.append(renderMonsterCompactLine(mm,userLv, nightmareYnVal));
 		    }
 		    if (nightmareYnVal == 2) {
 		        sb.append(ALL_SEE_STR).append(NL)
@@ -2863,7 +2863,7 @@ public class BossAttackController {
 		      .append("▶ 선택 가능한 몬스터").append(ALL_SEE_STR);
 
 		    for (Monster mm : monsters) {
-		        sb.append(renderMonsterSelectLine(mm,  nightmareYnVal));
+		        sb.append(renderMonsterCompactLine(mm, userLv, nightmareYnVal));
 		    }
 		    return sb.toString();
 		}
@@ -2872,7 +2872,7 @@ public class BossAttackController {
 		if (u == null) {
 		    botNewService.insertUserWithTargetTx(userName, roomName, m.monNo);
 		    return userName + "님, 공격 타겟을 " + m.monName + "(MON_NO=" + m.monNo + ") 으로 설정했습니다." + NL
-		         + "▶ 선택: " + renderMonsterSelectLine(m,  nightmareYnVal);
+		         + "▶ 선택: " + renderMonsterCompactLine(m, 1, nightmareYnVal);
 		}
 		if (u.targetMon == m.monNo) return "현재 타겟이 이미 " + m.monName + "(MON_NO=" + m.monNo + ") 입니다.";
 
@@ -2915,7 +2915,7 @@ public class BossAttackController {
 		botNewService.updateUserTargetMonTx(userName, roomName, m.monNo);
 		int userLvForView = (u != null ? u.lv : 1);
 		return userName + "님, 공격 타겟을 " + m.monName + "(MON_NO=" + m.monNo + ") 으로 설정했습니다." + NL
-		     + "▶ 선택: " + NL + renderMonsterSelectLine(m, nightmareYnVal);
+		     + "▶ 선택: " + NL + renderMonsterCompactLine(m, userLvForView,nightmareYnVal);
 	}
 	// 엔트리 포인트: 기존 /구매 명령이 들어오는 곳
 	public String buyItem(HashMap<String, Object> map) {
@@ -6916,7 +6916,7 @@ public class BossAttackController {
 	      .append("예) /공격타겟 1   또는   /공격타겟 토끼").append(NL).append(NL)
 	      .append("▶ 선택 가능한 몬스터").append(ALL_SEE_STR);
 	    for (Monster m : monsters) {
-	        sb.append(renderMonsterSelectLine(m,0)).append(NL);
+	        sb.append(renderMonsterCompactLine(m,0,0)).append(NL);
 	    }
 	    return sb.toString();
 	}
@@ -7915,12 +7915,12 @@ public class BossAttackController {
 	
 	
 	/** 몬스터 요약 한 줄 UI */
-	/*
+	
 	private String renderMonsterCompactLine(Monster m, int userLv, int nightmareYnVal) {
 
 		// 드랍 아이템명 및 판매가격
 	    String dropName = (m.monDrop != null ? m.monDrop : "-");
-	    long dropPrice = getDropPriceByName(dropName);
+	    //long dropPrice = getDropPriceByName(dropName);
 
 	    boolean nmActive = nightmareYnVal >= 1;
 	    boolean hellActive = nightmareYnVal == 2;
@@ -7932,14 +7932,14 @@ public class BossAttackController {
 	    if(nmActive) {
 	    	monAtk *= NM_MUL_HP_ATK;
 	    	monHp *= NM_MUL_HP_ATK;
-	    	dropPrice = dropPrice * 50;
-	    	if(hellActive) dropPrice *= HEL_SP_MULT; //토끼기준 100a
+	    	//dropPrice = dropPrice * 50;
+	    	//if(hellActive) dropPrice *= HEL_SP_MULT; //토끼기준 100a
 	    	monLv += hellActive ? HEL_ADD_MON_LV : NM_ADD_MON_LV;
 	    	monExp *= NM_MUL_EXP;
 	    	if(hellActive) monExp *= HEL_MUL_EXP;
 	    }
 
-	    SP dropSp= SP.fromSp(dropPrice);
+	    //SP dropSp= SP.fromSp(dropPrice);
 
 	    // ATK 범위 계산 (50% ~ 100%)
 	    int atkMin = (int) Math.floor(monAtk * 0.5);
@@ -8008,8 +8008,8 @@ public class BossAttackController {
 	    sb.append("▶ 보상: EXP ").append(effExp);
 	    if (hasPenalty) sb.append("▼");
 	    else if (hasBonus) sb.append("▲");
-	    sb.append(" / ").append(dropName).append(" ").append(dropSp.toString()).append("sp")
-	      .append(NL);
+	    //sb.append(" / ").append(dropName).append(" ").append(dropSp.toString()).append("sp")
+	    //  .append(NL);
 
 
 	    // 🔹 4행: 추가 설명 (mon_note)
@@ -8021,7 +8021,7 @@ public class BossAttackController {
 
 	    return sb.toString();
 	}
-	*/
+	
 	
 	private String renderMonsterSelectLine(Monster m, int nightmareYnVal) {
 

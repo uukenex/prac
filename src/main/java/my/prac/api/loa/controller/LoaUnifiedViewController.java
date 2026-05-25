@@ -25,6 +25,7 @@ import my.prac.core.game.dto.AchievementConfig;
 import my.prac.core.game.dto.AttackDeathStat;
 import my.prac.core.game.dto.JobDef;
 import my.prac.core.game.dto.Monster;
+import my.prac.core.game.dto.User;
 import my.prac.core.prjbot.service.BotNewService;
 import my.prac.core.prjbot.service.BotS3Service;
 import my.prac.core.util.MiniGameUtil;
@@ -573,20 +574,65 @@ public class LoaUnifiedViewController {
 
         HashMap<String, Object> result = new HashMap<>();
 
-        if (userName.trim().isEmpty()) {
-            result.put("error", "유저명을 입력하세요.");
+        if (userName == null || userName.trim().isEmpty()) {
             return ResponseEntity.ok(result);
         }
 
-        List<HashMap<String, Object>> killViewRows = new ArrayList<>();
+        String un = userName.trim();
+
+        List<HashMap<String, Object>> rows = new ArrayList<>();
         try {
-            List<HashMap<String, Object>> rows = botNewService.selectMonsterKillsForView(userName);
-            if (rows != null) killViewRows = new ArrayList<>(rows);
+            List<HashMap<String, Object>> tmp =
+                    botNewService.selectMonsterKillsForView(un);
+
+            if (tmp != null) {
+                rows = tmp;
+            }
         } catch (Exception ignore) {}
 
-        result.put("userName", userName);
-        result.put("stats", killViewRows);
-        result.put("count", killViewRows.size());
+        // 기존 구조 유지: MON_NO 기반 MAP
+        Map<String, Object> killMap = new HashMap<>();
+
+        long totalKills = 0;
+
+        for (HashMap<String, Object> row : rows) {
+
+            String monNo = String.valueOf(row.get("MON_NO"));
+
+            killMap.put(monNo, row);
+
+            Object t = row.get("KILL_TOTAL");
+
+            if (t instanceof Number) {
+                totalKills += ((Number) t).longValue();
+            }
+        }
+
+        // 기존 userInfo 유지
+        HashMap<String, Object> userInfo = new HashMap<>();
+
+        try {
+            User u = botNewService.selectUser(un, null);
+
+            if (u != null) {
+                userInfo.put("lv", u.lv);
+                userInfo.put("expCur", u.expCur);
+                userInfo.put("expNext", u.expNext);
+                userInfo.put("job", u.job != null ? u.job : "");
+                userInfo.put("nightmareYn", u.nightmareYn);
+            }
+
+        } catch (Exception ignore) {}
+
+        result.put("kills", killMap);
+        result.put("totalKills", totalKills);
+        result.put("userName", un);
+        result.put("userInfo", userInfo);
+
+        // 신규 구조도 같이 유지 (하위호환)
+        result.put("stats", rows);
+        result.put("count", rows.size());
+
         return ResponseEntity.ok(result);
     }
 

@@ -462,7 +462,24 @@ public class BossAttackS3Controller {
             }
         }
         long totalDamage = damage + damage2;
+        
+        String dmgLimitMsg = "";
+        
+     // 보스 최대체력의 10% 이상 피해 제한
+        long maxDamageLimit = Math.max(1L, maxHp / 10);
 
+        if (totalDamage > maxDamageLimit) {
+            long beforeLimit = totalDamage;
+            totalDamage = maxDamageLimit;
+
+            dmgLimitMsg = "[데미지 제한] "
+                    + SP.fromSp(beforeLimit)
+                    + " → "
+                    + SP.fromSp(totalDamage)
+                    + " (보스 최대체력 10% 제한)"
+                    + NL;
+        }
+        
         // [7012] 도사 버프 적용 (보스전)
         String dosaBossBuffMsg = "";
         {
@@ -651,6 +668,7 @@ public class BossAttackS3Controller {
             if (!debuff1Msg.isEmpty())  msg.append(debuff1Msg);
             if (!bossDefMsg.isEmpty())  msg.append(bossDefMsg);
             if (!dosaBossBuffMsg.isEmpty()) msg.append(dosaBossBuffMsg);
+            if (!dmgLimitMsg.isEmpty()) msg.append(dmgLimitMsg);
         } else {
             msg.append("보스가 공격을 회피했습니다! 데미지 0!").append(NL);
         }
