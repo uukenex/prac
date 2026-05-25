@@ -7959,10 +7959,7 @@ public class BossAttackController {
 	    }
 
 	    long effExp = Math.round(baseExp * expMultiplier);
-	    if(nmActive) {
-	    	effExp *= NM_MUL_EXP;
-	    	if(hellActive) effExp *= HEL_MUL_EXP;
-	    }
+	    // monExp already includes NM/HELL multipliers above.
 	    boolean hasPenalty = (levelGap >= 0 && expMultiplier < 1.0);
 	    boolean hasBonus   = (levelGap < 0  && expMultiplier > 1.0);
 
