@@ -43,7 +43,7 @@ public class AchievementConfig {
      * ※ 현재 전부 0. 추후 타입/임계값별로 세분화 가능.
      */
     public static int itemRewardSp(String gainType, int threshold) {
-        return 0;
+        return 10000;
     }
 
     /** 아이템 업적 DB CMD 키 */
