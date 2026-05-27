@@ -921,7 +921,7 @@ public class BossAttackS3Controller {
             // 당첨자별 지급 수량 결정 (1~2개 랜덤)
             Map<String, Integer> boxQtyMap = new LinkedHashMap<>();
             for (String winner : boxWinners) {
-                boxQtyMap.put(winner, 1 + rand.nextInt(2)); // 1 또는 2
+                boxQtyMap.put(winner, 3 + rand.nextInt(3)); // 1 또는 2
             }
 
             // 추첨 결과 표시
@@ -1119,58 +1119,35 @@ public class BossAttackS3Controller {
             //   - 당첨자 추첨 풀: 2%이상 기여자(qualified) 중 winnerCount명 추첨 → 각 0.5~1 GP
             //   - 0.3 GP: 전체 참여자(allContributors) 전원 (당첨자는 randomGp로 대체)
             // ────────────────────────────────────────────────────
-            if (allContributors.isEmpty()) {
-                msg.append("GP 지급 대상 없음").append(NL);
-            } else {
-                // 당첨자: 전체 참여자 중 winnerCount명 추첨 (각각 독립 GP 추첨)
-                List<String> gpWinnerList = pickWinners(allNames, winnerCount, rand);
-                Map<String, Double> gpWinnerMap = new LinkedHashMap<>();
-                for (String w : gpWinnerList) {
-                    gpWinnerMap.put(w, 0.5 + rand.nextDouble() * 0.5); // 0.5 ~ 1.0
-                }
+        	if (allContributors.isEmpty()) {
+        	    msg.append("GP 지급 대상 없음").append(NL);
+        	} else {
 
-                // 추첨 대상 목록 표시 (전체 참여자)
-                if (!allNames.isEmpty()) {
-                    msg.append("-- 추첨 대상 (전체 ").append(allNames.size()).append("명) --").append(NL);
-                    for (int i = 0; i < allNames.size(); i++) {
-                        String uName = allNames.get(i);
-                        boolean isWin = gpWinnerMap.containsKey(uName);
-                        msg.append(isWin ? "★" : "  ")
-                           .append(i + 1).append(". ").append(uName)
-                           .append(isWin ? " ← 당첨!" : "").append(NL);
-                    }
-                    msg.append(NL);
-                }
+        	    msg.append("-- 전체 참여자 GP 지급 (")
+        	       .append(allContributors.size())
+        	       .append("명) --")
+        	       .append(NL);
 
-                // GP 지급: 전체 참여자 대상
-                int baseCount = 0;
-                for (HashMap<String, Object> row : allContributors) {
-                    String uName = row.get("USER_NAME").toString();
-                    boolean isWin = gpWinnerMap.containsKey(uName);
-                    double winGp = isWin ? gpWinnerMap.get(uName) : 0.0;
-                    double gp = isWin ? winGp : 0.3;
-                    try {
-                        HashMap<String, Object> gpMap = new HashMap<>();
-                        gpMap.put("userName", uName);
-                        gpMap.put("roomName", roomName);
-                        gpMap.put("score",    gp);
-                        gpMap.put("cmd",      isWin ? "BOSS_HELL_KILL_GP" : "BOSS_HELL_PART_GP");
-                        botNewService.insertGpRecord(gpMap);
-                    } catch (Exception ignore) {}
+        	    for (HashMap<String, Object> row : allContributors) {
+        	        String uName = row.get("USER_NAME").toString();
 
-                    // 메시지: 당첨자는 개별 표시, 나머지는 카운트
-                    if (isWin) {
-                        msg.append("[").append(uName).append("] ")
-                           .append(String.format("+%.2f GP (랜덤당첨)", winGp))
-                           .append(NL);
-                    } else {
-                        baseCount++;
-                    }
-                }
-                if (baseCount > 0) {
-                    msg.append("참여자 ").append(baseCount).append("명 +0.30 GP").append(NL);
-                }
-            }
+        	        try {
+        	            HashMap<String, Object> gpMap = new HashMap<>();
+        	            gpMap.put("userName", uName);
+        	            gpMap.put("roomName", roomName);
+        	            gpMap.put("score", 0.5);
+        	            gpMap.put("cmd", "BOSS_HELL_KILL_GP");
+
+        	            botNewService.insertGpRecord(gpMap);
+
+        	        } catch (Exception ignore) {}
+
+        	        msg.append("[")
+        	           .append(uName)
+        	           .append("] +0.50 GP")
+        	           .append(NL);
+        	    }
+        	}
         }
 
         // 전체 기여도 TOP (데미지% 포함) — 더보기 구분자 이후에 표시
