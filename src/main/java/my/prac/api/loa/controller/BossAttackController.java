@@ -134,6 +134,10 @@ public class BossAttackController {
 	private static final int JOB_LV_KILL_OFFSET = 3;
 	private static final int JOB_MAX_LV         = 100;
 
+	// 이벤트 플래그
+	/** 레벨업 1+1 이벤트: true 시 레벨업 1회당 추가 1레벨 부여 */
+	private static final boolean EVENT_LEVEL_1PLUS1 = true;
+
 	/** 엘프 계열 야간 여부 (18~06시) */
 	private static boolean isElfNight() {
 	    int h = java.time.LocalTime.now().getHour();
@@ -7798,12 +7802,37 @@ public class BossAttackController {
 	        atkMaxDelta += (newAtkMax - atkMax);
 	        critDelta   += (newCrit   - crit);
 	        regenDelta  += (newRegen  - regen);
-	        
+
 	        hpMax   = newHpMax;
 	        atkMin = newAtkMin;
 	        atkMax = newAtkMax;
 	        crit   = newCrit;
 	        regen  = newRegen;
+
+	        // [이벤트] 레벨업 1+1: 레벨업 1회당 추가 1레벨 무료 부여
+	        if (EVENT_LEVEL_1PLUS1) {
+	            lv++;
+	            upCount++;
+	            expNext = calcNextExp(lv, expNext);
+
+	            int eHpMax  = MiniGameUtil.calcBaseHpMax(lv);
+	            int eAtkMin = MiniGameUtil.calcBaseAtkMin(lv);
+	            int eAtkMax = MiniGameUtil.calcBaseAtkMax(lv);
+	            int eCrit   = MiniGameUtil.calcBaseCritRate(lv);
+	            int eRegen  = MiniGameUtil.calcBaseHpRegen(lv);
+
+	            hpDelta     += (eHpMax  - hpMax);
+	            atkMinDelta += (eAtkMin - atkMin);
+	            atkMaxDelta += (eAtkMax - atkMax);
+	            critDelta   += (eCrit   - crit);
+	            regenDelta  += (eRegen  - regen);
+
+	            hpMax  = eHpMax;
+	            atkMin = eAtkMin;
+	            atkMax = eAtkMax;
+	            crit   = eCrit;
+	            regen  = eRegen;
+	        }
 	    }
 
 	    u.lv        = lv;
