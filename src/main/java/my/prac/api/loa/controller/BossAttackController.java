@@ -4614,8 +4614,8 @@ public class BossAttackController {
 
 		// [Feature1] 다회전 경험치 2배: 처치 시 진행 중 전투였을 경우 (다크/빛/섀도우 제외)
 		if (s.willKill && s.isOngoing && !s.dark && !s.lucky && !s.shadow) s.res.gainExp *= 2;
-		// [Feature2] lv 700 이하 경험치 2배
-		if (s.willKill && s.u.lv <= 700) s.res.gainExp *= 2;
+		// [Feature2] lv 800 이하 경험치 2배
+		if (s.willKill && s.u.lv <= 800) s.res.gainExp *= 2;
 
 		// SP 누적용 — baroSellItem은 INSERT 없이 outSp만 반환, 여기서 합산 후 단건 INSERT
 		SP stealSpTotal = new SP(0, "");
@@ -7785,6 +7785,7 @@ public class BossAttackController {
 
 	    while (expCur >= expNext) {
 	        expCur -= expNext;
+	        int lvBeforeUp = lv; // 레벨업 직전 레벨 (짝수 여부 판단용)
 	        lv++;
 	        upCount++;
 
@@ -7809,8 +7810,8 @@ public class BossAttackController {
 	        crit   = newCrit;
 	        regen  = newRegen;
 
-	        // [이벤트] 레벨업 1+1: 레벨업 1회당 추가 1레벨 무료 부여
-	        if (EVENT_LEVEL_1PLUS1) {
+	        // [이벤트] 레벨업 1+1: 짝수 레벨에서 레벨업 시 추가 1레벨 부여 (800레벨 이하)
+	        if (EVENT_LEVEL_1PLUS1 && lvBeforeUp % 2 == 0 && lvBeforeUp < 800) {
 	            lv++;
 	            upCount++;
 	            expNext = calcNextExp(lv, expNext);
