@@ -4608,8 +4608,8 @@ public class BossAttackController {
 		s.res = resolveKillAndDrop(s.m, s.calc, s.willKill, s.u, s.lucky, s.dark, s.gray, s.shadow, s.ctx.user.nightmareYn, s.ctx.ownedBossItems);
 		if ("궁수".equals(s.u.job) || "사냥꾼".equals(s.u.job)) s.res.gainExp *= 3;
 
-		// [Feature1] 다회전 경험치 2배: 처치 시 진행 중 전투였을 경우 (2턴 이상)
-		if (s.willKill && s.isOngoing) s.res.gainExp *= 2;
+		// [Feature1] 다회전 경험치 2배: 처치 시 진행 중 전투였을 경우 (다크/빛/섀도우 제외)
+		if (s.willKill && s.isOngoing && !s.dark && !s.lucky && !s.shadow) s.res.gainExp *= 2;
 		// [Feature2] lv 700 이하 경험치 2배
 		if (s.willKill && s.u.lv <= 700) s.res.gainExp *= 2;
 
