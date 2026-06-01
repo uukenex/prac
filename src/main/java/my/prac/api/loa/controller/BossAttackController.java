@@ -4658,7 +4658,9 @@ public class BossAttackController {
 				Integer id = getItemIdCached(dn);
 				int qty = 2 + extra;
 				if (id != null) {
-					boolean bonus = ThreadLocalRandom.current().nextDouble() < 0.10;
+					// [7021] 처단자 보스템: 아이템 수량 2배 크리 확률 +10%
+					double bonusProb = s.ctx.ownedBossItems.contains(7021) ? 0.20 : 0.10;
+					boolean bonus = ThreadLocalRandom.current().nextDouble() < bonusProb;
 					if (bonus) qty *= 2;
 					HashMap<String,Object> inv = buildStealInv(s.userName, s.roomName, id);
 					inv.put("qty", qty);
@@ -9017,11 +9019,6 @@ public class BossAttackController {
 	        out.hunterMsg += "헌터랭크(" + u.hunterGrade + ")보너스 "
 			               + "over치명률 " + overflow + "% → 치피"
 			               + converted + "%로 변환(" + Math.round(convertRate*100) + "%)" + NL;
-	    }
-
-	    // [7021] 처단자: 처단 크리티컬 확률 +10%
-	    if ("처단자".equals(u.job) && ownedBossItems != null && ownedBossItems.contains(7021)) {
-	        critRate = Math.min(100, critRate + 10);
 	    }
 
 	    // -----------------------------
