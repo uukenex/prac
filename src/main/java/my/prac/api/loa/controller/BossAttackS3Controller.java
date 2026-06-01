@@ -54,13 +54,13 @@ public class BossAttackS3Controller {
     /** 보스 공격 데미지: 유저 최대HP의 X% (체력비례 퍼센트 데미지) */
     static final int BOSS_ATK_POWER_MIN  = 10,  BOSS_ATK_POWER_MAX  = 99;
     /** 보스 방어 발동률 (%) */
-    static final int BOSS_DEF_RATE_MIN   = 10,  BOSS_DEF_RATE_MAX   = 25;
+    static final int BOSS_DEF_RATE_MIN   = 15,  BOSS_DEF_RATE_MAX   = 35;
     /** 보스 방어: 유저 공격의 X% 감소 */
-    static final int BOSS_DEF_POWER_MIN  = 10,  BOSS_DEF_POWER_MAX  = 100;
+    static final int BOSS_DEF_POWER_MIN  = 15,  BOSS_DEF_POWER_MAX  = 100;
     /** 보스 회피율 (%) */
-    static final int BOSS_EVADE_RATE_MIN = 5,   BOSS_EVADE_RATE_MAX = 20;
-    /** 보스 치명 저항: 제거 (0 고정) */
-    static final int BOSS_CRIT_DEF_MIN   = 0,   BOSS_CRIT_DEF_MAX   = 0;
+    static final int BOSS_EVADE_RATE_MIN = 10,  BOSS_EVADE_RATE_MAX = 30;
+    /** 보스 치명 저항 (%) */
+    static final int BOSS_CRIT_DEF_MIN   = 10,  BOSS_CRIT_DEF_MAX   = 30;
     /** 보스 최대 HP (raw) — 기존 대비 약 50% 감소 */
     static final long BOSS_MAX_HP_MIN    = 37_500L;
     static final long BOSS_MAX_HP_MAX    = 150_000L;
@@ -734,12 +734,12 @@ public class BossAttackS3Controller {
             long cooldownMin = (long) Math.max(480, Math.min(1440,
                     Math.round(1440.0 - Math.max(0, participantCount - 6) * 960.0 / 7.0)));
 
-            // 최근 공격 평균 데미지 기반으로 60~75회 분량 HP 산정 (기존 120~150의 약 절반)
+            // 최근 공격 평균 데미지 기반으로 HP 산정 (2~3배 강화)
             long rawHp;
             try {
                 Long avgDmg = botS3Service.selectRecentHellAvgDmg();
                 if (avgDmg != null && avgDmg > 0) {
-                    int hitTarget = 90 + rand.nextInt(23); // 90~112 랜덤 (1.5배)
+                    int hitTarget = 90 + rand.nextInt(23); // 90~112 랜덤
                     rawHp = avgDmg * hitTarget;
                 } else {
                     // 데이터 없을 때 기본값
@@ -749,12 +749,16 @@ public class BossAttackS3Controller {
                 rawHp = BOSS_MAX_HP_MIN + (long)(rand.nextDouble() * (BOSS_MAX_HP_MAX - BOSS_MAX_HP_MIN + 1));
             }
 
-            // 참여 인원수 기반 HP 보너스 배율 적용 (최대 25a = 250,000 raw 상한)
+            // [강화] 보스 체력 2~3배 배율 적용
+            double hpMult = 2.0 + rand.nextDouble(); // 2.0 ~ 3.0
+            rawHp = (long)(rawHp * hpMult);
+
+            // 참여 인원수 기반 HP 보너스 배율 적용 (최대 75a = 750,000 raw 상한)
             if (participantCount > 6) {
                 double participantMult = 1.0 + (participantCount - 6) * 0.1; // 1인당 +10%
                 rawHp = (long)(rawHp * participantMult);
             }
-            rawHp = Math.min(rawHp, 375_000L); // 최대 37.5a
+            rawHp = Math.min(rawHp, 1_125_000L); // 최대 112.5a (기존 37.5a × 3)
 
             HashMap<String, Object> bossMap = new HashMap<>();
             bossMap.put("atkRate",     randInt(rand, BOSS_ATK_RATE_MIN,   BOSS_ATK_RATE_MAX));

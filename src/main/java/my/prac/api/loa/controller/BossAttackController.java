@@ -1062,87 +1062,46 @@ public class BossAttackController {
 	        return "❌ 출석 처리 중 오류가 발생했습니다.";
 	    }
 
-	 // 상자 2개 지급 (tier 결정: 플래티넘1%, 골드9%, 기본90%)
+	 // [7018] 출석 상자 수: 기본 2개, 7018 보유 시 3개
+	    int attendBoxCount = 2;
+	    try {
+	        List<Integer> has7018 = botNewService.selectInventoryItemsByIds(userName, "", java.util.Arrays.asList(7018));
+	        if (has7018 != null && !has7018.isEmpty()) attendBoxCount = 3;
+	    } catch (Exception ignore) {}
+
+	    // 상자 지급 (tier 결정: 플래티넘1%, 골드9%, 기본90%)
 	    StringBuilder sb = new StringBuilder();
-	    sb.append(userName+"님, 출석체크 완료! 지옥의유물상자 2개 지급!").append(NL);
+	    sb.append(userName+"님, 출석체크 완료! 지옥의유물상자 "+attendBoxCount+"개 지급!").append(NL);
 	    sb.append("━━━━━━━━━━━━").append(NL);
 
-	    // 1번째 상자
-	    double roll1 = ThreadLocalRandom.current().nextDouble();
-	    String gainType1;
-	    String tierLabel1;
-
-	    if (roll1 < 0.01) {
-	        gainType1  = "DROP_OPEN_P";
-	        tierLabel1 = "✨플래티넘각인상자 (개봉 대기)";
-	    } else if (roll1 < 0.10) {
-	        gainType1  = "DROP_OPEN_G";
-	        tierLabel1 = "✨황금각인상자 (개봉 대기)";
-	    } else {
-	        gainType1  = "ATTEND";
-	        tierLabel1 = "지옥의유물상자";
+	    // 상자 tier 결정 (tier: 플래티넘1%, 골드9%, 기본90%) 및 지급
+	    java.util.Map<String, Integer> tierCount = new java.util.LinkedHashMap<>();
+	    for (int bi = 1; bi <= attendBoxCount; bi++) {
+	        double roll = ThreadLocalRandom.current().nextDouble();
+	        String gt;
+	        String tl;
+	        if (roll < 0.01) {
+	            gt = "DROP_OPEN_P"; tl = "✨플래티넘각인상자 (개봉 대기)";
+	        } else if (roll < 0.10) {
+	            gt = "DROP_OPEN_G"; tl = "✨황금각인상자 (개봉 대기)";
+	        } else {
+	            gt = "ATTEND"; tl = "지옥의유물상자";
+	        }
+	        sb.append("  상자").append(bi).append(": ").append(tl).append(NL);
+	        tierCount.merge(gt, 1, Integer::sum);
 	    }
-
-	    // 2번째 상자
-	    double roll2 = ThreadLocalRandom.current().nextDouble();
-	    String gainType2;
-	    String tierLabel2;
-
-	    if (roll2 < 0.01) {
-	        gainType2  = "DROP_OPEN_P";
-	        tierLabel2 = "✨플래티넘각인상자 (개봉 대기)";
-	    } else if (roll2 < 0.10) {
-	        gainType2  = "DROP_OPEN_G";
-	        tierLabel2 = "✨황금각인상자 (개봉 대기)";
-	    } else {
-	        gainType2  = "ATTEND";
-	        tierLabel2 = "지옥의유물상자";
-	    }
-
-	    // 출력
-	    sb.append("  상자1: ").append(tierLabel1).append(NL);
-	    sb.append("  상자2: ").append(tierLabel2).append(NL);
 
 	    try {
-
-	        // 같은 등급이면 qty=2
-	        if (gainType1.equals(gainType2)) {
-
+	        for (java.util.Map.Entry<String, Integer> e : tierCount.entrySet()) {
 	            HashMap<String,Object> inv = new HashMap<>();
 	            inv.put("userName", userName);
 	            inv.put("roomName", roomName);
 	            inv.put("itemId", BAG_HELL_ITEM_ID);
-	            inv.put("qty", 2);
+	            inv.put("qty", e.getValue());
 	            inv.put("delYn", "0");
-	            inv.put("gainType", gainType1);
-
+	            inv.put("gainType", e.getKey());
 	            botNewService.insertInventoryLogTx(inv);
-
-	        } else {
-
-	            // 첫번째
-	            HashMap<String,Object> inv1 = new HashMap<>();
-	            inv1.put("userName", userName);
-	            inv1.put("roomName", roomName);
-	            inv1.put("itemId", BAG_HELL_ITEM_ID);
-	            inv1.put("qty", 1);
-	            inv1.put("delYn", "0");
-	            inv1.put("gainType", gainType1);
-
-	            botNewService.insertInventoryLogTx(inv1);
-
-	            // 두번째
-	            HashMap<String,Object> inv2 = new HashMap<>();
-	            inv2.put("userName", userName);
-	            inv2.put("roomName", roomName);
-	            inv2.put("itemId", BAG_HELL_ITEM_ID);
-	            inv2.put("qty", 1);
-	            inv2.put("delYn", "0");
-	            inv2.put("gainType", gainType2);
-
-	            botNewService.insertInventoryLogTx(inv2);
 	        }
-
 	    } catch (Exception e) {
 	        /* 지급 실패 무시 */
 	    }
@@ -3187,6 +3146,10 @@ public class BossAttackController {
 
 	    // 단가 계산 (lifetimeSp 기반, 배치 중 불변)
 	    SP unitPrice = MiniGameUtil.getPotionPrice(itemId, ctx.lifetimeSp);
+	    // [7017] 엘릭서(1002/1003) 가격 50% 할인
+	    if ((itemId == 1002 || itemId == 1003) && ctx.ownedBossItems.contains(7017)) {
+	        unitPrice = SP.of(unitPrice.getValue() / 2, unitPrice.getUnit());
+	    }
 	    SP totalCost = unitPrice.multiply(qty);
 
 	    int hpCur = ctx.hpCur;
@@ -3448,6 +3411,10 @@ public class BossAttackController {
 
 	        // 가격 계산
 	        itemPrice = MiniGameUtil.getPotionPrice(itemId, ctx.lifetimeSp);
+	        // [7017] 엘릭서(1002/1003) 가격 50% 할인
+	        if ((itemId == 1002 || itemId == 1003) && ctx.ownedBossItems.contains(7017)) {
+	            itemPrice = SP.of(itemPrice.getValue() / 2, itemPrice.getUnit());
+	        }
 
 	        // 포인트 확인
 	        if (!userPoint.canAfford(itemPrice)) {
@@ -4141,6 +4108,9 @@ public class BossAttackController {
 		AttackDeathStat cachedAds;
 		boolean revivedThisTurn;
 
+		/* 진행중 전투 여부 (다회전 경험치 보너스용) */
+		boolean isOngoing = false;
+
 		/* 데미지 */
 		Flags flags;
 		DamageOutcome dmg, dmg2;
@@ -4280,6 +4250,7 @@ public class BossAttackController {
 	}
 
 	private String ma_resolveOngoing(AttackSession s, OngoingBattle ob) {
+		s.isOngoing = true; // 진행중 전투: 다회전 경험치 보너스 대상
 		s.m = getMonsterCached(ob.monNo);
 		if (s.m == null) return "진행중 몬스터 정보를 찾을 수 없습니다.";
 		s.beforeJobSkillYn = ob.beforeJobSkillYn;
@@ -4635,6 +4606,11 @@ public class BossAttackController {
 		s.res = resolveKillAndDrop(s.m, s.calc, s.willKill, s.u, s.lucky, s.dark, s.gray, s.shadow, s.ctx.user.nightmareYn, s.ctx.ownedBossItems);
 		if ("궁수".equals(s.u.job) || "사냥꾼".equals(s.u.job)) s.res.gainExp *= 3;
 
+		// [Feature1] 다회전 경험치 2배: 처치 시 진행 중 전투였을 경우 (2턴 이상)
+		if (s.willKill && s.isOngoing) s.res.gainExp *= 2;
+		// [Feature2] lv 700 이하 경험치 2배
+		if (s.willKill && s.u.lv <= 700) s.res.gainExp *= 2;
+
 		// SP 누적용 — baroSellItem은 INSERT 없이 outSp만 반환, 여기서 합산 후 단건 INSERT
 		SP stealSpTotal = new SP(0, "");
 		SP dropSpTotal  = new SP(0, "");
@@ -4654,7 +4630,9 @@ public class BossAttackController {
 					if (sp[0] != null) stealSpTotal = stealSpTotal.add(sp[0]);
 				} catch (Exception ignore) {}
 			}
-			if (s.thiefDoubleAtk && s.calc2 != null && ThreadLocalRandom.current().nextDouble() < 0.50) {
+			// [7019] 도적 2타 스틸 확률 100%
+			double stealProb2 = s.ctx.ownedBossItems.contains(7019) ? 1.0 : 0.50;
+			if (s.thiefDoubleAtk && s.calc2 != null && ThreadLocalRandom.current().nextDouble() < stealProb2) {
 				String dn = (s.m.monDrop == null ? "" : s.m.monDrop.trim());
 				if (!dn.isEmpty()) try {
 					Integer id = getItemIdCached(dn);
@@ -4821,6 +4799,13 @@ public class BossAttackController {
 		s.buffIng   = s.activeBuff != null ? 1 : 0;
 		s.buffCode  = s.activeBuff != null ? (String) s.activeBuff.get("FLAG_CODE") : null;
 		s.up = persist(s.userName, s.roomName, s.u, s.m, s.flags, s.calc, s.res, s.hpMax, s.nightmare, s.buffStart, s.buffIng, s.buffCode);
+
+		// [7016] 복수자: 처치 시 체력 회복 (hpRegen * 2)
+		if (s.res.killed && s.ctx.ownedBossItems.contains(7016)) {
+			int healAmt = s.regen * 2;
+			s.u.hpCur = (int) Math.min((long)s.u.hpCur + healAmt, (long)s.hpMax);
+			try { botNewService.updateUserHpOnlyTx(s.userName, s.roomName, s.u.hpCur); } catch (Exception ignore) {}
+		}
 
 		// 레벨 업적 (레벨업 시 체크)
 		if (s.up != null && s.up.levelUpCount > 0) {
@@ -6706,12 +6691,13 @@ public class BossAttackController {
 	            .anyMatch(it -> "POTION".equalsIgnoreCase(String.valueOf(it.get("ITEM_TYPE"))));
 
 	    SP userPoint = new SP(0, "");
+	    UserBattleContext shopCtx = null;
 
 	    if (hasPotion) {
 	        HashMap<String,Object> map = new HashMap<>();
 	        map.put("userName", userName);
-	        UserBattleContext ctx = calcUserBattleContext(map);
-	        userPoint = ctx.lifetimeSp;
+	        shopCtx = calcUserBattleContext(map);
+	        userPoint = shopCtx.lifetimeSp;
 	    }
 
 	    if(!hasPotion) {
@@ -6745,6 +6731,12 @@ public class BossAttackController {
 	        boolean lvLocked = (reqLv > 0 && userLv < reqLv);
 
 	        String displayPrice = buildDisplayPrice(it, isPotion, itemId, userPoint);
+	        // [7017] 엘릭서(1002/1003) 할인 표시
+	        if (isPotion && (itemId == 1002 || itemId == 1003)
+	                && shopCtx != null && shopCtx.ownedBossItems.contains(7017)) {
+	            SP base = MiniGameUtil.getPotionPrice(itemId, userPoint);
+	            displayPrice = SP.of(base.getValue() / 2, base.getUnit()).toString() + "(7017할인)";
+	        }
 
 	        // 포션: 한 줄 표기
 	        if (isPotion) {
@@ -9408,16 +9400,20 @@ public class BossAttackController {
 	        }
 	        
 	        if ("사냥꾼".equals(u.job) && flags.finisher && flags.monPattern==6 ) {
-	        	calc.atkDmg = rawAtkDmg*5;
+	        	// [7020] 초강력치명타: 피니셔 데미지 5배 → 6배
+	        	int finMul = (ownedBossItems != null && ownedBossItems.contains(7020)) ? 6 : 5;
+	        	calc.atkDmg = rawAtkDmg * finMul;
 	        	calc.monDmg = 0;
 	        	calc.endBattle = false;
-	        	calc.patternMsg = "도망가는 적을 붙잡아 강력한 일격!" + rawAtkDmg*5 + " 피해";
+	        	calc.patternMsg = "도망가는 적을 붙잡아 강력한 일격!" + rawAtkDmg * finMul + " 피해";
 	        }
 	        if ("어둠사냥꾼".equals(u.job) && flags.finisher && flags.monPattern==6 ) {
-	        	calc.atkDmg = rawAtkDmg*5;
+	        	// [7020] 초강력치명타: 피니셔 데미지 5배 → 6배
+	        	int finMul = (ownedBossItems != null && ownedBossItems.contains(7020)) ? 6 : 5;
+	        	calc.atkDmg = rawAtkDmg * finMul;
 			    calc.monDmg = 0;
 			    calc.endBattle = false;
-			    calc.patternMsg = "도망가는 적을 붙잡아 강력한 일격!" + rawAtkDmg*5 + " 피해";
+			    calc.patternMsg = "도망가는 적을 붙잡아 강력한 일격!" + rawAtkDmg * finMul + " 피해";
 	        }
 	        
 	        if ("복수자".equals(u.job)) {
