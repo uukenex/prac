@@ -1062,11 +1062,13 @@ public class BossAttackController {
 	        return "❌ 출석 처리 중 오류가 발생했습니다.";
 	    }
 
-	 // [7018] 출석 상자 수: 기본 2개, 7018 보유 시 3개
+	 // [7018] 출석 상자 수: 기본 2개, 7018 보유 시 3개 (캐시 활용)
 	    int attendBoxCount = 2;
 	    try {
-	        List<Integer> has7018 = botNewService.selectInventoryItemsByIds(userName, "", java.util.Arrays.asList(7018));
-	        if (has7018 != null && !has7018.isEmpty()) attendBoxCount = 3;
+	        HashMap<String,Object> invBuff = getInvBuffCached(userName);
+	        @SuppressWarnings("unchecked")
+	        List<Integer> bossItems = (List<Integer>) invBuff.get("bossItems");
+	        if (bossItems != null && bossItems.contains(7018)) attendBoxCount = 3;
 	    } catch (Exception ignore) {}
 
 	    // 상자 지급 (tier 결정: 플래티넘1%, 골드9%, 기본90%)
@@ -4799,13 +4801,6 @@ public class BossAttackController {
 		s.buffIng   = s.activeBuff != null ? 1 : 0;
 		s.buffCode  = s.activeBuff != null ? (String) s.activeBuff.get("FLAG_CODE") : null;
 		s.up = persist(s.userName, s.roomName, s.u, s.m, s.flags, s.calc, s.res, s.hpMax, s.nightmare, s.buffStart, s.buffIng, s.buffCode);
-
-		// [7016] 복수자: 처치 시 체력 회복 (hpRegen * 2)
-		if (s.res.killed && s.ctx.ownedBossItems.contains(7016)) {
-			int healAmt = s.regen * 2;
-			s.u.hpCur = (int) Math.min((long)s.u.hpCur + healAmt, (long)s.hpMax);
-			try { botNewService.updateUserHpOnlyTx(s.userName, s.roomName, s.u.hpCur); } catch (Exception ignore) {}
-		}
 
 		// 레벨 업적 (레벨업 시 체크)
 		if (s.up != null && s.up.levelUpCount > 0) {
@@ -9400,20 +9395,16 @@ public class BossAttackController {
 	        }
 	        
 	        if ("사냥꾼".equals(u.job) && flags.finisher && flags.monPattern==6 ) {
-	        	// [7020] 초강력치명타: 피니셔 데미지 5배 → 6배
-	        	int finMul = (ownedBossItems != null && ownedBossItems.contains(7020)) ? 6 : 5;
-	        	calc.atkDmg = rawAtkDmg * finMul;
+	        	calc.atkDmg = rawAtkDmg*5;
 	        	calc.monDmg = 0;
 	        	calc.endBattle = false;
-	        	calc.patternMsg = "도망가는 적을 붙잡아 강력한 일격!" + rawAtkDmg * finMul + " 피해";
+	        	calc.patternMsg = "도망가는 적을 붙잡아 강력한 일격!" + rawAtkDmg*5 + " 피해";
 	        }
 	        if ("어둠사냥꾼".equals(u.job) && flags.finisher && flags.monPattern==6 ) {
-	        	// [7020] 초강력치명타: 피니셔 데미지 5배 → 6배
-	        	int finMul = (ownedBossItems != null && ownedBossItems.contains(7020)) ? 6 : 5;
-	        	calc.atkDmg = rawAtkDmg * finMul;
+	        	calc.atkDmg = rawAtkDmg*5;
 			    calc.monDmg = 0;
 			    calc.endBattle = false;
-			    calc.patternMsg = "도망가는 적을 붙잡아 강력한 일격!" + rawAtkDmg * finMul + " 피해";
+			    calc.patternMsg = "도망가는 적을 붙잡아 강력한 일격!" + rawAtkDmg*5 + " 피해";
 	        }
 	        
 	        if ("복수자".equals(u.job)) {
@@ -9436,7 +9427,9 @@ public class BossAttackController {
 		            
 
 		            if (newMonDmg > 0 && calc.atkDmg >= monHpRemainBefore) {//willkill, 복수로죽였을때만 적용
-		            	int heal = (int) Math.round(hpMax * 0.10);
+		            	// [7016] 복수자 보스 아이템: 체력 회복 10% → 20%
+		            	double healRate = (ownedBossItems != null && ownedBossItems.contains(7016)) ? 0.20 : 0.10;
+		            	int heal = (int) Math.round(hpMax * healRate);
 		            	int before =u.hpCur-newMonDmg;
 			            u.hpCur = Math.min(hpMax, before + heal);
 

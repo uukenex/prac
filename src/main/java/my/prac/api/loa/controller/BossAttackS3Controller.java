@@ -394,7 +394,9 @@ public class BossAttackS3Controller {
                 }
 
                 if (isSuperCritical) {
-                    damage = (long)(baseAtk * 3 * critMultiplier);
+                    // [7020] 초강력치명타: 슈퍼크리티컬 5배 → 6배 (× 6/5)
+                    double superMul = ownedBoss.contains(7020) ? 6.0 / 5.0 : 1.0;
+                    damage = (long)(baseAtk * 3 * critMultiplier * superMul);
                     dmgMsg = "[✨초강력 치명타!!] " + atkRangeStr + baseAtk + " → " + damage;
                 } else if (isCritical) {
                     damage = (long)(baseAtk * critMultiplier);
@@ -445,7 +447,9 @@ public class BossAttackS3Controller {
             }
             double critMul2 = Math.max(1.0, ctx.critDmg / 100.0);
             if (isSuperCritical2) {
-                damage2 = (long)(baseAtk2 * 3 * critMul2);
+                // [7020] 초강력치명타: 슈퍼크리티컬 5배 → 6배 (× 6/5)
+                double superMul2 = ownedBoss.contains(7020) ? 6.0 / 5.0 : 1.0;
+                damage2 = (long)(baseAtk2 * 3 * critMul2 * superMul2);
                 dmgMsg2 = "[✨초강력 치명타!!] " + atkRangeStr2 + baseAtk2 + " → " + damage2;
             } else if (isCritical2) {
                 damage2 = (long)(baseAtk2 * critMul2);
