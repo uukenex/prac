@@ -743,6 +743,7 @@ public class BossAttackController {
 	    if(u.nightmareYn==2) {
 	    	double hellMult = MiniGameUtil.getHellNerfMult(ctx.hunterGrade);
 	    	if (ctx.ownedBossItems.contains(7007)) hellMult = Math.max(0.0, hellMult + 0.03);
+	    	if (ctx.ownedBossItems.contains(7022)) hellMult = Math.max(0.0, hellMult + 0.01); // [7022] 헬너프 -1%
 	    	ctx.hellNerfRate = hellMult;
 
 	    	hellNerfAtkMin = Math.max(0, (int) Math.round(atkMin   * (1-hellMult) ));
@@ -10039,6 +10040,7 @@ public class BossAttackController {
 	    if (ctx.hellNerfAtkMin > 0 || ctx.hellNerfAtkMax > 0) {
 	        double hellMult = MiniGameUtil.getHellNerfMult(ctx.hunterGrade);
 	        if (ctx.ownedBossItems.contains(7007)) hellMult = Math.max(0.0, hellMult + 0.03);
+	        if (ctx.ownedBossItems.contains(7022)) hellMult = Math.max(0.0, hellMult + 0.01); // [7022] 헬너프 -1%
 	        curMin -= ctx.hellNerfAtkMin; curMax -= ctx.hellNerfAtkMax;
 	        atkSteps.add(simStep("헬 너프",
 	            -ctx.hellNerfAtkMin, -ctx.hellNerfAtkMax, curMin, curMax,
