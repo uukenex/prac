@@ -7759,7 +7759,7 @@ public class BossAttackController {
 	}
 
 	public static class LevelUpResult {
-		public int gainedExp, beforeLv, afterLv, beforeExpCur, afterExpCur, afterExpNext, levelUpCount;
+		public long gainedExp; public int beforeLv, afterLv, beforeExpCur, afterExpCur, afterExpNext, levelUpCount;
 		public int hpMaxDelta, atkMinDelta, atkMaxDelta;
 		public int critDelta;
 		public int hpRegenDelta;
@@ -7772,9 +7772,7 @@ public class BossAttackController {
 
 	private LevelUpResult applyExpAndLevelUp(User u, long gainedExpLong) {
 	    LevelUpResult r = new LevelUpResult();
-	    // long → int 안전 변환 (int 초과 시 Integer.MAX_VALUE로 cap)
-	    int gainedExp = (int) Math.min(gainedExpLong, Integer.MAX_VALUE);
-	    r.gainedExp = Math.max(0, gainedExp);
+	    r.gainedExp = Math.max(0, gainedExpLong);
 
 	    r.beforeLv      = u.lv;
 	    r.beforeExpCur  = u.expCur;
@@ -7786,7 +7784,7 @@ public class BossAttackController {
 	    r.beforeHpRegen = u.hpRegen;
 
 	    int lv      = u.lv;
-	    int expCur  = u.expCur + r.gainedExp;
+	    long expCur = (long)u.expCur + Math.max(0, gainedExpLong); // long으로 합산 (int 오버플로우 방지)
 	    int expNext = u.expNext;
 
 	    int hpMax   = u.hpMax;
@@ -7856,7 +7854,7 @@ public class BossAttackController {
 	    }
 
 	    u.lv        = lv;
-	    u.expCur    = expCur;
+	    u.expCur    = (int) Math.min(expCur, Integer.MAX_VALUE); // long→int 안전 변환 (루프 후 expCur < expNext이므로 정상 범위)
 	    u.expNext   = expNext;
 	    u.hpMax     = hpMax;
 	    u.atkMin    = atkMin;
@@ -7865,7 +7863,7 @@ public class BossAttackController {
 	    u.hpRegen   = regen;
 
 	    r.afterLv       = lv;
-	    r.afterExpCur   = expCur;
+	    r.afterExpCur   = u.expCur;
 	    r.afterExpNext  = expNext;
 	    r.levelUpCount  = upCount;
 
