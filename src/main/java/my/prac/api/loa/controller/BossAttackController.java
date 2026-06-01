@@ -1062,14 +1062,14 @@ public class BossAttackController {
 	        return "❌ 출석 처리 중 오류가 발생했습니다.";
 	    }
 
-	 // [7018] 출석 상자 수: 기본 2개, 7018 보유 시 3개 (캐시 활용)
-	    int attendBoxCount = 2;
+	 // [7018] 출석 상자 수: 기본 2개, 7018 보유 시 3개
+	    Set<Integer> ownedBossItems = new java.util.HashSet<>();
 	    try {
-	        HashMap<String,Object> invBuff = getInvBuffCached(userName);
 	        @SuppressWarnings("unchecked")
-	        List<Integer> bossItems = (List<Integer>) invBuff.get("bossItems");
-	        if (bossItems != null && bossItems.contains(7018)) attendBoxCount = 3;
+	        List<Integer> bl = (List<Integer>) getInvBuffCached(userName).get("bossItems");
+	        if (bl != null) ownedBossItems.addAll(bl);
 	    } catch (Exception ignore) {}
+	    int attendBoxCount = ownedBossItems.contains(7018) ? 3 : 2;
 
 	    // 상자 지급 (tier 결정: 플래티넘1%, 골드9%, 기본90%)
 	    StringBuilder sb = new StringBuilder();
