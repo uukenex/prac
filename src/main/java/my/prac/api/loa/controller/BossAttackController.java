@@ -7596,6 +7596,13 @@ public class BossAttackController {
 	    return String.valueOf(v);
 	}
 
+	/** 한국어 단위 표기: 1억 이상→X.XX억, 100만 이상→X.XX만, 그 외→숫자 */
+	private String formatKorNum(long val) {
+	    if (val >= 100_000_000L) return String.format("%.2f억", val / 100_000_000.0);
+	    if (val >= 1_000_000L)   return String.format("%.2f만", val / 10_000.0);
+	    return String.valueOf(val);
+	}
+
 	private String trimDouble(double v) {
 		return String.format("%.2f", v);
 	    
@@ -7957,7 +7964,7 @@ public class BossAttackController {
 
 	    // 1행: 기본 정보
 	    sb.append(m.monNo).append(". ").append(m.monName).append(" [").append(monLv).append("lv]")
-	      .append(" ❤️HP ").append(monHp)
+	      .append(" ❤️HP ").append(formatKorNum(monHp))
 	      .append(" ⚔ATK ").append(atkMin).append("~").append(atkMax)
 	      .append(NL);
 
@@ -7989,7 +7996,7 @@ public class BossAttackController {
 	    }
 
 	    // 2행: 보상 정보
-	    sb.append("▶ 보상: EXP ").append(effExp);
+	    sb.append("▶ 보상: EXP ").append(formatKorNum(effExp));
 	    if (hasPenalty) sb.append("▼");
 	    else if (hasBonus) sb.append("▲");
 	    //sb.append(" / ").append(dropName).append(" ").append(dropSp.toString()).append("sp")
@@ -8029,7 +8036,7 @@ public class BossAttackController {
 	    	.append("no.").append(m.monNo).append(" ")
 	        .append(m.monName)
 	        .append(" Lv").append(monLv)
-	        .append("  ❤️").append(monHp)
+	        .append("  ❤️").append(formatKorNum(monHp))
 	        .append(" ⚔").append(atkMin).append("~").append(atkMax).append(NL)
 	        .toString();
 	}
@@ -9010,6 +9017,11 @@ public class BossAttackController {
 	        out.hunterMsg += "헌터랭크(" + u.hunterGrade + ")보너스 "
 			               + "over치명률 " + overflow + "% → 치피"
 			               + converted + "%로 변환(" + Math.round(convertRate*100) + "%)" + NL;
+	    }
+
+	    // [7021] 처단자: 처단 크리티컬 확률 +10%
+	    if ("처단자".equals(u.job) && ownedBossItems != null && ownedBossItems.contains(7021)) {
+	        critRate = Math.min(100, critRate + 10);
 	    }
 
 	    // -----------------------------
