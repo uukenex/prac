@@ -11,7 +11,7 @@ public class BattleLog {
 	private String roomName;
 	private int lv;
 	private int targetMonLv;
-	private int gainExp;
+	private long gainExp;
 	private int atkDmg;
 	private int monDmg;
 	private int atkCritYn;
@@ -50,7 +50,7 @@ public class BattleLog {
 		return this;
 	}
 
-	public BattleLog setGainExp(int v) {
+	public BattleLog setGainExp(long v) {
 		this.gainExp = v;
 		return this;
 	}
