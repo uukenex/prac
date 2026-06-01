@@ -4751,7 +4751,7 @@ public class BossAttackController {
 		// 경험치 스페셀버프
 		if (s.activeBuff != null && "경험치".equals(s.activeBuff.get("FLAG_CODE"))) {
 			double pct = Double.parseDouble(s.activeBuff.get("EFFECT_VALUE").toString());
-			s.res.gainExp = (int)(s.res.gainExp * (1 + pct / 100.0));
+			s.res.gainExp = (long)(s.res.gainExp * (1 + pct / 100.0));
 		}
 
 		// ── 직업레벨 킬 누적 ──────────────────────────────────────────────
@@ -7197,7 +7197,7 @@ public class BossAttackController {
 			expMultiplier = 1.0 + Math.min(-levelGap, 5) * 0.05; // 레벨 차이 1당 5% 보너스, 최대 25%
 		}
 
-		int baseKillExp = (int) Math.round(monExp * expMultiplier);
+		long baseKillExp = Math.round(monExp * expMultiplier);
 
 		if (willKill) {
 			if (shadow) {
@@ -7212,7 +7212,7 @@ public class BossAttackController {
 
 			r.gainExp = baseKillExp;
 		} else if (c.atkDmg > 0) {
-			r.gainExp = (int) Math.round(baseKillExp / 20) + 1; //
+			r.gainExp = Math.round(baseKillExp / 20.0) + 1;
 		}
 
 		if (shadow && willKill) {
@@ -7567,7 +7567,7 @@ public class BossAttackController {
 	    // EXP (항상 main)
 	    double gainPercent = (double) res.gainExp / u.expNext * 100;
 	    double curPercent  = (double) u.expCur    / u.expNext * 100;
-	    sb.append("✨ EXP +").append(formatWan(res.gainExp))
+	    sb.append("✨ EXP +").append(formatKorNum(res.gainExp))
 	      .append("(").append(String.format("%.1f", gainPercent)).append("%)")
 	      .append("[").append(String.format("%.1f", curPercent)).append("%/100%]")
 	      .append(NL);
@@ -7743,7 +7743,7 @@ public class BossAttackController {
 		    return result.isEmpty() ? null : result;
 		}
 	private static class Resolve {
-		boolean killed; String dropCode; int gainExp; boolean lucky; boolean dark; boolean gray;
+		boolean killed; String dropCode; long gainExp; boolean lucky; boolean dark; boolean gray;
 		boolean shadow; // 그림자 몬스터
 		boolean bonusNormalDrop; // [7008] 일반 드랍 +1
 	}
@@ -7770,8 +7770,10 @@ public class BossAttackController {
 		public int beforeHpRegen, afterHpRegen;
 	}
 
-	private LevelUpResult applyExpAndLevelUp(User u, int gainedExp) {
+	private LevelUpResult applyExpAndLevelUp(User u, long gainedExpLong) {
 	    LevelUpResult r = new LevelUpResult();
+	    // long → int 안전 변환 (int 초과 시 Integer.MAX_VALUE로 cap)
+	    int gainedExp = (int) Math.min(gainedExpLong, Integer.MAX_VALUE);
 	    r.gainedExp = Math.max(0, gainedExp);
 
 	    r.beforeLv      = u.lv;
