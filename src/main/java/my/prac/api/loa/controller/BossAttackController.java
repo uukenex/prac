@@ -3093,8 +3093,11 @@ public class BossAttackController {
 	            Double.parseDouble(Objects.toString(bagPointRow.get("SCORE"), "0")),
 	            Objects.toString(bagPointRow.get("SCORE_EXT"), "")
 	        );
-	        if (!bagUserPoint.canAfford(totalCost)) {
-	            return userName + "님, 포인트가 부족합니다. (단가: " + unitPrice + "sp x " + qty + " = " + totalCost + "sp, 보유: " + bagUserPoint + "sp)";
+	        // 다중구매 모드: 이미 확정된 비용을 차감한 실질 잔액으로 체크
+	        SP[] bagPreTl = MULTI_BUY_COST_TL.get();
+	        SP bagEffectivePoint = (bagPreTl != null && bagPreTl[0] != null) ? bagUserPoint.subtract(bagPreTl[0]) : bagUserPoint;
+	        if (!bagEffectivePoint.canAfford(totalCost)) {
+	            return userName + "님, 포인트가 부족합니다. (단가: " + unitPrice + "sp x " + qty + " = " + totalCost + "sp, 보유: " + bagEffectivePoint + "sp)";
 	        }
 	        HashMap<String, Object> inv = new HashMap<>();
 	        inv.put("userName", userName);
@@ -3149,6 +3152,9 @@ public class BossAttackController {
 	        Double.parseDouble(Objects.toString(pointRow.get("SCORE"), "0")),
 	        Objects.toString(pointRow.get("SCORE_EXT"), "")
 	    );
+	    // 다중구매 모드: 이미 확정된 비용을 차감한 실질 잔액으로 체크
+	    SP[] batchPreTl = MULTI_BUY_COST_TL.get();
+	    SP batchEffectivePoint = (batchPreTl != null && batchPreTl[0] != null) ? userPoint.subtract(batchPreTl[0]) : userPoint;
 
 	    // 단가 계산 (lifetimeSp 기반, 배치 중 불변)
 	    SP unitPrice = MiniGameUtil.getPotionPrice(itemId, ctx.lifetimeSp);
@@ -3171,17 +3177,17 @@ public class BossAttackController {
 	    }
 
 	    // 전체 비용 감당 가능 여부 체크
-	    if (!userPoint.canAfford(totalCost)) {
+	    if (!batchEffectivePoint.canAfford(totalCost)) {
 	        // 몇 개까지 살 수 있는지 계산
 	        int affordable = 0;
 	        SP acc = new SP(0, unitPrice.getUnit());
 	        for (int i = 0; i < qty; i++) {
 	            acc = acc.add(unitPrice);
-	            if (userPoint.canAfford(acc)) affordable++;
+	            if (batchEffectivePoint.canAfford(acc)) affordable++;
 	            else break;
 	        }
 	        return userName + "님, 포인트가 부족합니다."
-	            + " (필요: " + totalCost + "sp, 보유: " + userPoint + ")"
+	            + " (필요: " + totalCost + "sp, 보유: " + batchEffectivePoint + ")"
 	            + (affordable > 0 ? "\n※ " + affordable + "개는 구매 가능합니다." : "");
 	    }
 
@@ -3339,7 +3345,7 @@ public class BossAttackController {
 	    
 
 	    // 포인트 확인
-	    
+
 	    HashMap<String,Object> pointRow =
 	            getCurrentPoint(userName);
 
@@ -3350,10 +3356,13 @@ public class BossAttackController {
 	    String curExt = Objects.toString(pointRow.get("SCORE_EXT"), "");
 
 	    SP userPoint = new SP(curValue, curExt);
-	    
-	    if (!userPoint.canAfford(itemPrice)) {
+	    // 다중구매 모드: 이미 확정된 비용을 차감한 실질 잔액으로 체크
+	    SP[] preTl = MULTI_BUY_COST_TL.get();
+	    SP effectivePoint = (preTl != null && preTl[0] != null) ? userPoint.subtract(preTl[0]) : userPoint;
+
+	    if (!effectivePoint.canAfford(itemPrice)) {
 	    	return userName + "님, [" + itemName + "] 구매에 필요한 포인트가 부족합니다."
-		             + " (가격: " + itemPrice + "sp, 보유: " + userPoint + ")";
+		             + " (가격: " + itemPrice + "sp, 보유: " + effectivePoint + ")";
 	    }
 	    
 	    
