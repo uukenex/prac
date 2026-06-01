@@ -12,8 +12,8 @@ public  class User {
 	public String userName;
 	public String roomName;
 	public int lv;
-	public int expCur;
-	public int expNext;
+	public long expCur;
+	public long expNext;
 	public int hpCur;
 	public int hpMax;
 	public int hpRegen;

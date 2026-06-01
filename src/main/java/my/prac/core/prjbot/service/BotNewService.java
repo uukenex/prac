@@ -40,7 +40,7 @@ public interface BotNewService {
     int selectYesterdayAttackerCount();
 
     int updateUserAfterBattleTx(String userName, String roomName,
-                              int newLv, int newExpCur, int newExpNext,
+                              int newLv, long newExpCur, long newExpNext,
                               int newHpCur, int newHpMax, int newAtkMin, int newAtkMax
                               ,int critRate,int hpRegen );
 

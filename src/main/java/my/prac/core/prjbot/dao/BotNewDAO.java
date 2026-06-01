@@ -42,7 +42,7 @@ public interface BotNewDAO {
 
     int updateUserAfterBattle(
         @Param("userName") String userName, @Param("roomName") String roomName,
-        @Param("newLv") int newLv, @Param("newExpCur") int newExpCur, @Param("newExpNext") int newExpNext,
+        @Param("newLv") int newLv, @Param("newExpCur") long newExpCur, @Param("newExpNext") long newExpNext,
         @Param("newHpCur") int newHpCur, @Param("newHpMax") int newHpMax,
         @Param("newAtkMin") int newAtkMin, @Param("newAtkMax") int newAtkMax,
         @Param("critRate") int critRate, @Param("hpRegen") int hpRegen

@@ -7759,7 +7759,8 @@ public class BossAttackController {
 	}
 
 	public static class LevelUpResult {
-		public long gainedExp; public int beforeLv, afterLv, beforeExpCur, afterExpCur, afterExpNext, levelUpCount;
+		public long gainedExp; public int beforeLv, afterLv, levelUpCount;
+		public long beforeExpCur, afterExpCur, afterExpNext;
 		public int hpMaxDelta, atkMinDelta, atkMaxDelta;
 		public int critDelta;
 		public int hpRegenDelta;
@@ -7783,9 +7784,9 @@ public class BossAttackController {
 	    r.beforeCrit    = u.critRate;
 	    r.beforeHpRegen = u.hpRegen;
 
-	    int lv      = u.lv;
-	    long expCur = (long)u.expCur + Math.max(0, gainedExpLong); // long으로 합산 (int 오버플로우 방지)
-	    int expNext = u.expNext;
+	    int lv       = u.lv;
+	    long expCur  = u.expCur + Math.max(0, gainedExpLong);
+	    long expNext = u.expNext;
 
 	    int hpMax   = u.hpMax;
 	    int atkMin  = u.atkMin;
@@ -7854,7 +7855,7 @@ public class BossAttackController {
 	    }
 
 	    u.lv        = lv;
-	    u.expCur    = (int) Math.min(expCur, Integer.MAX_VALUE); // long→int 안전 변환 (루프 후 expCur < expNext이므로 정상 범위)
+	    u.expCur    = expCur;
 	    u.expNext   = expNext;
 	    u.hpMax     = hpMax;
 	    u.atkMin    = atkMin;
@@ -7887,12 +7888,12 @@ public class BossAttackController {
 	private static final int DELTA_QUAD = 8;
 	private static final int NEXT_CAP   = Integer.MAX_VALUE;
 
-	private int calcNextExp(int newLv, int prevExpNext) {
+	private long calcNextExp(int newLv, long prevExpNext) {
 	    long lv = Math.max(1, newLv);
 	    long delta = (long)DELTA_BASE + (long)DELTA_LIN * lv + (long)DELTA_QUAD * lv * lv;
-	    long next  = (long)prevExpNext + delta;
+	    long next  = prevExpNext + delta;
 	    if (next > NEXT_CAP) return NEXT_CAP;
-	    return (int) next;
+	    return next;
 	}
 
 	
