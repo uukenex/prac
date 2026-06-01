@@ -502,7 +502,7 @@ public class BossAttackController {
 	    // ── 세트 효과 적용 (flat 보너스) ─────────────────────────────────────────
 	    @SuppressWarnings("unchecked")
 	    List<HashMap<String,Object>> setBonus = (List<HashMap<String,Object>>) invBuffData.get("setBonus");
-	    int setAtkFinalRate = 0, setCritFinalRate = 0, setCooldownReduce = 0, setEvasionRate = 0;
+	    int setAtkFinalRate = 0, setCritFinalRate = 0, setCooldownReduce = 0, setCooldownIncrease = 0, setEvasionRate = 0;
 	    if (setBonus != null) {
 	        for (HashMap<String,Object> b : setBonus) {
 	            String bt = Objects.toString(b.get("BONUS_TYPE"), "");
@@ -516,8 +516,9 @@ public class BossAttackController {
 	                case "HP_REGEN":        mktRegen         += bv; break;
 	                case "ATK_FINAL_RATE":  setAtkFinalRate  += bv; break;
 	                case "CRIT_FINAL_RATE": setCritFinalRate += bv; break;
-	                case "COOLDOWN_REDUCE": setCooldownReduce += bv; break;
-	                case "EVASION_RATE":    setEvasionRate   += bv; break;
+	                case "COOLDOWN_REDUCE":   setCooldownReduce   += bv; break;
+	                case "COOLDOWN_INCREASE": setCooldownIncrease += bv; break;
+	                case "EVASION_RATE":      setEvasionRate      += bv; break;
 	                default:
 	                    if (bt.startsWith("SPECIAL_")) {
 	                        if (ctx.activeSetSpecials == null) ctx.activeSetSpecials = new ArrayList<>();
@@ -795,10 +796,11 @@ public class BossAttackController {
 	    if (setCritFinalRate > 0) {
 	        crit += (int) Math.round(crit * setCritFinalRate / 100.0);
 	    }
-	    ctx.setAtkFinalRate   = setAtkFinalRate;
-	    ctx.setCritFinalRate  = setCritFinalRate;
-	    ctx.setCooldownReduce = setCooldownReduce;
-	    ctx.setEvasionRate    = setEvasionRate;
+	    ctx.setAtkFinalRate     = setAtkFinalRate;
+	    ctx.setCritFinalRate    = setCritFinalRate;
+	    ctx.setCooldownReduce   = setCooldownReduce;
+	    ctx.setCooldownIncrease = setCooldownIncrease;
+	    ctx.setEvasionRate      = setEvasionRate;
 	    ctx.atkMin = atkMin;
 	    ctx.atkMax = atkMax;
 	    ctx.hpMax  = hpMax;
@@ -2337,7 +2339,7 @@ public class BossAttackController {
 
 
 	    // ─ 세트 효과 ─
-	    boolean hasSetEffect = ctx.setCooldownReduce > 0 || ctx.setAtkFinalRate > 0 || ctx.setCritFinalRate > 0
+	    boolean hasSetEffect = ctx.setCooldownReduce > 0 || ctx.setCooldownIncrease > 0 || ctx.setAtkFinalRate > 0 || ctx.setCritFinalRate > 0
 	            || ctx.setEvasionRate > 0 || (ctx.activeSetSpecials != null && !ctx.activeSetSpecials.isEmpty());
 	    if (hasSetEffect) {
 	        sb.append(NL).append("※ 세트 효과:").append(NL);
@@ -2347,6 +2349,8 @@ public class BossAttackController {
 	            sb.append("  └ 최종크리율 +").append(ctx.setCritFinalRate).append("%").append(NL);
 	        if (ctx.setCooldownReduce > 0)
 	            sb.append("  └ 쿨타임 -").append(ctx.setCooldownReduce).append("%").append(NL);
+	        if (ctx.setCooldownIncrease > 0)
+	            sb.append("  └ 쿨타임 +").append(ctx.setCooldownIncrease).append("%").append(NL);
 	        if (ctx.setEvasionRate > 0)
 	            sb.append("  └ 회피율 ").append(ctx.setEvasionRate).append("%").append(NL);
 	        if (ctx.activeSetSpecials != null) {
@@ -4389,7 +4393,8 @@ public class BossAttackController {
 
 		// [7004] 모래시계: 쿨타임 20% 감소 / 세트: DB값(%) 직접 합산
 		s.itemCdReduction  = s.ctx.ownedBossItems.contains(7004) ? 20 : 0;
-		s.itemCdReduction += s.ctx.setCooldownReduce; // DB BONUS_VALUE 그대로 % 적용 (2세트+3세트 각 10%)
+		s.itemCdReduction += s.ctx.setCooldownReduce;   // 세트 감소 (%)
+		s.itemCdReduction -= s.ctx.setCooldownIncrease; // 세트 증가 (음수로 전달 → checkCooldown에서 증가 처리)
 		CooldownCheck cd = checkCooldown(s.userName, s.roomName, s.param1, s.cdJob, s.cooldownBuff, cachedLastAtk, s.itemCdReduction);
 		if (!cd.ok) {
 			long min = cd.remainSeconds / 60;
@@ -6955,8 +6960,11 @@ public class BossAttackController {
 	    }
 
 	    if (itemCdReduction > 0) {
-	        // itemCdReduction은 % 단위 (예: 20 = 20% 감소)
+	        // 쿨타임 감소 (예: 20 = 20% 단축)
 	        baseCd = Math.max(10, (int) Math.round(baseCd * (100 - itemCdReduction) / 100.0));
+	    } else if (itemCdReduction < 0) {
+	        // 쿨타임 증가 (음수로 전달됨, 예: -30 = 30% 증가)
+	        baseCd = (int) Math.round(baseCd * (100 + (-itemCdReduction)) / 100.0);
 	    }
 
 	    Timestamp last = (cachedLastAtk != null) ? cachedLastAtk : botNewService.selectLastAttackTime(userName, roomName);
@@ -10179,7 +10187,8 @@ public class BossAttackController {
 	        List<String> setDesc = new ArrayList<>();
 	        if (ctx.setAtkFinalRate  > 0) setDesc.add("ATK+" + ctx.setAtkFinalRate + "%");
 	        if (ctx.setCritFinalRate > 0) setDesc.add("크리+" + ctx.setCritFinalRate + "%");
-	        if (ctx.setCooldownReduce> 0) setDesc.add("쿨-"  + ctx.setCooldownReduce + "s");
+	        if (ctx.setCooldownReduce  > 0) setDesc.add("쿨-"  + ctx.setCooldownReduce   + "%");
+	        if (ctx.setCooldownIncrease > 0) setDesc.add("쿨+"  + ctx.setCooldownIncrease + "%");
 	        if (ctx.setEvasionRate   > 0) setDesc.add("회피+" + ctx.setEvasionRate + "%");
 	        if (ctx.activeSetSpecials != null) {
 	            for (String sp : ctx.activeSetSpecials) setDesc.add(sp.replace("SPECIAL_", ""));
@@ -10263,7 +10272,8 @@ public class BossAttackController {
 	        List<String> setDesc = new ArrayList<>();
 	        if (ctx.setAtkFinalRate  > 0) setDesc.add("ATK+" + ctx.setAtkFinalRate + "%");
 	        if (ctx.setCritFinalRate > 0) setDesc.add("크리+" + ctx.setCritFinalRate + "%");
-	        if (ctx.setCooldownReduce> 0) setDesc.add("쿨-"  + ctx.setCooldownReduce + "s");
+	        if (ctx.setCooldownReduce  > 0) setDesc.add("쿨-"  + ctx.setCooldownReduce   + "%");
+	        if (ctx.setCooldownIncrease > 0) setDesc.add("쿨+"  + ctx.setCooldownIncrease + "%");
 	        if (ctx.setEvasionRate   > 0) setDesc.add("회피+" + ctx.setEvasionRate + "%");
 	        if (ctx.activeSetSpecials != null) {
 	            for (String sp : ctx.activeSetSpecials) setDesc.add(sp.replace("SPECIAL_", ""));
