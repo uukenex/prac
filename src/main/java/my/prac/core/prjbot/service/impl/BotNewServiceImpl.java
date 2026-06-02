@@ -859,4 +859,18 @@ public class BotNewServiceImpl implements BotNewService {
         param.put("jobKillCnt", jobKillCnt);
         return botNewDAO.upsertJobLevel(param);
     }
+
+    // ── 경험치판매 ──────────────────────────────────────────────────────────
+    @Override
+    public HashMap<String,Object> selectExpSellStats(String userName) {
+        return botNewDAO.selectExpSellStats(userName);
+    }
+    @Override
+    public int upsertExpSellStats(HashMap<String,Object> param) {
+        return botNewDAO.upsertExpSellStats(param);
+    }
+    @Override
+    public int updateExpCurOnly(String userName, String roomName, long expCur) {
+        return botNewDAO.updateExpCurOnly(userName, roomName, expCur);
+    }
 }

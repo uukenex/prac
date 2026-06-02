@@ -824,6 +824,10 @@ public class LoaChatController {
 			case "/체력": case "/ㅊㄹ":
 				val = boss.getHpStatus(reqMap);
 				break;
+			case "/경험치판매": case "/ㄱㅎㅊㅍㅁ":
+				passYn = true;
+				val = boss.handleExpSell(reqMap);
+				break;
 			case "/ㄱㅂㄹㄱ": case "/ㄱㅂㄺ":
 			case "/가방로그":
 				passYn = true;

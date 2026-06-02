@@ -303,4 +303,11 @@ public interface BotNewDAO {
     int selectTotalJobLv(String userName);
     /** 직업레벨/킬수 UPSERT */
     int upsertJobLevel(HashMap<String,Object> param);
+
+    // ── 경험치판매 ──────────────────────────────────────────────────────────
+    HashMap<String,Object> selectExpSellStats(@Param("userName") String userName);
+    int upsertExpSellStats(HashMap<String,Object> param);
+    int updateExpCurOnly(@Param("userName") String userName,
+                         @Param("roomName") String roomName,
+                         @Param("expCur")   long expCur);
 }
