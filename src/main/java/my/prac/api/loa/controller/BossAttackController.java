@@ -1395,7 +1395,7 @@ public class BossAttackController {
 	                    pInv.put("userName", userName); pInv.put("roomName", roomName);
 	                    pInv.put("itemId",   93); pInv.put("qty", 1);
 	                    pInv.put("delYn",    "0"); pInv.put("gainType", openGainType);
-	                    try { botNewService.insertInventoryLogTx(pInv); incrementTodayBagCache(userName, 1); } catch (Exception ignore) {}
+	                    try { botNewService.insertInventoryLogTx(pInv); } catch (Exception ignore) {}
 	                    String dramatic = (pool == my.prac.core.util.MiniGameUtil.HELL_BOX_PLAT)
 	                            ? "✨ 플래티넘 각인이 빛을 발하고 있습니다!! ✨"
 	                            : "✨ 황금 각인이 빛나고 있습니다!! ✨";
