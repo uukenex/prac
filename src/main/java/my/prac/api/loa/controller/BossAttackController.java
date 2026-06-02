@@ -821,6 +821,7 @@ public class BossAttackController {
 
 	    applyDropBonusToContext(ctx, targetUser, "");
 	    applyHellBoxBonusToContext(ctx, targetUser);
+	    applyExpSellBonusToContext(ctx, targetUser);
 	    applyJobLevelBonusToContext(ctx);
 
 	    // hpCur: 리젠 반영 현재 체력 (항상 실시간 DB 조회)
@@ -1499,6 +1500,143 @@ public class BossAttackController {
 	}
 
 	/**
+	 * 경험치판매 영구 스탯을 ctx에 반영
+	 */
+	private void applyExpSellBonusToContext(UserBattleContext ctx, String userName) {
+	    try {
+	        HashMap<String,Object> invBuff = MiniGameUtil.INV_BUFF_CACHE.get(userName);
+	        @SuppressWarnings(unchecked)
+	        HashMap<String,Object> row = (invBuff != null)
+	            ? (HashMap<String,Object>) invBuff.get("expSell")
+	            : botNewService.selectExpSellStats(userName);
+	        if (row == null) return;
+	        int hp      = safeInt(row.get("HP_BONUS"))      * 100;
+	        int atkMin  = safeInt(row.get("ATK_MIN_BONUS")) * 1;
+	        int atkMax  = safeInt(row.get("ATK_MAX_BONUS")) * 1;
+	        int crit    = safeInt(row.get("CRIT_BONUS"))    * 1;
+	        int critDmg = safeInt(row.get("CRIT_DMG_BONUS"))* 1;
+	        ctx.hpMax   += hp;      ctx.atkMin  += atkMin;
+	        ctx.atkMax  += atkMax;  ctx.crit    += crit;
+	        ctx.critDmg += critDmg;
+	        ctx.expSellHp = hp; ctx.expSellAtkMin = atkMin; ctx.expSellAtkMax = atkMax;
+	        ctx.expSellCrit = crit; ctx.expSellCritDmg = critDmg;
+	    } catch (Exception ignore) {}
+	}
+
+	/** 경험치판매 1회당 비용 (TOTAL_CNT 기준) */
+	private long calcExpSellCost(int totalCnt) {
+	    return (long)(totalCnt / 300 + 1) * 100_000_000L;
+	}
+
+	/** 대량 구매 총 비용 계산 */
+	private long calcExpSellBulkCost(int currentCnt, int buyCount) {
+	    long totalCost = 0;
+	    int cnt = currentCnt;
+	    for (int i = 0; i < buyCount; i++) {
+	        totalCost += calcExpSellCost(cnt);
+	        cnt++;
+	    }
+	    return totalCost;
+	}
+
+	/** /경험치판매 커맨드 핸들러 */
+	public String handleExpSell(HashMap<String,Object> map) {
+	    String userName = Objects.toString(map.get("userName"), "");
+	    String roomName = Objects.toString(map.get("roomName"), "");
+	    String param1   = Objects.toString(map.get("param1"), "").trim();  // 스탯 종류
+	    String param2   = Objects.toString(map.get("param2"), "1").trim(); // 횟수
+	    final String NL2 = NL;
+
+	    User u = botNewService.selectUser(userName, roomName);
+	    if (u == null || u.lv < 999) {
+	        return "⚠️ /경험치판매는 Lv.999 달성 후 사용 가능합니다.";
+	    }
+
+	    // 현재 판매 현황 조회
+	    HashMap<String,Object> sellRow = null;
+	    try { sellRow = botNewService.selectExpSellStats(userName); } catch (Exception ignore) {}
+	    int totalCnt    = sellRow != null ? safeInt(sellRow.get("TOTAL_CNT"))     : 0;
+	    int hpBonus     = sellRow != null ? safeInt(sellRow.get("HP_BONUS"))      : 0;
+	    int atkMinBonus = sellRow != null ? safeInt(sellRow.get("ATK_MIN_BONUS")) : 0;
+	    int atkMaxBonus = sellRow != null ? safeInt(sellRow.get("ATK_MAX_BONUS")) : 0;
+	    int critBonus   = sellRow != null ? safeInt(sellRow.get("CRIT_BONUS"))    : 0;
+	    int critDmgBonus= sellRow != null ? safeInt(sellRow.get("CRIT_DMG_BONUS")): 0;
+
+	    // param1 없으면 현황만 출력
+	    if (param1.isEmpty()) {
+	        java.text.DecimalFormat df = new java.text.DecimalFormat("#,###");
+	        long nextCost = calcExpSellCost(totalCnt);
+	        StringBuilder sb = new StringBuilder();
+	        sb.append("[ ").append(userName).append(" 경험치판매 현황 ]").append(NL2);
+	        sb.append("- 총 판매 횟수: ").append(df.format(totalCnt)).append("회").append(NL2);
+	        sb.append("- 다음 1회 비용: ").append(df.format(nextCost / 100_000_000L)).append("억 EXP").append(NL2);
+	        sb.append("- 현재 EXP: ").append(formatKorNum(u.expCur)).append(NL2);
+	        sb.append("━━━━━━━━━━").append(NL2);
+	        sb.append("- 체력 보너스  : +").append(df.format((long)hpBonus * 100)).append(NL2);
+	        sb.append("- 최소공격 보너스: +").append(df.format(atkMinBonus)).append(NL2);
+	        sb.append("- 최대공격 보너스: +").append(df.format(atkMaxBonus)).append(NL2);
+	        sb.append("- 치명타율 보너스: +").append(critBonus).append("%").append(NL2);
+	        sb.append("- 치명피해 보너스: +").append(critDmgBonus).append("%").append(NL2);
+	        sb.append("※ /경험치판매 [체력|최소공격|최대공격|치명타|치명피해] [횟수]").append(NL2);
+	        return sb.toString();
+	    }
+
+	    // 스탯 종류 파싱
+	    String statKey;
+	    String statName;
+	    switch (param1) {
+	        case "체력":     statKey = "HP";       statName = "체력(HP+100)"; break;
+	        case "최소공격": statKey = "ATK_MIN";  statName = "최소공격력(ATK_MIN+1)"; break;
+	        case "최대공격": statKey = "ATK_MAX";  statName = "최대공격력(ATK_MAX+1)"; break;
+	        case "치명타":   statKey = "CRIT";     statName = "치명타율(CRIT+1%)"; break;
+	        case "치명피해": statKey = "CRIT_DMG"; statName = "치명피해(CRIT_DMG+1%)"; break;
+	        default:
+	            return "⚠️ 스탯 종류: 체력 / 최소공격 / 최대공격 / 치명타 / 치명피해";
+	    }
+
+	    // 횟수 파싱
+	    int buyCount = 1;
+	    try { buyCount = Math.max(1, Integer.parseInt(param2)); } catch (NumberFormatException ignore) {}
+
+	    // 비용 계산 (티어 전환 포함)
+	    long totalCost = calcExpSellBulkCost(totalCnt, buyCount);
+
+	    if (u.expCur < totalCost) {
+	        java.text.DecimalFormat df = new java.text.DecimalFormat("#,###");
+	        return "⚠️ EXP 부족! 필요: " + formatKorNum(totalCost) + " / 보유: " + formatKorNum(u.expCur);
+	    }
+
+	    // DB 갱신
+	    long newExpCur = u.expCur - totalCost;
+	    int newTotalCnt = totalCnt + buyCount;
+	    HashMap<String,Object> upParam = new HashMap<>();
+	    upParam.put("userName",    userName);
+	    upParam.put("totalCnt",   newTotalCnt);
+	    upParam.put("hpBonus",    hpBonus     + ("HP".equals(statKey)      ? buyCount : 0));
+	    upParam.put("atkMinBonus",atkMinBonus  + ("ATK_MIN".equals(statKey) ? buyCount : 0));
+	    upParam.put("atkMaxBonus",atkMaxBonus  + ("ATK_MAX".equals(statKey) ? buyCount : 0));
+	    upParam.put("critBonus",  critBonus    + ("CRIT".equals(statKey)    ? buyCount : 0));
+	    upParam.put("critDmgBonus",critDmgBonus+("CRIT_DMG".equals(statKey) ? buyCount : 0));
+	    try {
+	        botNewService.updateExpCurOnly(userName, roomName, newExpCur);
+	        botNewService.upsertExpSellStats(upParam);
+	        invalidateInvBuff(userName);
+	    } catch (Exception e) {
+	        return "❌ 처리 중 오류가 발생했습니다.";
+	    }
+
+	    java.text.DecimalFormat df = new java.text.DecimalFormat("#,###");
+	    StringBuilder sb = new StringBuilder();
+	    sb.append("✅ 경험치판매 완료!").append(NL2);
+	    sb.append("- 스탯: ").append(statName).append(" × ").append(df.format(buyCount)).append("회").append(NL2);
+	    sb.append("- 소비 EXP: -").append(formatKorNum(totalCost)).append(NL2);
+	    sb.append("- 잔여 EXP: ").append(formatKorNum(newExpCur)).append(NL2);
+	    sb.append("- 총 판매 횟수: ").append(df.format(newTotalCnt)).append("회 (다음 비용: ")
+	        .append(formatKorNum(calcExpSellCost(newTotalCnt))).append(" EXP)").append(NL2);
+	    return sb.toString();
+	}
+
+	/**
 	 * 직업레벨 보너스를 ctx 스탯에 반영 (전 직업 레벨 합산, 최후 적용)
 	 */
 	private void applyJobLevelBonusToContext(UserBattleContext ctx) {
@@ -1549,6 +1687,7 @@ public class BossAttackController {
 	    } catch (Exception ignore) {}
 	    try { data.put("hellClearAchv", botNewService.hasHellClearAchv(userName)); } catch (Exception ignore) {}
 	    try { data.put("totalJobLv", botNewService.selectTotalJobLv(userName)); } catch (Exception ignore) {}
+	    try { data.put("expSell", botNewService.selectExpSellStats(userName)); } catch (Exception ignore) {}
 	    MiniGameUtil.INV_BUFF_CACHE.put(userName, data);
 	    return data;
 	}
@@ -7806,6 +7945,7 @@ public class BossAttackController {
 	    int upCount     = 0;
 
 	    while (expCur >= expNext) {
+	        if (lv >= 999) { expCur = expNext - 1; break; } // [lv999] 하드캡: EXP 누적만
 	        expCur -= expNext;
 	        int lvBeforeUp = lv; // 레벨업 직전 레벨 (짝수 여부 판단용)
 	        lv++;

@@ -2315,4 +2315,39 @@
 		    VALUES (#{userName}, #{jobName}, #{jobLv}, #{jobKillCnt}, SYSDATE)
 	</update>
 
+	<!-- ── 경험치판매 시스템 ──────────────────────────────────────────────── -->
+	<select id="selectExpSellStats" resultType="hashmap">
+		/* selectExpSellStats */
+		SELECT TOTAL_CNT, HP_BONUS, ATK_MIN_BONUS, ATK_MAX_BONUS, CRIT_BONUS, CRIT_DMG_BONUS
+		  FROM TBOT_POINT_NEW_EXP_SELL
+		 WHERE USER_NAME = #{userName}
+	</select>
+
+	<update id="upsertExpSellStats" parameterType="hashmap">
+		/* upsertExpSellStats */
+		MERGE INTO TBOT_POINT_NEW_EXP_SELL T
+		USING (SELECT #{userName} AS USER_NAME FROM DUAL) S
+		ON (T.USER_NAME = S.USER_NAME)
+		WHEN MATCHED THEN
+		    UPDATE SET TOTAL_CNT     = #{totalCnt},
+		               HP_BONUS      = #{hpBonus},
+		               ATK_MIN_BONUS = #{atkMinBonus},
+		               ATK_MAX_BONUS = #{atkMaxBonus},
+		               CRIT_BONUS    = #{critBonus},
+		               CRIT_DMG_BONUS= #{critDmgBonus},
+		               UPDATE_DATE   = SYSDATE
+		WHEN NOT MATCHED THEN
+		    INSERT (USER_NAME, TOTAL_CNT, HP_BONUS, ATK_MIN_BONUS, ATK_MAX_BONUS, CRIT_BONUS, CRIT_DMG_BONUS, UPDATE_DATE)
+		    VALUES (#{userName}, #{totalCnt}, #{hpBonus}, #{atkMinBonus}, #{atkMaxBonus}, #{critBonus}, #{critDmgBonus}, SYSDATE)
+	</update>
+
+	<update id="updateExpCurOnly">
+		/* updateExpCurOnly */
+		UPDATE TBOT_POINT_NEW_USER
+		   SET EXP_CUR   = #{expCur},
+		       PROC_DATE = SYSDATE
+		 WHERE USER_NAME = #{userName}
+		   AND ROOM_NAME = #{roomName}
+	</update>
+
 </mapper>

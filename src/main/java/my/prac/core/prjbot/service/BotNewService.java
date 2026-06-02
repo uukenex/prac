@@ -251,6 +251,11 @@ public interface BotNewService {
     int selectTotalJobLv(String userName);
     /** 직업레벨/킬수 UPSERT */
     int upsertJobLevel(String userName, String jobName, int jobLv, int jobKillCnt);
+
+    // ── 경험치판매 ──────────────────────────────────────────────────────────
+    HashMap<String,Object> selectExpSellStats(String userName);
+    int upsertExpSellStats(HashMap<String,Object> param);
+    int updateExpCurOnly(String userName, String roomName, long expCur);
 }
 
 	
