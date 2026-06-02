@@ -1395,7 +1395,7 @@ public class BossAttackController {
 	                    pInv.put("userName", userName); pInv.put("roomName", roomName);
 	                    pInv.put("itemId",   93); pInv.put("qty", 1);
 	                    pInv.put("delYn",    "0"); pInv.put("gainType", openGainType);
-	                    try { botNewService.insertInventoryLogTx(pInv); incrementTodayBagCache(userName, 1); } catch (Exception ignore) {}
+	                    try { botNewService.insertInventoryLogTx(pInv); } catch (Exception ignore) {}
 	                    String dramatic = (pool == my.prac.core.util.MiniGameUtil.HELL_BOX_PLAT)
 	                            ? "✨ 플래티넘 각인이 빛을 발하고 있습니다!! ✨"
 	                            : "✨ 황금 각인이 빛나고 있습니다!! ✨";
@@ -1604,7 +1604,6 @@ public class BossAttackController {
 	 * 캐시는 매 시간마다 MiniGameUtil.clearCachesIfExpired()에서 일괄 초기화
 	 */
 	private int getTodayBagCount(String userName) {
-	    MiniGameUtil.clearCachesIfExpired();  // 1시간 주기 캐시 초기화 확인
 
 	    int today = Integer.parseInt(java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd")));
 	    int[] cached = MiniGameUtil.DAILY_BAG_CACHE.get(userName);
@@ -1623,7 +1622,6 @@ public class BossAttackController {
 
 	/** 가방 획득 시 DAILY_BAG_CACHE 증가 (DB 조회 없이 캐시만 업데이트) */
 	private void incrementTodayBagCache(String userName, int delta) {
-	    MiniGameUtil.clearCachesIfExpired();  // 1시간 주기 캐시 초기화 확인
 
 	    int today = Integer.parseInt(java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd")));
 	    MiniGameUtil.DAILY_BAG_CACHE.merge(userName, new int[]{delta, today}, (old, add) -> {
