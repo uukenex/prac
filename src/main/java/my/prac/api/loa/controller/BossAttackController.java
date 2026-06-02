@@ -1076,25 +1076,30 @@ public class BossAttackController {
 	        List<Integer> bl = (List<Integer>) getInvBuffCached(userName).get("bossItems");
 	        if (bl != null) ownedBossItems.addAll(bl);
 	    } catch (Exception ignore) {}
-	    int attendBoxCount = ownedBossItems.contains(7018) ? 3 : 2;
+	    boolean has7018 = ownedBossItems.contains(7018);
+	    int attendBoxCount = has7018 ? 3 : 2;
 
-	    // 상자 지급 (tier 결정: 플래티넘1%, 골드9%, 기본90%)
+	    // 상자 지급 (tier 결정: 플래티넘1%, 골드9%, 기본90%) / 7018: 3번째 상자는 황금상자 고정
 	    StringBuilder sb = new StringBuilder();
 	    sb.append(userName+"님, 출석체크 완료! 지옥의유물상자 "+attendBoxCount+"개 지급!").append(NL);
 	    sb.append("━━━━━━━━━━━━").append(NL);
 
-	    // 상자 tier 결정 (tier: 플래티넘1%, 골드9%, 기본90%) 및 지급
 	    java.util.Map<String, Integer> tierCount = new java.util.LinkedHashMap<>();
 	    for (int bi = 1; bi <= attendBoxCount; bi++) {
-	        double roll = ThreadLocalRandom.current().nextDouble();
 	        String gt;
 	        String tl;
-	        if (roll < 0.01) {
-	            gt = "DROP_OPEN_P"; tl = "✨플래티넘각인상자 (개봉 대기)";
-	        } else if (roll < 0.10) {
-	            gt = "DROP_OPEN_G"; tl = "✨황금각인상자 (개봉 대기)";
+	        if (has7018 && bi == attendBoxCount) {
+	            // [7018] 상자수집가: 마지막 상자는 황금각인상자 고정
+	            gt = "DROP_OPEN_G"; tl = "✨황금각인상자 (개봉 대기) (상자수집가 효과)";
 	        } else {
-	            gt = "ATTEND"; tl = "지옥의유물상자";
+	            double roll = ThreadLocalRandom.current().nextDouble();
+	            if (roll < 0.01) {
+	                gt = "DROP_OPEN_P"; tl = "✨플래티넘각인상자 (개봉 대기)";
+	            } else if (roll < 0.10) {
+	                gt = "DROP_OPEN_G"; tl = "✨황금각인상자 (개봉 대기)";
+	            } else {
+	                gt = "ATTEND"; tl = "지옥의유물상자";
+	            }
 	        }
 	        sb.append("  상자").append(bi).append(": ").append(tl).append(NL);
 	        tierCount.merge(gt, 1, Integer::sum);
