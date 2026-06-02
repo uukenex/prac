@@ -619,13 +619,13 @@ public class BossAttackS3Controller {
             return "저장 중 오류가 발생했습니다.";
         }
 
-        // 공격 SP 보상: 준 데미지 × 10000 raw SP / 최소 1000a, 최대 1b
+        // 공격 SP 보상: 준 데미지 × 10000 raw SP / 최소 1000a, 최대 10b
         String spRewardMsg = "";
         try {
             long rawSpVal = totalDamage * 10000L;
-            boolean spCapped = rawSpVal > 100_000_000L;
+            boolean spCapped = rawSpVal > 1_000_000_000L;
             boolean spMin    = rawSpVal < 10_000_000L;
-            rawSpVal = Math.max(Math.min(rawSpVal, 100_000_000L), 10_000_000L);
+            rawSpVal = Math.max(Math.min(rawSpVal, 1_000_000_000L), 10_000_000L);
             SP spReward = SP.fromSp(rawSpVal);
             HashMap<String, Object> pr = new HashMap<>();
             pr.put("userName", userName);
@@ -929,7 +929,7 @@ public class BossAttackS3Controller {
             // 당첨자별 지급 수량 결정 (1~2개 랜덤)
             Map<String, Integer> boxQtyMap = new LinkedHashMap<>();
             for (String winner : boxWinners) {
-                boxQtyMap.put(winner, 3 + rand.nextInt(3)); // 1 또는 2
+                boxQtyMap.put(winner, 5 + rand.nextInt(6)); // 5~10개
             }
 
             // 추첨 결과 표시
