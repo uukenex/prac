@@ -1143,13 +1143,22 @@ public class BossAttackController {
 	            String gainType = Objects.toString(pendingRow.get("GAIN_TYPE"), "");
 	            boolean isGold  = "DROP_OPEN_G".equals(gainType);
 	            if (isGold && ThreadLocalRandom.current().nextDouble() < 0.05) {
-	                // 황금 → 플래티넘 진화: 1개만 G→P (나머지 G는 유지)
+	                // 황금 → 플래티넘 진화: INSERT 기반 이력관리 (기존 G행 soft-delete 후 재INSERT)
 	                int upgradeQty = pendingRow.get("QTY") != null ? ((Number) pendingRow.get("QTY")).intValue() : 1;
+	                // 1. 기존 골드 행 전체 이력화(soft-delete)
+	                botNewService.confirmPendingHellBox(userName);
+	                // 2. 남은 골드 재INSERT (QTY>1인 경우)
 	                if (upgradeQty > 1) {
-	                    botNewService.decrementPendingHellBox(userName);
-	                } else {
-	                    botNewService.confirmPendingHellBox(userName);
+	                    HashMap<String,Object> goldRemain = new HashMap<>();
+	                    goldRemain.put("userName", userName);
+	                    goldRemain.put("roomName", roomName);
+	                    goldRemain.put("itemId", 93);
+	                    goldRemain.put("qty", upgradeQty - 1);
+	                    goldRemain.put("delYn", "0");
+	                    goldRemain.put("gainType", "DROP_OPEN_G");
+	                    try { botNewService.insertInventoryLogTx(goldRemain); } catch (Exception ignore4) {}
 	                }
+	                // 3. 플래티넘 1개 INSERT
 	                HashMap<String,Object> platInv = new HashMap<>();
 	                platInv.put("userName", userName);
 	                platInv.put("roomName", roomName);
