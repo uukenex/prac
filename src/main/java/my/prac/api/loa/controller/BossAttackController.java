@@ -1773,22 +1773,26 @@ public class BossAttackController {
 
 	private SP rollBagSpWithCeiling(int nightmareYn) {
 	    long top1Sp = getTop1SpCached();
-	    long top1Ceiling2 = top1Sp > 0 ? top1Sp / 500 : 0; // 1등 누적SP의 0.2%
 
 	    switch (nightmareYn) {
-	    case	0:
-	    	return pickBiasedSp(10000, top1Ceiling2 > 0 ? top1Ceiling2 : 1000000);
+	    case	0: {
+	    	// 일반가방: max = min(1등SP의 0.2%, 10b)
+	    	long nmMax = top1Sp > 0 ? Math.min(top1Sp / 500, 1_000_000_000L) : 1_000_000L;
+	    	return pickBiasedSp(10000, nmMax);
+	    }
 	    case	1: {
-	    	// 나메상자: max = 1등SP의 0.5%, 최대 10b (1_000_000_000 raw)
-	    	long nmMax = top1Sp > 0 ? Math.min(top1Sp / 200, 1_000_000_000L) : 100_000_000L;
+	    	// 나메상자: max = min(1등SP의 0.5%, 20b)
+	    	long nmMax = top1Sp > 0 ? Math.min(top1Sp / 200, 2_000_000_000L) : 100_000_000L;
 	    	return pickBiasedSp(300000, nmMax);
 	    }
 	    case	2:
-	    	break;
+	    	// 헬상자: 고정 상한 200b
+	    	return pickBiasedSp(1_000_000L, 20_000_000_000L);
 	    default:
 	    	break;
 	    }
-	    return pickBiasedSp(10000, top1Ceiling2 > 0 ? top1Ceiling2 : 1000000);
+	    long ceiling = top1Sp > 0 ? Math.min(top1Sp / 500, 1_000_000_000L) : 1_000_000L;
+	    return pickBiasedSp(10000, ceiling);
 	}
 
 	/* ===== Public APIs ===== */
