@@ -1168,7 +1168,13 @@ public class BossAttackController {
 	                inv.put("itemId", entry.itemId); inv.put("qty", entry.value);
 	                inv.put("delYn", "0"); inv.put("gainType", hellGainType);
 	                try { botNewService.insertInventoryLogTx(inv); } catch (Exception ignore2) {}
-	                botNewService.confirmPendingHellBox(userName);
+	                // qty>1이면 1 감소, qty==1이면 삭제 (accumulation fix로 qty=N 행이 생길 수 있음)
+	                int pendingQty = pendingRow.get("QTY") != null ? ((Number) pendingRow.get("QTY")).intValue() : 1;
+	                if (pendingQty > 1) {
+	                    botNewService.decrementPendingHellBox(userName);
+	                } else {
+	                    botNewService.confirmPendingHellBox(userName);
+	                }
 	                invalidateInvBuff(userName);
 	                StringBuilder sb = new StringBuilder();
 	                sb.append("✨ " + tierLabel + "상자 개봉!").append(NL);
@@ -1355,6 +1361,7 @@ public class BossAttackController {
 	    SP hellSpLocal = new SP(0, ""); // SP 합산용 (루프 후 1회 INSERT)
 	    int goldBoxCount = 0;  // 황금상자 누적 (루프 후 1회 INSERT)
 	    int platBoxCount = 0;  // 플래티넘상자 누적 (루프 후 1회 INSERT)
+	    java.util.Map<Integer,Integer> basicBoxAcc = new java.util.LinkedHashMap<>(); // 기본상자 itemId->qty 누적 (루프 후 합산 INSERT)
 	    for (int i = 0; i < count; i++) {
 	        double roll = ThreadLocalRandom.current().nextDouble();
 	        if (!noSp && roll < 0.95) {
@@ -1383,12 +1390,8 @@ public class BossAttackController {
 	                        pool.get(ThreadLocalRandom.current().nextInt(pool.size()));
 	                boolean isBasic = pool == my.prac.core.util.MiniGameUtil.HELL_BOX_BASIC;
 	                if (isBasic) {
-	                    // 기본상자: 즉시 지급
-	                    HashMap<String,Object> inv = new HashMap<>();
-	                    inv.put("userName", userName); inv.put("roomName", roomName);
-	                    inv.put("itemId",   entry.itemId); inv.put("qty", entry.value);
-	                    inv.put("delYn",    "0"); inv.put("gainType", "HELL_BOX");
-	                    try { botNewService.insertInventoryLogTx(inv); invalidateInvBuff(userName); } catch (Exception ignore) {}
+	                    // 기본상자: 누적 (루프 후 itemId별 1회 INSERT, 동일 SYSDATE PK 충돌 방지)
+	                    basicBoxAcc.merge(entry.itemId, entry.value, Integer::sum);
 	                    detail.add("[지옥의유물상자]" + (i+1) + ": " + tierName + " → " + entry.starsStr() + " " + entry.desc);
 	                    itemSummary.add(tierName + "(" + entry.starsStr() + " " + entry.desc + ")");
 	                } else {
@@ -1407,6 +1410,17 @@ public class BossAttackController {
 	                }
 	            }
 	        }
+	    }
+	    // ── 기본상자 아이템 합산 후 itemId별 1회 INSERT (동일 SYSDATE PK 충돌 방지) ─
+	    if (!basicBoxAcc.isEmpty()) {
+	        for (java.util.Map.Entry<Integer,Integer> be : basicBoxAcc.entrySet()) {
+	            HashMap<String,Object> bi = new HashMap<>();
+	            bi.put("userName", userName); bi.put("roomName", roomName);
+	            bi.put("itemId", be.getKey()); bi.put("qty", be.getValue());
+	            bi.put("delYn", "0"); bi.put("gainType", "HELL_BOX");
+	            try { botNewService.insertInventoryLogTx(bi); } catch (Exception ignore) {}
+	        }
+	        invalidateInvBuff(userName);
 	    }
 	    // ── 황금/플래티넘 상자 합산 후 1회 INSERT (동일 SYSDATE PK 충돌 방지) ───
 	    if (goldBoxCount > 0) {
@@ -10093,6 +10107,16 @@ public class BossAttackController {
 		if (sumCrit != 0 || sumCritDmg != 0) {
 			if (!first) sb.append(", ");
 			sb.append("치확 +").append(sumCrit).append("% / 치뎀 +").append(sumCritDmg).append("%");
+			first = false;
+		}
+		// 특수 효과 아이템: 스탯 없어도 설명 표기 (예: 999 헬너프 감소)
+		for (HashMap<String, Object> row : bag) {
+			int id = safeInt(row.get("ITEM_ID"));
+			if (id < minId || id >= maxId) continue;
+			if (id == 999) {
+			    if (!first) sb.append(", ");
+			    sb.append("[헬너프 -1%]");
+			}
 		}
 		return sb.toString();
 	}

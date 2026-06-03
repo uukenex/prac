@@ -490,6 +490,11 @@ public class BotNewServiceImpl implements BotNewService {
     }
 
     @Override
+    public void decrementPendingHellBox(String userName) {
+        botNewDAO.decrementPendingHellBox(userName);
+    }
+
+    @Override
     public List<HashMap<String,Object>> selectActiveSetBonuses(String userName) {
         return botNewDAO.selectActiveSetBonuses(userName);
     }
