@@ -1168,7 +1168,13 @@ public class BossAttackController {
 	                inv.put("itemId", entry.itemId); inv.put("qty", entry.value);
 	                inv.put("delYn", "0"); inv.put("gainType", hellGainType);
 	                try { botNewService.insertInventoryLogTx(inv); } catch (Exception ignore2) {}
-	                botNewService.confirmPendingHellBox(userName);
+	                // qty>1이면 1 감소, qty==1이면 삭제 (accumulation fix로 qty=N 행이 생길 수 있음)
+	                int pendingQty = pendingRow.get("QTY") != null ? ((Number) pendingRow.get("QTY")).intValue() : 1;
+	                if (pendingQty > 1) {
+	                    botNewService.decrementPendingHellBox(userName);
+	                } else {
+	                    botNewService.confirmPendingHellBox(userName);
+	                }
 	                invalidateInvBuff(userName);
 	                StringBuilder sb = new StringBuilder();
 	                sb.append("✨ " + tierLabel + "상자 개봉!").append(NL);

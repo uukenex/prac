@@ -158,6 +158,7 @@ public interface BotNewService {
     HashMap<String,Object> selectPendingHellBox(String userName);
     void upgradePendingHellBox(HashMap<String,Object> map);
     void confirmPendingHellBox(String userName);
+    void decrementPendingHellBox(String userName);
 
     List<HashMap<String,Object>> selectActiveSetBonuses(String userName);
 
