@@ -1,4 +1,4 @@
-package my.prac.api.loa.controller;
+﻿package my.prac.api.loa.controller;
 
 
 import java.sql.Timestamp;
@@ -1143,10 +1143,21 @@ public class BossAttackController {
 	            String gainType = Objects.toString(pendingRow.get("GAIN_TYPE"), "");
 	            boolean isGold  = "DROP_OPEN_G".equals(gainType);
 	            if (isGold && ThreadLocalRandom.current().nextDouble() < 0.05) {
-	                // 황금 → 플래티넘 진화 (GAIN_TYPE만 변경)
-	                HashMap<String,Object> upMap = new HashMap<>();
-	                upMap.put("userName", userName);
-	                botNewService.upgradePendingHellBox(upMap);
+	                // 황금 → 플래티넘 진화: 1개만 G→P (나머지 G는 유지)
+	                int upgradeQty = pendingRow.get("QTY") != null ? ((Number) pendingRow.get("QTY")).intValue() : 1;
+	                if (upgradeQty > 1) {
+	                    botNewService.decrementPendingHellBox(userName);
+	                } else {
+	                    botNewService.confirmPendingHellBox(userName);
+	                }
+	                HashMap<String,Object> platInv = new HashMap<>();
+	                platInv.put("userName", userName);
+	                platInv.put("roomName", roomName);
+	                platInv.put("itemId", 93);
+	                platInv.put("qty", 1);
+	                platInv.put("delYn", "0");
+	                platInv.put("gainType", "DROP_OPEN_P");
+	                try { botNewService.insertInventoryLogTx(platInv); } catch (Exception ignore3) {}
 	                StringBuilder sb = new StringBuilder();
 	                sb.append("✨ 기적!! 황금 각인이 더욱 빛을 발합니다!!").append(NL);
 	                sb.append("━━━━━━━━━━━━").append(NL);
