@@ -1786,7 +1786,8 @@ public class BossAttackController {
 	    	return pickBiasedSp(300000, nmMax);
 	    }
 	    case	2:
-	    	break;
+	    	// 헬상자: 고정 상한 200b
+	    	return pickBiasedSp(1_000_000L, 20_000_000_000L);
 	    default:
 	    	break;
 	    }

@@ -623,27 +623,19 @@ public class MiniGameUtil {
 	    return itemId >= 1001 && itemId <= 1100;
 	}
 
-	// ── 가방 상점 가격 ────────────────────────────────────────────────────────
-	// 91 일반가방: 고정 10b (1_000_000_000 raw)
-	// 92 나메가방: 고정 20b (2_000_000_000 raw)
-	// 93 헬가방  : 변동 min(top1Sp/50, 200b)
-	public static final long BAG_PRICE_91_FIXED = 1_000_000_000L;  // 10b 고정
-	public static final long BAG_PRICE_92_FIXED = 2_000_000_000L;  // 20b 고정
-
-	/** 93 헬가방: top1/50, 상한 200b */
-	public static final long BAG_PRICE_93_DIV = 50;
-	public static final long BAG_PRICE_93_MAX = 20_000_000_000L;   // 200b
+	// ── 가방 상점 가격 (고정가) ───────────────────────────────────────────────
+	// 91 일반가방: 고정 10b  (1_000_000_000 raw)
+	// 92 나메가방: 고정 20b  (2_000_000_000 raw)
+	// 93 헬가방  : 고정 200b (20_000_000_000 raw)
+	public static final long BAG_PRICE_91_FIXED  = 1_000_000_000L;   // 10b
+	public static final long BAG_PRICE_92_FIXED  = 2_000_000_000L;   // 20b
+	public static final long BAG_PRICE_93_FIXED  = 20_000_000_000L;  // 200b
 
 	public static SP getBagPrice(int itemId, long top1SpRaw) {
 	    switch (itemId) {
 	        case 91: return SP.fromSp(BAG_PRICE_91_FIXED);
 	        case 92: return SP.fromSp(BAG_PRICE_92_FIXED);
-	        case 93: {
-	            long price = top1SpRaw > 0
-	                ? Math.min(top1SpRaw / BAG_PRICE_93_DIV, BAG_PRICE_93_MAX)
-	                : 10_000_000_000L;
-	            return SP.fromSp(Math.max(price, 1));
-	        }
+	        case 93: return SP.fromSp(BAG_PRICE_93_FIXED);
 	        default: return SP.of(0, "");
 	    }
 	}
