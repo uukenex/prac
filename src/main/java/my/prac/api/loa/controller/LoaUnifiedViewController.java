@@ -29,6 +29,7 @@ import my.prac.core.game.dto.User;
 import my.prac.core.prjbot.service.BotNewService;
 import my.prac.core.prjbot.service.BotS3Service;
 import my.prac.core.util.MiniGameUtil;
+import my.prac.core.util.SP;
 
 /**
  * 통합 LOA 뷰 컨트롤러
@@ -162,6 +163,44 @@ public class LoaUnifiedViewController {
         result.put("inventory", inventory);
         result.put("potionUseCount", potionUseCount);
         result.put("userName", userName);
+
+        // 4) 유저 기본 정보 (lv, job)
+        try {
+            User u = botNewService.selectUser(userName, null);
+            result.put("lv",  u != null ? u.lv  : 0);
+            result.put("job", u != null && u.job != null ? u.job.trim() : "");
+        } catch (Exception ignore) {
+            result.put("lv", 0); result.put("job", "");
+        }
+
+        // 5) 현재 SP (잔액)
+        try {
+            HashMap<String,Object> row = botNewService.selectCurrentPoint(userName, "");
+            double sc = Double.parseDouble(Objects.toString(row != null ? row.get("SCORE") : "0", "0"));
+            String sx = Objects.toString(row != null ? row.get("SCORE_EXT") : "", "");
+            result.put("currentSp", new SP(sc, sx).toString());
+        } catch (Exception ignore) { result.put("currentSp", "0"); }
+
+        // 6) 누적 SP (lifetime)
+        try {
+            List<HashMap<String,Object>> comps = botNewService.selectUserTotalSpComponents(userName);
+            double raw = 0;
+            if (comps != null) {
+                for (HashMap<String,Object> r : comps) {
+                    String ext = Objects.toString(r.get("SP_EXT"), "");
+                    double amt = Double.parseDouble(Objects.toString(r.get("SP_AMT"), "0"));
+                    double mult = ext.isEmpty() ? 1.0 : Math.pow(10000.0, (ext.charAt(0) - 'a') + 1);
+                    raw += amt * mult;
+                }
+            }
+            result.put("lifetimeSp", SP.fromSp(raw).toString());
+        } catch (Exception ignore) { result.put("lifetimeSp", "0"); }
+
+        // 7) 현재 GP
+        try {
+            double gp = botNewService.selectGpBalance(userName);
+            result.put("gpBalance", gp > 0 ? String.format("%.2f", gp) : "0");
+        } catch (Exception ignore) { result.put("gpBalance", "0"); }
 
         return ResponseEntity.ok(result);
     }
