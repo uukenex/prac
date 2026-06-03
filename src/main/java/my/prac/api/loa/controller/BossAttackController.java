@@ -1,4 +1,4 @@
-package my.prac.api.loa.controller;
+﻿package my.prac.api.loa.controller;
 
 
 import java.sql.Timestamp;
@@ -1353,6 +1353,8 @@ public class BossAttackController {
 	    long spMin  = top1Sp > 0 ? top1Sp * 3 / 1000 : 1_000_000L;                          // 1등의 0.3%
 	    long spMax  = top1Sp > 0 ? Math.min(top1Sp / 100, 100_000_000_000L) : 5_000_000L;   // 1등의 1%, 최대 1000b
 	    SP hellSpLocal = new SP(0, ""); // SP 합산용 (루프 후 1회 INSERT)
+	    int goldBoxCount = 0;  // 황금상자 누적 (루프 후 1회 INSERT)
+	    int platBoxCount = 0;  // 플래티넘상자 누적 (루프 후 1회 INSERT)
 	    for (int i = 0; i < count; i++) {
 	        double roll = ThreadLocalRandom.current().nextDouble();
 	        if (!noSp && roll < 0.95) {
@@ -1390,13 +1392,12 @@ public class BossAttackController {
 	                    detail.add("[지옥의유물상자]" + (i+1) + ": " + tierName + " → " + entry.starsStr() + " " + entry.desc);
 	                    itemSummary.add(tierName + "(" + entry.starsStr() + " " + entry.desc + ")");
 	                } else {
-	                    // 황금/플래티넘: item 93을 DROP_OPEN_G/P로 인벤에 보관 (아이템 롤링은 개봉 시)
-	                    String openGainType = (pool == my.prac.core.util.MiniGameUtil.HELL_BOX_PLAT) ? "DROP_OPEN_P" : "DROP_OPEN_G";
-	                    HashMap<String,Object> pInv = new HashMap<>();
-	                    pInv.put("userName", userName); pInv.put("roomName", roomName);
-	                    pInv.put("itemId",   93); pInv.put("qty", 1);
-	                    pInv.put("delYn",    "0"); pInv.put("gainType", openGainType);
-	                    try { botNewService.insertInventoryLogTx(pInv); } catch (Exception ignore) {}
+	                    // 황금/플래티넘: 카운트만 누적 (루프 후 1회 INSERT로 동일 SYSDATE PK 충돌 방지)
+	                    if (pool == my.prac.core.util.MiniGameUtil.HELL_BOX_PLAT) {
+	                        platBoxCount++;
+	                    } else {
+	                        goldBoxCount++;
+	                    }
 	                    String dramatic = (pool == my.prac.core.util.MiniGameUtil.HELL_BOX_PLAT)
 	                            ? "✨ 플래티넘 각인이 빛을 발하고 있습니다!! ✨"
 	                            : "✨ 황금 각인이 빛나고 있습니다!! ✨";
@@ -1406,6 +1407,21 @@ public class BossAttackController {
 	                }
 	            }
 	        }
+	    }
+	    // ── 황금/플래티넘 상자 합산 후 1회 INSERT (동일 SYSDATE PK 충돌 방지) ───
+	    if (goldBoxCount > 0) {
+	        HashMap<String,Object> gi = new HashMap<>();
+	        gi.put("userName", userName); gi.put("roomName", roomName);
+	        gi.put("itemId", 93); gi.put("qty", goldBoxCount);
+	        gi.put("delYn", "0"); gi.put("gainType", "DROP_OPEN_G");
+	        try { botNewService.insertInventoryLogTx(gi); } catch (Exception ignore) {}
+	    }
+	    if (platBoxCount > 0) {
+	        HashMap<String,Object> pi = new HashMap<>();
+	        pi.put("userName", userName); pi.put("roomName", roomName);
+	        pi.put("itemId", 93); pi.put("qty", platBoxCount);
+	        pi.put("delYn", "0"); pi.put("gainType", "DROP_OPEN_P");
+	        try { botNewService.insertInventoryLogTx(pi); } catch (Exception ignore) {}
 	    }
 	    // ── SP 합산 후 1회 INSERT (동일금액 PK 충돌 방지) ─────────────────────
 	    if (hellSpLocal.getValue() != 0) {
