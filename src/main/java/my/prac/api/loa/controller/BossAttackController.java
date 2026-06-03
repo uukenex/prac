@@ -1505,7 +1505,7 @@ public class BossAttackController {
 	private void applyExpSellBonusToContext(UserBattleContext ctx, String userName) {
 	    try {
 	        HashMap<String,Object> invBuff = MiniGameUtil.INV_BUFF_CACHE.get(userName);
-	        @SuppressWarnings(unchecked)
+	        @SuppressWarnings("unchecked")
 	        HashMap<String,Object> row = (invBuff != null)
 	            ? (HashMap<String,Object>) invBuff.get("expSell")
 	            : botNewService.selectExpSellStats(userName);
