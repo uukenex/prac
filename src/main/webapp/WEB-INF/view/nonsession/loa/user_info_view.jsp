@@ -7,7 +7,10 @@
   <title>람쥐봇 장비 정보</title>
   <link rel="stylesheet" href="<%=request.getContextPath()%>/assets/css/font-awesome.min.css">
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * { box-sizing: border-box; margin: 0; padding: 0;
+        -webkit-user-select: none; user-select: none;
+        -webkit-tap-highlight-color: transparent; }
+    input, textarea { -webkit-user-select: text; user-select: text; }
     body { background: #f0ece6; font-family: 'Segoe UI', 'Malgun Gothic', sans-serif; color: #333; min-height: 100vh; }
     .wrap { max-width: 860px; margin: 0 auto; padding: 16px 14px 60px; }
 
@@ -19,167 +22,112 @@
     .search-row input:focus { border-color: #c9a96e; }
     .btn-search  { background: #c9a96e; color: #fff; border: none; padding: 8px 18px; border-radius: 20px; font-size: 13px; font-weight: 700; cursor: pointer; }
     .btn-search:hover { background: #b8935a; }
-
     .loading { text-align: center; padding: 60px; color: #bbb; font-size: 15px; }
     .empty   { text-align: center; padding: 60px; color: #bbb; }
 
-    /* ═══════════════════════════
-       HERO SECTION
-    ═══════════════════════════ */
+    /* ═══════════ HERO ═══════════ */
     .hero {
-      display: flex;
-      gap: 20px;
-      align-items: flex-start;
+      display: flex; gap: 20px; align-items: flex-start;
       background: linear-gradient(135deg, #2a1f14 0%, #3d2b1f 60%, #1a1a2e 100%);
-      border-radius: 20px;
-      padding: 20px;
-      margin-bottom: 16px;
+      border-radius: 20px; padding: 20px; margin-bottom: 14px;
       box-shadow: 0 4px 20px rgba(0,0,0,.25);
     }
-
-    /* 사진 컬럼 */
     .photo-col { flex-shrink: 0; width: 220px; }
-
     .char-photo {
-      width: 220px;
-      height: 320px;
-      border-radius: 16px;
-      overflow: hidden;
-      background: linear-gradient(160deg, #2c1f30 0%, #1a1535 55%, #0f1a2e 100%);
+      width: 220px; height: 320px; border-radius: 16px; overflow: hidden;
+      background: linear-gradient(160deg,#2c1f30 0%,#1a1535 55%,#0f1a2e 100%);
       border: 2px solid rgba(201,169,110,.5);
       box-shadow: 0 8px 32px rgba(0,0,0,.4), inset 0 0 0 1px rgba(255,255,255,.05);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      position: relative;
+      display: flex; align-items: center; justify-content: center;
     }
     .char-photo img { width: 100%; height: 100%; object-fit: cover; }
     .char-photo .placeholder { font-size: 80px; opacity: .5; }
 
-    /* 스탯 컬럼 */
     .stats-col { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 12px; padding-top: 4px; }
-
     .char-name { font-size: 20px; font-weight: 900; color: #fff; letter-spacing: .5px; word-break: break-all; }
     .char-sub  { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 2px; }
     .char-lv   { font-size: 14px; font-weight: 700; color: #c9a96e; }
     .char-job  { font-size: 13px; color: rgba(255,255,255,.6); }
 
+    /* 경험치 바 */
+    .exp-wrap { display: flex; flex-direction: column; gap: 3px; margin-top: 4px; }
+    .exp-bar-bg {
+      height: 6px; border-radius: 4px;
+      background: rgba(255,255,255,.12);
+      overflow: hidden;
+    }
+    .exp-bar-fill {
+      height: 100%; border-radius: 4px;
+      background: linear-gradient(90deg, #c9a96e, #f0d080);
+      transition: width .4s ease;
+    }
+    .exp-text { font-size: 10px; color: rgba(255,255,255,.35); text-align: right; }
+
     /* SP / GP 패널 */
     .sp-gp-panel {
-      background: rgba(255,255,255,.06);
-      border: 1px solid rgba(201,169,110,.25);
-      border-radius: 12px;
-      padding: 12px 14px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
+      background: rgba(255,255,255,.06); border: 1px solid rgba(201,169,110,.25);
+      border-radius: 12px; padding: 12px 14px;
+      display: flex; flex-direction: column; gap: 9px;
     }
-    .sp-group { display: flex; flex-direction: column; gap: 4px; }
-    .sp-row   { display: flex; justify-content: space-between; align-items: center; }
-    .sp-label { font-size: 11px; color: rgba(255,255,255,.45); }
-    .sp-value { font-size: 15px; font-weight: 800; color: #f0d080; }
-    .sp-sub   { font-size: 11px; color: rgba(255,255,255,.45); }
-    .sp-sub-val { font-size: 12px; color: rgba(240,208,128,.65); }
-    .sp-divider { height: 1px; background: rgba(255,255,255,.08); }
+    .panel-row   { display: flex; justify-content: space-between; align-items: baseline; }
+    .panel-label { font-size: 11px; color: rgba(255,255,255,.45); }
+    .panel-val   { font-size: 15px; font-weight: 800; color: #f0d080; }
+    .panel-sub   { font-size: 12px; color: rgba(240,208,128,.6); font-weight: 600; }
+    .panel-divider { height: 1px; background: rgba(255,255,255,.08); }
+    .gp-val      { font-size: 15px; font-weight: 800; color: #80e0c0; }
+    .gp-sub      { font-size: 12px; color: rgba(128,224,192,.6); font-weight: 600; }
 
-    .gp-row   { display: flex; justify-content: space-between; align-items: center; }
-    .gp-label { font-size: 11px; color: rgba(255,255,255,.45); }
-    .gp-value { font-size: 15px; font-weight: 800; color: #80e0c0; }
-
-    /* 포인트/물약 칩 */
-    .bottom-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+    /* 하단 칩 */
+    .bottom-chips { display: flex; gap: 6px; flex-wrap: wrap; }
     .info-chip { background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12); border-radius: 8px; padding: 4px 10px; font-size: 11px; color: rgba(255,255,255,.5); }
 
-    /* ═══════════════════════════
-       EQUIP SECTION
-    ═══════════════════════════ */
-    .section-card {
-      background: #fff;
-      border-radius: 16px;
-      padding: 14px 16px;
-      margin-bottom: 12px;
-      box-shadow: 0 2px 10px rgba(0,0,0,.06);
-    }
-    .section-title {
-      font-size: 12px;
-      font-weight: 700;
-      color: #a09080;
-      letter-spacing: .5px;
-      margin-bottom: 10px;
-    }
+    /* ═══════════ 섹션 카드 ═══════════ */
+    .section-card { background: #fff; border-radius: 16px; padding: 14px 16px; margin-bottom: 12px; box-shadow: 0 2px 10px rgba(0,0,0,.06); }
+    .section-title { font-size: 12px; font-weight: 700; color: #a09080; letter-spacing: .5px; margin-bottom: 10px; }
 
-    /* 단일 슬롯 그리드 (투구/갑옷/전설/날개) */
-    .single-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 8px;
-    }
+    /* 단일 슬롯 그리드 */
+    .single-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; }
     .equip-slot {
-      border: 1.5px solid #e8ddd0;
-      border-radius: 12px;
-      padding: 10px 8px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 6px;
-      cursor: default;
-      transition: border-color .2s, box-shadow .2s;
-      min-height: 80px;
+      border: 1.5px solid #e8ddd0; border-radius: 12px; padding: 10px 8px;
+      display: flex; flex-direction: column; align-items: center; gap: 5px;
+      min-height: 80px; transition: border-color .2s, box-shadow .2s;
     }
     .equip-slot.has-item { border-color: #c9a96e; cursor: pointer; }
-    .equip-slot.has-item:hover { box-shadow: 0 3px 12px rgba(180,120,60,.15); background: #fffbf5; }
+    .equip-slot.has-item:active { box-shadow: 0 3px 12px rgba(180,120,60,.15); background: #fffbf5; }
     .slot-icon { font-size: 22px; }
     .slot-cat  { font-size: 9px; color: #c0b0a0; }
     .slot-name { font-size: 10px; color: #444; text-align: center; line-height: 1.3; word-break: keep-all; }
     .slot-empty-txt { font-size: 10px; color: #ccc; }
 
-    /* 무기 행 */
-    .weapon-row {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
+    /* 무기 카드 */
+    .weapon-row { display: flex; gap: 8px; flex-wrap: wrap; }
     .weapon-card {
-      flex: 1 1 calc(20% - 8px);
-      min-width: 110px;
-      max-width: 160px;
-      border: 1.5px solid #e8ddd0;
-      border-radius: 12px;
+      flex: 1 1 calc(20% - 8px); min-width: 110px; max-width: 160px;
+      border: 1.5px solid #e8ddd0; border-radius: 12px;
       padding: 10px 10px 8px;
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
-      cursor: default;
+      display: flex; flex-direction: column; gap: 5px;
       transition: border-color .2s, box-shadow .2s;
     }
     .weapon-card.has-item { border-color: #c9a96e; cursor: pointer; }
-    .weapon-card.has-item:hover { box-shadow: 0 3px 12px rgba(180,120,60,.15); background: #fffbf5; }
+    .weapon-card.has-item:active { box-shadow: 0 3px 12px rgba(180,120,60,.15); background: #fffbf5; }
     .weapon-card.empty { border-style: dashed; border-color: #e0d8ce; }
     .wc-num  { font-size: 9px; color: #c0b0a0; }
     .wc-icon { font-size: 20px; }
     .wc-name { font-size: 10px; color: #444; line-height: 1.3; }
     .wc-empty { font-size: 10px; color: #ccc; text-align: center; padding: 8px 0; }
 
-    /* 모바일에서 무기 가로 스크롤 */
-    @media (max-width: 480px) {
-      .weapon-row { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; }
-      .weapon-card { flex: 0 0 130px; }
+    /* 세트 효과 */
+    .set-list { display: flex; flex-direction: column; gap: 8px; }
+    .set-item {
+      border: 1.5px solid #e0cff0; border-radius: 10px;
+      padding: 8px 12px;
+      background: linear-gradient(90deg,#fdf8ff,#f8f0ff);
     }
+    .set-id    { font-size: 10px; color: #9070c0; font-weight: 700; margin-bottom: 2px; }
+    .set-desc  { font-size: 12px; color: #444; font-weight: 600; }
+    .set-val   { font-size: 11px; color: #7050b0; margin-top: 1px; }
 
-    /* ─ 그룹 칩 ─ */
-    .group-chips { display: flex; gap: 8px; flex-wrap: wrap; }
-    .g-chip {
-      background: #fff;
-      border: 1px solid #e8ddd0;
-      border-radius: 10px;
-      padding: 6px 14px;
-      font-size: 12px;
-      color: #888;
-      box-shadow: 0 1px 4px rgba(0,0,0,.05);
-    }
-    .g-chip strong { color: #c9a96e; margin-left: 3px; }
-
-    /* ─ 모달 ─ */
+    /* 모달 */
     .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 100; display: flex; align-items: center; justify-content: center; }
     .modal-box { background: #fff; border: 2px solid #c9a96e; border-radius: 16px; padding: 20px 22px; min-width: 240px; max-width: 320px; width: 90vw; box-shadow: 0 8px 32px rgba(0,0,0,.2); position: relative; }
     .modal-close { position: absolute; top: 10px; right: 14px; font-size: 18px; color: #bbb; cursor: pointer; }
@@ -190,27 +138,28 @@
     .modal-stat .lbl { color: #999; }
     .modal-stat .val { color: #5a9e6f; font-weight: 700; }
 
-    /* ═══════════════════════════
-       반응형: 모바일
-    ═══════════════════════════ */
+    /* 그룹 칩 */
+    .group-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+    .g-chip { background: #fff; border: 1px solid #e8ddd0; border-radius: 10px; padding: 6px 14px; font-size: 12px; color: #888; box-shadow: 0 1px 4px rgba(0,0,0,.05); }
+    .g-chip strong { color: #c9a96e; margin-left: 3px; }
+
+    /* ─ 모바일 ─ */
     @media (max-width: 600px) {
-      /* 히어로: 세로 스택, 사진 전체 폭 */
       .hero { flex-direction: column; gap: 16px; padding: 16px; }
       .photo-col { width: 100%; }
       .char-photo { width: 100%; height: 280px; }
-
-      /* 단일 슬롯: 2×2 그리드 */
-      .single-grid { grid-template-columns: repeat(2, 1fr); }
-
+      .single-grid { grid-template-columns: repeat(2,1fr); }
       .char-name { font-size: 17px; }
-      .sp-value  { font-size: 14px; }
-      .gp-value  { font-size: 14px; }
+      .panel-val { font-size: 14px; }
+      .gp-val    { font-size: 14px; }
     }
-
+    @media (max-width: 480px) {
+      .weapon-row { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; }
+      .weapon-card { flex: 0 0 130px; }
+    }
     @media (max-width: 360px) {
       .hero { padding: 12px; }
       .char-photo { height: 240px; }
-      .sp-value { font-size: 13px; }
     }
   </style>
 </head>
@@ -218,7 +167,6 @@
 <%@ include file="_loa_nav.jsp" %>
 <div id="app" class="wrap">
 
-  <!-- 헤더 -->
   <div class="page-header">
     <div class="page-title">⚔ 람쥐봇 장비 정보</div>
     <div class="search-row">
@@ -234,7 +182,6 @@
 
     <!-- ══ HERO ══ -->
     <div class="hero">
-      <!-- 사진 (크게) -->
       <div class="photo-col">
         <div class="char-photo">
           <img v-if="charImgUrl" :src="charImgUrl" alt="캐릭터">
@@ -242,7 +189,6 @@
         </div>
       </div>
 
-      <!-- 스탯 -->
       <div class="stats-col">
         <div>
           <div class="char-name">{{ userName }}</div>
@@ -250,26 +196,33 @@
             <span class="char-lv" v-if="userLv > 0">Lv.{{ userLv }}</span>
             <span class="char-job" v-if="userJob">{{ userJob }}</span>
           </div>
+          <!-- 경험치 프로그레스바 -->
+          <div class="exp-wrap" v-if="expNext > 0">
+            <div class="exp-bar-bg">
+              <div class="exp-bar-fill" :style="{ width: expPct + '%' }"></div>
+            </div>
+            <div class="exp-text">EXP {{ fmtNum(expCur) }} / {{ fmtNum(expNext) }}</div>
+          </div>
         </div>
 
-        <!-- SP / GP -->
+        <!-- SP / GP 패널 -->
         <div class="sp-gp-panel">
-          <!-- SP -->
-          <div class="sp-group">
-            <div class="sp-row">
-              <span class="sp-label">💎 현재 SP</span>
-              <span class="sp-value">{{ currentSp }}</span>
-            </div>
-            <div class="sp-row">
-              <span class="sp-sub">누적 SP</span>
-              <span class="sp-sub-val">{{ lifetimeSp }}</span>
-            </div>
+          <div class="panel-row">
+            <span class="panel-label">💎 현재 SP</span>
+            <span class="panel-val">{{ currentSp }}</span>
           </div>
-          <div class="sp-divider"></div>
-          <!-- GP -->
-          <div class="gp-row">
-            <span class="gp-label">🪙 GP</span>
-            <span class="gp-value">{{ gpBalance }}</span>
+          <div class="panel-row">
+            <span class="panel-label" style="padding-left:14px;">누적 SP</span>
+            <span class="panel-sub">{{ lifetimeSp }}</span>
+          </div>
+          <div class="panel-divider"></div>
+          <div class="panel-row">
+            <span class="panel-label">🪙 현재 GP</span>
+            <span class="gp-val">{{ gpBalance }}</span>
+          </div>
+          <div class="panel-row">
+            <span class="panel-label" style="padding-left:14px;">누적 GP</span>
+            <span class="gp-sub">{{ totalEarnedGp }}</span>
           </div>
         </div>
 
@@ -292,8 +245,8 @@
              @click="openModal(slot.item)">
           <div class="slot-icon">{{ catIcon(slot.cat) }}</div>
           <div class="slot-cat">{{ slot.cat }}</div>
-          <div class="slot-name"  v-if="slot.item">{{ slot.item.ITEM_NAME }}</div>
-          <div class="slot-empty-txt" v-else>비어있음</div>
+          <div class="slot-name"       v-if="slot.item">{{ slot.item.ITEM_NAME }}</div>
+          <div class="slot-empty-txt"  v-else>비어있음</div>
         </div>
       </div>
     </div>
@@ -309,18 +262,19 @@
           <div class="wc-name">{{ w.ITEM_NAME }}</div>
         </div>
         <div v-for="n in emptyWeaponSlots" :key="'e'+n" class="weapon-card empty">
-          <div class="wc-empty">비어있음</div>
+          <div class="wc-empty">빈 슬롯</div>
         </div>
       </div>
     </div>
 
-    <!-- ══ 기타 아이템 ══ -->
-    <div class="section-card" v-if="otherItems.length > 0">
-      <div class="section-title">📦 기타 아이템</div>
-      <div style="display:flex; gap:6px; flex-wrap:wrap;">
-        <div v-for="it in otherItems" :key="it.ITEM_ID"
-             style="background:#f8f5f0;border:1px solid #e8ddd0;border-radius:8px;padding:5px 10px;font-size:11px;color:#555;">
-          {{ it.ITEM_NAME }} <span style="color:#c9a96e;">×{{ it.TOTAL_QTY }}</span>
+    <!-- ══ 세트 효과 ══ -->
+    <div class="section-card" v-if="setBonuses.length > 0">
+      <div class="section-title">✨ 활성 세트 효과</div>
+      <div class="set-list">
+        <div v-for="s in setBonuses" :key="s.SET_ID + '_' + s.REQUIRED_CNT" class="set-item">
+          <div class="set-id">{{ s.SET_ID }}  ({{ s.OWNED_CNT }}종 보유)</div>
+          <div class="set-desc">{{ s.BONUS_DESC }}</div>
+          <div class="set-val">{{ bonusTypeLabel(s.BONUS_TYPE) }} +{{ fmtNum(s.BONUS_VALUE) }}</div>
         </div>
       </div>
     </div>
@@ -347,7 +301,6 @@
 
 <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.min.js"></script>
 <script>
-// 슬롯 범위 정의
 var WEAPON_RANGES = [{ min:100,max:200 }, { min:1100,max:1200 }, { min:2100,max:2200 }];
 var SINGLE_SLOTS  = ['투구','갑옷','전설','날개'];
 var SINGLE_RANGES = {
@@ -364,21 +317,23 @@ var GROUP_DEFS = [
   { label:'업적', min:8000, max:9000 },
   { label:'유물', min:9000, max:99999 }
 ];
-var CAT_ICONS = { '투구':'🪖','갑옷':'🛡️','전설':'✨','날개':'🪽','무기':'⚔️' };
+var CAT_ICONS = { '투구':'🪖','갑옷':'🛡️','전설':'✨','날개':'🪽' };
+var BONUS_TYPE_LABELS = {
+  'ATK_MIN':'최소 공격력', 'ATK_MAX':'최대 공격력',
+  'HP_MAX':'최대 체력', 'HP_REGEN':'체력 회복',
+  'ATK_CRI':'치명타율', 'CRI_DMG':'치명타 피해',
+  'ATK_MAX_RATE':'최종 공격력%', 'HP_MAX_RATE':'최종 체력%'
+};
 
 function inRanges(id, ranges) {
-  for (var i=0; i<ranges.length; i++) {
+  for (var i=0; i<ranges.length; i++)
     if (id >= ranges[i].min && id < ranges[i].max) return true;
-  }
   return false;
 }
-
-// nekos.best 캐릭터 이미지 (localStorage 캐싱)
 var IMG_PREFIX = 'loaCharImg_';
 function getCachedImg(u) { return localStorage.getItem(IMG_PREFIX+u) || null; }
 function fetchImg(u, cb) {
-  var c = getCachedImg(u);
-  if (c) { cb(c); return; }
+  var c = getCachedImg(u); if (c) { cb(c); return; }
   fetch('https://nekos.best/api/v2/neko')
     .then(function(r){ return r.json(); })
     .then(function(d){
@@ -390,125 +345,90 @@ function fetchImg(u, cb) {
 new Vue({
   el: '#app',
   data: {
-    inputUser:    '',
-    userName:     '',
-    userLv:       0,
-    userJob:      '',
-    currentSp:    '—',
-    lifetimeSp:   '—',
-    gpBalance:    '—',
-    loading:      false,
-    inventory:    [],
-    potionUseCount: 0,
-    modal:        null,
-    charImgUrl:   null
+    inputUser:'', userName:'', userLv:0, userJob:'',
+    expCur:0, expNext:0,
+    currentSp:'—', lifetimeSp:'—',
+    gpBalance:'—', totalEarnedGp:'—',
+    loading:false, inventory:[], potionUseCount:0,
+    setBonuses:[], modal:null, charImgUrl:null
   },
   computed: {
-    // 무기: 범위 내 모든 아이템 (보유 순서대로)
+    expPct: function() {
+      if (!this.expNext || this.expNext <= 0) return 0;
+      return Math.min(100, Math.round(this.expCur / this.expNext * 100));
+    },
     weaponItems: function() {
-      return this.inventory.filter(function(it) {
-        return inRanges(+it.ITEM_ID, WEAPON_RANGES);
-      });
+      return this.inventory.filter(function(it){ return inRanges(+it.ITEM_ID, WEAPON_RANGES); });
     },
-    emptyWeaponSlots: function() {
-      var n = 5 - this.weaponItems.length;
-      return n > 0 ? n : 0;
-    },
-    // 단일 슬롯 (투구/갑옷/전설/날개: 최고 티어 1개)
+    emptyWeaponSlots: function() { var n=5-this.weaponItems.length; return n>0?n:0; },
     singleSlots: function() {
-      var inv = this.inventory;
-      return SINGLE_SLOTS.map(function(cat) {
-        var ranges = SINGLE_RANGES[cat];
-        var found = null;
-        inv.forEach(function(it) {
-          if (inRanges(+it.ITEM_ID, ranges)) {
-            if (!found || +it.ITEM_ID > +found.ITEM_ID) found = it;
-          }
+      var inv=this.inventory;
+      return SINGLE_SLOTS.map(function(cat){
+        var ranges=SINGLE_RANGES[cat], found=null;
+        inv.forEach(function(it){
+          if (inRanges(+it.ITEM_ID,ranges) && (!found || +it.ITEM_ID > +found.ITEM_ID)) found=it;
         });
-        return { cat: cat, item: found };
+        return { cat:cat, item:found };
       });
     },
-    // 그룹 합계 (행운/반지/토템/선물/업적/유물)
     groupSummary: function() {
-      var inv = this.inventory;
-      return GROUP_DEFS.map(function(g) {
-        var total = 0;
-        inv.forEach(function(it) {
-          var id = +it.ITEM_ID;
-          if (id >= g.min && id < g.max) total += (+it.TOTAL_QTY || 0);
-        });
-        return { label: g.label, total: total };
-      }).filter(function(g) { return g.total > 0; });
-    },
-    // 기타 (슬롯/그룹에 속하지 않은 아이템)
-    otherItems: function() {
-      var inv = this.inventory;
-      return inv.filter(function(it) {
-        var id = +it.ITEM_ID;
-        if (inRanges(id, WEAPON_RANGES)) return false;
-        for (var cat in SINGLE_RANGES) {
-          if (inRanges(id, SINGLE_RANGES[cat])) return false;
-        }
-        for (var i=0; i<GROUP_DEFS.length; i++) {
-          if (id >= GROUP_DEFS[i].min && id < GROUP_DEFS[i].max) return false;
-        }
-        return true;
-      });
+      var inv=this.inventory;
+      return GROUP_DEFS.map(function(g){
+        var total=0;
+        inv.forEach(function(it){ var id=+it.ITEM_ID; if(id>=g.min&&id<g.max) total+=(+it.TOTAL_QTY||0); });
+        return { label:g.label, total:total };
+      }).filter(function(g){ return g.total>0; });
     }
   },
   methods: {
-    catIcon: function(cat) { return CAT_ICONS[cat] || '📦'; },
-    openModal: function(item) { if (item) this.modal = item; },
-    itemStats: function(item) {
-      var stats = [];
-      var add = function(lbl, key) {
-        var v = +item[key];
-        if (v && v !== 0) stats.push({ lbl: lbl, val: v });
-      };
-      add('공격력 최소', 'ATK_MIN');
-      add('공격력 최대', 'ATK_MAX');
-      add('치명타율',    'ATK_CRI');
-      add('치명타 피해', 'CRI_DMG');
-      add('최대 체력',   'HP_MAX');
-      add('HP 비율',     'HP_MAX_RATE');
-      add('ATK 비율',    'ATK_MAX_RATE');
-      add('체력 회복',   'HP_REGEN');
+    catIcon: function(cat){ return CAT_ICONS[cat]||'📦'; },
+    openModal: function(item){ if(item) this.modal=item; },
+    bonusTypeLabel: function(t){ return BONUS_TYPE_LABELS[t] || t; },
+    fmtNum: function(n) {
+      if (n === undefined || n === null) return '0';
+      return Number(n).toLocaleString();
+    },
+    itemStats: function(item){
+      var stats=[], add=function(lbl,key){ var v=+item[key]; if(v&&v!==0) stats.push({lbl:lbl,val:v}); };
+      add('공격력 최소','ATK_MIN'); add('공격력 최대','ATK_MAX');
+      add('치명타율','ATK_CRI');   add('치명타 피해','CRI_DMG');
+      add('최대 체력','HP_MAX');   add('HP 비율','HP_MAX_RATE');
+      add('ATK 비율','ATK_MAX_RATE'); add('체력 회복','HP_REGEN');
       return stats;
     },
-    fetchInfo: function() {
-      var name = this.inputUser.trim();
-      if (!name) return;
-      this.loading = true;
-      this.inventory = [];
-      this.modal = null;
-      this.currentSp = '—'; this.lifetimeSp = '—'; this.gpBalance = '—';
-      var self = this;
-      fetch('<%=request.getContextPath()%>/loa/api/user-info?userName=' + encodeURIComponent(name))
+    fetchInfo: function(){
+      var name=this.inputUser.trim(); if(!name) return;
+      this.loading=true; this.inventory=[]; this.modal=null;
+      this.currentSp='—'; this.lifetimeSp='—'; this.gpBalance='—'; this.totalEarnedGp='—';
+      this.setBonuses=[]; this.expCur=0; this.expNext=0;
+      var self=this;
+      fetch('<%=request.getContextPath()%>/loa/api/user-info?userName='+encodeURIComponent(name))
         .then(function(r){ return r.json(); })
         .then(function(d){
           self.userName       = d.userName       || name;
           self.userLv         = d.lv             || 0;
           self.userJob        = d.job             || '';
+          self.expCur         = d.expCur         || 0;
+          self.expNext        = d.expNext        || 0;
           self.inventory      = d.inventory      || [];
           self.potionUseCount = d.potionUseCount || 0;
           self.currentSp      = d.currentSp      || '0';
           self.lifetimeSp     = d.lifetimeSp     || '0';
           self.gpBalance      = d.gpBalance      || '0';
-          self.loading = false;
+          self.totalEarnedGp  = d.totalEarnedGp  || '0';
+          self.setBonuses     = d.setBonuses     || [];
+          self.loading=false;
           sessionStorage.setItem('loaUserName', self.userName);
-          // 캐릭터 이미지
           self.charImgUrl = getCachedImg(self.userName);
-          if (!self.charImgUrl) {
-            fetchImg(self.userName, function(url){ self.charImgUrl = url; });
-          }
+          if (!self.charImgUrl) fetchImg(self.userName, function(url){ self.charImgUrl=url; });
         })
-        .catch(function(){ self.loading = false; });
+        .catch(function(){ self.loading=false; });
     }
   },
-  mounted: function() {
-    var params = new URLSearchParams(window.location.search);
-    var u = (params.get('userName') || params.get('user') || '').trim();
-    if (u) { this.inputUser = u; this.fetchInfo(); }
+  mounted: function(){
+    var params=new URLSearchParams(window.location.search);
+    var u=(params.get('userName')||params.get('user')||'').trim();
+    if(u){ this.inputUser=u; this.fetchInfo(); }
   }
 });
 </script>

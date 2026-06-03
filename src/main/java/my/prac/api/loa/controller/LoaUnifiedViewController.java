@@ -164,13 +164,16 @@ public class LoaUnifiedViewController {
         result.put("potionUseCount", potionUseCount);
         result.put("userName", userName);
 
-        // 4) 유저 기본 정보 (lv, job)
+        // 4) 유저 기본 정보 (lv, job, exp)
         try {
             User u = botNewService.selectUser(userName, null);
-            result.put("lv",  u != null ? u.lv  : 0);
-            result.put("job", u != null && u.job != null ? u.job.trim() : "");
+            result.put("lv",     u != null ? u.lv      : 0);
+            result.put("job",    u != null && u.job != null ? u.job.trim() : "");
+            result.put("expCur", u != null ? u.expCur  : 0);
+            result.put("expNext",u != null ? u.expNext : 0);
         } catch (Exception ignore) {
             result.put("lv", 0); result.put("job", "");
+            result.put("expCur", 0); result.put("expNext", 0);
         }
 
         // 5) 현재 SP (잔액)
@@ -196,11 +199,20 @@ public class LoaUnifiedViewController {
             result.put("lifetimeSp", SP.fromSp(raw).toString());
         } catch (Exception ignore) { result.put("lifetimeSp", "0"); }
 
-        // 7) 현재 GP
+        // 7) 현재 GP + 누적 GP
         try {
             double gp = botNewService.selectGpBalance(userName);
             result.put("gpBalance", gp > 0 ? String.format("%.2f", gp) : "0");
         } catch (Exception ignore) { result.put("gpBalance", "0"); }
+        try {
+            double totalGp = botNewService.selectUserTotalEarnedGp(userName);
+            result.put("totalEarnedGp", totalGp > 0 ? String.format("%.2f", totalGp) : "0");
+        } catch (Exception ignore) { result.put("totalEarnedGp", "0"); }
+
+        // 8) 활성 세트 보너스
+        try {
+            result.put("setBonuses", botNewService.selectActiveSetBonuses(userName));
+        } catch (Exception ignore) { result.put("setBonuses", new ArrayList<>()); }
 
         return ResponseEntity.ok(result);
     }

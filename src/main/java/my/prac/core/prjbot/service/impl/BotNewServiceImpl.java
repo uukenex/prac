@@ -618,6 +618,11 @@ public class BotNewServiceImpl implements BotNewService {
     }
 
     @Override
+    public double selectUserTotalEarnedGp(String userName) {
+        return botNewDAO.selectUserTotalEarnedGp(userName);
+    }
+
+    @Override
     public List<HashMap<String, Object>> selectGpRanking() {
         return botNewDAO.selectGpRanking();
     }

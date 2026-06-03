@@ -556,6 +556,18 @@
       AND NEW_YN = '2'
   </select>
 
+  <!-- 유저 누적 획득 GP (BOSS_GACHA_RESTORE 환급 제외한 양수 합산) -->
+  <select id="selectUserTotalEarnedGp" parameterType="string" resultType="double">
+    /* selectUserTotalEarnedGp */
+    SELECT ROUND(NVL(SUM(CASE WHEN SCORE > 0 AND NVL(CMD,'') != 'BOSS_GACHA_RESTORE'
+                               THEN SCORE ELSE 0 END), 0), 2)
+      FROM (SELECT USER_NAME, SCORE, CMD, NEW_YN FROM TBOT_POINT_RANK
+            UNION ALL
+            SELECT USER_NAME, SCORE, CMD, NEW_YN FROM TBOT_POINT_RANK_OLD)
+     WHERE USER_NAME = #{userName}
+       AND NEW_YN = '2'
+  </select>
+
   <!-- GP 랭킹 (현재 GP / 누적 획득 GP, 현재 GP > 0 기준 TOP10) -->
   <!-- TOTAL_EARNED_GP: 실제 획득분만 합산 (BOSS_GACHA_RESTORE 환급 제외) -->
   <select id="selectGpRanking" resultType="hashmap">
