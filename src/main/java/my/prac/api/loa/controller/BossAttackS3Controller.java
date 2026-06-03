@@ -913,8 +913,8 @@ public class BossAttackS3Controller {
 
         // 보상 타입 결정 (20% 아이템 / 40% 상자 / 40% GP)
         double diceRoll = rand.nextDouble();
-        boolean isItemReward = diceRoll >= 0.80;           // 20%
-        boolean isBoxReward  = diceRoll >= 0.40 && !isItemReward; // 40%
+        boolean isItemReward = diceRoll >= 0.67;           // 20%
+        boolean isBoxReward  = diceRoll >= 0.33 && !isItemReward; // 40%
         // else GP: diceRoll < 0.40 (40%)
         String rewardTypeName = isItemReward ? "아이템" : isBoxReward ? "지옥의유물상자" : "GP";
         msg.append("이번 클리어 보상은 ").append(rewardTypeName).append(" 입니다!").append(NL);
