@@ -907,7 +907,7 @@ public class BossAttackS3Controller {
 
         // 참여자 수에 따라 추첨 인원 결정 (1~9명→1명, 10~14명→2명, 15~19명→3명, 20명+→4명)
         int participantCount = allContributors.size();
-        int winnerCount = participantCount >= 20 ? 4 : participantCount >= 15 ? 3 : participantCount >= 10 ? 2 : 1;
+        int winnerCount = participantCount >= 20 ? 6 : participantCount >= 15 ? 5 : participantCount >= 10 ? 4 : 3;
 
         StringBuilder msg = new StringBuilder();
 
