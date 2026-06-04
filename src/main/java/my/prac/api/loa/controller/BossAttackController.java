@@ -6354,28 +6354,6 @@ public class BossAttackController {
 	    }
 	    sb.append(NL);
 	    
-	    List<HashMap<String,Object>> maxs = botNewService.selectMaxDamageTop5();
-	    
-	    sb.append("✨ MAX 데미지 랭킹 (TOP5)").append(NL);
-	    
-	    if (maxs == null || maxs.isEmpty()) {
-	    	sb.append("- 데이터 없음").append(NL);
-	    } else {
-	    	int rank = 1;
-	    	for (HashMap<String,Object> row : maxs) {
-	    		String max  = String.valueOf(row.get("MAX_DAMAGE"));
-	    		String name = String.valueOf(row.get("USER_NAME"));
-	    		
-	    		sb.append("• ")
-	    		.append(max)
-	    		.append(" : ")
-	    		.append(name)
-	    		.append(NL);
-	    		
-	    		if (rank++ >= 5) break;
-	    	}
-	    }
-	    
 	    sb.append(allSeeStr);
 	    
 		 // =========================
