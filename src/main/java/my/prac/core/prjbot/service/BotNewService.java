@@ -265,4 +265,5 @@ public interface BotNewService {
 
     // ── 초기 이관 ─────────────────────────────────────────────────────────────
     void migrateBattleLogToStatAll();
+    void migrateLastMonthToJobStat();
 }

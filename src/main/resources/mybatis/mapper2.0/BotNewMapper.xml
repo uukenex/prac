@@ -75,7 +75,7 @@
   </select>
 
   <select id="selectAttackDeathStats" resultType="my.prac.core.game.dto.AttackDeathStat">
-  /* selectAttackDeathStats — TBOT_POINT_NEW_BATTLE_JOB */
+  /* selectAttackDeathStats — BATTLE_JOB(과거월) + 현재월 raw UNION ALL */
     SELECT
       NVL(SUM(ATTACK_CNT), 0) AS TOTAL_ATTACKS,
       NVL(SUM(CASE WHEN JOB = '헌터' THEN ATTACK_CNT ELSE 0 END), 0) AS HUNTER_ATTACKS,
@@ -85,9 +85,16 @@
         WHERE USER_NAME = #{userName} AND GAIN_EXP >= 0) AS LAST_ATTACK_TIME,
       (SELECT NVL(JOB, '초보자') FROM TBOT_POINT_NEW_USER
         WHERE USER_NAME = #{userName} AND ROWNUM = 1) AS LAST_ATTACK_JOB
-    FROM TBOT_POINT_NEW_BATTLE_JOB
-    WHERE USER_NAME = #{userName}
-    -- 월별 여러 행이 있으므로 SUM 집계
+    FROM (
+      SELECT JOB, ATTACK_CNT, DEATH_CNT FROM TBOT_POINT_NEW_BATTLE_JOB
+       WHERE USER_NAME = #{userName}
+      UNION ALL
+      SELECT NVL(JOB,'초보자'), COUNT(*), SUM(DEATH_YN)
+        FROM TBOT_POINT_NEW_BATTLE_LOG
+       WHERE USER_NAME = #{userName}
+         AND INSERT_DATE >= TRUNC(SYSDATE, 'MM')
+       GROUP BY NVL(JOB,'초보자')
+    )
   </select>
 
   <!-- 몬스터별 킬 통계 - 난이도(0/1/2) × 타입(일반/빛/다크/음양) 교차집계 (monster_view 페이지용) -->
@@ -876,21 +883,34 @@
 	</select>
 	
 	<select id="selectBattleCountByUser" parameterType="hashmap" resultType="hashmap">
-		/* selectBattleCountByUser — TBOT_POINT_NEW_BATTLE_JOB (월별 합산) */
-	    SELECT JOB, SUM(ATTACK_CNT) AS CNT
-	    FROM TBOT_POINT_NEW_BATTLE_JOB
-	    WHERE USER_NAME = #{userName}
-	    GROUP BY JOB
+		/* selectBattleCountByUser — BATTLE_JOB(과거) + 현재월 raw UNION ALL */
+	    SELECT JOB, SUM(CNT) AS CNT FROM (
+	      SELECT JOB, ATTACK_CNT AS CNT FROM TBOT_POINT_NEW_BATTLE_JOB
+	       WHERE USER_NAME = #{userName}
+	      UNION ALL
+	      SELECT NVL(JOB,'초보자'), COUNT(*)
+	        FROM TBOT_POINT_NEW_BATTLE_LOG
+	       WHERE USER_NAME = #{userName}
+	         AND INSERT_DATE >= TRUNC(SYSDATE, 'MM')
+	       GROUP BY NVL(JOB,'초보자')
+	    ) GROUP BY JOB
 	</select>
 
 	<!-- [OPT-HUNTER] selectAttackDeathStats + selectBattleCountByUser 통합 (BATTLE_LOG 1회 스캔) -->
 	<select id="selectBattleStatsByJob" parameterType="hashmap" resultType="hashmap">
-		/* selectBattleStatsByJob — TBOT_POINT_NEW_BATTLE_JOB (월별 합산) */
-	    SELECT JOB, SUM(ATTACK_CNT) AS CNT, SUM(DEATH_CNT) AS DEATH_CNT,
-	           MAX(UPDATE_DATE) AS MAX_DATE
-	    FROM TBOT_POINT_NEW_BATTLE_JOB
-	    WHERE USER_NAME = #{userName}
-	    GROUP BY JOB
+		/* selectBattleStatsByJob — BATTLE_JOB(과거) + 현재월 raw UNION ALL */
+	    SELECT JOB, SUM(CNT) AS CNT, SUM(DEATH_CNT) AS DEATH_CNT,
+	           MAX(MAX_DATE) AS MAX_DATE
+	    FROM (
+	      SELECT JOB, ATTACK_CNT AS CNT, DEATH_CNT, UPDATE_DATE AS MAX_DATE
+	        FROM TBOT_POINT_NEW_BATTLE_JOB WHERE USER_NAME = #{userName}
+	      UNION ALL
+	      SELECT NVL(JOB,'초보자'), COUNT(*), SUM(DEATH_YN), MAX(INSERT_DATE)
+	        FROM TBOT_POINT_NEW_BATTLE_LOG
+	       WHERE USER_NAME = #{userName}
+	         AND INSERT_DATE >= TRUNC(SYSDATE, 'MM')
+	       GROUP BY NVL(JOB,'초보자')
+	    ) GROUP BY JOB
 	</select>
 
 	<update id="updateUserJobAndChangeDate">
@@ -1305,10 +1325,16 @@
 	        parameterType="map"
 	        resultType="hashmap">
 	    /* selectJobSkillUseCountAllJobs — TBOT_POINT_NEW_BATTLE_JOB */
-	    SELECT JOB, SUM(SKILL_USE_CNT) AS TOTAL_SKILL_USE
-	    FROM TBOT_POINT_NEW_BATTLE_JOB
-	    WHERE USER_NAME = #{userName}
-	    GROUP BY JOB
+	    SELECT JOB, SUM(SKILL) AS TOTAL_SKILL_USE FROM (
+	      SELECT JOB, SKILL_USE_CNT AS SKILL FROM TBOT_POINT_NEW_BATTLE_JOB
+	       WHERE USER_NAME = #{userName}
+	      UNION ALL
+	      SELECT NVL(JOB,'초보자'), SUM(JOB_SKILL_YN)
+	        FROM TBOT_POINT_NEW_BATTLE_LOG
+	       WHERE USER_NAME = #{userName}
+	         AND INSERT_DATE >= TRUNC(SYSDATE, 'MM')
+	       GROUP BY NVL(JOB,'초보자')
+	    ) GROUP BY JOB
 	</select>
 
 	<select id="selectSpecialBuffAchvStats"
@@ -2430,13 +2456,14 @@
 	</insert>
 
 	<insert id="migrateBattleLogToJobStat">
-		/* migrateBattleLogToJobStat — STAT_YM 월별 */
+		/* migrateBattleLogToJobStat — 현재월 제외 전체 이관 (초기 1회용) */
 		INSERT INTO TBOT_POINT_NEW_BATTLE_JOB
 		    (STAT_YM, USER_NAME, JOB, ATTACK_CNT, KILL_CNT, DEATH_CNT, SKILL_USE_CNT, UPDATE_DATE)
 		SELECT TO_CHAR(INSERT_DATE,'YYYYMM'), USER_NAME, NVL(JOB,'초보자'),
 		    COUNT(*), SUM(KILL_YN), SUM(DEATH_YN), SUM(JOB_SKILL_YN),
 		    SYSDATE
 		FROM TBOT_POINT_NEW_BATTLE_LOG
+		WHERE INSERT_DATE < TRUNC(SYSDATE, 'MM')
 		GROUP BY TO_CHAR(INSERT_DATE,'YYYYMM'), USER_NAME, NVL(JOB,'초보자')
 	</insert>
 
@@ -2454,5 +2481,18 @@
 		GROUP BY USER_NAME, SPECIAL_BUFF_CODE
 	</insert>
 
+
+	<insert id="migrateLastMonthToJobStat">
+		/* migrateLastMonthToJobStat — 매월 1일: 전월 데이터 BATTLE_JOB에 적재 */
+		INSERT INTO TBOT_POINT_NEW_BATTLE_JOB
+		    (STAT_YM, USER_NAME, JOB, ATTACK_CNT, KILL_CNT, DEATH_CNT, SKILL_USE_CNT, UPDATE_DATE)
+		SELECT TO_CHAR(INSERT_DATE,'YYYYMM'), USER_NAME, NVL(JOB,'초보자'),
+		    COUNT(*), SUM(KILL_YN), SUM(DEATH_YN), SUM(JOB_SKILL_YN),
+		    SYSDATE
+		FROM TBOT_POINT_NEW_BATTLE_LOG
+		WHERE INSERT_DATE >= ADD_MONTHS(TRUNC(SYSDATE,'MM'), -1)
+		  AND INSERT_DATE  < TRUNC(SYSDATE, 'MM')
+		GROUP BY TO_CHAR(INSERT_DATE,'YYYYMM'), USER_NAME, NVL(JOB,'초보자')
+	</insert>
 
 </mapper>

@@ -321,4 +321,5 @@ public interface BotNewDAO {
     int migrateBattleLogToKillStat();
     int migrateBattleLogToJobStat();
     int migrateBattleLogToBuffStat();
+    int migrateLastMonthToJobStat();
 }

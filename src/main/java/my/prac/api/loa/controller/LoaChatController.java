@@ -317,6 +317,15 @@ public class LoaChatController {
 				e1.printStackTrace();
 			}
 			break;
+		case "c10":
+			// 매월 1일: 전월 배틀로그 → BATTLE_JOB 적재
+			try {
+				String result = boss.migrateLastMonthToJobStat();
+				System.out.println("[CRON-c10] " + result);
+			} catch (Exception e1) {
+				e1.printStackTrace();
+			}
+			break;
 		case "test":
 			try {
 				market.search_c2();

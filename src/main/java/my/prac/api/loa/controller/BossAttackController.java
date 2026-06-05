@@ -287,14 +287,24 @@ public class BossAttackController {
 	}
 	*/
 
+	/** 매월 1일 배치: 전월 배틀로그 → BATTLE_JOB 적재 (c10으로 호출) */
+	public String migrateLastMonthToJobStat() {
+	    try {
+	        botNewService.migrateLastMonthToJobStat();
+	        return "전월 BATTLE_JOB 이관 완료";
+	    } catch (Exception e) {
+	        return "이관 실패: " + e.getMessage();
+	    }
+	}
+
 	/**
-	 * 초기 이관: 기존 배틀로그 → 실시간 카운터 테이블 (1회 실행)
-	 * 주의: 테이블이 비어있을 때만 실행할 것 (중복 INSERT 방지)
+	 * 초기 이관: 기존 배틀로그 → 카운터 테이블 (1회 실행, c9으로 호출)
+	 * BATTLE_JOB: 현재월 제외한 전체 월 적재
 	 */
 	public String migrateBattleLogToStatAll() {
 	    try {
 	        botNewService.migrateBattleLogToStatAll();
-	        return "배틀로그 이관 완료 (MON_KILL_STAT / BATTLE_JOB / BATTLE_BUFF)";
+	        return "배틀로그 이관 완료 (MON_KILL_STAT / BATTLE_JOB 현재월제외 / BATTLE_BUFF)";
 	    } catch (Exception e) {
 	        return "이관 실패: " + e.getMessage();
 	    }
@@ -7602,17 +7612,6 @@ public class BossAttackController {
 	            ks.put("hellKillInc",hellKill);
 	            botNewService.upsertMonKillStat(ks);
 	        }
-
-	        // BATTLE_JOB (매 공격마다)
-	        String statYm = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMM"));
-	        HashMap<String,Object> js = new HashMap<>();
-	        js.put("userName",  userName);
-	        js.put("job",       u.job != null ? u.job : "초보자");
-	        js.put("statYm",    statYm);
-	        js.put("killInc",   killInc);
-	        js.put("deathInc",  deathYn);
-	        js.put("skillInc",  c.jobSkillUsed ? 1 : 0);
-	        botNewService.upsertBattleJobStat(js);
 
 	        // BATTLE_BUFF (버프 진행 중일 때만)
 	        if (specialBuffCode != null && !specialBuffCode.isEmpty()) {
