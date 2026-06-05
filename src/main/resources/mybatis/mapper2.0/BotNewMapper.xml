@@ -94,7 +94,7 @@
        WHERE USER_NAME = #{userName}
          AND INSERT_DATE >= TRUNC(SYSDATE, 'MM')
        GROUP BY NVL(JOB,'초보자')
-    )
+    ) t
   </select>
 
   <select id="selectKillStats" resultType="my.prac.core.game.dto.KillStat">
@@ -862,7 +862,7 @@
 	       WHERE USER_NAME = #{userName}
 	         AND INSERT_DATE >= TRUNC(SYSDATE, 'MM')
 	       GROUP BY NVL(JOB,'초보자')
-	    ) GROUP BY JOB
+	    ) t GROUP BY JOB
 	</select>
 
 	<!-- [OPT-HUNTER] selectAttackDeathStats + selectBattleCountByUser 통합 (BATTLE_LOG 1회 스캔) -->
@@ -879,7 +879,7 @@
 	       WHERE USER_NAME = #{userName}
 	         AND INSERT_DATE >= TRUNC(SYSDATE, 'MM')
 	       GROUP BY NVL(JOB,'초보자')
-	    ) GROUP BY JOB
+	    ) t GROUP BY JOB
 	</select>
 
 	<update id="updateUserJobAndChangeDate">
@@ -1303,7 +1303,7 @@
 	       WHERE USER_NAME = #{userName}
 	         AND INSERT_DATE >= TRUNC(SYSDATE, 'MM')
 	       GROUP BY NVL(JOB,'초보자')
-	    ) GROUP BY JOB
+	    ) t GROUP BY JOB
 	</select>
 
 	<select id="selectSpecialBuffAchvStats"
