@@ -905,4 +905,9 @@ public class BotNewServiceImpl implements BotNewService {
         botNewDAO.migrateBattleLogToJobStat();
         botNewDAO.migrateBattleLogToBuffStat();
     }
+
+    @Override
+    public void migrateLastMonthToJobStat() {
+        botNewDAO.migrateLastMonthToJobStat();
+    }
 }
