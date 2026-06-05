@@ -87,6 +87,7 @@
         WHERE USER_NAME = #{userName} AND ROWNUM = 1) AS LAST_ATTACK_JOB
     FROM TBOT_POINT_NEW_BATTLE_JOB
     WHERE USER_NAME = #{userName}
+    -- 월별 여러 행이 있으므로 SUM 집계
   </select>
 
   <!-- 몬스터별 킬 통계 - 난이도(0/1/2) × 타입(일반/빛/다크/음양) 교차집계 (monster_view 페이지용) -->
@@ -875,19 +876,21 @@
 	</select>
 	
 	<select id="selectBattleCountByUser" parameterType="hashmap" resultType="hashmap">
-		/* selectBattleCountByUser — TBOT_POINT_NEW_BATTLE_JOB */
-	    SELECT JOB, ATTACK_CNT AS CNT
+		/* selectBattleCountByUser — TBOT_POINT_NEW_BATTLE_JOB (월별 합산) */
+	    SELECT JOB, SUM(ATTACK_CNT) AS CNT
 	    FROM TBOT_POINT_NEW_BATTLE_JOB
 	    WHERE USER_NAME = #{userName}
+	    GROUP BY JOB
 	</select>
 
 	<!-- [OPT-HUNTER] selectAttackDeathStats + selectBattleCountByUser 통합 (BATTLE_LOG 1회 스캔) -->
 	<select id="selectBattleStatsByJob" parameterType="hashmap" resultType="hashmap">
-		/* selectBattleStatsByJob — TBOT_POINT_NEW_BATTLE_JOB */
-	    SELECT bj.JOB, bj.ATTACK_CNT AS CNT, bj.DEATH_CNT,
-	           bj.UPDATE_DATE AS MAX_DATE
-	    FROM TBOT_POINT_NEW_BATTLE_JOB bj
-	    WHERE bj.USER_NAME = #{userName}
+		/* selectBattleStatsByJob — TBOT_POINT_NEW_BATTLE_JOB (월별 합산) */
+	    SELECT JOB, SUM(ATTACK_CNT) AS CNT, SUM(DEATH_CNT) AS DEATH_CNT,
+	           MAX(UPDATE_DATE) AS MAX_DATE
+	    FROM TBOT_POINT_NEW_BATTLE_JOB
+	    WHERE USER_NAME = #{userName}
+	    GROUP BY JOB
 	</select>
 
 	<update id="updateUserJobAndChangeDate">
@@ -1302,9 +1305,10 @@
 	        parameterType="map"
 	        resultType="hashmap">
 	    /* selectJobSkillUseCountAllJobs — TBOT_POINT_NEW_BATTLE_JOB */
-	    SELECT JOB, SKILL_USE_CNT AS TOTAL_SKILL_USE
+	    SELECT JOB, SUM(SKILL_USE_CNT) AS TOTAL_SKILL_USE
 	    FROM TBOT_POINT_NEW_BATTLE_JOB
 	    WHERE USER_NAME = #{userName}
+	    GROUP BY JOB
 	</select>
 
 	<select id="selectSpecialBuffAchvStats"
@@ -2376,10 +2380,10 @@
 	</update>
 
 	<update id="upsertBattleJobStat" parameterType="hashmap">
-		/* upsertBattleJobStat */
+		/* upsertBattleJobStat — STAT_YM 월별 관리 */
 		MERGE INTO TBOT_POINT_NEW_BATTLE_JOB T
-		USING (SELECT #{userName} AS U, #{job} AS J FROM DUAL) S
-		ON (T.USER_NAME = S.U AND T.JOB = S.J)
+		USING (SELECT #{userName} AS U, #{job} AS J, #{statYm} AS YM FROM DUAL) S
+		ON (T.USER_NAME = S.U AND T.JOB = S.J AND T.STAT_YM = S.YM)
 		WHEN MATCHED THEN UPDATE SET
 		    ATTACK_CNT    = ATTACK_CNT    + 1,
 		    KILL_CNT      = KILL_CNT      + #{killInc},
@@ -2387,9 +2391,9 @@
 		    SKILL_USE_CNT = SKILL_USE_CNT + #{skillInc},
 		    UPDATE_DATE   = SYSDATE
 		WHEN NOT MATCHED THEN INSERT
-		    (USER_NAME, JOB, ATTACK_CNT, KILL_CNT, DEATH_CNT, SKILL_USE_CNT, UPDATE_DATE)
+		    (STAT_YM, USER_NAME, JOB, ATTACK_CNT, KILL_CNT, DEATH_CNT, SKILL_USE_CNT, UPDATE_DATE)
 		VALUES
-		    (#{userName}, #{job}, 1, #{killInc}, #{deathInc}, #{skillInc}, SYSDATE)
+		    (#{statYm}, #{userName}, #{job}, 1, #{killInc}, #{deathInc}, #{skillInc}, SYSDATE)
 	</update>
 
 	<update id="upsertBattleBuffStat" parameterType="hashmap">
@@ -2426,14 +2430,14 @@
 	</insert>
 
 	<insert id="migrateBattleLogToJobStat">
-		/* migrateBattleLogToJobStat */
+		/* migrateBattleLogToJobStat — STAT_YM 월별 */
 		INSERT INTO TBOT_POINT_NEW_BATTLE_JOB
-		    (USER_NAME, JOB, ATTACK_CNT, KILL_CNT, DEATH_CNT, SKILL_USE_CNT, UPDATE_DATE)
-		SELECT USER_NAME, NVL(JOB,'초보자'),
+		    (STAT_YM, USER_NAME, JOB, ATTACK_CNT, KILL_CNT, DEATH_CNT, SKILL_USE_CNT, UPDATE_DATE)
+		SELECT TO_CHAR(INSERT_DATE,'YYYYMM'), USER_NAME, NVL(JOB,'초보자'),
 		    COUNT(*), SUM(KILL_YN), SUM(DEATH_YN), SUM(JOB_SKILL_YN),
 		    SYSDATE
 		FROM TBOT_POINT_NEW_BATTLE_LOG
-		GROUP BY USER_NAME, NVL(JOB,'초보자')
+		GROUP BY TO_CHAR(INSERT_DATE,'YYYYMM'), USER_NAME, NVL(JOB,'초보자')
 	</insert>
 
 	<insert id="migrateBattleLogToBuffStat">

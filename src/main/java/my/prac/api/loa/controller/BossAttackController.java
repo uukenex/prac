@@ -7604,9 +7604,11 @@ public class BossAttackController {
 	        }
 
 	        // BATTLE_JOB (매 공격마다)
+	        String statYm = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMM"));
 	        HashMap<String,Object> js = new HashMap<>();
 	        js.put("userName",  userName);
 	        js.put("job",       u.job != null ? u.job : "초보자");
+	        js.put("statYm",    statYm);
 	        js.put("killInc",   killInc);
 	        js.put("deathInc",  deathYn);
 	        js.put("skillInc",  c.jobSkillUsed ? 1 : 0);
