@@ -916,20 +916,24 @@ public class BotNewServiceImpl implements BotNewService {
             result.append("BATTLE_JOB 이관 실패: ").append(e.getMessage());
         }
 
-        // 2. BACKUP 이관
+        // 2. BACKUP 이관 — 실패 시 삭제 스킵
+        boolean backupOk = false;
         try {
             int backed = botNewDAO.backupOldBattleLog();
             result.append(", BACKUP 이관: ").append(backed).append("건");
+            backupOk = true;
         } catch (Exception e) {
-            result.append(", BACKUP 이관 실패: ").append(e.getMessage());
+            result.append(", BACKUP 이관 실패(삭제 스킵): ").append(e.getMessage());
         }
 
-        // 3. 원본 삭제
-        try {
-            int deleted = botNewDAO.deleteLastMonthBattleLog();
-            result.append(", battle_log 삭제: ").append(deleted).append("건");
-        } catch (Exception e) {
-            result.append(", battle_log 삭제 실패: ").append(e.getMessage());
+        // 3. 원본 삭제 — BACKUP 성공한 경우에만 실행
+        if (backupOk) {
+            try {
+                int deleted = botNewDAO.deleteLastMonthBattleLog();
+                result.append(", battle_log 삭제: ").append(deleted).append("건");
+            } catch (Exception e) {
+                result.append(", battle_log 삭제 실패: ").append(e.getMessage());
+            }
         }
 
         return result.toString();
