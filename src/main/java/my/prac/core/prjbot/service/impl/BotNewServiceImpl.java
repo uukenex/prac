@@ -907,7 +907,8 @@ public class BotNewServiceImpl implements BotNewService {
     @Override
     public String runMonthlyBattleLogJob() {
         int inserted = botNewDAO.migrateLastMonthToJobStat();
+        int backed   = botNewDAO.backupOldBattleLog();
         int deleted  = botNewDAO.deleteLastMonthBattleLog();
-        return "전월 BATTLE_JOB 이관: " + inserted + "건, battle_log 삭제: " + deleted + "건";
+        return "전월 BATTLE_JOB 이관: " + inserted + "건, BACKUP 이관: " + backed + "건, battle_log 삭제: " + deleted + "건";
     }
 }
