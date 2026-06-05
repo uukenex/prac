@@ -510,10 +510,6 @@ public class LoaUnifiedViewController {
             List<HashMap<String, Object>> rising = safeList(() -> botNewService.selectRisingStarsTop5Last6h());
             result.put("rising", rising);
 
-            // MAX 데미지 TOP5
-            List<HashMap<String, Object>> maxDmg = safeList(() -> botNewService.selectMaxDamageTop5());
-            result.put("maxDmg", maxDmg);
-
             // SP + 공격횟수
             List<HashMap<String, Object>> spAtk = safeList(() -> {
                 try { return botNewService.selectSpAndAtkRanking(); } catch (Exception e) { return null; }

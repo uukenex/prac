@@ -287,6 +287,19 @@ public class BossAttackController {
 	}
 	*/
 
+	/**
+	 * 초기 이관: 기존 배틀로그 → 실시간 카운터 테이블 (1회 실행)
+	 * 주의: 테이블이 비어있을 때만 실행할 것 (중복 INSERT 방지)
+	 */
+	public String migrateBattleLogToStatAll() {
+	    try {
+	        botNewService.migrateBattleLogToStatAll();
+	        return "배틀로그 이관 완료 (MON_KILL_STAT / BATTLE_JOB / BATTLE_BUFF)";
+	    } catch (Exception e) {
+	        return "이관 실패: " + e.getMessage();
+	    }
+	}
+
 	public String bagLog(HashMap<String, Object> map) {
 		String userName   = Objects.toString(map.get("userName"), "");
 		String roomName   = Objects.toString(map.get("roomName"), "");
@@ -7571,6 +7584,45 @@ public class BossAttackController {
 	    	.setSpecialBuffCode(specialBuffCode);
 
 	    botNewService.insertBattleLogTx(log);
+
+	    // ── 실시간 카운터 업데이트 ───────────────────────────────────────────
+	    try {
+	        int nmYn   = u.nightmareYn;
+	        int killInc = res.killed ? 1 : 0;
+	        int nmKill  = (killInc == 1 && nmYn == 1) ? 1 : 0;
+	        int hellKill= (killInc == 1 && nmYn == 2) ? 1 : 0;
+
+	        // MON_KILL_STAT (처치 시만)
+	        if (killInc == 1) {
+	            HashMap<String,Object> ks = new HashMap<>();
+	            ks.put("userName",   userName);
+	            ks.put("monNo",      m.monNo);
+	            ks.put("killInc",    1);
+	            ks.put("nmKillInc",  nmKill);
+	            ks.put("hellKillInc",hellKill);
+	            botNewService.upsertMonKillStat(ks);
+	        }
+
+	        // BATTLE_JOB (매 공격마다)
+	        HashMap<String,Object> js = new HashMap<>();
+	        js.put("userName",  userName);
+	        js.put("job",       u.job != null ? u.job : "초보자");
+	        js.put("killInc",   killInc);
+	        js.put("deathInc",  deathYn);
+	        js.put("skillInc",  c.jobSkillUsed ? 1 : 0);
+	        botNewService.upsertBattleJobStat(js);
+
+	        // BATTLE_BUFF (버프 진행 중일 때만)
+	        if (specialBuffCode != null && !specialBuffCode.isEmpty()) {
+	            HashMap<String,Object> bs = new HashMap<>();
+	            bs.put("userName",    userName);
+	            bs.put("buffCode",    specialBuffCode);
+	            bs.put("triggerInc",  specialBuffStart);
+	            bs.put("ingInc",      specialBuffIng);
+	            bs.put("buffKillInc", (specialBuffIng == 1 && killInc == 1) ? 1 : 0);
+	            botNewService.upsertBattleBuffStat(bs);
+	        }
+	    } catch (Exception ignore) { /* 카운터 실패해도 전투 진행 */ }
 
 	    // 궁사 분할 화살 추가 로그 (공격횟수 증가용, 2번째 화살부터 개별 insert)
 	    if (c.multiAttack > 1) {

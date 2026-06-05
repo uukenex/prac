@@ -311,5 +311,14 @@ public interface BotNewDAO {
     int upsertExpSellStats(HashMap<String,Object> param);
     int updateExpCurOnly(@Param("userName") String userName,
                          @Param("roomName") String roomName,
-                         @Param("expCur")   long expCur);
+                         @Param("expCur")   long expCur);
+    // ── 실시간 카운터 테이블 ───────────────────────────────────────────────────
+    int upsertMonKillStat(HashMap<String,Object> param);
+    int upsertBattleJobStat(HashMap<String,Object> param);
+    int upsertBattleBuffStat(HashMap<String,Object> param);
+
+    // ── 초기 이관 ─────────────────────────────────────────────────────────────
+    int migrateBattleLogToKillStat();
+    int migrateBattleLogToJobStat();
+    int migrateBattleLogToBuffStat();
 }

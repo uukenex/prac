@@ -883,4 +883,26 @@ public class BotNewServiceImpl implements BotNewService {
     public int updateExpCurOnly(String userName, String roomName, long expCur) {
         return botNewDAO.updateExpCurOnly(userName, roomName, expCur);
     }
+
+    // ── 실시간 카운터 테이블 ──────────────────────────────────────────────────
+    @Override
+    public int upsertMonKillStat(HashMap<String,Object> param) {
+        return botNewDAO.upsertMonKillStat(param);
+    }
+    @Override
+    public int upsertBattleJobStat(HashMap<String,Object> param) {
+        return botNewDAO.upsertBattleJobStat(param);
+    }
+    @Override
+    public int upsertBattleBuffStat(HashMap<String,Object> param) {
+        return botNewDAO.upsertBattleBuffStat(param);
+    }
+
+    // ── 초기 이관 ─────────────────────────────────────────────────────────────
+    @Override
+    public void migrateBattleLogToStatAll() {
+        botNewDAO.migrateBattleLogToKillStat();
+        botNewDAO.migrateBattleLogToJobStat();
+        botNewDAO.migrateBattleLogToBuffStat();
+    }
 }

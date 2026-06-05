@@ -75,14 +75,17 @@
   </select>
 
   <select id="selectAttackDeathStats" resultType="my.prac.core.game.dto.AttackDeathStat">
-  /*selectAttackDeathStats*/
+  /* selectAttackDeathStats — TBOT_POINT_NEW_BATTLE_JOB */
     SELECT
-      COUNT(*) AS TOTAL_ATTACKS,
-      SUM(CASE WHEN JOB = '헌터' THEN 1 ELSE 0 END) AS HUNTER_ATTACKS,
-      SUM(CASE WHEN DEATH_YN = '1' THEN 1 ELSE 0 END) AS TOTAL_DEATHS,
-      MAX(CASE WHEN GAIN_EXP >= 0 THEN INSERT_DATE END) AS LAST_ATTACK_TIME,
-      MAX(JOB) KEEP (DENSE_RANK LAST ORDER BY CASE WHEN GAIN_EXP >= 0 THEN INSERT_DATE ELSE TO_DATE('19700101','YYYYMMDD') END) AS LAST_ATTACK_JOB
-    FROM TBOT_POINT_NEW_BATTLE_LOG
+      NVL(SUM(ATTACK_CNT), 0) AS TOTAL_ATTACKS,
+      NVL(SUM(CASE WHEN JOB = '헌터' THEN ATTACK_CNT ELSE 0 END), 0) AS HUNTER_ATTACKS,
+      NVL(SUM(DEATH_CNT), 0) AS TOTAL_DEATHS,
+      (SELECT MAX(INSERT_DATE)
+         FROM TBOT_POINT_NEW_BATTLE_LOG
+        WHERE USER_NAME = #{userName} AND GAIN_EXP >= 0) AS LAST_ATTACK_TIME,
+      (SELECT NVL(JOB, '초보자') FROM TBOT_POINT_NEW_USER
+        WHERE USER_NAME = #{userName} AND ROWNUM = 1) AS LAST_ATTACK_JOB
+    FROM TBOT_POINT_NEW_BATTLE_JOB
     WHERE USER_NAME = #{userName}
   </select>
 
@@ -118,18 +121,16 @@
   </select>
 
   <select id="selectKillStats" resultType="my.prac.core.game.dto.KillStat">
-  /*selectKillStats*/
-    SELECT bl.TARGET_MON_LV AS MON_NO,
-           m.MON_NAME AS MON_NAME,
-           COUNT(*) AS KILL_COUNT,
-           SUM(DECODE(BL.NIGHTMARE_YN,'1',1,0)) AS NM_KILL_COUNT,
-           SUM(DECODE(BL.NIGHTMARE_YN,'2',1,0)) AS HELL_KILL_COUNT
-    FROM TBOT_POINT_NEW_BATTLE_LOG bl
-    JOIN TBOT_POINT_NEW_MON_INFO m ON m.MON_NO = bl.TARGET_MON_LV
-    WHERE bl.USER_NAME = #{userName}
-      AND bl.KILL_YN = 1
-    GROUP BY bl.TARGET_MON_LV, m.MON_NAME
-    ORDER BY MON_NO DESC
+  /* selectKillStats — TBOT_POINT_NEW_MON_KILL_STAT */
+    SELECT mk.MON_NO          AS MON_NO,
+           mi.MON_NAME        AS MON_NAME,
+           mk.KILL_CNT        AS KILL_COUNT,
+           mk.NM_KILL_CNT     AS NM_KILL_COUNT,
+           mk.HELL_KILL_CNT   AS HELL_KILL_COUNT
+    FROM TBOT_POINT_NEW_MON_KILL_STAT mk
+    JOIN TBOT_POINT_NEW_MON_INFO mi ON mk.MON_NO = mi.MON_NO
+    WHERE mk.USER_NAME = #{userName}
+    ORDER BY mk.MON_NO DESC
   </select>
 
   <select id="selectAllMonsters" resultType="my.prac.core.game.dto.Monster">
@@ -796,27 +797,21 @@
 	
 	<!-- ③ 최초 토벌자 정보 -->
 	<select id="selectFirstClearInfo" resultType="hashmap">
-	  /* selectFirstClearInfo */
-	  SELECT
-	      m.MON_NO,
-	      m.MON_NAME,
-	      m.MON_LV,
-	      fc.FIRST_CLEAR_USER,
-	      CASE
-			   WHEN FC.FIRST_CLEAR_DATE > SYSDATE - 7 THEN
-			    TO_CHAR(FC.FIRST_CLEAR_DATE, 'YYYY-MM-DD HH24:MI')
-			   ELSE
-			    TO_CHAR(FC.FIRST_CLEAR_DATE, 'YYYY-MM-DD')
-		   END AS FIRST_CLEAR_DATE
+	  /* selectFirstClearInfo — TBOT_POINT_NEW_MON_KILL_STAT */
+	  SELECT m.MON_NO, m.MON_NAME, m.MON_LV,
+	         fc.FIRST_CLEAR_USER,
+	         CASE WHEN fc.FIRST_CLEAR_DATE > SYSDATE - 7
+	              THEN TO_CHAR(fc.FIRST_CLEAR_DATE, 'YYYY-MM-DD HH24:MI')
+	              ELSE TO_CHAR(fc.FIRST_CLEAR_DATE, 'YYYY-MM-DD')
+	         END AS FIRST_CLEAR_DATE
 	  FROM TBOT_POINT_NEW_MON_INFO m
 	  LEFT JOIN (
-	    SELECT
-	        bl.TARGET_MON_LV AS MON_NO,
-	        MIN(bl.INSERT_DATE) AS FIRST_CLEAR_DATE,
-	        MIN(bl.USER_NAME) KEEP (DENSE_RANK FIRST ORDER BY bl.INSERT_DATE) AS FIRST_CLEAR_USER
-	    FROM TBOT_POINT_NEW_BATTLE_LOG bl
-	    WHERE bl.KILL_YN = 1
-	    GROUP BY bl.TARGET_MON_LV
+	    SELECT MON_NO,
+	           MIN(FIRST_KILL_DATE) AS FIRST_CLEAR_DATE,
+	           MIN(USER_NAME) KEEP (DENSE_RANK FIRST ORDER BY FIRST_KILL_DATE) AS FIRST_CLEAR_USER
+	    FROM TBOT_POINT_NEW_MON_KILL_STAT
+	    WHERE FIRST_KILL_DATE IS NOT NULL
+	    GROUP BY MON_NO
 	  ) fc ON fc.MON_NO = m.MON_NO
 	  WHERE fc.FIRST_CLEAR_USER IS NOT NULL
 	  ORDER BY m.MON_NO
@@ -880,25 +875,19 @@
 	</select>
 	
 	<select id="selectBattleCountByUser" parameterType="hashmap" resultType="hashmap">
-		/*selectBattleCountByUser*/
-	    SELECT NVL(JOB,'초보자') AS JOB,
-	           COUNT(1) AS CNT
-	    FROM TBOT_POINT_NEW_BATTLE_LOG
+		/* selectBattleCountByUser — TBOT_POINT_NEW_BATTLE_JOB */
+	    SELECT JOB, ATTACK_CNT AS CNT
+	    FROM TBOT_POINT_NEW_BATTLE_JOB
 	    WHERE USER_NAME = #{userName}
-	    GROUP BY JOB
 	</select>
 
 	<!-- [OPT-HUNTER] selectAttackDeathStats + selectBattleCountByUser 통합 (BATTLE_LOG 1회 스캔) -->
 	<select id="selectBattleStatsByJob" parameterType="hashmap" resultType="hashmap">
-		/*selectBattleStatsByJob*/
-	    SELECT
-	        NVL(JOB,'초보자') AS JOB,
-	        COUNT(1) AS CNT,
-	        SUM(CASE WHEN DEATH_YN = '1' THEN 1 ELSE 0 END) AS DEATH_CNT,
-	        MAX(INSERT_DATE) AS MAX_DATE
-	    FROM TBOT_POINT_NEW_BATTLE_LOG
-	    WHERE USER_NAME = #{userName}
-	    GROUP BY JOB
+		/* selectBattleStatsByJob — TBOT_POINT_NEW_BATTLE_JOB */
+	    SELECT bj.JOB, bj.ATTACK_CNT AS CNT, bj.DEATH_CNT,
+	           bj.UPDATE_DATE AS MAX_DATE
+	    FROM TBOT_POINT_NEW_BATTLE_JOB bj
+	    WHERE bj.USER_NAME = #{userName}
 	</select>
 
 	<update id="updateUserJobAndChangeDate">
@@ -1312,28 +1301,20 @@
 	<select id="selectJobSkillUseCountAllJobs"
 	        parameterType="map"
 	        resultType="hashmap">
-	    /* selectJobSkillUseCountAllJobs */
-	    SELECT
-	        JOB                 AS JOB,
-	        NVL(SUM(job_skill_yn), 0) AS TOTAL_SKILL_USE
-	    FROM TBOT_POINT_NEW_BATTLE_LOG
+	    /* selectJobSkillUseCountAllJobs — TBOT_POINT_NEW_BATTLE_JOB */
+	    SELECT JOB, SKILL_USE_CNT AS TOTAL_SKILL_USE
+	    FROM TBOT_POINT_NEW_BATTLE_JOB
 	    WHERE USER_NAME = #{userName}
-	    GROUP BY JOB
 	</select>
 
 	<select id="selectSpecialBuffAchvStats"
 	        parameterType="string"
 	        resultType="hashmap">
-	    /* selectSpecialBuffAchvStats */
-	    SELECT
-	        SPECIAL_BUFF_CODE AS FLAG_CODE,
-	        SUM(CASE WHEN SPECIAL_BUFF_START = '1' THEN 1 ELSE 0 END) AS TRIGGER_CNT,
-	        SUM(CASE WHEN SPECIAL_BUFF_ING   = '1' THEN 1 ELSE 0 END) AS ING_CNT,
-	        SUM(CASE WHEN SPECIAL_BUFF_ING   = '1' AND KILL_YN = 1 THEN 1 ELSE 0 END) AS KILL_CNT
-	    FROM TBOT_POINT_NEW_BATTLE_LOG
+	    /* selectSpecialBuffAchvStats — TBOT_POINT_NEW_BATTLE_BUFF */
+	    SELECT SPECIAL_BUFF_CODE AS FLAG_CODE,
+	           TRIGGER_CNT, ING_CNT, KILL_CNT
+	    FROM TBOT_POINT_NEW_BATTLE_BUFF
 	    WHERE USER_NAME = #{userName}
-	      AND SPECIAL_BUFF_CODE IS NOT NULL
-	    GROUP BY SPECIAL_BUFF_CODE
 	</select>
 	
 	<select id="selectTodayDailyBuff" parameterType="hashmap" resultType="hashmap">
@@ -1578,13 +1559,11 @@
 
 	<!-- 나메 해금 조건: 일반모드에서 특정 몬스터 N킬 이상인지 확인 -->
 	<select id="selectNormalKillCountByMonNo" parameterType="map" resultType="int">
-		/* selectNormalKillCountByMonNo */
-		SELECT COUNT(1)
-		  FROM TBOT_POINT_NEW_BATTLE_LOG
+		/* selectNormalKillCountByMonNo — TBOT_POINT_NEW_MON_KILL_STAT */
+		SELECT NVL(KILL_CNT - NVL(NM_KILL_CNT,0) - NVL(HELL_KILL_CNT,0), 0)
+		  FROM TBOT_POINT_NEW_MON_KILL_STAT
 		 WHERE USER_NAME = #{userName}
-		   AND TARGET_MON_LV = #{monNo}
-		   AND KILL_YN = 1
-		   AND NIGHTMARE_YN = '0'
+		   AND MON_NO    = #{monNo}
 	</select>
 
 	<!-- 헬 해금 조건: 나메모드에서 1~30번 몬스터 dark킬(LUCKY_YN=2) 보유 monNo 수 -->
@@ -2377,5 +2356,99 @@
 		 WHERE USER_NAME = #{userName}
 		   AND ROOM_NAME = #{roomName}
 	</update>
+
+	<!-- ══ 실시간 카운터: 킬스탯 / 직업 / 버프 ══════════════════════════════════ -->
+	<update id="upsertMonKillStat" parameterType="hashmap">
+		/* upsertMonKillStat */
+		MERGE INTO TBOT_POINT_NEW_MON_KILL_STAT T
+		USING (SELECT #{userName} AS U, #{monNo} AS M FROM DUAL) S
+		ON (T.USER_NAME = S.U AND T.MON_NO = S.M)
+		WHEN MATCHED THEN UPDATE SET
+		    KILL_CNT      = KILL_CNT      + #{killInc},
+		    NM_KILL_CNT   = NM_KILL_CNT   + #{nmKillInc},
+		    HELL_KILL_CNT = HELL_KILL_CNT + #{hellKillInc},
+		    FIRST_KILL_DATE = NVL(FIRST_KILL_DATE, SYSDATE),
+		    UPDATE_DATE   = SYSDATE
+		WHEN NOT MATCHED THEN INSERT
+		    (USER_NAME, MON_NO, KILL_CNT, NM_KILL_CNT, HELL_KILL_CNT, FIRST_KILL_DATE, UPDATE_DATE)
+		VALUES
+		    (#{userName}, #{monNo}, #{killInc}, #{nmKillInc}, #{hellKillInc}, SYSDATE, SYSDATE)
+	</update>
+
+	<update id="upsertBattleJobStat" parameterType="hashmap">
+		/* upsertBattleJobStat */
+		MERGE INTO TBOT_POINT_NEW_BATTLE_JOB T
+		USING (SELECT #{userName} AS U, #{job} AS J FROM DUAL) S
+		ON (T.USER_NAME = S.U AND T.JOB = S.J)
+		WHEN MATCHED THEN UPDATE SET
+		    ATTACK_CNT    = ATTACK_CNT    + 1,
+		    KILL_CNT      = KILL_CNT      + #{killInc},
+		    DEATH_CNT     = DEATH_CNT     + #{deathInc},
+		    SKILL_USE_CNT = SKILL_USE_CNT + #{skillInc},
+		    UPDATE_DATE   = SYSDATE
+		WHEN NOT MATCHED THEN INSERT
+		    (USER_NAME, JOB, ATTACK_CNT, KILL_CNT, DEATH_CNT, SKILL_USE_CNT, UPDATE_DATE)
+		VALUES
+		    (#{userName}, #{job}, 1, #{killInc}, #{deathInc}, #{skillInc}, SYSDATE)
+	</update>
+
+	<update id="upsertBattleBuffStat" parameterType="hashmap">
+		/* upsertBattleBuffStat */
+		MERGE INTO TBOT_POINT_NEW_BATTLE_BUFF T
+		USING (SELECT #{userName} AS U, #{buffCode} AS B FROM DUAL) S
+		ON (T.USER_NAME = S.U AND T.SPECIAL_BUFF_CODE = S.B)
+		WHEN MATCHED THEN UPDATE SET
+		    TRIGGER_CNT = TRIGGER_CNT + #{triggerInc},
+		    ING_CNT     = ING_CNT     + #{ingInc},
+		    KILL_CNT    = KILL_CNT    + #{buffKillInc},
+		    UPDATE_DATE = SYSDATE
+		WHEN NOT MATCHED THEN INSERT
+		    (USER_NAME, SPECIAL_BUFF_CODE, TRIGGER_CNT, ING_CNT, KILL_CNT, UPDATE_DATE)
+		VALUES
+		    (#{userName}, #{buffCode}, #{triggerInc}, #{ingInc}, #{buffKillInc}, SYSDATE)
+	</update>
+
+	<!-- ══ 초기 이관: 기존 배틀로그 → 카운터 테이블 ════════════════════════════════ -->
+	<insert id="migrateBattleLogToKillStat">
+		/* migrateBattleLogToKillStat */
+		INSERT INTO TBOT_POINT_NEW_MON_KILL_STAT
+		    (USER_NAME, MON_NO, KILL_CNT, NM_KILL_CNT, HELL_KILL_CNT, FIRST_KILL_DATE, UPDATE_DATE)
+		SELECT USER_NAME, TARGET_MON_LV,
+		    COUNT(*),
+		    SUM(DECODE(NIGHTMARE_YN,'1',1,0)),
+		    SUM(DECODE(NIGHTMARE_YN,'2',1,0)),
+		    MIN(INSERT_DATE),
+		    SYSDATE
+		FROM TBOT_POINT_NEW_BATTLE_LOG
+		WHERE KILL_YN = 1
+		  AND TARGET_MON_LV > 0
+		GROUP BY USER_NAME, TARGET_MON_LV
+	</insert>
+
+	<insert id="migrateBattleLogToJobStat">
+		/* migrateBattleLogToJobStat */
+		INSERT INTO TBOT_POINT_NEW_BATTLE_JOB
+		    (USER_NAME, JOB, ATTACK_CNT, KILL_CNT, DEATH_CNT, SKILL_USE_CNT, UPDATE_DATE)
+		SELECT USER_NAME, NVL(JOB,'초보자'),
+		    COUNT(*), SUM(KILL_YN), SUM(DEATH_YN), SUM(JOB_SKILL_YN),
+		    SYSDATE
+		FROM TBOT_POINT_NEW_BATTLE_LOG
+		GROUP BY USER_NAME, NVL(JOB,'초보자')
+	</insert>
+
+	<insert id="migrateBattleLogToBuffStat">
+		/* migrateBattleLogToBuffStat */
+		INSERT INTO TBOT_POINT_NEW_BATTLE_BUFF
+		    (USER_NAME, SPECIAL_BUFF_CODE, TRIGGER_CNT, ING_CNT, KILL_CNT, UPDATE_DATE)
+		SELECT USER_NAME, SPECIAL_BUFF_CODE,
+		    SUM(CASE WHEN SPECIAL_BUFF_START = '1' THEN 1 ELSE 0 END),
+		    SUM(CASE WHEN SPECIAL_BUFF_ING   = '1' THEN 1 ELSE 0 END),
+		    SUM(CASE WHEN SPECIAL_BUFF_ING = '1' AND KILL_YN = 1 THEN 1 ELSE 0 END),
+		    SYSDATE
+		FROM TBOT_POINT_NEW_BATTLE_LOG
+		WHERE SPECIAL_BUFF_CODE IS NOT NULL
+		GROUP BY USER_NAME, SPECIAL_BUFF_CODE
+	</insert>
+
 
 </mapper>

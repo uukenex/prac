@@ -257,7 +257,12 @@ public interface BotNewService {
     // ── 경험치판매 ──────────────────────────────────────────────────────────
     HashMap<String,Object> selectExpSellStats(String userName);
     int upsertExpSellStats(HashMap<String,Object> param);
-    int updateExpCurOnly(String userName, String roomName, long expCur);
-}
+    int updateExpCurOnly(String userName, String roomName, long expCur);
+    // ── 실시간 카운터 테이블 ───────────────────────────────────────────────────
+    int upsertMonKillStat(HashMap<String,Object> param);
+    int upsertBattleJobStat(HashMap<String,Object> param);
+    int upsertBattleBuffStat(HashMap<String,Object> param);
 
-	
+    // ── 초기 이관 ─────────────────────────────────────────────────────────────
+    void migrateBattleLogToStatAll();
+}
