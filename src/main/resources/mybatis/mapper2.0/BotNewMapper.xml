@@ -753,30 +753,6 @@
 	  ORDER BY RN
 	</select>
 	
-	<!-- ② 몬스터별 학살자 (킬 50 이상, 동률 허용) -->
-	<select id="selectKillLeadersByMonster" resultType="hashmap">
-	  /* selectKillLeadersByMonster */
-	  SELECT MON_NO, MON_NAME, USER_NAME, KILL_COUNT
-	  FROM (
-	    SELECT
-	      bl.TARGET_MON_LV AS MON_NO,
-	      m.MON_NAME       AS MON_NAME,
-	      bl.USER_NAME     AS USER_NAME,
-	      COUNT(*)         AS KILL_COUNT,
-	      DENSE_RANK() OVER (
-	        PARTITION BY bl.TARGET_MON_LV
-	        ORDER BY COUNT(*) DESC
-	      ) AS RNK
-	    FROM TBOT_POINT_NEW_BATTLE_LOG bl
-	    JOIN TBOT_POINT_NEW_MON_INFO m
-	      ON m.MON_NO = bl.TARGET_MON_LV
-	    WHERE bl.KILL_YN   = 1
-	    GROUP BY bl.TARGET_MON_LV, m.MON_NAME, bl.USER_NAME
-	  )
-	  WHERE RNK = 1
-	    AND KILL_COUNT >= 50
-	  ORDER BY MON_NO, USER_NAME
-	</select>
 	
 	<!-- ③ 최초 토벌자 정보 -->
 	<select id="selectFirstClearInfo" resultType="hashmap">
@@ -2458,7 +2434,7 @@
 
 
 	<insert id="migrateLastMonthToJobStat">
-		/* migrateLastMonthToJobStat — 매월 1일: 전월 데이터 BATTLE_JOB에 적재 */
+		/* migrateLastMonthToJobStat — 매월 배치: 전월 데이터 BATTLE_JOB에 적재 */
 		INSERT INTO TBOT_POINT_NEW_BATTLE_JOB
 		    (STAT_YM, USER_NAME, JOB, ATTACK_CNT, KILL_CNT, DEATH_CNT, SKILL_USE_CNT, UPDATE_DATE)
 		SELECT TO_CHAR(INSERT_DATE,'YYYYMM'), USER_NAME, NVL(JOB,'초보자'),
@@ -2469,5 +2445,42 @@
 		  AND INSERT_DATE  &lt; TRUNC(SYSDATE, 'MM')
 		GROUP BY TO_CHAR(INSERT_DATE,'YYYYMM'), USER_NAME, NVL(JOB,'초보자')
 	</insert>
+
+	<insert id="backupOldBattleLog">
+		/* backupOldBattleLog — 2달 전 이전 데이터를 BACKUP 테이블로 이관 (MINUS로 중복 방지) */
+		INSERT INTO TBOT_BATTLE_LOG_BACKUP
+		  (USER_NAME, ROOM_NAME, LV, TARGET_MON_LV,
+		   GAIN_EXP, ATK_DMG, MON_DMG, ATK_CRIT_YN,
+		   MON_PATTEN, INSERT_DATE, KILL_YN, NOW_YN, DROP_YN, DEATH_YN, LUCKY_YN, BUFF_YN,
+		   JOB_SKILL_YN, JOB, NIGHTMARE_YN,
+		   SPECIAL_BUFF_START, SPECIAL_BUFF_ING, SPECIAL_BUFF_CODE)
+		SELECT
+		   USER_NAME, ROOM_NAME, LV, TARGET_MON_LV,
+		   GAIN_EXP, ATK_DMG, MON_DMG, ATK_CRIT_YN,
+		   MON_PATTEN, INSERT_DATE, KILL_YN, NOW_YN, DROP_YN, DEATH_YN, LUCKY_YN, BUFF_YN,
+		   JOB_SKILL_YN, JOB, NIGHTMARE_YN,
+		   SPECIAL_BUFF_START, SPECIAL_BUFF_ING, SPECIAL_BUFF_CODE
+		FROM TBOT_POINT_NEW_BATTLE_LOG
+		WHERE INSERT_DATE &lt; ADD_MONTHS(TRUNC(SYSDATE, 'MM'), -1)
+		MINUS
+		SELECT
+		   USER_NAME, ROOM_NAME, LV, TARGET_MON_LV,
+		   GAIN_EXP, ATK_DMG, MON_DMG, ATK_CRIT_YN,
+		   MON_PATTEN, INSERT_DATE, KILL_YN, NOW_YN, DROP_YN, DEATH_YN, LUCKY_YN, BUFF_YN,
+		   JOB_SKILL_YN, JOB, NIGHTMARE_YN,
+		   SPECIAL_BUFF_START, SPECIAL_BUFF_ING, SPECIAL_BUFF_CODE
+		FROM TBOT_BATTLE_LOG_BACKUP
+		WHERE INSERT_DATE &lt; ADD_MONTHS(TRUNC(SYSDATE, 'MM'), -1)
+	</insert>
+
+	<delete id="deleteLastMonthBattleLogBatch" parameterType="int">
+		/* deleteLastMonthBattleLogBatch — 배치 분할 삭제 (타임아웃 방지) */
+		DELETE FROM TBOT_POINT_NEW_BATTLE_LOG
+		WHERE ROWID IN (
+		    SELECT ROWID FROM TBOT_POINT_NEW_BATTLE_LOG
+		    WHERE INSERT_DATE &lt; ADD_MONTHS(TRUNC(SYSDATE, 'MM'), -1)
+		    AND ROWNUM &lt;= #{batchSize}
+		)
+	</delete>
 
 </mapper>

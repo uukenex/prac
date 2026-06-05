@@ -122,9 +122,6 @@ public interface BotNewDAO {
  // Top 3 레벨 랭킹
     List<HashMap<String,Object>> selectTopLevelUsers();
 
-    // 몬스터별 학살자(50킬 이상, 1위/동률)
-    List<HashMap<String,Object>> selectKillLeadersByMonster();
-
     // 최초 토벌자
     List<HashMap<String,Object>> selectFirstClearInfo();
     
@@ -309,7 +306,7 @@ public interface BotNewDAO {
     int upsertExpSellStats(HashMap<String,Object> param);
     int updateExpCurOnly(@Param("userName") String userName,
                          @Param("roomName") String roomName,
-                         @Param("expCur")   long expCur);
+                         @Param("expCur")   long expCur);
     // ── 실시간 카운터 테이블 ───────────────────────────────────────────────────
     int upsertMonKillStat(HashMap<String,Object> param);
     int upsertBattleJobStat(HashMap<String,Object> param);
@@ -320,5 +317,6 @@ public interface BotNewDAO {
     int migrateBattleLogToJobStat();
     int migrateBattleLogToBuffStat();
     int migrateLastMonthToJobStat();
-    int deleteLastMonthBattleLog();
+    int backupOldBattleLog();
+    int deleteLastMonthBattleLogBatch(@Param("batchSize") int batchSize);
 }
