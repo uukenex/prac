@@ -755,23 +755,20 @@
 	
 	<!-- ② 몬스터별 학살자 (킬 50 이상, 동률 허용) -->
 	<select id="selectKillLeadersByMonster" resultType="hashmap">
-	  /* selectKillLeadersByMonster */
+	  /* selectKillLeadersByMonster — MON_KILL_STAT 누적 사용 (BATTLE_LOG 삭제 정책 대응) */
 	  SELECT MON_NO, MON_NAME, USER_NAME, KILL_COUNT
 	  FROM (
 	    SELECT
-	      bl.TARGET_MON_LV AS MON_NO,
-	      m.MON_NAME       AS MON_NAME,
-	      bl.USER_NAME     AS USER_NAME,
-	      COUNT(*)         AS KILL_COUNT,
+	      mk.MON_NO                                                          AS MON_NO,
+	      m.MON_NAME                                                         AS MON_NAME,
+	      mk.USER_NAME                                                       AS USER_NAME,
+	      NVL(mk.KILL_CNT,0) + NVL(mk.NM_KILL_CNT,0) + NVL(mk.HELL_KILL_CNT,0) AS KILL_COUNT,
 	      DENSE_RANK() OVER (
-	        PARTITION BY bl.TARGET_MON_LV
-	        ORDER BY COUNT(*) DESC
+	        PARTITION BY mk.MON_NO
+	        ORDER BY NVL(mk.KILL_CNT,0) + NVL(mk.NM_KILL_CNT,0) + NVL(mk.HELL_KILL_CNT,0) DESC
 	      ) AS RNK
-	    FROM TBOT_POINT_NEW_BATTLE_LOG bl
-	    JOIN TBOT_POINT_NEW_MON_INFO m
-	      ON m.MON_NO = bl.TARGET_MON_LV
-	    WHERE bl.KILL_YN   = 1
-	    GROUP BY bl.TARGET_MON_LV, m.MON_NAME, bl.USER_NAME
+	    FROM TBOT_POINT_NEW_MON_KILL_STAT mk
+	    JOIN TBOT_POINT_NEW_MON_INFO m ON m.MON_NO = mk.MON_NO
 	  )
 	  WHERE RNK = 1
 	    AND KILL_COUNT >= 50
@@ -2458,7 +2455,7 @@
 
 
 	<insert id="migrateLastMonthToJobStat">
-		/* migrateLastMonthToJobStat — 매월 1일: 전월 데이터 BATTLE_JOB에 적재 */
+		/* migrateLastMonthToJobStat — 매월 배치: 전월 데이터 BATTLE_JOB에 적재 */
 		INSERT INTO TBOT_POINT_NEW_BATTLE_JOB
 		    (STAT_YM, USER_NAME, JOB, ATTACK_CNT, KILL_CNT, DEATH_CNT, SKILL_USE_CNT, UPDATE_DATE)
 		SELECT TO_CHAR(INSERT_DATE,'YYYYMM'), USER_NAME, NVL(JOB,'초보자'),
@@ -2469,5 +2466,11 @@
 		  AND INSERT_DATE  &lt; TRUNC(SYSDATE, 'MM')
 		GROUP BY TO_CHAR(INSERT_DATE,'YYYYMM'), USER_NAME, NVL(JOB,'초보자')
 	</insert>
+
+	<delete id="deleteLastMonthBattleLog">
+		/* deleteLastMonthBattleLog — 매월 배치: 2달 전 이전 데이터 삭제 (현재달+전달 보관) */
+		DELETE FROM TBOT_POINT_NEW_BATTLE_LOG
+		WHERE INSERT_DATE &lt; ADD_MONTHS(TRUNC(SYSDATE, 'MM'), -1)
+	</delete>
 
 </mapper>
