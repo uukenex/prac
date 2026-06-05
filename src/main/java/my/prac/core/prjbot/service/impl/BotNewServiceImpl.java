@@ -926,11 +926,17 @@ public class BotNewServiceImpl implements BotNewService {
             result.append(", BACKUP 이관 실패(삭제 스킵): ").append(e.getMessage());
         }
 
-        // 3. 원본 삭제 — BACKUP 성공한 경우에만 실행
+        // 3. 원본 삭제 — BACKUP 성공한 경우에만, 1만건씩 배치 분할 삭제
         if (backupOk) {
             try {
-                int deleted = botNewDAO.deleteLastMonthBattleLog();
-                result.append(", battle_log 삭제: ").append(deleted).append("건");
+                final int BATCH = 10000;
+                int totalDeleted = 0;
+                int deleted;
+                do {
+                    deleted = botNewDAO.deleteLastMonthBattleLogBatch(BATCH);
+                    totalDeleted += deleted;
+                } while (deleted > 0);
+                result.append(", battle_log 삭제: ").append(totalDeleted).append("건");
             } catch (Exception e) {
                 result.append(", battle_log 삭제 실패: ").append(e.getMessage());
             }

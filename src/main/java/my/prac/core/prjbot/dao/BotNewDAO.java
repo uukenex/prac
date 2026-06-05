@@ -318,5 +318,5 @@ public interface BotNewDAO {
     int migrateBattleLogToBuffStat();
     int migrateLastMonthToJobStat();
     int backupOldBattleLog();
-    int deleteLastMonthBattleLog();
+    int deleteLastMonthBattleLogBatch(@Param("batchSize") int batchSize);
 }
