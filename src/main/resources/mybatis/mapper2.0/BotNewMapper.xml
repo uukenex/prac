@@ -97,6 +97,17 @@
     )
   </select>
 
+  <select id="selectKillStats" resultType="my.prac.core.game.dto.KillStat">
+  /* selectKillStats — TBOT_POINT_NEW_MON_KILL_STAT */
+    SELECT mk.MON_NO          AS MON_NO,
+           mi.MON_NAME        AS MON_NAME,
+           mk.KILL_CNT        AS KILL_COUNT,
+           mk.NM_KILL_CNT     AS NM_KILL_COUNT,
+           mk.HELL_KILL_CNT   AS HELL_KILL_COUNT
+    FROM TBOT_POINT_NEW_MON_KILL_STAT mk
+    JOIN TBOT_POINT_NEW_MON_INFO mi ON mk.MON_NO = mi.MON_NO
+    WHERE mk.USER_NAME = #{userName}
+    ORDER BY mk.MON_NO DESC
   </select>
 
   <select id="selectAllMonsters" resultType="my.prac.core.game.dto.Monster">
