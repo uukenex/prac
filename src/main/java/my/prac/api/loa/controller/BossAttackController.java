@@ -287,6 +287,28 @@ public class BossAttackController {
 	}
 	*/
 
+	/** 매월 5일 배치: 전월 BATTLE_JOB 이관 + battle_log 삭제 (c10으로 호출) */
+	public String runMonthlyBattleLogJob() {
+	    try {
+	        return botNewService.runMonthlyBattleLogJob();
+	    } catch (Exception e) {
+	        return "월배치 실패: " + e.getMessage();
+	    }
+	}
+
+	/**
+	 * 초기 이관: 기존 배틀로그 → 카운터 테이블 (1회 실행, c9으로 호출)
+	 * BATTLE_JOB: 현재월 제외한 전체 월 적재
+	 */
+	public String migrateBattleLogToStatAll() {
+	    try {
+	        botNewService.migrateBattleLogToStatAll();
+	        return "배틀로그 이관 완료 (MON_KILL_STAT / BATTLE_JOB 현재월제외 / BATTLE_BUFF)";
+	    } catch (Exception e) {
+	        return "이관 실패: " + e.getMessage();
+	    }
+	}
+
 	public String bagLog(HashMap<String, Object> map) {
 		String userName   = Objects.toString(map.get("userName"), "");
 		String roomName   = Objects.toString(map.get("roomName"), "");
@@ -1304,9 +1326,26 @@ public class BossAttackController {
 
 	    totalSP.add(normalSP); totalSP.add(nmSP); // hellSP는 openHellBag 후 합산
 	    SP hellSP = new SP(0, "");
-	    if (hellNormalCount > 0) openHellBag(userName, roomName, hellNormalCount, hellSP, detail, itemSummary, false);
-	    if (hellNoSpCount > 0)    openHellBag(userName, roomName, hellNoSpCount,   hellSP, detail, itemSummary, true);
+	    int[] sharedGold = {0};
+	    int[] sharedPlat = {0};
+	    if (hellNormalCount > 0) openHellBag(userName, roomName, hellNormalCount, hellSP, detail, itemSummary, false, sharedGold, sharedPlat);
+	    if (hellNoSpCount > 0)    openHellBag(userName, roomName, hellNoSpCount,   hellSP, detail, itemSummary, true,  sharedGold, sharedPlat);
 	    totalSP.add(hellSP);
+	    // 황금/플래티넘 상자 합산 INSERT (두 openHellBag 통합 → PK 충돌 방지)
+	    if (sharedGold[0] > 0) {
+	        HashMap<String,Object> gi = new HashMap<>();
+	        gi.put("userName", userName); gi.put("roomName", roomName);
+	        gi.put("itemId", BAG_HELL_ITEM_ID); gi.put("qty", sharedGold[0]);
+	        gi.put("delYn", "0"); gi.put("gainType", "DROP_OPEN_G");
+	        try { botNewService.insertInventoryLogTx(gi); } catch (Exception ignore) {}
+	    }
+	    if (sharedPlat[0] > 0) {
+	        HashMap<String,Object> pi = new HashMap<>();
+	        pi.put("userName", userName); pi.put("roomName", roomName);
+	        pi.put("itemId", BAG_HELL_ITEM_ID); pi.put("qty", sharedPlat[0]);
+	        pi.put("delYn", "0"); pi.put("gainType", "DROP_OPEN_P");
+	        try { botNewService.insertInventoryLogTx(pi); } catch (Exception ignore) {}
+	    }
 
 	    // 🔹 메시지
 	    StringBuilder sb = new StringBuilder();
@@ -1374,13 +1413,21 @@ public class BossAttackController {
 	 */
 	private void openHellBag(String userName, String roomName, int count,
 	        SP totalSP, List<String> detail, List<String> itemSummary, boolean noSp) {
+	    openHellBag(userName, roomName, count, totalSP, detail, itemSummary, noSp, null, null);
+	}
+
+	private void openHellBag(String userName, String roomName, int count,
+	        SP totalSP, List<String> detail, List<String> itemSummary, boolean noSp,
+	        int[] goldRef, int[] platRef) {
 	    if (count <= 0) return;
 	    long top1Sp = getTop1SpCached();
 	    long spMin  = top1Sp > 0 ? top1Sp * 3 / 1000 : 1_000_000L;                          // 1등의 0.3%
 	    long spMax  = top1Sp > 0 ? Math.min(top1Sp / 100, 100_000_000_000L) : 5_000_000L;   // 1등의 1%, 최대 1000b
 	    SP hellSpLocal = new SP(0, ""); // SP 합산용 (루프 후 1회 INSERT)
-	    int goldBoxCount = 0;  // 황금상자 누적 (루프 후 1회 INSERT)
-	    int platBoxCount = 0;  // 플래티넘상자 누적 (루프 후 1회 INSERT)
+	    // 황금/플래티넘 누적: 외부 ref 있으면 공유, 없으면 로컬
+	    boolean useRef = (goldRef != null && platRef != null);
+	    int[] localGold = useRef ? goldRef : new int[]{0};
+	    int[] localPlat = useRef ? platRef : new int[]{0};
 	    java.util.Map<Integer,Integer> basicBoxAcc = new java.util.LinkedHashMap<>(); // 기본상자 itemId->qty 누적 (루프 후 합산 INSERT)
 	    for (int i = 0; i < count; i++) {
 	        double roll = ThreadLocalRandom.current().nextDouble();
@@ -1417,9 +1464,9 @@ public class BossAttackController {
 	                } else {
 	                    // 황금/플래티넘: 카운트만 누적 (루프 후 1회 INSERT로 동일 SYSDATE PK 충돌 방지)
 	                    if (pool == my.prac.core.util.MiniGameUtil.HELL_BOX_PLAT) {
-	                        platBoxCount++;
+	                        localPlat[0]++;
 	                    } else {
-	                        goldBoxCount++;
+	                        localGold[0]++;
 	                    }
 	                    String dramatic = (pool == my.prac.core.util.MiniGameUtil.HELL_BOX_PLAT)
 	                            ? "✨ 플래티넘 각인이 빛을 발하고 있습니다!! ✨"
@@ -1443,19 +1490,21 @@ public class BossAttackController {
 	        invalidateInvBuff(userName);
 	    }
 	    // ── 황금/플래티넘 상자 합산 후 1회 INSERT (동일 SYSDATE PK 충돌 방지) ───
-	    if (goldBoxCount > 0) {
-	        HashMap<String,Object> gi = new HashMap<>();
-	        gi.put("userName", userName); gi.put("roomName", roomName);
-	        gi.put("itemId", 93); gi.put("qty", goldBoxCount);
-	        gi.put("delYn", "0"); gi.put("gainType", "DROP_OPEN_G");
-	        try { botNewService.insertInventoryLogTx(gi); } catch (Exception ignore) {}
-	    }
-	    if (platBoxCount > 0) {
-	        HashMap<String,Object> pi = new HashMap<>();
-	        pi.put("userName", userName); pi.put("roomName", roomName);
-	        pi.put("itemId", 93); pi.put("qty", platBoxCount);
-	        pi.put("delYn", "0"); pi.put("gainType", "DROP_OPEN_P");
-	        try { botNewService.insertInventoryLogTx(pi); } catch (Exception ignore) {}
+	    if (!useRef) { // ref 미사용 시 내부에서 즉시 INSERT (기존 호환)
+	        if (localGold[0] > 0) {
+	            HashMap<String,Object> gi = new HashMap<>();
+	            gi.put("userName", userName); gi.put("roomName", roomName);
+	            gi.put("itemId", 93); gi.put("qty", localGold[0]);
+	            gi.put("delYn", "0"); gi.put("gainType", "DROP_OPEN_G");
+	            try { botNewService.insertInventoryLogTx(gi); } catch (Exception ignore) {}
+	        }
+	        if (localPlat[0] > 0) {
+	            HashMap<String,Object> pi = new HashMap<>();
+	            pi.put("userName", userName); pi.put("roomName", roomName);
+	            pi.put("itemId", 93); pi.put("qty", localPlat[0]);
+	            pi.put("delYn", "0"); pi.put("gainType", "DROP_OPEN_P");
+	            try { botNewService.insertInventoryLogTx(pi); } catch (Exception ignore) {}
+	        }
 	    }
 	    // ── SP 합산 후 1회 INSERT (동일금액 PK 충돌 방지) ─────────────────────
 	    if (hellSpLocal.getValue() != 0) {
@@ -2956,7 +3005,6 @@ public class BossAttackController {
 		    List<Monster> monsters = botNewService.selectAllMonsters();
 		    StringBuilder sb = new StringBuilder();
 		    sb.append("공격 타겟 목록입니다:").append(NL).append(NL)
-		      .append("http://rgb-tns.dev-apc.com/loa/monster-view?userName="+userName).append(NL).append(NL)
 		      .append("/ㄱㄱㅌㄱ 1 또는 /ㄱㄱㅌㄱ 토끼 로 설정").append(NL)
 		      .append("▶ 선택 가능한 몬스터").append(ALL_SEE_STR);
 
@@ -6354,28 +6402,6 @@ public class BossAttackController {
 	    }
 	    sb.append(NL);
 	    
-	    List<HashMap<String,Object>> maxs = botNewService.selectMaxDamageTop5();
-	    
-	    sb.append("✨ MAX 데미지 랭킹 (TOP5)").append(NL);
-	    
-	    if (maxs == null || maxs.isEmpty()) {
-	    	sb.append("- 데이터 없음").append(NL);
-	    } else {
-	    	int rank = 1;
-	    	for (HashMap<String,Object> row : maxs) {
-	    		String max  = String.valueOf(row.get("MAX_DAMAGE"));
-	    		String name = String.valueOf(row.get("USER_NAME"));
-	    		
-	    		sb.append("• ")
-	    		.append(max)
-	    		.append(" : ")
-	    		.append(name)
-	    		.append(NL);
-	    		
-	    		if (rank++ >= 5) break;
-	    	}
-	    }
-	    
 	    sb.append(allSeeStr);
 	    
 		 // =========================
@@ -7593,6 +7619,36 @@ public class BossAttackController {
 	    	.setSpecialBuffCode(specialBuffCode);
 
 	    botNewService.insertBattleLogTx(log);
+
+	    // ── 실시간 카운터 업데이트 ───────────────────────────────────────────
+	    try {
+	        int nmYn   = u.nightmareYn;
+	        int killInc = res.killed ? 1 : 0;
+	        int nmKill  = (killInc == 1 && nmYn == 1) ? 1 : 0;
+	        int hellKill= (killInc == 1 && nmYn == 2) ? 1 : 0;
+
+	        // MON_KILL_STAT (처치 시만)
+	        if (killInc == 1) {
+	            HashMap<String,Object> ks = new HashMap<>();
+	            ks.put("userName",   userName);
+	            ks.put("monNo",      m.monNo);
+	            ks.put("killInc",    1);
+	            ks.put("nmKillInc",  nmKill);
+	            ks.put("hellKillInc",hellKill);
+	            botNewService.upsertMonKillStat(ks);
+	        }
+
+	        // BATTLE_BUFF (버프 진행 중일 때만)
+	        if (specialBuffCode != null && !specialBuffCode.isEmpty()) {
+	            HashMap<String,Object> bs = new HashMap<>();
+	            bs.put("userName",    userName);
+	            bs.put("buffCode",    specialBuffCode);
+	            bs.put("triggerInc",  specialBuffStart);
+	            bs.put("ingInc",      specialBuffIng);
+	            bs.put("buffKillInc", (specialBuffIng == 1 && killInc == 1) ? 1 : 0);
+	            botNewService.upsertBattleBuffStat(bs);
+	        }
+	    } catch (Exception ignore) { /* 카운터 실패해도 전투 진행 */ }
 
 	    // 궁사 분할 화살 추가 로그 (공격횟수 증가용, 2번째 화살부터 개별 insert)
 	    if (c.multiAttack > 1) {

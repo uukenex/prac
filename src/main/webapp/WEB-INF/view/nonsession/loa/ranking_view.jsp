@@ -129,21 +129,6 @@
       </div>
     </div>
 
-    <!-- MAX 데미지 -->
-    <div class="rank-card">
-      <div class="rank-card-title">💥 MAX 데미지 TOP10</div>
-      <div class="rank-card-body">
-        <template v-if="filteredMaxDmg.length">
-          <div class="rank-row" v-for="(r,i) in filteredMaxDmg" :key="i">
-            <span class="rank-no" :class="rankClass(i+1)">{{ rankIcon(i+1) }}</span>
-            <span class="rank-name" :class="{ alt: isAlt(r.USER_NAME) }">{{ r.USER_NAME }}</span>
-            <span class="rank-val">{{ fmtNum(r.MAX_DAMAGE) }}</span>
-          </div>
-        </template>
-        <div class="empty" v-else>데이터 없음</div>
-      </div>
-    </div>
-
     <!-- SP 누적 -->
     <div class="rank-card">
       <div class="rank-card-title">⭐ SP 누적 TOP10</div>
@@ -226,7 +211,7 @@
       hideAlt: false,
       altChars: [],
       rising:  [],
-      maxDmg:  [],
+
       spAtk:   [],
       achv:    [],
       gp:      [],
@@ -234,7 +219,7 @@
     },
     computed: {
       filteredRising: function() { return this.filterList(this.rising).slice(0, 10); },
-      filteredMaxDmg: function() { return this.filterList(this.maxDmg).slice(0, 10); },
+
       filteredSpTop: function() {
         var sorted = this.spAtk.slice().sort(function(a, b) { return Number(b.TOT_SP) - Number(a.TOT_SP); });
         return this.filterList(sorted).slice(0, 10);
@@ -293,7 +278,7 @@
           .then(function(r) { return r.json(); })
           .then(function(d) {
             self.rising = d.rising || [];
-            self.maxDmg = d.maxDmg || [];
+
             self.spAtk  = d.spAtk  || [];
             self.achv   = d.achv   || [];
             self.gp     = d.gp     || [];

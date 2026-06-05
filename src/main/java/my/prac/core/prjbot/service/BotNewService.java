@@ -30,8 +30,6 @@ public interface BotNewService {
     List<Monster> selectAllMonsters();
     Monster selectMonsterByNo(int monNo);
     Monster selectMonsterByName(String monName);
-    List<HashMap<String, Object>> selectMonsterKillsForView(String userName);
-
     List<HashMap<String, Object>> selectUserBattleLog(HashMap<String, Object> params);
     int selectUserBattleLogCount(HashMap<String, Object> params);
 
@@ -258,6 +256,14 @@ public interface BotNewService {
     HashMap<String,Object> selectExpSellStats(String userName);
     int upsertExpSellStats(HashMap<String,Object> param);
     int updateExpCurOnly(String userName, String roomName, long expCur);
-}
+    // ── 실시간 카운터 테이블 ───────────────────────────────────────────────────
+    int upsertMonKillStat(HashMap<String,Object> param);
+    int upsertBattleJobStat(HashMap<String,Object> param);
+    int upsertBattleBuffStat(HashMap<String,Object> param);
 
-	
+    // ── 초기 이관 ─────────────────────────────────────────────────────────────
+    void migrateBattleLogToStatAll();
+    int migrateLastMonthToJobStat();
+    /** 매월 5일 배치: 전월 BATTLE_JOB 이관 + battle_log 삭제 */
+    String runMonthlyBattleLogJob();
+}

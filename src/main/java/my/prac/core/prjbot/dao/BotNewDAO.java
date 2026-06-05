@@ -31,8 +31,6 @@ public interface BotNewDAO {
     List<Monster> selectAllMonsters();
     Monster selectMonsterByNo(@Param("monNo") int monNo);
     Monster selectMonsterByName(@Param("monName") String monName);
-    List<HashMap<String, Object>> selectMonsterKillsForView(@Param("userName") String userName);
-
     List<HashMap<String, Object>> selectUserBattleLog(HashMap<String, Object> params);
     int selectUserBattleLogCount(HashMap<String, Object> params);
 
@@ -311,5 +309,16 @@ public interface BotNewDAO {
     int upsertExpSellStats(HashMap<String,Object> param);
     int updateExpCurOnly(@Param("userName") String userName,
                          @Param("roomName") String roomName,
-                         @Param("expCur")   long expCur);
+                         @Param("expCur")   long expCur);
+    // ── 실시간 카운터 테이블 ───────────────────────────────────────────────────
+    int upsertMonKillStat(HashMap<String,Object> param);
+    int upsertBattleJobStat(HashMap<String,Object> param);
+    int upsertBattleBuffStat(HashMap<String,Object> param);
+
+    // ── 초기 이관 ─────────────────────────────────────────────────────────────
+    int migrateBattleLogToKillStat();
+    int migrateBattleLogToJobStat();
+    int migrateBattleLogToBuffStat();
+    int migrateLastMonthToJobStat();
+    int deleteLastMonthBattleLog();
 }

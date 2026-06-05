@@ -308,6 +308,24 @@ public class LoaChatController {
 				e1.printStackTrace();
 			}
 			break;
+		case "c9":
+			// 배틀로그 → 카운터 테이블 초기 이관 (1회성, 테이블 비어있을 때만 실행)
+			try {
+				String result = boss.migrateBattleLogToStatAll();
+				System.out.println("[CRON-c9] " + result);
+			} catch (Exception e1) {
+				e1.printStackTrace();
+			}
+			break;
+		case "c10":
+			// 매월 5일: 전월 BATTLE_JOB 이관 + battle_log 삭제
+			try {
+				String result = boss.runMonthlyBattleLogJob();
+				System.out.println("[CRON-c10] " + result);
+			} catch (Exception e1) {
+				e1.printStackTrace();
+			}
+			break;
 		case "test":
 			try {
 				market.search_c2();

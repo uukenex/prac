@@ -69,10 +69,6 @@ public class BotNewServiceImpl implements BotNewService {
     	return botNewDAO.selectAllMonsters();
     }
     @Override
-    public List<HashMap<String, Object>> selectMonsterKillsForView(String userName) {
-        return botNewDAO.selectMonsterKillsForView(userName);
-    }
-    @Override
     public List<HashMap<String, Object>> selectUserBattleLog(HashMap<String, Object> params) {
         return botNewDAO.selectUserBattleLog(params);
     }
@@ -882,5 +878,40 @@ public class BotNewServiceImpl implements BotNewService {
     @Override
     public int updateExpCurOnly(String userName, String roomName, long expCur) {
         return botNewDAO.updateExpCurOnly(userName, roomName, expCur);
+    }
+
+    // ── 실시간 카운터 테이블 ──────────────────────────────────────────────────
+    @Override
+    public int upsertMonKillStat(HashMap<String,Object> param) {
+        return botNewDAO.upsertMonKillStat(param);
+    }
+    @Override
+    public int upsertBattleJobStat(HashMap<String,Object> param) {
+        return botNewDAO.upsertBattleJobStat(param);
+    }
+    @Override
+    public int upsertBattleBuffStat(HashMap<String,Object> param) {
+        return botNewDAO.upsertBattleBuffStat(param);
+    }
+
+    // ── 초기 이관 ─────────────────────────────────────────────────────────────
+    @Override
+    public void migrateBattleLogToStatAll() {
+        botNewDAO.migrateBattleLogToKillStat();
+        botNewDAO.migrateBattleLogToJobStat();
+        botNewDAO.migrateBattleLogToBuffStat();
+    }
+
+    @Override
+    public int migrateLastMonthToJobStat() {
+        return botNewDAO.migrateLastMonthToJobStat();
+    }
+
+    /** 매월 5일 배치: 전월 BATTLE_JOB 이관 + battle_log 삭제 */
+    @Override
+    public String runMonthlyBattleLogJob() {
+        int inserted = botNewDAO.migrateLastMonthToJobStat();
+        int deleted  = botNewDAO.deleteLastMonthBattleLog();
+        return "전월 BATTLE_JOB 이관: " + inserted + "건, battle_log 삭제: " + deleted + "건";
     }
 }
