@@ -318,9 +318,9 @@ public class LoaChatController {
 			}
 			break;
 		case "c10":
-			// 매월 1일: 전월 배틀로그 → BATTLE_JOB 적재
+			// 매월 5일: 전월 BATTLE_JOB 이관 + battle_log 삭제
 			try {
-				String result = boss.migrateLastMonthToJobStat();
+				String result = boss.runMonthlyBattleLogJob();
 				System.out.println("[CRON-c10] " + result);
 			} catch (Exception e1) {
 				e1.printStackTrace();

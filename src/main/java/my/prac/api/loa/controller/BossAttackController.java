@@ -287,13 +287,12 @@ public class BossAttackController {
 	}
 	*/
 
-	/** 매월 1일 배치: 전월 배틀로그 → BATTLE_JOB 적재 (c10으로 호출) */
-	public String migrateLastMonthToJobStat() {
+	/** 매월 5일 배치: 전월 BATTLE_JOB 이관 + battle_log 삭제 (c10으로 호출) */
+	public String runMonthlyBattleLogJob() {
 	    try {
-	        botNewService.migrateLastMonthToJobStat();
-	        return "전월 BATTLE_JOB 이관 완료";
+	        return botNewService.runMonthlyBattleLogJob();
 	    } catch (Exception e) {
-	        return "이관 실패: " + e.getMessage();
+	        return "월배치 실패: " + e.getMessage();
 	    }
 	}
 

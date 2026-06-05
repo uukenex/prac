@@ -255,7 +255,7 @@ public interface BotNewService {
     // ── 경험치판매 ──────────────────────────────────────────────────────────
     HashMap<String,Object> selectExpSellStats(String userName);
     int upsertExpSellStats(HashMap<String,Object> param);
-    int updateExpCurOnly(String userName, String roomName, long expCur);
+    int updateExpCurOnly(String userName, String roomName, long expCur);
     // ── 실시간 카운터 테이블 ───────────────────────────────────────────────────
     int upsertMonKillStat(HashMap<String,Object> param);
     int upsertBattleJobStat(HashMap<String,Object> param);
@@ -263,5 +263,7 @@ public interface BotNewService {
 
     // ── 초기 이관 ─────────────────────────────────────────────────────────────
     void migrateBattleLogToStatAll();
-    void migrateLastMonthToJobStat();
+    int migrateLastMonthToJobStat();
+    /** 매월 5일 배치: 전월 BATTLE_JOB 이관 + battle_log 삭제 */
+    String runMonthlyBattleLogJob();
 }
