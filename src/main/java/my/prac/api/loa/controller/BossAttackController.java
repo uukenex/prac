@@ -1465,9 +1465,9 @@ public class BossAttackController {
 	                } else {
 	                    // 황금/플래티넘: 카운트만 누적 (루프 후 1회 INSERT로 동일 SYSDATE PK 충돌 방지)
 	                    if (pool == my.prac.core.util.MiniGameUtil.HELL_BOX_PLAT) {
-	                        platBoxCount++;
+	                        localPlat[0]++;
 	                    } else {
-	                        goldBoxCount++;
+	                        localGold[0]++;
 	                    }
 	                    String dramatic = (pool == my.prac.core.util.MiniGameUtil.HELL_BOX_PLAT)
 	                            ? "✨ 플래티넘 각인이 빛을 발하고 있습니다!! ✨"
