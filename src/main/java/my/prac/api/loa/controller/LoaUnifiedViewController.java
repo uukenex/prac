@@ -102,10 +102,6 @@ public class LoaUnifiedViewController {
         return "nonsession/loa/job_view";
     }
 
-    @GetMapping("/monster-view")
-    public String monsterViewPage() {
-        return "nonsession/loa/monster_view";
-    }
 
     // ─────────────────────────────────────────────────────────────
     // REST API: /loa/api/{endpoint}
@@ -614,75 +610,6 @@ public class LoaUnifiedViewController {
      *
      * 유저별 몬스터 킬 통계 (일반/빛/어둠/음양 상세)
      */
-    @GetMapping("/api/monster-kills")
-    @ResponseBody
-    public ResponseEntity<?> getMonsterKills(
-            @RequestParam(value = "userName", defaultValue = "") String userName) {
-
-        HashMap<String, Object> result = new HashMap<>();
-
-        if (userName == null || userName.trim().isEmpty()) {
-            return ResponseEntity.ok(result);
-        }
-
-        String un = userName.trim();
-
-        List<HashMap<String, Object>> rows = new ArrayList<>();
-        try {
-            List<HashMap<String, Object>> tmp =
-                    botNewService.selectMonsterKillsForView(un);
-
-            if (tmp != null) {
-                rows = tmp;
-            }
-        } catch (Exception ignore) {}
-
-        // 기존 구조 유지: MON_NO 기반 MAP
-        Map<String, Object> killMap = new HashMap<>();
-
-        long totalKills = 0;
-
-        for (HashMap<String, Object> row : rows) {
-
-            String monNo = String.valueOf(row.get("MON_NO"));
-
-            killMap.put(monNo, row);
-
-            Object t = row.get("KILL_TOTAL");
-
-            if (t instanceof Number) {
-                totalKills += ((Number) t).longValue();
-            }
-        }
-
-        // 기존 userInfo 유지
-        HashMap<String, Object> userInfo = new HashMap<>();
-
-        try {
-            User u = botNewService.selectUser(un, null);
-
-            if (u != null) {
-                userInfo.put("lv", u.lv);
-                userInfo.put("expCur", u.expCur);
-                userInfo.put("expNext", u.expNext);
-                userInfo.put("job", u.job != null ? u.job : "");
-                userInfo.put("nightmareYn", u.nightmareYn);
-            }
-
-        } catch (Exception ignore) {}
-
-        result.put("kills", killMap);
-        result.put("totalKills", totalKills);
-        result.put("userName", un);
-        result.put("userInfo", userInfo);
-
-        // 신규 구조도 같이 유지 (하위호환)
-        result.put("stats", rows);
-        result.put("count", rows.size());
-
-        return ResponseEntity.ok(result);
-    }
-
     /**
      * GET /loa/api/jobs
      *
@@ -855,43 +782,31 @@ public class LoaUnifiedViewController {
         int realAttacks = ads != null ? ads.totalAttacks : 0;
         int realDeaths  = ads != null ? ads.totalDeaths  : 0;
 
-        // 10. 몬스터별 실제 킬 (일반/빛/어둠 상세) - 기존 selectMonsterKillsForView
-        List<HashMap<String, Object>> killViewRows = new ArrayList<>();
-        try {
-            List<HashMap<String, Object>> tmp = botNewService.selectMonsterKillsForView(userName);
-            if (tmp != null) killViewRows = tmp;
-        } catch (Exception ignore) {}
-
-        // achievement lookup (monNo → maxKill threshold)
+        // 10. 몬스터별 킬 통계 (MON_KILL_STAT 기반)
         Map<Integer, Integer> achvKillMap = new HashMap<>();
         for (HashMap<String, Object> item : monKillList) {
             achvKillMap.put(toInt(item.get("monNo")), toInt(item.get("maxKill")));
         }
-
-        // monKillList를 실제 킬 데이터로 재구성 (업적 없는 몬스터도 포함)
         int realKills = 0, realNmKills = 0, realHellKills = 0;
         monKillList = new ArrayList<>();
-        for (HashMap<String, Object> row : killViewRows) {
-            int monNo     = toInt(row.get("MON_NO"));
-            int killTotal = toInt(row.get("KILL_TOTAL"));
-            int nm1Total  = toInt(row.get("NM1_TOTAL"));
-            int nm2Total  = toInt(row.get("NM2_TOTAL"));
-            realKills     += killTotal;
-            realNmKills   += nm1Total;
-            realHellKills += nm2Total;
-            HashMap<String, Object> item = new HashMap<>();
-            item.put("monNo",      monNo);
-            item.put("monName",    getMonName(monNo, monMap));
-            item.put("killTotal",  killTotal);
-            item.put("nm0Normal",  toInt(row.get("NM0_NORMAL")));
-            item.put("nm0Light",   toInt(row.get("NM0_LIGHT")));
-            item.put("nm0Dark",    toInt(row.get("NM0_DARK")));
-            item.put("nm0Yinyang", toInt(row.get("NM0_YINYANG")));
-            item.put("nm1Total",   nm1Total);
-            item.put("nm2Total",   nm2Total);
-            item.put("maxKill",    achvKillMap.getOrDefault(monNo, 0));
-            monKillList.add(item);
-        }
+        try {
+            List<my.prac.core.game.dto.KillStat> ksList = botNewService.selectKillStats(userName, "");
+            if (ksList != null) {
+                for (my.prac.core.game.dto.KillStat ks : ksList) {
+                    realKills     += ks.killCount;
+                    realNmKills   += ks.nmKillCount;
+                    realHellKills += ks.hellKillCount;
+                    HashMap<String, Object> item = new HashMap<>();
+                    item.put("monNo",     ks.monNo);
+                    item.put("monName",   ks.monName);
+                    item.put("killTotal", ks.killCount);
+                    item.put("nm1Total",  ks.nmKillCount);
+                    item.put("nm2Total",  ks.hellKillCount);
+                    item.put("maxKill",   achvKillMap.getOrDefault(ks.monNo, 0));
+                    monKillList.add(item);
+                }
+            }
+        } catch (Exception ignore) {}
 
         // 11. 결과 조합
         result.put("userName",       userName);

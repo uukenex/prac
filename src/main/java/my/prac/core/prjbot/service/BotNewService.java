@@ -30,8 +30,6 @@ public interface BotNewService {
     List<Monster> selectAllMonsters();
     Monster selectMonsterByNo(int monNo);
     Monster selectMonsterByName(String monName);
-    List<HashMap<String, Object>> selectMonsterKillsForView(String userName);
-
     List<HashMap<String, Object>> selectUserBattleLog(HashMap<String, Object> params);
     int selectUserBattleLogCount(HashMap<String, Object> params);
 
