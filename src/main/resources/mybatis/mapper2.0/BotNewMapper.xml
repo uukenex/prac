@@ -75,26 +75,32 @@
   </select>
 
   <select id="selectAttackDeathStats" resultType="my.prac.core.game.dto.AttackDeathStat">
-  /* selectAttackDeathStats — BATTLE_JOB(과거월) + 현재월 raw UNION ALL */
+  /* selectAttackDeathStats — 집계 서브쿼리 분리 (ORA-00937 방지) */
     SELECT
-      NVL(SUM(ATTACK_CNT), 0) AS TOTAL_ATTACKS,
-      NVL(SUM(CASE WHEN JOB = '헌터' THEN ATTACK_CNT ELSE 0 END), 0) AS HUNTER_ATTACKS,
-      NVL(SUM(DEATH_CNT), 0) AS TOTAL_DEATHS,
+      s.TOTAL_ATTACKS,
+      s.HUNTER_ATTACKS,
+      s.TOTAL_DEATHS,
       (SELECT MAX(INSERT_DATE)
          FROM TBOT_POINT_NEW_BATTLE_LOG
         WHERE USER_NAME = #{userName} AND GAIN_EXP >= 0) AS LAST_ATTACK_TIME,
       (SELECT NVL(JOB, '초보자') FROM TBOT_POINT_NEW_USER
         WHERE USER_NAME = #{userName} AND ROWNUM = 1) AS LAST_ATTACK_JOB
     FROM (
-      SELECT JOB, ATTACK_CNT, DEATH_CNT FROM TBOT_POINT_NEW_BATTLE_JOB
-       WHERE USER_NAME = #{userName}
-      UNION ALL
-      SELECT NVL(JOB,'초보자'), COUNT(*), SUM(DEATH_YN)
-        FROM TBOT_POINT_NEW_BATTLE_LOG
-       WHERE USER_NAME = #{userName}
-         AND INSERT_DATE >= TRUNC(SYSDATE, 'MM')
-       GROUP BY NVL(JOB,'초보자')
-    ) t
+      SELECT
+        NVL(SUM(ATTACK_CNT), 0) AS TOTAL_ATTACKS,
+        NVL(SUM(CASE WHEN JOB = '헌터' THEN ATTACK_CNT ELSE 0 END), 0) AS HUNTER_ATTACKS,
+        NVL(SUM(DEATH_CNT), 0) AS TOTAL_DEATHS
+      FROM (
+        SELECT JOB, ATTACK_CNT, DEATH_CNT FROM TBOT_POINT_NEW_BATTLE_JOB
+         WHERE USER_NAME = #{userName}
+        UNION ALL
+        SELECT NVL(JOB,'초보자'), COUNT(*), SUM(CASE WHEN DEATH_YN = 1 THEN 1 ELSE 0 END)
+          FROM TBOT_POINT_NEW_BATTLE_LOG
+         WHERE USER_NAME = #{userName}
+           AND INSERT_DATE >= TRUNC(SYSDATE, 'MM')
+         GROUP BY NVL(JOB,'초보자')
+      ) t
+    ) s, DUAL
   </select>
 
   <select id="selectKillStats" resultType="my.prac.core.game.dto.KillStat">
