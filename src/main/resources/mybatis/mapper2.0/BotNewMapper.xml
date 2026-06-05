@@ -753,27 +753,6 @@
 	  ORDER BY RN
 	</select>
 	
-	<!-- ② 몬스터별 학살자 (킬 50 이상, 동률 허용) -->
-	<select id="selectKillLeadersByMonster" resultType="hashmap">
-	  /* selectKillLeadersByMonster — MON_KILL_STAT 누적 사용 (BATTLE_LOG 삭제 정책 대응) */
-	  SELECT MON_NO, MON_NAME, USER_NAME, KILL_COUNT
-	  FROM (
-	    SELECT
-	      mk.MON_NO                                                          AS MON_NO,
-	      m.MON_NAME                                                         AS MON_NAME,
-	      mk.USER_NAME                                                       AS USER_NAME,
-	      NVL(mk.KILL_CNT,0) + NVL(mk.NM_KILL_CNT,0) + NVL(mk.HELL_KILL_CNT,0) AS KILL_COUNT,
-	      DENSE_RANK() OVER (
-	        PARTITION BY mk.MON_NO
-	        ORDER BY NVL(mk.KILL_CNT,0) + NVL(mk.NM_KILL_CNT,0) + NVL(mk.HELL_KILL_CNT,0) DESC
-	      ) AS RNK
-	    FROM TBOT_POINT_NEW_MON_KILL_STAT mk
-	    JOIN TBOT_POINT_NEW_MON_INFO m ON m.MON_NO = mk.MON_NO
-	  )
-	  WHERE RNK = 1
-	    AND KILL_COUNT >= 50
-	  ORDER BY MON_NO, USER_NAME
-	</select>
 	
 	<!-- ③ 최초 토벌자 정보 -->
 	<select id="selectFirstClearInfo" resultType="hashmap">

@@ -247,10 +247,6 @@ public class BotNewServiceImpl implements BotNewService {
         return botNewDAO.selectTopLevelUsers();
     }
     @Override
-    public List<HashMap<String, Object>> selectKillLeadersByMonster() {
-        return botNewDAO.selectKillLeadersByMonster();
-    }
-    @Override
     public List<HashMap<String, Object>> selectFirstClearInfo() {
         return botNewDAO.selectFirstClearInfo();
     }
