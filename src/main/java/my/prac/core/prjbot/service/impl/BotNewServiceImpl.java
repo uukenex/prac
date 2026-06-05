@@ -903,12 +903,35 @@ public class BotNewServiceImpl implements BotNewService {
         return botNewDAO.migrateLastMonthToJobStat();
     }
 
-    /** 매월 5일 배치: 전월 BATTLE_JOB 이관 + battle_log 삭제 */
+    /** 매월 5일 배치: 전월 BATTLE_JOB 이관 + battle_log 백업 + 삭제 */
     @Override
     public String runMonthlyBattleLogJob() {
-        int inserted = botNewDAO.migrateLastMonthToJobStat();
-        int backed   = botNewDAO.backupOldBattleLog();
-        int deleted  = botNewDAO.deleteLastMonthBattleLog();
-        return "전월 BATTLE_JOB 이관: " + inserted + "건, BACKUP 이관: " + backed + "건, battle_log 삭제: " + deleted + "건";
+        StringBuilder result = new StringBuilder();
+
+        // 1. BATTLE_JOB 집계 — 실패해도 이후 단계 계속 진행
+        try {
+            int inserted = botNewDAO.migrateLastMonthToJobStat();
+            result.append("BATTLE_JOB 이관: ").append(inserted).append("건");
+        } catch (Exception e) {
+            result.append("BATTLE_JOB 이관 실패: ").append(e.getMessage());
+        }
+
+        // 2. BACKUP 이관
+        try {
+            int backed = botNewDAO.backupOldBattleLog();
+            result.append(", BACKUP 이관: ").append(backed).append("건");
+        } catch (Exception e) {
+            result.append(", BACKUP 이관 실패: ").append(e.getMessage());
+        }
+
+        // 3. 원본 삭제
+        try {
+            int deleted = botNewDAO.deleteLastMonthBattleLog();
+            result.append(", battle_log 삭제: ").append(deleted).append("건");
+        } catch (Exception e) {
+            result.append(", battle_log 삭제 실패: ").append(e.getMessage());
+        }
+
+        return result.toString();
     }
 }
