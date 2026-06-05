@@ -1327,9 +1327,26 @@ public class BossAttackController {
 
 	    totalSP.add(normalSP); totalSP.add(nmSP); // hellSP는 openHellBag 후 합산
 	    SP hellSP = new SP(0, "");
-	    if (hellNormalCount > 0) openHellBag(userName, roomName, hellNormalCount, hellSP, detail, itemSummary, false);
-	    if (hellNoSpCount > 0)    openHellBag(userName, roomName, hellNoSpCount,   hellSP, detail, itemSummary, true);
+	    int[] sharedGold = {0};
+	    int[] sharedPlat = {0};
+	    if (hellNormalCount > 0) openHellBag(userName, roomName, hellNormalCount, hellSP, detail, itemSummary, false, sharedGold, sharedPlat);
+	    if (hellNoSpCount > 0)    openHellBag(userName, roomName, hellNoSpCount,   hellSP, detail, itemSummary, true,  sharedGold, sharedPlat);
 	    totalSP.add(hellSP);
+	    // 황금/플래티넘 상자 합산 INSERT (두 openHellBag 통합 → PK 충돌 방지)
+	    if (sharedGold[0] > 0) {
+	        HashMap<String,Object> gi = new HashMap<>();
+	        gi.put("userName", userName); gi.put("roomName", roomName);
+	        gi.put("itemId", BAG_HELL_ITEM_ID); gi.put("qty", sharedGold[0]);
+	        gi.put("delYn", "0"); gi.put("gainType", "DROP_OPEN_G");
+	        try { botNewService.insertInventoryLogTx(gi); } catch (Exception ignore) {}
+	    }
+	    if (sharedPlat[0] > 0) {
+	        HashMap<String,Object> pi = new HashMap<>();
+	        pi.put("userName", userName); pi.put("roomName", roomName);
+	        pi.put("itemId", BAG_HELL_ITEM_ID); pi.put("qty", sharedPlat[0]);
+	        pi.put("delYn", "0"); pi.put("gainType", "DROP_OPEN_P");
+	        try { botNewService.insertInventoryLogTx(pi); } catch (Exception ignore) {}
+	    }
 
 	    // 🔹 메시지
 	    StringBuilder sb = new StringBuilder();
@@ -1397,13 +1414,21 @@ public class BossAttackController {
 	 */
 	private void openHellBag(String userName, String roomName, int count,
 	        SP totalSP, List<String> detail, List<String> itemSummary, boolean noSp) {
+	    openHellBag(userName, roomName, count, totalSP, detail, itemSummary, noSp, null, null);
+	}
+
+	private void openHellBag(String userName, String roomName, int count,
+	        SP totalSP, List<String> detail, List<String> itemSummary, boolean noSp,
+	        int[] goldRef, int[] platRef) {
 	    if (count <= 0) return;
 	    long top1Sp = getTop1SpCached();
 	    long spMin  = top1Sp > 0 ? top1Sp * 3 / 1000 : 1_000_000L;                          // 1등의 0.3%
 	    long spMax  = top1Sp > 0 ? Math.min(top1Sp / 100, 100_000_000_000L) : 5_000_000L;   // 1등의 1%, 최대 1000b
 	    SP hellSpLocal = new SP(0, ""); // SP 합산용 (루프 후 1회 INSERT)
-	    int goldBoxCount = 0;  // 황금상자 누적 (루프 후 1회 INSERT)
-	    int platBoxCount = 0;  // 플래티넘상자 누적 (루프 후 1회 INSERT)
+	    // 황금/플래티넘 누적: 외부 ref 있으면 공유, 없으면 로컬
+	    boolean useRef = (goldRef != null && platRef != null);
+	    int[] localGold = useRef ? goldRef : new int[]{0};
+	    int[] localPlat = useRef ? platRef : new int[]{0};
 	    java.util.Map<Integer,Integer> basicBoxAcc = new java.util.LinkedHashMap<>(); // 기본상자 itemId->qty 누적 (루프 후 합산 INSERT)
 	    for (int i = 0; i < count; i++) {
 	        double roll = ThreadLocalRandom.current().nextDouble();
@@ -1466,19 +1491,21 @@ public class BossAttackController {
 	        invalidateInvBuff(userName);
 	    }
 	    // ── 황금/플래티넘 상자 합산 후 1회 INSERT (동일 SYSDATE PK 충돌 방지) ───
-	    if (goldBoxCount > 0) {
-	        HashMap<String,Object> gi = new HashMap<>();
-	        gi.put("userName", userName); gi.put("roomName", roomName);
-	        gi.put("itemId", 93); gi.put("qty", goldBoxCount);
-	        gi.put("delYn", "0"); gi.put("gainType", "DROP_OPEN_G");
-	        try { botNewService.insertInventoryLogTx(gi); } catch (Exception ignore) {}
-	    }
-	    if (platBoxCount > 0) {
-	        HashMap<String,Object> pi = new HashMap<>();
-	        pi.put("userName", userName); pi.put("roomName", roomName);
-	        pi.put("itemId", 93); pi.put("qty", platBoxCount);
-	        pi.put("delYn", "0"); pi.put("gainType", "DROP_OPEN_P");
-	        try { botNewService.insertInventoryLogTx(pi); } catch (Exception ignore) {}
+	    if (!useRef) { // ref 미사용 시 내부에서 즉시 INSERT (기존 호환)
+	        if (localGold[0] > 0) {
+	            HashMap<String,Object> gi = new HashMap<>();
+	            gi.put("userName", userName); gi.put("roomName", roomName);
+	            gi.put("itemId", 93); gi.put("qty", localGold[0]);
+	            gi.put("delYn", "0"); gi.put("gainType", "DROP_OPEN_G");
+	            try { botNewService.insertInventoryLogTx(gi); } catch (Exception ignore) {}
+	        }
+	        if (localPlat[0] > 0) {
+	            HashMap<String,Object> pi = new HashMap<>();
+	            pi.put("userName", userName); pi.put("roomName", roomName);
+	            pi.put("itemId", 93); pi.put("qty", localPlat[0]);
+	            pi.put("delYn", "0"); pi.put("gainType", "DROP_OPEN_P");
+	            try { botNewService.insertInventoryLogTx(pi); } catch (Exception ignore) {}
+	        }
 	    }
 	    // ── SP 합산 후 1회 INSERT (동일금액 PK 충돌 방지) ─────────────────────
 	    if (hellSpLocal.getValue() != 0) {
