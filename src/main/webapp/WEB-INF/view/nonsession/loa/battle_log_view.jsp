@@ -27,6 +27,8 @@
     .btn-search { background: #c9a96e; color: #fff; border: none; padding: 8px 18px; border-radius: 20px; font-size: 13px; font-weight: 700; cursor: pointer; }
     .btn-search:hover { background: #b8935a; }
     .period-label { font-size: 12px; color: #a07858; background: #fff; border: 1px solid #e0d9ce; border-radius: 14px; padding: 5px 12px; }
+    .days-select { padding: 6px 12px; border: 1.5px solid #e0d9ce; border-radius: 20px; background: #fff; color: #7a5030; font-size: 13px; cursor: pointer; outline: none; }
+    .retention-note { font-size: 11px; color: #b09070; background: #fffbf5; border: 1px solid #e8ddd0; border-radius: 8px; padding: 5px 12px; }
 
     /* 요약 통계 */
     .stat-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
@@ -112,8 +114,13 @@
   <!-- 검색 -->
   <div class="search-area">
     <input v-model="inputUser" placeholder="유저명 입력" @keyup.enter="search">
+    <select class="days-select" v-model="days" @change="search">
+      <option :value="7">최근 7일</option>
+      <option :value="30">최근 30일</option>
+      <option :value="60">최근 60일</option>
+    </select>
     <button class="btn-search" @click="search">조회</button>
-    <span class="period-label">최근 7일</span>
+    <span class="retention-note">📦 최대 2개월 데이터 조회 가능</span>
   </div>
 
   <div class="loading" v-if="loading"><i class="fa fa-spinner fa-spin"></i> 불러오는 중...</div>
@@ -191,7 +198,8 @@ new Vue({
     list: [],
     total: 0,
     page: 1,
-    size: 50
+    size: 50,
+    days: 7
   },
   computed: {
     totalPages: function() { return Math.max(1, Math.ceil(this.total / this.size)); },
@@ -289,7 +297,7 @@ new Vue({
         + '?userName=' + encodeURIComponent(self.userName)
         + '&page='     + self.page
         + '&size='     + self.size
-        + '&days=7';
+        + '&days='     + self.days;
       fetch(url)
         .then(function(r) { return r.json(); })
         .then(function(data) {

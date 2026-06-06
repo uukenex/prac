@@ -105,11 +105,12 @@
 
   <select id="selectKillStats" resultType="my.prac.core.game.dto.KillStat">
   /* selectKillStats — TBOT_POINT_NEW_MON_KILL_STAT */
-    SELECT mk.MON_NO          AS MON_NO,
-           mi.MON_NAME        AS MON_NAME,
-           mk.KILL_CNT        AS KILL_COUNT,
-           mk.NM_KILL_CNT     AS NM_KILL_COUNT,
-           mk.HELL_KILL_CNT   AS HELL_KILL_COUNT
+    SELECT mk.MON_NO                       AS MON_NO,
+           mi.MON_NAME                     AS MON_NAME,
+           mk.KILL_CNT                     AS KILL_COUNT,
+           mk.NM_KILL_CNT                  AS NM_KILL_COUNT,
+           mk.HELL_KILL_CNT                AS HELL_KILL_COUNT,
+           NVL(mk.HELLBOSS_ATK_CNT, 0)     AS HELLBOSS_ATK_COUNT
     FROM TBOT_POINT_NEW_MON_KILL_STAT mk
     JOIN TBOT_POINT_NEW_MON_INFO mi ON mk.MON_NO = mi.MON_NO
     WHERE mk.USER_NAME = #{userName}
@@ -834,14 +835,25 @@
 	</select>
 	
 	<select id="selectDailyAttackCounts" parameterType="hashmap" resultType="hashmap">
-		/*selectDailyAttackCounts*/
-	    SELECT TRUNC(INSERT_DATE) AS ATTACK_DAY,
-	           COUNT(1)            AS ATK_CNT
-	      FROM TBOT_POINT_NEW_BATTLE_LOG
-	     WHERE USER_NAME = #{userName}
-	       AND INSERT_DATE &lt; SYSDATE
-	     GROUP BY TRUNC(INSERT_DATE)
-	     ORDER BY ATTACK_DAY
+		/*selectDailyAttackCounts — BATTLE_JOB(2달 이전 월별) + BATTLE_LOG(최근 2달 일별) UNION ALL */
+		SELECT ATTACK_DAY, SUM(ATK_CNT) AS ATK_CNT FROM (
+		  /* 2달 이전: BATTLE_JOB 월별 집계 → 해당월 1일로 표현 */
+		  SELECT TRUNC(TO_DATE(STAT_YM,'YYYYMM'),'MM') AS ATTACK_DAY,
+		         SUM(ATTACK_CNT) AS ATK_CNT
+		    FROM TBOT_POINT_NEW_BATTLE_JOB
+		   WHERE USER_NAME = #{userName}
+		     AND TO_DATE(STAT_YM,'YYYYMM') &lt; ADD_MONTHS(TRUNC(SYSDATE,'MM'), -1)
+		   GROUP BY TRUNC(TO_DATE(STAT_YM,'YYYYMM'),'MM')
+		  UNION ALL
+		  /* 최근 2달: BATTLE_LOG 일별 집계 */
+		  SELECT TRUNC(INSERT_DATE) AS ATTACK_DAY,
+		         COUNT(1)            AS ATK_CNT
+		    FROM TBOT_POINT_NEW_BATTLE_LOG
+		   WHERE USER_NAME = #{userName}
+		     AND INSERT_DATE &lt; SYSDATE
+		   GROUP BY TRUNC(INSERT_DATE)
+		) GROUP BY ATTACK_DAY
+		ORDER BY ATTACK_DAY
 	</select>
 	
 	<select id="selectBattleCountByUser" parameterType="hashmap" resultType="hashmap">
@@ -1984,12 +1996,11 @@
 	     [6-1] 헬보스 공격 횟수 (TARGET_MON_LV=999)
 	     ===================================================== -->
 	<select id="selectHellBossAttackCount" parameterType="string" resultType="int">
-	    /*selectHellBossAttackCount*/
-	    SELECT COUNT(1)
-	      FROM TBOT_POINT_NEW_BATTLE_LOG
-	     WHERE USER_NAME      = #{userName}
-	       AND TARGET_MON_LV  = 999
-	       AND NIGHTMARE_YN   = '2'
+	    /*selectHellBossAttackCount — MON_KILL_STAT.HELLBOSS_ATK_CNT 사용 */
+	    SELECT NVL(HELLBOSS_ATK_CNT, 0)
+	      FROM TBOT_POINT_NEW_MON_KILL_STAT
+	     WHERE USER_NAME = #{userName}
+	       AND MON_NO    = 999
 	</select>
 
 	<!-- =====================================================
@@ -1997,19 +2008,11 @@
 	         보스 처치 기간 동안 battle_log가 있는 보스 건수
 	     ===================================================== -->
 	<select id="selectHellBossClearCount" parameterType="string" resultType="int">
-		/*selectHellBossClearCount*/
-	    SELECT COUNT(DISTINCT B.SEQ)
-	      FROM TBOT_POINT_NEW_BOSS B
-	     WHERE B.END_YN = '1'
-	       AND EXISTS (
-	           SELECT 1
-	             FROM TBOT_POINT_NEW_BATTLE_LOG L
-	            WHERE L.USER_NAME     = #{userName}
-	              AND L.TARGET_MON_LV = 999
-	              AND L.NIGHTMARE_YN  = '2'
-	              AND L.INSERT_DATE   >= B.INSERT_DATE
-	              AND L.INSERT_DATE   &lt;  B.PROC_DATE + 1/24/60
-	       )
+		/*selectHellBossClearCount — MON_KILL_STAT.HELL_KILL_CNT 사용 */
+		SELECT NVL(HELL_KILL_CNT, 0)
+		  FROM TBOT_POINT_NEW_MON_KILL_STAT
+		 WHERE USER_NAME = #{userName}
+		   AND MON_NO    = 999
 	</select>
 
 	<!-- =====================================================
@@ -2356,15 +2359,17 @@
 		USING (SELECT #{userName} AS U, #{monNo} AS M FROM DUAL) S
 		ON (T.USER_NAME = S.U AND T.MON_NO = S.M)
 		WHEN MATCHED THEN UPDATE SET
-		    KILL_CNT      = KILL_CNT      + #{killInc},
-		    NM_KILL_CNT   = NM_KILL_CNT   + #{nmKillInc},
-		    HELL_KILL_CNT = HELL_KILL_CNT + #{hellKillInc},
-		    FIRST_KILL_DATE = NVL(FIRST_KILL_DATE, SYSDATE),
-		    UPDATE_DATE   = SYSDATE
+		    KILL_CNT           = KILL_CNT           + #{killInc},
+		    NM_KILL_CNT        = NM_KILL_CNT        + #{nmKillInc},
+		    HELL_KILL_CNT      = HELL_KILL_CNT      + #{hellKillInc},
+		    HELLBOSS_ATK_CNT   = NVL(HELLBOSS_ATK_CNT, 0) + #{hellbossAtkInc},
+		    FIRST_KILL_DATE    = CASE WHEN #{killInc} > 0 THEN NVL(FIRST_KILL_DATE, SYSDATE) ELSE FIRST_KILL_DATE END,
+		    UPDATE_DATE        = SYSDATE
 		WHEN NOT MATCHED THEN INSERT
-		    (USER_NAME, MON_NO, KILL_CNT, NM_KILL_CNT, HELL_KILL_CNT, FIRST_KILL_DATE, UPDATE_DATE)
+		    (USER_NAME, MON_NO, KILL_CNT, NM_KILL_CNT, HELL_KILL_CNT, HELLBOSS_ATK_CNT, FIRST_KILL_DATE, UPDATE_DATE)
 		VALUES
-		    (#{userName}, #{monNo}, #{killInc}, #{nmKillInc}, #{hellKillInc}, SYSDATE, SYSDATE)
+		    (#{userName}, #{monNo}, #{killInc}, #{nmKillInc}, #{hellKillInc}, #{hellbossAtkInc},
+		     CASE WHEN #{killInc} > 0 THEN SYSDATE ELSE NULL END, SYSDATE)
 	</update>
 
 	<update id="upsertBattleJobStat" parameterType="hashmap">

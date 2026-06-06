@@ -464,6 +464,7 @@ public class LoaUnifiedViewController {
         if (page  < 1)   page  = 1;
         if (size  < 1)   size  = 50;
         if (size  > 100) size  = 100;
+        if (days  > 60)  days  = 60;  // BATTLE_LOG 2개월 보관 정책에 따른 최대 조회 제한
         int startRow = (page - 1) * size;
         int endRow   = page * size;
 
@@ -797,12 +798,13 @@ public class LoaUnifiedViewController {
                     realNmKills   += ks.nmKillCount;
                     realHellKills += ks.hellKillCount;
                     HashMap<String, Object> item = new HashMap<>();
-                    item.put("monNo",     ks.monNo);
-                    item.put("monName",   ks.monName);
-                    item.put("killTotal", ks.killCount);
-                    item.put("nm1Total",  ks.nmKillCount);
-                    item.put("nm2Total",  ks.hellKillCount);
-                    item.put("maxKill",   achvKillMap.getOrDefault(ks.monNo, 0));
+                    item.put("monNo",           ks.monNo);
+                    item.put("monName",         ks.monName);
+                    item.put("killTotal",        ks.killCount);
+                    item.put("nm1Total",         ks.nmKillCount);
+                    item.put("nm2Total",         ks.hellKillCount);
+                    item.put("hellbossAtkCount", ks.hellbossAtkCount);
+                    item.put("maxKill",          achvKillMap.getOrDefault(ks.monNo, 0));
                     monKillList.add(item);
                 }
             }

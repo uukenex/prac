@@ -2813,7 +2813,11 @@ public class BossAttackController {
 					if (mm != null)
 						monName = mm.monName;
 				}
-				rows.add(monName + ": " + String.format("%,d", ks.killCount) + "마리");
+				String killStr = monName + ": " + String.format("%,d", ks.killCount) + "마리";
+				if (ks.monNo == 999 && ks.hellbossAtkCount > 0) {
+					killStr += " (공격 " + String.format("%,d", ks.hellbossAtkCount) + "회)";
+				}
+				rows.add(killStr);
 			}
 
 			for (int i = 0; i < rows.size(); i += 3) {
@@ -5164,7 +5168,7 @@ public class BossAttackController {
 						pityInv.put("gainType", "BAG_DROP_PITY");
 						botNewService.insertInventoryLogTx(pityInv);
 						incrementTodayBagCache(s.userName, 1);
-						String pityMsg = "🔥 [" + (todayHellKills + 1) + "킬 달성] 헬각인상자 확정 획득!";
+						String pityMsg = "[" + (todayHellKills + 1) + "킬 달성] 헬상자 획득!";
 						s.bagDropMsg = (s.bagDropMsg == null || s.bagDropMsg.isEmpty())
 								? pityMsg : s.bagDropMsg + NL + pityMsg;
 					}
@@ -7656,14 +7660,15 @@ public class BossAttackController {
 	        int nmKill  = (killInc == 1 && nmYn == 1) ? 1 : 0;
 	        int hellKill= (killInc == 1 && nmYn == 2) ? 1 : 0;
 
-	        // MON_KILL_STAT (처치 시만)
+	        // MON_KILL_STAT: 처치 시만 (헬보스 MON_NO=999는 BossAttackS3Controller에서 처리)
 	        if (killInc == 1) {
 	            HashMap<String,Object> ks = new HashMap<>();
-	            ks.put("userName",   userName);
-	            ks.put("monNo",      m.monNo);
-	            ks.put("killInc",    1);
-	            ks.put("nmKillInc",  nmKill);
-	            ks.put("hellKillInc",hellKill);
+	            ks.put("userName",       userName);
+	            ks.put("monNo",          m.monNo);
+	            ks.put("killInc",        killInc);
+	            ks.put("nmKillInc",      nmKill);
+	            ks.put("hellKillInc",    hellKill);
+	            ks.put("hellbossAtkInc", 0);
 	            botNewService.upsertMonKillStat(ks);
 	        }
 
