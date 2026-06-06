@@ -91,6 +91,11 @@ public class BotNewServiceImpl implements BotNewService {
     }
 
     @Override
+    public int selectTodayHellKillCount(String userName) {
+        return botNewDAO.selectTodayHellKillCount(userName);
+    }
+
+    @Override
     public int selectYesterdayAttackerCount() {
         return botNewDAO.selectYesterdayAttackerCount();
     }

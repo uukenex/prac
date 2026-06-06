@@ -36,6 +36,7 @@ public interface BotNewDAO {
 
     Timestamp selectLastAttackTime(@Param("userName") String userName, @Param("roomName") String roomName);
 
+    int selectTodayHellKillCount(@Param("userName") String userName);
     int selectYesterdayAttackerCount();
 
     int updateUserAfterBattle(

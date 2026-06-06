@@ -35,6 +35,7 @@ public interface BotNewService {
 
     HashMap<String,Object> selectLastBattleLog(HashMap<String,Object> map) throws Exception;
     Timestamp selectLastAttackTime(String userName, String roomName);
+    int selectTodayHellKillCount(String userName);
     int selectYesterdayAttackerCount();
 
     int updateUserAfterBattleTx(String userName, String roomName,
