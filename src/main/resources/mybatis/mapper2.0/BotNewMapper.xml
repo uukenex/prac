@@ -2008,19 +2008,11 @@
 	         보스 처치 기간 동안 battle_log가 있는 보스 건수
 	     ===================================================== -->
 	<select id="selectHellBossClearCount" parameterType="string" resultType="int">
-		/*selectHellBossClearCount*/
-	    SELECT COUNT(DISTINCT B.SEQ)
-	      FROM TBOT_POINT_NEW_BOSS B
-	     WHERE B.END_YN = '1'
-	       AND EXISTS (
-	           SELECT 1
-	             FROM TBOT_POINT_NEW_BATTLE_LOG L
-	            WHERE L.USER_NAME     = #{userName}
-	              AND L.TARGET_MON_LV = 999
-	              AND L.NIGHTMARE_YN  = '2'
-	              AND L.INSERT_DATE   >= B.INSERT_DATE
-	              AND L.INSERT_DATE   &lt;  B.PROC_DATE + 1/24/60
-	       )
+		/*selectHellBossClearCount — MON_KILL_STAT.HELL_KILL_CNT 사용 */
+		SELECT NVL(HELL_KILL_CNT, 0)
+		  FROM TBOT_POINT_NEW_MON_KILL_STAT
+		 WHERE USER_NAME = #{userName}
+		   AND MON_NO    = 999
 	</select>
 
 	<!-- =====================================================
