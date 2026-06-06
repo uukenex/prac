@@ -4875,6 +4875,9 @@ public class BossAttackController {
 		if (s.willKill && s.isOngoing && !s.dark && !s.lucky && !s.shadow) s.res.gainExp *= 2;
 		// [Feature2] lv 800 이하 경험치 2배
 		if (s.willKill && s.u.lv <= 800) s.res.gainExp *= 2;
+		// [Feature3] 토/일 경험치 2배
+		int _dow = java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_WEEK);
+		if (s.willKill && (_dow == java.util.Calendar.SATURDAY || _dow == java.util.Calendar.SUNDAY)) s.res.gainExp *= 2;
 
 		// SP 누적용 — baroSellItem은 INSERT 없이 outSp만 반환, 여기서 합산 후 단건 INSERT
 		SP stealSpTotal = new SP(0, "");
@@ -5143,6 +5146,32 @@ public class BossAttackController {
 		}
 
 		s.bagDropMsg = tryDropBag(s.userName, s.roomName, s.m, s.nightmare, s.hell, s.buff);
+
+		// [천장] 헬모드 20킬마다 헬각인상자 확정 (일일 35개 상한 유지)
+		if (s.hell && s.res != null && s.res.killed) {
+			try {
+				int todayHellKills = botNewService.selectTodayHellKillCount(s.userName);
+				// 현재 킬이 아직 BATTLE_LOG에 미기록 → +1 보정
+				if ((todayHellKills + 1) % 20 == 0) {
+					int todayBagTotal = getTodayBagCount(s.userName);
+					if (todayBagTotal < BAG_DAILY_LIMIT) {
+						HashMap<String,Object> pityInv = new HashMap<>();
+						pityInv.put("userName", s.userName);
+						pityInv.put("roomName", s.roomName);
+						pityInv.put("itemId",   BAG_HELL_ITEM_ID);
+						pityInv.put("qty",       1);
+						pityInv.put("delYn",    "0");
+						pityInv.put("gainType", "BAG_DROP_PITY");
+						botNewService.insertInventoryLogTx(pityInv);
+						incrementTodayBagCache(s.userName, 1);
+						String pityMsg = "🔥 [" + (todayHellKills + 1) + "킬 달성] 헬각인상자 확정 획득!";
+						s.bagDropMsg = (s.bagDropMsg == null || s.bagDropMsg.isEmpty())
+								? pityMsg : s.bagDropMsg + NL + pityMsg;
+					}
+				}
+			} catch (Exception ignore) {}
+		}
+
 		if (s.thiefDoubleAtk && s.m != null) {
 			String bag2 = tryDropBag(s.userName, s.roomName, s.m, s.nightmare, s.hell, s.buff);
 			if (bag2 != null && !bag2.isEmpty())

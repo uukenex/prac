@@ -1004,39 +1004,31 @@ public class BossAttackS3Controller {
                 Map<String, Integer> winnerOrderMap = new LinkedHashMap<>();
                 for (int w = 0; w < itemWinners.size(); w++) winnerOrderMap.put(itemWinners.get(w), w + 1);
 
-                // ── 아이템 지급 풀 구성 (미발견 우선) ──
-                List<Integer> givePool;
+                // ── 아이템 풀 구성 (전체 아이템, 중복 허용) ──
+                List<Integer> allItems = new ArrayList<>();
                 HashMap<Integer, String[]> itemInfoMap = new HashMap<>();
                 try {
                     List<HashMap<String, Object>> rewardMeta = botNewService.selectHellRewardItemsWithOwnCount();
-                    List<Integer> undiscovered = new ArrayList<>();
-                    List<Integer> allItems     = new ArrayList<>();
                     for (HashMap<String, Object> row : rewardMeta) {
                         int iid      = Integer.parseInt(row.get("ITEM_ID").toString());
-                        long cnt     = Long.parseLong(row.get("GLOBAL_OWN_CNT").toString());
                         String iName = Objects.toString(row.get("ITEM_NAME"), "아이템#" + iid);
                         String iDesc = Objects.toString(row.get("ITEM_DESC"), "");
                         itemInfoMap.put(iid, new String[]{iName, iDesc});
                         allItems.add(iid);
-                        if (cnt == 0) undiscovered.add(iid);
                     }
-                    givePool = !undiscovered.isEmpty() ? undiscovered : allItems;
                 } catch (Exception e) {
-                    givePool = new ArrayList<>(getHellRewardItems());
+                    allItems = new ArrayList<>(getHellRewardItems());
                 }
-                if (givePool.isEmpty()) givePool = new ArrayList<>(getHellRewardItems());
+                if (allItems.isEmpty()) allItems = new ArrayList<>(getHellRewardItems());
 
                 // ── 당첨자별 지급 아이템 미리 결정 (표시용 + DB 지급용) ──
-                // itemId: 양수=아이템, -1=풀없음GP, -2=이미보유GP
+                // itemId: 양수=아이템, -2=이미보유GP
                 Map<String, String>  winnerDisplay = new LinkedHashMap<>();
                 Map<String, Integer> winnerItemId  = new LinkedHashMap<>();
                 for (String winner : itemWinners) {
-                    if (givePool.isEmpty()) {
-                        winnerDisplay.put(winner, "지급 아이템 없음 → 1 GP 지급");
-                        winnerItemId.put(winner, -1);
-                    } else {
-                        int idx        = rand.nextInt(givePool.size());
-                        int giveItemId = givePool.remove(idx);
+                    {
+                        int idx        = rand.nextInt(allItems.size());
+                        int giveItemId = allItems.get(idx);  // remove 없이 get (중복 허용)
                         String[] info  = itemInfoMap.getOrDefault(giveItemId, new String[]{"아이템#" + giveItemId, ""});
                         String iName   = info[0];
                         String iDesc   = info[1];

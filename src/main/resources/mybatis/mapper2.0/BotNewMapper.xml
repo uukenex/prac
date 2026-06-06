@@ -166,7 +166,18 @@
       AND GAIN_EXP >= 0
   </select>
 
-  <!-- 4-1) 어제 공격자 수 (DISTINCT USER_NAME) -->
+  <!-- 4-1) 오늘 헬모드 킬 수 (천장 시스템용) -->
+  <select id="selectTodayHellKillCount" resultType="int">
+  /*selectTodayHellKillCount*/
+    SELECT COUNT(*)
+      FROM TBOT_POINT_NEW_BATTLE_LOG
+     WHERE USER_NAME    = #{userName}
+       AND NIGHTMARE_YN = 2
+       AND KILL_YN      = 1
+       AND INSERT_DATE  >= TRUNC(SYSDATE)
+  </select>
+
+  <!-- 4-2) 어제 공격자 수 (DISTINCT USER_NAME) -->
   <select id="selectYesterdayAttackerCount" resultType="int">
   /*selectYesterdayAttackerCount*/
     SELECT COUNT(DISTINCT USER_NAME)
