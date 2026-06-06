@@ -464,6 +464,7 @@ public class LoaUnifiedViewController {
         if (page  < 1)   page  = 1;
         if (size  < 1)   size  = 50;
         if (size  > 100) size  = 100;
+        if (days  > 60)  days  = 60;  // BATTLE_LOG 2개월 보관 정책에 따른 최대 조회 제한
         int startRow = (page - 1) * size;
         int endRow   = page * size;
 

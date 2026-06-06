@@ -834,14 +834,25 @@
 	</select>
 	
 	<select id="selectDailyAttackCounts" parameterType="hashmap" resultType="hashmap">
-		/*selectDailyAttackCounts*/
-	    SELECT TRUNC(INSERT_DATE) AS ATTACK_DAY,
-	           COUNT(1)            AS ATK_CNT
-	      FROM TBOT_POINT_NEW_BATTLE_LOG
-	     WHERE USER_NAME = #{userName}
-	       AND INSERT_DATE &lt; SYSDATE
-	     GROUP BY TRUNC(INSERT_DATE)
-	     ORDER BY ATTACK_DAY
+		/*selectDailyAttackCounts — BATTLE_JOB(2달 이전 월별) + BATTLE_LOG(최근 2달 일별) UNION ALL */
+		SELECT ATTACK_DAY, SUM(ATK_CNT) AS ATK_CNT FROM (
+		  /* 2달 이전: BATTLE_JOB 월별 집계 → 해당월 1일로 표현 */
+		  SELECT TRUNC(TO_DATE(STAT_YM,'YYYYMM'),'MM') AS ATTACK_DAY,
+		         SUM(ATTACK_CNT) AS ATK_CNT
+		    FROM TBOT_POINT_NEW_BATTLE_JOB
+		   WHERE USER_NAME = #{userName}
+		     AND TO_DATE(STAT_YM,'YYYYMM') &lt; ADD_MONTHS(TRUNC(SYSDATE,'MM'), -1)
+		   GROUP BY TRUNC(TO_DATE(STAT_YM,'YYYYMM'),'MM')
+		  UNION ALL
+		  /* 최근 2달: BATTLE_LOG 일별 집계 */
+		  SELECT TRUNC(INSERT_DATE) AS ATTACK_DAY,
+		         COUNT(1)            AS ATK_CNT
+		    FROM TBOT_POINT_NEW_BATTLE_LOG
+		   WHERE USER_NAME = #{userName}
+		     AND INSERT_DATE &lt; SYSDATE
+		   GROUP BY TRUNC(INSERT_DATE)
+		) GROUP BY ATTACK_DAY
+		ORDER BY ATTACK_DAY
 	</select>
 	
 	<select id="selectBattleCountByUser" parameterType="hashmap" resultType="hashmap">
