@@ -212,6 +212,7 @@
               <span class="kc kc-yy" v-if="m.nm0Yinyang > 0">음양 {{ fmt(m.nm0Yinyang) }}</span>
               <span class="kc kc-nm" v-if="m.nm1Total  > 0">나메 {{ fmt(m.nm1Total) }}</span>
               <span class="kc kc-h"  v-if="m.nm2Total  > 0">헬 {{ fmt(m.nm2Total) }}</span>
+              <span class="kc" style="background:#ffe0e0;color:#c03030;border:1px solid #f0b0b0" v-if="m.monNo == 999 && m.hellbossAtkCount > 0">공격 {{ fmt(m.hellbossAtkCount) }}회</span>
             </div>
             <div class="s-sub" v-if="m.maxKill > 0">업적 {{ fmt(m.maxKill) }}킬 달성</div>
           </div>

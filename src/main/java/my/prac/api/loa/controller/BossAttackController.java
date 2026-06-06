@@ -2813,7 +2813,11 @@ public class BossAttackController {
 					if (mm != null)
 						monName = mm.monName;
 				}
-				rows.add(monName + ": " + String.format("%,d", ks.killCount) + "마리");
+				String killStr = monName + ": " + String.format("%,d", ks.killCount) + "마리";
+				if (ks.monNo == 999 && ks.hellbossAtkCount > 0) {
+					killStr += " (공격 " + String.format("%,d", ks.hellbossAtkCount) + "회)";
+				}
+				rows.add(killStr);
 			}
 
 			for (int i = 0; i < rows.size(); i += 3) {

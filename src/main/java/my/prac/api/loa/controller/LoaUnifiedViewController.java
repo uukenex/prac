@@ -798,12 +798,13 @@ public class LoaUnifiedViewController {
                     realNmKills   += ks.nmKillCount;
                     realHellKills += ks.hellKillCount;
                     HashMap<String, Object> item = new HashMap<>();
-                    item.put("monNo",     ks.monNo);
-                    item.put("monName",   ks.monName);
-                    item.put("killTotal", ks.killCount);
-                    item.put("nm1Total",  ks.nmKillCount);
-                    item.put("nm2Total",  ks.hellKillCount);
-                    item.put("maxKill",   achvKillMap.getOrDefault(ks.monNo, 0));
+                    item.put("monNo",           ks.monNo);
+                    item.put("monName",         ks.monName);
+                    item.put("killTotal",        ks.killCount);
+                    item.put("nm1Total",         ks.nmKillCount);
+                    item.put("nm2Total",         ks.hellKillCount);
+                    item.put("hellbossAtkCount", ks.hellbossAtkCount);
+                    item.put("maxKill",          achvKillMap.getOrDefault(ks.monNo, 0));
                     monKillList.add(item);
                 }
             }
