@@ -1586,12 +1586,10 @@
 	<select id="selectHellUnlockStats" parameterType="string" resultType="hashmap">
 		/* selectHellUnlockStats */
 		SELECT
-		    (SELECT COUNT(1)
-		       FROM TBOT_POINT_NEW_BATTLE_LOG
+		    (SELECT NVL(NM_KILL_CNT, 0)
+		       FROM TBOT_POINT_NEW_MON_KILL_STAT
 		      WHERE USER_NAME = #{userName}
-		        AND TARGET_MON_LV = 25
-		        AND KILL_YN = 1
-		        AND NIGHTMARE_YN = '1') AS MON25_KILLS,
+		        AND MON_NO = 25) AS MON25_KILLS,
 		    (SELECT NVL(SUM(QTY), 0)
 		       FROM TBOT_POINT_NEW_INVENTORY
 		      WHERE USER_NAME = #{userName}
@@ -2008,8 +2006,8 @@
 	         보스 처치 기간 동안 battle_log가 있는 보스 건수
 	     ===================================================== -->
 	<select id="selectHellBossClearCount" parameterType="string" resultType="int">
-		/*selectHellBossClearCount — MON_KILL_STAT.HELL_KILL_CNT 사용 */
-		SELECT NVL(HELL_KILL_CNT, 0)
+		/*selectHellBossClearCount — MON_KILL_STAT.HELLBOSS_CLEAR_CNT 사용 (보스 처치 참여 횟수) */
+		SELECT NVL(HELLBOSS_CLEAR_CNT, 0)
 		  FROM TBOT_POINT_NEW_MON_KILL_STAT
 		 WHERE USER_NAME = #{userName}
 		   AND MON_NO    = 999
@@ -2359,16 +2357,19 @@
 		USING (SELECT #{userName} AS U, #{monNo} AS M FROM DUAL) S
 		ON (T.USER_NAME = S.U AND T.MON_NO = S.M)
 		WHEN MATCHED THEN UPDATE SET
-		    KILL_CNT           = KILL_CNT           + #{killInc},
-		    NM_KILL_CNT        = NM_KILL_CNT        + #{nmKillInc},
-		    HELL_KILL_CNT      = HELL_KILL_CNT      + #{hellKillInc},
-		    HELLBOSS_ATK_CNT   = NVL(HELLBOSS_ATK_CNT, 0) + #{hellbossAtkInc},
-		    FIRST_KILL_DATE    = CASE WHEN #{killInc} > 0 THEN NVL(FIRST_KILL_DATE, SYSDATE) ELSE FIRST_KILL_DATE END,
-		    UPDATE_DATE        = SYSDATE
+		    KILL_CNT             = KILL_CNT             + #{killInc},
+		    NM_KILL_CNT          = NM_KILL_CNT          + #{nmKillInc},
+		    HELL_KILL_CNT        = HELL_KILL_CNT        + #{hellKillInc},
+		    HELLBOSS_ATK_CNT     = NVL(HELLBOSS_ATK_CNT,   0) + #{hellbossAtkInc},
+		    HELLBOSS_CLEAR_CNT   = NVL(HELLBOSS_CLEAR_CNT, 0) + #{hellbossClearInc},
+		    FIRST_KILL_DATE      = CASE WHEN #{killInc} > 0 THEN NVL(FIRST_KILL_DATE, SYSDATE) ELSE FIRST_KILL_DATE END,
+		    UPDATE_DATE          = SYSDATE
 		WHEN NOT MATCHED THEN INSERT
-		    (USER_NAME, MON_NO, KILL_CNT, NM_KILL_CNT, HELL_KILL_CNT, HELLBOSS_ATK_CNT, FIRST_KILL_DATE, UPDATE_DATE)
+		    (USER_NAME, MON_NO, KILL_CNT, NM_KILL_CNT, HELL_KILL_CNT,
+		     HELLBOSS_ATK_CNT, HELLBOSS_CLEAR_CNT, FIRST_KILL_DATE, UPDATE_DATE)
 		VALUES
-		    (#{userName}, #{monNo}, #{killInc}, #{nmKillInc}, #{hellKillInc}, #{hellbossAtkInc},
+		    (#{userName}, #{monNo}, #{killInc}, #{nmKillInc}, #{hellKillInc},
+		     #{hellbossAtkInc}, #{hellbossClearInc},
 		     CASE WHEN #{killInc} > 0 THEN SYSDATE ELSE NULL END, SYSDATE)
 	</update>
 
@@ -2498,5 +2499,26 @@
 		    AND ROWNUM &lt;= #{batchSize}
 		)
 	</delete>
+
+	<update id="upsertHellBossClearForParticipants" parameterType="hashmap">
+		/* upsertHellBossClearForParticipants — 보스 처치 시 참여자 전원 HELLBOSS_CLEAR_CNT +1 */
+		MERGE INTO TBOT_POINT_NEW_MON_KILL_STAT T
+		USING (
+		    SELECT DISTINCT USER_NAME
+		      FROM TBOT_POINT_NEW_BATTLE_LOG
+		     WHERE TARGET_MON_LV = 999
+		       AND NIGHTMARE_YN  = '2'
+		       AND INSERT_DATE   >= #{bossStartDate}
+		       AND INSERT_DATE   &lt;  SYSDATE
+		) S ON (T.USER_NAME = S.USER_NAME AND T.MON_NO = 999)
+		WHEN MATCHED THEN UPDATE SET
+		    HELLBOSS_CLEAR_CNT = NVL(HELLBOSS_CLEAR_CNT, 0) + 1,
+		    UPDATE_DATE        = SYSDATE
+		WHEN NOT MATCHED THEN INSERT
+		    (USER_NAME, MON_NO, KILL_CNT, NM_KILL_CNT, HELL_KILL_CNT,
+		     HELLBOSS_ATK_CNT, HELLBOSS_CLEAR_CNT, UPDATE_DATE)
+		VALUES
+		    (S.USER_NAME, 999, 0, 0, 0, 0, 1, SYSDATE)
+	</update>
 
 </mapper>

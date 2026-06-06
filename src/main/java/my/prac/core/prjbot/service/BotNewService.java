@@ -256,6 +256,7 @@ public interface BotNewService {
     int updateExpCurOnly(String userName, String roomName, long expCur);
     // ── 실시간 카운터 테이블 ───────────────────────────────────────────────────
     int upsertMonKillStat(HashMap<String,Object> param);
+    int upsertHellBossClearForParticipants(HashMap<String,Object> param);
     int upsertBattleJobStat(HashMap<String,Object> param);
     int upsertBattleBuffStat(HashMap<String,Object> param);
 

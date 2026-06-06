@@ -887,6 +887,10 @@ public class BotNewServiceImpl implements BotNewService {
         return botNewDAO.upsertMonKillStat(param);
     }
     @Override
+    public int upsertHellBossClearForParticipants(HashMap<String,Object> param) {
+        return botNewDAO.upsertHellBossClearForParticipants(param);
+    }
+    @Override
     public int upsertBattleJobStat(HashMap<String,Object> param) {
         return botNewDAO.upsertBattleJobStat(param);
     }
