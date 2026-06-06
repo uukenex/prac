@@ -1995,20 +1995,12 @@
 	     [6-1] 헬보스 공격 횟수 (TARGET_MON_LV=999)
 	     ===================================================== -->
 	<select id="selectHellBossAttackCount" parameterType="string" resultType="int">
-	    /*selectHellBossAttackCount — BATTLE_LOG(최근 2달) + BACKUP(이전 데이터) UNION ALL */
-	    SELECT NVL(SUM(CNT), 0) FROM (
-	        SELECT COUNT(1) AS CNT
-	          FROM TBOT_POINT_NEW_BATTLE_LOG
-	         WHERE USER_NAME     = #{userName}
-	           AND TARGET_MON_LV = 999
-	           AND NIGHTMARE_YN  = '2'
-	        UNION ALL
-	        SELECT COUNT(1)
-	          FROM TBOT_BATTLE_LOG_BACKUP
-	         WHERE USER_NAME     = #{userName}
-	           AND TARGET_MON_LV = 999
-	           AND NIGHTMARE_YN  = '2'
-	    )
+	    /*selectHellBossAttackCount — BATTLE_LOG(최근 2달) */
+	    SELECT COUNT(1)
+	      FROM TBOT_POINT_NEW_BATTLE_LOG
+	     WHERE USER_NAME     = #{userName}
+	       AND TARGET_MON_LV = 999
+	       AND NIGHTMARE_YN  = '2'
 	</select>
 
 	<!-- =====================================================
@@ -2016,21 +2008,18 @@
 	         보스 처치 기간 동안 battle_log가 있는 보스 건수
 	     ===================================================== -->
 	<select id="selectHellBossClearCount" parameterType="string" resultType="int">
-		/*selectHellBossClearCount — BATTLE_LOG(최근 2달) + BACKUP(이전 데이터) UNION ALL */
+		/*selectHellBossClearCount*/
 	    SELECT COUNT(DISTINCT B.SEQ)
 	      FROM TBOT_POINT_NEW_BOSS B
 	     WHERE B.END_YN = '1'
 	       AND EXISTS (
 	           SELECT 1
-	             FROM (
-	                 SELECT INSERT_DATE FROM TBOT_POINT_NEW_BATTLE_LOG
-	                  WHERE USER_NAME = #{userName} AND TARGET_MON_LV = 999 AND NIGHTMARE_YN = '2'
-	                 UNION ALL
-	                 SELECT INSERT_DATE FROM TBOT_BATTLE_LOG_BACKUP
-	                  WHERE USER_NAME = #{userName} AND TARGET_MON_LV = 999 AND NIGHTMARE_YN = '2'
-	             ) L
-	            WHERE L.INSERT_DATE >= B.INSERT_DATE
-	              AND L.INSERT_DATE &lt;  B.PROC_DATE + 1/24/60
+	             FROM TBOT_POINT_NEW_BATTLE_LOG L
+	            WHERE L.USER_NAME     = #{userName}
+	              AND L.TARGET_MON_LV = 999
+	              AND L.NIGHTMARE_YN  = '2'
+	              AND L.INSERT_DATE   >= B.INSERT_DATE
+	              AND L.INSERT_DATE   &lt;  B.PROC_DATE + 1/24/60
 	       )
 	</select>
 
