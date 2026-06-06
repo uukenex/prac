@@ -619,6 +619,19 @@ public class BossAttackS3Controller {
             return "저장 중 오류가 발생했습니다.";
         }
 
+        // HELLBOSS_ATK_CNT 실시간 카운터 업데이트
+        try {
+            int _killInc = isKill ? 1 : 0;
+            HashMap<String,Object> ks = new HashMap<>();
+            ks.put("userName",       userName);
+            ks.put("monNo",          999);
+            ks.put("killInc",        _killInc);
+            ks.put("nmKillInc",      0);
+            ks.put("hellKillInc",    _killInc);
+            ks.put("hellbossAtkInc", 1);
+            botNewService.upsertMonKillStat(ks);
+        } catch (Exception ignore) {}
+
         // 공격 SP 보상: 준 데미지 × 10000 raw SP / 최소 1000a, 최대 10b
         String spRewardMsg = "";
         try {
