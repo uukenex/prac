@@ -1995,12 +1995,11 @@
 	     [6-1] 헬보스 공격 횟수 (TARGET_MON_LV=999)
 	     ===================================================== -->
 	<select id="selectHellBossAttackCount" parameterType="string" resultType="int">
-	    /*selectHellBossAttackCount — BATTLE_LOG(최근 2달) */
-	    SELECT COUNT(1)
-	      FROM TBOT_POINT_NEW_BATTLE_LOG
-	     WHERE USER_NAME     = #{userName}
-	       AND TARGET_MON_LV = 999
-	       AND NIGHTMARE_YN  = '2'
+	    /*selectHellBossAttackCount — MON_KILL_STAT.HELLBOSS_ATK_CNT 사용 */
+	    SELECT NVL(HELLBOSS_ATK_CNT, 0)
+	      FROM TBOT_POINT_NEW_MON_KILL_STAT
+	     WHERE USER_NAME = #{userName}
+	       AND MON_NO    = 999
 	</select>
 
 	<!-- =====================================================
@@ -2367,15 +2366,17 @@
 		USING (SELECT #{userName} AS U, #{monNo} AS M FROM DUAL) S
 		ON (T.USER_NAME = S.U AND T.MON_NO = S.M)
 		WHEN MATCHED THEN UPDATE SET
-		    KILL_CNT      = KILL_CNT      + #{killInc},
-		    NM_KILL_CNT   = NM_KILL_CNT   + #{nmKillInc},
-		    HELL_KILL_CNT = HELL_KILL_CNT + #{hellKillInc},
-		    FIRST_KILL_DATE = NVL(FIRST_KILL_DATE, SYSDATE),
-		    UPDATE_DATE   = SYSDATE
+		    KILL_CNT           = KILL_CNT           + #{killInc},
+		    NM_KILL_CNT        = NM_KILL_CNT        + #{nmKillInc},
+		    HELL_KILL_CNT      = HELL_KILL_CNT      + #{hellKillInc},
+		    HELLBOSS_ATK_CNT   = NVL(HELLBOSS_ATK_CNT, 0) + #{hellbossAtkInc},
+		    FIRST_KILL_DATE    = CASE WHEN #{killInc} > 0 THEN NVL(FIRST_KILL_DATE, SYSDATE) ELSE FIRST_KILL_DATE END,
+		    UPDATE_DATE        = SYSDATE
 		WHEN NOT MATCHED THEN INSERT
-		    (USER_NAME, MON_NO, KILL_CNT, NM_KILL_CNT, HELL_KILL_CNT, FIRST_KILL_DATE, UPDATE_DATE)
+		    (USER_NAME, MON_NO, KILL_CNT, NM_KILL_CNT, HELL_KILL_CNT, HELLBOSS_ATK_CNT, FIRST_KILL_DATE, UPDATE_DATE)
 		VALUES
-		    (#{userName}, #{monNo}, #{killInc}, #{nmKillInc}, #{hellKillInc}, SYSDATE, SYSDATE)
+		    (#{userName}, #{monNo}, #{killInc}, #{nmKillInc}, #{hellKillInc}, #{hellbossAtkInc},
+		     CASE WHEN #{killInc} > 0 THEN SYSDATE ELSE NULL END, SYSDATE)
 	</update>
 
 	<update id="upsertBattleJobStat" parameterType="hashmap">

@@ -5164,7 +5164,7 @@ public class BossAttackController {
 						pityInv.put("gainType", "BAG_DROP_PITY");
 						botNewService.insertInventoryLogTx(pityInv);
 						incrementTodayBagCache(s.userName, 1);
-						String pityMsg = "🔥 [" + (todayHellKills + 1) + "킬 달성] 헬각인상자 확정 획득!";
+						String pityMsg = "[" + (todayHellKills + 1) + "킬 달성] 헬상자 획득!";
 						s.bagDropMsg = (s.bagDropMsg == null || s.bagDropMsg.isEmpty())
 								? pityMsg : s.bagDropMsg + NL + pityMsg;
 					}
@@ -7656,14 +7656,16 @@ public class BossAttackController {
 	        int nmKill  = (killInc == 1 && nmYn == 1) ? 1 : 0;
 	        int hellKill= (killInc == 1 && nmYn == 2) ? 1 : 0;
 
-	        // MON_KILL_STAT (처치 시만)
-	        if (killInc == 1) {
+	        // MON_KILL_STAT: 처치 시 또는 헬보스 공격 시마다 업데이트
+	        int hellbossAtkInc = (nmYn == 2 && m.monNo == 999) ? 1 : 0;
+	        if (killInc == 1 || hellbossAtkInc == 1) {
 	            HashMap<String,Object> ks = new HashMap<>();
-	            ks.put("userName",   userName);
-	            ks.put("monNo",      m.monNo);
-	            ks.put("killInc",    1);
-	            ks.put("nmKillInc",  nmKill);
-	            ks.put("hellKillInc",hellKill);
+	            ks.put("userName",       userName);
+	            ks.put("monNo",          m.monNo);
+	            ks.put("killInc",        killInc);
+	            ks.put("nmKillInc",      nmKill);
+	            ks.put("hellKillInc",    hellKill);
+	            ks.put("hellbossAtkInc", hellbossAtkInc);
 	            botNewService.upsertMonKillStat(ks);
 	        }
 
