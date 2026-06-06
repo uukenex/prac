@@ -735,11 +735,9 @@ public class LoaUnifiedViewController {
         int bagTotal  = invCounts != null ? toInt(invCounts.get("BAG_COUNT"))  : 0;
         int totalDrops = lightQty + darkQty + grayQty;
 
-        // 6. 헬보스 업적
-        int hellAtkCount   = 0;
-        int hellClearCount = 0;
-        try { hellAtkCount   = botNewService.selectHellBossAttackCount(userName); } catch (Exception ignore) {}
-        try { hellClearCount = botNewService.selectHellBossClearCount(userName);  } catch (Exception ignore) {}
+        // 6. 헬보스 업적 — POINT_RANK 기반 grouped 값 사용 (BATTLE_LOG 보관정책 무관)
+        int hellAtkCount   = toInt(grouped.get("maxHellAtk"));
+        int hellClearCount = toInt(grouped.get("maxHellClear"));
 
         // 7. 룰렛 업적 (DAILY_BUFF 실수치)
         int atkSuccessCnt = 0;
