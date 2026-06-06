@@ -7668,7 +7668,8 @@ public class BossAttackController {
 	            ks.put("killInc",        killInc);
 	            ks.put("nmKillInc",      nmKill);
 	            ks.put("hellKillInc",    hellKill);
-	            ks.put("hellbossAtkInc", 0);
+	            ks.put("hellbossAtkInc",   0);
+	            ks.put("hellbossClearInc", 0);
 	            botNewService.upsertMonKillStat(ks);
 	        }
 

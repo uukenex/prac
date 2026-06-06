@@ -619,18 +619,28 @@ public class BossAttackS3Controller {
             return "저장 중 오류가 발생했습니다.";
         }
 
-        // HELLBOSS_ATK_CNT 실시간 카운터 업데이트
+        // MON_KILL_STAT 실시간 카운터 업데이트 (공격 + 킬)
         try {
             int _killInc = isKill ? 1 : 0;
             HashMap<String,Object> ks = new HashMap<>();
-            ks.put("userName",       userName);
-            ks.put("monNo",          999);
-            ks.put("killInc",        _killInc);
-            ks.put("nmKillInc",      0);
-            ks.put("hellKillInc",    _killInc);
-            ks.put("hellbossAtkInc", 1);
+            ks.put("userName",         userName);
+            ks.put("monNo",            999);
+            ks.put("killInc",          _killInc);
+            ks.put("nmKillInc",        0);
+            ks.put("hellKillInc",      _killInc);
+            ks.put("hellbossAtkInc",   1);
+            ks.put("hellbossClearInc", 0);
             botNewService.upsertMonKillStat(ks);
         } catch (Exception ignore) {}
+
+        // 보스 처치 시 참여자 전원 HELLBOSS_CLEAR_CNT +1
+        if (isKill) {
+            try {
+                HashMap<String,Object> cp = new HashMap<>();
+                cp.put("bossStartDate", bossStartDate);
+                botNewService.upsertHellBossClearForParticipants(cp);
+            } catch (Exception ignore) {}
+        }
 
         // 공격 SP 보상: 준 데미지 × 10000 raw SP / 최소 1000a, 최대 10b
         String spRewardMsg = "";
