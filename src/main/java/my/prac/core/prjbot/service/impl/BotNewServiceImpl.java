@@ -153,7 +153,7 @@ public class BotNewServiceImpl implements BotNewService {
 
 	@Override
 	public int insertInventoryLogTx(HashMap<String, Object> p) {
-		return botNewDAO.upsertInventoryLog(p);
+		return botNewDAO.insertInventoryLog(p);
 	}
 
 	@Override
