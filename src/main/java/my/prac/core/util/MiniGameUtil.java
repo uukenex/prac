@@ -626,10 +626,10 @@ public class MiniGameUtil {
 	// ── 가방 상점 가격 (고정가) ───────────────────────────────────────────────
 	// 91 일반가방: 고정 10b  (1_000_000_000 raw)
 	// 92 나메가방: 고정 20b  (2_000_000_000 raw)
-	// 93 헬가방  : 고정 200b (20_000_000_000 raw)
+	// 93 헬가방  : 고정 1000b (100_000_000_000 raw)
 	public static final long BAG_PRICE_91_FIXED  = 1_000_000_000L;   // 10b
 	public static final long BAG_PRICE_92_FIXED  = 2_000_000_000L;   // 20b
-	public static final long BAG_PRICE_93_FIXED  = 20_000_000_000L;  // 200b
+	public static final long BAG_PRICE_93_FIXED  = 100_000_000_000L; // 1000b
 
 	public static SP getBagPrice(int itemId, long top1SpRaw) {
 	    switch (itemId) {
