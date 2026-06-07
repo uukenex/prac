@@ -2371,7 +2371,8 @@ public class BossAttackController {
 	    
 	    
 	 // === NEW: 일별 공격 통계 (어제 자정까지) ===
-	    Date firstAttackDay = null;
+	    // 시작일: TBOT_POINT_NEW_USER.INSERT_DATE 사용
+	    Date firstAttackDay = (u.insertDate != null) ? truncateToDate(new Date(u.insertDate.getTime())) : null;
 	    Date maxAttackDay   = null;
 	    int  maxAttackCnt   = 0;
 	    int  avgAttackPerDay = 0;
@@ -2403,24 +2404,13 @@ public class BossAttackController {
 
 	                if (day == null) continue;
 
-	                // 최초 공격일
-	                if (firstAttackDay == null) {
-	                    firstAttackDay = day;
-	                }
-
-	                // 최대 공격일
-	                if (cnt > maxAttackCnt) {
-	                    maxAttackCnt = cnt;
-	                    maxAttackDay = day;
-	                }
-
-	                // ★ 오늘 공격
-	                if (day.equals(today)) {
-	                    todayAttackCnt = cnt;
-	                } else {
-	                    // ★ 어제까지 누적/평균용
-	                    totalAtkBeforeToday += cnt;
-	                    activeDays++;
+	                // DATA_TYPE: D=일별(BATTLE_LOG), M=월별(BATTLE_JOB)
+	                boolean isDaily = "D".equals(row.get("DATA_TYPE"));
+	                // 최대/평균/오늘은 일별(D) 데이터만 사용 (월 합계 M 제외)
+	                if (isDaily) {
+	                    if (cnt > maxAttackCnt) { maxAttackCnt = cnt; maxAttackDay = day; }
+	                    if (day.equals(today)) { todayAttackCnt = cnt; }
+	                    else { totalAtkBeforeToday += cnt; activeDays++; }
 	                }
 	            }
 

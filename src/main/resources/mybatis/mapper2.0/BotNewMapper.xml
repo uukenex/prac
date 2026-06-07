@@ -835,19 +835,23 @@
 	</select>
 	
 	<select id="selectDailyAttackCounts" parameterType="hashmap" resultType="hashmap">
-		/*selectDailyAttackCounts — BATTLE_JOB(2달 이전 월별) + BATTLE_LOG(최근 2달 일별) UNION ALL */
-		SELECT ATTACK_DAY, SUM(ATK_CNT) AS ATK_CNT FROM (
-		  /* 2달 이전: BATTLE_JOB 월별 집계 → 해당월 1일로 표현 */
+		/*selectDailyAttackCounts — BATTLE_JOB(2달 이전 월별 M) + BATTLE_LOG(최근 2달 일별 D) */
+		SELECT ATTACK_DAY, SUM(ATK_CNT) AS ATK_CNT,
+		       MAX(DATA_TYPE) AS DATA_TYPE
+		FROM (
+		  /* 2달 이전: BATTLE_JOB 월별 집계 → 해당월 1일, DATA_TYPE='M' */
 		  SELECT TRUNC(TO_DATE(STAT_YM,'YYYYMM'),'MM') AS ATTACK_DAY,
-		         SUM(ATTACK_CNT) AS ATK_CNT
+		         SUM(ATTACK_CNT) AS ATK_CNT,
+		         'M' AS DATA_TYPE
 		    FROM TBOT_POINT_NEW_BATTLE_JOB
 		   WHERE USER_NAME = #{userName}
 		     AND TO_DATE(STAT_YM,'YYYYMM') &lt; ADD_MONTHS(TRUNC(SYSDATE,'MM'), -1)
 		   GROUP BY TRUNC(TO_DATE(STAT_YM,'YYYYMM'),'MM')
 		  UNION ALL
-		  /* 최근 2달: BATTLE_LOG 일별 집계 */
+		  /* 최근 2달: BATTLE_LOG 일별 집계, DATA_TYPE='D' */
 		  SELECT TRUNC(INSERT_DATE) AS ATTACK_DAY,
-		         COUNT(1)            AS ATK_CNT
+		         COUNT(1)            AS ATK_CNT,
+		         'D' AS DATA_TYPE
 		    FROM TBOT_POINT_NEW_BATTLE_LOG
 		   WHERE USER_NAME = #{userName}
 		     AND INSERT_DATE &lt; SYSDATE
