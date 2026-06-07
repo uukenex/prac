@@ -343,6 +343,34 @@
        SYSDATE)
   </insert>
 
+  <!-- 같은 초·같은 아이템이면 QTY+1, 아니면 신규 INSERT -->
+  <update id="upsertInventoryLog" parameterType="hashmap">
+    /* upsertInventoryLog */
+    MERGE INTO TBOT_POINT_NEW_INVENTORY T
+    USING (
+        SELECT #{userName,jdbcType=VARCHAR} AS USER_NAME,
+               #{roomName,jdbcType=VARCHAR} AS ROOM_NAME,
+               #{itemId,jdbcType=NUMERIC}   AS ITEM_ID,
+               NVL(#{delYn,jdbcType=VARCHAR},'0') AS DEL_YN,
+               #{gainType,jdbcType=VARCHAR}  AS GAIN_TYPE,
+               #{qty,jdbcType=NUMERIC}       AS QTY
+          FROM DUAL
+    ) S
+    ON (
+        T.USER_NAME  = S.USER_NAME
+        AND T.ITEM_ID    = S.ITEM_ID
+        AND T.GAIN_TYPE  = S.GAIN_TYPE
+        AND T.DEL_YN     = '0'
+        AND T.INSERT_DATE &gt;= TRUNC(SYSDATE, 'SS')
+        AND T.INSERT_DATE &lt;  TRUNC(SYSDATE, 'SS') + 1/86400
+    )
+    WHEN MATCHED THEN
+        UPDATE SET T.QTY = T.QTY + S.QTY
+    WHEN NOT MATCHED THEN
+        INSERT (USER_NAME, ROOM_NAME, ITEM_ID, QTY, DEL_YN, GAIN_TYPE, INSERT_DATE)
+        VALUES (S.USER_NAME, S.ROOM_NAME, S.ITEM_ID, S.QTY, S.DEL_YN, S.GAIN_TYPE, SYSDATE)
+  </update>
+
   <select id="selectInventorySummaryAll" resultType="hashmap">
 	/* selectInventorySummaryAll */
 	SELECT

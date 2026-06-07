@@ -66,6 +66,7 @@ public interface BotNewDAO {
     Integer selectItemIdByName(@Param("itemName") String itemName);
 
     int insertInventoryLog(HashMap<String,Object> p);
+    int upsertInventoryLog(HashMap<String,Object> p);
 
     HashMap<String,Object>  selectCurrentPoint(@Param("userName") String userName, @Param("roomName") String roomName);
     List<HashMap<String,Object>> selectPointLogRaw(@Param("userName") String userName);
