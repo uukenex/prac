@@ -1884,9 +1884,12 @@ public class BossAttackController {
 	    	long nmMax = top1Sp > 0 ? Math.min(top1Sp / 200, 2_000_000_000L) : 100_000_000L;
 	    	return pickBiasedSp(300000, nmMax);
 	    }
-	    case	2:
-	    	// 헬상자: 고정 상한 200b
-	    	return pickBiasedSp(1_000_000L, 20_000_000_000L);
+	    case	2: {
+	    	// 헬상자: openHellBag과 동일 (1등의 0.3%~1%, 최대 1000b)
+	    	long hellMin = top1Sp > 0 ? top1Sp * 3 / 1000 : 1_000_000L;
+	    	long hellMax = top1Sp > 0 ? Math.min(top1Sp / 100, 100_000_000_000L) : 5_000_000L;
+	    	return pickBiasedSp(hellMin, hellMax);
+	    }
 	    default:
 	    	break;
 	    }
