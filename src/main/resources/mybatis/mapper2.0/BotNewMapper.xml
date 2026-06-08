@@ -1887,6 +1887,16 @@
 	
 	</insert>
 	
+	<!-- 유물 아이템 총 개수 (일반/나메 구분) -->
+	<select id="selectRelicTotalCounts" resultType="HashMap">
+		/* selectRelicTotalCounts */
+		SELECT
+		    SUM(CASE WHEN ITEM_NAME NOT LIKE '[N]%' THEN 1 ELSE 0 END) AS NORMAL_TOTAL,
+		    SUM(CASE WHEN ITEM_NAME     LIKE '[N]%' THEN 1 ELSE 0 END) AS NM_TOTAL
+		FROM TBOT_POINT_NEW_ITEM
+		WHERE ITEM_ID BETWEEN 9001 AND 9999
+	</select>
+
 	<!-- 전체 아이템 + 유저 보유여부 (item_view 페이지용) -->
 	<!-- GLOBAL_OWN_CNT / EVER_OBTAINED_CNT: 7000번대 이상만 집계 (blur 판단용) -->
 	<select id="selectAllItemsWithOwned" resultType="hashmap">

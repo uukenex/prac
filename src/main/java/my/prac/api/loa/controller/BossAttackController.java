@@ -2115,6 +2115,7 @@ public class BossAttackController {
 	    catMap.put("※갑옷", new ArrayList<>());
 	    catMap.put("※전설", new ArrayList<>());
 	    catMap.put("※유물", new ArrayList<>());
+	    catMap.put("※[N]유물", new ArrayList<>());
 	    catMap.put("※지옥", new ArrayList<>());
 	    catMap.put("※날개", new ArrayList<>());
 	    catMap.put("※보스", new ArrayList<>());
@@ -2134,6 +2135,10 @@ public class BossAttackController {
 	        if ((itemId >= 300 && itemId < 400) || (itemId >= 500 && itemId < 700) || (itemId >= 900 && itemId < 1000)) continue;
 
 	        String cat = resolveItemCategory(itemId);
+	        // 유물 세분화: [N] 접두사 = 나메유물
+	        if ("※유물".equals(cat)) {
+	            cat = itemName.startsWith("[N]") ? "※[N]유물" : "※유물";
+	        }
 	        String label = itemName;
 
 	        // ─────────────────
@@ -2157,11 +2162,7 @@ public class BossAttackController {
 	        // ─────────────────
 	        else if ("BOSS_HELL".equalsIgnoreCase(type) || "BOSS_GACHA".equalsIgnoreCase(type)) {
 	            if (qty > 1) label += "x" + qty;
-	            String opt = MiniGameUtil.buildEnhancedOptionLine(row, 1);
-	            if (!opt.isEmpty()) label += opt;
-	            String desc = Objects.toString(row.get("ITEM_DESC"), "").trim();
-	            if (!desc.isEmpty()) label += " (" + desc + ")";
-	            label += "BOSS_GACHA".equalsIgnoreCase(type) ? " [뽑기]" : " [보스처치]";
+	            label += "BOSS_GACHA".equalsIgnoreCase(type) ? " [뽑기]" : " [드랍]";
 	        }
 	        // ─────────────────
 	        // 지옥 각인 (3000번대)
@@ -2182,17 +2183,37 @@ public class BossAttackController {
 	        bucket.add(label);
 	    }
 
+	    // 유물 총개수 조회 (일반/나메 구분)
+	    int relicNormalTotal = 0, relicNmTotal = 0;
+	    try {
+	        HashMap<String,Object> relicCnt = botNewService.selectRelicTotalCounts();
+	        if (relicCnt != null) {
+	            relicNormalTotal = safeInt(relicCnt.get("NORMAL_TOTAL"));
+	            relicNmTotal     = safeInt(relicCnt.get("NM_TOTAL"));
+	        }
+	    } catch (Exception ignore) {}
+
 	    // 출력 (※날개 뒤에 행운/반지/토템/선물 합계 삽입)
 	    for (Map.Entry<String, List<String>> e : catMap.entrySet()) {
+	        String catKey = e.getKey();
 	        List<String> list = e.getValue();
-	        if (!list.isEmpty()) {
-	            sb.append(e.getKey()).append(":").append(NL);
+	        // 유물: 개수 요약 표시
+	        if ("※유물".equals(catKey) || "※[N]유물".equals(catKey)) {
+	            int ownedCnt = list.size();
+	            int totalCnt = "※유물".equals(catKey) ? relicNormalTotal : relicNmTotal;
+	            if (ownedCnt > 0 || totalCnt > 0) {
+	                String summary = ownedCnt + "/" + (totalCnt > 0 ? totalCnt : "?");
+	                if (totalCnt > 0 && ownedCnt >= totalCnt) summary += " 모두수집";
+	                sb.append(catKey).append(" : ").append(summary).append(NL);
+	            }
+	        } else if (!list.isEmpty()) {
+	            sb.append(catKey).append(":").append(NL);
 	            for (String s : list) {
-	                sb.append(", ").append(s).append(NL);
+	                sb.append(s).append(NL);
 	            }
 	        }
 	        // 날개 출력 직후 합계 삽입
-	        if ("※날개".equals(e.getKey())) {
+	        if ("※날개".equals(catKey)) {
 	            for (int[] gr : new int[][]{{300,400},{500,600},{600,700},{900,1000}}) {
 	                String gl = gr[0]==300?"행운":gr[0]==500?"반지":gr[0]==600?"토템":"선물";
 	                String line = buildGroupSummaryLine(bag, gr[0], gr[1], gl);
@@ -2908,21 +2929,11 @@ public class BossAttackController {
 	        //이전데이터강제생성용
 	        //if (today.getDayOfMonth() == 1 || today.getDayOfMonth() == 16) {
 
-            LocalDate seasonStart;
-            LocalDate seasonEnd;
-
-            if (today.getDayOfMonth() >= 16) {
-                // 16일~말일 실행 → 이번달 1~15 조회
-                seasonStart = today.withDayOfMonth(1);
-                seasonEnd = today.withDayOfMonth(15);
-            } else {
-                // 1일~15일 실행 → 전달 16~말일 조회
-                LocalDate prevMonth = today.minusMonths(1);
-                seasonStart = prevMonth.withDayOfMonth(16);
-                seasonEnd = prevMonth.withDayOfMonth(prevMonth.lengthOfMonth());
-            }
-
-            String seasonId = seasonStart.format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+            // 최근 30일 범위 조회 (성능 최적화)
+            LocalDate seasonStart = today.minusDays(30);
+            LocalDate seasonEnd   = today;
+            // 업적 키: 이번달 1일 기준 (월 단위 안정, 매달 한 번만 업적 체크)
+            String seasonId = today.withDayOfMonth(1).format(DateTimeFormatter.ofPattern("yyyyMMdd"));
 
             // 이미 생성된 시즌인지 체크 (몬스터1 기준)
             boolean seasonAlreadyDone = false;
@@ -2937,8 +2948,8 @@ public class BossAttackController {
             if (!seasonAlreadyDone) {
 
                 HashMap<String,Object> param = new HashMap<>();
-                param.put("seasonStart", seasonId);
-                param.put("seasonEnd", seasonEnd.format(DateTimeFormatter.ofPattern("yyyyMMdd")));
+                param.put("seasonStart", seasonStart.format(DateTimeFormatter.ofPattern("yyyyMMdd")));
+                param.put("seasonEnd",   seasonEnd.format(DateTimeFormatter.ofPattern("yyyyMMdd")));
                 param.put("userName", userName);  // [OPT] SQL WHERE에서 필터링 (Java 필터링 제거)
 
                 List<HashMap<String,Object>> ranking =
@@ -4373,12 +4384,21 @@ public class BossAttackController {
 		DamageOutcome dmg, dmg2;
 		AttackCalc calc, calc2;
 		boolean willKill, thiefDoubleAtk;
+		boolean willKill2;
 
 		/* 처치 / 보상 */
 		Resolve res;
 		LevelUpResult up;
+		Resolve res2;
+		LevelUpResult up2;
+		String secondKillMsg = "";
 		int buffStart, buffIng;
 		String buffCode;
+
+		/* 배치 수집 (다중공격 PK-safe) */
+		List<BattleLog>              pendingLogs      = new ArrayList<>();
+		List<HashMap<String,Object>> pendingInventory = new ArrayList<>();
+		Map<String,SP>               pendingRank      = new LinkedHashMap<>();
 
 		/* 업적 */
 		List<KillStat> cachedKillStats;
@@ -4819,7 +4839,9 @@ public class BossAttackController {
 	// ─ [도적] 2타 사전 계산 ──────────────────────────────────────────
 	private void ma_thiefDoubleAtkPreCalc(AttackSession s) {
 		if (!"도적".equals(s.job)) return;
+		
 		double thiefProb = s.ctx.ownedBossItems.contains(7002) ? 0.50 : 0.30;
+		if(s.u.userName.equals("일어난다람쥐/카단")) thiefProb = 1;
 		s.thiefDoubleAtk = ThreadLocalRandom.current().nextDouble() < thiefProb;
 		if (s.thiefDoubleAtk) {
 			Flags f2 = rollFlags(s.u, s.m);
@@ -4827,6 +4849,68 @@ public class BossAttackController {
 					s.berserkMul, s.monHpRemainBefore, s.hpMax, s.beforeJobSkillYn, s.nightmare,
 					s.ctx.ownedBossItems);
 			s.calc2 = s.dmg2.calc;
+		}
+	}
+
+	// ─ [도적] 2타 완전 처리 (킬/드랍/경험치/배치수집) ───────────────────────
+	private void ma_thiefSecondAtk(AttackSession s) {
+		// 1타 킬 여부에 따라 2타 대상 HP 결정
+		// - 1타 킬: 동일 몬스터 만피로 리셋 (새 몬스터 개념)
+		// - 1타 미킬: 1타 후 남은 HP 기준
+		long monHpAfter1st = s.res.killed
+				? (long) s.monMaxHp
+				: Math.max(0L, (long)s.monHpRemainBefore - Math.max(0, s.calc.atkDmg));
+		if (monHpAfter1st <= 0) return;
+
+		// 2타 willKill 판정
+		s.willKill2 = (monHpAfter1st - (long)Math.max(0, s.calc2.atkDmg)) <= 0;
+
+		// 2타는 몬스터 반격 없음
+		s.calc2.monDmg = 0;
+
+		// 2타 Resolve
+		s.res2 = resolveKillAndDrop(s.m, s.calc2, s.willKill2, s.u,
+				s.lucky, s.dark, s.gray, s.shadow,
+				s.ctx.user.nightmareYn, s.ctx.ownedBossItems);
+
+		// 경험치 배수 (1타와 동일 조건)
+		if ("궁수".equals(s.u.job) || "사냥꾼".equals(s.u.job)) s.res2.gainExp *= 3;
+		if (s.willKill2 && s.isOngoing && !s.dark && !s.lucky && !s.shadow) s.res2.gainExp *= 2;
+		if (s.willKill2 && s.u.lv <= 800) s.res2.gainExp *= 2;
+		int dow2 = java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_WEEK);
+		if (s.willKill2 && (dow2 == java.util.Calendar.SATURDAY || dow2 == java.util.Calendar.SUNDAY)) s.res2.gainExp *= 2;
+
+		// 2타 DROP SP 수집
+		if (s.res2.killed && !"0".equals(s.res2.dropCode)) {
+			String dn2 = (s.m.monDrop == null ? "" : s.m.monDrop.trim());
+			if (!dn2.isEmpty()) {
+				SP dropSp2 = new SP(0, "");
+				SP[] sp=new SP[1]; String[] nb={""};
+				baroSellItem(dn2, 0, s.res2, s.userName, s.roomName, s.ctx, s.u, "DROP", 1, s.nightmare, nb, sp);
+				if (sp[0] != null) dropSp2 = dropSp2.add(sp[0]);
+				if (dropSp2.getValue() > 0 || !dropSp2.getUnit().isEmpty())
+					s.pendingRank.merge("DROP_SP_DROP", dropSp2, SP::add);
+			}
+		}
+
+		// 2타 persist (BattleLog/Inventory 수집)
+		try {
+			s.up2 = persist(s.userName, s.roomName, s.u, s.m,
+					s.dmg2.flags, s.calc2, s.res2, s.hpMax,
+					s.nightmare, 0, s.buffIng, s.buffCode,
+					s.pendingLogs, s.pendingInventory);
+		} catch (Exception e) { return; }
+
+		// 2타 킬 후처리
+		if (s.res2.killed) {
+			invalidateInvBuff(s.userName);
+			try { botNewService.closeOngoingBattleTx(s.userName, s.roomName); } catch (Exception ignore) {}
+			s.secondKillMsg = "⚔️ [2타 확인사살!] " + s.m.monName + " 처치!";
+			// 2타 킬 업적 처리
+			try {
+				String ka2 = grantKillAchievements(s.userName, s.roomName, s.achievedCmdSet, s.cachedKillStats);
+				if (ka2 != null && !ka2.isEmpty()) s.bonusMsg += NL + ka2;
+			} catch (Exception ignore) {}
 		}
 	}
 
@@ -4949,15 +5033,9 @@ public class BossAttackController {
 			} catch (Exception ignore) {}
 		}
 
-		// STEAL SP 단건 INSERT
+		// STEAL SP 수집 (flush 시 합산 INSERT)
 		if (stealSpTotal.getValue() > 0 || !stealSpTotal.getUnit().isEmpty()) {
-			try {
-				HashMap<String, Object> pr = new HashMap<>();
-				pr.put("userName", s.userName); pr.put("roomName", s.roomName);
-				pr.put("score", stealSpTotal.getValue()); pr.put("scoreExt", stealSpTotal.getUnit());
-				pr.put("cmd", "DROP_SP_STEAL");
-				botNewService.insertPointRank(pr);
-			} catch (Exception ignore) {}
+			s.pendingRank.merge("DROP_SP_STEAL", stealSpTotal, SP::add);
 		}
 
 		// —— 음양사: 기원 메시지 ——
@@ -4976,15 +5054,9 @@ public class BossAttackController {
 					SP[] sp2=new SP[1]; String[] nb2={""}; s.newPoint += " +" + baroSellItem(dn, 0, bonusRes, s.userName, s.roomName, s.ctx, s.u, "DROP", 1, s.nightmare, nb2, sp2); s.newBonus += nb2[0];
 					if (sp2[0] != null) dropSpTotal = dropSpTotal.add(sp2[0]);
 				}
-				// DROP SP 단건 INSERT
+				// DROP SP 수집 (flush 시 합산 INSERT)
 				if (dropSpTotal.getValue() > 0 || !dropSpTotal.getUnit().isEmpty()) {
-					try {
-						HashMap<String, Object> pr = new HashMap<>();
-						pr.put("userName", s.userName); pr.put("roomName", s.roomName);
-						pr.put("score", dropSpTotal.getValue()); pr.put("scoreExt", dropSpTotal.getUnit());
-						pr.put("cmd", "DROP_SP_DROP");
-						botNewService.insertPointRank(pr);
-					} catch (Exception ignore) {}
+					s.pendingRank.merge("DROP_SP_DROP", dropSpTotal, SP::add);
 				}
 			}
 		}
@@ -5061,7 +5133,9 @@ public class BossAttackController {
 		s.buffStart = s.buff.started ? 1 : 0;
 		s.buffIng   = s.activeBuff != null ? 1 : 0;
 		s.buffCode  = s.activeBuff != null ? (String) s.activeBuff.get("FLAG_CODE") : null;
-		s.up = persist(s.userName, s.roomName, s.u, s.m, s.flags, s.calc, s.res, s.hpMax, s.nightmare, s.buffStart, s.buffIng, s.buffCode);
+		s.up = persist(s.userName, s.roomName, s.u, s.m, s.flags, s.calc, s.res, s.hpMax,
+				s.nightmare, s.buffStart, s.buffIng, s.buffCode,
+				s.pendingLogs, s.pendingInventory);
 
 		// 레벨 업적 (레벨업 시 체크)
 		if (s.up != null && s.up.levelUpCount > 0) {
@@ -5069,22 +5143,41 @@ public class BossAttackController {
 			if (lvAchvMsg != null && !lvAchvMsg.isEmpty()) s.bonusMsg += NL + lvAchvMsg;
 		}
 
-		// [도적] 2타 배틀로그 (PK 충돌 방지: Batch INSERT → SYSTIMESTAMP - (shotIndex+2)초)
+		// [도적] 2타 완전 처리 (킬/드랍/경험치 포함)
 		if (s.thiefDoubleAtk && s.calc2 != null && s.m != null) {
+			ma_thiefSecondAtk(s);
+		}
+
+		// ── 배치 flush: BattleLog(shotIndex 순번) / Inventory / PointRank(CMD 합산) ──
+		if (!s.pendingLogs.isEmpty()) {
+			for (int i = 0; i < s.pendingLogs.size(); i++) s.pendingLogs.get(i).setShotIndex(i);
+			try { botNewService.insertBattleLogsBatch(s.pendingLogs); } catch (Exception ignore) {}
+		}
+		// Inventory: (itemId, gainType) 키로 qty 합산 후 단건 INSERT
+		if (!s.pendingInventory.isEmpty()) {
+			Map<String,HashMap<String,Object>> invMerged = new LinkedHashMap<>();
+			for (HashMap<String,Object> inv : s.pendingInventory) {
+				String invKey = inv.get("itemId") + "|" + inv.get("gainType");
+				if (invMerged.containsKey(invKey)) {
+					int existing = ((Number) invMerged.get(invKey).get("qty")).intValue();
+					int adding   = ((Number) inv.get("qty")).intValue();
+					invMerged.get(invKey).put("qty", existing + adding);
+				} else {
+					invMerged.put(invKey, new HashMap<>(inv));
+				}
+			}
+			for (HashMap<String,Object> inv : invMerged.values()) {
+				try { botNewService.insertInventoryLogTx(inv); } catch (Exception ignore) {}
+			}
+		}
+		for (Map.Entry<String,SP> e : s.pendingRank.entrySet()) {
 			try {
-				List<BattleLog> thiefLogs = new ArrayList<>();
-				thiefLogs.add(new BattleLog()
-						.setUserName(s.userName).setRoomName(s.roomName).setLv(s.up.beforeLv)
-						.setTargetMonLv(s.m.monNo).setGainExp(0)
-						.setAtkDmg(s.calc2.atkDmg).setMonDmg(0)
-						.setAtkCritYn(s.dmg2.flags != null && s.dmg2.flags.atkCrit ? 1 : 0)
-						.setMonPatten(0).setKillYn(0).setNowYn(1).setDropYn(0)
-						.setDeathYn(0).setLuckyYn(0)
-						.setJobSkillYn(s.calc2.jobSkillUsed ? 1 : 0).setJob(s.job)
-						.setNightmareYn(s.ctx.user.nightmareYn)
-						.setSpecialBuffStart(0).setSpecialBuffIng(s.buffIng)
-						.setSpecialBuffCode(s.buffCode).setShotIndex(1));
-				botNewService.insertBattleLogsBatch(thiefLogs);
+				HashMap<String,Object> pr = new HashMap<>();
+				pr.put("userName", s.userName); pr.put("roomName", s.roomName);
+				pr.put("score", e.getValue().getValue());
+				pr.put("scoreExt", e.getValue().getUnit());
+				pr.put("cmd", e.getKey());
+				botNewService.insertPointRank(pr);
 			} catch (Exception ignore) {}
 		}
 
@@ -5187,6 +5280,7 @@ public class BossAttackController {
 			if (s.dmg2 != null && s.dmg2.flags != null && s.dmg2.flags.atkCrit) bot.append(" ✨크리!");
 		}
 		if (s.stealMsg != null && !s.stealMsg.isEmpty()) bot.append(NL).append(s.stealMsg);
+		if (s.secondKillMsg != null && !s.secondKillMsg.isEmpty()) bot.append(NL).append(s.secondKillMsg);
 
 		StringBuilder detailOut = new StringBuilder();
 		String msg = buildAttackMessage(s.userName, s.u, s.m, s.flags, s.calc, s.res, s.up,
@@ -7503,7 +7597,8 @@ public class BossAttackController {
 	private LevelUpResult persist(String userName, String roomName,
 	                              User u, Monster m,
 	                              Flags f, AttackCalc c, Resolve res, int hpMax,
-	                              boolean nightmare, int specialBuffStart, int specialBuffIng, String specialBuffCode) {
+	                              boolean nightmare, int specialBuffStart, int specialBuffIng, String specialBuffCode,
+	                              List<BattleLog> logCollector, List<HashMap<String,Object>> invCollector) {
 
 	    // 1) 최종 HP 계산 (전투 데미지 반영)
 	    u.hpCur = Math.max(0, u.hpCur - c.monDmg);
@@ -7573,7 +7668,7 @@ public class BossAttackController {
                     	inv.put("qty",qty);
 	                    inv.put("delYn",     "1");
 	                    inv.put("gainType", gainType);
-	                    botNewService.insertInventoryLogTx(inv);
+	                    invCollector.add(inv);
 	                }
 	            } catch (Exception ignore) {
 	                // 드랍 저장 실패해도 전투 진행은 계속
@@ -7640,7 +7735,7 @@ public class BossAttackController {
 	    	.setSpecialBuffIng(specialBuffIng)
 	    	.setSpecialBuffCode(specialBuffCode);
 
-	    botNewService.insertBattleLogTx(log);
+	    logCollector.add(log);
 
 	    // ── 실시간 카운터 업데이트 ───────────────────────────────────────────
 	    try {

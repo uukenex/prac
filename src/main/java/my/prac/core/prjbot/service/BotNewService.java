@@ -260,6 +260,9 @@ public interface BotNewService {
     int upsertBattleJobStat(HashMap<String,Object> param);
     int upsertBattleBuffStat(HashMap<String,Object> param);
 
+    /** 유물 아이템 총 개수 (일반/나메 구분) */
+    HashMap<String, Object> selectRelicTotalCounts();
+
     // ── 초기 이관 ─────────────────────────────────────────────────────────────
     void migrateBattleLogToStatAll();
     int migrateLastMonthToJobStat();
