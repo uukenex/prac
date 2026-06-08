@@ -49,7 +49,7 @@
   /*selectUserTotalSpComponents*/
     SELECT NVL(SP_EXT,'') AS SP_EXT, SUM(SP_AMT) AS SP_AMT
     FROM (
-        /* INVENTORY SP: ext별 합산 (보유 아이템 가격) */
+        /* INVENTORY SP: ext별 합산 */
         SELECT
             NVL(B.ITEM_SELL_PRICE_EXT,'') AS SP_EXT,
             (CASE WHEN A.GAIN_TYPE='BUY_MERCHANT'
@@ -64,10 +64,12 @@
 
         UNION ALL
 
-        /* POINT_RANK SP: TBOT_POINT_NEW_RANK 단건 조회 (UNION ALL SUM 대체) */
-        SELECT NVL(CUR_SP_EXT, '') AS SP_EXT, CUR_SP AS SP_AMT
-        FROM TBOT_POINT_NEW_RANK
-        WHERE USER_NAME = #{userName}
+        /* POINT LOG SP: ext별 합산 */
+        SELECT NVL(R.SCORE_EXT,'') AS SP_EXT, R.SCORE AS SP_AMT
+        FROM (SELECT USER_NAME, SCORE, SCORE_EXT, NEW_YN FROM TBOT_POINT_RANK
+              UNION ALL SELECT USER_NAME, SCORE, SCORE_EXT, NEW_YN FROM TBOT_POINT_RANK_OLD) R
+        WHERE R.USER_NAME = #{userName}
+          AND R.NEW_YN='1'
     )
     GROUP BY NVL(SP_EXT,'')
   </select>
@@ -421,10 +423,39 @@
 
 
   <select id="selectCurrentPoint" resultType="hashMap">
-    /* selectCurrentPoint — TBOT_POINT_NEW_RANK 단건 조회 */
-    SELECT NVL(CUR_SP, 0) AS SCORE, NVL(CUR_SP_EXT, '') AS SCORE_EXT
-    FROM TBOT_POINT_NEW_RANK
-    WHERE USER_NAME = #{userName}
+    /* selectCurrentPoint */
+    WITH SP_SUM AS (
+	    SELECT
+	        SUM(
+	            score * POWER(
+	                10000,
+	                CASE
+	                    WHEN score_ext IS NULL OR score_ext='' THEN 0
+	                    ELSE ASCII(score_ext) - ASCII('a') + 1
+	                END
+	            )
+	        ) AS total_sp
+	    FROM (SELECT USER_NAME, ROOM_NAME, SCORE, SCORE_EXT, INSERT_DATE, CMD, NEW_YN FROM TBOT_POINT_RANK UNION ALL SELECT USER_NAME, ROOM_NAME, SCORE, SCORE_EXT, INSERT_DATE, CMD, NEW_YN FROM TBOT_POINT_RANK_OLD)
+	    WHERE user_name = #{userName}
+	    AND new_yn='1'
+	)
+
+	SELECT
+	    ROUND(SIGN(total_sp) * ABS(total_sp) / POWER(10000, unit_idx),2) AS score,
+	    CASE
+	        WHEN unit_idx=0 THEN ''
+	        ELSE CHR(ASCII('a') + unit_idx - 1)
+	    END AS score_ext
+	FROM
+	(
+	    SELECT
+	        total_sp,
+	        CASE
+	            WHEN total_sp=0 THEN 0
+	            ELSE FLOOR(LOG(10000, ABS(total_sp)))
+	        END unit_idx
+	    FROM SP_SUM
+	)
   </select>
 
   <!-- 현재 포인트 로그 RAW 데이터 (score_ext별 합산, POWER/ASCII는 Java에서 계산) -->
@@ -512,12 +543,13 @@
       (#{userName}, #{roomName}, #{score}, NULL, SYSDATE, #{cmd}, '2')
   </insert>
 
-  <!-- GP 잔액 조회 — TBOT_POINT_NEW_RANK 단건 조회 -->
+  <!-- GP 잔액 조회 (new_yn='2' 합계) -->
   <select id="selectGpBalance" parameterType="string" resultType="double">
     /* selectGpBalance */
-    SELECT NVL(CUR_GP, 0)
-    FROM TBOT_POINT_NEW_RANK
+    SELECT NVL(SUM(SCORE), 0)
+    FROM (SELECT USER_NAME, ROOM_NAME, SCORE, SCORE_EXT, INSERT_DATE, CMD, NEW_YN FROM TBOT_POINT_RANK UNION ALL SELECT USER_NAME, ROOM_NAME, SCORE, SCORE_EXT, INSERT_DATE, CMD, NEW_YN FROM TBOT_POINT_RANK_OLD)
     WHERE USER_NAME = #{userName}
+      AND NEW_YN = '2'
   </select>
 
   <!-- TBOT_POINT_NEW_RANK MERGE: insertPointRank / insertGpRecord 후 자동 호출 -->
