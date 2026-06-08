@@ -49,7 +49,7 @@
   /*selectUserTotalSpComponents*/
     SELECT NVL(SP_EXT,'') AS SP_EXT, SUM(SP_AMT) AS SP_AMT
     FROM (
-        /* INVENTORY SP: ext별 합산 (보유 아이템 가격) */
+        /* INVENTORY SP: ext별 합산 */
         SELECT
             NVL(B.ITEM_SELL_PRICE_EXT,'') AS SP_EXT,
             (CASE WHEN A.GAIN_TYPE='BUY_MERCHANT'
@@ -64,10 +64,12 @@
 
         UNION ALL
 
-        /* POINT_RANK SP: TBOT_POINT_NEW_RANK 단건 조회 (UNION ALL SUM 대체) */
-        SELECT NVL(CUR_SP_EXT, '') AS SP_EXT, CUR_SP AS SP_AMT
-        FROM TBOT_POINT_NEW_RANK
-        WHERE USER_NAME = #{userName}
+        /* POINT LOG SP: ext별 합산 */
+        SELECT NVL(R.SCORE_EXT,'') AS SP_EXT, R.SCORE AS SP_AMT
+        FROM (SELECT USER_NAME, SCORE, SCORE_EXT, NEW_YN FROM TBOT_POINT_RANK
+              UNION ALL SELECT USER_NAME, SCORE, SCORE_EXT, NEW_YN FROM TBOT_POINT_RANK_OLD) R
+        WHERE R.USER_NAME = #{userName}
+          AND R.NEW_YN='1'
     )
     GROUP BY NVL(SP_EXT,'')
   </select>
