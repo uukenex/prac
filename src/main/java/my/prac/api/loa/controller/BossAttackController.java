@@ -1853,11 +1853,15 @@ public class BossAttackController {
 	        return cached[0];
 	    }
 
-	    // 캐시 만료 or 없음 → DB 조회 + 캐시 저장
-	    int count = 0;
-	    try { count = botNewService.selectTodayBagCount(userName); } catch (Exception ignore) {}
-	    MiniGameUtil.DAILY_BAG_CACHE.put(userName, new int[]{count, today});
-	    return count;
+	    // 캐시 만료 or 없음 → DB 조회 + 캐시 저장 (예외 시 캐시 갱신 금지 - 0 오염 방지)
+	    try {
+	        int count = botNewService.selectTodayBagCount(userName);
+	        MiniGameUtil.DAILY_BAG_CACHE.put(userName, new int[]{count, today});
+	        return count;
+	    } catch (Exception ignore) {
+	        // DB 오류 시 기존 캐시 값 유지 (날짜 불일치라도 이전 값 반환)
+	        return (cached != null) ? cached[0] : 0;
+	    }
 	}
 
 	/** 가방 획득 시 DAILY_BAG_CACHE 증가 (DB 조회 없이 캐시만 업데이트) */
