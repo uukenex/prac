@@ -3220,6 +3220,16 @@ public class BossAttackController {
 	            }
 	        }
 
+	        // 최근 등록 순 (INSERT_DATE 내림차순)
+	        filtered.sort((a, b2) -> {
+	            java.sql.Timestamp t1 = toTimestamp(a.get("INSERT_DATE"));
+	            java.sql.Timestamp t2 = toTimestamp(b2.get("INSERT_DATE"));
+	            if (t1 == null && t2 == null) return 0;
+	            if (t1 == null) return 1;
+	            if (t2 == null) return -1;
+	            return t2.compareTo(t1);
+	        });
+
 	        return "▶ " + rawParam + " 카테고리 목록" + NL
 	             + renderMarketListForBuy(filtered, userName, false);
 	    }
