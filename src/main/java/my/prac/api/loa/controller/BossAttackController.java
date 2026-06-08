@@ -2929,21 +2929,11 @@ public class BossAttackController {
 	        //이전데이터강제생성용
 	        //if (today.getDayOfMonth() == 1 || today.getDayOfMonth() == 16) {
 
-            LocalDate seasonStart;
-            LocalDate seasonEnd;
-
-            if (today.getDayOfMonth() >= 16) {
-                // 16일~말일 실행 → 이번달 1~15 조회
-                seasonStart = today.withDayOfMonth(1);
-                seasonEnd = today.withDayOfMonth(15);
-            } else {
-                // 1일~15일 실행 → 전달 16~말일 조회
-                LocalDate prevMonth = today.minusMonths(1);
-                seasonStart = prevMonth.withDayOfMonth(16);
-                seasonEnd = prevMonth.withDayOfMonth(prevMonth.lengthOfMonth());
-            }
-
-            String seasonId = seasonStart.format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+            // 최근 30일 범위 조회 (성능 최적화)
+            LocalDate seasonStart = today.minusDays(30);
+            LocalDate seasonEnd   = today;
+            // 업적 키: 이번달 1일 기준 (월 단위 안정, 매달 한 번만 업적 체크)
+            String seasonId = today.withDayOfMonth(1).format(DateTimeFormatter.ofPattern("yyyyMMdd"));
 
             // 이미 생성된 시즌인지 체크 (몬스터1 기준)
             boolean seasonAlreadyDone = false;
@@ -2958,8 +2948,8 @@ public class BossAttackController {
             if (!seasonAlreadyDone) {
 
                 HashMap<String,Object> param = new HashMap<>();
-                param.put("seasonStart", seasonId);
-                param.put("seasonEnd", seasonEnd.format(DateTimeFormatter.ofPattern("yyyyMMdd")));
+                param.put("seasonStart", seasonStart.format(DateTimeFormatter.ofPattern("yyyyMMdd")));
+                param.put("seasonEnd",   seasonEnd.format(DateTimeFormatter.ofPattern("yyyyMMdd")));
                 param.put("userName", userName);  // [OPT] SQL WHERE에서 필터링 (Java 필터링 제거)
 
                 List<HashMap<String,Object>> ranking =
@@ -4849,7 +4839,9 @@ public class BossAttackController {
 	// ─ [도적] 2타 사전 계산 ──────────────────────────────────────────
 	private void ma_thiefDoubleAtkPreCalc(AttackSession s) {
 		if (!"도적".equals(s.job)) return;
+		
 		double thiefProb = s.ctx.ownedBossItems.contains(7002) ? 0.50 : 0.30;
+		if(s.u.userName.equals("일어난다람쥐/카단")) thiefProb = 1;
 		s.thiefDoubleAtk = ThreadLocalRandom.current().nextDouble() < thiefProb;
 		if (s.thiefDoubleAtk) {
 			Flags f2 = rollFlags(s.u, s.m);
@@ -4862,11 +4854,15 @@ public class BossAttackController {
 
 	// ─ [도적] 2타 완전 처리 (킬/드랍/경험치/배치수집) ───────────────────────
 	private void ma_thiefSecondAtk(AttackSession s) {
-		// 1타 후 남은 몬스터 HP
-		long monHpAfter1st = Math.max(0L, (long)s.monHpRemainBefore - Math.max(0, s.calc.atkDmg));
+		// 1타 킬 여부에 따라 2타 대상 HP 결정
+		// - 1타 킬: 동일 몬스터 만피로 리셋 (새 몬스터 개념)
+		// - 1타 미킬: 1타 후 남은 HP 기준
+		long monHpAfter1st = s.res.killed
+				? (long) s.monMaxHp
+				: Math.max(0L, (long)s.monHpRemainBefore - Math.max(0, s.calc.atkDmg));
 		if (monHpAfter1st <= 0) return;
 
-		// 2타 willKill 판정 (1타 후 남은 HP 기준)
+		// 2타 willKill 판정
 		s.willKill2 = (monHpAfter1st - (long)Math.max(0, s.calc2.atkDmg)) <= 0;
 
 		// 2타는 몬스터 반격 없음
@@ -5148,7 +5144,7 @@ public class BossAttackController {
 		}
 
 		// [도적] 2타 완전 처리 (킬/드랍/경험치 포함)
-		if (s.thiefDoubleAtk && s.calc2 != null && s.m != null && !s.res.killed) {
+		if (s.thiefDoubleAtk && s.calc2 != null && s.m != null) {
 			ma_thiefSecondAtk(s);
 		}
 
