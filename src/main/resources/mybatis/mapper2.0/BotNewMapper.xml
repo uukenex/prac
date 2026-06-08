@@ -636,7 +636,7 @@
     SELECT ITEM_ID
     FROM TBOT_POINT_NEW_ITEM
     WHERE (ITEM_ID >= 7000 AND ITEM_ID &lt; 8000)
-       OR (ITEM_ID >= 900  AND ITEM_ID &lt; 1000)
+       OR ITEM_ID = 999
     ORDER BY ITEM_ID
   </select>
 
@@ -1619,10 +1619,12 @@
 	<!-- 나메 해금 조건: 일반모드에서 특정 몬스터 N킬 이상인지 확인 -->
 	<select id="selectNormalKillCountByMonNo" parameterType="map" resultType="int">
 		/* selectNormalKillCountByMonNo — TBOT_POINT_NEW_MON_KILL_STAT */
-		SELECT NVL(KILL_CNT - NVL(NM_KILL_CNT,0) - NVL(HELL_KILL_CNT,0), 0)
-		  FROM TBOT_POINT_NEW_MON_KILL_STAT
-		 WHERE USER_NAME = #{userName}
-		   AND MON_NO    = #{monNo}
+		SELECT NVL(
+		    (SELECT NVL(KILL_CNT - NVL(NM_KILL_CNT,0) - NVL(HELL_KILL_CNT,0), 0)
+		       FROM TBOT_POINT_NEW_MON_KILL_STAT
+		      WHERE USER_NAME = #{userName}
+		        AND MON_NO    = #{monNo})
+		, 0) FROM DUAL
 	</select>
 
 	<!-- 헬 해금 조건: 나메모드에서 1~30번 몬스터 dark킬(LUCKY_YN=2) 보유 monNo 수 -->

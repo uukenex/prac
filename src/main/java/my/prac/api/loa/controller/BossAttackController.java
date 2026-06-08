@@ -767,7 +767,7 @@ public class BossAttackController {
 	    if(u.nightmareYn==2) {
 	    	double hellMult = MiniGameUtil.getHellNerfMult(ctx.hunterGrade);
 	    	if (ctx.ownedBossItems.contains(7007)) hellMult = Math.max(0.0, hellMult + 0.03);
-	    	if (ctx.ownedBossItems.contains(999)) hellMult = Math.max(0.0, hellMult + 0.01); // [999] 선물: 헬너프 -1%
+	    	if (ctx.ownedBossItems.contains(999)) hellMult = Math.max(0.0, hellMult + 0.01); // [999] 선물: 헬너프 -1%p (잔존율 +1%)
 	    	ctx.hellNerfRate = hellMult;
 
 	    	hellNerfAtkMin = Math.max(0, (int) Math.round(atkMin   * (1-hellMult) ));
@@ -1853,11 +1853,15 @@ public class BossAttackController {
 	        return cached[0];
 	    }
 
-	    // 캐시 만료 or 없음 → DB 조회 + 캐시 저장
-	    int count = 0;
-	    try { count = botNewService.selectTodayBagCount(userName); } catch (Exception ignore) {}
-	    MiniGameUtil.DAILY_BAG_CACHE.put(userName, new int[]{count, today});
-	    return count;
+	    // 캐시 만료 or 없음 → DB 조회 + 캐시 저장 (예외 시 캐시 갱신 금지 - 0 오염 방지)
+	    try {
+	        int count = botNewService.selectTodayBagCount(userName);
+	        MiniGameUtil.DAILY_BAG_CACHE.put(userName, new int[]{count, today});
+	        return count;
+	    } catch (Exception ignore) {
+	        // DB 오류 시 기존 캐시 값 유지 (날짜 불일치라도 이전 값 반환)
+	        return (cached != null) ? cached[0] : 0;
+	    }
 	}
 
 	/** 가방 획득 시 DAILY_BAG_CACHE 증가 (DB 조회 없이 캐시만 업데이트) */
@@ -2675,7 +2679,7 @@ public class BossAttackController {
 
 	                if ("BOSS_HELL".equalsIgnoreCase(typeStr) || "BOSS_GACHA".equalsIgnoreCase(typeStr)) {
 	                    if (qtyVal > 1) label += "x" + qtyVal;
-	                    label += "BOSS_GACHA".equalsIgnoreCase(typeStr) ? " [뽑기]" : " [보스처치]";
+	                    label += "BOSS_GACHA".equalsIgnoreCase(typeStr) ? " [뽑기]" : " [드랍]";
 	                } else if ("DROP_OPEN_G".equalsIgnoreCase(typeStr) || "DROP_OPEN_P".equalsIgnoreCase(typeStr) || "ATTEND".equalsIgnoreCase(typeStr)) {
 	                    label = ("DROP_OPEN_P".equalsIgnoreCase(typeStr) ? "✨플래티넘" : "ATTEND".equalsIgnoreCase(typeStr) ? "출첵" : "✨황금") + "유물상자 (/가방열기 로 개봉)";
 	                } else if (typeStr != null && typeStr.toUpperCase().startsWith("HELL_BOX") && itemId >= 3000 && itemId < 4000) {
@@ -2697,21 +2701,18 @@ public class BossAttackController {
 	                bucket.add(label);
 	            }
 
-	            // 4) 카테고리별 출력 (※날개 뒤에 행운/반지/토템/선물 합계 삽입)
+	            // 4) 카테고리별 출력 (invenInfo와 동일: 줄바꿈 방식)
 	            for (Map.Entry<String, List<String>> e : catMap.entrySet()) {
+	                String catKey = e.getKey();
 	                List<String> list = e.getValue();
 	                if (list != null && !list.isEmpty()) {
-	                    int max = getMaxAllowedByCategoryLabel(e.getKey());
-	                    if (max != Integer.MAX_VALUE) {
-	                        sb.append(e.getKey()).append("(최대").append(max).append("개)").append(": ");
-	                    } else {
-	                        sb.append(e.getKey()).append(": ");
+	                    sb.append(catKey).append(":").append(NL);
+	                    for (String s : list) {
+	                        sb.append(s).append(NL);
 	                    }
-	                    sb.append(String.join(", ", list));
-	                    sb.append(NL);
 	                }
 	                // 날개 출력 직후 합계 삽입
-	                if ("※날개".equals(e.getKey())) {
+	                if ("※날개".equals(catKey)) {
 	                    for (int[] gr : new int[][]{{300,400},{500,600},{600,700},{900,1000}}) {
 	                        String gl = gr[0]==300?"행운":gr[0]==500?"반지":gr[0]==600?"토템":"선물";
 	                        String line = buildGroupSummaryLine(bag, gr[0], gr[1], gl);
@@ -3219,6 +3220,16 @@ public class BossAttackController {
 	                filtered.add(row);
 	            }
 	        }
+
+	        // 최근 등록 순 (INSERT_DATE 내림차순)
+	        filtered.sort((a, b2) -> {
+	            java.sql.Timestamp t1 = toTimestamp(a.get("INSERT_DATE"));
+	            java.sql.Timestamp t2 = toTimestamp(b2.get("INSERT_DATE"));
+	            if (t1 == null && t2 == null) return 0;
+	            if (t1 == null) return 1;
+	            if (t2 == null) return -1;
+	            return t2.compareTo(t1);
+	        });
 
 	        return "▶ " + rawParam + " 카테고리 목록" + NL
 	             + renderMarketListForBuy(filtered, userName, false);
