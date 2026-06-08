@@ -55,6 +55,7 @@ import my.prac.core.game.dto.User;
 import my.prac.core.game.dto.UserBattleContext;
 import my.prac.core.prjbot.dao.BotDAO;
 import my.prac.core.prjbot.service.BotNewService;
+import my.prac.core.prjbot.service.BotS3Service;
 import my.prac.core.prjbot.service.BotService;
 import my.prac.core.prjbot.service.BotSettleService;
 import my.prac.core.util.MiniGameUtil;
@@ -161,6 +162,7 @@ public class BossAttackController {
 	@Resource(name = "core.prjbot.BotService")        BotService botService;
 	@Resource(name = "core.prjbot.BotDAO")            BotDAO botDAO;
 	@Resource(name = "core.prjbot.BotNewService")     BotNewService botNewService;
+	@Resource(name = "core.prjbot.BotS3Service")      BotS3Service  botS3Service;
 	@Resource(name = "core.prjbot.BotSettleService")  BotSettleService botSettleService;
 	
 	
