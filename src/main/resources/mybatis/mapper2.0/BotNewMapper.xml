@@ -381,7 +381,10 @@
 	    NVL(MAX(i.CRI_DMG), 0)        AS CRI_DMG,
 	    NVL(MAX(i.HP_MAX_RATE), 0)    AS HP_MAX_RATE,
 	    NVL(MAX(i.ATK_MAX_RATE), 0)   AS ATK_MAX_RATE,
-	    NVL(MAX(i.ITEM_DESC), '')     AS ITEM_DESC
+	    NVL(MAX(i.ITEM_DESC), '')     AS ITEM_DESC,
+
+	    /* 🔹 획득 경로 (드랍/뽑기 레이블용) */
+	    NVL(inv.gain_type, 'DROP')    AS GAIN_TYPE
 
 	FROM (
 	    /* 현재 인벤 (item_id > 90) */
@@ -401,7 +404,8 @@
 	  ON i.item_id = inv.item_id
 
 	GROUP BY
-	    i.item_id, -1,
+	    i.item_id,
+	    NVL(inv.gain_type, 'DROP'),
 	    CASE
 	      WHEN NVL(inv.gain_type,'DROP') = 'DROP_OPEN_P'
 	        THEN '플래티넘유물상자'

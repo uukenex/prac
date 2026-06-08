@@ -2133,6 +2133,7 @@ public class BossAttackController {
 	        int itemId = safeInt(row.get("ITEM_ID"));
 	        String itemName = Objects.toString(row.get("ITEM_NAME"), "");
 	        String type = Objects.toString(row.get("ITEM_TYPE"), "");
+	        String gainType = Objects.toString(row.get("GAIN_TYPE"), "");
 	        int qty = safeInt(row.get("TOTAL_QTY"));
 
 	        if (itemName.isEmpty()) continue;
@@ -2166,9 +2167,9 @@ public class BossAttackController {
 	        // ─────────────────
 	        // 보스 아이템 (7000번대)
 	        // ─────────────────
-	        else if ("BOSS_HELL".equalsIgnoreCase(type) || "BOSS_GACHA".equalsIgnoreCase(type)) {
+	        else if ("BOSS_HELL".equalsIgnoreCase(type) || "BOSS_GACHA".equalsIgnoreCase(type) || (itemId >= 7000 && itemId < 8000)) {
 	            if (qty > 1) label += "x" + qty;
-	            label += "BOSS_GACHA".equalsIgnoreCase(type) ? " [뽑기]" : " [드랍]";
+	            label += "BOSS_GACHA".equalsIgnoreCase(gainType) ? " [뽑기]" : " [드랍]";
 	        }
 	        // ─────────────────
 	        // 지옥 각인 (3000번대)
@@ -2644,6 +2645,7 @@ public class BossAttackController {
 	            catMap.put("※갑옷", new ArrayList<>());
 	            catMap.put("※전설", new ArrayList<>());
 	            catMap.put("※유물", new ArrayList<>());
+	            catMap.put("※[N]유물", new ArrayList<>());
 	            catMap.put("※지옥", new ArrayList<>());
 	            catMap.put("※날개", new ArrayList<>());
 	            catMap.put("※보스", new ArrayList<>());
@@ -2654,10 +2656,11 @@ public class BossAttackController {
 	            for (HashMap<String, Object> row : bag) {
 	                if (row == null) continue;
 
-	                String itemName = Objects.toString(row.get("ITEM_NAME"), "-");
-	                String qtyStr   = Objects.toString(row.get("TOTAL_QTY"), "0");
-	                String typeStr  = Objects.toString(row.get("ITEM_TYPE"), "");
-	                int itemId      = MiniGameUtil.parseIntSafe(Objects.toString(row.get("ITEM_ID"), "0"));
+	                String itemName    = Objects.toString(row.get("ITEM_NAME"), "-");
+	                String qtyStr     = Objects.toString(row.get("TOTAL_QTY"), "0");
+	                String typeStr    = Objects.toString(row.get("ITEM_TYPE"), "");
+	                String gainTypeStr = Objects.toString(row.get("GAIN_TYPE"), "");
+	                int itemId        = MiniGameUtil.parseIntSafe(Objects.toString(row.get("ITEM_ID"), "0"));
 
 	                if (itemName == null || itemName.trim().isEmpty()) continue;
 
@@ -2677,9 +2680,9 @@ public class BossAttackController {
 	                        "ACHV".equalsIgnoreCase(typeStr) 
 	                        ;
 
-	                if ("BOSS_HELL".equalsIgnoreCase(typeStr) || "BOSS_GACHA".equalsIgnoreCase(typeStr)) {
+	                if ("BOSS_HELL".equalsIgnoreCase(typeStr) || "BOSS_GACHA".equalsIgnoreCase(typeStr) || (itemId >= 7000 && itemId < 8000)) {
 	                    if (qtyVal > 1) label += "x" + qtyVal;
-	                    label += "BOSS_GACHA".equalsIgnoreCase(typeStr) ? " [뽑기]" : " [드랍]";
+	                    label += "BOSS_GACHA".equalsIgnoreCase(gainTypeStr) ? " [뽑기]" : " [드랍]";
 	                } else if ("DROP_OPEN_G".equalsIgnoreCase(typeStr) || "DROP_OPEN_P".equalsIgnoreCase(typeStr) || "ATTEND".equalsIgnoreCase(typeStr)) {
 	                    label = ("DROP_OPEN_P".equalsIgnoreCase(typeStr) ? "✨플래티넘" : "ATTEND".equalsIgnoreCase(typeStr) ? "출첵" : "✨황금") + "유물상자 (/가방열기 로 개봉)";
 	                } else if (typeStr != null && typeStr.toUpperCase().startsWith("HELL_BOX") && itemId >= 3000 && itemId < 4000) {
@@ -2693,6 +2696,10 @@ public class BossAttackController {
 	                }
 
 	                String cat = resolveItemCategory(itemId);
+	                // 유물 세분화: [N] 접두사 = 나메유물 (invenInfo와 동일)
+	                if ("※유물".equals(cat)) {
+	                    cat = itemName.startsWith("[N]") ? "※[N]유물" : "※유물";
+	                }
 
 	                List<String> bucket = catMap.get(cat);
 	                if (bucket == null) {
@@ -2701,11 +2708,30 @@ public class BossAttackController {
 	                bucket.add(label);
 	            }
 
+	            // 유물 총개수 조회 (N/M 표시용)
+	            int relicNormalTotal2 = 0, relicNmTotal2 = 0;
+	            try {
+	                HashMap<String,Object> relicCnt2 = botNewService.selectRelicTotalCounts();
+	                if (relicCnt2 != null) {
+	                    relicNormalTotal2 = safeInt(relicCnt2.get("NORMAL_TOTAL"));
+	                    relicNmTotal2     = safeInt(relicCnt2.get("NM_TOTAL"));
+	                }
+	            } catch (Exception ignore2) {}
+
 	            // 4) 카테고리별 출력 (invenInfo와 동일: 줄바꿈 방식)
 	            for (Map.Entry<String, List<String>> e : catMap.entrySet()) {
 	                String catKey = e.getKey();
 	                List<String> list = e.getValue();
-	                if (list != null && !list.isEmpty()) {
+	                // 유물: N/M 요약 표시 (invenInfo와 동일)
+	                if ("※유물".equals(catKey) || "※[N]유물".equals(catKey)) {
+	                    int ownedCnt = list.size();
+	                    int totalCnt = "※유물".equals(catKey) ? relicNormalTotal2 : relicNmTotal2;
+	                    if (ownedCnt > 0 || totalCnt > 0) {
+	                        String summary = ownedCnt + "/" + (totalCnt > 0 ? totalCnt : "?");
+	                        if (totalCnt > 0 && ownedCnt >= totalCnt) summary += " 모두수집";
+	                        sb.append(catKey).append(" : ").append(summary).append(NL);
+	                    }
+	                } else if (list != null && !list.isEmpty()) {
 	                    sb.append(catKey).append(":").append(NL);
 	                    for (String s : list) {
 	                        sb.append(s).append(NL);
