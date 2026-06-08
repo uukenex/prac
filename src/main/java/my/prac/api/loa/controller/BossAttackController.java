@@ -1772,8 +1772,9 @@ public class BossAttackController {
 	    try { data.put("market", botNewService.selectOwnedMarketBuffTotals(userName, "")); } catch (Exception ignore) {}
 	    try { data.put("heaven", botNewService.selectHeavenItemBuff(userName)); } catch (Exception ignore) {}
 	    try {
-	        List<Integer> bossItemIds = botNewService.selectBossItemIds();
-	        if (bossItemIds != null && !bossItemIds.isEmpty())
+	        List<Integer> bossItemIds = new java.util.ArrayList<>(botNewService.selectBossItemIds());
+	        if (!bossItemIds.contains(999)) bossItemIds.add(999); // 999는 MARKET 타입이라 뽑기풀 제외, 여기서만 추가
+	        if (!bossItemIds.isEmpty())
 	            data.put("bossItems", botNewService.selectInventoryItemsByIds(userName, "", bossItemIds));
 	    } catch (Exception ignore) {}
 	    // [OPT] selectTotalDropItems는 applyDropBonusToContext에서 ctx.preDropRows로 대체되므로 제거

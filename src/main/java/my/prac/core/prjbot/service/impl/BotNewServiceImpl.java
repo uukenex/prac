@@ -611,7 +611,7 @@ public class BotNewServiceImpl implements BotNewService {
 
     @Override
     public List<Integer> selectBossItemIds() {
-        return botNewDAO.selectBossItemIds(); // BOSS_HELL + 999(MARKET) 포함
+        return botNewDAO.selectItemIdsByType("BOSS_HELL");
     }
 
     @Override
