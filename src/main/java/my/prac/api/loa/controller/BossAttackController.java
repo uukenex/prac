@@ -4157,10 +4157,25 @@ public class BossAttackController {
 	    try { gp = botNewService.selectGpBalance(userName); }
 	    catch (Exception ignore) {}
 
+	    // 보유 보스 아이템 수 조회 (뽑기 가격 안내용)
+	    int ownedCount = 0;
+	    try {
+	        List<Integer> ownedForCount = botNewService.selectInventoryItemsByIds(userName, "", bossItemIds);
+	        if (ownedForCount != null) ownedCount = ownedForCount.size();
+	    } catch (Exception ignore) {}
+	    double gachaPrice = ownedCount >= 20 ? 6.0 : ownedCount >= 10 ? 5.0 : 4.0;
+
 	    StringBuilder sb = new StringBuilder();
 	    sb.append("■ 보스 아이템 상점 (10 GP)").append(NL)
 	      .append("────────────────").append(NL)
 	      .append("현재 GP: ").append(String.format("%.2f", gp)).append(" GP").append(NL)
+	      .append(NL)
+	      .append("◆ GP뽑기 (/보스뽑기)").append(NL)
+	      .append("  보유 유물  0~9개 : 4 GP").append(NL)
+	      .append("  보유 유물 10~19개: 5 GP").append(NL)
+	      .append("  보유 유물 20개 이상: 6 GP").append(NL)
+	      .append("  현재 보유: ").append(ownedCount).append("개 → ").append((int)gachaPrice).append(" GP").append(NL)
+	      .append("────────────────").append(NL)
 	      .append(NL);
 
 	    for (int id : bossItemIds) {
@@ -4417,6 +4432,7 @@ public class BossAttackController {
 		String jobLevelUpMsg = "";
 		boolean elfNightMode = false;
 		String jobLvProgressMsg = "";
+		String gpDropMsg = "";
 
 		AttackSession(HashMap<String,Object> map) {
 			this.map      = map;
@@ -4905,7 +4921,7 @@ public class BossAttackController {
 		if (s.res2.killed) {
 			invalidateInvBuff(s.userName);
 			try { botNewService.closeOngoingBattleTx(s.userName, s.roomName); } catch (Exception ignore) {}
-			s.secondKillMsg = "⚔️ [2타 확인사살!] " + s.m.monName + " 처치!";
+			s.secondKillMsg = "⚔️ [2타!] " + s.m.monName + " 처치!";
 			// 2타 킬 업적 처리
 			try {
 				String ka2 = grantKillAchievements(s.userName, s.roomName, s.achievedCmdSet, s.cachedKillStats);
@@ -5263,6 +5279,14 @@ public class BossAttackController {
 			if (bag2 != null && !bag2.isEmpty())
 				s.bagDropMsg = (s.bagDropMsg == null || s.bagDropMsg.isEmpty()) ? bag2 : s.bagDropMsg + NL + bag2;
 		}
+
+		// ── [신규] 3.5% 확률 GP 지급 ────────────────────────────────────
+		s.gpDropMsg = tryDropGp(s.userName, s.roomName);
+
+		// ── [신규] 헬모드 일반 공격 시 보스 등장 30초 앞당기기 ────────────
+		if (s.hell) {
+			try { botS3Service.reduceHellBossInsertDate(); } catch (Exception ignore) {}
+		}
 	}
 
 	// ─ 15~16) 메시지 구성 + 포인트 ────────────────────────────────
@@ -5404,6 +5428,7 @@ public class BossAttackController {
 		StringBuilder line5 = new StringBuilder();
 		if (s.bonusMsg  != null && !s.bonusMsg.isEmpty())  line5.append("업적달성!");
 		if (s.bagDropMsg != null && !s.bagDropMsg.isEmpty()) line5.append("가방획득!");
+		if (s.gpDropMsg  != null && !s.gpDropMsg.isEmpty())  line5.append(s.gpDropMsg);
 		if (line5.length() > 0) sb.append(line5).append(NL);
 
 		// Line 6: 스페셜타임![효과 설명] (단독 줄)
@@ -5910,6 +5935,25 @@ public class BossAttackController {
 	    }
 	}
 
+	// ─ 공격 시 3.5% 확률 GP 지급 ──────────────────────────────────────
+	private static final double GP_DROP_RATE = 0.035;
+	private String tryDropGp(String userName, String roomName) {
+		if (ThreadLocalRandom.current().nextDouble() >= GP_DROP_RATE) return "";
+		try {
+			// 0.1~0.5 GP 랜덤 지급 (소수점 1자리: 0.1, 0.2, 0.3, 0.4, 0.5)
+			double gpAmount = (ThreadLocalRandom.current().nextInt(5) + 1) * 0.1;
+			HashMap<String,Object> gp = new HashMap<>();
+			gp.put("userName", userName);
+			gp.put("roomName", roomName);
+			gp.put("score",    gpAmount);
+			gp.put("cmd",      "ATK_GP_DROP");
+			botNewService.insertGpRecord(gp);
+			return String.format("✨ GP 획득! +%.1f GP", gpAmount);
+		} catch (Exception e) {
+			return "";
+		}
+	}
+
 	
 	public String sellItem(HashMap<String, Object> map) throws Exception {
 
@@ -6069,9 +6113,22 @@ public class BossAttackController {
 		try { gp = botNewService.selectGpBalance(userName); }
 		catch (Exception e) { return "GP 조회 중 오류가 발생했습니다."; }
 
-		if (gp < 4) {
-			return userName + "님," + NL + "보스뽑기에는 4 GP가 필요합니다." + NL
-				+ "현재 GP: " + gp + " GP" + NL
+		// 보스 아이템 보유 수에 따라 가격 결정 (4/5/6 GP)
+		int ownedBossCount = 0;
+		try {
+			List<Integer> allBossIds = botNewService.selectBossItemIds();
+			if (allBossIds != null && !allBossIds.isEmpty()) {
+				List<Integer> ownedBoss = botNewService.selectInventoryItemsByIds(userName, "", allBossIds);
+				if (ownedBoss != null) ownedBossCount = ownedBoss.size();
+			}
+		} catch (Exception ignore) {}
+		double gachaPrice = ownedBossCount >= 20 ? 6.0 : ownedBossCount >= 10 ? 5.0 : 4.0;
+
+		if (gp < gachaPrice) {
+			return userName + "님," + NL
+				+ "보스뽑기에는 " + (int)gachaPrice + " GP가 필요합니다." + NL
+				+ "현재 GP: " + String.format("%.2f", gp) + " GP" + NL
+				+ "(보유 유물 수: " + ownedBossCount + "개 → " + (int)gachaPrice + " GP)" + NL
 				+ "(7000번대 보스 아이템 판매 시 1개당 1 GP 획득)";
 		}
 
@@ -6095,12 +6152,12 @@ public class BossAttackController {
 			return userName + "님," + NL + "현재 모든 보스 아이템을 보유 중입니다." + NL
 				+ "잔여 GP: " + String.format("%.2f", gp) + " GP";
 
-		// GP 4 차감
+		// GP 차감 (가격: gachaPrice)
 		try {
 			HashMap<String, Object> gpDeduct = new HashMap<>();
 			gpDeduct.put("userName", userName);
 			gpDeduct.put("roomName", roomName);
-			gpDeduct.put("score",   -4.0);
+			gpDeduct.put("score",   -gachaPrice);
 			gpDeduct.put("cmd",     "BOSS_GACHA");
 			botNewService.insertGpRecord(gpDeduct);
 		} catch (Exception e) { return "GP 차감 중 오류가 발생했습니다."; }
@@ -6122,7 +6179,7 @@ public class BossAttackController {
 				HashMap<String, Object> gpRestore = new HashMap<>();
 				gpRestore.put("userName", userName);
 				gpRestore.put("roomName", roomName);
-				gpRestore.put("score",   4.0);
+				gpRestore.put("score",   gachaPrice);
 				gpRestore.put("cmd",     "BOSS_GACHA_RESTORE");
 				botNewService.insertGpRecord(gpRestore);
 			} catch (Exception ignore) {}
@@ -6159,9 +6216,9 @@ public class BossAttackController {
 		} catch (Exception ignore) {}
 
 		return userName + "님," + NL
-				+ "보스뽑기! (-4 GP)" + NL
+				+ "보스뽑기! (-" + (int)gachaPrice + " GP) [보유유물 " + ownedBossCount + "개]" + NL
 				+ "▶ 획득 아이템: " + itemLine + NL
-				+ "- 잔여 GP: " + String.format("%.2f", gp - 4) + " GP";
+				+ "- 잔여 GP: " + String.format("%.2f", gp - gachaPrice) + " GP";
 	}
 
 		private String sellCategoryItem(String userName, String roomName, String slotKey) throws Exception {

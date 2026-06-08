@@ -50,6 +50,19 @@
 	</select>
 
 	<!-- =====================================================
+	     [S3 헬보스] 헬모드 일반 공격 시 INSERT_DATE 30초 감소 (보스 등장 앞당기기)
+	     가장 높은 SEQ, END_YN='0' 인 보스 대상
+	     ===================================================== -->
+	<update id="reduceHellBossInsertDate">
+		/* reduceHellBossInsertDate */
+		UPDATE TBOT_POINT_NEW_BOSS
+		   SET INSERT_DATE = INSERT_DATE - NUMTODSINTERVAL(30, 'SECOND')
+		 WHERE SEQ = (
+		     SELECT MAX(SEQ) FROM TBOT_POINT_NEW_BOSS WHERE END_YN = '0'
+		 )
+	</update>
+
+	<!-- =====================================================
 	     [S3 헬보스] HP 업데이트 (낙관적 잠금)
 	     - PROC_DATE: S1의 MODIFY_DATE에 해당
 	     ===================================================== -->
