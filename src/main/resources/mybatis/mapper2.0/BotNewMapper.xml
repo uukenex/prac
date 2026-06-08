@@ -636,7 +636,7 @@
     SELECT ITEM_ID
     FROM TBOT_POINT_NEW_ITEM
     WHERE (ITEM_ID >= 7000 AND ITEM_ID &lt; 8000)
-       OR (ITEM_ID >= 900  AND ITEM_ID &lt; 1000)
+       OR ITEM_ID = 999
     ORDER BY ITEM_ID
   </select>
 
