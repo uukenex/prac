@@ -218,6 +218,7 @@ public interface BotNewDAO {
     HashMap<String,Object> selectHellUnlockStats(@Param("userName") String userName);
     HashMap<String,Object> selectHeavenItemBuff(@Param("userName") String userName);
     List<Integer> selectItemIdsByType(@Param("itemType") String itemType);
+    List<Integer> selectBossItemIds();
     List<HashMap<String, Object>> selectHellRewardItemsWithOwnCount();
     void insertGpRecord(HashMap<String, Object> param);
     double selectGpBalance(@Param("userName") String userName);
