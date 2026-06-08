@@ -212,6 +212,23 @@
 	</select>
 
 	<!-- =====================================================
+	     [S3 헬보스] 룰렛 대상 조회
+	     조건: 헬모드 몬스터 kill 이력 있음 + proc_date > trunc(sysdate)-3
+	     ===================================================== -->
+	<select id="selectHellLotteryPool" resultType="String">
+		/* selectHellLotteryPool */
+		SELECT DISTINCT b.USER_NAME
+		  FROM TBOT_POINT_NEW_BATTLE_LOG b
+		  JOIN TBOT_POINT_NEW_USER u
+		    ON u.USER_NAME = b.USER_NAME
+		 WHERE b.NIGHTMARE_YN = '2'
+		   AND b.KILL_YN      = '1'
+		   AND b.INSERT_DATE  > TRUNC(SYSDATE) - 3
+		   AND u.PROC_DATE    > TRUNC(SYSDATE) - 3
+		 ORDER BY b.USER_NAME
+	</select>
+
+	<!-- =====================================================
 	     [S3 헬보스] 마지막 처치된 보스 조회 (리워드 표시용)
 	     ===================================================== -->
 	<select id="selectLastKilledHellBoss" resultType="HashMap">

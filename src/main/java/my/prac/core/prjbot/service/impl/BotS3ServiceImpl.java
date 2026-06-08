@@ -53,6 +53,11 @@ public class BotS3ServiceImpl implements BotS3Service {
 	}
 
 	@Override
+	public List<String> selectHellLotteryPool() {
+		return botS3DAO.selectHellLotteryPool();
+	}
+
+	@Override
 	public Long selectRecentHellAvgDmg() throws Exception {
 		return botS3DAO.selectRecentHellAvgDmg();
 	}

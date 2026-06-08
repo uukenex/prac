@@ -2652,10 +2652,6 @@ public class BossAttackController {
 
 	                if ("BOSS_HELL".equalsIgnoreCase(typeStr) || "BOSS_GACHA".equalsIgnoreCase(typeStr)) {
 	                    if (qtyVal > 1) label += "x" + qtyVal;
-	                    String opt = MiniGameUtil.buildEnhancedOptionLine(row, 1);
-	                    if (!opt.isEmpty()) label += opt;
-	                    String bossDesc = Objects.toString(row.get("ITEM_DESC"), "").trim();
-	                    if (!bossDesc.isEmpty()) label += " (" + bossDesc + ")";
 	                    label += "BOSS_GACHA".equalsIgnoreCase(typeStr) ? " [뽑기]" : " [보스처치]";
 	                } else if ("DROP_OPEN_G".equalsIgnoreCase(typeStr) || "DROP_OPEN_P".equalsIgnoreCase(typeStr) || "ATTEND".equalsIgnoreCase(typeStr)) {
 	                    label = ("DROP_OPEN_P".equalsIgnoreCase(typeStr) ? "✨플래티넘" : "ATTEND".equalsIgnoreCase(typeStr) ? "출첵" : "✨황금") + "유물상자 (/가방열기 로 개봉)";

@@ -923,13 +923,18 @@ public class BossAttackS3Controller {
         for (HashMap<String, Object> row : allContributors)
             totScore += Long.parseLong(row.get("SCORE").toString());
 
-        // 전체 참여자 이름 목록 (순서 유지 — 2% 제한 없음)
+        // 룰렛 대상: 헬모드 몬스터 kill 이력 + proc_date > trunc(sysdate)-3
         List<String> allNames = new ArrayList<>();
-        for (HashMap<String, Object> row : allContributors)
-            allNames.add(row.get("USER_NAME").toString());
+        try {
+            allNames = botS3Service.selectHellLotteryPool();
+        } catch (Exception e) {
+            // 조회 실패 시 기존 방식(보스 공격자)으로 fallback
+            for (HashMap<String, Object> row : allContributors)
+                allNames.add(row.get("USER_NAME").toString());
+        }
 
         // 참여자 수에 따라 추첨 인원 결정 (1~9명→1명, 10~14명→2명, 15~19명→3명, 20명+→4명)
-        int participantCount = allContributors.size();
+        int participantCount = allNames.size();
         int winnerCount = participantCount >= 20 ? 6 : participantCount >= 15 ? 5 : participantCount >= 10 ? 4 : 3;
 
         StringBuilder msg = new StringBuilder();
@@ -941,6 +946,9 @@ public class BossAttackS3Controller {
         // else GP: diceRoll < 0.40 (40%)
         String rewardTypeName = isItemReward ? "아이템" : isBoxReward ? "지옥의유물상자" : "GP";
         msg.append("이번 클리어 보상은 ").append(rewardTypeName).append(" 입니다!").append(NL);
+
+        // 아이템 보상 더보기(？) 상세 블록
+        StringBuilder itemDetailBlock = new StringBuilder();
 
         if (isBoxReward) {
             // ────────────────────────────────────────────────────
@@ -964,15 +972,7 @@ public class BossAttackS3Controller {
             }
             msg.append(NL);
 
-            msg.append("[추첨대상]").append(NL);
-            for (int i = 0; i < allNames.size(); i++) {
-                String uName = allNames.get(i);
-                boolean isWin = boxWinnerSet.contains(uName);
-                msg.append(i + 1).append(". ").append(uName);
-                if (isWin) msg.append(" < 지옥의유물상자 ").append(boxQtyMap.get(uName)).append("개 당첨!");
-                else       msg.append(" < 0.2 GP");
-                msg.append(NL);
-            }
+            msg.append("당첨자 제외 전체 0.2GP").append(NL);
 
             // DB 지급
             for (String winner : boxWinners) {
@@ -1046,8 +1046,9 @@ public class BossAttackS3Controller {
 
                 // ── 당첨자별 지급 아이템 미리 결정 (표시용 + DB 지급용) ──
                 // itemId: 양수=아이템, -2=이미보유GP
-                Map<String, String>  winnerDisplay = new LinkedHashMap<>();
-                Map<String, Integer> winnerItemId  = new LinkedHashMap<>();
+                Map<String, String>  winnerDisplay  = new LinkedHashMap<>();
+                Map<String, String>  winnerItemName = new LinkedHashMap<>();
+                Map<String, Integer> winnerItemId   = new LinkedHashMap<>();
                 for (String winner : itemWinners) {
                     {
                         int idx        = rand.nextInt(allItems.size());
@@ -1062,40 +1063,41 @@ public class BossAttackS3Controller {
                                     winner, roomName, Collections.singleton(giveItemId));
                             alreadyOwned = owned != null && !owned.isEmpty();
                         } catch (Exception ignore) {}
-                        if (alreadyOwned) {
-                            winnerDisplay.put(winner, displayName + " 이미 보유 → 1 GP 지급");
-                            winnerItemId.put(winner, -2);
-                        } else {
-                            winnerDisplay.put(winner, displayName);
-                            winnerItemId.put(winner, giveItemId);
-                        }
+                        winnerItemName.put(winner, iName);
+                        winnerDisplay.put(winner, displayName);
+                        winnerItemId.put(winner, alreadyOwned ? -2 : giveItemId);
                     }
                 }
 
-                // ── 보상 요약: ✨N번 보상: 아이템명 ──
+                // ── 보상 요약: N번 보상: 아이템명 : 당첨자 ──
                 msg.append(NL);
                 for (int w = 0; w < itemWinners.size(); w++) {
-                    msg.append("✨").append(w + 1).append("번 보상: ")
-                       .append(winnerDisplay.get(itemWinners.get(w))).append(NL);
-                }
-                msg.append(NL);
-
-                // ── [추첨대상] 전체 참여자 목록 ──
-                msg.append("[추첨대상]").append(NL);
-                for (int i = 0; i < allNames.size(); i++) {
-                    String  uName    = allNames.get(i);
-                    boolean excluded = !noItemNames.contains(uName);
-                    Integer winOrder = winnerOrderMap.get(uName);
-                    msg.append(i + 1).append(". ").append(uName);
-                    if (winOrder != null) {
-                        msg.append(" < ").append(winOrder).append("번 보상 당첨!");
-                    } else if (excluded) {
-                        msg.append(" < 0.2GP (보스드랍템 2개 보유로 제외)");
-                    } else {
-                        msg.append(" < 0.2 GP");
-                    }
+                    String winner = itemWinners.get(w);
+                    msg.append(w + 1).append("번 보상: ").append(winnerItemName.get(winner))
+                       .append(" : ").append(winner);
+                    if (winnerItemId.get(winner) == -2) msg.append(" [이미보유 자동판매 + 1GP]");
                     msg.append(NL);
                 }
+                msg.append(NL);
+                msg.append("당첨자 제외 전체 +0.2GP").append(NL);
+
+                // 보스드랍템 2개 보유자 목록
+                List<String> excludedUsers = new ArrayList<>();
+                for (String uName : allNames) {
+                    if (!noItemNames.contains(uName)) excludedUsers.add(uName);
+                }
+                if (!excludedUsers.isEmpty()) {
+                    msg.append(NL).append("(보스드랍템 2개 보유자)").append(NL);
+                    for (String u : excludedUsers) msg.append(u).append(NL);
+                }
+
+                // 더보기(？) 영역용 상세 설명
+                for (int w = 0; w < itemWinners.size(); w++) {
+                    String winner = itemWinners.get(w);
+                    itemDetailBlock.append("？").append(w + 1).append("번 보상: ")
+                        .append(winnerDisplay.get(winner)).append(NL);
+                }
+                itemDetailBlock.append(NL);
 
                 // ── DB 지급 처리 ──
                 // 아이템/GP 당첨자
@@ -1145,30 +1147,17 @@ public class BossAttackS3Controller {
         	if (allContributors.isEmpty()) {
         	    msg.append("GP 지급 대상 없음").append(NL);
         	} else {
-
-        	    msg.append("-- 전체 참여자 GP 지급 (")
-        	       .append(allContributors.size())
-        	       .append("명) --")
-        	       .append(NL);
-
+        	    msg.append("전체참여자 0.5GP").append(NL);
         	    for (HashMap<String, Object> row : allContributors) {
         	        String uName = row.get("USER_NAME").toString();
-
         	        try {
         	            HashMap<String, Object> gpMap = new HashMap<>();
         	            gpMap.put("userName", uName);
         	            gpMap.put("roomName", roomName);
         	            gpMap.put("score", 0.5);
         	            gpMap.put("cmd", "BOSS_HELL_KILL_GP");
-
         	            botNewService.insertGpRecord(gpMap);
-
         	        } catch (Exception ignore) {}
-
-        	        msg.append("[")
-        	           .append(uName)
-        	           .append("] +0.50 GP")
-        	           .append(NL);
         	    }
         	}
         }
@@ -1176,6 +1165,7 @@ public class BossAttackS3Controller {
         // 전체 기여도 TOP (데미지% 포함) — 더보기 구분자 이후에 표시
         if (!allContributors.isEmpty()) {
             msg.append(NL).append(ALL_SEE_STR).append(NL);
+            if (itemDetailBlock.length() > 0) msg.append(itemDetailBlock);
             msg.append("-- 전체 기여도 TOP --").append(NL);
             for (HashMap<String, Object> row : allContributors) {
                 long score = Long.parseLong(row.get("SCORE").toString());

@@ -26,6 +26,9 @@ public interface BotS3DAO {
 	/** [헬보스] 보상 대상 기여도 조회 (7000번대 미소지자만) */
 	List<HashMap<String, Object>> selectHellEligibleContributors(HashMap<String, Object> map);
 
+	/** [헬보스] 룰렛 대상 목록 (헬모드 kill + 최근 활동) */
+	List<String> selectHellLotteryPool();
+
 	/** [헬보스] 마지막 처치된 보스 조회 (리워드 표시용) */
 	HashMap<String, Object> selectLastKilledHellBoss();
 
