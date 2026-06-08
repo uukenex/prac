@@ -923,13 +923,18 @@ public class BossAttackS3Controller {
         for (HashMap<String, Object> row : allContributors)
             totScore += Long.parseLong(row.get("SCORE").toString());
 
-        // 전체 참여자 이름 목록 (순서 유지 — 2% 제한 없음)
+        // 룰렛 대상: 헬모드 몬스터 kill 이력 + proc_date > trunc(sysdate)-3
         List<String> allNames = new ArrayList<>();
-        for (HashMap<String, Object> row : allContributors)
-            allNames.add(row.get("USER_NAME").toString());
+        try {
+            allNames = botS3Service.selectHellLotteryPool();
+        } catch (Exception e) {
+            // 조회 실패 시 기존 방식(보스 공격자)으로 fallback
+            for (HashMap<String, Object> row : allContributors)
+                allNames.add(row.get("USER_NAME").toString());
+        }
 
         // 참여자 수에 따라 추첨 인원 결정 (1~9명→1명, 10~14명→2명, 15~19명→3명, 20명+→4명)
-        int participantCount = allContributors.size();
+        int participantCount = allNames.size();
         int winnerCount = participantCount >= 20 ? 6 : participantCount >= 15 ? 5 : participantCount >= 10 ? 4 : 3;
 
         StringBuilder msg = new StringBuilder();
