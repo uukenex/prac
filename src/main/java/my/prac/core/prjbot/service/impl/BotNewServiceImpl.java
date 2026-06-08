@@ -899,6 +899,11 @@ public class BotNewServiceImpl implements BotNewService {
         return botNewDAO.upsertBattleBuffStat(param);
     }
 
+    @Override
+    public HashMap<String, Object> selectRelicTotalCounts() {
+        return botNewDAO.selectRelicTotalCounts();
+    }
+
     // ── 초기 이관 ─────────────────────────────────────────────────────────────
     @Override
     public void migrateBattleLogToStatAll() {

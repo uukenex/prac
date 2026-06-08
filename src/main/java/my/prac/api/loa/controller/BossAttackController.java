@@ -2115,6 +2115,7 @@ public class BossAttackController {
 	    catMap.put("※갑옷", new ArrayList<>());
 	    catMap.put("※전설", new ArrayList<>());
 	    catMap.put("※유물", new ArrayList<>());
+	    catMap.put("※[N]유물", new ArrayList<>());
 	    catMap.put("※지옥", new ArrayList<>());
 	    catMap.put("※날개", new ArrayList<>());
 	    catMap.put("※보스", new ArrayList<>());
@@ -2134,6 +2135,10 @@ public class BossAttackController {
 	        if ((itemId >= 300 && itemId < 400) || (itemId >= 500 && itemId < 700) || (itemId >= 900 && itemId < 1000)) continue;
 
 	        String cat = resolveItemCategory(itemId);
+	        // 유물 세분화: [N] 접두사 = 나메유물
+	        if ("※유물".equals(cat)) {
+	            cat = itemName.startsWith("[N]") ? "※[N]유물" : "※유물";
+	        }
 	        String label = itemName;
 
 	        // ─────────────────
@@ -2157,11 +2162,7 @@ public class BossAttackController {
 	        // ─────────────────
 	        else if ("BOSS_HELL".equalsIgnoreCase(type) || "BOSS_GACHA".equalsIgnoreCase(type)) {
 	            if (qty > 1) label += "x" + qty;
-	            String opt = MiniGameUtil.buildEnhancedOptionLine(row, 1);
-	            if (!opt.isEmpty()) label += opt;
-	            String desc = Objects.toString(row.get("ITEM_DESC"), "").trim();
-	            if (!desc.isEmpty()) label += " (" + desc + ")";
-	            label += "BOSS_GACHA".equalsIgnoreCase(type) ? " [뽑기]" : " [보스처치]";
+	            label += "BOSS_GACHA".equalsIgnoreCase(type) ? " [뽑기]" : " [드랍]";
 	        }
 	        // ─────────────────
 	        // 지옥 각인 (3000번대)
@@ -2182,17 +2183,37 @@ public class BossAttackController {
 	        bucket.add(label);
 	    }
 
+	    // 유물 총개수 조회 (일반/나메 구분)
+	    int relicNormalTotal = 0, relicNmTotal = 0;
+	    try {
+	        HashMap<String,Object> relicCnt = botNewService.selectRelicTotalCounts();
+	        if (relicCnt != null) {
+	            relicNormalTotal = safeInt(relicCnt.get("NORMAL_TOTAL"));
+	            relicNmTotal     = safeInt(relicCnt.get("NM_TOTAL"));
+	        }
+	    } catch (Exception ignore) {}
+
 	    // 출력 (※날개 뒤에 행운/반지/토템/선물 합계 삽입)
 	    for (Map.Entry<String, List<String>> e : catMap.entrySet()) {
+	        String catKey = e.getKey();
 	        List<String> list = e.getValue();
-	        if (!list.isEmpty()) {
-	            sb.append(e.getKey()).append(":").append(NL);
+	        // 유물: 개수 요약 표시
+	        if ("※유물".equals(catKey) || "※[N]유물".equals(catKey)) {
+	            int ownedCnt = list.size();
+	            int totalCnt = "※유물".equals(catKey) ? relicNormalTotal : relicNmTotal;
+	            if (ownedCnt > 0 || totalCnt > 0) {
+	                String summary = ownedCnt + "/" + (totalCnt > 0 ? totalCnt : "?");
+	                if (totalCnt > 0 && ownedCnt >= totalCnt) summary += " 모두수집";
+	                sb.append(catKey).append(" : ").append(summary).append(NL);
+	            }
+	        } else if (!list.isEmpty()) {
+	            sb.append(catKey).append(":").append(NL);
 	            for (String s : list) {
-	                sb.append(", ").append(s).append(NL);
+	                sb.append(s).append(NL);
 	            }
 	        }
 	        // 날개 출력 직후 합계 삽입
-	        if ("※날개".equals(e.getKey())) {
+	        if ("※날개".equals(catKey)) {
 	            for (int[] gr : new int[][]{{300,400},{500,600},{600,700},{900,1000}}) {
 	                String gl = gr[0]==300?"행운":gr[0]==500?"반지":gr[0]==600?"토템":"선물";
 	                String line = buildGroupSummaryLine(bag, gr[0], gr[1], gl);
