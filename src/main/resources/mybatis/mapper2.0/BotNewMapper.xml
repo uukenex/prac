@@ -423,39 +423,10 @@
 
 
   <select id="selectCurrentPoint" resultType="hashMap">
-    /* selectCurrentPoint */
-    WITH SP_SUM AS (
-	    SELECT
-	        SUM(
-	            score * POWER(
-	                10000,
-	                CASE
-	                    WHEN score_ext IS NULL OR score_ext='' THEN 0
-	                    ELSE ASCII(score_ext) - ASCII('a') + 1
-	                END
-	            )
-	        ) AS total_sp
-	    FROM (SELECT USER_NAME, ROOM_NAME, SCORE, SCORE_EXT, INSERT_DATE, CMD, NEW_YN FROM TBOT_POINT_RANK UNION ALL SELECT USER_NAME, ROOM_NAME, SCORE, SCORE_EXT, INSERT_DATE, CMD, NEW_YN FROM TBOT_POINT_RANK_OLD)
-	    WHERE user_name = #{userName}
-	    AND new_yn='1'
-	)
-	
-	SELECT
-	    ROUND(SIGN(total_sp) * ABS(total_sp) / POWER(10000, unit_idx),2) AS score,
-	    CASE
-	        WHEN unit_idx=0 THEN ''
-	        ELSE CHR(ASCII('a') + unit_idx - 1)
-	    END AS score_ext
-	FROM
-	(
-	    SELECT
-	        total_sp,
-	        CASE
-	            WHEN total_sp=0 THEN 0
-	            ELSE FLOOR(LOG(10000, ABS(total_sp)))
-	        END unit_idx
-	    FROM SP_SUM
-	)
+    /* selectCurrentPoint — TBOT_POINT_NEW_RANK 단건 조회 */
+    SELECT NVL(CUR_SP, 0) AS SCORE, NVL(CUR_SP_EXT, '') AS SCORE_EXT
+    FROM TBOT_POINT_NEW_RANK
+    WHERE USER_NAME = #{userName}
   </select>
 
   <!-- 현재 포인트 로그 RAW 데이터 (score_ext별 합산, POWER/ASCII는 Java에서 계산) -->
@@ -543,14 +514,64 @@
       (#{userName}, #{roomName}, #{score}, NULL, SYSDATE, #{cmd}, '2')
   </insert>
 
-  <!-- GP 잔액 조회 (new_yn='2' 합계) -->
+  <!-- GP 잔액 조회 — TBOT_POINT_NEW_RANK 단건 조회 -->
   <select id="selectGpBalance" parameterType="string" resultType="double">
     /* selectGpBalance */
-    SELECT NVL(SUM(SCORE), 0)
-    FROM (SELECT USER_NAME, ROOM_NAME, SCORE, SCORE_EXT, INSERT_DATE, CMD, NEW_YN FROM TBOT_POINT_RANK UNION ALL SELECT USER_NAME, ROOM_NAME, SCORE, SCORE_EXT, INSERT_DATE, CMD, NEW_YN FROM TBOT_POINT_RANK_OLD)
+    SELECT NVL(CUR_GP, 0)
+    FROM TBOT_POINT_NEW_RANK
     WHERE USER_NAME = #{userName}
-      AND NEW_YN = '2'
   </select>
+
+  <!-- TBOT_POINT_NEW_RANK MERGE: insertPointRank / insertGpRecord 후 자동 호출 -->
+  <update id="upsertPointNewRank" parameterType="string">
+    /* upsertPointNewRank */
+    MERGE INTO TBOT_POINT_NEW_RANK T
+    USING (
+        SELECT
+            #{userName} AS USER_NAME,
+            /* SP: POWER/ASCII 정규화 후 단위 추출 */
+            CASE WHEN sp.total_sp = 0 OR sp.total_sp IS NULL THEN 0
+                 ELSE ROUND(SIGN(sp.total_sp) * ABS(sp.total_sp)
+                            / POWER(10000, FLOOR(LOG(10000, ABS(sp.total_sp)))), 2)
+            END AS CUR_SP,
+            CASE WHEN sp.total_sp = 0 OR sp.total_sp IS NULL THEN ''
+                 WHEN FLOOR(LOG(10000, ABS(sp.total_sp))) = 0 THEN ''
+                 ELSE CHR(ASCII('a') + FLOOR(LOG(10000, ABS(sp.total_sp))) - 1)
+            END AS CUR_SP_EXT,
+            NVL(gp.total_gp, 0) AS CUR_GP
+        FROM DUAL
+        LEFT JOIN (
+            SELECT SUM(score * POWER(10000,
+                        CASE WHEN score_ext IS NULL OR score_ext = '' THEN 0
+                             ELSE ASCII(score_ext) - ASCII('a') + 1 END)) AS total_sp
+            FROM (
+                SELECT SCORE, SCORE_EXT FROM TBOT_POINT_RANK    WHERE USER_NAME = #{userName} AND NEW_YN = '1'
+                UNION ALL
+                SELECT SCORE, SCORE_EXT FROM TBOT_POINT_RANK_OLD WHERE USER_NAME = #{userName} AND NEW_YN = '1'
+            )
+        ) sp ON 1 = 1
+        LEFT JOIN (
+            SELECT SUM(SCORE) AS total_gp
+            FROM (
+                SELECT SCORE FROM TBOT_POINT_RANK    WHERE USER_NAME = #{userName} AND NEW_YN = '2'
+                UNION ALL
+                SELECT SCORE FROM TBOT_POINT_RANK_OLD WHERE USER_NAME = #{userName} AND NEW_YN = '2'
+            )
+        ) gp ON 1 = 1
+    ) S ON (T.USER_NAME = S.USER_NAME)
+    WHEN MATCHED THEN UPDATE SET
+        T.CUR_SP      = S.CUR_SP,
+        T.CUR_SP_EXT  = S.CUR_SP_EXT,
+        T.MAX_SP      = CASE WHEN S.CUR_SP > T.MAX_SP THEN S.CUR_SP ELSE T.MAX_SP END,
+        T.MAX_SP_EXT  = CASE WHEN S.CUR_SP > T.MAX_SP THEN S.CUR_SP_EXT ELSE T.MAX_SP_EXT END,
+        T.CUR_GP      = S.CUR_GP,
+        T.MAX_GP      = CASE WHEN S.CUR_GP > T.MAX_GP THEN S.CUR_GP ELSE T.MAX_GP END,
+        T.UPDATE_DATE = SYSDATE
+    WHEN NOT MATCHED THEN INSERT
+        (USER_NAME, CUR_SP, CUR_SP_EXT, MAX_SP, MAX_SP_EXT, CUR_GP, MAX_GP, UPDATE_DATE)
+    VALUES
+        (S.USER_NAME, S.CUR_SP, S.CUR_SP_EXT, S.CUR_SP, S.CUR_SP_EXT, S.CUR_GP, S.CUR_GP, SYSDATE)
+  </update>
 
   <!-- 유저 누적 획득 GP (BOSS_GACHA_RESTORE 환급 제외한 양수 합산) -->
   <select id="selectUserTotalEarnedGp" parameterType="string" resultType="double">

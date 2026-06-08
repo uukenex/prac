@@ -177,7 +177,17 @@ public class BotNewServiceImpl implements BotNewService {
 
 	@Override
 	public int insertPointRank(HashMap<String, Object> p) {
-		return botNewDAO.insertPointRank(p);
+		int result = botNewDAO.insertPointRank(p);
+		try {
+			String uName = p.get("userName") != null ? p.get("userName").toString() : null;
+			if (uName != null) botNewDAO.upsertPointNewRank(uName);
+		} catch (Exception ignore) {}
+		return result;
+	}
+
+	@Override
+	public void upsertPointNewRank(String userName) {
+		botNewDAO.upsertPointNewRank(userName);
 	}
 
 	@Override
@@ -607,6 +617,10 @@ public class BotNewServiceImpl implements BotNewService {
     @Override
     public void insertGpRecord(HashMap<String, Object> param) {
         botNewDAO.insertGpRecord(param);
+        try {
+            String uName = param.get("userName") != null ? param.get("userName").toString() : null;
+            if (uName != null) botNewDAO.upsertPointNewRank(uName);
+        } catch (Exception ignore) {}
     }
 
     @Override

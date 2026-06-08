@@ -74,6 +74,9 @@ public interface BotNewDAO {
 
     int insertPointRank(HashMap<String,Object> p);
 
+    /** 유저당 1행 SP/GP 잔액 MERGE (insertPointRank/insertGpRecord 후 자동 호출) */
+    int upsertPointNewRank(@Param("userName") String userName);
+
     HashMap<String,Object> selectItemSellPriceById(@Param("itemId") int itemId);
 
     List<HashMap<String,Object>> selectInventoryRowsForSale(
