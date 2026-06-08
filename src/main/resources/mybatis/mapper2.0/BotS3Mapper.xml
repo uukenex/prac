@@ -223,6 +223,7 @@
 		    ON u.USER_NAME = b.USER_NAME
 		 WHERE b.NIGHTMARE_YN = '2'
 		   AND b.KILL_YN      = '1'
+		   AND b.INSERT_DATE  > TRUNC(SYSDATE) - 3
 		   AND u.PROC_DATE    > TRUNC(SYSDATE) - 3
 		 ORDER BY b.USER_NAME
 	</select>
