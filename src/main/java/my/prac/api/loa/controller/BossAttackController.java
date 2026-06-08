@@ -5157,8 +5157,22 @@ public class BossAttackController {
 			for (int i = 0; i < s.pendingLogs.size(); i++) s.pendingLogs.get(i).setShotIndex(i);
 			try { botNewService.insertBattleLogsBatch(s.pendingLogs); } catch (Exception ignore) {}
 		}
-		for (HashMap<String,Object> inv : s.pendingInventory) {
-			try { botNewService.insertInventoryLogTx(inv); } catch (Exception ignore) {}
+		// Inventory: (itemId, gainType) 키로 qty 합산 후 단건 INSERT
+		if (!s.pendingInventory.isEmpty()) {
+			Map<String,HashMap<String,Object>> invMerged = new LinkedHashMap<>();
+			for (HashMap<String,Object> inv : s.pendingInventory) {
+				String invKey = inv.get("itemId") + "|" + inv.get("gainType");
+				if (invMerged.containsKey(invKey)) {
+					int existing = ((Number) invMerged.get(invKey).get("qty")).intValue();
+					int adding   = ((Number) inv.get("qty")).intValue();
+					invMerged.get(invKey).put("qty", existing + adding);
+				} else {
+					invMerged.put(invKey, new HashMap<>(inv));
+				}
+			}
+			for (HashMap<String,Object> inv : invMerged.values()) {
+				try { botNewService.insertInventoryLogTx(inv); } catch (Exception ignore) {}
+			}
 		}
 		for (Map.Entry<String,SP> e : s.pendingRank.entrySet()) {
 			try {
