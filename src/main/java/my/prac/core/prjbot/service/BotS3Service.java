@@ -23,6 +23,9 @@ public interface BotS3Service {
 	/** [헬보스] 룰렛 대상 목록 (헬모드 kill + 최근 활동) */
 	List<String> selectHellLotteryPool();
 
+	/** [헬보스] 헬모드 일반 공격 시 INSERT_DATE 30초 감소 */
+	void reduceHellBossInsertDate();
+
 	/** [헬보스] 마지막 처치 보스 + 보상 수령자 메시지 (보스 없을 때 표시용) */
 	String getLastKillRewardMsg();
 

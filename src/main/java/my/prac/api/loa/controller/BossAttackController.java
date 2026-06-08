@@ -4417,6 +4417,7 @@ public class BossAttackController {
 		String jobLevelUpMsg = "";
 		boolean elfNightMode = false;
 		String jobLvProgressMsg = "";
+		String gpDropMsg = "";
 
 		AttackSession(HashMap<String,Object> map) {
 			this.map      = map;
@@ -4905,7 +4906,7 @@ public class BossAttackController {
 		if (s.res2.killed) {
 			invalidateInvBuff(s.userName);
 			try { botNewService.closeOngoingBattleTx(s.userName, s.roomName); } catch (Exception ignore) {}
-			s.secondKillMsg = "⚔️ [2타 확인사살!] " + s.m.monName + " 처치!";
+			s.secondKillMsg = "⚔️ [2타!] " + s.m.monName + " 처치!";
 			// 2타 킬 업적 처리
 			try {
 				String ka2 = grantKillAchievements(s.userName, s.roomName, s.achievedCmdSet, s.cachedKillStats);
@@ -5263,6 +5264,14 @@ public class BossAttackController {
 			if (bag2 != null && !bag2.isEmpty())
 				s.bagDropMsg = (s.bagDropMsg == null || s.bagDropMsg.isEmpty()) ? bag2 : s.bagDropMsg + NL + bag2;
 		}
+
+		// ── [신규] 3.5% 확률 GP 지급 ────────────────────────────────────
+		s.gpDropMsg = tryDropGp(s.userName, s.roomName);
+
+		// ── [신규] 헬모드 일반 공격 시 보스 등장 30초 앞당기기 ────────────
+		if (s.hell) {
+			try { botS3Service.reduceHellBossInsertDate(); } catch (Exception ignore) {}
+		}
 	}
 
 	// ─ 15~16) 메시지 구성 + 포인트 ────────────────────────────────
@@ -5404,6 +5413,7 @@ public class BossAttackController {
 		StringBuilder line5 = new StringBuilder();
 		if (s.bonusMsg  != null && !s.bonusMsg.isEmpty())  line5.append("업적달성!");
 		if (s.bagDropMsg != null && !s.bagDropMsg.isEmpty()) line5.append("가방획득!");
+		if (s.gpDropMsg  != null && !s.gpDropMsg.isEmpty())  line5.append(s.gpDropMsg);
 		if (line5.length() > 0) sb.append(line5).append(NL);
 
 		// Line 6: 스페셜타임![효과 설명] (단독 줄)
@@ -5908,6 +5918,25 @@ public class BossAttackController {
 	    } catch (Exception e) {
 	        return "";
 	    }
+	}
+
+	// ─ 공격 시 3.5% 확률 GP 지급 ──────────────────────────────────────
+	private static final double GP_DROP_RATE = 0.035;
+	private String tryDropGp(String userName, String roomName) {
+		if (ThreadLocalRandom.current().nextDouble() >= GP_DROP_RATE) return "";
+		try {
+			// 0.1~0.5 GP 랜덤 지급 (소수점 1자리: 0.1, 0.2, 0.3, 0.4, 0.5)
+			double gpAmount = (ThreadLocalRandom.current().nextInt(5) + 1) * 0.1;
+			HashMap<String,Object> gp = new HashMap<>();
+			gp.put("userName", userName);
+			gp.put("roomName", roomName);
+			gp.put("score",    gpAmount);
+			gp.put("cmd",      "ATK_GP_DROP");
+			botNewService.insertGpRecord(gp);
+			return String.format("✨ GP 획득! +%.1f GP", gpAmount);
+		} catch (Exception e) {
+			return "";
+		}
 	}
 
 	

@@ -58,6 +58,11 @@ public class BotS3ServiceImpl implements BotS3Service {
 	}
 
 	@Override
+	public void reduceHellBossInsertDate() {
+		botS3DAO.reduceHellBossInsertDate();
+	}
+
+	@Override
 	public Long selectRecentHellAvgDmg() throws Exception {
 		return botS3DAO.selectRecentHellAvgDmg();
 	}
