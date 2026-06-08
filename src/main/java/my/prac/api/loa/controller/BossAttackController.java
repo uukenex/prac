@@ -2502,11 +2502,12 @@ public class BossAttackController {
 
 	    // 헬모드 삭감 정보 표시
 	    if (u.nightmareYn == 2) {
-	        double hellMult = MiniGameUtil.getHellNerfMult(ctx.hunterGrade);
+	        // ctx.hellNerfRate: 아이템 보정(7007/999 등) 이 반영된 최종 잔존율
+	        double hellMult = ctx.hellNerfRate > 0 ? ctx.hellNerfRate : MiniGameUtil.getHellNerfMult(ctx.hunterGrade);
 	        int reductionPct = (int) Math.round((1.0 - hellMult) * 100);
-	        //int basePct = (int) Math.round((1.0 - MiniGameUtil.HEL_NERF_BASE) * 100);
 	        sb.append("[헬모드] 능력치 삭감 ").append(reductionPct).append("%");
 	        sb.append(" (hunter").append(ctx.hunterGrade).append(")");
+	        if (ctx.ownedBossItems.contains(999)) sb.append(" [헬너프-1%]");
 	        sb.append(NL);
 	    }
 	    sb.append(NL);
