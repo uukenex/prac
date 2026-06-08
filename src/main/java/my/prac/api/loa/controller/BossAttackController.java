@@ -2697,21 +2697,18 @@ public class BossAttackController {
 	                bucket.add(label);
 	            }
 
-	            // 4) 카테고리별 출력 (※날개 뒤에 행운/반지/토템/선물 합계 삽입)
+	            // 4) 카테고리별 출력 (invenInfo와 동일: 줄바꿈 방식)
 	            for (Map.Entry<String, List<String>> e : catMap.entrySet()) {
+	                String catKey = e.getKey();
 	                List<String> list = e.getValue();
 	                if (list != null && !list.isEmpty()) {
-	                    int max = getMaxAllowedByCategoryLabel(e.getKey());
-	                    if (max != Integer.MAX_VALUE) {
-	                        sb.append(e.getKey()).append("(최대").append(max).append("개)").append(": ");
-	                    } else {
-	                        sb.append(e.getKey()).append(": ");
+	                    sb.append(catKey).append(":").append(NL);
+	                    for (String s : list) {
+	                        sb.append(s).append(NL);
 	                    }
-	                    sb.append(String.join(", ", list));
-	                    sb.append(NL);
 	                }
 	                // 날개 출력 직후 합계 삽입
-	                if ("※날개".equals(e.getKey())) {
+	                if ("※날개".equals(catKey)) {
 	                    for (int[] gr : new int[][]{{300,400},{500,600},{600,700},{900,1000}}) {
 	                        String gl = gr[0]==300?"행운":gr[0]==500?"반지":gr[0]==600?"토템":"선물";
 	                        String line = buildGroupSummaryLine(bag, gr[0], gr[1], gl);
