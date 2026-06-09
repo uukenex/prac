@@ -921,7 +921,7 @@ public class BossAttackS3Controller {
         // 전체 데미지 합산
         long totScore = 0;
         for (HashMap<String, Object> row : allContributors)
-            totScore += Long.parseLong(row.get("SCORE").toString());
+            totScore += ((Number) row.get("SCORE")).longValue();
 
         // 룰렛 대상: 헬모드 몬스터 kill 이력 + proc_date > trunc(sysdate)-3
         List<String> allNames = new ArrayList<>();
@@ -1175,11 +1175,11 @@ public class BossAttackS3Controller {
             if (itemDetailBlock.length() > 0) msg.append(itemDetailBlock);
             msg.append("-- 전체 기여도 TOP --").append(NL);
             for (HashMap<String, Object> row : allContributors) {
-                long score = Long.parseLong(row.get("SCORE").toString());
+                long score = ((Number) row.get("SCORE")).longValue();
                 double dmgPct = totScore > 0 ? score * 100.0 / totScore : 0;
                 msg.append(row.get("USER_NAME"))
                    .append(" - ").append(row.get("CNT")).append("회 / ")
-                   .append(row.get("SCORE")).append("dmg")
+                   .append(String.format("%,d", score)).append("dmg")
                    .append(String.format(" (%.1f%%)", dmgPct)).append(NL);
             }
         }
@@ -1312,7 +1312,7 @@ public class BossAttackS3Controller {
             msg.append(NL).append("-- 참여자 기여도 TOP --").append(NL);
             for (HashMap<String, Object> row : contributors) {
                 msg.append(row.get("USER_NAME"))
-                   .append(" - ").append(row.get("CNT")).append("회 / 데미지 ").append(row.get("SCORE"))
+                   .append(" - ").append(row.get("CNT")).append("회 / 데미지 ").append(String.format("%,d", ((Number)row.get("SCORE")).longValue()))
                    .append(NL);
             }
         } else {
