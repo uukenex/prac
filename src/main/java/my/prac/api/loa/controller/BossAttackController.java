@@ -114,7 +114,7 @@ public class BossAttackController {
     // [7000번대 보스 아이템 헬너프 면제]
     // true  = 7000번대 아이템(7001 천벌 등) ATK 스탯이 헬너프 적용 후 합산됨 (헬너프 미적용)
     // false = 기존 동작 (헬너프 이전 합산, 헬너프 영향받음)
-    private static final boolean BOSS_ITEM_HELL_NERF_EXEMPT = false;
+   // private static final boolean BOSS_ITEM_HELL_NERF_EXEMPT = false;
 
 	// [FIX4] selectActiveSpecialBuff 단기 캐시 (서버 전역 버프는 15초간 재사용)
 	private static volatile HashMap<String,Object> SPECIAL_BUFF_CACHE = null;
@@ -504,17 +504,17 @@ public class BossAttackController {
 	    // 7000번대 보스 아이템(BOSS_HELL 전체) ATK 스탯 합산
 	    // selectHeavenItemBuff: ITEM_TYPE='BOSS_HELL' 전체 합산 (7001~7999 모두 포함)
 	    // BOSS_ITEM_HELL_NERF_EXEMPT=true 이면 ATK만 분리해 헬너프 이후 합산
-	    int heavenAtkMin = 0, heavenAtkMax = 0; // 헬너프 면제 시 후합산 버퍼
+	    //int heavenAtkMin = 0, heavenAtkMax = 0; // 헬너프 면제 시 후합산 버퍼
 	    if (heavenBuff != null) {
 	        int hbAtkMin = heavenBuff.get("ATK_MIN") != null ? ((Number) heavenBuff.get("ATK_MIN")).intValue() : 0;
 	        int hbAtkMax = heavenBuff.get("ATK_MAX") != null ? ((Number) heavenBuff.get("ATK_MAX")).intValue() : 0;
-	        if (BOSS_ITEM_HELL_NERF_EXEMPT) {
-	            heavenAtkMin = hbAtkMin; // 헬너프 이후에 합산
-	            heavenAtkMax = hbAtkMax;
-	        } else {
+	       // if (BOSS_ITEM_HELL_NERF_EXEMPT) {
+	            //heavenAtkMin = hbAtkMin; // 헬너프 이후에 합산
+	           // heavenAtkMax = hbAtkMax;
+	        //} else {
 	            mktAtkMin += hbAtkMin;
 	            mktAtkMax += hbAtkMax;
-	        }
+	       // }
 	        mktCrit      += heavenBuff.get("ATK_CRI")      != null ? ((Number) heavenBuff.get("ATK_CRI")).intValue()      : 0;
 	        mktRegen     += heavenBuff.get("HP_REGEN")     != null ? ((Number) heavenBuff.get("HP_REGEN")).intValue()     : 0;
 	        mktHpMax     += heavenBuff.get("HP_MAX")       != null ? ((Number) heavenBuff.get("HP_MAX")).intValue()       : 0;
@@ -1525,6 +1525,7 @@ public class BossAttackController {
 	/**
 	 * pending 헬상자 행의 DEL_YN + ITEM_ID로 MiniGameUtil 풀에서 entry 찾기
 	 */
+	/*
 	private my.prac.core.util.MiniGameUtil.HellBoxEntry findPendingEntry(String delYn, int itemId) {
 	    java.util.List<my.prac.core.util.MiniGameUtil.HellBoxEntry> pool =
 	        "3".equals(delYn) ? my.prac.core.util.MiniGameUtil.HELL_BOX_PLAT
@@ -1534,6 +1535,7 @@ public class BossAttackController {
 	    }
 	    return null;
 	}
+	*/
 
 	/**
 	 * 헬상자 각인 누적 현황 요약 문자열 (확정 후 메시지에 포함)
@@ -1703,7 +1705,7 @@ public class BossAttackController {
 	    long totalCost = calcExpSellBulkCost(totalCnt, buyCount);
 
 	    if (u.expCur < totalCost) {
-	        java.text.DecimalFormat df = new java.text.DecimalFormat("#,###");
+	        //java.text.DecimalFormat df = new java.text.DecimalFormat("#,###");
 	        return "⚠️ EXP 부족! 필요: " + formatKorNum(totalCost) + " / 보유: " + formatKorNum(u.expCur);
 	    }
 
@@ -1976,19 +1978,20 @@ public class BossAttackController {
 	    if(!master) {
 	    	// 5-0) 해당 유저의 직업별 공격횟수 전체 조회 (쿼리 1번)
 		    Map<String, Integer> jobCntMap = Collections.emptyMap();
-		    int totalCnt = 0;
+		    //int totalCnt = 0;
 
+		    /*
 		    try {
 		        jobCntMap = botNewService.selectBattleCountByUser(userName, roomName);
 		    } catch (Exception e) {
 		        e.printStackTrace();
 		        jobCntMap = new HashMap<String, Integer>();
 		    }
-
+		     */
 		    // 전체 공격횟수 = 모든 직업 CNT 합
 		    for (Integer v : jobCntMap.values()) {
 		        if (v != null) {
-		            totalCnt += v;
+		            //totalCnt += v;
 		        }
 		    }
 
@@ -4385,6 +4388,7 @@ public class BossAttackController {
 	 * [COMPACT] 축약 메시지 버전 — 원본 monsterAttack 유지, 비교용 신규 메서드
 	 * 상단 4줄 요약 + === + 원문 전체
 	 */
+	/*
 	public String monsterAttackCompact(HashMap<String, Object> map) {
 		map.put("cmd", "monster_attack");
 		AttackSession s = new AttackSession(map);
@@ -4409,6 +4413,7 @@ public class BossAttackController {
 		// 15~16) 축약 메시지
 		return ma_buildMessageShort(s);
 	}
+	*/
 
 	// ────────────────────────────────────────────────────────────
 	//  AttackSession — monsterAttack 섬션 간 공유 상태
@@ -5404,7 +5409,9 @@ public class BossAttackController {
 	}
 
 	// ─ [COMPACT] 사망 축약 메시지 래퍼 ───────────────────────────────
+	/*
 	private String ma_deathMsgShort(AttackSession s, String fullDeathMsg) {
+		
 		// 공지 조회 (ma_buildMessage 를 거치지 않으므로 직접 호출)
 		String noticeStr = "";
 		try {
@@ -5424,8 +5431,10 @@ public class BossAttackController {
 		sb.append(fullDeathMsg);
 		return sb.toString();
 	}
+	*/
 
 	// ─ [COMPACT] 처치/진행중 축약 메시지 ────────────────────────────
+	/*
 	private String ma_buildMessageShort(AttackSession s) {
 		// 원문 먼저 생성 (execSPMsgTest 포함)
 		String fullMsg = ma_buildMessage(s);
@@ -5505,6 +5514,8 @@ public class BossAttackController {
 		return sb.toString();
 	}
 
+	 */
+	
 	/** isAnyNonEmpty 헬퍼 */
 	private static boolean isAnyNonEmpty(String... strs) {
 		for (String s : strs) if (s != null && !s.isEmpty()) return true;
@@ -5848,7 +5859,7 @@ public class BossAttackController {
 		return flagCode;
 	}
 	
-	
+	/*
 	private double computeBagPityMultiplier(String userName, String roomName,double buffRate) {
 		double rtn_value = 1;
 		int bagCountToday = 0;
@@ -5879,7 +5890,7 @@ public class BossAttackController {
 	    return rtn_value;
 	}
 	
-	
+	*/
 	private String tryDropBag(String userName, String roomName, Monster m, boolean nightmare, boolean hell, SpecialBuffResult buff) {
 	    double buffRate = 0.0;
 	    boolean forceNmBagDrop = false;
@@ -6002,7 +6013,7 @@ public class BossAttackController {
 			gp.put("score",    gpAmount);
 			gp.put("cmd",      "ATK_GP_DROP");
 			botNewService.insertGpRecord(gp);
-			return String.format("✨ GP 획득! +%.1f GP", gpAmount);
+			return String.format("✨ GP 획득! +%.2f GP", gpAmount);
 		} catch (Exception e) {
 			return "";
 		}
@@ -7378,6 +7389,7 @@ public class BossAttackController {
 	    return sb.toString();
 	}
 	
+	/*
 	private CooldownCheck checkCooldown(String userName, String roomName, String param1, String job, int buffTime) {
 	    return checkCooldown(userName, roomName, param1, job, buffTime, null, 0);
 	}
@@ -7385,7 +7397,7 @@ public class BossAttackController {
 	private CooldownCheck checkCooldown(String userName, String roomName, String param1, String job, int buffTime, Timestamp cachedLastAtk) {
 	    return checkCooldown(userName, roomName, param1, job, buffTime, cachedLastAtk, 0);
 	}
-
+	 */
 	// [FIX1] cachedLastAtk 가 null 이 아니면 DB 조회 생략
 	// itemCdReduction: 보스 아이템(7004 등)에 의한 추가 쿨타임 감소(초)
 	private CooldownCheck checkCooldown(String userName, String roomName, String param1, String job, int buffTime, Timestamp cachedLastAtk, int itemCdReduction) {
@@ -7607,6 +7619,7 @@ public class BossAttackController {
 		catch (Exception e) { return 0.0; }
 	}
 
+	/*
 	private Resolve resolveKillAndDrop(Monster m, AttackCalc c, boolean willKill, User u, boolean lucky, boolean dark,
 			boolean gray, int nightmareYnVal) {
 		return resolveKillAndDrop(m, c, willKill, u, lucky, dark, gray, false, nightmareYnVal, null);
@@ -7615,7 +7628,7 @@ public class BossAttackController {
 	private Resolve resolveKillAndDrop(Monster m, AttackCalc c, boolean willKill, User u, boolean lucky, boolean dark,
 			boolean gray, int nightmareYnVal, Set<Integer> ownedBossItems) {
 		return resolveKillAndDrop(m, c, willKill, u, lucky, dark, gray, false, nightmareYnVal, ownedBossItems);
-	}
+	}*/
 
 	private Resolve resolveKillAndDrop(Monster m, AttackCalc c, boolean willKill, User u, boolean lucky, boolean dark,
 			boolean gray, boolean shadow, int nightmareYnVal, Set<Integer> ownedBossItems) {
@@ -8447,7 +8460,7 @@ public class BossAttackController {
 	private String renderMonsterCompactLine(Monster m, int userLv, int nightmareYnVal) {
 
 		// 드랍 아이템명 및 판매가격
-	    String dropName = (m.monDrop != null ? m.monDrop : "-");
+	  //  String dropName = (m.monDrop != null ? m.monDrop : "-");
 	    //long dropPrice = getDropPriceByName(dropName);
 
 	    boolean nmActive = nightmareYnVal >= 1;
@@ -8547,7 +8560,7 @@ public class BossAttackController {
 	    return sb.toString();
 	}
 	
-	
+	/*
 	private String renderMonsterSelectLine(Monster m, int nightmareYnVal) {
 
 	    boolean nmActive = nightmareYnVal >= 1;
@@ -8574,7 +8587,7 @@ public class BossAttackController {
 	        .append(" ⚔").append(atkMin).append("~").append(atkMax).append(NL)
 	        .toString();
 	}
-	
+	*/
 	/** 몬스터 최초 토벌 보상 (방별 1명만)
 	 *  - 이미 해당 ROOM_NAME에 ACHV_FIRST_CLEAR_MON_{monNo}가 존재하면 스킵
 	 *  - 없으면: 해당 유저에게 rewardSp 지급 + CMD 기록
@@ -8996,13 +9009,14 @@ public class BossAttackController {
 	 * - 통산 처치 / 몬스터별 킬 / 죽음 극복 은 [..] 형태로 묶어서 출력
 	 */
 	// 업적 문자열 패턴
-	
+	/*
 	private void renderAchievementLinesCompact(
 	        StringBuilder sb,
 	        List<HashMap<String, Object>> achv,
 	        Map<Integer, Monster> monMap) {
 		renderAchievementLinesCompact(sb, achv, monMap, 0);
 	}
+	*/
 
 	private void renderAchievementLinesCompact(
 	        StringBuilder sb,
@@ -9450,7 +9464,7 @@ public class BossAttackController {
 	    return 200;
 	}
 
-	
+	/*
 	private int calcUserEffectiveAtkMax(User u, String roomName) {
 
 	    // -------------------------------
@@ -9483,6 +9497,7 @@ public class BossAttackController {
 
 	    return atkMax;
 	}
+	*/
 	// 전체방 기준 도사 버프 존재 여부 확인 (방 제한 없음)
 	private DosaBuffEffect loadGlobalDosaBuffAndBuild() {
 	    HashMap<String,Object> dosaBuff = botNewService.selectDosaBuffInfo();
@@ -9494,7 +9509,7 @@ public class BossAttackController {
 	    // 효과는 고정값: 최종 데미지 +1000 flat, +5%, 최대체력 5% 회복
 	    // (필드는 메시지 빌더용으로 유지)
 	}
-
+/*
 	private DamageOutcome calculateDamage(
 	        User u,
 	        Monster m,
@@ -9512,6 +9527,7 @@ public class BossAttackController {
 	    return calculateDamage(u, m, flags, effAtkMin, effAtkMax, critRate, critDmg,
 	            berserkMul, monHpRemainBefore, hpMax, beforeJobSkillYn, nightmareYn, Collections.emptySet());
 	}
+	*/
 
 	private DamageOutcome calculateDamage(
 	        User u,
@@ -10072,10 +10088,11 @@ public class BossAttackController {
 	    SP sp = SP.fromSp(value);
 	    return sp;
 	}
-
+/*
 	private String buildUnifiedDosaBuffMessage(DosaBuffEffect self, DosaBuffEffect room, int actualHeal) {
 	    return buildUnifiedDosaBuffMessage(self, room, actualHeal, 1);
 	}
+	*/
 	private String buildUnifiedDosaBuffMessage(DosaBuffEffect self, DosaBuffEffect room, int actualHeal, int coef) {
 	    int buffCount = (self != null ? 1 : 0) + (room != null ? 1 : 0);
 	    int flatBonus = buffCount * 1000 * coef;
@@ -10097,7 +10114,7 @@ public class BossAttackController {
 
 	    return Integer.MAX_VALUE;
 	}
-
+/*
 	private int getMaxAllowedByCategoryLabel(String label) {
 	    if (label.contains("무기"))  return 5;    // 100번대 , 1100번대 
 	    if (label.contains("투구"))  return 1;    // 200번대
@@ -10108,7 +10125,7 @@ public class BossAttackController {
 	    // 나머지(행운/반지/토템/선물/유물 등)
 	    return Integer.MAX_VALUE;
 	}
-	
+	*/
 	/**
 	 * 같은 "장비 카테고리"인지 판별
 	 *  - 여기서 말하는 카테고리는 위 제한이 걸리는 4개(무기/투구/갑옷/전설)
