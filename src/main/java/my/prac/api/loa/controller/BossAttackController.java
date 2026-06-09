@@ -5475,12 +5475,14 @@ public class BossAttackController {
 			sb.append(NL);
 		}
 
-		// Line 5: 업적달성! + 가방획득! (스페셜타임은 별도 줄)
+		// Line 5: 업적달성! + 가방획득!
 		StringBuilder line5 = new StringBuilder();
 		if (s.bonusMsg  != null && !s.bonusMsg.isEmpty())  line5.append("업적달성!");
 		if (s.bagDropMsg != null && !s.bagDropMsg.isEmpty()) line5.append("가방획득!");
-		if (s.gpDropMsg  != null && !s.gpDropMsg.isEmpty())  line5.append(s.gpDropMsg);
 		if (line5.length() > 0) sb.append(line5).append(NL);
+
+		// Line 5-1: GP 드랍 (별도 줄)
+		if (s.gpDropMsg != null && !s.gpDropMsg.isEmpty()) sb.append(s.gpDropMsg).append(NL);
 
 		// Line 6: 스페셜타임![효과 설명] (단독 줄)
 		if (s.activeBuff != null && !s.activeBuff.isEmpty()) {
