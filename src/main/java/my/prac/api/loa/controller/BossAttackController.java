@@ -2124,13 +2124,14 @@ public class BossAttackController {
 	    catMap.put("※투구", new ArrayList<>());
 	    catMap.put("※갑옷", new ArrayList<>());
 	    catMap.put("※전설", new ArrayList<>());
-	    catMap.put("※유물", new ArrayList<>());
-	    catMap.put("※[N]유물", new ArrayList<>());
-	    catMap.put("※지옥", new ArrayList<>());
 	    catMap.put("※날개", new ArrayList<>());
 	    catMap.put("※보스", new ArrayList<>());
 	    catMap.put("※업적", new ArrayList<>());
-	    catMap.put("※기타", new ArrayList<>());
+	    catMap.put("※유물", new ArrayList<>());
+	    catMap.put("※[N]유물", new ArrayList<>());
+	    catMap.put("※기타", new ArrayList<>()); // fallback, 미출력
+	    // 지옥 각인(3000번대): gain_type별 중복 row → itemId 기준 합산
+	    Map<Integer, String[]> hellQtyMap = new LinkedHashMap<>();
 
 	    for (HashMap<String, Object> row : bag) {
 
@@ -2182,7 +2183,14 @@ public class BossAttackController {
 	            label = ("DROP_OPEN_P".equalsIgnoreCase(type) ? "✨플래티넘" : "ATTEND".equalsIgnoreCase(type) ? "출첵" : "✨황금") + "유물상자 (/가방열기 로 개봉)";
 	        }
 	        else if (type != null && type.toUpperCase().startsWith("HELL_BOX") && itemId >= 3000 && itemId < 4000) {
-	            label += " +" + qty + " [지옥]";
+	            // gain_type별 중복 row → hellQtyMap에 합산
+	            String[] entry = hellQtyMap.get(itemId);
+	            if (entry == null) {
+	                hellQtyMap.put(itemId, new String[]{itemName, String.valueOf(qty)});
+	            } else {
+	                entry[1] = String.valueOf(Integer.parseInt(entry[1]) + qty);
+	            }
+	            continue;
 	        }
 	        else {
 	            if (qty > 1) {
@@ -2190,28 +2198,35 @@ public class BossAttackController {
 	            }
 	        }
 
+	        // 아이템ID 접두사 (무기/투구/갑옷/전설/날개/보스)
+	        if ("※무기".equals(cat)||"※투구".equals(cat)||"※갑옷".equals(cat)||
+	            "※전설".equals(cat)||"※날개".equals(cat)||"※보스".equals(cat)) {
+	            label = "no." + itemId + " " + label;
+	        }
 	        List<String> bucket = catMap.getOrDefault(cat, catMap.get("※기타"));
-	        bucket.add(label);
+	        if (bucket != null) bucket.add(label);
 	    }
+	    // 지옥 각인(3000번대)은 인벤 목록에 미출력
 
 	    // 유물 총개수 조회 (일반/나메 구분)
-	    int relicNormalTotal = 0, relicNmTotal = 0;
+	    int relicNormalTotal = 0, relicNmTotal = 0, achvTotal = 0;
 	    try {
 	        HashMap<String,Object> relicCnt = botNewService.selectRelicTotalCounts();
 	        if (relicCnt != null) {
 	            relicNormalTotal = safeInt(relicCnt.get("NORMAL_TOTAL"));
 	            relicNmTotal     = safeInt(relicCnt.get("NM_TOTAL"));
+	            achvTotal        = safeInt(relicCnt.get("ACHV_TOTAL"));
 	        }
 	    } catch (Exception ignore) {}
 
-	    // 출력 (※날개 뒤에 행운/반지/토템/선물 합계 삽입)
-	    for (Map.Entry<String, List<String>> e : catMap.entrySet()) {
-	        String catKey = e.getKey();
-	        List<String> list = e.getValue();
-	        // 유물: 개수 요약 표시
-	        if ("※유물".equals(catKey) || "※[N]유물".equals(catKey)) {
+	    // 출력 (새 순서: 무기/투구/갑옷/전설/날개/보스/업적 → 행운합계 → 유물/[N]유물)
+	    String[] invenCatOrder = {"※무기","※투구","※갑옷","※전설","※날개","※보스","※업적","※유물","※[N]유물"};
+	    for (String catKey : invenCatOrder) {
+	        List<String> list = catMap.getOrDefault(catKey, new ArrayList<>());
+	        if ("※유물".equals(catKey) || "※[N]유물".equals(catKey) || "※업적".equals(catKey)) {
 	            int ownedCnt = list.size();
-	            int totalCnt = "※유물".equals(catKey) ? relicNormalTotal : relicNmTotal;
+	            int totalCnt = "※유물".equals(catKey) ? relicNormalTotal
+	                         : "※[N]유물".equals(catKey) ? relicNmTotal : achvTotal;
 	            if (ownedCnt > 0 || totalCnt > 0) {
 	                String summary = ownedCnt + "/" + (totalCnt > 0 ? totalCnt : "?");
 	                if (totalCnt > 0 && ownedCnt >= totalCnt) summary += " 모두수집";
@@ -2221,14 +2236,6 @@ public class BossAttackController {
 	            sb.append(catKey).append(":").append(NL);
 	            for (String s : list) {
 	                sb.append(s).append(NL);
-	            }
-	        }
-	        // 날개 출력 직후 합계 삽입
-	        if ("※날개".equals(catKey)) {
-	            for (int[] gr : new int[][]{{300,400},{500,600},{600,700},{900,1000}}) {
-	                String gl = gr[0]==300?"행운":gr[0]==500?"반지":gr[0]==600?"토템":"선물";
-	                String line = buildGroupSummaryLine(bag, gr[0], gr[1], gl);
-	                if (line != null) sb.append(line).append(NL);
 	            }
 	        }
 	    }
@@ -2590,41 +2597,100 @@ public class BossAttackController {
         if (relicSummary != null) {
             sb.append(NL).append(relicSummary).append(NL);
         }
+        // 유물효과↔업적효과 사이: 행운/반지/토템/선물 합계
+        for (int[] gr : new int[][]{{300,400},{500,600},{600,700},{900,1000}}) {
+            String gl = gr[0]==300?"행운":gr[0]==500?"반지":gr[0]==600?"토템":"선물";
+            String gline = buildGroupSummaryLine(bag, gr[0], gr[1], gl);
+            if (gline != null) sb.append(gline).append(NL);
+        }
         String relicSummary2 = buildRelicSummaryLine(bag,8000);
         if (relicSummary2 != null) {
-        	sb.append(NL).append(relicSummary2).append(NL);
+        	sb.append(relicSummary2);
         }
         
         
         if (ctx.dropAtkMin +ctx.dropAtkMax +  ctx.dropHp + ctx.dropRegen
                 + ctx.dropCrit + ctx.dropCritDmg > 0) {
 
-        	sb.append(NL).append("✨어둠 부가 효과: ");
+        	sb.append(NL).append("✨어둠 부가 효과 [헬너프되지않음]: ");
             if (ctx.dropAtkMin > 0) sb.append("min_ATK+").append(ctx.dropAtkMin).append(" ");
             if (ctx.dropAtkMax > 0) sb.append("max_ATK+").append(ctx.dropAtkMax).append(" ");
             if (ctx.dropHp > 0) sb.append("HP+").append(ctx.dropHp).append(" ");
             if (ctx.dropRegen > 0) sb.append("체젠+").append(ctx.dropRegen).append(" ");
             if (ctx.dropCrit > 0) sb.append("치확+").append(ctx.dropCrit).append("% ");
             if (ctx.dropCritDmg > 0) sb.append("치피+").append(ctx.dropCritDmg).append("% ");
-            sb.append(NL);
         }
-
-
+        
+        
+     // ※지옥 각인 [헬너프되지않음]
+        {
+            // 지옥각인 스탯 합산
+            int hellAtkMin = 0, hellAtkMax = 0, hellHp = 0, hellRegen = 0, hellCrit = 0, hellCritDmg = 0, hellTotalQty = 0;
+            if (bag != null) {
+                for (HashMap<String, Object> hrow : bag) {
+                    int hId = MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("ITEM_ID"), "0"));
+                    String hType = Objects.toString(hrow.get("ITEM_TYPE"), "");
+                    if (hType.toUpperCase().startsWith("HELL_BOX") && hId >= 3000 && hId < 4000) {
+                        int hQty = Math.max(1, MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("TOTAL_QTY"), "0")));
+                        hellTotalQty += hQty;
+                        hellAtkMin   += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("ATK_MIN"),  "0")) * hQty;
+                        hellAtkMax   += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("ATK_MAX"),  "0")) * hQty;
+                        hellHp       += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("HP_MAX"),   "0")) * hQty;
+                        hellRegen    += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("HP_REGEN"), "0")) * hQty;
+                        hellCrit     += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("ATK_CRI"),  "0")) * hQty;
+                        hellCritDmg  += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("CRI_DMG"),  "0")) * hQty;
+                    }
+                }
+            }
+            if (hellTotalQty > 0) {
+                sb.append(NL).append("✨지옥각인 [헬너프되지않음](" + hellTotalQty + "개): ");
+                if (hellAtkMin != 0)  sb.append("min_ATK+").append(hellAtkMin).append(" ");
+                if (hellAtkMax != 0)  sb.append("max_ATK+").append(hellAtkMax).append(" ");
+                if (hellHp    != 0)  sb.append("HP+").append(hellHp).append(" ");
+                if (hellRegen != 0)  sb.append("체젠+").append(hellRegen).append(" ");
+                if (hellCrit  != 0)  sb.append("치확+").append(hellCrit).append("% ");
+                if (hellCritDmg != 0) sb.append("치피+").append(hellCritDmg).append("% ");
+                sb.append(NL);
+            }
+        }
+        
+        try {
+		    List<HashMap<String,Object>> jobLvRows = botNewService.selectJobLevels(ctx.targetUser);
+		    int totLv = ctx.totalJobLv;
+		    if (totLv > 0 || (jobLvRows != null && !jobLvRows.isEmpty())) {
+		        sb.append("✨직업레벨[헬너프되지않음] Lv.").append(totLv)
+		          .append(" → 데미지+").append(totLv * 10)
+		          .append(" 크리율+").append(totLv)
+		          .append("% 크리뎀+").append(totLv).append("%").append(NL);
+		        if (jobLvRows != null) {
+		            for (HashMap<String,Object> r : jobLvRows) {
+		                String jn  = Objects.toString(r.get("JOB_NAME"), "");
+		                int    jlv = ((Number) r.getOrDefault("JOB_LV", 0)).intValue();
+		                int    jkl = ((Number) r.getOrDefault("JOB_KILL_CNT", 0)).intValue();
+		                int    need = jlv * JOB_LV_KILL_BASE + JOB_LV_KILL_OFFSET;
+		                sb.append("  └ [").append(jn).append("] Lv.").append(jlv);
+		                if (jlv < JOB_MAX_LV) sb.append("  (다음레벨: ").append(jkl).append("/").append(need).append("킬)");
+		                else                  sb.append("  (MAX)");
+		                sb.append(NL);
+		            }
+		        }
+		    }
+		} catch (Exception ignore) {}
 	    // ─ 세트 효과 ─
 	    boolean hasSetEffect = ctx.setCooldownReduce > 0 || ctx.setCooldownIncrease > 0 || ctx.setAtkFinalRate > 0 || ctx.setCritFinalRate > 0
 	            || ctx.setEvasionRate > 0 || (ctx.activeSetSpecials != null && !ctx.activeSetSpecials.isEmpty());
 	    if (hasSetEffect) {
-	        sb.append(NL).append("※ 세트 효과:").append(NL);
+	        sb.append("✨세트 효과 [헬너프되지않음]:");
 	        if (ctx.setAtkFinalRate > 0)
-	            sb.append("  └ 최종공격력 +").append(ctx.setAtkFinalRate).append("%").append(NL);
+	            sb.append("최종공격력 +").append(ctx.setAtkFinalRate).append("%").append(NL);
 	        if (ctx.setCritFinalRate > 0)
-	            sb.append("  └ 최종크리율 +").append(ctx.setCritFinalRate).append("%").append(NL);
+	            sb.append("최종크리율 +").append(ctx.setCritFinalRate).append("%").append(NL);
 	        if (ctx.setCooldownReduce > 0)
-	            sb.append("  └ 쿨타임 -").append(ctx.setCooldownReduce).append("%").append(NL);
+	            sb.append("쿨타임 -").append(ctx.setCooldownReduce).append("%").append(NL);
 	        if (ctx.setCooldownIncrease > 0)
-	            sb.append("  └ 쿨타임 +").append(ctx.setCooldownIncrease).append("%").append(NL);
+	            sb.append("쿨타임 +").append(ctx.setCooldownIncrease).append("%").append(NL);
 	        if (ctx.setEvasionRate > 0)
-	            sb.append("  └ 회피율 ").append(ctx.setEvasionRate).append("%").append(NL);
+	            sb.append("회피율 ").append(ctx.setEvasionRate).append("%").append(NL);
 	        if (ctx.activeSetSpecials != null) {
 	            for (String sp : ctx.activeSetSpecials) sb.append("  └ ").append(sp).append(NL);
 	        }
@@ -2649,13 +2715,14 @@ public class BossAttackController {
 	            catMap.put("※투구", new ArrayList<>());
 	            catMap.put("※갑옷", new ArrayList<>());
 	            catMap.put("※전설", new ArrayList<>());
-	            catMap.put("※유물", new ArrayList<>());
-	            catMap.put("※[N]유물", new ArrayList<>());
-	            catMap.put("※지옥", new ArrayList<>());
 	            catMap.put("※날개", new ArrayList<>());
 	            catMap.put("※보스", new ArrayList<>());
 	            catMap.put("※업적", new ArrayList<>());
-	            catMap.put("※기타", new ArrayList<>());
+	            catMap.put("※유물", new ArrayList<>());
+	            catMap.put("※[N]유물", new ArrayList<>());
+	            catMap.put("※기타", new ArrayList<>()); // fallback, 미출력
+	            // 지옥 각인(3000번대): gain_type별 중복 row → itemId 기준 합산
+	            Map<Integer, String[]> hellQtyMap2 = new LinkedHashMap<>();
 
 	            // 3) 인벤토리 한 줄씩 카테고리 분류
 	            for (HashMap<String, Object> row : bag) {
@@ -2691,7 +2758,14 @@ public class BossAttackController {
 	                } else if ("DROP_OPEN_G".equalsIgnoreCase(typeStr) || "DROP_OPEN_P".equalsIgnoreCase(typeStr) || "ATTEND".equalsIgnoreCase(typeStr)) {
 	                    label = ("DROP_OPEN_P".equalsIgnoreCase(typeStr) ? "✨플래티넘" : "ATTEND".equalsIgnoreCase(typeStr) ? "출첵" : "✨황금") + "유물상자 (/가방열기 로 개봉)";
 	                } else if (typeStr != null && typeStr.toUpperCase().startsWith("HELL_BOX") && itemId >= 3000 && itemId < 4000) {
-	                    label += " +" + qtyVal + " [지옥]";
+	                    // gain_type별 중복 row → hellQtyMap2에 합산
+	                    String[] entry2 = hellQtyMap2.get(itemId);
+	                    if (entry2 == null) {
+	                        hellQtyMap2.put(itemId, new String[]{itemName, String.valueOf(qtyVal)});
+	                    } else {
+	                        entry2[1] = String.valueOf(Integer.parseInt(entry2[1]) + qtyVal);
+	                    }
+	                    continue;
 	                } else if (isEquipType) {
 	                	
 	                } else {
@@ -2706,48 +2780,44 @@ public class BossAttackController {
 	                    cat = itemName.startsWith("[N]") ? "※[N]유물" : "※유물";
 	                }
 
-	                List<String> bucket = catMap.get(cat);
-	                if (bucket == null) {
-	                    bucket = catMap.get("※기타");
+	                // 아이템ID 접두사 (무기/투구/갑옷/전설/날개/보스)
+	                if ("※무기".equals(cat)||"※투구".equals(cat)||"※갑옷".equals(cat)||
+	                    "※전설".equals(cat)||"※날개".equals(cat)||"※보스".equals(cat)) {
+	                    label = "no." + itemId + " " + label;
 	                }
-	                bucket.add(label);
+	                List<String> bucket = catMap.getOrDefault(cat, catMap.get("※기타"));
+	                if (bucket != null) bucket.add(label);
 	            }
+	            // 지옥 각인은 어둠부가효과 아래 ※지옥 섹션에서 별도 출력 (hellDisp)
 
 	            // 유물 총개수 조회 (N/M 표시용)
-	            int relicNormalTotal2 = 0, relicNmTotal2 = 0;
+	            int relicNormalTotal2 = 0, relicNmTotal2 = 0, achvTotal2 = 0;
 	            try {
 	                HashMap<String,Object> relicCnt2 = botNewService.selectRelicTotalCounts();
 	                if (relicCnt2 != null) {
 	                    relicNormalTotal2 = safeInt(relicCnt2.get("NORMAL_TOTAL"));
 	                    relicNmTotal2     = safeInt(relicCnt2.get("NM_TOTAL"));
+	                    achvTotal2        = safeInt(relicCnt2.get("ACHV_TOTAL"));
 	                }
 	            } catch (Exception ignore2) {}
 
-	            // 4) 카테고리별 출력 (invenInfo와 동일: 줄바꿈 방식)
-	            for (Map.Entry<String, List<String>> e : catMap.entrySet()) {
-	                String catKey = e.getKey();
-	                List<String> list = e.getValue();
-	                // 유물: N/M 요약 표시 (invenInfo와 동일)
-	                if ("※유물".equals(catKey) || "※[N]유물".equals(catKey)) {
+	            // 4) 카테고리별 출력 (새 순서: 무기/투구/갑옷/전설/날개/보스/업적 → 행운합계 → 유물/[N]유물)
+	            String[] atkCatOrder = {"※무기","※투구","※갑옷","※전설","※날개","※보스","※업적","※유물","※[N]유물"};
+	            for (String catKey : atkCatOrder) {
+	                List<String> list = catMap.getOrDefault(catKey, new ArrayList<>());
+	                if ("※유물".equals(catKey) || "※[N]유물".equals(catKey) || "※업적".equals(catKey)) {
 	                    int ownedCnt = list.size();
-	                    int totalCnt = "※유물".equals(catKey) ? relicNormalTotal2 : relicNmTotal2;
+	                    int totalCnt = "※유물".equals(catKey) ? relicNormalTotal2
+	                                 : "※[N]유물".equals(catKey) ? relicNmTotal2 : achvTotal2;
 	                    if (ownedCnt > 0 || totalCnt > 0) {
 	                        String summary = ownedCnt + "/" + (totalCnt > 0 ? totalCnt : "?");
 	                        if (totalCnt > 0 && ownedCnt >= totalCnt) summary += " 모두수집";
 	                        sb.append(catKey).append(" : ").append(summary).append(NL);
 	                    }
-	                } else if (list != null && !list.isEmpty()) {
+	                } else if (!list.isEmpty()) {
 	                    sb.append(catKey).append(":").append(NL);
 	                    for (String s : list) {
 	                        sb.append(s).append(NL);
-	                    }
-	                }
-	                // 날개 출력 직후 합계 삽입
-	                if ("※날개".equals(catKey)) {
-	                    for (int[] gr : new int[][]{{300,400},{500,600},{600,700},{900,1000}}) {
-	                        String gl = gr[0]==300?"행운":gr[0]==500?"반지":gr[0]==600?"토템":"선물";
-	                        String line = buildGroupSummaryLine(bag, gr[0], gr[1], gl);
-	                        if (line != null) sb.append(line).append(NL);
 	                    }
 	                }
 	            }
@@ -2817,30 +2887,6 @@ public class BossAttackController {
 			sb.append(NL);
 		}
 
-		// ── 직업레벨 표기 ──
-		try {
-		    List<HashMap<String,Object>> jobLvRows = botNewService.selectJobLevels(ctx.targetUser);
-		    int totLv = ctx.totalJobLv;
-		    if (totLv > 0 || (jobLvRows != null && !jobLvRows.isEmpty())) {
-		        sb.append("⬆ 직업레벨 [합산 Lv.").append(totLv).append("]")
-		          .append(" → 데미지+").append(totLv * 10)
-		          .append(" 크리율+").append(totLv)
-		          .append("% 크리뎀+").append(totLv).append("%").append(NL);
-		        if (jobLvRows != null) {
-		            for (HashMap<String,Object> r : jobLvRows) {
-		                String jn  = Objects.toString(r.get("JOB_NAME"), "");
-		                int    jlv = ((Number) r.getOrDefault("JOB_LV", 0)).intValue();
-		                int    jkl = ((Number) r.getOrDefault("JOB_KILL_CNT", 0)).intValue();
-		                int    need = jlv * JOB_LV_KILL_BASE + JOB_LV_KILL_OFFSET;
-		                sb.append("  └ [").append(jn).append("] Lv.").append(jlv);
-		                if (jlv < JOB_MAX_LV) sb.append("  (다음레벨: ").append(jkl).append("/").append(need).append("킬)");
-		                else                  sb.append("  (MAX)");
-		                sb.append(NL);
-		            }
-		        }
-		        sb.append(NL);
-		    }
-		} catch (Exception ignore) {}
 
 		// 누적 처치
 		sb.append("누적 처치 기록 (총 ").append(totalKills).append("마리)").append(NL);
@@ -6013,7 +6059,7 @@ public class BossAttackController {
 			gp.put("score",    gpAmount);
 			gp.put("cmd",      "ATK_GP_DROP");
 			botNewService.insertGpRecord(gp);
-			return String.format("✨ GP 획득! +%.2f GP", gpAmount);
+			return String.format("✨GP 획득! +%.2f GP", gpAmount);
 		} catch (Exception e) {
 			return "";
 		}
@@ -10344,9 +10390,9 @@ public class BossAttackController {
 
 		StringBuilder sb = new StringBuilder();
 		if(number==8000) {
-			sb.append("✨ 업적 효과 (").append(relicCount).append("개): ");
+			sb.append("✨업적 효과 (").append(relicCount).append("개): ");
 		}else if(number==9000) {
-			sb.append("✨ 유물 효과 (").append(relicCount).append("개): ");
+			sb.append("✨유물 효과 (").append(relicCount).append("개): ");
 		}
 
 		boolean first = true;
@@ -10406,7 +10452,7 @@ public class BossAttackController {
 		}
 		if (count == 0) return null;
 		StringBuilder sb = new StringBuilder();
-		sb.append("※").append(label).append("합계(").append(count).append("개): ");
+		sb.append("✨").append(label).append("합계(").append(count).append("개): ");
 		boolean first = true;
 		if (sumAtkMin != 0 || sumAtkMax != 0) {
 			sb.append("ATK ").append(sumAtkMin).append("~").append(sumAtkMax); first = false;
