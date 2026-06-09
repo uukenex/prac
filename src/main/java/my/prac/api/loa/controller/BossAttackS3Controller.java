@@ -62,8 +62,8 @@ public class BossAttackS3Controller {
     /** 보스 치명 저항 (%) */
     static final int BOSS_CRIT_DEF_MIN   = 10,  BOSS_CRIT_DEF_MAX   = 30;
     /** 보스 최대 HP (raw) — 기존 대비 약 50% 감소 */
-    static final long BOSS_MAX_HP_MIN    = 37_500L;
-    static final long BOSS_MAX_HP_MAX    = 150_000L;
+    static final long BOSS_MAX_HP_MIN    = 112_500L;
+    static final long BOSS_MAX_HP_MAX    = 450_000L;
 
     /** 헬보스 보상 아이템 타입 */
     private static final String HELL_ITEM_TYPE = "BOSS_HELL";
@@ -470,7 +470,7 @@ public class BossAttackS3Controller {
         String dmgLimitMsg = "";
         
      // 보스 최대체력의 10% 이상 피해 제한
-        long maxDamageLimit = Math.max(1L, maxHp / 10);
+        long maxDamageLimit = Math.max(1L, maxHp / 5);
 
         if (totalDamage > maxDamageLimit) {
             long beforeLimit = totalDamage;
@@ -480,7 +480,7 @@ public class BossAttackS3Controller {
                     + SP.fromSp(beforeLimit)
                     + " → "
                     + SP.fromSp(totalDamage)
-                    + " (보스 최대체력 10% 제한)"
+                    + " (보스 최대체력 20% 제한)"
                     + NL;
         }
         
@@ -1013,10 +1013,17 @@ public class BossAttackS3Controller {
             for (HashMap<String, Object> row : eligibleFromDB)
                 noItemNames.add(row.get("USER_NAME").toString());
 
-            // 전체 참여자 중 7000번대 미소지자
+            // 아이템 2개 이상 보유자 전체 조회 (현재 보스 공격 여부 무관)
+            Set<String> twoItemOwners = new HashSet<>();
+            try {
+                List<String> owners = botS3Service.selectHellItemOwners();
+                if (owners != null) twoItemOwners.addAll(owners);
+            } catch (Exception ignore) {}
+
+            // 전체 활성 유저 중 아이템 2개 미만인 대상
             List<String> itemCandidates = new ArrayList<>();
             for (String uName : allNames) {
-                if (noItemNames.contains(uName)) itemCandidates.add(uName);
+                if (!twoItemOwners.contains(uName)) itemCandidates.add(uName);
             }
 
             if (itemCandidates.isEmpty()) {
@@ -1081,13 +1088,13 @@ public class BossAttackS3Controller {
                 msg.append(NL);
                 msg.append("당첨자 제외 전체 +0.2GP").append(NL);
 
-                // 보스드랍템 2개 보유자 목록
+                // 룰렛 제외자: 보스드랍템 2개 이상 보유자 (활성 유저 풀 기준)
                 List<String> excludedUsers = new ArrayList<>();
                 for (String uName : allNames) {
-                    if (!noItemNames.contains(uName)) excludedUsers.add(uName);
+                    if (twoItemOwners.contains(uName)) excludedUsers.add(uName);
                 }
                 if (!excludedUsers.isEmpty()) {
-                    msg.append(NL).append("(보스드랍템 2개 보유자)").append(NL);
+                    msg.append(NL).append("(룰렛 제외 - 보스드랍템 2개 이상 보유자)").append(NL);
                     for (String u : excludedUsers) msg.append(u).append(NL);
                 }
 

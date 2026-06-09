@@ -58,6 +58,11 @@ public class BotS3ServiceImpl implements BotS3Service {
 	}
 
 	@Override
+	public List<String> selectHellItemOwners() {
+		return botS3DAO.selectHellItemOwners();
+	}
+
+	@Override
 	public void reduceHellBossInsertDate() {
 		botS3DAO.reduceHellBossInsertDate();
 	}
