@@ -2528,6 +2528,22 @@ public class BossAttackController {
 	        sb.append(ctx.job).append(" 마스터 보너스: ATK 10%, HP 15%, 리젠+1000").append(NL);
 	    }
 	     */
+        // 가방현황 (91=일반, 92=나메, 93=헬)
+        {
+            int bagNormal = 0, bagNm = 0, bagHell = 0;
+            if (bag != null) {
+                for (HashMap<String,Object> brow : bag) {
+                    int bId = MiniGameUtil.parseIntSafe(Objects.toString(brow.get("ITEM_ID"), "0"));
+                    int bQty = MiniGameUtil.parseIntSafe(Objects.toString(brow.get("TOTAL_QTY"), "0"));
+                    if (bId == 91) bagNormal += bQty;
+                    else if (bId == 92) bagNm   += bQty;
+                    else if (bId == 93) bagHell  += bQty;
+                }
+            }
+            sb.append("가방현황[ 일반:").append(bagNormal)
+              .append("/나메:").append(bagNm)
+              .append("/헬:").append(bagHell).append("]").append(NL);
+        }
         sb.append("▶ 현재 타겟: ").append(targetName)
 	      .append(" (MON_NO=").append(u.targetMon).append(")").append(NL);
 
@@ -2625,7 +2641,7 @@ public class BossAttackController {
      // ※지옥 각인 [헬너프되지않음]
         {
             // 지옥각인 스탯 합산
-            int hellAtkMin = 0, hellAtkMax = 0, hellHp = 0, hellRegen = 0, hellCrit = 0, hellCritDmg = 0, hellTotalQty = 0;
+            int hellAtkMin = 0, hellAtkMax = 0, hellHp = 0, hellRegen = 0, hellCrit = 0, hellCritDmg = 0, hellTotalQty = 0, hellAtkMaxRate = 0, hellHpMaxRate = 0;
             if (bag != null) {
                 for (HashMap<String, Object> hrow : bag) {
                     int hId = MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("ITEM_ID"), "0"));
@@ -2633,12 +2649,14 @@ public class BossAttackController {
                     if (hType.toUpperCase().startsWith("HELL_BOX") && hId >= 3000 && hId < 4000) {
                         int hQty = Math.max(1, MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("TOTAL_QTY"), "0")));
                         hellTotalQty += hQty;
-                        hellAtkMin   += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("ATK_MIN"),  "0")) * hQty;
-                        hellAtkMax   += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("ATK_MAX"),  "0")) * hQty;
-                        hellHp       += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("HP_MAX"),   "0")) * hQty;
-                        hellRegen    += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("HP_REGEN"), "0")) * hQty;
-                        hellCrit     += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("ATK_CRI"),  "0")) * hQty;
-                        hellCritDmg  += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("CRI_DMG"),  "0")) * hQty;
+                        hellAtkMin     += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("ATK_MIN"),      "0")) * hQty;
+                        hellAtkMax     += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("ATK_MAX"),      "0")) * hQty;
+                        hellHp         += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("HP_MAX"),       "0")) * hQty;
+                        hellRegen      += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("HP_REGEN"),     "0")) * hQty;
+                        hellCrit       += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("ATK_CRI"),      "0")) * hQty;
+                        hellCritDmg    += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("CRI_DMG"),      "0")) * hQty;
+                        hellAtkMaxRate += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("ATK_MAX_RATE"), "0")) * hQty;
+                        hellHpMaxRate  += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("HP_MAX_RATE"),  "0")) * hQty;
                     }
                 }
             }
@@ -2649,7 +2667,9 @@ public class BossAttackController {
                 if (hellHp    != 0)  sb.append("HP+").append(hellHp).append(" ");
                 if (hellRegen != 0)  sb.append("체젠+").append(hellRegen).append(" ");
                 if (hellCrit  != 0)  sb.append("치확+").append(hellCrit).append("% ");
-                if (hellCritDmg != 0) sb.append("치피+").append(hellCritDmg).append("% ");
+                if (hellCritDmg   != 0) sb.append("치피+").append(hellCritDmg).append("% ");
+                if (hellAtkMaxRate != 0) sb.append("최종ATK+").append(hellAtkMaxRate).append("% ");
+                if (hellHpMaxRate  != 0) sb.append("체력%+").append(hellHpMaxRate).append(" ");
                 sb.append(NL);
             }
         }
