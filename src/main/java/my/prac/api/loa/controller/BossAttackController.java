@@ -2641,7 +2641,7 @@ public class BossAttackController {
      // ※지옥 각인 [헬너프되지않음]
         {
             // 지옥각인 스탯 합산
-            int hellAtkMin = 0, hellAtkMax = 0, hellHp = 0, hellRegen = 0, hellCrit = 0, hellCritDmg = 0, hellTotalQty = 0, hellAtkMaxRate = 0, hellHpMaxRate = 0;
+            int hellAtkMin = 0, hellAtkMax = 0, hellHp = 0, hellRegen = 0, hellCrit = 0, hellCritDmg = 0, hellTotalQty = 0, hellAtkMinRate = 0, hellAtkMaxRate = 0, hellHpMaxRate = 0;
             if (bag != null) {
                 for (HashMap<String, Object> hrow : bag) {
                     int hId = MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("ITEM_ID"), "0"));
@@ -2655,7 +2655,8 @@ public class BossAttackController {
                         hellRegen      += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("HP_REGEN"),     "0")) * hQty;
                         hellCrit       += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("ATK_CRI"),      "0")) * hQty;
                         hellCritDmg    += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("CRI_DMG"),      "0")) * hQty;
-                        hellAtkMaxRate += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("ATK_MAX_RATE"), "0")) * hQty;
+                        if (hId == 3003) hellAtkMinRate += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("ATK_MAX_RATE"), "0")) * hQty;
+                        else if (hId == 3004) hellAtkMaxRate += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("ATK_MAX_RATE"), "0")) * hQty;
                         hellHpMaxRate  += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("HP_MAX_RATE"),  "0")) * hQty;
                     }
                 }
@@ -2668,7 +2669,7 @@ public class BossAttackController {
                 if (hellRegen != 0)  sb.append("체젠+").append(hellRegen).append(" ");
                 if (hellCrit  != 0)  sb.append("치확+").append(hellCrit).append("% ");
                 if (hellCritDmg   != 0) sb.append("치피+").append(hellCritDmg).append("% ");
-                if (hellAtkMaxRate != 0) sb.append("최종ATK+").append(hellAtkMaxRate).append("% ");
+                if (hellAtkMinRate != 0 || hellAtkMaxRate != 0) sb.append("공격% 최소+").append(hellAtkMinRate).append("/최대+").append(hellAtkMaxRate).append(" ");
                 if (hellHpMaxRate  != 0) sb.append("체력%+").append(hellHpMaxRate).append(" ");
                 sb.append(NL);
             }
