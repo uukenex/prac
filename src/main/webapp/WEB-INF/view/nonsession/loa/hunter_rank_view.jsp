@@ -260,13 +260,13 @@ new Vue({
     loading: false,
     data: null,
     gradeTable: [
-      {name:'SSS', k:50000, d:50000, de:1000},
-      {name:'SS',  k:30000, d:30000, de:300},
-      {name:'S',   k:20000, d:20000, de:300},
-      {name:'A',   k:10000, d:10000, de:200},
-      {name:'B',   k:5000,  d:5000,  de:100},
-      {name:'C',   k:3000,  d:3000,  de:50},
-      {name:'D',   k:1000,  d:1000,  de:30}
+      {name:'SSS', k:50000, d:100000, de:1200, secret:true},
+      {name:'SS',  k:40000, d:50000,  de:700,  secret:true},
+      {name:'S',   k:30000, d:30000,  de:500},
+      {name:'A',   k:20000, d:20000,  de:400},
+      {name:'B',   k:10000, d:10000,  de:200},
+      {name:'C',   k:5000,  d:5000,   de:100},
+      {name:'D',   k:1000,  d:1000,   de:50}
     ]
   },
   computed: {
