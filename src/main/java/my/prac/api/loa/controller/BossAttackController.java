@@ -2206,12 +2206,7 @@ public class BossAttackController {
 	        List<String> bucket = catMap.getOrDefault(cat, catMap.get("※기타"));
 	        if (bucket != null) bucket.add(label);
 	    }
-	    // 지옥 각인 합산 결과를 ※지옥 버킷에 추가
-	    for (Map.Entry<Integer, String[]> he : hellQtyMap.entrySet()) {
-	        String hName = he.getValue()[0];
-	        int hQty = Integer.parseInt(he.getValue()[1]);
-	        catMap.get("※지옥").add(hName + (hQty > 1 ? " x" + hQty : "") + " [지옥]");
-	    }
+	    // 지옥 각인(3000번대)은 인벤 목록에 미출력
 
 	    // 유물 총개수 조회 (일반/나메 구분)
 	    int relicNormalTotal = 0, relicNmTotal = 0;
@@ -2652,8 +2647,7 @@ public class BossAttackController {
                 sb.append(NL).append("※지옥 [헬너프되지않음]:").append(NL);
                 for (Map.Entry<Integer, String[]> he : hellDisp.entrySet()) {
                     int hQty = Integer.parseInt(he.getValue()[1]);
-                    sb.append("no.").append(he.getKey()).append(" ")
-                      .append(he.getValue()[0]).append(hQty > 1 ? " x" + hQty : "").append(" [지옥]").append(NL);
+                    sb.append(he.getValue()[0]).append(hQty > 1 ? " +" + hQty : "").append(" [지옥]").append(NL);
                 }
             }
         }
@@ -2771,12 +2765,7 @@ public class BossAttackController {
 	                List<String> bucket = catMap.getOrDefault(cat, catMap.get("※기타"));
 	                if (bucket != null) bucket.add(label);
 	            }
-	            // 지옥 각인 합산 결과를 ※지옥 버킷에 추가
-	            for (Map.Entry<Integer, String[]> he : hellQtyMap2.entrySet()) {
-	                String hName = he.getValue()[0];
-	                int hQty = Integer.parseInt(he.getValue()[1]);
-	                catMap.get("※지옥").add(hName + (hQty > 1 ? " x" + hQty : "") + " [지옥]");
-	            }
+	            // 지옥 각인은 어둠부가효과 아래 ※지옥 섹션에서 별도 출력 (hellDisp)
 
 	            // 유물 총개수 조회 (N/M 표시용)
 	            int relicNormalTotal2 = 0, relicNmTotal2 = 0;
