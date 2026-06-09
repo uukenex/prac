@@ -2621,47 +2621,78 @@ public class BossAttackController {
             if (ctx.dropCritDmg > 0) sb.append("치피+").append(ctx.dropCritDmg).append("% ");
             sb.append(NL);
         }
-        // ※지옥 각인 [헬너프되지않음]
+        
+        
+     // ※지옥 각인 [헬너프되지않음]
         {
-            Map<Integer, String[]> hellDisp = new LinkedHashMap<>();
+            // 지옥각인 스탯 합산
+            int hellAtkMin = 0, hellAtkMax = 0, hellHp = 0, hellRegen = 0, hellCrit = 0, hellCritDmg = 0, hellTotalQty = 0;
             if (bag != null) {
                 for (HashMap<String, Object> hrow : bag) {
                     int hId = MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("ITEM_ID"), "0"));
                     String hType = Objects.toString(hrow.get("ITEM_TYPE"), "");
                     if (hType.toUpperCase().startsWith("HELL_BOX") && hId >= 3000 && hId < 4000) {
-                        String hName = Objects.toString(hrow.get("ITEM_NAME"), "");
-                        int hQty = MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("TOTAL_QTY"), "0"));
-                        String[] he = hellDisp.get(hId);
-                        if (he == null) hellDisp.put(hId, new String[]{hName, String.valueOf(hQty)});
-                        else he[1] = String.valueOf(Integer.parseInt(he[1]) + hQty);
+                        int hQty = Math.max(1, MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("TOTAL_QTY"), "0")));
+                        hellTotalQty += hQty;
+                        hellAtkMin   += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("ATK_MIN"),  "0")) * hQty;
+                        hellAtkMax   += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("ATK_MAX"),  "0")) * hQty;
+                        hellHp       += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("HP_MAX"),   "0")) * hQty;
+                        hellRegen    += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("HP_REGEN"), "0")) * hQty;
+                        hellCrit     += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("ATK_CRI"),  "0")) * hQty;
+                        hellCritDmg  += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("CRI_DMG"),  "0")) * hQty;
                     }
                 }
             }
-            if (!hellDisp.isEmpty()) {
-                sb.append(NL).append("※지옥 [헬너프되지않음]:").append(NL);
-                for (Map.Entry<Integer, String[]> he : hellDisp.entrySet()) {
-                    int hQty = Integer.parseInt(he.getValue()[1]);
-                    sb.append(he.getValue()[0]).append(hQty > 1 ? " +" + hQty : "").append(" [지옥]").append(NL);
-                }
+            if (hellTotalQty > 0) {
+                sb.append(NL).append("✨지옥각인 [헬너프되지않음](" + hellTotalQty + "개): ");
+                if (hellAtkMin != 0)  sb.append("min_ATK+").append(hellAtkMin).append(" ");
+                if (hellAtkMax != 0)  sb.append("max_ATK+").append(hellAtkMax).append(" ");
+                if (hellHp    != 0)  sb.append("HP+").append(hellHp).append(" ");
+                if (hellRegen != 0)  sb.append("체젠+").append(hellRegen).append(" ");
+                if (hellCrit  != 0)  sb.append("치확+").append(hellCrit).append("% ");
+                if (hellCritDmg != 0) sb.append("치피+").append(hellCritDmg).append("% ");
+                sb.append(NL);
             }
         }
-
-
+        
+        try {
+		    List<HashMap<String,Object>> jobLvRows = botNewService.selectJobLevels(ctx.targetUser);
+		    int totLv = ctx.totalJobLv;
+		    if (totLv > 0 || (jobLvRows != null && !jobLvRows.isEmpty())) {
+		        sb.append("✨직업레벨 [합계 Lv.").append(totLv).append("]")
+		          .append(" → 데미지+").append(totLv * 10)
+		          .append(" 크리율+").append(totLv)
+		          .append("% 크리뎀+").append(totLv).append("%").append("[헬너프되지않음]").append(NL);
+		        if (jobLvRows != null) {
+		            for (HashMap<String,Object> r : jobLvRows) {
+		                String jn  = Objects.toString(r.get("JOB_NAME"), "");
+		                int    jlv = ((Number) r.getOrDefault("JOB_LV", 0)).intValue();
+		                int    jkl = ((Number) r.getOrDefault("JOB_KILL_CNT", 0)).intValue();
+		                int    need = jlv * JOB_LV_KILL_BASE + JOB_LV_KILL_OFFSET;
+		                sb.append("  └ [").append(jn).append("] Lv.").append(jlv);
+		                if (jlv < JOB_MAX_LV) sb.append("  (다음레벨: ").append(jkl).append("/").append(need).append("킬)");
+		                else                  sb.append("  (MAX)");
+		                sb.append(NL);
+		            }
+		        }
+		        sb.append(NL);
+		    }
+		} catch (Exception ignore) {}
 	    // ─ 세트 효과 ─
 	    boolean hasSetEffect = ctx.setCooldownReduce > 0 || ctx.setCooldownIncrease > 0 || ctx.setAtkFinalRate > 0 || ctx.setCritFinalRate > 0
 	            || ctx.setEvasionRate > 0 || (ctx.activeSetSpecials != null && !ctx.activeSetSpecials.isEmpty());
 	    if (hasSetEffect) {
-	        sb.append(NL).append("※ 세트 효과:").append(NL);
+	        sb.append(NL).append("✨세트 효과 [헬너프되지않음]:");
 	        if (ctx.setAtkFinalRate > 0)
-	            sb.append("  └ 최종공격력 +").append(ctx.setAtkFinalRate).append("%").append(NL);
+	            sb.append("최종공격력 +").append(ctx.setAtkFinalRate).append("%").append(NL);
 	        if (ctx.setCritFinalRate > 0)
-	            sb.append("  └ 최종크리율 +").append(ctx.setCritFinalRate).append("%").append(NL);
+	            sb.append("최종크리율 +").append(ctx.setCritFinalRate).append("%").append(NL);
 	        if (ctx.setCooldownReduce > 0)
-	            sb.append("  └ 쿨타임 -").append(ctx.setCooldownReduce).append("%").append(NL);
+	            sb.append("쿨타임 -").append(ctx.setCooldownReduce).append("%").append(NL);
 	        if (ctx.setCooldownIncrease > 0)
-	            sb.append("  └ 쿨타임 +").append(ctx.setCooldownIncrease).append("%").append(NL);
+	            sb.append("쿨타임 +").append(ctx.setCooldownIncrease).append("%").append(NL);
 	        if (ctx.setEvasionRate > 0)
-	            sb.append("  └ 회피율 ").append(ctx.setEvasionRate).append("%").append(NL);
+	            sb.append("회피율 ").append(ctx.setEvasionRate).append("%").append(NL);
 	        if (ctx.activeSetSpecials != null) {
 	            for (String sp : ctx.activeSetSpecials) sb.append("  └ ").append(sp).append(NL);
 	        }
@@ -2858,30 +2889,6 @@ public class BossAttackController {
 			sb.append(NL);
 		}
 
-		// ── 직업레벨 표기 ──
-		try {
-		    List<HashMap<String,Object>> jobLvRows = botNewService.selectJobLevels(ctx.targetUser);
-		    int totLv = ctx.totalJobLv;
-		    if (totLv > 0 || (jobLvRows != null && !jobLvRows.isEmpty())) {
-		        sb.append("⬆ 직업레벨 [합산 Lv.").append(totLv).append("]")
-		          .append(" → 데미지+").append(totLv * 10)
-		          .append(" 크리율+").append(totLv)
-		          .append("% 크리뎀+").append(totLv).append("%").append(NL);
-		        if (jobLvRows != null) {
-		            for (HashMap<String,Object> r : jobLvRows) {
-		                String jn  = Objects.toString(r.get("JOB_NAME"), "");
-		                int    jlv = ((Number) r.getOrDefault("JOB_LV", 0)).intValue();
-		                int    jkl = ((Number) r.getOrDefault("JOB_KILL_CNT", 0)).intValue();
-		                int    need = jlv * JOB_LV_KILL_BASE + JOB_LV_KILL_OFFSET;
-		                sb.append("  └ [").append(jn).append("] Lv.").append(jlv);
-		                if (jlv < JOB_MAX_LV) sb.append("  (다음레벨: ").append(jkl).append("/").append(need).append("킬)");
-		                else                  sb.append("  (MAX)");
-		                sb.append(NL);
-		            }
-		        }
-		        sb.append(NL);
-		    }
-		} catch (Exception ignore) {}
 
 		// 누적 처치
 		sb.append("누적 처치 기록 (총 ").append(totalKills).append("마리)").append(NL);
