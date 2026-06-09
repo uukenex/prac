@@ -2605,7 +2605,7 @@ public class BossAttackController {
         }
         String relicSummary2 = buildRelicSummaryLine(bag,8000);
         if (relicSummary2 != null) {
-        	sb.append(NL).append(relicSummary2).append(NL);
+        	sb.append(relicSummary2);
         }
         
         
@@ -2619,7 +2619,6 @@ public class BossAttackController {
             if (ctx.dropRegen > 0) sb.append("체젠+").append(ctx.dropRegen).append(" ");
             if (ctx.dropCrit > 0) sb.append("치확+").append(ctx.dropCrit).append("% ");
             if (ctx.dropCritDmg > 0) sb.append("치피+").append(ctx.dropCritDmg).append("% ");
-            sb.append(NL);
         }
         
         
@@ -2659,10 +2658,10 @@ public class BossAttackController {
 		    List<HashMap<String,Object>> jobLvRows = botNewService.selectJobLevels(ctx.targetUser);
 		    int totLv = ctx.totalJobLv;
 		    if (totLv > 0 || (jobLvRows != null && !jobLvRows.isEmpty())) {
-		        sb.append("✨직업레벨 [합계 Lv.").append(totLv).append("]")
+		        sb.append("✨직업레벨[헬너프되지않음] Lv.").append(totLv)
 		          .append(" → 데미지+").append(totLv * 10)
 		          .append(" 크리율+").append(totLv)
-		          .append("% 크리뎀+").append(totLv).append("%").append("[헬너프되지않음]").append(NL);
+		          .append("% 크리뎀+").append(totLv).append("%").append(NL);
 		        if (jobLvRows != null) {
 		            for (HashMap<String,Object> r : jobLvRows) {
 		                String jn  = Objects.toString(r.get("JOB_NAME"), "");
@@ -2675,14 +2674,13 @@ public class BossAttackController {
 		                sb.append(NL);
 		            }
 		        }
-		        sb.append(NL);
 		    }
 		} catch (Exception ignore) {}
 	    // ─ 세트 효과 ─
 	    boolean hasSetEffect = ctx.setCooldownReduce > 0 || ctx.setCooldownIncrease > 0 || ctx.setAtkFinalRate > 0 || ctx.setCritFinalRate > 0
 	            || ctx.setEvasionRate > 0 || (ctx.activeSetSpecials != null && !ctx.activeSetSpecials.isEmpty());
 	    if (hasSetEffect) {
-	        sb.append(NL).append("✨세트 효과 [헬너프되지않음]:");
+	        sb.append("✨세트 효과 [헬너프되지않음]:");
 	        if (ctx.setAtkFinalRate > 0)
 	            sb.append("최종공격력 +").append(ctx.setAtkFinalRate).append("%").append(NL);
 	        if (ctx.setCritFinalRate > 0)
