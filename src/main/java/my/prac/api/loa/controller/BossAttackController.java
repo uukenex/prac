@@ -2209,12 +2209,13 @@ public class BossAttackController {
 	    // 지옥 각인(3000번대)은 인벤 목록에 미출력
 
 	    // 유물 총개수 조회 (일반/나메 구분)
-	    int relicNormalTotal = 0, relicNmTotal = 0;
+	    int relicNormalTotal = 0, relicNmTotal = 0, achvTotal = 0;
 	    try {
 	        HashMap<String,Object> relicCnt = botNewService.selectRelicTotalCounts();
 	        if (relicCnt != null) {
 	            relicNormalTotal = safeInt(relicCnt.get("NORMAL_TOTAL"));
 	            relicNmTotal     = safeInt(relicCnt.get("NM_TOTAL"));
+	            achvTotal        = safeInt(relicCnt.get("ACHV_TOTAL"));
 	        }
 	    } catch (Exception ignore) {}
 
@@ -2222,9 +2223,10 @@ public class BossAttackController {
 	    String[] invenCatOrder = {"※무기","※투구","※갑옷","※전설","※날개","※보스","※업적","※유물","※[N]유물"};
 	    for (String catKey : invenCatOrder) {
 	        List<String> list = catMap.getOrDefault(catKey, new ArrayList<>());
-	        if ("※유물".equals(catKey) || "※[N]유물".equals(catKey)) {
+	        if ("※유물".equals(catKey) || "※[N]유물".equals(catKey) || "※업적".equals(catKey)) {
 	            int ownedCnt = list.size();
-	            int totalCnt = "※유물".equals(catKey) ? relicNormalTotal : relicNmTotal;
+	            int totalCnt = "※유물".equals(catKey) ? relicNormalTotal
+	                         : "※[N]유물".equals(catKey) ? relicNmTotal : achvTotal;
 	            if (ownedCnt > 0 || totalCnt > 0) {
 	                String summary = ownedCnt + "/" + (totalCnt > 0 ? totalCnt : "?");
 	                if (totalCnt > 0 && ownedCnt >= totalCnt) summary += " 모두수집";
@@ -2234,14 +2236,6 @@ public class BossAttackController {
 	            sb.append(catKey).append(":").append(NL);
 	            for (String s : list) {
 	                sb.append(s).append(NL);
-	            }
-	        }
-	        // 업적 출력 직후: 행운/반지/토템/선물 합계 삽입
-	        if ("※업적".equals(catKey)) {
-	            for (int[] gr : new int[][]{{300,400},{500,600},{600,700},{900,1000}}) {
-	                String gl = gr[0]==300?"행운":gr[0]==500?"반지":gr[0]==600?"토템":"선물";
-	                String line = buildGroupSummaryLine(bag, gr[0], gr[1], gl);
-	                if (line != null) sb.append(line).append(NL);
 	            }
 	        }
 	    }
@@ -2768,12 +2762,13 @@ public class BossAttackController {
 	            // 지옥 각인은 어둠부가효과 아래 ※지옥 섹션에서 별도 출력 (hellDisp)
 
 	            // 유물 총개수 조회 (N/M 표시용)
-	            int relicNormalTotal2 = 0, relicNmTotal2 = 0;
+	            int relicNormalTotal2 = 0, relicNmTotal2 = 0, achvTotal2 = 0;
 	            try {
 	                HashMap<String,Object> relicCnt2 = botNewService.selectRelicTotalCounts();
 	                if (relicCnt2 != null) {
 	                    relicNormalTotal2 = safeInt(relicCnt2.get("NORMAL_TOTAL"));
 	                    relicNmTotal2     = safeInt(relicCnt2.get("NM_TOTAL"));
+	                    achvTotal2        = safeInt(relicCnt2.get("ACHV_TOTAL"));
 	                }
 	            } catch (Exception ignore2) {}
 
@@ -2781,9 +2776,10 @@ public class BossAttackController {
 	            String[] atkCatOrder = {"※무기","※투구","※갑옷","※전설","※날개","※보스","※업적","※유물","※[N]유물"};
 	            for (String catKey : atkCatOrder) {
 	                List<String> list = catMap.getOrDefault(catKey, new ArrayList<>());
-	                if ("※유물".equals(catKey) || "※[N]유물".equals(catKey)) {
+	                if ("※유물".equals(catKey) || "※[N]유물".equals(catKey) || "※업적".equals(catKey)) {
 	                    int ownedCnt = list.size();
-	                    int totalCnt = "※유물".equals(catKey) ? relicNormalTotal2 : relicNmTotal2;
+	                    int totalCnt = "※유물".equals(catKey) ? relicNormalTotal2
+	                                 : "※[N]유물".equals(catKey) ? relicNmTotal2 : achvTotal2;
 	                    if (ownedCnt > 0 || totalCnt > 0) {
 	                        String summary = ownedCnt + "/" + (totalCnt > 0 ? totalCnt : "?");
 	                        if (totalCnt > 0 && ownedCnt >= totalCnt) summary += " 모두수집";
@@ -2793,14 +2789,6 @@ public class BossAttackController {
 	                    sb.append(catKey).append(":").append(NL);
 	                    for (String s : list) {
 	                        sb.append(s).append(NL);
-	                    }
-	                }
-	                // 업적 출력 직후: 행운/반지/토템/선물 합계 삽입
-	                if ("※업적".equals(catKey)) {
-	                    for (int[] gr : new int[][]{{300,400},{500,600},{600,700},{900,1000}}) {
-	                        String gl = gr[0]==300?"행운":gr[0]==500?"반지":gr[0]==600?"토템":"선물";
-	                        String line = buildGroupSummaryLine(bag, gr[0], gr[1], gl);
-	                        if (line != null) sb.append(line).append(NL);
 	                    }
 	                }
 	            }
