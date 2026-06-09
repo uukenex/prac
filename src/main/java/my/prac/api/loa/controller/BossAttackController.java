@@ -5377,6 +5377,7 @@ public class BossAttackController {
 		msg += "✨포인트: " + curSpStr;
 
 		if (s.bagDropMsg != null && !s.bagDropMsg.isEmpty()) msg += NL + s.bagDropMsg;
+		if (s.gpDropMsg  != null && !s.gpDropMsg.isEmpty())  msg += NL + s.gpDropMsg;
 		if (s.elfNightMode) msg += NL + "[다크엘프 각성] 데미지 3배";
 		if (s.jobLevelUpMsg != null && !s.jobLevelUpMsg.isEmpty()) msg += NL + s.jobLevelUpMsg;
 		if (s.jobLvProgressMsg != null && !s.jobLvProgressMsg.isEmpty()) msg += NL + s.jobLvProgressMsg;
@@ -5994,7 +5995,7 @@ public class BossAttackController {
 		if (ThreadLocalRandom.current().nextDouble() >= GP_DROP_RATE) return "";
 		try {
 			// 0.1~0.5 GP 랜덤 지급 (소수점 1자리: 0.1, 0.2, 0.3, 0.4, 0.5)
-			double gpAmount = (ThreadLocalRandom.current().nextInt(5) + 1) * 0.1;
+			double gpAmount = Math.round((ThreadLocalRandom.current().nextInt(49) + 1) * 0.01 * 100) / 100.0;
 			HashMap<String,Object> gp = new HashMap<>();
 			gp.put("userName", userName);
 			gp.put("roomName", roomName);
