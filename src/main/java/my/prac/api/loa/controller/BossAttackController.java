@@ -2124,13 +2124,12 @@ public class BossAttackController {
 	    catMap.put("※투구", new ArrayList<>());
 	    catMap.put("※갑옷", new ArrayList<>());
 	    catMap.put("※전설", new ArrayList<>());
-	    catMap.put("※유물", new ArrayList<>());
-	    catMap.put("※[N]유물", new ArrayList<>());
-	    catMap.put("※지옥", new ArrayList<>());
 	    catMap.put("※날개", new ArrayList<>());
 	    catMap.put("※보스", new ArrayList<>());
 	    catMap.put("※업적", new ArrayList<>());
-	    catMap.put("※기타", new ArrayList<>());
+	    catMap.put("※유물", new ArrayList<>());
+	    catMap.put("※[N]유물", new ArrayList<>());
+	    catMap.put("※기타", new ArrayList<>()); // fallback, 미출력
 	    // 지옥 각인(3000번대): gain_type별 중복 row → itemId 기준 합산
 	    Map<Integer, String[]> hellQtyMap = new LinkedHashMap<>();
 
@@ -2199,8 +2198,13 @@ public class BossAttackController {
 	            }
 	        }
 
+	        // 아이템ID 접두사 (무기/투구/갑옷/전설/날개/보스)
+	        if ("※무기".equals(cat)||"※투구".equals(cat)||"※갑옷".equals(cat)||
+	            "※전설".equals(cat)||"※날개".equals(cat)||"※보스".equals(cat)) {
+	            label = "no." + itemId + " " + label;
+	        }
 	        List<String> bucket = catMap.getOrDefault(cat, catMap.get("※기타"));
-	        bucket.add(label);
+	        if (bucket != null) bucket.add(label);
 	    }
 	    // 지옥 각인 합산 결과를 ※지옥 버킷에 추가
 	    for (Map.Entry<Integer, String[]> he : hellQtyMap.entrySet()) {
@@ -2219,11 +2223,10 @@ public class BossAttackController {
 	        }
 	    } catch (Exception ignore) {}
 
-	    // 출력 (※날개 뒤에 행운/반지/토템/선물 합계 삽입)
-	    for (Map.Entry<String, List<String>> e : catMap.entrySet()) {
-	        String catKey = e.getKey();
-	        List<String> list = e.getValue();
-	        // 유물: 개수 요약 표시
+	    // 출력 (새 순서: 무기/투구/갑옷/전설/날개/보스/업적 → 행운합계 → 유물/[N]유물)
+	    String[] invenCatOrder = {"※무기","※투구","※갑옷","※전설","※날개","※보스","※업적","※유물","※[N]유물"};
+	    for (String catKey : invenCatOrder) {
+	        List<String> list = catMap.getOrDefault(catKey, new ArrayList<>());
 	        if ("※유물".equals(catKey) || "※[N]유물".equals(catKey)) {
 	            int ownedCnt = list.size();
 	            int totalCnt = "※유물".equals(catKey) ? relicNormalTotal : relicNmTotal;
@@ -2238,8 +2241,8 @@ public class BossAttackController {
 	                sb.append(s).append(NL);
 	            }
 	        }
-	        // 날개 출력 직후 합계 삽입
-	        if ("※날개".equals(catKey)) {
+	        // 업적 출력 직후: 행운/반지/토템/선물 합계 삽입
+	        if ("※업적".equals(catKey)) {
 	            for (int[] gr : new int[][]{{300,400},{500,600},{600,700},{900,1000}}) {
 	                String gl = gr[0]==300?"행운":gr[0]==500?"반지":gr[0]==600?"토템":"선물";
 	                String line = buildGroupSummaryLine(bag, gr[0], gr[1], gl);
@@ -2605,6 +2608,12 @@ public class BossAttackController {
         if (relicSummary != null) {
             sb.append(NL).append(relicSummary).append(NL);
         }
+        // 유물효과↔업적효과 사이: 행운/반지/토템/선물 합계
+        for (int[] gr : new int[][]{{300,400},{500,600},{600,700},{900,1000}}) {
+            String gl = gr[0]==300?"행운":gr[0]==500?"반지":gr[0]==600?"토템":"선물";
+            String gline = buildGroupSummaryLine(bag, gr[0], gr[1], gl);
+            if (gline != null) sb.append(gline).append(NL);
+        }
         String relicSummary2 = buildRelicSummaryLine(bag,8000);
         if (relicSummary2 != null) {
         	sb.append(NL).append(relicSummary2).append(NL);
@@ -2614,7 +2623,7 @@ public class BossAttackController {
         if (ctx.dropAtkMin +ctx.dropAtkMax +  ctx.dropHp + ctx.dropRegen
                 + ctx.dropCrit + ctx.dropCritDmg > 0) {
 
-        	sb.append(NL).append("✨어둠 부가 효과: ");
+        	sb.append(NL).append("✨어둠 부가 효과 [헬너프되지않음]: ");
             if (ctx.dropAtkMin > 0) sb.append("min_ATK+").append(ctx.dropAtkMin).append(" ");
             if (ctx.dropAtkMax > 0) sb.append("max_ATK+").append(ctx.dropAtkMax).append(" ");
             if (ctx.dropHp > 0) sb.append("HP+").append(ctx.dropHp).append(" ");
@@ -2622,6 +2631,31 @@ public class BossAttackController {
             if (ctx.dropCrit > 0) sb.append("치확+").append(ctx.dropCrit).append("% ");
             if (ctx.dropCritDmg > 0) sb.append("치피+").append(ctx.dropCritDmg).append("% ");
             sb.append(NL);
+        }
+        // ※지옥 각인 [헬너프되지않음]
+        {
+            Map<Integer, String[]> hellDisp = new LinkedHashMap<>();
+            if (bag != null) {
+                for (HashMap<String, Object> hrow : bag) {
+                    int hId = MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("ITEM_ID"), "0"));
+                    String hType = Objects.toString(hrow.get("ITEM_TYPE"), "");
+                    if (hType.toUpperCase().startsWith("HELL_BOX") && hId >= 3000 && hId < 4000) {
+                        String hName = Objects.toString(hrow.get("ITEM_NAME"), "");
+                        int hQty = MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("TOTAL_QTY"), "0"));
+                        String[] he = hellDisp.get(hId);
+                        if (he == null) hellDisp.put(hId, new String[]{hName, String.valueOf(hQty)});
+                        else he[1] = String.valueOf(Integer.parseInt(he[1]) + hQty);
+                    }
+                }
+            }
+            if (!hellDisp.isEmpty()) {
+                sb.append(NL).append("※지옥 [헬너프되지않음]:").append(NL);
+                for (Map.Entry<Integer, String[]> he : hellDisp.entrySet()) {
+                    int hQty = Integer.parseInt(he.getValue()[1]);
+                    sb.append("no.").append(he.getKey()).append(" ")
+                      .append(he.getValue()[0]).append(hQty > 1 ? " x" + hQty : "").append(" [지옥]").append(NL);
+                }
+            }
         }
 
 
@@ -2664,13 +2698,12 @@ public class BossAttackController {
 	            catMap.put("※투구", new ArrayList<>());
 	            catMap.put("※갑옷", new ArrayList<>());
 	            catMap.put("※전설", new ArrayList<>());
-	            catMap.put("※유물", new ArrayList<>());
-	            catMap.put("※[N]유물", new ArrayList<>());
-	            catMap.put("※지옥", new ArrayList<>());
 	            catMap.put("※날개", new ArrayList<>());
 	            catMap.put("※보스", new ArrayList<>());
 	            catMap.put("※업적", new ArrayList<>());
-	            catMap.put("※기타", new ArrayList<>());
+	            catMap.put("※유물", new ArrayList<>());
+	            catMap.put("※[N]유물", new ArrayList<>());
+	            catMap.put("※기타", new ArrayList<>()); // fallback, 미출력
 	            // 지옥 각인(3000번대): gain_type별 중복 row → itemId 기준 합산
 	            Map<Integer, String[]> hellQtyMap2 = new LinkedHashMap<>();
 
@@ -2730,11 +2763,13 @@ public class BossAttackController {
 	                    cat = itemName.startsWith("[N]") ? "※[N]유물" : "※유물";
 	                }
 
-	                List<String> bucket = catMap.get(cat);
-	                if (bucket == null) {
-	                    bucket = catMap.get("※기타");
+	                // 아이템ID 접두사 (무기/투구/갑옷/전설/날개/보스)
+	                if ("※무기".equals(cat)||"※투구".equals(cat)||"※갑옷".equals(cat)||
+	                    "※전설".equals(cat)||"※날개".equals(cat)||"※보스".equals(cat)) {
+	                    label = "no." + itemId + " " + label;
 	                }
-	                bucket.add(label);
+	                List<String> bucket = catMap.getOrDefault(cat, catMap.get("※기타"));
+	                if (bucket != null) bucket.add(label);
 	            }
 	            // 지옥 각인 합산 결과를 ※지옥 버킷에 추가
 	            for (Map.Entry<Integer, String[]> he : hellQtyMap2.entrySet()) {
@@ -2753,11 +2788,10 @@ public class BossAttackController {
 	                }
 	            } catch (Exception ignore2) {}
 
-	            // 4) 카테고리별 출력 (invenInfo와 동일: 줄바꿈 방식)
-	            for (Map.Entry<String, List<String>> e : catMap.entrySet()) {
-	                String catKey = e.getKey();
-	                List<String> list = e.getValue();
-	                // 유물: N/M 요약 표시 (invenInfo와 동일)
+	            // 4) 카테고리별 출력 (새 순서: 무기/투구/갑옷/전설/날개/보스/업적 → 행운합계 → 유물/[N]유물)
+	            String[] atkCatOrder = {"※무기","※투구","※갑옷","※전설","※날개","※보스","※업적","※유물","※[N]유물"};
+	            for (String catKey : atkCatOrder) {
+	                List<String> list = catMap.getOrDefault(catKey, new ArrayList<>());
 	                if ("※유물".equals(catKey) || "※[N]유물".equals(catKey)) {
 	                    int ownedCnt = list.size();
 	                    int totalCnt = "※유물".equals(catKey) ? relicNormalTotal2 : relicNmTotal2;
@@ -2766,14 +2800,14 @@ public class BossAttackController {
 	                        if (totalCnt > 0 && ownedCnt >= totalCnt) summary += " 모두수집";
 	                        sb.append(catKey).append(" : ").append(summary).append(NL);
 	                    }
-	                } else if (list != null && !list.isEmpty()) {
+	                } else if (!list.isEmpty()) {
 	                    sb.append(catKey).append(":").append(NL);
 	                    for (String s : list) {
 	                        sb.append(s).append(NL);
 	                    }
 	                }
-	                // 날개 출력 직후 합계 삽입
-	                if ("※날개".equals(catKey)) {
+	                // 업적 출력 직후: 행운/반지/토템/선물 합계 삽입
+	                if ("※업적".equals(catKey)) {
 	                    for (int[] gr : new int[][]{{300,400},{500,600},{600,700},{900,1000}}) {
 	                        String gl = gr[0]==300?"행운":gr[0]==500?"반지":gr[0]==600?"토템":"선물";
 	                        String line = buildGroupSummaryLine(bag, gr[0], gr[1], gl);
