@@ -56,7 +56,7 @@
 	<update id="reduceHellBossInsertDate">
 		/* reduceHellBossInsertDate */
 		UPDATE TBOT_POINT_NEW_BOSS
-		   SET INSERT_DATE = INSERT_DATE - NUMTODSINTERVAL(30, 'SECOND')
+		   SET INSERT_DATE = GREATEST(SYSDATE, INSERT_DATE - NUMTODSINTERVAL(20, 'SECOND'))
 		 WHERE SEQ = (
 		     SELECT MAX(SEQ) FROM TBOT_POINT_NEW_BOSS WHERE END_YN = '0'
 		 )
@@ -320,6 +320,21 @@
 		     ORDER BY INSERT_DATE DESC
 		  )
 		 WHERE ROWNUM = 1
+	</select>
+
+	<!-- =====================================================
+	     [S3 헬보스] BOSS_HELL 아이템 2개 이상 보유자 조회
+	     - 아이템 룰렛 제외 대상 산정용
+	     ===================================================== -->
+	<select id="selectHellItemOwners" resultType="String">
+		/* selectHellItemOwners */
+		SELECT USER_NAME
+		  FROM TBOT_POINT_NEW_INVENTORY
+		 WHERE ITEM_ID BETWEEN 7000 AND 7999
+		   AND NVL(DEL_YN, '0') = '0'
+		   AND GAIN_TYPE = 'BOSS_HELL'
+		 GROUP BY USER_NAME
+		HAVING COUNT(1) >= 2
 	</select>
 
 	<!-- [S3 헬보스] 최근 200회 공격의 평균 데미지 -->

@@ -29,7 +29,10 @@ public interface BotS3DAO {
 	/** [헬보스] 룰렛 대상 목록 (헬모드 kill + 최근 활동) */
 	List<String> selectHellLotteryPool();
 
-	/** [헬보스] 헬모드 일반 공격 시 INSERT_DATE 30초 감소 */
+	/** [헬보스] BOSS_HELL 아이템 2개 이상 보유자 목록 (룰렛 제외 대상) */
+	List<String> selectHellItemOwners();
+
+	/** [헬보스] 헬모드 일반 공격 시 INSERT_DATE 20초 감소 (현재시간 하한) */
 	int reduceHellBossInsertDate();
 
 	/** [헬보스] 마지막 처치된 보스 조회 (리워드 표시용) */
