@@ -6054,7 +6054,7 @@ public class BossAttackController {
 			gp.put("score",    gpAmount);
 			gp.put("cmd",      "ATK_GP_DROP");
 			botNewService.insertGpRecord(gp);
-			return String.format("✨ GP 획득! +%.2f GP", gpAmount);
+			return String.format("✨GP 획득! +%.2f GP", gpAmount);
 		} catch (Exception e) {
 			return "";
 		}
@@ -10385,9 +10385,9 @@ public class BossAttackController {
 
 		StringBuilder sb = new StringBuilder();
 		if(number==8000) {
-			sb.append("✨ 업적 효과 (").append(relicCount).append("개): ");
+			sb.append("✨업적 효과 (").append(relicCount).append("개): ");
 		}else if(number==9000) {
-			sb.append("✨ 유물 효과 (").append(relicCount).append("개): ");
+			sb.append("✨유물 효과 (").append(relicCount).append("개): ");
 		}
 
 		boolean first = true;
@@ -10447,7 +10447,7 @@ public class BossAttackController {
 		}
 		if (count == 0) return null;
 		StringBuilder sb = new StringBuilder();
-		sb.append("※").append(label).append("합계(").append(count).append("개): ");
+		sb.append("✨").append(label).append("합계(").append(count).append("개): ");
 		boolean first = true;
 		if (sumAtkMin != 0 || sumAtkMax != 0) {
 			sb.append("ATK ").append(sumAtkMin).append("~").append(sumAtkMax); first = false;
