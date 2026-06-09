@@ -2131,6 +2131,8 @@ public class BossAttackController {
 	    catMap.put("※보스", new ArrayList<>());
 	    catMap.put("※업적", new ArrayList<>());
 	    catMap.put("※기타", new ArrayList<>());
+	    // 지옥 각인(3000번대): gain_type별 중복 row → itemId 기준 합산
+	    Map<Integer, String[]> hellQtyMap = new LinkedHashMap<>();
 
 	    for (HashMap<String, Object> row : bag) {
 
@@ -2182,7 +2184,14 @@ public class BossAttackController {
 	            label = ("DROP_OPEN_P".equalsIgnoreCase(type) ? "✨플래티넘" : "ATTEND".equalsIgnoreCase(type) ? "출첵" : "✨황금") + "유물상자 (/가방열기 로 개봉)";
 	        }
 	        else if (type != null && type.toUpperCase().startsWith("HELL_BOX") && itemId >= 3000 && itemId < 4000) {
-	            label += " +" + qty + " [지옥]";
+	            // gain_type별 중복 row → hellQtyMap에 합산
+	            String[] entry = hellQtyMap.get(itemId);
+	            if (entry == null) {
+	                hellQtyMap.put(itemId, new String[]{itemName, String.valueOf(qty)});
+	            } else {
+	                entry[1] = String.valueOf(Integer.parseInt(entry[1]) + qty);
+	            }
+	            continue;
 	        }
 	        else {
 	            if (qty > 1) {
@@ -2192,6 +2201,12 @@ public class BossAttackController {
 
 	        List<String> bucket = catMap.getOrDefault(cat, catMap.get("※기타"));
 	        bucket.add(label);
+	    }
+	    // 지옥 각인 합산 결과를 ※지옥 버킷에 추가
+	    for (Map.Entry<Integer, String[]> he : hellQtyMap.entrySet()) {
+	        String hName = he.getValue()[0];
+	        int hQty = Integer.parseInt(he.getValue()[1]);
+	        catMap.get("※지옥").add(hName + (hQty > 1 ? " x" + hQty : "") + " [지옥]");
 	    }
 
 	    // 유물 총개수 조회 (일반/나메 구분)
@@ -2656,6 +2671,8 @@ public class BossAttackController {
 	            catMap.put("※보스", new ArrayList<>());
 	            catMap.put("※업적", new ArrayList<>());
 	            catMap.put("※기타", new ArrayList<>());
+	            // 지옥 각인(3000번대): gain_type별 중복 row → itemId 기준 합산
+	            Map<Integer, String[]> hellQtyMap2 = new LinkedHashMap<>();
 
 	            // 3) 인벤토리 한 줄씩 카테고리 분류
 	            for (HashMap<String, Object> row : bag) {
@@ -2691,7 +2708,14 @@ public class BossAttackController {
 	                } else if ("DROP_OPEN_G".equalsIgnoreCase(typeStr) || "DROP_OPEN_P".equalsIgnoreCase(typeStr) || "ATTEND".equalsIgnoreCase(typeStr)) {
 	                    label = ("DROP_OPEN_P".equalsIgnoreCase(typeStr) ? "✨플래티넘" : "ATTEND".equalsIgnoreCase(typeStr) ? "출첵" : "✨황금") + "유물상자 (/가방열기 로 개봉)";
 	                } else if (typeStr != null && typeStr.toUpperCase().startsWith("HELL_BOX") && itemId >= 3000 && itemId < 4000) {
-	                    label += " +" + qtyVal + " [지옥]";
+	                    // gain_type별 중복 row → hellQtyMap2에 합산
+	                    String[] entry2 = hellQtyMap2.get(itemId);
+	                    if (entry2 == null) {
+	                        hellQtyMap2.put(itemId, new String[]{itemName, String.valueOf(qtyVal)});
+	                    } else {
+	                        entry2[1] = String.valueOf(Integer.parseInt(entry2[1]) + qtyVal);
+	                    }
+	                    continue;
 	                } else if (isEquipType) {
 	                	
 	                } else {
@@ -2711,6 +2735,12 @@ public class BossAttackController {
 	                    bucket = catMap.get("※기타");
 	                }
 	                bucket.add(label);
+	            }
+	            // 지옥 각인 합산 결과를 ※지옥 버킷에 추가
+	            for (Map.Entry<Integer, String[]> he : hellQtyMap2.entrySet()) {
+	                String hName = he.getValue()[0];
+	                int hQty = Integer.parseInt(he.getValue()[1]);
+	                catMap.get("※지옥").add(hName + (hQty > 1 ? " x" + hQty : "") + " [지옥]");
 	            }
 
 	            // 유물 총개수 조회 (N/M 표시용)
