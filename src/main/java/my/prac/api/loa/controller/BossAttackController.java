@@ -4958,7 +4958,8 @@ public class BossAttackController {
 		if (dosaSelf != null || dosaRoom != null) {
 		    int buffCount = (dosaSelf != null ? 1 : 0) + (dosaRoom != null ? 1 : 0);
 		    // [7012] 도사의 가르침: 도사/음양사 버프 계수 3배
-		    int coef = s.ctx.ownedBossItems.contains(7012) ? 3 : 1;
+		    int qty7012 = s.ctx.bossItemQtyMap.getOrDefault(7012, 1);
+		    int coef = s.ctx.ownedBossItems.contains(7012) ? BossAttackS3Controller.getBossEnhanceVal(7012, qty7012) : 1;
 		    if (s.calc.atkDmg > 0) {
 		        s.calc.atkDmg += buffCount * 1000 * coef;
 		        s.calc.atkDmg += (int) Math.round(s.calc.atkDmg * (buffCount * 5 * coef) / 100.0);
@@ -9828,8 +9829,9 @@ public class BossAttackController {
 	    
 	    if ("검성".equals(u.job)) {
 	    	double skillRate = 0.065;
-	    	if(ownedBossItems.contains(7005)) {
-	    		skillRate += 0.15;
+	    	if(ownedBossItems.contains(7006)) {
+	    		int qty7006_ws = (bossItemQtyMap != null) ? bossItemQtyMap.getOrDefault(7006, 1) : 1;
+	    		skillRate += BossAttackS3Controller.getBossEnhanceVal(7006, qty7006_ws) / 100.0;
 	    	}
 	    	
 	    	if (ThreadLocalRandom.current().nextDouble() < skillRate) {
@@ -10148,9 +10150,10 @@ public class BossAttackController {
 		            }
 		        }
 		    }
-	        // [7005] 가시갑옷: 받은 피해의 10% 반사
+	        // [7005] 가시갑옷: 받은 피해 반사 (permille, qty기반)
 	        if (ownedBossItems.contains(7005) && calc.monDmg > 0) {
-	            int reflect = Math.max(1, (int)Math.round(calc.monDmg * 0.10));
+	            int qty7005 = (bossItemQtyMap != null) ? bossItemQtyMap.getOrDefault(7005, 1) : 1;
+	            int reflect = Math.max(1, (int)Math.round(calc.monDmg * BossAttackS3Controller.getBossEnhanceVal(7005, qty7005) / 1000.0));
 	            calc.atkDmg += reflect;
 	            String baseMsg7005 = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
 	            calc.patternMsg = baseMsg7005 + "[가시갑옷] " + reflect + " 반사!";
