@@ -67,6 +67,8 @@ public class BossAttackS3Controller {
 
     /** 헬보스 보상 아이템 타입 */
     private static final String HELL_ITEM_TYPE = "BOSS_HELL";
+    /** 보스아이템 최대 강화 단계 (기본1 + 강화1 = QTY 2) */
+    private static final int MAX_BOSS_ENHANCE = 2;
 
     /** 헬보스 보상 아이템 목록 (BOSS_HELL 타입 기반 동적 로드, 캐시) */
     private volatile List<Integer> hellRewardItemsCache = null;
@@ -214,15 +216,22 @@ public class BossAttackS3Controller {
         Set<Integer> ownedBoss = ctx.ownedBossItems;
         boolean hasHeavenItem = ownedBoss.contains(7001); // 7001: 천벌 발동
 
+        // 보스 아이템 강화 등급 (bossItemQty: itemId -> totalQty, 강화=qty-1)
+        @SuppressWarnings("unchecked")
+        java.util.Map<Integer,Integer> bossItemQtyMap =
+            (java.util.Map<Integer,Integer>) bossAttackController.getInvBuffCachedPublic(ctx.targetUser).getOrDefault("bossItemQty", java.util.Collections.emptyMap());
+        int heaven7001Qty = bossItemQtyMap.getOrDefault(7001, hasHeavenItem ? 1 : 0);
+
         Random rand = new Random();
 
-        // 천벌 발동 (5%, 디버프 활성 시 발동 불가)
+        // 천벌 발동 (기본5%, +1강화→8%, 디버프 활성 시 발동 불가)
+        int heavenRate = heaven7001Qty >= 2 ? 8 : 5;
         boolean heavensPunishment = false;
         String punishMsg = "";
         if (hasHeavenItem && debuff == 0) {
-            if (rand.nextInt(100) < 5) {
+            if (rand.nextInt(100) < heavenRate) {
                 heavensPunishment = true;
-                punishMsg = "[천벌] 효과! 보스회피/방어를 무시하고 초강력치명타!" + NL;
+                punishMsg = "[천벌" + (heaven7001Qty >= 2 ? "+1" : "") + "] 효과! 보스회피/방어를 무시하고 초강력치명타!" + NL;
             }
         }
 
@@ -1053,9 +1062,10 @@ public class BossAttackS3Controller {
 
                 // ── 당첨자별 지급 아이템 미리 결정 (표시용 + DB 지급용) ──
                 // itemId: 양수=아이템, -2=이미보유GP
-                Map<String, String>  winnerDisplay  = new LinkedHashMap<>();
-                Map<String, String>  winnerItemName = new LinkedHashMap<>();
-                Map<String, Integer> winnerItemId   = new LinkedHashMap<>();
+                Map<String, String>  winnerDisplay      = new LinkedHashMap<>();
+                Map<String, String>  winnerItemName     = new LinkedHashMap<>();
+                Map<String, Integer> winnerItemId        = new LinkedHashMap<>();
+                Map<String, Integer> winnerEnhanceItemId = new LinkedHashMap<>(); // -3인 경우 실제 itemId 저장
                 for (String winner : itemWinners) {
                     {
                         int idx        = rand.nextInt(allItems.size());
@@ -1064,15 +1074,29 @@ public class BossAttackS3Controller {
                         String iName   = info[0];
                         String iDesc   = info[1];
                         String displayName = (iDesc == null || iDesc.isEmpty()) ? iName : iName + "  (" + iDesc + ")";
+                        // 강화 여부: 이미 보유 시 qty 확인 → qty < MAX_ENHANCE이면 강화(enchant), 아니면 GP
                         boolean alreadyOwned = false;
+                        int existQty = 0;
                         try {
                             List<Integer> owned = botNewService.selectInventoryItemsByIds(
                                     winner, roomName, Collections.singleton(giveItemId));
                             alreadyOwned = owned != null && !owned.isEmpty();
+                            if (alreadyOwned) {
+                                List<HashMap<String,Object>> qtyList = botNewService.selectBossHellItemTotalQty(winner);
+                                if (qtyList != null) for (HashMap<String,Object> qr : qtyList) {
+                                    if (giveItemId == MiniGameUtil.parseIntSafe(Objects.toString(qr.get("ITEM_ID"),"0")))
+                                        existQty = MiniGameUtil.parseIntSafe(Objects.toString(qr.get("TOTAL_QTY"),"1"));
+                                }
+                            }
                         } catch (Exception ignore) {}
+                        // -2=이미보유 GP, -3=강화 insert(alreadyOwned & qty<MAX)
+                        int assignCode = !alreadyOwned ? giveItemId
+                                       : (existQty < MAX_BOSS_ENHANCE) ? -3
+                                       : -2;
                         winnerItemName.put(winner, iName);
                         winnerDisplay.put(winner, displayName);
-                        winnerItemId.put(winner, alreadyOwned ? -2 : giveItemId);
+                        winnerItemId.put(winner, assignCode);
+                        if (assignCode == -3) winnerEnhanceItemId.put(winner, giveItemId);
                     }
                 }
 
@@ -1083,6 +1107,7 @@ public class BossAttackS3Controller {
                     msg.append(w + 1).append("번 보상: ").append(winnerItemName.get(winner))
                        .append(" : ").append(winner);
                     if (winnerItemId.get(winner) == -2) msg.append(" [이미보유 자동판매 + 1GP]");
+                    if (winnerItemId.get(winner) == -3) msg.append(" [강화!+1]");
                     msg.append(NL);
                 }
                 msg.append(NL);
@@ -1110,7 +1135,21 @@ public class BossAttackS3Controller {
                 // 아이템/GP 당첨자
                 for (String winner : itemWinners) {
                     int itemId = winnerItemId.get(winner);
-                    if (itemId < 0) {
+                    if (itemId == -3) {
+                        // 강화: 같은 아이템 1개 추가 INSERT (qty 합산으로 강화 표현)
+                        int enhItemId = winnerEnhanceItemId.getOrDefault(winner, 0);
+                        if (enhItemId > 0) {
+                            try {
+                                HashMap<String, Object> inv = new HashMap<>();
+                                inv.put("userName", winner);
+                                inv.put("roomName", roomName);
+                                inv.put("itemId",   enhItemId);
+                                inv.put("qty",      1);
+                                inv.put("gainType", "BOSS_HELL");
+                                botNewService.insertInventoryLogTx(inv);
+                            } catch (Exception e) { /* 강화 지급 실패 무시 */ }
+                        }
+                    } else if (itemId < 0) {
                         try {
                             HashMap<String, Object> gp = new HashMap<>();
                             gp.put("userName", winner);
@@ -1169,19 +1208,23 @@ public class BossAttackS3Controller {
         	}
         }
 
-        // 전체 기여도 TOP (데미지% 포함) — 더보기 구분자 이후에 표시
+        // 전체 기여도 TOP — 메인 메시지에 표시 (=== 이전)
         if (!allContributors.isEmpty()) {
-            msg.append(NL).append(ALL_SEE_STR).append(NL);
-            if (itemDetailBlock.length() > 0) msg.append(itemDetailBlock);
-            msg.append("-- 전체 기여도 TOP --").append(NL);
+            msg.append(NL).append("-- 전체 기여도 TOP --").append(NL);
             for (HashMap<String, Object> row : allContributors) {
-                long score = ((Number) row.get("SCORE")).longValue();
+                long score = row.get("SCORE") instanceof Number ? ((Number) row.get("SCORE")).longValue() : 0L;
                 double dmgPct = totScore > 0 ? score * 100.0 / totScore : 0;
                 msg.append(row.get("USER_NAME"))
                    .append(" - ").append(row.get("CNT")).append("회 / ")
                    .append(String.format("%,d", score)).append("dmg")
                    .append(String.format(" (%.1f%%)", dmgPct)).append(NL);
             }
+        }
+
+        // 더보기 구분자 + 아이템 상세
+        if (itemDetailBlock.length() > 0) {
+            msg.append(NL).append(ALL_SEE_STR).append(NL);
+            msg.append(itemDetailBlock);
         }
 
         // ── 전체 참가자 헬보스 클리어 업적 일괄 체크 ──────────────────────

@@ -214,6 +214,9 @@ public interface BotNewService {
 
     int insertSpecialBuff(HashMap<String,Object> param);
     
+    /** [헬보스 강화] 보스아이템 총 보유수량 맵 조회 */
+    List<HashMap<String, Object>> selectBossHellItemTotalQty(String userName);
+
     List<Integer> selectInventoryItemsByIds(String userName, String roomName, Collection<Integer> itemIds);
 
     /** 전체 아이템 + 유저 보유여부 (item_view 페이지용) */

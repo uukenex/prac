@@ -1790,10 +1790,25 @@ public class BossAttackController {
 	        data.put("setBonus", setBonus);
 	    } catch (Exception ignore) {}
 	    try { data.put("hellClearAchv", botNewService.hasHellClearAchv(userName)); } catch (Exception ignore) {}
+    try {
+        java.util.Map<Integer,Integer> qtyMap = new java.util.HashMap<>();
+        List<HashMap<String,Object>> qtyRows = botNewService.selectBossHellItemTotalQty(userName);
+        if (qtyRows != null) for (HashMap<String,Object> r : qtyRows) {
+            int iid = MiniGameUtil.parseIntSafe(Objects.toString(r.get("ITEM_ID"),"0"));
+            int qty = MiniGameUtil.parseIntSafe(Objects.toString(r.get("TOTAL_QTY"),"1"));
+            if (iid > 0) qtyMap.put(iid, qty);
+        }
+        data.put("bossItemQty", qtyMap);
+    } catch (Exception ignore) {}
 	    try { data.put("totalJobLv", botNewService.selectTotalJobLv(userName)); } catch (Exception ignore) {}
 	    try { data.put("expSell", botNewService.selectExpSellStats(userName)); } catch (Exception ignore) {}
 	    MiniGameUtil.INV_BUFF_CACHE.put(userName, data);
 	    return data;
+	}
+
+	/** [S3] 외부 컨트롤러에서 접근용 public wrapper */
+	public HashMap<String,Object> getInvBuffCachedPublic(String userName) {
+		return getInvBuffCached(userName);
 	}
 
 	/** 아이템 획득/판매/소비 후 호출 → 해당 유저의 인벤토리 버프 캐시 즉시 무효화 */
@@ -2774,7 +2789,7 @@ public class BossAttackController {
 	                        ;
 
 	                if ("BOSS_HELL".equalsIgnoreCase(typeStr) || "BOSS_GACHA".equalsIgnoreCase(typeStr) || (itemId >= 7000 && itemId < 8000)) {
-	                    if (qtyVal > 1) label += "x" + qtyVal;
+	                    if (qtyVal > 1) label += "+" + (qtyVal - 1);
 	                    label += "BOSS_GACHA".equalsIgnoreCase(gainTypeStr) ? " [뽑기]" : " [드랍]";
 	                } else if ("DROP_OPEN_G".equalsIgnoreCase(typeStr) || "DROP_OPEN_P".equalsIgnoreCase(typeStr) || "ATTEND".equalsIgnoreCase(typeStr)) {
 	                    label = ("DROP_OPEN_P".equalsIgnoreCase(typeStr) ? "✨플래티넘" : "ATTEND".equalsIgnoreCase(typeStr) ? "출첵" : "✨황금") + "유물상자 (/가방열기 로 개봉)";
