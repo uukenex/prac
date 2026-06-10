@@ -434,12 +434,12 @@ public class BossAttackS3Controller {
                     if (elfNight) windSlashMsg += "[다크엘프 각성] 데미지 3배" + NL;
                 }
 
-                // [검성] 바람가르기 (기본 6.5% + 7006: 기본+15%p, +1강화=+30%p)
+                // [검성] 바람가르기 (기본 6.5%; 7006 보유 시 SET: 기본=15%, +1강화=30%)
                 if ("검성".equals(ctx.job)) {
                     double windProb = 0.065;
                     if (ownedBoss.contains(7006)) {
                         int qty7006 = bossItemQtyMap.getOrDefault(7006, 1);
-                        windProb += getBossEnhanceVal(7006, qty7006) / 100.0;
+                        windProb = getBossEnhanceVal(7006, qty7006) / 100.0;
                     }
                     if (Math.random() < windProb) {
                         windSlashMsg = "[바람가르기] " + baseAtk + "→";

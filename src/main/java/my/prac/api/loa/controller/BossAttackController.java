@@ -5225,7 +5225,7 @@ public class BossAttackController {
 				SP[] sp=new SP[1]; String[] nb={""}; s.newPoint += " +" + baroSellItem(dn, 0, s.res, s.userName, s.roomName, s.ctx, s.u, "DROP", 1, s.nightmare, nb, sp); s.newBonus += nb[0];
 				if (sp[0] != null) dropSpTotal = dropSpTotal.add(sp[0]);
 				// [7008] 추가 드랍 +1 → 기본 드랍코드 1로 SP 추가 지급
-				if (s.res.bonusNormalDrop) {
+				for (int _bi = 0; _bi < s.res.bonusNormalDropQty; _bi++) {
 					Resolve bonusRes = new Resolve();
 					bonusRes.dropCode = "1";
 					SP[] sp2=new SP[1]; String[] nb2={""}; s.newPoint += " +" + baroSellItem(dn, 0, bonusRes, s.userName, s.roomName, s.ctx, s.u, "DROP", 1, s.nightmare, nb2, sp2); s.newBonus += nb2[0];
@@ -7837,7 +7837,8 @@ public class BossAttackController {
 		// [7008] 일반 드랍+1 (빛/어둠/음양 제외)
 		if (ownedBossItems != null && ownedBossItems.contains(7008)
 				&& ("1".equals(r.dropCode) || "2".equals(r.dropCode))) {
-			r.bonusNormalDrop = true;
+			int qty7008 = (bossItemQtyMap != null) ? bossItemQtyMap.getOrDefault(7008, 1) : 1;
+			r.bonusNormalDropQty = BossAttackS3Controller.getBossEnhanceVal(7008, qty7008);
 		}
 
 		return r;
