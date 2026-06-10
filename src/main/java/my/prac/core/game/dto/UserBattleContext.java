@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import my.prac.core.game.dto.AttackDeathStat;
 import my.prac.core.util.SP;
@@ -98,6 +99,8 @@ public class UserBattleContext {
 
 	// 보스 아이템(7001~7010) 보유 목록 (calcUserBattleContext에서 채워짐)
 	public Set<Integer> ownedBossItems = new HashSet<>();
+	// 보스 아이템 강화 수량 (calcUserBattleContext에서 채워짐)
+	public Map<Integer,Integer> bossItemQtyMap = new HashMap<>();
 
 	// GP 잔액 (calcUserBattleContext에서 채워짐, 0이면 미보유)
 	public double gpBalance = 0.0;

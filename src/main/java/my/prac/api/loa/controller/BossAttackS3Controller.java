@@ -79,28 +79,44 @@ public class BossAttackS3Controller {
     static final java.util.Map<Integer, int[]> BOSS_ENHANCE_TABLE;
     static {
         java.util.Map<Integer, int[]> m = new java.util.LinkedHashMap<>();
-        // ── 7001: 천벌 — 발동률(%) ──────────────────────────────
-        m.put(7001, new int[]{ 5,  8, 12 });
-        // ── 7002: 도둑질 — 아이템 훔치기 확률(%) ────────────────
-        m.put(7002, new int[]{ 50, 60, 70 });
-        // ── 7003: 연사수 — 궁사 최대연사 추가(회) ───────────────
+        // 7001: 천벌 — debuff 배수(×10회): +0=×1(10회), +1=×2(20회)
+        m.put(7001, new int[]{ 1,  2 });
+        // 7002: 예리한칼날 — 도적 더블어택 확률(%)
+        m.put(7002, new int[]{ 35, 45, 55 });
+        // 7003: 주작궁 — 궁사 연사 추가(회)
         m.put(7003, new int[]{ 1,  2,  3  });
-        // ── 7004: 아이템쿨타임 — 쿨타임 감소(분) ───────────────
-        m.put(7004, new int[]{ 20, 30, 40 });
-        // ── 7007: 헬 배율 — 헬너프 잔존율 추가(%p) ─────────────
-        m.put(7007, new int[]{ 3,  5,  8  });
-        // ── 7009: (효과값 입력 예시: 기본/+1/+2) ────────────────
-        m.put(7009, new int[]{ 0,  0,  0  });
-        // ── 7010: 회피무시 — (보유 시 발동, 강화 없음) ──────────
-        m.put(7010, new int[]{ 1,  1,  1  });
-        // ── 7012: (효과값 입력) ──────────────────────────────────
-        m.put(7012, new int[]{ 0,  0,  0  });
-        // ── 7013: (효과값 입력) ──────────────────────────────────
-        m.put(7013, new int[]{ 0,  0,  0  });
-        // ── 7017: (효과값 입력) ──────────────────────────────────
-        m.put(7017, new int[]{ 0,  0,  0  });
-        // ── 7018: 출석상자 — 추가 상자 수 ──────────────────────
+        // 7004: 모래시계 — 쿨타임 감소율(%)
+        m.put(7004, new int[]{ 20, 30 });
+        // 7005: 가시갑옷 — 반사율(퍼밀 /1000): 10=1.0%, 15=1.5%
+        m.put(7005, new int[]{ 10, 15 });
+        // 7006: 강한자의어금니 — 바람가르기 추가 확률(%p)
+        m.put(7006, new int[]{ 15, 30 });
+        // 7007: 헌터의자격 — 잔존율 추가(×10 저장: 30=3.0%p, 35=3.5%p)
+        m.put(7007, new int[]{ 30, 35 });
+        // 7008: 가난한자의부적 — 추가 드랍 수
+        m.put(7008, new int[]{ 1,  2,  3  });
+        // 7009: 진화의시대 — 레벨당 공격력(cap 별도 상수 800레벨)
+        m.put(7009, new int[]{ 200, 200 });
+        // 7010: 주시자의눈 — 회피저지 확률(%)
+        m.put(7010, new int[]{ 30, 60 });
+        // 7011: 개척자 — 숨기무시 확률(%)
+        m.put(7011, new int[]{ 30, 60 });
+        // 7012: 수선도사의머리띠 — 도사 버프 계수(배수)
+        m.put(7012, new int[]{ 3,  4,  5  });
+        // 7013: 과거의영광 — 어제 공격자수당 공격력 보너스
+        m.put(7013, new int[]{ 500, 600 });
+        // 7014: 달의부름 — 곰 스킬실패 패널티 완화 확률(%)
+        m.put(7014, new int[]{ 50, 65, 80 });
+        // 7015: 무한의대검 — 초강력치명타 추가 확률(%p)
+        m.put(7015, new int[]{ 10, 15, 20 });
+        // 7016: 복수의시간 — 복수자 처치 시 체력회복률(%)
+        m.put(7016, new int[]{ 20, 30 });
+        // 7017: 연금술의대가 — 엘릭서 할인율(%)
+        m.put(7017, new int[]{ 50, 70 });
+        // 7018: 상자수집가 — 추가 상자 수
         m.put(7018, new int[]{ 1,  1,  2  });
+        // 7019: 어세신의부름 — 도적 스틸 성공 시 추가 획득 수
+        m.put(7019, new int[]{ 1,  2,  3  });
         BOSS_ENHANCE_TABLE = java.util.Collections.unmodifiableMap(m);
     }
 
@@ -301,11 +317,15 @@ public class BossAttackS3Controller {
         // 보스 회피 판정
         boolean isEvade = !heavensPunishment && (Math.random() < bossEvadeRate / 100.0);
 
-        // [7010] 회피무시 유물: 보스가 회피해도 공격 관통
+        // [7010] 주시자의눈: 회피저지 확률(기본30%, +1=60%)
         String bossEvadeIgnoreMsg = "";
         if (isEvade && ownedBoss.contains(7010)) {
-            isEvade = false;
-            bossEvadeIgnoreMsg = "[회피무시] 보스가 회피했지만 공격했다!" + NL;
+            int qty7010 = bossItemQtyMap.getOrDefault(7010, 1);
+            int evadeBreakChance = getBossEnhanceVal(7010, qty7010);
+            if (ThreadLocalRandom.current().nextInt(100) < evadeBreakChance) {
+                isEvade = false;
+                bossEvadeIgnoreMsg = "[주시자의눈" + enhanceSuffix(qty7010) + "] 보스 회피 저지! (" + evadeBreakChance + "%)" + NL;
+            }
         }
 
         // 데미지 계산
@@ -317,20 +337,30 @@ public class BossAttackS3Controller {
         String hideMsg = "";
         String hideIgnoreMsg = "";
         String windSlashMsg = "";
-        // [7015] 무한의대검: 슈퍼크리티컬 확률 +10%
-        double superCritChance = 0.10 + (ownedBoss.contains(7015) ? 0.10 : 0.0);
+        // [7015] 무한의대검: 슈퍼크리티컬 추가 확률(기본+10%, +1=+15%, +2=+20%)
+        double superCritChance = 0.10;
+        if (ownedBoss.contains(7015)) {
+            int qty7015 = bossItemQtyMap.getOrDefault(7015, 1);
+            superCritChance += getBossEnhanceVal(7015, qty7015) / 100.0;
+        }
 
         if (!isEvade) {
             String atkRangeStr = "(" + (ctx.atkMin / 100) + "~" + (ctx.atkMax / 100) + ") ";
             // 보스 기본 크리율 10% 고정 (S2 크리율 미적용), 초강력치명타는 크리 발동 시 10% 확률
             int totalCritPercent = Math.max(0, 100 - critDefRate);
 
-            // HIDE_RULE: 특정 시간대 치명타 불가 (천벌/디버프/7011 중엔 무시)
-            // [7011] 꿰뚫는 눈: 보스가 숨어있어도 온전한 데미지
-            boolean has7011 = ownedBoss.contains(7011);
-            String rawHideMsg = applyHideRule(hideRule, false); // 7011 없이 체크
-            if (has7011 && !rawHideMsg.isEmpty()) {
-                hideIgnoreMsg = "[꿰뚫는 눈] 보스가 숨어있지만 온전한 데미지!" + NL;
+            // HIDE_RULE: 특정 시간대 치명타 불가 (천벌/디버프/7011 확률 성공 시 무시)
+            // [7011] 개척자: 숨기무시 확률(기본30%, +1=60%)
+            boolean has7011 = false;
+            if (ownedBoss.contains(7011)) {
+                int qty7011 = bossItemQtyMap.getOrDefault(7011, 1);
+                int hideBreakChance = getBossEnhanceVal(7011, qty7011);
+                if (ThreadLocalRandom.current().nextInt(100) < hideBreakChance) {
+                    has7011 = true;
+                    if (!applyHideRule(hideRule, false).isEmpty()) {
+                        hideIgnoreMsg = "[개척자" + enhanceSuffix(qty7011) + "] 보스 숨기 무시! (" + hideBreakChance + "%)" + NL;
+                    }
+                }
             }
             hideMsg = applyHideRule(hideRule, heavensPunishment || flag_boss_debuff || has7011);
 
@@ -345,7 +375,10 @@ public class BossAttackS3Controller {
                 else if (rangeRatio >= 0.30) hitCount = 4;
                 else if (rangeRatio >= 0.10) hitCount = 3;
                 else                         hitCount = 2;
-                if (ownedBoss.contains(7003)) hitCount = Math.min(hitCount + 1, 6); // [7003] 연사수 +1
+                if (ownedBoss.contains(7003)) { // [7003] 주작궁: 연사 추가(기본+1, +1강화=+2, +2강화=+3)
+                    int qty7003 = bossItemQtyMap.getOrDefault(7003, 1);
+                    hitCount = Math.min(hitCount + getBossEnhanceVal(7003, qty7003), 7);
+                }
 
                 int remainCrit = Math.max(0, heavensPunishment ? 100 : totalCritPercent);
                 double perHitRate = hitCount > 1 ? Math.min(80.0, (double) remainCrit / (hitCount - 1)) : 0.0;
@@ -401,9 +434,13 @@ public class BossAttackS3Controller {
                     if (elfNight) windSlashMsg += "[다크엘프 각성] 데미지 3배" + NL;
                 }
 
-                // [검성] 바람가르기 (기본 6.5% + 7006 보유 시 +15%)
+                // [검성] 바람가르기 (기본 6.5% + 7006: 기본+15%p, +1강화=+30%p)
                 if ("검성".equals(ctx.job)) {
-                    double windProb = 0.065 + (ownedBoss.contains(7006) ? 0.15 : 0.0);
+                    double windProb = 0.065;
+                    if (ownedBoss.contains(7006)) {
+                        int qty7006 = bossItemQtyMap.getOrDefault(7006, 1);
+                        windProb += getBossEnhanceVal(7006, qty7006) / 100.0;
+                    }
                     if (Math.random() < windProb) {
                         windSlashMsg = "[바람가르기] " + baseAtk + "→";
                         baseAtk = (int) Math.round(baseAtk * 4);
@@ -483,7 +520,11 @@ public class BossAttackS3Controller {
         boolean thiefHit2 = false;
         String dmgMsg2 = "", bossDefMsg2 = "";
         boolean isCritical2 = false, isSuperCritical2 = false;
-        double thiefProb = ownedBoss.contains(7002) ? 0.35 : 0.20;
+        double thiefProb = 0.20;
+        if (ownedBoss.contains(7002)) {
+            int qty7002 = bossItemQtyMap.getOrDefault(7002, 1);
+            thiefProb = getBossEnhanceVal(7002, qty7002) / 100.0;
+        }
         if (!isEvade && "도적".equals(ctx.job) && Math.random() < thiefProb) {
             thiefHit2 = true;
             int baseAtk2 = (ctx.atkMin + rand.nextInt(Math.max(1, ctx.atkMax - ctx.atkMin + 1))) / 100;
@@ -548,7 +589,11 @@ public class BossAttackS3Controller {
             boolean dosaRoom = dosaRoomRaw != null;
             int buffCount = (dosaSelf ? 1 : 0) + (dosaRoom ? 1 : 0);
             if (buffCount > 0 && !isEvade) {
-                int coef = ownedBoss.contains(7012) ? 3 : 1;
+                int coef = 1;
+                if (ownedBoss.contains(7012)) {
+                    int qty7012 = bossItemQtyMap.getOrDefault(7012, 1);
+                    coef = getBossEnhanceVal(7012, qty7012); // 기본×3, +1=×4, +2=×5
+                }
                 long flatBonus = (long) buffCount * 1000 * coef;
                 totalDamage += Math.round(totalDamage * (buffCount * 5 * coef) / 100.0);
                 totalDamage += flatBonus;
@@ -617,7 +662,9 @@ public class BossAttackS3Controller {
         int reflectDmg = 0;
         String reflectMsg = "";
         if (ownedBoss.contains(7005) && bossAtkApplied > 0) {
-            reflectDmg = Math.max(1, (int)Math.round(bossAtkApplied * 0.01));
+            int qty7005 = bossItemQtyMap.getOrDefault(7005, 1);
+            int reflectPermille = getBossEnhanceVal(7005, qty7005); // 10=1.0%, 15=1.5%
+            reflectDmg = Math.max(1, (int)Math.round(bossAtkApplied * reflectPermille / 1000.0));
             totalDamage += reflectDmg;
             newHpSp = SP.of(curHpNum, curHpExt).subtract(SP.fromSp(totalDamage));
             isKill = SP.toBaseValue(newHpSp) <= 0;
@@ -664,7 +711,7 @@ public class BossAttackS3Controller {
         map.put("atkCritYn",    isCritical ? "1" : "0");
         map.put("killYn",       isKill ? "1" : "0");
         map.put("job",          ctx.job);
-        if (heavensPunishment)                   map.put("heavensPunishment", 1);
+        if (heavensPunishment)                   map.put("heavensPunishment", getBossEnhanceVal(7001, heaven7001Qty));
         if (flag_boss_debuff)                    map.put("useDebuff", 1);
         if (debuff1_start)                       map.put("debuff1_start", 1);
         if (flag_boss_debuff1 && !debuff1_start) map.put("useDebuff1", 1);

@@ -73,8 +73,8 @@
 		     , CUR_HP_EXT = #{newHpExt, jdbcType=VARCHAR}
 		     , END_YN     = #{endYn,    jdbcType=VARCHAR}
 		     , PROC_DATE  = SYSDATE
-		     <if test="heavensPunishment == 1">
-		     , DEBUFF = DEBUFF + 10
+		     <if test="heavensPunishment > 0">
+		     , DEBUFF = DEBUFF + ${heavensPunishment} * 10
 		     </if>
 		     <if test="useDebuff == 1">
 		     , DEBUFF = DEBUFF - 1
