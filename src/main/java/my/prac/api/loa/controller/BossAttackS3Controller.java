@@ -4,7 +4,6 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -24,8 +23,9 @@ import org.springframework.stereotype.Controller;
 import my.prac.core.game.dto.User;
 import my.prac.core.game.dto.UserBattleContext;
 import my.prac.core.prjbot.service.BotNewService;
-import my.prac.core.util.SP;
 import my.prac.core.prjbot.service.BotS3Service;
+import my.prac.core.util.MiniGameUtil;
+import my.prac.core.util.SP;
 
 /**
  * [시즌3] 헬모드 전용 보스 컨트롤러
@@ -68,7 +68,54 @@ public class BossAttackS3Controller {
     /** 헬보스 보상 아이템 타입 */
     private static final String HELL_ITEM_TYPE = "BOSS_HELL";
     /** 보스아이템 최대 강화 단계 (기본1 + 강화1 = QTY 2) */
-    private static final int MAX_BOSS_ENHANCE = 2;
+    public static final int MAX_BOSS_ENHANCE = 2;
+
+    // =========================================================
+    // ★ 보스 아이템 강화 효과 테이블 (수치 직접 수정 가능)
+    //   배열: [기본효과, +1강화, +2강화, ...]  (인덱스 = qty - 1)
+    //   qty=1 → [0], qty=2 → [1], qty=3 → [2]
+    //   값의 의미는 아이템별 주석 참고
+    // =========================================================
+    static final java.util.Map<Integer, int[]> BOSS_ENHANCE_TABLE;
+    static {
+        java.util.Map<Integer, int[]> m = new java.util.LinkedHashMap<>();
+        // ── 7001: 천벌 — 발동률(%) ──────────────────────────────
+        m.put(7001, new int[]{ 5,  8, 12 });
+        // ── 7002: 도둑질 — 아이템 훔치기 확률(%) ────────────────
+        m.put(7002, new int[]{ 50, 60, 70 });
+        // ── 7003: 연사수 — 궁사 최대연사 추가(회) ───────────────
+        m.put(7003, new int[]{ 1,  2,  3  });
+        // ── 7004: 아이템쿨타임 — 쿨타임 감소(분) ───────────────
+        m.put(7004, new int[]{ 20, 30, 40 });
+        // ── 7007: 헬 배율 — 헬너프 잔존율 추가(%p) ─────────────
+        m.put(7007, new int[]{ 3,  5,  8  });
+        // ── 7009: (효과값 입력 예시: 기본/+1/+2) ────────────────
+        m.put(7009, new int[]{ 0,  0,  0  });
+        // ── 7010: 회피무시 — (보유 시 발동, 강화 없음) ──────────
+        m.put(7010, new int[]{ 1,  1,  1  });
+        // ── 7012: (효과값 입력) ──────────────────────────────────
+        m.put(7012, new int[]{ 0,  0,  0  });
+        // ── 7013: (효과값 입력) ──────────────────────────────────
+        m.put(7013, new int[]{ 0,  0,  0  });
+        // ── 7017: (효과값 입력) ──────────────────────────────────
+        m.put(7017, new int[]{ 0,  0,  0  });
+        // ── 7018: 출석상자 — 추가 상자 수 ──────────────────────
+        m.put(7018, new int[]{ 1,  1,  2  });
+        BOSS_ENHANCE_TABLE = java.util.Collections.unmodifiableMap(m);
+    }
+
+    /** 아이템 강화 효과값 반환 (qty 기반) */
+    static int getBossEnhanceVal(int itemId, int qty) {
+        int[] table = BOSS_ENHANCE_TABLE.get(itemId);
+        if (table == null || qty < 1) return 0;
+        int level = Math.min(qty - 1, table.length - 1);
+        return table[level];
+    }
+
+    /** 아이템 강화 등급 표시 문자열 (qty=1→, qty=2→+1, qty=3→+2) */
+    static String enhanceSuffix(int qty) {
+        return qty >= 2 ? "+" + (qty - 1) : "";
+    }
 
     /** 헬보스 보상 아이템 목록 (BOSS_HELL 타입 기반 동적 로드, 캐시) */
     private volatile List<Integer> hellRewardItemsCache = null;
@@ -224,14 +271,14 @@ public class BossAttackS3Controller {
 
         Random rand = new Random();
 
-        // 천벌 발동 (기본5%, +1강화→8%, 디버프 활성 시 발동 불가)
-        int heavenRate = heaven7001Qty >= 2 ? 8 : 5;
+        // 천벌 발동 (강화 테이블 기준, 디버프 활성 시 발동 불가)
+        int heavenRate = getBossEnhanceVal(7001, heaven7001Qty);
         boolean heavensPunishment = false;
         String punishMsg = "";
         if (hasHeavenItem && debuff == 0) {
             if (rand.nextInt(100) < heavenRate) {
                 heavensPunishment = true;
-                punishMsg = "[천벌" + (heaven7001Qty >= 2 ? "+1" : "") + "] 효과! 보스회피/방어를 무시하고 초강력치명타!" + NL;
+                punishMsg = "[천벌" + enhanceSuffix(heaven7001Qty) + "] 효과! 보스회피/방어를 무시하고 초강력치명타!" + NL;
             }
         }
 

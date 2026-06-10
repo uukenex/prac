@@ -60,6 +60,7 @@
 		 WHERE SEQ = (
 		     SELECT MAX(SEQ) FROM TBOT_POINT_NEW_BOSS WHERE END_YN = '0'
 		 )
+		   AND INSERT_DATE > SYSDATE + NUMTODSINTERVAL(300, 'SECOND')
 	</update>
 
 	<!-- =====================================================
