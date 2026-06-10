@@ -3560,9 +3560,11 @@ public class BossAttackController {
 
 	    // 단가 계산 (lifetimeSp 기반, 배치 중 불변)
 	    SP unitPrice = MiniGameUtil.getPotionPrice(itemId, ctx.lifetimeSp);
-	    // [7017] 엘릭서(1002/1003) 가격 50% 할인
+	    // [7017] 엘릭서(1002/1003) 가격 할인 (강화별)
 	    if ((itemId == 1002 || itemId == 1003) && ctx.ownedBossItems.contains(7017)) {
-	        unitPrice = SP.of(unitPrice.getValue() / 2, unitPrice.getUnit());
+	        int qty7017 = ctx.bossItemQtyMap.getOrDefault(7017, 1);
+	        int disc7017 = BossAttackS3Controller.getBossEnhanceVal(7017, qty7017);
+	        unitPrice = SP.of(unitPrice.getValue() * (100 - disc7017) / 100, unitPrice.getUnit());
 	    }
 	    SP totalCost = unitPrice.multiply(qty);
 
@@ -3828,9 +3830,11 @@ public class BossAttackController {
 
 	        // 가격 계산
 	        itemPrice = MiniGameUtil.getPotionPrice(itemId, ctx.lifetimeSp);
-	        // [7017] 엘릭서(1002/1003) 가격 50% 할인
+	        // [7017] 엘릭서(1002/1003) 가격 할인 (강화별)
 	        if ((itemId == 1002 || itemId == 1003) && ctx.ownedBossItems.contains(7017)) {
-	            itemPrice = SP.of(itemPrice.getValue() / 2, itemPrice.getUnit());
+	            int qty7017 = ctx.bossItemQtyMap.getOrDefault(7017, 1);
+	            int disc7017 = BossAttackS3Controller.getBossEnhanceVal(7017, qty7017);
+	            itemPrice = SP.of(itemPrice.getValue() * (100 - disc7017) / 100, itemPrice.getUnit());
 	        }
 
 	        // 포인트 확인
@@ -4944,7 +4948,7 @@ public class BossAttackController {
 		s.dmg = calculateDamage(s.u, s.m, s.flags,
 				s.effAtkMin, s.effAtkMax, s.critRate, s.critDmg,
 				s.berserkMul, s.monHpRemainBefore, s.hpMax, s.beforeJobSkillYn, s.nightmare,
-				s.ctx.ownedBossItems);
+				s.ctx.ownedBossItems, s.ctx.bossItemQtyMap);
 		s.calc     = s.dmg.calc;
 		s.flags    = s.dmg.flags;
 		s.willKill = s.dmg.willKill;
@@ -5032,7 +5036,7 @@ public class BossAttackController {
 			Flags f2 = rollFlags(s.u, s.m);
 			s.dmg2  = calculateDamage(s.u, s.m, f2, s.effAtkMin, s.effAtkMax, s.critRate, s.critDmg,
 					s.berserkMul, s.monHpRemainBefore, s.hpMax, s.beforeJobSkillYn, s.nightmare,
-					s.ctx.ownedBossItems);
+					s.ctx.ownedBossItems, s.ctx.bossItemQtyMap);
 			s.calc2 = s.dmg2.calc;
 		}
 	}
@@ -7344,11 +7348,13 @@ public class BossAttackController {
 	        boolean lvLocked = (reqLv > 0 && userLv < reqLv);
 
 	        String displayPrice = buildDisplayPrice(it, isPotion, itemId, userPoint);
-	        // [7017] 엘릭서(1002/1003) 할인 표시
+	        // [7017] 엘릭서(1002/1003) 할인 표시 (강화별)
 	        if (isPotion && (itemId == 1002 || itemId == 1003)
 	                && shopCtx != null && shopCtx.ownedBossItems.contains(7017)) {
 	            SP base = MiniGameUtil.getPotionPrice(itemId, userPoint);
-	            displayPrice = SP.of(base.getValue() / 2, base.getUnit()).toString() + "(7017할인)";
+	            int qty7017 = shopCtx.bossItemQtyMap.getOrDefault(7017, 1);
+	            int disc7017 = BossAttackS3Controller.getBossEnhanceVal(7017, qty7017);
+	            displayPrice = SP.of(base.getValue() * (100 - disc7017) / 100, base.getUnit()).toString() + "(7017할인)";
 	        }
 
 	        // 포션: 한 줄 표기
@@ -9934,7 +9940,7 @@ public class BossAttackController {
 
 	                // 7014 달의부름: 50% 확률로 실패 → 성공 전환
 	                if (ownedBossItems != null && ownedBossItems.contains(7014)
-	                        && ThreadLocalRandom.current().nextDouble() < 0.50) {
+	                        && ThreadLocalRandom.current().nextDouble() < BossAttackS3Controller.getBossEnhanceVal(7014, (bossItemQtyMap != null ? bossItemQtyMap.getOrDefault(7014, 1) : 1)) / 100.0) {
 	                    out.dmgCalcMsg += "달의 힘을 받아 반달가슴곰이 되었습니다... " + NL;
 	                    baseAtk = monHpRemainBefore;
 	                    rawAtkDmg = monHpRemainBefore;
