@@ -3896,14 +3896,29 @@ public class BossAttackController {
 	        if (bossItemList == null || !bossItemList.contains(itemId))
 	            return "구매할 수 없는 보스 아이템입니다: " + itemId;
 
-	        if (alreadyOwnedThisItem)
-	            return "이미 보유 중인 아이템입니다. [" + itemName + "]";
+	        // 강화 시스템: 이미 보유 시 강화 가능 여부 체크
+	        boolean buyIsEnhance = false;
+	        int curBuyQty = 1;
+	        if (alreadyOwnedThisItem) {
+	            try {
+	                List<HashMap<String,Object>> qrows = botNewService.selectBossHellItemTotalQty(userName);
+	                if (qrows != null) for (HashMap<String,Object> qr : qrows) {
+	                    int qid = MiniGameUtil.parseIntSafe(Objects.toString(qr.get("ITEM_ID"),"0"));
+	                    int qty = MiniGameUtil.parseIntSafe(Objects.toString(qr.get("TOTAL_QTY"),"1"));
+	                    if (qid == itemId) { curBuyQty = qty; break; }
+	                }
+	            } catch (Exception ignore) {}
+	            if (curBuyQty >= BossAttackS3Controller.MAX_BOSS_ENHANCE)
+	                return "[" + itemName + "] 이미 최대 강화 단계입니다. (현재 +" + (curBuyQty - 1) + ")";
+	            buyIsEnhance = true;
+	        }
 
 	        double gp;
 	        try { gp = botNewService.selectGpBalance(userName); }
 	        catch (Exception e) { return "GP 조회 중 오류가 발생했습니다."; }
 	        if (gp < 10)
-	            return userName + "님, 보스 아이템 직접 구매에는 10 GP가 필요합니다.\n현재 GP: " + String.format("%.2f", gp) + " GP";
+	            return userName + "님, 보스 아이템 직접 구매에는 10 GP가 필요합니다.
+현재 GP: " + String.format("%.2f", gp) + " GP";
 
 	        try {
 	            HashMap<String, Object> gpDeduct = new HashMap<>();
@@ -3935,7 +3950,11 @@ public class BossAttackController {
 	            return "아이템 지급 중 오류가 발생했습니다.";
 	        }
 	        double afterGp = gp - 10;
-	        return "▶ 구매 완료\n" + userName + "님이 [" + itemName + "]을(를) 구매했습니다.\n(10 GP 소모, 잔여 GP: " + String.format("%.2f", afterGp) + " GP)";
+	        String buyEnhSuffix = buyIsEnhance ? BossAttackS3Controller.enhanceSuffix(curBuyQty + 1) : "";
+	        String buyAction = buyIsEnhance ? "강화 완료" : "구매 완료";
+	        return "▶ " + buyAction + "
+" + userName + "님이 [" + itemName + buyEnhSuffix + "]을(를) " + (buyIsEnhance ? "강화" : "구매") + "했습니다.
+(10 GP 소모, 잔여 GP: " + String.format("%.2f", afterGp) + " GP)";
 	    }
 
 	    // 결제 (포인트 차감 — 다중구매 모드이면 ThreadLocal 에 누적, 단건이면 즉시 처리)
@@ -6286,18 +6305,39 @@ public class BossAttackController {
 		if (bossItems == null || bossItems.isEmpty())
 			return "현재 뽑기 가능한 보스 아이템이 없습니다.";
 
-		// 이미 보유한 아이템(어떤 경로든)은 가챠 풀에서 제외 (드랍템/가챠템 중복 방지)
+		// 강화 시스템: 미보유 아이템 우선, 없으면 강화 가능 아이템 선정
+		// qty 맵 로드
+		java.util.Map<Integer,Integer> bossQtyMap = new java.util.HashMap<>();
 		try {
-			List<Integer> owned = botNewService.selectInventoryItemsByIds(userName, "", bossItems);
-			if (owned != null && !owned.isEmpty()) {
-				bossItems = new ArrayList<>(bossItems);
-				bossItems.removeAll(new HashSet<>(owned));
+			List<HashMap<String,Object>> qrows = botNewService.selectBossHellItemTotalQty(userName);
+			if (qrows != null) for (HashMap<String,Object> qr : qrows) {
+				int qid = MiniGameUtil.parseIntSafe(Objects.toString(qr.get("ITEM_ID"),"0"));
+				int qty = MiniGameUtil.parseIntSafe(Objects.toString(qr.get("TOTAL_QTY"),"1"));
+				if (qid > 0) bossQtyMap.put(qid, qty);
 			}
 		} catch (Exception ignore) {}
 
-		if (bossItems.isEmpty())
-			return userName + "님," + NL + "현재 모든 보스 아이템을 보유 중입니다." + NL
+		List<Integer> newItems = new ArrayList<>(bossItems);
+		List<Integer> enhanceable = new ArrayList<>();
+		try {
+			List<Integer> owned = botNewService.selectInventoryItemsByIds(userName, "", bossItems);
+			if (owned != null && !owned.isEmpty()) {
+				newItems = new ArrayList<>(bossItems);
+				newItems.removeAll(new HashSet<>(owned));
+				// 강화 가능 목록: 보유 중이고 qty < MAX_ENHANCE
+				for (int oid : owned) {
+					int curQty = bossQtyMap.getOrDefault(oid, 1);
+					if (curQty < BossAttackS3Controller.MAX_BOSS_ENHANCE) enhanceable.add(oid);
+				}
+			}
+		} catch (Exception ignore) {}
+
+		boolean isEnhance = newItems.isEmpty(); // 신규 없으면 강화 시도
+		if (isEnhance && enhanceable.isEmpty())
+			return userName + "님," + NL + "모든 보스 아이템 최대 강화 달성! 더 이상 뽑기 불가합니다." + NL
 				+ "잔여 GP: " + String.format("%.2f", gp) + " GP";
+		if (!isEnhance) bossItems = newItems;  // 신규 풀로 교체
+		else           bossItems = enhanceable; // 강화 풀로 교체
 
 		// GP 차감 (가격: gachaPrice)
 		try {
@@ -6356,15 +6396,17 @@ public class BossAttackController {
 				if (regen  > 0) opts.append(" 리젠+").append(regen);
 				if (hpRate > 0) opts.append(" HP+").append(hpRate).append("%");
 				if (atkRate> 0) opts.append(" ATK+").append(atkRate).append("%");
-				itemLine = iName
+				String enhSuffix = isEnhance ? BossAttackS3Controller.enhanceSuffix(bossQtyMap.getOrDefault(giveItemId, 1) + 1) : "";
+				itemLine = iName + enhSuffix
 					+ (!iDesc.isEmpty() ? " (" + iDesc + ")" : "")
 					+ (opts.length() > 0 ? " [" + opts.toString().trim() + "]" : "");
 			}
 		} catch (Exception ignore) {}
 
+		String actionWord = isEnhance ? "강화!" : "획득!";
 		return userName + "님," + NL
 				+ "보스뽑기! (-" + (int)gachaPrice + " GP) [보유유물 " + ownedBossCount + "개]" + NL
-				+ "▶ 획득 아이템: " + itemLine + NL
+				+ "▶ " + actionWord + " " + itemLine + NL
 				+ "- 잔여 GP: " + String.format("%.2f", gp - gachaPrice) + " GP";
 	}
 
