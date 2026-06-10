@@ -149,6 +149,7 @@
 		    ,MON_DMG
 		    ,ATK_CRIT_YN
 		    ,MON_PATTEN
+		    ,INSERT_DATE
 		    ,KILL_YN
 		    ,NOW_YN
 		    ,DROP_YN
@@ -168,6 +169,7 @@
 		    ,#{monDmg, jdbcType=NUMERIC}
 		    ,#{atkCritYn, jdbcType=VARCHAR}
 		    ,'0'
+		    ,SYSDATE
 		    ,#{killYn, jdbcType=VARCHAR}
 		    ,'0'
 		    ,'0'

@@ -1208,23 +1208,21 @@ public class BossAttackS3Controller {
         	}
         }
 
-        // 전체 기여도 TOP — 메인 메시지에 표시 (=== 이전)
-        if (!allContributors.isEmpty()) {
-            msg.append(NL).append("-- 전체 기여도 TOP --").append(NL);
-            for (HashMap<String, Object> row : allContributors) {
-                long score = row.get("SCORE") instanceof Number ? ((Number) row.get("SCORE")).longValue() : 0L;
-                double dmgPct = totScore > 0 ? score * 100.0 / totScore : 0;
-                msg.append(row.get("USER_NAME"))
-                   .append(" - ").append(row.get("CNT")).append("회 / ")
-                   .append(String.format("%,d", score)).append("dmg")
-                   .append(String.format(" (%.1f%%)", dmgPct)).append(NL);
-            }
-        }
-
-        // 더보기 구분자 + 아이템 상세
-        if (itemDetailBlock.length() > 0) {
+        // 전체 기여도 TOP — 더보기(===) 이후에 표시
+        if (!allContributors.isEmpty() || itemDetailBlock.length() > 0) {
             msg.append(NL).append(ALL_SEE_STR).append(NL);
-            msg.append(itemDetailBlock);
+            if (itemDetailBlock.length() > 0) msg.append(itemDetailBlock);
+            if (!allContributors.isEmpty()) {
+                msg.append("-- 전체 기여도 TOP --").append(NL);
+                for (HashMap<String, Object> row : allContributors) {
+                    long score = row.get("SCORE") instanceof Number ? ((Number) row.get("SCORE")).longValue() : 0L;
+                    double dmgPct = totScore > 0 ? score * 100.0 / totScore : 0;
+                    msg.append(row.get("USER_NAME"))
+                       .append(" - ").append(row.get("CNT")).append("회 / ")
+                       .append(String.format("%,d", score)).append("dmg")
+                       .append(String.format(" (%.1f%%)", dmgPct)).append(NL);
+                }
+            }
         }
 
         // ── 전체 참가자 헬보스 클리어 업적 일괄 체크 ──────────────────────

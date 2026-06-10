@@ -2790,7 +2790,7 @@ public class BossAttackController {
 
 	                if ("BOSS_HELL".equalsIgnoreCase(typeStr) || "BOSS_GACHA".equalsIgnoreCase(typeStr) || (itemId >= 7000 && itemId < 8000)) {
 	                    if (qtyVal > 1) label += "+" + (qtyVal - 1);
-	                    label += "BOSS_GACHA".equalsIgnoreCase(gainTypeStr) ? " [뽑기]" : " [드랍]";
+	                    // [뽑기]/[드랍] 레이블 제거 - 강화단계(+N)로만 표기
 	                } else if ("DROP_OPEN_G".equalsIgnoreCase(typeStr) || "DROP_OPEN_P".equalsIgnoreCase(typeStr) || "ATTEND".equalsIgnoreCase(typeStr)) {
 	                    label = ("DROP_OPEN_P".equalsIgnoreCase(typeStr) ? "✨플래티넘" : "ATTEND".equalsIgnoreCase(typeStr) ? "출첵" : "✨황금") + "유물상자 (/가방열기 로 개봉)";
 	                } else if (typeStr != null && typeStr.toUpperCase().startsWith("HELL_BOX") && itemId >= 3000 && itemId < 4000) {
