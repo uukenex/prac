@@ -5060,7 +5060,7 @@ public class BossAttackController {
 		// 2타 Resolve
 		s.res2 = resolveKillAndDrop(s.m, s.calc2, s.willKill2, s.u,
 				s.lucky, s.dark, s.gray, s.shadow,
-				s.ctx.user.nightmareYn, s.ctx.ownedBossItems);
+				s.ctx.user.nightmareYn, s.ctx.ownedBossItems, s.ctx.bossItemQtyMap);
 
 		// 경험치 배수 (1타와 동일 조건)
 		if ("궁수".equals(s.u.job) || "사냥꾼".equals(s.u.job)) s.res2.gainExp *= 3;
