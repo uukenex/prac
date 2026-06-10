@@ -10680,7 +10680,7 @@ public class BossAttackController {
 
 	    if (ctx.hellNerfAtkMin > 0 || ctx.hellNerfAtkMax > 0) {
 	        double hellMult = MiniGameUtil.getHellNerfMult(ctx.hunterGrade);
-	        if (ctx.ownedBossItems.contains(7007)) hellMult = Math.max(0.0, hellMult + 0.03);
+	        if (ctx.ownedBossItems.contains(7007)) { int q7007d = ctx.bossItemQtyMap.getOrDefault(7007, 1); hellMult = Math.max(0.0, hellMult + BossAttackS3Controller.getBossEnhanceVal(7007, q7007d) / 1000.0); }
 	        if (ctx.ownedBossItems.contains(999)) hellMult = Math.max(0.0, hellMult + 0.01); // [999] 선물: 헬너프 -1%
 	        curMin -= ctx.hellNerfAtkMin; curMax -= ctx.hellNerfAtkMax;
 	        atkSteps.add(simStep("헬 너프",
