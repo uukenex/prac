@@ -95,8 +95,8 @@ public class BossAttackS3Controller {
         m.put(7007, new int[]{ 30, 35 });
         // 7008: 가난한자의부적 — 추가 드랍 수
         m.put(7008, new int[]{ 1,  2,  3  });
-        // 7009: 진화의시대 — 레벨당 공격력(cap 별도 상수 800레벨)
-        m.put(7009, new int[]{ 200, 200 });
+        // 7009: 진화의시대 — 레벨당 공격력(0강화:150/cap300, 1강화:200/cap500)
+        m.put(7009, new int[]{ 150, 200 });
         // 7010: 주시자의눈 — 회피저지 확률(%)
         m.put(7010, new int[]{ 30, 60 });
         // 7011: 개척자 — 숨기무시 확률(%)
@@ -113,8 +113,8 @@ public class BossAttackS3Controller {
         m.put(7016, new int[]{ 20, 30 });
         // 7017: 연금술의대가 — 엘릭서 할인율(%)
         m.put(7017, new int[]{ 50, 70 });
-        // 7018: 상자수집가 — 추가 상자 수
-        m.put(7018, new int[]{ 1,  1,  2  });
+        // 7018: 상자수집가 — 추가 상자 수(0강화:+1, 1강화:+2)
+        m.put(7018, new int[]{ 1,  2  });
         // 7019: 어세신의부름 — 도적 스틸 성공 시 추가 획득 수
         m.put(7019, new int[]{ 1,  2,  3  });
         BOSS_ENHANCE_TABLE = java.util.Collections.unmodifiableMap(m);
