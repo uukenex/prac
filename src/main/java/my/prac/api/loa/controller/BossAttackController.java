@@ -5030,7 +5030,11 @@ public class BossAttackController {
 	private void ma_thiefDoubleAtkPreCalc(AttackSession s) {
 		if (!"도적".equals(s.job)) return;
 		
-		double thiefProb = s.ctx.ownedBossItems.contains(7002) ? 0.50 : 0.30;
+		double thiefProb = 0.20;
+		if (s.ctx.ownedBossItems.contains(7002)) {
+			int qty7002 = s.ctx.bossItemQtyMap.getOrDefault(7002, 1);
+			thiefProb = BossAttackS3Controller.getBossEnhanceVal(7002, qty7002) / 100.0;
+		}
 		if(s.u.userName.equals("일어난다람쥐/카단")) thiefProb = 1;
 		s.thiefDoubleAtk = ThreadLocalRandom.current().nextDouble() < thiefProb;
 		if (s.thiefDoubleAtk) {
@@ -9742,7 +9746,7 @@ public class BossAttackController {
 	        else if (rangeRatio >= 0.30) hitCount = 4; // 30~49% → 4연사
 	        else if (rangeRatio >= 0.10) hitCount = 3; // 10~29% → 3연사
 	        else                         hitCount = 2; //  0~9%  → 2연사
-	        if (ownedBossItems.contains(7003)) hitCount = Math.min(hitCount + 1, 6); // [7003] 연사수 +1 (최대 6연사)
+	        if (ownedBossItems.contains(7003)) { int qty7003 = (bossItemQtyMap != null) ? bossItemQtyMap.getOrDefault(7003, 1) : 1; hitCount = Math.min(hitCount + BossAttackS3Controller.getBossEnhanceVal(7003, qty7003), 7); } // [7003] 연사 강화별
 
 	        
 	        calc.multiAttack =hitCount;
