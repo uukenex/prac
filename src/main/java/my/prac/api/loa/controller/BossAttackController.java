@@ -552,13 +552,15 @@ public class BossAttackController {
 	        }
 	    }
 
-	    // 보스 아이템(7000번대) 보유 목록 (캐시에서 로드)
-	    @SuppressWarnings("unchecked")
-	    List<Integer> ownedBossFromCache = (List<Integer>) invBuffData.get("bossItems");
-	    if (ownedBossFromCache != null) ctx.ownedBossItems.addAll(ownedBossFromCache);
+	    // 보스 아이템: bossItemQty 단일 소스 → ownedBossItems는 keySet으로 구성
 	    @SuppressWarnings("unchecked")
 	    java.util.Map<Integer,Integer> bossQtyFromCache = (java.util.Map<Integer,Integer>) invBuffData.get("bossItemQty");
-	    if (bossQtyFromCache != null) ctx.bossItemQtyMap.putAll(bossQtyFromCache);
+	    if (bossQtyFromCache != null) {
+	        ctx.bossItemQtyMap.putAll(bossQtyFromCache);
+	        ctx.ownedBossItems.addAll(bossQtyFromCache.keySet());
+	    }
+	    // [999] 선물: 일반 아이템에서 별도 관리
+	    ctx.has999Gift = Boolean.TRUE.equals(invBuffData.get("has999"));
 
 	    // GP 잔액 조회 → ctx.gpBalance
 	    try {
@@ -774,7 +776,7 @@ public class BossAttackController {
 	    if(u.nightmareYn==2) {
 	    	double hellMult = MiniGameUtil.getHellNerfMult(ctx.hunterGrade);
 	    	if (ctx.ownedBossItems.contains(7007)) { int qty7007 = ctx.bossItemQtyMap.getOrDefault(7007, 1); hellMult = Math.max(0.0, hellMult + BossAttackS3Controller.getBossEnhanceVal(7007, qty7007) / 1000.0); }
-	    	if (ctx.ownedBossItems.contains(999)) hellMult = Math.max(0.0, hellMult + 0.01); // [999] 선물: 헬너프 -1%p (잔존율 +1%)
+	    	if (ctx.has999Gift) hellMult = Math.max(0.0, hellMult + 0.01); // [999] 선물: 헬너프 -1%p (잔존율 +1%)
 	    	ctx.hellNerfRate = hellMult;
 
 	    	hellNerfAtkMin = Math.max(0, (int) Math.round(atkMin   * (1-hellMult) ));
@@ -1105,8 +1107,8 @@ public class BossAttackController {
 	    Set<Integer> ownedBossItems = new java.util.HashSet<>();
 	    try {
 	        @SuppressWarnings("unchecked")
-	        List<Integer> bl = (List<Integer>) getInvBuffCached(userName).get("bossItems");
-	        if (bl != null) ownedBossItems.addAll(bl);
+	        java.util.Map<Integer,Integer> bqm7018 = (java.util.Map<Integer,Integer>) getInvBuffCached(userName).get("bossItemQty");
+	        if (bqm7018 != null) ownedBossItems.addAll(bqm7018.keySet());
 	    } catch (Exception ignore) {}
 	    boolean has7018 = ownedBossItems.contains(7018);
 	    int attendBoxCount = 2;
@@ -1787,10 +1789,9 @@ public class BossAttackController {
 	    try { data.put("market", botNewService.selectOwnedMarketBuffTotals(userName, "")); } catch (Exception ignore) {}
 	    try { data.put("heaven", botNewService.selectHeavenItemBuff(userName)); } catch (Exception ignore) {}
 	    try {
-	        List<Integer> bossItemIds = new java.util.ArrayList<>(botNewService.selectBossItemIds());
-	        if (!bossItemIds.contains(999)) bossItemIds.add(999); // 999는 MARKET 타입이라 뽑기풀 제외, 여기서만 추가
-	        if (!bossItemIds.isEmpty())
-	            data.put("bossItems", botNewService.selectInventoryItemsByIds(userName, "", bossItemIds));
+	        // [999] 선물 아이템: 일반 인벤토리에서 별도 조회
+	        List<Integer> gift999 = botNewService.selectInventoryItemsByIds(userName, "", java.util.Arrays.asList(999));
+	        data.put("has999", gift999 != null && !gift999.isEmpty());
 	    } catch (Exception ignore) {}
 	    // [OPT] selectTotalDropItems는 applyDropBonusToContext에서 ctx.preDropRows로 대체되므로 제거
 	    // 만약 필요하면 라인 561에서 invBuffData.get("drops")를 사용함
@@ -2546,7 +2547,7 @@ public class BossAttackController {
 	        int reductionPct = (int) Math.round((1.0 - hellMult) * 100);
 	        sb.append("[헬모드] 능력치 삭감 ").append(reductionPct).append("%");
 	        sb.append(" (hunter").append(ctx.hunterGrade).append(")");
-	        if (ctx.ownedBossItems.contains(999)) sb.append(" [헬너프-1%]");
+	        if (ctx.has999Gift) sb.append(" [헬너프-1%]");
 	        sb.append(NL);
 	    }
 	    sb.append(NL);
@@ -10698,7 +10699,7 @@ public class BossAttackController {
 	    if (ctx.hellNerfAtkMin > 0 || ctx.hellNerfAtkMax > 0) {
 	        double hellMult = MiniGameUtil.getHellNerfMult(ctx.hunterGrade);
 	        if (ctx.ownedBossItems.contains(7007)) { int q7007d = ctx.bossItemQtyMap.getOrDefault(7007, 1); hellMult = Math.max(0.0, hellMult + BossAttackS3Controller.getBossEnhanceVal(7007, q7007d) / 1000.0); }
-	        if (ctx.ownedBossItems.contains(999)) hellMult = Math.max(0.0, hellMult + 0.01); // [999] 선물: 헬너프 -1%
+	        if (ctx.has999Gift) hellMult = Math.max(0.0, hellMult + 0.01); // [999] 선물: 헬너프 -1%
 	        curMin -= ctx.hellNerfAtkMin; curMax -= ctx.hellNerfAtkMax;
 	        atkSteps.add(simStep("헬 너프",
 	            -ctx.hellNerfAtkMin, -ctx.hellNerfAtkMax, curMin, curMax,
