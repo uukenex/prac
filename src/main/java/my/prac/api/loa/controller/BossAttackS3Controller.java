@@ -1256,8 +1256,6 @@ public class BossAttackS3Controller {
                     msg.append(NL);
                 }
                 msg.append(NL);
-                msg.append("당첨자 제외 전체 +0.2GP").append(NL);
-
                 // 룰렛 제외자: 보스드랍템 2개 이상 보유자 (활성 유저 풀 기준)
                 List<String> excludedUsers = new ArrayList<>();
                 for (String uName : allNames) {
@@ -1314,18 +1312,6 @@ public class BossAttackS3Controller {
                             botNewService.insertInventoryLogTx(inv);
                         } catch (Exception e) { /* 지급 실패 무시 */ }
                     }
-                }
-                // 당첨자 제외 전체 참여자 0.2 GP
-                for (String uName : allNames) {
-                    if (itemWinnerSet.contains(uName)) continue;
-                    try {
-                        HashMap<String, Object> gpMap = new HashMap<>();
-                        gpMap.put("userName", uName);
-                        gpMap.put("roomName", roomName);
-                        gpMap.put("score",    0.2);
-                        gpMap.put("cmd",      "BOSS_HELL_PART_GP");
-                        botNewService.insertGpRecord(gpMap);
-                    } catch (Exception ignore) {}
                 }
             }
 
