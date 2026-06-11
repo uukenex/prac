@@ -2099,8 +2099,8 @@ public class BossAttackController {
 	    long newHp = (long)Math.max(1, Math.floor(ctx2.hpMax * hpRatio));
 	    botNewService.updateUserHpOnlyTx(userName, roomName, (int) newHp);
 
-	    // 엘프 계열 최초 전직 시 직업레벨 1로 시작
-	    if ("엘프".equals(newJob) || "엘프궁수".equals(newJob) || "엘프마법사".equals(newJob)) {
+	    // 엘프/자이언트 최초 전직 시 직업레벨 1로 시작
+	    if ("자이언트".equals(newJob) || "엘프".equals(newJob) || "엘프궁수".equals(newJob) || "엘프마법사".equals(newJob)) {
 	        try {
 	            HashMap<String,Object> jlRow = botNewService.selectJobLevel(userName, newJob);
 	            int existingLv = jlRow != null ? ((Number) jlRow.getOrDefault("JOB_LV", 0)).intValue() : 0;
@@ -4681,6 +4681,7 @@ public class BossAttackController {
 		else if ("궁사".equals(s.job))   jobDmgMul = 1.0;
 		else if ("전사".equals(s.job))   jobDmgMul = 1.4;
 		else if ("검성".equals(s.job))   jobDmgMul = 2.5;
+		else if ("자이언트".equals(s.job)) jobDmgMul = 2.5;
 		else if ("어쓰신".equals(s.job))  jobDmgMul = 1.3;
 		else if ("제너럴".equals(s.job))  jobDmgMul = 1.2;
 		else if ("저격수".equals(s.job))  jobDmgMul = 2.0;
@@ -5124,6 +5125,22 @@ public class BossAttackController {
 		int dealtThisTurn  = Math.max(0, s.calc.atkDmg);
 		int monRemainAfter = Math.max(0, s.monHpRemainBefore - dealtThisTurn);
 
+		// [자이언트] 불굴 - 사망 시 즉시 부활 + 카운트+5
+		if ("자이언트".equals(s.job)) {
+		    botNewService.updateUserHpOnlyTx(s.userName, s.roomName, 0);
+		    addGiantJobCount(s, 5);
+		    int reviveHp = (int)(s.hpMax * 0.2);
+		    botNewService.updateUserHpOnlyTx(s.userName, s.roomName, reviveHp);
+		    botNewService.insertBattleLogTx(new BattleLog()
+		            .setUserName(s.userName).setRoomName(s.roomName).setLv(s.u.lv)
+		            .setTargetMonLv(s.m.monNo).setGainExp(0)
+		            .setAtkDmg(s.calc.atkDmg).setMonDmg(s.calc.monDmg)
+		            .setAtkCritYn(s.flags.atkCrit ? 1 : 0).setMonPatten(s.flags.monPattern)
+		            .setKillYn(0).setNowYn(0).setDropYn(0).setDeathYn(1).setLuckyYn(0)
+		            .setJobSkillYn(0).setJob(s.job).setNightmareYn(s.ctx.user.nightmareYn));
+		    return s.userName + "님, 쓰러졌지만 [자이언트의 불굴]로 즉시 부활합니다! (HP " + reviveHp + ")" + NL
+		         + (s.jobLvProgressMsg != null && !s.jobLvProgressMsg.isEmpty() ? NL + s.jobLvProgressMsg : "");
+		}
 		botNewService.closeOngoingBattleTx(s.userName, s.roomName);
 		botNewService.updateUserHpOnlyTx(s.userName, s.roomName, 0);
 		botNewService.insertBattleLogTx(new BattleLog()
@@ -5321,6 +5338,43 @@ public class BossAttackController {
 		        }
 		    } catch (Exception ignore) {}
 		}
+		// ── 자이언트 직업레벨 카운트+1 (맞았을 때) ──────────────────────────────
+		if ("자이언트".equals(s.job) && s.calc.monDmg > 0) {
+		    addGiantJobCount(s, 1);
+		}
+	}
+
+	/** 자이언트 직업레벨 카운트 누적 헬퍼 */
+	private void addGiantJobCount(AttackSession s, int add) {
+	    try {
+	        HashMap<String,Object> jlRow = botNewService.selectJobLevel(s.userName, s.job);
+	        int curLv  = jlRow != null ? ((Number) jlRow.getOrDefault("JOB_LV",       0)).intValue() : 0;
+	        int curKll = jlRow != null ? ((Number) jlRow.getOrDefault("JOB_KILL_CNT", 0)).intValue() : 0;
+	        if (curLv < JOB_MAX_LV) {
+	            int newKll = curKll + add;
+	            int need   = curLv * JOB_LV_KILL_BASE + JOB_LV_KILL_OFFSET;
+	            int newLv  = curLv;
+	            while (newKll >= need && newLv < JOB_MAX_LV) {
+	                newLv++;
+	                newKll -= need;
+	                need = newLv * JOB_LV_KILL_BASE + JOB_LV_KILL_OFFSET;
+	            }
+	            if (newLv > curLv) {
+	                s.jobLevelUpMsg = "[자이언트] 직업레벨 상승! Lv." + curLv + " -> Lv." + newLv;
+	                invalidateInvBuff(s.userName);
+	            }
+	            newLv = Math.min(newLv, JOB_MAX_LV);
+	            botNewService.upsertJobLevel(s.userName, s.job, newLv, newLv >= JOB_MAX_LV ? 0 : newKll);
+	            int displayNeed = newLv * JOB_LV_KILL_BASE + JOB_LV_KILL_OFFSET;
+	            if (newLv >= JOB_MAX_LV) {
+	                s.jobLvProgressMsg = "[자이언트] Lv." + newLv + " (MAX)";
+	            } else {
+	                s.jobLvProgressMsg = "[자이언트] Lv." + newLv + " (" + newKll + "/" + displayNeed + "회)";
+	            }
+	        } else {
+	            s.jobLvProgressMsg = "[자이언트] Lv." + curLv + " (MAX)";
+	        }
+	    } catch (Exception ignore) {}
 	}
 
 	/** buildStealInv 헬퍼 */
