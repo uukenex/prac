@@ -3931,6 +3931,10 @@ public class BossAttackController {
 	            buyIsEnhance = true;
 	        }
 
+	        if (buyIsEnhance)
+	            return "[" + itemName + "] 강화는 직접 구매가 불가합니다. 뽑기(/보스뽑기)를 이용해주세요."
+	                 + NL + "(강화뽑기 비용: 기본 뽑기가격 × 2)";
+
 	        double gp;
 	        try { gp = botNewService.selectGpBalance(userName); }
 	        catch (Exception e) { return "GP 조회 중 오류가 발생했습니다."; }
@@ -6313,12 +6317,23 @@ public class BossAttackController {
 		} catch (Exception ignore) {}
 		double gachaPrice = ownedBossCount >= 20 ? 6.0 : ownedBossCount >= 10 ? 5.0 : 4.0;
 
+		// 강화뽑기 사전 체크: 모든 아이템 보유 시 강화뽑기 → 가격 2배
+		boolean isEnhanceGacha = false;
+		try {
+			List<Integer> allBossIds = botNewService.selectBossItemIds();
+			List<Integer> ownedIds = botNewService.selectInventoryItemsByIds(userName, "", allBossIds);
+			if (ownedIds != null && allBossIds != null && new java.util.HashSet<>(ownedIds).containsAll(allBossIds)) {
+				isEnhanceGacha = true;
+				gachaPrice *= 2;
+			}
+		} catch (Exception ignore) {}
+
 		if (gp < gachaPrice) {
 			return userName + "님," + NL
-				+ "보스뽑기에는 " + (int)gachaPrice + " GP가 필요합니다." + NL
+				+ (isEnhanceGacha ? "[강화뽑기] " : "") + "보스뽑기에는 " + (int)gachaPrice + " GP가 필요합니다." + NL
 				+ "현재 GP: " + String.format("%.2f", gp) + " GP" + NL
 				+ "(보유 유물 수: " + ownedBossCount + "개 → " + (int)gachaPrice + " GP)" + NL
-				+ "(7000번대 보스 아이템 판매 시 1개당 1 GP 획득)";
+				+ (isEnhanceGacha ? "(강화뽑기: 기본가격 × 2)" : "(7000번대 보스 아이템 판매 시 1개당 1 GP 획득)");
 		}
 
 		// 7000번대 아이템 목록 조회
@@ -6428,7 +6443,7 @@ public class BossAttackController {
 
 		String actionWord = isEnhance ? "강화!" : "획득!";
 		return userName + "님," + NL
-				+ "보스뽑기! (-" + (int)gachaPrice + " GP) [보유유물 " + ownedBossCount + "개]" + NL
+				+ (isEnhance ? "[강화]" : "") + "보스뽑기! (-" + (int)gachaPrice + " GP) [보유유물 " + ownedBossCount + "개]" + NL
 				+ "▶ " + actionWord + " " + itemLine + NL
 				+ "- 잔여 GP: " + String.format("%.2f", gp - gachaPrice) + " GP";
 	}
