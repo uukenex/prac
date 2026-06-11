@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import my.prac.core.game.dto.AttackDeathStat;
 import my.prac.core.util.SP;
@@ -96,8 +97,12 @@ public class UserBattleContext {
 	// [OPT-HUNTER] attackInfo 에서 미리 조회한 dropsRows 공유용 (applyDropBonusToContext 중복 조회 방지)
 	public List<HashMap<String,Object>> preDropRows = null;
 
-	// 보스 아이템(7001~7010) 보유 목록 (calcUserBattleContext에서 채워짐)
+	// 보스 아이템(7001~7019) 보유 목록 (bossItemQtyMap.keySet 기반으로 채워짐)
 	public Set<Integer> ownedBossItems = new HashSet<>();
+	// 보스 아이템 강화 수량 (단일 소스, calcUserBattleContext에서 채워짐)
+	public Map<Integer,Integer> bossItemQtyMap = new HashMap<>();
+	// [999] 선물: 일반 인벤토리 기반 별도 관리
+	public boolean has999Gift = false;
 
 	// GP 잔액 (calcUserBattleContext에서 채워짐, 0이면 미보유)
 	public double gpBalance = 0.0;

@@ -261,6 +261,9 @@ public interface BotNewDAO {
             @Param("itemIds") Collection<Integer> itemIds
     );
 
+    /** [헬보스 강화] 보스아이템 총 보유수량 맵 조회 (item_id→총qty) */
+    List<HashMap<String, Object>> selectBossHellItemTotalQty(@Param("userName") String userName);
+
     /** 전체 아이템 + 유저 보유여부 (item_view 페이지용) */
     List<HashMap<String, Object>> selectAllItemsWithOwned(
             @Param("userName") String userName

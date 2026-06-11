@@ -33,7 +33,12 @@ import javax.annotation.Resource;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 
 import my.prac.core.game.dto.AchievementConfig;
 import my.prac.core.game.dto.AchievementCount;
@@ -61,12 +66,6 @@ import my.prac.core.prjbot.service.BotSettleService;
 import my.prac.core.util.MiniGameUtil;
 import my.prac.core.util.SP;
 import my.prac.core.util.SellResult;
-
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseBody;
 
 @Controller
 @RequestMapping("/loa")
@@ -553,10 +552,15 @@ public class BossAttackController {
 	        }
 	    }
 
-	    // 보스 아이템(7000번대) 보유 목록 (캐시에서 로드)
+	    // 보스 아이템: bossItemQty 단일 소스 → ownedBossItems는 keySet으로 구성
 	    @SuppressWarnings("unchecked")
-	    List<Integer> ownedBossFromCache = (List<Integer>) invBuffData.get("bossItems");
-	    if (ownedBossFromCache != null) ctx.ownedBossItems.addAll(ownedBossFromCache);
+	    java.util.Map<Integer,Integer> bossQtyFromCache = (java.util.Map<Integer,Integer>) invBuffData.get("bossItemQty");
+	    if (bossQtyFromCache != null) {
+	        ctx.bossItemQtyMap.putAll(bossQtyFromCache);
+	        ctx.ownedBossItems.addAll(bossQtyFromCache.keySet());
+	    }
+	    // [999] 선물: 일반 아이템에서 별도 관리
+	    ctx.has999Gift = Boolean.TRUE.equals(invBuffData.get("has999"));
 
 	    // GP 잔액 조회 → ctx.gpBalance
 	    try {
@@ -744,18 +748,23 @@ public class BossAttackController {
 	    int crit =baseCrit + mktCrit;
 	    int critDmg = baseCritDmg + mktCritDmg;
 	    
-	    // [7009] 진화형 무기: 레벨당 공격력 +150 (최대 Lv300 = +45,000)
+	    // [7009] 진화형 무기: 0강화=레벨당150/cap300, 1강화=레벨당200/cap500
 	    if (ctx.ownedBossItems.contains(7009)) {
-	        int evolveBonus = Math.min(u.lv, 300) * 150;
+	        int qty7009 = ctx.bossItemQtyMap.getOrDefault(7009, 1);
+	        int perLv7009 = BossAttackS3Controller.getBossEnhanceVal(7009, qty7009);
+	        int cap7009  = (qty7009 >= 2) ? 500 : 300;
+	        int evolveBonus = Math.min(u.lv, cap7009) * perLv7009;
 	        atkMin += evolveBonus;
 	        atkMax += evolveBonus;
 	    }
-	    // [7013] 어제 공격자 수 × 공격력 +500, 치명타 데미지 +5 (최대 30명 = +15,000)
+	    // [7013] 어제 공격자 수 × 공격력 (강화별), 치명타 데미지 (강화별) (최대 30명)
 	    if (ctx.ownedBossItems.contains(7013)) {
+	        int qty7013 = ctx.bossItemQtyMap.getOrDefault(7013, 1);
 	        int cappedYest = Math.min(getYesterdayAttackerCountCached(), 30);
-	        atkMin  += cappedYest * 500;
-	        atkMax  += cappedYest * 500;
-	        critDmg += cappedYest * 5;
+	        int atkPer = BossAttackS3Controller.getBossEnhanceVal(7013, qty7013);
+	        atkMin  += cappedYest * atkPer;
+	        atkMax  += cappedYest * atkPer;
+	        critDmg += cappedYest * (atkPer / 100);
 	    }
 
 	    int hellNerfAtkMin =0;
@@ -766,8 +775,8 @@ public class BossAttackController {
 
 	    if(u.nightmareYn==2) {
 	    	double hellMult = MiniGameUtil.getHellNerfMult(ctx.hunterGrade);
-	    	if (ctx.ownedBossItems.contains(7007)) hellMult = Math.max(0.0, hellMult + 0.03);
-	    	if (ctx.ownedBossItems.contains(999)) hellMult = Math.max(0.0, hellMult + 0.01); // [999] 선물: 헬너프 -1%p (잔존율 +1%)
+	    	if (ctx.ownedBossItems.contains(7007)) { int qty7007 = ctx.bossItemQtyMap.getOrDefault(7007, 1); hellMult = Math.max(0.0, hellMult + BossAttackS3Controller.getBossEnhanceVal(7007, qty7007) / 1000.0); }
+	    	if (ctx.has999Gift) hellMult = Math.max(0.0, hellMult + 0.01); // [999] 선물: 헬너프 -1%p (잔존율 +1%)
 	    	ctx.hellNerfRate = hellMult;
 
 	    	hellNerfAtkMin = Math.max(0, (int) Math.round(atkMin   * (1-hellMult) ));
@@ -1098,11 +1107,17 @@ public class BossAttackController {
 	    Set<Integer> ownedBossItems = new java.util.HashSet<>();
 	    try {
 	        @SuppressWarnings("unchecked")
-	        List<Integer> bl = (List<Integer>) getInvBuffCached(userName).get("bossItems");
-	        if (bl != null) ownedBossItems.addAll(bl);
+	        java.util.Map<Integer,Integer> bqm7018 = (java.util.Map<Integer,Integer>) getInvBuffCached(userName).get("bossItemQty");
+	        if (bqm7018 != null) ownedBossItems.addAll(bqm7018.keySet());
 	    } catch (Exception ignore) {}
 	    boolean has7018 = ownedBossItems.contains(7018);
-	    int attendBoxCount = has7018 ? 3 : 2;
+	    int attendBoxCount = 2;
+	    if (has7018) {
+	        @SuppressWarnings("unchecked")
+	        java.util.Map<Integer,Integer> bqm = (java.util.Map<Integer,Integer>) getInvBuffCached(userName).get("bossItemQty");
+	        int qty7018 = (bqm != null) ? bqm.getOrDefault(7018, 1) : 1;
+	        attendBoxCount += BossAttackS3Controller.getBossEnhanceVal(7018, qty7018);
+	    }
 
 	    // 상자 지급 (tier 결정: 플래티넘1%, 골드9%, 기본90%) / 7018: 3번째 상자는 황금상자 고정
 	    StringBuilder sb = new StringBuilder();
@@ -1774,10 +1789,9 @@ public class BossAttackController {
 	    try { data.put("market", botNewService.selectOwnedMarketBuffTotals(userName, "")); } catch (Exception ignore) {}
 	    try { data.put("heaven", botNewService.selectHeavenItemBuff(userName)); } catch (Exception ignore) {}
 	    try {
-	        List<Integer> bossItemIds = new java.util.ArrayList<>(botNewService.selectBossItemIds());
-	        if (!bossItemIds.contains(999)) bossItemIds.add(999); // 999는 MARKET 타입이라 뽑기풀 제외, 여기서만 추가
-	        if (!bossItemIds.isEmpty())
-	            data.put("bossItems", botNewService.selectInventoryItemsByIds(userName, "", bossItemIds));
+	        // [999] 선물 아이템: 일반 인벤토리에서 별도 조회
+	        List<Integer> gift999 = botNewService.selectInventoryItemsByIds(userName, "", java.util.Arrays.asList(999));
+	        data.put("has999", gift999 != null && !gift999.isEmpty());
 	    } catch (Exception ignore) {}
 	    // [OPT] selectTotalDropItems는 applyDropBonusToContext에서 ctx.preDropRows로 대체되므로 제거
 	    // 만약 필요하면 라인 561에서 invBuffData.get("drops")를 사용함
@@ -1790,10 +1804,25 @@ public class BossAttackController {
 	        data.put("setBonus", setBonus);
 	    } catch (Exception ignore) {}
 	    try { data.put("hellClearAchv", botNewService.hasHellClearAchv(userName)); } catch (Exception ignore) {}
+    try {
+        java.util.Map<Integer,Integer> qtyMap = new java.util.HashMap<>();
+        List<HashMap<String,Object>> qtyRows = botNewService.selectBossHellItemTotalQty(userName);
+        if (qtyRows != null) for (HashMap<String,Object> r : qtyRows) {
+            int iid = MiniGameUtil.parseIntSafe(Objects.toString(r.get("ITEM_ID"),"0"));
+            int qty = MiniGameUtil.parseIntSafe(Objects.toString(r.get("TOTAL_QTY"),"1"));
+            if (iid > 0) qtyMap.put(iid, qty);
+        }
+        data.put("bossItemQty", qtyMap);
+    } catch (Exception ignore) {}
 	    try { data.put("totalJobLv", botNewService.selectTotalJobLv(userName)); } catch (Exception ignore) {}
 	    try { data.put("expSell", botNewService.selectExpSellStats(userName)); } catch (Exception ignore) {}
 	    MiniGameUtil.INV_BUFF_CACHE.put(userName, data);
 	    return data;
+	}
+
+	/** [S3] 외부 컨트롤러에서 접근용 public wrapper */
+	public HashMap<String,Object> getInvBuffCachedPublic(String userName) {
+		return getInvBuffCached(userName);
 	}
 
 	/** 아이템 획득/판매/소비 후 호출 → 해당 유저의 인벤토리 버프 캐시 즉시 무효화 */
@@ -2518,7 +2547,7 @@ public class BossAttackController {
 	        int reductionPct = (int) Math.round((1.0 - hellMult) * 100);
 	        sb.append("[헬모드] 능력치 삭감 ").append(reductionPct).append("%");
 	        sb.append(" (hunter").append(ctx.hunterGrade).append(")");
-	        if (ctx.ownedBossItems.contains(999)) sb.append(" [헬너프-1%]");
+	        if (ctx.has999Gift) sb.append(" [헬너프-1%]");
 	        sb.append(NL);
 	    }
 	    sb.append(NL);
@@ -2774,8 +2803,8 @@ public class BossAttackController {
 	                        ;
 
 	                if ("BOSS_HELL".equalsIgnoreCase(typeStr) || "BOSS_GACHA".equalsIgnoreCase(typeStr) || (itemId >= 7000 && itemId < 8000)) {
-	                    if (qtyVal > 1) label += "x" + qtyVal;
-	                    label += "BOSS_GACHA".equalsIgnoreCase(gainTypeStr) ? " [뽑기]" : " [드랍]";
+	                    if (qtyVal > 1) label += "+" + (qtyVal - 1);
+	                    // [뽑기]/[드랍] 레이블 제거 - 강화단계(+N)로만 표기
 	                } else if ("DROP_OPEN_G".equalsIgnoreCase(typeStr) || "DROP_OPEN_P".equalsIgnoreCase(typeStr) || "ATTEND".equalsIgnoreCase(typeStr)) {
 	                    label = ("DROP_OPEN_P".equalsIgnoreCase(typeStr) ? "✨플래티넘" : "ATTEND".equalsIgnoreCase(typeStr) ? "출첵" : "✨황금") + "유물상자 (/가방열기 로 개봉)";
 	                } else if (typeStr != null && typeStr.toUpperCase().startsWith("HELL_BOX") && itemId >= 3000 && itemId < 4000) {
@@ -3532,9 +3561,11 @@ public class BossAttackController {
 
 	    // 단가 계산 (lifetimeSp 기반, 배치 중 불변)
 	    SP unitPrice = MiniGameUtil.getPotionPrice(itemId, ctx.lifetimeSp);
-	    // [7017] 엘릭서(1002/1003) 가격 50% 할인
+	    // [7017] 엘릭서(1002/1003) 가격 할인 (강화별)
 	    if ((itemId == 1002 || itemId == 1003) && ctx.ownedBossItems.contains(7017)) {
-	        unitPrice = SP.of(unitPrice.getValue() / 2, unitPrice.getUnit());
+	        int qty7017 = ctx.bossItemQtyMap.getOrDefault(7017, 1);
+	        int disc7017 = BossAttackS3Controller.getBossEnhanceVal(7017, qty7017);
+	        unitPrice = SP.of(unitPrice.getValue() * (100 - disc7017) / 100, unitPrice.getUnit());
 	    }
 	    SP totalCost = unitPrice.multiply(qty);
 
@@ -3800,9 +3831,11 @@ public class BossAttackController {
 
 	        // 가격 계산
 	        itemPrice = MiniGameUtil.getPotionPrice(itemId, ctx.lifetimeSp);
-	        // [7017] 엘릭서(1002/1003) 가격 50% 할인
+	        // [7017] 엘릭서(1002/1003) 가격 할인 (강화별)
 	        if ((itemId == 1002 || itemId == 1003) && ctx.ownedBossItems.contains(7017)) {
-	            itemPrice = SP.of(itemPrice.getValue() / 2, itemPrice.getUnit());
+	            int qty7017 = ctx.bossItemQtyMap.getOrDefault(7017, 1);
+	            int disc7017 = BossAttackS3Controller.getBossEnhanceVal(7017, qty7017);
+	            itemPrice = SP.of(itemPrice.getValue() * (100 - disc7017) / 100, itemPrice.getUnit());
 	        }
 
 	        // 포인트 확인
@@ -3881,14 +3914,29 @@ public class BossAttackController {
 	        if (bossItemList == null || !bossItemList.contains(itemId))
 	            return "구매할 수 없는 보스 아이템입니다: " + itemId;
 
-	        if (alreadyOwnedThisItem)
-	            return "이미 보유 중인 아이템입니다. [" + itemName + "]";
+	        // 강화 시스템: 이미 보유 시 강화 가능 여부 체크
+	        boolean buyIsEnhance = false;
+	        int curBuyQty = 1;
+	        if (alreadyOwnedThisItem) {
+	            try {
+	                List<HashMap<String,Object>> qrows = botNewService.selectBossHellItemTotalQty(userName);
+	                if (qrows != null) for (HashMap<String,Object> qr : qrows) {
+	                    int qid = MiniGameUtil.parseIntSafe(Objects.toString(qr.get("ITEM_ID"),"0"));
+	                    int qty = MiniGameUtil.parseIntSafe(Objects.toString(qr.get("TOTAL_QTY"),"1"));
+	                    if (qid == itemId) { curBuyQty = qty; break; }
+	                }
+	            } catch (Exception ignore) {}
+	            if (curBuyQty >= BossAttackS3Controller.MAX_BOSS_ENHANCE)
+	                return "[" + itemName + "] 이미 최대 강화 단계입니다. (현재 +" + (curBuyQty - 1) + ")";
+	            buyIsEnhance = true;
+	        }
 
 	        double gp;
 	        try { gp = botNewService.selectGpBalance(userName); }
 	        catch (Exception e) { return "GP 조회 중 오류가 발생했습니다."; }
 	        if (gp < 10)
-	            return userName + "님, 보스 아이템 직접 구매에는 10 GP가 필요합니다.\n현재 GP: " + String.format("%.2f", gp) + " GP";
+	            return userName + "님, 보스 아이템 직접 구매에는 10 GP가 필요합니다."+NL
+	        		+"현재 GP: " + String.format("%.2f", gp) + " GP";
 
 	        try {
 	            HashMap<String, Object> gpDeduct = new HashMap<>();
@@ -3920,7 +3968,10 @@ public class BossAttackController {
 	            return "아이템 지급 중 오류가 발생했습니다.";
 	        }
 	        double afterGp = gp - 10;
-	        return "▶ 구매 완료\n" + userName + "님이 [" + itemName + "]을(를) 구매했습니다.\n(10 GP 소모, 잔여 GP: " + String.format("%.2f", afterGp) + " GP)";
+	        String buyEnhSuffix = buyIsEnhance ? BossAttackS3Controller.enhanceSuffix(curBuyQty + 1) : "";
+	        String buyAction = buyIsEnhance ? "강화 완료" : "구매 완료";
+	        return "▶ " + buyAction + userName + "님이 [" + itemName + buyEnhSuffix + "]을(를) " + (buyIsEnhance ? "강화" : "구매") + "했습니다."+NL+
+	        	"(10 GP 소모, 잔여 GP: " + String.format("%.2f", afterGp) + " GP)";
 	    }
 
 	    // 결제 (포인트 차감 — 다중구매 모드이면 ThreadLocal 에 누적, 단건이면 즉시 처리)
@@ -4789,7 +4840,7 @@ public class BossAttackController {
 		s.cdJob = (s.cachedAds != null && s.cachedAds.lastAttackJob != null) ? s.cachedAds.lastAttackJob : s.job;
 
 		// [7004] 모래시계: 쿨타임 20% 감소 / 세트: DB값(%) 직접 합산
-		s.itemCdReduction  = s.ctx.ownedBossItems.contains(7004) ? 20 : 0;
+		s.itemCdReduction  = s.ctx.ownedBossItems.contains(7004) ? BossAttackS3Controller.getBossEnhanceVal(7004, s.ctx.bossItemQtyMap.getOrDefault(7004, 1)) : 0;
 		s.itemCdReduction += s.ctx.setCooldownReduce;   // 세트 감소 (%)
 		s.itemCdReduction -= s.ctx.setCooldownIncrease; // 세트 증가 (음수로 전달 → checkCooldown에서 증가 처리)
 		CooldownCheck cd = checkCooldown(s.userName, s.roomName, s.param1, s.cdJob, s.cooldownBuff, cachedLastAtk, s.itemCdReduction);
@@ -4898,7 +4949,7 @@ public class BossAttackController {
 		s.dmg = calculateDamage(s.u, s.m, s.flags,
 				s.effAtkMin, s.effAtkMax, s.critRate, s.critDmg,
 				s.berserkMul, s.monHpRemainBefore, s.hpMax, s.beforeJobSkillYn, s.nightmare,
-				s.ctx.ownedBossItems);
+				s.ctx.ownedBossItems, s.ctx.bossItemQtyMap);
 		s.calc     = s.dmg.calc;
 		s.flags    = s.dmg.flags;
 		s.willKill = s.dmg.willKill;
@@ -4907,7 +4958,8 @@ public class BossAttackController {
 		if (dosaSelf != null || dosaRoom != null) {
 		    int buffCount = (dosaSelf != null ? 1 : 0) + (dosaRoom != null ? 1 : 0);
 		    // [7012] 도사의 가르침: 도사/음양사 버프 계수 3배
-		    int coef = s.ctx.ownedBossItems.contains(7012) ? 3 : 1;
+		    int qty7012 = s.ctx.bossItemQtyMap.getOrDefault(7012, 1);
+		    int coef = s.ctx.ownedBossItems.contains(7012) ? BossAttackS3Controller.getBossEnhanceVal(7012, qty7012) : 1;
 		    if (s.calc.atkDmg > 0) {
 		        s.calc.atkDmg += buffCount * 1000 * coef;
 		        s.calc.atkDmg += (int) Math.round(s.calc.atkDmg * (buffCount * 5 * coef) / 100.0);
@@ -4979,14 +5031,18 @@ public class BossAttackController {
 	private void ma_thiefDoubleAtkPreCalc(AttackSession s) {
 		if (!"도적".equals(s.job)) return;
 		
-		double thiefProb = s.ctx.ownedBossItems.contains(7002) ? 0.50 : 0.30;
+		double thiefProb = 0.20;
+		if (s.ctx.ownedBossItems.contains(7002)) {
+			int qty7002 = s.ctx.bossItemQtyMap.getOrDefault(7002, 1);
+			thiefProb = BossAttackS3Controller.getBossEnhanceVal(7002, qty7002) / 100.0;
+		}
 		if(s.u.userName.equals("일어난다람쥐/카단")) thiefProb = 1;
 		s.thiefDoubleAtk = ThreadLocalRandom.current().nextDouble() < thiefProb;
 		if (s.thiefDoubleAtk) {
 			Flags f2 = rollFlags(s.u, s.m);
 			s.dmg2  = calculateDamage(s.u, s.m, f2, s.effAtkMin, s.effAtkMax, s.critRate, s.critDmg,
 					s.berserkMul, s.monHpRemainBefore, s.hpMax, s.beforeJobSkillYn, s.nightmare,
-					s.ctx.ownedBossItems);
+					s.ctx.ownedBossItems, s.ctx.bossItemQtyMap);
 			s.calc2 = s.dmg2.calc;
 		}
 	}
@@ -5010,7 +5066,7 @@ public class BossAttackController {
 		// 2타 Resolve
 		s.res2 = resolveKillAndDrop(s.m, s.calc2, s.willKill2, s.u,
 				s.lucky, s.dark, s.gray, s.shadow,
-				s.ctx.user.nightmareYn, s.ctx.ownedBossItems);
+				s.ctx.user.nightmareYn, s.ctx.ownedBossItems, s.ctx.bossItemQtyMap);
 
 		// 경험치 배수 (1타와 동일 조건)
 		if ("궁수".equals(s.u.job) || "사냥꾼".equals(s.u.job)) s.res2.gainExp *= 3;
@@ -5084,7 +5140,7 @@ public class BossAttackController {
 
 	// ─ 13) 처치·드랍 판단 + 직업별 스킬 ─────────────────────────────
 	private void ma_resolveKillAndJobSkills(AttackSession s) {
-		s.res = resolveKillAndDrop(s.m, s.calc, s.willKill, s.u, s.lucky, s.dark, s.gray, s.shadow, s.ctx.user.nightmareYn, s.ctx.ownedBossItems);
+		s.res = resolveKillAndDrop(s.m, s.calc, s.willKill, s.u, s.lucky, s.dark, s.gray, s.shadow, s.ctx.user.nightmareYn, s.ctx.ownedBossItems, s.ctx.bossItemQtyMap);
 		if ("궁수".equals(s.u.job) || "사냥꾼".equals(s.u.job)) s.res.gainExp *= 3;
 
 		// [Feature1] 다회전 경험치 2배: 처치 시 진행 중 전투였을 경우 (다크/빛/섀도우 제외)
@@ -5114,11 +5170,12 @@ public class BossAttackController {
 					if (sp[0] != null) stealSpTotal = stealSpTotal.add(sp[0]);
 				} catch (Exception ignore) {}
 			}
-			// [7019] 도적 2타 스틸 확률 100%
+			// [7019] 도적 2타 스틸 확률 100%, 강화 시 추가 스틸
 			double stealProb2 = s.ctx.ownedBossItems.contains(7019) ? 1.0 : 0.50;
+			int steal2Qty = s.ctx.ownedBossItems.contains(7019) ? BossAttackS3Controller.getBossEnhanceVal(7019, s.ctx.bossItemQtyMap.getOrDefault(7019, 1)) : 1;
 			if (s.thiefDoubleAtk && s.calc2 != null && ThreadLocalRandom.current().nextDouble() < stealProb2) {
 				String dn = (s.m.monDrop == null ? "" : s.m.monDrop.trim());
-				if (!dn.isEmpty()) try {
+				if (!dn.isEmpty()) for (int _si = 0; _si < steal2Qty; _si++) try {
 					Integer id = getItemIdCached(dn);
 					if (id != null) {
 						botNewService.insertInventoryLogTx(buildStealInv(s.userName, s.roomName, id));
@@ -5187,7 +5244,7 @@ public class BossAttackController {
 				SP[] sp=new SP[1]; String[] nb={""}; s.newPoint += " +" + baroSellItem(dn, 0, s.res, s.userName, s.roomName, s.ctx, s.u, "DROP", 1, s.nightmare, nb, sp); s.newBonus += nb[0];
 				if (sp[0] != null) dropSpTotal = dropSpTotal.add(sp[0]);
 				// [7008] 추가 드랍 +1 → 기본 드랍코드 1로 SP 추가 지급
-				if (s.res.bonusNormalDrop) {
+				for (int _bi = 0; _bi < s.res.bonusNormalDropQty; _bi++) {
 					Resolve bonusRes = new Resolve();
 					bonusRes.dropCode = "1";
 					SP[] sp2=new SP[1]; String[] nb2={""}; s.newPoint += " +" + baroSellItem(dn, 0, bonusRes, s.userName, s.roomName, s.ctx, s.u, "DROP", 1, s.nightmare, nb2, sp2); s.newBonus += nb2[0];
@@ -6271,18 +6328,39 @@ public class BossAttackController {
 		if (bossItems == null || bossItems.isEmpty())
 			return "현재 뽑기 가능한 보스 아이템이 없습니다.";
 
-		// 이미 보유한 아이템(어떤 경로든)은 가챠 풀에서 제외 (드랍템/가챠템 중복 방지)
+		// 강화 시스템: 미보유 아이템 우선, 없으면 강화 가능 아이템 선정
+		// qty 맵 로드
+		java.util.Map<Integer,Integer> bossQtyMap = new java.util.HashMap<>();
 		try {
-			List<Integer> owned = botNewService.selectInventoryItemsByIds(userName, "", bossItems);
-			if (owned != null && !owned.isEmpty()) {
-				bossItems = new ArrayList<>(bossItems);
-				bossItems.removeAll(new HashSet<>(owned));
+			List<HashMap<String,Object>> qrows = botNewService.selectBossHellItemTotalQty(userName);
+			if (qrows != null) for (HashMap<String,Object> qr : qrows) {
+				int qid = MiniGameUtil.parseIntSafe(Objects.toString(qr.get("ITEM_ID"),"0"));
+				int qty = MiniGameUtil.parseIntSafe(Objects.toString(qr.get("TOTAL_QTY"),"1"));
+				if (qid > 0) bossQtyMap.put(qid, qty);
 			}
 		} catch (Exception ignore) {}
 
-		if (bossItems.isEmpty())
-			return userName + "님," + NL + "현재 모든 보스 아이템을 보유 중입니다." + NL
+		List<Integer> newItems = new ArrayList<>(bossItems);
+		List<Integer> enhanceable = new ArrayList<>();
+		try {
+			List<Integer> owned = botNewService.selectInventoryItemsByIds(userName, "", bossItems);
+			if (owned != null && !owned.isEmpty()) {
+				newItems = new ArrayList<>(bossItems);
+				newItems.removeAll(new HashSet<>(owned));
+				// 강화 가능 목록: 보유 중이고 qty < MAX_ENHANCE
+				for (int oid : owned) {
+					int curQty = bossQtyMap.getOrDefault(oid, 1);
+					if (curQty < BossAttackS3Controller.MAX_BOSS_ENHANCE) enhanceable.add(oid);
+				}
+			}
+		} catch (Exception ignore) {}
+
+		boolean isEnhance = newItems.isEmpty(); // 신규 없으면 강화 시도
+		if (isEnhance && enhanceable.isEmpty())
+			return userName + "님," + NL + "모든 보스 아이템 최대 강화 달성! 더 이상 뽑기 불가합니다." + NL
 				+ "잔여 GP: " + String.format("%.2f", gp) + " GP";
+		if (!isEnhance) bossItems = newItems;  // 신규 풀로 교체
+		else           bossItems = enhanceable; // 강화 풀로 교체
 
 		// GP 차감 (가격: gachaPrice)
 		try {
@@ -6341,15 +6419,17 @@ public class BossAttackController {
 				if (regen  > 0) opts.append(" 리젠+").append(regen);
 				if (hpRate > 0) opts.append(" HP+").append(hpRate).append("%");
 				if (atkRate> 0) opts.append(" ATK+").append(atkRate).append("%");
-				itemLine = iName
+				String enhSuffix = isEnhance ? BossAttackS3Controller.enhanceSuffix(bossQtyMap.getOrDefault(giveItemId, 1) + 1) : "";
+				itemLine = iName + enhSuffix
 					+ (!iDesc.isEmpty() ? " (" + iDesc + ")" : "")
 					+ (opts.length() > 0 ? " [" + opts.toString().trim() + "]" : "");
 			}
 		} catch (Exception ignore) {}
 
+		String actionWord = isEnhance ? "강화!" : "획득!";
 		return userName + "님," + NL
 				+ "보스뽑기! (-" + (int)gachaPrice + " GP) [보유유물 " + ownedBossCount + "개]" + NL
-				+ "▶ 획득 아이템: " + itemLine + NL
+				+ "▶ " + actionWord + " " + itemLine + NL
 				+ "- 잔여 GP: " + String.format("%.2f", gp - gachaPrice) + " GP";
 	}
 
@@ -7274,11 +7354,13 @@ public class BossAttackController {
 	        boolean lvLocked = (reqLv > 0 && userLv < reqLv);
 
 	        String displayPrice = buildDisplayPrice(it, isPotion, itemId, userPoint);
-	        // [7017] 엘릭서(1002/1003) 할인 표시
+	        // [7017] 엘릭서(1002/1003) 할인 표시 (강화별)
 	        if (isPotion && (itemId == 1002 || itemId == 1003)
 	                && shopCtx != null && shopCtx.ownedBossItems.contains(7017)) {
 	            SP base = MiniGameUtil.getPotionPrice(itemId, userPoint);
-	            displayPrice = SP.of(base.getValue() / 2, base.getUnit()).toString() + "(7017할인)";
+	            int qty7017 = shopCtx.bossItemQtyMap.getOrDefault(7017, 1);
+	            int disc7017 = BossAttackS3Controller.getBossEnhanceVal(7017, qty7017);
+	            displayPrice = SP.of(base.getValue() * (100 - disc7017) / 100, base.getUnit()).toString() + "(7017할인)";
 	        }
 
 	        // 포션: 한 줄 표기
@@ -7698,7 +7780,7 @@ public class BossAttackController {
 	}*/
 
 	private Resolve resolveKillAndDrop(Monster m, AttackCalc c, boolean willKill, User u, boolean lucky, boolean dark,
-			boolean gray, boolean shadow, int nightmareYnVal, Set<Integer> ownedBossItems) {
+			boolean gray, boolean shadow, int nightmareYnVal, Set<Integer> ownedBossItems, java.util.Map<Integer,Integer> bossItemQtyMap) {
 		Resolve r = new Resolve();
 		r.killed = willKill;
 		r.lucky = lucky;
@@ -7776,7 +7858,8 @@ public class BossAttackController {
 		// [7008] 일반 드랍+1 (빛/어둠/음양 제외)
 		if (ownedBossItems != null && ownedBossItems.contains(7008)
 				&& ("1".equals(r.dropCode) || "2".equals(r.dropCode))) {
-			r.bonusNormalDrop = true;
+			int qty7008 = (bossItemQtyMap != null) ? bossItemQtyMap.getOrDefault(7008, 1) : 1;
+			r.bonusNormalDropQty = BossAttackS3Controller.getBossEnhanceVal(7008, qty7008);
 		}
 
 		return r;
@@ -7847,7 +7930,7 @@ public class BossAttackController {
 	            	if ("2".equals(res.dropCode)) {
 	            	    qty = 2; // 기본 1 + 추가 1
 	            	}
-	            	if (res.bonusNormalDrop) qty++; // [7008] 일반 드랍+1
+	            	qty += res.bonusNormalDropQty; // [7008] 추가 드랍 수량
 
 
 	                Integer itemId = getItemIdCached(dropName);
@@ -8308,7 +8391,7 @@ public class BossAttackController {
 	private static class Resolve {
 		boolean killed; String dropCode; long gainExp; boolean lucky; boolean dark; boolean gray;
 		boolean shadow; // 그림자 몬스터
-		boolean bonusNormalDrop; // [7008] 일반 드랍 +1
+		int bonusNormalDropQty; // [7008] 추가 드랍 수량 (강화별)
 	}
 	private static class CooldownCheck {
 	    final boolean ok; final int remainMinutes; final long remainSeconds;
@@ -9609,7 +9692,8 @@ public class BossAttackController {
 	        int hpMax,
 	        int beforeJobSkillYn,
 	        boolean nightmareYn,
-	        Set<Integer> ownedBossItems
+	        Set<Integer> ownedBossItems,
+	        java.util.Map<Integer,Integer> bossItemQtyMap
 	) {
 	    DamageOutcome out = new DamageOutcome();
 	    AttackCalc calc = new AttackCalc();
@@ -9663,7 +9747,7 @@ public class BossAttackController {
 	        else if (rangeRatio >= 0.30) hitCount = 4; // 30~49% → 4연사
 	        else if (rangeRatio >= 0.10) hitCount = 3; // 10~29% → 3연사
 	        else                         hitCount = 2; //  0~9%  → 2연사
-	        if (ownedBossItems.contains(7003)) hitCount = Math.min(hitCount + 1, 6); // [7003] 연사수 +1 (최대 6연사)
+	        if (ownedBossItems.contains(7003)) { int qty7003 = (bossItemQtyMap != null) ? bossItemQtyMap.getOrDefault(7003, 1) : 1; hitCount = Math.min(hitCount + BossAttackS3Controller.getBossEnhanceVal(7003, qty7003), 7); } // [7003] 연사 강화별
 
 	        
 	        calc.multiAttack =hitCount;
@@ -9745,8 +9829,9 @@ public class BossAttackController {
 	    
 	    if ("검성".equals(u.job)) {
 	    	double skillRate = 0.065;
-	    	if(ownedBossItems.contains(7005)) {
-	    		skillRate += 0.15;
+	    	if(ownedBossItems.contains(7006)) {
+	    		int qty7006_ws = (bossItemQtyMap != null) ? bossItemQtyMap.getOrDefault(7006, 1) : 1;
+	    		skillRate += BossAttackS3Controller.getBossEnhanceVal(7006, qty7006_ws) / 100.0;
 	    	}
 	    	
 	    	if (ThreadLocalRandom.current().nextDouble() < skillRate) {
@@ -9862,7 +9947,7 @@ public class BossAttackController {
 
 	                // 7014 달의부름: 50% 확률로 실패 → 성공 전환
 	                if (ownedBossItems != null && ownedBossItems.contains(7014)
-	                        && ThreadLocalRandom.current().nextDouble() < 0.50) {
+	                        && ThreadLocalRandom.current().nextDouble() < BossAttackS3Controller.getBossEnhanceVal(7014, (bossItemQtyMap != null ? bossItemQtyMap.getOrDefault(7014, 1) : 1)) / 100.0) {
 	                    out.dmgCalcMsg += "달의 힘을 받아 반달가슴곰이 되었습니다... " + NL;
 	                    baseAtk = monHpRemainBefore;
 	                    rawAtkDmg = monHpRemainBefore;
@@ -10052,7 +10137,8 @@ public class BossAttackController {
 
 		            if (newMonDmg > 0 && calc.atkDmg >= monHpRemainBefore) {//willkill, 복수로죽였을때만 적용
 		            	// [7016] 복수자 보스 아이템: 체력 회복 10% → 20%
-		            	double healRate = (ownedBossItems != null && ownedBossItems.contains(7016)) ? 0.20 : 0.10;
+		            	int qty7016 = (bossItemQtyMap != null) ? bossItemQtyMap.getOrDefault(7016, 1) : 1;
+	            	double healRate = (ownedBossItems != null && ownedBossItems.contains(7016)) ? BossAttackS3Controller.getBossEnhanceVal(7016, qty7016) / 100.0 : 0.10;
 		            	int heal = (int) Math.round(hpMax * healRate);
 		            	int before =u.hpCur-newMonDmg;
 			            u.hpCur = Math.min(hpMax, before + heal);
@@ -10064,9 +10150,10 @@ public class BossAttackController {
 		            }
 		        }
 		    }
-	        // [7005] 가시갑옷: 받은 피해의 10% 반사
+	        // [7005] 가시갑옷: 받은 피해 반사 (permille, qty기반)
 	        if (ownedBossItems.contains(7005) && calc.monDmg > 0) {
-	            int reflect = Math.max(1, (int)Math.round(calc.monDmg * 0.10));
+	            int qty7005 = (bossItemQtyMap != null) ? bossItemQtyMap.getOrDefault(7005, 1) : 1;
+	            int reflect = Math.max(1, (int)Math.round(calc.monDmg * BossAttackS3Controller.getBossEnhanceVal(7005, qty7005) / 1000.0));
 	            calc.atkDmg += reflect;
 	            String baseMsg7005 = (calc.patternMsg == null ? "" : calc.patternMsg + " ");
 	            calc.patternMsg = baseMsg7005 + "[가시갑옷] " + reflect + " 반사!";
@@ -10598,16 +10685,18 @@ public class BossAttackController {
 	    int bossMin = 0, bossMax = 0;
 	    List<String> bossNotes = new ArrayList<>();
 	    if (ctx.ownedBossItems.contains(7009)) {
-	        int effLv = Math.min(ctx.user.lv, 300);
-	        int b = effLv * 150;
+	        int effLv = Math.min(ctx.user.lv, 800);
+	        int b = effLv * 200;
 	        bossMin += b; bossMax += b;
-	        bossNotes.add("[7009] 진화무기 Lv" + effLv + "(max300) × 150 = +" + b);
+	        bossNotes.add("[7009] 진화무기 Lv" + effLv + "(max800) × 200 = +" + b);
 	    }
 	    if (ctx.ownedBossItems.contains(7013)) {
+	        int qty7013s = ctx.bossItemQtyMap.getOrDefault(7013, 1);
+	        int atkPer7013 = BossAttackS3Controller.getBossEnhanceVal(7013, qty7013s);
 	        int yest = Math.min(getYesterdayAttackerCountCached(), 30);
-	        int b = yest * 500;
+	        int b = yest * atkPer7013;
 	        bossMin += b; bossMax += b;
-	        bossNotes.add("[7013] 어제의전사들 " + yest + "명(max30) × 500 = +" + b);
+	        bossNotes.add("[7013] 어제의전사들 " + yest + "명(max30) × " + atkPer7013 + " = +" + b);
 	    }
 	    if (bossMin > 0) {
 	        curMin += bossMin; curMax += bossMax;
@@ -10616,8 +10705,8 @@ public class BossAttackController {
 
 	    if (ctx.hellNerfAtkMin > 0 || ctx.hellNerfAtkMax > 0) {
 	        double hellMult = MiniGameUtil.getHellNerfMult(ctx.hunterGrade);
-	        if (ctx.ownedBossItems.contains(7007)) hellMult = Math.max(0.0, hellMult + 0.03);
-	        if (ctx.ownedBossItems.contains(999)) hellMult = Math.max(0.0, hellMult + 0.01); // [999] 선물: 헬너프 -1%
+	        if (ctx.ownedBossItems.contains(7007)) { int q7007d = ctx.bossItemQtyMap.getOrDefault(7007, 1); hellMult = Math.max(0.0, hellMult + BossAttackS3Controller.getBossEnhanceVal(7007, q7007d) / 1000.0); }
+	        if (ctx.has999Gift) hellMult = Math.max(0.0, hellMult + 0.01); // [999] 선물: 헬너프 -1%
 	        curMin -= ctx.hellNerfAtkMin; curMax -= ctx.hellNerfAtkMax;
 	        atkSteps.add(simStep("헬 너프",
 	            -ctx.hellNerfAtkMin, -ctx.hellNerfAtkMax, curMin, curMax,
@@ -10753,13 +10842,17 @@ public class BossAttackController {
 
 	        // 표시용 보스템 보너스 (맥스치 기준, 너프 전 원본)
 	        int maxBossBonus = 0;
-	        if (has7009) maxBossBonus += Math.min(lv, 300) * 150;
-	        if (has7013) maxBossBonus += 30 * 500;
+	        int qty7009r = has7009 ? ctx.bossItemQtyMap.getOrDefault(7009, 1) : 1;
+        int perLv7009r = BossAttackS3Controller.getBossEnhanceVal(7009, qty7009r);
+        int cap7009r  = (qty7009r >= 2) ? 500 : 300;
+        if (has7009) maxBossBonus += Math.min(lv, cap7009r) * perLv7009r;
+	        int atkPer7013r = has7013 ? BossAttackS3Controller.getBossEnhanceVal(7013, ctx.bossItemQtyMap.getOrDefault(7013, 1)) : 500;
+        if (has7013) maxBossBonus += 30 * atkPer7013r;
 
 	        // ctx.atkMax 에는 이미 7009(실제lv)+7013(실제cappedYest)가 헬너프 적용된 채로 포함됨.
 	        // 추정MAX = ctx.atkMax + [7013의 (max30-실제) 차분] × 헬너프유지율 + dropAtkMax
 	        int cappedYest = Math.min(getYesterdayAttackerCountCached(), 30);
-	        int extra7013  = has7013 ? (30 - cappedYest) * 500 : 0;
+	        int extra7013  = has7013 ? (30 - cappedYest) * atkPer7013r : 0;
 	        // ctx.hellNerfRate = 유지비율(e.g. 0.1=10%유지). 헬너프 없으면 0 → 1.0 처리
 	        double keepFraction = ctx.hellNerfRate > 0 ? ctx.hellNerfRate : 1.0;
 	        int extra7013Nerfed = (int) Math.round(extra7013 * keepFraction);

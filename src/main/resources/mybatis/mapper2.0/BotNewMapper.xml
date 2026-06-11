@@ -2593,4 +2593,20 @@
 		    (S.USER_NAME, 999, 0, 0, 0, 0, 1, SYSDATE)
 	</update>
 
+
+	<!-- =====================================================
+	     [헬보스 강화] 유저의 보스아이템 총 보유수량 조회 (7000-7999, BOSS_HELL)
+	     강화 레벨 판단: SUM(QTY) - 1 = 강화 등급
+	     ===================================================== -->
+	<select id="selectBossHellItemTotalQty" resultType="HashMap">
+		/* selectBossHellItemTotalQty */
+		SELECT ITEM_ID, SUM(QTY) AS TOTAL_QTY
+		  FROM TBOT_POINT_NEW_INVENTORY
+		 WHERE USER_NAME = #{userName}
+		   AND ITEM_ID   BETWEEN 7000 AND 7999
+		   AND GAIN_TYPE IN ('BOSS_HELL', 'BOSS_GACHA', 'BOSS_BUY')
+		   AND NVL(DEL_YN, '0') = '0'
+		 GROUP BY ITEM_ID
+	</select>
+
 </mapper>

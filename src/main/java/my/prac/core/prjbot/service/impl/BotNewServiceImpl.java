@@ -766,6 +766,11 @@ public class BotNewServiceImpl implements BotNewService {
     }
     
     @Override
+    @Override
+    public List<java.util.HashMap<String, Object>> selectBossHellItemTotalQty(String userName) {
+        return botNewDAO.selectBossHellItemTotalQty(userName);
+    }
+
     public List<Integer> selectInventoryItemsByIds(String userName, String roomName, Collection<Integer> itemIds) {
         if (itemIds == null || itemIds.isEmpty()) {
             return Collections.emptyList();
