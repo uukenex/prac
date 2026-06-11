@@ -6317,23 +6317,24 @@ public class BossAttackController {
 		} catch (Exception ignore) {}
 		double gachaPrice = ownedBossCount >= 20 ? 6.0 : ownedBossCount >= 10 ? 5.0 : 4.0;
 
-		// 강화뽑기 사전 체크: 모든 아이템 보유 시 강화뽑기 → 가격 2배
+		// 강화뽑기 사전 체크: 모든 아이템 보유 시 강화뽑기 → 가격 2배 (강화뽑기 차단으로 현재 미사용)
+		// boolean isEnhanceGacha = false;
+		// try {
+		// 	List<Integer> allBossIds = botNewService.selectBossItemIds();
+		// 	List<Integer> ownedIds = botNewService.selectInventoryItemsByIds(userName, "", allBossIds);
+		// 	if (ownedIds != null && allBossIds != null && new java.util.HashSet<>(ownedIds).containsAll(allBossIds)) {
+		// 		isEnhanceGacha = true;
+		// 		gachaPrice *= 2;
+		// 	}
+		// } catch (Exception ignore) {}
 		boolean isEnhanceGacha = false;
-		try {
-			List<Integer> allBossIds = botNewService.selectBossItemIds();
-			List<Integer> ownedIds = botNewService.selectInventoryItemsByIds(userName, "", allBossIds);
-			if (ownedIds != null && allBossIds != null && new java.util.HashSet<>(ownedIds).containsAll(allBossIds)) {
-				isEnhanceGacha = true;
-				gachaPrice *= 2;
-			}
-		} catch (Exception ignore) {}
 
 		if (gp < gachaPrice) {
 			return userName + "님," + NL
-				+ (isEnhanceGacha ? "[강화뽑기] " : "") + "보스뽑기에는 " + (int)gachaPrice + " GP가 필요합니다." + NL
+				+ "보스뽑기에는 " + (int)gachaPrice + " GP가 필요합니다." + NL
 				+ "현재 GP: " + String.format("%.2f", gp) + " GP" + NL
 				+ "(보유 유물 수: " + ownedBossCount + "개 → " + (int)gachaPrice + " GP)" + NL
-				+ (isEnhanceGacha ? "(강화뽑기: 기본가격 × 2)" : "(7000번대 보스 아이템 판매 시 1개당 1 GP 획득)");
+				+ "(7000번대 보스 아이템 판매 시 1개당 1 GP 획득)";
 		}
 
 		// 7000번대 아이템 목록 조회
@@ -6370,12 +6371,19 @@ public class BossAttackController {
 			}
 		} catch (Exception ignore) {}
 
-		boolean isEnhance = newItems.isEmpty(); // 신규 없으면 강화 시도
-		if (isEnhance && enhanceable.isEmpty())
-			return userName + "님," + NL + "모든 보스 아이템 최대 강화 달성! 더 이상 뽑기 불가합니다." + NL
+		// 강화뽑기 차단 (추후 강화형태로 전환 시 아래 주석 해제)
+		// boolean isEnhance = newItems.isEmpty(); // 신규 없으면 강화 시도
+		// if (isEnhance && enhanceable.isEmpty())
+		// 	return userName + "님," + NL + "모든 보스 아이템 최대 강화 달성! 더 이상 뽑기 불가합니다." + NL
+		// 		+ "잔여 GP: " + String.format("%.2f", gp) + " GP";
+		// if (!isEnhance) bossItems = newItems;  // 신규 풀로 교체
+		// else           bossItems = enhanceable; // 강화 풀로 교체
+
+		boolean isEnhance = false;
+		if (newItems.isEmpty())
+			return userName + "님," + NL + "모든 보스 아이템을 보유 중입니다. 뽑기 불가합니다." + NL
 				+ "잔여 GP: " + String.format("%.2f", gp) + " GP";
-		if (!isEnhance) bossItems = newItems;  // 신규 풀로 교체
-		else           bossItems = enhanceable; // 강화 풀로 교체
+		bossItems = newItems; // 신규 풀로 교체
 
 		// GP 차감 (가격: gachaPrice)
 		try {
@@ -6443,7 +6451,7 @@ public class BossAttackController {
 
 		String actionWord = isEnhance ? "강화!" : "획득!";
 		return userName + "님," + NL
-				+ (isEnhance ? "[강화]" : "") + "보스뽑기! (-" + (int)gachaPrice + " GP) [보유유물 " + ownedBossCount + "개]" + NL
+				+ "보스뽑기! (-" + (int)gachaPrice + " GP) [보유유물 " + ownedBossCount + "개]" + NL
 				+ "▶ " + actionWord + " " + itemLine + NL
 				+ "- 잔여 GP: " + String.format("%.2f", gp - gachaPrice) + " GP";
 	}
