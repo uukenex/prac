@@ -549,8 +549,12 @@ public class BossAttackS3Controller {
                 }
 
                 if (isSuperCritical) {
-                    // [7020] 초강력치명타: 슈퍼크리티컬 5배 → 6배 (× 6/5)
-                    double superMul = ownedBoss.contains(7020) ? 6.0 / 5.0 : 1.0;
+                    // [7020] 초강력치명타: 슈퍼크리티컬 5배 → 6배, 1강화 6.5배
+                    double superMul = 1.0;
+                    if (ownedBoss.contains(7020)) {
+                        int qty7020 = bossItemQtyMap.getOrDefault(7020, 1);
+                        superMul = (qty7020 >= 2) ? 6.5 / 5.0 : 6.0 / 5.0;
+                    }
                     damage = (long)(baseAtk * 3 * critMultiplier * superMul);
                     dmgMsg = "[✨초강력 치명타!!] " + atkRangeStr + baseAtk + " → " + damage;
                 } else if (isCritical) {
@@ -606,8 +610,12 @@ public class BossAttackS3Controller {
             }
             double critMul2 = Math.max(1.0, ctx.critDmg / 100.0);
             if (isSuperCritical2) {
-                // [7020] 초강력치명타: 슈퍼크리티컬 5배 → 6배 (× 6/5)
-                double superMul2 = ownedBoss.contains(7020) ? 6.0 / 5.0 : 1.0;
+                // [7020] 초강력치명타: 슈퍼크리티컬 5배 → 6배, 1강화 6.5배
+                double superMul2 = 1.0;
+                if (ownedBoss.contains(7020)) {
+                    int qty7020 = bossItemQtyMap.getOrDefault(7020, 1);
+                    superMul2 = (qty7020 >= 2) ? 6.5 / 5.0 : 6.0 / 5.0;
+                }
                 damage2 = (long)(baseAtk2 * 3 * critMul2 * superMul2);
                 dmgMsg2 = "[✨초강력 치명타!!] " + atkRangeStr2 + baseAtk2 + " → " + damage2;
             } else if (isCritical2) {
