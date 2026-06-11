@@ -258,6 +258,7 @@ public class BossAttackS3Controller {
         int debuff, debuff1;
         String bossStartDate;
         String hideRule;
+        String bossRewardType;
         try {
             boss = botS3Service.selectHellBoss();
             if (boss == null || boss.get("CUR_HP") == null) {
@@ -286,8 +287,9 @@ public class BossAttackS3Controller {
             critDefRate   = boss.get("CRIT_DEF_RATE")!= null ? Integer.parseInt(boss.get("CRIT_DEF_RATE").toString()): 0;
             debuff        = boss.get("DEBUFF")       != null ? Integer.parseInt(boss.get("DEBUFF").toString())       : 0;
             debuff1       = boss.get("DEBUFF1")      != null ? Integer.parseInt(boss.get("DEBUFF1").toString())      : 0;
-            bossStartDate = boss.get("START_DATE")   != null ? boss.get("START_DATE").toString() : "";
-            hideRule      = boss.get("HIDE_RULE")    != null ? boss.get("HIDE_RULE").toString()    : "0";
+            bossStartDate  = boss.get("START_DATE")   != null ? boss.get("START_DATE").toString()  : "";
+            hideRule       = boss.get("HIDE_RULE")    != null ? boss.get("HIDE_RULE").toString()    : "0";
+            bossRewardType = boss.get("REWARD_TYPE") != null ? boss.get("REWARD_TYPE").toString() : "";
         } catch (Exception e) {
             return "보스 정보를 가져오는데 실패했습니다.";
         }
@@ -813,7 +815,7 @@ public class BossAttackS3Controller {
         // 처치 보상 + 보스 재생성
         String killMsg = "";
         if (isKill) {
-            killMsg = calcHellBossReward(roomName, bossStartDate, maxHp);
+            killMsg = calcHellBossReward(roomName, bossStartDate, maxHp, bossRewardType);
             botS3Service.saveLastKillMsg(killMsg); // 대기화면 표시용 캐시
             respawnHellBoss(bossStartDate);
         }
@@ -942,6 +944,10 @@ public class BossAttackS3Controller {
             // 참여 인원수 기반 쿨타임 후 등장
             bossMap.put("startDate",   LocalDateTime.now().plusMinutes(cooldownMin).format(SPAWN_DATE_FMT));
             bossMap.put("hideRule",    HIDE_RULES[rand.nextInt(HIDE_RULES.length)]);
+            // 보상 타입 사전 결정 (GP:40%, BOX:40%, ITEM:20%)
+            double rwDice = rand.nextDouble();
+            String preRewardType = rwDice >= 0.80 ? "ITEM" : rwDice >= 0.40 ? "BOX" : "GP";
+            bossMap.put("rewardType", preRewardType);
             SP hpSp = SP.fromSp(rawHp);
             bossMap.put("maxHp",    (long) hpSp.getValue());
             bossMap.put("maxHpExt", hpSp.getUnit().isEmpty() ? null : hpSp.getUnit());
@@ -1052,7 +1058,7 @@ public class BossAttackS3Controller {
     //   40% → 93번 상자 (지옥의유물상자)
     //   20% → 아이템 (7000번대 미소지자만)
     // =========================================================
-    private String calcHellBossReward(String roomName, String bossStartDate, long maxHp) {
+    private String calcHellBossReward(String roomName, String bossStartDate, long maxHp, String preRewardType) {
         Random rand = new Random();
 
         // ── 전체 참여자 조회 (데미지% 계산용) ──
@@ -1085,10 +1091,11 @@ public class BossAttackS3Controller {
         StringBuilder msg = new StringBuilder();
 
         // 보상 타입 결정 (20% 아이템 / 40% 상자 / 40% GP)
-        double diceRoll = rand.nextDouble();
-        boolean isItemReward = diceRoll >= 0.67;           // 20%
-        boolean isBoxReward  = diceRoll >= 0.33 && !isItemReward; // 40%
-        // else GP: diceRoll < 0.40 (40%)
+        // 보상 타입: 보스 생성 시 사전 결정된 값 사용 (없으면 즉석 랜덤)
+        String resolvedType  = (preRewardType != null && !preRewardType.isEmpty()) ? preRewardType
+                             : (rand.nextDouble() >= 0.80 ? "ITEM" : rand.nextDouble() >= 0.40 ? "BOX" : "GP");
+        boolean isItemReward = "ITEM".equals(resolvedType);
+        boolean isBoxReward  = "BOX".equals(resolvedType);
         String rewardTypeName = isItemReward ? "아이템" : isBoxReward ? "지옥의유물상자" : "GP";
         msg.append("이번 클리어 보상은 ").append(rewardTypeName).append(" 입니다!").append(NL);
 
@@ -1209,7 +1216,9 @@ public class BossAttackS3Controller {
                         String[] info  = itemInfoMap.getOrDefault(giveItemId, new String[]{"아이템#" + giveItemId, ""});
                         String iName   = info[0];
                         String iDesc   = info[1];
-                        String displayName = (iDesc == null || iDesc.isEmpty()) ? iName : iName + "  (" + iDesc + ")";
+                        String enhanceDesc = (iid >= 7001 && iid <= 7019) ? getBossItemEnhanceDesc(iid) : "";
+                    String descToShow  = !enhanceDesc.isEmpty() ? enhanceDesc : (iDesc != null && !iDesc.isEmpty() ? iDesc : "");
+                    String displayName  = descToShow.isEmpty() ? iName : iName + "  (" + descToShow + ")";
                         // 강화 여부: 이미 보유 시 qty 확인 → qty < MAX_ENHANCE이면 강화(enchant), 아니면 GP
                         boolean alreadyOwned = false;
                         int existQty = 0;
