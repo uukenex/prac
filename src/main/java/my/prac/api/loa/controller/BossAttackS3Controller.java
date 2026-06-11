@@ -67,6 +67,11 @@ public class BossAttackS3Controller {
 
     /** 헬보스 보상 아이템 타입 */
     private static final String HELL_ITEM_TYPE = "BOSS_HELL";
+
+    // ── 대악마 감금스킬 ──
+    private static final Map<String, Long> IMPRISONED_UNTIL   = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final int IMPRISON_DURATION_MS = 10 * 60 * 1000; // 10분
+    private static final int IMPRISON_CHANCE_PCT  = 10;             // 10%
     /** 보스아이템 최대 강화 단계 (기본1 + 강화1 = QTY 2) */
     public static final int MAX_BOSS_ENHANCE = 2;
 
@@ -245,6 +250,17 @@ public class BossAttackS3Controller {
         final String roomName = Objects.toString(map.get("roomName"), "");
         final String userName = Objects.toString(map.get("userName"), "");
         final User   user     = ctx.user;
+
+        // 대악마 감금 상태 체크
+        Long imprisonUntil = IMPRISONED_UNTIL.get(userName);
+        if (imprisonUntil != null) {
+            if (System.currentTimeMillis() < imprisonUntil) {
+                long remainSec = (imprisonUntil - System.currentTimeMillis()) / 1000;
+                long remMin = remainSec / 60, remSec = remainSec % 60;
+                return userName + "님, [감금스킬] 공격 불가 상태입니다. (" + remMin + "분 " + remSec + "초 남음)";
+            }
+            IMPRISONED_UNTIL.remove(userName);
+        }
 
         // 보스 정보 조회 (전역, ROOM_NAME 없음)
         HashMap<String, Object> boss;
@@ -740,6 +756,12 @@ public class BossAttackS3Controller {
             } catch (Exception ignored) {}
         }
 
+        // 대악마 감금스킬 발동 (10% 확률, 대악마 전용)
+        if ("대악마".equals(bossDemonType) && rand.nextInt(100) < IMPRISON_CHANCE_PCT) {
+            IMPRISONED_UNTIL.put(userName, System.currentTimeMillis() + IMPRISON_DURATION_MS);
+            // 감금 메시지는 아래 최종 msg 조립 후 추가
+        }
+
         // DB 저장 (HP 업데이트 + 배틀 로그)
         // hp    : 낙관적 잠금 WHERE 절용 → DB 원본값 그대로 (double)
         // newHp : SP 변환 결과 소수값 (예: 2.99832)
@@ -874,6 +896,12 @@ public class BossAttackS3Controller {
         String specialTimeMsg = bossAttackController.getActiveSpecialTimeMsg();
         if (!specialTimeMsg.isEmpty()) {
             msg.append(specialTimeMsg).append(NL);
+        }
+
+        // 대악마 감금스킬 발동 메시지
+        if (IMPRISONED_UNTIL.containsKey(userName) &&
+                System.currentTimeMillis() < IMPRISONED_UNTIL.get(userName)) {
+            msg.append(NL).append("[감금스킬] ").append(userName).append("님이 10분간 공격 불가 상태가 됩니다!");
         }
 
         return msg.toString().trim();
