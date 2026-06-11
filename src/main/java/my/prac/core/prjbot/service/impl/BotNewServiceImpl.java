@@ -766,7 +766,6 @@ public class BotNewServiceImpl implements BotNewService {
     }
     
     @Override
-    @Override
     public List<java.util.HashMap<String, Object>> selectBossHellItemTotalQty(String userName) {
         return botNewDAO.selectBossHellItemTotalQty(userName);
     }
