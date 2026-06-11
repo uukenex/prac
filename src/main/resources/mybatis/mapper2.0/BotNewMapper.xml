@@ -2580,7 +2580,7 @@
 		      FROM TBOT_POINT_NEW_BATTLE_LOG
 		     WHERE TARGET_MON_LV = 999
 		       AND NIGHTMARE_YN  = '2'
-		       AND INSERT_DATE   >= #{bossStartDate}
+		       AND INSERT_DATE   >= TO_DATE(#{bossStartDate}, 'yyyymmdd hh24miss')
 		       AND INSERT_DATE   &lt;  SYSDATE
 		) S ON (T.USER_NAME = S.USER_NAME AND T.MON_NO = 999)
 		WHEN MATCHED THEN UPDATE SET
