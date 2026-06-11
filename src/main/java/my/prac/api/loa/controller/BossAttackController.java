@@ -6713,10 +6713,11 @@ public class BossAttackController {
 					continue;
 			}
 
-			// [보스 아이템] 7000번대: BOSS_HELL 타입만 GP 판매 가능, BOSS_GACHA는 판매 불가
+			// [보스 아이템] 7000번대: BOSS_HELL 타입만 GP 판매 가능, BOSS_GACHA/강화(qty>1)는 판매 불가
 			if (itemId >= 7000 && itemId < 8000) {
 				String gainType = Objects.toString(r.get("GAIN_TYPE"), "");
 				if ("BOSS_GACHA".equalsIgnoreCase(gainType)) continue;
+				if (qty > 1) continue; // 강화된 아이템 판매 불가
 				int take2 = sellAll ? qty : Math.min(qty, need);
 				if (take2 == qty) ridList.add(rid);
 				else botNewService.updateInventoryQtyByRowId(rid, qty - take2);
