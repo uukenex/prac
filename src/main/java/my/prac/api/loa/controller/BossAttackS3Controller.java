@@ -122,34 +122,34 @@ public class BossAttackS3Controller {
 
     // =========================================================
     // 보스 아이템 효과 라벨 (상점/설명 표시용)
-    // {라벨, 단위, 특수메모(null 가능)}
+    // {라벨, 단위, 특수메모(null 가능)}  ← boss-item-reference.md 참조
     // =========================================================
     private static final java.util.Map<Integer, String[]> BOSS_ITEM_EFFECT;
     static {
         java.util.Map<Integer, String[]> e = new java.util.HashMap<>();
-        e.put(7001, new String[]{"천볌 발동률",         "%",  null});
-        e.put(7002, new String[]{"도적 2타 확률",        "%",  null});
-        e.put(7003, new String[]{"궁사 연사 추가",       "발", null});
-        e.put(7004, new String[]{"크리티콜 데미지",      "%",  null});
-        e.put(7005, new String[]{"받은 피해 반사",       "‰",  null});
-        e.put(7006, new String[]{"바람가르기 확률",      "%",  null});
-        e.put(7007, new String[]{"헬너프 감소",          "‰",  null});
-        e.put(7008, new String[]{"일반몬스터 드랍 추가", "개", null});
-        e.put(7009, new String[]{"레벨당 공격력",        "",   "0강화 max300 / +1강화 max500"});
-        e.put(7010, new String[]{"불꽃 폭발 확률",       "%",  null});
-        e.put(7011, new String[]{"폭풍 감전 확률",       "%",  null});
-        e.put(7012, new String[]{"직업 버프 계수",       "배", null});
-        e.put(7013, new String[]{"어제공격자 × 공격력",  "",   "최대 30명"});
-        e.put(7014, new String[]{"크리티콜 확률",        "%",  null});
-        e.put(7015, new String[]{"슈퍼크리티콜 확률",  "%",  null});
-        e.put(7016, new String[]{"드레인 HP흡수",         "%",  null});
-        e.put(7017, new String[]{"상점 할인율",          "%",  null});
-        e.put(7018, new String[]{"출석 상자 추가",       "개", null});
-        e.put(7019, new String[]{"저주 스택 추가",       "개", null});
+        e.put(7001, new String[]{"천벌 발동 횟수",        "회",  "디버프 활성시 발동 불가"});
+        e.put(7002, new String[]{"도적 2타 확률",          "%",   null});
+        e.put(7003, new String[]{"궁사 연사 추가",         "발",  "최대 7연사"});
+        e.put(7004, new String[]{"아이템 쿨타임 감소",     "%",   null});
+        e.put(7005, new String[]{"받은 피해 반사",         "ppm", "10=1.0%"});
+        e.put(7006, new String[]{"바람가르기 확률",        "%",   "검성 전용"});
+        e.put(7007, new String[]{"헬너프 감소",            "ppm", "30=3.0%p"});
+        e.put(7008, new String[]{"일반몬스터 드랍 추가",   "개",  null});
+        e.put(7009, new String[]{"레벨당 공격력 추가",     "",    "0강화 max300 / 1강화 max500"});
+        e.put(7010, new String[]{"보스 회피 무시 확률",    "%",   "헬보스 전용"});
+        e.put(7011, new String[]{"보스 은신 무시 확률",    "%",   "헬보스 전용"});
+        e.put(7012, new String[]{"직업 버프 계수",         "배",  "도사/음양사 전용"});
+        e.put(7013, new String[]{"어제공격자수 x 공격력",  "",    "최대 30명"});
+        e.put(7014, new String[]{"보스공격 크리티컬 확률", "%",   null});
+        e.put(7015, new String[]{"슈퍼크리티컬 확률",      "%",   "헬보스 전용"});
+        e.put(7016, new String[]{"HP 흡수율",              "%",   "미보유시 기본 10%"});
+        e.put(7017, new String[]{"상점 할인율",            "%",   null});
+        e.put(7018, new String[]{"출석 상자 추가",         "개",  null});
+        e.put(7019, new String[]{"저주 스택 추가",         "개",  null});
         BOSS_ITEM_EFFECT = java.util.Collections.unmodifiableMap(e);
     }
 
-    /** 보스 아이템 강화 옵션 한 줄 설명 반환 (상점 표시용) */
+        /** 보스 아이템 강화 옵션 한 줄 설명 반환 (상점 표시용) */
     public static String getBossItemEnhanceDesc(int itemId) {
         int[] vals = BOSS_ENHANCE_TABLE.get(itemId);
         String[] eff = BOSS_ITEM_EFFECT.get(itemId);
