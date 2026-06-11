@@ -906,9 +906,7 @@ public class BossAttackS3Controller {
                 if (participants != null && !participants.isEmpty()) participantCount = participants.size();
             } catch (Exception ignored) {}
 
-            // 6명 이하 → 1440분(24h), 13명 → 720분(12h), 최대 단축 480분(8h)
-            long cooldownMin = (long) Math.max(480, Math.min(1440,
-                    Math.round(1440.0 - Math.max(0, participantCount - 6) * 960.0 / 7.0)));
+            long cooldownMin = 1440; // 24시간 고정
 
             // 최근 공격 평균 데미지 기반으로 HP 산정 (2~3배 강화)
             long rawHp;
