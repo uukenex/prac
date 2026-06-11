@@ -1165,18 +1165,7 @@ public class BossAttackS3Controller {
             for (HashMap<String, Object> row : eligibleFromDB)
                 noItemNames.add(row.get("USER_NAME").toString());
 
-            // 아이템 2개 이상 보유자 전체 조회 (현재 보스 공격 여부 무관)
-            Set<String> twoItemOwners = new HashSet<>();
-            try {
-                List<String> owners = botS3Service.selectHellItemOwners();
-                if (owners != null) twoItemOwners.addAll(owners);
-            } catch (Exception ignore) {}
-
-            // 전체 활성 유저 중 아이템 2개 미만인 대상
-            List<String> itemCandidates = new ArrayList<>();
-            for (String uName : allNames) {
-                if (!twoItemOwners.contains(uName)) itemCandidates.add(uName);
-            }
+            List<String> itemCandidates = new ArrayList<>(allNames);
 
             if (itemCandidates.isEmpty()) {
                 msg.append("★ 보상 대상 없음").append(NL);
@@ -1256,16 +1245,6 @@ public class BossAttackS3Controller {
                     msg.append(NL);
                 }
                 msg.append(NL);
-                // 룰렛 제외자: 보스드랍템 2개 이상 보유자 (활성 유저 풀 기준)
-                List<String> excludedUsers = new ArrayList<>();
-                for (String uName : allNames) {
-                    if (twoItemOwners.contains(uName)) excludedUsers.add(uName);
-                }
-                if (!excludedUsers.isEmpty()) {
-                    msg.append(NL).append("(룰렛 제외 - 보스드랍템 2개 이상 보유자)").append(NL);
-                    for (String u : excludedUsers) msg.append(u).append(NL);
-                }
-
                 // 더보기(？) 영역용 상세 설명
                 for (int w = 0; w < itemWinners.size(); w++) {
                     String winner = itemWinners.get(w);
