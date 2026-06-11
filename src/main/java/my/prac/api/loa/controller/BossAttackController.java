@@ -6428,7 +6428,9 @@ public class BossAttackController {
 			HashMap<String, Object> detail = botNewService.selectItemDetailById(giveItemId);
 			if (detail != null) {
 				String iName = Objects.toString(detail.get("ITEM_NAME"), "#" + giveItemId);
-				String iDesc = Objects.toString(detail.get("ITEM_DESC"), "");
+				String rawDesc   = Objects.toString(detail.get("ITEM_DESC"), "");
+				String enhDesc   = (giveItemId >= 7001 && giveItemId <= 7019) ? BossAttackS3Controller.getBossItemEnhanceDesc(giveItemId) : "";
+				String iDesc     = !enhDesc.isEmpty() ? enhDesc : rawDesc;
 				StringBuilder opts = new StringBuilder();
 				int atkMin = detail.get("ATK_MIN") != null ? ((Number) detail.get("ATK_MIN")).intValue() : 0;
 				int atkMax = detail.get("ATK_MAX") != null ? ((Number) detail.get("ATK_MAX")).intValue() : 0;
