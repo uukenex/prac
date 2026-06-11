@@ -1098,22 +1098,10 @@ public class BossAttackS3Controller {
                 allNames.add(row.get("USER_NAME").toString());
         }
 
-        // 대악마: 1%이상 기여자 2명 / 상급악마: allNames 기반 참여자 수 비례
-        List<String> qualifiedPool = new ArrayList<>();
-        int winnerCount;
-        if (isGreatDemon) {
-            for (HashMap<String, Object> row : allContributors) {
-                long dmg = ((Number) row.get("SCORE")).longValue();
-                if (totScore > 0 && dmg * 100 >= totScore) qualifiedPool.add(row.get("USER_NAME").toString());
-            }
-            if (qualifiedPool.isEmpty())
-                for (HashMap<String, Object> row : allContributors) qualifiedPool.add(row.get("USER_NAME").toString());
-            winnerCount = 2;
-        } else {
-            qualifiedPool.addAll(allNames);
-            int participantCount = allNames.size();
-            winnerCount = participantCount >= 20 ? 6 : participantCount >= 15 ? 5 : participantCount >= 10 ? 4 : 3;
-        }
+        // 당첨자 풀 및 인원 결정 (대악마/상급악마 동일 기준)
+        List<String> qualifiedPool = new ArrayList<>(allNames);
+        int participantCount = allNames.size();
+        int winnerCount = participantCount >= 20 ? 6 : participantCount >= 15 ? 5 : participantCount >= 10 ? 4 : 3;
 
         StringBuilder msg = new StringBuilder();
 
@@ -1123,51 +1111,36 @@ public class BossAttackS3Controller {
                              : (rand.nextDouble() >= 0.80 ? "ITEM" : rand.nextDouble() >= 0.40 ? "BOX" : "GP");
         boolean isItemReward = "ITEM".equals(resolvedType);
         boolean isBoxReward  = "BOX".equals(resolvedType);
-        String rewardTypeName = isItemReward ? "아이템" : isBoxReward ? (isGreatDemon ? "플래티넘박스" : "지옥의유물상자") : "GP";
+        String rewardTypeName = isItemReward ? "아이템" : isBoxReward ? "지옥의유물상자" : "GP";
         msg.append(isGreatDemon ? "[대악마] " : "").append("이번 클리어 보상은 ").append(rewardTypeName).append(" 입니다!").append(NL);
 
         // 아이템 보상 더보기(？) 상세 블록
         StringBuilder itemDetailBlock = new StringBuilder();
 
         if (isBoxReward) {
+            // 상급악마: 5~10개 / 대악마: 10~20개 (2배)
             List<String> boxWinners = pickWinners(qualifiedPool, winnerCount, rand);
+            Map<String, Integer> boxQtyMap = new LinkedHashMap<>();
+            for (String winner : boxWinners) {
+                int baseQty = 5 + rand.nextInt(6); // 5~10
+                boxQtyMap.put(winner, isGreatDemon ? baseQty * 2 : baseQty);
+            }
             msg.append(NL);
-            if (isGreatDemon) {
-                // ── 대악마: 플래티넘박스 5개씩 ──
-                for (int w = 0; w < boxWinners.size(); w++)
-                    msg.append("✨").append(w + 1).append("번 보상: [").append(boxWinners.get(w)).append("] 플래티넘박스 5개").append(NL);
-                msg.append(NL);
-                for (String winner : boxWinners) {
-                    try {
-                        HashMap<String, Object> inv = new HashMap<>();
-                        inv.put("userName", winner);
-                        inv.put("roomName", roomName);
-                        inv.put("itemId",   93);
-                        inv.put("qty",      5);
-                        inv.put("gainType", "HELL_BOX_PLAT");
-                        botNewService.insertInventoryLogTx(inv);
-                    } catch (Exception e) { /* 지급 실패 무시 */ }
-                }
-            } else {
-                // ── 상급악마: 지옥의유물상자 5~10개 ──
-                Map<String, Integer> boxQtyMap = new LinkedHashMap<>();
-                for (String winner : boxWinners) boxQtyMap.put(winner, 5 + rand.nextInt(6));
-                for (int w = 0; w < boxWinners.size(); w++) {
-                    String winner = boxWinners.get(w);
-                    msg.append("✨").append(w + 1).append("번 보상: [").append(winner).append("] 지옥의유물상자 ").append(boxQtyMap.get(winner)).append("개").append(NL);
-                }
-                msg.append(NL);
-                for (String winner : boxWinners) {
-                    try {
-                        HashMap<String, Object> inv = new HashMap<>();
-                        inv.put("userName", winner);
-                        inv.put("roomName", roomName);
-                        inv.put("itemId",   93);
-                        inv.put("qty",      boxQtyMap.get(winner));
-                        inv.put("gainType", "BOSS_HELL");
-                        botNewService.insertInventoryLogTx(inv);
-                    } catch (Exception e) { /* 지급 실패 무시 */ }
-                }
+            for (int w = 0; w < boxWinners.size(); w++) {
+                String winner = boxWinners.get(w);
+                msg.append("✨").append(w + 1).append("번 보상: [").append(winner).append("] 지옥의유물상자 ").append(boxQtyMap.get(winner)).append("개").append(NL);
+            }
+            msg.append(NL);
+            for (String winner : boxWinners) {
+                try {
+                    HashMap<String, Object> inv = new HashMap<>();
+                    inv.put("userName", winner);
+                    inv.put("roomName", roomName);
+                    inv.put("itemId",   93);
+                    inv.put("qty",      boxQtyMap.get(winner));
+                    inv.put("gainType", "BOSS_HELL");
+                    botNewService.insertInventoryLogTx(inv);
+                } catch (Exception e) { /* 지급 실패 무시 */ }
             }
 
         } else if (isItemReward) {
@@ -1193,9 +1166,9 @@ public class BossAttackS3Controller {
                 }
                 if (allItems.isEmpty()) allItems = new ArrayList<>(getHellRewardItems());
 
-                int itemsPerWinner = isGreatDemon ? 4 : 1;
+                int itemsPerWinner = isGreatDemon ? 2 : 1;
 
-                // ── 당첨자별 아이템 결정 (대악마:4개, 상급악마:1개) ──
+                // ── 당첨자별 아이템 결정 (대악마:2개, 상급악마:1개) ──
                 Map<String, List<Integer>> winnerItemIds    = new LinkedHashMap<>();
                 Map<String, List<Integer>> winnerEnhItemIds = new LinkedHashMap<>();
                 Map<String, List<String>>  winnerItemNames  = new LinkedHashMap<>();
@@ -1275,45 +1248,57 @@ public class BossAttackS3Controller {
                 }
                 itemDetailBlock.append(NL);
 
-                // ── DB 지급 처리 ──
+                // ── DB 지급 처리 (같은 itemId는 qty 합산 후 단일 INSERT) ──
                 for (String winner : itemWinners) {
                     List<Integer> codes  = winnerItemIds.get(winner);
                     List<Integer> enhIds = winnerEnhItemIds.get(winner);
+
+                    Map<Integer, Integer> newItemQty = new LinkedHashMap<>(); // itemId → qty
+                    Map<Integer, Integer> enhItemQty = new LinkedHashMap<>(); // enhItemId → qty
+                    int dupGpCount = 0;
+
                     for (int i = 0; i < codes.size(); i++) {
                         int itemId = codes.get(i);
                         if (itemId == -3) {
-                            int enhItemId = enhIds.get(i);
-                            if (enhItemId > 0) {
-                                try {
-                                    HashMap<String, Object> inv = new HashMap<>();
-                                    inv.put("userName", winner);
-                                    inv.put("roomName", roomName);
-                                    inv.put("itemId",   enhItemId);
-                                    inv.put("qty",      1);
-                                    inv.put("gainType", "BOSS_HELL");
-                                    botNewService.insertInventoryLogTx(inv);
-                                } catch (Exception e) { /* 강화 지급 실패 무시 */ }
-                            }
+                            int eid = enhIds.get(i);
+                            if (eid > 0) enhItemQty.merge(eid, 1, Integer::sum);
                         } else if (itemId < 0) {
-                            try {
-                                HashMap<String, Object> gp = new HashMap<>();
-                                gp.put("userName", winner);
-                                gp.put("roomName", roomName);
-                                gp.put("score",    1.0);
-                                gp.put("cmd",      "BOSS_HELL_DUP_ITEM_GP");
-                                botNewService.insertGpRecord(gp);
-                            } catch (Exception e) { /* 지급 실패 무시 */ }
+                            dupGpCount++;
                         } else {
-                            try {
-                                HashMap<String, Object> inv = new HashMap<>();
-                                inv.put("userName", winner);
-                                inv.put("roomName", roomName);
-                                inv.put("itemId",   itemId);
-                                inv.put("qty",      1);
-                                inv.put("gainType", "BOSS_HELL");
-                                botNewService.insertInventoryLogTx(inv);
-                            } catch (Exception e) { /* 지급 실패 무시 */ }
+                            newItemQty.merge(itemId, 1, Integer::sum);
                         }
+                    }
+                    for (Map.Entry<Integer, Integer> e : newItemQty.entrySet()) {
+                        try {
+                            HashMap<String, Object> inv = new HashMap<>();
+                            inv.put("userName", winner);
+                            inv.put("roomName", roomName);
+                            inv.put("itemId",   e.getKey());
+                            inv.put("qty",      e.getValue());
+                            inv.put("gainType", "BOSS_HELL");
+                            botNewService.insertInventoryLogTx(inv);
+                        } catch (Exception ex) { /* 지급 실패 무시 */ }
+                    }
+                    for (Map.Entry<Integer, Integer> e : enhItemQty.entrySet()) {
+                        try {
+                            HashMap<String, Object> inv = new HashMap<>();
+                            inv.put("userName", winner);
+                            inv.put("roomName", roomName);
+                            inv.put("itemId",   e.getKey());
+                            inv.put("qty",      e.getValue());
+                            inv.put("gainType", "BOSS_HELL");
+                            botNewService.insertInventoryLogTx(inv);
+                        } catch (Exception ex) { /* 강화 지급 실패 무시 */ }
+                    }
+                    if (dupGpCount > 0) {
+                        try {
+                            HashMap<String, Object> gp = new HashMap<>();
+                            gp.put("userName", winner);
+                            gp.put("roomName", roomName);
+                            gp.put("score",    1.0 * dupGpCount);
+                            gp.put("cmd",      "BOSS_HELL_DUP_ITEM_GP");
+                            botNewService.insertGpRecord(gp);
+                        } catch (Exception ex) { /* 지급 실패 무시 */ }
                     }
                 }
             }
@@ -1325,39 +1310,26 @@ public class BossAttackS3Controller {
             } else {
                 List<String> gpWinners = pickWinners(qualifiedPool, winnerCount, rand);
                 msg.append(NL);
-                if (isGreatDemon) {
-                    // ── 대악마: 4GP 고정 ──
-                    for (int w = 0; w < gpWinners.size(); w++)
-                        msg.append("✨").append(w + 1).append("번 보상: [").append(gpWinners.get(w)).append("] 4GP").append(NL);
-                    msg.append(NL);
-                    for (String winner : gpWinners) {
-                        try {
-                            HashMap<String, Object> gpMap = new HashMap<>();
-                            gpMap.put("userName", winner);
-                            gpMap.put("roomName", roomName);
-                            gpMap.put("score",    4.0);
-                            gpMap.put("cmd",      "BOSS_HELL_KILL_GP");
-                            botNewService.insertGpRecord(gpMap);
-                        } catch (Exception ignore) {}
-                    }
-                } else {
-                    // ── 상급악마: 0.5~1.0GP 랜덤 ──
-                    for (int w = 0; w < gpWinners.size(); w++) {
-                        double gp = 0.5 + rand.nextInt(6) * 0.1;
-                        msg.append("✨").append(w + 1).append("번 보상: [").append(gpWinners.get(w)).append("] ").append(String.format("%.1f", gp)).append("GP").append(NL);
-                    }
-                    msg.append(NL);
-                    for (String winner : gpWinners) {
-                        double gp = 0.5 + rand.nextInt(6) * 0.1;
-                        try {
-                            HashMap<String, Object> gpMap = new HashMap<>();
-                            gpMap.put("userName", winner);
-                            gpMap.put("roomName", roomName);
-                            gpMap.put("score",    gp);
-                            gpMap.put("cmd",      "BOSS_HELL_KILL_GP");
-                            botNewService.insertGpRecord(gpMap);
-                        } catch (Exception ignore) {}
-                    }
+                // 상급악마: 0.5~1.0GP / 대악마: 2배 (1.0~2.0GP)
+                Map<String, Double> gpAmtMap = new LinkedHashMap<>();
+                for (String winner : gpWinners) {
+                    double base = 0.5 + rand.nextInt(6) * 0.1;
+                    gpAmtMap.put(winner, isGreatDemon ? base * 2 : base);
+                }
+                for (int w = 0; w < gpWinners.size(); w++) {
+                    String winner = gpWinners.get(w);
+                    msg.append("✨").append(w + 1).append("번 보상: [").append(winner).append("] ").append(String.format("%.1f", gpAmtMap.get(winner))).append("GP").append(NL);
+                }
+                msg.append(NL);
+                for (String winner : gpWinners) {
+                    try {
+                        HashMap<String, Object> gpMap = new HashMap<>();
+                        gpMap.put("userName", winner);
+                        gpMap.put("roomName", roomName);
+                        gpMap.put("score",    gpAmtMap.get(winner));
+                        gpMap.put("cmd",      "BOSS_HELL_KILL_GP");
+                        botNewService.insertGpRecord(gpMap);
+                    } catch (Exception ignore) {}
                 }
             }
         }
