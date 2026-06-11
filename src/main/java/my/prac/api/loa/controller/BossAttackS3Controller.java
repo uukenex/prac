@@ -1216,7 +1216,7 @@ public class BossAttackS3Controller {
                         String[] info  = itemInfoMap.getOrDefault(giveItemId, new String[]{"아이템#" + giveItemId, ""});
                         String iName   = info[0];
                         String iDesc   = info[1];
-                        String enhanceDesc = (iid >= 7001 && iid <= 7019) ? getBossItemEnhanceDesc(iid) : "";
+                        String enhanceDesc = (giveItemId >= 7001 && giveItemId <= 7019) ? getBossItemEnhanceDesc(giveItemId) : "";
                     String descToShow  = !enhanceDesc.isEmpty() ? enhanceDesc : (iDesc != null && !iDesc.isEmpty() ? iDesc : "");
                     String displayName  = descToShow.isEmpty() ? iName : iName + "  (" + descToShow + ")";
                         // 강화 여부: 이미 보유 시 qty 확인 → qty < MAX_ENHANCE이면 강화(enchant), 아니면 GP
