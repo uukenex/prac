@@ -147,7 +147,7 @@ body {
         <!-- HP 게이지 -->
         <div class="hp-section">
           <div class="hp-name-row">
-            <span class="boss-name">상급악마</span>
+            <span class="boss-name">{{ boss.BOSS_TYPE || '상급악마' }}</span>
             <span style="font-size:13px;color:#9090b8;">HP {{ hpLabel }}</span>
           </div>
           <div class="hp-bar-wrap">
@@ -242,19 +242,19 @@ body {
         <div class="next-boss-grid">
           <div class="next-stat-item">
             <div class="next-stat-label">최대 HP</div>
-            <div class="next-stat-value">{{ fmtHp(boss.MAX_HP, boss.MAX_HP_EXT) }}</div>
+            <div class="next-stat-value">??</div>
           </div>
           <div class="next-stat-item">
             <div class="next-stat-label">공격력</div>
-            <div class="next-stat-value">{{ fmt(boss.ATK_POWER) }}</div>
+            <div class="next-stat-value">??</div>
           </div>
           <div class="next-stat-item">
             <div class="next-stat-label">회피율</div>
-            <div class="next-stat-value">{{ fmt(boss.EVADE_RATE) }}%</div>
+            <div class="next-stat-value">??</div>
           </div>
           <div class="next-stat-item">
             <div class="next-stat-label">크리방어율</div>
-            <div class="next-stat-value">{{ fmt(boss.CRIT_DEF_RATE) }}%</div>
+            <div class="next-stat-value">??</div>
           </div>
         </div>
       </div>
