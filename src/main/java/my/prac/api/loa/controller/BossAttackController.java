@@ -4361,9 +4361,12 @@ public class BossAttackController {
 	            HashMap<String,Object> detail = botNewService.selectItemDetailById(id);
 	            if (detail != null) name = Objects.toString(detail.get("ITEM_NAME"), name);
 	        } catch (Exception ignore) {}
+	        String enhDesc = BossAttackS3Controller.getBossItemEnhanceDesc(id);
 	        sb.append("[").append(id).append("] ").append(name)
 	          .append(" - 10 GP")
-	          .append(owned ? " ✓보유" : "").append(NL);
+	          .append(owned ? " ✓보유" : "")
+	          .append(NL);
+	        if (!enhDesc.isEmpty()) sb.append("   └ ").append(enhDesc).append(NL);
 	    }
 
 	    sb.append("────────────────").append(NL)

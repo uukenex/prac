@@ -120,6 +120,48 @@ public class BossAttackS3Controller {
         BOSS_ENHANCE_TABLE = java.util.Collections.unmodifiableMap(m);
     }
 
+    // =========================================================
+    // 보스 아이템 효과 라벨 (상점/설명 표시용)
+    // {라벨, 단위, 특수메모(null 가능)}
+    // =========================================================
+    private static final java.util.Map<Integer, String[]> BOSS_ITEM_EFFECT;
+    static {
+        java.util.Map<Integer, String[]> e = new java.util.HashMap<>();
+        e.put(7001, new String[]{"천볌 발동률",         "%",  null});
+        e.put(7002, new String[]{"도적 2타 확률",        "%",  null});
+        e.put(7003, new String[]{"궁사 연사 추가",       "발", null});
+        e.put(7004, new String[]{"크리티콜 데미지",      "%",  null});
+        e.put(7005, new String[]{"받은 피해 반사",       "‰",  null});
+        e.put(7006, new String[]{"바람가르기 확률",      "%",  null});
+        e.put(7007, new String[]{"헬너프 감소",          "‰",  null});
+        e.put(7008, new String[]{"일반몬스터 드랍 추가", "개", null});
+        e.put(7009, new String[]{"레벨당 공격력",        "",   "0강화 max300 / +1강화 max500"});
+        e.put(7010, new String[]{"불꽃 폭발 확률",       "%",  null});
+        e.put(7011, new String[]{"폭풍 감전 확률",       "%",  null});
+        e.put(7012, new String[]{"직업 버프 계수",       "배", null});
+        e.put(7013, new String[]{"어제공격자 × 공격력",  "",   "최대 30명"});
+        e.put(7014, new String[]{"크리티콜 확률",        "%",  null});
+        e.put(7015, new String[]{"슈퍼크리티콜 확률",  "%",  null});
+        e.put(7016, new String[]{"드레인 HP흡수",         "%",  null});
+        e.put(7017, new String[]{"상점 할인율",          "%",  null});
+        e.put(7018, new String[]{"출석 상자 추가",       "개", null});
+        e.put(7019, new String[]{"저주 스택 추가",       "개", null});
+        BOSS_ITEM_EFFECT = java.util.Collections.unmodifiableMap(e);
+    }
+
+    /** 보스 아이템 강화 옵션 한 줄 설명 반환 (상점 표시용) */
+    public static String getBossItemEnhanceDesc(int itemId) {
+        int[] vals = BOSS_ENHANCE_TABLE.get(itemId);
+        String[] eff = BOSS_ITEM_EFFECT.get(itemId);
+        if (vals == null || eff == null) return "";
+        String label = eff[0], unit = eff[1], memo = eff[2];
+        StringBuilder sb = new StringBuilder();
+        sb.append(label).append(": ").append(vals[0]).append(unit).append("(0강화)");
+        if (vals.length >= 2) sb.append(" → ").append(vals[1]).append(unit).append("(+1강화)");
+        if (memo != null) sb.append(" [").append(memo).append("]");
+        return sb.toString();
+    }
+
     /** 아이템 강화 효과값 반환 (qty 기반) */
     static int getBossEnhanceVal(int itemId, int qty) {
         int[] table = BOSS_ENHANCE_TABLE.get(itemId);
