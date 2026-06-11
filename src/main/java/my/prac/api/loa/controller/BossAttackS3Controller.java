@@ -1288,8 +1288,7 @@ public class BossAttackS3Controller {
         	    msg.append("GP 지급 대상 없음").append(NL);
         	} else {
         	    msg.append("전체참여자 0.5GP").append(NL);
-        	    for (HashMap<String, Object> row : allContributors) {
-        	        String uName = row.get("USER_NAME").toString();
+        	    for (String uName : allNames) {
         	        try {
         	            HashMap<String, Object> gpMap = new HashMap<>();
         	            gpMap.put("userName", uName);
