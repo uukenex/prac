@@ -23,6 +23,7 @@
 		     , DEBUFF1
 		     , DEBUFF2
 		     , HIDE_RULE
+		     , REWARD_TYPE
 		     , to_char(INSERT_DATE, 'yyyymmdd hh24miss') AS START_DATE
 		  FROM (
 		    SELECT SEQ
@@ -41,6 +42,7 @@
 		         , DEBUFF1
 		         , DEBUFF2
 		         , HIDE_RULE
+		         , REWARD_TYPE
 		         , INSERT_DATE
 		      FROM TBOT_POINT_NEW_BOSS
 		     WHERE END_YN = '0'
@@ -113,7 +115,8 @@
 		    ,MAX_HP_EXT
 		    ,CUR_HP
 		    ,CUR_HP_EXT
-		    ,HIDE_RULE)
+		    ,HIDE_RULE
+		    ,REWARD_TYPE)
 		SELECT NVL(MAX(SEQ), 0) + 1
 		      ,TO_DATE(#{startDate, jdbcType=VARCHAR},'yyyy-mm-dd hh24:mi:ss')
 		      ,'0'
@@ -131,7 +134,8 @@
 		      ,#{maxHpExt,    jdbcType=VARCHAR}
 		      ,#{maxHp,       jdbcType=NUMERIC}
 		      ,#{maxHpExt,    jdbcType=VARCHAR}
-      ,#{hideRule,   jdbcType=VARCHAR}
+      ,#{hideRule,    jdbcType=VARCHAR}
+		      ,#{rewardType,  jdbcType=VARCHAR}
 		  FROM TBOT_POINT_NEW_BOSS
 	</insert>
 

@@ -1,0 +1,6 @@
+-- TBOT_POINT_NEW_BOSS 보상 타입 컬럼 추가
+-- 보스 생성 시점에 보상 종류를 사전 결정하여 저장 (GP / BOX / ITEM)
+ALTER TABLE TBOT_POINT_NEW_BOSS
+    ADD REWARD_TYPE VARCHAR2(10) DEFAULT NULL;
+
+COMMENT ON COLUMN TBOT_POINT_NEW_BOSS.REWARD_TYPE IS '보상 타입 사전 결정: GP=GP보상 / BOX=지옥의유물상자 / ITEM=7000번대 아이템';
