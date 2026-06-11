@@ -151,6 +151,8 @@ public class BossAttackS3Controller {
         e.put(7017, new String[]{"상점 할인율",            "%",   null});
         e.put(7018, new String[]{"출석 상자 추가",         "개",  null});
         e.put(7019, new String[]{"저주 스택 추가",         "개",  null});
+        e.put(7020, new String[]{"슈퍼크리티컬 배율",      "배",  "미보유 5배 / 0강화 6배 / 1강화 6.5배"});
+        e.put(7021, new String[]{"아이템 수량 2배 확률",   "%",   "미보유 10% / 0강화 20% / 1강화 25%"});
         BOSS_ITEM_EFFECT = java.util.Collections.unmodifiableMap(e);
     }
 
@@ -158,8 +160,10 @@ public class BossAttackS3Controller {
     public static String getBossItemEnhanceDesc(int itemId) {
         int[] vals = BOSS_ENHANCE_TABLE.get(itemId);
         String[] eff = BOSS_ITEM_EFFECT.get(itemId);
-        if (vals == null || eff == null) return "";
+        if (eff == null) return "";
         String label = eff[0], unit = eff[1], memo = eff[2];
+        // BOSS_ENHANCE_TABLE 없는 아이템은 memo로만 설명
+        if (vals == null) return memo != null ? label + ": " + memo : label;
         StringBuilder sb = new StringBuilder();
         sb.append(label).append(": ").append(vals[0]).append(unit).append("(0강화)");
         if (vals.length >= 2) sb.append(" → ").append(vals[1]).append(unit).append("(+1강화)");
