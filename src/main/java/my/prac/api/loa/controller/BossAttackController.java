@@ -5223,7 +5223,10 @@ public class BossAttackController {
 		// [자이언트 계열] 불굴 - 사망 시 즉시 부활 + 카운트+5
 		if (isGiantJob(s.job)) {
 		    botNewService.updateUserHpOnlyTx(s.userName, s.roomName, 0);
-		    addGiantJobCount(s, 5);
+		    HashMap<String,Object> _jlRow = botNewService.selectJobLevel(s.userName, s.job);
+		    int _giantLv = _jlRow != null ? ((Number)_jlRow.getOrDefault("JOB_LV",0)).intValue() : 0;
+		    int _reviveCnt = _giantLv >= 20 ? 1 : _giantLv >= 10 ? 3 : 5;
+		    addGiantJobCount(s, _reviveCnt);
 		    int reviveHp = (int)(s.hpMax * 0.2);
 		    botNewService.updateUserHpOnlyTx(s.userName, s.roomName, reviveHp);
 		    botNewService.insertBattleLogTx(new BattleLog()
