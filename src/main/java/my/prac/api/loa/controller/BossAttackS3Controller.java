@@ -825,13 +825,17 @@ public class BossAttackS3Controller {
             } catch (Exception ignore) {}
         }
 
-        // 공격 SP 보상: 준 데미지 × 10000 raw SP / 최소 1000a, 최대 10b
+        // 공격 SP 보상: 준 데미지 × 10000 raw SP / 최소 1000a, 최대 10b (대악마 3배)
         String spRewardMsg = "";
         try {
             long rawSpVal = totalDamage * 10000L;
-            boolean spCapped = rawSpVal > 1_000_000_000L;
-            boolean spMin    = rawSpVal < 10_000_000L;
-            rawSpVal = Math.max(Math.min(rawSpVal, 1_000_000_000L), 10_000_000L);
+            boolean isGreatDemonSp = "대악마".equals(bossDemonType);
+            long spCap = isGreatDemonSp ? 3_000_000_000L : 1_000_000_000L;
+            long spMin2 = isGreatDemonSp ? 30_000_000L   : 10_000_000L;
+            if (isGreatDemonSp) rawSpVal *= 3;
+            boolean spCapped = rawSpVal > spCap;
+            boolean spMin    = rawSpVal < spMin2;
+            rawSpVal = Math.max(Math.min(rawSpVal, spCap), spMin2);
             SP spReward = SP.fromSp(rawSpVal);
             HashMap<String, Object> pr = new HashMap<>();
             pr.put("userName", userName);
