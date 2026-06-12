@@ -2738,20 +2738,46 @@ public class BossAttackController {
         
         try {
 		    List<HashMap<String,Object>> jobLvRows = botNewService.selectJobLevels(ctx.targetUser);
-		    int totLv = ctx.totalJobLv;
-		    if (totLv > 0 || (jobLvRows != null && !jobLvRows.isEmpty())) {
-		        sb.append("✨직업레벨[헬너프되지않음] Lv.").append(totLv)
-		          .append(" → 데미지+").append(totLv * 10)
-		          .append(" 크리율+").append(totLv)
-		          .append("% 크리뎀+").append(totLv).append("%").append(NL);
-		        if (jobLvRows != null) {
-		            for (HashMap<String,Object> r : jobLvRows) {
+		    if (jobLvRows != null && !jobLvRows.isEmpty()) {
+		        java.util.Set<String> GIANT_JOBS = new java.util.HashSet<>(java.util.Arrays.asList("자이언트", "자이언트용병", "자이언트기사"));
+		        java.util.Set<String> ELF_JOBS   = new java.util.HashSet<>(java.util.Arrays.asList("엘프", "엘프궁수", "엘프마법사"));
+		        int elfTotLv = 0, giantTotLv = 0;
+		        List<HashMap<String,Object>> elfRows   = new ArrayList<>();
+		        List<HashMap<String,Object>> giantRows = new ArrayList<>();
+		        for (HashMap<String,Object> r : jobLvRows) {
+		            String jn  = Objects.toString(r.get("JOB_NAME"), "");
+		            int    jlv = ((Number) r.getOrDefault("JOB_LV", 0)).intValue();
+		            if (GIANT_JOBS.contains(jn))    { giantRows.add(r); giantTotLv += jlv; }
+		            else if (ELF_JOBS.contains(jn)) { elfRows.add(r);   elfTotLv   += jlv; }
+		        }
+		        if (elfTotLv > 0) {
+		            sb.append("✨엘프 직업레벨[헬너프되지않음] Lv.").append(elfTotLv)
+		              .append(" → 데미지+").append(elfTotLv * 10)
+		              .append(" 크리율+").append(elfTotLv)
+		              .append("% 크리뎀+").append(elfTotLv).append("%").append(NL);
+		            for (HashMap<String,Object> r : elfRows) {
 		                String jn  = Objects.toString(r.get("JOB_NAME"), "");
 		                int    jlv = ((Number) r.getOrDefault("JOB_LV", 0)).intValue();
 		                int    jkl = ((Number) r.getOrDefault("JOB_KILL_CNT", 0)).intValue();
 		                int    need = jlv * JOB_LV_KILL_BASE + JOB_LV_KILL_OFFSET;
 		                sb.append("  └ [").append(jn).append("] Lv.").append(jlv);
 		                if (jlv < JOB_MAX_LV) sb.append("  (다음레벨: ").append(jkl).append("/").append(need).append("킬)");
+		                else                  sb.append("  (MAX)");
+		                sb.append(NL);
+		            }
+		        }
+		        if (giantTotLv > 0) {
+		            sb.append("✨자이언트 직업레벨[헬너프되지않음] Lv.").append(giantTotLv)
+		              .append(" → 데미지+").append(giantTotLv * 10)
+		              .append(" 크리율+").append(giantTotLv)
+		              .append("% 크리뎀+").append(giantTotLv).append("%").append(NL);
+		            for (HashMap<String,Object> r : giantRows) {
+		                String jn  = Objects.toString(r.get("JOB_NAME"), "");
+		                int    jlv = ((Number) r.getOrDefault("JOB_LV", 0)).intValue();
+		                int    jkl = ((Number) r.getOrDefault("JOB_KILL_CNT", 0)).intValue();
+		                int    need = jlv * JOB_LV_KILL_BASE + JOB_LV_KILL_OFFSET;
+		                sb.append("  └ [").append(jn).append("] Lv.").append(jlv);
+		                if (jlv < JOB_MAX_LV) sb.append("  (다음레벨: ").append(jkl).append("/").append(need).append("회)");
 		                else                  sb.append("  (MAX)");
 		                sb.append(NL);
 		            }
