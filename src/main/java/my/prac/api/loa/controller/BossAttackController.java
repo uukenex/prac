@@ -2941,6 +2941,33 @@ public class BossAttackController {
 	        ignore.printStackTrace();
 	    }
 
+	    // ─ 경험치판매 현황 ─
+	    try {
+	        @SuppressWarnings("unchecked")
+	        HashMap<String,Object> invB2 = MiniGameUtil.INV_BUFF_CACHE.get(ctx.targetUser);
+	        HashMap<String,Object> eRow = invB2 != null
+	            ? (HashMap<String,Object>) invB2.get("expSell")
+	            : botNewService.selectExpSellStats(ctx.targetUser);
+	        if (eRow != null) {
+	            int eTot     = safeInt(eRow.get("TOTAL_CNT"));
+	            int eHp      = safeInt(eRow.get("HP_BONUS"));
+	            int eAtkMin  = safeInt(eRow.get("ATK_MIN_BONUS"));
+	            int eAtkMax  = safeInt(eRow.get("ATK_MAX_BONUS"));
+	            int eCrit    = safeInt(eRow.get("CRIT_BONUS"));
+	            int eCritDmg = safeInt(eRow.get("CRIT_DMG_BONUS"));
+	            long eTotalSp = 0; int rem = eTot, grp = 1;
+	            while (rem > 0) { int n = Math.min(rem, 300); eTotalSp += (long)n * grp * 100_000_000L; rem -= n; grp++; }
+	            sb.append("▶ 경험치판매 현황 (누적 ").append(eTot).append("회")
+	              .append(" / ").append(SP.fromSp(eTotalSp)).append(")").append(NL);
+	            if (eHp > 0)      sb.append("  HP +").append(eHp * 10).append(NL);
+	            if (eAtkMin > 0)  sb.append("  최소공격 +").append(eAtkMin).append(NL);
+	            if (eAtkMax > 0)  sb.append("  최대공격 +").append(eAtkMax).append(NL);
+	            if (eCrit > 0)    sb.append("  크리확률 +").append(String.format("%.1f", eCrit * 0.1)).append("%").append(NL);
+	            if (eCritDmg > 0) sb.append("  크리데미지 +").append(String.format("%.1f", eCritDmg * 0.1)).append("%").append(NL);
+	            sb.append(NL);
+	        }
+	    } catch (Exception ignore) {}
+
 	    // 물약 사용 횟수 (캐시 우선, 없으면 DB)
 	    int potionUseCount = 0;
 	    try {
