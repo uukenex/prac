@@ -91,8 +91,8 @@ public class UserBattleContext {
 	public int expSellHp;
 	public int expSellAtkMin;
 	public int expSellAtkMax;
-	public int expSellCrit;
-	public int expSellCritDmg;
+	public double expSellCrit;
+	public double expSellCritDmg;
     
 	// [OPT-HUNTER] attackInfo 에서 미리 조회한 dropsRows 공유용 (applyDropBonusToContext 중복 조회 방지)
 	public List<HashMap<String,Object>> preDropRows = null;
