@@ -70,7 +70,7 @@ public class BossAttackS3Controller {
 
     // ── 대악마 감금스킬 ──
     private static final Map<String, Long> IMPRISONED_UNTIL   = new java.util.concurrent.ConcurrentHashMap<>();
-    private static final int IMPRISON_DURATION_MS = 10 * 60 * 1000; // 10분
+    private static final int IMPRISON_DURATION_MS = 5 * 60 * 1000; // 5분
     private static final int IMPRISON_CHANCE_PCT  = 10;             // 10%
     /** 보스아이템 최대 강화 단계 (기본1 + 강화1 = QTY 2) */
     public static final int MAX_BOSS_ENHANCE = 2;
@@ -862,7 +862,7 @@ public class BossAttackS3Controller {
 
         // 결과 메시지
         StringBuilder msg = new StringBuilder();
-        msg.append(userName).append("님이 [상급악마]를 공격했습니다!").append(NL);
+        msg.append(userName).append("님이 [").append(bossDemonType).append("]를 공격했습니다!").append(NL);
 
         if (!isEvade) {
             msg.append("▶ 입힌 데미지: ").append(damage).append(NL);
@@ -898,7 +898,7 @@ public class BossAttackS3Controller {
 
         msg.append(NL);
         if (isKill) {
-            msg.append("✨상급악마를 처치했습니다!").append(NL).append(killMsg);
+            msg.append("✨").append(bossDemonType).append("를 처치했습니다!").append(NL).append(killMsg);
             msg.append(NL).append("새로운 상급악마가 출현했습니다!").append(NL);
         } else {
             String curHpDisp = SP.fromSp(newHp).toString();
@@ -917,7 +917,7 @@ public class BossAttackS3Controller {
         // 대악마 감금스킬 발동 메시지
         if (IMPRISONED_UNTIL.containsKey(userName) &&
                 System.currentTimeMillis() < IMPRISONED_UNTIL.get(userName)) {
-            msg.append(NL).append("[감금스킬] ").append(userName).append("님이 10분간 공격 불가 상태가 됩니다!");
+            msg.append(NL).append("[감금스킬] ").append(userName).append("님이 5분간 공격 불가 상태가 됩니다!");
         }
 
         return msg.toString().trim();
@@ -1602,6 +1602,7 @@ public class BossAttackS3Controller {
                 return "※상급악마 재정비 중 (" + remainStr + " 후 출현)" + NL;
             } else {
                 // 출현 중: 체력% 한 줄로
+                String statusBossType = boss.get("BOSS_TYPE") != null ? boss.get("BOSS_TYPE").toString() : "상급악마";
                 double curHpNum = Double.parseDouble(boss.get("CUR_HP").toString());
                 String curHpExt = boss.get("CUR_HP_EXT") != null ? boss.get("CUR_HP_EXT").toString() : "";
                 long hp = SP.toBaseValue(SP.of(curHpNum, curHpExt));
@@ -1609,7 +1610,7 @@ public class BossAttackS3Controller {
                 String maxHpExt = boss.get("MAX_HP_EXT") != null ? boss.get("MAX_HP_EXT").toString() : "";
                 long maxHp = SP.toBaseValue(SP.of(maxHpNum, maxHpExt));
                 int pct = maxHp > 0 ? (int)Math.round(hp * 100.0 / maxHp) : 0;
-                return "현재 상급악마 출현! [체력 " + pct + "%]" + NL;
+                return "현재 " + statusBossType + " 출현! [체력 " + pct + "%]" + NL;
             }
         } catch (Exception e) {
             return "";
@@ -1657,7 +1658,8 @@ public class BossAttackS3Controller {
         }
 
         StringBuilder msg = new StringBuilder();
-        msg.append("[ 상급악마 정보 ]").append(NL);
+        String bossType = boss.get("BOSS_TYPE") != null ? boss.get("BOSS_TYPE").toString() : "상급악마";
+        msg.append("[ ").append(bossType).append(" 정보 ]").append(NL);
         msg.append("체력: ").append(SP.fromSp(hp)).append("/").append(SP.fromSp(maxHp))
            .append(" (").append(String.format("%.1f", hpPct)).append("%)").append(NL);
 

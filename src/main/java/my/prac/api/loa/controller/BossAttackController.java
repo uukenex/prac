@@ -5277,7 +5277,7 @@ public class BossAttackController {
 		            .setKillYn(0).setNowYn(0).setDropYn(0).setDeathYn(0).setLuckyYn(0)
 		            .setJobSkillYn(0).setJob(s.job).setNightmareYn(s.ctx.user.nightmareYn));
 		    s.bonusMsg = NL + s.userName + "님, 쓰러졌지만 [자이언트의 불굴]로 즉시 부활합니다! (HP " + reviveHp + ")" + NL;
-		    s.u.hpCur = reviveHp;
+		    s.u.hpCur = reviveHp + s.calc.monDmg; // persist()가 monDmg 재차감하므로 보정
 		    return null;
 		}
 		botNewService.closeOngoingBattleTx(s.userName, s.roomName);
