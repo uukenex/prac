@@ -1315,21 +1315,16 @@ public class BossAttackS3Controller {
             msg.append("▶ 플래티넘유물상자 보상").append(NL);
             {
                 List<String> boxWinners = pickWinners(qualifiedPool, winnerCount, rand);
-                Map<String, Integer> boxQtyMap = new LinkedHashMap<>();
-                for (String winner : boxWinners) {
-                    int baseQty = 5 + rand.nextInt(6); // 5~10 → 대악마: 2배(10~20)
-                    boxQtyMap.put(winner, baseQty * 2);
-                }
                 for (int w = 0; w < boxWinners.size(); w++) {
                     String winner = boxWinners.get(w);
-                    msg.append("✨").append(w + 1).append("번 보상: [").append(winner).append("] 플래티넘유물상자 ").append(boxQtyMap.get(winner)).append("개").append(NL);
+                    msg.append("✨").append(w + 1).append("번 보상: [").append(winner).append("] 플래티넘유물상자 3개").append(NL);
                 }
                 msg.append(NL);
                 for (String winner : boxWinners) {
                     try {
                         HashMap<String, Object> inv = new HashMap<>();
                         inv.put("userName", winner); inv.put("roomName", roomName);
-                        inv.put("itemId",   93); inv.put("qty", boxQtyMap.get(winner));
+                        inv.put("itemId",   93); inv.put("qty", 3);
                         inv.put("gainType", "DROP_OPEN_P");
                         botNewService.insertInventoryLogTx(inv);
                     } catch (Exception e) { /* 지급 실패 무시 */ }
