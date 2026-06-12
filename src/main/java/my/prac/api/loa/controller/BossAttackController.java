@@ -2759,6 +2759,18 @@ public class BossAttackController {
 	                return Integer.compare(noA, noB);
 	            });
 
+	            // 2-0) 7000번대 보스아이템 BOSS_HELL/BOSS_GACHA qty 사전 합산
+	            java.util.Map<Integer,Integer> bossConsolidated = new java.util.LinkedHashMap<>();
+	            java.util.Set<Integer> bossConsolidatedShown = new java.util.HashSet<>();
+	            for (HashMap<String,Object> row : bag) {
+	                int pid = MiniGameUtil.parseIntSafe(Objects.toString(row.get("ITEM_ID"), "0"));
+	                String pgt = Objects.toString(row.get("GAIN_TYPE"), "");
+	                if (pid >= 7000 && pid < 8000
+	                        && ("BOSS_HELL".equalsIgnoreCase(pgt) || "BOSS_GACHA".equalsIgnoreCase(pgt))) {
+	                    int pq = MiniGameUtil.parseIntSafe(Objects.toString(row.get("TOTAL_QTY"),"1"));
+	                    bossConsolidated.merge(pid, Math.max(pq, 1), Integer::sum);
+	                }
+	            }
 	            // 2) 카테고리별 버킷 생성
 	            Map<String, List<String>> catMap = new LinkedHashMap<>();
 	            catMap.put("※무기", new ArrayList<>());
@@ -2802,9 +2814,19 @@ public class BossAttackController {
 	                        "ACHV".equalsIgnoreCase(typeStr) 
 	                        ;
 
-	                if ("BOSS_HELL".equalsIgnoreCase(typeStr) || "BOSS_GACHA".equalsIgnoreCase(typeStr) || (itemId >= 7000 && itemId < 8000)) {
+	                if (("BOSS_HELL".equalsIgnoreCase(typeStr) || "BOSS_GACHA".equalsIgnoreCase(typeStr) || (itemId >= 7000 && itemId < 8000))
+	                        && ("BOSS_HELL".equalsIgnoreCase(gainTypeStr) || "BOSS_GACHA".equalsIgnoreCase(gainTypeStr))) {
+	                    // BOSS_HELL/BOSS_GACHA 합산 qty로 강화 표기
+	                    if (bossConsolidated.containsKey(itemId)) {
+	                        if (bossConsolidatedShown.contains(itemId)) continue; // 중복 행 스킵
+	                        bossConsolidatedShown.add(itemId);
+	                        int totalQty = bossConsolidated.get(itemId);
+	                        if (totalQty > 1) label += "+" + (totalQty - 1);
+	                    } else {
+	                        if (qtyVal > 1) label += "+" + (qtyVal - 1);
+	                    }
+	                } else if (itemId >= 7000 && itemId < 8000) {
 	                    if (qtyVal > 1) label += "+" + (qtyVal - 1);
-	                    // [뽑기]/[드랍] 레이블 제거 - 강화단계(+N)로만 표기
 	                } else if ("DROP_OPEN_G".equalsIgnoreCase(typeStr) || "DROP_OPEN_P".equalsIgnoreCase(typeStr) || "ATTEND".equalsIgnoreCase(typeStr)) {
 	                    label = ("DROP_OPEN_P".equalsIgnoreCase(typeStr) ? "✨플래티넘" : "ATTEND".equalsIgnoreCase(typeStr) ? "출첵" : "✨황금") + "유물상자 (/가방열기 로 개봉)";
 	                } else if (typeStr != null && typeStr.toUpperCase().startsWith("HELL_BOX") && itemId >= 3000 && itemId < 4000) {
@@ -6416,18 +6438,12 @@ public class BossAttackController {
 
 		List<Integer> newItems = new ArrayList<>(bossItems);
 		List<Integer> enhanceable = new ArrayList<>();
-		try {
-			List<Integer> owned = botNewService.selectInventoryItemsByIds(userName, "", bossItems);
-			if (owned != null && !owned.isEmpty()) {
-				newItems = new ArrayList<>(bossItems);
-				newItems.removeAll(new HashSet<>(owned));
-				// 강화 가능 목록: 보유 중이고 qty < MAX_ENHANCE
-				for (int oid : owned) {
-					int curQty = bossQtyMap.getOrDefault(oid, 1);
-					if (curQty < BossAttackS3Controller.MAX_BOSS_ENHANCE) enhanceable.add(oid);
-				}
-			}
-		} catch (Exception ignore) {}
+		// bossQtyMap(BOSS_HELL+BOSS_GACHA+BOSS_BUY 합산)으로 보유 여부 판정
+		newItems.removeIf(id -> bossQtyMap.getOrDefault(id, 0) > 0);
+		for (int oid : bossQtyMap.keySet()) {
+		    int curQty = bossQtyMap.get(oid);
+		    if (curQty < BossAttackS3Controller.MAX_BOSS_ENHANCE) enhanceable.add(oid);
+		}
 
 		// 강화뽑기 차단 (추후 강화형태로 전환 시 아래 주석 해제)
 		// boolean isEnhance = newItems.isEmpty(); // 신규 없으면 강화 시도
