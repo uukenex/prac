@@ -2766,7 +2766,7 @@ public class BossAttackController {
 	                int pid = MiniGameUtil.parseIntSafe(Objects.toString(row.get("ITEM_ID"), "0"));
 	                String pgt = Objects.toString(row.get("GAIN_TYPE"), "");
 	                if (pid >= 7000 && pid < 8000
-	                        && ("BOSS_HELL".equalsIgnoreCase(pgt) || "BOSS_GACHA".equalsIgnoreCase(pgt))) {
+	                        && ("BOSS_HELL".equalsIgnoreCase(pgt) || "BOSS_GACHA".equalsIgnoreCase(pgt) || "BOSS_BUY".equalsIgnoreCase(pgt))) {
 	                    int pq = MiniGameUtil.parseIntSafe(Objects.toString(row.get("TOTAL_QTY"),"1"));
 	                    bossConsolidated.merge(pid, Math.max(pq, 1), Integer::sum);
 	                }
@@ -2815,7 +2815,7 @@ public class BossAttackController {
 	                        ;
 
 	                if (("BOSS_HELL".equalsIgnoreCase(typeStr) || "BOSS_GACHA".equalsIgnoreCase(typeStr) || (itemId >= 7000 && itemId < 8000))
-	                        && ("BOSS_HELL".equalsIgnoreCase(gainTypeStr) || "BOSS_GACHA".equalsIgnoreCase(gainTypeStr))) {
+	                        && ("BOSS_HELL".equalsIgnoreCase(gainTypeStr) || "BOSS_GACHA".equalsIgnoreCase(gainTypeStr) || "BOSS_BUY".equalsIgnoreCase(gainTypeStr))) {
 	                    // BOSS_HELL/BOSS_GACHA 합산 qty로 강화 표기
 	                    if (bossConsolidated.containsKey(itemId)) {
 	                        if (bossConsolidatedShown.contains(itemId)) continue; // 중복 행 스킵
