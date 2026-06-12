@@ -866,6 +866,9 @@ public class BossAttackController {
 	        int giantAtkBonus = _gjLv * 20 + _gmLv * 40 + _gkLv * 70;
 	        ctx.atkMin += giantAtkBonus - giantLvSum * 10;
 	        ctx.atkMax += giantAtkBonus - giantLvSum * 10;
+	        // 자이언트 직군은 크리율/크리뎀 보너스 없음 → 차감
+	        ctx.crit    -= giantLvSum;
+	        ctx.critDmg -= giantLvSum;
 	    }
 
 	    // hpCur: 리젠 반영 현재 체력 (항상 실시간 DB 조회)
@@ -2780,9 +2783,7 @@ public class BossAttackController {
 		                giantAtkBonus += jlv * mul;
 		            }
 		            sb.append("✨자이언트 직업레벨[헬너프되지않음]").append(NL)
-		              .append("  데미지+").append(giantAtkBonus)
-		              .append(" 크리율+").append(giantTotLv)
-		              .append("% 크리뎀+").append(giantTotLv).append("%").append(NL);
+		              .append("  데미지+").append(giantAtkBonus).append(NL);
 		            for (HashMap<String,Object> r : giantRows) {
 		                String jn  = Objects.toString(r.get("JOB_NAME"), "");
 		                int    jlv = ((Number) r.getOrDefault("JOB_LV", 0)).intValue();
