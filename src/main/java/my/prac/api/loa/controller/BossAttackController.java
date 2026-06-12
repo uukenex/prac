@@ -2004,6 +2004,9 @@ public class BossAttackController {
 	        }
 	    }
 
+	    // [임시] 자이언트 미공개 - 전직 불가 처리
+	    if ("자이언트".equals(newJob)) return "[자이언트] 직업은 현재 준비 중입니다.";
+
 	    if(!master) {
 	    	// 5-0) 해당 유저의 직업별 공격횟수 전체 조회 (쿼리 1번)
 		    Map<String, Integer> jobCntMap = Collections.emptyMap();
