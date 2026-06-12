@@ -139,7 +139,7 @@
             <span class="rank-name" :class="{ alt: isAlt(r.USER_NAME) }">
               {{ r.USER_NAME }}<span style="color:#9090c0;font-size:11px;"> Lv.{{ r.LV }}</span>
             </span>
-            <span class="rank-val">{{ fmtSp(r.TOT_SP) }}</span>
+            <span class="rank-val">{{ fmtSp(r) }}</span>
           </div>
         </template>
         <div class="empty" v-else>데이터 없음</div>
@@ -258,18 +258,8 @@
         if (v == null) return '0.00';
         return Number(v).toFixed(2);
       },
-      fmtSp: function(v) {
-        var sp = Number(v) || 0;
-        var units = ['sp', 'a', 'b', 'c', 'd', 'e', 'f'];
-        var idx = 0;
-        var val = sp;
-        while (val >= 10000 && idx < units.length - 1) {
-          val = val / 10000;
-          idx++;
-        }
-        if (idx === 0) return Math.floor(val) + 'sp';
-        var lower = Math.floor((sp / Math.pow(10000, idx - 1)) % 10000);
-        return Math.floor(val) + units[idx] + ' ' + lower + units[idx - 1];
+      fmtSp: function(r) {
+        return r.TOT_SP_STR || '-';
       },
       loadAll: function() {
         var self = this;

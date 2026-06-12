@@ -511,6 +511,17 @@ public class LoaUnifiedViewController {
             List<HashMap<String, Object>> spAtk = safeList(() -> {
                 try { return botNewService.selectSpAndAtkRanking(); } catch (Exception e) { return null; }
             });
+            // TOT_SP를 Java SP 클래스로 포맷한 문자열 추가 (JS에서 단위 계산 불필요)
+            for (HashMap<String, Object> row : spAtk) {
+                try {
+                    double raw = row.get("TOT_SP") instanceof Number
+                        ? ((Number) row.get("TOT_SP")).doubleValue()
+                        : Double.parseDouble(String.valueOf(row.get("TOT_SP")));
+                    row.put("TOT_SP_STR", my.prac.core.util.SP.fromSp(raw).toString());
+                } catch (Exception ignore) {
+                    row.put("TOT_SP_STR", "-");
+                }
+            }
             result.put("spAtk", spAtk);
 
             // 업적 갯수
