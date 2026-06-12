@@ -856,6 +856,12 @@ public class BossAttackController {
 	    applyHellBoxBonusToContext(ctx, targetUser);
 	    applyExpSellBonusToContext(ctx, targetUser);
 	    applyJobLevelBonusToContext(ctx);
+	    // 자이언트 계열: 직업별 추가 공격력 (레벨당 자이언트+10, 용병+30, 기사+60 extra)
+	    if (isGiantJob(u.job)) {
+	        int _gjLv = invBuffData != null ? ((Number) invBuffData.getOrDefault("jlv_" + u.job, 0)).intValue() : 0;
+	        int _extra = "자이언트기사".equals(u.job) ? _gjLv * 60 : "자이언트용병".equals(u.job) ? _gjLv * 30 : _gjLv * 10;
+	        ctx.atkMin += _extra; ctx.atkMax += _extra;
+	    }
 
 	    // hpCur: 리젠 반영 현재 체력 (항상 실시간 DB 조회)
 	    final String ctxRoomName = Objects.toString(map.get("roomName"), "");
@@ -1815,6 +1821,12 @@ public class BossAttackController {
         data.put("bossItemQty", qtyMap);
     } catch (Exception ignore) {}
 	    try { data.put("totalJobLv", botNewService.selectTotalJobLv(userName)); } catch (Exception ignore) {}
+	    for (String _gj : new String[]{"자이언트", "자이언트용병", "자이언트기사"}) {
+	        try {
+	            HashMap<String,Object> _r = botNewService.selectJobLevel(userName, _gj);
+	            if (_r != null) data.put("jlv_" + _gj, ((Number) _r.getOrDefault("JOB_LV", 0)).intValue());
+	        } catch (Exception ignore) {}
+	    }
 	    try { data.put("expSell", botNewService.selectExpSellStats(userName)); } catch (Exception ignore) {}
 	    MiniGameUtil.INV_BUFF_CACHE.put(userName, data);
 	    return data;
@@ -2004,9 +2016,6 @@ public class BossAttackController {
 	        }
 	    }
 
-	    // [임시] 자이언트 미공개 - 전직 불가 처리
-	    if ("자이언트".equals(newJob)) return "[자이언트] 직업은 현재 준비 중입니다.";
-
 	    if(!master) {
 	    	// 5-0) 해당 유저의 직업별 공격횟수 전체 조회 (쿼리 1번)
 		    Map<String, Integer> jobCntMap = Collections.emptyMap();
@@ -2044,6 +2053,25 @@ public class BossAttackController {
 		        if (elfLv < 30) {
 		            return "[" + newJob + "] 전직 조건 미충족: 엘프 직업레벨 30 달성 필요 (현재 Lv." + elfLv + ")";
 		        }
+		    }
+
+		    // 5-3) 자이언트용병: 자이언트 직업레벨 30 필요
+		    if ("자이언트용병".equals(newJob)) {
+		        int prevLv = 0;
+		        try {
+		            HashMap<String,Object> r = botNewService.selectJobLevel(userName, "자이언트");
+		            if (r != null) prevLv = ((Number) r.getOrDefault("JOB_LV", 0)).intValue();
+		        } catch (Exception ignore) {}
+		        if (prevLv < 30) return "[자이언트용병] 전직 조건 미충족: 자이언트 직업레벨 30 달성 필요 (현재 Lv." + prevLv + ")";
+		    }
+		    // 5-4) 자이언트기사: 자이언트용병 직업레벨 30 필요
+		    if ("자이언트기사".equals(newJob)) {
+		        int prevLv = 0;
+		        try {
+		            HashMap<String,Object> r = botNewService.selectJobLevel(userName, "자이언트용병");
+		            if (r != null) prevLv = ((Number) r.getOrDefault("JOB_LV", 0)).intValue();
+		        } catch (Exception ignore) {}
+		        if (prevLv < 30) return "[자이언트기사] 전직 조건 미충족: 자이언트용병 직업레벨 30 달성 필요 (현재 Lv." + prevLv + ")";
 		    }
 
 		    // // 5-2) 직업별 전직 조건 체크 (전사 100, 도적 100 같은 것들)
@@ -2102,8 +2130,9 @@ public class BossAttackController {
 	    long newHp = (long)Math.max(1, Math.floor(ctx2.hpMax * hpRatio));
 	    botNewService.updateUserHpOnlyTx(userName, roomName, (int) newHp);
 
-	    // 엘프/자이언트 최초 전직 시 직업레벨 1로 시작
-	    if ("자이언트".equals(newJob) || "엘프".equals(newJob) || "엘프궁수".equals(newJob) || "엘프마법사".equals(newJob)) {
+	    // 엘프/자이언트 계열 최초 전직 시 직업레벨 1로 시작
+	    if ("자이언트".equals(newJob) || "자이언트용병".equals(newJob) || "자이언트기사".equals(newJob)
+	        || "엘프".equals(newJob) || "엘프궁수".equals(newJob) || "엘프마법사".equals(newJob)) {
 	        try {
 	            HashMap<String,Object> jlRow = botNewService.selectJobLevel(userName, newJob);
 	            int existingLv = jlRow != null ? ((Number) jlRow.getOrDefault("JOB_LV", 0)).intValue() : 0;
@@ -4717,7 +4746,9 @@ public class BossAttackController {
 		else if ("궁사".equals(s.job))   jobDmgMul = 1.0;
 		else if ("전사".equals(s.job))   jobDmgMul = 1.4;
 		else if ("검성".equals(s.job))   jobDmgMul = 2.5;
-		else if ("자이언트".equals(s.job)) jobDmgMul = 2.5;
+		else if ("자이언트".equals(s.job))   jobDmgMul = 3.5;
+		else if ("자이언트용병".equals(s.job)) jobDmgMul = 5.0;
+		else if ("자이언트기사".equals(s.job)) jobDmgMul = 6.5;
 		else if ("어쓰신".equals(s.job))  jobDmgMul = 1.3;
 		else if ("제너럴".equals(s.job))  jobDmgMul = 1.2;
 		else if ("저격수".equals(s.job))  jobDmgMul = 2.0;
@@ -5162,8 +5193,8 @@ public class BossAttackController {
 		int dealtThisTurn  = Math.max(0, s.calc.atkDmg);
 		int monRemainAfter = Math.max(0, s.monHpRemainBefore - dealtThisTurn);
 
-		// [자이언트] 불굴 - 사망 시 즉시 부활 + 카운트+5
-		if ("자이언트".equals(s.job)) {
+		// [자이언트 계열] 불굴 - 사망 시 즉시 부활 + 카운트+5
+		if (isGiantJob(s.job)) {
 		    botNewService.updateUserHpOnlyTx(s.userName, s.roomName, 0);
 		    addGiantJobCount(s, 5);
 		    int reviveHp = (int)(s.hpMax * 0.2);
@@ -5376,16 +5407,32 @@ public class BossAttackController {
 		        }
 		    } catch (Exception ignore) {}
 		}
-		// ── 자이언트 직업레벨 카운트+1 (맞았을 때) ──────────────────────────────
-		if ("자이언트".equals(s.job) && s.calc.monDmg > 0) {
+		// 자이언트 계열: 진행도 미설정 시 현재 레벨 표시
+		if (isGiantJob(s.job) && s.jobLvProgressMsg.isEmpty()) {
+		    try {
+		        HashMap<String,Object> _jr = botNewService.selectJobLevel(s.userName, s.job);
+		        int _lv  = _jr != null ? ((Number) _jr.getOrDefault("JOB_LV", 0)).intValue() : 0;
+		        int _kll = _jr != null ? ((Number) _jr.getOrDefault("JOB_KILL_CNT", 0)).intValue() : 0;
+		        int _need = _lv * JOB_LV_KILL_BASE + JOB_LV_KILL_OFFSET;
+		        if (_lv >= JOB_MAX_LV) s.jobLvProgressMsg = "[" + s.job + "] Lv." + _lv + " (MAX)";
+		        else                   s.jobLvProgressMsg = "[" + s.job + "] Lv." + _lv + " (" + _kll + "/" + _need + "회)";
+		    } catch (Exception ignore) {}
+		}
+		// ── 자이언트 계열 직업레벨 카운트+1 (맞았을 때) ───────────────────────────
+		if (isGiantJob(s.job) && s.calc.monDmg > 0) {
 		    addGiantJobCount(s, 1);
 		}
 	}
 
 	/** 자이언트 직업레벨 카운트 누적 헬퍼 */
+	private boolean isGiantJob(String job) {
+	    return "자이언트".equals(job) || "자이언트용병".equals(job) || "자이언트기사".equals(job);
+	}
+
 	private void addGiantJobCount(AttackSession s, int add) {
 	    try {
-	        HashMap<String,Object> jlRow = botNewService.selectJobLevel(s.userName, s.job);
+	        String gJob = s.job;
+	        HashMap<String,Object> jlRow = botNewService.selectJobLevel(s.userName, gJob);
 	        int curLv  = jlRow != null ? ((Number) jlRow.getOrDefault("JOB_LV",       0)).intValue() : 0;
 	        int curKll = jlRow != null ? ((Number) jlRow.getOrDefault("JOB_KILL_CNT", 0)).intValue() : 0;
 	        if (curLv < JOB_MAX_LV) {
@@ -5398,19 +5445,24 @@ public class BossAttackController {
 	                need = newLv * JOB_LV_KILL_BASE + JOB_LV_KILL_OFFSET;
 	            }
 	            if (newLv > curLv) {
-	                s.jobLevelUpMsg = "[자이언트] 직업레벨 상승! Lv." + curLv + " -> Lv." + newLv;
+	                s.jobLevelUpMsg = "[" + gJob + "] 직업레벨 상승! Lv." + curLv + " -> Lv." + newLv;
 	                invalidateInvBuff(s.userName);
+	                if (newLv % 5 == 0) {
+	                    String achvCmd = "ACHV_GIANT_JOB_LV_" + gJob + "_" + newLv;
+	                    String achvMsg = grantOnceIfEligibleFast(s.userName, s.roomName, achvCmd, 10_000, s.achievedCmdSet);
+	                    if (!achvMsg.isEmpty()) s.jobLevelUpMsg += NL + achvMsg.trim();
+	                }
 	            }
 	            newLv = Math.min(newLv, JOB_MAX_LV);
 	            botNewService.upsertJobLevel(s.userName, s.job, newLv, newLv >= JOB_MAX_LV ? 0 : newKll);
 	            int displayNeed = newLv * JOB_LV_KILL_BASE + JOB_LV_KILL_OFFSET;
 	            if (newLv >= JOB_MAX_LV) {
-	                s.jobLvProgressMsg = "[자이언트] Lv." + newLv + " (MAX)";
+	                s.jobLvProgressMsg = "[" + gJob + "] Lv." + newLv + " (MAX)";
 	            } else {
-	                s.jobLvProgressMsg = "[자이언트] Lv." + newLv + " (" + newKll + "/" + displayNeed + "회)";
+	                s.jobLvProgressMsg = "[" + gJob + "] Lv." + newLv + " (" + newKll + "/" + displayNeed + "회)";
 	            }
 	        } else {
-	            s.jobLvProgressMsg = "[자이언트] Lv." + curLv + " (MAX)";
+	            s.jobLvProgressMsg = "[" + gJob + "] Lv." + curLv + " (MAX)";
 	        }
 	    } catch (Exception ignore) {}
 	}
