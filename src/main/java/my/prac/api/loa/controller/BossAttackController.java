@@ -856,11 +856,16 @@ public class BossAttackController {
 	    applyHellBoxBonusToContext(ctx, targetUser);
 	    applyExpSellBonusToContext(ctx, targetUser);
 	    applyJobLevelBonusToContext(ctx);
-	    // 자이언트 계열: 직업별 추가 공격력 (레벨당 자이언트+10, 용병+30, 기사+60 extra)
-	    if (isGiantJob(u.job)) {
-	        int _gjLv = invBuffData != null ? ((Number) invBuffData.getOrDefault("jlv_" + u.job, 0)).intValue() : 0;
-	        int _extra = "자이언트기사".equals(u.job) ? _gjLv * 60 : "자이언트용병".equals(u.job) ? _gjLv * 30 : _gjLv * 10;
-	        ctx.atkMin += _extra; ctx.atkMax += _extra;
+	    // 자이언트 계열: 직업별 레벨당 공격력 (자이언트+20, 용병+40, 기사+70)
+	    {
+	        int _gjLv = invBuffData != null ? ((Number) invBuffData.getOrDefault("jlv_자이언트", 0)).intValue() : 0;
+	        int _gmLv = invBuffData != null ? ((Number) invBuffData.getOrDefault("jlv_자이언트용병", 0)).intValue() : 0;
+	        int _gkLv = invBuffData != null ? ((Number) invBuffData.getOrDefault("jlv_자이언트기사", 0)).intValue() : 0;
+	        int giantLvSum = _gjLv + _gmLv + _gkLv;
+	        // applyJobLevelBonusToContext가 totalJobLv*10에 자이언트 레벨 포함 → 교정
+	        int giantAtkBonus = _gjLv * 20 + _gmLv * 40 + _gkLv * 70;
+	        ctx.atkMin += giantAtkBonus - giantLvSum * 10;
+	        ctx.atkMax += giantAtkBonus - giantLvSum * 10;
 	    }
 
 	    // hpCur: 리젠 반영 현재 체력 (항상 실시간 DB 조회)
@@ -2767,8 +2772,15 @@ public class BossAttackController {
 		            }
 		        }
 		        if (giantTotLv > 0) {
-		            sb.append("✨자이언트 직업레벨[헬너프되지않음] Lv.").append(giantTotLv)
-		              .append(" → 데미지+").append(giantTotLv * 10)
+		            int giantAtkBonus = 0;
+		            for (HashMap<String,Object> r : giantRows) {
+		                String jn = Objects.toString(r.get("JOB_NAME"), "");
+		                int jlv = ((Number) r.getOrDefault("JOB_LV", 0)).intValue();
+		                int mul = "자이언트기사".equals(jn) ? 70 : "자이언트용병".equals(jn) ? 40 : 20;
+		                giantAtkBonus += jlv * mul;
+		            }
+		            sb.append("✨자이언트 직업레벨[헬너프되지않음]").append(NL)
+		              .append("  데미지+").append(giantAtkBonus)
 		              .append(" 크리율+").append(giantTotLv)
 		              .append("% 크리뎀+").append(giantTotLv).append("%").append(NL);
 		            for (HashMap<String,Object> r : giantRows) {
@@ -2776,7 +2788,8 @@ public class BossAttackController {
 		                int    jlv = ((Number) r.getOrDefault("JOB_LV", 0)).intValue();
 		                int    jkl = ((Number) r.getOrDefault("JOB_KILL_CNT", 0)).intValue();
 		                int    need = jlv * JOB_LV_KILL_BASE + JOB_LV_KILL_OFFSET;
-		                sb.append("  └ [").append(jn).append("] Lv.").append(jlv);
+		                int    mul  = "자이언트기사".equals(jn) ? 70 : "자이언트용병".equals(jn) ? 40 : 20;
+		                sb.append("  └ [").append(jn).append("] Lv.").append(jlv).append(" (+").append(mul).append("/lv)");
 		                if (jlv < JOB_MAX_LV) sb.append("  (다음레벨: ").append(jkl).append("/").append(need).append("회)");
 		                else                  sb.append("  (MAX)");
 		                sb.append(NL);
