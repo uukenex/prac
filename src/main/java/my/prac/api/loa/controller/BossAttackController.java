@@ -5236,8 +5236,10 @@ public class BossAttackController {
 		            .setAtkCritYn(s.flags.atkCrit ? 1 : 0).setMonPatten(s.flags.monPattern)
 		            .setKillYn(0).setNowYn(0).setDropYn(0).setDeathYn(1).setLuckyYn(0)
 		            .setJobSkillYn(0).setJob(s.job).setNightmareYn(s.ctx.user.nightmareYn));
-		    return s.userName + "님, 쓰러졌지만 [자이언트의 불굴]로 즉시 부활합니다! (HP " + reviveHp + ")" + NL
-		         + (s.jobLvProgressMsg != null && !s.jobLvProgressMsg.isEmpty() ? NL + s.jobLvProgressMsg : "");
+		    s.bonusMsg = s.userName + "님, 쓰러졌지만 [자이언트의 불굴]로 즉시 부활합니다! (HP " + reviveHp + ")" + NL
+		                 + (s.jobLvProgressMsg != null && !s.jobLvProgressMsg.isEmpty() ? NL + s.jobLvProgressMsg : "");
+		    s.u.hpCur = reviveHp;
+		    return null;
 		}
 		botNewService.closeOngoingBattleTx(s.userName, s.roomName);
 		botNewService.updateUserHpOnlyTx(s.userName, s.roomName, 0);
@@ -5604,7 +5606,7 @@ public class BossAttackController {
 			String specialAchvMsg  = grantSpecialHistoricalAchievements(s.userName, s.roomName);
 
 			if (isAnyNonEmpty(killAchvMsg, itemAchvMsg, attackAchvMsg, jobSkillAchvMsg, shopSellAchvMsg, potionAchvMsg, achvRewardMsg, bagAchvMsg, specialAchvMsg, buffAchvMsg)) {
-				s.bonusMsg = NL + killAchvMsg + itemAchvMsg + attackAchvMsg + jobSkillAchvMsg
+				s.bonusMsg += NL + killAchvMsg + itemAchvMsg + attackAchvMsg + jobSkillAchvMsg
 						 + shopSellAchvMsg + potionAchvMsg + achvRewardMsg + bagAchvMsg + specialAchvMsg + buffAchvMsg;
 			}
 		}
