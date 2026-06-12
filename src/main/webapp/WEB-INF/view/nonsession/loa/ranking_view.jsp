@@ -260,14 +260,16 @@
       },
       fmtSp: function(v) {
         var sp = Number(v) || 0;
-        var c = Math.floor(sp / 1000000000000);
-        var b = Math.floor((sp % 1000000000000) / 100000000);
-        var a = Math.floor((sp % 100000000) / 10000);
-        var s = sp % 10000;
-        if (c > 0) return c + 'c ' + b + 'b';
-        if (b > 0) return b + 'b ' + a + 'a';
-        if (a > 0) return a + 'a ' + s + 'sp';
-        return s + 'sp';
+        var units = ['sp', 'a', 'b', 'c', 'd', 'e', 'f'];
+        var idx = 0;
+        var val = sp;
+        while (val >= 10000 && idx < units.length - 1) {
+          val = val / 10000;
+          idx++;
+        }
+        if (idx === 0) return Math.floor(val) + 'sp';
+        var lower = Math.floor((sp / Math.pow(10000, idx - 1)) % 10000);
+        return Math.floor(val) + units[idx] + ' ' + lower + units[idx - 1];
       },
       loadAll: function() {
         var self = this;
