@@ -5269,13 +5269,7 @@ public class BossAttackController {
 		    addGiantJobCount(s, _reviveCnt);
 		    int reviveHp = (int)(s.hpMax * 0.2);
 		    botNewService.updateUserHpOnlyTx(s.userName, s.roomName, reviveHp);
-		    botNewService.insertBattleLogTx(new BattleLog()
-		            .setUserName(s.userName).setRoomName(s.roomName).setLv(s.u.lv)
-		            .setTargetMonLv(s.m.monNo).setGainExp(0)
-		            .setAtkDmg(s.calc.atkDmg).setMonDmg(s.calc.monDmg)
-		            .setAtkCritYn(s.flags.atkCrit ? 1 : 0).setMonPatten(s.flags.monPattern)
-		            .setKillYn(0).setNowYn(0).setDropYn(0).setDeathYn(0).setLuckyYn(0)
-		            .setJobSkillYn(0).setJob(s.job).setNightmareYn(s.ctx.user.nightmareYn));
+		    // 배틀로그는 persist()→pendingLogs 배치에서 정상 삽입됨 (여기서 insertBattleLogTx 호출 시 중복 발생)
 		    s.bonusMsg = NL + s.userName + "님, 쓰러졌지만 [자이언트의 불굴]로 즉시 부활합니다! (HP " + reviveHp + ")" + NL;
 		    s.u.hpCur = reviveHp + s.calc.monDmg; // persist()가 monDmg 재차감하므로 보정
 		    return null;
