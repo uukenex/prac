@@ -973,7 +973,7 @@
 	        HAVING COUNT(*) >= 10
 	        ORDER BY ATK_CNT DESC, LAST_ATTACK DESC
 	    )
-	    WHERE ROWNUM &lt;= 10
+	    WHERE ROWNUM &lt;= 20
 	</select>
 	
 	<select id="selectMaxDamageTop5" resultType="hashmap">
