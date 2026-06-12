@@ -5200,7 +5200,7 @@ public class BossAttackController {
 		if ("궁수".equals(s.u.job) || "사냥꾼".equals(s.u.job)) s.res2.gainExp *= 3;
 		if (s.willKill2 && s.isOngoing && !s.dark && !s.lucky && !s.shadow) s.res2.gainExp *= 2;
 		if (s.willKill2 && s.u.lv <= 800) s.res2.gainExp *= 4;
-		else if (s.willKill2 && s.u.lv <= 998) s.res2.gainExp *= 3;
+		else if (s.willKill2 && s.u.lv <= 990) s.res2.gainExp *= 3;
 		int dow2 = java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_WEEK);
 		if (s.willKill2 && (dow2 == java.util.Calendar.SATURDAY || dow2 == java.util.Calendar.SUNDAY)) s.res2.gainExp *= 2;
 
@@ -5295,9 +5295,9 @@ public class BossAttackController {
 
 		// [Feature1] 다회전 경험치 2배: 처치 시 진행 중 전투였을 경우 (다크/빛/섀도우 제외)
 		if (s.willKill && s.isOngoing && !s.dark && !s.lucky && !s.shadow) s.res.gainExp *= 2;
-		// [Feature2] lv 800 이하 4배, 998 이하 3배
+		// [Feature2] lv 800 이하 4배, 990 이하 3배
 		if (s.willKill && s.u.lv <= 800) s.res.gainExp *= 4;
-		else if (s.willKill && s.u.lv <= 998) s.res.gainExp *= 3;
+		else if (s.willKill && s.u.lv <= 990) s.res.gainExp *= 3;
 		// [Feature3] 토/일 경험치 2배
 		int _dow = java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_WEEK);
 		if (s.willKill && (_dow == java.util.Calendar.SATURDAY || _dow == java.util.Calendar.SUNDAY)) s.res.gainExp *= 2;
