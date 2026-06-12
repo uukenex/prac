@@ -260,9 +260,11 @@
       },
       fmtSp: function(v) {
         var sp = Number(v) || 0;
-        var b = Math.floor(sp / 100000000);
+        var c = Math.floor(sp / 1000000000000);
+        var b = Math.floor((sp % 1000000000000) / 100000000);
         var a = Math.floor((sp % 100000000) / 10000);
         var s = sp % 10000;
+        if (c > 0) return c + 'c ' + b + 'b';
         if (b > 0) return b + 'b ' + a + 'a';
         if (a > 0) return a + 'a ' + s + 'sp';
         return s + 'sp';
