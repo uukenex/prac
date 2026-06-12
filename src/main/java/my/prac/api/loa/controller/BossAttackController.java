@@ -6758,6 +6758,17 @@ public class BossAttackController {
 		List<String> ridList = new ArrayList<>(rows.size());
 		Map<Integer, String> catCache = new HashMap<>(itemIds.size());
 
+		// 7000번대 보스아이템 강화 여부 판단용: BOSS_HELL/BOSS_GACHA/BOSS_BUY 합산
+		Map<Integer, Integer> bossConsolidatedQty = new java.util.LinkedHashMap<>();
+		for (HashMap<String,Object> r0 : rows) {
+			int id0 = MiniGameUtil.parseIntSafe(Objects.toString(r0.get("ITEM_ID"), "0"));
+			if (id0 < 7000 || id0 >= 8000) continue;
+			String gt0 = Objects.toString(r0.get("GAIN_TYPE"), "");
+			if (!"BOSS_HELL".equalsIgnoreCase(gt0) && !"BOSS_GACHA".equalsIgnoreCase(gt0) && !"BOSS_BUY".equalsIgnoreCase(gt0)) continue;
+			int q0 = Math.max(MiniGameUtil.parseIntSafe(Objects.toString(r0.get("QTY"), "0")), 1);
+			bossConsolidatedQty.merge(id0, q0, Integer::sum);
+		}
+
 		int sold = 0;
 		SP total = SP.of(0, "");
 		int gpCount = 0; // 7000번대 보스 아이템 판매 GP
@@ -6788,7 +6799,7 @@ public class BossAttackController {
 			if (itemId >= 7000 && itemId < 8000) {
 				String gainType = Objects.toString(r.get("GAIN_TYPE"), "");
 				if ("BOSS_GACHA".equalsIgnoreCase(gainType)) continue;
-				if (qty > 1) continue; // 강화된 아이템 판매 불가
+				if (bossConsolidatedQty.getOrDefault(itemId, 0) > 1) continue; // 강화된 아이템 판매 불가 (합산 기준)
 				int take2 = sellAll ? qty : Math.min(qty, need);
 				if (take2 == qty) ridList.add(rid);
 				else botNewService.updateInventoryQtyByRowId(rid, qty - take2);
