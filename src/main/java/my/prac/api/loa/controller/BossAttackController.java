@@ -1628,14 +1628,14 @@ public class BossAttackController {
 	            ? (HashMap<String,Object>) invBuff.get("expSell")
 	            : botNewService.selectExpSellStats(userName);
 	        if (row == null) return;
-	        int hp      = safeInt(row.get("HP_BONUS"))      * 100;
+	        int hp      = safeInt(row.get("HP_BONUS"))      * 10;
 	        int atkMin  = safeInt(row.get("ATK_MIN_BONUS")) * 1;
 	        int atkMax  = safeInt(row.get("ATK_MAX_BONUS")) * 1;
-	        int crit    = safeInt(row.get("CRIT_BONUS"))    * 1;
-	        int critDmg = safeInt(row.get("CRIT_DMG_BONUS"))* 1;
+	        double crit    = safeInt(row.get("CRIT_BONUS"))    * 0.1;
+	        double critDmg = safeInt(row.get("CRIT_DMG_BONUS"))* 0.1;
 	        ctx.hpMax   += hp;      ctx.atkMin  += atkMin;
-	        ctx.atkMax  += atkMax;  ctx.crit    += crit;
-	        ctx.critDmg += critDmg;
+	        ctx.atkMax  += atkMax;  ctx.crit    += (int) crit;
+	        ctx.critDmg += (int) critDmg;
 	        ctx.expSellHp = hp; ctx.expSellAtkMin = atkMin; ctx.expSellAtkMax = atkMax;
 	        ctx.expSellCrit = crit; ctx.expSellCritDmg = critDmg;
 	    } catch (Exception ignore) {}
@@ -2729,6 +2729,15 @@ public class BossAttackController {
 		        }
 		    }
 		} catch (Exception ignore) {}
+	    // ─ 경험치판매 영구 스탯 ─
+	    if (ctx.expSellAtkMin > 0 || ctx.expSellAtkMax > 0 || ctx.expSellHp > 0 || ctx.expSellCrit > 0 || ctx.expSellCritDmg > 0) {
+	        sb.append("✨경험치판매 보너스 [헬너프되지않음]").append(NL);
+	        if (ctx.expSellHp > 0)      sb.append("  HP +").append(ctx.expSellHp).append(NL);
+	        if (ctx.expSellAtkMin > 0)  sb.append("  최소공격 +").append(ctx.expSellAtkMin).append(NL);
+	        if (ctx.expSellAtkMax > 0)  sb.append("  최대공격 +").append(ctx.expSellAtkMax).append(NL);
+	        if (ctx.expSellCrit > 0)    sb.append("  크리확률 +").append(String.format("%.1f", ctx.expSellCrit)).append("%").append(NL);
+	        if (ctx.expSellCritDmg > 0) sb.append("  크리데미지 +").append(String.format("%.1f", ctx.expSellCritDmg)).append("%").append(NL);
+	    }
 	    // ─ 세트 효과 ─
 	    boolean hasSetEffect = ctx.setCooldownReduce > 0 || ctx.setCooldownIncrease > 0 || ctx.setAtkFinalRate > 0 || ctx.setCritFinalRate > 0
 	            || ctx.setEvasionRate > 0 || (ctx.activeSetSpecials != null && !ctx.activeSetSpecials.isEmpty());
@@ -5106,7 +5115,8 @@ public class BossAttackController {
 		// 경험치 배수 (1타와 동일 조건)
 		if ("궁수".equals(s.u.job) || "사냥꾼".equals(s.u.job)) s.res2.gainExp *= 3;
 		if (s.willKill2 && s.isOngoing && !s.dark && !s.lucky && !s.shadow) s.res2.gainExp *= 2;
-		if (s.willKill2 && s.u.lv <= 800) s.res2.gainExp *= 2;
+		if (s.willKill2 && s.u.lv <= 800) s.res2.gainExp *= 4;
+		else if (s.willKill2 && s.u.lv <= 998) s.res2.gainExp *= 3;
 		int dow2 = java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_WEEK);
 		if (s.willKill2 && (dow2 == java.util.Calendar.SATURDAY || dow2 == java.util.Calendar.SUNDAY)) s.res2.gainExp *= 2;
 
@@ -5196,8 +5206,9 @@ public class BossAttackController {
 
 		// [Feature1] 다회전 경험치 2배: 처치 시 진행 중 전투였을 경우 (다크/빛/섀도우 제외)
 		if (s.willKill && s.isOngoing && !s.dark && !s.lucky && !s.shadow) s.res.gainExp *= 2;
-		// [Feature2] lv 800 이하 경험치 2배
-		if (s.willKill && s.u.lv <= 800) s.res.gainExp *= 2;
+		// [Feature2] lv 800 이하 4배, 998 이하 3배
+		if (s.willKill && s.u.lv <= 800) s.res.gainExp *= 4;
+		else if (s.willKill && s.u.lv <= 998) s.res.gainExp *= 3;
 		// [Feature3] 토/일 경험치 2배
 		int _dow = java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_WEEK);
 		if (s.willKill && (_dow == java.util.Calendar.SATURDAY || _dow == java.util.Calendar.SUNDAY)) s.res.gainExp *= 2;
