@@ -6439,7 +6439,7 @@ public class BossAttackController {
 		List<Integer> newItems = new ArrayList<>(bossItems);
 		List<Integer> enhanceable = new ArrayList<>();
 		// bossQtyMap(BOSS_HELL+BOSS_GACHA+BOSS_BUY 합산)으로 보유 여부 판정
-		newItems.removeIf(id -> bossQtyMap.getOrDefault(id, 0) > 0);
+		newItems.removeIf(id -> bossQtyMap.getOrDefault(id, 0) >= BossAttackS3Controller.MAX_BOSS_ENHANCE);
 		for (int oid : bossQtyMap.keySet()) {
 		    int curQty = bossQtyMap.get(oid);
 		    if (curQty < BossAttackS3Controller.MAX_BOSS_ENHANCE) enhanceable.add(oid);
