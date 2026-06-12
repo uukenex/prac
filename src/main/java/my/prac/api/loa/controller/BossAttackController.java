@@ -4358,13 +4358,13 @@ public class BossAttackController {
 	    try { gp = botNewService.selectGpBalance(userName); }
 	    catch (Exception ignore) {}
 
-	    // 보유 보스 아이템 수 조회 (뽑기 가격 안내용)
+	    // 보유 보스 아이템 qty 합산 (뽑기 가격 안내용)
 	    int ownedCount = 0;
 	    try {
-	        List<Integer> ownedForCount = botNewService.selectInventoryItemsByIds(userName, "", bossItemIds);
-	        if (ownedForCount != null) ownedCount = ownedForCount.size();
+	        List<HashMap<String,Object>> qtyRows = botNewService.selectBossHellItemTotalQty(userName);
+	        if (qtyRows != null) for (HashMap<String,Object> r : qtyRows) ownedCount += ((Number) r.get("TOTAL_QTY")).intValue();
 	    } catch (Exception ignore) {}
-	    double gachaPrice = ownedCount >= 20 ? 6.0 : ownedCount >= 10 ? 5.0 : 4.0;
+	    double gachaPrice = ownedCount >= 40 ? 8.0 : ownedCount >= 30 ? 7.0 : ownedCount >= 20 ? 6.0 : ownedCount >= 10 ? 5.0 : 4.0;
 
 	    StringBuilder sb = new StringBuilder();
 	    sb.append("■ 보스 아이템 상점 (10 GP)").append(NL)
@@ -4374,8 +4374,10 @@ public class BossAttackController {
 	      .append("◆ GP뽑기 (/보스뽑기)").append(NL)
 	      .append("  보유 유물  0~9개 : 4 GP").append(NL)
 	      .append("  보유 유물 10~19개: 5 GP").append(NL)
-	      .append("  보유 유물 20개 이상: 6 GP").append(NL)
-	      .append("  현재 보유: ").append(ownedCount).append("개 → ").append((int)gachaPrice).append(" GP").append(NL)
+	      .append("  보유 유물 20~29개: 6 GP").append(NL)
+	      .append("  보유 유물 30~39개: 7 GP").append(NL)
+	      .append("  보유 유물 40개 이상: 8 GP").append(NL)
+	      .append("  현재 보유(qty합산): ").append(ownedCount).append("개 → ").append((int)gachaPrice).append(" GP").append(NL)
 	      .append("────────────────").append(NL)
 	      .append(NL);
 
@@ -6389,16 +6391,13 @@ public class BossAttackController {
 		try { gp = botNewService.selectGpBalance(userName); }
 		catch (Exception e) { return "GP 조회 중 오류가 발생했습니다."; }
 
-		// 보스 아이템 보유 수에 따라 가격 결정 (4/5/6 GP)
+		// 보스 아이템 qty 합산에 따라 가격 결정 (4~8 GP)
 		int ownedBossCount = 0;
 		try {
-			List<Integer> allBossIds = botNewService.selectBossItemIds();
-			if (allBossIds != null && !allBossIds.isEmpty()) {
-				List<Integer> ownedBoss = botNewService.selectInventoryItemsByIds(userName, "", allBossIds);
-				if (ownedBoss != null) ownedBossCount = ownedBoss.size();
-			}
+			List<HashMap<String,Object>> qtyRows = botNewService.selectBossHellItemTotalQty(userName);
+			if (qtyRows != null) for (HashMap<String,Object> r : qtyRows) ownedBossCount += ((Number) r.get("TOTAL_QTY")).intValue();
 		} catch (Exception ignore) {}
-		double gachaPrice = ownedBossCount >= 20 ? 6.0 : ownedBossCount >= 10 ? 5.0 : 4.0;
+		double gachaPrice = ownedBossCount >= 40 ? 8.0 : ownedBossCount >= 30 ? 7.0 : ownedBossCount >= 20 ? 6.0 : ownedBossCount >= 10 ? 5.0 : 4.0;
 
 		// 강화뽑기 사전 체크: 모든 아이템 보유 시 강화뽑기 → 가격 2배 (강화뽑기 차단으로 현재 미사용)
 		// boolean isEnhanceGacha = false;
