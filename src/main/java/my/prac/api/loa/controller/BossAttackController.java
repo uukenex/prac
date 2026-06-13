@@ -11182,10 +11182,10 @@ public class BossAttackController {
 	        // 표시용 보스템 보너스 (맥스치 기준, 너프 전 원본)
 	        int maxBossBonus = 0;
 	        if (has7009) maxBossBonus += Math.min(lv, 300) * 150; // 최대 45,000
-	        if (has7013) maxBossBonus += 40 * 1500;                // 최대 60,000
+	        if (has7013) maxBossBonus += 40 * 1000;                // 최대 40,000
 
 	        int cappedYest = Math.min(getYesterdayAttackerCountCached(), 40);
-	        int extra7013  = has7013 ? (40 - cappedYest) * 1500 : 0;
+	        int extra7013  = has7013 ? (40 - cappedYest) * 1000 : 0;
 	        double keepFraction = ctx.hellNerfRate > 0 ? ctx.hellNerfRate : 1.0;
 	        int extra7013Nerfed = (int) Math.round(extra7013 * keepFraction);
 
