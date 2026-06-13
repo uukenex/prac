@@ -5647,25 +5647,32 @@ public class BossAttackController {
 		s.bagDropMsg = tryDropBag(s.userName, s.roomName, s.m, s.nightmare, s.hell, s.buff);
 
 		// [천장] 헬모드 20킬마다 헬각인상자 확정 (일일 35개 상한 유지)
-		if (s.hell && s.res != null && s.res.killed) {
+		// 주의: insertBattleLogsBatch 완료 후 조회이므로 이번 킬이 이미 COUNT에 포함됨 (+1 보정 불필요)
+		// 도적 더블어택으로 1턴에 2킬 가능 → 이번 턴 킬 수만큼 루프하여 20의 배수 빠짐없이 체크
+		int hellKillsThisTurn = (s.res  != null && s.res.killed  ? 1 : 0)
+		                      + (s.res2 != null && s.res2.killed ? 1 : 0);
+		if (s.hell && hellKillsThisTurn > 0) {
 			try {
 				int todayHellKills = botNewService.selectTodayHellKillCount(s.userName);
-				// 현재 킬이 아직 BATTLE_LOG에 미기록 → +1 보정
-				if ((todayHellKills + 1) % 20 == 0) {
-					int todayBagTotal = getTodayBagCount(s.userName);
-					if (todayBagTotal < BAG_DAILY_LIMIT) {
-						HashMap<String,Object> pityInv = new HashMap<>();
-						pityInv.put("userName", s.userName);
-						pityInv.put("roomName", s.roomName);
-						pityInv.put("itemId",   BAG_HELL_ITEM_ID);
-						pityInv.put("qty",       1);
-						pityInv.put("delYn",    "0");
-						pityInv.put("gainType", "BAG_DROP");
-						botNewService.insertInventoryLogTx(pityInv);
-						incrementTodayBagCache(s.userName, 1);
-						String pityMsg = "[" + (todayHellKills + 1) + "킬 달성] 헬상자 획득!";
-						s.bagDropMsg = (s.bagDropMsg == null || s.bagDropMsg.isEmpty())
-								? pityMsg : s.bagDropMsg + NL + pityMsg;
+				int prevKills = todayHellKills - hellKillsThisTurn;
+				for (int k = 1; k <= hellKillsThisTurn; k++) {
+					int checkKills = prevKills + k;
+					if (checkKills > 0 && checkKills % 20 == 0) {
+						int todayBagTotal = getTodayBagCount(s.userName);
+						if (todayBagTotal < BAG_DAILY_LIMIT) {
+							HashMap<String,Object> pityInv = new HashMap<>();
+							pityInv.put("userName", s.userName);
+							pityInv.put("roomName", s.roomName);
+							pityInv.put("itemId",   BAG_HELL_ITEM_ID);
+							pityInv.put("qty",       1);
+							pityInv.put("delYn",    "0");
+							pityInv.put("gainType", "BAG_DROP");
+							botNewService.insertInventoryLogTx(pityInv);
+							incrementTodayBagCache(s.userName, 1);
+							String pityMsg = "[" + checkKills + "킬 달성] 헬상자 획득!";
+							s.bagDropMsg = (s.bagDropMsg == null || s.bagDropMsg.isEmpty())
+									? pityMsg : s.bagDropMsg + NL + pityMsg;
+						}
 					}
 				}
 			} catch (Exception ignore) {}
