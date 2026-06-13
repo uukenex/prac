@@ -144,7 +144,7 @@ public class BossAttackS3Controller {
         e.put(7010, new String[]{"보스 회피 무시 확률",    "%",   "헬보스 전용"});
         e.put(7011, new String[]{"보스 은신 무시 확률",    "%",   "헬보스 전용"});
         e.put(7012, new String[]{"직업 버프 계수",         "배",  "도사/음양사 전용"});
-        e.put(7013, new String[]{"어제공격자수 x 공격력",  "",    "최대 30명"});
+        e.put(7013, new String[]{"어제공격자수 x 공격력",  "",    "최대 40명 / 0강max60,000 / 1강max150,000"});
         e.put(7014, new String[]{"곰 스킬실패 패널티 완화", "%",  "곰 전용"});
         e.put(7015, new String[]{"슈퍼크리티컬 확률",      "%",   "헬보스 전용"});
         e.put(7016, new String[]{"HP 흡수율",              "%",   "미보유시 기본 10%"});
