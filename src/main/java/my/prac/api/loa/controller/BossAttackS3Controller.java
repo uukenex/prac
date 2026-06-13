@@ -998,7 +998,8 @@ public class BossAttackS3Controller {
             String bossType = isGreatDemon ? "대악마" : "상급악마";
             bossMap.put("bossType", bossType);
             if (isGreatDemon) {
-                rawHp = rawHp * 10;
+                // 대악마 HP: 1200a ~ 1500a 고정 범위
+                rawHp = 12_000_000L + (long)(rand.nextDouble() * (15_000_000L - 12_000_000L + 1));
                 bossMap.put("atkRate",     Math.min(100, (int) bossMap.get("atkRate")     * 3));
                 bossMap.put("atkPower",    Math.min(100, (int) bossMap.get("atkPower")    * 3));
                 bossMap.put("defRate",     Math.min(100, (int) bossMap.get("defRate")     * 3));
