@@ -757,10 +757,10 @@ public class BossAttackController {
 	        atkMin += evolveBonus;
 	        atkMax += evolveBonus;
 	    }
-	    // [7013] 어제 공격자 수 × 공격력 (강화별), 치명타 데미지 (강화별) (최대 30명)
+	    // [7013] 어제 공격자 수 × 공격력 (강화별), 치명타 데미지 (강화별) (최대 40명)
 	    if (ctx.ownedBossItems.contains(7013)) {
 	        int qty7013 = ctx.bossItemQtyMap.getOrDefault(7013, 1);
-	        int cappedYest = Math.min(getYesterdayAttackerCountCached(), 30);
+	        int cappedYest = Math.min(getYesterdayAttackerCountCached(), 40);
 	        int atkPer = BossAttackS3Controller.getBossEnhanceVal(7013, qty7013);
 	        atkMin  += cappedYest * atkPer;
 	        atkMax  += cappedYest * atkPer;
@@ -5647,25 +5647,32 @@ public class BossAttackController {
 		s.bagDropMsg = tryDropBag(s.userName, s.roomName, s.m, s.nightmare, s.hell, s.buff);
 
 		// [천장] 헬모드 20킬마다 헬각인상자 확정 (일일 35개 상한 유지)
-		if (s.hell && s.res != null && s.res.killed) {
+		// 주의: insertBattleLogsBatch 완료 후 조회이므로 이번 킬이 이미 COUNT에 포함됨 (+1 보정 불필요)
+		// 도적 더블어택으로 1턴에 2킬 가능 → 이번 턴 킬 수만큼 루프하여 20의 배수 빠짐없이 체크
+		int hellKillsThisTurn = (s.res  != null && s.res.killed  ? 1 : 0)
+		                      + (s.res2 != null && s.res2.killed ? 1 : 0);
+		if (s.hell && hellKillsThisTurn > 0) {
 			try {
 				int todayHellKills = botNewService.selectTodayHellKillCount(s.userName);
-				// 현재 킬이 아직 BATTLE_LOG에 미기록 → +1 보정
-				if ((todayHellKills + 1) % 20 == 0) {
-					int todayBagTotal = getTodayBagCount(s.userName);
-					if (todayBagTotal < BAG_DAILY_LIMIT) {
-						HashMap<String,Object> pityInv = new HashMap<>();
-						pityInv.put("userName", s.userName);
-						pityInv.put("roomName", s.roomName);
-						pityInv.put("itemId",   BAG_HELL_ITEM_ID);
-						pityInv.put("qty",       1);
-						pityInv.put("delYn",    "0");
-						pityInv.put("gainType", "BAG_DROP");
-						botNewService.insertInventoryLogTx(pityInv);
-						incrementTodayBagCache(s.userName, 1);
-						String pityMsg = "[" + (todayHellKills + 1) + "킬 달성] 헬상자 획득!";
-						s.bagDropMsg = (s.bagDropMsg == null || s.bagDropMsg.isEmpty())
-								? pityMsg : s.bagDropMsg + NL + pityMsg;
+				int prevKills = todayHellKills - hellKillsThisTurn;
+				for (int k = 1; k <= hellKillsThisTurn; k++) {
+					int checkKills = prevKills + k;
+					if (checkKills > 0 && checkKills % 20 == 0) {
+						int todayBagTotal = getTodayBagCount(s.userName);
+						if (todayBagTotal < BAG_DAILY_LIMIT) {
+							HashMap<String,Object> pityInv = new HashMap<>();
+							pityInv.put("userName", s.userName);
+							pityInv.put("roomName", s.roomName);
+							pityInv.put("itemId",   BAG_HELL_ITEM_ID);
+							pityInv.put("qty",       1);
+							pityInv.put("delYn",    "0");
+							pityInv.put("gainType", "BAG_DROP");
+							botNewService.insertInventoryLogTx(pityInv);
+							incrementTodayBagCache(s.userName, 1);
+							String pityMsg = "[" + checkKills + "킬 달성] 헬상자 획득!";
+							s.bagDropMsg = (s.bagDropMsg == null || s.bagDropMsg.isEmpty())
+									? pityMsg : s.bagDropMsg + NL + pityMsg;
+						}
 					}
 				}
 			} catch (Exception ignore) {}
@@ -10934,10 +10941,10 @@ public class BossAttackController {
 	    if (ctx.ownedBossItems.contains(7013)) {
 	        int qty7013s = ctx.bossItemQtyMap.getOrDefault(7013, 1);
 	        int atkPer7013 = BossAttackS3Controller.getBossEnhanceVal(7013, qty7013s);
-	        int yest = Math.min(getYesterdayAttackerCountCached(), 30);
+	        int yest = Math.min(getYesterdayAttackerCountCached(), 40);
 	        int b = yest * atkPer7013;
 	        bossMin += b; bossMax += b;
-	        bossNotes.add("[7013] 어제의전사들 " + yest + "명(max30) × " + atkPer7013 + " = +" + b);
+	        bossNotes.add("[7013] 어제의전사들 " + yest + "명(max40) × " + atkPer7013 + " = +" + b);
 	    }
 	    if (bossMin > 0) {
 	        curMin += bossMin; curMax += bossMax;
@@ -11088,12 +11095,12 @@ public class BossAttackController {
         int cap7009r  = (qty7009r >= 2) ? 500 : 300;
         if (has7009) maxBossBonus += Math.min(lv, cap7009r) * perLv7009r;
 	        int atkPer7013r = has7013 ? BossAttackS3Controller.getBossEnhanceVal(7013, ctx.bossItemQtyMap.getOrDefault(7013, 1)) : 500;
-        if (has7013) maxBossBonus += 30 * atkPer7013r;
+        if (has7013) maxBossBonus += 40 * atkPer7013r;
 
 	        // ctx.atkMax 에는 이미 7009(실제lv)+7013(실제cappedYest)가 헬너프 적용된 채로 포함됨.
 	        // 추정MAX = ctx.atkMax + [7013의 (max30-실제) 차분] × 헬너프유지율 + dropAtkMax
-	        int cappedYest = Math.min(getYesterdayAttackerCountCached(), 30);
-	        int extra7013  = has7013 ? (30 - cappedYest) * atkPer7013r : 0;
+	        int cappedYest = Math.min(getYesterdayAttackerCountCached(), 40);
+	        int extra7013  = has7013 ? (40 - cappedYest) * atkPer7013r : 0;
 	        // ctx.hellNerfRate = 유지비율(e.g. 0.1=10%유지). 헬너프 없으면 0 → 1.0 처리
 	        double keepFraction = ctx.hellNerfRate > 0 ? ctx.hellNerfRate : 1.0;
 	        int extra7013Nerfed = (int) Math.round(extra7013 * keepFraction);
@@ -11175,10 +11182,10 @@ public class BossAttackController {
 	        // 표시용 보스템 보너스 (맥스치 기준, 너프 전 원본)
 	        int maxBossBonus = 0;
 	        if (has7009) maxBossBonus += Math.min(lv, 300) * 150; // 최대 45,000
-	        if (has7013) maxBossBonus += 30 * 500;                // 최대 15,000
+	        if (has7013) maxBossBonus += 40 * 1000;                // 최대 40,000
 
-	        int cappedYest = Math.min(getYesterdayAttackerCountCached(), 30);
-	        int extra7013  = has7013 ? (30 - cappedYest) * 500 : 0;
+	        int cappedYest = Math.min(getYesterdayAttackerCountCached(), 40);
+	        int extra7013  = has7013 ? (40 - cappedYest) * 1000 : 0;
 	        double keepFraction = ctx.hellNerfRate > 0 ? ctx.hellNerfRate : 1.0;
 	        int extra7013Nerfed = (int) Math.round(extra7013 * keepFraction);
 
