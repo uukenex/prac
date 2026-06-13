@@ -757,10 +757,10 @@ public class BossAttackController {
 	        atkMin += evolveBonus;
 	        atkMax += evolveBonus;
 	    }
-	    // [7013] 어제 공격자 수 × 공격력 (강화별), 치명타 데미지 (강화별) (최대 30명)
+	    // [7013] 어제 공격자 수 × 공격력 (강화별), 치명타 데미지 (강화별) (최대 40명)
 	    if (ctx.ownedBossItems.contains(7013)) {
 	        int qty7013 = ctx.bossItemQtyMap.getOrDefault(7013, 1);
-	        int cappedYest = Math.min(getYesterdayAttackerCountCached(), 30);
+	        int cappedYest = Math.min(getYesterdayAttackerCountCached(), 40);
 	        int atkPer = BossAttackS3Controller.getBossEnhanceVal(7013, qty7013);
 	        atkMin  += cappedYest * atkPer;
 	        atkMax  += cappedYest * atkPer;
@@ -10941,10 +10941,10 @@ public class BossAttackController {
 	    if (ctx.ownedBossItems.contains(7013)) {
 	        int qty7013s = ctx.bossItemQtyMap.getOrDefault(7013, 1);
 	        int atkPer7013 = BossAttackS3Controller.getBossEnhanceVal(7013, qty7013s);
-	        int yest = Math.min(getYesterdayAttackerCountCached(), 30);
+	        int yest = Math.min(getYesterdayAttackerCountCached(), 40);
 	        int b = yest * atkPer7013;
 	        bossMin += b; bossMax += b;
-	        bossNotes.add("[7013] 어제의전사들 " + yest + "명(max30) × " + atkPer7013 + " = +" + b);
+	        bossNotes.add("[7013] 어제의전사들 " + yest + "명(max40) × " + atkPer7013 + " = +" + b);
 	    }
 	    if (bossMin > 0) {
 	        curMin += bossMin; curMax += bossMax;
@@ -11095,12 +11095,12 @@ public class BossAttackController {
         int cap7009r  = (qty7009r >= 2) ? 500 : 300;
         if (has7009) maxBossBonus += Math.min(lv, cap7009r) * perLv7009r;
 	        int atkPer7013r = has7013 ? BossAttackS3Controller.getBossEnhanceVal(7013, ctx.bossItemQtyMap.getOrDefault(7013, 1)) : 500;
-        if (has7013) maxBossBonus += 30 * atkPer7013r;
+        if (has7013) maxBossBonus += 40 * atkPer7013r;
 
 	        // ctx.atkMax 에는 이미 7009(실제lv)+7013(실제cappedYest)가 헬너프 적용된 채로 포함됨.
 	        // 추정MAX = ctx.atkMax + [7013의 (max30-실제) 차분] × 헬너프유지율 + dropAtkMax
-	        int cappedYest = Math.min(getYesterdayAttackerCountCached(), 30);
-	        int extra7013  = has7013 ? (30 - cappedYest) * atkPer7013r : 0;
+	        int cappedYest = Math.min(getYesterdayAttackerCountCached(), 40);
+	        int extra7013  = has7013 ? (40 - cappedYest) * atkPer7013r : 0;
 	        // ctx.hellNerfRate = 유지비율(e.g. 0.1=10%유지). 헬너프 없으면 0 → 1.0 처리
 	        double keepFraction = ctx.hellNerfRate > 0 ? ctx.hellNerfRate : 1.0;
 	        int extra7013Nerfed = (int) Math.round(extra7013 * keepFraction);
@@ -11182,10 +11182,10 @@ public class BossAttackController {
 	        // 표시용 보스템 보너스 (맥스치 기준, 너프 전 원본)
 	        int maxBossBonus = 0;
 	        if (has7009) maxBossBonus += Math.min(lv, 300) * 150; // 최대 45,000
-	        if (has7013) maxBossBonus += 30 * 500;                // 최대 15,000
+	        if (has7013) maxBossBonus += 40 * 1500;                // 최대 60,000
 
-	        int cappedYest = Math.min(getYesterdayAttackerCountCached(), 30);
-	        int extra7013  = has7013 ? (30 - cappedYest) * 500 : 0;
+	        int cappedYest = Math.min(getYesterdayAttackerCountCached(), 40);
+	        int extra7013  = has7013 ? (40 - cappedYest) * 1500 : 0;
 	        double keepFraction = ctx.hellNerfRate > 0 ? ctx.hellNerfRate : 1.0;
 	        int extra7013Nerfed = (int) Math.round(extra7013 * keepFraction);
 
