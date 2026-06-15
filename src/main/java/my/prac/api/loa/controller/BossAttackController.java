@@ -2083,6 +2083,27 @@ public class BossAttackController {
 		        if (prevLv < 30) return "[자이언트기사] 전직 조건 미충족: 자이언트용병 직업레벨 30 달성 필요 (현재 Lv." + prevLv + ")";
 		    }
 
+		    // 5-5) 워록: 궁사 1000회 + 도적 500회
+		    if ("워록".equals(newJob)) {
+		        Map<String,Integer> _jcm = new HashMap<>();
+		        try {
+		            HashMap<String,Object> _p = new HashMap<>(); _p.put("userName", userName);
+		            List<HashMap<String,Object>> _rows = botNewService.selectBattleCountByUser(_p);
+		            if (_rows != null) for (HashMap<String,Object> _r : _rows) {
+		                String _j = Objects.toString(_r.get("JOB"), "");
+		                int _cnt = ((Number) _r.getOrDefault("CNT", 0)).intValue();
+		                _jcm.put(_j, _jcm.getOrDefault(_j, 0) + _cnt);
+		            }
+		        } catch (Exception ignore) {}
+		        int _gungCnt = _jcm.getOrDefault("궁사", 0);
+		        int _thfCnt  = _jcm.getOrDefault("도적", 0);
+		        if (_gungCnt < 1000 || _thfCnt < 500) {
+		            return "[워록] 전직 조건 미충족" + NL
+		                 + "▶ 궁사 공격 1000회 (현재 " + _gungCnt + "회)" + NL
+		                 + "▶ 도적 공격 500회 (현재 " + _thfCnt + "회)";
+		        }
+		    }
+
 		    // // 5-2) 직업별 전직 조건 체크 (전사 100, 도적 100 같은 것들)
 // 		    List<JobChangeReq> reqList = MiniGameUtil.JOB_CHANGE_REQS.get(newJob);
 // 		    if (reqList != null && !reqList.isEmpty()) {
@@ -4839,7 +4860,7 @@ public class BossAttackController {
 		else if ("엘프".equals(s.job))       jobDmgMul = 2.0;
 		else if ("엘프궁수".equals(s.job))   jobDmgMul = 2.0;
 		else if ("엘프마법사".equals(s.job)) jobDmgMul = 2.0;
-		else if ("워록".equals(s.job))      jobDmgMul = 2.0;
+		else if ("워록".equals(s.job))      jobDmgMul = 1.5;
 
 		s.effAtkMin = (int)Math.round(atkMin * jobDmgMul + jobBonusMin);
 		s.effAtkMax = (int)Math.round(atkMax * jobDmgMul + jobBonusMax);
