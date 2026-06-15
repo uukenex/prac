@@ -5318,13 +5318,15 @@ public class BossAttackController {
 			} catch (Exception ignore) { s.warlockExtraUps.add(null); }
 			if (er.killed) {
 				warlockKillCount++;
-				invalidateInvBuff(s.userName);
-				try { botNewService.closeOngoingBattleTx(s.userName, s.roomName); } catch (Exception ignore) {}
 				s.warlockKillMsgs.add("⚔️ [" + (i + 2) + "타!] " + s.m.monName + " 처치!");
-				break;
 			} else {
 				s.warlockKillMsgs.add("");
 			}
+		}
+		// 처치 성공한 업주는 요청에서 한 번만 closeOngoingBattle
+		if (warlockKillCount > 0) {
+			invalidateInvBuff(s.userName);
+			try { botNewService.closeOngoingBattleTx(s.userName, s.roomName); } catch (Exception ignore) {}
 		}
 		// 1타(already persisted) + 추가타 처치 합산 → killStat 한 번에 업데이트
 		if (s.res.killed || warlockKillCount > 0) {
