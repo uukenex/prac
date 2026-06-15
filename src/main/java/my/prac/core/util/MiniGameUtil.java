@@ -449,6 +449,11 @@ public class MiniGameUtil {
 	    	//new JobChangeReq("도사", 1000)
 		));
 	    
+	    JOB_CHANGE_REQS.put("워록", Arrays.asList(
+			new JobChangeReq("궁사", 1000),
+			new JobChangeReq("도적", 500)
+		));
+
 	    // 용사 = 전체 공격 1000회 이상
 	    JOB_CHANGE_TOTAL_REQS.put("궁사", 3000);
 	    

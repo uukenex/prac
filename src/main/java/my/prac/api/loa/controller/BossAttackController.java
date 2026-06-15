@@ -2027,23 +2027,10 @@ public class BossAttackController {
 
 	    if(!master) {
 	    	// 5-0) 해당 유저의 직업별 공격횟수 전체 조회 (쿼리 1번)
-		    Map<String, Integer> jobCntMap = Collections.emptyMap();
-		    //int totalCnt = 0;
-
-		    /*
+		    Map<String, Integer> jobCntMap = new HashMap<>();
 		    try {
-		        jobCntMap = botNewService.selectBattleCountByUser(userName, roomName);
-		    } catch (Exception e) {
-		        e.printStackTrace();
-		        jobCntMap = new HashMap<String, Integer>();
-		    }
-		     */
-		    // 전체 공격횟수 = 모든 직업 CNT 합
-		    for (Integer v : jobCntMap.values()) {
-		        if (v != null) {
-		            //totalCnt += v;
-		        }
-		    }
+		        jobCntMap = botNewService.selectBattleCountByUser(userName, "");
+		    } catch (Exception ignore) {}
 
 		    // 5-1) 야간(18~06시): 비엘프 계열 → 엘프 계열 전직 불가
 		    boolean isElfFamilyTarget = "엘프".equals(newJob) || "엘프궁수".equals(newJob) || "엘프마법사".equals(newJob);
@@ -2083,52 +2070,23 @@ public class BossAttackController {
 		        if (prevLv < 30) return "[자이언트기사] 전직 조건 미충족: 자이언트용병 직업레벨 30 달성 필요 (현재 Lv." + prevLv + ")";
 		    }
 
-		    // 5-5) 워록: 궁사 1000회 + 도적 500회
-		    if ("워록".equals(newJob)) {
-		        Map<String,Integer> _jcm = new HashMap<>();
-		        try {
-		            HashMap<String,Object> _p = new HashMap<>(); _p.put("userName", userName);
-		            List<HashMap<String,Object>> _rows = botNewService.selectBattleCountByUser(_p);
-		            if (_rows != null) for (HashMap<String,Object> _r : _rows) {
-		                String _j = Objects.toString(_r.get("JOB"), "");
-		                int _cnt = ((Number) _r.getOrDefault("CNT", 0)).intValue();
-		                _jcm.put(_j, _jcm.getOrDefault(_j, 0) + _cnt);
+		    // 5-2) JOB_CHANGE_REQS 직업별 전직 조건 체크
+		    {
+		        List<my.prac.core.game.dto.JobChangeReq> reqList = MiniGameUtil.JOB_CHANGE_REQS.get(newJob);
+		        if (reqList != null && !reqList.isEmpty()) {
+		            StringBuilder sb = new StringBuilder();
+		            for (my.prac.core.game.dto.JobChangeReq req : reqList) {
+		                int curCnt = jobCntMap.getOrDefault(req.baseJob, 0);
+		                if (curCnt < req.minCount) {
+		                    sb.append("▶ ").append(req.baseJob).append(" ").append(req.minCount)
+		                      .append("회 이상 공격 필요 (현재: ").append(curCnt).append("회)").append(NL);
+		                }
 		            }
-		        } catch (Exception ignore) {}
-		        int _gungCnt = _jcm.getOrDefault("궁사", 0);
-		        int _thfCnt  = _jcm.getOrDefault("도적", 0);
-		        if (_gungCnt < 1000 || _thfCnt < 500) {
-		            return "[워록] 전직 조건 미충족" + NL
-		                 + "▶ 궁사 공격 1000회 (현재 " + _gungCnt + "회)" + NL
-		                 + "▶ 도적 공격 500회 (현재 " + _thfCnt + "회)";
+		            if (sb.length() > 0) {
+		                return "[" + newJob + "] 전직 조건 미충족" + NL + sb.toString().trim();
+		            }
 		        }
 		    }
-
-		    // // 5-2) 직업별 전직 조건 체크 (전사 100, 도적 100 같은 것들)
-// 		    List<JobChangeReq> reqList = MiniGameUtil.JOB_CHANGE_REQS.get(newJob);
-// 		    if (reqList != null && !reqList.isEmpty()) {
-// 		        StringBuilder sb = new StringBuilder();
-// 
-// 		        for (JobChangeReq req : reqList) {
-// 		            int curCnt = jobCntMap.getOrDefault(req.baseJob, 0);
-// 
-// 		            if (curCnt < req.minCount) {
-// 		                sb.append("- [")
-// 		                  .append(req.baseJob)
-// 		                  .append("] 직업으로 ")
-// 		                  .append(req.minCount)
-// 		                  .append("회 이상 공격 필요 (현재: ")
-// 		                  .append(curCnt)
-// 		                  .append("회)")
-// 		                  .append(NL);
-// 		            }
-// 		        }
-// 
-// 		        if (sb.length() > 0) {
-// 		            return "[" + newJob + "] 직업은 아래 조건을 모두 만족해야 전직 가능합니다." + NL
-// 		                 + sb.toString().trim();
-// 		        }
-// 		    }
 // 
 // 		    // 5-2) 전체 공격 횟수 조건 체크
 // 		    Integer totalReq = MiniGameUtil.JOB_CHANGE_TOTAL_REQS.get(newJob);
