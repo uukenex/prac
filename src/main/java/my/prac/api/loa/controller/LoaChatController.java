@@ -78,6 +78,9 @@ public class LoaChatController {
 	@Autowired
 	BossAttackS3Controller bossS3; // [시즌3] 보스 공격 전담 컨트롤러
 
+	@Autowired
+	Season4Controller s4; // [시즌4] 낚시
+
 	@Resource(name = "core.prjbot.BotService")
 	BotService botService;
 	@Resource(name = "core.prjbot.BotSettleService")
@@ -513,6 +516,15 @@ public class LoaChatController {
 			}
 			
 			switch (param0) {
+			case "/낚시":
+				val = s4.fishing(reqMap);
+				break;
+			case "/낚시가방":
+				val = s4.fishingBag(reqMap);
+				break;
+			case "/낚시구매":
+				val = s4.fishingShop(reqMap);
+				break;
 			case "/테스트":
 				val = play.testMethod(reqMap);
 				break;
@@ -825,7 +837,7 @@ public class LoaChatController {
 				passYn = true;
 				val = bossS3.getHellBossStatusMsg() + "http://rgb-tns.dev-apc.com/loa/boss-status-view";
 				break;
-			case "/보스뽑기": case "/gp뽑기":
+			case "/보스뽑기": case "/gp뽑기": case "/보뽑": case "/ㅂㅃ": case "/ㅂㅅㅃㄱ": case "/ㅄㅃㄱ":
 				val = boss.gpGacha(reqMap);
 				break;
 			case "/직업":

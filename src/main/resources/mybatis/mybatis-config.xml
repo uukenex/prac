@@ -22,6 +22,7 @@
 		<mapper resource="mybatis/mapper2.0/BotNewMapper.xml" />
 		<mapper resource="mybatis/mapper2.0/BotExtMapper.xml" />
 		<mapper resource="mybatis/mapper2.0/BotS3Mapper.xml" />
+		<mapper resource="mybatis/mapper2.0/BotS4Mapper.xml" />
 	</mappers>
 
 </configuration>
