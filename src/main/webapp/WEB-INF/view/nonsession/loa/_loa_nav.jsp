@@ -105,7 +105,6 @@
 <nav class="loa-nav" id="loaNav">
   <div class="loa-nav-title">람쥐봇</div>
   <a class="loa-nav-item" data-page="user-info"    href="#">⚔ 장비정보</a>
-  <a class="loa-nav-item" data-page="monster"      href="#">👾 몬스터</a>
   <a class="loa-nav-item" data-page="item"         href="#">🛒 아이템샵</a>
   <a class="loa-nav-item" data-page="job"          href="#">📚 직업도감</a>
   <a class="loa-nav-item" data-page="hunter-rank"  href="#">🎯 헌터랭크</a>
@@ -137,7 +136,7 @@
 
   // 현재 페이지 하이라이트
   var path = window.location.pathname;
-  ['user-info', 'monster', 'item', 'job', 'hunter-rank', 'achievement', 'battle-log', 'ranking', 'boss-status', 'dmg-sim', 'equip-rank'].forEach(function (page) {
+  ['user-info', 'item', 'job', 'hunter-rank', 'achievement', 'battle-log', 'ranking', 'boss-status', 'dmg-sim', 'equip-rank'].forEach(function (page) {
     if (path.indexOf(page) !== -1) {
       var el = document.querySelector('.loa-nav-item[data-page="' + page + '"]');
       if (el) el.classList.add('active');
