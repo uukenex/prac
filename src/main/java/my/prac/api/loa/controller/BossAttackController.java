@@ -2138,9 +2138,10 @@ public class BossAttackController {
 	    long newHp = (long)Math.max(1, Math.floor(ctx2.hpMax * hpRatio));
 	    botNewService.updateUserHpOnlyTx(userName, roomName, (int) newHp);
 
-	    // 엘프/자이언트 계열 최초 전직 시 직업레벨 1로 시작
+	    // 엘프/자이언트/워록 계열 최초 전직 시 직업레벨 1로 시작
 	    if ("자이언트".equals(newJob) || "자이언트용병".equals(newJob) || "자이언트기사".equals(newJob)
-	        || "엘프".equals(newJob) || "엘프궁수".equals(newJob) || "엘프마법사".equals(newJob)) {
+	        || "엘프".equals(newJob) || "엘프궁수".equals(newJob) || "엘프마법사".equals(newJob)
+	        || "워록".equals(newJob)) {
 	        try {
 	            HashMap<String,Object> jlRow = botNewService.selectJobLevel(userName, newJob);
 	            int existingLv = jlRow != null ? ((Number) jlRow.getOrDefault("JOB_LV", 0)).intValue() : 0;
@@ -4627,6 +4628,8 @@ public class BossAttackController {
 
 		// [도적] 2타 사전 계산
 		ma_thiefDoubleAtkPreCalc(s);
+		// [워록] 다중히트 사전 계산
+		ma_warlockPreCalc(s);
 
 		// 12) 사망 처리
 		if ((earlyMsg = ma_deathCheck(s)) != null) return earlyMsg;
@@ -4746,6 +4749,15 @@ public class BossAttackController {
 		boolean elfNightMode = false;
 		String jobLvProgressMsg = "";
 		String gpDropMsg = "";
+		/* 워록 다중히트 */
+		int warlockHitCount = 1;
+		boolean warlockMultiHit = false;
+		boolean warlockKillFail = false;
+		List<DamageOutcome>  warlockExtraDmgs  = new ArrayList<>();
+		List<AttackCalc>     warlockExtraCalcs = new ArrayList<>();
+		List<Resolve>        warlockExtraRes   = new ArrayList<>();
+		List<LevelUpResult>  warlockExtraUps   = new ArrayList<>();
+		List<String>         warlockKillMsgs   = new ArrayList<>();
 
 		AttackSession(HashMap<String,Object> map) {
 			this.map      = map;
@@ -4826,6 +4838,7 @@ public class BossAttackController {
 		else if ("엘프".equals(s.job))       jobDmgMul = 2.0;
 		else if ("엘프궁수".equals(s.job))   jobDmgMul = 2.0;
 		else if ("엘프마법사".equals(s.job)) jobDmgMul = 2.0;
+		else if ("워록".equals(s.job))      jobDmgMul = 2.0;
 
 		s.effAtkMin = (int)Math.round(atkMin * jobDmgMul + jobBonusMin);
 		s.effAtkMax = (int)Math.round(atkMax * jobDmgMul + jobBonusMax);
@@ -5253,6 +5266,51 @@ public class BossAttackController {
 	}
 
 	// ─ 12) 사망 처리 ───────────────────────────────────────────────────
+	// 워록) 다중히트 사전 계산 
+	private void ma_warlockPreCalc(AttackSession s) {
+		if (!"워록".equals(s.job)) return;
+		int hitCount = 1 + (s.critRate / 1000);
+		if (hitCount <= 1) return;
+		s.warlockHitCount = hitCount;
+		s.warlockMultiHit = true;
+		for (int i = 1; i < hitCount; i++) {
+			try {
+				DamageOutcome extraDmg = calculateDamage(s.u, s.m, s.flags,
+						s.effAtkMin, s.effAtkMax, s.critRate, s.critDmg,
+						s.berserkMul, s.monHpRemainBefore, s.hpMax, s.beforeJobSkillYn, s.nightmare,
+						s.ctx.ownedBossItems, s.ctx.bossItemQtyMap);
+				s.warlockExtraDmgs.add(extraDmg);
+				s.warlockExtraCalcs.add(extraDmg.calc);
+			} catch (Exception ignore) {
+				break;
+			}
+		}
+	}
+
+	// 워록) 추가 히트 처리 
+	private void ma_warlockExtraHits(AttackSession s) {
+		for (int i = 0; i < s.warlockExtraDmgs.size(); i++) {
+			DamageOutcome ed = s.warlockExtraDmgs.get(i);
+			AttackCalc ec = ed.calc;
+			Resolve er = resolveKillAndDrop(s.m, ec, ed.willKill, s.u, s.lucky, s.dark, s.gray, s.shadow,
+					s.ctx.user.nightmareYn, s.ctx.ownedBossItems, s.ctx.bossItemQtyMap);
+			s.warlockExtraRes.add(er);
+			try {
+				LevelUpResult eu = persist(s.userName, s.roomName, s.u, s.m, ed.flags, ec, er, s.hpMax,
+						s.nightmare, 0, s.buffIng, s.buffCode, s.pendingLogs, s.pendingInventory);
+				s.warlockExtraUps.add(eu);
+			} catch (Exception ignore) { s.warlockExtraUps.add(null); }
+			if (er.killed) {
+				invalidateInvBuff(s.userName);
+				try { botNewService.closeOngoingBattleTx(s.userName, s.roomName); } catch (Exception ignore) {}
+				s.warlockKillMsgs.add("⚔️ [" + (i + 2) + "타!] " + s.m.monName + " 처치!");
+				break;
+			} else {
+				s.warlockKillMsgs.add("");
+			}
+		}
+	}
+
 	private String ma_deathCheck(AttackSession s) {
 		int newHpPreview = Math.max(0, s.u.hpCur - s.calc.monDmg);
 		if (newHpPreview > 0) return null;
@@ -5260,6 +5318,12 @@ public class BossAttackController {
 		int dealtThisTurn  = Math.max(0, s.calc.atkDmg);
 		int monRemainAfter = Math.max(0, s.monHpRemainBefore - dealtThisTurn);
 
+		// [워록] 콤보 전타 처치 실패 시 자멸
+		if ("워록".equals(s.job) && s.warlockMultiHit && !s.warlockKillFail) {
+			s.warlockKillFail = true;
+			// 즉사 처리를 위해 monDmg를 현재 HP로 세팅 → 이후 사망 로직 정상 흐름
+			s.calc.monDmg = s.u.hpCur;
+		}
 		// [자이언트 계열] 불굴 - 사망 시 즉시 부활 + 카운트+5
 		if (isGiantJob(s.job)) {
 		    botNewService.updateUserHpOnlyTx(s.userName, s.roomName, 0);
@@ -5560,6 +5624,10 @@ public class BossAttackController {
 		if (s.thiefDoubleAtk && s.calc2 != null && s.m != null) {
 			ma_thiefSecondAtk(s);
 		}
+		// [워록] 추가 히트 처리 (처치 실패 시 자멸로 롤백됨)
+		if (s.warlockMultiHit && !s.warlockKillFail && !s.warlockExtraCalcs.isEmpty()) {
+			ma_warlockExtraHits(s);
+		}
 
 		// ── 배치 flush: BattleLog(shotIndex 순번) / Inventory / PointRank(CMD 합산) ──
 		if (!s.pendingLogs.isEmpty()) {
@@ -5709,6 +5777,18 @@ public class BossAttackController {
 		}
 		if (s.stealMsg != null && !s.stealMsg.isEmpty()) bot.append(NL).append(s.stealMsg);
 		if (s.secondKillMsg != null && !s.secondKillMsg.isEmpty()) bot.append(NL).append(s.secondKillMsg);
+		// [워록] 다중히트 메시지
+		if (s.warlockMultiHit) {
+			if (s.warlockKillFail) {
+				bot.append(NL).append("[워록] 콤보 처치 실패! 자멸 처리됩니다.");
+			} else {
+				for (int _wi = 0; _wi < s.warlockExtraCalcs.size(); _wi++) {
+					bot.append(NL).append("⚔️[").append(_wi + 2).append("타] 데미지: ").append(formatWan(s.warlockExtraCalcs.get(_wi).atkDmg));
+					if (s.warlockExtraDmgs.get(_wi).flags.atkCrit) bot.append(" ✨크리!");
+					if (_wi < s.warlockKillMsgs.size() && !s.warlockKillMsgs.get(_wi).isEmpty()) bot.append(NL).append(s.warlockKillMsgs.get(_wi));
+				}
+			}
+		}
 
 		StringBuilder detailOut = new StringBuilder();
 		String msg = buildAttackMessage(s.userName, s.u, s.m, s.flags, s.calc, s.res, s.up,
@@ -6361,7 +6441,8 @@ public class BossAttackController {
 			gp.put("score",    gpAmount);
 			gp.put("cmd",      "ATK_GP_DROP");
 			botNewService.insertGpRecord(gp);
-			return String.format("✨GP 획득! +%.2f GP", gpAmount);
+			double gpBalance = botNewService.selectGpBalance(userName);
+			return String.format("✨GP 획득! +%.2f GP (보유: %.2f GP)", gpAmount, gpBalance);
 		} catch (Exception e) {
 			return "";
 		}

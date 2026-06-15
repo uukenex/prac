@@ -637,22 +637,32 @@ public class BossAttackS3Controller {
             }
         }
         long totalDamage = damage + damage2;
-        
+
         String dmgLimitMsg = "";
-        
-     // 보스 최대체력의 10% 이상 피해 제한
-        long maxDamageLimit = Math.max(1L, maxHp / 5);
+        boolean isMaWang = "마왕".equals(bossDemonType);
 
-        if (totalDamage > maxDamageLimit) {
-            long beforeLimit = totalDamage;
-            totalDamage = maxDamageLimit;
-
-            dmgLimitMsg = "[데미지 제한] "
-                    + SP.fromSp(beforeLimit)
-                    + " → "
-                    + SP.fromSp(totalDamage)
-                    + " (보스 최대체력 20% 제한)"
-                    + NL;
+        if (isMaWang) {
+            // 마왕: 10배 데미지, 용사 추가 2배, 100만 cap
+            totalDamage *= 10L;
+            if ("용사".equals(ctx.job)) totalDamage *= 2L;
+            final long MAWANG_CAP = 1_000_000L;
+            if (totalDamage > MAWANG_CAP) {
+                dmgLimitMsg = "[데미지 제한] " + SP.fromSp(totalDamage) + " → " + SP.fromSp(MAWANG_CAP) + " (마왕 100만 cap)" + NL;
+                totalDamage = MAWANG_CAP;
+            }
+        } else {
+            // 보스 최대체력의 20% 이상 피해 제한
+            long maxDamageLimit = Math.max(1L, maxHp / 5);
+            if (totalDamage > maxDamageLimit) {
+                long beforeLimit = totalDamage;
+                totalDamage = maxDamageLimit;
+                dmgLimitMsg = "[데미지 제한] "
+                        + SP.fromSp(beforeLimit)
+                        + " → "
+                        + SP.fromSp(totalDamage)
+                        + " (보스 최대체력 20% 제한)"
+                        + NL;
+            }
         }
         
         // [7012] 도사 버프 적용 (보스전)
@@ -825,28 +835,49 @@ public class BossAttackS3Controller {
             } catch (Exception ignore) {}
         }
 
-        // 공격 SP 보상: 준 데미지 × 10000 raw SP / 최소 1000a, 최대 10b (대악마 3배)
+        // 공격 보상: 마왕은 GP, 그 외는 SP
         String spRewardMsg = "";
-        try {
-            long rawSpVal = totalDamage * 10000L;
-            boolean isGreatDemonSp = "대악마".equals(bossDemonType);
-            long spCap = isGreatDemonSp ? 3_000_000_000L : 1_000_000_000L;
-            long spMin2 = isGreatDemonSp ? 30_000_000L   : 10_000_000L;
-            if (isGreatDemonSp) rawSpVal *= 3;
-            boolean spCapped = rawSpVal > spCap;
-            boolean spMin    = rawSpVal < spMin2;
-            rawSpVal = Math.max(Math.min(rawSpVal, spCap), spMin2);
-            SP spReward = SP.fromSp(rawSpVal);
-            HashMap<String, Object> pr = new HashMap<>();
-            pr.put("userName", userName);
-            pr.put("roomName", roomName);
-            pr.put("score",    spReward.getValue());
-            pr.put("scoreExt", spReward.getUnit());
-            pr.put("cmd",      "BOSS_HELL_ATK");
-            botNewService.insertPointRank(pr);
-            spRewardMsg = " 획득 SP: " + spReward + (spCapped ? " (max)" : spMin ? " (min)" : "") + NL;
-        } catch (Exception e) {
-            // SP 지급 실패는 무시
+        if (isMaWang && !isEvade && totalDamage > 0) {
+            // 마왕 GP 보상: 0.02 ~ 0.40 GP (데미지 비례, 100만 대비)
+            try {
+                double gpRatio = Math.min(1.0, totalDamage / 1_000_000.0);
+                double gpMin = 0.02, gpMax = 0.40;
+                double gpAmount = gpMin + (gpMax - gpMin) * gpRatio;
+                gpAmount = Math.round(gpAmount * 100) / 100.0;
+                if (gpAmount < gpMin) gpAmount = gpMin;
+                HashMap<String, Object> gp = new HashMap<>();
+                gp.put("userName", userName);
+                gp.put("roomName", roomName);
+                gp.put("score",    gpAmount);
+                gp.put("cmd",      "MAWANG_ATK_GP");
+                botNewService.insertGpRecord(gp);
+                double gpBalance = botNewService.selectGpBalance(userName);
+                spRewardMsg = String.format("✨GP 획득! +%.2f GP (보유: %.2f GP)%s", gpAmount, gpBalance, NL);
+            } catch (Exception e) {
+                // GP 지급 실패는 무시
+            }
+        } else if (!isMaWang) {
+            try {
+                long rawSpVal = totalDamage * 10000L;
+                boolean isGreatDemonSp = "대악마".equals(bossDemonType);
+                long spCap = isGreatDemonSp ? 3_000_000_000L : 1_000_000_000L;
+                long spMin2 = isGreatDemonSp ? 30_000_000L   : 10_000_000L;
+                if (isGreatDemonSp) rawSpVal *= 3;
+                boolean spCapped = rawSpVal > spCap;
+                boolean spMin    = rawSpVal < spMin2;
+                rawSpVal = Math.max(Math.min(rawSpVal, spCap), spMin2);
+                SP spReward = SP.fromSp(rawSpVal);
+                HashMap<String, Object> pr = new HashMap<>();
+                pr.put("userName", userName);
+                pr.put("roomName", roomName);
+                pr.put("score",    spReward.getValue());
+                pr.put("scoreExt", spReward.getUnit());
+                pr.put("cmd",      "BOSS_HELL_ATK");
+                botNewService.insertPointRank(pr);
+                spRewardMsg = " 획득 SP: " + spReward + (spCapped ? " (max)" : spMin ? " (min)" : "") + NL;
+            } catch (Exception e) {
+                // SP 지급 실패는 무시
+            }
         }
 
         // 헬보스 업적 체크 (공격 업적, 클리어 참여 업적)
@@ -993,13 +1024,31 @@ public class BossAttackS3Controller {
             double rwDice = rand.nextDouble();
             String preRewardType = rwDice >= 0.80 ? "ITEM" : rwDice >= 0.40 ? "BOX" : "GP";
             bossMap.put("rewardType", preRewardType);
-            // 대악마 여부 결정 (10% 확률) — HP 10배, 나머지 스탯 3배
-            boolean isGreatDemon = rand.nextDouble() < 0.10;
-            String bossType = isGreatDemon ? "대악마" : "상급악마";
+            // 보스 타입 결정: 마왕 30%, 대악마 20%, 상급악마 50%
+            double bossTypeDice = rand.nextDouble();
+            String bossType;
+            if (bossTypeDice < 0.30) {
+                bossType = "마왕";
+            } else if (bossTypeDice < 0.50) {
+                bossType = "대악마";
+            } else {
+                bossType = "상급악마";
+            }
+            boolean isGreatDemon = "대악마".equals(bossType);
+            boolean isDemonKing  = "마왕".equals(bossType);
             bossMap.put("bossType", bossType);
             if (isGreatDemon) {
                 // 대악마 HP: 1200a ~ 1500a 고정 범위
                 rawHp = 12_000_000L + (long)(rand.nextDouble() * (15_000_000L - 12_000_000L + 1));
+                bossMap.put("atkRate",     Math.min(100, (int) bossMap.get("atkRate")     * 3));
+                bossMap.put("atkPower",    Math.min(100, (int) bossMap.get("atkPower")    * 3));
+                bossMap.put("defRate",     Math.min(100, (int) bossMap.get("defRate")     * 3));
+                bossMap.put("defPower",    Math.min(100, (int) bossMap.get("defPower")    * 3));
+                bossMap.put("evadeRate",   Math.min(100, (int) bossMap.get("evadeRate")   * 3));
+                bossMap.put("critDefRate", Math.min(100, (int) bossMap.get("critDefRate") * 3));
+            } else if (isDemonKing) {
+                // 마왕 HP: 90,000,000 ~ 110,000,000 raw SP (≈1b)
+                rawHp = 90_000_000L + (long)(rand.nextDouble() * 20_000_001L);
                 bossMap.put("atkRate",     Math.min(100, (int) bossMap.get("atkRate")     * 3));
                 bossMap.put("atkPower",    Math.min(100, (int) bossMap.get("atkPower")    * 3));
                 bossMap.put("defRate",     Math.min(100, (int) bossMap.get("defRate")     * 3));
