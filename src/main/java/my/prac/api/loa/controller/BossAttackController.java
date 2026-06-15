@@ -1829,12 +1829,13 @@ public class BossAttackController {
         data.put("bossItemQty", qtyMap);
     } catch (Exception ignore) {}
 	    try { data.put("totalJobLv", botNewService.selectTotalJobLv(userName)); } catch (Exception ignore) {}
-	    for (String _gj : new String[]{"자이언트", "자이언트용병", "자이언트기사"}) {
-	        try {
-	            HashMap<String,Object> _r = botNewService.selectJobLevel(userName, _gj);
-	            if (_r != null) data.put("jlv_" + _gj, ((Number) _r.getOrDefault("JOB_LV", 0)).intValue());
-	        } catch (Exception ignore) {}
-	    }
+	    try {
+	        List<HashMap<String,Object>> _gjRows = botNewService.selectJobLevels(userName);
+	        if (_gjRows != null) for (HashMap<String,Object> _r : _gjRows) {
+	            String _jn = Objects.toString(_r.get("JOB_NAME"), "");
+	            data.put("jlv_" + _jn, ((Number) _r.getOrDefault("JOB_LV", 0)).intValue());
+	        }
+	    } catch (Exception ignore) {}
 	    try { data.put("expSell", botNewService.selectExpSellStats(userName)); } catch (Exception ignore) {}
 	    MiniGameUtil.INV_BUFF_CACHE.put(userName, data);
 	    return data;
@@ -5624,8 +5625,8 @@ public class BossAttackController {
 		if (s.thiefDoubleAtk && s.calc2 != null && s.m != null) {
 			ma_thiefSecondAtk(s);
 		}
-		// [워록] 추가 히트 처리 (처치 실패 시 자멸로 롤백됨)
-		if (s.warlockMultiHit && !s.warlockKillFail && !s.warlockExtraCalcs.isEmpty()) {
+		// [워록] 추가 히트 처리 (1타 처치 시 스킵, 처치 실패 시 자멸로 롤백됨)
+		if (s.warlockMultiHit && !s.warlockKillFail && !s.warlockExtraCalcs.isEmpty() && !s.res.killed) {
 			ma_warlockExtraHits(s);
 		}
 
@@ -5782,10 +5783,10 @@ public class BossAttackController {
 			if (s.warlockKillFail) {
 				bot.append(NL).append("[워록] 콤보 처치 실패! 자멸 처리됩니다.");
 			} else {
-				for (int _wi = 0; _wi < s.warlockExtraCalcs.size(); _wi++) {
+				for (int _wi = 0; _wi < s.warlockKillMsgs.size(); _wi++) {
 					bot.append(NL).append("⚔️[").append(_wi + 2).append("타] 데미지: ").append(formatWan(s.warlockExtraCalcs.get(_wi).atkDmg));
 					if (s.warlockExtraDmgs.get(_wi).flags.atkCrit) bot.append(" ✨크리!");
-					if (_wi < s.warlockKillMsgs.size() && !s.warlockKillMsgs.get(_wi).isEmpty()) bot.append(NL).append(s.warlockKillMsgs.get(_wi));
+					if (!s.warlockKillMsgs.get(_wi).isEmpty()) bot.append(NL).append(s.warlockKillMsgs.get(_wi));
 				}
 			}
 		}
