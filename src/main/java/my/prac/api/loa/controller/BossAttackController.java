@@ -5274,12 +5274,25 @@ public class BossAttackController {
 		if (hitCount <= 1) return;
 		s.warlockHitCount = hitCount;
 		s.warlockMultiHit = true;
+		// 1타 처치 실패 시 즉시 자멸
+		if (!s.willKill) {
+			s.warlockKillFail = true;
+			return;
+		}
+		// 2~N타 순서대로 계산; 처치 실패 타에서 중단 → 자멸
 		for (int i = 1; i < hitCount; i++) {
 			try {
 				DamageOutcome extraDmg = calculateDamage(s.u, s.m, s.flags,
 						s.effAtkMin, s.effAtkMax, s.critRate, s.critDmg,
 						s.berserkMul, s.monHpRemainBefore, s.hpMax, s.beforeJobSkillYn, s.nightmare,
 						s.ctx.ownedBossItems, s.ctx.bossItemQtyMap);
+				if (!extraDmg.willKill) {
+					// 이 타에서 처치 실패 → 자멸, 이전 성공 타 모두 취소
+					s.warlockKillFail = true;
+					s.warlockExtraDmgs.clear();
+					s.warlockExtraCalcs.clear();
+					return;
+				}
 				s.warlockExtraDmgs.add(extraDmg);
 				s.warlockExtraCalcs.add(extraDmg.calc);
 			} catch (Exception ignore) {
@@ -5319,10 +5332,8 @@ public class BossAttackController {
 		int dealtThisTurn  = Math.max(0, s.calc.atkDmg);
 		int monRemainAfter = Math.max(0, s.monHpRemainBefore - dealtThisTurn);
 
-		// [워록] 콤보 전타 처치 실패 시 자멸
-		if ("워록".equals(s.job) && s.warlockMultiHit && !s.warlockKillFail) {
-			s.warlockKillFail = true;
-			// 즉사 처리를 위해 monDmg를 현재 HP로 세팅 → 이후 사망 로직 정상 흐름
+		// [워록] 처치 실패 자멸: monDmg를 hpCur로 세팅 → 사망 로직 정상 흐름
+		if ("워록".equals(s.job) && s.warlockKillFail) {
 			s.calc.monDmg = s.u.hpCur;
 		}
 		// [자이언트 계열] 불굴 - 사망 시 즉시 부활 + 카운트+5
@@ -5625,8 +5636,8 @@ public class BossAttackController {
 		if (s.thiefDoubleAtk && s.calc2 != null && s.m != null) {
 			ma_thiefSecondAtk(s);
 		}
-		// [워록] 추가 히트 처리 (1타 처치 시 스킵, 처치 실패 시 자멸로 롤백됨)
-		if (s.warlockMultiHit && !s.warlockKillFail && !s.warlockExtraCalcs.isEmpty() && !s.res.killed) {
+		// [워록] 추가 히트 처리 (처치 실패 시 자멸로 롤백됨 → 여기까지 오면 전타 처치 성공)
+		if (s.warlockMultiHit && !s.warlockKillFail && !s.warlockExtraCalcs.isEmpty()) {
 			ma_warlockExtraHits(s);
 		}
 
