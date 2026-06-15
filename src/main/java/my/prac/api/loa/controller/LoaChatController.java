@@ -3948,7 +3948,7 @@ public class LoaChatController {
 			}
 		}
 		
-		String arkGridMsg ="아크그리드"+enterStr;
+		String arkGridMsg ="아크그리드(해/달/별)"+enterStr;
 		int ark_질서_해=-1;
 		int ark_질서_달=-1;
 		int ark_질서_별=-1;
@@ -4118,8 +4118,8 @@ public class LoaChatController {
 			ark_혼돈_별_msg = "["+ark_혼돈_별_grade+"]"+ark_혼돈_별;
 		}
 		
-		arkGridMsg +="질서(해/달/별) 　　 "+ark_질서_해_msg+" / "+ark_질서_달_msg+" / "+ark_질서_별_msg+enterStr;
-		arkGridMsg +="혼돈(해/달/별) 　　 "+ark_혼돈_해_msg+" / "+ark_혼돈_달_msg+" / "+ark_혼돈_별_msg+enterStr;
+		arkGridMsg +="질서 　　 "+ark_질서_해_msg+" / "+ark_질서_달_msg+" / "+ark_질서_별_msg+enterStr;
+		arkGridMsg +="혼돈 　　 "+ark_혼돈_해_msg+" / "+ark_혼돈_달_msg+" / "+ark_혼돈_별_msg+enterStr;
 		
 		} catch(Exception e) {
 			System.out.println("아크그리드파싱실패");
