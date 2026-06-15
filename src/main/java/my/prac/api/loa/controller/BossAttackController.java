@@ -5356,6 +5356,19 @@ public class BossAttackController {
 				botNewService.upsertMonKillStat(ks);
 			} catch (Exception ignore) {}
 		}
+		// 스페셜버프 통계 합산 1회
+		if (s.buffCode != null && !s.buffCode.isEmpty()) {
+			int totalKillForBuff = (s.res.killed ? 1 : 0) + warlockKillCount;
+			try {
+				HashMap<String,Object> bs = new HashMap<>();
+				bs.put("userName",    s.userName);
+				bs.put("buffCode",    s.buffCode);
+				bs.put("triggerInc",  0);
+				bs.put("ingInc",      s.warlockHitCount); // N타 모두 버프 진행 중
+				bs.put("buffKillInc", (s.buffIng == 1) ? totalKillForBuff : 0);
+				botNewService.upsertBattleBuffStat(bs);
+			} catch (Exception ignore) {}
+		}
 	}
 
 	private String ma_deathCheck(AttackSession s) {
@@ -8427,8 +8440,8 @@ public class BossAttackController {
 	            botNewService.upsertMonKillStat(ks);
 	        }
 
-	        // BATTLE_BUFF (버프 진행 중일 때만)
-	        if (specialBuffCode != null && !specialBuffCode.isEmpty()) {
+	        // BATTLE_BUFF (버프 진행 중일 때만, 워록 추가타 스킵 — 마지막에 합산)
+	        if (specialBuffCode != null && !specialBuffCode.isEmpty() && !skipUserUpdate) {
 	            HashMap<String,Object> bs = new HashMap<>();
 	            bs.put("userName",    userName);
 	            bs.put("buffCode",    specialBuffCode);
