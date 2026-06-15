@@ -5311,6 +5311,7 @@ public class BossAttackController {
 			AttackCalc ec = ed.calc;
 			Resolve er = resolveKillAndDrop(s.m, ec, ed.willKill, s.u, s.lucky, s.dark, s.gray, s.shadow,
 					s.ctx.user.nightmareYn, s.ctx.ownedBossItems, s.ctx.bossItemQtyMap);
+			er.dropCode = "0"; // 워록: 아이템 획득 불가
 			s.warlockExtraRes.add(er);
 			try {
 				// killStat·userUpdate 스킵 — 마지막에 합산/한 번만 처리
@@ -5406,6 +5407,7 @@ public class BossAttackController {
 	// ─ 13) 처치·드랍 판단 + 직업별 스킬 ─────────────────────────────
 	private void ma_resolveKillAndJobSkills(AttackSession s) {
 		s.res = resolveKillAndDrop(s.m, s.calc, s.willKill, s.u, s.lucky, s.dark, s.gray, s.shadow, s.ctx.user.nightmareYn, s.ctx.ownedBossItems, s.ctx.bossItemQtyMap);
+		if ("워록".equals(s.job)) s.res.dropCode = "0"; // 워록: 아이템 획득 불가
 		if ("궁수".equals(s.u.job) || "사냥꾼".equals(s.u.job)) s.res.gainExp *= 3;
 
 		// [Feature1] 다회전 경험치 2배: 처치 시 진행 중 전투였을 경우 (다크/빛/섀도우 제외)
