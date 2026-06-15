@@ -5270,7 +5270,9 @@ public class BossAttackController {
 	// 워록) 다중히트 사전 계산 
 	private void ma_warlockPreCalc(AttackSession s) {
 		if (!"워록".equals(s.job)) return;
-		int hitCount = 1 + (s.critRate / 1000);
+		// 헬모드 너프 이전 원본 critRate로 타수 계산
+		int rawCritForHit = s.critRate + (s.ctx != null ? s.ctx.hellNerfCrit : 0);
+		int hitCount = 1 + (rawCritForHit / 1000);
 		if (hitCount <= 1) return;
 		s.warlockHitCount = hitCount;
 		s.warlockMultiHit = true;
@@ -5311,9 +5313,9 @@ public class BossAttackController {
 					s.ctx.user.nightmareYn, s.ctx.ownedBossItems, s.ctx.bossItemQtyMap);
 			s.warlockExtraRes.add(er);
 			try {
-				// killStat 스킵 — 마지막에 합산해서 한 번만 호출
+				// killStat·userUpdate 스킵 — 마지막에 합산/한 번만 처리
 				LevelUpResult eu = persist(s.userName, s.roomName, s.u, s.m, ed.flags, ec, er, s.hpMax,
-						s.nightmare, 0, s.buffIng, s.buffCode, s.pendingLogs, s.pendingInventory, true);
+						s.nightmare, 0, s.buffIng, s.buffCode, s.pendingLogs, s.pendingInventory, true, true);
 				s.warlockExtraUps.add(eu);
 			} catch (Exception ignore) { s.warlockExtraUps.add(null); }
 			if (er.killed) {
@@ -5323,10 +5325,19 @@ public class BossAttackController {
 				s.warlockKillMsgs.add("");
 			}
 		}
-		// 처치 성공한 업주는 요청에서 한 번만 closeOngoingBattle
+		// 처치 성공한 타 있으면 closeOngoingBattle 1회 + 최종 user 업데이트 1회
 		if (warlockKillCount > 0) {
 			invalidateInvBuff(s.userName);
 			try { botNewService.closeOngoingBattleTx(s.userName, s.roomName); } catch (Exception ignore) {}
+		}
+		// 추가타 EXP 합산 후 최종 user 상태 1회 업데이트
+		{
+			int bHpMax   = MiniGameUtil.calcBaseHpMax(s.u.lv);
+			int bAtkMin  = MiniGameUtil.calcBaseAtkMin(s.u.lv);
+			int bAtkMax  = MiniGameUtil.calcBaseAtkMax(s.u.lv);
+			int bCrit    = MiniGameUtil.calcBaseCritRate(s.u.lv);
+			int bRegen   = MiniGameUtil.calcBaseHpRegen(s.u.lv);
+			try { botNewService.updateUserAfterBattleTx(s.userName, s.roomName, s.u.lv, s.u.expCur, s.u.expNext, s.u.hpCur, bHpMax, bAtkMin, bAtkMax, bCrit, bRegen); } catch (Exception ignore) {}
 		}
 		// 1타(already persisted) + 추가타 처치 합산 → killStat 한 번에 업데이트
 		if (s.res.killed || warlockKillCount > 0) {
@@ -5697,8 +5708,11 @@ public class BossAttackController {
 
 		if (s.res.killed) {
 			// 처치 후 드랍 아이템이 인벤토리에 추가되므로 캐시 무효화
-			invalidateInvBuff(s.userName);
-			botNewService.closeOngoingBattleTx(s.userName, s.roomName);
+			// 워록 다중타 시 closeOngoingBattle/invalidate는 ma_warlockExtraHits 끝에서 1회만 처리
+			if (!s.warlockMultiHit) {
+				invalidateInvBuff(s.userName);
+				botNewService.closeOngoingBattleTx(s.userName, s.roomName);
+			}
 
 			// Parallel CompletableFuture queries for achievement processing
 			CompletableFuture<HashMap<String,Object>> f1 = CompletableFuture.supplyAsync(() -> {
@@ -8235,7 +8249,7 @@ public class BossAttackController {
 	                              Flags f, AttackCalc c, Resolve res, int hpMax,
 	                              boolean nightmare, int specialBuffStart, int specialBuffIng, String specialBuffCode,
 	                              List<BattleLog> logCollector, List<HashMap<String,Object>> invCollector) {
-	    return persist(userName, roomName, u, m, f, c, res, hpMax, nightmare, specialBuffStart, specialBuffIng, specialBuffCode, logCollector, invCollector, false);
+	    return persist(userName, roomName, u, m, f, c, res, hpMax, nightmare, specialBuffStart, specialBuffIng, specialBuffCode, logCollector, invCollector, false, false);
 	}
 
 	private LevelUpResult persist(String userName, String roomName,
@@ -8244,6 +8258,15 @@ public class BossAttackController {
 	                              boolean nightmare, int specialBuffStart, int specialBuffIng, String specialBuffCode,
 	                              List<BattleLog> logCollector, List<HashMap<String,Object>> invCollector,
 	                              boolean skipKillStat) {
+	    return persist(userName, roomName, u, m, f, c, res, hpMax, nightmare, specialBuffStart, specialBuffIng, specialBuffCode, logCollector, invCollector, skipKillStat, false);
+	}
+
+	private LevelUpResult persist(String userName, String roomName,
+	                              User u, Monster m,
+	                              Flags f, AttackCalc c, Resolve res, int hpMax,
+	                              boolean nightmare, int specialBuffStart, int specialBuffIng, String specialBuffCode,
+	                              List<BattleLog> logCollector, List<HashMap<String,Object>> invCollector,
+	                              boolean skipKillStat, boolean skipUserUpdate) {
 
 	    // 1) 최종 HP 계산 (전투 데미지 반영)
 	    u.hpCur = Math.max(0, u.hpCur - c.monDmg);
@@ -8263,8 +8286,8 @@ public class BossAttackController {
 	    int baseCrit = MiniGameUtil.calcBaseCritRate(u.lv);
 	    int baseHpRegen  = MiniGameUtil.calcBaseHpRegen(u.lv);
 	    
-	    // 4) 유저 테이블 업데이트: **항상 '순수 레벨 스탯'만 저장**
-	    botNewService.updateUserAfterBattleTx(
+	    // 4) 유저 테이블 업데이트: **항상 '순수 레벨 스탯'만 저장** (skipUserUpdate=true면 스킵)
+	    if (!skipUserUpdate) botNewService.updateUserAfterBattleTx(
 	        userName,
 	        roomName,
 	        u.lv,
