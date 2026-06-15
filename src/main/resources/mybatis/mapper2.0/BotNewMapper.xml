@@ -1065,12 +1065,19 @@
 		
 		LEFT JOIN
 		(
-		    /* 전투 통계 — BATTLE_JOB 기준 (BATTLE_LOG COUNT는 분할화살 등으로 부풀려짐) */
+		    /* 전투 통계 — BATTLE_JOB 전체 + 이번 달 BATTLE_LOG */
 		    SELECT
 		           USER_NAME,
 		           SUM(ATTACK_CNT) AS ATK_CNT,
 		           SUM(DEATH_CNT)  AS DEATH_CNT
-		    FROM TBOT_POINT_NEW_BATTLE_JOB
+		    FROM (
+		        SELECT USER_NAME, ATTACK_CNT, DEATH_CNT FROM TBOT_POINT_NEW_BATTLE_JOB
+		        UNION ALL
+		        SELECT USER_NAME, COUNT(*), SUM(CASE WHEN DEATH_YN = 1 THEN 1 ELSE 0 END)
+		          FROM TBOT_POINT_NEW_BATTLE_LOG
+		         WHERE INSERT_DATE >= TRUNC(SYSDATE, 'MM')
+		         GROUP BY USER_NAME
+		    )
 		    GROUP BY USER_NAME
 		
 		) B
