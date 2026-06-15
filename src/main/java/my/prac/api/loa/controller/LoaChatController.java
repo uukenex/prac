@@ -4026,6 +4026,10 @@ public class LoaChatController {
 				}
 				
 				//arkGridMsg += slot.get("Grade") + " " + grid_core_type_v_e1+ ", 활성포인트: " + activePoint + enterStr ;
+				// ✅ 이걸로 교체
+				String gradeShort = slot.get("Grade").equals("고대") ? "고" : slot.get("Grade").equals("유물") ? "유" : (String)slot.get("Grade");
+				arkGridMsg += "[" + gradeShort + "]" + activePoint + " / ";
+				
 				arkGridFullMsg += slot.get("Grade") + " " + slot.get("Name")+ " : " + activePoint + enterStr + optionMsg.toString()+enterStr;
 				
 
@@ -4058,6 +4062,12 @@ public class LoaChatController {
 				
 				
 			}
+			
+			// ✅ 마지막 " / " 제거 후 앞에 "아크그리드 " 붙이기
+			if (arkGridMsg.endsWith(" / ")) {
+			    arkGridMsg = "아크그리드 " + arkGridMsg.substring(0, arkGridMsg.length() - 3);
+			}
+			
 			List<HashMap<String, Object>> effects= (List<HashMap<String, Object>>) arkGrid.get("Effects");
 			arkGridFullMsg += enterStr+"§아크그리드 젬 전체 효과"+enterStr;
 			for (HashMap<String, Object> effect : effects) {
