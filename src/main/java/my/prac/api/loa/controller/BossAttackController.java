@@ -5303,6 +5303,7 @@ public class BossAttackController {
 
 	// 워록) 추가 히트 처리 
 	private void ma_warlockExtraHits(AttackSession s) {
+		int warlockKillCount = 0; // 추가타 처치 합산용
 		for (int i = 0; i < s.warlockExtraDmgs.size(); i++) {
 			DamageOutcome ed = s.warlockExtraDmgs.get(i);
 			AttackCalc ec = ed.calc;
@@ -5310,11 +5311,13 @@ public class BossAttackController {
 					s.ctx.user.nightmareYn, s.ctx.ownedBossItems, s.ctx.bossItemQtyMap);
 			s.warlockExtraRes.add(er);
 			try {
+				// killStat 스킵 — 마지막에 합산해서 한 번만 호출
 				LevelUpResult eu = persist(s.userName, s.roomName, s.u, s.m, ed.flags, ec, er, s.hpMax,
-						s.nightmare, 0, s.buffIng, s.buffCode, s.pendingLogs, s.pendingInventory);
+						s.nightmare, 0, s.buffIng, s.buffCode, s.pendingLogs, s.pendingInventory, true);
 				s.warlockExtraUps.add(eu);
 			} catch (Exception ignore) { s.warlockExtraUps.add(null); }
 			if (er.killed) {
+				warlockKillCount++;
 				invalidateInvBuff(s.userName);
 				try { botNewService.closeOngoingBattleTx(s.userName, s.roomName); } catch (Exception ignore) {}
 				s.warlockKillMsgs.add("⚔️ [" + (i + 2) + "타!] " + s.m.monName + " 처치!");
@@ -5322,6 +5325,22 @@ public class BossAttackController {
 			} else {
 				s.warlockKillMsgs.add("");
 			}
+		}
+		// 1타(already persisted) + 추가타 처치 합산 → killStat 한 번에 업데이트
+		if (s.res.killed || warlockKillCount > 0) {
+			int totalKill = (s.res.killed ? 1 : 0) + warlockKillCount;
+			int nmYn = s.ctx.user.nightmareYn;
+			try {
+				HashMap<String,Object> ks = new HashMap<>();
+				ks.put("userName",       s.userName);
+				ks.put("monNo",          s.m.monNo);
+				ks.put("killInc",        totalKill);
+				ks.put("nmKillInc",      nmYn == 1 ? totalKill : 0);
+				ks.put("hellKillInc",    nmYn == 2 ? totalKill : 0);
+				ks.put("hellbossAtkInc",   0);
+				ks.put("hellbossClearInc", 0);
+				botNewService.upsertMonKillStat(ks);
+			} catch (Exception ignore) {}
 		}
 	}
 
@@ -5624,7 +5643,7 @@ public class BossAttackController {
 		s.buffCode  = s.activeBuff != null ? (String) s.activeBuff.get("FLAG_CODE") : null;
 		s.up = persist(s.userName, s.roomName, s.u, s.m, s.flags, s.calc, s.res, s.hpMax,
 				s.nightmare, s.buffStart, s.buffIng, s.buffCode,
-				s.pendingLogs, s.pendingInventory);
+				s.pendingLogs, s.pendingInventory, s.warlockMultiHit); // 워록 다중타 시 killStat 지연
 
 		// 레벨 업적 (레벨업 시 체크)
 		if (s.up != null && s.up.levelUpCount > 0) {
@@ -8214,6 +8233,15 @@ public class BossAttackController {
 	                              Flags f, AttackCalc c, Resolve res, int hpMax,
 	                              boolean nightmare, int specialBuffStart, int specialBuffIng, String specialBuffCode,
 	                              List<BattleLog> logCollector, List<HashMap<String,Object>> invCollector) {
+	    return persist(userName, roomName, u, m, f, c, res, hpMax, nightmare, specialBuffStart, specialBuffIng, specialBuffCode, logCollector, invCollector, false);
+	}
+
+	private LevelUpResult persist(String userName, String roomName,
+	                              User u, Monster m,
+	                              Flags f, AttackCalc c, Resolve res, int hpMax,
+	                              boolean nightmare, int specialBuffStart, int specialBuffIng, String specialBuffCode,
+	                              List<BattleLog> logCollector, List<HashMap<String,Object>> invCollector,
+	                              boolean skipKillStat) {
 
 	    // 1) 최종 HP 계산 (전투 데미지 반영)
 	    u.hpCur = Math.max(0, u.hpCur - c.monDmg);
@@ -8360,7 +8388,7 @@ public class BossAttackController {
 	        int hellKill= (killInc == 1 && nmYn == 2) ? 1 : 0;
 
 	        // MON_KILL_STAT: 처치 시만 (헬보스 MON_NO=999는 BossAttackS3Controller에서 처리)
-	        if (killInc == 1) {
+	        if (killInc == 1 && !skipKillStat) {
 	            HashMap<String,Object> ks = new HashMap<>();
 	            ks.put("userName",       userName);
 	            ks.put("monNo",          m.monNo);
