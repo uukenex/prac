@@ -3962,6 +3962,12 @@ public class LoaChatController {
 		String ark_혼돈_해_msg="";
 		String ark_혼돈_달_msg="";
 		String ark_혼돈_별_msg="";
+		String ark_질서_해_grade="";
+		String ark_질서_달_grade="";
+		String ark_질서_별_grade="";
+		String ark_혼돈_해_grade="";
+		String ark_혼돈_달_grade="";
+		String ark_혼돈_별_grade="";
 		String arkGridFullMsg="§아크그리드"+enterStr;
 		try {
 			List<HashMap<String, Object>> slots= (List<HashMap<String, Object>>) arkGrid.get("Slots");
@@ -4004,31 +4010,28 @@ public class LoaChatController {
 				
 				//grid_core_type_v_e1 => 질서 - 해/ 혼돈 - 달
 				
+				String gradeShort = slot.get("Grade").equals("고대") ? "고" : slot.get("Grade").equals("유물") ? "유" : (String)slot.get("Grade");
 				switch(grid_core_type_v_e1) {
 					case "질서 - 해":
-						ark_질서_해 = activePoint;
+						ark_질서_해 = activePoint; ark_질서_해_grade = gradeShort;
 						break;
 					case "질서 - 달":
-						ark_질서_달 = activePoint;
+						ark_질서_달 = activePoint; ark_질서_달_grade = gradeShort;
 						break;
 					case "질서 - 별":
-						ark_질서_별 = activePoint;
+						ark_질서_별 = activePoint; ark_질서_별_grade = gradeShort;
 						break;
 					case "혼돈 - 해":
-						ark_혼돈_해 = activePoint;
+						ark_혼돈_해 = activePoint; ark_혼돈_해_grade = gradeShort;
 						break;
 					case "혼돈 - 달":
-						ark_혼돈_달 = activePoint;
+						ark_혼돈_달 = activePoint; ark_혼돈_달_grade = gradeShort;
 						break;
 					case "혼돈 - 별":
-						ark_혼돈_별 = activePoint;
+						ark_혼돈_별 = activePoint; ark_혼돈_별_grade = gradeShort;
 						break;
 				}
 				
-				//arkGridMsg += slot.get("Grade") + " " + grid_core_type_v_e1+ ", 활성포인트: " + activePoint + enterStr ;
-				// ✅ 이걸로 교체
-				String gradeShort = slot.get("Grade").equals("고대") ? "고" : slot.get("Grade").equals("유물") ? "유" : (String)slot.get("Grade");
-				arkGridMsg += "[" + gradeShort + "]" + activePoint + " / ";
 				
 				arkGridFullMsg += slot.get("Grade") + " " + slot.get("Name")+ " : " + activePoint + enterStr + optionMsg.toString()+enterStr;
 				
@@ -4087,32 +4090,32 @@ public class LoaChatController {
 		if(ark_질서_해==-1) {
 			ark_질서_해_msg="X";
 		}else {
-			ark_질서_해_msg = String.valueOf(ark_질서_해);
+			ark_질서_해_msg = "["+ark_질서_해_grade+"]"+ark_질서_해;
 		}
 		if(ark_질서_달==-1) {
 			ark_질서_달_msg="X";
 		}else {
-			ark_질서_달_msg = String.valueOf(ark_질서_달);
+			ark_질서_달_msg = "["+ark_질서_달_grade+"]"+ark_질서_달;
 		}
 		if(ark_질서_별==-1) {
 			ark_질서_별_msg="X";
 		}else {
-			ark_질서_별_msg = String.valueOf(ark_질서_별);
+			ark_질서_별_msg = "["+ark_질서_별_grade+"]"+ark_질서_별;
 		}
 		if(ark_혼돈_해==-1) {
 			ark_혼돈_해_msg="X";
 		}else {
-			ark_혼돈_해_msg = String.valueOf(ark_혼돈_해);
+			ark_혼돈_해_msg = "["+ark_혼돈_해_grade+"]"+ark_혼돈_해;
 		}
 		if(ark_혼돈_달==-1) {
 			ark_혼돈_달_msg="X";
 		}else {
-			ark_혼돈_달_msg = String.valueOf(ark_혼돈_달);
+			ark_혼돈_달_msg = "["+ark_혼돈_달_grade+"]"+ark_혼돈_달;
 		}
 		if(ark_혼돈_별==-1) {
 			ark_혼돈_별_msg="X";
 		}else {
-			ark_혼돈_별_msg = String.valueOf(ark_혼돈_별);
+			ark_혼돈_별_msg = "["+ark_혼돈_별_grade+"]"+ark_혼돈_별;
 		}
 		
 		arkGridMsg +="질서(해/달/별) 　　 "+ark_질서_해_msg+" / "+ark_질서_달_msg+" / "+ark_질서_별_msg+enterStr;
