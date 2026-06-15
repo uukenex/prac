@@ -220,12 +220,14 @@ public class MiniGameUtil {
     	   +"▶[피의추억] 반사데미지로 처치시 최대체력의 10% 회복"+NL
     	));
 	    
+        /*
         JOB_DEFS.put("도박사", new JobDef(
     	    "도박사",
     	    "⚔모든 것을 운에 건 승부사[운 특화]",
     	    "▶[도박] 공격,피격 시 도박하여 공격,회피"+NL
     	));
-	    
+	    */
+        
         JOB_DEFS.put("음양사", new JobDef(
     	    "음양사",
     	    "☯음양의 이치를 깨달은 도사[아군회복, 음양몬스터 특화]",
@@ -322,10 +324,11 @@ public class MiniGameUtil {
 	    
 		JOB_DEFS.put("워록", new JobDef(
 		    "워록",
-		    "⚔마법을 극한까지 끌어올린 공격마법사",
-		    "▶[다중히트] 크리율 1000%마다 히트수 +1 (크리율 2300% = 3타)"+NL
-		   +"▶[공격배율] 150%"+NL
-		   +"▶[처단] 콤보 중 적을 처치 못하면 본인 사망 (1타 처리로 롤백)"+NL
+		    "⚔모든것을 불태우는 전장의 마법사",
+		    "▶[기본기강화] 공격배율 150%"+NL
+		   +"▶[몰아치는화염] 크리율 1000%마다 공격횟수 +1 (헬너프전 크리율로 적용,처치 시 킬판정)"+NL
+		   +"▶[소멸] 콤보 중 아이템이 불타서 소멸"+NL
+		   +"▶[시전제한] 콤보 중 적을 처치 못하면 본인 사망 (1타 사망으로 처리)"+NL
 		   +"▶[전직조건] 궁사 1000회 + 도적 500회 공격"+NL
 		));
 
@@ -410,6 +413,7 @@ public class MiniGameUtil {
 	public static final Map<String, Integer> JOB_CHANGE_TOTAL_REQS = new HashMap<>();
 	
 	static {
+		/*
 	    // 용사 = 전사 300회 + 도적 300회 공격해야 전직 가능
 	    JOB_CHANGE_REQS.put("용사", Arrays.asList(
 	        new JobChangeReq("전사", 150),
@@ -421,18 +425,18 @@ public class MiniGameUtil {
     		new JobChangeReq("마법사", 150),
     		new JobChangeReq("도적", 150)
 		));
-	    /*
+	    
 	    JOB_CHANGE_REQS.put("제너럴", Arrays.asList(
     		new JobChangeReq("저격수", 150),
     		new JobChangeReq("전사", 150)
-		));*/
+		));
 	    JOB_CHANGE_REQS.put("검성", Arrays.asList(
     		new JobChangeReq("전사", 1000)
 		));
-	    /*
+	    
 	    JOB_CHANGE_REQS.put("어쎄신", Arrays.asList(
 	    	new JobChangeReq("도적", 1000)
-		));*/
+		));
 	    JOB_CHANGE_REQS.put("어둠사냥꾼", Arrays.asList(
 	    	//new JobChangeReq("프리스트", 150),
 	    	//new JobChangeReq("용기사", 150)
@@ -448,6 +452,7 @@ public class MiniGameUtil {
 	    JOB_CHANGE_REQS.put("음양사", Arrays.asList(
 	    	//new JobChangeReq("도사", 1000)
 		));
+	    */
 	    
 	    JOB_CHANGE_REQS.put("워록", Arrays.asList(
 			new JobChangeReq("궁사", 1000),
@@ -455,7 +460,7 @@ public class MiniGameUtil {
 		));
 
 	    // 용사 = 전체 공격 1000회 이상
-	    JOB_CHANGE_TOTAL_REQS.put("궁사", 3000);
+	    //JOB_CHANGE_TOTAL_REQS.put("궁사", 3000);
 	    
 	}
 		
