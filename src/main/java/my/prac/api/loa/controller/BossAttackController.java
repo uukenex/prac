@@ -5800,9 +5800,14 @@ public class BossAttackController {
 
 		// [천장] 헬모드 20킬마다 헬각인상자 확정 (일일 35개 상한 유지)
 		// 주의: insertBattleLogsBatch 완료 후 조회이므로 이번 킬이 이미 COUNT에 포함됨 (+1 보정 불필요)
-		// 도적 더블어택으로 1턴에 2킬 가능 → 이번 턴 킬 수만큼 루프하여 20의 배수 빠짐없이 체크
+		// 도적 더블어택/워록 다중타로 1턴에 N킬 가능 → 이번 턴 킬 수만큼 루프하여 20의 배수 빠짐없이 체크
+		int warlockExtraKills = 0;
+		if (s.warlockExtraRes != null) {
+			for (Resolve _er : s.warlockExtraRes) { if (_er != null && _er.killed) warlockExtraKills++; }
+		}
 		int hellKillsThisTurn = (s.res  != null && s.res.killed  ? 1 : 0)
-		                      + (s.res2 != null && s.res2.killed ? 1 : 0);
+		                      + (s.res2 != null && s.res2.killed ? 1 : 0)
+		                      + warlockExtraKills;
 		if (s.hell && hellKillsThisTurn > 0) {
 			try {
 				int todayHellKills = botNewService.selectTodayHellKillCount(s.userName);
