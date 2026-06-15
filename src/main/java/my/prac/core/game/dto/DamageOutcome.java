@@ -14,5 +14,11 @@ public class DamageOutcome {
 	public String extraMsg; // 패턴/직업 스킬 메시지
 	public String dmgCalcMsg; // 패턴/직업 스킬 메시지
 	public String hunterMsg; //
-	
+
+	// 워록 추가타용: 해당 타의 몬스터 상태 (재선택 결과)
+	public boolean extraDark;
+	public boolean extraLucky;
+	public boolean extraGray;
+	public boolean extraShadow;
+	public int extraMonMaxHp;
 }

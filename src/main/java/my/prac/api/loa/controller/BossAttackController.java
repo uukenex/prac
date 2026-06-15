@@ -5260,20 +5260,61 @@ public class BossAttackController {
 			s.warlockKillFail = true;
 			return;
 		}
-		// 2~N타 순서대로 계산; 처치 실패 타에서 중단 → 자멸
+		// 2~N타 순서대로 계산; 타마다 몬스터 재선택(다크/빛 재롤) → 처치 실패 시 자멸
 		for (int i = 1; i < hitCount; i++) {
 			try {
+				// ── 다음 몬스터 dark/lucky 재롤 ──
+				boolean hitDark = false, hitLucky = false, hitGray = false, hitShadow = false;
+				int hitMonHp = s.m.monHp;
+				if (s.nightmare) hitMonHp *= NM_MUL_HP_ATK;
+				int levelGap = s.u.lv - s.monLv;
+				double darkRate = Math.max(0, levelGap / 100) * 0.20;
+				if ("어둠사냥꾼".equals(s.job)) darkRate += DARK_RATE_DARK;
+				if (!s.nightmare) {
+					if (s.killCountForThisMon >= 350 && s.m.monNo >= 15) darkRate += 0.05;
+					if (s.killCountForThisMon >= 300 && s.m.monNo <  15) darkRate += 0.10;
+				} else if (s.hell) {
+					if (s.hellKillCountForThisMon > 150 && s.m.monNo >= 15) darkRate += 0.05;
+					if (s.hellKillCountForThisMon > 150 && s.m.monNo <  15) darkRate += 0.10;
+				} else {
+					if (s.nmKillCountForThisMon > 150 && s.m.monNo >= 15) darkRate += 0.05;
+					if (s.nmKillCountForThisMon > 150 && s.m.monNo <  15) darkRate += 0.10;
+				}
+				if (ThreadLocalRandom.current().nextDouble() < darkRate) hitDark = true;
+				double luckyRate = "도사".equals(s.job) ? LUCKY_RATE_DOSA : LUCKY_RATE;
+				hitLucky = (s.killCountForThisMon >= 50) && ThreadLocalRandom.current().nextDouble() < luckyRate;
+				int globalCnt = s.globalAchvMap.getOrDefault("ACHV_FIRST_CLEAR_MON_" + s.m.monNo, 0);
+				if (hitDark || globalCnt == 0 || s.m.monNo > 50) hitLucky = false;
+				if (hitLucky || globalCnt == 0 || s.m.monNo > 50 || "사신".equals(s.job)) hitDark = false;
+				if ("음양사".equals(s.job)) hitGray = ThreadLocalRandom.current().nextDouble() < 0.05;
+				if (hitGray) { hitLucky = false; hitDark = false; }
+				if ("곰".equals(s.job)) { hitLucky = false; hitDark = false; }
+				if (s.hell && s.hellKillCountForThisMon >= 100 && ThreadLocalRandom.current().nextDouble() < 0.10) {
+					hitShadow = true; hitLucky = false; hitDark = false; hitGray = false;
+				}
+				// 다크 몬스터면 HP 스케일 적용
+				if (hitDark) {
+					if      (s.m.monNo < 15)  hitMonHp = hitMonHp * 3;
+					else if (s.m.monNo >= 25) hitMonHp = (int)Math.round(hitMonHp * 1.75);
+					else                      hitMonHp = hitMonHp * 2;
+				}
+				// 새 몬스터 전체 HP로 calculateDamage
 				DamageOutcome extraDmg = calculateDamage(s.u, s.m, s.flags,
 						s.effAtkMin, s.effAtkMax, s.critRate, s.critDmg,
-						s.berserkMul, s.monHpRemainBefore, s.hpMax, s.beforeJobSkillYn, s.nightmare,
+						s.berserkMul, hitMonHp, s.hpMax, s.beforeJobSkillYn, s.nightmare,
 						s.ctx.ownedBossItems, s.ctx.bossItemQtyMap);
 				if (!extraDmg.willKill) {
-					// 이 타에서 처치 실패 → 자멸, 이전 성공 타 모두 취소
+					// 처치 실패 → 자멸, 이전 성공 타 모두 취소
 					s.warlockKillFail = true;
 					s.warlockExtraDmgs.clear();
 					s.warlockExtraCalcs.clear();
 					return;
 				}
+				extraDmg.extraDark   = hitDark;
+				extraDmg.extraLucky  = hitLucky;
+				extraDmg.extraGray   = hitGray;
+				extraDmg.extraShadow = hitShadow;
+				extraDmg.extraMonMaxHp = hitMonHp;
 				s.warlockExtraDmgs.add(extraDmg);
 				s.warlockExtraCalcs.add(extraDmg.calc);
 			} catch (Exception ignore) {
@@ -5288,7 +5329,8 @@ public class BossAttackController {
 		for (int i = 0; i < s.warlockExtraDmgs.size(); i++) {
 			DamageOutcome ed = s.warlockExtraDmgs.get(i);
 			AttackCalc ec = ed.calc;
-			Resolve er = resolveKillAndDrop(s.m, ec, ed.willKill, s.u, s.lucky, s.dark, s.gray, s.shadow,
+			Resolve er = resolveKillAndDrop(s.m, ec, ed.willKill, s.u,
+					ed.extraLucky, ed.extraDark, ed.extraGray, ed.extraShadow,
 					s.ctx.user.nightmareYn, s.ctx.ownedBossItems, s.ctx.bossItemQtyMap);
 			er.dropCode = "0"; // 워록: 아이템 획득 불가
 			s.warlockExtraRes.add(er);
@@ -5300,7 +5342,8 @@ public class BossAttackController {
 			} catch (Exception ignore) { s.warlockExtraUps.add(null); }
 			if (er.killed) {
 				warlockKillCount++;
-				s.warlockKillMsgs.add("⚔️ [" + (i + 2) + "타!] " + s.m.monName + " 처치!");
+				String _wTag = ed.extraDark ? "[어둠]" : ed.extraLucky ? "[빛]" : ed.extraGray ? "[음양]" : ed.extraShadow ? "[그림자]" : "";
+				s.warlockKillMsgs.add("⚔️ [" + (i + 2) + "타!] " + _wTag + s.m.monName + " 처치!");
 			} else {
 				s.warlockKillMsgs.add("");
 			}
