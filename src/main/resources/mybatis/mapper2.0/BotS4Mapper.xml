@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="my.prac.core.prjbot.dao.BotS4DAO">
+
+    <select id="selectUserEquip" resultType="hashmap">
+        SELECT ROD_GRADE, BOBBER_GRADE FROM TBOT_S4_USER_EQUIP WHERE USER_NAME = #{userName}
+    </select>
+
+    <insert id="upsertUserEquip" parameterType="hashmap">
+        MERGE INTO TBOT_S4_USER_EQUIP T
+        USING (SELECT #{userName} AS U FROM DUAL) S
+        ON (T.USER_NAME = S.U)
+        WHEN NOT MATCHED THEN
+            INSERT (USER_NAME, ROD_GRADE, BOBBER_GRADE, REG_DATE)
+            VALUES (#{userName}, #{rodGrade}, #{bobberGrade}, SYSDATE)
+    </insert>
+
+    <select id="selectTodayFishingLog" resultType="hashmap">
+        SELECT FISH_ID FROM TBOT_S4_FISHING_LOG
+        WHERE USER_NAME = #{userName}
+          AND FISHING_DATE = TRUNC(SYSDATE)
+    </select>
+
+    <insert id="insertFishingLog" parameterType="hashmap">
+        INSERT INTO TBOT_S4_FISHING_LOG (USER_NAME, FISHING_DATE, FISH_ID, INSERT_DATE)
+        VALUES (#{userName}, TRUNC(SYSDATE), #{fishId}, SYSDATE)
+    </insert>
+
+    <select id="selectFishByGrade" resultType="hashmap">
+        SELECT FISH_ID, FISH_NAME, FISH_GRADE, WEIGHT
+        FROM TBOT_S4_FISH_INFO
+        WHERE FISH_GRADE = #{grade} AND ACTIVE_YN = '1'
+    </select>
+
+    <insert id="upsertFishInv" parameterType="hashmap">
+        MERGE INTO TBOT_S4_FISH_INV T
+        USING (SELECT #{userName} AS U, #{fishId} AS F FROM DUAL) S
+        ON (T.USER_NAME = S.U AND T.FISH_ID = S.F)
+        WHEN MATCHED THEN
+            UPDATE SET QTY = QTY + 1
+        WHEN NOT MATCHED THEN
+            INSERT (USER_NAME, FISH_ID, QTY, FIRST_CATCH_DATE)
+            VALUES (#{userName}, #{fishId}, 1, SYSDATE)
+    </insert>
+
+    <select id="selectFishInv" resultType="hashmap">
+        SELECT I.FISH_ID, F.FISH_NAME, F.FISH_GRADE, I.QTY,
+               TO_CHAR(I.FIRST_CATCH_DATE, 'YYYY-MM-DD') AS FIRST_CATCH_DATE
+        FROM TBOT_S4_FISH_INV I
+        JOIN TBOT_S4_FISH_INFO F ON I.FISH_ID = F.FISH_ID
+        WHERE I.USER_NAME = #{userName}
+        ORDER BY F.FISH_GRADE, F.FISH_NAME
+    </select>
+
+    <select id="selectAchievementList" resultType="hashmap">
+        SELECT ACH_ID, ACH_NAME, ACH_DESC, ACH_TYPE, ACH_PARAM, REWARD_TYPE, REWARD_GRADE
+        FROM TBOT_S4_ACHIEVEMENT
+        ORDER BY ACH_ID
+    </select>
+
+    <select id="selectUserAchievements" resultType="hashmap">
+        SELECT ACH_ID, TO_CHAR(CLEAR_DATE, 'YYYY-MM-DD') AS CLEAR_DATE
+        FROM TBOT_S4_USER_ACH
+        WHERE USER_NAME = #{userName}
+    </select>
+
+    <insert id="insertUserAch" parameterType="hashmap">
+        INSERT INTO TBOT_S4_USER_ACH (USER_NAME, ACH_ID, CLEAR_DATE)
+        VALUES (#{userName}, #{achId}, SYSDATE)
+    </insert>
+
+    <select id="selectCaughtKindCountByGrade" resultType="int">
+        SELECT COUNT(DISTINCT I.FISH_ID)
+        FROM TBOT_S4_FISH_INV I
+        JOIN TBOT_S4_FISH_INFO F ON I.FISH_ID = F.FISH_ID
+        WHERE I.USER_NAME = #{userName} AND F.FISH_GRADE = #{grade}
+    </select>
+
+    <select id="selectTotalKindCountByGrade" resultType="int">
+        SELECT COUNT(*) FROM TBOT_S4_FISH_INFO
+        WHERE FISH_GRADE = #{grade} AND ACTIVE_YN = '1'
+    </select>
+
+</mapper>
