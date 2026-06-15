@@ -5251,7 +5251,7 @@ public class BossAttackController {
 		if (!"워록".equals(s.job)) return;
 		// 헬모드 너프 이전 원본 critRate로 타수 계산
 		int rawCritForHit = s.critRate + (s.ctx != null ? s.ctx.hellNerfCrit : 0);
-		int hitCount = 1 + (rawCritForHit / 1000);
+		int hitCount = 1 + (rawCritForHit / 2000);
 		if (hitCount <= 1) return;
 		s.warlockHitCount = hitCount;
 		s.warlockMultiHit = true;
