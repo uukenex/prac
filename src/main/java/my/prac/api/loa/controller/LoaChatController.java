@@ -415,6 +415,36 @@ public class LoaChatController {
 
 		return null;
 	}
+
+	@RequestMapping(value = "/loa/chat2", method = RequestMethod.GET)
+	public void chatApplication2(
+			@RequestParam(required = true)  String param0,
+			@RequestParam(required = false) String param1,
+			@RequestParam(required = false) String param2,
+			@RequestParam(required = false) String room,
+			@RequestParam(required = false) String sender,
+			@RequestParam(required = false) String fulltxt,
+			javax.servlet.http.HttpServletResponse response) throws Exception {
+		try {
+			System.out.println(param0 + " " + param1 + " " + param2 + " " + room + " " + sender);
+			System.out.println("fulltxt: " + fulltxt);
+			sender = removeEmojis(sender);
+			String val = autoResponse(param0, param1, param2, room, sender, fulltxt);
+			HashMap<String, Object> rtnMap = new HashMap<>();
+			if (val != null && !val.equals("")) rtnMap.put("data", val);
+			com.fasterxml.jackson.databind.ObjectMapper _om = new com.fasterxml.jackson.databind.ObjectMapper();
+			_om.configure(com.fasterxml.jackson.core.JsonGenerator.Feature.ESCAPE_NON_ASCII, false);
+			String _json = _om.writeValueAsString(rtnMap);
+			response.setCharacterEncoding("UTF-8");
+			response.setContentType("application/json; charset=UTF-8");
+			response.getWriter().write(_json);
+		} catch (Exception e) {
+			System.out.println(e.getMessage());
+			response.setCharacterEncoding("UTF-8");
+			response.setContentType("application/json; charset=UTF-8");
+			response.getWriter().write("{\"data\":\"\"}");
+		}
+	}
 	@RequestMapping(value = "/in/{imgvalues}", method = RequestMethod.GET)
 	public String innerimgReturn(@PathVariable String imgvalues, Model model) {
 		model.addAttribute("imgval",imgvalues);
