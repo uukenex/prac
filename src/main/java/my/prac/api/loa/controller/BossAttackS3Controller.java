@@ -886,7 +886,11 @@ public class BossAttackS3Controller {
         // 처치 보상 + 보스 재생성
         String killMsg = "";
         if (isKill) {
-            killMsg = calcHellBossReward(roomName, bossStartDate, maxHp, bossRewardType, bossDemonType);
+            if (isMaWang) {
+                killMsg = "[마왕] " + userName + "님이 마왕을 처치했습니다! (처치 보상 없음)";
+            } else {
+                killMsg = calcHellBossReward(roomName, bossStartDate, maxHp, bossRewardType, bossDemonType);
+            }
             botS3Service.saveLastKillMsg(killMsg); // 대기화면 표시용 캐시
             respawnHellBoss(bossStartDate);
         }
@@ -1024,12 +1028,12 @@ public class BossAttackS3Controller {
             double rwDice = rand.nextDouble();
             String preRewardType = rwDice >= 0.80 ? "ITEM" : rwDice >= 0.40 ? "BOX" : "GP";
             bossMap.put("rewardType", preRewardType);
-            // 보스 타입 결정: 마왕 30%, 대악마 20%, 상급악마 50%
+            // 보스 타입 결정: 마왕 20%, 대악마 15%, 상급악마 65%
             double bossTypeDice = rand.nextDouble();
             String bossType;
-            if (bossTypeDice < 0.30) {
+            if (bossTypeDice < 0.20) {
                 bossType = "마왕";
-            } else if (bossTypeDice < 0.50) {
+            } else if (bossTypeDice < 0.35) {
                 bossType = "대악마";
             } else {
                 bossType = "상급악마";
