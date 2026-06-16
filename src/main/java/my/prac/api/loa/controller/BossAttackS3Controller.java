@@ -641,13 +641,20 @@ public class BossAttackS3Controller {
         String dmgLimitMsg = "";
         boolean isMaWang = "마왕".equals(bossDemonType);
 
+        String maWangMulMsg = "";
         if (isMaWang) {
             // 마왕: 10배 데미지, 용사 추가 2배, 100만 cap
+            long beforeMul = totalDamage;
             totalDamage *= 10L;
-            if ("용사".equals(ctx.job)) totalDamage *= 2L;
+            maWangMulMsg = "⚔️ [마왕] 데미지 ×10 적용: " + beforeMul + " → " + totalDamage + NL;
+            if ("용사".equals(ctx.job)) {
+                long before2 = totalDamage;
+                totalDamage *= 2L;
+                maWangMulMsg += "⚔️ [용사 특권] 추가 ×2 적용: " + before2 + " → " + totalDamage + NL;
+            }
             final long MAWANG_CAP = 1_000_000L;
             if (totalDamage > MAWANG_CAP) {
-                dmgLimitMsg = "[데미지 제한] " + SP.fromSp(totalDamage) + " → " + SP.fromSp(MAWANG_CAP) + " (마왕 100만 cap)" + NL;
+                dmgLimitMsg = "[데미지 제한] " + totalDamage + " → " + MAWANG_CAP + " (마왕 100만 cap)" + NL;
                 totalDamage = MAWANG_CAP;
             }
         } else {
@@ -900,12 +907,22 @@ public class BossAttackS3Controller {
         msg.append(userName).append("님이 [").append(bossDemonType).append("]를 공격했습니다!").append(NL);
 
         if (!isEvade) {
-            msg.append("▶ 입힌 데미지: ").append(damage).append(NL);
+            if (isMaWang) {
+                msg.append("▶ 기본 데미지: ").append(damage);
+                if (thiefHit2) msg.append(" + ").append(damage2).append(" (2타)");
+                msg.append(NL);
+                msg.append(maWangMulMsg);
+            } else {
+                msg.append("▶ 입힌 데미지: ").append(damage).append(NL);
+            }
             msg.append(dmgMsg).append(NL);
             if (!bossEvadeIgnoreMsg.isEmpty()) msg.append(bossEvadeIgnoreMsg);
             if (!windSlashMsg.isEmpty()) msg.append(windSlashMsg);
-            if (thiefHit2) {
+            if (thiefHit2 && !isMaWang) {
                 msg.append("⚔ 2타 데미지: ").append(damage2).append(NL);
+                msg.append(dmgMsg2).append(NL);
+                if (!bossDefMsg2.isEmpty()) msg.append(bossDefMsg2);
+            } else if (thiefHit2 && isMaWang) {
                 msg.append(dmgMsg2).append(NL);
                 if (!bossDefMsg2.isEmpty()) msg.append(bossDefMsg2);
             }
