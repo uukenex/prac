@@ -5886,6 +5886,10 @@ public class BossAttackController {
 		if (s.warlockMultiHit && !s.warlockKillFail && s.warlockTotalGainExp > 0) {
 			s.res.gainExp += s.warlockTotalGainExp;
 		}
+		// [도적] 표기용 gainExp = 1타 + 2타 합산
+		if (s.thiefDoubleAtk && s.res2 != null && s.res2.gainExp > 0) {
+			s.res.gainExp += s.res2.gainExp;
+		}
 		String msg = buildAttackMessage(s.userName, s.u, s.m, s.flags, s.calc, s.res, s.up,
 				s.monHpRemainBefore, s.monMaxHp, s.effAtkMin, s.effAtkMax, s.hpMax,
 				mid.toString(), hunter.toString(), bot.toString(), s.nightmare, s.ctx, detailOut);
