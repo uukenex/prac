@@ -4738,6 +4738,7 @@ public class BossAttackController {
 		List<Resolve>        warlockExtraRes   = new ArrayList<>();
 		List<LevelUpResult>  warlockExtraUps   = new ArrayList<>();
 		List<String>         warlockKillMsgs   = new ArrayList<>();
+		long warlockTotalGainExp = 0; // 전체 타수 합산 exp
 
 		AttackSession(HashMap<String,Object> map) {
 			this.map      = map;
@@ -5333,6 +5334,7 @@ public class BossAttackController {
 					ed.extraLucky, ed.extraDark, ed.extraGray, ed.extraShadow,
 					s.ctx.user.nightmareYn, s.ctx.ownedBossItems, s.ctx.bossItemQtyMap);
 			er.dropCode = "0"; // 워록: 아이템 획득 불가
+			s.warlockTotalGainExp += er.gainExp;
 			s.warlockExtraRes.add(er);
 			try {
 				// killStat·userUpdate 스킵 — 마지막에 합산/한 번만 처리
@@ -5880,6 +5882,10 @@ public class BossAttackController {
 		}
 
 		StringBuilder detailOut = new StringBuilder();
+		// [워록] 표기용 gainExp = 1타 + 추가타 합산
+		if (s.warlockMultiHit && !s.warlockKillFail && s.warlockTotalGainExp > 0) {
+			s.res.gainExp += s.warlockTotalGainExp;
+		}
 		String msg = buildAttackMessage(s.userName, s.u, s.m, s.flags, s.calc, s.res, s.up,
 				s.monHpRemainBefore, s.monMaxHp, s.effAtkMin, s.effAtkMax, s.hpMax,
 				mid.toString(), hunter.toString(), bot.toString(), s.nightmare, s.ctx, detailOut);
