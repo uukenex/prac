@@ -29,7 +29,7 @@
     </insert>
 
     <select id="selectFishByGrade" resultType="hashmap">
-        SELECT FISH_ID, FISH_NAME, FISH_GRADE, WEIGHT, FISH_EMOJI, FISH_DESC
+        SELECT FISH_ID, FISH_NAME, FISH_GRADE, WEIGHT, FISH_DESC
         FROM TBOT_S4_FISH_INFO
         WHERE FISH_GRADE = #{grade} AND ACTIVE_YN = '1'
     </select>

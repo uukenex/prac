@@ -24,6 +24,18 @@ public class BotS4ServiceImpl implements BotS4Service {
     private static final String NL  = "♬";
     private static final Random RND = new Random();
 
+    // DB charset(KO16MSWIN949)이 이모지 미지원 → 소스에서 관리
+    private static final HashMap<Integer, String> FISH_EMOJI_MAP = new HashMap<Integer, String>() {{
+        put(101, "🐟"); put(102, "🐠"); put(103, "🐍"); put(104, "🐟"); put(105, "🐡"); put(106, "🐟");
+        put(201, "🐟"); put(202, "🐈"); put(203, "❄");  put(204, "🐊"); put(205, "🦪"); put(206, "🦪");
+        put(301, "🌊"); put(302, "🐟"); put(303, "🐟"); put(304, "🦪"); put(305, "🐚"); put(306, "🦀");
+        put(401, "🐙"); put(402, "🦑"); put(403, "🐚"); put(404, "🦪"); put(405, "🐟"); put(406, "🐟");
+        put(501, "🐟"); put(502, "🐟"); put(503, "🐚"); put(504, "🥒"); put(505, "🦀"); put(506, "🐙");
+        put(601, "🐟"); put(602, "🌊"); put(603, "🦀"); put(604, "🐍"); put(605, "🦪"); put(606, "🐟");
+        put(701, "🐋"); put(702, "🐡"); put(703, "🦞"); put(704, "🐚"); put(705, "🦈"); put(706, "🐡");
+        put(801, "🦑"); put(802, "🐟"); put(803, "🐟"); put(804, "🐟"); put(805, "🐟"); put(806, "🦈");
+    }};
+
     // 낚시대 등급별 최대 접근 가능 물고기 등급
     private static final int[] ROD_MAX_GRADE = { 0, 3, 5, 6, 7, 8 }; // index = rodGrade(1~5)
 
@@ -98,7 +110,7 @@ public class BotS4ServiceImpl implements BotS4Service {
         String achMsg = checkAchievements(userName, fishId, fishGrade);
 
         String star = buildStar(fishGrade);
-        String emoji = fish.get("FISH_EMOJI") != null ? fish.get("FISH_EMOJI").toString() : "🐟";
+        String emoji = FISH_EMOJI_MAP.getOrDefault(fishId, "🐟");
         String desc  = fish.get("FISH_DESC")  != null ? fish.get("FISH_DESC").toString()  : "";
 
         StringBuilder sb = new StringBuilder();
