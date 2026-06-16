@@ -21,6 +21,7 @@ public class BotS4ServiceImpl implements BotS4Service {
     @Resource(name = "core.prjbot.BotS4DAO")
     BotS4DAO botS4DAO;
 
+    private static final String NL  = "♬";
     private static final Random RND = new Random();
 
     // 낚시대 등급별 최대 접근 가능 물고기 등급
@@ -97,10 +98,17 @@ public class BotS4ServiceImpl implements BotS4Service {
         String achMsg = checkAchievements(userName, fishId, fishGrade);
 
         String star = buildStar(fishGrade);
+        String emoji = fish.get("FISH_EMOJI") != null ? fish.get("FISH_EMOJI").toString() : "🐟";
+        String desc  = fish.get("FISH_DESC")  != null ? fish.get("FISH_DESC").toString()  : "";
+
         StringBuilder sb = new StringBuilder();
-        sb.append("🎣 낚시 결과: ").append(star).append(" ").append(fishName).append("!");
+        sb.append("🎣 낚시 결과!").append(NL);
+        sb.append(star).append(" ").append(fishName);
+        if (!desc.isEmpty()) {
+            sb.append(NL).append(emoji).append(" ").append(desc);
+        }
         if (!achMsg.isEmpty()) {
-            sb.append("♬").append(achMsg);
+            sb.append(NL).append(achMsg);
         }
         return sb.toString();
     }
