@@ -7856,15 +7856,14 @@ public class BossAttackController {
 		int nCri    = (int) Math.round(cri     * keepFraction);
 		int nCriDmg = (int) Math.round(criDmg  * keepFraction);
 		int nHp     = (int) Math.round(hp      * keepFraction);
-		int nHpRate = (int) Math.round(hpRate  * keepFraction);
-		int nAtkRate= (int) Math.round(atkRate * keepFraction);
+		// ATK_MAX_RATE, HP_MAX_RATE는 너프 비대상 - 원본값 그대로 표시
 		StringBuilder sb = new StringBuilder();
 		if (nMin != 0 || nMax != 0) sb.append("공격 ").append(nMin).append("~").append(nMax).append(" / ");
-		if (nAtkRate != 0)          sb.append("최종공%+").append(nAtkRate).append("% / ");
+		if (atkRate != 0)           sb.append("최종공%+").append(atkRate).append("% / ");
 		if (nCri != 0)              sb.append("치확 ").append(nCri).append(" / ");
 		if (nCriDmg != 0)           sb.append("치피 ").append(nCriDmg).append(" / ");
 		if (nHp != 0)               sb.append("체력 ").append(nHp).append(" / ");
-		if (nHpRate != 0)           sb.append("체력% ").append(nHpRate).append(" / ");
+		if (hpRate != 0)            sb.append("체력% ").append(hpRate).append(" / ");
 		String result = sb.toString();
 		if (result.endsWith(" / ")) result = result.substring(0, result.length() - 3);
 		return result;
