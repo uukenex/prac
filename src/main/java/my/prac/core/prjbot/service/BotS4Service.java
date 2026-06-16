@@ -25,4 +25,7 @@ public interface BotS4Service {
 
     /** [낚시구매] 전체 업적 마스터 조회 */
     List<HashMap<String, Object>> selectAchievementList();
+
+    /** [낚시가방] 유저명 부분검색 (TBOT_S4_USER_EQUIP 기준) */
+    List<String> selectS4UserSearch(HashMap<String, Object> map);
 }

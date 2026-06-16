@@ -83,4 +83,12 @@
         WHERE FISH_GRADE = #{grade} AND ACTIVE_YN = '1'
     </select>
 
+    <select id="selectS4UserSearch" parameterType="HashMap" resultType="String">
+        /*selectS4UserSearch*/
+        SELECT USER_NAME
+          FROM TBOT_S4_USER_EQUIP
+         WHERE UPPER(USER_NAME) LIKE UPPER(#{param1,jdbcType=VARCHAR}) || '%'
+         ORDER BY USER_NAME
+    </select>
+
 </mapper>

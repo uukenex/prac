@@ -9,7 +9,6 @@ import javax.annotation.Resource;
 
 import org.springframework.stereotype.Controller;
 
-import my.prac.core.prjbot.service.BotNewService;
 import my.prac.core.prjbot.service.BotS4Service;
 import my.prac.core.prjbot.service.impl.BotS4ServiceImpl;
 
@@ -34,9 +33,6 @@ public class Season4Controller {
 
     private static final String[] ROD_NAMES    = { "", "일반낚시대", "고급낚시대", "희귀낚시대", "영웅낚시대", "전설낚시대" };
     private static final String[] BOBBER_NAMES = { "", "일반찌", "고급찌", "희귀찌", "영웅찌" };
-
-    @Resource(name = "core.prjbot.BotNewService")
-    BotNewService botNewService;
 
     @Resource(name = "core.prjbot.BotS4Service")
     BotS4Service s4Service;
@@ -75,7 +71,7 @@ public class Season4Controller {
         String param1 = java.util.Objects.toString(map.get("param1"), "").trim();
         String targetUser = userName;
         if (!param1.isEmpty()) {
-            List<String> found = botNewService.selectParam1ToNewUserSearch(map);
+            List<String> found = s4Service.selectS4UserSearch(map);
             if (found != null && !found.isEmpty()) {
                 targetUser = found.get(0);
             } else {

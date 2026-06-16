@@ -219,4 +219,9 @@ public class BotS4ServiceImpl implements BotS4Service {
         String g = grade < names.length ? names[grade] : "Lv" + grade;
         return g + type;
     }
+
+    @Override
+    public List<String> selectS4UserSearch(HashMap<String, Object> map) {
+        return dao.selectS4UserSearch(map);
+    }
 }

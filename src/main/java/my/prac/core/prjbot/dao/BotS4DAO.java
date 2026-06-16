@@ -25,4 +25,5 @@ public interface BotS4DAO {
 
     int selectCaughtKindCountByGrade(@Param("userName") String userName, @Param("grade") int grade);
     int selectTotalKindCountByGrade(@Param("grade") int grade);
+    List<String> selectS4UserSearch(HashMap<String, Object> map);
 }
