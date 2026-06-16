@@ -244,4 +244,18 @@ public class BotS4ServiceImpl implements BotS4Service {
     public List<String> selectS4UserSearch(HashMap<String, Object> map) {
         return botS4DAO.selectS4UserSearch(map);
     }
+
+    @Override
+    public HashMap<String, Object> selectMemberByKakaoId(String kakaoId) {
+        return botS4DAO.selectMemberByKakaoId(kakaoId);
+    }
+
+    @Override
+    public void upsertMember(String kakaoId, String userName, String nickname) {
+        HashMap<String, Object> map = new HashMap<>();
+        map.put("kakaoId",  kakaoId);
+        map.put("userName", userName);
+        map.put("nickname", nickname);
+        botS4DAO.upsertMember(map);
+    }
 }

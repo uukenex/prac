@@ -4,6 +4,22 @@
 
 <mapper namespace="my.prac.core.prjbot.dao.BotS4DAO">
 
+    <!-- ==================== 회원(카카오 로그인) ==================== -->
+    <select id="selectMemberByKakaoId" parameterType="String" resultType="hashmap">
+        SELECT KAKAO_ID, USER_NAME, NICKNAME FROM TBOT_S4_MEMBER WHERE KAKAO_ID = #{kakaoId}
+    </select>
+
+    <insert id="upsertMember" parameterType="hashmap">
+        MERGE INTO TBOT_S4_MEMBER T
+        USING (SELECT #{kakaoId} AS KAKAO_ID FROM DUAL) S ON (T.KAKAO_ID = S.KAKAO_ID)
+        WHEN MATCHED THEN
+            UPDATE SET NICKNAME = #{nickname}, LAST_LOGIN = SYSDATE
+        WHEN NOT MATCHED THEN
+            INSERT (KAKAO_ID, USER_NAME, NICKNAME, REG_DATE, LAST_LOGIN)
+            VALUES (#{kakaoId}, #{userName}, #{nickname}, SYSDATE, SYSDATE)
+    </insert>
+
+    <!-- ==================== 장비 ==================== -->
     <select id="selectUserEquip" resultType="hashmap">
         SELECT ROD_GRADE, BOBBER_GRADE FROM TBOT_S4_USER_EQUIP WHERE USER_NAME = #{userName}
     </select>

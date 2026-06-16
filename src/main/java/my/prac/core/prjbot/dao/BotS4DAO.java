@@ -9,6 +9,9 @@ import org.springframework.stereotype.Repository;
 @Repository("core.prjbot.BotS4DAO")
 public interface BotS4DAO {
 
+    HashMap<String, Object> selectMemberByKakaoId(@Param("kakaoId") String kakaoId);
+    int upsertMember(HashMap<String, Object> map);
+
     HashMap<String, Object> selectUserEquip(@Param("userName") String userName);
     int upsertUserEquip(HashMap<String, Object> map);
 

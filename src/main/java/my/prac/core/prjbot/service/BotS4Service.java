@@ -5,6 +5,12 @@ import java.util.List;
 
 public interface BotS4Service {
 
+    /** [카카오 로그인] 카카오ID로 회원 조회 */
+    HashMap<String, Object> selectMemberByKakaoId(String kakaoId);
+
+    /** [카카오 로그인] 회원 upsert (신규 가입 or 최근 로그인 갱신) */
+    void upsertMember(String kakaoId, String userName, String nickname);
+
     /** [낚시] 유저 장비 조회 (없으면 null) */
     HashMap<String, Object> selectUserEquip(String userName);
 
