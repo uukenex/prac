@@ -7744,11 +7744,21 @@ public class BossAttackController {
 	    SP userPoint = new SP(0, "");
 	    UserBattleContext shopCtx = null;
 
-	    if (hasPotion) {
-	        HashMap<String,Object> map = new HashMap<>();
-	        map.put("userName", userName);
-	        shopCtx = calcUserBattleContext(map);
-	        userPoint = shopCtx.lifetimeSp;
+	    try {
+	        HashMap<String,Object> ctxMap = new HashMap<>();
+	        ctxMap.put("userName", userName);
+	        shopCtx = calcUserBattleContext(ctxMap);
+	        if (shopCtx != null) userPoint = shopCtx.lifetimeSp;
+	    } catch (Exception ignore) {}
+
+	    // 헬모드 유저: 너프율 헤더 표시
+	    boolean isHellUser = shopCtx != null && shopCtx.user != null && shopCtx.user.nightmareYn == 2;
+	    double hellKeep = 0;
+	    if (isHellUser) {
+	        hellKeep = shopCtx.hellNerfRate > 0 ? shopCtx.hellNerfRate : MiniGameUtil.getHellNerfMult(shopCtx.hunterGrade);
+	        int nerfPct = (int) Math.round((1.0 - hellKeep) * 100);
+	        int keepPct = 100 - nerfPct;
+	        sb.append(" 헬너프율").append(nerfPct).append("%로 인해 ").append(keepPct).append("%의 성능을 발휘합니다.").append(NL);
 	    }
 
 	    if(!hasPotion) {
@@ -7819,13 +7829,46 @@ public class BossAttackController {
 
 	        sb.append("↘옵션: ")
 	          .append(buildOptionText(it, isEquip, isPotion, ownQty, itemId))
-	          .append(NL)
 	          .append(NL);
+	        // 헬모드 유저: 장비 아이템에만 너프 후 실효치 표시
+	        if (isHellUser && isEquip && hellKeep > 0) {
+	            String hellLine = buildHellNerfedLine(it, hellKeep);
+	            if (hellLine != null && !hellLine.isEmpty()) {
+	                sb.append("↘헬너프후: ").append(hellLine).append(NL);
+	            }
+	        }
+	        sb.append(NL);
 	    }
 
 	    return sb.toString();
 	}
 
+	private String buildHellNerfedLine(HashMap<String, Object> it, double keepFraction) {
+		int min     = MiniGameUtil.parseIntSafe(Objects.toString(it.get("ATK_MIN"), "0"));
+		int max     = MiniGameUtil.parseIntSafe(Objects.toString(it.get("ATK_MAX"), "0"));
+		int cri     = MiniGameUtil.parseIntSafe(Objects.toString(it.get("ATK_CRI"), "0"));
+		int criDmg  = MiniGameUtil.parseIntSafe(Objects.toString(it.get("CRI_DMG"), "0"));
+		int hp      = MiniGameUtil.parseIntSafe(Objects.toString(it.get("HP_MAX"), "0"));
+		int hpRate  = MiniGameUtil.parseIntSafe(Objects.toString(it.get("HP_MAX_RATE"), "0"));
+		int atkRate = MiniGameUtil.parseIntSafe(Objects.toString(it.get("ATK_MAX_RATE"), "0"));
+		int nMin    = (int) Math.round(min     * keepFraction);
+		int nMax    = (int) Math.round(max     * keepFraction);
+		int nCri    = (int) Math.round(cri     * keepFraction);
+		int nCriDmg = (int) Math.round(criDmg  * keepFraction);
+		int nHp     = (int) Math.round(hp      * keepFraction);
+		int nHpRate = (int) Math.round(hpRate  * keepFraction);
+		int nAtkRate= (int) Math.round(atkRate * keepFraction);
+		StringBuilder sb = new StringBuilder();
+		if (nMin != 0 || nMax != 0) sb.append("공격 ").append(nMin).append("~").append(nMax).append(" / ");
+		if (nAtkRate != 0)          sb.append("최종공%+").append(nAtkRate).append("% / ");
+		if (nCri != 0)              sb.append("치확 ").append(nCri).append(" / ");
+		if (nCriDmg != 0)           sb.append("치피 ").append(nCriDmg).append(" / ");
+		if (nHp != 0)               sb.append("체력 ").append(nHp).append(" / ");
+		if (nHpRate != 0)           sb.append("체력% ").append(nHpRate).append(" / ");
+		String result = sb.toString();
+		if (result.endsWith(" / ")) result = result.substring(0, result.length() - 3);
+		return result;
+	}
 	private String buildDisplayPrice(HashMap<String,Object> it, boolean isPotion, int itemId, SP userPoint){
 
 	    if(isPotion){
