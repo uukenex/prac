@@ -54,13 +54,13 @@ public class Season4Controller {
 
         // 오늘 이미 낚시했는지 체크
         if (s4Service.selectTodayFishingLog(userName) != null) {
-            return "오늘은 이미 낚시를 했습니다. 내일 다시 도전하세요! 🎣";
+            return userName + "님," + NL + "오늘은 이미 낚시를 했습니다. 내일 다시 도전하세요! 🎣";
         }
 
         int rodGrade    = ((Number) equip.get("ROD_GRADE")).intValue();
         int bobberGrade = ((Number) equip.get("BOBBER_GRADE")).intValue();
 
-        return s4Service.fishing(userName, rodGrade, bobberGrade);
+        return userName + "님," + NL + s4Service.fishing(userName, rodGrade, bobberGrade);
     }
 
     // ================================================================
@@ -68,18 +68,28 @@ public class Season4Controller {
     // ================================================================
     public String fishingBag(HashMap<String, Object> map) {
         String userName = map.get("userName").toString();
+        String param1 = java.util.Objects.toString(map.get("param1"), "").trim();
+        String targetUser = userName;
+        if (!param1.isEmpty()) {
+            java.util.List<String> found = botNewService.selectParam1ToNewUserSearch(map);
+            if (found != null && !found.isEmpty()) {
+                targetUser = found.get(0);
+            } else {
+                return "해당 유저(" + param1 + ")를 찾을 수 없습니다.";
+            }
+        }
 
-        List<HashMap<String, Object>> inv = s4Service.selectFishInv(userName);
-        List<HashMap<String, Object>> userAch = s4Service.selectUserAchievements(userName);
+        List<HashMap<String, Object>> inv = s4Service.selectFishInv(targetUser);
+        List<HashMap<String, Object>> userAch = s4Service.selectUserAchievements(targetUser);
 
         if (inv == null || inv.isEmpty()) {
-            return "아직 잡은 물고기가 없습니다. /낚시 로 낚시를 시작하세요!";
+            return targetUser + "님," + NL + "아직 잡은 물고기가 없습니다. /낚시 로 낚시를 시작하세요!";
         }
 
         // 등급별 그룹핑
         int curGrade = -1;
         StringBuilder sb = new StringBuilder();
-        sb.append("🐟 [낚시가방]").append(NL);
+        sb.append(targetUser).append("님,").append(NL).append("🐟 [낚시가방]").append(NL);
 
         for (HashMap<String, Object> item : inv) {
             int grade = ((Number) item.get("FISH_GRADE")).intValue();
@@ -148,7 +158,7 @@ public class Season4Controller {
         }
 
         StringBuilder sb = new StringBuilder();
-        sb.append("🛒 [낚시 상점]").append(NL);
+        sb.append(userName).append("님,").append(NL).append("🛒 [낚시 상점]").append(NL);
 
         // 낚시대
         sb.append(NL).append("[ 낚시대 ]").append(NL);
