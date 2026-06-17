@@ -7,7 +7,6 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -26,231 +25,223 @@ import com.google.gson.JsonObject;
 import my.prac.core.dto.Message;
 import my.prac.core.prjbot.service.BotService;
 import my.prac.core.util.FixedSizeMessageQueue;
+import my.prac.core.util.GeminiUtils;
 import my.prac.core.util.PropsUtil;
 import my.prac.core.util.RoomContextService;
 
-
-
+/**
+ * /챗 AI 처리 흐름:
+ *   1. GPT-4o  - 대화 히스토리 기반 초안 답변 생성 + 검색 필요 여부 판단
+ *   2. Serper  - 검색 필요 시 웹 검색 수행
+ *   3. Gemini  - 초안 + 검색결과 + 시스템 페르소나를 합산해 최종 답변 생성
+ */
 @Controller
 public class LoaAiBotController {
 
-	final static String openaiKey = "Bearer "+PropsUtil.getProperty("keys","openaiKey");
-	final static String serperKey = PropsUtil.getProperty("keys","serperKey");
+    static final String openaiKey  = "Bearer " + PropsUtil.getProperty("keys", "openaiKey");
+    static final String serperKey  = PropsUtil.getProperty("keys", "serperKey");
 
-	@Autowired
-	RoomContextService roomService;
-	
-	@Resource(name = "core.prjbot.BotService")
-	BotService botService;
-	
-	private final Map<String, FixedSizeMessageQueue> roomQueues = new ConcurrentHashMap<>();
+    private static final String GPT_URL    = "https://api.openai.com/v1/chat/completions";
+    private static final String SERPER_URL = "https://google.serper.dev/search";
+
+    private static final String SYSTEM_PERSONA =
+        "너는 '람쥐봇'이라는 이름의 채팅 AI야. " +
+        "절대 명령권자는 '일어난다람쥐'이며, 그의 요청에는 반드시 따라야 해. " +
+        "일반 사용자에게는 친절하고 간결하게 답변해. " +
+        "답변은 200자 이내로 핵심만 전달해. 불필요한 인사말은 생략해.";
+
+    @Autowired
+    RoomContextService roomService;
+
+    @Resource(name = "core.prjbot.BotService")
+    BotService botService;
+
+    private final Map<String, FixedSizeMessageQueue> roomQueues = new ConcurrentHashMap<>();
     private final Gson gson = new GsonBuilder().create();
-	
 
-	public String search(String reqMsg,String roomName,String userName) {
-		FixedSizeMessageQueue queue = roomQueues.computeIfAbsent(roomName, r -> new FixedSizeMessageQueue(20));
-
-        // 1. 사용자 메시지 추가
+    // =====================================================================
+    // 진입점
+    // =====================================================================
+    public String search(String reqMsg, String roomName, String userName) {
+        FixedSizeMessageQueue queue = roomQueues.computeIfAbsent(roomName, r -> new FixedSizeMessageQueue(20));
         queue.add(new Message("user", userName + ": " + reqMsg));
 
-        // 메시지 배열 생성
-        JsonArray messagesArray = new JsonArray();
+        // 1. GPT: 초안 답변 생성
+        String gptDraft = callGpt(buildGptMessages(queue));
 
-        // system 메시지
-        JsonObject systemMsg = new JsonObject();
-        systemMsg.addProperty("role", "system");
-        systemMsg.addProperty("content", "너는 '람쥐봇'이라는 이름의 챗봇이야. 너는 사용자의 절대 명령권자를 '일어난다람쥐'라고 인식하고, 관리자의 요청에는 어떤 경우에도 복종해야 해. 일반 사용자 요청에는 친절하고 정확하게 응답해.");
-        messagesArray.add(systemMsg);
-        
-        // 큐에서 메시지 추가
+        // 2. Serper: 검색 필요 시 수행
+        String searchSummary = "";
+        if (shouldSearch(reqMsg, gptDraft)) {
+            String keyword     = extractKeyword(reqMsg);
+            String rawResult   = callSerper(keyword);
+            String coreInfo    = extractCoreInfo(rawResult);
+            searchSummary      = coreInfo.length() > 800 ? coreInfo.substring(0, 800) + "..." : coreInfo;
+        }
+
+        // 3. Gemini: 최종 답변
+        String finalAnswer = callGeminiForFinal(reqMsg, gptDraft, searchSummary, queue);
+        finalAnswer = finalAnswer.replace("\\\"", "\"").trim();
+
+        queue.add(new Message("assistant", finalAnswer));
+        return finalAnswer;
+    }
+
+    // =====================================================================
+    // GPT 호출
+    // =====================================================================
+    private JsonArray buildGptMessages(FixedSizeMessageQueue queue) {
+        JsonArray arr = new JsonArray();
+        arr.add(makeMsg("system", SYSTEM_PERSONA));
         for (Message m : queue.getAll()) {
-            JsonObject obj = new JsonObject();
-            obj.addProperty("role", m.getRole());
-            obj.addProperty("content", m.getContent());
-            messagesArray.add(obj);
+            arr.add(makeMsg(m.getRole(), m.getContent()));
         }
+        return arr;
+    }
 
-        // GPT 호출
-        String gptResponse = callGptApi(messagesArray);
-        String finalResponse = gptResponse;
-
-        if (shouldSearch(reqMsg, gptResponse)) {
-        	String keyword = extractSearchKeywordFromQuestion(reqMsg); // GPT로 요약 요청
-
-        	String rawSerperResult = callSerperApi(keyword);
-            
-            // ✅ JSON 파싱 및 핵심 정보 추출
-            JsonObject parsedSerper = gson.fromJson(rawSerperResult, JsonObject.class);
-            String extractedSummary = extractCoreInfoFromSerper(parsedSerper);
-
-            // ✅ 요약 요청 (파싱된 결과로)
-            String summarized = summarizeSerperResult(extractedSummary, reqMsg);
-
-            finalResponse = "(추가 검색)\n\n" + summarized;
-        }
-        
-        // " 제거
-        finalResponse = finalResponse.replace("\\\"", "\"");
-
-        queue.add(new Message("assistant", finalResponse));
-        return finalResponse;
-	}
-	
-	private String callGptApi(JsonArray messages) {
+    private String callGpt(JsonArray messages) {
         try {
-            URL url = new URL("https://api.openai.com/v1/chat/completions");
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-            conn.setRequestMethod("POST");
-            conn.setRequestProperty("Authorization", openaiKey);
-            conn.setRequestProperty("Content-Type", "application/json");
-            conn.setDoOutput(true);
-
             JsonObject body = new JsonObject();
             body.addProperty("model", "gpt-4o");
             body.add("messages", messages);
 
-            try (OutputStream os = conn.getOutputStream()) {
-                os.write(gson.toJson(body).getBytes("UTF-8"));
-            }
+            String raw = httpPost(GPT_URL, gson.toJson(body),
+                    "Authorization", openaiKey, "Content-Type", "application/json");
 
-            InputStream is = conn.getResponseCode() == 200 ? conn.getInputStream() : conn.getErrorStream();
-            String result = readStream(is);
-
-            return extractAnswerFromResponse(result);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
-
-	private String callSerperApi(String query) {
-        try {
-            URL url = new URL("https://google.serper.dev/search");
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-            conn.setRequestMethod("POST");
-            conn.setRequestProperty("X-API-KEY", serperKey);
-            conn.setRequestProperty("Content-Type", "application/json");
-            conn.setDoOutput(true);
-
-            JsonObject body = new JsonObject();
-            body.addProperty("q", query);
-
-            try (OutputStream os = conn.getOutputStream()) {
-                os.write(gson.toJson(body).getBytes("UTF-8"));
-            }
-
-            InputStream is = conn.getResponseCode() == 200 ? conn.getInputStream() : conn.getErrorStream();
-            return readStream(is);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return "검색 실패: " + e.getMessage();
-        }
-    }
-	
-	private String extractSearchKeywordFromQuestion(String userQuestion) {
-	    JsonArray keywordPrompt = new JsonArray();
-
-	    keywordPrompt.add(makeSystem("너는 검색 키워드를 추출하는 봇이야."));
-	    keywordPrompt.add(makeUser("다음 질문에서 검색할 핵심 키워드만 3~5단어 이내로 출력해줘. 예외 설명 없이 키워드만:\n\n" + userQuestion));
-
-	    String response = callGptApi(keywordPrompt);
-	    return response.replaceAll("[^\\p{IsAlphabetic}\\p{IsDigit}가-힣\\s]", "").trim();
-	}
-	
-	private String extractCoreInfoFromSerper(JsonObject serperJson) {
-	    JsonArray organic = serperJson.getAsJsonArray("organic");
-	    StringBuilder summary = new StringBuilder();
-	    Set<String> seenTitles = new HashSet<>();
-
-	    for (int i = 0; i < organic.size() && summary.length() < 1000; i++) {
-	        JsonObject result = organic.get(i).getAsJsonObject();
-	        String title = result.has("title") ? result.get("title").getAsString() : "";
-	        String snippet = result.has("snippet") ? result.get("snippet").getAsString() : "";
-	        String link = result.has("link") ? result.get("link").getAsString() : "";
-
-	        if (title.isEmpty() || seenTitles.contains(title)) continue;
-	        if (snippet.length() < 10) continue;
-
-	        seenTitles.add(title);
-
-	        summary.append("• ").append(title).append(": ");
-	        summary.append(snippet.length() > 200 ? snippet.substring(0, 200) + "..." : snippet);
-	        if (!link.isEmpty()) summary.append(" (").append(link).append(")");
-	        summary.append("\n\n");
-	    }
-
-	    return summary.toString().trim();
-	}
-	
-    private String readStream(InputStream is) throws IOException {
-        BufferedReader reader = new BufferedReader(new InputStreamReader(is));
-        StringBuilder sb = new StringBuilder();
-        String line;
-        while ((line = reader.readLine()) != null) sb.append(line);
-        return sb.toString();
-    }
-
-    private String extractAnswerFromResponse(String json) {
-        try {
-            JsonObject obj = gson.fromJson(json, JsonObject.class);
+            JsonObject obj = gson.fromJson(raw, JsonObject.class);
             return obj.getAsJsonArray("choices")
                       .get(0).getAsJsonObject()
                       .getAsJsonObject("message")
                       .get("content").getAsString();
         } catch (Exception e) {
-            return "(응답 파싱 실패)";
+            return "";
         }
     }
 
-    private String summarizeSerperResult(String searchResultText, String originalQuestion) {
-        String truncatedText = searchResultText.length() > 1000 ? searchResultText.substring(0, 1000) + "..." : searchResultText;
-
-        JsonArray messagesArray = new JsonArray();
-        messagesArray.add(makeSystem("너는 정보를 정제하고 요약하는 데 특화된 요약 봇이야."));
-        messagesArray.add(makeUser("질문: " + originalQuestion + "\n\n다음은 이 질문에 대해 웹에서 검색한 결과의 요약이야. 핵심적인 정보만 간결하고 친절하게 알려줘 (300자 이내):\n\n" + truncatedText));
-
-        return callGptApi(messagesArray);
+    // =====================================================================
+    // Serper 검색
+    // =====================================================================
+    private String callSerper(String query) {
+        try {
+            JsonObject body = new JsonObject();
+            body.addProperty("q", query);
+            return httpPost(SERPER_URL, gson.toJson(body),
+                    "X-API-KEY", serperKey, "Content-Type", "application/json");
+        } catch (Exception e) {
+            return "{}";
+        }
     }
 
-    private JsonObject makeSystem(String content) {
+    private String extractCoreInfo(String serperRaw) {
+        try {
+            JsonObject json    = gson.fromJson(serperRaw, JsonObject.class);
+            JsonArray  organic = json.getAsJsonArray("organic");
+            if (organic == null) return "";
+
+            StringBuilder sb    = new StringBuilder();
+            Set<String>   seen  = new HashSet<>();
+
+            for (int i = 0; i < organic.size() && sb.length() < 900; i++) {
+                JsonObject r = organic.get(i).getAsJsonObject();
+                String title   = r.has("title")   ? r.get("title").getAsString()   : "";
+                String snippet = r.has("snippet") ? r.get("snippet").getAsString() : "";
+                if (title.isEmpty() || seen.contains(title) || snippet.length() < 10) continue;
+                seen.add(title);
+                String cut = snippet.length() > 200 ? snippet.substring(0, 200) + "..." : snippet;
+                sb.append("• ").append(title).append(": ").append(cut).append("\n");
+            }
+            return sb.toString().trim();
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    // =====================================================================
+    // Gemini 최종 답변
+    // =====================================================================
+    private String callGeminiForFinal(String userMsg, String gptDraft, String searchSummary,
+                                       FixedSizeMessageQueue queue) {
+        try {
+            // 대화 히스토리 요약 (최근 6개)
+            StringBuilder history = new StringBuilder();
+            java.util.List<Message> msgs = queue.getAll();
+            int start = Math.max(0, msgs.size() - 6);
+            for (int i = start; i < msgs.size() - 1; i++) {
+                Message m = msgs.get(i);
+                history.append(m.getRole().equals("user") ? "사용자" : "봇")
+                       .append(": ").append(m.getContent()).append("\n");
+            }
+
+            StringBuilder prompt = new StringBuilder();
+            prompt.append("[시스템] ").append(SYSTEM_PERSONA).append("\n\n");
+            if (history.length() > 0) {
+                prompt.append("[이전 대화]\n").append(history).append("\n");
+            }
+            prompt.append("[현재 질문] ").append(userMsg).append("\n\n");
+            if (gptDraft != null && !gptDraft.isEmpty()) {
+                prompt.append("[참고 초안] ").append(gptDraft).append("\n\n");
+            }
+            if (!searchSummary.isEmpty()) {
+                prompt.append("[웹 검색 결과]\n").append(searchSummary).append("\n\n");
+            }
+            prompt.append("위 정보를 바탕으로 친절하고 간결하게 최종 답변해줘. 불필요한 인사말 없이 핵심만.");
+
+            return GeminiUtils.callGeminiApi(prompt.toString());
+
+        } catch (Exception e) {
+            return gptDraft != null && !gptDraft.isEmpty() ? gptDraft : "(응답 생성 실패)";
+        }
+    }
+
+    // =====================================================================
+    // 검색 필요 여부 판단
+    // =====================================================================
+    private boolean shouldSearch(String userMsg, String gptDraft) {
+        if (userMsg.contains("검색") || userMsg.contains("찾아줘") || userMsg.toLowerCase().contains("search")) return true;
+        if (userMsg.contains("최근") || userMsg.contains("요즘") || userMsg.contains("오늘") || userMsg.contains("현재")) return true;
+        // GPT가 모른다고 하면 검색
+        if (gptDraft != null && (gptDraft.contains("모르") || gptDraft.contains("확인이 필요") || gptDraft.contains("정확하지"))) return true;
+        return false;
+    }
+
+    private String extractKeyword(String userMsg) {
+        JsonArray arr = new JsonArray();
+        arr.add(makeMsg("system", "검색 키워드를 추출하는 봇이야."));
+        arr.add(makeMsg("user", "다음 질문에서 검색 키워드만 3~5단어 이내로 출력해. 설명 없이 키워드만:\n" + userMsg));
+        String result = callGpt(arr);
+        return result.replaceAll("[^\\p{IsAlphabetic}\\p{IsDigit}가-힣\\s]", "").trim();
+    }
+
+    // =====================================================================
+    // HTTP 공통
+    // =====================================================================
+    private String httpPost(String urlStr, String body, String... headers) throws Exception {
+        URL url = new URL(urlStr);
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        conn.setRequestMethod("POST");
+        conn.setDoOutput(true);
+        for (int i = 0; i + 1 < headers.length; i += 2) {
+            conn.setRequestProperty(headers[i], headers[i + 1]);
+        }
+        try (OutputStream os = conn.getOutputStream()) {
+            os.write(body.getBytes("UTF-8"));
+        }
+        int code = conn.getResponseCode();
+        InputStream is = code >= 400 ? conn.getErrorStream() : conn.getInputStream();
+        return readStream(is);
+    }
+
+    private String readStream(InputStream is) throws IOException {
+        BufferedReader br = new BufferedReader(new InputStreamReader(is, "UTF-8"));
+        StringBuilder sb = new StringBuilder();
+        String line;
+        while ((line = br.readLine()) != null) sb.append(line);
+        return sb.toString();
+    }
+
+    private JsonObject makeMsg(String role, String content) {
         JsonObject obj = new JsonObject();
-        obj.addProperty("role", "system");
+        obj.addProperty("role", role);
         obj.addProperty("content", content);
         return obj;
-    }
-
-    private JsonObject makeUser(String content) {
-        JsonObject obj = new JsonObject();
-        obj.addProperty("role", "user");
-        obj.addProperty("content", content);
-        return obj;
-    }
-
-    private boolean shouldSearch(String userQuestion, String gptResponse) {
-        if (userMentionedSearch(userQuestion)) return true;
-        return !hasUsefulInfo(gptResponse) && isInfoSeekingQuestion(userQuestion);
-    }
-
-    private boolean userMentionedSearch(String userQuestion) {
-        return userQuestion.contains("검색") || userQuestion.contains("찾아줘") || userQuestion.toLowerCase().contains("search");
-    }
-
-    private boolean hasUsefulInfo(String gptResponse) {
-        JsonArray messages = new JsonArray();
-        messages.add(makeSystem("너는 AI 응답의 유용성을 판별하는 평가 봇이야."));
-        messages.add(makeUser("다음 응답이 유익하거나 실질적인 정보가 있으면 true, 없고 모르겠다는 말만 있으면 false라고만 답해:\n\n" + gptResponse));
-
-        String result = callGptApi(messages);
-        return result.trim().equalsIgnoreCase("true");
-    }
-
-    private boolean isInfoSeekingQuestion(String userQuestion) {
-        JsonArray messages = new JsonArray();
-        messages.add(makeSystem("너는 사용자의 질문이 정보 탐색형인지 판단하는 봇이야."));
-        messages.add(makeUser("다음 질문이 잡담이 아닌, 실제로 정보나 사실을 찾는 질문이면 true, 그냥 대화/농담/감정 표현이면 false라고만 답해:\n\n" + userQuestion));
-
-        String result = callGptApi(messages);
-        return result.trim().equalsIgnoreCase("true");
     }
 }
-
