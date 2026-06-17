@@ -2547,7 +2547,7 @@ public class BossAttackController {
 	    sb.append(", EXP ").append(u.expCur).append("/").append(u.expNext).append(NL);
 	    sb.append("포인트: ").append(ctx.currentPointStr).append(NL);
 	    if (ctx.gpBalance > 0) {
-	        sb.append("GP: ").append(String.format("%.2f", ctx.gpBalance)).append(NL);
+	        sb.append("GP: ").append(String.format("%.2f", Math.floor(ctx.gpBalance * 100) / 100)).append(NL);
 	    }
 	    sb.append("누적 획득 포인트: ").append(ctx.lifetimeSpStr).append(NL).append(NL);
 
@@ -4051,7 +4051,7 @@ public class BossAttackController {
 	        catch (Exception e) { return "GP 조회 중 오류가 발생했습니다."; }
 	        if (gp < 10)
 	            return userName + "님, 보스 아이템 직접 구매에는 10 GP가 필요합니다."+NL
-	        		+"현재 GP: " + String.format("%.2f", gp) + " GP";
+	        		+"현재 GP: " + String.format("%.2f", Math.floor((gp) * 100) / 100) + " GP";
 
 	        try {
 	            HashMap<String, Object> gpDeduct = new HashMap<>();
@@ -4086,7 +4086,7 @@ public class BossAttackController {
 	        String buyEnhSuffix = buyIsEnhance ? BossAttackS3Controller.enhanceSuffix(curBuyQty + 1) : "";
 	        String buyAction = buyIsEnhance ? "강화 완료" : "구매 완료";
 	        return "▶ " + buyAction + userName + "님이 [" + itemName + buyEnhSuffix + "]을(를) " + (buyIsEnhance ? "강화" : "구매") + "했습니다."+NL+
-	        	"(10 GP 소모, 잔여 GP: " + String.format("%.2f", afterGp) + " GP)";
+	        	"(10 GP 소모, 잔여 GP: " + String.format("%.2f", Math.floor((afterGp) * 100) / 100) + " GP)";
 	    }
 
 	    // 결제 (포인트 차감 — 다중구매 모드이면 ThreadLocal 에 누적, 단건이면 즉시 처리)
@@ -4455,7 +4455,7 @@ public class BossAttackController {
 	    StringBuilder sb = new StringBuilder();
 	    sb.append("■ 보스 아이템 상점 (10 GP)").append(NL)
 	      .append("────────────────").append(NL)
-	      .append("현재 GP: ").append(String.format("%.2f", gp)).append(" GP").append(NL)
+	      .append("현재 GP: ").append(String.format("%.2f", Math.floor((gp) * 100) / 100)).append(" GP").append(NL)
 	      .append(NL)
 	      .append("◆ GP뽑기 (/보스뽑기)").append(NL)
 	      .append("  보유 유물  0~9개 : 4 GP").append(NL)
@@ -6541,7 +6541,7 @@ public class BossAttackController {
 			gp.put("cmd",      "ATK_GP_DROP");
 			botNewService.insertGpRecord(gp);
 			double gpBalance = botNewService.selectGpBalance(userName);
-			return String.format("✨GP 획득! +%.2f GP (보유: %.2f GP)", gpAmount, gpBalance);
+			return String.format("✨GP 획득! +%.2f GP (보유: %.2f GP)", Math.floor(gpAmount * 100) / 100, Math.floor(gpBalance * 100) / 100);
 		} catch (Exception e) {
 			return "";
 		}
@@ -6729,7 +6729,7 @@ public class BossAttackController {
 		if (gp < gachaPrice) {
 			return userName + "님," + NL
 				+ "보스뽑기에는 " + (int)gachaPrice + " GP가 필요합니다." + NL
-				+ "현재 GP: " + String.format("%.2f", gp) + " GP" + NL
+				+ "현재 GP: " + String.format("%.2f", Math.floor((gp) * 100) / 100) + " GP" + NL
 				+ "(보유 유물 수: " + ownedBossCount + "개 → " + (int)gachaPrice + " GP)" + NL
 				+ "(7000번대 보스 아이템 판매 시 1개당 1 GP 획득)";
 		}
@@ -6766,14 +6766,14 @@ public class BossAttackController {
 		// boolean isEnhance = newItems.isEmpty(); // 신규 없으면 강화 시도
 		// if (isEnhance && enhanceable.isEmpty())
 		// 	return userName + "님," + NL + "모든 보스 아이템 최대 강화 달성! 더 이상 뽑기 불가합니다." + NL
-		// 		+ "잔여 GP: " + String.format("%.2f", gp) + " GP";
+		// 		+ "잔여 GP: " + String.format("%.2f", Math.floor((gp) * 100) / 100) + " GP";
 		// if (!isEnhance) bossItems = newItems;  // 신규 풀로 교체
 		// else           bossItems = enhanceable; // 강화 풀로 교체
 
 		boolean isEnhance = false;
 		if (newItems.isEmpty())
 			return userName + "님," + NL + "모든 보스 아이템을 보유 중입니다. 뽑기 불가합니다." + NL
-				+ "잔여 GP: " + String.format("%.2f", gp) + " GP";
+				+ "잔여 GP: " + String.format("%.2f", Math.floor((gp) * 100) / 100) + " GP";
 		bossItems = newItems; // 신규 풀로 교체
 
 		// GP 차감 (가격: gachaPrice)
@@ -6846,7 +6846,7 @@ public class BossAttackController {
 		return userName + "님," + NL
 				+ "보스뽑기! (-" + (int)gachaPrice + " GP) [보유유물 " + ownedBossCount + "개]" + NL
 				+ "▶ " + actionWord + " " + itemLine + NL
-				+ "- 잔여 GP: " + String.format("%.2f", gp - gachaPrice) + " GP";
+				+ "- 잔여 GP: " + String.format("%.2f", Math.floor((gp - gachaPrice) * 100) / 100) + " GP";
 	}
 
 		private String sellCategoryItem(String userName, String roomName, String slotKey) throws Exception {
@@ -7314,8 +7314,8 @@ public class BossAttackController {
                 double curGp    = row.get("CURRENT_GP")     != null ? ((Number)row.get("CURRENT_GP")).doubleValue()     : 0;
                 double totalGp  = row.get("TOTAL_EARNED_GP") != null ? ((Number)row.get("TOTAL_EARNED_GP")).doubleValue() : 0;
                 sb.append(rank).append("위 ").append(uName)
-                  .append(" - 보유 ").append(String.format("%.2f", curGp)).append(" GP")
-                  .append(" / 누적 ").append(String.format("%.2f", totalGp)).append(" GP")
+                  .append(" - 보유 ").append(String.format("%.2f", Math.floor((curGp) * 100) / 100)).append(" GP")
+                  .append(" / 누적 ").append(String.format("%.2f", Math.floor((totalGp) * 100) / 100)).append(" GP")
                   .append(NL);
                 if (++rank > 10) break;
             }
