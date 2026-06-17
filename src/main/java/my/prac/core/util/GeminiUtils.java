@@ -128,10 +128,10 @@ public class GeminiUtils {
 					JSONArray candidates = jsonResponse.getJSONArray("candidates");
 					StringBuilder message = new StringBuilder();
 					for (int i = 0; i < candidates.length(); i++) {
-						JSONObject content = candidates.getJSONObject(i).getJSONObject("content");
-						JSONArray parts = content.getJSONArray("parts");
-						for (int j = 0; j < parts.length(); j++) {
-							message.append(parts.getJSONObject(j).getString("text")).append("\n");
+						JSONObject candidate = candidates.getJSONObject(i).getJSONObject("content");
+						JSONArray resParts = candidate.getJSONArray("parts");
+						for (int j = 0; j < resParts.length(); j++) {
+							message.append(resParts.getJSONObject(j).getString("text")).append("\n");
 						}
 					}
 					return message.toString().trim();
