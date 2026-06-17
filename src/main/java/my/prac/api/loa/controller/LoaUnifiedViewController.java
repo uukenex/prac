@@ -198,11 +198,11 @@ public class LoaUnifiedViewController {
         // 7) 현재 GP + 누적 GP
         try {
             double gp = botNewService.selectGpBalance(userName);
-            result.put("gpBalance", gp > 0 ? String.format("%.2f", gp) : "0");
+            result.put("gpBalance", gp > 0 ? String.format("%.2f", Math.floor((gp) * 100) / 100) : "0");
         } catch (Exception ignore) { result.put("gpBalance", "0"); }
         try {
             double totalGp = botNewService.selectUserTotalEarnedGp(userName);
-            result.put("totalEarnedGp", totalGp > 0 ? String.format("%.2f", totalGp) : "0");
+            result.put("totalEarnedGp", totalGp > 0 ? String.format("%.2f", Math.floor((totalGp) * 100) / 100) : "0");
         } catch (Exception ignore) { result.put("totalEarnedGp", "0"); }
 
         // 8) 활성 세트 보너스

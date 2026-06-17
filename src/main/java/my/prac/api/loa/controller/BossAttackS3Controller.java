@@ -859,7 +859,7 @@ public class BossAttackS3Controller {
                 gp.put("cmd",      "MAWANG_ATK_GP");
                 botNewService.insertGpRecord(gp);
                 double gpBalance = botNewService.selectGpBalance(userName);
-                spRewardMsg = String.format("✨GP 획득! +%.2f GP (보유: %.2f GP)%s", gpAmount, gpBalance, NL);
+                spRewardMsg = String.format("✨GP 획득! +%.2f GP (보유: %.2f GP)%s", Math.floor(gpAmount * 100) / 100, Math.floor(gpBalance * 100) / 100, NL);
             } catch (Exception e) {
                 // GP 지급 실패는 무시
             }
