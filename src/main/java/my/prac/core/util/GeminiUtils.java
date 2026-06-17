@@ -95,9 +95,18 @@ public class GeminiUtils {
 		conn.setRequestProperty("Content-Type", "application/json");
 		conn.setDoOutput(true);
 
-		// JSON 형식이 올바른지 확인
-		String jsonInputString = String.format("{\"contents\": [{\"parts\": [{\"text\": \"%s\"}]}]}",
-				prompt.replace("\n", "\\n"));
+		// JSONObject로 빌드 — 특수문자/따옴표/역슬래시 자동 이스케이프
+		JSONObject textPart = new JSONObject();
+		textPart.put("text", prompt);
+		JSONArray parts = new JSONArray();
+		parts.put(textPart);
+		JSONObject content = new JSONObject();
+		content.put("parts", parts);
+		JSONArray contents = new JSONArray();
+		contents.put(content);
+		JSONObject requestBody = new JSONObject();
+		requestBody.put("contents", contents);
+		String jsonInputString = requestBody.toString();
 
 		try (OutputStream os = conn.getOutputStream()) {
 			byte[] input = jsonInputString.getBytes("utf-8");
