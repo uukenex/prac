@@ -2470,12 +2470,16 @@ public class LoaChatController {
 
 						String[] txtList;
 						fulltxt = fulltxt.substring(param0.length()).trim();
-						txtList = fulltxt.split("=");
-						reqMap.put("req", txtList[0].trim());
-						reqMap.put("res", txtList[1].trim());
-
-						botService.insertBotWordSaveTx(reqMap);
-						val = "단어등록 완료!";
+						txtList = fulltxt.split("=", 2);
+						String resVal = txtList[1].trim();
+						if (resVal.length() > 200) {
+							val = "단어등록 실패!, 응답 내용이 200자를 초과했습니다. (" + resVal.length() + "자)";
+						} else {
+							reqMap.put("req", txtList[0].trim());
+							reqMap.put("res", resVal);
+							botService.insertBotWordSaveTx(reqMap);
+							val = "단어등록 완료!";
+						}
 					}
 				} catch (Exception e) {
 					val = "단어등록 실패!";
