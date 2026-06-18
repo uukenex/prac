@@ -23,6 +23,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 
 import my.prac.core.dto.Message;
+import my.prac.core.prjbot.service.BotS4Service;
 import my.prac.core.prjbot.service.BotService;
 import my.prac.core.util.FixedSizeMessageQueue;
 import my.prac.core.util.GeminiUtils;
@@ -75,8 +76,30 @@ public class LoaAiBotController {
     @Resource(name = "core.prjbot.BotService")
     BotService botService;
 
+    @Resource(name = "core.prjbot.BotS4Service")
+    BotS4Service botS4Service;
+
     private final Map<String, FixedSizeMessageQueue> roomQueues = new ConcurrentHashMap<>();
     private final Gson gson = new GsonBuilder().create();
+
+    // USE_GEMINI: TCONFIG DB에서 60초 캐싱
+    private volatile boolean geminiCached = false;
+    private volatile long geminiCacheTime = 0L;
+    private static final long GEMINI_CACHE_TTL = 60_000L;
+
+    private boolean isUseGemini() {
+        long now = System.currentTimeMillis();
+        if (now - geminiCacheTime > GEMINI_CACHE_TTL) {
+            try {
+                String val = botS4Service.selectTconfigVal("USE_GEMINI");
+                geminiCached = "1".equals(val);
+            } catch (Exception e) {
+                // DB 오류 시 이전 캐시 유지
+            }
+            geminiCacheTime = now;
+        }
+        return geminiCached;
+    }
 
     // =====================================================================
     // 진입점
@@ -216,17 +239,15 @@ public class LoaAiBotController {
     }
 
     // =====================================================================
-    // 3단계: 최종 답변 (GPT 사용 중 — Gemini 복구 시 USE_GEMINI = true 로 변경)
+    // 3단계: 최종 답변 (USE_GEMINI는 TCONFIG DB에서 실시간 조회, 60초 캐시)
     // =====================================================================
-    private static final boolean USE_GEMINI = true;
-
     private String callGeminiForFinal(String userMsg, String userName,
                                        String searchSummary, FixedSizeMessageQueue queue) {
         // 대화 히스토리 구성 (최대 8개)
         java.util.List<Message> msgs = queue.getAll();
         int start = Math.max(0, msgs.size() - 8);
 
-        if (USE_GEMINI) {
+        if (isUseGemini()) {
             // ── Gemini 경로 ──────────────────────────────────────────────
             try {
                 StringBuilder history = new StringBuilder();

@@ -33,6 +33,7 @@ public class Season4Controller {
 
     private static final String[] ROD_NAMES    = { "", "일반낚시대", "고급낚시대", "희귀낚시대", "영웅낚시대", "전설낚시대" };
     private static final String[] BOBBER_NAMES = { "", "일반찌", "고급찌", "희귀찌", "영웅찌" };
+    private static final int[]    ROD_MAX_GRADE = { 0, 3, 5, 6, 7, 8 };
 
     @Resource(name = "core.prjbot.BotS4Service")
     BotS4Service s4Service;
@@ -123,10 +124,11 @@ public class Season4Controller {
     }
 
     // ================================================================
-    // /낚시구매
+    // /낚시구매  (목록 조회 or 장비 구매)
     // ================================================================
     public String fishingShop(HashMap<String, Object> map) {
         String userName = map.get("userName").toString();
+        String param1   = java.util.Objects.toString(map.get("param1"), "").trim();
 
         HashMap<String, Object> equip = s4Service.selectUserEquip(userName);
         if (equip == null) {
@@ -157,41 +159,64 @@ public class Season4Controller {
             if ("BOBBER_UNLOCK".equals(rewardType)) maxBobberUnlock = Math.max(maxBobberUnlock, rewardGrade);
         }
 
+        // 장비명 파라미터 있으면 구매 처리
+        if (!param1.isEmpty()) {
+            return buyEquip(userName, param1, rodGrade, bobberGrade, maxRodUnlock, maxBobberUnlock);
+        }
+
+        // 목록 표시
         StringBuilder sb = new StringBuilder();
         sb.append(userName).append("님,").append(NL).append("🛒 [낚시 상점]").append(NL);
 
-        // 낚시대
         sb.append(NL).append("[ 낚시대 ]").append(NL);
         for (int g = 1; g < ROD_NAMES.length; g++) {
             if (g == rodGrade) {
                 sb.append("  ").append(ROD_NAMES[g]).append(" ← 장착중").append(NL);
             } else if (g <= maxRodUnlock) {
-                sb.append("  ").append(ROD_NAMES[g]).append(" (구매가능)").append(NL);
+                sb.append("  ").append(ROD_NAMES[g]).append(" (구매가능) → /낚시구매 ").append(ROD_NAMES[g]).append(NL);
             } else {
                 sb.append("  ").append(ROD_NAMES[g]).append(" 🔒").append(NL);
             }
         }
 
-        // 찌
         sb.append(NL).append("[ 찌 ]").append(NL);
         for (int g = 1; g < BOBBER_NAMES.length; g++) {
             if (g == bobberGrade) {
                 sb.append("  ").append(BOBBER_NAMES[g]).append(" ← 장착중").append(NL);
             } else if (g <= maxBobberUnlock) {
-                sb.append("  ").append(BOBBER_NAMES[g]).append(" (구매가능)").append(NL);
+                sb.append("  ").append(BOBBER_NAMES[g]).append(" (구매가능) → /낚시구매 ").append(BOBBER_NAMES[g]).append(NL);
             } else {
                 sb.append("  ").append(BOBBER_NAMES[g]).append(" 🔒").append(NL);
             }
         }
 
-        sb.append(NL).append("* 구매 기능은 추후 오픈 예정입니다.");
-        return sb.toString();
+        return sb.toString().replaceAll(NL + "$", "");
+    }
+
+    private String buyEquip(String userName, String itemName,
+                             int curRod, int curBobber, int maxRod, int maxBobber) {
+        for (int g = 2; g < ROD_NAMES.length; g++) {
+            if (ROD_NAMES[g].equals(itemName)) {
+                if (curRod >= g) return itemName + "은 이미 장착 중입니다.";
+                if (g > maxRod)  return "🔒 " + itemName + "은 아직 해금되지 않았습니다. (업적 달성 필요)";
+                s4Service.upgradeEquip(userName, "ROD", g);
+                int maxGrade = g < ROD_MAX_GRADE.length ? ROD_MAX_GRADE[g] : 8;
+                return "✅ " + itemName + " 장착 완료!" + NL + "이제 " + buildStar(maxGrade) + " 등급까지 낚을 수 있습니다!";
+            }
+        }
+        for (int g = 2; g < BOBBER_NAMES.length; g++) {
+            if (BOBBER_NAMES[g].equals(itemName)) {
+                if (curBobber >= g) return itemName + "은 이미 장착 중입니다.";
+                if (g > maxBobber)  return "🔒 " + itemName + "은 아직 해금되지 않았습니다. (업적 달성 필요)";
+                s4Service.upgradeEquip(userName, "BOBBER", g);
+                return "✅ " + itemName + " 장착 완료!" + NL + "고등급 물고기 확률이 올라갑니다!";
+            }
+        }
+        return "알 수 없는 장비명입니다." + NL + "/낚시구매 로 목록을 확인하세요.";
     }
 
     // ----------------------------------------------------------------
     private String buildStar(int grade) {
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < grade; i++) sb.append("★");
-        return sb.toString();
+        return BotS4ServiceImpl.buildStar(grade);
     }
 }
