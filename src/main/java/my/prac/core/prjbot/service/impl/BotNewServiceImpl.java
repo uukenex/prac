@@ -898,6 +898,12 @@ public class BotNewServiceImpl implements BotNewService {
     public int updateExpCurOnly(String userName, String roomName, long expCur) {
         return botNewDAO.updateExpCurOnly(userName, roomName, expCur);
     }
+    @Override
+    @Transactional
+    public void expSellTx(String userName, String roomName, long newExpCur, HashMap<String,Object> statsParam) {
+        botNewDAO.updateExpCurOnly(userName, roomName, newExpCur);
+        botNewDAO.upsertExpSellStats(statsParam);
+    }
 
     // ── 실시간 카운터 테이블 ──────────────────────────────────────────────────
     @Override
