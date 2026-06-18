@@ -1733,13 +1733,18 @@ public class BossAttackController {
 	    // 비용 계산 (티어 전환 포함)
 	    long totalCost = calcExpSellBulkCost(totalCnt, buyCount);
 
+	    if (u.expCur <= 0) {
+	        return "⚠️ EXP가 없습니다. 몬스터를 처치하여 EXP를 획득하세요.";
+	    }
 	    if (u.expCur < totalCost) {
-	        //java.text.DecimalFormat df = new java.text.DecimalFormat("#,###");
 	        return "⚠️ EXP 부족! 필요: " + formatKorNum(totalCost) + " / 보유: " + formatKorNum(u.expCur);
 	    }
 
 	    // DB 갱신
 	    long newExpCur = u.expCur - totalCost;
+	    if (newExpCur < 0) {
+	        return "⚠️ EXP 부족! 처리 중 오류가 발생했습니다.";
+	    }
 	    int newTotalCnt = totalCnt + buyCount;
 	    HashMap<String,Object> upParam = new HashMap<>();
 	    upParam.put("userName",    userName);
