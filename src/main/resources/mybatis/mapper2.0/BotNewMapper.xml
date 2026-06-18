@@ -2426,7 +2426,6 @@
 		   SET EXP_CUR   = #{expCur},
 		       PROC_DATE = SYSDATE
 		 WHERE USER_NAME = #{userName}
-		   AND ROOM_NAME = #{roomName}
 	</update>
 
 	<!-- ══ 실시간 카운터: 킬스탯 / 직업 / 버프 ══════════════════════════════════ -->
