@@ -232,7 +232,12 @@ public class BossAttackS3Controller {
         }
         if (user == null) return userName + "님, 게임 가입이 필요합니다.";
 
-        // 2. 헬모드 체크
+        // 2. 데스 상태 체크
+        if (user.hpCur <= 0) {
+            return userName + "님, 데스 상태입니다. 체력을 회복 후 공격 가능합니다.";
+        }
+
+        // 3. 헬모드 체크
         if (user.nightmareYn != 2) {
             return userName + "님," + NL + "헬모드 유저만 도전 가능한 보스입니다.";
         }
@@ -255,15 +260,20 @@ public class BossAttackS3Controller {
         final String userName = Objects.toString(map.get("userName"), "");
         final User   user     = ctx.user;
 
-        // 대악마 감금 상태 체크
-        Long imprisonUntil = IMPRISONED_UNTIL.get(userName);
-        if (imprisonUntil != null) {
-            if (System.currentTimeMillis() < imprisonUntil) {
-                long remainSec = (imprisonUntil - System.currentTimeMillis()) / 1000;
-                long remMin = remainSec / 60, remSec = remainSec % 60;
-                return userName + "님, [감금스킬] 공격 불가 상태입니다. (" + remMin + "분 " + remSec + "초 남음)";
-            }
-            IMPRISONED_UNTIL.remove(userName);
+        // 데스 상태 체크 (진입점 A: monsterAttack 경유 시)
+        if (user.hpCur <= 0) {
+            return userName + "님, 데스 상태입니다. 체력을 회복 후 공격 가능합니다.";
+        }
+
+        // 대악마/마왕 감금 상태 체크
+        Long imprisonUntil = IMPRISONED_UNTIL.get(userName);
+        if (imprisonUntil != null) {
+            if (System.currentTimeMillis() < imprisonUntil) {
+                long remainSec = (imprisonUntil - System.currentTimeMillis()) / 1000;
+                long remMin = remainSec / 60, remSec = remainSec % 60;
+                return userName + "님, [감금스킬] 공격 불가 상태입니다. (" + remMin + "분 " + remSec + "초 남음)";
+            }
+            IMPRISONED_UNTIL.remove(userName);
         }
 
         // 보스 정보 조회 (전역, ROOM_NAME 없음)
@@ -316,6 +326,17 @@ public class BossAttackS3Controller {
             return "보스 정보를 가져오는데 실패했습니다.";
         }
 
+
+        // 상급악마/대악마/마왕: 스탯 상한 적용 (공격력 100%, 나머지 50%)
+        boolean isMajorBoss = "상급악마".equals(bossDemonType) || "대악마".equals(bossDemonType) || "마왕".equals(bossDemonType);
+        if (isMajorBoss) {
+            bossAtkRate   = Math.max(BOSS_ATK_RATE_MIN,   Math.min(50, bossAtkRate));
+            bossAtkPower  = Math.max(BOSS_ATK_POWER_MIN,  Math.min(100, bossAtkPower));
+            bossDefRate   = Math.max(BOSS_DEF_RATE_MIN,   Math.min(50, bossDefRate));
+            bossDefPower  = Math.max(BOSS_DEF_POWER_MIN,  Math.min(50, bossDefPower));
+            bossEvadeRate = Math.max(BOSS_EVADE_RATE_MIN, Math.min(50, bossEvadeRate));
+            critDefRate   = Math.max(0,                   Math.min(50, critDefRate));
+        }
         // 재생성 쿨타임 체크 (INSERT_DATE가 미래면 아직 등장 전)
         if (!bossStartDate.isEmpty()) {
             try {
@@ -785,8 +806,8 @@ public class BossAttackS3Controller {
             } catch (Exception ignored) {}
         }
 
-        // 대악마 감금스킬 발동 (10% 확률, 대악마 전용)
-        if ("대악마".equals(bossDemonType) && rand.nextInt(100) < IMPRISON_CHANCE_PCT) {
+        // 대악마/마왕 감금스킬 발동 (10% 확률)
+        if (("대악마".equals(bossDemonType) || "마왕".equals(bossDemonType)) && rand.nextInt(100) < IMPRISON_CHANCE_PCT) {
             IMPRISONED_UNTIL.put(userName, System.currentTimeMillis() + IMPRISON_DURATION_MS);
             // 감금 메시지는 아래 최종 msg 조립 후 추가
         }
@@ -945,7 +966,7 @@ public class BossAttackS3Controller {
         if (flag_boss_attack && bossAtkApplied > 0) {
             msg.append("▶ 보스의 반격! 최대HP의 피해! (").append(bossAtkApplied).append(")").append(NL);
             msg.append("  └ 남은체력: ").append(user.hpCur).append("/").append(ctx.hpMax).append(NL);
-            if (playerDead) msg.append("  체력이 0이 되었습니다!").append(NL);
+            if (playerDead) msg.append("  ☠ 체력이 0이 되었습니다! 데스 상태 — 체력 회복 후 공격 가능합니다.").append(NL);
         }
 
         msg.append(NL);
@@ -966,7 +987,7 @@ public class BossAttackS3Controller {
             msg.append(specialTimeMsg).append(NL);
         }
 
-        // 대악마 감금스킬 발동 메시지
+        // 대악마/마왕 감금스킬 발동 메시지
         if (IMPRISONED_UNTIL.containsKey(userName) &&
                 System.currentTimeMillis() < IMPRISONED_UNTIL.get(userName)) {
             msg.append(NL).append("[감금스킬] ").append(userName).append("님이 5분간 공격 불가 상태가 됩니다!");
@@ -1205,14 +1226,10 @@ public class BossAttackS3Controller {
             totScore += ((Number) row.get("SCORE")).longValue();
 
         // 룰렛 대상: 헬모드 몬스터 kill 이력 + proc_date > trunc(sysdate)-3
+        // 보상 대상: 해당 보스 등장 이후 실제 공격한 유저로 한정
         List<String> allNames = new ArrayList<>();
-        try {
-            allNames = botS3Service.selectHellLotteryPool();
-        } catch (Exception e) {
-            // 조회 실패 시 기존 방식(보스 공격자)으로 fallback
-            for (HashMap<String, Object> row : allContributors)
-                allNames.add(row.get("USER_NAME").toString());
-        }
+        for (HashMap<String, Object> row : allContributors)
+            allNames.add(row.get("USER_NAME").toString());
 
         // 당첨자 풀 및 인원 결정 (대악마/상급악마 동일 기준)
         List<String> qualifiedPool = new ArrayList<>(allNames);
