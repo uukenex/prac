@@ -1733,13 +1733,18 @@ public class BossAttackController {
 	    // 비용 계산 (티어 전환 포함)
 	    long totalCost = calcExpSellBulkCost(totalCnt, buyCount);
 
+	    if (u.expCur <= 0) {
+	        return "⚠️ EXP가 없습니다. 몬스터를 처치하여 EXP를 획득하세요.";
+	    }
 	    if (u.expCur < totalCost) {
-	        //java.text.DecimalFormat df = new java.text.DecimalFormat("#,###");
 	        return "⚠️ EXP 부족! 필요: " + formatKorNum(totalCost) + " / 보유: " + formatKorNum(u.expCur);
 	    }
 
 	    // DB 갱신
 	    long newExpCur = u.expCur - totalCost;
+	    if (newExpCur < 0) {
+	        return "⚠️ EXP 부족! 처리 중 오류가 발생했습니다.";
+	    }
 	    int newTotalCnt = totalCnt + buyCount;
 	    HashMap<String,Object> upParam = new HashMap<>();
 	    upParam.put("userName",    userName);
@@ -1750,8 +1755,7 @@ public class BossAttackController {
 	    upParam.put("critBonus",  critBonus    + ("CRIT".equals(statKey)    ? buyCount : 0));
 	    upParam.put("critDmgBonus",critDmgBonus+("CRIT_DMG".equals(statKey) ? buyCount : 0));
 	    try {
-	        botNewService.updateExpCurOnly(userName, roomName, newExpCur);
-	        botNewService.upsertExpSellStats(upParam);
+	        botNewService.expSellTx(userName, roomName, newExpCur, upParam);
 	        invalidateInvBuff(userName);
 	    } catch (Exception e) {
 	        return "❌ 처리 중 오류가 발생했습니다.";
@@ -2544,7 +2548,11 @@ public class BossAttackController {
         	sb.append("(hunter"+ctx.hunterGrade+")");
 	        
 	    }
-	    sb.append(", EXP ").append(u.expCur).append("/").append(u.expNext).append(NL);
+	    if (u.lv >= 999) {
+	        sb.append(", EXP 누적 ").append(formatKorNum(u.expCur)).append(NL);
+	    } else {
+	        sb.append(", EXP ").append(u.expCur).append("/").append(u.expNext).append(NL);
+	    }
 	    sb.append("포인트: ").append(ctx.currentPointStr).append(NL);
 	    if (ctx.gpBalance > 0) {
 	        sb.append("GP: ").append(String.format("%.2f", Math.floor(ctx.gpBalance * 100) / 100)).append(NL);
@@ -5987,10 +5995,15 @@ public class BossAttackController {
 		// Kill 전용: EXP / SP
 		if (s.res.killed) {
 			// Line 3: EXP (레벨업 포함)
-			double gainPct = s.u.expNext > 0 ? (double) s.res.gainExp / s.u.expNext * 100 : 0;
-			double curPct  = s.u.expNext > 0 ? (double) s.u.expCur    / s.u.expNext * 100 : 0;
-			sb.append("EXP +").append(String.format("%.1f", gainPct)).append("%")
-			  .append(" [").append(String.format("%.1f", curPct)).append("%/100%]");
+			if (s.u.lv >= 999) {
+			    sb.append("EXP +").append(formatKorNum(s.res.gainExp))
+			      .append(" [누적 ").append(formatKorNum(s.u.expCur)).append("]");
+			} else {
+			    double gainPct = s.u.expNext > 0 ? (double) s.res.gainExp / s.u.expNext * 100 : 0;
+			    double curPct  = s.u.expNext > 0 ? (double) s.u.expCur    / s.u.expNext * 100 : 0;
+			    sb.append("EXP +").append(String.format("%.1f", gainPct)).append("%")
+			      .append(" [").append(String.format("%.1f", curPct)).append("%/100%]");
+			}
 			if (s.up != null && s.up.levelUpCount > 0) {
 				sb.append(" ✨Lv").append(s.up.beforeLv).append("→").append(s.up.afterLv);
 			}
@@ -8699,12 +8712,17 @@ public class BossAttackController {
 	    }
 
 	    // EXP (항상 main)
-	    double gainPercent = (double) res.gainExp / u.expNext * 100;
-	    double curPercent  = (double) u.expCur    / u.expNext * 100;
-	    sb.append("✨ EXP +").append(formatKorNum(res.gainExp))
-	      .append("(").append(String.format("%.1f", gainPercent)).append("%)")
-	      .append("[").append(String.format("%.1f", curPercent)).append("%/100%]")
-	      .append(NL);
+	    if (u.lv >= 999) {
+	        sb.append("✨ EXP +").append(formatKorNum(res.gainExp))
+	          .append(" [누적 ").append(formatKorNum(u.expCur)).append("]").append(NL);
+	    } else {
+	        double gainPercent = (double) res.gainExp / u.expNext * 100;
+	        double curPercent  = (double) u.expCur    / u.expNext * 100;
+	        sb.append("✨ EXP +").append(formatKorNum(res.gainExp))
+	          .append("(").append(String.format("%.1f", gainPercent)).append("%)")
+	          .append("[").append(String.format("%.1f", curPercent)).append("%/100%]")
+	          .append(NL);
+	    }
 
 	    // 레벨업
 	    if (up != null && up.levelUpCount > 0) {
@@ -8936,7 +8954,7 @@ public class BossAttackController {
 	    int upCount     = 0;
 
 	    while (expCur >= expNext) {
-	        if (lv >= 999) { expCur = expNext - 1; break; } // [lv999] 하드캡: EXP 누적만
+	        if (lv >= 999) { break; } // [lv999] 레벨업 없음, EXP는 제한 없이 누적
 	        expCur -= expNext;
 	        int lvBeforeUp = lv; // 레벨업 직전 레벨 (짝수 여부 판단용)
 	        lv++;

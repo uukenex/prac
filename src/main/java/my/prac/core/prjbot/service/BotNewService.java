@@ -259,6 +259,8 @@ public interface BotNewService {
     HashMap<String,Object> selectExpSellStats(String userName);
     int upsertExpSellStats(HashMap<String,Object> param);
     int updateExpCurOnly(String userName, String roomName, long expCur);
+    /** EXP 차감 + 스탯 저장을 하나의 트랜잭션으로 처리 */
+    void expSellTx(String userName, String roomName, long newExpCur, HashMap<String,Object> statsParam);
     // ── 실시간 카운터 테이블 ───────────────────────────────────────────────────
     int upsertMonKillStat(HashMap<String,Object> param);
     int upsertHellBossClearForParticipants(HashMap<String,Object> param);
