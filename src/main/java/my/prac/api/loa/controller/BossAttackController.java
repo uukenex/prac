@@ -1704,11 +1704,11 @@ public class BossAttackController {
 	        sb.append("- 다음 1회 비용: ").append(df.format(nextCost / 100_000_000L)).append("억 EXP").append(NL2);
 	        sb.append("- 현재 EXP: ").append(formatKorNum(u.expCur)).append(NL2);
 	        sb.append("━━━━━━━━━━").append(NL2);
-	        sb.append("- 체력 보너스  : +").append(df.format((long)hpBonus * 100)).append(NL2);
+	        sb.append("- 체력 보너스  : +").append(df.format((long)hpBonus * 10)).append(NL2);
 	        sb.append("- 최소공격 보너스: +").append(df.format(atkMinBonus)).append(NL2);
 	        sb.append("- 최대공격 보너스: +").append(df.format(atkMaxBonus)).append(NL2);
-	        sb.append("- 치명타율 보너스: +").append(critBonus).append("%").append(NL2);
-	        sb.append("- 치명피해 보너스: +").append(critDmgBonus).append("%").append(NL2);
+	        sb.append("- 치명타율 보너스: +").append(String.format("%.1f", critBonus * 0.1)).append("%").append(NL2);
+	        sb.append("- 치명피해 보너스: +").append(String.format("%.1f", critDmgBonus * 0.1)).append("%").append(NL2);
 	        sb.append("※ /경험치판매 [체력|최소공격|최대공격|치명타|치명피해] [횟수]").append(NL2);
 	        return sb.toString();
 	    }
@@ -1717,11 +1717,11 @@ public class BossAttackController {
 	    String statKey;
 	    String statName;
 	    switch (param1) {
-	        case "체력":     statKey = "HP";       statName = "체력(HP+100)"; break;
+	        case "체력":     statKey = "HP";       statName = "체력(HP+10)"; break;
 	        case "최소공격": statKey = "ATK_MIN";  statName = "최소공격력(ATK_MIN+1)"; break;
 	        case "최대공격": statKey = "ATK_MAX";  statName = "최대공격력(ATK_MAX+1)"; break;
-	        case "치명타":   statKey = "CRIT";     statName = "치명타율(CRIT+1%)"; break;
-	        case "치명피해": statKey = "CRIT_DMG"; statName = "치명피해(CRIT_DMG+1%)"; break;
+	        case "치명타":   statKey = "CRIT";     statName = "치명타율(CRIT+0.1%)"; break;
+	        case "치명피해": statKey = "CRIT_DMG"; statName = "치명피해(CRIT_DMG+0.1%)"; break;
 	        default:
 	            return "⚠️ 스탯 종류: 체력 / 최소공격 / 최대공격 / 치명타 / 치명피해";
 	    }
