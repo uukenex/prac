@@ -20,7 +20,7 @@ import org.json.JSONObject;
 public class GeminiUtils {
 
 	final static String googleaiKey = PropsUtil.getProperty("keys","googleaiKey");
-	final static String googleaiVer ="gemini-1.5-flash-latest";
+	final static String googleaiVer ="gemini-2.0-flash";
 	final static String googleaiUrl = "https://generativelanguage.googleapis.com/v1beta/models/"+googleaiVer+":generateContent?key=";
 
 	/**
@@ -153,7 +153,14 @@ public class GeminiUtils {
 						"Failed : HTTP error code : 400 Bad Request. Response: " + response.toString());
 			}
 		} else {
-			throw new RuntimeException("Failed : HTTP error code : " + responseCode);
+			try (BufferedReader br = new BufferedReader(new InputStreamReader(conn.getErrorStream(), "utf-8"))) {
+				StringBuilder response = new StringBuilder();
+				String responseLine;
+				while ((responseLine = br.readLine()) != null) {
+					response.append(responseLine.trim());
+				}
+				throw new RuntimeException("Failed : HTTP error code : " + responseCode + ". Response: " + response.toString());
+			}
 		}
 	}
 	

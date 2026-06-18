@@ -216,38 +216,70 @@ public class LoaAiBotController {
     }
 
     // =====================================================================
-    // 3단계: Gemini 최종 답변
+    // 3단계: 최종 답변 (GPT 사용 중 — Gemini 복구 시 USE_GEMINI = true 로 변경)
     // =====================================================================
+    private static final boolean USE_GEMINI = true;
+
     private String callGeminiForFinal(String userMsg, String userName,
                                        String searchSummary, FixedSizeMessageQueue queue) {
+        // 대화 히스토리 구성 (최대 8개)
+        java.util.List<Message> msgs = queue.getAll();
+        int start = Math.max(0, msgs.size() - 8);
+
+        if (USE_GEMINI) {
+            // ── Gemini 경로 ──────────────────────────────────────────────
+            try {
+                StringBuilder history = new StringBuilder();
+                for (int i = start; i < msgs.size() - 1; i++) {
+                    Message m = msgs.get(i);
+                    history.append(m.getRole().equals("user") ? "유저" : "람쥐봇")
+                           .append(": ").append(m.getContent()).append("\n");
+                }
+                StringBuilder prompt = new StringBuilder();
+                prompt.append("[캐릭터 설정]\n").append(SYSTEM_PERSONA).append("\n\n");
+                if (history.length() > 0) prompt.append("[대화 흐름]\n").append(history).append("\n");
+                prompt.append("[").append(userName).append("의 말] ").append(userMsg).append("\n\n");
+                if (!searchSummary.isEmpty()) {
+                    prompt.append("[웹에서 찾은 정보]\n").append(searchSummary).append("\n\n");
+                    prompt.append("위 검색 결과를 자연스럽게 녹여서 람쥐봇 말투로 답해줘.");
+                } else {
+                    prompt.append("람쥐봇 캐릭터로 자연스럽게 답해줘. 잡담이면 같이 놀아주고, 질문이면 핵심만 짧게.");
+                }
+                return GeminiUtils.callGeminiApi(prompt.toString());
+            } catch (Exception e) {
+                return "(지금 좀 멍청해진 것 같아... 나중에 다시 물어봐!)";
+            }
+        }
+
+        // ── GPT 경로 (Gemini 미사용 시) ──────────────────────────────────
         try {
-            // 최근 대화 히스토리 (최대 8개)
-            StringBuilder history = new StringBuilder();
-            java.util.List<Message> msgs = queue.getAll();
-            int start = Math.max(0, msgs.size() - 8);
+            JsonArray messages = new JsonArray();
+            messages.add(makeMsg("system", SYSTEM_PERSONA));
+            // 히스토리
             for (int i = start; i < msgs.size() - 1; i++) {
                 Message m = msgs.get(i);
-                history.append(m.getRole().equals("user") ? "유저" : "람쥐봇")
-                       .append(": ").append(m.getContent()).append("\n");
+                messages.add(makeMsg(m.getRole(), m.getContent()));
             }
-
-            StringBuilder prompt = new StringBuilder();
-            prompt.append("[캐릭터 설정]\n").append(SYSTEM_PERSONA).append("\n\n");
-
-            if (history.length() > 0) {
-                prompt.append("[대화 흐름]\n").append(history).append("\n");
-            }
-
-            prompt.append("[").append(userName).append("의 말] ").append(userMsg).append("\n\n");
-
+            // 검색 결과가 있으면 user 메시지에 추가 컨텍스트로 주입
+            String userContent = userMsg;
             if (!searchSummary.isEmpty()) {
-                prompt.append("[웹에서 찾은 정보]\n").append(searchSummary).append("\n\n");
-                prompt.append("위 검색 결과를 자연스럽게 녹여서 람쥐봇 말투로 답해줘.");
-            } else {
-                prompt.append("람쥐봇 캐릭터로 자연스럽게 답해줘. 잡담이면 같이 놀아주고, 질문이면 핵심만 짧게.");
+                userContent = userMsg + "\n\n[참고 검색결과]\n" + searchSummary
+                        + "\n\n위 검색 결과를 자연스럽게 녹여서 람쥐봇 말투로 답해줘.";
             }
+            messages.add(makeMsg("user", userName + ": " + userContent));
 
-            return GeminiUtils.callGeminiApi(prompt.toString());
+            JsonObject body = new JsonObject();
+            body.addProperty("model", "gpt-4o-mini");
+            body.add("messages", messages);
+            body.addProperty("max_tokens", 300);
+            body.addProperty("temperature", 0.8);
+
+            String raw = httpPost(GPT_URL, gson.toJson(body),
+                    "Authorization", openaiKey, "Content-Type", "application/json");
+
+            return gson.fromJson(raw, JsonObject.class)
+                       .getAsJsonArray("choices").get(0).getAsJsonObject()
+                       .getAsJsonObject("message").get("content").getAsString().trim();
 
         } catch (Exception e) {
             return "(지금 좀 멍청해진 것 같아... 나중에 다시 물어봐!)";
