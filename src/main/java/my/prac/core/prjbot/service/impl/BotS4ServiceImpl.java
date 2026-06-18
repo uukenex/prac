@@ -207,6 +207,11 @@ public class BotS4ServiceImpl implements BotS4Service {
                 if (total > 0 && caught >= total) {
                     cleared_now = true;
                 }
+            } else if ("TOTAL_FISHING_COUNT".equals(achType)) {
+                int totalCount = botS4DAO.selectTotalFishingLogCount(userName);
+                if (totalCount >= achParam) {
+                    cleared_now = true;
+                }
             }
 
             if (cleared_now) {

@@ -111,6 +111,10 @@
         SELECT VAL FROM TCONFIG WHERE ITEM = #{item} AND ROWNUM = 1
     </select>
 
+    <select id="selectTotalFishingLogCount" resultType="int">
+        SELECT COUNT(*) FROM TBOT_S4_FISHING_LOG WHERE USER_NAME = #{userName}
+    </select>
+
     <update id="updateUserEquip" parameterType="hashmap">
         UPDATE TBOT_S4_USER_EQUIP
            SET ROD_GRADE    = #{rodGrade},
