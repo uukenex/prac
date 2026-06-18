@@ -34,4 +34,10 @@ public interface BotS4Service {
 
     /** [낚시가방] 유저명 부분검색 (TBOT_S4_USER_EQUIP 기준) */
     List<String> selectS4UserSearch(HashMap<String, Object> map);
+
+    /** [설정] TCONFIG에서 단일 값 조회 */
+    String selectTconfigVal(String item);
+
+    /** [낚시구매] 장비 업그레이드 (ROD or BOBBER, grade) */
+    void upgradeEquip(String userName, String type, int grade);
 }

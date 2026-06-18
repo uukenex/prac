@@ -207,6 +207,11 @@ public class BotS4ServiceImpl implements BotS4Service {
                 if (total > 0 && caught >= total) {
                     cleared_now = true;
                 }
+            } else if ("TOTAL_FISHING_COUNT".equals(achType)) {
+                int totalCount = botS4DAO.selectTotalFishingLogCount(userName);
+                if (totalCount >= achParam) {
+                    cleared_now = true;
+                }
             }
 
             if (cleared_now) {
@@ -228,10 +233,11 @@ public class BotS4ServiceImpl implements BotS4Service {
         return msg.toString();
     }
 
-    private String buildStar(int grade) {
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < grade; i++) sb.append("★");
-        return sb.toString();
+    private static final String[] GRADE_EMOJI = { "", "⭐", "🌟", "💫", "🔶", "💎", "💜", "🔥", "👑" };
+
+    static String buildStar(int grade) {
+        String emoji = grade < GRADE_EMOJI.length ? GRADE_EMOJI[grade] : "★";
+        return emoji + "★" + grade;
     }
 
     static String gradeName(String type, int grade) {
@@ -243,6 +249,26 @@ public class BotS4ServiceImpl implements BotS4Service {
     @Override
     public List<String> selectS4UserSearch(HashMap<String, Object> map) {
         return botS4DAO.selectS4UserSearch(map);
+    }
+
+    @Override
+    public String selectTconfigVal(String item) {
+        return botS4DAO.selectTconfigVal(item);
+    }
+
+    @Override
+    @Transactional
+    public void upgradeEquip(String userName, String type, int grade) {
+        HashMap<String, Object> equip = botS4DAO.selectUserEquip(userName);
+        int rodGrade    = equip != null ? ((Number) equip.get("ROD_GRADE")).intValue()    : 1;
+        int bobberGrade = equip != null ? ((Number) equip.get("BOBBER_GRADE")).intValue() : 1;
+        if ("ROD".equals(type))    rodGrade    = grade;
+        if ("BOBBER".equals(type)) bobberGrade = grade;
+        HashMap<String, Object> map = new HashMap<>();
+        map.put("userName",    userName);
+        map.put("rodGrade",    rodGrade);
+        map.put("bobberGrade", bobberGrade);
+        botS4DAO.updateUserEquip(map);
     }
 
     @Override
