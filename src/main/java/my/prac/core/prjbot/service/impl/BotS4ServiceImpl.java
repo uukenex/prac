@@ -235,7 +235,7 @@ public class BotS4ServiceImpl implements BotS4Service {
 
     private static final String[] GRADE_EMOJI = { "", "⭐", "🌟", "💫", "🔶", "💎", "💜", "🔥", "👑" };
 
-    static String buildStar(int grade) {
+    public static String buildStar(int grade) {
         String emoji = grade < GRADE_EMOJI.length ? GRADE_EMOJI[grade] : "★";
         return emoji + "★" + grade;
     }
