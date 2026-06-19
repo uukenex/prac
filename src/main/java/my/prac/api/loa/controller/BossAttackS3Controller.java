@@ -104,7 +104,7 @@ public class BossAttackS3Controller {
         m.put(7009, new int[]{ 150, 200 });
         // 7010: 주시자의눈 — 회피저지 확률(%)
         m.put(7010, new int[]{ 30, 60 });
-        // 7011: 개척자 — 숨기무시 확률(%)
+        // 7011: 개척자 — 추가데미지 +10% 확률(%)
         m.put(7011, new int[]{ 30, 60 });
         // 7012: 수선도사의머리띠 — 도사 버프 계수(배수)
         m.put(7012, new int[]{ 3,  4,  5  });
@@ -142,7 +142,7 @@ public class BossAttackS3Controller {
         e.put(7008, new String[]{"일반몬스터 드랍 추가",   "개",  null});
         e.put(7009, new String[]{"레벨당 공격력 추가",     "",    "0강화 max300 / 1강화 max500"});
         e.put(7010, new String[]{"보스 회피 무시 확률",    "%",   "헬보스 전용"});
-        e.put(7011, new String[]{"보스 은신 무시 확률",    "%",   "헬보스 전용"});
+        e.put(7011, new String[]{"추가데미지 +10% 확률",    "%",   "헬보스 전용"});
         e.put(7012, new String[]{"직업 버프 계수",         "배",  "도사/음양사 전용"});
         e.put(7013, new String[]{"어제공격자수 x 공격력",  "",    "최대 40명 / 0강max40,000 / 1강max64,000"});
         e.put(7014, new String[]{"곰 스킬실패 패널티 완화", "%",  "곰 전용"});
@@ -288,6 +288,7 @@ public class BossAttackS3Controller {
         int debuff, debuff1;
         String bossStartDate;
         String hideRule;
+        String bossPattern = "";
         String bossRewardType;
         String bossDemonType = "상급악마";
         try {
@@ -320,12 +321,16 @@ public class BossAttackS3Controller {
             debuff1       = boss.get("DEBUFF1")      != null ? Integer.parseInt(boss.get("DEBUFF1").toString())      : 0;
             bossStartDate  = boss.get("START_DATE")   != null ? boss.get("START_DATE").toString()  : "";
             hideRule       = boss.get("HIDE_RULE")    != null ? boss.get("HIDE_RULE").toString()    : "0";
+            bossPattern    = boss.get("PATTERN")     != null ? boss.get("PATTERN").toString()     : "";
             bossRewardType = boss.get("REWARD_TYPE") != null ? boss.get("REWARD_TYPE").toString() : "";
             bossDemonType  = boss.get("BOSS_TYPE")   != null ? boss.get("BOSS_TYPE").toString()   : "상급악마";
         } catch (Exception e) {
             return "보스 정보를 가져오는데 실패했습니다.";
         }
 
+        // 홀수/짝수 패턴 시간대 체크
+        String patternBlock = checkPattern(bossPattern);
+        if (!patternBlock.isEmpty()) return patternBlock;
 
         // 상급악마/대악마/마왕: 스탯 상한 적용 (공격력 100%, 나머지 50%)
         boolean isMajorBoss = "상급악마".equals(bossDemonType) || "대악마".equals(bossDemonType) || "마왕".equals(bossDemonType);
@@ -422,7 +427,7 @@ public class BossAttackS3Controller {
         String dmgMsg = "";
         String bossDefMsg = "";
         String hideMsg = "";
-        String hideIgnoreMsg = "";
+        String hideIgnoreMsg = ""; // (미사용 - 7011 효과 변경됨)
         String windSlashMsg = "";
         // [7015] 무한의대검: 슈퍼크리티컬 추가 확률(기본+10%, +1=+15%, +2=+20%)
         double superCritChance = 0.10;
@@ -438,18 +443,16 @@ public class BossAttackS3Controller {
 
             // HIDE_RULE: 특정 시간대 치명타 불가 (천벌/디버프/7011 확률 성공 시 무시)
             // [7011] 개척자: 숨기무시 확률(기본30%, +1=60%)
+            // [7011] 개척자: 확률(30%/60%)로 이번 공격 추가데미지 +10%
             boolean has7011 = false;
             if (ownedBoss.contains(7011)) {
                 int qty7011 = bossItemQtyMap.getOrDefault(7011, 1);
-                int hideBreakChance = getBossEnhanceVal(7011, qty7011);
-                if (ThreadLocalRandom.current().nextInt(100) < hideBreakChance) {
+                int bonusChance = getBossEnhanceVal(7011, qty7011);
+                if (ThreadLocalRandom.current().nextInt(100) < bonusChance) {
                     has7011 = true;
-                    if (!applyHideRule(hideRule, false).isEmpty()) {
-                        hideIgnoreMsg = "[개척자" + enhanceSuffix(qty7011) + "] 보스 숨기 무시! (" + hideBreakChance + "%)" + NL;
-                    }
                 }
             }
-            hideMsg = applyHideRule(hideRule, heavensPunishment || flag_boss_debuff || has7011);
+            hideMsg = applyHideRule(hideRule, true); // HIDE_RULE 임시 비활성화
 
             double critMultiplier = Math.max(1.0, ctx.critDmg / 100.0);
 
@@ -658,6 +661,15 @@ public class BossAttackS3Controller {
             }
         }
         long totalDamage = damage + damage2;
+
+        // [7011] 개척자: 추가데미지 +10%
+        String dmg7011Msg = "";
+        if (has7011) {
+            long before7011 = totalDamage;
+            totalDamage = (long)(totalDamage * 1.1);
+            int qty7011 = bossItemQtyMap.getOrDefault(7011, 1);
+            dmg7011Msg = "[개척자" + enhanceSuffix(qty7011) + "] 추가데미지 +10%! " + before7011 + " → " + totalDamage + NL;
+        }
 
         String dmgLimitMsg = "";
         boolean isMaWang = "마왕".equals(bossDemonType);
@@ -947,7 +959,7 @@ public class BossAttackS3Controller {
                 msg.append(dmgMsg2).append(NL);
                 if (!bossDefMsg2.isEmpty()) msg.append(bossDefMsg2);
             }
-            if (!hideIgnoreMsg.isEmpty()) msg.append(hideIgnoreMsg);
+            if (!dmg7011Msg.isEmpty())   msg.append(dmg7011Msg);
             if (!hideMsg.isEmpty())     msg.append(hideMsg);
             if (!reflectMsg.isEmpty())  msg.append(reflectMsg);
             if (!hellAchvMsg.isEmpty()) msg.append(hellAchvMsg);
@@ -1060,8 +1072,13 @@ public class BossAttackS3Controller {
             bossMap.put("evadeRate",   randInt(rand, BOSS_EVADE_RATE_MIN, BOSS_EVADE_RATE_MAX));
             bossMap.put("critDefRate", randInt(rand, BOSS_CRIT_DEF_MIN,   BOSS_CRIT_DEF_MAX));
             // 참여 인원수 기반 쿨타임 후 등장
-            bossMap.put("startDate",   LocalDateTime.now().plusMinutes(cooldownMin).format(SPAWN_DATE_FMT));
-            bossMap.put("hideRule",    HIDE_RULES[rand.nextInt(HIDE_RULES.length)]);
+            // 1시간 후 정각으로 맞춤 (xx:00:00)
+            LocalDateTime spawnAt = LocalDateTime.now().plusHours(1)
+                    .withMinute(0).withSecond(0).withNano(0);
+            bossMap.put("startDate", spawnAt.format(SPAWN_DATE_FMT));
+            // PATTERN: 홀수/짝수 시간 랜덤 결정
+            bossMap.put("hideRule",  "없음");
+            bossMap.put("pattern",   (spawnAt.getHour() % 2 == 0) ? "짝수" : "홀수");
             // 보상 타입 사전 결정 (GP:40%, BOX:40%, ITEM:20%)
             double rwDice = rand.nextDouble();
             String preRewardType = rwDice >= 0.80 ? "ITEM" : rwDice >= 0.40 ? "BOX" : "GP";
@@ -1179,26 +1196,27 @@ public class BossAttackS3Controller {
      * @param skip 천벌/디버프 활성 시 무시
      * @return 활성 시 메시지, 비활성 시 빈 문자열
      */
+    /** HIDE_RULE 임시 비활성화 */
     private String applyHideRule(String hideRule, boolean skip) {
-        if (skip) return "";
-        LocalTime now = LocalTime.now();
-        LocalTime s, e;
-        String msg;
-        switch (hideRule) {
-            case "아침":
-                s = LocalTime.of(6,  0); e = LocalTime.of(10, 0);
-                msg = "보스가 안개에 숨었습니다 (치명타 불가, 06~10시)" + NL; break;
-            case "점심":
-                s = LocalTime.of(10, 0); e = LocalTime.of(15, 0);
-                msg = "보스가 구름에 숨었습니다 (치명타 불가, 10~15시)" + NL; break;
-            case "저녁":
-                s = LocalTime.of(15, 0); e = LocalTime.of(19, 0);
-                msg = "보스가 퇴근길에 숨었습니다 (치명타 불가, 15~19시)" + NL; break;
-            default: // 새벽
-                s = LocalTime.of(2,  0); e = LocalTime.of(6,  0);
-                msg = "보스가 어둠에 숨었습니다 (치명타 불가, 02~06시)" + NL; break;
+        return "";
+    }
+
+    /** 홀수/짝수 시간 패턴 체크. 공격 가능하면 "", 불가면 안내 메시지 반환 */
+    private String checkPattern(String pattern) {
+        if (pattern == null || pattern.isEmpty()) return "";
+        int hour = java.time.LocalTime.now().getHour();
+        boolean isOdd  = (hour % 2 != 0);
+        boolean isEven = (hour % 2 == 0);
+        if ("홀수".equals(pattern) && !isOdd) {
+            int nextHour = (hour % 2 == 0) ? hour + 1 : hour;
+            return String.format("⏰ 이 보스는 홀수 시간대(1시,3시...)에만 공격 가능합니다. 현재 %d시
+", hour);
         }
-        return (!now.isBefore(s) && now.isBefore(e)) ? msg : "";
+        if ("짝수".equals(pattern) && !isEven) {
+            return String.format("⏰ 이 보스는 짝수 시간대(0시,2시...)에만 공격 가능합니다. 현재 %d시
+", hour);
+        }
+        return "";
     }
 
 

@@ -474,7 +474,9 @@ public class MiniGameUtil {
 		    new SpecialBuffOption(3,  "나메가방", "고정값"),
 		    new SpecialBuffOption(10, "회복", "고정값"),
 		    new SpecialBuffOption(15, "SP", "고정값"),
-		    new SpecialBuffOption(15, "경험치", "고정값")
+		    new SpecialBuffOption(15, "경험치", "고정값"),
+		    new SpecialBuffOption(5,  "GP확정", "고정값"),
+		    new SpecialBuffOption(3,  "헬상자", "고정값")
 		);
 	
 	public static  SpecialBuffOption pickWeightedBuff(List<SpecialBuffOption> options) {
