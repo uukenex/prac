@@ -178,14 +178,13 @@
        AND INSERT_DATE  >= TRUNC(SYSDATE)
   </select>
 
-  <!-- 헬상자타임 버프 기간 중 유저별 지급된 헬상자 수 (BUFF_HELL gainType) -->
+  <!-- 헬상자타임 버프 기간 중 유저별 지급된 헬상자 수 -->
   <select id="countHellBagsInBuffPeriod" resultType="int">
   /*countHellBagsInBuffPeriod*/
     SELECT NVL(SUM(QTY), 0)
       FROM TBOT_POINT_NEW_INVENTORY
      WHERE USER_NAME  = #{userName}
        AND ITEM_ID    = #{itemId}
-       AND GAIN_TYPE  = 'BUFF_HELL'
        AND INSERT_DATE >= #{buffStart}
   </select>
 
