@@ -200,6 +200,8 @@ public interface BotNewDAO {
     int upgradePendingHellBox(HashMap<String,Object> map);
     int confirmPendingHellBox(String userName);
     int decrementPendingHellBox(String userName);
+    List<HashMap<String,Object>> selectAllPendingHellBoxGrouped(String userName);
+    int confirmAllPendingHellBoxes(String userName);
 
     List<HashMap<String,Object>> selectActiveSetBonuses(@Param("userName") String userName);
 

@@ -508,6 +508,16 @@ public class BotNewServiceImpl implements BotNewService {
     }
 
     @Override
+    public List<HashMap<String,Object>> selectAllPendingHellBoxGrouped(String userName) {
+        return botNewDAO.selectAllPendingHellBoxGrouped(userName);
+    }
+
+    @Override
+    public void confirmAllPendingHellBoxes(String userName) {
+        botNewDAO.confirmAllPendingHellBoxes(userName);
+    }
+
+    @Override
     public List<HashMap<String,Object>> selectActiveSetBonuses(String userName) {
         return botNewDAO.selectActiveSetBonuses(userName);
     }
