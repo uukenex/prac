@@ -29,12 +29,17 @@ public class SP {
 
 	@Override
 	public String toString() {
-		return String.format("%.2f %s", value, unit);
+		SP n = normalize();
+		return n.unit.isEmpty()
+				? String.format("%.2f", n.value)
+				: String.format("%.2f%s", n.value, n.unit);
 	}
 
 	public String format() {
-
-		return String.format("%.2f %s", value, unit);
+		SP n = normalize();
+		return n.unit.isEmpty()
+				? String.format("%.2f", n.value)
+				: String.format("%.2f%s", n.value, n.unit);
 	}
 
 	public SP normalize() {

@@ -1399,8 +1399,21 @@ public class BossAttackController {
         sb.append("✨ 총 획득: ").append(totalSP).append(NL);
 
 	    if (!itemSummary.isEmpty()) {
-	        sb.append("✨ 아이템 획득: ")
-	          .append(String.join(", ", itemSummary)).append(NL);
+	        // itemSummary 집계: 동일 항목은 ×N으로 합산, 황금/플래티넘 보류는 별도 우선 표시
+	        java.util.LinkedHashMap<String,Integer> summaryMap = new java.util.LinkedHashMap<>();
+	        for (String s2 : itemSummary) summaryMap.merge(s2, 1, Integer::sum);
+	        java.util.List<String> pending = new java.util.ArrayList<>();
+	        java.util.List<String> items   = new java.util.ArrayList<>();
+	        for (java.util.Map.Entry<String,Integer> e2 : summaryMap.entrySet()) {
+	            String k = e2.getKey(); int v = e2.getValue();
+	            String label = v > 1 ? k + " ×" + v : k;
+	            if (k.contains("/가방열기")) pending.add(label);
+	            else items.add(label);
+	        }
+	        java.util.List<String> merged = new java.util.ArrayList<>(pending);
+	        merged.addAll(items);
+	        sb.append("✨ 아이템 획득").append(NL);
+	        for (String s2 : merged) sb.append("  · ").append(s2).append(NL);
 	    }
 
 	    sb.append(NL).append("▶ 상세 내역").append(NL);
@@ -1495,8 +1508,7 @@ public class BossAttackController {
 	                            ? "✨ 플래티넘 각인이 빛을 발하고 있습니다!! ✨"
 	                            : "✨ 황금 각인이 빛나고 있습니다!! ✨";
 	                    detail.add("[지옥의유물상자]" + (i+1) + ": " + dramatic);
-	                    detail.add("/가방열기 로 개봉하세요!");
-	                    itemSummary.add(tierName + " 보류중 (/가방열기)");
+	                    detail.add("/가방열기 로 개봉하세요!"); // itemSummary는 루프 후 합산
 	                }
 	            }
 	        }
@@ -1529,6 +1541,9 @@ public class BossAttackController {
 	            try { botNewService.insertInventoryLogTx(pi); } catch (Exception ignore) {}
 	        }
 	    }
+	    // 황금/플래티넘 보류 합산 itemSummary
+	    if (localGold[0] > 0) itemSummary.add("✨황금상자 " + localGold[0] + "개 (/가방열기)");
+	    if (localPlat[0] > 0) itemSummary.add("✨플래티넘상자 " + localPlat[0] + "개 (/가방열기)");
 	    // ── SP 합산 후 1회 INSERT (동일금액 PK 충돌 방지) ─────────────────────
 	    if (hellSpLocal.getValue() != 0) {
 	        try {
