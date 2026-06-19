@@ -5854,10 +5854,23 @@ public class BossAttackController {
 		// ── [신규] 3.5% 확률 GP 지급 ────────────────────────────────────
 		s.gpDropMsg = tryDropGp(s.userName, s.roomName);
 
-		// ── [신규] 헬모드 일반 공격 시 보스 등장 30초 앞당기기 ────────────
-		if (s.hell) {
-			try { botS3Service.reduceHellBossInsertDate(); } catch (Exception ignore) {}
+		// GP확정 스페셜버프 활성 시 GP 지급
+		if (s.activeBuff != null && "GP확정".equals(s.activeBuff.get("FLAG_CODE"))) {
+			try {
+				double gpAmt = Double.parseDouble(s.activeBuff.get("EFFECT_VALUE").toString());
+				HashMap<String,Object> gp = new HashMap<>();
+				gp.put("userName", s.userName);
+				gp.put("roomName", s.roomName);
+				gp.put("score",    gpAmt);
+				gp.put("cmd",      "GP_BUFF_TIME");
+				botNewService.insertGpRecord(gp);
+				double gpBal = botNewService.selectGpBalance(s.userName);
+				String gpMsg = String.format("💎[GP확정타임] +%.2f GP (보유: %.2f GP)", gpAmt, gpBal);
+				s.gpDropMsg = (s.gpDropMsg == null || s.gpDropMsg.isEmpty()) ? gpMsg : s.gpDropMsg + NL + gpMsg;
+			} catch (Exception ignored) {}
 		}
+
+		// [제거됨] 헬모드 공격시 보스 등장 시간 감소 로직 제거 (고정 1시간 부활)
 	}
 
 	// ─ 15~16) 메시지 구성 + 포인트 ────────────────────────────────
@@ -6253,6 +6266,12 @@ public class BossAttackController {
 	        	    case "나메가방":
 	        	        effectValue = 1;
 	        	        durationMin = 3;
+	        	        break;
+
+	        	    case "GP확정":
+	        	        // 0.05~0.20 GP, 5~10분
+	        	        effectValue = Math.round((0.05 + ThreadLocalRandom.current().nextInt(16) * 0.01) * 100.0) / 100.0;
+	        	        durationMin = 5 + ThreadLocalRandom.current().nextInt(6);
 	        	        break;
 
 	        	    default:

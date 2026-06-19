@@ -23,6 +23,7 @@
 		     , DEBUFF1
 		     , DEBUFF2
 		     , HIDE_RULE
+		     , PATTERN
 		     , REWARD_TYPE
 		     , BOSS_TYPE
 		     , to_char(INSERT_DATE, 'yyyymmdd hh24miss') AS START_DATE
@@ -43,6 +44,7 @@
 		         , DEBUFF1
 		         , DEBUFF2
 		         , HIDE_RULE
+		         , PATTERN
 		         , REWARD_TYPE
 		         , BOSS_TYPE
 		         , INSERT_DATE
@@ -118,6 +120,7 @@
 		    ,CUR_HP
 		    ,CUR_HP_EXT
 		    ,HIDE_RULE
+		    ,PATTERN
 		    ,REWARD_TYPE
 		    ,BOSS_TYPE)
 		SELECT NVL(MAX(SEQ), 0) + 1
@@ -137,7 +140,8 @@
 		      ,#{maxHpExt,    jdbcType=VARCHAR}
 		      ,#{maxHp,       jdbcType=NUMERIC}
 		      ,#{maxHpExt,    jdbcType=VARCHAR}
-      ,#{hideRule,    jdbcType=VARCHAR}
+		      ,#{hideRule,    jdbcType=VARCHAR}
+		      ,#{pattern,     jdbcType=VARCHAR}
 		      ,#{rewardType,  jdbcType=VARCHAR}
 		      ,#{bossType,    jdbcType=VARCHAR}
 		  FROM TBOT_POINT_NEW_BOSS
