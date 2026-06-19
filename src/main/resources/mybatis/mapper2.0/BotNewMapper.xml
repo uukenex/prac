@@ -235,14 +235,14 @@
          GAIN_EXP, ATK_DMG, MON_DMG, ATK_CRIT_YN,
          MON_PATTEN, INSERT_DATE, KILL_YN, NOW_YN, DROP_YN, DEATH_YN, LUCKY_YN, BUFF_YN,
          JOB_SKILL_YN, JOB, NIGHTMARE_YN,
-         SPECIAL_BUFF_START, SPECIAL_BUFF_ING, SPECIAL_BUFF_CODE, SHOT_INDEX)
+         SPECIAL_BUFF_START, SPECIAL_BUFF_ING, SPECIAL_BUFF_CODE)
       VALUES
         (#{log.userName}, #{log.roomName}, #{log.lv}, #{log.targetMonLv},
          #{log.gainExp}, #{log.atkDmg}, #{log.monDmg}, #{log.atkCritYn},
          #{log.monPatten}, SYSTIMESTAMP - NUMTODSINTERVAL(#{log.shotIndex}+2, 'SECOND'),
          #{log.killYn}, #{log.nowYn}, #{log.dropYn}, #{log.deathYn}, #{log.luckyYn}, #{log.buffYn},
          #{log.jobSkillYn}, #{log.job}, #{log.nightmareYn},
-         0, 0, null, #{log.shotIndex})
+         0, 0, null)
     </foreach>
     SELECT 1 FROM DUAL
   </insert>
@@ -965,11 +965,20 @@
 					    AND ROWNUM=1) AS JOB,
 	               COUNT(*) AS ATK_CNT,
 	               MAX(INSERT_DATE) AS LAST_ATTACK
-	        FROM TBOT_POINT_NEW_BATTLE_LOG A
-	        WHERE INSERT_DATE >= SYSDATE - (3/24)
-	          AND ROOM_NAME NOT IN ('람쥐봇 문의방','test123')
-	          AND GAIN_EXP >= 0
-	          AND NVL(SHOT_INDEX, 0) = 0
+	        FROM (
+	            /* 30초 버킷 내 최신 로그 1건만 선택 → 워록/도적 추가타 중복 제외 */
+	            SELECT USER_NAME, INSERT_DATE,
+	                   ROW_NUMBER() OVER (
+	                       PARTITION BY USER_NAME,
+	                                    FLOOR((SYSDATE - INSERT_DATE) * 86400 / 30)
+	                       ORDER BY INSERT_DATE DESC
+	                   ) AS RN
+	            FROM TBOT_POINT_NEW_BATTLE_LOG
+	            WHERE INSERT_DATE >= SYSDATE - (3/24)
+	              AND ROOM_NAME NOT IN ('람쥐봇 문의방','test123')
+	              AND GAIN_EXP >= 0
+	        ) A
+	        WHERE A.RN = 1
 	        GROUP BY USER_NAME
 	        HAVING COUNT(*) >= 10
 	        ORDER BY ATK_CNT DESC, LAST_ATTACK DESC
