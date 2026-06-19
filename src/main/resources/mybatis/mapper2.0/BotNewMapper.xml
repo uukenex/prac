@@ -1640,6 +1640,26 @@
 		     ) WHERE ROWNUM = 1
 		 )
 	</update>
+	<select id="selectAllPendingHellBoxGrouped" parameterType="String" resultType="hashmap">
+		/* selectAllPendingHellBoxGrouped: 유저의 pending 황금/플래티넘 전체 집계 */
+		SELECT GAIN_TYPE, SUM(QTY) AS QTY
+		  FROM TBOT_POINT_NEW_INVENTORY
+		 WHERE USER_NAME = #{userName}
+		   AND ITEM_ID   = 93
+		   AND GAIN_TYPE IN ('DROP_OPEN_G', 'DROP_OPEN_P')
+		   AND DEL_YN    = '0'
+		 GROUP BY GAIN_TYPE
+		 ORDER BY MIN(INSERT_DATE) ASC
+	</select>
+	<update id="confirmAllPendingHellBoxes" parameterType="String">
+		/* confirmAllPendingHellBoxes: 모든 pending 황금/플래티넘 일괄 소비 */
+		UPDATE TBOT_POINT_NEW_INVENTORY
+		   SET DEL_YN = '1'
+		 WHERE USER_NAME = #{userName}
+		   AND ITEM_ID   = 93
+		   AND GAIN_TYPE IN ('DROP_OPEN_G', 'DROP_OPEN_P')
+		   AND DEL_YN    = '0'
+	</update>
 	<select id="selectNightmareYn" parameterType="map" resultType="int">
 		/* selectNightmareYn */
 		SELECT NVL(NIGHTMARE_YN, '0') AS NIGHTMARE_YN

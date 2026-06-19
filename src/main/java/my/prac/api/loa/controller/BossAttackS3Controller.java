@@ -265,16 +265,16 @@ public class BossAttackS3Controller {
             return userName + "님, 데스 상태입니다. 체력을 회복 후 공격 가능합니다.";
         }
 
-        // 대악마/마왕 감금 상태 체크
-        Long imprisonUntil = IMPRISONED_UNTIL.get(userName);
-        if (imprisonUntil != null) {
-            if (System.currentTimeMillis() < imprisonUntil) {
-                long remainSec = (imprisonUntil - System.currentTimeMillis()) / 1000;
-                long remMin = remainSec / 60, remSec = remainSec % 60;
-                return userName + "님, [감금스킬] 공격 불가 상태입니다. (" + remMin + "분 " + remSec + "초 남음)";
-            }
-            IMPRISONED_UNTIL.remove(userName);
-        }
+        // 대악마/마왕 감금 상태 체크 (임시 비활성화)
+        // Long imprisonUntil = IMPRISONED_UNTIL.get(userName);
+        // if (imprisonUntil != null) {
+        //     if (System.currentTimeMillis() < imprisonUntil) {
+        //         long remainSec = (imprisonUntil - System.currentTimeMillis()) / 1000;
+        //         long remMin = remainSec / 60, remSec = remainSec % 60;
+        //         return userName + "님, [감금스킬] 공격 불가 상태입니다. (" + remMin + "분 " + remSec + "초 남음)";
+        //     }
+        //     IMPRISONED_UNTIL.remove(userName);
+        // }
 
         // 보스 정보 조회 (전역, ROOM_NAME 없음)
         HashMap<String, Object> boss;
@@ -818,11 +818,10 @@ public class BossAttackS3Controller {
             } catch (Exception ignored) {}
         }
 
-        // 대악마/마왕 감금스킬 발동 (10% 확률)
-        if (("대악마".equals(bossDemonType) || "마왕".equals(bossDemonType)) && rand.nextInt(100) < IMPRISON_CHANCE_PCT) {
-            IMPRISONED_UNTIL.put(userName, System.currentTimeMillis() + IMPRISON_DURATION_MS);
-            // 감금 메시지는 아래 최종 msg 조립 후 추가
-        }
+        // 대악마/마왕 감금스킬 발동 (임시 비활성화)
+        // if (("대악마".equals(bossDemonType) || "마왕".equals(bossDemonType)) && rand.nextInt(100) < IMPRISON_CHANCE_PCT) {
+        //     IMPRISONED_UNTIL.put(userName, System.currentTimeMillis() + IMPRISON_DURATION_MS);
+        // }
 
         // DB 저장 (HP 업데이트 + 배틀 로그)
         // hp    : 낙관적 잠금 WHERE 절용 → DB 원본값 그대로 (double)
@@ -999,11 +998,11 @@ public class BossAttackS3Controller {
             msg.append(specialTimeMsg).append(NL);
         }
 
-        // 대악마/마왕 감금스킬 발동 메시지
-        if (IMPRISONED_UNTIL.containsKey(userName) &&
-                System.currentTimeMillis() < IMPRISONED_UNTIL.get(userName)) {
-            msg.append(NL).append("[감금스킬] ").append(userName).append("님이 5분간 공격 불가 상태가 됩니다!");
-        }
+        // 대악마/마왕 감금스킬 발동 메시지 (임시 비활성화)
+        // if (IMPRISONED_UNTIL.containsKey(userName) &&
+        //         System.currentTimeMillis() < IMPRISONED_UNTIL.get(userName)) {
+        //     msg.append(NL).append("[감금스킬] ").append(userName).append("님이 5분간 공격 불가 상태가 됩니다!");
+        // }
 
         return msg.toString().trim();
     }
@@ -1081,12 +1080,12 @@ public class BossAttackS3Controller {
             double rwDice = rand.nextDouble();
             String preRewardType = rwDice >= 0.80 ? "ITEM" : rwDice >= 0.40 ? "BOX" : "GP";
             bossMap.put("rewardType", preRewardType);
-            // 보스 타입 결정: 마왕 20%, 대악마 15%, 상급악마 65%
+            // 보스 타입 결정: 공격자 10명 이상일 때만 마왕(20%)/대악마(15%) 등장 가능
             double bossTypeDice = rand.nextDouble();
             String bossType;
-            if (bossTypeDice < 0.20) {
+            if (participantCount >= 10 && bossTypeDice < 0.20) {
                 bossType = "마왕";
-            } else if (bossTypeDice < 0.35) {
+            } else if (participantCount >= 10 && bossTypeDice < 0.35) {
                 bossType = "대악마";
             } else {
                 bossType = "상급악마";
