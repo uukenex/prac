@@ -1189,92 +1189,84 @@ public class BossAttackController {
 	        return "방/유저 정보가 누락되었습니다.";
 	    }
 
-	    // ── 헬상자 pending 확인 (GAIN_TYPE='DROP_OPEN_G'=황금대기, 'DROP_OPEN_P'=플래티넘대기) ──────
+	    // ── 헬상자 pending 확인 (황금상자 일괄 처리) ───────────────────────────────────
 	    try {
 	        HashMap<String,Object> pendingRow = botNewService.selectPendingHellBox(userName);
 	        if (pendingRow != null) {
 	            String gainType = Objects.toString(pendingRow.get("GAIN_TYPE"), "");
 	            boolean isGold  = "DROP_OPEN_G".equals(gainType);
+	            int pendingQty  = pendingRow.get("QTY") != null ? ((Number) pendingRow.get("QTY")).intValue() : 1;
+
+	            // 황금상자: 5% 진화 판정 (1번만), 나머지는 전부 일괄 개봉
 	            if (isGold && ThreadLocalRandom.current().nextDouble() < 0.05) {
-	                // 황금 → 플래티넘 진화: INSERT 기반 이력관리 (기존 G행 soft-delete 후 재INSERT)
-	                int upgradeQty = pendingRow.get("QTY") != null ? ((Number) pendingRow.get("QTY")).intValue() : 1;
-	                // 1. 기존 골드 행 전체 이력화(soft-delete)
+	                // 황금 → 플래티넘 진화
 	                botNewService.confirmPendingHellBox(userName);
-	                // 2. 남은 골드 재INSERT (QTY>1인 경우)
-	                if (upgradeQty > 1) {
+	                if (pendingQty > 1) {
 	                    HashMap<String,Object> goldRemain = new HashMap<>();
-	                    goldRemain.put("userName", userName);
-	                    goldRemain.put("roomName", roomName);
-	                    goldRemain.put("itemId", 93);
-	                    goldRemain.put("qty", upgradeQty - 1);
-	                    goldRemain.put("delYn", "0");
-	                    goldRemain.put("gainType", "DROP_OPEN_G");
+	                    goldRemain.put("userName", userName); goldRemain.put("roomName", roomName);
+	                    goldRemain.put("itemId", 93); goldRemain.put("qty", pendingQty - 1);
+	                    goldRemain.put("delYn", "0"); goldRemain.put("gainType", "DROP_OPEN_G");
 	                    try { botNewService.insertInventoryLogTx(goldRemain); } catch (Exception ignore4) {}
 	                }
-	                // 3. 플래티넘 1개 INSERT
 	                HashMap<String,Object> platInv = new HashMap<>();
-	                platInv.put("userName", userName);
-	                platInv.put("roomName", roomName);
-	                platInv.put("itemId", 93);
-	                platInv.put("qty", 1);
-	                platInv.put("delYn", "0");
-	                platInv.put("gainType", "DROP_OPEN_P");
+	                platInv.put("userName", userName); platInv.put("roomName", roomName);
+	                platInv.put("itemId", 93); platInv.put("qty", 1);
+	                platInv.put("delYn", "0"); platInv.put("gainType", "DROP_OPEN_P");
 	                try { botNewService.insertInventoryLogTx(platInv); } catch (Exception ignore3) {}
 	                StringBuilder sb = new StringBuilder();
-	                sb.append("✨ 기적!! 황금 각인이 더욱 빛을 발합니다!!").append(NL);
+	                sb.append(userName).append("님, ✨ 기적!! 황금 각인이 더욱 빛을 발합니다!!").append(NL);
 	                sb.append("━━━━━━━━━━━━").append(NL);
 	                sb.append("✨ 플래티넘로 진화하였습니다!! ✨").append(NL);
 	                sb.append("━━━━━━━━━━━━").append(NL);
 	                sb.append("/가방열기 로 개봉하세요!");
 	                return sb.toString();
 	            } else {
-	                // 확정: 이 시점에 아이템 롤링
+	                // 황금/플래티넘 일괄 개봉 (pendingQty개 전부)
 	                java.util.List<my.prac.core.util.MiniGameUtil.HellBoxEntry> pool =
 	                    isGold ? my.prac.core.util.MiniGameUtil.HELL_BOX_GOLD
 	                           : my.prac.core.util.MiniGameUtil.HELL_BOX_PLAT;
-	                my.prac.core.util.MiniGameUtil.HellBoxEntry entry =
-	                    pool.get(ThreadLocalRandom.current().nextInt(pool.size()));
 	                String hellGainType = isGold ? "HELL_BOX_GOLD" : "HELL_BOX_PLAT";
 	                String tierLabel    = isGold ? "황금" : "플래티넘";
-	                HashMap<String,Object> inv = new HashMap<>();
-	                inv.put("userName", userName); inv.put("roomName", roomName);
-	                inv.put("itemId", entry.itemId); inv.put("qty", entry.value);
-	                inv.put("delYn", "0"); inv.put("gainType", hellGainType);
-	                try { botNewService.insertInventoryLogTx(inv); } catch (Exception ignore2) {}
-	                // qty>1이면 1 감소, qty==1이면 삭제 (accumulation fix로 qty=N 행이 생길 수 있음)
-	                int pendingQty = pendingRow.get("QTY") != null ? ((Number) pendingRow.get("QTY")).intValue() : 1;
-	                if (pendingQty > 1) {
-	                    botNewService.decrementPendingHellBox(userName);
-	                } else {
-	                    botNewService.confirmPendingHellBox(userName);
-	                }
-	                invalidateInvBuff(userName);
 	                StringBuilder sb = new StringBuilder();
-	                sb.append("✨ " + tierLabel + "상자 개봉!").append(NL);
+	                sb.append(userName).append("님, ✨ ").append(tierLabel).append("상자 ").append(pendingQty).append("개 개봉!").append(NL);
 	                sb.append("━━━━━━━━━━━━").append(NL);
-	                sb.append("✨ ").append(entry.starsStr()).append(" ").append(entry.desc).append(" 획득!").append(NL);
-	                sb.append("━━━━━━━━━━━━").append(NL);
-	                // ── 플래티넘 각인 첫 획득 업적 ──────────────────────────────────────
-	                if (!isGold) {
-	                    try {
-	                        int alreadyHas = botNewService.selectPointRankCountByCmdUserInRoom(roomName, userName, "ACHV_PLAT_BOX_1");
-	                        if (alreadyHas == 0) {
-	                            HashMap<String,Object> aPr = new HashMap<>();
-	                            aPr.put("userName", userName); aPr.put("roomName", roomName);
-	                            aPr.put("score", 10_000_000); aPr.put("scoreExt", "");
-	                            aPr.put("cmd", "ACHV_PLAT_BOX_1");
-	                            botNewService.insertPointRank(aPr);
-	                            sb.append("업적 달성! [플래티넘 각인 첫 획득] 보상 +1000a 지급!").append(NL);
-	                        }
-	                    } catch (Exception ignore3) {}
+	                boolean platAchvDone = false;
+	                for (int _i = 0; _i < pendingQty; _i++) {
+	                    my.prac.core.util.MiniGameUtil.HellBoxEntry entry =
+	                        pool.get(ThreadLocalRandom.current().nextInt(pool.size()));
+	                    HashMap<String,Object> inv = new HashMap<>();
+	                    inv.put("userName", userName); inv.put("roomName", roomName);
+	                    inv.put("itemId", entry.itemId); inv.put("qty", entry.value);
+	                    inv.put("delYn", "0"); inv.put("gainType", hellGainType);
+	                    try { botNewService.insertInventoryLogTx(inv); } catch (Exception ignore2) {}
+	                    sb.append("✨ ").append(entry.starsStr()).append(" ").append(entry.desc).append(" 획득!").append(NL);
+	                    // 플래티넘 첫 획득 업적 (1번만)
+	                    if (!isGold && !platAchvDone) {
+	                        try {
+	                            int alreadyHas = botNewService.selectPointRankCountByCmdUserInRoom(roomName, userName, "ACHV_PLAT_BOX_1");
+	                            if (alreadyHas == 0) {
+	                                HashMap<String,Object> aPr = new HashMap<>();
+	                                aPr.put("userName", userName); aPr.put("roomName", roomName);
+	                                aPr.put("score", 10_000_000); aPr.put("scoreExt", "");
+	                                aPr.put("cmd", "ACHV_PLAT_BOX_1");
+	                                botNewService.insertPointRank(aPr);
+	                                sb.append("업적 달성! [플래티넘 각인 첫 획득] 보상 +1000a 지급!").append(NL);
+	                                platAchvDone = true;
+	                            }
+	                        } catch (Exception ignore3) {}
+	                    }
 	                }
+	                // 전체 soft-delete
+	                botNewService.confirmPendingHellBox(userName);
+	                invalidateInvBuff(userName);
+	                sb.append("━━━━━━━━━━━━").append(NL);
 	                sb.append(buildHellBoxStatSummary(userName));
 	                return sb.toString();
 	            }
 	        }
 	    } catch (Exception ignore) {}
 
-	    // ── 가방 개수 일괄 조회 (6 queries → 1) ───────────────────────────────────────
+	        // ── 가방 개수 일괄 조회 (6 queries → 1) ───────────────────────────────────────
 	    HashMap<String,Object> bagCounts = botNewService.selectOpenBagCounts(userName);
 	    int normalCount     = bagCounts != null ? ((Number) bagCounts.getOrDefault("NORMAL_COUNT",      0)).intValue() : 0;
 	    int nightmareCount  = bagCounts != null ? ((Number) bagCounts.getOrDefault("NM_COUNT",          0)).intValue() : 0;
@@ -5854,20 +5846,33 @@ public class BossAttackController {
 		// ── [신규] 3.5% 확률 GP 지급 ────────────────────────────────────
 		s.gpDropMsg = tryDropGp(s.userName, s.roomName);
 
-		// GP확정 스페셜버프 활성 시 GP 지급
-		if (s.activeBuff != null && "GP확정".equals(s.activeBuff.get("FLAG_CODE"))) {
-			try {
-				double gpAmt = Double.parseDouble(s.activeBuff.get("EFFECT_VALUE").toString());
-				HashMap<String,Object> gp = new HashMap<>();
-				gp.put("userName", s.userName);
-				gp.put("roomName", s.roomName);
-				gp.put("score",    gpAmt);
-				gp.put("cmd",      "GP_BUFF_TIME");
-				botNewService.insertGpRecord(gp);
-				double gpBal = botNewService.selectGpBalance(s.userName);
-				String gpMsg = String.format("💎[GP확정타임] +%.2f GP (보유: %.2f GP)", gpAmt, gpBal);
-				s.gpDropMsg = (s.gpDropMsg == null || s.gpDropMsg.isEmpty()) ? gpMsg : s.gpDropMsg + NL + gpMsg;
-			} catch (Exception ignored) {}
+		// GP확정/헬상자 스페셜버프 처리
+		if (s.activeBuff != null) {
+			String _fc = String.valueOf(s.activeBuff.get("FLAG_CODE"));
+			int _prob = 0;
+			try { _prob = (int) Double.parseDouble(s.activeBuff.get("EFFECT_VALUE").toString()); } catch (Exception ignore) {}
+			if ("GP확정".equals(_fc) && ThreadLocalRandom.current().nextInt(100) < _prob) {
+				try {
+					double gpAmt = Math.round((0.05 + ThreadLocalRandom.current().nextInt(16) * 0.01) * 100.0) / 100.0;
+					HashMap<String,Object> gp = new HashMap<>();
+					gp.put("userName", s.userName); gp.put("roomName", s.roomName);
+					gp.put("score", gpAmt); gp.put("cmd", "GP_BUFF_TIME");
+					botNewService.insertGpRecord(gp);
+					double gpBal = botNewService.selectGpBalance(s.userName);
+					String gpMsg = String.format("💎[GP확정타임 %d%%] +%.2f GP (보유: %.2f GP)", _prob, gpAmt, gpBal);
+					s.gpDropMsg = (s.gpDropMsg == null || s.gpDropMsg.isEmpty()) ? gpMsg : s.gpDropMsg + NL + gpMsg;
+				} catch (Exception ignored) {}
+			} else if ("헬상자".equals(_fc) && s.hell && ThreadLocalRandom.current().nextInt(100) < _prob) {
+				try {
+					HashMap<String,Object> inv = new HashMap<>();
+					inv.put("userName", s.userName); inv.put("roomName", s.roomName);
+					inv.put("itemId", BAG_HELL_ITEM_ID); inv.put("qty", 1);
+					inv.put("delYn", "0"); inv.put("gainType", "BUFF_HELL");
+					botNewService.insertInventoryLogTx(inv);
+					String hellMsg = String.format("📦[헬상자타임 %d%%] 헬상자 획득!", _prob);
+					s.gpDropMsg = (s.gpDropMsg == null || s.gpDropMsg.isEmpty()) ? hellMsg : s.gpDropMsg + NL + hellMsg;
+				} catch (Exception ignored) {}
+			}
 		}
 
 		// [제거됨] 헬모드 공격시 보스 등장 시간 감소 로직 제거 (고정 1시간 부활)
@@ -6268,9 +6273,15 @@ public class BossAttackController {
 	        	        durationMin = 3;
 	        	        break;
 
+	        	    case "헬상자":
+	        	        // effectValue = 발동확률%(30~70), 헬모드 공격시 헬상자 확정
+	        	        effectValue = 30 + ThreadLocalRandom.current().nextInt(41);
+	        	        durationMin = 5 + ThreadLocalRandom.current().nextInt(6);
+	        	        break;
+
 	        	    case "GP확정":
-	        	        // 0.05~0.20 GP, 5~10분
-	        	        effectValue = Math.round((0.05 + ThreadLocalRandom.current().nextInt(16) * 0.01) * 100.0) / 100.0;
+	        	        // effectValue = 발동확률%(30~70), 지급시 0.05~0.20 GP 랜덤
+	        	        effectValue = 30 + ThreadLocalRandom.current().nextInt(41);
 	        	        durationMin = 5 + ThreadLocalRandom.current().nextInt(6);
 	        	        break;
 
