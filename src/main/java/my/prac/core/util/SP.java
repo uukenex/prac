@@ -236,11 +236,20 @@ public class SP {
 			return SP.of(0, "");
 		}
 
-		String[] p = str.trim().split("\\s+");
+		String s = str.trim();
+		String[] p = s.split("\\s+");
 
-		double v = Double.parseDouble(p[0]);
-		String u = (p.length > 1) ? p[1] : "";
+		if (p.length >= 2) {
+			double v = Double.parseDouble(p[0]);
+			String u = p[1];
+			return SP.of(v, u);
+		}
 
+		// "26.22b" 형태 (공백 없이 단위가 붙은 경우)
+		int i = p[0].length() - 1;
+		while (i >= 0 && Character.isLetter(p[0].charAt(i))) i--;
+		double v = Double.parseDouble(p[0].substring(0, i + 1));
+		String u = p[0].substring(i + 1);
 		return SP.of(v, u);
 	}
 
