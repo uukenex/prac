@@ -436,6 +436,7 @@ public class BossAttackS3Controller {
             superCritChance += getBossEnhanceVal(7015, qty7015) / 100.0;
         }
 
+        boolean has7011 = false;
         if (!isEvade) {
             String atkRangeStr = "(" + (ctx.atkMin / 100) + "~" + (ctx.atkMax / 100) + ") ";
             // 보스 기본 크리율 10% 고정 (S2 크리율 미적용), 초강력치명타는 크리 발동 시 10% 확률
@@ -444,7 +445,6 @@ public class BossAttackS3Controller {
             // HIDE_RULE: 특정 시간대 치명타 불가 (천벌/디버프/7011 확률 성공 시 무시)
             // [7011] 개척자: 숨기무시 확률(기본30%, +1=60%)
             // [7011] 개척자: 확률(30%/60%)로 이번 공격 추가데미지 +10%
-            boolean has7011 = false;
             if (ownedBoss.contains(7011)) {
                 int qty7011 = bossItemQtyMap.getOrDefault(7011, 1);
                 int bonusChance = getBossEnhanceVal(7011, qty7011);
@@ -1208,13 +1208,10 @@ public class BossAttackS3Controller {
         boolean isOdd  = (hour % 2 != 0);
         boolean isEven = (hour % 2 == 0);
         if ("홀수".equals(pattern) && !isOdd) {
-            int nextHour = (hour % 2 == 0) ? hour + 1 : hour;
-            return String.format("⏰ 이 보스는 홀수 시간대(1시,3시...)에만 공격 가능합니다. 현재 %d시
-", hour);
+            return String.format("⏰ 이 보스는 홀수 시간대(1시,3시...)에만 공격 가능합니다. 현재 %d시", hour);
         }
         if ("짝수".equals(pattern) && !isEven) {
-            return String.format("⏰ 이 보스는 짝수 시간대(0시,2시...)에만 공격 가능합니다. 현재 %d시
-", hour);
+            return String.format("⏰ 이 보스는 짝수 시간대(0시,2시...)에만 공격 가능합니다. 현재 %d시", hour);
         }
         return "";
     }
