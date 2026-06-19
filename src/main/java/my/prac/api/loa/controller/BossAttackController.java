@@ -1455,9 +1455,8 @@ public class BossAttackController {
 	        SP totalSP, List<String> detail, List<String> itemSummary, boolean noSp,
 	        int[] goldRef, int[] platRef) {
 	    if (count <= 0) return;
-	    long top1Sp = getTop1SpCached();
-	    long spMax  = top1Sp > 0 ? Math.min(top1Sp / 100, 100_000_000_000L) : 5_000_000L;   // 1등의 1%, 최대 1000b
-	    long spMin  = Math.min(100_000_000_000L, spMax);                                      // 고정 100b (spMax 초과 방지)
+	    long spMin  = 100_000_000_000L; // 고정 1000b
+	    long spMax  = 100_000_000_000L; // 고정 1000b
 	    SP hellSpLocal = new SP(0, ""); // SP 합산용 (루프 후 1회 INSERT)
 	    // 황금/플래티넘 누적: 외부 ref 있으면 공유, 없으면 로컬
 	    boolean useRef = (goldRef != null && platRef != null);
