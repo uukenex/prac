@@ -235,14 +235,14 @@
          GAIN_EXP, ATK_DMG, MON_DMG, ATK_CRIT_YN,
          MON_PATTEN, INSERT_DATE, KILL_YN, NOW_YN, DROP_YN, DEATH_YN, LUCKY_YN, BUFF_YN,
          JOB_SKILL_YN, JOB, NIGHTMARE_YN,
-         SPECIAL_BUFF_START, SPECIAL_BUFF_ING, SPECIAL_BUFF_CODE)
+         SPECIAL_BUFF_START, SPECIAL_BUFF_ING, SPECIAL_BUFF_CODE, SHOT_INDEX)
       VALUES
         (#{log.userName}, #{log.roomName}, #{log.lv}, #{log.targetMonLv},
          #{log.gainExp}, #{log.atkDmg}, #{log.monDmg}, #{log.atkCritYn},
          #{log.monPatten}, SYSTIMESTAMP - NUMTODSINTERVAL(#{log.shotIndex}+2, 'SECOND'),
          #{log.killYn}, #{log.nowYn}, #{log.dropYn}, #{log.deathYn}, #{log.luckyYn}, #{log.buffYn},
          #{log.jobSkillYn}, #{log.job}, #{log.nightmareYn},
-         0, 0, null)
+         0, 0, null, #{log.shotIndex})
     </foreach>
     SELECT 1 FROM DUAL
   </insert>
@@ -969,6 +969,7 @@
 	        WHERE INSERT_DATE >= SYSDATE - (3/24)
 	          AND ROOM_NAME NOT IN ('람쥐봇 문의방','test123')
 	          AND GAIN_EXP >= 0
+	          AND NVL(SHOT_INDEX, 0) = 0
 	        GROUP BY USER_NAME
 	        HAVING COUNT(*) >= 10
 	        ORDER BY ATK_CNT DESC, LAST_ATTACK DESC
