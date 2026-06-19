@@ -5814,6 +5814,25 @@ public class BossAttackController {
 		}
 
 		s.bagDropMsg = tryDropBag(s.userName, s.roomName, s.m, s.nightmare, s.hell, s.buff);
+		// 헬상자타임 스페셜버프: 헬모드 공격 시 확률로 헬상자 지급
+		if (s.activeBuff != null && "헬상자".equals(String.valueOf(s.activeBuff.get("FLAG_CODE")))) {
+			if (s.hell) {
+				int _prob = 0;
+				try { _prob = (int) Double.parseDouble(s.activeBuff.get("EFFECT_VALUE").toString()); } catch (Exception ignored) {}
+				if (ThreadLocalRandom.current().nextInt(100) < _prob) {
+					try {
+						HashMap<String,Object> inv = new HashMap<>();
+						inv.put("userName", s.userName); inv.put("roomName", s.roomName);
+						inv.put("itemId", BAG_HELL_ITEM_ID); inv.put("qty", 1);
+						inv.put("delYn", "0"); inv.put("gainType", "BUFF_HELL");
+						botNewService.insertInventoryLogTx(inv);
+						String hellMsg = String.format("📦[헬상자타임 %d%%] 헬상자 획득!", _prob);
+						s.bagDropMsg = (s.bagDropMsg == null || s.bagDropMsg.isEmpty()) ? hellMsg : s.bagDropMsg + NL + hellMsg;
+					} catch (Exception ignored) {}
+				}
+			}
+		}
+
 
 		// [천장] 헬모드 20킬마다 헬각인상자 확정 (일일 35개 상한 유지)
 		// 주의: insertBattleLogsBatch 완료 후 조회이므로 이번 킬이 이미 COUNT에 포함됨 (+1 보정 불필요)
@@ -5860,13 +5879,11 @@ public class BossAttackController {
 
 		// ── [신규] 3.5% 확률 GP 지급 ────────────────────────────────────
 		s.gpDropMsg = tryDropGp(s.userName, s.roomName);
-
-		// GP확정/헬상자 스페셜버프 처리
-		if (s.activeBuff != null) {
-			String _fc = String.valueOf(s.activeBuff.get("FLAG_CODE"));
+		// GP확정타임 스페셜버프: 확률로 GP 추가 지급
+		if (s.activeBuff != null && "GP확정".equals(String.valueOf(s.activeBuff.get("FLAG_CODE")))) {
 			int _prob = 0;
-			try { _prob = (int) Double.parseDouble(s.activeBuff.get("EFFECT_VALUE").toString()); } catch (Exception ignore) {}
-			if ("GP확정".equals(_fc) && ThreadLocalRandom.current().nextInt(100) < _prob) {
+			try { _prob = (int) Double.parseDouble(s.activeBuff.get("EFFECT_VALUE").toString()); } catch (Exception ignored) {}
+			if (ThreadLocalRandom.current().nextInt(100) < _prob) {
 				try {
 					double gpAmt = Math.round((0.05 + ThreadLocalRandom.current().nextInt(16) * 0.01) * 100.0) / 100.0;
 					HashMap<String,Object> gp = new HashMap<>();
@@ -5877,18 +5894,9 @@ public class BossAttackController {
 					String gpMsg = String.format("💎[GP확정타임 %d%%] +%.2f GP (보유: %.2f GP)", _prob, gpAmt, gpBal);
 					s.gpDropMsg = (s.gpDropMsg == null || s.gpDropMsg.isEmpty()) ? gpMsg : s.gpDropMsg + NL + gpMsg;
 				} catch (Exception ignored) {}
-			} else if ("헬상자".equals(_fc) && s.hell && ThreadLocalRandom.current().nextInt(100) < _prob) {
-				try {
-					HashMap<String,Object> inv = new HashMap<>();
-					inv.put("userName", s.userName); inv.put("roomName", s.roomName);
-					inv.put("itemId", BAG_HELL_ITEM_ID); inv.put("qty", 1);
-					inv.put("delYn", "0"); inv.put("gainType", "BUFF_HELL");
-					botNewService.insertInventoryLogTx(inv);
-					String hellMsg = String.format("📦[헬상자타임 %d%%] 헬상자 획득!", _prob);
-					s.gpDropMsg = (s.gpDropMsg == null || s.gpDropMsg.isEmpty()) ? hellMsg : s.gpDropMsg + NL + hellMsg;
-				} catch (Exception ignored) {}
 			}
 		}
+
 
 		// [제거됨] 헬모드 공격시 보스 등장 시간 감소 로직 제거 (고정 1시간 부활)
 	}
