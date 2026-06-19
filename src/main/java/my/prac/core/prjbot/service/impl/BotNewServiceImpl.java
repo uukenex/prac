@@ -97,6 +97,11 @@ public class BotNewServiceImpl implements BotNewService {
     }
 
     @Override
+    public int countHellBagsInBuffPeriod(String userName, int itemId, java.util.Date buffStart) {
+        return botNewDAO.countHellBagsInBuffPeriod(userName, itemId, buffStart);
+    }
+
+    @Override
     public int selectYesterdayAttackerCount() {
         return botNewDAO.selectYesterdayAttackerCount();
     }
