@@ -264,16 +264,16 @@ public class BossAttackS3Controller {
         if (user.hpCur <= 0) {
             return userName + "님, 데스 상태입니다. 체력을 회복 후 공격 가능합니다.";
         }
-
-        // 대악마/마왕 감금 상태 체크
-        Long imprisonUntil = IMPRISONED_UNTIL.get(userName);
-        if (imprisonUntil != null) {
-            if (System.currentTimeMillis() < imprisonUntil) {
-                long remainSec = (imprisonUntil - System.currentTimeMillis()) / 1000;
-                long remMin = remainSec / 60, remSec = remainSec % 60;
-                return userName + "님, [감금스킬] 공격 불가 상태입니다. (" + remMin + "분 " + remSec + "초 남음)";
-            }
-            IMPRISONED_UNTIL.remove(userName);
+
+        // 대악마/마왕 감금 상태 체크
+        Long imprisonUntil = IMPRISONED_UNTIL.get(userName);
+        if (imprisonUntil != null) {
+            if (System.currentTimeMillis() < imprisonUntil) {
+                long remainSec = (imprisonUntil - System.currentTimeMillis()) / 1000;
+                long remMin = remainSec / 60, remSec = remainSec % 60;
+                return userName + "님, [감금스킬] 공격 불가 상태입니다. (" + remMin + "분 " + remSec + "초 남음)";
+            }
+            IMPRISONED_UNTIL.remove(userName);
         }
 
         // 보스 정보 조회 (전역, ROOM_NAME 없음)
@@ -1071,10 +1071,8 @@ public class BossAttackS3Controller {
             bossMap.put("defPower",    randInt(rand, BOSS_DEF_POWER_MIN,  BOSS_DEF_POWER_MAX));
             bossMap.put("evadeRate",   randInt(rand, BOSS_EVADE_RATE_MIN, BOSS_EVADE_RATE_MAX));
             bossMap.put("critDefRate", randInt(rand, BOSS_CRIT_DEF_MIN,   BOSS_CRIT_DEF_MAX));
-            // 참여 인원수 기반 쿨타임 후 등장
-            // 1시간 후 정각으로 맞춤 (xx:00:00)
-            LocalDateTime spawnAt = LocalDateTime.now().plusHours(1)
-                    .withMinute(0).withSecond(0).withNano(0);
+            // 처치 시점 기준 정확히 3시간 후 등장
+            LocalDateTime spawnAt = LocalDateTime.now().plusHours(3);
             bossMap.put("startDate", spawnAt.format(SPAWN_DATE_FMT));
             // PATTERN: 홀수/짝수 시간 랜덤 결정
             bossMap.put("hideRule",  "없음");
