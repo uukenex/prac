@@ -265,16 +265,16 @@ public class BossAttackS3Controller {
             return userName + "님, 데스 상태입니다. 체력을 회복 후 공격 가능합니다.";
         }
 
-        // 대악마/마왕 감금 상태 체크 (임시 비활성화)
-        // Long imprisonUntil = IMPRISONED_UNTIL.get(userName);
-        // if (imprisonUntil != null) {
-        //     if (System.currentTimeMillis() < imprisonUntil) {
-        //         long remainSec = (imprisonUntil - System.currentTimeMillis()) / 1000;
-        //         long remMin = remainSec / 60, remSec = remainSec % 60;
-        //         return userName + "님, [감금스킬] 공격 불가 상태입니다. (" + remMin + "분 " + remSec + "초 남음)";
-        //     }
-        //     IMPRISONED_UNTIL.remove(userName);
-        // }
+        // 대악마/마왕 감금 상태 체크
+        Long imprisonUntil = IMPRISONED_UNTIL.get(userName);
+        if (imprisonUntil != null) {
+            if (System.currentTimeMillis() < imprisonUntil) {
+                long remainSec = (imprisonUntil - System.currentTimeMillis()) / 1000;
+                long remMin = remainSec / 60, remSec = remainSec % 60;
+                return userName + "님, [감금스킬] 공격 불가 상태입니다. (" + remMin + "분 " + remSec + "초 남음)";
+            }
+            IMPRISONED_UNTIL.remove(userName);
+        }
 
         // 보스 정보 조회 (전역, ROOM_NAME 없음)
         HashMap<String, Object> boss;
@@ -328,21 +328,7 @@ public class BossAttackS3Controller {
             return "보스 정보를 가져오는데 실패했습니다.";
         }
 
-        // 홀수/짝수 패턴 시간대 체크
-        String patternBlock = checkPattern(bossPattern);
-        if (!patternBlock.isEmpty()) return patternBlock;
-
-        // 상급악마/대악마/마왕: 스탯 상한 적용 (공격력 100%, 나머지 50%)
-        boolean isMajorBoss = "상급악마".equals(bossDemonType) || "대악마".equals(bossDemonType) || "마왕".equals(bossDemonType);
-        if (isMajorBoss) {
-            bossAtkRate   = Math.max(BOSS_ATK_RATE_MIN,   Math.min(50, bossAtkRate));
-            bossAtkPower  = Math.max(BOSS_ATK_POWER_MIN,  Math.min(100, bossAtkPower));
-            bossDefRate   = Math.max(BOSS_DEF_RATE_MIN,   Math.min(50, bossDefRate));
-            bossDefPower  = Math.max(BOSS_DEF_POWER_MIN,  Math.min(50, bossDefPower));
-            bossEvadeRate = Math.max(BOSS_EVADE_RATE_MIN, Math.min(50, bossEvadeRate));
-            critDefRate   = Math.max(0,                   Math.min(50, critDefRate));
-        }
-        // 재생성 쿨타임 체크 (INSERT_DATE가 미래면 아직 등장 전)
+        // 재생성 쿨타임 체크 (startDate가 미래면 아직 등장 전 → 패턴 체크 불필요)
         if (!bossStartDate.isEmpty()) {
             try {
                 LocalDateTime spawnTime = LocalDateTime.parse(bossStartDate,
@@ -365,6 +351,21 @@ public class BossAttackS3Controller {
                     return sb.toString();
                 }
             } catch (Exception ignored) {}
+        }
+
+        // 홀수/짝수 패턴 시간대 체크 (보스가 등장한 이후에만 적용)
+        String patternBlock = checkPattern(bossPattern);
+        if (!patternBlock.isEmpty()) return patternBlock;
+
+        // 상급악마/대악마/마왕: 스탯 상한 적용 (공격력 100%, 나머지 50%)
+        boolean isMajorBoss = "상급악마".equals(bossDemonType) || "대악마".equals(bossDemonType) || "마왕".equals(bossDemonType);
+        if (isMajorBoss) {
+            bossAtkRate   = Math.max(BOSS_ATK_RATE_MIN,   Math.min(50, bossAtkRate));
+            bossAtkPower  = Math.max(BOSS_ATK_POWER_MIN,  Math.min(100, bossAtkPower));
+            bossDefRate   = Math.max(BOSS_DEF_RATE_MIN,   Math.min(50, bossDefRate));
+            bossDefPower  = Math.max(BOSS_DEF_POWER_MIN,  Math.min(50, bossDefPower));
+            bossEvadeRate = Math.max(BOSS_EVADE_RATE_MIN, Math.min(50, bossEvadeRate));
+            critDefRate   = Math.max(0,                   Math.min(50, critDefRate));
         }
 
         // 보스 아이템 보유 여부: calcUserBattleContext에서 이미 로드된 ctx.ownedBossItems 재사용
@@ -676,7 +677,7 @@ public class BossAttackS3Controller {
 
         String maWangMulMsg = "";
         if (isMaWang) {
-            // 마왕: 10배 데미지, 용사 추가 2배, 100만 cap
+            // 마왕: 10배 데미지, 용사 추가 2배 (캡 없음)
             long beforeMul = totalDamage;
             totalDamage *= 10L;
             maWangMulMsg = "⚔️ [마왕] 데미지 ×10 적용: " + beforeMul + " → " + totalDamage + NL;
@@ -684,24 +685,6 @@ public class BossAttackS3Controller {
                 long before2 = totalDamage;
                 totalDamage *= 2L;
                 maWangMulMsg += "⚔️ [용사 특권] 추가 ×2 적용: " + before2 + " → " + totalDamage + NL;
-            }
-            final long MAWANG_CAP = 1_000_000L;
-            if (totalDamage > MAWANG_CAP) {
-                dmgLimitMsg = "[데미지 제한] " + totalDamage + " → " + MAWANG_CAP + " (마왕 100만 cap)" + NL;
-                totalDamage = MAWANG_CAP;
-            }
-        } else {
-            // 보스 최대체력의 20% 이상 피해 제한
-            long maxDamageLimit = Math.max(1L, maxHp / 5);
-            if (totalDamage > maxDamageLimit) {
-                long beforeLimit = totalDamage;
-                totalDamage = maxDamageLimit;
-                dmgLimitMsg = "[데미지 제한] "
-                        + SP.fromSp(beforeLimit)
-                        + " → "
-                        + SP.fromSp(totalDamage)
-                        + " (보스 최대체력 20% 제한)"
-                        + NL;
             }
         }
         
@@ -818,10 +801,11 @@ public class BossAttackS3Controller {
             } catch (Exception ignored) {}
         }
 
-        // 대악마/마왕 감금스킬 발동 (임시 비활성화)
-        // if (("대악마".equals(bossDemonType) || "마왕".equals(bossDemonType)) && rand.nextInt(100) < IMPRISON_CHANCE_PCT) {
-        //     IMPRISONED_UNTIL.put(userName, System.currentTimeMillis() + IMPRISON_DURATION_MS);
-        // }
+        // 대악마/마왕 감금스킬 발동: 한 번에 보스 체력 90% 이상 데미지 시
+        if (!isEvade && ("대악마".equals(bossDemonType) || "마왕".equals(bossDemonType))
+                && maxHp > 0 && totalDamage >= (long)(maxHp * 0.9)) {
+            IMPRISONED_UNTIL.put(userName, System.currentTimeMillis() + IMPRISON_DURATION_MS);
+        }
 
         // DB 저장 (HP 업데이트 + 배틀 로그)
         // hp    : 낙관적 잠금 WHERE 절용 → DB 원본값 그대로 (double)
@@ -998,11 +982,11 @@ public class BossAttackS3Controller {
             msg.append(specialTimeMsg).append(NL);
         }
 
-        // 대악마/마왕 감금스킬 발동 메시지 (임시 비활성화)
-        // if (IMPRISONED_UNTIL.containsKey(userName) &&
-        //         System.currentTimeMillis() < IMPRISONED_UNTIL.get(userName)) {
-        //     msg.append(NL).append("[감금스킬] ").append(userName).append("님이 5분간 공격 불가 상태가 됩니다!");
-        // }
+        // 대악마/마왕 감금스킬 발동 메시지
+        if (IMPRISONED_UNTIL.containsKey(userName) &&
+                System.currentTimeMillis() < IMPRISONED_UNTIL.get(userName)) {
+            msg.append(NL).append("[감금스킬] ").append(userName).append("님이 5분간 공격 불가 상태가 됩니다!");
+        }
 
         return msg.toString().trim();
     }
