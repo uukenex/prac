@@ -1415,6 +1415,30 @@ public class BossAttackS3Controller {
                 }
             }
 
+            // ── [4] 전체 참여 보상: 당첨 여부와 무관하게 전원 (플래티넘상자 1개 + 0.5GP) ──
+            if (allNames.size() > 0) {
+                msg.append("▶ 전체 참여 보상").append(NL);
+                for (String participant : allNames) {
+                    msg.append("[").append(participant).append("] 플래티넘상자 1개 + 0.5GP").append(NL);
+                }
+                msg.append(NL);
+                for (String participant : allNames) {
+                    try {
+                        HashMap<String, Object> inv = new HashMap<>();
+                        inv.put("userName", participant); inv.put("roomName", roomName);
+                        inv.put("itemId",   93); inv.put("qty", 1);
+                        inv.put("gainType", "DROP_OPEN_P");
+                        botNewService.insertInventoryLogTx(inv);
+                    } catch (Exception e) {}
+                    try {
+                        HashMap<String, Object> gpMap = new HashMap<>();
+                        gpMap.put("userName", participant); gpMap.put("roomName", roomName);
+                        gpMap.put("score",    0.5); gpMap.put("cmd", "BOSS_HELL_PART_GP");
+                        botNewService.insertGpRecord(gpMap);
+                    } catch (Exception e) {}
+                }
+            }
+
         } else {
             // 상급악마: 단일 보상 (20% 아이템 / 40% 상자 / 40% GP)
             String resolvedType  = (preRewardType != null && !preRewardType.isEmpty()) ? preRewardType
@@ -1425,25 +1449,36 @@ public class BossAttackS3Controller {
             msg.append("이번 클리어 보상은 ").append(rewardTypeName).append(" 입니다!").append(NL);
 
             if (isBoxReward) {
-                List<String> boxWinners = pickWinners(qualifiedPool, winnerCount, rand);
+                // 전원 기여도 구간별 지급 (allNames는 score DESC 정렬)
+                int total = allNames.size();
                 Map<String, Integer> boxQtyMap = new LinkedHashMap<>();
-                for (String winner : boxWinners) {
-                    int baseQty = 5 + rand.nextInt(6); // 5~10
-                    boxQtyMap.put(winner, baseQty);
+                for (int idx = 0; idx < total; idx++) {
+                    String name = allNames.get(idx);
+                    int qty;
+                    if (total <= 1) {
+                        qty = 5 + rand.nextInt(6); // 단독 처치: 5~10
+                    } else if (idx < total / 3) {
+                        qty = 5 + rand.nextInt(6); // 상위 33%: 5~10
+                    } else if (idx < total * 2 / 3) {
+                        qty = 2 + rand.nextInt(3); // 중위 33%: 2~4
+                    } else {
+                        qty = 1;                   // 하위 33%: 1
+                    }
+                    boxQtyMap.put(name, qty);
                 }
                 msg.append(NL);
-                for (int w = 0; w < boxWinners.size(); w++) {
-                    String winner = boxWinners.get(w);
-                    msg.append("✨").append(w + 1).append("번 보상: [").append(winner).append("] 지옥의유물상자 ").append(boxQtyMap.get(winner)).append("개").append(NL);
+                for (int w = 0; w < allNames.size(); w++) {
+                    String name = allNames.get(w);
+                    msg.append("✨").append(w + 1).append("번 보상: [").append(name).append("] 지옥의유물상자 ").append(boxQtyMap.get(name)).append("개").append(NL);
                 }
                 msg.append(NL);
-                for (String winner : boxWinners) {
+                for (String name : allNames) {
                     try {
                         HashMap<String, Object> inv = new HashMap<>();
-                        inv.put("userName", winner);
+                        inv.put("userName", name);
                         inv.put("roomName", roomName);
                         inv.put("itemId",   93);
-                        inv.put("qty",      boxQtyMap.get(winner));
+                        inv.put("qty",      boxQtyMap.get(name));
                         inv.put("gainType", "BOSS_HELL");
                         botNewService.insertInventoryLogTx(inv);
                     } catch (Exception e) { /* 지급 실패 무시 */ }
@@ -1573,30 +1608,57 @@ public class BossAttackS3Controller {
                             } catch (Exception ex) { /* 지급 실패 무시 */ }
                         }
                     }
+
+                    // 미당첨자 전원 1GP 지급
+                    Set<String> itemWinnerSet = new java.util.HashSet<>(itemWinners);
+                    List<String> nonWinners = new ArrayList<>();
+                    for (String n : allNames) { if (!itemWinnerSet.contains(n)) nonWinners.add(n); }
+                    if (!nonWinners.isEmpty()) {
+                        msg.append(NL).append("▶ 참여 보상 (미당첨)").append(NL);
+                        for (String n : nonWinners) msg.append("[").append(n).append("] 1GP").append(NL);
+                        msg.append(NL);
+                        for (String n : nonWinners) {
+                            try {
+                                HashMap<String, Object> gpMap = new HashMap<>();
+                                gpMap.put("userName", n); gpMap.put("roomName", roomName);
+                                gpMap.put("score", 1.0); gpMap.put("cmd", "BOSS_HELL_PART_GP");
+                                botNewService.insertGpRecord(gpMap);
+                            } catch (Exception ex) {}
+                        }
+                    }
                 }
 
             } else {
-                // GP 지급
-                if (qualifiedPool.isEmpty()) {
+                // GP 지급: 당첨자 3GP, 미당첨자 1GP
+                if (allNames.isEmpty()) {
                     msg.append("GP 지급 대상 없음").append(NL);
                 } else {
                     List<String> gpWinners = pickWinners(qualifiedPool, winnerCount, rand);
+                    Set<String> gpWinnerSet = new java.util.HashSet<>(gpWinners);
                     msg.append(NL);
-                    Map<String, Double> gpAmtMap = new LinkedHashMap<>();
-                    for (String winner : gpWinners) {
-                        double base = 0.5 + rand.nextInt(6) * 0.1;
-                        gpAmtMap.put(winner, base);
-                    }
                     for (int w = 0; w < gpWinners.size(); w++) {
-                        String winner = gpWinners.get(w);
-                        msg.append("✨").append(w + 1).append("번 보상: [").append(winner).append("] ").append(String.format("%.1f", gpAmtMap.get(winner))).append("GP").append(NL);
+                        msg.append("✨").append(w + 1).append("번 보상: [").append(gpWinners.get(w)).append("] 3GP").append(NL);
+                    }
+                    List<String> gpNonWinners = new ArrayList<>();
+                    for (String n : allNames) { if (!gpWinnerSet.contains(n)) gpNonWinners.add(n); }
+                    if (!gpNonWinners.isEmpty()) {
+                        msg.append(NL).append("▶ 참여 보상 (미당첨)").append(NL);
+                        for (String n : gpNonWinners) msg.append("[").append(n).append("] 1GP").append(NL);
                     }
                     msg.append(NL);
                     for (String winner : gpWinners) {
                         try {
                             HashMap<String, Object> gpMap = new HashMap<>();
                             gpMap.put("userName", winner); gpMap.put("roomName", roomName);
-                            gpMap.put("score",    gpAmtMap.get(winner)); gpMap.put("cmd", "BOSS_HELL_KILL_GP");
+                            gpMap.put("score",    3.0); gpMap.put("cmd", "BOSS_HELL_KILL_GP");
+                            botNewService.insertGpRecord(gpMap);
+                        } catch (Exception ignore) {}
+                    }
+                    for (String n : gpNonWinners) {
+                        try {
+                            HashMap<String, Object> gpMap = new HashMap<>();
+                            gpMap.put("userName", n); gpMap.put("roomName", roomName);
+                            gpMap.put("score",    1.0); gpMap.put("cmd", "BOSS_HELL_PART_GP");
                             botNewService.insertGpRecord(gpMap);
                         } catch (Exception ignore) {}
                     }
