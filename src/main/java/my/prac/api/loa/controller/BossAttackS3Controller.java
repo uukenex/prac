@@ -1324,8 +1324,8 @@ public class BossAttackS3Controller {
             String uName   = Objects.toString(row.get("USER_NAME"), "");
             long myDamage  = ((Number) row.get("SCORE")).longValue();
 
-            // SP: myDamage × 300, cap 1c (1,000,000,000,000 raw)
-            long mySpRaw = Math.min(1_000_000_000_000L, myDamage * 300L);
+            // SP: myDamage × 15000 (기존 300의 50배), cap 1c
+            long mySpRaw = Math.min(1_000_000_000_000L, myDamage * 15_000L);
             if (mySpRaw < 10_000_000L) mySpRaw = 10_000_000L;
             SP mySp = SP.fromSp(mySpRaw);
             try {
@@ -1338,8 +1338,8 @@ public class BossAttackS3Controller {
                 botNewService.insertPointRank(pr);
             } catch (Exception ignore) {}
 
-            // GP: myDamage ÷ 6,000,000, cap 10 GP
-            double myGp = Math.min(10.0, myDamage / 6_000_000.0);
+            // GP: myDamage ÷ 750,000 (기존 6,000,000의 1/8), cap 10 GP
+            double myGp = Math.min(10.0, myDamage / 750_000.0);
             if (myGp < 0.1) myGp = 0.1;
             myGp = Math.floor(myGp * 100) / 100.0;
             try {
@@ -2187,6 +2187,7 @@ public class BossAttackS3Controller {
         if (isCountUp) {
             bossMap.put("curHp",    0L);
             bossMap.put("curHpExt", null);
+            bossMap.put("closeDate", LocalDateTime.now().plusHours(COUNTUP_WINDOW_HOURS).format(DateTimeFormatter.ofPattern("yyyyMMdd HHmmss")));
         } else {
             bossMap.put("curHp",    (long)hpSp.getValue());
             bossMap.put("curHpExt", hpSp.getUnit().isEmpty() ? null : hpSp.getUnit());

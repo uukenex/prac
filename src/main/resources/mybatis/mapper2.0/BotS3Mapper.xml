@@ -513,6 +513,7 @@
 		     , DEBUFF1       = 0
 		     , DEBUFF2       = 0
 		     , PROC_DATE     = SYSDATE
+		     <if test="closeDate != null">, CLOSE_DATE = TO_DATE(#{closeDate}, 'yyyymmdd hh24miss')</if>
 		 WHERE SEQ = (SELECT MAX(SEQ) FROM TBOT_POINT_NEW_BOSS WHERE END_YN = '0')
 		   AND END_YN = '0'
 	</update>
