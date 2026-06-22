@@ -990,7 +990,7 @@ public class BossAttackController {
 	            Monster m = getMonsterCached(ob.monNo);
 	            if (m != null) {
 	                int monMaxHp    = m.monHp;
-	                int monHpRemain = Math.max(0, m.monHp - ob.totalDealtDmg);
+	                int monHpRemain = (int)Math.max(0L, (long)m.monHp - ob.totalDealtDmg);
 
 	                if(nightmare) {
 	                	monMaxHp *=NM_MUL_HP_ATK;
@@ -4695,7 +4695,8 @@ public class BossAttackController {
 
 		/* 몬스터 */
 		Monster m;
-		int monMaxHp, monHpRemainBefore, monAtk, monLv;
+		int monMaxHp, monAtk, monLv;
+		int monHpRemainBefore;
 		boolean lucky, dark, gray, shadow, nightmare, hell;
 		int beforeJobSkillYn;
 		int killCountForThisMon, nmKillCountForThisMon, hellKillCountForThisMon;
@@ -4802,12 +4803,8 @@ public class BossAttackController {
 						String lockedYn = Objects.toString(recent.get("LOCKED_YN"), "0");
 						if ("1".equals(lockedYn)) {
 							String code = Objects.toString(recent.get("CODE"), "");
-							int recentWarn = botNewService.countMacroDetectLogLastHour(s.userName, macroHours);
 							try { botNewService.insertMacroDetectLog(s.userName, code); } catch (Exception ig) {}
-							if (recentWarn == 0) {
-								return s.userName + "님, 비정상 패턴이 감지되었습니다."+NL+"/매크로아님 " + code + " 를 입력하세요.";
-							}
-							return "";
+							return s.userName + "님, 비정상 패턴이 감지되었습니다."+NL+"/매크로아님 " + code + " 를 입력하세요.";
 						}
 						// LOCKED_YN=0: 최근 해제 → 유예 허용
 					}
@@ -4918,7 +4915,7 @@ public class BossAttackController {
 		s.gray   = (ob.luckyYn != null && ob.luckyYn == 3);
 		s.shadow = (ob.luckyYn != null && ob.luckyYn == 4);
 		if (s.dark) applyDarkMonsterScale(s);
-		s.monHpRemainBefore = Math.max(0, s.monMaxHp - ob.totalDealtDmg);
+		s.monHpRemainBefore = (int)Math.max(0L, (long)s.monMaxHp - ob.totalDealtDmg);
 		resolveKillCounts(s);
 		return null;
 	}
