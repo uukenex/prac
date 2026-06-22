@@ -5933,18 +5933,36 @@ public class BossAttackController {
 				}
 			} else {
 				for (int _wi = 0; _wi < s.warlockKillMsgs.size(); _wi++) {
-					bot.append(NL).append("⚔️[").append(_wi + 2).append("타] 데미지: ").append(formatWan(s.warlockExtraCalcs.get(_wi).atkDmg));
-					if (s.warlockExtraDmgs.get(_wi).flags.atkCrit) bot.append(" ✨크리!");
-					if (!s.warlockKillMsgs.get(_wi).isEmpty()) bot.append(NL).append(s.warlockKillMsgs.get(_wi));
+					DamageOutcome _ed = s.warlockExtraDmgs.get(_wi);
+					boolean _killed = !s.warlockKillMsgs.get(_wi).isEmpty();
+					String _wTag = _ed.extraDark ? "[어둠]" : _ed.extraLucky ? "[빛]" : _ed.extraGray ? "[음양]" : _ed.extraShadow ? "[그림자]" : "";
+					String _mName = s.m != null ? s.m.monName : "몬스터";
+					if (_killed) {
+						bot.append(NL).append("[").append(_wi + 2).append("타처치] ").append(_wTag).append(_mName).append(", 데미지: ").append(formatWan(s.warlockExtraCalcs.get(_wi).atkDmg));
+					} else {
+						bot.append(NL).append("[").append(_wi + 2).append("타] 데미지: ").append(formatWan(s.warlockExtraCalcs.get(_wi).atkDmg));
+					}
+					if (_ed.flags.atkCrit) bot.append(" ✨크리!");
+					if (_killed) {
+						LevelUpResult _eu = _wi < s.warlockExtraUps.size() ? s.warlockExtraUps.get(_wi) : null;
+						if (_eu != null && s.u.lv < 999) {
+							double _gPct = _eu.afterExpNext > 0 ? (double)_eu.gainedExp / _eu.afterExpNext * 100 : 0;
+							double _cPct = _eu.afterExpNext > 0 ? (double)_eu.afterExpCur / _eu.afterExpNext * 100 : 0;
+							bot.append(NL).append("EXP +").append(formatKorNum(_eu.gainedExp))
+							   .append("(").append(String.format("%.1f", _gPct)).append("%)") 
+							   .append("[").append(String.format("%.1f", _cPct)).append("%/100%]");
+							if (_eu.levelUpCount > 0) bot.append(" ✨Lv").append(_eu.beforeLv).append("→").append(_eu.afterLv);
+						} else if (_eu != null) {
+							bot.append(NL).append("EXP +").append(formatKorNum(_eu.gainedExp))
+							   .append(" [누적 ").append(formatKorNum(_eu.afterExpCur)).append("]");
+						}
+					}
 				}
 			}
 		}
 
 		StringBuilder detailOut = new StringBuilder();
-		// [워록] 표기용 gainExp = 1타 + 추가타 합산
-		if (s.warlockMultiHit && !s.warlockKillFail && s.warlockTotalGainExp > 0) {
-			s.res.gainExp += s.warlockTotalGainExp;
-		}
+
 		// [도적] 표기용 gainExp = 1타 + 2타 합산
 		if (s.thiefDoubleAtk && s.res2 != null && s.res2.gainExp > 0) {
 			s.res.gainExp += s.res2.gainExp;
@@ -6057,8 +6075,9 @@ public class BossAttackController {
 			} else {
 			    double gainPct = s.u.expNext > 0 ? (double) s.res.gainExp / s.u.expNext * 100 : 0;
 			    double curPct  = s.u.expNext > 0 ? (double) s.u.expCur    / s.u.expNext * 100 : 0;
-			    sb.append("EXP +").append(String.format("%.1f", gainPct)).append("%")
-			      .append(" [").append(String.format("%.1f", curPct)).append("%/100%]");
+			    sb.append("EXP +").append(formatKorNum(s.res.gainExp))
+			      .append("(").append(String.format("%.1f", gainPct)).append("%)") 
+			      .append("[").append(String.format("%.1f", curPct)).append("%/100%]");
 			}
 			if (s.up != null && s.up.levelUpCount > 0) {
 				sb.append(" ✨Lv").append(s.up.beforeLv).append("→").append(s.up.afterLv);
@@ -8861,7 +8880,7 @@ public class BossAttackController {
 
 	/** 10,000,000(천만) 이상이면 만 단위로 표시. 예: 12345678 → "1234만" */
 	private String formatWan(int v) {
-	    if (v >= 10_000_000) return (v / 10_000) + "만";
+	    if (v >= 1_000_000) return (v / 10_000) + "만";
 	    return String.valueOf(v);
 	}
 
