@@ -5986,11 +5986,7 @@ public class BossAttackController {
 	}
 
 	private static String generateMacroCode() {
-		String chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-		StringBuilder sb = new StringBuilder(6);
-		java.util.Random rnd = new java.util.Random();
-		for (int i = 0; i < 6; i++) sb.append(chars.charAt(rnd.nextInt(chars.length())));
-		return sb.toString();
+		return String.format("%03d", new java.util.Random().nextInt(1000));
 	}
 
 	// ─ [COMPACT] 사망 축약 메시지 래퍼 ───────────────────────────────

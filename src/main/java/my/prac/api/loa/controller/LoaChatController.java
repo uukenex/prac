@@ -944,7 +944,7 @@ public class LoaChatController {
 				try {
 					String macroCode = param1 != null ? param1.trim() : "";
 					if (macroCode.isEmpty()) {
-						val = "코드를 입력하세요. 예) /매크로아님 AR32FD";
+						val = sender + "님, 코드를 입력하세요. 예) /매크로아님 123";
 					} else {
 						int released = botNewService.releaseMacroLock(sender, macroCode);
 						val = released > 0
