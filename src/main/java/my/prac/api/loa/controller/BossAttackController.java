@@ -2727,7 +2727,7 @@ public class BossAttackController {
                         hellRegen      += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("HP_REGEN"),     "0")) * hQty;
                         hellCrit       += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("ATK_CRI"),      "0")) * hQty;
                         hellCritDmg    += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("CRI_DMG"),      "0")) * hQty;
-                        if (hId == 3003) hellAtkMinRate += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("ATK_MAX_RATE"), "0")) * hQty;
+                        if (hId == 3003) hellAtkMinRate += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("ATK_MIN_RATE"), "0")) * hQty;
                         else if (hId == 3004) hellAtkMaxRate += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("ATK_MAX_RATE"), "0")) * hQty;
                         hellHpMaxRate  += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("HP_MAX_RATE"),  "0")) * hQty;
                     }

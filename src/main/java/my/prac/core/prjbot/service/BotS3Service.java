@@ -41,4 +41,13 @@ public interface BotS3Service {
 	/** [헬보스] 현재 보스 세션 최근 공격 로그 (TOP50) */
 	List<HashMap<String, Object>> selectHellBossRecentLog(HashMap<String, Object> map);
 
+	/** [카운트업 보스] HP 누적 + 공격 로그 (트랜잭션) */
+	void updateHellBossCountUpTx(HashMap<String, Object> map) throws Exception;
+
+	/** [카운트업 보스] 종료 (END_YN=1). 성공 시 1, 이미 종료된 경우 0 반환 */
+	int closeHellBoss(int seq) throws Exception;
+
+	/** [카운트업 보스] 새 인스턴스 생성 (CUR_HP=0) */
+	void insertHellBossCountUp(HashMap<String, Object> map) throws Exception;
+
 }
