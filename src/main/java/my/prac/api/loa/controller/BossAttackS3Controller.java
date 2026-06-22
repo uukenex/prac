@@ -700,7 +700,7 @@ public class BossAttackS3Controller {
             long before7011 = totalDamage;
             totalDamage = (long)(totalDamage * 1.1);
             int qty7011 = bossItemQtyMap.getOrDefault(7011, 1);
-            dmg7011Msg = "[개척자" + enhanceSuffix(qty7011) + "] 추가데미지 +10%! " + before7011 + " → " + totalDamage + NL;
+            dmg7011Msg = "[개척자" + enhanceSuffix(qty7011) + "] 추가데미지 +10%! " + SP.fromSp(before7011) + " → " + SP.fromSp(totalDamage) + NL;
         }
 
         String dmgLimitMsg = "";
@@ -711,11 +711,11 @@ public class BossAttackS3Controller {
             // 마왕: 10배 데미지, 용사 추가 2배 (캡 없음)
             long beforeMul = totalDamage;
             totalDamage *= 10L;
-            maWangMulMsg = "⚔️ [마왕] 데미지 ×10 적용: " + beforeMul + " → " + totalDamage + NL;
+            maWangMulMsg = "⚔️ [마왕] 데미지 ×10 적용: " + SP.fromSp(beforeMul) + " → " + SP.fromSp(totalDamage) + NL;
             if ("용사".equals(ctx.job)) {
                 long before2 = totalDamage;
                 totalDamage *= 2L;
-                maWangMulMsg += "⚔️ [용사 특권] 추가 ×2 적용: " + before2 + " → " + totalDamage + NL;
+                maWangMulMsg += "⚔️ [용사 특권] 추가 ×2 적용: " + SP.fromSp(before2) + " → " + SP.fromSp(totalDamage) + NL;
             }
         }
         
