@@ -68,10 +68,10 @@ public class BossAttackS3Controller {
     /** 헬보스 보상 아이템 타입 */
     private static final String HELL_ITEM_TYPE = "BOSS_HELL";
 
-    /** 카운트업 보스: DB 저장값 / 표시 이름 / 2시간 윈도우 */
+    /** 카운트업 보스: DB 저장값 / 표시 이름 / 1시간 윈도우 */
     private static final String COUNTUP_BOSS_TYPE    = "카운트업";
     static final String COUNTUP_DISPLAY_NAME  = "심연의 군주"; // TODO: 이름 확정 후 수정
-    private static final long   COUNTUP_WINDOW_HOURS = 2;
+    private static final long   COUNTUP_WINDOW_HOURS = 1;
     /** 카운트업 보스 목표 HP (표시용, raw SP 단위) — 100b */
     private static final long   COUNTUP_TARGET_HP    = 10_000_000_000L;
 
@@ -384,11 +384,7 @@ public class BossAttackS3Controller {
             } catch (Exception ignored) {}
         }
 
-        // 홀수/짝수 패턴 시간대 체크 (카운트업 보스는 제외)
-        if (!isCountUp) {
-            String patternBlock = checkPattern(bossPattern);
-            if (!patternBlock.isEmpty()) return patternBlock;
-        }
+        // 홀수/짝수 패턴 시간대 체크 비활성화 (전 보스 공통)
 
         // 상급악마/대악마/마왕/카운트업: 스탯 상한 적용 (공격력 100%, 나머지 50%)
         boolean isMajorBoss = "상급악마".equals(bossDemonType) || "대악마".equals(bossDemonType) || "마왕".equals(bossDemonType) || isCountUp;
@@ -1262,7 +1258,9 @@ public class BossAttackS3Controller {
 
 
     // =========================================================
-    // 카운트업 보스 2시간 종료 보상: 전원에게 기여도 비례 GP + SP 지급
+    // 카운트업 보스 1시간 종료 보상: 개인 누적 데미지 기준 독립 지급
+    //   SP = myDamage × 300  (max 1c = 1,000,000,000,000 raw)
+    //   GP = myDamage ÷ 6,000,000  (max 10 GP)
     // =========================================================
     private String calcCountUpBossReward(String roomName, String bossStartDate, long totalAccumulated) {
         StringBuilder msg = new StringBuilder();
@@ -1282,28 +1280,16 @@ public class BossAttackS3Controller {
             return msg.toString();
         }
 
-        long totalScore = 0;
-        for (HashMap<String, Object> row : contributors)
-            totalScore += ((Number) row.get("SCORE")).longValue();
-
-        if (totalScore <= 0) totalScore = 1;
-
-        // 보상 풀: GP 20 고정, SP = 누적데미지 × 1000 (10b ~ 1000b 범위)
-        final double totalGpPool = 20.0;
-        final long totalSpPoolRaw = Math.max(1_000_000_000L, Math.min(100_000_000_000L, totalAccumulated * 1000L));
-
-        msg.append("누적 데미지: ").append(SP.fromSp(totalAccumulated))
-           .append(" / 참여자: ").append(contributors.size()).append("명").append(NL);
-        msg.append("보상 풀: ").append(SP.fromSp(totalSpPoolRaw)).append(" SP + ").append((int)totalGpPool).append(" GP (기여도 비례)").append(NL).append(NL);
+        msg.append("총 누적 데미지: ").append(SP.fromSp(totalAccumulated))
+           .append(" / 참여자: ").append(contributors.size()).append("명").append(NL).append(NL);
 
         for (HashMap<String, Object> row : contributors) {
-            String uName = Objects.toString(row.get("USER_NAME"), "");
-            long myScore = ((Number) row.get("SCORE")).longValue();
-            double ratio = (double) myScore / totalScore;
+            String uName   = Objects.toString(row.get("USER_NAME"), "");
+            long myDamage  = ((Number) row.get("SCORE")).longValue();
 
-            // SP 지급
-            long mySpRaw = (long)(totalSpPoolRaw * ratio);
-            if (mySpRaw < 10_000_000L) mySpRaw = 10_000_000L; // 최소 1000a
+            // SP: myDamage × 300, cap 1c (1,000,000,000,000 raw)
+            long mySpRaw = Math.min(1_000_000_000_000L, myDamage * 300L);
+            if (mySpRaw < 10_000_000L) mySpRaw = 10_000_000L;
             SP mySp = SP.fromSp(mySpRaw);
             try {
                 HashMap<String, Object> pr = new HashMap<>();
@@ -1315,9 +1301,10 @@ public class BossAttackS3Controller {
                 botNewService.insertPointRank(pr);
             } catch (Exception ignore) {}
 
-            // GP 지급
-            double myGp = Math.floor(totalGpPool * ratio * 100) / 100.0;
-            if (myGp < 0.01) myGp = 0.01;
+            // GP: myDamage ÷ 6,000,000, cap 10 GP
+            double myGp = Math.min(10.0, myDamage / 6_000_000.0);
+            if (myGp < 0.1) myGp = 0.1;
+            myGp = Math.floor(myGp * 100) / 100.0;
             try {
                 HashMap<String, Object> gp = new HashMap<>();
                 gp.put("userName", uName);
@@ -1327,9 +1314,12 @@ public class BossAttackS3Controller {
                 botNewService.insertGpRecord(gp);
             } catch (Exception ignore) {}
 
+            double gpBalance = 0;
+            try { gpBalance = botNewService.selectGpBalance(uName); } catch (Exception ignore) {}
+
             msg.append(uName).append(": +").append(mySp).append(" SP, +")
                .append(String.format("%.2f", myGp)).append(" GP")
-               .append(" (기여 ").append(String.format("%.1f", ratio * 100)).append("%)").append(NL);
+               .append(" (보유 ").append(String.format("%.2f", Math.floor(gpBalance * 100) / 100.0)).append(" GP)").append(NL);
         }
 
         return msg.toString();
