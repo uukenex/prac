@@ -1640,6 +1640,26 @@
 		     ) WHERE ROWNUM = 1
 		 )
 	</update>
+	<select id="selectAllPendingHellBoxGrouped" parameterType="String" resultType="hashmap">
+		/* selectAllPendingHellBoxGrouped: 유저의 pending 황금/플래티넘 전체 집계 */
+		SELECT GAIN_TYPE, SUM(QTY) AS QTY
+		  FROM TBOT_POINT_NEW_INVENTORY
+		 WHERE USER_NAME = #{userName}
+		   AND ITEM_ID   = 93
+		   AND GAIN_TYPE IN ('DROP_OPEN_G', 'DROP_OPEN_P')
+		   AND DEL_YN    = '0'
+		 GROUP BY GAIN_TYPE
+		 ORDER BY MIN(INSERT_DATE) ASC
+	</select>
+	<update id="confirmAllPendingHellBoxes" parameterType="String">
+		/* confirmAllPendingHellBoxes: 모든 pending 황금/플래티넘 일괄 소비 */
+		UPDATE TBOT_POINT_NEW_INVENTORY
+		   SET DEL_YN = '1'
+		 WHERE USER_NAME = #{userName}
+		   AND ITEM_ID   = 93
+		   AND GAIN_TYPE IN ('DROP_OPEN_G', 'DROP_OPEN_P')
+		   AND DEL_YN    = '0'
+	</update>
 	<select id="selectNightmareYn" parameterType="map" resultType="int">
 		/* selectNightmareYn */
 		SELECT NVL(NIGHTMARE_YN, '0') AS NIGHTMARE_YN
@@ -2634,5 +2654,51 @@
 		   AND NVL(DEL_YN, '0') = '0'
 		 GROUP BY ITEM_ID
 	</select>
+
+
+    <!-- =====================================================
+         매크로 탐지
+         ===================================================== -->
+    <!-- 현재 시간(정각 기준) 실공격 횟수 (GAIN_EXP > 0 인 row) -->
+    <select id="selectHourlyRealAttackCount" parameterType="String" resultType="int">
+        /* selectHourlyRealAttackCount */
+        SELECT COUNT(*)
+          FROM TBOT_POINT_NEW_BATTLE_LOG
+         WHERE USER_NAME  = #{userName}
+           AND GAIN_EXP   &gt; 0
+           AND INSERT_DATE &gt;= TRUNC(SYSDATE, 'HH24')
+           AND INSERT_DATE &lt;  TRUNC(SYSDATE, 'HH24') + 1/24
+    </select>
+
+    <!-- 매크로 잠금 정보 조회 -->
+    <select id="selectMacroLock" parameterType="String" resultType="hashmap">
+        /* selectMacroLock */
+        SELECT USER_NAME, CODE, LOCKED_YN, LOCK_DATE
+          FROM TBOT_MACRO_DETECT
+         WHERE USER_NAME = #{userName}
+           AND LOCKED_YN = '1'
+    </select>
+
+    <!-- 매크로 잠금 INSERT (중복 시 무시) -->
+    <insert id="insertMacroLock" parameterType="hashmap">
+        /* insertMacroLock */
+        INSERT INTO TBOT_MACRO_DETECT (USER_NAME, CODE, LOCKED_YN, LOCK_DATE)
+        SELECT #{userName}, #{code}, '1', SYSDATE
+          FROM DUAL
+         WHERE NOT EXISTS (
+               SELECT 1 FROM TBOT_MACRO_DETECT
+                WHERE USER_NAME = #{userName} AND LOCKED_YN = '1'
+         )
+    </insert>
+
+    <!-- 매크로 잠금 해제 (코드 일치 시) -->
+    <update id="releaseMacroLock" parameterType="hashmap">
+        /* releaseMacroLock */
+        UPDATE TBOT_MACRO_DETECT
+           SET LOCKED_YN = '0'
+         WHERE USER_NAME = #{userName}
+           AND CODE      = #{code}
+           AND LOCKED_YN = '1'
+    </update>
 
 </mapper>

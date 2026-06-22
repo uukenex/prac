@@ -1189,59 +1189,42 @@ public class BossAttackController {
 	        return "방/유저 정보가 누락되었습니다.";
 	    }
 
-	    // ── 헬상자 pending 확인 (황금상자 일괄 처리) ───────────────────────────────────
+	    // ── 헬상자 pending 확인 (황금+플래티넘 전체 일괄 처리) ──────────────────────────
 	    try {
-	        HashMap<String,Object> pendingRow = botNewService.selectPendingHellBox(userName);
-	        if (pendingRow != null) {
-	            String gainType = Objects.toString(pendingRow.get("GAIN_TYPE"), "");
-	            boolean isGold  = "DROP_OPEN_G".equals(gainType);
-	            int pendingQty  = pendingRow.get("QTY") != null ? ((Number) pendingRow.get("QTY")).intValue() : 1;
-
-	            // 황금상자: 5% 진화 판정 (1번만), 나머지는 전부 일괄 개봉
-	            if (isGold && ThreadLocalRandom.current().nextDouble() < 0.05) {
-	                // 황금 → 플래티넘 진화
-	                botNewService.confirmPendingHellBox(userName);
-	                if (pendingQty > 1) {
-	                    HashMap<String,Object> goldRemain = new HashMap<>();
-	                    goldRemain.put("userName", userName); goldRemain.put("roomName", roomName);
-	                    goldRemain.put("itemId", 93); goldRemain.put("qty", pendingQty - 1);
-	                    goldRemain.put("delYn", "0"); goldRemain.put("gainType", "DROP_OPEN_G");
-	                    try { botNewService.insertInventoryLogTx(goldRemain); } catch (Exception ignore4) {}
-	                }
-	                HashMap<String,Object> platInv = new HashMap<>();
-	                platInv.put("userName", userName); platInv.put("roomName", roomName);
-	                platInv.put("itemId", 93); platInv.put("qty", 1);
-	                platInv.put("delYn", "0"); platInv.put("gainType", "DROP_OPEN_P");
-	                try { botNewService.insertInventoryLogTx(platInv); } catch (Exception ignore3) {}
-	                StringBuilder sb = new StringBuilder();
+	        List<HashMap<String,Object>> pendingGroups = botNewService.selectAllPendingHellBoxGrouped(userName);
+	        if (pendingGroups != null && !pendingGroups.isEmpty()) {
+	            int totalGold = 0, totalPlat = 0;
+	            for (HashMap<String,Object> pg : pendingGroups) {
+	                String gt = Objects.toString(pg.get("GAIN_TYPE"), "");
+	                int qty = pg.get("QTY") != null ? ((Number) pg.get("QTY")).intValue() : 0;
+	                if ("DROP_OPEN_G".equals(gt)) totalGold += qty;
+	                else if ("DROP_OPEN_P".equals(gt)) totalPlat += qty;
+	            }
+	            StringBuilder sb = new StringBuilder();
+	            // 황금 → 플래티넘 진화 (5%, 황금 있을 때만)
+	            if (totalGold > 0 && ThreadLocalRandom.current().nextDouble() < 0.05) {
+	                totalGold--;
+	                totalPlat++;
 	                sb.append(userName).append("님, ✨ 기적!! 황금 각인이 더욱 빛을 발합니다!!").append(NL);
 	                sb.append("━━━━━━━━━━━━").append(NL);
-	                sb.append("✨ 플래티넘로 진화하였습니다!! ✨").append(NL);
+	                sb.append("✨ 플래티넘으로 진화하였습니다!! ✨").append(NL);
 	                sb.append("━━━━━━━━━━━━").append(NL);
-	                sb.append("/가방열기 로 개봉하세요!");
-	                return sb.toString();
-	            } else {
-	                // 황금/플래티넘 일괄 개봉 (pendingQty개 전부)
-	                java.util.List<my.prac.core.util.MiniGameUtil.HellBoxEntry> pool =
-	                    isGold ? my.prac.core.util.MiniGameUtil.HELL_BOX_GOLD
-	                           : my.prac.core.util.MiniGameUtil.HELL_BOX_PLAT;
-	                String hellGainType = isGold ? "HELL_BOX_GOLD" : "HELL_BOX_PLAT";
-	                String tierLabel    = isGold ? "황금" : "플래티넘";
-	                StringBuilder sb = new StringBuilder();
-	                sb.append(userName).append("님, ✨ ").append(tierLabel).append("상자 ").append(pendingQty).append("개 개봉!").append(NL);
+	            }
+	            boolean platAchvDone = false;
+	            // 플래티넘 먼저 개봉
+	            if (totalPlat > 0) {
+	                sb.append(userName).append("님, ✨ 플래티넘상자 ").append(totalPlat).append("개 개봉!").append(NL);
 	                sb.append("━━━━━━━━━━━━").append(NL);
-	                boolean platAchvDone = false;
-	                for (int _i = 0; _i < pendingQty; _i++) {
+	                for (int _i = 0; _i < totalPlat; _i++) {
 	                    my.prac.core.util.MiniGameUtil.HellBoxEntry entry =
-	                        pool.get(ThreadLocalRandom.current().nextInt(pool.size()));
+	                        my.prac.core.util.MiniGameUtil.HELL_BOX_PLAT.get(ThreadLocalRandom.current().nextInt(my.prac.core.util.MiniGameUtil.HELL_BOX_PLAT.size()));
 	                    HashMap<String,Object> inv = new HashMap<>();
 	                    inv.put("userName", userName); inv.put("roomName", roomName);
 	                    inv.put("itemId", entry.itemId); inv.put("qty", entry.value);
-	                    inv.put("delYn", "0"); inv.put("gainType", hellGainType);
+	                    inv.put("delYn", "0"); inv.put("gainType", "HELL_BOX_PLAT");
 	                    try { botNewService.insertInventoryLogTx(inv); } catch (Exception ignore2) {}
 	                    sb.append("✨ ").append(entry.starsStr()).append(" ").append(entry.desc).append(" 획득!").append(NL);
-	                    // 플래티넘 첫 획득 업적 (1번만)
-	                    if (!isGold && !platAchvDone) {
+	                    if (!platAchvDone) {
 	                        try {
 	                            int alreadyHas = botNewService.selectPointRankCountByCmdUserInRoom(roomName, userName, "ACHV_PLAT_BOX_1");
 	                            if (alreadyHas == 0) {
@@ -1256,13 +1239,29 @@ public class BossAttackController {
 	                        } catch (Exception ignore3) {}
 	                    }
 	                }
-	                // 전체 soft-delete
-	                botNewService.confirmPendingHellBox(userName);
-	                invalidateInvBuff(userName);
 	                sb.append("━━━━━━━━━━━━").append(NL);
-	                sb.append(buildHellBoxStatSummary(userName));
-	                return sb.toString();
 	            }
+	            // 황금 개봉
+	            if (totalGold > 0) {
+	                sb.append(userName).append("님, ✨ 황금상자 ").append(totalGold).append("개 개봉!").append(NL);
+	                sb.append("━━━━━━━━━━━━").append(NL);
+	                for (int _i = 0; _i < totalGold; _i++) {
+	                    my.prac.core.util.MiniGameUtil.HellBoxEntry entry =
+	                        my.prac.core.util.MiniGameUtil.HELL_BOX_GOLD.get(ThreadLocalRandom.current().nextInt(my.prac.core.util.MiniGameUtil.HELL_BOX_GOLD.size()));
+	                    HashMap<String,Object> inv = new HashMap<>();
+	                    inv.put("userName", userName); inv.put("roomName", roomName);
+	                    inv.put("itemId", entry.itemId); inv.put("qty", entry.value);
+	                    inv.put("delYn", "0"); inv.put("gainType", "HELL_BOX_GOLD");
+	                    try { botNewService.insertInventoryLogTx(inv); } catch (Exception ignore2) {}
+	                    sb.append("✨ ").append(entry.starsStr()).append(" ").append(entry.desc).append(" 획득!").append(NL);
+	                }
+	                sb.append("━━━━━━━━━━━━").append(NL);
+	            }
+	            // 전체 pending 일괄 soft-delete
+	            botNewService.confirmAllPendingHellBoxes(userName);
+	            invalidateInvBuff(userName);
+	            sb.append(buildHellBoxStatSummary(userName));
+	            return sb.toString();
 	        }
 	    } catch (Exception ignore) {}
 
@@ -1456,9 +1455,8 @@ public class BossAttackController {
 	        SP totalSP, List<String> detail, List<String> itemSummary, boolean noSp,
 	        int[] goldRef, int[] platRef) {
 	    if (count <= 0) return;
-	    long top1Sp = getTop1SpCached();
-	    long spMin  = top1Sp > 0 ? top1Sp * 3 / 1000 : 1_000_000L;                          // 1등의 0.3%
-	    long spMax  = top1Sp > 0 ? Math.min(top1Sp / 100, 100_000_000_000L) : 5_000_000L;   // 1등의 1%, 최대 1000b
+	    long spMin  = 100_000_000_000L; // 고정 1000b
+	    long spMax  = 100_000_000_000L; // 고정 1000b
 	    SP hellSpLocal = new SP(0, ""); // SP 합산용 (루프 후 1회 INSERT)
 	    // 황금/플래티넘 누적: 외부 ref 있으면 공유, 없으면 로컬
 	    boolean useRef = (goldRef != null && platRef != null);
@@ -2593,21 +2591,30 @@ public class BossAttackController {
 	        sb.append(ctx.job).append(" 마스터 보너스: ATK 10%, HP 15%, 리젠+1000").append(NL);
 	    }
 	     */
-        // 가방현황 (91=일반, 92=나메, 93=헬)
+        // 가방현황 (91=일반, 92=나메, 93=헬/황금/플래티넘)
         {
-            int bagNormal = 0, bagNm = 0, bagHell = 0;
+            int bagNormal = 0, bagNm = 0, bagHell = 0, bagGold = 0, bagPlat = 0;
             if (bag != null) {
                 for (HashMap<String,Object> brow : bag) {
                     int bId = MiniGameUtil.parseIntSafe(Objects.toString(brow.get("ITEM_ID"), "0"));
                     int bQty = MiniGameUtil.parseIntSafe(Objects.toString(brow.get("TOTAL_QTY"), "0"));
+                    String gt = Objects.toString(brow.get("GAIN_TYPE"), "");
                     if (bId == 91) bagNormal += bQty;
-                    else if (bId == 92) bagNm   += bQty;
-                    else if (bId == 93) bagHell  += bQty;
+                    else if (bId == 92) bagNm += bQty;
+                    else if (bId == 93) {
+                        if ("DROP_OPEN_G".equals(gt)) bagGold += bQty;
+                        else if ("DROP_OPEN_P".equals(gt)) bagPlat += bQty;
+                        else bagHell += bQty;
+                    }
                 }
             }
             sb.append("가방현황[ 일반:").append(bagNormal)
               .append("/나메:").append(bagNm)
-              .append("/헬:").append(bagHell).append("]").append(NL);
+              .append("/헬:").append(bagHell);
+            if (bagGold > 0 || bagPlat > 0) {
+                sb.append(" (황금:").append(bagGold).append("/플래티넘:").append(bagPlat).append(")");
+            }
+            sb.append("]").append(NL);
         }
         sb.append("▶ 현재 타겟: ").append(targetName)
 	      .append(" (MON_NO=").append(u.targetMon).append(")").append(NL);
@@ -2720,7 +2727,7 @@ public class BossAttackController {
                         hellRegen      += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("HP_REGEN"),     "0")) * hQty;
                         hellCrit       += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("ATK_CRI"),      "0")) * hQty;
                         hellCritDmg    += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("CRI_DMG"),      "0")) * hQty;
-                        if (hId == 3003) hellAtkMinRate += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("ATK_MAX_RATE"), "0")) * hQty;
+                        if (hId == 3003) hellAtkMinRate += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("ATK_MIN_RATE"), "0")) * hQty;
                         else if (hId == 3004) hellAtkMaxRate += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("ATK_MAX_RATE"), "0")) * hQty;
                         hellHpMaxRate  += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("HP_MAX_RATE"),  "0")) * hQty;
                     }
@@ -4748,6 +4755,9 @@ public class BossAttackController {
 		int warlockHitCount = 1;
 		boolean warlockMultiHit = false;
 		boolean warlockKillFail = false;
+		int warlockFailHitNo  = 0; // 자멸 실패한 타수 (1~N)
+		int warlockFailMonHp  = 0; // 실패 시점 몬스터 최대체력
+		int warlockFailDmg    = 0; // 실패 시점 데미지
 		List<DamageOutcome>  warlockExtraDmgs  = new ArrayList<>();
 		List<AttackCalc>     warlockExtraCalcs = new ArrayList<>();
 		List<Resolve>        warlockExtraRes   = new ArrayList<>();
@@ -4773,12 +4783,14 @@ public class BossAttackController {
 		if ("람쥐봇 문의방".equals(s.roomName) && !s.master)
 			return "문의방에서는 불가능합니다.";
 
-		/*
-		HashMap<String,Object> lockParam = botNewService.lockMacroUser(s.userName);
-		int lockCode = (Integer) lockParam.get("outCode");
-		if (lockCode == 1 || lockCode == 2)
-			return "공격불가 상태입니다 code:" + lockParam.get("outMsg");
-		 */
+		// 매크로 잠금 체크
+		try {
+			HashMap<String,Object> macroLock = botNewService.selectMacroLock(s.userName);
+			if (macroLock != null) {
+				String code = Objects.toString(macroLock.get("CODE"), "");
+				return s.userName + "님, 비정상 패턴이 감지되었습니다.\n/매크로아님 " + code + " 를 입력하세요.";
+			}
+		} catch (Exception ignore) {}
 		s.param1 = Objects.toString(s.map.get("param1"), "");
 		return null;
 	}
@@ -5274,6 +5286,9 @@ public class BossAttackController {
 		// 1타 처치 실패 시 즉시 자멸
 		if (!s.willKill) {
 			s.warlockKillFail = true;
+			s.warlockFailHitNo = 1;
+			s.warlockFailMonHp = s.monMaxHp;
+			s.warlockFailDmg   = s.calc != null ? s.calc.atkDmg : 0;
 			return;
 		}
 		// 2~N타 순서대로 계산; 타마다 몬스터 재선택(다크/빛 재롤) → 처치 실패 시 자멸
@@ -5322,6 +5337,9 @@ public class BossAttackController {
 				if (!extraDmg.willKill) {
 					// 처치 실패 → 자멸, 이전 성공 타 모두 취소
 					s.warlockKillFail = true;
+					s.warlockFailHitNo = i + 1; // 1-indexed (i=1 → 2타)
+					s.warlockFailMonHp = hitMonHp;
+					s.warlockFailDmg   = extraDmg.calc != null ? extraDmg.calc.atkDmg : 0;
 					s.warlockExtraDmgs.clear();
 					s.warlockExtraCalcs.clear();
 					return;
@@ -5884,6 +5902,12 @@ public class BossAttackController {
 		if (s.warlockMultiHit) {
 			if (s.warlockKillFail) {
 				bot.append(NL).append("[워록] 콤보 처치 실패! 자멸 처리됩니다.");
+				if (s.warlockFailHitNo > 0) {
+					String mName = (s.m != null) ? s.m.monName : "몬스터";
+					bot.append(NL).append("  → ").append(s.warlockFailHitNo).append("타에서 실패")
+					   .append(" | ").append(mName).append(" 체력: ").append(formatWan(s.warlockFailMonHp))
+					   .append(" / 내 데미지: ").append(formatWan(s.warlockFailDmg));
+				}
 			} else {
 				for (int _wi = 0; _wi < s.warlockKillMsgs.size(); _wi++) {
 					bot.append(NL).append("⚔️[").append(_wi + 2).append("타] 데미지: ").append(formatWan(s.warlockExtraCalcs.get(_wi).atkDmg));
@@ -5944,7 +5968,25 @@ public class BossAttackController {
 			msg += NL + ALL_SEE_STR + NL + detailOut.toString();
 		}
 
+		// 매크로 탐지: 실공격(exp>0) 기록 시 시간당 횟수 체크
+		try {
+			if (s.res != null && s.res.gainExp > 0) {
+				int hourlyCnt = botNewService.selectHourlyRealAttackCount(s.userName);
+				if (hourlyCnt >= 20) {
+					HashMap<String,Object> existLock = botNewService.selectMacroLock(s.userName);
+					if (existLock == null) {
+						String code = generateMacroCode();
+						botNewService.insertMacroLock(s.userName, code);
+					}
+				}
+			}
+		} catch (Exception ignore) {}
+
 		return msg;
+	}
+
+	private static String generateMacroCode() {
+		return String.format("%03d", new java.util.Random().nextInt(1000));
 	}
 
 	// ─ [COMPACT] 사망 축약 메시지 래퍼 ───────────────────────────────

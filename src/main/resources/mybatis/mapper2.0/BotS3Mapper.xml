@@ -366,4 +366,76 @@
 	     WHERE ROWNUM &lt;= 200
 	</select>
 
+	<!-- =====================================================
+	     [카운트업 보스] HP 원자적 누적 (CUR_HP + dmg, 낙관적 잠금 없음)
+	     ===================================================== -->
+	<update id="updateHellBossCountUpAdd" parameterType="HashMap">
+		UPDATE TBOT_POINT_NEW_BOSS
+		   SET CUR_HP    = CUR_HP + #{rawDmg, jdbcType=NUMERIC}
+		     , PROC_DATE = SYSDATE
+		 WHERE SEQ    = #{seq, jdbcType=NUMERIC}
+		   AND END_YN = '0'
+	</update>
+
+	<!-- =====================================================
+	     [카운트업 보스] 종료 처리 (END_YN=1)
+	     ===================================================== -->
+	<update id="closeHellBoss" parameterType="HashMap">
+		UPDATE TBOT_POINT_NEW_BOSS
+		   SET END_YN    = '1'
+		     , PROC_DATE = SYSDATE
+		 WHERE SEQ    = #{seq, jdbcType=NUMERIC}
+		   AND END_YN = '0'
+	</update>
+
+	<!-- =====================================================
+	     [카운트업 보스] 새 인스턴스 생성 (CUR_HP=0으로 시작)
+	     ===================================================== -->
+	<insert id="insertHellBossCountUp" parameterType="HashMap">
+		INSERT INTO TBOT_POINT_NEW_BOSS
+		    (SEQ
+		    ,INSERT_DATE
+		    ,END_YN
+		    ,ATK_RATE
+		    ,ATK_POWER
+		    ,DEF_RATE
+		    ,DEF_POWER
+		    ,EVADE_RATE
+		    ,CRIT_DEF_RATE
+		    ,DEBUFF
+		    ,DEBUFF1
+		    ,DEBUFF2
+		    ,REWARD
+		    ,MAX_HP
+		    ,MAX_HP_EXT
+		    ,CUR_HP
+		    ,CUR_HP_EXT
+		    ,HIDE_RULE
+		    ,PATTERN
+		    ,REWARD_TYPE
+		    ,BOSS_TYPE)
+		SELECT NVL(MAX(SEQ), 0) + 1
+		      ,TO_DATE(#{startDate, jdbcType=VARCHAR},'yyyy-mm-dd hh24:mi:ss')
+		      ,'0'
+		      ,#{atkRate,     jdbcType=NUMERIC}
+		      ,#{atkPower,    jdbcType=NUMERIC}
+		      ,#{defRate,     jdbcType=NUMERIC}
+		      ,#{defPower,    jdbcType=NUMERIC}
+		      ,#{evadeRate,   jdbcType=NUMERIC}
+		      ,#{critDefRate, jdbcType=NUMERIC}
+		      ,0
+		      ,0
+		      ,0
+		      ,0
+		      ,#{maxHp,       jdbcType=NUMERIC}
+		      ,#{maxHpExt,    jdbcType=VARCHAR}
+		      ,0
+		      ,null
+		      ,#{hideRule,    jdbcType=VARCHAR}
+		      ,'없음'
+		      ,#{rewardType,  jdbcType=VARCHAR}
+		      ,'카운트업'
+		  FROM TBOT_POINT_NEW_BOSS
+	</insert>
+
 </mapper>

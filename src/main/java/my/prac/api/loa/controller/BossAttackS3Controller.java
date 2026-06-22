@@ -68,6 +68,13 @@ public class BossAttackS3Controller {
     /** 헬보스 보상 아이템 타입 */
     private static final String HELL_ITEM_TYPE = "BOSS_HELL";
 
+    /** 카운트업 보스: DB 저장값 / 표시 이름 / 1시간 윈도우 */
+    private static final String COUNTUP_BOSS_TYPE    = "카운트업";
+    static final String COUNTUP_DISPLAY_NAME  = "심연의 군주"; // TODO: 이름 확정 후 수정
+    private static final long   COUNTUP_WINDOW_HOURS = 1;
+    /** 카운트업 보스 목표 HP (표시용, raw SP 단위) — 100b */
+    private static final long   COUNTUP_TARGET_HP    = 10_000_000_000L;
+
     // ── 대악마 감금스킬 ──
     private static final Map<String, Long> IMPRISONED_UNTIL   = new java.util.concurrent.ConcurrentHashMap<>();
     private static final int IMPRISON_DURATION_MS = 5 * 60 * 1000; // 5분
@@ -264,16 +271,16 @@ public class BossAttackS3Controller {
         if (user.hpCur <= 0) {
             return userName + "님, 데스 상태입니다. 체력을 회복 후 공격 가능합니다.";
         }
-
-        // 대악마/마왕 감금 상태 체크
-        Long imprisonUntil = IMPRISONED_UNTIL.get(userName);
-        if (imprisonUntil != null) {
-            if (System.currentTimeMillis() < imprisonUntil) {
-                long remainSec = (imprisonUntil - System.currentTimeMillis()) / 1000;
-                long remMin = remainSec / 60, remSec = remainSec % 60;
-                return userName + "님, [감금스킬] 공격 불가 상태입니다. (" + remMin + "분 " + remSec + "초 남음)";
-            }
-            IMPRISONED_UNTIL.remove(userName);
+
+        // 대악마/마왕 감금 상태 체크
+        Long imprisonUntil = IMPRISONED_UNTIL.get(userName);
+        if (imprisonUntil != null) {
+            if (System.currentTimeMillis() < imprisonUntil) {
+                long remainSec = (imprisonUntil - System.currentTimeMillis()) / 1000;
+                long remMin = remainSec / 60, remSec = remainSec % 60;
+                return userName + "님, [감금스킬] 공격 불가 상태입니다. (" + remMin + "분 " + remSec + "초 남음)";
+            }
+            IMPRISONED_UNTIL.remove(userName);
         }
 
         // 보스 정보 조회 (전역, ROOM_NAME 없음)
@@ -328,21 +335,10 @@ public class BossAttackS3Controller {
             return "보스 정보를 가져오는데 실패했습니다.";
         }
 
-        // 홀수/짝수 패턴 시간대 체크
-        String patternBlock = checkPattern(bossPattern);
-        if (!patternBlock.isEmpty()) return patternBlock;
+        boolean isCountUp = COUNTUP_BOSS_TYPE.equals(bossDemonType);
+        String bossDisplayName = isCountUp ? COUNTUP_DISPLAY_NAME : bossDemonType;
 
-        // 상급악마/대악마/마왕: 스탯 상한 적용 (공격력 100%, 나머지 50%)
-        boolean isMajorBoss = "상급악마".equals(bossDemonType) || "대악마".equals(bossDemonType) || "마왕".equals(bossDemonType);
-        if (isMajorBoss) {
-            bossAtkRate   = Math.max(BOSS_ATK_RATE_MIN,   Math.min(50, bossAtkRate));
-            bossAtkPower  = Math.max(BOSS_ATK_POWER_MIN,  Math.min(100, bossAtkPower));
-            bossDefRate   = Math.max(BOSS_DEF_RATE_MIN,   Math.min(50, bossDefRate));
-            bossDefPower  = Math.max(BOSS_DEF_POWER_MIN,  Math.min(50, bossDefPower));
-            bossEvadeRate = Math.max(BOSS_EVADE_RATE_MIN, Math.min(50, bossEvadeRate));
-            critDefRate   = Math.max(0,                   Math.min(50, critDefRate));
-        }
-        // 재생성 쿨타임 체크 (INSERT_DATE가 미래면 아직 등장 전)
+        // 재생성 쿨타임 체크 (startDate가 미래면 아직 등장 전 → 패턴 체크 불필요)
         if (!bossStartDate.isEmpty()) {
             try {
                 LocalDateTime spawnTime = LocalDateTime.parse(bossStartDate,
@@ -354,7 +350,7 @@ public class BossAttackS3Controller {
                             : remainMin + "분";
                     StringBuilder sb = new StringBuilder();
                     sb.append(userName).append("님,").append(NL)
-                      .append("상급악마가 재정비 중입니다.").append(NL)
+                      .append(bossDisplayName).append("가 재정비 중입니다.").append(NL)
                       .append("등장까지 ").append(remainStr).append(" 남았습니다.");
                     try {
                         String lastReward = botS3Service.getLastKillRewardMsg();
@@ -365,6 +361,40 @@ public class BossAttackS3Controller {
                     return sb.toString();
                 }
             } catch (Exception ignored) {}
+        }
+
+        // 카운트업 보스: 2시간 윈도우 종료 여부 체크
+        if (isCountUp && !bossStartDate.isEmpty()) {
+            try {
+                LocalDateTime spawnTime = LocalDateTime.parse(bossStartDate, DateTimeFormatter.ofPattern("yyyyMMdd HHmmss"));
+                LocalDateTime closeTime = spawnTime.plusHours(COUNTUP_WINDOW_HOURS);
+                if (LocalDateTime.now().isAfter(closeTime)) {
+                    int closed = botS3Service.closeHellBoss(seq);
+                    if (closed > 0) {
+                        String rewardMsg = calcCountUpBossReward(roomName, bossStartDate, hp);
+                        botS3Service.saveLastKillMsg(rewardMsg);
+                        respawnHellBoss(bossStartDate);
+                        return "[" + COUNTUP_DISPLAY_NAME + "] ⌛ 2시간 윈도우가 종료되었습니다!" + NL
+                                + rewardMsg + NL + NL
+                                + "새로운 보스가 소환됩니다!";
+                    } else {
+                        return userName + "님, 보스가 이미 종료되었습니다.";
+                    }
+                }
+            } catch (Exception ignored) {}
+        }
+
+        // 홀수/짝수 패턴 시간대 체크 비활성화 (전 보스 공통)
+
+        // 상급악마/대악마/마왕/카운트업: 스탯 상한 적용 (공격력 100%, 나머지 50%)
+        boolean isMajorBoss = "상급악마".equals(bossDemonType) || "대악마".equals(bossDemonType) || "마왕".equals(bossDemonType) || isCountUp;
+        if (isMajorBoss) {
+            bossAtkRate   = Math.max(BOSS_ATK_RATE_MIN,   Math.min(50, bossAtkRate));
+            bossAtkPower  = Math.max(BOSS_ATK_POWER_MIN,  Math.min(100, bossAtkPower));
+            bossDefRate   = Math.max(BOSS_DEF_RATE_MIN,   Math.min(50, bossDefRate));
+            bossDefPower  = Math.max(BOSS_DEF_POWER_MIN,  Math.min(50, bossDefPower));
+            bossEvadeRate = Math.max(BOSS_EVADE_RATE_MIN, Math.min(50, bossEvadeRate));
+            critDefRate   = Math.max(0,                   Math.min(50, critDefRate));
         }
 
         // 보스 아이템 보유 여부: calcUserBattleContext에서 이미 로드된 ctx.ownedBossItems 재사용
@@ -676,7 +706,7 @@ public class BossAttackS3Controller {
 
         String maWangMulMsg = "";
         if (isMaWang) {
-            // 마왕: 10배 데미지, 용사 추가 2배, 100만 cap
+            // 마왕: 10배 데미지, 용사 추가 2배 (캡 없음)
             long beforeMul = totalDamage;
             totalDamage *= 10L;
             maWangMulMsg = "⚔️ [마왕] 데미지 ×10 적용: " + beforeMul + " → " + totalDamage + NL;
@@ -684,24 +714,6 @@ public class BossAttackS3Controller {
                 long before2 = totalDamage;
                 totalDamage *= 2L;
                 maWangMulMsg += "⚔️ [용사 특권] 추가 ×2 적용: " + before2 + " → " + totalDamage + NL;
-            }
-            final long MAWANG_CAP = 1_000_000L;
-            if (totalDamage > MAWANG_CAP) {
-                dmgLimitMsg = "[데미지 제한] " + totalDamage + " → " + MAWANG_CAP + " (마왕 100만 cap)" + NL;
-                totalDamage = MAWANG_CAP;
-            }
-        } else {
-            // 보스 최대체력의 20% 이상 피해 제한
-            long maxDamageLimit = Math.max(1L, maxHp / 5);
-            if (totalDamage > maxDamageLimit) {
-                long beforeLimit = totalDamage;
-                totalDamage = maxDamageLimit;
-                dmgLimitMsg = "[데미지 제한] "
-                        + SP.fromSp(beforeLimit)
-                        + " → "
-                        + SP.fromSp(totalDamage)
-                        + " (보스 최대체력 20% 제한)"
-                        + NL;
             }
         }
         
@@ -735,11 +747,11 @@ public class BossAttackS3Controller {
             }
         }
 
-        // HP 차감 (1차)
+        // HP 차감 (1차) — 카운트업 보스는 HP가 올라가므로 kill 없음
         SP newHpSp = isEvade || totalDamage <= 0
                 ? SP.of(curHpNum, curHpExt)
                 : SP.of(curHpNum, curHpExt).subtract(SP.fromSp(totalDamage));
-        boolean isKill = SP.toBaseValue(newHpSp) <= 0;
+        boolean isKill = !isCountUp && SP.toBaseValue(newHpSp) <= 0;
         long newHp = isKill ? 0 : SP.toBaseValue(newHpSp);
 
         // 보스 반격 (유저 최대HP × bossAtkPower% 비례 데미지)
@@ -790,9 +802,11 @@ public class BossAttackS3Controller {
             int reflectPermille = getBossEnhanceVal(7005, qty7005); // 10=1.0%, 15=1.5%
             reflectDmg = Math.max(1, (int)Math.round(bossAtkApplied * reflectPermille / 1000.0));
             totalDamage += reflectDmg;
-            newHpSp = SP.of(curHpNum, curHpExt).subtract(SP.fromSp(totalDamage));
-            isKill = SP.toBaseValue(newHpSp) <= 0;
-            newHp = isKill ? 0 : SP.toBaseValue(newHpSp);
+            if (!isCountUp) {
+                newHpSp = SP.of(curHpNum, curHpExt).subtract(SP.fromSp(totalDamage));
+                isKill = SP.toBaseValue(newHpSp) <= 0;
+                newHp = isKill ? 0 : SP.toBaseValue(newHpSp);
+            }
             reflectMsg = "[가시갑옷] 반사 +" + reflectDmg + "!" + NL;
         }
 
@@ -818,36 +832,38 @@ public class BossAttackS3Controller {
             } catch (Exception ignored) {}
         }
 
-        // 대악마/마왕 감금스킬 발동 (10% 확률)
-        if (("대악마".equals(bossDemonType) || "마왕".equals(bossDemonType)) && rand.nextInt(100) < IMPRISON_CHANCE_PCT) {
+        // 대악마/마왕 감금스킬 발동: 한 번에 보스 체력 90% 이상 데미지 시
+        if (!isEvade && ("대악마".equals(bossDemonType) || "마왕".equals(bossDemonType))
+                && maxHp > 0 && totalDamage >= (long)(maxHp * 0.9)) {
             IMPRISONED_UNTIL.put(userName, System.currentTimeMillis() + IMPRISON_DURATION_MS);
-            // 감금 메시지는 아래 최종 msg 조립 후 추가
         }
 
         // DB 저장 (HP 업데이트 + 배틀 로그)
-        // hp    : 낙관적 잠금 WHERE 절용 → DB 원본값 그대로 (double)
-        // newHp : SP 변환 결과 소수값 (예: 2.99832)
-        // newHpExt: SP 변환 결과 단위 (예: "b"), 없으면 null
-        double newHpDbVal = isKill ? 0.0 : newHpSp.getValue();
-        String newHpDbExt = isKill || newHpSp.getUnit().isEmpty() ? null : newHpSp.getUnit();
-        map.put("hp",       curHpNum);
-        map.put("newHp",    newHpDbVal);
-        map.put("newHpExt", newHpDbExt);
-        map.put("seq",          seq);
-        map.put("endYn",        isKill ? "1" : "0");
-        map.put("lv",           user.lv);
-        map.put("atkDmg",       totalDamage);
-        map.put("monDmg",       bossAtkApplied);
-        map.put("atkCritYn",    isCritical ? "1" : "0");
-        map.put("killYn",       isKill ? "1" : "0");
-        map.put("job",          ctx.job);
-        if (heavensPunishment)                   map.put("heavensPunishment", getBossEnhanceVal(7001, heaven7001Qty));
-        if (flag_boss_debuff)                    map.put("useDebuff", 1);
-        if (debuff1_start)                       map.put("debuff1_start", 1);
-        if (flag_boss_debuff1 && !debuff1_start) map.put("useDebuff1", 1);
+        map.put("seq",       seq);
+        map.put("lv",        user.lv);
+        map.put("atkDmg",    totalDamage);
+        map.put("monDmg",    bossAtkApplied);
+        map.put("atkCritYn", isCritical ? "1" : "0");
+        map.put("killYn",    isKill ? "1" : "0");
+        map.put("job",       ctx.job);
 
         try {
-            botS3Service.updateHellBossTx(map);
+            if (isCountUp) {
+                map.put("rawDmg", isEvade ? 0L : totalDamage);
+                botS3Service.updateHellBossCountUpTx(map);
+            } else {
+                double newHpDbVal = isKill ? 0.0 : newHpSp.getValue();
+                String newHpDbExt = isKill || newHpSp.getUnit().isEmpty() ? null : newHpSp.getUnit();
+                map.put("hp",       curHpNum);
+                map.put("newHp",    newHpDbVal);
+                map.put("newHpExt", newHpDbExt);
+                map.put("endYn",    isKill ? "1" : "0");
+                if (heavensPunishment)                   map.put("heavensPunishment", getBossEnhanceVal(7001, heaven7001Qty));
+                if (flag_boss_debuff)                    map.put("useDebuff", 1);
+                if (debuff1_start)                       map.put("debuff1_start", 1);
+                if (flag_boss_debuff1 && !debuff1_start) map.put("useDebuff1", 1);
+                botS3Service.updateHellBossTx(map);
+            }
         } catch (Exception e) {
             return "저장 중 오류가 발생했습니다.";
         }
@@ -875,9 +891,9 @@ public class BossAttackS3Controller {
             } catch (Exception ignore) {}
         }
 
-        // 공격 보상: 마왕은 GP, 그 외는 SP
+        // 공격 보상: 카운트업 보스는 즉시 보상 없음 (2시간 종료 시 일괄 지급)
         String spRewardMsg = "";
-        if (isMaWang && !isEvade && totalDamage > 0) {
+        if (!isCountUp && isMaWang && !isEvade && totalDamage > 0) {
             // 마왕 GP 보상: 0.02 ~ 0.40 GP (데미지 비례, 100만 대비)
             try {
                 double gpRatio = Math.min(1.0, totalDamage / 1_000_000.0);
@@ -896,7 +912,7 @@ public class BossAttackS3Controller {
             } catch (Exception e) {
                 // GP 지급 실패는 무시
             }
-        } else if (!isMaWang) {
+        } else if (!isCountUp && !isMaWang) {
             try {
                 long rawSpVal = totalDamage * 10000L;
                 boolean isGreatDemonSp = "대악마".equals(bossDemonType);
@@ -937,7 +953,7 @@ public class BossAttackS3Controller {
 
         // 결과 메시지
         StringBuilder msg = new StringBuilder();
-        msg.append(userName).append("님이 [").append(bossDemonType).append("]를 공격했습니다!").append(NL);
+        msg.append(userName).append("님이 [").append(bossDisplayName).append("]를 공격했습니다!").append(NL);
 
         if (!isEvade) {
             if (isMaWang) {
@@ -983,8 +999,24 @@ public class BossAttackS3Controller {
 
         msg.append(NL);
         if (isKill) {
-            msg.append("✨").append(bossDemonType).append("를 처치했습니다!").append(NL).append(killMsg);
-            msg.append(NL).append("새로운 상급악마가 출현했습니다!").append(NL);
+            msg.append("✨").append(bossDisplayName).append("를 처치했습니다!").append(NL).append(killMsg);
+            msg.append(NL).append("새로운 보스가 출현했습니다!").append(NL);
+        } else if (isCountUp) {
+            long newAccumulated = hp + (isEvade ? 0L : totalDamage);
+            SP accSp = SP.fromSp(newAccumulated);
+            SP targetSp = SP.fromSp(maxHp > 0 ? maxHp : COUNTUP_TARGET_HP);
+            double accPct = maxHp > 0 ? newAccumulated * 100.0 / maxHp : 0;
+            msg.append("📈 누적 데미지: ").append(accSp)
+               .append(" / ").append(targetSp)
+               .append(" (").append(String.format("%.1f", accPct)).append("%)").append(NL);
+            try {
+                LocalDateTime spawnTime2 = LocalDateTime.parse(bossStartDate, DateTimeFormatter.ofPattern("yyyyMMdd HHmmss"));
+                long remainSecs = java.time.Duration.between(LocalDateTime.now(), spawnTime2.plusHours(COUNTUP_WINDOW_HOURS)).getSeconds();
+                if (remainSecs > 0) {
+                    msg.append("⏱ 종료까지: ").append(remainSecs / 60).append("분 ").append(remainSecs % 60).append("초").append(NL);
+                }
+            } catch (Exception ignored) {}
+            msg.append("💡 2시간 종료 시 기여도 비례 GP+SP 지급!").append(NL);
         } else {
             String curHpDisp = SP.fromSp(newHp).toString();
             String maxHpDisp = SP.fromSp(maxHp).toString();
@@ -1071,10 +1103,8 @@ public class BossAttackS3Controller {
             bossMap.put("defPower",    randInt(rand, BOSS_DEF_POWER_MIN,  BOSS_DEF_POWER_MAX));
             bossMap.put("evadeRate",   randInt(rand, BOSS_EVADE_RATE_MIN, BOSS_EVADE_RATE_MAX));
             bossMap.put("critDefRate", randInt(rand, BOSS_CRIT_DEF_MIN,   BOSS_CRIT_DEF_MAX));
-            // 참여 인원수 기반 쿨타임 후 등장
-            // 1시간 후 정각으로 맞춤 (xx:00:00)
-            LocalDateTime spawnAt = LocalDateTime.now().plusHours(1)
-                    .withMinute(0).withSecond(0).withNano(0);
+            // 처치 시점 기준 정확히 3시간 후 등장
+            LocalDateTime spawnAt = LocalDateTime.now().plusHours(3);
             bossMap.put("startDate", spawnAt.format(SPAWN_DATE_FMT));
             // PATTERN: 홀수/짝수 시간 랜덤 결정
             bossMap.put("hideRule",  "없음");
@@ -1083,18 +1113,21 @@ public class BossAttackS3Controller {
             double rwDice = rand.nextDouble();
             String preRewardType = rwDice >= 0.80 ? "ITEM" : rwDice >= 0.40 ? "BOX" : "GP";
             bossMap.put("rewardType", preRewardType);
-            // 보스 타입 결정: 마왕 20%, 대악마 15%, 상급악마 65%
+            // 보스 타입 결정: 카운트업(15%) 우선, 이후 기존 비율
             double bossTypeDice = rand.nextDouble();
             String bossType;
-            if (bossTypeDice < 0.20) {
+            if (bossTypeDice < 0.15) {
+                bossType = COUNTUP_BOSS_TYPE;
+            } else if (participantCount >= 10 && bossTypeDice < 0.32) {
                 bossType = "마왕";
-            } else if (bossTypeDice < 0.35) {
+            } else if (participantCount >= 10 && bossTypeDice < 0.47) {
                 bossType = "대악마";
             } else {
                 bossType = "상급악마";
             }
-            boolean isGreatDemon = "대악마".equals(bossType);
-            boolean isDemonKing  = "마왕".equals(bossType);
+            boolean isGreatDemon  = "대악마".equals(bossType);
+            boolean isDemonKing   = "마왕".equals(bossType);
+            boolean isCountUpBoss = COUNTUP_BOSS_TYPE.equals(bossType);
             bossMap.put("bossType", bossType);
             if (isGreatDemon) {
                 // 대악마 HP: 1200a ~ 1500a 고정 범위
@@ -1114,11 +1147,18 @@ public class BossAttackS3Controller {
                 bossMap.put("defPower",    Math.min(100, (int) bossMap.get("defPower")    * 3));
                 bossMap.put("evadeRate",   Math.min(100, (int) bossMap.get("evadeRate")   * 3));
                 bossMap.put("critDefRate", Math.min(100, (int) bossMap.get("critDefRate") * 3));
+            } else if (isCountUpBoss) {
+                // 카운트업: MAX_HP = 목표 데미지 표시용, CUR_HP=0 으로 별도 INSERT
+                rawHp = COUNTUP_TARGET_HP;
             }
             SP hpSp = SP.fromSp(rawHp);
             bossMap.put("maxHp",    (long) hpSp.getValue());
             bossMap.put("maxHpExt", hpSp.getUnit().isEmpty() ? null : hpSp.getUnit());
-            botS3Service.insertHellBoss(bossMap);
+            if (isCountUpBoss) {
+                botS3Service.insertHellBossCountUp(bossMap);
+            } else {
+                botS3Service.insertHellBoss(bossMap);
+            }
         } catch (Exception e) {
             // 재생성 실패는 무시 (처치 결과 메시지에 영향 없음)
         }
@@ -1216,6 +1256,74 @@ public class BossAttackS3Controller {
         return "";
     }
 
+
+    // =========================================================
+    // 카운트업 보스 1시간 종료 보상: 개인 누적 데미지 기준 독립 지급
+    //   SP = myDamage × 300  (max 1c = 1,000,000,000,000 raw)
+    //   GP = myDamage ÷ 6,000,000  (max 10 GP)
+    // =========================================================
+    private String calcCountUpBossReward(String roomName, String bossStartDate, long totalAccumulated) {
+        StringBuilder msg = new StringBuilder();
+        msg.append("[ ").append(COUNTUP_DISPLAY_NAME).append(" 종료 보상 ]").append(NL);
+
+        List<HashMap<String, Object>> contributors;
+        try {
+            HashMap<String, Object> q = new HashMap<>();
+            q.put("bossStartDate", bossStartDate);
+            contributors = botS3Service.selectHellTop3Contributors(q);
+        } catch (Exception e) {
+            contributors = new ArrayList<>();
+        }
+
+        if (contributors == null || contributors.isEmpty()) {
+            msg.append("참여자가 없어 보상이 지급되지 않았습니다.").append(NL);
+            return msg.toString();
+        }
+
+        msg.append("총 누적 데미지: ").append(SP.fromSp(totalAccumulated))
+           .append(" / 참여자: ").append(contributors.size()).append("명").append(NL).append(NL);
+
+        for (HashMap<String, Object> row : contributors) {
+            String uName   = Objects.toString(row.get("USER_NAME"), "");
+            long myDamage  = ((Number) row.get("SCORE")).longValue();
+
+            // SP: myDamage × 300, cap 1c (1,000,000,000,000 raw)
+            long mySpRaw = Math.min(1_000_000_000_000L, myDamage * 300L);
+            if (mySpRaw < 10_000_000L) mySpRaw = 10_000_000L;
+            SP mySp = SP.fromSp(mySpRaw);
+            try {
+                HashMap<String, Object> pr = new HashMap<>();
+                pr.put("userName", uName);
+                pr.put("roomName", roomName);
+                pr.put("score",    mySp.getValue());
+                pr.put("scoreExt", mySp.getUnit());
+                pr.put("cmd",      "COUNTUP_BOSS_REWARD");
+                botNewService.insertPointRank(pr);
+            } catch (Exception ignore) {}
+
+            // GP: myDamage ÷ 6,000,000, cap 10 GP
+            double myGp = Math.min(10.0, myDamage / 6_000_000.0);
+            if (myGp < 0.1) myGp = 0.1;
+            myGp = Math.floor(myGp * 100) / 100.0;
+            try {
+                HashMap<String, Object> gp = new HashMap<>();
+                gp.put("userName", uName);
+                gp.put("roomName", roomName);
+                gp.put("score",    myGp);
+                gp.put("cmd",      "COUNTUP_BOSS_REWARD_GP");
+                botNewService.insertGpRecord(gp);
+            } catch (Exception ignore) {}
+
+            double gpBalance = 0;
+            try { gpBalance = botNewService.selectGpBalance(uName); } catch (Exception ignore) {}
+
+            msg.append(uName).append(": +").append(mySp).append(" SP, +")
+               .append(String.format("%.2f", myGp)).append(" GP")
+               .append(" (보유 ").append(String.format("%.2f", Math.floor(gpBalance * 100) / 100.0)).append(" GP)").append(NL);
+        }
+
+        return msg.toString();
+    }
 
     // =========================================================
     // 보상: 2% 이상 데미지 기여자 중 등확률 랜덤 지급
@@ -1434,6 +1542,30 @@ public class BossAttackS3Controller {
                 }
             }
 
+            // ── [4] 전체 참여 보상: 당첨 여부와 무관하게 전원 (플래티넘상자 1개 + 0.5GP) ──
+            if (allNames.size() > 0) {
+                msg.append("▶ 전체 참여 보상").append(NL);
+                for (String participant : allNames) {
+                    msg.append("[").append(participant).append("] 플래티넘상자 1개 + 0.5GP").append(NL);
+                }
+                msg.append(NL);
+                for (String participant : allNames) {
+                    try {
+                        HashMap<String, Object> inv = new HashMap<>();
+                        inv.put("userName", participant); inv.put("roomName", roomName);
+                        inv.put("itemId",   93); inv.put("qty", 1);
+                        inv.put("gainType", "DROP_OPEN_P");
+                        botNewService.insertInventoryLogTx(inv);
+                    } catch (Exception e) {}
+                    try {
+                        HashMap<String, Object> gpMap = new HashMap<>();
+                        gpMap.put("userName", participant); gpMap.put("roomName", roomName);
+                        gpMap.put("score",    0.5); gpMap.put("cmd", "BOSS_HELL_PART_GP");
+                        botNewService.insertGpRecord(gpMap);
+                    } catch (Exception e) {}
+                }
+            }
+
         } else {
             // 상급악마: 단일 보상 (20% 아이템 / 40% 상자 / 40% GP)
             String resolvedType  = (preRewardType != null && !preRewardType.isEmpty()) ? preRewardType
@@ -1444,25 +1576,36 @@ public class BossAttackS3Controller {
             msg.append("이번 클리어 보상은 ").append(rewardTypeName).append(" 입니다!").append(NL);
 
             if (isBoxReward) {
-                List<String> boxWinners = pickWinners(qualifiedPool, winnerCount, rand);
+                // 전원 기여도 구간별 지급 (allNames는 score DESC 정렬)
+                int total = allNames.size();
                 Map<String, Integer> boxQtyMap = new LinkedHashMap<>();
-                for (String winner : boxWinners) {
-                    int baseQty = 5 + rand.nextInt(6); // 5~10
-                    boxQtyMap.put(winner, baseQty);
+                for (int idx = 0; idx < total; idx++) {
+                    String name = allNames.get(idx);
+                    int qty;
+                    if (total <= 1) {
+                        qty = 5 + rand.nextInt(6); // 단독 처치: 5~10
+                    } else if (idx < total / 3) {
+                        qty = 5 + rand.nextInt(6); // 상위 33%: 5~10
+                    } else if (idx < total * 2 / 3) {
+                        qty = 2 + rand.nextInt(3); // 중위 33%: 2~4
+                    } else {
+                        qty = 1;                   // 하위 33%: 1
+                    }
+                    boxQtyMap.put(name, qty);
                 }
                 msg.append(NL);
-                for (int w = 0; w < boxWinners.size(); w++) {
-                    String winner = boxWinners.get(w);
-                    msg.append("✨").append(w + 1).append("번 보상: [").append(winner).append("] 지옥의유물상자 ").append(boxQtyMap.get(winner)).append("개").append(NL);
+                for (int w = 0; w < allNames.size(); w++) {
+                    String name = allNames.get(w);
+                    msg.append("✨").append(w + 1).append("번 보상: [").append(name).append("] 지옥의유물상자 ").append(boxQtyMap.get(name)).append("개").append(NL);
                 }
                 msg.append(NL);
-                for (String winner : boxWinners) {
+                for (String name : allNames) {
                     try {
                         HashMap<String, Object> inv = new HashMap<>();
-                        inv.put("userName", winner);
+                        inv.put("userName", name);
                         inv.put("roomName", roomName);
                         inv.put("itemId",   93);
-                        inv.put("qty",      boxQtyMap.get(winner));
+                        inv.put("qty",      boxQtyMap.get(name));
                         inv.put("gainType", "BOSS_HELL");
                         botNewService.insertInventoryLogTx(inv);
                     } catch (Exception e) { /* 지급 실패 무시 */ }
@@ -1592,30 +1735,57 @@ public class BossAttackS3Controller {
                             } catch (Exception ex) { /* 지급 실패 무시 */ }
                         }
                     }
+
+                    // 미당첨자 전원 1GP 지급
+                    Set<String> itemWinnerSet = new java.util.HashSet<>(itemWinners);
+                    List<String> nonWinners = new ArrayList<>();
+                    for (String n : allNames) { if (!itemWinnerSet.contains(n)) nonWinners.add(n); }
+                    if (!nonWinners.isEmpty()) {
+                        msg.append(NL).append("▶ 참여 보상 (미당첨)").append(NL);
+                        for (String n : nonWinners) msg.append("[").append(n).append("] 1GP").append(NL);
+                        msg.append(NL);
+                        for (String n : nonWinners) {
+                            try {
+                                HashMap<String, Object> gpMap = new HashMap<>();
+                                gpMap.put("userName", n); gpMap.put("roomName", roomName);
+                                gpMap.put("score", 1.0); gpMap.put("cmd", "BOSS_HELL_PART_GP");
+                                botNewService.insertGpRecord(gpMap);
+                            } catch (Exception ex) {}
+                        }
+                    }
                 }
 
             } else {
-                // GP 지급
-                if (qualifiedPool.isEmpty()) {
+                // GP 지급: 당첨자 3GP, 미당첨자 1GP
+                if (allNames.isEmpty()) {
                     msg.append("GP 지급 대상 없음").append(NL);
                 } else {
                     List<String> gpWinners = pickWinners(qualifiedPool, winnerCount, rand);
+                    Set<String> gpWinnerSet = new java.util.HashSet<>(gpWinners);
                     msg.append(NL);
-                    Map<String, Double> gpAmtMap = new LinkedHashMap<>();
-                    for (String winner : gpWinners) {
-                        double base = 0.5 + rand.nextInt(6) * 0.1;
-                        gpAmtMap.put(winner, base);
-                    }
                     for (int w = 0; w < gpWinners.size(); w++) {
-                        String winner = gpWinners.get(w);
-                        msg.append("✨").append(w + 1).append("번 보상: [").append(winner).append("] ").append(String.format("%.1f", gpAmtMap.get(winner))).append("GP").append(NL);
+                        msg.append("✨").append(w + 1).append("번 보상: [").append(gpWinners.get(w)).append("] 3GP").append(NL);
+                    }
+                    List<String> gpNonWinners = new ArrayList<>();
+                    for (String n : allNames) { if (!gpWinnerSet.contains(n)) gpNonWinners.add(n); }
+                    if (!gpNonWinners.isEmpty()) {
+                        msg.append(NL).append("▶ 참여 보상 (미당첨)").append(NL);
+                        for (String n : gpNonWinners) msg.append("[").append(n).append("] 1GP").append(NL);
                     }
                     msg.append(NL);
                     for (String winner : gpWinners) {
                         try {
                             HashMap<String, Object> gpMap = new HashMap<>();
                             gpMap.put("userName", winner); gpMap.put("roomName", roomName);
-                            gpMap.put("score",    gpAmtMap.get(winner)); gpMap.put("cmd", "BOSS_HELL_KILL_GP");
+                            gpMap.put("score",    3.0); gpMap.put("cmd", "BOSS_HELL_KILL_GP");
+                            botNewService.insertGpRecord(gpMap);
+                        } catch (Exception ignore) {}
+                    }
+                    for (String n : gpNonWinners) {
+                        try {
+                            HashMap<String, Object> gpMap = new HashMap<>();
+                            gpMap.put("userName", n); gpMap.put("roomName", roomName);
+                            gpMap.put("score",    1.0); gpMap.put("cmd", "BOSS_HELL_PART_GP");
                             botNewService.insertGpRecord(gpMap);
                         } catch (Exception ignore) {}
                     }

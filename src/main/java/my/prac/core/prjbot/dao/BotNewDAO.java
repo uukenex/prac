@@ -200,6 +200,8 @@ public interface BotNewDAO {
     int upgradePendingHellBox(HashMap<String,Object> map);
     int confirmPendingHellBox(String userName);
     int decrementPendingHellBox(String userName);
+    List<HashMap<String,Object>> selectAllPendingHellBoxGrouped(String userName);
+    int confirmAllPendingHellBoxes(String userName);
 
     List<HashMap<String,Object>> selectActiveSetBonuses(@Param("userName") String userName);
 
@@ -331,4 +333,10 @@ public interface BotNewDAO {
     int migrateLastMonthToJobStat();
     int backupOldBattleLog();
     int deleteLastMonthBattleLogBatch(@Param("batchSize") int batchSize);
+
+    // ── 매크로 탐지 ───────────────────────────────────────────────────────────
+    int selectHourlyRealAttackCount(String userName);
+    HashMap<String,Object> selectMacroLock(String userName);
+    int insertMacroLock(HashMap<String,Object> param);
+    int releaseMacroLock(HashMap<String,Object> param);
 }

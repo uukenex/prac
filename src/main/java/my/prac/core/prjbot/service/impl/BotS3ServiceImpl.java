@@ -78,6 +78,26 @@ public class BotS3ServiceImpl implements BotS3Service {
 	}
 
 	@Override
+	public void updateHellBossCountUpTx(HashMap<String, Object> map) throws Exception {
+		botS3DAO.updateHellBossCountUpAdd(map);
+		botS3DAO.insertHellBattleLog(map);
+	}
+
+	@Override
+	public int closeHellBoss(int seq) throws Exception {
+		HashMap<String, Object> p = new HashMap<>();
+		p.put("seq", seq);
+		return botS3DAO.closeHellBoss(p);
+	}
+
+	@Override
+	public void insertHellBossCountUp(HashMap<String, Object> map) throws Exception {
+		if (botS3DAO.insertHellBossCountUp(map) < 1) {
+			throw new Exception("카운트업 보스 생성 실패");
+		}
+	}
+
+	@Override
 	public void saveLastKillMsg(String msg) {
 		CACHED_KILL_MSG = (msg == null ? "" : msg.trim());
 	}
