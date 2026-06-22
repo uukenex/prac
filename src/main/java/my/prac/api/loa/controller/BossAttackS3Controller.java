@@ -754,9 +754,9 @@ public class BossAttackS3Controller {
         boolean isKill = !isCountUp && SP.toBaseValue(newHpSp) <= 0;
         long newHp = isKill ? 0 : SP.toBaseValue(newHpSp);
 
-        // 보스 반격 (유저 최대HP × bossAtkPower% 비례 데미지)
+        // 보스 반격 (유저 최대HP × bossAtkPower% 비례 데미지) — 카운트업 보스는 반격 없음
         int bossAtkApplied = 0;
-        boolean flag_boss_attack = !isKill && !heavensPunishment && Math.random() < bossAtkRate / 100.0;
+        boolean flag_boss_attack = !isCountUp && !isKill && !heavensPunishment && Math.random() < bossAtkRate / 100.0;
         if (flag_boss_attack) {
             int atkPct = ThreadLocalRandom.current().nextInt(BOSS_ATK_POWER_MIN, bossAtkPower + 1);
             bossAtkApplied = Math.max(1, (int)(ctx.hpMax * atkPct / 100.0));
