@@ -73,7 +73,7 @@ public class BossAttackS3Controller {
     static final String COUNTUP_DISPLAY_NAME  = "심연의 군주"; // TODO: 이름 확정 후 수정
     private static final long   COUNTUP_WINDOW_HOURS = 2;
     /** 카운트업 보스 목표 HP (표시용, raw SP 단위) — 100b */
-    private static final long   COUNTUP_TARGET_HP    = 10_000_000_000L;
+    private static final long   COUNTUP_TARGET_HP    = 10_000_000_000_000_000L; // 1d
 
     // ── 대악마 감금스킬 ──
     private static final Map<String, Long> IMPRISONED_UNTIL   = new java.util.concurrent.ConcurrentHashMap<>();
@@ -1015,8 +1015,7 @@ public class BossAttackS3Controller {
             }
             try {
                 long myAcc = botS3Service.selectMyCountUpDmg(userName, bossStartDate);
-                long myTotal = myAcc + (isEvade ? 0L : totalDamage);
-                msg.append("📊 본인 누적 데미지: ").append(SP.fromSp(myTotal)).append(NL);
+                msg.append("📊 본인 누적 데미지: ").append(SP.fromSp(myAcc)).append(NL);
             } catch (Exception ignored) {}
             try {
                 String closeDateStr2 = boss != null && boss.get("CLOSE_DATE") != null ? boss.get("CLOSE_DATE").toString() : "";
@@ -2080,6 +2079,14 @@ public class BossAttackS3Controller {
         bossMap.put("defPower",    randInt(rand, BOSS_DEF_POWER_MIN,  BOSS_DEF_POWER_MAX));
         bossMap.put("evadeRate",   randInt(rand, BOSS_EVADE_RATE_MIN, BOSS_EVADE_RATE_MAX));
         bossMap.put("critDefRate", randInt(rand, BOSS_CRIT_DEF_MIN,   BOSS_CRIT_DEF_MAX));
+        if (isCountUp) {
+            bossMap.put("atkRate",     0);
+            bossMap.put("atkPower",    0);
+            bossMap.put("defRate",     0);
+            bossMap.put("defPower",    0);
+            bossMap.put("evadeRate",   0);
+            bossMap.put("critDefRate", 0);
+        }
         bossMap.put("startDate",   java.time.LocalDateTime.now().format(SPAWN_DATE_FMT));
         bossMap.put("hideRule",    "없음");
         bossMap.put("pattern",     (java.time.LocalDateTime.now().getHour() % 2 == 0) ? "짝수" : "홀수");
