@@ -98,6 +98,11 @@ public class BotS3ServiceImpl implements BotS3Service {
 	}
 
 	@Override
+	public int masterRespawnBossNow() {
+		return botS3DAO.masterRespawnBossNow();
+	}
+
+	@Override
 	public int forceCloseCurrentBoss() {
 		return botS3DAO.forceCloseCurrentBoss();
 	}

@@ -2001,11 +2001,11 @@ public class BossAttackS3Controller {
     public String masterBossRespawn(String room, String sender) {
         if (!"람쥐봇 문의방".equals(room) || !"일어난다람쥐/카단".equals(sender)) return null;
         try {
-            botS3Service.forceCloseCurrentBoss();
-            masterSpawnBoss(null);
-            return "마스터 권한으로 보스가 즉시 재생성되었습니다.";
+            int updated = botS3Service.masterRespawnBossNow();
+            if (updated == 0) return "즉시 등장시킬 보스가 없습니다. (이미 활성화 상태이거나 보스 없음)";
+            return "마스터 권한으로 보스가 즉시 등장합니다.";
         } catch (Exception e) {
-            return "보스 재생성 실패: " + e.getMessage();
+            return "보스 부활 실패: " + e.getMessage();
         }
     }
 

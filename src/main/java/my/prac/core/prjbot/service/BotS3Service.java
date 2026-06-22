@@ -50,6 +50,9 @@ public interface BotS3Service {
 	/** [카운트업 보스] 새 인스턴스 생성 (CUR_HP=0) */
 	void insertHellBossCountUp(HashMap<String, Object> map) throws Exception;
 
+	/** [마스터] 현재 활성 보스 즉시 등장 (INSERT_DATE → SYSDATE) */
+	int masterRespawnBossNow();
+
 	/** [마스터] 현재 활성 보스 강제 종료 */
 	int forceCloseCurrentBoss();
 
