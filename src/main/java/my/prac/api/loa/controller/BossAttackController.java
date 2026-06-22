@@ -4788,8 +4788,12 @@ public class BossAttackController {
 			HashMap<String,Object> macroLock = botNewService.selectMacroLock(s.userName);
 			if (macroLock != null) {
 				String code = Objects.toString(macroLock.get("CODE"), "");
+				int recentWarn = botNewService.countMacroDetectLogLastHour(s.userName);
 				try { botNewService.insertMacroDetectLog(s.userName, code); } catch (Exception ignore) {}
-				return s.userName + "님, 비정상 패턴이 감지되었습니다."+NL+"/매크로아님 " + code + " 를 입력하세요.";
+				if (recentWarn == 0) {
+					return s.userName + "님, 비정상 패턴이 감지되었습니다."+NL+"/매크로아님 " + code + " 를 입력하세요.";
+				}
+				return "";
 			}
 		} catch (Exception ignore) {}
 		s.param1 = Objects.toString(s.map.get("param1"), "");

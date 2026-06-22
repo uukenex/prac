@@ -1026,6 +1026,11 @@ public class BotNewServiceImpl implements BotNewService {
     }
 
     @Override
+    public int countMacroDetectLogLastHour(String userName) {
+        return botNewDAO.countMacroDetectLogLastHour(userName);
+    }
+
+    @Override
     public void insertMacroDetectLog(String userName, String code) {
         HashMap<String,Object> p = new HashMap<>();
         p.put("userName", userName);
