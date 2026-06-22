@@ -398,6 +398,10 @@ public class BossAttackS3Controller {
             bossEvadeRate = Math.max(BOSS_EVADE_RATE_MIN, Math.min(50, bossEvadeRate));
             critDefRate   = Math.max(0,                   Math.min(50, critDefRate));
         }
+        // 헬보스 3종 공격확률 90% 고정 (디버프 발동 시 이후 블록에서 0으로 재설정됨)
+        if ("상급악마".equals(bossDemonType) || "대악마".equals(bossDemonType) || "마왕".equals(bossDemonType)) {
+            bossAtkRate = 90;
+        }
 
         // 보스 아이템 보유 여부: calcUserBattleContext에서 이미 로드된 ctx.ownedBossItems 재사용
         Set<Integer> ownedBoss = ctx.ownedBossItems;
@@ -760,7 +764,15 @@ public class BossAttackS3Controller {
         int bossAtkApplied = 0;
         boolean flag_boss_attack = !isCountUp && !isKill && !heavensPunishment && Math.random() < bossAtkRate / 100.0;
         if (flag_boss_attack) {
-            int atkPct = ThreadLocalRandom.current().nextInt(BOSS_ATK_POWER_MIN, bossAtkPower + 1);
+            int atkPct;
+            if ("상급악마".equals(bossDemonType)) {
+                atkPct = 35 + rand.nextInt(26); // 35~60%
+            } else if ("대악마".equals(bossDemonType) || "마왕".equals(bossDemonType)) {
+                // 60~100%, 100%에 가까울수록 더 잘 나오게 (60% 확률로 85~100, 40% 확률로 60~84)
+                atkPct = rand.nextInt(100) < 60 ? 85 + rand.nextInt(16) : 60 + rand.nextInt(25);
+            } else {
+                atkPct = ThreadLocalRandom.current().nextInt(BOSS_ATK_POWER_MIN, bossAtkPower + 1);
+            }
             bossAtkApplied = Math.max(1, (int)(ctx.hpMax * atkPct / 100.0));
         }
 
