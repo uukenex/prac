@@ -132,7 +132,7 @@ public class BossAttackController {
 	// 직업레벨 시스템 상수
 	private static final int JOB_LV_KILL_BASE   = 5;   // N→N+1 필요 킬 = N * 5 + 3
 	private static final int JOB_LV_KILL_OFFSET = 3;
-	private static final int JOB_MAX_LV         = 100;
+	private static final int JOB_MAX_LV         = 50;
 
 	// 이벤트 플래그
 	/** 레벨업 1+1 이벤트: true 시 레벨업 1회당 추가 1레벨 부여 */
