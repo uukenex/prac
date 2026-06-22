@@ -1011,7 +1011,7 @@ public class BossAttackS3Controller {
                .append(" (").append(String.format("%.1f", accPct)).append("%)").append(NL);
             try {
                 LocalDateTime spawnTime2 = LocalDateTime.parse(bossStartDate, DateTimeFormatter.ofPattern("yyyyMMdd HHmmss"));
-                long remainSecs = java.time.Duration.between(LocalDateTime.now(), spawnTime2.plusHours(COUNTUP_WINDOW_HOURS)).toSeconds();
+                long remainSecs = java.time.Duration.between(LocalDateTime.now(), spawnTime2.plusHours(COUNTUP_WINDOW_HOURS)).getSeconds();
                 if (remainSecs > 0) {
                     msg.append("⏱ 종료까지: ").append(remainSecs / 60).append("분 ").append(remainSecs % 60).append("초").append(NL);
                 }
