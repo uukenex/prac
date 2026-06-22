@@ -834,10 +834,12 @@ public class BossAttackS3Controller {
             } catch (Exception ignored) {}
         }
 
-        // 대악마/마왕 감금스킬 발동: 한 번에 보스 체력 90% 이상 데미지 시
-        if (!isEvade && ("대악마".equals(bossDemonType) || "마왕".equals(bossDemonType))
-                && maxHp > 0 && totalDamage >= (long)(maxHp * 0.9)) {
-            IMPRISONED_UNTIL.put(userName, System.currentTimeMillis() + IMPRISON_DURATION_MS);
+        // 대악마/마왕 감금스킬 발동: 한 번에 보스 체력 90% 이상 데미지 or 한방사망 시
+        if (("대악마".equals(bossDemonType) || "마왕".equals(bossDemonType))) {
+            boolean bigDmg = !isEvade && maxHp > 0 && totalDamage >= (long)(maxHp * 0.9);
+            if (bigDmg || playerDead) {
+                IMPRISONED_UNTIL.put(userName, System.currentTimeMillis() + IMPRISON_DURATION_MS);
+            }
         }
 
         // DB 저장 (HP 업데이트 + 배틀 로그)
