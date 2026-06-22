@@ -71,7 +71,7 @@ public class BossAttackS3Controller {
     /** 카운트업 보스: DB 저장값 / 표시 이름 / 1시간 윈도우 */
     private static final String COUNTUP_BOSS_TYPE    = "카운트업";
     static final String COUNTUP_DISPLAY_NAME  = "심연의 군주"; // TODO: 이름 확정 후 수정
-    private static final long   COUNTUP_WINDOW_HOURS = 1;
+    private static final long   COUNTUP_WINDOW_HOURS = 2;
     /** 카운트업 보스 목표 HP (표시용, raw SP 단위) — 100b */
     private static final long   COUNTUP_TARGET_HP    = 10_000_000_000L;
 
@@ -1323,6 +1323,9 @@ public class BossAttackS3Controller {
         for (HashMap<String, Object> row : contributors) {
             String uName   = Objects.toString(row.get("USER_NAME"), "");
             long myDamage  = ((Number) row.get("SCORE")).longValue();
+            long maxDmg    = row.get("MAX_DMG") != null ? ((Number)row.get("MAX_DMG")).longValue() : 0L;
+            long avgDmg    = row.get("AVG_DMG") != null ? ((Number)row.get("AVG_DMG")).longValue() : 0L;
+            long atkCnt2   = row.get("CNT")     != null ? ((Number)row.get("CNT")).longValue()     : 0L;
 
             // SP: myDamage × 15000 (기존 300의 50배), cap 1c
             long mySpRaw = Math.min(1_000_000_000_000L, myDamage * 15_000L);
@@ -1354,7 +1357,12 @@ public class BossAttackS3Controller {
             double gpBalance = 0;
             try { gpBalance = botNewService.selectGpBalance(uName); } catch (Exception ignore) {}
 
-            msg.append(uName).append(": +").append(mySp).append(" SP, +")
+            msg.append(uName)
+               .append(" | 누적: ").append(SP.fromSp(myDamage))
+               .append(" / 최고: ").append(SP.fromSp(maxDmg))
+               .append(" / 평균: ").append(SP.fromSp(avgDmg))
+               .append("(").append(atkCnt2).append("회)").append(NL)
+               .append("  → +").append(mySp).append(" SP, +")
                .append(String.format("%.2f", myGp)).append(" GP")
                .append(" (보유 ").append(String.format("%.2f", Math.floor(gpBalance * 100) / 100.0)).append(" GP)").append(NL);
         }

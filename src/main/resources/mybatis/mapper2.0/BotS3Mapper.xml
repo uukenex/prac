@@ -207,6 +207,8 @@
 		    SELECT user_name
 		         , count(user_name)  as cnt
 		         , SUM(atk_dmg)      AS score
+		         , MAX(atk_dmg)      AS max_dmg
+		         , ROUND(AVG(atk_dmg)) AS avg_dmg
 		      FROM TBOT_POINT_NEW_BATTLE_LOG
 		     WHERE nightmare_yn  = '2'
 		       AND target_mon_lv = 999
@@ -440,7 +442,7 @@
 		      ,'없음'
 		      ,#{rewardType,  jdbcType=VARCHAR}
 		      ,'카운트업'
-		      ,TO_DATE(#{startDate, jdbcType=VARCHAR},'yyyy-mm-dd hh24:mi:ss') + INTERVAL '1' HOUR
+		      ,TO_DATE(#{startDate, jdbcType=VARCHAR},'yyyy-mm-dd hh24:mi:ss') + INTERVAL '2' HOUR
 		  FROM TBOT_POINT_NEW_BOSS
 	</insert>
 
