@@ -1004,11 +1004,15 @@ public class BossAttackS3Controller {
         } else if (isCountUp) {
             long newAccumulated = hp + (isEvade ? 0L : totalDamage);
             SP accSp = SP.fromSp(newAccumulated);
-            SP targetSp = SP.fromSp(maxHp > 0 ? maxHp : COUNTUP_TARGET_HP);
-            double accPct = maxHp > 0 ? newAccumulated * 100.0 / maxHp : 0;
-            msg.append("📈 누적 데미지: ").append(accSp)
-               .append(" / ").append(targetSp)
-               .append(" (").append(String.format("%.1f", accPct)).append("%)").append(NL);
+            msg.append("📈 전체 누적 데미지: ").append(accSp).append(NL);
+            if (!isEvade && totalDamage > 0) {
+                msg.append("💥 본인 현재 데미지: ").append(SP.fromSp(totalDamage)).append(NL);
+            }
+            try {
+                long myAcc = botS3Service.selectMyCountUpDmg(userName, bossStartDate);
+                long myTotal = myAcc + (isEvade ? 0L : totalDamage);
+                msg.append("📊 본인 누적 데미지: ").append(SP.fromSp(myTotal)).append(NL);
+            } catch (Exception ignored) {}
             try {
                 LocalDateTime spawnTime2 = LocalDateTime.parse(bossStartDate, DateTimeFormatter.ofPattern("yyyyMMdd HHmmss"));
                 long remainSecs = java.time.Duration.between(LocalDateTime.now(), spawnTime2.plusHours(COUNTUP_WINDOW_HOURS)).getSeconds();
@@ -1016,7 +1020,7 @@ public class BossAttackS3Controller {
                     msg.append("⏱ 종료까지: ").append(remainSecs / 60).append("분 ").append(remainSecs % 60).append("초").append(NL);
                 }
             } catch (Exception ignored) {}
-            msg.append("💡 2시간 종료 시 기여도 비례 GP+SP 지급!").append(NL);
+            msg.append("💡 종료까지 개인별 누적데미지에 따른 보상지급").append(NL);
         } else {
             String curHpDisp = SP.fromSp(newHp).toString();
             String maxHpDisp = SP.fromSp(maxHp).toString();
@@ -2134,9 +2138,33 @@ public class BossAttackS3Controller {
         SP hpSp = SP.fromSp(rawHp);
         bossMap.put("maxHp",    (long)hpSp.getValue());
         bossMap.put("maxHpExt", hpSp.getUnit().isEmpty() ? null : hpSp.getUnit());
-
+        // 카운트업은 CUR_HP=0(누적 시작), 나머지는 maxHp로 리셋
+        if (isCountUp) {
+            bossMap.put("curHp",    0L);
+            bossMap.put("curHpExt", null);
+        } else {
+            bossMap.put("curHp",    (long)hpSp.getValue());
+            bossMap.put("curHpExt", hpSp.getUnit().isEmpty() ? null : hpSp.getUnit());
+        }
         botS3Service.masterChangeBossStat(bossMap);
         return bossType;
+    }
+
+    // =========================================================
+    // [마스터] 보스 즉시 종료 + 기존 처치와 동일하게 재생성 (/보스종료)
+    // =========================================================
+    public String masterBossEnd(String room, String sender) {
+        if (!"람쥐봇 문의방".equals(room) || !"일어난다람쥐/카단".equals(sender)) return null;
+        try {
+            HashMap<String, Object> currentBoss = botS3Service.selectHellBoss();
+            if (currentBoss == null) return "현재 활성 보스가 없습니다.";
+            String startDate = Objects.toString(currentBoss.get("START_DATE"), "");
+            botS3Service.forceCloseCurrentBoss();
+            respawnHellBoss(startDate);
+            return "마스터 권한으로 보스가 즉시 종료되었습니다. 새 보스가 재생성됩니다.";
+        } catch (Exception e) {
+            return "보스 종료 실패: " + e.getMessage();
+        }
     }
 
 }

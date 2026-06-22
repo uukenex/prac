@@ -439,6 +439,19 @@
 	</insert>
 
 	<!-- =====================================================
+	     [카운트업] 개인 누적 데미지 조회
+	     ===================================================== -->
+	<select id="selectMyCountUpDmg" parameterType="HashMap" resultType="long">
+		SELECT NVL(SUM(ATK_DMG), 0)
+		  FROM TBOT_POINT_NEW_BATTLE_LOG
+		 WHERE USER_NAME    = #{userName}
+		   AND NIGHTMARE_YN = '2'
+		   AND TARGET_MON_LV = 999
+		   AND ATK_DMG      > 0
+		   AND INSERT_DATE  >= TO_DATE(#{bossStartDate}, 'yyyymmdd hh24miss')
+	</select>
+
+	<!-- =====================================================
 	     [마스터] 현재 활성 보스 강제 종료 (END_YN=1)
 	     ===================================================== -->
 	<update id="forceCloseCurrentBoss">
@@ -462,8 +475,8 @@
 		     , CRIT_DEF_RATE = #{critDefRate, jdbcType=NUMERIC}
 		     , MAX_HP        = #{maxHp,       jdbcType=NUMERIC}
 		     , MAX_HP_EXT    = #{maxHpExt,    jdbcType=VARCHAR}
-		     , CUR_HP        = #{maxHp,       jdbcType=NUMERIC}
-		     , CUR_HP_EXT    = #{maxHpExt,    jdbcType=VARCHAR}
+		     , CUR_HP        = #{curHp,        jdbcType=NUMERIC}
+		     , CUR_HP_EXT    = #{curHpExt,    jdbcType=VARCHAR}
 		     , DEBUFF        = 0
 		     , DEBUFF1       = 0
 		     , DEBUFF2       = 0

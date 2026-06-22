@@ -108,6 +108,14 @@ public class BotS3ServiceImpl implements BotS3Service {
 	}
 
 	@Override
+	public long selectMyCountUpDmg(String userName, String bossStartDate) {
+		HashMap<String, Object> p = new HashMap<>();
+		p.put("userName", userName);
+		p.put("bossStartDate", bossStartDate);
+		return botS3DAO.selectMyCountUpDmg(p);
+	}
+
+	@Override
 	public void saveLastKillMsg(String msg) {
 		CACHED_KILL_MSG = (msg == null ? "" : msg.trim());
 	}

@@ -56,4 +56,7 @@ public interface BotS3Service {
 	/** [마스터] 보스 타입/스탯 변경 (INSERT_DATE 유지) */
 	int masterChangeBossStat(HashMap<String, Object> map);
 
+	/** [카운트업] 개인 누적 데미지 조회 */
+	long selectMyCountUpDmg(String userName, String bossStartDate);
+
 }

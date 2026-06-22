@@ -961,6 +961,9 @@ public class LoaChatController {
 			case "/보스변경":
 				val = bossS3.masterBossChange(roomName, sender, param1 != null ? param1.trim() : "");
 				break;
+			case "/보스종료":
+				val = bossS3.masterBossEnd(roomName, sender);
+				break;
 			case "/ㄱㄱㄱ": case "/ㄱ": case "/R": case "/r":
 				param0="/ㄱ";
 				val = boss.monsterAttack(reqMap);
