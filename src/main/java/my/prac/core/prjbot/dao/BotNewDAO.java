@@ -333,4 +333,10 @@ public interface BotNewDAO {
     int migrateLastMonthToJobStat();
     int backupOldBattleLog();
     int deleteLastMonthBattleLogBatch(@Param("batchSize") int batchSize);
+
+    // ── 매크로 탐지 ───────────────────────────────────────────────────────────
+    int selectHourlyRealAttackCount(String userName);
+    HashMap<String,Object> selectMacroLock(String userName);
+    int insertMacroLock(HashMap<String,Object> param);
+    int releaseMacroLock(HashMap<String,Object> param);
 }

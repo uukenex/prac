@@ -998,4 +998,30 @@ public class BotNewServiceImpl implements BotNewService {
 
         return result.toString();
     }
+
+    @Override
+    public int selectHourlyRealAttackCount(String userName) {
+        return botNewDAO.selectHourlyRealAttackCount(userName);
+    }
+
+    @Override
+    public HashMap<String,Object> selectMacroLock(String userName) {
+        return botNewDAO.selectMacroLock(userName);
+    }
+
+    @Override
+    public int insertMacroLock(String userName, String code) {
+        HashMap<String,Object> p = new HashMap<>();
+        p.put("userName", userName);
+        p.put("code", code);
+        return botNewDAO.insertMacroLock(p);
+    }
+
+    @Override
+    public int releaseMacroLock(String userName, String code) {
+        HashMap<String,Object> p = new HashMap<>();
+        p.put("userName", userName);
+        p.put("code", code);
+        return botNewDAO.releaseMacroLock(p);
+    }
 }

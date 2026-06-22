@@ -939,6 +939,22 @@ public class LoaChatController {
 				val = boss.roulette(reqMap);
 				break;*/
 				
+			case "/매크로아님":
+				param0="/매크로아님";
+				try {
+					String macroCode = param1 != null ? param1.trim() : "";
+					if (macroCode.isEmpty()) {
+						val = "코드를 입력하세요. 예) /매크로아님 AR32FD";
+					} else {
+						int released = botNewService.releaseMacroLock(sender, macroCode);
+						val = released > 0
+							? sender + "님, 인증 완료! 공격이 다시 가능합니다."
+							: sender + "님, 코드가 올바르지 않습니다. 다시 확인해주세요.";
+					}
+				} catch (Exception e) {
+					val = "처리 중 오류가 발생했습니다.";
+				}
+				break;
 			case "/ㄱㄱㄱ": case "/ㄱ": case "/R": case "/r":
 				param0="/ㄱ";
 				val = boss.monsterAttack(reqMap);
