@@ -421,7 +421,8 @@
 		    ,HIDE_RULE
 		    ,PATTERN
 		    ,REWARD_TYPE
-		    ,BOSS_TYPE)
+		    ,BOSS_TYPE
+	    ,CLOSE_DATE)
 		SELECT NVL(MAX(SEQ), 0) + 1
 		      ,TO_DATE(#{startDate, jdbcType=VARCHAR},'yyyy-mm-dd hh24:mi:ss')
 		      ,'0'

@@ -439,7 +439,7 @@ public class BossAttackS3Controller {
         }
 
         // 보스 회피 판정
-        boolean isEvade = !heavensPunishment && (Math.random() < bossEvadeRate / 100.0);
+        boolean isEvade = !heavensPunishment && !isCountUp && (Math.random() < bossEvadeRate / 100.0);
 
         // [7010] 주시자의눈: 회피저지 확률(기본30%, +1=60%)
         String bossEvadeIgnoreMsg = "";
