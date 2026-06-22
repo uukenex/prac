@@ -74,9 +74,6 @@ public class BossAttackS3Controller {
     private static final long   COUNTUP_WINDOW_HOURS = 1;
     /** 카운트업 보스 목표 HP (표시용, raw SP 단위) — 100b */
     private static final long   COUNTUP_TARGET_HP    = 10_000_000_000L;
-    // 카운트업 보스 종료시점 메모리 관리 (현재 SEQ 기준, 30초/공격 단축)
-    private static volatile int  countUpTimerSeq      = -1;
-    private static volatile long countUpTimerReduceSec = 0L;
 
     // ── 대악마 감금스킬 ──
     private static final Map<String, Long> IMPRISONED_UNTIL   = new java.util.concurrent.ConcurrentHashMap<>();
@@ -369,9 +366,10 @@ public class BossAttackS3Controller {
         // 카운트업 보스: 2시간 윈도우 종료 여부 체크
         if (isCountUp && !bossStartDate.isEmpty()) {
             try {
-                LocalDateTime spawnTime = LocalDateTime.parse(bossStartDate, DateTimeFormatter.ofPattern("yyyyMMdd HHmmss"));
-                long reduceSec = (countUpTimerSeq == seq) ? countUpTimerReduceSec : 0L;
-                LocalDateTime closeTime = spawnTime.plusHours(COUNTUP_WINDOW_HOURS).minusSeconds(reduceSec);
+                String closeDateStr = boss != null && boss.get("CLOSE_DATE") != null ? boss.get("CLOSE_DATE").toString() : "";
+                LocalDateTime closeTime = closeDateStr.isEmpty()
+                    ? LocalDateTime.parse(bossStartDate, DateTimeFormatter.ofPattern("yyyyMMdd HHmmss")).plusHours(COUNTUP_WINDOW_HOURS)
+                    : LocalDateTime.parse(closeDateStr, DateTimeFormatter.ofPattern("yyyyMMdd HHmmss"));
                 if (LocalDateTime.now().isAfter(closeTime)) {
                     int closed = botS3Service.closeHellBoss(seq);
                     if (closed > 0) {
@@ -856,8 +854,7 @@ public class BossAttackS3Controller {
                 map.put("rawDmg", isEvade ? 0L : totalDamage);
                 botS3Service.updateHellBossCountUpTx(map);
                 if (!isEvade && totalDamage > 0) {
-                    if (countUpTimerSeq != seq) { countUpTimerSeq = seq; countUpTimerReduceSec = 0L; }
-                    countUpTimerReduceSec += 30L;
+                    try { botS3Service.reduceCountUpCloseDate(); } catch (Exception ignore) {}
                 }
             } else {
                 double newHpDbVal = isKill ? 0.0 : newHpSp.getValue();
@@ -1022,9 +1019,11 @@ public class BossAttackS3Controller {
                 msg.append("📊 본인 누적 데미지: ").append(SP.fromSp(myTotal)).append(NL);
             } catch (Exception ignored) {}
             try {
-                LocalDateTime spawnTime2 = LocalDateTime.parse(bossStartDate, DateTimeFormatter.ofPattern("yyyyMMdd HHmmss"));
-                long _reduceSec2 = (countUpTimerSeq == seq) ? countUpTimerReduceSec : 0L;
-                long remainSecs = java.time.Duration.between(LocalDateTime.now(), spawnTime2.plusHours(COUNTUP_WINDOW_HOURS).minusSeconds(_reduceSec2)).getSeconds();
+                String closeDateStr2 = boss != null && boss.get("CLOSE_DATE") != null ? boss.get("CLOSE_DATE").toString() : "";
+                LocalDateTime closeTime2 = closeDateStr2.isEmpty()
+                    ? LocalDateTime.parse(bossStartDate, DateTimeFormatter.ofPattern("yyyyMMdd HHmmss")).plusHours(COUNTUP_WINDOW_HOURS)
+                    : LocalDateTime.parse(closeDateStr2, DateTimeFormatter.ofPattern("yyyyMMdd HHmmss"));
+                long remainSecs = java.time.Duration.between(LocalDateTime.now(), closeTime2).getSeconds();
                 if (remainSecs > 0) {
                     msg.append("⏱ 종료까지: ").append(remainSecs / 60).append("분 ").append(remainSecs % 60).append("초").append(NL);
                 }

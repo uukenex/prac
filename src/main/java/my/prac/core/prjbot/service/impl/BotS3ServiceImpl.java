@@ -108,6 +108,11 @@ public class BotS3ServiceImpl implements BotS3Service {
 	}
 
 	@Override
+	public void reduceCountUpCloseDate() {
+		botS3DAO.reduceCountUpCloseDate();
+	}
+
+	@Override
 	public long selectMyCountUpDmg(String userName, String bossStartDate) {
 		HashMap<String, Object> p = new HashMap<>();
 		p.put("userName", userName);

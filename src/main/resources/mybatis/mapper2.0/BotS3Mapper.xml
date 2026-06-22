@@ -122,7 +122,8 @@
 		    ,HIDE_RULE
 		    ,PATTERN
 		    ,REWARD_TYPE
-		    ,BOSS_TYPE)
+		    ,BOSS_TYPE
+		    ,CLOSE_DATE)
 		SELECT NVL(MAX(SEQ), 0) + 1
 		      ,TO_DATE(#{startDate, jdbcType=VARCHAR},'yyyy-mm-dd hh24:mi:ss')
 		      ,'0'
@@ -435,8 +436,20 @@
 		      ,'없음'
 		      ,#{rewardType,  jdbcType=VARCHAR}
 		      ,'카운트업'
+		      ,TO_DATE(#{startDate, jdbcType=VARCHAR},'yyyy-mm-dd hh24:mi:ss') + INTERVAL '1' HOUR
 		  FROM TBOT_POINT_NEW_BOSS
 	</insert>
+
+	<!-- =====================================================
+	     [카운트업] 공격마다 CLOSE_DATE 30초 감소
+	     ===================================================== -->
+	<update id="reduceCountUpCloseDate">
+		/* reduceCountUpCloseDate */
+		UPDATE TBOT_POINT_NEW_BOSS
+		   SET CLOSE_DATE = GREATEST(SYSDATE, CLOSE_DATE - NUMTODSINTERVAL(30, 'SECOND'))
+		 WHERE END_YN    = '0'
+		   AND BOSS_TYPE = '카운트업'
+	</update>
 
 		<!-- =====================================================
 	     [카운트업] 개인 누적 데미지 조회
