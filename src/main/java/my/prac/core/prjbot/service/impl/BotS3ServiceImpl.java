@@ -103,6 +103,11 @@ public class BotS3ServiceImpl implements BotS3Service {
 	}
 
 	@Override
+	public int masterChangeBossStat(HashMap<String, Object> map) {
+		return botS3DAO.masterChangeBossStat(map);
+	}
+
+	@Override
 	public void saveLastKillMsg(String msg) {
 		CACHED_KILL_MSG = (msg == null ? "" : msg.trim());
 	}

@@ -443,9 +443,33 @@
 	     ===================================================== -->
 	<update id="forceCloseCurrentBoss">
 		UPDATE TBOT_POINT_NEW_BOSS
-		   SET END_YN   = '1'
+		   SET END_YN    = '1'
 		     , PROC_DATE = SYSDATE
 		 WHERE END_YN = '0'
+	</update>
+
+	<!-- =====================================================
+	     [마스터] 보스 타입/스탯 변경 (INSERT_DATE 유지, HP 리셋)
+	     ===================================================== -->
+	<update id="masterChangeBossStat" parameterType="HashMap">
+		UPDATE TBOT_POINT_NEW_BOSS
+		   SET BOSS_TYPE     = #{bossType,    jdbcType=VARCHAR}
+		     , ATK_RATE      = #{atkRate,     jdbcType=NUMERIC}
+		     , ATK_POWER     = #{atkPower,    jdbcType=NUMERIC}
+		     , DEF_RATE      = #{defRate,     jdbcType=NUMERIC}
+		     , DEF_POWER     = #{defPower,    jdbcType=NUMERIC}
+		     , EVADE_RATE    = #{evadeRate,   jdbcType=NUMERIC}
+		     , CRIT_DEF_RATE = #{critDefRate, jdbcType=NUMERIC}
+		     , MAX_HP        = #{maxHp,       jdbcType=NUMERIC}
+		     , MAX_HP_EXT    = #{maxHpExt,    jdbcType=VARCHAR}
+		     , CUR_HP        = #{maxHp,       jdbcType=NUMERIC}
+		     , CUR_HP_EXT    = #{maxHpExt,    jdbcType=VARCHAR}
+		     , DEBUFF        = 0
+		     , DEBUFF1       = 0
+		     , DEBUFF2       = 0
+		     , PROC_DATE     = SYSDATE
+		 WHERE SEQ = (SELECT MAX(SEQ) FROM TBOT_POINT_NEW_BOSS WHERE END_YN = '0')
+		   AND END_YN = '0'
 	</update>
 
 </mapper>

@@ -62,4 +62,7 @@ public interface BotS3DAO {
 	/** [마스터] 현재 활성 보스 강제 종료 */
 	int forceCloseCurrentBoss();
 
+	/** [마스터] 보스 타입/스탯 변경 (INSERT_DATE 유지) */
+	int masterChangeBossStat(HashMap<String, Object> map);
+
 }
