@@ -5452,16 +5452,16 @@ public class BossAttackController {
 	}
 
 	private String ma_deathCheck(AttackSession s) {
+		// [워록] 처치 실패 자멸: monDmg를 hpCur로 세팅 → 사망 로직 정상 흐름
+		if ("워록".equals(s.job) && s.warlockKillFail) {
+			s.calc.monDmg = s.u.hpCur;
+		}
 		int newHpPreview = Math.max(0, s.u.hpCur - s.calc.monDmg);
 		if (newHpPreview > 0) return null;
 
 		int dealtThisTurn  = Math.max(0, s.calc.atkDmg);
 		int monRemainAfter = Math.max(0, s.monHpRemainBefore - dealtThisTurn);
 
-		// [워록] 처치 실패 자멸: monDmg를 hpCur로 세팅 → 사망 로직 정상 흐름
-		if ("워록".equals(s.job) && s.warlockKillFail) {
-			s.calc.monDmg = s.u.hpCur;
-		}
 		// [자이언트 계열] 불굴 - 사망 시 즉시 부활 + 카운트+5
 		if (isGiantJob(s.job)) {
 		    botNewService.updateUserHpOnlyTx(s.userName, s.roomName, 0);
