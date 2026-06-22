@@ -1950,4 +1950,128 @@ public class BossAttackS3Controller {
         return msg.toString().trim();
     }
 
+    // =========================================================
+    // [마스터] 보스 즉시 재생성 (/보스부활)
+    // =========================================================
+    public String masterBossRespawn(String room, String sender) {
+        if (!"람쥐봇 문의방".equals(room) || !"일어난다람쥐/카단".equals(sender)) return null;
+        try {
+            botS3Service.forceCloseCurrentBoss();
+            masterSpawnBoss(null);
+            return "마스터 권한으로 보스가 즉시 재생성되었습니다.";
+        } catch (Exception e) {
+            return "보스 재생성 실패: " + e.getMessage();
+        }
+    }
+
+    // =========================================================
+    // [마스터] 보스 변경 (/보스변경 [타입])
+    // =========================================================
+    public String masterBossChange(String room, String sender, String bossTypeParam) {
+        if (!"람쥐봇 문의방".equals(room) || !"일어난다람쥐/카단".equals(sender)) return null;
+        String[] validTypes = {"상급악마", "대악마", "마왕", "카운트업", "랜덤"};
+        boolean valid = false;
+        for (String t : validTypes) if (t.equals(bossTypeParam)) { valid = true; break; }
+        if (!valid) return "보스 타입을 확인해주세요. (상급악마/대악마/마왕/카운트업/랜덤)";
+        try {
+            botS3Service.forceCloseCurrentBoss();
+            String forcedType = "랜덤".equals(bossTypeParam) ? null : bossTypeParam;
+            String spawnedType = masterSpawnBoss(forcedType);
+            int bossCode = bossTypeCode(spawnedType);
+            if ("랜덤".equals(bossTypeParam)) {
+                return "마스터 권한으로 보스변경되었습니다(" + bossCode + ")";
+            }
+            return "마스터 권한으로 [" + spawnedType + "] 보스로 변경되었습니다.";
+        } catch (Exception e) {
+            return "보스 변경 실패: " + e.getMessage();
+        }
+    }
+
+    private int bossTypeCode(String bossType) {
+        switch (bossType == null ? "" : bossType) {
+            case "마왕":     return 2;
+            case "대악마":   return 3;
+            case "상급악마": return 4;
+            case "카운트업": return 5;
+            default:        return 0;
+        }
+    }
+
+    /** 지정 타입(null=랜덤)으로 보스 즉시 스폰, 실제 스폰된 타입 반환 */
+    private String masterSpawnBoss(String forcedType) throws Exception {
+        Random rand = new Random();
+        String bossType;
+        if (forcedType != null) {
+            bossType = forcedType;
+        } else {
+            double dice = rand.nextDouble();
+            if (dice < 0.15)      bossType = COUNTUP_BOSS_TYPE;
+            else if (dice < 0.32) bossType = "마왕";
+            else if (dice < 0.47) bossType = "대악마";
+            else                  bossType = "상급악마";
+        }
+        boolean isCountUp    = COUNTUP_BOSS_TYPE.equals(bossType);
+        boolean isGreatDemon = "대악마".equals(bossType);
+        boolean isDemonKing  = "마왕".equals(bossType);
+
+        long rawHp;
+        try {
+            Long avgDmg = botS3Service.selectRecentHellAvgDmg();
+            if (avgDmg != null && avgDmg > 0) {
+                rawHp = avgDmg * (90 + rand.nextInt(23));
+            } else {
+                rawHp = BOSS_MAX_HP_MIN + (long)(rand.nextDouble() * (BOSS_MAX_HP_MAX - BOSS_MAX_HP_MIN + 1));
+            }
+        } catch (Exception e) {
+            rawHp = BOSS_MAX_HP_MIN + (long)(rand.nextDouble() * (BOSS_MAX_HP_MAX - BOSS_MAX_HP_MIN + 1));
+        }
+        rawHp = (long)(rawHp * (2.0 + rand.nextDouble()));
+        rawHp = Math.max(rawHp, 1_000_000L);
+        rawHp = Math.min(rawHp, 3_000_000L);
+
+        HashMap<String, Object> bossMap = new HashMap<>();
+        bossMap.put("atkRate",     randInt(rand, BOSS_ATK_RATE_MIN,   BOSS_ATK_RATE_MAX));
+        bossMap.put("atkPower",    randInt(rand, BOSS_ATK_POWER_MIN,  BOSS_ATK_POWER_MAX));
+        bossMap.put("defRate",     randInt(rand, BOSS_DEF_RATE_MIN,   BOSS_DEF_RATE_MAX));
+        bossMap.put("defPower",    randInt(rand, BOSS_DEF_POWER_MIN,  BOSS_DEF_POWER_MAX));
+        bossMap.put("evadeRate",   randInt(rand, BOSS_EVADE_RATE_MIN, BOSS_EVADE_RATE_MAX));
+        bossMap.put("critDefRate", randInt(rand, BOSS_CRIT_DEF_MIN,   BOSS_CRIT_DEF_MAX));
+        bossMap.put("startDate",   java.time.LocalDateTime.now().format(SPAWN_DATE_FMT));
+        bossMap.put("hideRule",    "없음");
+        bossMap.put("pattern",     (java.time.LocalDateTime.now().getHour() % 2 == 0) ? "짝수" : "홀수");
+        double rwDice = rand.nextDouble();
+        bossMap.put("rewardType",  rwDice >= 0.80 ? "ITEM" : rwDice >= 0.40 ? "BOX" : "GP");
+        bossMap.put("bossType",    bossType);
+
+        if (isGreatDemon) {
+            rawHp = 12_000_000L + (long)(rand.nextDouble() * 3_000_001L);
+            bossMap.put("atkRate",     Math.min(100, (int)bossMap.get("atkRate")     * 3));
+            bossMap.put("atkPower",    Math.min(100, (int)bossMap.get("atkPower")    * 3));
+            bossMap.put("defRate",     Math.min(100, (int)bossMap.get("defRate")     * 3));
+            bossMap.put("defPower",    Math.min(100, (int)bossMap.get("defPower")    * 3));
+            bossMap.put("evadeRate",   Math.min(100, (int)bossMap.get("evadeRate")   * 3));
+            bossMap.put("critDefRate", Math.min(100, (int)bossMap.get("critDefRate") * 3));
+        } else if (isDemonKing) {
+            rawHp = 90_000_000L + (long)(rand.nextDouble() * 20_000_001L);
+            bossMap.put("atkRate",     Math.min(100, (int)bossMap.get("atkRate")     * 3));
+            bossMap.put("atkPower",    Math.min(100, (int)bossMap.get("atkPower")    * 3));
+            bossMap.put("defRate",     Math.min(100, (int)bossMap.get("defRate")     * 3));
+            bossMap.put("defPower",    Math.min(100, (int)bossMap.get("defPower")    * 3));
+            bossMap.put("evadeRate",   Math.min(100, (int)bossMap.get("evadeRate")   * 3));
+            bossMap.put("critDefRate", Math.min(100, (int)bossMap.get("critDefRate") * 3));
+        } else if (isCountUp) {
+            rawHp = COUNTUP_TARGET_HP;
+        }
+        SP hpSp = SP.fromSp(rawHp);
+        bossMap.put("maxHp",    (long)hpSp.getValue());
+        bossMap.put("maxHpExt", hpSp.getUnit().isEmpty() ? null : hpSp.getUnit());
+
+        if (isCountUp) {
+            botS3Service.insertHellBossCountUp(bossMap);
+        } else {
+            botS3Service.insertHellBoss(bossMap);
+        }
+        return bossType;
+    }
+
 }

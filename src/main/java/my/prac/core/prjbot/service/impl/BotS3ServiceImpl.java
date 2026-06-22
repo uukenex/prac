@@ -98,6 +98,11 @@ public class BotS3ServiceImpl implements BotS3Service {
 	}
 
 	@Override
+	public int forceCloseCurrentBoss() {
+		return botS3DAO.forceCloseCurrentBoss();
+	}
+
+	@Override
 	public void saveLastKillMsg(String msg) {
 		CACHED_KILL_MSG = (msg == null ? "" : msg.trim());
 	}

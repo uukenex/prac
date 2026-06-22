@@ -955,6 +955,12 @@ public class LoaChatController {
 					val = "처리 중 오류가 발생했습니다.";
 				}
 				break;
+			case "/보스부활":
+				val = bossS3.masterBossRespawn(room, sender);
+				break;
+			case "/보스변경":
+				val = bossS3.masterBossChange(room, sender, param1 != null ? param1.trim() : "");
+				break;
 			case "/ㄱㄱㄱ": case "/ㄱ": case "/R": case "/r":
 				param0="/ㄱ";
 				val = boss.monsterAttack(reqMap);

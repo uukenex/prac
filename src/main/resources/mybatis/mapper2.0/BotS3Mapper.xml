@@ -438,4 +438,14 @@
 		  FROM TBOT_POINT_NEW_BOSS
 	</insert>
 
+	<!-- =====================================================
+	     [마스터] 현재 활성 보스 강제 종료 (END_YN=1)
+	     ===================================================== -->
+	<update id="forceCloseCurrentBoss">
+		UPDATE TBOT_POINT_NEW_BOSS
+		   SET END_YN   = '1'
+		     , PROC_DATE = SYSDATE
+		 WHERE END_YN = '0'
+	</update>
+
 </mapper>
