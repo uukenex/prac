@@ -956,10 +956,10 @@ public class LoaChatController {
 				}
 				break;
 			case "/보스부활":
-				val = bossS3.masterBossRespawn(room, sender);
+				val = bossS3.masterBossRespawn(roomName, sender);
 				break;
 			case "/보스변경":
-				val = bossS3.masterBossChange(room, sender, param1 != null ? param1.trim() : "");
+				val = bossS3.masterBossChange(roomName, sender, param1 != null ? param1.trim() : "");
 				break;
 			case "/ㄱㄱㄱ": case "/ㄱ": case "/R": case "/r":
 				param0="/ㄱ";
