@@ -278,4 +278,10 @@ public interface BotNewService {
     int migrateLastMonthToJobStat();
     /** 매월 5일 배치: 전월 BATTLE_JOB 이관 + battle_log 삭제 */
     String runMonthlyBattleLogJob();
+
+    // ── 매크로 탐지 ───────────────────────────────────────────────────────────
+    int selectHourlyRealAttackCount(String userName);
+    HashMap<String,Object> selectMacroLock(String userName);
+    int insertMacroLock(String userName, String code);
+    int releaseMacroLock(String userName, String code);
 }

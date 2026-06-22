@@ -4755,6 +4755,9 @@ public class BossAttackController {
 		int warlockHitCount = 1;
 		boolean warlockMultiHit = false;
 		boolean warlockKillFail = false;
+		int warlockFailHitNo  = 0; // 자멸 실패한 타수 (1~N)
+		int warlockFailMonHp  = 0; // 실패 시점 몬스터 최대체력
+		int warlockFailDmg    = 0; // 실패 시점 데미지
 		List<DamageOutcome>  warlockExtraDmgs  = new ArrayList<>();
 		List<AttackCalc>     warlockExtraCalcs = new ArrayList<>();
 		List<Resolve>        warlockExtraRes   = new ArrayList<>();
@@ -4780,12 +4783,14 @@ public class BossAttackController {
 		if ("람쥐봇 문의방".equals(s.roomName) && !s.master)
 			return "문의방에서는 불가능합니다.";
 
-		/*
-		HashMap<String,Object> lockParam = botNewService.lockMacroUser(s.userName);
-		int lockCode = (Integer) lockParam.get("outCode");
-		if (lockCode == 1 || lockCode == 2)
-			return "공격불가 상태입니다 code:" + lockParam.get("outMsg");
-		 */
+		// 매크로 잠금 체크
+		try {
+			HashMap<String,Object> macroLock = botNewService.selectMacroLock(s.userName);
+			if (macroLock != null) {
+				String code = Objects.toString(macroLock.get("CODE"), "");
+				return s.userName + "님, 비정상 패턴이 감지되었습니다.\n/매크로아님 " + code + " 를 입력하세요.";
+			}
+		} catch (Exception ignore) {}
 		s.param1 = Objects.toString(s.map.get("param1"), "");
 		return null;
 	}
@@ -5281,6 +5286,9 @@ public class BossAttackController {
 		// 1타 처치 실패 시 즉시 자멸
 		if (!s.willKill) {
 			s.warlockKillFail = true;
+			s.warlockFailHitNo = 1;
+			s.warlockFailMonHp = s.monMaxHp;
+			s.warlockFailDmg   = s.calc != null ? s.calc.atkDmg : 0;
 			return;
 		}
 		// 2~N타 순서대로 계산; 타마다 몬스터 재선택(다크/빛 재롤) → 처치 실패 시 자멸
@@ -5329,6 +5337,9 @@ public class BossAttackController {
 				if (!extraDmg.willKill) {
 					// 처치 실패 → 자멸, 이전 성공 타 모두 취소
 					s.warlockKillFail = true;
+					s.warlockFailHitNo = i + 1; // 1-indexed (i=1 → 2타)
+					s.warlockFailMonHp = hitMonHp;
+					s.warlockFailDmg   = extraDmg.calc != null ? extraDmg.calc.atkDmg : 0;
 					s.warlockExtraDmgs.clear();
 					s.warlockExtraCalcs.clear();
 					return;
@@ -5891,6 +5902,12 @@ public class BossAttackController {
 		if (s.warlockMultiHit) {
 			if (s.warlockKillFail) {
 				bot.append(NL).append("[워록] 콤보 처치 실패! 자멸 처리됩니다.");
+				if (s.warlockFailHitNo > 0) {
+					String mName = (s.m != null) ? s.m.monName : "몬스터";
+					bot.append(NL).append("  → ").append(s.warlockFailHitNo).append("타에서 실패")
+					   .append(" | ").append(mName).append(" 체력: ").append(formatWan(s.warlockFailMonHp))
+					   .append(" / 내 데미지: ").append(formatWan(s.warlockFailDmg));
+				}
 			} else {
 				for (int _wi = 0; _wi < s.warlockKillMsgs.size(); _wi++) {
 					bot.append(NL).append("⚔️[").append(_wi + 2).append("타] 데미지: ").append(formatWan(s.warlockExtraCalcs.get(_wi).atkDmg));
@@ -5951,7 +5968,25 @@ public class BossAttackController {
 			msg += NL + ALL_SEE_STR + NL + detailOut.toString();
 		}
 
+		// 매크로 탐지: 실공격(exp>0) 기록 시 시간당 횟수 체크
+		try {
+			if (s.res != null && s.res.gainExp > 0) {
+				int hourlyCnt = botNewService.selectHourlyRealAttackCount(s.userName);
+				if (hourlyCnt >= 20) {
+					HashMap<String,Object> existLock = botNewService.selectMacroLock(s.userName);
+					if (existLock == null) {
+						String code = generateMacroCode();
+						botNewService.insertMacroLock(s.userName, code);
+					}
+				}
+			}
+		} catch (Exception ignore) {}
+
 		return msg;
+	}
+
+	private static String generateMacroCode() {
+		return String.format("%03d", new java.util.Random().nextInt(1000));
 	}
 
 	// ─ [COMPACT] 사망 축약 메시지 래퍼 ───────────────────────────────
