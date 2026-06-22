@@ -438,35 +438,6 @@
 		  FROM TBOT_POINT_NEW_BOSS
 	</insert>
 
-	<!-- =====================================================
-	     [카운트업] 공격 시 INSERT_DATE 30초 감소 (종료 시각 앞당기기)
-	     floor: SYSDATE-3600초 (이 이하로 내려가면 즉시 만료)
-	     ===================================================== -->
-	<update id="reduceCountUpBossTimer">
-		/* reduceCountUpBossTimer */
-		UPDATE TBOT_POINT_NEW_BOSS
-		   SET INSERT_DATE = GREATEST(
-		           SYSDATE - NUMTODSINTERVAL(3600, 'SECOND'),
-		           INSERT_DATE - NUMTODSINTERVAL(30, 'SECOND')
-		       )
-		 WHERE END_YN    = '0'
-		   AND BOSS_TYPE = '카운트업'
-	</update>
-
-	<!-- =====================================================
-	     [카운트업] 보스 세션 공격 통계 (총 횟수, 첫/마지막 공격 시간)
-	     ===================================================== -->
-	<select id="selectCountUpBossStats" parameterType="HashMap" resultType="HashMap">
-		SELECT COUNT(*)                                 AS ATK_CNT,
-		       MIN(INSERT_DATE)                         AS FIRST_ATK,
-		       MAX(INSERT_DATE)                         AS LAST_ATK
-		  FROM TBOT_POINT_NEW_BATTLE_LOG
-		 WHERE NIGHTMARE_YN  = '2'
-		   AND TARGET_MON_LV = 999
-		   AND ATK_DMG       > 0
-		   AND INSERT_DATE   >= TO_DATE(#{bossStartDate}, 'yyyymmdd hh24miss')
-	</select>
-
 		<!-- =====================================================
 	     [카운트업] 개인 누적 데미지 조회
 	     ===================================================== -->

@@ -56,12 +56,6 @@ public interface BotS3Service {
 	/** [마스터] 보스 타입/스탯 변경 (INSERT_DATE 유지) */
 	int masterChangeBossStat(HashMap<String, Object> map);
 
-	/** [카운트업] 공격마다 INSERT_DATE 30초 감소 */
-	void reduceCountUpBossTimer();
-
-	/** [카운트업] 보스 세션 공격 통계 (총 횟수, 첫/마지막 공격 시간) */
-	HashMap<String, Object> selectCountUpBossStats(String bossStartDate);
-
 	/** [카운트업] 개인 누적 데미지 조회 */
 	long selectMyCountUpDmg(String userName, String bossStartDate);
 

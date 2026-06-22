@@ -108,18 +108,6 @@ public class BotS3ServiceImpl implements BotS3Service {
 	}
 
 	@Override
-	public void reduceCountUpBossTimer() {
-		botS3DAO.reduceCountUpBossTimer();
-	}
-
-	@Override
-	public HashMap<String, Object> selectCountUpBossStats(String bossStartDate) {
-		HashMap<String, Object> p = new HashMap<>();
-		p.put("bossStartDate", bossStartDate);
-		return botS3DAO.selectCountUpBossStats(p);
-	}
-
-	@Override
 	public long selectMyCountUpDmg(String userName, String bossStartDate) {
 		HashMap<String, Object> p = new HashMap<>();
 		p.put("userName", userName);
