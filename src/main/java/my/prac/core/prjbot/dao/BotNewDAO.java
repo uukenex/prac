@@ -339,4 +339,5 @@ public interface BotNewDAO {
     HashMap<String,Object> selectMacroLock(String userName);
     int insertMacroLock(HashMap<String,Object> param);
     int releaseMacroLock(HashMap<String,Object> param);
+    int insertMacroDetectLog(HashMap<String,Object> param);
 }

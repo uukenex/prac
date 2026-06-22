@@ -2703,4 +2703,11 @@
            AND LOCKED_YN = '1'
     </update>
 
+    <!-- 매크로 잠금 중 공격 시도 이력 INSERT (PK 없음, 이력 누적) -->
+    <insert id="insertMacroDetectLog" parameterType="hashmap">
+        /* insertMacroDetectLog */
+        INSERT INTO TBOT_MACRO_DETECT_LOG (USER_NAME, CODE, INSERT_DATE)
+        VALUES (#{userName}, #{code}, SYSDATE)
+    </insert>
+
 </mapper>

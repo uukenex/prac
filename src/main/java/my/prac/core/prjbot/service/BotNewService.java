@@ -284,4 +284,5 @@ public interface BotNewService {
     HashMap<String,Object> selectMacroLock(String userName);
     int insertMacroLock(String userName, String code);
     int releaseMacroLock(String userName, String code);
+    void insertMacroDetectLog(String userName, String code);
 }

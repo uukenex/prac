@@ -1024,4 +1024,12 @@ public class BotNewServiceImpl implements BotNewService {
         p.put("code", code);
         return botNewDAO.releaseMacroLock(p);
     }
+
+    @Override
+    public void insertMacroDetectLog(String userName, String code) {
+        HashMap<String,Object> p = new HashMap<>();
+        p.put("userName", userName);
+        p.put("code", code);
+        botNewDAO.insertMacroDetectLog(p);
+    }
 }
