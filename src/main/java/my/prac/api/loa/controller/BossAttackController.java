@@ -5343,11 +5343,11 @@ public class BossAttackController {
 				if (s.hell && s.hellKillCountForThisMon >= 100 && ThreadLocalRandom.current().nextDouble() < 0.10) {
 					hitShadow = true; hitLucky = false; hitDark = false; hitGray = false;
 				}
-				// 다크 몬스터면 HP 스케일 적용
+				// 다크 몬스터면 HP 스케일 적용 (applyDarkMonsterScale과 동일 기준)
 				if (hitDark) {
 					if      (s.m.monNo < 15)  hitMonHp = hitMonHp * 3;
 					else if (s.m.monNo >= 25) hitMonHp = (int)Math.round(hitMonHp * 1.75);
-					else                      hitMonHp = hitMonHp * 2;
+					else                      hitMonHp = (int)Math.round(hitMonHp * 2.50);
 				}
 				// 새 몬스터 전체 HP로 calculateDamage
 				DamageOutcome extraDmg = calculateDamage(s.u, s.m, s.flags,
