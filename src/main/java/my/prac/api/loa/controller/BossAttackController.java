@@ -5967,6 +5967,21 @@ public class BossAttackController {
 		if (s.thiefDoubleAtk && s.res2 != null && s.res2.gainExp > 0) {
 			s.res.gainExp += s.res2.gainExp;
 		}
+		// [워록 멀티킷] top EXP 제거: buildAttackMessage EXP 줄 스킵, 1타 EXP는 bot에 표시
+		if (s.warlockMultiHit && !s.warlockKillFail) {
+			if (s.up != null && s.u.lv < 999) {
+				double _g1 = s.up.afterExpNext > 0 ? (double)s.up.gainedExp / s.up.afterExpNext * 100 : 0;
+				double _c1 = s.up.afterExpNext > 0 ? (double)s.up.afterExpCur / s.up.afterExpNext * 100 : 0;
+				bot.insert(0, ("EXP +" + formatKorNum(s.up.gainedExp)
+					+ "(" + String.format("%.1f", _g1) + "%)"
+					+ "[" + String.format("%.1f", _c1) + "%/100%]"
+					+ (s.up.levelUpCount > 0 ? " ✨Lv" + s.up.beforeLv + "→" + s.up.afterLv : "") + NL));
+			} else if (s.up != null) {
+				bot.insert(0, "EXP +" + formatKorNum(s.up.gainedExp) + " [누적 " + formatKorNum(s.up.afterExpCur) + "]" + NL);
+			}
+			s.res.gainExp = 0;
+			s.up = null;
+		}
 		String msg = buildAttackMessage(s.userName, s.u, s.m, s.flags, s.calc, s.res, s.up,
 				s.monHpRemainBefore, s.monMaxHp, s.effAtkMin, s.effAtkMax, s.hpMax,
 				mid.toString(), hunter.toString(), bot.toString(), s.nightmare, s.ctx, detailOut);
@@ -8824,7 +8839,8 @@ public class BossAttackController {
 	        }
 	    }
 
-	    // EXP (항상 main)
+	    // EXP (gainExp > 0 일 때만 표시)
+	    if (res.gainExp > 0) {
 	    if (u.lv >= 999) {
 	        sb.append("✨ EXP +").append(formatKorNum(res.gainExp))
 	          .append(" [누적 ").append(formatKorNum(u.expCur)).append("]").append(NL);
@@ -8837,6 +8853,7 @@ public class BossAttackController {
 	          .append(NL);
 	    }
 
+	    } // end gainExp > 0
 	    // 레벨업
 	    if (up != null && up.levelUpCount > 0) {
 	        sb.append(NL).append("★★★ ✨레벨업!✨ ★★★").append(NL);
