@@ -1357,12 +1357,12 @@ public class BossAttackS3Controller {
             double gpBalance = 0;
             try { gpBalance = botNewService.selectGpBalance(uName); } catch (Exception ignore) {}
 
-            msg.append(uName)
-               .append(" | 누적: ").append(SP.fromSp(myDamage))
-               .append(" / 최고: ").append(SP.fromSp(maxDmg))
-               .append(" / 평균: ").append(SP.fromSp(avgDmg))
+            msg.append(uName).append(NL)
+               .append("📈 누적: ").append(SP.fromSp(myDamage))
+               .append(" | 💥 최고: ").append(SP.fromSp(maxDmg))
+               .append(" | 🎯 평균: ").append(SP.fromSp(avgDmg))
                .append("(").append(atkCnt2).append("회)").append(NL)
-               .append("  → +").append(mySp).append(" SP, +")
+               .append("🎁 +").append(mySp).append(" SP, +")
                .append(String.format("%.2f", myGp)).append(" GP")
                .append(" (보유 ").append(String.format("%.2f", Math.floor(gpBalance * 100) / 100.0)).append(" GP)").append(NL);
         }
