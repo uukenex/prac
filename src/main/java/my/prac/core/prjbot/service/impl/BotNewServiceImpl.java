@@ -1005,8 +1005,11 @@ public class BotNewServiceImpl implements BotNewService {
     }
 
     @Override
-    public HashMap<String,Object> selectMacroDetectRecentHour(String userName) {
-        return botNewDAO.selectMacroDetectRecentHour(userName);
+    public HashMap<String,Object> selectMacroDetectRecentHour(String userName, int hours) {
+        HashMap<String,Object> p = new HashMap<>();
+        p.put("userName", userName);
+        p.put("hours", hours);
+        return botNewDAO.selectMacroDetectRecentHour(p);
     }
 
     @Override
@@ -1026,8 +1029,11 @@ public class BotNewServiceImpl implements BotNewService {
     }
 
     @Override
-    public int countMacroDetectLogLastHour(String userName) {
-        return botNewDAO.countMacroDetectLogLastHour(userName);
+    public int countMacroDetectLogLastHour(String userName, int hours) {
+        HashMap<String,Object> p = new HashMap<>();
+        p.put("userName", userName);
+        p.put("hours", hours);
+        return botNewDAO.countMacroDetectLogLastHour(p);
     }
 
     @Override

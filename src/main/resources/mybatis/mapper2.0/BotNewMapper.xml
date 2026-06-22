@@ -2671,13 +2671,13 @@
     </select>
 
     <!-- 1시간 내 매크로 등록/해제 이력 조회 (신규 잠금 여부 판단용) -->
-    <select id="selectMacroDetectRecentHour" parameterType="String" resultType="hashmap">
+    <select id="selectMacroDetectRecentHour" parameterType="hashmap" resultType="hashmap">
         /* selectMacroDetectRecentHour */
         SELECT USER_NAME, CODE, LOCKED_YN, LOCK_DATE, UNLOCK_DATE
           FROM TBOT_MACRO_DETECT
          WHERE USER_NAME = #{userName}
-           AND (LOCK_DATE >= SYSDATE - 1/24
-                OR (UNLOCK_DATE IS NOT NULL AND UNLOCK_DATE >= SYSDATE - 1/24))
+           AND (LOCK_DATE >= SYSDATE - #{hours}/24
+                OR (UNLOCK_DATE IS NOT NULL AND UNLOCK_DATE >= SYSDATE - #{hours}/24))
     </select>
 
     <!-- 매크로 신규 잠금 MERGE (이미 잠금이 아닌 경우에만 갱신) -->
@@ -2705,12 +2705,12 @@
     </update>
 
     <!-- 매크로 잠금 중 최근 1시간 내 경고 발송 여부 -->
-    <select id="countMacroDetectLogLastHour" parameterType="String" resultType="int">
+    <select id="countMacroDetectLogLastHour" parameterType="hashmap" resultType="int">
         /* countMacroDetectLogLastHour */
         SELECT COUNT(*)
           FROM TBOT_MACRO_DETECT_LOG
          WHERE USER_NAME  = #{userName}
-           AND INSERT_DATE >= SYSDATE - 1/24
+           AND INSERT_DATE >= SYSDATE - #{hours}/24
     </select>
 
     <!-- 매크로 잠금 중 공격 시도 이력 INSERT (PK 없음, 이력 누적) -->

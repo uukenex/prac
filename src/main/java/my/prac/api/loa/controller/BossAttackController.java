@@ -4786,33 +4786,30 @@ public class BossAttackController {
 		// 매크로 탐지 통합 체크 (22시~08시, 부캐 제외, 20회+)
 		try {
 			int hour = java.time.LocalTime.now().getHour();
-			boolean isMacroTime = (hour >= 22 || hour < 8);
-			if (isMacroTime) {
-				List<String> altChars = botNewService.selectAltCharList();
-				boolean isAlt = altChars != null && altChars.contains(s.userName);
-				if (!isAlt) {
-					int hourlyCnt = botNewService.selectHourlyRealAttackCount(s.userName);
-					if (hourlyCnt >= 20) {
-						HashMap<String,Object> recent = botNewService.selectMacroDetectRecentHour(s.userName);
-						if (recent == null) {
-							// 1시간 내 이력 없음 → 신규 잠금
-							String code = generateMacroCode();
-							botNewService.insertMacroLock(s.userName, code);
-							return s.userName + "님, 비정상 패턴이 감지되었습니다."+NL+"/매크로아님 " + code + " 를 입력하세요.";
-						} else {
-							String lockedYn = Objects.toString(recent.get("LOCKED_YN"), "0");
-							if ("1".equals(lockedYn)) {
-								// 잠금 중 → 로그 적재 + 경고(1시간 1회)
-								String code = Objects.toString(recent.get("CODE"), "");
-								int recentWarn = botNewService.countMacroDetectLogLastHour(s.userName);
-								try { botNewService.insertMacroDetectLog(s.userName, code); } catch (Exception ig) {}
-								if (recentWarn == 0) {
-									return s.userName + "님, 비정상 패턴이 감지되었습니다."+NL+"/매크로아님 " + code + " 를 입력하세요.";
-								}
-								return "";
+			boolean isNight = (hour >= 22 || hour < 8);
+			int macroHours = isNight ? 1 : 2;
+			List<String> altChars = botNewService.selectAltCharList();
+			boolean isAlt = altChars != null && altChars.contains(s.userName);
+			if (!isAlt) {
+				int hourlyCnt = botNewService.selectHourlyRealAttackCount(s.userName);
+				if (hourlyCnt >= 20) {
+					HashMap<String,Object> recent = botNewService.selectMacroDetectRecentHour(s.userName, macroHours);
+					if (recent == null) {
+						String code = generateMacroCode();
+						botNewService.insertMacroLock(s.userName, code);
+						return s.userName + "님, 비정상 패턴이 감지되었습니다."+NL+"/매크로아님 " + code + " 를 입력하세요.";
+					} else {
+						String lockedYn = Objects.toString(recent.get("LOCKED_YN"), "0");
+						if ("1".equals(lockedYn)) {
+							String code = Objects.toString(recent.get("CODE"), "");
+							int recentWarn = botNewService.countMacroDetectLogLastHour(s.userName, macroHours);
+							try { botNewService.insertMacroDetectLog(s.userName, code); } catch (Exception ig) {}
+							if (recentWarn == 0) {
+								return s.userName + "님, 비정상 패턴이 감지되었습니다."+NL+"/매크로아님 " + code + " 를 입력하세요.";
 							}
-							// LOCKED_YN=0: 최근 해제 → 유예 허용
+							return "";
 						}
+						// LOCKED_YN=0: 최근 해제 → 유예 허용
 					}
 				}
 			}
