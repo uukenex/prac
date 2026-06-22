@@ -1162,6 +1162,12 @@ public class BossAttackS3Controller {
             } else if (isCountUpBoss) {
                 // 카운트업: MAX_HP = 목표 데미지 표시용, CUR_HP=0 으로 별도 INSERT
                 rawHp = COUNTUP_TARGET_HP;
+                bossMap.put("atkRate",     0);
+                bossMap.put("atkPower",    0);
+                bossMap.put("defRate",     0);
+                bossMap.put("defPower",    0);
+                bossMap.put("evadeRate",   0);
+                bossMap.put("critDefRate", 0);
             }
             SP hpSp = SP.fromSp(rawHp);
             bossMap.put("maxHp",    (long) hpSp.getValue());
@@ -2091,6 +2097,12 @@ public class BossAttackS3Controller {
             bossMap.put("critDefRate", Math.min(100, (int)bossMap.get("critDefRate") * 3));
         } else if (isCountUp) {
             rawHp = COUNTUP_TARGET_HP;
+                bossMap.put("atkRate",     0);
+                bossMap.put("atkPower",    0);
+                bossMap.put("defRate",     0);
+                bossMap.put("defPower",    0);
+                bossMap.put("evadeRate",   0);
+                bossMap.put("critDefRate", 0);
         }
         SP hpSp = SP.fromSp(rawHp);
         bossMap.put("maxHp",    (long)hpSp.getValue());
@@ -2161,6 +2173,12 @@ public class BossAttackS3Controller {
             bossMap.put("critDefRate", Math.min(100, (int)bossMap.get("critDefRate") * 3));
         } else if (isCountUp) {
             rawHp = COUNTUP_TARGET_HP;
+                bossMap.put("atkRate",     0);
+                bossMap.put("atkPower",    0);
+                bossMap.put("defRate",     0);
+                bossMap.put("defPower",    0);
+                bossMap.put("evadeRate",   0);
+                bossMap.put("critDefRate", 0);
         }
         SP hpSp = SP.fromSp(rawHp);
         bossMap.put("maxHp",    (long)hpSp.getValue());
