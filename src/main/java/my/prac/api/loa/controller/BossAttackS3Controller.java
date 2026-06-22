@@ -363,7 +363,7 @@ public class BossAttackS3Controller {
             } catch (Exception ignored) {}
         }
 
-        // 카운트업 보스: 2시간 윈도우 종료 여부 체크
+        // 카운트업 보스: 1시간 윈도우 종료 여부 체크
         if (isCountUp && !bossStartDate.isEmpty()) {
             try {
                 LocalDateTime spawnTime = LocalDateTime.parse(bossStartDate, DateTimeFormatter.ofPattern("yyyyMMdd HHmmss"));
@@ -374,7 +374,7 @@ public class BossAttackS3Controller {
                         String rewardMsg = calcCountUpBossReward(roomName, bossStartDate, hp);
                         botS3Service.saveLastKillMsg(rewardMsg);
                         respawnHellBoss(bossStartDate);
-                        return "[" + COUNTUP_DISPLAY_NAME + "] ⌛ 2시간 윈도우가 종료되었습니다!" + NL
+                        return "[" + COUNTUP_DISPLAY_NAME + "] ⌛ 1시간 윈도우가 종료되었습니다!" + NL
                                 + rewardMsg + NL + NL
                                 + "새로운 보스가 소환됩니다!";
                     } else {
@@ -715,8 +715,13 @@ public class BossAttackS3Controller {
                 totalDamage *= 2L;
                 maWangMulMsg += "⚔️ [용사 특권] 추가 ×2 적용: " + before2 + " → " + totalDamage + NL;
             }
+        } else if (isCountUp) {
+            // 카운트업: 10배 데미지 (마왕과 동일, 허수아비이므로 반격 없음)
+            long beforeMul = totalDamage;
+            totalDamage *= 10L;
+            maWangMulMsg = "⚔️ [" + COUNTUP_DISPLAY_NAME + "] 데미지 ×10 적용: " + beforeMul + " → " + totalDamage + NL;
         }
-        
+
         // [7012] 도사 버프 적용 (보스전)
         String dosaBossBuffMsg = "";
         {
@@ -754,9 +759,9 @@ public class BossAttackS3Controller {
         boolean isKill = !isCountUp && SP.toBaseValue(newHpSp) <= 0;
         long newHp = isKill ? 0 : SP.toBaseValue(newHpSp);
 
-        // 보스 반격 (유저 최대HP × bossAtkPower% 비례 데미지)
+        // 보스 반격 (유저 최대HP × bossAtkPower% 비례 데미지) — 카운트업은 허수아비이므로 반격 없음
         int bossAtkApplied = 0;
-        boolean flag_boss_attack = !isKill && !heavensPunishment && Math.random() < bossAtkRate / 100.0;
+        boolean flag_boss_attack = !isCountUp && !isKill && !heavensPunishment && Math.random() < bossAtkRate / 100.0;
         if (flag_boss_attack) {
             int atkPct = ThreadLocalRandom.current().nextInt(BOSS_ATK_POWER_MIN, bossAtkPower + 1);
             bossAtkApplied = Math.max(1, (int)(ctx.hpMax * atkPct / 100.0));
@@ -956,7 +961,7 @@ public class BossAttackS3Controller {
         msg.append(userName).append("님이 [").append(bossDisplayName).append("]를 공격했습니다!").append(NL);
 
         if (!isEvade) {
-            if (isMaWang) {
+            if (isMaWang || isCountUp) {
                 msg.append("▶ 기본 데미지: ").append(damage);
                 if (thiefHit2) msg.append(" + ").append(damage2).append(" (2타)");
                 msg.append(NL);
@@ -1016,7 +1021,7 @@ public class BossAttackS3Controller {
                     msg.append("⏱ 종료까지: ").append(remainSecs / 60).append("분 ").append(remainSecs % 60).append("초").append(NL);
                 }
             } catch (Exception ignored) {}
-            msg.append("💡 2시간 종료 시 기여도 비례 GP+SP 지급!").append(NL);
+            msg.append("💡 1시간 종료 시 기여도 비례 GP+SP 지급!").append(NL);
         } else {
             String curHpDisp = SP.fromSp(newHp).toString();
             String maxHpDisp = SP.fromSp(maxHp).toString();
