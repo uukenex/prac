@@ -851,6 +851,9 @@ public class BossAttackS3Controller {
             if (isCountUp) {
                 map.put("rawDmg", isEvade ? 0L : totalDamage);
                 botS3Service.updateHellBossCountUpTx(map);
+                if (!isEvade && totalDamage > 0) {
+                    try { botS3Service.reduceCountUpBossTimer(); } catch (Exception ignore) {}
+                }
             } else {
                 double newHpDbVal = isKill ? 0.0 : newHpSp.getValue();
                 String newHpDbExt = isKill || newHpSp.getUnit().isEmpty() ? null : newHpSp.getUnit();
@@ -1283,6 +1286,25 @@ public class BossAttackS3Controller {
             msg.append("참여자가 없어 보상이 지급되지 않았습니다.").append(NL);
             return msg.toString();
         }
+
+        // 총 공격 통계 (첫~마지막 공격 시간으로 실제 활동시간 계산)
+        try {
+            HashMap<String, Object> stats = botS3Service.selectCountUpBossStats(bossStartDate);
+            if (stats != null) {
+                Object first = stats.get("FIRST_ATK");
+                Object last  = stats.get("LAST_ATK");
+                Object cnt   = stats.get("ATK_CNT");
+                long atkCnt = cnt != null ? ((Number)cnt).longValue() : 0L;
+                if (first instanceof java.sql.Timestamp && last instanceof java.sql.Timestamp) {
+                    long diffSec = (((java.sql.Timestamp)last).getTime() - ((java.sql.Timestamp)first).getTime()) / 1000L;
+                    long mm = diffSec / 60, ss = diffSec % 60;
+                    msg.append("⏱ 총 공격시간: ").append(mm).append("분 ").append(ss).append("초");
+                    msg.append(" (총 ").append(atkCnt).append("회)").append(NL);
+                } else if (atkCnt > 0) {
+                    msg.append("⚔ 총 공격 횟수: ").append(atkCnt).append("회").append(NL);
+                }
+            }
+        } catch (Exception ignore) {}
 
         msg.append("총 누적 데미지: ").append(SP.fromSp(totalAccumulated))
            .append(" / 참여자: ").append(contributors.size()).append("명").append(NL).append(NL);
