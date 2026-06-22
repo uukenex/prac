@@ -2682,13 +2682,15 @@
     <!-- 매크로 잠금 INSERT (중복 시 무시) -->
     <insert id="insertMacroLock" parameterType="hashmap">
         /* insertMacroLock */
-        INSERT INTO TBOT_MACRO_DETECT (USER_NAME, CODE, LOCKED_YN, LOCK_DATE)
-        SELECT #{userName}, #{code}, '1', SYSDATE
-          FROM DUAL
-         WHERE NOT EXISTS (
-               SELECT 1 FROM TBOT_MACRO_DETECT
-                WHERE USER_NAME = #{userName} AND LOCKED_YN = '1'
-         )
+        MERGE INTO TBOT_MACRO_DETECT T
+        USING (SELECT #{userName} AS UN, #{code} AS CD FROM DUAL) S
+           ON (T.USER_NAME = S.UN)
+        WHEN NOT MATCHED THEN
+            INSERT (USER_NAME, CODE, LOCKED_YN, LOCK_DATE)
+            VALUES (S.UN, S.CD, '1', SYSDATE)
+        WHEN MATCHED THEN
+            UPDATE SET T.CODE = S.CD, T.LOCKED_YN = '1', T.LOCK_DATE = SYSDATE
+             WHERE T.LOCKED_YN != '1'
     </insert>
 
     <!-- 매크로 잠금 해제 (코드 일치 시) -->
