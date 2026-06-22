@@ -148,6 +148,7 @@
 		      ,#{pattern,     jdbcType=VARCHAR}
 		      ,#{rewardType,  jdbcType=VARCHAR}
 		      ,#{bossType,    jdbcType=VARCHAR}
+		      ,NULL
 		  FROM TBOT_POINT_NEW_BOSS
 	</insert>
 
