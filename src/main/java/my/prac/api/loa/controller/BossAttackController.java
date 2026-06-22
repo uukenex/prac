@@ -4783,7 +4783,8 @@ public class BossAttackController {
 		if ("람쥐봇 문의방".equals(s.roomName) && !s.master)
 			return "문의방에서는 불가능합니다.";
 
-		// 매크로 잠금 체크
+		// 매크로 잠금 체크 (임시 비활성화)
+		/*
 		try {
 			HashMap<String,Object> macroLock = botNewService.selectMacroLock(s.userName);
 			if (macroLock != null) {
@@ -4796,6 +4797,7 @@ public class BossAttackController {
 				return "";
 			}
 		} catch (Exception ignore) {}
+		*/
 		s.param1 = Objects.toString(s.map.get("param1"), "");
 		return null;
 	}
@@ -5973,7 +5975,8 @@ public class BossAttackController {
 			msg += NL + ALL_SEE_STR + NL + detailOut.toString();
 		}
 
-		// 매크로 탐지: 실공격(exp>0) 기록 시 시간당 횟수 체크
+		// 매크로 탐지: 실공격(exp>0) 기록 시 시간당 횟수 체크 (임시 비활성화)
+		/*
 		try {
 			if (s.res != null && s.res.gainExp > 0) {
 				int hourlyCnt = botNewService.selectHourlyRealAttackCount(s.userName);
@@ -5986,6 +5989,7 @@ public class BossAttackController {
 				}
 			}
 		} catch (Exception ignore) {}
+		*/
 
 		return msg;
 	}
