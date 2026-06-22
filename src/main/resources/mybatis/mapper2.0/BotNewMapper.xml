@@ -2670,34 +2670,35 @@
            AND INSERT_DATE &lt;  TRUNC(SYSDATE, 'HH24') + 1/24
     </select>
 
-    <!-- 매크로 잠금 정보 조회 -->
-    <select id="selectMacroLock" parameterType="String" resultType="hashmap">
-        /* selectMacroLock */
-        SELECT USER_NAME, CODE, LOCKED_YN, LOCK_DATE
+    <!-- 1시간 내 매크로 등록/해제 이력 조회 (신규 잠금 여부 판단용) -->
+    <select id="selectMacroDetectRecentHour" parameterType="String" resultType="hashmap">
+        /* selectMacroDetectRecentHour */
+        SELECT USER_NAME, CODE, LOCKED_YN, LOCK_DATE, UNLOCK_DATE
           FROM TBOT_MACRO_DETECT
          WHERE USER_NAME = #{userName}
-           AND LOCKED_YN = '1'
+           AND (LOCK_DATE >= SYSDATE - 1/24
+                OR (UNLOCK_DATE IS NOT NULL AND UNLOCK_DATE >= SYSDATE - 1/24))
     </select>
 
-    <!-- 매크로 잠금 INSERT (중복 시 무시) -->
+    <!-- 매크로 신규 잠금 MERGE (이미 잠금이 아닌 경우에만 갱신) -->
     <insert id="insertMacroLock" parameterType="hashmap">
         /* insertMacroLock */
         MERGE INTO TBOT_MACRO_DETECT T
         USING (SELECT #{userName} AS UN, #{code} AS CD FROM DUAL) S
            ON (T.USER_NAME = S.UN)
         WHEN NOT MATCHED THEN
-            INSERT (USER_NAME, CODE, LOCKED_YN, LOCK_DATE)
-            VALUES (S.UN, S.CD, '1', SYSDATE)
+            INSERT (USER_NAME, CODE, LOCKED_YN, LOCK_DATE, UNLOCK_DATE)
+            VALUES (S.UN, S.CD, '1', SYSDATE, NULL)
         WHEN MATCHED THEN
-            UPDATE SET T.CODE = S.CD, T.LOCKED_YN = '1', T.LOCK_DATE = SYSDATE
+            UPDATE SET T.CODE = S.CD, T.LOCKED_YN = '1', T.LOCK_DATE = SYSDATE, T.UNLOCK_DATE = NULL
              WHERE T.LOCKED_YN != '1'
     </insert>
 
-    <!-- 매크로 잠금 해제 (코드 일치 시) -->
+    <!-- 매크로 잠금 해제: LOCKED_YN=0 + UNLOCK_DATE 기록 -->
     <update id="releaseMacroLock" parameterType="hashmap">
         /* releaseMacroLock */
         UPDATE TBOT_MACRO_DETECT
-           SET LOCKED_YN = '0'
+           SET LOCKED_YN = '0', UNLOCK_DATE = SYSDATE
          WHERE USER_NAME = #{userName}
            AND CODE      = #{code}
            AND LOCKED_YN = '1'

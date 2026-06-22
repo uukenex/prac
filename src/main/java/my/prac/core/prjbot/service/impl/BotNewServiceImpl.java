@@ -1005,8 +1005,8 @@ public class BotNewServiceImpl implements BotNewService {
     }
 
     @Override
-    public HashMap<String,Object> selectMacroLock(String userName) {
-        return botNewDAO.selectMacroLock(userName);
+    public HashMap<String,Object> selectMacroDetectRecentHour(String userName) {
+        return botNewDAO.selectMacroDetectRecentHour(userName);
     }
 
     @Override
