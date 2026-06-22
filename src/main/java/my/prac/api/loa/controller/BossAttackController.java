@@ -4783,21 +4783,32 @@ public class BossAttackController {
 		if ("람쥐봇 문의방".equals(s.roomName) && !s.master)
 			return "문의방에서는 불가능합니다.";
 
-		// 매크로 잠금 체크 (임시 비활성화)
-		/*
+		// 매크로 탐지 통합 체크 (시간당 20회+ 시 신규잠금/차단)
 		try {
-			HashMap<String,Object> macroLock = botNewService.selectMacroLock(s.userName);
-			if (macroLock != null) {
-				String code = Objects.toString(macroLock.get("CODE"), "");
-				int recentWarn = botNewService.countMacroDetectLogLastHour(s.userName);
-				try { botNewService.insertMacroDetectLog(s.userName, code); } catch (Exception ignore) {}
-				if (recentWarn == 0) {
+			int hourlyCnt = botNewService.selectHourlyRealAttackCount(s.userName);
+			if (hourlyCnt >= 20) {
+				HashMap<String,Object> recent = botNewService.selectMacroDetectRecentHour(s.userName);
+				if (recent == null) {
+					// 1시간 내 이력 없음 → 신규 잠금
+					String code = generateMacroCode();
+					botNewService.insertMacroLock(s.userName, code);
 					return s.userName + "님, 비정상 패턴이 감지되었습니다."+NL+"/매크로아님 " + code + " 를 입력하세요.";
+				} else {
+					String lockedYn = Objects.toString(recent.get("LOCKED_YN"), "0");
+					if ("1".equals(lockedYn)) {
+						// 잠금 중 → 로그 적재 + 경고(1시간 1회)
+						String code = Objects.toString(recent.get("CODE"), "");
+						int recentWarn = botNewService.countMacroDetectLogLastHour(s.userName);
+						try { botNewService.insertMacroDetectLog(s.userName, code); } catch (Exception ig) {}
+						if (recentWarn == 0) {
+							return s.userName + "님, 비정상 패턴이 감지되었습니다."+NL+"/매크로아님 " + code + " 를 입력하세요.";
+						}
+						return "";
+					}
+					// LOCKED_YN=0: 최근 해제 → 유예 허용
 				}
-				return "";
 			}
 		} catch (Exception ignore) {}
-		*/
 		s.param1 = Objects.toString(s.map.get("param1"), "");
 		return null;
 	}
@@ -5975,21 +5986,6 @@ public class BossAttackController {
 			msg += NL + ALL_SEE_STR + NL + detailOut.toString();
 		}
 
-		// 매크로 탐지: 실공격(exp>0) 기록 시 시간당 횟수 체크 (임시 비활성화)
-		/*
-		try {
-			if (s.res != null && s.res.gainExp > 0) {
-				int hourlyCnt = botNewService.selectHourlyRealAttackCount(s.userName);
-				if (hourlyCnt >= 20) {
-					HashMap<String,Object> existLock = botNewService.selectMacroLock(s.userName);
-					if (existLock == null) {
-						String code = generateMacroCode();
-						botNewService.insertMacroLock(s.userName, code);
-					}
-				}
-			}
-		} catch (Exception ignore) {}
-		*/
 
 		return msg;
 	}
