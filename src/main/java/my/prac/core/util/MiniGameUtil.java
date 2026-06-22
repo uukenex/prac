@@ -471,7 +471,7 @@ public class MiniGameUtil {
 		    new SpecialBuffOption(15, "치확", "고정값"),
 		    new SpecialBuffOption(7,  "쿨타임", "고정값"),
 		    new SpecialBuffOption(7,  "쿨타임감소", "배율"),
-		    new SpecialBuffOption(0,  "나메가방", "고정값") // 확률 0 (비활성),
+		    new SpecialBuffOption(0,  "나메가방", "고정값"), // 확률 0 (비활성)
 		    new SpecialBuffOption(10, "회복", "고정값"),
 		    new SpecialBuffOption(15, "SP", "고정값"),
 		    new SpecialBuffOption(15, "경험치", "고정값"),
