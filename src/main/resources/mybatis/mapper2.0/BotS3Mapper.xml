@@ -27,6 +27,7 @@
 		     , REWARD_TYPE
 		     , BOSS_TYPE
 		     , to_char(INSERT_DATE, 'yyyymmdd hh24miss') AS START_DATE
+		     , to_char(CLOSE_DATE,  'yyyymmdd hh24miss') AS CLOSE_DATE
 		  FROM (
 		    SELECT SEQ
 		         , CUR_HP
@@ -48,6 +49,7 @@
 		         , REWARD_TYPE
 		         , BOSS_TYPE
 		         , INSERT_DATE
+		         , CLOSE_DATE
 		      FROM TBOT_POINT_NEW_BOSS
 		     WHERE END_YN = '0'
 		     ORDER BY INSERT_DATE DESC
@@ -79,6 +81,7 @@
 		     , CUR_HP_EXT = #{newHpExt, jdbcType=VARCHAR}
 		     , END_YN     = #{endYn,    jdbcType=VARCHAR}
 		     , PROC_DATE  = SYSDATE
+		     <if test='endYn == "1"'>, CLOSE_DATE = SYSDATE</if>
 		     <if test="heavensPunishment > 0">
 		     , DEBUFF = DEBUFF + ${heavensPunishment} * 10
 		     </if>
@@ -384,7 +387,8 @@
 	<update id="closeHellBoss" parameterType="HashMap">
 		UPDATE TBOT_POINT_NEW_BOSS
 		   SET END_YN    = '1'
-		     , PROC_DATE = SYSDATE
+		     , PROC_DATE  = SYSDATE
+		     , CLOSE_DATE = SYSDATE
 		 WHERE SEQ    = #{seq, jdbcType=NUMERIC}
 		   AND END_YN = '0'
 	</update>
@@ -470,7 +474,8 @@
 	<update id="forceCloseCurrentBoss">
 		UPDATE TBOT_POINT_NEW_BOSS
 		   SET END_YN    = '1'
-		     , PROC_DATE = SYSDATE
+		     , PROC_DATE  = SYSDATE
+		     , CLOSE_DATE = SYSDATE
 		 WHERE END_YN = '0'
 	</update>
 
