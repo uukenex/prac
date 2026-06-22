@@ -5387,6 +5387,19 @@ public class BossAttackController {
 					ed.extraLucky, ed.extraDark, ed.extraGray, ed.extraShadow,
 					s.ctx.user.nightmareYn, s.ctx.ownedBossItems, s.ctx.bossItemQtyMap);
 			er.dropCode = "0"; // 워록: 아이템 획득 불가
+			// 추가타 EXP 버프 적용 (1타와 동일한 배율)
+			if (er.killed) {
+				if ("궁수".equals(s.u.job) || "사냥꾼".equals(s.u.job)) er.gainExp *= 3;
+				if (s.isOngoing && !ed.extraDark && !ed.extraLucky && !ed.extraShadow) er.gainExp *= 2;
+				if (s.u.lv <= 800) er.gainExp *= 4;
+				else if (s.u.lv <= 990) er.gainExp *= 3;
+				int _edow = java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_WEEK);
+				if (_edow == java.util.Calendar.SATURDAY || _edow == java.util.Calendar.SUNDAY) er.gainExp *= 2;
+				if (s.activeBuff != null && "경험치".equals(s.activeBuff.get("FLAG_CODE"))) {
+					double _pct = Double.parseDouble(s.activeBuff.get("EFFECT_VALUE").toString());
+					er.gainExp = (long)(er.gainExp * (1 + _pct / 100.0));
+				}
+			}
 			s.warlockTotalGainExp += er.gainExp;
 			s.warlockExtraRes.add(er);
 			try {
@@ -5966,15 +5979,29 @@ public class BossAttackController {
 		}
 		// [워록 멀티킷] top EXP 제거: buildAttackMessage EXP 줄 스킵, 1타 EXP는 bot에 표시
 		if (s.warlockMultiHit && !s.warlockKillFail) {
-			if (s.up != null && s.u.lv < 999) {
-				double _g1 = s.up.afterExpNext > 0 ? (double)s.up.gainedExp / s.up.afterExpNext * 100 : 0;
-				double _c1 = s.up.afterExpNext > 0 ? (double)s.up.afterExpCur / s.up.afterExpNext * 100 : 0;
-				bot.insert(0, ("EXP +" + formatKorNum(s.up.gainedExp)
-					+ "(" + String.format("%.1f", _g1) + "%)"
-					+ "[" + String.format("%.1f", _c1) + "%/100%]"
-					+ (s.up.levelUpCount > 0 ? " ✨Lv" + s.up.beforeLv + "→" + s.up.afterLv : "") + NL));
-			} else if (s.up != null) {
-				bot.insert(0, "EXP +" + formatKorNum(s.up.gainedExp) + " [누적 " + formatKorNum(s.up.afterExpCur) + "]" + NL);
+			// 1타 [1타처치] 줄 구성
+			if (s.willKill) {
+				String _1tag = s.shadow ? "[그림자]" : s.dark ? "[어둠]" : s.gray ? "[음양]" : s.lucky ? "[빛]" : "";
+				String _1name = s.m != null ? s.m.monName : "몬스터";
+				StringBuilder _1line = new StringBuilder();
+				_1line.append("[1타처치] ").append(_1tag).append(_1name)
+					  .append(", 데미지: ").append(formatWan(s.calc.atkDmg));
+				if (s.flags != null && s.flags.atkCrit) _1line.append(" ✨크리!");
+				if (s.up != null) {
+					_1line.append(NL);
+					if (s.up.levelUpCount > 0 && s.u.lv < 999) {
+						double _g1 = s.up.afterExpNext > 0 ? (double)s.up.gainedExp / s.up.afterExpNext * 100 : 0;
+						double _c1 = s.up.afterExpNext > 0 ? (double)s.up.afterExpCur / s.up.afterExpNext * 100 : 0;
+						_1line.append("EXP +").append(formatKorNum(s.up.gainedExp))
+							  .append("(").append(String.format("%.1f", _g1)).append("%)")
+							  .append("[").append(String.format("%.1f", _c1)).append("%/100%]")
+							  .append(" ✨Lv").append(s.up.beforeLv).append("→").append(s.up.afterLv);
+					} else {
+						_1line.append("EXP +").append(formatKorNum(s.up.gainedExp))
+							  .append(" [누적 ").append(formatKorNum(s.up.afterExpCur)).append("]");
+					}
+				}
+				bot.insert(0, _1line.toString() + NL);
 			}
 			s.res.gainExp = 0;
 			s.up = null;
