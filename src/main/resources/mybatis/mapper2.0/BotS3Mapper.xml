@@ -456,6 +456,20 @@
 	</update>
 
 		<!-- =====================================================
+	     [카운트업] 보스 세션 공격 통계
+	     ===================================================== -->
+	<select id="selectCountUpBossStats" parameterType="HashMap" resultType="HashMap">
+		SELECT COUNT(*)        AS ATK_CNT,
+		       MIN(INSERT_DATE) AS FIRST_ATK,
+		       MAX(INSERT_DATE) AS LAST_ATK
+		  FROM TBOT_POINT_NEW_BATTLE_LOG
+		 WHERE NIGHTMARE_YN  = '2'
+		   AND TARGET_MON_LV = 999
+		   AND ATK_DMG       > 0
+		   AND INSERT_DATE   >= TO_DATE(#{bossStartDate}, 'yyyymmdd hh24miss')
+	</select>
+
+	<!-- =====================================================
 	     [카운트업] 개인 누적 데미지 조회
 	     ===================================================== -->
 	<select id="selectMyCountUpDmg" parameterType="HashMap" resultType="long">

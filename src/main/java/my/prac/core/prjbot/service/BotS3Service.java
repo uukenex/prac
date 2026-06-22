@@ -59,6 +59,9 @@ public interface BotS3Service {
 	/** [카운트업] 공격마다 CLOSE_DATE 30초 감소 */
 	void reduceCountUpCloseDate();
 
+	/** [카운트업] 보스 세션 공격 통계 */
+	HashMap<String, Object> selectCountUpBossStats(String bossStartDate);
+
 	/** [카운트업] 개인 누적 데미지 조회 */
 	long selectMyCountUpDmg(String userName, String bossStartDate);
 

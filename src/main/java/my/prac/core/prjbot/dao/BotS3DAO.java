@@ -68,6 +68,9 @@ public interface BotS3DAO {
 	/** [카운트업] 공격마다 CLOSE_DATE 30초 감소 */
 	int reduceCountUpCloseDate();
 
+	/** [카운트업] 보스 세션 공격 통계 */
+	HashMap<String, Object> selectCountUpBossStats(HashMap<String, Object> map);
+
 	/** [카운트업] 개인 누적 데미지 조회 */
 	long selectMyCountUpDmg(HashMap<String, Object> map);
 
