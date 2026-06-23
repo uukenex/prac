@@ -302,13 +302,13 @@ public class LoaUnifiedViewController {
         // 4. 다음 등급 요건 계산
         int[][] gradeReqs = {
             // {killReq, dropReq, deathReq}
-            {50000, 100000, 1200},  // SSS
-            {40000,  50000,  700},  // SS
-            {30000,  30000,  500},  // S
-            {20000,  20000,  400},  // A
-            {10000,  10000,  200},  // B
-            { 5000,   5000,  100},  // C
-            { 1000,   1000,   50},  // D
+            {50000, 50000, 1000},  // SSS
+            {30000, 30000,  300},  // SS
+            {20000, 20000,  300},  // S
+            {10000, 10000,  200},  // A
+            { 5000,  5000,  100},  // B
+            { 3000,  3000,   50},  // C
+            { 1000,  1000,   30},  // D
         };
         String[] gradeNames = {"SSS","SS","S","A","B","C","D"};
 
@@ -1249,16 +1249,16 @@ public class LoaUnifiedViewController {
     }
 
     private String calcGrade(int kills, int drops, int deaths) {
-        if (kills >= 50000 && drops >= 100000 && deaths >= 1200) return "SSS";
-        if (kills >= 40000 && drops >=  50000 && deaths >=  700) return "SS";
-        if (kills >= 30000 && drops >=  30000 && deaths >=  500) return "S";
-        String g = checkPlus(kills, drops, deaths, 20000, 20000, 400, "A");
+        if (kills >= 50000 && drops >= 50000 && deaths >= 1000) return "SSS";
+        if (kills >= 30000 && drops >= 30000 && deaths >=  300) return "SS";
+        if (kills >= 20000 && drops >= 20000 && deaths >=  300) return "S";
+        String g = checkPlus(kills, drops, deaths, 10000, 10000, 200, "A");
         if (g != null) return g;
-        g = checkPlus(kills, drops, deaths, 10000, 10000, 200, "B");
+        g = checkPlus(kills, drops, deaths,  5000,  5000, 100, "B");
         if (g != null) return g;
-        g = checkPlus(kills, drops, deaths,  5000,  5000, 100, "C");
+        g = checkPlus(kills, drops, deaths,  3000,  3000,  50, "C");
         if (g != null) return g;
-        g = checkPlus(kills, drops, deaths,  1000,  1000,  50, "D");
+        g = checkPlus(kills, drops, deaths,  1000,  1000,  30, "D");
         if (g != null) return g;
         return "F";
     }

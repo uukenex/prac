@@ -79,8 +79,8 @@ public class BossAttackS3Controller {
     private static final Map<String, Long> IMPRISONED_UNTIL   = new java.util.concurrent.ConcurrentHashMap<>();
     private static final int IMPRISON_DURATION_MS = 5 * 60 * 1000; // 5분
     private static final int IMPRISON_CHANCE_PCT  = 10;             // 10%
-    /** 보스아이템 최대 강화 단계 (기본1 + 강화1 = QTY 2) */
-    public static final int MAX_BOSS_ENHANCE = 3;
+    /** 보스아이템 최대 강화 단계 (qty1=0강화, qty2=+1강화, qty3=+1강화×2, qty4=+2강화, qty5+→자동판매) */
+    public static final int MAX_BOSS_ENHANCE = 4;
 
     // =========================================================
     // ★ 보스 아이템 강화 효과 테이블 (수치 직접 수정 가능)
@@ -182,13 +182,17 @@ public class BossAttackS3Controller {
     static int getBossEnhanceVal(int itemId, int qty) {
         int[] table = BOSS_ENHANCE_TABLE.get(itemId);
         if (table == null || qty < 1) return 0;
-        int level = Math.min(qty - 1, table.length - 1);
+        int level = qty <= 1 ? 0 : qty <= 3 ? 1 : 2;
+        level = Math.min(level, table.length - 1);
         return table[level];
     }
 
-    /** 아이템 강화 등급 표시 문자열 (qty=1→, qty=2→+1, qty=3→+2) */
+    /** 아이템 강화 등급 표시 문자열 (qty=1→0강화, qty=2→+1, qty=3→+1(×2), qty=4→+2) */
     static String enhanceSuffix(int qty) {
-        return qty >= 2 ? "+" + (qty - 1) : "";
+        if (qty >= 4) return "+2";
+        if (qty == 3) return "+1(×2)";
+        if (qty == 2) return "+1";
+        return "";
     }
 
     /** 헬보스 보상 아이템 목록 (BOSS_HELL 타입 기반 동적 로드, 캐시) */
@@ -617,7 +621,7 @@ public class BossAttackS3Controller {
                     double superMul = 1.0;
                     if (ownedBoss.contains(7020)) {
                         int qty7020 = bossItemQtyMap.getOrDefault(7020, 1);
-                        superMul = (qty7020 >= 3) ? 7.0 / 5.0 : (qty7020 >= 2) ? 6.5 / 5.0 : 6.0 / 5.0;
+                        superMul = (qty7020 >= 4) ? 7.0 / 5.0 : (qty7020 >= 2) ? 6.5 / 5.0 : 6.0 / 5.0;
                     }
                     damage = (long)(baseAtk * 3 * critMultiplier * superMul);
                     dmgMsg = "[✨초강력 치명타!!] " + atkRangeStr + baseAtk + " → " + damage;
@@ -678,7 +682,7 @@ public class BossAttackS3Controller {
                 double superMul2 = 1.0;
                 if (ownedBoss.contains(7020)) {
                     int qty7020 = bossItemQtyMap.getOrDefault(7020, 1);
-                    superMul2 = (qty7020 >= 3) ? 7.0 / 5.0 : (qty7020 >= 2) ? 6.5 / 5.0 : 6.0 / 5.0;
+                    superMul2 = (qty7020 >= 4) ? 7.0 / 5.0 : (qty7020 >= 2) ? 6.5 / 5.0 : 6.0 / 5.0;
                 }
                 damage2 = (long)(baseAtk2 * 3 * critMul2 * superMul2);
                 dmgMsg2 = "[✨초강력 치명타!!] " + atkRangeStr2 + baseAtk2 + " → " + damage2;
@@ -1419,6 +1423,22 @@ public class BossAttackS3Controller {
 
         StringBuilder msg = new StringBuilder();
 
+        // ── 첫 보스 참여 보너스: BOSS_HELL_KILL_GP 기록 없는 신규 참여자 → 20GP ──
+        for (String participant : allNames) {
+            try {
+                int existing = botNewService.countGpByCmd(participant, "BOSS_HELL_KILL_GP");
+                if (existing == 0) {
+                    HashMap<String, Object> firstGp = new HashMap<>();
+                    firstGp.put("userName", participant);
+                    firstGp.put("roomName", roomName);
+                    firstGp.put("score",    20.0);
+                    firstGp.put("cmd",      "BOSS_FIRST_JOIN_GP");
+                    botNewService.insertGpRecord(firstGp);
+                    msg.append("🎉 [").append(participant).append("] 첫 보스 참여 보너스! +20GP").append(NL);
+                }
+            } catch (Exception ignore) {}
+        }
+
         // 아이템 보상 더보기(？) 상세 블록
         StringBuilder itemDetailBlock = new StringBuilder();
 
@@ -1454,6 +1474,7 @@ public class BossAttackS3Controller {
                 for (String winner : itemWinners) {
                     List<Integer> codes    = new ArrayList<>();
                     List<Integer> enhIds   = new ArrayList<>();
+                    List<Integer> newQtys  = new ArrayList<>();
                     List<String>  names    = new ArrayList<>();
                     List<String>  displays = new ArrayList<>();
                     for (int i = 0; i < 2; i++) { // 대악마: 2개
@@ -1477,13 +1498,16 @@ public class BossAttackS3Controller {
                             }
                         } catch (Exception ignore) {}
                         int assignCode = !alreadyOwned ? giveItemId : (existQty < MAX_BOSS_ENHANCE) ? -3 : -2;
+                        int targetQty = (assignCode == -3) ? existQty + 1 : (assignCode == -2) ? existQty : 1;
                         codes.add(assignCode);
                         enhIds.add(assignCode == -3 ? giveItemId : 0);
+                        newQtys.add(targetQty);
                         names.add(iName);
                         displays.add(displayName);
                     }
                     winnerItemIds.put(winner, codes);
                     winnerEnhItemIds.put(winner, enhIds);
+                    winnerNewQtys.put(winner, newQtys);
                     winnerItemNames.put(winner, names);
                     winnerDisplays.put(winner, displays);
                 }
@@ -1496,8 +1520,12 @@ public class BossAttackS3Controller {
                     for (int i = 0; i < codes.size(); i++) {
                         int code = codes.get(i);
                         msg.append("  ").append(i + 1).append(") ").append(names.get(i));
-                        if (code == -2) msg.append(" [이미보유 자동판매 + 1GP]");
-                        if (code == -3) msg.append(" [강화!+1]");
+                        if (code == -2) msg.append(" [최대강화 자동판매 + 1GP]");
+                        if (code == -3) {
+                            List<Integer> nqs = winnerNewQtys.get(winner);
+                            int nq = (nqs != null && i < nqs.size()) ? nqs.get(i) : 2;
+                            msg.append(" [강화! ").append(enhanceSuffix(nq)).append("]");
+                        }
                         msg.append(NL);
                     }
                 }
@@ -1693,11 +1721,13 @@ public class BossAttackS3Controller {
 
                     Map<String, List<Integer>> winnerItemIds    = new LinkedHashMap<>();
                     Map<String, List<Integer>> winnerEnhItemIds = new LinkedHashMap<>();
+                    Map<String, List<Integer>> winnerNewQtys    = new LinkedHashMap<>();
                     Map<String, List<String>>  winnerItemNames  = new LinkedHashMap<>();
                     Map<String, List<String>>  winnerDisplays   = new LinkedHashMap<>();
                     for (String winner : itemWinners) {
                         List<Integer> codes    = new ArrayList<>();
                         List<Integer> enhIds   = new ArrayList<>();
+                        List<Integer> newQtys  = new ArrayList<>();
                         List<String>  names    = new ArrayList<>();
                         List<String>  displays = new ArrayList<>();
                         int giveItemId = allItems.get(rand.nextInt(allItems.size()));
@@ -1720,12 +1750,15 @@ public class BossAttackS3Controller {
                             }
                         } catch (Exception ignore) {}
                         int assignCode = !alreadyOwned ? giveItemId : (existQty < MAX_BOSS_ENHANCE) ? -3 : -2;
+                        int targetQty = (assignCode == -3) ? existQty + 1 : (assignCode == -2) ? existQty : 1;
                         codes.add(assignCode);
                         enhIds.add(assignCode == -3 ? giveItemId : 0);
+                        newQtys.add(targetQty);
                         names.add(iName);
                         displays.add(displayName);
                         winnerItemIds.put(winner, codes);
                         winnerEnhItemIds.put(winner, enhIds);
+                        winnerNewQtys.put(winner, newQtys);
                         winnerItemNames.put(winner, names);
                         winnerDisplays.put(winner, displays);
                     }

@@ -186,6 +186,7 @@ public interface BotNewService {
     List<Integer> selectItemIdsByType(String itemType);
     List<HashMap<String, Object>> selectHellRewardItemsWithOwnCount();
     void insertGpRecord(HashMap<String, Object> param);
+    int countGpByCmd(String userName, String cmd);
     double selectGpBalance(String userName);
     double selectUserTotalEarnedGp(String userName);
     List<HashMap<String, Object>> selectGpRanking();

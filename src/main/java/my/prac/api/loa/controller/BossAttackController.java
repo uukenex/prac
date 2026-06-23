@@ -752,7 +752,7 @@ public class BossAttackController {
 	    if (ctx.ownedBossItems.contains(7009)) {
 	        int qty7009 = ctx.bossItemQtyMap.getOrDefault(7009, 1);
 	        int perLv7009 = BossAttackS3Controller.getBossEnhanceVal(7009, qty7009);
-	        int cap7009  = (qty7009 >= 2) ? 500 : 300;
+	        int cap7009  = (qty7009 >= 4) ? 700 : (qty7009 >= 2) ? 500 : 300;
 	        int evolveBonus = Math.min(u.lv, cap7009) * perLv7009;
 	        atkMin += evolveBonus;
 	        atkMax += evolveBonus;
@@ -5585,7 +5585,7 @@ public class BossAttackController {
 				if (id != null) {
 					// [7021] 처단자 보스템: 아이템 수량 2배 크리 확률 +10%, 1강화 +25%
 					int qty7021 = s.ctx.bossItemQtyMap.getOrDefault(7021, 1);
-					double bonusProb = !s.ctx.ownedBossItems.contains(7021) ? 0.10 : (qty7021 >= 3 ? 0.30 : qty7021 >= 2 ? 0.25 : 0.20);
+					double bonusProb = !s.ctx.ownedBossItems.contains(7021) ? 0.10 : (qty7021 >= 4 ? 0.30 : qty7021 >= 2 ? 0.25 : 0.20);
 					boolean bonus = ThreadLocalRandom.current().nextDouble() < bonusProb;
 					if (bonus) qty *= 2;
 					HashMap<String,Object> inv = buildStealInv(s.userName, s.roomName, id);
@@ -6577,9 +6577,13 @@ public class BossAttackController {
 	    boolean forceNmBagDrop = false;
 	    boolean forceHellBagDrop = false;
 
-	    // 버프 발동 시: 어떤 버프든 발동자는 나메가방 확정 (의도된 기능)
+	    // 버프 발동 시: 발동자에게 나메가방(나메모드) 또는 헬가방(헬모드) 확정 지급
 	    if (buff != null && buff.started) {
-	        forceNmBagDrop = true;
+	        if (hell) {
+	            forceHellBagDrop = true;
+	        } else {
+	            forceNmBagDrop = true;
+	        }
 	    }
 
 	    try {
@@ -11524,7 +11528,7 @@ public class BossAttackController {
 	        int maxBossBonus = 0;
 	        int qty7009r = has7009 ? ctx.bossItemQtyMap.getOrDefault(7009, 1) : 1;
         int perLv7009r = BossAttackS3Controller.getBossEnhanceVal(7009, qty7009r);
-        int cap7009r  = (qty7009r >= 2) ? 500 : 300;
+        int cap7009r  = (qty7009r >= 4) ? 700 : (qty7009r >= 2) ? 500 : 300;
         if (has7009) maxBossBonus += Math.min(lv, cap7009r) * perLv7009r;
 	        int atkPer7013r = has7013 ? BossAttackS3Controller.getBossEnhanceVal(7013, ctx.bossItemQtyMap.getOrDefault(7013, 1)) : 500;
         if (has7013) maxBossBonus += 40 * atkPer7013r;

@@ -631,6 +631,11 @@ public class BotNewServiceImpl implements BotNewService {
     }
 
     @Override
+    public int countGpByCmd(String userName, String cmd) {
+        return botNewDAO.countGpByCmd(userName, cmd);
+    }
+
+    @Override
     public void insertGpRecord(HashMap<String, Object> param) {
         botNewDAO.insertGpRecord(param);
         try {

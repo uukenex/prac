@@ -557,6 +557,16 @@
       (#{userName}, #{roomName}, #{score}, NULL, SYSDATE, #{cmd}, '2')
   </insert>
 
+  <!-- GP cmd 기록 수 조회 (첫 보스 참여 체크 등) -->
+  <select id="countGpByCmd" parameterType="hashmap" resultType="int">
+    /* countGpByCmd */
+    SELECT COUNT(1)
+    FROM (SELECT USER_NAME, CMD, NEW_YN FROM TBOT_POINT_RANK UNION ALL SELECT USER_NAME, CMD, NEW_YN FROM TBOT_POINT_RANK_OLD)
+    WHERE USER_NAME = #{userName}
+      AND CMD = #{cmd}
+      AND NEW_YN = '2'
+  </select>
+
   <!-- GP 잔액 조회 (new_yn='2' 합계) -->
   <select id="selectGpBalance" parameterType="string" resultType="double">
     /* selectGpBalance */
