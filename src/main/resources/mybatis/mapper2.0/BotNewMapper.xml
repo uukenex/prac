@@ -2686,7 +2686,7 @@
         SELECT USER_NAME, CODE, LOCKED_YN, LOCK_DATE, UNLOCK_DATE
           FROM TBOT_MACRO_DETECT
          WHERE USER_NAME = #{userName}
-           AND (LOCK_DATE >= SYSDATE - #{hours}/24
+           AND (LOCKED_YN = '1'
                 OR (UNLOCK_DATE IS NOT NULL AND UNLOCK_DATE >= SYSDATE - #{hours}/24))
     </select>
 
