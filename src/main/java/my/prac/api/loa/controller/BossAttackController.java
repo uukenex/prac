@@ -5560,7 +5560,7 @@ public class BossAttackController {
 				if (id != null) {
 					// [7021] 처단자 보스템: 아이템 수량 2배 크리 확률 +10%, 1강화 +25%
 					int qty7021 = s.ctx.bossItemQtyMap.getOrDefault(7021, 1);
-					double bonusProb = !s.ctx.ownedBossItems.contains(7021) ? 0.10 : (qty7021 >= 2 ? 0.25 : 0.20);
+					double bonusProb = !s.ctx.ownedBossItems.contains(7021) ? 0.10 : (qty7021 >= 3 ? 0.30 : qty7021 >= 2 ? 0.25 : 0.20);
 					boolean bonus = ThreadLocalRandom.current().nextDouble() < bonusProb;
 					if (bonus) qty *= 2;
 					HashMap<String,Object> inv = buildStealInv(s.userName, s.roomName, id);
