@@ -354,7 +354,7 @@ public class BossAttackS3Controller {
                             : remainMin + "분";
                     StringBuilder sb = new StringBuilder();
                     sb.append(userName).append("님,").append(NL)
-                      .append("다음 헬보스가 재정비 중입니다.").append(NL)
+                      .append(bossDisplayName).append("가 재정비 중입니다.").append(NL)
                       .append("등장까지 ").append(remainStr).append(" 남았습니다.");
                     try {
                         String lastReward = botS3Service.getLastKillRewardMsg();
@@ -1966,7 +1966,9 @@ public class BossAttackS3Controller {
                 } else {
                     remainStr = remainMin + "분";
                 }
-                return "※상급악마 재정비 중 (" + remainStr + " 후 출현)" + NL;
+                String respecBossType = boss.get("BOSS_TYPE") != null ? boss.get("BOSS_TYPE").toString() : "상급악마";
+                String respecBossName = COUNTUP_BOSS_TYPE.equals(respecBossType) ? COUNTUP_DISPLAY_NAME : respecBossType;
+                return "※" + respecBossName + " 재정비 중 (" + remainStr + " 후 출현)" + NL;
             } else {
                 // 출현 중: 체력% 한 줄로
                 String statusBossType = boss.get("BOSS_TYPE") != null ? boss.get("BOSS_TYPE").toString() : "상급악마";
