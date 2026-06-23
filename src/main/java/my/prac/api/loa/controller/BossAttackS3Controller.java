@@ -354,7 +354,7 @@ public class BossAttackS3Controller {
                             : remainMin + "분";
                     StringBuilder sb = new StringBuilder();
                     sb.append(userName).append("님,").append(NL)
-                      .append(bossDisplayName).append("가 재정비 중입니다.").append(NL)
+                      .append("다음 헬보스가 재정비 중입니다.").append(NL)
                       .append("등장까지 ").append(remainStr).append(" 남았습니다.");
                     try {
                         String lastReward = botS3Service.getLastKillRewardMsg();

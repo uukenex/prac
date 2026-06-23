@@ -6011,13 +6011,13 @@ public class BossAttackController {
 				if (s.flags != null && s.flags.atkCrit) _1line.append(" ✨크리!");
 				if (s.up != null) {
 					_1line.append(NL);
-					if (s.up.levelUpCount > 0 && s.u.lv < 999) {
+					if (s.u.lv < 999) {
 						double _g1 = s.up.afterExpNext > 0 ? (double)s.up.gainedExp / s.up.afterExpNext * 100 : 0;
 						double _c1 = s.up.afterExpNext > 0 ? (double)s.up.afterExpCur / s.up.afterExpNext * 100 : 0;
 						_1line.append("EXP +").append(formatKorNum(s.up.gainedExp))
 							  .append("(").append(String.format("%.1f", _g1)).append("%)")
-							  .append("[").append(String.format("%.1f", _c1)).append("%/100%]")
-							  .append(" ✨Lv").append(s.up.beforeLv).append("→").append(s.up.afterLv);
+							  .append("[").append(String.format("%.1f", _c1)).append("%/100%]");
+						if (s.up.levelUpCount > 0) _1line.append(" ✨Lv").append(s.up.beforeLv).append("→").append(s.up.afterLv);
 					} else {
 						_1line.append("EXP +").append(formatKorNum(s.up.gainedExp))
 							  .append(" [누적 ").append(formatKorNum(s.up.afterExpCur)).append("]");
