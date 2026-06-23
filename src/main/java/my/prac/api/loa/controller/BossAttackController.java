@@ -752,7 +752,7 @@ public class BossAttackController {
 	    if (ctx.ownedBossItems.contains(7009)) {
 	        int qty7009 = ctx.bossItemQtyMap.getOrDefault(7009, 1);
 	        int perLv7009 = BossAttackS3Controller.getBossEnhanceVal(7009, qty7009);
-	        int cap7009  = (qty7009 >= 2) ? 500 : 300;
+	        int cap7009  = (qty7009 >= 4) ? 700 : (qty7009 >= 2) ? 500 : 300;
 	        int evolveBonus = Math.min(u.lv, cap7009) * perLv7009;
 	        atkMin += evolveBonus;
 	        atkMax += evolveBonus;
@@ -11524,7 +11524,7 @@ public class BossAttackController {
 	        int maxBossBonus = 0;
 	        int qty7009r = has7009 ? ctx.bossItemQtyMap.getOrDefault(7009, 1) : 1;
         int perLv7009r = BossAttackS3Controller.getBossEnhanceVal(7009, qty7009r);
-        int cap7009r  = (qty7009r >= 2) ? 500 : 300;
+        int cap7009r  = (qty7009r >= 4) ? 700 : (qty7009r >= 2) ? 500 : 300;
         if (has7009) maxBossBonus += Math.min(lv, cap7009r) * perLv7009r;
 	        int atkPer7013r = has7013 ? BossAttackS3Controller.getBossEnhanceVal(7013, ctx.bossItemQtyMap.getOrDefault(7013, 1)) : 500;
         if (has7013) maxBossBonus += 40 * atkPer7013r;
