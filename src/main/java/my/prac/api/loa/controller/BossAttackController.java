@@ -5508,10 +5508,20 @@ public class BossAttackController {
 				.setJobSkillYn(0).setJob(s.job).setNightmareYn(s.ctx.user.nightmareYn));
 
 		String deathAchvMsg = grantDeathAchievements(s.userName, s.roomName);
-		String warlockFailNote = ("워록".equals(s.job) && s.warlockKillFail && s.warlockFailHitNo > 1)
-				? s.warlockFailHitNo + "타 처치 실패로 자멸!" + NL : "";
+		String warlockFailNote = "";
 		String deathCauseMsg;
-		if (s.calc.monDmg > 0) {
+		if ("워록".equals(s.job) && s.warlockKillFail) {
+			String monTag  = s.shadow ? "[그림자]" : s.dark ? "[어둠]" : s.gray ? "[음양]" : s.lucky ? "[빛]" : "";
+			String monName = s.m != null ? s.m.monName : "몬스터";
+			int failHit = s.warlockFailHitNo;
+			if (failHit > 1) {
+				int monRemain = Math.max(0, s.warlockFailMonHp - s.warlockFailDmg);
+				warlockFailNote = failHit + "타 " + monTag + monName + " 처치 실패! (남은 HP " + monRemain + " / " + s.warlockFailMonHp + ")" + NL;
+			} else {
+				warlockFailNote = monTag + monName + " 처치 실패!" + NL;
+			}
+			deathCauseMsg = "처치 실패로 인한 자멸!" + NL;
+		} else if (s.calc.monDmg > 0) {
 			deathCauseMsg = s.calc.monDmg + " 피해로 사망!" + NL;
 		} else if (s.calc.patternMsg != null && !s.calc.patternMsg.isEmpty()) {
 			deathCauseMsg = "[" + s.calc.patternMsg + "] 잔여 체력 소진으로 사망!" + NL;
