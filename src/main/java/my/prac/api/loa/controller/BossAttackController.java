@@ -9249,12 +9249,30 @@ public class BossAttackController {
 	
 	private String renderMonsterCompactLine(Monster m, int userLv, int nightmareYnVal) {
 
-		// 드랍 아이템명 및 판매가격
-	  //  String dropName = (m.monDrop != null ? m.monDrop : "-");
-	    //long dropPrice = getDropPriceByName(dropName);
-
 	    boolean nmActive = nightmareYnVal >= 1;
 	    boolean hellActive = nightmareYnVal == 2;
+
+		// 드랍 아이템명 및 판매 SP
+	    String dropName = (m.monDrop != null && !m.monDrop.trim().isEmpty()) ? m.monDrop.trim() : null;
+	    SP dropSp = null;
+	    if (dropName != null) {
+	        try {
+	            Integer dropItemId = getItemIdCached(dropName);
+	            if (dropItemId != null) {
+	                HashMap<String,Object> priceRow = getItemPriceCached(dropItemId);
+	                if (priceRow != null) {
+	                    double pv = safeDouble(priceRow.get("ITEM_SELL_PRICE"));
+	                    String pe = Objects.toString(priceRow.get("ITEM_SELL_PRICE_EXT"), "");
+	                    SP baseDropSp = SP.of(pv, pe);
+	                    if (nmActive) {
+	                        baseDropSp = baseDropSp.multiply(NM_MUL_HP_ATK);
+	                        if (hellActive) baseDropSp = baseDropSp.multiply(HEL_SP_MULT);
+	                    }
+	                    dropSp = baseDropSp;
+	                }
+	            }
+	        } catch (Exception ignore) {}
+	    }
 
 	    int monAtk = m.monAtk;
 	    int monHp = m.monHp;
@@ -9263,14 +9281,11 @@ public class BossAttackController {
 	    if(nmActive) {
 	    	monAtk *= NM_MUL_HP_ATK;
 	    	monHp *= NM_MUL_HP_ATK;
-	    	//dropPrice = dropPrice * 50;
-	    	//if(hellActive) dropPrice *= HEL_SP_MULT; //토끼기준 100a
 	    	monLv += hellActive ? HEL_ADD_MON_LV : NM_ADD_MON_LV;
 	    	monExp *= NM_MUL_EXP;
 	    	if(hellActive) monExp *= HEL_MUL_EXP;
 	    }
 
-	    //SP dropSp= SP.fromSp(dropPrice);
 
 	    // ATK 범위 계산 (50% ~ 100%)
 	    int atkMin = (int) Math.floor(monAtk * 0.5);
@@ -9336,8 +9351,9 @@ public class BossAttackController {
 	    sb.append("▶ 보상: EXP ").append(formatKorNum(effExp));
 	    if (hasPenalty) sb.append("▼");
 	    else if (hasBonus) sb.append("▲");
-	    //sb.append(" / ").append(dropName).append(" ").append(dropSp.toString()).append("sp")
-	    //  .append(NL);
+	    if (dropName != null && dropSp != null) {
+	        sb.append(" / ").append(dropName).append(" ").append(dropSp.toString());
+	    }
 
 
 	    // 🔹 4행: 추가 설명 (mon_note)
