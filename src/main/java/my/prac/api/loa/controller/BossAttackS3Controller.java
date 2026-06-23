@@ -187,10 +187,10 @@ public class BossAttackS3Controller {
         return table[level];
     }
 
-    /** 아이템 강화 등급 표시 문자열 (qty=1→0강화, qty=2→+1, qty=3→+1(×2), qty=4→+2) */
+    /** 아이템 강화 등급 표시 문자열 (qty=1→0강화, qty=2→+1, qty=3→+1(+1), qty=4→+2) */
     static String enhanceSuffix(int qty) {
         if (qty >= 4) return "+2";
-        if (qty == 3) return "+1(×2)";
+        if (qty == 3) return "+1(+1)";
         if (qty == 2) return "+1";
         return "";
     }

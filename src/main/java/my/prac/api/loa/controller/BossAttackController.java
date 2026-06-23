@@ -2905,12 +2905,12 @@ public class BossAttackController {
 	                        if (bossConsolidatedShown.contains(itemId)) continue; // 중복 행 스킵
 	                        bossConsolidatedShown.add(itemId);
 	                        int totalQty = bossConsolidated.get(itemId);
-	                        if (totalQty > 1) label += "+" + (totalQty - 1);
+	                        String enh = BossAttackS3Controller.enhanceSuffix(totalQty); if (!enh.isEmpty()) label += enh;
 	                    } else {
-	                        if (qtyVal > 1) label += "+" + (qtyVal - 1);
+	                        String enhV = BossAttackS3Controller.enhanceSuffix(qtyVal); if (!enhV.isEmpty()) label += enhV;
 	                    }
 	                } else if (itemId >= 7000 && itemId < 8000) {
-	                    if (qtyVal > 1) label += "+" + (qtyVal - 1);
+	                    String enhV2 = BossAttackS3Controller.enhanceSuffix(qtyVal); if (!enhV2.isEmpty()) label += enhV2;
 	                } else if ("DROP_OPEN_G".equalsIgnoreCase(typeStr) || "DROP_OPEN_P".equalsIgnoreCase(typeStr) || "ATTEND".equalsIgnoreCase(typeStr)) {
 	                    label = ("DROP_OPEN_P".equalsIgnoreCase(typeStr) ? "✨플래티넘" : "ATTEND".equalsIgnoreCase(typeStr) ? "출첵" : "✨황금") + "유물상자 (/가방열기 로 개봉)";
 	                } else if (typeStr != null && typeStr.toUpperCase().startsWith("HELL_BOX") && itemId >= 3000 && itemId < 4000) {
@@ -5508,12 +5508,19 @@ public class BossAttackController {
 				.setJobSkillYn(0).setJob(s.job).setNightmareYn(s.ctx.user.nightmareYn));
 
 		String deathAchvMsg = grantDeathAchievements(s.userName, s.roomName);
-		//return // 워록 2타+ 실패 자멸 시 원인 명시
 		String warlockFailNote = ("워록".equals(s.job) && s.warlockKillFail && s.warlockFailHitNo > 1)
 				? s.warlockFailHitNo + "타 처치 실패로 자멸!" + NL : "";
+		String deathCauseMsg;
+		if (s.calc.monDmg > 0) {
+			deathCauseMsg = s.calc.monDmg + " 피해로 사망!" + NL;
+		} else if (s.calc.patternMsg != null && !s.calc.patternMsg.isEmpty()) {
+			deathCauseMsg = "[" + s.calc.patternMsg + "] 잔여 체력 소진으로 사망!" + NL;
+		} else {
+			deathCauseMsg = "잔여 체력 소진으로 사망!" + NL;
+		}
 		return s.userName + "님, 이번전투에서 패배하여, 전투 불능이 되었습니다." + NL
 				+ warlockFailNote
-				+ s.calc.monDmg + " 피해로 사망!" + NL
+				+ deathCauseMsg
 				+ "▶ 이번에 준 피해: " + dealtThisTurn + NL
 				+ "▶ 몬스터 남은 체력: " + monRemainAfter + " / " + displayMonMaxHp + NL
 				+ "현재 체력: 0 / " + s.hpMax + NL
