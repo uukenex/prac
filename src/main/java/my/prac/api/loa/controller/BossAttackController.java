@@ -5463,14 +5463,25 @@ public class BossAttackController {
 
 	private String ma_deathCheck(AttackSession s) {
 		// [워록] 처치 실패 자멸: monDmg를 hpCur로 세팅 → 사망 로직 정상 흐름
+		// hpCur<=0 엣지케이스: 0HP 상태에서 자멸 시 "0 피해로 사망" 방지
 		if ("워록".equals(s.job) && s.warlockKillFail) {
-			s.calc.monDmg = s.u.hpCur;
+			s.calc.monDmg = Math.max(1, s.u.hpCur);
+			if (s.u.hpCur <= 0) s.u.hpCur = s.calc.monDmg;
 		}
 		int newHpPreview = Math.max(0, s.u.hpCur - s.calc.monDmg);
 		if (newHpPreview > 0) return null;
 
 		int dealtThisTurn  = Math.max(0, s.calc.atkDmg);
-		int monRemainAfter = Math.max(0, s.monHpRemainBefore - dealtThisTurn);
+		// 워록 2타+ 실패: 실패한 몬스터 기준으로 표시
+		int monRemainAfter;
+		int displayMonMaxHp;
+		if ("워록".equals(s.job) && s.warlockKillFail && s.willKill && s.warlockFailHitNo > 1) {
+			monRemainAfter  = Math.max(0, s.warlockFailMonHp - s.warlockFailDmg);
+			displayMonMaxHp = s.warlockFailMonHp;
+		} else {
+			monRemainAfter  = Math.max(0, s.monHpRemainBefore - dealtThisTurn);
+			displayMonMaxHp = s.monMaxHp;
+		}
 
 		// [자이언트 계열] 불굴 - 사망 시 즉시 부활 + 카운트+5
 		if (isGiantJob(s.job)) {
@@ -5497,10 +5508,14 @@ public class BossAttackController {
 				.setJobSkillYn(0).setJob(s.job).setNightmareYn(s.ctx.user.nightmareYn));
 
 		String deathAchvMsg = grantDeathAchievements(s.userName, s.roomName);
+		return // 워록 2타+ 실패 자멸 시 원인 명시
+		String warlockFailNote = ("워록".equals(s.job) && s.warlockKillFail && s.warlockFailHitNo > 1)
+				? s.warlockFailHitNo + "타 처치 실패로 자멸!" + NL : "";
 		return s.userName + "님, 이번전투에서 패배하여, 전투 불능이 되었습니다." + NL
+				+ warlockFailNote
 				+ s.calc.monDmg + " 피해로 사망!" + NL
 				+ "▶ 이번에 준 피해: " + dealtThisTurn + NL
-				+ "▶ 몬스터 남은 체력: " + monRemainAfter + " / " + s.monMaxHp + NL
+				+ "▶ 몬스터 남은 체력: " + monRemainAfter + " / " + displayMonMaxHp + NL
 				+ "현재 체력: 0 / " + s.hpMax + NL
 				+ "5분 뒤 최대 체력의 10%로 부활하며," + NL
 				+ "이후 5분마다 HP_REGEN 만큼 서서히 회복됩니다." + NL
@@ -5570,7 +5585,7 @@ public class BossAttackController {
 				if (id != null) {
 					// [7021] 처단자 보스템: 아이템 수량 2배 크리 확률 +10%, 1강화 +25%
 					int qty7021 = s.ctx.bossItemQtyMap.getOrDefault(7021, 1);
-					double bonusProb = !s.ctx.ownedBossItems.contains(7021) ? 0.10 : (qty7021 >= 2 ? 0.25 : 0.20);
+					double bonusProb = !s.ctx.ownedBossItems.contains(7021) ? 0.10 : (qty7021 >= 3 ? 0.30 : qty7021 >= 2 ? 0.25 : 0.20);
 					boolean bonus = ThreadLocalRandom.current().nextDouble() < bonusProb;
 					if (bonus) qty *= 2;
 					HashMap<String,Object> inv = buildStealInv(s.userName, s.roomName, id);
@@ -6896,7 +6911,7 @@ public class BossAttackController {
 				+ "보스뽑기에는 " + (int)gachaPrice + " GP가 필요합니다." + NL
 				+ "현재 GP: " + String.format("%.2f", Math.floor((gp) * 100) / 100) + " GP" + NL
 				+ "(보유 유물 수: " + ownedBossCount + "개 → " + (int)gachaPrice + " GP)" + NL
-				+ "(7000번대 보스 아이템 판매 시 1개당 1 GP 획득)";
+				+ "(보스 아이템은 판매 불가)";
 		}
 
 		// 7000번대 아이템 목록 조회
@@ -7277,19 +7292,8 @@ public class BossAttackController {
 					continue;
 			}
 
-			// [보스 아이템] 7000번대: BOSS_HELL 타입만 GP 판매 가능, BOSS_GACHA/강화(qty>1)는 판매 불가
-			if (itemId >= 7000 && itemId < 8000) {
-				String gainType = Objects.toString(r.get("GAIN_TYPE"), "");
-				if ("BOSS_GACHA".equalsIgnoreCase(gainType)) continue;
-				if (bossConsolidatedQty.getOrDefault(itemId, 0) > 1) continue; // 강화된 아이템 판매 불가 (합산 기준)
-				int take2 = sellAll ? qty : Math.min(qty, need);
-				if (take2 == qty) ridList.add(rid);
-				else botNewService.updateInventoryQtyByRowId(rid, qty - take2);
-				gpCount += take2;
-				sold += take2;
-				if (!sellAll) { need -= take2; if (need <= 0) break; }
-				continue;
-			}
+			// [보스 아이템] 7000번대: 판매 불가
+			if (itemId >= 7000 && itemId < 8000) continue;
 
 			double price = priceMap.getOrDefault(itemId, 0d);
 			if (price <= 0)
@@ -9269,12 +9273,30 @@ public class BossAttackController {
 	
 	private String renderMonsterCompactLine(Monster m, int userLv, int nightmareYnVal) {
 
-		// 드랍 아이템명 및 판매가격
-	  //  String dropName = (m.monDrop != null ? m.monDrop : "-");
-	    //long dropPrice = getDropPriceByName(dropName);
-
 	    boolean nmActive = nightmareYnVal >= 1;
 	    boolean hellActive = nightmareYnVal == 2;
+
+		// 드랍 아이템명 및 판매 SP
+	    String dropName = (m.monDrop != null && !m.monDrop.trim().isEmpty()) ? m.monDrop.trim() : null;
+	    SP dropSp = null;
+	    if (dropName != null) {
+	        try {
+	            Integer dropItemId = getItemIdCached(dropName);
+	            if (dropItemId != null) {
+	                HashMap<String,Object> priceRow = getItemPriceCached(dropItemId);
+	                if (priceRow != null) {
+	                    double pv = safeDouble(priceRow.get("ITEM_SELL_PRICE"));
+	                    String pe = Objects.toString(priceRow.get("ITEM_SELL_PRICE_EXT"), "");
+	                    SP baseDropSp = SP.of(pv, pe);
+	                    if (nmActive) {
+	                        baseDropSp = baseDropSp.multiply(NM_MUL_HP_ATK);
+	                        if (hellActive) baseDropSp = baseDropSp.multiply(HEL_SP_MULT);
+	                    }
+	                    dropSp = baseDropSp;
+	                }
+	            }
+	        } catch (Exception ignore) {}
+	    }
 
 	    int monAtk = m.monAtk;
 	    int monHp = m.monHp;
@@ -9283,14 +9305,11 @@ public class BossAttackController {
 	    if(nmActive) {
 	    	monAtk *= NM_MUL_HP_ATK;
 	    	monHp *= NM_MUL_HP_ATK;
-	    	//dropPrice = dropPrice * 50;
-	    	//if(hellActive) dropPrice *= HEL_SP_MULT; //토끼기준 100a
 	    	monLv += hellActive ? HEL_ADD_MON_LV : NM_ADD_MON_LV;
 	    	monExp *= NM_MUL_EXP;
 	    	if(hellActive) monExp *= HEL_MUL_EXP;
 	    }
 
-	    //SP dropSp= SP.fromSp(dropPrice);
 
 	    // ATK 범위 계산 (50% ~ 100%)
 	    int atkMin = (int) Math.floor(monAtk * 0.5);
@@ -9356,8 +9375,9 @@ public class BossAttackController {
 	    sb.append("▶ 보상: EXP ").append(formatKorNum(effExp));
 	    if (hasPenalty) sb.append("▼");
 	    else if (hasBonus) sb.append("▲");
-	    //sb.append(" / ").append(dropName).append(" ").append(dropSp.toString()).append("sp")
-	    //  .append(NL);
+	    if (dropName != null && dropSp != null) {
+	        sb.append(" / ").append(dropName).append(" ").append(dropSp.toString());
+	    }
 
 
 	    // 🔹 4행: 추가 설명 (mon_note)

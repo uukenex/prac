@@ -61,9 +61,9 @@ public class BossAttackS3Controller {
     static final int BOSS_EVADE_RATE_MIN = 10,  BOSS_EVADE_RATE_MAX = 30;
     /** 보스 치명 저항 (%) */
     static final int BOSS_CRIT_DEF_MIN   = 10,  BOSS_CRIT_DEF_MAX   = 30;
-    /** 보스 최대 HP (raw) — 100a~300a 범위 (1a = 10,000 raw) */
-    static final long BOSS_MAX_HP_MIN    = 1_000_000L; // 100a
-    static final long BOSS_MAX_HP_MAX    = 3_000_000L; // 300a
+    /** 보스 최대 HP (raw) — 500a~2400a 범위 (1a = 10,000 raw) */
+    static final long BOSS_MAX_HP_MIN    = 5_000_000L; // 500a
+    static final long BOSS_MAX_HP_MAX    = 24_000_000L; // 2400a
 
     /** 헬보스 보상 아이템 타입 */
     private static final String HELL_ITEM_TYPE = "BOSS_HELL";
@@ -80,7 +80,7 @@ public class BossAttackS3Controller {
     private static final int IMPRISON_DURATION_MS = 5 * 60 * 1000; // 5분
     private static final int IMPRISON_CHANCE_PCT  = 10;             // 10%
     /** 보스아이템 최대 강화 단계 (기본1 + 강화1 = QTY 2) */
-    public static final int MAX_BOSS_ENHANCE = 2;
+    public static final int MAX_BOSS_ENHANCE = 3;
 
     // =========================================================
     // ★ 보스 아이템 강화 효과 테이블 (수치 직접 수정 가능)
@@ -92,41 +92,41 @@ public class BossAttackS3Controller {
     static {
         java.util.Map<Integer, int[]> m = new java.util.LinkedHashMap<>();
         // 7001: 천벌 — debuff 배수(×10회): +0=×1(10회), +1=×2(20회)
-        m.put(7001, new int[]{ 1,  2 });
+        m.put(7001, new int[]{ 1,  2,  3  });
         // 7002: 예리한칼날 — 도적 더블어택 확률(%)
         m.put(7002, new int[]{ 35, 45, 55 });
         // 7003: 주작궁 — 궁사 연사 추가(회)
         m.put(7003, new int[]{ 1,  2,  3  });
         // 7004: 모래시계 — 쿨타임 감소율(%)
-        m.put(7004, new int[]{ 20, 30 });
+        m.put(7004, new int[]{ 20, 30, 40 });
         // 7005: 가시갑옷 — 반사율(퍼밀 /1000): 10=1.0%, 15=1.5%
-        m.put(7005, new int[]{ 10, 15 });
+        m.put(7005, new int[]{ 10, 15, 20 });
         // 7006: 강한자의어금니 — 바람가르기 추가 확률(%p)
-        m.put(7006, new int[]{ 15, 30 });
+        m.put(7006, new int[]{ 15, 30, 45 });
         // 7007: 헌터의자격 — 잔존율 추가(×10 저장: 30=3.0%p, 35=3.5%p)
-        m.put(7007, new int[]{ 30, 35 });
+        m.put(7007, new int[]{ 30, 35, 40 });
         // 7008: 가난한자의부적 — 추가 드랍 수
         m.put(7008, new int[]{ 1,  2,  3  });
         // 7009: 진화의시대 — 레벨당 공격력(0강화:150/cap300, 1강화:200/cap500)
-        m.put(7009, new int[]{ 150, 200 });
+        m.put(7009, new int[]{ 150, 200, 250 });
         // 7010: 주시자의눈 — 회피저지 확률(%)
-        m.put(7010, new int[]{ 30, 60 });
+        m.put(7010, new int[]{ 30, 60, 80 });
         // 7011: 개척자 — 추가데미지 +10% 확률(%)
-        m.put(7011, new int[]{ 30, 60 });
+        m.put(7011, new int[]{ 30, 60, 80 });
         // 7012: 수선도사의머리띠 — 도사 버프 계수(배수)
         m.put(7012, new int[]{ 3,  4,  5  });
         // 7013: 과거의영광 — 어제 공격자수당 공격력 보너스
-        m.put(7013, new int[]{ 1000, 1600 });
+        m.put(7013, new int[]{ 1000, 1600, 2200 });
         // 7014: 달의부름 — 곰 스킬실패 패널티 완화 확률(%)
         m.put(7014, new int[]{ 50, 65, 80 });
         // 7015: 무한의대검 — 초강력치명타 추가 확률(%p)
         m.put(7015, new int[]{ 10, 15, 20 });
         // 7016: 복수의시간 — 복수자 처치 시 체력회복률(%)
-        m.put(7016, new int[]{ 20, 30 });
+        m.put(7016, new int[]{ 20, 30, 40 });
         // 7017: 연금술의대가 — 엘릭서 할인율(%)
-        m.put(7017, new int[]{ 50, 70 });
+        m.put(7017, new int[]{ 50, 70, 80 });
         // 7018: 상자수집가 — 추가 상자 수(0강화:+1, 1강화:+2)
-        m.put(7018, new int[]{ 1,  2  });
+        m.put(7018, new int[]{ 1,  2,  3  });
         // 7019: 어세신의부름 — 도적 스틸 성공 시 추가 획득 수
         m.put(7019, new int[]{ 1,  2,  3  });
         BOSS_ENHANCE_TABLE = java.util.Collections.unmodifiableMap(m);
@@ -143,23 +143,23 @@ public class BossAttackS3Controller {
         e.put(7002, new String[]{"도적 2타 확률",          "%",   null});
         e.put(7003, new String[]{"궁사 연사 추가",         "발",  "최대 7연사"});
         e.put(7004, new String[]{"아이템 쿨타임 감소",     "%",   null});
-        e.put(7005, new String[]{"받은 피해 반사",         "",    "0강화 1.0% / 1강화 1.5%"});
+        e.put(7005, new String[]{"받은 피해 반사",         "",    "0강화 1.0% / 1강화 1.5% / 2강화 2.0%"});
         e.put(7006, new String[]{"바람가르기 확률",        "%",   "검성 전용"});
-        e.put(7007, new String[]{"헬너프 감소",            "",    "0강화 3.0%p / 1강화 3.5%p"});
+        e.put(7007, new String[]{"헬너프 감소",            "",    "0강화 3.0%p / 1강화 3.5%p / 2강화 4.0%p"});
         e.put(7008, new String[]{"일반몬스터 드랍 추가",   "개",  null});
-        e.put(7009, new String[]{"레벨당 공격력 추가",     "",    "0강화 max300 / 1강화 max500"});
+        e.put(7009, new String[]{"레벨당 공격력 추가",     "",    "0강화 max300 / 1강화 max500 / 2강화 max700"});
         e.put(7010, new String[]{"보스 회피 무시 확률",    "%",   "헬보스 전용"});
         e.put(7011, new String[]{"추가데미지 +10% 확률",    "%",   "헬보스 전용"});
         e.put(7012, new String[]{"직업 버프 계수",         "배",  "도사/음양사 전용"});
-        e.put(7013, new String[]{"어제공격자수 x 공격력",  "",    "최대 40명 / 0강max40,000 / 1강max64,000"});
+        e.put(7013, new String[]{"어제공격자수 x 공격력",  "",    "최대 40명 / 0강max40,000 / 1강max64,000 / 2강max88,000"});
         e.put(7014, new String[]{"곰 스킬실패 패널티 완화", "%",  "곰 전용"});
         e.put(7015, new String[]{"슈퍼크리티컬 확률",      "%",   "헬보스 전용"});
         e.put(7016, new String[]{"HP 흡수율",              "%",   "미보유시 기본 10%"});
         e.put(7017, new String[]{"상점 할인율",            "%",   null});
         e.put(7018, new String[]{"출석 상자 추가",         "개",  null});
         e.put(7019, new String[]{"저주 스택 추가",         "개",  null});
-        e.put(7020, new String[]{"슈퍼크리티컬 배율",      "배",  "미보유 5배 / 0강화 6배 / 1강화 6.5배"});
-        e.put(7021, new String[]{"아이템 수량 2배 확률",   "%",   "미보유 10% / 0강화 20% / 1강화 25%"});
+        e.put(7020, new String[]{"슈퍼크리티컬 배율",      "배",  "미보유 5배 / 0강화 6배 / 1강화 6.5배 / 2강화 7배"});
+        e.put(7021, new String[]{"아이템 수량 2배 확률",   "%",   "미보유 10% / 0강화 20% / 1강화 25% / 2강화 30%"});
         BOSS_ITEM_EFFECT = java.util.Collections.unmodifiableMap(e);
     }
 
@@ -617,7 +617,7 @@ public class BossAttackS3Controller {
                     double superMul = 1.0;
                     if (ownedBoss.contains(7020)) {
                         int qty7020 = bossItemQtyMap.getOrDefault(7020, 1);
-                        superMul = (qty7020 >= 2) ? 6.5 / 5.0 : 6.0 / 5.0;
+                        superMul = (qty7020 >= 3) ? 7.0 / 5.0 : (qty7020 >= 2) ? 6.5 / 5.0 : 6.0 / 5.0;
                     }
                     damage = (long)(baseAtk * 3 * critMultiplier * superMul);
                     dmgMsg = "[✨초강력 치명타!!] " + atkRangeStr + baseAtk + " → " + damage;
@@ -678,7 +678,7 @@ public class BossAttackS3Controller {
                 double superMul2 = 1.0;
                 if (ownedBoss.contains(7020)) {
                     int qty7020 = bossItemQtyMap.getOrDefault(7020, 1);
-                    superMul2 = (qty7020 >= 2) ? 6.5 / 5.0 : 6.0 / 5.0;
+                    superMul2 = (qty7020 >= 3) ? 7.0 / 5.0 : (qty7020 >= 2) ? 6.5 / 5.0 : 6.0 / 5.0;
                 }
                 damage2 = (long)(baseAtk2 * 3 * critMul2 * superMul2);
                 dmgMsg2 = "[✨초강력 치명타!!] " + atkRangeStr2 + baseAtk2 + " → " + damage2;
