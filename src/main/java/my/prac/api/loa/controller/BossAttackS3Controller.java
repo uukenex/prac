@@ -1471,6 +1471,7 @@ public class BossAttackS3Controller {
 
                 Map<String, List<Integer>> winnerItemIds    = new LinkedHashMap<>();
                 Map<String, List<Integer>> winnerEnhItemIds = new LinkedHashMap<>();
+                Map<String, List<Integer>> winnerNewQtys    = new LinkedHashMap<>();
                 Map<String, List<String>>  winnerItemNames  = new LinkedHashMap<>();
                 Map<String, List<String>>  winnerDisplays   = new LinkedHashMap<>();
                 for (String winner : itemWinners) {
