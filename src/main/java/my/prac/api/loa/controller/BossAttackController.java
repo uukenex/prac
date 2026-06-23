@@ -6577,9 +6577,13 @@ public class BossAttackController {
 	    boolean forceNmBagDrop = false;
 	    boolean forceHellBagDrop = false;
 
-	    // 버프 발동 시: 어떤 버프든 발동자는 나메가방 확정 (의도된 기능)
+	    // 버프 발동 시: 발동자에게 나메가방(나메모드) 또는 헬가방(헬모드) 확정 지급
 	    if (buff != null && buff.started) {
-	        forceNmBagDrop = true;
+	        if (hell) {
+	            forceHellBagDrop = true;
+	        } else {
+	            forceNmBagDrop = true;
+	        }
 	    }
 
 	    try {

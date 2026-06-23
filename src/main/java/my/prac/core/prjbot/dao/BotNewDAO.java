@@ -223,6 +223,7 @@ public interface BotNewDAO {
     List<Integer> selectItemIdsByType(@Param("itemType") String itemType);
     List<HashMap<String, Object>> selectHellRewardItemsWithOwnCount();
     void insertGpRecord(HashMap<String, Object> param);
+    int countGpByCmd(@Param("userName") String userName, @Param("cmd") String cmd);
     double selectGpBalance(@Param("userName") String userName);
     double selectUserTotalEarnedGp(@Param("userName") String userName);
     List<HashMap<String, Object>> selectGpRanking();

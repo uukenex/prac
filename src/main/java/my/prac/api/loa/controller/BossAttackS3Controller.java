@@ -1423,6 +1423,22 @@ public class BossAttackS3Controller {
 
         StringBuilder msg = new StringBuilder();
 
+        // ── 첫 보스 참여 보너스: BOSS_HELL_KILL_GP 기록 없는 신규 참여자 → 20GP ──
+        for (String participant : allNames) {
+            try {
+                int existing = botNewService.countGpByCmd(participant, "BOSS_HELL_KILL_GP");
+                if (existing == 0) {
+                    HashMap<String, Object> firstGp = new HashMap<>();
+                    firstGp.put("userName", participant);
+                    firstGp.put("roomName", roomName);
+                    firstGp.put("score",    20.0);
+                    firstGp.put("cmd",      "BOSS_FIRST_JOIN_GP");
+                    botNewService.insertGpRecord(firstGp);
+                    msg.append("🎉 [").append(participant).append("] 첫 보스 참여 보너스! +20GP").append(NL);
+                }
+            } catch (Exception ignore) {}
+        }
+
         // 아이템 보상 더보기(？) 상세 블록
         StringBuilder itemDetailBlock = new StringBuilder();
 
