@@ -78,7 +78,7 @@ public class BossAttackS3Controller {
     // ── 대악마 감금스킬 ──
     private static final Map<String, Long> IMPRISONED_UNTIL   = new java.util.concurrent.ConcurrentHashMap<>();
     private static final int IMPRISON_DURATION_MS = 5 * 60 * 1000; // 5분
-    private static final int IMPRISON_CHANCE_PCT  = 10;             // 10%
+    private static final int IMPRISON_CHANCE_PCT  = 30;             // 30%
     /** 보스아이템 최대 강화 단계 (qty1=0강화, qty2=+1강화, qty3=+1강화×2, qty4=+2강화, qty5+→자동판매) */
     public static final int MAX_BOSS_ENHANCE = 4;
 
@@ -758,9 +758,11 @@ public class BossAttackS3Controller {
         }
 
         // HP 차감 (1차) — 카운트업 보스는 HP가 올라가므로 kill 없음
-        SP newHpSp = isEvade || totalDamage <= 0
+        // 회피 시 데미지 반감 처리
+        long effectiveDamage = isEvade ? totalDamage / 2 : totalDamage;
+        SP newHpSp = effectiveDamage <= 0
                 ? SP.of(curHpNum, curHpExt)
-                : SP.of(curHpNum, curHpExt).subtract(SP.fromSp(totalDamage));
+                : SP.of(curHpNum, curHpExt).subtract(SP.fromSp(effectiveDamage));
         boolean isKill = !isCountUp && SP.toBaseValue(newHpSp) <= 0;
         long newHp = isKill ? 0 : SP.toBaseValue(newHpSp);
 
@@ -850,10 +852,10 @@ public class BossAttackS3Controller {
             } catch (Exception ignored) {}
         }
 
-        // 대악마/마왕 감금스킬 발동: 한 번에 보스 체력 90% 이상 데미지 or 한방사망 시
+        // 대악마/마왕 감금스킬 발동: 한 번에 보스 체력 90% 이상 데미지 or 한방사망 시 → 30% 확률
         if (("대악마".equals(bossDemonType) || "마왕".equals(bossDemonType))) {
             boolean bigDmg = !isEvade && maxHp > 0 && totalDamage >= (long)(maxHp * 0.9);
-            if (bigDmg || playerDead) {
+            if ((bigDmg || playerDead) && ThreadLocalRandom.current().nextInt(100) < IMPRISON_CHANCE_PCT) {
                 IMPRISONED_UNTIL.put(userName, System.currentTimeMillis() + IMPRISON_DURATION_MS);
             }
         }
@@ -869,9 +871,9 @@ public class BossAttackS3Controller {
 
         try {
             if (isCountUp) {
-                map.put("rawDmg", isEvade ? 0L : totalDamage);
+                map.put("rawDmg", effectiveDamage);
                 botS3Service.updateHellBossCountUpTx(map);
-                if (!isEvade && totalDamage > 0) {
+                if (effectiveDamage > 0) {
                     try { botS3Service.reduceCountUpCloseDate(); } catch (Exception ignore) {}
                 }
             } else {
@@ -1008,7 +1010,7 @@ public class BossAttackS3Controller {
             if (!dosaBossBuffMsg.isEmpty()) msg.append(dosaBossBuffMsg);
             if (!dmgLimitMsg.isEmpty()) msg.append(dmgLimitMsg);
         } else {
-            msg.append("보스가 공격을 회피했습니다! 데미지 0!").append(NL);
+            msg.append("보스가 공격을 회피했습니다! 데미지 반감! (").append(SP.fromSp(effectiveDamage)).append(")").append(NL);
         }
         if (!spRewardMsg.isEmpty()) msg.append(spRewardMsg);
 
@@ -1025,11 +1027,11 @@ public class BossAttackS3Controller {
             msg.append("✨").append(bossDisplayName).append("를 처치했습니다!").append(NL).append(killMsg);
             msg.append(NL).append("새로운 보스가 출현했습니다!").append(NL);
         } else if (isCountUp) {
-            long newAccumulated = hp + (isEvade ? 0L : totalDamage);
+            long newAccumulated = hp + effectiveDamage;
             SP accSp = SP.fromSp(newAccumulated);
             msg.append("📈 전체 누적 데미지: ").append(accSp).append(NL);
-            if (!isEvade && totalDamage > 0) {
-                msg.append("💥 본인 현재 데미지: ").append(SP.fromSp(totalDamage)).append(NL);
+            if (effectiveDamage > 0) {
+                msg.append("💥 본인 현재 데미지: ").append(SP.fromSp(effectiveDamage)).append(NL);
             }
             try {
                 long myAcc = botS3Service.selectMyCountUpDmg(userName, bossStartDate);
