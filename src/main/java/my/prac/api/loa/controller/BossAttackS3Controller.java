@@ -61,9 +61,9 @@ public class BossAttackS3Controller {
     static final int BOSS_EVADE_RATE_MIN = 10,  BOSS_EVADE_RATE_MAX = 30;
     /** 보스 치명 저항 (%) */
     static final int BOSS_CRIT_DEF_MIN   = 10,  BOSS_CRIT_DEF_MAX   = 30;
-    /** 보스 최대 HP (raw) — 100a~300a 범위 (1a = 10,000 raw) */
-    static final long BOSS_MAX_HP_MIN    = 1_000_000L; // 100a
-    static final long BOSS_MAX_HP_MAX    = 3_000_000L; // 300a
+    /** 보스 최대 HP (raw) — 500a~2400a 범위 (1a = 10,000 raw) */
+    static final long BOSS_MAX_HP_MIN    = 5_000_000L; // 500a
+    static final long BOSS_MAX_HP_MAX    = 24_000_000L; // 2400a
 
     /** 헬보스 보상 아이템 타입 */
     private static final String HELL_ITEM_TYPE = "BOSS_HELL";
