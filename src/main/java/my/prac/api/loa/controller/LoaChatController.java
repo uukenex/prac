@@ -2997,8 +2997,10 @@ public class LoaChatController {
 		String msg = "";
 		//msg += enterStr + "종막[ "+enterStr+"[하 0G/노 0G]";
 		msg += enterStr + "⭐그림자 레이드⭐";
-		msg += enterStr + "✓고통-세르카"+enterStr+" ↳ [노 17,500G(+17,500G)/하 44,000G]";
+		msg += enterStr + "✓고통-세르카"+enterStr+" ↳ [노 16,000G(+16,000G)/하 44,000G]";
 		msg += enterStr+" ↳ [나메 54,000G]";
+		msg += enterStr + "✓죽음-벨가르딘"+enterStr+" ↳ [노 50,000G)/하 62,000G]";
+		msg += enterStr+" ↳ [나메 75,000G]";
 		/*
 		msg += enterStr + "✓절망-****"+enterStr+" ↳ [노 **,000G/하 **,000G]";
 		msg += enterStr+" ↳ [나메 **,000G]";
@@ -3012,8 +3014,8 @@ public class LoaChatController {
 		
 		msg += enterStr ;
 		msg += enterStr + "⭐카제로스 레이드⭐";
-		msg += enterStr + "✓종막-카제로스"+enterStr+" ↳ [노 20,000G(+20,000G)/하 52,000G]";
-		msg += enterStr + "✓4막-아르모체"+enterStr+" ↳ [노 16,500G(+16,500G)/하 42,000G]";
+		msg += enterStr + "✓종막-카제로스"+enterStr+" ↳ [노 16,000G(+16,000G)/하 48,000G]";
+		msg += enterStr + "✓4막-아르모체"+enterStr+" ↳ [노 13,500G(+13,500G)/하 38,000G]";
 		msg += enterStr + "✓3막-모르둠"+enterStr+" ↳ [노 10,500G(+10,500G)/하 13,500G(+13,500G)]";
 		//msg += enterStr + " ↳ (구)[노 28,000G/하 38,000G]";
 		msg += enterStr + "✓2막-아브렐슈드"+enterStr+" ↳ [노 8,250G(+8,250G)/하 23,000G(+11,500G)]";
