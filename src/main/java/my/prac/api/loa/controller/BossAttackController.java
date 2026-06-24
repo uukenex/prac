@@ -338,9 +338,10 @@ public class BossAttackController {
 					sb.append("- 드랍 없음 (한도 초과)").append(NL);
 				} else {
 					String bagType = isHell ? "헬상자" : (isNightmare ? "일반/나메가방" : "일반가방");
-					sb.append("- 드랍률: 3.0% / ").append(bagType);
+					String rateStr = (todayTotal < 20) ? "10.0%" : "3.0%";
+					sb.append("- 드랍률: ").append(rateStr).append(" / ").append(bagType);
 					if (isNightmare && !isHell) sb.append(" (20% 확률로 나메가방)");
-					sb.append(NL);
+					sb.append(" (20개까지 10%, 이후 3%)").append(NL);
 				}
 				sb.append(NL);
 			} catch (Exception ignore) {}
@@ -1448,8 +1449,8 @@ public class BossAttackController {
 	        SP totalSP, List<String> detail, List<String> itemSummary, boolean noSp,
 	        int[] goldRef, int[] platRef) {
 	    if (count <= 0) return;
-	    long spMin  = 100_000_000_000L; // 고정 1000b
-	    long spMax  = 100_000_000_000L; // 고정 1000b
+	    long spMin  =   5_000_000_000L; // 50b
+	    long spMax  = 200_000_000_000L; // 2000b
 	    SP hellSpLocal = new SP(0, ""); // SP 합산용 (루프 후 1회 INSERT)
 	    // 황금/플래티넘 누적: 외부 ref 있으면 공유, 없으면 로컬
 	    boolean useRef = (goldRef != null && platRef != null);
@@ -1517,7 +1518,7 @@ public class BossAttackController {
 	            }
 	        }
 	        // 보스아이템 드랍 확률 (헬가방 1개당): 보유30개미만→3%, 이상→1%
-	        double bossItemRate = (totalBossQtyFinal < 30) ? 0.03 : 0.01;
+	        double bossItemRate = (totalBossQtyFinal < 30) ? 0.03 : 0.0; // 30개 이상 드랍 없음
 	        if (ThreadLocalRandom.current().nextDouble() < bossItemRate) {
 	            int bossItemId = BOSS_ITEM_IDS_FOR_BOX.get(ThreadLocalRandom.current().nextInt(BOSS_ITEM_IDS_FOR_BOX.size()));
 	            bossBoxAcc.merge(bossItemId, 1, Integer::sum);
@@ -6698,7 +6699,7 @@ public class BossAttackController {
 	        try { todayBagTotal = getTodayBagCount(userName); } catch (Exception ignore) {}
 	        if (todayBagTotal >= BAG_DAILY_LIMIT) return ""; // 하루 35개 한도 초과
 
-	        double dropRate = (todayBagTotal < 30) ? 0.10 : BAG_DROP_RATE;
+	        double dropRate = (todayBagTotal < 20) ? 0.10 : BAG_DROP_RATE;
 	        if (ThreadLocalRandom.current().nextDouble() >= dropRate) {
 	            return "";
 	        }
