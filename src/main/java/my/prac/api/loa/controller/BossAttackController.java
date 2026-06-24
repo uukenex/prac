@@ -1952,14 +1952,18 @@ public class BossAttackController {
 	    }
 	}
 
-	/** 가방 획득 시 DAILY_BAG_CACHE 증가 (DB 조회 없이 캐시만 업데이트) */
+	/** 가방 획득 시 DAILY_BAG_CACHE 증가 */
 	private void incrementTodayBagCache(String userName, int delta) {
-
 	    int today = Integer.parseInt(java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd")));
-	    MiniGameUtil.DAILY_BAG_CACHE.merge(userName, new int[]{delta, today}, (old, add) -> {
-	        if (old[1] != today) return new int[]{add[0], today}; // 날짜 다르면 리셋
-	        return new int[]{old[0] + add[0], today};
-	    });
+	    int[] cached = MiniGameUtil.DAILY_BAG_CACHE.get(userName);
+	    if (cached == null || cached[1] != today) {
+	        // 캐시 없거나 날짜 다름 → DB 조회 후 + delta (서버 재시작 후 누락 방지)
+	        int dbCount = 0;
+	        try { dbCount = botNewService.selectTodayBagCount(userName); } catch (Exception ignore) {}
+	        MiniGameUtil.DAILY_BAG_CACHE.put(userName, new int[]{dbCount + delta, today});
+	    } else {
+	        MiniGameUtil.DAILY_BAG_CACHE.put(userName, new int[]{cached[0] + delta, today});
+	    }
 	}
 
 	// ─────────────────────────────────────────────────────────────────────────
