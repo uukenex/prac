@@ -1463,6 +1463,19 @@ public class BossAttackController {
 	    int[] localGold = useRef ? goldRef : new int[]{0};
 	    int[] localPlat = useRef ? platRef : new int[]{0};
 	    java.util.Map<Integer,Integer> basicBoxAcc = new java.util.LinkedHashMap<>(); // 기본상자 itemId->qty 누적 (루프 후 합산 INSERT)
+	    // 보스아이템 드랍: 1%(보유30개이상) / 3%(보유30개미만) 확률
+	    int totalBossQty = 0;
+	    try {
+	        @SuppressWarnings("unchecked")
+	        java.util.Map<Integer,Integer> bqMap = (java.util.Map<Integer,Integer>)
+	            getInvBuffCachedPublic(userName).getOrDefault("bossItemQty", java.util.Collections.emptyMap());
+	        for (int v : bqMap.values()) totalBossQty += v;
+	    } catch (Exception ignore) {}
+	    final int totalBossQtyFinal = totalBossQty;
+	    java.util.List<Integer> BOSS_ITEM_IDS_FOR_BOX = java.util.Arrays.asList(
+	        7001,7002,7003,7004,7005,7006,7007,7008,7009,7010,
+	        7011,7012,7013,7014,7015,7016,7017,7018,7019,7020,7021);
+	    java.util.Map<Integer,Integer> bossBoxAcc = new java.util.LinkedHashMap<>(); // 보스템 누적 INSERT
 	    for (int i = 0; i < count; i++) {
 	        double roll = ThreadLocalRandom.current().nextDouble();
 	        if (!noSp && roll < 0.95) {
@@ -1510,7 +1523,24 @@ public class BossAttackController {
 	                }
 	            }
 	        }
+	        // 보스아이템 드랍 확률 (헬가방 1개당): 보유30개미만→3%, 이상→1%
+	        double bossItemRate = (totalBossQtyFinal < 30) ? 0.03 : 0.01;
+	        if (ThreadLocalRandom.current().nextDouble() < bossItemRate) {
+	            int bossItemId = BOSS_ITEM_IDS_FOR_BOX.get(ThreadLocalRandom.current().nextInt(BOSS_ITEM_IDS_FOR_BOX.size()));
+	            bossBoxAcc.merge(bossItemId, 1, Integer::sum);
+	            detail.add("[지옥의유물상자]" + (i+1) + ": 🎁보스아이템 [" + bossItemId + "] 획득!");
+	            itemSummary.add("🎁보스아이템[" + bossItemId + "]");
+	        }
 	    }
+	    // ── 보스아이템 합산 후 1회 INSERT (gainType=BUY) ─────────────────────────────
+	    for (java.util.Map.Entry<Integer,Integer> be : bossBoxAcc.entrySet()) {
+	        HashMap<String,Object> bi = new HashMap<>();
+	        bi.put("userName", userName); bi.put("roomName", roomName);
+	        bi.put("itemId", be.getKey()); bi.put("qty", be.getValue());
+	        bi.put("delYn", "0"); bi.put("gainType", "BUY");
+	        try { botNewService.insertInventoryLogTx(bi); } catch (Exception ignore) {}
+	    }
+	    if (!bossBoxAcc.isEmpty()) invalidateInvBuff(userName);
 	    // ── 기본상자 아이템 합산 후 itemId별 1회 INSERT (동일 SYSDATE PK 충돌 방지) ─
 	    if (!basicBoxAcc.isEmpty()) {
 	        for (java.util.Map.Entry<Integer,Integer> be : basicBoxAcc.entrySet()) {
@@ -6630,13 +6660,14 @@ public class BossAttackController {
 	    }
 
 
-	    // 강제 드랍이 아닐 때만 확률 계산 (3% 고정, 하루 35개 한도)
+	    // 강제 드랍이 아닐 때만 확률 계산 (30개 미만: 10%, 이상: 3%, 하루 35개 한도)
 	    if (!forceNmBagDrop && !forceHellBagDrop) {
 	        int todayBagTotal = 0;
 	        try { todayBagTotal = getTodayBagCount(userName); } catch (Exception ignore) {}
 	        if (todayBagTotal >= BAG_DAILY_LIMIT) return ""; // 하루 35개 한도 초과
 
-	        if (ThreadLocalRandom.current().nextDouble() >= BAG_DROP_RATE) {
+	        double dropRate = (todayBagTotal < 30) ? 0.10 : BAG_DROP_RATE;
+	        if (ThreadLocalRandom.current().nextDouble() >= dropRate) {
 	            return "";
 	        }
 	    }
