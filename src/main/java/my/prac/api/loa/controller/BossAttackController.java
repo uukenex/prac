@@ -5501,6 +5501,7 @@ public class BossAttackController {
 	}
 
 	private String ma_deathCheck(AttackSession s) {
+		System.out.println("[DEATH_DBG] user=" + s.userName + " hpCur=" + s.u.hpCur + " monDmg=" + (s.calc!=null?s.calc.monDmg:null) + " warlockKillFail=" + s.warlockKillFail + " willKill=" + s.willKill + " pattern=" + (s.flags!=null?s.flags.monPattern:null) + " job=" + s.job);
 		// [워록] 처치 실패 자멸: monDmg를 hpCur로 세팅 → 사망 로직 정상 흐름
 		// hpCur<=0 엣지케이스: 0HP 상태에서 자멸 시 "0 피해로 사망" 방지
 		if ("워록".equals(s.job) && s.warlockKillFail) {
