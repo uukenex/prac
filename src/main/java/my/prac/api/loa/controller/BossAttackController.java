@@ -5501,13 +5501,21 @@ public class BossAttackController {
 	}
 
 	private String ma_deathCheck(AttackSession s) {
-		System.out.println("[DEATH_DBG] user=" + s.userName + " hpCur=" + s.u.hpCur + " monDmg=" + (s.calc!=null?s.calc.monDmg:null) + " warlockKillFail=" + s.warlockKillFail + " willKill=" + s.willKill + " pattern=" + (s.flags!=null?s.flags.monPattern:null) + " job=" + s.job);
 		// [워록] 처치 실패 자멸: monDmg를 hpCur로 세팅 → 사망 로직 정상 흐름
 		// hpCur<=0 엣지케이스: 0HP 상태에서 자멸 시 "0 피해로 사망" 방지
 		if ("워록".equals(s.job) && s.warlockKillFail) {
 			s.calc.monDmg = Math.max(1, s.u.hpCur);
 			if (s.u.hpCur <= 0) s.u.hpCur = s.calc.monDmg;
 		}
+		// willKill=true + monDmg=0: 몬스터 처치 완료, 반격 없음 → 사망 불가
+		// (이 조건에서 hpCur<=0이면 비정상 — 역추적 로그만 남기고 사망 취소)
+		if (s.willKill && s.calc.monDmg == 0 && !s.warlockKillFail) {
+			if (s.u.hpCur <= 0) {
+				System.out.println("[DEATH_GUARD] 비정상사망방지 user=" + s.userName + " job=" + s.job + " hpCur=" + s.u.hpCur + " pattern=" + (s.flags!=null?s.flags.monPattern:null) + " monHpBefore=" + s.monHpRemainBefore + " atkDmg=" + s.calc.atkDmg + " revivedThisTurn=" + s.revivedThisTurn);
+			}
+			return null; // 처치 완료 → 생존
+		}
+
 		int newHpPreview = Math.max(0, s.u.hpCur - s.calc.monDmg);
 		if (newHpPreview > 0) return null;
 
