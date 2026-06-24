@@ -1517,7 +1517,7 @@ public class BossAttackController {
 	            }
 	        }
 	        // 보스아이템 드랍 확률 (헬가방 1개당): 보유30개미만→3%, 이상→1%
-	        double bossItemRate = (totalBossQtyFinal < 30) ? 0.03 : 0.01;
+	        double bossItemRate = (totalBossQtyFinal < 30) ? 0.03 : 0.0; // 30개 이상 드랍 없음
 	        if (ThreadLocalRandom.current().nextDouble() < bossItemRate) {
 	            int bossItemId = BOSS_ITEM_IDS_FOR_BOX.get(ThreadLocalRandom.current().nextInt(BOSS_ITEM_IDS_FOR_BOX.size()));
 	            bossBoxAcc.merge(bossItemId, 1, Integer::sum);
