@@ -1,4 +1,3 @@
-		System.out.println("[DEATH_DBG] user=" + s.userName + " hpCur=" + s.u.hpCur + " monDmg=" + (s.calc!=null?s.calc.monDmg:null) + " warlockKillFail=" + s.warlockKillFail + " willKill=" + s.willKill + " pattern=" + (s.flags!=null?s.flags.monPattern:null) + " job=" + s.job);
 package my.prac.api.loa.controller;
 
 
