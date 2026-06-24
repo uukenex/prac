@@ -679,7 +679,7 @@ public class MiniGameUtil {
 	// 93 헬가방  : 고정 1000b (100_000_000_000 raw)
 	public static final long BAG_PRICE_91_FIXED  = 1_000_000_000L;   // 10b
 	public static final long BAG_PRICE_92_FIXED  = 2_000_000_000L;   // 20b
-	public static final long BAG_PRICE_93_FIXED  = 100_000_000_000L; // 1000b
+	public static final long BAG_PRICE_93_FIXED  = 200_000_000_000L; // 2000b
 
 	public static SP getBagPrice(int itemId, long top1SpRaw) {
 	    switch (itemId) {
