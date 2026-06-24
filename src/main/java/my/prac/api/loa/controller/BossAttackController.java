@@ -1,3 +1,4 @@
+		System.out.println("[DEATH_DBG] user=" + s.userName + " hpCur=" + s.u.hpCur + " monDmg=" + (s.calc!=null?s.calc.monDmg:null) + " warlockKillFail=" + s.warlockKillFail + " willKill=" + s.willKill + " pattern=" + (s.flags!=null?s.flags.monPattern:null) + " job=" + s.job);
 package my.prac.api.loa.controller;
 
 
@@ -4635,6 +4636,8 @@ public class BossAttackController {
 		// 2~4) 공통 스탯 + 직업 공격배율
 		if ((earlyMsg = ma_calcStats(s)) != null) return earlyMsg;
 
+		if ((earlyMsg = ma_macroCheck(s)) != null) return earlyMsg;
+
 		// 5~6) 부활 처리 / 진행중·신규 몬스터 설정
 		if ((earlyMsg = ma_resolveMonster(s)) != null) return earlyMsg;
 
@@ -4803,7 +4806,14 @@ public class BossAttackController {
 		if ("람쥐봇 문의방".equals(s.roomName) && !s.master)
 			return "문의방에서는 불가능합니다.";
 
-		// 매크로 탐지 통합 체크 (유저별 임계값 적용, 부캐 제외)
+		s.param1 = Objects.toString(s.map.get("param1"), "");
+		return null;
+	}
+
+
+	// ─ 매크로 탐지 체크 (보스 공격 제외) ─────────────────────────────────
+	private String ma_macroCheck(AttackSession s) {
+		if (s.u != null && s.u.targetMon == 99) return null; // 보스 공격 매크로 탐지 제외
 		try {
 			int hour = java.time.LocalTime.now().getHour();
 			boolean isNight = (hour >= 22 || hour < 8);
@@ -4842,10 +4852,8 @@ public class BossAttackController {
 				}
 			}
 		} catch (Exception ignore) {}
-		s.param1 = Objects.toString(s.map.get("param1"), "");
 		return null;
 	}
-
 	// ─ 2~4) 공통 스탯 + 직업 공격배율 ────────────────────────────
 	private String ma_calcStats(AttackSession s) {
 		HashMap<String,Object> statMap = new HashMap<>(s.map);
@@ -5499,6 +5507,15 @@ public class BossAttackController {
 			s.calc.monDmg = Math.max(1, s.u.hpCur);
 			if (s.u.hpCur <= 0) s.u.hpCur = s.calc.monDmg;
 		}
+		// willKill=true + monDmg=0: 몬스터 처치 완료, 반격 없음 → 사망 불가
+		// (이 조건에서 hpCur<=0이면 비정상 — 역추적 로그만 남기고 사망 취소)
+		if (s.willKill && s.calc.monDmg == 0 && !s.warlockKillFail) {
+			if (s.u.hpCur <= 0) {
+				System.out.println("[DEATH_GUARD] 비정상사망방지 user=" + s.userName + " job=" + s.job + " hpCur=" + s.u.hpCur + " pattern=" + (s.flags!=null?s.flags.monPattern:null) + " monHpBefore=" + s.monHpRemainBefore + " atkDmg=" + s.calc.atkDmg + " revivedThisTurn=" + s.revivedThisTurn);
+			}
+			return null; // 처치 완료 → 생존
+		}
+
 		int newHpPreview = Math.max(0, s.u.hpCur - s.calc.monDmg);
 		if (newHpPreview > 0) return null;
 
