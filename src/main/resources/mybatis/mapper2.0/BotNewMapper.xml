@@ -1964,7 +1964,7 @@
 	     WHERE INSERT_DATE >= TRUNC(SYSDATE)
 	       AND A.ITEM_ID IN (91, 92, 93)
 	       AND A.USER_NAME = #{userName}
-	       AND A.GAIN_TYPE = 'BAG_DROP'
+	       AND A.GAIN_TYPE IN ('BAG_DROP', 'PITY_BAG')
 	</select>
 	
 	

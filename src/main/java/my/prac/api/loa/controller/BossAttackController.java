@@ -5953,7 +5953,7 @@ public class BossAttackController {
 							pityInv.put("itemId",   BAG_HELL_ITEM_ID);
 							pityInv.put("qty",       1);
 							pityInv.put("delYn",    "0");
-							pityInv.put("gainType", "BAG_DROP");
+							pityInv.put("gainType", "PITY_BAG");
 							botNewService.insertInventoryLogTx(pityInv);
 							incrementTodayBagCache(s.userName, 1);
 							String pityMsg = "[" + checkKills + "킬 달성] 헬상자 획득!";
