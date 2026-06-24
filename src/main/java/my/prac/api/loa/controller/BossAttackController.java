@@ -192,9 +192,6 @@ public class BossAttackController {
 		}
 	    
 	    
-	    // ── 모드 전환 전 체력 기준 캡처 (아이템/버프 포함 실제 유효 최대 체력) ──
-	    UserBattleContext ctxBefore = null;
-	    try { ctxBefore = calcUserBattleContext(map); } catch (Exception ignore) {}
 
 	    if(selRaw.equals("나이트메어")||selRaw.equals("나메")) {
 
@@ -232,16 +229,12 @@ public class BossAttackController {
 	    	botNewService.setNightmareMode(userName,roomName,0);
 	    	msg="일반";
 	    }
-	    // ── 모드 전환 시 체력 비율 유지 (아이템 포함 컨텍스트 기준) ──────────
-	    if (!msg.isEmpty() && ctxBefore != null) {
+	    // ── 모드 전환 시 체력 100% 회복 ──────────────────────────────────
+	    if (!msg.isEmpty()) {
 	        try {
-	            int curEffMax = Math.max(1, ctxBefore.hpMax);
-	            double ratio  = Math.min(1.0, Math.max(0.0, u.hpCur / (double) curEffMax));
-	            // 전환 후 컨텍스트 재조회 (setNightmareMode가 DB 반영된 상태)
 	            UserBattleContext ctxAfter = calcUserBattleContext(map);
 	            int newEffMax = Math.max(1, ctxAfter.hpMax);
-	            int newHpCur  = Math.min(newEffMax, Math.max(1, (int) Math.round(ratio * newEffMax)));
-	            botNewService.updateUserHpOnlyTx(userName, roomName, newHpCur);
+	            botNewService.updateUserHpOnlyTx(userName, roomName, newEffMax);
 	        } catch (Exception ignore) {}
 	    }
 	    botNewService.closeOngoingBattleTx(userName, roomName);
@@ -2137,9 +2130,6 @@ public class BossAttackController {
 // 		        }
 // 		    }
 	    }
-	 // 변경 전 HP 비율 저장
-	    double hpRatio = (double) ctx.hpCur / (double) ctx.hpMax;
-	    
 	    // 6) 직업 변경 수행 (JOB + JOB_CHANGE_DATE = SYSDATE)
 	    int updated = botNewService.updateUserJobAndChangeDate(userName, roomName, newJob);
 	    if (updated <= 0) {
@@ -2153,9 +2143,8 @@ public class BossAttackController {
 	    
 	    UserBattleContext ctx2 = calcUserBattleContext(map);
 
-	    // HP 비율 유지
-	    long newHp = (long)Math.max(1, Math.floor(ctx2.hpMax * hpRatio));
-	    botNewService.updateUserHpOnlyTx(userName, roomName, (int) newHp);
+	    // 직업 변경 시 체력 100% 회복
+	    botNewService.updateUserHpOnlyTx(userName, roomName, Math.max(1, ctx2.hpMax));
 
 	    // 엘프/자이언트/워록 계열 최초 전직 시 직업레벨 1로 시작
 	    if ("자이언트".equals(newJob) || "자이언트용병".equals(newJob) || "자이언트기사".equals(newJob)
