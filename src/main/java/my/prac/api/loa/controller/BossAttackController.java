@@ -1522,16 +1522,18 @@ public class BossAttackController {
 	        if (ThreadLocalRandom.current().nextDouble() < bossItemRate) {
 	            int bossItemId = BOSS_ITEM_IDS_FOR_BOX.get(ThreadLocalRandom.current().nextInt(BOSS_ITEM_IDS_FOR_BOX.size()));
 	            bossBoxAcc.merge(bossItemId, 1, Integer::sum);
-	            detail.add("[지옥의유물상자]" + (i+1) + ": 🎁보스아이템 [" + bossItemId + "] 획득!");
-	            itemSummary.add("🎁보스아이템[" + bossItemId + "]");
+	            String _bossName = String.valueOf(bossItemId);
+	            try { HashMap<String,Object> _bi = botNewService.selectItemDetailById(bossItemId); if (_bi != null) _bossName = Objects.toString(_bi.get("ITEM_NAME"), _bossName); } catch (Exception _e) {}
+	            detail.add("[지옥의유물상자]" + (i+1) + ": 🎁보스아이템 [" + _bossName + "] 획득!");
+	            itemSummary.add("🎁보스아이템[" + _bossName + "]");
 	        }
 	    }
-	    // ── 보스아이템 합산 후 1회 INSERT (gainType=BUY) ─────────────────────────────
+	    // ── 보스아이템 합산 후 1회 INSERT (gainType=BOSS_BUY, attackinfo 합산) ────────────────────
 	    for (java.util.Map.Entry<Integer,Integer> be : bossBoxAcc.entrySet()) {
 	        HashMap<String,Object> bi = new HashMap<>();
 	        bi.put("userName", userName); bi.put("roomName", roomName);
 	        bi.put("itemId", be.getKey()); bi.put("qty", be.getValue());
-	        bi.put("delYn", "0"); bi.put("gainType", "BUY");
+	        bi.put("delYn", "0"); bi.put("gainType", "BOSS_BUY");
 	        try { botNewService.insertInventoryLogTx(bi); } catch (Exception ignore) {}
 	    }
 	    if (!bossBoxAcc.isEmpty()) invalidateInvBuff(userName);
