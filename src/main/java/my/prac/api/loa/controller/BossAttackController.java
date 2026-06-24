@@ -11779,6 +11779,3 @@ public class BossAttackController {
 	    return m;
 	}
 }
-					double curDropRate = (todayTotal < 20) ? 0.10 : 0.03;
-					String rateStr = (todayTotal < 20) ? "10.0%" : "3.0%";
-					sb.append("- 드랍률: ").append(rateStr).append(" (20개까지 10%, 이후 3%)").append(" / ").append(bagType);
