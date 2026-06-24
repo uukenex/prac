@@ -1,3 +1,4 @@
+		System.out.println("[DEATH_DBG] user=" + s.userName + " hpCur=" + s.u.hpCur + " monDmg=" + (s.calc!=null?s.calc.monDmg:null) + " warlockKillFail=" + s.warlockKillFail + " willKill=" + s.willKill + " pattern=" + (s.flags!=null?s.flags.monPattern:null) + " job=" + s.job);
 package my.prac.api.loa.controller;
 
 
@@ -4635,6 +4636,8 @@ public class BossAttackController {
 		// 2~4) 공통 스탯 + 직업 공격배율
 		if ((earlyMsg = ma_calcStats(s)) != null) return earlyMsg;
 
+		if ((earlyMsg = ma_macroCheck(s)) != null) return earlyMsg;
+
 		// 5~6) 부활 처리 / 진행중·신규 몬스터 설정
 		if ((earlyMsg = ma_resolveMonster(s)) != null) return earlyMsg;
 
@@ -4803,7 +4806,14 @@ public class BossAttackController {
 		if ("람쥐봇 문의방".equals(s.roomName) && !s.master)
 			return "문의방에서는 불가능합니다.";
 
-		// 매크로 탐지 통합 체크 (유저별 임계값 적용, 부캐 제외)
+		s.param1 = Objects.toString(s.map.get("param1"), "");
+		return null;
+	}
+
+
+	// ─ 매크로 탐지 체크 (보스 공격 제외) ─────────────────────────────────
+	private String ma_macroCheck(AttackSession s) {
+		if (s.u != null && s.u.targetMon == 99) return null; // 보스 공격 매크로 탐지 제외
 		try {
 			int hour = java.time.LocalTime.now().getHour();
 			boolean isNight = (hour >= 22 || hour < 8);
@@ -4842,10 +4852,8 @@ public class BossAttackController {
 				}
 			}
 		} catch (Exception ignore) {}
-		s.param1 = Objects.toString(s.map.get("param1"), "");
 		return null;
 	}
-
 	// ─ 2~4) 공통 스탯 + 직업 공격배율 ────────────────────────────
 	private String ma_calcStats(AttackSession s) {
 		HashMap<String,Object> statMap = new HashMap<>(s.map);
@@ -5493,6 +5501,7 @@ public class BossAttackController {
 	}
 
 	private String ma_deathCheck(AttackSession s) {
+		System.out.println("[DEATH_DBG] user=" + s.userName + " hpCur=" + s.u.hpCur + " monDmg=" + (s.calc!=null?s.calc.monDmg:null) + " warlockKillFail=" + s.warlockKillFail + " willKill=" + s.willKill + " pattern=" + (s.flags!=null?s.flags.monPattern:null) + " job=" + s.job);
 		// [워록] 처치 실패 자멸: monDmg를 hpCur로 세팅 → 사망 로직 정상 흐름
 		// hpCur<=0 엣지케이스: 0HP 상태에서 자멸 시 "0 피해로 사망" 방지
 		if ("워록".equals(s.job) && s.warlockKillFail) {
