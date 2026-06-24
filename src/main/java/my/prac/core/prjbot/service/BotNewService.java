@@ -216,6 +216,7 @@ public interface BotNewService {
     int consumeBagBulkByItemIdAndGainTypeTx(String userName, String roomName, int itemId, String gainType, int count);
     
     int selectTodayBagCount(String userName);
+    List<HashMap<String,Object>> selectAllTodayBagCounts();
     HashMap<String,Object> selectActiveSpecialBuff();
 
     int insertSpecialBuff(HashMap<String,Object> param);

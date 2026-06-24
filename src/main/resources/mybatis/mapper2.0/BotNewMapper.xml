@@ -1956,6 +1956,16 @@
 	</update>
 	
 	
+	<select id="selectAllTodayBagCounts" resultType="hashmap">
+	    /* selectAllTodayBagCounts - 기동 시 전체 유저 오늘 가방 수 일괄 적재용 */
+	    SELECT USER_NAME, NVL(SUM(NVL(QTY,1)), 0) AS TODAY_COUNT
+	      FROM TBOT_POINT_NEW_INVENTORY
+	     WHERE INSERT_DATE >= TRUNC(SYSDATE)
+	       AND ITEM_ID IN (91, 92, 93)
+	       AND GAIN_TYPE IN ('BAG_DROP', 'PITY_BAG')
+	     GROUP BY USER_NAME
+	</select>
+
 	<select id="selectTodayBagCount"
 	        resultType="int">
 	    /* selectTodayBagCount - 전체 가방(91/92/93) 하루 드랍 합산 (일반 드롭만 포함) */

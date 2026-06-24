@@ -1952,18 +1952,13 @@ public class BossAttackController {
 	    }
 	}
 
-	/** 가방 획득 시 DAILY_BAG_CACHE 증가 */
+	/** 가방 획득 시 DAILY_BAG_CACHE 증가 (DB 조회 없이 캐시만 업데이트) */
 	private void incrementTodayBagCache(String userName, int delta) {
 	    int today = Integer.parseInt(java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd")));
-	    int[] cached = MiniGameUtil.DAILY_BAG_CACHE.get(userName);
-	    if (cached == null || cached[1] != today) {
-	        // 캐시 없거나 날짜 다름 → DB 조회 후 + delta (서버 재시작 후 누락 방지)
-	        int dbCount = 0;
-	        try { dbCount = botNewService.selectTodayBagCount(userName); } catch (Exception ignore) {}
-	        MiniGameUtil.DAILY_BAG_CACHE.put(userName, new int[]{dbCount + delta, today});
-	    } else {
-	        MiniGameUtil.DAILY_BAG_CACHE.put(userName, new int[]{cached[0] + delta, today});
-	    }
+	    MiniGameUtil.DAILY_BAG_CACHE.merge(userName, new int[]{delta, today}, (old, add) -> {
+	        if (old[1] != today) return new int[]{add[0], today}; // 날짜 다르면 리셋
+	        return new int[]{old[0] + add[0], today};
+	    });
 	}
 
 	// ─────────────────────────────────────────────────────────────────────────
@@ -7237,6 +7232,16 @@ public class BossAttackController {
 	                priceRow.put("ITEM_SELL_PRICE",     row.get("ITEM_SELL_PRICE"));
 	                priceRow.put("ITEM_SELL_PRICE_EXT", row.get("ITEM_SELL_PRICE_EXT"));
 	                MiniGameUtil.ITEM_PRICE_CACHE.put(id2, priceRow);
+	            }
+	        }
+	        // 오늘 가방 획득 수 전체 유저 일괄 적재
+	        int today = Integer.parseInt(java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd")));
+	        List<HashMap<String,Object>> bagRows = botNewService.selectAllTodayBagCounts();
+	        if (bagRows != null) {
+	            for (HashMap<String,Object> row : bagRows) {
+	                String uName = String.valueOf(row.get("USER_NAME"));
+	                int cnt = ((Number) row.getOrDefault("TODAY_COUNT", 0)).intValue();
+	                MiniGameUtil.DAILY_BAG_CACHE.put(uName, new int[]{cnt, today});
 	            }
 	        }
 	    } catch (Exception e) {
