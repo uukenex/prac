@@ -185,6 +185,8 @@ public interface BotNewService {
     HashMap<String,Object> selectHeavenItemBuff(String userName);
     List<Integer> selectItemIdsByType(String itemType);
     List<HashMap<String, Object>> selectHellRewardItemsWithOwnCount();
+    HashMap<String,Object> selectMacroConfig(String userName);
+    int insertMacroConfigIfAbsent(String userName);
     void insertGpRecord(HashMap<String, Object> param);
     int countGpByCmd(String userName, String cmd);
     double selectGpBalance(String userName);

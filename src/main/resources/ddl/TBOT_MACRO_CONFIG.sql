@@ -1,0 +1,16 @@
+-- 유저별 매크로 감지 임계값 설정 테이블
+-- 최초 매크로 락 시 기본값으로 자동 INSERT, 이후 수동 수정 가능
+CREATE TABLE TBOT_MACRO_CONFIG (
+    USER_NAME       VARCHAR2(100) NOT NULL,
+    HOURLY_LIMIT    NUMBER(5)     DEFAULT 20   NOT NULL,  -- 1시간 내 허용 공격 횟수
+    NIGHT_MULTI     NUMBER(3,1)   DEFAULT 0.5  NOT NULL,  -- 야간(22~08시) 배율 (기본 0.5 = 절반)
+    MEMO            VARCHAR2(200),
+    INSERT_DATE     DATE          DEFAULT SYSDATE NOT NULL,
+    UPDATE_DATE     DATE          DEFAULT SYSDATE NOT NULL,
+    CONSTRAINT PK_TBOT_MACRO_CONFIG PRIMARY KEY (USER_NAME)
+);
+
+COMMENT ON TABLE  TBOT_MACRO_CONFIG              IS '유저별 매크로 감지 임계값 (수동 조정 가능)';
+COMMENT ON COLUMN TBOT_MACRO_CONFIG.HOURLY_LIMIT IS '1시간 기준 허용 공격 횟수 (기본 20)';
+COMMENT ON COLUMN TBOT_MACRO_CONFIG.NIGHT_MULTI  IS '야간 임계값 배율 (기본 0.5 → 야간한도=HOURLY_LIMIT×0.5)';
+COMMENT ON COLUMN TBOT_MACRO_CONFIG.MEMO         IS '관리자 메모';

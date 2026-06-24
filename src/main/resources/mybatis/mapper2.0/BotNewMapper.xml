@@ -1968,6 +1968,22 @@
 	</select>
 	
 	
+	<!-- 유저별 매크로 임계값 조회 (없으면 null) -->
+	<select id="selectMacroConfig" parameterType="string" resultType="hashmap">
+	    /* selectMacroConfig */
+	    SELECT USER_NAME, HOURLY_LIMIT, NIGHT_MULTI, MEMO
+	    FROM TBOT_MACRO_CONFIG
+	    WHERE USER_NAME = #{userName}
+	</select>
+
+	<!-- 최초 매크로 락 시 기본값으로 INSERT (이미 있으면 무시) -->
+	<insert id="insertMacroConfigIfAbsent" parameterType="string">
+	    /* insertMacroConfigIfAbsent */
+	    INSERT INTO TBOT_MACRO_CONFIG (USER_NAME, HOURLY_LIMIT, NIGHT_MULTI, INSERT_DATE, UPDATE_DATE)
+	    SELECT #{userName}, 20, 0.5, SYSDATE, SYSDATE FROM DUAL
+	    WHERE NOT EXISTS (SELECT 1 FROM TBOT_MACRO_CONFIG WHERE USER_NAME = #{userName})
+	</insert>
+
 	<select id="selectActiveSpecialBuff"
 	        resultType="hashmap">
 	    /* selectActiveSpecialBuff */
