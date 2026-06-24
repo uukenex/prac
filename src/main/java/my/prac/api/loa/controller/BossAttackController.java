@@ -192,9 +192,6 @@ public class BossAttackController {
 		}
 	    
 	    
-	    // ── 모드 전환 전 체력 기준 캡처 (아이템/버프 포함 실제 유효 최대 체력) ──
-	    UserBattleContext ctxBefore = null;
-	    try { ctxBefore = calcUserBattleContext(map); } catch (Exception ignore) {}
 
 	    if(selRaw.equals("나이트메어")||selRaw.equals("나메")) {
 
@@ -232,16 +229,12 @@ public class BossAttackController {
 	    	botNewService.setNightmareMode(userName,roomName,0);
 	    	msg="일반";
 	    }
-	    // ── 모드 전환 시 체력 비율 유지 (아이템 포함 컨텍스트 기준) ──────────
-	    if (!msg.isEmpty() && ctxBefore != null) {
+	    // ── 모드 전환 시 체력 100% 회복 ──────────────────────────────────
+	    if (!msg.isEmpty()) {
 	        try {
-	            int curEffMax = Math.max(1, ctxBefore.hpMax);
-	            double ratio  = Math.min(1.0, Math.max(0.0, u.hpCur / (double) curEffMax));
-	            // 전환 후 컨텍스트 재조회 (setNightmareMode가 DB 반영된 상태)
 	            UserBattleContext ctxAfter = calcUserBattleContext(map);
 	            int newEffMax = Math.max(1, ctxAfter.hpMax);
-	            int newHpCur  = Math.min(newEffMax, Math.max(1, (int) Math.round(ratio * newEffMax)));
-	            botNewService.updateUserHpOnlyTx(userName, roomName, newHpCur);
+	            botNewService.updateUserHpOnlyTx(userName, roomName, newEffMax);
 	        } catch (Exception ignore) {}
 	    }
 	    botNewService.closeOngoingBattleTx(userName, roomName);
@@ -1463,6 +1456,19 @@ public class BossAttackController {
 	    int[] localGold = useRef ? goldRef : new int[]{0};
 	    int[] localPlat = useRef ? platRef : new int[]{0};
 	    java.util.Map<Integer,Integer> basicBoxAcc = new java.util.LinkedHashMap<>(); // 기본상자 itemId->qty 누적 (루프 후 합산 INSERT)
+	    // 보스아이템 드랍: 1%(보유30개이상) / 3%(보유30개미만) 확률
+	    int totalBossQty = 0;
+	    try {
+	        @SuppressWarnings("unchecked")
+	        java.util.Map<Integer,Integer> bqMap = (java.util.Map<Integer,Integer>)
+	            getInvBuffCachedPublic(userName).getOrDefault("bossItemQty", java.util.Collections.emptyMap());
+	        for (int v : bqMap.values()) totalBossQty += v;
+	    } catch (Exception ignore) {}
+	    final int totalBossQtyFinal = totalBossQty;
+	    java.util.List<Integer> BOSS_ITEM_IDS_FOR_BOX = java.util.Arrays.asList(
+	        7001,7002,7003,7004,7005,7006,7007,7008,7009,7010,
+	        7011,7012,7013,7014,7015,7016,7017,7018,7019,7020,7021);
+	    java.util.Map<Integer,Integer> bossBoxAcc = new java.util.LinkedHashMap<>(); // 보스템 누적 INSERT
 	    for (int i = 0; i < count; i++) {
 	        double roll = ThreadLocalRandom.current().nextDouble();
 	        if (!noSp && roll < 0.95) {
@@ -1510,7 +1516,24 @@ public class BossAttackController {
 	                }
 	            }
 	        }
+	        // 보스아이템 드랍 확률 (헬가방 1개당): 보유30개미만→3%, 이상→1%
+	        double bossItemRate = (totalBossQtyFinal < 30) ? 0.03 : 0.01;
+	        if (ThreadLocalRandom.current().nextDouble() < bossItemRate) {
+	            int bossItemId = BOSS_ITEM_IDS_FOR_BOX.get(ThreadLocalRandom.current().nextInt(BOSS_ITEM_IDS_FOR_BOX.size()));
+	            bossBoxAcc.merge(bossItemId, 1, Integer::sum);
+	            detail.add("[지옥의유물상자]" + (i+1) + ": 🎁보스아이템 [" + bossItemId + "] 획득!");
+	            itemSummary.add("🎁보스아이템[" + bossItemId + "]");
+	        }
 	    }
+	    // ── 보스아이템 합산 후 1회 INSERT (gainType=BUY) ─────────────────────────────
+	    for (java.util.Map.Entry<Integer,Integer> be : bossBoxAcc.entrySet()) {
+	        HashMap<String,Object> bi = new HashMap<>();
+	        bi.put("userName", userName); bi.put("roomName", roomName);
+	        bi.put("itemId", be.getKey()); bi.put("qty", be.getValue());
+	        bi.put("delYn", "0"); bi.put("gainType", "BUY");
+	        try { botNewService.insertInventoryLogTx(bi); } catch (Exception ignore) {}
+	    }
+	    if (!bossBoxAcc.isEmpty()) invalidateInvBuff(userName);
 	    // ── 기본상자 아이템 합산 후 itemId별 1회 INSERT (동일 SYSDATE PK 충돌 방지) ─
 	    if (!basicBoxAcc.isEmpty()) {
 	        for (java.util.Map.Entry<Integer,Integer> be : basicBoxAcc.entrySet()) {
@@ -2107,9 +2130,6 @@ public class BossAttackController {
 // 		        }
 // 		    }
 	    }
-	 // 변경 전 HP 비율 저장
-	    double hpRatio = (double) ctx.hpCur / (double) ctx.hpMax;
-	    
 	    // 6) 직업 변경 수행 (JOB + JOB_CHANGE_DATE = SYSDATE)
 	    int updated = botNewService.updateUserJobAndChangeDate(userName, roomName, newJob);
 	    if (updated <= 0) {
@@ -2123,9 +2143,8 @@ public class BossAttackController {
 	    
 	    UserBattleContext ctx2 = calcUserBattleContext(map);
 
-	    // HP 비율 유지
-	    long newHp = (long)Math.max(1, Math.floor(ctx2.hpMax * hpRatio));
-	    botNewService.updateUserHpOnlyTx(userName, roomName, (int) newHp);
+	    // 직업 변경 시 체력 100% 회복
+	    botNewService.updateUserHpOnlyTx(userName, roomName, Math.max(1, ctx2.hpMax));
 
 	    // 엘프/자이언트/워록 계열 최초 전직 시 직업레벨 1로 시작
 	    if ("자이언트".equals(newJob) || "자이언트용병".equals(newJob) || "자이언트기사".equals(newJob)
@@ -4784,7 +4803,7 @@ public class BossAttackController {
 		if ("람쥐봇 문의방".equals(s.roomName) && !s.master)
 			return "문의방에서는 불가능합니다.";
 
-		// 매크로 탐지 통합 체크 (22시~08시, 부캐 제외, 20회+)
+		// 매크로 탐지 통합 체크 (유저별 임계값 적용, 부캐 제외)
 		try {
 			int hour = java.time.LocalTime.now().getHour();
 			boolean isNight = (hour >= 22 || hour < 8);
@@ -4792,12 +4811,24 @@ public class BossAttackController {
 			List<String> altChars = botNewService.selectAltCharList();
 			boolean isAlt = altChars != null && altChars.contains(s.userName);
 			if (!isAlt) {
+				// 유저별 임계값 조회 (없으면 기본값 20 / 0.5)
+				int hourlyLimit = 20;
+				double nightMulti = 0.5;
+				try {
+					HashMap<String,Object> mcfg = botNewService.selectMacroConfig(s.userName);
+					if (mcfg != null) {
+						hourlyLimit = ((Number) mcfg.getOrDefault("HOURLY_LIMIT", 20)).intValue();
+						nightMulti  = ((Number) mcfg.getOrDefault("NIGHT_MULTI", 0.5)).doubleValue();
+					}
+				} catch (Exception ignore) {}
+				int effectiveLimit = isNight ? (int)(hourlyLimit * nightMulti) : hourlyLimit;
 				int hourlyCnt = botNewService.selectHourlyRealAttackCount(s.userName);
-				if (hourlyCnt >= 20) {
+				if (hourlyCnt >= effectiveLimit) {
 					HashMap<String,Object> recent = botNewService.selectMacroDetectRecentHour(s.userName, macroHours);
 					if (recent == null) {
 						String code = generateMacroCode();
 						botNewService.insertMacroLock(s.userName, code);
+						try { botNewService.insertMacroConfigIfAbsent(s.userName); } catch (Exception ignore) {}
 						return s.userName + "님, 비정상 패턴이 감지되었습니다."+NL+"/매크로아님 " + code + " 를 입력하세요.";
 					} else {
 						String lockedYn = Objects.toString(recent.get("LOCKED_YN"), "0");
@@ -5896,7 +5927,8 @@ public class BossAttackController {
 			}
 		}
 
-		s.bagDropMsg = tryDropBag(s.userName, s.roomName, s.m, s.nightmare, s.hell, s.buff);
+		int[] hellBagAcc = {0};
+		s.bagDropMsg = tryDropBag(s.userName, s.roomName, s.m, s.nightmare, s.hell, s.buff, hellBagAcc);
 
 		// [천장] 헬모드 20킬마다 헬각인상자 확정 (일일 35개 상한 유지)
 		// 주의: insertBattleLogsBatch 완료 후 조회이므로 이번 킬이 이미 COUNT에 포함됨 (+1 보정 불필요)
@@ -5917,14 +5949,7 @@ public class BossAttackController {
 					if (checkKills > 0 && checkKills % 20 == 0) {
 						int todayBagTotal = getTodayBagCount(s.userName);
 						if (todayBagTotal < BAG_DAILY_LIMIT) {
-							HashMap<String,Object> pityInv = new HashMap<>();
-							pityInv.put("userName", s.userName);
-							pityInv.put("roomName", s.roomName);
-							pityInv.put("itemId",   BAG_HELL_ITEM_ID);
-							pityInv.put("qty",       1);
-							pityInv.put("delYn",    "0");
-							pityInv.put("gainType", "BAG_DROP");
-							botNewService.insertInventoryLogTx(pityInv);
+							hellBagAcc[0]++;
 							incrementTodayBagCache(s.userName, 1);
 							String pityMsg = "[" + checkKills + "킬 달성] 헬상자 획득!";
 							s.bagDropMsg = (s.bagDropMsg == null || s.bagDropMsg.isEmpty())
@@ -5936,9 +5961,24 @@ public class BossAttackController {
 		}
 
 		if (s.thiefDoubleAtk && s.m != null) {
-			String bag2 = tryDropBag(s.userName, s.roomName, s.m, s.nightmare, s.hell, s.buff);
+			String bag2 = tryDropBag(s.userName, s.roomName, s.m, s.nightmare, s.hell, s.buff, hellBagAcc);
 			if (bag2 != null && !bag2.isEmpty())
 				s.bagDropMsg = (s.bagDropMsg == null || s.bagDropMsg.isEmpty()) ? bag2 : s.bagDropMsg + NL + bag2;
+		}
+
+		// 헬가방 합산 INSERT (PK 충돌 방지: tryDropBag + 피티 누적 → QTY=합계 1회 INSERT)
+		if (hellBagAcc[0] > 0) {
+			try {
+				HashMap<String,Object> hInv = new HashMap<>();
+				hInv.put("userName", s.userName);
+				hInv.put("roomName", s.roomName);
+				hInv.put("itemId",   BAG_HELL_ITEM_ID);
+				hInv.put("qty",      hellBagAcc[0]);
+				hInv.put("delYn",   "0");
+				hInv.put("gainType","BAG_DROP");
+				botNewService.insertInventoryLogTx(hInv);
+				invalidateInvBuff(s.userName);
+			} catch (Exception ignore) {}
 		}
 
 		// ── [신규] 3.5% 확률 GP 지급 / GP확정타임 (이중 지급 방지 — 내부에서 분기)
@@ -6590,6 +6630,10 @@ public class BossAttackController {
 	
 	*/
 	private String tryDropBag(String userName, String roomName, Monster m, boolean nightmare, boolean hell, SpecialBuffResult buff) {
+	    return tryDropBag(userName, roomName, m, nightmare, hell, buff, null);
+	}
+
+	private String tryDropBag(String userName, String roomName, Monster m, boolean nightmare, boolean hell, SpecialBuffResult buff, int[] hellBagAcc) {
 	    double buffRate = 0.0;
 	    boolean forceNmBagDrop = false;
 	    boolean forceHellBagDrop = false;
@@ -6630,13 +6674,14 @@ public class BossAttackController {
 	    }
 
 
-	    // 강제 드랍이 아닐 때만 확률 계산 (3% 고정, 하루 35개 한도)
+	    // 강제 드랍이 아닐 때만 확률 계산 (30개 미만: 10%, 이상: 3%, 하루 35개 한도)
 	    if (!forceNmBagDrop && !forceHellBagDrop) {
 	        int todayBagTotal = 0;
 	        try { todayBagTotal = getTodayBagCount(userName); } catch (Exception ignore) {}
 	        if (todayBagTotal >= BAG_DAILY_LIMIT) return ""; // 하루 35개 한도 초과
 
-	        if (ThreadLocalRandom.current().nextDouble() >= BAG_DROP_RATE) {
+	        double dropRate = (todayBagTotal < 30) ? 0.10 : BAG_DROP_RATE;
+	        if (ThreadLocalRandom.current().nextDouble() >= dropRate) {
 	            return "";
 	        }
 	    }
@@ -6656,17 +6701,22 @@ public class BossAttackController {
 	    }
 	    
 	    try {
-	        HashMap<String, Object> inv = new HashMap<>();
-	        inv.put("userName", userName);
-	        inv.put("roomName", roomName);
-	        inv.put("itemId", bagItemId);
-	        inv.put("qty", 1);
-	        inv.put("delYn", "0");
-	        inv.put("gainType", "BAG_DROP");
-
-	        botNewService.insertInventoryLogTx(inv);
-	        invalidateInvBuff(userName);
-	        incrementTodayBagCache(userName, 1);  // [OPT] DAILY_BAG_CACHE 증가
+	        // 헬가방(93): hellBagAcc로 누적 후 caller에서 합산 INSERT (PK 충돌 방지)
+	        if (bagItemId == BAG_HELL_ITEM_ID && hellBagAcc != null) {
+	            hellBagAcc[0]++;
+	            incrementTodayBagCache(userName, 1);
+	        } else {
+	            HashMap<String, Object> inv = new HashMap<>();
+	            inv.put("userName", userName);
+	            inv.put("roomName", roomName);
+	            inv.put("itemId", bagItemId);
+	            inv.put("qty", 1);
+	            inv.put("delYn", "0");
+	            inv.put("gainType", "BAG_DROP");
+	            botNewService.insertInventoryLogTx(inv);
+	            invalidateInvBuff(userName);
+	            incrementTodayBagCache(userName, 1);
+	        }
 
 	        String bagName = (bagItemId == BAG_HELL_ITEM_ID) ? "지옥의유물상자" : (bagItemId == BAG_NM_ITEM_ID) ? "복주머니가방" : "세티노의비밀가방";
 

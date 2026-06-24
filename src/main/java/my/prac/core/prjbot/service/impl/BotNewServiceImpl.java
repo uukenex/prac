@@ -631,6 +631,16 @@ public class BotNewServiceImpl implements BotNewService {
     }
 
     @Override
+    public HashMap<String,Object> selectMacroConfig(String userName) {
+        return botNewDAO.selectMacroConfig(userName);
+    }
+
+    @Override
+    public int insertMacroConfigIfAbsent(String userName) {
+        return botNewDAO.insertMacroConfigIfAbsent(userName);
+    }
+
+    @Override
     public int countGpByCmd(String userName, String cmd) {
         return botNewDAO.countGpByCmd(userName, cmd);
     }

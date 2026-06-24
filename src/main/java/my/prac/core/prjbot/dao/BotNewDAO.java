@@ -222,6 +222,8 @@ public interface BotNewDAO {
     HashMap<String,Object> selectHeavenItemBuff(@Param("userName") String userName);
     List<Integer> selectItemIdsByType(@Param("itemType") String itemType);
     List<HashMap<String, Object>> selectHellRewardItemsWithOwnCount();
+    HashMap<String,Object> selectMacroConfig(@Param("userName") String userName);
+    int insertMacroConfigIfAbsent(@Param("userName") String userName);
     void insertGpRecord(HashMap<String, Object> param);
     int countGpByCmd(@Param("userName") String userName, @Param("cmd") String cmd);
     double selectGpBalance(@Param("userName") String userName);

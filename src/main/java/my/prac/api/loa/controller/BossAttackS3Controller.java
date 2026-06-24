@@ -476,6 +476,8 @@ public class BossAttackS3Controller {
             superCritChance += getBossEnhanceVal(7015, qty7015) / 100.0;
         }
 
+        // 회피 시 데미지 표시용 기본 계산 (if(!isEvade) 블록에서 크리/보정 포함으로 덮어씌워짐)
+        damage = Math.max(1, (ctx.atkMin + ThreadLocalRandom.current().nextInt(Math.max(1, ctx.atkMax - ctx.atkMin + 1))) / 100);
         boolean has7011 = false;
         if (!isEvade) {
             String atkRangeStr = "(" + (ctx.atkMin / 100) + "~" + (ctx.atkMax / 100) + ") ";
