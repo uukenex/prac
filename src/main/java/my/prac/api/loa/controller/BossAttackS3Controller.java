@@ -50,17 +50,17 @@ public class BossAttackS3Controller {
     // 헬보스 능력치 랜덤 범위 설정 (필요 시 수정)
     // =========================================================
     /** 보스 공격 발동률 (%) */
-    static final int BOSS_ATK_RATE_MIN   = 25,  BOSS_ATK_RATE_MAX   = 40;
+    static final int BOSS_ATK_RATE_MIN   = 15,  BOSS_ATK_RATE_MAX   = 30;
     /** 보스 공격 데미지: 유저 최대HP의 X% (체력비례 퍼센트 데미지) */
-    static final int BOSS_ATK_POWER_MIN  = 30,  BOSS_ATK_POWER_MAX  = 99;
+    static final int BOSS_ATK_POWER_MIN  = 10,  BOSS_ATK_POWER_MAX  = 99;
     /** 보스 방어 발동률 (%) */
-    static final int BOSS_DEF_RATE_MIN   = 25,  BOSS_DEF_RATE_MAX   = 45;
+    static final int BOSS_DEF_RATE_MIN   = 15,  BOSS_DEF_RATE_MAX   = 35;
     /** 보스 방어: 유저 공격의 X% 감소 */
-    static final int BOSS_DEF_POWER_MIN  = 30,  BOSS_DEF_POWER_MAX  = 100;
+    static final int BOSS_DEF_POWER_MIN  = 15,  BOSS_DEF_POWER_MAX  = 100;
     /** 보스 회피율 (%) */
-    static final int BOSS_EVADE_RATE_MIN = 20,  BOSS_EVADE_RATE_MAX = 40;
+    static final int BOSS_EVADE_RATE_MIN = 10,  BOSS_EVADE_RATE_MAX = 30;
     /** 보스 치명 저항 (%) */
-    static final int BOSS_CRIT_DEF_MIN   = 20,  BOSS_CRIT_DEF_MAX   = 40;
+    static final int BOSS_CRIT_DEF_MIN   = 10,  BOSS_CRIT_DEF_MAX   = 30;
     /** 보스 최대 HP (raw) — 500a~2400a 범위 (1a = 10,000 raw) */
     static final long BOSS_MAX_HP_MIN    = 5_000_000L; // 500a
     static final long BOSS_MAX_HP_MAX    = 24_000_000L; // 2400a
@@ -960,10 +960,10 @@ public class BossAttackS3Controller {
         // 공격 보상: 카운트업 보스는 즉시 보상 없음 (2시간 종료 시 일괄 지급)
         String spRewardMsg = "";
         if (!isCountUp && isMaWang && !isEvade && totalDamage > 0) {
-            // 마왕 GP 보상: 0.02 ~ 0.40 GP (데미지 비례, 100만 대비)
+            // 마왕 GP 보상: 0.10 ~ 0.20 GP (데미지 비례, 100만 대비)
             try {
                 double gpRatio = Math.min(1.0, totalDamage / 1_000_000.0);
-                double gpMin = 0.02, gpMax = 0.40;
+                double gpMin = 0.10, gpMax = 0.20;
                 double gpAmount = gpMin + (gpMax - gpMin) * gpRatio;
                 gpAmount = Math.round(gpAmount * 100) / 100.0;
                 if (gpAmount < gpMin) gpAmount = gpMin;
@@ -982,8 +982,8 @@ public class BossAttackS3Controller {
             try {
                 long rawSpVal = totalDamage * 10000L;
                 boolean isGreatDemonSp = "대악마".equals(bossDemonType);
-                long spCap = isGreatDemonSp ? 3_000_000_000L : 1_000_000_000L;
-                long spMin2 = isGreatDemonSp ? 30_000_000L   : 10_000_000L;
+                long spCap  = isGreatDemonSp ? 50_000_000_000L : 10_000_000_000L; // 대악마 500b, 상급악마 100b
+                long spMin2 = isGreatDemonSp ?    300_000_000L :    100_000_000L; // 대악마   3b, 상급악마   1b
                 if (isGreatDemonSp) rawSpVal *= 3;
                 boolean spCapped = rawSpVal > spCap;
                 boolean spMin    = rawSpVal < spMin2;
@@ -1375,7 +1375,7 @@ public class BossAttackS3Controller {
         }
         if (totalWeight <= 0) totalWeight = 1;
         double totalGp = 50.0;
-        long   totalSp = 1_000_000_000_000L; // 1c
+        long   totalSp = 10_000_000_000_000L; // 10c
         msg.append("참여자: ").append(contributors.size()).append("명").append(NL).append(NL);
         for (int i = 0; i < contributors.size(); i++) {
             String uName  = Objects.toString(contributors.get(i).get("USER_NAME"), "");
@@ -1384,8 +1384,8 @@ public class BossAttackS3Controller {
             double ratio  = weights[i] / totalWeight;
             double myGp   = Math.floor(totalGp * ratio * 100) / 100.0;
             if (myGp < 0.01) myGp = 0.01;
-            long mySpRaw  = (long)(totalSp * ratio);
-            if (mySpRaw < 10_000_000L) mySpRaw = 10_000_000L;
+            long mySpRaw  = Math.min(2_000_000_000_000L, (long)(totalSp * ratio)); // 인당 최대 2c
+            if (mySpRaw < 100_000_000L) mySpRaw = 100_000_000L; // 최소 1b
             SP mySp = SP.fromSp(mySpRaw);
             try {
                 HashMap<String, Object> pr = new HashMap<>();
