@@ -3303,14 +3303,14 @@ public class BossAttackController {
 		    List<Monster> monsters = botNewService.selectAllMonsters();
 		    StringBuilder sb = new StringBuilder();
 		    sb.append("공격 타겟 목록입니다:").append(NL).append(NL)
-		      .append("/ㄱㄱㅌㄱ 1 또는 /ㄱㄱㅌㄱ 토끼 로 설정").append(NL)
+		      .append("/ㄱㄱㅌㄱ 1 또는 /ㄱㄱㅌㄱ 토끼 로 설정").append(NL).append(NL)
 		      .append("▶ 선택 가능한 몬스터").append(ALL_SEE_STR);
 
 		    for (Monster mm : monsters) {
 		        sb.append(renderMonsterCompactLine(mm,userLv, nightmareYnVal));
 		    }
 		    if (nightmareYnVal == 2) {
-		        sb.append(ALL_SEE_STR).append(NL)
+		        sb.append(NL).append(ALL_SEE_STR).append(NL)
 		          .append("▶ [헬전용] 99 또는 보스 → [상급악마]").append(NL);
 		    }
 
@@ -3426,8 +3426,8 @@ public class BossAttackController {
 		botNewService.closeOngoingBattleTx(userName, roomName);
 		botNewService.updateUserTargetMonTx(userName, roomName, m.monNo);
 		int userLvForView = (u != null ? u.lv : 1);
-		return userName + "님, 공격 타겟을 " + m.monName + "(MON_NO=" + m.monNo + ") 으로 설정했습니다." + NL
-		     + "▶ 선택: " + NL + renderMonsterCompactLine(m, userLvForView,nightmareYnVal);
+		return userName + "님, 공격 타겟을 [" + m.monName + "] 으로 설정했습니다." + NL
+		     + NL + "▶ 선택:" + NL + renderMonsterCompactLine(m, userLvForView, nightmareYnVal);
 	}
 	// 엔트리 포인트: 기존 /구매 명령이 들어오는 곳
 	public String buyItem(HashMap<String, Object> map) {
@@ -7104,17 +7104,22 @@ public class BossAttackController {
 				if (regen  > 0) opts.append(" 리젠+").append(regen);
 				if (hpRate > 0) opts.append(" HP+").append(hpRate).append("%");
 				if (atkRate> 0) opts.append(" ATK+").append(atkRate).append("%");
-				String enhSuffix = isEnhance ? BossAttackS3Controller.enhanceSuffix(bossQtyMap.getOrDefault(giveItemId, 1) + 1) : "";
+				int curQty = bossQtyMap.getOrDefault(giveItemId, 0);
+				String curSuffix = BossAttackS3Controller.enhanceSuffix(curQty);
+				String enhSuffix = isEnhance ? BossAttackS3Controller.enhanceSuffix(curQty + 1) : "";
+				String beforeStr = isEnhance ? (curQty + "개" + (!curSuffix.isEmpty() ? "(" + curSuffix + ")" : "")) : "";
+				String afterStr  = (curQty + 1) + "개" + (!enhSuffix.isEmpty() ? "(" + enhSuffix + ")" : "");
 				itemLine = iName + enhSuffix
 					+ (!iDesc.isEmpty() ? " (" + iDesc + ")" : "")
 					+ (opts.length() > 0 ? " [" + opts.toString().trim() + "]" : "");
-			}
 		} catch (Exception ignore) {}
 
 		String actionWord = isEnhance ? "강화!" : "획득!";
+		String qtyProgress = isEnhance ? " (" + beforeStr + " → " + afterStr + ")" : " (" + afterStr + ")";
 		return userName + "님," + NL
 				+ "보스뽑기! (-" + (int)gachaPrice + " GP) [보유유물 " + ownedBossCount + "개]" + NL
 				+ "▶ " + actionWord + " " + itemLine + NL
+				+ "- 수량: " + qtyProgress + NL
 				+ "- 잔여 GP: " + String.format("%.2f", Math.floor((gp - gachaPrice) * 100) / 100) + " GP";
 	}
 
