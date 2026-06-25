@@ -684,7 +684,7 @@ public class BossAttackController {
 	    // 기본 스탯
 	    int baseAtkMin     = u.atkMin;
 	    int baseAtkMax     = u.atkMax;
-	    int baseHpMax   = u.hpMax;
+	    int baseHpMax   = (u.hpMax > 0) ? u.hpMax : MiniGameUtil.calcBaseHpMax(Math.max(1, u.lv));
 	    int baseRegen   = u.hpRegen;
 	    int baseCrit    = u.critRate;
 	    int baseCritDmg = u.critDmg;
