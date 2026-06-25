@@ -7127,6 +7127,7 @@ public class BossAttackController {
 				+ "- 수량: " + qtyProgress + NL
 				+ (!effectChange.isEmpty() ? "- 효과변화: " + effectChange + NL : "")
 				+ "- 잔여 GP: " + String.format("%.2f", Math.floor((gp - gachaPrice) * 100) / 100) + " GP";
+	}
 
 		private String sellCategoryItem(String userName, String roomName, String slotKey) throws Exception {
 
