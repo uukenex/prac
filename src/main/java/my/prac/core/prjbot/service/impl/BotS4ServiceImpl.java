@@ -220,7 +220,8 @@ public class BotS4ServiceImpl implements BotS4Service {
                 achMap.put("achId", achId);
                 botS4DAO.insertUserAch(achMap);
                 if (msg.length() > 0) msg.append("♬");
-                msg.append("🏆 업적 달성: [").append(ach.get("ACH_NAME")).append("]");
+                String achLabel = buildAchName(achType, achParam);
+                msg.append("🏆 업적 달성: [").append(achLabel).append("]");
                 String rewardType = ach.get("REWARD_TYPE") != null ? ach.get("REWARD_TYPE").toString() : "";
                 int rewardGrade   = ach.get("REWARD_GRADE") != null ? ((Number) ach.get("REWARD_GRADE")).intValue() : 0;
                 if ("ROD_UNLOCK".equals(rewardType) && rewardGrade > 0) {
@@ -231,6 +232,13 @@ public class BotS4ServiceImpl implements BotS4Service {
             }
         }
         return msg.toString();
+    }
+
+    private static String buildAchName(String achType, int achParam) {
+        if ("FIRST_CATCH_GRADE".equals(achType))    return "★" + achParam + " 첫 획득!";
+        if ("ALL_KIND_GRADE".equals(achType))       return "★" + achParam + " 도감 완성!";
+        if ("TOTAL_FISHING_COUNT".equals(achType))  return "낚시 " + achParam + "회 달성!";
+        return "업적 달성!";
     }
 
     private static final String[] GRADE_EMOJI = { "", "⭐", "🌟", "💫", "🔶", "💎", "💜", "🔥", "👑" };
