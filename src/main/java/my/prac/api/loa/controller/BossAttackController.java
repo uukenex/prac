@@ -7080,6 +7080,12 @@ public class BossAttackController {
 		}
 
 		// 아이템 이름/설명/옵션 조회
+		int curQty = bossQtyMap.getOrDefault(giveItemId, 0);
+		String curSuffix = BossAttackS3Controller.enhanceSuffix(curQty);
+		String beforeStr = isEnhance ? (curQty + "개" + (!curSuffix.isEmpty() ? "(" + curSuffix + ")" : "")) : "";
+		String afterStr  = (curQty + 1) + "개"
+		        + (!BossAttackS3Controller.enhanceSuffix(curQty + 1).isEmpty()
+		                ? "(" + BossAttackS3Controller.enhanceSuffix(curQty + 1) + ")" : "");
 		String itemLine = "#" + giveItemId;
 		try {
 			HashMap<String, Object> detail = botNewService.selectItemDetailById(giveItemId);
@@ -7104,14 +7110,11 @@ public class BossAttackController {
 				if (regen  > 0) opts.append(" 리젠+").append(regen);
 				if (hpRate > 0) opts.append(" HP+").append(hpRate).append("%");
 				if (atkRate> 0) opts.append(" ATK+").append(atkRate).append("%");
-				int curQty = bossQtyMap.getOrDefault(giveItemId, 0);
-				String curSuffix = BossAttackS3Controller.enhanceSuffix(curQty);
 				String enhSuffix = isEnhance ? BossAttackS3Controller.enhanceSuffix(curQty + 1) : "";
-				String beforeStr = isEnhance ? (curQty + "개" + (!curSuffix.isEmpty() ? "(" + curSuffix + ")" : "")) : "";
-				String afterStr  = (curQty + 1) + "개" + (!enhSuffix.isEmpty() ? "(" + enhSuffix + ")" : "");
 				itemLine = iName + enhSuffix
 					+ (!iDesc.isEmpty() ? " (" + iDesc + ")" : "")
 					+ (opts.length() > 0 ? " [" + opts.toString().trim() + "]" : "");
+			}
 		} catch (Exception ignore) {}
 
 		String actionWord = isEnhance ? "강화!" : "획득!";
@@ -7124,7 +7127,6 @@ public class BossAttackController {
 				+ "- 수량: " + qtyProgress + NL
 				+ (!effectChange.isEmpty() ? "- 효과변화: " + effectChange + NL : "")
 				+ "- 잔여 GP: " + String.format("%.2f", Math.floor((gp - gachaPrice) * 100) / 100) + " GP";
-	}
 
 		private String sellCategoryItem(String userName, String roomName, String slotKey) throws Exception {
 
