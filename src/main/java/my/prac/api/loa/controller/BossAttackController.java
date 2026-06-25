@@ -5525,6 +5525,7 @@ public class BossAttackController {
 		int monRemainAfter;
 		int displayMonMaxHp;
 		if ("워록".equals(s.job) && s.warlockKillFail && s.willKill && s.warlockFailHitNo > 1) {
+			dealtThisTurn   = Math.max(0, s.warlockFailDmg);
 			monRemainAfter  = Math.max(0, s.warlockFailMonHp - s.warlockFailDmg);
 			displayMonMaxHp = s.warlockFailMonHp;
 		} else {
