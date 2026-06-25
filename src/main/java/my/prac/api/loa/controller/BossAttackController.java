@@ -7116,10 +7116,13 @@ public class BossAttackController {
 
 		String actionWord = isEnhance ? "강화!" : "획득!";
 		String qtyProgress = isEnhance ? " (" + beforeStr + " → " + afterStr + ")" : " (" + afterStr + ")";
+		String effectChange = (isEnhance && giveItemId >= 7001 && giveItemId <= 7021)
+		        ? BossAttackS3Controller.getBossItemLevelChangeLine(giveItemId, curQty) : "";
 		return userName + "님," + NL
 				+ "보스뽑기! (-" + (int)gachaPrice + " GP) [보유유물 " + ownedBossCount + "개]" + NL
 				+ "▶ " + actionWord + " " + itemLine + NL
 				+ "- 수량: " + qtyProgress + NL
+				+ (!effectChange.isEmpty() ? "- 효과변화: " + effectChange + NL : "")
 				+ "- 잔여 GP: " + String.format("%.2f", Math.floor((gp - gachaPrice) * 100) / 100) + " GP";
 	}
 
@@ -9483,6 +9486,7 @@ public class BossAttackController {
 	        sb.append(" / ").append(dropName).append(" ").append(dropSp.toString());
 	    }
 
+	    sb.append(NL);
 
 	    // 🔹 4행: 추가 설명 (mon_note)
 	    String note = (m.monNote != null ? m.monNote.trim() : "");
