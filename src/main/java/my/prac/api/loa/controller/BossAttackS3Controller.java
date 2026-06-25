@@ -195,6 +195,17 @@ public class BossAttackS3Controller {
         return "";
     }
 
+    /** 강화 전후 수치 변화 한 줄 반환 (변화 없으면 "") */
+    static String getBossItemLevelChangeLine(int itemId, int curQty) {
+        int[] vals = BOSS_ENHANCE_TABLE.get(itemId);
+        String[] eff = BOSS_ITEM_EFFECT.get(itemId);
+        if (vals == null || eff == null) return "";
+        int curVal = getBossEnhanceVal(itemId, curQty);
+        int newVal = getBossEnhanceVal(itemId, curQty + 1);
+        if (curVal == newVal) return "";
+        return eff[0] + " " + curVal + eff[1] + " → " + newVal + eff[1];
+    }
+
     /** 헬보스 보상 아이템 목록 (BOSS_HELL 타입 기반 동적 로드, 캐시) */
     private volatile List<Integer> hellRewardItemsCache = null;
 

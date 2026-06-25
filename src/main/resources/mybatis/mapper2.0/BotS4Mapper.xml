@@ -91,7 +91,7 @@
         SELECT COUNT(DISTINCT I.FISH_ID)
         FROM TBOT_S4_FISH_INV I
         JOIN TBOT_S4_FISH_INFO F ON I.FISH_ID = F.FISH_ID
-        WHERE I.USER_NAME = #{userName} AND F.FISH_GRADE = #{grade}
+        WHERE I.USER_NAME = #{userName} AND F.FISH_GRADE = #{grade} AND F.ACTIVE_YN = '1'
     </select>
 
     <select id="selectTotalKindCountByGrade" resultType="int">
