@@ -1772,11 +1772,11 @@ public class BossAttackS3Controller {
             }
 
         } else {
-            // 상급악마: 단일 보상 (20% 아이템 / 40% 상자 / 40% GP)
-            String resolvedType  = (preRewardType != null && !preRewardType.isEmpty()) ? preRewardType
-                                 : (rand.nextDouble() >= 0.80 ? "ITEM" : rand.nextDouble() >= 0.40 ? "BOX" : "GP");
+            // 상급악마: 단일 보상 (20% 아이템 / 80% GP)
+            String resolvedType  = (preRewardType != null && !preRewardType.isEmpty() && !"BOX".equals(preRewardType)) ? preRewardType
+                                 : (rand.nextDouble() >= 0.80 ? "ITEM" : "GP");
             boolean isItemReward = "ITEM".equals(resolvedType);
-            boolean isBoxReward  = "BOX".equals(resolvedType);
+            boolean isBoxReward  = false;
             String rewardTypeName = isItemReward ? "아이템" : isBoxReward ? "지옥의유물상자" : "GP";
             msg.append("이번 클리어 보상은 ").append(rewardTypeName).append(" 입니다!").append(NL);
 
