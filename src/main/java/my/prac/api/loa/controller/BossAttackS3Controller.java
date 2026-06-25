@@ -71,6 +71,7 @@ public class BossAttackS3Controller {
     /** 카운트업 보스: DB 저장값 / 표시 이름 / 1시간 윈도우 */
     private static final String COUNTUP_BOSS_TYPE    = "카운트업";
     static final String COUNTUP_DISPLAY_NAME  = "심연의 군주"; // TODO: 이름 확정 후 수정
+    private static final String SUCCUBUS_BOSS_TYPE    = "서큐버스";
     private static final long   COUNTUP_WINDOW_HOURS = 2;
     /** 카운트업 보스 목표 HP (표시용, raw SP 단위) — 100b */
     private static final long   COUNTUP_TARGET_HP    = 10_000_000_000_000_000L; // 1d
@@ -351,6 +352,7 @@ public class BossAttackS3Controller {
         }
 
         boolean isCountUp = COUNTUP_BOSS_TYPE.equals(bossDemonType);
+        boolean isSuccubus = SUCCUBUS_BOSS_TYPE.equals(bossDemonType);
         String bossDisplayName = isCountUp ? COUNTUP_DISPLAY_NAME : bossDemonType;
 
         // 재생성 쿨타임 체크 (startDate가 미래면 아직 등장 전 → 패턴 체크 불필요)
@@ -404,7 +406,7 @@ public class BossAttackS3Controller {
         // 홀수/짝수 패턴 시간대 체크 비활성화 (전 보스 공통)
 
         // 상급악마/대악마/마왕/카운트업: 스탯 상한 적용 (공격력 100%, 나머지 50%)
-        boolean isMajorBoss = "상급악마".equals(bossDemonType) || "대악마".equals(bossDemonType) || "마왕".equals(bossDemonType) || isCountUp;
+        boolean isMajorBoss = "상급악마".equals(bossDemonType) || "대악마".equals(bossDemonType) || "마왕".equals(bossDemonType) || SUCCUBUS_BOSS_TYPE.equals(bossDemonType) || isCountUp;
         if (isMajorBoss) {
             bossAtkRate   = Math.max(BOSS_ATK_RATE_MIN,   Math.min(50, bossAtkRate));
             bossAtkPower  = Math.max(BOSS_ATK_POWER_MIN,  Math.min(100, bossAtkPower));
@@ -414,7 +416,7 @@ public class BossAttackS3Controller {
             critDefRate   = Math.max(0,                   Math.min(50, critDefRate));
         }
         // 헬보스 3종 공격확률 90% 고정 (디버프 발동 시 이후 블록에서 0으로 재설정됨)
-        if ("상급악마".equals(bossDemonType) || "대악마".equals(bossDemonType) || "마왕".equals(bossDemonType)) {
+        if ("상급악마".equals(bossDemonType) || "대악마".equals(bossDemonType) || "마왕".equals(bossDemonType) || SUCCUBUS_BOSS_TYPE.equals(bossDemonType)) {
             bossAtkRate = 90;
         }
 
@@ -779,6 +781,21 @@ public class BossAttackS3Controller {
         boolean isKill = !isCountUp && SP.toBaseValue(newHpSp) <= 0;
         long newHp = isKill ? 0 : SP.toBaseValue(newHpSp);
 
+        // [서큐버스] 흡혈: 30% 확률로 데미지의 30% HP 회복 + 플레이어 HP 흡수
+        int succubusHealAmt = 0;
+        String succubusMsg = "";
+        if (isSuccubus && !isKill && !isEvade && effectiveDamage > 0 && Math.random() < 0.30) {
+            long healRaw = Math.min(maxHp - newHp, (long)(effectiveDamage * 0.3));
+            if (healRaw > 0) {
+                succubusHealAmt = (int) healRaw;
+                newHp += healRaw;
+                newHpSp = SP.fromSp(newHp);
+            }
+            int suckHp = Math.max(1, (int)(ctx.hpMax * 0.15));
+            user.hpCur = Math.max(0, user.hpCur - suckHp);
+            succubusMsg = "[흡혈!] 서큐버스가 " + SP.fromSp(Math.max(1L,(long)succubusHealAmt)) + " 회복! (당신 HP -" + suckHp + ")" + NL;
+        }
+
         // 보스 반격 (유저 최대HP × bossAtkPower% 비례 데미지) — 카운트업 보스는 반격 없음
         int bossAtkApplied = 0;
         boolean flag_boss_attack = !isCountUp && !isKill && !heavensPunishment && Math.random() < bossAtkRate / 100.0;
@@ -863,6 +880,17 @@ public class BossAttackS3Controller {
                     user.hpCur, baseHpMax, baseAtkMin, baseAtkMax, baseCrit, baseHpRegen
                 );
             } catch (Exception ignored) {}
+        if (!succubusMsg.isEmpty()) {
+            try {
+                int _hpMax  = my.prac.core.util.MiniGameUtil.calcBaseHpMax(user.lv);
+                int _atkMin = my.prac.core.util.MiniGameUtil.calcBaseAtkMin(user.lv);
+                int _atkMax = my.prac.core.util.MiniGameUtil.calcBaseAtkMax(user.lv);
+                int _crit   = my.prac.core.util.MiniGameUtil.calcBaseCritRate(user.lv);
+                int _regen  = my.prac.core.util.MiniGameUtil.calcBaseHpRegen(user.lv);
+                botNewService.updateUserAfterBattleTx(userName, roomName, user.lv, user.expCur, user.expNext,
+                    user.hpCur, _hpMax, _atkMin, _atkMax, _crit, _regen);
+            } catch (Exception ignored) {}
+        }
         }
 
         // 대악마/마왕 감금스킬 발동: 한 번에 보스 체력 90% 이상 데미지 or 한방사망 시 → 30% 확률
@@ -950,7 +978,7 @@ public class BossAttackS3Controller {
             } catch (Exception e) {
                 // GP 지급 실패는 무시
             }
-        } else if (!isCountUp && !isMaWang) {
+        } else if (!isCountUp && !isMaWang && !isSuccubus) {
             try {
                 long rawSpVal = totalDamage * 10000L;
                 boolean isGreatDemonSp = "대악마".equals(bossDemonType);
@@ -992,6 +1020,7 @@ public class BossAttackS3Controller {
         // 결과 메시지
         StringBuilder msg = new StringBuilder();
         msg.append(userName).append("님이 [").append(bossDisplayName).append("]를 공격했습니다!").append(NL);
+        if (!succubusMsg.isEmpty()) msg.append(succubusMsg);
 
         if (!isEvade) {
             if (isMaWang) {
@@ -1166,12 +1195,15 @@ public class BossAttackS3Controller {
                 bossType = "마왕";
             } else if (participantCount >= 10 && bossTypeDice < 0.47) {
                 bossType = "대악마";
+            } else if (bossTypeDice < 0.62) {
+                bossType = SUCCUBUS_BOSS_TYPE;
             } else {
                 bossType = "상급악마";
             }
             boolean isGreatDemon  = "대악마".equals(bossType);
             boolean isDemonKing   = "마왕".equals(bossType);
             boolean isCountUpBoss = COUNTUP_BOSS_TYPE.equals(bossType);
+            boolean isSuccubus    = SUCCUBUS_BOSS_TYPE.equals(bossType);
             bossMap.put("bossType", bossType);
             if (isGreatDemon) {
                 // 대악마 HP: 1200a ~ 1500a 고정 범위
@@ -1200,6 +1232,10 @@ public class BossAttackS3Controller {
                 bossMap.put("defPower",    0);
                 bossMap.put("evadeRate",   0);
                 bossMap.put("critDefRate", 0);
+            } else if (isSuccubus) {
+                rawHp = 10_000_000L; // 서큐버스: 1000a 고정
+            } else {
+                rawHp = 10_000_000L; // 상급악마: 1000a 고정
             }
             SP hpSp = SP.fromSp(rawHp);
             bossMap.put("maxHp",    (long) hpSp.getValue());
@@ -1312,6 +1348,70 @@ public class BossAttackS3Controller {
     //   SP = myDamage × 300  (max 1c = 1,000,000,000,000 raw)
     //   GP = myDamage ÷ 6,000,000  (max 10 GP)
     // =========================================================
+    // =================================================================
+    // 서큐버스 처치 보상: 50GP + 1c, 데미지/공격횟수 비율 분배
+    // =================================================================
+    private String calcSuccubusReward(String roomName, String bossStartDate) {
+        StringBuilder msg = new StringBuilder();
+        msg.append("[ 서큐버스 처치 보상 ]").append(NL);
+        List<HashMap<String, Object>> contributors;
+        try {
+            HashMap<String, Object> q = new HashMap<>();
+            q.put("bossStartDate", bossStartDate);
+            contributors = botS3Service.selectHellTop3Contributors(q);
+        } catch (Exception e) { contributors = new ArrayList<>(); }
+        if (contributors == null || contributors.isEmpty()) {
+            msg.append("참여자가 없어 보상이 지급되지 않았습니다.").append(NL);
+            return msg.toString();
+        }
+        double totalWeight = 0;
+        double[] weights = new double[contributors.size()];
+        for (int i = 0; i < contributors.size(); i++) {
+            long score = ((Number) contributors.get(i).get("SCORE")).longValue();
+            long cnt   = contributors.get(i).get("CNT") != null ? ((Number) contributors.get(i).get("CNT")).longValue() : 1L;
+            if (cnt <= 0) cnt = 1L;
+            weights[i]   = (double) score / cnt;
+            totalWeight += weights[i];
+        }
+        if (totalWeight <= 0) totalWeight = 1;
+        double totalGp = 50.0;
+        long   totalSp = 1_000_000_000_000L; // 1c
+        msg.append("참여자: ").append(contributors.size()).append("명").append(NL).append(NL);
+        for (int i = 0; i < contributors.size(); i++) {
+            String uName  = Objects.toString(contributors.get(i).get("USER_NAME"), "");
+            long   score  = ((Number) contributors.get(i).get("SCORE")).longValue();
+            long   cnt    = contributors.get(i).get("CNT") != null ? ((Number) contributors.get(i).get("CNT")).longValue() : 1L;
+            double ratio  = weights[i] / totalWeight;
+            double myGp   = Math.floor(totalGp * ratio * 100) / 100.0;
+            if (myGp < 0.01) myGp = 0.01;
+            long mySpRaw  = (long)(totalSp * ratio);
+            if (mySpRaw < 10_000_000L) mySpRaw = 10_000_000L;
+            SP mySp = SP.fromSp(mySpRaw);
+            try {
+                HashMap<String, Object> pr = new HashMap<>();
+                pr.put("userName", uName); pr.put("roomName", roomName);
+                pr.put("score", mySp.getValue()); pr.put("scoreExt", mySp.getUnit());
+                pr.put("cmd", "SUCCUBUS_KILL_REWARD");
+                botNewService.insertPointRank(pr);
+            } catch (Exception ignore) {}
+            try {
+                HashMap<String, Object> gp = new HashMap<>();
+                gp.put("userName", uName); gp.put("roomName", roomName);
+                gp.put("score", myGp); gp.put("cmd", "SUCCUBUS_KILL_GP");
+                botNewService.insertGpRecord(gp);
+            } catch (Exception ignore) {}
+            double gpBal = 0;
+            try { gpBal = botNewService.selectGpBalance(uName); } catch (Exception ignore) {}
+            msg.append(uName).append(NL)
+               .append("⚔ 데미지: ").append(SP.fromSp(score))
+               .append(" (").append(cnt).append("회)").append(NL)
+               .append("✨ +").append(mySp).append(" SP, +")
+               .append(String.format("%.2f", myGp)).append(" GP")
+               .append(" (보유 ").append(String.format("%.2f", Math.floor(gpBal*100)/100.0)).append(" GP)").append(NL);
+        }
+        return msg.toString();
+    }
+
     private String calcCountUpBossReward(String roomName, String bossStartDate, long totalAccumulated) {
         StringBuilder msg = new StringBuilder();
         msg.append("[ ").append(COUNTUP_DISPLAY_NAME).append(" 종료 보상 ]").append(NL);
@@ -1409,6 +1509,9 @@ public class BossAttackS3Controller {
     //   20% → 아이템 (7000번대 미소지자만)
     // =========================================================
     private String calcHellBossReward(String roomName, String bossStartDate, long maxHp, String preRewardType, String demonType) {
+        if (SUCCUBUS_BOSS_TYPE.equals(demonType)) {
+            return calcSuccubusReward(roomName, bossStartDate);
+        }
         boolean isGreatDemon = "대악마".equals(demonType);
         Random rand = new Random();
 
@@ -2078,7 +2181,7 @@ public class BossAttackS3Controller {
     // =========================================================
     public String masterBossChange(String room, String sender, String bossTypeParam) {
         if (!"람쥐봇 문의방".equals(room) || !"일어난다람쥐/카단".equals(sender)) return null;
-        String[] validTypes = {"상급악마", "대악마", "마왕", "카운트업", "랜덤"};
+        String[] validTypes = {"상급악마", "대악마", "마왕", "카운트업", "서큐버스", "랜덤"};
         boolean valid = false;
         for (String t : validTypes) if (t.equals(bossTypeParam)) { valid = true; break; }
         if (!valid) return "보스 타입을 확인해주세요. (상급악마/대악마/마왕/카운트업/랜덤)";
@@ -2101,6 +2204,7 @@ public class BossAttackS3Controller {
             case "대악마":   return 3;
             case "상급악마": return 4;
             case "카운트업": return 5;
+            case "서큐버스": return 6;
             default:        return 0;
         }
     }
@@ -2116,9 +2220,11 @@ public class BossAttackS3Controller {
             if (dice < 0.15)      bossType = COUNTUP_BOSS_TYPE;
             else if (dice < 0.32) bossType = "마왕";
             else if (dice < 0.47) bossType = "대악마";
+            else if (dice < 0.62) bossType = SUCCUBUS_BOSS_TYPE;
             else                  bossType = "상급악마";
         }
         boolean isCountUp    = COUNTUP_BOSS_TYPE.equals(bossType);
+        boolean isSuccubus    = SUCCUBUS_BOSS_TYPE.equals(bossType);
         boolean isGreatDemon = "대악마".equals(bossType);
         boolean isDemonKing  = "마왕".equals(bossType);
 
@@ -2183,6 +2289,10 @@ public class BossAttackS3Controller {
                 bossMap.put("defPower",    0);
                 bossMap.put("evadeRate",   0);
                 bossMap.put("critDefRate", 0);
+        } else if (isSuccubus) {
+            rawHp = 10_000_000L; // 서큐버스: 1000a 고정
+        } else {
+            rawHp = 10_000_000L; // 상급악마: 1000a 고정
         }
         SP hpSp = SP.fromSp(rawHp);
         bossMap.put("maxHp",    (long)hpSp.getValue());
@@ -2207,9 +2317,11 @@ public class BossAttackS3Controller {
             if (dice < 0.15)      bossType = COUNTUP_BOSS_TYPE;
             else if (dice < 0.32) bossType = "마왕";
             else if (dice < 0.47) bossType = "대악마";
+            else if (dice < 0.62) bossType = SUCCUBUS_BOSS_TYPE;
             else                  bossType = "상급악마";
         }
         boolean isCountUp    = COUNTUP_BOSS_TYPE.equals(bossType);
+        boolean isSuccubus    = SUCCUBUS_BOSS_TYPE.equals(bossType);
         boolean isGreatDemon = "대악마".equals(bossType);
         boolean isDemonKing  = "마왕".equals(bossType);
 
@@ -2259,6 +2371,10 @@ public class BossAttackS3Controller {
                 bossMap.put("defPower",    0);
                 bossMap.put("evadeRate",   0);
                 bossMap.put("critDefRate", 0);
+        } else if (isSuccubus) {
+            rawHp = 10_000_000L; // 서큐버스: 1000a 고정
+        } else {
+            rawHp = 10_000_000L; // 상급악마: 1000a 고정
         }
         SP hpSp = SP.fromSp(rawHp);
         bossMap.put("maxHp",    (long)hpSp.getValue());
