@@ -50,17 +50,17 @@ public class BossAttackS3Controller {
     // 헬보스 능력치 랜덤 범위 설정 (필요 시 수정)
     // =========================================================
     /** 보스 공격 발동률 (%) */
-    static final int BOSS_ATK_RATE_MIN   = 15,  BOSS_ATK_RATE_MAX   = 30;
+    static final int BOSS_ATK_RATE_MIN   = 25,  BOSS_ATK_RATE_MAX   = 40;
     /** 보스 공격 데미지: 유저 최대HP의 X% (체력비례 퍼센트 데미지) */
-    static final int BOSS_ATK_POWER_MIN  = 10,  BOSS_ATK_POWER_MAX  = 99;
+    static final int BOSS_ATK_POWER_MIN  = 30,  BOSS_ATK_POWER_MAX  = 99;
     /** 보스 방어 발동률 (%) */
-    static final int BOSS_DEF_RATE_MIN   = 15,  BOSS_DEF_RATE_MAX   = 35;
+    static final int BOSS_DEF_RATE_MIN   = 25,  BOSS_DEF_RATE_MAX   = 45;
     /** 보스 방어: 유저 공격의 X% 감소 */
-    static final int BOSS_DEF_POWER_MIN  = 15,  BOSS_DEF_POWER_MAX  = 100;
+    static final int BOSS_DEF_POWER_MIN  = 30,  BOSS_DEF_POWER_MAX  = 100;
     /** 보스 회피율 (%) */
-    static final int BOSS_EVADE_RATE_MIN = 10,  BOSS_EVADE_RATE_MAX = 30;
+    static final int BOSS_EVADE_RATE_MIN = 20,  BOSS_EVADE_RATE_MAX = 40;
     /** 보스 치명 저항 (%) */
-    static final int BOSS_CRIT_DEF_MIN   = 10,  BOSS_CRIT_DEF_MAX   = 30;
+    static final int BOSS_CRIT_DEF_MIN   = 20,  BOSS_CRIT_DEF_MAX   = 40;
     /** 보스 최대 HP (raw) — 500a~2400a 범위 (1a = 10,000 raw) */
     static final long BOSS_MAX_HP_MIN    = 5_000_000L; // 500a
     static final long BOSS_MAX_HP_MAX    = 24_000_000L; // 2400a
@@ -72,7 +72,7 @@ public class BossAttackS3Controller {
     private static final String COUNTUP_BOSS_TYPE    = "카운트업";
     static final String COUNTUP_DISPLAY_NAME  = "심연의 군주"; // TODO: 이름 확정 후 수정
     private static final String SUCCUBUS_BOSS_TYPE    = "서큐버스";
-    private static final long   COUNTUP_WINDOW_HOURS = 2;
+    private static final long   COUNTUP_WINDOW_HOURS = 3;
     /** 카운트업 보스 목표 HP (표시용, raw SP 단위) — 100b */
     private static final long   COUNTUP_TARGET_HP    = 10_000_000_000_000_000L; // 1d
 
@@ -1176,8 +1176,8 @@ public class BossAttackS3Controller {
             bossMap.put("defPower",    randInt(rand, BOSS_DEF_POWER_MIN,  BOSS_DEF_POWER_MAX));
             bossMap.put("evadeRate",   randInt(rand, BOSS_EVADE_RATE_MIN, BOSS_EVADE_RATE_MAX));
             bossMap.put("critDefRate", randInt(rand, BOSS_CRIT_DEF_MIN,   BOSS_CRIT_DEF_MAX));
-            // 처치 시점 기준 정확히 3시간 후 등장
-            LocalDateTime spawnAt = LocalDateTime.now().plusHours(3);
+            // 처치 시점 기준 정확히 9시간 후 등장
+            LocalDateTime spawnAt = LocalDateTime.now().plusHours(9);
             bossMap.put("startDate", spawnAt.format(SPAWN_DATE_FMT));
             // PATTERN: 홀수/짝수 시간 랜덤 결정
             bossMap.put("hideRule",  "없음");
