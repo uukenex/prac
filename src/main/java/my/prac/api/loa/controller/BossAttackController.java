@@ -2997,12 +2997,14 @@ public class BossAttackController {
 	    }
 
 	    // ─ 경험치판매 현황 ─
+	    HashMap<String,Object> _expSellRow = null;
 	    try {
 	        @SuppressWarnings("unchecked")
 	        HashMap<String,Object> invB2 = MiniGameUtil.INV_BUFF_CACHE.get(ctx.targetUser);
 	        HashMap<String,Object> eRow = invB2 != null
 	            ? (HashMap<String,Object>) invB2.get("expSell")
 	            : botNewService.selectExpSellStats(ctx.targetUser);
+	        _expSellRow = eRow;
 	        if (eRow != null) {
 	            int eTot     = safeInt(eRow.get("TOTAL_CNT"));
 	            int eHp      = safeInt(eRow.get("HP_BONUS"));
@@ -3129,7 +3131,7 @@ public class BossAttackController {
 	        } else {
 	        	//renderAchievementSummary(sb, achv);
 	        	//sb.append("(상세: /가방상세)").append(NL);
-	            renderAchievementLinesCompact(sb, achv, monMap, _nmBagCount);
+	            renderAchievementLinesCompact(sb, achv, monMap, _nmBagCount, _expSellRow);
 	        }
 	    } catch (Exception ignore) {}
 
@@ -9954,6 +9956,15 @@ public class BossAttackController {
 	        List<HashMap<String, Object>> achv,
 	        Map<Integer, Monster> monMap,
 	        int nmBagCount) {
+		renderAchievementLinesCompact(sb, achv, monMap, nmBagCount, null);
+	}
+
+	private void renderAchievementLinesCompact(
+	        StringBuilder sb,
+	        List<HashMap<String, Object>> achv,
+	        Map<Integer, Monster> monMap,
+	        int nmBagCount,
+	        HashMap<String,Object> expSellRow) {
 
 	    // ===== 패턴 =====
 		Pattern P_BAG_GET =
@@ -10111,15 +10122,43 @@ public class BossAttackController {
 	        sb.append(NL);
 	    }
 
-	    // 4️⃣ 몬스터 처치 (3개씩)
-	    if (!monsterKills.isEmpty()) {
-	        sb.append("✨몬스터 처치").append(NL);
+	    // 4️⃣ 경험치판매 현황 (몬스터 처치 위)
+	    if (expSellRow != null) {
+	        int eTot     = safeInt(expSellRow.get("TOTAL_CNT"));
+	        int eHp      = safeInt(expSellRow.get("HP_BONUS"));
+	        int eAtkMin  = safeInt(expSellRow.get("ATK_MIN_BONUS"));
+	        int eAtkMax  = safeInt(expSellRow.get("ATK_MAX_BONUS"));
+	        int eCrit    = safeInt(expSellRow.get("CRIT_BONUS"));
+	        int eCritDmg = safeInt(expSellRow.get("CRIT_DMG_BONUS"));
+	        if (eTot > 0) {
+	            List<String> ep = new ArrayList<>();
+	            ep.add("누적 " + eTot + "회");
+	            if (eHp > 0)      ep.add("HP+" + (eHp * 10));
+	            if (eAtkMin > 0)  ep.add("최소공격+" + eAtkMin);
+	            if (eAtkMax > 0)  ep.add("최대공격+" + eAtkMax);
+	            if (eCrit > 0)    ep.add("치확+" + String.format("%.1f", eCrit * 0.1) + "%");
+	            if (eCritDmg > 0) ep.add("치피+" + String.format("%.1f", eCritDmg * 0.1) + "%");
+	            sb.append("✨경험치판매 ").append(String.join(" / ", ep)).append(NL);
+	        }
+	    }
 
+	    // 5️⃣ 몬스터 처치 (MON_NO 순, 3개씩)
+	    if (!monsterKills.isEmpty()) {
+	        // MON_NO 기준 정렬
+	        Map<String, Integer> nameToMonNo = new HashMap<>();
+	        if (monMap != null) {
+	            for (Map.Entry<Integer, Monster> e : monMap.entrySet()) {
+	                nameToMonNo.put(e.getValue().monName, e.getKey());
+	            }
+	        }
+	        List<Map.Entry<String, Integer>> sortedKills = new ArrayList<>(monsterKills.entrySet());
+	        sortedKills.sort(Comparator.comparingInt(e -> nameToMonNo.getOrDefault(e.getKey(), Integer.MAX_VALUE)));
+
+	        sb.append("✨몬스터 처치").append(NL);
 	        List<String> rows = new ArrayList<>();
-	        for (Map.Entry<String, Integer> e : monsterKills.entrySet()) {
+	        for (Map.Entry<String, Integer> e : sortedKills) {
 	            rows.add(e.getKey() + ": " + String.format("%,d", e.getValue()) + "킬");
 	        }
-
 	        for (int i = 0; i < rows.size(); i += 3) {
 	            sb.append(String.join(" / ",
 	                    rows.subList(i, Math.min(i + 3, rows.size()))))
