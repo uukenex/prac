@@ -6089,9 +6089,9 @@ public class BossAttackController {
 					String _wTag = _ed.extraDark ? "[어둠]" : _ed.extraLucky ? "[빛]" : _ed.extraGray ? "[음양]" : _ed.extraShadow ? "[그림자]" : "";
 					String _mName = s.m != null ? s.m.monName : "몬스터";
 					if (_killed) {
-						bot.append(NL).append("[").append(_wi + 2).append("타처치] ").append(_wTag).append(_mName).append(", 데미지: ").append(formatWan(s.warlockExtraCalcs.get(_wi).atkDmg));
+						bot.append(NL).append("[").append(_wi + 2).append(":처치] ").append(_wTag).append(_mName).append(", 데미지: ").append(formatWan(s.warlockExtraCalcs.get(_wi).atkDmg));
 					} else {
-						bot.append(NL).append("[").append(_wi + 2).append("타] 데미지: ").append(formatWan(s.warlockExtraCalcs.get(_wi).atkDmg));
+						bot.append(NL).append("[").append(_wi + 2).append(":공격] 데미지: ").append(formatWan(s.warlockExtraCalcs.get(_wi).atkDmg));
 					}
 					if (_killed) {
 						LevelUpResult _eu = _wi < s.warlockExtraUps.size() ? s.warlockExtraUps.get(_wi) : null;
@@ -6125,7 +6125,7 @@ public class BossAttackController {
 				String _1tag = s.shadow ? "[그림자]" : s.dark ? "[어둠]" : s.gray ? "[음양]" : s.lucky ? "[빛]" : "";
 				String _1name = s.m != null ? s.m.monName : "몬스터";
 				StringBuilder _1line = new StringBuilder();
-				_1line.append("[1타처치] ").append(_1tag).append(_1name)
+				_1line.append("[1:처치] ").append(_1tag).append(_1name)
 					  .append(", 데미지: ").append(formatWan(s.calc.atkDmg));
 				// 크리 표시 생략 (멀티킬 간소화)
 				if (s.up != null) {
@@ -8948,10 +8948,21 @@ public class BossAttackController {
 	    	if(ctx.user.nightmareYn == 2) sb.append("[헬]");
 	    	else sb.append("[나이트메어]");
 	    }
-	    sb.append("을(를) 공격!").append(NL).append(NL);
+	    sb.append("을(를) 공격!").append(NL);
 
 	    final boolean _warlockSimple = (ctx != null && ctx.warlockMultiKill);
-	    if (!_warlockSimple) {
+	    if (_warlockSimple) {
+	        // 워록 멀티킬: 몬스터 HP + 기본 데미지 범위 표시
+	        sb.append("❤️ ").append(m.monName);
+	        if (nightmare) {
+	            if (ctx.user.nightmareYn == 2) sb.append("[헬]");
+	            else sb.append("[나이트메어]");
+	        }
+	        sb.append(" HP : ").append(formatWan(monMaxHp)).append(NL);
+	        sb.append("⚔ 데미지: ").append(formatWan(shownAtkMin)).append("~").append(formatWan(shownAtkMax)).append(NL);
+	        sb.append(NL);
+	    } else {
+	        sb.append(NL);
 	        if (res.shadow) sb.append("✨ SHADOW MONSTER! (처치시 경험치×10, 드랍 없음)").append(NL);
 	        if (res.gray) sb.append("✨ LIGHT&DARK MONSTER! (처치시 경험치×9, 음양 드랍)").append(NL);
 	        if (res.dark) sb.append("✨ DARK MONSTER! (처치시 경험치×5, 어둠 드랍)").append(NL);
@@ -8998,6 +9009,21 @@ public class BossAttackController {
 	                sb.append(hunterMsg).append(NL).append(NL);
 	            if (midExtraLines != null && !midExtraLines.isEmpty())
 	                sb.append(midExtraLines).append(NL).append(NL);
+	        }
+	    } else {
+	        // 워록 멀티킬: 계산식은 === 이후(detailOut)에 표시
+	        if (detailOut != null) {
+	            detailOut.append("⚔ 데미지: (").append(formatWan(shownAtkMin)).append("~").append(formatWan(shownAtkMax)).append(" ⇒ ");
+	            if (flags != null && flags.atkCrit && calc.baseAtk > 0 && calc.critMultiplier >= 1.0) {
+	                detailOut.append(formatWan(calc.baseAtk)).append("*").append(trimDouble(calc.critMultiplier)).append("=>").append(formatWan(calc.atkDmg));
+	            } else {
+	                detailOut.append(formatWan(calc.atkDmg));
+	            }
+	            detailOut.append(")").append(NL);
+	            if (hunterMsg != null && !hunterMsg.isEmpty())
+	                detailOut.append(hunterMsg).append(NL);
+	            if (midExtraLines != null && !midExtraLines.isEmpty())
+	                detailOut.append(midExtraLines).append(NL);
 	        }
 	    }
 
