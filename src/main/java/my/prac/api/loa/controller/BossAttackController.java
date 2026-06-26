@@ -1,4 +1,4 @@
-package my.prac.api.loa.controller;
+﻿package my.prac.api.loa.controller;
 
 
 import java.sql.Timestamp;
@@ -2566,7 +2566,7 @@ public class BossAttackController {
 	    // ⑨ 출력
 	    StringBuilder sb = new StringBuilder();
 	    sb.append("✨").append(ctx.targetUser).append(" 공격 정보").append(NL)
-	      .append("Lv: ").append(u.lv);
+	      .append("Lv: ").append(u.lv >= 999 ? "Max" : u.lv);
 	    if (!ctx.job.isEmpty()) {
 	        sb.append(" (").append(elfDisplayJob(ctx.job)).append(")");
 	        
@@ -2648,60 +2648,100 @@ public class BossAttackController {
 	    if (jobDef != null && jobDef.attackLine != null && !jobDef.attackLine.isEmpty()) {
 	        sb.append(jobDef.attackLine).append(NL).append(NL);
 	    }
+		// ─ 지옥각인/어둠 스탯 사전 계산 ─
+		int hellAtkMin = 0, hellAtkMax = 0, hellHp = 0, hellRegen = 0, hellCrit = 0, hellCritDmg = 0, hellTotalQty = 0, hellAtkMinRate = 0, hellAtkMaxRate = 0, hellHpMaxRate = 0;
+		if (bag != null) {
+		    for (HashMap<String, Object> hrow : bag) {
+		        int hId = MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("ITEM_ID"), "0"));
+		        String hType = Objects.toString(hrow.get("ITEM_TYPE"), "");
+		        if (hType.toUpperCase().startsWith("HELL_BOX") && hId >= 3000 && hId < 4000) {
+		            int hQty = Math.max(1, MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("TOTAL_QTY"), "0")));
+		            hellTotalQty += hQty;
+		            hellAtkMin     += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("ATK_MIN"),      "0")) * hQty;
+		            hellAtkMax     += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("ATK_MAX"),      "0")) * hQty;
+		            hellHp         += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("HP_MAX"),       "0")) * hQty;
+		            hellRegen      += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("HP_REGEN"),     "0")) * hQty;
+		            hellCrit       += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("ATK_CRI"),      "0")) * hQty;
+		            hellCritDmg    += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("CRI_DMG"),      "0")) * hQty;
+		            if (hId == 3003) hellAtkMinRate += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("ATK_MIN_RATE"), "0")) * hQty;
+		            else if (hId == 3004) hellAtkMaxRate += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("ATK_MAX_RATE"), "0")) * hQty;
+		            hellHpMaxRate  += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("HP_MAX_RATE"),  "0")) * hQty;
+		        }
+		    }
+		}
+
 		// ─ ATK 상세 ─
 		if ("곰".equals(ctx.job)) {
 			sb.append("⚔ATK: ").append("최대체력으로 공격").append(NL);
 		} else {
-			sb.append("⚔ATK: ").append(ctx.atkMin).append(" ~ ").append(ctx.atkMax).append(NL).append("   └ 기본 (")
-					.append(ctx.baseAtkMin).append("~").append(ctx.baseAtkMax).append(")").append(NL)
-					.append("   └ 아이템 (min").append(formatSigned(ctx.mktAtkMin)).append(", max")
-					.append(formatSigned(ctx.mktAtkMax)).append(")").append(NL);
-			if (ctx.mktAtkMaxRate > 0) {
+			sb.append("⚔ATK: ").append(ctx.atkMin).append(" ~ ").append(ctx.atkMax).append(NL)
+					.append("   └ 기본 (").append(ctx.baseAtkMin).append("~").append(ctx.baseAtkMax).append(")").append(NL)
+					.append("   └ 아이템 (min").append(formatSigned(ctx.mktAtkMin)).append(", max").append(formatSigned(ctx.mktAtkMax)).append(")").append(NL);
+			if (ctx.mktAtkMaxRate > 0)
 				sb.append("   └ 최종공격력 (").append(formatSigned(ctx.mktAtkMaxRate)).append("%)").append(NL);
+			if (ctx.hellNerfAtkMax > 0)
+				sb.append("   └ 모드 (min-").append(ctx.hellNerfAtkMin).append("~, max-").append(ctx.hellNerfAtkMax).append(")").append(NL);
+			if (ctx.dropAtkMin > 0 || ctx.dropAtkMax > 0) {
+				sb.append("   └ 어둠 (");
+				if (ctx.dropAtkMin > 0) sb.append("min+").append(ctx.dropAtkMin).append(" ");
+				if (ctx.dropAtkMax > 0) sb.append("max+").append(ctx.dropAtkMax);
+				sb.append(")").append(NL);
 			}
-			if (ctx.hellNerfAtkMax > 0) {
-				sb.append("   └ 모드 (min-").append(ctx.hellNerfAtkMin).append("~, max-").append(ctx.hellNerfAtkMax).append(")")
-						.append(NL);
+			if (hellAtkMin != 0 || hellAtkMax != 0 || hellAtkMinRate != 0 || hellAtkMaxRate != 0) {
+				sb.append("   └ 각인 (");
+				if (hellAtkMin != 0) sb.append("min+").append(hellAtkMin).append(" ");
+				if (hellAtkMax != 0) sb.append("max+").append(hellAtkMax).append(" ");
+				if (hellAtkMinRate != 0 || hellAtkMaxRate != 0) sb.append("공격% 최소+").append(hellAtkMinRate).append("/최대+").append(hellAtkMaxRate);
+				sb.append(")").append(NL);
 			}
-
 		}
-	    
-	    if("곰".equals(ctx.job)) {
-	    	
-	    }else {
-	    	// ─ CRIT 상세 ─
+
+		if (!"곰".equals(ctx.job)) {
+			// ─ CRIT 상세 ─
 		    sb.append("⚔CRIT: ").append(ctx.crit).append("%  CDMG ").append(ctx.critDmg).append("%").append(NL)
 		      .append("   └ 기본 (").append(u.critRate).append("%, ").append(ctx.critDmg).append("%)").append(NL);
 			sb.append("   └ 아이템 (CRIT").append(formatSigned(ctx.mktCrit)).append("%, CDMG ").append(formatSigned(ctx.mktCritDmg)).append("%)").append(NL);
-			if (ctx.hellNerfCrit != 0 ) {
+			if (ctx.hellNerfCrit != 0)
 				sb.append("   └ 모드 (CRIT-").append(ctx.hellNerfCrit).append("%, CDMG -").append(ctx.hellNerfCritDmg).append("%)").append(NL);
-		    }
+			if (ctx.dropCrit > 0 || ctx.dropCritDmg > 0) {
+				sb.append("   └ 어둠 (");
+				if (ctx.dropCrit > 0) sb.append("치확+").append(ctx.dropCrit).append("% ");
+				if (ctx.dropCritDmg > 0) sb.append("치피+").append(ctx.dropCritDmg).append("%");
+				sb.append(")").append(NL);
+			}
+			if (hellCrit != 0 || hellCritDmg != 0) {
+				sb.append("   └ 각인 (");
+				if (hellCrit != 0) sb.append("치확+").append(hellCrit).append("% ");
+				if (hellCritDmg != 0) sb.append("치피+").append(hellCritDmg).append("%");
+				sb.append(")").append(NL);
+			}
 	    }
-	    
+
 	    // ─ HP 상세 ─
 	    sb.append("❤️HP: ").append(ctx.hpCur).append(" / ").append(ctx.hpMax)
 	      .append(",5분당회복+").append(ctx.regen).append(NL)
-	      .append("   └ 기본 (HP+").append(ctx.baseHpMax)
-	      .append(",5분당회복+").append(u.hpRegen).append(")").append(NL)
-	      .append("   └ 아이템 (HP").append(formatSigned(ctx.mktHpMax))
-	      .append(",5분당회복").append(formatSigned(ctx.mktRegen)).append(")").append(NL);
-	    if (ctx.mktHpMaxRate > 0) {
+	      .append("   └ 기본 (HP+").append(ctx.baseHpMax).append(",5분당회복+").append(u.hpRegen).append(")").append(NL)
+	      .append("   └ 아이템 (HP").append(formatSigned(ctx.mktHpMax)).append(",5분당회복").append(formatSigned(ctx.mktRegen)).append(")").append(NL);
+	    if (ctx.mktHpMaxRate > 0)
 	    	sb.append("   └ 최종체력 (").append(formatSigned(ctx.mktHpMaxRate)).append("%)").append(NL);
+	    if (ctx.jobHp != 0 || ctx.jobRegen != 0)
+	        sb.append("   └ 직업 (HP").append(formatSigned(ctx.jobHp)).append(",5분당회복").append(formatSigned(ctx.jobRegen)).append(")").append(NL);
+	    if (ctx.hellNerfHp != 0)
+	        sb.append("   └ 모드 (HP -").append(ctx.hellNerfHp).append(")").append(NL);
+	    if (ctx.dropHp > 0 || ctx.dropRegen > 0) {
+	    	sb.append("   └ 어둠 (");
+	    	if (ctx.dropHp > 0) sb.append("HP+").append(ctx.dropHp).append(" ");
+	    	if (ctx.dropRegen > 0) sb.append("체젠+").append(ctx.dropRegen);
+	    	sb.append(")").append(NL);
+	    }
+	    if (hellHp != 0 || hellRegen != 0 || hellHpMaxRate != 0) {
+	    	sb.append("   └ 각인 (");
+	    	if (hellHp != 0) sb.append("HP+").append(hellHp).append(" ");
+	    	if (hellRegen != 0) sb.append("체젠+").append(hellRegen).append(" ");
+	    	if (hellHpMaxRate != 0) sb.append("체력%+").append(hellHpMaxRate);
+	    	sb.append(")").append(NL);
 	    }
 
-	    if (ctx.jobHp != 0 || ctx.jobRegen != 0) {
-	        sb.append("   └ 직업 (HP")
-	          .append(formatSigned(ctx.jobHp))
-	          .append(",5분당회복")
-	          .append(formatSigned(ctx.jobRegen))
-	          .append(")").append(NL);
-	    }
-	    if (ctx.hellNerfHp != 0 ) {
-	        sb.append("   └ 모드 (HP -")
-	          .append(ctx.hellNerfHp)
-	          .append(")").append(NL);
-	    }
-	    
 	    String relicSummary = buildRelicSummaryLine(bag,9000);
         if (relicSummary != null) {
             sb.append(NL).append(relicSummary).append(NL);
@@ -2715,57 +2755,6 @@ public class BossAttackController {
         String relicSummary2 = buildRelicSummaryLine(bag,8000);
         if (relicSummary2 != null) {
         	sb.append(relicSummary2);
-        }
-        
-        
-        if (ctx.dropAtkMin +ctx.dropAtkMax +  ctx.dropHp + ctx.dropRegen
-                + ctx.dropCrit + ctx.dropCritDmg > 0) {
-
-        	sb.append(NL).append("✨어둠 부가 효과 [헬너프되지않음]: ");
-            if (ctx.dropAtkMin > 0) sb.append("min_ATK+").append(ctx.dropAtkMin).append(" ");
-            if (ctx.dropAtkMax > 0) sb.append("max_ATK+").append(ctx.dropAtkMax).append(" ");
-            if (ctx.dropHp > 0) sb.append("HP+").append(ctx.dropHp).append(" ");
-            if (ctx.dropRegen > 0) sb.append("체젠+").append(ctx.dropRegen).append(" ");
-            if (ctx.dropCrit > 0) sb.append("치확+").append(ctx.dropCrit).append("% ");
-            if (ctx.dropCritDmg > 0) sb.append("치피+").append(ctx.dropCritDmg).append("% ");
-        }
-        
-        
-     // ※지옥 각인 [헬너프되지않음]
-        {
-            // 지옥각인 스탯 합산
-            int hellAtkMin = 0, hellAtkMax = 0, hellHp = 0, hellRegen = 0, hellCrit = 0, hellCritDmg = 0, hellTotalQty = 0, hellAtkMinRate = 0, hellAtkMaxRate = 0, hellHpMaxRate = 0;
-            if (bag != null) {
-                for (HashMap<String, Object> hrow : bag) {
-                    int hId = MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("ITEM_ID"), "0"));
-                    String hType = Objects.toString(hrow.get("ITEM_TYPE"), "");
-                    if (hType.toUpperCase().startsWith("HELL_BOX") && hId >= 3000 && hId < 4000) {
-                        int hQty = Math.max(1, MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("TOTAL_QTY"), "0")));
-                        hellTotalQty += hQty;
-                        hellAtkMin     += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("ATK_MIN"),      "0")) * hQty;
-                        hellAtkMax     += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("ATK_MAX"),      "0")) * hQty;
-                        hellHp         += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("HP_MAX"),       "0")) * hQty;
-                        hellRegen      += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("HP_REGEN"),     "0")) * hQty;
-                        hellCrit       += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("ATK_CRI"),      "0")) * hQty;
-                        hellCritDmg    += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("CRI_DMG"),      "0")) * hQty;
-                        if (hId == 3003) hellAtkMinRate += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("ATK_MIN_RATE"), "0")) * hQty;
-                        else if (hId == 3004) hellAtkMaxRate += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("ATK_MAX_RATE"), "0")) * hQty;
-                        hellHpMaxRate  += MiniGameUtil.parseIntSafe(Objects.toString(hrow.get("HP_MAX_RATE"),  "0")) * hQty;
-                    }
-                }
-            }
-            if (hellTotalQty > 0) {
-                sb.append(NL).append("✨지옥각인 [헬너프되지않음](" + hellTotalQty + "개): ");
-                if (hellAtkMin != 0)  sb.append("min_ATK+").append(hellAtkMin).append(" ");
-                if (hellAtkMax != 0)  sb.append("max_ATK+").append(hellAtkMax).append(" ");
-                if (hellHp    != 0)  sb.append("HP+").append(hellHp).append(" ");
-                if (hellRegen != 0)  sb.append("체젠+").append(hellRegen).append(" ");
-                if (hellCrit  != 0)  sb.append("치확+").append(hellCrit).append("% ");
-                if (hellCritDmg   != 0) sb.append("치피+").append(hellCritDmg).append("% ");
-                if (hellAtkMinRate != 0 || hellAtkMaxRate != 0) sb.append("공격% 최소+").append(hellAtkMinRate).append("/최대+").append(hellAtkMaxRate).append(" ");
-                if (hellHpMaxRate  != 0) sb.append("체력%+").append(hellHpMaxRate).append(" ");
-                sb.append(NL);
-            }
         }
         
         try {
