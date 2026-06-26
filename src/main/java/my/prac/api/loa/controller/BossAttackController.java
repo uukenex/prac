@@ -8978,8 +8978,9 @@ public class BossAttackController {
 	            else sb.append("[나이트메어]");
 	        }
 	        sb.append(" HP : ").append(formatWan(monMaxHp)).append(NL);
-	        long _dMin = ctx.warlockDmgMin > 0 ? ctx.warlockDmgMin : (long)shownAtkMin;
-	        long _dMax = ctx.warlockDmgMax > 0 ? ctx.warlockDmgMax : (long)shownAtkMax;
+	        double _mult = (calc != null && calc.critMultiplier > 1.0) ? calc.critMultiplier : 1.0;
+	        long _dMin = (long)(shownAtkMin * _mult);
+	        long _dMax = (long)(shownAtkMax * _mult);
 	        sb.append("⚔ 데미지: ").append(formatWan(_dMin)).append("~").append(formatWan(_dMax)).append(NL);
 	        sb.append(NL);
 	    } else {
