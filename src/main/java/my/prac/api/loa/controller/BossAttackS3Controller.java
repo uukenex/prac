@@ -772,16 +772,35 @@ public class BossAttackS3Controller {
             }
         }
 
-        // 무적 방어 (등장 초기: 공격자 수에 따라 10%씩 감소, 10명 이상이면 해제)
+        // 출현 후 경과 시간 계산
+        long _minutesSinceSpawn = Long.MAX_VALUE;
+        try {
+            LocalDateTime _spawnTime = LocalDateTime.parse(bossStartDate,
+                    DateTimeFormatter.ofPattern("yyyyMMdd HHmmss"));
+            _minutesSinceSpawn = java.time.Duration.between(_spawnTime, LocalDateTime.now()).toMinutes();
+        } catch (Exception ignore) {}
+
+        // 출현 후 10분 이내: 데미지 캡 (보스 최대HP의 0.5%)
+        String dmgCapMsg = "";
+        if (!isCountUp && _minutesSinceSpawn < 10) {
+            long _cap = Math.max(1L, maxHp / 200); // 0.5% = 1/200
+            if (totalDamage > _cap) {
+                totalDamage = _cap;
+                long _remain = 10 - _minutesSinceSpawn;
+                dmgCapMsg = "⏳ [출현 " + _minutesSinceSpawn + "분] 데미지 제한 (" + _remain + "분 남음): 최대 " + SP.fromSp(_cap) + NL;
+            }
+        }
+
+        // 출현 후 10분 이후: 공격자 수에 따라 방어율 감소 (10%씩, 10명 이상이면 0%)
         String shieldMsg = "";
-        if (!isCountUp && !isEvade && !heavensPunishment && !flag_boss_debuff) {
+        if (!isCountUp && _minutesSinceSpawn >= 10 && !isEvade && !heavensPunishment && !flag_boss_debuff) {
             try {
                 int _attackerCnt = botS3Service.selectHellBossAttackerCount(bossStartDate);
                 int _shieldPct = Math.max(0, 100 - _attackerCnt * 10);
                 if (_shieldPct > 0) {
                     long _shieldAmt = totalDamage * _shieldPct / 100;
                     totalDamage = Math.max(0, totalDamage - _shieldAmt);
-                    shieldMsg = "🛡️ 무적! [" + (_attackerCnt + 1) + "번째 도전자] 방어 " + _shieldPct + "% 적용" + NL;
+                    shieldMsg = "🛡️ [" + (_attackerCnt + 1) + "번째 도전자] 방어 " + _shieldPct + "% 적용" + NL;
                 }
             } catch (Exception ignore) {}
         }
@@ -1062,6 +1081,7 @@ public class BossAttackS3Controller {
             if (!hellAchvMsg.isEmpty()) msg.append(hellAchvMsg);
             if (!punishMsg.isEmpty())   msg.append(punishMsg);
             if (!debuff1Msg.isEmpty())  msg.append(debuff1Msg);
+            if (!dmgCapMsg.isEmpty())   msg.append(dmgCapMsg);
             if (!shieldMsg.isEmpty())   msg.append(shieldMsg);
             if (!bossDefMsg.isEmpty())  msg.append(bossDefMsg);
             if (!dosaBossBuffMsg.isEmpty()) msg.append(dosaBossBuffMsg);
