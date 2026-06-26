@@ -10,3 +10,5 @@
 
 # Tomcat
 catalina.base_IS_UNDEFINED/
+
+fix_attackinfo.py
