@@ -125,4 +125,7 @@ public class UserBattleContext {
 
 	// 워록 멀티킬 여부 (buildAttackMessage에서 header 생략 제어)
 	public boolean warlockMultiKill = false;
+	// 워록 멀티킬 실제 데미지 범위
+	public long warlockDmgMin = 0;
+	public long warlockDmgMax = 0;
 }

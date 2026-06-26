@@ -6120,6 +6120,16 @@ public class BossAttackController {
 		// [워록 멀티킬] top EXP 제거: buildAttackMessage EXP 줄 스킵, 1타 EXP는 bot에 표시
 		if (s.warlockMultiHit && !s.warlockKillFail) {
 			s.ctx.warlockMultiKill = true;
+			// 실제 데미지 min/max 계산
+			long _wMin = s.calc.atkDmg, _wMax = s.calc.atkDmg;
+			if (s.warlockExtraCalcs != null) {
+			    for (AttackCalc _ec : s.warlockExtraCalcs) {
+			        if (_ec.atkDmg < _wMin) _wMin = _ec.atkDmg;
+			        if (_ec.atkDmg > _wMax) _wMax = _ec.atkDmg;
+			    }
+			}
+			s.ctx.warlockDmgMin = _wMin;
+			s.ctx.warlockDmgMax = _wMax;
 			// 1타 [1타처치] 줄 구성
 			if (s.willKill) {
 				String _1tag = s.shadow ? "[그림자]" : s.dark ? "[어둠]" : s.gray ? "[음양]" : s.lucky ? "[빛]" : "";
@@ -8959,7 +8969,9 @@ public class BossAttackController {
 	            else sb.append("[나이트메어]");
 	        }
 	        sb.append(" HP : ").append(formatWan(monMaxHp)).append(NL);
-	        sb.append("⚔ 데미지: ").append(formatWan(shownAtkMin)).append("~").append(formatWan(shownAtkMax)).append(NL);
+	        long _dMin = ctx.warlockDmgMin > 0 ? ctx.warlockDmgMin : (long)shownAtkMin;
+	        long _dMax = ctx.warlockDmgMax > 0 ? ctx.warlockDmgMax : (long)shownAtkMax;
+	        sb.append("⚔ 데미지: ").append(formatWan(_dMin)).append("~").append(formatWan(_dMax)).append(NL);
 	        sb.append(NL);
 	    } else {
 	        sb.append(NL);
@@ -9118,6 +9130,10 @@ public class BossAttackController {
 	/** 10,000,000(천만) 이상이면 만 단위로 표시. 예: 12345678 → "1234만" */
 	private String formatWan(int v) {
 	    if (v >= 1_000_000) return (v / 10_000) + "만";
+	    return String.valueOf(v);
+	}
+	private String formatWan(long v) {
+	    if (v >= 1_000_000L) return (v / 10_000L) + "만";
 	    return String.valueOf(v);
 	}
 
