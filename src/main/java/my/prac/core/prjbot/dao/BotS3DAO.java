@@ -50,6 +50,9 @@ public interface BotS3DAO {
 	/** [헬보스] 현재 보스 세션 최근 공격 로그 (TOP50) */
 	List<HashMap<String, Object>> selectHellBossRecentLog(HashMap<String, Object> map);
 
+	/** [헬보스] 등장 이후 공격한 고유 유저 수 */
+	int selectHellBossAttackerCount(String bossStartDate);
+
 	/** [카운트업 보스] HP 원자적 누적 */
 	int updateHellBossCountUpAdd(HashMap<String, Object> map);
 

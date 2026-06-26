@@ -772,6 +772,20 @@ public class BossAttackS3Controller {
             }
         }
 
+        // 무적 방어 (등장 초기: 공격자 수에 따라 10%씩 감소, 10명 이상이면 해제)
+        String shieldMsg = "";
+        if (!isCountUp && !isEvade && !heavensPunishment && !flag_boss_debuff) {
+            try {
+                int _attackerCnt = botS3Service.selectHellBossAttackerCount(bossStartDate);
+                int _shieldPct = Math.max(0, 100 - _attackerCnt * 10);
+                if (_shieldPct > 0) {
+                    long _shieldAmt = totalDamage * _shieldPct / 100;
+                    totalDamage = Math.max(0, totalDamage - _shieldAmt);
+                    shieldMsg = "🛡️ 무적! [" + (_attackerCnt + 1) + "번째 도전자] 방어 " + _shieldPct + "% 적용" + NL;
+                }
+            } catch (Exception ignore) {}
+        }
+
         // HP 차감 (1차) — 카운트업 보스는 HP가 올라가므로 kill 없음
         // 회피 시 데미지 반감 처리
         long effectiveDamage = isEvade ? totalDamage / 2 : totalDamage;
@@ -1048,6 +1062,7 @@ public class BossAttackS3Controller {
             if (!hellAchvMsg.isEmpty()) msg.append(hellAchvMsg);
             if (!punishMsg.isEmpty())   msg.append(punishMsg);
             if (!debuff1Msg.isEmpty())  msg.append(debuff1Msg);
+            if (!shieldMsg.isEmpty())   msg.append(shieldMsg);
             if (!bossDefMsg.isEmpty())  msg.append(bossDefMsg);
             if (!dosaBossBuffMsg.isEmpty()) msg.append(dosaBossBuffMsg);
             if (!dmgLimitMsg.isEmpty()) msg.append(dmgLimitMsg);

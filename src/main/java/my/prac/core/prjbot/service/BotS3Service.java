@@ -41,6 +41,9 @@ public interface BotS3Service {
 	/** [헬보스] 현재 보스 세션 최근 공격 로그 (TOP50) */
 	List<HashMap<String, Object>> selectHellBossRecentLog(HashMap<String, Object> map);
 
+	/** [헬보스] 현재 보스 등장 이후 공격한 고유 유저 수 (무적 방어 계산용) */
+	int selectHellBossAttackerCount(String bossStartDate);
+
 	/** [카운트업 보스] HP 누적 + 공격 로그 (트랜잭션) */
 	void updateHellBossCountUpTx(HashMap<String, Object> map) throws Exception;
 

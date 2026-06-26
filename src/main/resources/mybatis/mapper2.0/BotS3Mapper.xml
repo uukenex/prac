@@ -306,6 +306,15 @@
 		) WHERE ROWNUM &lt;= 50
 	</select>
 
+	<!-- 헬보스 등장 이후 공격한 고유 유저 수 (무적 방어 계산용) -->
+	<select id="selectHellBossAttackerCount" parameterType="String" resultType="int">
+		SELECT COUNT(DISTINCT USER_NAME)
+		  FROM TBOT_POINT_NEW_BATTLE_LOG
+		 WHERE NIGHTMARE_YN  = '2'
+		   AND TARGET_MON_LV = 999
+		   AND INSERT_DATE   >= TO_DATE(#{bossStartDate}, 'yyyymmdd hh24miss')
+	</select>
+
 	<!-- =====================================================
 	     [S3 헬보스] 마지막 보상 수령자 조회 (TBOT_POINT_NEW_INVENTORY)
 	     ===================================================== -->

@@ -78,6 +78,11 @@ public class BotS3ServiceImpl implements BotS3Service {
 	}
 
 	@Override
+	public int selectHellBossAttackerCount(String bossStartDate) {
+		return botS3DAO.selectHellBossAttackerCount(bossStartDate);
+	}
+
+	@Override
 	public void updateHellBossCountUpTx(HashMap<String, Object> map) throws Exception {
 		botS3DAO.updateHellBossCountUpAdd(map);
 		botS3DAO.insertHellBattleLog(map);
