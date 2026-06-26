@@ -4838,6 +4838,8 @@ public class BossAttackController {
 		List<Resolve>        warlockExtraRes   = new ArrayList<>();
 		List<LevelUpResult>  warlockExtraUps   = new ArrayList<>();
 		List<String>         warlockKillMsgs   = new ArrayList<>();
+		List<String>         warlockExpBreakdowns = new ArrayList<>(); // 타별 EXP 계산식
+		String               warlockExp1Breakdown = null; // 1타 EXP 계산식
 		long warlockTotalGainExp = 0; // 전체 타수 합산 exp
 
 		AttackSession(HashMap<String,Object> map) {
@@ -5490,6 +5492,11 @@ public class BossAttackController {
 					double _pct = Double.parseDouble(s.activeBuff.get("EFFECT_VALUE").toString());
 					er.gainExp = (long)(er.gainExp * (1 + _pct / 100.0));
 				}
+				s.warlockExpBreakdowns.add(buildExpBreakdown(er.expBase, s.ctx.user.nightmareYn, er.expLevelMult,
+					ed.extraDark, ed.extraLucky, ed.extraGray, ed.extraShadow,
+					s.u.job, s.isOngoing, s.u.lv, _edow, s.activeBuff, er.gainExp));
+			} else {
+				s.warlockExpBreakdowns.add(null);
 			}
 			s.warlockTotalGainExp += er.gainExp;
 			s.warlockExtraRes.add(er);
@@ -5654,6 +5661,10 @@ public class BossAttackController {
 		// [Feature3] 토/일 경험치 2배
 		int _dow = java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_WEEK);
 		if (s.willKill && (_dow == java.util.Calendar.SATURDAY || _dow == java.util.Calendar.SUNDAY)) s.res.gainExp *= 2;
+		// [워록] 1타 EXP 계산식 저장
+		if ("워록".equals(s.job) && s.willKill)
+			s.warlockExp1Breakdown = buildExpBreakdown(s.res.expBase, s.ctx.user.nightmareYn, s.res.expLevelMult,
+				s.dark, s.lucky, s.gray, s.shadow, s.u.job, s.isOngoing, s.u.lv, _dow, s.activeBuff, s.res.gainExp);
 
 		// SP 누적용 — baroSellItem은 INSERT 없이 outSp만 반환, 여기서 합산 후 단건 INSERT
 		SP stealSpTotal = new SP(0, "");
@@ -6142,6 +6153,9 @@ public class BossAttackController {
 			}
 			s.ctx.warlockDmgMin = _wMin;
 			s.ctx.warlockDmgMax = _wMax;
+			// EXP 계산식 ctx로 복사
+			s.ctx.warlockExp1Breakdown = s.warlockExp1Breakdown;
+			s.ctx.warlockExpBreakdowns = s.warlockExpBreakdowns;
 			// 1타 [1타처치] 줄 구성
 			if (s.willKill) {
 				String _1tag = s.shadow ? "[그림자]" : s.dark ? "[어둠]" : s.gray ? "[음양]" : s.lucky ? "[빛]" : "";
@@ -8642,6 +8656,7 @@ public class BossAttackController {
 		}
 
 		long baseKillExp = Math.round(monExp * expMultiplier);
+		r.expBase = m.monExp; r.expLevelMult = expMultiplier; // 계산식 표시용
 
 		if (willKill) {
 			if (shadow) {
@@ -9059,6 +9074,17 @@ public class BossAttackController {
 	                detailOut.append(hunterMsg).append(NL);
 	            if (midExtraLines != null && !midExtraLines.isEmpty())
 	                detailOut.append(midExtraLines).append(NL);
+	            // 워록 멀티킬 EXP 계산식
+	            if (ctx != null && ctx.warlockMultiKill) {
+	                detailOut.append(NL);
+	                if (ctx.warlockExp1Breakdown != null)
+	                    detailOut.append("[1타] EXP: ").append(ctx.warlockExp1Breakdown).append(NL);
+	                for (int _ei = 0; _ei < ctx.warlockExpBreakdowns.size(); _ei++) {
+	                    String _bd = ctx.warlockExpBreakdowns.get(_ei);
+	                    if (_bd != null)
+	                        detailOut.append("[").append(_ei + 2).append("타] EXP: ").append(_bd).append(NL);
+	                }
+	            }
 	            // 워록 멀티킬 레벨업 스탯
 	            if (ctx != null && ctx.warlockLvUpAfter > 0) {
 	                detailOut.append(NL).append("★★★ ✨레벨업!✨ ★★★").append(NL);
@@ -9167,6 +9193,37 @@ public class BossAttackController {
 	private String formatWan(long v) {
 	    if (v >= 1_000_000L) return (v / 10_000L) + "만";
 	    return String.valueOf(v);
+	}
+
+	/** 워록 EXP 계산식 문자열 생성 (==== 이후 표시용) */
+	private String buildExpBreakdown(long baseMonExp, int nightmareYnVal, double expMult,
+	        boolean dark, boolean lucky, boolean gray, boolean shadow,
+	        String job, boolean isOngoing, int userLv, int dow, Object activeBuff, long finalExp) {
+	    StringBuilder sb = new StringBuilder();
+	    sb.append(formatKorNum(baseMonExp));
+	    if (nightmareYnVal >= 1) {
+	        sb.append("x").append(NM_MUL_EXP).append("(나메)");
+	        if (nightmareYnVal == 2) sb.append("x").append(HEL_MUL_EXP).append("(헬)");
+	    }
+	    if (expMult != 1.0) sb.append("x").append(String.format("%.2f", expMult)).append("(레벨차)");
+	    if (shadow) sb.append("x10(그림자)");
+	    else if (gray) sb.append("x9(음양)");
+	    else if (dark) sb.append("x5(어둠)");
+	    else if (lucky) sb.append("x3(빛)");
+	    if ("궁수".equals(job) || "사냥꾼".equals(job)) sb.append("x3(궁수)");
+	    if (isOngoing && !dark && !lucky && !shadow) sb.append("x2(다회전)");
+	    if (userLv <= 800) sb.append("x4(800이하)");
+	    else if (userLv <= 990) sb.append("x3(990이하)");
+	    if (dow == java.util.Calendar.SATURDAY || dow == java.util.Calendar.SUNDAY) sb.append("x2(주말)");
+	    if (activeBuff != null) {
+	        try {
+	            java.util.Map<?,?> m = (java.util.Map<?,?>)activeBuff;
+	            if ("경험치".equals(m.get("FLAG_CODE")))
+	                sb.append("x").append(String.format("%.0f%%", Double.parseDouble(m.get("EFFECT_VALUE").toString()))).append("(버프)");
+	        } catch (Exception ignore) {}
+	    }
+	    sb.append(" = ").append(formatKorNum(finalExp));
+	    return sb.toString();
 	}
 
 	/** 한국어 단위 표기: 1억 이상→X.XX억, 100만 이상→X만, 그 외→숫자 (소수점 없으면 생략) */
@@ -9302,6 +9359,7 @@ public class BossAttackController {
 		boolean killed; String dropCode; long gainExp; boolean lucky; boolean dark; boolean gray;
 		boolean shadow; // 그림자 몬스터
 		int bonusNormalDropQty; // [7008] 추가 드랍 수량 (강화별)
+		long expBase; double expLevelMult; // EXP 계산식 표시용
 	}
 	private static class CooldownCheck {
 	    final boolean ok; final int remainMinutes; final long remainSeconds;
