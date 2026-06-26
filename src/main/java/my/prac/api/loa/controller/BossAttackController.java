@@ -6200,6 +6200,8 @@ public class BossAttackController {
 			s.res.gainExp = 0;
 			s.up = null;
 		}
+		// SP breakdown을 buildAttackMessage 전에 ctx에 복사 (=== 섹션 출력용)
+		if (!s.spBreakdowns.isEmpty()) s.ctx.spBreakdowns = s.spBreakdowns;
 		String msg = buildAttackMessage(s.userName, s.u, s.m, s.flags, s.calc, s.res, s.up,
 				s.monHpRemainBefore, s.monMaxHp, s.effAtkMin, s.effAtkMax, s.hpMax,
 				mid.toString(), hunter.toString(), bot.toString(), s.nightmare, s.ctx, detailOut);
