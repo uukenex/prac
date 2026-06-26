@@ -2698,11 +2698,57 @@ public class BossAttackController {
 			}
 		}
 
+		// ─ CRIT 사전 계산 (그룹별 치확/치피) ─
+		int _cRelicC = 0, _cRelicD = 0, _cAchvC = 0, _cAchvD = 0;
+		int _cLuckC  = 0, _cLuckD  = 0, _cRingC = 0, _cRingD = 0;
+		int _cTotemC = 0, _cTotemD = 0, _cGiftC = 0, _cGiftD = 0;
+		int _elfCritSum = 0, _elfCritDmgSum = 0;
+		List<HashMap<String,Object>> _preJobLvRows = null;
+		if (bag != null) {
+		    for (HashMap<String,Object> brow : bag) {
+		        int bid = safeInt(brow.get("ITEM_ID"));
+		        int bc = safeInt(brow.get("ATK_CRI")), bd = safeInt(brow.get("CRI_DMG"));
+		        if      (bid>=9000&&bid<10000) { _cRelicC+=bc; _cRelicD+=bd; }
+		        else if (bid>=8000&&bid< 9000) { _cAchvC +=bc; _cAchvD +=bd; }
+		        else if (bid>= 300&&bid<  400) { _cLuckC +=bc; _cLuckD +=bd; }
+		        else if (bid>= 500&&bid<  600) { _cRingC +=bc; _cRingD +=bd; }
+		        else if (bid>= 600&&bid<  700) { _cTotemC+=bc; _cTotemD+=bd; }
+		        else if (bid>= 900&&bid< 1000) { _cGiftC +=bc; _cGiftD +=bd; }
+		    }
+		}
+		try {
+		    _preJobLvRows = botNewService.selectJobLevels(ctx.targetUser);
+		    if (_preJobLvRows != null) {
+		        java.util.Set<String> _ELF = new java.util.HashSet<>(java.util.Arrays.asList("엘프","엘프궁수","엘프마법사"));
+		        for (HashMap<String,Object> r : _preJobLvRows) {
+		            if (_ELF.contains(Objects.toString(r.get("JOB_NAME"),""))) {
+		                int jlv = ((Number)r.getOrDefault("JOB_LV",0)).intValue();
+		                _elfCritSum += jlv; _elfCritDmgSum += jlv;
+		            }
+		        }
+		    }
+		} catch (Exception ignore) {}
+
 		if (!"곰".equals(ctx.job)) {
 			// ─ CRIT 상세 ─
 		    sb.append("⚔CRIT: ").append(ctx.crit).append("%  CDMG ").append(ctx.critDmg).append("%").append(NL)
 		      .append("   └ 기본 (").append(u.critRate).append("%, ").append(ctx.baseCritDmg).append("%)").append(NL);
 			sb.append("   └ 아이템 (CRIT").append(formatSigned(ctx.mktCrit)).append("%, CDMG ").append(formatSigned(ctx.mktCritDmg)).append("%)").append(NL);
+			{ List<String> p=new ArrayList<>(); if(_cRelicC!=0)p.add("치확+"+_cRelicC+"%"); if(_cRelicD!=0)p.add("치피+"+_cRelicD+"%"); if(!p.isEmpty())sb.append("   └ 유물 (").append(String.join(" ",p)).append(")").append(NL); }
+			{ List<String> p=new ArrayList<>(); if(_cLuckC !=0)p.add("치확+"+_cLuckC +"%"); if(_cLuckD !=0)p.add("치피+"+_cLuckD +"%"); if(!p.isEmpty())sb.append("   └ 행운 (").append(String.join(" ",p)).append(")").append(NL); }
+			{ List<String> p=new ArrayList<>(); if(_cRingC !=0)p.add("치확+"+_cRingC +"%"); if(_cRingD !=0)p.add("치피+"+_cRingD +"%"); if(!p.isEmpty())sb.append("   └ 반지 (").append(String.join(" ",p)).append(")").append(NL); }
+			{ List<String> p=new ArrayList<>(); if(_cTotemC!=0)p.add("치확+"+_cTotemC+"%"); if(_cTotemD!=0)p.add("치피+"+_cTotemD+"%"); if(!p.isEmpty())sb.append("   └ 토템 (").append(String.join(" ",p)).append(")").append(NL); }
+			{ List<String> p=new ArrayList<>(); if(_cGiftC !=0)p.add("치확+"+_cGiftC +"%"); if(_cGiftD !=0)p.add("치피+"+_cGiftD +"%"); if(!p.isEmpty())sb.append("   └ 선물 (").append(String.join(" ",p)).append(")").append(NL); }
+			{ List<String> p=new ArrayList<>(); if(_cAchvC !=0)p.add("치확+"+_cAchvC +"%"); if(_cAchvD !=0)p.add("치피+"+_cAchvD +"%"); if(!p.isEmpty())sb.append("   └ 업적 (").append(String.join(" ",p)).append(")").append(NL); }
+			{ List<String> p=new ArrayList<>(); if(_elfCritSum>0)p.add("치확+"+_elfCritSum+"%"); if(_elfCritDmgSum>0)p.add("치피+"+_elfCritDmgSum+"%"); if(!p.isEmpty())sb.append("   └ 엘프 (").append(String.join(" ",p)).append(")").append(NL); }
+			if (ctx.expSellCrit > 0 || ctx.expSellCritDmg > 0) {
+				List<String> p = new ArrayList<>();
+				if (ctx.expSellCrit > 0) p.add("치확+" + String.format("%.1f", ctx.expSellCrit) + "%");
+				if (ctx.expSellCritDmg > 0) p.add("치피+" + String.format("%.1f", ctx.expSellCritDmg) + "%");
+				sb.append("   └ 경험치판매 (").append(String.join(" ", p)).append(")").append(NL);
+			}
+			if (ctx.setCritFinalRate > 0)
+				sb.append("   └ 세트 (최종크리율+").append(ctx.setCritFinalRate).append("%)").append(NL);
 			if (ctx.hellNerfCrit != 0)
 				sb.append("   └ 모드 (CRIT-").append(ctx.hellNerfCrit).append("%, CDMG -").append(ctx.hellNerfCritDmg).append("%)").append(NL);
 			{ // CRIT 어둠
@@ -2760,7 +2806,7 @@ public class BossAttackController {
         }
         
         try {
-		    List<HashMap<String,Object>> jobLvRows = botNewService.selectJobLevels(ctx.targetUser);
+		    List<HashMap<String,Object>> jobLvRows = _preJobLvRows != null ? _preJobLvRows : botNewService.selectJobLevels(ctx.targetUser);
 		    if (jobLvRows != null && !jobLvRows.isEmpty()) {
 		        java.util.Set<String> GIANT_JOBS = new java.util.HashSet<>(java.util.Arrays.asList("자이언트", "자이언트용병", "자이언트기사"));
 		        java.util.Set<String> ELF_JOBS   = new java.util.HashSet<>(java.util.Arrays.asList("엘프", "엘프궁수", "엘프마법사"));
@@ -2775,9 +2821,7 @@ public class BossAttackController {
 		        }
 		        if (elfTotLv > 0) {
 		            sb.append("✨엘프 직업레벨[헬너프되지않음] Lv.").append(elfTotLv)
-		              .append(" → 데미지+").append(elfTotLv * 10)
-		              .append(" 크리율+").append(elfTotLv)
-		              .append("% 크리뎀+").append(elfTotLv).append("%").append(NL);
+		              .append(" → 데미지+").append(elfTotLv * 10).append(NL);
 		            for (HashMap<String,Object> r : elfRows) {
 		                String jn  = Objects.toString(r.get("JOB_NAME"), "");
 		                int    jlv = ((Number) r.getOrDefault("JOB_LV", 0)).intValue();
@@ -2819,8 +2863,7 @@ public class BossAttackController {
 	        if (ctx.expSellHp > 0)      sb.append("  HP +").append(ctx.expSellHp).append(NL);
 	        if (ctx.expSellAtkMin > 0)  sb.append("  최소공격 +").append(ctx.expSellAtkMin).append(NL);
 	        if (ctx.expSellAtkMax > 0)  sb.append("  최대공격 +").append(ctx.expSellAtkMax).append(NL);
-	        if (ctx.expSellCrit > 0)    sb.append("  크리확률 +").append(String.format("%.1f", ctx.expSellCrit)).append("%").append(NL);
-	        if (ctx.expSellCritDmg > 0) sb.append("  크리데미지 +").append(String.format("%.1f", ctx.expSellCritDmg)).append("%").append(NL);
+	        // 크리확률/데미지는 CRIT 섹션에 표시
 	    }
 	    // ─ 세트 효과 ─
 	    boolean hasSetEffect = ctx.setCooldownReduce > 0 || ctx.setCooldownIncrease > 0 || ctx.setAtkFinalRate > 0 || ctx.setCritFinalRate > 0
@@ -2829,8 +2872,7 @@ public class BossAttackController {
 	        sb.append("✨세트 효과 [헬너프되지않음]:");
 	        if (ctx.setAtkFinalRate > 0)
 	            sb.append("최종공격력 +").append(ctx.setAtkFinalRate).append("%").append(NL);
-	        if (ctx.setCritFinalRate > 0)
-	            sb.append("최종크리율 +").append(ctx.setCritFinalRate).append("%").append(NL);
+	        // 최종크리율은 CRIT 섹션에 표시
 	        if (ctx.setCooldownReduce > 0)
 	            sb.append("쿨타임 -").append(ctx.setCooldownReduce).append("%").append(NL);
 	        if (ctx.setCooldownIncrease > 0)
@@ -11349,13 +11391,7 @@ public class BossAttackController {
 			sb.append("체젠 +").append(sumRegen);
 			first = false;
 		}
-		if (sumCrit > 0 || sumCritDmg > 0) {
-			if (!first)
-				sb.append(", ");
-			sb.append("치확 +").append(sumCrit).append("% / 치뎀 +").append(sumCritDmg).append("%");
-		}
-		
-
+		// 치확/치피는 CRIT 섹션에 통합 표시
 
 		return sb.toString();
 	}
@@ -11401,11 +11437,7 @@ public class BossAttackController {
 			if (!first) sb.append(", ");
 			sb.append("체젠 +").append(sumRegen); first = false;
 		}
-		if (sumCrit != 0 || sumCritDmg != 0) {
-			if (!first) sb.append(", ");
-			sb.append("치확 +").append(sumCrit).append("% / 치뎀 +").append(sumCritDmg).append("%");
-			first = false;
-		}
+		// 치확/치피는 CRIT 섹션에 통합 표시
 		// 특수 효과 아이템: 스탯 없어도 설명 표기 (예: 999 헬너프 감소)
 		for (HashMap<String, Object> row : bag) {
 			int id = safeInt(row.get("ITEM_ID"));
