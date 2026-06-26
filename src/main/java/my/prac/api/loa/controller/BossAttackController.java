@@ -6100,8 +6100,8 @@ public class BossAttackController {
 							double _gPct = _eu.afterExpNext > 0 ? (double)_eu.gainedExp / _eu.afterExpNext * 100 : 0;
 							double _cPct = _eu.afterExpNext > 0 ? (double)_eu.afterExpCur / _eu.afterExpNext * 100 : 0;
 							bot.append(NL).append("EXP +").append(formatKorNum(_eu.gainedExp))
-							   .append("(").append(String.format("%.1f", _gPct)).append("%)") 
-							   .append("[").append(String.format("%.1f", _cPct)).append("%/100%]");
+							   .append("(").append(String.format("%.1f", _gPct)).append("%)")
+							   .append("[").append(String.format("%.1f", _cPct)).append("%]");
 							if (_eu.levelUpCount > 0) bot.append(" ✨Lv").append(_eu.beforeLv).append("→").append(_eu.afterLv);
 						} else if (_eu != null) {
 							bot.append(NL).append("EXP +").append(formatKorNum(_eu.gainedExp))
@@ -6118,8 +6118,9 @@ public class BossAttackController {
 		if (s.thiefDoubleAtk && s.res2 != null && s.res2.gainExp > 0) {
 			s.res.gainExp += s.res2.gainExp;
 		}
-		// [워록 멀티킷] top EXP 제거: buildAttackMessage EXP 줄 스킵, 1타 EXP는 bot에 표시
+		// [워록 멀티킬] top EXP 제거: buildAttackMessage EXP 줄 스킵, 1타 EXP는 bot에 표시
 		if (s.warlockMultiHit && !s.warlockKillFail) {
+			s.ctx.warlockMultiKill = true;
 			// 1타 [1타처치] 줄 구성
 			if (s.willKill) {
 				String _1tag = s.shadow ? "[그림자]" : s.dark ? "[어둠]" : s.gray ? "[음양]" : s.lucky ? "[빛]" : "";
@@ -6127,7 +6128,7 @@ public class BossAttackController {
 				StringBuilder _1line = new StringBuilder();
 				_1line.append("[1타처치] ").append(_1tag).append(_1name)
 					  .append(", 데미지: ").append(formatWan(s.calc.atkDmg));
-				if (s.flags != null && s.flags.atkCrit) _1line.append(" ✨크리!");
+				// 크리 표시 생략 (멀티킬 간소화)
 				if (s.up != null) {
 					_1line.append(NL);
 					if (s.u.lv < 999) {
@@ -6135,7 +6136,7 @@ public class BossAttackController {
 						double _c1 = s.up.afterExpNext > 0 ? (double)s.up.afterExpCur / s.up.afterExpNext * 100 : 0;
 						_1line.append("EXP +").append(formatKorNum(s.up.gainedExp))
 							  .append("(").append(String.format("%.1f", _g1)).append("%)")
-							  .append("[").append(String.format("%.1f", _c1)).append("%/100%]");
+							  .append("[").append(String.format("%.1f", _c1)).append("%]");
 						if (s.up.levelUpCount > 0) _1line.append(" ✨Lv").append(s.up.beforeLv).append("→").append(s.up.afterLv);
 					} else {
 						_1line.append("EXP +").append(formatKorNum(s.up.gainedExp))
@@ -8950,17 +8951,20 @@ public class BossAttackController {
 	    }
 	    sb.append("을(를) 공격!").append(NL).append(NL);
 
-	    if (res.shadow) sb.append("✨ SHADOW MONSTER! (처치시 경험치×10, 드랍 없음)").append(NL);
-	    if (res.gray) sb.append("✨ LIGHT&DARK MONSTER! (처치시 경험치×9, 음양 드랍)").append(NL);
-	    if (res.dark) sb.append("✨ DARK MONSTER! (처치시 경험치×5, 어둠 드랍)").append(NL);
-	    if (res.lucky) sb.append("✨ LUCKY MONSTER! (처치시 경험치×3, 빛 드랍)").append(NL);
+	    final boolean _warlockSimple = (ctx != null && ctx.warlockMultiKill);
+	    if (!_warlockSimple) {
+	        if (res.shadow) sb.append("✨ SHADOW MONSTER! (처치시 경험치×10, 드랍 없음)").append(NL);
+	        if (res.gray) sb.append("✨ LIGHT&DARK MONSTER! (처치시 경험치×9, 음양 드랍)").append(NL);
+	        if (res.dark) sb.append("✨ DARK MONSTER! (처치시 경험치×5, 어둠 드랍)").append(NL);
+	        if (res.lucky) sb.append("✨ LUCKY MONSTER! (처치시 경험치×3, 빛 드랍)").append(NL);
+	    }
 
 	    if (u.job.equals("곰")) {
 	        // 더보기 없이 그대로 표기 (곰은 계산식 없음 — dmgCalcMsg 는 항상 main에 출력)
 	        sb.append("최대체력 ").append(formatWan(displayHpMax)).append(" 이하에게 괴력!").append(NL);
 	        if (midExtraLines != null && !midExtraLines.isEmpty())
 	            sb.append(midExtraLines).append(NL);
-	    } else {
+	    } else if (!_warlockSimple) {
 	        // 치명타/축복 (항상 main)
 	        if (flags.atkCrit) sb.append("✨ 치명타!");
 	        if (u.blessYn == 1) sb.append("✨축복(x1.5)!");
@@ -8998,21 +9002,23 @@ public class BossAttackController {
 	        }
 	    }
 
-	    // 몬스터 HP (항상 main)
-	    int monHpAfter = Math.max(0, monHpRemainBefore - calc.atkDmg);
-	    sb.append("❤️ 몬스터 HP: ").append(formatWan(monHpAfter)).append(" / ").append(formatWan(monMaxHp)).append(NL);
+	    if (!_warlockSimple) {
+	        // 몬스터 HP
+	        int monHpAfter = Math.max(0, monHpRemainBefore - calc.atkDmg);
+	        sb.append("❤️ 몬스터 HP: ").append(formatWan(monHpAfter)).append(" / ").append(formatWan(monMaxHp)).append(NL);
 
-	    // 반격 알림 (항상 main — 게임 이벤트)
-	    if (calc.patternMsg != null && !calc.patternMsg.isEmpty()) {
-	        sb.append(NL).append("⚅ ").append(calc.patternMsg).append(NL);
-	    }
+	        // 반격 알림
+	        if (calc.patternMsg != null && !calc.patternMsg.isEmpty()) {
+	            sb.append(NL).append("⚅ ").append(calc.patternMsg).append(NL);
+	        }
 
-	    // 현재 체력 (항상 main)
-	    if (calc.monDmg > 0) {
-	        sb.append("❤️ 받은 피해: ").append(formatWan(calc.monDmg))
-	          .append(",  현재 체력: ").append(formatWan(u.hpCur)).append(" / ").append(formatWan(displayHpMax)).append(NL);
-	    } else {
-	        sb.append("❤️ 현재 체력: ").append(formatWan(u.hpCur)).append(" / ").append(formatWan(displayHpMax)).append(NL);
+	        // 현재 체력
+	        if (calc.monDmg > 0) {
+	            sb.append("❤️ 받은 피해: ").append(formatWan(calc.monDmg))
+	              .append(",  현재 체력: ").append(formatWan(u.hpCur)).append(" / ").append(formatWan(displayHpMax)).append(NL);
+	        } else {
+	            sb.append("❤️ 현재 체력: ").append(formatWan(u.hpCur)).append(" / ").append(formatWan(displayHpMax)).append(NL);
+	        }
 	    }
 
 	    // 드랍 (항상 main)

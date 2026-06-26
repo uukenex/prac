@@ -122,4 +122,7 @@ public class UserBattleContext {
 
 	// 직업레벨 보너스 (전 직업 레벨 합산)
 	public int totalJobLv = 0;
+
+	// 워록 멀티킬 여부 (buildAttackMessage에서 header 생략 제어)
+	public boolean warlockMultiKill = false;
 }
