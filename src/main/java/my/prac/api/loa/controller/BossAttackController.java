@@ -2733,14 +2733,10 @@ public class BossAttackController {
 			// ─ CRIT 상세 ─
 		    sb.append("⚔CRIT: ").append(ctx.crit).append("%  CDMG ").append(ctx.critDmg).append("%").append(NL)
 		      .append("   └ 기본 (").append(u.critRate).append("%, ").append(ctx.baseCritDmg).append("%)").append(NL);
-			sb.append("   └ 아이템 (CRIT").append(formatSigned(ctx.mktCrit)).append("%, CDMG ").append(formatSigned(ctx.mktCritDmg)).append("%)").append(NL);
-			{ List<String> p=new ArrayList<>(); if(_cRelicC!=0)p.add("치확+"+_cRelicC+"%"); if(_cRelicD!=0)p.add("치피+"+_cRelicD+"%"); if(!p.isEmpty())sb.append("   └ 유물 (").append(String.join(" ",p)).append(")").append(NL); }
-			{ List<String> p=new ArrayList<>(); if(_cLuckC !=0)p.add("치확+"+_cLuckC +"%"); if(_cLuckD !=0)p.add("치피+"+_cLuckD +"%"); if(!p.isEmpty())sb.append("   └ 행운 (").append(String.join(" ",p)).append(")").append(NL); }
-			{ List<String> p=new ArrayList<>(); if(_cRingC !=0)p.add("치확+"+_cRingC +"%"); if(_cRingD !=0)p.add("치피+"+_cRingD +"%"); if(!p.isEmpty())sb.append("   └ 반지 (").append(String.join(" ",p)).append(")").append(NL); }
-			{ List<String> p=new ArrayList<>(); if(_cTotemC!=0)p.add("치확+"+_cTotemC+"%"); if(_cTotemD!=0)p.add("치피+"+_cTotemD+"%"); if(!p.isEmpty())sb.append("   └ 토템 (").append(String.join(" ",p)).append(")").append(NL); }
-			{ List<String> p=new ArrayList<>(); if(_cGiftC !=0)p.add("치확+"+_cGiftC +"%"); if(_cGiftD !=0)p.add("치피+"+_cGiftD +"%"); if(!p.isEmpty())sb.append("   └ 선물 (").append(String.join(" ",p)).append(")").append(NL); }
-			{ List<String> p=new ArrayList<>(); if(_cAchvC !=0)p.add("치확+"+_cAchvC +"%"); if(_cAchvD !=0)p.add("치피+"+_cAchvD +"%"); if(!p.isEmpty())sb.append("   └ 업적 (").append(String.join(" ",p)).append(")").append(NL); }
-			{ List<String> p=new ArrayList<>(); if(_elfCritSum>0)p.add("치확+"+_elfCritSum+"%"); if(_elfCritDmgSum>0)p.add("치피+"+_elfCritDmgSum+"%"); if(!p.isEmpty())sb.append("   └ 엘프 (").append(String.join(" ",p)).append(")").append(NL); }
+			int _allGroupC = _cRelicC+_cLuckC+_cRingC+_cTotemC+_cGiftC+_cAchvC;
+			int _allGroupD = _cRelicD+_cLuckD+_cRingD+_cTotemD+_cGiftD+_cAchvD;
+			sb.append("   └ 아이템 (CRIT").append(formatSigned(ctx.mktCrit + _allGroupC)).append("%, CDMG ").append(formatSigned(ctx.mktCritDmg + _allGroupD)).append("%)").append(NL);
+			{ List<String> p=new ArrayList<>(); if(_elfCritSum>0)p.add("치확+"+_elfCritSum+"%"); if(_elfCritDmgSum>0)p.add("치피+"+_elfCritDmgSum+"%"); if(!p.isEmpty())sb.append("   └ 직업(엘프) (").append(String.join(" ",p)).append(")").append(NL); }
 			if (ctx.expSellCrit > 0 || ctx.expSellCritDmg > 0) {
 				List<String> p = new ArrayList<>();
 				if (ctx.expSellCrit > 0) p.add("치확+" + String.format("%.1f", ctx.expSellCrit) + "%");
@@ -2749,8 +2745,6 @@ public class BossAttackController {
 			}
 			if (ctx.setCritFinalRate > 0)
 				sb.append("   └ 세트 (최종크리율+").append(ctx.setCritFinalRate).append("%)").append(NL);
-			if (ctx.hellNerfCrit != 0)
-				sb.append("   └ 모드 (CRIT-").append(ctx.hellNerfCrit).append("%, CDMG -").append(ctx.hellNerfCritDmg).append("%)").append(NL);
 			{ // CRIT 어둠
 				List<String> p = new ArrayList<>();
 				if (ctx.dropCrit > 0) p.add("치확+" + ctx.dropCrit + "%");
@@ -2763,6 +2757,8 @@ public class BossAttackController {
 				if (hellCritDmg != 0) p.add("치피+" + hellCritDmg + "%");
 				if (!p.isEmpty()) sb.append("   └ 각인 (").append(String.join(" ", p)).append(")").append(NL);
 			}
+			if (ctx.hellNerfCrit != 0)
+				sb.append("   └ 모드 (CRIT-").append(ctx.hellNerfCrit).append("%, CDMG -").append(ctx.hellNerfCritDmg).append("%)").append(NL);
 	    }
 
 	    // ─ HP 상세 ─
