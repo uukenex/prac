@@ -2681,39 +2681,41 @@ public class BossAttackController {
 				sb.append("   └ 최종공격력 (").append(formatSigned(ctx.mktAtkMaxRate)).append("%)").append(NL);
 			if (ctx.hellNerfAtkMax > 0)
 				sb.append("   └ 모드 (min-").append(ctx.hellNerfAtkMin).append("~, max-").append(ctx.hellNerfAtkMax).append(")").append(NL);
-			if (ctx.dropAtkMin > 0 || ctx.dropAtkMax > 0) {
-				sb.append("   └ 어둠 (");
-				if (ctx.dropAtkMin > 0) sb.append("min+").append(ctx.dropAtkMin).append(" ");
-				if (ctx.dropAtkMax > 0) sb.append("max+").append(ctx.dropAtkMax);
-				sb.append(")").append(NL);
+			{ // ATK 어둠
+				List<String> p = new ArrayList<>();
+				if (ctx.dropAtkMin > 0) p.add("min+" + ctx.dropAtkMin);
+				if (ctx.dropAtkMax > 0) p.add("max+" + ctx.dropAtkMax);
+				if (!p.isEmpty()) sb.append("   └ 어둠 (").append(String.join(" ", p)).append(")").append(NL);
 			}
-			if (hellAtkMin != 0 || hellAtkMax != 0 || hellAtkMinRate != 0 || hellAtkMaxRate != 0) {
-				sb.append("   └ 각인 (");
-				if (hellAtkMin != 0) sb.append("min+").append(hellAtkMin).append(" ");
-				if (hellAtkMax != 0) sb.append("max+").append(hellAtkMax).append(" ");
-				if (hellAtkMinRate != 0 || hellAtkMaxRate != 0) sb.append("공격% 최소+").append(hellAtkMinRate).append("/최대+").append(hellAtkMaxRate);
-				sb.append(")").append(NL);
+			{ // ATK 각인
+				List<String> p = new ArrayList<>();
+				if (hellAtkMin != 0) p.add("min+" + hellAtkMin);
+				if (hellAtkMax != 0) p.add("max+" + hellAtkMax);
+				if (hellAtkMinRate != 0 && hellAtkMaxRate != 0) p.add("공격% 최소+" + hellAtkMinRate + "/최대+" + hellAtkMaxRate);
+				else if (hellAtkMinRate != 0) p.add("공격min%+" + hellAtkMinRate);
+				else if (hellAtkMaxRate != 0) p.add("공격max%+" + hellAtkMaxRate);
+				if (!p.isEmpty()) sb.append("   └ 각인 (").append(String.join(" ", p)).append(")").append(NL);
 			}
 		}
 
 		if (!"곰".equals(ctx.job)) {
 			// ─ CRIT 상세 ─
 		    sb.append("⚔CRIT: ").append(ctx.crit).append("%  CDMG ").append(ctx.critDmg).append("%").append(NL)
-		      .append("   └ 기본 (").append(u.critRate).append("%, ").append(ctx.critDmg).append("%)").append(NL);
+		      .append("   └ 기본 (").append(u.critRate).append("%, ").append(ctx.baseCritDmg).append("%)").append(NL);
 			sb.append("   └ 아이템 (CRIT").append(formatSigned(ctx.mktCrit)).append("%, CDMG ").append(formatSigned(ctx.mktCritDmg)).append("%)").append(NL);
 			if (ctx.hellNerfCrit != 0)
 				sb.append("   └ 모드 (CRIT-").append(ctx.hellNerfCrit).append("%, CDMG -").append(ctx.hellNerfCritDmg).append("%)").append(NL);
-			if (ctx.dropCrit > 0 || ctx.dropCritDmg > 0) {
-				sb.append("   └ 어둠 (");
-				if (ctx.dropCrit > 0) sb.append("치확+").append(ctx.dropCrit).append("% ");
-				if (ctx.dropCritDmg > 0) sb.append("치피+").append(ctx.dropCritDmg).append("%");
-				sb.append(")").append(NL);
+			{ // CRIT 어둠
+				List<String> p = new ArrayList<>();
+				if (ctx.dropCrit > 0) p.add("치확+" + ctx.dropCrit + "%");
+				if (ctx.dropCritDmg > 0) p.add("치피+" + ctx.dropCritDmg + "%");
+				if (!p.isEmpty()) sb.append("   └ 어둠 (").append(String.join(" ", p)).append(")").append(NL);
 			}
-			if (hellCrit != 0 || hellCritDmg != 0) {
-				sb.append("   └ 각인 (");
-				if (hellCrit != 0) sb.append("치확+").append(hellCrit).append("% ");
-				if (hellCritDmg != 0) sb.append("치피+").append(hellCritDmg).append("%");
-				sb.append(")").append(NL);
+			{ // CRIT 각인
+				List<String> p = new ArrayList<>();
+				if (hellCrit != 0) p.add("치확+" + hellCrit + "%");
+				if (hellCritDmg != 0) p.add("치피+" + hellCritDmg + "%");
+				if (!p.isEmpty()) sb.append("   └ 각인 (").append(String.join(" ", p)).append(")").append(NL);
 			}
 	    }
 
@@ -2728,18 +2730,18 @@ public class BossAttackController {
 	        sb.append("   └ 직업 (HP").append(formatSigned(ctx.jobHp)).append(",5분당회복").append(formatSigned(ctx.jobRegen)).append(")").append(NL);
 	    if (ctx.hellNerfHp != 0)
 	        sb.append("   └ 모드 (HP -").append(ctx.hellNerfHp).append(")").append(NL);
-	    if (ctx.dropHp > 0 || ctx.dropRegen > 0) {
-	    	sb.append("   └ 어둠 (");
-	    	if (ctx.dropHp > 0) sb.append("HP+").append(ctx.dropHp).append(" ");
-	    	if (ctx.dropRegen > 0) sb.append("체젠+").append(ctx.dropRegen);
-	    	sb.append(")").append(NL);
+	    { // HP 어둠
+	    	List<String> p = new ArrayList<>();
+	    	if (ctx.dropHp > 0) p.add("HP+" + ctx.dropHp);
+	    	if (ctx.dropRegen > 0) p.add("체젠+" + ctx.dropRegen);
+	    	if (!p.isEmpty()) sb.append("   └ 어둠 (").append(String.join(" ", p)).append(")").append(NL);
 	    }
-	    if (hellHp != 0 || hellRegen != 0 || hellHpMaxRate != 0) {
-	    	sb.append("   └ 각인 (");
-	    	if (hellHp != 0) sb.append("HP+").append(hellHp).append(" ");
-	    	if (hellRegen != 0) sb.append("체젠+").append(hellRegen).append(" ");
-	    	if (hellHpMaxRate != 0) sb.append("체력%+").append(hellHpMaxRate);
-	    	sb.append(")").append(NL);
+	    { // HP 각인
+	    	List<String> p = new ArrayList<>();
+	    	if (hellHp != 0) p.add("HP+" + hellHp);
+	    	if (hellRegen != 0) p.add("체젠+" + hellRegen);
+	    	if (hellHpMaxRate != 0) p.add("체력%+" + hellHpMaxRate);
+	    	if (!p.isEmpty()) sb.append("   └ 각인 (").append(String.join(" ", p)).append(")").append(NL);
 	    }
 
 	    String relicSummary = buildRelicSummaryLine(bag,9000);
