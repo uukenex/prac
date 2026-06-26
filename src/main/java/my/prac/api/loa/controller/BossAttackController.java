@@ -6088,10 +6088,11 @@ public class BossAttackController {
 					boolean _killed = !s.warlockKillMsgs.get(_wi).isEmpty();
 					String _wTag = _ed.extraDark ? "[어둠]" : _ed.extraLucky ? "[빛]" : _ed.extraGray ? "[음양]" : _ed.extraShadow ? "[그림자]" : "";
 					String _mName = s.m != null ? s.m.monName : "몬스터";
+					if (bot.length() > 0) bot.append(NL);
 					if (_killed) {
-						bot.append(NL).append("[").append(_wi + 2).append(":처치] ").append(_wTag).append(_mName).append(", 데미지: ").append(formatWan(s.warlockExtraCalcs.get(_wi).atkDmg));
+						bot.append("[").append(_wi + 2).append(":처치] ").append(_wTag).append(_mName).append(", 데미지: ").append(formatWan(s.warlockExtraCalcs.get(_wi).atkDmg));
 					} else {
-						bot.append(NL).append("[").append(_wi + 2).append(":공격] 데미지: ").append(formatWan(s.warlockExtraCalcs.get(_wi).atkDmg));
+						bot.append("[").append(_wi + 2).append(":공격] 데미지: ").append(formatWan(s.warlockExtraCalcs.get(_wi).atkDmg));
 					}
 					if (_killed) {
 						LevelUpResult _eu = _wi < s.warlockExtraUps.size() ? s.warlockExtraUps.get(_wi) : null;
@@ -6101,7 +6102,15 @@ public class BossAttackController {
 							bot.append(NL).append("EXP +").append(formatKorNum(_eu.gainedExp))
 							   .append("(").append(String.format("%.1f", _gPct)).append("%)")
 							   .append("[").append(String.format("%.1f", _cPct)).append("%]");
-							if (_eu.levelUpCount > 0) bot.append(" ✨Lv").append(_eu.beforeLv).append("→").append(_eu.afterLv);
+							if (_eu.levelUpCount > 0) {
+								bot.append(NL).append("✨Lv").append(_eu.beforeLv).append("→").append(_eu.afterLv);
+								s.ctx.warlockLvUpBefore = _eu.beforeLv; s.ctx.warlockLvUpAfter = _eu.afterLv;
+								s.ctx.warlockLvUpHpBefore = _eu.beforeHpMax; s.ctx.warlockLvUpHpAfter = _eu.afterHpMax; s.ctx.warlockLvUpHpDelta = _eu.hpMaxDelta;
+								s.ctx.warlockLvUpAtkMinBefore = _eu.beforeAtkMin; s.ctx.warlockLvUpAtkMinAfter = _eu.afterAtkMin; s.ctx.warlockLvUpAtkMinDelta = _eu.atkMinDelta;
+								s.ctx.warlockLvUpAtkMaxBefore = _eu.beforeAtkMax; s.ctx.warlockLvUpAtkMaxAfter = _eu.afterAtkMax; s.ctx.warlockLvUpAtkMaxDelta = _eu.atkMaxDelta;
+								s.ctx.warlockLvUpCritBefore = _eu.beforeCrit; s.ctx.warlockLvUpCritAfter = _eu.afterCrit; s.ctx.warlockLvUpCritDelta = _eu.critDelta;
+								s.ctx.warlockLvUpRegenBefore = _eu.beforeHpRegen; s.ctx.warlockLvUpRegenAfter = _eu.afterHpRegen; s.ctx.warlockLvUpRegenDelta = _eu.hpRegenDelta;
+							}
 						} else if (_eu != null) {
 							bot.append(NL).append("EXP +").append(formatKorNum(_eu.gainedExp))
 							   .append(" [누적 ").append(formatKorNum(_eu.afterExpCur)).append("]");
@@ -6146,7 +6155,7 @@ public class BossAttackController {
 						_1line.append("EXP +").append(formatKorNum(s.up.gainedExp))
 							  .append("(").append(String.format("%.1f", _g1)).append("%)")
 							  .append("[").append(String.format("%.1f", _c1)).append("%]");
-						if (s.up.levelUpCount > 0) _1line.append(" ✨Lv").append(s.up.beforeLv).append("→").append(s.up.afterLv);
+						if (s.up.levelUpCount > 0) _1line.append(NL).append("✨Lv").append(s.up.beforeLv).append("→").append(s.up.afterLv);
 					} else {
 						_1line.append("EXP +").append(formatKorNum(s.up.gainedExp))
 							  .append(" [누적 ").append(formatKorNum(s.up.afterExpCur)).append("]");
@@ -9036,6 +9045,15 @@ public class BossAttackController {
 	                detailOut.append(hunterMsg).append(NL);
 	            if (midExtraLines != null && !midExtraLines.isEmpty())
 	                detailOut.append(midExtraLines).append(NL);
+	            // 워록 멀티킬 레벨업 스탯
+	            if (ctx != null && ctx.warlockLvUpAfter > 0) {
+	                detailOut.append(NL).append("★★★ ✨레벨업!✨ ★★★").append(NL);
+	                detailOut.append("Lv ").append(ctx.warlockLvUpBefore).append(" → ").append(ctx.warlockLvUpAfter).append(NL);
+	                detailOut.append("└:❤️HP ").append(formatWan(ctx.warlockLvUpHpBefore)).append("→").append(formatWan(ctx.warlockLvUpHpAfter)).append(" (+").append(formatWan(ctx.warlockLvUpHpDelta)).append(")").append(NL);
+	                detailOut.append("└:⚔ATK ").append(ctx.warlockLvUpAtkMinBefore).append("~").append(ctx.warlockLvUpAtkMaxBefore).append("→").append(ctx.warlockLvUpAtkMinAfter).append("~").append(ctx.warlockLvUpAtkMaxAfter).append(" (+").append(ctx.warlockLvUpAtkMinDelta).append("~+").append(ctx.warlockLvUpAtkMaxDelta).append(")").append(NL);
+	                detailOut.append("└: CRIT ").append(ctx.warlockLvUpCritBefore).append("%→").append(ctx.warlockLvUpCritAfter).append("% (+").append(ctx.warlockLvUpCritDelta).append("%)").append(NL);
+	                detailOut.append("└: 5분당회복 ").append(ctx.warlockLvUpRegenBefore).append("→").append(ctx.warlockLvUpRegenAfter).append(" (+").append(ctx.warlockLvUpRegenDelta).append(")").append(NL);
+	            }
 	        }
 	    }
 

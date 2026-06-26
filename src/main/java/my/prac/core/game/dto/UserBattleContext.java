@@ -128,4 +128,22 @@ public class UserBattleContext {
 	// 워록 멀티킬 실제 데미지 범위
 	public long warlockDmgMin = 0;
 	public long warlockDmgMax = 0;
+	// 워록 멀티킬 중 레벨업 발생 시 === 이후 표시용 (LevelUpResult 수치 복사)
+	public int warlockLvUpBefore = 0;
+	public int warlockLvUpAfter = 0;
+	public int warlockLvUpHpBefore = 0;
+	public int warlockLvUpHpAfter = 0;
+	public int warlockLvUpHpDelta = 0;
+	public int warlockLvUpAtkMinBefore = 0;
+	public int warlockLvUpAtkMinAfter = 0;
+	public int warlockLvUpAtkMaxBefore = 0;
+	public int warlockLvUpAtkMaxAfter = 0;
+	public int warlockLvUpAtkMinDelta = 0;
+	public int warlockLvUpAtkMaxDelta = 0;
+	public int warlockLvUpCritBefore = 0;
+	public int warlockLvUpCritAfter = 0;
+	public int warlockLvUpCritDelta = 0;
+	public int warlockLvUpRegenBefore = 0;
+	public int warlockLvUpRegenAfter = 0;
+	public int warlockLvUpRegenDelta = 0;
 }
