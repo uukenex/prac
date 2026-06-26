@@ -6083,6 +6083,7 @@ public class BossAttackController {
 					   .append(" / 내 데미지: ").append(formatWan(s.warlockFailDmg));
 				}
 			} else {
+				String _warlockLvUpLine = null;
 				for (int _wi = 0; _wi < s.warlockKillMsgs.size(); _wi++) {
 					DamageOutcome _ed = s.warlockExtraDmgs.get(_wi);
 					boolean _killed = !s.warlockKillMsgs.get(_wi).isEmpty();
@@ -6103,7 +6104,7 @@ public class BossAttackController {
 							   .append("(").append(String.format("%.1f", _gPct)).append("%)")
 							   .append("[").append(String.format("%.1f", _cPct)).append("%]");
 							if (_eu.levelUpCount > 0) {
-								bot.append(NL).append("✨Lv").append(_eu.beforeLv).append("→").append(_eu.afterLv);
+								_warlockLvUpLine = "✨Lv" + _eu.beforeLv + "→" + _eu.afterLv;
 								s.ctx.warlockLvUpBefore = _eu.beforeLv; s.ctx.warlockLvUpAfter = _eu.afterLv;
 								s.ctx.warlockLvUpHpBefore = _eu.beforeHpMax; s.ctx.warlockLvUpHpAfter = _eu.afterHpMax; s.ctx.warlockLvUpHpDelta = _eu.hpMaxDelta;
 								s.ctx.warlockLvUpAtkMinBefore = _eu.beforeAtkMin; s.ctx.warlockLvUpAtkMinAfter = _eu.afterAtkMin; s.ctx.warlockLvUpAtkMinDelta = _eu.atkMinDelta;
@@ -6117,6 +6118,8 @@ public class BossAttackController {
 						}
 					}
 				}
+				// 레벨업은 모든 킬 이후 맨 끝에 표시
+				if (_warlockLvUpLine != null) bot.append(NL).append(_warlockLvUpLine);
 			}
 		}
 
@@ -6155,13 +6158,23 @@ public class BossAttackController {
 						_1line.append("EXP +").append(formatKorNum(s.up.gainedExp))
 							  .append("(").append(String.format("%.1f", _g1)).append("%)")
 							  .append("[").append(String.format("%.1f", _c1)).append("%]");
-						if (s.up.levelUpCount > 0) _1line.append(NL).append("✨Lv").append(s.up.beforeLv).append("→").append(s.up.afterLv);
+								if (s.up.levelUpCount > 0 && s.ctx.warlockLvUpAfter == 0) {
+								s.ctx.warlockLvUpBefore = s.up.beforeLv; s.ctx.warlockLvUpAfter = s.up.afterLv;
+								s.ctx.warlockLvUpHpBefore = s.up.beforeHpMax; s.ctx.warlockLvUpHpAfter = s.up.afterHpMax; s.ctx.warlockLvUpHpDelta = s.up.hpMaxDelta;
+								s.ctx.warlockLvUpAtkMinBefore = s.up.beforeAtkMin; s.ctx.warlockLvUpAtkMinAfter = s.up.afterAtkMin; s.ctx.warlockLvUpAtkMinDelta = s.up.atkMinDelta;
+								s.ctx.warlockLvUpAtkMaxBefore = s.up.beforeAtkMax; s.ctx.warlockLvUpAtkMaxAfter = s.up.afterAtkMax; s.ctx.warlockLvUpAtkMaxDelta = s.up.atkMaxDelta;
+								s.ctx.warlockLvUpCritBefore = s.up.beforeCrit; s.ctx.warlockLvUpCritAfter = s.up.afterCrit; s.ctx.warlockLvUpCritDelta = s.up.critDelta;
+								s.ctx.warlockLvUpRegenBefore = s.up.beforeHpRegen; s.ctx.warlockLvUpRegenAfter = s.up.afterHpRegen; s.ctx.warlockLvUpRegenDelta = s.up.hpRegenDelta;
+							}
 					} else {
 						_1line.append("EXP +").append(formatKorNum(s.up.gainedExp))
 							  .append(" [누적 ").append(formatKorNum(s.up.afterExpCur)).append("]");
 					}
 				}
 				bot.insert(0, _1line.toString() + NL);
+				// 1타 레벨업: 2타+ 레벨업이 없는 경우에만 bot 맨 끝에 추가
+				if (s.ctx.warlockLvUpAfter > 0 && !bot.toString().contains("✨Lv" + s.ctx.warlockLvUpBefore))
+					bot.append(NL).append("✨Lv").append(s.ctx.warlockLvUpBefore).append("→").append(s.ctx.warlockLvUpAfter);
 			}
 			s.res.gainExp = 0;
 			s.up = null;
