@@ -6018,7 +6018,6 @@ public class BossAttackController {
 		if (s.dosaCastMsg    != null && !s.dosaCastMsg.isEmpty())     bot.append(NL).append(s.dosaCastMsg);
 		if (s.thiefDoubleAtk && s.calc2 != null) {
 			bot.append(NL).append("⚔️2타 데미지: ").append(formatWan(s.calc2.atkDmg));
-			if (s.dmg2 != null && s.dmg2.flags != null && s.dmg2.flags.atkCrit) bot.append(" ✨크리!");
 		}
 		if (s.stealMsg != null && !s.stealMsg.isEmpty()) bot.append(NL).append(s.stealMsg);
 		if (s.secondKillMsg != null && !s.secondKillMsg.isEmpty()) bot.append(NL).append(s.secondKillMsg);
@@ -6043,7 +6042,6 @@ public class BossAttackController {
 					} else {
 						bot.append(NL).append("[").append(_wi + 2).append("타] 데미지: ").append(formatWan(s.warlockExtraCalcs.get(_wi).atkDmg));
 					}
-					if (_ed.flags.atkCrit) bot.append(" ✨크리!");
 					if (_killed) {
 						LevelUpResult _eu = _wi < s.warlockExtraUps.size() ? s.warlockExtraUps.get(_wi) : null;
 						if (_eu != null && s.u.lv < 999) {
