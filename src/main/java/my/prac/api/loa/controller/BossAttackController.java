@@ -2727,7 +2727,7 @@ public class BossAttackController {
 		} else {
 			sb.append("⚔ATK: ").append(ctx.atkMin).append(" ~ ").append(ctx.atkMax).append(NL)
 					.append("   └ 기본 (").append(ctx.baseAtkMin).append("~").append(ctx.baseAtkMax).append(")").append(NL)
-					.append("   └ 아이템 (min").append(formatSigned(ctx.mktAtkMin+_grpAtkMin)).append(", max").append(formatSigned(ctx.mktAtkMax+_grpAtkMax)).append(")").append(NL);
+					.append("   └ 아이템 (min").append(formatSigned(ctx.mktAtkMin - _achvAtkMin)).append(", max").append(formatSigned(ctx.mktAtkMax - _achvAtkMax)).append(")").append(NL);
 			if (_relicAtkMin != 0 || _relicAtkMax != 0)
 				sb.append("   └ 유물 (min").append(formatSigned(_relicAtkMin)).append(", max").append(formatSigned(_relicAtkMax)).append(")").append(NL);
 			if (_achvAtkMin != 0 || _achvAtkMax != 0)
@@ -2769,9 +2769,8 @@ public class BossAttackController {
 			// ─ CRIT 상세 ─
 		    sb.append("⚔CRIT: ").append(ctx.crit).append("%  CDMG ").append(ctx.critDmg).append("%").append(NL)
 		      .append("   └ 기본 (CRIT+").append(u.critRate).append("%, CDMG +").append(ctx.baseCritDmg).append("%)").append(NL);
-			sb.append("   └ 아이템 (CRIT").append(formatSigned(ctx.mktCrit + _grpCritC)).append("%, CDMG ").append(formatSigned(ctx.mktCritDmg + _grpCritD)).append("%)").append(NL);
-			if (_cRelicC != 0 || _cRelicD != 0)
-				sb.append("   └ 유물 (CRIT").append(formatSigned(_cRelicC)).append(" CDMG").append(formatSigned(_cRelicD)).append(")").append(NL);
+				// 아이템 = ctx.mktCrit(업적/행운계열 포함) - 업적 (별도 표시)
+			sb.append("   └ 아이템 (CRIT").append(formatSigned(ctx.mktCrit - _cAchvC)).append("%, CDMG ").append(formatSigned(ctx.mktCritDmg - _cAchvD)).append("%)").append(NL);
 			if (_cAchvC != 0 || _cAchvD != 0)
 				sb.append("   └ 업적 (CRIT").append(formatSigned(_cAchvC)).append(" CDMG").append(formatSigned(_cAchvD)).append(")").append(NL);
 			if (ctx.hellNerfCrit != 0)
@@ -2803,7 +2802,7 @@ public class BossAttackController {
 	    sb.append("❤️HP: ").append(ctx.hpCur).append(" / ").append(ctx.hpMax)
 	      .append(",5분당회복+").append(ctx.regen).append(NL)
 	      .append("   └ 기본 (HP+").append(ctx.baseHpMax).append(",5분당회복+").append(u.hpRegen).append(")").append(NL)
-	      .append("   └ 아이템 (HP").append(formatSigned(ctx.mktHpMax+_grpHp)).append(",5분당회복").append(formatSigned(ctx.mktRegen)).append(")").append(NL);
+	      .append("   └ 아이템 (HP").append(formatSigned(ctx.mktHpMax - _achvHp)).append(",5분당회복").append(formatSigned(ctx.mktRegen - _achvRegen)).append(")").append(NL);
 	    if (_relicHp != 0 || _relicRegen != 0) {
 	    	List<String> p = new ArrayList<>();
 	    	p.add("HP+"+_relicHp);
