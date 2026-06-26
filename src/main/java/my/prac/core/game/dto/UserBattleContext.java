@@ -128,6 +128,8 @@ public class UserBattleContext {
 	// 워록 멀티킬 실제 데미지 범위
 	public long warlockDmgMin = 0;
 	public long warlockDmgMax = 0;
+	// SP 항목별 계산식 (=== 이후 표시용)
+	public java.util.List<String> spBreakdowns = new java.util.ArrayList<>();
 	// 워록 멀티킬 EXP 계산식 (=== 이후 표시용)
 	public String warlockExp1Breakdown = null;
 	public java.util.List<String> warlockExpBreakdowns = new java.util.ArrayList<>();
