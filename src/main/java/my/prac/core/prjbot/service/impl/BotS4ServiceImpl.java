@@ -234,7 +234,7 @@ public class BotS4ServiceImpl implements BotS4Service {
         return msg.toString();
     }
 
-    private static String buildAchName(String achType, int achParam) {
+    public static String buildAchName(String achType, int achParam) {
         if ("FIRST_CATCH_GRADE".equals(achType))    return "★" + achParam + " 첫 획득!";
         if ("ALL_KIND_GRADE".equals(achType))       return "★" + achParam + " 도감 완성!";
         if ("TOTAL_FISHING_COUNT".equals(achType))  return "낚시 " + achParam + "회 달성!";

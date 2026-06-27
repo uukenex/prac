@@ -170,19 +170,19 @@ COMMIT;
 | 등급 | 이름 | 접근 가능 등급 | 해금 조건 |
 |---|---|---|---|
 | 1 | 일반낚시대 | ★1~★3 | 기본 지급 |
-| 2 | 고급낚시대 | ★1~★5 | ★3 첫 획득 업적 |
-| 3 | 희귀낚시대 | ★1~★6 | ★5 첫 획득 업적 |
-| 4 | 영웅낚시대 | ★1~★7 | ★6 첫 획득 업적 |
-| 5 | 전설낚시대 | ★1~★8 | ★7 첫 획득 업적 |
+| 2 | 고급낚시대 | ★1~★5 | ★1 전 종류(6종) 획득 |
+| 3 | 희귀낚시대 | ★1~★6 | ★2 전 종류(6종) 획득 |
+| 4 | 영웅낚시대 | ★1~★7 | ★3 전 종류(6종) 획득 |
+| 5 | 전설낚시대 | ★1~★8 | (미구현) |
 
 ### 찌 (고등급 확률 보정)
 
 | 등급 | 이름 | 효과 | 해금 조건 |
 |---|---|---|---|
 | 1 | 일반찌 | 기본 확률 | 기본 지급 |
-| 2 | 고급찌 | 고등급 확률 소폭 상승 | ★1 전 종류(6종) 획득 |
-| 3 | 희귀찌 | 고등급 확률 중폭 상승 | ★2 전 종류(6종) 획득 |
-| 4 | 영웅찌 | 고등급 확률 대폭 상승 | ★3 전 종류(6종) 획득 |
+| 2 | 고급찌 | 고등급 확률 소폭 상승 | 누적 낚시 10회 |
+| 3 | 희귀찌 | 고등급 확률 중폭 상승 | 누적 낚시 30회 |
+| 4 | 영웅찌 | 고등급 확률 대폭 상승 | 누적 낚시 60회 |
 
 ---
 
@@ -210,13 +210,19 @@ COMMIT;
 -- REWARD_TYPE: ROD_UNLOCK     = 낚시대 해금
 -- REWARD_TYPE: BOBBER_UNLOCK  = 찌 해금
 
-INSERT INTO TBOT_S4_ACHIEVEMENT VALUES (1, '★3 첫 획득!',        '★3 등급 물고기를 처음 낚았다!',      'FIRST_CATCH_GRADE', '3', 'ROD_UNLOCK',    2);
-INSERT INTO TBOT_S4_ACHIEVEMENT VALUES (2, '★1 도감 완성!',      '★1 물고기 전 종류를 획득했다!',      'ALL_KIND_GRADE',    '1', 'BOBBER_UNLOCK', 2);
-INSERT INTO TBOT_S4_ACHIEVEMENT VALUES (3, '★2 도감 완성!',      '★2 물고기 전 종류를 획득했다!',      'ALL_KIND_GRADE',    '2', 'BOBBER_UNLOCK', 3);
-INSERT INTO TBOT_S4_ACHIEVEMENT VALUES (4, '★3 도감 완성!',      '★3 물고기 전 종류를 획득했다!',      'ALL_KIND_GRADE',    '3', 'BOBBER_UNLOCK', 4);
-INSERT INTO TBOT_S4_ACHIEVEMENT VALUES (5, '★5 첫 획득!',        '★5 등급 물고기를 처음 낚았다!',      'FIRST_CATCH_GRADE', '5', 'ROD_UNLOCK',    3);
-INSERT INTO TBOT_S4_ACHIEVEMENT VALUES (6, '★6 첫 획득!',        '★6 등급 물고기를 처음 낚았다!',      'FIRST_CATCH_GRADE', '6', 'ROD_UNLOCK',    4);
-INSERT INTO TBOT_S4_ACHIEVEMENT VALUES (7, '★7 첫 획득!',        '★7 등급 물고기를 처음 낚았다!',      'FIRST_CATCH_GRADE', '7', 'ROD_UNLOCK',    5);
+-- FIRST_CATCH_GRADE: 보상 없음, 달성 표시만
+INSERT INTO TBOT_S4_ACHIEVEMENT VALUES (1, '★3 첫 획득!',        '★3 등급 물고기를 처음 낚았다!',      'FIRST_CATCH_GRADE', '3', NULL,            NULL);
+INSERT INTO TBOT_S4_ACHIEVEMENT VALUES (5, '★5 첫 획득!',        '★5 등급 물고기를 처음 낚았다!',      'FIRST_CATCH_GRADE', '5', NULL,            NULL);
+INSERT INTO TBOT_S4_ACHIEVEMENT VALUES (6, '★6 첫 획득!',        '★6 등급 물고기를 처음 낚았다!',      'FIRST_CATCH_GRADE', '6', NULL,            NULL);
+INSERT INTO TBOT_S4_ACHIEVEMENT VALUES (7, '★7 첫 획득!',        '★7 등급 물고기를 처음 낚았다!',      'FIRST_CATCH_GRADE', '7', NULL,            NULL);
+-- ALL_KIND_GRADE: 도감완성 → 낚시대(ROD_UNLOCK) 해금
+INSERT INTO TBOT_S4_ACHIEVEMENT VALUES (2, '★1 도감 완성!',      '★1 물고기 전 종류를 획득했다!',      'ALL_KIND_GRADE',    '1', 'ROD_UNLOCK',   2);
+INSERT INTO TBOT_S4_ACHIEVEMENT VALUES (3, '★2 도감 완성!',      '★2 물고기 전 종류를 획득했다!',      'ALL_KIND_GRADE',    '2', 'ROD_UNLOCK',   3);
+INSERT INTO TBOT_S4_ACHIEVEMENT VALUES (4, '★3 도감 완성!',      '★3 물고기 전 종류를 획득했다!',      'ALL_KIND_GRADE',    '3', 'ROD_UNLOCK',   4);
+-- TOTAL_FISHING_COUNT: 누적 낚시 횟수 → 찌(BOBBER_UNLOCK) 해금
+INSERT INTO TBOT_S4_ACHIEVEMENT VALUES (8,  '낚시 10회 달성!',   '낚시를 10번 완료했다!',              'TOTAL_FISHING_COUNT','10','BOBBER_UNLOCK', 2);
+INSERT INTO TBOT_S4_ACHIEVEMENT VALUES (9,  '낚시 30회 달성!',   '낚시를 30번 완료했다!',              'TOTAL_FISHING_COUNT','30','BOBBER_UNLOCK', 3);
+INSERT INTO TBOT_S4_ACHIEVEMENT VALUES (10, '낚시 60회 달성!',   '낚시를 60번 완료했다!',              'TOTAL_FISHING_COUNT','60','BOBBER_UNLOCK', 4);
 
 COMMIT;
 ```

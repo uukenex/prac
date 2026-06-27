@@ -115,7 +115,9 @@ public class Season4Controller {
             for (HashMap<String, Object> a : allAch) {
                 int id = ((Number) a.get("ACH_ID")).intValue();
                 if (clearedIds.contains(id)) {
-                    sb.append("  ✅ ").append(a.get("ACH_NAME")).append(NL);
+                    String _achType  = a.get("ACH_TYPE")  != null ? a.get("ACH_TYPE").toString()                    : "";
+                    int    _achParam = a.get("ACH_PARAM") != null ? Integer.parseInt(a.get("ACH_PARAM").toString()) : 0;
+                    sb.append("  ✅ ").append(BotS4ServiceImpl.buildAchName(_achType, _achParam)).append(NL);
                 }
             }
         }
