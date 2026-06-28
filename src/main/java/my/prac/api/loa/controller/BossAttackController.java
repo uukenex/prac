@@ -4841,6 +4841,8 @@ public class BossAttackController {
 		List<String>         warlockKillMsgs   = new ArrayList<>();
 		List<String>         warlockExpBreakdowns = new ArrayList<>(); // 타별 EXP 계산식
 		String               warlockExp1Breakdown = null; // 1타 EXP 계산식
+		String               exp1Breakdown = null; // 일반직업 1타 EXP 계산식
+		String               exp2Breakdown = null; // 도적 2타 EXP 계산식
 		long warlockTotalGainExp = 0; // 전체 타수 합산 exp
 
 		AttackSession(HashMap<String,Object> map) {
@@ -4876,8 +4878,8 @@ public class BossAttackController {
 			List<String> altChars = botNewService.selectAltCharList();
 			boolean isAlt = altChars != null && altChars.contains(s.userName);
 			if (!isAlt) {
-				// 유저별 임계값 조회 (없으면 기본값 20 / 0.5)
-				int hourlyLimit = 20;
+				// 유저별 임계값 조회 (없으면 기본값 60 / 0.5)
+				int hourlyLimit = 60;
 				double nightMulti = 0.5;
 				try {
 					HashMap<String,Object> mcfg = botNewService.selectMacroConfig(s.userName);
@@ -4888,7 +4890,21 @@ public class BossAttackController {
 				} catch (Exception ignore) {}
 				int effectiveLimit = isNight ? (int)(hourlyLimit * nightMulti) : hourlyLimit;
 				int hourlyCnt = botNewService.selectHourlyRealAttackCount(s.userName);
+				// 시간당 횟수 초과 또는 패턴 매크로 탐지
+				boolean _patternMacro = false;
 				if (hourlyCnt >= effectiveLimit) {
+					_patternMacro = true;
+				} else {
+					// 패턴 조건1: 동일 간격 122회 초과
+					// 패턴 조건2: 간격 종류 5가지 이상 & 각 40회 이상
+					try {
+						if (botNewService.selectMacroPatternCond1(s.userName) > 0
+								|| botNewService.selectMacroPatternCond2(s.userName) > 0) {
+							_patternMacro = true;
+						}
+					} catch (Exception ignore) {}
+				}
+				if (_patternMacro) {
 					HashMap<String,Object> recent = botNewService.selectMacroDetectRecentHour(s.userName, macroHours);
 					if (recent == null) {
 						String code = generateMacroCode();
@@ -5352,6 +5368,10 @@ public class BossAttackController {
 		else if (s.willKill2 && s.u.lv <= 990) s.res2.gainExp *= 3;
 		int dow2 = java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_WEEK);
 		if (s.willKill2 && (dow2 == java.util.Calendar.SATURDAY || dow2 == java.util.Calendar.SUNDAY)) s.res2.gainExp *= 2;
+		// 도적 2타 EXP 계산식 저장
+		if (s.willKill2)
+			s.exp2Breakdown = buildExpBreakdown(s.res2.expBase, s.ctx.user.nightmareYn, s.res2.expLevelMult,
+				s.dark, s.lucky, s.gray, s.shadow, s.u.job, s.isOngoing, s.u.lv, dow2, s.activeBuff, s.res2.gainExp);
 
 		// 2타 DROP SP 수집
 		if (s.res2.killed && !"0".equals(s.res2.dropCode)) {
@@ -5654,18 +5674,21 @@ public class BossAttackController {
 		if ("워록".equals(s.job)) s.res.dropCode = "0"; // 워록: 아이템 획득 불가
 		if ("궁수".equals(s.u.job) || "사냥꾼".equals(s.u.job)) s.res.gainExp *= 3;
 
-		// [Feature1] 다회전 경험치 2배: 처치 시 진행 중 전투였을 경우 (다크/빛/섀도우 제외)
-		if (s.willKill && s.isOngoing && !s.dark && !s.lucky && !s.shadow) s.res.gainExp *= 2;
+		// [Feature1] 다회전 경험치 2배: 처치 시 진행 중 전투였을 경우 (다크/빛/섀도우/워록 제외)
+		if (s.willKill && s.isOngoing && !s.dark && !s.lucky && !s.shadow && !"워록".equals(s.job)) s.res.gainExp *= 2;
 		// [Feature2] lv 800 이하 4배, 990 이하 3배
 		if (s.willKill && s.u.lv <= 800) s.res.gainExp *= 4;
 		else if (s.willKill && s.u.lv <= 990) s.res.gainExp *= 3;
 		// [Feature3] 토/일 경험치 2배
 		int _dow = java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_WEEK);
 		if (s.willKill && (_dow == java.util.Calendar.SATURDAY || _dow == java.util.Calendar.SUNDAY)) s.res.gainExp *= 2;
-		// [워록] 1타 EXP 계산식 저장
-		if ("워록".equals(s.job) && s.willKill)
-			s.warlockExp1Breakdown = buildExpBreakdown(s.res.expBase, s.ctx.user.nightmareYn, s.res.expLevelMult,
+		// 1타 EXP 계산식 저장
+		if (s.willKill) {
+			String _expBd = buildExpBreakdown(s.res.expBase, s.ctx.user.nightmareYn, s.res.expLevelMult,
 				s.dark, s.lucky, s.gray, s.shadow, s.u.job, s.isOngoing, s.u.lv, _dow, s.activeBuff, s.res.gainExp);
+			if ("워록".equals(s.job)) s.warlockExp1Breakdown = _expBd;
+			else s.exp1Breakdown = _expBd;
+		}
 
 		// SP 누적용 — baroSellItem은 INSERT 없이 outSp만 반환, 여기서 합산 후 단건 INSERT
 		SP stealSpTotal = new SP(0, "");
@@ -6200,8 +6223,10 @@ public class BossAttackController {
 			s.res.gainExp = 0;
 			s.up = null;
 		}
-		// SP breakdown을 buildAttackMessage 전에 ctx에 복사 (=== 섹션 출력용)
+		// SP/EXP breakdown을 buildAttackMessage 전에 ctx에 복사 (=== 섹션 출력용)
 		if (!s.spBreakdowns.isEmpty()) s.ctx.spBreakdowns = s.spBreakdowns;
+		if (s.exp1Breakdown != null) s.ctx.exp1Breakdown = s.exp1Breakdown;
+		if (s.exp2Breakdown != null) s.ctx.exp2Breakdown = s.exp2Breakdown;
 		String msg = buildAttackMessage(s.userName, s.u, s.m, s.flags, s.calc, s.res, s.up,
 				s.monHpRemainBefore, s.monMaxHp, s.effAtkMin, s.effAtkMax, s.hpMax,
 				mid.toString(), hunter.toString(), bot.toString(), s.nightmare, s.ctx, detailOut);
@@ -9039,11 +9064,28 @@ public class BossAttackController {
 	        sb.append("⚔ 데미지: ").append(formatWan(_dMin)).append("~").append(formatWan(_dMax)).append(NL);
 	        sb.append(NL);
 	    } else {
-	        sb.append(NL);
-	        if (res.shadow) sb.append("✨ SHADOW MONSTER! (처치시 경험치×10, 드랍 없음)").append(NL);
-	        if (res.gray) sb.append("✨ LIGHT&DARK MONSTER! (처치시 경험치×9, 음양 드랍)").append(NL);
-	        if (res.dark) sb.append("✨ DARK MONSTER! (처치시 경험치×5, 어둠 드랍)").append(NL);
-	        if (res.lucky) sb.append("✨ LUCKY MONSTER! (처치시 경험치×3, 빛 드랍)").append(NL);
+	        if (split) {
+	            // split 모드: 워록과 유사한 컴팩트 헤더
+	            int _hpAfter = Math.max(0, monHpRemainBefore - calc.atkDmg);
+	            sb.append("❤️ ").append(m.monName);
+	            if (nightmare) {
+	                if (ctx != null && ctx.user.nightmareYn == 2) sb.append("[헬]");
+	                else sb.append("[나이트메어]");
+	            }
+	            sb.append(" HP : ").append(formatWan(_hpAfter)).append(NL);
+	            sb.append("⚔ 데미지: ").append(formatWan(shownAtkMin)).append("~").append(formatWan(shownAtkMax)).append(NL);
+	            // DARK/LUCKY/SHADOW 공지 → detail로 이동
+	            if (res.shadow) detailOut.append("✨ SHADOW MONSTER! (처치시 경험치×10, 드랍 없음)").append(NL);
+	            if (res.gray)   detailOut.append("✨ LIGHT&DARK MONSTER! (처치시 경험치×9, 음양 드랍)").append(NL);
+	            if (res.dark)   detailOut.append("✨ DARK MONSTER! (처치시 경험치×5, 어둠 드랍)").append(NL);
+	            if (res.lucky)  detailOut.append("✨ LUCKY MONSTER! (처치시 경험치×3, 빛 드랍)").append(NL);
+	        } else {
+	            sb.append(NL);
+	            if (res.shadow) sb.append("✨ SHADOW MONSTER! (처치시 경험치×10, 드랍 없음)").append(NL);
+	            if (res.gray) sb.append("✨ LIGHT&DARK MONSTER! (처치시 경험치×9, 음양 드랍)").append(NL);
+	            if (res.dark) sb.append("✨ DARK MONSTER! (처치시 경험치×5, 어둠 드랍)").append(NL);
+	            if (res.lucky) sb.append("✨ LUCKY MONSTER! (처치시 경험치×3, 빛 드랍)").append(NL);
+	        }
 	    }
 
 	    if (u.job.equals("곰")) {
@@ -9052,16 +9094,11 @@ public class BossAttackController {
 	        if (midExtraLines != null && !midExtraLines.isEmpty())
 	            sb.append(midExtraLines).append(NL);
 	    } else if (!_warlockSimple) {
-	        // 치명타/축복 (항상 main)
-	        if (flags.atkCrit) sb.append("✨ 치명타!");
-	        if (u.blessYn == 1) sb.append("✨축복(x1.5)!");
-	        sb.append(NL);
-
 	        if (split) {
-	            // [main] 최종 데미지만 표기
-	            sb.append("⚔ 데미지: ").append(formatWan(calc.atkDmg)).append(NL);
-
-	            // [detail] 계산 상세
+	            // split 모드: 치명타/축복 + 데미지 상세 → detail
+	            if (flags.atkCrit) detailOut.append("✨ 치명타!");
+	            if (u.blessYn == 1) detailOut.append("✨축복(x1.5)!");
+	            if (flags.atkCrit || u.blessYn == 1) detailOut.append(NL);
 	            detailOut.append("⚔ 데미지: (").append(formatWan(shownAtkMin)).append("~").append(formatWan(shownAtkMax)).append(" ⇒ ");
 	            if (flags.atkCrit && calc.baseAtk > 0 && calc.critMultiplier >= 1.0) {
 	                detailOut.append(formatWan(calc.baseAtk)).append("*").append(trimDouble(calc.critMultiplier)).append("=>").append(formatWan(calc.atkDmg));
@@ -9073,8 +9110,19 @@ public class BossAttackController {
 	                detailOut.append(hunterMsg).append(NL);
 	            if (midExtraLines != null && !midExtraLines.isEmpty())
 	                detailOut.append(midExtraLines).append(NL);
+	            // 일반직업 EXP 계산식
+	            if (ctx != null && (ctx.exp1Breakdown != null || ctx.exp2Breakdown != null)) {
+	                detailOut.append(NL);
+	                if (ctx.exp1Breakdown != null)
+	                    detailOut.append("[1타] EXP: ").append(ctx.exp1Breakdown).append(NL);
+	                if (ctx.exp2Breakdown != null)
+	                    detailOut.append("[2타] EXP: ").append(ctx.exp2Breakdown).append(NL);
+	            }
 	        } else {
 	            // 기존 동작
+	            if (flags.atkCrit) sb.append("✨ 치명타!");
+	            if (u.blessYn == 1) sb.append("✨축복(x1.5)!");
+	            sb.append(NL);
 	            sb.append("⚔ 데미지: (").append(formatWan(shownAtkMin)).append("~").append(formatWan(shownAtkMax)).append(" ⇒ ");
 	            if (flags.atkCrit && calc.baseAtk > 0 && calc.critMultiplier >= 1.0) {
 	                sb.append(formatWan(calc.baseAtk)).append("*").append(trimDouble(calc.critMultiplier)).append("=>").append(formatWan(calc.atkDmg));
@@ -9125,9 +9173,11 @@ public class BossAttackController {
 	    }
 
 	    if (!_warlockSimple) {
-	        // 몬스터 HP
-	        int monHpAfter = Math.max(0, monHpRemainBefore - calc.atkDmg);
-	        sb.append("❤️ 몬스터 HP: ").append(formatWan(monHpAfter)).append(" / ").append(formatWan(monMaxHp)).append(NL);
+	        // 몬스터 HP (split 모드는 헤더에서 이미 표시)
+	        if (!split) {
+	            int monHpAfter = Math.max(0, monHpRemainBefore - calc.atkDmg);
+	            sb.append("❤️ 몬스터 HP: ").append(formatWan(monHpAfter)).append(" / ").append(formatWan(monMaxHp)).append(NL);
+	        }
 
 	        // 반격 알림
 	        if (calc.patternMsg != null && !calc.patternMsg.isEmpty()) {
@@ -9244,7 +9294,7 @@ public class BossAttackController {
 	    else if (dark) sb.append("x5(어둠)");
 	    else if (lucky) sb.append("x3(빛)");
 	    if ("궁수".equals(job) || "사냥꾼".equals(job)) sb.append("x3(궁수)");
-	    if (isOngoing && !dark && !lucky && !shadow) sb.append("x2(다회전)");
+	    if (isOngoing && !dark && !lucky && !shadow && !"워록".equals(job)) sb.append("x2(다회전)");
 	    if (userLv <= 800) sb.append("x4(800이하)");
 	    else if (userLv <= 990) sb.append("x3(990이하)");
 	    if (dow == java.util.Calendar.SATURDAY || dow == java.util.Calendar.SUNDAY) sb.append("x2(주말)");

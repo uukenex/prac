@@ -1030,6 +1030,19 @@ public class BossAttackS3Controller {
                 pr.put("cmd",      "BOSS_HELL_ATK");
                 botNewService.insertPointRank(pr);
                 spRewardMsg = " 획득 SP: " + spReward + (spCapped ? " (max)" : spMin ? " (min)" : "") + NL;
+                // 대악마 공격 시 0.1 GP 추가 지급
+                if (isGreatDemonSp) {
+                    try {
+                        HashMap<String, Object> gpMap = new HashMap<>();
+                        gpMap.put("userName", userName);
+                        gpMap.put("roomName", roomName);
+                        gpMap.put("score",    0.1);
+                        gpMap.put("cmd",      "GREAT_DEMON_ATK_GP");
+                        botNewService.insertGpRecord(gpMap);
+                        double gpBal = botNewService.selectGpBalance(userName);
+                        spRewardMsg += String.format("✨ +0.10 GP (보유: %.2f GP)%s", Math.floor(gpBal * 100) / 100, NL);
+                    } catch (Exception ignore) {}
+                }
             } catch (Exception e) {
                 // SP 지급 실패는 무시
             }

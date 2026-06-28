@@ -340,6 +340,8 @@ public interface BotNewDAO {
 
     // ── 매크로 탐지 ───────────────────────────────────────────────────────────
     int selectHourlyRealAttackCount(String userName);
+    int selectMacroPatternCond1(String userName);
+    int selectMacroPatternCond2(String userName);
     HashMap<String,Object> selectMacroDetectRecentHour(HashMap<String,Object> param);
     int insertMacroLock(HashMap<String,Object> param);
     int releaseMacroLock(HashMap<String,Object> param);

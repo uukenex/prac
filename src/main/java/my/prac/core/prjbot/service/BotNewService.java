@@ -285,6 +285,8 @@ public interface BotNewService {
 
     // ── 매크로 탐지 ───────────────────────────────────────────────────────────
     int selectHourlyRealAttackCount(String userName);
+    int selectMacroPatternCond1(String userName);
+    int selectMacroPatternCond2(String userName);
     HashMap<String,Object> selectMacroDetectRecentHour(String userName, int hours);
     int insertMacroLock(String userName, String code);
     int releaseMacroLock(String userName, String code);

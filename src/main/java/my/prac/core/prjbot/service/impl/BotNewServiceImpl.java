@@ -1023,6 +1023,16 @@ public class BotNewServiceImpl implements BotNewService {
     }
 
     @Override
+    public int selectMacroPatternCond1(String userName) {
+        return botNewDAO.selectMacroPatternCond1(userName);
+    }
+
+    @Override
+    public int selectMacroPatternCond2(String userName) {
+        return botNewDAO.selectMacroPatternCond2(userName);
+    }
+
+    @Override
     public HashMap<String,Object> selectMacroDetectRecentHour(String userName, int hours) {
         HashMap<String,Object> p = new HashMap<>();
         p.put("userName", userName);

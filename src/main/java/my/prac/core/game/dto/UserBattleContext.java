@@ -133,6 +133,9 @@ public class UserBattleContext {
 	// 워록 멀티킬 EXP 계산식 (=== 이후 표시용)
 	public String warlockExp1Breakdown = null;
 	public java.util.List<String> warlockExpBreakdowns = new java.util.ArrayList<>();
+	// 일반직업/도적 EXP 계산식 (=== 이후 표시용)
+	public String exp1Breakdown = null;
+	public String exp2Breakdown = null;
 	// 워록 멀티킬 중 레벨업 발생 시 === 이후 표시용 (LevelUpResult 수치 복사)
 	public int warlockLvUpBefore = 0;
 	public int warlockLvUpAfter = 0;

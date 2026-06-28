@@ -2706,6 +2706,51 @@
            AND INSERT_DATE &lt;  TRUNC(SYSDATE, 'HH24') + 1/24
     </select>
 
+    <!-- 패턴 매크로 탐지 조건1: 동일 간격 122회 초과 (24시간 내) -->
+    <select id="selectMacroPatternCond1" parameterType="String" resultType="int">
+        /* selectMacroPatternCond1 */
+        SELECT COUNT(*)
+          FROM (
+               SELECT DIFF, COUNT(1) CNT
+                 FROM (
+                      SELECT ROUND((INSERT_DATE - LAG(INSERT_DATE)
+                                    OVER(PARTITION BY USER_NAME ORDER BY INSERT_DATE)) * 86400, 3) AS DIFF
+                        FROM TBOT_POINT_NEW_BATTLE_LOG
+                       WHERE INSERT_DATE &gt;= SYSDATE - 2/24
+                         AND USER_NAME = #{userName}
+                         AND GAIN_EXP &gt;= 0
+                      )
+                WHERE DIFF IS NOT NULL
+                GROUP BY DIFF
+               HAVING COUNT(1) &gt; 10
+               )
+    </select>
+
+    <!-- 패턴 매크로 탐지 조건2: 서로 다른 간격 5종류 이상 & 각 40회 이상 -->
+    <select id="selectMacroPatternCond2" parameterType="String" resultType="int">
+        /* selectMacroPatternCond2 */
+        SELECT COUNT(*)
+          FROM (
+               SELECT COUNT(1) KIND_CNT
+                 FROM (
+                      SELECT DIFF, COUNT(1) CNT
+                        FROM (
+                             SELECT ROUND((INSERT_DATE - LAG(INSERT_DATE)
+                                           OVER(PARTITION BY USER_NAME ORDER BY INSERT_DATE)) * 86400, 3) AS DIFF
+                               FROM TBOT_POINT_NEW_BATTLE_LOG
+                              WHERE INSERT_DATE &gt;= SYSDATE - 2/24
+                                AND USER_NAME = #{userName}
+                                AND GAIN_EXP &gt;= 0
+                             )
+                       WHERE DIFF IS NOT NULL
+                       GROUP BY DIFF
+                      HAVING COUNT(1) &gt; 4
+                      )
+                GROUP BY 1
+               HAVING COUNT(1) &gt;= 5
+               )
+    </select>
+
     <!-- 1시간 내 매크로 등록/해제 이력 조회 (신규 잠금 여부 판단용) -->
     <select id="selectMacroDetectRecentHour" parameterType="hashmap" resultType="hashmap">
         /* selectMacroDetectRecentHour */
