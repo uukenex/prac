@@ -995,11 +995,7 @@ public class BossAttackS3Controller {
         if (!isCountUp && isMaWang && !isEvade && totalDamage > 0) {
             // 마왕 GP 보상: 0.10 ~ 0.20 GP (데미지 비례, 100만 대비)
             try {
-                double gpRatio = Math.min(1.0, totalDamage / 1_000_000.0);
-                double gpMin = 0.10, gpMax = 0.20;
-                double gpAmount = gpMin + (gpMax - gpMin) * gpRatio;
-                gpAmount = Math.round(gpAmount * 100) / 100.0;
-                if (gpAmount < gpMin) gpAmount = gpMin;
+                double gpAmount = applyGpNewbieMult(userName, 0.1);
                 HashMap<String, Object> gp = new HashMap<>();
                 gp.put("userName", userName);
                 gp.put("roomName", roomName);
@@ -1031,18 +1027,6 @@ public class BossAttackS3Controller {
                 botNewService.insertPointRank(pr);
                 spRewardMsg = " 획득 SP: " + spReward + (spCapped ? " (max)" : spMin ? " (min)" : "") + NL;
                 // 대악마 공격 시 0.1 GP 추가 지급
-                if (isGreatDemonSp) {
-                    try {
-                        HashMap<String, Object> gpMap = new HashMap<>();
-                        gpMap.put("userName", userName);
-                        gpMap.put("roomName", roomName);
-                        gpMap.put("score",    0.1);
-                        gpMap.put("cmd",      "GREAT_DEMON_ATK_GP");
-                        botNewService.insertGpRecord(gpMap);
-                        double gpBal = botNewService.selectGpBalance(userName);
-                        spRewardMsg += String.format("✨ +0.10 GP (보유: %.2f GP)%s", Math.floor(gpBal * 100) / 100, NL);
-                    } catch (Exception ignore) {}
-                }
             } catch (Exception e) {
                 // SP 지급 실패는 무시
             }
@@ -1373,6 +1357,19 @@ public class BossAttackS3Controller {
     /** HIDE_RULE 임시 비활성화 */
     private String applyHideRule(String hideRule, boolean skip) {
         return "";
+    }
+
+    /**
+     * 누적 GP 기준 신규 유저 보너스 배율 적용
+     * 누적 200 GP 이하 → 2배, 누적 300 GP 이하 → 1.5배, 초과 → 1배
+     */
+    private double applyGpNewbieMult(String userName, double base) {
+        try {
+            double total = botNewService.selectUserTotalEarnedGp(userName);
+            if (total <= 200) return Math.round(base * 2.0 * 100) / 100.0;
+            if (total <= 300) return Math.round(base * 1.5 * 100) / 100.0;
+        } catch (Exception ignore) {}
+        return base;
     }
 
     /** 홀수/짝수 시간 패턴 체크. 공격 가능하면 "", 불가면 안내 메시지 반환 */

@@ -345,6 +345,7 @@ public interface BotNewDAO {
     HashMap<String,Object> selectMacroDetectRecentHour(HashMap<String,Object> param);
     int insertMacroLock(HashMap<String,Object> param);
     int releaseMacroLock(HashMap<String,Object> param);
+    java.util.Date selectMacroLockDate(String userName);
     int countMacroDetectLogLastHour(HashMap<String,Object> param);
     int insertMacroDetectLog(HashMap<String,Object> param);
 }

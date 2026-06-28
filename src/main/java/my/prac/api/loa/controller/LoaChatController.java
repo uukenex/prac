@@ -946,10 +946,34 @@ public class LoaChatController {
 					if (macroCode.isEmpty()) {
 						val = sender + "님, 코드를 입력하세요. 예) /매크로아님 123";
 					} else {
+						// 해제 전 LOCK_DATE 조회 (5분 이내 보상 판단)
+						java.util.Date lockDate = null;
+						try { lockDate = botNewService.selectMacroLockDate(sender); } catch (Exception ignore) {}
 						int released = botNewService.releaseMacroLock(sender, macroCode);
-						val = released > 0
-							? sender + "님, 인증 완료! 공격이 다시 가능합니다."
-							: sender + "님, 코드가 올바르지 않습니다. 다시 확인해주세요.";
+						if (released > 0) {
+							StringBuilder sb94 = new StringBuilder();
+							sb94.append(sender).append("님, 인증 완료! 공격이 다시 가능합니다.");
+							// 5분(300초) 이내 해제 시 94번 아이템상자 지급
+							if (lockDate != null) {
+								long elapsedSec = (System.currentTimeMillis() - lockDate.getTime()) / 1000;
+								if (elapsedSec <= 300) {
+									try {
+										java.util.HashMap<String,Object> inv = new java.util.HashMap<>();
+										inv.put("userName", sender);
+										inv.put("roomName", roomName);
+										inv.put("itemId",   94);
+										inv.put("qty",      1);
+										inv.put("delYn",    "0");
+										inv.put("gainType", "MACRO_REWARD");
+										botNewService.insertInventoryLogTx(inv);
+										sb94.append(enterStr).append("🎁 빠른 인증 보상! 미확인상자(94) 1개 지급 (추후 개방됩니다)");
+									} catch (Exception ignore) {}
+								}
+							}
+							val = sb94.toString();
+						} else {
+							val = sender + "님, 코드가 올바르지 않습니다. 다시 확인해주세요.";
+						}
 					}
 				} catch (Exception e) {
 					val = "처리 중 오류가 발생했습니다.";

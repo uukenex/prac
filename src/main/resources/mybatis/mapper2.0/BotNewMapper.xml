@@ -2785,6 +2785,15 @@
            AND LOCKED_YN = '1'
     </update>
 
+    <!-- 현재 잠금된 LOCK_DATE 조회 (5분 이내 해제 보상 판단용) -->
+    <select id="selectMacroLockDate" parameterType="string" resultType="java.util.Date">
+        /* selectMacroLockDate */
+        SELECT LOCK_DATE
+          FROM TBOT_MACRO_DETECT
+         WHERE USER_NAME = #{userName}
+           AND LOCKED_YN = '1'
+    </select>
+
     <!-- 매크로 잠금 중 최근 1시간 내 경고 발송 여부 -->
     <select id="countMacroDetectLogLastHour" parameterType="hashmap" resultType="int">
         /* countMacroDetectLogLastHour */

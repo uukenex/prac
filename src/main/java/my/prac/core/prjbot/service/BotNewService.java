@@ -290,6 +290,7 @@ public interface BotNewService {
     HashMap<String,Object> selectMacroDetectRecentHour(String userName, int hours);
     int insertMacroLock(String userName, String code);
     int releaseMacroLock(String userName, String code);
+    java.util.Date selectMacroLockDate(String userName);
     int countMacroDetectLogLastHour(String userName, int hours);
     void insertMacroDetectLog(String userName, String code);
 }

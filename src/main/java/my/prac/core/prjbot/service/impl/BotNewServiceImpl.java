@@ -1057,6 +1057,11 @@ public class BotNewServiceImpl implements BotNewService {
     }
 
     @Override
+    public java.util.Date selectMacroLockDate(String userName) {
+        return botNewDAO.selectMacroLockDate(userName);
+    }
+
+    @Override
     public int countMacroDetectLogLastHour(String userName, int hours) {
         HashMap<String,Object> p = new HashMap<>();
         p.put("userName", userName);
