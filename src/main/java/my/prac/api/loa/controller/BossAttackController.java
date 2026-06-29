@@ -4112,6 +4112,7 @@ public class BossAttackController {
 	        botNewService.insertInventoryLogTx(inv);
 	        invalidateInvBuff(userName);
 	    } else if (isBossShop) {
+	        return "보스 아이템은 헬보스 처치 보상으로만 획득 가능합니다. (직접 구매 불가)";
 	        // 보스 아이템 상점: 10 GP 소모, 이미 보유 시 불가
 	        List<Integer> bossItemList;
 	        try { bossItemList = botNewService.selectBossItemIds(); }

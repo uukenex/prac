@@ -80,8 +80,8 @@ public class BossAttackS3Controller {
     private static final Map<String, Long> IMPRISONED_UNTIL   = new java.util.concurrent.ConcurrentHashMap<>();
     private static final int IMPRISON_DURATION_MS = 5 * 60 * 1000; // 5분
     private static final int IMPRISON_CHANCE_PCT  = 30;             // 30%
-    /** 보스아이템 최대 강화 단계 (qty1=0강화, qty2=+1강화, qty3=+1강화×2, qty4=+2강화, qty5+→자동판매) */
-    public static final int MAX_BOSS_ENHANCE = 4;
+    /** 보스아이템 최대 qty (이이상 회당불가, 인덱스 강화단계는 +4까지, 효과는 2강화 캐플) */
+    public static final int MAX_BOSS_ENHANCE = 15;
 
     // =========================================================
     // ★ 보스 아이템 강화 효과 테이블 (수치 직접 수정 가능)
@@ -180,20 +180,29 @@ public class BossAttackS3Controller {
     }
 
     /** 아이템 강화 효과값 반환 (qty 기반) */
+    static int getBossEnhanceLevel(int qty) {
+        if (qty <= 1) return 0;
+        if (qty <= 3) return 1;
+        if (qty <= 6) return 2;
+        if (qty <= 10) return 3;
+        return 4; // qty 11~15
+    }
+
     static int getBossEnhanceVal(int itemId, int qty) {
         int[] table = BOSS_ENHANCE_TABLE.get(itemId);
         if (table == null || qty < 1) return 0;
-        int level = qty <= 1 ? 0 : qty <= 3 ? 1 : 2;
-        level = Math.min(level, table.length - 1);
+        int level = Math.min(getBossEnhanceLevel(qty), table.length - 1);
         return table[level];
     }
 
-    /** 아이템 강화 등급 표시 문자열 (qty=1→0강화, qty=2→+1, qty=3→+1(+1), qty=4→+2) */
+    /** 아이템 강화 등급 표시 문자열 (qty=1→"", qty=2→+1, qty=3→+1(+1), qty=4→+2, …, qty=15→+4(+4)) */
     static String enhanceSuffix(int qty) {
-        if (qty >= 4) return "+2";
-        if (qty == 3) return "+1(+1)";
-        if (qty == 2) return "+1";
-        return "";
+        if (qty <= 1) return "";
+        int lv = getBossEnhanceLevel(qty);
+        int threshold = 1 + lv * (lv + 1) / 2;
+        int sub = qty - threshold;
+        if (sub == 0) return "+" + lv;
+        return "+" + lv + "(+" + sub + ")";
     }
 
     /** 강화 전후 수치 변화 한 줄 반환 (변화 없으면 "") */
@@ -1661,8 +1670,8 @@ public class BossAttackS3Controller {
                                 }
                             }
                         } catch (Exception ignore) {}
-                        int assignCode = !alreadyOwned ? giveItemId : (existQty < MAX_BOSS_ENHANCE) ? -3 : -2;
-                        int targetQty = (assignCode == -3) ? existQty + 1 : (assignCode == -2) ? existQty : 1;
+                        int assignCode = !alreadyOwned ? giveItemId : (existQty < MAX_BOSS_ENHANCE) ? -3 : -1;
+                        int targetQty = (assignCode == -3) ? existQty + 1 : (assignCode == -1) ? existQty : 1;
                         codes.add(assignCode);
                         enhIds.add(assignCode == -3 ? giveItemId : 0);
                         newQtys.add(targetQty);
@@ -1684,7 +1693,7 @@ public class BossAttackS3Controller {
                     for (int i = 0; i < codes.size(); i++) {
                         int code = codes.get(i);
                         msg.append("  ").append(i + 1).append(") ").append(names.get(i));
-                        if (code == -2) msg.append(" [최대강화 자동판매 + 1GP]");
+                        if (code == -1) msg.append(" [최대강화 달성]");
                         if (code == -3) {
                             List<Integer> nqs = winnerNewQtys.get(winner);
                             int nq = (nqs != null && i < nqs.size()) ? nqs.get(i) : 2;
@@ -1713,11 +1722,10 @@ public class BossAttackS3Controller {
                         if (itemId == -3) {
                             int eid = enhIds.get(i);
                             if (eid > 0) enhItemQty.merge(eid, 1, Integer::sum);
-                        } else if (itemId < 0) {
-                            dupGpCount++;
-                        } else {
+                        } else if (itemId > 0) {
                             newItemQty.merge(itemId, 1, Integer::sum);
                         }
+                        // itemId == -1: 최대강화 달성, GP 무시
                     }
                     for (Map.Entry<Integer, Integer> e : newItemQty.entrySet()) {
                         try {
@@ -1736,14 +1744,6 @@ public class BossAttackS3Controller {
                             inv.put("gainType", "BOSS_HELL");
                             botNewService.insertInventoryLogTx(inv);
                         } catch (Exception ex) { /* 강화 지급 실패 무시 */ }
-                    }
-                    if (dupGpCount > 0) {
-                        try {
-                            HashMap<String, Object> gp = new HashMap<>();
-                            gp.put("userName", winner); gp.put("roomName", roomName);
-                            gp.put("score",    1.0 * dupGpCount); gp.put("cmd", "BOSS_HELL_DUP_ITEM_GP");
-                            botNewService.insertGpRecord(gp);
-                        } catch (Exception ex) { /* 지급 실패 무시 */ }
                     }
                 }
             }
@@ -1913,8 +1913,8 @@ public class BossAttackS3Controller {
                                 }
                             }
                         } catch (Exception ignore) {}
-                        int assignCode = !alreadyOwned ? giveItemId : (existQty < MAX_BOSS_ENHANCE) ? -3 : -2;
-                        int targetQty = (assignCode == -3) ? existQty + 1 : (assignCode == -2) ? existQty : 1;
+                        int assignCode = !alreadyOwned ? giveItemId : (existQty < MAX_BOSS_ENHANCE) ? -3 : -1;
+                        int targetQty = (assignCode == -3) ? existQty + 1 : (assignCode == -1) ? existQty : 1;
                         codes.add(assignCode);
                         enhIds.add(assignCode == -3 ? giveItemId : 0);
                         newQtys.add(targetQty);
@@ -1934,8 +1934,12 @@ public class BossAttackS3Controller {
                         List<String>  names = winnerItemNames.get(winner);
                         int code = codes.get(0);
                         msg.append(w + 1).append("번 보상: ").append(names.get(0)).append(" : ").append(winner);
-                        if (code == -2) msg.append(" [이미보유 자동판매 + 1GP]");
-                        if (code == -3) msg.append(" [강화!+1]");
+                        if (code == -1) msg.append(" [최대강화 달성]");
+                        if (code == -3) {
+                            List<Integer> nqs = winnerNewQtys.get(winner);
+                            int nq = (nqs != null) ? nqs.get(0) : 2;
+                            msg.append(" [강화! ").append(enhanceSuffix(nq)).append("]");
+                        }
                         msg.append(NL);
                     }
                     msg.append(NL);
@@ -1957,11 +1961,10 @@ public class BossAttackS3Controller {
                             if (itemId == -3) {
                                 int eid = enhIds.get(i);
                                 if (eid > 0) enhItemQty.merge(eid, 1, Integer::sum);
-                            } else if (itemId < 0) {
-                                dupGpCount++;
-                            } else {
+                            } else if (itemId > 0) {
                                 newItemQty.merge(itemId, 1, Integer::sum);
                             }
+                            // itemId == -1: 최대강화, GP 무시
                         }
                         for (Map.Entry<Integer, Integer> e : newItemQty.entrySet()) {
                             try {
@@ -1980,14 +1983,6 @@ public class BossAttackS3Controller {
                                 inv.put("gainType", "BOSS_HELL");
                                 botNewService.insertInventoryLogTx(inv);
                             } catch (Exception ex) { /* 강화 지급 실패 무시 */ }
-                        }
-                        if (dupGpCount > 0) {
-                            try {
-                                HashMap<String, Object> gp = new HashMap<>();
-                                gp.put("userName", winner); gp.put("roomName", roomName);
-                                gp.put("score",    1.0 * dupGpCount); gp.put("cmd", "BOSS_HELL_DUP_ITEM_GP");
-                                botNewService.insertGpRecord(gp);
-                            } catch (Exception ex) { /* 지급 실패 무시 */ }
                         }
                     }
 
