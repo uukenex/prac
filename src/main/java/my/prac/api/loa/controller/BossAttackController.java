@@ -2614,7 +2614,7 @@ public class BossAttackController {
 	     */
         // 가방현황 (91=일반, 92=나메, 93=헬/황금/플래티넘)
         {
-            int bagNormal = 0, bagNm = 0, bagHell = 0, bagGold = 0, bagPlat = 0;
+            int bagNormal = 0, bagNm = 0, bagHell = 0, bagGold = 0, bagPlat = 0, bagUnknown = 0;
             if (bag != null) {
                 for (HashMap<String,Object> brow : bag) {
                     int bId = MiniGameUtil.parseIntSafe(Objects.toString(brow.get("ITEM_ID"), "0"));
@@ -2622,6 +2622,7 @@ public class BossAttackController {
                     String gt = Objects.toString(brow.get("GAIN_TYPE"), "");
                     if (bId == 91) bagNormal += bQty;
                     else if (bId == 92) bagNm += bQty;
+                    else if (bId == 94) bagUnknown += bQty;
                     else if (bId == 93) {
                         if ("DROP_OPEN_G".equals(gt)) bagGold += bQty;
                         else if ("DROP_OPEN_P".equals(gt)) bagPlat += bQty;
@@ -2631,7 +2632,8 @@ public class BossAttackController {
             }
             sb.append("가방현황[ 일반:").append(bagNormal)
               .append("/나메:").append(bagNm)
-              .append("/헬:").append(bagHell);
+              .append("/헬:").append(bagHell)
+              .append("/미확인:").append(bagUnknown);
             if (bagGold > 0 || bagPlat > 0) {
                 sb.append(" (황금:").append(bagGold).append("/플래티넘:").append(bagPlat).append(")");
             }
@@ -9009,7 +9011,7 @@ public class BossAttackController {
 	                if (ctx != null && ctx.user.nightmareYn == 2) sb.append("[헬]");
 	                else sb.append("[나이트메어]");
 	            }
-	            sb.append(" HP : ").append(formatWan(_hpAfter)).append(NL);
+	            sb.append(" HP : ").append(formatWan(_hpAfter)).append(" / ").append(formatWan(monMaxHp)).append(NL);
 	            if (flags != null && flags.atkCrit && calc != null && calc.critMultiplier > 1.0) {
 	                long _cMin = Math.round(shownAtkMin * calc.critMultiplier);
 	                long _cMax = Math.round(shownAtkMax * calc.critMultiplier);
