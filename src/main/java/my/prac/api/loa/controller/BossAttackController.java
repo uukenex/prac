@@ -4976,7 +4976,7 @@ public class BossAttackController {
 		else if ("엘프".equals(s.job))       jobDmgMul = 2.0;
 		else if ("엘프궁수".equals(s.job))   jobDmgMul = 2.0;
 		else if ("엘프마법사".equals(s.job)) jobDmgMul = 2.0;
-		else if ("워록".equals(s.job))      jobDmgMul = 1.5;
+		else if ("워록".equals(s.job))      jobDmgMul = 1.6;
 
 		s.effAtkMin = (int)Math.round(atkMin * jobDmgMul + jobBonusMin);
 		s.effAtkMax = (int)Math.round(atkMax * jobDmgMul + jobBonusMax);
@@ -5413,7 +5413,12 @@ public class BossAttackController {
 		if (!"워록".equals(s.job)) return;
 		// 헬모드 너프 이전 원본 critRate로 타수 계산
 		int rawCritForHit = s.critRate + (s.ctx != null ? s.ctx.hellNerfCrit : 0);
-		int hitCount = 1 + (rawCritForHit / 2000);
+		int hitCount;
+		if (rawCritForHit >= 7500) hitCount = 5;
+		else if (rawCritForHit >= 6500) hitCount = 4;
+		else if (rawCritForHit >= 5000) hitCount = 3;
+		else if (rawCritForHit >= 3000) hitCount = 2;
+		else hitCount = 1;
 		if (hitCount <= 1) return;
 		s.warlockHitCount = hitCount;
 		s.warlockMultiHit = true;
@@ -7665,7 +7670,7 @@ public class BossAttackController {
 	
 		             sb.append(rank).append("위 ")
 		               .append(userName2)
-		               .append(" (Lv.").append(lv).append(")")
+		               .append(" (").append(lv >= 999 ? "Lv.Max" : "Lv." + lv).append(")")
 		               .append(" - ").append(SP.fromSp(totSp))
 		               .append(NL);
 	
@@ -9120,16 +9125,16 @@ public class BossAttackController {
 	            }
 	        } else {
 	            // 기존 동작
-	            if (flags.atkCrit) sb.append("✨ 치명타!");
+	            if (!flags.atkCrit) sb.append("치명회피!");
 	            if (u.blessYn == 1) sb.append("✨축복(x1.5)!");
 	            sb.append(NL);
-	            sb.append("⚔ 데미지: (").append(formatWan(shownAtkMin)).append("~").append(formatWan(shownAtkMax)).append(" ⇒ ");
-	            if (flags.atkCrit && calc.baseAtk > 0 && calc.critMultiplier >= 1.0) {
-	                sb.append(formatWan(calc.baseAtk)).append("*").append(trimDouble(calc.critMultiplier)).append("=>").append(formatWan(calc.atkDmg));
+	            if (flags.atkCrit && calc.critMultiplier >= 1.0) {
+	                long critMin = Math.round(shownAtkMin * calc.critMultiplier);
+	                long critMax = Math.round(shownAtkMax * calc.critMultiplier);
+	                sb.append("⚔ 데미지: (").append(formatWan((int)critMin)).append("~").append(formatWan((int)critMax)).append(" ⇒ ").append(formatWan(calc.atkDmg)).append(")").append(NL);
 	            } else {
-	                sb.append(formatWan(calc.atkDmg));
+	                sb.append("⚔ 데미지: (").append(formatWan(shownAtkMin)).append("~").append(formatWan(shownAtkMax)).append(" ⇒ ").append(formatWan(calc.atkDmg)).append(")").append(NL);
 	            }
-	            sb.append(")").append(NL);
 	            if (hunterMsg != null && !hunterMsg.isEmpty())
 	                sb.append(hunterMsg).append(NL).append(NL);
 	            if (midExtraLines != null && !midExtraLines.isEmpty())
