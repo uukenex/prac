@@ -2566,7 +2566,7 @@ public class BossAttackController {
 	    // ⑨ 출력
 	    StringBuilder sb = new StringBuilder();
 	    sb.append("✨").append(ctx.targetUser).append(" 공격 정보").append(NL)
-	      .append("Lv: ").append(u.lv);
+	      .append("Lv: ").append(u.lv >= 999 ? "Max" : u.lv);
 	    if (!ctx.job.isEmpty()) {
 	        sb.append(" (").append(elfDisplayJob(ctx.job)).append(")");
 	        
@@ -4906,7 +4906,7 @@ public class BossAttackController {
 		else if ("엘프".equals(s.job))       jobDmgMul = 2.0;
 		else if ("엘프궁수".equals(s.job))   jobDmgMul = 2.0;
 		else if ("엘프마법사".equals(s.job)) jobDmgMul = 2.0;
-		else if ("워록".equals(s.job))      jobDmgMul = 1.5;
+		else if ("워록".equals(s.job))      jobDmgMul = 1.6;
 
 		s.effAtkMin = (int)Math.round(atkMin * jobDmgMul + jobBonusMin);
 		s.effAtkMax = (int)Math.round(atkMax * jobDmgMul + jobBonusMax);
@@ -5339,7 +5339,12 @@ public class BossAttackController {
 		if (!"워록".equals(s.job)) return;
 		// 헬모드 너프 이전 원본 critRate로 타수 계산
 		int rawCritForHit = s.critRate + (s.ctx != null ? s.ctx.hellNerfCrit : 0);
-		int hitCount = 1 + (rawCritForHit / 2000);
+		int hitCount;
+		if (rawCritForHit >= 7500) hitCount = 5;
+		else if (rawCritForHit >= 6500) hitCount = 4;
+		else if (rawCritForHit >= 5000) hitCount = 3;
+		else if (rawCritForHit >= 3000) hitCount = 2;
+		else hitCount = 1;
 		if (hitCount <= 1) return;
 		s.warlockHitCount = hitCount;
 		s.warlockMultiHit = true;
@@ -6036,10 +6041,11 @@ public class BossAttackController {
 					boolean _killed = !s.warlockKillMsgs.get(_wi).isEmpty();
 					String _wTag = _ed.extraDark ? "[어둠]" : _ed.extraLucky ? "[빛]" : _ed.extraGray ? "[음양]" : _ed.extraShadow ? "[그림자]" : "";
 					String _mName = s.m != null ? s.m.monName : "몬스터";
+					String _sep = (_wi == 0) ? "" : NL;
 					if (_killed) {
-						bot.append(NL).append("[").append(_wi + 2).append("타처치] ").append(_wTag).append(_mName).append(", 데미지: ").append(formatWan(s.warlockExtraCalcs.get(_wi).atkDmg));
+						bot.append(_sep).append("[").append(_wi + 2).append("타처치] ").append(_wTag).append(_mName).append(", 데미지: ").append(formatWan(s.warlockExtraCalcs.get(_wi).atkDmg));
 					} else {
-						bot.append(NL).append("[").append(_wi + 2).append("타] 데미지: ").append(formatWan(s.warlockExtraCalcs.get(_wi).atkDmg));
+						bot.append(_sep).append("[").append(_wi + 2).append("타] 데미지: ").append(formatWan(s.warlockExtraCalcs.get(_wi).atkDmg));
 					}
 					if (_killed) {
 						LevelUpResult _eu = _wi < s.warlockExtraUps.size() ? s.warlockExtraUps.get(_wi) : null;
@@ -6065,32 +6071,8 @@ public class BossAttackController {
 		if (s.thiefDoubleAtk && s.res2 != null && s.res2.gainExp > 0) {
 			s.res.gainExp += s.res2.gainExp;
 		}
-		// [워록 멀티킷] top EXP 제거: buildAttackMessage EXP 줄 스킵, 1타 EXP는 bot에 표시
+		// [워록 멀티킷] buildAttackMessage EXP 중복 방지
 		if (s.warlockMultiHit && !s.warlockKillFail) {
-			// 1타 [1타처치] 줄 구성
-			if (s.willKill) {
-				String _1tag = s.shadow ? "[그림자]" : s.dark ? "[어둠]" : s.gray ? "[음양]" : s.lucky ? "[빛]" : "";
-				String _1name = s.m != null ? s.m.monName : "몬스터";
-				StringBuilder _1line = new StringBuilder();
-				_1line.append("[1타처치] ").append(_1tag).append(_1name)
-					  .append(", 데미지: ").append(formatWan(s.calc.atkDmg));
-				if (s.flags != null && s.flags.atkCrit) _1line.append(" ✨크리!");
-				if (s.up != null) {
-					_1line.append(NL);
-					if (s.u.lv < 999) {
-						double _g1 = s.up.afterExpNext > 0 ? (double)s.up.gainedExp / s.up.afterExpNext * 100 : 0;
-						double _c1 = s.up.afterExpNext > 0 ? (double)s.up.afterExpCur / s.up.afterExpNext * 100 : 0;
-						_1line.append("EXP +").append(formatKorNum(s.up.gainedExp))
-							  .append("(").append(String.format("%.1f", _g1)).append("%)")
-							  .append("[").append(String.format("%.1f", _c1)).append("%/100%]");
-						if (s.up.levelUpCount > 0) _1line.append(" ✨Lv").append(s.up.beforeLv).append("→").append(s.up.afterLv);
-					} else {
-						_1line.append("EXP +").append(formatKorNum(s.up.gainedExp))
-							  .append(" [누적 ").append(formatKorNum(s.up.afterExpCur)).append("]");
-					}
-				}
-				bot.insert(0, _1line.toString() + NL);
-			}
 			s.res.gainExp = 0;
 			s.up = null;
 		}
@@ -7514,7 +7496,7 @@ public class BossAttackController {
 	
 		             sb.append(rank).append("위 ")
 		               .append(userName2)
-		               .append(" (Lv.").append(lv).append(")")
+		               .append(" (").append(lv >= 999 ? "Lv.Max" : "Lv." + lv).append(")")
 		               .append(" - ").append(SP.fromSp(totSp))
 		               .append(NL);
 	
@@ -8909,7 +8891,7 @@ public class BossAttackController {
 	            sb.append(midExtraLines).append(NL);
 	    } else {
 	        // 치명타/축복 (항상 main)
-	        if (flags.atkCrit) sb.append("✨ 치명타!");
+	        if (!flags.atkCrit) sb.append("치명회피!");
 	        if (u.blessYn == 1) sb.append("✨축복(x1.5)!");
 	        sb.append(NL);
 
@@ -8931,13 +8913,13 @@ public class BossAttackController {
 	                detailOut.append(midExtraLines).append(NL);
 	        } else {
 	            // 기존 동작
-	            sb.append("⚔ 데미지: (").append(formatWan(shownAtkMin)).append("~").append(formatWan(shownAtkMax)).append(" ⇒ ");
-	            if (flags.atkCrit && calc.baseAtk > 0 && calc.critMultiplier >= 1.0) {
-	                sb.append(formatWan(calc.baseAtk)).append("*").append(trimDouble(calc.critMultiplier)).append("=>").append(formatWan(calc.atkDmg));
+	            if (flags.atkCrit && calc.critMultiplier >= 1.0) {
+	                long critMin = Math.round(shownAtkMin * calc.critMultiplier);
+	                long critMax = Math.round(shownAtkMax * calc.critMultiplier);
+	                sb.append("⚔ 데미지: (").append(formatWan((int)critMin)).append("~").append(formatWan((int)critMax)).append(" ⇒ ").append(formatWan(calc.atkDmg)).append(")").append(NL);
 	            } else {
-	                sb.append(formatWan(calc.atkDmg));
+	                sb.append("⚔ 데미지: (").append(formatWan(shownAtkMin)).append("~").append(formatWan(shownAtkMax)).append(" ⇒ ").append(formatWan(calc.atkDmg)).append(")").append(NL);
 	            }
-	            sb.append(")").append(NL);
 	            if (hunterMsg != null && !hunterMsg.isEmpty())
 	                sb.append(hunterMsg).append(NL).append(NL);
 	            if (midExtraLines != null && !midExtraLines.isEmpty())
