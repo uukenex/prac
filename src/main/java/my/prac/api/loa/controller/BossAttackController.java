@@ -8994,7 +8994,7 @@ public class BossAttackController {
 	            if (ctx.user.nightmareYn == 2) sb.append("[헬]");
 	            else sb.append("[나이트메어]");
 	        }
-	        sb.append(" HP : ").append(formatWan(monMaxHp)).append(NL);
+	        sb.append(" HP : ").append(formatWan(Math.max(0, monHpRemainBefore - calc.atkDmg))).append(" / ").append(formatWan(monMaxHp)).append(NL);
 	        double _mult = (calc != null && calc.critMultiplier > 1.0) ? calc.critMultiplier : 1.0;
 	        long _dMin = (long)(shownAtkMin * _mult);
 	        long _dMax = (long)(shownAtkMax * _mult);
