@@ -958,15 +958,20 @@ public class LoaChatController {
 								long elapsedSec = (System.currentTimeMillis() - lockDate.getTime()) / 1000;
 								if (elapsedSec <= 300) {
 									try {
-										java.util.HashMap<String,Object> inv = new java.util.HashMap<>();
-										inv.put("userName", sender);
-										inv.put("roomName", roomName);
-										inv.put("itemId",   94);
-										inv.put("qty",      1);
-										inv.put("delYn",    "0");
-										inv.put("gainType", "MACRO_REWARD");
-										botNewService.insertInventoryLogTx(inv);
-										sb94.append(enterStr).append("🎁 빠른 인증 보상! 미확인상자(94) 1개 지급 (추후 개방됩니다)");
+										int _unknownHeld = botNewService.selectBagCountByItemId(sender, roomName, 94);
+										if (_unknownHeld >= 50) {
+											sb94.append(enterStr).append("⚠️ 미확인상자 보유 한도(50개) 도달! 더 이상 받을 수 없습니다.");
+										} else {
+											java.util.HashMap<String,Object> inv = new java.util.HashMap<>();
+											inv.put("userName", sender);
+											inv.put("roomName", roomName);
+											inv.put("itemId",   94);
+											inv.put("qty",      1);
+											inv.put("delYn",    "0");
+											inv.put("gainType", "MACRO_REWARD");
+											botNewService.insertInventoryLogTx(inv);
+											sb94.append(enterStr).append("🎁 빠른 인증 보상! 미확인상자(94) 1개 지급 (추후 개방됩니다)");
+										}
 									} catch (Exception ignore) {}
 								}
 							}
