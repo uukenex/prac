@@ -9049,13 +9049,7 @@ public class BossAttackController {
 	                else sb.append("[나이트메어]");
 	            }
 	            sb.append(" HP : ").append(formatWan(_hpAfter)).append(" / ").append(formatWan(monMaxHp)).append(NL);
-	            if (flags != null && flags.atkCrit && calc != null && calc.critMultiplier > 1.0) {
-	                long _cMin = Math.round(shownAtkMin * calc.critMultiplier);
-	                long _cMax = Math.round(shownAtkMax * calc.critMultiplier);
-	                sb.append("⚔ 데미지: ").append(formatWan(_cMin)).append("~").append(formatWan(_cMax)).append(NL);
-	            } else {
-	                sb.append("⚔ 데미지: ").append(formatWan(shownAtkMin)).append("~").append(formatWan(shownAtkMax)).append(NL);
-	            }
+	            sb.append("⚔ 데미지: ").append(formatWan(calc.atkDmg)).append(NL);
 	            // DARK/LUCKY/SHADOW 공지 → detail로 이동
 	            if (res.shadow) detailOut.append("✨ SHADOW MONSTER! (처치시 경험치×10, 드랍 없음)").append(NL);
 	            if (res.gray)   detailOut.append("✨ LIGHT&DARK MONSTER! (처치시 경험치×9, 음양 드랍)").append(NL);
