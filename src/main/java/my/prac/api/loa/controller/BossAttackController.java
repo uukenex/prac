@@ -1417,7 +1417,7 @@ public class BossAttackController {
         if (nightmareCount > 0) sb.append("✨ 나메가방 획득: ").append(nmSP).append(NL);
         if (hellCount > 0) sb.append("✨ 헬상자 획득: ").append(hellSP).append(NL);
         sb.append("✨ 총 획득: ").append(totalSP).append(NL);
-        if (unknownCount > 0) {
+        if (unknownLevelUp != null) {
             sb.append("🎁 미확인상자 ").append(unknownCount).append("개 개봉 → 경험치 ")
               .append(formatKorNum(unknownTotalExp)).append(" 획득!").append(NL);
             if (unknownLevelUp != null && unknownLevelUp.levelUpCount > 0) {
