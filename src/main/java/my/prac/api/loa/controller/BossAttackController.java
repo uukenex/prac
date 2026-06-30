@@ -95,6 +95,7 @@ public class BossAttackController {
 	private static final int BAG_ITEM_ID = 91;
 	private static final int BAG_NM_ITEM_ID = 92;
 	private static final int BAG_HELL_ITEM_ID = 93;
+	private static final int BAG_UNKNOWN_ITEM_ID = 94;
 	private static final double BAG_DROP_RATE = 0.03; // 3% 고정
 	/** 가방 하루 최대 드랍 개수 (91+92+93 합산) */
 	private static final int BAG_DAILY_LIMIT = 35;
@@ -1269,6 +1270,7 @@ public class BossAttackController {
 	    int hellAttendCount = bagCounts != null ? ((Number) bagCounts.getOrDefault("HELL_ATTEND_COUNT", 0)).intValue() : 0;
 	    int hellNoSpCount  = hellEventCount + hellBossCount + hellAttendCount; // SP 지급 제외 타입 합산
 	    int hellNormalCount = hellCount - hellNoSpCount;
+	    int unknownCount = botNewService.selectBagCountByItemId(userName, roomName, BAG_UNKNOWN_ITEM_ID);
 
 	    // ── 헬상자 오픈 권한 체크 (헬보스1회처치 업적 필요) ──────────────────
 	    if (hellCount > 0) {
@@ -1287,7 +1289,7 @@ public class BossAttackController {
 	        } catch (Exception ignore) {}
 	    }
 
-	    if (normalCount + nightmareCount + hellCount <= 0) {
+	    if (normalCount + nightmareCount + hellCount + unknownCount <= 0) {
 	        return "열 수 있는 가방이 없습니다.";
 	    }
 
@@ -1310,6 +1312,27 @@ public class BossAttackController {
 	    }
 	    if (hellNormalCount > 0) {
 	        botNewService.consumeBagBulkByItemIdTx(userName, roomName, BAG_HELL_ITEM_ID, hellNormalCount);
+	    }
+	    long unknownTotalExp = 0L;
+	    LevelUpResult unknownLevelUp = null;
+	    if (unknownCount > 0) {
+	        botNewService.consumeBagBulkByItemIdTx(userName, roomName, BAG_UNKNOWN_ITEM_ID, unknownCount);
+	        User unknownUser = botNewService.selectUser(userName, roomName);
+	        for (int _ui = 0; _ui < unknownCount; _ui++) {
+	            long _min = 10_000_000_000L, _max = 100_000_000_000L;
+	            unknownTotalExp += _min + (long) (ThreadLocalRandom.current().nextDouble() * (_max - _min + 1));
+	        }
+	        unknownLevelUp = applyExpAndLevelUp(unknownUser, unknownTotalExp);
+	        int _ubaseHpMax   = MiniGameUtil.calcBaseHpMax(unknownUser.lv);
+	        int _ubaseAtkMin  = MiniGameUtil.calcBaseAtkMin(unknownUser.lv);
+	        int _ubaseAtkMax  = MiniGameUtil.calcBaseAtkMax(unknownUser.lv);
+	        int _ubaseCrit    = MiniGameUtil.calcBaseCritRate(unknownUser.lv);
+	        int _ubaseHpRegen = MiniGameUtil.calcBaseHpRegen(unknownUser.lv);
+	        botNewService.updateUserAfterBattleTx(
+	            userName, roomName, unknownUser.lv, unknownUser.expCur, unknownUser.expNext,
+	            unknownUser.hpCur, _ubaseHpMax, _ubaseAtkMin, _ubaseAtkMax, _ubaseCrit, _ubaseHpRegen
+	        );
+	        invalidateInvBuff(userName);
 	    }
 
 	    SP normalSP  = new SP(0, "");
@@ -1390,6 +1413,16 @@ public class BossAttackController {
         if (nightmareCount > 0) sb.append("✨ 나메가방 획득: ").append(nmSP).append(NL);
         if (hellCount > 0) sb.append("✨ 헬상자 획득: ").append(hellSP).append(NL);
         sb.append("✨ 총 획득: ").append(totalSP).append(NL);
+        if (unknownCount > 0) {
+            sb.append("🎁 미확인상자 ").append(unknownCount).append("개 개봉 → 경험치 ")
+              .append(formatWan(unknownTotalExp)).append(" 획득!").append(NL);
+            if (unknownLevelUp != null && unknownLevelUp.levelUpCount > 0) {
+                sb.append("★★★ ✨레벨업!✨ ★★★").append(NL);
+                sb.append("Lv ").append(unknownLevelUp.beforeLv).append(" → ").append(unknownLevelUp.afterLv);
+                if (unknownLevelUp.levelUpCount > 1) sb.append(" ( +").append(unknownLevelUp.levelUpCount).append(" )");
+                sb.append(NL);
+            }
+        }
 
 	    if (!itemSummary.isEmpty()) {
 	        // itemSummary 집계: 동일 항목은 ×N으로 합산, 황금/플래티넘 보류는 별도 우선 표시
