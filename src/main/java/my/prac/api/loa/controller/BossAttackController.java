@@ -1270,7 +1270,7 @@ public class BossAttackController {
 	    int hellAttendCount = bagCounts != null ? ((Number) bagCounts.getOrDefault("HELL_ATTEND_COUNT", 0)).intValue() : 0;
 	    int hellNoSpCount  = hellEventCount + hellBossCount + hellAttendCount; // SP 지급 제외 타입 합산
 	    int hellNormalCount = hellCount - hellNoSpCount;
-	    int unknownCount = 0; // [임시중단] 94가방 개봉 비활성화 (경험치 범위 오류로 점검중)
+	    int unknownCount   = bagCounts != null ? ((Number) bagCounts.getOrDefault("UNKNOWN_COUNT",     0)).intValue() : 0;
 
 	    // ── 헬상자 오픈 권한 체크 (헬보스1회처치 업적 필요) ──────────────────
 	    if (hellCount > 0) {
