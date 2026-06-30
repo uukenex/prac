@@ -1319,10 +1319,15 @@ public class BossAttackController {
 	    List<String> detail = new ArrayList<>();
 	    List<String> itemSummary = new ArrayList<>();
 
+	    final long UNKNOWN_EXP_HOLD_CAP = 999_900_000_000L; // 9999억 (DB EXP_CUR NUMBER(12,0) 안전마진)
 	    long unknownTotalExp = 0L;
+	    boolean unknownCapReached = false;
 	    LevelUpResult unknownLevelUp = null;
 	    User unknownUser = unknownCount > 0 ? botNewService.selectUser(userName, roomName) : null;
 	    if (unknownCount > 0 && unknownUser != null && unknownUser.lv >= 990) {
+	      if (unknownUser.expCur >= UNKNOWN_EXP_HOLD_CAP) {
+	        unknownCapReached = true;
+	      } else {
 	        botNewService.consumeBagBulkByItemIdTx(userName, roomName, BAG_UNKNOWN_ITEM_ID, unknownCount);
 	        for (int _ui = 0; _ui < unknownCount; _ui++) {
 	            long _min = 100_000_000L, _max = 10_000_000_000L; // 1억~100억, 1억 쪽으로 편향
@@ -1331,6 +1336,11 @@ public class BossAttackController {
 	            long _val = _min + Math.round((_max - _min) * _biased);
 	            unknownTotalExp += _val;
 	            detail.add("[미확인상자]" + (_ui+1) + ": " + formatKorNum(_val) + " 경험치");
+	        }
+	        long _room = UNKNOWN_EXP_HOLD_CAP - unknownUser.expCur;
+	        if (unknownTotalExp > _room) {
+	            unknownTotalExp = Math.max(0, _room);
+	            unknownCapReached = true;
 	        }
 	        unknownLevelUp = applyExpAndLevelUp(unknownUser, unknownTotalExp);
 	        int _ubaseHpMax   = MiniGameUtil.calcBaseHpMax(unknownUser.lv);
@@ -1343,6 +1353,7 @@ public class BossAttackController {
 	            unknownUser.hpCur, _ubaseHpMax, _ubaseAtkMin, _ubaseAtkMax, _ubaseCrit, _ubaseHpRegen
 	        );
 	        invalidateInvBuff(userName);
+	      }
 	    }
 
 	    processBagOpen(
@@ -1426,6 +1437,9 @@ public class BossAttackController {
                 if (unknownLevelUp.levelUpCount > 1) sb.append(" ( +").append(unknownLevelUp.levelUpCount).append(" )");
                 sb.append(NL);
             }
+        }
+        if (unknownCapReached) {
+            sb.append("⚠️ 경험치 보유 한도(9999억) 도달! 더 이상 보유할 수 없습니다.").append(NL);
         }
 
 	    if (!itemSummary.isEmpty()) {
