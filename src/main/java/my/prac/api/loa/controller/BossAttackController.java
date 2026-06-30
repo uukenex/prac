@@ -100,7 +100,7 @@ public class BossAttackController {
 	/** 가방 하루 최대 드랍 개수 (91+92+93 합산) */
 	private static final int BAG_DAILY_LIMIT = 35;
 	/** 가방 최대 보유 개수 설정 — 이 개수 이상 보유 중이면 드랍 즉시 자동 오픈 */
-	private static final int BAG_MAX_HOLD = 300;
+	private static final int BAG_MAX_HOLD = 150;
 
 
 	private static final int NM_MUL_HP_ATK = 100;
@@ -9063,13 +9063,12 @@ public class BossAttackController {
 	                else sb.append("[나이트메어]");
 	            }
 	            sb.append(" HP : ").append(formatWan(_hpAfter)).append(" / ").append(formatWan(monMaxHp)).append(NL);
-	            sb.append("⚔ 데미지: (").append(formatWan(shownAtkMin)).append("~").append(formatWan(shownAtkMax)).append(" ⇒ ");
-	            if (flags != null && flags.atkCrit && calc.baseAtk > 0 && calc.critMultiplier >= 1.0) {
-	                sb.append(formatWan(calc.baseAtk)).append("*").append(trimDouble(calc.critMultiplier)).append("=>").append(formatWan(calc.atkDmg));
-	            } else {
-	                sb.append(formatWan(calc.atkDmg));
+	            long _dispMin = shownAtkMin, _dispMax = shownAtkMax;
+	            if (flags != null && flags.atkCrit && calc != null && calc.critMultiplier > 1.0) {
+	                _dispMin = Math.round(shownAtkMin * calc.critMultiplier);
+	                _dispMax = Math.round(shownAtkMax * calc.critMultiplier);
 	            }
-	            sb.append(")").append(NL);
+	            sb.append("⚔ 데미지: (").append(formatWan(_dispMin)).append("~").append(formatWan(_dispMax)).append(" ⇒ ").append(formatWan(calc.atkDmg)).append(")").append(NL);
 	            // DARK/LUCKY/SHADOW 공지 → detail로 이동
 	            if (res.shadow) detailOut.append("✨ SHADOW MONSTER! (처치시 경험치×10, 드랍 없음)").append(NL);
 	            if (res.gray)   detailOut.append("✨ LIGHT&DARK MONSTER! (처치시 경험치×9, 음양 드랍)").append(NL);
