@@ -1313,14 +1313,24 @@ public class BossAttackController {
 	    if (hellNormalCount > 0) {
 	        botNewService.consumeBagBulkByItemIdTx(userName, roomName, BAG_HELL_ITEM_ID, hellNormalCount);
 	    }
+	    SP normalSP  = new SP(0, "");
+	    SP nmSP      = new SP(0, "");
+	    SP totalSP   = new SP(0, ""); // 표시용 합계 (헬 제외)
+	    List<String> detail = new ArrayList<>();
+	    List<String> itemSummary = new ArrayList<>();
+
 	    long unknownTotalExp = 0L;
 	    LevelUpResult unknownLevelUp = null;
 	    if (unknownCount > 0) {
 	        botNewService.consumeBagBulkByItemIdTx(userName, roomName, BAG_UNKNOWN_ITEM_ID, unknownCount);
 	        User unknownUser = botNewService.selectUser(userName, roomName);
 	        for (int _ui = 0; _ui < unknownCount; _ui++) {
-	            long _min = 10_000_000_000L, _max = 100_000_000_000L;
-	            unknownTotalExp += _min + (long) (ThreadLocalRandom.current().nextDouble() * (_max - _min + 1));
+	            long _min = 100_000_000L, _max = 10_000_000_000L; // 1억~100억, 1억 쪽으로 편향
+	            double _r = ThreadLocalRandom.current().nextDouble();
+	            double _biased = Math.pow(_r, 6);
+	            long _val = _min + Math.round((_max - _min) * _biased);
+	            unknownTotalExp += _val;
+	            detail.add("[미확인상자]" + (_ui+1) + ": " + formatKorNum(_val) + " 경험치");
 	        }
 	        unknownLevelUp = applyExpAndLevelUp(unknownUser, unknownTotalExp);
 	        int _ubaseHpMax   = MiniGameUtil.calcBaseHpMax(unknownUser.lv);
@@ -1334,12 +1344,6 @@ public class BossAttackController {
 	        );
 	        invalidateInvBuff(userName);
 	    }
-
-	    SP normalSP  = new SP(0, "");
-	    SP nmSP      = new SP(0, "");
-	    SP totalSP   = new SP(0, ""); // 표시용 합계 (헬 제외)
-	    List<String> detail = new ArrayList<>();
-	    List<String> itemSummary = new ArrayList<>();
 
 	    processBagOpen(
 	            91,
@@ -1415,7 +1419,7 @@ public class BossAttackController {
         sb.append("✨ 총 획득: ").append(totalSP).append(NL);
         if (unknownCount > 0) {
             sb.append("🎁 미확인상자 ").append(unknownCount).append("개 개봉 → 경험치 ")
-              .append(formatWan(unknownTotalExp)).append(" 획득!").append(NL);
+              .append(formatKorNum(unknownTotalExp)).append(" 획득!").append(NL);
             if (unknownLevelUp != null && unknownLevelUp.levelUpCount > 0) {
                 sb.append("★★★ ✨레벨업!✨ ★★★").append(NL);
                 sb.append("Lv ").append(unknownLevelUp.beforeLv).append(" → ").append(unknownLevelUp.afterLv);
