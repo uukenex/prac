@@ -1321,9 +1321,9 @@ public class BossAttackController {
 
 	    long unknownTotalExp = 0L;
 	    LevelUpResult unknownLevelUp = null;
-	    if (unknownCount > 0) {
+	    User unknownUser = unknownCount > 0 ? botNewService.selectUser(userName, roomName) : null;
+	    if (unknownCount > 0 && unknownUser != null && unknownUser.lv >= 990) {
 	        botNewService.consumeBagBulkByItemIdTx(userName, roomName, BAG_UNKNOWN_ITEM_ID, unknownCount);
-	        User unknownUser = botNewService.selectUser(userName, roomName);
 	        for (int _ui = 0; _ui < unknownCount; _ui++) {
 	            long _min = 100_000_000L, _max = 10_000_000_000L; // 1억~100억, 1억 쪽으로 편향
 	            double _r = ThreadLocalRandom.current().nextDouble();
