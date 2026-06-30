@@ -1611,7 +1611,7 @@ public class BossAttackS3Controller {
             } catch (Exception ignore) {}
         }
 
-        // 아이템 보상 더보기(？) 상세 블록
+        // 아이템 보상 더보기(📦) 상세 블록
         StringBuilder itemDetailBlock = new StringBuilder();
 
         if (isGreatDemon) {
@@ -1705,7 +1705,7 @@ public class BossAttackS3Controller {
                 for (int w = 0; w < itemWinners.size(); w++) {
                     String winner = itemWinners.get(w);
                     List<String> displays = winnerDisplays.get(winner);
-                    itemDetailBlock.append("？").append(w + 1).append("번 보상: ").append(winner).append(NL);
+                    itemDetailBlock.append("📦").append(w + 1).append("번 보상: ").append(winner).append(NL);
                     for (int i = 0; i < displays.size(); i++)
                         itemDetailBlock.append("  ").append(i + 1).append(") ").append(displays.get(i)).append(NL);
                 }
@@ -1946,7 +1946,7 @@ public class BossAttackS3Controller {
                     for (int w = 0; w < itemWinners.size(); w++) {
                         String winner = itemWinners.get(w);
                         List<String> displays = winnerDisplays.get(winner);
-                        itemDetailBlock.append("？").append(w + 1).append("번 보상: ").append(displays.get(0)).append(NL);
+                        itemDetailBlock.append("📦").append(w + 1).append("번 보상: ").append(displays.get(0)).append(NL);
                     }
                     itemDetailBlock.append(NL);
 
