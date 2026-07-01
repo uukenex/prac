@@ -97,7 +97,7 @@
         SELECT NVL(JOB,'초보자'), COUNT(*), SUM(CASE WHEN DEATH_YN = 1 THEN 1 ELSE 0 END)
           FROM TBOT_POINT_NEW_BATTLE_LOG
          WHERE USER_NAME = #{userName}
-           AND INSERT_DATE >= TRUNC(SYSDATE, 'MM')
+           AND INSERT_DATE >= ADD_MONTHS(TRUNC(SYSDATE, 'MM'), -1)
          GROUP BY NVL(JOB,'초보자')
       ) t
     ) s, DUAL
@@ -944,7 +944,7 @@
 	      SELECT NVL(JOB,'초보자'), COUNT(*)
 	        FROM TBOT_POINT_NEW_BATTLE_LOG
 	       WHERE USER_NAME = #{userName}
-	         AND INSERT_DATE >= TRUNC(SYSDATE, 'MM')
+	         AND INSERT_DATE >= ADD_MONTHS(TRUNC(SYSDATE, 'MM'), -1)
 	       GROUP BY NVL(JOB,'초보자')
 	    ) t GROUP BY JOB
 	</select>
@@ -961,7 +961,7 @@
 	      SELECT NVL(JOB,'초보자'), COUNT(*), SUM(DEATH_YN), MAX(INSERT_DATE)
 	        FROM TBOT_POINT_NEW_BATTLE_LOG
 	       WHERE USER_NAME = #{userName}
-	         AND INSERT_DATE >= TRUNC(SYSDATE, 'MM')
+	         AND INSERT_DATE >= ADD_MONTHS(TRUNC(SYSDATE, 'MM'), -1)
 	       GROUP BY NVL(JOB,'초보자')
 	    ) t GROUP BY JOB
 	</select>
@@ -1105,7 +1105,7 @@
 		        UNION ALL
 		        SELECT USER_NAME, COUNT(*), SUM(CASE WHEN DEATH_YN = 1 THEN 1 ELSE 0 END)
 		          FROM TBOT_POINT_NEW_BATTLE_LOG
-		         WHERE INSERT_DATE >= TRUNC(SYSDATE, 'MM')
+		         WHERE INSERT_DATE >= ADD_MONTHS(TRUNC(SYSDATE, 'MM'), -1)
 		         GROUP BY USER_NAME
 		    )
 		    GROUP BY USER_NAME
@@ -1402,7 +1402,7 @@
 	      SELECT NVL(JOB,'초보자'), SUM(JOB_SKILL_YN)
 	        FROM TBOT_POINT_NEW_BATTLE_LOG
 	       WHERE USER_NAME = #{userName}
-	         AND INSERT_DATE >= TRUNC(SYSDATE, 'MM')
+	         AND INSERT_DATE >= ADD_MONTHS(TRUNC(SYSDATE, 'MM'), -1)
 	       GROUP BY NVL(JOB,'초보자')
 	    ) t GROUP BY JOB
 	</select>
