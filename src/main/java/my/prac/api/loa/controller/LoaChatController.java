@@ -5585,7 +5585,7 @@ public class LoaChatController {
 			result.append(enterStr).append(tradeableSB);
 		}
 		if (boundSB.length() > 0) {
-			result.append(enterStr).append("귀속 보석 ▼").append(enterStr).append(enterStr).append(boundSB);
+			result.append(enterStr).append("귀속 보석 ▼").append(allSeeStr).append(boundSB);
 		}
 		return result.toString().trim();
 	}
