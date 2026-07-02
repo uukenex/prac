@@ -81,7 +81,7 @@ public class BossAttackS3Controller {
     private static final int IMPRISON_DURATION_MS = 5 * 60 * 1000; // 5분
     private static final int IMPRISON_CHANCE_PCT  = 30;             // 30%
     /** 보스아이템 최대 qty (이이상 회당불가, 인덱스 강화단계는 +4까지, 효과는 2강화 캐플) */
-    public static final int MAX_BOSS_ENHANCE = 15;
+    public static final int MAX_BOSS_ENHANCE = 21;
 
     // =========================================================
     // ★ 보스 아이템 강화 효과 테이블 (수치 직접 수정 가능)
@@ -92,44 +92,44 @@ public class BossAttackS3Controller {
     static final java.util.Map<Integer, int[]> BOSS_ENHANCE_TABLE;
     static {
         java.util.Map<Integer, int[]> m = new java.util.LinkedHashMap<>();
-        // 7001: 천벌 — debuff 배수(×10회): +0=×1(10회), +1=×2(20회)
-        m.put(7001, new int[]{ 1,  2,  3  });
+        // 7001: 천벌 — debuff 배수(발동횟수)
+        m.put(7001, new int[]{ 1,  2,  3,  4,  5,  6  });
         // 7002: 예리한칼날 — 도적 더블어택 확률(%)
-        m.put(7002, new int[]{ 35, 45, 55 });
+        m.put(7002, new int[]{ 35, 45, 55, 65, 75, 85 });
         // 7003: 주작궁 — 궁사 연사 추가(회)
-        m.put(7003, new int[]{ 1,  2,  3  });
+        m.put(7003, new int[]{ 1,  2,  3,  4,  5,  6  });
         // 7004: 모래시계 — 쿨타임 감소율(%)
-        m.put(7004, new int[]{ 20, 30, 40 });
-        // 7005: 가시갑옷 — 반사율(퍼밀 /1000): 10=1.0%, 15=1.5%
-        m.put(7005, new int[]{ 10, 15, 20 });
-        // 7006: 강한자의어금니 — 바람가르기 추가 확률(%p)
-        m.put(7006, new int[]{ 15, 30, 45 });
-        // 7007: 헌터의자격 — 잔존율 추가(×10 저장: 30=3.0%p, 35=3.5%p)
-        m.put(7007, new int[]{ 30, 35, 40 });
+        m.put(7004, new int[]{ 20, 30, 40, 50, 60, 70 });
+        // 7005: 가시갑옷 — 반사율(퍼밀/1000): 10=1.0%~35=3.5%
+        m.put(7005, new int[]{ 10, 15, 20, 25, 30, 35 });
+        // 7006: 강한자의어금니 — 바람가르기 확률(%p)
+        m.put(7006, new int[]{ 15, 30, 45, 55, 65, 75 });
+        // 7007: 헌터의자격 — 잔존율(×10 저장: 30=3.0%p, 55=5.5%p)
+        m.put(7007, new int[]{ 30, 35, 40, 45, 50, 55 });
         // 7008: 가난한자의부적 — 추가 드랍 수
-        m.put(7008, new int[]{ 1,  2,  3  });
-        // 7009: 진화의시대 — 레벨당 공격력(0강화:150/cap300, 1강화:200/cap500)
-        m.put(7009, new int[]{ 150, 200, 250 });
+        m.put(7008, new int[]{ 1,  2,  3,  4,  5,  6  });
+        // 7009: 진화의시대 — 레벨당 공격력(cap: 0강300/1강500/2강700/3강900/4강1100/5강1300)
+        m.put(7009, new int[]{ 150, 200, 250, 300, 350, 400 });
         // 7010: 주시자의눈 — 회피저지 확률(%)
-        m.put(7010, new int[]{ 30, 60, 80 });
+        m.put(7010, new int[]{ 30, 60, 80, 85, 90, 95 });
         // 7011: 개척자 — 추가데미지 +10% 확률(%)
-        m.put(7011, new int[]{ 30, 60, 80 });
+        m.put(7011, new int[]{ 30, 60, 80, 85, 90, 95 });
         // 7012: 수선도사의머리띠 — 도사 버프 계수(배수)
-        m.put(7012, new int[]{ 3,  4,  5  });
-        // 7013: 과거의영광 — 어제 공격자수당 공격력 보너스
-        m.put(7013, new int[]{ 1000, 1600, 2200 });
-        // 7014: 달의부름 — 곰 스킬실패 패널티 완화 확률(%)
-        m.put(7014, new int[]{ 50, 65, 80 });
-        // 7015: 무한의대검 — 초강력치명타 추가 확률(%p)
-        m.put(7015, new int[]{ 10, 15, 20 });
-        // 7016: 복수의시간 — 복수자 처치 시 체력회복률(%)
-        m.put(7016, new int[]{ 20, 30, 40 });
-        // 7017: 연금술의대가 — 엘릭서 할인율(%)
-        m.put(7017, new int[]{ 50, 70, 80 });
-        // 7018: 상자수집가 — 추가 상자 수(0강화:+1, 1강화:+2)
-        m.put(7018, new int[]{ 1,  2,  3  });
-        // 7019: 어세신의부름 — 도적 스틸 성공 시 추가 획득 수
-        m.put(7019, new int[]{ 1,  2,  3  });
+        m.put(7012, new int[]{ 3,  4,  5,  6,  7,  8  });
+        // 7013: 과거의영광 — 어제 공격자수당 공격력 보너스(max40명)
+        m.put(7013, new int[]{ 1000, 1600, 2200, 2800, 3400, 4000 });
+        // 7014: 달의부름 — 곰 스킬실패 패널티 완화(%)
+        m.put(7014, new int[]{ 50, 65, 80, 87, 93, 100 });
+        // 7015: 무한의대검 — 슈퍼크리 추가 확률(%p)
+        m.put(7015, new int[]{ 10, 15, 20, 25, 30, 35 });
+        // 7016: 복수의시간 — HP 흡수율(%)
+        m.put(7016, new int[]{ 20, 30, 40, 50, 60, 70 });
+        // 7017: 연금술의대가 — 상점 할인율(%)
+        m.put(7017, new int[]{ 50, 70, 80, 85, 88, 90 });
+        // 7018: 상자수집가 — 출석 추가 상자 수
+        m.put(7018, new int[]{ 1,  2,  3,  4,  5,  6  });
+        // 7019: 어세신의부름 — 도적 스틸 추가 획득 수
+        m.put(7019, new int[]{ 1,  2,  3,  4,  5,  6  });
         BOSS_ENHANCE_TABLE = java.util.Collections.unmodifiableMap(m);
     }
 
@@ -164,18 +164,37 @@ public class BossAttackS3Controller {
         BOSS_ITEM_EFFECT = java.util.Collections.unmodifiableMap(e);
     }
 
-        /** 보스 아이템 강화 옵션 한 줄 설명 반환 (상점 표시용) */
+        /** 보스 아이템 강화 옵션 전체 단계 설명 반환 */
     public static String getBossItemEnhanceDesc(int itemId) {
         int[] vals = BOSS_ENHANCE_TABLE.get(itemId);
         String[] eff = BOSS_ITEM_EFFECT.get(itemId);
         if (eff == null) return "";
-        String label = eff[0], unit = eff[1], memo = eff[2];
-        // BOSS_ENHANCE_TABLE 없는 아이템은 memo로만 설명
-        if (vals == null) return memo != null ? label + ": " + memo : label;
+        String label = eff[0], unit = eff[1];
+        if (vals == null) return label;
+        String[] lvLabels = {"0강화", "+1강화", "+2강화", "+3강화", "+4강화", "+5강화"};
         StringBuilder sb = new StringBuilder();
-        sb.append(label).append(": ").append(vals[0]).append(unit).append("(0강화)");
-        if (vals.length >= 2) sb.append(" → ").append(vals[1]).append(unit).append("(+1강화)");
-        if (memo != null) sb.append(" [").append(memo).append("]");
+        sb.append(label).append(": ");
+        for (int i = 0; i < vals.length; i++) {
+            if (i > 0) sb.append(" / ");
+            sb.append(lvLabels[i]).append(":").append(vals[i]).append(unit);
+        }
+        return sb.toString();
+    }
+
+    /** 전체 강화 단계 표시 + 현재 레벨 마킹 (채팅 메시지용) */
+    static String getBossItemAllTiersLine(int itemId, int curQty) {
+        int[] vals = BOSS_ENHANCE_TABLE.get(itemId);
+        String[] eff = BOSS_ITEM_EFFECT.get(itemId);
+        if (vals == null || eff == null) return "";
+        String unit = eff[1];
+        int curLv = getBossEnhanceLevel(curQty);
+        String[] lvLabels = {"0강화", "+1강화", "+2강화", "+3강화", "+4강화", "+5강화"};
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < vals.length; i++) {
+            if (i > 0) sb.append(" / ");
+            if (i == curLv) sb.append("[").append(lvLabels[i]).append(":").append(vals[i]).append(unit).append("]");
+            else sb.append(lvLabels[i]).append(":").append(vals[i]).append(unit);
+        }
         return sb.toString();
     }
 
@@ -185,7 +204,8 @@ public class BossAttackS3Controller {
         if (qty <= 3) return 1;
         if (qty <= 6) return 2;
         if (qty <= 10) return 3;
-        return 4; // qty 11~15
+        if (qty <= 15) return 4;
+        return 5; // qty 16~21
     }
 
     static int getBossEnhanceVal(int itemId, int qty) {
@@ -1687,17 +1707,31 @@ public class BossAttackS3Controller {
 
                 for (int w = 0; w < itemWinners.size(); w++) {
                     String winner = itemWinners.get(w);
-                    List<Integer> codes = winnerItemIds.get(winner);
-                    List<String>  names = winnerItemNames.get(winner);
+                    List<Integer> codes  = winnerItemIds.get(winner);
+                    List<Integer> enhIds = winnerEnhItemIds.get(winner);
+                    List<String>  names  = winnerItemNames.get(winner);
+                    List<Integer> nqs    = winnerNewQtys.get(winner);
                     msg.append(w + 1).append("번 보상: ").append(winner).append(NL);
-                    for (int i = 0; i < codes.size(); i++) {
-                        int code = codes.get(i);
-                        msg.append("  ").append(i + 1).append(") ").append(names.get(i));
-                        if (code == -1) msg.append(" [최대강화 달성]");
-                        if (code == -3) {
-                            List<Integer> nqs = winnerNewQtys.get(winner);
-                            int nq = (nqs != null && i < nqs.size()) ? nqs.get(i) : 2;
-                            msg.append(" [강화! ").append(enhanceSuffix(nq)).append("]");
+                    for (int ii = 0; ii < codes.size(); ii++) {
+                        int code = codes.get(ii);
+                        int nq   = (nqs != null && ii < nqs.size()) ? nqs.get(ii) : 1;
+                        int realId = (code >= 0) ? code : (enhIds != null && ii < enhIds.size() ? enhIds.get(ii) : 0);
+                        msg.append("  ").append(ii + 1).append(") ").append(names.get(ii));
+                        if (code == -1) {
+                            msg.append(" [최대강화 달성]");
+                        } else if (code == -3) {
+                            int prevLv = getBossEnhanceLevel(nq - 1);
+                            int newLv  = getBossEnhanceLevel(nq);
+                            String prevLabel = (prevLv == 0) ? "0강화" : "+" + prevLv + "강화";
+                            String newLabel  = "+" + newLv + "강화";
+                            if (newLv > prevLv) msg.append(" [강화! ").append(prevLabel).append(" → ").append(newLabel).append("]");
+                            else msg.append(" [강화 누적 ").append(newLabel).append(" (").append(nq).append("개)]");
+                        } else {
+                            msg.append(" [신규 획득! 0강화]");
+                        }
+                        if (realId >= 7001 && realId <= 7019 && code != -1) {
+                            String tiers = getBossItemAllTiersLine(realId, nq);
+                            if (!tiers.isEmpty()) msg.append(NL).append("     ").append(tiers);
                         }
                         msg.append(NL);
                     }
@@ -1706,8 +1740,8 @@ public class BossAttackS3Controller {
                     String winner = itemWinners.get(w);
                     List<String> displays = winnerDisplays.get(winner);
                     itemDetailBlock.append("📦").append(w + 1).append("번 보상: ").append(winner).append(NL);
-                    for (int i = 0; i < displays.size(); i++)
-                        itemDetailBlock.append("  ").append(i + 1).append(") ").append(displays.get(i)).append(NL);
+                    for (int ii = 0; ii < displays.size(); ii++)
+                        itemDetailBlock.append("  ").append(ii + 1).append(") ").append(displays.get(ii)).append(NL);
                 }
                 itemDetailBlock.append(NL);
 
@@ -1928,17 +1962,32 @@ public class BossAttackS3Controller {
                     }
 
                     msg.append(NL);
+                    msg.append(NL);
                     for (int w = 0; w < itemWinners.size(); w++) {
                         String winner = itemWinners.get(w);
-                        List<Integer> codes = winnerItemIds.get(winner);
-                        List<String>  names = winnerItemNames.get(winner);
-                        int code = codes.get(0);
+                        List<Integer> codes  = winnerItemIds.get(winner);
+                        List<Integer> enhIds = winnerEnhItemIds.get(winner);
+                        List<String>  names  = winnerItemNames.get(winner);
+                        List<Integer> nqs    = winnerNewQtys.get(winner);
+                        int code  = codes.get(0);
+                        int nq    = (nqs != null) ? nqs.get(0) : 1;
+                        int realId = (code >= 0) ? code : (enhIds != null && !enhIds.isEmpty() ? enhIds.get(0) : 0);
                         msg.append(w + 1).append("번 보상: ").append(names.get(0)).append(" : ").append(winner);
-                        if (code == -1) msg.append(" [최대강화 달성]");
-                        if (code == -3) {
-                            List<Integer> nqs = winnerNewQtys.get(winner);
-                            int nq = (nqs != null) ? nqs.get(0) : 2;
-                            msg.append(" [강화! ").append(enhanceSuffix(nq)).append("]");
+                        if (code == -1) {
+                            msg.append(" [최대강화 달성]");
+                        } else if (code == -3) {
+                            int prevLv = getBossEnhanceLevel(nq - 1);
+                            int newLv  = getBossEnhanceLevel(nq);
+                            String prevLabel = (prevLv == 0) ? "0강화" : "+" + prevLv + "강화";
+                            String newLabel  = "+" + newLv + "강화";
+                            if (newLv > prevLv) msg.append(" [강화! ").append(prevLabel).append(" → ").append(newLabel).append("]");
+                            else msg.append(" [강화 누적 ").append(newLabel).append(" (").append(nq).append("개)]");
+                        } else {
+                            msg.append(" [신규 획득! 0강화]");
+                        }
+                        if (realId >= 7001 && realId <= 7019 && code != -1) {
+                            String tiers = getBossItemAllTiersLine(realId, nq);
+                            if (!tiers.isEmpty()) msg.append(NL).append("     ").append(tiers);
                         }
                         msg.append(NL);
                     }
@@ -1948,6 +1997,7 @@ public class BossAttackS3Controller {
                         List<String> displays = winnerDisplays.get(winner);
                         itemDetailBlock.append("📦").append(w + 1).append("번 보상: ").append(displays.get(0)).append(NL);
                     }
+                    itemDetailBlock.append(NL);
                     itemDetailBlock.append(NL);
 
                     for (String winner : itemWinners) {

@@ -7161,28 +7161,37 @@ public class BossAttackController {
 			}
 		} catch (Exception ignore) {}
 
-		List<Integer> newItems = new ArrayList<>(bossItems);
-		List<Integer> enhanceable = new ArrayList<>();
-		// bossQtyMap(BOSS_HELL+BOSS_GACHA+BOSS_BUY 합산)으로 보유 여부 판정
-		newItems.removeIf(id -> bossQtyMap.getOrDefault(id, 0) >= BossAttackS3Controller.MAX_BOSS_ENHANCE);
-		for (int oid : bossQtyMap.keySet()) {
-		    int curQty = bossQtyMap.get(oid);
-		    if (curQty < BossAttackS3Controller.MAX_BOSS_ENHANCE) enhanceable.add(oid);
-		}
-
-		// 강화뽑기 차단 (추후 강화형태로 전환 시 아래 주석 해제)
-		// boolean isEnhance = newItems.isEmpty(); // 신규 없으면 강화 시도
-		// if (isEnhance && enhanceable.isEmpty())
-		// 	return userName + "님," + NL + "모든 보스 아이템 최대 강화 달성! 더 이상 뽑기 불가합니다." + NL
-		// 		+ "잔여 GP: " + String.format("%.2f", Math.floor((gp) * 100) / 100) + " GP";
-		// if (!isEnhance) bossItems = newItems;  // 신규 풀로 교체
-		// else           bossItems = enhanceable; // 강화 풀로 교체
-
-		boolean isEnhance = false;
-		if (newItems.isEmpty())
-			return userName + "님," + NL + "모든 보스 아이템을 보유 중입니다. 뽑기 불가합니다." + NL
-				+ "잔여 GP: " + String.format("%.2f", Math.floor((gp) * 100) / 100) + " GP";
-		bossItems = newItems; // 신규 풀로 교체
+			// ── 강화 레벨별 풀 선정: 가장 낮은 강화 레벨 아이템 우선 ──
+			// unowned(qty=0)=-1, 0강화(qty=1)=0, +1강화(qty=2~3)=1, ...
+			int minLv = Integer.MAX_VALUE;
+			for (int id : bossItems) {
+				int q = bossQtyMap.getOrDefault(id, 0);
+				if (q >= BossAttackS3Controller.MAX_BOSS_ENHANCE) continue;
+				int lv = (q == 0) ? -1 : BossAttackS3Controller.getBossEnhanceLevel(q);
+				if (lv < minLv) minLv = lv;
+			}
+			if (minLv == Integer.MAX_VALUE) {
+				return userName + "님," + NL + "모든 보스 아이템 최대 강화 달성! 뽑기 불가합니다." + NL
+					+ "잔여 GP: " + String.format("%.2f", Math.floor(gp * 100) / 100) + " GP";
+			}
+			final int fMinLv = minLv;
+			List<Integer> minPool = new ArrayList<>();
+			for (int id : bossItems) {
+				int q = bossQtyMap.getOrDefault(id, 0);
+				if (q >= BossAttackS3Controller.MAX_BOSS_ENHANCE) continue;
+				int lv = (q == 0) ? -1 : BossAttackS3Controller.getBossEnhanceLevel(q);
+				if (lv == fMinLv) minPool.add(id);
+			}
+			boolean isEnhance = (fMinLv >= 0);
+			String poolDesc;
+			if (!isEnhance) {
+				poolDesc = "미보유 아이템 " + minPool.size() + "종 중 랜덤";
+			} else {
+				String curLvLabel = (fMinLv == 0) ? "0강화" : "+" + fMinLv + "강화";
+				String nxtLvLabel = "+" + (fMinLv + 1) + "강화";
+				poolDesc = curLvLabel + " 아이템 " + minPool.size() + "종 → " + nxtLvLabel + " 도전";
+			}
+			bossItems = minPool;
 
 		// GP 차감 (가격: gachaPrice)
 		try {
@@ -7218,54 +7227,49 @@ public class BossAttackController {
 			return "아이템 지급 중 오류가 발생했습니다.";
 		}
 
-		// 아이템 이름/설명/옵션 조회
-		int curQty = bossQtyMap.getOrDefault(giveItemId, 0);
-		String curSuffix = BossAttackS3Controller.enhanceSuffix(curQty);
-		String beforeStr = isEnhance ? (curQty + "개" + (!curSuffix.isEmpty() ? "(" + curSuffix + ")" : "")) : "";
-		String afterStr  = (curQty + 1) + "개"
-		        + (!BossAttackS3Controller.enhanceSuffix(curQty + 1).isEmpty()
-		                ? "(" + BossAttackS3Controller.enhanceSuffix(curQty + 1) + ")" : "");
-		String itemLine = "#" + giveItemId;
-		try {
-			HashMap<String, Object> detail = botNewService.selectItemDetailById(giveItemId);
-			if (detail != null) {
-				String iName = Objects.toString(detail.get("ITEM_NAME"), "#" + giveItemId);
-				String rawDesc   = Objects.toString(detail.get("ITEM_DESC"), "");
-				String enhDesc   = (giveItemId >= 7001 && giveItemId <= 7019) ? BossAttackS3Controller.getBossItemEnhanceDesc(giveItemId) : "";
-				String iDesc     = !enhDesc.isEmpty() ? enhDesc : rawDesc;
-				StringBuilder opts = new StringBuilder();
-				int atkMin = detail.get("ATK_MIN") != null ? ((Number) detail.get("ATK_MIN")).intValue() : 0;
-				int atkMax = detail.get("ATK_MAX") != null ? ((Number) detail.get("ATK_MAX")).intValue() : 0;
-				int cri    = detail.get("ATK_CRI") != null ? ((Number) detail.get("ATK_CRI")).intValue() : 0;
-				int criDmg = detail.get("CRI_DMG") != null ? ((Number) detail.get("CRI_DMG")).intValue() : 0;
-				int hp     = detail.get("HP_MAX")  != null ? ((Number) detail.get("HP_MAX")).intValue()  : 0;
-				int regen  = detail.get("HP_REGEN")!= null ? ((Number) detail.get("HP_REGEN")).intValue(): 0;
-				int hpRate = detail.get("HP_MAX_RATE") != null ? ((Number) detail.get("HP_MAX_RATE")).intValue() : 0;
-				int atkRate= detail.get("ATK_MAX_RATE")!= null ? ((Number) detail.get("ATK_MAX_RATE")).intValue(): 0;
-				if (atkMin > 0 || atkMax > 0) opts.append(" ATK+").append(atkMin).append("~").append(atkMax);
-				if (cri    > 0) opts.append(" 크리+").append(cri);
-				if (criDmg > 0) opts.append(" 크리뎀+").append(criDmg);
-				if (hp     > 0) opts.append(" HP+").append(hp);
-				if (regen  > 0) opts.append(" 리젠+").append(regen);
-				if (hpRate > 0) opts.append(" HP+").append(hpRate).append("%");
-				if (atkRate> 0) opts.append(" ATK+").append(atkRate).append("%");
-				String enhSuffix = isEnhance ? BossAttackS3Controller.enhanceSuffix(curQty + 1) : "";
-				itemLine = iName + enhSuffix
-					+ (!iDesc.isEmpty() ? " (" + iDesc + ")" : "")
-					+ (opts.length() > 0 ? " [" + opts.toString().trim() + "]" : "");
+			// ── 아이템 이름 조회 ──
+			int curQty = bossQtyMap.getOrDefault(giveItemId, 0); // 지급 전 qty
+			int newQty = curQty + 1;
+			int prevLv = (curQty == 0) ? -1 : BossAttackS3Controller.getBossEnhanceLevel(curQty);
+			int newLv  = BossAttackS3Controller.getBossEnhanceLevel(newQty);
+			String iName = "#" + giveItemId;
+			try {
+				HashMap<String, Object> detail = botNewService.selectItemDetailById(giveItemId);
+				if (detail != null) iName = Objects.toString(detail.get("ITEM_NAME"), "#" + giveItemId);
+			} catch (Exception ignore) {}
+			
+			// ── 강화 레벨 표시 ──
+			String newLvStr  = (newLv == 0) ? "0강화" : "+" + newLv + "강화";
+			String prevLvStr = (prevLv < 0) ? "" : ((prevLv == 0) ? "0강화" : "+" + prevLv + "강화");
+			String actionLabel;
+			if (!isEnhance) {
+				actionLabel = "🆕 신규 획득! [" + newLvStr + "]";
+			} else if (newLv > prevLv) {
+				actionLabel = "⬆ 강화! [" + prevLvStr + " → " + newLvStr + "]";
+			} else {
+				actionLabel = "⬆ 강화 누적! [" + newLvStr + " (" + newQty + "개)]";
 			}
-		} catch (Exception ignore) {}
-
-		String actionWord = isEnhance ? "강화!" : "획득!";
-		String qtyProgress = isEnhance ? " (" + beforeStr + " → " + afterStr + ")" : " (" + afterStr + ")";
-		String effectChange = (isEnhance && giveItemId >= 7001 && giveItemId <= 7021)
-		        ? BossAttackS3Controller.getBossItemLevelChangeLine(giveItemId, curQty) : "";
-		return userName + "님," + NL
-				+ "보스뽑기! (-" + (int)gachaPrice + " GP) [보유유물 " + ownedBossCount + "개]" + NL
-				+ "▶ " + actionWord + " " + itemLine + NL
-				+ "- 수량: " + qtyProgress + NL
-				+ (!effectChange.isEmpty() ? "- 효과변화: " + effectChange + NL : "")
-				+ "- 잔여 GP: " + String.format("%.2f", Math.floor((gp - gachaPrice) * 100) / 100) + " GP";
+			
+			// 강화 단계 효과 변화
+			String effectChange = (isEnhance && newLv > prevLv && giveItemId >= 7001 && giveItemId <= 7021)
+				? BossAttackS3Controller.getBossItemLevelChangeLine(giveItemId, curQty) : "";
+			
+			// 전체 강화 단계 목록
+			String allTiersLine = (giveItemId >= 7001 && giveItemId <= 7021)
+				? BossAttackS3Controller.getBossItemAllTiersLine(giveItemId, newQty) : "";
+			
+			StringBuilder sb = new StringBuilder();
+			sb.append(userName).append("님,").append(NL);
+			sb.append("⚔ 보스뽑기! (-").append((int)gachaPrice).append(" GP) [보유유물 ").append(ownedBossCount).append("개]").append(NL);
+			sb.append("🎲 뽑기 풀: ").append(poolDesc).append(NL);
+			sb.append("──────────────").append(NL);
+			sb.append(actionLabel).append(" ").append(iName).append(NL);
+			if (!effectChange.isEmpty()) sb.append(" 효과: ").append(effectChange).append(NL);
+			if (!allTiersLine.isEmpty()) sb.append(" ").append(allTiersLine).append(NL);
+			sb.append(" 보유수량: ").append(newQty).append("개").append(NL);
+			sb.append("──────────────").append(NL);
+			sb.append("잔여 GP: ").append(String.format("%.2f", Math.floor((gp - gachaPrice) * 100) / 100)).append(" GP");
+			return sb.toString();
 	}
 
 		private String sellCategoryItem(String userName, String roomName, String slotKey) throws Exception {
