@@ -164,19 +164,36 @@ public class BossAttackS3Controller {
         BOSS_ITEM_EFFECT = java.util.Collections.unmodifiableMap(e);
     }
 
+    /** raw 테이블값 → 표시 문자열 변환 (단위 포함)
+     *  7005: ÷10 + "%" (퍼밀 저장)
+     *  7007: ÷10 + "%p" (×10 저장)
+     *  7012: ÷2  + "배" (×2 저장)
+     */
+    static String displayVal(int itemId, int raw) {
+        switch (itemId) {
+            case 7005: { double v = raw / 10.0; return (v == (int)v ? String.valueOf((int)v) : String.valueOf(v)) + "%"; }
+            case 7007: { double v = raw / 10.0; return (v == (int)v ? String.valueOf((int)v) : String.valueOf(v)) + "%p"; }
+            case 7012: { double v = raw / 2.0;  return (v == (int)v ? String.valueOf((int)v) : String.valueOf(v)) + "배"; }
+            default: {
+                String[] eff = BOSS_ITEM_EFFECT.get(itemId);
+                return raw + (eff != null ? eff[1] : "");
+            }
+        }
+    }
+
         /** 보스 아이템 강화 옵션 전체 단계 설명 반환 */
     public static String getBossItemEnhanceDesc(int itemId) {
         int[] vals = BOSS_ENHANCE_TABLE.get(itemId);
         String[] eff = BOSS_ITEM_EFFECT.get(itemId);
         if (eff == null) return "";
-        String label = eff[0], unit = eff[1];
+        String label = eff[0];
         if (vals == null) return label;
         String[] lvLabels = {"0강화", "+1강화", "+2강화", "+3강화", "+4강화", "+5강화"};
         StringBuilder sb = new StringBuilder();
         sb.append(label).append(": ");
         for (int i = 0; i < vals.length; i++) {
             if (i > 0) sb.append(" / ");
-            sb.append(lvLabels[i]).append(":").append(vals[i]).append(unit);
+            sb.append(lvLabels[i]).append(":").append(displayVal(itemId, vals[i]));
         }
         return sb.toString();
     }
@@ -186,14 +203,14 @@ public class BossAttackS3Controller {
         int[] vals = BOSS_ENHANCE_TABLE.get(itemId);
         String[] eff = BOSS_ITEM_EFFECT.get(itemId);
         if (vals == null || eff == null) return "";
-        String unit = eff[1];
         int curLv = getBossEnhanceLevel(curQty);
         String[] lvLabels = {"0강화", "+1강화", "+2강화", "+3강화", "+4강화", "+5강화"};
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < vals.length; i++) {
             if (i > 0) sb.append(" / ");
-            if (i == curLv) sb.append("[").append(lvLabels[i]).append(":").append(vals[i]).append(unit).append("]");
-            else sb.append(lvLabels[i]).append(":").append(vals[i]).append(unit);
+            String disp = lvLabels[i] + ":" + displayVal(itemId, vals[i]);
+            if (i == curLv) sb.append("[").append(disp).append("]");
+            else sb.append(disp);
         }
         return sb.toString();
     }
@@ -233,7 +250,7 @@ public class BossAttackS3Controller {
         int curVal = getBossEnhanceVal(itemId, curQty);
         int newVal = getBossEnhanceVal(itemId, curQty + 1);
         if (curVal == newVal) return "";
-        return eff[0] + " " + curVal + eff[1] + " → " + newVal + eff[1];
+        return eff[0] + " " + displayVal(itemId, curVal) + " → " + displayVal(itemId, newVal);
     }
 
     /** 헬보스 보상 아이템 목록 (BOSS_HELL 타입 기반 동적 로드, 캐시) */
