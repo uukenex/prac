@@ -102,7 +102,7 @@ public class LoaUnifiedViewController {
             + "<a class='loa-nav-item' href='" + base + "/battle-log-view'>&#128220; 배틀로그</a>"
             + "<a class='loa-nav-item' href='" + base + "/ranking-view'>&#127942; 랭킹</a>"
             + "<a class='loa-nav-item' href='" + base + "/boss-status-view'>&#128009; 보스현황</a>"
-            + "<a class='loa-nav-item active' href='" + base + "/boss-item-view'>&#9876; 유물옵션</a>"
+            + "<a class='loa-nav-item active' href='" + base + "/boss-item-view'>&#9876; 보스템옵션</a>"
             + "<a class='loa-nav-item' href='" + base + "/dmg-sim-view'>&#9876; 데미지시뮬</a>"
             + "<a class='loa-nav-item' href='" + base + "/equip-rank-view'>&#128202; 장비랭킹</a>"
             + "</nav>";
