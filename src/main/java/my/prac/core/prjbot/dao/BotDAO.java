@@ -101,6 +101,7 @@ public interface BotDAO {
 	public int insertAuctionItemOne(HashMap<String, Object> itemOne);
 	
 	public List<HashMap<String,Object>> selectMarketItemPriceInfo(HashMap<String,Object> map);
+	public List<HashMap<String,Object>> selectLatestGemPrices();
 	
 	//param to userName
 	public List<String> selectParam1ToNewUserSearch(HashMap<String,Object> map);

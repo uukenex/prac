@@ -5438,6 +5438,30 @@ public class LoaChatController {
 		gemTypeMap.put("멸화", "멸");
 		gemTypeMap.put("홍염", "홍");
 
+		// 보석 가격 맵 로드: "N겁" → 가격 (광휘는 겁화 가격 사용)
+		java.util.Map<String, Long> gemPriceMap = new java.util.HashMap<>();
+		try {
+			List<HashMap<String,Object>> priceRows = botService.selectLatestGemPrices();
+			java.util.Map<String, String> typeShortMap = new java.util.HashMap<>();
+			typeShortMap.put("겁화", "겁"); typeShortMap.put("작열", "작");
+			typeShortMap.put("멸화", "멸"); typeShortMap.put("홍염", "홍");
+			for (HashMap<String,Object> row : priceRows) {
+				String iName = row.get("ITEM_NAME").toString(); // e.g. "8레벨 겁화의 보석"
+				long price = ((Number) row.get("PRICE")).longValue();
+				for (Map.Entry<String,String> e : typeShortMap.entrySet()) {
+					if (iName.contains(e.getKey())) {
+						String lvStr = iName.replaceAll("[^0-9].*", "").trim();
+						String key = lvStr + e.getValue(); // e.g. "8겁"
+						gemPriceMap.put(key, price);
+						if ("겁".equals(e.getValue())) {
+							gemPriceMap.put(lvStr + "광", price); // 광휘 = 겁화 가격
+						}
+						break;
+					}
+				}
+			}
+		} catch (Exception ignore) {}
+
 		// 아이템레벨 가장 높은 캐릭터의 서버를 기준으로 사용
 		String serverName = siblings.stream()
 			.max(java.util.Comparator.comparingDouble(s ->
@@ -5456,6 +5480,7 @@ public class LoaChatController {
 		StringBuilder boundSB = new StringBuilder();
 		int totalTradeable = 0;
 		int totalBound = 0;
+		long totalTradeableGold = 0;
 
 		for (HashMap<String, Object> sib : siblings) { try {
 			if (!serverName.equals(sib.get("ServerName").toString())) continue;
@@ -5561,16 +5586,26 @@ public class LoaChatController {
 			if (tradeableCount > 0) {
 				totalTradeable += tradeableCount;
 				totalBound += boundCount;
+				if (tradeableSB.length() > 0) tradeableSB.append(enterStr);
 				tradeableSB.append(sibName).append(" (").append(itemAvgLevel).append(")").append(displayCp).append(enterStr);
 				StringBuilder gemLine = new StringBuilder();
+				long charGold = 0;
 				for (Map.Entry<Integer, java.util.LinkedHashMap<String, Integer>> lvEntry : tradeableGems.entrySet()) {
 					int lv = lvEntry.getKey();
 					for (Map.Entry<String, Integer> typeEntry : lvEntry.getValue().entrySet()) {
 						if (gemLine.length() > 0) gemLine.append(", ");
 						gemLine.append(lv).append(typeEntry.getKey()).append("(").append(typeEntry.getValue()).append(")");
+						String priceKey = lv + typeEntry.getKey();
+						if (gemPriceMap.containsKey(priceKey)) {
+							charGold += gemPriceMap.get(priceKey) * typeEntry.getValue();
+						}
 					}
 				}
+				totalTradeableGold += charGold;
 				tradeableSB.append(gemLine).append(enterStr);
+				if (charGold > 0) {
+					tradeableSB.append(String.format("%,d", charGold)).append(" 골드").append(enterStr);
+				}
 			} else if (boundCount > 0) {
 				totalBound += boundCount;
 				boundSB.append(sibName).append(" (").append(itemAvgLevel).append(")").append(displayCp).append(enterStr);
@@ -5580,6 +5615,9 @@ public class LoaChatController {
 
 		StringBuilder result = new StringBuilder();
 		result.append("❖ 원정대 보석 현황").append(enterStr);
+		if (totalTradeableGold > 0) {
+			result.append("거래 가능 보석: ").append(String.format("%,d", totalTradeableGold)).append(" 골드").append(enterStr);
+		}
 		result.append("거래가능 ").append(totalTradeable).append("개, 귀속 ").append(totalBound).append("개").append(enterStr);
 		if (tradeableSB.length() > 0) {
 			result.append(enterStr).append(tradeableSB);

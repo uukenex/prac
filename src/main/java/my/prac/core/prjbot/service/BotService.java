@@ -88,6 +88,7 @@ public interface BotService {
 	public void insertAuctionItemOne(HashMap<String, Object> rawDataOne) throws Exception;
 	
 	public List<HashMap<String,Object>> selectMarketItemPriceInfo(HashMap<String,Object> map);
+	public List<HashMap<String,Object>> selectLatestGemPrices();
 
 	/** updown */
 	public HashMap<String,Object> selectBotPointUpdownS(HashMap<String,Object> map);

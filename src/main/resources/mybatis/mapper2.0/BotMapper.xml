@@ -828,6 +828,21 @@
 		
 	</select>
 	
+	<!-- 보석 최신 가격 일괄 조회 (레벨별 겁화/작열/멸화/홍염) -->
+	<select id="selectLatestGemPrices" resultType="HashMap">
+		/* selectLatestGemPrices */
+		SELECT ITEM_NAME, PRICE
+		  FROM (
+		       SELECT ITEM_NAME, PRICE,
+		              ROW_NUMBER() OVER (PARTITION BY ITEM_NAME ORDER BY INSERT_DATE DESC) AS RN
+		         FROM T_MARKET_ITEM_PRICE
+		        WHERE (ITEM_NAME LIKE '%겁화의 보석' OR ITEM_NAME LIKE '%작열의 보석'
+		            OR ITEM_NAME LIKE '%멸화의 보석' OR ITEM_NAME LIKE '%홍염의 보석')
+		          AND INSERT_DATE >= SYSDATE - 1
+		       )
+		 WHERE RN = 1
+	</select>
+
 	<select id="selectBotPointRankFightBeforeCount" parameterType="HashMap" resultType="int">
 		SELECT COUNT(1)
 		  FROM TBOT_POINT_FIGHT A
