@@ -1909,9 +1909,10 @@
 		    A.ITEM_LEVEL   = B.ITEM_LEVEL,
 		    A.COMBAT_POWER = B.COMBAT_POWER,
 		    A.UPDATE_DATE  = SYSDATE
-		WHERE B.COMBAT_POWER > A.COMBAT_POWER
-		
-		WHEN NOT MATCHED THEN
+		WHERE B.COMBAT_POWER &lt;= 20000
+		  AND (B.COMBAT_POWER > A.COMBAT_POWER OR COALESCE(A.UPDATE_DATE, A.INSERT_DATE) &lt; SYSDATE - 7)
+
+		WHEN NOT MATCHED AND B.COMBAT_POWER &lt;= 20000 THEN
 		INSERT
 		(
 		    CHARACTER_NAME,
@@ -1931,5 +1932,11 @@
 		    SYSDATE
 		)
 	</update>
-	
+
+	<select id="selectCharacterPower" parameterType="hashMap" resultType="hashMap">
+		SELECT COMBAT_POWER
+		FROM TBOT_CHARACTER_POWER
+		WHERE CHARACTER_NAME = #{characterName}
+	</select>
+
 </mapper>

@@ -5426,21 +5426,53 @@ public class LoaChatController {
 			if (!serverName.equals(sib.get("ServerName").toString())) continue;
 			String sibName = sib.get("CharacterName").toString();
 			String itemAvgLevel = sib.get("ItemAvgLevel").toString();
+			String className = sib.get("CharacterClassName") != null ? sib.get("CharacterClassName").toString() : "";
 
-			String sibEncoded = java.net.URLEncoder.encode(sibName, "UTF-8");
-			String armoryUrl = lostArkAPIurl + "/armories/characters/" + sibEncoded + "/gems";
-			String armoryData;
+			// 전체 아머리 조회 (보석+프로필 동시 획득)
+			Map<String, Object> armoryAll;
 			try {
-				armoryData = LoaApiUtils.connect_process(armoryUrl);
+				armoryAll = sub.sumTotalPowerSearch2(sibName);
 			} catch (Exception e) {
 				continue;
 			}
-			if (armoryData == null || armoryData.trim().equals("null")) continue;
+			if (armoryAll == null) continue;
 
-			Map<String, Object> armoryGem;
+			// 전투력 저장
+			Map<String, Object> armoryProfile = new HashMap<>();
 			try {
-				armoryGem = new ObjectMapper().readValue(armoryData, new TypeReference<Map<String, Object>>() {});
-			} catch (Exception e) { continue; }
+				armoryProfile = (Map<String, Object>) armoryAll.get("ArmoryProfile");
+			} catch (Exception ignored) {}
+			if (armoryProfile != null && armoryProfile.get("CombatPower") != null) {
+				String cpStr = armoryProfile.get("CombatPower").toString().replaceAll(",", "");
+				try {
+					double cp = Double.parseDouble(cpStr);
+					HashMap<String, Object> dbMap = new HashMap<>();
+					dbMap.put("characterName", sibName);
+					dbMap.put("serverName", serverName);
+					dbMap.put("className", className);
+					dbMap.put("itemLevel", Double.parseDouble(itemAvgLevel.replaceAll(",", "")));
+					dbMap.put("combatPower", cp);
+					botService.mergeCharacterPower(dbMap);
+				} catch (Exception ignored) {}
+			}
+
+			// 저장된 전투력 조회 (표시용)
+			String displayCp = "";
+			try {
+				HashMap<String, Object> cpQuery = new HashMap<>();
+				cpQuery.put("characterName", sibName);
+				HashMap<String, Object> cpRow = botService.selectCharacterPower(cpQuery);
+				if (cpRow != null && cpRow.get("COMBAT_POWER") != null) {
+					double cpVal = Double.parseDouble(cpRow.get("COMBAT_POWER").toString());
+					displayCp = " (전:" + (int) cpVal + ")";
+				}
+			} catch (Exception ignored) {}
+
+			// 보석 파싱
+			Map<String, Object> armoryGem = new HashMap<>();
+			try {
+				armoryGem = (Map<String, Object>) armoryAll.get("ArmoryGem");
+			} catch (Exception ignored) {}
 			if (armoryGem == null) continue;
 
 			List<Map<String, Object>> gems;
@@ -5494,7 +5526,7 @@ public class LoaChatController {
 			if (tradeableCount > 0) {
 				totalTradeable += tradeableCount;
 				totalBound += boundCount;
-				tradeableSB.append(sibName).append(" (").append(itemAvgLevel).append(")").append(enterStr);
+				tradeableSB.append(sibName).append(" (").append(itemAvgLevel).append(")").append(displayCp).append(enterStr);
 				StringBuilder gemLine = new StringBuilder();
 				for (Map.Entry<Integer, java.util.LinkedHashMap<String, Integer>> lvEntry : tradeableGems.entrySet()) {
 					int lv = lvEntry.getKey();
@@ -5506,7 +5538,7 @@ public class LoaChatController {
 				tradeableSB.append(gemLine).append(enterStr);
 			} else if (boundCount > 0) {
 				totalBound += boundCount;
-				boundSB.append(sibName).append(" (").append(itemAvgLevel).append(")").append(enterStr);
+				boundSB.append(sibName).append(" (").append(itemAvgLevel).append(")").append(displayCp).append(enterStr);
 				boundSB.append("  ").append(boundCount).append("개 귀속").append(enterStr);
 			}
 		}

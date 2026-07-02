@@ -203,6 +203,7 @@ public interface BotDAO {
 	public int insertBotPointStatUser(HashMap<String,Object> map) throws Exception;
 	public int execSPProcTest(HashMap<String,Object> map) throws Exception;
 	public int mergeCharacterPower(HashMap<String,Object> map);
-	
+	public HashMap<String,Object> selectCharacterPower(HashMap<String,Object> map);
+
 }
 

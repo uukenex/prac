@@ -877,4 +877,8 @@ public class BotServiceImpl implements BotService {
 	public void mergeCharacterPower(HashMap<String,Object> map) {
 		botDAO.mergeCharacterPower(map);
 	}
+
+	public HashMap<String,Object> selectCharacterPower(HashMap<String,Object> map) {
+		return botDAO.selectCharacterPower(map);
+	}
 }
