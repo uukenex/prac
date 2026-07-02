@@ -56,6 +56,7 @@ tr:hover td { background: #14112a; }
 </style>
 </head>
 <body>
+<%@ include file="_loa_nav.jsp" %>
 <div class="wrap">
   <div class="page-title">⚔ 보스 유물 강화 옵션</div>
   <div class="page-sub">최대 +5강화까지 각 단계별 수치를 확인하세요. (qty: 0강화=1개, +1=2~3개, +2=4~6개, +3=7~10개, +4=11~15개, +5=16~21개)</div>
