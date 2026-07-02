@@ -839,7 +839,19 @@ public class LoaChatController {
 				break;
 				
 				/*
-			case "/보스": case "/보스정보":
+			case "/보석": case "/귀속":
+				if (param1 != null && !param1.trim().equals("")) {
+					try {
+						val = gemSearch(param1.trim());
+					} catch (Exception e) {
+						e.printStackTrace();
+						val = errorCodeMng(e, reqMap);
+					}
+				} else {
+					val = "/보석 캐릭명 으로 입력해주세요";
+				}
+				break;
+						case "/보스": case "/보스정보":
 				gameYnList = botService.selectGamePlayYn(reqMap);
 				playYn ="1"; 
 				for(HashMap<String,Object> gameYn : gameYnList) {
@@ -5383,6 +5395,128 @@ public class LoaChatController {
 		
 		return resMsg;
 	}
+	String gemSearch(String charName) throws Exception {
+		String encoded = java.net.URLEncoder.encode(charName, "UTF-8");
+		String siblingsUrl = lostArkAPIurl + "/characters/" + encoded + "/siblings";
+		String siblingsData;
+		try {
+			siblingsData = LoaApiUtils.connect_process(siblingsUrl);
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new Exception("E0004");
+		}
+		List<HashMap<String, Object>> siblings = new ObjectMapper().readValue(siblingsData, new TypeReference<List<Map<String, Object>>>() {});
+		if (siblings == null || siblings.isEmpty()) return charName + " 원정대를 찾을 수 없습니다.";
+
+		java.util.LinkedHashMap<String, String> gemTypeMap = new java.util.LinkedHashMap<>();
+		gemTypeMap.put("겁화", "겁");
+		gemTypeMap.put("작열", "작");
+		gemTypeMap.put("광휘", "광");
+		gemTypeMap.put("멸화", "멸");
+		gemTypeMap.put("홍염", "홍");
+
+		String serverName = siblings.get(0).get("ServerName").toString();
+
+		StringBuilder tradeableSB = new StringBuilder();
+		StringBuilder boundSB = new StringBuilder();
+		int totalTradeable = 0;
+		int totalBound = 0;
+
+		for (HashMap<String, Object> sib : siblings) {
+			if (!serverName.equals(sib.get("ServerName").toString())) continue;
+			String sibName = sib.get("CharacterName").toString();
+			String itemAvgLevel = sib.get("ItemAvgLevel").toString();
+
+			String sibEncoded = java.net.URLEncoder.encode(sibName, "UTF-8");
+			String armoryUrl = lostArkAPIurl + "/armories/characters/" + sibEncoded + "/gems";
+			String armoryData;
+			try {
+				armoryData = LoaApiUtils.connect_process(armoryUrl);
+			} catch (Exception e) {
+				continue;
+			}
+			if (armoryData == null || armoryData.trim().equals("null")) continue;
+
+			Map<String, Object> armoryGem;
+			try {
+				armoryGem = new ObjectMapper().readValue(armoryData, new TypeReference<Map<String, Object>>() {});
+			} catch (Exception e) { continue; }
+			if (armoryGem == null) continue;
+
+			List<Map<String, Object>> gems;
+			try {
+				gems = (List<Map<String, Object>>) armoryGem.get("Gems");
+			} catch (Exception e) { continue; }
+			if (gems == null || gems.isEmpty()) continue;
+
+			java.util.TreeMap<Integer, java.util.LinkedHashMap<String, Integer>> tradeableGems
+				= new java.util.TreeMap<>(java.util.Collections.reverseOrder());
+			int boundCount = 0;
+			int tradeableCount = 0;
+
+			for (Map<String, Object> gem : gems) {
+				String gemName = Jsoup.parse((String) gem.get("Name")).text();
+				int gemLv = (int) gem.get("Level");
+				String shortName = null;
+				for (Map.Entry<String, String> e : gemTypeMap.entrySet()) {
+					if (gemName.contains(e.getKey())) { shortName = e.getValue(); break; }
+				}
+				if (shortName == null) continue;
+
+				boolean isBound = false;
+				try {
+					String tooltip = (String) gem.get("Tooltip");
+					if (tooltip != null) {
+						Map<String, Object> tooltipMap = new ObjectMapper().readValue(tooltip, new TypeReference<Map<String, Object>>() {});
+						Object el003 = tooltipMap.get("Element_003");
+						if (el003 != null && el003.toString().contains("거래 불가")) isBound = true;
+					}
+				} catch (Exception ignored) {}
+
+				if (isBound) {
+					boundCount++;
+				} else {
+					tradeableCount++;
+					tradeableGems.computeIfAbsent(gemLv, k -> new java.util.LinkedHashMap<>())
+						.merge(shortName, 1, Integer::sum);
+				}
+			}
+
+			if (tradeableCount == 0 && boundCount == 0) continue;
+
+			if (tradeableCount > 0) {
+				totalTradeable += tradeableCount;
+				tradeableSB.append(sibName).append(" (").append(itemAvgLevel).append(")").append(enterStr);
+				StringBuilder gemLine = new StringBuilder();
+				for (Map.Entry<Integer, java.util.LinkedHashMap<String, Integer>> lvEntry : tradeableGems.entrySet()) {
+					int lv = lvEntry.getKey();
+					for (Map.Entry<String, Integer> typeEntry : lvEntry.getValue().entrySet()) {
+						if (gemLine.length() > 0) gemLine.append(", ");
+						gemLine.append(lv).append(typeEntry.getKey()).append("(").append(typeEntry.getValue()).append(")");
+					}
+				}
+				tradeableSB.append(gemLine).append(enterStr);
+			}
+
+			if (boundCount > 0) {
+				totalBound += boundCount;
+				boundSB.append(sibName).append(" (").append(itemAvgLevel).append(")").append(enterStr);
+				boundSB.append("  ").append(boundCount).append("개 귀속").append(enterStr);
+			}
+		}
+
+		StringBuilder result = new StringBuilder();
+		result.append("❖ 원정대 보석 현황").append(enterStr);
+		result.append("거래가능 ").append(totalTradeable).append("개, 귀속 ").append(totalBound).append("개").append(enterStr);
+		if (tradeableSB.length() > 0) {
+			result.append(enterStr).append(tradeableSB);
+		}
+		if (boundSB.length() > 0) {
+			result.append(enterStr).append("귀속 보석 ▼").append(enterStr).append(enterStr).append(boundSB);
+		}
+		return result.toString().trim();
+	}
+
 	String subCharacterInfoSearch2(String userId) throws Exception {
 		String ordUserId=userId;
 		userId = URLEncoder.encode(userId, "UTF-8");
