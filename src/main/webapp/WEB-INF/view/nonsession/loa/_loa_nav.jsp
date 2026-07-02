@@ -113,7 +113,7 @@
   <a class="loa-nav-item" data-page="ranking"     href="#">🏆 랭킹</a>
   <%-- <a class="loa-nav-item" data-page="equip-sim"   href="#">🔬 장비시뮬</a> --%>
   <a class="loa-nav-item" data-page="boss-status" href="#">🐉 보스현황</a>
-  <a class="loa-nav-item" data-page="boss-item"  href="#">⚔ 유물옵션</a>
+  <a class="loa-nav-item" data-page="boss-item"  href="#">⚔ 보스템옵션</a>
   <a class="loa-nav-item" data-page="dmg-sim"    href="#">⚔️ 데미지시뮬</a>
   <a class="loa-nav-item" data-page="equip-rank" href="#">📊 장비랭킹</a>
 </nav>

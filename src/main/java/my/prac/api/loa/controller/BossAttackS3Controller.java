@@ -158,7 +158,7 @@ public class BossAttackS3Controller {
         e.put(7016, new String[]{"HP 흡수율",              "%",   "미보유시 기본 10%"});
         e.put(7017, new String[]{"상점 할인율",            "%",   null});
         e.put(7018, new String[]{"출석 상자 추가",         "개",  null});
-        e.put(7019, new String[]{"저주 스택 추가",         "개",  null});
+        e.put(7019, new String[]{"추가 스틸 수",            "개",  null});
         e.put(7020, new String[]{"슈퍼크리티컬 배율",      "배",  "미보유 5배 / 0강화 6배 / 1강화 6.5배 / 2강화 7배"});
         e.put(7021, new String[]{"아이템 수량 2배 확률",   "%",   "미보유 10% / 0강화 20% / 1강화 25% / 2강화 30%"});
         BOSS_ITEM_EFFECT = java.util.Collections.unmodifiableMap(e);

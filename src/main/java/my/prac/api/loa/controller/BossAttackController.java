@@ -7268,7 +7268,8 @@ public class BossAttackController {
 			if (!allTiersLine.isEmpty()) sb.append(" ").append(allTiersLine).append(NL);
 			sb.append(" 보유수량: ").append(newQty).append("개").append(NL);
 			sb.append("──────────────").append(NL);
-			sb.append("잔여 GP: ").append(String.format("%.2f", Math.floor((gp - gachaPrice) * 100) / 100)).append(" GP");
+			sb.append("잔여 GP: ").append(String.format("%.2f", Math.floor((gp - gachaPrice) * 100) / 100)).append(" GP").append(NL);
+			sb.append("http://rgb-tns.dev-apc.com/loa/boss-item-view");
 			return sb.toString();
 	}
 
