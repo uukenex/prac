@@ -5458,33 +5458,46 @@ public class LoaChatController {
 			String itemAvgLevel = sib.get("ItemAvgLevel").toString().replaceAll(",", "");
 			String className = sib.get("CharacterClassName") != null ? sib.get("CharacterClassName").toString() : "";
 
-			// 전체 아머리 조회 (보석+프로필 동시 획득)
-			Map<String, Object> armoryAll;
+			// 보석 직접 조회 (안정적)
+			String sibEncoded = java.net.URLEncoder.encode(sibName, "UTF-8");
+			String armoryUrl = lostArkAPIurl + "/armories/characters/" + sibEncoded + "/gems";
+			String armoryData;
 			try {
-				armoryAll = sub.sumTotalPowerSearch2(sibName);
+				armoryData = LoaApiUtils.connect_process(armoryUrl);
 			} catch (Exception e) {
 				continue;
 			}
-			if (armoryAll == null) continue;
+			if (armoryData == null || armoryData.trim().equals("null")) continue;
 
-			// 전투력 저장
-			Map<String, Object> armoryProfile = new HashMap<>();
+			Map<String, Object> armoryGem;
 			try {
-				armoryProfile = (Map<String, Object>) armoryAll.get("ArmoryProfile");
+				armoryGem = new ObjectMapper().readValue(armoryData, new TypeReference<Map<String, Object>>() {});
+			} catch (Exception e) { continue; }
+			if (armoryGem == null) continue;
+
+			List<Map<String, Object>> gems;
+			try {
+				gems = (List<Map<String, Object>>) armoryGem.get("Gems");
+			} catch (Exception e) { continue; }
+			if (gems == null || gems.isEmpty()) continue;
+
+			// 전투력 저장 (실패해도 보석 조회에 영향 없음)
+			try {
+				Map<String, Object> armoryAll = sub.sumTotalPowerSearch2(sibName);
+				if (armoryAll != null) {
+					Map<String, Object> armoryProfile = (Map<String, Object>) armoryAll.get("ArmoryProfile");
+					if (armoryProfile != null && armoryProfile.get("CombatPower") != null) {
+						double cp = Double.parseDouble(armoryProfile.get("CombatPower").toString().replaceAll(",", ""));
+						HashMap<String, Object> dbMap = new HashMap<>();
+						dbMap.put("characterName", sibName);
+						dbMap.put("serverName", serverName);
+						dbMap.put("className", className);
+						dbMap.put("itemLevel", Double.parseDouble(itemAvgLevel.replaceAll(",", "")));
+						dbMap.put("combatPower", cp);
+						botService.mergeCharacterPower(dbMap);
+					}
+				}
 			} catch (Exception ignored) {}
-			if (armoryProfile != null && armoryProfile.get("CombatPower") != null) {
-				String cpStr = armoryProfile.get("CombatPower").toString().replaceAll(",", "");
-				try {
-					double cp = Double.parseDouble(cpStr);
-					HashMap<String, Object> dbMap = new HashMap<>();
-					dbMap.put("characterName", sibName);
-					dbMap.put("serverName", serverName);
-					dbMap.put("className", className);
-					dbMap.put("itemLevel", Double.parseDouble(itemAvgLevel.replaceAll(",", "")));
-					dbMap.put("combatPower", cp);
-					botService.mergeCharacterPower(dbMap);
-				} catch (Exception ignored) {}
-			}
 
 			// 저장된 전투력 조회 (표시용)
 			String displayCp = "";
@@ -5497,19 +5510,6 @@ public class LoaChatController {
 					displayCp = " (전:" + (int) cpVal + ")";
 				}
 			} catch (Exception ignored) {}
-
-			// 보석 파싱
-			Map<String, Object> armoryGem = new HashMap<>();
-			try {
-				armoryGem = (Map<String, Object>) armoryAll.get("ArmoryGem");
-			} catch (Exception ignored) {}
-			if (armoryGem == null) continue;
-
-			List<Map<String, Object>> gems;
-			try {
-				gems = (List<Map<String, Object>>) armoryGem.get("Gems");
-			} catch (Exception e) { continue; }
-			if (gems == null || gems.isEmpty()) continue;
 
 			java.util.TreeMap<Integer, java.util.LinkedHashMap<String, Integer>> tradeableGems
 				= new java.util.TreeMap<>(java.util.Collections.reverseOrder());
