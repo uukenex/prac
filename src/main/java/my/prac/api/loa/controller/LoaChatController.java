@@ -838,7 +838,6 @@ public class LoaChatController {
 				}
 				break;
 				
-				/*
 			case "/보석": case "/귀속":
 				if (param1 != null && !param1.trim().equals("")) {
 					try {
@@ -851,6 +850,7 @@ public class LoaChatController {
 					val = "/보석 캐릭명 으로 입력해주세요";
 				}
 				break;
+				/*
 						case "/보스": case "/보스정보":
 				gameYnList = botService.selectGamePlayYn(reqMap);
 				playYn ="1"; 
