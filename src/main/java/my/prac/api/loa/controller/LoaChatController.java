@@ -5417,6 +5417,13 @@ public class LoaChatController {
 
 		String serverName = siblings.get(0).get("ServerName").toString();
 
+		// 아이템레벨 내림차순 정렬
+		siblings.sort((a, b) -> {
+			double la = Double.parseDouble(a.get("ItemAvgLevel").toString().replaceAll(",", ""));
+			double lb = Double.parseDouble(b.get("ItemAvgLevel").toString().replaceAll(",", ""));
+			return Double.compare(lb, la);
+		});
+
 		StringBuilder tradeableSB = new StringBuilder();
 		StringBuilder boundSB = new StringBuilder();
 		int totalTradeable = 0;
@@ -5425,7 +5432,7 @@ public class LoaChatController {
 		for (HashMap<String, Object> sib : siblings) {
 			if (!serverName.equals(sib.get("ServerName").toString())) continue;
 			String sibName = sib.get("CharacterName").toString();
-			String itemAvgLevel = sib.get("ItemAvgLevel").toString();
+			String itemAvgLevel = sib.get("ItemAvgLevel").toString().replaceAll(",", "");
 			String className = sib.get("CharacterClassName") != null ? sib.get("CharacterClassName").toString() : "";
 
 			// 전체 아머리 조회 (보석+프로필 동시 획득)
