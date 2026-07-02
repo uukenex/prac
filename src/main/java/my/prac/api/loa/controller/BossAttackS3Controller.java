@@ -1789,7 +1789,7 @@ public class BossAttackS3Controller {
                 Map<String, Double> gpAmtMap = new LinkedHashMap<>();
                 for (String winner : gpWinners) {
                     double base = 0.5 + rand.nextInt(6) * 0.1;
-                    gpAmtMap.put(winner, base * 2); // 대악마: 2배 (1.0~2.0GP)
+                    gpAmtMap.put(winner, applyGpNewbieMult(winner, base * 2)); // 대악마: 2배 (1.0~2.0GP), 신규보너스 적용
                 }
                 for (int w = 0; w < gpWinners.size(); w++) {
                     String winner = gpWinners.get(w);
@@ -1830,7 +1830,8 @@ public class BossAttackS3Controller {
             if (allNames.size() > 0) {
                 msg.append("▶ 전체 참여 보상").append(NL);
                 for (String participant : allNames) {
-                    msg.append("[").append(participant).append("] 플래티넘상자 1개 + 0.5GP").append(NL);
+                    double partGp = applyGpNewbieMult(participant, 0.5);
+                    msg.append("[").append(participant).append("] 플래티넘상자 1개 + ").append(String.format("%.2f", partGp)).append("GP").append(NL);
                 }
                 msg.append(NL);
                 for (String participant : allNames) {
@@ -1844,7 +1845,7 @@ public class BossAttackS3Controller {
                     try {
                         HashMap<String, Object> gpMap = new HashMap<>();
                         gpMap.put("userName", participant); gpMap.put("roomName", roomName);
-                        gpMap.put("score",    0.5); gpMap.put("cmd", "BOSS_HELL_PART_GP");
+                        gpMap.put("score",    applyGpNewbieMult(participant, 0.5)); gpMap.put("cmd", "BOSS_HELL_PART_GP");
                         botNewService.insertGpRecord(gpMap);
                     } catch (Exception e) {}
                 }
@@ -2042,13 +2043,13 @@ public class BossAttackS3Controller {
                     for (String n : allNames) { if (!itemWinnerSet.contains(n)) nonWinners.add(n); }
                     if (!nonWinners.isEmpty()) {
                         msg.append(NL).append("▶ 참여 보상 (미당첨)").append(NL);
-                        for (String n : nonWinners) msg.append("[").append(n).append("] 1GP").append(NL);
+                        for (String n : nonWinners) msg.append("[").append(n).append("] ").append(String.format("%.2f", applyGpNewbieMult(n, 1.0))).append("GP").append(NL);
                         msg.append(NL);
                         for (String n : nonWinners) {
                             try {
                                 HashMap<String, Object> gpMap = new HashMap<>();
                                 gpMap.put("userName", n); gpMap.put("roomName", roomName);
-                                gpMap.put("score", 1.0); gpMap.put("cmd", "BOSS_HELL_PART_GP");
+                                gpMap.put("score", applyGpNewbieMult(n, 1.0)); gpMap.put("cmd", "BOSS_HELL_PART_GP");
                                 botNewService.insertGpRecord(gpMap);
                             } catch (Exception ex) {}
                         }
@@ -2064,20 +2065,21 @@ public class BossAttackS3Controller {
                     Set<String> gpWinnerSet = new java.util.HashSet<>(gpWinners);
                     msg.append(NL);
                     for (int w = 0; w < gpWinners.size(); w++) {
-                        msg.append("✨").append(w + 1).append("번 보상: [").append(gpWinners.get(w)).append("] 3GP").append(NL);
+                        double wgp = applyGpNewbieMult(gpWinners.get(w), 3.0);
+                        msg.append("✨").append(w + 1).append("번 보상: [").append(gpWinners.get(w)).append("] ").append(String.format("%.2f", wgp)).append("GP").append(NL);
                     }
                     List<String> gpNonWinners = new ArrayList<>();
                     for (String n : allNames) { if (!gpWinnerSet.contains(n)) gpNonWinners.add(n); }
                     if (!gpNonWinners.isEmpty()) {
                         msg.append(NL).append("▶ 참여 보상 (미당첨)").append(NL);
-                        for (String n : gpNonWinners) msg.append("[").append(n).append("] 1GP").append(NL);
+                        for (String n : gpNonWinners) msg.append("[").append(n).append("] ").append(String.format("%.2f", applyGpNewbieMult(n, 1.0))).append("GP").append(NL);
                     }
                     msg.append(NL);
                     for (String winner : gpWinners) {
                         try {
                             HashMap<String, Object> gpMap = new HashMap<>();
                             gpMap.put("userName", winner); gpMap.put("roomName", roomName);
-                            gpMap.put("score",    3.0); gpMap.put("cmd", "BOSS_HELL_KILL_GP");
+                            gpMap.put("score",    applyGpNewbieMult(winner, 3.0)); gpMap.put("cmd", "BOSS_HELL_KILL_GP");
                             botNewService.insertGpRecord(gpMap);
                         } catch (Exception ignore) {}
                     }
@@ -2085,7 +2087,7 @@ public class BossAttackS3Controller {
                         try {
                             HashMap<String, Object> gpMap = new HashMap<>();
                             gpMap.put("userName", n); gpMap.put("roomName", roomName);
-                            gpMap.put("score",    1.0); gpMap.put("cmd", "BOSS_HELL_PART_GP");
+                            gpMap.put("score",    applyGpNewbieMult(n, 1.0)); gpMap.put("cmd", "BOSS_HELL_PART_GP");
                             botNewService.insertGpRecord(gpMap);
                         } catch (Exception ignore) {}
                     }
