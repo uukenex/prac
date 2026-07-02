@@ -347,7 +347,7 @@ public class LoaChatController {
 				botService.insertBotWordHisTx(reqMap);
 			}
 		}catch(Exception e) {
-			
+
 		}
 		
 		
@@ -5438,7 +5438,12 @@ public class LoaChatController {
 		gemTypeMap.put("멸화", "멸");
 		gemTypeMap.put("홍염", "홍");
 
-		String serverName = siblings.get(0).get("ServerName").toString();
+		// 아이템레벨 가장 높은 캐릭터의 서버를 기준으로 사용
+		String serverName = siblings.stream()
+			.max(java.util.Comparator.comparingDouble(s ->
+				Double.parseDouble(s.get("ItemAvgLevel").toString().replaceAll(",", ""))))
+			.map(s -> s.get("ServerName").toString())
+			.orElse(siblings.get(0).get("ServerName").toString());
 
 		// 아이템레벨 내림차순 정렬
 		siblings.sort((a, b) -> {
