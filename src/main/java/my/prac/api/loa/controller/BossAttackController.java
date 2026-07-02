@@ -743,11 +743,12 @@ public class BossAttackController {
 	    int crit =baseCrit + mktCrit;
 	    int critDmg = baseCritDmg + mktCritDmg;
 	    
-	    // [7009] 진화형 무기: 0강화=레벨당150/cap300, 1강화=레벨당200/cap500
+	    // [7009] 진화형 무기: 0강화=레벨당150/cap300, 1강화=레벨당200/cap500, 2강=250/700, 3강=300/900, 4강=350/1100, 5강=400/1300
 	    if (ctx.ownedBossItems.contains(7009)) {
 	        int qty7009 = ctx.bossItemQtyMap.getOrDefault(7009, 1);
 	        int perLv7009 = BossAttackS3Controller.getBossEnhanceVal(7009, qty7009);
-	        int cap7009  = (qty7009 >= 4) ? 700 : (qty7009 >= 2) ? 500 : 300;
+	        int lv7009 = BossAttackS3Controller.getBossEnhanceLevel(qty7009);
+	        int cap7009 = 300 + lv7009 * 200;
 	        int evolveBonus = Math.min(u.lv, cap7009) * perLv7009;
 	        atkMin += evolveBonus;
 	        atkMax += evolveBonus;
@@ -11939,7 +11940,7 @@ public class BossAttackController {
 	        int maxBossBonus = 0;
 	        int qty7009r = has7009 ? ctx.bossItemQtyMap.getOrDefault(7009, 1) : 1;
         int perLv7009r = BossAttackS3Controller.getBossEnhanceVal(7009, qty7009r);
-        int cap7009r  = (qty7009r >= 4) ? 700 : (qty7009r >= 2) ? 500 : 300;
+        int cap7009r   = 300 + BossAttackS3Controller.getBossEnhanceLevel(qty7009r) * 200;
         if (has7009) maxBossBonus += Math.min(lv, cap7009r) * perLv7009r;
 	        int atkPer7013r = has7013 ? BossAttackS3Controller.getBossEnhanceVal(7013, ctx.bossItemQtyMap.getOrDefault(7013, 1)) : 500;
         if (has7013) maxBossBonus += 40 * atkPer7013r;
