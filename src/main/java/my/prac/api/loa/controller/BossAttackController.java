@@ -748,7 +748,8 @@ public class BossAttackController {
 	        int qty7009 = ctx.bossItemQtyMap.getOrDefault(7009, 1);
 	        int perLv7009 = BossAttackS3Controller.getBossEnhanceVal(7009, qty7009);
 	        int lv7009 = BossAttackS3Controller.getBossEnhanceLevel(qty7009);
-	        int cap7009 = 300 + lv7009 * 200;
+	        int[] cap7009tbl = {300, 500, 650, 800, 950, 1100};
+	        int cap7009 = cap7009tbl[Math.min(lv7009, cap7009tbl.length - 1)];
 	        int evolveBonus = Math.min(u.lv, cap7009) * perLv7009;
 	        atkMin += evolveBonus;
 	        atkMax += evolveBonus;
@@ -5236,11 +5237,12 @@ public class BossAttackController {
 		// 11-후) 도사 버프 최종 데미지 적용 (+1000 flat, +5%, 최대체력 5% 회복)
 		if (dosaSelf != null || dosaRoom != null) {
 		    int buffCount = (dosaSelf != null ? 1 : 0) + (dosaRoom != null ? 1 : 0);
-		    // [7012] 도사의 가르침: 도사/음양사 버프 계수 3배
+		    // [7012] 도사의 가르침: 버프 계수 (×2 저장: 2=1.0x, 6=3.0x, 12=6.0x)
 		    int qty7012 = s.ctx.bossItemQtyMap.getOrDefault(7012, 1);
-		    int coef = s.ctx.ownedBossItems.contains(7012) ? BossAttackS3Controller.getBossEnhanceVal(7012, qty7012) : 1;
+		    int raw7012 = s.ctx.ownedBossItems.contains(7012) ? BossAttackS3Controller.getBossEnhanceVal(7012, qty7012) : 2;
+		    double coef = raw7012 / 2.0; // 6=3.0배, 8=4.0배, 9=4.5배, 10=5.0배, 11=5.5배, 12=6.0배
 		    if (s.calc.atkDmg > 0) {
-		        s.calc.atkDmg += buffCount * 1000 * coef;
+		        s.calc.atkDmg += (int) Math.round(buffCount * 1000 * coef);
 		        s.calc.atkDmg += (int) Math.round(s.calc.atkDmg * (buffCount * 5 * coef) / 100.0);
 		    }
 		    int heal = (int) Math.round(s.hpMax * (buffCount * 5 * coef) / 100.0);
@@ -11353,13 +11355,13 @@ public class BossAttackController {
 	    return buildUnifiedDosaBuffMessage(self, room, actualHeal, 1);
 	}
 	*/
-	private String buildUnifiedDosaBuffMessage(DosaBuffEffect self, DosaBuffEffect room, int actualHeal, int coef) {
+	private String buildUnifiedDosaBuffMessage(DosaBuffEffect self, DosaBuffEffect room, int actualHeal, double coef) {
 	    int buffCount = (self != null ? 1 : 0) + (room != null ? 1 : 0);
-	    int flatBonus = buffCount * 1000 * coef;
-	    int rateBonus = buffCount * 5 * coef;
+	    int flatBonus = (int) Math.round(buffCount * 1000 * coef);
+	    double rateBonus = buffCount * 5 * coef;
 	    StringBuilder sb = new StringBuilder("※도사 기원: 최종 데미지 +").append(flatBonus);
-	    if (rateBonus > 0) sb.append(", +").append(rateBonus).append("%");
-	    if (coef > 1) sb.append(" [7012 ×").append(coef).append("]");
+	    if (rateBonus > 0) sb.append(", +").append(rateBonus % 1 == 0 ? (int)rateBonus : rateBonus).append("%");
+	    if (coef > 1.0) sb.append(" [7012 ×").append(coef % 1 == 0 ? (int)coef : coef).append("]");
 	    if (actualHeal > 0) sb.append(", HP +").append(actualHeal).append(" 회복");
 	    return sb.toString();
 	}
@@ -11940,7 +11942,8 @@ public class BossAttackController {
 	        int maxBossBonus = 0;
 	        int qty7009r = has7009 ? ctx.bossItemQtyMap.getOrDefault(7009, 1) : 1;
         int perLv7009r = BossAttackS3Controller.getBossEnhanceVal(7009, qty7009r);
-        int cap7009r   = 300 + BossAttackS3Controller.getBossEnhanceLevel(qty7009r) * 200;
+        int[] cap7009rtbl = {300, 500, 650, 800, 950, 1100};
+        int cap7009r = cap7009rtbl[Math.min(BossAttackS3Controller.getBossEnhanceLevel(qty7009r), cap7009rtbl.length - 1)];
         if (has7009) maxBossBonus += Math.min(lv, cap7009r) * perLv7009r;
 	        int atkPer7013r = has7013 ? BossAttackS3Controller.getBossEnhanceVal(7013, ctx.bossItemQtyMap.getOrDefault(7013, 1)) : 500;
         if (has7013) maxBossBonus += 40 * atkPer7013r;
