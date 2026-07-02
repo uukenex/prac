@@ -110,6 +110,7 @@ public class LoaAiBotController {
 
         // 1. GPT-4o-mini: 의도 분석 (검색 필요 여부 + 검색어)
         IntentResult intent = analyzeIntent(reqMsg, queue);
+        if (intent.apiError != null) return intent.apiError;
 
         // 2. Serper: 검색 필요 시 수행
         String searchSummary = "";
@@ -133,6 +134,7 @@ public class LoaAiBotController {
     private static class IntentResult {
         boolean needSearch = false;
         String  query      = "";
+        String  apiError   = null;
     }
 
     private IntentResult analyzeIntent(String userMsg, FixedSizeMessageQueue queue) {
@@ -174,7 +176,10 @@ public class LoaAiBotController {
                 result.query      = json.has("query")  ? json.get("query").getAsString().trim() : "";
             }
         } catch (Exception e) {
-            // 파싱 실패 시 키워드 폴백
+            // HTTP 에러 시 result에 에러 메시지 보관 (3단계에서 그대로 반환)
+            String apiErr = parseApiErrMsg(e);
+            if (apiErr != null) { result.needSearch = false; result.query = apiErr; result.apiError = apiErr; return result; }
+            // 기타 파싱 실패 시 키워드 폴백
             result.needSearch = fallbackNeedsSearch(userMsg);
             result.query      = userMsg;
         }
@@ -268,7 +273,8 @@ public class LoaAiBotController {
                 }
                 return GeminiUtils.callGeminiApi(prompt.toString());
             } catch (Exception e) {
-                return "(지금 좀 멍청해진 것 같아... 나중에 다시 물어봐!)";
+                String apiErr = parseApiErrMsg(e);
+                return apiErr != null ? apiErr : "(Gemini 오류 발생... 나중에 다시 물어봐!)";
             }
         }
 
@@ -303,13 +309,19 @@ public class LoaAiBotController {
                        .getAsJsonObject("message").get("content").getAsString().trim();
 
         } catch (Exception e) {
-            return "(지금 좀 멍청해진 것 같아... 나중에 다시 물어봐!)";
+            String apiErr = parseApiErrMsg(e);
+            return apiErr != null ? apiErr : "(지금 좀 멍청해진 것 같아... 나중에 다시 물어봐!)";
         }
     }
 
     // =====================================================================
     // HTTP 공통
     // =====================================================================
+    static class HttpApiException extends Exception {
+        final int code;
+        HttpApiException(int code, String body) { super(code + ":" + body); this.code = code; }
+    }
+
     private String httpPost(String urlStr, String body, String... headers) throws Exception {
         URL url = new URL(urlStr);
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
@@ -324,8 +336,28 @@ public class LoaAiBotController {
             os.write(body.getBytes("UTF-8"));
         }
         int code = conn.getResponseCode();
-        InputStream is = code >= 400 ? conn.getErrorStream() : conn.getInputStream();
-        return readStream(is);
+        if (code >= 400) {
+            String errBody = readStream(conn.getErrorStream());
+            throw new HttpApiException(code, errBody);
+        }
+        return readStream(conn.getInputStream());
+    }
+
+    private String parseApiErrMsg(Exception e) {
+        if (!(e instanceof HttpApiException)) return null;
+        HttpApiException he = (HttpApiException) e;
+        String msg = "";
+        try {
+            JsonObject j = gson.fromJson(he.getMessage().substring(he.getMessage().indexOf(":") + 1), JsonObject.class);
+            if (j.has("error")) msg = j.getAsJsonObject("error").get("message").getAsString();
+        } catch (Exception ignore) {}
+        if (he.code == 429 || msg.toLowerCase().contains("quota") || msg.toLowerCase().contains("rate limit")
+                || msg.toLowerCase().contains("insufficient_quota")) {
+            return "(OpenAI API 사용량 한도 초과야. 잠시 후 다시 시도해줘!)";
+        }
+        if (he.code == 401) return "(OpenAI API 키가 유효하지 않아. 설정 확인 필요!)";
+        if (!msg.isEmpty()) return "(API 오류: " + msg + ")";
+        return "(API 오류 " + he.code + ")";
     }
 
     private String readStream(InputStream is) throws IOException {
