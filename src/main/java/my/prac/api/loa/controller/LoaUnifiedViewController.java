@@ -72,6 +72,11 @@ public class LoaUnifiedViewController {
         return "nonsession/loa/boss_status_view";
     }
 
+    @GetMapping("/boss-item-view")
+    public String bossItemViewPage() {
+        return "nonsession/loa/boss_item_view";
+    }
+
     @GetMapping("/battle-log-view")
     public String battleLogViewPage() {
         return "nonsession/loa/battle_log_view";
@@ -384,6 +389,26 @@ public class LoaUnifiedViewController {
      *   recentLog    : 공격 로그 리스트 (ALIVE 때 채워짐)
      *   lastKillMsg  : 마지막 처치 결과 메시지
      */
+    @GetMapping("/api/boss-items")
+    @ResponseBody
+    public ResponseEntity<?> getBossItems() {
+        int[] itemIds = {7001,7002,7003,7004,7005,7006,7007,7008,7009,7010,7011,7012,7013,7014,7015,7016,7017,7018,7019};
+        List<Map<String, Object>> list = new ArrayList<>();
+        for (int itemId : itemIds) {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("itemId", itemId);
+            String name = "#" + itemId;
+            try {
+                HashMap<String, Object> detail = botNewService.selectItemDetailById(itemId);
+                if (detail != null) name = Objects.toString(detail.get("ITEM_NAME"), name);
+            } catch (Exception ignore) {}
+            m.put("itemName", name);
+            m.put("enhanceDesc", BossAttackS3Controller.getBossItemEnhanceDesc(itemId));
+            list.add(m);
+        }
+        return ResponseEntity.ok(list);
+    }
+
     @GetMapping("/api/boss-status")
     @ResponseBody
     public ResponseEntity<?> getBossStatus() {
