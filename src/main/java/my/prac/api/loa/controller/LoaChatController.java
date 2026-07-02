@@ -5497,6 +5497,7 @@ public class LoaChatController {
 
 		// 배치 처리용
 		List<HashMap<String,Object>> cpMergeList = new java.util.ArrayList<>();
+		java.util.Map<String, Integer> apiCpMap = new java.util.HashMap<>(); // API에서 가져온 CP (신규 캐릭터 표시용)
 		// 기존 저장 전투력 일괄 조회 (displayCp용)
 		List<String> sibNames = new java.util.ArrayList<>();
 		for (HashMap<String,Object> sib : siblings) {
@@ -5557,14 +5558,19 @@ public class LoaChatController {
 						dbMap.put("itemLevel", Double.parseDouble(itemAvgLevel.replaceAll(",", "")));
 						dbMap.put("combatPower", cp);
 						cpMergeList.add(dbMap);
+						apiCpMap.put(sibName, (int) cp);
 					}
 				}
 			} catch (Exception ignored) {}
 
-			// 미리 조회된 전투력 사용 (표시용)
+			// 미리 조회된 전투력 사용 (표시용) - DB 없으면 API값 fallback
 			String displayCp = "";
 			if (storedCpMap.containsKey(sibName)) {
-				displayCp = " (전:" + storedCpMap.get(sibName) + ")";
+				int stored = storedCpMap.get(sibName);
+				int api = apiCpMap.getOrDefault(sibName, 0);
+				displayCp = " (전:" + Math.max(stored, api) + ")";
+			} else if (apiCpMap.containsKey(sibName)) {
+				displayCp = " (전:" + apiCpMap.get(sibName) + ")";
 			}
 
 			java.util.TreeMap<Integer, java.util.LinkedHashMap<String, Integer>> tradeableGems
