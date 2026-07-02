@@ -205,6 +205,8 @@ public interface BotDAO {
 	public int execSPProcTest(HashMap<String,Object> map) throws Exception;
 	public int mergeCharacterPower(HashMap<String,Object> map);
 	public HashMap<String,Object> selectCharacterPower(HashMap<String,Object> map);
+	public int mergeCharacterPowerBatch(List<HashMap<String,Object>> list);
+	public List<HashMap<String,Object>> selectCharacterPowerBatch(List<String> list);
 
 }
 

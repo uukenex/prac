@@ -5482,6 +5482,27 @@ public class LoaChatController {
 		int totalBound = 0;
 		long totalTradeableGold = 0;
 
+		// 배치 처리용
+		List<HashMap<String,Object>> cpMergeList = new java.util.ArrayList<>();
+		// 기존 저장 전투력 일괄 조회 (displayCp용)
+		List<String> sibNames = new java.util.ArrayList<>();
+		for (HashMap<String,Object> sib : siblings) {
+			if (serverName.equals(sib.get("ServerName").toString())) {
+				sibNames.add(sib.get("CharacterName").toString());
+			}
+		}
+		java.util.Map<String, Integer> storedCpMap = new java.util.HashMap<>();
+		try {
+			List<HashMap<String,Object>> cpRows = botService.selectCharacterPowerBatch(sibNames);
+			for (HashMap<String,Object> row : cpRows) {
+				String cName = row.get("CHARACTER_NAME").toString();
+				int cpVal = (int) Double.parseDouble(row.get("COMBAT_POWER").toString());
+				storedCpMap.put(cName, cpVal);
+			}
+		} catch (Exception ignore) {}
+
+		String updateTime = new java.text.SimpleDateFormat("HH:mm").format(new java.util.Date());
+
 		for (HashMap<String, Object> sib : siblings) { try {
 			if (!serverName.equals(sib.get("ServerName").toString())) continue;
 			String sibName = sib.get("CharacterName").toString();
@@ -5511,7 +5532,7 @@ public class LoaChatController {
 			} catch (Exception e) { continue; }
 			if (gems == null || gems.isEmpty()) continue;
 
-			// 전투력 저장 (실패해도 보석 조회에 영향 없음)
+			// 전투력 수집 (루프 후 배치 MERGE)
 			try {
 				Map<String, Object> armoryAll = sub.sumTotalPowerSearch2(sibName);
 				if (armoryAll != null) {
@@ -5524,22 +5545,16 @@ public class LoaChatController {
 						dbMap.put("className", className);
 						dbMap.put("itemLevel", Double.parseDouble(itemAvgLevel.replaceAll(",", "")));
 						dbMap.put("combatPower", cp);
-						botService.mergeCharacterPower(dbMap);
+						cpMergeList.add(dbMap);
 					}
 				}
 			} catch (Exception ignored) {}
 
-			// 저장된 전투력 조회 (표시용)
+			// 미리 조회된 전투력 사용 (표시용)
 			String displayCp = "";
-			try {
-				HashMap<String, Object> cpQuery = new HashMap<>();
-				cpQuery.put("characterName", sibName);
-				HashMap<String, Object> cpRow = botService.selectCharacterPower(cpQuery);
-				if (cpRow != null && cpRow.get("COMBAT_POWER") != null) {
-					double cpVal = Double.parseDouble(cpRow.get("COMBAT_POWER").toString());
-					displayCp = " (전:" + (int) cpVal + ")";
-				}
-			} catch (Exception ignored) {}
+			if (storedCpMap.containsKey(sibName)) {
+				displayCp = " (전:" + storedCpMap.get(sibName) + ")";
+			}
 
 			java.util.TreeMap<Integer, java.util.LinkedHashMap<String, Integer>> tradeableGems
 				= new java.util.TreeMap<>(java.util.Collections.reverseOrder());
@@ -5613,10 +5628,14 @@ public class LoaChatController {
 			}
 		} catch (Exception _sibEx) { /* 캐릭터 조회 실패 시 다음 캐릭터로 */ } }
 
+		// 배치 MERGE 실행
+		try { botService.mergeCharacterPowerBatch(cpMergeList); } catch (Exception ignore) {}
+
 		StringBuilder result = new StringBuilder();
 		result.append("❖ 원정대 보석 현황").append(enterStr);
 		if (totalTradeableGold > 0) {
 			result.append("거래 가능 보석: ").append(String.format("%,d", totalTradeableGold)).append(" 골드").append(enterStr);
+			result.append(updateTime).append(" 갱신분").append(enterStr);
 		}
 		result.append("거래가능 ").append(totalTradeable).append("개, 귀속 ").append(totalBound).append("개").append(enterStr);
 		if (tradeableSB.length() > 0) {

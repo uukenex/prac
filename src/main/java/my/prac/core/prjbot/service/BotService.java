@@ -182,6 +182,8 @@ public interface BotService {
 	
 	void mergeCharacterPower(HashMap<String,Object> map);
 	HashMap<String,Object> selectCharacterPower(HashMap<String,Object> map);
+	void mergeCharacterPowerBatch(List<HashMap<String,Object>> list);
+	List<HashMap<String,Object>> selectCharacterPowerBatch(List<String> list);
 } 
 
 	

@@ -886,4 +886,13 @@ public class BotServiceImpl implements BotService {
 	public HashMap<String,Object> selectCharacterPower(HashMap<String,Object> map) {
 		return botDAO.selectCharacterPower(map);
 	}
+
+	public void mergeCharacterPowerBatch(java.util.List<HashMap<String,Object>> list) {
+		if (list != null && !list.isEmpty()) botDAO.mergeCharacterPowerBatch(list);
+	}
+
+	public java.util.List<HashMap<String,Object>> selectCharacterPowerBatch(java.util.List<String> list) {
+		if (list == null || list.isEmpty()) return java.util.Collections.emptyList();
+		return botDAO.selectCharacterPowerBatch(list);
+	}
 }

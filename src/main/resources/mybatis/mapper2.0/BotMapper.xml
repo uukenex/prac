@@ -1954,4 +1954,41 @@
 		WHERE CHARACTER_NAME = #{characterName}
 	</select>
 
+	<update id="mergeCharacterPowerBatch" parameterType="java.util.List">
+		MERGE INTO TBOT_CHARACTER_POWER A
+		USING (
+		<foreach collection="list" item="item" separator="UNION ALL">
+			SELECT
+			    #{item.characterName} AS CHARACTER_NAME,
+			    #{item.serverName}    AS SERVER_NAME,
+			    #{item.className}     AS CLASS_NAME,
+			    #{item.itemLevel}     AS ITEM_LEVEL,
+			    #{item.combatPower}   AS COMBAT_POWER
+			FROM DUAL
+		</foreach>
+		) B
+		ON (A.CHARACTER_NAME = B.CHARACTER_NAME)
+		WHEN MATCHED THEN
+		UPDATE SET
+		    A.SERVER_NAME  = B.SERVER_NAME,
+		    A.CLASS_NAME   = B.CLASS_NAME,
+		    A.ITEM_LEVEL   = B.ITEM_LEVEL,
+		    A.COMBAT_POWER = CASE WHEN B.COMBAT_POWER > A.COMBAT_POWER THEN B.COMBAT_POWER ELSE A.COMBAT_POWER END,
+		    A.UPDATE_DATE  = SYSDATE
+		WHERE B.COMBAT_POWER &lt;= 20000
+		WHEN NOT MATCHED THEN
+		INSERT (CHARACTER_NAME, SERVER_NAME, CLASS_NAME, ITEM_LEVEL, COMBAT_POWER, INSERT_DATE)
+		VALUES (B.CHARACTER_NAME, B.SERVER_NAME, B.CLASS_NAME, B.ITEM_LEVEL, B.COMBAT_POWER, SYSDATE)
+		WHERE B.COMBAT_POWER &lt;= 20000
+	</update>
+
+	<select id="selectCharacterPowerBatch" parameterType="java.util.List" resultType="hashMap">
+		SELECT CHARACTER_NAME, COMBAT_POWER
+		FROM TBOT_CHARACTER_POWER
+		WHERE CHARACTER_NAME IN
+		<foreach collection="list" item="name" open="(" separator="," close=")">
+			#{name}
+		</foreach>
+	</select>
+
 </mapper>
