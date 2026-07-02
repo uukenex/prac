@@ -839,15 +839,38 @@ public class LoaChatController {
 				break;
 				
 			case "/보석": case "/귀속":
-				if (param1 != null && !param1.trim().equals("")) {
-					try {
-						val = gemSearch(param1.trim());
-					} catch (Exception e) {
-						e.printStackTrace();
-						val = errorCodeMng(e, reqMap);
+				
+				
+				if (param1 != null && !param1.equals("")) {
+					param0="/귀속";
+					param1 = param1.trim();
+					
+					replace_param = botService.selectBotWordReplace(reqMap);
+					if(replace_param!=null && !replace_param.equals("")) {
+						param1 = replace_param;
 					}
-				} else {
-					val = "/보석 캐릭명 으로 입력해주세요";
+					
+					fulltxt = param0+" "+param1;
+					org_fulltxt = fulltxt;
+					reqMap.put("fulltxt", fulltxt);
+					try {
+						//val = supporters(param1);
+						val = gemSearch(param1);
+						//val+= tossAccount2();
+						
+					} catch (Exception e) {
+						val = errorCodeMng(e,reqMap);
+						val+=enterStr+param1+" 으로 조회됨";
+						
+						HashMap<String,Object> h = botService.selectIssueCase(reqMap);
+						if(h !=null && h.size()>0) {
+							val+= enterStr+h.get("INSERT_DATE")+ "에 최종조회된 내용 불러오기입니다.";
+							val+= enterStr;
+							val+= h.get("RES");
+						}
+					}
+				}else {
+					return "/귀속 캐릭명 으로 입력해주세요";
 				}
 				break;
 				/*
@@ -5429,7 +5452,7 @@ public class LoaChatController {
 		int totalTradeable = 0;
 		int totalBound = 0;
 
-		for (HashMap<String, Object> sib : siblings) {
+		for (HashMap<String, Object> sib : siblings) { try {
 			if (!serverName.equals(sib.get("ServerName").toString())) continue;
 			String sibName = sib.get("CharacterName").toString();
 			String itemAvgLevel = sib.get("ItemAvgLevel").toString().replaceAll(",", "");
@@ -5548,7 +5571,7 @@ public class LoaChatController {
 				boundSB.append(sibName).append(" (").append(itemAvgLevel).append(")").append(displayCp).append(enterStr);
 				boundSB.append("  ").append(boundCount).append("개 귀속").append(enterStr);
 			}
-		}
+		} catch (Exception _sibEx) { /* 캐릭터 조회 실패 시 다음 캐릭터로 */ } }
 
 		StringBuilder result = new StringBuilder();
 		result.append("❖ 원정대 보석 현황").append(enterStr);
