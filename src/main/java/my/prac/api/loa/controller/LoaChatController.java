@@ -5440,14 +5440,24 @@ public class LoaChatController {
 
 		// 보석 가격 맵 로드: "N겁" → 가격 (광휘는 겁화 가격 사용)
 		java.util.Map<String, Long> gemPriceMap = new java.util.HashMap<>();
+		String marketUpdateTime = null;
 		try {
 			List<HashMap<String,Object>> priceRows = botService.selectLatestGemPrices();
 			java.util.Map<String, String> typeShortMap = new java.util.HashMap<>();
 			typeShortMap.put("겁화", "겁"); typeShortMap.put("작열", "작");
 			typeShortMap.put("멸화", "멸"); typeShortMap.put("홍염", "홍");
+			java.util.Date latestDate = null;
 			for (HashMap<String,Object> row : priceRows) {
 				String iName = row.get("ITEM_NAME").toString(); // e.g. "8레벨 겁화의 보석"
 				long price = ((Number) row.get("PRICE")).longValue();
+				// INSERT_DATE 최신값 추출
+				Object insertDateObj = row.get("INSERT_DATE");
+				if (insertDateObj != null) {
+					java.util.Date d = (insertDateObj instanceof java.util.Date)
+						? (java.util.Date) insertDateObj
+						: new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").parse(insertDateObj.toString().substring(0, 19));
+					if (latestDate == null || d.after(latestDate)) latestDate = d;
+				}
 				for (Map.Entry<String,String> e : typeShortMap.entrySet()) {
 					if (iName.contains(e.getKey())) {
 						String lvStr = iName.replaceAll("[^0-9].*", "").trim();
@@ -5459,6 +5469,9 @@ public class LoaChatController {
 						break;
 					}
 				}
+			}
+			if (latestDate != null) {
+				marketUpdateTime = new java.text.SimpleDateFormat("yyyy/MM/dd HH:mm").format(latestDate);
 			}
 		} catch (Exception ignore) {}
 
@@ -5500,8 +5513,6 @@ public class LoaChatController {
 				storedCpMap.put(cName, cpVal);
 			}
 		} catch (Exception ignore) {}
-
-		String updateTime = new java.text.SimpleDateFormat("HH:mm").format(new java.util.Date());
 
 		for (HashMap<String, Object> sib : siblings) { try {
 			if (!serverName.equals(sib.get("ServerName").toString())) continue;
@@ -5635,7 +5646,9 @@ public class LoaChatController {
 		result.append("❖ 원정대 보석 현황").append(enterStr);
 		if (totalTradeableGold > 0) {
 			result.append("거래 가능 보석: ").append(String.format("%,d", totalTradeableGold)).append(" 골드").append(enterStr);
-			result.append(updateTime).append(" 갱신분").append(enterStr);
+			if (marketUpdateTime != null) {
+				result.append("※").append(marketUpdateTime).append(" 시세갱신(/시세 10겁)").append(enterStr);
+			}
 		}
 		result.append("거래가능 ").append(totalTradeable).append("개, 귀속 ").append(totalBound).append("개").append(enterStr);
 		if (tradeableSB.length() > 0) {

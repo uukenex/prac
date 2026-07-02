@@ -831,9 +831,9 @@
 	<!-- 보석 최신 가격 일괄 조회 (레벨별 겁화/작열/멸화/홍염) -->
 	<select id="selectLatestGemPrices" resultType="HashMap">
 		/* selectLatestGemPrices */
-		SELECT ITEM_NAME, PRICE
+		SELECT ITEM_NAME, PRICE, INSERT_DATE
 		  FROM (
-		       SELECT ITEM_NAME, PRICE,
+		       SELECT ITEM_NAME, PRICE, INSERT_DATE,
 		              ROW_NUMBER() OVER (PARTITION BY ITEM_NAME ORDER BY INSERT_DATE DESC) AS RN
 		         FROM T_MARKET_ITEM_PRICE
 		        WHERE (ITEM_NAME LIKE '%겁화의 보석' OR ITEM_NAME LIKE '%작열의 보석'
