@@ -5686,6 +5686,8 @@ public class BossAttackController {
 		// SP 누적용 — baroSellItem은 INSERT 없이 outSp만 반환, 여기서 합산 후 단건 INSERT
 		SP stealSpTotal = new SP(0, "");
 		SP dropSpTotal  = new SP(0, "");
+		// 스틸 아이템 누적 (PK 충돌 방지 — itemId별 SUM 후 단건 INSERT)
+		Map<Integer, Integer> stealQtyMap = new HashMap<>();
 
 		// —— 도적: 더블어택 + 스틸 ——
 		if ("도적".equals(s.job) && !(s.m.monNo > 50)) {
@@ -5694,7 +5696,7 @@ public class BossAttackController {
 				if (!dn.isEmpty()) try {
 					Integer id = getItemIdCached(dn);
 					if (id != null) {
-						botNewService.insertInventoryLogTx(buildStealInv(s.userName, s.roomName, id));
+						stealQtyMap.merge(id, 1, Integer::sum);
 						s.stealMsg += "✨ [1타] " + s.m.monName + "의 아이템을 훔쳤습니다! (" + dn + "조각)";
 						s.calc.jobSkillUsed = true;
 					}
@@ -5711,7 +5713,7 @@ public class BossAttackController {
 				if (!dn.isEmpty()) for (int _si = 0; _si < steal2Qty; _si++) try {
 					Integer id = getItemIdCached(dn);
 					if (id != null) {
-						botNewService.insertInventoryLogTx(buildStealInv(s.userName, s.roomName, id));
+						stealQtyMap.merge(id, 1, Integer::sum);
 						s.stealMsg += (s.stealMsg.isEmpty() ? "" : NL) + "✨ [2타] " + s.m.monName + "의 아이템을 훔쳤습니다! (" + dn + "조각)";
 						s.calc2.jobSkillUsed = true;
 					}
@@ -5736,9 +5738,7 @@ public class BossAttackController {
 					double bonusProb = !s.ctx.ownedBossItems.contains(7021) ? 0.10 : (qty7021 >= 4 ? 0.30 : qty7021 >= 2 ? 0.25 : 0.20);
 					boolean bonus = ThreadLocalRandom.current().nextDouble() < bonusProb;
 					if (bonus) qty *= 2;
-					HashMap<String,Object> inv = buildStealInv(s.userName, s.roomName, id);
-					inv.put("qty", qty);
-					botNewService.insertInventoryLogTx(inv);
+					stealQtyMap.merge(id, qty, Integer::sum);
 					s.stealMsg = "✨ 날카로운 처단으로 추가획득 (+" + dn + "조각" + qty + ")" + (bonus ? "✨ 보너스!" : "");
 					s.calc.jobSkillUsed = true;
 				}
@@ -5754,7 +5754,7 @@ public class BossAttackController {
 			if (!dn.isEmpty()) try {
 				Integer id = getItemIdCached(dn);
 				if (id != null) {
-					botNewService.insertInventoryLogTx(buildStealInv(s.userName, s.roomName, id));
+					stealQtyMap.merge(id, 1, Integer::sum);
 					s.stealMsg += ThreadLocalRandom.current().nextDouble() < 0.5
 						? "✨ " + s.m.monName + "와  싸우던 마을주민에게서 약탈했다! (" + dn + "조각)"
 						: "✨ 촌장 집에서 " + s.m.monName + "의 아이템을 발견했다! (" + dn + "조각)";
@@ -5763,6 +5763,15 @@ public class BossAttackController {
 				SP[] sp=new SP[1]; String[] b={""}; String[] bd={""}; s.stealPoint += " +" + baroSellItem(dn, id, s.res, s.userName, s.roomName, s.ctx, s.u, "STEAL", 1, s.nightmare, b, sp, bd) + b[0];
 				if (sp[0] != null) stealSpTotal = stealSpTotal.add(sp[0]);
 				if (bd[0] != null && !bd[0].isEmpty()) s.spBreakdowns.add("[추가] " + bd[0]);
+			} catch (Exception ignore) {}
+		}
+
+		// 스틸 인벤토리 단건 INSERT (itemId별 합산)
+		for (Map.Entry<Integer, Integer> _se : stealQtyMap.entrySet()) {
+			try {
+				HashMap<String,Object> inv = buildStealInv(s.userName, s.roomName, _se.getKey());
+				inv.put("qty", _se.getValue());
+				botNewService.insertInventoryLogTx(inv);
 			} catch (Exception ignore) {}
 		}
 
