@@ -5411,7 +5411,7 @@ public class LoaChatController {
 		java.util.LinkedHashMap<String, String> gemTypeMap = new java.util.LinkedHashMap<>();
 		gemTypeMap.put("겁화", "겁");
 		gemTypeMap.put("작열", "작");
-		gemTypeMap.put("광휘", "광");
+		gemTypeMap.put("광휘", "겁");  // 겁화로 취급
 		gemTypeMap.put("멸화", "멸");
 		gemTypeMap.put("홍염", "홍");
 
