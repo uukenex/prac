@@ -38,7 +38,7 @@ td { padding: 8px 10px; border-bottom: 1px solid #1a1830; vertical-align: middle
 td:first-child { font-weight: 700; color: #e0d8f8; white-space: nowrap; }
 td.opt-label { color: #90a0c0; font-size: 12px; white-space: nowrap; }
 td.val { text-align: center; color: #e8c870; font-weight: 700; }
-td.val.highlight { color: #60d0a0; }
+td.val.hi { color: #60d0a0; }
 tr:hover td { background: #14112a; }
 
 .enhance-lv {
@@ -58,59 +58,59 @@ tr:hover td { background: #14112a; }
 <body>
 <%@ include file="_loa_nav.jsp" %>
 <div class="wrap">
-  <div class="page-title">⚔ 보스 유물 강화 옵션</div>
-  <div class="page-sub">최대 +5강화까지 각 단계별 수치를 확인하세요. (qty: 0강화=1개, +1=2~3개, +2=4~6개, +3=7~10개, +4=11~15개, +5=16~21개)</div>
+  <div class="page-title">&#9876; 보스 유물 강화 옵션</div>
+  <div class="page-sub">최대 +5강화까지 각 단계별 수치 (qty: 0강화=1개, +1=2~3개, +2=4~6개, +3=7~10개, +4=11~15개, +5=16~21개)</div>
   <div id="loading">데이터 불러오는 중...</div>
   <div id="content" style="display:none"></div>
 </div>
 <script>
-const LV_LABELS = ['0강화', '+1강화', '+2강화', '+3강화', '+4강화', '+5강화'];
-const LV_CLS    = ['lv0',   'lv1',    'lv2',    'lv3',    'lv4',    'lv5'   ];
+var LV_LABELS = ['0강화', '+1강화', '+2강화', '+3강화', '+4강화', '+5강화'];
+var LV_CLS    = ['lv0',   'lv1',    'lv2',    'lv3',    'lv4',    'lv5'   ];
 
 fetch('/loa/api/boss-items')
-  .then(r => r.json())
-  .then(items => {
-    const el = document.getElementById('content');
-    const rows = items.map(item => {
-      const desc = item.enhanceDesc || '';
-      // parse "옵션명: 0강화:X단위 / +1강화:Y단위 / ..."
-      const colonIdx = desc.indexOf(': ');
-      const optLabel = colonIdx >= 0 ? desc.substring(0, colonIdx) : desc;
-      const tiers = desc.substring(colonIdx + 2).split(' / ').map(s => {
-        const ci = s.indexOf(':');
+  .then(function(r) { return r.json(); })
+  .then(function(items) {
+    var el = document.getElementById('content');
+    var rows = items.map(function(item) {
+      var desc = item.enhanceDesc || '';
+      var colonIdx = desc.indexOf(': ');
+      var optLabel = colonIdx >= 0 ? desc.substring(0, colonIdx) : desc;
+      var tierStr  = colonIdx >= 0 ? desc.substring(colonIdx + 2) : '';
+      var tiers = tierStr.split(' / ').map(function(s) {
+        var ci = s.indexOf(':');
         return ci >= 0 ? s.substring(ci + 1) : s;
       });
 
-      const cells = tiers.map((v, i) =>
-        `<td class="val${i === 5 ? ' highlight' : ''}">${v}</td>`
-      ).join('');
-      const empties = LV_LABELS.slice(tiers.length).map(() => `<td class="val" style="color:#3a3060">-</td>`).join('');
+      var cells = '';
+      for (var i = 0; i < tiers.length; i++) {
+        cells += '<td class="val' + (i === 5 ? ' hi' : '') + '">' + tiers[i] + '</td>';
+      }
+      for (var j = tiers.length; j < 6; j++) {
+        cells += '<td class="val" style="color:#3a3060">-</td>';
+      }
 
-      return `<tr>
-        <td>${item.itemId}. ${item.itemName}</td>
-        <td class="opt-label">${optLabel}</td>
-        ${cells}${empties}
-      </tr>`;
+      return '<tr><td>' + item.itemId + '. ' + item.itemName + '</td>'
+           + '<td class="opt-label">' + optLabel + '</td>'
+           + cells + '</tr>';
     }).join('');
 
-    el.innerHTML = `
-      <div class="card">
-        <div class="card-title">유물 목록 (총 ${items.length}종)</div>
-        <div style="overflow-x:auto">
-          <table>
-            <thead><tr>
-              <th>유물명</th>
-              <th>옵션</th>
-              ${LV_LABELS.map((l,i) => `<th><span class="enhance-lv ${LV_CLS[i]}">${l}</span></th>`).join('')}
-            </tr></thead>
-            <tbody>${rows}</tbody>
-          </table>
-        </div>
-      </div>`;
+    var thead = '<tr><th>유물명</th><th>옵션</th>';
+    for (var k = 0; k < LV_LABELS.length; k++) {
+      thead += '<th><span class="enhance-lv ' + LV_CLS[k] + '">' + LV_LABELS[k] + '</span></th>';
+    }
+    thead += '</tr>';
+
+    el.innerHTML = '<div class="card">'
+      + '<div class="card-title">유물 목록 (총 ' + items.length + '종)</div>'
+      + '<div style="overflow-x:auto"><table>'
+      + '<thead>' + thead + '</thead>'
+      + '<tbody>' + rows + '</tbody>'
+      + '</table></div></div>';
+
     document.getElementById('loading').style.display = 'none';
     el.style.display = '';
   })
-  .catch(e => {
+  .catch(function(e) {
     document.getElementById('loading').textContent = '데이터 로드 실패: ' + e;
   });
 </script>

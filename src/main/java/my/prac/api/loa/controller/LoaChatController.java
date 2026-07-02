@@ -866,7 +866,7 @@ public class LoaChatController {
 			case "/보스":
 				passYn = true;
 				val = bossS3.getHellBossStatusMsg() + "http://rgb-tns.dev-apc.com/loa/boss-status-view"
-					+ "\n유물 옵션 보기: http://rgb-tns.dev-apc.com/loa/boss-item-view";
+					+ enterStr+ "유물 옵션 보기: http://rgb-tns.dev-apc.com/loa/boss-item-view";
 				break;
 			case "/보스뽑기": case "/gp뽑기": case "/보뽑": case "/ㅂㅃ": case "/ㅂㅅㅃㄱ": case "/ㅄㅃㄱ":
 				val = boss.gpGacha(reqMap);
