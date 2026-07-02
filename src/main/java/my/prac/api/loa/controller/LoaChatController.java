@@ -5463,15 +5463,22 @@ public class LoaChatController {
 				}
 				if (shortName == null) continue;
 
+				// 광휘의보석: 이름에 "귀속" 포함 시 귀속, 아니면 거래가능
+				// 그 외: Tooltip Element_003에 "거래 불가" 포함 시 귀속
 				boolean isBound = false;
-				try {
-					String tooltip = (String) gem.get("Tooltip");
-					if (tooltip != null) {
-						Map<String, Object> tooltipMap = new ObjectMapper().readValue(tooltip, new TypeReference<Map<String, Object>>() {});
-						Object el003 = tooltipMap.get("Element_003");
-						if (el003 != null && el003.toString().contains("거래 불가")) isBound = true;
-					}
-				} catch (Exception ignored) {}
+				boolean isGwanghwi = gemName.contains("광휘");
+				if (isGwanghwi) {
+					isBound = gemName.contains("귀속");
+				} else {
+					try {
+						String tooltip = (String) gem.get("Tooltip");
+						if (tooltip != null) {
+							Map<String, Object> tooltipMap = new ObjectMapper().readValue(tooltip, new TypeReference<Map<String, Object>>() {});
+							Object el003 = tooltipMap.get("Element_003");
+							if (el003 != null && el003.toString().contains("거래 불가")) isBound = true;
+						}
+					} catch (Exception ignored) {}
+				}
 
 				if (isBound) {
 					boundCount++;
@@ -5486,6 +5493,7 @@ public class LoaChatController {
 
 			if (tradeableCount > 0) {
 				totalTradeable += tradeableCount;
+				totalBound += boundCount;
 				tradeableSB.append(sibName).append(" (").append(itemAvgLevel).append(")").append(enterStr);
 				StringBuilder gemLine = new StringBuilder();
 				for (Map.Entry<Integer, java.util.LinkedHashMap<String, Integer>> lvEntry : tradeableGems.entrySet()) {
@@ -5496,9 +5504,7 @@ public class LoaChatController {
 					}
 				}
 				tradeableSB.append(gemLine).append(enterStr);
-			}
-
-			if (boundCount > 0) {
+			} else if (boundCount > 0) {
 				totalBound += boundCount;
 				boundSB.append(sibName).append(" (").append(itemAvgLevel).append(")").append(enterStr);
 				boundSB.append("  ").append(boundCount).append("개 귀속").append(enterStr);
