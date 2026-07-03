@@ -156,7 +156,7 @@ public class BossAttackS3Controller {
         e.put(7014, new String[]{"곰 스킬실패 패널티 완화", "%",  "곰 전용"});
         e.put(7015, new String[]{"슈퍼크리티컬 확률",      "%",   "헬보스 전용"});
         e.put(7016, new String[]{"HP 흡수율",              "%",   "미보유시 기본 10%"});
-        e.put(7017, new String[]{"상점 할인율",            "%",   null});
+        e.put(7017, new String[]{"물약상점 할인율",          "%",   null});
         e.put(7018, new String[]{"출석 상자 추가",         "개",  null});
         e.put(7019, new String[]{"추가 스틸 수",            "개",  null});
         e.put(7020, new String[]{"슈퍼크리티컬 배율",      "배",  "미보유 5배 / 0강화 6배 / 1강화 6.5배 / 2강화 7배"});
