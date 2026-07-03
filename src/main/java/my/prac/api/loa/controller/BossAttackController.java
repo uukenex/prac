@@ -7285,7 +7285,7 @@ public class BossAttackController {
 			sb.append("──────────────").append(NL);
 			sb.append(actionLabel).append(" ").append(iName).append(NL);
 			if (!effectChange.isEmpty()) sb.append(" 효과: ").append(effectChange).append(NL);
-			if (!allTiersLine.isEmpty()) sb.append(" ").append(allTiersLine).append(NL);
+			if (!allTiersLine.isEmpty()) sb.append(allTiersLine).append(NL);
 			sb.append(" 보유수량: ").append(newQty).append("개").append(NL);
 			sb.append("──────────────").append(NL);
 			sb.append("잔여 GP: ").append(String.format("%.2f", Math.floor((gp - gachaPrice) * 100) / 100)).append(" GP").append(NL);

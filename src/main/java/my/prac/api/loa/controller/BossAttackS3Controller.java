@@ -205,7 +205,12 @@ public class BossAttackS3Controller {
         if (vals == null || eff == null) return "";
         int curLv = getBossEnhanceLevel(curQty);
         String[] lvLabels = {"0강화", "+1강화", "+2강화", "+3강화", "+4강화", "+5강화"};
+        // 능력치 이름 + 단위
+        String effName = eff[0] + (eff[1] != null && !eff[1].isEmpty() ? "(" + eff[1] + ")" : "");
+        // 특이사항
+        String note = (eff.length > 2 && eff[2] != null && !eff[2].isEmpty()) ? " ※" + eff[2] : "";
         StringBuilder sb = new StringBuilder();
+        sb.append("▶ ").append(effName).append(note).append(" : ");
         for (int i = 0; i < vals.length; i++) {
             if (i > 0) sb.append(" / ");
             String disp = lvLabels[i] + ":" + displayVal(itemId, vals[i]);
