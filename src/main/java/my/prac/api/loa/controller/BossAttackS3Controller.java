@@ -1455,13 +1455,23 @@ public class BossAttackS3Controller {
             msg.append("참여자가 없어 보상이 지급되지 않았습니다.").append(NL);
             return msg.toString();
         }
+        long totalCntAll = 0; long totalScoreAll = 0;
+        for (HashMap<String, Object> c : contributors) {
+            totalCntAll   += c.get("CNT")   != null ? ((Number) c.get("CNT")).longValue()   : 1L;
+            totalScoreAll += ((Number) c.get("SCORE")).longValue();
+        }
+        if (totalCntAll   <= 0) totalCntAll   = 1;
+        if (totalScoreAll <= 0) totalScoreAll = 1;
         double totalWeight = 0;
         double[] weights = new double[contributors.size()];
         for (int i = 0; i < contributors.size(); i++) {
             long score = ((Number) contributors.get(i).get("SCORE")).longValue();
             long cnt   = contributors.get(i).get("CNT") != null ? ((Number) contributors.get(i).get("CNT")).longValue() : 1L;
             if (cnt <= 0) cnt = 1L;
-            weights[i]   = (double) score / cnt;
+            // 횟수 90% + 데미지 10% 가중치
+            double cntRatio   = (double) cnt   / totalCntAll;
+            double scoreRatio = (double) score / totalScoreAll;
+            weights[i]   = cntRatio * 0.9 + scoreRatio * 0.1;
             totalWeight += weights[i];
         }
         if (totalWeight <= 0) totalWeight = 1;
@@ -1473,7 +1483,7 @@ public class BossAttackS3Controller {
             long   score  = ((Number) contributors.get(i).get("SCORE")).longValue();
             long   cnt    = contributors.get(i).get("CNT") != null ? ((Number) contributors.get(i).get("CNT")).longValue() : 1L;
             double ratio  = weights[i] / totalWeight;
-            double myGp   = Math.floor(totalGp * ratio * 100) / 100.0;
+            double myGp   = applyGpNewbieMult(uName, Math.floor(totalGp * ratio * 100) / 100.0);
             if (myGp < 0.01) myGp = 0.01;
             long mySpRaw  = Math.min(2_000_000_000_000L, (long)(totalSp * ratio)); // 인당 최대 2c
             if (mySpRaw < 100_000_000L) mySpRaw = 100_000_000L; // 최소 1b
