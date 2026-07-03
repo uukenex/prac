@@ -6804,6 +6804,7 @@ public class BossAttackController {
 
 	private String tryDropBag(String userName, String roomName, Monster m, boolean nightmare, boolean hell, SpecialBuffResult buff, int[] hellBagAcc) {
 	    double buffRate = 0.0;
+	    int hellGiven = 0;
 	    boolean forceNmBagDrop = false;
 	    boolean forceHellBagDrop = false;
 
@@ -6835,7 +6836,7 @@ public class BossAttackController {
 	                    int given = (buffStart != null)
 	                        ? botNewService.countHellBagsInBuffPeriod(userName, BAG_HELL_ITEM_ID, buffStart)
 	                        : 0;
-	                    if (given < 2) forceHellBagDrop = true;
+	                    if (given < 2) { hellGiven = given + 1; forceHellBagDrop = true; }
 	                } catch (Exception ignored) {}
 	            }
 	        }
@@ -6929,7 +6930,7 @@ public class BossAttackController {
 	            }
 	        } catch (Exception ignore) {}
 
-	        return m.monName + "이(가) " + bagName + "을 떨어뜨렸습니다! (/가방열기 로 열 수 있습니다.)";
+	        String hellTag = (forceHellBagDrop && hellGiven > 0) ? " (" + hellGiven + "/2)" : "";	        return m.monName + "이(가) " + bagName + hellTag + "을 떨어뜨렸습니다! (/가방열기 로 열 수 있습니다.)";
 	    } catch (Exception e) {
 	        return "";
 	    }
