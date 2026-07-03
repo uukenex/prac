@@ -1575,7 +1575,7 @@ public class BossAttackS3Controller {
             } catch (Exception ignore) {}
 
             // GP: myDamage ÷ 750,000 (기존 6,000,000의 1/8), cap 10 GP
-            double myGp = Math.min(10.0, myDamage / 750_000.0);
+            double myGp = applyGpNewbieMult(uName, Math.min(10.0, myDamage / 750_000.0));
             if (myGp < 0.1) myGp = 0.1;
             myGp = Math.floor(myGp * 100) / 100.0;
             try {
