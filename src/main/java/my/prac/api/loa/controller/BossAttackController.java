@@ -7175,33 +7175,24 @@ public class BossAttackController {
 			}
 		} catch (Exception ignore) {}
 
-			// ── 강화 레벨별 가중 랜덤 선정: 낮은 강화일수록 높은 확률 ──
-			// 가중치: 미보유=50, 0강=30, 1강=10, 2강=4, 3강=2, 4강+=1
-			int[] lvWeights = {50, 30, 10, 4, 2, 1};
-			List<Integer> weightedPool  = new ArrayList<>();
+			// ── 강화 레벨별 가중 랜덤: 1레벨 차이당 3배 확률 차이 (지수 감쇠) ──
+			// weight = 3^(MAX_LV - currentLv)  (미보유 lv=-1 → 3^6=729, 0강=243, 1강=81, 2강=27, ...)
+			final int MAX_ENH_LV = 5;
 			List<Integer> weightedItems = new ArrayList<>();
 			boolean allMaxed = true;
+			int minLv = Integer.MAX_VALUE;
 			for (int id : bossItems) {
 				int q = bossQtyMap.getOrDefault(id, 0);
 				if (q >= BossAttackS3Controller.MAX_BOSS_ENHANCE) continue;
 				allMaxed = false;
 				int lv = (q == 0) ? -1 : BossAttackS3Controller.getBossEnhanceLevel(q);
-				// lv: -1=미보유, 0=0강, 1=1강, ...
-				int lvIdx = (lv < 0) ? 0 : Math.min(lv + 1, lvWeights.length - 1);
-				int w = lvWeights[lvIdx];
-				for (int wi = 0; wi < w; wi++) weightedItems.add(id);
+				if (lv < minLv) minLv = lv;
+				int weight = (int) Math.pow(3, MAX_ENH_LV - lv); // 미보유=729, 0강=243, 1강=81, 2강=27...
+				for (int wi = 0; wi < weight; wi++) weightedItems.add(id);
 			}
 			if (allMaxed) {
 				return userName + "님," + NL + "모든 보스 아이템 최대 강화 달성! 뽑기 불가합니다." + NL
 				    + "잔여 GP: " + String.format("%.2f", Math.floor(gp * 100) / 100) + " GP";
-			}
-			// 최저 강화 레벨 (poolDesc 표시용)
-			int minLv = Integer.MAX_VALUE;
-			for (int id : bossItems) {
-				int q = bossQtyMap.getOrDefault(id, 0);
-				if (q >= BossAttackS3Controller.MAX_BOSS_ENHANCE) continue;
-				int lv = (q == 0) ? -1 : BossAttackS3Controller.getBossEnhanceLevel(q);
-				if (lv < minLv) minLv = lv;
 			}
 			final int fMinLv = minLv;
 			List<Integer> minPool = new ArrayList<>();
@@ -7214,11 +7205,11 @@ public class BossAttackController {
 			boolean isEnhance = (fMinLv >= 0);
 			String poolDesc;
 			if (!isEnhance) {
-				poolDesc = "미보유 아이템 " + minPool.size() + "종 확률↑, 가중 랜덤";
+				poolDesc = "미보유 아이템 " + minPool.size() + "종 확률↑ (1레벨차 3배 가중)";
 			} else {
-				String curLvLabel = (fMinLv == 0) ? "0강화" : "+" + fMinLv + "강화";
+				String curLvLabel = "+" + fMinLv + "강화";
 				String nxtLvLabel = "+" + (fMinLv + 1) + "강화";
-				poolDesc = curLvLabel + " 아이템 " + minPool.size() + "종 확률↑ (" + curLvLabel + "→" + nxtLvLabel + " 도전)";
+				poolDesc = curLvLabel + " 아이템 " + minPool.size() + "종 확률↑ (1레벨차 3배 가중)";
 			}
 			bossItems = weightedItems;
 
