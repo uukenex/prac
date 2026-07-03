@@ -78,7 +78,7 @@ public class BossAttackS3Controller {
 
     // ── 대악마 감금스킬 ──
     private static final Map<String, Long> IMPRISONED_UNTIL   = new java.util.concurrent.ConcurrentHashMap<>();
-    private static final int IMPRISON_DURATION_MS = 5 * 60 * 1000; // 5분
+    private static final int IMPRISON_DURATION_MS = 3 * 60 * 1000; // 3분
     private static final int IMPRISON_CHANCE_PCT  = 30;             // 30%
     /** 보스아이템 최대 qty (이이상 회당불가, 인덱스 강화단계는 +4까지, 효과는 2강화 캐플) */
     public static final int MAX_BOSS_ENHANCE = 21;
@@ -1185,7 +1185,7 @@ public class BossAttackS3Controller {
         // 대악마/마왕 감금스킬 발동 메시지
         if (IMPRISONED_UNTIL.containsKey(userName) &&
                 System.currentTimeMillis() < IMPRISONED_UNTIL.get(userName)) {
-            msg.append(NL).append("[감금스킬] ").append(userName).append("님이 5분간 공격 불가 상태가 됩니다!");
+            msg.append(NL).append("[감금스킬] ").append(userName).append("님이 3분간 공격 불가 상태가 됩니다!");
         }
 
         return msg.toString().trim();
