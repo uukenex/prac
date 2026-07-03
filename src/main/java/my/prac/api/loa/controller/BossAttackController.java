@@ -6851,6 +6851,7 @@ public class BossAttackController {
 
 	        double dropRate = (todayBagTotal < 20) ? 0.10 : BAG_DROP_RATE;
 	        if (ThreadLocalRandom.current().nextDouble() >= dropRate) {
+	        if (buffRate > 0) dropRate = Math.min(0.50, dropRate * buffRate);
 	            return "";
 	        }
 	    }
