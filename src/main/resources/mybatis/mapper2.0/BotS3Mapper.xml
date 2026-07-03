@@ -543,4 +543,47 @@
 		   AND END_YN = '0'
 	</update>
 
+	<!-- 최근 서큐버스 처치 GP 지급 내역 (DB 직접 조회, 가장 최근 배치) -->
+	<select id="selectLastSuccubusKillGp" resultType="HashMap">
+		SELECT r.USER_NAME,
+		       r.SCORE         AS gp,
+		       r.INSERT_DATE,
+		       b.cnt,
+		       b.score         AS total_dmg
+		  FROM TBOT_POINT_RANK r
+		  JOIN (
+		           SELECT USER_NAME,
+		                  COUNT(*)     AS cnt,
+		                  SUM(ATK_DMG) AS score
+		             FROM TBOT_POINT_NEW_BATTLE_LOG
+		            WHERE NIGHTMARE_YN  = '2'
+		              AND TARGET_MON_LV = 999
+		              AND ATK_DMG       > 0
+		              AND INSERT_DATE   >= (
+		                      SELECT MIN(INSERT_DATE) - 3/24
+		                        FROM TBOT_POINT_RANK
+		                       WHERE CMD    = 'SUCCUBUS_KILL_GP'
+		                         AND NEW_YN = '2'
+		                         AND INSERT_DATE = (
+		                               SELECT MAX(INSERT_DATE)
+		                                 FROM TBOT_POINT_RANK
+		                                WHERE CMD    = 'SUCCUBUS_KILL_GP'
+		                                  AND NEW_YN = '2'
+		                                  AND INSERT_DATE >= SYSDATE - 30
+		                         )
+		                  )
+		            GROUP BY USER_NAME
+		       ) b ON b.USER_NAME = r.USER_NAME
+		 WHERE r.CMD    = 'SUCCUBUS_KILL_GP'
+		   AND r.NEW_YN = '2'
+		   AND r.INSERT_DATE = (
+		           SELECT MAX(INSERT_DATE)
+		             FROM TBOT_POINT_RANK
+		            WHERE CMD    = 'SUCCUBUS_KILL_GP'
+		              AND NEW_YN = '2'
+		              AND INSERT_DATE >= SYSDATE - 30
+		       )
+		 ORDER BY r.SCORE DESC
+	</select>
+
 </mapper>

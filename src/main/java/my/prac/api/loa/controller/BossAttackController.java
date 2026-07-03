@@ -7357,6 +7357,13 @@ public class BossAttackController {
 	    MiniGameUtil.POTION_USE_CACHE.clear();
 	    MiniGameUtil.INV_BUFF_CACHE.clear();
 	    initCache();
+	    // 헬보스 최근 처치 결과 DB 재조회 (서버 재시작 후 캐시 복원)
+	    try {
+	        String freshKillMsg = botS3Service.buildLastKillMsgFromDb();
+	        if (freshKillMsg != null && !freshKillMsg.isEmpty()) {
+	            botS3Service.saveLastKillMsg(freshKillMsg);
+	        }
+	    } catch (Exception ignore) {}
 	    return "✅ 캐시 갱신 완료" + NL
 	         + "몬스터: " + MiniGameUtil.MONSTER_CACHE.size() + "건" + NL
 	         + "아이템ID: " + MiniGameUtil.ITEM_ID_CACHE.size() + "건" + NL
