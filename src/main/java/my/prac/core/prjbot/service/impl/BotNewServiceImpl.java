@@ -979,39 +979,43 @@ public class BotNewServiceImpl implements BotNewService {
     @Override
     public String runMonthlyBattleLogJob() {
         StringBuilder result = new StringBuilder();
-
-        // 1. BATTLE_JOB 집계 — 실패해도 이후 단계 계속 진행
+        my.prac.api.loa.controller.BossAttackController.MONTHLY_BATCH_RUNNING = true;
         try {
-            int inserted = botNewDAO.migrateLastMonthToJobStat();
-            result.append("BATTLE_JOB 이관: ").append(inserted).append("건");
-        } catch (Exception e) {
-            result.append("BATTLE_JOB 이관 실패: ").append(e.getMessage());
-        }
-
-        // 2. BACKUP 이관 — 실패 시 삭제 스킵
-        boolean backupOk = false;
-        try {
-            int backed = botNewDAO.backupOldBattleLog();
-            result.append(", BACKUP 이관: ").append(backed).append("건");
-            backupOk = true;
-        } catch (Exception e) {
-            result.append(", BACKUP 이관 실패(삭제 스킵): ").append(e.getMessage());
-        }
-
-        // 3. 원본 삭제 — BACKUP 성공한 경우에만, 1만건씩 배치 분할 삭제
-        if (backupOk) {
+            // 1. BATTLE_JOB 집계 — 실패해도 이후 단계 계속 진행
             try {
-                final int BATCH = 10000;
-                int totalDeleted = 0;
-                int deleted;
-                do {
-                    deleted = botNewDAO.deleteLastMonthBattleLogBatch(BATCH);
-                    totalDeleted += deleted;
-                } while (deleted > 0);
-                result.append(", battle_log 삭제: ").append(totalDeleted).append("건");
+                int inserted = botNewDAO.migrateLastMonthToJobStat();
+                result.append("BATTLE_JOB 이관: ").append(inserted).append("건");
             } catch (Exception e) {
-                result.append(", battle_log 삭제 실패: ").append(e.getMessage());
+                result.append("BATTLE_JOB 이관 실패: ").append(e.getMessage());
             }
+
+            // 2. BACKUP 이관 — 실패 시 삭제 스킵
+            boolean backupOk = false;
+            try {
+                int backed = botNewDAO.backupOldBattleLog();
+                result.append(", BACKUP 이관: ").append(backed).append("건");
+                backupOk = true;
+            } catch (Exception e) {
+                result.append(", BACKUP 이관 실패(삭제 스킵): ").append(e.getMessage());
+            }
+
+            // 3. 원본 삭제 — BACKUP 성공한 경우에만, 1만건씩 배치 분할 삭제
+            if (backupOk) {
+                try {
+                    final int BATCH = 10000;
+                    int totalDeleted = 0;
+                    int deleted;
+                    do {
+                        deleted = botNewDAO.deleteLastMonthBattleLogBatch(BATCH);
+                        totalDeleted += deleted;
+                    } while (deleted > 0);
+                    result.append(", battle_log 삭제: ").append(totalDeleted).append("건");
+                } catch (Exception e) {
+                    result.append(", battle_log 삭제 실패: ").append(e.getMessage());
+                }
+            }
+        } finally {
+            my.prac.api.loa.controller.BossAttackController.MONTHLY_BATCH_RUNNING = false;
         }
 
         return result.toString();

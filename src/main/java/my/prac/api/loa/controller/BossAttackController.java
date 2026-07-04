@@ -125,6 +125,9 @@ public class BossAttackController {
 	private static volatile List<HashMap<String,Object>> EQUIP_RANK_CACHE = null;
 	private static volatile long EQUIP_RANK_CACHE_TS = 0L;
 
+	// 월 배치 실행 중 공격횟수 업적 잠금 (BATTLE_JOB 이관 ~ BATTLE_LOG 삭제 완료 사이 이중집계 방지)
+	static volatile boolean MONTHLY_BATCH_RUNNING = false;
+
 	// 누적SP 1위 캐시 (1시간마다 갱신, 가방 최대금액 계산용)
 	private static volatile long TOP1_SP_CACHE = 0L;
 	private static volatile long TOP1_SP_CACHE_TS = 0L;
@@ -7951,6 +7954,8 @@ public class BossAttackController {
 	        AttackDeathStat ads   // [PERF] 호출부에서 프리로드
 	) {
 	    if (ads == null) return "";
+	    // 월 배치 실행 중에는 공격횟수 업적 스킵 (BATTLE_JOB 이중집계 방지)
+	    if (MONTHLY_BATCH_RUNNING) return "";
 
 	    int totalAttacks = ads.totalAttacks;
 	    if (totalAttacks <= 0) return "";
