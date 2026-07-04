@@ -1402,7 +1402,7 @@
 	      SELECT NVL(JOB,'초보자'), SUM(JOB_SKILL_YN)
 	        FROM TBOT_POINT_NEW_BATTLE_LOG
 	       WHERE USER_NAME = #{userName}
-	         AND INSERT_DATE >= ADD_MONTHS(TRUNC(SYSDATE, 'MM'), -1)
+	         AND INSERT_DATE >= TRUNC(SYSDATE, 'MM')
 	       GROUP BY NVL(JOB,'초보자')
 	    ) t GROUP BY JOB
 	</select>
