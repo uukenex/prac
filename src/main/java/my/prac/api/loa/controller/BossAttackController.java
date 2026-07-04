@@ -6804,6 +6804,7 @@ public class BossAttackController {
 
 	private String tryDropBag(String userName, String roomName, Monster m, boolean nightmare, boolean hell, SpecialBuffResult buff, int[] hellBagAcc) {
 	    double buffRate = 0.0;
+	    int hellGiven = 0;
 	    boolean forceNmBagDrop = false;
 	    boolean forceHellBagDrop = false;
 
@@ -6835,7 +6836,7 @@ public class BossAttackController {
 	                    int given = (buffStart != null)
 	                        ? botNewService.countHellBagsInBuffPeriod(userName, BAG_HELL_ITEM_ID, buffStart)
 	                        : 0;
-	                    if (given < 2) forceHellBagDrop = true;
+	                    if (given < 2) { hellGiven = given + 1; forceHellBagDrop = true; }
 	                } catch (Exception ignored) {}
 	            }
 	        }
@@ -6851,6 +6852,7 @@ public class BossAttackController {
 
 	        double dropRate = (todayBagTotal < 20) ? 0.10 : BAG_DROP_RATE;
 	        if (ThreadLocalRandom.current().nextDouble() >= dropRate) {
+	        if (buffRate > 0) dropRate = Math.min(0.50, dropRate * buffRate);
 	            return "";
 	        }
 	    }
@@ -6928,7 +6930,7 @@ public class BossAttackController {
 	            }
 	        } catch (Exception ignore) {}
 
-	        return m.monName + "이(가) " + bagName + "을 떨어뜨렸습니다! (/가방열기 로 열 수 있습니다.)";
+	        String hellTag = (forceHellBagDrop && hellGiven > 0) ? " (" + hellGiven + "/2)" : "";	        return m.monName + "이(가) " + bagName + hellTag + "을 떨어뜨렸습니다! (/가방열기 로 열 수 있습니다.)";
 	    } catch (Exception e) {
 	        return "";
 	    }
@@ -7173,18 +7175,24 @@ public class BossAttackController {
 			}
 		} catch (Exception ignore) {}
 
-			// ── 강화 레벨별 풀 선정: 가장 낮은 강화 레벨 아이템 우선 ──
-			// unowned(qty=0)=-1, 0강화(qty=1)=0, +1강화(qty=2~3)=1, ...
+			// ── 강화 레벨별 가중 랜덤: 1레벨 차이당 3배 확률 차이 (지수 감쇠) ──
+			// weight = 3^(MAX_LV - currentLv)  (미보유 lv=-1 → 3^6=729, 0강=243, 1강=81, 2강=27, ...)
+			final int MAX_ENH_LV = 5;
+			List<Integer> weightedItems = new ArrayList<>();
+			boolean allMaxed = true;
 			int minLv = Integer.MAX_VALUE;
 			for (int id : bossItems) {
 				int q = bossQtyMap.getOrDefault(id, 0);
 				if (q >= BossAttackS3Controller.MAX_BOSS_ENHANCE) continue;
+				allMaxed = false;
 				int lv = (q == 0) ? -1 : BossAttackS3Controller.getBossEnhanceLevel(q);
 				if (lv < minLv) minLv = lv;
+				int weight = (int) Math.pow(3, MAX_ENH_LV - lv); // 미보유=729, 0강=243, 1강=81, 2강=27...
+				for (int wi = 0; wi < weight; wi++) weightedItems.add(id);
 			}
-			if (minLv == Integer.MAX_VALUE) {
+			if (allMaxed) {
 				return userName + "님," + NL + "모든 보스 아이템 최대 강화 달성! 뽑기 불가합니다." + NL
-					+ "잔여 GP: " + String.format("%.2f", Math.floor(gp * 100) / 100) + " GP";
+				    + "잔여 GP: " + String.format("%.2f", Math.floor(gp * 100) / 100) + " GP";
 			}
 			final int fMinLv = minLv;
 			List<Integer> minPool = new ArrayList<>();
@@ -7197,13 +7205,13 @@ public class BossAttackController {
 			boolean isEnhance = (fMinLv >= 0);
 			String poolDesc;
 			if (!isEnhance) {
-				poolDesc = "미보유 아이템 " + minPool.size() + "종 중 랜덤";
+				poolDesc = "미보유 아이템 " + minPool.size() + "종 확률↑ (1레벨차 3배 가중)";
 			} else {
-				String curLvLabel = (fMinLv == 0) ? "0강화" : "+" + fMinLv + "강화";
+				String curLvLabel = "+" + fMinLv + "강화";
 				String nxtLvLabel = "+" + (fMinLv + 1) + "강화";
-				poolDesc = curLvLabel + " 아이템 " + minPool.size() + "종 → " + nxtLvLabel + " 도전";
+				poolDesc = curLvLabel + " 아이템 " + minPool.size() + "종 확률↑ (1레벨차 3배 가중)";
 			}
-			bossItems = minPool;
+			bossItems = weightedItems;
 
 		// GP 차감 (가격: gachaPrice)
 		try {
@@ -7277,7 +7285,7 @@ public class BossAttackController {
 			sb.append("──────────────").append(NL);
 			sb.append(actionLabel).append(" ").append(iName).append(NL);
 			if (!effectChange.isEmpty()) sb.append(" 효과: ").append(effectChange).append(NL);
-			if (!allTiersLine.isEmpty()) sb.append(" ").append(allTiersLine).append(NL);
+			if (!allTiersLine.isEmpty()) sb.append(allTiersLine).append(NL);
 			sb.append(" 보유수량: ").append(newQty).append("개").append(NL);
 			sb.append("──────────────").append(NL);
 			sb.append("잔여 GP: ").append(String.format("%.2f", Math.floor((gp - gachaPrice) * 100) / 100)).append(" GP").append(NL);
@@ -7357,6 +7365,13 @@ public class BossAttackController {
 	    MiniGameUtil.POTION_USE_CACHE.clear();
 	    MiniGameUtil.INV_BUFF_CACHE.clear();
 	    initCache();
+	    // 헬보스 최근 처치 결과 DB 재조회 (서버 재시작 후 캐시 복원)
+	    try {
+	        String freshKillMsg = botS3Service.buildLastKillMsgFromDb();
+	        if (freshKillMsg != null && !freshKillMsg.isEmpty()) {
+	            botS3Service.saveLastKillMsg(freshKillMsg);
+	        }
+	    } catch (Exception ignore) {}
 	    return "✅ 캐시 갱신 완료" + NL
 	         + "몬스터: " + MiniGameUtil.MONSTER_CACHE.size() + "건" + NL
 	         + "아이템ID: " + MiniGameUtil.ITEM_ID_CACHE.size() + "건" + NL

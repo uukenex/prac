@@ -52,6 +52,7 @@ public interface BotS3DAO {
 
 	/** [헬보스] 등장 이후 공격한 고유 유저 수 */
 	int selectHellBossAttackerCount(String bossStartDate);
+	List<HashMap<String, Object>> selectLastSuccubusKillGp();
 
 	/** [카운트업 보스] HP 원자적 누적 */
 	int updateHellBossCountUpAdd(HashMap<String, Object> map);

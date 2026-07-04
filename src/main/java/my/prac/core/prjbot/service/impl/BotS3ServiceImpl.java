@@ -145,12 +145,48 @@ public class BotS3ServiceImpl implements BotS3Service {
 	@Override
 	public String getLastKillRewardMsg() {
 		try {
-			// 캐시된 처치 결과가 있으면 그대로 반환
 			if (CACHED_KILL_MSG != null && !CACHED_KILL_MSG.isEmpty()) {
 				return "[ 최근 처치된 헬보스 결과 ]" + NL + CACHED_KILL_MSG;
 			}
-			// 캐시 없음 (서버 재시작 후 등) → 빈 문자열
+			// 캐시 없으면 DB에서 재조회 (서버 재시작 후 복원)
+			String fromDb = buildLastKillMsgFromDb();
+			if (!fromDb.isEmpty()) {
+				CACHED_KILL_MSG = fromDb;
+				return "[ 최근 처치된 헬보스 결과 ]" + NL + fromDb;
+			}
 			return "";
+		} catch (Exception e) {
+			return "";
+		}
+	}
+
+	@Override
+	public String buildLastKillMsgFromDb() {
+		try {
+			List<HashMap<String, Object>> rows = botS3DAO.selectLastSuccubusKillGp();
+			if (rows == null || rows.isEmpty()) return "";
+			// CMD로 보스 종류 판별
+			String cmd = rows.get(0).get("CMD") != null ? rows.get(0).get("CMD").toString() : "";
+			String bossLabel;
+			if ("SUCCUBUS_KILL_GP".equals(cmd))          bossLabel = "서큐버스";
+			else if ("COUNTUP_BOSS_REWARD_GP".equals(cmd)) bossLabel = "카운트업 보스";
+			else                                           bossLabel = "헬보스";
+			StringBuilder sb = new StringBuilder();
+			sb.append("[ ").append(bossLabel).append(" 처치 보상 ]").append(NL);
+			sb.append("참여자: ").append(rows.size()).append("명").append(NL).append(NL);
+			for (HashMap<String, Object> row : rows) {
+				String uName = row.get("USER_NAME") != null ? row.get("USER_NAME").toString() : "";
+				double gp    = row.get("GP")        != null ? ((Number) row.get("GP")).doubleValue()       : 0;
+				long   cnt   = row.get("CNT")        != null ? ((Number) row.get("CNT")).longValue()        : 0;
+				long   dmg   = row.get("TOTAL_DMG")  != null ? ((Number) row.get("TOTAL_DMG")).longValue()  : 0;
+				sb.append(uName).append(NL);
+				if (cnt > 0 || dmg > 0) {
+					sb.append("⚔ 데미지: ").append(my.prac.core.util.SP.fromSp(dmg))
+					  .append(" (").append(cnt).append("회)").append(NL);
+				}
+				sb.append("✨ +").append(String.format("%.2f", gp)).append(" GP").append(NL);
+			}
+			return sb.toString().trim();
 		} catch (Exception e) {
 			return "";
 		}

@@ -78,7 +78,7 @@ public class BossAttackS3Controller {
 
     // ── 대악마 감금스킬 ──
     private static final Map<String, Long> IMPRISONED_UNTIL   = new java.util.concurrent.ConcurrentHashMap<>();
-    private static final int IMPRISON_DURATION_MS = 5 * 60 * 1000; // 5분
+    private static final int IMPRISON_DURATION_MS = 3 * 60 * 1000; // 3분
     private static final int IMPRISON_CHANCE_PCT  = 30;             // 30%
     /** 보스아이템 최대 qty (이이상 회당불가, 인덱스 강화단계는 +4까지, 효과는 2강화 캐플) */
     public static final int MAX_BOSS_ENHANCE = 21;
@@ -156,7 +156,7 @@ public class BossAttackS3Controller {
         e.put(7014, new String[]{"곰 스킬실패 패널티 완화", "%",  "곰 전용"});
         e.put(7015, new String[]{"슈퍼크리티컬 확률",      "%",   "헬보스 전용"});
         e.put(7016, new String[]{"HP 흡수율",              "%",   "미보유시 기본 10%"});
-        e.put(7017, new String[]{"상점 할인율",            "%",   null});
+        e.put(7017, new String[]{"물약상점 할인율",          "%",   null});
         e.put(7018, new String[]{"출석 상자 추가",         "개",  null});
         e.put(7019, new String[]{"추가 스틸 수",            "개",  null});
         e.put(7020, new String[]{"슈퍼크리티컬 배율",      "배",  "미보유 5배 / 0강화 6배 / 1강화 6.5배 / 2강화 7배"});
@@ -205,7 +205,12 @@ public class BossAttackS3Controller {
         if (vals == null || eff == null) return "";
         int curLv = getBossEnhanceLevel(curQty);
         String[] lvLabels = {"0강화", "+1강화", "+2강화", "+3강화", "+4강화", "+5강화"};
+        // 능력치 이름 + 단위
+        String effName = eff[0] + (eff[1] != null && !eff[1].isEmpty() ? "(" + eff[1] + ")" : "");
+        // 특이사항
+        String note = (eff.length > 2 && eff[2] != null && !eff[2].isEmpty()) ? " ※" + eff[2] : "";
         StringBuilder sb = new StringBuilder();
+        sb.append("▶ ").append(effName).append(note).append(" : ");
         for (int i = 0; i < vals.length; i++) {
             if (i > 0) sb.append(" / ");
             String disp = lvLabels[i] + ":" + displayVal(itemId, vals[i]);
@@ -1185,7 +1190,7 @@ public class BossAttackS3Controller {
         // 대악마/마왕 감금스킬 발동 메시지
         if (IMPRISONED_UNTIL.containsKey(userName) &&
                 System.currentTimeMillis() < IMPRISONED_UNTIL.get(userName)) {
-            msg.append(NL).append("[감금스킬] ").append(userName).append("님이 5분간 공격 불가 상태가 됩니다!");
+            msg.append(NL).append("[감금스킬] ").append(userName).append("님이 3분간 공격 불가 상태가 됩니다!");
         }
 
         return msg.toString().trim();
@@ -1455,13 +1460,23 @@ public class BossAttackS3Controller {
             msg.append("참여자가 없어 보상이 지급되지 않았습니다.").append(NL);
             return msg.toString();
         }
+        long totalCntAll = 0; long totalScoreAll = 0;
+        for (HashMap<String, Object> c : contributors) {
+            totalCntAll   += c.get("CNT")   != null ? ((Number) c.get("CNT")).longValue()   : 1L;
+            totalScoreAll += ((Number) c.get("SCORE")).longValue();
+        }
+        if (totalCntAll   <= 0) totalCntAll   = 1;
+        if (totalScoreAll <= 0) totalScoreAll = 1;
         double totalWeight = 0;
         double[] weights = new double[contributors.size()];
         for (int i = 0; i < contributors.size(); i++) {
             long score = ((Number) contributors.get(i).get("SCORE")).longValue();
             long cnt   = contributors.get(i).get("CNT") != null ? ((Number) contributors.get(i).get("CNT")).longValue() : 1L;
             if (cnt <= 0) cnt = 1L;
-            weights[i]   = (double) score / cnt;
+            // 횟수 90% + 데미지 10% 가중치
+            double cntRatio   = (double) cnt   / totalCntAll;
+            double scoreRatio = (double) score / totalScoreAll;
+            weights[i]   = cntRatio * 0.9 + scoreRatio * 0.1;
             totalWeight += weights[i];
         }
         if (totalWeight <= 0) totalWeight = 1;
@@ -1473,7 +1488,7 @@ public class BossAttackS3Controller {
             long   score  = ((Number) contributors.get(i).get("SCORE")).longValue();
             long   cnt    = contributors.get(i).get("CNT") != null ? ((Number) contributors.get(i).get("CNT")).longValue() : 1L;
             double ratio  = weights[i] / totalWeight;
-            double myGp   = Math.floor(totalGp * ratio * 100) / 100.0;
+            double myGp   = applyGpNewbieMult(uName, Math.floor(totalGp * ratio * 100) / 100.0);
             if (myGp < 0.01) myGp = 0.01;
             long mySpRaw  = Math.min(2_000_000_000_000L, (long)(totalSp * ratio)); // 인당 최대 2c
             if (mySpRaw < 100_000_000L) mySpRaw = 100_000_000L; // 최소 1b
@@ -1565,7 +1580,7 @@ public class BossAttackS3Controller {
             } catch (Exception ignore) {}
 
             // GP: myDamage ÷ 750,000 (기존 6,000,000의 1/8), cap 10 GP
-            double myGp = Math.min(10.0, myDamage / 750_000.0);
+            double myGp = applyGpNewbieMult(uName, Math.min(10.0, myDamage / 750_000.0));
             if (myGp < 0.1) myGp = 0.1;
             myGp = Math.floor(myGp * 100) / 100.0;
             try {

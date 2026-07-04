@@ -31,6 +31,7 @@ public interface BotS3Service {
 
 	/** [헬보스] 마지막 처치 보스 + 보상 수령자 메시지 (보스 없을 때 표시용) */
 	String getLastKillRewardMsg();
+	String buildLastKillMsgFromDb();
 
 	/** [헬보스] 처치 결과 메시지 캐시 저장 (재정비 대기화면 표시용) */
 	void saveLastKillMsg(String msg);

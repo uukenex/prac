@@ -543,4 +543,44 @@
 		   AND END_YN = '0'
 	</update>
 
+	<!-- 가장 최근 헬보스 처치 GP 지급 내역 (보스 종류 무관, DB 직접 조회) -->
+	<select id="selectLastSuccubusKillGp" resultType="HashMap">
+		SELECT r.USER_NAME,
+		       r.SCORE       AS gp,
+		       r.CMD,
+		       r.INSERT_DATE,
+		       b.cnt,
+		       b.score       AS total_dmg
+		  FROM TBOT_POINT_RANK r
+		  LEFT JOIN (
+		           SELECT USER_NAME,
+		                  COUNT(*)     AS cnt,
+		                  SUM(ATK_DMG) AS score
+		             FROM TBOT_POINT_NEW_BATTLE_LOG
+		            WHERE NIGHTMARE_YN  = '2'
+		              AND TARGET_MON_LV = 999
+		              AND ATK_DMG       > 0
+		              AND INSERT_DATE   >= (
+		                      /* 최근 처치 배치 기준 최대 3시간 전까지의 전투 로그 */
+		                      SELECT MAX(INSERT_DATE) - 3/24
+		                        FROM TBOT_POINT_RANK
+		                       WHERE CMD    IN ('SUCCUBUS_KILL_GP','BOSS_HELL_KILL_GP','COUNTUP_BOSS_REWARD_GP')
+		                         AND NEW_YN = '2'
+		                         AND INSERT_DATE >= SYSDATE - 30
+		                  )
+		            GROUP BY USER_NAME
+		       ) b ON b.USER_NAME = r.USER_NAME
+		 WHERE r.CMD IN ('SUCCUBUS_KILL_GP','BOSS_HELL_KILL_GP','BOSS_HELL_PART_GP','COUNTUP_BOSS_REWARD_GP')
+		   AND r.NEW_YN = '2'
+		   /* 가장 최근 배치: 대표 CMD의 최대 시각으로부터 ±5초 이내 */
+		   AND r.INSERT_DATE >= (
+		           SELECT MAX(INSERT_DATE) - 5/86400
+		             FROM TBOT_POINT_RANK
+		            WHERE CMD    IN ('SUCCUBUS_KILL_GP','BOSS_HELL_KILL_GP','COUNTUP_BOSS_REWARD_GP')
+		              AND NEW_YN = '2'
+		              AND INSERT_DATE >= SYSDATE - 30
+		       )
+		 ORDER BY NVL(b.cnt, 0) DESC, r.SCORE DESC
+	</select>
+
 </mapper>
