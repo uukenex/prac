@@ -9898,10 +9898,17 @@ public class BossAttackController {
 	) {
 	    if (rewardSp <= 0) return "";
 
-	    // ✅ 메모리에서만 중복 체크
+	    // 1차: 메모리 중복 체크 (빠른 경로)
 	    if (achievedCmdSet.contains(achvCmd)) {
 	        return "";
 	    }
+	    // 2차: DB 중복 체크 (메모리 누락 방어)
+	    try {
+	        if (botNewService.selectPointRankCountByCmdUserInRoom(roomName, userName, achvCmd) > 0) {
+	            achievedCmdSet.add(achvCmd); // 메모리 동기화
+	            return "";
+	        }
+	    } catch (Exception ignore) {}
 
 	    HashMap<String,Object> pr = new HashMap<>();
 	    pr.put("userName", userName);

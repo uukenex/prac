@@ -97,7 +97,7 @@
         SELECT NVL(JOB,'초보자'), COUNT(*), SUM(CASE WHEN DEATH_YN = 1 THEN 1 ELSE 0 END)
           FROM TBOT_POINT_NEW_BATTLE_LOG
          WHERE USER_NAME = #{userName}
-           AND INSERT_DATE >= ADD_MONTHS(TRUNC(SYSDATE, 'MM'), -1)
+           AND INSERT_DATE >= TRUNC(SYSDATE, 'MM')
          GROUP BY NVL(JOB,'초보자')
       ) t
     ) s, DUAL
