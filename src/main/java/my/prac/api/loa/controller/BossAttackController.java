@@ -9559,7 +9559,7 @@ public class BossAttackController {
 	        regen  = newRegen;
 
 	        // [이벤트] 레벨업 1+1: 짝수 레벨에서 레벨업 시 추가 1레벨 부여 (800레벨 이하)
-	        if (EVENT_LEVEL_1PLUS1 && lvBeforeUp % 2 == 0 && lvBeforeUp < 800) {
+	        if (EVENT_LEVEL_1PLUS1 && lvBeforeUp % 2 == 0 && lvBeforeUp < 990) {
 	            lv++;
 	            upCount++;
 	            expNext = calcNextExp(lv, expNext);
