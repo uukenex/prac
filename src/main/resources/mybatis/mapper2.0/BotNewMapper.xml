@@ -1383,6 +1383,7 @@
 	        SELECT GAIN_TYPE, QTY FROM TBOT_POINT_NEW_INVENTORY
 	         WHERE USER_NAME = #{userName}
 	           AND GAIN_TYPE IN ('DROP3', 'DROP5','DROP9')
+		        AND INSERT_DATE >= TRUNC(SYSDATE, 'MM')
 	        UNION ALL
 	        SELECT GAIN_TYPE, QTY FROM TBOT_POINT_NEW_INVENTORY_OLD
 	         WHERE USER_NAME = #{userName}
@@ -1563,6 +1564,7 @@
 	         WHERE USER_NAME = #{userName}
 	           AND GAIN_TYPE IN ('DROP','DROP2','DROP3','DROP5','DROP9','STEAL')
 	           AND ITEM_ID &lt; 50
+		           AND INSERT_DATE >= TRUNC(SYSDATE, 'MM')
 	        UNION ALL
 	        SELECT ITEM_ID, GAIN_TYPE, QTY FROM TBOT_POINT_NEW_INVENTORY_OLD
 	         WHERE USER_NAME = #{userName}
@@ -1836,6 +1838,7 @@
 	        /* 현재 인벤 (DEL_YN='1' 판매분 포함) */
 	        SELECT GAIN_TYPE, ITEM_ID, QTY, DEL_YN FROM TBOT_POINT_NEW_INVENTORY
 	         WHERE USER_NAME = #{userName}
+	           AND (ITEM_ID >= 100 OR INSERT_DATE >= TRUNC(SYSDATE, 'MM'))
 	        UNION ALL
 	        /* 통계 테이블 (item_id &lt; 100, DEL_YN='0'만 존재) */
 	        SELECT GAIN_TYPE, ITEM_ID, QTY, DEL_YN FROM TBOT_POINT_NEW_INVENTORY_OLD
