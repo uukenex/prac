@@ -128,6 +128,10 @@ public class BossAttackController {
 	// 월 배치 실행 중 공격횟수 업적 잠금 (BATTLE_JOB 이관 ~ BATTLE_LOG 삭제 완료 사이 이중집계 방지)
 	public static volatile boolean MONTHLY_BATCH_RUNNING = false;
 
+	// 공격 중복 방지 락 (유저별 처리 중 여부)
+	private static final java.util.Set<String> ATTACK_IN_PROGRESS =
+		java.util.Collections.newSetFromMap(new java.util.concurrent.ConcurrentHashMap<>());
+
 	// 누적SP 1위 캐시 (1시간마다 갱신, 가방 최대금액 계산용)
 	private static volatile long TOP1_SP_CACHE = 0L;
 	private static volatile long TOP1_SP_CACHE_TS = 0L;
@@ -4675,39 +4679,46 @@ public class BossAttackController {
 		// 0~1) 입력 검증 / 매크로 잠금
 		if ((earlyMsg = ma_validate(s)) != null) return earlyMsg;
 
-		// 2~4) 공통 스탯 + 직업 공격배율
-		if ((earlyMsg = ma_calcStats(s)) != null) return earlyMsg;
+		// 중복 공격 방지 (동일 유저의 동시 요청 차단)
+		if (!ATTACK_IN_PROGRESS.add(s.userName)) return "";
 
-		if ((earlyMsg = ma_macroCheck(s)) != null) return earlyMsg;
+		try {
+			// 2~4) 공통 스탯 + 직업 공격배율
+			if ((earlyMsg = ma_calcStats(s)) != null) return earlyMsg;
 
-		// 5~6) 부활 처리 / 진행중·신규 몬스터 설정
-		if ((earlyMsg = ma_resolveMonster(s)) != null) return earlyMsg;
+			if ((earlyMsg = ma_macroCheck(s)) != null) return earlyMsg;
 
-		// 7) 쿨타임·8) HP 확정 / [S3] 헰보스 분기
-		if ((earlyMsg = ma_cooldownAndHp(s)) != null) return earlyMsg;
+			// 5~6) 부활 처리 / 진행중·신규 몬스터 설정
+			if ((earlyMsg = ma_resolveMonster(s)) != null) return earlyMsg;
 
-		// 8-후) berserkMul + Flags 롤
-		ma_preDmgJobBuffs(s);
+			// 7) 쿨타임·8) HP 확정 / [S3] 헰보스 분기
+			if ((earlyMsg = ma_cooldownAndHp(s)) != null) return earlyMsg;
 
-		// 9~11) HP5% 제한 / 도사버프 / 스페셀버프 / 데미지 계산
-		if ((earlyMsg = ma_applyBuffsAndCalcDmg(s)) != null) return earlyMsg;
+			// 8-후) berserkMul + Flags 롤
+			ma_preDmgJobBuffs(s);
 
-		// [도적] 2타 사전 계산
-		ma_thiefDoubleAtkPreCalc(s);
-		// [워록] 다중히트 사전 계산
-		ma_warlockPreCalc(s);
+			// 9~11) HP5% 제한 / 도사버프 / 스페셀버프 / 데미지 계산
+			if ((earlyMsg = ma_applyBuffsAndCalcDmg(s)) != null) return earlyMsg;
 
-		// 12) 사망 처리
-		if ((earlyMsg = ma_deathCheck(s)) != null) return earlyMsg;
+			// [도적] 2타 사전 계산
+			ma_thiefDoubleAtkPreCalc(s);
+			// [워록] 다중히트 사전 계산
+			ma_warlockPreCalc(s);
 
-		// 13) 처치·드랍 판단 + 직업별 스킬
-		ma_resolveKillAndJobSkills(s);
+			// 12) 사망 처리
+			if ((earlyMsg = ma_deathCheck(s)) != null) return earlyMsg;
 
-		// 14) DB 반영 + 업적 부여
-		ma_persistAndAchv(s);
+			// 13) 처치·드랍 판단 + 직업별 스킬
+			ma_resolveKillAndJobSkills(s);
 
-		// 15~16) 메시지 구성 + 포인트 출력
-		return ma_buildMessage(s);
+			// 14) DB 반영 + 업적 부여
+			ma_persistAndAchv(s);
+
+			// 15~16) 메시지 구성 + 포인트 출력
+			return ma_buildMessage(s);
+		} finally {
+			ATTACK_IN_PROGRESS.remove(s.userName);
+		}
 	}
 
 	/**
