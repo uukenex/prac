@@ -476,9 +476,9 @@ new Vue({
       if (!this.userName || this.attacking) return;
       var self = this;
       this.attacking = true;
-      var sender = encodeURIComponent(this.userName + '/' + this.room);
+      var sender = encodeURIComponent(this.userName);
       var room   = encodeURIComponent(this.room);
-      var url = '<%=request.getContextPath()%>/loa/chat?param0=%2F%E3%84%B1&sender='+sender+'&room='+room+'&fulltxt=%2F%E3%84%B1';
+      var url = '<%=request.getContextPath()%>/loa/chat?param0=%2F%EC%9B%B9%EA%B3%B5%EA%B2%A9&sender='+sender+'&room='+room+'&fulltxt=%2F%EC%9B%B9%EA%B3%B5%EA%B2%A9';
       fetch(url)
         .then(function(r){ return r.json(); })
         .then(function(d){

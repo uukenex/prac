@@ -1033,6 +1033,10 @@ public class LoaChatController {
 				param0="/ㄱ";
 				val = boss.monsterAttack(reqMap);
 				break;
+			case "/웹공격":
+				param0="/웹공격";
+				val = boss.monsterAttack(reqMap);
+				break;
 			case "/ㄱㄱㅌㄱ":case "/공격타겟":
 			case "/ㄱㄱㄷㅅ":case "/공격대상": 
 				param0="/ㄱㄱㅌㄱ";
