@@ -22,8 +22,48 @@
     .search-row input:focus { border-color: #c9a96e; }
     .btn-search  { background: #c9a96e; color: #fff; border: none; padding: 8px 18px; border-radius: 20px; font-size: 13px; font-weight: 700; cursor: pointer; }
     .btn-search:hover { background: #b8935a; }
+    .btn-attack  { background: #e05050; color: #fff; border: none; padding: 8px 18px; border-radius: 20px; font-size: 13px; font-weight: 700; cursor: pointer; transition: background .2s; }
+    .btn-attack:hover  { background: #c43c3c; }
+    .btn-attack:disabled { background: #e09898; cursor: default; }
+    .btn-history { background: #5a7fc9; color: #fff; border: none; padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 700; cursor: pointer; transition: background .2s; }
+    .btn-history:hover { background: #4465b0; }
     .loading { text-align: center; padding: 60px; color: #bbb; font-size: 15px; }
     .empty   { text-align: center; padding: 60px; color: #bbb; }
+
+    /* ─ 토스트 ─ */
+    .toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+      background: rgba(30,20,10,.88); color: #fff; border-radius: 14px;
+      padding: 12px 22px; font-size: 13px; line-height: 1.55;
+      max-width: 88vw; white-space: pre-wrap; word-break: break-all;
+      box-shadow: 0 4px 20px rgba(0,0,0,.3); z-index: 200;
+      transition: opacity .3s;
+    }
+    .toast.hide { opacity: 0; pointer-events: none; }
+
+    /* ─ 이력 패널 ─ */
+    .history-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 150; display: flex; align-items: flex-end; justify-content: center; }
+    .history-panel {
+      background: #fff; border-radius: 20px 20px 0 0; width: 100%; max-width: 860px;
+      max-height: 70vh; display: flex; flex-direction: column;
+      box-shadow: 0 -4px 24px rgba(0,0,0,.2);
+    }
+    .history-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 18px 12px; border-bottom: 1px solid #f0ece4;
+    }
+    .history-title { font-size: 15px; font-weight: 800; color: #3d2b1f; }
+    .history-close { font-size: 20px; color: #bbb; cursor: pointer; padding: 4px; }
+    .history-close:hover { color: #555; }
+    .history-body { overflow-y: auto; padding: 12px 18px 24px; flex: 1; }
+    .history-empty { text-align: center; padding: 40px; color: #bbb; font-size: 14px; }
+    .log-item { margin-bottom: 14px; }
+    .log-time { font-size: 11px; color: #aaa; margin-bottom: 3px; }
+    .log-msg  {
+      background: #f7f3ee; border-left: 3px solid #c9a96e;
+      border-radius: 0 10px 10px 0; padding: 8px 12px;
+      font-size: 12px; color: #333; white-space: pre-wrap; word-break: break-all; line-height: 1.5;
+    }
 
     /* ═══════════ HERO ═══════════ */
     .hero {
@@ -172,6 +212,8 @@
     <div class="search-row">
       <input v-model="inputUser" placeholder="유저명 입력" @keyup.enter="fetchInfo">
       <button class="btn-search" @click="fetchInfo">조회</button>
+      <button class="btn-attack" @click="doAttack" :disabled="attacking" v-if="userName">⚔ 공격</button>
+      <button class="btn-history" @click="showHistory=true" v-if="userName">📜 이력</button>
     </div>
   </div>
 
@@ -297,6 +339,26 @@
     </div>
   </div>
 
+  <!-- ══ 토스트 ══ -->
+  <div class="toast" :class="{ hide: !toastVisible }" v-if="toastMsg">{{ toastMsg }}</div>
+
+  <!-- ══ 이력 패널 ══ -->
+  <div class="history-overlay" v-if="showHistory" @click.self="showHistory=false">
+    <div class="history-panel">
+      <div class="history-header">
+        <div class="history-title">⚔ 공격 이력 ({{ attackLog.length }}건)</div>
+        <div class="history-close" @click="showHistory=false">✕</div>
+      </div>
+      <div class="history-body">
+        <div class="history-empty" v-if="attackLog.length===0">아직 공격 이력이 없습니다.</div>
+        <div class="log-item" v-for="(log, i) in attackLog" :key="i">
+          <div class="log-time">{{ log.time }}</div>
+          <div class="log-msg">{{ log.msg }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.min.js"></script>
@@ -350,7 +412,9 @@ new Vue({
     currentSp:'—', lifetimeSp:'—',
     gpBalance:'—', totalEarnedGp:'—',
     loading:false, inventory:[], potionUseCount:0,
-    setBonuses:[], modal:null, charImgUrl:null
+    setBonuses:[], modal:null, charImgUrl:null,
+    attacking:false, toastMsg:'', toastVisible:false, toastTimer:null,
+    showHistory:false, attackLog:[], room:'웹'
   },
   computed: {
     expPct: function() {
@@ -396,6 +460,38 @@ new Vue({
       add('ATK 비율','ATK_MAX_RATE'); add('체력 회복','HP_REGEN');
       return stats;
     },
+    showToast: function(msg) {
+      var self = this;
+      this.toastMsg = msg;
+      this.toastVisible = true;
+      if (this.toastTimer) clearTimeout(this.toastTimer);
+      this.toastTimer = setTimeout(function(){ self.toastVisible = false; }, 4000);
+    },
+    fmtTime: function() {
+      var d = new Date();
+      var pad = function(n){ return String(n).padStart(2,'0'); };
+      return pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());
+    },
+    doAttack: function() {
+      if (!this.userName || this.attacking) return;
+      var self = this;
+      this.attacking = true;
+      var sender = encodeURIComponent(this.userName + '/' + this.room);
+      var room   = encodeURIComponent(this.room);
+      var url = '<%=request.getContextPath()%>/loa/chat?param0=%2F%E3%84%B1&sender='+sender+'&room='+room+'&fulltxt=%2F%E3%84%B1';
+      fetch(url)
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          var msg = (d && d.data) ? d.data : '응답 없음';
+          self.attackLog.unshift({ time: self.fmtTime(), msg: msg });
+          self.showToast(msg);
+          self.attacking = false;
+        })
+        .catch(function(){
+          self.showToast('공격 요청 실패');
+          self.attacking = false;
+        });
+    },
     fetchInfo: function(){
       var name=this.inputUser.trim(); if(!name) return;
       this.loading=true; this.inventory=[]; this.modal=null;
@@ -428,6 +524,8 @@ new Vue({
   mounted: function(){
     var params=new URLSearchParams(window.location.search);
     var u=(params.get('userName')||params.get('user')||'').trim();
+    var r=(params.get('room')||'').trim();
+    if(r) this.room=r;
     if(u){ this.inputUser=u; this.fetchInfo(); }
   }
 });
