@@ -482,7 +482,7 @@ new Vue({
       fetch(url)
         .then(function(r){ return r.json(); })
         .then(function(d){
-          var msg = (d && d.data) ? d.data : '응답 없음';
+          var msg = (d && d.data) ? d.data.split('♬').join('\n') : '응답 없음';
           self.attackLog.unshift({ time: self.fmtTime(), msg: msg });
           self.showToast(msg);
           self.attacking = false;
