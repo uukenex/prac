@@ -1219,14 +1219,12 @@ public class BossAttackController {
 	            if (totalPlat > 0) {
 	                sb.append(userName).append("님, ✨ 플래티넘상자 ").append(totalPlat).append("개 개봉!").append(NL);
 	                sb.append("━━━━━━━━━━━━").append(NL);
+	                java.util.Map<Long,int[]> platAccum = new java.util.LinkedHashMap<>();
 	                for (int _i = 0; _i < totalPlat; _i++) {
 	                    my.prac.core.util.MiniGameUtil.HellBoxEntry entry =
 	                        my.prac.core.util.MiniGameUtil.HELL_BOX_PLAT.get(ThreadLocalRandom.current().nextInt(my.prac.core.util.MiniGameUtil.HELL_BOX_PLAT.size()));
-	                    HashMap<String,Object> inv = new HashMap<>();
-	                    inv.put("userName", userName); inv.put("roomName", roomName);
-	                    inv.put("itemId", entry.itemId); inv.put("qty", entry.value);
-	                    inv.put("delYn", "0"); inv.put("gainType", "HELL_BOX_PLAT");
-	                    try { botNewService.insertInventoryLogTx(inv); } catch (Exception ignore2) {}
+	                    long key = (long) entry.itemId * 10000 + entry.value;
+	                    platAccum.computeIfAbsent(key, k -> new int[]{entry.itemId, 0})[1] += entry.value;
 	                    sb.append("✨ ").append(entry.starsStr()).append(" ").append(entry.desc).append(" 획득!").append(NL);
 	                    if (!platAchvDone) {
 	                        try {
@@ -1243,25 +1241,39 @@ public class BossAttackController {
 	                        } catch (Exception ignore3) {}
 	                    }
 	                }
+	                // PK 충돌 방지: 동일 itemId+value 조합은 qty 합산 후 1건만 INSERT
+	                for (int[] v : platAccum.values()) {
+	                    HashMap<String,Object> inv = new HashMap<>();
+	                    inv.put("userName", userName); inv.put("roomName", roomName);
+	                    inv.put("itemId", v[0]); inv.put("qty", v[1]);
+	                    inv.put("delYn", "0"); inv.put("gainType", "HELL_BOX_PLAT");
+	                    try { botNewService.insertInventoryLogTx(inv); } catch (Exception ignore2) {}
+	                }
 	                sb.append("━━━━━━━━━━━━").append(NL);
 	            }
 	            // 황금 개봉
 	            if (totalGold > 0) {
 	                sb.append(userName).append("님, ✨ 황금상자 ").append(totalGold).append("개 개봉!").append(NL);
 	                sb.append("━━━━━━━━━━━━").append(NL);
+	                java.util.Map<Long,int[]> goldAccum = new java.util.LinkedHashMap<>();
 	                for (int _i = 0; _i < totalGold; _i++) {
 	                    my.prac.core.util.MiniGameUtil.HellBoxEntry entry =
 	                        my.prac.core.util.MiniGameUtil.HELL_BOX_GOLD.get(ThreadLocalRandom.current().nextInt(my.prac.core.util.MiniGameUtil.HELL_BOX_GOLD.size()));
+	                    long key = (long) entry.itemId * 10000 + entry.value;
+	                    goldAccum.computeIfAbsent(key, k -> new int[]{entry.itemId, 0})[1] += entry.value;
+	                    sb.append("✨ ").append(entry.starsStr()).append(" ").append(entry.desc).append(" 획득!").append(NL);
+	                }
+	                // PK 충돌 방지: 동일 itemId+value 조합은 qty 합산 후 1건만 INSERT
+	                for (int[] v : goldAccum.values()) {
 	                    HashMap<String,Object> inv = new HashMap<>();
 	                    inv.put("userName", userName); inv.put("roomName", roomName);
-	                    inv.put("itemId", entry.itemId); inv.put("qty", entry.value);
+	                    inv.put("itemId", v[0]); inv.put("qty", v[1]);
 	                    inv.put("delYn", "0"); inv.put("gainType", "HELL_BOX_GOLD");
 	                    try { botNewService.insertInventoryLogTx(inv); } catch (Exception ignore2) {}
-	                    sb.append("✨ ").append(entry.starsStr()).append(" ").append(entry.desc).append(" 획득!").append(NL);
 	                }
 	                sb.append("━━━━━━━━━━━━").append(NL);
 	            }
-	            // 전체 pending 일괄 soft-delete
+	                        // 전체 pending 일괄 soft-delete
 	            botNewService.confirmAllPendingHellBoxes(userName);
 	            invalidateInvBuff(userName);
 	            sb.append(buildHellBoxStatSummary(userName));
