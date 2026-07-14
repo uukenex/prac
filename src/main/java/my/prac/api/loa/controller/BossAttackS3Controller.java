@@ -1651,7 +1651,8 @@ public class BossAttackS3Controller {
         for (String participant : allNames) {
             try {
                 int existing = botNewService.countGpByCmd(participant, "BOSS_HELL_KILL_GP");
-                if (existing == 0) {
+                int alreadyFirst = botNewService.countGpByCmd(participant, "BOSS_FIRST_JOIN_GP");
+                if (existing == 0 && alreadyFirst == 0) {
                     HashMap<String, Object> firstGp = new HashMap<>();
                     firstGp.put("userName", participant);
                     firstGp.put("roomName", roomName);
