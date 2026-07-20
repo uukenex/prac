@@ -6130,13 +6130,18 @@ public class BossAttackController {
 				if (s.hell) { gpMin = 0.2; gpMax = 0.5; }
 				else        { gpMin = 0.1; gpMax = 0.3; }
 				double gpAmt = Math.round((gpMin + (gpMax - gpMin) * (monNo - 1) / 29.0) * 100.0) / 100.0;
+				boolean gpCrit = s.hell && ThreadLocalRandom.current().nextDouble() < 0.05;
+				if (gpCrit) gpAmt = Math.round(gpAmt * 2 * 100.0) / 100.0;
 				try {
 					HashMap<String,Object> gp = new HashMap<>();
 					gp.put("userName", s.userName); gp.put("roomName", s.roomName);
 					gp.put("score", gpAmt); gp.put("cmd", "MON_KILL_GP");
 					botNewService.insertGpRecord(gp);
 					double gpBal = botNewService.selectGpBalance(s.userName);
-					s.gpDropMsg = String.format("💎GP 획득! +%.2f GP (보유: %.2f GP)", gpAmt, gpBal);
+					if (gpCrit)
+						s.gpDropMsg = String.format("💎⚡GP 크리티컬! +%.2f GP (보유: %.2f GP)", gpAmt, gpBal);
+					else
+						s.gpDropMsg = String.format("💎GP 획득! +%.2f GP (보유: %.2f GP)", gpAmt, gpBal);
 				} catch (Exception ignore) {}
 			}
 		}
