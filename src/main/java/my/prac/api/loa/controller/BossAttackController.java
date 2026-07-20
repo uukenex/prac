@@ -4971,25 +4971,27 @@ public class BossAttackController {
 
 		double jobDmgMul  = 1.0;
 		int    jobBonusMin = 0, jobBonusMax = 0;
-		if      ("궁수".equals(s.job))   jobDmgMul = 4.5;
-		else if ("사냥꾼".equals(s.job))  jobDmgMul = 4.5;
-		else if ("궁사".equals(s.job))   jobDmgMul = 1.5;
-		else if ("전사".equals(s.job))   jobDmgMul = 2.1;
-		else if ("검성".equals(s.job))   jobDmgMul = 3.75;
-		else if ("자이언트".equals(s.job))   jobDmgMul = 5.25;
-		else if ("자이언트용병".equals(s.job)) jobDmgMul = 7.5;
-		else if ("자이언트기사".equals(s.job)) jobDmgMul = 9.75;
-		else if ("어쓰신".equals(s.job))  jobDmgMul = 1.95;
-		else if ("제너럴".equals(s.job))  jobDmgMul = 1.8;
-		else if ("저격수".equals(s.job))  jobDmgMul = 3.0;
-		else if ("처단자".equals(s.job))  jobDmgMul = 2.1;
-		else if ("용사".equals(s.job))   jobDmgMul = 2.1;
-		else if ("복수자".equals(s.job))  jobDmgMul = 0.3;
-		else if ("음양사".equals(s.job))  jobDmgMul = 2.4;
-		else if ("엘프".equals(s.job))       jobDmgMul = 3.0;
-		else if ("엘프궁수".equals(s.job))   jobDmgMul = 3.0;
-		else if ("엘프마법사".equals(s.job)) jobDmgMul = 3.0;
-		else if ("워록".equals(s.job))      jobDmgMul = 2.4;
+		boolean graceApplied = false; // 종말의 가호 (엘프/자이언트 종족 제외)
+		if      ("궁수".equals(s.job))   { jobDmgMul = 4.5;  graceApplied = true; }
+		else if ("사냥꾼".equals(s.job))  { jobDmgMul = 4.5;  graceApplied = true; }
+		else if ("궁사".equals(s.job))   { jobDmgMul = 1.5;  graceApplied = true; }
+		else if ("전사".equals(s.job))   { jobDmgMul = 2.1;  graceApplied = true; }
+		else if ("검성".equals(s.job))   { jobDmgMul = 3.75; graceApplied = true; }
+		else if ("자이언트".equals(s.job))   jobDmgMul = 3.5;   // 엘프/자이언트 종족: 가호 제외
+		else if ("자이언트용병".equals(s.job)) jobDmgMul = 5.0;
+		else if ("자이언트기사".equals(s.job)) jobDmgMul = 6.5;
+		else if ("어쓰신".equals(s.job))  { jobDmgMul = 1.95; graceApplied = true; }
+		else if ("제너럴".equals(s.job))  { jobDmgMul = 1.8;  graceApplied = true; }
+		else if ("저격수".equals(s.job))  { jobDmgMul = 3.0;  graceApplied = true; }
+		else if ("처단자".equals(s.job))  { jobDmgMul = 2.1;  graceApplied = true; }
+		else if ("용사".equals(s.job))   { jobDmgMul = 2.1;  graceApplied = true; }
+		else if ("복수자".equals(s.job))  { jobDmgMul = 0.3;  graceApplied = true; }
+		else if ("음양사".equals(s.job))  { jobDmgMul = 2.4;  graceApplied = true; }
+		else if ("엘프".equals(s.job))       jobDmgMul = 2.0;  // 엘프 종족: 가호 제외
+		else if ("엘프궁수".equals(s.job))   jobDmgMul = 2.0;
+		else if ("엘프마법사".equals(s.job)) jobDmgMul = 2.0;
+		else if ("워록".equals(s.job))      { jobDmgMul = 2.4;  graceApplied = true; }
+		if (graceApplied) s.bonusMsg += NL + "✨종말의 가호 효과 (+50% 데미지)";
 
 		s.effAtkMin = (int)Math.round(atkMin * jobDmgMul + jobBonusMin);
 		s.effAtkMax = (int)Math.round(atkMax * jobDmgMul + jobBonusMax);
@@ -6125,8 +6127,8 @@ public class BossAttackController {
 			int monNo = s.m.monNo;
 			if (monNo >= 1 && monNo <= 30) {
 				double gpMin, gpMax;
-				if (s.hell) { gpMin = 0.5; gpMax = 1.0; }
-				else        { gpMin = 0.3; gpMax = 0.7; }
+				if (s.hell) { gpMin = 0.2; gpMax = 0.5; }
+				else        { gpMin = 0.1; gpMax = 0.3; }
 				double gpAmt = Math.round((gpMin + (gpMax - gpMin) * (monNo - 1) / 29.0) * 100.0) / 100.0;
 				try {
 					HashMap<String,Object> gp = new HashMap<>();
