@@ -4991,7 +4991,6 @@ public class BossAttackController {
 		else if ("엘프궁수".equals(s.job))   jobDmgMul = 2.0;
 		else if ("엘프마법사".equals(s.job)) jobDmgMul = 2.0;
 		else if ("워록".equals(s.job))      { jobDmgMul = 2.4;  graceApplied = true; }
-		if (graceApplied) s.bonusMsg += NL + "✨종말의 가호 효과 (+50% 데미지)";
 
 		s.effAtkMin = (int)Math.round(atkMin * jobDmgMul + jobBonusMin);
 		s.effAtkMax = (int)Math.round(atkMax * jobDmgMul + jobBonusMax);
