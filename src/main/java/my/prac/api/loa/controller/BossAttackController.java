@@ -4971,25 +4971,25 @@ public class BossAttackController {
 
 		double jobDmgMul  = 1.0;
 		int    jobBonusMin = 0, jobBonusMax = 0;
-		if      ("궁수".equals(s.job))   jobDmgMul = 3.0;
-		else if ("사냥꾼".equals(s.job))  jobDmgMul = 3.0;
-		else if ("궁사".equals(s.job))   jobDmgMul = 1.0;
-		else if ("전사".equals(s.job))   jobDmgMul = 1.4;
-		else if ("검성".equals(s.job))   jobDmgMul = 2.5;
-		else if ("자이언트".equals(s.job))   jobDmgMul = 3.5;
-		else if ("자이언트용병".equals(s.job)) jobDmgMul = 5.0;
-		else if ("자이언트기사".equals(s.job)) jobDmgMul = 6.5;
-		else if ("어쓰신".equals(s.job))  jobDmgMul = 1.3;
-		else if ("제너럴".equals(s.job))  jobDmgMul = 1.2;
-		else if ("저격수".equals(s.job))  jobDmgMul = 2.0;
-		else if ("처단자".equals(s.job))  jobDmgMul = 1.4;
-		else if ("용사".equals(s.job))   jobDmgMul = 1.4;
-		else if ("복수자".equals(s.job))  jobDmgMul = 0.2;
-		else if ("음양사".equals(s.job))  jobDmgMul = 1.6;
-		else if ("엘프".equals(s.job))       jobDmgMul = 2.0;
-		else if ("엘프궁수".equals(s.job))   jobDmgMul = 2.0;
-		else if ("엘프마법사".equals(s.job)) jobDmgMul = 2.0;
-		else if ("워록".equals(s.job))      jobDmgMul = 1.6;
+		if      ("궁수".equals(s.job))   jobDmgMul = 4.5;
+		else if ("사냥꾼".equals(s.job))  jobDmgMul = 4.5;
+		else if ("궁사".equals(s.job))   jobDmgMul = 1.5;
+		else if ("전사".equals(s.job))   jobDmgMul = 2.1;
+		else if ("검성".equals(s.job))   jobDmgMul = 3.75;
+		else if ("자이언트".equals(s.job))   jobDmgMul = 5.25;
+		else if ("자이언트용병".equals(s.job)) jobDmgMul = 7.5;
+		else if ("자이언트기사".equals(s.job)) jobDmgMul = 9.75;
+		else if ("어쓰신".equals(s.job))  jobDmgMul = 1.95;
+		else if ("제너럴".equals(s.job))  jobDmgMul = 1.8;
+		else if ("저격수".equals(s.job))  jobDmgMul = 3.0;
+		else if ("처단자".equals(s.job))  jobDmgMul = 2.1;
+		else if ("용사".equals(s.job))   jobDmgMul = 2.1;
+		else if ("복수자".equals(s.job))  jobDmgMul = 0.3;
+		else if ("음양사".equals(s.job))  jobDmgMul = 2.4;
+		else if ("엘프".equals(s.job))       jobDmgMul = 3.0;
+		else if ("엘프궁수".equals(s.job))   jobDmgMul = 3.0;
+		else if ("엘프마법사".equals(s.job)) jobDmgMul = 3.0;
+		else if ("워록".equals(s.job))      jobDmgMul = 2.4;
 
 		s.effAtkMin = (int)Math.round(atkMin * jobDmgMul + jobBonusMin);
 		s.effAtkMax = (int)Math.round(atkMax * jobDmgMul + jobBonusMax);
@@ -6120,8 +6120,24 @@ public class BossAttackController {
 			} catch (Exception ignore) {}
 		}
 
-		// ── [신규] 3.5% 확률 GP 지급 / GP확정타임 (이중 지급 방지 — 내부에서 분기)
-		s.gpDropMsg = tryDropGp(s.userName, s.roomName, s.activeBuff);
+		// ── 몬스터 처치 시 GP 지급 (헬: 0.5~1.0, 일반/나이트메어: 0.3~0.7, MON_NO 1~30 순차 증가)
+		if (s.res.killed && s.m != null) {
+			int monNo = s.m.monNo;
+			if (monNo >= 1 && monNo <= 30) {
+				double gpMin, gpMax;
+				if (s.hell) { gpMin = 0.5; gpMax = 1.0; }
+				else        { gpMin = 0.3; gpMax = 0.7; }
+				double gpAmt = Math.round((gpMin + (gpMax - gpMin) * (monNo - 1) / 29.0) * 100.0) / 100.0;
+				try {
+					HashMap<String,Object> gp = new HashMap<>();
+					gp.put("userName", s.userName); gp.put("roomName", s.roomName);
+					gp.put("score", gpAmt); gp.put("cmd", "MON_KILL_GP");
+					botNewService.insertGpRecord(gp);
+					double gpBal = botNewService.selectGpBalance(s.userName);
+					s.gpDropMsg = String.format("💎GP 획득! +%.2f GP (보유: %.2f GP)", gpAmt, gpBal);
+				} catch (Exception ignore) {}
+			}
+		}
 
 		// [제거됨] 헬모드 공격시 보스 등장 시간 감소 로직 제거 (고정 1시간 부활)
 	}
@@ -6962,38 +6978,6 @@ public class BossAttackController {
 	    }
 	}
 
-	// ─ 공격 시 3.5% 확률 GP 지급 ──────────────────────────────────────
-	private static final double GP_DROP_RATE = 0.035;
-	private String tryDropGp(String userName, String roomName, HashMap<String,Object> activeBuff) {
-		// GP확정타임: 100% 무조건 지급 (일반 랜덤 GP skip → 이중 방지)
-		if (activeBuff != null && "GP확정".equals(String.valueOf(activeBuff.get("FLAG_CODE")))) {
-			try {
-				double gpAmt = Math.round((0.05 + ThreadLocalRandom.current().nextInt(16) * 0.01) * 100.0) / 100.0;
-				HashMap<String,Object> gp = new HashMap<>();
-				gp.put("userName", userName); gp.put("roomName", roomName);
-				gp.put("score", gpAmt); gp.put("cmd", "GP_BUFF_TIME");
-				botNewService.insertGpRecord(gp);
-				double gpBal = botNewService.selectGpBalance(userName);
-				return String.format("💎[GP확정타임] +%.2f GP (보유: %.2f GP)", gpAmt, gpBal);
-			} catch (Exception ignored) {}
-			return "";
-		}
-		// 일반 3.5% 랜덤 GP 지급
-		if (ThreadLocalRandom.current().nextDouble() >= GP_DROP_RATE) return "";
-		try {
-			double gpAmount = Math.round((ThreadLocalRandom.current().nextInt(49) + 1) * 0.01 * 100) / 100.0;
-			HashMap<String,Object> gp = new HashMap<>();
-			gp.put("userName", userName);
-			gp.put("roomName", roomName);
-			gp.put("score",    gpAmount);
-			gp.put("cmd",      "ATK_GP_DROP");
-			botNewService.insertGpRecord(gp);
-			double gpBalance = botNewService.selectGpBalance(userName);
-			return String.format("✨GP 획득! +%.2f GP (보유: %.2f GP)", Math.floor(gpAmount * 100) / 100, Math.floor(gpBalance * 100) / 100);
-		} catch (Exception e) {
-			return "";
-		}
-	}
 
 	
 	public String sellItem(HashMap<String, Object> map) throws Exception {

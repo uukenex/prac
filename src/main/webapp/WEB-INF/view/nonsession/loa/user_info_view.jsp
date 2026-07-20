@@ -42,7 +42,7 @@
     .toast.hide { opacity: 0; pointer-events: none; }
 
     /* ─ 이력 패널 ─ */
-    .history-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 150; display: flex; align-items: flex-end; justify-content: center; }
+    .history-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 300; display: flex; align-items: flex-end; justify-content: center; }
     .history-panel {
       background: #fff; border-radius: 20px 20px 0 0; width: 100%; max-width: 860px;
       max-height: 70vh; display: flex; flex-direction: column;
