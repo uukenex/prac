@@ -136,6 +136,9 @@ public class UserBattleContext {
 	// 일반직업/도적 EXP 계산식 (=== 이후 표시용)
 	public String exp1Breakdown = null;
 	public String exp2Breakdown = null;
+	// 데미지 계산 과정 단계별 텍스트 (=== 이후 표시용)
+	public java.util.List<String> dmgSteps = new java.util.ArrayList<>();
+
 	// 워록 멀티킬 중 레벨업 발생 시 === 이후 표시용 (LevelUpResult 수치 복사)
 	public int warlockLvUpBefore = 0;
 	public int warlockLvUpAfter = 0;

@@ -4996,6 +4996,24 @@ public class BossAttackController {
 		s.effAtkMin = (int)Math.round(atkMin * jobDmgMul + jobBonusMin);
 		s.effAtkMax = (int)Math.round(atkMax * jobDmgMul + jobBonusMax);
 		if (s.effAtkMax < s.effAtkMin) s.effAtkMax = s.effAtkMin;
+
+		// 데미지 계산 단계 기록
+		{
+			int rawMin = s.ctx.atkMin + s.ctx.hellNerfAtkMin;
+			int rawMax = s.ctx.atkMax + s.ctx.hellNerfAtkMax;
+			s.ctx.dmgSteps.clear();
+			if (s.hell) {
+				int nerfPct = (int)Math.round((1.0 - s.ctx.hellNerfRate) * 100);
+				s.ctx.dmgSteps.add(" 1) 기본 ATK 헬너프 적용(-" + nerfPct + "%): "
+					+ String.format("%,d", rawMin) + " ~ " + String.format("%,d", rawMax));
+			} else {
+				s.ctx.dmgSteps.add(" 1) 기본 ATK: "
+					+ String.format("%,d", rawMin) + " ~ " + String.format("%,d", rawMax));
+			}
+			String graceNote = graceApplied ? " [종말의 가호 ×1.5 포함]" : "";
+			s.ctx.dmgSteps.add(" 2) 직업배율(" + s.job + " ×" + trimDouble(jobDmgMul) + ")" + graceNote + ": "
+				+ formatWan(s.effAtkMin) + " ~ " + formatWan(s.effAtkMax));
+		}
 		return null;
 	}
 
@@ -5234,6 +5252,7 @@ public class BossAttackController {
 				double value = Double.parseDouble(s.activeBuff.get("EFFECT_VALUE").toString());
 				if ("배율".equals(effectType)) { s.effAtkMin = (int)Math.round(s.effAtkMin * value); s.effAtkMax = (int)Math.round(s.effAtkMax * value); }
 				else                                   { s.effAtkMin += (int)value; s.effAtkMax += (int)value; }
+				if (!s.ctx.dmgSteps.isEmpty()) s.ctx.dmgSteps.add(" +) 스페셜버프(공격력 버프): " + formatWan(s.effAtkMin) + " ~ " + formatWan(s.effAtkMax));
 			}
 			if ("치피".equals(s.activeBuff.get("FLAG_CODE"))) {
 				double value = Double.parseDouble(s.activeBuff.get("EFFECT_VALUE").toString());
@@ -5251,6 +5270,7 @@ public class BossAttackController {
 		if (hasBless) {
 			s.effAtkMin = (int)Math.round(s.effAtkMin * 1.5);
 			s.effAtkMax = (int)Math.round(s.effAtkMax * 1.5);
+			if (!s.ctx.dmgSteps.isEmpty()) s.ctx.dmgSteps.add(" +) 축복 ×1.5: " + formatWan(s.effAtkMin) + " ~ " + formatWan(s.effAtkMax));
 		}
 
 		// 11) 데미지 계산
@@ -9141,17 +9161,32 @@ public class BossAttackController {
 	            sb.append(midExtraLines).append(NL);
 	    } else if (!_warlockSimple) {
 	        if (split) {
-	            // split 모드: 치명타/축복 + 데미지 상세 → detail
-	            if (flags.atkCrit) detailOut.append("✨ 치명타!");
-	            if (u.blessYn == 1) detailOut.append("✨축복(x1.5)!");
-	            if (flags.atkCrit || u.blessYn == 1) detailOut.append(NL);
-	            detailOut.append("⚔ 데미지: (").append(formatWan(shownAtkMin)).append("~").append(formatWan(shownAtkMax)).append(" ⇒ ");
-	            if (flags.atkCrit && calc.baseAtk > 0 && calc.critMultiplier >= 1.0) {
-	                detailOut.append(formatWan(calc.baseAtk)).append("*").append(trimDouble(calc.critMultiplier)).append("=>").append(formatWan(calc.atkDmg));
+	            // split 모드: 데미지 계산 과정 표시 → detail
+	            if (ctx != null && !ctx.dmgSteps.isEmpty()) {
+	                detailOut.append("⚔ 데미지 계산 과정:").append(NL);
+	                for (String _step : ctx.dmgSteps) detailOut.append(_step).append(NL);
+	                int _stepNo = ctx.dmgSteps.size() + 1;
+	                if (calc != null && calc.baseAtk > 0) {
+	                    if (flags.atkCrit && calc.critMultiplier >= 1.0) {
+	                        detailOut.append(" ").append(_stepNo).append(") ➡ 치명타(×").append(trimDouble(calc.critMultiplier)).append("): ")
+	                            .append(formatWan(calc.baseAtk)).append(" × ").append(trimDouble(calc.critMultiplier))
+	                            .append(" ⇒ ").append(formatWan(calc.atkDmg)).append(NL);
+	                    } else {
+	                        detailOut.append(" ").append(_stepNo).append(") ➡ 확정 타격: ").append(formatWan(calc.atkDmg)).append(NL);
+	                    }
+	                }
 	            } else {
-	                detailOut.append(formatWan(calc.atkDmg));
+	                if (flags.atkCrit) detailOut.append("✨ 치명타!");
+	                if (u.blessYn == 1) detailOut.append("✨축복(x1.5)!");
+	                if (flags.atkCrit || u.blessYn == 1) detailOut.append(NL);
+	                detailOut.append("⚔ 데미지: (").append(formatWan(shownAtkMin)).append("~").append(formatWan(shownAtkMax)).append(" ⇒ ");
+	                if (flags.atkCrit && calc.baseAtk > 0 && calc.critMultiplier >= 1.0) {
+	                    detailOut.append(formatWan(calc.baseAtk)).append("*").append(trimDouble(calc.critMultiplier)).append("=>").append(formatWan(calc.atkDmg));
+	                } else {
+	                    detailOut.append(formatWan(calc.atkDmg));
+	                }
+	                detailOut.append(")").append(NL);
 	            }
-	            detailOut.append(")").append(NL);
 	            if (hunterMsg != null && !hunterMsg.isEmpty())
 	                detailOut.append(hunterMsg).append(NL);
 	            if (midExtraLines != null && !midExtraLines.isEmpty())
