@@ -5001,7 +5001,7 @@ public class BossAttackController {
 			int rawMin = s.ctx.atkMin + s.ctx.hellNerfAtkMin;
 			int rawMax = s.ctx.atkMax + s.ctx.hellNerfAtkMax;
 			s.ctx.dmgSteps.clear();
-			if (s.hell) {
+			if (s.u.nightmareYn == 2) {
 				int nerfPct = (int)Math.round((1.0 - s.ctx.hellNerfRate) * 100);
 				s.ctx.dmgSteps.add(" 1) 기본 ATK 헬너프 적용(-" + nerfPct + "%): "
 					+ String.format("%,d", rawMin) + " ~ " + String.format("%,d", rawMax));
@@ -5215,6 +5215,18 @@ public class BossAttackController {
 		    } 
 		}
 		s.flags = rollFlags(s.u, s.m);
+
+		// 보너스 몬스터 berserkMul 단계 기록
+		if (s.berserkMul != 1.0 && !s.ctx.dmgSteps.isEmpty()) {
+			String berserkReason = "";
+			if (s.dark)  berserkReason = "DARK 몬스터";
+			else if (s.lucky) berserkReason = "LUCKY 몬스터";
+			else if (s.elfNightMode) berserkReason = "야간 엘프 각성";
+			else berserkReason = "직업 보너스";
+			s.ctx.dmgSteps.add(" +) 보너스(" + berserkReason + " ×" + trimDouble(s.berserkMul) + "): "
+				+ formatWan((int)Math.round(s.effAtkMin * s.berserkMul)) + " ~ "
+				+ formatWan((int)Math.round(s.effAtkMax * s.berserkMul)));
+		}
 	}
 
 	// ─ 9~11) HP5% 제한 / 도사버프 / 스페셀버프 / 데미지 계산 ──────────
