@@ -3920,6 +3920,7 @@ public class LoaChatController {
 			switch (equip.get("Type").toString()) {
 			case "무기":
 			case "투구": case "상의": case "하의": case "장갑": case "어깨":
+			case "완갑":
 				
 				String setFind = Jsoup.parse((String) weapon_element.get("value")).text();
 				for(String set:LoaApiParser.getSetList()) {
@@ -3938,12 +3939,16 @@ public class LoaChatController {
 					newEnhanceInfo2 = newEnhanceInfo2.replaceAll(" 40단계 - 기본 효과 \\+3%", "");
 					newEnhanceInfo2 = newEnhanceInfo2.replace("단계", "");
 					newEnhanceInfo2 = StringUtils.leftPad( newEnhanceInfo2, 2, " ");
-					resField1 += "[+"+newEnhanceInfo2+"]";
+					resField1 += "[상재:+"+newEnhanceInfo2+"]";
 				}else {
-					resField1 += "[+ 0]";
+					//resField1 += "[+ 0]";
 				}
-				resField1 += " 품:"+(int)((HashMap<String, Object>) quality_element.get("value")).get("qualityValue");
 				
+				if(!equip.get("Type").toString().equals("완갑")) {
+					resField1 += " 품:"+(int)((HashMap<String, Object>) quality_element.get("value")).get("qualityValue");
+				}
+				
+				/*
 				if(!equip.get("Type").toString().equals("무기")) {
 					if(Jsoup.parse((String) ((HashMap<String, Object>) quality_element.get("value")).get("leftStr2")).text().indexOf("티어 4")>0) {
 						try {
@@ -3954,6 +3959,7 @@ public class LoaChatController {
 						
 					}
 				}
+				*/
 				resField1 += enterStr;
 				/*
 				resField2 += equip.get("Type").toString()+" :";//초
@@ -4072,7 +4078,8 @@ public class LoaChatController {
 				}catch(Exception e) {
 					
 				}
-				break;	
+				break;
+			
 			default:
 			continue;
 			}
