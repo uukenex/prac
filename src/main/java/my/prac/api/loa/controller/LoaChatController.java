@@ -1042,11 +1042,12 @@ public class LoaChatController {
 			case "/ㄱㄱㄱ": case "/ㄱ": case "/R": case "/r":
 				param0="/ㄱ";
 				val = "시즌3가 종료되었습니다. ";
-				val = boss.monsterAttack(reqMap);
+				//val = boss.monsterAttack(reqMap);
 				break;
 			case "/웹공격":
 				param0="/웹공격";
-				val = boss.monsterAttack(reqMap);
+				val = "시즌3가 종료되었습니다. ";
+				//val = boss.monsterAttack(reqMap);
 				break;
 				/*
 			case "/ㄱㄱㅌㄱ":case "/공격타겟":
