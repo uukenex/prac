@@ -890,6 +890,7 @@ public class LoaChatController {
 				}
 				break;
 				*/
+				/*
 			case "/구매": case "/ㄱㅁ":
 				param0="/ㄱㅁ";
 				val = boss.buyItem(reqMap);
@@ -924,19 +925,24 @@ public class LoaChatController {
 				passYn = true;
 				val = boss.handleExpSell(reqMap);
 				break;
+				*/
+				/*
 			case "/ㄱㅂㄹㄱ": case "/ㄱㅂㄺ":
 			case "/가방로그":
 				passYn = true;
 				val = boss.bagLog(reqMap);
 				break;
+				
 			case "/ㄱㅂㅇㅍ": case "/ㄱㅂㅇㄱ":
 			case "/가방오픈": case "/가방열기":
 				val = boss.openBag(reqMap);
 				break;
+				*/
 			case "/공격랭킹": case "/ㄱㄱㄹㅋ":
 				passYn = true;
 				val = "http://rgb-tns.dev-apc.com/loa/ranking-view" + enterStr + boss.showAttackRanking(reqMap);
 				break;
+				/*
 			case "/공격로그": case "/ㄱㄱㄹㄱ":
 				passYn = true;
 				try {
@@ -945,6 +951,7 @@ public class LoaChatController {
 					val = "http://rgb-tns.dev-apc.com/loa/battle-log-view?userName=" + sender;
 				}
 				break;
+				*/
 			case "/공격정보": case "/ㄱㄱㅈㅂ": case "/가방": case "/ㄱㅂ":
 				param0="/ㄱㅂ";
 				/*
@@ -1020,6 +1027,7 @@ public class LoaChatController {
 					val = "처리 중 오류가 발생했습니다.";
 				}
 				break;
+				/*
 			case "/보스부활":
 				val = bossS3.masterBossRespawn(roomName, sender);
 				break;
@@ -1029,14 +1037,18 @@ public class LoaChatController {
 			case "/보스종료":
 				val = bossS3.masterBossEnd(roomName, sender);
 				break;
+				*/
+				
 			case "/ㄱㄱㄱ": case "/ㄱ": case "/R": case "/r":
 				param0="/ㄱ";
+				val = "시즌3가 종료되었습니다. ";
 				val = boss.monsterAttack(reqMap);
 				break;
 			case "/웹공격":
 				param0="/웹공격";
 				val = boss.monsterAttack(reqMap);
 				break;
+				/*
 			case "/ㄱㄱㅌㄱ":case "/공격타겟":
 			case "/ㄱㄱㄷㅅ":case "/공격대상": 
 				param0="/ㄱㄱㅌㄱ";
@@ -1044,6 +1056,7 @@ public class LoaChatController {
 				reqMap.put("monNo", param1);
 				val = boss.changeTarget(reqMap);
 				break;
+				*/
 				/*
 			case "/공격": case "/ㄱㄱ": case "/rr": case "/RR": 
 				
@@ -2255,10 +2268,12 @@ public class LoaChatController {
 				val = chatGptSearch(fulltxt,sender);
 				break;
 				*/
+				/*
 			case "/챗2":
 				fulltxt = fulltxt.substring(param0.length()).trim();
 				val = geminiSearch(fulltxt,sender);
 				break;
+				*/
 			case "/챗": 
 			case "/ㅊ": 
 			case "/대화": 
@@ -2415,6 +2430,7 @@ public class LoaChatController {
 				}
 				break;		
 				*/
+				
 			case "/게임공지":
 				
 				if(!sender.equals("전태환")) {
