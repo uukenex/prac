@@ -5398,32 +5398,24 @@ public class LoaChatController {
 				
 				double lv = Double.parseDouble(charList.get("ItemAvgLevel").toString().replaceAll(",", ""));
 				partial_gold = 0;
-				if(lv >= 1750 ) {
+				if(lv >= 1780 ) {
+					partial_gold = 177000;
+				}else if(lv >= 1770 ) {
+					partial_gold = 164000;
+				}else if(lv >= 1750 ) {
 					partial_gold = 156000;
 				}else if(lv >= 1740 ) {
-					partial_gold = 148000;
+					partial_gold = 142000;
 				}else if(lv >= 1730) {
-					partial_gold = 138000;
+					partial_gold = 132000;
 				}else if(lv >= 1720) {
-					partial_gold = 117000;
+					partial_gold = 110000;
 				}else if(lv >= 1710) {
-					partial_gold = 108000;
-				}else if(lv >= 1700) {
-					partial_gold = 83000;
-				}else if(lv >= 1690) {
-					partial_gold = 62000;
-				}else if(lv >= 1680) {
-					partial_gold = 55500;
-				}else if(lv >= 1670) {
-					partial_gold = 16500+11500+7200;
-				}else if(lv >= 1660) {
-					partial_gold = 25900;
-				}else if(lv >= 1640) {
-					partial_gold = 7200+7200;
+					partial_gold = 94000;
 				}
 				total_gold +=partial_gold;
 				
-				if(Double.parseDouble(charList.get("ItemAvgLevel").toString().replaceAll(",", "")) >= 1600) {
+				if(Double.parseDouble(charList.get("ItemAvgLevel").toString().replaceAll(",", "")) >= 1700) {
 					String combatPower ="";
 					if(armoryProfile.get("CombatPower") != null) {
 						
