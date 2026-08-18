@@ -6932,194 +6932,192 @@ public class LoaChatController {
 	    });
 	}
 	
-	
 	String weatherSearch(String area) throws Exception {
-	    HashMap<String, Object> rtnMap = new HashMap<>();
-	    String retMsg = "";
-	    String errMsg = "불러올 수 없는 지역이거나 지원되지 않는 지역입니다." + enterStr + "ex)00시00구00동 (띄어쓰기없이)";
+        HashMap<String, Object> rtnMap = new HashMap<>();
+        String retMsg = "";
+        String errMsg = "불러올 수 없는 지역이거나 지원되지 않는 지역입니다." + enterStr + "ex)00시00구00동 (띄어쓰기없이)";
 
-	    // 필드 데이터 유실 대비 초기 기본값 설정
-	    String cur_temp = "";
-	    String weather = "맑음";
-	    String diff_temp = "0.0°";
-	    String v1 = "", v2 = "", v3 = "";
-	    String windTitle = "바람";
-	    String lowest = "", highest = "";
-	    String mise = "", choMise = "", uv = "";
-	    String time_text = "";
-	    
-	    // 디버깅 추적용 메시지 빌더
-	    StringBuilder debugLogs = new StringBuilder();
+        String cur_temp = "";
+        String weather = "맑음";
+        String diff_temp = "0.0°";
+        String v1 = "", v2 = "", v3 = "";
+        String windTitle = "바람";
+        String lowest = "", highest = "";
+        String mise = "", choMise = "", uv = "";
+        String time_text = "";
 
-	    Document doc = null;
+        StringBuilder debugLogs = new StringBuilder();
+        Document doc = null;
 
-	    // [단계 1] 네이버 날씨 페이지 연동
-	    try {
-	        LoaApiUtils.setSSL();
-	        String encodedQuery = URLEncoder.encode("날씨 " + area, StandardCharsets.UTF_8.toString());
-	        // 모바일 주소로 강제 락인하여 구조 일치화
-	        String weatherURL = "https://naver.com" + encodedQuery;
-	        
-	        doc = Jsoup.connect(weatherURL)
-	                   .userAgent("Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36")
-	                   .timeout(6000)
-	                   .get();
-	    } catch (Exception e) {
-	        debugLogs.append("[1단계 실패: ").append(e.getMessage()).append("]").append(enterStr);
-	        rtnMap.put("data", errMsg + enterStr + debugLogs.toString());
-	        return errMsg + enterStr + debugLogs.toString();
-	    }
+        // [1단계] 정확한 네이버 통합검색 URL 호출
+        try {
+            LoaApiUtils.setSSL();
 
-	    if (doc == null) {
-	        rtnMap.put("data", errMsg);
-	        return errMsg;
-	    }
+            String encodedArea = URLEncoder.encode("날씨 " + area.trim(), StandardCharsets.UTF_8.toString());
+            String weatherURL = "https://search.naver.com/search.naver?query=" + encodedArea;
 
-	    // [단계 2] 현재 온도 & 날씨 상태 (가장 유력한 유효성 검사 실패 구간 타격)
-	    try {
-	        // 백업 초정밀 타겟팅: 모바일 전용 요소를 우선 탐색하고 없을 시 PC 통합 요소를 탐색하도록 콤마(,) 결합 적용
-	        Element tempNode = doc.selectFirst(".weather_info .temperature_text strong, .temperature_text strong, .weather_graphic .temperature_text strong");
-	        if (tempNode != null) {
-	            cur_temp = tempNode.text().trim();
-	            // 텍스트 내부에 "현재 온도" 한글이 중복으로 결합되어 나오는 현상 방지 전처리
-	            cur_temp = cur_temp.replaceAll("현재 온도", "").trim();
-	        }
+            doc = Jsoup.connect(weatherURL)
+                       .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+                       .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8")
+                       .header("Accept-Language", "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7")
+                       .followRedirects(true)
+                       .timeout(6000)
+                       .get();
 
-	        // 오늘 날씨 글자 (구름많음, 흐림 등)
-	        Element weatherNode = doc.selectFirst(".weather_info .weather_main, .weather_main .weather, .weather_graphic .weather_main");
-	        if (weatherNode != null) {
-	            weather = weatherNode.text().trim();
-	        }
+            // 디버그용 HTML 저장 (원인 파악 끝나면 이 3줄은 지워도 됨)
+            try (java.io.FileWriter fw = new java.io.FileWriter("/tmp/naver_weather_debug.html")) {
+                fw.write(doc.outerHtml());
+            }
 
-	        // 어제보다 몇 도 높은지/낮은지
-	        Element diffNode = doc.selectFirst(".weather_info .temperature_info .temperature, .temperature_info .temperature");
-	        if (diffNode != null) {
-	            diff_temp = diffNode.text().trim();
-	        }
-	    } catch (Exception e) {
-	        debugLogs.append("[2단계 실패: ").append(e.getMessage()).append("]").append(enterStr);
-	    }
+        } catch (Exception e) {
+            debugLogs.append("[1단계 웹문서 로드 오류: ").append(e.toString()).append("]");
+            String fallbackMsg = errMsg + enterStr + debugLogs.toString();
+            rtnMap.put("data", fallbackMsg);
+            return fallbackMsg;
+        }
 
-	    // [단계 3] 요약 세부 리스트 파싱 (체감, 습도, 풍향)
-	    try {
-	        Elements summaryItems = doc.select(".weather_info .summary_list .sort_box, .summary_list .item, .summary_list .sort");
-	        for (Element item : summaryItems) {
-	            String term = item.select(".term").text().trim();
-	            String desc = item.select(".desc").text().trim();
-	            
-	            if (term.contains("체감")) {
-	                v1 = desc;
-	            } else if (term.contains("습도")) {
-	                v2 = desc;
-	            } else if (term.contains("풍") || term.contains("바람")) {
-	                windTitle = term;
-	                v3 = desc;
-	            }
-	        }
-	    } catch (Exception e) {
-	        debugLogs.append("[3단계 실패: ").append(e.getMessage()).append("]").append(enterStr);
-	    }
+        if (doc == null) {
+            rtnMap.put("data", errMsg);
+            return errMsg;
+        }
 
-	    // [단계 4] 오늘 최저기온 및 최고기온 추출
-	    try {
-	        Element todayCell = doc.selectFirst(".weekly_forecast_area .today, .weekly_forecast_area .card_date_today, .weekly_forecast_area .today_cell");
-	        if (todayCell != null) {
-	            lowest = todayCell.select(".lowest").text().trim();
-	            highest = todayCell.select(".highest").text().trim();
-	        } else {
-	            lowest = doc.select(".cell_temperature .lowest").text().trim();
-	            highest = doc.select(".cell_temperature .highest").text().trim();
-	        }
-	    } catch (Exception e) {
-	        debugLogs.append("[4단계 실패: ").append(e.getMessage()).append("]").append(enterStr);
-	    }
+        // [2단계] 현재 온도 & 날씨 추출
+        try {
+            Element tempBox = doc.selectFirst(".temperature_text");
+            if (tempBox != null) {
+                Element cleanTemp = tempBox.clone();
+                cleanTemp.select(".blind, ._predict_atmp, .text").remove();
 
-	    // [단계 5] 대기환경 등급 (미세먼지, 초미세먼지, 자외선)
-	    try {
-	        Elements chartItems = doc.select(".today_chart_list .item_today");
-	        for (Element item : chartItems) {
-	            String title = item.select(".title").text().trim();
-	            String txt = item.select(".txt").text().trim();
-	            
-	            if (title.contains("미세먼지")) mise = txt;
-	            else if (title.contains("초미세먼지")) choMise = txt;
-	            else if (title.contains("자외선")) uv = txt;
-	        }
-	    } catch (Exception e) {
-	        debugLogs.append("[5단계 실패: ").append(e.getMessage()).append("]").append(enterStr);
-	    }
+                String numOnly = cleanTemp.text().replaceAll("[^0-9.]", "").trim();
+                if (!numOnly.isEmpty()) {
+                    cur_temp = numOnly;
+                }
+            }
 
-	    // [단계 6] 시간별 날씨 그래프 정제 조립
-	    try {
-	        Elements hourlyItems = doc.select(".weather_graph_box ._hourly_weather ._li, .flicking-camera ._hourly_weather ._li, ._hourly_weather ._li");
-	        int loopCount = Math.min(hourlyItems.size(), 8);
-	        
-	        if (loopCount >= 2) {
-	            StringBuilder timeSb = new StringBuilder();
-	            int half = loopCount / 2;
-	            for (int i = 0; i < half; i++) {
-	                Element leftItem = hourlyItems.get(i);
-	                String leftTime = leftItem.select(".time").text().trim();
-	                String leftBlind = leftItem.select(".blind").text().trim();
-	                leftBlind = leftBlind.replaceAll("내일", "").replaceAll("많음", "").trim();
-	                leftBlind = org.apache.commons.lang3.StringUtils.leftPad(leftBlind, 2, "　");
-	                
-	                Element rightItem = hourlyItems.get(i + half);
-	                String rightTime = rightItem.select(".time").text().trim();
-	                String rightBlind = rightItem.select(".blind").text().trim();
-	                rightBlind = rightBlind.replaceAll("내일", "").replaceAll("많음", "").trim();
-	                rightBlind = org.apache.commons.lang3.StringUtils.leftPad(rightBlind, 2, "　");
-	                
-	                timeSb.append(leftTime).append(" : ").append(leftBlind)
-	                      .append("　　")
-	                      .append(rightTime).append(" : ").append(rightBlind);
-	                      
-	                if (i < half - 1) {
-	                    timeSb.append(enterStr);
-	                }
-	            }
-	            time_text = timeSb.toString().replaceAll("내일", "00시");
-	        }
-	    } catch (Exception e) {
-	        debugLogs.append("[6단계 실패: ").append(e.getMessage()).append("]").append(enterStr);
-	    }
+            Element weatherNode = doc.selectFirst(".weather_main .weather, .weather_graphic .weather_main, .status_name");
+            if (weatherNode != null) {
+                weather = weatherNode.text().trim();
+            }
 
-	    // [단계 7] 데이터 검증 규칙 완화 및 결과 빌드
-	    // 현재 온도 조차 비어있다면 네이버 크롤링 실패로 간주하고 누적 에러와 errMsg 반환
-	    if (cur_temp.isEmpty()) {
-	        String finalErr = errMsg + enterStr + "[유효성검사 실패 원인 추적 로그]" + enterStr + debugLogs.toString();
-	        rtnMap.put("data", finalErr);
-	        return finalErr;
-	    }
+            Element diffNode = doc.selectFirst(".temperature_info .temperature");
+            if (diffNode != null) {
+                diff_temp = diffNode.text().trim();
+            }
+        } catch (Exception e) {
+            debugLogs.append("[2단계 온도파싱 오류: ").append(e.toString()).append("]");
+        }
 
-	    // 데이터가 정상 파싱되었다면 원하셨던 본래 포맷 이모티콘 형태로 정확하게 빌딩
-	    StringBuilder sb = new StringBuilder();
-	    sb.append("오늘날씨 : ").append(weather);
-	    sb.append(enterStr).append("현재온도 : 현재 온도").append(cur_temp);
-	    if (!v1.isEmpty()) sb.append(enterStr).append("체감 : ").append(v1);
-	    if (!v2.isEmpty()) sb.append(enterStr).append("습도 : ").append(v2);
-	    if (!v3.isEmpty()) sb.append(enterStr).append(windTitle).append(" : ").append(v3);
-	    
-	    sb.append(enterStr).append("현재 ").append(area).append("의 온도는 현재 온도").append(cur_temp)
-	      .append(" 이며 어제보다 ").append(diff_temp);
-	    
-	    sb.append(enterStr).append(enterStr); 
-	    
-	    if (!lowest.isEmpty() || !highest.isEmpty()) {
-	        sb.append("최저기온").append(lowest).append(" 최고기온").append(highest).append(enterStr);
-	    }
-	    if (!mise.isEmpty()) sb.append("미세먼지 : ").append(mise).append(enterStr);
-	    if (!choMise.isEmpty()) sb.append("초미세먼지 : ").append(choMise).append(enterStr);
-	    if (!uv.isEmpty()) sb.append("자외선 : ").append(uv).append(enterStr);
-	    
-	    if (!time_text.isEmpty()) {
-	        sb.append(time_text);
-	    }
-	    
-	    retMsg = sb.toString();
-	    rtnMap.put("data", retMsg);
-	    return retMsg;
-	}	
+        // [3단계] 요약 세부 리스트 파싱 (체감, 습도, 풍향풍속)
+        try {
+            Elements summaryItems = doc.select(".summary_list .item, .summary_list .sort_box");
+            for (Element item : summaryItems) {
+                String term = item.select(".term").text().trim();
+                String desc = item.select(".desc").text().trim();
+
+                if (term.contains("체감")) v1 = desc;
+                else if (term.contains("습도")) v2 = desc;
+                else if (term.contains("풍") || term.contains("바람")) {
+                    windTitle = term;
+                    v3 = desc;
+                }
+            }
+        } catch (Exception e) {
+            debugLogs.append("[3단계 세부리스트 오류: ").append(e.toString()).append("]");
+        }
+
+        // [4단계] 오늘 최저/최고기온
+        try {
+            Element cellTemp = doc.selectFirst(".temperature_info .cell_temperature, .weekly_forecast_area .card_date_today, .weekly_forecast_area .today");
+            if (cellTemp != null) {
+                lowest = cellTemp.select(".lowest").text().replaceAll("낮음", "").trim();
+                highest = cellTemp.select(".highest").text().replaceAll("높음", "").trim();
+            }
+        } catch (Exception e) {
+            debugLogs.append("[4단계 기온범위 오류: ").append(e.toString()).append("]");
+        }
+
+        // [5단계] 미세먼지, 초미세먼지, 자외선
+        try {
+            Elements chartItems = doc.select(".today_chart_list .item_today");
+            for (Element item : chartItems) {
+                String title = item.select(".title").text().trim();
+                String txt = item.select(".txt").text().trim();
+
+                if (title.contains("미세먼지") && !title.contains("초미세먼지")) mise = txt;
+                else if (title.contains("초미세먼지")) choMise = txt;
+                else if (title.contains("자외선")) uv = txt;
+            }
+        } catch (Exception e) {
+            debugLogs.append("[5단계 대기환경 오류: ").append(e.toString()).append("]");
+        }
+
+        // [6단계] 시간별 날씨 2열 배치
+        try {
+            Elements hourlyItems = doc.select(".weather_graph_box ._hourly_weather ._li, ._hourly_weather ._li");
+            int loopCount = Math.min(hourlyItems.size(), 8);
+
+            if (loopCount >= 2) {
+                StringBuilder timeSb = new StringBuilder();
+                int half = loopCount / 2;
+                for (int i = 0; i < half; i++) {
+                    Element leftItem = hourlyItems.get(i);
+                    String leftTime = leftItem.select(".time").text().trim();
+                    String leftBlind = leftItem.select(".blind").text().trim();
+                    leftBlind = leftBlind.replaceAll("내일", "").replaceAll("많음", "").trim();
+                    leftBlind = org.apache.commons.lang3.StringUtils.leftPad(leftBlind, 2, "　");
+
+                    Element rightItem = hourlyItems.get(i + half);
+                    String rightTime = rightItem.select(".time").text().trim();
+                    String rightBlind = rightItem.select(".blind").text().trim();
+                    rightBlind = rightBlind.replaceAll("내일", "").replaceAll("많음", "").trim();
+                    rightBlind = org.apache.commons.lang3.StringUtils.leftPad(rightBlind, 2, "　");
+
+                    timeSb.append(leftTime).append(" : ").append(leftBlind)
+                          .append("　　")
+                          .append(rightTime).append(" : ").append(rightBlind);
+
+                    if (i < half - 1) {
+                        timeSb.append(enterStr);
+                    }
+                }
+                time_text = timeSb.toString().replaceAll("내일", "00시");
+            }
+        } catch (Exception e) {
+            debugLogs.append("[6단계 시간별오류: ").append(e.toString()).append("]");
+        }
+
+        // [최종 검증 및 메시지 조립]
+        if (cur_temp.isEmpty()) {
+            String finalErr = errMsg + enterStr + "[최종 유효성 검사 실패로그]" + enterStr + debugLogs.toString();
+            rtnMap.put("data", finalErr);
+            return finalErr;
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("오늘날씨 : ").append(weather).append("♬");
+        sb.append("현재온도 : 현재 온도").append(cur_temp).append("°♬");
+        if (!v1.isEmpty()) sb.append("체감 : ").append(v1).append("♬");
+        if (!v2.isEmpty()) sb.append("습도 : ").append(v2).append("♬");
+        if (!v3.isEmpty()) sb.append(windTitle).append(" : ").append(v3).append("♬");
+
+        sb.append("현재 ").append(area).append("의 온도는 현재 온도").append(cur_temp).append("° 이며 어제보다 ").append(diff_temp).append("♬♬");
+
+        if (!lowest.isEmpty() || !highest.isEmpty()) {
+            sb.append("최저기온").append(lowest).append(" 최고기온").append(highest).append("♬");
+        }
+        if (!mise.isEmpty()) sb.append("미세먼지 : ").append(mise).append("♬");
+        if (!choMise.isEmpty()) sb.append("초미세먼지 : ").append(choMise).append("♬");
+        if (!uv.isEmpty()) sb.append("자외선 : ").append(uv).append("♬");
+
+        if (!time_text.isEmpty()) {
+            sb.append(time_text).append("♬");
+        }
+
+        retMsg = sb.toString();
+        rtnMap.put("data", retMsg);
+        return retMsg;
+    }
+	
 	public String openBox(String str1,String str2) throws Exception {
 		String resMsg="";
 		
