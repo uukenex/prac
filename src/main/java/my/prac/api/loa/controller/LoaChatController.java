@@ -3,6 +3,7 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.net.URL;
 import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -31,6 +32,8 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -6931,120 +6934,93 @@ public class LoaChatController {
 	
 	
 	String weatherSearch(String area) throws Exception {
-		HashMap<String, Object> rtnMap = new HashMap<>();
+	    HashMap<String, Object> rtnMap = new HashMap<>();
+	    String retMsg = "";
+	    String enterStr = "\n"; // 기존 정의된 줄바꿈 변수가 있다면 대체하세요.
+	    String errMsg = "불러올 수 없는 지역이거나 지원되지 않는 지역입니다." + enterStr + "ex)00시00구00동 (띄어쓰기없이)";
 
-		String retMsg = "";
-		String errMsg = "불러올 수 없는 지역이거나 지원되지 않는 지역입니다."+enterStr+"ex)00시00구00동 (띄어쓰기없이)";
-		try {
-			LoaApiUtils.setSSL();
-			String WeatherURL = "https://m.search.naver.com/search.naver?&query=날씨+" + area;
-			Document doc = Jsoup.connect(WeatherURL).get();
-			String cur_temp = doc.select(".weather_info ._today .temperature_text strong").text();
-			String weather = doc.select(".weather_info ._today .before_slash").text();
-			String diff_temp = doc.select(".weather_info ._today .temperature_info .temperature").text();// 어제와 온도차이
-			
-			String v1_text = doc.select(".weather_info ._today .summary_list .sort:eq(0) .term").text();
-			String v2_text = doc.select(".weather_info ._today .summary_list .sort:eq(1) .term").text();
-			String v3_text = doc.select(".weather_info ._today .summary_list .sort:eq(2) .term").text();
-			String v4_text = doc.select(".weather_info ._today .summary_list .sort:eq(3) .term").text();
-			
-			String v1 = doc.select(".weather_info ._today .summary_list .sort:eq(0) .desc").text();// 체감
-			String v2 = doc.select(".weather_info ._today .summary_list .sort:eq(1) .desc").text();// 습도
-			String v3 = doc.select(".weather_info ._today .summary_list .sort:eq(2) .desc").text();// 풍속
-			String v4 = doc.select(".weather_info ._today .summary_list .sort:eq(3) .desc").text();// 
-			
-			//v 체감 강수 습도 북동풍 
-			
-			
-			String ondo_text="";
-			try {
-				ondo_text += doc.select(".weekly_forecast_area .today .lowest").text();
-				ondo_text += " ";
-				ondo_text += doc.select(".weekly_forecast_area .today .highest").text();
-			}catch(Exception e) {
-			}
-			
-			//m : 미세먼지 
-			String mise_text="";
-			try {
-				for(int i=0;i<3;i++) {
-					try {
-						mise_text += doc.select(".weather_info:not(.type_tomorrow) .today_chart_list .item_today:eq("+i+") .title").text();
-						mise_text += " : ";
-						mise_text += doc.select(".weather_info:not(.type_tomorrow) .today_chart_list .item_today:eq("+i+") .txt").text();
-						mise_text += enterStr;
-					}catch(Exception e) {
-						continue;
-					}
-				}
-			}catch(Exception e) {
-			}
-			
-			
-			
-			//t : 시간별 날씨 
-			String time_text="";
-			String tmp_weather="";
-			try {
-				for(int i=0;i<4;i++) {
-					tmp_weather = "";
-					time_text += doc.select(".flicking-camera > div:first-child .weather_graph_box ._hourly_weather ._li:eq("+i+") .time" ).text();
-					time_text += " : ";
-					
-					tmp_weather = doc.select(".flicking-camera > div:first-child .weather_graph_box ._hourly_weather ._li:eq("+i+") .blind").text();
-					tmp_weather = StringUtils.leftPad(tmp_weather, 2, "　");
-					time_text +=tmp_weather;
-					
-					time_text += "　　";
-					time_text += doc.select(".flicking-camera > div:first-child .weather_graph_box ._hourly_weather ._li:eq("+(i+4)+") .time" ).text();
-					time_text += " : ";
-					tmp_weather = doc.select(".flicking-camera > div:first-child .weather_graph_box ._hourly_weather ._li:eq("+(i+4)+") .blind").text();
-					tmp_weather = StringUtils.leftPad(tmp_weather, 2, "　");
-					time_text +=tmp_weather;
-					time_text +=enterStr;
-					
-				}
-				
-				time_text = time_text.replaceAll("내일", "00시");
-				time_text = time_text.replaceAll("많음", "");
-			}catch(Exception e) {
-			}
+	    try {
+	        // SSL 설정 (기존 소스 유지)
+	        LoaApiUtils.setSSL();
 
-			if(cur_temp.equals("")) {
-				return errMsg;
-			}
-			
-			retMsg += "오늘날씨 : " + weather;
-			retMsg += enterStr+"현재온도 : " + cur_temp;
-			retMsg += enterStr+""+v1_text+" : " + v1;
-			retMsg += enterStr+v2_text+" : " + v2;
-			retMsg += enterStr+v3_text+" : " + v3;
-			if(v4!=null && !v4.equals("")) {
-				retMsg += enterStr+v4_text+" : " + v4;
-			}
-			retMsg += enterStr+"현재 " + area + "의 온도는 " + cur_temp + " 이며 어제보다 " + diff_temp;
-			retMsg += enterStr;
-			
-			if(ondo_text!=null && !ondo_text.equals("")) {
-				retMsg += enterStr+ondo_text;
-			}
-			
-			if(mise_text!=null && !mise_text.equals("")) {
-				retMsg += enterStr+mise_text;
-			}
-			
-			if(time_text!=null && !time_text.equals("")) {
-				retMsg += time_text;
-			}
-			
-			
-		} catch (Exception e) {
-			//e.printStackTrace();
-			System.out.println(e.getMessage());
-			retMsg = errMsg;
-		}
-		rtnMap.put("data", retMsg);
-		return retMsg;
+	        // 1. 한글 지역명 깨짐 방지를 위해 URL 인코딩 적용
+	        String encodedArea = URLEncoder.encode("날씨 " + area, StandardCharsets.UTF_8.toString());
+	        String weatherURL = "https://search.naver.com/search.naver?query=" + encodedArea;
+
+	        // 2. Jsoup 요청 시 User-Agent 헤더 필수 추가 (차단 방지)
+	        Document doc = Jsoup.connect(weatherURL)
+	                .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+	                .timeout(5000)
+	                .get();
+
+	        // 3. 현재 온도 및 상태 파싱 (변경된 클래스 반영)
+	        String cur_temp = doc.select(".temperature_text strong").text().replace("현재 온도", "").trim();
+	        String weather = doc.select(".weather_main .weather").text(); // 흐림, 맑음 등
+	        String diff_temp = doc.select(".temperature_info .temperature").text(); // 어제와 온도 차이
+
+	        // 4. 요약 정보 (체감온도, 습도, 풍속 등) 파싱 방식 변경
+	        // 개편 후 구조가 유동적이므로 리스트를 순회하며 텍스트를 조합하는 방식이 안전합니다.
+	        String v1_text = "체감", v2_text = "습도", v3_text = "풍속", v4_text = "자외선";
+	        String v1 = "", v2 = "", v3 = "", v4 = "";
+	        
+	        Elements summaryItems = doc.select(".summary_list .item");
+	        for (Element item : summaryItems) {
+	            String term = item.select(".term").text();
+	            String desc = item.select(".desc").text();
+	            if (term.contains("체감")) v1 = desc;
+	            else if (term.contains("습도")) v2 = desc;
+	            else if (term.contains("풍속")) v3 = desc;
+	            else if (term.contains("자외선") || term.contains("강수")) v4 = desc;
+	        }
+
+	        // 5. 최저/최고 온도
+	        String ondo_text = "";
+	        try {
+	            ondo_text = doc.select(".temperature_info .cell_temperature").text(); // "낮음 12° 높음 20°" 형태
+	        } catch (Exception e) {}
+
+	        // 6. 미세먼지 정보 파싱
+	        String mise_text = "";
+	        try {
+	            Elements charts = doc.select(".today_chart_list .item_today");
+	            for (Element chart : charts) {
+	                String title = chart.select(".title").text();
+	                String txt = chart.select(".txt").text();
+	                if(!title.isEmpty()) {
+	                    mise_text += title + " : " + txt + enterStr;
+	                }
+	            }
+	        } catch (Exception e) {}
+
+	        // 데이터 검증
+	        if (cur_temp.isEmpty()) {
+	            return errMsg;
+	        }
+
+	        // 결과 메시지 조립
+	        retMsg += "오늘날씨 : " + weather;
+	        retMsg += enterStr + "현재온도 : " + cur_temp;
+	        if (!v1.isEmpty()) retMsg += enterStr + v1_text + " : " + v1;
+	        if (!v2.isEmpty()) retMsg += enterStr + v2_text + " : " + v2;
+	        if (!v3.isEmpty()) retMsg += enterStr + v3_text + " : " + v3;
+	        if (!v4.isEmpty()) retMsg += enterStr + v4_text + " : " + v4;
+	        retMsg += enterStr + "현재 " + area + "의 온도는 " + cur_temp + " 이며 " + diff_temp;
+	        retMsg += enterStr;
+
+	        if (!ondo_text.isEmpty()) {
+	            retMsg += enterStr + ondo_text;
+	        }
+	        if (!mise_text.isEmpty()) {
+	            retMsg += enterStr + mise_text;
+	        }
+
+	    } catch (Exception e) {
+	        System.out.println("Weather Parsing Error: " + e.getMessage());
+	        retMsg = errMsg;
+	    }
+
+	    rtnMap.put("data", retMsg);
+	    return retMsg;
 	}
 	
 	
