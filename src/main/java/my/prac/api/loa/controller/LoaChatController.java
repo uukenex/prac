@@ -6935,90 +6935,135 @@ public class LoaChatController {
 	
 	String weatherSearch(String area) throws Exception {
 	    HashMap<String, Object> rtnMap = new HashMap<>();
+
 	    String retMsg = "";
-	    String enterStr = "\n"; // 기존 정의된 줄바꿈 변수가 있다면 대체하세요.
 	    String errMsg = "불러올 수 없는 지역이거나 지원되지 않는 지역입니다." + enterStr + "ex)00시00구00동 (띄어쓰기없이)";
-
 	    try {
-	        // SSL 설정 (기존 소스 유지)
 	        LoaApiUtils.setSSL();
-
-	        // 1. 한글 지역명 깨짐 방지를 위해 URL 인코딩 적용
-	        String encodedArea = URLEncoder.encode("날씨 " + area, StandardCharsets.UTF_8.toString());
-	        String weatherURL = "https://search.naver.com/search.naver?query=" + encodedArea;
-
-	        // 2. Jsoup 요청 시 User-Agent 헤더 필수 추가 (차단 방지)
-	        Document doc = Jsoup.connect(weatherURL)
-	                .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-	                .timeout(5000)
-	                .get();
-
-	        // 3. 현재 온도 및 상태 파싱 (변경된 클래스 반영)
-	        String cur_temp = doc.select(".temperature_text strong").text().replace("현재 온도", "").trim();
-	        String weather = doc.select(".weather_main .weather").text(); // 흐림, 맑음 등
-	        String diff_temp = doc.select(".temperature_info .temperature").text(); // 어제와 온도 차이
-
-	        // 4. 요약 정보 (체감온도, 습도, 풍속 등) 파싱 방식 변경
-	        // 개편 후 구조가 유동적이므로 리스트를 순회하며 텍스트를 조합하는 방식이 안전합니다.
-	        String v1_text = "체감", v2_text = "습도", v3_text = "풍속", v4_text = "자외선";
-	        String v1 = "", v2 = "", v3 = "", v4 = "";
 	        
-	        Elements summaryItems = doc.select(".summary_list .item");
-	        for (Element item : summaryItems) {
-	            String term = item.select(".term").text();
-	            String desc = item.select(".desc").text();
-	            if (term.contains("체감")) v1 = desc;
-	            else if (term.contains("습도")) v2 = desc;
-	            else if (term.contains("풍속")) v3 = desc;
-	            else if (term.contains("자외선") || term.contains("강수")) v4 = desc;
+	        // URL 인코딩 및 Jsoup 커넥션 브라우저 헤더 주입
+	        String encodedQuery = URLEncoder.encode("날씨 " + area, StandardCharsets.UTF_8.toString());
+	        String WeatherURL = "https://naver.com" + encodedQuery;
+	        
+	        Document doc = Jsoup.connect(WeatherURL)
+	                            .userAgent("Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36")
+	                            .get();
+	        
+	        // 1. 현재 온도 추출 (예측 온도 텍스트가 섞이지 않도록 자식 요소들 중 strong 텍스트만 선별)
+	        Element tempElement = doc.selectFirst(".weather_info .weather_graphic .temperature_text strong");
+	        String cur_temp = "";
+	        if (tempElement != null) {
+	            // "현재 온도" 문구가 포함되어 있다면 제거하되 원래 포맷 형태("현재 온도28.9°")를 복구하기 위해 정제
+	            cur_temp = tempElement.text().replaceAll("현재 온도", "").trim();
 	        }
-
-	        // 5. 최저/최고 온도
-	        String ondo_text = "";
-	        try {
-	            ondo_text = doc.select(".temperature_info .cell_temperature").text(); // "낮음 12° 높음 20°" 형태
-	        } catch (Exception e) {}
-
-	        // 6. 미세먼지 정보 파싱
-	        String mise_text = "";
-	        try {
-	            Elements charts = doc.select(".today_chart_list .item_today");
-	            for (Element chart : charts) {
-	                String title = chart.select(".title").text();
-	                String txt = chart.select(".txt").text();
-	                if(!title.isEmpty()) {
-	                    mise_text += title + " : " + txt + enterStr;
-	                }
-	            }
-	        } catch (Exception e) {}
-
-	        // 데이터 검증
-	        if (cur_temp.isEmpty()) {
+	        
+	        if (cur_temp.equals("")) {
 	            return errMsg;
 	        }
 
-	        // 결과 메시지 조립
-	        retMsg += "오늘날씨 : " + weather;
-	        retMsg += enterStr + "현재온도 : " + cur_temp;
-	        if (!v1.isEmpty()) retMsg += enterStr + v1_text + " : " + v1;
-	        if (!v2.isEmpty()) retMsg += enterStr + v2_text + " : " + v2;
-	        if (!v3.isEmpty()) retMsg += enterStr + v3_text + " : " + v3;
-	        if (!v4.isEmpty()) retMsg += enterStr + v4_text + " : " + v4;
-	        retMsg += enterStr + "현재 " + area + "의 온도는 " + cur_temp + " 이며 " + diff_temp;
-	        retMsg += enterStr;
-
-	        if (!ondo_text.isEmpty()) {
-	            retMsg += enterStr + ondo_text;
+	        // 2. 오늘 날씨 상태 (예: 흐림, 맑음, 구름많음)
+	        String weather = doc.select(".weather_info .weather_graphic .weather_main").text();
+	        
+	        // 3. 어제와의 온도 차이
+	        String diff_temp = doc.select(".weather_info .temperature_info .temperature").text();
+	        
+	        // 4. 요약 정보 리스트 (체감, 습도, 풍향/풍속 등) 매핑 처리
+	        Elements summaryItems = doc.select(".weather_info .summary_list .sort_box");
+	        String v1 = "", v2 = "", v3 = "";
+	        String windTitle = "바람"; // 북동풍, 남서풍 등 유동적인 타이틀 저장용
+	        
+	        for (Element item : summaryItems) {
+	            String term = item.select(".term").text();
+	            String desc = item.select(".desc").text();
+	            
+	            if (term.contains("체감")) {
+	                v1 = desc;
+	            } else if (term.contains("습도")) {
+	                v2 = desc;
+	            } else if (term.contains("풍") || term.contains("바람")) {
+	                windTitle = term; // "남서풍" 등 네이버가 제공하는 텍스트 그대로 보관
+	                v3 = desc;
+	            }
 	        }
-	        if (!mise_text.isEmpty()) {
-	            retMsg += enterStr + mise_text;
+	        
+	        // 5. 오늘 최저기온 / 최고기온 추출 (weekly_forecast_area의 오늘 데이터)
+	        String lowest = doc.select(".weekly_forecast_area .card_date_today .lowest").text();
+	        String highest = doc.select(".weekly_forecast_area .card_date_today .highest").text();
+	        
+	        // 6. 환경 지수 정보 (미세먼지, 초미세먼지, 자외선 등) 추출 방식 정교화
+	        Elements chartItems = doc.select(".weather_info .today_chart_list .item_today");
+	        String mise = "보통", choMise = "보통", uv = "보통";
+	        
+	        for (Element item : chartItems) {
+	            String title = item.select(".title").text();
+	            String txt = item.select(".txt").text();
+	            
+	            if (title.contains("미세먼지")) mise = txt;
+	            else if (title.contains("초미세먼지")) choMise = txt;
+	            else if (title.contains("자외선")) uv = txt;
+	        }
+	        
+	        // 7. 시간별 날씨 정보 조립 (깔끔하게 매칭)
+	        String time_text = "";
+	        try {
+	            Elements hourlyItems = doc.select(".weather_graph_box ._hourly_weather ._li");
+	            int loopCount = Math.min(hourlyItems.size(), 8); // 요청하신 포맷대로 8개 시간대 추출
+	            
+	            for (int i = 0; i < loopCount / 2; i++) {
+	                // 좌측 열 시간 및 상태
+	                Element leftItem = hourlyItems.get(i);
+	                String leftTime = leftItem.select(".time").text();
+	                String leftBlind = leftItem.select(".blind").text();
+	                // "구름많음", "흐림" 등의 앞뒤 불필요한 기온예측 제거용 전처리
+	                leftBlind = leftBlind.replaceAll("내일", "").replaceAll("많음", "").trim();
+	                leftBlind = org.apache.commons.lang3.StringUtils.leftPad(leftBlind, 2, "　");
+	                
+	                // 우측 열 시간 및 상태
+	                Element rightItem = hourlyItems.get(i + (loopCount / 2));
+	                String rightTime = rightItem.select(".time").text();
+	                String rightBlind = rightItem.select(".blind").text();
+	                rightBlind = rightBlind.replaceAll("내일", "").replaceAll("많음", "").trim();
+	                rightBlind = org.apache.commons.lang3.StringUtils.leftPad(rightBlind, 2, "　");
+	                
+	                time_text += leftTime + " : " + leftBlind + "　　" + rightTime + " : " + rightBlind;
+	                if (i < (loopCount / 2) - 1) {
+	                    time_text += enterStr;
+	                }
+	            }
+	            // 기존 치환 규칙 적용
+	            time_text = time_text.replaceAll("내일", "00시");
+	        } catch (Exception e) {
+	            // 시간별 예보 파싱 오류 대비 방어
 	        }
 
+	        // 8. ♬ 구분 기호를 활용한 원본 요청 데이터 포맷 빌드
+	        StringBuilder sb = new StringBuilder();
+	        sb.append("오늘날씨 : ").append(weather);
+	        sb.append(enterStr).append("현재온도 : 현재 온도").append(cur_temp);
+	        if (!v1.isEmpty()) sb.append(enterStr).append("체감 : ").append(v1);
+	        if (!v2.isEmpty()) sb.append(enterStr).append("습도 : ").append(v2);
+	        if (!v3.isEmpty()) sb.append(windTitle).append(" : ").append(v3);
+	        
+	        sb.append(enterStr).append("현재 ").append(area).append("의 온도는 현재 온도").append(cur_temp)
+	          .append(" 이며 어제보다 ").append(diff_temp);
+	        
+	        sb.append(enterStr).append(enterStr); // ♬♬ 간격 맞춤용 연속 개행
+	        sb.append("최저기온").append(lowest).append(" 최고기온").append(highest);
+	        
+	        sb.append(enterStr).append("미세먼지 : ").append(mise);
+	        sb.append(enterStr).append("초미세먼지 : ").append(choMise);
+	        sb.append(enterStr).append("자외선 : ").append(uv);
+	        
+	        if (!time_text.isEmpty()) {
+	            sb.append(enterStr).append(time_text);
+	        }
+	        
+	        retMsg = sb.toString();
+	        
 	    } catch (Exception e) {
-	        System.out.println("Weather Parsing Error: " + e.getMessage());
+	        System.out.println(e.getMessage());
 	        retMsg = errMsg;
 	    }
-
 	    rtnMap.put("data", retMsg);
 	    return retMsg;
 	}
