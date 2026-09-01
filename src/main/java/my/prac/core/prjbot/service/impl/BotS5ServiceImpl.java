@@ -1071,7 +1071,10 @@ public class BotS5ServiceImpl implements BotS5Service {
     @Override
     @Transactional
     public String equipSynthesis(String userName, int equipIdx) {
-        getOrInitProgress(userName);
+        HashMap<String, Object> progress = getOrInitProgress(userName);
+        if ("IN_COMBAT".equals(strVal(progress.get("STATUS"), "NORMAL"))) {
+            return "전투 중에는 장비를 합성할 수 없습니다.";
+        }
         List<HashMap<String, Object>> unequipped = new ArrayList<>();
         for (HashMap<String, Object> e : dao.selectUserEquip(userName)) {
             if (e.get("EQUIPPED_COMPANION_ID") == null) unequipped.add(e);
