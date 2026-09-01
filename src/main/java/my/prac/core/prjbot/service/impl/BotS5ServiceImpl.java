@@ -15,12 +15,8 @@ import my.prac.core.prjbot.service.BotS5Service;
 import my.prac.core.util.PP;
 
 /**
- * [시즌5] 탑 등반 시스템 서비스 구현체 (MVP).
+ * [시즌5] 탑 등반 시스템 서비스 구현체.
  * 설계서: src/main/resources/ddl/S5_TOWER_DESIGN.md
- *
- * 미구현(TODO): 가챠(동료뽑기/장비뽑기), 상점 구매, 주사위구매, 스탯구매,
- * 자동사냥 정산(현재는 10마리 처치 시 AUTO_HUNT_YN 플래그만 세움),
- * 장비 장착/합성, 직업별 특수효과(전사 도발/마법사 스턴/도적 스틸/궁수 즉사/도사 보호막).
  */
 @Service("core.prjbot.BotS5Service")
 public class BotS5ServiceImpl implements BotS5Service {
@@ -30,6 +26,8 @@ public class BotS5ServiceImpl implements BotS5Service {
 
     private static final String NL  = "♬";
     private static final Random RND = new Random();
+
+    private static final String[] JOB_KEYS = { "WARRIOR", "MAGE", "ROGUE", "ARCHER", "PRIEST" };
 
     // 등급(성급) 베이스 스탯 [HP, ATK, DEF], index0 = ★1
     private static final int[][] GRADE_BASE = {
@@ -55,6 +53,20 @@ public class BotS5ServiceImpl implements BotS5Service {
         put("ARCHER", "궁수");  put("PRIEST", "도사");
     }};
 
+    // 장비 등급별 보너스 [투구고정,투구%, 무기고정,무기%, 갑옷고정,갑옷%], index0=★1
+    private static final double[][] EQUIP_BONUS = {
+        { 30, 0.05,   5, 0.05,   3, 0.05 },
+        { 45, 0.07,   8, 0.07,   5, 0.07 },
+        { 75, 0.10,  13, 0.10,   8, 0.10 },
+        { 150, 0.15, 25, 0.15,  15, 0.15 },
+        { 350, 0.22, 60, 0.22,  35, 0.22 },
+        { 800, 0.35, 150, 0.35, 80, 0.35 },
+    };
+
+    // 주사위 해금 계단 [코드, 해금 UNLOCKED_BLOCK]
+    private static final String[] DICE_NAMES = { "DICE_6", "DICE_8", "DICE_10", "DICE_12", "DICE_20" };
+    private static final int[]    DICE_UNLOCK = { 0, 10, 30, 50, 70 };
+
     @Override
     public HashMap<String, Object> selectUserProgress(String userName) {
         return dao.selectUserProgress(userName);
@@ -67,16 +79,18 @@ public class BotS5ServiceImpl implements BotS5Service {
         p.put("userName", userName);
         dao.insertUserProgress(p);
 
-        // 스타터 동료: ★1 전사, 파티 1번 슬롯 자동 편성
-        int[] stat = calcStat("WARRIOR", 1);
-        HashMap<String, Object> c = new HashMap<>();
-        c.put("userName", userName);
-        c.put("class", "WARRIOR");
-        c.put("grade", 1);
-        c.put("curHpValue", stat[0]);
-        c.put("curHpExt", "");
-        c.put("partySlot", 1);
-        dao.insertCompanion(c);
+        // 하급 동료 계약서(GACHA_ID=1) 2회 무료 지급
+        pullCompanionInternal(userName, 1, true);
+        pullCompanionInternal(userName, 1, true);
+
+        // 첫 동료를 자동으로 파티 1번에 편성
+        List<HashMap<String, Object>> mine = dao.selectUserCompanions(userName);
+        if (!mine.isEmpty()) {
+            HashMap<String, Object> up = new HashMap<>();
+            up.put("companionId", intVal(mine.get(0).get("COMPANION_ID"), 0));
+            up.put("partySlot", 1);
+            dao.updateCompanionPartySlot(up);
+        }
     }
 
     private HashMap<String, Object> getOrInitProgress(String userName) {
@@ -85,16 +99,46 @@ public class BotS5ServiceImpl implements BotS5Service {
             initUser(userName);
             p = dao.selectUserProgress(userName);
         }
+        settleAutoHunt(userName, p);
         return p;
     }
 
-    private int[] calcStat(String job, int grade) {
+    // ================================================================
+    // 스탯 계산
+    // ================================================================
+    private int[] calcBaseStat(String job, int grade) {
         int[] base = GRADE_BASE[grade - 1];
         double[] mult = JOB_MULT.get(job);
         int hp  = (int) Math.round(base[0] * mult[0]);
         int atk = (int) Math.round(base[1] * mult[1]);
         int def = (int) Math.round(base[2] * mult[2]);
         return new int[]{ hp, atk, def };
+    }
+
+    /** 등급+직업 베이스 스탯에 장비/스탯구매 보너스를 반영한 최종 전투 스탯. [hp, atk, def, minDmgFloor] */
+    private int[] computeEffectiveStat(String job, int grade, List<HashMap<String, Object>> equips, HashMap<String, Object> userStat) {
+        int[] base = calcBaseStat(job, grade);
+        double hp = base[0], atk = base[1], def = base[2];
+
+        if (equips != null) {
+            for (HashMap<String, Object> e : equips) {
+                int eg = intVal(e.get("GRADE"), 1);
+                double[] b = EQUIP_BONUS[eg - 1];
+                String part = strVal(e.get("PART"), "");
+                if ("HELMET".equals(part)) hp += b[0] + base[0] * b[1];
+                else if ("WEAPON".equals(part)) atk += b[2] + base[1] * b[3];
+                else if ("ARMOR".equals(part)) def += b[4] + base[2] * b[5];
+            }
+        }
+
+        int atkMaxLv = userStat == null ? 0 : intVal(userStat.get("ATK_MAX_LV"), 0);
+        int atkMinLv = userStat == null ? 0 : intVal(userStat.get("ATK_MIN_LV"), 0);
+        int hpLv     = userStat == null ? 0 : intVal(userStat.get("HP_LV"), 0);
+        atk *= (1 + 0.03 * atkMaxLv);
+        hp  *= (1 + 0.03 * hpLv);
+        int minDmgFloor = atkMinLv * 2;
+
+        return new int[]{ (int) Math.round(hp), (int) Math.round(atk), (int) Math.round(def), minDmgFloor };
     }
 
     private int diceMax(String diceGrade) {
@@ -150,6 +194,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             sb.append("보드 위치: ").append(curTile).append(" / ").append(tileCount).append(NL);
         }
         sb.append("사용 주사위: ").append(strVal(p.get("DICE_GRADE"), "DICE_6")).append(NL);
+        sb.append("자동사냥: ").append("Y".equals(strVal(p.get("AUTO_HUNT_YN"), "N")) ? "ON" : "OFF").append(NL);
         sb.append("누적 처치: ").append(intVal(p.get("TOTAL_KILL_COUNT"), 0)).append("마리");
         return sb.toString();
     }
@@ -177,14 +222,12 @@ public class BotS5ServiceImpl implements BotS5Service {
 
         int m = floor % 10;
         if (m == 0) {
-            return userName + "님," + NL + "여기는 마을입니다. /층변경 N 으로 사냥터에 진입하세요. (상점 기능은 준비 중입니다)";
+            return userName + "님," + NL + "여기는 마을입니다. /탑상점 으로 상점을 이용하거나 /층변경 N 으로 사냥터에 진입하세요.";
         }
         if (m == 9) {
-            // 보스층: 보드 없이 바로 전투 시작
             return startCombat(userName, p, floor, true);
         }
 
-        // 사냥터: 보드 이동
         HashMap<String, Object> fi = dao.selectFloorInfo(floor);
         int tileCount = fi == null ? 8 : intVal(fi.get("TILE_COUNT"), 8);
         HashMap<String, Object> ufp = dao.selectUserFloorProgress(userName, floor);
@@ -209,7 +252,6 @@ public class BotS5ServiceImpl implements BotS5Service {
         sb.append("🎲 주사위 ").append(roll).append("! ").append(curTile).append(" → ").append(newTile)
           .append(" / ").append(tileCount).append("칸").append(NL);
 
-        // 함정 디버프 턴 감소
         int trapTurnLeft = intVal(p.get("TRAP_TURN_LEFT"), 0);
         if (trapTurnLeft > 0) {
             HashMap<String, Object> up = new HashMap<>();
@@ -248,7 +290,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                 break;
             }
             case "SHOP":
-                sb.append("🎁 비밀상점을 발견했다! (가챠 기능은 준비 중입니다)");
+                sb.append("🎁 비밀상점을 발견했다! /탑상점 으로 확인해보세요.");
                 break;
             case "SPECIAL":
                 sb.append(handleSpecialTile(userName));
@@ -287,6 +329,20 @@ public class BotS5ServiceImpl implements BotS5Service {
         p.put("PP_EXT", result.getUnit());
     }
 
+    private boolean deductPp(String userName, HashMap<String, Object> p, PP cost) {
+        PP cur = PP.of(((Number) p.get("PP_VALUE")).doubleValue(), strVal(p.get("PP_EXT"), ""));
+        if (!cur.canAfford(cost)) return false;
+        PP result = cur.subtract(cost);
+        HashMap<String, Object> up = new HashMap<>();
+        up.put("userName", userName);
+        up.put("ppValue", result.getValue());
+        up.put("ppExt", result.getUnit());
+        dao.updateUserProgress(up);
+        p.put("PP_VALUE", result.getValue());
+        p.put("PP_EXT", result.getUnit());
+        return true;
+    }
+
     private String startCombat(String userName, HashMap<String, Object> p, int floor, boolean boss) {
         HashMap<String, Object> mon = dao.selectMonster(blockNo(floor), boss ? "Y" : "N");
         if (mon == null) {
@@ -309,7 +365,6 @@ public class BotS5ServiceImpl implements BotS5Service {
         int monsterId = intVal(p.get("CUR_MONSTER_ID"), 0);
         HashMap<String, Object> mon = findMonsterById(floor, monsterId);
         if (mon == null) {
-            // 상태 꼬임 방지: 전투 상태 초기화
             HashMap<String, Object> up = new HashMap<>();
             up.put("userName", userName);
             up.put("status", "NORMAL");
@@ -319,6 +374,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         }
 
         PP monsterHp = PP.of(((Number) p.get("CUR_MONSTER_HP_VALUE")).doubleValue(), strVal(p.get("CUR_MONSTER_HP_EXT"), ""));
+        PP monsterMaxHp = PP.of(((Number) mon.get("HP_VALUE")).doubleValue(), strVal(mon.get("HP_EXT"), ""));
         int monsterDef = intVal(mon.get("DEF_VALUE"), 0);
         int diceMax = diceMax(strVal(p.get("DICE_GRADE"), "DICE_6"));
 
@@ -331,23 +387,65 @@ public class BotS5ServiceImpl implements BotS5Service {
             return "파티에 편성된 동료가 없습니다. /파티편성 으로 동료를 편성하세요.";
         }
 
+        HashMap<String, Object> userStat = dao.selectUserStat(userName);
         StringBuilder sb = new StringBuilder(userName).append("님," + NL);
 
-        // ── 파티 선공: 생존한 동료 전원이 각자 1회씩 공격 ──
+        // ── 파티 선공: 생존한 동료 전원이 각자 1회씩 공격 (직업별 특수효과 포함) ──
         long totalDamage = 0;
+        boolean stunned = false;
+        boolean executeKill = false;
+        int shieldPool = 0;
+
         for (HashMap<String, Object> c : party) {
             PP hp = PP.of(((Number) c.get("CUR_HP_VALUE")).doubleValue(), strVal(c.get("CUR_HP_EXT"), ""));
             if (PP.toBaseValue(hp) <= 0) continue; // 전투불가
-            int[] stat = calcStat(strVal(c.get("CLASS"), "WARRIOR"), intVal(c.get("GRADE"), 1));
+
+            String job = strVal(c.get("CLASS"), "WARRIOR");
+            int grade = intVal(c.get("GRADE"), 1);
+            List<HashMap<String, Object>> equips = dao.selectEquipByCompanion(intVal(c.get("COMPANION_ID"), 0));
+            int[] eff = computeEffectiveStat(job, grade, equips, userStat);
+
             int roll = RND.nextInt(diceMax) + 1;
-            int dmg = Math.max(1, stat[1] * roll - monsterDef);
+            int dmg = Math.max(1, eff[1] * roll - monsterDef);
+            dmg = Math.max(dmg, eff[3]); // 스탯구매 최소공격력 보정
             totalDamage += dmg;
-            sb.append(JOB_NAME.getOrDefault(strVal(c.get("CLASS"), "WARRIOR"), "동료"))
-              .append(" 공격! 🎲").append(roll).append(" → ").append(dmg).append(" 데미지").append(NL);
+            sb.append(JOB_NAME.getOrDefault(job, "동료")).append(" 공격! 🎲").append(roll)
+              .append(" → ").append(dmg).append(" 데미지").append(NL);
+
+            switch (job) {
+                case "MAGE":
+                    if (RND.nextInt(100) < 20) {
+                        stunned = true;
+                        sb.append("  ✨ 마법사의 스턴 적중! 몬스터가 이번 반격을 못합니다.").append(NL);
+                    }
+                    break;
+                case "ROGUE":
+                    if (RND.nextInt(100) < 25) {
+                        PP steal = PP.of(((Number) mon.get("PP_PER_KILL_VALUE")).doubleValue(), strVal(mon.get("PP_PER_KILL_EXT"), "")).multiply(0.1);
+                        addPp(userName, p, steal);
+                        sb.append("  🗡️ 도적이 ").append(steal.format()).append(" PP를 스틸했다!").append(NL);
+                    }
+                    break;
+                case "ARCHER":
+                    if (PP.toBaseValue(monsterHp) <= PP.toBaseValue(monsterMaxHp) * 0.1 && RND.nextInt(100) < 40) {
+                        executeKill = true;
+                        sb.append("  🏹 궁수의 즉사 사격 적중!").append(NL);
+                    }
+                    break;
+                case "PRIEST": {
+                    int shieldRoll = RND.nextInt(diceMax) + 1;
+                    int shieldAmt = Math.max(0, eff[1] * shieldRoll);
+                    shieldPool += shieldAmt;
+                    sb.append("  🛡️ 도사가 보호막 ").append(shieldAmt).append(" 전개! (🎲").append(shieldRoll).append(")").append(NL);
+                    break;
+                }
+                default:
+                    break;
+            }
         }
 
-        PP monsterHpAfter = monsterHp.subtract(PP.fromPP(totalDamage));
-        boolean monsterDead = PP.toBaseValue(monsterHpAfter) <= 0;
+        PP monsterHpAfter = executeKill ? PP.fromPP(0) : monsterHp.subtract(PP.fromPP(totalDamage));
+        boolean monsterDead = executeKill || PP.toBaseValue(monsterHpAfter) <= 0;
 
         if (monsterDead) {
             PP reward = PP.of(((Number) mon.get("PP_PER_KILL_VALUE")).doubleValue(), strVal(mon.get("PP_PER_KILL_EXT"), ""));
@@ -373,24 +471,33 @@ public class BotS5ServiceImpl implements BotS5Service {
                 up.put("killCountCur", killCountCur >= 10 ? 0 : killCountCur);
                 if (killCountCur >= 10) {
                     up.put("autoHuntYn", "Y");
-                    sb.append("🔥 이 층에서 10마리 처치! 자동사냥 모드 ON (정산 로직은 TODO)").append(NL);
+                    HashMap<String, Object> log = new HashMap<>();
+                    log.put("userName", userName);
+                    log.put("floor", floor);
+                    dao.upsertAutoHuntLog(log);
+                    sb.append("🔥 이 층에서 10마리 처치! 자동사냥 모드 ON (다음 접속 시 경과시간만큼 자동 정산)").append(NL);
                 }
             }
             dao.updateUserProgress(up);
             addPp(userName, p, reward);
             checkKillAchievements(userName, totalKill);
             sb.append(reward.format()).append(" PP 획득!");
-            healPartyFull(party); // 전투 종료 시 전원 부활 + Full HP
+            healPartyFull(userName, party, userStat);
             return sb.toString();
         }
 
-        // 몬스터 생존 → 반격
+        // 몬스터 생존 → 반격 (스턴이면 생략)
         HashMap<String, Object> up = new HashMap<>();
         up.put("userName", userName);
         up.put("curMonsterHpValue", monsterHpAfter.getValue());
         up.put("curMonsterHpExt", monsterHpAfter.getUnit());
         dao.updateUserProgress(up);
         sb.append(strVal(mon.get("MONSTER_NAME"), "몬스터")).append(" 남은 HP: ").append(monsterHpAfter.format()).append(NL);
+
+        if (stunned) {
+            sb.append("몬스터가 스턴에 걸려 반격하지 못했습니다!");
+            return sb.toString();
+        }
 
         List<HashMap<String, Object>> alive = new ArrayList<>();
         for (HashMap<String, Object> c : party) {
@@ -404,16 +511,41 @@ public class BotS5ServiceImpl implements BotS5Service {
             defeatUp.put("status", "NORMAL");
             defeatUp.put("clearMonster", true);
             dao.updateUserProgress(defeatUp);
-            healPartyFull(party);
+            healPartyFull(userName, party, userStat);
             sb.append("💀 파티 전멸... 전투에 패배했습니다. 동료들이 마을에서 회복 후 다시 도전하세요.");
             return sb.toString();
         }
 
         HashMap<String, Object> target = alive.get(RND.nextInt(alive.size()));
-        int[] tStat = calcStat(strVal(target.get("CLASS"), "WARRIOR"), intVal(target.get("GRADE"), 1));
+
+        // 전사 도발: 체력 50% 이상인 전사가 있으면 확률적으로 자신이 대신 맞음
+        for (HashMap<String, Object> c : alive) {
+            if (!"WARRIOR".equals(strVal(c.get("CLASS"), ""))) continue;
+            int wGrade = intVal(c.get("GRADE"), 1);
+            List<HashMap<String, Object>> wEquips = dao.selectEquipByCompanion(intVal(c.get("COMPANION_ID"), 0));
+            int[] wEff = computeEffectiveStat("WARRIOR", wGrade, wEquips, userStat);
+            PP wHp = PP.of(((Number) c.get("CUR_HP_VALUE")).doubleValue(), strVal(c.get("CUR_HP_EXT"), ""));
+            boolean over50 = PP.toBaseValue(wHp) * 2 >= wEff[0];
+            if (over50 && !c.equals(target) && RND.nextInt(100) < 30) {
+                target = c;
+                sb.append("🛡️ 전사가 대신 공격을 받아냅니다!").append(NL);
+            }
+            break; // 파티엔 전사가 최대 1명이라고 가정하지 않지만, 첫 전사만 판정
+        }
+
+        String tJob = strVal(target.get("CLASS"), "WARRIOR");
+        int tGrade = intVal(target.get("GRADE"), 1);
+        List<HashMap<String, Object>> tEquips = dao.selectEquipByCompanion(intVal(target.get("COMPANION_ID"), 0));
+        int[] tEff = computeEffectiveStat(tJob, tGrade, tEquips, userStat);
         int monsterAtk = intVal(mon.get("ATK_VALUE"), 0);
         int roll = RND.nextInt(diceMax) + 1;
-        int dmgToParty = Math.max(1, monsterAtk * roll - tStat[2]);
+        int dmgToParty = Math.max(1, monsterAtk * roll - tEff[2]);
+
+        if (shieldPool > 0) {
+            int absorbed = Math.min(shieldPool, dmgToParty);
+            dmgToParty -= absorbed;
+            sb.append("🛡️ 보호막이 ").append(absorbed).append(" 피해를 흡수했습니다!").append(NL);
+        }
 
         PP targetHp = PP.of(((Number) target.get("CUR_HP_VALUE")).doubleValue(), strVal(target.get("CUR_HP_EXT"), ""));
         PP targetHpAfter = targetHp.subtract(PP.fromPP(dmgToParty));
@@ -426,26 +558,28 @@ public class BotS5ServiceImpl implements BotS5Service {
         dao.updateCompanionHp(cUp);
 
         sb.append(strVal(mon.get("MONSTER_NAME"), "몬스터")).append(" 반격! 🎲").append(roll).append(" → ")
-          .append(JOB_NAME.getOrDefault(strVal(target.get("CLASS"), "WARRIOR"), "동료")).append("에게 ")
+          .append(JOB_NAME.getOrDefault(tJob, "동료")).append("에게 ")
           .append(dmgToParty).append(" 피해 (남은 HP ").append(targetHpAfter.format()).append(")");
         if (PP.toBaseValue(targetHpAfter) <= 0) sb.append(" — 전투불가!");
 
         return sb.toString();
     }
 
-    private void healPartyFull(List<HashMap<String, Object>> party) {
+    private void healPartyFull(String userName, List<HashMap<String, Object>> party, HashMap<String, Object> userStat) {
         for (HashMap<String, Object> c : party) {
-            int[] stat = calcStat(strVal(c.get("CLASS"), "WARRIOR"), intVal(c.get("GRADE"), 1));
+            String job = strVal(c.get("CLASS"), "WARRIOR");
+            int grade = intVal(c.get("GRADE"), 1);
+            List<HashMap<String, Object>> equips = dao.selectEquipByCompanion(intVal(c.get("COMPANION_ID"), 0));
+            int[] eff = computeEffectiveStat(job, grade, equips, userStat);
             HashMap<String, Object> up = new HashMap<>();
             up.put("companionId", intVal(c.get("COMPANION_ID"), 0));
-            up.put("curHpValue", (double) stat[0]);
+            up.put("curHpValue", (double) eff[0]);
             up.put("curHpExt", "");
             dao.updateCompanionHp(up);
         }
     }
 
     private HashMap<String, Object> findMonsterById(int floor, int monsterId) {
-        // 일반/보스 둘 다 조회해서 ID로 매칭 (구조가 단순해서 blockNo 기준 재조회)
         HashMap<String, Object> normal = dao.selectMonster(blockNo(floor), "N");
         if (normal != null && intVal(normal.get("MONSTER_ID"), -1) == monsterId) return normal;
         HashMap<String, Object> boss = dao.selectMonster(blockNo(floor), "Y");
@@ -461,12 +595,52 @@ public class BotS5ServiceImpl implements BotS5Service {
     private void grantAchievement(String userName, int achId) {
         List<HashMap<String, Object>> mine = dao.selectUserAchievements(userName);
         for (HashMap<String, Object> a : mine) {
-            if (intVal(a.get("ACH_ID"), -1) == achId) return; // 이미 달성
+            if (intVal(a.get("ACH_ID"), -1) == achId) return;
         }
         HashMap<String, Object> m = new HashMap<>();
         m.put("userName", userName);
         m.put("achId", achId);
         dao.insertUserAch(m);
+    }
+
+    // ================================================================
+    // 자동사냥 정산
+    // ================================================================
+    private void settleAutoHunt(String userName, HashMap<String, Object> p) {
+        if (!"Y".equals(strVal(p.get("AUTO_HUNT_YN"), "N"))) return;
+        HashMap<String, Object> log = dao.selectAutoHuntLog(userName);
+        if (log == null) return;
+
+        java.util.Date lastSettle = (java.util.Date) log.get("LAST_SETTLE_DATE");
+        if (lastSettle == null) return;
+        long elapsedMin = (System.currentTimeMillis() - lastSettle.getTime()) / 60000L;
+        if (elapsedMin < 10) return; // 10분(=처치 1회 기준) 미만이면 정산할 게 없음
+
+        long cappedMin = Math.min(elapsedMin, 8 * 60L); // 최대 8시간
+        int floor = intVal(log.get("FLOOR"), intVal(p.get("CUR_FLOOR"), 1));
+        HashMap<String, Object> mon = dao.selectMonster(blockNo(floor), "N");
+        if (mon == null) return;
+
+        long kills = cappedMin / 10; // 시간당 6마리 = 10분당 1마리
+        if (kills <= 0) return;
+
+        PP perKill = PP.of(((Number) mon.get("PP_PER_KILL_VALUE")).doubleValue(), strVal(mon.get("PP_PER_KILL_EXT"), ""));
+        PP reward = perKill.multiply(kills);
+        addPp(userName, p, reward);
+
+        HashMap<String, Object> up = new HashMap<>();
+        up.put("userName", userName);
+        up.put("totalKillCount", intVal(p.get("TOTAL_KILL_COUNT"), 0) + (int) kills);
+        dao.updateUserProgress(up);
+        p.put("TOTAL_KILL_COUNT", intVal(p.get("TOTAL_KILL_COUNT"), 0) + (int) kills);
+
+        HashMap<String, Object> logUp = new HashMap<>();
+        logUp.put("userName", userName);
+        logUp.put("floor", floor);
+        dao.upsertAutoHuntLog(logUp); // LAST_SETTLE_DATE = SYSDATE 로 갱신
+
+        checkKillAchievements(userName, intVal(p.get("TOTAL_KILL_COUNT"), 0));
+        // TODO: AUTO_HUNT_PP_TOTAL 누적치 업적(14번)은 별도 누적 컬럼이 없어 아직 미체크
     }
 
     // ================================================================
@@ -490,7 +664,19 @@ public class BotS5ServiceImpl implements BotS5Service {
         up.put("curFloor", target);
         dao.updateUserProgress(up);
 
+        if (target != floor) {
+            grantFloorAchievements(userName, target);
+        }
         return userName + "님," + NL + floor + "층 → " + target + "층(" + floorKindLabel(target) + ")으로 이동했습니다.";
+    }
+
+    private void grantFloorAchievements(String userName, int floor) {
+        if (floor == 1) grantAchievement(userName, 1);
+        if (floor == 10) grantAchievement(userName, 2);
+        if (floor == 30) grantAchievement(userName, 3);
+        if (floor == 50) grantAchievement(userName, 4);
+        if (floor == 70) grantAchievement(userName, 5);
+        if (floor == 100) grantAchievement(userName, 6);
     }
 
     // ================================================================
@@ -542,7 +728,6 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (used >= 3) {
             return "파티는 최대 3명까지 편성 가능합니다. 다른 동료를 먼저 해제하세요.";
         }
-        // 비어있는 가장 작은 슬롯 번호 사용
         boolean[] usedSlot = new boolean[4];
         for (HashMap<String, Object> c : companions) {
             Object s = c.get("PARTY_SLOT");
@@ -576,10 +761,338 @@ public class BotS5ServiceImpl implements BotS5Service {
             int id = intVal(a.get("ACH_ID"), -1);
             boolean hidden = "Y".equals(strVal(a.get("HIDDEN_YN"), "N"));
             boolean done = cleared.containsKey(id);
-            if (hidden && !done) continue; // 히든 미달성은 숨김
+            if (hidden && !done) continue;
             sb.append(done ? "✅ " : "⬜ ").append(strVal(a.get("ACH_NAME"), "")).append(" - ")
               .append(strVal(a.get("ACH_DESC"), "")).append(NL);
         }
         return sb.toString();
+    }
+
+    // ================================================================
+    // /탑상점
+    // ================================================================
+    @Override
+    public String shopList(String userName) {
+        HashMap<String, Object> p = getOrInitProgress(userName);
+        int unlocked = intVal(p.get("UNLOCKED_BLOCK"), 0);
+
+        StringBuilder sb = new StringBuilder(userName).append("님의 탑 상점 (해금 구간: ").append(unlocked).append("층)," + NL);
+        sb.append("── 동료 계약서 (/동료뽑기 N) ──").append(NL);
+        for (HashMap<String, Object> g : dao.selectGachaList("COMPANION", unlocked)) {
+            appendGachaLine(sb, g);
+        }
+        sb.append("── 장비 보물상자 (/장비뽑기 N) ──").append(NL);
+        for (HashMap<String, Object> g : dao.selectGachaList("EQUIP", unlocked)) {
+            appendGachaLine(sb, g);
+        }
+        sb.append("── 기타 ──").append(NL);
+        sb.append("/주사위구매 — 주사위 등급 확인/교체").append(NL);
+        sb.append("/스탯구매 — 공격/방어 스탯 강화").append(NL);
+        sb.append("/장비목록, /장비장착, /장비합성 — 장비 관리");
+        return sb.toString();
+    }
+
+    private void appendGachaLine(StringBuilder sb, HashMap<String, Object> g) {
+        PP cost = PP.of(((Number) g.get("COST_VALUE")).doubleValue(), strVal(g.get("COST_EXT"), ""));
+        sb.append(intVal(g.get("GACHA_ID"), 0)).append(". ").append(strVal(g.get("GACHA_NAME"), ""))
+          .append(" — ").append(cost.format()).append(" PP").append(NL);
+    }
+
+    // ================================================================
+    // 가챠
+    // ================================================================
+    private int rollGrade(HashMap<String, Object> gacha) {
+        double[] w = new double[6];
+        double sum = 0;
+        for (int i = 0; i < 6; i++) {
+            Object v = gacha.get("PROB_G" + (i + 1));
+            w[i] = v == null ? 0 : ((Number) v).doubleValue();
+            sum += w[i];
+        }
+        if (sum <= 0) return 1;
+        double r = RND.nextDouble() * sum;
+        double acc = 0;
+        for (int i = 0; i < 6; i++) {
+            acc += w[i];
+            if (r < acc) return i + 1;
+        }
+        return 6;
+    }
+
+    private String pullCompanionInternal(String userName, int gachaId, boolean free) {
+        HashMap<String, Object> gacha = dao.selectGacha(gachaId);
+        if (gacha == null || !"COMPANION".equals(strVal(gacha.get("GACHA_TYPE"), ""))) {
+            return "존재하지 않는 동료 계약서입니다.";
+        }
+        HashMap<String, Object> p = null;
+        if (!free) {
+            p = dao.selectUserProgress(userName);
+            int unlocked = intVal(p.get("UNLOCKED_BLOCK"), 0);
+            if (intVal(gacha.get("UNLOCK_FLOOR"), 0) > unlocked) {
+                return "아직 해금되지 않은 계약서입니다.";
+            }
+            PP cost = PP.of(((Number) gacha.get("COST_VALUE")).doubleValue(), strVal(gacha.get("COST_EXT"), ""));
+            if (!deductPp(userName, p, cost)) {
+                return "PP가 부족합니다. (필요 " + cost.format() + " PP)";
+            }
+        }
+
+        int grade = rollGrade(gacha);
+        String job = JOB_KEYS[RND.nextInt(JOB_KEYS.length)];
+        int[] stat = calcBaseStat(job, grade);
+
+        HashMap<String, Object> c = new HashMap<>();
+        c.put("userName", userName);
+        c.put("class", job);
+        c.put("grade", grade);
+        c.put("curHpValue", (double) stat[0]);
+        c.put("curHpExt", "");
+        c.put("partySlot", null);
+        dao.insertCompanion(c);
+
+        int cnt = dao.countUserCompanions(userName);
+        if (cnt == 1) grantAchievement(userName, 10);
+        if (cnt == 50) grantAchievement(userName, 11);
+        if (grade == 6) grantAchievement(userName, 22);
+
+        return "🎉 " + JOB_NAME.get(job) + " ★" + grade + " 동료를 영입했습니다!";
+    }
+
+    @Override
+    @Transactional
+    public String gachaCompanion(String userName, int gachaId) {
+        getOrInitProgress(userName);
+        return pullCompanionInternal(userName, gachaId, false);
+    }
+
+    @Override
+    @Transactional
+    public String gachaEquip(String userName, int gachaId) {
+        HashMap<String, Object> p = getOrInitProgress(userName);
+        HashMap<String, Object> gacha = dao.selectGacha(gachaId);
+        if (gacha == null || !"EQUIP".equals(strVal(gacha.get("GACHA_TYPE"), ""))) {
+            return "존재하지 않는 장비 상자입니다.";
+        }
+        int unlocked = intVal(p.get("UNLOCKED_BLOCK"), 0);
+        if (intVal(gacha.get("UNLOCK_FLOOR"), 0) > unlocked) {
+            return "아직 해금되지 않은 상자입니다.";
+        }
+        PP cost = PP.of(((Number) gacha.get("COST_VALUE")).doubleValue(), strVal(gacha.get("COST_EXT"), ""));
+        if (!deductPp(userName, p, cost)) {
+            return "PP가 부족합니다. (필요 " + cost.format() + " PP)";
+        }
+
+        int grade = rollGrade(gacha);
+        String job = JOB_KEYS[RND.nextInt(JOB_KEYS.length)];
+        String[] parts = { "HELMET", "WEAPON", "ARMOR" };
+        String part = parts[RND.nextInt(parts.length)];
+
+        HashMap<String, Object> e = new HashMap<>();
+        e.put("userName", userName);
+        e.put("class", job);
+        e.put("part", part);
+        e.put("grade", grade);
+        e.put("equippedCompanionId", null);
+        dao.insertEquip(e);
+
+        int cnt = dao.countUserEquip(userName);
+        if (grade == 6) grantAchievement(userName, 22);
+
+        String partName = "HELMET".equals(part) ? "투구" : "WEAPON".equals(part) ? "무기" : "갑옷";
+        return "🎁 " + JOB_NAME.get(job) + "용 " + partName + " ★" + grade + " 획득!";
+    }
+
+    // ================================================================
+    // /주사위구매 (등급 확인/교체 — 무료 장착, 층 진행으로 자동 해금)
+    // ================================================================
+    @Override
+    @Transactional
+    public String diceShop(String userName, Integer n) {
+        HashMap<String, Object> p = getOrInitProgress(userName);
+        int unlocked = intVal(p.get("UNLOCKED_BLOCK"), 0);
+        String curDice = strVal(p.get("DICE_GRADE"), "DICE_6");
+
+        if (n == null) {
+            StringBuilder sb = new StringBuilder(userName).append("님의 주사위 목록," + NL);
+            for (int i = 0; i < DICE_NAMES.length; i++) {
+                boolean unlockedTier = unlocked >= DICE_UNLOCK[i];
+                sb.append(i + 1).append(". ").append(DICE_NAMES[i])
+                  .append(unlockedTier ? "" : " (미해금, " + DICE_UNLOCK[i] + "층부터)")
+                  .append(DICE_NAMES[i].equals(curDice) ? " ← 사용중" : "")
+                  .append(NL);
+            }
+            sb.append("/주사위구매 N 으로 해금된 주사위 장착");
+            return sb.toString();
+        }
+
+        if (n < 1 || n > DICE_NAMES.length) return "잘못된 번호입니다.";
+        if (unlocked < DICE_UNLOCK[n - 1]) return "아직 해금되지 않은 주사위입니다.";
+
+        HashMap<String, Object> up = new HashMap<>();
+        up.put("userName", userName);
+        up.put("diceGrade", DICE_NAMES[n - 1]);
+        dao.updateUserProgress(up);
+        return DICE_NAMES[n - 1] + " 을(를) 장착했습니다.";
+    }
+
+    // ================================================================
+    // /스탯구매
+    // ================================================================
+    @Override
+    @Transactional
+    public String statShop(String userName, String type) {
+        HashMap<String, Object> p = getOrInitProgress(userName);
+        HashMap<String, Object> stat = dao.selectUserStat(userName);
+        int atkMaxLv = stat == null ? 0 : intVal(stat.get("ATK_MAX_LV"), 0);
+        int atkMinLv = stat == null ? 0 : intVal(stat.get("ATK_MIN_LV"), 0);
+        int hpLv     = stat == null ? 0 : intVal(stat.get("HP_LV"), 0);
+        int cap = 5 + 5 * (intVal(p.get("UNLOCKED_BLOCK"), 0) / 10);
+
+        if (type == null || type.isEmpty()) {
+            StringBuilder sb = new StringBuilder(userName).append("님의 스탯 구매 현황 (구간 상한 ").append(cap).append(")," + NL);
+            sb.append("공격력(최대) Lv").append(atkMaxLv).append(" — 다음 비용 ").append(50 * (atkMaxLv + 1)).append(" PP").append(NL);
+            sb.append("공격력(최소) Lv").append(atkMinLv).append(" — 다음 비용 ").append(50 * (atkMinLv + 1)).append(" PP").append(NL);
+            sb.append("체력 Lv").append(hpLv).append(" — 다음 비용 ").append(50 * (hpLv + 1)).append(" PP").append(NL);
+            sb.append("/스탯구매 공격력 | 최소공격력 | 체력");
+            return sb.toString();
+        }
+
+        int curLv;
+        String field;
+        switch (type) {
+            case "공격력":     curLv = atkMaxLv; field = "atk"; break;
+            case "최소공격력": curLv = atkMinLv; field = "min"; break;
+            case "체력":       curLv = hpLv;     field = "hp";  break;
+            default: return "스탯 종류는 공격력 / 최소공격력 / 체력 중 하나여야 합니다.";
+        }
+        if (curLv >= cap) return "현재 구간에서는 더 이상 강화할 수 없습니다. 다음 마을에 도달하면 상한이 늘어납니다.";
+
+        PP cost = PP.fromPP(50 * (curLv + 1));
+        if (!deductPp(userName, p, cost)) return "PP가 부족합니다. (필요 " + cost.format() + " PP)";
+
+        if ("atk".equals(field)) atkMaxLv++;
+        else if ("min".equals(field)) atkMinLv++;
+        else hpLv++;
+
+        HashMap<String, Object> up = new HashMap<>();
+        up.put("userName", userName);
+        up.put("atkMaxLv", atkMaxLv);
+        up.put("atkMinLv", atkMinLv);
+        up.put("hpLv", hpLv);
+        dao.upsertUserStat(up);
+        return type + " 스탯을 강화했습니다! (Lv" + curLv + " → Lv" + (curLv + 1) + ")";
+    }
+
+    // ================================================================
+    // 장비
+    // ================================================================
+    @Override
+    public String equipList(String userName) {
+        getOrInitProgress(userName);
+        List<HashMap<String, Object>> equips = dao.selectUserEquip(userName);
+        List<HashMap<String, Object>> companions = dao.selectUserCompanions(userName);
+        HashMap<Integer, String> companionLabel = new HashMap<>();
+        for (HashMap<String, Object> c : companions) {
+            companionLabel.put(intVal(c.get("COMPANION_ID"), -1),
+                    JOB_NAME.getOrDefault(strVal(c.get("CLASS"), ""), "?") + " ★" + intVal(c.get("GRADE"), 1));
+        }
+        if (equips.isEmpty()) return "보유한 장비가 없습니다.";
+
+        StringBuilder sb = new StringBuilder(userName).append("님의 장비 목록," + NL);
+        int idx = 1;
+        for (HashMap<String, Object> e : equips) {
+            String part = strVal(e.get("PART"), "");
+            String partName = "HELMET".equals(part) ? "투구" : "WEAPON".equals(part) ? "무기" : "갑옷";
+            Object cid = e.get("EQUIPPED_COMPANION_ID");
+            sb.append(idx++).append(". ").append(JOB_NAME.getOrDefault(strVal(e.get("CLASS"), ""), "?"))
+              .append(" ").append(partName).append(" ★").append(intVal(e.get("GRADE"), 1))
+              .append(cid != null ? " [" + companionLabel.getOrDefault(((Number) cid).intValue(), "장착중") + "]" : " [미착용]")
+              .append(NL);
+        }
+        sb.append("/장비장착 N (미착용 목록 기준), /장비합성 N");
+        return sb.toString();
+    }
+
+    @Override
+    @Transactional
+    public String equipWear(String userName, int equipIdx, Integer companionIdx) {
+        getOrInitProgress(userName);
+        List<HashMap<String, Object>> unequipped = new ArrayList<>();
+        for (HashMap<String, Object> e : dao.selectUserEquip(userName)) {
+            if (e.get("EQUIPPED_COMPANION_ID") == null) unequipped.add(e);
+        }
+        if (equipIdx < 1 || equipIdx > unequipped.size()) return "잘못된 장비 번호입니다. /장비목록을 확인하세요.";
+        HashMap<String, Object> equip = unequipped.get(equipIdx - 1);
+        String equipClass = strVal(equip.get("CLASS"), "");
+        String part = strVal(equip.get("PART"), "");
+
+        List<HashMap<String, Object>> companions = dao.selectUserCompanions(userName);
+        List<HashMap<String, Object>> party = new ArrayList<>();
+        for (HashMap<String, Object> c : companions) if (c.get("PARTY_SLOT") != null) party.add(c);
+
+        HashMap<String, Object> targetCompanion = null;
+        if (companionIdx != null) {
+            if (companionIdx < 1 || companionIdx > party.size()) return "잘못된 동료 번호입니다. /파티편성을 확인하세요.";
+            targetCompanion = party.get(companionIdx - 1);
+        } else {
+            for (HashMap<String, Object> c : party) {
+                if (equipClass.equals(strVal(c.get("CLASS"), ""))) { targetCompanion = c; break; }
+            }
+        }
+        if (targetCompanion == null) return "장착할 동료를 찾지 못했습니다 (같은 직업의 파티원이 필요합니다).";
+        if (!equipClass.equals(strVal(targetCompanion.get("CLASS"), ""))) return "이 장비는 " + JOB_NAME.get(equipClass) + " 전용입니다.";
+
+        int companionId = intVal(targetCompanion.get("COMPANION_ID"), 0);
+        // 같은 부위에 이미 장착된 게 있으면 해제
+        for (HashMap<String, Object> e : dao.selectEquipByCompanion(companionId)) {
+            if (part.equals(strVal(e.get("PART"), ""))) {
+                HashMap<String, Object> unwear = new HashMap<>();
+                unwear.put("equipId", intVal(e.get("EQUIP_ID"), 0));
+                unwear.put("equippedCompanionId", null);
+                dao.updateEquipEquippedCompanion(unwear);
+            }
+        }
+
+        HashMap<String, Object> wear = new HashMap<>();
+        wear.put("equipId", intVal(equip.get("EQUIP_ID"), 0));
+        wear.put("equippedCompanionId", companionId);
+        dao.updateEquipEquippedCompanion(wear);
+
+        return "장착했습니다!";
+    }
+
+    @Override
+    @Transactional
+    public String equipSynthesis(String userName, int equipIdx) {
+        getOrInitProgress(userName);
+        List<HashMap<String, Object>> unequipped = new ArrayList<>();
+        for (HashMap<String, Object> e : dao.selectUserEquip(userName)) {
+            if (e.get("EQUIPPED_COMPANION_ID") == null) unequipped.add(e);
+        }
+        if (equipIdx < 1 || equipIdx > unequipped.size()) return "잘못된 장비 번호입니다. /장비목록을 확인하세요.";
+        HashMap<String, Object> equip = unequipped.get(equipIdx - 1);
+        int grade = intVal(equip.get("GRADE"), 1);
+        if (grade >= 6) return "★6 장비는 합성할 수 없습니다.";
+        String clazz = strVal(equip.get("CLASS"), "");
+        String part = strVal(equip.get("PART"), "");
+
+        List<HashMap<String, Object>> same = dao.selectSameEquipForSynthesis(userName, clazz, part, grade);
+        if (same.size() < 3) return "동일 등급/부위/직업 미착용 장비가 3개 이상 필요합니다. (현재 " + same.size() + "개)";
+
+        for (int i = 0; i < 3; i++) {
+            dao.deleteEquip(intVal(same.get(i).get("EQUIP_ID"), 0));
+        }
+        HashMap<String, Object> e = new HashMap<>();
+        e.put("userName", userName);
+        e.put("class", clazz);
+        e.put("part", part);
+        e.put("grade", grade + 1);
+        e.put("equippedCompanionId", null);
+        dao.insertEquip(e);
+
+        grantAchievement(userName, 12);
+        // TODO: EQUIP_SYNTHESIS 누적 횟수 카운터가 없어 13번(30회) 업적은 아직 체크 불가
+        String partName = "HELMET".equals(part) ? "투구" : "WEAPON".equals(part) ? "무기" : "갑옷";
+        return "✨ 합성 성공! " + JOB_NAME.get(clazz) + " " + partName + " ★" + (grade + 1) + " 획득!";
     }
 }

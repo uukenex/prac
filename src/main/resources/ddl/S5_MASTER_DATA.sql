@@ -47,10 +47,16 @@ INSERT INTO TBOT_S5_MONSTER_INFO VALUES (101, 1, '하수구 뿔쥐',       120, 
 INSERT INTO TBOT_S5_MONSTER_INFO VALUES (102, 2, '버려진 광산 좀비',   350,     '', 28,    '', 8,    '', 3,    '', 'N');
 INSERT INTO TBOT_S5_MONSTER_INFO VALUES (103, 3, '통곡의 늪지 악어',   900,     '', 15,    '', 8,    '', 7,    '', 'N');
 INSERT INTO TBOT_S5_MONSTER_INFO VALUES (104, 4, '붉은 화산 가고일',   2400,    '', 26,    '', 15,   '', 15,   '', 'N');
-INSERT INTO TBOT_S5_MONSTER_INFO VALUES (105, 5, '얼어붙은 요새 설인', 6800,    '', 160,   '', 90,   '', 30,   '', 'N');
-INSERT INTO TBOT_S5_MONSTER_INFO VALUES (106, 6, '심연의 기사단 망령', 22000,   '', 350,   '', 210,  '', 70,   '', 'N');
-INSERT INTO TBOT_S5_MONSTER_INFO VALUES (107, 7, '뒤틀린 차원의 괴수', 58000,   '', 620,   '', 450,  '', 150,  '', 'N');
-INSERT INTO TBOT_S5_MONSTER_INFO VALUES (108, 8, '천공의 성 가디언',   160000,  '', 1200,  '', 1000, '', 300,  '', 'N');
+-- MONSTER_ID 105~108: rebalanced (see S5_TOWER_DESIGN.md 밸런스 재검증) --
+-- original design values were HP6800/ATK160/DEF90, HP22000/ATK350/DEF210,
+-- HP58000/ATK620/DEF450, HP160000/ATK1200/DEF1000 -- unplayable under the
+-- confirmed "party alpha-strike" combat model (50+ rounds per kill even at
+-- max party DPS), so HP/ATK/DEF were recomputed to keep TTK in a sane range
+-- while staying monotonically >= the block4 monster.
+INSERT INTO TBOT_S5_MONSTER_INFO VALUES (105, 5, '얼어붙은 요새 설인', 2600,    '', 20,    '', 5,    '', 30,   '', 'N');
+INSERT INTO TBOT_S5_MONSTER_INFO VALUES (106, 6, '심연의 기사단 망령', 5000,    '', 34,    '', 10,   '', 70,   '', 'N');
+INSERT INTO TBOT_S5_MONSTER_INFO VALUES (107, 7, '뒤틀린 차원의 괴수', 5500,    '', 29,    '', 10,   '', 150,  '', 'N');
+INSERT INTO TBOT_S5_MONSTER_INFO VALUES (108, 8, '천공의 성 가디언',   15000,   '', 37,    '', 15,   '', 300,  '', 'N');
 INSERT INTO TBOT_S5_MONSTER_INFO VALUES (109, 9, '용의 둥지 새끼용',   450000,  '', 2400,  '', 2200, '', 600,  '', 'N');
 INSERT INTO TBOT_S5_MONSTER_INFO VALUES (110,10, '파멸의 균열 마룡',   1200000, '', 5000,  '', 5000, '', 1200, '', 'N');
 
@@ -59,10 +65,11 @@ INSERT INTO TBOT_S5_MONSTER_INFO VALUES (201, 1, '9층 보스',   720,     '', 2
 INSERT INTO TBOT_S5_MONSTER_INFO VALUES (202, 2, '19층 보스',  2100,    '', 62,    '', 12,   '', 0, '', 'Y');
 INSERT INTO TBOT_S5_MONSTER_INFO VALUES (203, 3, '29층 보스',  5400,    '', 33,    '', 12,   '', 0, '', 'Y');
 INSERT INTO TBOT_S5_MONSTER_INFO VALUES (204, 4, '39층 보스',  14400,   '', 57,    '', 23,   '', 0, '', 'Y');
-INSERT INTO TBOT_S5_MONSTER_INFO VALUES (205, 5, '49층 보스',  40800,   '', 352,   '', 135,  '', 0, '', 'Y');
-INSERT INTO TBOT_S5_MONSTER_INFO VALUES (206, 6, '59층 보스',  132000,  '', 770,   '', 315,  '', 0, '', 'Y');
-INSERT INTO TBOT_S5_MONSTER_INFO VALUES (207, 7, '69층 보스',  348000,  '', 1364,  '', 675,  '', 0, '', 'Y');
-INSERT INTO TBOT_S5_MONSTER_INFO VALUES (208, 8, '79층 보스',  960000,  '', 2640,  '', 1500, '', 0, '', 'Y');
+-- MONSTER_ID 205~208: rebalanced together with 105~108 above (same HP*6/ATK*2.2/DEF*1.5 ratio)
+INSERT INTO TBOT_S5_MONSTER_INFO VALUES (205, 5, '49층 보스',  15600,   '', 44,    '', 8,   '', 0, '', 'Y');
+INSERT INTO TBOT_S5_MONSTER_INFO VALUES (206, 6, '59층 보스',  30000,   '', 75,    '', 15,  '', 0, '', 'Y');
+INSERT INTO TBOT_S5_MONSTER_INFO VALUES (207, 7, '69층 보스',  33000,   '', 64,    '', 15,  '', 0, '', 'Y');
+INSERT INTO TBOT_S5_MONSTER_INFO VALUES (208, 8, '79층 보스',  90000,   '', 81,    '', 23,  '', 0, '', 'Y');
 INSERT INTO TBOT_S5_MONSTER_INFO VALUES (209, 9, '89층 보스',  2700000, '', 5280,  '', 3300, '', 0, '', 'Y');
 INSERT INTO TBOT_S5_MONSTER_INFO VALUES (210,10, '99층 보스',  7200000, '', 11000, '', 7500, '', 0, '', 'Y');
 

@@ -169,4 +169,12 @@ ALTER TABLE TBOT_S5_USER_PROGRESS ADD (
     TOTAL_KILL_COUNT NUMBER DEFAULT 0 NOT NULL
 );
 
+-- combat skill state: mage stun flag on the monster, priest shield buffering
+-- the party's next incoming hit
+ALTER TABLE TBOT_S5_USER_PROGRESS ADD (
+    MONSTER_STUNNED_YN CHAR(1)     DEFAULT 'N' NOT NULL,
+    SHIELD_VALUE       NUMBER      DEFAULT 0   NOT NULL,
+    SHIELD_EXT         VARCHAR2(1) DEFAULT ''  NOT NULL
+);
+
 EXIT;

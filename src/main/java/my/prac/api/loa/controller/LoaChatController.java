@@ -577,6 +577,30 @@ public class LoaChatController {
 			case "/업적":
 				val = s5.achievements(reqMap);
 				break;
+			case "/탑상점":
+				val = s5.shop(reqMap);
+				break;
+			case "/동료뽑기":
+				val = s5.gachaCompanion(reqMap);
+				break;
+			case "/장비뽑기":
+				val = s5.gachaEquip(reqMap);
+				break;
+			case "/주사위구매":
+				val = s5.diceShop(reqMap);
+				break;
+			case "/스탯구매":
+				val = s5.statShop(reqMap);
+				break;
+			case "/장비목록":
+				val = s5.equipList(reqMap);
+				break;
+			case "/장비장착":
+				val = s5.equipWear(reqMap);
+				break;
+			case "/장비합성":
+				val = s5.equipSynthesis(reqMap);
+				break;
 			case "/테스트":
 				val = play.testMethod(reqMap);
 				break;

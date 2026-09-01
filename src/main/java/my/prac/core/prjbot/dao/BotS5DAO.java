@@ -26,6 +26,7 @@ public interface BotS5DAO {
 
     // ── 동료 ──
     List<HashMap<String, Object>> selectUserCompanions(@Param("userName") String userName);
+    int countUserCompanions(@Param("userName") String userName);
     int insertCompanion(HashMap<String, Object> map);
     int updateCompanionHp(HashMap<String, Object> map);
     int updateCompanionPartySlot(HashMap<String, Object> map);
@@ -38,4 +39,26 @@ public interface BotS5DAO {
     // ── 특수칸 ──
     HashMap<String, Object> selectUserSpecialVisit(@Param("userName") String userName);
     int upsertSpecialVisitIncrement(@Param("userName") String userName);
+
+    // ── 가챠 마스터 ──
+    HashMap<String, Object> selectGacha(@Param("gachaId") int gachaId);
+    List<HashMap<String, Object>> selectGachaList(@Param("gachaType") String gachaType, @Param("maxUnlockFloor") int maxUnlockFloor);
+
+    // ── 장비 ──
+    List<HashMap<String, Object>> selectUserEquip(@Param("userName") String userName);
+    List<HashMap<String, Object>> selectEquipByCompanion(@Param("companionId") int companionId);
+    int countUserEquip(@Param("userName") String userName);
+    int insertEquip(HashMap<String, Object> map);
+    int deleteEquip(@Param("equipId") int equipId);
+    int updateEquipEquippedCompanion(HashMap<String, Object> map);
+    List<HashMap<String, Object>> selectSameEquipForSynthesis(@Param("userName") String userName,
+            @Param("clazz") String clazz, @Param("part") String part, @Param("grade") int grade);
+
+    // ── 스탯 구매 ──
+    HashMap<String, Object> selectUserStat(@Param("userName") String userName);
+    int upsertUserStat(HashMap<String, Object> map);
+
+    // ── 자동사냥 ──
+    HashMap<String, Object> selectAutoHuntLog(@Param("userName") String userName);
+    int upsertAutoHuntLog(HashMap<String, Object> map);
 }

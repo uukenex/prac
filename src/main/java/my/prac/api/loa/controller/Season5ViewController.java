@@ -1,0 +1,199 @@
+package my.prac.api.loa.controller;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+
+import javax.annotation.Resource;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
+
+import my.prac.core.prjbot.dao.BotS5DAO;
+import my.prac.core.prjbot.service.BotS5Service;
+
+/**
+ * [시즌5] 탑 등반 SPA 뷰 컨트롤러
+ * - JSP: GET /loa/tower-view
+ * - REST API: GET /loa/api/tower-*
+ *
+ * 기존 LoaUnifiedViewController 패턴(JSP + /api/* JSON)을 그대로 계승.
+ * 화면 조회는 BotS5DAO를 직접 사용하고(다른 view 컨트롤러들과 동일 방식),
+ * 게임 진행에 영향을 주는 액션은 반드시 BotS5Service를 통해 채팅 명령어와
+ * 동일한 로직으로 처리한다.
+ */
+@Controller
+@RequestMapping("/loa")
+public class Season5ViewController {
+
+    @Resource(name = "core.prjbot.BotS5Service")
+    BotS5Service s5Service;
+
+    @Resource(name = "core.prjbot.BotS5DAO")
+    BotS5DAO s5Dao;
+
+    // ─────────────────────────────────────────────
+    // JSP 뷰 페이지
+    // ─────────────────────────────────────────────
+    @GetMapping("/tower-view")
+    public String towerViewPage() {
+        return "nonsession/loa/tower_view";
+    }
+
+    // ─────────────────────────────────────────────
+    // REST API
+    // ─────────────────────────────────────────────
+
+    @GetMapping("/api/tower-status")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerStatus(@RequestParam(value = "userName", defaultValue = "") String userName) {
+        HashMap<String, Object> result = new HashMap<>();
+        if (userName.trim().isEmpty()) {
+            result.put("error", "유저명을 입력하세요.");
+            return ResponseEntity.ok(result);
+        }
+        HashMap<String, Object> progress = s5Service.selectUserProgress(userName);
+        if (progress == null) {
+            s5Service.initUser(userName);
+            progress = s5Service.selectUserProgress(userName);
+        }
+        result.put("progress", progress);
+
+        int floor = toInt(progress.get("CUR_FLOOR"));
+        if (floor % 10 >= 1 && floor % 10 <= 8) {
+            result.put("floorInfo", s5Dao.selectFloorInfo(floor));
+            result.put("tiles", s5Dao.selectTileMaster(floor));
+            result.put("myTile", s5Dao.selectUserFloorProgress(userName, floor));
+        }
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/api/tower-party")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerParty(@RequestParam(value = "userName", defaultValue = "") String userName) {
+        List<HashMap<String, Object>> companions = userName.trim().isEmpty()
+                ? new ArrayList<>() : s5Dao.selectUserCompanions(userName);
+        HashMap<String, Object> result = new HashMap<>();
+        result.put("companions", companions);
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/api/tower-equip")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerEquip(@RequestParam(value = "userName", defaultValue = "") String userName) {
+        List<HashMap<String, Object>> equips = userName.trim().isEmpty()
+                ? new ArrayList<>() : s5Dao.selectUserEquip(userName);
+        HashMap<String, Object> result = new HashMap<>();
+        result.put("equips", equips);
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/api/tower-shop")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerShop(@RequestParam(value = "userName", defaultValue = "") String userName) {
+        HashMap<String, Object> result = new HashMap<>();
+        int unlocked = 0;
+        if (!userName.trim().isEmpty()) {
+            HashMap<String, Object> progress = s5Service.selectUserProgress(userName);
+            if (progress != null) unlocked = toInt(progress.get("UNLOCKED_BLOCK"));
+        }
+        result.put("companionGacha", s5Dao.selectGachaList("COMPANION", unlocked));
+        result.put("equipGacha", s5Dao.selectGachaList("EQUIP", unlocked));
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/api/tower-achievements")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerAchievements(@RequestParam(value = "userName", defaultValue = "") String userName) {
+        HashMap<String, Object> result = new HashMap<>();
+        List<HashMap<String, Object>> all = s5Dao.selectAchievementList();
+        List<HashMap<String, Object>> mine = userName.trim().isEmpty()
+                ? new ArrayList<>() : s5Dao.selectUserAchievements(userName);
+        HashMap<Integer, Boolean> cleared = new HashMap<>();
+        for (HashMap<String, Object> m : mine) cleared.put(toInt(m.get("ACH_ID")), true);
+
+        List<HashMap<String, Object>> visible = new ArrayList<>();
+        for (HashMap<String, Object> a : all) {
+            boolean hidden = "Y".equals(String.valueOf(a.get("HIDDEN_YN")));
+            boolean done = cleared.containsKey(toInt(a.get("ACH_ID")));
+            if (hidden && !done) continue;
+            HashMap<String, Object> row = new HashMap<>(a);
+            row.put("DONE", done);
+            visible.add(row);
+        }
+        result.put("achievements", visible);
+        result.put("total", all.size());
+        result.put("clearedCount", mine.size());
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * 통합 액션 엔드포인트. 채팅 명령어(/주사위 등)와 동일한 BotS5Service 로직을 그대로 호출한다.
+     * GET /loa/api/tower-action?userName=..&type=DICE|CHANGE_FLOOR|PARTY_TOGGLE|GACHA_COMPANION|
+     *     GACHA_EQUIP|DICE_BUY|STAT_BUY|EQUIP_WEAR|EQUIP_SYNTH&param1=&param2=
+     */
+    @GetMapping("/api/tower-action")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerAction(
+            @RequestParam(value = "userName", defaultValue = "") String userName,
+            @RequestParam(value = "type", defaultValue = "") String type,
+            @RequestParam(value = "param1", defaultValue = "") String param1,
+            @RequestParam(value = "param2", defaultValue = "") String param2) {
+
+        HashMap<String, Object> result = new HashMap<>();
+        if (userName.trim().isEmpty()) {
+            result.put("error", "유저명을 입력하세요.");
+            return ResponseEntity.ok(result);
+        }
+
+        String message;
+        try {
+            switch (type) {
+                case "DICE":
+                    message = s5Service.rollDice(userName);
+                    break;
+                case "CHANGE_FLOOR":
+                    message = s5Service.changeFloor(userName, Integer.parseInt(param1));
+                    break;
+                case "PARTY_TOGGLE":
+                    message = s5Service.partyToggle(userName, Integer.parseInt(param1));
+                    break;
+                case "GACHA_COMPANION":
+                    message = s5Service.gachaCompanion(userName, Integer.parseInt(param1));
+                    break;
+                case "GACHA_EQUIP":
+                    message = s5Service.gachaEquip(userName, Integer.parseInt(param1));
+                    break;
+                case "DICE_BUY":
+                    message = s5Service.diceShop(userName, param1.isEmpty() ? null : Integer.parseInt(param1));
+                    break;
+                case "STAT_BUY":
+                    message = s5Service.statShop(userName, param1.isEmpty() ? null : param1);
+                    break;
+                case "EQUIP_WEAR":
+                    message = s5Service.equipWear(userName, Integer.parseInt(param1),
+                            param2.isEmpty() ? null : Integer.parseInt(param2));
+                    break;
+                case "EQUIP_SYNTH":
+                    message = s5Service.equipSynthesis(userName, Integer.parseInt(param1));
+                    break;
+                default:
+                    message = "알 수 없는 액션입니다.";
+            }
+        } catch (NumberFormatException e) {
+            message = "잘못된 입력값입니다.";
+        }
+
+        result.put("message", message);
+        return ResponseEntity.ok(result);
+    }
+
+    private int toInt(Object o) {
+        if (o == null) return 0;
+        try { return ((Number) o).intValue(); } catch (Exception e) { return 0; }
+    }
+}

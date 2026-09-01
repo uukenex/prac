@@ -8,7 +8,8 @@
     <select id="selectUserProgress" resultType="hashmap">
         SELECT USER_NAME, CUR_FLOOR, UNLOCKED_BLOCK, PP_VALUE, PP_EXT, STATUS,
                TRAP_TURN_LEFT, DICE_GRADE, KILL_COUNT_CUR, AUTO_HUNT_YN,
-               TOTAL_KILL_COUNT, CUR_MONSTER_ID, CUR_MONSTER_HP_VALUE, CUR_MONSTER_HP_EXT
+               TOTAL_KILL_COUNT, CUR_MONSTER_ID, CUR_MONSTER_HP_VALUE, CUR_MONSTER_HP_EXT,
+               MONSTER_STUNNED_YN, SHIELD_VALUE, SHIELD_EXT
         FROM TBOT_S5_USER_PROGRESS
         WHERE USER_NAME = #{userName}
     </select>
@@ -34,6 +35,9 @@
             <if test="killCountCur != null">KILL_COUNT_CUR = #{killCountCur},</if>
             <if test="autoHuntYn != null">AUTO_HUNT_YN = #{autoHuntYn},</if>
             <if test="totalKillCount != null">TOTAL_KILL_COUNT = #{totalKillCount},</if>
+            <if test="monsterStunnedYn != null">MONSTER_STUNNED_YN = #{monsterStunnedYn},</if>
+            <if test="shieldValue != null">SHIELD_VALUE = #{shieldValue},</if>
+            <if test="shieldExt != null">SHIELD_EXT = #{shieldExt},</if>
             <if test="clearMonster != null">
                 CUR_MONSTER_ID = NULL, CUR_MONSTER_HP_VALUE = NULL, CUR_MONSTER_HP_EXT = NULL,
             </if>
@@ -87,11 +91,16 @@
         ORDER BY PARTY_SLOT NULLS LAST, COMPANION_ID
     </select>
 
+    <select id="countUserCompanions" resultType="int">
+        SELECT COUNT(*) FROM TBOT_S5_USER_COMPANION WHERE USER_NAME = #{userName}
+    </select>
+
     <insert id="insertCompanion" parameterType="hashmap">
         INSERT INTO TBOT_S5_USER_COMPANION
             (COMPANION_ID, USER_NAME, CLASS, GRADE, CUR_HP_VALUE, CUR_HP_EXT, PARTY_SLOT)
         VALUES
-            (SEQ_S5_COMPANION_ID.NEXTVAL, #{userName}, #{class}, #{grade}, #{curHpValue}, #{curHpExt}, #{partySlot})
+            (SEQ_S5_COMPANION_ID.NEXTVAL, #{userName}, #{class}, #{grade}, #{curHpValue}, #{curHpExt},
+             #{partySlot, jdbcType=NUMERIC})
     </insert>
 
     <update id="updateCompanionHp" parameterType="hashmap">
@@ -134,6 +143,92 @@
             UPDATE SET VISIT_COUNT = VISIT_COUNT + 1
         WHEN NOT MATCHED THEN
             INSERT (USER_NAME, VISIT_COUNT) VALUES (#{userName}, 1)
+    </insert>
+
+    <!-- ==================== 가챠 마스터 ==================== -->
+    <select id="selectGacha" resultType="hashmap">
+        SELECT GACHA_ID, GACHA_TYPE, GACHA_NAME, UNLOCK_FLOOR, COST_VALUE, COST_EXT,
+               PROB_G1, PROB_G2, PROB_G3, PROB_G4, PROB_G5, PROB_G6
+        FROM TBOT_S5_GACHA_MASTER
+        WHERE GACHA_ID = #{gachaId}
+    </select>
+
+    <select id="selectGachaList" resultType="hashmap">
+        SELECT GACHA_ID, GACHA_TYPE, GACHA_NAME, UNLOCK_FLOOR, COST_VALUE, COST_EXT,
+               PROB_G1, PROB_G2, PROB_G3, PROB_G4, PROB_G5, PROB_G6
+        FROM TBOT_S5_GACHA_MASTER
+        WHERE GACHA_TYPE = #{gachaType} AND UNLOCK_FLOOR <= #{maxUnlockFloor}
+        ORDER BY UNLOCK_FLOOR
+    </select>
+
+    <!-- ==================== 장비 ==================== -->
+    <select id="selectUserEquip" resultType="hashmap">
+        SELECT EQUIP_ID, USER_NAME, CLASS, PART, GRADE, EQUIPPED_COMPANION_ID
+        FROM TBOT_S5_USER_EQUIP
+        WHERE USER_NAME = #{userName}
+        ORDER BY EQUIPPED_COMPANION_ID NULLS FIRST, GRADE DESC, EQUIP_ID
+    </select>
+
+    <select id="selectEquipByCompanion" resultType="hashmap">
+        SELECT EQUIP_ID, PART, GRADE FROM TBOT_S5_USER_EQUIP WHERE EQUIPPED_COMPANION_ID = #{companionId}
+    </select>
+
+    <select id="countUserEquip" resultType="int">
+        SELECT COUNT(*) FROM TBOT_S5_USER_EQUIP WHERE USER_NAME = #{userName}
+    </select>
+
+    <insert id="insertEquip" parameterType="hashmap">
+        INSERT INTO TBOT_S5_USER_EQUIP (EQUIP_ID, USER_NAME, CLASS, PART, GRADE, EQUIPPED_COMPANION_ID)
+        VALUES (SEQ_S5_EQUIP_ID.NEXTVAL, #{userName}, #{class}, #{part}, #{grade}, #{equippedCompanionId, jdbcType=NUMERIC})
+    </insert>
+
+    <delete id="deleteEquip">
+        DELETE FROM TBOT_S5_USER_EQUIP WHERE EQUIP_ID = #{equipId}
+    </delete>
+
+    <update id="updateEquipEquippedCompanion" parameterType="hashmap">
+        UPDATE TBOT_S5_USER_EQUIP
+        SET EQUIPPED_COMPANION_ID = #{equippedCompanionId, jdbcType=NUMERIC}
+        WHERE EQUIP_ID = #{equipId}
+    </update>
+
+    <select id="selectSameEquipForSynthesis" resultType="hashmap">
+        SELECT EQUIP_ID, CLASS, PART, GRADE FROM TBOT_S5_USER_EQUIP
+        WHERE USER_NAME = #{userName} AND CLASS = #{clazz} AND PART = #{part} AND GRADE = #{grade}
+          AND EQUIPPED_COMPANION_ID IS NULL
+        ORDER BY EQUIP_ID
+    </select>
+
+    <!-- ==================== 스탯 구매 ==================== -->
+    <select id="selectUserStat" resultType="hashmap">
+        SELECT USER_NAME, ATK_MAX_LV, ATK_MIN_LV, HP_LV FROM TBOT_S5_USER_STAT WHERE USER_NAME = #{userName}
+    </select>
+
+    <insert id="upsertUserStat" parameterType="hashmap">
+        MERGE INTO TBOT_S5_USER_STAT T
+        USING (SELECT #{userName} AS U FROM DUAL) S
+        ON (T.USER_NAME = S.U)
+        WHEN MATCHED THEN
+            UPDATE SET ATK_MAX_LV = #{atkMaxLv}, ATK_MIN_LV = #{atkMinLv}, HP_LV = #{hpLv}
+        WHEN NOT MATCHED THEN
+            INSERT (USER_NAME, ATK_MAX_LV, ATK_MIN_LV, HP_LV)
+            VALUES (#{userName}, #{atkMaxLv}, #{atkMinLv}, #{hpLv})
+    </insert>
+
+    <!-- ==================== 자동사냥 ==================== -->
+    <select id="selectAutoHuntLog" resultType="hashmap">
+        SELECT USER_NAME, FLOOR, START_DATE, LAST_SETTLE_DATE FROM TBOT_S5_AUTO_HUNT_LOG WHERE USER_NAME = #{userName}
+    </select>
+
+    <insert id="upsertAutoHuntLog" parameterType="hashmap">
+        MERGE INTO TBOT_S5_AUTO_HUNT_LOG T
+        USING (SELECT #{userName} AS U FROM DUAL) S
+        ON (T.USER_NAME = S.U)
+        WHEN MATCHED THEN
+            UPDATE SET FLOOR = #{floor}, LAST_SETTLE_DATE = SYSDATE
+        WHEN NOT MATCHED THEN
+            INSERT (USER_NAME, FLOOR, START_DATE, LAST_SETTLE_DATE)
+            VALUES (#{userName}, #{floor}, SYSDATE, SYSDATE)
     </insert>
 
 </mapper>
