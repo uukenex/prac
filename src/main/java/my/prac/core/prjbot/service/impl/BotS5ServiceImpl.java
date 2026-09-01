@@ -708,6 +708,10 @@ public class BotS5ServiceImpl implements BotS5Service {
     @Override
     @Transactional
     public String partyToggle(String userName, int idx) {
+        HashMap<String, Object> p = dao.selectUserProgress(userName);
+        if (p != null && "IN_COMBAT".equals(strVal(p.get("STATUS"), "NORMAL"))) {
+            return "전투 중에는 파티를 변경할 수 없습니다.";
+        }
         List<HashMap<String, Object>> companions = dao.selectUserCompanions(userName);
         if (idx < 1 || idx > companions.size()) {
             return "잘못된 번호입니다. /파티편성 으로 목록을 확인하세요.";
@@ -1016,7 +1020,10 @@ public class BotS5ServiceImpl implements BotS5Service {
     @Override
     @Transactional
     public String equipWear(String userName, int equipIdx, Integer companionIdx) {
-        getOrInitProgress(userName);
+        HashMap<String, Object> progress = getOrInitProgress(userName);
+        if ("IN_COMBAT".equals(strVal(progress.get("STATUS"), "NORMAL"))) {
+            return "전투 중에는 장비를 변경할 수 없습니다.";
+        }
         List<HashMap<String, Object>> unequipped = new ArrayList<>();
         for (HashMap<String, Object> e : dao.selectUserEquip(userName)) {
             if (e.get("EQUIPPED_COMPANION_ID") == null) unequipped.add(e);
