@@ -84,6 +84,9 @@ public class LoaChatController {
 	@Autowired
 	Season4Controller s4; // [시즌4] 낚시
 
+	@Autowired
+	Season5Controller s5; // [시즌5] 탑 등반
+
 	@Resource(name = "core.prjbot.BotService")
 	BotService botService;
 	@Resource(name = "core.prjbot.BotSettleService")
@@ -557,6 +560,22 @@ public class LoaChatController {
 				break;
 			case "/낚시구매":
 				val = s4.fishingShop(reqMap);
+				break;
+			case "/주사위":
+			case "/ㅈㅅㅇ":
+				val = s5.rollDice(reqMap);
+				break;
+			case "/층변경":
+				val = s5.changeFloor(reqMap);
+				break;
+			case "/파티편성":
+				val = s5.party(reqMap);
+				break;
+			case "/탑현황":
+				val = s5.towerStatus(reqMap);
+				break;
+			case "/업적":
+				val = s5.achievements(reqMap);
 				break;
 			case "/테스트":
 				val = play.testMethod(reqMap);

@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="my.prac.core.prjbot.dao.BotS5DAO">
+
+    <!-- ==================== 유저 진행 상태 ==================== -->
+    <select id="selectUserProgress" resultType="hashmap">
+        SELECT USER_NAME, CUR_FLOOR, UNLOCKED_BLOCK, PP_VALUE, PP_EXT, STATUS,
+               TRAP_TURN_LEFT, DICE_GRADE, KILL_COUNT_CUR, AUTO_HUNT_YN,
+               TOTAL_KILL_COUNT, CUR_MONSTER_ID, CUR_MONSTER_HP_VALUE, CUR_MONSTER_HP_EXT
+        FROM TBOT_S5_USER_PROGRESS
+        WHERE USER_NAME = #{userName}
+    </select>
+
+    <insert id="insertUserProgress" parameterType="hashmap">
+        INSERT INTO TBOT_S5_USER_PROGRESS
+            (USER_NAME, CUR_FLOOR, UNLOCKED_BLOCK, PP_VALUE, PP_EXT, STATUS, DICE_GRADE)
+        VALUES
+            (#{userName}, 0, 0, 0, '', 'NORMAL', 'DICE_6')
+    </insert>
+
+    <!-- map에 담긴 키만 동적으로 SET (부분 업데이트) -->
+    <update id="updateUserProgress" parameterType="hashmap">
+        UPDATE TBOT_S5_USER_PROGRESS
+        <set>
+            <if test="curFloor != null">CUR_FLOOR = #{curFloor},</if>
+            <if test="unlockedBlock != null">UNLOCKED_BLOCK = #{unlockedBlock},</if>
+            <if test="ppValue != null">PP_VALUE = #{ppValue},</if>
+            <if test="ppExt != null">PP_EXT = #{ppExt},</if>
+            <if test="status != null">STATUS = #{status},</if>
+            <if test="trapTurnLeft != null">TRAP_TURN_LEFT = #{trapTurnLeft},</if>
+            <if test="diceGrade != null">DICE_GRADE = #{diceGrade},</if>
+            <if test="killCountCur != null">KILL_COUNT_CUR = #{killCountCur},</if>
+            <if test="autoHuntYn != null">AUTO_HUNT_YN = #{autoHuntYn},</if>
+            <if test="totalKillCount != null">TOTAL_KILL_COUNT = #{totalKillCount},</if>
+            <if test="clearMonster != null">
+                CUR_MONSTER_ID = NULL, CUR_MONSTER_HP_VALUE = NULL, CUR_MONSTER_HP_EXT = NULL,
+            </if>
+            <if test="curMonsterId != null">CUR_MONSTER_ID = #{curMonsterId},</if>
+            <if test="curMonsterHpValue != null">CUR_MONSTER_HP_VALUE = #{curMonsterHpValue},</if>
+            <if test="curMonsterHpExt != null">CUR_MONSTER_HP_EXT = #{curMonsterHpExt},</if>
+            LAST_ACTION_DATE = SYSDATE
+        </set>
+        WHERE USER_NAME = #{userName}
+    </update>
+
+    <!-- ==================== 층 보드 ==================== -->
+    <select id="selectFloorInfo" resultType="hashmap">
+        SELECT FLOOR, TILE_COUNT FROM TBOT_S5_FLOOR_INFO WHERE FLOOR = #{floor}
+    </select>
+
+    <select id="selectTileMaster" resultType="hashmap">
+        SELECT FLOOR, TILE_NO, TILE_TYPE FROM TBOT_S5_TILE_MASTER
+        WHERE FLOOR = #{floor}
+        ORDER BY TILE_NO
+    </select>
+
+    <select id="selectUserFloorProgress" resultType="hashmap">
+        SELECT USER_NAME, FLOOR, CUR_TILE FROM TBOT_S5_USER_FLOOR_PROGRESS
+        WHERE USER_NAME = #{userName} AND FLOOR = #{floor}
+    </select>
+
+    <insert id="upsertUserFloorProgress" parameterType="hashmap">
+        MERGE INTO TBOT_S5_USER_FLOOR_PROGRESS T
+        USING (SELECT #{userName} AS U, #{floor} AS F FROM DUAL) S
+        ON (T.USER_NAME = S.U AND T.FLOOR = S.F)
+        WHEN MATCHED THEN
+            UPDATE SET CUR_TILE = #{curTile}
+        WHEN NOT MATCHED THEN
+            INSERT (USER_NAME, FLOOR, CUR_TILE) VALUES (#{userName}, #{floor}, #{curTile})
+    </insert>
+
+    <!-- ==================== 몬스터 ==================== -->
+    <select id="selectMonster" resultType="hashmap">
+        SELECT MONSTER_ID, BLOCK_NO, MONSTER_NAME, HP_VALUE, HP_EXT, ATK_VALUE, ATK_EXT,
+               DEF_VALUE, DEF_EXT, PP_PER_KILL_VALUE, PP_PER_KILL_EXT, BOSS_YN
+        FROM TBOT_S5_MONSTER_INFO
+        WHERE BLOCK_NO = #{blockNo} AND BOSS_YN = #{bossYn}
+    </select>
+
+    <!-- ==================== 동료 ==================== -->
+    <select id="selectUserCompanions" resultType="hashmap">
+        SELECT COMPANION_ID, USER_NAME, CLASS, GRADE, CUR_HP_VALUE, CUR_HP_EXT, PARTY_SLOT
+        FROM TBOT_S5_USER_COMPANION
+        WHERE USER_NAME = #{userName}
+        ORDER BY PARTY_SLOT NULLS LAST, COMPANION_ID
+    </select>
+
+    <insert id="insertCompanion" parameterType="hashmap">
+        INSERT INTO TBOT_S5_USER_COMPANION
+            (COMPANION_ID, USER_NAME, CLASS, GRADE, CUR_HP_VALUE, CUR_HP_EXT, PARTY_SLOT)
+        VALUES
+            (SEQ_S5_COMPANION_ID.NEXTVAL, #{userName}, #{class}, #{grade}, #{curHpValue}, #{curHpExt}, #{partySlot})
+    </insert>
+
+    <update id="updateCompanionHp" parameterType="hashmap">
+        UPDATE TBOT_S5_USER_COMPANION
+        SET CUR_HP_VALUE = #{curHpValue}, CUR_HP_EXT = #{curHpExt}
+        WHERE COMPANION_ID = #{companionId}
+    </update>
+
+    <update id="updateCompanionPartySlot" parameterType="hashmap">
+        UPDATE TBOT_S5_USER_COMPANION
+        SET PARTY_SLOT = #{partySlot, jdbcType=NUMERIC}
+        WHERE COMPANION_ID = #{companionId}
+    </update>
+
+    <!-- ==================== 업적 ==================== -->
+    <select id="selectAchievementList" resultType="hashmap">
+        SELECT ACH_ID, ACH_NAME, ACH_DESC, ACH_TYPE, ACH_PARAM, HIDDEN_YN, REWARD_TYPE, REWARD_VALUE
+        FROM TBOT_S5_ACHIEVEMENT
+        ORDER BY ACH_ID
+    </select>
+
+    <select id="selectUserAchievements" resultType="hashmap">
+        SELECT ACH_ID, CLEAR_DATE FROM TBOT_S5_USER_ACH WHERE USER_NAME = #{userName}
+    </select>
+
+    <insert id="insertUserAch" parameterType="hashmap">
+        INSERT INTO TBOT_S5_USER_ACH (USER_NAME, ACH_ID) VALUES (#{userName}, #{achId})
+    </insert>
+
+    <!-- ==================== 특수칸 ==================== -->
+    <select id="selectUserSpecialVisit" resultType="hashmap">
+        SELECT USER_NAME, VISIT_COUNT FROM TBOT_S5_USER_SPECIAL_VISIT WHERE USER_NAME = #{userName}
+    </select>
+
+    <insert id="upsertSpecialVisitIncrement" parameterType="String">
+        MERGE INTO TBOT_S5_USER_SPECIAL_VISIT T
+        USING (SELECT #{userName} AS U FROM DUAL) S
+        ON (T.USER_NAME = S.U)
+        WHEN MATCHED THEN
+            UPDATE SET VISIT_COUNT = VISIT_COUNT + 1
+        WHEN NOT MATCHED THEN
+            INSERT (USER_NAME, VISIT_COUNT) VALUES (#{userName}, 1)
+    </insert>
+
+</mapper>
