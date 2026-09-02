@@ -5759,7 +5759,7 @@ public class BossAttackController {
 						s.stealMsg += "✨ [1타] " + s.m.monName + "의 아이템을 훔쳤습니다! (" + dn + "조각)";
 						s.calc.jobSkillUsed = true;
 					}
-					SP[] sp=new SP[1]; String[] b={""}; String[] bd={""}; s.stealPoint += " +" + baroSellItem(dn, id, s.res, s.userName, s.roomName, s.ctx, s.u, "STEAL", 1, s.nightmare, b, sp, bd) + b[0];
+					SP[] sp=new SP[1]; String[] b={""}; String[] bd={""}; String _sv=baroSellItem(dn, id, s.res, s.userName, s.roomName, s.ctx, s.u, "STEAL", 1, s.nightmare, b, sp, bd); if(!_sv.isEmpty()||!b[0].isEmpty()) s.stealPoint += " +" + _sv + b[0];
 					if (sp[0] != null) stealSpTotal = stealSpTotal.add(sp[0]);
 					if (bd[0] != null && !bd[0].isEmpty()) s.spBreakdowns.add("[추가] " + bd[0]);
 				} catch (Exception ignore) {}
@@ -5776,7 +5776,7 @@ public class BossAttackController {
 						s.stealMsg += (s.stealMsg.isEmpty() ? "" : NL) + "✨ [2타] " + s.m.monName + "의 아이템을 훔쳤습니다! (" + dn + "조각)";
 						s.calc2.jobSkillUsed = true;
 					}
-					SP[] sp=new SP[1]; String[] b={""}; String[] bd={""}; s.stealPoint += " +" + baroSellItem(dn, id, s.res, s.userName, s.roomName, s.ctx, s.u, "STEAL", 1, s.nightmare, b, sp, bd) + b[0];
+					SP[] sp=new SP[1]; String[] b={""}; String[] bd={""}; String _sv2=baroSellItem(dn, id, s.res, s.userName, s.roomName, s.ctx, s.u, "STEAL", 1, s.nightmare, b, sp, bd); if(!_sv2.isEmpty()||!b[0].isEmpty()) s.stealPoint += " +" + _sv2 + b[0];
 					if (sp[0] != null) stealSpTotal = stealSpTotal.add(sp[0]);
 					if (bd[0] != null && !bd[0].isEmpty()) s.spBreakdowns.add("[추가2타] " + bd[0]);
 				} catch (Exception ignore) {}
@@ -5801,7 +5801,7 @@ public class BossAttackController {
 					s.stealMsg = "✨ 날카로운 처단으로 추가획득 (+" + dn + "조각" + qty + ")" + (bonus ? "✨ 보너스!" : "");
 					s.calc.jobSkillUsed = true;
 				}
-				SP[] sp=new SP[1]; String[] b={""}; String[] bd={""}; s.stealPoint += " +" + baroSellItem(dn, id, s.res, s.userName, s.roomName, s.ctx, s.u, "STEAL", qty, s.nightmare, b, sp, bd) + b[0];
+				SP[] sp=new SP[1]; String[] b={""}; String[] bd={""}; String _sv3=baroSellItem(dn, id, s.res, s.userName, s.roomName, s.ctx, s.u, "STEAL", qty, s.nightmare, b, sp, bd); if(!_sv3.isEmpty()||!b[0].isEmpty()) s.stealPoint += " +" + _sv3 + b[0];
 				if (sp[0] != null) stealSpTotal = stealSpTotal.add(sp[0]);
 				if (bd[0] != null && !bd[0].isEmpty()) s.spBreakdowns.add("[처단] " + bd[0]);
 			} catch (Exception ignore) {}
@@ -5819,7 +5819,7 @@ public class BossAttackController {
 						: "✨ 촌장 집에서 " + s.m.monName + "의 아이템을 발견했다! (" + dn + "조각)";
 					s.calc.jobSkillUsed = true;
 				}
-				SP[] sp=new SP[1]; String[] b={""}; String[] bd={""}; s.stealPoint += " +" + baroSellItem(dn, id, s.res, s.userName, s.roomName, s.ctx, s.u, "STEAL", 1, s.nightmare, b, sp, bd) + b[0];
+				SP[] sp=new SP[1]; String[] b={""}; String[] bd={""}; String _sv4=baroSellItem(dn, id, s.res, s.userName, s.roomName, s.ctx, s.u, "STEAL", 1, s.nightmare, b, sp, bd); if(!_sv4.isEmpty()||!b[0].isEmpty()) s.stealPoint += " +" + _sv4 + b[0];
 				if (sp[0] != null) stealSpTotal = stealSpTotal.add(sp[0]);
 				if (bd[0] != null && !bd[0].isEmpty()) s.spBreakdowns.add("[추가] " + bd[0]);
 			} catch (Exception ignore) {}
@@ -5846,14 +5846,14 @@ public class BossAttackController {
 		if (s.res.killed && !"0".equals(s.res.dropCode)) {
 			String dn = (s.m.monDrop == null ? "" : s.m.monDrop.trim());
 			if (!dn.isEmpty()) {
-				SP[] sp=new SP[1]; String[] nb={""}; String[] bd={""}; String _v1 = baroSellItem(dn, 0, s.res, s.userName, s.roomName, s.ctx, s.u, "DROP", 1, s.nightmare, nb, sp, bd); s.newPoint += " +" + _v1 + nb[0];
+				SP[] sp=new SP[1]; String[] nb={""}; String[] bd={""}; String _v1 = baroSellItem(dn, 0, s.res, s.userName, s.roomName, s.ctx, s.u, "DROP", 1, s.nightmare, nb, sp, bd); if(!_v1.isEmpty()||!nb[0].isEmpty()) s.newPoint += " +" + _v1 + nb[0];
 				if (sp[0] != null) dropSpTotal = dropSpTotal.add(sp[0]);
 				if (bd[0] != null && !bd[0].isEmpty()) s.spBreakdowns.add("[전투] " + bd[0]);
 				// [7008] 추가 드랍 +1 → 기본 드랍코드 1로 SP 추가 지급
 				for (int _bi = 0; _bi < s.res.bonusNormalDropQty; _bi++) {
 					Resolve bonusRes = new Resolve();
 					bonusRes.dropCode = "1";
-					SP[] sp2=new SP[1]; String[] nb2={""}; String[] bd2={""}; String _v2 = baroSellItem(dn, 0, bonusRes, s.userName, s.roomName, s.ctx, s.u, "DROP", 1, s.nightmare, nb2, sp2, bd2); s.newPoint += " +" + _v2 + nb2[0];
+					SP[] sp2=new SP[1]; String[] nb2={""}; String[] bd2={""}; String _v2 = baroSellItem(dn, 0, bonusRes, s.userName, s.roomName, s.ctx, s.u, "DROP", 1, s.nightmare, nb2, sp2, bd2); if(!_v2.isEmpty()||!nb2[0].isEmpty()) s.newPoint += " +" + _v2 + nb2[0];
 					if (sp2[0] != null) dropSpTotal = dropSpTotal.add(sp2[0]);
 					if (bd2[0] != null && !bd2[0].isEmpty()) s.spBreakdowns.add("[전투+] " + bd2[0]);
 				}
@@ -6516,11 +6516,14 @@ public class BossAttackController {
 	        }
 	        HashMap<String,Object> priceRow = getItemPriceCached(itemId);
 	        double basePrice = safeDouble(priceRow == null ? null : priceRow.get("ITEM_SELL_PRICE"));
+	        String baseExt   = Objects.toString(priceRow == null ? null : priceRow.get("ITEM_SELL_PRICE_EXT"), "");
 	        if (basePrice > 0) {
-	            double gainSp = basePrice;
+	            // ITEM_SELL_PRICE+EXT는 표시값 기준 (e.g. 3.5b) → raw로 변환 후 배율 적용
+	            SP baseSp = SP.of(basePrice, baseExt);
+	            double gainSp = SP.toBaseValue(baseSp);
 	            StringBuilder bonusDesc = new StringBuilder();
 	            StringBuilder bdFormula = new StringBuilder(); // 계산식용
-	            bdFormula.append(dropName).append(" ").append(SP.fromSp(basePrice));
+	            bdFormula.append(dropName).append(" ").append(baseSp);
 
 	            if("STEAL".equals(gainType)) {
 	                gainSp /= 2;
