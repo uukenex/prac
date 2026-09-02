@@ -82,6 +82,11 @@ public class Season5Controller {
         return s5Service.help(userNameOf(map));
     }
 
+    /** /갱신 — 다른 시즌들의 /갱신과 같이 눌리는 공용 명령어에 얹어서 호출됨(LoaChatController 참고) */
+    public String refreshConfig() {
+        return s5Service.refreshConfig();
+    }
+
     public String achievements(HashMap<String, Object> map) {
         return s5Service.achievements(userNameOf(map));
     }

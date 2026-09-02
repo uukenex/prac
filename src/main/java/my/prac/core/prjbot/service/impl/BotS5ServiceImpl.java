@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Random;
 
+import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 
 import org.json.JSONArray;
@@ -87,9 +88,40 @@ public class BotS5ServiceImpl implements BotS5Service {
         put("TRAP",   "🕳️ 함정");  put("SPECIAL", "✨ 특수"); put("STAIRS", "🪜 계단");
     }};
 
-    // 이동(비전투) 쿨타임 3분, 전투 쿨타임 30초
-    private static final long MOVE_COOLDOWN_SEC   = 180;
-    private static final long COMBAT_COOLDOWN_SEC = 30;
+    // 이동(비전투)/전투 쿨타임(초). DB(TBOT_S5_CONFIG)에서 서버 기동 시(@PostConstruct)
+    // 로드해 메모리에 캐싱하고, /갱신 명령어로 재조회해서 값을 갱신한다. DB 조회 실패
+    // 시엔 아래 기본값을 그대로 사용(서버가 죽지 않도록 방어).
+    private static volatile long MOVE_COOLDOWN_SEC   = 180;
+    private static volatile long COMBAT_COOLDOWN_SEC = 30;
+
+    /** 서버 기동 시 TBOT_S5_CONFIG를 읽어 메모리(static 필드)에 반영. 실패해도 기본값으로 계속 동작. */
+    @PostConstruct
+    public void loadConfig() {
+        try {
+            for (HashMap<String, Object> row : dao.selectAllConfig()) {
+                String key = strVal(row.get("CONFIG_KEY"), "");
+                String val = strVal(row.get("CONFIG_VALUE"), "");
+                try {
+                    if ("MOVE_COOLDOWN_SEC".equals(key)) {
+                        MOVE_COOLDOWN_SEC = Long.parseLong(val);
+                    } else if ("COMBAT_COOLDOWN_SEC".equals(key)) {
+                        COMBAT_COOLDOWN_SEC = Long.parseLong(val);
+                    }
+                } catch (NumberFormatException ignore) {
+                    // 파싱 실패한 값은 무시하고 기존(기본) 값 유지
+                }
+            }
+        } catch (Exception ignore) {
+            // 서버 기동 시점에 DB 접속이 안 되거나 테이블이 없어도 기본값으로 계속 기동
+        }
+    }
+
+    /** /갱신 — TBOT_S5_CONFIG를 다시 읽어 메모리 값을 갱신 */
+    @Override
+    public String refreshConfig() {
+        loadConfig();
+        return "🗼 시즌5 설정 갱신 완료 (이동쿨타임 " + MOVE_COOLDOWN_SEC + "초 / 전투쿨타임 " + COMBAT_COOLDOWN_SEC + "초)";
+    }
 
     @Override
     public HashMap<String, Object> selectUserProgress(String userName) {

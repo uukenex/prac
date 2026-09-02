@@ -276,4 +276,9 @@
             VALUES (#{userName}, #{floor}, SYSDATE, SYSDATE)
     </insert>
 
+    <!-- ==================== 서버 설정값(config) ==================== -->
+    <select id="selectAllConfig" resultType="hashmap">
+        SELECT CONFIG_KEY, CONFIG_VALUE FROM TBOT_S5_CONFIG
+    </select>
+
 </mapper>

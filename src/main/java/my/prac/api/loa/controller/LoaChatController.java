@@ -1024,7 +1024,7 @@ public class LoaChatController {
 				break;
 			case "/갱신":
 				passYn = true;
-				val = boss.refreshCache();
+				val = boss.refreshCache() + enterStr + s5.refreshConfig();
 				break;
 
 			case "/ㄱㄱㄱㅈ": case "/공격공지": case "/공지":

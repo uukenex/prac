@@ -50,11 +50,13 @@
 
 ### 쿨타임
 
-| 층 구분 | 행동 | 쿨타임 |
-|---|---|---|
-| 1~8층 (사냥터) | 이동(주사위, 비전투 칸 처리) | 3분 |
-| 1~8층 (사냥터) | 전투(주사위 공격) | 30초 |
-| 9층 (보스) | 전투 | 30초 |
+| 층 구분 | 행동 | 쿨타임 | 기본값 |
+|---|---|---|---|
+| 1~8층 (사냥터) | 이동(주사위, 비전투 칸 처리) | `TBOT_S5_CONFIG.MOVE_COOLDOWN_SEC` | 3분(180초) |
+| 1~8층 (사냥터) | 전투(주사위 공격) | `TBOT_S5_CONFIG.COMBAT_COOLDOWN_SEC` | 30초 |
+| 9층 (보스) | 전투 | `TBOT_S5_CONFIG.COMBAT_COOLDOWN_SEC` | 30초 |
+
+- 두 값 다 하드코딩이 아니라 DB(`TBOT_S5_CONFIG`)에서 서버 기동 시 메모리로 로드되고, `/갱신` 명령어로 재배포 없이 값만 바꿔 즉시 반영 가능(DB 조회 실패 시 위 기본값으로 안전하게 동작).
 
 ---
 
@@ -392,6 +394,7 @@ S4의 `TBOT_S4_ACHIEVEMENT`/`TBOT_S4_USER_ACH` 패턴을 확장 계승. S5에서
 - `TBOT_S5_ACHIEVEMENT` (ACH_ID PK, ACH_NAME, ACH_DESC, ACH_TYPE, ACH_PARAM, HIDDEN_YN, REWARD_TYPE, REWARD_VALUE)
 - `TBOT_S5_USER_ACH` (USER_NAME, ACH_ID, CLEAR_DATE, PK(USER_NAME,ACH_ID))
 - `TBOT_S5_USER_SPECIAL_VISIT` (USER_NAME PK, VISIT_COUNT) — 특수칸 누적 방문 카운터
+- `TBOT_S5_CONFIG` (CONFIG_KEY PK, CONFIG_VALUE, MEMO) — 서버 설정값. `BotS5ServiceImpl.@PostConstruct`에서 서버 기동 시 전체를 static 필드로 로드하고, `/갱신` 명령어로 재조회. 현재 키: `MOVE_COOLDOWN_SEC`(기본 180), `COMBAT_COOLDOWN_SEC`(기본 30). DB 조회 실패해도 기본값으로 계속 동작(방어적).
 
 ---
 

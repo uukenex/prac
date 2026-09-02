@@ -69,4 +69,7 @@ public interface BotS5DAO {
     // ── 자동사냥 ──
     HashMap<String, Object> selectAutoHuntLog(@Param("userName") String userName);
     int upsertAutoHuntLog(HashMap<String, Object> map);
+
+    // ── 서버 설정값(config) ──
+    List<HashMap<String, Object>> selectAllConfig();
 }
