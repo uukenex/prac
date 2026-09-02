@@ -9,7 +9,7 @@
         SELECT USER_NAME, CUR_FLOOR, UNLOCKED_BLOCK, PP_VALUE, PP_EXT, STATUS,
                TRAP_TURN_LEFT, DICE_GRADE, KILL_COUNT_CUR, AUTO_HUNT_YN,
                TOTAL_KILL_COUNT, CUR_MONSTER_ID, CUR_MONSTER_HP_VALUE, CUR_MONSTER_HP_EXT,
-               MONSTER_STUNNED_YN, SHIELD_VALUE, SHIELD_EXT
+               MONSTER_STUNNED_YN, SHIELD_VALUE, SHIELD_EXT, LAST_DICE_ACTION_DATE
         FROM TBOT_S5_USER_PROGRESS
         WHERE USER_NAME = #{userName}
     </select>
@@ -44,6 +44,7 @@
             <if test="curMonsterId != null">CUR_MONSTER_ID = #{curMonsterId},</if>
             <if test="curMonsterHpValue != null">CUR_MONSTER_HP_VALUE = #{curMonsterHpValue},</if>
             <if test="curMonsterHpExt != null">CUR_MONSTER_HP_EXT = #{curMonsterHpExt},</if>
+            <if test="touchDiceCooldown != null">LAST_DICE_ACTION_DATE = SYSDATE,</if>
             LAST_ACTION_DATE = SYSDATE
         </set>
         WHERE USER_NAME = #{userName}
@@ -74,6 +75,19 @@
         WHEN NOT MATCHED THEN
             INSERT (USER_NAME, FLOOR, CUR_TILE) VALUES (#{userName}, #{floor}, #{curTile})
     </insert>
+
+    <!-- 발견(방문)한 칸 기록. 이미 있으면 무시 -->
+    <insert id="insertTileVisit">
+        MERGE INTO TBOT_S5_USER_TILE_VISIT T
+        USING (SELECT #{userName} AS U, #{floor} AS F, #{tileNo} AS N FROM DUAL) S
+        ON (T.USER_NAME = S.U AND T.FLOOR = S.F AND T.TILE_NO = S.N)
+        WHEN NOT MATCHED THEN
+            INSERT (USER_NAME, FLOOR, TILE_NO) VALUES (#{userName}, #{floor}, #{tileNo})
+    </insert>
+
+    <select id="countTileVisits" resultType="int">
+        SELECT COUNT(*) FROM TBOT_S5_USER_TILE_VISIT WHERE USER_NAME = #{userName} AND FLOOR = #{floor}
+    </select>
 
     <!-- ==================== 몬스터 ==================== -->
     <select id="selectMonster" resultType="hashmap">

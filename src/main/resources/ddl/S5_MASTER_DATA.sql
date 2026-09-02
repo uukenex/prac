@@ -5,7 +5,9 @@
 
 -- ============================================================
 -- 1) 층별 보드 칸 수 + 고정 보드 배치 (사냥터층: FLOOR MOD 10 IN 1..8)
---    칸수 5~13 랜덤, 칸종류 분포: 전투45% / PP20% / 상점10% / 함정10% / 특수15%
+--    칸수 5~13 랜덤, 칸종류 분포: 전투35% / PP15% / 상점10% / 함정10% / 특수15% / 계단15%
+--    보드는 끝이 없는 루프(원형)이며, 계단(STAIRS) 칸에 도착해야 다음 층으로
+--    이동할 수 있다.
 -- ============================================================
 DECLARE
     v_tile_count NUMBER;
@@ -21,11 +23,12 @@ BEGIN
 
             FOR t IN 1..v_tile_count LOOP
                 v_rand := DBMS_RANDOM.VALUE(0, 100);
-                IF    v_rand < 45 THEN v_type := 'COMBAT';
-                ELSIF v_rand < 65 THEN v_type := 'PP';
-                ELSIF v_rand < 75 THEN v_type := 'SHOP';
-                ELSIF v_rand < 85 THEN v_type := 'TRAP';
-                ELSE                    v_type := 'SPECIAL';
+                IF    v_rand < 35 THEN v_type := 'COMBAT';
+                ELSIF v_rand < 50 THEN v_type := 'PP';
+                ELSIF v_rand < 60 THEN v_type := 'SHOP';
+                ELSIF v_rand < 70 THEN v_type := 'TRAP';
+                ELSIF v_rand < 85 THEN v_type := 'SPECIAL';
+                ELSE                    v_type := 'STAIRS';
                 END IF;
 
                 INSERT INTO TBOT_S5_TILE_MASTER (FLOOR, TILE_NO, TILE_TYPE)
@@ -117,6 +120,7 @@ INSERT INTO TBOT_S5_ACHIEVEMENT VALUES (21, '???',              '한 우물',   
 INSERT INTO TBOT_S5_ACHIEVEMENT VALUES (22, '???',              '도박사',                              'GACHA_GRADE6_HIT',      NULL,  'Y', 'TITLE', NULL);
 INSERT INTO TBOT_S5_ACHIEVEMENT VALUES (23, '???',              '무패 행진',                           'BLOCK_CLEAR_NO_LOSE',   NULL,  'Y', 'PP',   '500');
 INSERT INTO TBOT_S5_ACHIEVEMENT VALUES (24, '???',              '전 직업 마스터',                      'ALL_CLASS_PARTY',       NULL,  'Y', 'PP',   '500');
+INSERT INTO TBOT_S5_ACHIEVEMENT VALUES (25, '탐험왕',            '한 층의 모든 칸을 다 찾아냈다',        'FLOOR_FULL_EXPLORE',    NULL,  'N', 'PP',   '150');
 
 COMMIT;
 

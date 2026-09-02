@@ -48,11 +48,21 @@ CREATE TABLE TBOT_S5_USER_PROGRESS (
 );
 
 -- per-floor board position (kept independently per floor, CUR_TILE=0 means not entered yet)
+-- the board loops (no "end"): CUR_TILE wraps around TILE_COUNT via modulo on every roll.
 CREATE TABLE TBOT_S5_USER_FLOOR_PROGRESS (
     USER_NAME   VARCHAR2(100) NOT NULL,
     FLOOR       NUMBER        NOT NULL,
     CUR_TILE    NUMBER        DEFAULT 0 NOT NULL,
     PRIMARY KEY (USER_NAME, FLOOR)
+);
+
+-- discovered tiles per (user, floor) -- landed tiles only, skipped tiles do not count
+CREATE TABLE TBOT_S5_USER_TILE_VISIT (
+    USER_NAME   VARCHAR2(100) NOT NULL,
+    FLOOR       NUMBER        NOT NULL,
+    TILE_NO     NUMBER        NOT NULL,
+    VISIT_DATE  DATE DEFAULT SYSDATE,
+    PRIMARY KEY (USER_NAME, FLOOR, TILE_NO)
 );
 
 -- monster master (one normal + one boss row per block, BLOCK_NO 1..10)
@@ -175,6 +185,11 @@ ALTER TABLE TBOT_S5_USER_PROGRESS ADD (
     MONSTER_STUNNED_YN CHAR(1)     DEFAULT 'N' NOT NULL,
     SHIELD_VALUE       NUMBER      DEFAULT 0   NOT NULL,
     SHIELD_EXT         VARCHAR2(1) DEFAULT '' -- Oracle treats '' as NULL, so NOT NULL is not usable here
+);
+
+-- cooldown gate for /dice: 180s while NORMAL (movement), 30s while IN_COMBAT
+ALTER TABLE TBOT_S5_USER_PROGRESS ADD (
+    LAST_DICE_ACTION_DATE DATE
 );
 
 EXIT;

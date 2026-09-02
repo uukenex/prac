@@ -67,6 +67,16 @@ public class BotS5ServiceImpl implements BotS5Service {
     private static final String[] DICE_NAMES = { "DICE_6", "DICE_8", "DICE_10", "DICE_12", "DICE_20" };
     private static final int[]    DICE_UNLOCK = { 0, 10, 30, 50, 70 };
 
+    // 칸 종류 표시(아이콘+이름)
+    private static final HashMap<String, String> TILE_LABEL = new HashMap<String, String>() {{
+        put("COMBAT", "⚔️ 전투");  put("PP", "💰 PP");     put("SHOP", "🎁 상점");
+        put("TRAP",   "🕳️ 함정");  put("SPECIAL", "✨ 특수"); put("STAIRS", "🪜 계단");
+    }};
+
+    // 이동(비전투) 쿨타임 3분, 전투 쿨타임 30초
+    private static final long MOVE_COOLDOWN_SEC   = 180;
+    private static final long COMBAT_COOLDOWN_SEC = 30;
+
     @Override
     public HashMap<String, Object> selectUserProgress(String userName) {
         return dao.selectUserProgress(userName);
@@ -206,12 +216,43 @@ public class BotS5ServiceImpl implements BotS5Service {
 
         if (brandNew) {
             // 계정이 없던 유저의 첫 /주사위 → 계정만 생성. 진행은 튜토리얼 순서대로 유도.
-            return "🗼 계정을 생성했습니다!" + NL + "현재 0층 마을입니다." + NL
-                    + "하급 동료 계약서 무료뽑기를 하세요! (/동료뽑기 1)";
+            return "┌─────────────────┐" + NL
+                    + "  🗼 시즌5 탑 등반기" + NL
+                    + "└─────────────────┘" + NL
+                    + "계정을 생성했습니다! 현재 0층 마을이에요." + NL
+                    + "👉 하급 동료 계약서 무료뽑기를 하세요! (/동료뽑기 1)";
         }
 
-        int floor = intVal(p.get("CUR_FLOOR"), 0);
         String status = strVal(p.get("STATUS"), "NORMAL");
+        String cooldownMsg = checkDiceCooldown(p, status);
+        if (cooldownMsg != null) return cooldownMsg;
+
+        String result = rollDiceInternal(userName, p, status);
+        touchDiceCooldown(userName);
+        return result;
+    }
+
+    /** LAST_DICE_ACTION_DATE 기준 쿨타임 검사. 아직 남았으면 안내 메시지, 통과면 null. */
+    private String checkDiceCooldown(HashMap<String, Object> p, String status) {
+        java.util.Date last = (java.util.Date) p.get("LAST_DICE_ACTION_DATE");
+        if (last == null) return null;
+        long cooldownSec = "IN_COMBAT".equals(status) ? COMBAT_COOLDOWN_SEC : MOVE_COOLDOWN_SEC;
+        long elapsedSec = (System.currentTimeMillis() - last.getTime()) / 1000;
+        if (elapsedSec >= cooldownSec) return null;
+        long remain = cooldownSec - elapsedSec;
+        return "⏳ 아직 쿨타임입니다! " + remain + "초 후 다시 시도해주세요." + NL
+                + ("IN_COMBAT".equals(status) ? "(전투 쿨타임 30초)" : "(이동 쿨타임 3분)");
+    }
+
+    private void touchDiceCooldown(String userName) {
+        HashMap<String, Object> up = new HashMap<>();
+        up.put("userName", userName);
+        up.put("touchDiceCooldown", true);
+        dao.updateUserProgress(up);
+    }
+
+    private String rollDiceInternal(String userName, HashMap<String, Object> p, String status) {
+        int floor = intVal(p.get("CUR_FLOOR"), 0);
 
         if ("IN_COMBAT".equals(status)) {
             return resolveCombatTurn(userName, p, floor);
@@ -222,31 +263,33 @@ public class BotS5ServiceImpl implements BotS5Service {
             if (floor == 0) {
                 // 튜토리얼 진행 중(0층 마을) — 다음 단계를 순서대로 안내
                 int companionCount = dao.countUserCompanions(userName);
+                int partyCount = countPartySize(userName);
                 if (companionCount == 0) {
-                    return userName + "님," + NL + "아직 동료가 없습니다." + NL
-                            + "하급 동료 계약서 무료뽑기를 하세요! (/동료뽑기 1)";
+                    return userName + "님," + NL + "🏘️ 0층 마을 — 아직 동료가 없습니다." + NL
+                            + "👉 하급 동료 계약서 무료뽑기를 하세요! (/동료뽑기 1)";
                 }
-                return userName + "님," + NL + "0층 마을입니다." + NL
-                        + "층이동 명령어로 1층 가세요! (/층변경 1)";
+                if (partyCount == 0) {
+                    return userName + "님," + NL + "🏘️ 0층 마을 — 동료는 있지만 파티가 비어있습니다." + NL
+                            + "👉 /파티편성 N 으로 동료를 파티에 편성하세요! (/파티편성 목록은 /파티편성 으로 확인)";
+                }
+                return userName + "님," + NL + "🏘️ 0층 마을 — 파티 준비 완료!" + NL
+                        + "👉 층이동 명령어로 1층 가세요! (/층변경 1)";
             }
-            return userName + "님," + NL + "여기는 마을입니다. /탑상점 으로 상점을 이용하거나 /층변경 N 으로 사냥터에 진입하세요.";
+            return userName + "님," + NL + "🏘️ 여기는 마을입니다. /탑상점 으로 상점을 이용하거나 /층변경 N 으로 사냥터에 진입하세요.";
         }
         if (m == 9) {
             return startCombat(userName, p, floor, true);
         }
 
+        // ── 사냥터 보드: 끝 없이 순환하는 루프. 계단(STAIRS) 칸에 도착해야 다음 층으로 이동. ──
         HashMap<String, Object> fi = dao.selectFloorInfo(floor);
         int tileCount = fi == null ? 8 : intVal(fi.get("TILE_COUNT"), 8);
         HashMap<String, Object> ufp = dao.selectUserFloorProgress(userName, floor);
         int curTile = ufp == null ? 0 : intVal(ufp.get("CUR_TILE"), 0);
 
-        if (curTile >= tileCount) {
-            return userName + "님," + NL + "이미 이 층 보드 끝에 도달했습니다. /층변경 N 으로 다른 층으로 이동하세요.";
-        }
-
         int diceMax = diceMax(strVal(p.get("DICE_GRADE"), "DICE_6"));
         int roll = RND.nextInt(diceMax) + 1;
-        int newTile = Math.min(curTile + roll, tileCount);
+        int newTile = ((curTile + roll - 1) % tileCount) + 1;
 
         HashMap<String, Object> ufpSave = new HashMap<>();
         ufpSave.put("userName", userName);
@@ -254,10 +297,17 @@ public class BotS5ServiceImpl implements BotS5Service {
         ufpSave.put("curTile", newTile);
         dao.upsertUserFloorProgress(ufpSave);
 
+        dao.insertTileVisit(userName, floor, newTile);
+        int visited = dao.countTileVisits(userName, floor);
+
         StringBuilder sb = new StringBuilder();
         sb.append(userName).append("님," + NL);
-        sb.append("🎲 주사위 ").append(roll).append("! ").append(curTile).append(" → ").append(newTile)
-          .append(" / ").append(tileCount).append("칸").append(NL);
+        sb.append("🎲 주사위 ").append(roll).append("! ").append(curTile).append(" → ").append(newTile).append("번 칸")
+          .append(NL).append("🗺️ 탐사 현황: ").append(visited).append("/").append(tileCount).append("칸 발견");
+        if (visited >= tileCount && grantAchievement(userName, 25)) {
+            sb.append(NL).append("🏆 이 층을 전부 탐험했습니다! [탐험왕] 업적 달성!");
+        }
+        sb.append(NL);
 
         int trapTurnLeft = intVal(p.get("TRAP_TURN_LEFT"), 0);
         if (trapTurnLeft > 0) {
@@ -275,6 +325,9 @@ public class BotS5ServiceImpl implements BotS5Service {
                 break;
             }
         }
+        if (!"COMBAT".equals(tileType)) {
+            sb.append(TILE_LABEL.getOrDefault(tileType, tileType)).append(" 칸!").append(NL);
+        }
 
         switch (tileType) {
             case "COMBAT":
@@ -285,7 +338,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                 PP reward = mon == null ? PP.of(1, "")
                         : PP.of(((Number) mon.get("PP_PER_KILL_VALUE")).doubleValue(), strVal(mon.get("PP_PER_KILL_EXT"), ""));
                 addPp(userName, p, reward);
-                sb.append("💰 PP 칸! ").append(reward.format()).append(" PP 획득!");
+                sb.append(reward.format()).append(" PP 획득!");
                 break;
             }
             case "TRAP": {
@@ -293,19 +346,37 @@ public class BotS5ServiceImpl implements BotS5Service {
                 up.put("userName", userName);
                 up.put("trapTurnLeft", 3);
                 dao.updateUserProgress(up);
-                sb.append("🕳️ 함정에 걸렸다! 3턴간 전투력이 약화됩니다.");
+                sb.append("함정에 걸렸다! 3턴간 전투력이 약화됩니다.");
                 break;
             }
             case "SHOP":
-                sb.append("🎁 비밀상점을 발견했다! /탑상점 으로 확인해보세요.");
+                sb.append("비밀상점을 발견했다! /탑상점 으로 확인해보세요.");
                 break;
             case "SPECIAL":
                 sb.append(handleSpecialTile(userName));
                 break;
+            case "STAIRS": {
+                int nextFloor = floor + 1; // floor%10 in 1..8 이므로 다음 칸은 항상 같은 구간 내(최대 9층 보스)
+                HashMap<String, Object> up = new HashMap<>();
+                up.put("userName", userName);
+                up.put("curFloor", nextFloor);
+                dao.updateUserProgress(up);
+                grantFloorAchievements(userName, nextFloor);
+                sb.append(nextFloor).append("층으로 올라갑니다!");
+                break;
+            }
             default:
                 sb.append("...아무 일도 일어나지 않았다.");
         }
         return sb.toString();
+    }
+
+    private int countPartySize(String userName) {
+        int cnt = 0;
+        for (HashMap<String, Object> c : dao.selectUserCompanions(userName)) {
+            if (c.get("PARTY_SLOT") != null) cnt++;
+        }
+        return cnt;
     }
 
     private String handleSpecialTile(String userName) {
@@ -599,15 +670,17 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (totalKill == 1000) grantAchievement(userName, 9);
     }
 
-    private void grantAchievement(String userName, int achId) {
+    /** @return 이번에 새로 달성되었으면 true, 이미 달성된 상태였으면 false */
+    private boolean grantAchievement(String userName, int achId) {
         List<HashMap<String, Object>> mine = dao.selectUserAchievements(userName);
         for (HashMap<String, Object> a : mine) {
-            if (intVal(a.get("ACH_ID"), -1) == achId) return;
+            if (intVal(a.get("ACH_ID"), -1) == achId) return false;
         }
         HashMap<String, Object> m = new HashMap<>();
         m.put("userName", userName);
         m.put("achId", achId);
         dao.insertUserAch(m);
+        return true;
     }
 
     // ================================================================
@@ -677,6 +750,14 @@ public class BotS5ServiceImpl implements BotS5Service {
 
         StringBuilder sb = new StringBuilder(userName).append("님," + NL)
                 .append(floor).append("층 → ").append(target).append("층(").append(floorKindLabel(target)).append(")으로 이동했습니다.");
+
+        int tm = target % 10;
+        if (tm >= 1 && tm <= 8) {
+            HashMap<String, Object> fi = dao.selectFloorInfo(target);
+            int tileCount = fi == null ? 0 : intVal(fi.get("TILE_COUNT"), 0);
+            int visited = dao.countTileVisits(userName, target);
+            sb.append(NL).append("🗺️ 이 층 탐사 현황: ").append(visited).append("/").append(tileCount).append("칸 발견");
+        }
         if (target == 1 && intVal(p.get("TOTAL_KILL_COUNT"), 0) == 0) {
             sb.append(NL).append("1층에서 주사위를 굴려 전투하세요! (/주사위)");
         }
@@ -759,7 +840,12 @@ public class BotS5ServiceImpl implements BotS5Service {
         dao.updateCompanionPartySlot(up);
 
         if (used + 1 == 3) grantAchievement(userName, 15);
-        return "파티 " + slot + "번 슬롯에 편성했습니다.";
+
+        StringBuilder sb = new StringBuilder("파티 ").append(slot).append("번 슬롯에 편성했습니다!");
+        if (p != null && intVal(p.get("CUR_FLOOR"), 0) == 0) {
+            sb.append(NL).append("👉 층이동 명령어로 1층 가세요! (/층변경 1)");
+        }
+        return sb.toString();
     }
 
     // ================================================================
@@ -878,39 +964,15 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (cnt == 50) grantAchievement(userName, 11);
         if (grade == 6) grantAchievement(userName, 22);
 
-        // 파티에 빈 자리가 있으면 새 동료를 자동으로 편성
-        String partyMsg = autoAssignParty(userName);
-
-        StringBuilder sb = new StringBuilder("🎉 ").append(JOB_NAME.get(job)).append(" ★").append(grade)
-                .append(" 동료를 영입했습니다!").append(partyMsg);
-
-        if (intVal(p.get("CUR_FLOOR"), 0) == 0) {
-            sb.append(NL).append("층이동 명령어로 1층 가세요! (/층변경 1)");
-        }
+        // 새로 뽑은 동료는 (PARTY_SLOT NULLS LAST, COMPANION_ID) 정렬상 항상 목록의 맨 끝(=cnt번)에 위치
+        StringBuilder sb = new StringBuilder();
+        sb.append("┌─────────────┐").append(NL);
+        sb.append("  🎉 새 동료 영입!").append(NL);
+        sb.append("└─────────────┘").append(NL);
+        sb.append("직업: ").append(JOB_NAME.get(job)).append(" ★").append(grade).append(NL);
+        sb.append("스탯: HP ").append(stat[0]).append(" / ATK ").append(stat[1]).append(" / DEF ").append(stat[2]).append(NL);
+        sb.append("👉 /파티편성 ").append(cnt).append(" 로 파티에 편성하세요 (동료 목록 ").append(cnt).append("번)");
         return sb.toString();
-    }
-
-    /** 파티(최대 3명)에 빈 슬롯이 있으면 대기 중인 동료 중 하나를 자동 편성. */
-    private String autoAssignParty(String userName) {
-        List<HashMap<String, Object>> companions = dao.selectUserCompanions(userName);
-        boolean[] usedSlot = new boolean[4];
-        int used = 0;
-        HashMap<String, Object> waiting = null;
-        for (HashMap<String, Object> c : companions) {
-            Object s = c.get("PARTY_SLOT");
-            if (s != null) { usedSlot[((Number) s).intValue()] = true; used++; }
-            else if (waiting == null) waiting = c;
-        }
-        if (used >= 3 || waiting == null) return "";
-        int slot = 1;
-        while (slot <= 3 && usedSlot[slot]) slot++;
-
-        HashMap<String, Object> up = new HashMap<>();
-        up.put("companionId", intVal(waiting.get("COMPANION_ID"), 0));
-        up.put("partySlot", slot);
-        dao.updateCompanionPartySlot(up);
-        if (used + 1 == 3) grantAchievement(userName, 15);
-        return NL + "(파티 " + slot + "번에 자동 편성됨)";
     }
 
     @Override
