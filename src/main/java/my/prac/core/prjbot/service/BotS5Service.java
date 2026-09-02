@@ -66,6 +66,9 @@ public interface BotS5Service {
     /** /장비목록 */
     String equipList(String userName);
 
+    /** /장비장착 (인자 없이) — 미착용 장비 번호 + 파티원 번호를 함께 안내 */
+    String equipWearUsage(String userName);
+
     /** /장비장착 N [M] — N번째 미착용 장비를 M번째 파티원(생략시 같은 클래스 파티원 자동탐색)에 장착 */
     String equipWear(String userName, int equipIdx, Integer companionIdx);
 

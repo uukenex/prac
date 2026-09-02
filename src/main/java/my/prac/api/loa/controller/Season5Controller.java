@@ -154,7 +154,7 @@ public class Season5Controller {
     public String equipWear(HashMap<String, Object> map) {
         String param1 = param1Of(map);
         String param2 = param2Of(map);
-        if (param1.isEmpty()) return "사용법: /장비장착 N [M] (N=미착용 장비 번호, M=파티원 번호(생략 가능))";
+        if (param1.isEmpty()) return s5Service.equipWearUsage(userNameOf(map));
         try {
             int equipIdx = Integer.parseInt(param1);
             Integer companionIdx = param2.isEmpty() ? null : Integer.parseInt(param2);

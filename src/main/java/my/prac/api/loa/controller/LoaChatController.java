@@ -563,6 +563,12 @@ public class LoaChatController {
 				break;
 			case "/주사위":
 			case "/ㅈㅅㅇ":
+			case "/ㅈ":
+				// 로그(TBOT_WORD_HIS.REQ)엔 별칭과 상관없이 항상 "/ㅈㅅㅇ"로 정규화해서 남긴다
+				param0 = "/ㅈㅅㅇ";
+				fulltxt = param0;
+				org_fulltxt = fulltxt;
+				reqMap.put("fulltxt", fulltxt);
 				val = s5.rollDice(reqMap);
 				break;
 			case "/층변경":

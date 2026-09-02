@@ -294,16 +294,11 @@ var TW = (function () {
             + (p.AUTO_HUNT_YN === 'Y' ? ' · 자동사냥ON' : '');
         document.getElementById('ppVal').textContent = (p.PP_VALUE || 0).toFixed ? p.PP_VALUE.toFixed(2) + (p.PP_EXT || '') : p.PP_VALUE;
 
-        // 상점/편성은 마을(층%10==0)에서만, 주사위는 마을이 아닐 때만 -- 흐리게 비활성화
+        // '편성' 탭 안에는 파티 슬롯 토글(마을 전용)과 장비 장착/합성(어디서든 가능)이
+        // 함께 있어서 탭 자체를 막지는 않는다 -- 파티 슬롯 토글만 마을 밖에서 누르면
+        // 서버(BotS5Service.partyToggle)가 거부 메시지를 토스트로 띄운다.
+        // 뽑기(상점)도 마을이 아니어도 가능 -- 상점 탭도 항상 열어둠.
         state.inVillage = (p.CUR_FLOOR % 10 === 0);
-        document.getElementById('dbtnParty').disabled = !state.inVillage;
-        document.getElementById('dbtnShop').disabled = !state.inVillage;
-        if (!state.inVillage) {
-          var activePanel = document.querySelector('.panel.active');
-          if (activePanel && (activePanel.id === 'panel-party' || activePanel.id === 'panel-shop')) {
-            switchTab('board');
-          }
-        }
         updateDiceButtonState();
 
         var huntCard = document.getElementById('autoHuntCard');
@@ -457,23 +452,28 @@ var TW = (function () {
           // 스타터(1번) 계약서는 튜토리얼 무료도 적용, 나머지는 뽑기권만 적용
           var isFree = (gi === 0 && starterFree > 0) || companionVoucher > 0;
           var singleLabel = isFree ? '무료뽑기' : '뽑기';
+          // 서버(BotS5Service.gachaCompanion 등)는 이제 GACHA_ID(DB PK)가 아니라 표시번호
+          // (1부터, UNLOCK_FLOOR 순 = 이 목록 순서)를 받는다 -- 채팅 명령어 /동료뽑기 N 과
+          // 번호 체계를 통일하기 위함(장비뽑기는 GACHA_ID가 5~8부터 시작해서 혼란스러웠음).
+          var displayNo = gi + 1;
           row.innerHTML = '<span>' + g.GACHA_NAME + ' (' + fmtPP(g.COST_VALUE, g.COST_EXT) + ' PP)</span>'
               + '<span class="btn-group">'
-              + '<button class="' + (isFree ? 'free' : '') + '" onclick="TW.action(\'GACHA_COMPANION\',\'' + g.GACHA_ID + '\')">' + singleLabel + '</button>'
-              + '<button class="ten" onclick="TW.action(\'GACHA_COMPANION_10\',\'' + g.GACHA_ID + '\')">10연속</button>'
+              + '<button class="' + (isFree ? 'free' : '') + '" onclick="TW.action(\'GACHA_COMPANION\',\'' + displayNo + '\')">' + singleLabel + '</button>'
+              + '<button class="ten" onclick="TW.action(\'GACHA_COMPANION_10\',\'' + displayNo + '\')">10연속</button>'
               + '</span>';
           cBox.appendChild(row);
         });
         var eBox = document.getElementById('equipGachaList');
         eBox.innerHTML = '';
-        (data.equipGacha || []).forEach(function (g) {
+        (data.equipGacha || []).forEach(function (g, gi) {
           var row = document.createElement('div');
           row.className = 'shop-row';
           var isFree = equipVoucher > 0;
+          var displayNo = gi + 1;
           row.innerHTML = '<span>' + g.GACHA_NAME + ' (' + fmtPP(g.COST_VALUE, g.COST_EXT) + ' PP)</span>'
               + '<span class="btn-group">'
-              + '<button class="' + (isFree ? 'free' : '') + '" onclick="TW.action(\'GACHA_EQUIP\',\'' + g.GACHA_ID + '\')">' + (isFree ? '무료뽑기' : '뽑기') + '</button>'
-              + '<button class="ten" onclick="TW.action(\'GACHA_EQUIP_10\',\'' + g.GACHA_ID + '\')">10연속</button>'
+              + '<button class="' + (isFree ? 'free' : '') + '" onclick="TW.action(\'GACHA_EQUIP\',\'' + displayNo + '\')">' + (isFree ? '무료뽑기' : '뽑기') + '</button>'
+              + '<button class="ten" onclick="TW.action(\'GACHA_EQUIP_10\',\'' + displayNo + '\')">10연속</button>'
               + '</span>';
           eBox.appendChild(row);
         });

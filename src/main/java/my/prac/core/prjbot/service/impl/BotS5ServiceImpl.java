@@ -268,31 +268,32 @@ public class BotS5ServiceImpl implements BotS5Service {
         sb.append("📖 시즌5 탑 등반 — 전체 명령어 도움말").append(NL);
         sb.append(NL);
         sb.append("[이동/전투] (웹 '보드' 탭)").append(NL);
-        sb.append("/주사위 (/ㅈㅅㅇ) : 보드 이동(평소) 또는 몬스터 공격(전투 중)").append(NL);
+        sb.append("/주사위 (/ㅈㅅㅇ, /ㅈ) : 보드 이동(평소) 또는 몬스터 공격(전투 중)").append(NL);
         sb.append("/층변경 N (/층이동 N) : 현재 구간 내 N번째 층으로 이동. N=0(마을)~9(보스), 전투 중이면 도망 처리").append(NL);
         sb.append("  ※ 계단(STAIRS) 칸을 밟으면 다음 층으로 갈 '자격'만 생기고, 실제 이동은 이 명령어를 입력해야 합니다.").append(NL);
         sb.append("  ⚠️ 사냥터층에서 0층(마을, /층변경 0)으로 가면 방금 있던 층의 탐사맵(보드 위치+발견기록)이 초기화됩니다. 원정 중엔 끝까지 밀고 올라가세요!").append(NL);
+        sb.append("  ⚠️ 보스를 처치해 다음 10층 구간으로 넘어가면 이전 구간으로는 다시 내려갈 수 없습니다(과거 구간 복귀 불가, 편도 진행).").append(NL);
         sb.append("/탑현황 : 현재 층/보드 위치/PP/상태/자동사냥 조회").append(NL);
         sb.append(NL);
 
-        sb.append("[동료] (웹 '파티' 탭)").append(NL);
+        sb.append("[동료] (웹 '파티' 탭) — ⚠️ 파티 편성/해제는 마을(X0층)에서만 가능").append(NL);
         sb.append("/파티편성 : 보유 동료 목록 + 파티 편성 현황 조회").append(NL);
-        sb.append("/파티편성 N : 목록 N번째 동료를 파티에 편성/해제").append(NL);
+        sb.append("/파티편성 N : 목록 N번째 동료를 파티에 편성/해제 (마을에서만)").append(NL);
         sb.append(NL);
 
-        sb.append("[상점] (웹 '상점' 탭)").append(NL);
-        sb.append("/동료뽑기 N, /동료뽑기10 N : 아래 번호의 계약서로 동료 뽑기(10연속)").append(NL);
+        sb.append("[상점] (웹 '상점' 탭) — 뽑기는 마을이 아니어도 아무 층에서나 가능").append(NL);
+        sb.append("/동료뽑기 N, /동료뽑기10 N : 아래 번호의 계약서로 동료 뽑기(10연속), 스탯도 함께 표시").append(NL);
         sb.append(gachaCatalogText(dao.selectGachaList("COMPANION", 999), unlocked));
-        sb.append("/장비뽑기 N, /장비뽑기10 N : 아래 번호의 보물상자로 장비 뽑기(10연속)").append(NL);
+        sb.append("/장비뽑기 N, /장비뽑기10 N : 아래 번호의 보물상자로 장비 뽑기(10연속), 스탯 보너스도 함께 표시").append(NL);
         sb.append(gachaCatalogText(dao.selectGachaList("EQUIP", 999), unlocked));
         sb.append("/주사위구매 [N] : 해금된 주사위 목록 확인 / N번 장착").append(NL);
         sb.append("/스탯구매 [공격력|최소공격력|체력] : 스탯 강화 현황 확인 / 구매").append(NL);
         sb.append(NL);
 
         sb.append("[장비] (웹 '장비' 탭)").append(NL);
-        sb.append("/장비목록 : 보유 장비 조회").append(NL);
-        sb.append("/장비장착 N [M] : N번째 미착용 장비를 M번째 파티원(생략 시 같은 직업 자동탐색)에 장착").append(NL);
-        sb.append("/장비합성 N : N번째 장비 포함 동일 직업/부위/등급 미착용 장비 3개를 상위 등급 1개로 합성 (★6 불가)").append(NL);
+        sb.append("/장비목록 : 보유 장비 조회 (미착용은 번호 + 스탯 보너스, 착용중인 건 누가 끼고 있는지 표시)").append(NL);
+        sb.append("/장비장착 [N] [M] : 인자 없이 입력하면 미착용 장비 번호·파티원 번호를 먼저 안내. N=미착용 장비 번호, M=파티원 번호(생략 시 같은 직업 자동탐색)").append(NL);
+        sb.append("/장비합성 N : N번째 장비 포함 동일 직업/부위/등급 미착용 장비 3개를 상위 등급 1개로 합성 (★6 불가, /장비목록의 [미착용] 번호 기준)").append(NL);
         sb.append(NL);
 
         sb.append("[업적] (웹 '업적' 탭)").append(NL);
@@ -303,20 +304,31 @@ public class BotS5ServiceImpl implements BotS5Service {
         return sb.toString();
     }
 
-    /** 가챠 목록을 "번호. 이름 (해금층~, 비용 PP) [잠김]" 형태로 나열 (해금 안 된 것도 잠금 표시로 함께 노출) */
+    /**
+     * 가챠 목록을 "번호. 이름 (해금층~, 비용 PP) [잠김]" 형태로 나열 (해금 안 된 것도 잠금 표시로 함께 노출).
+     * 표시번호(1부터, UNLOCK_FLOOR 순 = /탑도움말·/장비뽑기·/동료뽑기에서 쓰는 번호)와
+     * 실제 GACHA_ID(DB PK, COMPANION 1~4 / EQUIP 5~8로 서로 다름)가 다르므로 매핑해서 보여준다.
+     */
     private String gachaCatalogText(List<HashMap<String, Object>> list, int unlocked) {
         StringBuilder sb = new StringBuilder();
+        int displayIdx = 1;
         for (HashMap<String, Object> g : list) {
-            int gachaId = intVal(g.get("GACHA_ID"), 0);
             String name = strVal(g.get("GACHA_NAME"), "?");
             int unlockFloor = intVal(g.get("UNLOCK_FLOOR"), 0);
             PP cost = PP.of(((Number) g.get("COST_VALUE")).doubleValue(), strVal(g.get("COST_EXT"), ""));
             boolean isUnlocked = unlocked >= unlockFloor;
-            sb.append("  ").append(gachaId).append(". ").append(name)
+            sb.append("  ").append(displayIdx++).append(". ").append(name)
               .append(" (").append(unlockFloor).append("층~, ").append(cost.format()).append(" PP)")
               .append(isUnlocked ? "" : " 🔒잠김").append(NL);
         }
         return sb.toString();
+    }
+
+    /** /동료뽑기·/장비뽑기 N에서 쓰는 표시번호(1부터, UNLOCK_FLOOR 순)를 실제 GACHA_ID로 변환. 없으면 null. */
+    private Integer resolveGachaId(String gachaType, int displayIdx) {
+        List<HashMap<String, Object>> list = dao.selectGachaList(gachaType, 999);
+        if (displayIdx < 1 || displayIdx > list.size()) return null;
+        return intVal(list.get(displayIdx - 1).get("GACHA_ID"), 0);
     }
 
     // ================================================================
@@ -355,7 +367,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (elapsedSec >= cooldownSec) return null;
         long remain = cooldownSec - elapsedSec;
         return "⏳ 아직 쿨타임입니다! " + remain + "초 후 다시 시도해주세요." + NL
-                + ("IN_COMBAT".equals(status) ? "(전투 쿨타임 30초)" : "(이동 쿨타임 3분)");
+                + ("IN_COMBAT".equals(status) ? "(전투 쿨타임 " + COMBAT_COOLDOWN_SEC + "초)" : "(이동 쿨타임 " + MOVE_COOLDOWN_SEC + "초)");
     }
 
     private void touchDiceCooldown(String userName) {
@@ -1017,6 +1029,9 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (p != null && "IN_COMBAT".equals(strVal(p.get("STATUS"), "NORMAL"))) {
             return "전투 중에는 파티를 변경할 수 없습니다.";
         }
+        if (p != null && !isVillage(p)) {
+            return "🏘️ 파티 편성은 마을에서만 가능합니다. /층변경 0 으로 마을로 이동하세요.";
+        }
         List<HashMap<String, Object>> companions = dao.selectUserCompanions(userName);
         if (idx < 1 || idx > companions.size()) {
             return "잘못된 번호입니다. /파티편성 으로 목록을 확인하세요.";
@@ -1261,21 +1276,21 @@ public class BotS5ServiceImpl implements BotS5Service {
     @Override
     @Transactional
     public String gachaCompanion(String userName, int gachaId) {
-        HashMap<String, Object> p = getOrInitProgress(userName);
-        if (!isVillage(p)) {
-            return "🏘️ 동료뽑기는 마을에서만 가능합니다. /층변경 0 으로 마을로 이동하세요.";
-        }
-        return pullCompanionInternal(userName, gachaId);
+        getOrInitProgress(userName);
+        // 뽑기(가챠)는 어디서든 가능 -- 마을 제한은 파티 편성(/파티편성)에만 적용됨
+        // gachaId는 화면/도움말에 보이는 표시번호(1부터, UNLOCK_FLOOR 순) -- 실제 GACHA_ID로 변환해서 사용
+        Integer realId = resolveGachaId("COMPANION", gachaId);
+        if (realId == null) return "존재하지 않는 번호입니다. /탑도움말에서 번호를 다시 확인하세요.";
+        return pullCompanionInternal(userName, realId);
     }
 
     @Override
     @Transactional
     public String gachaCompanionTen(String userName, int gachaId) {
-        HashMap<String, Object> p = getOrInitProgress(userName);
-        if (!isVillage(p)) {
-            return "🏘️ 동료뽑기는 마을에서만 가능합니다. /층변경 0 으로 마을로 이동하세요.";
-        }
-        return pullCompanionTenInternal(userName, gachaId);
+        getOrInitProgress(userName);
+        Integer realId = resolveGachaId("COMPANION", gachaId);
+        if (realId == null) return "존재하지 않는 번호입니다. /탑도움말에서 번호를 다시 확인하세요.";
+        return pullCompanionTenInternal(userName, realId);
     }
 
     /** 장비 뽑기 1회의 핵심 로직만 수행. 실패 시 result에 error만 채워 반환. */
@@ -1320,10 +1335,9 @@ public class BotS5ServiceImpl implements BotS5Service {
     @Transactional
     public String gachaEquip(String userName, int gachaId) {
         HashMap<String, Object> p = getOrInitProgress(userName);
-        if (!isVillage(p)) {
-            return "🏘️ 장비뽑기는 마을에서만 가능합니다. /층변경 0 으로 마을로 이동하세요.";
-        }
-        HashMap<String, Object> gacha = dao.selectGacha(gachaId);
+        Integer realId = resolveGachaId("EQUIP", gachaId);
+        if (realId == null) return "존재하지 않는 번호입니다. /탑도움말에서 번호를 다시 확인하세요.";
+        HashMap<String, Object> gacha = dao.selectGacha(realId);
         if (gacha == null || !"EQUIP".equals(strVal(gacha.get("GACHA_TYPE"), ""))) {
             return "존재하지 않는 장비 상자입니다.";
         }
@@ -1333,18 +1347,16 @@ public class BotS5ServiceImpl implements BotS5Service {
         String job = (String) r.get("job");
         String part = (String) r.get("part");
         int grade = intVal(r.get("grade"), 1);
-        String partName = "HELMET".equals(part) ? "투구" : "WEAPON".equals(part) ? "무기" : "갑옷";
-        return "🎁 " + JOB_NAME.get(job) + "용 " + partName + " ★" + grade + " 획득!";
+        return "🎁 " + JOB_NAME.get(job) + "용 " + partNameOf(part) + " ★" + grade + " 획득! (" + equipBonusText(part, grade) + ")";
     }
 
     @Override
     @Transactional
     public String gachaEquipTen(String userName, int gachaId) {
         HashMap<String, Object> p = getOrInitProgress(userName);
-        if (!isVillage(p)) {
-            return "🏘️ 장비뽑기는 마을에서만 가능합니다. /층변경 0 으로 마을로 이동하세요.";
-        }
-        HashMap<String, Object> gacha = dao.selectGacha(gachaId);
+        Integer realId = resolveGachaId("EQUIP", gachaId);
+        if (realId == null) return "존재하지 않는 번호입니다. /탑도움말에서 번호를 다시 확인하세요.";
+        HashMap<String, Object> gacha = dao.selectGacha(realId);
         if (gacha == null || !"EQUIP".equals(strVal(gacha.get("GACHA_TYPE"), ""))) {
             return "존재하지 않는 장비 상자입니다.";
         }
@@ -1455,6 +1467,20 @@ public class BotS5ServiceImpl implements BotS5Service {
     // ================================================================
     // 장비
     // ================================================================
+    private String partNameOf(String part) {
+        return "HELMET".equals(part) ? "투구" : "WEAPON".equals(part) ? "무기" : "갑옷";
+    }
+
+    /** 장비 등급/부위별 스탯 보너스 표기 (예: "ATK +13 / +10%") — EQUIP_BONUS[grade-1] 기준. */
+    private String equipBonusText(String part, int grade) {
+        double[] b = EQUIP_BONUS[grade - 1];
+        int fixedIdx = "HELMET".equals(part) ? 0 : "WEAPON".equals(part) ? 2 : 4;
+        int pctIdx = fixedIdx + 1;
+        String statName = "HELMET".equals(part) ? "HP" : "WEAPON".equals(part) ? "ATK" : "DEF";
+        return statName + " +" + (int) b[fixedIdx] + " / +" + Math.round(b[pctIdx] * 100) + "%";
+    }
+
+    /** 장비 목록 - 미착용은 /장비장착·/장비합성에 그대로 쓸 수 있는 번호를 붙이고, 착용중인 건 누가 끼고 있는지 표시. */
     @Override
     public String equipList(String userName) {
         getOrInitProgress(userName);
@@ -1462,23 +1488,88 @@ public class BotS5ServiceImpl implements BotS5Service {
         List<HashMap<String, Object>> companions = dao.selectUserCompanions(userName);
         HashMap<Integer, String> companionLabel = new HashMap<>();
         for (HashMap<String, Object> c : companions) {
-            companionLabel.put(intVal(c.get("COMPANION_ID"), -1),
-                    JOB_NAME.getOrDefault(strVal(c.get("CLASS"), ""), "?") + " ★" + intVal(c.get("GRADE"), 1));
+            String job = JOB_NAME.getOrDefault(strVal(c.get("CLASS"), ""), "?");
+            String name = strVal(c.get("NAME"), job);
+            companionLabel.put(intVal(c.get("COMPANION_ID"), -1), job + "(" + name + ") ★" + intVal(c.get("GRADE"), 1));
         }
         if (equips.isEmpty()) return "보유한 장비가 없습니다.";
 
-        StringBuilder sb = new StringBuilder(userName).append("님의 장비 목록," + NL);
-        int idx = 1;
+        List<HashMap<String, Object>> unequipped = new ArrayList<>();
+        List<HashMap<String, Object>> equipped = new ArrayList<>();
         for (HashMap<String, Object> e : equips) {
-            String part = strVal(e.get("PART"), "");
-            String partName = "HELMET".equals(part) ? "투구" : "WEAPON".equals(part) ? "무기" : "갑옷";
-            Object cid = e.get("EQUIPPED_COMPANION_ID");
-            sb.append(idx++).append(". ").append(JOB_NAME.getOrDefault(strVal(e.get("CLASS"), ""), "?"))
-              .append(" ").append(partName).append(" ★").append(intVal(e.get("GRADE"), 1))
-              .append(cid != null ? " [" + companionLabel.getOrDefault(((Number) cid).intValue(), "장착중") + "]" : " [미착용]")
-              .append(NL);
+            if (e.get("EQUIPPED_COMPANION_ID") == null) unequipped.add(e);
+            else equipped.add(e);
         }
-        sb.append("/장비장착 N (미착용 목록 기준), /장비합성 N");
+
+        StringBuilder sb = new StringBuilder(userName).append("님의 장비 목록," + NL);
+        sb.append("[미착용 — 이 번호로 /장비장착 N, /장비합성 N]").append(NL);
+        if (unequipped.isEmpty()) {
+            sb.append("(없음)").append(NL);
+        } else {
+            int idx = 1;
+            for (HashMap<String, Object> e : unequipped) {
+                String part = strVal(e.get("PART"), "");
+                int grade = intVal(e.get("GRADE"), 1);
+                sb.append(idx++).append(". ").append(JOB_NAME.getOrDefault(strVal(e.get("CLASS"), ""), "?"))
+                  .append(" ").append(partNameOf(part)).append(" ★").append(grade)
+                  .append(" (").append(equipBonusText(part, grade)).append(")").append(NL);
+            }
+        }
+        if (!equipped.isEmpty()) {
+            sb.append("[장착중]").append(NL);
+            for (HashMap<String, Object> e : equipped) {
+                String part = strVal(e.get("PART"), "");
+                int grade = intVal(e.get("GRADE"), 1);
+                Object cid = e.get("EQUIPPED_COMPANION_ID");
+                sb.append("- ").append(JOB_NAME.getOrDefault(strVal(e.get("CLASS"), ""), "?"))
+                  .append(" ").append(partNameOf(part)).append(" ★").append(grade)
+                  .append(" (").append(equipBonusText(part, grade)).append(")")
+                  .append(" → ").append(companionLabel.getOrDefault(((Number) cid).intValue(), "?"))
+                  .append(NL);
+            }
+        }
+        sb.append("/장비장착 N [M], /장비합성 N (둘 다 위 [미착용] 번호 기준)");
+        return sb.toString();
+    }
+
+    /** /장비장착 인자 없이 호출 시: 미착용 장비 번호 + 파티원 번호를 한 번에 안내 */
+    @Override
+    public String equipWearUsage(String userName) {
+        getOrInitProgress(userName);
+        List<HashMap<String, Object>> unequipped = new ArrayList<>();
+        for (HashMap<String, Object> e : dao.selectUserEquip(userName)) {
+            if (e.get("EQUIPPED_COMPANION_ID") == null) unequipped.add(e);
+        }
+        List<HashMap<String, Object>> party = new ArrayList<>();
+        for (HashMap<String, Object> c : dao.selectUserCompanions(userName)) {
+            if (c.get("PARTY_SLOT") != null) party.add(c);
+        }
+
+        StringBuilder sb = new StringBuilder("사용법: /장비장착 N [M]  (N=미착용 장비 번호, M=파티원 번호(생략 시 같은 직업 자동탐색))").append(NL);
+        sb.append("[미착용 장비 N번]").append(NL);
+        if (unequipped.isEmpty()) {
+            sb.append("(없음 — /장비뽑기로 먼저 획득하세요)").append(NL);
+        } else {
+            int idx = 1;
+            for (HashMap<String, Object> e : unequipped) {
+                String part = strVal(e.get("PART"), "");
+                int grade = intVal(e.get("GRADE"), 1);
+                sb.append(idx++).append(". ").append(JOB_NAME.getOrDefault(strVal(e.get("CLASS"), ""), "?"))
+                  .append(" ").append(partNameOf(part)).append(" ★").append(grade)
+                  .append(" (").append(equipBonusText(part, grade)).append(")").append(NL);
+            }
+        }
+        sb.append("[파티원 M번]").append(NL);
+        if (party.isEmpty()) {
+            sb.append("(없음 — /파티편성으로 먼저 편성하세요, 마을에서만 가능)").append(NL);
+        } else {
+            int idx = 1;
+            for (HashMap<String, Object> c : party) {
+                String job = JOB_NAME.getOrDefault(strVal(c.get("CLASS"), ""), "?");
+                String name = strVal(c.get("NAME"), job);
+                sb.append(idx++).append(". ").append(job).append("(").append(name).append(") ★").append(intVal(c.get("GRADE"), 1)).append(NL);
+            }
+        }
         return sb.toString();
     }
 
@@ -1530,7 +1621,11 @@ public class BotS5ServiceImpl implements BotS5Service {
         wear.put("equippedCompanionId", companionId);
         dao.updateEquipEquippedCompanion(wear);
 
-        return "장착했습니다!";
+        int grade = intVal(equip.get("GRADE"), 1);
+        String targetJob = JOB_NAME.getOrDefault(equipClass, "?");
+        String targetName = strVal(targetCompanion.get("NAME"), targetJob);
+        return "🎽 " + targetJob + "(" + targetName + ")에게 " + partNameOf(part) + " ★" + grade
+                + " (" + equipBonusText(part, grade) + ") 장착 완료!";
     }
 
     @Override
@@ -1567,7 +1662,7 @@ public class BotS5ServiceImpl implements BotS5Service {
 
         grantAchievement(userName, 12);
         // TODO: EQUIP_SYNTHESIS 누적 횟수 카운터가 없어 13번(30회) 업적은 아직 체크 불가
-        String partName = "HELMET".equals(part) ? "투구" : "WEAPON".equals(part) ? "무기" : "갑옷";
-        return "✨ 합성 성공! " + JOB_NAME.get(clazz) + " " + partName + " ★" + (grade + 1) + " 획득!";
+        return "✨ 합성 성공! " + JOB_NAME.get(clazz) + " " + partNameOf(part) + " ★" + (grade + 1)
+                + " (" + equipBonusText(part, grade + 1) + ") 획득!";
     }
 }
