@@ -20,10 +20,13 @@ public interface BotS5DAO {
 
     HashMap<String, Object> selectUserFloorProgress(@Param("userName") String userName, @Param("floor") int floor);
     int upsertUserFloorProgress(HashMap<String, Object> map);
+    int deleteUserFloorProgress(@Param("userName") String userName, @Param("floor") int floor);
 
     // ── 칸 발견(방문) 기록 ──
     int insertTileVisit(@Param("userName") String userName, @Param("floor") int floor, @Param("tileNo") int tileNo);
     int countTileVisits(@Param("userName") String userName, @Param("floor") int floor);
+    int selectTileVisitCount(@Param("userName") String userName, @Param("floor") int floor, @Param("tileNo") int tileNo);
+    int deleteTileVisits(@Param("userName") String userName, @Param("floor") int floor);
     List<HashMap<String, Object>> selectVisitedTileNos(@Param("userName") String userName, @Param("floor") int floor);
 
     // ── 몬스터 ──

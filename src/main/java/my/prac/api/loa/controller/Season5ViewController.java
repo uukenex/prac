@@ -135,6 +135,8 @@ public class Season5ViewController {
             result.put("ppValue", progress == null ? 0 : progress.get("PP_VALUE"));
             result.put("ppExt", progress == null ? "" : progress.get("PP_EXT"));
             result.put("freeCompanionPullsLeft", s5Service.freeCompanionPullsLeft(userName));
+            result.put("companionVoucher", progress == null ? 0 : progress.get("COMPANION_VOUCHER"));
+            result.put("equipVoucher", progress == null ? 0 : progress.get("EQUIP_VOUCHER"));
         }
         result.put("companionGacha", s5Dao.selectGachaList("COMPANION", unlocked));
         result.put("equipGacha", s5Dao.selectGachaList("EQUIP", unlocked));

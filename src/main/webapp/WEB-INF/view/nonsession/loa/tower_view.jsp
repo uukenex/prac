@@ -433,11 +433,18 @@ var TW = (function () {
       .then(function (r) { return r.json(); })
       .then(function (data) {
         document.getElementById('shopPpVal').textContent = fmtPP(data.ppValue, data.ppExt);
-        var freePulls = data.freeCompanionPullsLeft || 0;
+        var starterFree = data.freeCompanionPullsLeft || 0;
+        var companionVoucher = data.companionVoucher || 0;
+        var equipVoucher = data.equipVoucher || 0;
+
+        var chipText = [];
+        if (starterFree > 0) chipText.push('튜토리얼 무료 ' + starterFree + '회');
+        if (companionVoucher > 0) chipText.push('동료뽑기권 ' + companionVoucher + '장');
+        if (equipVoucher > 0) chipText.push('장비뽑기권 ' + equipVoucher + '장');
         var freeChip = document.getElementById('shopFreeChip');
-        if (freePulls > 0) {
+        if (chipText.length > 0) {
           freeChip.style.display = '';
-          freeChip.textContent = '🎁 무료 동료뽑기 ' + freePulls + '회 남음';
+          freeChip.textContent = '🎁 ' + chipText.join(' · ');
         } else {
           freeChip.style.display = 'none';
         }
@@ -447,8 +454,8 @@ var TW = (function () {
         (data.companionGacha || []).forEach(function (g, gi) {
           var row = document.createElement('div');
           row.className = 'shop-row';
-          // 첫 번째(하급) 계약서만 무료뽑기 대상 -- 잔여 무료 횟수가 있으면 버튼 문구를 바꿔줌
-          var isFree = gi === 0 && freePulls > 0;
+          // 스타터(1번) 계약서는 튜토리얼 무료도 적용, 나머지는 뽑기권만 적용
+          var isFree = (gi === 0 && starterFree > 0) || companionVoucher > 0;
           var singleLabel = isFree ? '무료뽑기' : '뽑기';
           row.innerHTML = '<span>' + g.GACHA_NAME + ' (' + fmtPP(g.COST_VALUE, g.COST_EXT) + ' PP)</span>'
               + '<span class="btn-group">'
@@ -462,9 +469,10 @@ var TW = (function () {
         (data.equipGacha || []).forEach(function (g) {
           var row = document.createElement('div');
           row.className = 'shop-row';
+          var isFree = equipVoucher > 0;
           row.innerHTML = '<span>' + g.GACHA_NAME + ' (' + fmtPP(g.COST_VALUE, g.COST_EXT) + ' PP)</span>'
               + '<span class="btn-group">'
-              + '<button onclick="TW.action(\'GACHA_EQUIP\',\'' + g.GACHA_ID + '\')">뽑기</button>'
+              + '<button class="' + (isFree ? 'free' : '') + '" onclick="TW.action(\'GACHA_EQUIP\',\'' + g.GACHA_ID + '\')">' + (isFree ? '무료뽑기' : '뽑기') + '</button>'
               + '<button class="ten" onclick="TW.action(\'GACHA_EQUIP_10\',\'' + g.GACHA_ID + '\')">10연속</button>'
               + '</span>';
           eBox.appendChild(row);

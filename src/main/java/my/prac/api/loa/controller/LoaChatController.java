@@ -578,9 +578,6 @@ public class LoaChatController {
 			case "/업적":
 				val = s5.achievements(reqMap);
 				break;
-			case "/탑상점":
-				val = s5.shop(reqMap);
-				break;
 			case "/동료뽑기":
 				val = s5.gachaCompanion(reqMap);
 				break;

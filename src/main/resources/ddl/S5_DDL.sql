@@ -56,12 +56,17 @@ CREATE TABLE TBOT_S5_USER_FLOOR_PROGRESS (
     PRIMARY KEY (USER_NAME, FLOOR)
 );
 
--- discovered tiles per (user, floor) -- landed tiles only, skipped tiles do not count
+-- discovered tiles per (user, floor) -- landed tiles only, skipped tiles do not count.
+-- VISIT_COUNT increments on every re-landing (not just the first); SPECIAL/SHOP tiles
+-- only pay out on VISIT_COUNT=1, turning into a normal combat encounter from the 2nd
+-- landing onward (anti-farming). Rows are wiped when the user retreats from this floor
+-- to its block's village (see changeFloor) so a fresh expedition starts clean.
 CREATE TABLE TBOT_S5_USER_TILE_VISIT (
-    USER_NAME   VARCHAR2(100) NOT NULL,
-    FLOOR       NUMBER        NOT NULL,
-    TILE_NO     NUMBER        NOT NULL,
-    VISIT_DATE  DATE DEFAULT SYSDATE,
+    USER_NAME    VARCHAR2(100) NOT NULL,
+    FLOOR        NUMBER        NOT NULL,
+    TILE_NO      NUMBER        NOT NULL,
+    VISIT_COUNT  NUMBER        DEFAULT 1 NOT NULL,
+    VISIT_DATE   DATE DEFAULT SYSDATE,
     PRIMARY KEY (USER_NAME, FLOOR, TILE_NO)
 );
 
@@ -203,6 +208,13 @@ ALTER TABLE TBOT_S5_USER_PROGRESS ADD (
 -- can fast-travel to it.
 ALTER TABLE TBOT_S5_USER_PROGRESS ADD (
     MAX_FLOOR_REACHED NUMBER DEFAULT 0 NOT NULL
+);
+
+-- free-pull vouchers, granted by landing on a SHOP tile (replaces the old /tower-shop
+-- command entirely). Consumed automatically the next time the matching gacha is pulled.
+ALTER TABLE TBOT_S5_USER_PROGRESS ADD (
+    COMPANION_VOUCHER NUMBER DEFAULT 0 NOT NULL,
+    EQUIP_VOUCHER     NUMBER DEFAULT 0 NOT NULL
 );
 
 EXIT;

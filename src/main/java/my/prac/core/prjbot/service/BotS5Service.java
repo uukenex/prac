@@ -36,9 +36,6 @@ public interface BotS5Service {
     /** /업적 — 달성 목록 + 히든 제외 미달성 목록 */
     String achievements(String userName);
 
-    /** /탑상점 — 해금된 가챠(동료/장비)+주사위+스탯구매 메뉴 요약 */
-    String shopList(String userName);
-
     /** /동료뽑기 N — N번 가챠(계약서)로 동료 1명 뽑기 */
     String gachaCompanion(String userName, int gachaId);
 

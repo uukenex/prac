@@ -310,6 +310,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         ufpSave.put("curTile", newTile);
         dao.upsertUserFloorProgress(ufpSave);
 
+        int priorVisits = dao.selectTileVisitCount(userName, floor, newTile);
         dao.insertTileVisit(userName, floor, newTile);
         int visited = dao.countTileVisits(userName, floor);
 
@@ -342,7 +343,16 @@ public class BotS5ServiceImpl implements BotS5Service {
             sb.append(TILE_LABEL.getOrDefault(tileType, tileType)).append(" 칸!").append(NL);
         }
 
-        switch (tileType) {
+        // 히든(특수)/아이템획득(상점) 칸은 첫 방문에만 보상을 주고, 재방문(2회차부터)은 몬스터 전투로 전환.
+        // 이걸 의미있게 만드는 짝: 마을로 돌아가면 그 층의 방문기록이 초기화되므로(changeFloor 참고)
+        // "한 원정 안에서 같은 칸을 우려먹기"만 막고, 다음 원정에서 다시 새로 발견하는 건 자유.
+        boolean revisitOverride = priorVisits >= 1 && ("SPECIAL".equals(tileType) || "SHOP".equals(tileType));
+        if (revisitOverride) {
+            sb.append("(어라, 낯익은 자리인데...? 몬스터가 튀어나왔다!)").append(NL);
+        }
+        String effectiveType = revisitOverride ? "COMBAT" : tileType;
+
+        switch (effectiveType) {
             case "COMBAT":
                 sb.append(startCombat(userName, p, floor, false));
                 break;
@@ -362,9 +372,21 @@ public class BotS5ServiceImpl implements BotS5Service {
                 sb.append("함정에 걸렸다! 3턴간 전투력이 약화됩니다.");
                 break;
             }
-            case "SHOP":
-                sb.append("비밀상점을 발견했다! /탑상점 으로 확인해보세요.");
+            case "SHOP": {
+                boolean companionVoucher = RND.nextBoolean();
+                HashMap<String, Object> up = new HashMap<>();
+                up.put("userName", userName);
+                if (companionVoucher) {
+                    up.put("companionVoucher", intVal(p.get("COMPANION_VOUCHER"), 0) + 1);
+                } else {
+                    up.put("equipVoucher", intVal(p.get("EQUIP_VOUCHER"), 0) + 1);
+                }
+                dao.updateUserProgress(up);
+                sb.append("비밀상점에서 ").append(companionVoucher ? "동료" : "장비")
+                  .append(" 무료뽑기 1회권을 발견했다! (다음 ").append(companionVoucher ? "/동료뽑기" : "/장비뽑기")
+                  .append(" 시 자동 적용)");
                 break;
+            }
             case "SPECIAL":
                 sb.append(handleSpecialTile(userName));
                 break;
@@ -431,6 +453,30 @@ public class BotS5ServiceImpl implements BotS5Service {
         dao.updateUserProgress(up);
         p.put("PP_VALUE", result.getValue());
         p.put("PP_EXT", result.getUnit());
+        return true;
+    }
+
+    /** 보유한 동료 무료뽑기권이 있으면 1장 소비하고 true, 없으면 false(비용 정상 차감 필요). */
+    private boolean consumeCompanionVoucher(String userName, HashMap<String, Object> p) {
+        int cur = intVal(p.get("COMPANION_VOUCHER"), 0);
+        if (cur <= 0) return false;
+        HashMap<String, Object> up = new HashMap<>();
+        up.put("userName", userName);
+        up.put("companionVoucher", cur - 1);
+        dao.updateUserProgress(up);
+        p.put("COMPANION_VOUCHER", cur - 1);
+        return true;
+    }
+
+    /** 보유한 장비 무료뽑기권이 있으면 1장 소비하고 true, 없으면 false(비용 정상 차감 필요). */
+    private boolean consumeEquipVoucher(String userName, HashMap<String, Object> p) {
+        int cur = intVal(p.get("EQUIP_VOUCHER"), 0);
+        if (cur <= 0) return false;
+        HashMap<String, Object> up = new HashMap<>();
+        up.put("userName", userName);
+        up.put("equipVoucher", cur - 1);
+        dao.updateUserProgress(up);
+        p.put("EQUIP_VOUCHER", cur - 1);
         return true;
     }
 
@@ -775,11 +821,23 @@ public class BotS5ServiceImpl implements BotS5Service {
             grantFloorAchievements(userName, target);
         }
 
+        // 사냥터층에서 마을로 돌아가면 그 층의 원정(보드 위치+발견기록)을 초기화한다.
+        // 업적(탐험왕 등)을 자유롭게 파밍하지 못하게 하려는 의도 -- 한 원정 안에서 끝까지 밀어야 함.
+        int fm = floor % 10;
+        boolean returnedToVillage = target % 10 == 0 && fm >= 1 && fm <= 8 && floor != target;
+        if (returnedToVillage) {
+            dao.deleteUserFloorProgress(userName, floor);
+            dao.deleteTileVisits(userName, floor);
+        }
+
         StringBuilder sb = new StringBuilder(userName).append("님," + NL);
         if (wasInCombat) {
             sb.append("💨 전투에서 도망쳤습니다!").append(NL);
         }
         sb.append(floor).append("층 → ").append(target).append("층(").append(floorKindLabel(target)).append(")으로 이동했습니다.");
+        if (returnedToVillage) {
+            sb.append(NL).append("⚠️ ").append(floor).append("층의 탐사 진행도가 초기화되었습니다. (다시 가면 처음부터)");
+        }
 
         int tm = target % 10;
         if (tm >= 1 && tm <= 8) {
@@ -903,38 +961,10 @@ public class BotS5ServiceImpl implements BotS5Service {
     }
 
     // ================================================================
-    // /탑상점
-    // ================================================================
-    @Override
-    public String shopList(String userName) {
-        HashMap<String, Object> p = getOrInitProgress(userName);
-        int unlocked = intVal(p.get("UNLOCKED_BLOCK"), 0);
-
-        StringBuilder sb = new StringBuilder(userName).append("님의 탑 상점 (해금 구간: ").append(unlocked).append("층)," + NL);
-        sb.append("── 동료 계약서 (/동료뽑기 N) ──").append(NL);
-        for (HashMap<String, Object> g : dao.selectGachaList("COMPANION", unlocked)) {
-            appendGachaLine(sb, g);
-        }
-        sb.append("── 장비 보물상자 (/장비뽑기 N) ──").append(NL);
-        for (HashMap<String, Object> g : dao.selectGachaList("EQUIP", unlocked)) {
-            appendGachaLine(sb, g);
-        }
-        sb.append("── 기타 ──").append(NL);
-        sb.append("/주사위구매 — 주사위 등급 확인/교체").append(NL);
-        sb.append("/스탯구매 — 공격/방어 스탯 강화").append(NL);
-        sb.append("/장비목록, /장비장착, /장비합성 — 장비 관리");
-        return sb.toString();
-    }
-
-    private void appendGachaLine(StringBuilder sb, HashMap<String, Object> g) {
-        PP cost = PP.of(((Number) g.get("COST_VALUE")).doubleValue(), strVal(g.get("COST_EXT"), ""));
-        sb.append(intVal(g.get("GACHA_ID"), 0)).append(". ").append(strVal(g.get("GACHA_NAME"), ""))
-          .append(" — ").append(cost.format()).append(" PP").append(NL);
-    }
-
-    // ================================================================
     // 가챠
     // ================================================================
+    // (구 /탑상점 명령어는 제거됨 -- SPA "상점" 탭이 그 UI 역할을 대신하고,
+    //  비밀상점 칸에서 나오는 무료뽑기권으로 대체됨)
 
     /**
      * 동료 초상화용 랜덤 이미지 1장을 가져와 URL만 반환. nekos.best는 이미 user_info_view.jsp에서
@@ -991,13 +1021,17 @@ public class BotS5ServiceImpl implements BotS5Service {
             HashMap<String, Object> p, int ownedSoFar) {
         HashMap<String, Object> result = new HashMap<>();
         int gachaId = intVal(gacha.get("GACHA_ID"), 0);
+
+        // 해금 여부는 무료뽑기권/스타터 무료와 무관하게 항상 확인 (권은 비용만 면제, 해금 요건은 그대로)
+        int unlocked = intVal(p.get("UNLOCKED_BLOCK"), 0);
+        if (intVal(gacha.get("UNLOCK_FLOOR"), 0) > unlocked) {
+            result.put("error", "아직 해금되지 않은 계약서입니다.");
+            return result;
+        }
+
         boolean free = gachaId == STARTER_GACHA_ID && ownedSoFar < STARTER_FREE_PULLS;
+        if (!free) free = consumeCompanionVoucher(userName, p);
         if (!free) {
-            int unlocked = intVal(p.get("UNLOCKED_BLOCK"), 0);
-            if (intVal(gacha.get("UNLOCK_FLOOR"), 0) > unlocked) {
-                result.put("error", "아직 해금되지 않은 계약서입니다.");
-                return result;
-            }
             PP cost = PP.of(((Number) gacha.get("COST_VALUE")).doubleValue(), strVal(gacha.get("COST_EXT"), ""));
             if (!deductPp(userName, p, cost)) {
                 result.put("error", "PP가 부족합니다. (필요 " + cost.format() + " PP)");
@@ -1130,10 +1164,12 @@ public class BotS5ServiceImpl implements BotS5Service {
             result.put("error", "아직 해금되지 않은 상자입니다.");
             return result;
         }
-        PP cost = PP.of(((Number) gacha.get("COST_VALUE")).doubleValue(), strVal(gacha.get("COST_EXT"), ""));
-        if (!deductPp(userName, p, cost)) {
-            result.put("error", "PP가 부족합니다. (필요 " + cost.format() + " PP)");
-            return result;
+        if (!consumeEquipVoucher(userName, p)) {
+            PP cost = PP.of(((Number) gacha.get("COST_VALUE")).doubleValue(), strVal(gacha.get("COST_EXT"), ""));
+            if (!deductPp(userName, p, cost)) {
+                result.put("error", "PP가 부족합니다. (필요 " + cost.format() + " PP)");
+                return result;
+            }
         }
 
         int grade = rollGrade(gacha);
