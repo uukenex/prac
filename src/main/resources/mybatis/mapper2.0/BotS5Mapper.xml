@@ -157,7 +157,7 @@
         SELECT GACHA_ID, GACHA_TYPE, GACHA_NAME, UNLOCK_FLOOR, COST_VALUE, COST_EXT,
                PROB_G1, PROB_G2, PROB_G3, PROB_G4, PROB_G5, PROB_G6
         FROM TBOT_S5_GACHA_MASTER
-        WHERE GACHA_TYPE = #{gachaType} AND UNLOCK_FLOOR <= #{maxUnlockFloor}
+        WHERE GACHA_TYPE = #{gachaType} AND UNLOCK_FLOOR &lt;= #{maxUnlockFloor}
         ORDER BY UNLOCK_FLOOR
     </select>
 
