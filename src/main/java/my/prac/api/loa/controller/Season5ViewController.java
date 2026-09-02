@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 
 import my.prac.core.prjbot.dao.BotS5DAO;
 import my.prac.core.prjbot.service.BotS5Service;
+import my.prac.core.util.PP;
 
 /**
  * [시즌5] 탑 등반 SPA 뷰 컨트롤러
@@ -71,7 +72,36 @@ public class Season5ViewController {
             result.put("tiles", buildTilesWithFogOfWar(userName, floor));
             result.put("myTile", s5Dao.selectUserFloorProgress(userName, floor));
         }
+        if ("Y".equals(String.valueOf(progress.get("AUTO_HUNT_YN")))) {
+            result.put("autoHunt", buildAutoHuntInfo(userName));
+        }
         return ResponseEntity.ok(result);
+    }
+
+    /** 자동사냥 화면 표시용: 몇 층 기준으로 정산되는지 + 시간당 PP + 지금까지 누적 경과시간(분). */
+    private HashMap<String, Object> buildAutoHuntInfo(String userName) {
+        HashMap<String, Object> log = s5Dao.selectAutoHuntLog(userName);
+        if (log == null) return null;
+
+        HashMap<String, Object> info = new HashMap<>();
+        int floor = toInt(log.get("FLOOR"));
+        info.put("floor", floor);
+
+        int blockNo = (floor / 10) + 1;
+        HashMap<String, Object> mon = s5Dao.selectMonster(blockNo, "N");
+        if (mon != null) {
+            info.put("monsterName", mon.get("MONSTER_NAME"));
+            Object extObj = mon.get("PP_PER_KILL_EXT");
+            PP perKill = PP.of(((Number) mon.get("PP_PER_KILL_VALUE")).doubleValue(), extObj == null ? "" : extObj.toString());
+            info.put("ppPerHourFormatted", perKill.multiply(6).format());
+        }
+
+        Object startObj = log.get("START_DATE");
+        if (startObj instanceof java.util.Date) {
+            long elapsedMs = System.currentTimeMillis() - ((java.util.Date) startObj).getTime();
+            info.put("elapsedMinutes", Math.max(0, elapsedMs / 60000));
+        }
+        return info;
     }
 
     @GetMapping("/api/tower-party")
@@ -102,6 +132,9 @@ public class Season5ViewController {
         if (!userName.trim().isEmpty()) {
             HashMap<String, Object> progress = s5Service.selectUserProgress(userName);
             if (progress != null) unlocked = toInt(progress.get("UNLOCKED_BLOCK"));
+            result.put("ppValue", progress == null ? 0 : progress.get("PP_VALUE"));
+            result.put("ppExt", progress == null ? "" : progress.get("PP_EXT"));
+            result.put("freeCompanionPullsLeft", s5Service.freeCompanionPullsLeft(userName));
         }
         result.put("companionGacha", s5Dao.selectGachaList("COMPANION", unlocked));
         result.put("equipGacha", s5Dao.selectGachaList("EQUIP", unlocked));
@@ -167,8 +200,14 @@ public class Season5ViewController {
                 case "GACHA_COMPANION":
                     message = s5Service.gachaCompanion(userName, Integer.parseInt(param1));
                     break;
+                case "GACHA_COMPANION_10":
+                    message = s5Service.gachaCompanionTen(userName, Integer.parseInt(param1));
+                    break;
                 case "GACHA_EQUIP":
                     message = s5Service.gachaEquip(userName, Integer.parseInt(param1));
+                    break;
+                case "GACHA_EQUIP_10":
+                    message = s5Service.gachaEquipTen(userName, Integer.parseInt(param1));
                     break;
                 case "DICE_BUY":
                     message = s5Service.diceShop(userName, param1.isEmpty() ? null : Integer.parseInt(param1));

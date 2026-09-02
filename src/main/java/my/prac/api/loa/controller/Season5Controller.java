@@ -96,11 +96,31 @@ public class Season5Controller {
         }
     }
 
+    public String gachaCompanionTen(HashMap<String, Object> map) {
+        String param1 = param1Of(map);
+        if (param1.isEmpty()) return "사용법: /동료뽑기10 N (N은 /탑상점에서 확인)";
+        try {
+            return s5Service.gachaCompanionTen(userNameOf(map), Integer.parseInt(param1));
+        } catch (NumberFormatException e) {
+            return "번호는 숫자로 입력해주세요.";
+        }
+    }
+
     public String gachaEquip(HashMap<String, Object> map) {
         String param1 = param1Of(map);
         if (param1.isEmpty()) return "사용법: /장비뽑기 N (N은 /탑상점에서 확인)";
         try {
             return s5Service.gachaEquip(userNameOf(map), Integer.parseInt(param1));
+        } catch (NumberFormatException e) {
+            return "번호는 숫자로 입력해주세요.";
+        }
+    }
+
+    public String gachaEquipTen(HashMap<String, Object> map) {
+        String param1 = param1Of(map);
+        if (param1.isEmpty()) return "사용법: /장비뽑기10 N (N은 /탑상점에서 확인)";
+        try {
+            return s5Service.gachaEquipTen(userNameOf(map), Integer.parseInt(param1));
         } catch (NumberFormatException e) {
             return "번호는 숫자로 입력해주세요.";
         }

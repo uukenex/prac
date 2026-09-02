@@ -42,8 +42,17 @@ public interface BotS5Service {
     /** /동료뽑기 N — N번 가챠(계약서)로 동료 1명 뽑기 */
     String gachaCompanion(String userName, int gachaId);
 
+    /** /동료뽑기10 N — N번 가챠로 동료 10연속 뽑기(무료뽑기 잔여분 자동 적용, PP 부족 시 중단) */
+    String gachaCompanionTen(String userName, int gachaId);
+
     /** /장비뽑기 N — N번 가챠(보물상자)로 장비 1개 뽑기 */
     String gachaEquip(String userName, int gachaId);
+
+    /** /장비뽑기10 N — N번 가챠로 장비 10연속 뽑기(PP 부족 시 중단) */
+    String gachaEquipTen(String userName, int gachaId);
+
+    /** 하급 동료 계약서(GACHA_ID=1) 무료뽑기 잔여 횟수 */
+    int freeCompanionPullsLeft(String userName);
 
     /** /주사위구매 — 인자 없으면 해금된 주사위 목록, N 있으면 해당 등급으로 장착 */
     String diceShop(String userName, Integer n);

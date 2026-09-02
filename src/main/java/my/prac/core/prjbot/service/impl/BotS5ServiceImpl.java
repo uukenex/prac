@@ -1,5 +1,9 @@
 package my.prac.core.prjbot.service.impl;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -7,6 +11,8 @@ import java.util.Random;
 
 import javax.annotation.Resource;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -52,6 +58,13 @@ public class BotS5ServiceImpl implements BotS5Service {
         put("WARRIOR", "전사"); put("MAGE", "마법사"); put("ROGUE", "도적");
         put("ARCHER", "궁수");  put("PRIEST", "도사");
     }};
+
+    // 동료 뽑을 때 무작위로 붙는 일본식 이름 (성급/직업과 무관, 순전히 개성 부여용)
+    private static final String[] NAME_POOL = {
+        "유키", "하루토", "사쿠라", "렌", "아오이", "리쿠", "나츠키", "히나",
+        "소라", "유토", "카이토", "미유", "아카리", "유이", "료", "리코",
+        "소우타", "나나", "유즈키", "카나데", "츠바사", "메이", "슌", "이츠키",
+    };
 
     // 장비 등급별 보너스 [투구고정,투구%, 무기고정,무기%, 갑옷고정,갑옷%], index0=★1
     private static final double[][] EQUIP_BONUS = {
@@ -479,6 +492,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             if (PP.toBaseValue(hp) <= 0) continue; // 전투불가
 
             String job = strVal(c.get("CLASS"), "WARRIOR");
+            String cName = strVal(c.get("NAME"), JOB_NAME.getOrDefault(job, "동료"));
             int grade = intVal(c.get("GRADE"), 1);
             List<HashMap<String, Object>> equips = dao.selectEquipByCompanion(intVal(c.get("COMPANION_ID"), 0));
             int[] eff = computeEffectiveStat(job, grade, equips, userStat);
@@ -487,7 +501,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             int dmg = Math.max(1, eff[1] * roll - monsterDef);
             dmg = Math.max(dmg, eff[3]); // 스탯구매 최소공격력 보정
             totalDamage += dmg;
-            sb.append(JOB_NAME.getOrDefault(job, "동료")).append(" 공격! 🎲").append(roll)
+            sb.append(cName).append(" 공격! 🎲").append(roll)
               .append(" → ").append(dmg).append(" 데미지").append(NL);
 
             switch (job) {
@@ -637,8 +651,9 @@ public class BotS5ServiceImpl implements BotS5Service {
         cUp.put("curHpExt", targetHpAfter.getUnit());
         dao.updateCompanionHp(cUp);
 
+        String tName = strVal(target.get("NAME"), JOB_NAME.getOrDefault(tJob, "동료"));
         sb.append(strVal(mon.get("MONSTER_NAME"), "몬스터")).append(" 반격! 🎲").append(roll).append(" → ")
-          .append(JOB_NAME.getOrDefault(tJob, "동료")).append("에게 ")
+          .append(tName).append("에게 ")
           .append(dmgToParty).append(" 피해 (남은 HP ").append(targetHpAfter.format()).append(")");
         if (PP.toBaseValue(targetHpAfter) <= 0) sb.append(" — 전투불가!");
 
@@ -802,10 +817,11 @@ public class BotS5ServiceImpl implements BotS5Service {
         int idx = 1;
         for (HashMap<String, Object> c : companions) {
             String job = JOB_NAME.getOrDefault(strVal(c.get("CLASS"), "WARRIOR"), "?");
+            String name = strVal(c.get("NAME"), job); // 이름 없는 옛 데이터는 직업명으로 대체 표시
             int grade = intVal(c.get("GRADE"), 1);
             PP hp = PP.of(((Number) c.get("CUR_HP_VALUE")).doubleValue(), strVal(c.get("CUR_HP_EXT"), ""));
             Object slot = c.get("PARTY_SLOT");
-            sb.append(idx++).append(". ").append(job).append(" ★").append(grade)
+            sb.append(idx++).append(". ").append(name).append(" (").append(job).append(" ★").append(grade).append(")")
               .append(" HP ").append(hp.format())
               .append(slot != null ? " [파티 " + slot + "번]" : " [대기]")
               .append(NL);
@@ -919,6 +935,35 @@ public class BotS5ServiceImpl implements BotS5Service {
     // ================================================================
     // 가챠
     // ================================================================
+
+    /**
+     * 동료 초상화용 랜덤 이미지 1장을 가져와 URL만 반환. nekos.best는 이미 user_info_view.jsp에서
+     * 클라이언트(localStorage)로 캐싱해 쓰던 API인데, 여기선 동료별로 영구히 남아야 해서 뽑는 시점에
+     * 서버가 한 번 호출해 DB(IMAGE_URL)에 박아둔다. 실패해도 동료 생성 자체는 계속 진행(null 반환).
+     */
+    private String fetchRandomNekoImage() {
+        try {
+            URL url = new URL("https://nekos.best/api/v2/neko");
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("GET");
+            conn.setConnectTimeout(3000);
+            conn.setReadTimeout(3000);
+            if (conn.getResponseCode() != 200) return null;
+
+            StringBuilder sb = new StringBuilder();
+            try (BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream(), "utf-8"))) {
+                String line;
+                while ((line = br.readLine()) != null) sb.append(line);
+            }
+            JSONObject obj = new JSONObject(sb.toString());
+            JSONArray results = obj.optJSONArray("results");
+            if (results == null || results.length() == 0) return null;
+            return results.getJSONObject(0).optString("url", null);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     private int rollGrade(HashMap<String, Object> gacha) {
         double[] w = new double[6];
         double sum = 0;
@@ -941,57 +986,120 @@ public class BotS5ServiceImpl implements BotS5Service {
     private static final int STARTER_GACHA_ID = 1;
     private static final int STARTER_FREE_PULLS = 2;
 
-    private String pullCompanionInternal(String userName, int gachaId) {
-        HashMap<String, Object> gacha = dao.selectGacha(gachaId);
-        if (gacha == null || !"COMPANION".equals(strVal(gacha.get("GACHA_TYPE"), ""))) {
-            return "존재하지 않는 동료 계약서입니다.";
-        }
-        int ownedBefore = dao.countUserCompanions(userName);
-        boolean free = gachaId == STARTER_GACHA_ID && ownedBefore < STARTER_FREE_PULLS;
-
-        HashMap<String, Object> p = dao.selectUserProgress(userName);
+    /** 동료 뽑기 1회의 핵심 로직(무료판정/비용차감/추첨/insert)만 수행. 실패 시 result에 error만 채워 반환. */
+    private HashMap<String, Object> pullCompanionCore(String userName, HashMap<String, Object> gacha,
+            HashMap<String, Object> p, int ownedSoFar) {
+        HashMap<String, Object> result = new HashMap<>();
+        int gachaId = intVal(gacha.get("GACHA_ID"), 0);
+        boolean free = gachaId == STARTER_GACHA_ID && ownedSoFar < STARTER_FREE_PULLS;
         if (!free) {
             int unlocked = intVal(p.get("UNLOCKED_BLOCK"), 0);
             if (intVal(gacha.get("UNLOCK_FLOOR"), 0) > unlocked) {
-                return "아직 해금되지 않은 계약서입니다.";
+                result.put("error", "아직 해금되지 않은 계약서입니다.");
+                return result;
             }
             PP cost = PP.of(((Number) gacha.get("COST_VALUE")).doubleValue(), strVal(gacha.get("COST_EXT"), ""));
             if (!deductPp(userName, p, cost)) {
-                return "PP가 부족합니다. (필요 " + cost.format() + " PP)";
+                result.put("error", "PP가 부족합니다. (필요 " + cost.format() + " PP)");
+                return result;
             }
         }
 
         int grade = rollGrade(gacha);
         String job = JOB_KEYS[RND.nextInt(JOB_KEYS.length)];
         int[] stat = calcBaseStat(job, grade);
+        String name = NAME_POOL[RND.nextInt(NAME_POOL.length)];
+        String imageUrl = fetchRandomNekoImage();
 
         HashMap<String, Object> c = new HashMap<>();
         c.put("userName", userName);
         c.put("class", job);
         c.put("grade", grade);
+        c.put("name", name);
+        c.put("imageUrl", imageUrl);
         c.put("curHpValue", (double) stat[0]);
         c.put("curHpExt", "");
         c.put("partySlot", null);
         dao.insertCompanion(c);
 
-        int cnt = ownedBefore + 1;
+        int cnt = ownedSoFar + 1;
         if (cnt == 1) grantAchievement(userName, 10);
         if (cnt == 50) grantAchievement(userName, 11);
         if (grade == 6) grantAchievement(userName, 22);
+
+        result.put("ok", true);
+        result.put("job", job);
+        result.put("grade", grade);
+        result.put("stat", stat);
+        result.put("name", name);
+        return result;
+    }
+
+    private String pullCompanionInternal(String userName, int gachaId) {
+        HashMap<String, Object> gacha = dao.selectGacha(gachaId);
+        if (gacha == null || !"COMPANION".equals(strVal(gacha.get("GACHA_TYPE"), ""))) {
+            return "존재하지 않는 동료 계약서입니다.";
+        }
+        int ownedBefore = dao.countUserCompanions(userName);
+        HashMap<String, Object> p = dao.selectUserProgress(userName);
+        HashMap<String, Object> r = pullCompanionCore(userName, gacha, p, ownedBefore);
+        if (r.get("error") != null) return (String) r.get("error");
+
+        String job = (String) r.get("job");
+        int grade = intVal(r.get("grade"), 1);
+        int[] stat = (int[]) r.get("stat");
+        String name = (String) r.get("name");
+        int cnt = ownedBefore + 1;
 
         // 새로 뽑은 동료는 (PARTY_SLOT NULLS LAST, COMPANION_ID) 정렬상 항상 목록의 맨 끝(=cnt번)에 위치
         StringBuilder sb = new StringBuilder();
         sb.append("┌─────────────┐").append(NL);
         sb.append("  🎉 새 동료 영입!").append(NL);
         sb.append("└─────────────┘").append(NL);
-        sb.append("직업: ").append(JOB_NAME.get(job)).append(" ★").append(grade).append(NL);
+        sb.append(name).append(" (").append(JOB_NAME.get(job)).append(" ★").append(grade).append(")").append(NL);
         sb.append("스탯: HP ").append(stat[0]).append(" / ATK ").append(stat[1]).append(" / DEF ").append(stat[2]).append(NL);
         sb.append("👉 /파티편성 ").append(cnt).append(" 로 파티에 편성하세요 (동료 목록 ").append(cnt).append("번)");
         return sb.toString();
     }
 
+    private String pullCompanionTenInternal(String userName, int gachaId) {
+        HashMap<String, Object> gacha = dao.selectGacha(gachaId);
+        if (gacha == null || !"COMPANION".equals(strVal(gacha.get("GACHA_TYPE"), ""))) {
+            return "존재하지 않는 동료 계약서입니다.";
+        }
+        int owned = dao.countUserCompanions(userName);
+        HashMap<String, Object> p = dao.selectUserProgress(userName);
+
+        int[] gradeCount = new int[7]; // index 1~6
+        int success = 0;
+        String stopReason = null;
+        for (int i = 0; i < 10; i++) {
+            HashMap<String, Object> r = pullCompanionCore(userName, gacha, p, owned);
+            if (r.get("error") != null) {
+                stopReason = (String) r.get("error");
+                break;
+            }
+            owned++;
+            success++;
+            gradeCount[intVal(r.get("grade"), 1)]++;
+        }
+
+        StringBuilder sb = new StringBuilder("🎰 10연속 동료뽑기 (").append(success).append("/10)").append(NL);
+        for (int g = 1; g <= 6; g++) {
+            if (gradeCount[g] > 0) sb.append("★").append(g).append("×").append(gradeCount[g]).append("  ");
+        }
+        if (stopReason != null) sb.append(NL).append("⚠️ ").append(stopReason).append(" (그 이상은 중단됨)");
+        sb.append(NL).append("👉 /파티편성 으로 확인하세요");
+        return sb.toString();
+    }
+
     private boolean isVillage(HashMap<String, Object> p) {
         return intVal(p.get("CUR_FLOOR"), 0) % 10 == 0;
+    }
+
+    @Override
+    public int freeCompanionPullsLeft(String userName) {
+        return Math.max(0, STARTER_FREE_PULLS - dao.countUserCompanions(userName));
     }
 
     @Override
@@ -1006,22 +1114,26 @@ public class BotS5ServiceImpl implements BotS5Service {
 
     @Override
     @Transactional
-    public String gachaEquip(String userName, int gachaId) {
+    public String gachaCompanionTen(String userName, int gachaId) {
         HashMap<String, Object> p = getOrInitProgress(userName);
         if (!isVillage(p)) {
-            return "🏘️ 장비뽑기는 마을에서만 가능합니다. /층변경 0 으로 마을로 이동하세요.";
+            return "🏘️ 동료뽑기는 마을에서만 가능합니다. /층변경 0 으로 마을로 이동하세요.";
         }
-        HashMap<String, Object> gacha = dao.selectGacha(gachaId);
-        if (gacha == null || !"EQUIP".equals(strVal(gacha.get("GACHA_TYPE"), ""))) {
-            return "존재하지 않는 장비 상자입니다.";
-        }
+        return pullCompanionTenInternal(userName, gachaId);
+    }
+
+    /** 장비 뽑기 1회의 핵심 로직만 수행. 실패 시 result에 error만 채워 반환. */
+    private HashMap<String, Object> pullEquipCore(String userName, HashMap<String, Object> gacha, HashMap<String, Object> p) {
+        HashMap<String, Object> result = new HashMap<>();
         int unlocked = intVal(p.get("UNLOCKED_BLOCK"), 0);
         if (intVal(gacha.get("UNLOCK_FLOOR"), 0) > unlocked) {
-            return "아직 해금되지 않은 상자입니다.";
+            result.put("error", "아직 해금되지 않은 상자입니다.");
+            return result;
         }
         PP cost = PP.of(((Number) gacha.get("COST_VALUE")).doubleValue(), strVal(gacha.get("COST_EXT"), ""));
         if (!deductPp(userName, p, cost)) {
-            return "PP가 부족합니다. (필요 " + cost.format() + " PP)";
+            result.put("error", "PP가 부족합니다. (필요 " + cost.format() + " PP)");
+            return result;
         }
 
         int grade = rollGrade(gacha);
@@ -1037,11 +1149,68 @@ public class BotS5ServiceImpl implements BotS5Service {
         e.put("equippedCompanionId", null);
         dao.insertEquip(e);
 
-        int cnt = dao.countUserEquip(userName);
         if (grade == 6) grantAchievement(userName, 22);
 
+        result.put("ok", true);
+        result.put("job", job);
+        result.put("part", part);
+        result.put("grade", grade);
+        return result;
+    }
+
+    @Override
+    @Transactional
+    public String gachaEquip(String userName, int gachaId) {
+        HashMap<String, Object> p = getOrInitProgress(userName);
+        if (!isVillage(p)) {
+            return "🏘️ 장비뽑기는 마을에서만 가능합니다. /층변경 0 으로 마을로 이동하세요.";
+        }
+        HashMap<String, Object> gacha = dao.selectGacha(gachaId);
+        if (gacha == null || !"EQUIP".equals(strVal(gacha.get("GACHA_TYPE"), ""))) {
+            return "존재하지 않는 장비 상자입니다.";
+        }
+        HashMap<String, Object> r = pullEquipCore(userName, gacha, p);
+        if (r.get("error") != null) return (String) r.get("error");
+
+        String job = (String) r.get("job");
+        String part = (String) r.get("part");
+        int grade = intVal(r.get("grade"), 1);
         String partName = "HELMET".equals(part) ? "투구" : "WEAPON".equals(part) ? "무기" : "갑옷";
         return "🎁 " + JOB_NAME.get(job) + "용 " + partName + " ★" + grade + " 획득!";
+    }
+
+    @Override
+    @Transactional
+    public String gachaEquipTen(String userName, int gachaId) {
+        HashMap<String, Object> p = getOrInitProgress(userName);
+        if (!isVillage(p)) {
+            return "🏘️ 장비뽑기는 마을에서만 가능합니다. /층변경 0 으로 마을로 이동하세요.";
+        }
+        HashMap<String, Object> gacha = dao.selectGacha(gachaId);
+        if (gacha == null || !"EQUIP".equals(strVal(gacha.get("GACHA_TYPE"), ""))) {
+            return "존재하지 않는 장비 상자입니다.";
+        }
+
+        int[] gradeCount = new int[7];
+        int success = 0;
+        String stopReason = null;
+        for (int i = 0; i < 10; i++) {
+            HashMap<String, Object> r = pullEquipCore(userName, gacha, p);
+            if (r.get("error") != null) {
+                stopReason = (String) r.get("error");
+                break;
+            }
+            success++;
+            gradeCount[intVal(r.get("grade"), 1)]++;
+        }
+
+        StringBuilder sb = new StringBuilder("🎰 10연속 장비뽑기 (").append(success).append("/10)").append(NL);
+        for (int g = 1; g <= 6; g++) {
+            if (gradeCount[g] > 0) sb.append("★").append(g).append("×").append(gradeCount[g]).append("  ");
+        }
+        if (stopReason != null) sb.append(NL).append("⚠️ ").append(stopReason).append(" (그 이상은 중단됨)");
+        sb.append(NL).append("👉 파티/장비 탭에서 확인하세요");
+        return sb.toString();
     }
 
     // ================================================================

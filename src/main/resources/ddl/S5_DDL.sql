@@ -82,11 +82,16 @@ CREATE TABLE TBOT_S5_MONSTER_INFO (
 );
 
 -- user-owned companions (CLASS: WARRIOR/MAGE/ROGUE/ARCHER/PRIEST, GRADE 1..6, PARTY_SLOT 1..3 or NULL)
+-- NAME: random Japanese-style name assigned at pull time. IMAGE_URL: portrait fetched once
+-- from nekos.best at pull time and persisted (server-side, not just client localStorage
+-- like the earlier user_info_view.jsp pattern) so every viewer sees the same face.
 CREATE TABLE TBOT_S5_USER_COMPANION (
     COMPANION_ID    NUMBER        PRIMARY KEY,
     USER_NAME       VARCHAR2(100) NOT NULL,
     CLASS           VARCHAR2(10)  NOT NULL,
     GRADE           NUMBER(1)     NOT NULL,
+    NAME            VARCHAR2(50),
+    IMAGE_URL       VARCHAR2(500),
     CUR_HP_VALUE    NUMBER        NOT NULL,
     CUR_HP_EXT      VARCHAR2(1)   DEFAULT '',
     PARTY_SLOT      NUMBER,

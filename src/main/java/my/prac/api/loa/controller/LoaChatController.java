@@ -584,8 +584,14 @@ public class LoaChatController {
 			case "/동료뽑기":
 				val = s5.gachaCompanion(reqMap);
 				break;
+			case "/동료뽑기10":
+				val = s5.gachaCompanionTen(reqMap);
+				break;
 			case "/장비뽑기":
 				val = s5.gachaEquip(reqMap);
+				break;
+			case "/장비뽑기10":
+				val = s5.gachaEquipTen(reqMap);
 				break;
 			case "/주사위구매":
 				val = s5.diceShop(reqMap);

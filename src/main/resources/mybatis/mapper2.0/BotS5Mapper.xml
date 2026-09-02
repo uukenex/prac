@@ -110,7 +110,7 @@
 
     <!-- ==================== 동료 ==================== -->
     <select id="selectUserCompanions" resultType="hashmap">
-        SELECT COMPANION_ID, USER_NAME, CLASS, GRADE, CUR_HP_VALUE, CUR_HP_EXT, PARTY_SLOT
+        SELECT COMPANION_ID, USER_NAME, CLASS, GRADE, NAME, IMAGE_URL, CUR_HP_VALUE, CUR_HP_EXT, PARTY_SLOT
         FROM TBOT_S5_USER_COMPANION
         WHERE USER_NAME = #{userName}
         ORDER BY PARTY_SLOT NULLS LAST, COMPANION_ID
@@ -122,10 +122,11 @@
 
     <insert id="insertCompanion" parameterType="hashmap">
         INSERT INTO TBOT_S5_USER_COMPANION
-            (COMPANION_ID, USER_NAME, CLASS, GRADE, CUR_HP_VALUE, CUR_HP_EXT, PARTY_SLOT)
+            (COMPANION_ID, USER_NAME, CLASS, GRADE, NAME, IMAGE_URL, CUR_HP_VALUE, CUR_HP_EXT, PARTY_SLOT)
         VALUES
-            (SEQ_S5_COMPANION_ID.NEXTVAL, #{userName}, #{class}, #{grade}, #{curHpValue}, #{curHpExt},
-             #{partySlot, jdbcType=NUMERIC})
+            (SEQ_S5_COMPANION_ID.NEXTVAL, #{userName}, #{class}, #{grade},
+             #{name, jdbcType=VARCHAR}, #{imageUrl, jdbcType=VARCHAR},
+             #{curHpValue}, #{curHpExt}, #{partySlot, jdbcType=NUMERIC})
     </insert>
 
     <update id="updateCompanionHp" parameterType="hashmap">
