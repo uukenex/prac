@@ -9,16 +9,17 @@
         SELECT USER_NAME, CUR_FLOOR, UNLOCKED_BLOCK, PP_VALUE, PP_EXT, STATUS,
                TRAP_TURN_LEFT, DICE_GRADE, KILL_COUNT_CUR, AUTO_HUNT_YN,
                TOTAL_KILL_COUNT, CUR_MONSTER_ID, CUR_MONSTER_HP_VALUE, CUR_MONSTER_HP_EXT,
-               MONSTER_STUNNED_YN, SHIELD_VALUE, SHIELD_EXT, LAST_DICE_ACTION_DATE
+               MONSTER_STUNNED_YN, SHIELD_VALUE, SHIELD_EXT, LAST_DICE_ACTION_DATE, MAX_FLOOR_REACHED
         FROM TBOT_S5_USER_PROGRESS
         WHERE USER_NAME = #{userName}
     </select>
 
+    <!-- MAX_FLOOR_REACHED=1: 0층 마을에서 시작해도 그 구간 첫 사냥터층(1층)은 바로 층변경 가능해야 함 -->
     <insert id="insertUserProgress" parameterType="hashmap">
         INSERT INTO TBOT_S5_USER_PROGRESS
-            (USER_NAME, CUR_FLOOR, UNLOCKED_BLOCK, PP_VALUE, PP_EXT, STATUS, DICE_GRADE)
+            (USER_NAME, CUR_FLOOR, UNLOCKED_BLOCK, PP_VALUE, PP_EXT, STATUS, DICE_GRADE, MAX_FLOOR_REACHED)
         VALUES
-            (#{userName}, 0, 0, 0, '', 'NORMAL', 'DICE_6')
+            (#{userName}, 0, 0, 0, '', 'NORMAL', 'DICE_6', 1)
     </insert>
 
     <!-- map에 담긴 키만 동적으로 SET (부분 업데이트) -->
@@ -26,6 +27,12 @@
         UPDATE TBOT_S5_USER_PROGRESS
         <set>
             <if test="curFloor != null">CUR_FLOOR = #{curFloor},</if>
+            <if test="curFloor != null or maxFloorReached != null">
+                MAX_FLOOR_REACHED = GREATEST(MAX_FLOOR_REACHED
+                    <if test="curFloor != null">, #{curFloor}</if>
+                    <if test="maxFloorReached != null">, #{maxFloorReached}</if>
+                ),
+            </if>
             <if test="unlockedBlock != null">UNLOCKED_BLOCK = #{unlockedBlock},</if>
             <if test="ppValue != null">PP_VALUE = #{ppValue},</if>
             <if test="ppExt != null">PP_EXT = #{ppExt},</if>

@@ -192,4 +192,12 @@ ALTER TABLE TBOT_S5_USER_PROGRESS ADD (
     LAST_DICE_ACTION_DATE DATE
 );
 
+-- highest floor ever reached (via STAIRS or boss-kill advance), kept monotonically
+-- via GREATEST() whenever CUR_FLOOR is set. /change-floor only allows targets
+-- within this range -- you must have actually climbed a floor once before you
+-- can fast-travel to it.
+ALTER TABLE TBOT_S5_USER_PROGRESS ADD (
+    MAX_FLOOR_REACHED NUMBER DEFAULT 0 NOT NULL
+);
+
 EXIT;

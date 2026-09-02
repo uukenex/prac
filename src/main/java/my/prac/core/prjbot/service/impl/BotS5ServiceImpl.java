@@ -543,6 +543,8 @@ public class BotS5ServiceImpl implements BotS5Service {
                 int nextFloor = floorBlockBase(floor) + 10;
                 up.put("curFloor", nextFloor);
                 up.put("unlockedBlock", floorBlockBase(floor) + 10);
+                // 새 구간의 첫 사냥터층은 계단 없이도 바로 층변경 가능해야 함
+                up.put("maxFloorReached", nextFloor + 1);
                 sb.append("👑 보스 격파! ").append(nextFloor).append("층 마을로 이동합니다.").append(NL);
                 grantAchievement(userName, 7);
             } else {
@@ -738,6 +740,11 @@ public class BotS5ServiceImpl implements BotS5Service {
             return "전투 중에는 층 이동을 할 수 없습니다.";
         }
         int target = floorBlockBase(floor) + n;
+        int maxReached = intVal(p.get("MAX_FLOOR_REACHED"), 0);
+        if (target > maxReached) {
+            return "🪜 " + target + "층은 아직 가본 적이 없습니다." + NL
+                    + "계단을 통해 한 번은 직접 올라가야 다음부턴 층변경으로 오갈 수 있어요.";
+        }
 
         HashMap<String, Object> up = new HashMap<>();
         up.put("userName", userName);
@@ -975,10 +982,17 @@ public class BotS5ServiceImpl implements BotS5Service {
         return sb.toString();
     }
 
+    private boolean isVillage(HashMap<String, Object> p) {
+        return intVal(p.get("CUR_FLOOR"), 0) % 10 == 0;
+    }
+
     @Override
     @Transactional
     public String gachaCompanion(String userName, int gachaId) {
-        getOrInitProgress(userName);
+        HashMap<String, Object> p = getOrInitProgress(userName);
+        if (!isVillage(p)) {
+            return "🏘️ 동료뽑기는 마을에서만 가능합니다. /층변경 0 으로 마을로 이동하세요.";
+        }
         return pullCompanionInternal(userName, gachaId);
     }
 
@@ -986,6 +1000,9 @@ public class BotS5ServiceImpl implements BotS5Service {
     @Transactional
     public String gachaEquip(String userName, int gachaId) {
         HashMap<String, Object> p = getOrInitProgress(userName);
+        if (!isVillage(p)) {
+            return "🏘️ 장비뽑기는 마을에서만 가능합니다. /층변경 0 으로 마을로 이동하세요.";
+        }
         HashMap<String, Object> gacha = dao.selectGacha(gachaId);
         if (gacha == null || !"EQUIP".equals(strVal(gacha.get("GACHA_TYPE"), ""))) {
             return "존재하지 않는 장비 상자입니다.";
