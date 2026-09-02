@@ -271,6 +271,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         sb.append("/주사위 (/ㅈㅅㅇ) : 보드 이동(평소) 또는 몬스터 공격(전투 중)").append(NL);
         sb.append("/층변경 N (/층이동 N) : 현재 구간 내 N번째 층으로 이동. N=0(마을)~9(보스), 전투 중이면 도망 처리").append(NL);
         sb.append("  ※ 계단(STAIRS) 칸을 밟으면 다음 층으로 갈 '자격'만 생기고, 실제 이동은 이 명령어를 입력해야 합니다.").append(NL);
+        sb.append("  ⚠️ 사냥터층에서 0층(마을, /층변경 0)으로 가면 방금 있던 층의 탐사맵(보드 위치+발견기록)이 초기화됩니다. 원정 중엔 끝까지 밀고 올라가세요!").append(NL);
         sb.append("/탑현황 : 현재 층/보드 위치/PP/상태/자동사냥 조회").append(NL);
         sb.append(NL);
 
