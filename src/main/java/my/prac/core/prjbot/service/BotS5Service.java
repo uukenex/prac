@@ -11,7 +11,11 @@ public interface BotS5Service {
     /** 유저 진행상태 조회 (없으면 null) */
     HashMap<String, Object> selectUserProgress(String userName);
 
-    /** 신규 유저 초기화: 진행상태 생성 + 하급 동료 계약서 2회 무료 지급(뽑기) */
+    /**
+     * 신규 유저 초기화: 진행상태(0층 마을)만 생성.
+     * 동료 지급은 튜토리얼 순서대로 유저가 직접 진행한다:
+     * /주사위(계정생성) → /동료뽑기 1(무료 2회) → /층변경 1 → /주사위(전투 시작)
+     */
     void initUser(String userName);
 
     /** /탑현황 */
