@@ -1,0 +1,41 @@
+-- ============================================================
+-- Season 5 - 몬스터 이름 일괄 변경 (1~100층, 일반 10 + 보스 10)
+-- 이미 배포된 DB(TBOT_S5_MONSTER_INFO에 101~110/201~210 로우가 존재)에
+-- 실행하는 UPDATE 스크립트. HP/ATK/DEF/PP는 그대로 두고 이름만 변경한다.
+-- S5_MASTER_DATA.sql의 INSERT 문도 동일한 이름으로 함께 갱신해뒀으니,
+-- 신규로 처음부터 세팅하는 환경이면 이 파일은 실행할 필요 없음.
+--
+-- ⚠️ 이 파일은 사람이 읽기 위한 버전(한글 리터럴)이라 sqlplus 클라이언트
+-- 인코딩(NLS_LANG)이 DB 문자셋(KO16MSWIN949)과 정확히 안 맞으면 실제 DB에
+-- 깨진 한글이 저장될 수 있다(2026-09-02에 실제로 겪음 -- 게임 로그에
+-- "하수구 곰쥐"가 몬스터 처치 메시지에서 깨져 나옴). 실제 적용은 인코딩
+-- 문제가 없는 S5_MONSTER_RENAME_HEX.sql(CP949 hex 리터럴, ASCII-only)을
+-- 대신 실행할 것. 이 파일은 "무슨 이름으로 바꾸는지" 참고용으로만 사용.
+-- ============================================================
+
+UPDATE TBOT_S5_MONSTER_INFO SET MONSTER_NAME = '하수구 곰쥐'       WHERE MONSTER_ID = 101;
+UPDATE TBOT_S5_MONSTER_INFO SET MONSTER_NAME = '폐광 유령 광부'     WHERE MONSTER_ID = 102;
+UPDATE TBOT_S5_MONSTER_INFO SET MONSTER_NAME = '탄식의 늪 악어'     WHERE MONSTER_ID = 103;
+UPDATE TBOT_S5_MONSTER_INFO SET MONSTER_NAME = '용암 가고일'        WHERE MONSTER_ID = 104;
+UPDATE TBOT_S5_MONSTER_INFO SET MONSTER_NAME = '설원 요새 설귀'     WHERE MONSTER_ID = 105;
+UPDATE TBOT_S5_MONSTER_INFO SET MONSTER_NAME = '심연 기사단 망령병' WHERE MONSTER_ID = 106;
+UPDATE TBOT_S5_MONSTER_INFO SET MONSTER_NAME = '뒤틀린 차원 촉수괴' WHERE MONSTER_ID = 107;
+UPDATE TBOT_S5_MONSTER_INFO SET MONSTER_NAME = '천공성 수호 골렘'   WHERE MONSTER_ID = 108;
+UPDATE TBOT_S5_MONSTER_INFO SET MONSTER_NAME = '용의 둥지 새끼비룡' WHERE MONSTER_ID = 109;
+UPDATE TBOT_S5_MONSTER_INFO SET MONSTER_NAME = '파멸의 균열 마수'   WHERE MONSTER_ID = 110;
+
+UPDATE TBOT_S5_MONSTER_INFO SET MONSTER_NAME = '하수구의 지배자 라텔'         WHERE MONSTER_ID = 201;
+UPDATE TBOT_S5_MONSTER_INFO SET MONSTER_NAME = '폐광의 검은 갱도왕'           WHERE MONSTER_ID = 202;
+UPDATE TBOT_S5_MONSTER_INFO SET MONSTER_NAME = '늪지 여왕 히드라'             WHERE MONSTER_ID = 203;
+UPDATE TBOT_S5_MONSTER_INFO SET MONSTER_NAME = '화산의 심장 이프리트'         WHERE MONSTER_ID = 204;
+UPDATE TBOT_S5_MONSTER_INFO SET MONSTER_NAME = '빙하의 폭군 프로스트자이언트' WHERE MONSTER_ID = 205;
+UPDATE TBOT_S5_MONSTER_INFO SET MONSTER_NAME = '심연의 대공 모르드레드'       WHERE MONSTER_ID = 206;
+UPDATE TBOT_S5_MONSTER_INFO SET MONSTER_NAME = '차원의 파괴자 아자토스'       WHERE MONSTER_ID = 207;
+UPDATE TBOT_S5_MONSTER_INFO SET MONSTER_NAME = '천공의 대천사 세라핌'         WHERE MONSTER_ID = 208;
+UPDATE TBOT_S5_MONSTER_INFO SET MONSTER_NAME = '고룡 바하무트'                WHERE MONSTER_ID = 209;
+UPDATE TBOT_S5_MONSTER_INFO SET MONSTER_NAME = '종말의 마룡왕 니드호그'       WHERE MONSTER_ID = 210;
+
+COMMIT;
+
+SELECT MONSTER_ID, BLOCK_NO, MONSTER_NAME, BOSS_YN FROM TBOT_S5_MONSTER_INFO ORDER BY BOSS_YN, BLOCK_NO;
+EXIT;

@@ -575,6 +575,10 @@ public class LoaChatController {
 			case "/탑현황":
 				val = s5.towerStatus(reqMap);
 				break;
+			case "/탑도움말":
+			case "/탑명령어":
+				val = s5.help(reqMap);
+				break;
 			case "/업적":
 				val = s5.achievements(reqMap);
 				break;

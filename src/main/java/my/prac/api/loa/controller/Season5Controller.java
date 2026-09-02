@@ -17,6 +17,7 @@ import my.prac.core.prjbot.service.BotS5Service;
  *   /층변경 N         — 같은 10층 구간 내 이동 (예: 33층에서 /층변경 9 → 39층)
  *   /파티편성 [N]     — 동료 목록 조회 / N번째 동료 파티 편성·해제
  *   /탑현황           — 현재 층/PP/상태 조회
+ *   /탑도움말, /탑명령어 — 웹(SPA) 탭 기능을 포함한 전체 명령어 안내
  *   /업적             — 업적 달성 현황
  *   /동료뽑기 N, /동료뽑기10 N — N번 계약서로 동료 뽑기(10연속), 번호는 SPA 상점 탭에서 확인
  *   /장비뽑기 N, /장비뽑기10 N — N번 보물상자로 장비 뽑기(10연속)
@@ -75,6 +76,10 @@ public class Season5Controller {
 
     public String towerStatus(HashMap<String, Object> map) {
         return s5Service.towerStatus(userNameOf(map));
+    }
+
+    public String help(HashMap<String, Object> map) {
+        return s5Service.help(userNameOf(map));
     }
 
     public String achievements(HashMap<String, Object> map) {

@@ -32,6 +32,7 @@ public class BotS5ServiceImpl implements BotS5Service {
 
     private static final String NL  = "♬";
     private static final Random RND = new Random();
+    private static final String TOWER_VIEW_URL = "/loa/tower-view";
 
     private static final String[] JOB_KEYS = { "WARRIOR", "MAGE", "ROGUE", "ARCHER", "PRIEST" };
 
@@ -218,6 +219,73 @@ public class BotS5ServiceImpl implements BotS5Service {
         return "사냥터";
     }
 
+    /** 전투 로그 표시용 "직업(이름)" 포맷. 예: 궁수(나나) */
+    private String jobTag(String job, String name) {
+        return JOB_NAME.getOrDefault(job, "동료") + "(" + name + ")";
+    }
+
+    // ================================================================
+    // /탑도움말, /탑명령어 — 웹(SPA) 탭에 있는 기능을 포함해 전체 명령어를 텍스트로 안내
+    // ================================================================
+    @Override
+    public String help(String userName) {
+        HashMap<String, Object> p = getOrInitProgress(userName);
+        int unlocked = intVal(p.get("UNLOCKED_BLOCK"), 0);
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("📖 시즌5 탑 등반 — 전체 명령어 도움말").append(NL);
+        sb.append(NL);
+        sb.append("[이동/전투] (웹 '보드' 탭)").append(NL);
+        sb.append("/주사위 (/ㅈㅅㅇ) : 보드 이동(평소) 또는 몬스터 공격(전투 중)").append(NL);
+        sb.append("/층변경 N (/층이동 N) : 현재 구간 내 N번째 층으로 이동. N=0(마을)~9(보스), 전투 중이면 도망 처리").append(NL);
+        sb.append("  ※ 계단(STAIRS) 칸을 밟으면 다음 층으로 갈 '자격'만 생기고, 실제 이동은 이 명령어를 입력해야 합니다.").append(NL);
+        sb.append("/탑현황 : 현재 층/보드 위치/PP/상태/자동사냥 조회").append(NL);
+        sb.append(NL);
+
+        sb.append("[동료] (웹 '파티' 탭)").append(NL);
+        sb.append("/파티편성 : 보유 동료 목록 + 파티 편성 현황 조회").append(NL);
+        sb.append("/파티편성 N : 목록 N번째 동료를 파티에 편성/해제").append(NL);
+        sb.append(NL);
+
+        sb.append("[상점] (웹 '상점' 탭)").append(NL);
+        sb.append("/동료뽑기 N, /동료뽑기10 N : 아래 번호의 계약서로 동료 뽑기(10연속)").append(NL);
+        sb.append(gachaCatalogText(dao.selectGachaList("COMPANION", 999), unlocked));
+        sb.append("/장비뽑기 N, /장비뽑기10 N : 아래 번호의 보물상자로 장비 뽑기(10연속)").append(NL);
+        sb.append(gachaCatalogText(dao.selectGachaList("EQUIP", 999), unlocked));
+        sb.append("/주사위구매 [N] : 해금된 주사위 목록 확인 / N번 장착").append(NL);
+        sb.append("/스탯구매 [공격력|최소공격력|체력] : 스탯 강화 현황 확인 / 구매").append(NL);
+        sb.append(NL);
+
+        sb.append("[장비] (웹 '장비' 탭)").append(NL);
+        sb.append("/장비목록 : 보유 장비 조회").append(NL);
+        sb.append("/장비장착 N [M] : N번째 미착용 장비를 M번째 파티원(생략 시 같은 직업 자동탐색)에 장착").append(NL);
+        sb.append("/장비합성 N : N번째 장비 포함 동일 직업/부위/등급 미착용 장비 3개를 상위 등급 1개로 합성 (★6 불가)").append(NL);
+        sb.append(NL);
+
+        sb.append("[업적] (웹 '업적' 탭)").append(NL);
+        sb.append("/업적 : 달성/미달성(히든 제외) 업적 목록 조회").append(NL);
+        sb.append(NL);
+
+        sb.append("🖥️ 모든 기능을 그래픽으로 보려면: ").append(TOWER_VIEW_URL).append("?userName=").append(userName);
+        return sb.toString();
+    }
+
+    /** 가챠 목록을 "번호. 이름 (해금층~, 비용 PP) [잠김]" 형태로 나열 (해금 안 된 것도 잠금 표시로 함께 노출) */
+    private String gachaCatalogText(List<HashMap<String, Object>> list, int unlocked) {
+        StringBuilder sb = new StringBuilder();
+        for (HashMap<String, Object> g : list) {
+            int gachaId = intVal(g.get("GACHA_ID"), 0);
+            String name = strVal(g.get("GACHA_NAME"), "?");
+            int unlockFloor = intVal(g.get("UNLOCK_FLOOR"), 0);
+            PP cost = PP.of(((Number) g.get("COST_VALUE")).doubleValue(), strVal(g.get("COST_EXT"), ""));
+            boolean isUnlocked = unlocked >= unlockFloor;
+            sb.append("  ").append(gachaId).append(". ").append(name)
+              .append(" (").append(unlockFloor).append("층~, ").append(cost.format()).append(" PP)")
+              .append(isUnlocked ? "" : " 🔒잠김").append(NL);
+        }
+        return sb.toString();
+    }
+
     // ================================================================
     // /주사위, /ㅈㅅㅇ
     // ================================================================
@@ -288,13 +356,14 @@ public class BotS5ServiceImpl implements BotS5Service {
                 return userName + "님," + NL + "🏘️ 0층 마을 — 파티 준비 완료!" + NL
                         + "👉 층이동 명령어로 1층 가세요! (/층변경 1)";
             }
-            return userName + "님," + NL + "🏘️ 여기는 마을입니다. /탑상점 으로 상점을 이용하거나 /층변경 N 으로 사냥터에 진입하세요.";
+            return userName + "님," + NL + "🏘️ 여기는 마을입니다. 웹 상점(" + TOWER_VIEW_URL + ")을 이용하거나 /층변경 N 으로 사냥터에 진입하세요. (전체 명령어는 /탑도움말)";
         }
         if (m == 9) {
             return startCombat(userName, p, floor, true);
         }
 
-        // ── 사냥터 보드: 끝 없이 순환하는 루프. 계단(STAIRS) 칸에 도착해야 다음 층으로 이동. ──
+        // ── 사냥터 보드: 끝 없이 순환하는 루프. 계단(STAIRS) 칸을 밟으면 다음 층 이동
+        //    "자격"만 얻고(MAX_FLOOR_REACHED 갱신), 실제 이동은 /층변경 N 을 직접 입력해야 한다. ──
         HashMap<String, Object> fi = dao.selectFloorInfo(floor);
         int tileCount = fi == null ? 8 : intVal(fi.get("TILE_COUNT"), 8);
         HashMap<String, Object> ufp = dao.selectUserFloorProgress(userName, floor);
@@ -391,13 +460,18 @@ public class BotS5ServiceImpl implements BotS5Service {
                 sb.append(handleSpecialTile(userName));
                 break;
             case "STAIRS": {
-                int nextFloor = floor + 1; // floor%10 in 1..8 이므로 다음 칸은 항상 같은 구간 내(최대 9층 보스)
+                // floor%10 in 1..8 이므로 다음 칸은 항상 같은 구간 내(최대 9층 보스).
+                // 계단을 밟아도 즉시 층이동하지 않는다 -- MAX_FLOOR_REACHED만 갱신해서
+                // "이 층까지는 계단으로 실제로 밟아봤다"는 자격만 얻고, 실제 이동은
+                // 유저가 /층변경 N 을 직접 입력해야 이뤄진다(도착 시점의 업적/탐사 표시는
+                // changeFloor 쪽에서 그대로 처리됨).
+                int nextFloor = floor + 1;
                 HashMap<String, Object> up = new HashMap<>();
                 up.put("userName", userName);
-                up.put("curFloor", nextFloor);
+                up.put("maxFloorReached", nextFloor);
                 dao.updateUserProgress(up);
-                grantFloorAchievements(userName, nextFloor);
-                sb.append(nextFloor).append("층으로 올라갑니다!");
+                sb.append("🪜 계단을 발견했습니다! ").append(nextFloor).append("층으로 갈 수 있어요.").append(NL)
+                  .append("👉 /층변경 ").append(nextFloor % 10).append(" 으로 이동하세요.");
                 break;
             }
             default:
@@ -483,7 +557,9 @@ public class BotS5ServiceImpl implements BotS5Service {
     private String startCombat(String userName, HashMap<String, Object> p, int floor, boolean boss) {
         HashMap<String, Object> mon = dao.selectMonster(blockNo(floor), boss ? "Y" : "N");
         if (mon == null) {
-            return "몬스터 정보가 없습니다 (관리자 문의).";
+            // TBOT_S5_MONSTER_INFO에 이 BLOCK_NO×BOSS_YN 조합 데이터가 없는 경우.
+            // 원인 확인용: S5_CHECK_MONSTER_DATA.sql
+            return floor + "층(BLOCK " + blockNo(floor) + ") 몬스터 정보가 없습니다 (관리자 문의).";
         }
         HashMap<String, Object> up = new HashMap<>();
         up.put("userName", userName);
@@ -547,7 +623,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             int dmg = Math.max(1, eff[1] * roll - monsterDef);
             dmg = Math.max(dmg, eff[3]); // 스탯구매 최소공격력 보정
             totalDamage += dmg;
-            sb.append(cName).append(" 공격! 🎲").append(roll)
+            sb.append(jobTag(job, cName)).append(" 공격! 🎲").append(roll)
               .append(" → ").append(dmg).append(" 데미지").append(NL);
 
             switch (job) {
@@ -600,13 +676,18 @@ public class BotS5ServiceImpl implements BotS5Service {
             sb.append(strVal(mon.get("MONSTER_NAME"), "몬스터")).append(" 처치! 🎉").append(NL);
 
             if (isBoss) {
-                int nextFloor = floorBlockBase(floor) + 10;
+                int prevBlockBase = floorBlockBase(floor);
+                int nextFloor = prevBlockBase + 10;
                 up.put("curFloor", nextFloor);
-                up.put("unlockedBlock", floorBlockBase(floor) + 10);
+                up.put("unlockedBlock", prevBlockBase + 10);
                 // 새 구간의 첫 사냥터층은 계단 없이도 바로 층변경 가능해야 함
                 up.put("maxFloorReached", nextFloor + 1);
                 sb.append("👑 보스 격파! ").append(nextFloor).append("층 마을로 이동합니다.").append(NL);
                 grantAchievement(userName, 7);
+                // 보스 처치로 다음 구간으로 넘어가면 이전 구간(방금 클리어한 사냥터 8개층)은
+                // 어차피 재진입 불가(과거 구간 복귀 불가 규칙) -- 그 구간의 보드 위치/발견기록도
+                // 함께 초기화한다. (마을로만 돌아갔을 때 그 층 하나만 지우는 것과 별개 케이스)
+                resetBlockExploration(userName, prevBlockBase);
             } else {
                 up.put("killCountCur", killCountCur >= 10 ? 0 : killCountCur);
                 if (killCountCur >= 10) {
@@ -699,7 +780,7 @@ public class BotS5ServiceImpl implements BotS5Service {
 
         String tName = strVal(target.get("NAME"), JOB_NAME.getOrDefault(tJob, "동료"));
         sb.append(strVal(mon.get("MONSTER_NAME"), "몬스터")).append(" 반격! 🎲").append(roll).append(" → ")
-          .append(tName).append("에게 ")
+          .append(jobTag(tJob, tName)).append("에게 ")
           .append(dmgToParty).append(" 피해 (남은 HP ").append(targetHpAfter.format()).append(")");
         if (PP.toBaseValue(targetHpAfter) <= 0) sb.append(" — 전투불가!");
 
@@ -859,6 +940,14 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (floor == 50) grantAchievement(userName, 4);
         if (floor == 70) grantAchievement(userName, 5);
         if (floor == 100) grantAchievement(userName, 6);
+    }
+
+    /** blockBase(예: 0,10,20…) 구간의 사냥터층(blockBase+1 ~ blockBase+8) 전체의 보드 위치/발견기록을 초기화. */
+    private void resetBlockExploration(String userName, int blockBase) {
+        for (int f = blockBase + 1; f <= blockBase + 8; f++) {
+            dao.deleteUserFloorProgress(userName, f);
+            dao.deleteTileVisits(userName, f);
+        }
     }
 
     // ================================================================

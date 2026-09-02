@@ -21,6 +21,9 @@ public interface BotS5Service {
     /** /탑현황 */
     String towerStatus(String userName);
 
+    /** /탑도움말, /탑명령어 — 웹(SPA) 탭 기능을 포함한 전체 명령어 텍스트 안내 */
+    String help(String userName);
+
     /** /주사위, /ㅈㅅㅇ — 상태에 따라 이동 또는 전투 1턴 처리 */
     String rollDice(String userName);
 

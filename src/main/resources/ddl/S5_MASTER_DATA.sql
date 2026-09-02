@@ -5,22 +5,34 @@
 
 -- ============================================================
 -- 1) 층별 보드 칸 수 + 고정 보드 배치 (사냥터층: FLOOR MOD 10 IN 1..8)
---    칸수 5~13 랜덤, 칸종류 분포: 전투35% / PP15% / 상점10% / 함정10% / 특수15% / 계단15%
---    보드는 끝이 없는 루프(원형)이며, 계단(STAIRS) 칸에 도착해야 다음 층으로
---    이동할 수 있다.
+--    칸수: 1~48층 15~30 랜덤 / 51~98층 100~150 랜덤(50층 이후는 계단 찾아
+--    올라가는 데 더 헤매도록 큰 보드). 칸종류 분포: 전투35% / PP15% / 상점10%
+--    / 함정10% / 특수15% / 계단15%. 보드는 끝이 없는 루프(원형)이며,
+--    계단(STAIRS) 칸을 밟아야 다음 층으로 넘어갈 자격이 생긴다.
+--    ⚠️ STAIRS는 확률 배치라 칸 수가 적으면 한 개도 안 나올 수 있다 --
+--    그러면 그 층에서 영영 못 올라가는 심각한 버그가 되므로, 생성 후
+--    STAIRS가 0개면 마지막 칸을 강제로 STAIRS로 바꿔 최소 1개를 보장한다.
+--    (2026-09-02 실 DB 점검에서 80개 사냥터층 중 28개가 이 문제로 계단이
+--    하나도 없던 것을 확인 -- S5_TILE_STAIRS_FIX.sql 로 기배포 DB도 수정함)
 -- ============================================================
 DECLARE
     v_tile_count NUMBER;
     v_rand       NUMBER;
     v_type       VARCHAR2(10);
+    v_stairs_cnt NUMBER;
 BEGIN
     FOR f IN 1..100 LOOP
         IF MOD(f, 10) BETWEEN 1 AND 8 THEN
-            v_tile_count := TRUNC(DBMS_RANDOM.VALUE(5, 14)); -- 5~13
+            IF f <= 48 THEN
+                v_tile_count := TRUNC(DBMS_RANDOM.VALUE(15, 31));  -- 15~30
+            ELSE
+                v_tile_count := TRUNC(DBMS_RANDOM.VALUE(100, 151)); -- 100~150
+            END IF;
 
             INSERT INTO TBOT_S5_FLOOR_INFO (FLOOR, TILE_COUNT)
             VALUES (f, v_tile_count);
 
+            v_stairs_cnt := 0;
             FOR t IN 1..v_tile_count LOOP
                 v_rand := DBMS_RANDOM.VALUE(0, 100);
                 IF    v_rand < 35 THEN v_type := 'COMBAT';
@@ -30,10 +42,16 @@ BEGIN
                 ELSIF v_rand < 85 THEN v_type := 'SPECIAL';
                 ELSE                    v_type := 'STAIRS';
                 END IF;
+                IF v_type = 'STAIRS' THEN v_stairs_cnt := v_stairs_cnt + 1; END IF;
 
                 INSERT INTO TBOT_S5_TILE_MASTER (FLOOR, TILE_NO, TILE_TYPE)
                 VALUES (f, t, v_type);
             END LOOP;
+
+            IF v_stairs_cnt = 0 THEN
+                UPDATE TBOT_S5_TILE_MASTER SET TILE_TYPE = 'STAIRS'
+                WHERE FLOOR = f AND TILE_NO = v_tile_count;
+            END IF;
         END IF;
     END LOOP;
     COMMIT;
@@ -46,35 +64,35 @@ END;
 --    (HP×6 / ATK×2.2 / DEF×1.5 비율로 산정, S5_TOWER_DESIGN.md 참고)
 -- ============================================================
 -- 일반 몬스터
-INSERT INTO TBOT_S5_MONSTER_INFO VALUES (101, 1, '하수구 뿔쥐',       120,     '', 12,    '', 3,    '', 1,    '', 'N');
-INSERT INTO TBOT_S5_MONSTER_INFO VALUES (102, 2, '버려진 광산 좀비',   350,     '', 28,    '', 8,    '', 3,    '', 'N');
-INSERT INTO TBOT_S5_MONSTER_INFO VALUES (103, 3, '통곡의 늪지 악어',   900,     '', 15,    '', 8,    '', 7,    '', 'N');
-INSERT INTO TBOT_S5_MONSTER_INFO VALUES (104, 4, '붉은 화산 가고일',   2400,    '', 26,    '', 15,   '', 15,   '', 'N');
+INSERT INTO TBOT_S5_MONSTER_INFO VALUES (101, 1, '하수구 곰쥐',       120,     '', 12,    '', 3,    '', 1,    '', 'N');
+INSERT INTO TBOT_S5_MONSTER_INFO VALUES (102, 2, '폐광 유령 광부',     350,     '', 28,    '', 8,    '', 3,    '', 'N');
+INSERT INTO TBOT_S5_MONSTER_INFO VALUES (103, 3, '탄식의 늪 악어',     900,     '', 15,    '', 8,    '', 7,    '', 'N');
+INSERT INTO TBOT_S5_MONSTER_INFO VALUES (104, 4, '용암 가고일',        2400,    '', 26,    '', 15,   '', 15,   '', 'N');
 -- MONSTER_ID 105~108: rebalanced (see S5_TOWER_DESIGN.md 밸런스 재검증) --
 -- original design values were HP6800/ATK160/DEF90, HP22000/ATK350/DEF210,
 -- HP58000/ATK620/DEF450, HP160000/ATK1200/DEF1000 -- unplayable under the
 -- confirmed "party alpha-strike" combat model (50+ rounds per kill even at
 -- max party DPS), so HP/ATK/DEF were recomputed to keep TTK in a sane range
 -- while staying monotonically >= the block4 monster.
-INSERT INTO TBOT_S5_MONSTER_INFO VALUES (105, 5, '얼어붙은 요새 설인', 2600,    '', 20,    '', 5,    '', 30,   '', 'N');
-INSERT INTO TBOT_S5_MONSTER_INFO VALUES (106, 6, '심연의 기사단 망령', 5000,    '', 34,    '', 10,   '', 70,   '', 'N');
-INSERT INTO TBOT_S5_MONSTER_INFO VALUES (107, 7, '뒤틀린 차원의 괴수', 5500,    '', 29,    '', 10,   '', 150,  '', 'N');
-INSERT INTO TBOT_S5_MONSTER_INFO VALUES (108, 8, '천공의 성 가디언',   15000,   '', 37,    '', 15,   '', 300,  '', 'N');
-INSERT INTO TBOT_S5_MONSTER_INFO VALUES (109, 9, '용의 둥지 새끼용',   450000,  '', 2400,  '', 2200, '', 600,  '', 'N');
-INSERT INTO TBOT_S5_MONSTER_INFO VALUES (110,10, '파멸의 균열 마룡',   1200000, '', 5000,  '', 5000, '', 1200, '', 'N');
+INSERT INTO TBOT_S5_MONSTER_INFO VALUES (105, 5, '설원 요새 설귀',     2600,    '', 20,    '', 5,    '', 30,   '', 'N');
+INSERT INTO TBOT_S5_MONSTER_INFO VALUES (106, 6, '심연 기사단 망령병', 5000,    '', 34,    '', 10,   '', 70,   '', 'N');
+INSERT INTO TBOT_S5_MONSTER_INFO VALUES (107, 7, '뒤틀린 차원 촉수괴', 5500,    '', 29,    '', 10,   '', 150,  '', 'N');
+INSERT INTO TBOT_S5_MONSTER_INFO VALUES (108, 8, '천공성 수호 골렘',   15000,   '', 37,    '', 15,   '', 300,  '', 'N');
+INSERT INTO TBOT_S5_MONSTER_INFO VALUES (109, 9, '용의 둥지 새끼비룡', 450000,  '', 2400,  '', 2200, '', 600,  '', 'N');
+INSERT INTO TBOT_S5_MONSTER_INFO VALUES (110,10, '파멸의 균열 마수',   1200000, '', 5000,  '', 5000, '', 1200, '', 'N');
 
 -- 보스 (잠정치)
-INSERT INTO TBOT_S5_MONSTER_INFO VALUES (201, 1, '9층 보스',   720,     '', 26,    '', 5,    '', 0, '', 'Y');
-INSERT INTO TBOT_S5_MONSTER_INFO VALUES (202, 2, '19층 보스',  2100,    '', 62,    '', 12,   '', 0, '', 'Y');
-INSERT INTO TBOT_S5_MONSTER_INFO VALUES (203, 3, '29층 보스',  5400,    '', 33,    '', 12,   '', 0, '', 'Y');
-INSERT INTO TBOT_S5_MONSTER_INFO VALUES (204, 4, '39층 보스',  14400,   '', 57,    '', 23,   '', 0, '', 'Y');
+INSERT INTO TBOT_S5_MONSTER_INFO VALUES (201, 1, '하수구의 지배자 라텔',     720,     '', 26,    '', 5,    '', 0, '', 'Y');
+INSERT INTO TBOT_S5_MONSTER_INFO VALUES (202, 2, '폐광의 검은 갱도왕',       2100,    '', 62,    '', 12,   '', 0, '', 'Y');
+INSERT INTO TBOT_S5_MONSTER_INFO VALUES (203, 3, '늪지 여왕 히드라',         5400,    '', 33,    '', 12,   '', 0, '', 'Y');
+INSERT INTO TBOT_S5_MONSTER_INFO VALUES (204, 4, '화산의 심장 이프리트',     14400,   '', 57,    '', 23,   '', 0, '', 'Y');
 -- MONSTER_ID 205~208: rebalanced together with 105~108 above (same HP*6/ATK*2.2/DEF*1.5 ratio)
-INSERT INTO TBOT_S5_MONSTER_INFO VALUES (205, 5, '49층 보스',  15600,   '', 44,    '', 8,   '', 0, '', 'Y');
-INSERT INTO TBOT_S5_MONSTER_INFO VALUES (206, 6, '59층 보스',  30000,   '', 75,    '', 15,  '', 0, '', 'Y');
-INSERT INTO TBOT_S5_MONSTER_INFO VALUES (207, 7, '69층 보스',  33000,   '', 64,    '', 15,  '', 0, '', 'Y');
-INSERT INTO TBOT_S5_MONSTER_INFO VALUES (208, 8, '79층 보스',  90000,   '', 81,    '', 23,  '', 0, '', 'Y');
-INSERT INTO TBOT_S5_MONSTER_INFO VALUES (209, 9, '89층 보스',  2700000, '', 5280,  '', 3300, '', 0, '', 'Y');
-INSERT INTO TBOT_S5_MONSTER_INFO VALUES (210,10, '99층 보스',  7200000, '', 11000, '', 7500, '', 0, '', 'Y');
+INSERT INTO TBOT_S5_MONSTER_INFO VALUES (205, 5, '빙하의 폭군 프로스트자이언트', 15600,   '', 44,    '', 8,   '', 0, '', 'Y');
+INSERT INTO TBOT_S5_MONSTER_INFO VALUES (206, 6, '심연의 대공 모르드레드',   30000,   '', 75,    '', 15,  '', 0, '', 'Y');
+INSERT INTO TBOT_S5_MONSTER_INFO VALUES (207, 7, '차원의 파괴자 아자토스',   33000,   '', 64,    '', 15,  '', 0, '', 'Y');
+INSERT INTO TBOT_S5_MONSTER_INFO VALUES (208, 8, '천공의 대천사 세라핌',     90000,   '', 81,    '', 23,  '', 0, '', 'Y');
+INSERT INTO TBOT_S5_MONSTER_INFO VALUES (209, 9, '고룡 바하무트',            2700000, '', 5280,  '', 3300, '', 0, '', 'Y');
+INSERT INTO TBOT_S5_MONSTER_INFO VALUES (210,10, '종말의 마룡왕 니드호그',   7200000, '', 11000, '', 7500, '', 0, '', 'Y');
 
 COMMIT;
 
