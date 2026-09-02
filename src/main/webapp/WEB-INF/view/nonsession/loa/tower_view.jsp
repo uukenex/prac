@@ -40,10 +40,6 @@
                border-radius:999px; padding:7px 14px; }
     .pp-badge .val{ font-size:15px; font-weight:800; color:var(--pp); }
 
-    .tabs{ display:flex; gap:6px; overflow-x:auto; }
-    .tab-btn{ flex-shrink:0; background:#fff; border:1.5px solid var(--line); border-radius:14px; padding:8px 14px;
-              font-size:12px; font-weight:700; color:var(--ink-soft); cursor:pointer; }
-    .tab-btn.active{ background:var(--gold); border-color:var(--gold); color:#fff; }
     .panel{ display:none; }
     .panel.active{ display:block; }
 
@@ -95,8 +91,11 @@
            border-radius:14px; padding:8px 4px 6px; color:var(--ink-soft); font-size:10px; font-weight:700; cursor:pointer; }
     .dbtn .d-icn{ font-size:18px; }
     .dbtn:hover{ background:var(--parchment-deep); }
+    .dbtn.active{ color:var(--gold); }
     .dbtn.primary{ background:linear-gradient(180deg,#E4633F,var(--combat)); color:#fff; box-shadow:0 3px 0 #A93A28; }
     .dbtn.primary .d-icn{ font-size:22px; }
+    .dbtn:disabled{ opacity:.35; cursor:not-allowed; }
+    .dbtn:disabled:hover{ background:transparent; }
 
     select.floor-select{ padding:6px 10px; border-radius:10px; border:1.5px solid var(--line); font-size:12px; }
 
@@ -120,13 +119,6 @@
       <div class="who-floor" id="whoFloor">유저명을 입력하고 조회를 눌러주세요</div>
     </div>
     <div class="pp-badge">💰 <span class="val" id="ppVal">0</span></div>
-  </div>
-
-  <div class="tabs">
-    <button class="tab-btn active" data-tab="board">🗼 탑</button>
-    <button class="tab-btn" data-tab="party">🎒 파티/장비</button>
-    <button class="tab-btn" data-tab="shop">🛍️ 상점</button>
-    <button class="tab-btn" data-tab="ach">🏆 업적</button>
   </div>
 
   <div class="panel active" id="panel-board">
@@ -212,9 +204,11 @@
 
 <nav class="dock">
   <div class="dock-inner">
-    <button class="dbtn" onclick="TW.switchTab('party')"><span class="d-icn">🎒</span>편성</button>
+    <button class="dbtn active" data-tab="board" onclick="TW.switchTab('board')"><span class="d-icn">🗼</span>탑</button>
+    <button class="dbtn" data-tab="party" id="dbtnParty" onclick="TW.switchTab('party')"><span class="d-icn">🎒</span>편성</button>
     <button class="dbtn primary" onclick="TW.action('DICE','')"><span class="d-icn">🎲</span>주사위</button>
-    <button class="dbtn" onclick="TW.switchTab('shop')"><span class="d-icn">🛍️</span>상점</button>
+    <button class="dbtn" data-tab="shop" id="dbtnShop" onclick="TW.switchTab('shop')"><span class="d-icn">🛍️</span>상점</button>
+    <button class="dbtn" data-tab="ach" onclick="TW.switchTab('ach')"><span class="d-icn">🏆</span>업적</button>
   </div>
 </nav>
 
@@ -251,7 +245,7 @@ var TW = (function () {
   }
 
   function switchTab(name) {
-    document.querySelectorAll('.tab-btn').forEach(function (b) { b.classList.toggle('active', b.dataset.tab === name); });
+    document.querySelectorAll('.dbtn[data-tab]').forEach(function (b) { b.classList.toggle('active', b.dataset.tab === name); });
     document.querySelectorAll('.panel').forEach(function (p) { p.classList.toggle('active', p.id === 'panel-' + name); });
     if (name === 'shop') loadShop();
     if (name === 'ach') loadAchievements();
@@ -274,6 +268,19 @@ var TW = (function () {
         document.getElementById('whoFloor').textContent = p.CUR_FLOOR + '층 · 상태 ' + p.STATUS
             + (p.AUTO_HUNT_YN === 'Y' ? ' · 자동사냥ON' : '');
         document.getElementById('ppVal').textContent = (p.PP_VALUE || 0).toFixed ? p.PP_VALUE.toFixed(2) + (p.PP_EXT || '') : p.PP_VALUE;
+
+        // 상점/편성은 마을(층%10==0)에서만 — 마을이 아니면 흐리게 비활성화
+        var inVillage = (p.CUR_FLOOR % 10 === 0);
+        var partyBtn = document.getElementById('dbtnParty');
+        var shopBtn = document.getElementById('dbtnShop');
+        partyBtn.disabled = !inVillage;
+        shopBtn.disabled = !inVillage;
+        if (!inVillage) {
+          var activePanel = document.querySelector('.panel.active');
+          if (activePanel && (activePanel.id === 'panel-party' || activePanel.id === 'panel-shop')) {
+            switchTab('board');
+          }
+        }
 
         var track = document.getElementById('towerTrack');
         track.innerHTML = '';
@@ -430,9 +437,6 @@ var TW = (function () {
   document.addEventListener('DOMContentLoaded', function () {
     var saved = sessionStorage.getItem('loaUserName');
     if (saved) document.getElementById('userNameInput').value = saved;
-    document.querySelectorAll('.tab-btn').forEach(function (b) {
-      b.addEventListener('click', function () { switchTab(b.dataset.tab); });
-    });
     if (saved) loadStatus();
   });
 

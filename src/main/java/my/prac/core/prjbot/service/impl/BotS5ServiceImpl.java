@@ -738,8 +738,10 @@ public class BotS5ServiceImpl implements BotS5Service {
         int floor = intVal(p.get("CUR_FLOOR"), 0);
         boolean wasInCombat = "IN_COMBAT".equals(strVal(p.get("STATUS"), "NORMAL"));
         int target = floorBlockBase(floor) + n;
+        int villageFloor = floorBlockBase(floor);
+        boolean alwaysFree = (target == villageFloor) || (target == villageFloor + 1); // 마을↔첫 사냥터층은 항상 자유 이동
         int maxReached = intVal(p.get("MAX_FLOOR_REACHED"), 0);
-        if (target > maxReached) {
+        if (!alwaysFree && target > maxReached) {
             return "🪜 " + target + "층은 아직 가본 적이 없습니다." + NL
                     + "계단을 통해 한 번은 직접 올라가야 다음부턴 층변경으로 오갈 수 있어요.";
         }
