@@ -212,20 +212,33 @@ public class BotS5ServiceImpl implements BotS5Service {
     @Override
     @Transactional
     public String rollDice(String userName) {
+        boolean brandNew = dao.selectUserProgress(userName) == null;
         HashMap<String, Object> p = getOrInitProgress(userName);
+        String welcome = "";
+
+        if (brandNew) {
+            // 계정이 없던 유저의 첫 /주사위 → 계정 생성 + 0층 마을 대기 없이 곧장 1층으로 입장
+            HashMap<String, Object> up = new HashMap<>();
+            up.put("userName", userName);
+            up.put("curFloor", 1);
+            dao.updateUserProgress(up);
+            p.put("CUR_FLOOR", 1);
+            welcome = "🗼 탑 등반을 시작합니다! 동료 2명을 영입했습니다 (/파티편성 으로 확인)." + NL;
+        }
+
         int floor = intVal(p.get("CUR_FLOOR"), 0);
         String status = strVal(p.get("STATUS"), "NORMAL");
 
         if ("IN_COMBAT".equals(status)) {
-            return resolveCombatTurn(userName, p, floor);
+            return welcome + resolveCombatTurn(userName, p, floor);
         }
 
         int m = floor % 10;
         if (m == 0) {
-            return userName + "님," + NL + "여기는 마을입니다. /탑상점 으로 상점을 이용하거나 /층변경 N 으로 사냥터에 진입하세요.";
+            return welcome + userName + "님," + NL + "여기는 마을입니다. /탑상점 으로 상점을 이용하거나 /층변경 N 으로 사냥터에 진입하세요.";
         }
         if (m == 9) {
-            return startCombat(userName, p, floor, true);
+            return welcome + startCombat(userName, p, floor, true);
         }
 
         HashMap<String, Object> fi = dao.selectFloorInfo(floor);
@@ -234,7 +247,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         int curTile = ufp == null ? 0 : intVal(ufp.get("CUR_TILE"), 0);
 
         if (curTile >= tileCount) {
-            return userName + "님," + NL + "이미 이 층 보드 끝에 도달했습니다. /층변경 N 으로 다른 층으로 이동하세요.";
+            return welcome + userName + "님," + NL + "이미 이 층 보드 끝에 도달했습니다. /층변경 N 으로 다른 층으로 이동하세요.";
         }
 
         int diceMax = diceMax(strVal(p.get("DICE_GRADE"), "DICE_6"));
@@ -248,6 +261,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         dao.upsertUserFloorProgress(ufpSave);
 
         StringBuilder sb = new StringBuilder();
+        sb.append(welcome);
         sb.append(userName).append("님," + NL);
         sb.append("🎲 주사위 ").append(roll).append("! ").append(curTile).append(" → ").append(newTile)
           .append(" / ").append(tileCount).append("칸").append(NL);
