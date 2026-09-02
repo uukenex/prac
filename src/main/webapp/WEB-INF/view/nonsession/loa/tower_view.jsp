@@ -55,7 +55,9 @@
     .tile .tno{ position:absolute; top:2px; left:5px; font-size:8px; opacity:.75; }
     .tile.combat{ background:var(--combat); } .tile.shop{ background:var(--shop); }
     .tile.pp{ background:var(--pp); } .tile.trap{ background:var(--trap); } .tile.special{ background:var(--special); }
-    .tile.done{ opacity:.35; } .tile.here{ outline:2px solid var(--ink); transform:scale(1.08); }
+    .tile.stairs{ background:var(--gold); }
+    .tile.hidden{ background:#D8CDB4; color:#8a7f68; }
+    .tile.done{ opacity:.55; } .tile.here{ outline:2px solid var(--ink); transform:scale(1.08); opacity:1; }
     .rail-end{ flex-shrink:0; width:60px; height:46px; border-radius:12px; display:flex; flex-direction:column;
                align-items:center; justify-content:center; font-size:9px; font-weight:700; color:#fff; }
     .rail-end.village{ background:var(--village); } .rail-end.boss{ background:var(--boss); }
@@ -81,8 +83,8 @@
     .ach-row.done{ background:#fffbe8; border-color:var(--gold); }
 
     .msg-toast{ position:fixed; left:50%; bottom:96px; transform:translateX(-50%); background:var(--ink); color:#fff;
-                padding:10px 18px; border-radius:12px; font-size:12px; max-width:90vw; text-align:center; z-index:50;
-                box-shadow:0 6px 18px rgba(0,0,0,.3); display:none; white-space:pre-line; }
+                padding:12px 18px; border-radius:12px; font-size:12px; line-height:1.6; max-width:min(92vw,420px);
+                text-align:left; z-index:50; box-shadow:0 6px 18px rgba(0,0,0,.3); display:none; white-space:pre-line; }
 
     .dock{ position:fixed; left:0; right:0; bottom:0; display:flex; justify-content:center;
            padding:10px 14px calc(10px + env(safe-area-inset-bottom));
@@ -122,9 +124,8 @@
 
   <div class="tabs">
     <button class="tab-btn active" data-tab="board">🗼 탑</button>
-    <button class="tab-btn" data-tab="party">🎒 파티</button>
+    <button class="tab-btn" data-tab="party">🎒 파티/장비</button>
     <button class="tab-btn" data-tab="shop">🛍️ 상점</button>
-    <button class="tab-btn" data-tab="equip">⚔️ 장비</button>
     <button class="tab-btn" data-tab="ach">🏆 업적</button>
   </div>
 
@@ -140,6 +141,8 @@
         <span class="legend-chip"><span class="legend-dot" style="background:var(--pp)"></span>PP</span>
         <span class="legend-chip"><span class="legend-dot" style="background:var(--trap)"></span>함정</span>
         <span class="legend-chip"><span class="legend-dot" style="background:var(--special)"></span>특수</span>
+        <span class="legend-chip"><span class="legend-dot" style="background:var(--gold)"></span>계단</span>
+        <span class="legend-chip"><span class="legend-dot" style="background:#D8CDB4"></span>미발견</span>
       </div>
     </div>
     <div class="card" style="margin-top:10px;">
@@ -154,10 +157,24 @@
     </div>
   </div>
 
+  <!-- 파티(동료 3명)와 그 동료들에게 장착하는 장비는 한 화면에서 같이 관리 -->
   <div class="panel" id="panel-party">
     <div class="card">
       <div class="card-title">보유 동료 (클릭해서 파티 편성/해제, 최대 3명)</div>
       <div class="party-grid" id="partyGrid"></div>
+    </div>
+    <div class="card" style="margin-top:10px;">
+      <div class="card-title">파티 장비 현황</div>
+      <div id="partyEquipBox"></div>
+    </div>
+    <div class="card" style="margin-top:10px;">
+      <div class="card-title">미착용 장비 (번호 기준으로 장착/합성)</div>
+      <div id="equipListBox"></div>
+      <div style="margin-top:8px; display:flex; gap:6px;">
+        <input type="number" id="equipWearIdx" placeholder="장비#" style="width:70px;padding:6px;">
+        <button class="btn-query" onclick="TW.action('EQUIP_WEAR', document.getElementById('equipWearIdx').value)">장착(자동배정)</button>
+        <button class="btn-query" onclick="TW.action('EQUIP_SYNTH', document.getElementById('equipWearIdx').value)">합성</button>
+      </div>
     </div>
   </div>
 
@@ -182,18 +199,6 @@
     </div>
   </div>
 
-  <div class="panel" id="panel-equip">
-    <div class="card">
-      <div class="card-title">보유 장비 (번호는 미착용 목록 기준)</div>
-      <div id="equipListBox"></div>
-      <div style="margin-top:8px; display:flex; gap:6px;">
-        <input type="number" id="equipWearIdx" placeholder="장비#" style="width:70px;padding:6px;">
-        <button class="btn-query" onclick="TW.action('EQUIP_WEAR', document.getElementById('equipWearIdx').value)">장착(자동배정)</button>
-        <button class="btn-query" onclick="TW.action('EQUIP_SYNTH', document.getElementById('equipWearIdx').value)">합성</button>
-      </div>
-    </div>
-  </div>
-
   <div class="panel" id="panel-ach">
     <div class="card">
       <div class="card-title" id="achTitle">업적</div>
@@ -207,7 +212,7 @@
 
 <nav class="dock">
   <div class="dock-inner">
-    <button class="dbtn" onclick="TW.action('PARTY_TOGGLE', prompt('편성/해제할 동료 번호 (파티 탭 목록 기준)'))"><span class="d-icn">🎒</span>편성</button>
+    <button class="dbtn" onclick="TW.switchTab('party')"><span class="d-icn">🎒</span>편성</button>
     <button class="dbtn primary" onclick="TW.action('DICE','')"><span class="d-icn">🎲</span>주사위</button>
     <button class="dbtn" onclick="TW.switchTab('shop')"><span class="d-icn">🛍️</span>상점</button>
   </div>
@@ -223,26 +228,39 @@ var TW = (function () {
     return v || sessionStorage.getItem('loaUserName') || '';
   }
 
+  // 서버 메시지는 ♬(NL)를 줄바꿈 구분자로 씀(카톡봇 등 채팅 환경 공용) -- 웹에서는 실제 개행으로 변환
+  function formatMsg(msg) {
+    return (msg == null ? '' : String(msg)).split('♬').join('\n');
+  }
+
+  // PP_EXT/COST_EXT 등 단위 컬럼은 ''가 Oracle에서 NULL로 저장되므로 항상 null-safe 처리
+  function fmtPP(value, ext) {
+    var v = (value == null) ? 0 : value;
+    var e = (ext == null) ? '' : ext;
+    return v + e;
+  }
+
   function toast(msg) {
     var el = document.getElementById('msgToast');
-    el.textContent = msg;
+    var text = formatMsg(msg);
+    el.textContent = text;
     el.style.display = 'block';
     clearTimeout(toast._t);
-    toast._t = setTimeout(function () { el.style.display = 'none'; }, 3200);
+    var duration = Math.min(8000, Math.max(3200, text.length * 60));
+    toast._t = setTimeout(function () { el.style.display = 'none'; }, duration);
   }
 
   function switchTab(name) {
     document.querySelectorAll('.tab-btn').forEach(function (b) { b.classList.toggle('active', b.dataset.tab === name); });
     document.querySelectorAll('.panel').forEach(function (p) { p.classList.toggle('active', p.id === 'panel-' + name); });
     if (name === 'shop') loadShop();
-    if (name === 'equip') loadEquip();
     if (name === 'ach') loadAchievements();
-    if (name === 'party') loadParty();
+    if (name === 'party') loadPartyAndEquip();
   }
 
-  function tileClass(type) {
-    return { COMBAT: 'combat', SHOP: 'shop', PP: 'pp', TRAP: 'trap', SPECIAL: 'special' }[type] || 'combat';
-  }
+  var TILE_CLASS = { COMBAT: 'combat', SHOP: 'shop', PP: 'pp', TRAP: 'trap', SPECIAL: 'special', STAIRS: 'stairs' };
+  var TILE_KR    = { COMBAT: '전투', SHOP: '상점', PP: 'PP', TRAP: '함정', SPECIAL: '특수', STAIRS: '계단' };
+  function tileClass(type) { return TILE_CLASS[type] || 'combat'; }
 
   function loadStatus() {
     var u = userName();
@@ -263,8 +281,15 @@ var TW = (function () {
           var curTile = data.myTile ? data.myTile.CUR_TILE : 0;
           data.tiles.forEach(function (t) {
             var div = document.createElement('div');
-            div.className = 'tile ' + tileClass(t.TILE_TYPE) + (t.TILE_NO <= curTile ? ' done' : '') + (t.TILE_NO === curTile ? ' here' : '');
-            div.innerHTML = '<span class="tno">' + t.TILE_NO + '</span>' + t.TILE_TYPE;
+            var isHere = (t.TILE_NO === curTile);
+            if (t.DISCOVERED) {
+              div.className = 'tile ' + tileClass(t.TILE_TYPE) + (isHere ? ' here' : ' done');
+              div.innerHTML = '<span class="tno">' + t.TILE_NO + '</span>' + (TILE_KR[t.TILE_TYPE] || t.TILE_TYPE);
+            } else {
+              // 방문한 적 없는 칸은 종류를 감추고 물음표만 표시(fog of war)
+              div.className = 'tile hidden' + (isHere ? ' here' : '');
+              div.innerHTML = '<span class="tno">' + t.TILE_NO + '</span>?';
+            }
             track.appendChild(div);
           });
         } else {
@@ -274,25 +299,76 @@ var TW = (function () {
       .catch(function () { toast('조회 실패'); });
   }
 
-  function loadParty() {
+  var PART_KR = { HELMET: '투구', WEAPON: '무기', ARMOR: '갑옷' };
+
+  // 파티(동료 최대 3명)와 그 동료들에게 장착하는 장비는 한 화면에서 같이 관리한다.
+  function loadPartyAndEquip() {
     var u = userName();
     if (!u) return;
-    fetch(base + '/api/tower-party?userName=' + encodeURIComponent(u))
-      .then(function (r) { return r.json(); })
-      .then(function (data) {
-        var grid = document.getElementById('partyGrid');
-        grid.innerHTML = '';
-        (data.companions || []).forEach(function (c, idx) {
-          var div = document.createElement('div');
-          div.className = 'party-card' + (c.PARTY_SLOT ? ' inparty' : '');
-          var hpMax = c.CUR_HP_VALUE; // 표시는 현재치만 (최대치는 서버 계산)
-          div.innerHTML = '<div class="role">' + c.CLASS + ' ★' + c.GRADE + '</div>'
-              + '<div class="hpbar-track"><div class="hpbar-fill" style="width:100%"></div></div>'
-              + '<div class="hp-num">HP ' + c.CUR_HP_VALUE + c.CUR_HP_EXT + (c.PARTY_SLOT ? ' [파티' + c.PARTY_SLOT + ']' : '') + '</div>';
-          div.onclick = function () { action('PARTY_TOGGLE', String(idx + 1)); };
-          grid.appendChild(div);
-        });
+    Promise.all([
+      fetch(base + '/api/tower-party?userName=' + encodeURIComponent(u)).then(function (r) { return r.json(); }),
+      fetch(base + '/api/tower-equip?userName=' + encodeURIComponent(u)).then(function (r) { return r.json(); })
+    ]).then(function (results) {
+      var companions = results[0].companions || [];
+      var equips = results[1].equips || [];
+
+      // 동료 목록 + 편성 토글
+      var grid = document.getElementById('partyGrid');
+      grid.innerHTML = '';
+      companions.forEach(function (c, idx) {
+        var div = document.createElement('div');
+        div.className = 'party-card' + (c.PARTY_SLOT ? ' inparty' : '');
+        div.innerHTML = '<div class="role">' + c.CLASS + ' ★' + c.GRADE + '</div>'
+            + '<div class="hpbar-track"><div class="hpbar-fill" style="width:100%"></div></div>'
+            + '<div class="hp-num">HP ' + fmtPP(c.CUR_HP_VALUE, c.CUR_HP_EXT) + (c.PARTY_SLOT ? ' [파티' + c.PARTY_SLOT + ']' : '') + '</div>';
+        div.onclick = function () { action('PARTY_TOGGLE', String(idx + 1)); };
+        grid.appendChild(div);
       });
+
+      // 장착된 장비를 동료별로 묶기
+      var byCompanion = {};
+      var unequipped = [];
+      equips.forEach(function (e) {
+        if (e.EQUIPPED_COMPANION_ID != null) {
+          (byCompanion[e.EQUIPPED_COMPANION_ID] = byCompanion[e.EQUIPPED_COMPANION_ID] || []).push(e);
+        } else {
+          unequipped.push(e);
+        }
+      });
+
+      // 파티 슬롯별 장비 현황
+      var partyBox = document.getElementById('partyEquipBox');
+      partyBox.innerHTML = '';
+      var partied = companions.filter(function (c) { return c.PARTY_SLOT; })
+                               .sort(function (a, b) { return a.PARTY_SLOT - b.PARTY_SLOT; });
+      if (partied.length === 0) {
+        partyBox.innerHTML = '<div style="color:var(--ink-soft);font-size:12px;">파티에 편성된 동료가 없습니다.</div>';
+      }
+      partied.forEach(function (c) {
+        var row = document.createElement('div');
+        row.className = 'shop-row';
+        var mine = byCompanion[c.COMPANION_ID] || [];
+        var parts = ['HELMET', 'WEAPON', 'ARMOR'].map(function (part) {
+          var found = mine.filter(function (e) { return e.PART === part; })[0];
+          return PART_KR[part] + (found ? ' ★' + found.GRADE : ' 미착용');
+        }).join(' / ');
+        row.innerHTML = '<span>[파티' + c.PARTY_SLOT + '] ' + c.CLASS + ' ★' + c.GRADE + ' — ' + parts + '</span>';
+        partyBox.appendChild(row);
+      });
+
+      // 미착용 장비 목록 (번호 = 장착/합성 명령에 쓰는 번호)
+      var box = document.getElementById('equipListBox');
+      box.innerHTML = '';
+      if (unequipped.length === 0) {
+        box.innerHTML = '<div style="color:var(--ink-soft);font-size:12px;">미착용 장비가 없습니다.</div>';
+      }
+      unequipped.forEach(function (e, i) {
+        var row = document.createElement('div');
+        row.className = 'shop-row';
+        row.innerHTML = '<span>#' + (i + 1) + ' ' + e.CLASS + ' ' + (PART_KR[e.PART] || e.PART) + ' ★' + e.GRADE + '</span>';
+        box.appendChild(row);
+      });
+    });
   }
 
   function loadShop() {
@@ -305,7 +381,7 @@ var TW = (function () {
         (data.companionGacha || []).forEach(function (g) {
           var row = document.createElement('div');
           row.className = 'shop-row';
-          row.innerHTML = '<span>' + g.GACHA_NAME + ' (' + g.COST_VALUE + g.COST_EXT + ' PP)</span>'
+          row.innerHTML = '<span>' + g.GACHA_NAME + ' (' + fmtPP(g.COST_VALUE, g.COST_EXT) + ' PP)</span>'
               + '<button onclick="TW.action(\'GACHA_COMPANION\',\'' + g.GACHA_ID + '\')">뽑기</button>';
           cBox.appendChild(row);
         });
@@ -314,27 +390,9 @@ var TW = (function () {
         (data.equipGacha || []).forEach(function (g) {
           var row = document.createElement('div');
           row.className = 'shop-row';
-          row.innerHTML = '<span>' + g.GACHA_NAME + ' (' + g.COST_VALUE + g.COST_EXT + ' PP)</span>'
+          row.innerHTML = '<span>' + g.GACHA_NAME + ' (' + fmtPP(g.COST_VALUE, g.COST_EXT) + ' PP)</span>'
               + '<button onclick="TW.action(\'GACHA_EQUIP\',\'' + g.GACHA_ID + '\')">뽑기</button>';
           eBox.appendChild(row);
-        });
-      });
-  }
-
-  function loadEquip() {
-    var u = userName();
-    fetch(base + '/api/tower-equip?userName=' + encodeURIComponent(u))
-      .then(function (r) { return r.json(); })
-      .then(function (data) {
-        var box = document.getElementById('equipListBox');
-        box.innerHTML = '';
-        var uIdx = 1;
-        (data.equips || []).forEach(function (e) {
-          var row = document.createElement('div');
-          row.className = 'shop-row';
-          var label = e.EQUIPPED_COMPANION_ID ? '[장착중]' : ('[#' + (uIdx++) + ' 미착용]');
-          row.innerHTML = '<span>' + e.CLASS + ' ' + e.PART + ' ★' + e.GRADE + ' ' + label + '</span>';
-          box.appendChild(row);
         });
       });
   }
@@ -364,9 +422,8 @@ var TW = (function () {
     fetch(url).then(function (r) { return r.json(); }).then(function (data) {
       toast(data.message || data.error || '완료');
       loadStatus();
-      if (document.getElementById('panel-party').classList.contains('active')) loadParty();
+      if (document.getElementById('panel-party').classList.contains('active')) loadPartyAndEquip();
       if (document.getElementById('panel-shop').classList.contains('active')) loadShop();
-      if (document.getElementById('panel-equip').classList.contains('active')) loadEquip();
     }).catch(function () { toast('요청 실패'); });
   }
 

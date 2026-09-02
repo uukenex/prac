@@ -96,6 +96,10 @@
         SELECT COUNT(*) FROM TBOT_S5_USER_TILE_VISIT WHERE USER_NAME = #{userName} AND FLOOR = #{floor}
     </select>
 
+    <select id="selectVisitedTileNos" resultType="hashmap">
+        SELECT TILE_NO FROM TBOT_S5_USER_TILE_VISIT WHERE USER_NAME = #{userName} AND FLOOR = #{floor}
+    </select>
+
     <!-- ==================== 몬스터 ==================== -->
     <select id="selectMonster" resultType="hashmap">
         SELECT MONSTER_ID, BLOCK_NO, MONSTER_NAME, HP_VALUE, HP_EXT, ATK_VALUE, ATK_EXT,

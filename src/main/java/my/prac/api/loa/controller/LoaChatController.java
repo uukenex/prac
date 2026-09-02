@@ -566,6 +566,7 @@ public class LoaChatController {
 				val = s5.rollDice(reqMap);
 				break;
 			case "/층변경":
+			case "/층이동":
 				val = s5.changeFloor(reqMap);
 				break;
 			case "/파티편성":

@@ -736,9 +736,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             return "층변경은 0~9 범위만 가능합니다. (같은 10층 구간 내 이동)";
         }
         int floor = intVal(p.get("CUR_FLOOR"), 0);
-        if ("IN_COMBAT".equals(strVal(p.get("STATUS"), "NORMAL"))) {
-            return "전투 중에는 층 이동을 할 수 없습니다.";
-        }
+        boolean wasInCombat = "IN_COMBAT".equals(strVal(p.get("STATUS"), "NORMAL"));
         int target = floorBlockBase(floor) + n;
         int maxReached = intVal(p.get("MAX_FLOOR_REACHED"), 0);
         if (target > maxReached) {
@@ -749,14 +747,22 @@ public class BotS5ServiceImpl implements BotS5Service {
         HashMap<String, Object> up = new HashMap<>();
         up.put("userName", userName);
         up.put("curFloor", target);
+        if (wasInCombat) {
+            // 전투 중 층 이동 = 도망. 진행 중이던 전투를 포기하고 상태를 되돌린다.
+            up.put("status", "NORMAL");
+            up.put("clearMonster", true);
+        }
         dao.updateUserProgress(up);
 
         if (target != floor) {
             grantFloorAchievements(userName, target);
         }
 
-        StringBuilder sb = new StringBuilder(userName).append("님," + NL)
-                .append(floor).append("층 → ").append(target).append("층(").append(floorKindLabel(target)).append(")으로 이동했습니다.");
+        StringBuilder sb = new StringBuilder(userName).append("님," + NL);
+        if (wasInCombat) {
+            sb.append("💨 전투에서 도망쳤습니다!").append(NL);
+        }
+        sb.append(floor).append("층 → ").append(target).append("층(").append(floorKindLabel(target)).append(")으로 이동했습니다.");
 
         int tm = target % 10;
         if (tm >= 1 && tm <= 8) {

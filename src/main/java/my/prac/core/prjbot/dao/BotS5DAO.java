@@ -24,6 +24,7 @@ public interface BotS5DAO {
     // ── 칸 발견(방문) 기록 ──
     int insertTileVisit(@Param("userName") String userName, @Param("floor") int floor, @Param("tileNo") int tileNo);
     int countTileVisits(@Param("userName") String userName, @Param("floor") int floor);
+    List<HashMap<String, Object>> selectVisitedTileNos(@Param("userName") String userName, @Param("floor") int floor);
 
     // ── 몬스터 ──
     HashMap<String, Object> selectMonster(@Param("blockNo") int blockNo, @Param("bossYn") String bossYn);

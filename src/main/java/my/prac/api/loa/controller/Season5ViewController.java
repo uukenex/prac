@@ -2,7 +2,9 @@ package my.prac.api.loa.controller;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import javax.annotation.Resource;
 
@@ -66,7 +68,7 @@ public class Season5ViewController {
         int floor = toInt(progress.get("CUR_FLOOR"));
         if (floor % 10 >= 1 && floor % 10 <= 8) {
             result.put("floorInfo", s5Dao.selectFloorInfo(floor));
-            result.put("tiles", s5Dao.selectTileMaster(floor));
+            result.put("tiles", buildTilesWithFogOfWar(userName, floor));
             result.put("myTile", s5Dao.selectUserFloorProgress(userName, floor));
         }
         return ResponseEntity.ok(result);
@@ -195,5 +197,27 @@ public class Season5ViewController {
     private int toInt(Object o) {
         if (o == null) return 0;
         try { return ((Number) o).intValue(); } catch (Exception e) { return 0; }
+    }
+
+    /**
+     * 방문(발견)한 칸만 실제 TILE_TYPE을 노출하고, 미발견 칸은 종류를 감춘 채(DISCOVERED=false)
+     * 내려준다 -- 화면에서 안개(fog of war) 처리를 서버가 보장.
+     */
+    private List<HashMap<String, Object>> buildTilesWithFogOfWar(String userName, int floor) {
+        Set<Integer> visited = new HashSet<>();
+        for (HashMap<String, Object> v : s5Dao.selectVisitedTileNos(userName, floor)) {
+            visited.add(toInt(v.get("TILE_NO")));
+        }
+        List<HashMap<String, Object>> out = new ArrayList<>();
+        for (HashMap<String, Object> t : s5Dao.selectTileMaster(floor)) {
+            int tileNo = toInt(t.get("TILE_NO"));
+            HashMap<String, Object> row = new HashMap<>();
+            row.put("TILE_NO", tileNo);
+            boolean discovered = visited.contains(tileNo);
+            row.put("DISCOVERED", discovered);
+            if (discovered) row.put("TILE_TYPE", t.get("TILE_TYPE"));
+            out.add(row);
+        }
+        return out;
     }
 }
