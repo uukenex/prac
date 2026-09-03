@@ -113,7 +113,7 @@ public class BotS5ServiceImpl implements BotS5Service {
 
     // 칸 종류 표시(아이콘+이름)
     private static final HashMap<String, String> TILE_LABEL = new HashMap<String, String>() {{
-        put("COMBAT", "⚔️ 전투");  put("PP", "💰 PP");     put("SHOP", "🎁 상점");
+        put("COMBAT", "⚔️ 전투");  put("PP", "🍀 럭키");     put("SHOP", "🎁 상점");
         put("TRAP",   "🕳️ 함정");  put("SPECIAL", "✨ 특수"); put("STAIRS", "🪜 계단");
     }};
 
@@ -567,10 +567,12 @@ public class BotS5ServiceImpl implements BotS5Service {
         sb.append(NL);
 
         int trapTurnLeft = intVal(p.get("TRAP_TURN_LEFT"), 0);
-        if (trapTurnLeft > 0) {
+        int luckyTurnLeft = intVal(p.get("LUCKY_TURN_LEFT"), 0);
+        if (trapTurnLeft > 0 || luckyTurnLeft > 0) {
             HashMap<String, Object> up = new HashMap<>();
             up.put("userName", userName);
-            up.put("trapTurnLeft", trapTurnLeft - 1);
+            if (trapTurnLeft > 0) up.put("trapTurnLeft", trapTurnLeft - 1);
+            if (luckyTurnLeft > 0) up.put("luckyTurnLeft", luckyTurnLeft - 1);
             dao.updateUserProgress(up);
         }
 
@@ -600,11 +602,48 @@ public class BotS5ServiceImpl implements BotS5Service {
                 sb.append(startCombat(userName, p, floor, false));
                 break;
             case "PP": {
+                // 럭키칸(칸 유형 값은 하위호환을 위해 기존 "PP" 그대로 두고 표시만 "🍀 럭키"로 바꿈,
+                // 함정칸처럼 이로운 효과 4종 중 무작위 -- PP 보너스/회복은 즉시 발동, 공격력/방어력
+                // 강화는 이후 3번의 보드 이동 동안 지속되는 파티 전체 버프(위 luckyTurnLeft 참고).
                 HashMap<String, Object> mon = dao.selectMonster(blockNo(floor), "N");
-                PP reward = mon == null ? PP.of(1, "")
+                PP basePp = mon == null ? PP.of(1, "")
                         : PP.of(((Number) mon.get("PP_PER_KILL_VALUE")).doubleValue(), strVal(mon.get("PP_PER_KILL_EXT"), "")).multiply(floorPpMultiplier(floor));
-                addPp(userName, p, reward);
-                sb.append(reward.format()).append(" PP 획득!");
+                String[] luckyEffects = { "PP_BONUS", "ATK_UP", "DEF_UP", "HEAL" };
+                String luckyEffect = luckyEffects[RND.nextInt(luckyEffects.length)];
+                switch (luckyEffect) {
+                    case "ATK_UP":
+                    case "DEF_UP": {
+                        HashMap<String, Object> up = new HashMap<>();
+                        up.put("userName", userName);
+                        up.put("luckyTurnLeft", 3);
+                        up.put("luckyEffect", luckyEffect);
+                        dao.updateUserProgress(up);
+                        if ("ATK_UP".equals(luckyEffect)) {
+                            sb.append("🍀 럭키 칸! 앞으로 3번 이동하는 동안 파티 전원의 공격력이 30% 강화됩니다.");
+                        } else {
+                            sb.append("🍀 럭키 칸! 앞으로 3번 이동하는 동안 파티 전원의 방어력이 30% 강화됩니다.");
+                        }
+                        break;
+                    }
+                    case "HEAL": {
+                        List<HashMap<String, Object>> healParty = new ArrayList<>();
+                        for (HashMap<String, Object> c : dao.selectUserCompanions(userName)) {
+                            if (c.get("PARTY_SLOT") != null) healParty.add(c);
+                        }
+                        if (healParty.isEmpty()) {
+                            sb.append("🍀 럭키 칸! 몸이 개운해지는 기운을 느꼈지만... 파티가 비어있어 효과가 없었다.");
+                        } else {
+                            healPartyFull(userName, healParty, dao.selectUserStat(userName));
+                            sb.append("🍀 럭키 칸! 파티 전원의 체력이 완전히 회복되었습니다!");
+                        }
+                        break;
+                    }
+                    default: { // PP_BONUS -- 기존 PP칸 보상의 3배
+                        PP reward = basePp.multiply(3);
+                        addPp(userName, p, reward);
+                        sb.append("🍀 럭키 칸! ").append(reward.format()).append(" PP 획득!");
+                    }
+                }
                 break;
             }
             case "TRAP": {
@@ -808,9 +847,11 @@ public class BotS5ServiceImpl implements BotS5Service {
         int monsterDef = intVal(mon.get("DEF_VALUE"), 0);
         int diceMax = diceMax(strVal(p.get("DICE_GRADE"), "DICE_6"));
 
-        // 함정칸 디버프(TRAP 칸 참고): 남은 이동횟수가 있는 동안 파티 전체에 적용
+        // 함정칸 디버프 / 럭키칸 버프: 남은 이동횟수가 있는 동안 파티 전체에 적용
         boolean trapAtkDown = intVal(p.get("TRAP_TURN_LEFT"), 0) > 0 && "ATK_DOWN".equals(strVal(p.get("TRAP_EFFECT"), ""));
         boolean trapDefDown = intVal(p.get("TRAP_TURN_LEFT"), 0) > 0 && "DEF_DOWN".equals(strVal(p.get("TRAP_EFFECT"), ""));
+        boolean luckyAtkUp = intVal(p.get("LUCKY_TURN_LEFT"), 0) > 0 && "ATK_UP".equals(strVal(p.get("LUCKY_EFFECT"), ""));
+        boolean luckyDefUp = intVal(p.get("LUCKY_TURN_LEFT"), 0) > 0 && "DEF_UP".equals(strVal(p.get("LUCKY_EFFECT"), ""));
 
         // 20층 이후(블록3+) 보스 전용 스킬: 무시(면역, startCombat에서 지정) + 기절(아래 반격 턴에서 확률 발동)
         boolean lateBoss = "Y".equals(strVal(mon.get("BOSS_YN"), "N")) && blockNo(floor) >= 3;
@@ -854,6 +895,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             List<HashMap<String, Object>> equips = dao.selectEquipByCompanion(intVal(c.get("COMPANION_ID"), 0));
             int[] eff = computeEffectiveStat(job, grade, equips, userStat);
             if (trapAtkDown) eff[1] = (int) Math.round(eff[1] * 0.7); // 함정: 공격력 30% 약화
+            if (luckyAtkUp) eff[1] = (int) Math.round(eff[1] * 1.3); // 럭키: 공격력 30% 강화
 
             int roll = RND.nextInt(diceMax) + 1;
             int dmg = Math.max(1, eff[1] * roll - monsterDef);
@@ -1013,6 +1055,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         List<HashMap<String, Object>> tEquips = dao.selectEquipByCompanion(intVal(target.get("COMPANION_ID"), 0));
         int[] tEff = computeEffectiveStat(tJob, tGrade, tEquips, userStat);
         if (trapDefDown) tEff[2] = (int) Math.round(tEff[2] * 0.7); // 함정: 방어력 30% 약화(반격 피해 증가)
+        if (luckyDefUp) tEff[2] = (int) Math.round(tEff[2] * 1.3); // 럭키: 방어력 30% 강화(반격 피해 감소)
         int monsterAtk = intVal(mon.get("ATK_VALUE"), 0);
         int roll = RND.nextInt(diceMax) + 1;
         int dmgToParty = Math.max(1, monsterAtk * roll - tEff[2]);

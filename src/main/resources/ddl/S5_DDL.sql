@@ -250,4 +250,12 @@ ALTER TABLE TBOT_S5_USER_PROGRESS ADD (
     NO_COOLDOWN_YN CHAR(1) DEFAULT 'N' NOT NULL
 );
 
+-- "럭키칸"(TILE_TYPE='PP', display renamed) buff mirror of TRAP_TURN_LEFT/TRAP_EFFECT:
+-- ATK_UP/DEF_UP is a party-wide +30% buff for 3 board moves; PP_BONUS/HEAL are instant
+-- and don't touch these columns.
+ALTER TABLE TBOT_S5_USER_PROGRESS ADD (
+    LUCKY_TURN_LEFT NUMBER DEFAULT 0 NOT NULL,
+    LUCKY_EFFECT    VARCHAR2(10)
+);
+
 EXIT;

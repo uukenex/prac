@@ -166,7 +166,7 @@
       <div class="legend">
         <span class="legend-chip"><span class="legend-dot" style="background:var(--combat)"></span>전투</span>
         <span class="legend-chip"><span class="legend-dot" style="background:var(--shop)"></span>비밀상점</span>
-        <span class="legend-chip"><span class="legend-dot" style="background:var(--pp)"></span>PP</span>
+        <span class="legend-chip"><span class="legend-dot" style="background:var(--pp)"></span>🍀 럭키</span>
         <span class="legend-chip"><span class="legend-dot" style="background:var(--trap)"></span>함정</span>
         <span class="legend-chip"><span class="legend-dot" style="background:var(--special)"></span>특수</span>
         <span class="legend-chip"><span class="legend-dot" style="background:var(--gold)"></span>계단</span>
@@ -307,7 +307,7 @@ var TW = (function () {
   }
 
   var TILE_CLASS = { COMBAT: 'combat', SHOP: 'shop', PP: 'pp', TRAP: 'trap', SPECIAL: 'special', STAIRS: 'stairs' };
-  var TILE_KR    = { COMBAT: '전투', SHOP: '상점', PP: 'PP', TRAP: '함정', SPECIAL: '특수', STAIRS: '계단' };
+  var TILE_KR    = { COMBAT: '전투', SHOP: '상점', PP: '럭키', TRAP: '함정', SPECIAL: '특수', STAIRS: '계단' };
   function tileClass(type) { return TILE_CLASS[type] || 'combat'; }
 
   function loadStatus() {
