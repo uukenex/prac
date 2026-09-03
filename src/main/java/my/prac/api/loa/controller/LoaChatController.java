@@ -606,7 +606,7 @@ public class LoaChatController {
 			case "/탑명령어":
 				val = s5.help(reqMap);
 				break;
-			case "/업적":
+			case "/탑업적":
 				val = s5.achievements(reqMap);
 				break;
 			case "/동료뽑기":

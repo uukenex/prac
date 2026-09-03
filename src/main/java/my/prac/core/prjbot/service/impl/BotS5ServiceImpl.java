@@ -5,6 +5,7 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Random;
@@ -367,7 +368,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         sb.append("/장비목록").append(NL);
         sb.append("/장비장착 [N] [M]").append(NL);
         sb.append("/장비합성 N").append(NL);
-        sb.append("/업적").append(NL);
+        sb.append("/탑업적").append(NL);
         sb.append(NL);
 
         sb.append("[상세 설명]").append(NL);
@@ -403,7 +404,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         sb.append(NL);
 
         sb.append("[업적] (웹 '업적' 탭)").append(NL);
-        sb.append("/업적 : 달성/미달성(히든 제외) 업적 목록 조회").append(NL);
+        sb.append("/탑업적 : 달성한 업적 이름만 조회").append(NL);
         return sb.toString();
     }
 
@@ -1276,24 +1277,30 @@ public class BotS5ServiceImpl implements BotS5Service {
     }
 
     // ================================================================
-    // /업적
+    // /탑업적
     // ================================================================
     @Override
     public String achievements(String userName) {
         List<HashMap<String, Object>> all = dao.selectAchievementList();
         List<HashMap<String, Object>> mine = dao.selectUserAchievements(userName);
-        HashMap<Integer, Boolean> cleared = new HashMap<>();
-        for (HashMap<String, Object> m : mine) cleared.put(intVal(m.get("ACH_ID"), -1), true);
+
+        // 이름(ACH_NAME) → 달성일(ACH_ID)로 매핑해두면 이름만 나열할 때도 ACH_ID 순서를 유지할 수 있음
+        HashMap<Integer, String> nameById = new HashMap<>();
+        for (HashMap<String, Object> a : all) {
+            nameById.put(intVal(a.get("ACH_ID"), -1), strVal(a.get("ACH_NAME"), ""));
+        }
+        List<Integer> clearedIds = new ArrayList<>();
+        for (HashMap<String, Object> m : mine) clearedIds.add(intVal(m.get("ACH_ID"), -1));
+        Collections.sort(clearedIds);
 
         StringBuilder sb = new StringBuilder(userName).append("님의 업적 (")
                 .append(mine.size()).append("/").append(all.size()).append(")," + NL);
-        for (HashMap<String, Object> a : all) {
-            int id = intVal(a.get("ACH_ID"), -1);
-            boolean hidden = "Y".equals(strVal(a.get("HIDDEN_YN"), "N"));
-            boolean done = cleared.containsKey(id);
-            if (hidden && !done) continue;
-            sb.append(done ? "✅ " : "⬜ ").append(strVal(a.get("ACH_NAME"), "")).append(" - ")
-              .append(strVal(a.get("ACH_DESC"), "")).append(NL);
+        if (clearedIds.isEmpty()) {
+            sb.append("(아직 달성한 업적이 없습니다)");
+            return sb.toString();
+        }
+        for (Integer id : clearedIds) {
+            sb.append("✅ ").append(nameById.getOrDefault(id, "?")).append(NL);
         }
         return sb.toString();
     }

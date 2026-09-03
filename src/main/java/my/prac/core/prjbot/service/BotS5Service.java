@@ -45,7 +45,7 @@ public interface BotS5Service {
     /** /동료가리기 N — 목록 N번째 동료를 숨김/숨김해제 토글(/파티편성 텍스트 목록에서 안 보이게) */
     String toggleCompanionHidden(String userName, int idx);
 
-    /** /업적 — 달성 목록 + 히든 제외 미달성 목록 */
+    /** /탑업적 — 달성한 업적 이름만 조회(설명/미달성 목록은 웹 UI '업적' 탭에서 확인) */
     String achievements(String userName);
 
     /** /동료뽑기 N — N번 가챠(계약서)로 동료 1명 뽑기 */
