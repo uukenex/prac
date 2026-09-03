@@ -290,7 +290,6 @@ public class BotS5ServiceImpl implements BotS5Service {
     public String towerStatus(String userName, String targetQuery) {
         boolean isOther = targetQuery != null && !targetQuery.trim().isEmpty();
         String target = userName;
-        String otherCandidatesNote = null;
 
         if (isOther) {
             String q = targetQuery.trim();
@@ -299,18 +298,12 @@ public class BotS5ServiceImpl implements BotS5Service {
                 target = q;
             } else {
                 // 앞부분 일치 검색(selectS5UserSearch)은 USER_NAME 오름차순 정렬이라 여러 명이
-                // 걸리면 그중 가장 앞선(사전순 첫) 닉네임으로 자동 조회하고, 나머지는 참고용으로만 안내.
+                // 걸리면 그중 가장 앞선(사전순 첫) 닉네임으로 조용히 바로 조회한다(후보 안내 없음).
                 List<String> matches = dao.selectS5UserSearch(q);
                 if (matches.isEmpty()) {
                     return "🔍 '" + q + "' 로 시작하는 유저를 찾을 수 없습니다.";
                 }
                 target = matches.get(0);
-                if (matches.size() > 1) {
-                    StringBuilder note = new StringBuilder("🔍 '").append(q).append("' 검색 결과 ").append(matches.size())
-                            .append("명 중 '").append(target).append("' 조회. 다른 후보:");
-                    for (int i = 1; i < matches.size(); i++) note.append(" ").append(matches.get(i));
-                    otherCandidatesNote = note.toString();
-                }
             }
         }
 
@@ -324,7 +317,6 @@ public class BotS5ServiceImpl implements BotS5Service {
         PP pp = PP.of(((Number) p.get("PP_VALUE")).doubleValue(), strVal(p.get("PP_EXT"), ""));
 
         StringBuilder sb = new StringBuilder();
-        if (otherCandidatesNote != null) sb.append(otherCandidatesNote).append(NL);
         sb.append(target).append(isOther ? "님의 탑 현황" : "님").append("," + NL);
         sb.append("현재 층: ").append(floor);
         sb.append(" (").append(floorKindLabel(floor)).append(")").append(NL);

@@ -47,68 +47,50 @@ public class Season5Controller {
         return Objects.toString(map.get("param2"), "").trim();
     }
 
-    /**
-     * 카톡 단체방에서 여러 명이 같이 쓰는 봇이라, 응답만 봐서는 누가 한 액션인지 알기 어렵다
-     * (특히 "⏳ 아직 쿨타임입니다!" 류의 짧은 메시지). 이미 본문이 유저명으로 시작하는 응답
-     * (예: "OOO님, ...")은 건드리지 않고, 그렇지 않은 응답에만 맨 앞에 "[유저명] "을 붙여준다.
-     * 모든 public 메서드의 반환 시점에 이 메서드를 거치도록 해서, 서비스 계층 안쪽 어디서
-     * 리턴하든 빠짐없이 적용되게 한다.
-     */
-    private String withUser(String userName, String msg) {
-        if (msg == null || userName == null || msg.startsWith(userName)) return msg;
-        return "[" + userName + "] " + msg;
-    }
-
     public String rollDice(HashMap<String, Object> map) {
-        String userName = userNameOf(map);
-        return withUser(userName, s5Service.rollDice(userName));
+        return s5Service.rollDice(userNameOf(map));
     }
 
     public String changeFloor(HashMap<String, Object> map) {
-        String userName = userNameOf(map);
         String param1 = param1Of(map);
         if (param1.isEmpty()) {
-            return withUser(userName, "사용법: /층변경 0~9 (예: /층변경 9 → 같은 구간 보스층으로 이동)");
+            return "사용법: /층변경 0~9 (예: /층변경 9 → 같은 구간 보스층으로 이동)";
         }
         try {
-            return withUser(userName, s5Service.changeFloor(userName, Integer.parseInt(param1)));
+            return s5Service.changeFloor(userNameOf(map), Integer.parseInt(param1));
         } catch (NumberFormatException e) {
-            return withUser(userName, "층변경 값은 0~9 사이의 숫자여야 합니다.");
+            return "층변경 값은 0~9 사이의 숫자여야 합니다.";
         }
     }
 
     public String party(HashMap<String, Object> map) {
         String userName = userNameOf(map);
         String param1 = param1Of(map);
-        if (param1.isEmpty()) return withUser(userName, s5Service.partyList(userName));
+        if (param1.isEmpty()) return s5Service.partyList(userName);
         try {
-            return withUser(userName, s5Service.partyToggle(userName, Integer.parseInt(param1)));
+            return s5Service.partyToggle(userName, Integer.parseInt(param1));
         } catch (NumberFormatException e) {
-            return withUser(userName, "번호는 숫자로 입력해주세요. 예: /파티편성 1");
+            return "번호는 숫자로 입력해주세요. 예: /파티편성 1";
         }
     }
 
     public String hideCompanion(HashMap<String, Object> map) {
-        String userName = userNameOf(map);
         String param1 = param1Of(map);
-        if (param1.isEmpty()) return withUser(userName, "사용법: /동료가리기 N (N은 /파티편성 목록 번호)");
+        if (param1.isEmpty()) return "사용법: /동료가리기 N (N은 /파티편성 목록 번호)";
         try {
-            return withUser(userName, s5Service.toggleCompanionHidden(userName, Integer.parseInt(param1)));
+            return s5Service.toggleCompanionHidden(userNameOf(map), Integer.parseInt(param1));
         } catch (NumberFormatException e) {
-            return withUser(userName, "번호는 숫자로 입력해주세요.");
+            return "번호는 숫자로 입력해주세요.";
         }
     }
 
     public String towerStatus(HashMap<String, Object> map) {
-        String userName = userNameOf(map);
         String param1 = param1Of(map);
-        String result = param1.isEmpty() ? s5Service.towerStatus(userName) : s5Service.towerStatus(userName, param1);
-        return withUser(userName, result);
+        return param1.isEmpty() ? s5Service.towerStatus(userNameOf(map)) : s5Service.towerStatus(userNameOf(map), param1);
     }
 
     public String help(HashMap<String, Object> map) {
-        String userName = userNameOf(map);
-        return withUser(userName, s5Service.help(userName));
+        return s5Service.help(userNameOf(map));
     }
 
     /** /갱신 — 다른 시즌들의 /갱신과 같이 눌리는 공용 명령어에 얹어서 호출됨(LoaChatController 참고) */
@@ -122,98 +104,89 @@ public class Season5Controller {
     }
 
     public String achievements(HashMap<String, Object> map) {
-        String userName = userNameOf(map);
-        return withUser(userName, s5Service.achievements(userName));
+        return s5Service.achievements(userNameOf(map));
     }
 
     public String gachaCompanion(HashMap<String, Object> map) {
-        String userName = userNameOf(map);
         String param1 = param1Of(map);
-        if (param1.isEmpty()) return withUser(userName, "사용법: /동료뽑기N (N은 SPA 상점 탭에서 확인, 생략 시 1번)");
+        if (param1.isEmpty()) return "사용법: /동료뽑기N (N은 SPA 상점 탭에서 확인, 생략 시 1번)";
         try {
-            return withUser(userName, s5Service.gachaCompanion(userName, Integer.parseInt(param1)));
+            return s5Service.gachaCompanion(userNameOf(map), Integer.parseInt(param1));
         } catch (NumberFormatException e) {
-            return withUser(userName, "번호는 숫자로 입력해주세요.");
+            return "번호는 숫자로 입력해주세요.";
         }
     }
 
     public String gachaCompanionTen(HashMap<String, Object> map) {
-        String userName = userNameOf(map);
         String param1 = param1Of(map);
-        if (param1.isEmpty()) return withUser(userName, "사용법: /동료뽑기N 10 (N은 SPA 상점 탭에서 확인)");
+        if (param1.isEmpty()) return "사용법: /동료뽑기N 10 (N은 SPA 상점 탭에서 확인)";
         try {
-            return withUser(userName, s5Service.gachaCompanionTen(userName, Integer.parseInt(param1)));
+            return s5Service.gachaCompanionTen(userNameOf(map), Integer.parseInt(param1));
         } catch (NumberFormatException e) {
-            return withUser(userName, "번호는 숫자로 입력해주세요.");
+            return "번호는 숫자로 입력해주세요.";
         }
     }
 
     public String gachaEquip(HashMap<String, Object> map) {
-        String userName = userNameOf(map);
         String param1 = param1Of(map);
-        if (param1.isEmpty()) return withUser(userName, "사용법: /장비뽑기N (N은 SPA 상점 탭에서 확인, 생략 시 1번)");
+        if (param1.isEmpty()) return "사용법: /장비뽑기N (N은 SPA 상점 탭에서 확인, 생략 시 1번)";
         try {
-            return withUser(userName, s5Service.gachaEquip(userName, Integer.parseInt(param1)));
+            return s5Service.gachaEquip(userNameOf(map), Integer.parseInt(param1));
         } catch (NumberFormatException e) {
-            return withUser(userName, "번호는 숫자로 입력해주세요.");
+            return "번호는 숫자로 입력해주세요.";
         }
     }
 
     public String gachaEquipTen(HashMap<String, Object> map) {
-        String userName = userNameOf(map);
         String param1 = param1Of(map);
-        if (param1.isEmpty()) return withUser(userName, "사용법: /장비뽑기N 10 (N은 SPA 상점 탭에서 확인)");
+        if (param1.isEmpty()) return "사용법: /장비뽑기N 10 (N은 SPA 상점 탭에서 확인)";
         try {
-            return withUser(userName, s5Service.gachaEquipTen(userName, Integer.parseInt(param1)));
+            return s5Service.gachaEquipTen(userNameOf(map), Integer.parseInt(param1));
         } catch (NumberFormatException e) {
-            return withUser(userName, "번호는 숫자로 입력해주세요.");
+            return "번호는 숫자로 입력해주세요.";
         }
     }
 
     public String diceShop(HashMap<String, Object> map) {
         String param1 = param1Of(map);
         String userName = userNameOf(map);
-        if (param1.isEmpty()) return withUser(userName, s5Service.diceShop(userName, null));
+        if (param1.isEmpty()) return s5Service.diceShop(userName, null);
         try {
-            return withUser(userName, s5Service.diceShop(userName, Integer.parseInt(param1)));
+            return s5Service.diceShop(userName, Integer.parseInt(param1));
         } catch (NumberFormatException e) {
-            return withUser(userName, "번호는 숫자로 입력해주세요.");
+            return "번호는 숫자로 입력해주세요.";
         }
     }
 
     public String statShop(HashMap<String, Object> map) {
-        String userName = userNameOf(map);
         String param1 = param1Of(map);
-        return withUser(userName, s5Service.statShop(userName, param1.isEmpty() ? null : param1));
+        return s5Service.statShop(userNameOf(map), param1.isEmpty() ? null : param1);
     }
 
     public String equipList(HashMap<String, Object> map) {
-        String userName = userNameOf(map);
-        return withUser(userName, s5Service.equipList(userName));
+        return s5Service.equipList(userNameOf(map));
     }
 
     public String equipWear(HashMap<String, Object> map) {
-        String userName = userNameOf(map);
         String param1 = param1Of(map);
         String param2 = param2Of(map);
-        if (param1.isEmpty()) return withUser(userName, s5Service.equipWearUsage(userName));
+        if (param1.isEmpty()) return s5Service.equipWearUsage(userNameOf(map));
         try {
             int equipIdx = Integer.parseInt(param1);
             Integer companionIdx = param2.isEmpty() ? null : Integer.parseInt(param2);
-            return withUser(userName, s5Service.equipWear(userName, equipIdx, companionIdx));
+            return s5Service.equipWear(userNameOf(map), equipIdx, companionIdx);
         } catch (NumberFormatException e) {
-            return withUser(userName, "번호는 숫자로 입력해주세요.");
+            return "번호는 숫자로 입력해주세요.";
         }
     }
 
     public String equipSynthesis(HashMap<String, Object> map) {
-        String userName = userNameOf(map);
         String param1 = param1Of(map);
-        if (param1.isEmpty()) return withUser(userName, "사용법: /장비합성 N (N=미착용 장비 번호)");
+        if (param1.isEmpty()) return "사용법: /장비합성 N (N=미착용 장비 번호)";
         try {
-            return withUser(userName, s5Service.equipSynthesis(userName, Integer.parseInt(param1)));
+            return s5Service.equipSynthesis(userNameOf(map), Integer.parseInt(param1));
         } catch (NumberFormatException e) {
-            return withUser(userName, "번호는 숫자로 입력해주세요.");
+            return "번호는 숫자로 입력해주세요.";
         }
     }
 }
