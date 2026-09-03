@@ -481,6 +481,7 @@ public class BotS5ServiceImpl implements BotS5Service {
 
     /** LAST_DICE_ACTION_DATE 기준 쿨타임 검사. 아직 남았으면 안내 메시지, 통과면 null. */
     private String checkDiceCooldown(HashMap<String, Object> p, String status) {
+        if ("Y".equals(strVal(p.get("NO_COOLDOWN_YN"), "N"))) return null; // 특정 유저만 쿨타임 면제(관리자가 직접 부여)
         java.util.Date last = (java.util.Date) p.get("LAST_DICE_ACTION_DATE");
         if (last == null) return null;
         long cooldownSec = "IN_COMBAT".equals(status) ? COMBAT_COOLDOWN_SEC : MOVE_COOLDOWN_SEC;
@@ -919,6 +920,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                 up.put("unlockedBlock", prevBlockBase + 10);
                 // 새 구간의 첫 사냥터층은 계단 없이도 바로 층변경 가능해야 함
                 up.put("maxFloorReached", nextFloor + 1);
+                up.put("killCountCur", 0); // 새 구간으로 넘어가므로 "이 층 처치수"도 초기화(changeFloor와 동일 이유)
                 sb.append("👑 보스 격파! ").append(nextFloor).append("층 마을로 이동합니다.").append(NL);
                 grantAchievement(userName, 7);
                 // 보스 처치로 다음 구간으로 넘어가면 이전 구간(방금 클리어한 사냥터 8개층)은
@@ -1157,6 +1159,13 @@ public class BotS5ServiceImpl implements BotS5Service {
             // 전투 중 층 이동 = 도망. 진행 중이던 전투를 포기하고 상태를 되돌린다.
             up.put("status", "NORMAL");
             up.put("clearMonster", true);
+        }
+        // [버그 수정] KILL_COUNT_CUR("이 층에서 몇 마리 잡았는지")가 층이 바뀌어도 초기화되지
+        // 않아서, 예전 층에서 쌓인 처치수가 다음 층까지 이어져 엉뚱하게 10마리를 채우고
+        // 자동사냥이 켜지는 문제가 있었다(예: 이전 층 9마리 + 새 층 1마리 = 10). 층이 실제로
+        // 바뀔 때는 항상 0으로 리셋해서 "이 층 도착 이후 처치수"만 세도록 한다.
+        if (target != floor) {
+            up.put("killCountCur", 0);
         }
         dao.updateUserProgress(up);
 
@@ -1397,6 +1406,41 @@ public class BotS5ServiceImpl implements BotS5Service {
      * 클라이언트(localStorage)로 캐싱해 쓰던 API인데, 여기선 동료별로 영구히 남아야 해서 뽑는 시점에
      * 서버가 한 번 호출해 DB(IMAGE_URL)에 박아둔다. 실패해도 동료 생성 자체는 계속 진행(null 반환).
      */
+    /**
+     * /이미지갱신 — IMAGE_URL이 없는 동료(전체 유저 공통, 최대 20마리씩)를 찾아 nekos.best에서
+     * 이미지를 받아와 DB(IMAGE_URL)에 채워넣는다. 예전엔 뽑기 시점에 자동 호출했지만, 외부 API가
+     * 느리거나(이 프로젝트 환경에서는 사내망이 외부 사이트를 차단하는 경우도 있음) 실패하면 뽑기
+     * 응답 자체가 늦어지는 문제가 있어서, 뽑기와 분리해 관리자가 필요할 때 직접 실행하는 명령어로 뺐다.
+     * 한 번에 20마리로 제한하는 이유: 이 요청 하나가 컨트롤러 스레드를 물고 있는 동안 마리당 최대
+     * 3초(연결)+3초(응답) 대기할 수 있어서, 너무 많이 처리하면 요청이 과도하게 오래 걸림 -- 남은
+     * 마리가 있으면 안내 문구에 표시하고, 다시 실행하면 이어서 처리된다.
+     */
+    @Override
+    public String refreshCompanionImages() {
+        List<HashMap<String, Object>> targets = dao.selectCompanionsMissingImage(20);
+        if (targets.isEmpty()) {
+            return "🖼️ 이미지가 없는 동료가 없습니다. 전부 채워져 있어요.";
+        }
+        int success = 0, fail = 0;
+        for (HashMap<String, Object> c : targets) {
+            String imgUrl = fetchRandomNekoImage();
+            if (imgUrl == null) {
+                fail++;
+                continue;
+            }
+            HashMap<String, Object> up = new HashMap<>();
+            up.put("companionId", intVal(c.get("COMPANION_ID"), 0));
+            up.put("imageUrl", imgUrl);
+            dao.updateCompanionImage(up);
+            success++;
+        }
+        int remaining = dao.countCompanionsMissingImage();
+        StringBuilder sb = new StringBuilder("🖼️ 이미지 갱신: 성공 ").append(success).append("마리");
+        if (fail > 0) sb.append(", 실패 ").append(fail).append("마리(외부 API 응답 없음/차단 추정)");
+        if (remaining > 0) sb.append(NL).append("아직 ").append(remaining).append("마리 남음 -- /이미지갱신 다시 실행하면 이어서 처리됩니다.");
+        return sb.toString();
+    }
+
     private String fetchRandomNekoImage() {
         try {
             URL url = new URL("https://nekos.best/api/v2/neko");

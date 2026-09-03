@@ -244,4 +244,10 @@ ALTER TABLE TBOT_S5_USER_PROGRESS ADD (
     BOSS_STUN_CID   NUMBER
 );
 
+-- per-user cooldown exemption (admin-granted only, no chat command exposes it) --
+-- when 'Y', checkDiceCooldown() skips the wait entirely for that one user.
+ALTER TABLE TBOT_S5_USER_PROGRESS ADD (
+    NO_COOLDOWN_YN CHAR(1) DEFAULT 'N' NOT NULL
+);
+
 EXIT;

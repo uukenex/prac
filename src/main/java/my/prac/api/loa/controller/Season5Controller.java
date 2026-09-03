@@ -98,6 +98,11 @@ public class Season5Controller {
         return s5Service.refreshConfig();
     }
 
+    /** /이미지갱신 */
+    public String refreshImages() {
+        return s5Service.refreshCompanionImages();
+    }
+
     public String achievements(HashMap<String, Object> map) {
         return s5Service.achievements(userNameOf(map));
     }

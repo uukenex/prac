@@ -1053,6 +1053,10 @@ public class LoaChatController {
 				passYn = true;
 				val = boss.refreshCache() + enterStr + s5.refreshConfig();
 				break;
+			case "/이미지갱신":
+				passYn = true;
+				val = s5.refreshImages();
+				break;
 
 			case "/ㄱㄱㄱㅈ": case "/공격공지": case "/공지":
 				passYn = true;

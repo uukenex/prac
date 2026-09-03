@@ -46,6 +46,11 @@ public interface BotS5DAO {
     int updateCompanionPartySlot(HashMap<String, Object> map);
     int updateCompanionHidden(HashMap<String, Object> map);
 
+    // ── /이미지갱신: IMAGE_URL이 없는 동료를 서버 커맨드로 나중에 채워넣기 ──
+    List<HashMap<String, Object>> selectCompanionsMissingImage(@Param("limit") int limit);
+    int updateCompanionImage(HashMap<String, Object> map);
+    int countCompanionsMissingImage();
+
     // ── 업적 ──
     List<HashMap<String, Object>> selectAchievementList();
     List<HashMap<String, Object>> selectUserAchievements(@Param("userName") String userName);
