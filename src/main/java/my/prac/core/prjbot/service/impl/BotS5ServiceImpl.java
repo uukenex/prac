@@ -76,14 +76,59 @@ public class BotS5ServiceImpl implements BotS5Service {
         put("ARCHER", "궁수");  put("PRIEST", "도사");
     }};
 
-    // 동료 뽑을 때 붙는 이름 -- 직업별로 정확히 3종만 관리(너무 많으면 도감/애착 형성이 안 되므로 의도적으로 좁힘).
-    // 별도 이름관리 테이블은 없고 이 상수가 유일한 소스 -- 뽑기 시점에 TBOT_S5_USER_COMPANION.NAME 컬럼에 그대로 저장됨.
-    private static final HashMap<String, String[]> NAME_POOL_BY_JOB = new HashMap<String, String[]>() {{
-        put("WARRIOR", new String[]{ "리쿠", "소우타", "슌" });
-        put("MAGE",    new String[]{ "유키", "아오이", "이츠키" });
-        put("ROGUE",   new String[]{ "카이토", "료", "츠바사" });
-        put("ARCHER",  new String[]{ "소라", "유토", "나나" });
-        put("PRIEST",  new String[]{ "사쿠라", "히나", "유이" });
+    // 동료 뽑을 때 붙는 이름 -- 직업별×등급별로 관리(도감/애착 형성을 위해 의도적으로 좁힘).
+    // [설계 변경] 원래는 직업당 3종을 등급(GRADE) 구분 없이 통으로 공유해서, 다른 등급끼리도 같은
+    // 이름이 겹쳐 뽑힐 수 있었다(예: ★2 소라와 ★3 소라가 동시에 존재 가능) -- 이게 중복(dupe) 판정을
+    // "직업+이름"만 보고 하던 로직과 만나 "이미 있는 이름이 더 높은 등급으로 다시 나와도 그냥
+    // 증발한다"는 버그의 근본 원인이었다(실사례: 타락고냥이/바드의 ★2 궁수 "소라" 보유 중 ★3 궁수
+    // 픽업이 증발). 이제 이름 자체가 등급을 내포하도록(★1 3종/★2 3종/★3 3종/★4 2종/★5 1종/★6
+    // 1종, 직업당 총 13종·전체 5직업×13=65종) 등급별로 완전히 분리해서, 서로 다른 등급끼리는 이름이
+    // 절대 겹치지 않는다 -- 이러면 "직업+이름"이 같다는 건 곧 "등급도 같다"는 뜻이 되어 애초에
+    // 등급이 다른데 증발하는 상황 자체가 구조적으로 불가능해진다(중복 판정 코드의 등급 비교는
+    // 방어적으로 그대로 둠). 기존 데이터는 S5_NAME_TIER_MIGRATION.sql로 등급에 맞는 새 이름으로
+    // 일괄 재배정(마이그레이션) 완료. 별도 이름관리 테이블은 없고 이 상수가 유일한 소스 --
+    // 뽑기 시점에 TBOT_S5_USER_COMPANION.NAME 컬럼에 그대로 저장됨. 배열 인덱스 0~5 = 등급 1~6.
+    private static final HashMap<String, String[][]> NAME_POOL_BY_JOB_GRADE = new HashMap<String, String[][]>() {{
+        put("WARRIOR", new String[][]{
+            { "리쿠", "소우타", "슌" },
+            { "켄고", "다이키", "유마" },
+            { "하야토", "코타로", "진" },
+            { "렌지", "아츠시" },
+            { "츠요시" },
+            { "고우키" },
+        });
+        put("MAGE", new String[][]{
+            { "유키", "아오이", "이츠키" },
+            { "미유", "리사", "나오" },
+            { "사야", "마이", "유나" },
+            { "리오", "카나" },
+            { "미코토" },
+            { "세라" },
+        });
+        put("ROGUE", new String[][]{
+            { "카이토", "료", "츠바사" },
+            { "신지", "타쿠야", "겐지" },
+            { "레이", "아키라", "소마" },
+            { "유이토", "카게로우" },
+            { "나기" },
+            { "야토" },
+        });
+        put("ARCHER", new String[][]{
+            { "소라", "유토", "나나" },
+            { "아야", "미사키", "유즈키" },
+            { "리코", "마유", "하루카" },
+            { "세리나", "츠키미" },
+            { "스즈네" },
+            { "아마츠" },
+        });
+        put("PRIEST", new String[][]{
+            { "사쿠라", "히나", "유이" },
+            { "모모카", "이오리", "시온" },
+            { "노조미", "아사히", "렌게" },
+            { "코하루", "미레이" },
+            { "스이렌" },
+            { "아마네" },
+        });
     }};
 
     // 사냥터층(보스 제외) 몬스터 이름 -- 50종만 관리하고, 80개 사냥터층(블록1~10 × 8칸)에
@@ -402,6 +447,11 @@ public class BotS5ServiceImpl implements BotS5Service {
             }
         }
         sb.append(NL);
+        // "자동사냥이 지금 층 기준으로 도는지" 헷갈린다는 신고로 추가 -- 이 층에서 몇 마리째인지
+        // 항상 보여줘서, 10마리를 다 채워야 그 층 기준으로 (재)적용된다는 걸 명확히 한다.
+        if (floor % 10 >= 1 && floor % 10 <= 8) {
+            sb.append("이 층 처치: ").append(intVal(p.get("KILL_COUNT_CUR"), 0)).append("/10 (자동사냥 적용까지)").append(NL);
+        }
         sb.append("누적 처치: ").append(intVal(p.get("TOTAL_KILL_COUNT"), 0)).append("마리").append(NL);
         sb.append(NL).append("🖥️ 웹으로 보기: ").append(towerViewLink(target)).append(NL);
         sb.append("👉 전체 명령어는 /탑도움말 을 입력해 확인하세요.");
@@ -1187,6 +1237,10 @@ public class BotS5ServiceImpl implements BotS5Service {
                     log.put("floor", floor);
                     dao.upsertAutoHuntLog(log);
                     sb.append("🔥 이 층에서 10마리 처치! 자동사냥 모드 ON (다음 접속 시 경과시간만큼 자동 정산)").append(NL);
+                } else {
+                    // "자동사냥이 지금 층 기준으로 잘 돌고 있는지" 헷갈린다는 신고로 추가 -- 몇 마리째인지
+                    // 매 처치마다 보여줘서 진행 상황을 항상 알 수 있게 함(/탑현황에서도 동일하게 표시).
+                    sb.append("(이 층 처치: ").append(killCountCur).append("/10 -- 자동사냥 적용까지)").append(NL);
                 }
             }
             dao.updateUserProgress(up);
@@ -1456,6 +1510,19 @@ public class BotS5ServiceImpl implements BotS5Service {
             up.put("killCountCur", 0);
         }
         dao.updateUserProgress(up);
+
+        // [설계 변경] 자동사냥이 이미 켜져 있으면(AUTO_HUNT_YN='Y') 정산 기준 층도 "지금 있는 층"으로
+        // 바로 맞춰준다. 예전엔 그 층에서 10마리를 다시 채워야만(killCountCur 10 도달 시점에만)
+        // AUTO_HUNT_LOG.FLOOR가 갱신돼서, 새 층으로 올라가 놀기만 해도(재도전 없이는) 자동사냥이
+        // 계속 예전 층 기준으로 도는 것처럼 보이는 혼란이 있었다(신고로 확인). 사냥터층으로 실제
+        // 이동할 때마다 즉시 동기화해서 "자동사냥 = 지금 층 기준"을 항상 유지한다.
+        int targetFm = target % 10;
+        if (target != floor && targetFm >= 1 && targetFm <= 8 && "Y".equals(strVal(p.get("AUTO_HUNT_YN"), "N"))) {
+            HashMap<String, Object> logUp = new HashMap<>();
+            logUp.put("userName", userName);
+            logUp.put("floor", target);
+            dao.upsertAutoHuntLog(logUp);
+        }
 
         if (target != floor) {
             grantFloorAchievements(userName, target);
@@ -1816,43 +1883,22 @@ public class BotS5ServiceImpl implements BotS5Service {
 
         int grade = rollGrade(gacha);
         String job = JOB_KEYS[RND.nextInt(JOB_KEYS.length)];
-        String[] namePool = NAME_POOL_BY_JOB.get(job);
+        String[] namePool = NAME_POOL_BY_JOB_GRADE.get(job)[grade - 1];
         String name = namePool[RND.nextInt(namePool.length)];
 
-        // 중복 동료(같은 직업+이름을 이미 보유) 처리: 이름 풀이 직업당 3종뿐이라 중복이 흔해지므로
-        // 같은 걸 또 뽑는 일이 잦다. [버그 수정] 원래는 등급(GRADE)을 안 보고 직업+이름만 같으면
-        // 무조건 "중복"으로 취급해 20% PP 환급 후 버렸는데, 그러면 이미 낮은 등급으로 보유 중인
-        // 동료의 이름을 더 높은 등급으로 다시 뽑아도 그냥 증발해버리는 문제가 있었다("3성 궁수를
-        // 또 뽑았는데 증발했다" 신고 -- 실제론 같은 이름(예: 나나)을 다른 등급으로 갖고 있다가,
-        // 새로 뽑은 등급이 기존과 같거나 낮으면 여전히 "진짜 중복"으로 환급, 기존보다 **높은
-        // 등급**이면 새로 하나 더 늘리는 대신 그 자리에서 승급시켜 상위 등급으로 갱신한다.
-        HashMap<String, Object> ownedSame = null;
+        // 중복 동료(같은 직업+이름을 이미 보유) 처리: 이름 풀이 직업×등급별로 나뉘어 있어서(위
+        // NAME_POOL_BY_JOB_GRADE 참고) 같은 이름은 항상 같은 등급에서만 나온다 -- 즉 "직업+이름"이
+        // 같으면 등급도 항상 같다는 뜻이라, [예전 버그였던] "다른 등급인데 이름이 겹쳐서 증발" 같은
+        // 상황 자체가 이제 구조적으로 발생하지 않는다. 그래서 등급 비교 없이 단순하게 직업+이름만
+        // 같으면 진짜 중복으로 보고 뽑기 비용의 20%를 PP로 환급한다("중복 정산").
+        boolean dupe = false;
         for (HashMap<String, Object> owned : dao.selectUserCompanions(userName)) {
             if (job.equals(strVal(owned.get("CLASS"), "")) && name.equals(strVal(owned.get("NAME"), ""))) {
-                ownedSame = owned;
+                dupe = true;
                 break;
             }
         }
-        if (ownedSame != null) {
-            int ownedGrade = intVal(ownedSame.get("GRADE"), 1);
-            if (grade > ownedGrade) {
-                int[] upStat = calcBaseStat(job, grade);
-                HashMap<String, Object> up = new HashMap<>();
-                up.put("companionId", ownedSame.get("COMPANION_ID"));
-                up.put("grade", grade);
-                up.put("curHpValue", (double) upStat[0]);
-                up.put("curHpExt", "");
-                dao.updateCompanionGrade(up);
-                result.put("ok", true);
-                result.put("dupe", false);
-                result.put("upgrade", true);
-                result.put("job", job);
-                result.put("name", name);
-                result.put("grade", grade);
-                result.put("oldGrade", ownedGrade);
-                result.put("stat", upStat);
-                return result;
-            }
+        if (dupe) {
             PP cost = PP.of(((Number) gacha.get("COST_VALUE")).doubleValue(), strVal(gacha.get("COST_EXT"), ""));
             PP dupeBonus = cost.multiply(0.2);
             addPp(userName, p, dupeBonus);
@@ -1911,12 +1957,6 @@ public class BotS5ServiceImpl implements BotS5Service {
             return "🔁 이미 보유한 " + JOB_NAME.get(job) + "(" + name + ")와 중복! (★" + grade + " 뽑힘)" + NL
                     + "계약서 대신 " + r.get("dupeBonus") + " PP로 환급되었습니다.";
         }
-        if (Boolean.TRUE.equals(r.get("upgrade"))) {
-            int oldGrade = intVal(r.get("oldGrade"), grade);
-            int[] upStat = (int[]) r.get("stat");
-            return "⬆️ 이미 보유한 " + JOB_NAME.get(job) + "(" + name + ")보다 높은 등급이 나와 승급했습니다! (★" + oldGrade + " → ★" + grade + ")" + NL
-                    + "스탯: HP " + upStat[0] + " / ATK " + upStat[1] + " / DEF " + upStat[2];
-        }
 
         int[] stat = (int[]) r.get("stat");
         int cnt = ownedBefore + 1;
@@ -1943,7 +1983,6 @@ public class BotS5ServiceImpl implements BotS5Service {
         int[] gradeCount = new int[7]; // index 1~6
         int success = 0;
         int dupeCount = 0;
-        int upgradeCount = 0;
         PP dupeTotal = PP.of(0, "");
         String stopReason = null;
         for (int i = 0; i < 10; i++) {
@@ -1957,19 +1996,14 @@ public class BotS5ServiceImpl implements BotS5Service {
             if (Boolean.TRUE.equals(r.get("dupe"))) {
                 dupeCount++;
                 dupeTotal = dupeTotal.add(PP.parse((String) r.get("dupeBonus")));
-            } else if (Boolean.TRUE.equals(r.get("upgrade"))) {
-                upgradeCount++; // 신규 동료는 아니지만 보유 수는 그대로(자리를 새로 차지하지 않음)
             } else {
-                owned++; // 중복도 승급도 아닌 실제 신규 동료일 때만 보유 수 증가(스타터 무료뽑기/업적 판정에 사용)
+                owned++; // 중복이 아닌 실제 신규 동료일 때만 보유 수 증가(스타터 무료뽑기/업적 판정에 사용)
             }
         }
 
         StringBuilder sb = new StringBuilder("🎰 10연속 동료뽑기 (").append(success).append("/10)").append(NL);
         for (int g = 1; g <= 6; g++) {
             if (gradeCount[g] > 0) sb.append("★").append(g).append("×").append(gradeCount[g]).append("  ");
-        }
-        if (upgradeCount > 0) {
-            sb.append(NL).append("⬆️ 기존 동료 승급 ").append(upgradeCount).append("마리");
         }
         if (dupeCount > 0) {
             sb.append(NL).append("🔁 중복 ").append(dupeCount).append("마리 → ").append(dupeTotal.format()).append(" PP 환급");
