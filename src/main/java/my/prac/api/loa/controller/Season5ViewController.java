@@ -261,7 +261,7 @@ public class Season5ViewController {
             visited.add(toInt(v.get("TILE_NO")));
         }
         List<HashMap<String, Object>> out = new ArrayList<>();
-        for (HashMap<String, Object> t : s5Dao.selectTileMaster(floor)) {
+        for (HashMap<String, Object> t : s5Service.ensureUserBoard(userName, floor)) {
             int tileNo = toInt(t.get("TILE_NO"));
             HashMap<String, Object> row = new HashMap<>();
             row.put("TILE_NO", tileNo);

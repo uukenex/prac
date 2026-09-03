@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 
 import javax.annotation.PostConstruct;
@@ -110,6 +111,12 @@ public class BotS5ServiceImpl implements BotS5Service {
         return pos > n ? "강화 " + base : base;
     }
 
+    /** 강화몬스터방(ELITE)용 이름 표시. elite=true면 "💪 강화 " 접두어를 붙인다. */
+    private String eliteMonsterName(int floor, HashMap<String, Object> mon, boolean elite) {
+        String base = floorMonsterName(floor, mon);
+        return elite ? "💪 강화 " + base : base;
+    }
+
     // 장비 등급별 보너스 [투구고정,투구%, 무기고정,무기%, 갑옷고정,갑옷%], index0=★1
     private static final double[][] EQUIP_BONUS = {
         { 30, 0.05,   5, 0.05,   3, 0.05 },
@@ -126,8 +133,9 @@ public class BotS5ServiceImpl implements BotS5Service {
 
     // 칸 종류 표시(아이콘+이름)
     private static final HashMap<String, String> TILE_LABEL = new HashMap<String, String>() {{
-        put("COMBAT", "⚔️ 전투");  put("PP", "🍀 럭키");     put("SHOP", "🎁 상점");
+        put("COMBAT", "⚔️ 전투");  put("PP", "🍀 럭키");     put("TREASURE", "💎 보물상자");
         put("TRAP",   "🕳️ 함정");  put("SPECIAL", "✨ 특수"); put("STAIRS", "🪜 계단");
+        put("ELITE",  "💪 강화몬스터");
     }};
 
     // 쿨타임(초) 3종. DB(TBOT_S5_CONFIG)에서 서버 기동 시(@PostConstruct) 로드해 메모리에
@@ -254,6 +262,56 @@ public class BotS5ServiceImpl implements BotS5Service {
 
     private int blockNo(int floor) {
         return (floorBlockBase(floor) / 10) + 1;
+    }
+
+    /**
+     * 이 (유저,층) 보드가 아직 없으면(마을 갔다온 뒤 첫 진입 등) 새로 만든다. 칸 개수는
+     * TBOT_S5_FLOOR_INFO.TILE_COUNT(층별 고정, 기존과 동일)를 그대로 쓰고 칸 "종류"만 매번
+     * 새로 무작위 배정한다. 고정 개수 칸을 먼저 넣고(계단1, 히든 1~2, 보물상자1, 20층대+엔
+     * 강화몹1) 나머지를 전투50%/함정10%/럭키40%로 채운 뒤 위치를 섞는다.
+     */
+    @Override
+    public List<HashMap<String, Object>> ensureUserBoard(String userName, int floor) {
+        List<HashMap<String, Object>> existing = dao.selectUserTileMaster(userName, floor);
+        if (!existing.isEmpty()) return existing;
+
+        HashMap<String, Object> fi = dao.selectFloorInfo(floor);
+        int tileCount = fi == null ? 8 : intVal(fi.get("TILE_COUNT"), 8);
+
+        List<String> types = new ArrayList<>();
+        types.add("STAIRS");
+        int specialCount = tileCount >= 20 ? 2 : 1;
+        for (int i = 0; i < specialCount; i++) types.add("SPECIAL");
+        types.add("TREASURE");
+        if (blockNo(floor) >= 3) types.add("ELITE"); // 20층대(블록3)부터만 강화몹방 등장
+        while (types.size() < tileCount) {
+            int r = RND.nextInt(100);
+            if (r < 50) types.add("COMBAT");
+            else if (r < 60) types.add("TRAP");
+            else types.add("PP"); // 럭키칸
+        }
+        if (types.size() > tileCount) types = types.subList(0, tileCount); // 초소형 보드 방어
+        Collections.shuffle(types, RND);
+
+        List<HashMap<String, Object>> tiles = new ArrayList<>();
+        List<Map<String, Object>> batch = new ArrayList<>();
+        for (int i = 0; i < types.size(); i++) {
+            int tileNo = i + 1;
+            HashMap<String, Object> row = new HashMap<>();
+            row.put("TILE_NO", tileNo);
+            row.put("TILE_TYPE", types.get(i));
+            tiles.add(row);
+            HashMap<String, Object> b = new HashMap<>();
+            b.put("tileNo", tileNo);
+            b.put("tileType", types.get(i));
+            batch.add(b);
+        }
+        Map<String, Object> params = new HashMap<>();
+        params.put("userName", userName);
+        params.put("floor", floor);
+        params.put("tiles", batch);
+        dao.insertUserTileMasterBatch(params);
+        return tiles;
     }
 
     /** 사냥터층(구간 내 1~8번째) PP 보상 배율: 1층 1.0배, 2층 1.1배 ... 8층 1.7배로 층마다 조금씩 차이. 보스/마을층은 1.0배. */
@@ -558,7 +616,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             return userName + "님," + NL + "🏘️ 여기는 마을입니다. 웹 상점(" + TOWER_VIEW_URL + ")을 이용하거나 /층변경 N 으로 사냥터에 진입하세요. (전체 명령어는 /탑도움말)";
         }
         if (m == 9) {
-            return startCombat(userName, p, floor, true);
+            return startCombat(userName, p, floor, true, false);
         }
 
         // ── 사냥터 보드: 끝 없이 순환하는 루프. 계단(STAIRS) 칸을 밟으면 다음 층 이동
@@ -608,7 +666,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             dao.updateUserProgress(up);
         }
 
-        List<HashMap<String, Object>> tiles = dao.selectTileMaster(floor);
+        List<HashMap<String, Object>> tiles = ensureUserBoard(userName, floor);
         String tileType = "COMBAT";
         for (HashMap<String, Object> t : tiles) {
             if (intVal(t.get("TILE_NO"), -1) == newTile) {
@@ -623,7 +681,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 히든(특수)/아이템획득(상점) 칸은 첫 방문에만 보상을 주고, 재방문(2회차부터)은 몬스터 전투로 전환.
         // 이걸 의미있게 만드는 짝: 마을로 돌아가면 그 층의 방문기록이 초기화되므로(changeFloor 참고)
         // "한 원정 안에서 같은 칸을 우려먹기"만 막고, 다음 원정에서 다시 새로 발견하는 건 자유.
-        boolean revisitOverride = priorVisits >= 1 && ("SPECIAL".equals(tileType) || "SHOP".equals(tileType));
+        boolean revisitOverride = priorVisits >= 1 && ("SPECIAL".equals(tileType) || "TREASURE".equals(tileType));
         if (revisitOverride) {
             sb.append("(어라, 낯익은 자리인데...? 몬스터가 튀어나왔다!)").append(NL);
         }
@@ -631,7 +689,7 @@ public class BotS5ServiceImpl implements BotS5Service {
 
         switch (effectiveType) {
             case "COMBAT":
-                sb.append(startCombat(userName, p, floor, false));
+                sb.append(startCombat(userName, p, floor, false, false));
                 break;
             case "PP": {
                 // 럭키칸(칸 유형 값은 하위호환을 위해 기존 "PP" 그대로 두고 표시만 "🍀 럭키"로 바꿈,
@@ -720,23 +778,37 @@ public class BotS5ServiceImpl implements BotS5Service {
                 }
                 break;
             }
-            case "SHOP": {
-                boolean companionVoucher = RND.nextBoolean();
+            case "TREASURE": {
+                // 보물상자방 -- 첫 방문에만 보상(아이템처럼 1회성), 재방문은 위 revisitOverride로
+                // 전투 전환됨. 구 SHOP칸(상점)을 대체 -- 상점 개념 자체를 없애고 보상만 남김.
+                boolean pp = RND.nextBoolean();
                 HashMap<String, Object> up = new HashMap<>();
                 up.put("userName", userName);
-                if (companionVoucher) {
-                    up.put("companionVoucher", intVal(p.get("COMPANION_VOUCHER"), 0) + 1);
+                if (pp) {
+                    HashMap<String, Object> mon = dao.selectMonster(blockNo(floor), "N");
+                    PP reward = mon == null ? PP.of(10, "")
+                            : PP.of(((Number) mon.get("PP_PER_KILL_VALUE")).doubleValue(), strVal(mon.get("PP_PER_KILL_EXT"), "")).multiply(5 * floorPpMultiplier(floor));
+                    addPp(userName, p, reward);
+                    sb.append("💎 보물상자를 발견했다! ").append(reward.format()).append(" PP 획득!");
                 } else {
-                    up.put("equipVoucher", intVal(p.get("EQUIP_VOUCHER"), 0) + 1);
+                    boolean companionVoucher = RND.nextBoolean();
+                    if (companionVoucher) {
+                        up.put("companionVoucher", intVal(p.get("COMPANION_VOUCHER"), 0) + 1);
+                    } else {
+                        up.put("equipVoucher", intVal(p.get("EQUIP_VOUCHER"), 0) + 1);
+                    }
+                    sb.append("💎 보물상자를 발견했다! ").append(companionVoucher ? "동료" : "장비")
+                      .append(" 무료뽑기 1회권 획득! (다음 ").append(companionVoucher ? "/동료뽑기" : "/장비뽑기")
+                      .append(" 시 자동 적용)");
                 }
                 dao.updateUserProgress(up);
-                sb.append("비밀상점에서 ").append(companionVoucher ? "동료" : "장비")
-                  .append(" 무료뽑기 1회권을 발견했다! (다음 ").append(companionVoucher ? "/동료뽑기" : "/장비뽑기")
-                  .append(" 시 자동 적용)");
                 break;
             }
             case "SPECIAL":
                 sb.append(handleSpecialTile(userName));
+                break;
+            case "ELITE":
+                sb.append(startCombat(userName, p, floor, false, true)); // 강화몹: 보스 아님, 강화만
                 break;
             case "STAIRS": {
                 // floor%10 in 1..8 이므로 다음 칸은 항상 같은 구간 내(최대 9층 보스).
@@ -833,19 +905,25 @@ public class BotS5ServiceImpl implements BotS5Service {
         return true;
     }
 
-    private String startCombat(String userName, HashMap<String, Object> p, int floor, boolean boss) {
+    private String startCombat(String userName, HashMap<String, Object> p, int floor, boolean boss, boolean elite) {
         HashMap<String, Object> mon = dao.selectMonster(blockNo(floor), boss ? "Y" : "N");
         if (mon == null) {
             // TBOT_S5_MONSTER_INFO에 이 BLOCK_NO×BOSS_YN 조합 데이터가 없는 경우.
             // 원인 확인용: S5_CHECK_MONSTER_DATA.sql
             return floor + "층(BLOCK " + blockNo(floor) + ") 몬스터 정보가 없습니다 (관리자 문의).";
         }
+        // 강화몹(ELITE 칸, 20층대+ 전용): 같은 층 몬스터를 그대로 쓰되 HP/ATK/DEF/PP보상 전부 2배.
+        // HP는 여기서 CUR_MONSTER_HP_VALUE에 곱한 값을 바로 저장해두면 끝이지만, ATK/DEF/보상은
+        // 매 턴 mon에서 새로 읽어오므로(resolveCombatTurn) CUR_MONSTER_ELITE_YN 플래그를 남겨서
+        // 거기서도 계속 2배를 적용하게 한다.
+        double eliteMult = elite ? 2.0 : 1.0;
         HashMap<String, Object> up = new HashMap<>();
         up.put("userName", userName);
         up.put("status", "IN_COMBAT");
         up.put("curMonsterId", intVal(mon.get("MONSTER_ID"), 0));
-        up.put("curMonsterHpValue", ((Number) mon.get("HP_VALUE")).doubleValue());
+        up.put("curMonsterHpValue", ((Number) mon.get("HP_VALUE")).doubleValue() * eliteMult);
         up.put("curMonsterHpExt", strVal(mon.get("HP_EXT"), ""));
+        up.put("curMonsterEliteYn", elite ? "Y" : "N");
 
         // 20층 이후(블록3+, 29층 보스부터) 보스는 전투 시작 시 파티원 1명을 무작위로 "안중에 없다"며
         // 지목 -- 그 동료는 이번 전투 내내 보스의 반격 피해를 0으로 받는다(스턴 스킬과는 별개 효과).
@@ -865,15 +943,17 @@ public class BotS5ServiceImpl implements BotS5Service {
         }
         dao.updateUserProgress(up);
 
-        PP fullHp = PP.of(((Number) mon.get("HP_VALUE")).doubleValue(), strVal(mon.get("HP_EXT"), ""));
+        String monName = (elite ? "💪 강화 " : "") + floorMonsterName(floor, mon);
+        PP fullHp = PP.of(((Number) mon.get("HP_VALUE")).doubleValue() * eliteMult, strVal(mon.get("HP_EXT"), "")).normalize();
         StringBuilder sb = new StringBuilder();
-        sb.append(boss ? "👹 보스 " : "⚔️ ").append(floorMonsterName(floor, mon)).append(" 등장! (HP ")
+        sb.append(boss ? "👹 보스 " : elite ? "" : "⚔️ ").append(monName).append(" 등장! (HP ")
           .append(fullHp.format()).append("/").append(fullHp.format()).append(")").append(NL);
         // 공격력 범위(주사위 곱셈 전)만 보고는 몬스터 방어력이 빠지는 걸 몰라서 "왜 범위보다
         // 적게 들어갔지?" 헷갈릴 수 있어, 전투 시작 전에 몬스터 방어력/공격력과 지금 파티에
         // 걸려있는 공격력·방어력 강화/약화 효과(함정/럭키칸)를 미리 안내한다.
-        sb.append("🛡️ 몬스터 방어력: ").append(intVal(mon.get("DEF_VALUE"), 0))
-          .append(" (공격 시 이 값만큼 피해에서 차감) / ⚔️ 몬스터 공격력: ").append(intVal(mon.get("ATK_VALUE"), 0)).append(NL);
+        sb.append("🛡️ 몬스터 방어력: ").append((int) Math.round(intVal(mon.get("DEF_VALUE"), 0) * eliteMult))
+          .append(" (공격 시 이 값만큼 피해에서 차감) / ⚔️ 몬스터 공격력: ").append((int) Math.round(intVal(mon.get("ATK_VALUE"), 0) * eliteMult)).append(NL);
+        if (elite) sb.append("💪 강화몹 -- 스탯/보상 전부 평소의 2배입니다.").append(NL);
         String buffNote = currentPartyBuffDebuffNote(p);
         if (buffNote != null) sb.append(buffNote).append(NL);
         sb.append(immuneMsg.isEmpty() ? "" : immuneMsg + NL);
@@ -926,9 +1006,14 @@ public class BotS5ServiceImpl implements BotS5Service {
             return "전투 정보를 찾을 수 없어 전투를 종료합니다.";
         }
 
+        // 강화몹(ELITE 칸) 전투면 HP/ATK/DEF/PP보상 전부 2배 -- HP는 startCombat에서 이미 곱해서
+        // CUR_MONSTER_HP_VALUE에 저장해뒀지만, ATK/DEF/보상은 mon에서 매 턴 새로 읽으므로 여기서도
+        // 계속 곱해줘야 한다(안 그러면 시작할 땐 강화였는데 실제 전투 계산은 평소대로 되는 불일치 발생).
+        boolean elite = "Y".equals(strVal(p.get("CUR_MONSTER_ELITE_YN"), "N"));
+        double eliteMult = elite ? 2.0 : 1.0;
         PP monsterHp = PP.of(((Number) p.get("CUR_MONSTER_HP_VALUE")).doubleValue(), strVal(p.get("CUR_MONSTER_HP_EXT"), ""));
-        PP monsterMaxHp = PP.of(((Number) mon.get("HP_VALUE")).doubleValue(), strVal(mon.get("HP_EXT"), ""));
-        int monsterDef = intVal(mon.get("DEF_VALUE"), 0);
+        PP monsterMaxHp = PP.of(((Number) mon.get("HP_VALUE")).doubleValue() * eliteMult, strVal(mon.get("HP_EXT"), "")).normalize();
+        int monsterDef = (int) Math.round(intVal(mon.get("DEF_VALUE"), 0) * eliteMult);
         int diceMax = diceMax(strVal(p.get("DICE_GRADE"), "DICE_6"));
 
         // 함정칸 디버프 / 럭키칸 버프: 남은 이동횟수가 있는 동안 파티 전체에 적용. 럭키칸은
@@ -1003,7 +1088,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                     break;
                 case "ROGUE":
                     if (RND.nextInt(100) < 25) {
-                        PP steal = PP.of(((Number) mon.get("PP_PER_KILL_VALUE")).doubleValue(), strVal(mon.get("PP_PER_KILL_EXT"), "")).multiply(0.1 * floorPpMultiplier(floor));
+                        PP steal = PP.of(((Number) mon.get("PP_PER_KILL_VALUE")).doubleValue(), strVal(mon.get("PP_PER_KILL_EXT"), "")).multiply(0.1 * floorPpMultiplier(floor) * eliteMult);
                         addPp(userName, p, steal);
                         sb.append("  🗡️ 도적이 ").append(steal.format()).append(" PP를 스틸했다!").append(NL);
                     }
@@ -1030,7 +1115,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         boolean monsterDead = executeKill || PP.toBaseValue(monsterHpAfter) <= 0;
 
         if (monsterDead) {
-            PP reward = PP.of(((Number) mon.get("PP_PER_KILL_VALUE")).doubleValue(), strVal(mon.get("PP_PER_KILL_EXT"), "")).multiply(floorPpMultiplier(floor));
+            PP reward = PP.of(((Number) mon.get("PP_PER_KILL_VALUE")).doubleValue(), strVal(mon.get("PP_PER_KILL_EXT"), "")).multiply(floorPpMultiplier(floor) * eliteMult);
             boolean isBoss = "Y".equals(strVal(mon.get("BOSS_YN"), "N"));
             int killCountCur = intVal(p.get("KILL_COUNT_CUR"), 0) + 1;
             int totalKill = intVal(p.get("TOTAL_KILL_COUNT"), 0) + 1;
@@ -1041,7 +1126,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             up.put("clearMonster", true);
             up.put("totalKillCount", totalKill);
 
-            sb.append(floorMonsterName(floor, mon)).append(" 처치! 🎉").append(NL);
+            sb.append(eliteMonsterName(floor, mon, elite)).append(" 처치! 🎉").append(NL);
 
             if (isBoss) {
                 int prevBlockBase = floorBlockBase(floor);
@@ -1091,7 +1176,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         up.put("curMonsterHpExt", monsterHpAfter.getUnit());
         if (stunConsumed) up.put("clearBossStun", true);
         dao.updateUserProgress(up);
-        sb.append(floorMonsterName(floor, mon)).append(" 남은 HP: ")
+        sb.append(eliteMonsterName(floor, mon, elite)).append(" 남은 HP: ")
           .append(monsterHpAfter.format()).append("/").append(monsterMaxHp.format()).append(NL);
 
         if (stunned) {
@@ -1142,7 +1227,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             stunUp.put("bossStunCid", intVal(target.get("COMPANION_ID"), 0));
             dao.updateUserProgress(stunUp);
             String stunTargetName = strVal(target.get("NAME"), JOB_NAME.getOrDefault(strVal(target.get("CLASS"), ""), "동료"));
-            sb.append("💫 ").append(floorMonsterName(floor, mon)).append("이(가) ").append(stunTargetName)
+            sb.append("💫 ").append(eliteMonsterName(floor, mon, elite)).append("이(가) ").append(stunTargetName)
               .append("을(를) 기절시켰다! 다음 턴 공격 불가");
             return sb.toString();
         }
@@ -1153,7 +1238,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         int[] tEff = computeEffectiveStat(tJob, tGrade, tEquips, userStat);
         if (trapDefDown) tEff[2] = (int) Math.round(tEff[2] * 0.7); // 함정: 방어력 30% 약화(반격 피해 증가)
         if (luckyDefUp) tEff[2] = (int) Math.round(tEff[2] * luckyMult); // 럭키: 방어력 강화(반격 피해 감소)
-        int monsterAtk = intVal(mon.get("ATK_VALUE"), 0);
+        int monsterAtk = (int) Math.round(intVal(mon.get("ATK_VALUE"), 0) * eliteMult);
         int roll = RND.nextInt(diceMax) + 1;
         int dmgToParty = Math.max(1, monsterAtk * roll - tEff[2]);
 
@@ -1180,7 +1265,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         dao.updateCompanionHp(cUp);
 
         String tName = strVal(target.get("NAME"), JOB_NAME.getOrDefault(tJob, "동료"));
-        sb.append(floorMonsterName(floor, mon)).append(" 반격! 🎲").append(roll).append(" → ")
+        sb.append(eliteMonsterName(floor, mon, elite)).append(" 반격! 🎲").append(roll).append(" → ")
           .append(jobTag(tGrade, tJob, tName)).append("에게 ")
           .append(dmgToParty).append(" 피해 (남은 HP ").append(targetHpAfter.format()).append(")");
         if (PP.toBaseValue(targetHpAfter) <= 0) sb.append(" — 전투불가!");
@@ -1355,6 +1440,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             floorBest = snapshotFloorBest(userName, floor);
             dao.deleteUserFloorProgress(userName, floor);
             dao.deleteTileVisits(userName, floor);
+            dao.deleteUserTileMaster(userName, floor); // 마을 귀환 시 보드 재생성(유저별 맵 삭제 → 다음 진입 때 ensureUserBoard가 새로 생성)
         }
 
         // 마을(X0층) 도착 시 전투불가(HP 0) 상태였던 파티원을 부활시킨다 -- 전투 승리/패배로는
@@ -1422,6 +1508,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             snapshotFloorBest(userName, f);
             dao.deleteUserFloorProgress(userName, f);
             dao.deleteTileVisits(userName, f);
+            dao.deleteUserTileMaster(userName, f);
         }
     }
 

@@ -546,6 +546,32 @@ S4의 `TBOT_S4_ACHIEVEMENT`/`TBOT_S4_USER_ACH` 패턴을 확장 계승. S5에서
   수치라 실제 데미지는 그보다 낮게 나올 수 있는데, 몬스터 방어력이 전투 시작 전엔 전혀 안 보였음.
   `startCombat()`의 "OO 등장!" 메시지에 몬스터 방어력/공격력을 추가하고, 지금 파티에 함정칸
   ATK_DOWN/DEF_DOWN이나 럭키칸 ATK_UP/DEF_UP이 걸려있으면 그것도 같이 안내(`currentPartyBuffDebuffNote`).
+- **[구조 변경] 보드를 전체 공용 → 유저별 재생성 방식으로 전환(신규 `TBOT_S5_USER_TILE_MASTER`)**:
+  기존엔 모든 유저가 같은 층에서 같은 순서의 칸(`TBOT_S5_TILE_MASTER`, FLOOR로만 키)을 보고 있었는데,
+  "유저별로 다르고 매번 마을 갔다오면 재생성"되도록 요청받아 (USER_NAME, FLOOR, TILE_NO)로 키가
+  바뀐 새 테이블을 신설. 칸 **수**는 기존처럼 `TBOT_S5_FLOOR_INFO.TILE_COUNT`(공용)를 그대로 쓰고,
+  칸 **종류 배치**만 유저별로 최초 진입 시 무작위 생성(`ensureUserBoard()` — 없으면 만들고, 있으면
+  그대로 반환)한 뒤 저장해둔다. 마을로 돌아가면(`changeFloor`의 `returnedToVillage` 분기) 그 층의
+  유저 보드를 삭제해서 다음 원정 때 새로 뽑히게 하고, 보스 처치로 구간 전체가 초기화될 때도
+  (`resetBlockExploration`) 8개 층 전부 같이 삭제. 기존 공용 `TBOT_S5_TILE_MASTER`/생성 스크립트
+  (`S5_MASTER_DATA.sql`, `S5_TILE_STAIRS_FIX.sql`)는 이제 사냥터층 진행엔 안 쓰이지만 삭제는 안 하고
+  그대로 둠. 신규 보드의 칸 구성 규칙: **계단(STAIRS) 정확히 1개**, **특수(SPECIAL) 1개(칸수 20개 이상
+  이면 2개)**, **보물상자(TREASURE) 1개**, **강화몬스터(ELITE, 3구간부터/블록≥3) 1개**, 나머지는
+  **전투 50% / 함정 10% / 럭키(PP) 40%**로 무작위 배정.
+- **상점(SHOP) 칸 제거 → 보물상자(TREASURE) 칸으로 대체**: 비밀상점 칸이 없어지고, 같은 자리에
+  "히든 룸" 성격의 보물상자 칸이 들어감. 특수칸과 동일한 **첫 방문 1회 한정** 패턴(`revisitOverride`,
+  재방문 시 일반 전투로 전환)을 그대로 재사용. 보물상자를 열면 PP 또는 동료뽑기권 중 하나를 50/50으로
+  무작위 지급("💎 보물상자를 발견했다!").
+- **강화몬스터방(ELITE) 신규(20층/블록3+ 부터)**: 일반 사냥터 칸과 별도로 뽑히는 전용 칸 타입.
+  전투에 들어가면 몬스터 HP/방어력/공격력/처치보상(PP)이 전부 **동일 층 일반 몬스터의 2배**로
+  적용(`eliteMult`). HP는 전투 시작 시 1회 저장되는 값이라 그대로 2배 곱해서 저장하면 되지만,
+  ATK/DEF/보상은 매 전투 턴마다 몬스터 원본 데이터에서 새로 계산해오는 구조라 지금 전투가 elite인지
+  매 턴 알 수 있게 `TBOT_S5_USER_PROGRESS.CUR_MONSTER_ELITE_YN` 플래그를 신설해 유지. 표시 이름 앞에도
+  "💪 강화 " 접두어를 붙여(`eliteMonsterName()`) 일반 몬스터와 구분. SPA(`tower_view.jsp`)의 보드
+  칸 색상/범례도 TREASURE/ELITE로 갱신, `Season5ViewController`의 보드 조회도 유저별 보드
+  (`ensureUserBoard`)를 쓰도록 함께 수정.
+- **중급 동료뽑기권 30층 해금 확인**: 별도 코드 변경 없이 기존 `TBOT_S5_GACHA_MASTER.UNLOCK_FLOOR` 값이
+  이미 30으로 설정되어 있어 요구사항과 일치함을 확인만 함.
 ### 알려진 단순화(설계 가정)
 
 - 데미지 계산은 방어력 단순 차감(`ATK×주사위눈−DEF`, 최소1), 스탯구매 "최소공격력"은 데미지 하한(`Lv×2`)으로 매핑

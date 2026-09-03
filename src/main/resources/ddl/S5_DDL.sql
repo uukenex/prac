@@ -71,6 +71,20 @@ CREATE TABLE TBOT_S5_USER_TILE_VISIT (
     PRIMARY KEY (USER_NAME, FLOOR, TILE_NO)
 );
 
+-- per-user, per-floor board layout (TILE_TYPE only -- TILE_COUNT/size still comes from
+-- TBOT_S5_FLOOR_INFO, unchanged). Replaces the old shared/global TBOT_S5_TILE_MASTER for
+-- hunting-floor gameplay: every user gets their own random layout, generated lazily the
+-- first time it's needed (ensureUserBoard()) and wiped whenever they retreat to the
+-- village (same trigger as TBOT_S5_USER_TILE_VISIT above) so it's freshly re-rolled on
+-- the next expedition. TBOT_S5_TILE_MASTER is kept around unused rather than dropped.
+CREATE TABLE TBOT_S5_USER_TILE_MASTER (
+    USER_NAME  VARCHAR2(100) NOT NULL,
+    FLOOR      NUMBER        NOT NULL,
+    TILE_NO    NUMBER        NOT NULL,
+    TILE_TYPE  VARCHAR2(10)  NOT NULL,
+    PRIMARY KEY (USER_NAME, FLOOR, TILE_NO)
+);
+
 -- best-ever exploration record per (user, floor). Unlike TBOT_S5_USER_FLOOR_PROGRESS /
 -- TBOT_S5_USER_TILE_VISIT (wiped when the user retreats to the village so a single
 -- expedition can't be farmed piecemeal), this row is NEVER deleted -- only ever
@@ -264,6 +278,13 @@ ALTER TABLE TBOT_S5_USER_PROGRESS ADD (
 -- afterwards but should use different cooldowns. See checkDiceCooldown()/rollDice().
 ALTER TABLE TBOT_S5_USER_PROGRESS ADD (
     NEXT_COOLDOWN_SEC NUMBER
+);
+
+-- "강화몹" ELITE 칸(블록3+ 전용) 전투 중엔 그 몬스터의 HP/ATK/DEF/PP보상이 전부 2배가 되는데,
+-- ATK/DEF/보상은 매 턴 몬스터 원본 데이터에서 다시 계산해오기 때문에(HP처럼 시작 시점에 한 번
+-- 저장해두고 끝나는 값이 아님) 지금 이 전투가 elite인지 매 턴 알 수 있게 플래그로 저장해둔다.
+ALTER TABLE TBOT_S5_USER_PROGRESS ADD (
+    CUR_MONSTER_ELITE_YN CHAR(1) DEFAULT 'N' NOT NULL
 );
 
 EXIT;

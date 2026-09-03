@@ -1,6 +1,7 @@
 package my.prac.core.prjbot.service;
 
 import java.util.HashMap;
+import java.util.List;
 
 /**
  * [시즌5] 탑 등반 시스템
@@ -83,4 +84,7 @@ public interface BotS5Service {
 
     /** /장비합성 N — N번째 장비와 동일(클래스/부위/등급) 미착용 장비 3개를 상위 등급 1개로 합성 */
     String equipSynthesis(String userName, int equipIdx);
+
+    /** 유저별 보드(층) 조회 — 없으면 새로 생성(계단1/특수1~2/보물상자1/강화몬스터(3구간부터)+나머지 전투/함정/럭키). 마을 귀환 시 삭제되어 다음 진입 때 재생성됨. */
+    List<HashMap<String, Object>> ensureUserBoard(String userName, int floor);
 }

@@ -2,6 +2,7 @@ package my.prac.core.prjbot.dao;
 
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.ibatis.annotations.Param;
 import org.springframework.stereotype.Repository;
@@ -17,6 +18,11 @@ public interface BotS5DAO {
     // ── 층 보드 ──
     HashMap<String, Object> selectFloorInfo(@Param("floor") int floor);
     List<HashMap<String, Object>> selectTileMaster(@Param("floor") int floor);
+
+    // ── 유저별 보드(마을 갔다오면 재생성) ──
+    List<HashMap<String, Object>> selectUserTileMaster(@Param("userName") String userName, @Param("floor") int floor);
+    int insertUserTileMasterBatch(Map<String, Object> params);
+    int deleteUserTileMaster(@Param("userName") String userName, @Param("floor") int floor);
 
     HashMap<String, Object> selectUserFloorProgress(@Param("userName") String userName, @Param("floor") int floor);
     int upsertUserFloorProgress(HashMap<String, Object> map);

@@ -11,7 +11,7 @@
                TOTAL_KILL_COUNT, CUR_MONSTER_ID, CUR_MONSTER_HP_VALUE, CUR_MONSTER_HP_EXT,
                MONSTER_STUNNED_YN, SHIELD_VALUE, SHIELD_EXT, LAST_DICE_ACTION_DATE, MAX_FLOOR_REACHED,
                COMPANION_VOUCHER, EQUIP_VOUCHER, BOSS_IMMUNE_CID, BOSS_STUN_CID, NO_COOLDOWN_YN,
-               LUCKY_TURN_LEFT, LUCKY_EFFECT, NEXT_COOLDOWN_SEC
+               LUCKY_TURN_LEFT, LUCKY_EFFECT, NEXT_COOLDOWN_SEC, CUR_MONSTER_ELITE_YN
         FROM TBOT_S5_USER_PROGRESS
         WHERE USER_NAME = #{userName}
     </select>
@@ -54,11 +54,12 @@
             <if test="equipVoucher != null">EQUIP_VOUCHER = #{equipVoucher},</if>
             <if test="clearMonster != null">
                 CUR_MONSTER_ID = NULL, CUR_MONSTER_HP_VALUE = NULL, CUR_MONSTER_HP_EXT = NULL,
-                BOSS_IMMUNE_CID = NULL, BOSS_STUN_CID = NULL,
+                BOSS_IMMUNE_CID = NULL, BOSS_STUN_CID = NULL, CUR_MONSTER_ELITE_YN = 'N',
             </if>
             <if test="curMonsterId != null">CUR_MONSTER_ID = #{curMonsterId},</if>
             <if test="curMonsterHpValue != null">CUR_MONSTER_HP_VALUE = #{curMonsterHpValue},</if>
             <if test="curMonsterHpExt != null">CUR_MONSTER_HP_EXT = #{curMonsterHpExt},</if>
+            <if test="curMonsterEliteYn != null">CUR_MONSTER_ELITE_YN = #{curMonsterEliteYn},</if>
             <if test="bossImmuneCid != null">BOSS_IMMUNE_CID = #{bossImmuneCid},</if>
             <if test="bossStunCid != null">BOSS_STUN_CID = #{bossStunCid},</if>
             <if test="clearBossStun != null">BOSS_STUN_CID = NULL,</if>
@@ -80,6 +81,26 @@
         WHERE FLOOR = #{floor}
         ORDER BY TILE_NO
     </select>
+
+    <!-- 유저별 보드(마을 갔다오면 재생성). ensureUserBoard() 참고 -->
+    <select id="selectUserTileMaster" resultType="hashmap">
+        SELECT FLOOR, TILE_NO, TILE_TYPE FROM TBOT_S5_USER_TILE_MASTER
+        WHERE USER_NAME = #{userName} AND FLOOR = #{floor}
+        ORDER BY TILE_NO
+    </select>
+
+    <insert id="insertUserTileMasterBatch" parameterType="map">
+        INSERT ALL
+        <foreach collection="tiles" item="t">
+            INTO TBOT_S5_USER_TILE_MASTER (USER_NAME, FLOOR, TILE_NO, TILE_TYPE)
+            VALUES (#{userName}, #{floor}, #{t.tileNo}, #{t.tileType})
+        </foreach>
+        SELECT 1 FROM DUAL
+    </insert>
+
+    <delete id="deleteUserTileMaster">
+        DELETE FROM TBOT_S5_USER_TILE_MASTER WHERE USER_NAME = #{userName} AND FLOOR = #{floor}
+    </delete>
 
     <select id="selectUserFloorProgress" resultType="hashmap">
         SELECT USER_NAME, FLOOR, CUR_TILE FROM TBOT_S5_USER_FLOOR_PROGRESS
