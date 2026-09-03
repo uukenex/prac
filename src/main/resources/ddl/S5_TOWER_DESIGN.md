@@ -620,6 +620,19 @@ S4의 `TBOT_S4_ACHIEVEMENT`/`TBOT_S4_USER_ACH` 패턴을 확장 계승. S5에서
   자동배정 장착/합성 버튼은 그대로 유지.
 - **동료 88 → 100마리로 증가**: 신규 동료 12마리도 IMAGE_URL이 비어 있어서 nekos.best에서 받아와
   DB에 직접 채움(`S5_COMPANION_IMAGE_BACKFILL_20260903_2.sql`, 적용 완료).
+- **[2026-09-04] 10층 구간 4층 그룹 완전탐사 보상(★3 선택권)**: 기존 "N층 완전탐사"(ACH_ID
+  101~200, 동료뽑기권=랜덤 1장)와 별개로, 한 구간 안의 **앞 4개 사냥터층(X1~X4)을 전부**
+  완전탐사(역대 최고기록 `TBOT_S5_USER_FLOOR_BEST` 기준이라 마을 복귀로 리셋 안 됨)하면 등급/직업
+  확정 **★3 동료 선택권**을, **뒤 4개 사냥터층(X5~X8)을 전부** 완전탐사하면 **★3 무기(WEAPON
+  부위) 선택권**을 지급(`BotS5ServiceImpl.checkBlockExploreTicket`, `snapshotFloorBest`에서
+  층이 새로 완전탐사될 때마다 그 그룹 완성 여부 확인). `TBOT_S5_USER_PROGRESS`에
+  `COMPANION_CHOICE_TICKET`/`WEAPON_CHOICE_TICKET` 컬럼 추가, 지급 이력은 신규 업적
+  ACH_ID 301~310(구간별 동료)/401~410(구간별 무기)로 중복 방지(`S5_BLOCK_CHOICE_TICKET.sql`,
+  적용 완료). **선택권 사용은 의도적으로 웹 UI 전용**(채팅 명령어 없음) —
+  `BotS5Service.redeemCompanionChoiceTicket`/`redeemWeaponChoiceTicket`,
+  `Season5ViewController` `/api/tower-action?type=REDEEM_COMPANION_TICKET|REDEEM_WEAPON_TICKET`
+  (param1=직업 코드), 파티 탭에 보유 수량+직업별 버튼 카드로 노출. 선택권은 원가가 0인 보너스라
+  가챠의 "중복 동료 20% PP 환급" 로직은 적용 안 함(알려진 단순화).
 
 ### 알려진 단순화(설계 가정)
 

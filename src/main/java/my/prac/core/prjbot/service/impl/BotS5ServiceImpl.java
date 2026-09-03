@@ -704,6 +704,8 @@ public class BotS5ServiceImpl implements BotS5Service {
             }
             if ("Y".equals(strVal(best.get("NEWLY_FULL"), "N"))) {
                 sb.append(NL).append("🏆 [").append(floor).append("층 완전탐사] 업적 달성! 동료뽑기권 1장 지급!");
+                Object ticketMsg = best.get("BLOCK_TICKET_MSG");
+                if (ticketMsg != null) sb.append(NL).append(ticketMsg);
             }
         }
         sb.append(NL);
@@ -1582,6 +1584,8 @@ public class BotS5ServiceImpl implements BotS5Service {
                 }
                 if ("Y".equals(strVal(floorBest.get("NEWLY_FULL"), "N"))) {
                     sb.append(NL).append("🏆 [").append(floor).append("층 완전탐사] 업적 달성! 동료뽑기권 1장 지급!");
+                    Object ticketMsg = floorBest.get("BLOCK_TICKET_MSG");
+                    if (ticketMsg != null) sb.append(NL).append(ticketMsg);
                 }
             }
         }
@@ -1647,8 +1651,46 @@ public class BotS5ServiceImpl implements BotS5Service {
                 voucherUp.put("companionVoucher", intVal(prog.get("COMPANION_VOUCHER"), 0) + 1);
                 dao.updateUserProgress(voucherUp);
             }
+            // 이번에 새로 완전탐사된 층이 속한 10층 구간의 4층 그룹(앞 X1~X4/뒤 X5~X8)이
+            // 이걸로 전부 완전탐사가 됐는지 확인 -- 됐으면 ★3 선택권 지급(웹 UI 전용).
+            row.put("BLOCK_TICKET_MSG", checkBlockExploreTicket(userName, floor));
         }
         return row;
+    }
+
+    /**
+     * 방금 완전탐사된 floor가 속한 4층 그룹(X1~X4 또는 X5~X8)이 전부 완전탐사인지 확인하고,
+     * 처음 달성이면 ★3 선택권(동료/무기)을 지급한다. 알림 문구(없으면 null)를 반환.
+     */
+    private String checkBlockExploreTicket(String userName, int floor) {
+        int m = floor % 10;
+        if (m < 1 || m > 8) return null; // 마을/보스층은 대상 아님(이 경로로 올 일도 없음)
+        boolean lowGroup = m <= 4;
+        int base = floorBlockBase(floor);
+        int groupStart = lowGroup ? base + 1 : base + 5;
+
+        for (int f = groupStart; f < groupStart + 4; f++) {
+            HashMap<String, Object> fb = dao.selectUserFloorBest(userName, f);
+            if (fb == null || !"Y".equals(strVal(fb.get("FULLY_EXPLORED_YN"), "N"))) return null; // 아직 그룹 미완성
+        }
+
+        int block = blockNo(floor);
+        int achId = (lowGroup ? 300 : 400) + block;
+        if (!grantAchievement(userName, achId)) return null; // 이미 지급됨
+
+        HashMap<String, Object> prog = dao.selectUserProgress(userName);
+        HashMap<String, Object> up = new HashMap<>();
+        up.put("userName", userName);
+        if (lowGroup) {
+            up.put("companionChoiceTicket", intVal(prog == null ? null : prog.get("COMPANION_CHOICE_TICKET"), 0) + 1);
+        } else {
+            up.put("weaponChoiceTicket", intVal(prog == null ? null : prog.get("WEAPON_CHOICE_TICKET"), 0) + 1);
+        }
+        dao.updateUserProgress(up);
+
+        int gStart = groupStart, gEnd = groupStart + 3;
+        return "🎁 [" + gStart + "~" + gEnd + "층 완전탐사] 업적 달성! ★3 " + (lowGroup ? "동료" : "무기")
+                + " 선택권 1장 지급! (웹 화면 파티/장비 탭에서 직업을 골라 사용하세요)";
     }
 
     // ================================================================
@@ -2436,6 +2478,70 @@ public class BotS5ServiceImpl implements BotS5Service {
             dao.updateEquipEquippedCompanion(unwear);
         }
         return "🧺 " + job + "(" + name + ")의 장비 " + equipped.size() + "개를 전부 해제했습니다. (/장비목록의 [미착용]으로 이동)";
+    }
+
+    /**
+     * ★3 동료 선택권 사용(웹 UI 전용). 등급/직업이 확정이라 가챠와 달리 실패가 없다.
+     * [알려진 단순화] 가챠의 "중복 동료 20% PP 환급"은 여기선 적용 안 함 -- 선택권 자체가
+     * 무상 보상이라 이미 원가가 0이고, 중복이어도 이름만 다시 랜덤일 뿐 손해가 아니라서 생략.
+     */
+    @Override
+    @Transactional
+    public String redeemCompanionChoiceTicket(String userName, String job) {
+        HashMap<String, Object> p = getOrInitProgress(userName);
+        int have = intVal(p.get("COMPANION_CHOICE_TICKET"), 0);
+        if (have <= 0) return "보유한 동료 선택권이 없습니다.";
+        if (!JOB_NAME.containsKey(job)) return "직업 값이 올바르지 않습니다.";
+
+        int grade = 3;
+        String[] namePool = NAME_POOL_BY_JOB_GRADE.get(job)[grade - 1];
+        String name = namePool[RND.nextInt(namePool.length)];
+        int[] stat = calcBaseStat(job, grade);
+        String imageUrl = fetchRandomNekoImage();
+
+        HashMap<String, Object> c = new HashMap<>();
+        c.put("userName", userName);
+        c.put("class", job);
+        c.put("grade", grade);
+        c.put("name", name);
+        c.put("imageUrl", imageUrl);
+        c.put("curHpValue", (double) stat[0]);
+        c.put("curHpExt", "");
+        c.put("partySlot", null);
+        dao.insertCompanion(c);
+
+        HashMap<String, Object> up = new HashMap<>();
+        up.put("userName", userName);
+        up.put("companionChoiceTicket", have - 1);
+        dao.updateUserProgress(up);
+
+        return "🎉 " + JOB_NAME.get(job) + "(" + name + ") ★3 동료를 획득했습니다! (선택권 사용, 남은 선택권 " + (have - 1) + "장)";
+    }
+
+    /** ★3 무기(WEAPON 부위) 선택권 사용(웹 UI 전용). */
+    @Override
+    @Transactional
+    public String redeemWeaponChoiceTicket(String userName, String job) {
+        HashMap<String, Object> p = getOrInitProgress(userName);
+        int have = intVal(p.get("WEAPON_CHOICE_TICKET"), 0);
+        if (have <= 0) return "보유한 무기 선택권이 없습니다.";
+        if (!JOB_NAME.containsKey(job)) return "직업 값이 올바르지 않습니다.";
+
+        int grade = 3;
+        HashMap<String, Object> e = new HashMap<>();
+        e.put("userName", userName);
+        e.put("class", job);
+        e.put("part", "WEAPON");
+        e.put("grade", grade);
+        e.put("equippedCompanionId", null);
+        dao.insertEquip(e);
+
+        HashMap<String, Object> up = new HashMap<>();
+        up.put("userName", userName);
+        up.put("weaponChoiceTicket", have - 1);
+        dao.updateUserProgress(up);
+
+        return "🎉 " + JOB_NAME.get(job) + "용 무기 ★3 (" + equipBonusText("WEAPON", grade) + ") 획득! (선택권 사용, 남은 선택권 " + (have - 1) + "장)";
     }
 
     @Override

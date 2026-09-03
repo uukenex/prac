@@ -91,6 +91,18 @@ public interface BotS5Service {
     /** /장비해제 M — M번째 파티원이 착용 중인 장비(투구/무기/갑옷) 전부를 한 번에 해제 */
     String equipUnwearAll(String userName, int companionIdx);
 
+    /**
+     * ★3 동료 선택권 사용 — 10층 구간 앞4층(X1~X4) 완전탐사 보상으로 받은 선택권을 소비해
+     * 직업(job)을 골라 그 등급/직업의 동료를 확정 생성한다. 웹 UI 전용 기능(채팅 명령어 없음).
+     */
+    String redeemCompanionChoiceTicket(String userName, String job);
+
+    /**
+     * ★3 무기 선택권 사용 — 10층 구간 뒤4층(X5~X8) 완전탐사 보상으로 받은 선택권을 소비해
+     * 직업(job)을 골라 그 직업 전용 무기(WEAPON 부위) ★3을 확정 생성한다. 웹 UI 전용.
+     */
+    String redeemWeaponChoiceTicket(String userName, String job);
+
     /** 유저별 보드(층) 조회 — 없으면 새로 생성(계단1/특수1~2/보물상자1/강화몬스터(3구간부터)+나머지 전투/함정/럭키). 마을 귀환 시 삭제되어 다음 진입 때 재생성됨. */
     List<HashMap<String, Object>> ensureUserBoard(String userName, int floor);
 }

@@ -240,6 +240,10 @@
       <div class="card-title">파티 (동료 카드를 드래그해서 넣기/빼기, 탭해도 편성/해제됨)</div>
       <div class="party-slots" id="partySlots"></div>
     </div>
+    <div class="card" id="ticketCard" style="margin-top:10px; display:none;">
+      <div class="card-title">🎁 완전탐사 선택권 (10층 구간 앞/뒤 4개층 전부 완전탐사 시 지급, 직업을 골라 확정 획득)</div>
+      <div id="ticketBox"></div>
+    </div>
     <div class="card" style="margin-top:10px;">
       <div class="card-title">보유 동료 (위 파티 칸으로 드래그하거나, 카드를 탭해서 편성/해제)</div>
       <div class="party-grid" id="partyGrid"></div>
@@ -389,6 +393,7 @@ var TW = (function () {
         // 없는 마을에서는 이동/전투가 의미 없음)에만 쓰인다.
         state.inVillage = (p.CUR_FLOOR % 10 === 0);
         updateDiceButtonState();
+        renderTickets(p);
 
         var huntCard = document.getElementById('autoHuntCard');
         if (data.autoHunt) {
@@ -623,6 +628,44 @@ var TW = (function () {
 
   function closeDetail() {
     document.getElementById('detailOverlay').classList.remove('open');
+  }
+
+  // 10층 구간 완전탐사 보상(★3 선택권)은 채팅 명령어 없이 이 웹 화면에서만 쓸 수 있다.
+  // /api/tower-status가 내려주는 progress(p)에 COMPANION_CHOICE_TICKET/WEAPON_CHOICE_TICKET
+  // 이 이미 포함돼 있어서(BotS5Mapper selectUserProgress) 별도 API 없이 바로 씀.
+  function renderTickets(p) {
+    var compTix = p.COMPANION_CHOICE_TICKET || 0;
+    var weapTix = p.WEAPON_CHOICE_TICKET || 0;
+    var card = document.getElementById('ticketCard');
+    var box = document.getElementById('ticketBox');
+    if (compTix <= 0 && weapTix <= 0) { card.style.display = 'none'; return; }
+    card.style.display = '';
+    box.innerHTML = '';
+
+    function jobPickerRow(label, count, actionType) {
+      var row = document.createElement('div');
+      row.className = 'shop-row';
+      row.style.flexWrap = 'wrap';
+      var head = document.createElement('span');
+      head.textContent = label + ' ' + count + '장';
+      row.appendChild(head);
+      if (count > 0) {
+        var picker = document.createElement('span');
+        picker.className = 'btn-group';
+        picker.style.flexWrap = 'wrap';
+        JOB_ORDER.forEach(function (job) {
+          var btn = document.createElement('button');
+          btn.textContent = JOB_KR[job];
+          btn.onclick = function () { action(actionType, job); };
+          picker.appendChild(btn);
+        });
+        row.appendChild(picker);
+      }
+      box.appendChild(row);
+    }
+
+    if (compTix > 0) jobPickerRow('★3 동료 선택권', compTix, 'REDEEM_COMPANION_TICKET');
+    if (weapTix > 0) jobPickerRow('★3 무기 선택권', weapTix, 'REDEEM_WEAPON_TICKET');
   }
 
   // 파티(동료 최대 3명)와 그 동료들에게 장착하는 장비는 한 화면에서 같이 관리한다.
