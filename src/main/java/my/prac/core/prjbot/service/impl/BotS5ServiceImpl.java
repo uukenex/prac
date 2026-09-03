@@ -704,6 +704,13 @@ public class BotS5ServiceImpl implements BotS5Service {
                 String[] luckyEffects = { "PP_BONUS", "ATK_UP_30", "DEF_UP_30", "ATK_UP_10", "DEF_UP_10", "HEAL_ALL", "CLEANSE" };
                 String luckyEffect = luckyEffects[RND.nextInt(luckyEffects.length)];
                 if (luckyEffect.startsWith("ATK_UP") || luckyEffect.startsWith("DEF_UP")) {
+                    // [버그 수정] 이미 럭키 버프가 남아있는 상태에서 새 버프를 뽑으면 컬럼이 하나뿐이라
+                    // 무조건 새 걸로 덮어써지는데(연장이 아니라 3턴으로 리셋), 예전엔 이걸 아무 안내 없이
+                    // 조용히 덮어써서 "버프가 하나만 적용되는 것 같다"는 혼란을 줬다. 규칙은 "새 효과로
+                    // 갱신"으로 명확히 하고, 기존 효과를 밀어냈을 땐 그 사실을 문구로 분명히 알려준다.
+                    int prevLuckyTurnLeft = intVal(p.get("LUCKY_TURN_LEFT"), 0);
+                    String prevLuckyEffect = strVal(p.get("LUCKY_EFFECT"), "");
+                    boolean overwrote = prevLuckyTurnLeft > 0 && !prevLuckyEffect.isEmpty() && !prevLuckyEffect.equals(luckyEffect);
                     HashMap<String, Object> up = new HashMap<>();
                     up.put("userName", userName);
                     up.put("luckyTurnLeft", 3);
@@ -712,6 +719,12 @@ public class BotS5ServiceImpl implements BotS5Service {
                     int pct = luckyEffectPct(luckyEffect);
                     String stat = luckyEffect.startsWith("ATK_UP") ? "공격력" : "방어력";
                     sb.append("🍀 럭키 칸! 앞으로 3번 이동하는 동안 파티 전원의 ").append(stat).append("이 ").append(pct).append("% 강화됩니다.");
+                    if (overwrote) {
+                        int prevPct = luckyEffectPct(prevLuckyEffect);
+                        String prevStat = prevLuckyEffect.startsWith("ATK_UP") ? "공격력" : "방어력";
+                        sb.append(NL).append("(기존 ").append(prevStat).append(" ").append(prevPct)
+                          .append("% 강화 효과는 새 효과로 갱신되어 사라졌습니다)");
+                    }
                 } else if ("CLEANSE".equals(luckyEffect)) {
                     // 정화 -- 함정칸으로 걸린 공격력/방어력 약화 디버프를 즉시 해제(PP 손실 효과는 즉시
                     // 발동형이라 이미 끝난 뒤라 정화할 게 없음, 이 정화 자체가 새 디버프를 남기지도 않음).
@@ -767,6 +780,11 @@ public class BotS5ServiceImpl implements BotS5Service {
                     sb.append("💸 함정에 걸려 소매치기를 당했다! PP ").append(loss.format())
                       .append(" 손실 (남은 PP ").append(after.format()).append(")");
                 } else {
+                    // [버그 수정] 럭키 버프와 동일한 문제 -- 이미 함정 디버프가 남아있는데 새 함정을
+                    // 밟으면 조용히 덮어써졌다. 동일하게 "새 효과로 갱신" + 명시적 안내로 통일.
+                    int prevTrapTurnLeft = intVal(p.get("TRAP_TURN_LEFT"), 0);
+                    String prevTrapEffect = strVal(p.get("TRAP_EFFECT"), "");
+                    boolean overwrote = prevTrapTurnLeft > 0 && !prevTrapEffect.isEmpty() && !prevTrapEffect.equals(effect);
                     up.put("trapTurnLeft", 3);
                     up.put("trapEffect", effect);
                     dao.updateUserProgress(up);
@@ -774,6 +792,10 @@ public class BotS5ServiceImpl implements BotS5Service {
                         sb.append("🕳️ 함정에 걸렸다! 앞으로 3번 이동하는 동안 파티 전원의 공격력이 30% 약화됩니다.");
                     } else {
                         sb.append("🕳️ 함정에 걸렸다! 앞으로 3번 이동하는 동안 파티 전원의 방어력이 30% 약화되어 반격 피해를 더 받습니다.");
+                    }
+                    if (overwrote) {
+                        String prevKr = "ATK_DOWN".equals(prevTrapEffect) ? "공격력 약화" : "방어력 약화";
+                        sb.append(NL).append("(기존 ").append(prevKr).append(" 효과는 새 효과로 갱신되어 사라졌습니다)");
                     }
                 }
                 break;
@@ -973,25 +995,33 @@ public class BotS5ServiceImpl implements BotS5Service {
         }
     }
 
-    /** 지금 파티에 걸려있는 함정/럭키칸 공격력·방어력 강화·약화 효과를 안내 문구로 (없으면 null). */
+    /**
+     * 지금 파티에 걸려있는 함정/럭키칸 공격력·방어력 강화·약화 효과를 안내 문구로 (없으면 null).
+     * [버그 수정] TRAP과 LUCKY는 서로 다른 컬럼 쌍(TRAP_TURN_LEFT/EFFECT, LUCKY_TURN_LEFT/EFFECT)이라
+     * 실제 전투 계산(resolveCombatTurn)에서는 둘 다 동시에 적용되는데, 이 안내문은 원래 if-return
+     * 체인이라 먼저 매치되는 것 하나만 보여주고 있었다(예: 함정 디버프가 걸린 채로 럭키 버프까지
+     * 걸려도 함정 문구만 보임 -- "버프가 하나만 적용되는 것 같다"는 혼란의 원인). 이제 해당되는
+     * 효과를 전부 모아서 줄바꿈으로 함께 보여준다.
+     */
     private String currentPartyBuffDebuffNote(HashMap<String, Object> p) {
         int trapTurnLeft = intVal(p.get("TRAP_TURN_LEFT"), 0);
         String trapEffect = strVal(p.get("TRAP_EFFECT"), "");
         int luckyTurnLeft = intVal(p.get("LUCKY_TURN_LEFT"), 0);
         String luckyEffect = strVal(p.get("LUCKY_EFFECT"), "");
+        List<String> notes = new ArrayList<>();
         if (trapTurnLeft > 0 && "ATK_DOWN".equals(trapEffect)) {
-            return "⚠️ 함정 효과로 파티 공격력 30% 약화 중 (남은 이동 " + trapTurnLeft + "회)";
+            notes.add("⚠️ 함정 효과로 파티 공격력 30% 약화 중 (남은 이동 " + trapTurnLeft + "회)");
         }
         if (trapTurnLeft > 0 && "DEF_DOWN".equals(trapEffect)) {
-            return "⚠️ 함정 효과로 파티 방어력 30% 약화 중, 반격 피해 증가 (남은 이동 " + trapTurnLeft + "회)";
+            notes.add("⚠️ 함정 효과로 파티 방어력 30% 약화 중, 반격 피해 증가 (남은 이동 " + trapTurnLeft + "회)");
         }
         if (luckyTurnLeft > 0 && luckyEffect.startsWith("ATK_UP")) {
-            return "🍀 럭키 효과로 파티 공격력 " + luckyEffectPct(luckyEffect) + "% 강화 중 (남은 이동 " + luckyTurnLeft + "회)";
+            notes.add("🍀 럭키 효과로 파티 공격력 " + luckyEffectPct(luckyEffect) + "% 강화 중 (남은 이동 " + luckyTurnLeft + "회)");
         }
         if (luckyTurnLeft > 0 && luckyEffect.startsWith("DEF_UP")) {
-            return "🍀 럭키 효과로 파티 방어력 " + luckyEffectPct(luckyEffect) + "% 강화 중, 반격 피해 감소 (남은 이동 " + luckyTurnLeft + "회)";
+            notes.add("🍀 럭키 효과로 파티 방어력 " + luckyEffectPct(luckyEffect) + "% 강화 중, 반격 피해 감소 (남은 이동 " + luckyTurnLeft + "회)");
         }
-        return null;
+        return notes.isEmpty() ? null : String.join(NL, notes);
     }
 
     private String resolveCombatTurn(String userName, HashMap<String, Object> p, int floor) {
@@ -1790,15 +1820,39 @@ public class BotS5ServiceImpl implements BotS5Service {
         String name = namePool[RND.nextInt(namePool.length)];
 
         // 중복 동료(같은 직업+이름을 이미 보유) 처리: 이름 풀이 직업당 3종뿐이라 중복이 흔해지므로
-        // 새 동료를 또 넣는 대신 이번 뽑기 비용의 20%를 PP로 환급한다("중복 정산").
-        boolean dupe = false;
+        // 같은 걸 또 뽑는 일이 잦다. [버그 수정] 원래는 등급(GRADE)을 안 보고 직업+이름만 같으면
+        // 무조건 "중복"으로 취급해 20% PP 환급 후 버렸는데, 그러면 이미 낮은 등급으로 보유 중인
+        // 동료의 이름을 더 높은 등급으로 다시 뽑아도 그냥 증발해버리는 문제가 있었다("3성 궁수를
+        // 또 뽑았는데 증발했다" 신고 -- 실제론 같은 이름(예: 나나)을 다른 등급으로 갖고 있다가,
+        // 새로 뽑은 등급이 기존과 같거나 낮으면 여전히 "진짜 중복"으로 환급, 기존보다 **높은
+        // 등급**이면 새로 하나 더 늘리는 대신 그 자리에서 승급시켜 상위 등급으로 갱신한다.
+        HashMap<String, Object> ownedSame = null;
         for (HashMap<String, Object> owned : dao.selectUserCompanions(userName)) {
             if (job.equals(strVal(owned.get("CLASS"), "")) && name.equals(strVal(owned.get("NAME"), ""))) {
-                dupe = true;
+                ownedSame = owned;
                 break;
             }
         }
-        if (dupe) {
+        if (ownedSame != null) {
+            int ownedGrade = intVal(ownedSame.get("GRADE"), 1);
+            if (grade > ownedGrade) {
+                int[] upStat = calcBaseStat(job, grade);
+                HashMap<String, Object> up = new HashMap<>();
+                up.put("companionId", ownedSame.get("COMPANION_ID"));
+                up.put("grade", grade);
+                up.put("curHpValue", (double) upStat[0]);
+                up.put("curHpExt", "");
+                dao.updateCompanionGrade(up);
+                result.put("ok", true);
+                result.put("dupe", false);
+                result.put("upgrade", true);
+                result.put("job", job);
+                result.put("name", name);
+                result.put("grade", grade);
+                result.put("oldGrade", ownedGrade);
+                result.put("stat", upStat);
+                return result;
+            }
             PP cost = PP.of(((Number) gacha.get("COST_VALUE")).doubleValue(), strVal(gacha.get("COST_EXT"), ""));
             PP dupeBonus = cost.multiply(0.2);
             addPp(userName, p, dupeBonus);
@@ -1857,6 +1911,12 @@ public class BotS5ServiceImpl implements BotS5Service {
             return "🔁 이미 보유한 " + JOB_NAME.get(job) + "(" + name + ")와 중복! (★" + grade + " 뽑힘)" + NL
                     + "계약서 대신 " + r.get("dupeBonus") + " PP로 환급되었습니다.";
         }
+        if (Boolean.TRUE.equals(r.get("upgrade"))) {
+            int oldGrade = intVal(r.get("oldGrade"), grade);
+            int[] upStat = (int[]) r.get("stat");
+            return "⬆️ 이미 보유한 " + JOB_NAME.get(job) + "(" + name + ")보다 높은 등급이 나와 승급했습니다! (★" + oldGrade + " → ★" + grade + ")" + NL
+                    + "스탯: HP " + upStat[0] + " / ATK " + upStat[1] + " / DEF " + upStat[2];
+        }
 
         int[] stat = (int[]) r.get("stat");
         int cnt = ownedBefore + 1;
@@ -1883,6 +1943,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         int[] gradeCount = new int[7]; // index 1~6
         int success = 0;
         int dupeCount = 0;
+        int upgradeCount = 0;
         PP dupeTotal = PP.of(0, "");
         String stopReason = null;
         for (int i = 0; i < 10; i++) {
@@ -1896,14 +1957,19 @@ public class BotS5ServiceImpl implements BotS5Service {
             if (Boolean.TRUE.equals(r.get("dupe"))) {
                 dupeCount++;
                 dupeTotal = dupeTotal.add(PP.parse((String) r.get("dupeBonus")));
+            } else if (Boolean.TRUE.equals(r.get("upgrade"))) {
+                upgradeCount++; // 신규 동료는 아니지만 보유 수는 그대로(자리를 새로 차지하지 않음)
             } else {
-                owned++; // 중복이 아닌 실제 신규 동료일 때만 보유 수 증가(스타터 무료뽑기/업적 판정에 사용)
+                owned++; // 중복도 승급도 아닌 실제 신규 동료일 때만 보유 수 증가(스타터 무료뽑기/업적 판정에 사용)
             }
         }
 
         StringBuilder sb = new StringBuilder("🎰 10연속 동료뽑기 (").append(success).append("/10)").append(NL);
         for (int g = 1; g <= 6; g++) {
             if (gradeCount[g] > 0) sb.append("★").append(g).append("×").append(gradeCount[g]).append("  ");
+        }
+        if (upgradeCount > 0) {
+            sb.append(NL).append("⬆️ 기존 동료 승급 ").append(upgradeCount).append("마리");
         }
         if (dupeCount > 0) {
             sb.append(NL).append("🔁 중복 ").append(dupeCount).append("마리 → ").append(dupeTotal.format()).append(" PP 환급");

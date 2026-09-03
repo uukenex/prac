@@ -49,6 +49,8 @@ public interface BotS5DAO {
     int countUserCompanions(@Param("userName") String userName);
     int insertCompanion(HashMap<String, Object> map);
     int updateCompanionHp(HashMap<String, Object> map);
+    // 같은 (직업,이름) 동료를 더 높은 등급으로 다시 뽑았을 때 그 자리에서 승급(신규 추가 대신) -- pullCompanionCore 참고
+    int updateCompanionGrade(HashMap<String, Object> map);
     int updateCompanionPartySlot(HashMap<String, Object> map);
     int updateCompanionHidden(HashMap<String, Object> map);
 

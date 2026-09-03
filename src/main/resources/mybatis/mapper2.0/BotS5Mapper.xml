@@ -238,6 +238,13 @@
         WHERE COMPANION_ID = #{companionId}
     </update>
 
+    <!-- 같은 (직업,이름) 동료를 더 높은 등급으로 다시 뽑았을 때 그 자리에서 승급. HP도 새 등급 기준 풀피로 -->
+    <update id="updateCompanionGrade" parameterType="hashmap">
+        UPDATE TBOT_S5_USER_COMPANION
+        SET GRADE = #{grade}, CUR_HP_VALUE = #{curHpValue}, CUR_HP_EXT = #{curHpExt}
+        WHERE COMPANION_ID = #{companionId}
+    </update>
+
     <update id="updateCompanionPartySlot" parameterType="hashmap">
         UPDATE TBOT_S5_USER_COMPANION
         SET PARTY_SLOT = #{partySlot, jdbcType=NUMERIC}
