@@ -740,22 +740,24 @@ var TW = (function () {
       // 번호"와 반드시 같은 순서여야 하므로, 정렬/그룹핑은 화면 표시용으로만 하고 idx 자체는
       // API가 내려준 원본 순서(unequipped 배열 인덱스)를 그대로 쓴다.
       unequipped.forEach(function (e, i) { e.__idx = i + 1; });
-      var sorted = unequipped.slice().sort(function (a, b) {
-        var ca = JOB_ORDER.indexOf(a.CLASS), cb = JOB_ORDER.indexOf(b.CLASS);
-        if (ca !== cb) return ca - cb;
-        return b.GRADE - a.GRADE; // 직업별로 묶고, 그 안에서 성급 내림차순(좋은 장비 먼저)
-      });
       var grouped = {};
-      sorted.forEach(function (e) { (grouped[e.CLASS] = grouped[e.CLASS] || []).push(e); });
+      unequipped.forEach(function (e) { (grouped[e.CLASS] = grouped[e.CLASS] || []).push(e); });
+      // 그룹(직업) 순서도 고정(전사→도사)이 아니라 그 직업이 가진 최고 성급 내림차순으로 --
+      // 제일 좋은 장비를 들고 있는 직업이 위로 오게. 그 안의 카드도 성급 내림차순.
+      var jobsSortedByGrade = Object.keys(grouped).sort(function (jobA, jobB) {
+        var maxA = Math.max.apply(null, grouped[jobA].map(function (e) { return e.GRADE; }));
+        var maxB = Math.max.apply(null, grouped[jobB].map(function (e) { return e.GRADE; }));
+        if (maxA !== maxB) return maxB - maxA;
+        return JOB_ORDER.indexOf(jobA) - JOB_ORDER.indexOf(jobB); // 동률이면 기존 고정 순서로
+      });
 
       var box = document.getElementById('equipListBox');
       box.innerHTML = '';
       if (unequipped.length === 0) {
         box.innerHTML = '<div style="color:var(--ink-soft);font-size:12px;">미착용 장비가 없습니다.</div>';
       }
-      JOB_ORDER.forEach(function (job) {
-        var list = grouped[job];
-        if (!list || !list.length) return;
+      jobsSortedByGrade.forEach(function (job) {
+        var list = grouped[job].slice().sort(function (a, b) { return b.GRADE - a.GRADE; });
         var title = document.createElement('div');
         title.className = 'equip-group-title';
         title.textContent = (JOB_KR[job] || job) + ' (' + list.length + ')';
