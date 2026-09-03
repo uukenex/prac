@@ -608,7 +608,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                 HashMap<String, Object> mon = dao.selectMonster(blockNo(floor), "N");
                 PP basePp = mon == null ? PP.of(1, "")
                         : PP.of(((Number) mon.get("PP_PER_KILL_VALUE")).doubleValue(), strVal(mon.get("PP_PER_KILL_EXT"), "")).multiply(floorPpMultiplier(floor));
-                String[] luckyEffects = { "PP_BONUS", "ATK_UP", "DEF_UP", "REVIVE" };
+                String[] luckyEffects = { "PP_BONUS", "ATK_UP", "DEF_UP", "HEAL_ALL" };
                 String luckyEffect = luckyEffects[RND.nextInt(luckyEffects.length)];
                 switch (luckyEffect) {
                     case "ATK_UP":
@@ -625,18 +625,18 @@ public class BotS5ServiceImpl implements BotS5Service {
                         }
                         break;
                     }
-                    case "REVIVE": {
-                        // 완전회복이 아니라 부활 -- 전투불가(HP 0) 상태인 동료만 되살리고, 이미
-                        // 살아있는 동료의 HP는 건드리지 않는다(마을 도착 부활과 동일 정책).
-                        List<HashMap<String, Object>> reviveParty = new ArrayList<>();
+                    case "HEAL_ALL": {
+                        // 완전회복 -- 전투불가(HP 0) 상태인 동료까지 포함해 파티 전원을 풀피로 채운다
+                        // (전투 승리 후 자동회복은 살아있는 동료만 대상이라 이거랑 다름, healPartyAliveOnly 참고).
+                        List<HashMap<String, Object>> healParty = new ArrayList<>();
                         for (HashMap<String, Object> c : dao.selectUserCompanions(userName)) {
-                            if (c.get("PARTY_SLOT") != null) reviveParty.add(c);
+                            if (c.get("PARTY_SLOT") != null) healParty.add(c);
                         }
-                        int revived = reviveParty.isEmpty() ? 0 : revivePartyDead(userName, reviveParty, dao.selectUserStat(userName));
-                        if (revived > 0) {
-                            sb.append("🍀 럭키 칸! 전투불가 상태였던 동료 ").append(revived).append("명이 부활했습니다!");
+                        if (healParty.isEmpty()) {
+                            sb.append("🍀 럭키 칸! 몸이 개운해지는 기운을 느꼈지만... 파티가 비어있어 효과가 없었다.");
                         } else {
-                            sb.append("🍀 럭키 칸! 신비로운 기운을 느꼈지만... 부활시킬 동료가 없어 효과가 없었다.");
+                            healPartyAll(healParty, dao.selectUserStat(userName));
+                            sb.append("🍀 럭키 칸! 파티 전원의 체력이 완전히 회복되었습니다! (전투불가 상태였던 동료도 부활)");
                         }
                         break;
                     }
@@ -992,8 +992,9 @@ public class BotS5ServiceImpl implements BotS5Service {
             addPp(userName, p, reward);
             checkKillAchievements(userName, totalKill);
             sb.append(reward.format()).append(" PP 획득!");
-            // [변경] 승리해도 더 이상 파티 전원을 풀피로 되돌리지 않음 -- HP는 전투 결과 그대로
-            // 이어지고, 전투불가(HP 0)가 된 동료는 마을에 돌아가야 부활한다(또는 럭키칸 효과).
+            // 승리하면 살아있는 동료는 자동으로 풀피 회복되지만, 전투불가(HP 0)가 된 동료는
+            // 그대로 둔다 -- 부활은 마을 도착이나 럭키칸의 "완전회복" 효과로만 일어난다.
+            healPartyAliveOnly(party, userStat);
             return sb.toString();
         }
 
@@ -1103,11 +1104,7 @@ public class BotS5ServiceImpl implements BotS5Service {
 
     /**
      * 전투불가(HP 0)인 동료만 최대 HP로 되살린다("부활") -- 이미 살아있는 동료의 HP는 건드리지
-     * 않는다. 예전엔 전투가 끝날 때마다(승리/전멸 모두) 파티 전원을 무조건 풀피로 되돌렸는데,
-     * 그러면 "전투 중 사망 → 마을에 가야 부활"이라는 의도가 무색해져서(전투만 이기면 어차피
-     * 바로 다시 풀피) 이 방식으로 교체했다. 실제 부활은 이 메서드가 호출되는 곳에서만 일어남:
-     * (1) 마을 도착(changeFloor), (2) 보스 처치로 새 구간 마을에 자동 도착할 때, (3) 럭키칸의
-     * "부활" 효과.
+     * 않는다. 마을 도착(changeFloor)과 보스 처치로 새 구간 마을에 자동 도착할 때 쓰인다.
      * @return 실제로 되살아난 동료 수
      */
     private int revivePartyDead(String userName, List<HashMap<String, Object>> party, HashMap<String, Object> userStat) {
@@ -1115,18 +1112,41 @@ public class BotS5ServiceImpl implements BotS5Service {
         for (HashMap<String, Object> c : party) {
             PP hp = PP.of(((Number) c.get("CUR_HP_VALUE")).doubleValue(), strVal(c.get("CUR_HP_EXT"), ""));
             if (PP.toBaseValue(hp) > 0) continue; // 이미 살아있으면 그대로 둠
-            String job = strVal(c.get("CLASS"), "WARRIOR");
-            int grade = intVal(c.get("GRADE"), 1);
-            List<HashMap<String, Object>> equips = dao.selectEquipByCompanion(intVal(c.get("COMPANION_ID"), 0));
-            int[] eff = computeEffectiveStat(job, grade, equips, userStat);
-            HashMap<String, Object> up = new HashMap<>();
-            up.put("companionId", intVal(c.get("COMPANION_ID"), 0));
-            up.put("curHpValue", (double) eff[0]);
-            up.put("curHpExt", "");
-            dao.updateCompanionHp(up);
+            setCompanionFullHp(c, userStat);
             revived++;
         }
         return revived;
+    }
+
+    /**
+     * 전투 승리 후 자동 회복 -- 살아있는(HP&gt;0) 동료만 풀피로 채우고, 전투불가(HP 0)가 된
+     * 동료는 그대로 둔다(부활은 마을 도착/럭키칸에서만 일어남).
+     */
+    private void healPartyAliveOnly(List<HashMap<String, Object>> party, HashMap<String, Object> userStat) {
+        for (HashMap<String, Object> c : party) {
+            PP hp = PP.of(((Number) c.get("CUR_HP_VALUE")).doubleValue(), strVal(c.get("CUR_HP_EXT"), ""));
+            if (PP.toBaseValue(hp) <= 0) continue; // 전투불가 상태는 그대로 둠(부활 아님)
+            setCompanionFullHp(c, userStat);
+        }
+    }
+
+    /** 럭키칸 "완전회복" 전용 -- 전투불가 상태였던 동료까지 포함해 파티 전원을 풀피로 채운다. */
+    private void healPartyAll(List<HashMap<String, Object>> party, HashMap<String, Object> userStat) {
+        for (HashMap<String, Object> c : party) {
+            setCompanionFullHp(c, userStat);
+        }
+    }
+
+    private void setCompanionFullHp(HashMap<String, Object> c, HashMap<String, Object> userStat) {
+        String job = strVal(c.get("CLASS"), "WARRIOR");
+        int grade = intVal(c.get("GRADE"), 1);
+        List<HashMap<String, Object>> equips = dao.selectEquipByCompanion(intVal(c.get("COMPANION_ID"), 0));
+        int[] eff = computeEffectiveStat(job, grade, equips, userStat);
+        HashMap<String, Object> up = new HashMap<>();
+        up.put("companionId", intVal(c.get("COMPANION_ID"), 0));
+        up.put("curHpValue", (double) eff[0]);
+        up.put("curHpExt", "");
+        dao.updateCompanionHp(up);
     }
 
     private HashMap<String, Object> findMonsterById(int floor, int monsterId) {
