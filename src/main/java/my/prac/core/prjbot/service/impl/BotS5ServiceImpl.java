@@ -865,9 +865,40 @@ public class BotS5ServiceImpl implements BotS5Service {
         dao.updateUserProgress(up);
 
         PP fullHp = PP.of(((Number) mon.get("HP_VALUE")).doubleValue(), strVal(mon.get("HP_EXT"), ""));
-        return (boss ? "👹 보스 " : "⚔️ ") + floorMonsterName(floor, mon) + " 등장! (HP "
-                + fullHp.format() + "/" + fullHp.format()
-                + ")" + immuneMsg + NL + "전투를 시작하려면 다시 /주사위 를 입력하세요!";
+        StringBuilder sb = new StringBuilder();
+        sb.append(boss ? "👹 보스 " : "⚔️ ").append(floorMonsterName(floor, mon)).append(" 등장! (HP ")
+          .append(fullHp.format()).append("/").append(fullHp.format()).append(")").append(NL);
+        // 공격력 범위(주사위 곱셈 전)만 보고는 몬스터 방어력이 빠지는 걸 몰라서 "왜 범위보다
+        // 적게 들어갔지?" 헷갈릴 수 있어, 전투 시작 전에 몬스터 방어력/공격력과 지금 파티에
+        // 걸려있는 공격력·방어력 강화/약화 효과(함정/럭키칸)를 미리 안내한다.
+        sb.append("🛡️ 몬스터 방어력: ").append(intVal(mon.get("DEF_VALUE"), 0))
+          .append(" (공격 시 이 값만큼 피해에서 차감) / ⚔️ 몬스터 공격력: ").append(intVal(mon.get("ATK_VALUE"), 0)).append(NL);
+        String buffNote = currentPartyBuffDebuffNote(p);
+        if (buffNote != null) sb.append(buffNote).append(NL);
+        sb.append(immuneMsg.isEmpty() ? "" : immuneMsg + NL);
+        sb.append("전투를 시작하려면 다시 /주사위 를 입력하세요!");
+        return sb.toString();
+    }
+
+    /** 지금 파티에 걸려있는 함정/럭키칸 공격력·방어력 강화·약화 효과를 안내 문구로 (없으면 null). */
+    private String currentPartyBuffDebuffNote(HashMap<String, Object> p) {
+        int trapTurnLeft = intVal(p.get("TRAP_TURN_LEFT"), 0);
+        String trapEffect = strVal(p.get("TRAP_EFFECT"), "");
+        int luckyTurnLeft = intVal(p.get("LUCKY_TURN_LEFT"), 0);
+        String luckyEffect = strVal(p.get("LUCKY_EFFECT"), "");
+        if (trapTurnLeft > 0 && "ATK_DOWN".equals(trapEffect)) {
+            return "⚠️ 함정 효과로 파티 공격력 30% 약화 중 (남은 이동 " + trapTurnLeft + "회)";
+        }
+        if (trapTurnLeft > 0 && "DEF_DOWN".equals(trapEffect)) {
+            return "⚠️ 함정 효과로 파티 방어력 30% 약화 중, 반격 피해 증가 (남은 이동 " + trapTurnLeft + "회)";
+        }
+        if (luckyTurnLeft > 0 && "ATK_UP".equals(luckyEffect)) {
+            return "🍀 럭키 효과로 파티 공격력 30% 강화 중 (남은 이동 " + luckyTurnLeft + "회)";
+        }
+        if (luckyTurnLeft > 0 && "DEF_UP".equals(luckyEffect)) {
+            return "🍀 럭키 효과로 파티 방어력 30% 강화 중, 반격 피해 감소 (남은 이동 " + luckyTurnLeft + "회)";
+        }
+        return null;
     }
 
     private String resolveCombatTurn(String userName, HashMap<String, Object> p, int floor) {
