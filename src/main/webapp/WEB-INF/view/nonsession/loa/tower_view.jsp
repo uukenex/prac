@@ -18,8 +18,12 @@
       --shadow: 0 3px 0 rgba(46,36,64,.14), 0 10px 22px -12px rgba(46,36,64,.35);
     }
     *,*::before,*::after{box-sizing:border-box;}
+    /* 이 페이지는 사이드바(_loa_nav.jsp)를 포함하지 않는 독립 SPA라 그 폭(120px)을
+       비워둘 필요가 없다 -- 대신 하단 dock 내비게이션을 쓴다. 그래서 다른 /loa 페이지들과
+       달리 margin-left를 두지 않는다(전에 넣었더니 폰/폴더블 펼친 화면처럼 600px보다
+       넓은데 아직 데스크톱은 아닌 폭에서 왼쪽에 아무 것도 없는 여백만 남았었음). */
     body{
-      margin:0; margin-left:120px;
+      margin:0;
       background: radial-gradient(1100px 500px at 50% -8%, #FFFDF6 0%, var(--parchment) 46%, var(--parchment-deep) 100%);
       color:var(--ink); font-family:'Malgun Gothic','Segoe UI',sans-serif;
     }
@@ -103,7 +107,7 @@
     .dock{ position:fixed; left:0; right:0; bottom:0; display:flex; justify-content:center;
            padding:10px 14px calc(10px + env(safe-area-inset-bottom));
            background:linear-gradient(180deg,rgba(251,243,223,0),var(--parchment) 22%); }
-    .dock-inner{ max-width:900px; width:100%; margin-left:120px; display:flex; gap:8px; background:#fff;
+    .dock-inner{ max-width:900px; width:100%; display:flex; gap:8px; background:#fff;
                  border:2px solid var(--line); border-radius:20px; padding:8px; box-shadow:0 10px 26px -10px rgba(46,36,64,.4); }
     .dbtn{ flex:1; display:flex; flex-direction:column; align-items:center; gap:2px; background:transparent; border:none;
            border-radius:14px; padding:8px 4px 6px; color:var(--ink-soft); font-size:10px; font-weight:700; cursor:pointer; }
@@ -118,8 +122,7 @@
     select.floor-select{ padding:6px 10px; border-radius:10px; border:1.5px solid var(--line); font-size:12px; }
 
     @media (max-width:600px){
-      body{ margin-left:0; padding-top:8px; }
-      .dock-inner{ margin-left:0; }
+      body{ padding-top:8px; }
     }
   </style>
 </head>
@@ -303,10 +306,9 @@ var TW = (function () {
             + (p.AUTO_HUNT_YN === 'Y' ? ' · 자동사냥ON' : '');
         document.getElementById('ppVal').textContent = (p.PP_VALUE || 0).toFixed ? p.PP_VALUE.toFixed(2) + (p.PP_EXT || '') : p.PP_VALUE;
 
-        // '편성' 탭 안에는 파티 슬롯 토글(마을 전용)과 장비 장착/합성(어디서든 가능)이
-        // 함께 있어서 탭 자체를 막지는 않는다 -- 파티 슬롯 토글만 마을 밖에서 누르면
-        // 서버(BotS5Service.partyToggle)가 거부 메시지를 토스트로 띄운다.
-        // 뽑기(상점)도 마을이 아니어도 가능 -- 상점 탭도 항상 열어둠.
+        // '편성' 탭(파티 슬롯 토글/장비 장착·합성)과 '상점' 탭(뽑기) 전부 전투 중만 아니면
+        // 어디서든 가능하므로 탭 자체를 막지 않는다. inVillage는 아래 주사위 버튼(보드가
+        // 없는 마을에서는 이동/전투가 의미 없음)에만 쓰인다.
         state.inVillage = (p.CUR_FLOOR % 10 === 0);
         updateDiceButtonState();
 

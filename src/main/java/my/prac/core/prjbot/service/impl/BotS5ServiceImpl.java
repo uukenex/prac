@@ -382,9 +382,9 @@ public class BotS5ServiceImpl implements BotS5Service {
         sb.append("/탑현황 [닉네임] : 현재 층/보드 위치/PP/상태/자동사냥 조회. 닉네임을 붙이면 다른 유저 조회(앞부분만 입력해도 검색됨)").append(NL);
         sb.append(NL);
 
-        sb.append("[동료] (웹 '파티' 탭) — ⚠️ 파티 편성/해제는 마을(X0층)에서만 가능").append(NL);
+        sb.append("[동료] (웹 '파티' 탭) — 파티 편성/해제는 전투 중이 아니면 어디서든 가능").append(NL);
         sb.append("/파티편성 : 보유 동료 목록 + 파티 편성 현황 조회").append(NL);
-        sb.append("/파티편성 N : 목록 N번째 동료를 파티에 편성/해제 (마을에서만)").append(NL);
+        sb.append("/파티편성 N : 목록 N번째 동료를 파티에 편성/해제 (전투 중이 아니면 어디서든)").append(NL);
         sb.append("/동료가리기 N : 목록 N번째 동료를 /파티편성 텍스트 목록에서 숨김/숨김해제(웹 화면엔 항상 표시)").append(NL);
         sb.append(NL);
 
@@ -606,11 +606,36 @@ public class BotS5ServiceImpl implements BotS5Service {
                 break;
             }
             case "TRAP": {
+                // 함정 효과 3종 중 무작위 -- 공격력/방어력 약화는 이후 3번의 보드 이동(위 trapTurnLeft
+                // 감소 로직 기준) 동안 지속되는 파티 전체 디버프, PP 손실은 즉시 발동하는 1회성 효과.
+                // 실제 적용은 resolveCombatTurn의 파티 공격 루프(ATK_DOWN)와 몬스터 반격 대상
+                // 방어력 계산(DEF_DOWN)에서 이뤄진다.
+                String[] effects = { "ATK_DOWN", "DEF_DOWN", "PP_LOSS" };
+                String effect = effects[RND.nextInt(effects.length)];
                 HashMap<String, Object> up = new HashMap<>();
                 up.put("userName", userName);
-                up.put("trapTurnLeft", 3);
-                dao.updateUserProgress(up);
-                sb.append("함정에 걸렸다! 3턴간 전투력이 약화됩니다.");
+                if ("PP_LOSS".equals(effect)) {
+                    PP cur = PP.of(((Number) p.get("PP_VALUE")).doubleValue(), strVal(p.get("PP_EXT"), ""));
+                    PP loss = cur.multiplyRate(0.05); // 보유 PP의 5% 손실
+                    PP after = cur.subtract(loss);
+                    if (PP.toBaseValue(after) < 0) after = PP.fromPP(0);
+                    up.put("ppValue", after.getValue());
+                    up.put("ppExt", after.getUnit());
+                    dao.updateUserProgress(up);
+                    p.put("PP_VALUE", after.getValue());
+                    p.put("PP_EXT", after.getUnit());
+                    sb.append("💸 함정에 걸려 소매치기를 당했다! PP ").append(loss.format())
+                      .append(" 손실 (남은 PP ").append(after.format()).append(")");
+                } else {
+                    up.put("trapTurnLeft", 3);
+                    up.put("trapEffect", effect);
+                    dao.updateUserProgress(up);
+                    if ("ATK_DOWN".equals(effect)) {
+                        sb.append("🕳️ 함정에 걸렸다! 앞으로 3번 이동하는 동안 파티 전원의 공격력이 30% 약화됩니다.");
+                    } else {
+                        sb.append("🕳️ 함정에 걸렸다! 앞으로 3번 이동하는 동안 파티 전원의 방어력이 30% 약화되어 반격 피해를 더 받습니다.");
+                    }
+                }
                 break;
             }
             case "SHOP": {
@@ -764,6 +789,10 @@ public class BotS5ServiceImpl implements BotS5Service {
         int monsterDef = intVal(mon.get("DEF_VALUE"), 0);
         int diceMax = diceMax(strVal(p.get("DICE_GRADE"), "DICE_6"));
 
+        // 함정칸 디버프(TRAP 칸 참고): 남은 이동횟수가 있는 동안 파티 전체에 적용
+        boolean trapAtkDown = intVal(p.get("TRAP_TURN_LEFT"), 0) > 0 && "ATK_DOWN".equals(strVal(p.get("TRAP_EFFECT"), ""));
+        boolean trapDefDown = intVal(p.get("TRAP_TURN_LEFT"), 0) > 0 && "DEF_DOWN".equals(strVal(p.get("TRAP_EFFECT"), ""));
+
         List<HashMap<String, Object>> companions = dao.selectUserCompanions(userName);
         List<HashMap<String, Object>> party = new ArrayList<>();
         for (HashMap<String, Object> c : companions) {
@@ -791,6 +820,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             int grade = intVal(c.get("GRADE"), 1);
             List<HashMap<String, Object>> equips = dao.selectEquipByCompanion(intVal(c.get("COMPANION_ID"), 0));
             int[] eff = computeEffectiveStat(job, grade, equips, userStat);
+            if (trapAtkDown) eff[1] = (int) Math.round(eff[1] * 0.7); // 함정: 공격력 30% 약화
 
             int roll = RND.nextInt(diceMax) + 1;
             int dmg = Math.max(1, eff[1] * roll - monsterDef);
@@ -934,6 +964,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         int tGrade = intVal(target.get("GRADE"), 1);
         List<HashMap<String, Object>> tEquips = dao.selectEquipByCompanion(intVal(target.get("COMPANION_ID"), 0));
         int[] tEff = computeEffectiveStat(tJob, tGrade, tEquips, userStat);
+        if (trapDefDown) tEff[2] = (int) Math.round(tEff[2] * 0.7); // 함정: 방어력 30% 약화(반격 피해 증가)
         int monsterAtk = intVal(mon.get("ATK_VALUE"), 0);
         int roll = RND.nextInt(diceMax) + 1;
         int dmgToParty = Math.max(1, monsterAtk * roll - tEff[2]);
@@ -1231,9 +1262,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (p != null && "IN_COMBAT".equals(strVal(p.get("STATUS"), "NORMAL"))) {
             return "전투 중에는 파티를 변경할 수 없습니다.";
         }
-        if (p != null && !isVillage(p)) {
-            return "🏘️ 파티 편성은 마을에서만 가능합니다. /층변경 0 으로 마을로 이동하세요.";
-        }
+        // 마을 전용 제한 폐지 -- 전투 중만 아니면 어디서든 편성 가능 (2026-09-03)
         List<HashMap<String, Object>> companions = dao.selectUserCompanions(userName);
         if (idx < 1 || idx > companions.size()) {
             return "잘못된 번호입니다. /파티편성 으로 목록을 확인하세요.";
@@ -1526,7 +1555,7 @@ public class BotS5ServiceImpl implements BotS5Service {
     @Transactional
     public String gachaCompanion(String userName, int gachaId) {
         getOrInitProgress(userName);
-        // 뽑기(가챠)는 어디서든 가능 -- 마을 제한은 파티 편성(/파티편성)에만 적용됨
+        // 뽑기(가챠)는 어디서든 가능 -- 파티 편성(/파티편성)도 전투 중만 아니면 어디서든 가능(마을 제한 폐지)
         // gachaId는 화면/도움말에 보이는 표시번호(1부터, UNLOCK_FLOOR 순) -- 실제 GACHA_ID로 변환해서 사용
         Integer realId = resolveGachaId("COMPANION", gachaId);
         if (realId == null) return "존재하지 않는 번호입니다. /탑도움말에서 번호를 다시 확인하세요.";
@@ -1810,7 +1839,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         }
         sb.append("[파티원 M번]").append(NL);
         if (party.isEmpty()) {
-            sb.append("(없음 — /파티편성으로 먼저 편성하세요, 마을에서만 가능)").append(NL);
+            sb.append("(없음 — /파티편성으로 먼저 편성하세요, 전투 중이 아니면 어디서든 가능)").append(NL);
         } else {
             int idx = 1;
             for (HashMap<String, Object> c : party) {

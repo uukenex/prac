@@ -7,7 +7,7 @@
     <!-- ==================== 유저 진행 상태 ==================== -->
     <select id="selectUserProgress" resultType="hashmap">
         SELECT USER_NAME, CUR_FLOOR, UNLOCKED_BLOCK, PP_VALUE, PP_EXT, STATUS,
-               TRAP_TURN_LEFT, DICE_GRADE, KILL_COUNT_CUR, AUTO_HUNT_YN,
+               TRAP_TURN_LEFT, TRAP_EFFECT, DICE_GRADE, KILL_COUNT_CUR, AUTO_HUNT_YN,
                TOTAL_KILL_COUNT, CUR_MONSTER_ID, CUR_MONSTER_HP_VALUE, CUR_MONSTER_HP_EXT,
                MONSTER_STUNNED_YN, SHIELD_VALUE, SHIELD_EXT, LAST_DICE_ACTION_DATE, MAX_FLOOR_REACHED,
                COMPANION_VOUCHER, EQUIP_VOUCHER
@@ -39,6 +39,7 @@
             <if test="ppExt != null">PP_EXT = #{ppExt},</if>
             <if test="status != null">STATUS = #{status},</if>
             <if test="trapTurnLeft != null">TRAP_TURN_LEFT = #{trapTurnLeft},</if>
+            <if test="trapEffect != null">TRAP_EFFECT = #{trapEffect},</if>
             <if test="diceGrade != null">DICE_GRADE = #{diceGrade},</if>
             <if test="killCountCur != null">KILL_COUNT_CUR = #{killCountCur},</if>
             <if test="autoHuntYn != null">AUTO_HUNT_YN = #{autoHuntYn},</if>
