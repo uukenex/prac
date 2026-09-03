@@ -135,12 +135,22 @@
     .shop-row button{ background:var(--gold); color:#fff; border:none; border-radius:10px; padding:6px 12px; font-size:11px; cursor:pointer; }
 
     /* 미착용 장비도 동료 카드처럼 드래그해서 파티 슬롯에 놓으면 그 동료에게 장착됨.
-       버튼(장착/합성)은 그대로 남겨둬서 드래그 없이도 쓸 수 있게 함. */
-    .equip-card{ background:#fff; border:1.5px solid var(--line); border-radius:12px; padding:9px 12px;
-                 margin-bottom:6px; font-size:12px; display:flex; justify-content:space-between; align-items:center;
-                 touch-action:none; user-select:none; cursor:grab; }
+       버튼(장착/합성)은 그대로 남겨둬서 드래그 없이도 쓸 수 있게 함.
+       직업별로 묶고 그 안에서 성급 내림차순 정렬, 카드 한 칸이 화면 폭을 다 먹던 걸
+       party-grid처럼 여러 칸으로 배치되는 작은 카드로 줄임(개수 많아지면 스캔하기 쉽게). */
+    .equip-group-title{ font-size:11px; font-weight:800; color:var(--ink-soft); margin:10px 0 6px; }
+    .equip-group-title:first-child{ margin-top:0; }
+    .equip-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(108px,1fr)); gap:8px; }
+    .equip-card{ background:#fff; border:1.5px solid var(--line); border-radius:12px; padding:8px;
+                 font-size:11px; text-align:center; touch-action:none; user-select:none; cursor:grab; }
+    .equip-card .eq-part{ font-size:18px; }
+    .equip-card .eq-grade{ font-weight:800; margin:2px 0 6px; }
+    .equip-card .btn-group{ display:flex; gap:4px; justify-content:center; }
+    .equip-card button{ background:var(--gold); color:#fff; border:none; border-radius:8px;
+                         padding:4px 6px; font-size:10px; cursor:pointer; }
+    .equip-card button.ten{ background:var(--shop); }
     .equip-card.drag-ghost{ position:fixed; z-index:999; pointer-events:none; opacity:.9; box-shadow:0 8px 20px rgba(0,0,0,.3);
-                             width:240px; cursor:grabbing; }
+                             width:108px; cursor:grabbing; }
     .equip-card.drag-source-hidden{ opacity:.3; }
 
     .ach-row{ display:flex; gap:8px; align-items:flex-start; background:#fff; border:1.5px solid var(--line);
@@ -454,8 +464,10 @@ var TW = (function () {
     }
   }
 
-  var PART_KR = { HELMET: '투구', WEAPON: '무기', ARMOR: '갑옷' };
-  var JOB_KR  = { WARRIOR: '전사', MAGE: '마법사', ROGUE: '도적', ARCHER: '궁수', PRIEST: '도사' };
+  var PART_KR   = { HELMET: '투구', WEAPON: '무기', ARMOR: '갑옷' };
+  var PART_EMOJI = { HELMET: '⛑️', WEAPON: '⚔️', ARMOR: '🛡️' };
+  var JOB_KR    = { WARRIOR: '전사', MAGE: '마법사', ROGUE: '도적', ARCHER: '궁수', PRIEST: '도사' };
+  var JOB_ORDER = ['WARRIOR', 'MAGE', 'ROGUE', 'ARCHER', 'PRIEST']; // 장비 목록 직업별 그룹핑 순서
   // 초상화(IMAGE_URL)는 외부 API(nekos.best) 실패/차단 시 비어있을 수 있어 직업별 이모지로 항상 얼굴이 보이게 폴백
   var JOB_EMOJI = { WARRIOR: '⚔️', MAGE: '🧙', ROGUE: '🗡️', ARCHER: '🏹', PRIEST: '💫' };
 
@@ -724,22 +736,47 @@ var TW = (function () {
 
       // 미착용 장비 목록 -- 위 파티 슬롯으로 드래그하면 그 동료에게 장착되고(attachEquipDrag),
       // 버튼으로 자동배정 장착/합성도 그대로 가능(드래그가 번거로운 경우를 위해 남겨둠).
+      // idx(N번)는 서버(BotS5Service.equipWear/equipSynthesis)가 계산하는 "미착용 장비
+      // 번호"와 반드시 같은 순서여야 하므로, 정렬/그룹핑은 화면 표시용으로만 하고 idx 자체는
+      // API가 내려준 원본 순서(unequipped 배열 인덱스)를 그대로 쓴다.
+      unequipped.forEach(function (e, i) { e.__idx = i + 1; });
+      var sorted = unequipped.slice().sort(function (a, b) {
+        var ca = JOB_ORDER.indexOf(a.CLASS), cb = JOB_ORDER.indexOf(b.CLASS);
+        if (ca !== cb) return ca - cb;
+        return b.GRADE - a.GRADE; // 직업별로 묶고, 그 안에서 성급 내림차순(좋은 장비 먼저)
+      });
+      var grouped = {};
+      sorted.forEach(function (e) { (grouped[e.CLASS] = grouped[e.CLASS] || []).push(e); });
+
       var box = document.getElementById('equipListBox');
       box.innerHTML = '';
       if (unequipped.length === 0) {
         box.innerHTML = '<div style="color:var(--ink-soft);font-size:12px;">미착용 장비가 없습니다.</div>';
       }
-      unequipped.forEach(function (e, i) {
-        var idx = i + 1;
-        var card = document.createElement('div');
-        card.className = 'equip-card';
-        card.innerHTML = '<span>🎽 ' + (JOB_KR[e.CLASS] || e.CLASS) + ' ' + (PART_KR[e.PART] || e.PART) + ' ★' + e.GRADE + '</span>'
-            + '<span class="btn-group">'
-            + '<button onclick="TW.action(\'EQUIP_WEAR\',\'' + idx + '\')">장착</button>'
-            + '<button class="ten" onclick="TW.action(\'EQUIP_SYNTH\',\'' + idx + '\')">합성</button>'
-            + '</span>';
-        attachEquipDrag(card, idx);
-        box.appendChild(card);
+      JOB_ORDER.forEach(function (job) {
+        var list = grouped[job];
+        if (!list || !list.length) return;
+        var title = document.createElement('div');
+        title.className = 'equip-group-title';
+        title.textContent = (JOB_KR[job] || job) + ' (' + list.length + ')';
+        box.appendChild(title);
+
+        var grid = document.createElement('div');
+        grid.className = 'equip-grid';
+        list.forEach(function (e) {
+          var idx = e.__idx;
+          var card = document.createElement('div');
+          card.className = 'equip-card';
+          card.innerHTML = '<div class="eq-part">' + (PART_EMOJI[e.PART] || '🎽') + '</div>'
+              + '<div class="eq-grade">' + (PART_KR[e.PART] || e.PART) + ' ★' + e.GRADE + '</div>'
+              + '<div class="btn-group">'
+              + '<button onclick="TW.action(\'EQUIP_WEAR\',\'' + idx + '\')">장착</button>'
+              + '<button class="ten" onclick="TW.action(\'EQUIP_SYNTH\',\'' + idx + '\')">합성</button>'
+              + '</div>';
+          attachEquipDrag(card, idx);
+          grid.appendChild(card);
+        });
+        box.appendChild(grid);
       });
     });
   }
