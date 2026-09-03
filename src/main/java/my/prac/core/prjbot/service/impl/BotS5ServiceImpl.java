@@ -379,6 +379,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         sb.append("  ※ 계단(STAIRS) 칸을 밟으면 다음 층으로 갈 '자격'만 생기고, 실제 이동은 이 명령어를 입력해야 합니다.").append(NL);
         sb.append("  ⚠️ 사냥터층에서 0층(마을, /층변경 0)으로 가면 방금 있던 층의 탐사맵(보드 위치+발견기록)이 초기화됩니다. 원정 중엔 끝까지 밀고 올라가세요!").append(NL);
         sb.append("  ⚠️ 보스를 처치해 다음 10층 구간으로 넘어가면 이전 구간으로는 다시 내려갈 수 없습니다(과거 구간 복귀 불가, 편도 진행).").append(NL);
+        sb.append("  👹 29층 이후 보스는 전투 시작 시 파티원 1명을 무시(그 동료는 이번 전투 내내 피해 0), 반격 턴마다 30% 확률로 다른 동료를 기절(다음 공격 1회 불가)시킵니다.").append(NL);
         sb.append("/탑현황 [닉네임] : 현재 층/보드 위치/PP/상태/자동사냥 조회. 닉네임을 붙이면 다른 유저 조회(앞부분만 입력해도 검색됨)").append(NL);
         sb.append(NL);
 
@@ -764,12 +765,29 @@ public class BotS5ServiceImpl implements BotS5Service {
         up.put("curMonsterId", intVal(mon.get("MONSTER_ID"), 0));
         up.put("curMonsterHpValue", ((Number) mon.get("HP_VALUE")).doubleValue());
         up.put("curMonsterHpExt", strVal(mon.get("HP_EXT"), ""));
+
+        // 20층 이후(블록3+, 29층 보스부터) 보스는 전투 시작 시 파티원 1명을 무작위로 "안중에 없다"며
+        // 지목 -- 그 동료는 이번 전투 내내 보스의 반격 피해를 0으로 받는다(스턴 스킬과는 별개 효과).
+        String immuneMsg = "";
+        boolean lateBoss = boss && blockNo(floor) >= 3;
+        if (lateBoss) {
+            List<HashMap<String, Object>> party = new ArrayList<>();
+            for (HashMap<String, Object> c : dao.selectUserCompanions(userName)) {
+                if (c.get("PARTY_SLOT") != null) party.add(c);
+            }
+            if (!party.isEmpty()) {
+                HashMap<String, Object> chosen = party.get(RND.nextInt(party.size()));
+                up.put("bossImmuneCid", intVal(chosen.get("COMPANION_ID"), 0));
+                String cName = strVal(chosen.get("NAME"), JOB_NAME.getOrDefault(strVal(chosen.get("CLASS"), ""), "동료"));
+                immuneMsg = NL + "👁️ 보스가 " + cName + "은(는) 안중에도 없다는 듯 무시한다... (이번 전투 동안 피해 0)";
+            }
+        }
         dao.updateUserProgress(up);
 
         PP fullHp = PP.of(((Number) mon.get("HP_VALUE")).doubleValue(), strVal(mon.get("HP_EXT"), ""));
         return (boss ? "👹 보스 " : "⚔️ ") + floorMonsterName(floor, mon) + " 등장! (HP "
                 + fullHp.format() + "/" + fullHp.format()
-                + ") " + NL + "전투를 시작하려면 다시 /주사위 를 입력하세요!";
+                + ")" + immuneMsg + NL + "전투를 시작하려면 다시 /주사위 를 입력하세요!";
     }
 
     private String resolveCombatTurn(String userName, HashMap<String, Object> p, int floor) {
@@ -793,6 +811,10 @@ public class BotS5ServiceImpl implements BotS5Service {
         boolean trapAtkDown = intVal(p.get("TRAP_TURN_LEFT"), 0) > 0 && "ATK_DOWN".equals(strVal(p.get("TRAP_EFFECT"), ""));
         boolean trapDefDown = intVal(p.get("TRAP_TURN_LEFT"), 0) > 0 && "DEF_DOWN".equals(strVal(p.get("TRAP_EFFECT"), ""));
 
+        // 20층 이후(블록3+) 보스 전용 스킬: 무시(면역, startCombat에서 지정) + 기절(아래 반격 턴에서 확률 발동)
+        boolean lateBoss = "Y".equals(strVal(mon.get("BOSS_YN"), "N")) && blockNo(floor) >= 3;
+        int bossImmuneCid = intVal(p.get("BOSS_IMMUNE_CID"), 0);
+
         List<HashMap<String, Object>> companions = dao.selectUserCompanions(userName);
         List<HashMap<String, Object>> party = new ArrayList<>();
         for (HashMap<String, Object> c : companions) {
@@ -805,6 +827,10 @@ public class BotS5ServiceImpl implements BotS5Service {
         HashMap<String, Object> userStat = dao.selectUserStat(userName);
         StringBuilder sb = new StringBuilder(userName).append("님," + NL);
 
+        // 보스 기절 스킬(반격 턴에 걸림, 아래 참고)로 지정된 동료는 이번 공격 턴만 건너뛰고 소모된다.
+        int bossStunCid = intVal(p.get("BOSS_STUN_CID"), 0);
+        boolean stunConsumed = false;
+
         // ── 파티 선공: 생존한 동료 전원이 각자 1회씩 공격 (직업별 특수효과 포함) ──
         long totalDamage = 0;
         boolean stunned = false;
@@ -814,6 +840,12 @@ public class BotS5ServiceImpl implements BotS5Service {
         for (HashMap<String, Object> c : party) {
             PP hp = PP.of(((Number) c.get("CUR_HP_VALUE")).doubleValue(), strVal(c.get("CUR_HP_EXT"), ""));
             if (PP.toBaseValue(hp) <= 0) continue; // 전투불가
+            if (bossStunCid != 0 && bossStunCid == intVal(c.get("COMPANION_ID"), -1)) {
+                String stunName = strVal(c.get("NAME"), JOB_NAME.getOrDefault(strVal(c.get("CLASS"), ""), "동료"));
+                sb.append("💫 ").append(stunName).append("은(는) 기절 상태라 공격하지 못했다!").append(NL);
+                stunConsumed = true;
+                continue;
+            }
 
             String job = strVal(c.get("CLASS"), "WARRIOR");
             String cName = strVal(c.get("NAME"), JOB_NAME.getOrDefault(job, "동료"));
@@ -917,6 +949,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         up.put("userName", userName);
         up.put("curMonsterHpValue", monsterHpAfter.getValue());
         up.put("curMonsterHpExt", monsterHpAfter.getUnit());
+        if (stunConsumed) up.put("clearBossStun", true);
         dao.updateUserProgress(up);
         sb.append(floorMonsterName(floor, mon)).append(" 남은 HP: ")
           .append(monsterHpAfter.format()).append("/").append(monsterMaxHp.format()).append(NL);
@@ -960,6 +993,19 @@ public class BotS5ServiceImpl implements BotS5Service {
             break; // 파티엔 전사가 최대 1명이라고 가정하지 않지만, 첫 전사만 판정
         }
 
+        // 20층 이후 보스의 기절 스킬: 30% 확률로 이번 반격 턴을 통째로 써서 대상을 기절시킴(피해 없음,
+        // 다음 파티 공격 턴 1회를 건너뛰게 됨 -- 위 party 루프의 bossStunCid 체크에서 소모됨).
+        if (lateBoss && RND.nextInt(100) < 30) {
+            HashMap<String, Object> stunUp = new HashMap<>();
+            stunUp.put("userName", userName);
+            stunUp.put("bossStunCid", intVal(target.get("COMPANION_ID"), 0));
+            dao.updateUserProgress(stunUp);
+            String stunTargetName = strVal(target.get("NAME"), JOB_NAME.getOrDefault(strVal(target.get("CLASS"), ""), "동료"));
+            sb.append("💫 ").append(floorMonsterName(floor, mon)).append("이(가) ").append(stunTargetName)
+              .append("을(를) 기절시켰다! 다음 턴 공격 불가");
+            return sb.toString();
+        }
+
         String tJob = strVal(target.get("CLASS"), "WARRIOR");
         int tGrade = intVal(target.get("GRADE"), 1);
         List<HashMap<String, Object>> tEquips = dao.selectEquipByCompanion(intVal(target.get("COMPANION_ID"), 0));
@@ -973,6 +1019,12 @@ public class BotS5ServiceImpl implements BotS5Service {
             int absorbed = Math.min(shieldPool, dmgToParty);
             dmgToParty -= absorbed;
             sb.append("🛡️ 보호막이 ").append(absorbed).append(" 피해를 흡수했습니다!").append(NL);
+        }
+
+        boolean immune = bossImmuneCid != 0 && bossImmuneCid == intVal(target.get("COMPANION_ID"), -1);
+        if (immune) {
+            dmgToParty = 0;
+            sb.append("👁️ 보스가 무시하던 동료라 피해가 없다!").append(NL);
         }
 
         PP targetHp = PP.of(((Number) target.get("CUR_HP_VALUE")).doubleValue(), strVal(target.get("CUR_HP_EXT"), ""));

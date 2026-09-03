@@ -234,4 +234,14 @@ ALTER TABLE TBOT_S5_USER_PROGRESS ADD (
     EQUIP_VOUCHER     NUMBER DEFAULT 0 NOT NULL
 );
 
+-- late-game boss skills (blockNo>=3, i.e. floor 29+ bosses): BOSS_IMMUNE_CID is one
+-- party COMPANION_ID picked at the start of the fight who takes 0 damage from the
+-- boss for the whole encounter; BOSS_STUN_CID is a COMPANION_ID the boss just
+-- stunned (skips their next party-attack turn, then auto-clears). Both cleared
+-- whenever CUR_MONSTER_ID is cleared (kill or flee).
+ALTER TABLE TBOT_S5_USER_PROGRESS ADD (
+    BOSS_IMMUNE_CID NUMBER,
+    BOSS_STUN_CID   NUMBER
+);
+
 EXIT;
