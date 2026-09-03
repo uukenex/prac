@@ -69,9 +69,22 @@
                   border:1px solid var(--line); border-radius:999px; padding:3px 9px; }
     .legend-dot{ width:8px; height:8px; border-radius:50%; }
 
+    .party-slots{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+    .party-slot-box{ min-height:96px; border:2px dashed var(--line); border-radius:14px; padding:8px;
+                      display:flex; flex-direction:column; align-items:center; justify-content:center;
+                      text-align:center; font-size:10px; color:var(--ink-soft); background:#fff; }
+    .party-slot-box.filled{ border-style:solid; border-color:var(--gold); background:var(--gold-soft); }
+    .party-slot-box.drop-hover{ border-color:var(--pp); background:var(--pp-soft); transform:scale(1.04); }
+    .party-slot-box .slot-label{ font-size:9px; opacity:.7; margin-bottom:4px; }
+    .party-slot-box .cname{ font-size:12px; font-weight:800; color:var(--ink); }
+
     .party-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:8px; }
-    .party-card{ background:#fff; border:2px solid var(--line); border-radius:14px; padding:9px; cursor:pointer; text-align:center; }
+    .party-card{ background:#fff; border:2px solid var(--line); border-radius:14px; padding:9px; cursor:pointer; text-align:center;
+                  touch-action:none; user-select:none; }
     .party-card.inparty{ border-color:var(--gold); background:var(--gold-soft); }
+    .party-card.drag-ghost{ position:fixed; z-index:999; pointer-events:none; opacity:.85; box-shadow:0 8px 20px rgba(0,0,0,.3);
+                             width:120px; }
+    .party-card.drag-source-hidden{ opacity:.25; }
     .party-card .avatar{ width:48px; height:48px; border-radius:50%; object-fit:cover; background:#EFE7D2;
                           display:block; margin:0 auto 6px; border:2px solid var(--line); }
     .party-card .avatar-emoji{ display:flex; align-items:center; justify-content:center; font-size:24px; }
@@ -179,7 +192,11 @@
   <!-- 파티(동료 3명)와 그 동료들에게 장착하는 장비는 한 화면에서 같이 관리 -->
   <div class="panel" id="panel-party">
     <div class="card">
-      <div class="card-title">보유 동료 (클릭해서 파티 편성/해제, 최대 3명)</div>
+      <div class="card-title">파티 (동료 카드를 드래그해서 넣기/빼기, 탭해도 편성/해제됨)</div>
+      <div class="party-slots" id="partySlots"></div>
+    </div>
+    <div class="card" style="margin-top:10px;">
+      <div class="card-title">보유 동료 (위 파티 칸으로 드래그하거나, 카드를 탭해서 편성/해제)</div>
       <div class="party-grid" id="partyGrid"></div>
     </div>
     <div class="card" style="margin-top:10px;">
@@ -391,6 +408,63 @@ var TW = (function () {
   // 초상화(IMAGE_URL)는 외부 API(nekos.best) 실패/차단 시 비어있을 수 있어 직업별 이모지로 항상 얼굴이 보이게 폴백
   var JOB_EMOJI = { WARRIOR: '⚔️', MAGE: '🧙', ROGUE: '🗡️', ARCHER: '🏹', PRIEST: '💫' };
 
+  // 동료 카드 드래그 편성: Pointer Events(마우스/터치 공용) 기반. 이동량이 작으면 탭으로 취급해
+  // 기존처럼 즉시 토글하고, 일정 거리 이상 끌면 드래그로 취급한다. 서버는 "N번째 동료 토글"만
+  // 지원(정확히 몇 번 슬롯인지는 서버가 다음 빈 슬롯으로 자동 배정 / 있으면 해제)하므로, 드롭 대상은
+  // "파티 슬롯 영역(#partySlots) 하나"뿐이다 -- 거기에 놓으면 편성 안 된 동료는 편성되고, 이미
+  // 편성된 동료는 해제된다(같은 토글 액션). 별도 "해제 존"을 화면 하단에 두면 고정 dock 내비게이션과
+  // 겹쳐서 드롭이 안 먹는 경우가 있어(실제 테스트로 발견) 이 방식으로 통일함.
+  function attachPartyDrag(card, idx, inParty) {
+    card.addEventListener('pointerdown', function (ev) {
+      if (ev.target.closest('.hide-btn')) return;
+      var startX = ev.clientX, startY = ev.clientY;
+      var moved = false, ghost = null;
+
+      function onMove(mv) {
+        var dx = mv.clientX - startX, dy = mv.clientY - startY;
+        if (!moved && Math.hypot(dx, dy) > 10) {
+          moved = true;
+          card.classList.add('drag-source-hidden');
+          ghost = card.cloneNode(true);
+          ghost.className = 'party-card drag-ghost';
+          document.body.appendChild(ghost);
+          document.querySelectorAll('.party-slot-box').forEach(function (b) { b.classList.add('drop-hover'); });
+        }
+        if (moved && ghost) {
+          ghost.style.left = (mv.clientX - 60) + 'px';
+          ghost.style.top = (mv.clientY - 40) + 'px';
+        }
+      }
+
+      function onUp(up) {
+        document.removeEventListener('pointermove', onMove);
+        document.removeEventListener('pointerup', onUp);
+
+        if (!moved) {
+          card.classList.remove('drag-source-hidden');
+          action('PARTY_TOGGLE', String(idx)); // 단순 탭 -- 기존과 동일하게 토글
+          return;
+        }
+        // 드롭 위치 판정은 반드시 슬롯을 숨기기(drop-hover 제거) 전에 해야 한다 -- 먼저 숨기면
+        // 레이아웃/표시가 바뀌어 elementFromPoint가 엉뚱한 걸 찾을 수 있음.
+        var el = document.elementFromPoint(up.clientX, up.clientY);
+        var onZone = el && el.closest('#partySlots');
+
+        card.classList.remove('drag-source-hidden');
+        document.querySelectorAll('.party-slot-box').forEach(function (b) { b.classList.remove('drop-hover'); });
+        if (ghost) document.body.removeChild(ghost);
+
+        if (onZone) {
+          action('PARTY_TOGGLE', String(idx)); // 있으면 해제, 없으면 편성
+        }
+        // 그 외의 곳에 놓으면 아무 일도 없었던 것처럼 원위치(다음 loadPartyAndEquip에서 그대로 다시 그려짐)
+      }
+
+      document.addEventListener('pointermove', onMove);
+      document.addEventListener('pointerup', onUp, { once: true });
+    });
+  }
+
   // 파티(동료 최대 3명)와 그 동료들에게 장착하는 장비는 한 화면에서 같이 관리한다.
   function loadPartyAndEquip() {
     var u = userName();
@@ -402,13 +476,30 @@ var TW = (function () {
       var companions = results[0].companions || [];
       var equips = results[1].equips || [];
 
-      // 동료 목록 + 편성 토글
+      // 파티 슬롯(최대 3) 표시 -- 실제 어느 슬롯 번호에 넣을지는 서버가 정하므로(PARTY_TOGGLE이
+      // 항상 비어있는 다음 슬롯에 자동 배정) 여기 3칸은 "드롭하면 편성됨"을 보여주는 용도.
+      var slotsBox = document.getElementById('partySlots');
+      slotsBox.innerHTML = '';
+      var bySlot = {};
+      companions.forEach(function (c) { if (c.PARTY_SLOT) bySlot[c.PARTY_SLOT] = c; });
+      for (var s = 1; s <= 3; s++) {
+        var slotEl = document.createElement('div');
+        var occ = bySlot[s];
+        slotEl.className = 'party-slot-box' + (occ ? ' filled' : '');
+        slotEl.innerHTML = '<div class="slot-label">파티 ' + s + '</div>'
+            + (occ ? '<div class="cname">' + (occ.NAME || JOB_KR[occ.CLASS] || occ.CLASS) + '</div><div class="role">' + (JOB_KR[occ.CLASS] || occ.CLASS) + ' ★' + occ.GRADE + '</div>'
+                   : '<div>빈 슬롯</div>');
+        slotsBox.appendChild(slotEl);
+      }
+
+      // 동료 목록 + 편성 토글 (드래그 또는 탭 둘 다 지원 -- Pointer Events라 마우스/터치 공용)
       var grid = document.getElementById('partyGrid');
       grid.innerHTML = '';
       companions.forEach(function (c, idx) {
         var hidden = c.HIDDEN_YN === 'Y';
+        var inParty = !!c.PARTY_SLOT;
         var div = document.createElement('div');
-        div.className = 'party-card' + (c.PARTY_SLOT ? ' inparty' : '') + (hidden ? ' hidden' : '');
+        div.className = 'party-card' + (inParty ? ' inparty' : '') + (hidden ? ' hidden' : '');
         var img = c.IMAGE_URL ? c.IMAGE_URL : '';
         var name = c.NAME || (JOB_KR[c.CLASS] || c.CLASS);
         var emoji = JOB_EMOJI[c.CLASS] || '👤';
@@ -429,7 +520,6 @@ var TW = (function () {
             avatarEl.textContent = emoji;
         }
         div.insertBefore(avatarEl, div.firstChild);
-        div.onclick = function () { action('PARTY_TOGGLE', String(idx + 1)); };
         var hideBtn = document.createElement('button');
         hideBtn.className = 'hide-btn';
         hideBtn.type = 'button';
@@ -437,6 +527,7 @@ var TW = (function () {
         hideBtn.title = hidden ? '목록에 다시 표시' : '텍스트 목록(/파티편성)에서 숨기기';
         hideBtn.onclick = function (ev) { ev.stopPropagation(); action('COMPANION_HIDE', String(idx + 1)); };
         div.appendChild(hideBtn);
+        attachPartyDrag(div, idx + 1, inParty);
         grid.appendChild(div);
       });
 
