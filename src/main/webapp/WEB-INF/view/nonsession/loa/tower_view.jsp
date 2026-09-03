@@ -43,20 +43,23 @@
     .panel{ display:none; }
     .panel.active{ display:block; }
 
-    .tower-track{ display:flex; flex-direction:column-reverse; gap:8px; }
-    .tile-row{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-    .tile{ position:relative; flex:1 1 44px; min-width:44px; height:46px; border-radius:12px; display:flex;
-           flex-direction:column; align-items:center; justify-content:center; font-size:10px; font-weight:700;
-           color:#fff; box-shadow:0 2px 0 rgba(0,0,0,.12); }
-    .tile .tno{ position:absolute; top:2px; left:5px; font-size:8px; opacity:.75; }
+    /* 부루마불 스타일: 칸들이 사각형 둘레를 따라 시계방향으로 빙 둘러 배치되는 순환 보드.
+       칸 수(15~150)에 따라 정사각형 한 변의 칸수(S)가 달라지므로, 컨테이너 크기와 각 칸의
+       left/top은 JS에서 인라인 스타일로 계산해서 넣는다(테두리 칸만 채우는 배치라 CSS 그리드로는
+       표현이 애매함). 큰 보드(51층 이후 최대 150칸)는 화면보다 커질 수 있어 스크롤 가능한
+       뷰포트 안에 넣고, 처음 로드 시 현재 위치로 자동 스크롤한다. */
+    .tower-viewport{ position:relative; overflow:auto; max-height:60vh; border-radius:14px;
+                      background:var(--parchment-deep); border:1.5px dashed var(--line); padding:10px; }
+    .tower-track{ position:relative; }
+    .tile{ position:absolute; border-radius:10px; display:flex;
+           flex-direction:column; align-items:center; justify-content:center; font-size:9px; font-weight:700;
+           color:#fff; box-shadow:0 2px 0 rgba(0,0,0,.12); text-align:center; line-height:1.15; padding:1px; }
+    .tile .tno{ position:absolute; top:1px; left:3px; font-size:7px; opacity:.75; }
     .tile.combat{ background:var(--combat); } .tile.shop{ background:var(--shop); }
     .tile.pp{ background:var(--pp); } .tile.trap{ background:var(--trap); } .tile.special{ background:var(--special); }
     .tile.stairs{ background:var(--gold); }
     .tile.hidden{ background:#D8CDB4; color:#8a7f68; }
-    .tile.done{ opacity:.55; } .tile.here{ outline:2px solid var(--ink); transform:scale(1.08); opacity:1; }
-    .rail-end{ flex-shrink:0; width:60px; height:46px; border-radius:12px; display:flex; flex-direction:column;
-               align-items:center; justify-content:center; font-size:9px; font-weight:700; color:#fff; }
-    .rail-end.village{ background:var(--village); } .rail-end.boss{ background:var(--boss); }
+    .tile.done{ opacity:.55; } .tile.here{ outline:2px solid var(--ink); transform:scale(1.15); opacity:1; z-index:2; }
     .legend{ display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
     .legend-chip{ display:flex; align-items:center; gap:4px; font-size:10px; color:var(--ink-soft); background:#fff;
                   border:1px solid var(--line); border-radius:999px; padding:3px 9px; }
@@ -139,8 +142,10 @@
   <div class="panel active" id="panel-board">
     <div class="card">
       <div class="card-title">보드</div>
-      <div class="tower-track" id="towerTrack">
-        <div style="color:var(--ink-soft);font-size:12px;">데이터를 불러오는 중...</div>
+      <div class="tower-viewport" id="towerViewport">
+        <div class="tower-track" id="towerTrack">
+          <div style="color:var(--ink-soft);font-size:12px;">데이터를 불러오는 중...</div>
+        </div>
       </div>
       <div class="legend">
         <span class="legend-chip"><span class="legend-dot" style="background:var(--combat)"></span>전투</span>
@@ -319,28 +324,64 @@ var TW = (function () {
           huntCard.style.display = 'none';
         }
 
-        var track = document.getElementById('towerTrack');
-        track.innerHTML = '';
-        if (data.tiles && data.tiles.length) {
-          var curTile = data.myTile ? data.myTile.CUR_TILE : 0;
-          data.tiles.forEach(function (t) {
-            var div = document.createElement('div');
-            var isHere = (t.TILE_NO === curTile);
-            if (t.DISCOVERED) {
-              div.className = 'tile ' + tileClass(t.TILE_TYPE) + (isHere ? ' here' : ' done');
-              div.innerHTML = '<span class="tno">' + t.TILE_NO + '</span>' + (TILE_KR[t.TILE_TYPE] || t.TILE_TYPE);
-            } else {
-              // 방문한 적 없는 칸은 종류를 감추고 물음표만 표시(fog of war)
-              div.className = 'tile hidden' + (isHere ? ' here' : '');
-              div.innerHTML = '<span class="tno">' + t.TILE_NO + '</span>?';
-            }
-            track.appendChild(div);
-          });
-        } else {
-          track.innerHTML = '<div style="color:var(--ink-soft);font-size:12px;">이 층은 보드가 없습니다 (마을/보스층)</div>';
-        }
+        renderBoard(data.tiles, data.myTile ? data.myTile.CUR_TILE : 0);
       })
       .catch(function () { toast('조회 실패'); });
+  }
+
+  // 사각형 둘레를 시계방향으로 도는 칸 배치(부루마불 스타일). S = 정사각형 한 변의 칸 수,
+  // 둘레 칸 수 = 4*(S-1). N개를 다 담을 수 있는 가장 작은 S를 골라서 칸 수가 늘어나도(최대
+  // 150칸) 자동으로 정사각형이 커지기만 하고 모양은 항상 정사각형 루프를 유지한다.
+  function perimeterPos(i, side) {
+    var per = side - 1; // 변 하나에 놓이는 칸 간격 수
+    var s = Math.floor(i / per), o = i % per;
+    if (s === 0) return { x: o, y: 0 };
+    if (s === 1) return { x: side - 1, y: o };
+    if (s === 2) return { x: side - 1 - o, y: side - 1 };
+    return { x: 0, y: side - 1 - o };
+  }
+
+  function renderBoard(tiles, curTile) {
+    var viewport = document.getElementById('towerViewport');
+    var track = document.getElementById('towerTrack');
+    track.innerHTML = '';
+    if (!tiles || !tiles.length) {
+      track.style.width = ''; track.style.height = '';
+      track.innerHTML = '<div style="color:var(--ink-soft);font-size:12px;">이 층은 보드가 없습니다 (마을/보스층)</div>';
+      return;
+    }
+    var n = tiles.length;
+    var side = Math.max(2, Math.ceil(n / 4) + 1);
+    var cell = 40, gap = 4, step = cell + gap;
+    track.style.width = (side * step) + 'px';
+    track.style.height = (side * step) + 'px';
+
+    var hereEl = null;
+    tiles.forEach(function (t, idx) {
+      var pos = perimeterPos(idx, side);
+      var div = document.createElement('div');
+      var isHere = (t.TILE_NO === curTile);
+      div.style.left = (pos.x * step) + 'px';
+      div.style.top = (pos.y * step) + 'px';
+      div.style.width = cell + 'px';
+      div.style.height = cell + 'px';
+      if (t.DISCOVERED) {
+        div.className = 'tile ' + tileClass(t.TILE_TYPE) + (isHere ? ' here' : ' done');
+        div.innerHTML = '<span class="tno">' + t.TILE_NO + '</span>' + (TILE_KR[t.TILE_TYPE] || t.TILE_TYPE);
+      } else {
+        // 방문한 적 없는 칸은 종류를 감추고 물음표만 표시(fog of war)
+        div.className = 'tile hidden' + (isHere ? ' here' : '');
+        div.innerHTML = '<span class="tno">' + t.TILE_NO + '</span>?';
+      }
+      track.appendChild(div);
+      if (isHere) hereEl = div;
+    });
+
+    // 큰 보드는 화면보다 커서 스크롤이 필요하므로, 로드 시 현재 위치가 가운데 보이도록 스크롤
+    if (hereEl) {
+      viewport.scrollLeft = Math.max(0, hereEl.offsetLeft - viewport.clientWidth / 2 + cell / 2);
+      viewport.scrollTop = Math.max(0, hereEl.offsetTop - viewport.clientHeight / 2 + cell / 2);
+    }
   }
 
   var PART_KR = { HELMET: '투구', WEAPON: '무기', ARMOR: '갑옷' };
