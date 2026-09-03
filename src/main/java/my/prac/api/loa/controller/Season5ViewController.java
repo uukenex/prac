@@ -93,7 +93,9 @@ public class Season5ViewController {
             info.put("monsterName", mon.get("MONSTER_NAME"));
             Object extObj = mon.get("PP_PER_KILL_EXT");
             PP perKill = PP.of(((Number) mon.get("PP_PER_KILL_VALUE")).doubleValue(), extObj == null ? "" : extObj.toString());
-            info.put("ppPerHourFormatted", perKill.multiply(6).format());
+            int pos = floor % 10;
+            double floorMult = (pos < 1 || pos > 8) ? 1.0 : (1.0 + 0.1 * (pos - 1)); // BotS5ServiceImpl.floorPpMultiplier와 동일 공식
+            info.put("ppPerHourFormatted", perKill.multiply(6 * floorMult).format());
         }
 
         Object startObj = log.get("START_DATE");

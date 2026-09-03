@@ -311,8 +311,21 @@ public class BotS5ServiceImpl implements BotS5Service {
             sb.append("보드 위치: ").append(curTile).append(" / ").append(tileCount).append(NL);
         }
         sb.append("사용 주사위: ").append(strVal(p.get("DICE_GRADE"), "DICE_6")).append(NL);
-        sb.append("자동사냥: ").append("Y".equals(strVal(p.get("AUTO_HUNT_YN"), "N")) ? "ON" : "OFF").append(NL);
-        sb.append("누적 처치: ").append(intVal(p.get("TOTAL_KILL_COUNT"), 0)).append("마리");
+        boolean autoHuntOn = "Y".equals(strVal(p.get("AUTO_HUNT_YN"), "N"));
+        sb.append("자동사냥: ").append(autoHuntOn ? "ON" : "OFF");
+        if (autoHuntOn) {
+            HashMap<String, Object> log = dao.selectAutoHuntLog(target);
+            int huntFloor = log == null ? floor : intVal(log.get("FLOOR"), floor);
+            HashMap<String, Object> mon = dao.selectMonster(blockNo(huntFloor), "N");
+            if (mon != null) {
+                PP perKill = PP.of(((Number) mon.get("PP_PER_KILL_VALUE")).doubleValue(), strVal(mon.get("PP_PER_KILL_EXT"), ""));
+                PP perHour = perKill.multiply(6 * floorPpMultiplier(huntFloor));
+                sb.append(" (").append(huntFloor).append("층 기준, 미접속 시 시간당 약 ").append(perHour.format()).append(" PP)");
+            }
+        }
+        sb.append(NL);
+        sb.append("누적 처치: ").append(intVal(p.get("TOTAL_KILL_COUNT"), 0)).append("마리").append(NL);
+        sb.append(NL).append("👉 전체 명령어는 /탑도움말 을 입력해 확인하세요.");
         return sb.toString();
     }
 
@@ -338,6 +351,26 @@ public class BotS5ServiceImpl implements BotS5Service {
 
         StringBuilder sb = new StringBuilder();
         sb.append("📖 시즌5 탑 등반 — 전체 명령어 도움말").append(NL);
+        sb.append("🖥️ 웹으로 모든 기능 보기: ").append(TOWER_VIEW_URL).append("?userName=").append(userName).append(NL);
+        sb.append(NL);
+
+        sb.append("[명령어 목록] (설명은 아래 참고)").append(NL);
+        sb.append("/주사위 (/ㅈㅅㅇ, /ㅈ)").append(NL);
+        sb.append("/층변경 N (/층이동 N)").append(NL);
+        sb.append("/탑현황 [닉네임]").append(NL);
+        sb.append("/파티편성 [N]").append(NL);
+        sb.append("/동료가리기 N").append(NL);
+        sb.append("/동료뽑기N [10]").append(NL);
+        sb.append("/장비뽑기N [10]").append(NL);
+        sb.append("/주사위구매 [N]").append(NL);
+        sb.append("/스탯구매 [공격력|최소공격력|체력]").append(NL);
+        sb.append("/장비목록").append(NL);
+        sb.append("/장비장착 [N] [M]").append(NL);
+        sb.append("/장비합성 N").append(NL);
+        sb.append("/업적").append(NL);
+        sb.append(NL);
+
+        sb.append("[상세 설명]").append(NL);
         sb.append(NL);
         sb.append("[이동/전투] (웹 '보드' 탭)").append(NL);
         sb.append("/주사위 (/ㅈㅅㅇ, /ㅈ) : 보드 이동(평소) 또는 몬스터 공격(전투 중)").append(NL);
@@ -351,6 +384,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         sb.append("[동료] (웹 '파티' 탭) — ⚠️ 파티 편성/해제는 마을(X0층)에서만 가능").append(NL);
         sb.append("/파티편성 : 보유 동료 목록 + 파티 편성 현황 조회").append(NL);
         sb.append("/파티편성 N : 목록 N번째 동료를 파티에 편성/해제 (마을에서만)").append(NL);
+        sb.append("/동료가리기 N : 목록 N번째 동료를 /파티편성 텍스트 목록에서 숨김/숨김해제(웹 화면엔 항상 표시)").append(NL);
         sb.append(NL);
 
         sb.append("[상점] (웹 '상점' 탭) — 뽑기는 마을이 아니어도 아무 층에서나 가능").append(NL);
@@ -370,9 +404,6 @@ public class BotS5ServiceImpl implements BotS5Service {
 
         sb.append("[업적] (웹 '업적' 탭)").append(NL);
         sb.append("/업적 : 달성/미달성(히든 제외) 업적 목록 조회").append(NL);
-        sb.append(NL);
-
-        sb.append("🖥️ 모든 기능을 그래픽으로 보려면: ").append(TOWER_VIEW_URL).append("?userName=").append(userName);
         return sb.toString();
     }
 
