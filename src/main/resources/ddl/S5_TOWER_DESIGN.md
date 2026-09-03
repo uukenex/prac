@@ -535,6 +535,12 @@ S4의 `TBOT_S4_ACHIEVEMENT`/`TBOT_S4_USER_ACH` 패턴을 확장 계승. S5에서
   그대로 두고("OOO님, ..." 패턴), 아니면 맨 앞에 "[유저명] "을 붙임. 서비스 계층(`BotS5ServiceImpl`)
   내부의 수십 개 return 지점을 일일이 고치는 대신 컨트롤러 경계 한 곳에서 일괄 처리(SPA 웹 UI는
   화면에 이미 유저명이 보이는 별개 소비 경로라 대상에서 제외, `Season5ViewController`는 안 건드림).
+- **`/탑현황`·`/탑도움말`의 웹 링크가 실제로 자동 로그인되도록 수정**: `?userName=닉네임`을 붙여서
+  링크를 만들어주고는 있었는데, `tower_view.jsp`가 URL 쿼리파라미터를 아예 안 읽고 `sessionStorage`만
+  보고 있어서 그 링크로 들어가도 유저명 입력칸이 비어있었음(발견 즉시 수정). 페이지 로드 시
+  `URLSearchParams`로 `userName`(및 흔한 변형 `user_name`/`username`/`name`)을 확인해서 있으면
+  입력칸을 채우고 바로 조회하도록 수정. 링크 생성 쪽(`towerViewLink()`)도 `URLEncoder`로 제대로
+  인코딩하도록 신설(기존엔 한글 닉네임이 그대로 URL에 박혀 있었음).
 ### 알려진 단순화(설계 가정)
 
 - 데미지 계산은 방어력 단순 차감(`ATK×주사위눈−DEF`, 최소1), 스탯구매 "최소공격력"은 데미지 하한(`Lv×2`)으로 매핑

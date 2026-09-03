@@ -677,7 +677,12 @@ var TW = (function () {
   }
 
   document.addEventListener('DOMContentLoaded', function () {
-    var saved = sessionStorage.getItem('loaUserName');
+    // 채팅에서 "/탑현황"·"/탑도움말"이 붙여주는 링크(?userName=닉네임)로 들어오면 그 유저로
+    // 바로 조회되게 한다. 파라미터 이름이 userName이 아니어도(user_name, username 등) 웬만하면
+    // 알아서 찾도록 흔한 변형을 다 확인 -- 못 찾으면 예전처럼 sessionStorage에 저장된 값으로 폴백.
+    var qs = new URLSearchParams(window.location.search);
+    var fromUrl = qs.get('userName') || qs.get('user_name') || qs.get('username') || qs.get('name');
+    var saved = fromUrl || sessionStorage.getItem('loaUserName');
     if (saved) document.getElementById('userNameInput').value = saved;
     if (saved) loadStatus();
   });

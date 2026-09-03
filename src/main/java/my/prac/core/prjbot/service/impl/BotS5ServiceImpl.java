@@ -2,8 +2,10 @@ package my.prac.core.prjbot.service.impl;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -35,6 +37,15 @@ public class BotS5ServiceImpl implements BotS5Service {
     private static final String NL  = "♬";
     private static final Random RND = new Random();
     private static final String TOWER_VIEW_URL = "/loa/tower-view";
+
+    /** tower-view SPA 링크 + userName 쿼리파라미터(URL 인코딩) -- 클릭하면 그 유저 화면이 바로 뜨도록. */
+    private String towerViewLink(String userName) {
+        try {
+            return TOWER_VIEW_URL + "?userName=" + URLEncoder.encode(userName, "UTF-8");
+        } catch (UnsupportedEncodingException e) {
+            return TOWER_VIEW_URL + "?userName=" + userName; // UTF-8은 항상 지원되므로 사실상 발생 안 함
+        }
+    }
 
     private static final String[] JOB_KEYS = { "WARRIOR", "MAGE", "ROGUE", "ARCHER", "PRIEST" };
 
@@ -340,7 +351,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         }
         sb.append(NL);
         sb.append("누적 처치: ").append(intVal(p.get("TOTAL_KILL_COUNT"), 0)).append("마리").append(NL);
-        sb.append(NL).append("👉 전체 명령어는 /탑도움말 을 입력해 확인하세요.");
+        sb.append(NL).append("🖥️ 웹으로 보기: ").append(towerViewLink(target)).append(NL);
+        sb.append("👉 전체 명령어는 /탑도움말 을 입력해 확인하세요.");
         return sb.toString();
     }
 
@@ -366,7 +378,7 @@ public class BotS5ServiceImpl implements BotS5Service {
 
         StringBuilder sb = new StringBuilder();
         sb.append("📖 시즌5 탑 등반 — 전체 명령어 도움말").append(NL);
-        sb.append("🖥️ 웹으로 모든 기능 보기: ").append(TOWER_VIEW_URL).append("?userName=").append(userName).append(NL);
+        sb.append("🖥️ 웹으로 모든 기능 보기: ").append(towerViewLink(userName)).append(NL);
         sb.append(NL);
 
         sb.append("[명령어 목록] (설명은 아래 참고)").append(NL);
