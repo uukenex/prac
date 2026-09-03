@@ -1820,6 +1820,9 @@ public class BotS5ServiceImpl implements BotS5Service {
             conn.setRequestMethod("GET");
             conn.setConnectTimeout(3000);
             conn.setReadTimeout(3000);
+            // nekos.best는 User-Agent 미지정 요청을 403으로 차단함(요구 형식: "APP_NAME (CONTACT_INFO)").
+            // https://docs.nekos.best/getting-started/api-reference.html#user-agent
+            conn.setRequestProperty("User-Agent", "RgbTowerBot/1.0 (https://rgb-tns.dev-apc.com)");
             if (conn.getResponseCode() != 200) return null;
 
             StringBuilder sb = new StringBuilder();

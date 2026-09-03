@@ -23,6 +23,35 @@ GET /loa/chat
 - `sender` → `일어난다람쥐/카단` (유저명/캐릭터명)
 - `room` → `람쥐봇 문의방`
 
+라이브 서버: `http://rgb-tns.dev-apc.com` (예: `http://rgb-tns.dev-apc.com/loa/chat?...`, 웹뷰는 `/loa/tower-view?userName=...`).
+
+## 라이브 `/loa/chat`을 curl로 직접 테스트하기
+- **git-bash에서 curl로 `param0=/이미지갱신` 같은 값을 보내면 MSYS가 "/"로 시작하는 부분을
+  Windows 경로로 멋대로 변환해버림**(예: `/이미지갱신` → `C:/Program Files/Git/이미지갱신`,
+  한글도 그 과정에서 깨짐). `--data-urlencode`를 써도 안의 값이 "/"를 포함하면 걸림.
+  → **한글 명령어는 미리 UTF-8 percent-encoding으로 직접 만들어서, "http://"로 시작하는
+  완성된 URL 문자열 하나를 curl에 넘길 것** (이러면 MSYS가 경로로 오인 안 함):
+  ```powershell
+  # PowerShell에서 UTF-8 hex 계산
+  [System.Text.Encoding]::UTF8.GetBytes("/이미지갱신") | ForEach-Object { "%{0:X2}" -f $_ } | Out-String
+  ```
+  ```bash
+  # bash에서는 이렇게 완성된 URL 하나로 호출 (param0=/xxx 를 별도 인자로 안 넘김)
+  curl "http://rgb-tns.dev-apc.com/loa/chat?param0=%2F...&sender=BG&room=t&fulltxt=%2F..."
+  ```
+  이거 안 하면 서버가 명령어를 못 알아듣고 응답이 빈 문자열로 옴(에러 없이 조용히 실패라
+  더 헷갈림 — 2026-09-03에 이걸로 한참 헤맴).
+
+## nekos.best(동료 초상화 API) 관련
+- API(`https://nekos.best/api/v2/neko`)는 **User-Agent 헤더가 없으면 403** — `"APP_NAME
+  (CONTACT_INFO)"` 형식 필요(문서: https://docs.nekos.best/getting-started/api-reference.html#user-agent).
+  `BotS5ServiceImpl.fetchRandomNekoImage()`에 `"RgbTowerBot/1.0 (https://rgb-tns.dev-apc.com)"`
+  헤더를 달아서 고쳐둠(2026-09-03).
+- **API가 돌려주는 이미지 CDN 경로 자체는 Cloudflare JS 챌린지("Just a moment...")가 걸려있어서
+  curl 등 스크립트로는 이미지 바이트를 못 받아옴**(User-Agent를 정상 브라우저 값으로 바꿔도
+  동일). 실제 유저 브라우저의 `<img>` 태그 렌더링이 되는지는 아직 실브라우저로 확인 못 했음
+  — 안 보인다는 얘기 나오면 이 챌린지가 원인일 가능성부터 볼 것.
+
 ## DB 스크립트 실행 (sqlplus)
 - DB 문자셋은 `KO16MSWIN949`(CP949)인데, 이 저장소에서 만드는 `.sql` 파일은 UTF-8로 저장됨.
   `export NLS_LANG=KOREAN_KOREA.AL32UTF8` 후 sqlplus로 실행해도 **완전히 안전하지 않음** —
