@@ -67,6 +67,10 @@
     .party-card.inparty{ border-color:var(--gold); background:var(--gold-soft); }
     .party-card .avatar{ width:48px; height:48px; border-radius:50%; object-fit:cover; background:#EFE7D2;
                           display:block; margin:0 auto 6px; border:2px solid var(--line); }
+    .party-card .avatar-emoji{ display:flex; align-items:center; justify-content:center; font-size:24px; }
+    .party-card{ position:relative; }
+    .party-card.hidden{ opacity:.4; }
+    .party-card .hide-btn{ position:absolute; top:4px; right:6px; font-size:13px; cursor:pointer; background:none; border:none; padding:2px; }
     .party-card .cname{ font-size:12px; font-weight:800; }
     .party-card .role{ font-size:10px; color:var(--ink-soft); }
     .hpbar-track{ height:6px; border-radius:4px; background:#EFE7D2; overflow:hidden; margin-top:4px; }
@@ -341,6 +345,8 @@ var TW = (function () {
 
   var PART_KR = { HELMET: '투구', WEAPON: '무기', ARMOR: '갑옷' };
   var JOB_KR  = { WARRIOR: '전사', MAGE: '마법사', ROGUE: '도적', ARCHER: '궁수', PRIEST: '도사' };
+  // 초상화(IMAGE_URL)는 외부 API(nekos.best) 실패/차단 시 비어있을 수 있어 직업별 이모지로 항상 얼굴이 보이게 폴백
+  var JOB_EMOJI = { WARRIOR: '⚔️', MAGE: '🧙', ROGUE: '🗡️', ARCHER: '🏹', PRIEST: '💫' };
 
   // 파티(동료 최대 3명)와 그 동료들에게 장착하는 장비는 한 화면에서 같이 관리한다.
   function loadPartyAndEquip() {
@@ -357,16 +363,37 @@ var TW = (function () {
       var grid = document.getElementById('partyGrid');
       grid.innerHTML = '';
       companions.forEach(function (c, idx) {
+        var hidden = c.HIDDEN_YN === 'Y';
         var div = document.createElement('div');
-        div.className = 'party-card' + (c.PARTY_SLOT ? ' inparty' : '');
+        div.className = 'party-card' + (c.PARTY_SLOT ? ' inparty' : '') + (hidden ? ' hidden' : '');
         var img = c.IMAGE_URL ? c.IMAGE_URL : '';
         var name = c.NAME || (JOB_KR[c.CLASS] || c.CLASS);
-        div.innerHTML = (img ? '<img class="avatar" src="' + img + '" alt="">' : '<div class="avatar"></div>')
-            + '<div class="cname">' + name + '</div>'
+        var emoji = JOB_EMOJI[c.CLASS] || '👤';
+        div.innerHTML = '<div class="cname">' + name + '</div>'
             + '<div class="role">' + (JOB_KR[c.CLASS] || c.CLASS) + ' ★' + c.GRADE + '</div>'
             + '<div class="hpbar-track"><div class="hpbar-fill" style="width:100%"></div></div>'
             + '<div class="hp-num">HP ' + fmtPP(c.CUR_HP_VALUE, c.CUR_HP_EXT) + (c.PARTY_SLOT ? ' [파티' + c.PARTY_SLOT + ']' : '') + '</div>';
+        // 이미지가 있으면 <img>를 쓰되, 로드 실패(차단/404 등) 시 직업 이모지로 교체
+        var avatarEl = document.createElement(img ? 'img' : 'div');
+        avatarEl.className = 'avatar' + (img ? '' : ' avatar-emoji');
+        if (img) {
+            avatarEl.src = img;
+            avatarEl.alt = '';
+            avatarEl.onerror = function () {
+                avatarEl.outerHTML = '<div class="avatar avatar-emoji">' + emoji + '</div>';
+            };
+        } else {
+            avatarEl.textContent = emoji;
+        }
+        div.insertBefore(avatarEl, div.firstChild);
         div.onclick = function () { action('PARTY_TOGGLE', String(idx + 1)); };
+        var hideBtn = document.createElement('button');
+        hideBtn.className = 'hide-btn';
+        hideBtn.type = 'button';
+        hideBtn.textContent = hidden ? '👀' : '🙈';
+        hideBtn.title = hidden ? '목록에 다시 표시' : '텍스트 목록(/파티편성)에서 숨기기';
+        hideBtn.onclick = function (ev) { ev.stopPropagation(); action('COMPANION_HIDE', String(idx + 1)); };
+        div.appendChild(hideBtn);
         grid.appendChild(div);
       });
 

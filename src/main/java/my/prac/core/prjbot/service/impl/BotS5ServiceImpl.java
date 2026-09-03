@@ -61,12 +61,40 @@ public class BotS5ServiceImpl implements BotS5Service {
         put("ARCHER", "궁수");  put("PRIEST", "도사");
     }};
 
-    // 동료 뽑을 때 무작위로 붙는 일본식 이름 (성급/직업과 무관, 순전히 개성 부여용)
-    private static final String[] NAME_POOL = {
-        "유키", "하루토", "사쿠라", "렌", "아오이", "리쿠", "나츠키", "히나",
-        "소라", "유토", "카이토", "미유", "아카리", "유이", "료", "리코",
-        "소우타", "나나", "유즈키", "카나데", "츠바사", "메이", "슌", "이츠키",
+    // 동료 뽑을 때 붙는 이름 -- 직업별로 정확히 3종만 관리(너무 많으면 도감/애착 형성이 안 되므로 의도적으로 좁힘).
+    // 별도 이름관리 테이블은 없고 이 상수가 유일한 소스 -- 뽑기 시점에 TBOT_S5_USER_COMPANION.NAME 컬럼에 그대로 저장됨.
+    private static final HashMap<String, String[]> NAME_POOL_BY_JOB = new HashMap<String, String[]>() {{
+        put("WARRIOR", new String[]{ "리쿠", "소우타", "슌" });
+        put("MAGE",    new String[]{ "유키", "아오이", "이츠키" });
+        put("ROGUE",   new String[]{ "카이토", "료", "츠바사" });
+        put("ARCHER",  new String[]{ "소라", "유토", "나나" });
+        put("PRIEST",  new String[]{ "사쿠라", "히나", "유이" });
+    }};
+
+    // 사냥터층(보스 제외) 몬스터 이름 -- 50종만 관리하고, 80개 사냥터층(블록1~10 × 8칸)에
+    // 블록/칸 순서(1~8, 11~18, ...)로 순환 배정. 51번째부터는 앞에서부터 다시 돌면서
+    // "강화 " 접두사를 붙여 재사용(스탯은 그대로 블록 단위 유지, 이름만 층마다 다르게 보이는 용도).
+    // 보스(BOSS_YN='Y')는 이 배열을 쓰지 않고 TBOT_S5_MONSTER_INFO의 블록별 고유 보스 이름을 그대로 쓴다.
+    private static final String[] FLOOR_MONSTER_NAME = {
+        "슬라임", "들쥐", "야생 늑대", "독버섯 정령", "숲도둑 고블린", "박쥐 무리", "성난 멧돼지", "덤불 살모사",
+        "곰팡이 골렘", "낡은 갑옷 유령", "동굴 거미", "뿔토끼", "이끼 트롤", "흙탕 지렁이", "떠돌이 산적",
+        "가시덩굴 괴물", "얼어붙은 스켈레톤", "불도롱뇽", "안개 늑대인간", "썩은 나무 정령", "쇠사슬 죄수",
+        "폐광 광부 좀비", "지하수로 악어", "곰팡이 박쥐", "돌개비", "탐욕의 임프", "습지 늪괴물",
+        "부서진 인형병정", "칼날 까마귀", "얼음 정령", "화염 도마뱀", "바위 두더지", "저주받은 기사",
+        "그림자 늑대", "폭풍 매", "독안개 요정", "뼈다귀 사냥개", "붉은눈 오크", "고대 석상 파수꾼",
+        "심연의 촉수", "탐식하는 거머리", "번개 다람쥐", "달빛 여우령", "먼지 유령", "타오르는 해골병사",
+        "얼음 여왕의 시종", "가시갑옷 멧돼지", "칠흑 까마귀왕", "폐허의 파수병", "심연 박쥐", "천벌의 사슬귀",
     };
+
+    /** 사냥터층(비보스) 표시용 몬스터 이름. 보스는 mon의 DB 이름을 그대로 쓴다. */
+    private String floorMonsterName(int floor, HashMap<String, Object> mon) {
+        if ("Y".equals(strVal(mon.get("BOSS_YN"), "N"))) return strVal(mon.get("MONSTER_NAME"), "보스");
+        int pos = (floor / 10) * 8 + (floor % 10); // 1층=1, 8층=8, 11층=9 ... 순환 일련번호
+        if (pos < 1) pos = 1;
+        int n = FLOOR_MONSTER_NAME.length;
+        String base = FLOOR_MONSTER_NAME[(pos - 1) % n];
+        return pos > n ? "강화 " + base : base;
+    }
 
     // 장비 등급별 보너스 [투구고정,투구%, 무기고정,무기%, 갑옷고정,갑옷%], index0=★1
     private static final double[][] EQUIP_BONUS = {
@@ -144,7 +172,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             initUser(userName);
             p = dao.selectUserProgress(userName);
         }
-        settleAutoHunt(userName, p);
+        settleAutoHunt(userName, p); // 결과 메시지는 /주사위 쪽에서만 사용 -- 여기선 부수효과(PP 지급 등)만 필요
         return p;
     }
 
@@ -205,6 +233,13 @@ public class BotS5ServiceImpl implements BotS5Service {
         return (floorBlockBase(floor) / 10) + 1;
     }
 
+    /** 사냥터층(구간 내 1~8번째) PP 보상 배율: 1층 1.0배, 2층 1.1배 ... 8층 1.7배로 층마다 조금씩 차이. 보스/마을층은 1.0배. */
+    private double floorPpMultiplier(int floor) {
+        int pos = floor % 10;
+        if (pos < 1 || pos > 8) return 1.0;
+        return 1.0 + 0.1 * (pos - 1);
+    }
+
     private int intVal(Object o, int def) {
         if (o == null) return def;
         return ((Number) o).intValue();
@@ -219,13 +254,50 @@ public class BotS5ServiceImpl implements BotS5Service {
     // ================================================================
     @Override
     public String towerStatus(String userName) {
-        HashMap<String, Object> p = getOrInitProgress(userName);
+        return towerStatus(userName, null);
+    }
+
+    /**
+     * /탑현황 [닉네임] — 인자가 없으면 자기 자신, 있으면 다른 유저 조회.
+     * 정확히 일치하는 유저가 없으면 앞부분이 일치하는 닉네임을 LIKE로 검색(시즌2~4의
+     * selectS4UserSearch류와 동일 패턴). 다른 유저 조회는 조회만 할 뿐 그 유저의
+     * getOrInitProgress()를 타지 않는다(자동사냥 정산 등 부수효과가 남의 조회로 트리거되지 않게).
+     */
+    @Override
+    public String towerStatus(String userName, String targetQuery) {
+        boolean isOther = targetQuery != null && !targetQuery.trim().isEmpty();
+        String target = userName;
+
+        if (isOther) {
+            String q = targetQuery.trim();
+            HashMap<String, Object> exact = dao.selectUserProgress(q);
+            if (exact != null) {
+                target = q;
+            } else {
+                List<String> matches = dao.selectS5UserSearch(q);
+                if (matches.isEmpty()) {
+                    return "🔍 '" + q + "' 로 시작하는 유저를 찾을 수 없습니다.";
+                }
+                if (matches.size() > 1) {
+                    StringBuilder sb = new StringBuilder("🔍 검색 결과가 여러 명입니다. 닉네임을 더 정확히 입력해주세요:").append(NL);
+                    for (String m : matches) sb.append("- ").append(m).append(NL);
+                    return sb.toString();
+                }
+                target = matches.get(0);
+            }
+        }
+
+        HashMap<String, Object> p = isOther ? dao.selectUserProgress(target) : getOrInitProgress(target);
+        if (p == null) {
+            return "🔍 '" + target + "' 님의 탑 진행 정보를 찾을 수 없습니다.";
+        }
+
         int floor = intVal(p.get("CUR_FLOOR"), 0);
         String status = strVal(p.get("STATUS"), "NORMAL");
         PP pp = PP.of(((Number) p.get("PP_VALUE")).doubleValue(), strVal(p.get("PP_EXT"), ""));
 
         StringBuilder sb = new StringBuilder();
-        sb.append(userName).append("님," + NL);
+        sb.append(target).append(isOther ? "님의 탑 현황" : "님").append("," + NL);
         sb.append("현재 층: ").append(floor);
         sb.append(" (").append(floorKindLabel(floor)).append(")").append(NL);
         sb.append("보유 PP: ").append(pp.format()).append(NL);
@@ -233,7 +305,7 @@ public class BotS5ServiceImpl implements BotS5Service {
 
         if (floor % 10 >= 1 && floor % 10 <= 8) {
             HashMap<String, Object> fi = dao.selectFloorInfo(floor);
-            HashMap<String, Object> ufp = dao.selectUserFloorProgress(userName, floor);
+            HashMap<String, Object> ufp = dao.selectUserFloorProgress(target, floor);
             int tileCount = fi == null ? 0 : intVal(fi.get("TILE_COUNT"), 0);
             int curTile = ufp == null ? 0 : intVal(ufp.get("CUR_TILE"), 0);
             sb.append("보드 위치: ").append(curTile).append(" / ").append(tileCount).append(NL);
@@ -251,9 +323,9 @@ public class BotS5ServiceImpl implements BotS5Service {
         return "사냥터";
     }
 
-    /** 전투 로그 표시용 "직업(이름)" 포맷. 예: 궁수(나나) */
-    private String jobTag(String job, String name) {
-        return JOB_NAME.getOrDefault(job, "동료") + "(" + name + ")";
+    /** 전투 로그 표시용 "★등급직업(이름)" 포맷. 예: ★3궁수(나나) */
+    private String jobTag(int grade, String job, String name) {
+        return "★" + grade + JOB_NAME.getOrDefault(job, "동료") + "(" + name + ")";
     }
 
     // ================================================================
@@ -273,7 +345,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         sb.append("  ※ 계단(STAIRS) 칸을 밟으면 다음 층으로 갈 '자격'만 생기고, 실제 이동은 이 명령어를 입력해야 합니다.").append(NL);
         sb.append("  ⚠️ 사냥터층에서 0층(마을, /층변경 0)으로 가면 방금 있던 층의 탐사맵(보드 위치+발견기록)이 초기화됩니다. 원정 중엔 끝까지 밀고 올라가세요!").append(NL);
         sb.append("  ⚠️ 보스를 처치해 다음 10층 구간으로 넘어가면 이전 구간으로는 다시 내려갈 수 없습니다(과거 구간 복귀 불가, 편도 진행).").append(NL);
-        sb.append("/탑현황 : 현재 층/보드 위치/PP/상태/자동사냥 조회").append(NL);
+        sb.append("/탑현황 [닉네임] : 현재 층/보드 위치/PP/상태/자동사냥 조회. 닉네임을 붙이면 다른 유저 조회(앞부분만 입력해도 검색됨)").append(NL);
         sb.append(NL);
 
         sb.append("[동료] (웹 '파티' 탭) — ⚠️ 파티 편성/해제는 마을(X0층)에서만 가능").append(NL);
@@ -282,9 +354,9 @@ public class BotS5ServiceImpl implements BotS5Service {
         sb.append(NL);
 
         sb.append("[상점] (웹 '상점' 탭) — 뽑기는 마을이 아니어도 아무 층에서나 가능").append(NL);
-        sb.append("/동료뽑기 N, /동료뽑기10 N : 아래 번호의 계약서로 동료 뽑기(10연속), 스탯도 함께 표시").append(NL);
+        sb.append("/동료뽑기N [10] : 아래 번호의 계약서로 동료 뽑기(뒤에 10을 붙이면 10연속), 스탯도 함께 표시. 번호 생략 시 1번").append(NL);
         sb.append(gachaCatalogText(dao.selectGachaList("COMPANION", 999), unlocked));
-        sb.append("/장비뽑기 N, /장비뽑기10 N : 아래 번호의 보물상자로 장비 뽑기(10연속), 스탯 보너스도 함께 표시").append(NL);
+        sb.append("/장비뽑기N [10] : 아래 번호의 보물상자로 장비 뽑기(뒤에 10을 붙이면 10연속), 스탯 보너스도 함께 표시. 번호 생략 시 1번").append(NL);
         sb.append(gachaCatalogText(dao.selectGachaList("EQUIP", 999), unlocked));
         sb.append("/주사위구매 [N] : 해금된 주사위 목록 확인 / N번 장착").append(NL);
         sb.append("/스탯구매 [공격력|최소공격력|체력] : 스탯 강화 현황 확인 / 구매").append(NL);
@@ -338,7 +410,11 @@ public class BotS5ServiceImpl implements BotS5Service {
     @Transactional
     public String rollDice(String userName) {
         boolean brandNew = dao.selectUserProgress(userName) == null;
-        HashMap<String, Object> p = getOrInitProgress(userName);
+        HashMap<String, Object> p = dao.selectUserProgress(userName);
+        if (p == null) {
+            initUser(userName);
+            p = dao.selectUserProgress(userName);
+        }
 
         if (brandNew) {
             // 계정이 없던 유저의 첫 /주사위 → 계정만 생성. 진행은 튜토리얼 순서대로 유도.
@@ -349,13 +425,25 @@ public class BotS5ServiceImpl implements BotS5Service {
                     + "👉 하급 동료 계약서 무료뽑기를 하세요! (/동료뽑기 1)";
         }
 
+        java.util.Date lastAction = (java.util.Date) p.get("LAST_DICE_ACTION_DATE");
+        String autoHuntMsg = settleAutoHunt(userName, p);
+        if (autoHuntMsg == null && lastAction != null
+                && !"Y".equals(strVal(p.get("AUTO_HUNT_YN"), "N"))
+                && (System.currentTimeMillis() - lastAction.getTime()) / 60000L >= 30) {
+            autoHuntMsg = "🌙 오랜만이에요! 자동사냥 중인 층이 없습니다.";
+        }
+
         String status = strVal(p.get("STATUS"), "NORMAL");
         String cooldownMsg = checkDiceCooldown(p, status);
-        if (cooldownMsg != null) return cooldownMsg;
+        if (cooldownMsg != null) return prependAutoHunt(autoHuntMsg, cooldownMsg);
 
         String result = rollDiceInternal(userName, p, status);
         touchDiceCooldown(userName);
-        return result;
+        return prependAutoHunt(autoHuntMsg, result);
+    }
+
+    private String prependAutoHunt(String autoHuntMsg, String result) {
+        return autoHuntMsg == null ? result : autoHuntMsg + NL + NL + result;
     }
 
     /** LAST_DICE_ACTION_DATE 기준 쿨타임 검사. 아직 남았으면 안내 메시지, 통과면 null. */
@@ -432,8 +520,15 @@ public class BotS5ServiceImpl implements BotS5Service {
         sb.append(userName).append("님," + NL);
         sb.append("🎲 주사위 ").append(roll).append("! ").append(curTile).append(" → ").append(newTile).append("번 칸")
           .append(NL).append("🗺️ 탐사 현황: ").append(visited).append("/").append(tileCount).append("칸 발견");
-        if (visited >= tileCount && grantAchievement(userName, 25)) {
-            sb.append(NL).append("🏆 이 층을 전부 탐험했습니다! [탐험왕] 업적 달성!");
+        if (visited >= tileCount) {
+            // 완전탐사 달성 즉시 (user,floor) 역대기록에 반영 -- 마을 복귀 전이라도 영구 보존
+            HashMap<String, Object> best = snapshotFloorBest(userName, floor);
+            if (grantAchievement(userName, 25)) {
+                sb.append(NL).append("🏆 이 층을 전부 탐험했습니다! [탐험왕] 업적 달성!");
+            }
+            if ("Y".equals(strVal(best.get("NEWLY_FULL"), "N"))) {
+                sb.append(NL).append("🏆 [").append(floor).append("층 완전탐사] 업적 달성! 동료뽑기권 1장 지급!");
+            }
         }
         sb.append(NL);
 
@@ -473,7 +568,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             case "PP": {
                 HashMap<String, Object> mon = dao.selectMonster(blockNo(floor), "N");
                 PP reward = mon == null ? PP.of(1, "")
-                        : PP.of(((Number) mon.get("PP_PER_KILL_VALUE")).doubleValue(), strVal(mon.get("PP_PER_KILL_EXT"), ""));
+                        : PP.of(((Number) mon.get("PP_PER_KILL_VALUE")).doubleValue(), strVal(mon.get("PP_PER_KILL_EXT"), "")).multiply(floorPpMultiplier(floor));
                 addPp(userName, p, reward);
                 sb.append(reward.format()).append(" PP 획득!");
                 break;
@@ -537,7 +632,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         dao.upsertSpecialVisitIncrement(userName);
         HashMap<String, Object> v = dao.selectUserSpecialVisit(userName);
         int cnt = v == null ? 1 : intVal(v.get("VISIT_COUNT"), 1);
-        StringBuilder sb = new StringBuilder("✨ 수상한 기운이 감돈다... (특수칸 누적 방문 ").append(cnt).append("회)");
+        StringBuilder sb = new StringBuilder("✨ 수상한 기운이 감돌았지만... 이번엔 별다른 일이 일어나지 않았다. (특수칸 누적 방문 ").append(cnt).append("회)");
         int[] thresholds = { 10, 50, 100 };
         int[] achIds = { 17, 18, 19 };
         for (int i = 0; i < thresholds.length; i++) {
@@ -614,8 +709,9 @@ public class BotS5ServiceImpl implements BotS5Service {
         up.put("curMonsterHpExt", strVal(mon.get("HP_EXT"), ""));
         dao.updateUserProgress(up);
 
-        return (boss ? "👹 보스 " : "⚔️ ") + strVal(mon.get("MONSTER_NAME"), "몬스터") + " 등장! (HP "
-                + PP.of(((Number) mon.get("HP_VALUE")).doubleValue(), strVal(mon.get("HP_EXT"), "")).format()
+        PP fullHp = PP.of(((Number) mon.get("HP_VALUE")).doubleValue(), strVal(mon.get("HP_EXT"), ""));
+        return (boss ? "👹 보스 " : "⚔️ ") + floorMonsterName(floor, mon) + " 등장! (HP "
+                + fullHp.format() + "/" + fullHp.format()
                 + ") " + NL + "전투를 시작하려면 다시 /주사위 를 입력하세요!";
     }
 
@@ -668,7 +764,9 @@ public class BotS5ServiceImpl implements BotS5Service {
             int dmg = Math.max(1, eff[1] * roll - monsterDef);
             dmg = Math.max(dmg, eff[3]); // 스탯구매 최소공격력 보정
             totalDamage += dmg;
-            sb.append(jobTag(job, cName)).append(" 공격! 🎲").append(roll)
+            sb.append(jobTag(grade, job, cName)).append(" (공격력 ").append(eff[1])
+              .append(", 범위 ").append(eff[1]).append("~").append(eff[1] * diceMax)
+              .append(") 공격! 🎲").append(roll)
               .append(" → ").append(dmg).append(" 데미지").append(NL);
 
             switch (job) {
@@ -680,7 +778,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                     break;
                 case "ROGUE":
                     if (RND.nextInt(100) < 25) {
-                        PP steal = PP.of(((Number) mon.get("PP_PER_KILL_VALUE")).doubleValue(), strVal(mon.get("PP_PER_KILL_EXT"), "")).multiply(0.1);
+                        PP steal = PP.of(((Number) mon.get("PP_PER_KILL_VALUE")).doubleValue(), strVal(mon.get("PP_PER_KILL_EXT"), "")).multiply(0.1 * floorPpMultiplier(floor));
                         addPp(userName, p, steal);
                         sb.append("  🗡️ 도적이 ").append(steal.format()).append(" PP를 스틸했다!").append(NL);
                     }
@@ -707,7 +805,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         boolean monsterDead = executeKill || PP.toBaseValue(monsterHpAfter) <= 0;
 
         if (monsterDead) {
-            PP reward = PP.of(((Number) mon.get("PP_PER_KILL_VALUE")).doubleValue(), strVal(mon.get("PP_PER_KILL_EXT"), ""));
+            PP reward = PP.of(((Number) mon.get("PP_PER_KILL_VALUE")).doubleValue(), strVal(mon.get("PP_PER_KILL_EXT"), "")).multiply(floorPpMultiplier(floor));
             boolean isBoss = "Y".equals(strVal(mon.get("BOSS_YN"), "N"));
             int killCountCur = intVal(p.get("KILL_COUNT_CUR"), 0) + 1;
             int totalKill = intVal(p.get("TOTAL_KILL_COUNT"), 0) + 1;
@@ -718,7 +816,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             up.put("clearMonster", true);
             up.put("totalKillCount", totalKill);
 
-            sb.append(strVal(mon.get("MONSTER_NAME"), "몬스터")).append(" 처치! 🎉").append(NL);
+            sb.append(floorMonsterName(floor, mon)).append(" 처치! 🎉").append(NL);
 
             if (isBoss) {
                 int prevBlockBase = floorBlockBase(floor);
@@ -758,7 +856,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         up.put("curMonsterHpValue", monsterHpAfter.getValue());
         up.put("curMonsterHpExt", monsterHpAfter.getUnit());
         dao.updateUserProgress(up);
-        sb.append(strVal(mon.get("MONSTER_NAME"), "몬스터")).append(" 남은 HP: ").append(monsterHpAfter.format()).append(NL);
+        sb.append(floorMonsterName(floor, mon)).append(" 남은 HP: ")
+          .append(monsterHpAfter.format()).append("/").append(monsterMaxHp.format()).append(NL);
 
         if (stunned) {
             sb.append("몬스터가 스턴에 걸려 반격하지 못했습니다!");
@@ -824,8 +923,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         dao.updateCompanionHp(cUp);
 
         String tName = strVal(target.get("NAME"), JOB_NAME.getOrDefault(tJob, "동료"));
-        sb.append(strVal(mon.get("MONSTER_NAME"), "몬스터")).append(" 반격! 🎲").append(roll).append(" → ")
-          .append(jobTag(tJob, tName)).append("에게 ")
+        sb.append(floorMonsterName(floor, mon)).append(" 반격! 🎲").append(roll).append(" → ")
+          .append(jobTag(tGrade, tJob, tName)).append("에게 ")
           .append(dmgToParty).append(" 피해 (남은 HP ").append(targetHpAfter.format()).append(")");
         if (PP.toBaseValue(targetHpAfter) <= 0) sb.append(" — 전투불가!");
 
@@ -875,26 +974,27 @@ public class BotS5ServiceImpl implements BotS5Service {
     // ================================================================
     // 자동사냥 정산
     // ================================================================
-    private void settleAutoHunt(String userName, HashMap<String, Object> p) {
-        if (!"Y".equals(strVal(p.get("AUTO_HUNT_YN"), "N"))) return;
+    /** 자동사냥 정산. 실제로 정산된 게 있으면 안내 메시지를 반환(없으면 null) — /주사위 응답 맨 위에 붙여준다. */
+    private String settleAutoHunt(String userName, HashMap<String, Object> p) {
+        if (!"Y".equals(strVal(p.get("AUTO_HUNT_YN"), "N"))) return null;
         HashMap<String, Object> log = dao.selectAutoHuntLog(userName);
-        if (log == null) return;
+        if (log == null) return null;
 
         java.util.Date lastSettle = (java.util.Date) log.get("LAST_SETTLE_DATE");
-        if (lastSettle == null) return;
+        if (lastSettle == null) return null;
         long elapsedMin = (System.currentTimeMillis() - lastSettle.getTime()) / 60000L;
-        if (elapsedMin < 10) return; // 10분(=처치 1회 기준) 미만이면 정산할 게 없음
+        if (elapsedMin < 10) return null; // 10분(=처치 1회 기준) 미만이면 정산할 게 없음
 
         long cappedMin = Math.min(elapsedMin, 8 * 60L); // 최대 8시간
         int floor = intVal(log.get("FLOOR"), intVal(p.get("CUR_FLOOR"), 1));
         HashMap<String, Object> mon = dao.selectMonster(blockNo(floor), "N");
-        if (mon == null) return;
+        if (mon == null) return null;
 
         long kills = cappedMin / 10; // 시간당 6마리 = 10분당 1마리
-        if (kills <= 0) return;
+        if (kills <= 0) return null;
 
         PP perKill = PP.of(((Number) mon.get("PP_PER_KILL_VALUE")).doubleValue(), strVal(mon.get("PP_PER_KILL_EXT"), ""));
-        PP reward = perKill.multiply(kills);
+        PP reward = perKill.multiply(kills * floorPpMultiplier(floor));
         addPp(userName, p, reward);
 
         HashMap<String, Object> up = new HashMap<>();
@@ -910,6 +1010,8 @@ public class BotS5ServiceImpl implements BotS5Service {
 
         checkKillAchievements(userName, intVal(p.get("TOTAL_KILL_COUNT"), 0));
         // TODO: AUTO_HUNT_PP_TOTAL 누적치 업적(14번)은 별도 누적 컬럼이 없어 아직 미체크
+
+        return "💤 자동사냥 정산: " + floor + "층에서 " + kills + "마리 처치, " + reward.format() + " PP 획득!";
     }
 
     // ================================================================
@@ -951,7 +1053,9 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 업적(탐험왕 등)을 자유롭게 파밍하지 못하게 하려는 의도 -- 한 원정 안에서 끝까지 밀어야 함.
         int fm = floor % 10;
         boolean returnedToVillage = target % 10 == 0 && fm >= 1 && fm <= 8 && floor != target;
+        HashMap<String, Object> floorBest = null;
         if (returnedToVillage) {
+            floorBest = snapshotFloorBest(userName, floor);
             dao.deleteUserFloorProgress(userName, floor);
             dao.deleteTileVisits(userName, floor);
         }
@@ -963,6 +1067,19 @@ public class BotS5ServiceImpl implements BotS5Service {
         sb.append(floor).append("층 → ").append(target).append("층(").append(floorKindLabel(target)).append(")으로 이동했습니다.");
         if (returnedToVillage) {
             sb.append(NL).append("⚠️ ").append(floor).append("층의 탐사 진행도가 초기화되었습니다. (다시 가면 처음부터)");
+            if (floorBest != null) {
+                int bestVisited = intVal(floorBest.get("BEST_VISITED_COUNT"), 0);
+                int bestTileCount = intVal(floorBest.get("TILE_COUNT"), 0);
+                int pct = bestTileCount > 0 ? (bestVisited * 100 / bestTileCount) : 0;
+                sb.append(NL).append("📊 이 층 역대 최고 탐사 기록: ").append(bestVisited).append("/").append(bestTileCount)
+                  .append("칸 (").append(pct).append("%)");
+                if ("Y".equals(strVal(floorBest.get("FULLY_EXPLORED_YN"), "N"))) {
+                    sb.append(" ✅ 완전탐사 기록 보유(계속 유지됨)");
+                }
+                if ("Y".equals(strVal(floorBest.get("NEWLY_FULL"), "N"))) {
+                    sb.append(NL).append("🏆 [").append(floor).append("층 완전탐사] 업적 달성! 동료뽑기권 1장 지급!");
+                }
+            }
         }
 
         int tm = target % 10;
@@ -990,9 +1107,40 @@ public class BotS5ServiceImpl implements BotS5Service {
     /** blockBase(예: 0,10,20…) 구간의 사냥터층(blockBase+1 ~ blockBase+8) 전체의 보드 위치/발견기록을 초기화. */
     private void resetBlockExploration(String userName, int blockBase) {
         for (int f = blockBase + 1; f <= blockBase + 8; f++) {
+            snapshotFloorBest(userName, f);
             dao.deleteUserFloorProgress(userName, f);
             dao.deleteTileVisits(userName, f);
         }
+    }
+
+    /**
+     * 방문기록이 지워지기 전, 이번 원정의 발견 칸 수를 (user, floor) 역대 최고기록에 반영하고 갱신된 행을 반환.
+     * 이번 호출로 처음 100% 완전탐사가 되었으면 "N층 완전탐사" 업적(ID 100+floor)을 주고 동료뽑기권 1장을 지급하며,
+     * 반환하는 맵에 NEWLY_FULL="Y" 를 얹어 호출부가 보상 안내 문구를 붙일 수 있게 한다.
+     */
+    private HashMap<String, Object> snapshotFloorBest(String userName, int floor) {
+        HashMap<String, Object> fi = dao.selectFloorInfo(floor);
+        int tileCount = fi == null ? 0 : intVal(fi.get("TILE_COUNT"), 0);
+        int visited = dao.countTileVisits(userName, floor);
+        HashMap<String, Object> up = new HashMap<>();
+        up.put("userName", userName);
+        up.put("floor", floor);
+        up.put("visited", visited);
+        up.put("tileCount", tileCount);
+        dao.upsertUserFloorBest(up);
+        HashMap<String, Object> row = dao.selectUserFloorBest(userName, floor);
+        row.put("NEWLY_FULL", "N");
+        if ("Y".equals(strVal(row.get("FULLY_EXPLORED_YN"), "N")) && grantAchievement(userName, 100 + floor)) {
+            row.put("NEWLY_FULL", "Y");
+            HashMap<String, Object> prog = dao.selectUserProgress(userName);
+            if (prog != null) {
+                HashMap<String, Object> voucherUp = new HashMap<>();
+                voucherUp.put("userName", userName);
+                voucherUp.put("companionVoucher", intVal(prog.get("COMPANION_VOUCHER"), 0) + 1);
+                dao.updateUserProgress(voucherUp);
+            }
+        }
+        return row;
     }
 
     // ================================================================
@@ -1007,7 +1155,11 @@ public class BotS5ServiceImpl implements BotS5Service {
         }
         StringBuilder sb = new StringBuilder(userName).append("님의 동료 목록," + NL);
         int idx = 1;
+        int hiddenCount = 0;
         for (HashMap<String, Object> c : companions) {
+            // 숨김 처리된 동료는 번호(인덱스)만 소비하고 텍스트 목록엔 표시하지 않는다.
+            // (인덱스는 항상 전체 목록 기준 위치라서 /파티편성 N, /동료가리기 N 모두 같은 번호를 가리킴)
+            if ("Y".equals(strVal(c.get("HIDDEN_YN"), "N"))) { idx++; hiddenCount++; continue; }
             String job = JOB_NAME.getOrDefault(strVal(c.get("CLASS"), "WARRIOR"), "?");
             String name = strVal(c.get("NAME"), job); // 이름 없는 옛 데이터는 직업명으로 대체 표시
             int grade = intVal(c.get("GRADE"), 1);
@@ -1018,8 +1170,26 @@ public class BotS5ServiceImpl implements BotS5Service {
               .append(slot != null ? " [파티 " + slot + "번]" : " [대기]")
               .append(NL);
         }
-        sb.append("/파티편성 N 으로 편성/해제 (최대 3명)");
+        if (hiddenCount > 0) sb.append("(숨긴 동료 ").append(hiddenCount).append("마리는 표시 생략, 웹에서 확인)").append(NL);
+        sb.append("/파티편성 N 으로 편성/해제 (최대 3명), /동료가리기 N 으로 목록 숨김/해제");
         return sb.toString();
+    }
+
+    @Override
+    @Transactional
+    public String toggleCompanionHidden(String userName, int idx) {
+        List<HashMap<String, Object>> companions = dao.selectUserCompanions(userName);
+        if (idx < 1 || idx > companions.size()) {
+            return "잘못된 번호입니다. /파티편성 으로 목록을 확인하세요.";
+        }
+        HashMap<String, Object> target = companions.get(idx - 1);
+        boolean nowHidden = !"Y".equals(strVal(target.get("HIDDEN_YN"), "N"));
+        HashMap<String, Object> up = new HashMap<>();
+        up.put("companionId", intVal(target.get("COMPANION_ID"), 0));
+        up.put("hiddenYn", nowHidden ? "Y" : "N");
+        dao.updateCompanionHidden(up);
+        String name = strVal(target.get("NAME"), JOB_NAME.getOrDefault(strVal(target.get("CLASS"), ""), "동료"));
+        return nowHidden ? ("🙈 " + name + " 을(를) 목록에서 숨겼습니다.") : ("👀 " + name + " 을(를) 다시 표시합니다.");
     }
 
     @Override
@@ -1178,8 +1348,32 @@ public class BotS5ServiceImpl implements BotS5Service {
 
         int grade = rollGrade(gacha);
         String job = JOB_KEYS[RND.nextInt(JOB_KEYS.length)];
+        String[] namePool = NAME_POOL_BY_JOB.get(job);
+        String name = namePool[RND.nextInt(namePool.length)];
+
+        // 중복 동료(같은 직업+이름을 이미 보유) 처리: 이름 풀이 직업당 3종뿐이라 중복이 흔해지므로
+        // 새 동료를 또 넣는 대신 이번 뽑기 비용의 20%를 PP로 환급한다("중복 정산").
+        boolean dupe = false;
+        for (HashMap<String, Object> owned : dao.selectUserCompanions(userName)) {
+            if (job.equals(strVal(owned.get("CLASS"), "")) && name.equals(strVal(owned.get("NAME"), ""))) {
+                dupe = true;
+                break;
+            }
+        }
+        if (dupe) {
+            PP cost = PP.of(((Number) gacha.get("COST_VALUE")).doubleValue(), strVal(gacha.get("COST_EXT"), ""));
+            PP dupeBonus = cost.multiply(0.2);
+            addPp(userName, p, dupeBonus);
+            result.put("ok", true);
+            result.put("dupe", true);
+            result.put("job", job);
+            result.put("grade", grade);
+            result.put("name", name);
+            result.put("dupeBonus", dupeBonus.format());
+            return result;
+        }
+
         int[] stat = calcBaseStat(job, grade);
-        String name = NAME_POOL[RND.nextInt(NAME_POOL.length)];
         String imageUrl = fetchRandomNekoImage();
 
         HashMap<String, Object> c = new HashMap<>();
@@ -1199,6 +1393,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (grade == 6) grantAchievement(userName, 22);
 
         result.put("ok", true);
+        result.put("dupe", false);
         result.put("job", job);
         result.put("grade", grade);
         result.put("stat", stat);
@@ -1218,8 +1413,14 @@ public class BotS5ServiceImpl implements BotS5Service {
 
         String job = (String) r.get("job");
         int grade = intVal(r.get("grade"), 1);
-        int[] stat = (int[]) r.get("stat");
         String name = (String) r.get("name");
+
+        if (Boolean.TRUE.equals(r.get("dupe"))) {
+            return "🔁 이미 보유한 " + JOB_NAME.get(job) + "(" + name + ")와 중복! (★" + grade + " 뽑힘)" + NL
+                    + "계약서 대신 " + r.get("dupeBonus") + " PP로 환급되었습니다.";
+        }
+
+        int[] stat = (int[]) r.get("stat");
         int cnt = ownedBefore + 1;
 
         // 새로 뽑은 동료는 (PARTY_SLOT NULLS LAST, COMPANION_ID) 정렬상 항상 목록의 맨 끝(=cnt번)에 위치
@@ -1243,6 +1444,8 @@ public class BotS5ServiceImpl implements BotS5Service {
 
         int[] gradeCount = new int[7]; // index 1~6
         int success = 0;
+        int dupeCount = 0;
+        PP dupeTotal = PP.of(0, "");
         String stopReason = null;
         for (int i = 0; i < 10; i++) {
             HashMap<String, Object> r = pullCompanionCore(userName, gacha, p, owned);
@@ -1250,14 +1453,22 @@ public class BotS5ServiceImpl implements BotS5Service {
                 stopReason = (String) r.get("error");
                 break;
             }
-            owned++;
             success++;
             gradeCount[intVal(r.get("grade"), 1)]++;
+            if (Boolean.TRUE.equals(r.get("dupe"))) {
+                dupeCount++;
+                dupeTotal = dupeTotal.add(PP.parse((String) r.get("dupeBonus")));
+            } else {
+                owned++; // 중복이 아닌 실제 신규 동료일 때만 보유 수 증가(스타터 무료뽑기/업적 판정에 사용)
+            }
         }
 
         StringBuilder sb = new StringBuilder("🎰 10연속 동료뽑기 (").append(success).append("/10)").append(NL);
         for (int g = 1; g <= 6; g++) {
             if (gradeCount[g] > 0) sb.append("★").append(g).append("×").append(gradeCount[g]).append("  ");
+        }
+        if (dupeCount > 0) {
+            sb.append(NL).append("🔁 중복 ").append(dupeCount).append("마리 → ").append(dupeTotal.format()).append(" PP 환급");
         }
         if (stopReason != null) sb.append(NL).append("⚠️ ").append(stopReason).append(" (그 이상은 중단됨)");
         sb.append(NL).append("👉 /파티편성 으로 확인하세요");

@@ -70,6 +70,21 @@ CREATE TABLE TBOT_S5_USER_TILE_VISIT (
     PRIMARY KEY (USER_NAME, FLOOR, TILE_NO)
 );
 
+-- best-ever exploration record per (user, floor). Unlike TBOT_S5_USER_FLOOR_PROGRESS /
+-- TBOT_S5_USER_TILE_VISIT (wiped when the user retreats to the village so a single
+-- expedition can't be farmed piecemeal), this row is NEVER deleted -- only ever
+-- upgraded (GREATEST) -- so "fully explored this floor once" stays true forever and
+-- players can see their best-ever discovery % even after a reset.
+CREATE TABLE TBOT_S5_USER_FLOOR_BEST (
+    USER_NAME            VARCHAR2(100) NOT NULL,
+    FLOOR                NUMBER        NOT NULL,
+    BEST_VISITED_COUNT   NUMBER        DEFAULT 0 NOT NULL,
+    TILE_COUNT            NUMBER        DEFAULT 0 NOT NULL,
+    FULLY_EXPLORED_YN     VARCHAR2(1)   DEFAULT 'N' NOT NULL,
+    UPDATE_DATE           DATE DEFAULT SYSDATE,
+    PRIMARY KEY (USER_NAME, FLOOR)
+);
+
 -- monster master (one normal + one boss row per block, BLOCK_NO 1..10)
 CREATE TABLE TBOT_S5_MONSTER_INFO (
     MONSTER_ID           NUMBER        PRIMARY KEY,
@@ -100,6 +115,7 @@ CREATE TABLE TBOT_S5_USER_COMPANION (
     CUR_HP_VALUE    NUMBER        NOT NULL,
     CUR_HP_EXT      VARCHAR2(1)   DEFAULT '',
     PARTY_SLOT      NUMBER,
+    HIDDEN_YN       VARCHAR2(1)   DEFAULT 'N',
     ACQUIRE_DATE    DATE          DEFAULT SYSDATE
 );
 CREATE INDEX IDX_S5_COMPANION_USER ON TBOT_S5_USER_COMPANION (USER_NAME);

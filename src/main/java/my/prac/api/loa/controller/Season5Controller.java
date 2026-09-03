@@ -16,11 +16,11 @@ import my.prac.core.prjbot.service.BotS5Service;
  *   /주사위, /ㅈㅅㅇ  — 이동(비전투) 또는 공격(전투 중)
  *   /층변경 N         — 같은 10층 구간 내 이동 (예: 33층에서 /층변경 9 → 39층)
  *   /파티편성 [N]     — 동료 목록 조회 / N번째 동료 파티 편성·해제
- *   /탑현황           — 현재 층/PP/상태 조회
+ *   /탑현황 [닉네임]   — 현재 층/PP/상태 조회. 닉네임을 붙이면 다른 유저 조회(부분 입력 시 앞부분 일치 검색)
  *   /탑도움말, /탑명령어 — 웹(SPA) 탭 기능을 포함한 전체 명령어 안내
  *   /업적             — 업적 달성 현황
- *   /동료뽑기 N, /동료뽑기10 N — N번 계약서로 동료 뽑기(10연속), 번호는 SPA 상점 탭에서 확인
- *   /장비뽑기 N, /장비뽑기10 N — N번 보물상자로 장비 뽑기(10연속)
+ *   /동료뽑기N [10]   — N번 계약서로 동료 뽑기(뒤에 10을 붙이면 10연속), 번호는 SPA 상점 탭에서 확인. /동료뽑기(번호 생략)는 1번
+ *   /장비뽑기N [10]   — N번 보물상자로 장비 뽑기(뒤에 10을 붙이면 10연속). /장비뽑기(번호 생략)는 1번
  *   /주사위구매 [N]   — 주사위 등급 확인 / 장착
  *   /스탯구매 [종류]  — 스탯 구매 현황 / 강화(공격력 | 최소공격력 | 체력)
  *   /장비목록         — 보유 장비 조회
@@ -74,8 +74,19 @@ public class Season5Controller {
         }
     }
 
+    public String hideCompanion(HashMap<String, Object> map) {
+        String param1 = param1Of(map);
+        if (param1.isEmpty()) return "사용법: /동료가리기 N (N은 /파티편성 목록 번호)";
+        try {
+            return s5Service.toggleCompanionHidden(userNameOf(map), Integer.parseInt(param1));
+        } catch (NumberFormatException e) {
+            return "번호는 숫자로 입력해주세요.";
+        }
+    }
+
     public String towerStatus(HashMap<String, Object> map) {
-        return s5Service.towerStatus(userNameOf(map));
+        String param1 = param1Of(map);
+        return param1.isEmpty() ? s5Service.towerStatus(userNameOf(map)) : s5Service.towerStatus(userNameOf(map), param1);
     }
 
     public String help(HashMap<String, Object> map) {
@@ -93,7 +104,7 @@ public class Season5Controller {
 
     public String gachaCompanion(HashMap<String, Object> map) {
         String param1 = param1Of(map);
-        if (param1.isEmpty()) return "사용법: /동료뽑기 N (N은 SPA 상점 탭에서 확인)";
+        if (param1.isEmpty()) return "사용법: /동료뽑기N (N은 SPA 상점 탭에서 확인, 생략 시 1번)";
         try {
             return s5Service.gachaCompanion(userNameOf(map), Integer.parseInt(param1));
         } catch (NumberFormatException e) {
@@ -103,7 +114,7 @@ public class Season5Controller {
 
     public String gachaCompanionTen(HashMap<String, Object> map) {
         String param1 = param1Of(map);
-        if (param1.isEmpty()) return "사용법: /동료뽑기10 N (N은 SPA 상점 탭에서 확인)";
+        if (param1.isEmpty()) return "사용법: /동료뽑기N 10 (N은 SPA 상점 탭에서 확인)";
         try {
             return s5Service.gachaCompanionTen(userNameOf(map), Integer.parseInt(param1));
         } catch (NumberFormatException e) {
@@ -113,7 +124,7 @@ public class Season5Controller {
 
     public String gachaEquip(HashMap<String, Object> map) {
         String param1 = param1Of(map);
-        if (param1.isEmpty()) return "사용법: /장비뽑기 N (N은 SPA 상점 탭에서 확인)";
+        if (param1.isEmpty()) return "사용법: /장비뽑기N (N은 SPA 상점 탭에서 확인, 생략 시 1번)";
         try {
             return s5Service.gachaEquip(userNameOf(map), Integer.parseInt(param1));
         } catch (NumberFormatException e) {
@@ -123,7 +134,7 @@ public class Season5Controller {
 
     public String gachaEquipTen(HashMap<String, Object> map) {
         String param1 = param1Of(map);
-        if (param1.isEmpty()) return "사용법: /장비뽑기10 N (N은 SPA 상점 탭에서 확인)";
+        if (param1.isEmpty()) return "사용법: /장비뽑기N 10 (N은 SPA 상점 탭에서 확인)";
         try {
             return s5Service.gachaEquipTen(userNameOf(map), Integer.parseInt(param1));
         } catch (NumberFormatException e) {

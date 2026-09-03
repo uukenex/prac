@@ -199,6 +199,9 @@ public class Season5ViewController {
                 case "PARTY_TOGGLE":
                     message = s5Service.partyToggle(userName, Integer.parseInt(param1));
                     break;
+                case "COMPANION_HIDE":
+                    message = s5Service.toggleCompanionHidden(userName, Integer.parseInt(param1));
+                    break;
                 case "GACHA_COMPANION":
                     message = s5Service.gachaCompanion(userName, Integer.parseInt(param1));
                     break;

@@ -21,6 +21,9 @@ public interface BotS5Service {
     /** /탑현황 */
     String towerStatus(String userName);
 
+    /** /탑현황 닉네임 — 다른 유저 조회(정확 일치 우선, 없으면 앞부분 일치 LIKE 검색) */
+    String towerStatus(String userName, String targetQuery);
+
     /** /탑도움말, /탑명령어 — 웹(SPA) 탭 기능을 포함한 전체 명령어 텍스트 안내 */
     String help(String userName);
 
@@ -38,6 +41,9 @@ public interface BotS5Service {
 
     /** /파티편성 N — 목록 N번째 동료를 파티 편성/해제 토글 */
     String partyToggle(String userName, int idx);
+
+    /** /동료가리기 N — 목록 N번째 동료를 숨김/숨김해제 토글(/파티편성 텍스트 목록에서 안 보이게) */
+    String toggleCompanionHidden(String userName, int idx);
 
     /** /업적 — 달성 목록 + 히든 제외 미달성 목록 */
     String achievements(String userName);

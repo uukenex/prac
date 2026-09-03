@@ -550,7 +550,25 @@ public class LoaChatController {
 				val = "너무길어요!";
 				return val;
 			}
-			
+
+			// [시즌5] 뽑기 명령어 표기 정리: "/동료뽑기N [10]" 형태로 통일
+			// (예: /동료뽑기 → 1번 단발, /동료뽑기2 → 2번 단발, /동료뽑기2 10 → 2번 10연차)
+			Matcher s5GachaM = Pattern.compile("^/(동료뽑기|장비뽑기)(\\d+)?$").matcher(param0);
+			if (s5GachaM.matches()) {
+				String s5GachaBase = "/" + s5GachaM.group(1);
+				String s5GachaAttached = s5GachaM.group(2);
+				if (s5GachaAttached != null) {
+					boolean s5GachaTen = "10".equals(param1 == null ? "" : param1.trim());
+					param0 = s5GachaBase + (s5GachaTen ? "10" : "");
+					param1 = s5GachaAttached;
+					reqMap.put("param0", param0);
+					reqMap.put("param1", param1);
+				} else if (param1 == null || param1.trim().isEmpty()) {
+					param1 = "1";
+					reqMap.put("param1", param1);
+				}
+			}
+
 			switch (param0) {
 			case "/낚시":
 				val = s4.fishing(reqMap);
@@ -577,6 +595,9 @@ public class LoaChatController {
 				break;
 			case "/파티편성":
 				val = s5.party(reqMap);
+				break;
+			case "/동료가리기":
+				val = s5.hideCompanion(reqMap);
 				break;
 			case "/탑현황":
 				val = s5.towerStatus(reqMap);

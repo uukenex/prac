@@ -28,6 +28,12 @@ public interface BotS5DAO {
     int selectTileVisitCount(@Param("userName") String userName, @Param("floor") int floor, @Param("tileNo") int tileNo);
     int deleteTileVisits(@Param("userName") String userName, @Param("floor") int floor);
     List<HashMap<String, Object>> selectVisitedTileNos(@Param("userName") String userName, @Param("floor") int floor);
+    int upsertUserFloorBest(HashMap<String, Object> map);
+    HashMap<String, Object> selectUserFloorBest(@Param("userName") String userName, @Param("floor") int floor);
+    int countFullyExploredFloors(@Param("userName") String userName);
+
+    // ── /탑현황 닉네임 검색 (시즌2~4의 selectS4UserSearch와 동일 패턴: 앞부분 일치 LIKE) ──
+    List<String> selectS5UserSearch(@Param("param1") String param1);
 
     // ── 몬스터 ──
     HashMap<String, Object> selectMonster(@Param("blockNo") int blockNo, @Param("bossYn") String bossYn);
@@ -38,6 +44,7 @@ public interface BotS5DAO {
     int insertCompanion(HashMap<String, Object> map);
     int updateCompanionHp(HashMap<String, Object> map);
     int updateCompanionPartySlot(HashMap<String, Object> map);
+    int updateCompanionHidden(HashMap<String, Object> map);
 
     // ── 업적 ──
     List<HashMap<String, Object>> selectAchievementList();

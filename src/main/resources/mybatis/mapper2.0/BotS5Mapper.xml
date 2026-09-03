@@ -90,6 +90,38 @@
         DELETE FROM TBOT_S5_USER_FLOOR_PROGRESS WHERE USER_NAME = #{userName} AND FLOOR = #{floor}
     </delete>
 
+    <!-- 마을 복귀로 CUR_TILE/방문기록이 지워지기 전, 이번 원정의 발견 칸 수를 역대 최고기록에 반영(GREATEST) -->
+    <insert id="upsertUserFloorBest" parameterType="hashmap">
+        MERGE INTO TBOT_S5_USER_FLOOR_BEST T
+        USING (SELECT #{userName} AS U, #{floor} AS F FROM DUAL) S
+        ON (T.USER_NAME = S.U AND T.FLOOR = S.F)
+        WHEN MATCHED THEN
+            UPDATE SET BEST_VISITED_COUNT = GREATEST(T.BEST_VISITED_COUNT, #{visited}),
+                       TILE_COUNT = #{tileCount},
+                       FULLY_EXPLORED_YN = CASE WHEN GREATEST(T.BEST_VISITED_COUNT, #{visited}) >= #{tileCount} AND #{tileCount} > 0 THEN 'Y' ELSE T.FULLY_EXPLORED_YN END,
+                       UPDATE_DATE = SYSDATE
+        WHEN NOT MATCHED THEN
+            INSERT (USER_NAME, FLOOR, BEST_VISITED_COUNT, TILE_COUNT, FULLY_EXPLORED_YN)
+            VALUES (#{userName}, #{floor}, #{visited}, #{tileCount}, CASE WHEN #{visited} >= #{tileCount} AND #{tileCount} > 0 THEN 'Y' ELSE 'N' END)
+    </insert>
+
+    <select id="selectUserFloorBest" resultType="hashmap">
+        SELECT USER_NAME, FLOOR, BEST_VISITED_COUNT, TILE_COUNT, FULLY_EXPLORED_YN
+        FROM TBOT_S5_USER_FLOOR_BEST WHERE USER_NAME = #{userName} AND FLOOR = #{floor}
+    </select>
+
+    <select id="countFullyExploredFloors" resultType="int">
+        SELECT COUNT(*) FROM TBOT_S5_USER_FLOOR_BEST WHERE USER_NAME = #{userName} AND FULLY_EXPLORED_YN = 'Y'
+    </select>
+
+    <!-- /탑현황 닉네임 앞부분 일치 검색 (시즌2~4 selectS4UserSearch와 동일 패턴) -->
+    <select id="selectS5UserSearch" parameterType="HashMap" resultType="String">
+        SELECT USER_NAME
+          FROM TBOT_S5_USER_PROGRESS
+         WHERE UPPER(USER_NAME) LIKE UPPER(#{param1,jdbcType=VARCHAR}) || '%'
+         ORDER BY USER_NAME
+    </select>
+
     <!-- 방문(발견) 기록. 이미 있으면 VISIT_COUNT 증가(재방문 횟수 추적, SPECIAL/SHOP은 2회차부터 전투로 전환) -->
     <insert id="insertTileVisit">
         MERGE INTO TBOT_S5_USER_TILE_VISIT T
@@ -129,11 +161,16 @@
 
     <!-- ==================== 동료 ==================== -->
     <select id="selectUserCompanions" resultType="hashmap">
-        SELECT COMPANION_ID, USER_NAME, CLASS, GRADE, NAME, IMAGE_URL, CUR_HP_VALUE, CUR_HP_EXT, PARTY_SLOT
+        SELECT COMPANION_ID, USER_NAME, CLASS, GRADE, NAME, IMAGE_URL, CUR_HP_VALUE, CUR_HP_EXT, PARTY_SLOT,
+               NVL(HIDDEN_YN, 'N') AS HIDDEN_YN
         FROM TBOT_S5_USER_COMPANION
         WHERE USER_NAME = #{userName}
         ORDER BY PARTY_SLOT NULLS LAST, COMPANION_ID
     </select>
+
+    <update id="updateCompanionHidden" parameterType="hashmap">
+        UPDATE TBOT_S5_USER_COMPANION SET HIDDEN_YN = #{hiddenYn} WHERE COMPANION_ID = #{companionId}
+    </update>
 
     <select id="countUserCompanions" resultType="int">
         SELECT COUNT(*) FROM TBOT_S5_USER_COMPANION WHERE USER_NAME = #{userName}

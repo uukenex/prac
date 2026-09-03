@@ -36,16 +36,21 @@ public class PP {
 	@Override
 	public String toString() {
 		PP n = normalize();
-		return n.unit.isEmpty()
-				? String.format("%.2f", n.value)
-				: String.format("%.2f%s", n.value, n.unit);
+		return formatNumber(n.value) + n.unit;
 	}
 
 	public String format() {
 		PP n = normalize();
-		return n.unit.isEmpty()
-				? String.format("%.2f", n.value)
-				: String.format("%.2f%s", n.value, n.unit);
+		return formatNumber(n.value) + n.unit;
+	}
+
+	// 정수면 소수점 없이("1"), 아니면 소수 둘째자리까지("1.50") 표기
+	private static String formatNumber(double v) {
+		BigDecimal bd = BigDecimal.valueOf(v).setScale(2, RoundingMode.HALF_UP);
+		if (bd.stripTrailingZeros().scale() <= 0) {
+			return bd.setScale(0, RoundingMode.HALF_UP).toPlainString();
+		}
+		return bd.toPlainString();
 	}
 
 	public PP normalize() {
