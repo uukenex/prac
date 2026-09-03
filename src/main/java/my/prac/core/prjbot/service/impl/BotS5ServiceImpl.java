@@ -608,7 +608,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                 HashMap<String, Object> mon = dao.selectMonster(blockNo(floor), "N");
                 PP basePp = mon == null ? PP.of(1, "")
                         : PP.of(((Number) mon.get("PP_PER_KILL_VALUE")).doubleValue(), strVal(mon.get("PP_PER_KILL_EXT"), "")).multiply(floorPpMultiplier(floor));
-                String[] luckyEffects = { "PP_BONUS", "ATK_UP", "DEF_UP", "HEAL" };
+                String[] luckyEffects = { "PP_BONUS", "ATK_UP", "DEF_UP", "REVIVE" };
                 String luckyEffect = luckyEffects[RND.nextInt(luckyEffects.length)];
                 switch (luckyEffect) {
                     case "ATK_UP":
@@ -625,16 +625,18 @@ public class BotS5ServiceImpl implements BotS5Service {
                         }
                         break;
                     }
-                    case "HEAL": {
-                        List<HashMap<String, Object>> healParty = new ArrayList<>();
+                    case "REVIVE": {
+                        // 완전회복이 아니라 부활 -- 전투불가(HP 0) 상태인 동료만 되살리고, 이미
+                        // 살아있는 동료의 HP는 건드리지 않는다(마을 도착 부활과 동일 정책).
+                        List<HashMap<String, Object>> reviveParty = new ArrayList<>();
                         for (HashMap<String, Object> c : dao.selectUserCompanions(userName)) {
-                            if (c.get("PARTY_SLOT") != null) healParty.add(c);
+                            if (c.get("PARTY_SLOT") != null) reviveParty.add(c);
                         }
-                        if (healParty.isEmpty()) {
-                            sb.append("🍀 럭키 칸! 몸이 개운해지는 기운을 느꼈지만... 파티가 비어있어 효과가 없었다.");
+                        int revived = reviveParty.isEmpty() ? 0 : revivePartyDead(userName, reviveParty, dao.selectUserStat(userName));
+                        if (revived > 0) {
+                            sb.append("🍀 럭키 칸! 전투불가 상태였던 동료 ").append(revived).append("명이 부활했습니다!");
                         } else {
-                            healPartyFull(userName, healParty, dao.selectUserStat(userName));
-                            sb.append("🍀 럭키 칸! 파티 전원의 체력이 완전히 회복되었습니다!");
+                            sb.append("🍀 럭키 칸! 신비로운 기운을 느꼈지만... 부활시킬 동료가 없어 효과가 없었다.");
                         }
                         break;
                     }
@@ -969,6 +971,12 @@ public class BotS5ServiceImpl implements BotS5Service {
                 // 어차피 재진입 불가(과거 구간 복귀 불가 규칙) -- 그 구간의 보드 위치/발견기록도
                 // 함께 초기화한다. (마을로만 돌아갔을 때 그 층 하나만 지우는 것과 별개 케이스)
                 resetBlockExploration(userName, prevBlockBase);
+                // 새 구간 마을에 도착하는 셈이므로(changeFloor의 마을 도착 부활과 동일 이유),
+                // 이 보스전에서 전투불가가 된 동료가 있으면 여기서 부활시킨다.
+                int revivedOnBossClear = revivePartyDead(userName, party, userStat);
+                if (revivedOnBossClear > 0) {
+                    sb.append("✨ 전투불가 상태였던 동료 ").append(revivedOnBossClear).append("명이 마을에서 부활했습니다!").append(NL);
+                }
             } else {
                 up.put("killCountCur", killCountCur >= 10 ? 0 : killCountCur);
                 if (killCountCur >= 10) {
@@ -984,7 +992,8 @@ public class BotS5ServiceImpl implements BotS5Service {
             addPp(userName, p, reward);
             checkKillAchievements(userName, totalKill);
             sb.append(reward.format()).append(" PP 획득!");
-            healPartyFull(userName, party, userStat);
+            // [변경] 승리해도 더 이상 파티 전원을 풀피로 되돌리지 않음 -- HP는 전투 결과 그대로
+            // 이어지고, 전투불가(HP 0)가 된 동료는 마을에 돌아가야 부활한다(또는 럭키칸 효과).
             return sb.toString();
         }
 
@@ -1015,8 +1024,9 @@ public class BotS5ServiceImpl implements BotS5Service {
             defeatUp.put("status", "NORMAL");
             defeatUp.put("clearMonster", true);
             dao.updateUserProgress(defeatUp);
-            healPartyFull(userName, party, userStat);
-            sb.append("💀 파티 전멸... 전투에 패배했습니다. 동료들이 마을에서 회복 후 다시 도전하세요.");
+            // [변경] 예전엔 여기서 바로 풀피로 되돌렸는데, 그러면 안내 문구("마을에서 회복")가
+            // 거짓말이 됨. 이제 정말로 마을에 돌아가야(changeFloor) 부활한다.
+            sb.append("💀 파티 전멸... 전투에 패배했습니다. 동료들이 전투불가 상태로 남습니다 -- 마을로 돌아가야 부활합니다.");
             return sb.toString();
         }
 
@@ -1091,8 +1101,20 @@ public class BotS5ServiceImpl implements BotS5Service {
         return sb.toString();
     }
 
-    private void healPartyFull(String userName, List<HashMap<String, Object>> party, HashMap<String, Object> userStat) {
+    /**
+     * 전투불가(HP 0)인 동료만 최대 HP로 되살린다("부활") -- 이미 살아있는 동료의 HP는 건드리지
+     * 않는다. 예전엔 전투가 끝날 때마다(승리/전멸 모두) 파티 전원을 무조건 풀피로 되돌렸는데,
+     * 그러면 "전투 중 사망 → 마을에 가야 부활"이라는 의도가 무색해져서(전투만 이기면 어차피
+     * 바로 다시 풀피) 이 방식으로 교체했다. 실제 부활은 이 메서드가 호출되는 곳에서만 일어남:
+     * (1) 마을 도착(changeFloor), (2) 보스 처치로 새 구간 마을에 자동 도착할 때, (3) 럭키칸의
+     * "부활" 효과.
+     * @return 실제로 되살아난 동료 수
+     */
+    private int revivePartyDead(String userName, List<HashMap<String, Object>> party, HashMap<String, Object> userStat) {
+        int revived = 0;
         for (HashMap<String, Object> c : party) {
+            PP hp = PP.of(((Number) c.get("CUR_HP_VALUE")).doubleValue(), strVal(c.get("CUR_HP_EXT"), ""));
+            if (PP.toBaseValue(hp) > 0) continue; // 이미 살아있으면 그대로 둠
             String job = strVal(c.get("CLASS"), "WARRIOR");
             int grade = intVal(c.get("GRADE"), 1);
             List<HashMap<String, Object>> equips = dao.selectEquipByCompanion(intVal(c.get("COMPANION_ID"), 0));
@@ -1102,7 +1124,9 @@ public class BotS5ServiceImpl implements BotS5Service {
             up.put("curHpValue", (double) eff[0]);
             up.put("curHpExt", "");
             dao.updateCompanionHp(up);
+            revived++;
         }
+        return revived;
     }
 
     private HashMap<String, Object> findMonsterById(int floor, int monsterId) {
@@ -1227,6 +1251,18 @@ public class BotS5ServiceImpl implements BotS5Service {
             dao.deleteTileVisits(userName, floor);
         }
 
+        // 마을(X0층) 도착 시 전투불가(HP 0) 상태였던 파티원을 부활시킨다 -- 전투 승리/패배로는
+        // 더 이상 자동으로 되살아나지 않으므로, 부활은 이 경로(또는 럭키칸)로만 일어난다.
+        boolean arrivedAtVillage = target % 10 == 0 && floor != target;
+        int revivedCount = 0;
+        if (arrivedAtVillage) {
+            List<HashMap<String, Object>> villageParty = new ArrayList<>();
+            for (HashMap<String, Object> c : dao.selectUserCompanions(userName)) {
+                if (c.get("PARTY_SLOT") != null) villageParty.add(c);
+            }
+            revivedCount = revivePartyDead(userName, villageParty, dao.selectUserStat(userName));
+        }
+
         StringBuilder sb = new StringBuilder(userName).append("님," + NL);
         if (wasInCombat) {
             sb.append("💨 전투에서 도망쳤습니다!").append(NL);
@@ -1247,6 +1283,9 @@ public class BotS5ServiceImpl implements BotS5Service {
                     sb.append(NL).append("🏆 [").append(floor).append("층 완전탐사] 업적 달성! 동료뽑기권 1장 지급!");
                 }
             }
+        }
+        if (revivedCount > 0) {
+            sb.append(NL).append("✨ 전투불가 상태였던 동료 ").append(revivedCount).append("명이 마을에서 부활했습니다!");
         }
 
         int tm = target % 10;
