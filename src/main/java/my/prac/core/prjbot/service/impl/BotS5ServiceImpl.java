@@ -2,10 +2,8 @@ package my.prac.core.prjbot.service.impl;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
-import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -41,13 +39,14 @@ public class BotS5ServiceImpl implements BotS5Service {
     // 다른 시즌들과 동일하게 절대경로로 고정한다(LoaChatController/BossAttackController 등 참고).
     private static final String TOWER_VIEW_URL = "http://rgb-tns.dev-apc.com/loa/tower-view";
 
-    /** tower-view SPA 링크 + userName 쿼리파라미터(URL 인코딩) -- 클릭하면 그 유저 화면이 바로 뜨도록. */
+    /**
+     * tower-view SPA 링크 + userName 쿼리파라미터 -- 클릭하면 그 유저 화면이 바로 뜨도록.
+     * [2026-09-03] 한글을 %XX로 URL 인코딩하면 채팅 텍스트에서 알아보기 어렵다는 요청으로
+     * 인코딩 없이 원문 그대로 붙인다. (예전엔 카톡 등 채팅앱의 링크 자동인식이 원문 한글에서
+     * 끊기는 문제 때문에 인코딩을 넣었던 것으로 보임 -- 다시 끊기면 그때 재검토)
+     */
     private String towerViewLink(String userName) {
-        try {
-            return TOWER_VIEW_URL + "?userName=" + URLEncoder.encode(userName, "UTF-8");
-        } catch (UnsupportedEncodingException e) {
-            return TOWER_VIEW_URL + "?userName=" + userName; // UTF-8은 항상 지원되므로 사실상 발생 안 함
-        }
+        return TOWER_VIEW_URL + "?userName=" + userName;
     }
 
     private static final String[] JOB_KEYS = { "WARRIOR", "MAGE", "ROGUE", "ARCHER", "PRIEST" };
