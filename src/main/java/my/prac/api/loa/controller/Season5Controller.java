@@ -15,7 +15,7 @@ import my.prac.core.prjbot.service.BotS5Service;
  * 명령어:
  *   /주사위, /ㅈㅅㅇ  — 이동(비전투) 또는 공격(전투 중)
  *   /층변경 N         — 같은 10층 구간 내 이동 (예: 33층에서 /층변경 9 → 39층)
- *   /파티편성 [N]     — 동료 목록 조회 / N번째 동료 파티 편성·해제
+ *   /파티편성 [N]     — 동료 목록 조회 / N번째 동료 파티 편성·해제 (별칭: /탑편성, /탑동료, /ㅌㅍㅅ, /ㅌㄷㄹ)
  *   /탑현황 [닉네임]   — 현재 층/PP/상태 조회. 닉네임을 붙이면 다른 유저 조회(부분 입력 시 앞부분 일치 검색)
  *   /탑도움말, /탑명령어 — 웹(SPA) 탭 기능을 포함한 전체 명령어 안내
  *   /탑업적           — 달성한 업적 이름만 조회
@@ -26,6 +26,7 @@ import my.prac.core.prjbot.service.BotS5Service;
  *   /장비목록         — 보유 장비 조회
  *   /장비장착 N [M]   — N번째 미착용 장비를 M번째(생략 시 자동) 파티원에 장착
  *   /장비합성 N       — N번째 장비 포함 동일 장비 3개를 상위 등급으로 합성
+ *   /장비해제 M       — M번째 파티원이 착용 중인 장비 전부 해제 (별칭: /탑해제, /ㅈㅂㅎㅈ, /ㅌㅎㅈ)
  *
  * 설계서: src/main/resources/ddl/S5_TOWER_DESIGN.md
  */
@@ -185,6 +186,16 @@ public class Season5Controller {
         if (param1.isEmpty()) return "사용법: /장비합성 N (N=미착용 장비 번호)";
         try {
             return s5Service.equipSynthesis(userNameOf(map), Integer.parseInt(param1));
+        } catch (NumberFormatException e) {
+            return "번호는 숫자로 입력해주세요.";
+        }
+    }
+
+    public String equipUnwearAll(HashMap<String, Object> map) {
+        String param1 = param1Of(map);
+        if (param1.isEmpty()) return "사용법: /장비해제 M (M=파티원 번호, /파티편성에서 확인)";
+        try {
+            return s5Service.equipUnwearAll(userNameOf(map), Integer.parseInt(param1));
         } catch (NumberFormatException e) {
             return "번호는 숫자로 입력해주세요.";
         }

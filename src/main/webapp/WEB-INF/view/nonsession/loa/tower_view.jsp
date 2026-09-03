@@ -730,7 +730,11 @@ var TW = (function () {
           return PART_KR[part] + (found ? ' ★' + found.GRADE : ' 미착용');
         }).join(' / ');
         var name = c.NAME || (JOB_KR[c.CLASS] || c.CLASS);
-        row.innerHTML = '<span>[파티' + c.PARTY_SLOT + '] ' + name + ' (' + (JOB_KR[c.CLASS] || c.CLASS) + ' ★' + c.GRADE + ') — ' + parts + '</span>';
+        var hasAnyEquip = mine.length > 0;
+        row.innerHTML = '<span>[파티' + c.PARTY_SLOT + '] ' + name + ' (' + (JOB_KR[c.CLASS] || c.CLASS) + ' ★' + c.GRADE + ') — ' + parts + '</span>'
+            + (hasAnyEquip
+                ? '<span class="btn-group"><button class="ten" onclick="TW.action(\'EQUIP_UNWEAR_ALL\',\'' + c.PARTY_SLOT + '\')">전체해제</button></span>'
+                : '');
         partyBox.appendChild(row);
       });
 

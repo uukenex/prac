@@ -513,7 +513,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         sb.append(NL);
 
         sb.append("[동료] (웹 '파티' 탭) — 파티 편성/해제는 전투 중이 아니면 어디서든 가능").append(NL);
-        sb.append("/파티편성 : 보유 동료 목록 + 파티 편성 현황 조회").append(NL);
+        sb.append("/파티편성 (별칭: /탑편성, /탑동료, /ㅌㅍㅅ, /ㅌㄷㄹ) : 보유 동료 목록 + 파티 편성 현황 조회").append(NL);
         sb.append("/파티편성 N : 목록 N번째 동료를 파티에 편성/해제 (전투 중이 아니면 어디서든)").append(NL);
         sb.append("/동료가리기 N : 목록 N번째 동료를 /파티편성 텍스트 목록에서 숨김/숨김해제(웹 화면엔 항상 표시)").append(NL);
         sb.append(NL);
@@ -531,6 +531,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         sb.append("/장비목록 : 보유 장비 조회 (미착용은 번호 + 스탯 보너스, 착용중인 건 누가 끼고 있는지 표시)").append(NL);
         sb.append("/장비장착 [N] [M] : 인자 없이 입력하면 미착용 장비 번호·파티원 번호를 먼저 안내. N=미착용 장비 번호, M=파티원 번호(생략 시 같은 직업 자동탐색)").append(NL);
         sb.append("/장비합성 N : N번째 장비 포함 동일 직업/부위/등급 미착용 장비 3개를 상위 등급 1개로 합성 (★6 불가, /장비목록의 [미착용] 번호 기준)").append(NL);
+        sb.append("/장비해제 M (별칭: /탑해제, /ㅈㅂㅎㅈ, /ㅌㅎㅈ) : M번째 파티원이 착용 중인 장비(투구/무기/갑옷) 전부를 한 번에 해제").append(NL);
         sb.append(NL);
 
         sb.append("[업적] (웹 '업적' 탭)").append(NL);
@@ -2405,6 +2406,36 @@ public class BotS5ServiceImpl implements BotS5Service {
         String targetName = strVal(targetCompanion.get("NAME"), targetJob);
         return "🎽 " + targetJob + "(" + targetName + ")에게 " + partNameOf(part) + " ★" + grade
                 + " (" + equipBonusText(part, grade) + ") 장착 완료!";
+    }
+
+    /** /장비해제 M — M번째 파티원(equipWear의 companionIdx와 동일 기준)이 착용 중인 장비 전부 해제 */
+    @Override
+    @Transactional
+    public String equipUnwearAll(String userName, int companionIdx) {
+        HashMap<String, Object> progress = getOrInitProgress(userName);
+        if ("IN_COMBAT".equals(strVal(progress.get("STATUS"), "NORMAL"))) {
+            return "전투 중에는 장비를 변경할 수 없습니다.";
+        }
+        List<HashMap<String, Object>> party = new ArrayList<>();
+        for (HashMap<String, Object> c : dao.selectUserCompanions(userName)) {
+            if (c.get("PARTY_SLOT") != null) party.add(c);
+        }
+        if (companionIdx < 1 || companionIdx > party.size()) return "잘못된 동료 번호입니다. /파티편성을 확인하세요.";
+        HashMap<String, Object> target = party.get(companionIdx - 1);
+        int companionId = intVal(target.get("COMPANION_ID"), 0);
+
+        List<HashMap<String, Object>> equipped = dao.selectEquipByCompanion(companionId);
+        String job = JOB_NAME.getOrDefault(strVal(target.get("CLASS"), ""), "?");
+        String name = strVal(target.get("NAME"), job);
+        if (equipped.isEmpty()) return job + "(" + name + ")은(는) 착용 중인 장비가 없습니다.";
+
+        for (HashMap<String, Object> e : equipped) {
+            HashMap<String, Object> unwear = new HashMap<>();
+            unwear.put("equipId", intVal(e.get("EQUIP_ID"), 0));
+            unwear.put("equippedCompanionId", null);
+            dao.updateEquipEquippedCompanion(unwear);
+        }
+        return "🧺 " + job + "(" + name + ")의 장비 " + equipped.size() + "개를 전부 해제했습니다. (/장비목록의 [미착용]으로 이동)";
     }
 
     @Override

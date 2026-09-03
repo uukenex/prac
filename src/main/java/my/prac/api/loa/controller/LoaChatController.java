@@ -594,6 +594,10 @@ public class LoaChatController {
 				val = s5.changeFloor(reqMap);
 				break;
 			case "/파티편성":
+			case "/탑편성":
+			case "/탑동료":
+			case "/ㅌㅍㅅ":
+			case "/ㅌㄷㄹ":
 				val = s5.party(reqMap);
 				break;
 			case "/동료가리기":
@@ -635,6 +639,12 @@ public class LoaChatController {
 				break;
 			case "/장비합성":
 				val = s5.equipSynthesis(reqMap);
+				break;
+			case "/장비해제":
+			case "/탑해제":
+			case "/ㅈㅂㅎㅈ":
+			case "/ㅌㅎㅈ":
+				val = s5.equipUnwearAll(reqMap);
 				break;
 			case "/테스트":
 				val = play.testMethod(reqMap);

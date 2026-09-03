@@ -198,7 +198,7 @@ public class Season5ViewController {
     /**
      * 통합 액션 엔드포인트. 채팅 명령어(/주사위 등)와 동일한 BotS5Service 로직을 그대로 호출한다.
      * GET /loa/api/tower-action?userName=..&type=DICE|CHANGE_FLOOR|PARTY_TOGGLE|GACHA_COMPANION|
-     *     GACHA_EQUIP|DICE_BUY|STAT_BUY|EQUIP_WEAR|EQUIP_SYNTH&param1=&param2=
+     *     GACHA_EQUIP|DICE_BUY|STAT_BUY|EQUIP_WEAR|EQUIP_SYNTH|EQUIP_UNWEAR_ALL&param1=&param2=
      */
     @GetMapping("/api/tower-action")
     @ResponseBody
@@ -253,6 +253,9 @@ public class Season5ViewController {
                     break;
                 case "EQUIP_SYNTH":
                     message = s5Service.equipSynthesis(userName, Integer.parseInt(param1));
+                    break;
+                case "EQUIP_UNWEAR_ALL":
+                    message = s5Service.equipUnwearAll(userName, Integer.parseInt(param1));
                     break;
                 default:
                     message = "알 수 없는 액션입니다.";
