@@ -515,10 +515,15 @@ var TW = (function () {
         document.getElementById('achTitle').textContent = '업적 (' + data.clearedCount + '/' + data.total + ')';
         var box = document.getElementById('achList');
         box.innerHTML = '';
-        (data.achievements || []).forEach(function (a) {
+        var list = data.achievements || [];
+        if (list.length === 0) {
+          box.innerHTML = '<div class="ach-row">아직 달성한 업적이 없습니다</div>';
+          return;
+        }
+        list.forEach(function (a) {
           var row = document.createElement('div');
-          row.className = 'ach-row' + (a.DONE ? ' done' : '');
-          row.innerHTML = '<span>' + (a.DONE ? '✅' : '⬜') + '</span><span>' + a.ACH_NAME + ' - ' + a.ACH_DESC + '</span>';
+          row.className = 'ach-row done';
+          row.innerHTML = '<span>✅</span><span>' + a.ACH_NAME + ' - ' + a.ACH_DESC + '</span>';
           box.appendChild(row);
         });
       });

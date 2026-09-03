@@ -98,9 +98,15 @@ public class Season5ViewController {
             info.put("ppPerHourFormatted", perKill.multiply(6 * floorMult).format());
         }
 
+        // 정산 대기 중인(=아직 PP로 못 받은) 시간만 보여줘야 하므로 START_DATE(자동사냥이 최초 켜진 시점,
+        // 계속 플레이해도 안 바뀜)가 아니라 LAST_SETTLE_DATE(가장 최근 정산 시점) 기준으로 계산한다.
+        // 그렇지 않으면 한창 접속해서 플레이 중이어도 자동사냥을 켠 이후 누적 시간이 계속 불어나 보여
+        // "지금 하고 있는데 왜 15시간 경과라고 뜨지?" 같은 혼란이 생긴다.
+        Object lastSettleObj = log.get("LAST_SETTLE_DATE");
         Object startObj = log.get("START_DATE");
-        if (startObj instanceof java.util.Date) {
-            long elapsedMs = System.currentTimeMillis() - ((java.util.Date) startObj).getTime();
+        Object baseObj = lastSettleObj != null ? lastSettleObj : startObj;
+        if (baseObj instanceof java.util.Date) {
+            long elapsedMs = System.currentTimeMillis() - ((java.util.Date) baseObj).getTime();
             info.put("elapsedMinutes", Math.max(0, elapsedMs / 60000));
         }
         return info;
@@ -155,11 +161,11 @@ public class Season5ViewController {
         HashMap<Integer, Boolean> cleared = new HashMap<>();
         for (HashMap<String, Object> m : mine) cleared.put(toInt(m.get("ACH_ID")), true);
 
+        // 달성한 업적만 노출(미달성은 숨김/히든 여부 관계없이 전부 제외) -- /탑업적 채팅 명령어와 동일한 정책
         List<HashMap<String, Object>> visible = new ArrayList<>();
         for (HashMap<String, Object> a : all) {
-            boolean hidden = "Y".equals(String.valueOf(a.get("HIDDEN_YN")));
             boolean done = cleared.containsKey(toInt(a.get("ACH_ID")));
-            if (hidden && !done) continue;
+            if (!done) continue;
             HashMap<String, Object> row = new HashMap<>(a);
             row.put("DONE", done);
             visible.add(row);
