@@ -633,6 +633,22 @@ S4의 `TBOT_S4_ACHIEVEMENT`/`TBOT_S4_USER_ACH` 패턴을 확장 계승. S5에서
   `Season5ViewController` `/api/tower-action?type=REDEEM_COMPANION_TICKET|REDEEM_WEAPON_TICKET`
   (param1=직업 코드), 파티 탭에 보유 수량+직업별 버튼 카드로 노출. 선택권은 원가가 0인 보너스라
   가챠의 "중복 동료 20% PP 환급" 로직은 적용 안 함(알려진 단순화).
+- **[2026-09-04] 선택권 등급 상향 + 층별 완전탐사 보상 상향(`S5_BLOCK_REWARD_SCALING.sql`, 적용
+  완료)**:
+  - **선택권 등급**: 위 4층 그룹 선택권의 등급이 구간(블록)에 따라 오름 — 블록1~3(1~30층)=★3,
+    블록4~5(31~50층)=★4, 블록6~10(51층~)=★5(`checkBlockExploreTicket`). 등급별로 컬럼을 따로
+    둬서(`COMPANION_CHOICE_TICKET`=★3, `_G4`/`_G5`=★4/★5, 무기도 동일) 여러 등급을 동시에
+    보유해도 안 섞임. `redeemCompanionChoiceTicket`/`redeemWeaponChoiceTicket`에 `grade`
+    파라미터 추가(웹 UI가 등급별로 버튼 줄을 나눠 보여주고 그 등급을 그대로 넘김).
+  - **N층 완전탐사 보상 상향**: 기존엔 몇 층이든 "동료뽑기권(범용) 1장" 고정이었는데, 이제
+    3개 블록(=30층)마다 동료뽑기 티어가 한 단계 오르고 그 안에서 지급 수량이 1→3→5로 늘어남
+    (`floorVoucherReward`): 블록1~3(1~30층)=하급×1/3/5, 블록4~6(31~60층)=중급×1/3/5,
+    블록7~9(61~90층)=상급×1/3/5, 블록10(91~98층)=최상급×1. 이 보상은 **티어락 뽑기권**
+    (`COMPANION_VOUCHER_T1~T4`, `TBOT_S5_GACHA_MASTER`의 COMPANION GACHA_ID 1~4와 매칭)이라
+    지급받은 그 등급 계약서에만 쓸 수 있고, 기존 범용 `COMPANION_VOUCHER`(비밀상점 등에서 지급,
+    아무 해금 티어에나 사용 가능)와는 별개 컬럼 — `consumeCompanionVoucher`가 가챠 시도 시
+    티어락 권을 먼저 확인하고 없으면 범용 권으로 폴백. SPA 상점탭도 티어별 보유 수량을 칩+뽑기
+    버튼 무료표시에 반영(`companionVoucherByTier`).
 
 ### 알려진 단순화(설계 가정)
 

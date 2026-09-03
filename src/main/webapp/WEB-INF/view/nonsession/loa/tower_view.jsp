@@ -633,39 +633,41 @@ var TW = (function () {
   // 10층 구간 완전탐사 보상(★3 선택권)은 채팅 명령어 없이 이 웹 화면에서만 쓸 수 있다.
   // /api/tower-status가 내려주는 progress(p)에 COMPANION_CHOICE_TICKET/WEAPON_CHOICE_TICKET
   // 이 이미 포함돼 있어서(BotS5Mapper selectUserProgress) 별도 API 없이 바로 씀.
+  // 선택권 등급(3/4/5)은 그 선택권을 지급한 10층 구간(블록)에 따라 이미 정해져 있어서
+  // (블록1~3=★3, 4~5=★4, 6~10=★5) 여러 등급을 동시에 들고 있을 수 있다 -- 등급별로 줄을 나눠 표시.
   function renderTickets(p) {
-    var compTix = p.COMPANION_CHOICE_TICKET || 0;
-    var weapTix = p.WEAPON_CHOICE_TICKET || 0;
+    var compByGrade = { 3: p.COMPANION_CHOICE_TICKET || 0, 4: p.COMPANION_CHOICE_TICKET_G4 || 0, 5: p.COMPANION_CHOICE_TICKET_G5 || 0 };
+    var weapByGrade = { 3: p.WEAPON_CHOICE_TICKET || 0, 4: p.WEAPON_CHOICE_TICKET_G4 || 0, 5: p.WEAPON_CHOICE_TICKET_G5 || 0 };
+    var totalTix = compByGrade[3] + compByGrade[4] + compByGrade[5] + weapByGrade[3] + weapByGrade[4] + weapByGrade[5];
     var card = document.getElementById('ticketCard');
     var box = document.getElementById('ticketBox');
-    if (compTix <= 0 && weapTix <= 0) { card.style.display = 'none'; return; }
+    if (totalTix <= 0) { card.style.display = 'none'; return; }
     card.style.display = '';
     box.innerHTML = '';
 
-    function jobPickerRow(label, count, actionType) {
+    function jobPickerRow(label, count, actionType, grade) {
+      if (count <= 0) return;
       var row = document.createElement('div');
       row.className = 'shop-row';
       row.style.flexWrap = 'wrap';
       var head = document.createElement('span');
       head.textContent = label + ' ' + count + '장';
       row.appendChild(head);
-      if (count > 0) {
-        var picker = document.createElement('span');
-        picker.className = 'btn-group';
-        picker.style.flexWrap = 'wrap';
-        JOB_ORDER.forEach(function (job) {
-          var btn = document.createElement('button');
-          btn.textContent = JOB_KR[job];
-          btn.onclick = function () { action(actionType, job); };
-          picker.appendChild(btn);
-        });
-        row.appendChild(picker);
-      }
+      var picker = document.createElement('span');
+      picker.className = 'btn-group';
+      picker.style.flexWrap = 'wrap';
+      JOB_ORDER.forEach(function (job) {
+        var btn = document.createElement('button');
+        btn.textContent = JOB_KR[job];
+        btn.onclick = function () { action(actionType, job, String(grade)); };
+        picker.appendChild(btn);
+      });
+      row.appendChild(picker);
       box.appendChild(row);
     }
 
-    if (compTix > 0) jobPickerRow('★3 동료 선택권', compTix, 'REDEEM_COMPANION_TICKET');
-    if (weapTix > 0) jobPickerRow('★3 무기 선택권', weapTix, 'REDEEM_WEAPON_TICKET');
+    [3, 4, 5].forEach(function (g) { jobPickerRow('★' + g + ' 동료 선택권', compByGrade[g], 'REDEEM_COMPANION_TICKET', g); });
+    [3, 4, 5].forEach(function (g) { jobPickerRow('★' + g + ' 무기 선택권', weapByGrade[g], 'REDEEM_WEAPON_TICKET', g); });
   }
 
   // 파티(동료 최대 3명)와 그 동료들에게 장착하는 장비는 한 화면에서 같이 관리한다.
@@ -839,10 +841,15 @@ var TW = (function () {
         var starterFree = data.freeCompanionPullsLeft || 0;
         var companionVoucher = data.companionVoucher || 0;
         var equipVoucher = data.equipVoucher || 0;
+        var voucherByTier = data.companionVoucherByTier || [0, 0, 0, 0]; // [티어1(하급)..티어4(최상급)]
 
         var chipText = [];
         if (starterFree > 0) chipText.push('튜토리얼 무료 ' + starterFree + '회');
         if (companionVoucher > 0) chipText.push('동료뽑기권 ' + companionVoucher + '장');
+        var tierNames = ['하급', '중급', '상급', '최상급'];
+        voucherByTier.forEach(function (n, i) {
+          if (n > 0) chipText.push(tierNames[i] + ' 전용 동료뽑기권 ' + n + '장');
+        });
         if (equipVoucher > 0) chipText.push('장비뽑기권 ' + equipVoucher + '장');
         var freeChip = document.getElementById('shopFreeChip');
         if (chipText.length > 0) {
@@ -858,7 +865,7 @@ var TW = (function () {
           var row = document.createElement('div');
           row.className = 'shop-row';
           // 스타터(1번) 계약서는 튜토리얼 무료도 적용, 나머지는 뽑기권만 적용
-          var isFree = (gi === 0 && starterFree > 0) || companionVoucher > 0;
+          var isFree = (gi === 0 && starterFree > 0) || companionVoucher > 0 || (voucherByTier[gi] || 0) > 0;
           var singleLabel = isFree ? '무료뽑기' : '뽑기';
           // 서버(BotS5Service.gachaCompanion 등)는 이제 GACHA_ID(DB PK)가 아니라 표시번호
           // (1부터, UNLOCK_FLOOR 순 = 이 목록 순서)를 받는다 -- 채팅 명령어 /동료뽑기 N 과

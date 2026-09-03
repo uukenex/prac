@@ -173,6 +173,9 @@ public class BotS5ServiceImpl implements BotS5Service {
 
     // 주사위 해금 계단 [코드, 해금 UNLOCKED_BLOCK]
     private static final String[] DICE_NAMES = { "DICE_6", "DICE_8", "DICE_10", "DICE_12", "DICE_20" };
+
+    // COMPANION 가챠 티어(GACHA_ID 1~4) 이름 -- floorVoucherReward()가 지급하는 티어락 뽑기권 표시용
+    private static final String[] COMPANION_TIER_NAME = { "하급", "중급", "상급", "최상급" };
     private static final int[]    DICE_UNLOCK = { 0, 10, 30, 50, 70 };
 
     // 칸 종류 표시(아이콘+이름)
@@ -306,6 +309,19 @@ public class BotS5ServiceImpl implements BotS5Service {
 
     private int blockNo(int floor) {
         return (floorBlockBase(floor) / 10) + 1;
+    }
+
+    /**
+     * "N층 완전탐사" 업적(ACH_ID 100+floor) 보상 — 3개 블록(=30층)마다 동료뽑기 티어가 한 단계
+     * 오르고, 그 안에서 지급 수량이 1→3→5로 늘어난다: 블록1~3(1~30층)=하급×1/3/5,
+     * 블록4~6(31~60층)=중급×1/3/5, 블록7~9(61~90층)=상급×1/3/5, 블록10(91~98층)=최상급×1.
+     * @return [gachaTier(1~4, COMPANION GACHA_ID와 동일), count]
+     */
+    private int[] floorVoucherReward(int floor) {
+        int block = blockNo(floor); // 1~10
+        int tier = (block - 1) / 3 + 1;      // 1,1,1, 2,2,2, 3,3,3, 4
+        int count = (block - 1) % 3 * 2 + 1; // 1,3,5, 1,3,5, 1,3,5, 1
+        return new int[]{ tier, count };
     }
 
     /**
@@ -703,7 +719,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                 sb.append(NL).append("🏆 이 층을 전부 탐험했습니다! [탐험왕] 업적 달성!");
             }
             if ("Y".equals(strVal(best.get("NEWLY_FULL"), "N"))) {
-                sb.append(NL).append("🏆 [").append(floor).append("층 완전탐사] 업적 달성! 동료뽑기권 1장 지급!");
+                sb.append(NL).append("🏆 [").append(floor).append("층 완전탐사] 업적 달성! ").append(best.get("VOUCHER_MSG"));
                 Object ticketMsg = best.get("BLOCK_TICKET_MSG");
                 if (ticketMsg != null) sb.append(NL).append(ticketMsg);
             }
@@ -957,8 +973,26 @@ public class BotS5ServiceImpl implements BotS5Service {
         return true;
     }
 
-    /** 보유한 동료 무료뽑기권이 있으면 1장 소비하고 true, 없으면 false(비용 정상 차감 필요). */
-    private boolean consumeCompanionVoucher(String userName, HashMap<String, Object> p) {
+    /**
+     * 보유한 동료 무료뽑기권이 있으면 1장 소비하고 true, 없으면 false(비용 정상 차감 필요).
+     * gachaId(=COMPANION 가챠 티어 1~4)에 락된 티어별 권(N층 완전탐사 보상, COMPANION_VOUCHER_T1~4)
+     * 을 먼저 확인하고, 없으면 기존 범용 권(COMPANION_VOUCHER, 비밀상점 등에서 지급되어 아무
+     * 해금된 티어에나 쓸 수 있음)으로 폴백한다.
+     */
+    private boolean consumeCompanionVoucher(String userName, HashMap<String, Object> p, int gachaId) {
+        if (gachaId >= 1 && gachaId <= 4) {
+            String field = "companionVoucherT" + gachaId;
+            String column = "COMPANION_VOUCHER_T" + gachaId;
+            int tierCur = intVal(p.get(column), 0);
+            if (tierCur > 0) {
+                HashMap<String, Object> up = new HashMap<>();
+                up.put("userName", userName);
+                up.put(field, tierCur - 1);
+                dao.updateUserProgress(up);
+                p.put(column, tierCur - 1);
+                return true;
+            }
+        }
         int cur = intVal(p.get("COMPANION_VOUCHER"), 0);
         if (cur <= 0) return false;
         HashMap<String, Object> up = new HashMap<>();
@@ -1583,7 +1617,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                     sb.append(" ✅ 완전탐사 기록 보유(계속 유지됨)");
                 }
                 if ("Y".equals(strVal(floorBest.get("NEWLY_FULL"), "N"))) {
-                    sb.append(NL).append("🏆 [").append(floor).append("층 완전탐사] 업적 달성! 동료뽑기권 1장 지급!");
+                    sb.append(NL).append("🏆 [").append(floor).append("층 완전탐사] 업적 달성! ").append(floorBest.get("VOUCHER_MSG"));
                     Object ticketMsg = floorBest.get("BLOCK_TICKET_MSG");
                     if (ticketMsg != null) sb.append(NL).append(ticketMsg);
                 }
@@ -1645,14 +1679,17 @@ public class BotS5ServiceImpl implements BotS5Service {
         if ("Y".equals(strVal(row.get("FULLY_EXPLORED_YN"), "N")) && grantAchievement(userName, 100 + floor)) {
             row.put("NEWLY_FULL", "Y");
             HashMap<String, Object> prog = dao.selectUserProgress(userName);
-            if (prog != null) {
-                HashMap<String, Object> voucherUp = new HashMap<>();
-                voucherUp.put("userName", userName);
-                voucherUp.put("companionVoucher", intVal(prog.get("COMPANION_VOUCHER"), 0) + 1);
-                dao.updateUserProgress(voucherUp);
-            }
+            int[] reward = floorVoucherReward(floor); // [gachaTier 1~4, count]
+            int tier = reward[0], count = reward[1];
+            String field = "companionVoucherT" + tier;
+            String column = "COMPANION_VOUCHER_T" + tier;
+            HashMap<String, Object> voucherUp = new HashMap<>();
+            voucherUp.put("userName", userName);
+            voucherUp.put(field, intVal(prog == null ? null : prog.get(column), 0) + count);
+            dao.updateUserProgress(voucherUp);
+            row.put("VOUCHER_MSG", COMPANION_TIER_NAME[tier - 1] + " 동료뽑기권 " + count + "장 지급!");
             // 이번에 새로 완전탐사된 층이 속한 10층 구간의 4층 그룹(앞 X1~X4/뒤 X5~X8)이
-            // 이걸로 전부 완전탐사가 됐는지 확인 -- 됐으면 ★3 선택권 지급(웹 UI 전용).
+            // 이걸로 전부 완전탐사가 됐는지 확인 -- 됐으면 선택권 지급(웹 UI 전용, 구간별 등급 상향).
             row.put("BLOCK_TICKET_MSG", checkBlockExploreTicket(userName, floor));
         }
         return row;
@@ -1678,18 +1715,20 @@ public class BotS5ServiceImpl implements BotS5Service {
         int achId = (lowGroup ? 300 : 400) + block;
         if (!grantAchievement(userName, achId)) return null; // 이미 지급됨
 
+        // 선택권 등급도 구간(블록)에 따라 상향: 1~30층(블록1~3)=★3, 31~50층(블록4~5)=★4,
+        // 51층 이후(블록6~10)=★5. 등급별로 컬럼을 따로 둬서(기존 _G3=원래 컬럼 재사용) 여러
+        // 등급의 선택권을 동시에 들고 있어도 섞이지 않게 한다.
+        int ticketGrade = base >= 50 ? 5 : (base >= 30 ? 4 : 3);
         HashMap<String, Object> prog = dao.selectUserProgress(userName);
         HashMap<String, Object> up = new HashMap<>();
         up.put("userName", userName);
-        if (lowGroup) {
-            up.put("companionChoiceTicket", intVal(prog == null ? null : prog.get("COMPANION_CHOICE_TICKET"), 0) + 1);
-        } else {
-            up.put("weaponChoiceTicket", intVal(prog == null ? null : prog.get("WEAPON_CHOICE_TICKET"), 0) + 1);
-        }
+        String field = (lowGroup ? "companionChoiceTicket" : "weaponChoiceTicket") + (ticketGrade == 3 ? "" : "G" + ticketGrade);
+        String column = (lowGroup ? "COMPANION_CHOICE_TICKET" : "WEAPON_CHOICE_TICKET") + (ticketGrade == 3 ? "" : "_G" + ticketGrade);
+        up.put(field, intVal(prog == null ? null : prog.get(column), 0) + 1);
         dao.updateUserProgress(up);
 
         int gStart = groupStart, gEnd = groupStart + 3;
-        return "🎁 [" + gStart + "~" + gEnd + "층 완전탐사] 업적 달성! ★3 " + (lowGroup ? "동료" : "무기")
+        return "🎁 [" + gStart + "~" + gEnd + "층 완전탐사] 업적 달성! ★" + ticketGrade + " " + (lowGroup ? "동료" : "무기")
                 + " 선택권 1장 지급! (웹 화면 파티/장비 탭에서 직업을 골라 사용하세요)";
     }
 
@@ -1929,7 +1968,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         }
 
         boolean free = gachaId == STARTER_GACHA_ID && ownedSoFar < STARTER_FREE_PULLS;
-        if (!free) free = consumeCompanionVoucher(userName, p);
+        if (!free) free = consumeCompanionVoucher(userName, p, gachaId);
         if (!free) {
             PP cost = PP.of(((Number) gacha.get("COST_VALUE")).doubleValue(), strVal(gacha.get("COST_EXT"), ""));
             if (!deductPp(userName, p, cost)) {
@@ -2480,20 +2519,28 @@ public class BotS5ServiceImpl implements BotS5Service {
         return "🧺 " + job + "(" + name + ")의 장비 " + equipped.size() + "개를 전부 해제했습니다. (/장비목록의 [미착용]으로 이동)";
     }
 
+    /** 선택권 등급(3/4/5)에 대응하는 진행상태 컬럼/필드 접미사("" 또는 "G4"/"G5"). */
+    private String ticketSuffix(int grade) {
+        return grade == 3 ? "" : "G" + grade;
+    }
+
     /**
-     * ★3 동료 선택권 사용(웹 UI 전용). 등급/직업이 확정이라 가챠와 달리 실패가 없다.
+     * ★N 동료 선택권 사용(웹 UI 전용). 등급(3/4/5, 구간에 따라 지급된 것 그대로)/직업이
+     * 확정이라 가챠와 달리 실패가 없다.
      * [알려진 단순화] 가챠의 "중복 동료 20% PP 환급"은 여기선 적용 안 함 -- 선택권 자체가
      * 무상 보상이라 이미 원가가 0이고, 중복이어도 이름만 다시 랜덤일 뿐 손해가 아니라서 생략.
      */
     @Override
     @Transactional
-    public String redeemCompanionChoiceTicket(String userName, String job) {
+    public String redeemCompanionChoiceTicket(String userName, String job, int grade) {
+        if (grade != 3 && grade != 4 && grade != 5) return "선택권 등급 값이 올바르지 않습니다.";
         HashMap<String, Object> p = getOrInitProgress(userName);
-        int have = intVal(p.get("COMPANION_CHOICE_TICKET"), 0);
-        if (have <= 0) return "보유한 동료 선택권이 없습니다.";
+        String field = "companionChoiceTicket" + ticketSuffix(grade);
+        String column = "COMPANION_CHOICE_TICKET" + (grade == 3 ? "" : "_G" + grade);
+        int have = intVal(p.get(column), 0);
+        if (have <= 0) return "보유한 ★" + grade + " 동료 선택권이 없습니다.";
         if (!JOB_NAME.containsKey(job)) return "직업 값이 올바르지 않습니다.";
 
-        int grade = 3;
         String[] namePool = NAME_POOL_BY_JOB_GRADE.get(job)[grade - 1];
         String name = namePool[RND.nextInt(namePool.length)];
         int[] stat = calcBaseStat(job, grade);
@@ -2512,22 +2559,24 @@ public class BotS5ServiceImpl implements BotS5Service {
 
         HashMap<String, Object> up = new HashMap<>();
         up.put("userName", userName);
-        up.put("companionChoiceTicket", have - 1);
+        up.put(field, have - 1);
         dao.updateUserProgress(up);
 
-        return "🎉 " + JOB_NAME.get(job) + "(" + name + ") ★3 동료를 획득했습니다! (선택권 사용, 남은 선택권 " + (have - 1) + "장)";
+        return "🎉 " + JOB_NAME.get(job) + "(" + name + ") ★" + grade + " 동료를 획득했습니다! (선택권 사용, 남은 ★" + grade + " 선택권 " + (have - 1) + "장)";
     }
 
-    /** ★3 무기(WEAPON 부위) 선택권 사용(웹 UI 전용). */
+    /** ★N 무기(WEAPON 부위) 선택권 사용(웹 UI 전용). */
     @Override
     @Transactional
-    public String redeemWeaponChoiceTicket(String userName, String job) {
+    public String redeemWeaponChoiceTicket(String userName, String job, int grade) {
+        if (grade != 3 && grade != 4 && grade != 5) return "선택권 등급 값이 올바르지 않습니다.";
         HashMap<String, Object> p = getOrInitProgress(userName);
-        int have = intVal(p.get("WEAPON_CHOICE_TICKET"), 0);
-        if (have <= 0) return "보유한 무기 선택권이 없습니다.";
+        String field = "weaponChoiceTicket" + ticketSuffix(grade);
+        String column = "WEAPON_CHOICE_TICKET" + (grade == 3 ? "" : "_G" + grade);
+        int have = intVal(p.get(column), 0);
+        if (have <= 0) return "보유한 ★" + grade + " 무기 선택권이 없습니다.";
         if (!JOB_NAME.containsKey(job)) return "직업 값이 올바르지 않습니다.";
 
-        int grade = 3;
         HashMap<String, Object> e = new HashMap<>();
         e.put("userName", userName);
         e.put("class", job);
@@ -2538,10 +2587,10 @@ public class BotS5ServiceImpl implements BotS5Service {
 
         HashMap<String, Object> up = new HashMap<>();
         up.put("userName", userName);
-        up.put("weaponChoiceTicket", have - 1);
+        up.put(field, have - 1);
         dao.updateUserProgress(up);
 
-        return "🎉 " + JOB_NAME.get(job) + "용 무기 ★3 (" + equipBonusText("WEAPON", grade) + ") 획득! (선택권 사용, 남은 선택권 " + (have - 1) + "장)";
+        return "🎉 " + JOB_NAME.get(job) + "용 무기 ★" + grade + " (" + equipBonusText("WEAPON", grade) + ") 획득! (선택권 사용, 남은 ★" + grade + " 선택권 " + (have - 1) + "장)";
     }
 
     @Override

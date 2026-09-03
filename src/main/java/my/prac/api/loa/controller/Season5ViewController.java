@@ -164,6 +164,13 @@ public class Season5ViewController {
             result.put("freeCompanionPullsLeft", s5Service.freeCompanionPullsLeft(userName));
             result.put("companionVoucher", progress == null ? 0 : progress.get("COMPANION_VOUCHER"));
             result.put("equipVoucher", progress == null ? 0 : progress.get("EQUIP_VOUCHER"));
+            // 티어락 뽑기권(N층 완전탐사 보상) -- 인덱스 0=티어1(하급)...3=티어4(최상급), COMPANION_GACHA_ID와 매칭
+            result.put("companionVoucherByTier", new int[]{
+                    progress == null ? 0 : toInt(progress.get("COMPANION_VOUCHER_T1")),
+                    progress == null ? 0 : toInt(progress.get("COMPANION_VOUCHER_T2")),
+                    progress == null ? 0 : toInt(progress.get("COMPANION_VOUCHER_T3")),
+                    progress == null ? 0 : toInt(progress.get("COMPANION_VOUCHER_T4")),
+            });
         }
         result.put("companionGacha", s5Dao.selectGachaList("COMPANION", unlocked));
         result.put("equipGacha", s5Dao.selectGachaList("EQUIP", unlocked));
@@ -200,8 +207,8 @@ public class Season5ViewController {
      * GET /loa/api/tower-action?userName=..&type=DICE|CHANGE_FLOOR|PARTY_TOGGLE|GACHA_COMPANION|
      *     GACHA_EQUIP|DICE_BUY|STAT_BUY|EQUIP_WEAR|EQUIP_SYNTH|EQUIP_UNWEAR_ALL|
      *     REDEEM_COMPANION_TICKET|REDEEM_WEAPON_TICKET&param1=&param2=
-     * REDEEM_*_TICKET(param1=직업 코드)는 10층 구간 완전탐사 보상인 ★3 선택권을 쓰는
-     * 기능으로, 웹 UI 전용이다(채팅 명령어로는 노출 안 함 -- 의도적).
+     * REDEEM_*_TICKET(param1=직업 코드, param2=선택권 등급 3/4/5)는 10층 구간 완전탐사
+     * 보상인 선택권을 쓰는 기능으로, 웹 UI 전용이다(채팅 명령어로는 노출 안 함 -- 의도적).
      */
     @GetMapping("/api/tower-action")
     @ResponseBody
@@ -261,10 +268,10 @@ public class Season5ViewController {
                     message = s5Service.equipUnwearAll(userName, Integer.parseInt(param1));
                     break;
                 case "REDEEM_COMPANION_TICKET":
-                    message = s5Service.redeemCompanionChoiceTicket(userName, param1);
+                    message = s5Service.redeemCompanionChoiceTicket(userName, param1, Integer.parseInt(param2));
                     break;
                 case "REDEEM_WEAPON_TICKET":
-                    message = s5Service.redeemWeaponChoiceTicket(userName, param1);
+                    message = s5Service.redeemWeaponChoiceTicket(userName, param1, Integer.parseInt(param2));
                     break;
                 default:
                     message = "알 수 없는 액션입니다.";

@@ -92,16 +92,19 @@ public interface BotS5Service {
     String equipUnwearAll(String userName, int companionIdx);
 
     /**
-     * ★3 동료 선택권 사용 — 10층 구간 앞4층(X1~X4) 완전탐사 보상으로 받은 선택권을 소비해
-     * 직업(job)을 골라 그 등급/직업의 동료를 확정 생성한다. 웹 UI 전용 기능(채팅 명령어 없음).
+     * ★N(grade=3/4/5) 동료 선택권 사용 — 10층 구간 앞4층(X1~X4) 완전탐사 보상으로 받은
+     * 선택권을 소비해 직업(job)을 골라 그 등급/직업의 동료를 확정 생성한다. 등급은 그
+     * 선택권을 지급한 구간(블록 1~3=★3, 4~5=★4, 6~10=★5)에 따라 이미 정해져 있고, 유저는
+     * 보유한 등급 중 무엇을 쓸지와 직업만 고른다. 웹 UI 전용 기능(채팅 명령어 없음).
      */
-    String redeemCompanionChoiceTicket(String userName, String job);
+    String redeemCompanionChoiceTicket(String userName, String job, int grade);
 
     /**
-     * ★3 무기 선택권 사용 — 10층 구간 뒤4층(X5~X8) 완전탐사 보상으로 받은 선택권을 소비해
-     * 직업(job)을 골라 그 직업 전용 무기(WEAPON 부위) ★3을 확정 생성한다. 웹 UI 전용.
+     * ★N(grade=3/4/5) 무기 선택권 사용 — 10층 구간 뒤4층(X5~X8) 완전탐사 보상으로 받은
+     * 선택권을 소비해 직업(job)을 골라 그 직업 전용 무기(WEAPON 부위)를 확정 생성한다.
+     * 웹 UI 전용.
      */
-    String redeemWeaponChoiceTicket(String userName, String job);
+    String redeemWeaponChoiceTicket(String userName, String job, int grade);
 
     /** 유저별 보드(층) 조회 — 없으면 새로 생성(계단1/특수1~2/보물상자1/강화몬스터(3구간부터)+나머지 전투/함정/럭키). 마을 귀환 시 삭제되어 다음 진입 때 재생성됨. */
     List<HashMap<String, Object>> ensureUserBoard(String userName, int floor);
