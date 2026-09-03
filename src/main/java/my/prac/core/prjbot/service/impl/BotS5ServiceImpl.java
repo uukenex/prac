@@ -36,7 +36,9 @@ public class BotS5ServiceImpl implements BotS5Service {
 
     private static final String NL  = "♬";
     private static final Random RND = new Random();
-    private static final String TOWER_VIEW_URL = "/loa/tower-view";
+    // 채팅(카톡 등)에 상대경로만 넣으면 링크가 도메인 없이 잘려 나가서(클릭 불가) 이 프로젝트의
+    // 다른 시즌들과 동일하게 절대경로로 고정한다(LoaChatController/BossAttackController 등 참고).
+    private static final String TOWER_VIEW_URL = "http://rgb-tns.dev-apc.com/loa/tower-view";
 
     /** tower-view SPA 링크 + userName 쿼리파라미터(URL 인코딩) -- 클릭하면 그 유저 화면이 바로 뜨도록. */
     private String towerViewLink(String userName) {
