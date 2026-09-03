@@ -117,11 +117,17 @@ public class BotS5ServiceImpl implements BotS5Service {
         put("TRAP",   "🕳️ 함정");  put("SPECIAL", "✨ 특수"); put("STAIRS", "🪜 계단");
     }};
 
-    // 이동(비전투)/전투 쿨타임(초). DB(TBOT_S5_CONFIG)에서 서버 기동 시(@PostConstruct)
-    // 로드해 메모리에 캐싱하고, /갱신 명령어로 재조회해서 값을 갱신한다. DB 조회 실패
-    // 시엔 아래 기본값을 그대로 사용(서버가 죽지 않도록 방어).
-    private static volatile long MOVE_COOLDOWN_SEC   = 180;
-    private static volatile long COMBAT_COOLDOWN_SEC = 30;
+    // 쿨타임(초) 3종. DB(TBOT_S5_CONFIG)에서 서버 기동 시(@PostConstruct) 로드해 메모리에
+    // 캐싱하고, /갱신 명령어로 재조회해서 값을 갱신한다. DB 조회 실패 시엔 아래 기본값을 그대로
+    // 사용(서버가 죽지 않도록 방어). 다음 액션에 어느 쿨타임이 적용될지는 "지금 상태"가 아니라
+    // "방금 무슨 일이 있었는지"로 정해지므로(칸이동 vs 전투중 vs 막 전투가 끝남) 매 액션마다
+    // NEXT_COOLDOWN_SEC에 값을 직접 저장해둔다(touchDiceCooldown 참고).
+    //   - MOVE_COOLDOWN_SEC   : 칸이동(비전투) 후
+    //   - COMBAT_COOLDOWN_SEC : 전투 중(몬스터가 아직 살아있어 다음 턴으로 이어짐) 후
+    //   - COMBAT_END_COOLDOWN_SEC : 전투가 이번 액션으로 끝났을 때(처치 성공 또는 파티 전멸) 후
+    private static volatile long MOVE_COOLDOWN_SEC       = 15;
+    private static volatile long COMBAT_COOLDOWN_SEC     = 15;
+    private static volatile long COMBAT_END_COOLDOWN_SEC = 100;
 
     /** 서버 기동 시 TBOT_S5_CONFIG를 읽어 메모리(static 필드)에 반영. 실패해도 기본값으로 계속 동작. */
     @PostConstruct
@@ -135,6 +141,8 @@ public class BotS5ServiceImpl implements BotS5Service {
                         MOVE_COOLDOWN_SEC = Long.parseLong(val);
                     } else if ("COMBAT_COOLDOWN_SEC".equals(key)) {
                         COMBAT_COOLDOWN_SEC = Long.parseLong(val);
+                    } else if ("COMBAT_END_COOLDOWN_SEC".equals(key)) {
+                        COMBAT_END_COOLDOWN_SEC = Long.parseLong(val);
                     }
                 } catch (NumberFormatException ignore) {
                     // 파싱 실패한 값은 무시하고 기존(기본) 값 유지
@@ -149,7 +157,8 @@ public class BotS5ServiceImpl implements BotS5Service {
     @Override
     public String refreshConfig() {
         loadConfig();
-        return "🗼 시즌5 설정 갱신 완료 (이동쿨타임 " + MOVE_COOLDOWN_SEC + "초 / 전투쿨타임 " + COMBAT_COOLDOWN_SEC + "초)";
+        return "🗼 시즌5 설정 갱신 완료 (칸이동 " + MOVE_COOLDOWN_SEC + "초 / 전투중 " + COMBAT_COOLDOWN_SEC
+                + "초 / 전투종료 " + COMBAT_END_COOLDOWN_SEC + "초)";
     }
 
     @Override
@@ -472,11 +481,23 @@ public class BotS5ServiceImpl implements BotS5Service {
         }
 
         String status = strVal(p.get("STATUS"), "NORMAL");
-        String cooldownMsg = checkDiceCooldown(p, status);
+        String cooldownMsg = checkDiceCooldown(p);
         if (cooldownMsg != null) return prependAutoHunt(autoHuntMsg, cooldownMsg);
 
         String result = rollDiceInternal(userName, p, status);
-        touchDiceCooldown(userName);
+        // 다음 액션에 적용될 쿨타임은 "이번에 무슨 일이 있었는지"로 결정된다 -- 방금 전투 중이었는데
+        // 이번 액션으로 몬스터가 죽었거나(처치) 파티가 전멸해서 전투가 끝났으면(=CUR_MONSTER_ID가
+        // 이제 없음) 더 긴 "전투종료" 쿨타임을, 아직 몬스터가 살아있어 전투가 이어지면 "전투중"
+        // 쿨타임을, 애초에 전투가 아니었으면(칸이동) "칸이동" 쿨타임을 적용한다.
+        long nextCooldownSec;
+        if ("IN_COMBAT".equals(status)) {
+            HashMap<String, Object> pAfter = dao.selectUserProgress(userName);
+            boolean stillFighting = pAfter != null && pAfter.get("CUR_MONSTER_ID") != null;
+            nextCooldownSec = stillFighting ? COMBAT_COOLDOWN_SEC : COMBAT_END_COOLDOWN_SEC;
+        } else {
+            nextCooldownSec = MOVE_COOLDOWN_SEC;
+        }
+        touchDiceCooldown(userName, nextCooldownSec);
         return prependAutoHunt(autoHuntMsg, result);
     }
 
@@ -484,23 +505,23 @@ public class BotS5ServiceImpl implements BotS5Service {
         return autoHuntMsg == null ? result : autoHuntMsg + NL + NL + result;
     }
 
-    /** LAST_DICE_ACTION_DATE 기준 쿨타임 검사. 아직 남았으면 안내 메시지, 통과면 null. */
-    private String checkDiceCooldown(HashMap<String, Object> p, String status) {
+    /** LAST_DICE_ACTION_DATE + NEXT_COOLDOWN_SEC 기준 쿨타임 검사. 아직 남았으면 안내 메시지, 통과면 null. */
+    private String checkDiceCooldown(HashMap<String, Object> p) {
         if ("Y".equals(strVal(p.get("NO_COOLDOWN_YN"), "N"))) return null; // 특정 유저만 쿨타임 면제(관리자가 직접 부여)
         java.util.Date last = (java.util.Date) p.get("LAST_DICE_ACTION_DATE");
         if (last == null) return null;
-        long cooldownSec = "IN_COMBAT".equals(status) ? COMBAT_COOLDOWN_SEC : MOVE_COOLDOWN_SEC;
+        long cooldownSec = intVal(p.get("NEXT_COOLDOWN_SEC"), (int) MOVE_COOLDOWN_SEC);
         long elapsedSec = (System.currentTimeMillis() - last.getTime()) / 1000;
         if (elapsedSec >= cooldownSec) return null;
         long remain = cooldownSec - elapsedSec;
-        return "⏳ 아직 쿨타임입니다! " + remain + "초 후 다시 시도해주세요." + NL
-                + ("IN_COMBAT".equals(status) ? "(전투 쿨타임 " + COMBAT_COOLDOWN_SEC + "초)" : "(이동 쿨타임 " + MOVE_COOLDOWN_SEC + "초)");
+        return "⏳ 아직 쿨타임입니다! " + remain + "초 후 다시 시도해주세요. (쿨타임 " + cooldownSec + "초)";
     }
 
-    private void touchDiceCooldown(String userName) {
+    private void touchDiceCooldown(String userName, long nextCooldownSec) {
         HashMap<String, Object> up = new HashMap<>();
         up.put("userName", userName);
         up.put("touchDiceCooldown", true);
+        up.put("nextCooldownSec", nextCooldownSec);
         dao.updateUserProgress(up);
     }
 

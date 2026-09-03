@@ -258,4 +258,12 @@ ALTER TABLE TBOT_S5_USER_PROGRESS ADD (
     LUCKY_EFFECT    VARCHAR2(10)
 );
 
+-- which cooldown (seconds) applies to the NEXT dice action, decided and stored at the
+-- moment of THIS action (touchDiceCooldown) rather than re-derived from current STATUS,
+-- because "combat just ended this turn" and "ordinary board move" are both STATUS=NORMAL
+-- afterwards but should use different cooldowns. See checkDiceCooldown()/rollDice().
+ALTER TABLE TBOT_S5_USER_PROGRESS ADD (
+    NEXT_COOLDOWN_SEC NUMBER
+);
+
 EXIT;
