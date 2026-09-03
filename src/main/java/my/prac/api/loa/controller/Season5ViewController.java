@@ -132,6 +132,25 @@ public class Season5ViewController {
         return ResponseEntity.ok(result);
     }
 
+    /** 캐릭터 클릭(확대) 상세 카드용 — 장비/스탯구매 보너스까지 반영한 유효 스탯. 장비 목록은
+     *  이미 /api/tower-equip으로 받아둔 데이터를 화면에서 COMPANION_ID로 필터링해서 재사용한다. */
+    @GetMapping("/api/tower-companion-stat")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerCompanionStat(
+            @RequestParam(value = "userName", defaultValue = "") String userName,
+            @RequestParam(value = "companionId", defaultValue = "0") int companionId) {
+        HashMap<String, Object> result = new HashMap<>();
+        if (userName.trim().isEmpty()) {
+            result.put("error", "유저명을 입력하세요.");
+            return ResponseEntity.ok(result);
+        }
+        int[] eff = s5Service.companionEffectiveStat(userName, companionId);
+        result.put("hp", eff[0]);
+        result.put("atk", eff[1]);
+        result.put("def", eff[2]);
+        return ResponseEntity.ok(result);
+    }
+
     @GetMapping("/api/tower-shop")
     @ResponseBody
     public ResponseEntity<?> apiTowerShop(@RequestParam(value = "userName", defaultValue = "") String userName) {

@@ -448,8 +448,10 @@ public class BotS5ServiceImpl implements BotS5Service {
         }
         sb.append(NL);
         // "자동사냥이 지금 층 기준으로 도는지" 헷갈린다는 신고로 추가 -- 이 층에서 몇 마리째인지
-        // 항상 보여줘서, 10마리를 다 채워야 그 층 기준으로 (재)적용된다는 걸 명확히 한다.
-        if (floor % 10 >= 1 && floor % 10 <= 8) {
+        // 보여줘서 10마리를 다 채워야 켜진다는 걸 명확히 한다. 단, 이미 켜져 있으면 이 카운터는
+        // 더 이상 안 오르고(위 resolveCombatTurn 참고) 의미도 없으므로 표시 자체를 생략한다
+        // (계속 표시하면 "숫자가 이상하게 안 늘어난다"는 오해를 삼).
+        if (!autoHuntOn && floor % 10 >= 1 && floor % 10 <= 8) {
             sb.append("이 층 처치: ").append(intVal(p.get("KILL_COUNT_CUR"), 0)).append("/10 (자동사냥 적용까지)").append(NL);
         }
         sb.append("누적 처치: ").append(intVal(p.get("TOTAL_KILL_COUNT"), 0)).append("마리").append(NL);
@@ -1229,18 +1231,28 @@ public class BotS5ServiceImpl implements BotS5Service {
                     sb.append("✨ 전투불가 상태였던 동료 ").append(revivedOnBossClear).append("명이 마을에서 부활했습니다!").append(NL);
                 }
             } else {
-                up.put("killCountCur", killCountCur >= 10 ? 0 : killCountCur);
-                if (killCountCur >= 10) {
-                    up.put("autoHuntYn", "Y");
-                    HashMap<String, Object> log = new HashMap<>();
-                    log.put("userName", userName);
-                    log.put("floor", floor);
-                    dao.upsertAutoHuntLog(log);
-                    sb.append("🔥 이 층에서 10마리 처치! 자동사냥 모드 ON (다음 접속 시 경과시간만큼 자동 정산)").append(NL);
-                } else {
-                    // "자동사냥이 지금 층 기준으로 잘 돌고 있는지" 헷갈린다는 신고로 추가 -- 몇 마리째인지
-                    // 매 처치마다 보여줘서 진행 상황을 항상 알 수 있게 함(/탑현황에서도 동일하게 표시).
-                    sb.append("(이 층 처치: ").append(killCountCur).append("/10 -- 자동사냥 적용까지)").append(NL);
+                // [버그 수정] 자동사냥이 이미 켜져 있을 때도 KILL_COUNT_CUR가 계속 0~9로
+                // 순환(리셋)해서 "이 층 처치 N/10" 수치가 계속 오르내리는 것처럼 보이고,
+                // 10마리째마다 "자동사냥 모드 ON" 안내가 쓸데없이 반복 출력되는 문제가
+                // 있었다(문의로 확인). 자동사냥은 한 번 켜지면 층 이동 시 자동으로 그 층
+                // 기준으로 따라오므로(changeFloor의 동기화 로직 참고), 이미 켜진 뒤에는
+                // 이 카운터를 더 건드리지 않는다 -- "이 층 처치 N/10"은 순수하게 "아직
+                // 자동사냥이 꺼져 있고, 이 층에서 처음 켜기까지 몇 마리 남았는지"만 의미.
+                boolean alreadyAutoHunt = "Y".equals(strVal(p.get("AUTO_HUNT_YN"), "N"));
+                if (!alreadyAutoHunt) {
+                    up.put("killCountCur", killCountCur >= 10 ? 0 : killCountCur);
+                    if (killCountCur >= 10) {
+                        up.put("autoHuntYn", "Y");
+                        HashMap<String, Object> log = new HashMap<>();
+                        log.put("userName", userName);
+                        log.put("floor", floor);
+                        dao.upsertAutoHuntLog(log);
+                        sb.append("🔥 이 층에서 10마리 처치! 자동사냥 모드 ON (다음 접속 시 경과시간만큼 자동 정산)").append(NL);
+                    } else {
+                        // "자동사냥이 지금 층 기준으로 잘 돌고 있는지" 헷갈린다는 신고로 추가 -- 몇 마리째인지
+                        // 매 처치마다 보여줘서 진행 상황을 항상 알 수 있게 함(/탑현황에서도 동일하게 표시).
+                        sb.append("(이 층 처치: ").append(killCountCur).append("/10 -- 자동사냥 적용까지)").append(NL);
+                    }
                 }
             }
             dao.updateUserProgress(up);
@@ -2230,6 +2242,22 @@ public class BotS5ServiceImpl implements BotS5Service {
         int pctIdx = fixedIdx + 1;
         String statName = "HELMET".equals(part) ? "HP" : "WEAPON".equals(part) ? "ATK" : "DEF";
         return statName + " +" + (int) b[fixedIdx] + " / +" + Math.round(b[pctIdx] * 100) + "%";
+    }
+
+    /** 웹 SPA 캐릭터 상세 카드용 — 장비/스탯구매 보너스까지 반영한 유효 스탯. 대상이 없으면 [0,0,0]. */
+    @Override
+    public int[] companionEffectiveStat(String userName, int companionId) {
+        HashMap<String, Object> target = null;
+        for (HashMap<String, Object> c : dao.selectUserCompanions(userName)) {
+            if (intVal(c.get("COMPANION_ID"), -1) == companionId) { target = c; break; }
+        }
+        if (target == null) return new int[]{ 0, 0, 0 };
+        String job = strVal(target.get("CLASS"), "WARRIOR");
+        int grade = intVal(target.get("GRADE"), 1);
+        List<HashMap<String, Object>> equips = dao.selectEquipByCompanion(companionId);
+        HashMap<String, Object> userStat = dao.selectUserStat(userName);
+        int[] eff = computeEffectiveStat(job, grade, equips, userStat);
+        return new int[]{ eff[0], eff[1], eff[2] };
     }
 
     /** 장비 목록 - 미착용은 /장비장착·/장비합성에 그대로 쓸 수 있는 번호를 붙이고, 착용중인 건 누가 끼고 있는지 표시. */

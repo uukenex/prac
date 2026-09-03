@@ -87,9 +87,32 @@
     .party-card.drag-ghost{ position:fixed; z-index:999; pointer-events:none; opacity:.85; box-shadow:0 8px 20px rgba(0,0,0,.3);
                              width:120px; }
     .party-card.drag-source-hidden{ opacity:.25; }
-    .party-card .avatar{ width:48px; height:48px; border-radius:50%; object-fit:cover; background:#EFE7D2;
-                          display:block; margin:0 auto 6px; border:2px solid var(--line); }
-    .party-card .avatar-emoji{ display:flex; align-items:center; justify-content:center; font-size:24px; }
+    /* 얼굴이 잘 안 보인다는 신고로 원형 → 사각형으로 변경 + 인물 사진은 보통 위쪽에 얼굴이
+       있어서 object-position을 top으로 둬서 얼굴이 잘리지 않게 함. 클릭하면 확대(zoom-in). */
+    .party-card .avatar{ width:64px; height:64px; border-radius:10px; object-fit:cover; object-position:50% 15%;
+                          background:#EFE7D2; display:block; margin:0 auto 6px; border:2px solid var(--line);
+                          cursor:zoom-in; }
+    .party-card .avatar-emoji{ display:flex; align-items:center; justify-content:center; font-size:28px; cursor:default; }
+
+    /* 캐릭터 확대 + 상세(장비/스탯) 모달 */
+    .detail-overlay{ position:fixed; inset:0; background:rgba(20,14,32,.72); z-index:200;
+                      display:none; align-items:center; justify-content:center; padding:20px; }
+    .detail-overlay.open{ display:flex; }
+    .detail-card{ background:linear-gradient(180deg,#FFFCF3,var(--parchment-deep)); border:2px solid var(--line);
+                   border-radius:20px; padding:16px; box-shadow:var(--shadow); max-width:360px; width:100%;
+                   max-height:88vh; overflow:auto; position:relative; }
+    .detail-card .detail-close{ position:absolute; top:10px; right:12px; background:none; border:none;
+                                  font-size:20px; cursor:pointer; color:var(--ink-soft); line-height:1; }
+    .detail-card .detail-img{ width:100%; aspect-ratio:1/1; object-fit:cover; object-position:50% 15%;
+                                border-radius:14px; border:2px solid var(--line); background:#EFE7D2; display:block; }
+    .detail-card .detail-name{ font-size:17px; font-weight:800; margin-top:10px; }
+    .detail-card .detail-role{ font-size:12px; color:var(--ink-soft); margin-bottom:8px; }
+    .detail-stats{ display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin:8px 0 10px; }
+    .detail-stats .stat-box{ background:#fff; border:1.5px solid var(--line); border-radius:10px; padding:8px 4px; text-align:center; }
+    .detail-stats .stat-box .stat-label{ font-size:9px; color:var(--ink-soft); }
+    .detail-stats .stat-box .stat-val{ font-size:14px; font-weight:800; }
+    .detail-equip-row{ display:flex; justify-content:space-between; background:#fff; border:1.5px solid var(--line);
+                        border-radius:10px; padding:7px 10px; margin-bottom:5px; font-size:11px; }
     .party-card{ position:relative; }
     .party-card.hidden{ opacity:.4; }
     .party-card .hide-btn{ position:absolute; top:4px; right:6px; font-size:13px; cursor:pointer; background:none; border:none; padding:2px; }
@@ -110,6 +133,15 @@
     .shop-row{ display:flex; justify-content:space-between; align-items:center; background:#fff; border:1.5px solid var(--line);
                border-radius:12px; padding:9px 12px; margin-bottom:6px; font-size:12px; }
     .shop-row button{ background:var(--gold); color:#fff; border:none; border-radius:10px; padding:6px 12px; font-size:11px; cursor:pointer; }
+
+    /* 미착용 장비도 동료 카드처럼 드래그해서 파티 슬롯에 놓으면 그 동료에게 장착됨.
+       버튼(장착/합성)은 그대로 남겨둬서 드래그 없이도 쓸 수 있게 함. */
+    .equip-card{ background:#fff; border:1.5px solid var(--line); border-radius:12px; padding:9px 12px;
+                 margin-bottom:6px; font-size:12px; display:flex; justify-content:space-between; align-items:center;
+                 touch-action:none; user-select:none; cursor:grab; }
+    .equip-card.drag-ghost{ position:fixed; z-index:999; pointer-events:none; opacity:.9; box-shadow:0 8px 20px rgba(0,0,0,.3);
+                             width:240px; cursor:grabbing; }
+    .equip-card.drag-source-hidden{ opacity:.3; }
 
     .ach-row{ display:flex; gap:8px; align-items:flex-start; background:#fff; border:1.5px solid var(--line);
               border-radius:12px; padding:8px 12px; margin-bottom:6px; font-size:12px; }
@@ -249,6 +281,22 @@
 </div>
 
 <div class="msg-toast" id="msgToast"></div>
+
+<div class="detail-overlay" id="detailOverlay" onclick="if(event.target===this) TW.closeDetail();">
+  <div class="detail-card">
+    <button class="detail-close" onclick="TW.closeDetail()">✕</button>
+    <img class="detail-img" id="detailImg" src="" alt="">
+    <div class="detail-name" id="detailName">-</div>
+    <div class="detail-role" id="detailRole">-</div>
+    <div class="detail-stats">
+      <div class="stat-box"><div class="stat-label">HP</div><div class="stat-val" id="detailHp">-</div></div>
+      <div class="stat-box"><div class="stat-label">공격력</div><div class="stat-val" id="detailAtk">-</div></div>
+      <div class="stat-box"><div class="stat-label">방어력</div><div class="stat-val" id="detailDef">-</div></div>
+    </div>
+    <div class="card-title" style="font-size:13px;">착용 장비</div>
+    <div id="detailEquipBox"></div>
+  </div>
+</div>
 
 <nav class="dock">
   <div class="dock-inner">
@@ -420,6 +468,7 @@ var TW = (function () {
   function attachPartyDrag(card, idx, inParty) {
     card.addEventListener('pointerdown', function (ev) {
       if (ev.target.closest('.hide-btn')) return;
+      if (ev.target.closest('.avatar')) return; // 초상화 클릭은 드래그/토글이 아니라 확대 카드 열기(아래 avatarEl.onclick)
       var startX = ev.clientX, startY = ev.clientY;
       var moved = false, ghost = null;
 
@@ -468,6 +517,102 @@ var TW = (function () {
     });
   }
 
+  // 미착용 장비 카드를 파티 슬롯(#partySlots 안의 개별 .party-slot-box)으로 드래그하면 그
+  // 슬롯의 동료에게 장착된다(EQUIP_WEAR param2=슬롯번호). attachPartyDrag와 같은 Pointer
+  // Events 패턴이되, 드롭 대상이 "슬롯 전체 영역"이 아니라 "슬롯 하나"라는 점만 다르다.
+  // 탭(이동 없음)은 버튼(장착/합성)이 이미 있으니 별도 동작 없이 무시한다.
+  function attachEquipDrag(card, idx) {
+    card.addEventListener('pointerdown', function (ev) {
+      if (ev.target.closest('button')) return;
+      var startX = ev.clientX, startY = ev.clientY;
+      var moved = false, ghost = null;
+
+      function onMove(mv) {
+        var dx = mv.clientX - startX, dy = mv.clientY - startY;
+        if (!moved && Math.hypot(dx, dy) > 10) {
+          moved = true;
+          card.classList.add('drag-source-hidden');
+          ghost = card.cloneNode(true);
+          ghost.className = 'equip-card drag-ghost';
+          document.body.appendChild(ghost);
+          document.querySelectorAll('.party-slot-box.filled').forEach(function (b) { b.classList.add('drop-hover'); });
+        }
+        if (moved && ghost) {
+          ghost.style.left = (mv.clientX - 120) + 'px';
+          ghost.style.top = (mv.clientY - 24) + 'px';
+        }
+      }
+
+      function onUp(up) {
+        document.removeEventListener('pointermove', onMove);
+        document.removeEventListener('pointerup', onUp);
+        if (!moved) return; // 탭은 버튼으로만 동작(카드 자체는 드래그 전용)
+
+        var el = document.elementFromPoint(up.clientX, up.clientY);
+        var slotBox = el && el.closest('.party-slot-box.filled');
+        var slot = slotBox ? slotBox.dataset.slot : null;
+
+        card.classList.remove('drag-source-hidden');
+        document.querySelectorAll('.party-slot-box').forEach(function (b) { b.classList.remove('drop-hover'); });
+        if (ghost) document.body.removeChild(ghost);
+
+        if (slot) {
+          action('EQUIP_WEAR', String(idx), slot); // 특정 슬롯(동료)에 직접 장착
+        }
+      }
+
+      document.addEventListener('pointermove', onMove);
+      document.addEventListener('pointerup', onUp, { once: true });
+    });
+  }
+
+  // 캐릭터 확대/상세 카드에서 쓰려고 마지막으로 불러온 파티·장비 데이터를 기억해둔다
+  // (모달을 열 때마다 다시 fetch하지 않고, 스탯만 별도로 조회).
+  var lastParty = { companions: [], byCompanion: {} };
+
+  function showCompanionDetail(companionId) {
+    var c = lastParty.companions.filter(function (x) { return x.COMPANION_ID === companionId; })[0];
+    if (!c) return;
+    var name = c.NAME || (JOB_KR[c.CLASS] || c.CLASS);
+    var detailImg = document.getElementById('detailImg');
+    detailImg.onerror = function () { detailImg.style.display = 'none'; };
+    detailImg.src = c.IMAGE_URL || '';
+    detailImg.style.display = c.IMAGE_URL ? '' : 'none';
+    document.getElementById('detailName').textContent = name;
+    document.getElementById('detailRole').textContent = (JOB_KR[c.CLASS] || c.CLASS) + ' ★' + c.GRADE
+        + (c.PARTY_SLOT ? ' · 파티 ' + c.PARTY_SLOT + '번' : ' · 대기중');
+    document.getElementById('detailHp').textContent = '-';
+    document.getElementById('detailAtk').textContent = '-';
+    document.getElementById('detailDef').textContent = '-';
+
+    var mine = lastParty.byCompanion[companionId] || [];
+    var eqBox = document.getElementById('detailEquipBox');
+    eqBox.innerHTML = '';
+    ['HELMET', 'WEAPON', 'ARMOR'].forEach(function (part) {
+      var found = mine.filter(function (e) { return e.PART === part; })[0];
+      var row = document.createElement('div');
+      row.className = 'detail-equip-row';
+      row.innerHTML = '<span>' + PART_KR[part] + '</span><span>' + (found ? '★' + found.GRADE : '미착용') + '</span>';
+      eqBox.appendChild(row);
+    });
+
+    document.getElementById('detailOverlay').classList.add('open');
+
+    var u = userName();
+    fetch(base + '/api/tower-companion-stat?userName=' + encodeURIComponent(u) + '&companionId=' + companionId)
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        document.getElementById('detailHp').textContent = data.hp != null ? data.hp : '-';
+        document.getElementById('detailAtk').textContent = data.atk != null ? data.atk : '-';
+        document.getElementById('detailDef').textContent = data.def != null ? data.def : '-';
+      })
+      .catch(function () {});
+  }
+
+  function closeDetail() {
+    document.getElementById('detailOverlay').classList.remove('open');
+  }
+
   // 파티(동료 최대 3명)와 그 동료들에게 장착하는 장비는 한 화면에서 같이 관리한다.
   function loadPartyAndEquip() {
     var u = userName();
@@ -489,6 +634,7 @@ var TW = (function () {
         var slotEl = document.createElement('div');
         var occ = bySlot[s];
         slotEl.className = 'party-slot-box' + (occ ? ' filled' : '');
+        slotEl.dataset.slot = String(s); // 장비 드래그 드롭 시 "몇 번 파티원에게 장착할지" 판별용
         slotEl.innerHTML = '<div class="slot-label">파티 ' + s + '</div>'
             + (occ ? '<div class="cname">' + (occ.NAME || JOB_KR[occ.CLASS] || occ.CLASS) + '</div><div class="role">' + (JOB_KR[occ.CLASS] || occ.CLASS) + ' ★' + occ.GRADE + '</div>'
                    : '<div>빈 슬롯</div>');
@@ -510,14 +656,23 @@ var TW = (function () {
             + '<div class="role">' + (JOB_KR[c.CLASS] || c.CLASS) + ' ★' + c.GRADE + '</div>'
             + '<div class="hpbar-track"><div class="hpbar-fill" style="width:100%"></div></div>'
             + '<div class="hp-num">HP ' + fmtPP(c.CUR_HP_VALUE, c.CUR_HP_EXT) + (c.PARTY_SLOT ? ' [파티' + c.PARTY_SLOT + ']' : '') + '</div>';
-        // 이미지가 있으면 <img>를 쓰되, 로드 실패(차단/404 등) 시 직업 이모지로 교체
+        // 이미지가 있으면 <img>를 쓰되, 로드 실패(차단/404 등) 시 직업 이모지로 교체.
+        // 초상화를 누르면 확대 + 착용장비/스탯 상세 카드가 뜬다(드래그/편성 토글과는 별개 동작 --
+        // attachPartyDrag 쪽에서 .avatar 클릭은 걸러내고 있음). outerHTML로 교체하면 핸들러가
+        // 날아가므로, 이미지 로드 실패 시엔 새 엘리먼트를 만들어 직접 바꿔치기한다.
+        var avatarClick = function (ev) { ev.stopPropagation(); showCompanionDetail(c.COMPANION_ID); };
         var avatarEl = document.createElement(img ? 'img' : 'div');
         avatarEl.className = 'avatar' + (img ? '' : ' avatar-emoji');
+        avatarEl.onclick = avatarClick;
         if (img) {
             avatarEl.src = img;
             avatarEl.alt = '';
             avatarEl.onerror = function () {
-                avatarEl.outerHTML = '<div class="avatar avatar-emoji">' + emoji + '</div>';
+                var fallback = document.createElement('div');
+                fallback.className = 'avatar avatar-emoji';
+                fallback.textContent = emoji;
+                fallback.onclick = avatarClick;
+                avatarEl.replaceWith(fallback);
             };
         } else {
             avatarEl.textContent = emoji;
@@ -544,6 +699,7 @@ var TW = (function () {
           unequipped.push(e);
         }
       });
+      lastParty = { companions: companions, byCompanion: byCompanion }; // 캐릭터 상세 카드(showCompanionDetail)용 캐시
 
       // 파티 슬롯별 장비 현황
       var partyBox = document.getElementById('partyEquipBox');
@@ -566,22 +722,24 @@ var TW = (function () {
         partyBox.appendChild(row);
       });
 
-      // 미착용 장비 목록 -- 번호 입력 없이 버튼 클릭으로 장착(자동배정)/합성
+      // 미착용 장비 목록 -- 위 파티 슬롯으로 드래그하면 그 동료에게 장착되고(attachEquipDrag),
+      // 버튼으로 자동배정 장착/합성도 그대로 가능(드래그가 번거로운 경우를 위해 남겨둠).
       var box = document.getElementById('equipListBox');
       box.innerHTML = '';
       if (unequipped.length === 0) {
         box.innerHTML = '<div style="color:var(--ink-soft);font-size:12px;">미착용 장비가 없습니다.</div>';
       }
       unequipped.forEach(function (e, i) {
-        var row = document.createElement('div');
-        row.className = 'shop-row';
         var idx = i + 1;
-        row.innerHTML = '<span>' + (JOB_KR[e.CLASS] || e.CLASS) + ' ' + (PART_KR[e.PART] || e.PART) + ' ★' + e.GRADE + '</span>'
+        var card = document.createElement('div');
+        card.className = 'equip-card';
+        card.innerHTML = '<span>🎽 ' + (JOB_KR[e.CLASS] || e.CLASS) + ' ' + (PART_KR[e.PART] || e.PART) + ' ★' + e.GRADE + '</span>'
             + '<span class="btn-group">'
             + '<button onclick="TW.action(\'EQUIP_WEAR\',\'' + idx + '\')">장착</button>'
             + '<button class="ten" onclick="TW.action(\'EQUIP_SYNTH\',\'' + idx + '\')">합성</button>'
             + '</span>';
-        box.appendChild(row);
+        attachEquipDrag(card, idx);
+        box.appendChild(card);
       });
     });
   }
@@ -690,7 +848,7 @@ var TW = (function () {
     if (saved) loadStatus();
   });
 
-  return { load: loadStatus, action: action, switchTab: switchTab };
+  return { load: loadStatus, action: action, switchTab: switchTab, closeDetail: closeDetail };
 })();
 </script>
 </body>

@@ -76,6 +76,9 @@ public interface BotS5Service {
     /** /장비목록 */
     String equipList(String userName);
 
+    /** 웹 SPA 캐릭터 상세(클릭 확대) 카드용 — 장비/스탯구매 보너스가 반영된 유효 스탯 [hp, atk, def] */
+    int[] companionEffectiveStat(String userName, int companionId);
+
     /** /장비장착 (인자 없이) — 미착용 장비 번호 + 파티원 번호를 함께 안내 */
     String equipWearUsage(String userName);
 

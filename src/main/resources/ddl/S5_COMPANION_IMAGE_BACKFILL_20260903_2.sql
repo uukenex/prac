@@ -1,0 +1,15 @@
+-- Auto-generated: fill IMAGE_URL for newly-added companions (nekos.best), Thu Sep  3 22:57:12     2026
+UPDATE TBOT_S5_USER_COMPANION SET IMAGE_URL = 'https://nekos.best/api/v2/neko/8bb97612-ece4-4884-883e-838813636f3a.png' WHERE COMPANION_ID = 96;
+UPDATE TBOT_S5_USER_COMPANION SET IMAGE_URL = 'https://nekos.best/api/v2/neko/f0a4d0ff-8501-4fad-8d27-1f1098c542c1.png' WHERE COMPANION_ID = 97;
+UPDATE TBOT_S5_USER_COMPANION SET IMAGE_URL = 'https://nekos.best/api/v2/neko/dfe2c6a3-460b-47aa-b8eb-ac4c80631ba7.png' WHERE COMPANION_ID = 98;
+UPDATE TBOT_S5_USER_COMPANION SET IMAGE_URL = 'https://nekos.best/api/v2/neko/edbe233d-9621-4259-85e2-95d8cf83c23f.png' WHERE COMPANION_ID = 99;
+UPDATE TBOT_S5_USER_COMPANION SET IMAGE_URL = 'https://nekos.best/api/v2/neko/b4118cc4-be81-47d1-99db-1aa45d926b4d.png' WHERE COMPANION_ID = 100;
+UPDATE TBOT_S5_USER_COMPANION SET IMAGE_URL = 'https://nekos.best/api/v2/neko/6f3e6ed5-99d4-4d2f-9138-1cce18c8e64e.png' WHERE COMPANION_ID = 101;
+UPDATE TBOT_S5_USER_COMPANION SET IMAGE_URL = 'https://nekos.best/api/v2/neko/25fa2ca9-20dc-429c-8c11-34a9cac33cde.png' WHERE COMPANION_ID = 102;
+UPDATE TBOT_S5_USER_COMPANION SET IMAGE_URL = 'https://nekos.best/api/v2/neko/b30e1a66-1167-462c-8c57-1c2c61700d80.png' WHERE COMPANION_ID = 103;
+UPDATE TBOT_S5_USER_COMPANION SET IMAGE_URL = 'https://nekos.best/api/v2/neko/0d544c4f-9095-4311-ac15-6f20101cd18d.png' WHERE COMPANION_ID = 104;
+UPDATE TBOT_S5_USER_COMPANION SET IMAGE_URL = 'https://nekos.best/api/v2/neko/4aaa797c-1d47-4d6c-8886-ed1c67212894.png' WHERE COMPANION_ID = 105;
+UPDATE TBOT_S5_USER_COMPANION SET IMAGE_URL = 'https://nekos.best/api/v2/neko/9d891b1c-d4d8-4e31-bc02-d9ba67cded16.png' WHERE COMPANION_ID = 106;
+UPDATE TBOT_S5_USER_COMPANION SET IMAGE_URL = 'https://nekos.best/api/v2/neko/cefdd762-d484-4650-a202-b00a5b02f668.png' WHERE COMPANION_ID = 107;
+COMMIT;
+EXIT;
