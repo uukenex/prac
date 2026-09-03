@@ -648,43 +648,50 @@ public class BotS5ServiceImpl implements BotS5Service {
                 HashMap<String, Object> mon = dao.selectMonster(blockNo(floor), "N");
                 PP basePp = mon == null ? PP.of(1, "")
                         : PP.of(((Number) mon.get("PP_PER_KILL_VALUE")).doubleValue(), strVal(mon.get("PP_PER_KILL_EXT"), "")).multiply(floorPpMultiplier(floor));
-                String[] luckyEffects = { "PP_BONUS", "ATK_UP", "DEF_UP", "HEAL_ALL" };
+                // ATK_UP_10/ATK_UP_30/DEF_UP_10/DEF_UP_30: 접두어로 종류, 끝 숫자로 세기를 구분
+                // (luckyEffectPct 참고) -- 강한 버프(30%)와 약한 버프(10%)를 같이 두어 매번 같은
+                // 세기만 나오지 않도록 함. CLEANSE는 함정 디버프를 즉시 해제하는 효과(신규).
+                String[] luckyEffects = { "PP_BONUS", "ATK_UP_30", "DEF_UP_30", "ATK_UP_10", "DEF_UP_10", "HEAL_ALL", "CLEANSE" };
                 String luckyEffect = luckyEffects[RND.nextInt(luckyEffects.length)];
-                switch (luckyEffect) {
-                    case "ATK_UP":
-                    case "DEF_UP": {
+                if (luckyEffect.startsWith("ATK_UP") || luckyEffect.startsWith("DEF_UP")) {
+                    HashMap<String, Object> up = new HashMap<>();
+                    up.put("userName", userName);
+                    up.put("luckyTurnLeft", 3);
+                    up.put("luckyEffect", luckyEffect);
+                    dao.updateUserProgress(up);
+                    int pct = luckyEffectPct(luckyEffect);
+                    String stat = luckyEffect.startsWith("ATK_UP") ? "공격력" : "방어력";
+                    sb.append("🍀 럭키 칸! 앞으로 3번 이동하는 동안 파티 전원의 ").append(stat).append("이 ").append(pct).append("% 강화됩니다.");
+                } else if ("CLEANSE".equals(luckyEffect)) {
+                    // 정화 -- 함정칸으로 걸린 공격력/방어력 약화 디버프를 즉시 해제(PP 손실 효과는 즉시
+                    // 발동형이라 이미 끝난 뒤라 정화할 게 없음, 이 정화 자체가 새 디버프를 남기지도 않음).
+                    int curTrapTurnLeft = intVal(p.get("TRAP_TURN_LEFT"), 0);
+                    if (curTrapTurnLeft > 0) {
                         HashMap<String, Object> up = new HashMap<>();
                         up.put("userName", userName);
-                        up.put("luckyTurnLeft", 3);
-                        up.put("luckyEffect", luckyEffect);
+                        up.put("trapTurnLeft", 0);
                         dao.updateUserProgress(up);
-                        if ("ATK_UP".equals(luckyEffect)) {
-                            sb.append("🍀 럭키 칸! 앞으로 3번 이동하는 동안 파티 전원의 공격력이 30% 강화됩니다.");
-                        } else {
-                            sb.append("🍀 럭키 칸! 앞으로 3번 이동하는 동안 파티 전원의 방어력이 30% 강화됩니다.");
-                        }
-                        break;
+                        sb.append("🍀 럭키 칸! 몸에 걸려있던 함정 효과가 말끔히 정화되었습니다.");
+                    } else {
+                        sb.append("🍀 럭키 칸! 정화의 기운을 느꼈지만... 딱히 없앨 디버프가 없어 효과가 없었다.");
                     }
-                    case "HEAL_ALL": {
-                        // 완전회복 -- 전투불가(HP 0) 상태인 동료까지 포함해 파티 전원을 풀피로 채운다
-                        // (전투 승리 후 자동회복은 살아있는 동료만 대상이라 이거랑 다름, healPartyAliveOnly 참고).
-                        List<HashMap<String, Object>> healParty = new ArrayList<>();
-                        for (HashMap<String, Object> c : dao.selectUserCompanions(userName)) {
-                            if (c.get("PARTY_SLOT") != null) healParty.add(c);
-                        }
-                        if (healParty.isEmpty()) {
-                            sb.append("🍀 럭키 칸! 몸이 개운해지는 기운을 느꼈지만... 파티가 비어있어 효과가 없었다.");
-                        } else {
-                            healPartyAll(healParty, dao.selectUserStat(userName));
-                            sb.append("🍀 럭키 칸! 파티 전원의 체력이 완전히 회복되었습니다! (전투불가 상태였던 동료도 부활)");
-                        }
-                        break;
+                } else if ("HEAL_ALL".equals(luckyEffect)) {
+                    // 완전회복 -- 전투불가(HP 0) 상태인 동료까지 포함해 파티 전원을 풀피로 채운다
+                    // (전투 승리 후 자동회복은 살아있는 동료만 대상이라 이거랑 다름, healPartyAliveOnly 참고).
+                    List<HashMap<String, Object>> healParty = new ArrayList<>();
+                    for (HashMap<String, Object> c : dao.selectUserCompanions(userName)) {
+                        if (c.get("PARTY_SLOT") != null) healParty.add(c);
                     }
-                    default: { // PP_BONUS -- 기존 PP칸 보상의 3배
-                        PP reward = basePp.multiply(3);
-                        addPp(userName, p, reward);
-                        sb.append("🍀 럭키 칸! ").append(reward.format()).append(" PP 획득!");
+                    if (healParty.isEmpty()) {
+                        sb.append("🍀 럭키 칸! 몸이 개운해지는 기운을 느꼈지만... 파티가 비어있어 효과가 없었다.");
+                    } else {
+                        healPartyAll(healParty, dao.selectUserStat(userName));
+                        sb.append("🍀 럭키 칸! 파티 전원의 체력이 완전히 회복되었습니다! (전투불가 상태였던 동료도 부활)");
                     }
+                } else { // PP_BONUS -- 기존 PP칸 보상의 3배
+                    PP reward = basePp.multiply(3);
+                    addPp(userName, p, reward);
+                    sb.append("🍀 럭키 칸! ").append(reward.format()).append(" PP 획득!");
                 }
                 break;
             }
@@ -882,6 +889,18 @@ public class BotS5ServiceImpl implements BotS5Service {
         return sb.toString();
     }
 
+    /** "ATK_UP_10"/"DEF_UP_30" 같은 럭키칸 효과 문자열에서 끝의 퍼센트 숫자만 뽑는다. 형식이 아니면 0. */
+    private int luckyEffectPct(String luckyEffect) {
+        if (luckyEffect == null) return 0;
+        int idx = luckyEffect.lastIndexOf('_');
+        if (idx < 0) return 0;
+        try {
+            return Integer.parseInt(luckyEffect.substring(idx + 1));
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
     /** 지금 파티에 걸려있는 함정/럭키칸 공격력·방어력 강화·약화 효과를 안내 문구로 (없으면 null). */
     private String currentPartyBuffDebuffNote(HashMap<String, Object> p) {
         int trapTurnLeft = intVal(p.get("TRAP_TURN_LEFT"), 0);
@@ -894,11 +913,11 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (trapTurnLeft > 0 && "DEF_DOWN".equals(trapEffect)) {
             return "⚠️ 함정 효과로 파티 방어력 30% 약화 중, 반격 피해 증가 (남은 이동 " + trapTurnLeft + "회)";
         }
-        if (luckyTurnLeft > 0 && "ATK_UP".equals(luckyEffect)) {
-            return "🍀 럭키 효과로 파티 공격력 30% 강화 중 (남은 이동 " + luckyTurnLeft + "회)";
+        if (luckyTurnLeft > 0 && luckyEffect.startsWith("ATK_UP")) {
+            return "🍀 럭키 효과로 파티 공격력 " + luckyEffectPct(luckyEffect) + "% 강화 중 (남은 이동 " + luckyTurnLeft + "회)";
         }
-        if (luckyTurnLeft > 0 && "DEF_UP".equals(luckyEffect)) {
-            return "🍀 럭키 효과로 파티 방어력 30% 강화 중, 반격 피해 감소 (남은 이동 " + luckyTurnLeft + "회)";
+        if (luckyTurnLeft > 0 && luckyEffect.startsWith("DEF_UP")) {
+            return "🍀 럭키 효과로 파티 방어력 " + luckyEffectPct(luckyEffect) + "% 강화 중, 반격 피해 감소 (남은 이동 " + luckyTurnLeft + "회)";
         }
         return null;
     }
@@ -920,11 +939,15 @@ public class BotS5ServiceImpl implements BotS5Service {
         int monsterDef = intVal(mon.get("DEF_VALUE"), 0);
         int diceMax = diceMax(strVal(p.get("DICE_GRADE"), "DICE_6"));
 
-        // 함정칸 디버프 / 럭키칸 버프: 남은 이동횟수가 있는 동안 파티 전체에 적용
+        // 함정칸 디버프 / 럭키칸 버프: 남은 이동횟수가 있는 동안 파티 전체에 적용. 럭키칸은
+        // ATK_UP_10/ATK_UP_30처럼 세기가 다른 여러 등급이 있어서(luckyEffects 참고) 접두어로
+        // 종류를, 끝의 숫자로 퍼센트를 판단한다(luckyEffectPct 참고). 함정은 항상 고정 30%.
         boolean trapAtkDown = intVal(p.get("TRAP_TURN_LEFT"), 0) > 0 && "ATK_DOWN".equals(strVal(p.get("TRAP_EFFECT"), ""));
         boolean trapDefDown = intVal(p.get("TRAP_TURN_LEFT"), 0) > 0 && "DEF_DOWN".equals(strVal(p.get("TRAP_EFFECT"), ""));
-        boolean luckyAtkUp = intVal(p.get("LUCKY_TURN_LEFT"), 0) > 0 && "ATK_UP".equals(strVal(p.get("LUCKY_EFFECT"), ""));
-        boolean luckyDefUp = intVal(p.get("LUCKY_TURN_LEFT"), 0) > 0 && "DEF_UP".equals(strVal(p.get("LUCKY_EFFECT"), ""));
+        String luckyEffectNow = strVal(p.get("LUCKY_EFFECT"), "");
+        boolean luckyAtkUp = intVal(p.get("LUCKY_TURN_LEFT"), 0) > 0 && luckyEffectNow.startsWith("ATK_UP");
+        boolean luckyDefUp = intVal(p.get("LUCKY_TURN_LEFT"), 0) > 0 && luckyEffectNow.startsWith("DEF_UP");
+        double luckyMult = 1.0 + luckyEffectPct(luckyEffectNow) / 100.0;
 
         // 20층 이후(블록3+) 보스 전용 스킬: 무시(면역, startCombat에서 지정) + 기절(아래 반격 턴에서 확률 발동)
         boolean lateBoss = "Y".equals(strVal(mon.get("BOSS_YN"), "N")) && blockNo(floor) >= 3;
@@ -968,7 +991,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             List<HashMap<String, Object>> equips = dao.selectEquipByCompanion(intVal(c.get("COMPANION_ID"), 0));
             int[] eff = computeEffectiveStat(job, grade, equips, userStat);
             if (trapAtkDown) eff[1] = (int) Math.round(eff[1] * 0.7); // 함정: 공격력 30% 약화
-            if (luckyAtkUp) eff[1] = (int) Math.round(eff[1] * 1.3); // 럭키: 공격력 30% 강화
+            if (luckyAtkUp) eff[1] = (int) Math.round(eff[1] * luckyMult); // 럭키: 공격력 강화
 
             int roll = RND.nextInt(diceMax) + 1;
             int dmg = Math.max(1, eff[1] * roll - monsterDef);
@@ -1137,7 +1160,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         List<HashMap<String, Object>> tEquips = dao.selectEquipByCompanion(intVal(target.get("COMPANION_ID"), 0));
         int[] tEff = computeEffectiveStat(tJob, tGrade, tEquips, userStat);
         if (trapDefDown) tEff[2] = (int) Math.round(tEff[2] * 0.7); // 함정: 방어력 30% 약화(반격 피해 증가)
-        if (luckyDefUp) tEff[2] = (int) Math.round(tEff[2] * 1.3); // 럭키: 방어력 30% 강화(반격 피해 감소)
+        if (luckyDefUp) tEff[2] = (int) Math.round(tEff[2] * luckyMult); // 럭키: 방어력 강화(반격 피해 감소)
         int monsterAtk = intVal(mon.get("ATK_VALUE"), 0);
         int roll = RND.nextInt(diceMax) + 1;
         int dmgToParty = Math.max(1, monsterAtk * roll - tEff[2]);
