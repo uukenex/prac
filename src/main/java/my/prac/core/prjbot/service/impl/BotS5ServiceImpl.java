@@ -1819,16 +1819,26 @@ public class BotS5ServiceImpl implements BotS5Service {
             grantFloorAchievements(userName, target);
         }
 
-        // 사냥터층에서 마을로 돌아가면 그 층의 원정(보드 위치+발견기록)을 초기화한다.
-        // 업적(탐험왕 등)을 자유롭게 파밍하지 못하게 하려는 의도 -- 한 원정 안에서 끝까지 밀어야 함.
+        // 사냥터층에서 마을로 돌아가면 그 구간(blockBase+1~+8) 전체 사냥터층의 원정(보드
+        // 위치+발견기록)을 초기화한다. 업적(탐험왕 등)을 자유롭게 파밍하지 못하게 하려는
+        // 의도 -- 한 원정 안에서 끝까지 밀어야 함.
+        // [버그 수정] "1층 17/25 채우고 2층 올라갔다가 마을 가면 1층이 초기화 안 된다"는 신고로
+        // 확인 -- 예전엔 마을 오기 직전에 서 있던 층 딱 하나만 초기화돼서, 그 전에 들렀다가
+        // 층변경으로 그냥 지나쳐온 다른 층들의 방문기록은 그대로 방치돼 있었다(원정을 나눠서
+        // 여러 번에 걸쳐 완전탐사를 파밍할 수 있던 구멍). 이제 이 구간 사냥터층 8개 전부를
+        // 같이 초기화하되, 이미 완전탐사(FULLY_EXPLORED_YN='Y')한 층은 다시 초기화해봐야
+        // 의미가 없으니 손대지 않는다("탐사완료층 제외" 요청).
         int fm = floor % 10;
         boolean returnedToVillage = target % 10 == 0 && fm >= 1 && fm <= 8 && floor != target;
         HashMap<String, Object> floorBest = null;
         if (returnedToVillage) {
-            floorBest = snapshotFloorBest(userName, floor);
-            dao.deleteUserFloorProgress(userName, floor);
-            dao.deleteTileVisits(userName, floor);
-            dao.deleteUserTileMaster(userName, floor); // 마을 귀환 시 보드 재생성(유저별 맵 삭제 → 다음 진입 때 ensureUserBoard가 새로 생성)
+            floorBest = snapshotFloorBest(userName, floor); // 방금 나온 층 -- 안내 메시지에 이 기록을 그대로 씀
+            resetFloorProgressUnlessFullyExplored(userName, floor);
+            for (int f = target + 1; f <= target + 8; f++) {
+                if (f == floor) continue; // 방금 나온 층은 위에서 이미 처리
+                snapshotFloorBest(userName, f);
+                resetFloorProgressUnlessFullyExplored(userName, f);
+            }
         }
 
         // "탑 상하이동 시 계단칸에 도착하게 해달라" 요청 -- 사냥터층(1~8)에 도착하면 이동 방향에
@@ -1874,7 +1884,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         }
         sb.append(floor).append("층 → ").append(target).append("층(").append(floorKindLabel(target)).append(")으로 이동했습니다.");
         if (returnedToVillage) {
-            sb.append(NL).append("⚠️ ").append(floor).append("층의 탐사 진행도가 초기화되었습니다. (다시 가면 처음부터)");
+            sb.append(NL).append("⚠️ 이 구간 사냥터층(완전탐사한 층 제외)의 탐사 진행도가 전부 초기화되었습니다. (다시 가면 처음부터)");
             if (floorBest != null) {
                 int bestVisited = intVal(floorBest.get("BEST_VISITED_COUNT"), 0);
                 int bestTileCount = intVal(floorBest.get("TILE_COUNT"), 0);
@@ -1925,6 +1935,23 @@ public class BotS5ServiceImpl implements BotS5Service {
             dao.deleteTileVisits(userName, f);
             dao.deleteUserTileMaster(userName, f);
         }
+    }
+
+    /**
+     * 마을 귀환 시 사냥터층 하나를 초기화(보드 위치/발견기록 삭제)한다 -- 단, 이미 완전탐사
+     * (FULLY_EXPLORED_YN='Y')한 층은 다시 초기화해봐야 얻을 게 없으니 건드리지 않는다
+     * ("탐사완료층 제외하고는 초기화" 요청). 호출 전에 snapshotFloorBest()로 역대 최고기록에
+     * 이번 방문 결과를 먼저 반영해둬야 한다(이 함수는 삭제만 함).
+     * @return 실제로 초기화했으면 true, 이미 완전탐사라 건너뛰었으면 false
+     */
+    private boolean resetFloorProgressUnlessFullyExplored(String userName, int floor) {
+        HashMap<String, Object> best = dao.selectUserFloorBest(userName, floor);
+        boolean alreadyFull = best != null && "Y".equals(strVal(best.get("FULLY_EXPLORED_YN"), "N"));
+        if (alreadyFull) return false;
+        dao.deleteUserFloorProgress(userName, floor);
+        dao.deleteTileVisits(userName, floor);
+        dao.deleteUserTileMaster(userName, floor); // 마을 귀환 시 보드 재생성(유저별 맵 삭제 → 다음 진입 때 ensureUserBoard가 새로 생성)
+        return true;
     }
 
     /**
