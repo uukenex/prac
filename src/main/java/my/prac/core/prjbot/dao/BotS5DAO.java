@@ -97,6 +97,7 @@ public interface BotS5DAO {
     int selectMaxAchievementCount();
     int selectMaxFullyExploredCount();
     int selectMaxCompanionCount();
+    int selectMaxCompanionGrade();
     int selectMaxEquipCount();
     List<HashMap<String, Object>> selectAllUserPp();
 }

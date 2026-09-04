@@ -408,6 +408,10 @@
         )
     </select>
 
+    <select id="selectMaxCompanionGrade" resultType="int">
+        SELECT NVL(MAX(GRADE), 0) FROM TBOT_S5_USER_COMPANION
+    </select>
+
     <select id="selectMaxEquipCount" resultType="int">
         SELECT NVL(MAX(CNT), 0) FROM (
             SELECT COUNT(*) CNT FROM TBOT_S5_USER_EQUIP GROUP BY USER_NAME
