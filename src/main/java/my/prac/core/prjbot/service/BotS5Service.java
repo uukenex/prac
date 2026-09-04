@@ -121,4 +121,11 @@ public interface BotS5Service {
 
     /** 웹 SPA 전용: 파티에 편성된 동료 전원을 한 번에 해제("일괄해제" 요청으로 신설). */
     String partyUnassignAll(String userName);
+
+    /**
+     * /이벤트지급(관리자 전용, 채팅 명령어) — 전체 유저에게 동료뽑기권/장비뽑기권을 일괄 지급.
+     * TBOT_S5_CONFIG.EVENT_ADMIN_USERS('|' 구분 유저명 목록)에 등록된 유저만 실행 가능,
+     * 그 외엔 조용히 "권한이 없습니다"만 반환(누가 관리자인지 자체를 노출하지 않음).
+     */
+    String grantEventVouchers(String userName, int companionQty, int equipQty);
 }

@@ -616,6 +616,9 @@ public class LoaChatController {
 			case "/탑랭킹":
 				val = s5.ranking();
 				break;
+			case "/이벤트지급": // 관리자 전용(비공개) -- TBOT_S5_CONFIG.EVENT_ADMIN_USERS 등록자만 실제 동작
+				val = s5.grantEventVouchers(reqMap);
+				break;
 			case "/동료뽑기":
 				val = s5.gachaCompanion(reqMap);
 				break;

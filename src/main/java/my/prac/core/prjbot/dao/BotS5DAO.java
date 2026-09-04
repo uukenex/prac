@@ -91,6 +91,9 @@ public interface BotS5DAO {
     // ── 서버 설정값(config) ──
     List<HashMap<String, Object>> selectAllConfig();
 
+    // ── /이벤트지급(관리자 전용): 전체 유저에게 동료/장비 뽑기권 일괄 지급, 영향받은 행 수 반환 ──
+    int bulkGrantVouchers(@Param("companionQty") int companionQty, @Param("equipQty") int equipQty);
+
     // ── /탑랭킹: 서버 전체 최고기록(익명 집계) — 누가 세운 기록인지는 노출하지 않고 수치만 조회 ──
     int selectMaxFloorReached();
     int selectMaxTotalKillCount();

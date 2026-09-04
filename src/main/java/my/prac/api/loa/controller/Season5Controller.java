@@ -197,6 +197,19 @@ public class Season5Controller {
         return s5Service.ranking();
     }
 
+    /** /이벤트지급(관리자 전용, 미공개) — param1=동료뽑기권 수량, param2=장비뽑기권 수량(둘 다 생략 시 0) */
+    public String grantEventVouchers(HashMap<String, Object> map) {
+        String param1 = param1Of(map);
+        String param2 = param2Of(map);
+        try {
+            int companionQty = param1.isEmpty() ? 0 : Integer.parseInt(param1);
+            int equipQty = param2.isEmpty() ? 0 : Integer.parseInt(param2);
+            return s5Service.grantEventVouchers(userNameOf(map), companionQty, equipQty);
+        } catch (NumberFormatException e) {
+            return "수량은 숫자로 입력해주세요.";
+        }
+    }
+
     public String equipUnwearAll(HashMap<String, Object> map) {
         String param1 = param1Of(map);
         if (param1.isEmpty()) return "사용법: /장비해제 M (M=파티원 번호, /파티편성에서 확인)";

@@ -379,6 +379,13 @@
         SELECT CONFIG_KEY, CONFIG_VALUE FROM TBOT_S5_CONFIG
     </select>
 
+    <!-- /이벤트지급(관리자 전용): 전체 유저 TBOT_S5_USER_PROGRESS 행에 뽑기권 수량을 그대로 더함 -->
+    <update id="bulkGrantVouchers">
+        UPDATE TBOT_S5_USER_PROGRESS
+        SET COMPANION_VOUCHER = NVL(COMPANION_VOUCHER, 0) + #{companionQty},
+            EQUIP_VOUCHER = NVL(EQUIP_VOUCHER, 0) + #{equipQty}
+    </update>
+
     <!-- ==================== /탑랭킹: 서버 전체 최고기록(익명 집계) ====================
          누가 세운 기록인지는 노출하지 않는다는 설계상 USER_NAME은 절대 SELECT하지 않고
          MAX(수치)만 조회한다. -->

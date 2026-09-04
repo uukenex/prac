@@ -197,6 +197,12 @@ public class BotS5ServiceImpl implements BotS5Service {
     private static volatile long COMBAT_COOLDOWN_SEC     = 15;
     private static volatile long COMBAT_END_COOLDOWN_SEC = 100;
 
+    // /이벤트지급(관리자 전용) 실행 권한이 있는 유저명 목록 -- TBOT_S5_CONFIG.EVENT_ADMIN_USERS에
+    // '|'로 구분해 저장(예: "일어난다람쥐/카단|다른관리자"). 이 시스템엔 별도 권한/역할 체계가
+    // 없어서, 뽑기권처럼 실제 경제가치가 있는 걸 아무나 채팅으로 못 뿌리게 막는 유일한 장치다.
+    // 비어있으면(기본값) 아무도 실행할 수 없다 -- 반드시 DB에 직접 세팅해야 활성화됨(의도적).
+    private static volatile String EVENT_ADMIN_USERS = "";
+
     /** 서버 기동 시 TBOT_S5_CONFIG를 읽어 메모리(static 필드)에 반영. 실패해도 기본값으로 계속 동작. */
     @PostConstruct
     public void loadConfig() {
@@ -204,6 +210,10 @@ public class BotS5ServiceImpl implements BotS5Service {
             for (HashMap<String, Object> row : dao.selectAllConfig()) {
                 String key = strVal(row.get("CONFIG_KEY"), "");
                 String val = strVal(row.get("CONFIG_VALUE"), "");
+                if ("EVENT_ADMIN_USERS".equals(key)) {
+                    EVENT_ADMIN_USERS = val; // 문자열 그대로라 파싱 실패 케이스 없음
+                    continue;
+                }
                 try {
                     if ("MOVE_COOLDOWN_SEC".equals(key)) {
                         MOVE_COOLDOWN_SEC = Long.parseLong(val);
@@ -219,6 +229,15 @@ public class BotS5ServiceImpl implements BotS5Service {
         } catch (Exception ignore) {
             // 서버 기동 시점에 DB 접속이 안 되거나 테이블이 없어도 기본값으로 계속 기동
         }
+    }
+
+    /** userName이 EVENT_ADMIN_USERS 목록에 있는지(=이벤트 지급 명령어 실행 권한이 있는지). */
+    private boolean isEventAdmin(String userName) {
+        if (EVENT_ADMIN_USERS == null || EVENT_ADMIN_USERS.trim().isEmpty() || userName == null) return false;
+        for (String u : EVENT_ADMIN_USERS.split("\\|")) {
+            if (u.trim().equals(userName)) return true;
+        }
+        return false;
     }
 
     /** /갱신 — TBOT_S5_CONFIG를 다시 읽어 메모리 값을 갱신 */
@@ -1949,6 +1968,29 @@ public class BotS5ServiceImpl implements BotS5Service {
         }
         if (cnt == 0) return "편성된 동료가 없습니다.";
         return "파티 " + cnt + "명을 전부 해제했습니다.";
+    }
+
+    /**
+     * /이벤트지급(관리자 전용) — EVENT_ADMIN_USERS에 없는 유저는 조용히 거부(누가 관리자인지,
+     * 이 명령어가 뭘 하는 건지조차 드러내지 않도록 이유를 자세히 안 붙임). 뽑기권은 실제 경제
+     * 가치가 있어 아무나 채팅으로 뿌릴 수 있으면 안 되므로, 이 시스템 안에서 유일하게 존재하는
+     * 권한 체크(isEventAdmin)를 반드시 통과해야 한다.
+     */
+    @Override
+    @Transactional
+    public String grantEventVouchers(String userName, int companionQty, int equipQty) {
+        if (!isEventAdmin(userName)) {
+            return "권한이 없습니다.";
+        }
+        if (companionQty < 0 || equipQty < 0) {
+            return "수량은 0 이상이어야 합니다.";
+        }
+        if (companionQty == 0 && equipQty == 0) {
+            return "사용법: /이벤트지급 [동료뽑기권수량] [장비뽑기권수량] (예: /이벤트지급 3 2, 하나는 0으로 생략 가능)";
+        }
+        int affected = dao.bulkGrantVouchers(companionQty, equipQty);
+        return "🎉 이벤트 지급 완료! 전체 유저 " + affected + "명에게 동료뽑기권 " + companionQty
+                + "장, 장비뽑기권 " + equipQty + "장을 지급했습니다.";
     }
 
     // ================================================================
