@@ -435,9 +435,9 @@ public class BotS5ServiceImpl implements BotS5Service {
         }
 
         StringBuilder sb = new StringBuilder();
-        sb.append("┌─────────────────┐").append(NL);
-        sb.append("  🏆 시즌5 서버 전체 기록").append(NL);
-        sb.append("└─────────────────┘").append(NL);
+        sb.append("┌────────────────┐").append(NL);
+        sb.append(" 🏆 시즌5 서버 전체 기록").append(NL);
+        sb.append("└────────────────┘").append(NL);
         sb.append("(누가 세운 기록인지는 비공개입니다)").append(NL).append(NL);
         sb.append("🪜 최고 도달 층: ").append(maxFloor).append("층").append(NL);
         sb.append("⚔️ 최다 누적 처치: ").append(maxKill).append("마리").append(NL);
@@ -730,9 +730,9 @@ public class BotS5ServiceImpl implements BotS5Service {
 
         if (brandNew) {
             // 계정이 없던 유저의 첫 /주사위 → 계정만 생성. 진행은 튜토리얼 순서대로 유도.
-            return "┌─────────────────┐" + NL
-                    + "  🗼 시즌5 탑 등반기" + NL
-                    + "└─────────────────┘" + NL
+            return "┌────────────┐" + NL
+                    + " 🗼 시즌5 탑 등반기" + NL
+                    + "└────────────┘" + NL
                     + "계정을 생성했습니다! 현재 0층 마을이에요." + NL
                     + "👉 하급 동료 계약서 무료뽑기를 하세요! (/동료뽑기 1)";
         }
@@ -1271,14 +1271,14 @@ public class BotS5ServiceImpl implements BotS5Service {
         }
         dao.updateUserProgress(up);
 
-        String monName = (elite ? "💪 강화 " : "") + floorMonsterName(floor, mon);
         PP fullHp = PP.of(((Number) mon.get("HP_VALUE")).doubleValue() * eliteMult, strVal(mon.get("HP_EXT"), "")).normalize();
         StringBuilder sb = new StringBuilder();
-        // [엔터/이모지 정리 요청] "등장!" 줄의 HP 괄호 표기 대신, 공격력/방어력/HP를 "능력치" 한
-        // 줄로 압축(원래 방어력 설명 문구는 뺌 -- 반복 안내라 간결화).
-        sb.append(boss ? "👹 보스 " : elite ? "" : "👾 ").append(monName).append(" 등장! ").append(NL);
-        sb.append("능력치 ⚔️: ").append((int) Math.round(intVal(mon.get("ATK_VALUE"), 0) * eliteMult))
-          .append(" 🛡️: ").append((int) Math.round(intVal(mon.get("DEF_VALUE"), 0) * eliteMult))
+        // [형식 정리 요청] "OO 등장!"을 한 줄에 다 몰아넣지 않고 "등장!" 알림 / 몬스터 이름 /
+        // 능력치를 각각 줄로 나눔("능력치" 라벨·콜론도 빼서 더 짧게).
+        sb.append(boss ? "👹 보스 등장!" : elite ? "💪 강화 등장!" : "👾 등장!").append(NL);
+        sb.append(floorMonsterName(floor, mon)).append(NL);
+        sb.append("⚔️ ").append((int) Math.round(intVal(mon.get("ATK_VALUE"), 0) * eliteMult))
+          .append(" 🛡️ ").append((int) Math.round(intVal(mon.get("DEF_VALUE"), 0) * eliteMult))
           .append(" ❤️ ").append(fullHp.format()).append(NL);
         if (elite) sb.append("💪 강화몹 -- 스탯/보상 전부 평소의 2배입니다.").append(NL);
         sb.append(NL);
@@ -1639,13 +1639,18 @@ public class BotS5ServiceImpl implements BotS5Service {
         cUp.put("curHpValue", targetHpAfter.getValue());
         cUp.put("curHpExt", targetHpAfter.getUnit());
         dao.updateCompanionHp(cUp);
+        // [버그 수정] DB엔 반영됐지만 target(=party 리스트 안의 같은 객체)의 메모리 값은 안 바뀌어서,
+        // 바로 아래 partyHpSummary()가 반격 맞기 "전" HP를 그대로 보여주는 문제가 있었다("이번턴
+        // 남은" 구간에 맞은 사람 HP가 그대로 풀피로 나옴 -- 신고로 확인). party 리스트 원본을 직접 갱신.
+        target.put("CUR_HP_VALUE", targetHpAfter.getValue());
+        target.put("CUR_HP_EXT", targetHpAfter.getUnit());
 
-        // [세 구간 분리 요청] 반격범위 수식 줄은 빼고(어차피 3구간에서 실제 HP를 보여주므로
-        // 중복) 이모지 한 줄로 짧게 예고만 하고 바로 반격 결과를 보여준다. 대상/피격후HP도
-        // 3구간(이번턴 남은 HP)에서 어차피 보이므로 여기선 데미지만.
+        String tName = strVal(target.get("NAME"), JOB_NAME.getOrDefault(tJob, "동료"));
+        // [세 구간 분리 요청] 반격범위 수식 줄은 빼고 이모지 한 줄로 짧게 예고만 하고 바로 반격
+        // 결과를 보여준다. [버그 수정] "누가 맞았는지 안 나온다"는 신고로 대상도 다시 표기.
         sb.append("⚡").append(NL);
         sb.append(eliteMonsterName(floor, mon, elite)).append(" 반격 🎲").append(roll).append("→")
-          .append(dmgToParty).append("dmg");
+          .append(jobTag(tGrade, tJob, tName)).append(" ").append(dmgToParty).append("dmg");
         if (guarded) {
             // 도발로 실제 맞은 건 다른 동료라서, 원래 대상이 누구였는지 반격 결과 다음 줄에 설명.
             String origJob = strVal(originalTarget.get("CLASS"), "WARRIOR");
@@ -2499,12 +2504,13 @@ public class BotS5ServiceImpl implements BotS5Service {
         int cnt = ownedBefore + 1;
 
         // 새로 뽑은 동료는 (PARTY_SLOT NULLS LAST, COMPANION_ID) 정렬상 항상 목록의 맨 끝(=cnt번)에 위치
+        // [정리 요청] 테두리가 너무 길어서 텍스트 폭에 맞게 줄이고, HP/ATK/DEF 라벨도 이모지로.
         StringBuilder sb = new StringBuilder();
-        sb.append("┌─────────────┐").append(NL);
-        sb.append("  🎉 새 동료 영입!").append(NL);
-        sb.append("└─────────────┘").append(NL);
+        sb.append("┌───────────┐").append(NL);
+        sb.append(" 🎉 새 동료 영입!").append(NL);
+        sb.append("└───────────┘").append(NL);
         sb.append(name).append(" (").append(JOB_NAME.get(job)).append(" ★").append(grade).append(")").append(NL);
-        sb.append("스탯: HP ").append(stat[0]).append(" / ATK ").append(stat[1]).append(" / DEF ").append(stat[2]).append(NL);
+        sb.append("❤️ ").append(stat[0]).append(" ⚔️ ").append(stat[1]).append(" 🛡️ ").append(stat[2]).append(NL);
         sb.append("👉 /파티편성 ").append(cnt).append(" 로 파티에 편성하세요 (동료 목록 ").append(cnt).append("번)");
         return sb.toString();
     }
