@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 
 import my.prac.core.prjbot.dao.BotS5DAO;
 import my.prac.core.prjbot.service.BotS5Service;
+import my.prac.core.prjbot.service.BotService;
 import my.prac.core.util.PP;
 
 /**
@@ -38,6 +39,9 @@ public class Season5ViewController {
 
     @Resource(name = "core.prjbot.BotS5DAO")
     BotS5DAO s5Dao;
+
+    @Resource(name = "core.prjbot.BotService")
+    BotService botService;
 
     // ─────────────────────────────────────────────
     // JSP 뷰 페이지
@@ -322,6 +326,22 @@ public class Season5ViewController {
             }
         } catch (NumberFormatException e) {
             message = "잘못된 입력값입니다.";
+        }
+
+        // "웹 액션도 TBOT_WORD_HIS에 넣어달라" 요청 -- 지금까지는 채팅 명령어(/주사위 등)만
+        // 이 로그에 남고 웹 SPA 버튼 액션은 안 남아서, 웹으로만 플레이한 유저는 "메시지" 탭
+        // (/api/tower-messages)에 이력이 하나도 안 보이고, 관리자가 과거 이상행동을 감사(audit)
+        // 할 때도 웹 채널은 사각지대였다(범용 뽑기권 악용 조사 때 실제로 이 한계에 부딪힘).
+        // 로그 실패가 실제 액션 응답을 막으면 안 되므로 채팅 컨트롤러와 동일하게 try/catch로 격리.
+        try {
+            HashMap<String, Object> logMap = new HashMap<>();
+            logMap.put("userName", userName);
+            logMap.put("roomName", "WEB");
+            logMap.put("req", "[웹] " + type + (param1.isEmpty() ? "" : " " + param1) + (param2.isEmpty() ? "" : " " + param2));
+            logMap.put("res", message);
+            botService.insertBotWordHisTx(logMap);
+        } catch (Exception e) {
+            // 로그 저장 실패는 무시(채팅 컨트롤러의 기존 관례와 동일)
         }
 
         result.put("message", message);

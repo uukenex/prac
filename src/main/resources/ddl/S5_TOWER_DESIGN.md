@@ -865,9 +865,14 @@ S4의 `TBOT_S4_ACHIEVEMENT`/`TBOT_S4_USER_ACH` 패턴을 확장 계승. S5에서
   원래부터 기존 `TBOT_WORD_HIS`(REQ/RES/USER_NAME, 봇 전체 공용 요청·응답 로그)에 남고 있었다는
   걸 확인하고 그대로 재사용 -- `selectUserRecentMessages`(ROWNUM으로 최신 10개, RES는 CLOB이라
   `TO_CHAR`로 변환, 기존 `selectIssueCase`와 동일 패턴), `GET /loa/api/tower-messages`, SPA에
-  "💬 메시지" 탭 신설. 단, 이 로그는 채팅 채널에만 쌓이고 웹 SPA 자체 액션(`/api/tower-action`)은
-  안 남으므로 웹으로만 플레이한 이력은 안 보임(알려진 한계). REQ/RES 둘 다 유저가 입력/생성한
-  텍스트라 `innerHTML`이 아닌 `textContent`로 채워서 XSS 방지.
+  "💬 메시지" 탭 신설. 처음엔 채팅 채널만 이 로그에 쌓이고 웹 SPA 자체 액션(`/api/tower-action`)은
+  안 남아서 웹으로만 플레이한 이력이 안 보이는 한계가 있었는데, "웹 액션도 TBOT_WORD_HIS에
+  넣어달라"는 후속 요청으로 `apiTowerAction`이 액션 처리 직후 동일 테이블에 REQ="[웹] TYPE
+  param1 param2", RES=결과 메시지, ROOM_NAME="WEB" 형태로 같이 남기도록 수정(채팅 컨트롤러의
+  `botService.insertBotWordHisTx` 그대로 재사용, 로그 실패가 실제 액션 응답을 막지 않게
+  try/catch로 격리 -- 채팅 컨트롤러의 기존 관례와 동일). 이제 채팅/웹 두 채널 모두 감사(audit)
+  가능. REQ/RES 둘 다 유저가 입력/생성한 텍스트라 `innerHTML`이 아닌 `textContent`로 채워서
+  XSS 방지.
 - **[버그 수정] 등급 무관 범용 뽑기권 폐지**: "중급 전용 장비뽑기권만 줬는데 왜 상급/최상급
   상자도 무료뽑기 가능하다고 뜨냐"는 신고로 확인 -- `hasUsableEquipVoucher`/`hasUsableCompanionVoucher`가
   "그 등급에 락된 티어권이 없으면 범용 권(`EQUIP_VOUCHER`/`COMPANION_VOUCHER`)으로 폴백"하도록
