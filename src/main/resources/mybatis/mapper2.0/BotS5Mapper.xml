@@ -17,7 +17,8 @@
                WEAPON_CHOICE_TICKET_G4, WEAPON_CHOICE_TICKET_G5,
                COMPANION_VOUCHER_T1, COMPANION_VOUCHER_T2, COMPANION_VOUCHER_T3, COMPANION_VOUCHER_T4,
                EQUIP_VOUCHER_T1, EQUIP_VOUCHER_T2, EQUIP_VOUCHER_T3, EQUIP_VOUCHER_T4,
-               TOTAL_PP_EARNED_VALUE, TOTAL_PP_EARNED_EXT
+               TOTAL_PP_EARNED_VALUE, TOTAL_PP_EARNED_EXT,
+               DICE_ROLL_COUNT_TODAY, DICE_ROLL_DATE
         FROM TBOT_S5_USER_PROGRESS
         WHERE USER_NAME = #{userName}
     </select>
@@ -88,6 +89,8 @@
             <if test="noCooldownYn != null">NO_COOLDOWN_YN = #{noCooldownYn},</if>
             <if test="touchDiceCooldown != null">LAST_DICE_ACTION_DATE = SYSDATE,</if>
             <if test="nextCooldownSec != null">NEXT_COOLDOWN_SEC = #{nextCooldownSec},</if>
+            <if test="diceRollCountToday != null">DICE_ROLL_COUNT_TODAY = #{diceRollCountToday},</if>
+            <if test="touchDiceRollDate != null">DICE_ROLL_DATE = SYSDATE,</if>
             LAST_ACTION_DATE = SYSDATE
         </set>
         WHERE USER_NAME = #{userName}

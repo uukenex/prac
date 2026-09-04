@@ -703,6 +703,14 @@ public class BotS5ServiceImpl implements BotS5Service {
         String cooldownMsg = checkDiceCooldown(p);
         if (cooldownMsg != null) return prependAutoHunt(autoHuntMsg, cooldownMsg);
 
+        // 하루 500회 주사위 굴림 제한("하루 500번까지만" 요청) -- 쿨타임 통과 후, 실제로 이번
+        // 액션이 "굴림 1회"로 카운트되기 직전에 확인한다(쿨타임에 막힌 시도는 카운트 안 함).
+        // 관리자 테스트 계정(NO_COOLDOWN_YN)은 쿨타임과 동일한 이유로 이 제한도 면제.
+        if (!"Y".equals(strVal(p.get("NO_COOLDOWN_YN"), "N"))) {
+            String limitMsg = checkAndBumpDailyDiceLimit(userName, p);
+            if (limitMsg != null) return prependAutoHunt(autoHuntMsg, limitMsg);
+        }
+
         String result = rollDiceInternal(userName, p, status);
         // 다음 액션에 적용될 쿨타임은 "이번에 무슨 일이 있었는지"로 결정된다 -- 방금 전투 중이었는데
         // 이번 액션으로 몬스터가 죽었거나(처치) 파티가 전멸해서 전투가 끝났으면(=CUR_MONSTER_ID가
@@ -742,6 +750,34 @@ public class BotS5ServiceImpl implements BotS5Service {
         up.put("touchDiceCooldown", true);
         up.put("nextCooldownSec", nextCooldownSec);
         dao.updateUserProgress(up);
+    }
+
+    private static final int DAILY_DICE_LIMIT = 500;
+
+    /**
+     * 하루 주사위 굴림 횟수(DICE_ROLL_COUNT_TODAY)를 확인하고, 한도 안이면 카운트를 올린 뒤 null을
+     * 반환한다(통과). DICE_ROLL_DATE가 오늘이 아니면(=날짜가 바뀌었거나 최초 굴림) 카운트를 1로
+     * 리셋 -- 별도 배치/스케줄러 없이 "확인하는 시점에 날짜만 비교"하는 방식이라 자정에 뭔가
+     * 돌려줄 필요가 없다. 한도를 넘으면 카운트는 그대로 두고 안내 메시지만 반환.
+     * (SimpleDateFormat은 스레드 안전하지 않아 static 캐시로 못 쓰므로 java.time으로 비교한다.)
+     */
+    private String checkAndBumpDailyDiceLimit(String userName, HashMap<String, Object> p) {
+        java.util.Date rollDate = (java.util.Date) p.get("DICE_ROLL_DATE");
+        int rollCountToday = intVal(p.get("DICE_ROLL_COUNT_TODAY"), 0);
+        boolean sameDay = rollDate != null
+                && new java.sql.Date(rollDate.getTime()).toLocalDate().equals(java.time.LocalDate.now());
+        if (sameDay && rollCountToday >= DAILY_DICE_LIMIT) {
+            return "🎲 오늘 주사위를 " + DAILY_DICE_LIMIT + "번 모두 굴렸습니다. 내일 다시 시도해주세요.";
+        }
+        int newCount = sameDay ? rollCountToday + 1 : 1;
+        HashMap<String, Object> up = new HashMap<>();
+        up.put("userName", userName);
+        up.put("diceRollCountToday", newCount);
+        up.put("touchDiceRollDate", true);
+        dao.updateUserProgress(up);
+        p.put("DICE_ROLL_COUNT_TODAY", newCount);
+        p.put("DICE_ROLL_DATE", new java.util.Date());
+        return null;
     }
 
     private String rollDiceInternal(String userName, HashMap<String, Object> p, String status) {
@@ -1675,6 +1711,9 @@ public class BotS5ServiceImpl implements BotS5Service {
         int floor = intVal(p.get("CUR_FLOOR"), 0);
         boolean wasInCombat = "IN_COMBAT".equals(strVal(p.get("STATUS"), "NORMAL"));
         int target = floorBlockBase(floor) + n;
+        if (target == floor) {
+            return "이미 " + floor + "층에 있습니다."; // "같은 층으로 이동은 막아달라" 요청
+        }
         int villageFloor = floorBlockBase(floor);
         boolean alwaysFree = (target == villageFloor) || (target == villageFloor + 1); // 마을↔첫 사냥터층은 항상 자유 이동
         int maxReached = intVal(p.get("MAX_FLOOR_REACHED"), 0);
