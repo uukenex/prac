@@ -1604,11 +1604,13 @@ public class BotS5ServiceImpl implements BotS5Service {
         String tName = strVal(target.get("NAME"), JOB_NAME.getOrDefault(tJob, "동료"));
         // "주사위 적용 전 최소~최대 데미지 수식을 보여달라" 요청 -- 실제 주사위 결과를 보여주기
         // 전에, 그 결과가 어느 범위 안에서 나온 건지(몬스터 공격력 × 주사위(1~최대) - 대상
-        // 방어력) 수식 그대로 한 줄로 먼저 보여준다. ===로 감싸서 눈에 띄게 구분.
+        // 방어력) 수식 그대로 한 줄로 먼저 보여준다.
+        // [수정] "===로 감싸면 반격 부분이 잘려나온다"는 신고로 === 마커 제거(채팅 쪽에서
+        // === 를 구분선 등으로 인식해 메시지가 잘리는 것으로 추정).
         int minDmgToParty = Math.max(1, monsterAtk * 1 - tEff[2]);
         int maxDmgToParty = Math.max(1, monsterAtk * diceMax - tEff[2]);
-        sb.append("=== 반격범위 ATK").append(monsterAtk).append("×(1~").append(diceMax)
-          .append(")-DEF").append(tEff[2]).append("=").append(minDmgToParty).append("~").append(maxDmgToParty).append(" ===").append(NL);
+        sb.append("반격범위 ATK").append(monsterAtk).append("×(1~").append(diceMax)
+          .append(")-DEF").append(tEff[2]).append("=").append(minDmgToParty).append("~").append(maxDmgToParty).append(NL);
         sb.append(eliteMonsterName(floor, mon, elite)).append(" 반격 🎲").append(roll).append("→")
           .append(jobTag(tGrade, tJob, tName)).append(" ")
           .append(dmgToParty).append("dmg(HP ").append(targetHpAfter.format()).append(")");
