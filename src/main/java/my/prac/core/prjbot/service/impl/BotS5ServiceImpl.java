@@ -687,7 +687,17 @@ public class BotS5ServiceImpl implements BotS5Service {
         int unlocked = intVal(p.get("UNLOCKED_BLOCK"), 0);
         String cmd = "COMPANION".equals(gachaType) ? "/동료뽑기" : "/장비뽑기";
         StringBuilder sb = new StringBuilder("📖 ").append(cmd).append("N 번호 안내").append(NL);
-        sb.append(gachaCatalogText(dao.selectGachaList(gachaType, 999), unlocked));
+        // "실제 칠 명령어 형태 그대로 보여달라" 요청 -- "N. 이름" 대신 "/동료뽑기N : 이름"
+        int displayIdx = 1;
+        for (HashMap<String, Object> g : dao.selectGachaList(gachaType, 999)) {
+            String name = strVal(g.get("GACHA_NAME"), "?");
+            int unlockFloor = intVal(g.get("UNLOCK_FLOOR"), 0);
+            PP cost = PP.of(((Number) g.get("COST_VALUE")).doubleValue(), strVal(g.get("COST_EXT"), ""));
+            boolean isUnlocked = unlocked >= unlockFloor;
+            sb.append(cmd).append(displayIdx++).append(" : ").append(name)
+              .append(" (").append(unlockFloor).append("층~, ").append(cost.format()).append(" PP)")
+              .append(isUnlocked ? "" : " 🔒잠김").append(NL);
+        }
         sb.append("(뒤에 10을 붙이면 10연속, 예: ").append(cmd).append("2 10)").append(NL);
         sb.append("번호 없이 치면 1번을 바로 구매합니다. 이번 결과 👇").append(NL);
         return sb.toString();
