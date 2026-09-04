@@ -553,6 +553,10 @@ public class LoaChatController {
 
 			// [시즌5] 뽑기 명령어 표기 정리: "/동료뽑기N [10]" 형태로 통일
 			// (예: /동료뽑기 → 1번 단발, /동료뽑기2 → 2번 단발, /동료뽑기2 10 → 2번 10연차)
+			// [버그 수정/정책 변경] 예전엔 옛 띄어쓰기 방식("/동료뽑기 2" = 2번 단발)도 하위호환으로
+			// 계속 동작하게 남겨뒀는데, "번호는 반드시 붙여쓰기(/동료뽑기2)여야 한다"는 요청으로
+			// 이 하위호환을 완전히 없앴다 -- 번호가 안 붙어있으면(bare) 뒤에 뭐가 딸려오든
+			// (예: 실수로 띄어쓴 "/동료뽑기 2") 전부 무시하고 항상 1번 단발로 고정한다.
 			Matcher s5GachaM = Pattern.compile("^/(동료뽑기|장비뽑기)(\\d+)?$").matcher(param0);
 			if (s5GachaM.matches()) {
 				String s5GachaBase = "/" + s5GachaM.group(1);
@@ -561,12 +565,11 @@ public class LoaChatController {
 					boolean s5GachaTen = "10".equals(param1 == null ? "" : param1.trim());
 					param0 = s5GachaBase + (s5GachaTen ? "10" : "");
 					param1 = s5GachaAttached;
-					reqMap.put("param0", param0);
-					reqMap.put("param1", param1);
-				} else if (param1 == null || param1.trim().isEmpty()) {
-					param1 = "1";
-					reqMap.put("param1", param1);
+				} else {
+					param1 = "1"; // 번호 없이 bare로 치면 뒤에 뭐가 오든 무조건 1번 단발
 				}
+				reqMap.put("param0", param0);
+				reqMap.put("param1", param1);
 			}
 
 			switch (param0) {
