@@ -608,6 +608,36 @@ public class BotS5ServiceImpl implements BotS5Service {
         return "★" + grade + JOB_NAME.getOrDefault(job, "동료") + "(" + name + ")";
     }
 
+    /**
+     * 파티 시너지 판정("3캐릭부터만 효과가 나도록" 요청) -- 파티가 정확히 3명이고, 그 3명이
+     * 전부 같은 직업(모노 조합)이거나 전부 다른 직업(균형 조합, "레인보우")일 때만 발동한다.
+     * 3명 중 2명만 같은 직업(예: 전사2+마법사1)이거나 파티가 3명 미만이면 시너지 없음(null).
+     * @return "WARRIOR"/"MAGE"/"ROGUE"/"ARCHER"/"PRIEST"(해당 직업 모노 3인) 또는
+     *         "RAINBOW"(3직업 전부 다름), 조건 미충족 시 null.
+     */
+    private String detectPartySynergy(List<HashMap<String, Object>> party) {
+        if (party.size() != 3) return null;
+        java.util.Set<String> jobs = new java.util.HashSet<>();
+        for (HashMap<String, Object> c : party) jobs.add(strVal(c.get("CLASS"), "WARRIOR"));
+        if (jobs.size() == 1) return jobs.iterator().next();
+        if (jobs.size() == 3) return "RAINBOW";
+        return null;
+    }
+
+    /** 시너지 발동 안내 한 줄(없으면 빈 문자열). 매 전투 턴마다 붙여서 지금 켜져 있는지 알 수 있게 함. */
+    private String synergyAnnounce(String synergy) {
+        if (synergy == null) return "";
+        switch (synergy) {
+            case "WARRIOR": return "🛡️ 전사 3인조 시너지! 도발 확률 상승, 파티 전체 반격 피해 10%↓" + NL;
+            case "MAGE":    return "🔮 마법사 3인조 시너지! 스턴 확률 상승, 스턴 시 피해 +20%" + NL;
+            case "ROGUE":   return "🗡️ 도적 3인조 시너지! PP 훔치기 확률 상승, 훔친 PP량 2배" + NL;
+            case "ARCHER":  return "🏹 궁수 3인조 시너지! 파티 전체 공격력 +30%" + NL;
+            case "PRIEST":  return "✨ 도사 3인조 시너지! 보호막량 2배" + NL;
+            case "RAINBOW": return "🌈 균형 파티 시너지(직업 3종 전부 다름)! 파티 전체 공격력/방어력 +10%" + NL;
+            default:        return "";
+        }
+    }
+
     // ================================================================
     // /탑도움말, /탑명령어 — 웹(SPA) 탭에 있는 기능을 포함해 전체 명령어를 텍스트로 안내
     // ================================================================
@@ -659,6 +689,23 @@ public class BotS5ServiceImpl implements BotS5Service {
         sb.append("/파티편성 (별칭: /탑편성, /탑동료, /탑파티, /ㅌㅍㅅ, /ㅌㄷㄹ, /ㅌㅍㅌ) : 보유 동료 목록 + 파티 편성 현황 조회").append(NL);
         sb.append("/파티편성 N : 목록 N번째 동료를 파티에 편성/해제 (전투 중이 아니면 어디서든)").append(NL);
         sb.append("/동료가리기 N : 목록 N번째 동료를 /파티편성 텍스트 목록에서 숨김/숨김해제(웹 화면엔 항상 표시)").append(NL);
+        sb.append(NL);
+
+        sb.append("[파티 시너지] 전투마다 자동 판정, 파티가 정확히 3명이고 아래 조건을 만족해야 발동(2명만 겹치면 발동 안 함)").append(NL);
+        sb.append("전사★★★ : 도발 확률 상승, 파티 전체 반격 피해 10%↓").append(NL);
+        sb.append("마법사★★★ : 스턴 확률 상승, 스턴 시 피해 +20%").append(NL);
+        sb.append("도적★★★ : PP훔치기 확률 상승, 훔친 PP량 2배").append(NL);
+        sb.append("궁수★★★ : 파티 전체 공격력 +30%").append(NL);
+        sb.append("도사★★★ : 보호막량 2배").append(NL);
+        sb.append("직업 3종 전부 다름(균형) : 파티 전체 공격력/방어력 +10%").append(NL);
+        sb.append(NL);
+
+        sb.append("[동료 성급 특수효과] ★5/★6 동료는 그 직업 고유 효과가 개인적으로 더 강해짐(시너지와 중복 적용)").append(NL);
+        sb.append("전사 : ★5 도발 확률 +10%p, ★6 +20%p(도발 성공 시 받는 피해도 20%↓)").append(NL);
+        sb.append("마법사 : ★5 스턴 확률 +10%p, ★6 +20%p(스턴 시 피해도 +20%)").append(NL);
+        sb.append("도적 : ★5 PP훔치기 확률 +10%p, ★6 +15%p(훔친 PP량도 +50%)").append(NL);
+        sb.append("궁수 : ★5 즉사 발동 기준 HP10%→15%, ★6 20%(확률도 40%→55%)").append(NL);
+        sb.append("도사 : ★5 보호막량 +20%, ★6 +50%").append(NL);
         sb.append(NL);
 
         sb.append("[상점] (웹 '상점' 탭) — 뽑기는 마을이 아니어도 아무 층에서나 가능").append(NL);
@@ -1410,6 +1457,11 @@ public class BotS5ServiceImpl implements BotS5Service {
         HashMap<String, Object> userStat = dao.selectUserStat(userName);
         StringBuilder sb = new StringBuilder(userName).append("님," + NL);
 
+        // 파티 시너지(직업 3인조/균형 3인조, "3캐릭부터만" 요청) -- 매 턴 판정해서 파티 구성을
+        // 바꾸면 바로바로 반영되게 한다. 발동 중이면 매 턴 안내 한 줄을 붙여서 켜져 있는지 보여줌.
+        String synergy = detectPartySynergy(party);
+        sb.append(synergyAnnounce(synergy));
+
         // 보스 기절 스킬(반격 턴에 걸림, 아래 참고)로 지정된 동료는 이번 공격 턴만 건너뛰고 소모된다.
         int bossStunCid = intVal(p.get("BOSS_STUN_CID"), 0);
         boolean stunConsumed = false;
@@ -1435,6 +1487,10 @@ public class BotS5ServiceImpl implements BotS5Service {
             int grade = intVal(c.get("GRADE"), 1);
             List<HashMap<String, Object>> equips = dao.selectEquipByCompanion(intVal(c.get("COMPANION_ID"), 0));
             int[] eff = computeEffectiveStat(job, grade, equips, userStat);
+            if ("ARCHER".equals(synergy)) eff[1] = (int) Math.round(eff[1] * 1.3); // 시너지: 궁수3인조 공격력+30%
+            // 균형3인조(RAINBOW)의 방어 +10%는 이 배열이 아니라 반격 파트에서 대상(tEff[2])에
+            // 직접 적용한다(여기 eff[2]는 "내가 공격할 때" 값이라 방어 보너스는 안 쓰임).
+            if ("RAINBOW".equals(synergy)) eff[1] = (int) Math.round(eff[1] * 1.1); // 시너지: 균형3인조 공격 +10%
             if (trapAtkDown) eff[1] = (int) Math.round(eff[1] * 0.7); // 함정: 공격력 30% 약화
             if (luckyAtkUp) eff[1] = (int) Math.round(eff[1] * luckyMult); // 럭키: 공격력 강화
 
@@ -1460,32 +1516,62 @@ public class BotS5ServiceImpl implements BotS5Service {
             sb.append(jobTag(grade, job, cName)).append(" ").append(hp.format()).append("/").append(eff[0])
               .append(" 🎲").append(roll).append("→").append(dmg).append("dmg");
 
+            // [2026-09-05 신설] ★5/★6 동료 성급 특수효과 -- 시너지와 별개로 "이 동료 개인"의
+            // 등급이 높을수록 그 직업 고유 효과가 강해진다. 시너지가 함께 켜져 있으면 둘 다
+            // 적용(스택)된다.
             switch (job) {
-                case "MAGE":
-                    if (RND.nextInt(100) < 20) {
+                case "MAGE": {
+                    int stunChance = 20;
+                    if ("MAGE".equals(synergy)) stunChance += 20; // 시너지: 마법사3인조
+                    if (grade >= 6) stunChance += 20;              // ★6
+                    else if (grade >= 5) stunChance += 10;         // ★5
+                    if (RND.nextInt(100) < stunChance) {
                         stunned = true;
                         sb.append(" ✨스턴!");
+                        // ★6 또는 마법사3인조 시너지: 스턴 성공 시 이번 공격 피해 +20% 추가
+                        if (grade >= 6 || "MAGE".equals(synergy)) {
+                            long extra = Math.round(dmg * 0.2);
+                            totalDamage += extra;
+                            sb.append("(+").append(extra).append("dmg)");
+                        }
                     }
                     break;
-                case "ROGUE":
-                    if (RND.nextInt(100) < 25) {
-                        PP steal = PP.of(((Number) mon.get("PP_PER_KILL_VALUE")).doubleValue(), strVal(mon.get("PP_PER_KILL_EXT"), "")).multiply(0.1 * floorPpMultiplier(floor) * eliteMult);
+                }
+                case "ROGUE": {
+                    int stealChance = 25;
+                    if ("ROGUE".equals(synergy)) stealChance += 10; // 시너지: 도적3인조
+                    if (grade >= 6) stealChance += 15;               // ★6
+                    else if (grade >= 5) stealChance += 10;          // ★5
+                    if (RND.nextInt(100) < stealChance) {
+                        double stealMult = 0.1;
+                        if ("ROGUE".equals(synergy)) stealMult *= 2.0; // 시너지: 훔친 PP 2배
+                        if (grade >= 6) stealMult *= 1.5;               // ★6: 훔친 PP +50%
+                        PP steal = PP.of(((Number) mon.get("PP_PER_KILL_VALUE")).doubleValue(), strVal(mon.get("PP_PER_KILL_EXT"), "")).multiply(stealMult * floorPpMultiplier(floor) * eliteMult);
                         addPp(userName, p, steal);
                         sb.append(" 🗡️+").append(steal.format()).append("PP");
                     }
                     break;
-                case "ARCHER":
-                    if (PP.toBaseValue(monsterHp) <= PP.toBaseValue(monsterMaxHp) * 0.1 && RND.nextInt(100) < 40) {
+                }
+                case "ARCHER": {
+                    double executeThreshold = 0.1;
+                    int executeChance = 40;
+                    if (grade >= 6) { executeThreshold = 0.2; executeChance = 55; } // ★6
+                    else if (grade >= 5) { executeThreshold = 0.15; }                // ★5
+                    if (PP.toBaseValue(monsterHp) <= PP.toBaseValue(monsterMaxHp) * executeThreshold && RND.nextInt(100) < executeChance) {
                         executeKill = true;
                         sb.append(" 🏹즉사!");
                     }
                     break;
+                }
                 case "PRIEST": {
                     // [명확화 요청] "실드를 누구한테 주는지 안 보인다"는 지적으로, 도사 자신의
                     // 줄에는 더 이상 🛡️+N을 안 찍는다 -- 실제로 이번 반격을 막아준 대상이
                     // 정해진 뒤(아래 resolveCombatTurn의 반격 파트) 그 동료 자신의 줄에 붙여준다.
                     int shieldRoll = rollFace(diceMax);
                     int shieldAmt = Math.max(0, eff[1] * shieldRoll);
+                    if ("PRIEST".equals(synergy)) shieldAmt = (int) Math.round(shieldAmt * 2.0); // 시너지: 도사3인조 2배
+                    if (grade >= 6) shieldAmt = (int) Math.round(shieldAmt * 1.5);                 // ★6
+                    else if (grade >= 5) shieldAmt = (int) Math.round(shieldAmt * 1.2);             // ★5
                     shieldPool += shieldAmt;
                     break;
                 }
@@ -1663,7 +1749,13 @@ public class BotS5ServiceImpl implements BotS5Service {
         HashMap<String, Object> originalTarget = target;
         boolean guarded = false;
 
-        // 전사 도발: 체력 50% 이상인 전사가 있으면 확률적으로 자신이 대신 맞음
+        // 전사 도발: 체력 50% 이상인 전사가 있으면 확률적으로 자신이 대신 맞음.
+        // [2026-09-05 신설] 전사3인조 시너지/★5·★6 성급 특수효과로 도발 확률이 오르고,
+        // ★6 전사가 도발에 성공하면 그 반격 피해를 추가로 20% 더 깎는다. 전사3인조일 때는
+        // 3명 전원이 각자 도발 판정을 받도록(기존엔 "첫 전사만" 판정하던 걸) 시너지 조건에서만
+        // 풀어준다 -- 그 외엔 예전처럼 첫 전사만 판정(다수 판정으로 인한 밸런스 변화 방지).
+        boolean warriorSynergy = "WARRIOR".equals(synergy);
+        int warriorGuardMitigationPct = 0;
         for (HashMap<String, Object> c : alive) {
             if (!"WARRIOR".equals(strVal(c.get("CLASS"), ""))) continue;
             int wGrade = intVal(c.get("GRADE"), 1);
@@ -1671,11 +1763,16 @@ public class BotS5ServiceImpl implements BotS5Service {
             int[] wEff = computeEffectiveStat("WARRIOR", wGrade, wEquips, userStat);
             PP wHp = PP.of(((Number) c.get("CUR_HP_VALUE")).doubleValue(), strVal(c.get("CUR_HP_EXT"), ""));
             boolean over50 = PP.toBaseValue(wHp) * 2 >= wEff[0];
-            if (over50 && !c.equals(target) && RND.nextInt(100) < 30) {
+            int guardChance = 30;
+            if (warriorSynergy) guardChance += 20;      // 시너지: 전사3인조
+            if (wGrade >= 6) guardChance += 20;          // ★6
+            else if (wGrade >= 5) guardChance += 10;     // ★5
+            if (over50 && !c.equals(target) && RND.nextInt(100) < guardChance) {
                 target = c;
                 guarded = true;
+                warriorGuardMitigationPct = wGrade >= 6 ? 20 : 0; // ★6: 도발 성공 시 받는 피해 추가 20%↓
             }
-            break; // 파티엔 전사가 최대 1명이라고 가정하지 않지만, 첫 전사만 판정
+            if (!warriorSynergy) break; // 시너지 아니면 예전처럼 첫 전사만 판정
         }
 
         // 20층 이후 보스의 기절 스킬: 30% 확률로 이번 반격 턴을 통째로 써서 대상을 기절시킴(피해 없음,
@@ -1696,6 +1793,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         int tGrade = intVal(target.get("GRADE"), 1);
         List<HashMap<String, Object>> tEquips = dao.selectEquipByCompanion(intVal(target.get("COMPANION_ID"), 0));
         int[] tEff = computeEffectiveStat(tJob, tGrade, tEquips, userStat);
+        if ("RAINBOW".equals(synergy)) tEff[2] = (int) Math.round(tEff[2] * 1.1); // 시너지: 균형3인조 방어 +10%
         if (trapDefDown) tEff[2] = (int) Math.round(tEff[2] * 0.7); // 함정: 방어력 30% 약화(반격 피해 증가)
         if (luckyDefUp) tEff[2] = (int) Math.round(tEff[2] * luckyMult); // 럭키: 방어력 강화(반격 피해 감소)
         int monsterAtk = (int) Math.round(intVal(mon.get("ATK_VALUE"), 0) * eliteMult);
@@ -1730,6 +1828,11 @@ public class BotS5ServiceImpl implements BotS5Service {
 
         // [정책 변경] "무시 대상"은 보스 피해를 면제받지 않는다(반격은 평소처럼 그대로 받음) --
         // 대신 이 동료의 공격이 보스에게 안 먹히도록 위 파티 공격 파트에서 처리했다.
+
+        // [2026-09-05 신설] 전사3인조 시너지: 파티 전체가 받는 반격 피해 10% 감소(항상 적용).
+        // ★6 전사가 이번에 도발로 대신 맞았으면 그 몫만 추가로 20% 더 감소.
+        if (warriorSynergy) dmgToParty = (int) Math.round(dmgToParty * 0.9);
+        if (warriorGuardMitigationPct > 0) dmgToParty = (int) Math.round(dmgToParty * (1 - warriorGuardMitigationPct / 100.0));
 
         PP targetHpAfter = targetHp.subtract(PP.fromPP(dmgToParty));
         if (PP.toBaseValue(targetHpAfter) < 0) targetHpAfter = PP.fromPP(0);
