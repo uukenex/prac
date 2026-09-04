@@ -1451,10 +1451,12 @@ public class BotS5ServiceImpl implements BotS5Service {
                     }
                     break;
                 case "PRIEST": {
+                    // [명확화 요청] "실드를 누구한테 주는지 안 보인다"는 지적으로, 도사 자신의
+                    // 줄에는 더 이상 🛡️+N을 안 찍는다 -- 실제로 이번 반격을 막아준 대상이
+                    // 정해진 뒤(아래 resolveCombatTurn의 반격 파트) 그 동료 자신의 줄에 붙여준다.
                     int shieldRoll = RND.nextInt(diceMax) + 1;
                     int shieldAmt = Math.max(0, eff[1] * shieldRoll);
                     shieldPool += shieldAmt;
-                    sb.append(" 🛡️+").append(shieldAmt);
                     break;
                 }
                 default:
@@ -1462,6 +1464,9 @@ public class BotS5ServiceImpl implements BotS5Service {
             }
             sb.append(NL);
         }
+        // "파티 합공 총 데미지도 보여달라" 요청 -- 개별 줄만으로는 한 번에 얼마나 몰아쳤는지
+        // 암산해야 해서, 공격 줄들 바로 아래에 합계를 한 줄 더 보여준다.
+        if (totalDamage > 0) sb.append("총 ").append(totalDamage).append("dmg로 공격!").append(NL);
 
         PP monsterHpAfter = executeKill ? PP.fromPP(0) : monsterHp.subtract(PP.fromPP(totalDamage));
         boolean monsterDead = executeKill || PP.toBaseValue(monsterHpAfter) <= 0;
@@ -1628,12 +1633,32 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (luckyDefUp) tEff[2] = (int) Math.round(tEff[2] * luckyMult); // 럭키: 방어력 강화(반격 피해 감소)
         int monsterAtk = (int) Math.round(intVal(mon.get("ATK_VALUE"), 0) * eliteMult);
         int roll = RND.nextInt(diceMax) + 1;
-        int dmgToParty = Math.max(1, monsterAtk * roll - tEff[2]);
+        int rawDmgToParty = Math.max(1, monsterAtk * roll - tEff[2]);
+        int dmgToParty = rawDmgToParty;
+
+        String tName = strVal(target.get("NAME"), JOB_NAME.getOrDefault(tJob, "동료"));
+        PP targetHp = PP.of(((Number) target.get("CUR_HP_VALUE")).doubleValue(), strVal(target.get("CUR_HP_EXT"), ""));
+        // [명확화 요청] 실드가 얼마나 막아줬는지 한눈에 보이게, 반격 줄은 먼저 원본(raw) 피해량을
+        // 보여주고, 실드/무시로 깎인 결과는 바로 다음 줄에서 설명한다(예전엔 이미 깎인 값만 나와서
+        // "실드가 실제로 얼마를 막아줬는지" 확인이 안 됐음). [버그 수정] "누가 맞았는지 안 나온다"는
+        // 신고로 대상도 표기 -- 이모지 예고 줄(⚡)은 정보 없이 한 줄만 차지해서 생략.
+        sb.append(eliteMonsterName(floor, mon, elite)).append("의 ").append(jobTag(tGrade, tJob, tName))
+          .append("에게 반격! 🎲").append(roll).append("→ ").append(rawDmgToParty).append("dmg").append(NL);
 
         if (shieldPool > 0) {
             int absorbed = Math.min(shieldPool, dmgToParty);
             dmgToParty -= absorbed;
-            sb.append("🛡️ 보호막 -").append(absorbed).append(" 흡수").append(NL);
+            sb.append("🛡️ 보호막 ").append(absorbed).append("보호 후 ").append(dmgToParty).append("dmg").append(NL);
+            // "도사가 누구를 실드해줬는지 명확히" 요청 -- 위 파티 공격 줄에서 도사 자신에게
+            // 붙던 🛡️+N 표시를, 실제로 이 실드를 받은(이번 반격의) 대상 본인의 공격 줄로 옮겨서
+            // 붙인다. 그 줄은 이 시점에 이미 sb에 적혀 있으므로 자리를 찾아 뒤에 이어붙인다.
+            String targetAttackLinePrefix = jobTag(tGrade, tJob, tName) + " " + targetHp.format() + "/" + tEff[0];
+            int lineStart = sb.indexOf(targetAttackLinePrefix);
+            if (lineStart >= 0) {
+                int lineEnd = sb.indexOf(NL, lineStart);
+                if (lineEnd < 0) lineEnd = sb.length();
+                sb.insert(lineEnd, " 🛡️+" + shieldPool);
+            }
         }
 
         boolean immune = bossImmuneCid != 0 && bossImmuneCid == intVal(target.get("COMPANION_ID"), -1);
@@ -1642,7 +1667,6 @@ public class BotS5ServiceImpl implements BotS5Service {
             sb.append("👁️ 무시 대상, 피해없음").append(NL);
         }
 
-        PP targetHp = PP.of(((Number) target.get("CUR_HP_VALUE")).doubleValue(), strVal(target.get("CUR_HP_EXT"), ""));
         PP targetHpAfter = targetHp.subtract(PP.fromPP(dmgToParty));
         if (PP.toBaseValue(targetHpAfter) < 0) targetHpAfter = PP.fromPP(0);
 
@@ -1657,21 +1681,15 @@ public class BotS5ServiceImpl implements BotS5Service {
         target.put("CUR_HP_VALUE", targetHpAfter.getValue());
         target.put("CUR_HP_EXT", targetHpAfter.getUnit());
 
-        String tName = strVal(target.get("NAME"), JOB_NAME.getOrDefault(tJob, "동료"));
-        // [세 구간 분리 요청] 반격범위 수식 줄은 빼고 이모지 한 줄로 짧게 예고만 하고 바로 반격
-        // 결과를 보여준다. [버그 수정] "누가 맞았는지 안 나온다"는 신고로 대상도 다시 표기.
-        sb.append("⚡").append(NL);
-        sb.append(eliteMonsterName(floor, mon, elite)).append(" 반격 🎲").append(roll).append("→")
-          .append(jobTag(tGrade, tJob, tName)).append(" ").append(dmgToParty).append("dmg");
         if (guarded) {
             // 도발로 실제 맞은 건 다른 동료라서, 원래 대상이 누구였는지 반격 결과 다음 줄에 설명.
             String origJob = strVal(originalTarget.get("CLASS"), "WARRIOR");
             int origGrade = intVal(originalTarget.get("GRADE"), 1);
             String origName = strVal(originalTarget.get("NAME"), JOB_NAME.getOrDefault(origJob, "동료"));
-            sb.append(NL).append(jobTag(origGrade, origJob, origName)).append(" 대신 🛡️ 전사가 공격을 받아냅니다!");
+            sb.append(jobTag(origGrade, origJob, origName)).append(" 대신 🛡️ 전사가 공격을 받아냅니다!").append(NL);
         }
         // "몬스터 반격 이후 파티 체력을 보여달라" 요청
-        sb.append(NL).append(NL).append(partyHpSummary(party, userStat));
+        sb.append(NL).append(partyHpSummary(party, userStat));
 
         return sb.toString();
     }
@@ -1682,7 +1700,9 @@ public class BotS5ServiceImpl implements BotS5Service {
      * 한 명당 한 줄씩 보여준다(전투불가면 💀). [세 구간 분리 요청] "이번턴 남은" 구간의 헤더.
      */
     private String partyHpSummary(List<HashMap<String, Object>> party, HashMap<String, Object> userStat) {
-        StringBuilder sb = new StringBuilder("💗이번턴 남은💗").append(NL);
+        // [명확화 요청] 헤더를 "전투결과"로 바꾸고, 하트는 헤더 장식이 아니라 각자의 HP 앞에
+        // 붙여서 "이 사람은 살아있다/죽었다"가 줄마다 바로 보이게 함(전투불가면 💀0/최대).
+        StringBuilder sb = new StringBuilder("전투결과").append(NL);
         for (int i = 0; i < party.size(); i++) {
             HashMap<String, Object> c = party.get(i);
             String job = strVal(c.get("CLASS"), "WARRIOR");
@@ -1691,9 +1711,10 @@ public class BotS5ServiceImpl implements BotS5Service {
             List<HashMap<String, Object>> equips = dao.selectEquipByCompanion(intVal(c.get("COMPANION_ID"), 0));
             int[] eff = computeEffectiveStat(job, grade, equips, userStat);
             PP hp = PP.of(((Number) c.get("CUR_HP_VALUE")).doubleValue(), strVal(c.get("CUR_HP_EXT"), ""));
+            boolean dead = PP.toBaseValue(hp) <= 0;
             if (i > 0) sb.append(NL);
-            sb.append(jobTag(grade, job, cName)).append(" ").append(hp.format()).append("/").append(eff[0]);
-            if (PP.toBaseValue(hp) <= 0) sb.append("💀");
+            sb.append(jobTag(grade, job, cName)).append(" ").append(dead ? "💀" : "💗")
+              .append(hp.format()).append("/").append(eff[0]);
         }
         return sb.toString();
     }
