@@ -90,4 +90,13 @@ public interface BotS5DAO {
 
     // ── 서버 설정값(config) ──
     List<HashMap<String, Object>> selectAllConfig();
+
+    // ── /탑랭킹: 서버 전체 최고기록(익명 집계) — 누가 세운 기록인지는 노출하지 않고 수치만 조회 ──
+    int selectMaxFloorReached();
+    int selectMaxTotalKillCount();
+    int selectMaxAchievementCount();
+    int selectMaxFullyExploredCount();
+    int selectMaxCompanionCount();
+    int selectMaxEquipCount();
+    List<HashMap<String, Object>> selectAllUserPp();
 }

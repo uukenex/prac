@@ -374,6 +374,42 @@ public class BotS5ServiceImpl implements BotS5Service {
         return tiles;
     }
 
+    /**
+     * /탑랭킹 — "누가 랭커인지는 모르게" 요청대로, 유저명은 절대 조회/노출하지 않고
+     * 서버 전체에서 각 항목별 최고 수치만 익명으로 보여준다(1위 목록이 아니라 "기록판"에 가까움).
+     * PP는 값+단위(EXT)가 섞여있어 SQL MAX로 못 비교하므로(예: 9999 vs 1a는 1a가 더 큼)
+     * 전체를 가져와 PP.compare()로 비교 -- 유저 수가 많지 않아 성능 문제 없음.
+     */
+    @Override
+    public String ranking() {
+        int maxFloor = dao.selectMaxFloorReached();
+        int maxKill = dao.selectMaxTotalKillCount();
+        int maxAch = dao.selectMaxAchievementCount();
+        int maxExplored = dao.selectMaxFullyExploredCount();
+        int maxCompanion = dao.selectMaxCompanionCount();
+        int maxEquip = dao.selectMaxEquipCount();
+
+        PP maxPp = PP.fromPP(0);
+        for (HashMap<String, Object> row : dao.selectAllUserPp()) {
+            PP v = PP.of(((Number) row.get("PP_VALUE")).doubleValue(), strVal(row.get("PP_EXT"), ""));
+            if (v.compare(maxPp) > 0) maxPp = v;
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("┌─────────────────┐").append(NL);
+        sb.append("  🏆 시즌5 서버 전체 기록").append(NL);
+        sb.append("└─────────────────┘").append(NL);
+        sb.append("(누가 세운 기록인지는 비공개입니다)").append(NL).append(NL);
+        sb.append("🪜 최고 도달 층: ").append(maxFloor).append("층").append(NL);
+        sb.append("⚔️ 최다 누적 처치: ").append(maxKill).append("마리").append(NL);
+        sb.append("🏅 최다 업적 보유: ").append(maxAch).append("개").append(NL);
+        sb.append("🗺️ 최다 완전탐사: ").append(maxExplored).append("개 층").append(NL);
+        sb.append("👥 최다 동료 보유: ").append(maxCompanion).append("마리").append(NL);
+        sb.append("🎽 최다 장비 보유: ").append(maxEquip).append("개").append(NL);
+        sb.append("💰 최다 보유 PP: ").append(maxPp.format());
+        return sb.toString();
+    }
+
     /** 사냥터층(구간 내 1~8번째) PP 보상 배율: 1층 1.0배, 2층 1.1배 ... 8층 1.7배로 층마다 조금씩 차이. 보스/마을층은 1.0배. */
     private double floorPpMultiplier(int floor) {
         int pos = floor % 10;
@@ -514,6 +550,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         sb.append("/장비장착 [N] [M]").append(NL);
         sb.append("/장비합성 N").append(NL);
         sb.append("/탑업적").append(NL);
+        sb.append("/탑랭킹").append(NL);
         sb.append(NL);
 
         sb.append("[상세 설명]").append(NL);
@@ -552,6 +589,10 @@ public class BotS5ServiceImpl implements BotS5Service {
 
         sb.append("[업적] (웹 '업적' 탭)").append(NL);
         sb.append("/탑업적 : 달성한 업적 이름만 조회").append(NL);
+        sb.append(NL);
+
+        sb.append("[랭킹]").append(NL);
+        sb.append("/탑랭킹 : 서버 전체 최고기록 조회 (최고층/누적처치/업적수 등, 누가 세운 기록인지는 비공개)").append(NL);
         return sb.toString();
     }
 

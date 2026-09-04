@@ -27,6 +27,7 @@ import my.prac.core.prjbot.service.BotS5Service;
  *   /장비장착 N [M]   — N번째 미착용 장비를 M번째(생략 시 자동) 파티원에 장착
  *   /장비합성 N       — N번째 장비 포함 동일 장비 3개를 상위 등급으로 합성
  *   /장비해제 M       — M번째 파티원이 착용 중인 장비 전부 해제 (별칭: /탑해제, /ㅈㅂㅎㅈ, /ㅌㅎㅈ)
+ *   /탑랭킹           — 서버 전체 최고기록(익명 집계, 누가 세웠는지는 비공개)
  *
  * 설계서: src/main/resources/ddl/S5_TOWER_DESIGN.md
  */
@@ -189,6 +190,11 @@ public class Season5Controller {
         } catch (NumberFormatException e) {
             return "번호는 숫자로 입력해주세요.";
         }
+    }
+
+    /** /탑랭킹 — 인자/유저 구분 없이 서버 전체 익명 기록판을 그대로 보여줌 */
+    public String ranking() {
+        return s5Service.ranking();
     }
 
     public String equipUnwearAll(HashMap<String, Object> map) {

@@ -108,4 +108,7 @@ public interface BotS5Service {
 
     /** 유저별 보드(층) 조회 — 없으면 새로 생성(계단1/특수1~2/보물상자1/강화몬스터(3구간부터)+나머지 전투/함정/럭키). 마을 귀환 시 삭제되어 다음 진입 때 재생성됨. */
     List<HashMap<String, Object>> ensureUserBoard(String userName, int floor);
+
+    /** /탑랭킹 — 서버 전체 최고기록(익명 집계). 누가 세운 기록인지는 노출하지 않고 수치만 보여준다. */
+    String ranking();
 }
