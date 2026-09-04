@@ -1043,10 +1043,16 @@ var TW = (function () {
         var st = data.stat || {};
         var statBox = document.getElementById('statShopBox');
         statBox.innerHTML = '';
+        // 레벨당 실제 증가량도 같이 보여준다("스탯구매로 인해 증가량도 표기해달라" 요청) --
+        // 퍼센트 스탯(공격력최대/체력)은 "현재 +N% (다음 +M%p)", 최소공격력은 고정 데미지라
+        // "현재 최소데미지 +N (다음 +M)" 형태.
         var statDefs = [
-          { key: 'atkMaxLv', label: '공격력(최대)', cost: st.nextCostAtkMax, type: '공격력' },
-          { key: 'atkMinLv', label: '공격력(최소)', cost: st.nextCostAtkMin, type: '최소공격력' },
-          { key: 'hpLv',     label: '체력',         cost: st.nextCostHp,     type: '체력' }
+          { key: 'atkMaxLv', label: '공격력(최대)', cost: st.nextCostAtkMax, type: '공격력',
+            gain: '현재 +' + (st.atkPctCur || 0) + '% (다음 레벨 +' + (st.atkPctPerLv || 0) + '%p)' },
+          { key: 'atkMinLv', label: '공격력(최소)', cost: st.nextCostAtkMin, type: '최소공격력',
+            gain: '현재 최소데미지 +' + (st.minDmgCur || 0) + ' (다음 레벨 +' + (st.minDmgPerLv || 0) + ')' },
+          { key: 'hpLv',     label: '체력',         cost: st.nextCostHp,     type: '체력',
+            gain: '현재 +' + (st.hpPctCur || 0) + '% (다음 레벨 +' + (st.hpPctPerLv || 0) + '%p)' }
         ];
         statDefs.forEach(function (def) {
           var lv = st[def.key] || 0;
@@ -1054,8 +1060,9 @@ var TW = (function () {
           var maxed = lv >= cap;
           var row = document.createElement('div');
           row.className = 'shop-row';
-          row.innerHTML = '<span>' + def.label + ' Lv' + lv + ' / ' + cap
-              + (maxed ? ' (상한 도달)' : ' (' + def.cost + 'PP)') + '</span>'
+          row.innerHTML = '<span><div>' + def.label + ' Lv' + lv + ' / ' + cap
+              + (maxed ? ' (상한 도달)' : ' (' + def.cost + 'PP)') + '</div>'
+              + '<div style="font-size:10px;color:var(--ink-soft);margin-top:2px;">' + def.gain + '</div></span>'
               + '<span class="btn-group"><button' + (maxed ? ' disabled' : '')
               + ' onclick="TW.action(\'STAT_BUY\',\'' + def.type + '\')">강화</button></span>';
           statBox.appendChild(row);

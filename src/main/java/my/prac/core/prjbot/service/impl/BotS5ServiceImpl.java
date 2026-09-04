@@ -178,6 +178,12 @@ public class BotS5ServiceImpl implements BotS5Service {
     private static final String[] COMPANION_TIER_NAME = { "하급", "중급", "상급", "최상급" };
     private static final int[]    DICE_UNLOCK = { 0, 10, 30, 50, 70 };
 
+    // /스탯구매 레벨당 실제 증가량 -- computeEffectiveStat()과 상점 표시(statShop/statShopInfo)가
+    // 이 값을 공유해서 "레벨당 얼마나 느는지" 표시가 실제 전투 계산과 어긋나지 않게 한다.
+    private static final double ATK_PCT_PER_LV = 0.03;   // 공격력(최대) 레벨당 +3%(곱연산)
+    private static final double HP_PCT_PER_LV  = 0.03;   // 체력 레벨당 +3%(곱연산)
+    private static final int    MIN_DMG_PER_LV = 2;      // 최소공격력 레벨당 데미지 하한 +2(고정값)
+
     // 칸 종류 표시(아이콘+이름)
     private static final HashMap<String, String> TILE_LABEL = new HashMap<String, String>() {{
         put("COMBAT", "⚔️ 전투");  put("PP", "🍀 럭키");     put("TREASURE", "💎 보물상자");
@@ -304,9 +310,9 @@ public class BotS5ServiceImpl implements BotS5Service {
         int atkMaxLv = userStat == null ? 0 : intVal(userStat.get("ATK_MAX_LV"), 0);
         int atkMinLv = userStat == null ? 0 : intVal(userStat.get("ATK_MIN_LV"), 0);
         int hpLv     = userStat == null ? 0 : intVal(userStat.get("HP_LV"), 0);
-        atk *= (1 + 0.03 * atkMaxLv);
-        hp  *= (1 + 0.03 * hpLv);
-        int minDmgFloor = atkMinLv * 2;
+        atk *= (1 + ATK_PCT_PER_LV * atkMaxLv);
+        hp  *= (1 + HP_PCT_PER_LV * hpLv);
+        int minDmgFloor = atkMinLv * MIN_DMG_PER_LV;
 
         return new int[]{ (int) Math.round(hp), (int) Math.round(atk), (int) Math.round(def), minDmgFloor };
     }
@@ -2578,12 +2584,25 @@ public class BotS5ServiceImpl implements BotS5Service {
         int nextVillageFloor = unlockedBlock + 10; // 다음 상한이 열리는 마을(그 앞 보스를 처치하면 도착)
 
         if (type == null || type.isEmpty()) {
+            // 레벨당 실제 증가량("스탯구매로 인해 증가량도 표기해달라" 요청) -- 퍼센트 스탯(공격력
+            // 최대/체력)은 현재까지 누적된 % + 다음 레벨에 추가되는 %p, 최소공격력은 고정 데미지
+            // 하한이라 현재/다음 수치를 그대로 보여준다. 값은 computeEffectiveStat()과 공유하는
+            // ATK_PCT_PER_LV/HP_PCT_PER_LV/MIN_DMG_PER_LV 상수 기준이라 실제 전투 계산과 항상 일치.
+            int atkPct = (int) Math.round(ATK_PCT_PER_LV * 100 * atkMaxLv);
+            int atkPctPerLv = (int) Math.round(ATK_PCT_PER_LV * 100);
+            int hpPct = (int) Math.round(HP_PCT_PER_LV * 100 * hpLv);
+            int hpPctPerLv = (int) Math.round(HP_PCT_PER_LV * 100);
+            int minDmgCur = atkMinLv * MIN_DMG_PER_LV;
+
             StringBuilder sb = new StringBuilder(userName).append("님의 스탯 구매 현황 (현재 구간 상한 ").append(cap).append(")," + NL);
             sb.append("공격력(최대) Lv").append(atkMaxLv).append(" / ").append(cap)
+              .append(" (현재 +").append(atkPct).append("%, 다음 레벨 +").append(atkPctPerLv).append("%p)")
               .append(" — 다음 비용 ").append(50 * (atkMaxLv + 1)).append(" PP").append(NL);
             sb.append("공격력(최소) Lv").append(atkMinLv).append(" / ").append(cap)
+              .append(" (현재 최소데미지 +").append(minDmgCur).append(", 다음 레벨 +").append(MIN_DMG_PER_LV).append(")")
               .append(" — 다음 비용 ").append(50 * (atkMinLv + 1)).append(" PP").append(NL);
             sb.append("체력 Lv").append(hpLv).append(" / ").append(cap)
+              .append(" (현재 +").append(hpPct).append("%, 다음 레벨 +").append(hpPctPerLv).append("%p)")
               .append(" — 다음 비용 ").append(50 * (hpLv + 1)).append(" PP").append(NL);
             sb.append("📈 다음 상한 ").append(cap + 5).append("은 ").append(nextVillageFloor)
               .append("층 마을 도달 시 열립니다 (그 앞 보스 처치 필요).").append(NL);
@@ -2617,7 +2636,14 @@ public class BotS5ServiceImpl implements BotS5Service {
         up.put("atkMinLv", atkMinLv);
         up.put("hpLv", hpLv);
         dao.upsertUserStat(up);
-        return type + " 스탯을 강화했습니다! (Lv" + curLv + " → Lv" + (curLv + 1) + ")";
+        String gain;
+        if ("min".equals(field)) {
+            gain = "최소데미지 +" + MIN_DMG_PER_LV;
+        } else {
+            int pctPerLv = (int) Math.round(("atk".equals(field) ? ATK_PCT_PER_LV : HP_PCT_PER_LV) * 100);
+            gain = "+" + pctPerLv + "%p";
+        }
+        return type + " 스탯을 강화했습니다! (Lv" + curLv + " → Lv" + (curLv + 1) + ", " + gain + ")";
     }
 
     /** 웹 SPA 상점탭 스탯 UI용 — 현재 레벨/상한/다음 상한이 열리는 층·비용을 구조화해서 반환. */
@@ -2641,6 +2667,17 @@ public class BotS5ServiceImpl implements BotS5Service {
         result.put("nextCostAtkMax", 50 * (atkMaxLv + 1));
         result.put("nextCostAtkMin", 50 * (atkMinLv + 1));
         result.put("nextCostHp", 50 * (hpLv + 1));
+        // "레벨당 증가량도 표기해달라" 요청 -- 현재까지 누적된 보너스 + 레벨당 증가폭(퍼센트
+        // 스탯은 %, 최소공격력은 고정 데미지). computeEffectiveStat()과 같은 상수를 써서 실제
+        // 전투 계산과 항상 일치.
+        int atkPctPerLv = (int) Math.round(ATK_PCT_PER_LV * 100);
+        int hpPctPerLv = (int) Math.round(HP_PCT_PER_LV * 100);
+        result.put("atkPctPerLv", atkPctPerLv);
+        result.put("hpPctPerLv", hpPctPerLv);
+        result.put("minDmgPerLv", MIN_DMG_PER_LV);
+        result.put("atkPctCur", atkPctPerLv * atkMaxLv);
+        result.put("hpPctCur", hpPctPerLv * hpLv);
+        result.put("minDmgCur", MIN_DMG_PER_LV * atkMinLv);
         return result;
     }
 
