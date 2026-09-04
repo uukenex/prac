@@ -18,7 +18,9 @@
                COMPANION_VOUCHER_T1, COMPANION_VOUCHER_T2, COMPANION_VOUCHER_T3, COMPANION_VOUCHER_T4,
                EQUIP_VOUCHER_T1, EQUIP_VOUCHER_T2, EQUIP_VOUCHER_T3, EQUIP_VOUCHER_T4,
                TOTAL_PP_EARNED_VALUE, TOTAL_PP_EARNED_EXT,
-               DICE_ROLL_COUNT_TODAY, DICE_ROLL_DATE
+               DICE_ROLL_COUNT_TODAY, DICE_ROLL_DATE,
+               PENDING_RESTORE_FLOOR, PENDING_RESTORE_MAX_FLOOR, PENDING_RESTORE_UNLOCKED_BLOCK,
+               PENDING_RESTORE_AUTOHUNT_FLOOR
         FROM TBOT_S5_USER_PROGRESS
         WHERE USER_NAME = #{userName}
     </select>
@@ -53,6 +55,10 @@
             <if test="diceGrade != null">DICE_GRADE = #{diceGrade},</if>
             <if test="killCountCur != null">KILL_COUNT_CUR = #{killCountCur},</if>
             <if test="wipeStreakCur != null">WIPE_STREAK_CUR = #{wipeStreakCur},</if>
+            <if test="clearPendingRestore != null">
+                PENDING_RESTORE_FLOOR = NULL, PENDING_RESTORE_MAX_FLOOR = NULL,
+                PENDING_RESTORE_UNLOCKED_BLOCK = NULL, PENDING_RESTORE_AUTOHUNT_FLOOR = NULL,
+            </if>
             <if test="autoHuntYn != null">AUTO_HUNT_YN = #{autoHuntYn},</if>
             <if test="totalKillCount != null">TOTAL_KILL_COUNT = #{totalKillCount},</if>
             <if test="monsterStunnedYn != null">MONSTER_STUNNED_YN = #{monsterStunnedYn},</if>

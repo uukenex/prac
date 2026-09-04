@@ -1521,14 +1521,38 @@ public class BotS5ServiceImpl implements BotS5Service {
             if (isBoss) {
                 int prevBlockBase = floorBlockBase(floor);
                 int nextFloor = prevBlockBase + 10;
-                up.put("curFloor", nextFloor);
-                up.put("unlockedBlock", prevBlockBase + 10);
+
+                // [2026-09-05 보정] "무시 대상" 보스 기믹이 반대로(면역) 동작하던 시기에 29층
+                // 보스를 이미 깬 유저는 28층으로 되돌려 새 규칙으로 재도전하게 했다
+                // (PENDING_RESTORE_* 컬럼에 원래 진행상황 저장, S5_BOSS29_ROLLBACK.sql 참고).
+                // 지금이 바로 그 재도전 클리어(floor==29 && 저장된 값 있음)라면, 평소처럼
+                // 다음 구간(30층)으로 보내는 대신 저장해둔 원래 위치로 복구해준다.
+                boolean isRestore = floor == 29 && p.get("PENDING_RESTORE_FLOOR") != null;
+                int landFloor = isRestore ? intVal(p.get("PENDING_RESTORE_FLOOR"), nextFloor) : nextFloor;
+                int landUnlockedBlock = isRestore ? intVal(p.get("PENDING_RESTORE_UNLOCKED_BLOCK"), nextFloor) : nextFloor;
+                int landMaxFloorReached = isRestore ? intVal(p.get("PENDING_RESTORE_MAX_FLOOR"), nextFloor + 1) : nextFloor + 1;
+
+                up.put("curFloor", landFloor);
+                up.put("unlockedBlock", landUnlockedBlock);
                 // 새 구간의 첫 사냥터층은 계단 없이도 바로 층변경 가능해야 함
-                up.put("maxFloorReached", nextFloor + 1);
+                up.put("maxFloorReached", landMaxFloorReached);
                 up.put("killCountCur", 0); // 새 구간으로 넘어가므로 "이 층 처치수"도 초기화(changeFloor와 동일 이유)
-                sb.append("👑 보스 격파! ").append(nextFloor).append("층 마을로 이동합니다.").append(NL);
+                if (isRestore) {
+                    up.put("clearPendingRestore", true);
+                    sb.append("👑 보스 격파! (재도전 완료) 예전 진행 상황으로 복구되어 ").append(landFloor).append("층으로 이동합니다.").append(NL);
+                    Object pendingAutoHuntFloor = p.get("PENDING_RESTORE_AUTOHUNT_FLOOR");
+                    if (pendingAutoHuntFloor != null) {
+                        HashMap<String, Object> restoreLog = new HashMap<>();
+                        restoreLog.put("userName", userName);
+                        restoreLog.put("floor", intVal(pendingAutoHuntFloor, landFloor));
+                        dao.upsertAutoHuntLog(restoreLog);
+                    }
+                } else {
+                    sb.append("👑 보스 격파! ").append(nextFloor).append("층 마을로 이동합니다.").append(NL);
+                }
                 // "새 마을 도착 시 스탯상한/주사위해금/뽑기권해금 등 바뀐 것들을 알려달라" 요청으로 추가
-                String unlockSummary = newlyUnlockedSummary(prevBlockBase, prevBlockBase + 10);
+                // (재도전 복구 케이스는 여러 구간을 한 번에 건너뛸 수 있어 landUnlockedBlock까지 전부 훑는다)
+                String unlockSummary = newlyUnlockedSummary(prevBlockBase, landUnlockedBlock);
                 if (!unlockSummary.isEmpty()) {
                     sb.append("── 새로 해금된 것들 ──").append(NL).append(unlockSummary);
                 }

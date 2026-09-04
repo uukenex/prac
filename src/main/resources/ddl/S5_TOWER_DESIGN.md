@@ -1049,6 +1049,21 @@ S4의 `TBOT_S4_ACHIEVEMENT`/`TBOT_S4_USER_ACH` 패턴을 확장 계승. S5에서
   통하지 않는다"만 표시)이고, **보스 반격은 평소처럼 그대로 받는다**(반격 파트의 면역 분기
   삭제) — 예전과 정반대. DB 컬럼(`BOSS_IMMUNE_CID`)은 재사용, 스키마 변경 없음. 전투 시작
   안내 문구/`/탑도움말` 설명도 함께 갱신.
+- **[2026-09-05] 29층 보스 소급 롤백**: 위 기믹 반전에 이어 "이미 29층을 깬 사람은 28층
+  맥스도달로 되돌리고 30층 해금도 재잠금해달라, 단 구매템/탐사100% 기록은 그대로 두고
+  자동사냥도 28층으로, 나중에 29층 다시 클리어하면 원래층으로 자동사냥 복구되게" 요청.
+  `TBOT_S5_USER_PROGRESS`에 `PENDING_RESTORE_FLOOR/MAX_FLOOR/UNLOCKED_BLOCK/AUTOHUNT_FLOOR`
+  4개 nullable 컬럼 신설(`S5_BOSS29_ROLLBACK.sql`) — `UNLOCKED_BLOCK >= 30`(=29층 보스를
+  이미 깼다는 확실한 신호, 계단만 밟아도 오르는 `MAX_FLOOR_REACHED`와 달리 이건 보스를 실제로
+  죽여야만 오름)인 유저만 대상으로, 원래 `CUR_FLOOR`/`MAX_FLOOR_REACHED`/`UNLOCKED_BLOCK`과
+  (있다면) `TBOT_S5_AUTO_HUNT_LOG.FLOOR`를 저장해두고 28/28/20/28로 되돌림(진행 중이던
+  전투 상태 STATUS/CUR_MONSTER_*/BOSS_*_CID도 같이 정리해서 낀 상태 방지). 장비/구매/PP/
+  뽑기권과 `TBOT_S5_USER_FLOOR_BEST`(탐사100%/업적)는 전혀 건드리지 않음. 라이브 DB에서
+  실행해보니 대상 2명(그 중 하나가 이 버그를 신고한 유저) 확인, 정상 적용.
+  `resolveCombatTurn`의 보스 처치 분기에서 `floor==29 && PENDING_RESTORE_FLOOR != null`이면
+  평소처럼 다음 구간(30층)으로 한 칸만 보내는 대신 저장해둔 원래 위치/해금/자동사냥층을
+  그대로 복구하고 pending 컬럼을 비운다("재도전 완료" 메시지로 구분) — 여러 구간을 미리
+  올라가 있던 유저도 이번 재도전 한 번으로 원래 자리까지 한 번에 복구됨.
 
 ### 남은 TODO
 
