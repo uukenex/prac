@@ -486,21 +486,21 @@
     <!-- PP는 값+단위(EXT) 쌍이라 단위가 섞여있으면 SQL MAX로 못 비교함(예: 9999 vs 1a는 1a가 더 큼).
          전체를 가져와서 서비스 레이어(PP.compare)에서 비교. 유저 수가 많지 않아 문제 없음.
          [2026-09-04] /탑랭킹의 "최다 보유 PP"는 현재 잔액(PP_VALUE)이 아니라 누적 획득량
-         (TOTAL_PP_EARNED)으로 봐야 맞다는 지적으로 여기서 아예 후자를 내려줌 -- 잔액은 뽑기/
+         (TOTAL_PP_EARNED)으로 봐야 맞다는 지적으로 여기서 아예 후자를 내려줌 잔액은 뽑기/
          스탯구매로 쓰면 줄어들어서 "기록"으로서 의미가 없음. 컬럼명은 그대로 두고(변경 범위
          최소화) 값만 TOTAL_PP_EARNED로 바꿈. -->
     <select id="selectAllUserPp" resultType="hashmap">
         SELECT TOTAL_PP_EARNED_VALUE AS PP_VALUE, TOTAL_PP_EARNED_EXT AS PP_EXT FROM TBOT_S5_USER_PROGRESS
     </select>
 
-    <!-- /탑통계(관리자 전용) -- 웹/카톡 채널별 이용자 수 + 활동량(주사위/가챠/전멸).
+    <!-- /탑통계(관리자 전용) 웹/카톡 채널별 이용자 수 + 활동량(주사위/가챠/전멸).
          [2026-09-04 개정] 원래는 TBOT_WORD_HIS(ROOM_NAME='WEB' 여부)를 스캔해서 역산했는데,
          그 테이블이 127만 행 이상에 인덱스가 하나도 없어서(USER_IND_COLUMNS로 실제 확인) 와일드카드
-         LIKE가 섞인 집계 쿼리가 이 세션 안에서 끝내 응답을 안 줬다 -- 매번 호출될 수 있는 실제
+         LIKE가 섞인 집계 쿼리가 이 세션 안에서 끝내 응답을 안 줬다 매번 호출될 수 있는 실제
          명령어로 쓰기엔 위험해서, TBOT_S5_USER_PROGRESS에 실시간 카운터 컬럼을 두는 방식(기존
          TOTAL_KILL_COUNT 등과 동일 패턴)으로 바꿈. 이 테이블은 유저 수만큼(수십 행)만 있어서
          전체 스캔이어도 사실상 즉시 끝남. 대신 이 컬럼들이 생긴 시점부터만 집계되고, 과거
-         이력은 못 살림(트레이드오프를 알고 선택한 것 -- 매번 느린 완전 집계보다 계속 빠른
+         이력은 못 살림(트레이드오프를 알고 선택한 것  매번 느린 완전 집계보다 계속 빠른
          근사치가 낫다고 판단). -->
     <select id="selectChannelUsageStats" resultType="hashmap">
         SELECT
