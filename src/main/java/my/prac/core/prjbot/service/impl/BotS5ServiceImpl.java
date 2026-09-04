@@ -206,6 +206,10 @@ public class BotS5ServiceImpl implements BotS5Service {
     private static volatile long COMBAT_COOLDOWN_SEC     = 15;
     private static volatile long COMBAT_END_COOLDOWN_SEC = 100;
 
+    // 하루 주사위(이동+전투 통합) 굴림 횟수 제한. 위 쿨타임들과 같은 이유로 DB(TBOT_S5_CONFIG)
+    // config화 -- 재배포 없이 /갱신으로 값만 바꿀 수 있게.
+    private static volatile int DAILY_DICE_LIMIT = 750;
+
     // /이벤트지급(관리자 전용) 실행 권한이 있는 유저명 목록 -- TBOT_S5_CONFIG.EVENT_ADMIN_USERS에
     // '|'로 구분해 저장(예: "일어난다람쥐/카단|다른관리자"). 이 시스템엔 별도 권한/역할 체계가
     // 없어서, 뽑기권처럼 실제 경제가치가 있는 걸 아무나 채팅으로 못 뿌리게 막는 유일한 장치다.
@@ -230,6 +234,8 @@ public class BotS5ServiceImpl implements BotS5Service {
                         COMBAT_COOLDOWN_SEC = Long.parseLong(val);
                     } else if ("COMBAT_END_COOLDOWN_SEC".equals(key)) {
                         COMBAT_END_COOLDOWN_SEC = Long.parseLong(val);
+                    } else if ("DAILY_DICE_LIMIT".equals(key)) {
+                        DAILY_DICE_LIMIT = Integer.parseInt(val);
                     }
                 } catch (NumberFormatException ignore) {
                     // 파싱 실패한 값은 무시하고 기존(기본) 값 유지
@@ -254,7 +260,7 @@ public class BotS5ServiceImpl implements BotS5Service {
     public String refreshConfig() {
         loadConfig();
         return "🗼 시즌5 설정 갱신 완료 (칸이동 " + MOVE_COOLDOWN_SEC + "초 / 전투중 " + COMBAT_COOLDOWN_SEC
-                + "초 / 전투종료 " + COMBAT_END_COOLDOWN_SEC + "초)";
+                + "초 / 전투종료 " + COMBAT_END_COOLDOWN_SEC + "초 / 하루 주사위 한도 " + DAILY_DICE_LIMIT + "회)";
     }
 
     @Override
@@ -804,8 +810,6 @@ public class BotS5ServiceImpl implements BotS5Service {
         up.put("nextCooldownSec", nextCooldownSec);
         dao.updateUserProgress(up);
     }
-
-    private static final int DAILY_DICE_LIMIT = 500;
 
     /**
      * 하루 주사위 굴림 횟수(DICE_ROLL_COUNT_TODAY)를 확인하고, 한도 안이면 카운트를 올린 뒤 null을
