@@ -1077,6 +1077,24 @@ public class BotS5ServiceImpl implements BotS5Service {
         return true;
     }
 
+    /**
+     * [해금 여부 우회용] 소비하지 않고 "이 gachaId를 무료로 뽑을 수 있는 권이 있는지"만 확인.
+     * 원래는 권이 있어도 UNLOCK_FLOOR(그 등급 해금 여부)는 그대로 확인해서, 아직 그 층에
+     * 못 간 유저는 티어락 권(N층 완전탐사 보상)이나 이벤트로 받은 범용 권이 있어도 못 썼다 --
+     * "이벤트로 중급뽑기권을 뿌려도 30층 전이면 못 쓰는 거 아니냐"는 지적으로 확인된 문제.
+     * 권을 보유했다는 것 자체가 이미 그 등급을 쓸 자격을 부여받았다는 뜻이므로(관리자 지급이든
+     * 진행도 보상이든), 권이 있으면 해금 여부와 무관하게 그 등급 가챠를 시도할 수 있게 한다.
+     */
+    private boolean hasUsableCompanionVoucher(HashMap<String, Object> p, int gachaId) {
+        if (gachaId >= 1 && gachaId <= 4 && intVal(p.get("COMPANION_VOUCHER_T" + gachaId), 0) > 0) return true;
+        return intVal(p.get("COMPANION_VOUCHER"), 0) > 0;
+    }
+
+    /** hasUsableCompanionVoucher와 동일한 목적, 장비뽑기용(장비는 티어락 권 없이 범용 EQUIP_VOUCHER만 존재). */
+    private boolean hasUsableEquipVoucher(HashMap<String, Object> p) {
+        return intVal(p.get("EQUIP_VOUCHER"), 0) > 0;
+    }
+
     private String startCombat(String userName, HashMap<String, Object> p, int floor, boolean boss, boolean elite) {
         HashMap<String, Object> mon = dao.selectMonster(blockNo(floor), boss ? "Y" : "N");
         if (mon == null) {
@@ -1993,6 +2011,31 @@ public class BotS5ServiceImpl implements BotS5Service {
                 + "장, 장비뽑기권 " + equipQty + "장을 지급했습니다.";
     }
 
+    private static final String[] TIER_NAME = { "", "하급", "중급", "상급", "최상급" }; // index 1~4
+
+    /**
+     * /이벤트티어지급(관리자 전용) — 특정 등급(1~4) 동료 계약서 티어락 권만 전체 유저에게 지급.
+     * grantEventVouchers의 범용 권과 달리 "이번 이벤트는 중급(2번)만" 처럼 등급을 못박고 싶을 때
+     * 씀. 이 권을 쓰면 hasUsableCompanionVoucher()가 UNLOCK_FLOOR 확인을 건너뛰게 해주므로,
+     * 아직 그 계약서가 안 풀린 저층 유저도 이 권으로는 바로 뽑을 수 있다.
+     */
+    @Override
+    @Transactional
+    public String grantEventTierVoucher(String userName, int tier, int qty) {
+        if (!isEventAdmin(userName)) {
+            return "권한이 없습니다.";
+        }
+        if (tier < 1 || tier > 4) {
+            return "등급은 1(하급)~4(최상급) 사이여야 합니다.";
+        }
+        if (qty <= 0) {
+            return "사용법: /이벤트티어지급 [등급1~4] [수량] (예: /이벤트티어지급 2 1 → 전체 유저에게 중급 동료뽑기권 1장)";
+        }
+        int affected = dao.bulkGrantTierCompanionVoucher(tier, qty);
+        return "🎉 이벤트 지급 완료! 전체 유저 " + affected + "명에게 " + TIER_NAME[tier] + "(" + tier + "번) 동료뽑기권 "
+                + qty + "장을 지급했습니다. (해금 여부와 무관하게 바로 사용 가능)";
+    }
+
     // ================================================================
     // /탑업적
     // ================================================================
@@ -2122,9 +2165,14 @@ public class BotS5ServiceImpl implements BotS5Service {
         HashMap<String, Object> result = new HashMap<>();
         int gachaId = intVal(gacha.get("GACHA_ID"), 0);
 
-        // 해금 여부는 무료뽑기권/스타터 무료와 무관하게 항상 확인 (권은 비용만 면제, 해금 요건은 그대로)
+        // [정책 변경] 해금 여부는 원래 무료뽑기권/스타터 무료와 무관하게 항상 확인했는데(권은
+        // 비용만 면제, 해금 요건은 그대로), 그러면 이벤트로 중급 이상 뽑기권을 지급해도 아직
+        // 그 층에 못 간 유저는 못 쓰는 문제가 있었다. 권을 갖고 있다는 것 자체가 그 등급을 쓸
+        // 자격을 이미 부여받았다는 뜻이라, 그 gachaId에 실제로 쓸 수 있는 권(티어락 또는 범용)이
+        // 있으면 해금 여부를 건너뛴다.
         int unlocked = intVal(p.get("UNLOCKED_BLOCK"), 0);
-        if (intVal(gacha.get("UNLOCK_FLOOR"), 0) > unlocked) {
+        boolean hasVoucher = hasUsableCompanionVoucher(p, gachaId);
+        if (!hasVoucher && intVal(gacha.get("UNLOCK_FLOOR"), 0) > unlocked) {
             result.put("error", "아직 해금되지 않은 계약서입니다.");
             return result;
         }
@@ -2304,7 +2352,8 @@ public class BotS5ServiceImpl implements BotS5Service {
     private HashMap<String, Object> pullEquipCore(String userName, HashMap<String, Object> gacha, HashMap<String, Object> p) {
         HashMap<String, Object> result = new HashMap<>();
         int unlocked = intVal(p.get("UNLOCKED_BLOCK"), 0);
-        if (intVal(gacha.get("UNLOCK_FLOOR"), 0) > unlocked) {
+        // pullCompanionCore와 동일한 이유로, 쓸 수 있는 장비뽑기권을 갖고 있으면 해금 여부를 건너뜀
+        if (!hasUsableEquipVoucher(p) && intVal(gacha.get("UNLOCK_FLOOR"), 0) > unlocked) {
             result.put("error", "아직 해금되지 않은 상자입니다.");
             return result;
         }

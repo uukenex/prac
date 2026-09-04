@@ -210,6 +210,19 @@ public class Season5Controller {
         }
     }
 
+    /** /이벤트티어지급(관리자 전용, 미공개) — param1=등급(1~4), param2=수량 */
+    public String grantEventTierVoucher(HashMap<String, Object> map) {
+        String param1 = param1Of(map);
+        String param2 = param2Of(map);
+        try {
+            int tier = param1.isEmpty() ? 0 : Integer.parseInt(param1);
+            int qty = param2.isEmpty() ? 0 : Integer.parseInt(param2);
+            return s5Service.grantEventTierVoucher(userNameOf(map), tier, qty);
+        } catch (NumberFormatException e) {
+            return "등급/수량은 숫자로 입력해주세요.";
+        }
+    }
+
     public String equipUnwearAll(HashMap<String, Object> map) {
         String param1 = param1Of(map);
         if (param1.isEmpty()) return "사용법: /장비해제 M (M=파티원 번호, /파티편성에서 확인)";

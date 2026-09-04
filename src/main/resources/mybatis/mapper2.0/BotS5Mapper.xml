@@ -386,6 +386,17 @@
             EQUIP_VOUCHER = NVL(EQUIP_VOUCHER, 0) + #{equipQty}
     </update>
 
+    <!-- /이벤트티어지급(관리자 전용): 전체 유저에게 특정 등급(1~4)의 티어락 동료뽑기권만 지급.
+         컬럼명은 바인딩 파라미터로 못 넣으니(#{}는 값 전용) CASE로 4개 컬럼 중 tier와 일치하는
+         것만 갱신한다. tier는 서비스 레이어에서 1~4로 이미 검증된 값만 들어온다. -->
+    <update id="bulkGrantTierCompanionVoucher">
+        UPDATE TBOT_S5_USER_PROGRESS
+        SET COMPANION_VOUCHER_T1 = CASE WHEN #{tier} = 1 THEN NVL(COMPANION_VOUCHER_T1, 0) + #{qty} ELSE COMPANION_VOUCHER_T1 END,
+            COMPANION_VOUCHER_T2 = CASE WHEN #{tier} = 2 THEN NVL(COMPANION_VOUCHER_T2, 0) + #{qty} ELSE COMPANION_VOUCHER_T2 END,
+            COMPANION_VOUCHER_T3 = CASE WHEN #{tier} = 3 THEN NVL(COMPANION_VOUCHER_T3, 0) + #{qty} ELSE COMPANION_VOUCHER_T3 END,
+            COMPANION_VOUCHER_T4 = CASE WHEN #{tier} = 4 THEN NVL(COMPANION_VOUCHER_T4, 0) + #{qty} ELSE COMPANION_VOUCHER_T4 END
+    </update>
+
     <!-- ==================== /탑랭킹: 서버 전체 최고기록(익명 집계) ====================
          누가 세운 기록인지는 노출하지 않는다는 설계상 USER_NAME은 절대 SELECT하지 않고
          MAX(수치)만 조회한다. -->

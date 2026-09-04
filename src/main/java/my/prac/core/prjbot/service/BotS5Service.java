@@ -128,4 +128,14 @@ public interface BotS5Service {
      * 그 외엔 조용히 "권한이 없습니다"만 반환(누가 관리자인지 자체를 노출하지 않음).
      */
     String grantEventVouchers(String userName, int companionQty, int equipQty);
+
+    /**
+     * /이벤트티어지급(관리자 전용, 채팅 명령어) — 전체 유저에게 특정 동료 계약서 등급
+     * (1=하급/2=중급/3=상급/4=최상급, TBOT_S5_GACHA_MASTER.GACHA_ID 기준)의 티어락 동료뽑기권만
+     * 일괄 지급. `/이벤트지급`의 범용 권과 달리 그 계약서에만 쓸 수 있어서 "이벤트로 중급(2번)
+     * 동료뽑기만 뿌리고 싶다" 같은 특정 등급 한정 이벤트에 적합. 이 권을 보유한 유저는 아직 그
+     * 계약서가 해금될 층에 못 갔어도 뽑을 수 있다(hasUsableCompanionVoucher 참고). 권한 체크는
+     * grantEventVouchers와 동일(EVENT_ADMIN_USERS).
+     */
+    String grantEventTierVoucher(String userName, int tier, int qty);
 }
