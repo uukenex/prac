@@ -599,14 +599,19 @@ public class LoaChatController {
 			case "/파티편성":
 			case "/탑편성":
 			case "/탑동료":
+			case "/탑파티":
 			case "/ㅌㅍㅅ":
 			case "/ㅌㄷㄹ":
+			case "/ㅌㅍㅌ":
 				val = s5.party(reqMap);
 				break;
 			case "/동료가리기":
 				val = s5.hideCompanion(reqMap);
 				break;
 			case "/탑현황":
+			case "/탑정보":
+			case "/ㅌㅎㅎ":
+			case "/ㅌㅈㅂ":
 				val = s5.towerStatus(reqMap);
 				break;
 			case "/탑도움말":
@@ -614,9 +619,11 @@ public class LoaChatController {
 				val = s5.help(reqMap);
 				break;
 			case "/탑업적":
+			case "/ㅌㅇㅂ":
 				val = s5.achievements(reqMap);
 				break;
 			case "/탑랭킹":
+			case "/ㅌㄹㅋ":
 				val = s5.ranking();
 				break;
 			case "/이벤트지급": // 관리자 전용(비공개) -- TBOT_S5_CONFIG.EVENT_ADMIN_USERS 등록자만 실제 동작

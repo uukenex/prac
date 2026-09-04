@@ -608,11 +608,11 @@ public class BotS5ServiceImpl implements BotS5Service {
         sb.append("  ⚠️ 사냥터층에서 0층(마을, /층변경 0)으로 가면 방금 있던 층의 탐사맵(보드 위치+발견기록)이 초기화됩니다. 원정 중엔 끝까지 밀고 올라가세요!").append(NL);
         sb.append("  ⚠️ 보스를 처치해 다음 10층 구간으로 넘어가면 이전 구간으로는 다시 내려갈 수 없습니다(과거 구간 복귀 불가, 편도 진행).").append(NL);
         sb.append("  👹 29층 이후 보스는 전투 시작 시 파티원 1명을 무시(그 동료는 이번 전투 내내 피해 0), 반격 턴마다 30% 확률로 다른 동료를 기절(다음 공격 1회 불가)시킵니다.").append(NL);
-        sb.append("/탑현황 [닉네임] : 현재 층/보드 위치/PP/상태/자동사냥 조회. 닉네임을 붙이면 다른 유저 조회(앞부분만 입력해도 검색됨)").append(NL);
+        sb.append("/탑현황 [닉네임] (별칭: /탑정보, /ㅌㅎㅎ, /ㅌㅈㅂ) : 현재 층/보드 위치/PP/상태/자동사냥 조회. 닉네임을 붙이면 다른 유저 조회(앞부분만 입력해도 검색됨)").append(NL);
         sb.append(NL);
 
         sb.append("[동료] (웹 '파티' 탭) — 파티 편성/해제는 전투 중이 아니면 어디서든 가능").append(NL);
-        sb.append("/파티편성 (별칭: /탑편성, /탑동료, /ㅌㅍㅅ, /ㅌㄷㄹ) : 보유 동료 목록 + 파티 편성 현황 조회").append(NL);
+        sb.append("/파티편성 (별칭: /탑편성, /탑동료, /탑파티, /ㅌㅍㅅ, /ㅌㄷㄹ, /ㅌㅍㅌ) : 보유 동료 목록 + 파티 편성 현황 조회").append(NL);
         sb.append("/파티편성 N : 목록 N번째 동료를 파티에 편성/해제 (전투 중이 아니면 어디서든)").append(NL);
         sb.append("/동료가리기 N : 목록 N번째 동료를 /파티편성 텍스트 목록에서 숨김/숨김해제(웹 화면엔 항상 표시)").append(NL);
         sb.append(NL);
@@ -634,11 +634,11 @@ public class BotS5ServiceImpl implements BotS5Service {
         sb.append(NL);
 
         sb.append("[업적] (웹 '업적' 탭)").append(NL);
-        sb.append("/탑업적 : 달성한 업적 이름만 조회").append(NL);
+        sb.append("/탑업적 (별칭: /ㅌㅇㅂ) : 달성한 업적 이름만 조회").append(NL);
         sb.append(NL);
 
         sb.append("[랭킹]").append(NL);
-        sb.append("/탑랭킹 : 서버 전체 최고기록 조회 (최고층/누적처치/업적수 등, 누가 세운 기록인지는 비공개)").append(NL);
+        sb.append("/탑랭킹 (별칭: /ㅌㄹㅋ) : 서버 전체 최고기록 조회 (최고층/누적처치/업적수 등, 누가 세운 기록인지는 비공개)").append(NL);
         return sb.toString();
     }
 
