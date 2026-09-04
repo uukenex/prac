@@ -36,6 +36,9 @@ public interface BotS5DAO {
     List<HashMap<String, Object>> selectVisitedTileNos(@Param("userName") String userName, @Param("floor") int floor);
     int upsertUserFloorBest(HashMap<String, Object> map);
     HashMap<String, Object> selectUserFloorBest(@Param("userName") String userName, @Param("floor") int floor);
+    // 웹 SPA 층이동 탑 그림에서 "탐사완료" 표시용 -- 한 구간(10개 층) 전체를 한 번에 조회
+    List<HashMap<String, Object>> selectUserFloorBestRange(@Param("userName") String userName,
+            @Param("floorFrom") int floorFrom, @Param("floorTo") int floorTo);
     int countFullyExploredFloors(@Param("userName") String userName);
 
     // ── /탑현황 닉네임 검색 (시즌2~4의 selectS4UserSearch와 동일 패턴: 앞부분 일치 LIKE) ──

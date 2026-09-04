@@ -155,6 +155,13 @@
         FROM TBOT_S5_USER_FLOOR_BEST WHERE USER_NAME = #{userName} AND FLOOR = #{floor}
     </select>
 
+    <!-- 웹 SPA 층이동 탑 그림용: 한 구간(예: 21~28층)의 탐사완료 여부를 한 번에 조회 -->
+    <select id="selectUserFloorBestRange" resultType="hashmap">
+        SELECT FLOOR, BEST_VISITED_COUNT, TILE_COUNT, FULLY_EXPLORED_YN
+        FROM TBOT_S5_USER_FLOOR_BEST
+        WHERE USER_NAME = #{userName} AND FLOOR BETWEEN #{floorFrom} AND #{floorTo}
+    </select>
+
     <select id="countFullyExploredFloors" resultType="int">
         SELECT COUNT(*) FROM TBOT_S5_USER_FLOOR_BEST WHERE USER_NAME = #{userName} AND FULLY_EXPLORED_YN = 'Y'
     </select>

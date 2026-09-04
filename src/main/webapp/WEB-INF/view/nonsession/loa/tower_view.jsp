@@ -185,7 +185,32 @@
     .dbtn:disabled{ opacity:.35; cursor:not-allowed; }
     .dbtn:disabled:hover{ background:transparent; }
 
-    select.floor-select{ padding:6px 10px; border-radius:10px; border:1.5px solid var(--line); font-size:12px; }
+    /* 층이동: 부루마불 보드 옆에 세우는 "탑" 모양 -- 9층(보스)이 맨 위, 0층(마을)이 맨 아래에
+       오도록 DOM을 9->0 순서로 채워서 실제 탑처럼 보이게 한다. 칸 하나가 그 층 하나. */
+    .tower-nav{ display:flex; flex-direction:column; gap:5px; max-width:320px; margin:0 auto; }
+    .tower-floor{ display:flex; align-items:center; justify-content:space-between; gap:8px;
+                  padding:9px 14px; border:2px solid var(--line); border-radius:10px; background:#fff;
+                  cursor:pointer; font-size:12px; font-weight:700; color:var(--ink); }
+    .tower-floor:active{ transform:scale(.97); }
+    .tower-floor .tf-left{ display:flex; align-items:center; gap:8px; }
+    .tower-floor .tf-num{ width:22px; height:22px; border-radius:50%; background:var(--parchment-deep);
+                           display:flex; align-items:center; justify-content:center; font-size:11px;
+                           flex-shrink:0; }
+    .tower-floor .tf-kind{ font-size:10px; color:var(--ink-soft); font-weight:600; }
+    .tower-floor .tf-explored{ font-size:10px; color:var(--pp); font-weight:800; }
+    .tower-floor.here{ border-color:var(--gold); background:var(--gold-soft); }
+    .tower-floor.here .tf-num{ background:var(--gold); color:#fff; }
+    .tower-floor.village{ border-left:5px solid var(--village); }
+    .tower-floor.boss{ border-left:5px solid var(--boss); }
+    .tower-floor.locked{ opacity:.4; cursor:not-allowed; }
+
+    .confirm-card{ max-width:280px; text-align:center; }
+    .confirm-msg{ font-size:14px; margin:6px 0 18px; line-height:1.6; }
+    .confirm-btns{ display:flex; gap:10px; }
+    .confirm-btns button{ flex:1; padding:11px; border-radius:12px; border:none; font-size:13px;
+                            font-weight:800; cursor:pointer; }
+    .confirm-btns .btn-yes{ background:var(--gold); color:#fff; }
+    .confirm-btns .btn-no{ background:#fff; border:1.5px solid var(--line); color:var(--ink-soft); }
 
     @media (max-width:600px){
       body{ padding-top:8px; }
@@ -232,14 +257,8 @@
       <div id="autoHuntBox" style="font-size:12px; color:var(--ink-soft); line-height:1.7;"></div>
     </div>
     <div class="card" style="margin-top:10px;">
-      <div class="card-title">층 이동</div>
-      <select class="floor-select" id="floorSelect">
-        <option value="0">0 (마을)</option>
-        <option value="1">1</option><option value="2">2</option><option value="3">3</option>
-        <option value="4">4</option><option value="5">5</option><option value="6">6</option>
-        <option value="7">7</option><option value="8">8</option><option value="9">9 (보스)</option>
-      </select>
-      <button class="btn-query" onclick="TW.action('CHANGE_FLOOR', document.getElementById('floorSelect').value)">이동</button>
+      <div class="card-title">🗼 층 이동 (눌러서 이동, 탐사완료 층엔 ✅ 표시)</div>
+      <div class="tower-nav" id="towerNav"></div>
     </div>
   </div>
 
@@ -321,6 +340,16 @@
     </div>
     <div class="card-title" style="font-size:13px;">착용 장비</div>
     <div id="detailEquipBox"></div>
+  </div>
+</div>
+
+<div class="detail-overlay" id="confirmOverlay" onclick="if(event.target===this) TW.closeConfirm();">
+  <div class="detail-card confirm-card">
+    <div class="confirm-msg" id="confirmMsg">정말 이동하시겠습니까?</div>
+    <div class="confirm-btns">
+      <button type="button" class="btn-no" onclick="TW.closeConfirm()">취소</button>
+      <button type="button" class="btn-yes" id="confirmYesBtn">이동</button>
+    </div>
   </div>
 </div>
 
@@ -422,8 +451,65 @@ var TW = (function () {
         }
 
         renderBoard(data.tiles, data.myTile ? data.myTile.CUR_TILE : 0);
+        renderTowerNav(p, data.floorBest);
       })
       .catch(function () { toast('조회 실패'); });
+  }
+
+  // 층이동을 셀렉트박스+버튼 대신 부루마불 옆에 세우는 "탑" 그림으로 -- 9층(보스)이 맨 위,
+  // 0층(마을)이 맨 아래에 오도록 n=9부터 역순으로 그린다. 탐사완료(FULLY_EXPLORED_YN)된 사냥터
+  // 층엔 ✅ 배지를 붙이고, 아직 한 번도 계단으로 못 간 층(alwaysFree 아니고 MAX_FLOOR_REACHED
+  // 미만)은 흐리게 표시 + 눌러도 이동 대신 안내만 뜨게 한다(실제 검증은 서버 changeFloor()가
+  // 최종적으로 하므로 여기 reachable 판정은 UX용 힌트일 뿐).
+  function renderTowerNav(p, floorBest) {
+    var nav = document.getElementById('towerNav');
+    nav.innerHTML = '';
+    var curFloor = p.CUR_FLOOR;
+    var blockBase = curFloor - (curFloor % 10);
+    var maxReached = p.MAX_FLOOR_REACHED || 0;
+    var bestByFloor = {};
+    (floorBest || []).forEach(function (b) { bestByFloor[b.FLOOR] = b; });
+
+    for (var n = 9; n >= 0; n--) {
+      var floor = blockBase + n;
+      var isHere = (floor === curFloor);
+      var alwaysFree = (n === 0) || (n === 1); // 마을<->그 구간 첫 사냥터층은 항상 자유 이동(서버 changeFloor와 동일 규칙)
+      var reachable = alwaysFree || floor <= maxReached;
+      var kind = n === 0 ? '마을' : (n === 9 ? '보스' : '사냥터');
+      var best = bestByFloor[floor];
+      var explored = best && best.FULLY_EXPLORED_YN === 'Y';
+
+      var row = document.createElement('div');
+      row.className = 'tower-floor'
+          + (isHere ? ' here' : '')
+          + (n === 0 ? ' village' : '') + (n === 9 ? ' boss' : '')
+          + (reachable ? '' : ' locked');
+      row.innerHTML = '<span class="tf-left"><span class="tf-num">' + n + '</span>'
+          + '<span>' + floor + '층</span><span class="tf-kind">' + kind + '</span></span>'
+          + (isHere ? '<span class="tf-explored" style="color:var(--gold);">📍 현재 위치</span>'
+                    : (explored ? '<span class="tf-explored">✅ 탐사완료</span>' : ''));
+      if (reachable && !isHere) {
+        row.onclick = (function (targetFloor, targetN, targetKind) {
+          return function () { confirmMove(targetFloor, targetN, targetKind); };
+        })(floor, n, kind);
+      } else if (!reachable) {
+        row.onclick = function () { toast('아직 가본 적 없는 층입니다. 계단으로 먼저 올라가야 해요.'); };
+      }
+      nav.appendChild(row);
+    }
+  }
+
+  function confirmMove(floor, n, kind) {
+    document.getElementById('confirmMsg').textContent = floor + '층(' + kind + ')으로 정말 이동하시겠습니까?';
+    document.getElementById('confirmYesBtn').onclick = function () {
+      closeConfirm();
+      action('CHANGE_FLOOR', String(n));
+    };
+    document.getElementById('confirmOverlay').classList.add('open');
+  }
+
+  function closeConfirm() {
+    document.getElementById('confirmOverlay').classList.remove('open');
   }
 
   // 사각형 둘레를 시계방향으로 도는 칸 배치(부루마불 스타일). S = 정사각형 한 변의 칸 수,
@@ -985,7 +1071,7 @@ var TW = (function () {
     if (saved) loadStatus();
   });
 
-  return { load: loadStatus, action: action, switchTab: switchTab, closeDetail: closeDetail };
+  return { load: loadStatus, action: action, switchTab: switchTab, closeDetail: closeDetail, closeConfirm: closeConfirm };
 })();
 </script>
 </body>

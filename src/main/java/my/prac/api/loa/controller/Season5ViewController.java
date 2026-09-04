@@ -75,6 +75,9 @@ public class Season5ViewController {
         if ("Y".equals(String.valueOf(progress.get("AUTO_HUNT_YN")))) {
             result.put("autoHunt", buildAutoHuntInfo(userName));
         }
+        // 웹 SPA "층이동 탑 그림"에서 각 층(1~8, 사냥터만)의 탐사완료 여부를 보여주기 위함
+        int blockBase = floor - (floor % 10);
+        result.put("floorBest", s5Dao.selectUserFloorBestRange(userName, blockBase + 1, blockBase + 8));
         return ResponseEntity.ok(result);
     }
 
