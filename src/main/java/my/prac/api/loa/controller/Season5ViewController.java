@@ -177,6 +177,10 @@ public class Season5ViewController {
         }
         result.put("companionGacha", s5Dao.selectGachaList("COMPANION", unlocked));
         result.put("equipGacha", s5Dao.selectGachaList("EQUIP", unlocked));
+        if (!userName.trim().isEmpty()) {
+            result.put("stat", s5Service.statShopInfo(userName));
+            result.put("dice", s5Service.diceListInfo(userName));
+        }
         return ResponseEntity.ok(result);
     }
 

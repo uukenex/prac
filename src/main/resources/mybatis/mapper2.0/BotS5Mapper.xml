@@ -15,7 +15,8 @@
                COMPANION_CHOICE_TICKET, WEAPON_CHOICE_TICKET,
                COMPANION_CHOICE_TICKET_G4, COMPANION_CHOICE_TICKET_G5,
                WEAPON_CHOICE_TICKET_G4, WEAPON_CHOICE_TICKET_G5,
-               COMPANION_VOUCHER_T1, COMPANION_VOUCHER_T2, COMPANION_VOUCHER_T3, COMPANION_VOUCHER_T4
+               COMPANION_VOUCHER_T1, COMPANION_VOUCHER_T2, COMPANION_VOUCHER_T3, COMPANION_VOUCHER_T4,
+               TOTAL_PP_EARNED_VALUE, TOTAL_PP_EARNED_EXT
         FROM TBOT_S5_USER_PROGRESS
         WHERE USER_NAME = #{userName}
     </select>
@@ -66,6 +67,8 @@
             <if test="companionVoucherT2 != null">COMPANION_VOUCHER_T2 = #{companionVoucherT2},</if>
             <if test="companionVoucherT3 != null">COMPANION_VOUCHER_T3 = #{companionVoucherT3},</if>
             <if test="companionVoucherT4 != null">COMPANION_VOUCHER_T4 = #{companionVoucherT4},</if>
+            <if test="totalPpEarnedValue != null">TOTAL_PP_EARNED_VALUE = #{totalPpEarnedValue},</if>
+            <if test="totalPpEarnedExt != null">TOTAL_PP_EARNED_EXT = #{totalPpEarnedExt},</if>
             <if test="clearMonster != null">
                 CUR_MONSTER_ID = NULL, CUR_MONSTER_HP_VALUE = NULL, CUR_MONSTER_HP_EXT = NULL,
                 BOSS_IMMUNE_CID = NULL, BOSS_STUN_CID = NULL, CUR_MONSTER_ELITE_YN = 'N',

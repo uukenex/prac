@@ -142,6 +142,9 @@
     .shop-row{ display:flex; justify-content:space-between; align-items:center; background:#fff; border:1.5px solid var(--line);
                border-radius:12px; padding:9px 12px; margin-bottom:6px; font-size:12px; }
     .shop-row button{ background:var(--gold); color:#fff; border:none; border-radius:10px; padding:6px 12px; font-size:11px; cursor:pointer; }
+    .shop-row button:disabled{ opacity:.4; cursor:not-allowed; }
+    .shop-row.dice-locked{ opacity:.45; }
+    .shop-row.dice-current{ border-color:var(--gold); background:var(--gold-soft); }
 
     /* 미착용 장비도 동료 카드처럼 드래그해서 파티 슬롯에 놓으면 그 동료에게 장착됨.
        버튼(장착/합성)은 그대로 남겨둬서 드래그 없이도 쓸 수 있게 함.
@@ -305,14 +308,12 @@
       <div id="equipGachaList"></div>
     </div>
     <div class="card" style="margin-top:10px;">
-      <div class="card-title">주사위 / 스탯</div>
-      <button class="btn-query" onclick="TW.action('DICE_BUY','')">주사위 목록</button>
-      <button class="btn-query" onclick="TW.action('STAT_BUY','')">스탯 현황</button>
-      <div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">
-        <button class="btn-query" onclick="TW.action('STAT_BUY','공격력')">공격력 강화</button>
-        <button class="btn-query" onclick="TW.action('STAT_BUY','최소공격력')">최소공격력 강화</button>
-        <button class="btn-query" onclick="TW.action('STAT_BUY','체력')">체력 강화</button>
-      </div>
+      <div class="card-title">🎲 주사위 (해금된 것끼리는 몇 번이든 무료로 교체 가능)</div>
+      <div id="diceListBox"></div>
+    </div>
+    <div class="card" style="margin-top:10px;">
+      <div class="card-title">📊 스탯 강화</div>
+      <div id="statShopBox"></div>
     </div>
   </div>
 
@@ -1022,6 +1023,49 @@ var TW = (function () {
               + '</span>';
           eBox.appendChild(row);
         });
+
+        // 주사위: 해금된 것끼리 자유롭게 교체(무료). 사용중인 건 강조, 미해금은 흐리게 + 몇 층부터인지.
+        var diceBox = document.getElementById('diceListBox');
+        diceBox.innerHTML = '';
+        (data.dice || []).forEach(function (d) {
+          var row = document.createElement('div');
+          row.className = 'shop-row' + (d.current ? ' dice-current' : '') + (!d.unlocked ? ' dice-locked' : '');
+          var label = d.name + (d.current ? ' (사용중)' : '') + (!d.unlocked ? ' — ' + d.unlockFloor + '층부터 해금' : '');
+          row.innerHTML = '<span>' + label + '</span>'
+              + (d.unlocked && !d.current
+                  ? '<span class="btn-group"><button onclick="TW.action(\'DICE_BUY\',\'' + d.idx + '\')">장착</button></span>'
+                  : '');
+          diceBox.appendChild(row);
+        });
+
+        // 스탯 강화: 현재 Lv/상한 + 다음 비용, 상한 도달 시 버튼 비활성화. 다음 상한이 몇층에서
+        // 열리는지도 하단에 안내("어떤 마을 가면 몇까지 올릴 수 있는지" 요청).
+        var st = data.stat || {};
+        var statBox = document.getElementById('statShopBox');
+        statBox.innerHTML = '';
+        var statDefs = [
+          { key: 'atkMaxLv', label: '공격력(최대)', cost: st.nextCostAtkMax, type: '공격력' },
+          { key: 'atkMinLv', label: '공격력(최소)', cost: st.nextCostAtkMin, type: '최소공격력' },
+          { key: 'hpLv',     label: '체력',         cost: st.nextCostHp,     type: '체력' }
+        ];
+        statDefs.forEach(function (def) {
+          var lv = st[def.key] || 0;
+          var cap = st.cap || 0;
+          var maxed = lv >= cap;
+          var row = document.createElement('div');
+          row.className = 'shop-row';
+          row.innerHTML = '<span>' + def.label + ' Lv' + lv + ' / ' + cap
+              + (maxed ? ' (상한 도달)' : ' (' + def.cost + 'PP)') + '</span>'
+              + '<span class="btn-group"><button' + (maxed ? ' disabled' : '')
+              + ' onclick="TW.action(\'STAT_BUY\',\'' + def.type + '\')">강화</button></span>';
+          statBox.appendChild(row);
+        });
+        if (st.nextVillageFloor != null) {
+          var note = document.createElement('div');
+          note.style.cssText = 'font-size:11px;color:var(--ink-soft);margin-top:6px;';
+          note.textContent = '📈 다음 상한 ' + st.nextCap + '은 ' + st.nextVillageFloor + '층 마을 도달 시 열립니다(그 앞 보스 처치 필요).';
+          statBox.appendChild(note);
+        }
       });
   }
 

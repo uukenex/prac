@@ -443,6 +443,11 @@ public class BotS5ServiceImpl implements BotS5Service {
         return ((Number) o).intValue();
     }
 
+    private double numVal(Object o, double def) {
+        if (o == null) return def;
+        return ((Number) o).doubleValue();
+    }
+
     private String strVal(Object o, String def) {
         return o == null ? def : o.toString();
     }
@@ -504,6 +509,18 @@ public class BotS5ServiceImpl implements BotS5Service {
             int tileCount = fi == null ? 0 : intVal(fi.get("TILE_COUNT"), 0);
             int curTile = ufp == null ? 0 : intVal(ufp.get("CUR_TILE"), 0);
             sb.append("보드 위치: ").append(curTile).append(" / ").append(tileCount).append(NL);
+            // "보드위치에 현재탐사율/최고탐사율도 보여달라" 요청으로 추가 -- 이번 원정에서 실제로
+            // 발견(방문)한 칸 수 기준 현재탐사율과, 마을 복귀로 리셋되어도 남아있는 역대 최고기록을
+            // 같이 보여준다(둘 다 %, 분모가 0이면 0%로 방어).
+            int visitedNow = dao.countTileVisits(target, floor);
+            int curPct = tileCount > 0 ? (visitedNow * 100 / tileCount) : 0;
+            HashMap<String, Object> best = dao.selectUserFloorBest(target, floor);
+            int bestVisited = best == null ? 0 : intVal(best.get("BEST_VISITED_COUNT"), 0);
+            int bestTileCount = best == null ? 0 : intVal(best.get("TILE_COUNT"), 0);
+            int bestPct = bestTileCount > 0 ? (bestVisited * 100 / bestTileCount) : Math.max(curPct, 0);
+            boolean fullyExplored = best != null && "Y".equals(strVal(best.get("FULLY_EXPLORED_YN"), "N"));
+            sb.append("탐사율: 현재 ").append(curPct).append("% / 최고 ").append(bestPct).append("%")
+              .append(fullyExplored ? " ✅완전탐사" : "").append(NL);
         }
         sb.append("사용 주사위: ").append(strVal(p.get("DICE_GRADE"), "DICE_6")).append(NL);
         boolean autoHuntOn = "Y".equals(strVal(p.get("AUTO_HUNT_YN"), "N"));
@@ -527,6 +544,8 @@ public class BotS5ServiceImpl implements BotS5Service {
             sb.append("이 층 처치: ").append(intVal(p.get("KILL_COUNT_CUR"), 0)).append("/10 (자동사냥 적용까지)").append(NL);
         }
         sb.append("누적 처치: ").append(intVal(p.get("TOTAL_KILL_COUNT"), 0)).append("마리").append(NL);
+        PP totalEarned = PP.of(numVal(p.get("TOTAL_PP_EARNED_VALUE"), 0), strVal(p.get("TOTAL_PP_EARNED_EXT"), ""));
+        sb.append("누적 획득 PP: ").append(totalEarned.format()).append(NL);
         sb.append(NL).append("🖥️ 웹으로 보기: ").append(towerViewLink(target)).append(NL);
         sb.append("👉 전체 명령어는 /탑도움말 을 입력해 확인하세요.");
         return sb.toString();
@@ -1009,16 +1028,28 @@ public class BotS5ServiceImpl implements BotS5Service {
         return sb.toString();
     }
 
+    /**
+     * PP 지급의 유일한 통로 -- 전투 처치보상/자동사냥 정산/보물상자/럭키칸/도적 스틸/중복 뽑기
+     * 환급 등 모든 PP 획득이 이 함수를 거치므로, 여기서 같이 누적치(TOTAL_PP_EARNED)도 더해두면
+     * 소스별로 따로 손댈 필요 없이 "역대 총 획득 PP"를 정확히 추적할 수 있다("/탑현황에 누적PP도
+     * 보여달라" 요청으로 신설). 현재 보유고(PP_VALUE, 쓰면 줄어듦)와는 별개의 값.
+     */
     private void addPp(String userName, HashMap<String, Object> p, PP amount) {
         PP cur = PP.of(((Number) p.get("PP_VALUE")).doubleValue(), strVal(p.get("PP_EXT"), ""));
         PP result = cur.add(amount);
+        PP earnedCur = PP.of(numVal(p.get("TOTAL_PP_EARNED_VALUE"), 0), strVal(p.get("TOTAL_PP_EARNED_EXT"), ""));
+        PP earnedResult = earnedCur.add(amount);
         HashMap<String, Object> up = new HashMap<>();
         up.put("userName", userName);
         up.put("ppValue", result.getValue());
         up.put("ppExt", result.getUnit());
+        up.put("totalPpEarnedValue", earnedResult.getValue());
+        up.put("totalPpEarnedExt", earnedResult.getUnit());
         dao.updateUserProgress(up);
         p.put("PP_VALUE", result.getValue());
         p.put("PP_EXT", result.getUnit());
+        p.put("TOTAL_PP_EARNED_VALUE", earnedResult.getValue());
+        p.put("TOTAL_PP_EARNED_EXT", earnedResult.getUnit());
     }
 
     private boolean deductPp(String userName, HashMap<String, Object> p, PP cost) {
@@ -1335,6 +1366,11 @@ public class BotS5ServiceImpl implements BotS5Service {
                 up.put("maxFloorReached", nextFloor + 1);
                 up.put("killCountCur", 0); // 새 구간으로 넘어가므로 "이 층 처치수"도 초기화(changeFloor와 동일 이유)
                 sb.append("👑 보스 격파! ").append(nextFloor).append("층 마을로 이동합니다.").append(NL);
+                // "새 마을 도착 시 스탯상한/주사위해금/뽑기권해금 등 바뀐 것들을 알려달라" 요청으로 추가
+                String unlockSummary = newlyUnlockedSummary(prevBlockBase, prevBlockBase + 10);
+                if (!unlockSummary.isEmpty()) {
+                    sb.append("── 새로 해금된 것들 ──").append(NL).append(unlockSummary);
+                }
                 grantAchievement(userName, 7);
                 // 보스 처치로 다음 구간으로 넘어가면 이전 구간(방금 클리어한 사냥터 8개층)은
                 // 어차피 재진입 불가(과거 구간 복귀 불가 규칙) -- 그 구간의 보드 위치/발견기록도
@@ -2449,7 +2485,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                   .append(DICE_NAMES[i].equals(curDice) ? " ← 사용중" : "")
                   .append(NL);
             }
-            sb.append("/주사위구매 N 으로 해금된 주사위 장착");
+            sb.append("/주사위구매 N 으로 해금된 주사위로 자유롭게 교체(무료, 몇 번이든 가능)");
             return sb.toString();
         }
 
@@ -2463,6 +2499,69 @@ public class BotS5ServiceImpl implements BotS5Service {
         return DICE_NAMES[n - 1] + " 을(를) 장착했습니다.";
     }
 
+    /** 웹 SPA 상점탭 주사위 UI용 — 등급별 {name, unlockFloor, unlocked, current} 구조화 목록. */
+    @Override
+    public List<HashMap<String, Object>> diceListInfo(String userName) {
+        HashMap<String, Object> p = getOrInitProgress(userName);
+        int unlocked = intVal(p.get("UNLOCKED_BLOCK"), 0);
+        String curDice = strVal(p.get("DICE_GRADE"), "DICE_6");
+        List<HashMap<String, Object>> list = new ArrayList<>();
+        for (int i = 0; i < DICE_NAMES.length; i++) {
+            HashMap<String, Object> row = new HashMap<>();
+            row.put("idx", i + 1);
+            row.put("name", DICE_NAMES[i]);
+            row.put("unlockFloor", DICE_UNLOCK[i]);
+            row.put("unlocked", unlocked >= DICE_UNLOCK[i]);
+            row.put("current", DICE_NAMES[i].equals(curDice));
+            list.add(row);
+        }
+        return list;
+    }
+
+    /** 스탯 강화 상한 계산: 구간(10층 단위) 하나 클리어(보스 처치)마다 +5. index0(unlockedBlock=0)일 때도 최소 5. */
+    private int statCapFor(int unlockedBlock) {
+        return 5 + 5 * (unlockedBlock / 10);
+    }
+
+    /**
+     * 보스 처치로 UNLOCKED_BLOCK이 oldUnlocked -> newUnlocked로 오를 때 "이번에 새로 열린 것"만
+     * 모아서 안내 문구로 만든다(스탯 상한 상승 / 이번 구간부터 열리는 주사위 / 동료·장비 계약서
+     * 해금) -- "새 마을 도착 시 뭐가 바뀌었는지 알려달라" 요청으로 추가.
+     */
+    private String newlyUnlockedSummary(int oldUnlocked, int newUnlocked) {
+        StringBuilder sb = new StringBuilder();
+        int oldCap = statCapFor(oldUnlocked);
+        int newCap = statCapFor(newUnlocked);
+        if (newCap > oldCap) {
+            sb.append("📈 스탯 강화 상한: ").append(oldCap).append(" → ").append(newCap).append(NL);
+        }
+        for (int i = 0; i < DICE_NAMES.length; i++) {
+            if (DICE_UNLOCK[i] == newUnlocked) {
+                sb.append("🎲 새 주사위 해금: ").append(DICE_NAMES[i])
+                  .append(" (/주사위구매 ").append(i + 1).append("로 장착)").append(NL);
+            }
+        }
+        sb.append(newlyUnlockedGacha("COMPANION", "동료 계약서", oldUnlocked, newUnlocked));
+        sb.append(newlyUnlockedGacha("EQUIP", "장비 상자", oldUnlocked, newUnlocked));
+        return sb.toString();
+    }
+
+    /** newlyUnlockedSummary의 가챠(동료/장비) 부분 -- 해금 컷오프 전후 목록을 비교해 새로 늘어난 것만 뽑는다. */
+    private String newlyUnlockedGacha(String gachaType, String label, int oldUnlocked, int newUnlocked) {
+        List<HashMap<String, Object>> oldList = dao.selectGachaList(gachaType, oldUnlocked);
+        List<HashMap<String, Object>> newList = dao.selectGachaList(gachaType, newUnlocked);
+        List<Integer> oldIds = new ArrayList<>();
+        for (HashMap<String, Object> g : oldList) oldIds.add(intVal(g.get("GACHA_ID"), -1));
+        StringBuilder sb = new StringBuilder();
+        for (HashMap<String, Object> g : newList) {
+            int id = intVal(g.get("GACHA_ID"), -1);
+            if (!oldIds.contains(id)) {
+                sb.append("🎁 ").append(label).append(" 해금: ").append(strVal(g.get("GACHA_NAME"), "")).append(NL);
+            }
+        }
+        return sb.toString();
+    }
+
     // ================================================================
     // /스탯구매
     // ================================================================
@@ -2474,13 +2573,20 @@ public class BotS5ServiceImpl implements BotS5Service {
         int atkMaxLv = stat == null ? 0 : intVal(stat.get("ATK_MAX_LV"), 0);
         int atkMinLv = stat == null ? 0 : intVal(stat.get("ATK_MIN_LV"), 0);
         int hpLv     = stat == null ? 0 : intVal(stat.get("HP_LV"), 0);
-        int cap = 5 + 5 * (intVal(p.get("UNLOCKED_BLOCK"), 0) / 10);
+        int unlockedBlock = intVal(p.get("UNLOCKED_BLOCK"), 0);
+        int cap = statCapFor(unlockedBlock);
+        int nextVillageFloor = unlockedBlock + 10; // 다음 상한이 열리는 마을(그 앞 보스를 처치하면 도착)
 
         if (type == null || type.isEmpty()) {
-            StringBuilder sb = new StringBuilder(userName).append("님의 스탯 구매 현황 (구간 상한 ").append(cap).append(")," + NL);
-            sb.append("공격력(최대) Lv").append(atkMaxLv).append(" — 다음 비용 ").append(50 * (atkMaxLv + 1)).append(" PP").append(NL);
-            sb.append("공격력(최소) Lv").append(atkMinLv).append(" — 다음 비용 ").append(50 * (atkMinLv + 1)).append(" PP").append(NL);
-            sb.append("체력 Lv").append(hpLv).append(" — 다음 비용 ").append(50 * (hpLv + 1)).append(" PP").append(NL);
+            StringBuilder sb = new StringBuilder(userName).append("님의 스탯 구매 현황 (현재 구간 상한 ").append(cap).append(")," + NL);
+            sb.append("공격력(최대) Lv").append(atkMaxLv).append(" / ").append(cap)
+              .append(" — 다음 비용 ").append(50 * (atkMaxLv + 1)).append(" PP").append(NL);
+            sb.append("공격력(최소) Lv").append(atkMinLv).append(" / ").append(cap)
+              .append(" — 다음 비용 ").append(50 * (atkMinLv + 1)).append(" PP").append(NL);
+            sb.append("체력 Lv").append(hpLv).append(" / ").append(cap)
+              .append(" — 다음 비용 ").append(50 * (hpLv + 1)).append(" PP").append(NL);
+            sb.append("📈 다음 상한 ").append(cap + 5).append("은 ").append(nextVillageFloor)
+              .append("층 마을 도달 시 열립니다 (그 앞 보스 처치 필요).").append(NL);
             sb.append("/스탯구매 공격력 | 최소공격력 | 체력");
             return sb.toString();
         }
@@ -2493,7 +2599,10 @@ public class BotS5ServiceImpl implements BotS5Service {
             case "체력":       curLv = hpLv;     field = "hp";  break;
             default: return "스탯 종류는 공격력 / 최소공격력 / 체력 중 하나여야 합니다.";
         }
-        if (curLv >= cap) return "현재 구간에서는 더 이상 강화할 수 없습니다. 다음 마을에 도달하면 상한이 늘어납니다.";
+        if (curLv >= cap) {
+            return "현재 구간에서는 더 이상 강화할 수 없습니다. " + nextVillageFloor + "층 마을에 도달하면 상한이 "
+                    + (cap + 5) + "로 늘어납니다.";
+        }
 
         PP cost = PP.fromPP(50 * (curLv + 1));
         if (!deductPp(userName, p, cost)) return "PP가 부족합니다. (필요 " + cost.format() + " PP)";
@@ -2509,6 +2618,30 @@ public class BotS5ServiceImpl implements BotS5Service {
         up.put("hpLv", hpLv);
         dao.upsertUserStat(up);
         return type + " 스탯을 강화했습니다! (Lv" + curLv + " → Lv" + (curLv + 1) + ")";
+    }
+
+    /** 웹 SPA 상점탭 스탯 UI용 — 현재 레벨/상한/다음 상한이 열리는 층·비용을 구조화해서 반환. */
+    @Override
+    public HashMap<String, Object> statShopInfo(String userName) {
+        HashMap<String, Object> p = getOrInitProgress(userName);
+        HashMap<String, Object> stat = dao.selectUserStat(userName);
+        int atkMaxLv = stat == null ? 0 : intVal(stat.get("ATK_MAX_LV"), 0);
+        int atkMinLv = stat == null ? 0 : intVal(stat.get("ATK_MIN_LV"), 0);
+        int hpLv     = stat == null ? 0 : intVal(stat.get("HP_LV"), 0);
+        int unlockedBlock = intVal(p.get("UNLOCKED_BLOCK"), 0);
+        int cap = statCapFor(unlockedBlock);
+
+        HashMap<String, Object> result = new HashMap<>();
+        result.put("atkMaxLv", atkMaxLv);
+        result.put("atkMinLv", atkMinLv);
+        result.put("hpLv", hpLv);
+        result.put("cap", cap);
+        result.put("nextCap", cap + 5);
+        result.put("nextVillageFloor", unlockedBlock + 10);
+        result.put("nextCostAtkMax", 50 * (atkMaxLv + 1));
+        result.put("nextCostAtkMin", 50 * (atkMinLv + 1));
+        result.put("nextCostHp", 50 * (hpLv + 1));
+        return result;
     }
 
     // ================================================================
