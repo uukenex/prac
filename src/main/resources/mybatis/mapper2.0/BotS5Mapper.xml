@@ -85,6 +85,7 @@
             <if test="clearMonster != null">
                 CUR_MONSTER_ID = NULL, CUR_MONSTER_HP_VALUE = NULL, CUR_MONSTER_HP_EXT = NULL,
                 BOSS_IMMUNE_CID = NULL, BOSS_STUN_CID = NULL, CUR_MONSTER_ELITE_YN = 'N',
+                MONSTER_STUNNED_YN = 'N',
             </if>
             <if test="curMonsterId != null">CUR_MONSTER_ID = #{curMonsterId},</if>
             <if test="curMonsterHpValue != null">CUR_MONSTER_HP_VALUE = #{curMonsterHpValue},</if>

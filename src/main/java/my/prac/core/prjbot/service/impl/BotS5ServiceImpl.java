@@ -210,6 +210,12 @@ public class BotS5ServiceImpl implements BotS5Service {
     // config화 -- 재배포 없이 /갱신으로 값만 바꿀 수 있게.
     private static volatile int DAILY_DICE_LIMIT = 750;
 
+    // 자동사냥(미접속 정산) 속도/상한. "재배포 없이 밸런스 조절하게 해달라" 요청으로 config화.
+    //   - AUTO_HUNT_KILLS_PER_HOUR : 미접속 시간당 처치 수(분당 환산해 10분당 1마리처럼 사용)
+    //   - AUTO_HUNT_MAX_HOURS      : 정산에 반영하는 미접속 시간 상한(그 이상 방치해도 더 안 늘어남)
+    private static volatile int AUTO_HUNT_KILLS_PER_HOUR = 6;
+    private static volatile int AUTO_HUNT_MAX_HOURS = 8;
+
     // /이벤트지급(관리자 전용) 실행 권한이 있는 유저명 목록 -- TBOT_S5_CONFIG.EVENT_ADMIN_USERS에
     // '|'로 구분해 저장(예: "일어난다람쥐/카단|다른관리자"). 이 시스템엔 별도 권한/역할 체계가
     // 없어서, 뽑기권처럼 실제 경제가치가 있는 걸 아무나 채팅으로 못 뿌리게 막는 유일한 장치다.
@@ -236,6 +242,10 @@ public class BotS5ServiceImpl implements BotS5Service {
                         COMBAT_END_COOLDOWN_SEC = Long.parseLong(val);
                     } else if ("DAILY_DICE_LIMIT".equals(key)) {
                         DAILY_DICE_LIMIT = Integer.parseInt(val);
+                    } else if ("AUTO_HUNT_KILLS_PER_HOUR".equals(key)) {
+                        AUTO_HUNT_KILLS_PER_HOUR = Integer.parseInt(val);
+                    } else if ("AUTO_HUNT_MAX_HOURS".equals(key)) {
+                        AUTO_HUNT_MAX_HOURS = Integer.parseInt(val);
                     }
                 } catch (NumberFormatException ignore) {
                     // 파싱 실패한 값은 무시하고 기존(기본) 값 유지
@@ -260,7 +270,8 @@ public class BotS5ServiceImpl implements BotS5Service {
     public String refreshConfig() {
         loadConfig();
         return "🗼 시즌5 설정 갱신 완료 (칸이동 " + MOVE_COOLDOWN_SEC + "초 / 전투중 " + COMBAT_COOLDOWN_SEC
-                + "초 / 전투종료 " + COMBAT_END_COOLDOWN_SEC + "초 / 하루 주사위 한도 " + DAILY_DICE_LIMIT + "회)";
+                + "초 / 전투종료 " + COMBAT_END_COOLDOWN_SEC + "초 / 하루 주사위 한도 " + DAILY_DICE_LIMIT
+                + "회 / 자동사냥 시간당 " + AUTO_HUNT_KILLS_PER_HOUR + "마리, 최대 " + AUTO_HUNT_MAX_HOURS + "시간)";
     }
 
     @Override
@@ -576,7 +587,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             HashMap<String, Object> mon = dao.selectMonster(blockNo(huntFloor), "N");
             if (mon != null) {
                 PP perKill = PP.of(((Number) mon.get("PP_PER_KILL_VALUE")).doubleValue(), strVal(mon.get("PP_PER_KILL_EXT"), ""));
-                PP perHour = perKill.multiply(6 * floorPpMultiplier(huntFloor));
+                PP perHour = perKill.multiply(AUTO_HUNT_KILLS_PER_HOUR * floorPpMultiplier(huntFloor));
                 sb.append(" (").append(huntFloor).append("층 기준, 미접속 시 시간당 약 ").append(perHour.format()).append(" PP)");
             }
         }
@@ -700,12 +711,12 @@ public class BotS5ServiceImpl implements BotS5Service {
         sb.append("직업 3종 전부 다름(균형) : 파티 전체 공격력/방어력 +10%").append(NL);
         sb.append(NL);
 
-        sb.append("[동료 성급 특수효과] ★5/★6 동료는 그 직업 고유 효과가 개인적으로 더 강해짐(시너지와 중복 적용)").append(NL);
+        sb.append("[동료 성급 특수효과] ★5/★6 동료는 그 직업에 완전히 새로운 개인 효과가 생김(시너지와 별개, 중복 적용)").append(NL);
         sb.append("전사 : ★5 도발 확률 +10%p, ★6 +20%p(도발 성공 시 받는 피해도 20%↓)").append(NL);
-        sb.append("마법사 : ★5 스턴 확률 +10%p, ★6 +20%p(스턴 시 피해도 +20%)").append(NL);
-        sb.append("도적 : ★5 PP훔치기 확률 +10%p, ★6 +15%p(훔친 PP량도 +50%)").append(NL);
-        sb.append("궁수 : ★5 즉사 발동 기준 HP10%→15%, ★6 20%(확률도 40%→55%)").append(NL);
-        sb.append("도사 : ★5 보호막량 +20%, ★6 +50%").append(NL);
+        sb.append("마법사 : ★5/★6 스턴 2턴 지속(다음 턴 반격까지 막음), ★6은 발동 확률도 +15%p").append(NL);
+        sb.append("도적 : ★5 반격 대상이 되면 30% 확률로 회피(피해 0), ★6 45%").append(NL);
+        sb.append("궁수 : ★5 몬스터 방어력 50% 무시(관통), ★6 100% 무시(완전 관통)").append(NL);
+        sb.append("도사 : ★5 동료가 쓰러지면 25% 확률로 즉시 부활(HP30%), ★6 40% 확률(HP50%)").append(NL);
         sb.append(NL);
 
         sb.append("[상점] (웹 '상점' 탭) — 뽑기는 마을이 아니어도 아무 층에서나 가능").append(NL);
@@ -1139,19 +1150,28 @@ public class BotS5ServiceImpl implements BotS5Service {
                     PP curPp = PP.of(((Number) p.get("PP_VALUE")).doubleValue(), strVal(p.get("PP_EXT"), ""));
                     sb.append("💎 보물상자를 발견했다! ").append(reward.format()).append(" PP 획득! (보유 ").append(curPp.format()).append(" PP)");
                 } else {
-                    // [정책 변경] 예전엔 등급 무관 범용 권(COMPANION_VOUCHER/EQUIP_VOUCHER)을
-                    // 줬는데, 범용 권이 "해금 여부 무관하게 아무 등급에나 쓸 수 있게" 설계돼
-                    // 있어서 하급 보물상자에서 나온 권으로 최상급(35000 PP짜리) 가챠까지
-                    // 뚫려버리는 문제가 있었다("팔세쪽있음 신고로 확인). 범용 권 개념 자체를
-                    // 없애고 항상 하급(T1) 전용 권으로 지급하도록 변경.
+                    // [정책 변경, 2026-09-02] 예전엔 등급 무관 범용 권(COMPANION_VOUCHER/
+                    // EQUIP_VOUCHER)을 줬는데, 범용 권이 "해금 여부 무관하게 아무 등급에나
+                    // 쓸 수 있게" 설계돼 있어서 하급 보물상자에서 나온 권으로 최상급(35000
+                    // PP짜리) 가챠까지 뚫려버리는 문제가 있었다(신고로 확인). 범용 권 개념
+                    // 자체를 없애고 등급락 권(T1~T4)만 지급하도록 변경.
+                    // [정책 변경, 2026-09-05] 그 다음엔 항상 T1(하급)만 줬는데, "층에 맞는
+                    // 뽑기권이 지급돼야 한다"(0~30층 하급, 30층~ 중급 ...)는 요청으로, 지금
+                    // 해금된 최고 등급(현재 UNLOCKED_BLOCK 기준)에 맞춰 준다 -- 절대 그보다
+                    // 높은 등급은 못 받으므로 위 "최상급 뚫림" 버그는 여전히 재발하지 않는다.
                     boolean companionVoucher = RND.nextBoolean();
+                    String voucherGachaType = companionVoucher ? "COMPANION" : "EQUIP";
+                    int unlockedBlockNow = intVal(p.get("UNLOCKED_BLOCK"), 0);
+                    int tier = dao.selectGachaList(voucherGachaType, unlockedBlockNow).size();
+                    if (tier < 1) tier = 1;
+                    if (tier > 4) tier = 4;
                     if (companionVoucher) {
-                        up.put("companionVoucherT1", intVal(p.get("COMPANION_VOUCHER_T1"), 0) + 1);
+                        up.put("companionVoucherT" + tier, intVal(p.get("COMPANION_VOUCHER_T" + tier), 0) + 1);
                     } else {
-                        up.put("equipVoucherT1", intVal(p.get("EQUIP_VOUCHER_T1"), 0) + 1);
+                        up.put("equipVoucherT" + tier, intVal(p.get("EQUIP_VOUCHER_T" + tier), 0) + 1);
                     }
                     sb.append("💎 보물상자를 발견했다! ").append(companionVoucher ? "동료" : "장비")
-                      .append(" 무료뽑기 1회권(하급) 획득! (다음 ").append(companionVoucher ? "/동료뽑기" : "/장비뽑기")
+                      .append(" 무료뽑기 1회권(").append(COMPANION_TIER_NAME[tier - 1]).append(") 획득! (다음 ").append(companionVoucher ? "/동료뽑기" : "/장비뽑기")
                       .append(" 시 자동 적용)");
                 }
                 dao.updateUserProgress(up);
@@ -1471,6 +1491,11 @@ public class BotS5ServiceImpl implements BotS5Service {
         boolean stunned = false;
         boolean executeKill = false;
         int shieldPool = 0;
+        // [2026-09-05] ★5/★6 마법사 "2턴 스턴" -- 지난 턴에 걸어둔 배너(MONSTER_STUNNED_YN)가
+        // 있으면 이번 턴도 자동으로 스턴 처리하고 소모한다. mageBankNextTurn은 "이번 턴에 새로
+        // 배너를 걸었는지" -- 아래에서 이번 턴 결과를 반영해 배너를 다시 쓰거나 지운다.
+        boolean incomingBankedStun = "Y".equals(strVal(p.get("MONSTER_STUNNED_YN"), "N"));
+        boolean mageBankNextTurn = false;
 
         for (HashMap<String, Object> c : party) {
             PP hp = PP.of(((Number) c.get("CUR_HP_VALUE")).doubleValue(), strVal(c.get("CUR_HP_EXT"), ""));
@@ -1504,8 +1529,15 @@ public class BotS5ServiceImpl implements BotS5Service {
                 continue;
             }
 
+            // [2026-09-05] ★5/★6 궁수 "관통" 특수효과 -- 몬스터 방어력을 일부/전부 무시
+            int effMonsterDef = monsterDef;
+            if ("ARCHER".equals(job)) {
+                if (grade >= 6) effMonsterDef = 0;                                   // ★6: 방어 완전 무시
+                else if (grade >= 5) effMonsterDef = (int) Math.round(monsterDef * 0.5); // ★5: 방어 50% 무시
+            }
+
             int roll = rollFace(diceMax);
-            int dmg = Math.max(1, eff[1] * roll - monsterDef);
+            int dmg = Math.max(1, eff[1] * roll - effMonsterDef);
             dmg = Math.max(dmg, eff[3]); // 스탯구매 최소공격력 보정
             totalDamage += dmg;
             // [간결화] 텍스트가 너무 길다는 요청으로, 공격력/범위(전투 시작 전 "OO 등장!" 메시지에
@@ -1523,16 +1555,15 @@ public class BotS5ServiceImpl implements BotS5Service {
                 case "MAGE": {
                     int stunChance = 20;
                     if ("MAGE".equals(synergy)) stunChance += 20; // 시너지: 마법사3인조
-                    if (grade >= 6) stunChance += 20;              // ★6
-                    else if (grade >= 5) stunChance += 10;         // ★5
+                    if (grade >= 6) stunChance += 15;              // ★6: 확률도 약간 상승
                     if (RND.nextInt(100) < stunChance) {
                         stunned = true;
                         sb.append(" ✨스턴!");
-                        // ★6 또는 마법사3인조 시너지: 스턴 성공 시 이번 공격 피해 +20% 추가
-                        if (grade >= 6 || "MAGE".equals(synergy)) {
-                            long extra = Math.round(dmg * 0.2);
-                            totalDamage += extra;
-                            sb.append("(+").append(extra).append("dmg)");
+                        // [2026-09-05] ★5/★6 "2턴 스턴" -- 이번 턴은 물론 다음 턴 반격까지
+                        // 막아버린다(MONSTER_STUNNED_YN에 배너로 저장해뒀다가 다음 턴 소모).
+                        if (grade >= 5) {
+                            mageBankNextTurn = true;
+                            sb.append("(2턴 지속)");
                         }
                     }
                     break;
@@ -1540,24 +1571,20 @@ public class BotS5ServiceImpl implements BotS5Service {
                 case "ROGUE": {
                     int stealChance = 25;
                     if ("ROGUE".equals(synergy)) stealChance += 10; // 시너지: 도적3인조
-                    if (grade >= 6) stealChance += 15;               // ★6
-                    else if (grade >= 5) stealChance += 10;          // ★5
                     if (RND.nextInt(100) < stealChance) {
                         double stealMult = 0.1;
                         if ("ROGUE".equals(synergy)) stealMult *= 2.0; // 시너지: 훔친 PP 2배
-                        if (grade >= 6) stealMult *= 1.5;               // ★6: 훔친 PP +50%
                         PP steal = PP.of(((Number) mon.get("PP_PER_KILL_VALUE")).doubleValue(), strVal(mon.get("PP_PER_KILL_EXT"), "")).multiply(stealMult * floorPpMultiplier(floor) * eliteMult);
                         addPp(userName, p, steal);
                         sb.append(" 🗡️+").append(steal.format()).append("PP");
                     }
+                    // ★5/★6 특수효과(회피)는 도적이 반격 "대상"이 됐을 때 발동하므로 아래
+                    // resolveCombatTurn 반격 파트에서 처리한다(공격 턴인 여기와는 무관).
                     break;
                 }
                 case "ARCHER": {
-                    double executeThreshold = 0.1;
-                    int executeChance = 40;
-                    if (grade >= 6) { executeThreshold = 0.2; executeChance = 55; } // ★6
-                    else if (grade >= 5) { executeThreshold = 0.15; }                // ★5
-                    if (PP.toBaseValue(monsterHp) <= PP.toBaseValue(monsterMaxHp) * executeThreshold && RND.nextInt(100) < executeChance) {
+                    // ★5/★6 특수효과(관통, 몬스터 방어 무시)는 위 dmg 계산에서 이미 처리했다.
+                    if (PP.toBaseValue(monsterHp) <= PP.toBaseValue(monsterMaxHp) * 0.1 && RND.nextInt(100) < 40) {
                         executeKill = true;
                         sb.append(" 🏹즉사!");
                     }
@@ -1570,9 +1597,9 @@ public class BotS5ServiceImpl implements BotS5Service {
                     int shieldRoll = rollFace(diceMax);
                     int shieldAmt = Math.max(0, eff[1] * shieldRoll);
                     if ("PRIEST".equals(synergy)) shieldAmt = (int) Math.round(shieldAmt * 2.0); // 시너지: 도사3인조 2배
-                    if (grade >= 6) shieldAmt = (int) Math.round(shieldAmt * 1.5);                 // ★6
-                    else if (grade >= 5) shieldAmt = (int) Math.round(shieldAmt * 1.2);             // ★5
                     shieldPool += shieldAmt;
+                    // ★5/★6 특수효과(부활)는 반격으로 동료가 사망할 때 발동하므로 아래 반격
+                    // 파트에서 처리한다.
                     break;
                 }
                 default:
@@ -1583,6 +1610,13 @@ public class BotS5ServiceImpl implements BotS5Service {
         // "파티 합공 총 데미지도 보여달라" 요청 -- 개별 줄만으로는 한 번에 얼마나 몰아쳤는지
         // 암산해야 해서, 공격 줄들 바로 아래에 합계를 한 줄 더 보여준다.
         if (totalDamage > 0) sb.append("총 ").append(totalDamage).append("dmg로 공격!").append(NL);
+
+        // 지난 턴에 걸린 "2턴 스턴" 배너가 있으면 이번 턴도 반격을 못 하게 한다(이번 턴에 새
+        // 마법사가 또 성공시켰는지와 무관하게 항상 적용).
+        if (incomingBankedStun) {
+            stunned = true;
+            sb.append("💫 지난 턴 스턴이 아직 이어지고 있다!").append(NL);
+        }
 
         PP monsterHpAfter = executeKill ? PP.fromPP(0) : monsterHp.subtract(PP.fromPP(totalDamage));
         boolean monsterDead = executeKill || PP.toBaseValue(monsterHpAfter) <= 0;
@@ -1702,6 +1736,9 @@ public class BotS5ServiceImpl implements BotS5Service {
         up.put("curMonsterHpValue", monsterHpAfter.getValue());
         up.put("curMonsterHpExt", monsterHpAfter.getUnit());
         if (stunConsumed) up.put("clearBossStun", true);
+        // ★5/★6 마법사 2턴 스턴 배너 갱신 -- 이번 턴에 새로 걸렸으면 다음 턴을 위해 Y로,
+        // 아니면(지난 배너를 방금 소모했든 애초에 없었든) N으로 정리한다.
+        up.put("monsterStunnedYn", mageBankNextTurn ? "Y" : "N");
         dao.updateUserProgress(up);
         // [세 구간 분리 요청] 파티 공격 결과(1구간)와 몬스터 상태·반격(2구간) 사이에 빈 줄을 넣는다.
         sb.append(NL);
@@ -1810,32 +1847,67 @@ public class BotS5ServiceImpl implements BotS5Service {
         sb.append(eliteMonsterName(floor, mon, elite)).append("의 ").append(jobTag(tGrade, tJob, tName))
           .append("에게 반격! 🎲").append(roll).append("→ ").append(rawDmgToParty).append("dmg").append(NL);
 
-        if (shieldPool > 0) {
-            int absorbed = Math.min(shieldPool, dmgToParty);
-            dmgToParty -= absorbed;
-            sb.append("🛡️ 보호막 ").append(absorbed).append("보호 후 ").append(dmgToParty).append("dmg").append(NL);
-            // "도사가 누구를 실드해줬는지 명확히" 요청 -- 위 파티 공격 줄에서 도사 자신에게
-            // 붙던 🛡️+N 표시를, 실제로 이 실드를 받은(이번 반격의) 대상 본인의 공격 줄로 옮겨서
-            // 붙인다. 그 줄은 이 시점에 이미 sb에 적혀 있으므로 자리를 찾아 뒤에 이어붙인다.
-            String targetAttackLinePrefix = jobTag(tGrade, tJob, tName) + " " + targetHp.format() + "/" + tEff[0];
-            int lineStart = sb.indexOf(targetAttackLinePrefix);
-            if (lineStart >= 0) {
-                int lineEnd = sb.indexOf(NL, lineStart);
-                if (lineEnd < 0) lineEnd = sb.length();
-                sb.insert(lineEnd, " 🛡️+" + shieldPool);
-            }
+        // [2026-09-05 신설] ★5/★6 도적 "회피" -- 자신이 반격 대상이 되면 일정 확률로 피해를
+        // 통째로 무효화한다(실드/전사 감소보다 우선 -- 아예 안 맞은 셈이라 뒤 계산 자체를 건너뜀).
+        boolean rogueEvaded = false;
+        if ("ROGUE".equals(tJob) && tGrade >= 5) {
+            int evadeChance = tGrade >= 6 ? 45 : 30;
+            if (RND.nextInt(100) < evadeChance) rogueEvaded = true;
         }
 
-        // [정책 변경] "무시 대상"은 보스 피해를 면제받지 않는다(반격은 평소처럼 그대로 받음) --
-        // 대신 이 동료의 공격이 보스에게 안 먹히도록 위 파티 공격 파트에서 처리했다.
+        if (rogueEvaded) {
+            dmgToParty = 0;
+            sb.append("🌀 회피! 피해를 완전히 피했다").append(NL);
+        } else {
+            if (shieldPool > 0) {
+                int absorbed = Math.min(shieldPool, dmgToParty);
+                dmgToParty -= absorbed;
+                sb.append("🛡️ 보호막 ").append(absorbed).append("보호 후 ").append(dmgToParty).append("dmg").append(NL);
+                // "도사가 누구를 실드해줬는지 명확히" 요청 -- 위 파티 공격 줄에서 도사 자신에게
+                // 붙던 🛡️+N 표시를, 실제로 이 실드를 받은(이번 반격의) 대상 본인의 공격 줄로 옮겨서
+                // 붙인다. 그 줄은 이 시점에 이미 sb에 적혀 있으므로 자리를 찾아 뒤에 이어붙인다.
+                String targetAttackLinePrefix = jobTag(tGrade, tJob, tName) + " " + targetHp.format() + "/" + tEff[0];
+                int lineStart = sb.indexOf(targetAttackLinePrefix);
+                if (lineStart >= 0) {
+                    int lineEnd = sb.indexOf(NL, lineStart);
+                    if (lineEnd < 0) lineEnd = sb.length();
+                    sb.insert(lineEnd, " 🛡️+" + shieldPool);
+                }
+            }
 
-        // [2026-09-05 신설] 전사3인조 시너지: 파티 전체가 받는 반격 피해 10% 감소(항상 적용).
-        // ★6 전사가 이번에 도발로 대신 맞았으면 그 몫만 추가로 20% 더 감소.
-        if (warriorSynergy) dmgToParty = (int) Math.round(dmgToParty * 0.9);
-        if (warriorGuardMitigationPct > 0) dmgToParty = (int) Math.round(dmgToParty * (1 - warriorGuardMitigationPct / 100.0));
+            // [정책 변경] "무시 대상"은 보스 피해를 면제받지 않는다(반격은 평소처럼 그대로 받음) --
+            // 대신 이 동료의 공격이 보스에게 안 먹히도록 위 파티 공격 파트에서 처리했다.
+
+            // [2026-09-05 신설] 전사3인조 시너지: 파티 전체가 받는 반격 피해 10% 감소(항상 적용).
+            // ★6 전사가 이번에 도발로 대신 맞았으면 그 몫만 추가로 20% 더 감소.
+            if (warriorSynergy) dmgToParty = (int) Math.round(dmgToParty * 0.9);
+            if (warriorGuardMitigationPct > 0) dmgToParty = (int) Math.round(dmgToParty * (1 - warriorGuardMitigationPct / 100.0));
+        }
 
         PP targetHpAfter = targetHp.subtract(PP.fromPP(dmgToParty));
         if (PP.toBaseValue(targetHpAfter) < 0) targetHpAfter = PP.fromPP(0);
+
+        // [2026-09-05 신설] ★5/★6 도사 "부활" -- 이번 반격으로 동료가 쓰러지면, 파티 안의
+        // ★5 이상 도사가(자기 자신이 쓰러진 경우 포함) 일정 확률로 그 자리에서 되살린다.
+        if (PP.toBaseValue(targetHpAfter) <= 0) {
+            HashMap<String, Object> reviver = null;
+            for (HashMap<String, Object> c : party) {
+                if ("PRIEST".equals(strVal(c.get("CLASS"), "")) && intVal(c.get("GRADE"), 1) >= 5) {
+                    reviver = c;
+                    break;
+                }
+            }
+            if (reviver != null) {
+                int reviverGrade = intVal(reviver.get("GRADE"), 1);
+                int reviveChance = reviverGrade >= 6 ? 40 : 25;
+                double revivePct = reviverGrade >= 6 ? 0.5 : 0.3;
+                if (RND.nextInt(100) < reviveChance) {
+                    targetHpAfter = PP.fromPP(Math.max(1, (int) Math.round(tEff[0] * revivePct)));
+                    sb.append("✨ 도사의 기적! ").append(jobTag(tGrade, tJob, tName))
+                      .append(" 부활 (HP ").append(targetHpAfter.format()).append("/").append(tEff[0]).append(")").append(NL);
+                }
+            }
+        }
 
         HashMap<String, Object> cUp = new HashMap<>();
         cUp.put("companionId", intVal(target.get("COMPANION_ID"), 0));
@@ -1971,14 +2043,16 @@ public class BotS5ServiceImpl implements BotS5Service {
         java.util.Date lastSettle = (java.util.Date) log.get("LAST_SETTLE_DATE");
         if (lastSettle == null) return null;
         long elapsedMin = (System.currentTimeMillis() - lastSettle.getTime()) / 60000L;
-        if (elapsedMin < 10) return null; // 10분(=처치 1회 기준) 미만이면 정산할 게 없음
+        // AUTO_HUNT_KILLS_PER_HOUR(기본 6)를 "N분당 1마리"로 환산 -- config화(재배포 없이 /갱신으로 조절)
+        long minPerKill = Math.max(1, 60L / Math.max(1, AUTO_HUNT_KILLS_PER_HOUR));
+        if (elapsedMin < minPerKill) return null; // 아직 1마리도 정산할 만큼 안 지남
 
-        long cappedMin = Math.min(elapsedMin, 8 * 60L); // 최대 8시간
+        long cappedMin = Math.min(elapsedMin, AUTO_HUNT_MAX_HOURS * 60L);
         int floor = intVal(log.get("FLOOR"), intVal(p.get("CUR_FLOOR"), 1));
         HashMap<String, Object> mon = dao.selectMonster(blockNo(floor), "N");
         if (mon == null) return null;
 
-        long kills = cappedMin / 10; // 시간당 6마리 = 10분당 1마리
+        long kills = cappedMin / minPerKill;
         if (kills <= 0) return null;
 
         PP perKill = PP.of(((Number) mon.get("PP_PER_KILL_VALUE")).doubleValue(), strVal(mon.get("PP_PER_KILL_EXT"), ""));
