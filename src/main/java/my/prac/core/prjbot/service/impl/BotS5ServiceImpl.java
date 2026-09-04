@@ -1874,6 +1874,60 @@ public class BotS5ServiceImpl implements BotS5Service {
         return sb.toString();
     }
 
+    /**
+     * 웹 SPA 전용: 이미 편성된 동료끼리 파티 1/2/3번 슬롯 자리를 서로 바꾼다("동료1,2,3끼리도
+     * 위치변경 가능하니?" 요청으로 신설). targetSlot이 비어있으면 그냥 그 자리로 이동, 이미
+     * 다른 동료가 있으면 맞바꾼다(교환). idx의 동료가 파티 밖(미편성)이면 실패 -- 그 경우는
+     * 기존 PARTY_TOGGLE(편성/해제)이 담당할 영역이라 여기서는 다루지 않는다.
+     */
+    @Override
+    @Transactional
+    public String partySwapSlot(String userName, int idx, int targetSlot) {
+        HashMap<String, Object> p = dao.selectUserProgress(userName);
+        if (p != null && "IN_COMBAT".equals(strVal(p.get("STATUS"), "NORMAL"))) {
+            return "전투 중에는 파티를 변경할 수 없습니다.";
+        }
+        if (targetSlot < 1 || targetSlot > 3) {
+            return "잘못된 슬롯 번호입니다.";
+        }
+        List<HashMap<String, Object>> companions = dao.selectUserCompanions(userName);
+        if (idx < 1 || idx > companions.size()) {
+            return "잘못된 번호입니다. /파티편성 으로 목록을 확인하세요.";
+        }
+        HashMap<String, Object> dragged = companions.get(idx - 1);
+        Object draggedSlotObj = dragged.get("PARTY_SLOT");
+        if (draggedSlotObj == null) {
+            return "먼저 파티에 편성된 동료만 자리를 바꿀 수 있습니다.";
+        }
+        int draggedSlot = ((Number) draggedSlotObj).intValue();
+        if (draggedSlot == targetSlot) {
+            return "이미 그 자리입니다.";
+        }
+
+        HashMap<String, Object> occupant = null;
+        for (HashMap<String, Object> c : companions) {
+            Object s = c.get("PARTY_SLOT");
+            if (s != null && ((Number) s).intValue() == targetSlot) {
+                occupant = c;
+                break;
+            }
+        }
+
+        HashMap<String, Object> up1 = new HashMap<>();
+        up1.put("companionId", intVal(dragged.get("COMPANION_ID"), 0));
+        up1.put("partySlot", targetSlot);
+        dao.updateCompanionPartySlot(up1);
+
+        if (occupant != null) {
+            HashMap<String, Object> up2 = new HashMap<>();
+            up2.put("companionId", intVal(occupant.get("COMPANION_ID"), 0));
+            up2.put("partySlot", draggedSlot);
+            dao.updateCompanionPartySlot(up2);
+            return "파티 " + draggedSlot + "번과 " + targetSlot + "번 자리를 맞바꿨습니다!";
+        }
+        return "파티 " + targetSlot + "번 자리로 이동했습니다!";
+    }
+
     // ================================================================
     // /탑업적
     // ================================================================

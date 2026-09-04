@@ -204,9 +204,11 @@ public class Season5ViewController {
 
     /**
      * 통합 액션 엔드포인트. 채팅 명령어(/주사위 등)와 동일한 BotS5Service 로직을 그대로 호출한다.
-     * GET /loa/api/tower-action?userName=..&type=DICE|CHANGE_FLOOR|PARTY_TOGGLE|GACHA_COMPANION|
+     * GET /loa/api/tower-action?userName=..&type=DICE|CHANGE_FLOOR|PARTY_TOGGLE|PARTY_SWAP|GACHA_COMPANION|
      *     GACHA_EQUIP|DICE_BUY|STAT_BUY|EQUIP_WEAR|EQUIP_SYNTH|EQUIP_UNWEAR_ALL|
      *     REDEEM_COMPANION_TICKET|REDEEM_WEAPON_TICKET&param1=&param2=
+     * PARTY_SWAP(param1=/파티편성 목록 번호, param2=옮길 파티 슬롯 1~3)는 이미 편성된 동료끼리
+     * 슬롯 자리를 바꾸는 웹 UI 전용 기능(채팅 명령어 없음).
      * REDEEM_*_TICKET(param1=직업 코드, param2=선택권 등급 3/4/5)는 10층 구간 완전탐사
      * 보상인 선택권을 쓰는 기능으로, 웹 UI 전용이다(채팅 명령어로는 노출 안 함 -- 의도적).
      */
@@ -235,6 +237,9 @@ public class Season5ViewController {
                     break;
                 case "PARTY_TOGGLE":
                     message = s5Service.partyToggle(userName, Integer.parseInt(param1));
+                    break;
+                case "PARTY_SWAP":
+                    message = s5Service.partySwapSlot(userName, Integer.parseInt(param1), Integer.parseInt(param2));
                     break;
                 case "COMPANION_HIDE":
                     message = s5Service.toggleCompanionHidden(userName, Integer.parseInt(param1));

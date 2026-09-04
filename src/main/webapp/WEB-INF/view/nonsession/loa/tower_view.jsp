@@ -477,12 +477,14 @@ var TW = (function () {
   var JOB_EMOJI = { WARRIOR: '⚔️', MAGE: '🧙', ROGUE: '🗡️', ARCHER: '🏹', PRIEST: '💫' };
 
   // 동료 카드 드래그 편성: Pointer Events(마우스/터치 공용) 기반. 이동량이 작으면 탭으로 취급해
-  // 기존처럼 즉시 토글하고, 일정 거리 이상 끌면 드래그로 취급한다. 서버는 "N번째 동료 토글"만
-  // 지원(정확히 몇 번 슬롯인지는 서버가 다음 빈 슬롯으로 자동 배정 / 있으면 해제)하므로, 드롭 대상은
-  // "파티 슬롯 영역(#partySlots) 하나"뿐이다 -- 거기에 놓으면 편성 안 된 동료는 편성되고, 이미
-  // 편성된 동료는 해제된다(같은 토글 액션). 별도 "해제 존"을 화면 하단에 두면 고정 dock 내비게이션과
-  // 겹쳐서 드롭이 안 먹는 경우가 있어(실제 테스트로 발견) 이 방식으로 통일함.
-  function attachPartyDrag(card, idx, inParty) {
+  // 기존처럼 즉시 토글하고, 일정 거리 이상 끌면 드래그로 취급한다. 미편성 동료를 파티 슬롯 영역
+  // (#partySlots) 아무데나 놓으면 편성(서버가 다음 빈 슬롯 자동 배정)되고, 이미 편성된 동료를
+  // 놓으면 기본은 해제(토글)지만 -- [신규] 드롭 위치가 자기 자신이 아닌 "다른" 구체적인 슬롯
+  // 박스(.party-slot-box) 위라면 그 슬롯과 자리를 맞바꾼다("동료끼리 위치변경" 요청으로 추가,
+  // PARTY_SWAP). 자기 슬롯 위나 슬롯 경계가 아닌 빈 여백에 놓으면 기존처럼 해제로 처리(빠르게
+  // 빼고 싶을 때 쓰던 기존 제스처를 그대로 남겨둠). 별도 "해제 존"을 화면 하단에 두면 고정 dock
+  // 내비게이션과 겹쳐서 드롭이 안 먹는 경우가 있어(실제 테스트로 발견) 파티 슬롯 영역 하나로 통일함.
+  function attachPartyDrag(card, idx, inParty, partySlot) {
     card.addEventListener('pointerdown', function (ev) {
       if (ev.target.closest('.hide-btn')) return;
       if (ev.target.closest('.avatar')) return; // 초상화 클릭은 드래그/토글이 아니라 확대 카드 열기(아래 avatarEl.onclick)
@@ -517,12 +519,21 @@ var TW = (function () {
         // 드롭 위치 판정은 반드시 슬롯을 숨기기(drop-hover 제거) 전에 해야 한다 -- 먼저 숨기면
         // 레이아웃/표시가 바뀌어 elementFromPoint가 엉뚱한 걸 찾을 수 있음.
         var el = document.elementFromPoint(up.clientX, up.clientY);
+        var slotBox = el && el.closest('.party-slot-box');
         var onZone = el && el.closest('#partySlots');
 
         card.classList.remove('drag-source-hidden');
         document.querySelectorAll('.party-slot-box').forEach(function (b) { b.classList.remove('drop-hover'); });
         if (ghost) document.body.removeChild(ghost);
 
+        // 이미 편성된 동료를 자기 것이 아닌 "다른" 구체적인 슬롯 위에 놓으면 자리 교환/이동(신규).
+        if (inParty && slotBox) {
+          var targetSlot = parseInt(slotBox.dataset.slot, 10);
+          if (targetSlot && targetSlot !== partySlot) {
+            action('PARTY_SWAP', String(idx), String(targetSlot));
+            return;
+          }
+        }
         if (onZone) {
           action('PARTY_TOGGLE', String(idx)); // 있으면 해제, 없으면 편성
         }
@@ -742,7 +753,7 @@ var TW = (function () {
         hideBtn.title = hidden ? '목록에 다시 표시' : '텍스트 목록(/파티편성)에서 숨기기';
         hideBtn.onclick = function (ev) { ev.stopPropagation(); action('COMPANION_HIDE', String(idx + 1)); };
         div.appendChild(hideBtn);
-        attachPartyDrag(div, idx + 1, inParty);
+        attachPartyDrag(div, idx + 1, inParty, c.PARTY_SLOT || 0);
         grid.appendChild(div);
       });
 

@@ -111,4 +111,11 @@ public interface BotS5Service {
 
     /** /탑랭킹 — 서버 전체 최고기록(익명 집계). 누가 세운 기록인지는 노출하지 않고 수치만 보여준다. */
     String ranking();
+
+    /**
+     * 웹 SPA 파티 슬롯끼리 자리 교체 전용(채팅 명령어 없음) — idx(=/파티편성 목록 번호)의 동료를
+     * targetSlot(1~3) 자리로 옮긴다. targetSlot이 비어있으면 단순 이동, 이미 다른 동료가 있으면
+     * 서로 자리를 맞바꾼다. idx의 동료가 파티 밖이면(드래그 대상이 미편성 동료) 실패 처리.
+     */
+    String partySwapSlot(String userName, int idx, int targetSlot);
 }
