@@ -960,7 +960,8 @@ public class BotS5ServiceImpl implements BotS5Service {
                 } else { // PP_BONUS -- 기존 PP칸 보상의 3배
                     PP reward = basePp.multiply(3);
                     addPp(userName, p, reward);
-                    sb.append("🍀 럭키 칸! ").append(reward.format()).append(" PP 획득!");
+                    PP curPp = PP.of(((Number) p.get("PP_VALUE")).doubleValue(), strVal(p.get("PP_EXT"), ""));
+                    sb.append("🍀 럭키 칸! ").append(reward.format()).append(" PP 획득! (보유 ").append(curPp.format()).append(" PP)");
                 }
                 break;
             }
@@ -1017,7 +1018,8 @@ public class BotS5ServiceImpl implements BotS5Service {
                     PP reward = mon == null ? PP.of(10, "")
                             : PP.of(((Number) mon.get("PP_PER_KILL_VALUE")).doubleValue(), strVal(mon.get("PP_PER_KILL_EXT"), "")).multiply(5 * floorPpMultiplier(floor));
                     addPp(userName, p, reward);
-                    sb.append("💎 보물상자를 발견했다! ").append(reward.format()).append(" PP 획득!");
+                    PP curPp = PP.of(((Number) p.get("PP_VALUE")).doubleValue(), strVal(p.get("PP_EXT"), ""));
+                    sb.append("💎 보물상자를 발견했다! ").append(reward.format()).append(" PP 획득! (보유 ").append(curPp.format()).append(" PP)");
                 } else {
                     boolean companionVoucher = RND.nextBoolean();
                     if (companionVoucher) {
@@ -1491,7 +1493,13 @@ public class BotS5ServiceImpl implements BotS5Service {
             dao.updateUserProgress(up);
             addPp(userName, p, reward);
             checkKillAchievements(userName, totalKill);
-            sb.append(reward.format()).append(" PP 획득!");
+            // "PP 획득 시 현재 보유 PP도 같이 보여달라, 보스전처럼 0PP면 아예 표시하지 말아달라"
+            // 요청 -- 보스 몬스터는 PP_PER_KILL_VALUE가 0으로 설정돼 있어 처치해도 파밍 보상이
+            // 없는데(업적/해금 보상만 있음), 그동안 "0 PP 획득!"이 그대로 찍혀서 어색했다.
+            if (PP.toBaseValue(reward) > 0) {
+                PP curPp = PP.of(((Number) p.get("PP_VALUE")).doubleValue(), strVal(p.get("PP_EXT"), ""));
+                sb.append(reward.format()).append(" PP 획득! (보유 ").append(curPp.format()).append(" PP)");
+            }
             // 승리하면 살아있는 동료는 자동으로 풀피 회복되지만, 전투불가(HP 0)가 된 동료는
             // 그대로 둔다 -- 부활은 마을 도착이나 럭키칸의 "완전회복" 효과로만 일어난다.
             healPartyAliveOnly(party, userStat);
@@ -1746,7 +1754,11 @@ public class BotS5ServiceImpl implements BotS5Service {
         checkKillAchievements(userName, intVal(p.get("TOTAL_KILL_COUNT"), 0));
         // TODO: AUTO_HUNT_PP_TOTAL 누적치 업적(14번)은 별도 누적 컬럼이 없어 아직 미체크
 
-        return "💤 자동사냥 정산: " + floor + "층에서 " + kills + "마리 처치, " + reward.format() + " PP 획득!";
+        // "PP 획득 시 현재 보유 PP도 보여달라" 요청 -- 자동사냥은 사냥터 몬스터만 farm하므로
+        // reward가 0일 일은 없어 보스전 같은 0PP 생략 케이스는 여기 해당 없음.
+        PP curPp = PP.of(((Number) p.get("PP_VALUE")).doubleValue(), strVal(p.get("PP_EXT"), ""));
+        return "💤 자동사냥 정산: " + floor + "층에서 " + kills + "마리 처치, " + reward.format()
+                + " PP 획득! (보유 " + curPp.format() + " PP)";
     }
 
     // ================================================================
