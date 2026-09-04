@@ -1105,9 +1105,9 @@ var TW = (function () {
         // 퍼센트 스탯(공격력최대/체력)은 "현재 +N% (다음 +M%p)", 최소공격력은 고정 데미지라
         // "현재 최소데미지 +N (다음 +M)" 형태.
         var statDefs = [
-          { key: 'atkMaxLv', label: '공격력(최대)', cost: st.nextCostAtkMax, type: '공격력',
+          { key: 'atkMaxLv', label: '공격력(%)', cost: st.nextCostAtkMax, type: '공격력',
             gain: '현재 +' + (st.atkPctCur || 0) + '% (다음 레벨 +' + (st.atkPctPerLv || 0) + '%p)' },
-          { key: 'atkMinLv', label: '공격력(최소)', cost: st.nextCostAtkMin, type: '최소공격력',
+          { key: 'atkMinLv', label: '공격력(+)', cost: st.nextCostAtkMin, type: '최소공격력',
             gain: '현재 최소데미지 +' + (st.minDmgCur || 0) + ' (다음 레벨 +' + (st.minDmgPerLv || 0) + ')' },
           { key: 'hpLv',     label: '체력',         cost: st.nextCostHp,     type: '체력',
             gain: '현재 +' + (st.hpPctCur || 0) + '% (다음 레벨 +' + (st.hpPctPerLv || 0) + '%p)' }

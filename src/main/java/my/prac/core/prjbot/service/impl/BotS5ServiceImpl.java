@@ -713,7 +713,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         }
 
         String status = strVal(p.get("STATUS"), "NORMAL");
-        String cooldownMsg = checkDiceCooldown(p);
+        String cooldownMsg = checkDiceCooldown(userName, p);
         if (cooldownMsg != null) return prependAutoHunt(autoHuntMsg, cooldownMsg);
 
         // 하루 500회 주사위 굴림 제한("하루 500번까지만" 요청) -- 쿨타임 통과 후, 실제로 이번
@@ -746,7 +746,7 @@ public class BotS5ServiceImpl implements BotS5Service {
     }
 
     /** LAST_DICE_ACTION_DATE + NEXT_COOLDOWN_SEC 기준 쿨타임 검사. 아직 남았으면 안내 메시지, 통과면 null. */
-    private String checkDiceCooldown(HashMap<String, Object> p) {
+    private String checkDiceCooldown(String userName, HashMap<String, Object> p) {
         if ("Y".equals(strVal(p.get("NO_COOLDOWN_YN"), "N"))) return null; // 특정 유저만 쿨타임 면제(관리자가 직접 부여)
         java.util.Date last = (java.util.Date) p.get("LAST_DICE_ACTION_DATE");
         if (last == null) return null;
@@ -754,7 +754,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         long elapsedSec = (System.currentTimeMillis() - last.getTime()) / 1000;
         if (elapsedSec >= cooldownSec) return null;
         long remain = cooldownSec - elapsedSec;
-        return "⏳ 아직 쿨타임입니다! " + remain + "초 후 다시 시도해주세요. (쿨타임 " + cooldownSec + "초)";
+        // "누구한테 온 메시지인지 알 수 있게 닉네임도 넣어달라" 요청
+        return "⏳" + userName + "님, 아직 쿨타임입니다! " + remain + "초 후 다시 시도해주세요. (쿨타임 " + cooldownSec + "초)";
     }
 
     private void touchDiceCooldown(String userName, long nextCooldownSec) {
@@ -847,7 +848,13 @@ public class BotS5ServiceImpl implements BotS5Service {
         StringBuilder sb = new StringBuilder();
         sb.append(userName).append("님," + NL);
         sb.append("🎲 주사위 ").append(roll).append("! ").append(curTile).append(" → ").append(newTile).append("번 칸")
-          .append(NL).append("🗺️ 탐사 현황: ").append(visited).append("/").append(tileCount).append("칸 발견");
+          .append(NL).append("🗺️ 탐사 현황: ").append(floor).append("층 .. ");
+        // "25/25 완전탐사면 그냥 탐사완료라고만 띄워달라" 요청
+        if (visited >= tileCount) {
+            sb.append("탐사완료");
+        } else {
+            sb.append(visited).append("/").append(tileCount).append("칸 발견");
+        }
         if (visited >= tileCount) {
             // 완전탐사 달성 즉시 (user,floor) 역대기록에 반영 -- 마을 복귀 전이라도 영구 보존
             HashMap<String, Object> best = snapshotFloorBest(userName, floor);
@@ -895,7 +902,8 @@ public class BotS5ServiceImpl implements BotS5Service {
 
         switch (effectiveType) {
             case "COMBAT":
-                sb.append(startCombat(userName, p, floor, false, false));
+                // [세 구간 분리 요청] 탐사 현황과 몬스터 등장 사이에 빈 줄
+                sb.append(NL).append(startCombat(userName, p, floor, false, false));
                 break;
             case "PP": {
                 // 럭키칸(칸 유형 값은 하위호환을 위해 기존 "PP" 그대로 두고 표시만 "🍀 럭키"로 바꿈,
@@ -984,8 +992,9 @@ public class BotS5ServiceImpl implements BotS5Service {
                     dao.updateUserProgress(up);
                     p.put("PP_VALUE", after.getValue());
                     p.put("PP_EXT", after.getUnit());
+                    // "엔터값 넣어달라" 요청 -- 손실 문구와 남은 PP를 줄바꿈으로 분리
                     sb.append("💸 함정에 걸려 소매치기를 당했다! PP ").append(loss.format())
-                      .append(" 손실 (남은 PP ").append(after.format()).append(")");
+                      .append(" 손실 ").append(NL).append("💰 PP ").append(after.format());
                 } else {
                     // [버그 수정] 럭키 버프와 동일한 문제 -- 이미 함정 디버프가 남아있는데 새 함정을
                     // 밟으면 조용히 덮어써졌다. 동일하게 "새 효과로 갱신" + 명시적 안내로 통일.
@@ -1043,7 +1052,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                 sb.append(handleSpecialTile(userName));
                 break;
             case "ELITE":
-                sb.append(startCombat(userName, p, floor, false, true)); // 강화몹: 보스 아님, 강화만
+                sb.append(NL).append(startCombat(userName, p, floor, false, true)); // 강화몹: 보스 아님, 강화만
                 break;
             case "STAIRS_UP": {
                 // floor%10 in 1..8 이므로 다음 칸은 항상 같은 구간 내(최대 9층 보스).
@@ -1232,14 +1241,14 @@ public class BotS5ServiceImpl implements BotS5Service {
         String monName = (elite ? "💪 강화 " : "") + floorMonsterName(floor, mon);
         PP fullHp = PP.of(((Number) mon.get("HP_VALUE")).doubleValue() * eliteMult, strVal(mon.get("HP_EXT"), "")).normalize();
         StringBuilder sb = new StringBuilder();
-        sb.append(boss ? "👹 보스 " : elite ? "" : "⚔️ ").append(monName).append(" 등장! (HP ")
-          .append(fullHp.format()).append("/").append(fullHp.format()).append(")").append(NL);
-        // 공격력 범위(주사위 곱셈 전)만 보고는 몬스터 방어력이 빠지는 걸 몰라서 "왜 범위보다
-        // 적게 들어갔지?" 헷갈릴 수 있어, 전투 시작 전에 몬스터 방어력/공격력과 지금 파티에
-        // 걸려있는 공격력·방어력 강화/약화 효과(함정/럭키칸)를 미리 안내한다.
-        sb.append("🛡️ 몬스터 방어력: ").append((int) Math.round(intVal(mon.get("DEF_VALUE"), 0) * eliteMult))
-          .append(" (공격 시 이 값만큼 피해에서 차감) / ⚔️ 몬스터 공격력: ").append((int) Math.round(intVal(mon.get("ATK_VALUE"), 0) * eliteMult)).append(NL);
+        // [엔터/이모지 정리 요청] "등장!" 줄의 HP 괄호 표기 대신, 공격력/방어력/HP를 "능력치" 한
+        // 줄로 압축(원래 방어력 설명 문구는 뺌 -- 반복 안내라 간결화).
+        sb.append(boss ? "👹 보스 " : elite ? "" : "👾 ").append(monName).append(" 등장! ").append(NL);
+        sb.append("능력치 ⚔️: ").append((int) Math.round(intVal(mon.get("ATK_VALUE"), 0) * eliteMult))
+          .append(" 🛡️: ").append((int) Math.round(intVal(mon.get("DEF_VALUE"), 0) * eliteMult))
+          .append(" ❤️ ").append(fullHp.format()).append(NL);
         if (elite) sb.append("💪 강화몹 -- 스탯/보상 전부 평소의 2배입니다.").append(NL);
+        sb.append(NL);
         String buffNote = currentPartyBuffDebuffNote(p);
         if (buffNote != null) sb.append(buffNote).append(NL);
         sb.append(immuneMsg.isEmpty() ? "" : immuneMsg + NL);
@@ -1371,7 +1380,10 @@ public class BotS5ServiceImpl implements BotS5Service {
             // [간결화] 텍스트가 너무 길다는 요청으로, 공격력/범위(전투 시작 전 "OO 등장!" 메시지에
             // 이미 표시됨)는 매 줄마다 반복하지 않고, 직업별 특수효과도 새 줄 대신 같은 줄 끝에
             // 붙여서 파티원 1명당 항상 딱 1줄만 쓰도록 함.
-            sb.append(jobTag(grade, job, cName)).append(" 🎲").append(roll).append("→").append(dmg).append("dmg");
+            // [세 구간 분리 요청] 공격 줄에도 현재/최대 HP를 같이 보여줘서, 나중에 "이번턴 남은"
+            // 구간의 HP와 바로 비교되게 함.
+            sb.append(jobTag(grade, job, cName)).append(" ").append(hp.format()).append("/").append(eff[0])
+              .append(" 🎲").append(roll).append("→").append(dmg).append("dmg");
 
             switch (job) {
                 case "MAGE":
@@ -1421,7 +1433,8 @@ public class BotS5ServiceImpl implements BotS5Service {
             up.put("clearMonster", true);
             up.put("totalKillCount", totalKill);
 
-            sb.append(eliteMonsterName(floor, mon, elite)).append(" 처치! 🎉").append(NL);
+            // [세 구간 분리 요청] 공격 결과 / 처치·보상 안내를 빈 줄로 나눠서 구분되게 함.
+            sb.append(NL).append(eliteMonsterName(floor, mon, elite)).append(" 처치! 🎉").append(NL);
 
             if (isBoss) {
                 int prevBlockBase = floorBlockBase(floor);
@@ -1480,8 +1493,10 @@ public class BotS5ServiceImpl implements BotS5Service {
             // 요청 -- 보스 몬스터는 PP_PER_KILL_VALUE가 0으로 설정돼 있어 처치해도 파밍 보상이
             // 없는데(업적/해금 보상만 있음), 그동안 "0 PP 획득!"이 그대로 찍혀서 어색했다.
             if (PP.toBaseValue(reward) > 0) {
+                // [세 구간 분리 요청] "이번턴 남은" 자리를 처치 시에는 생존 동료 HP 대신 획득 PP로
+                // 대체 -- 처치한 마당에 파티 HP를 또 보여줄 필요는 없으므로.
                 PP curPp = PP.of(((Number) p.get("PP_VALUE")).doubleValue(), strVal(p.get("PP_EXT"), ""));
-                sb.append(reward.format()).append(" PP 획득! (보유 ").append(curPp.format()).append(" PP)");
+                sb.append(NL).append(reward.format()).append(" PP 획득! (보유 ").append(curPp.format()).append(" PP)");
             }
             // 승리하면 살아있는 동료는 자동으로 풀피 회복되지만, 전투불가(HP 0)가 된 동료는
             // 그대로 둔다 -- 부활은 마을 도착이나 럭키칸의 "완전회복" 효과로만 일어난다.
@@ -1496,11 +1511,14 @@ public class BotS5ServiceImpl implements BotS5Service {
         up.put("curMonsterHpExt", monsterHpAfter.getUnit());
         if (stunConsumed) up.put("clearBossStun", true);
         dao.updateUserProgress(up);
+        // [세 구간 분리 요청] 파티 공격 결과(1구간)와 몬스터 상태·반격(2구간) 사이에 빈 줄을 넣는다.
+        sb.append(NL);
         sb.append(eliteMonsterName(floor, mon, elite)).append(" HP ")
           .append(monsterHpAfter.format()).append("/").append(monsterMaxHp.format()).append(NL);
 
         if (stunned) {
-            sb.append("몬스터 스턴! 반격 못함").append(NL).append(partyHpSummary(party, userStat));
+            sb.append("몬스터 스턴! 반격 못함");
+            sb.append(NL).append(NL).append(partyHpSummary(party, userStat));
             return sb.toString();
         }
 
@@ -1523,6 +1541,10 @@ public class BotS5ServiceImpl implements BotS5Service {
         }
 
         HashMap<String, Object> target = alive.get(RND.nextInt(alive.size()));
+        // 도발로 대상이 바뀌면, 그 안내는 반격 결과 줄 "다음"에 보여준다("원래 대상이었던 X 대신"
+        // 형태로 설명하는 게 자연스러움) -- 원래 대상을 미리 기억해둔다.
+        HashMap<String, Object> originalTarget = target;
+        boolean guarded = false;
 
         // 전사 도발: 체력 50% 이상인 전사가 있으면 확률적으로 자신이 대신 맞음
         for (HashMap<String, Object> c : alive) {
@@ -1534,7 +1556,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             boolean over50 = PP.toBaseValue(wHp) * 2 >= wEff[0];
             if (over50 && !c.equals(target) && RND.nextInt(100) < 30) {
                 target = c;
-                sb.append("🛡️ 전사가 대신 공격을 받아냅니다!").append(NL);
+                guarded = true;
             }
             break; // 파티엔 전사가 최대 1명이라고 가정하지 않지만, 첫 전사만 판정
         }
@@ -1548,7 +1570,8 @@ public class BotS5ServiceImpl implements BotS5Service {
             dao.updateUserProgress(stunUp);
             String stunTargetName = strVal(target.get("NAME"), JOB_NAME.getOrDefault(strVal(target.get("CLASS"), ""), "동료"));
             sb.append("💫 ").append(eliteMonsterName(floor, mon, elite)).append("이(가) ").append(stunTargetName)
-              .append(" 기절! 다음턴 공격불가").append(NL).append(partyHpSummary(party, userStat));
+              .append(" 기절! 다음턴 공격불가");
+            sb.append(NL).append(NL).append(partyHpSummary(party, userStat));
             return sb.toString();
         }
 
@@ -1584,22 +1607,21 @@ public class BotS5ServiceImpl implements BotS5Service {
         cUp.put("curHpExt", targetHpAfter.getUnit());
         dao.updateCompanionHp(cUp);
 
-        String tName = strVal(target.get("NAME"), JOB_NAME.getOrDefault(tJob, "동료"));
-        // "주사위 적용 전 최소~최대 데미지 수식을 보여달라" 요청 -- 실제 주사위 결과를 보여주기
-        // 전에, 그 결과가 어느 범위 안에서 나온 건지(몬스터 공격력 × 주사위(1~최대) - 대상
-        // 방어력) 수식 그대로 한 줄로 먼저 보여준다.
-        // [수정] "===로 감싸면 반격 부분이 잘려나온다"는 신고로 === 마커 제거(채팅 쪽에서
-        // === 를 구분선 등으로 인식해 메시지가 잘리는 것으로 추정).
-        int minDmgToParty = Math.max(1, monsterAtk * 1 - tEff[2]);
-        int maxDmgToParty = Math.max(1, monsterAtk * diceMax - tEff[2]);
-        sb.append("반격범위 ATK").append(monsterAtk).append("×(1~").append(diceMax)
-          .append(")-DEF").append(tEff[2]).append("=").append(minDmgToParty).append("~").append(maxDmgToParty).append(NL);
+        // [세 구간 분리 요청] 반격범위 수식 줄은 빼고(어차피 3구간에서 실제 HP를 보여주므로
+        // 중복) 이모지 한 줄로 짧게 예고만 하고 바로 반격 결과를 보여준다. 대상/피격후HP도
+        // 3구간(이번턴 남은 HP)에서 어차피 보이므로 여기선 데미지만.
+        sb.append("⚡").append(NL);
         sb.append(eliteMonsterName(floor, mon, elite)).append(" 반격 🎲").append(roll).append("→")
-          .append(jobTag(tGrade, tJob, tName)).append(" ")
-          .append(dmgToParty).append("dmg(HP ").append(targetHpAfter.format()).append(")");
-        if (PP.toBaseValue(targetHpAfter) <= 0) sb.append("💀");
+          .append(dmgToParty).append("dmg");
+        if (guarded) {
+            // 도발로 실제 맞은 건 다른 동료라서, 원래 대상이 누구였는지 반격 결과 다음 줄에 설명.
+            String origJob = strVal(originalTarget.get("CLASS"), "WARRIOR");
+            int origGrade = intVal(originalTarget.get("GRADE"), 1);
+            String origName = strVal(originalTarget.get("NAME"), JOB_NAME.getOrDefault(origJob, "동료"));
+            sb.append(NL).append(jobTag(origGrade, origJob, origName)).append(" 대신 🛡️ 전사가 공격을 받아냅니다!");
+        }
         // "몬스터 반격 이후 파티 체력을 보여달라" 요청
-        sb.append(NL).append(partyHpSummary(party, userStat));
+        sb.append(NL).append(NL).append(partyHpSummary(party, userStat));
 
         return sb.toString();
     }
@@ -1607,10 +1629,10 @@ public class BotS5ServiceImpl implements BotS5Service {
     /**
      * "몬스터 반격 이후 파티 체력을 보여달라, 성급/이름도 나오게, 줄바꿈도 넣어달라" 요청으로
      * 신설 -- 파티 전원의 현재HP/최대HP를 공격 줄과 동일한 jobTag(★등급직업(이름)) 형식으로
-     * 한 명당 한 줄씩 보여준다(전투불가면 💀).
+     * 한 명당 한 줄씩 보여준다(전투불가면 💀). [세 구간 분리 요청] "이번턴 남은" 구간의 헤더.
      */
     private String partyHpSummary(List<HashMap<String, Object>> party, HashMap<String, Object> userStat) {
-        StringBuilder sb = new StringBuilder("파티 HP:").append(NL);
+        StringBuilder sb = new StringBuilder("💗이번턴 남은💗").append(NL);
         for (int i = 0; i < party.size(); i++) {
             HashMap<String, Object> c = party.get(i);
             String job = strVal(c.get("CLASS"), "WARRIOR");
@@ -2737,16 +2759,22 @@ public class BotS5ServiceImpl implements BotS5Service {
             int hpPctPerLv = (int) Math.round(HP_PCT_PER_LV * 100);
             int minDmgCur = atkMinLv * MIN_DMG_PER_LV;
 
+            // "보기 불편하다" 요청 -- 라벨을 더 짧고 직관적으로(최대→%, 최소→+) 바꾸고, 스탯
+            // 항목 사이사이에 빈 줄을 넣어 구분되게 함.
             StringBuilder sb = new StringBuilder(userName).append("님의 스탯 구매 현황 (현재 구간 상한 ").append(cap).append(")," + NL);
-            sb.append("공격력(최대) Lv").append(atkMaxLv).append(" / ").append(cap)
+            sb.append(NL);
+            sb.append("공격력(%) Lv").append(atkMaxLv).append(" / ").append(cap)
               .append(" (현재 +").append(atkPct).append("%, 다음 레벨 +").append(atkPctPerLv).append("%p)")
               .append(" — 다음 비용 ").append(50 * (atkMaxLv + 1)).append(" PP").append(NL);
-            sb.append("공격력(최소) Lv").append(atkMinLv).append(" / ").append(cap)
+            sb.append(NL);
+            sb.append("공격력(+) Lv").append(atkMinLv).append(" / ").append(cap)
               .append(" (현재 최소데미지 +").append(minDmgCur).append(", 다음 레벨 +").append(MIN_DMG_PER_LV).append(")")
               .append(" — 다음 비용 ").append(50 * (atkMinLv + 1)).append(" PP").append(NL);
+            sb.append(NL);
             sb.append("체력 Lv").append(hpLv).append(" / ").append(cap)
               .append(" (현재 +").append(hpPct).append("%, 다음 레벨 +").append(hpPctPerLv).append("%p)")
               .append(" — 다음 비용 ").append(50 * (hpLv + 1)).append(" PP").append(NL);
+            sb.append(NL);
             sb.append("📈 다음 상한 ").append(cap + 5).append("은 ").append(nextVillageFloor)
               .append("층 마을 도달 시 열립니다 (그 앞 보스 처치 필요).").append(NL);
             sb.append("/스탯구매 공격력 | 최소공격력 | 체력");
