@@ -623,6 +623,7 @@ public class LoaChatController {
 				break;
 			case "/탑업적":
 			case "/ㅌㅇㅂ":
+			case "/ㅌㅇㅈ":
 				val = s5.achievements(reqMap);
 				break;
 			case "/탑랭킹":

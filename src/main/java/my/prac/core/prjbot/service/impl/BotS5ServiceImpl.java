@@ -471,6 +471,20 @@ public class BotS5ServiceImpl implements BotS5Service {
         return o == null ? def : o.toString();
     }
 
+    /**
+     * 닉네임(부분 입력 가능)으로 실제 유저명을 찾는다("/탑현황 닉네임"과 동일 패턴, /탑업적
+     * 닉네임 조회에도 재사용). 정확히 일치하는 유저가 있으면 그대로, 없으면 앞부분이 일치하는
+     * 후보 중 사전순 첫 번째(USER_NAME 오름차순, 여러 명이면 후보 안내 없이 조용히 첫 번째로).
+     * 아무도 없으면 null.
+     */
+    private String resolveTargetUser(String targetQuery) {
+        String q = targetQuery.trim();
+        HashMap<String, Object> exact = dao.selectUserProgress(q);
+        if (exact != null) return q;
+        List<String> matches = dao.selectS5UserSearch(q);
+        return matches.isEmpty() ? null : matches.get(0);
+    }
+
     // ================================================================
     // /탑현황
     // ================================================================
@@ -491,19 +505,11 @@ public class BotS5ServiceImpl implements BotS5Service {
         String target = userName;
 
         if (isOther) {
-            String q = targetQuery.trim();
-            HashMap<String, Object> exact = dao.selectUserProgress(q);
-            if (exact != null) {
-                target = q;
-            } else {
-                // 앞부분 일치 검색(selectS5UserSearch)은 USER_NAME 오름차순 정렬이라 여러 명이
-                // 걸리면 그중 가장 앞선(사전순 첫) 닉네임으로 조용히 바로 조회한다(후보 안내 없음).
-                List<String> matches = dao.selectS5UserSearch(q);
-                if (matches.isEmpty()) {
-                    return "🔍 '" + q + "' 로 시작하는 유저를 찾을 수 없습니다.";
-                }
-                target = matches.get(0);
+            String resolved = resolveTargetUser(targetQuery);
+            if (resolved == null) {
+                return "🔍 '" + targetQuery.trim() + "' 로 시작하는 유저를 찾을 수 없습니다.";
             }
+            target = resolved;
         }
 
         HashMap<String, Object> p = isOther ? dao.selectUserProgress(target) : getOrInitProgress(target);
@@ -647,7 +653,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         sb.append(NL);
 
         sb.append("[업적] (웹 '업적' 탭)").append(NL);
-        sb.append("/탑업적 (별칭: /ㅌㅇㅂ) : 달성한 업적 이름만 조회").append(NL);
+        sb.append("/탑업적 [닉네임] (별칭: /ㅌㅇㅂ, /ㅌㅇㅈ) : 달성한 업적 이름만 조회 (닉네임 붙이면 다른 유저도)").append(NL);
         sb.append(NL);
 
         sb.append("[랭킹]").append(NL);
@@ -2277,8 +2283,24 @@ public class BotS5ServiceImpl implements BotS5Service {
     // ================================================================
     @Override
     public String achievements(String userName) {
+        return achievements(userName, null);
+    }
+
+    /** /탑업적 닉네임 — "/탑현황 닉네임"과 동일한 패턴으로 다른 유저 업적도 조회 가능하게. */
+    @Override
+    public String achievements(String userName, String targetQuery) {
+        boolean isOther = targetQuery != null && !targetQuery.trim().isEmpty();
+        String target = userName;
+        if (isOther) {
+            String resolved = resolveTargetUser(targetQuery);
+            if (resolved == null) {
+                return "🔍 '" + targetQuery.trim() + "' 로 시작하는 유저를 찾을 수 없습니다.";
+            }
+            target = resolved;
+        }
+
         List<HashMap<String, Object>> all = dao.selectAchievementList();
-        List<HashMap<String, Object>> mine = dao.selectUserAchievements(userName);
+        List<HashMap<String, Object>> mine = dao.selectUserAchievements(target);
 
         // 이름(ACH_NAME) → 달성일(ACH_ID)로 매핑해두면 이름만 나열할 때도 ACH_ID 순서를 유지할 수 있음
         HashMap<Integer, String> nameById = new HashMap<>();
@@ -2289,7 +2311,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         for (HashMap<String, Object> m : mine) clearedIds.add(intVal(m.get("ACH_ID"), -1));
         Collections.sort(clearedIds);
 
-        StringBuilder sb = new StringBuilder(userName).append("님의 업적 (")
+        StringBuilder sb = new StringBuilder(target).append("님의 업적 (")
                 .append(mine.size()).append("/").append(all.size()).append(")," + NL);
         if (clearedIds.isEmpty()) {
             sb.append("(아직 달성한 업적이 없습니다)");
