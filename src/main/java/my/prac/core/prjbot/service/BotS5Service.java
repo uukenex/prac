@@ -118,4 +118,7 @@ public interface BotS5Service {
      * 서로 자리를 맞바꾼다. idx의 동료가 파티 밖이면(드래그 대상이 미편성 동료) 실패 처리.
      */
     String partySwapSlot(String userName, int idx, int targetSlot);
+
+    /** 웹 SPA 전용: 파티에 편성된 동료 전원을 한 번에 해제("일괄해제" 요청으로 신설). */
+    String partyUnassignAll(String userName);
 }

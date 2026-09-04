@@ -1928,6 +1928,29 @@ public class BotS5ServiceImpl implements BotS5Service {
         return "파티 " + targetSlot + "번 자리로 이동했습니다!";
     }
 
+    /** 웹 SPA 전용: 편성된 동료 전원을 한 번에 해제("일괄해제" 요청으로 신설). 개별 해제는 기존 PARTY_TOGGLE로 충분해서 그대로 둠. */
+    @Override
+    @Transactional
+    public String partyUnassignAll(String userName) {
+        HashMap<String, Object> p = dao.selectUserProgress(userName);
+        if (p != null && "IN_COMBAT".equals(strVal(p.get("STATUS"), "NORMAL"))) {
+            return "전투 중에는 파티를 변경할 수 없습니다.";
+        }
+        List<HashMap<String, Object>> companions = dao.selectUserCompanions(userName);
+        int cnt = 0;
+        for (HashMap<String, Object> c : companions) {
+            if (c.get("PARTY_SLOT") != null) {
+                HashMap<String, Object> up = new HashMap<>();
+                up.put("companionId", intVal(c.get("COMPANION_ID"), 0));
+                up.put("partySlot", null);
+                dao.updateCompanionPartySlot(up);
+                cnt++;
+            }
+        }
+        if (cnt == 0) return "편성된 동료가 없습니다.";
+        return "파티 " + cnt + "명을 전부 해제했습니다.";
+    }
+
     // ================================================================
     // /탑업적
     // ================================================================

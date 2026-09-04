@@ -72,13 +72,22 @@
     .legend-dot{ width:8px; height:8px; border-radius:50%; }
 
     .party-slots{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
-    .party-slot-box{ min-height:96px; border:2px dashed var(--line); border-radius:14px; padding:8px;
+    .party-slot-box{ min-height:118px; border:2px dashed var(--line); border-radius:14px; padding:8px;
                       display:flex; flex-direction:column; align-items:center; justify-content:center;
                       text-align:center; font-size:10px; color:var(--ink-soft); background:#fff; }
     .party-slot-box.filled{ border-style:solid; border-color:var(--gold); background:var(--gold-soft); }
     .party-slot-box.drop-hover{ border-color:var(--pp); background:var(--pp-soft); transform:scale(1.04); }
     .party-slot-box .slot-label{ font-size:9px; opacity:.7; margin-bottom:4px; }
     .party-slot-box .cname{ font-size:12px; font-weight:800; color:var(--ink); }
+    .party-slot-box .slot-equip{ font-size:9px; color:var(--ink-soft); margin-top:3px; }
+    .party-slot-box .slot-unassign{ margin-top:6px; background:#fff; border:1px solid var(--line); border-radius:8px;
+                                      font-size:9px; padding:2px 9px; cursor:pointer; color:var(--ink-soft); }
+    .party-slot-box .slot-unassign:hover{ border-color:var(--combat); color:var(--combat); }
+    .card-title-row{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:10px; }
+    .card-title-row .card-title{ margin-bottom:0; }
+    .btn-unassign-all{ background:#fff; border:1.5px solid var(--line); border-radius:10px;
+                         font-size:11px; padding:5px 11px; cursor:pointer; color:var(--ink-soft); white-space:nowrap; }
+    .btn-unassign-all:hover{ border-color:var(--combat); color:var(--combat); }
 
     .party-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:8px; }
     .party-card{ background:#fff; border:2px solid var(--line); border-radius:14px; padding:9px; cursor:pointer; text-align:center;
@@ -237,7 +246,10 @@
   <!-- 파티(동료 3명)와 그 동료들에게 장착하는 장비는 한 화면에서 같이 관리 -->
   <div class="panel" id="panel-party">
     <div class="card">
-      <div class="card-title">파티 (동료 카드를 드래그해서 넣기/빼기, 탭해도 편성/해제됨)</div>
+      <div class="card-title-row">
+        <div class="card-title">파티 (동료 카드를 드래그해서 넣기/빼기/자리교환, 탭해도 편성/해제됨)</div>
+        <button type="button" class="btn-unassign-all" onclick="TW.action('PARTY_UNASSIGN_ALL')">일괄해제</button>
+      </div>
       <div class="party-slots" id="partySlots"></div>
     </div>
     <div class="card" id="ticketCard" style="margin-top:10px; display:none;">
@@ -253,7 +265,7 @@
       <div id="partyEquipBox"></div>
     </div>
     <div class="card" style="margin-top:10px;">
-      <div class="card-title">미착용 장비 (클릭으로 장착/합성)</div>
+      <div class="card-title">미착용 장비 (드래그해서 파티 슬롯에 장착, 또는 클릭으로 장착/합성)</div>
       <div id="equipListBox"></div>
     </div>
   </div>
@@ -692,8 +704,25 @@ var TW = (function () {
       var companions = results[0].companions || [];
       var equips = results[1].equips || [];
 
+      // 장착된 장비를 동료별로 묶기 -- 파티 슬롯(아래)에서 "낀 장비"를 같이 보여주려면 슬롯을
+      // 그리기 전에 먼저 계산해둬야 한다.
+      var byCompanion = {};
+      var unequipped = [];
+      equips.forEach(function (e) {
+        if (e.EQUIPPED_COMPANION_ID != null) {
+          (byCompanion[e.EQUIPPED_COMPANION_ID] = byCompanion[e.EQUIPPED_COMPANION_ID] || []).push(e);
+        } else {
+          unequipped.push(e);
+        }
+      });
+      lastParty = { companions: companions, byCompanion: byCompanion }; // 캐릭터 상세 카드(showCompanionDetail)용 캐시
+
+      // 장비 부위 표시 순서(무기→투구→갑옷) -- 파티 슬롯 요약과 "파티 장비 현황" 둘 다 동일하게 씀
+      var PART_ORDER = ['WEAPON', 'HELMET', 'ARMOR'];
+
       // 파티 슬롯(최대 3) 표시 -- 실제 어느 슬롯 번호에 넣을지는 서버가 정하므로(PARTY_TOGGLE이
       // 항상 비어있는 다음 슬롯에 자동 배정) 여기 3칸은 "드롭하면 편성됨"을 보여주는 용도.
+      // 채워진 슬롯엔 낀 장비 요약과, 그 동료 한 명만 파티에서 빼는 "해제" 버튼도 같이 보여준다.
       var slotsBox = document.getElementById('partySlots');
       slotsBox.innerHTML = '';
       var bySlot = {};
@@ -703,16 +732,35 @@ var TW = (function () {
         var occ = bySlot[s];
         slotEl.className = 'party-slot-box' + (occ ? ' filled' : '');
         slotEl.dataset.slot = String(s); // 장비 드래그 드롭 시 "몇 번 파티원에게 장착할지" 판별용
-        slotEl.innerHTML = '<div class="slot-label">파티 ' + s + '</div>'
-            + (occ ? '<div class="cname">' + (occ.NAME || JOB_KR[occ.CLASS] || occ.CLASS) + '</div><div class="role">' + (JOB_KR[occ.CLASS] || occ.CLASS) + ' ★' + occ.GRADE + '</div>'
-                   : '<div>빈 슬롯</div>');
+        if (occ) {
+          var occMine = byCompanion[occ.COMPANION_ID] || [];
+          var gearText = PART_ORDER.map(function (part) {
+            var found = occMine.filter(function (e) { return e.PART === part; })[0];
+            return (PART_EMOJI[part] || '') + (found ? '★' + found.GRADE : '-');
+          }).join(' ');
+          var occIdx = companions.indexOf(occ) + 1; // PARTY_TOGGLE(해제)이 참조하는 "N번째 동료" 번호
+          slotEl.innerHTML = '<div class="slot-label">파티 ' + s + '</div>'
+              + '<div class="cname">' + (occ.NAME || JOB_KR[occ.CLASS] || occ.CLASS) + '</div>'
+              + '<div class="role">' + (JOB_KR[occ.CLASS] || occ.CLASS) + ' ★' + occ.GRADE + '</div>'
+              + '<div class="slot-equip">' + gearText + '</div>'
+              + '<button type="button" class="slot-unassign" onclick="event.stopPropagation();TW.action(\'PARTY_TOGGLE\',\'' + occIdx + '\')">해제</button>';
+        } else {
+          slotEl.innerHTML = '<div class="slot-label">파티 ' + s + '</div><div>빈 슬롯</div>';
+        }
         slotsBox.appendChild(slotEl);
       }
 
-      // 동료 목록 + 편성 토글 (드래그 또는 탭 둘 다 지원 -- Pointer Events라 마우스/터치 공용)
+      // 동료 목록 + 편성 토글 (드래그 또는 탭 둘 다 지원 -- Pointer Events라 마우스/터치 공용).
+      // [정렬 고정] 서버가 내려주는 순서는 PARTY_SLOT NULLS LAST, COMPANION_ID라 편성/해제할
+      // 때마다 카드가 앞뒤로 튀어서 헷갈린다는 신고로, 화면 표시 순서만 COMPANION_ID(뽑은 순서)
+      // 고정으로 다시 정렬한다 -- 단, /파티편성 N 텍스트 명령어·PARTY_TOGGLE 등이 참조하는 idx는
+      // 서버가 내려준 원본 순서 그대로 써야 하므로 표시 순서와 별도로 유지한다.
+      var displayOrder = companions.map(function (c, i) { return { c: c, idx: i + 1 }; })
+          .sort(function (a, b) { return a.c.COMPANION_ID - b.c.COMPANION_ID; });
       var grid = document.getElementById('partyGrid');
       grid.innerHTML = '';
-      companions.forEach(function (c, idx) {
+      displayOrder.forEach(function (entry) {
+        var c = entry.c, idx = entry.idx;
         var hidden = c.HIDDEN_YN === 'Y';
         var inParty = !!c.PARTY_SLOT;
         var div = document.createElement('div');
@@ -751,23 +799,11 @@ var TW = (function () {
         hideBtn.type = 'button';
         hideBtn.textContent = hidden ? '👀' : '🙈';
         hideBtn.title = hidden ? '목록에 다시 표시' : '텍스트 목록(/파티편성)에서 숨기기';
-        hideBtn.onclick = function (ev) { ev.stopPropagation(); action('COMPANION_HIDE', String(idx + 1)); };
+        hideBtn.onclick = function (ev) { ev.stopPropagation(); action('COMPANION_HIDE', String(idx)); };
         div.appendChild(hideBtn);
-        attachPartyDrag(div, idx + 1, inParty, c.PARTY_SLOT || 0);
+        attachPartyDrag(div, idx, inParty, c.PARTY_SLOT || 0);
         grid.appendChild(div);
       });
-
-      // 장착된 장비를 동료별로 묶기
-      var byCompanion = {};
-      var unequipped = [];
-      equips.forEach(function (e) {
-        if (e.EQUIPPED_COMPANION_ID != null) {
-          (byCompanion[e.EQUIPPED_COMPANION_ID] = byCompanion[e.EQUIPPED_COMPANION_ID] || []).push(e);
-        } else {
-          unequipped.push(e);
-        }
-      });
-      lastParty = { companions: companions, byCompanion: byCompanion }; // 캐릭터 상세 카드(showCompanionDetail)용 캐시
 
       // 파티 슬롯별 장비 현황
       var partyBox = document.getElementById('partyEquipBox');
@@ -781,7 +817,7 @@ var TW = (function () {
         var row = document.createElement('div');
         row.className = 'shop-row';
         var mine = byCompanion[c.COMPANION_ID] || [];
-        var parts = ['HELMET', 'WEAPON', 'ARMOR'].map(function (part) {
+        var parts = PART_ORDER.map(function (part) {
           var found = mine.filter(function (e) { return e.PART === part; })[0];
           return PART_KR[part] + (found ? ' ★' + found.GRADE : ' 미착용');
         }).join(' / ');
@@ -802,21 +838,18 @@ var TW = (function () {
       unequipped.forEach(function (e, i) { e.__idx = i + 1; });
       var grouped = {};
       unequipped.forEach(function (e) { (grouped[e.CLASS] = grouped[e.CLASS] || []).push(e); });
-      // 그룹(직업) 순서도 고정(전사→도사)이 아니라 그 직업이 가진 최고 성급 내림차순으로 --
-      // 제일 좋은 장비를 들고 있는 직업이 위로 오게. 그 안의 카드도 성급 내림차순.
-      var jobsSortedByGrade = Object.keys(grouped).sort(function (jobA, jobB) {
-        var maxA = Math.max.apply(null, grouped[jobA].map(function (e) { return e.GRADE; }));
-        var maxB = Math.max.apply(null, grouped[jobB].map(function (e) { return e.GRADE; }));
-        if (maxA !== maxB) return maxB - maxA;
-        return JOB_ORDER.indexOf(jobA) - JOB_ORDER.indexOf(jobB); // 동률이면 기존 고정 순서로
-      });
+      // [정렬 고정] 그룹(직업) 순서를 "그 직업이 가진 최고 성급 내림차순"으로 뒀더니 장비를 하나
+      // 장착/합성할 때마다 각 직업의 최고 성급이 바뀌면서 그룹 자체가 계속 자리를 바꿔 헷갈린다는
+      // 신고로, 항상 고정 순서(JOB_ORDER: 전사→마법사→도적→궁수→도사)로 되돌림. 그룹 안의 카드는
+      // 그대로 성급 내림차순 유지.
+      var jobsInOrder = JOB_ORDER.filter(function (job) { return grouped[job]; });
 
       var box = document.getElementById('equipListBox');
       box.innerHTML = '';
       if (unequipped.length === 0) {
         box.innerHTML = '<div style="color:var(--ink-soft);font-size:12px;">미착용 장비가 없습니다.</div>';
       }
-      jobsSortedByGrade.forEach(function (job) {
+      jobsInOrder.forEach(function (job) {
         var list = grouped[job].slice().sort(function (a, b) { return b.GRADE - a.GRADE; });
         var title = document.createElement('div');
         title.className = 'equip-group-title';
