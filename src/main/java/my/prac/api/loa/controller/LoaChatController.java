@@ -634,6 +634,7 @@ public class LoaChatController {
 				val = s5.grantEventVouchers(reqMap);
 				break;
 			case "/탑통계": // 관리자 전용(비공개) -- 웹/카톡 채널별 이용자 수
+			case "/ㅌㅌㄱ":
 				val = s5.towerStats(reqMap);
 				break;
 			case "/동료뽑기":

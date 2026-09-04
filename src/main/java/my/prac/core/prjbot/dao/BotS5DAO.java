@@ -121,4 +121,10 @@ public interface BotS5DAO {
     /** countColumn/usedFlagColumn은 BotS5ServiceImpl.bumpActivityStat()의 고정 화이트리스트에서만 온다. */
     void bumpActivityStat(@Param("userName") String userName, @Param("countColumn") String countColumn,
             @Param("usedFlagColumn") String usedFlagColumn);
+
+    /** 주사위 눈(1~20) 전역 통계 1증가. face는 항상 서버에서 RND로 만든 값이라 안전. */
+    void bumpDiceFaceStat(@Param("face") int face);
+
+    /** [{FACE_VALUE, ROLL_COUNT}, ...] FACE_VALUE 오름차순. */
+    List<HashMap<String, Object>> selectDiceFaceStats();
 }

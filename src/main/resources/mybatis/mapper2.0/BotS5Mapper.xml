@@ -527,4 +527,13 @@
         WHERE USER_NAME = #{userName}
     </update>
 
+    <!-- 주사위 눈(1~20) 전역 분포. 행은 S5_DICE_FACE_STATS.sql에서 1~20 미리 만들어둠(UPDATE만으로 충분). -->
+    <update id="bumpDiceFaceStat">
+        UPDATE TBOT_S5_DICE_STATS SET ROLL_COUNT = ROLL_COUNT + 1 WHERE FACE_VALUE = #{face}
+    </update>
+
+    <select id="selectDiceFaceStats" resultType="hashmap">
+        SELECT FACE_VALUE, ROLL_COUNT FROM TBOT_S5_DICE_STATS ORDER BY FACE_VALUE
+    </select>
+
 </mapper>

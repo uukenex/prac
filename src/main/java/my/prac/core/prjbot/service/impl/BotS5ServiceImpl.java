@@ -337,6 +337,18 @@ public class BotS5ServiceImpl implements BotS5Service {
         }
     }
 
+    /**
+     * 주사위를 굴리고(1~diceMax) 나온 눈을 전역 통계(TBOT_S5_DICE_STATS)에 1 증가시킨다.
+     * 이동/전투공격/보호막/몬스터반격 등 RND.nextInt(diceMax)를 쓰는 모든 지점에서 이걸로
+     * 대체 -- "/탑통계"의 "주사위 눈 나온 횟수" 항목용. 통계 적재 실패가 게임 진행을
+     * 막으면 안 되므로 실패는 조용히 무시한다.
+     */
+    private int rollFace(int diceMax) {
+        int face = RND.nextInt(diceMax) + 1;
+        try { dao.bumpDiceFaceStat(face); } catch (Exception ignore) { }
+        return face;
+    }
+
     private int floorBlockBase(int floor) {
         return (floor / 10) * 10;
     }
@@ -877,7 +889,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         int curTile = ufp == null ? 0 : intVal(ufp.get("CUR_TILE"), 0);
 
         int diceMax = diceMax(strVal(p.get("DICE_GRADE"), "DICE_6"));
-        int roll = RND.nextInt(diceMax) + 1;
+        int roll = rollFace(diceMax);
         int newTile = ((curTile + roll - 1) % tileCount) + 1;
 
         HashMap<String, Object> ufpSave = new HashMap<>();
@@ -1418,7 +1430,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             if (trapAtkDown) eff[1] = (int) Math.round(eff[1] * 0.7); // 함정: 공격력 30% 약화
             if (luckyAtkUp) eff[1] = (int) Math.round(eff[1] * luckyMult); // 럭키: 공격력 강화
 
-            int roll = RND.nextInt(diceMax) + 1;
+            int roll = rollFace(diceMax);
             int dmg = Math.max(1, eff[1] * roll - monsterDef);
             dmg = Math.max(dmg, eff[3]); // 스탯구매 최소공격력 보정
             totalDamage += dmg;
@@ -1454,7 +1466,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                     // [명확화 요청] "실드를 누구한테 주는지 안 보인다"는 지적으로, 도사 자신의
                     // 줄에는 더 이상 🛡️+N을 안 찍는다 -- 실제로 이번 반격을 막아준 대상이
                     // 정해진 뒤(아래 resolveCombatTurn의 반격 파트) 그 동료 자신의 줄에 붙여준다.
-                    int shieldRoll = RND.nextInt(diceMax) + 1;
+                    int shieldRoll = rollFace(diceMax);
                     int shieldAmt = Math.max(0, eff[1] * shieldRoll);
                     shieldPool += shieldAmt;
                     break;
@@ -1632,7 +1644,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (trapDefDown) tEff[2] = (int) Math.round(tEff[2] * 0.7); // 함정: 방어력 30% 약화(반격 피해 증가)
         if (luckyDefUp) tEff[2] = (int) Math.round(tEff[2] * luckyMult); // 럭키: 방어력 강화(반격 피해 감소)
         int monsterAtk = (int) Math.round(intVal(mon.get("ATK_VALUE"), 0) * eliteMult);
-        int roll = RND.nextInt(diceMax) + 1;
+        int roll = rollFace(diceMax);
         int rawDmgToParty = Math.max(1, monsterAtk * roll - tEff[2]);
         int dmgToParty = rawDmgToParty;
 
@@ -2352,7 +2364,30 @@ public class BotS5ServiceImpl implements BotS5Service {
           .append(" (합계 ").append(gachaWeb + gachaChat).append(", 10연속도 1회로 집계)").append(NL);
         sb.append("💀 파티 전멸 — 웹 ").append(wipeWeb).append(" / 카톡 ").append(wipeChat)
           .append(" (합계 ").append(wipeWeb + wipeChat).append(")").append(NL);
-        sb.append(NL).append("⚠️ 모든 수치는 이 기능이 생긴 시점(2026-09-04)부터의 누적입니다(과거 이력 없음).");
+
+        try {
+            List<HashMap<String, Object>> faceRows = dao.selectDiceFaceStats();
+            long faceTotal = 0;
+            int maxRolledFace = 6; // DICE_6은 항상 있으니 최소 1~6까지는 표시
+            for (HashMap<String, Object> row : faceRows) {
+                long cnt = ((Number) row.getOrDefault("ROLL_COUNT", 0)).longValue();
+                faceTotal += cnt;
+                if (cnt > 0) maxRolledFace = Math.max(maxRolledFace, intVal(row.get("FACE_VALUE"), 0));
+            }
+            sb.append(NL).append("🎲 주사위 눈 분포 (합계 ").append(faceTotal).append("회)").append(NL);
+            for (HashMap<String, Object> row : faceRows) {
+                int face = intVal(row.get("FACE_VALUE"), 0);
+                if (face > maxRolledFace) continue; // DICE_8/10/12/20 미해금 구간의 빈 칸(항상 0)은 생략
+                long cnt = ((Number) row.getOrDefault("ROLL_COUNT", 0)).longValue();
+                sb.append("  ").append(face).append(": ").append(cnt).append("회");
+                if (face < maxRolledFace) sb.append(NL);
+            }
+        } catch (Exception e) {
+            // S5_DICE_FACE_STATS.sql 미적용 등으로 테이블이 없을 때도 나머지 통계는 정상 출력되게
+            sb.append(NL).append("🎲 주사위 눈 분포: (TBOT_S5_DICE_STATS 테이블 확인 필요)");
+        }
+
+        sb.append(NL).append(NL).append("⚠️ 모든 수치는 이 기능이 생긴 시점(2026-09-04)부터의 누적입니다(과거 이력 없음). 주사위 눈 분포는 이동/전투공격/보호막/몬스터반격 등 모든 굴림을 합친 것이며, 등급이 높은 주사위(d8~d20)를 쓰는 유저가 적어 7 이상은 표본이 작습니다.");
         return sb.toString();
     }
 
