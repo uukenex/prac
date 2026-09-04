@@ -174,9 +174,23 @@ public class Season5ViewController {
                     progress == null ? 0 : toInt(progress.get("COMPANION_VOUCHER_T3")),
                     progress == null ? 0 : toInt(progress.get("COMPANION_VOUCHER_T4")),
             });
+            // 장비도 동료와 동일하게 등급별 티어락 권이 생겼으므로(/이벤트지급 등급지급) 같은 방식으로 노출
+            result.put("equipVoucherByTier", new int[]{
+                    progress == null ? 0 : toInt(progress.get("EQUIP_VOUCHER_T1")),
+                    progress == null ? 0 : toInt(progress.get("EQUIP_VOUCHER_T2")),
+                    progress == null ? 0 : toInt(progress.get("EQUIP_VOUCHER_T3")),
+                    progress == null ? 0 : toInt(progress.get("EQUIP_VOUCHER_T4")),
+            });
         }
-        result.put("companionGacha", s5Dao.selectGachaList("COMPANION", unlocked));
-        result.put("equipGacha", s5Dao.selectGachaList("EQUIP", unlocked));
+        result.put("unlockedBlock", unlocked);
+        // [UX 개선] 예전엔 해금된 것만 내려줘서 미해금 등급은 무료뽑기권이 있어도 화면에 아예 안
+        // 보였음("무료뽑기권 있으면 나오게 해달라" 요청) -- 이제 항상 4개 전체(선택권/등급 무관하게
+        // UNLOCK_FLOOR 순, "999"는 사실상 무제한)를 내려주고, 그 안의 UNLOCK_FLOOR/등급별 권
+        // 수량을 클라이언트가 비교해서 "해금됨" 또는 "미해금이지만 무료뽑기권 있음"인 것만 그리도록
+        // 한다. 배열 인덱스(0부터)가 그대로 표시번호(1부터)이자 서버가 쓰는 등급(tier)이므로,
+        // 앞부분만 잘라내면 이 번호 체계가 깨진다 -- 반드시 4개 전체를 순서 그대로 내려야 함.
+        result.put("companionGacha", s5Dao.selectGachaList("COMPANION", 999));
+        result.put("equipGacha", s5Dao.selectGachaList("EQUIP", 999));
         if (!userName.trim().isEmpty()) {
             result.put("stat", s5Service.statShopInfo(userName));
             result.put("dice", s5Service.diceListInfo(userName));

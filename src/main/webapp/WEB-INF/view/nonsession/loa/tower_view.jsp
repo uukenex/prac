@@ -215,6 +215,16 @@
     .confirm-btns .btn-yes{ background:var(--gold); color:#fff; }
     .confirm-btns .btn-no{ background:#fff; border:1.5px solid var(--line); color:var(--ink-soft); }
 
+    /* 보드 + 층이동 탑: 모바일에선 위아래로 쌓고(기존과 동일), PC처럼 넓은 화면에선 부루마불판
+       옆에 나란히 두는 게 낫다는 요청으로 폭 700px 이상에서만 가로 배치로 전환. */
+    .board-row{ display:flex; flex-direction:column; gap:10px; }
+    .board-card{ flex:1 1 auto; min-width:0; }
+    .tower-nav-card{ flex:0 0 auto; }
+    @media (min-width:700px){
+      .board-row{ flex-direction:row; align-items:flex-start; }
+      .tower-nav-card{ width:260px; flex:0 0 260px; }
+    }
+
     @media (max-width:600px){
       body{ padding-top:8px; }
     }
@@ -237,31 +247,33 @@
   </div>
 
   <div class="panel active" id="panel-board">
-    <div class="card">
-      <div class="card-title">보드</div>
-      <div class="tower-viewport" id="towerViewport">
-        <div class="tower-track" id="towerTrack">
-          <div style="color:var(--ink-soft);font-size:12px;">데이터를 불러오는 중...</div>
+    <div class="board-row">
+      <div class="card board-card">
+        <div class="card-title">보드</div>
+        <div class="tower-viewport" id="towerViewport">
+          <div class="tower-track" id="towerTrack">
+            <div style="color:var(--ink-soft);font-size:12px;">데이터를 불러오는 중...</div>
+          </div>
+        </div>
+        <div class="legend">
+          <span class="legend-chip"><span class="legend-dot" style="background:var(--combat)"></span>전투</span>
+          <span class="legend-chip"><span class="legend-dot" style="background:var(--treasure)"></span>💎 보물상자</span>
+          <span class="legend-chip"><span class="legend-dot" style="background:var(--pp)"></span>🍀 럭키</span>
+          <span class="legend-chip"><span class="legend-dot" style="background:var(--trap)"></span>함정</span>
+          <span class="legend-chip"><span class="legend-dot" style="background:var(--special)"></span>특수</span>
+          <span class="legend-chip"><span class="legend-dot" style="background:var(--elite)"></span>💪 강화몬스터</span>
+          <span class="legend-chip"><span class="legend-dot" style="background:var(--gold)"></span>계단</span>
+          <span class="legend-chip"><span class="legend-dot" style="background:#D8CDB4"></span>미발견</span>
         </div>
       </div>
-      <div class="legend">
-        <span class="legend-chip"><span class="legend-dot" style="background:var(--combat)"></span>전투</span>
-        <span class="legend-chip"><span class="legend-dot" style="background:var(--treasure)"></span>💎 보물상자</span>
-        <span class="legend-chip"><span class="legend-dot" style="background:var(--pp)"></span>🍀 럭키</span>
-        <span class="legend-chip"><span class="legend-dot" style="background:var(--trap)"></span>함정</span>
-        <span class="legend-chip"><span class="legend-dot" style="background:var(--special)"></span>특수</span>
-        <span class="legend-chip"><span class="legend-dot" style="background:var(--elite)"></span>💪 강화몬스터</span>
-        <span class="legend-chip"><span class="legend-dot" style="background:var(--gold)"></span>계단</span>
-        <span class="legend-chip"><span class="legend-dot" style="background:#D8CDB4"></span>미발견</span>
+      <div class="card tower-nav-card">
+        <div class="card-title">🗼 층 이동 (눌러서 이동, 탐사완료 층엔 ✅ 표시)</div>
+        <div class="tower-nav" id="towerNav"></div>
       </div>
     </div>
     <div class="card" id="autoHuntCard" style="margin-top:10px; display:none;">
       <div class="card-title">🔥 자동사냥</div>
       <div id="autoHuntBox" style="font-size:12px; color:var(--ink-soft); line-height:1.7;"></div>
-    </div>
-    <div class="card" style="margin-top:10px;">
-      <div class="card-title">🗼 층 이동 (눌러서 이동, 탐사완료 층엔 ✅ 표시)</div>
-      <div class="tower-nav" id="towerNav"></div>
     </div>
   </div>
 
@@ -453,8 +465,21 @@ var TW = (function () {
 
         renderBoard(data.tiles, data.myTile ? data.myTile.CUR_TILE : 0);
         renderTowerNav(p, data.floorBest);
+        // [버그 수정] "조회"는 상단 상태/보드만 다시 불러오고 파티·상점·업적 탭은 그대로 둬서,
+        // 파티 탭 등을 보고 있는 채로 다른 닉네임을 검색하면 방금 조회한 유저 이름이 위에는
+        // 보이는데 그 아래 탭 내용(동료 목록 등)은 이전 유저 것이 그대로 남아있는 문제가 있었다
+        // ("닉네임 검색 시 기존 검색정보가 남아있다" 신고). 지금 열려있는 탭도 같이 새로고침.
+        refreshActivePanel();
       })
       .catch(function () { toast('조회 실패'); });
+  }
+
+  // 지금 활성화된 탭(파티/상점/업적)이 있으면 그 데이터도 같이 새로고침 -- loadStatus()(닉네임
+  // 재조회)와 action()(액션 후 갱신) 둘 다에서 공유해서 쓴다.
+  function refreshActivePanel() {
+    if (document.getElementById('panel-party').classList.contains('active')) loadPartyAndEquip();
+    if (document.getElementById('panel-shop').classList.contains('active')) loadShop();
+    if (document.getElementById('panel-ach').classList.contains('active')) loadAchievements();
   }
 
   // 층이동을 셀렉트박스+버튼 대신 부루마불 옆에 세우는 "탑" 그림으로 -- 9층(보스)이 맨 위,
@@ -972,7 +997,9 @@ var TW = (function () {
         var starterFree = data.freeCompanionPullsLeft || 0;
         var companionVoucher = data.companionVoucher || 0;
         var equipVoucher = data.equipVoucher || 0;
+        var unlockedBlock = data.unlockedBlock || 0;
         var voucherByTier = data.companionVoucherByTier || [0, 0, 0, 0]; // [티어1(하급)..티어4(최상급)]
+        var equipVoucherByTier = data.equipVoucherByTier || [0, 0, 0, 0];
 
         var chipText = [];
         if (starterFree > 0) chipText.push('튜토리얼 무료 ' + starterFree + '회');
@@ -982,6 +1009,9 @@ var TW = (function () {
           if (n > 0) chipText.push(tierNames[i] + ' 전용 동료뽑기권 ' + n + '장');
         });
         if (equipVoucher > 0) chipText.push('장비뽑기권 ' + equipVoucher + '장');
+        equipVoucherByTier.forEach(function (n, i) {
+          if (n > 0) chipText.push(tierNames[i] + ' 전용 장비뽑기권 ' + n + '장');
+        });
         var freeChip = document.getElementById('shopFreeChip');
         if (chipText.length > 0) {
           freeChip.style.display = '';
@@ -990,19 +1020,26 @@ var TW = (function () {
           freeChip.style.display = 'none';
         }
 
+        // companionGacha/equipGacha는 이제 항상 4개 전체(등급 순)가 내려온다("무료뽑기권 있으면
+        // 해금 전에도 뽑을 수 있게 해달라" 요청) -- gi(0부터)가 곧 표시번호-1이자 서버가 쓰는
+        // 등급(tier)이므로 절대 잘라내지 않는다. 아직 해금 안 됐고(UNLOCK_FLOOR > 내 진행도)
+        // 쓸 수 있는 무료뽑기권도 없는 항목만 화면에서 숨긴다.
         var cBox = document.getElementById('companionGachaList');
         cBox.innerHTML = '';
         (data.companionGacha || []).forEach(function (g, gi) {
-          var row = document.createElement('div');
-          row.className = 'shop-row';
           // 스타터(1번) 계약서는 튜토리얼 무료도 적용, 나머지는 뽑기권만 적용
           var isFree = (gi === 0 && starterFree > 0) || companionVoucher > 0 || (voucherByTier[gi] || 0) > 0;
+          var locked = unlockedBlock < (g.UNLOCK_FLOOR || 0);
+          if (locked && !isFree) return; // 해금도 안 됐고 무료뽑기권도 없으면 목록에서 숨김
+          var row = document.createElement('div');
+          row.className = 'shop-row';
           var singleLabel = isFree ? '무료뽑기' : '뽑기';
           // 서버(BotS5Service.gachaCompanion 등)는 이제 GACHA_ID(DB PK)가 아니라 표시번호
           // (1부터, UNLOCK_FLOOR 순 = 이 목록 순서)를 받는다 -- 채팅 명령어 /동료뽑기 N 과
           // 번호 체계를 통일하기 위함(장비뽑기는 GACHA_ID가 5~8부터 시작해서 혼란스러웠음).
           var displayNo = gi + 1;
-          row.innerHTML = '<span>' + g.GACHA_NAME + ' (' + fmtPP(g.COST_VALUE, g.COST_EXT) + ' PP)</span>'
+          row.innerHTML = '<span>' + g.GACHA_NAME + ' (' + fmtPP(g.COST_VALUE, g.COST_EXT) + ' PP)'
+              + (locked ? ' 🎁 해금 전, 무료뽑기권으로만 가능' : '') + '</span>'
               + '<span class="btn-group">'
               + '<button class="' + (isFree ? 'free' : '') + '" onclick="TW.action(\'GACHA_COMPANION\',\'' + displayNo + '\')">' + singleLabel + '</button>'
               + '<button class="ten" onclick="TW.action(\'GACHA_COMPANION_10\',\'' + displayNo + '\')">10연속</button>'
@@ -1012,11 +1049,14 @@ var TW = (function () {
         var eBox = document.getElementById('equipGachaList');
         eBox.innerHTML = '';
         (data.equipGacha || []).forEach(function (g, gi) {
+          var isFree = equipVoucher > 0 || (equipVoucherByTier[gi] || 0) > 0;
+          var locked = unlockedBlock < (g.UNLOCK_FLOOR || 0);
+          if (locked && !isFree) return;
           var row = document.createElement('div');
           row.className = 'shop-row';
-          var isFree = equipVoucher > 0;
           var displayNo = gi + 1;
-          row.innerHTML = '<span>' + g.GACHA_NAME + ' (' + fmtPP(g.COST_VALUE, g.COST_EXT) + ' PP)</span>'
+          row.innerHTML = '<span>' + g.GACHA_NAME + ' (' + fmtPP(g.COST_VALUE, g.COST_EXT) + ' PP)'
+              + (locked ? ' 🎁 해금 전, 무료뽑기권으로만 가능' : '') + '</span>'
               + '<span class="btn-group">'
               + '<button class="' + (isFree ? 'free' : '') + '" onclick="TW.action(\'GACHA_EQUIP\',\'' + displayNo + '\')">' + (isFree ? '무료뽑기' : '뽑기') + '</button>'
               + '<button class="ten" onclick="TW.action(\'GACHA_EQUIP_10\',\'' + displayNo + '\')">10연속</button>'
@@ -1105,9 +1145,7 @@ var TW = (function () {
         + '&param1=' + encodeURIComponent(param1 || '') + '&param2=' + encodeURIComponent(param2 || '');
     fetch(url).then(function (r) { return r.json(); }).then(function (data) {
       toast(data.message || data.error || '완료');
-      loadStatus();
-      if (document.getElementById('panel-party').classList.contains('active')) loadPartyAndEquip();
-      if (document.getElementById('panel-shop').classList.contains('active')) loadShop();
+      loadStatus(); // loadStatus()가 끝나면 refreshActivePanel()도 같이 불러서 중복 호출 없이 처리됨
     }).catch(function () { toast('요청 실패'); });
   }
 

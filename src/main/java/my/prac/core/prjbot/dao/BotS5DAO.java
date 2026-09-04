@@ -97,8 +97,11 @@ public interface BotS5DAO {
     // ── /이벤트지급(관리자 전용): 전체 유저에게 등급별 동료뽑기권 일괄 지급, 영향받은 행 수 반환 ──
     int bulkGrantTierCompanionVoucher(@Param("tier") int tier, @Param("qty") int qty);
 
-    // ── /이벤트지급(관리자 전용): 전체 유저에게 범용 장비뽑기권 일괄 지급(장비는 등급별 권이 없음) ──
+    // ── /이벤트지급(관리자 전용): 전체 유저에게 범용 장비뽑기권 일괄 지급(레거시, 등급 지정 없을 때 폴백용) ──
     int bulkGrantEquipVoucher(@Param("qty") int qty);
+
+    // ── /이벤트지급(관리자 전용): 전체 유저에게 특정 등급(1~4) 장비뽑기권만 일괄 지급 ──
+    int bulkGrantTierEquipVoucher(@Param("tier") int tier, @Param("qty") int qty);
 
     // ── /탑랭킹: 서버 전체 최고기록(익명 집계) — 누가 세운 기록인지는 노출하지 않고 수치만 조회 ──
     int selectMaxFloorReached();

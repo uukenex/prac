@@ -16,6 +16,7 @@
                COMPANION_CHOICE_TICKET_G4, COMPANION_CHOICE_TICKET_G5,
                WEAPON_CHOICE_TICKET_G4, WEAPON_CHOICE_TICKET_G5,
                COMPANION_VOUCHER_T1, COMPANION_VOUCHER_T2, COMPANION_VOUCHER_T3, COMPANION_VOUCHER_T4,
+               EQUIP_VOUCHER_T1, EQUIP_VOUCHER_T2, EQUIP_VOUCHER_T3, EQUIP_VOUCHER_T4,
                TOTAL_PP_EARNED_VALUE, TOTAL_PP_EARNED_EXT
         FROM TBOT_S5_USER_PROGRESS
         WHERE USER_NAME = #{userName}
@@ -67,6 +68,10 @@
             <if test="companionVoucherT2 != null">COMPANION_VOUCHER_T2 = #{companionVoucherT2},</if>
             <if test="companionVoucherT3 != null">COMPANION_VOUCHER_T3 = #{companionVoucherT3},</if>
             <if test="companionVoucherT4 != null">COMPANION_VOUCHER_T4 = #{companionVoucherT4},</if>
+            <if test="equipVoucherT1 != null">EQUIP_VOUCHER_T1 = #{equipVoucherT1},</if>
+            <if test="equipVoucherT2 != null">EQUIP_VOUCHER_T2 = #{equipVoucherT2},</if>
+            <if test="equipVoucherT3 != null">EQUIP_VOUCHER_T3 = #{equipVoucherT3},</if>
+            <if test="equipVoucherT4 != null">EQUIP_VOUCHER_T4 = #{equipVoucherT4},</if>
             <if test="totalPpEarnedValue != null">TOTAL_PP_EARNED_VALUE = #{totalPpEarnedValue},</if>
             <if test="totalPpEarnedExt != null">TOTAL_PP_EARNED_EXT = #{totalPpEarnedExt},</if>
             <if test="clearMonster != null">
@@ -389,10 +394,21 @@
         SELECT CONFIG_KEY, CONFIG_VALUE FROM TBOT_S5_CONFIG
     </select>
 
-    <!-- /이벤트지급(관리자 전용): 전체 유저에게 범용 장비뽑기권 일괄 지급(장비는 등급별 권이 없음) -->
+    <!-- /이벤트지급(관리자 전용): 전체 유저에게 범용 장비뽑기권 일괄 지급(레거시 폴백용, 지금은
+         /이벤트지급이 항상 등급을 지정하므로 bulkGrantTierEquipVoucher가 대신 쓰인다) -->
     <update id="bulkGrantEquipVoucher">
         UPDATE TBOT_S5_USER_PROGRESS
         SET EQUIP_VOUCHER = NVL(EQUIP_VOUCHER, 0) + #{qty}
+    </update>
+
+    <!-- /이벤트지급(관리자 전용): 전체 유저에게 특정 등급(1~4)의 티어락 장비뽑기권만 지급.
+         bulkGrantTierCompanionVoucher와 동일 패턴(CASE로 4개 컬럼 중 tier와 일치하는 것만 갱신). -->
+    <update id="bulkGrantTierEquipVoucher">
+        UPDATE TBOT_S5_USER_PROGRESS
+        SET EQUIP_VOUCHER_T1 = CASE WHEN #{tier} = 1 THEN NVL(EQUIP_VOUCHER_T1, 0) + #{qty} ELSE EQUIP_VOUCHER_T1 END,
+            EQUIP_VOUCHER_T2 = CASE WHEN #{tier} = 2 THEN NVL(EQUIP_VOUCHER_T2, 0) + #{qty} ELSE EQUIP_VOUCHER_T2 END,
+            EQUIP_VOUCHER_T3 = CASE WHEN #{tier} = 3 THEN NVL(EQUIP_VOUCHER_T3, 0) + #{qty} ELSE EQUIP_VOUCHER_T3 END,
+            EQUIP_VOUCHER_T4 = CASE WHEN #{tier} = 4 THEN NVL(EQUIP_VOUCHER_T4, 0) + #{qty} ELSE EQUIP_VOUCHER_T4 END
     </update>
 
     <!-- /이벤트지급(관리자 전용): 전체 유저에게 특정 등급(1~4)의 티어락 동료뽑기권만 지급.
