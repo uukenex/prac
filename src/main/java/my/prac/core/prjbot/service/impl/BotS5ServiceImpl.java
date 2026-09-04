@@ -648,7 +648,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         sb.append("  ※ 계단(STAIRS) 칸을 밟으면 다음 층으로 갈 '자격'만 생기고, 실제 이동은 이 명령어를 입력해야 합니다.").append(NL);
         sb.append("  ⚠️ 사냥터층에서 0층(마을, /층변경 0)으로 가면 방금 있던 층의 탐사맵(보드 위치+발견기록)이 초기화됩니다. 원정 중엔 끝까지 밀고 올라가세요!").append(NL);
         sb.append("  ⚠️ 보스를 처치해 다음 10층 구간으로 넘어가면 그 구간 사냥터층(전투/탐사)으로는 다시 못 돌아갑니다(편도 진행, 마을은 예외 — 아래 /탑내려가기 참고).").append(NL);
-        sb.append("  👹 29층 이후 보스는 전투 시작 시 파티원 1명을 무시(그 동료는 이번 전투 내내 피해 0), 반격 턴마다 30% 확률로 다른 동료를 기절(다음 공격 1회 불가)시킵니다.").append(NL);
+        sb.append("  👹 29층 이후 보스는 전투 시작 시 파티원 1명을 무시(그 동료는 이번 전투 내내 보스에게 공격이 안 통함, 보스 반격은 평소처럼 받음), 반격 턴마다 30% 확률로 다른 동료를 기절(다음 공격 1회 불가)시킵니다.").append(NL);
         sb.append("/층내려가기 (별칭: /층다운) : 지금 있는 구간 안에서 바로 아래 한 층으로 이동(예: 28층 → 27층). 이미 그 구간 마을이면 실패(대신 /탑내려가기 사용). 전투 중이면 도망 처리(/층변경과 동일)").append(NL);
         sb.append("/탑내려가기 (별칭: /탑다운) : 마을에서만 사용 가능, 바로 아래 10층 구간의 마을로 이동(예: 20층 마을 → 10층 마을). 사냥터층은 거치지 않고 마을끼리만 이동하며, 몇 번이든 반복 가능").append(NL);
         sb.append("  💡 구간 앞부분(1~4층 위치)에서 파티가 여러 번 전멸하면, 스탯/장비를 더 준비하고 오라고 /탑내려가기를 자동으로 안내해줍니다.").append(NL);
@@ -1283,7 +1283,10 @@ public class BotS5ServiceImpl implements BotS5Service {
         up.put("curMonsterEliteYn", elite ? "Y" : "N");
 
         // 20층 이후(블록3+, 29층 보스부터) 보스는 전투 시작 시 파티원 1명을 무작위로 "안중에 없다"며
-        // 지목 -- 그 동료는 이번 전투 내내 보스의 반격 피해를 0으로 받는다(스턴 스킬과는 별개 효과).
+        // 지목 -- [정책 변경, 2026-09-05] 원래는 그 동료가 보스 반격 피해를 0으로 받는(면역) 쪽
+        // 이었는데, "반대로 해달라(보스를 공격 못 하고 맞기만 하는 쪽)"는 요청으로 뒤집었다.
+        // 이제 이 동료는 이번 전투 내내 보스에게 공격이 안 먹히고(데미지 0), 보스 반격은 평소처럼
+        // 그대로 받는다(스턴 스킬과는 별개 효과).
         String immuneMsg = "";
         boolean lateBoss = boss && blockNo(floor) >= 3;
         if (lateBoss) {
@@ -1295,7 +1298,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                 HashMap<String, Object> chosen = party.get(RND.nextInt(party.size()));
                 up.put("bossImmuneCid", intVal(chosen.get("COMPANION_ID"), 0));
                 String cName = strVal(chosen.get("NAME"), JOB_NAME.getOrDefault(strVal(chosen.get("CLASS"), ""), "동료"));
-                immuneMsg = NL + "👁️ 보스가 " + cName + "은(는) 안중에도 없다는 듯 무시한다... (이번 전투 동안 피해 0)";
+                immuneMsg = NL + "🙈 보스가 " + cName + "은(는) 안중에도 없다는 듯 무시한다... (이번 전투 동안 이 동료의 공격은 안 통합니다. 보스 반격은 평소처럼 받음)";
             }
         }
         dao.updateUserProgress(up);
@@ -1434,6 +1437,16 @@ public class BotS5ServiceImpl implements BotS5Service {
             int[] eff = computeEffectiveStat(job, grade, equips, userStat);
             if (trapAtkDown) eff[1] = (int) Math.round(eff[1] * 0.7); // 함정: 공격력 30% 약화
             if (luckyAtkUp) eff[1] = (int) Math.round(eff[1] * luckyMult); // 럭키: 공격력 강화
+
+            // [정책 변경] "무시 대상"은 반대로 바꿨다 -- 예전엔 이 동료가 보스 피해를 안 받는
+            // 쪽(면역)이었는데, 이제는 이 동료의 공격이 보스에게 아예 안 먹히는 쪽이다(주사위도
+            // 안 굴리고 데미지 0, 특수효과도 발동 안 함). 보스 반격은 평소처럼 그대로 받는다
+            // (resolveCombatTurn 반격 파트의 immune 분기 삭제 참고 -- "맞기만 한다"가 요지).
+            if (bossImmuneCid != 0 && bossImmuneCid == intVal(c.get("COMPANION_ID"), -1)) {
+                sb.append(jobTag(grade, job, cName)).append(" ").append(hp.format()).append("/").append(eff[0])
+                  .append(" 🙈 보스가 무시해서 공격이 통하지 않는다").append(NL);
+                continue;
+            }
 
             int roll = rollFace(diceMax);
             int dmg = Math.max(1, eff[1] * roll - monsterDef);
@@ -1691,11 +1704,8 @@ public class BotS5ServiceImpl implements BotS5Service {
             }
         }
 
-        boolean immune = bossImmuneCid != 0 && bossImmuneCid == intVal(target.get("COMPANION_ID"), -1);
-        if (immune) {
-            dmgToParty = 0;
-            sb.append("👁️ 무시 대상, 피해없음").append(NL);
-        }
+        // [정책 변경] "무시 대상"은 보스 피해를 면제받지 않는다(반격은 평소처럼 그대로 받음) --
+        // 대신 이 동료의 공격이 보스에게 안 먹히도록 위 파티 공격 파트에서 처리했다.
 
         PP targetHpAfter = targetHp.subtract(PP.fromPP(dmgToParty));
         if (PP.toBaseValue(targetHpAfter) < 0) targetHpAfter = PP.fromPP(0);
