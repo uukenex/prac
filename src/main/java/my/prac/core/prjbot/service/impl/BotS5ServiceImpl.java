@@ -1375,41 +1375,42 @@ public class BotS5ServiceImpl implements BotS5Service {
             int dmg = Math.max(1, eff[1] * roll - monsterDef);
             dmg = Math.max(dmg, eff[3]); // 스탯구매 최소공격력 보정
             totalDamage += dmg;
-            sb.append(jobTag(grade, job, cName)).append(" (공격력 ").append(eff[1])
-              .append(", 범위 ").append(eff[1]).append("~").append(eff[1] * diceMax)
-              .append(") 공격! 🎲").append(roll)
-              .append(" → ").append(dmg).append(" 데미지").append(NL);
+            // [간결화] 텍스트가 너무 길다는 요청으로, 공격력/범위(전투 시작 전 "OO 등장!" 메시지에
+            // 이미 표시됨)는 매 줄마다 반복하지 않고, 직업별 특수효과도 새 줄 대신 같은 줄 끝에
+            // 붙여서 파티원 1명당 항상 딱 1줄만 쓰도록 함.
+            sb.append(jobTag(grade, job, cName)).append(" 🎲").append(roll).append("→").append(dmg).append("dmg");
 
             switch (job) {
                 case "MAGE":
                     if (RND.nextInt(100) < 20) {
                         stunned = true;
-                        sb.append("  ✨ 마법사의 스턴 적중! 몬스터가 이번 반격을 못합니다.").append(NL);
+                        sb.append(" ✨스턴!");
                     }
                     break;
                 case "ROGUE":
                     if (RND.nextInt(100) < 25) {
                         PP steal = PP.of(((Number) mon.get("PP_PER_KILL_VALUE")).doubleValue(), strVal(mon.get("PP_PER_KILL_EXT"), "")).multiply(0.1 * floorPpMultiplier(floor) * eliteMult);
                         addPp(userName, p, steal);
-                        sb.append("  🗡️ 도적이 ").append(steal.format()).append(" PP를 스틸했다!").append(NL);
+                        sb.append(" 🗡️+").append(steal.format()).append("PP");
                     }
                     break;
                 case "ARCHER":
                     if (PP.toBaseValue(monsterHp) <= PP.toBaseValue(monsterMaxHp) * 0.1 && RND.nextInt(100) < 40) {
                         executeKill = true;
-                        sb.append("  🏹 궁수의 즉사 사격 적중!").append(NL);
+                        sb.append(" 🏹즉사!");
                     }
                     break;
                 case "PRIEST": {
                     int shieldRoll = RND.nextInt(diceMax) + 1;
                     int shieldAmt = Math.max(0, eff[1] * shieldRoll);
                     shieldPool += shieldAmt;
-                    sb.append("  🛡️ 도사가 보호막 ").append(shieldAmt).append(" 전개! (🎲").append(shieldRoll).append(")").append(NL);
+                    sb.append(" 🛡️+").append(shieldAmt);
                     break;
                 }
                 default:
                     break;
             }
+            sb.append(NL);
         }
 
         PP monsterHpAfter = executeKill ? PP.fromPP(0) : monsterHp.subtract(PP.fromPP(totalDamage));
@@ -1496,11 +1497,11 @@ public class BotS5ServiceImpl implements BotS5Service {
         up.put("curMonsterHpExt", monsterHpAfter.getUnit());
         if (stunConsumed) up.put("clearBossStun", true);
         dao.updateUserProgress(up);
-        sb.append(eliteMonsterName(floor, mon, elite)).append(" 남은 HP: ")
+        sb.append(eliteMonsterName(floor, mon, elite)).append(" HP ")
           .append(monsterHpAfter.format()).append("/").append(monsterMaxHp.format()).append(NL);
 
         if (stunned) {
-            sb.append("몬스터가 스턴에 걸려 반격하지 못했습니다!");
+            sb.append("몬스터 스턴! 반격 못함").append(NL).append(partyHpSummary(party, userStat));
             return sb.toString();
         }
 
@@ -1548,7 +1549,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             dao.updateUserProgress(stunUp);
             String stunTargetName = strVal(target.get("NAME"), JOB_NAME.getOrDefault(strVal(target.get("CLASS"), ""), "동료"));
             sb.append("💫 ").append(eliteMonsterName(floor, mon, elite)).append("이(가) ").append(stunTargetName)
-              .append("을(를) 기절시켰다! 다음 턴 공격 불가");
+              .append(" 기절! 다음턴 공격불가").append(NL).append(partyHpSummary(party, userStat));
             return sb.toString();
         }
 
@@ -1565,13 +1566,13 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (shieldPool > 0) {
             int absorbed = Math.min(shieldPool, dmgToParty);
             dmgToParty -= absorbed;
-            sb.append("🛡️ 보호막이 ").append(absorbed).append(" 피해를 흡수했습니다!").append(NL);
+            sb.append("🛡️ 보호막 -").append(absorbed).append(" 흡수").append(NL);
         }
 
         boolean immune = bossImmuneCid != 0 && bossImmuneCid == intVal(target.get("COMPANION_ID"), -1);
         if (immune) {
             dmgToParty = 0;
-            sb.append("👁️ 보스가 무시하던 동료라 피해가 없다!").append(NL);
+            sb.append("👁️ 무시 대상, 피해없음").append(NL);
         }
 
         PP targetHp = PP.of(((Number) target.get("CUR_HP_VALUE")).doubleValue(), strVal(target.get("CUR_HP_EXT"), ""));
@@ -1585,11 +1586,34 @@ public class BotS5ServiceImpl implements BotS5Service {
         dao.updateCompanionHp(cUp);
 
         String tName = strVal(target.get("NAME"), JOB_NAME.getOrDefault(tJob, "동료"));
-        sb.append(eliteMonsterName(floor, mon, elite)).append(" 반격! 🎲").append(roll).append(" → ")
-          .append(jobTag(tGrade, tJob, tName)).append("에게 ")
-          .append(dmgToParty).append(" 피해 (남은 HP ").append(targetHpAfter.format()).append(")");
-        if (PP.toBaseValue(targetHpAfter) <= 0) sb.append(" — 전투불가!");
+        sb.append(eliteMonsterName(floor, mon, elite)).append(" 반격 🎲").append(roll).append("→")
+          .append(jobTag(tGrade, tJob, tName)).append(" ")
+          .append(dmgToParty).append("dmg(HP ").append(targetHpAfter.format()).append(")");
+        if (PP.toBaseValue(targetHpAfter) <= 0) sb.append("💀");
+        // "몬스터 반격 이후 파티 체력을 보여달라" 요청
+        sb.append(NL).append(partyHpSummary(party, userStat));
 
+        return sb.toString();
+    }
+
+    /**
+     * "몬스터 반격 이후 파티 체력을 보여달라" 요청으로 신설 -- 파티 전원의 현재HP/최대HP를 한
+     * 줄로 압축해서 보여준다(전투불가면 💀). 매번 새 줄을 여러 개 쓰는 대신 한 줄에 다 몰아서
+     * 텍스트 길이를 최대한 아낀다.
+     */
+    private String partyHpSummary(List<HashMap<String, Object>> party, HashMap<String, Object> userStat) {
+        StringBuilder sb = new StringBuilder("파티 HP: ");
+        for (int i = 0; i < party.size(); i++) {
+            HashMap<String, Object> c = party.get(i);
+            String job = strVal(c.get("CLASS"), "WARRIOR");
+            int grade = intVal(c.get("GRADE"), 1);
+            List<HashMap<String, Object>> equips = dao.selectEquipByCompanion(intVal(c.get("COMPANION_ID"), 0));
+            int[] eff = computeEffectiveStat(job, grade, equips, userStat);
+            PP hp = PP.of(((Number) c.get("CUR_HP_VALUE")).doubleValue(), strVal(c.get("CUR_HP_EXT"), ""));
+            if (i > 0) sb.append(" ");
+            sb.append(JOB_NAME.getOrDefault(job, job)).append(" ").append(hp.format()).append("/").append(eff[0]);
+            if (PP.toBaseValue(hp) <= 0) sb.append("💀");
+        }
         return sb.toString();
     }
 
