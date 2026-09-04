@@ -433,6 +433,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         int maxCompanion = dao.selectMaxCompanionCount();
         int maxCompanionGrade = dao.selectMaxCompanionGrade();
         int maxEquip = dao.selectMaxEquipCount();
+        int maxEquipGrade = dao.selectMaxEquipGrade();
 
         PP maxPp = PP.fromPP(0);
         for (HashMap<String, Object> row : dao.selectAllUserPp()) {
@@ -452,7 +453,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         sb.append("👥 최다 동료 보유: ").append(maxCompanion).append("명").append(NL);
         sb.append("✨ 최고 동료 등급: ★").append(maxCompanionGrade).append(NL);
         sb.append("🎽 최다 장비 보유: ").append(maxEquip).append("개").append(NL);
-        sb.append("💰 최다 보유 PP: ").append(maxPp.format());
+        sb.append("💎 최고 장비 등급: ★").append(maxEquipGrade).append(NL);
+        sb.append("💰 최다 누적 PP: ").append(maxPp.format());
         return sb.toString();
     }
 

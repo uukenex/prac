@@ -479,10 +479,18 @@
         )
     </select>
 
+    <select id="selectMaxEquipGrade" resultType="int">
+        SELECT NVL(MAX(GRADE), 0) FROM TBOT_S5_USER_EQUIP
+    </select>
+
     <!-- PP는 값+단위(EXT) 쌍이라 단위가 섞여있으면 SQL MAX로 못 비교함(예: 9999 vs 1a는 1a가 더 큼).
-         전체를 가져와서 서비스 레이어(PP.compare)에서 비교. 유저 수가 많지 않아 문제 없음. -->
+         전체를 가져와서 서비스 레이어(PP.compare)에서 비교. 유저 수가 많지 않아 문제 없음.
+         [2026-09-04] /탑랭킹의 "최다 보유 PP"는 현재 잔액(PP_VALUE)이 아니라 누적 획득량
+         (TOTAL_PP_EARNED)으로 봐야 맞다는 지적으로 여기서 아예 후자를 내려줌 -- 잔액은 뽑기/
+         스탯구매로 쓰면 줄어들어서 "기록"으로서 의미가 없음. 컬럼명은 그대로 두고(변경 범위
+         최소화) 값만 TOTAL_PP_EARNED로 바꿈. -->
     <select id="selectAllUserPp" resultType="hashmap">
-        SELECT PP_VALUE, PP_EXT FROM TBOT_S5_USER_PROGRESS
+        SELECT TOTAL_PP_EARNED_VALUE AS PP_VALUE, TOTAL_PP_EARNED_EXT AS PP_EXT FROM TBOT_S5_USER_PROGRESS
     </select>
 
 </mapper>
