@@ -52,6 +52,7 @@
             <if test="luckyEffect != null">LUCKY_EFFECT = #{luckyEffect},</if>
             <if test="diceGrade != null">DICE_GRADE = #{diceGrade},</if>
             <if test="killCountCur != null">KILL_COUNT_CUR = #{killCountCur},</if>
+            <if test="wipeStreakCur != null">WIPE_STREAK_CUR = #{wipeStreakCur},</if>
             <if test="autoHuntYn != null">AUTO_HUNT_YN = #{autoHuntYn},</if>
             <if test="totalKillCount != null">TOTAL_KILL_COUNT = #{totalKillCount},</if>
             <if test="monsterStunnedYn != null">MONSTER_STUNNED_YN = #{monsterStunnedYn},</if>

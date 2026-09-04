@@ -566,10 +566,11 @@ public class LoaChatController {
 					param0 = s5GachaBase + (s5GachaTen ? "10" : "");
 					param1 = s5GachaAttached;
 				} else {
-					param1 = "1"; // 번호 없이 bare로 치면 뒤에 뭐가 오든 무조건 1번 단발
-					// "번호 사용법을 헷갈려한다" 요청 -- bare로 쳤을 때만 구분해서 등급별
-					// 안내(1번은 뭐고 2번은 뭔지)를 같이 보여주기 위한 표식.
-					reqMap.put("s5GachaBare", "Y");
+					// [정책 변경] "번호가 안 붙어있으면 뽑기 자체가 안 되게 해달라" 요청으로,
+					// 예전처럼 1번으로 대신 뽑아주던 동작을 없앴다. bare로 치면(뒤에 뭐가
+					// 오든, 예: 실수로 띄어쓴 "/동료뽑기 2") param1을 비워서 아래 컨트롤러가
+					// 뽑기 대신 등급별 안내+사용법만 보여주게 한다.
+					param1 = "";
 				}
 				reqMap.put("param0", param0);
 				reqMap.put("param1", param1);

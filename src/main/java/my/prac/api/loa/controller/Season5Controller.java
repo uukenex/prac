@@ -52,11 +52,6 @@ public class Season5Controller {
         return Objects.toString(map.get("param2"), "").trim();
     }
 
-    /** LoaChatController가 "/동료뽑기"·"/장비뽑기"를 번호 없이(bare) 받았을 때만 세팅해두는 표식. */
-    private boolean isS5GachaBare(HashMap<String, Object> map) {
-        return "Y".equals(Objects.toString(map.get("s5GachaBare"), ""));
-    }
-
     public String rollDice(HashMap<String, Object> map) {
         String userName = userNameOf(map);
         String result = s5Service.rollDice(userName);
@@ -135,13 +130,15 @@ public class Season5Controller {
 
     public String gachaCompanion(HashMap<String, Object> map) {
         String param1 = param1Of(map);
-        if (param1.isEmpty()) return "사용법: /동료뽑기N (N은 SPA 상점 탭에서 확인, 생략 시 1번)";
+        String userName = userNameOf(map);
+        // [정책 변경] 번호를 안 붙이면(bare) 더 이상 대신 뽑아주지 않는다 -- 등급별 안내와
+        // 사용법만 보여주고 끝(요청: "번호가 붙어야만 뽑기 가능하도록").
+        if (param1.isEmpty()) {
+            return s5Service.gachaTierGuide(userName, "COMPANION")
+                    + "👉 번호를 붙여써야 뽑기가 진행됩니다. (예: /동료뽑기1)";
+        }
         try {
-            String userName = userNameOf(map);
-            // "번호별로 뭐가 다른지 헷갈려한다" 요청 -- 번호 없이 bare로 쳤을 때만 안내를 앞에
-            // 붙여주고, 기존 정책대로 1번 구매는 그대로 진행한다.
-            String guide = isS5GachaBare(map) ? s5Service.gachaTierGuide(userName, "COMPANION") : "";
-            String result = guide + s5Service.gachaCompanion(userName, Integer.parseInt(param1));
+            String result = s5Service.gachaCompanion(userName, Integer.parseInt(param1));
             s5Service.bumpActivityStat(userName, "GACHA_CHAT");
             return result;
         } catch (NumberFormatException e) {
@@ -164,11 +161,14 @@ public class Season5Controller {
 
     public String gachaEquip(HashMap<String, Object> map) {
         String param1 = param1Of(map);
-        if (param1.isEmpty()) return "사용법: /장비뽑기N (N은 SPA 상점 탭에서 확인, 생략 시 1번)";
+        String userName = userNameOf(map);
+        // [정책 변경] 번호를 안 붙이면(bare) 더 이상 대신 뽑아주지 않는다.
+        if (param1.isEmpty()) {
+            return s5Service.gachaTierGuide(userName, "EQUIP")
+                    + "👉 번호를 붙여써야 뽑기가 진행됩니다. (예: /장비뽑기1)";
+        }
         try {
-            String userName = userNameOf(map);
-            String guide = isS5GachaBare(map) ? s5Service.gachaTierGuide(userName, "EQUIP") : "";
-            String result = guide + s5Service.gachaEquip(userName, Integer.parseInt(param1));
+            String result = s5Service.gachaEquip(userName, Integer.parseInt(param1));
             s5Service.bumpActivityStat(userName, "GACHA_CHAT");
             return result;
         } catch (NumberFormatException e) {

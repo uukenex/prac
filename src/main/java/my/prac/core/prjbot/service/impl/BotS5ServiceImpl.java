@@ -651,6 +651,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         sb.append("  👹 29층 이후 보스는 전투 시작 시 파티원 1명을 무시(그 동료는 이번 전투 내내 피해 0), 반격 턴마다 30% 확률로 다른 동료를 기절(다음 공격 1회 불가)시킵니다.").append(NL);
         sb.append("/층내려가기 (별칭: /층다운) : 지금 있는 구간 안에서 바로 아래 한 층으로 이동(예: 28층 → 27층). 이미 그 구간 마을이면 실패(대신 /탑내려가기 사용). 전투 중이면 도망 처리(/층변경과 동일)").append(NL);
         sb.append("/탑내려가기 (별칭: /탑다운) : 마을에서만 사용 가능, 바로 아래 10층 구간의 마을로 이동(예: 20층 마을 → 10층 마을). 사냥터층은 거치지 않고 마을끼리만 이동하며, 몇 번이든 반복 가능").append(NL);
+        sb.append("  💡 구간 앞부분(1~4층 위치)에서 파티가 여러 번 전멸하면, 스탯/장비를 더 준비하고 오라고 /탑내려가기를 자동으로 안내해줍니다.").append(NL);
         sb.append("/탑현황 [닉네임] (별칭: /탑정보, /ㅌㅎㅎ, /ㅌㅈㅂ) : 현재 층/보드 위치/PP/상태/자동사냥 조회. 닉네임을 붙이면 다른 유저 조회(앞부분만 입력해도 검색됨)").append(NL);
         sb.append(NL);
 
@@ -661,9 +662,9 @@ public class BotS5ServiceImpl implements BotS5Service {
         sb.append(NL);
 
         sb.append("[상점] (웹 '상점' 탭) — 뽑기는 마을이 아니어도 아무 층에서나 가능").append(NL);
-        sb.append("/동료뽑기N [10] : 아래 번호의 계약서로 동료 뽑기(뒤에 10을 붙이면 10연속), 스탯도 함께 표시. 번호 생략 시 1번").append(NL);
+        sb.append("/동료뽑기N [10] : 아래 번호의 계약서로 동료 뽑기(뒤에 10을 붙이면 10연속), 스탯도 함께 표시. 번호는 반드시 붙여써야 함(예: /동료뽑기1) — 번호 없이 /동료뽑기만 치면 안 뽑히고 등급별 안내만 나옴").append(NL);
         sb.append(gachaCatalogText(dao.selectGachaList("COMPANION", 999), unlocked));
-        sb.append("/장비뽑기N [10] : 아래 번호의 보물상자로 장비 뽑기(뒤에 10을 붙이면 10연속), 스탯 보너스도 함께 표시. 번호 생략 시 1번").append(NL);
+        sb.append("/장비뽑기N [10] : 아래 번호의 보물상자로 장비 뽑기(뒤에 10을 붙이면 10연속), 스탯 보너스도 함께 표시. 번호는 반드시 붙여써야 함(예: /장비뽑기1) — 번호 없이 /장비뽑기만 치면 안 뽑히고 등급별 안내만 나옴").append(NL);
         sb.append(gachaCatalogText(dao.selectGachaList("EQUIP", 999), unlocked));
         sb.append("/주사위구매 [N] : 해금된 주사위 목록 확인 / N번 장착").append(NL);
         sb.append("/스탯구매 [공격력|최소공격력|체력] : 스탯 강화 현황 확인 / 구매").append(NL);
@@ -764,7 +765,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                     + " 🗼 시즌5 탑 등반기" + NL
                     + "└────────────┘" + NL
                     + "계정을 생성했습니다! 현재 0층 마을이에요." + NL
-                    + "👉 하급 동료 계약서 무료뽑기를 하세요! (/동료뽑기 1)";
+                    + "👉 하급 동료 계약서 무료뽑기를 하세요! (/동료뽑기1)";
         }
 
         java.util.Date lastAction = (java.util.Date) p.get("LAST_DICE_ACTION_DATE");
@@ -870,7 +871,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                 int partyCount = countPartySize(userName);
                 if (companionCount == 0) {
                     return userName + "님," + NL + "🏘️ 0층 마을 — 아직 동료가 없습니다." + NL
-                            + "👉 하급 동료 계약서 무료뽑기를 하세요! (/동료뽑기 1)";
+                            + "👉 하급 동료 계약서 무료뽑기를 하세요! (/동료뽑기1)";
                 }
                 if (partyCount == 0) {
                     return userName + "님," + NL + "🏘️ 0층 마을 — 동료는 있지만 파티가 비어있습니다." + NL
@@ -1498,6 +1499,8 @@ public class BotS5ServiceImpl implements BotS5Service {
             up.put("status", "NORMAL");
             up.put("clearMonster", true);
             up.put("totalKillCount", totalKill);
+            // 승리했으니 연속 전멸 스트릭 초기화("여러 번 죽으면 /탑내려가기 안내" 판단용)
+            up.put("wipeStreakCur", 0);
 
             // [세 구간 분리 요청] 공격 결과 / 처치·보상 안내를 빈 줄로 나눠서 구분되게 함.
             sb.append(NL).append(eliteMonsterName(floor, mon, elite)).append(" 처치! 🎉").append(NL);
@@ -1595,14 +1598,25 @@ public class BotS5ServiceImpl implements BotS5Service {
         }
 
         if (alive.isEmpty()) {
+            int wipeStreak = intVal(p.get("WIPE_STREAK_CUR"), 0) + 1;
             HashMap<String, Object> defeatUp = new HashMap<>();
             defeatUp.put("userName", userName);
             defeatUp.put("status", "NORMAL");
             defeatUp.put("clearMonster", true);
+            defeatUp.put("wipeStreakCur", wipeStreak);
             dao.updateUserProgress(defeatUp);
             // [변경] 예전엔 여기서 바로 풀피로 되돌렸는데, 그러면 안내 문구("마을에서 회복")가
             // 거짓말이 됨. 이제 정말로 마을에 돌아가야(changeFloor) 부활한다.
             sb.append("💀 파티 전멸... 전투에 패배했습니다. 동료들이 전투불가 상태로 남습니다 -- 마을로 돌아가야 부활합니다.");
+            // "1~4층에서 여러 번 죽으면 /탑내려가기 안내도 해달라" 요청 -- 이 구간(블록 앞
+            // 절반, 초반 사냥터)에서 연속으로 막히고 있으면 쉬운 아래 구간에서 파밍하고
+            // 오라고 힌트를 준다. 2연속부터("여러 번") 매번 다시 보여준다.
+            int fm = floor % 10;
+            if (fm >= 1 && fm <= 4 && wipeStreak >= 2 && floor >= 10) {
+                sb.append(NL).append(NL)
+                  .append("💡 이 구간에서 ").append(wipeStreak).append("연속으로 전멸했어요. 아직 버거우면 ")
+                  .append("/탑내려가기(/탑다운)로 10층 아래 마을로 내려가서 스탯/장비를 더 준비한 뒤 다시 도전해보세요.");
+            }
             return sb.toString();
         }
 
