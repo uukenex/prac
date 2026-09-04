@@ -860,6 +860,33 @@ S4의 `TBOT_S4_ACHIEVEMENT`/`TBOT_S4_USER_ACH` 패턴을 확장 계승. S5에서
   로 해당 38개 보드마다 `COMBAT`/`TRAP`/`PP`(중복 있는 타입) 중 `TILE_NO`가 가장 작은 칸 하나를
   `STAIRS_DOWN`으로 전환(재실행해도 이미 2개면 대상에서 빠지므로 안전). 실 DB 적용 완료 -- 적용 후
   전 유저 보드가 `STAIRS_UP=49`/`STAIRS_DOWN=49`로 정확히 1:1 일치, 1개짜리 보드 0건 확인.
+- **웹 UI: 유저별 지난 메시지 이력(신규)**: "지나간 이전 메시지도 유저별로 볼 수 있게 해달라"는
+  요청(최근 10개까지). 시즌5 전용 로그를 새로 만들 필요 없이, 채팅 명령어(층변경/주사위/뽑기 등)는
+  원래부터 기존 `TBOT_WORD_HIS`(REQ/RES/USER_NAME, 봇 전체 공용 요청·응답 로그)에 남고 있었다는
+  걸 확인하고 그대로 재사용 -- `selectUserRecentMessages`(ROWNUM으로 최신 10개, RES는 CLOB이라
+  `TO_CHAR`로 변환, 기존 `selectIssueCase`와 동일 패턴), `GET /loa/api/tower-messages`, SPA에
+  "💬 메시지" 탭 신설. 단, 이 로그는 채팅 채널에만 쌓이고 웹 SPA 자체 액션(`/api/tower-action`)은
+  안 남으므로 웹으로만 플레이한 이력은 안 보임(알려진 한계). REQ/RES 둘 다 유저가 입력/생성한
+  텍스트라 `innerHTML`이 아닌 `textContent`로 채워서 XSS 방지.
+- **[버그 수정] 등급 무관 범용 뽑기권 폐지**: "중급 전용 장비뽑기권만 줬는데 왜 상급/최상급
+  상자도 무료뽑기 가능하다고 뜨냐"는 신고로 확인 -- `hasUsableEquipVoucher`/`hasUsableCompanionVoucher`가
+  "그 등급에 락된 티어권이 없으면 범용 권(`EQUIP_VOUCHER`/`COMPANION_VOUCHER`)으로 폴백"하도록
+  돼 있었는데, 범용 권은 애초에 "해금 여부 무관하게 아무 등급에나 쓸 수 있다"는 설계라 하급
+  보물상자에서 나온 권 1장만 있어도 상급/최상급(각 8000/35000 PP)까지 전부 "무료뽑기권으로만
+  가능"으로 표시되고, 실제로 눌러도 진짜로 뽑혔다(라이브 DB로 실제 클릭 시 소비되는 컬럼까지
+  확인). 유저 판단: "범용 등급권 개념 자체를 없애고, 등급 명시가 없으면 항상 하급(T1)으로
+  취급한다" -- (1) `consumeCompanionVoucher`/`consumeEquipVoucher`/`hasUsableCompanionVoucher`/
+  `hasUsableEquipVoucher`에서 범용 폴백 완전히 제거(그 등급에 정확히 락된 T1~4 권만 확인),
+  (2) 범용 권을 지급하던 유일한 지점(보물상자 TREASURE 칸 보상)도 이제 T1 전용으로 지급하도록
+  수정, (3) 웹 SPA(`apiTowerShop`, `tower_view.jsp`)에서도 범용 권 표시/`isFree` 판정 제거,
+  (4) 기존에 쌓여있던 범용 권 잔량은 잃어버리지 않게 전부 T1으로 일괄 이관
+  (`S5_VOUCHER_TIER_MIGRATION.sql`, 실 DB 적용 완료 -- 동료 5명/장비 8명분 이관, 이관 후 범용
+  잔량 0 확인). 과거 악용 여부 조사(`TBOT_WORD_HIS` 채팅 이력 + 현재 보유 등급 교차 확인) 결과,
+  채팅 채널에서 상급/최상급을 미해금 상태로 뽑은 성공 기록은 없었음. 다만 `castle/냉동홀붕`
+  계정이 `UNLOCKED_BLOCK=0`(정상 해금 전혀 없음)인데도 G6(최고 등급) 동료 1개·장비 1개를
+  보유 중인 게 발견됨 -- G6은 하급 가챠 확률표에 0%라 정상적으로는 절대 못 나오는 등급이라
+  범용 권 우회로 뽑혔을 가능성이 높음(웹 채널 액션은 로그가 없어 완전한 재구성은 불가). 관리자
+  확인 필요.
 
 ### 알려진 단순화(설계 가정)
 

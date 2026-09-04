@@ -185,6 +185,21 @@
          ORDER BY USER_NAME
     </select>
 
+    <!-- 웹 UI: 유저별 지난 메시지(요청 명령어 + 응답) 최근 N개, 최신순. 시즌5 전용 로그가
+         따로 없어도 채팅으로 들어온 모든 명령어(층변경/주사위/뽑기 등)는 이미 기존
+         TBOT_WORD_HIS(REQ/RES/USER_NAME)에 남고 있어서 그대로 재사용한다. RES는 CLOB이라
+         TO_CHAR로 변환(기존 selectIssueCase와 동일 패턴). -->
+    <select id="selectUserRecentMessages" parameterType="HashMap" resultType="hashMap">
+        SELECT * FROM (
+            SELECT A.REQ AS REQ,
+                   TO_CHAR(A.RES) AS RES,
+                   TO_CHAR(A.INSERT_DATE, 'YYYY-MM-DD HH24:MI:SS') AS INSERT_DATE
+              FROM TBOT_WORD_HIS A
+             WHERE A.USER_NAME = #{userName, jdbcType=VARCHAR}
+             ORDER BY A.INSERT_DATE DESC
+        ) WHERE ROWNUM &lt;= #{limit, jdbcType=INTEGER}
+    </select>
+
     <!-- 방문(발견) 기록. 이미 있으면 VISIT_COUNT 증가(재방문 횟수 추적, SPECIAL/SHOP은 2회차부터 전투로 전환) -->
     <insert id="insertTileVisit">
         MERGE INTO TBOT_S5_USER_TILE_VISIT T

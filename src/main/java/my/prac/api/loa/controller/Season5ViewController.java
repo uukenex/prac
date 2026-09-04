@@ -165,8 +165,9 @@ public class Season5ViewController {
             result.put("ppValue", progress == null ? 0 : progress.get("PP_VALUE"));
             result.put("ppExt", progress == null ? "" : progress.get("PP_EXT"));
             result.put("freeCompanionPullsLeft", s5Service.freeCompanionPullsLeft(userName));
-            result.put("companionVoucher", progress == null ? 0 : progress.get("COMPANION_VOUCHER"));
-            result.put("equipVoucher", progress == null ? 0 : progress.get("EQUIP_VOUCHER"));
+            // [정책 변경] 등급 무관 범용 뽑기권(COMPANION_VOUCHER/EQUIP_VOUCHER)은 "하급 권으로
+            // 최상급까지 뚫린다"는 문제로 폐지 -- 이제 항상 티어락 권만 쓴다(기존 잔량은 T1로
+            // 일괄 이관, S5_VOUCHER_TIER_MIGRATION.sql). 아래 티어락 배열만 내려주면 충분.
             // 티어락 뽑기권(N층 완전탐사 보상) -- 인덱스 0=티어1(하급)...3=티어4(최상급), COMPANION_GACHA_ID와 매칭
             result.put("companionVoucherByTier", new int[]{
                     progress == null ? 0 : toInt(progress.get("COMPANION_VOUCHER_T1")),
@@ -195,6 +196,19 @@ public class Season5ViewController {
             result.put("stat", s5Service.statShopInfo(userName));
             result.put("dice", s5Service.diceListInfo(userName));
         }
+        return ResponseEntity.ok(result);
+    }
+
+    /** "지나간 이전 메시지도 유저별로 볼 수 있게" 요청 -- 시즌5 전용 로그를 새로 만들지 않고,
+     *  채팅 명령어(층변경/주사위/뽑기 등)가 원래 남기고 있던 TBOT_WORD_HIS(요청/응답)를 최신순
+     *  10개까지 그대로 재사용해서 보여준다. */
+    @GetMapping("/api/tower-messages")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMessages(@RequestParam(value = "userName", defaultValue = "") String userName) {
+        List<HashMap<String, Object>> messages = userName.trim().isEmpty()
+                ? new ArrayList<>() : s5Dao.selectUserRecentMessages(userName, 10);
+        HashMap<String, Object> result = new HashMap<>();
+        result.put("messages", messages);
         return ResponseEntity.ok(result);
     }
 

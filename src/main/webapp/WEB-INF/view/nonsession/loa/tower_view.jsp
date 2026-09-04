@@ -169,6 +169,13 @@
               border-radius:12px; padding:8px 12px; margin-bottom:6px; font-size:12px; }
     .ach-row.done{ background:#fffbe8; border-color:var(--gold); }
 
+    .msg-row{ background:#fff; border:1.5px solid var(--line); border-radius:12px; padding:8px 12px;
+               margin-bottom:6px; font-size:12px; }
+    .msg-row-head{ display:flex; align-items:baseline; justify-content:space-between; gap:8px; margin-bottom:4px; }
+    .msg-row-req{ font-weight:800; color:var(--combat); }
+    .msg-row-time{ font-size:10px; color:var(--ink-soft); white-space:nowrap; }
+    .msg-row-res{ white-space:pre-line; color:var(--ink-soft); line-height:1.5; }
+
     .msg-toast{ position:fixed; left:50%; bottom:96px; transform:translateX(-50%); background:var(--ink); color:#fff;
                 padding:12px 18px; border-radius:12px; font-size:12px; line-height:1.6; max-width:min(92vw,420px);
                 text-align:left; z-index:50; box-shadow:0 6px 18px rgba(0,0,0,.3); display:none; white-space:pre-line; }
@@ -337,6 +344,13 @@
     </div>
   </div>
 
+  <div class="panel" id="panel-msg">
+    <div class="card">
+      <div class="card-title">💬 지난 메시지 (최근 10개)</div>
+      <div id="msgList"></div>
+    </div>
+  </div>
+
 </div>
 
 <div class="msg-toast" id="msgToast"></div>
@@ -374,6 +388,7 @@
     <button class="dbtn primary" id="dbtnDice" onclick="TW.action('DICE','')"><span class="d-icn">🎲</span>주사위</button>
     <button class="dbtn" data-tab="shop" id="dbtnShop" onclick="TW.switchTab('shop')"><span class="d-icn">🛍️</span>상점</button>
     <button class="dbtn" data-tab="ach" onclick="TW.switchTab('ach')"><span class="d-icn">🏆</span>업적</button>
+    <button class="dbtn" data-tab="msg" onclick="TW.switchTab('msg')"><span class="d-icn">💬</span>메시지</button>
   </div>
 </nav>
 
@@ -423,6 +438,7 @@ var TW = (function () {
     if (name === 'shop') loadShop();
     if (name === 'ach') loadAchievements();
     if (name === 'party') loadPartyAndEquip();
+    if (name === 'msg') loadMessages();
     updateDiceButtonState();
   }
 
@@ -483,6 +499,7 @@ var TW = (function () {
     if (document.getElementById('panel-party').classList.contains('active')) loadPartyAndEquip();
     if (document.getElementById('panel-shop').classList.contains('active')) loadShop();
     if (document.getElementById('panel-ach').classList.contains('active')) loadAchievements();
+    if (document.getElementById('panel-msg').classList.contains('active')) loadMessages();
   }
 
   // 층이동을 셀렉트박스+버튼 대신 부루마불 옆에 세우는 "탑" 그림으로 -- 9층(보스)이 맨 위,
@@ -998,20 +1015,18 @@ var TW = (function () {
       .then(function (data) {
         document.getElementById('shopPpVal').textContent = fmtPP(data.ppValue, data.ppExt);
         var starterFree = data.freeCompanionPullsLeft || 0;
-        var companionVoucher = data.companionVoucher || 0;
-        var equipVoucher = data.equipVoucher || 0;
         var unlockedBlock = data.unlockedBlock || 0;
+        // [정책 변경] 등급 무관 범용 뽑기권(아무 등급에나 쓸 수 있어서 하급 권으로 최상급까지
+        // 뚫리던 문제)은 없앴고 항상 등급별 티어락 권만 존재한다.
         var voucherByTier = data.companionVoucherByTier || [0, 0, 0, 0]; // [티어1(하급)..티어4(최상급)]
         var equipVoucherByTier = data.equipVoucherByTier || [0, 0, 0, 0];
 
         var chipText = [];
         if (starterFree > 0) chipText.push('튜토리얼 무료 ' + starterFree + '회');
-        if (companionVoucher > 0) chipText.push('동료뽑기권 ' + companionVoucher + '장');
         var tierNames = ['하급', '중급', '상급', '최상급'];
         voucherByTier.forEach(function (n, i) {
           if (n > 0) chipText.push(tierNames[i] + ' 전용 동료뽑기권 ' + n + '장');
         });
-        if (equipVoucher > 0) chipText.push('장비뽑기권 ' + equipVoucher + '장');
         equipVoucherByTier.forEach(function (n, i) {
           if (n > 0) chipText.push(tierNames[i] + ' 전용 장비뽑기권 ' + n + '장');
         });
@@ -1031,7 +1046,7 @@ var TW = (function () {
         cBox.innerHTML = '';
         (data.companionGacha || []).forEach(function (g, gi) {
           // 스타터(1번) 계약서는 튜토리얼 무료도 적용, 나머지는 뽑기권만 적용
-          var isFree = (gi === 0 && starterFree > 0) || companionVoucher > 0 || (voucherByTier[gi] || 0) > 0;
+          var isFree = (gi === 0 && starterFree > 0) || (voucherByTier[gi] || 0) > 0;
           var locked = unlockedBlock < (g.UNLOCK_FLOOR || 0);
           if (locked && !isFree) return; // 해금도 안 됐고 무료뽑기권도 없으면 목록에서 숨김
           var row = document.createElement('div');
@@ -1052,7 +1067,7 @@ var TW = (function () {
         var eBox = document.getElementById('equipGachaList');
         eBox.innerHTML = '';
         (data.equipGacha || []).forEach(function (g, gi) {
-          var isFree = equipVoucher > 0 || (equipVoucherByTier[gi] || 0) > 0;
+          var isFree = (equipVoucherByTier[gi] || 0) > 0;
           var locked = unlockedBlock < (g.UNLOCK_FLOOR || 0);
           if (locked && !isFree) return;
           var row = document.createElement('div');
@@ -1139,6 +1154,45 @@ var TW = (function () {
           box.appendChild(row);
         });
       });
+  }
+
+  // "지나간 이전 메시지도 유저별로 볼 수 있게" 요청 -- 채팅 명령어 요청/응답 이력을 최신순 10개까지.
+  function loadMessages() {
+    var u = userName();
+    fetch(base + '/api/tower-messages?userName=' + encodeURIComponent(u))
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        var box = document.getElementById('msgList');
+        box.innerHTML = '';
+        var list = data.messages || [];
+        if (list.length === 0) {
+          box.innerHTML = '<div class="msg-row">아직 기록된 메시지가 없습니다</div>';
+          return;
+        }
+        list.forEach(function (m) {
+          // REQ/RES 둘 다 유저가 채팅으로 직접 입력/생성한 텍스트가 섞일 수 있어 innerHTML이
+          // 아닌 textContent로 안전하게 채운다(다른 유저 메시지 이력을 조회할 때의 XSS 방지).
+          var row = document.createElement('div');
+          row.className = 'msg-row';
+          var head = document.createElement('div');
+          head.className = 'msg-row-head';
+          var req = document.createElement('span');
+          req.className = 'msg-row-req';
+          req.textContent = m.REQ || '';
+          var time = document.createElement('span');
+          time.className = 'msg-row-time';
+          time.textContent = m.INSERT_DATE || '';
+          head.appendChild(req);
+          head.appendChild(time);
+          var res = document.createElement('div');
+          res.className = 'msg-row-res';
+          res.textContent = formatMsg(m.RES);
+          row.appendChild(head);
+          row.appendChild(res);
+          box.appendChild(row);
+        });
+      })
+      .catch(function () { document.getElementById('msgList').innerHTML = '<div class="msg-row">불러오기 실패</div>'; });
   }
 
   function action(type, param1, param2) {

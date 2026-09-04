@@ -44,6 +44,9 @@ public interface BotS5DAO {
     // ── /탑현황 닉네임 검색 (시즌2~4의 selectS4UserSearch와 동일 패턴: 앞부분 일치 LIKE) ──
     List<String> selectS5UserSearch(@Param("param1") String param1);
 
+    // ── 웹 UI: 유저별 지난 메시지(채팅 명령어 요청/응답) 이력 -- 기존 TBOT_WORD_HIS 재사용 ──
+    List<HashMap<String, Object>> selectUserRecentMessages(@Param("userName") String userName, @Param("limit") int limit);
+
     // ── 몬스터 ──
     HashMap<String, Object> selectMonster(@Param("blockNo") int blockNo, @Param("bossYn") String bossYn);
 

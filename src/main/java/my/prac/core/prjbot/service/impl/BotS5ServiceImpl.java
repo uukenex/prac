@@ -1021,14 +1021,19 @@ public class BotS5ServiceImpl implements BotS5Service {
                     PP curPp = PP.of(((Number) p.get("PP_VALUE")).doubleValue(), strVal(p.get("PP_EXT"), ""));
                     sb.append("💎 보물상자를 발견했다! ").append(reward.format()).append(" PP 획득! (보유 ").append(curPp.format()).append(" PP)");
                 } else {
+                    // [정책 변경] 예전엔 등급 무관 범용 권(COMPANION_VOUCHER/EQUIP_VOUCHER)을
+                    // 줬는데, 범용 권이 "해금 여부 무관하게 아무 등급에나 쓸 수 있게" 설계돼
+                    // 있어서 하급 보물상자에서 나온 권으로 최상급(35000 PP짜리) 가챠까지
+                    // 뚫려버리는 문제가 있었다("팔세쪽있음 신고로 확인). 범용 권 개념 자체를
+                    // 없애고 항상 하급(T1) 전용 권으로 지급하도록 변경.
                     boolean companionVoucher = RND.nextBoolean();
                     if (companionVoucher) {
-                        up.put("companionVoucher", intVal(p.get("COMPANION_VOUCHER"), 0) + 1);
+                        up.put("companionVoucherT1", intVal(p.get("COMPANION_VOUCHER_T1"), 0) + 1);
                     } else {
-                        up.put("equipVoucher", intVal(p.get("EQUIP_VOUCHER"), 0) + 1);
+                        up.put("equipVoucherT1", intVal(p.get("EQUIP_VOUCHER_T1"), 0) + 1);
                     }
                     sb.append("💎 보물상자를 발견했다! ").append(companionVoucher ? "동료" : "장비")
-                      .append(" 무료뽑기 1회권 획득! (다음 ").append(companionVoucher ? "/동료뽑기" : "/장비뽑기")
+                      .append(" 무료뽑기 1회권(하급) 획득! (다음 ").append(companionVoucher ? "/동료뽑기" : "/장비뽑기")
                       .append(" 시 자동 적용)");
                 }
                 dao.updateUserProgress(up);
@@ -1131,81 +1136,59 @@ public class BotS5ServiceImpl implements BotS5Service {
 
     /**
      * 보유한 동료 무료뽑기권이 있으면 1장 소비하고 true, 없으면 false(비용 정상 차감 필요).
-     * gachaId(=COMPANION 가챠 티어 1~4)에 락된 티어별 권(N층 완전탐사 보상, COMPANION_VOUCHER_T1~4)
-     * 을 먼저 확인하고, 없으면 기존 범용 권(COMPANION_VOUCHER, 비밀상점 등에서 지급되어 아무
-     * 해금된 티어에나 쓸 수 있음)으로 폴백한다.
+     * gachaId(=COMPANION 가챠 티어 1~4)에 정확히 락된 티어별 권(N층 완전탐사 보상,
+     * COMPANION_VOUCHER_T1~4)만 확인한다.
+     * [정책 변경] 예전엔 등급 무관 범용 권(COMPANION_VOUCHER)으로 폴백해서 아무 등급에나
+     * 쓸 수 있었는데, 그러면 하급 보물상자에서 나온 권 1장으로 최상급(35000 PP) 가챠까지
+     * 뚫려버리는 문제가 있었다("팔세쪽있음" 신고로 확인 -- 하급 보물상자 권이 있어서 최상급
+     * 상자도 "무료뽑기권으로만 가능"으로 표시됨). 범용 권 개념 자체를 없애고, 기존에 쌓여있던
+     * 범용 권 잔량은 전부 T1(하급)로 일괄 이관했다(S5_VOUCHER_TIER_MIGRATION.sql).
      */
     private boolean consumeCompanionVoucher(String userName, HashMap<String, Object> p, int gachaId) {
-        if (gachaId >= 1 && gachaId <= 4) {
-            String field = "companionVoucherT" + gachaId;
-            String column = "COMPANION_VOUCHER_T" + gachaId;
-            int tierCur = intVal(p.get(column), 0);
-            if (tierCur > 0) {
-                HashMap<String, Object> up = new HashMap<>();
-                up.put("userName", userName);
-                up.put(field, tierCur - 1);
-                dao.updateUserProgress(up);
-                p.put(column, tierCur - 1);
-                return true;
-            }
-        }
-        int cur = intVal(p.get("COMPANION_VOUCHER"), 0);
-        if (cur <= 0) return false;
+        if (gachaId < 1 || gachaId > 4) return false;
+        String field = "companionVoucherT" + gachaId;
+        String column = "COMPANION_VOUCHER_T" + gachaId;
+        int tierCur = intVal(p.get(column), 0);
+        if (tierCur <= 0) return false;
         HashMap<String, Object> up = new HashMap<>();
         up.put("userName", userName);
-        up.put("companionVoucher", cur - 1);
+        up.put(field, tierCur - 1);
         dao.updateUserProgress(up);
-        p.put("COMPANION_VOUCHER", cur - 1);
+        p.put(column, tierCur - 1);
         return true;
     }
 
-    /**
-     * 보유한 장비 무료뽑기권이 있으면 1장 소비하고 true, 없으면 false(비용 정상 차감 필요).
-     * gachaId(=EQUIP 가챠 티어 1~4)에 락된 티어별 권(EQUIP_VOUCHER_T1~4)을 먼저 확인하고,
-     * 없으면 기존 범용 권(EQUIP_VOUCHER, 보물상자 등에서 지급되어 아무 해금된 티어에나 쓸 수
-     * 있음)으로 폴백한다 -- consumeCompanionVoucher와 완전히 동일한 패턴.
-     */
+    /** consumeCompanionVoucher와 완전히 동일한 정책/패턴, 장비뽑기용. */
     private boolean consumeEquipVoucher(String userName, HashMap<String, Object> p, int gachaId) {
-        if (gachaId >= 1 && gachaId <= 4) {
-            String field = "equipVoucherT" + gachaId;
-            String column = "EQUIP_VOUCHER_T" + gachaId;
-            int tierCur = intVal(p.get(column), 0);
-            if (tierCur > 0) {
-                HashMap<String, Object> up = new HashMap<>();
-                up.put("userName", userName);
-                up.put(field, tierCur - 1);
-                dao.updateUserProgress(up);
-                p.put(column, tierCur - 1);
-                return true;
-            }
-        }
-        int cur = intVal(p.get("EQUIP_VOUCHER"), 0);
-        if (cur <= 0) return false;
+        if (gachaId < 1 || gachaId > 4) return false;
+        String field = "equipVoucherT" + gachaId;
+        String column = "EQUIP_VOUCHER_T" + gachaId;
+        int tierCur = intVal(p.get(column), 0);
+        if (tierCur <= 0) return false;
         HashMap<String, Object> up = new HashMap<>();
         up.put("userName", userName);
-        up.put("equipVoucher", cur - 1);
+        up.put(field, tierCur - 1);
         dao.updateUserProgress(up);
-        p.put("EQUIP_VOUCHER", cur - 1);
+        p.put(column, tierCur - 1);
         return true;
     }
 
     /**
      * [해금 여부 우회용] 소비하지 않고 "이 gachaId를 무료로 뽑을 수 있는 권이 있는지"만 확인.
      * 원래는 권이 있어도 UNLOCK_FLOOR(그 등급 해금 여부)는 그대로 확인해서, 아직 그 층에
-     * 못 간 유저는 티어락 권(N층 완전탐사 보상)이나 이벤트로 받은 범용 권이 있어도 못 썼다 --
-     * "이벤트로 중급뽑기권을 뿌려도 30층 전이면 못 쓰는 거 아니냐"는 지적으로 확인된 문제.
-     * 권을 보유했다는 것 자체가 이미 그 등급을 쓸 자격을 부여받았다는 뜻이므로(관리자 지급이든
-     * 진행도 보상이든), 권이 있으면 해금 여부와 무관하게 그 등급 가챠를 시도할 수 있게 한다.
+     * 못 간 유저는 티어락 권(N층 완전탐사 보상)이 있어도 못 썼다 -- "이벤트로 중급뽑기권을
+     * 뿌려도 30층 전이면 못 쓰는 거 아니냐"는 지적으로 확인된 문제. 권을 보유했다는 것 자체가
+     * 이미 그 등급을 쓸 자격을 부여받았다는 뜻이므로(관리자 지급이든 진행도 보상이든), 그
+     * gachaId에 정확히 락된 권이 있으면 해금 여부와 무관하게 그 등급 가챠를 시도할 수 있게 한다.
+     * (등급 무관 범용 권 폴백은 제거됨 -- 위 consumeCompanionVoucher 주석 참고)
      */
     private boolean hasUsableCompanionVoucher(HashMap<String, Object> p, int gachaId) {
-        if (gachaId >= 1 && gachaId <= 4 && intVal(p.get("COMPANION_VOUCHER_T" + gachaId), 0) > 0) return true;
-        return intVal(p.get("COMPANION_VOUCHER"), 0) > 0;
+        return gachaId >= 1 && gachaId <= 4 && intVal(p.get("COMPANION_VOUCHER_T" + gachaId), 0) > 0;
     }
 
     /** hasUsableCompanionVoucher와 완전히 동일한 목적/패턴, 장비뽑기용. */
     private boolean hasUsableEquipVoucher(HashMap<String, Object> p, int gachaId) {
-        if (gachaId >= 1 && gachaId <= 4 && intVal(p.get("EQUIP_VOUCHER_T" + gachaId), 0) > 0) return true;
-        return intVal(p.get("EQUIP_VOUCHER"), 0) > 0;
+        return gachaId >= 1 && gachaId <= 4 && intVal(p.get("EQUIP_VOUCHER_T" + gachaId), 0) > 0;
     }
 
     private String startCombat(String userName, HashMap<String, Object> p, int floor, boolean boss, boolean elite) {
