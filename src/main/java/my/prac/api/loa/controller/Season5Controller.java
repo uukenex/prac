@@ -56,7 +56,14 @@ public class Season5Controller {
     }
 
     public String rollDice(HashMap<String, Object> map) {
-        return s5Service.rollDice(userNameOf(map));
+        String userName = userNameOf(map);
+        String result = s5Service.rollDice(userName);
+        // /탑통계용 활동 카운터(웹 쪽은 Season5ViewController.apiTowerAction에서 동일하게 적재)
+        s5Service.bumpActivityStat(userName, "DICE_CHAT");
+        if (result != null && result.contains("파티 전멸")) {
+            s5Service.bumpActivityStat(userName, "WIPE_CHAT");
+        }
+        return result;
     }
 
     public String changeFloor(HashMap<String, Object> map) {
@@ -124,7 +131,9 @@ public class Season5Controller {
             // "번호별로 뭐가 다른지 헷갈려한다" 요청 -- 번호 없이 bare로 쳤을 때만 안내를 앞에
             // 붙여주고, 기존 정책대로 1번 구매는 그대로 진행한다.
             String guide = isS5GachaBare(map) ? s5Service.gachaTierGuide(userName, "COMPANION") : "";
-            return guide + s5Service.gachaCompanion(userName, Integer.parseInt(param1));
+            String result = guide + s5Service.gachaCompanion(userName, Integer.parseInt(param1));
+            s5Service.bumpActivityStat(userName, "GACHA_CHAT");
+            return result;
         } catch (NumberFormatException e) {
             return "번호는 숫자로 입력해주세요.";
         }
@@ -134,7 +143,10 @@ public class Season5Controller {
         String param1 = param1Of(map);
         if (param1.isEmpty()) return "사용법: /동료뽑기N 10 (N은 SPA 상점 탭에서 확인)";
         try {
-            return s5Service.gachaCompanionTen(userNameOf(map), Integer.parseInt(param1));
+            String userName = userNameOf(map);
+            String result = s5Service.gachaCompanionTen(userName, Integer.parseInt(param1));
+            s5Service.bumpActivityStat(userName, "GACHA_CHAT");
+            return result;
         } catch (NumberFormatException e) {
             return "번호는 숫자로 입력해주세요.";
         }
@@ -146,7 +158,9 @@ public class Season5Controller {
         try {
             String userName = userNameOf(map);
             String guide = isS5GachaBare(map) ? s5Service.gachaTierGuide(userName, "EQUIP") : "";
-            return guide + s5Service.gachaEquip(userName, Integer.parseInt(param1));
+            String result = guide + s5Service.gachaEquip(userName, Integer.parseInt(param1));
+            s5Service.bumpActivityStat(userName, "GACHA_CHAT");
+            return result;
         } catch (NumberFormatException e) {
             return "번호는 숫자로 입력해주세요.";
         }
@@ -156,7 +170,10 @@ public class Season5Controller {
         String param1 = param1Of(map);
         if (param1.isEmpty()) return "사용법: /장비뽑기N 10 (N은 SPA 상점 탭에서 확인)";
         try {
-            return s5Service.gachaEquipTen(userNameOf(map), Integer.parseInt(param1));
+            String userName = userNameOf(map);
+            String result = s5Service.gachaEquipTen(userName, Integer.parseInt(param1));
+            s5Service.bumpActivityStat(userName, "GACHA_CHAT");
+            return result;
         } catch (NumberFormatException e) {
             return "번호는 숫자로 입력해주세요.";
         }

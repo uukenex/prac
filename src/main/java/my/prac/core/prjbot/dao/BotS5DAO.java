@@ -117,4 +117,8 @@ public interface BotS5DAO {
     int selectMaxEquipGrade();
     List<HashMap<String, Object>> selectAllUserPp();
     HashMap<String, Object> selectChannelUsageStats();
+
+    /** countColumn/usedFlagColumn은 BotS5ServiceImpl.bumpActivityStat()의 고정 화이트리스트에서만 온다. */
+    void bumpActivityStat(@Param("userName") String userName, @Param("countColumn") String countColumn,
+            @Param("usedFlagColumn") String usedFlagColumn);
 }

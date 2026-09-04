@@ -328,6 +328,16 @@ public class Season5ViewController {
             message = "잘못된 입력값입니다.";
         }
 
+        // /탑통계용 활동 카운터(채팅 쪽은 Season5Controller에서 동일하게 적재)
+        if ("DICE".equals(type)) {
+            s5Service.bumpActivityStat(userName, "DICE_WEB");
+            if (message != null && message.contains("파티 전멸")) {
+                s5Service.bumpActivityStat(userName, "WIPE_WEB");
+            }
+        } else if (type != null && type.startsWith("GACHA_")) {
+            s5Service.bumpActivityStat(userName, "GACHA_WEB");
+        }
+
         // "웹 액션도 TBOT_WORD_HIS에 넣어달라" 요청 -- 지금까지는 채팅 명령어(/주사위 등)만
         // 이 로그에 남고 웹 SPA 버튼 액션은 안 남아서, 웹으로만 플레이한 유저는 "메시지" 탭
         // (/api/tower-messages)에 이력이 하나도 안 보이고, 관리자가 과거 이상행동을 감사(audit)

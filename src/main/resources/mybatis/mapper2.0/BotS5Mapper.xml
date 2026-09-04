@@ -493,27 +493,38 @@
         SELECT TOTAL_PP_EARNED_VALUE AS PP_VALUE, TOTAL_PP_EARNED_EXT AS PP_EXT FROM TBOT_S5_USER_PROGRESS
     </select>
 
-    <!-- /탑통계(관리자 전용) -- 웹/카톡 채널별 이용자 수. 시즌5는 별도 "어느 채널로 왔는지" 컬럼이
-         없어서, Season5ViewController.apiTowerAction이 웹 액션마다 TBOT_WORD_HIS.ROOM_NAME='WEB'
-         으로 남기는 기존 로그(2781d885 커밋)를 그대로 이용해 역산한다. 이 로그가 웹 액션이 처음
-         생긴 시점부터만 있으므로, 그 전부터 웹으로만 플레이하고 그 뒤로 접속 안 한 유저는 카운트에
-         안 잡힐 수 있음(로그 쌓이면서 갈수록 정확해짐) -- 완벽한 집계가 아니라 "대략적인 채널
-         분포"용으로 쓸 것. CHAT_USERS는 ROOM_NAME<>'WEB'인 기록이 하나라도 있으면 카운트하는데,
-         같은 방에서 시즌5 말고 다른 봇 명령어만 쓴 경우도 섞일 수 있어 약간 과대 집계될 수 있음. -->
+    <!-- /탑통계(관리자 전용) -- 웹/카톡 채널별 이용자 수 + 활동량(주사위/가챠/전멸).
+         [2026-09-04 개정] 원래는 TBOT_WORD_HIS(ROOM_NAME='WEB' 여부)를 스캔해서 역산했는데,
+         그 테이블이 127만 행 이상에 인덱스가 하나도 없어서(USER_IND_COLUMNS로 실제 확인) 와일드카드
+         LIKE가 섞인 집계 쿼리가 이 세션 안에서 끝내 응답을 안 줬다 -- 매번 호출될 수 있는 실제
+         명령어로 쓰기엔 위험해서, TBOT_S5_USER_PROGRESS에 실시간 카운터 컬럼을 두는 방식(기존
+         TOTAL_KILL_COUNT 등과 동일 패턴)으로 바꿈. 이 테이블은 유저 수만큼(수십 행)만 있어서
+         전체 스캔이어도 사실상 즉시 끝남. 대신 이 컬럼들이 생긴 시점부터만 집계되고, 과거
+         이력은 못 살림(트레이드오프를 알고 선택한 것 -- 매번 느린 완전 집계보다 계속 빠른
+         근사치가 낫다고 판단). -->
     <select id="selectChannelUsageStats" resultType="hashmap">
         SELECT
-            (SELECT COUNT(*) FROM TBOT_S5_USER_PROGRESS) AS TOTAL_USERS,
-            (SELECT COUNT(*) FROM TBOT_S5_USER_PROGRESS p WHERE EXISTS (
-                SELECT 1 FROM TBOT_WORD_HIS h WHERE h.USER_NAME = p.USER_NAME AND h.ROOM_NAME = 'WEB'
-            )) AS WEB_USERS,
-            (SELECT COUNT(*) FROM TBOT_S5_USER_PROGRESS p WHERE EXISTS (
-                SELECT 1 FROM TBOT_WORD_HIS h WHERE h.USER_NAME = p.USER_NAME AND h.ROOM_NAME <> 'WEB'
-            )) AS CHAT_USERS,
-            (SELECT COUNT(*) FROM TBOT_S5_USER_PROGRESS p WHERE
-                EXISTS (SELECT 1 FROM TBOT_WORD_HIS h WHERE h.USER_NAME = p.USER_NAME AND h.ROOM_NAME = 'WEB')
-                AND EXISTS (SELECT 1 FROM TBOT_WORD_HIS h WHERE h.USER_NAME = p.USER_NAME AND h.ROOM_NAME <> 'WEB')
-            ) AS BOTH_USERS
-        FROM DUAL
+            COUNT(*) AS TOTAL_USERS,
+            SUM(CASE WHEN WEB_USED_YN = 'Y' THEN 1 ELSE 0 END) AS WEB_USERS,
+            SUM(CASE WHEN CHAT_USED_YN = 'Y' THEN 1 ELSE 0 END) AS CHAT_USERS,
+            SUM(CASE WHEN WEB_USED_YN = 'Y' AND CHAT_USED_YN = 'Y' THEN 1 ELSE 0 END) AS BOTH_USERS,
+            SUM(NVL(DICE_COUNT_WEB, 0)) AS DICE_WEB,
+            SUM(NVL(DICE_COUNT_CHAT, 0)) AS DICE_CHAT,
+            SUM(NVL(GACHA_COUNT_WEB, 0)) AS GACHA_WEB,
+            SUM(NVL(GACHA_COUNT_CHAT, 0)) AS GACHA_CHAT,
+            SUM(NVL(WIPE_COUNT_WEB, 0)) AS WIPE_WEB,
+            SUM(NVL(WIPE_COUNT_CHAT, 0)) AS WIPE_CHAT
+        FROM TBOT_S5_USER_PROGRESS
     </select>
+
+    <!-- 활동 카운터 1증가 + 채널 사용 플래그 세팅을 한 번에. column은 Java(BotS5ServiceImpl.
+         bumpActivityStat)에서 하드코딩된 화이트리스트로만 골라 넘기므로 ${} 그대로 써도 안전
+         (사용자 입력이 여기 도달할 경로가 없음). -->
+    <update id="bumpActivityStat">
+        UPDATE TBOT_S5_USER_PROGRESS
+        SET ${countColumn} = NVL(${countColumn}, 0) + 1,
+            ${usedFlagColumn} = 'Y'
+        WHERE USER_NAME = #{userName}
+    </update>
 
 </mapper>

@@ -151,4 +151,12 @@ public interface BotS5Service {
      * "권한이 없습니다"만 반환.
      */
     String towerStats(String userName);
+
+    /**
+     * 활동 카운터 1증가 + 그 채널 사용 플래그 세팅. statKey는 아래 6개 중 하나만 유효
+     * (그 외는 조용히 무시): "DICE_WEB", "DICE_CHAT", "GACHA_WEB", "GACHA_CHAT", "WIPE_WEB",
+     * "WIPE_CHAT". 채널이 갈리는 지점(Season5Controller=채팅, Season5ViewController=웹)에서
+     * 호출해서 /탑통계가 집계할 실시간 카운터를 쌓는다.
+     */
+    void bumpActivityStat(String userName, String statKey);
 }

@@ -2324,7 +2324,13 @@ public class BotS5ServiceImpl implements BotS5Service {
         int both = intVal(stat.get("BOTH_USERS"), 0);
         int webOnly = web - both;
         int chatOnly = chat - both;
-        int neither = total - web - chatOnly; // = total - (web ∪ chat), 로그가 아예 없는 유저(계정만 생성)
+        int neither = total - web - chatOnly; // = total - (web ∪ chat), 아직 아무 활동도 없는 유저(계정만 생성)
+        long diceWeb = ((Number) stat.getOrDefault("DICE_WEB", 0)).longValue();
+        long diceChat = ((Number) stat.getOrDefault("DICE_CHAT", 0)).longValue();
+        long gachaWeb = ((Number) stat.getOrDefault("GACHA_WEB", 0)).longValue();
+        long gachaChat = ((Number) stat.getOrDefault("GACHA_CHAT", 0)).longValue();
+        long wipeWeb = ((Number) stat.getOrDefault("WIPE_WEB", 0)).longValue();
+        long wipeChat = ((Number) stat.getOrDefault("WIPE_CHAT", 0)).longValue();
 
         StringBuilder sb = new StringBuilder();
         sb.append("┌────────────────┐").append(NL);
@@ -2339,12 +2345,41 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (neither > 0) {
             sb.append("⚪ 기록 없음(계정만 생성): ").append(neither).append("명").append(NL);
         }
-        sb.append(NL).append("⚠️ 웹 액션 로그가 남기 시작한 시점 이후 기준이라 대략적인 분포입니다.");
+        sb.append(NL);
+        sb.append("🎲 총 주사위(이동+전투) — 웹 ").append(diceWeb).append(" / 카톡 ").append(diceChat)
+          .append(" (합계 ").append(diceWeb + diceChat).append(")").append(NL);
+        sb.append("🎰 총 뽑기 시도 — 웹 ").append(gachaWeb).append(" / 카톡 ").append(gachaChat)
+          .append(" (합계 ").append(gachaWeb + gachaChat).append(", 10연속도 1회로 집계)").append(NL);
+        sb.append("💀 파티 전멸 — 웹 ").append(wipeWeb).append(" / 카톡 ").append(wipeChat)
+          .append(" (합계 ").append(wipeWeb + wipeChat).append(")").append(NL);
+        sb.append(NL).append("⚠️ 모든 수치는 이 기능이 생긴 시점(2026-09-04)부터의 누적입니다(과거 이력 없음).");
         return sb.toString();
     }
 
     private int pct(int part, int total) {
         return total <= 0 ? 0 : (int) Math.round(part * 100.0 / total);
+    }
+
+    private static final HashMap<String, String[]> ACTIVITY_STAT_COLUMNS = new HashMap<String, String[]>() {{
+        // { countColumn, usedFlagColumn } -- 이 화이트리스트에 없는 statKey는 bumpActivityStat에서 조용히 무시됨
+        put("DICE_WEB",   new String[]{ "DICE_COUNT_WEB",  "WEB_USED_YN" });
+        put("DICE_CHAT",  new String[]{ "DICE_COUNT_CHAT", "CHAT_USED_YN" });
+        put("GACHA_WEB",  new String[]{ "GACHA_COUNT_WEB",  "WEB_USED_YN" });
+        put("GACHA_CHAT", new String[]{ "GACHA_COUNT_CHAT", "CHAT_USED_YN" });
+        put("WIPE_WEB",   new String[]{ "WIPE_COUNT_WEB",  "WEB_USED_YN" });
+        put("WIPE_CHAT",  new String[]{ "WIPE_COUNT_CHAT", "CHAT_USED_YN" });
+    }};
+
+    /** /탑통계용 활동 카운터 적재. statKey가 화이트리스트에 없으면 조용히 무시(호출부 실수 방지용 방어). */
+    @Override
+    public void bumpActivityStat(String userName, String statKey) {
+        String[] cols = ACTIVITY_STAT_COLUMNS.get(statKey);
+        if (cols == null) return;
+        try {
+            dao.bumpActivityStat(userName, cols[0], cols[1]);
+        } catch (Exception ignore) {
+            // 통계 적재 실패가 실제 게임 액션 응답을 막으면 안 됨(TBOT_WORD_HIS 로깅과 동일 관례)
+        }
     }
 
     // ================================================================
