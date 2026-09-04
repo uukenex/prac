@@ -603,6 +603,10 @@ public class LoaChatController {
 			case "/탑다운":
 				val = s5.descendVillage(reqMap);
 				break;
+			case "/층내려가기":
+			case "/층다운":
+				val = s5.descendFloor(reqMap);
+				break;
 			case "/파티편성":
 			case "/탑편성":
 			case "/탑동료":

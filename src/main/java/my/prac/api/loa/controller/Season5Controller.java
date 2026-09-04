@@ -16,6 +16,7 @@ import my.prac.core.prjbot.service.BotS5Service;
  *   /주사위, /ㅈㅅㅇ  — 이동(비전투) 또는 공격(전투 중)
  *   /층변경 N         — 같은 10층 구간 내 이동 (예: 33층에서 /층변경 9 → 39층)
  *   /탑내려가기        — 마을에서만 사용, 바로 아래 10층 구간 마을로 이동 (예: 20층 마을 → 10층 마을) (별칭: /탑다운)
+ *   /층내려가기        — 같은 구간 안에서 바로 아래 한 층으로 이동 (예: 28층 → 27층) (별칭: /층다운)
  *   /파티편성 [N]     — 동료 목록 조회 / N번째 동료 파티 편성·해제 (별칭: /탑편성, /탑동료, /탑파티, /ㅌㅍㅅ, /ㅌㄷㄹ, /ㅌㅍㅌ)
  *   /탑현황 [닉네임]   — 현재 층/PP/상태 조회. 닉네임을 붙이면 다른 유저 조회(부분 입력 시 앞부분 일치 검색) (별칭: /탑정보, /ㅌㅎㅎ, /ㅌㅈㅂ)
  *   /탑도움말, /탑명령어 — 웹(SPA) 탭 기능을 포함한 전체 명령어 안내
@@ -81,6 +82,10 @@ public class Season5Controller {
 
     public String descendVillage(HashMap<String, Object> map) {
         return s5Service.descendVillage(userNameOf(map));
+    }
+
+    public String descendFloor(HashMap<String, Object> map) {
+        return s5Service.descendFloor(userNameOf(map));
     }
 
     public String party(HashMap<String, Object> map) {
