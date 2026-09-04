@@ -567,6 +567,9 @@ public class LoaChatController {
 					param1 = s5GachaAttached;
 				} else {
 					param1 = "1"; // 번호 없이 bare로 치면 뒤에 뭐가 오든 무조건 1번 단발
+					// "번호 사용법을 헷갈려한다" 요청 -- bare로 쳤을 때만 구분해서 등급별
+					// 안내(1번은 뭐고 2번은 뭔지)를 같이 보여주기 위한 표식.
+					reqMap.put("s5GachaBare", "Y");
 				}
 				reqMap.put("param0", param0);
 				reqMap.put("param1", param1);

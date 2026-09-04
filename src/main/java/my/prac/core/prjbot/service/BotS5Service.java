@@ -52,6 +52,9 @@ public interface BotS5Service {
     /** /탑업적 — 달성한 업적 이름만 조회(설명/미달성 목록은 웹 UI '업적' 탭에서 확인) */
     String achievements(String userName);
 
+    /** 번호 없이 bare로 /동료뽑기, /장비뽑기 쳤을 때 "몇 번이 뭔지" 안내(gachaType: COMPANION|EQUIP) */
+    String gachaTierGuide(String userName, String gachaType);
+
     /** /동료뽑기 N — N번 가챠(계약서)로 동료 1명 뽑기 */
     String gachaCompanion(String userName, int gachaId);
 

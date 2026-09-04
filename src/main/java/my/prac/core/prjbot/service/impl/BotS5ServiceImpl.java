@@ -675,6 +675,29 @@ public class BotS5ServiceImpl implements BotS5Service {
         return sb.toString();
     }
 
+    /**
+     * "번호 사용법을 헷갈려한다" 요청 -- 번호 없이 bare로 /동료뽑기, /장비뽑기를 치면 이 안내를
+     * 먼저 보여준 다음(아래 gachaCompanion/gachaEquip에서 이어붙임), 기존 정책대로 1번을 그대로
+     * 구매까지 진행한다("설명하고, 없으면 1번 사줄지 물어본 다음 사준다" 요청 -- 이 봇은 대화
+     * 상태를 유지하지 않아 실제로 되묻지는 못하므로, 안내와 함께 기본값(1번) 구매를 그 자리에서
+     * 바로 진행하는 걸로 대신함).
+     */
+    private String gachaTierGuideText(String userName, String gachaType) {
+        HashMap<String, Object> p = getOrInitProgress(userName);
+        int unlocked = intVal(p.get("UNLOCKED_BLOCK"), 0);
+        String cmd = "COMPANION".equals(gachaType) ? "/동료뽑기" : "/장비뽑기";
+        StringBuilder sb = new StringBuilder("📖 ").append(cmd).append("N 번호 안내").append(NL);
+        sb.append(gachaCatalogText(dao.selectGachaList(gachaType, 999), unlocked));
+        sb.append("(뒤에 10을 붙이면 10연속, 예: ").append(cmd).append("2 10)").append(NL);
+        sb.append("번호 없이 치면 1번을 바로 구매합니다. 이번 결과 👇").append(NL);
+        return sb.toString();
+    }
+
+    @Override
+    public String gachaTierGuide(String userName, String gachaType) {
+        return gachaTierGuideText(userName, gachaType);
+    }
+
     /** /동료뽑기·/장비뽑기 N에서 쓰는 표시번호(1부터, UNLOCK_FLOOR 순)를 실제 GACHA_ID로 변환. 없으면 null. */
     private Integer resolveGachaId(String gachaType, int displayIdx) {
         List<HashMap<String, Object>> list = dao.selectGachaList(gachaType, 999);
