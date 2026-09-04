@@ -28,6 +28,7 @@ import my.prac.core.prjbot.service.BotS5Service;
  *   /장비합성 N       — N번째 장비 포함 동일 장비 3개를 상위 등급으로 합성
  *   /장비해제 M       — M번째 파티원이 착용 중인 장비 전부 해제 (별칭: /탑해제, /ㅈㅂㅎㅈ, /ㅌㅎㅈ)
  *   /탑랭킹           — 서버 전체 최고기록(익명 집계, 누가 세웠는지는 비공개) (별칭: /ㅌㄹㅋ)
+ *   /탑통계 (관리자 전용, 미공개) — 웹/카톡 채널별 이용자 수(대략치)
  *
  * 설계서: src/main/resources/ddl/S5_TOWER_DESIGN.md
  */
@@ -254,5 +255,10 @@ public class Season5Controller {
         } catch (NumberFormatException e) {
             return "번호는 숫자로 입력해주세요.";
         }
+    }
+
+    /** /탑통계 (관리자 전용) — 웹/카톡 채널별 이용자 수 */
+    public String towerStats(HashMap<String, Object> map) {
+        return s5Service.towerStats(userNameOf(map));
     }
 }

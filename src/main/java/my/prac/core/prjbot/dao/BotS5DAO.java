@@ -116,4 +116,5 @@ public interface BotS5DAO {
     int selectMaxEquipCount();
     int selectMaxEquipGrade();
     List<HashMap<String, Object>> selectAllUserPp();
+    HashMap<String, Object> selectChannelUsageStats();
 }

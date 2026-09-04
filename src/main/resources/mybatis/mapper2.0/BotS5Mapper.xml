@@ -493,4 +493,27 @@
         SELECT TOTAL_PP_EARNED_VALUE AS PP_VALUE, TOTAL_PP_EARNED_EXT AS PP_EXT FROM TBOT_S5_USER_PROGRESS
     </select>
 
+    <!-- /탑통계(관리자 전용) -- 웹/카톡 채널별 이용자 수. 시즌5는 별도 "어느 채널로 왔는지" 컬럼이
+         없어서, Season5ViewController.apiTowerAction이 웹 액션마다 TBOT_WORD_HIS.ROOM_NAME='WEB'
+         으로 남기는 기존 로그(2781d885 커밋)를 그대로 이용해 역산한다. 이 로그가 웹 액션이 처음
+         생긴 시점부터만 있으므로, 그 전부터 웹으로만 플레이하고 그 뒤로 접속 안 한 유저는 카운트에
+         안 잡힐 수 있음(로그 쌓이면서 갈수록 정확해짐) -- 완벽한 집계가 아니라 "대략적인 채널
+         분포"용으로 쓸 것. CHAT_USERS는 ROOM_NAME<>'WEB'인 기록이 하나라도 있으면 카운트하는데,
+         같은 방에서 시즌5 말고 다른 봇 명령어만 쓴 경우도 섞일 수 있어 약간 과대 집계될 수 있음. -->
+    <select id="selectChannelUsageStats" resultType="hashmap">
+        SELECT
+            (SELECT COUNT(*) FROM TBOT_S5_USER_PROGRESS) AS TOTAL_USERS,
+            (SELECT COUNT(*) FROM TBOT_S5_USER_PROGRESS p WHERE EXISTS (
+                SELECT 1 FROM TBOT_WORD_HIS h WHERE h.USER_NAME = p.USER_NAME AND h.ROOM_NAME = 'WEB'
+            )) AS WEB_USERS,
+            (SELECT COUNT(*) FROM TBOT_S5_USER_PROGRESS p WHERE EXISTS (
+                SELECT 1 FROM TBOT_WORD_HIS h WHERE h.USER_NAME = p.USER_NAME AND h.ROOM_NAME <> 'WEB'
+            )) AS CHAT_USERS,
+            (SELECT COUNT(*) FROM TBOT_S5_USER_PROGRESS p WHERE
+                EXISTS (SELECT 1 FROM TBOT_WORD_HIS h WHERE h.USER_NAME = p.USER_NAME AND h.ROOM_NAME = 'WEB')
+                AND EXISTS (SELECT 1 FROM TBOT_WORD_HIS h WHERE h.USER_NAME = p.USER_NAME AND h.ROOM_NAME <> 'WEB')
+            ) AS BOTH_USERS
+        FROM DUAL
+    </select>
+
 </mapper>

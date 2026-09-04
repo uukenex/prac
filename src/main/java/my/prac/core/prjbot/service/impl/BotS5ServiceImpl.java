@@ -2305,6 +2305,48 @@ public class BotS5ServiceImpl implements BotS5Service {
         return sb.toString();
     }
 
+    /**
+     * /탑통계(관리자 전용) — /이벤트지급과 같은 EVENT_ADMIN_USERS 권한 체크를 그대로 재사용.
+     * "어느 채널이 몇 명인지" 별도 컬럼으로 안 남기고 있어서, 웹 액션마다 TBOT_WORD_HIS.
+     * ROOM_NAME='WEB'으로 로그를 남기는 기존 장치(Season5ViewController.apiTowerAction)를
+     * 역이용해서 집계한다(selectChannelUsageStats 주석 참고) -- 정확한 실시간 집계가 아니라
+     * 대략적인 채널 분포 참고용이라는 걸 명시해서 오해 없게 한다.
+     */
+    @Override
+    public String towerStats(String userName) {
+        if (!isEventAdmin(userName)) {
+            return "권한이 없습니다.";
+        }
+        HashMap<String, Object> stat = dao.selectChannelUsageStats();
+        int total = intVal(stat.get("TOTAL_USERS"), 0);
+        int web = intVal(stat.get("WEB_USERS"), 0);
+        int chat = intVal(stat.get("CHAT_USERS"), 0);
+        int both = intVal(stat.get("BOTH_USERS"), 0);
+        int webOnly = web - both;
+        int chatOnly = chat - both;
+        int neither = total - web - chatOnly; // = total - (web ∪ chat), 로그가 아예 없는 유저(계정만 생성)
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("┌────────────────┐").append(NL);
+        sb.append(" 📊 시즌5 채널 통계").append(NL);
+        sb.append("└────────────────┘").append(NL);
+        sb.append("전체 유저: ").append(total).append("명").append(NL);
+        sb.append("🖥️ 웹 이용: ").append(web).append("명 (").append(pct(web, total)).append("%)").append(NL);
+        sb.append("💬 카톡 이용: ").append(chat).append("명 (").append(pct(chat, total)).append("%)").append(NL);
+        sb.append("🔀 둘 다 이용: ").append(both).append("명").append(NL);
+        sb.append("  ├ 웹만: ").append(webOnly).append("명").append(NL);
+        sb.append("  └ 카톡만: ").append(chatOnly).append("명").append(NL);
+        if (neither > 0) {
+            sb.append("⚪ 기록 없음(계정만 생성): ").append(neither).append("명").append(NL);
+        }
+        sb.append(NL).append("⚠️ 웹 액션 로그가 남기 시작한 시점 이후 기준이라 대략적인 분포입니다.");
+        return sb.toString();
+    }
+
+    private int pct(int part, int total) {
+        return total <= 0 ? 0 : (int) Math.round(part * 100.0 / total);
+    }
+
     // ================================================================
     // /탑업적
     // ================================================================

@@ -144,4 +144,11 @@ public interface BotS5Service {
      * 반환(누가 관리자인지 자체를 노출하지 않음).
      */
     String grantEventVouchers(String userName, int tier, int companionQty, int equipQty);
+
+    /**
+     * /탑통계(관리자 전용) — 시즌5 유저가 웹(SPA)과 카톡(채팅) 중 어느 채널을 얼마나 쓰는지
+     * 대략적인 분포를 보여준다. EVENT_ADMIN_USERS에 없으면 /이벤트지급과 동일하게 조용히
+     * "권한이 없습니다"만 반환.
+     */
+    String towerStats(String userName);
 }
