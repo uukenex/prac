@@ -1594,6 +1594,13 @@ public class BotS5ServiceImpl implements BotS5Service {
         dao.updateCompanionHp(cUp);
 
         String tName = strVal(target.get("NAME"), JOB_NAME.getOrDefault(tJob, "동료"));
+        // "주사위 적용 전 최소~최대 데미지 수식을 보여달라" 요청 -- 실제 주사위 결과를 보여주기
+        // 전에, 그 결과가 어느 범위 안에서 나온 건지(몬스터 공격력 × 주사위(1~최대) - 대상
+        // 방어력) 수식 그대로 한 줄로 먼저 보여준다. ===로 감싸서 눈에 띄게 구분.
+        int minDmgToParty = Math.max(1, monsterAtk * 1 - tEff[2]);
+        int maxDmgToParty = Math.max(1, monsterAtk * diceMax - tEff[2]);
+        sb.append("=== 반격범위 ATK").append(monsterAtk).append("×(1~").append(diceMax)
+          .append(")-DEF").append(tEff[2]).append("=").append(minDmgToParty).append("~").append(maxDmgToParty).append(" ===").append(NL);
         sb.append(eliteMonsterName(floor, mon, elite)).append(" 반격 🎲").append(roll).append("→")
           .append(jobTag(tGrade, tJob, tName)).append(" ")
           .append(dmgToParty).append("dmg(HP ").append(targetHpAfter.format()).append(")");
@@ -1605,21 +1612,22 @@ public class BotS5ServiceImpl implements BotS5Service {
     }
 
     /**
-     * "몬스터 반격 이후 파티 체력을 보여달라" 요청으로 신설 -- 파티 전원의 현재HP/최대HP를 한
-     * 줄로 압축해서 보여준다(전투불가면 💀). 매번 새 줄을 여러 개 쓰는 대신 한 줄에 다 몰아서
-     * 텍스트 길이를 최대한 아낀다.
+     * "몬스터 반격 이후 파티 체력을 보여달라, 성급/이름도 나오게, 줄바꿈도 넣어달라" 요청으로
+     * 신설 -- 파티 전원의 현재HP/최대HP를 공격 줄과 동일한 jobTag(★등급직업(이름)) 형식으로
+     * 한 명당 한 줄씩 보여준다(전투불가면 💀).
      */
     private String partyHpSummary(List<HashMap<String, Object>> party, HashMap<String, Object> userStat) {
-        StringBuilder sb = new StringBuilder("파티 HP: ");
+        StringBuilder sb = new StringBuilder("파티 HP:").append(NL);
         for (int i = 0; i < party.size(); i++) {
             HashMap<String, Object> c = party.get(i);
             String job = strVal(c.get("CLASS"), "WARRIOR");
             int grade = intVal(c.get("GRADE"), 1);
+            String cName = strVal(c.get("NAME"), JOB_NAME.getOrDefault(job, "동료"));
             List<HashMap<String, Object>> equips = dao.selectEquipByCompanion(intVal(c.get("COMPANION_ID"), 0));
             int[] eff = computeEffectiveStat(job, grade, equips, userStat);
             PP hp = PP.of(((Number) c.get("CUR_HP_VALUE")).doubleValue(), strVal(c.get("CUR_HP_EXT"), ""));
-            if (i > 0) sb.append(" ");
-            sb.append(JOB_NAME.getOrDefault(job, job)).append(" ").append(hp.format()).append("/").append(eff[0]);
+            if (i > 0) sb.append(NL);
+            sb.append(jobTag(grade, job, cName)).append(" ").append(hp.format()).append("/").append(eff[0]);
             if (PP.toBaseValue(hp) <= 0) sb.append("💀");
         }
         return sb.toString();
