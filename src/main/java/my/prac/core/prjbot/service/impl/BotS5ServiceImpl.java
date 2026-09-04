@@ -624,6 +624,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         sb.append("[명령어 목록] (설명은 아래 참고)").append(NL);
         sb.append("/주사위 (/ㅈㅅㅇ, /ㅈ)").append(NL);
         sb.append("/층변경 N (/층이동 N)").append(NL);
+        sb.append("/탑내려가기 (/탑다운)").append(NL);
         sb.append("/탑현황 [닉네임]").append(NL);
         sb.append("/파티편성 [N]").append(NL);
         sb.append("/동료가리기 N").append(NL);
@@ -645,8 +646,9 @@ public class BotS5ServiceImpl implements BotS5Service {
         sb.append("/층변경 N (/층이동 N) : 현재 구간 내 N번째 층으로 이동. N=0(마을)~9(보스), 전투 중이면 도망 처리").append(NL);
         sb.append("  ※ 계단(STAIRS) 칸을 밟으면 다음 층으로 갈 '자격'만 생기고, 실제 이동은 이 명령어를 입력해야 합니다.").append(NL);
         sb.append("  ⚠️ 사냥터층에서 0층(마을, /층변경 0)으로 가면 방금 있던 층의 탐사맵(보드 위치+발견기록)이 초기화됩니다. 원정 중엔 끝까지 밀고 올라가세요!").append(NL);
-        sb.append("  ⚠️ 보스를 처치해 다음 10층 구간으로 넘어가면 이전 구간으로는 다시 내려갈 수 없습니다(과거 구간 복귀 불가, 편도 진행).").append(NL);
+        sb.append("  ⚠️ 보스를 처치해 다음 10층 구간으로 넘어가면 그 구간 사냥터층(전투/탐사)으로는 다시 못 돌아갑니다(편도 진행, 마을은 예외 — 아래 /탑내려가기 참고).").append(NL);
         sb.append("  👹 29층 이후 보스는 전투 시작 시 파티원 1명을 무시(그 동료는 이번 전투 내내 피해 0), 반격 턴마다 30% 확률로 다른 동료를 기절(다음 공격 1회 불가)시킵니다.").append(NL);
+        sb.append("/탑내려가기 (별칭: /탑다운) : 마을에서만 사용 가능, 바로 아래 10층 구간의 마을로 이동(예: 20층 마을 → 10층 마을). 사냥터층은 거치지 않고 마을끼리만 이동하며, 몇 번이든 반복 가능").append(NL);
         sb.append("/탑현황 [닉네임] (별칭: /탑정보, /ㅌㅎㅎ, /ㅌㅈㅂ) : 현재 층/보드 위치/PP/상태/자동사냥 조회. 닉네임을 붙이면 다른 유저 조회(앞부분만 입력해도 검색됨)").append(NL);
         sb.append(NL);
 
@@ -2002,6 +2004,44 @@ public class BotS5ServiceImpl implements BotS5Service {
         }
         if (target == 1 && intVal(p.get("TOTAL_KILL_COUNT"), 0) == 0) {
             sb.append(NL).append("1층에서 주사위를 굴려 전투하세요! (/주사위)");
+        }
+        return sb.toString();
+    }
+
+    /**
+     * /탑내려가기(/탑다운) — 마을에서만 바로 아래 10층 구간 마을로 이동. changeFloor()와 달리
+     * 같은 구간을 벗어나는 이동이라 target이 항상 이전에 실제로 밟았던 마을(구간을 순서대로
+     * 올라와야만 지금 서 있을 수 있으므로)이라 별도 재진입 자격 확인이 필요 없다. 사냥터층
+     * 탐사 초기화(resetBlockExploration)도 여긴 해당 없음(마을→마을 이동은 사냥터층을 아예
+     * 거치지 않음).
+     */
+    @Override
+    public String descendVillage(String userName) {
+        HashMap<String, Object> p = getOrInitProgress(userName);
+        int floor = intVal(p.get("CUR_FLOOR"), 0);
+        if (floor % 10 != 0) {
+            return "🏘️ 마을에서만 사용할 수 있습니다. (/층변경 0 으로 먼저 마을로 이동하세요)";
+        }
+        if (floor == 0) {
+            return "🏘️ 이미 0층 마을입니다. 더 내려갈 곳이 없습니다.";
+        }
+        int target = floor - 10;
+
+        HashMap<String, Object> up = new HashMap<>();
+        up.put("userName", userName);
+        up.put("curFloor", target);
+        dao.updateUserProgress(up);
+
+        List<HashMap<String, Object>> villageParty = new ArrayList<>();
+        for (HashMap<String, Object> c : dao.selectUserCompanions(userName)) {
+            if (c.get("PARTY_SLOT") != null) villageParty.add(c);
+        }
+        int revivedCount = revivePartyDead(userName, villageParty, dao.selectUserStat(userName));
+
+        StringBuilder sb = new StringBuilder(userName).append("님," + NL);
+        sb.append("🪜 ").append(floor).append("층 마을 → ").append(target).append("층 마을로 내려갔습니다.");
+        if (revivedCount > 0) {
+            sb.append(NL).append("✨ 전투불가 상태였던 동료 ").append(revivedCount).append("명이 마을에서 부활했습니다!");
         }
         return sb.toString();
     }

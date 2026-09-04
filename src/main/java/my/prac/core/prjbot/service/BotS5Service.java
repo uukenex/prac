@@ -40,6 +40,13 @@ public interface BotS5Service {
     /** /층변경 N — 같은 10층 구간 내에서 N번째 층으로 이동 */
     String changeFloor(String userName, int n);
 
+    /**
+     * /탑내려가기(별칭 /탑다운) — 마을(X0층)에서만 사용 가능, 바로 아래 10층 구간의
+     * 마을(예: 20층 → 10층)로 이동한다. 0층 마을에선 더 내려갈 곳이 없어 실패 메시지 반환.
+     * 이미 한 번 올라온 구간이라 재진입 자격 확인(계단 최초 도달 여부)이 필요 없다.
+     */
+    String descendVillage(String userName);
+
     /** /파티편성 — 인자 없으면 보유 동료 + 파티 슬롯 현황 표시 */
     String partyList(String userName);
 
