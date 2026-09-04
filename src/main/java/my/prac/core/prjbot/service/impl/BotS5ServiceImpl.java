@@ -424,7 +424,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         sb.append("⚔️ 최다 누적 처치: ").append(maxKill).append("마리").append(NL);
         sb.append("🏅 최다 업적 보유: ").append(maxAch).append("개").append(NL);
         sb.append("🗺️ 최다 완전탐사: ").append(maxExplored).append("개 층").append(NL);
-        sb.append("👥 최다 동료 보유: ").append(maxCompanion).append("마리").append(NL);
+        sb.append("👥 최다 동료 보유: ").append(maxCompanion).append("명").append(NL);
         sb.append("✨ 최고 동료 등급: ★").append(maxCompanionGrade).append(NL);
         sb.append("🎽 최다 장비 보유: ").append(maxEquip).append("개").append(NL);
         sb.append("💰 최다 보유 PP: ").append(maxPp.format());
@@ -1993,47 +1993,38 @@ public class BotS5ServiceImpl implements BotS5Service {
      * 이 명령어가 뭘 하는 건지조차 드러내지 않도록 이유를 자세히 안 붙임). 뽑기권은 실제 경제
      * 가치가 있어 아무나 채팅으로 뿌릴 수 있으면 안 되므로, 이 시스템 안에서 유일하게 존재하는
      * 권한 체크(isEventAdmin)를 반드시 통과해야 한다.
+     * 동료뽑기권은 등급(tier 1~4)을 못박은 티어락 권으로 지급(그 등급 계약서에만 쓸 수 있고,
+     * 아직 그 층에 못 간 유저도 이 권으로는 바로 뽑을 수 있음 -- hasUsableCompanionVoucher 참고).
+     * 장비는 등급별 권 자체가 없어서 그대로 범용 EQUIP_VOUCHER로 지급.
      */
     @Override
     @Transactional
-    public String grantEventVouchers(String userName, int companionQty, int equipQty) {
-        if (!isEventAdmin(userName)) {
-            return "권한이 없습니다.";
-        }
-        if (companionQty < 0 || equipQty < 0) {
-            return "수량은 0 이상이어야 합니다.";
-        }
-        if (companionQty == 0 && equipQty == 0) {
-            return "사용법: /이벤트지급 [동료뽑기권수량] [장비뽑기권수량] (예: /이벤트지급 3 2, 하나는 0으로 생략 가능)";
-        }
-        int affected = dao.bulkGrantVouchers(companionQty, equipQty);
-        return "🎉 이벤트 지급 완료! 전체 유저 " + affected + "명에게 동료뽑기권 " + companionQty
-                + "장, 장비뽑기권 " + equipQty + "장을 지급했습니다.";
-    }
-
-    private static final String[] TIER_NAME = { "", "하급", "중급", "상급", "최상급" }; // index 1~4
-
-    /**
-     * /이벤트티어지급(관리자 전용) — 특정 등급(1~4) 동료 계약서 티어락 권만 전체 유저에게 지급.
-     * grantEventVouchers의 범용 권과 달리 "이번 이벤트는 중급(2번)만" 처럼 등급을 못박고 싶을 때
-     * 씀. 이 권을 쓰면 hasUsableCompanionVoucher()가 UNLOCK_FLOOR 확인을 건너뛰게 해주므로,
-     * 아직 그 계약서가 안 풀린 저층 유저도 이 권으로는 바로 뽑을 수 있다.
-     */
-    @Override
-    @Transactional
-    public String grantEventTierVoucher(String userName, int tier, int qty) {
+    public String grantEventVouchers(String userName, int tier, int companionQty, int equipQty) {
         if (!isEventAdmin(userName)) {
             return "권한이 없습니다.";
         }
         if (tier < 1 || tier > 4) {
             return "등급은 1(하급)~4(최상급) 사이여야 합니다.";
         }
-        if (qty <= 0) {
-            return "사용법: /이벤트티어지급 [등급1~4] [수량] (예: /이벤트티어지급 2 1 → 전체 유저에게 중급 동료뽑기권 1장)";
+        if (companionQty < 0 || equipQty < 0) {
+            return "수량은 0 이상이어야 합니다.";
         }
-        int affected = dao.bulkGrantTierCompanionVoucher(tier, qty);
-        return "🎉 이벤트 지급 완료! 전체 유저 " + affected + "명에게 " + TIER_NAME[tier] + "(" + tier + "번) 동료뽑기권 "
-                + qty + "장을 지급했습니다. (해금 여부와 무관하게 바로 사용 가능)";
+        if (companionQty == 0 && equipQty == 0) {
+            return "사용법: /이벤트지급 [등급 초급|중급|상급|최상급] [동료뽑기권수량] [장비뽑기권수량] "
+                    + "(예: /이벤트지급 중급 3 2, 등급 생략 시 초급, 수량 생략 시 0)";
+        }
+        StringBuilder sb = new StringBuilder("🎉 이벤트 지급 완료!");
+        if (companionQty > 0) {
+            int affected = dao.bulkGrantTierCompanionVoucher(tier, companionQty);
+            sb.append(NL).append("전체 유저 ").append(affected).append("명에게 ")
+              .append(COMPANION_TIER_NAME[tier - 1]).append("(").append(tier).append("번) 동료뽑기권 ")
+              .append(companionQty).append("장 지급 (해금 여부와 무관하게 바로 사용 가능)");
+        }
+        if (equipQty > 0) {
+            int affected = dao.bulkGrantEquipVoucher(equipQty);
+            sb.append(NL).append("전체 유저 ").append(affected).append("명에게 장비뽑기권 ").append(equipQty).append("장 지급");
+        }
+        return sb.toString();
     }
 
     // ================================================================

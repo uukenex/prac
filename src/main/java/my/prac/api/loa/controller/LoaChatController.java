@@ -622,9 +622,6 @@ public class LoaChatController {
 			case "/이벤트지급": // 관리자 전용(비공개) -- TBOT_S5_CONFIG.EVENT_ADMIN_USERS 등록자만 실제 동작
 				val = s5.grantEventVouchers(reqMap);
 				break;
-			case "/이벤트티어지급": // 관리자 전용(비공개) -- 특정 등급(1~4) 동료뽑기권만 지급
-				val = s5.grantEventTierVoucher(reqMap);
-				break;
 			case "/동료뽑기":
 				val = s5.gachaCompanion(reqMap);
 				break;

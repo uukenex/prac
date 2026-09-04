@@ -379,14 +379,13 @@
         SELECT CONFIG_KEY, CONFIG_VALUE FROM TBOT_S5_CONFIG
     </select>
 
-    <!-- /이벤트지급(관리자 전용): 전체 유저 TBOT_S5_USER_PROGRESS 행에 뽑기권 수량을 그대로 더함 -->
-    <update id="bulkGrantVouchers">
+    <!-- /이벤트지급(관리자 전용): 전체 유저에게 범용 장비뽑기권 일괄 지급(장비는 등급별 권이 없음) -->
+    <update id="bulkGrantEquipVoucher">
         UPDATE TBOT_S5_USER_PROGRESS
-        SET COMPANION_VOUCHER = NVL(COMPANION_VOUCHER, 0) + #{companionQty},
-            EQUIP_VOUCHER = NVL(EQUIP_VOUCHER, 0) + #{equipQty}
+        SET EQUIP_VOUCHER = NVL(EQUIP_VOUCHER, 0) + #{qty}
     </update>
 
-    <!-- /이벤트티어지급(관리자 전용): 전체 유저에게 특정 등급(1~4)의 티어락 동료뽑기권만 지급.
+    <!-- /이벤트지급(관리자 전용): 전체 유저에게 특정 등급(1~4)의 티어락 동료뽑기권만 지급.
          컬럼명은 바인딩 파라미터로 못 넣으니(#{}는 값 전용) CASE로 4개 컬럼 중 tier와 일치하는
          것만 갱신한다. tier는 서비스 레이어에서 1~4로 이미 검증된 값만 들어온다. -->
     <update id="bulkGrantTierCompanionVoucher">

@@ -197,29 +197,40 @@ public class Season5Controller {
         return s5Service.ranking();
     }
 
-    /** /이벤트지급(관리자 전용, 미공개) — param1=동료뽑기권 수량, param2=장비뽑기권 수량(둘 다 생략 시 0) */
+    // /이벤트지급 인자 3개(등급/동료권수량/장비권수량)를 담기엔 param1·param2 2칸으로 부족해서
+    // fulltxt(전체 입력 원문)를 직접 토큰화해서 쓴다. 등급 키워드는 초급(=하급 계약서와 동일 취급)
+    // /중급/상급/최상급 4개.
+    private static final java.util.Map<String, Integer> EVENT_TIER_KEYWORDS = new java.util.HashMap<String, Integer>() {{
+        put("초급", 1); put("하급", 1);
+        put("중급", 2);
+        put("상급", 3);
+        put("최상급", 4);
+    }};
+
+    /**
+     * /이벤트지급(관리자 전용, 미공개) — "/이벤트지급 [등급] [동료뽑기권수량] [장비뽑기권수량]".
+     * 등급 토큰(초급/중급/상급/최상급)이 없으면 초급 취급, 뒤 두 수량은 생략하면 각각 0.
+     * 예: "/이벤트지급 중급 3 2" -> 전체 유저에게 중급 동료뽑기권 3장 + 장비뽑기권 2장.
+     */
     public String grantEventVouchers(HashMap<String, Object> map) {
-        String param1 = param1Of(map);
-        String param2 = param2Of(map);
+        String fulltxt = Objects.toString(map.get("fulltxt"), "").trim();
+        String[] tokens = fulltxt.isEmpty() ? new String[0] : fulltxt.split("\\s+");
+        // tokens[0]은 명령어 자체("/이벤트지급") -- 그 뒤부터가 실제 인자
+        java.util.List<String> args = tokens.length > 1
+                ? java.util.Arrays.asList(tokens).subList(1, tokens.length)
+                : java.util.Collections.<String>emptyList();
+        int tier = 1; // 등급 생략 시 기본값: 초급
+        int argIdx = 0;
+        if (!args.isEmpty() && EVENT_TIER_KEYWORDS.containsKey(args.get(0))) {
+            tier = EVENT_TIER_KEYWORDS.get(args.get(0));
+            argIdx = 1;
+        }
         try {
-            int companionQty = param1.isEmpty() ? 0 : Integer.parseInt(param1);
-            int equipQty = param2.isEmpty() ? 0 : Integer.parseInt(param2);
-            return s5Service.grantEventVouchers(userNameOf(map), companionQty, equipQty);
+            int companionQty = args.size() > argIdx ? Integer.parseInt(args.get(argIdx)) : 0;
+            int equipQty = args.size() > argIdx + 1 ? Integer.parseInt(args.get(argIdx + 1)) : 0;
+            return s5Service.grantEventVouchers(userNameOf(map), tier, companionQty, equipQty);
         } catch (NumberFormatException e) {
             return "수량은 숫자로 입력해주세요.";
-        }
-    }
-
-    /** /이벤트티어지급(관리자 전용, 미공개) — param1=등급(1~4), param2=수량 */
-    public String grantEventTierVoucher(HashMap<String, Object> map) {
-        String param1 = param1Of(map);
-        String param2 = param2Of(map);
-        try {
-            int tier = param1.isEmpty() ? 0 : Integer.parseInt(param1);
-            int qty = param2.isEmpty() ? 0 : Integer.parseInt(param2);
-            return s5Service.grantEventTierVoucher(userNameOf(map), tier, qty);
-        } catch (NumberFormatException e) {
-            return "등급/수량은 숫자로 입력해주세요.";
         }
     }
 
