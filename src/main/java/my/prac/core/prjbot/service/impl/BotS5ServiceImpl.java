@@ -184,10 +184,13 @@ public class BotS5ServiceImpl implements BotS5Service {
     private static final double HP_PCT_PER_LV  = 0.03;   // 체력 레벨당 +3%(곱연산)
     private static final int    MIN_DMG_PER_LV = 2;      // 최소공격력 레벨당 데미지 하한 +2(고정값)
 
-    // 칸 종류 표시(아이콘+이름)
+    // 칸 종류 표시(아이콘+이름). 계단은 "위로 향하는 계단"/"아래로 향하는 계단" 2종으로 분리
+    // (요청으로 신설) -- 층마다 고정으로 하나씩, 총 2칸. 층이동 시 어느 쪽에 도착하는지가 이동
+    // 방향(위/아래)을 따라 갈리므로 changeFloor() 참고.
     private static final HashMap<String, String> TILE_LABEL = new HashMap<String, String>() {{
         put("COMBAT", "⚔️ 전투");  put("PP", "🍀 럭키");     put("TREASURE", "💎 보물상자");
-        put("TRAP",   "🕳️ 함정");  put("SPECIAL", "✨ 특수"); put("STAIRS", "🪜 계단");
+        put("TRAP",   "🕳️ 함정");  put("SPECIAL", "✨ 특수");
+        put("STAIRS_UP", "🪜⬆️ 계단(위)"); put("STAIRS_DOWN", "🪜⬇️ 계단(아래)");
         put("ELITE",  "💪 강화몬스터");
     }};
 
@@ -352,8 +355,8 @@ public class BotS5ServiceImpl implements BotS5Service {
     /**
      * 이 (유저,층) 보드가 아직 없으면(마을 갔다온 뒤 첫 진입 등) 새로 만든다. 칸 개수는
      * TBOT_S5_FLOOR_INFO.TILE_COUNT(층별 고정, 기존과 동일)를 그대로 쓰고 칸 "종류"만 매번
-     * 새로 무작위 배정한다. 고정 개수 칸을 먼저 넣고(계단1, 히든 1~2, 보물상자1, 20층대+엔
-     * 강화몹1) 나머지를 전투50%/함정10%/럭키40%로 채운 뒤 위치를 섞는다.
+     * 새로 무작위 배정한다. 고정 개수 칸을 먼저 넣고(계단 위/아래 각 1개씩 총 2개, 히든 1~2,
+     * 보물상자1, 20층대+엔 강화몹1) 나머지를 전투50%/함정10%/럭키40%로 채운 뒤 위치를 섞는다.
      */
     @Override
     public List<HashMap<String, Object>> ensureUserBoard(String userName, int floor) {
@@ -364,7 +367,9 @@ public class BotS5ServiceImpl implements BotS5Service {
         int tileCount = fi == null ? 8 : intVal(fi.get("TILE_COUNT"), 8);
 
         List<String> types = new ArrayList<>();
-        types.add("STAIRS");
+        // 계단을 위/아래 방향으로 분리(요청) -- 항상 층마다 딱 2칸(각 방향 1개씩) 고정
+        types.add("STAIRS_UP");
+        types.add("STAIRS_DOWN");
         int specialCount = tileCount >= 20 ? 2 : 1;
         for (int i = 0; i < specialCount; i++) types.add("SPECIAL");
         types.add("TREASURE");
@@ -1025,7 +1030,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             case "ELITE":
                 sb.append(startCombat(userName, p, floor, false, true)); // 강화몹: 보스 아님, 강화만
                 break;
-            case "STAIRS": {
+            case "STAIRS_UP": {
                 // floor%10 in 1..8 이므로 다음 칸은 항상 같은 구간 내(최대 9층 보스).
                 // 계단을 밟아도 즉시 층이동하지 않는다 -- MAX_FLOOR_REACHED만 갱신해서
                 // "이 층까지는 계단으로 실제로 밟아봤다"는 자격만 얻고, 실제 이동은
@@ -1036,10 +1041,16 @@ public class BotS5ServiceImpl implements BotS5Service {
                 up.put("userName", userName);
                 up.put("maxFloorReached", nextFloor);
                 dao.updateUserProgress(up);
-                sb.append("🪜 계단을 발견했습니다! ").append(nextFloor).append("층으로 갈 수 있어요.").append(NL)
+                sb.append("🪜⬆️ 위로 향하는 계단을 발견했습니다! ").append(nextFloor).append("층으로 갈 수 있어요.").append(NL)
                   .append("👉 /층변경 ").append(nextFloor % 10).append(" 으로 이동하세요.");
                 break;
             }
+            case "STAIRS_DOWN":
+                // 내려가는 방향은 이미 가본 층이라 별도 해금 로직 없이 안내만(이전 층/마을로는
+                // 이미 자유롭게 /층변경 가능). 위/아래 계단을 구분한 건 층 이동 시 어느 칸에
+                // 도착하는지 방향을 나누기 위함(changeFloor 참고).
+                sb.append("🪜⬇️ 내려가는 계단을 발견했습니다. (/층변경으로 이전 층·마을로 이동 가능)");
+                break;
             default:
                 sb.append("...아무 일도 일어나지 않았다.");
         }
@@ -1766,6 +1777,31 @@ public class BotS5ServiceImpl implements BotS5Service {
             dao.deleteUserFloorProgress(userName, floor);
             dao.deleteTileVisits(userName, floor);
             dao.deleteUserTileMaster(userName, floor); // 마을 귀환 시 보드 재생성(유저별 맵 삭제 → 다음 진입 때 ensureUserBoard가 새로 생성)
+        }
+
+        // "탑 상하이동 시 계단칸에 도착하게 해달라" 요청 -- 사냥터층(1~8)에 도착하면 이동 방향에
+        // 맞는 계단 칸에 서 있는 걸로 위치를 맞춘다: 아래에서 올라왔으면(target > floor) 그 층의
+        // "내려가는 계단"(다시 내려갈 때 쓸 계단)에, 위에서 내려왔으면(target < floor) "올라가는
+        // 계단"에 도착. target은 항상 floor와 같은 10층 구간 안이라 단순 대소 비교로 방향이 정확히
+        // 갈린다. 마을/보스층은 보드가 없어서 해당 없음.
+        if (targetFm >= 1 && targetFm <= 8) {
+            String landTileType = target > floor ? "STAIRS_DOWN" : "STAIRS_UP";
+            List<HashMap<String, Object>> targetTiles = ensureUserBoard(userName, target);
+            int landTileNo = 0;
+            for (HashMap<String, Object> t : targetTiles) {
+                if (landTileType.equals(strVal(t.get("TILE_TYPE"), ""))) {
+                    landTileNo = intVal(t.get("TILE_NO"), 0);
+                    break;
+                }
+            }
+            if (landTileNo > 0) {
+                HashMap<String, Object> ufpSave = new HashMap<>();
+                ufpSave.put("userName", userName);
+                ufpSave.put("floor", target);
+                ufpSave.put("curTile", landTileNo);
+                dao.upsertUserFloorProgress(ufpSave);
+                dao.insertTileVisit(userName, target, landTileNo);
+            }
         }
 
         // 마을(X0층) 도착 시 전투불가(HP 0) 상태였던 파티원을 부활시킨다 -- 전투 승리/패배로는

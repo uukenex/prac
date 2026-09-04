@@ -63,7 +63,7 @@
     .tile .tno{ position:absolute; top:1px; left:3px; font-size:7px; opacity:.75; }
     .tile.combat{ background:var(--combat); } .tile.treasure{ background:var(--treasure); }
     .tile.pp{ background:var(--pp); } .tile.trap{ background:var(--trap); } .tile.special{ background:var(--special); }
-    .tile.stairs{ background:var(--gold); } .tile.elite{ background:var(--elite); }
+    .tile.stairs-up{ background:var(--gold); } .tile.stairs-down{ background:var(--village); } .tile.elite{ background:var(--elite); }
     .tile.hidden{ background:#D8CDB4; color:#8a7f68; }
     .tile.done{ opacity:.55; } .tile.here{ outline:2px solid var(--ink); transform:scale(1.15); opacity:1; z-index:2; }
     .legend{ display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
@@ -262,7 +262,8 @@
           <span class="legend-chip"><span class="legend-dot" style="background:var(--trap)"></span>함정</span>
           <span class="legend-chip"><span class="legend-dot" style="background:var(--special)"></span>특수</span>
           <span class="legend-chip"><span class="legend-dot" style="background:var(--elite)"></span>💪 강화몬스터</span>
-          <span class="legend-chip"><span class="legend-dot" style="background:var(--gold)"></span>계단</span>
+          <span class="legend-chip"><span class="legend-dot" style="background:var(--gold)"></span>계단↑(위)</span>
+          <span class="legend-chip"><span class="legend-dot" style="background:var(--village)"></span>계단↓(아래)</span>
           <span class="legend-chip"><span class="legend-dot" style="background:#D8CDB4"></span>미발견</span>
         </div>
       </div>
@@ -425,8 +426,10 @@ var TW = (function () {
     updateDiceButtonState();
   }
 
-  var TILE_CLASS = { COMBAT: 'combat', TREASURE: 'treasure', PP: 'pp', TRAP: 'trap', SPECIAL: 'special', STAIRS: 'stairs', ELITE: 'elite' };
-  var TILE_KR    = { COMBAT: '전투', TREASURE: '보물상자', PP: '럭키', TRAP: '함정', SPECIAL: '특수', STAIRS: '계단', ELITE: '강화몬스터' };
+  var TILE_CLASS = { COMBAT: 'combat', TREASURE: 'treasure', PP: 'pp', TRAP: 'trap', SPECIAL: 'special',
+                      STAIRS_UP: 'stairs-up', STAIRS_DOWN: 'stairs-down', ELITE: 'elite' };
+  var TILE_KR    = { COMBAT: '전투', TREASURE: '보물상자', PP: '럭키', TRAP: '함정', SPECIAL: '특수',
+                      STAIRS_UP: '계단↑', STAIRS_DOWN: '계단↓', ELITE: '강화몬스터' };
   function tileClass(type) { return TILE_CLASS[type] || 'combat'; }
 
   function loadStatus() {
