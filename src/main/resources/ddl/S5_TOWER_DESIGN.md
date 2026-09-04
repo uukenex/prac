@@ -657,6 +657,17 @@ S4의 `TBOT_S4_ACHIEVEMENT`/`TBOT_S4_USER_ACH` 패턴을 확장 계승. S5에서
   벌어들인 PP 총합을 추적. 모든 PP 지급이 `addPp()` 한 곳을 거치므로 그 함수 안에서 같이
   누적(기존 로직 변경 없이 안전하게 추가). 기존 유저는 최소한 현재 보유 PP만큼은 이미 벌었을
   것이므로 `S5_TOTAL_PP_EARNED.sql`에서 PP_VALUE/EXT로 백필(실 DB 적용 완료, 20명 반영).
+- **[긴급 버그 수정] 웹 UI 층이동 500 에러**: "층이동이 잘 안 되고 500 에러가 난다"는 신고로
+  즉시 실 서버에서 재현 확인 -- 원인은 `TBOT_S5_USER_TILE_MASTER.TILE_TYPE`이 `VARCHAR2(10)`
+  인데 새로 추가한 `'STAIRS_DOWN'`이 11자라 ORA-12899(value too large for column)가 나면서
+  보드 생성 자체가 실패, `changeFloor()`가 그 예외를 그대로 던져 500으로 노출되던 것. 두 테이블
+  (`TBOT_S5_USER_TILE_MASTER`/구 전역 테이블 `TBOT_S5_TILE_MASTER`) 모두 `VARCHAR2(15)`로
+  긴급 확장(`S5_TILE_TYPE_WIDEN.sql`, 실 DB 적용 후 라이브에서 재현 테스트로 200 정상 확인).
+  같이 발견한 별개 잠재 버그도 수정: `ensureUserBoard()`에 `@Transactional`이 없어서 트랜잭션이
+  안 걸린 컨텍스트(SPA 조회 전용 API)에서 부르면 새로 만든 보드가 커밋 안 되고 매번 새로
+  랜덤 생성만 되던 문제(웹으로만 접속하고 채팅 명령어를 한 번도 안 쓴 계정은
+  `TBOT_S5_USER_TILE_MASTER`에 행이 0개였던 것으로 실제 확인) -- 메서드에 `@Transactional`
+  추가해서 어디서 불러도 항상 커밋되도록 수정.
 - **전투 로그 간결화 + 몬스터 반격 이후 파티 HP 표시**: "텍스트가 너무 길다, 반격 이후 파티
   체력도 보여달라"는 요청. 파티원 공격 줄에서 "(공격력 X, 범위 Y~Z)"를 뺌(전투 시작 전 "OO
   등장!" 메시지에 이미 표시되므로 매 줄 반복 불필요), 직업별 특수효과(마법사 스턴/도적 스틸/

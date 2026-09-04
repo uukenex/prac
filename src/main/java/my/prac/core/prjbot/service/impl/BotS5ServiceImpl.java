@@ -358,7 +358,15 @@ public class BotS5ServiceImpl implements BotS5Service {
      * 새로 무작위 배정한다. 고정 개수 칸을 먼저 넣고(계단 위/아래 각 1개씩 총 2개, 히든 1~2,
      * 보물상자1, 20층대+엔 강화몹1) 나머지를 전투50%/함정10%/럭키40%로 채운 뒤 위치를 섞는다.
      */
+    // [버그 수정] @Transactional이 없어서, 트랜잭션이 안 걸린 컨텍스트(예: Season5ViewController의
+    // 읽기 전용 GET들이 이걸 호출하는 buildTilesWithFogOfWar)에서 부르면 새로 만든 보드가
+    // insertUserTileMasterBatch로 저장은 시도되지만 커밋이 안 돼서(스프링+마이바티스 조합에서
+    // 트랜잭션 밖 쓰기는 세션이 닫히며 조용히 롤백됨) 매번 새로 랜덤 생성만 되고 실제로는 절대
+    // 저장이 안 되는 문제가 있었다(실 DB 확인: 활발히 플레이 중인 계정인데 TBOT_S5_USER_TILE_MASTER
+    // 행이 0개). changeFloor()/rollDice()처럼 이미 @Transactional인 곳에서 부르면 그 트랜잭션에
+    // 합류하므로 원래도 정상 동작했음 -- 이 메서드 자체에 달아서 어디서 불러도 항상 커밋되게 함.
     @Override
+    @Transactional
     public List<HashMap<String, Object>> ensureUserBoard(String userName, int floor) {
         List<HashMap<String, Object>> existing = dao.selectUserTileMaster(userName, floor);
         if (!existing.isEmpty()) return existing;
