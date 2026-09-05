@@ -644,7 +644,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             case "ROGUE":   return "🗡️ 도적 3인조 시너지! PP 훔치기 확률 상승, 훔친 PP량 2배" + NL;
             case "ARCHER":  return "🏹 궁수 3인조 시너지! 파티 전체 공격력 +30%" + NL;
             case "PRIEST":  return "✨ 도사 3인조 시너지! 보호막량 2배" + NL;
-            case "RAINBOW": return "🌈 균형 파티 시너지(직업 3종 전부 다름)! 파티 전체 공격력/방어력 +10%" + NL;
+            case "RAINBOW": return ""; // 균형 파티 시너지 멘트 제거 요청(효과 자체는 유지)
             default:        return "";
         }
     }
@@ -689,7 +689,6 @@ public class BotS5ServiceImpl implements BotS5Service {
         sb.append("  ※ 계단(STAIRS) 칸을 밟으면 다음 층으로 갈 '자격'만 생기고, 실제 이동은 이 명령어를 입력해야 합니다.").append(NL);
         sb.append("  ⚠️ 사냥터층에서 0층(마을, /층변경 0)으로 가면 방금 있던 층의 탐사맵(보드 위치+발견기록)이 초기화됩니다. 원정 중엔 끝까지 밀고 올라가세요!").append(NL);
         sb.append("  ⚠️ 보스를 처치해 다음 10층 구간으로 넘어가면 그 구간 사냥터층(전투/탐사)으로는 다시 못 돌아갑니다(편도 진행, 마을은 예외 — 아래 /탑내려가기 참고).").append(NL);
-        sb.append("  👹 29층 이후 보스는 전투 시작 시 파티원 1명을 무시(그 동료는 이번 전투 내내 보스에게 공격이 안 통함, 보스 반격은 평소처럼 받음), 반격 턴마다 30% 확률로 다른 동료를 기절(다음 공격 1회 불가)시킵니다.").append(NL);
         sb.append("/층내려가기 (별칭: /층다운) : 지금 있는 구간 안에서 바로 아래 한 층으로 이동(예: 28층 → 27층). 이미 그 구간 마을이면 실패(대신 /탑내려가기 사용). 전투 중이면 도망 처리(/층변경과 동일)").append(NL);
         sb.append("/탑내려가기 (별칭: /탑다운) : 마을에서만 사용 가능, 바로 아래 10층 구간의 마을로 이동(예: 20층 마을 → 10층 마을). 사냥터층은 거치지 않고 마을끼리만 이동하며, 몇 번이든 반복 가능").append(NL);
         sb.append("  💡 구간 앞부분(1~4층 위치)에서 파티가 여러 번 전멸하면, 스탯/장비를 더 준비하고 오라고 /탑내려가기를 자동으로 안내해줍니다.").append(NL);
@@ -708,7 +707,6 @@ public class BotS5ServiceImpl implements BotS5Service {
         sb.append("도적★★★ : PP훔치기 확률 상승, 훔친 PP량 2배").append(NL);
         sb.append("궁수★★★ : 파티 전체 공격력 +30%").append(NL);
         sb.append("도사★★★ : 보호막량 2배").append(NL);
-        sb.append("직업 3종 전부 다름(균형) : 파티 전체 공격력/방어력 +10%").append(NL);
         sb.append(NL);
 
         sb.append("[동료 성급 특수효과] ★5/★6 동료는 그 직업에 완전히 새로운 개인 효과가 생김(시너지와 별개, 중복 적용)").append(NL);
