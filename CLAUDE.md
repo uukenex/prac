@@ -75,5 +75,17 @@ GET /loa/chat
   출력으로도 한 번 더 확인**할 것 — sqlplus 왕복 결과만 믿지 말 것.
   참고 예시: `src/main/resources/ddl/S5_MONSTER_RENAME_HEX.sql`
 - 조회(SELECT)만 할 땐 `export NLS_LANG=KOREAN_KOREA.AL32UTF8` 정도로 충분.
+- **이모지(surrogate pair, 4바이트 UTF-8)를 sqlplus로 직접 INSERT해서 왕복 테스트하면 그
+  결과를 믿지 말 것** — 위 한글 CP949 함정과 같은 경로(git-bash↔sqlplus.exe↔Windows 콘솔
+  코드페이지)에서 이모지도 깨진다(2026-09-05에 `NVARCHAR2`/`NCLOB` 컬럼으로 이미 바꿔둔
+  컬럼에 이모지를 직접 INSERT했는데도 sqlplus에서 넣고 바로 조회하면 `?`/`？`로 깨져서 보여서
+  "고친 게 안 먹히나?" 헷갈렸음 — 실제로는 컬럼은 정상, 터미널 왕복 경로만 문제였음).
+  → **이모지가 실제로 잘 들어가는지 확인할 땐 `UNISTR('\D83C\DFB2')`처럼 UTF-16 서로게이트
+  페어를 코드값(순수 ASCII 이스케이프)으로 직접 써서 INSERT하고, 조회도 `ASCIISTR(col)`로
+  받아서(터미널에 이모지 글자 자체를 안 띄우고 `\D83C\DFB2` 같은 이스케이프 문자열로) 비교할
+  것** — 이러면 스크립트 파일 자체는 ASCII만 있어서 인코딩 경로가 전혀 개입 안 함.
+  참고 예시: `src/main/resources/ddl/S5_WORD_HIS_EMOJI_FIX.sql`(마이그레이션),
+  그 마이그레이션 검증 시 실제로 쓴 쿼리 -- `INSERT INTO t (REQ) VALUES
+  (UNISTR('test\D83C\DFB2dice')); SELECT ASCIISTR(REQ) FROM t;`.
 
 #테스트

@@ -66,15 +66,20 @@
     .tile.stairs-up{ background:var(--gold); } .tile.stairs-down{ background:var(--village); } .tile.elite{ background:var(--elite); }
     .tile.hidden{ background:#D8CDB4; color:#8a7f68; }
     .tile.done{ opacity:.55; } .tile.here{ outline:2px solid var(--ink); transform:scale(1.15); opacity:1; z-index:2; }
-    /* [2026-09-05] 주사위 교체 오버레이 -- 보드 칸그리드(.tower-viewport) 좌상단에 떠서
-       스크롤해도 항상 같은 자리에 보인다(position:sticky). 해금 안 된 등급은 흐리게(클릭 불가). */
-    .dice-overlay{ position:sticky; top:6px; left:6px; z-index:5;
-                   display:inline-flex; gap:4px; flex-wrap:wrap; max-width:160px;
-                   background:var(--parchment); border:1px solid var(--line); border-radius:999px;
-                   padding:4px 6px; box-shadow:var(--shadow); }
-    .dice-overlay button{ border:none; border-radius:999px; padding:3px 8px; font-size:11px;
-                   font-weight:700; cursor:pointer; background:#fff; color:var(--ink); }
-    .dice-overlay button.current{ background:var(--gold); color:#fff; }
+    /* [2026-09-05] 주사위 교체 오버레이 -- board-card 기준 절대좌표로 칸그리드
+       (.tower-viewport) 좌상단 위에 떠있다. board-card 밖(스크롤 영역 밖)이라 보드
+       크기(scrollWidth/Height)에 전혀 영향을 안 줘서 스크롤바가 새로 생기지 않는다.
+       한 줄로만 나열(줄바꿈 없음, 넘치면 가로 스크롤)하고, 사용중인 주사위는 더 크게/
+       진하게 돋보이도록 표시. */
+    .dice-overlay{ position:absolute; top:38px; left:22px; z-index:5;
+                   display:flex; gap:4px; flex-wrap:nowrap; max-width:calc(100% - 32px);
+                   overflow-x:auto; background:var(--parchment); border:1px solid var(--line);
+                   border-radius:999px; padding:4px 6px; box-shadow:var(--shadow); }
+    .dice-overlay button{ flex:0 0 auto; border:none; border-radius:999px; padding:3px 9px;
+                   font-size:11px; font-weight:700; cursor:pointer; background:#fff;
+                   color:var(--ink); transition:transform .1s; }
+    .dice-overlay button.current{ background:var(--gold); color:#fff; font-size:13px;
+                   padding:5px 12px; box-shadow:0 2px 0 rgba(0,0,0,.18); transform:scale(1.08); }
     .dice-overlay button.locked{ background:transparent; color:var(--ink-soft); opacity:.5; cursor:default; }
     .legend{ display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
     .legend-chip{ display:flex; align-items:center; gap:4px; font-size:10px; color:var(--ink-soft); background:#fff;
@@ -235,7 +240,7 @@
     /* 보드 + 층이동 탑: 모바일에선 위아래로 쌓고(기존과 동일), PC처럼 넓은 화면에선 부루마불판
        옆에 나란히 두는 게 낫다는 요청으로 폭 700px 이상에서만 가로 배치로 전환. */
     .board-row{ display:flex; flex-direction:column; gap:10px; }
-    .board-card{ flex:1 1 auto; min-width:0; }
+    .board-card{ flex:1 1 auto; min-width:0; position:relative; }
     .tower-nav-card{ flex:0 0 auto; }
     @media (min-width:700px){
       .board-row{ flex-direction:row; align-items:flex-start; }
@@ -267,13 +272,16 @@
     <div class="board-row">
       <div class="card board-card">
         <div class="card-title">보드</div>
+        <!-- [2026-09-05] 주사위 교체를 상점탭에서 여기(칸그리드 위 오버레이)로 옮김 -- 해금된
+             것만 버튼으로 눌러 즉시 교체(자동구매형태, 별도 확인 없음). renderDiceOverlay 참고.
+             #towerViewport(스크롤 영역) 밖, board-card 기준 절대좌표로 띄워서 보드가 아무리
+             커도 스크롤 영역의 가로/세로 크기에 영향을 안 준다(전에 안에 넣었더니 작은 보드에서
+             스크롤바가 생기던 문제 수정) -- 시각적으로는 여전히 칸그리드 좌상단 위에 겹쳐 보임. -->
+        <div class="dice-overlay" id="diceOverlay"></div>
         <div class="tower-viewport" id="towerViewport">
           <div class="tower-track" id="towerTrack">
             <div style="color:var(--ink-soft);font-size:12px;">데이터를 불러오는 중...</div>
           </div>
-          <!-- [2026-09-05] 주사위 교체를 상점탭에서 여기(칸그리드 위 오버레이)로 옮김 -- 해금된
-               것만 버튼으로 눌러 즉시 교체(자동구매형태, 별도 확인 없음). renderDiceOverlay 참고. -->
-          <div class="dice-overlay" id="diceOverlay"></div>
         </div>
         <div class="legend">
           <span class="legend-chip"><span class="legend-dot" style="background:var(--combat)"></span>전투</span>
