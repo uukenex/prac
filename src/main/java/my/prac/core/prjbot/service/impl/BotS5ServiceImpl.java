@@ -806,6 +806,58 @@ public class BotS5ServiceImpl implements BotS5Service {
         return intVal(list.get(displayIdx - 1).get("GACHA_ID"), 0);
     }
 
+    // 매크로 탐지: 이 이상 촘촘하지 않으면 애초에 "빠르게 연타"일 뿐 자동화로 보기 어려움
+    private static final long MACRO_MAX_INTERVAL_SEC = 20;
+    // 이전 간격과 이만큼(초) 이내로 차이나면 "같은 타이머"로 본다
+    private static final long MACRO_TOLERANCE_SEC = 1;
+    // 이 횟수 연속으로 "같은 타이머"가 감지되면 일시정지
+    private static final int MACRO_STREAK_THRESHOLD = 15;
+
+    /**
+     * 매크로(자동화 클라이언트) 탐지 + 잠금 처리. 쿨타임 통과 여부와 무관하게 "요청이 들어온
+     * 간격" 자체가 여러 번 연속으로 거의 똑같으면(사람은 이렇게 못 침) 일시정지시키고, 이미
+     * 일시정지된 계정이 그래도 계속 시도하면 영구정지로 격상한다. 잠기지 않았으면 null 반환.
+     */
+    private String checkMacroLock(String userName, HashMap<String, Object> p) {
+        if ("Y".equals(strVal(p.get("BAN_YN"), "N"))) {
+            return "🚫 매크로(자동화) 사용이 확인되어 영구정지된 계정입니다.";
+        }
+
+        java.util.Date lastReq = (java.util.Date) p.get("LAST_REQUEST_DATE");
+        long nowMs = System.currentTimeMillis();
+        long curIntervalSec = lastReq == null ? -1 : (nowMs - lastReq.getTime()) / 1000L;
+
+        if ("Y".equals(strVal(p.get("SUSPEND_YN"), "N"))) {
+            // 이미 매크로 의심으로 일시정지된 계정이 그래도 계속 시도 -- 영구정지로 격상.
+            HashMap<String, Object> up = new HashMap<>();
+            up.put("userName", userName);
+            up.put("banYn", "Y");
+            up.put("touchLastRequestDate", true);
+            dao.updateUserProgress(up);
+            return "🚫 일시정지 상태에서 계속 시도하여 영구정지 처리되었습니다. (관리자 문의)";
+        }
+
+        int prevStreak = intVal(p.get("MACRO_STREAK"), 0);
+        long prevIntervalSec = (long) intVal(p.get("LAST_REQUEST_INTERVAL_SEC"), -1);
+        boolean sameTimer = curIntervalSec >= 0 && curIntervalSec <= MACRO_MAX_INTERVAL_SEC
+                && prevIntervalSec >= 0 && Math.abs(curIntervalSec - prevIntervalSec) <= MACRO_TOLERANCE_SEC;
+        int newStreak = sameTimer ? prevStreak + 1 : 0;
+
+        HashMap<String, Object> up = new HashMap<>();
+        up.put("userName", userName);
+        up.put("touchLastRequestDate", true);
+        up.put("lastRequestIntervalSec", (int) curIntervalSec);
+        up.put("macroStreak", newStreak);
+
+        if (newStreak >= MACRO_STREAK_THRESHOLD) {
+            up.put("suspendYn", "Y");
+            dao.updateUserProgress(up);
+            return "🚫 매크로(자동화) 사용이 의심되어 일시정지되었습니다. (관리자 문의 필요)";
+        }
+        dao.updateUserProgress(up);
+        return null;
+    }
+
     // ================================================================
     // /주사위, /ㅈㅅㅇ
     // ================================================================
@@ -827,6 +879,13 @@ public class BotS5ServiceImpl implements BotS5Service {
                     + "계정을 생성했습니다! 현재 0층 마을이에요." + NL
                     + "👉 하급 동료 계약서 무료뽑기를 하세요! (/동료뽑기1)";
         }
+
+        // [2026-09-05 신설] 매크로(자동화 클라이언트) 탐지 -- "팔세쪽있음" 계정이 웹 DICE
+        // 액션을 20분 넘게 거의 완벽하게 균일한 4초 간격으로 반복하는 걸 실 로그로 확인
+        // (사람이 낼 수 없는 규칙성). 쿨타임 통과 여부와 무관하게 "요청이 들어온 간격" 자체를
+        // 본다(매크로는 쿨타임 안내를 받아도 그냥 같은 타이머로 계속 찌르기 때문).
+        String macroLockMsg = checkMacroLock(userName, p);
+        if (macroLockMsg != null) return macroLockMsg;
 
         java.util.Date lastAction = (java.util.Date) p.get("LAST_DICE_ACTION_DATE");
         String autoHuntMsg = settleAutoHunt(userName, p);

@@ -1254,6 +1254,30 @@ S4의 `TBOT_S4_ACHIEVEMENT`/`TBOT_S4_USER_ACH` 패턴을 확장 계승. S5에서
   아닐 수 있는) 가로/세로 비율에 맞춰 늘려서 칸 위치와 어긋나지 않게 함. `TRACK_PATHS` 4종
   전부 닫힌(Z) 루프로 교체(열린 와인딩 경로 2종 삭제)하고, 칸 아이콘이 뷰포트 경계 밖으로
   잘리지 않도록 좌표 범위도 0~100에서 12~88 안쪽으로 좁혀 다시 그림.
+- **[2026-09-05] TBOT_WORD_HIS 이모지 수정 3차 - 커스텀 TypeHandler**: 2차 수정(내장
+  `NClobTypeHandler` 지정)도 배포해서 SQL 로그로 `<Reader of length N>` 바인딩까지 확인했는데
+  여전히 라이브에서 깨짐 -- 내장 `NClobTypeHandler`가 쓰는 `setCharacterStream()`이 국가문자셋
+  바인딩을 driver에 확실히 보장하지 않는 것으로 판단, `my.prac.core.util.
+  NCharStringTypeHandler`/`NCharClobTypeHandler`를 새로 만들어 각각
+  `PreparedStatement.setNString()`/`setNClob()`을 직접 호출하도록 강제(둘 다 JDBC 표준
+  N-접두 메서드라 driver가 국가문자셋 처리를 모호하게 판단할 여지가 없음). `BotMapper.xml`의
+  `insertBotWordHis`가 이 커스텀 핸들러를 쓰도록 변경. 이번에도 앱 재배포 필요, 재배포 후
+  실제 로그(`ASCIISTR`)로 재검증 필요.
+- **[2026-09-05] 매크로(자동화) 탐지 + 일시정지/영구정지**: "팔세쪽있음" 계정이 웹 DICE
+  액션을 20분 넘게 거의 완벽한 ~4초 간격으로 반복하는 걸 `TBOT_WORD_HIS` 실 로그로 확인(사람은
+  이 정도 균일한 타이밍을 못 냄) -- 매크로 탐지 기능 신설 요청. `TBOT_S5_USER_PROGRESS`에
+  `LAST_REQUEST_DATE`(쿨타임 통과 여부와 무관하게 `rollDice()` 호출마다 매번 갱신 -- 기존
+  `LAST_DICE_ACTION_DATE`는 쿨타임 통과 시에만 갱신되므로 별도 필드 신설),
+  `LAST_REQUEST_INTERVAL_SEC`, `MACRO_STREAK`, `SUSPEND_YN`, `BAN_YN` 5개 컬럼 추가
+  (`S5_MACRO_LOCK.sql`, 실 DB 적용 완료). `checkMacroLock()`을 `rollDice()` 맨 앞에서 호출:
+  - 이전 요청과의 간격이 20초 이내이면서 그 이전 간격과 1초 이내로 거의 같은 상태가 15회
+    연속되면 "같은 타이머로 자동화 중"으로 보고 `SUSPEND_YN='Y'`(일시정지) 처리.
+  - `SUSPEND_YN='Y'`인 계정이 그래도 계속 시도하면 즉시 `BAN_YN='Y'`(영구정지)로 격상.
+  - `BAN_YN='Y'`이면 이후 모든 `/주사위` 시도를 조용히 차단.
+  - 자연스러운 텀(20초 초과)이 한 번이라도 있으면 스트릭이 0으로 리셋되어 오탐 방지.
+  현재는 `/주사위`(이동+전투 통합 진입점)에만 적용 -- 이번 사례가 여기서 나왔고 파급력이
+  가장 큰 지점이라 우선 적용, 다른 반복 액션(가챠 등)으로 확장은 필요시 추가 예정.
+  IP 차단은 별도로 고려 중이라는 언급이 있었으나 이번 배치엔 미포함(계정 단위 잠금까지만).
 
 ### 남은 TODO
 
