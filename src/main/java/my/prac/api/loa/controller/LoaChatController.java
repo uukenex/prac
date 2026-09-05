@@ -1094,7 +1094,11 @@ public class LoaChatController {
 				break;
 			case "/갱신":
 				passYn = true;
-				val = boss.refreshCache() + enterStr + s5.refreshConfig();
+				// [2026-09-06] "시즌5 정보가 아닌 건 멘트 지워달라" 요청 -- 보스 미니게임 쪽
+				// 캐시 갱신은 부수효과(캐시 클리어/재조회)만 그대로 실행하고, 그 확인 문구는
+				// 화면에 안 보여준다(시즌5 설정 갱신 결과만 표시).
+				boss.refreshCache();
+				val = s5.refreshConfig();
 				break;
 			case "/이미지갱신":
 				passYn = true;

@@ -553,4 +553,22 @@
         SELECT FACE_VALUE, ROLL_COUNT FROM TBOT_S5_DICE_STATS ORDER BY FACE_VALUE
     </select>
 
+    <!-- /탑통계 시간대별(1시간/24시간/오늘) 집계용. statType/channel은 화이트리스트에서만 오므로 ${} 안전 -->
+    <update id="bumpActivityHourly">
+        MERGE INTO TBOT_S5_ACTIVITY_HOURLY T
+        USING (SELECT TRUNC(SYSDATE, 'HH24') AS BD, '${statType}' AS ST, '${channel}' AS CH FROM DUAL) S
+        ON (T.BUCKET_DATE = S.BD AND T.STAT_TYPE = S.ST AND T.CHANNEL = S.CH)
+        WHEN MATCHED THEN UPDATE SET CNT = CNT + 1
+        WHEN NOT MATCHED THEN INSERT (BUCKET_DATE, STAT_TYPE, CHANNEL, CNT) VALUES (S.BD, S.ST, S.CH, 1)
+    </update>
+
+    <select id="selectActivityHourly" resultType="hashmap">
+        SELECT STAT_TYPE, CHANNEL,
+               SUM(CASE WHEN BUCKET_DATE >= TRUNC(SYSDATE, 'HH24') THEN CNT ELSE 0 END) AS HOUR1,
+               SUM(CASE WHEN BUCKET_DATE >= SYSDATE - 1 THEN CNT ELSE 0 END) AS HOUR24,
+               SUM(CASE WHEN BUCKET_DATE >= TRUNC(SYSDATE) THEN CNT ELSE 0 END) AS TODAY
+        FROM TBOT_S5_ACTIVITY_HOURLY
+        GROUP BY STAT_TYPE, CHANNEL
+    </select>
+
 </mapper>

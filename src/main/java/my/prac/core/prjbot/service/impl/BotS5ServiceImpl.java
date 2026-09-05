@@ -2713,12 +2713,6 @@ public class BotS5ServiceImpl implements BotS5Service {
         int webOnly = web - both;
         int chatOnly = chat - both;
         int neither = total - web - chatOnly; // = total - (web ∪ chat), 아직 아무 활동도 없는 유저(계정만 생성)
-        long diceWeb = ((Number) stat.getOrDefault("DICE_WEB", 0)).longValue();
-        long diceChat = ((Number) stat.getOrDefault("DICE_CHAT", 0)).longValue();
-        long gachaWeb = ((Number) stat.getOrDefault("GACHA_WEB", 0)).longValue();
-        long gachaChat = ((Number) stat.getOrDefault("GACHA_CHAT", 0)).longValue();
-        long wipeWeb = ((Number) stat.getOrDefault("WIPE_WEB", 0)).longValue();
-        long wipeChat = ((Number) stat.getOrDefault("WIPE_CHAT", 0)).longValue();
 
         StringBuilder sb = new StringBuilder();
         sb.append("┌────────────────┐").append(NL);
@@ -2733,13 +2727,35 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (neither > 0) {
             sb.append("⚪ 기록 없음(계정만 생성): ").append(neither).append("명").append(NL);
         }
-        sb.append(NL);
-        sb.append("🎲 총 주사위(이동+전투) — 웹 ").append(diceWeb).append(" / 카톡 ").append(diceChat)
-          .append(" (합계 ").append(diceWeb + diceChat).append(")").append(NL);
-        sb.append("🎰 총 뽑기 시도 — 웹 ").append(gachaWeb).append(" / 카톡 ").append(gachaChat)
-          .append(" (합계 ").append(gachaWeb + gachaChat).append(", 10연속도 1회로 집계)").append(NL);
-        sb.append("💀 파티 전멸 — 웹 ").append(wipeWeb).append(" / 카톡 ").append(wipeChat)
-          .append(" (합계 ").append(wipeWeb + wipeChat).append(")").append(NL);
+
+        // [2026-09-06] "1시간/24시간/오늘 기준도 보고 싶다" 요청 -- TBOT_S5_ACTIVITY_HOURLY
+        // (시간 버킷) 기준으로 세 구간을 먼저 보여주고, 마지막에 전체 누적을 보여준다.
+        // 시간/24시간/오늘은 달력 기준(현재 시(hour) 버킷 / 최근 24개 버킷 / 자정 이후 버킷
+        // 합)이라 "정확히 지금부터 60분 전"같은 엄밀한 롤링 윈도우는 아니다.
+        try {
+            List<HashMap<String, Object>> hourlyRows = dao.selectActivityHourly();
+            HashMap<String, HashMap<String, Object>> byKey = new HashMap<>();
+            for (HashMap<String, Object> row : hourlyRows) {
+                byKey.put(strVal(row.get("STAT_TYPE"), "") + "_" + strVal(row.get("CHANNEL"), ""), row);
+            }
+            appendActivityWindow(sb, byKey, "⏱ 최근 1시간", "HOUR1");
+            appendActivityWindow(sb, byKey, "🕐 최근 24시간", "HOUR24");
+            appendActivityWindow(sb, byKey, "📅 오늘(00:00~)", "TODAY");
+        } catch (Exception e) {
+            // S5_ACTIVITY_HOURLY.sql 미적용 등으로 테이블이 없을 때도 나머지 통계는 정상 출력되게
+            sb.append(NL).append("(시간대별 통계는 TBOT_S5_ACTIVITY_HOURLY 테이블 확인 필요)").append(NL);
+        }
+
+        long diceWeb = ((Number) stat.getOrDefault("DICE_WEB", 0)).longValue();
+        long diceChat = ((Number) stat.getOrDefault("DICE_CHAT", 0)).longValue();
+        long gachaWeb = ((Number) stat.getOrDefault("GACHA_WEB", 0)).longValue();
+        long gachaChat = ((Number) stat.getOrDefault("GACHA_CHAT", 0)).longValue();
+        long wipeWeb = ((Number) stat.getOrDefault("WIPE_WEB", 0)).longValue();
+        long wipeChat = ((Number) stat.getOrDefault("WIPE_CHAT", 0)).longValue();
+        sb.append(NL).append("📆 전체 누적").append(NL);
+        appendActivityLine(sb, "🎲", "주사위(이동+전투)", diceWeb, diceChat);
+        appendActivityLine(sb, "🎰", "뽑기 시도(10연속도 1회)", gachaWeb, gachaChat);
+        appendActivityLine(sb, "💀", "파티 전멸", wipeWeb, wipeChat);
 
         try {
             List<HashMap<String, Object>> faceRows = dao.selectDiceFaceStats();
@@ -2763,12 +2779,31 @@ public class BotS5ServiceImpl implements BotS5Service {
             sb.append(NL).append("🎲 주사위 눈 분포: (TBOT_S5_DICE_STATS 테이블 확인 필요)");
         }
 
-        sb.append(NL).append(NL).append("⚠️ 모든 수치는 이 기능이 생긴 시점(2026-09-04)부터의 누적입니다(과거 이력 없음). 주사위 눈 분포는 이동/전투공격/보호막/몬스터반격 등 모든 굴림을 합친 것이며, 등급이 높은 주사위(d8~d20)를 쓰는 유저가 적어 7 이상은 표본이 작습니다.");
         return sb.toString();
     }
 
     private int pct(int part, int total) {
         return total <= 0 ? 0 : (int) Math.round(part * 100.0 / total);
+    }
+
+    /** /탑통계 한 줄(이모지 + 라벨 + 웹/카톡 + 합계). */
+    private void appendActivityLine(StringBuilder sb, String emoji, String label, long web, long chat) {
+        sb.append(emoji).append(" ").append(label).append(" — 웹 ").append(web).append(" / 카톡 ").append(chat)
+          .append(" (합계 ").append(web + chat).append(")").append(NL);
+    }
+
+    /** /탑통계 시간대 구간 하나(제목 + 주사위/뽑기/전멸 3줄). windowCol은 HOUR1/HOUR24/TODAY. */
+    private void appendActivityWindow(StringBuilder sb, HashMap<String, HashMap<String, Object>> byKey, String title, String windowCol) {
+        sb.append(NL).append(title).append(NL);
+        appendActivityLine(sb, "🎲", "주사위", hourlyVal(byKey, "DICE", "WEB", windowCol), hourlyVal(byKey, "DICE", "CHAT", windowCol));
+        appendActivityLine(sb, "🎰", "뽑기", hourlyVal(byKey, "GACHA", "WEB", windowCol), hourlyVal(byKey, "GACHA", "CHAT", windowCol));
+        appendActivityLine(sb, "💀", "전멸", hourlyVal(byKey, "WIPE", "WEB", windowCol), hourlyVal(byKey, "WIPE", "CHAT", windowCol));
+    }
+
+    private long hourlyVal(HashMap<String, HashMap<String, Object>> byKey, String statType, String channel, String windowCol) {
+        HashMap<String, Object> row = byKey.get(statType + "_" + channel);
+        if (row == null) return 0;
+        return ((Number) row.getOrDefault(windowCol, 0)).longValue();
     }
 
     private static final HashMap<String, String[]> ACTIVITY_STAT_COLUMNS = new HashMap<String, String[]>() {{
@@ -2790,6 +2825,17 @@ public class BotS5ServiceImpl implements BotS5Service {
             dao.bumpActivityStat(userName, cols[0], cols[1]);
         } catch (Exception ignore) {
             // 통계 적재 실패가 실제 게임 액션 응답을 막으면 안 됨(TBOT_WORD_HIS 로깅과 동일 관례)
+        }
+        // [2026-09-06] "/탑통계에 1시간/24시간/오늘 기준도 보고싶다" 요청 -- 전체 누적 컬럼과
+        // 별개로, 현재 시(hour) 버킷에도 같이 적재해서 시간대별 집계를 가능하게 함.
+        // statKey는 항상 "STATTYPE_CHANNEL"(예: DICE_WEB) 형태의 고정 화이트리스트 값.
+        try {
+            int us = statKey.lastIndexOf('_');
+            if (us > 0) {
+                dao.bumpActivityHourly(statKey.substring(0, us), statKey.substring(us + 1));
+            }
+        } catch (Exception ignore) {
+            // 마찬가지로 통계 실패가 게임 진행을 막으면 안 됨
         }
     }
 
