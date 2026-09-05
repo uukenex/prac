@@ -685,6 +685,9 @@ var TW = (function () {
       } else if (!d.unlocked) {
         btn.className = 'locked';
         btn.title = d.unlockFloor + '층부터 해금';
+        // [2026-09-06] "미해금 주사위 눌렀을 때 언제 풀리는지 보여달라" 요청 -- title(호버)은
+        // 모바일에서 잘 안 보이므로 탭해도 토스트로 뜨게 함.
+        btn.onclick = function () { toast('🔒 ' + d.unlockFloor + '층부터 해금됩니다'); };
       } else {
         btn.title = '눌러서 바로 교체';
         btn.onclick = function () { TW.action('DICE_BUY', String(d.idx)); };

@@ -806,12 +806,22 @@ public class BotS5ServiceImpl implements BotS5Service {
         return intVal(list.get(displayIdx - 1).get("GACHA_ID"), 0);
     }
 
-    // 매크로 탐지: 이 이상 촘촘하지 않으면 애초에 "빠르게 연타"일 뿐 자동화로 보기 어려움
+    // [2026-09-06 오탐 수정] "은용" 계정이 실제로는 매크로가 아닌데 정지된 사고로 확인 --
+    // 원인은 LAST_REQUEST_INTERVAL_SEC를 초 단위로 반올림(버림)해서 저장하다 보니, 실제
+    // 간격이 0.3초든 0.9초든 전부 "0초"로 뭉개져서 매번 "이전과 완전히 같은 간격"으로
+    // 오판된 것 -- 웹 UI가 액션 후 바로 상태를 다시 불러오는 이중 요청이나 더블탭/새로고침
+    // 몇 번만 겹쳐도 쉽게 15연속을 채워버림. 사람이 못 내는 규칙성은 보통 "초 단위로 몇 초씩
+    // 딱딱 맞아떨어지는" 느린 패턴(팔세쪽있음 사례: ~4초 간격)이지, 1초 미만의 순간적인
+    // 겹침이 아니므로 최소 간격 하한(MACRO_MIN_INTERVAL_SEC)을 둬서 그런 경우는 아예
+    // "판정 대상에서 제외"(스트릭을 올리지도, 끊지도 않음)하도록 수정. 안전 마진으로 스트릭
+    // 기준치도 15->25로 올림.
+    private static final long MACRO_MIN_INTERVAL_SEC = 2;
+    // 이 이상 촘촘하지 않으면 애초에 "빠르게 연타"일 뿐 자동화로 보기 어려움
     private static final long MACRO_MAX_INTERVAL_SEC = 20;
     // 이전 간격과 이만큼(초) 이내로 차이나면 "같은 타이머"로 본다
     private static final long MACRO_TOLERANCE_SEC = 1;
     // 이 횟수 연속으로 "같은 타이머"가 감지되면 일시정지
-    private static final int MACRO_STREAK_THRESHOLD = 15;
+    private static final int MACRO_STREAK_THRESHOLD = 25;
 
     /**
      * 매크로(자동화 클라이언트) 탐지 + 잠금 처리. 쿨타임 통과 여부와 무관하게 "요청이 들어온
@@ -823,10 +833,6 @@ public class BotS5ServiceImpl implements BotS5Service {
             return "🚫 매크로(자동화) 사용이 확인되어 영구정지된 계정입니다.";
         }
 
-        java.util.Date lastReq = (java.util.Date) p.get("LAST_REQUEST_DATE");
-        long nowMs = System.currentTimeMillis();
-        long curIntervalSec = lastReq == null ? -1 : (nowMs - lastReq.getTime()) / 1000L;
-
         if ("Y".equals(strVal(p.get("SUSPEND_YN"), "N"))) {
             // 이미 매크로 의심으로 일시정지된 계정이 그래도 계속 시도 -- 영구정지로 격상.
             HashMap<String, Object> up = new HashMap<>();
@@ -835,6 +841,17 @@ public class BotS5ServiceImpl implements BotS5Service {
             up.put("touchLastRequestDate", true);
             dao.updateUserProgress(up);
             return "🚫 일시정지 상태에서 계속 시도하여 영구정지 처리되었습니다. (관리자 문의)";
+        }
+
+        java.util.Date lastReq = (java.util.Date) p.get("LAST_REQUEST_DATE");
+        long nowMs = System.currentTimeMillis();
+        long curIntervalSec = lastReq == null ? -1 : (nowMs - lastReq.getTime()) / 1000L;
+
+        // 너무 촘촘한(순간적인) 간격은 웹 UI의 이중 요청/더블탭 같은 아티팩트일 수 있어
+        // 판정에서 아예 제외한다 -- LAST_REQUEST_DATE 등도 갱신하지 않아 이 호출이 없었던
+        // 것처럼 취급(다음 요청은 그 이전의 진짜 간격을 기준으로 비교됨).
+        if (curIntervalSec >= 0 && curIntervalSec < MACRO_MIN_INTERVAL_SEC) {
+            return null;
         }
 
         int prevStreak = intVal(p.get("MACRO_STREAK"), 0);
@@ -3226,7 +3243,9 @@ public class BotS5ServiceImpl implements BotS5Service {
         up.put("userName", userName);
         up.put("diceGrade", DICE_NAMES[n - 1]);
         dao.updateUserProgress(up);
-        return DICE_NAMES[n - 1] + " 을(를) 장착했습니다.";
+        // [2026-09-06] "웹 UI에서 뭘로 바뀌었는지 멘트 있으면 좋겠다" 요청 -- 웹 오버레이도
+        // 이 메시지를 그대로 토스트로 보여주므로(TW.action 공용 흐름) 여기서만 고치면 됨.
+        return "🎲 " + diceMax(DICE_NAMES[n - 1]) + "면체 주사위로 교체되었습니다.";
     }
 
     /** 웹 SPA 상점탭 주사위 UI용 — 등급별 {name, unlockFloor, unlocked, current} 구조화 목록. */

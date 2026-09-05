@@ -201,12 +201,15 @@
 
     <!-- 웹 UI: 유저별 지난 메시지(요청 명령어 + 응답) 최근 N개, 최신순. 시즌5 전용 로그가
          따로 없어도 채팅으로 들어온 모든 명령어(층변경/주사위/뽑기 등)는 이미 기존
-         TBOT_WORD_HIS(REQ/RES/USER_NAME)에 남고 있어서 그대로 재사용한다. RES는 CLOB이라
-         TO_CHAR로 변환(기존 selectIssueCase와 동일 패턴). -->
+         TBOT_WORD_HIS(REQ/RES/USER_NAME)에 남고 있어서 그대로 재사용한다.
+         [2026-09-05/06 이모지 깨짐 수정] RES는 NCLOB(예전엔 CLOB)인데 여기서 TO_CHAR로
+         변환하고 있었음(TO_CHAR는 DB 기본 문자셋 KO16MSWIN949/CP949로 변환해서, 저장은
+         NCharClobTypeHandler로 정상인데도 조회 시점에 이모지가 다시 ?로 깨졌음). 국가문자셋
+         (UTF8)을 그대로 쓰는 TO_NCHAR로 교체. -->
     <select id="selectUserRecentMessages" parameterType="HashMap" resultType="hashMap">
         SELECT * FROM (
             SELECT A.REQ AS REQ,
-                   TO_CHAR(A.RES) AS RES,
+                   TO_NCHAR(A.RES) AS RES,
                    TO_CHAR(A.INSERT_DATE, 'YYYY-MM-DD HH24:MI:SS') AS INSERT_DATE
               FROM TBOT_WORD_HIS A
              WHERE A.USER_NAME = #{userName, jdbcType=VARCHAR}
