@@ -1796,10 +1796,11 @@ public class BotS5ServiceImpl implements BotS5Service {
             if (!warriorSynergy) break; // 시너지 아니면 예전처럼 첫 전사만 판정
         }
 
-        // 20층 이후 보스의 기절 스킬: [2026-09-05] 30%->20% 확률로 완화(보스가 너무 세다는
-        // 신고로 "무시" 스킬 제거와 함께 조정). 이번 반격 턴을 통째로 써서 대상을 기절시킴(피해
-        // 없음, 다음 파티 공격 턴 1회를 건너뛰게 됨 -- 위 party 루프의 bossStunCid 체크에서 소모됨).
-        if (lateBoss && RND.nextInt(100) < 20) {
+        // 20층 이후 보스의 기절 스킬: [2026-09-05] 30%->20%(무시 스킬 삭제와 함께 완화) ->
+        // 50%(무시 삭제로 빠진 위협도를 기절 쪽으로 보충)로 재조정. 이번 반격 턴을 통째로 써서
+        // 대상을 기절시킴(피해 없음, 다음 파티 공격 턴 1회를 건너뛰게 됨 -- 위 party 루프의
+        // bossStunCid 체크에서 소모됨).
+        if (lateBoss && RND.nextInt(100) < 50) {
             HashMap<String, Object> stunUp = new HashMap<>();
             stunUp.put("userName", userName);
             stunUp.put("bossStunCid", intVal(target.get("COMPANION_ID"), 0));
