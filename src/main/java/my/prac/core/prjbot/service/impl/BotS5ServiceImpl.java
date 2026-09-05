@@ -132,7 +132,9 @@ public class BotS5ServiceImpl implements BotS5Service {
 
     // 사냥터층(보스 제외) 몬스터 이름 -- 50종만 관리하고, 80개 사냥터층(블록1~10 × 8칸)에
     // 블록/칸 순서(1~8, 11~18, ...)로 순환 배정. 51번째부터는 앞에서부터 다시 돌면서
-    // "강화 " 접두사를 붙여 재사용(스탯은 그대로 블록 단위 유지, 이름만 층마다 다르게 보이는 용도).
+    // "어둠 " 접두사를 붙여 재사용(스탯은 그대로 블록 단위 유지, 이름만 층마다 다르게 보이는
+    // 용도). [2026-09-05] "강화"는 ELITE 칸 몬스터 이름(eliteMonsterName의 "💪 강화 ")과
+    // 헷갈린다는 요청으로 이쪽만 "어둠"으로 변경.
     // 보스(BOSS_YN='Y')는 이 배열을 쓰지 않고 TBOT_S5_MONSTER_INFO의 블록별 고유 보스 이름을 그대로 쓴다.
     private static final String[] FLOOR_MONSTER_NAME = {
         "슬라임", "들쥐", "야생 늑대", "독버섯 정령", "숲도둑 고블린", "박쥐 무리", "성난 멧돼지", "덤불 살모사",
@@ -152,7 +154,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (pos < 1) pos = 1;
         int n = FLOOR_MONSTER_NAME.length;
         String base = FLOOR_MONSTER_NAME[(pos - 1) % n];
-        return pos > n ? "강화 " + base : base;
+        return pos > n ? "어둠 " + base : base;
     }
 
     /** 강화몬스터방(ELITE)용 이름 표시. elite=true면 "💪 강화 " 접두어를 붙인다. */
@@ -1522,8 +1524,8 @@ public class BotS5ServiceImpl implements BotS5Service {
             // 안 굴리고 데미지 0, 특수효과도 발동 안 함). 보스 반격은 평소처럼 그대로 받는다
             // (resolveCombatTurn 반격 파트의 immune 분기 삭제 참고 -- "맞기만 한다"가 요지).
             if (bossImmuneCid != 0 && bossImmuneCid == intVal(c.get("COMPANION_ID"), -1)) {
-                sb.append(jobTag(grade, job, cName)).append(" ").append(hp.format()).append("/").append(eff[0])
-                  .append(" 🙈 보스가 무시해서 공격이 통하지 않는다").append(NL);
+                sb.append(jobTag(grade, job, cName)).append(" 💗").append(hp.format()).append("/").append(eff[0]).append(NL)
+                  .append("🙈 보스가 무시해서 공격이 통하지 않는다").append(NL);
                 continue;
             }
 
@@ -1543,8 +1545,10 @@ public class BotS5ServiceImpl implements BotS5Service {
             // 붙여서 파티원 1명당 항상 딱 1줄만 쓰도록 함.
             // [세 구간 분리 요청] 공격 줄에도 현재/최대 HP를 같이 보여줘서, 나중에 "이번턴 남은"
             // 구간의 HP와 바로 비교되게 함.
-            sb.append(jobTag(grade, job, cName)).append(" ").append(hp.format()).append("/").append(eff[0])
-              .append(" 🎲").append(roll).append("→").append(dmg).append("dmg");
+            // [2026-09-05 멘트 개편] "이름+HP"와 "주사위/데미지"를 한 줄에 몰아넣지 말고 줄을
+            // 나눠달라는 요청 -- 이름+HP 줄, 그 아래 굴림 결과 줄로 분리.
+            sb.append(jobTag(grade, job, cName)).append(" 💗").append(hp.format()).append("/").append(eff[0]).append(NL)
+              .append("🎲").append(roll).append("→").append(dmg).append("dmg");
 
             // [2026-09-05 신설] ★5/★6 동료 성급 특수효과 -- 시너지와 별개로 "이 동료 개인"의
             // 등급이 높을수록 그 직업 고유 효과가 강해진다. 시너지가 함께 켜져 있으면 둘 다
@@ -1740,7 +1744,9 @@ public class BotS5ServiceImpl implements BotS5Service {
         dao.updateUserProgress(up);
         // [세 구간 분리 요청] 파티 공격 결과(1구간)와 몬스터 상태·반격(2구간) 사이에 빈 줄을 넣는다.
         sb.append(NL);
-        sb.append(eliteMonsterName(floor, mon, elite)).append(" HP ")
+        // [2026-09-05 멘트 개편] "HP" 텍스트 대신 이모지로, 파티(💗)와 구분되게 몬스터는
+        // 노란색 하트(💛)를 쓴다.
+        sb.append(eliteMonsterName(floor, mon, elite)).append(" 💛")
           .append(monsterHpAfter.format()).append("/").append(monsterMaxHp.format()).append(NL);
 
         if (stunned) {
@@ -1841,9 +1847,12 @@ public class BotS5ServiceImpl implements BotS5Service {
         // [명확화 요청] 실드가 얼마나 막아줬는지 한눈에 보이게, 반격 줄은 먼저 원본(raw) 피해량을
         // 보여주고, 실드/무시로 깎인 결과는 바로 다음 줄에서 설명한다(예전엔 이미 깎인 값만 나와서
         // "실드가 실제로 얼마를 막아줬는지" 확인이 안 됐음). [버그 수정] "누가 맞았는지 안 나온다"는
-        // 신고로 대상도 표기 -- 이모지 예고 줄(⚡)은 정보 없이 한 줄만 차지해서 생략.
+        // 신고로 대상도 표기.
+        // [2026-09-05 멘트 개편] 파티 공격 줄과 형식을 맞춰서(이름+HP 줄 / 굴림 결과 줄 분리),
+        // 몬스터 HP 줄 바로 다음에 굴림 결과를 붙이고, "~에게 반격!" 문구는 숫자 없이 별도 줄로.
+        sb.append("🎲").append(roll).append("→ ").append(rawDmgToParty).append("dmg").append(NL);
         sb.append(eliteMonsterName(floor, mon, elite)).append("의 ").append(jobTag(tGrade, tJob, tName))
-          .append("에게 반격! 🎲").append(roll).append("→ ").append(rawDmgToParty).append("dmg").append(NL);
+          .append("에게 반격! ").append(NL);
 
         // [2026-09-05 신설] ★5/★6 도적 "회피" -- 자신이 반격 대상이 되면 일정 확률로 피해를
         // 통째로 무효화한다(실드/전사 감소보다 우선 -- 아예 안 맞은 셈이라 뒤 계산 자체를 건너뜀).
@@ -1860,16 +1869,22 @@ public class BotS5ServiceImpl implements BotS5Service {
             if (shieldPool > 0) {
                 int absorbed = Math.min(shieldPool, dmgToParty);
                 dmgToParty -= absorbed;
-                sb.append("🛡️ 보호막 ").append(absorbed).append("보호 후 ").append(dmgToParty).append("dmg").append(NL);
-                // "도사가 누구를 실드해줬는지 명확히" 요청 -- 위 파티 공격 줄에서 도사 자신에게
-                // 붙던 🛡️+N 표시를, 실제로 이 실드를 받은(이번 반격의) 대상 본인의 공격 줄로 옮겨서
-                // 붙인다. 그 줄은 이 시점에 이미 sb에 적혀 있으므로 자리를 찾아 뒤에 이어붙인다.
-                String targetAttackLinePrefix = jobTag(tGrade, tJob, tName) + " " + targetHp.format() + "/" + tEff[0];
-                int lineStart = sb.indexOf(targetAttackLinePrefix);
-                if (lineStart >= 0) {
-                    int lineEnd = sb.indexOf(NL, lineStart);
-                    if (lineEnd < 0) lineEnd = sb.length();
-                    sb.insert(lineEnd, " 🛡️+" + shieldPool);
+                // [2026-09-05 멘트 개편] "N보호 후 Mdmg" 대신 잔여/총 보호막을 게이지처럼 보여줌.
+                sb.append("🛡️ ").append(shieldPool - absorbed).append("/").append(shieldPool)
+                  .append(" ").append(dmgToParty).append("dmg").append(NL);
+                // "도사가 누구를 실드해줬는지 명확히" 요청 -- 위 파티 공격 파트에서 도사 자신에게
+                // 붙던 🛡️+N 표시를, 실제로 이 실드를 받은(이번 반격의) 대상 본인의 "굴림 결과"
+                // 줄로 옮겨서 붙인다(이름+HP 줄 / 굴림 결과 줄이 분리된 뒤로는 후자에 붙임).
+                // 그 줄은 이 시점에 이미 sb에 적혀 있으므로 자리를 찾아 뒤에 이어붙인다.
+                String targetAttackLinePrefix = jobTag(tGrade, tJob, tName) + " 💗" + targetHp.format() + "/" + tEff[0];
+                int nameLineStart = sb.indexOf(targetAttackLinePrefix);
+                if (nameLineStart >= 0) {
+                    int nameLineEnd = sb.indexOf(NL, nameLineStart);
+                    if (nameLineEnd >= 0) {
+                        int rollLineEnd = sb.indexOf(NL, nameLineEnd + NL.length());
+                        if (rollLineEnd < 0) rollLineEnd = sb.length();
+                        sb.insert(rollLineEnd, " 🛡️+" + shieldPool);
+                    }
                 }
             }
 
