@@ -173,12 +173,13 @@ public class BotS5ServiceImpl implements BotS5Service {
         { 800, 0.35, 150, 0.35, 80, 0.35 },
     };
 
-    // 주사위 해금 계단 [코드, 해금 UNLOCKED_BLOCK]
-    private static final String[] DICE_NAMES = { "DICE_6", "DICE_8", "DICE_10", "DICE_12", "DICE_20" };
+    // 주사위 해금 계단 [코드, 해금 UNLOCKED_BLOCK] -- [2026-09-05] DICE_4 신설, 언제든(0층부터)
+    // 쓸 수 있는 탐사용 저분산 주사위로 DICE_6과 같은 해금 단계(0)에 추가.
+    private static final String[] DICE_NAMES = { "DICE_4", "DICE_6", "DICE_8", "DICE_10", "DICE_12", "DICE_20" };
 
     // COMPANION 가챠 티어(GACHA_ID 1~4) 이름 -- floorVoucherReward()가 지급하는 티어락 뽑기권 표시용
     private static final String[] COMPANION_TIER_NAME = { "하급", "중급", "상급", "최상급" };
-    private static final int[]    DICE_UNLOCK = { 0, 10, 30, 50, 70 };
+    private static final int[]    DICE_UNLOCK = { 0, 0, 10, 30, 50, 70 };
 
     // /스탯구매 레벨당 실제 증가량 -- computeEffectiveStat()과 상점 표시(statShop/statShopInfo)가
     // 이 값을 공유해서 "레벨당 얼마나 느는지" 표시가 실제 전투 계산과 어긋나지 않게 한다.
@@ -342,6 +343,7 @@ public class BotS5ServiceImpl implements BotS5Service {
     private int diceMax(String diceGrade) {
         if (diceGrade == null) return 6;
         switch (diceGrade) {
+            case "DICE_4":  return 4;
             case "DICE_8":  return 8;
             case "DICE_10": return 10;
             case "DICE_12": return 12;
@@ -1349,25 +1351,11 @@ public class BotS5ServiceImpl implements BotS5Service {
         up.put("curMonsterHpExt", strVal(mon.get("HP_EXT"), ""));
         up.put("curMonsterEliteYn", elite ? "Y" : "N");
 
-        // 20층 이후(블록3+, 29층 보스부터) 보스는 전투 시작 시 파티원 1명을 무작위로 "안중에 없다"며
-        // 지목 -- [정책 변경, 2026-09-05] 원래는 그 동료가 보스 반격 피해를 0으로 받는(면역) 쪽
-        // 이었는데, "반대로 해달라(보스를 공격 못 하고 맞기만 하는 쪽)"는 요청으로 뒤집었다.
-        // 이제 이 동료는 이번 전투 내내 보스에게 공격이 안 먹히고(데미지 0), 보스 반격은 평소처럼
-        // 그대로 받는다(스턴 스킬과는 별개 효과).
-        String immuneMsg = "";
-        boolean lateBoss = boss && blockNo(floor) >= 3;
-        if (lateBoss) {
-            List<HashMap<String, Object>> party = new ArrayList<>();
-            for (HashMap<String, Object> c : dao.selectUserCompanions(userName)) {
-                if (c.get("PARTY_SLOT") != null) party.add(c);
-            }
-            if (!party.isEmpty()) {
-                HashMap<String, Object> chosen = party.get(RND.nextInt(party.size()));
-                up.put("bossImmuneCid", intVal(chosen.get("COMPANION_ID"), 0));
-                String cName = strVal(chosen.get("NAME"), JOB_NAME.getOrDefault(strVal(chosen.get("CLASS"), ""), "동료"));
-                immuneMsg = NL + "🙈 보스가 " + cName + "은(는) 안중에도 없다는 듯 무시한다... (이번 전투 동안 이 동료의 공격은 안 통합니다. 보스 반격은 평소처럼 받음)";
-            }
-        }
+        // [정책 변경, 2026-09-05] "29층 보스가 너무 세다"는 신고로, 블록3+ 보스의 "무시"
+        // 스킬(파티원 1명 지목, 그 동료는 전투 내내 보스에게 공격 불가)을 완전히 제거했다.
+        // 이제 블록3+ 보스 특수 스킬은 아래 반격 파트의 "기절"(매 턴 확률로 1명 스턴) 하나뿐
+        // -- 발동 확률도 30%→20%로 낮춰서 예전보다 확실히 약해졌다. BOSS_IMMUNE_CID는 더 이상
+        // 세팅하지 않지만 컬럼/조회/초기화 로직은 과거 진행 중이던 값 정리를 위해 남겨둔다.
         dao.updateUserProgress(up);
 
         PP fullHp = PP.of(((Number) mon.get("HP_VALUE")).doubleValue() * eliteMult, strVal(mon.get("HP_EXT"), "")).normalize();
@@ -1383,7 +1371,6 @@ public class BotS5ServiceImpl implements BotS5Service {
         sb.append(NL);
         String buffNote = currentPartyBuffDebuffNote(p);
         if (buffNote != null) sb.append(buffNote).append(NL);
-        sb.append(immuneMsg.isEmpty() ? "" : immuneMsg + NL);
         sb.append("전투를 시작하려면 다시 /주사위 를 입력하세요!");
         return sb.toString();
     }
@@ -1461,9 +1448,9 @@ public class BotS5ServiceImpl implements BotS5Service {
         boolean luckyDefUp = intVal(p.get("LUCKY_TURN_LEFT"), 0) > 0 && luckyEffectNow.startsWith("DEF_UP");
         double luckyMult = 1.0 + luckyEffectPct(luckyEffectNow) / 100.0;
 
-        // 20층 이후(블록3+) 보스 전용 스킬: 무시(면역, startCombat에서 지정) + 기절(아래 반격 턴에서 확률 발동)
+        // [2026-09-05] 20층 이후(블록3+) 보스 전용 스킬: 기절(아래 반격 턴에서 20% 확률 발동)
+        // -- 원래 있던 "무시" 스킬은 보스가 너무 세다는 신고로 제거, 기절 확률도 30%->20%로 완화.
         boolean lateBoss = "Y".equals(strVal(mon.get("BOSS_YN"), "N")) && blockNo(floor) >= 3;
-        int bossImmuneCid = intVal(p.get("BOSS_IMMUNE_CID"), 0);
 
         List<HashMap<String, Object>> companions = dao.selectUserCompanions(userName);
         List<HashMap<String, Object>> party = new ArrayList<>();
@@ -1519,15 +1506,8 @@ public class BotS5ServiceImpl implements BotS5Service {
             if (trapAtkDown) eff[1] = (int) Math.round(eff[1] * 0.7); // 함정: 공격력 30% 약화
             if (luckyAtkUp) eff[1] = (int) Math.round(eff[1] * luckyMult); // 럭키: 공격력 강화
 
-            // [정책 변경] "무시 대상"은 반대로 바꿨다 -- 예전엔 이 동료가 보스 피해를 안 받는
-            // 쪽(면역)이었는데, 이제는 이 동료의 공격이 보스에게 아예 안 먹히는 쪽이다(주사위도
-            // 안 굴리고 데미지 0, 특수효과도 발동 안 함). 보스 반격은 평소처럼 그대로 받는다
-            // (resolveCombatTurn 반격 파트의 immune 분기 삭제 참고 -- "맞기만 한다"가 요지).
-            if (bossImmuneCid != 0 && bossImmuneCid == intVal(c.get("COMPANION_ID"), -1)) {
-                sb.append(jobTag(grade, job, cName)).append(" 💗").append(hp.format()).append("/").append(eff[0]).append(NL)
-                  .append("🙈 보스가 무시해서 공격이 통하지 않는다").append(NL);
-                continue;
-            }
+            // [정책 변경, 2026-09-05] "무시 대상" 스킬 자체를 제거했다("29층 보스가 너무 세다"는
+            // 신고 -- bossImmuneCid는 더 이상 세팅되지 않으므로 이 분기는 이제 죽은 코드다).
 
             // [2026-09-05] ★5/★6 궁수 "관통" 특수효과 -- 몬스터 방어력을 일부/전부 무시
             int effMonsterDef = monsterDef;
@@ -1816,9 +1796,10 @@ public class BotS5ServiceImpl implements BotS5Service {
             if (!warriorSynergy) break; // 시너지 아니면 예전처럼 첫 전사만 판정
         }
 
-        // 20층 이후 보스의 기절 스킬: 30% 확률로 이번 반격 턴을 통째로 써서 대상을 기절시킴(피해 없음,
-        // 다음 파티 공격 턴 1회를 건너뛰게 됨 -- 위 party 루프의 bossStunCid 체크에서 소모됨).
-        if (lateBoss && RND.nextInt(100) < 30) {
+        // 20층 이후 보스의 기절 스킬: [2026-09-05] 30%->20% 확률로 완화(보스가 너무 세다는
+        // 신고로 "무시" 스킬 제거와 함께 조정). 이번 반격 턴을 통째로 써서 대상을 기절시킴(피해
+        // 없음, 다음 파티 공격 턴 1회를 건너뛰게 됨 -- 위 party 루프의 bossStunCid 체크에서 소모됨).
+        if (lateBoss && RND.nextInt(100) < 20) {
             HashMap<String, Object> stunUp = new HashMap<>();
             stunUp.put("userName", userName);
             stunUp.put("bossStunCid", intVal(target.get("COMPANION_ID"), 0));
@@ -1830,9 +1811,29 @@ public class BotS5ServiceImpl implements BotS5Service {
             return sb.toString();
         }
 
-        String tJob = strVal(target.get("CLASS"), "WARRIOR");
-        int tGrade = intVal(target.get("GRADE"), 1);
-        List<HashMap<String, Object>> tEquips = dao.selectEquipByCompanion(intVal(target.get("COMPANION_ID"), 0));
+        // [2026-09-05 신설] 39층 이후(블록4+) 보스는 반격 한 번에 동료 2명을 동시에 노린다
+        // ("29층보다 갑자기 세졌다"는 원성과는 별개 요청 -- 위의 "무시" 스킬 삭제/기절 완화로
+        // 개별 위협도는 낮췄고, 이건 블록4+ 보스만의 새 특성으로 얹은 것). 보호막은 두 대상
+        // 모두에게 각자 독립적으로 100% 적용된다(shieldPool을 나눠 쓰지 않음 -- 도사의 가치가
+        // 유지되도록). 첫 번째 대상만 위 전사 도발의 대상이 될 수 있고, 두 번째는 순수 랜덤.
+        boolean doubleTarget = "Y".equals(strVal(mon.get("BOSS_YN"), "N")) && blockNo(floor) >= 4;
+        List<HashMap<String, Object>> targets = new ArrayList<>();
+        targets.add(target);
+        if (doubleTarget) {
+            List<HashMap<String, Object>> remaining = new ArrayList<>(alive);
+            remaining.remove(target);
+            if (!remaining.isEmpty()) targets.add(remaining.get(RND.nextInt(remaining.size())));
+        }
+
+        for (int ti = 0; ti < targets.size(); ti++) {
+            HashMap<String, Object> curTarget = targets.get(ti);
+            boolean curGuarded = ti == 0 && guarded;
+            HashMap<String, Object> curOriginalTarget = ti == 0 ? originalTarget : curTarget;
+            if (ti > 0) sb.append(NL);
+
+        String tJob = strVal(curTarget.get("CLASS"), "WARRIOR");
+        int tGrade = intVal(curTarget.get("GRADE"), 1);
+        List<HashMap<String, Object>> tEquips = dao.selectEquipByCompanion(intVal(curTarget.get("COMPANION_ID"), 0));
         int[] tEff = computeEffectiveStat(tJob, tGrade, tEquips, userStat);
         if ("RAINBOW".equals(synergy)) tEff[2] = (int) Math.round(tEff[2] * 1.1); // 시너지: 균형3인조 방어 +10%
         if (trapDefDown) tEff[2] = (int) Math.round(tEff[2] * 0.7); // 함정: 방어력 30% 약화(반격 피해 증가)
@@ -1842,8 +1843,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         int rawDmgToParty = Math.max(1, monsterAtk * roll - tEff[2]);
         int dmgToParty = rawDmgToParty;
 
-        String tName = strVal(target.get("NAME"), JOB_NAME.getOrDefault(tJob, "동료"));
-        PP targetHp = PP.of(((Number) target.get("CUR_HP_VALUE")).doubleValue(), strVal(target.get("CUR_HP_EXT"), ""));
+        String tName = strVal(curTarget.get("NAME"), JOB_NAME.getOrDefault(tJob, "동료"));
+        PP targetHp = PP.of(((Number) curTarget.get("CUR_HP_VALUE")).doubleValue(), strVal(curTarget.get("CUR_HP_EXT"), ""));
         // [명확화 요청] 실드가 얼마나 막아줬는지 한눈에 보이게, 반격 줄은 먼저 원본(raw) 피해량을
         // 보여주고, 실드/무시로 깎인 결과는 바로 다음 줄에서 설명한다(예전엔 이미 깎인 값만 나와서
         // "실드가 실제로 얼마를 막아줬는지" 확인이 안 됐음). [버그 수정] "누가 맞았는지 안 나온다"는
@@ -1923,23 +1924,26 @@ public class BotS5ServiceImpl implements BotS5Service {
         }
 
         HashMap<String, Object> cUp = new HashMap<>();
-        cUp.put("companionId", intVal(target.get("COMPANION_ID"), 0));
+        cUp.put("companionId", intVal(curTarget.get("COMPANION_ID"), 0));
         cUp.put("curHpValue", targetHpAfter.getValue());
         cUp.put("curHpExt", targetHpAfter.getUnit());
         dao.updateCompanionHp(cUp);
-        // [버그 수정] DB엔 반영됐지만 target(=party 리스트 안의 같은 객체)의 메모리 값은 안 바뀌어서,
-        // 바로 아래 partyHpSummary()가 반격 맞기 "전" HP를 그대로 보여주는 문제가 있었다("이번턴
-        // 남은" 구간에 맞은 사람 HP가 그대로 풀피로 나옴 -- 신고로 확인). party 리스트 원본을 직접 갱신.
-        target.put("CUR_HP_VALUE", targetHpAfter.getValue());
-        target.put("CUR_HP_EXT", targetHpAfter.getUnit());
+        // [버그 수정] DB엔 반영됐지만 curTarget(=party 리스트 안의 같은 객체)의 메모리 값은 안
+        // 바뀌어서, 바로 아래 partyHpSummary()가 반격 맞기 "전" HP를 그대로 보여주는 문제가
+        // 있었다("이번턴 남은" 구간에 맞은 사람 HP가 그대로 풀피로 나옴 -- 신고로 확인).
+        // party 리스트 원본을 직접 갱신.
+        curTarget.put("CUR_HP_VALUE", targetHpAfter.getValue());
+        curTarget.put("CUR_HP_EXT", targetHpAfter.getUnit());
 
-        if (guarded) {
+        if (curGuarded) {
             // 도발로 실제 맞은 건 다른 동료라서, 원래 대상이 누구였는지 반격 결과 다음 줄에 설명.
-            String origJob = strVal(originalTarget.get("CLASS"), "WARRIOR");
-            int origGrade = intVal(originalTarget.get("GRADE"), 1);
-            String origName = strVal(originalTarget.get("NAME"), JOB_NAME.getOrDefault(origJob, "동료"));
+            String origJob = strVal(curOriginalTarget.get("CLASS"), "WARRIOR");
+            int origGrade = intVal(curOriginalTarget.get("GRADE"), 1);
+            String origName = strVal(curOriginalTarget.get("NAME"), JOB_NAME.getOrDefault(origJob, "동료"));
             sb.append(jobTag(origGrade, origJob, origName)).append(" 대신 🛡️ 전사가 공격을 받아냅니다!").append(NL);
         }
+        } // for (targets)
+
         // "몬스터 반격 이후 파티 체력을 보여달라" 요청
         sb.append(NL).append(partyHpSummary(party, userStat));
 
@@ -3182,6 +3186,11 @@ public class BotS5ServiceImpl implements BotS5Service {
             list.add(row);
         }
         return list;
+    }
+
+    @Override
+    public int autoHuntKillsPerHour() {
+        return AUTO_HUNT_KILLS_PER_HOUR;
     }
 
     /** 스탯 강화 상한 계산: 구간(10층 단위) 하나 클리어(보스 처치)마다 +5. index0(unlockedBlock=0)일 때도 최소 5. */

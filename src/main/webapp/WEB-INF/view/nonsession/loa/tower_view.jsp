@@ -66,6 +66,16 @@
     .tile.stairs-up{ background:var(--gold); } .tile.stairs-down{ background:var(--village); } .tile.elite{ background:var(--elite); }
     .tile.hidden{ background:#D8CDB4; color:#8a7f68; }
     .tile.done{ opacity:.55; } .tile.here{ outline:2px solid var(--ink); transform:scale(1.15); opacity:1; z-index:2; }
+    /* [2026-09-05] 주사위 교체 오버레이 -- 보드 칸그리드(.tower-viewport) 좌상단에 떠서
+       스크롤해도 항상 같은 자리에 보인다(position:sticky). 해금 안 된 등급은 흐리게(클릭 불가). */
+    .dice-overlay{ position:sticky; top:6px; left:6px; z-index:5;
+                   display:inline-flex; gap:4px; flex-wrap:wrap; max-width:160px;
+                   background:var(--parchment); border:1px solid var(--line); border-radius:999px;
+                   padding:4px 6px; box-shadow:var(--shadow); }
+    .dice-overlay button{ border:none; border-radius:999px; padding:3px 8px; font-size:11px;
+                   font-weight:700; cursor:pointer; background:#fff; color:var(--ink); }
+    .dice-overlay button.current{ background:var(--gold); color:#fff; }
+    .dice-overlay button.locked{ background:transparent; color:var(--ink-soft); opacity:.5; cursor:default; }
     .legend{ display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
     .legend-chip{ display:flex; align-items:center; gap:4px; font-size:10px; color:var(--ink-soft); background:#fff;
                   border:1px solid var(--line); border-radius:999px; padding:3px 9px; }
@@ -261,6 +271,9 @@
           <div class="tower-track" id="towerTrack">
             <div style="color:var(--ink-soft);font-size:12px;">데이터를 불러오는 중...</div>
           </div>
+          <!-- [2026-09-05] 주사위 교체를 상점탭에서 여기(칸그리드 위 오버레이)로 옮김 -- 해금된
+               것만 버튼으로 눌러 즉시 교체(자동구매형태, 별도 확인 없음). renderDiceOverlay 참고. -->
+          <div class="dice-overlay" id="diceOverlay"></div>
         </div>
         <div class="legend">
           <span class="legend-chip"><span class="legend-dot" style="background:var(--combat)"></span>전투</span>
@@ -327,10 +340,9 @@
       <div class="card-title">장비 보물상자</div>
       <div id="equipGachaList"></div>
     </div>
-    <div class="card" style="margin-top:10px;">
-      <div class="card-title">🎲 주사위 (해금된 것끼리는 몇 번이든 무료로 교체 가능)</div>
-      <div id="diceListBox"></div>
-    </div>
+    <!-- [2026-09-05] 주사위 교체는 여기(상점탭)가 아니라 '탑' 탭 보드 칸그리드 위 오버레이로
+         옮겼다(더 유동적으로 바로 굴릴 수 있게 해달라는 요청) -- diceListBox/renderDiceShop은
+         이제 그 오버레이(#diceOverlay)를 채운다. -->
     <div class="card" style="margin-top:10px;">
       <div class="card-title">📊 스탯 강화</div>
       <div id="statShopBox"></div>
@@ -482,7 +494,8 @@ var TW = (function () {
           huntCard.style.display = 'none';
         }
 
-        renderBoard(data.tiles, data.myTile ? data.myTile.CUR_TILE : 0);
+        renderBoard(data.tiles, data.myTile ? data.myTile.CUR_TILE : 0, p.CUR_FLOOR);
+        renderDiceOverlay(data.dice || []);
         renderTowerNav(p, data.floorBest);
         // [버그 수정] "조회"는 상단 상태/보드만 다시 불러오고 파티·상점·업적 탭은 그대로 둬서,
         // 파티 탭 등을 보고 있는 채로 다른 닉네임을 검색하면 방금 조회한 유저 이름이 위에는
@@ -558,19 +571,38 @@ var TW = (function () {
     document.getElementById('confirmOverlay').classList.remove('open');
   }
 
-  // 사각형 둘레를 시계방향으로 도는 칸 배치(부루마불 스타일). S = 정사각형 한 변의 칸 수,
-  // 둘레 칸 수 = 4*(S-1). N개를 다 담을 수 있는 가장 작은 S를 골라서 칸 수가 늘어나도(최대
-  // 150칸) 자동으로 정사각형이 커지기만 하고 모양은 항상 정사각형 루프를 유지한다.
-  function perimeterPos(i, side) {
-    var per = side - 1; // 변 하나에 놓이는 칸 간격 수
-    var s = Math.floor(i / per), o = i % per;
-    if (s === 0) return { x: o, y: 0 };
-    if (s === 1) return { x: side - 1, y: o };
-    if (s === 2) return { x: side - 1 - o, y: side - 1 };
-    return { x: 0, y: side - 1 - o };
+  // [2026-09-05] "던전앤파이터 보스맵/카트라이더 느낌으로 구불구불하게, 시작과 끝이 이어지면
+  // 좋겠다, 순환 아니어도 되니 종류가 여러 개로" 요청으로 정사각형 둘레 배치를 곡선 트랙으로
+  // 교체. 층(floor)마다 아래 중 하나를 고정 배정(같은 층은 항상 같은 모양)해서 층별로 다른
+  // 생김새를 보여준다 -- 데이터/이동 로직은 전혀 안 바뀌고 순수하게 "그리는 좌표"만 바뀐다.
+  // 각 path는 0~100 정규화 좌표계로 그려두고, 실제로는 칸 수(n)에 맞춰 간격이 대략 step(px)
+  // 유지되도록 전체를 배율(scale)만큼 키워서 쓴다(칸이 많은 고층 보드일수록 트랙이 커짐 --
+  // 예전에 side가 커지던 것과 같은 원리).
+  var TRACK_PATHS = [
+    'M50,15 C75,15 90,35 82,55 C74,73 85,88 65,90 C45,92 40,75 22,72 C5,69 8,45 25,35 C35,29 35,15 50,15 Z',
+    'M50,10 C80,10 92,40 85,60 C95,75 80,95 55,90 C35,86 40,70 20,68 C0,66 5,35 25,25 C35,20 35,12 50,10 Z',
+    'M10,15 C50,5 20,45 55,50 C90,55 60,80 90,90',
+    'M50,95 C82,85 18,75 50,65 C82,55 18,45 50,35 C82,25 18,15 50,5'
+  ];
+
+  // 실제로 sampling(getTotalLength/getPointAtLength)에 쓸 <path>. 일부 브라우저(사파리 계열)는
+  // 문서에 붙어있지 않은 path에서 geometry 메서드가 제대로 안 되는 경우가 있어, 화면엔 안
+  // 보이지만 문서에는 붙어있는 숨은 SVG 안에 넣어서 재사용한다.
+  var trackSvgNS = 'http://www.w3.org/2000/svg';
+  var trackSampleSvg = document.createElementNS(trackSvgNS, 'svg');
+  trackSampleSvg.setAttribute('viewBox', '0 0 100 100');
+  trackSampleSvg.style.cssText = 'position:absolute;width:0;height:0;overflow:hidden;';
+  var trackSamplePath = document.createElementNS(trackSvgNS, 'path');
+  trackSampleSvg.appendChild(trackSamplePath);
+  document.body.appendChild(trackSampleSvg);
+
+  /** 층 번호로 트랙 모양을 고정 배정(같은 층이면 항상 같은 모양). */
+  function pickTrackPath(floor) {
+    var idx = ((floor || 0) % TRACK_PATHS.length + TRACK_PATHS.length) % TRACK_PATHS.length;
+    return TRACK_PATHS[idx];
   }
 
-  function renderBoard(tiles, curTile) {
+  function renderBoard(tiles, curTile, floor) {
     var viewport = document.getElementById('towerViewport');
     var track = document.getElementById('towerTrack');
     track.innerHTML = '';
@@ -580,18 +612,48 @@ var TW = (function () {
       return;
     }
     var n = tiles.length;
-    var side = Math.max(2, Math.ceil(n / 4) + 1);
-    var cell = 40, gap = 4, step = cell + gap;
-    track.style.width = (side * step) + 'px';
-    track.style.height = (side * step) + 'px';
+    var cell = 40, gap = 6, step = cell + gap;
+
+    // 트랙 모양(정규화 0~100 좌표계) 하나를 길이 측정용으로 세팅
+    var d = pickTrackPath(floor);
+    trackSamplePath.setAttribute('d', d);
+    var normLen = trackSamplePath.getTotalLength();
+    // 칸 사이 간격이 대략 step(px)가 되도록 전체를 키운다 -- 칸이 많을수록(n↑) 트랙도 커짐.
+    var scale = Math.max(1, (n * step) / normLen);
+    var boxSize = Math.ceil(100 * scale) + cell; // 트랙 좌표 + 칸 반경 여유
+
+    track.style.width = boxSize + 'px';
+    track.style.height = boxSize + 'px';
+
+    // 트랙 라인을 배경으로 깔아서 "길"처럼 보이게(카트라이더 느낌) -- 칸 아이콘들보다 아래(z-index)
+    var svg = document.createElementNS(trackSvgNS, 'svg');
+    svg.setAttribute('width', boxSize);
+    svg.setAttribute('height', boxSize);
+    svg.setAttribute('viewBox', '0 0 100 100');
+    svg.style.position = 'absolute';
+    svg.style.left = (cell / 2) + 'px';
+    svg.style.top = (cell / 2) + 'px';
+    svg.style.width = (100 * scale) + 'px';
+    svg.style.height = (100 * scale) + 'px';
+    svg.style.pointerEvents = 'none';
+    var lineEl = document.createElementNS(trackSvgNS, 'path');
+    lineEl.setAttribute('d', d);
+    lineEl.setAttribute('fill', 'none');
+    lineEl.setAttribute('stroke', 'var(--line)');
+    lineEl.setAttribute('stroke-width', '3');
+    lineEl.setAttribute('vector-effect', 'non-scaling-stroke');
+    svg.appendChild(lineEl);
+    track.appendChild(svg);
 
     var hereEl = null;
     tiles.forEach(function (t, idx) {
-      var pos = perimeterPos(idx, side);
+      // 순환 여부와 무관하게 시작부터 끝까지 균등 간격으로 배치 -- 닫힌(Z) 경로면 자연히
+      // 처음과 끝이 이어져 보이고, 열린 경로면 자연스러운 시작/끝이 생김(둘 다 요청대로 허용).
+      var pt = trackSamplePath.getPointAtLength((normLen * idx) / n);
       var div = document.createElement('div');
       var isHere = (t.TILE_NO === curTile);
-      div.style.left = (pos.x * step) + 'px';
-      div.style.top = (pos.y * step) + 'px';
+      div.style.left = (pt.x * scale) + 'px';
+      div.style.top = (pt.y * scale) + 'px';
       div.style.width = cell + 'px';
       div.style.height = cell + 'px';
       if (t.DISCOVERED) {
@@ -611,6 +673,30 @@ var TW = (function () {
       viewport.scrollLeft = Math.max(0, hereEl.offsetLeft - viewport.clientWidth / 2 + cell / 2);
       viewport.scrollTop = Math.max(0, hereEl.offsetTop - viewport.clientHeight / 2 + cell / 2);
     }
+  }
+
+  // [2026-09-05] 주사위 교체 오버레이 -- 상점탭에 있던 걸 보드 칸그리드 위로 옮겨서, 해금된
+  // 등급끼리는 버튼 한 번으로(자동구매형태, 별도 확인창 없음) 바로 교체하고 굴릴 수 있게 함.
+  // 해금 조건(unlockFloor)은 서버 로직 그대로, 여기선 표시/클릭만 담당.
+  function renderDiceOverlay(dice) {
+    var box = document.getElementById('diceOverlay');
+    box.innerHTML = '';
+    dice.forEach(function (d) {
+      var btn = document.createElement('button');
+      var label = d.name.replace('DICE_', '');
+      btn.textContent = '🎲' + label;
+      if (d.current) {
+        btn.className = 'current';
+        btn.title = '사용중';
+      } else if (!d.unlocked) {
+        btn.className = 'locked';
+        btn.title = d.unlockFloor + '층부터 해금';
+      } else {
+        btn.title = '눌러서 바로 교체';
+        btn.onclick = function () { TW.action('DICE_BUY', String(d.idx)); };
+      }
+      box.appendChild(btn);
+    });
   }
 
   var PART_KR   = { HELMET: '투구', WEAPON: '무기', ARMOR: '갑옷' };
@@ -883,12 +969,18 @@ var TW = (function () {
       }
 
       // 동료 목록 + 편성 토글 (드래그 또는 탭 둘 다 지원 -- Pointer Events라 마우스/터치 공용).
-      // [정렬 고정] 서버가 내려주는 순서는 PARTY_SLOT NULLS LAST, COMPANION_ID라 편성/해제할
-      // 때마다 카드가 앞뒤로 튀어서 헷갈린다는 신고로, 화면 표시 순서만 COMPANION_ID(뽑은 순서)
-      // 고정으로 다시 정렬한다 -- 단, /파티편성 N 텍스트 명령어·PARTY_TOGGLE 등이 참조하는 idx는
-      // 서버가 내려준 원본 순서 그대로 써야 하므로 표시 순서와 별도로 유지한다.
+      // [2026-09-05 재정렬] "편성된 동료는 맨 앞, 성급 내림차순으로" 요청 -- 편성 여부를
+      // 1순위로, 그 안에서는 성급(GRADE) 내림차순(동률이면 안정 정렬이라 원래 순서인
+      // COMPANION_ID 순 유지)으로 화면 표시 순서만 재정렬한다. 편성/해제 시 카드가 앞뒤로
+      //움직이는 건 이번엔 의도된 동작(과거엔 반대로 "안 튀게" 고정했었는데 이 요청으로 뒤집음).
+      // /파티편성 N 텍스트 명령어·PARTY_TOGGLE 등이 참조하는 idx는 서버가 내려준 원본 순서
+      // 그대로 써야 하므로 표시 순서와 별도로 유지한다.
       var displayOrder = companions.map(function (c, i) { return { c: c, idx: i + 1 }; })
-          .sort(function (a, b) { return a.c.COMPANION_ID - b.c.COMPANION_ID; });
+          .sort(function (a, b) {
+            var aIn = a.c.PARTY_SLOT ? 1 : 0, bIn = b.c.PARTY_SLOT ? 1 : 0;
+            if (aIn !== bIn) return bIn - aIn;
+            return (b.c.GRADE || 0) - (a.c.GRADE || 0);
+          });
       var grid = document.getElementById('partyGrid');
       grid.innerHTML = '';
       displayOrder.forEach(function (entry) {
@@ -1082,19 +1174,8 @@ var TW = (function () {
           eBox.appendChild(row);
         });
 
-        // 주사위: 해금된 것끼리 자유롭게 교체(무료). 사용중인 건 강조, 미해금은 흐리게 + 몇 층부터인지.
-        var diceBox = document.getElementById('diceListBox');
-        diceBox.innerHTML = '';
-        (data.dice || []).forEach(function (d) {
-          var row = document.createElement('div');
-          row.className = 'shop-row' + (d.current ? ' dice-current' : '') + (!d.unlocked ? ' dice-locked' : '');
-          var label = d.name + (d.current ? ' (사용중)' : '') + (!d.unlocked ? ' — ' + d.unlockFloor + '층부터 해금' : '');
-          row.innerHTML = '<span>' + label + '</span>'
-              + (d.unlocked && !d.current
-                  ? '<span class="btn-group"><button onclick="TW.action(\'DICE_BUY\',\'' + d.idx + '\')">장착</button></span>'
-                  : '');
-          diceBox.appendChild(row);
-        });
+        // [2026-09-05] 주사위 교체는 상점탭에서 뺐다 -- '탑' 탭 보드 위 오버레이(renderDiceOverlay,
+        // loadStatus에서 매번 호출)로 이동. 여기(상점탭)는 더 이상 렌더링 안 함.
 
         // 스탯 강화: 현재 Lv/상한 + 다음 비용, 상한 도달 시 버튼 비활성화. 다음 상한이 몇층에서
         // 열리는지도 하단에 안내("어떤 마을 가면 몇까지 올릴 수 있는지" 요청).

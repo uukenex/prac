@@ -90,8 +90,11 @@ public interface BotS5Service {
     /** /주사위구매 — 인자 없으면 해금된 주사위 목록, N 있으면 해당 등급으로 장착 */
     String diceShop(String userName, Integer n);
 
-    /** 웹 SPA 상점탭 주사위 UI용 — 등급별 {name, unlockFloor, unlocked, current} 구조화 목록 */
+    /** 웹 SPA 주사위 UI용 — 등급별 {name, unlockFloor, unlocked, current} 구조화 목록 */
     List<HashMap<String, Object>> diceListInfo(String userName);
+
+    /** 자동사냥 시간당 처치 수(config, /갱신으로 조절됨) — Season5ViewController의 PP/시간 추정치가 참조 */
+    int autoHuntKillsPerHour();
 
     /** /스탯구매 — 인자 없으면 현재 레벨/다음 비용, type 있으면 해당 스탯 구매(ATK/MINATK/HP) */
     String statShop(String userName, String type);
