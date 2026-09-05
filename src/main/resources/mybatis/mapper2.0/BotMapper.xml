@@ -350,9 +350,18 @@
 			 ,USER_NAME
 			 ,INSERT_DATE
 			 ,ISSUE_YN)
+		<!-- [2026-09-05 버그 수정] REQ/RES를 NVARCHAR2/NCLOB로 바꿨는데도(TBOT_WORD_HIS 이모지
+		     깨짐 대응) 실제로는 여전히 이모지가 ?로 깨지는 걸 라이브로 확인함(원인은 컬럼
+		     타입이 아니라 바인딩 방식이었음). MyBatis의 기본 StringTypeHandler는 jdbcType과
+		     무관하게 PreparedStatement.setString()을 호출하는데, Oracle JDBC는 setString()을
+		     항상 DB 기본 문자셋(KO16MSWIN949/CP949)으로 변환해서 보낸다(컬럼이 NVARCHAR2여도
+		     소용없음, 한글은 CP949로도 표현 가능해서 지금까지 멀쩡해 보였을 뿐 이모지만 CP949에
+		     없어서 깨짐). NStringTypeHandler/NClobTypeHandler를 명시해서 setNString()/
+		     setNClob()(국가문자셋 UTF8 경유)로 바인딩하도록 강제. ROOM_NAME/USER_NAME/ISSUE_YN은
+		     이모지가 안 들어가므로(순수 한글/영문) 그대로 둠. -->
 		VALUES
-			 (#{req, jdbcType=VARCHAR}
-			 ,#{res, jdbcType=VARCHAR}
+			 (#{req, jdbcType=NVARCHAR, typeHandler=org.apache.ibatis.type.NStringTypeHandler}
+			 ,#{res, jdbcType=NCLOB, typeHandler=org.apache.ibatis.type.NClobTypeHandler}
 			 ,#{roomName, jdbcType=VARCHAR}
 			 ,#{userName, jdbcType=VARCHAR}
 			 ,sysdate

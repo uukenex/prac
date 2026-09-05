@@ -51,12 +51,14 @@
 
     /* 부루마불 스타일: 칸들이 사각형 둘레를 따라 시계방향으로 빙 둘러 배치되는 순환 보드.
        칸 수(15~150)에 따라 정사각형 한 변의 칸수(S)가 달라지므로, 컨테이너 크기와 각 칸의
-       left/top은 JS에서 인라인 스타일로 계산해서 넣는다(테두리 칸만 채우는 배치라 CSS 그리드로는
-       표현이 애매함). 큰 보드(51층 이후 최대 150칸)는 화면보다 커질 수 있어 스크롤 가능한
-       뷰포트 안에 넣고, 처음 로드 시 현재 위치로 자동 스크롤한다. */
-    .tower-viewport{ position:relative; overflow:auto; max-height:60vh; border-radius:14px;
-                      background:var(--parchment-deep); border:1.5px dashed var(--line); padding:10px; }
-    .tower-track{ position:relative; }
+       left/top은 JS에서 %(퍼센트) 인라인 스타일로 계산해서 넣는다. [2026-09-05] "좌우/상하
+       스크롤바가 보인다" 신고로, 칸 수(최대 150)에 따라 트랙 자체가 커지던 방식을 버리고
+       뷰포트 크기를 고정(overflow:hidden)한 뒤 칸 크기만 칸 수에 맞춰 줄어들게 바꿨다 --
+       이제 어떤 화면 크기/칸 수에서도 스크롤바가 생길 수 없다. */
+    .tower-viewport{ position:relative; overflow:hidden; width:100%; height:min(440px, 55vh);
+                      border-radius:14px; background:var(--parchment-deep);
+                      border:1.5px dashed var(--line); padding:10px; }
+    .tower-track{ position:relative; width:100%; height:100%; }
     .tile{ position:absolute; border-radius:10px; display:flex;
            flex-direction:column; align-items:center; justify-content:center; font-size:9px; font-weight:700;
            color:#fff; box-shadow:0 2px 0 rgba(0,0,0,.12); text-align:center; line-height:1.15; padding:1px; }
@@ -580,17 +582,17 @@ var TW = (function () {
   }
 
   // [2026-09-05] "던전앤파이터 보스맵/카트라이더 느낌으로 구불구불하게, 시작과 끝이 이어지면
-  // 좋겠다, 순환 아니어도 되니 종류가 여러 개로" 요청으로 정사각형 둘레 배치를 곡선 트랙으로
-  // 교체. 층(floor)마다 아래 중 하나를 고정 배정(같은 층은 항상 같은 모양)해서 층별로 다른
-  // 생김새를 보여준다 -- 데이터/이동 로직은 전혀 안 바뀌고 순수하게 "그리는 좌표"만 바뀐다.
-  // 각 path는 0~100 정규화 좌표계로 그려두고, 실제로는 칸 수(n)에 맞춰 간격이 대략 step(px)
-  // 유지되도록 전체를 배율(scale)만큼 키워서 쓴다(칸이 많은 고층 보드일수록 트랙이 커짐 --
-  // 예전에 side가 커지던 것과 같은 원리).
+  // 좋겠다" 요청으로 정사각형 둘레 배치를 곡선 트랙으로 교체. 층(floor)마다 아래 중 하나를
+  // 고정 배정(같은 층은 항상 같은 모양)해서 층별로 다른 생김새를 보여준다 -- 데이터/이동
+  // 로직은 전혀 안 바뀌고 순수하게 "그리는 좌표"만 바뀐다. [2026-09-05 수정] 처음엔 열린
+  // 경로도 섞여있었는데 "시작과 끝이 항상 이어지게" 요청으로 전부 닫힌(Z) 루프로 교체.
+  // 각 path는 0~100 정규화 좌표계, 여백을 위해 12~88 범위 안쪽으로만 그려서(칸 아이콘이
+  // 뷰포트 경계 밖으로 잘리지 않게) 시작과 끝이 항상 자연스럽게 이어진다.
   var TRACK_PATHS = [
-    'M50,15 C75,15 90,35 82,55 C74,73 85,88 65,90 C45,92 40,75 22,72 C5,69 8,45 25,35 C35,29 35,15 50,15 Z',
-    'M50,10 C80,10 92,40 85,60 C95,75 80,95 55,90 C35,86 40,70 20,68 C0,66 5,35 25,25 C35,20 35,12 50,10 Z',
-    'M10,15 C50,5 20,45 55,50 C90,55 60,80 90,90',
-    'M50,95 C82,85 18,75 50,65 C82,55 18,45 50,35 C82,25 18,15 50,5'
+    'M50,20 C70,20 82,32 78,50 C74,68 82,78 65,80 C48,82 42,70 28,68 C15,66 15,45 28,35 C36,29 36,20 50,20 Z',
+    'M50,15 C75,15 85,35 80,55 C88,68 78,85 58,82 C40,80 42,68 25,65 C15,63 15,42 30,32 C38,26 38,17 50,15 Z',
+    'M30,20 C55,15 75,25 78,45 C80,60 68,68 72,80 C75,88 55,85 45,75 C35,65 42,55 25,55 C15,55 12,35 20,25 C24,20 26,22 30,20 Z',
+    'M50,15 C65,15 68,30 60,38 C52,45 68,48 70,60 C72,72 60,85 50,85 C40,85 28,72 30,60 C32,48 48,45 40,38 C32,30 35,15 50,15 Z'
   ];
 
   // 실제로 sampling(getTotalLength/getPointAtLength)에 쓸 <path>. 일부 브라우저(사파리 계열)는
@@ -611,39 +613,31 @@ var TW = (function () {
   }
 
   function renderBoard(tiles, curTile, floor) {
-    var viewport = document.getElementById('towerViewport');
     var track = document.getElementById('towerTrack');
     track.innerHTML = '';
     if (!tiles || !tiles.length) {
-      track.style.width = ''; track.style.height = '';
       track.innerHTML = '<div style="color:var(--ink-soft);font-size:12px;">이 층은 보드가 없습니다 (마을/보스층)</div>';
       return;
     }
     var n = tiles.length;
-    var cell = 40, gap = 6, step = cell + gap;
+    // [2026-09-05] "좌우/상하 스크롤바가 나온다" 신고로, 칸 수에 맞춰 트랙을 키우던 방식을
+    // 버리고 뷰포트를 고정 크기(overflow:hidden)로 두는 대신 칸 크기(cell)를 칸 수에 맞춰
+    // 줄인다 -- 좌표도 px가 아니라 %(뷰포트 기준 퍼센트)로 둬서 어떤 화면 크기/칸 수에서도
+    // 뷰포트를 벗어나지 않는다(스크롤바가 원천적으로 생길 수 없음).
+    var cell = Math.max(16, Math.min(40, 900 / n));
 
-    // 트랙 모양(정규화 0~100 좌표계) 하나를 길이 측정용으로 세팅
+    // 트랙 모양(0~100 정규화 좌표계, 항상 닫힌 루프)의 <path> 하나를 길이 측정용으로 세팅
     var d = pickTrackPath(floor);
     trackSamplePath.setAttribute('d', d);
     var normLen = trackSamplePath.getTotalLength();
-    // 칸 사이 간격이 대략 step(px)가 되도록 전체를 키운다 -- 칸이 많을수록(n↑) 트랙도 커짐.
-    var scale = Math.max(1, (n * step) / normLen);
-    var boxSize = Math.ceil(100 * scale) + cell; // 트랙 좌표 + 칸 반경 여유
 
-    track.style.width = boxSize + 'px';
-    track.style.height = boxSize + 'px';
-
-    // 트랙 라인을 배경으로 깔아서 "길"처럼 보이게(카트라이더 느낌) -- 칸 아이콘들보다 아래(z-index)
+    // 트랙 라인을 배경으로 깔아서 "길"처럼 보이게(카트라이더 느낌) -- 칸 아이콘들보다 아래(z-index).
+    // preserveAspectRatio="none"으로 0~100 좌표계를 뷰포트 실제 가로/세로 비율에 맞게 그대로
+    // 늘려서, 아래 칸 아이콘의 %(pt.x/pt.y) 위치와 정확히 겹치게 한다.
     var svg = document.createElementNS(trackSvgNS, 'svg');
-    svg.setAttribute('width', boxSize);
-    svg.setAttribute('height', boxSize);
     svg.setAttribute('viewBox', '0 0 100 100');
-    svg.style.position = 'absolute';
-    svg.style.left = (cell / 2) + 'px';
-    svg.style.top = (cell / 2) + 'px';
-    svg.style.width = (100 * scale) + 'px';
-    svg.style.height = (100 * scale) + 'px';
-    svg.style.pointerEvents = 'none';
+    svg.setAttribute('preserveAspectRatio', 'none');
+    svg.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;';
     var lineEl = document.createElementNS(trackSvgNS, 'path');
     lineEl.setAttribute('d', d);
     lineEl.setAttribute('fill', 'none');
@@ -653,17 +647,16 @@ var TW = (function () {
     svg.appendChild(lineEl);
     track.appendChild(svg);
 
-    var hereEl = null;
     tiles.forEach(function (t, idx) {
-      // 순환 여부와 무관하게 시작부터 끝까지 균등 간격으로 배치 -- 닫힌(Z) 경로면 자연히
-      // 처음과 끝이 이어져 보이고, 열린 경로면 자연스러운 시작/끝이 생김(둘 다 요청대로 허용).
+      // 닫힌 루프라 처음과 끝이 자연스럽게 이어진다(요청대로 항상 순환).
       var pt = trackSamplePath.getPointAtLength((normLen * idx) / n);
       var div = document.createElement('div');
       var isHere = (t.TILE_NO === curTile);
-      div.style.left = (pt.x * scale) + 'px';
-      div.style.top = (pt.y * scale) + 'px';
+      div.style.left = 'calc(' + pt.x + '% - ' + (cell / 2) + 'px)';
+      div.style.top = 'calc(' + pt.y + '% - ' + (cell / 2) + 'px)';
       div.style.width = cell + 'px';
       div.style.height = cell + 'px';
+      div.style.fontSize = Math.max(7, cell / 4.5) + 'px';
       if (t.DISCOVERED) {
         div.className = 'tile ' + tileClass(t.TILE_TYPE) + (isHere ? ' here' : ' done');
         div.innerHTML = '<span class="tno">' + t.TILE_NO + '</span>' + (TILE_KR[t.TILE_TYPE] || t.TILE_TYPE);
@@ -673,14 +666,7 @@ var TW = (function () {
         div.innerHTML = '<span class="tno">' + t.TILE_NO + '</span>?';
       }
       track.appendChild(div);
-      if (isHere) hereEl = div;
     });
-
-    // 큰 보드는 화면보다 커서 스크롤이 필요하므로, 로드 시 현재 위치가 가운데 보이도록 스크롤
-    if (hereEl) {
-      viewport.scrollLeft = Math.max(0, hereEl.offsetLeft - viewport.clientWidth / 2 + cell / 2);
-      viewport.scrollTop = Math.max(0, hereEl.offsetTop - viewport.clientHeight / 2 + cell / 2);
-    }
   }
 
   // [2026-09-05] 주사위 교체 오버레이 -- 상점탭에 있던 걸 보드 칸그리드 위로 옮겨서, 해금된

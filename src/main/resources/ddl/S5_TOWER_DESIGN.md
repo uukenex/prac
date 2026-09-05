@@ -1228,6 +1228,32 @@ S4의 `TBOT_S4_ACHIEVEMENT`/`TBOT_S4_USER_ACH` 패턴을 확장 계승. S5에서
   여전히 깨져 보여서 "수정이 안 먹혔나" 헷갈렸는데, `UNISTR()`/`ASCIISTR()`로 다시 확인해보니
   실제로는 컬럼이 정상 동작하고 sqlplus 왕복 테스트 경로 자체가 문제였음(CLAUDE.md에 이
   검증 방법 기록). 앞으로 JDBC로 들어오는 실제 로그는 이모지가 정상 저장됨.
+- **[2026-09-05] 이모지 수정 후속 - 실제로는 컬럼 타입 변경만으론 안 됐음(바인딩 문제)**:
+  위 수정을 배포하고도 라이브 로그(`ASCIISTR`로 직접 확인)에 여전히 이모지 자리에 전각
+  물음표(`？？`)가 찍혀서 재조사 -- `BotMapper.xml`의 `insertBotWordHis`가 `REQ`/`RES`를
+  `jdbcType=VARCHAR`로 바인딩하고 있었는데, MyBatis 기본 `StringTypeHandler`는 jdbcType과
+  무관하게 `PreparedStatement.setString()`을 호출하고, Oracle JDBC는 `setString()`을 대상
+  컬럼 타입과 무관하게 **DB 기본 문자셋**(KO16MSWIN949/CP949)으로 변환해서 보낸다 -- 컬럼을
+  NVARCHAR2/NCLOB로 바꿔도 이 바인딩 경로에서 이미 CP949로 뭉개진 뒤라 소용없었던 것(한글은
+  CP949로도 표현 가능해서 지금까지 멀쩡해 보였을 뿐). `REQ`는
+  `typeHandler=org.apache.ibatis.type.NStringTypeHandler`(`setNString()`), `RES`는
+  `typeHandler=org.apache.ibatis.type.NClobTypeHandler`(`setNClob()`)로 명시해서 국가문자셋
+  (UTF8) 경유로 강제 바인딩하도록 수정(`BotMapper.xml`). `ROOM_NAME`/`USER_NAME`/`ISSUE_YN`은
+  이모지가 안 들어가는 값들이라 그대로 둠. **이 수정은 DB가 아니라 애플리케이션 코드(매퍼
+  XML)라 이전 세션의 다른 DB-only 수정들과 달리 앱 재배포가 있어야 실제로 적용됨** -- 재배포
+  후 다시 확인 필요.
+- **[2026-09-05] 보드 스크롤바 완전 제거 + 항상 닫힌 루프로 통일**: "좌우/상하 스크롤바가
+  나온다, 화면 축소 시 위아래 스크롤도 생긴다, 시작과 끝이 항상 이어지게 해달라"는 후속
+  요청. 칸 수(최대 150)에 맞춰 트랙 자체를 키우고 뷰포트가 스크롤되던 방식(`scale`/`boxSize`
+  계산, `viewport.scrollLeft/scrollTop` 자동 스크롤)을 완전히 버리고, `#towerViewport`를
+  고정 크기(`overflow:hidden`, `height:min(440px, 55vh)`)로 두는 대신 칸 크기(`cell =
+  clamp(16, 40, 900/n)`)가 칸 수에 맞춰 줄어들게 뒤집었다 -- 이제 어떤 화면 크기/칸 수에서도
+  트랙이 뷰포트를 벗어날 수 없어 스크롤바가 원천적으로 안 생긴다. 좌표도 px 대신 %(뷰포트
+  기준 퍼센트, `calc(pt.x% - cell/2px)`)로 둬서 컨테이너 크기가 반응형으로 바뀌어도 그대로
+  맞는다. 배경 트랙 라인 SVG도 `preserveAspectRatio="none"`으로 뷰포트의 실제(정사각형이
+  아닐 수 있는) 가로/세로 비율에 맞춰 늘려서 칸 위치와 어긋나지 않게 함. `TRACK_PATHS` 4종
+  전부 닫힌(Z) 루프로 교체(열린 와인딩 경로 2종 삭제)하고, 칸 아이콘이 뷰포트 경계 밖으로
+  잘리지 않도록 좌표 범위도 0~100에서 12~88 안쪽으로 좁혀 다시 그림.
 
 ### 남은 TODO
 
