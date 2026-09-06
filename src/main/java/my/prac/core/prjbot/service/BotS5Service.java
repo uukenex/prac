@@ -142,9 +142,10 @@ public interface BotS5Service {
     String ranking();
 
     /**
-     * 웹 SPA 파티 슬롯끼리 자리 교체 전용(채팅 명령어 없음) — idx(=/파티편성 목록 번호)의 동료를
-     * targetSlot(1~3) 자리로 옮긴다. targetSlot이 비어있으면 단순 이동, 이미 다른 동료가 있으면
-     * 서로 자리를 맞바꾼다. idx의 동료가 파티 밖이면(드래그 대상이 미편성 동료) 실패 처리.
+     * 웹 SPA 파티 슬롯 배치 통합 액션(채팅 명령어 없음) — idx(=/파티편성 목록 번호)의 동료를
+     * targetSlot(1~3) 자리에 배치한다. idx가 이미 편성된 동료면 자리 이동/맞교환, 아직 미편성인
+     * 동료면 그 자리에 배치(비어있으면 단순 배치, 다른 동료가 있으면 그 동료는 파티 밖으로
+     * 축출되고 장비도 함께 해제됨).
      */
     String partySwapSlot(String userName, int idx, int targetSlot);
 

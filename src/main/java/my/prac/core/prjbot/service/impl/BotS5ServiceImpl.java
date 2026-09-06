@@ -2735,6 +2735,21 @@ public class BotS5ServiceImpl implements BotS5Service {
         return nowHidden ? ("🙈 " + name + " 을(를) 목록에서 숨겼습니다.") : ("👀 " + name + " 을(를) 다시 표시합니다.");
     }
 
+    /** 파티 슬롯에서 동료를 뺄 때 항상 같이 호출 -- "해제 시 장비도 같이 풀리게 해달라" 요청
+      * (2026-09-06)으로 신설. 착용 중이던 장비를 전부 미착용 상태로 되돌린다(장비 자체가
+      * 사라지진 않고 미착용 목록으로 돌아갈 뿐). equipUnwearAll(/장비해제)과 partyToggle/
+      * partyUnassignAll(파티 해제) 양쪽에서 공유. */
+    private int unequipAllForCompanion(int companionId) {
+        List<HashMap<String, Object>> equipped = dao.selectEquipByCompanion(companionId);
+        for (HashMap<String, Object> e : equipped) {
+            HashMap<String, Object> unwear = new HashMap<>();
+            unwear.put("equipId", intVal(e.get("EQUIP_ID"), 0));
+            unwear.put("equippedCompanionId", null);
+            dao.updateEquipEquippedCompanion(unwear);
+        }
+        return equipped.size();
+    }
+
     @Override
     @Transactional
     public String partyToggle(String userName, int idx) {
@@ -2751,11 +2766,13 @@ public class BotS5ServiceImpl implements BotS5Service {
         boolean inParty = target.get("PARTY_SLOT") != null;
 
         if (inParty) {
+            int companionId = intVal(target.get("COMPANION_ID"), 0);
+            int unequipped = unequipAllForCompanion(companionId);
             HashMap<String, Object> up = new HashMap<>();
-            up.put("companionId", intVal(target.get("COMPANION_ID"), 0));
+            up.put("companionId", companionId);
             up.put("partySlot", null);
             dao.updateCompanionPartySlot(up);
-            return "파티에서 해제했습니다.";
+            return "파티에서 해제했습니다." + (unequipped > 0 ? " (착용 중이던 장비 " + unequipped + "개도 함께 해제됨)" : "");
         }
 
         int used = 0;
@@ -2786,10 +2803,15 @@ public class BotS5ServiceImpl implements BotS5Service {
     }
 
     /**
-     * 웹 SPA 전용: 이미 편성된 동료끼리 파티 1/2/3번 슬롯 자리를 서로 바꾼다("동료1,2,3끼리도
-     * 위치변경 가능하니?" 요청으로 신설). targetSlot이 비어있으면 그냥 그 자리로 이동, 이미
-     * 다른 동료가 있으면 맞바꾼다(교환). idx의 동료가 파티 밖(미편성)이면 실패 -- 그 경우는
-     * 기존 PARTY_TOGGLE(편성/해제)이 담당할 영역이라 여기서는 다루지 않는다.
+     * 웹 SPA 전용: 파티 슬롯 탭 시트에서 쓰는 통합 배치 액션. targetSlot(1~3)에 idx(=/파티편성
+     * 목록 번호)의 동료를 배치한다. 두 가지 경우를 하나로 처리:
+     *   1) idx가 이미 편성된 동료(파티끼리 자리 교체, "동료1,2,3끼리도 위치변경 가능하니?" 요청) --
+     *      targetSlot이 비어있으면 단순 이동, 다른 동료가 있으면 서로 자리를 맞바꾼다(교환,
+     *      쫓겨나는 동료 없음).
+     *   2) idx가 아직 미편성인 동료(슬롯 시트에서 "빈 슬롯에 배치" 또는 "다른 동료로 교체") --
+     *      targetSlot이 비어있으면 그냥 배치, 이미 다른 동료가 있으면 그 동료를 파티에서
+     *      완전히 빼낸다(돌아갈 자리가 없으므로 교환이 아니라 축출 -- "해제 시 장비도 함께
+     *      해제되게 해달라" 요청대로 축출되는 동료의 장비도 이때 자동으로 전부 해제한다).
      */
     @Override
     @Transactional
@@ -2807,11 +2829,9 @@ public class BotS5ServiceImpl implements BotS5Service {
         }
         HashMap<String, Object> dragged = companions.get(idx - 1);
         Object draggedSlotObj = dragged.get("PARTY_SLOT");
-        if (draggedSlotObj == null) {
-            return "먼저 파티에 편성된 동료만 자리를 바꿀 수 있습니다.";
-        }
-        int draggedSlot = ((Number) draggedSlotObj).intValue();
-        if (draggedSlot == targetSlot) {
+        boolean wasPartied = draggedSlotObj != null;
+        int draggedSlot = wasPartied ? ((Number) draggedSlotObj).intValue() : 0;
+        if (wasPartied && draggedSlot == targetSlot) {
             return "이미 그 자리입니다.";
         }
 
@@ -2829,14 +2849,27 @@ public class BotS5ServiceImpl implements BotS5Service {
         up1.put("partySlot", targetSlot);
         dao.updateCompanionPartySlot(up1);
 
-        if (occupant != null) {
+        if (occupant == null) {
+            return wasPartied ? ("파티 " + targetSlot + "번 자리로 이동했습니다!")
+                               : ("파티 " + targetSlot + "번 슬롯에 편성했습니다!");
+        }
+        if (wasPartied) {
             HashMap<String, Object> up2 = new HashMap<>();
             up2.put("companionId", intVal(occupant.get("COMPANION_ID"), 0));
             up2.put("partySlot", draggedSlot);
             dao.updateCompanionPartySlot(up2);
             return "파티 " + draggedSlot + "번과 " + targetSlot + "번 자리를 맞바꿨습니다!";
         }
-        return "파티 " + targetSlot + "번 자리로 이동했습니다!";
+        // 미편성 동료로 교체 -- 기존 자리는 사라지므로 쫓겨나는 동료는 완전히 파티 밖으로,
+        // 장비도 함께 해제.
+        int evictedUnequipped = unequipAllForCompanion(intVal(occupant.get("COMPANION_ID"), 0));
+        HashMap<String, Object> up2 = new HashMap<>();
+        up2.put("companionId", intVal(occupant.get("COMPANION_ID"), 0));
+        up2.put("partySlot", null);
+        dao.updateCompanionPartySlot(up2);
+        String occupantName = strVal(occupant.get("NAME"), JOB_NAME.getOrDefault(strVal(occupant.get("CLASS"), ""), "동료"));
+        return "파티 " + targetSlot + "번 자리를 교체했습니다! (" + occupantName + " 은(는) 파티 밖으로"
+                + (evictedUnequipped > 0 ? ", 장비 " + evictedUnequipped + "개도 함께 해제됨)" : ")");
     }
 
     /** 웹 SPA 전용: 편성된 동료 전원을 한 번에 해제("일괄해제" 요청으로 신설). 개별 해제는 기존 PARTY_TOGGLE로 충분해서 그대로 둠. */
@@ -2849,17 +2882,20 @@ public class BotS5ServiceImpl implements BotS5Service {
         }
         List<HashMap<String, Object>> companions = dao.selectUserCompanions(userName);
         int cnt = 0;
+        int unequippedTotal = 0;
         for (HashMap<String, Object> c : companions) {
             if (c.get("PARTY_SLOT") != null) {
+                int companionId = intVal(c.get("COMPANION_ID"), 0);
+                unequippedTotal += unequipAllForCompanion(companionId);
                 HashMap<String, Object> up = new HashMap<>();
-                up.put("companionId", intVal(c.get("COMPANION_ID"), 0));
+                up.put("companionId", companionId);
                 up.put("partySlot", null);
                 dao.updateCompanionPartySlot(up);
                 cnt++;
             }
         }
         if (cnt == 0) return "편성된 동료가 없습니다.";
-        return "파티 " + cnt + "명을 전부 해제했습니다.";
+        return "파티 " + cnt + "명을 전부 해제했습니다." + (unequippedTotal > 0 ? " (착용 중이던 장비 " + unequippedTotal + "개도 함께 해제됨)" : "");
     }
 
     /**
@@ -3889,18 +3925,11 @@ public class BotS5ServiceImpl implements BotS5Service {
         HashMap<String, Object> target = party.get(companionIdx - 1);
         int companionId = intVal(target.get("COMPANION_ID"), 0);
 
-        List<HashMap<String, Object>> equipped = dao.selectEquipByCompanion(companionId);
         String job = JOB_NAME.getOrDefault(strVal(target.get("CLASS"), ""), "?");
         String name = strVal(target.get("NAME"), job);
-        if (equipped.isEmpty()) return job + "(" + name + ")은(는) 착용 중인 장비가 없습니다.";
-
-        for (HashMap<String, Object> e : equipped) {
-            HashMap<String, Object> unwear = new HashMap<>();
-            unwear.put("equipId", intVal(e.get("EQUIP_ID"), 0));
-            unwear.put("equippedCompanionId", null);
-            dao.updateEquipEquippedCompanion(unwear);
-        }
-        return "🧺 " + job + "(" + name + ")의 장비 " + equipped.size() + "개를 전부 해제했습니다. (/장비목록의 [미착용]으로 이동)";
+        int unequipped = unequipAllForCompanion(companionId);
+        if (unequipped == 0) return job + "(" + name + ")은(는) 착용 중인 장비가 없습니다.";
+        return "🧺 " + job + "(" + name + ")의 장비 " + unequipped + "개를 전부 해제했습니다. (/장비목록의 [미착용]으로 이동)";
     }
 
     /** 선택권 등급(3/4/5)에 대응하는 진행상태 컬럼/필드 접미사("" 또는 "G4"/"G5"). */
