@@ -2112,6 +2112,17 @@ public class BotS5ServiceImpl implements BotS5Service {
         boolean vampiricBoss = "Y".equals(strVal(mon.get("BOSS_YN"), "N")) && blockNo(floor) >= 5;
         long lifestealHeal = 0;
 
+        // [2026-09-07] "몬스터도 주사위를 굴리는데 51~70층은 6~12, 71층부터는 8~20을 굴리게
+        // 해달라" 요청 -- 원래 몬스터 반격은 플레이어가 낀 주사위(diceMax)를 그대로 같이
+        // 썼는데(플레이어가 큰 주사위를 낄수록 몬스터 반격도 덩달아 세지는 부작용), 51층+는
+        // 몬스터 자신만의 무작위 면수 주사위를 매 턴 새로 굴려서 플레이어 장비와 무관하게
+        // 반격 변동폭을 키운다(한 턴 안에서 여러 대상을 때리는 다중 타겟 보스는 같은 턴 동안
+        // 같은 면수를 공유, 대상별 눈금만 각자 새로 굴림).
+        int monsterDiceMax = diceMax;
+        if (floor >= 51) {
+            monsterDiceMax = (floor <= 70) ? (6 + RND.nextInt(7)) : (8 + RND.nextInt(13));
+        }
+
         for (int ti = 0; ti < targets.size(); ti++) {
             HashMap<String, Object> curTarget = targets.get(ti);
             boolean curGuarded = ti == 0 && guarded;
@@ -2126,7 +2137,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (trapDefDown) tEff[2] = (int) Math.round(tEff[2] * 0.7); // 함정: 방어력 30% 약화(반격 피해 증가)
         if (luckyDefUp) tEff[2] = (int) Math.round(tEff[2] * luckyMult); // 럭키: 방어력 강화(반격 피해 감소)
         int monsterAtk = (int) Math.round(intVal(mon.get("ATK_VALUE"), 0) * eliteMult);
-        int roll = rollFace(diceMax);
+        int roll = rollFace(monsterDiceMax);
         int rawDmgToParty = Math.max(1, monsterAtk * roll - tEff[2]);
         // 중간보스가 이번 턴 궁수 기술을 훔쳤으면(위 미드보스 파트) 이 반격 피해를 즉시 증폭.
         if (midBossArcherDmgUp) rawDmgToParty = (int) Math.round(rawDmgToParty * 1.3);
