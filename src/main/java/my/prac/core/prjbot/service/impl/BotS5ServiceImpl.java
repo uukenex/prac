@@ -372,8 +372,10 @@ public class BotS5ServiceImpl implements BotS5Service {
         return (floorBlockBase(floor) / 10) + 1;
     }
 
-    // [2026-09-06, 당분간] 51층(블록6 사냥터) 이후 콘텐츠 아직 미공개 -- 진입 자체를 막는다.
-    private static final int CONTENT_LOCKED_FLOOR = 51;
+    // [2026-09-07, 당분간] 블록6(51~60층) 오픈 확정, 61층(블록7 사냥터) 이후는 아직 콘텐츠
+    // 미공개라 진입 자체를 막는다. (49층/59층 보스 스킬, 51층+ 중간보스·신규 함정/럭키·
+    // 지그재그 큰 보드·보상 인상 전부 51~60 범위에서 실측 검증 완료 후 이 값만 올렸음.)
+    private static final int CONTENT_LOCKED_FLOOR = 61;
 
     // [2026-09-06] 51층 이후(블록6+) 전투칸에서 중간보스와 마주칠 확률(%). 밸런스 튜닝값이라
     // 필요하면 조정. 잠긴 콘텐츠라 실사용자 영향 없이 먼저 만들어두고 51층 오픈 시 재검토.
@@ -2394,10 +2396,10 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (target == floor) {
             return "이미 " + floor + "층에 있습니다."; // "같은 층으로 이동은 막아달라" 요청
         }
-        // [2026-09-06, 당분간] 51층 이상은 콘텐츠 준비 전이라 진입 자체를 차단(마을 접근 등
+        // [2026-09-07, 당분간] 61층 이상은 콘텐츠 준비 전이라 진입 자체를 차단(마을 접근 등
         // 다른 제약보다 우선 확인). maxReached로 이미 자격이 있어도 예외 없이 막는다.
         if (target >= CONTENT_LOCKED_FLOOR) {
-            return "🌑 어둠이 득실거려 현재는 갈 수 없습니다. (51층 이상, 추후 오픈 예정)";
+            return "🌑 어둠이 득실거려 현재는 갈 수 없습니다. (61층 이상, 추후 오픈 예정)";
         }
         int villageFloor = floorBlockBase(floor);
         boolean alwaysFree = (target == villageFloor) || (target == villageFloor + 1); // 마을↔첫 사냥터층은 항상 자유 이동

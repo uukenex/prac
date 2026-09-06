@@ -139,6 +139,10 @@
     .party-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:8px; }
     .party-card{ background:#fff; border:2px solid var(--line); border-radius:14px; padding:9px; text-align:center; }
     .party-card.inparty{ border-color:var(--gold); background:var(--gold-soft); }
+    /* [2026-09-07] 전체동료보기를 배치 팝업으로도 재사용할 때(companionPickerSlot) 탭
+       가능함을 알리는 커서/피드백. */
+    .party-card.pickable{ cursor:pointer; }
+    .party-card.pickable:active{ transform:scale(.97); }
     /* 얼굴이 잘 안 보인다는 신고로 원형 → 사각형으로 변경 + 인물 사진은 보통 위쪽에 얼굴이
        있어서 object-position을 top으로 둬서 얼굴이 잘리지 않게 함. 클릭하면 확대(zoom-in). */
     .party-card .avatar{ width:64px; height:64px; border-radius:10px; object-fit:cover; object-position:50% 15%;
@@ -469,7 +473,7 @@
 <div class="detail-overlay" id="allCompanionsOverlay" onclick="if(event.target===this) TW.closeAllCompanions();">
   <div class="detail-card sheet-card wide-card">
     <button class="detail-close" onclick="TW.closeAllCompanions()">✕</button>
-    <div class="sheet-title">보유 동료</div>
+    <div class="sheet-title" id="allCompanionsTitle">보유 동료</div>
     <div id="partyGridFilters"></div>
     <div class="party-grid" id="partyGrid"></div>
   </div>
@@ -924,7 +928,8 @@ var TW = (function () {
   function buildGradeFilterRow(current, onSelect) {
     var row = document.createElement('div');
     row.className = 'filter-row';
-    [null, 1, 2, 3, 4, 5, 6].forEach(function (g) {
+    // [2026-09-07] "필터도 성급 desc로 정렬순서 바꿔줘" 요청 -- 전체 다음 ★6부터 내림차순.
+    [null, 6, 5, 4, 3, 2, 1].forEach(function (g) {
       var btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'filter-chip' + (current === g ? ' on' : '');
@@ -951,20 +956,14 @@ var TW = (function () {
 
   // [2026-09-06] "파티 카드 자체에 동료변경/해제, 부위별 장비변경 버튼을 직관적으로" 요청으로
   // 슬롯 관리 UI를 재편 -- 파티 카드(renderPartySlots)는 이제 항상 펼쳐진 상태로 모든 정보를
-  // 보여주고, 이 팝업은 그 카드의 버튼에서 "무엇으로 바꿀지" 딱 한 번만 고르는 용도로 좁혔다
-  // (고르면 바로 닫힘, 예전처럼 슬롯 전체를 관리하는 화면이 아님). mode:'companion'이면
-  // 동료 후보 목록(직업/성급 필터, "필터링된 동료선택 팝업" 요청), mode:'equip'이면 그
-  // 부위+직업에 맞는 장비 후보 목록(+현재 장착 아이템 해제).
+  // 보여주고, 이 팝업은 그 카드의 부위별 "OO변경" 버튼에서 "무엇으로 바꿀지" 딱 한 번만
+  // 고르는 용도로 좁혔다(고르면 바로 닫힘). [2026-09-07] 동료 배치/변경은 "전체동료보기와
+  // 같은 창을 띄워달라" 요청으로 이 팝업에서 빠지고 openCompanionPicker(아래, allCompanions
+  // Overlay 재사용)로 옮겨갔다 -- 이제 이 팝업은 장비 부위 선택 전용.
   var pickerState = null;
 
-  function openCompanionPicker(slot) {
-    pickerState = { mode: 'companion', slot: slot, candJob: null, candGrade: null };
-    document.getElementById('pickerOverlay').classList.add('open');
-    renderPicker();
-  }
-
   function openEquipPicker(slot, part) {
-    pickerState = { mode: 'equip', slot: slot, part: part };
+    pickerState = { slot: slot, part: part };
     document.getElementById('pickerOverlay').classList.add('open');
     renderPicker();
   }
@@ -972,43 +971,6 @@ var TW = (function () {
   function closePicker() {
     pickerState = null;
     document.getElementById('pickerOverlay').classList.remove('open');
-  }
-
-  // 동료 후보 목록 -- 필터 칩(직업/성급, 보유동료 목록과 동일한 UI) + 직업별로 묶어서
-  // 그려준다("직업문양 넣어 분류 가능하게" 요청). candidates는 [{c:동료객체, idx:전체목록번호}]
-  // 필터 전 전체 목록.
-  function renderCandidateCompanions(container, candidates, onPick) {
-    container.appendChild(buildJobFilterRow(pickerState.candJob, function (job) { pickerState.candJob = job; renderPicker(); }));
-    container.appendChild(buildGradeFilterRow(pickerState.candGrade, function (g) { pickerState.candGrade = g; renderPicker(); }));
-
-    var filtered = candidates.filter(function (entry) {
-      if (pickerState.candJob && entry.c.CLASS !== pickerState.candJob) return false;
-      if (pickerState.candGrade && entry.c.GRADE !== pickerState.candGrade) return false;
-      return true;
-    });
-    if (filtered.length === 0) {
-      var empty = document.createElement('div');
-      empty.className = 'sheet-empty';
-      empty.textContent = candidates.length === 0 ? '배치할 수 있는 동료가 없습니다.' : '조건에 맞는 동료가 없습니다.';
-      container.appendChild(empty);
-      return;
-    }
-    var grouped = {};
-    filtered.forEach(function (entry) { (grouped[entry.c.CLASS] = grouped[entry.c.CLASS] || []).push(entry); });
-    JOB_ORDER.filter(function (job) { return grouped[job]; }).forEach(function (job) {
-      var title = document.createElement('div');
-      title.className = 'equip-group-title';
-      title.textContent = (JOB_EMOJI[job] || '') + ' ' + (JOB_KR[job] || job) + ' (' + grouped[job].length + ')';
-      container.appendChild(title);
-      grouped[job].sort(function (a, b) { return (b.c.GRADE || 0) - (a.c.GRADE || 0); }).forEach(function (entry) {
-        var c = entry.c;
-        var row = document.createElement('div');
-        row.className = 'sheet-row';
-        row.innerHTML = '<span class="sr-main">' + (c.NAME || JOB_KR[c.CLASS] || c.CLASS) + '</span><span class="sr-sub">★' + c.GRADE + '</span>';
-        row.onclick = function () { onPick(entry.idx); };
-        container.appendChild(row);
-      });
-    });
   }
 
   // 팝업 내용 렌더링 -- 고르면 즉시 액션을 쏘고(action) 팝업을 닫는다. 카드 자체가 항상
@@ -1021,22 +983,8 @@ var TW = (function () {
     var byCompanion = lastParty.byCompanion || {};
     var unequipped = lastParty.unequipped || [];
 
-    if (pickerState.mode === 'companion') {
-      var title = document.createElement('div');
-      title.className = 'sheet-title';
-      title.textContent = '파티 ' + pickerState.slot + '번에 배치할 동료';
-      body.appendChild(title);
-      var candidates = companions.map(function (c, i) { return { c: c, idx: i + 1 }; })
-          .filter(function (entry) { return !entry.c.PARTY_SLOT; });
-      renderCandidateCompanions(body, candidates, function (idx) {
-        action('PARTY_SWAP', String(idx), String(pickerState.slot));
-        closePicker();
-      });
-      return;
-    }
-
-    // mode === 'equip' -- 부위+그 동료 직업에 맞는 장비만 고를 수 있다(요청대로 서로 다른
-    // 직업 장비는 애초에 후보에 나오지 않음, equipWear의 직업 제약과 동일 조건).
+    // 부위+그 동료 직업에 맞는 장비만 고를 수 있다(요청대로 서로 다른 직업 장비는 애초에
+    // 후보에 나오지 않음, equipWear의 직업 제약과 동일 조건).
     var occupant = companions.filter(function (c) { return c.PARTY_SLOT === pickerState.slot; })[0];
     if (!occupant) { closePicker(); return; }
     var part = pickerState.part;
@@ -1086,10 +1034,31 @@ var TW = (function () {
   // "보유동료/파티장비현황/미착용장비는 없애고 전체동료보기/전체아이템보기 버튼으로 이관"
   // 요청 -- 내용(renderPartyGrid/renderEquipList)은 loadPartyAndEquip()이 매번 백그라운드로
   // 계속 그려두고, 이 열기/닫기 함수는 그 결과가 담긴 팝업을 보이기만 한다.
-  function openAllCompanions() {
+  //
+  // [2026-09-07] "빈 슬롯 배치/동료 변경 시 전체동료보기와 같은 창을 띄워달라" 요청 -- 별도
+  // 팝업을 새로 만들지 않고 이 allCompanionsOverlay를 그대로 재사용한다. companionPickerSlot이
+  // 있으면(openCompanionPicker로 열렸으면) renderPartyGrid()가 "배치 모드"로 그린다(미편성
+  // 동료만, 탭하면 그 슬롯에 바로 배치하고 닫힘) -- 없으면(openAllCompanions로 열렸으면)
+  // 기존처럼 전체 동료 브라우징 모드.
+  var companionPickerSlot = null;
+
+  function openCompanionPicker(slot) {
+    companionPickerSlot = slot;
+    gridFilter = { job: null, grade: null };
+    document.getElementById('allCompanionsTitle').textContent = '파티 ' + slot + '번에 배치할 동료';
     document.getElementById('allCompanionsOverlay').classList.add('open');
+    renderPartyGrid();
+  }
+
+  function openAllCompanions() {
+    companionPickerSlot = null;
+    gridFilter = { job: null, grade: null };
+    document.getElementById('allCompanionsTitle').textContent = '보유 동료';
+    document.getElementById('allCompanionsOverlay').classList.add('open');
+    renderPartyGrid();
   }
   function closeAllCompanions() {
+    companionPickerSlot = null;
     document.getElementById('allCompanionsOverlay').classList.remove('open');
   }
   function openAllEquip() {
@@ -1247,7 +1216,11 @@ var TW = (function () {
       unassignBtn.type = 'button';
       unassignBtn.className = 'ps-btn danger';
       unassignBtn.textContent = '해제';
-      unassignBtn.onclick = function () { action('PARTY_TOGGLE', String(occIdx)); };
+      // [2026-09-07 버그 수정] "누른 동료가 아니라 다른 동료가 해제된다" 신고 -- occIdx가
+      // for문 안에서 var로 선언돼 함수 스코프를 타서, 세 슬롯의 onclick 클로저가 전부 같은
+      // occIdx 변수를 공유하고 있었다(루프가 다 돈 뒤 클릭 시점엔 항상 마지막 슬롯 값).
+      // 다른 버튼들처럼 즉시실행함수로 캡처해서 슬롯마다 자기 값을 갖게 한다.
+      (function (idx) { unassignBtn.onclick = function () { action('PARTY_TOGGLE', String(idx)); }; })(occIdx);
       actions.appendChild(changeBtn);
       actions.appendChild(unassignBtn);
       card.appendChild(actions);
@@ -1276,8 +1249,13 @@ var TW = (function () {
   // 보유 동료 목록 -- 편성 여부 1순위(편성된 동료 먼저) + 성급 내림차순으로 정렬(기존과 동일),
   // 그 위에 직업/성급 필터 칩을 얹는다("필터링 기능 있으면 좋겠다" 요청). idx는 /파티편성·
   // PARTY_TOGGLE 등이 참조하는 "N번째 동료" 번호라 필터와 무관하게 항상 원본 순서 기준.
+  // [2026-09-07] companionPickerSlot이 있으면(openCompanionPicker로 열림) 미편성 동료만
+  // 후보로 보여주고 탭하면 그 슬롯에 배치, 없으면(openAllCompanions) 기존처럼 전체 브라우징
+  // (숨기기/상세보기만). "정렬순서를 성급 desc로" 요청으로 편성여부 우선순위를 없애고 항상
+  // 성급 내림차순 하나로 통일.
   function renderPartyGrid() {
     var companions = lastParty.companions || [];
+    var picking = !!companionPickerSlot;
     var filterBox = document.getElementById('partyGridFilters');
     filterBox.innerHTML = '';
     filterBox.appendChild(buildJobFilterRow(gridFilter.job, function (job) { gridFilter.job = job; renderPartyGrid(); }));
@@ -1285,19 +1263,16 @@ var TW = (function () {
 
     var displayOrder = companions.map(function (c, i) { return { c: c, idx: i + 1 }; })
         .filter(function (entry) {
+          if (picking && entry.c.PARTY_SLOT) return false; // 배치 모드: 이미 편성된 동료는 후보 제외
           if (gridFilter.job && entry.c.CLASS !== gridFilter.job) return false;
           if (gridFilter.grade && entry.c.GRADE !== gridFilter.grade) return false;
           return true;
         })
-        .sort(function (a, b) {
-          var aIn = a.c.PARTY_SLOT ? 1 : 0, bIn = b.c.PARTY_SLOT ? 1 : 0;
-          if (aIn !== bIn) return bIn - aIn;
-          return (b.c.GRADE || 0) - (a.c.GRADE || 0);
-        });
+        .sort(function (a, b) { return (b.c.GRADE || 0) - (a.c.GRADE || 0); });
     var grid = document.getElementById('partyGrid');
     grid.innerHTML = '';
     if (displayOrder.length === 0) {
-      grid.innerHTML = '<div class="sheet-empty">조건에 맞는 동료가 없습니다.</div>';
+      grid.innerHTML = '<div class="sheet-empty">' + (picking ? '배치할 수 있는 동료가 없습니다.' : '조건에 맞는 동료가 없습니다.') + '</div>';
       return;
     }
     displayOrder.forEach(function (entry) {
@@ -1305,20 +1280,30 @@ var TW = (function () {
       var hidden = c.HIDDEN_YN === 'Y';
       var inParty = !!c.PARTY_SLOT;
       var div = document.createElement('div');
-      div.className = 'party-card' + (inParty ? ' inparty' : '') + (hidden ? ' hidden' : '');
+      div.className = 'party-card' + (inParty ? ' inparty' : '') + (hidden ? ' hidden' : '') + (picking ? ' pickable' : '');
       var name = c.NAME || (JOB_KR[c.CLASS] || c.CLASS);
       div.innerHTML = '<div class="cname">' + name + '</div>'
           + '<div class="role">' + (JOB_KR[c.CLASS] || c.CLASS) + ' ★' + c.GRADE + '</div>'
           + '<div class="hpbar-track"><div class="hpbar-fill" style="width:100%"></div></div>'
           + '<div class="hp-num">HP ' + fmtPP(c.CUR_HP_VALUE, c.CUR_HP_EXT) + (c.PARTY_SLOT ? ' [파티' + c.PARTY_SLOT + ']' : '') + '</div>';
       div.insertBefore(buildAvatarEl(c, 'avatar', true), div.firstChild);
-      var hideBtn = document.createElement('button');
-      hideBtn.className = 'hide-btn';
-      hideBtn.type = 'button';
-      hideBtn.textContent = hidden ? '👀' : '🙈';
-      hideBtn.title = hidden ? '목록에 다시 표시' : '텍스트 목록(/파티편성)에서 숨기기';
-      hideBtn.onclick = function (ev) { ev.stopPropagation(); action('COMPANION_HIDE', String(idx)); };
-      div.appendChild(hideBtn);
+      if (picking) {
+        // 배치 모드 -- 카드를 탭하면 바로 배치(아바타는 buildAvatarEl이 이미 stopPropagation
+        // 처리해서 상세보기가 먼저 뜬다). 목록 관리용 숨기기 버튼은 이 모드에선 불필요.
+        var slotNo = companionPickerSlot;
+        div.onclick = function () {
+          action('PARTY_SWAP', String(idx), String(slotNo));
+          closeAllCompanions();
+        };
+      } else {
+        var hideBtn = document.createElement('button');
+        hideBtn.className = 'hide-btn';
+        hideBtn.type = 'button';
+        hideBtn.textContent = hidden ? '👀' : '🙈';
+        hideBtn.title = hidden ? '목록에 다시 표시' : '텍스트 목록(/파티편성)에서 숨기기';
+        hideBtn.onclick = function (ev) { ev.stopPropagation(); action('COMPANION_HIDE', String(idx)); };
+        div.appendChild(hideBtn);
+      }
       grid.appendChild(div);
     });
   }
@@ -1352,7 +1337,14 @@ var TW = (function () {
       return;
     }
     jobsInOrder.forEach(function (job) {
-      var list = grouped[job].slice().sort(function (a, b) { return b.GRADE - a.GRADE; });
+      // [2026-09-07] "성급별 무기별 정렬해줘, 지금은 섞여있다" 요청 -- 부위(무기→투구→갑옷)로
+      // 먼저 묶고 그 안에서 성급 내림차순. 예전엔 성급만으로 정렬해서 같은 직업 안에서
+      // 무기/투구/갑옷이 서로 섞여 나왔다.
+      var list = grouped[job].slice().sort(function (a, b) {
+        var pa = PART_ORDER.indexOf(a.PART), pb = PART_ORDER.indexOf(b.PART);
+        if (pa !== pb) return pa - pb;
+        return b.GRADE - a.GRADE;
+      });
       var title = document.createElement('div');
       title.className = 'equip-group-title';
       title.textContent = (JOB_KR[job] || job) + ' (' + list.length + ')';
