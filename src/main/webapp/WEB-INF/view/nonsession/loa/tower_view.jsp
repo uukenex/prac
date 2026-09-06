@@ -88,19 +88,46 @@
                   border:1px solid var(--line); border-radius:999px; padding:3px 9px; }
     .legend-dot{ width:8px; height:8px; border-radius:50%; }
 
-    /* [2026-09-06] 드래그 편성 폐지("모바일에서 드래그와 세로 스크롤이 겹쳐 오조작" 신고) --
-       슬롯은 이제 탭하면 시트(#slotSheetOverlay)가 열려 배치/교체/장비 관리를 전부 그 안에서
-       처리한다. 그래서 cursor/active 피드백만 탭 대상임을 알리는 용도로 남긴다. */
-    .party-slots{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
-    .party-slot-box{ min-height:118px; border:2px dashed var(--line); border-radius:14px; padding:8px;
-                      display:flex; flex-direction:column; align-items:center; justify-content:center;
-                      text-align:center; font-size:10px; color:var(--ink-soft); background:#fff;
-                      cursor:pointer; transition:transform .1s; }
-    .party-slot-box:active{ transform:scale(.96); }
-    .party-slot-box.filled{ border-style:solid; border-color:var(--gold); background:var(--gold-soft); }
-    .party-slot-box .slot-label{ font-size:9px; opacity:.7; margin-bottom:4px; }
-    .party-slot-box .cname{ font-size:12px; font-weight:800; color:var(--ink); }
-    .party-slot-box .slot-equip{ font-size:9px; color:var(--ink-soft); margin-top:3px; }
+    /* [2026-09-06] 파티 영역 확대 개편 -- 드래그 폐지에 이어, 슬롯을 탭해서 여는 시트 대신
+       각 파티원 카드 자체에 동료변경/해제/부위별 장비변경 버튼을 전부 인라인으로 붙인다
+       ("보유동료보다 이미지 크게, 동료 한 명씩 영역도 크게, 버튼은 직관적으로" 요청).
+       세로로 크게 쌓아서(3열 그리드였던 것을 1열로) 카드 하나에 들어갈 내용(초상화+정보+
+       버튼 2개+장비 3부위)이 넉넉히 들어가게 함. */
+    .party-slots{ display:flex; flex-direction:column; gap:10px; }
+    .party-slot-card{ border:2px solid var(--line); border-radius:16px; padding:14px; background:#fff; }
+    .party-slot-card.filled{ border-color:var(--gold); background:var(--gold-soft); }
+    .party-slot-card.empty{ display:flex; flex-direction:column; align-items:center; gap:10px;
+                             padding:26px 14px; border-style:dashed; color:var(--ink-soft); }
+    .ps-slot-label{ font-size:10px; color:var(--ink-soft); opacity:.8; }
+    .ps-header{ display:flex; align-items:center; gap:14px; margin-bottom:12px; }
+    .ps-avatar{ width:84px; height:84px; border-radius:14px; object-fit:cover; object-position:50% 15%;
+                background:#EFE7D2; border:2px solid var(--line); flex-shrink:0; cursor:zoom-in; }
+    .ps-avatar.avatar-emoji{ display:flex; align-items:center; justify-content:center; font-size:38px; }
+    .ps-info{ flex:1; min-width:0; }
+    .ps-name{ font-size:16px; font-weight:800; color:var(--ink); }
+    .ps-role{ font-size:12px; color:var(--ink-soft); margin-top:2px; }
+    .ps-hp{ font-size:11px; color:var(--ink-soft); margin-top:4px; }
+    .ps-actions{ display:flex; gap:8px; margin-bottom:12px; }
+    .ps-btn{ flex:1; background:#fff; border:1.5px solid var(--line); border-radius:10px; font-size:12px;
+             font-weight:700; padding:9px; cursor:pointer; color:var(--ink); }
+    .ps-btn:active{ transform:scale(.97); }
+    .ps-btn.danger{ color:var(--combat); border-color:var(--combat); }
+    .ps-btn.small{ font-size:10px; padding:6px; width:100%; }
+    .ps-equip-row{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; border-top:1.5px dashed var(--line); padding-top:12px; }
+    .ps-equip-slot{ display:flex; flex-direction:column; align-items:center; gap:5px; background:#fff;
+                    border:1.5px solid var(--line); border-radius:12px; padding:9px 6px; }
+    .ps-equip-icon{ font-size:22px; }
+    .ps-equip-grade{ font-size:11px; font-weight:700; color:var(--ink); }
+    .ps-empty-msg{ font-size:13px; }
+
+    /* "보유동료/파티장비현황/미착용장비는 없애고 버튼으로 이관" 요청 -- 파티 탭 하단의
+       "더 보기" 버튼 2개. 눌린 기능 자체(renderPartyGrid/renderEquipList 등)는 그대로 두고
+       담는 그릇만 인라인 카드에서 팝업(.wide-card)으로 옮겼다. */
+    .browse-btn{ flex:1; background:var(--parchment); border:1.5px solid var(--line); border-radius:12px;
+                 font-size:13px; font-weight:700; padding:12px; cursor:pointer; color:var(--ink); }
+    .browse-btn:active{ transform:scale(.98); }
+    .wide-card{ max-width:520px; }
+
     .card-title-row{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:10px; }
     .card-title-row .card-title{ margin-bottom:0; }
     .btn-unassign-all{ background:#fff; border:1.5px solid var(--line); border-radius:10px;
@@ -162,8 +189,8 @@
 
     /* 미착용 장비 목록(합성/자동장착용 버튼은 그대로, 드래그는 폐지). 직업별로 묶고 그 안에서
        성급 내림차순 정렬, 카드 한 칸이 화면 폭을 다 먹던 걸 party-grid처럼 여러 칸으로
-       배치되는 작은 카드로 줄임(개수 많아지면 스캔하기 쉽게). .equip-group-title은 슬롯
-       시트(#slotSheetOverlay) 안의 직업별 동료 그룹 헤더에도 재사용한다. */
+       배치되는 작은 카드로 줄임(개수 많아지면 스캔하기 쉽게). .equip-group-title은 선택
+       팝업(#pickerOverlay) 안의 직업별 동료 그룹 헤더에도 재사용한다. */
     .equip-group-title{ font-size:11px; font-weight:800; color:var(--ink-soft); margin:10px 0 6px; }
     .equip-group-title:first-child{ margin-top:0; }
     .equip-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(108px,1fr)); gap:8px; }
@@ -176,13 +203,11 @@
                          padding:4px 6px; font-size:10px; cursor:pointer; }
     .equip-card button.ten{ background:var(--shop); }
 
-    /* [2026-09-06] 파티 슬롯 탭 시트 -- 빈 슬롯/편성된 슬롯을 탭하면 열려서 배치·교체·장비
-       관리를 전부 이 안에서 탭으로만 처리한다(드래그 없음). detail-overlay/detail-card를
-       그대로 재사용하고 내부 콘텐츠만 아래 클래스로 새로 구성. */
+    /* [2026-09-06] 동료변경/장비변경 선택 팝업(#pickerOverlay), "전체 동료보기"/"전체
+       아이템보기" 팝업 공용 -- detail-overlay/detail-card를 그대로 재사용하고 내부 콘텐츠만
+       아래 클래스로 새로 구성. */
     .sheet-card{ max-width:340px; }
     .sheet-title{ font-size:15px; font-weight:800; margin:2px 0 12px; padding-right:22px; }
-    .sheet-back{ background:none; border:none; color:var(--ink-soft); font-size:11px; cursor:pointer;
-                 padding:0 0 10px; display:flex; align-items:center; gap:3px; }
     .sheet-row{ display:flex; align-items:center; justify-content:space-between; gap:8px; background:#fff;
                 border:1.5px solid var(--line); border-radius:12px; padding:10px 12px; margin-bottom:6px;
                 font-size:12px; cursor:pointer; text-align:left; }
@@ -194,7 +219,7 @@
     .sheet-row .sr-sub{ font-size:10px; color:var(--ink-soft); white-space:nowrap; }
     .sheet-empty{ font-size:11px; color:var(--ink-soft); text-align:center; padding:10px 0; }
 
-    /* [2026-09-06] 필터 칩 -- 보유동료/미착용장비/슬롯 시트 후보목록 공용(직업·성급·부위). */
+    /* [2026-09-06] 필터 칩 -- 보유동료/미착용장비/선택 팝업 후보목록 공용(직업·성급·부위). */
     .filter-row{ display:flex; flex-wrap:wrap; gap:5px; margin-bottom:8px; }
     .filter-chip{ background:#fff; border:1.5px solid var(--line); border-radius:999px; font-size:10px;
                   padding:4px 10px; cursor:pointer; color:var(--ink-soft); white-space:nowrap; }
@@ -202,22 +227,6 @@
     .mini-btn{ background:#fff; border:1.5px solid var(--line); border-radius:8px; font-size:10px;
                padding:3px 10px; cursor:pointer; color:var(--combat); white-space:nowrap; flex-shrink:0; }
     .mini-btn:hover{ border-color:var(--combat); }
-
-    /* 파티 슬롯 카드 안의 작은 초상화("파티 탭에도 이미지 나오게" 요청) -- party-card .avatar와
-       같은 폴백 로직(buildAvatarEl)을 크기만 줄여서 재사용. */
-    .slot-avatar{ width:48px; height:48px; border-radius:10px; object-fit:cover; object-position:50% 15%;
-                  background:#EFE7D2; border:2px solid var(--line); display:block; margin:0 auto 5px; cursor:zoom-in; }
-    .slot-avatar.avatar-emoji{ display:flex; align-items:center; justify-content:center; font-size:22px; }
-
-    /* 슬롯 시트 상단 "현재 동료" 헤더("보유동료처럼 이미지도 띄워달라" 요청) -- 초상화 + 이름/등급. */
-    .sheet-head{ display:flex; align-items:center; gap:10px; background:var(--gold-soft); border:1.5px solid var(--gold);
-                 border-radius:12px; padding:10px 12px; margin-bottom:6px; }
-    .sheet-head .sh-info{ flex:1; min-width:0; }
-    .sheet-head .sh-name{ font-weight:800; font-size:13px; color:var(--ink); }
-    .sheet-head .sh-role{ font-size:10px; color:var(--ink-soft); margin-top:2px; }
-    .sheet-avatar{ width:52px; height:52px; border-radius:10px; object-fit:cover; object-position:50% 15%;
-                   background:#EFE7D2; border:2px solid var(--line); flex-shrink:0; cursor:zoom-in; }
-    .sheet-avatar.avatar-emoji{ display:flex; align-items:center; justify-content:center; font-size:24px; }
 
     .ach-row{ display:flex; gap:8px; align-items:flex-start; background:#fff; border:1.5px solid var(--line);
               border-radius:12px; padding:8px 12px; margin-bottom:6px; font-size:12px; }
@@ -349,7 +358,7 @@
   <div class="panel" id="panel-party">
     <div class="card">
       <div class="card-title-row">
-        <div class="card-title">파티 (슬롯을 탭하면 배치·교체·장비 관리)</div>
+        <div class="card-title">파티</div>
         <button type="button" class="btn-unassign-all" onclick="TW.action('PARTY_UNASSIGN_ALL')">일괄해제</button>
       </div>
       <div class="party-slots" id="partySlots"></div>
@@ -358,19 +367,12 @@
       <div class="card-title">🎁 완전탐사 선택권 (10층 구간 앞/뒤 4개층 전부 완전탐사 시 지급, 직업을 골라 확정 획득)</div>
       <div id="ticketBox"></div>
     </div>
-    <div class="card" style="margin-top:10px;">
-      <div class="card-title">보유 동료 (파티 편성은 위 슬롯을 탭하세요, 여기선 숨기기/상세보기만)</div>
-      <div id="partyGridFilters"></div>
-      <div class="party-grid" id="partyGrid"></div>
-    </div>
-    <div class="card" style="margin-top:10px;">
-      <div class="card-title">파티 장비 현황</div>
-      <div id="partyEquipBox"></div>
-    </div>
-    <div class="card" style="margin-top:10px;">
-      <div class="card-title">미착용 장비 (장착은 위 슬롯 탭에서도 가능, 합성은 여기서)</div>
-      <div id="equipListFilters"></div>
-      <div id="equipListBox"></div>
+    <!-- [2026-09-06] "보유동료/파티장비현황/미착용장비는 없애고 버튼으로 이관" 요청 -- 안의
+         기능(renderPartyGrid/renderPartyEquipSummary/renderEquipList)은 그대로 두고, 항상
+         보이던 카드 3개를 이 버튼 2개 뒤 팝업(#allCompanionsOverlay/#allEquipOverlay)으로 옮김. -->
+    <div class="card" style="margin-top:10px; display:flex; gap:8px;">
+      <button type="button" class="browse-btn" onclick="TW.openAllCompanions()">👥 전체 동료보기</button>
+      <button type="button" class="browse-btn" onclick="TW.openAllEquip()">🎒 전체 아이템보기</button>
     </div>
   </div>
 
@@ -442,12 +444,35 @@
   </div>
 </div>
 
-<!-- [2026-09-06] 파티 슬롯 탭 시트 -- 빈 슬롯/편성된 슬롯을 탭하면 열림. renderSlotSheet()가
-     sheetBody 안을 그때그때 채운다(메인 화면 또는 장비 부위별 화면). -->
-<div class="detail-overlay" id="slotSheetOverlay" onclick="if(event.target===this) TW.closeSlotSheet();">
+<!-- [2026-09-06] 동료변경/무기·투구·갑옷변경 버튼에서 여는 선택 팝업. renderPicker()가
+     pickerBody 안을 그때그때 채운다(동료 후보 목록 또는 장비 후보 목록, 고르면 바로 닫힘). -->
+<div class="detail-overlay" id="pickerOverlay" onclick="if(event.target===this) TW.closePicker();">
   <div class="detail-card sheet-card">
-    <button class="detail-close" onclick="TW.closeSlotSheet()">✕</button>
-    <div id="sheetBody"></div>
+    <button class="detail-close" onclick="TW.closePicker()">✕</button>
+    <div id="pickerBody"></div>
+  </div>
+</div>
+
+<!-- "보유동료/파티장비현황/미착용장비 카드는 없애고 버튼으로 이관" 요청 -- 내용물
+     (partyGridFilters/partyGrid/partyEquipBox/equipListFilters/equipListBox)은 그대로,
+     항상 보이던 인라인 카드 대신 이 팝업 2개 뒤로 옮겼다. -->
+<div class="detail-overlay" id="allCompanionsOverlay" onclick="if(event.target===this) TW.closeAllCompanions();">
+  <div class="detail-card sheet-card wide-card">
+    <button class="detail-close" onclick="TW.closeAllCompanions()">✕</button>
+    <div class="sheet-title">보유 동료</div>
+    <div id="partyGridFilters"></div>
+    <div class="party-grid" id="partyGrid"></div>
+  </div>
+</div>
+
+<div class="detail-overlay" id="allEquipOverlay" onclick="if(event.target===this) TW.closeAllEquip();">
+  <div class="detail-card sheet-card wide-card">
+    <button class="detail-close" onclick="TW.closeAllEquip()">✕</button>
+    <div class="sheet-title">파티 장비 현황</div>
+    <div id="partyEquipBox"></div>
+    <div class="sheet-title" style="margin-top:16px;">미착용 장비</div>
+    <div id="equipListFilters"></div>
+    <div id="equipListBox"></div>
   </div>
 </div>
 
@@ -630,32 +655,65 @@ var TW = (function () {
   }
 
   // [2026-09-05] "던전앤파이터 보스맵/카트라이더 느낌으로 구불구불하게, 시작과 끝이 이어지면
-  // 좋겠다" 요청으로 정사각형 둘레 배치를 곡선 트랙으로 교체. 층(floor)마다 아래 중 하나를
-  // 고정 배정(같은 층은 항상 같은 모양)해서 층별로 다른 생김새를 보여준다 -- 데이터/이동
-  // 로직은 전혀 안 바뀌고 순수하게 "그리는 좌표"만 바뀐다. [2026-09-05 수정] 처음엔 열린
-  // 경로도 섞여있었는데 "시작과 끝이 항상 이어지게" 요청으로 전부 닫힌(Z) 루프로 교체.
-  // 각 path는 0~100 정규화 좌표계, 여백을 위해 12~88 범위 안쪽으로만 그려서(칸 아이콘이
-  // 뷰포트 경계 밖으로 잘리지 않게) 시작과 끝이 항상 자연스럽게 이어진다.
-  var TRACK_PATHS = [
-    'M50,20 C70,20 82,32 78,50 C74,68 82,78 65,80 C48,82 42,70 28,68 C15,66 15,45 28,35 C36,29 36,20 50,20 Z',
-    'M50,15 C75,15 85,35 80,55 C88,68 78,85 58,82 C40,80 42,68 25,65 C15,63 15,42 30,32 C38,26 38,17 50,15 Z',
-    'M30,20 C55,15 75,25 78,45 C80,60 68,68 72,80 C75,88 55,85 45,75 C35,65 42,55 25,55 C15,55 12,35 20,25 C24,20 26,22 30,20 Z',
-    'M50,15 C65,15 68,30 60,38 C52,45 68,48 70,60 C72,72 60,85 50,85 C40,85 28,72 30,60 C32,48 48,45 40,38 C32,30 35,15 50,15 Z'
-  ];
-
-  // [2026-09-06] "51층 200칸 보드가 11층이랑 트랙 모양이 똑같고 너무 촘촘하다, Z자로 퍼트려
-  // 달라" 신고 -- 위 블롭 곡선 4종은 floor%4로 고정 배정되다 보니 11층(11%4=3)과 51층
-  // (51%4=3)이 우연히 같은 모양을 뽑았고, 애초에 칸 수(n)와 무관하게 항상 같은 길이의
-  // 곡선 위에 n개를 욱여넣는 구조라 n이 커질수록(51층+ 하드코어 보드는 190~210칸) 무조건
-  // 촘촘해질 수밖에 없었다(칸 크기도 900/n으로만 정해져 큰 n에서 최소치 16px에 바로 붙음).
-  // LARGE_BOARD_TILE_THRESHOLD 이상인 보드는 지그재그(뱀 모양, 문자 그대로 "Z"자에 가까움)
-  // 그리드로 새로 그린다 -- 행(rows)이 칸 수에 비례해 늘어나 총 경로 길이도 같이 늘어나므로,
-  // 원의 둘레 위에 점을 찍는 기존 방식과 달리 칸이 많아져도 칸 사이 간격이 좁아지지 않는다.
+  // 좋겠다" 요청으로 정사각형 둘레 배치를 곡선 트랙으로 교체. [2026-09-06] "Z자만 하지 말고
+  // 여러 형태를 알아서 만들어줘, 50층 아래도 다 다르게" 요청(마리오카트 코스 아이콘 스샷 참고)
+  // -- 고정 4종을 floor%4로 돌려쓰던 방식은 4층마다 모양이 겹쳤다(11층=51층 신고). 손으로
+  // 그린 곡선 대신, 층 번호를 시드로 한 의사난수로 매번 다른 닫힌 루프를 "생성"한다 --
+  // 꼭짓점 개수/각도 흔들림/반지름/가로세로 비율/각진 정도(각진 Z·S 느낌 vs 부드러운 블롭)를
+  // 전부 시드로 결정해서 같은 층은 항상 같은 모양, 다른 층은 웬만하면 다른 모양이 나온다.
   var LARGE_BOARD_TILE_THRESHOLD = 60;
 
-  /** 지그재그(뱀) 경로 생성 -- cols×rows 격자를 한 줄씩 좌우로 왕복하며 직선으로 잇고,
-   * 마지막 칸에서 시작점으로 곧장 되돌아가 닫는다(항상 닫힌 루프 유지). vertical이면 방향을
-   * 90도 돌려서(세로로 왕복) 큰 보드끼리도 층마다 다른 모양이 나오게 한다. */
+  /** 시드 기반 의사난수(선형합동법) -- 같은 시드면 항상 같은 순서의 숫자를 뽑는다. */
+  function seededRandom(seed) {
+    var s = seed % 2147483647;
+    if (s <= 0) s += 2147483646;
+    return function () {
+      s = (s * 16807) % 2147483647;
+      return (s - 1) / 2147483646;
+    };
+  }
+
+  /** 층 번호(+칸 수)를 시드로 매번 다른 닫힌 루프를 만든다(작은~중간 보드용). 중심에서
+   * 각도를 고르게 나눠 뽑은 뒤(각도가 항상 증가하는 순서라 스스로 안 꼬임) 반지름/가로세로
+   * 비율을 흔들어 별 모양 정사각형·타원·지그재그 등 다양한 실루엣을 낸다. angular(직선 연결,
+   * "Z자/S자" 느낌)와 부드러운 곡선을 절반씩 섞는다. */
+  function buildLoopPath(floor, n) {
+    var rnd = seededRandom((floor || 0) * 9301 + 49297 + (n || 0));
+    var margin = 12, cx = 50, cy = 50, maxR = 38;
+    var verts = 6 + Math.floor(rnd() * 6); // 6~11각형
+    var angular = rnd() < 0.5;
+    var rx = 0.7 + rnd() * 0.6, ry = 0.7 + rnd() * 0.6; // 가로/세로를 다르게 눌러 타원·직사각 느낌도 나오게
+    var pts = [];
+    for (var i = 0; i < verts; i++) {
+      var angle = (i / verts) * Math.PI * 2;
+      var jitter = (rnd() - 0.5) * (Math.PI / verts) * 0.7; // 각도를 살짝만 흔들어서(별모양 자기교차 방지) 각지게
+      var r = maxR * (0.55 + rnd() * 0.45);
+      var x = cx + Math.cos(angle + jitter) * r * rx;
+      var y = cy + Math.sin(angle + jitter) * r * ry;
+      pts.push([Math.max(margin, Math.min(100 - margin, x)), Math.max(margin, Math.min(100 - margin, y))]);
+    }
+    var d = 'M' + pts[0][0].toFixed(1) + ',' + pts[0][1].toFixed(1) + ' ';
+    if (angular) {
+      for (var j = 1; j < pts.length; j++) d += 'L' + pts[j][0].toFixed(1) + ',' + pts[j][1].toFixed(1) + ' ';
+      d += 'Z';
+    } else {
+      // 부드러운 닫힌 곡선 -- 인접한 두 점의 중점을 향해 quadratic curve로 이어서(각 꼭짓점을
+      // control point 삼아) 뾰족하지 않게 둥글린다.
+      for (var k = 0; k < pts.length; k++) {
+        var p1 = pts[k], p2 = pts[(k + 1) % pts.length];
+        var mid = [(p1[0] + p2[0]) / 2, (p1[1] + p2[1]) / 2];
+        d += 'Q' + p1[0].toFixed(1) + ',' + p1[1].toFixed(1) + ' ' + mid[0].toFixed(1) + ',' + mid[1].toFixed(1) + ' ';
+      }
+      d += 'Z';
+    }
+    return d;
+  }
+
+  /** 지그재그(뱀) 경로 생성 -- cols×rows 격자를 한 줄씩 좌우(또는 위아래)로 왕복하며 직선으로
+   * 잇고, 마지막 칸에서 시작점으로 곧장 되돌아가 닫는다(항상 닫힌 루프 유지). 칸 수(n)가 많은
+   * 51층+ 하드코어 보드 전용 -- 행(rows)이 칸 수에 비례해 늘어나 총 경로 길이도 같이 늘어나므로,
+   * 원의 둘레 위에 점을 찍는 방식과 달리 칸이 많아져도 칸 사이 간격이 좁아지지 않는다.
+   * vertical이면 방향을 90도 돌려서(세로로 왕복) 큰 보드끼리도 층마다 다른 모양이 나오게 한다. */
   function buildSerpentinePath(cols, rows, vertical) {
     var margin = 12, span = 100 - margin * 2;
     var pts = [];
@@ -693,12 +751,6 @@ var TW = (function () {
   trackSampleSvg.appendChild(trackSamplePath);
   document.body.appendChild(trackSampleSvg);
 
-  /** 층 번호로 트랙 모양을 고정 배정(같은 층이면 항상 같은 모양). */
-  function pickTrackPath(floor) {
-    var idx = ((floor || 0) % TRACK_PATHS.length + TRACK_PATHS.length) % TRACK_PATHS.length;
-    return TRACK_PATHS[idx];
-  }
-
   function renderBoard(tiles, curTile, floor) {
     var track = document.getElementById('towerTrack');
     track.innerHTML = '';
@@ -711,22 +763,29 @@ var TW = (function () {
     // 버리고 뷰포트를 고정 크기(overflow:hidden)로 두는 대신 칸 크기(cell)를 칸 수에 맞춰
     // 줄인다 -- 좌표도 px가 아니라 %(뷰포트 기준 퍼센트)로 둬서 어떤 화면 크기/칸 수에서도
     // 뷰포트를 벗어나지 않는다(스크롤바가 원천적으로 생길 수 없음).
-    // [2026-09-06] "51층 200칸 보드가 너무 촘촘하고 11층이랑 트랙이 똑같다" 신고로, 칸 수가
-    // 많은 보드는 기존 900/n 공식(칸이 늘수록 무조건 16px로 수렴) 대신 실제 뷰포트 픽셀
-    // 크기를 재서 격자(cols×rows)로 칸 크기를 역산한다 -- 칸이 많아도 뷰포트를 최대한
-    // 넓게 쓰는 셈이라 16px보다 여유 있게 나온다.
+    // [2026-09-06] "51층 200칸 보드가 너무 촘촘하고 11층이랑 트랙이 똑같다, 겹치는 게 더
+    // 줄었으면 좋겠다" 신고로 두 번 손봄. 칸 수가 많은 보드는 기존 900/n 공식(칸이 늘수록
+    // 무조건 16px로 수렴) 대신 실제 뷰포트 픽셀 크기를 재서 격자(cols×rows)로 칸 크기를
+    // 역산한다. [수정] 처음 버전은 "칸 크기 ≈ 칸 사이 간격"으로 맞춰서 여전히 서로 닿을
+    // 만큼 겹쳐 보였다 -- 격자 계산에 여백 비율(marginFrac, 12~88 범위라 실제 폭의 76%만
+    // 씀)을 반영하지 않은 채 칸 크기를 잡았던 게 원인. 이제 실제 칸 사이 간격(spacingX/Y)을
+    // 먼저 구하고, 칸 크기는 그 간격의 72%만 써서 항상 눈에 보이는 틈을 남긴다.
     var cell, d;
     if (n > LARGE_BOARD_TILE_THRESHOLD) {
       var vw = Math.max(200, track.clientWidth - 8);
       var vh = Math.max(160, track.clientHeight - 8);
-      var idealCell = 26;
-      var cols = Math.max(6, Math.floor(vw / idealCell));
+      var marginFrac = (100 - 12 * 2) / 100; // buildSerpentinePath의 margin=12와 맞춤(0.76)
+      var idealSpacing = 26; // 칸 "중심 간" 목표 거리(칸 자체 크기가 아니라 간격 기준)
+      var cols = Math.max(6, Math.round(1 + (marginFrac * vw) / idealSpacing));
       var rows = Math.max(3, Math.ceil(n / cols));
-      cell = Math.max(14, Math.min(30, Math.min(vw / cols, vh / rows)));
-      d = buildSerpentinePath(cols, rows, floor % 2 === 0);
+      var spacingX = cols > 1 ? (marginFrac * vw) / (cols - 1) : vw;
+      var spacingY = rows > 1 ? (marginFrac * vh) / (rows - 1) : vh;
+      cell = Math.max(12, Math.min(28, Math.min(spacingX, spacingY) * 0.72));
+      var rndOrient = seededRandom(floor || 0);
+      d = buildSerpentinePath(cols, rows, rndOrient() < 0.5);
     } else {
       cell = Math.max(16, Math.min(40, 900 / n));
-      d = pickTrackPath(floor);
+      d = buildLoopPath(floor, n);
     }
 
     // 트랙 모양(0~100 정규화 좌표계, 항상 닫힌 루프)의 <path> 하나를 길이 측정용으로 세팅
@@ -812,7 +871,7 @@ var TW = (function () {
   // 초상화(IMAGE_URL)는 외부 API(nekos.best) 실패/차단 시 비어있을 수 있어 직업별 이모지로 항상 얼굴이 보이게 폴백
   var JOB_EMOJI = { WARRIOR: '⚔️', MAGE: '🧙', ROGUE: '🗡️', ARCHER: '🏹', PRIEST: '💫' };
 
-  // [2026-09-06] 동료 초상화 엘리먼트 -- party-card/party-slot-box/슬롯 시트 헤더 공용.
+  // [2026-09-06] 동료 초상화 엘리먼트 -- party-card/party-slot-card 헤더 공용.
   // 이미지 로드 실패(외부 API 차단 등) 시 직업 이모지로 폴백하는 로직을 한 곳에 모음.
   // clickable이면 탭 시 상세(showCompanionDetail) 카드가 뜬다(그 외 클릭은 부모에게 위임).
   function buildAvatarEl(c, sizeClass, clickable) {
@@ -839,7 +898,7 @@ var TW = (function () {
   }
 
   // [2026-09-06] 필터 칩 행 3종(직업/성급/장비부위) -- 보유동료 목록, 미착용 장비 목록,
-  // 슬롯 시트의 동료 후보 목록에서 공용으로 쓴다. current가 null이면 "전체" 칩이 켜진다.
+  // 선택 팝업의 동료 후보 목록에서 공용으로 쓴다. current가 null이면 "전체" 칩이 켜진다.
   function buildJobFilterRow(current, onSelect) {
     var row = document.createElement('div');
     row.className = 'filter-row';
@@ -882,35 +941,41 @@ var TW = (function () {
     return row;
   }
 
-  // [2026-09-06] 파티 슬롯 탭 시트 -- "모바일에서 드래그와 세로 스크롤이 겹쳐 오조작" 신고로
-  // 드래그 편성/장착을 전부 없애고, 슬롯을 탭하면 뜨는 이 시트 안에서만 탭으로 배치·교체·장비
-  // 관리를 한다. slot(1~3)이 null이면 닫힌 상태. part가 있으면 "그 슬롯 특정 부위" 화면
-  // (장착 후보 목록), 없으면 슬롯 메인 화면(현재 동료 정보 + 부위 목록 + 배치/교체 후보).
-  // candJob/candGrade는 "배치/교체" 동료 후보 목록 전용 필터(보유동료 목록 필터와 같은
-  // UI, 시트 안에서 독립적으로 동작 -- 열 때마다 초기화됨).
-  var sheetState = { slot: null, part: null, candJob: null, candGrade: null };
+  // [2026-09-06] "파티 카드 자체에 동료변경/해제, 부위별 장비변경 버튼을 직관적으로" 요청으로
+  // 슬롯 관리 UI를 재편 -- 파티 카드(renderPartySlots)는 이제 항상 펼쳐진 상태로 모든 정보를
+  // 보여주고, 이 팝업은 그 카드의 버튼에서 "무엇으로 바꿀지" 딱 한 번만 고르는 용도로 좁혔다
+  // (고르면 바로 닫힘, 예전처럼 슬롯 전체를 관리하는 화면이 아님). mode:'companion'이면
+  // 동료 후보 목록(직업/성급 필터, "필터링된 동료선택 팝업" 요청), mode:'equip'이면 그
+  // 부위+직업에 맞는 장비 후보 목록(+현재 장착 아이템 해제).
+  var pickerState = null;
 
-  function openSlotSheet(slot) {
-    sheetState = { slot: slot, part: null, candJob: null, candGrade: null };
-    document.getElementById('slotSheetOverlay').classList.add('open');
-    renderSlotSheet();
+  function openCompanionPicker(slot) {
+    pickerState = { mode: 'companion', slot: slot, candJob: null, candGrade: null };
+    document.getElementById('pickerOverlay').classList.add('open');
+    renderPicker();
   }
 
-  function closeSlotSheet() {
-    sheetState = { slot: null, part: null, candJob: null, candGrade: null };
-    document.getElementById('slotSheetOverlay').classList.remove('open');
+  function openEquipPicker(slot, part) {
+    pickerState = { mode: 'equip', slot: slot, part: part };
+    document.getElementById('pickerOverlay').classList.add('open');
+    renderPicker();
   }
 
-  // 배치/교체용 동료 후보 목록 -- 필터 칩(직업/성급, 보유동료 목록과 동일한 UI) + 직업별로
-  // 묶어서 그려준다("직업문양 넣어 분류 가능하게", "보유동료 필터링에 따라 보여주게" 요청).
-  // candidates는 [{c:동료객체, idx:전체목록번호}] 필터 전 전체 목록.
+  function closePicker() {
+    pickerState = null;
+    document.getElementById('pickerOverlay').classList.remove('open');
+  }
+
+  // 동료 후보 목록 -- 필터 칩(직업/성급, 보유동료 목록과 동일한 UI) + 직업별로 묶어서
+  // 그려준다("직업문양 넣어 분류 가능하게" 요청). candidates는 [{c:동료객체, idx:전체목록번호}]
+  // 필터 전 전체 목록.
   function renderCandidateCompanions(container, candidates, onPick) {
-    container.appendChild(buildJobFilterRow(sheetState.candJob, function (job) { sheetState.candJob = job; renderSlotSheet(); }));
-    container.appendChild(buildGradeFilterRow(sheetState.candGrade, function (g) { sheetState.candGrade = g; renderSlotSheet(); }));
+    container.appendChild(buildJobFilterRow(pickerState.candJob, function (job) { pickerState.candJob = job; renderPicker(); }));
+    container.appendChild(buildGradeFilterRow(pickerState.candGrade, function (g) { pickerState.candGrade = g; renderPicker(); }));
 
     var filtered = candidates.filter(function (entry) {
-      if (sheetState.candJob && entry.c.CLASS !== sheetState.candJob) return false;
-      if (sheetState.candGrade && entry.c.GRADE !== sheetState.candGrade) return false;
+      if (pickerState.candJob && entry.c.CLASS !== pickerState.candJob) return false;
+      if (pickerState.candGrade && entry.c.GRADE !== pickerState.candGrade) return false;
       return true;
     });
     if (filtered.length === 0) {
@@ -938,133 +1003,96 @@ var TW = (function () {
     });
   }
 
-  // 슬롯 시트 내용 렌더링 -- loadPartyAndEquip()이 새 데이터를 받을 때마다(액션 후 자동 새로고침
-  // 포함) 시트가 열려있으면 다시 호출해서 최신 상태를 그대로 보여준다(닫지 않고 이어서 관리 가능).
-  function renderSlotSheet() {
-    var body = document.getElementById('sheetBody');
+  // 팝업 내용 렌더링 -- 고르면 즉시 액션을 쏘고(action) 팝업을 닫는다. 카드 자체가 항상
+  // 펼쳐져 있어 "고른 뒤 계속 이 화면에 머무를" 필요가 없어졌다(예전 슬롯 시트와 다른 점).
+  function renderPicker() {
+    var body = document.getElementById('pickerBody');
     body.innerHTML = '';
-    if (!sheetState.slot) return;
+    if (!pickerState) return;
     var companions = lastParty.companions || [];
     var byCompanion = lastParty.byCompanion || {};
     var unequipped = lastParty.unequipped || [];
-    var occupant = companions.filter(function (c) { return c.PARTY_SLOT === sheetState.slot; })[0];
-    var unpartiedCandidates = companions.map(function (c, i) { return { c: c, idx: i + 1 }; })
-        .filter(function (entry) { return !entry.c.PARTY_SLOT; });
 
-    if (sheetState.part && occupant) {
-      // ---- 장비 부위 화면: 현재 장착 아이템(정보) + 후보 목록(탭하면 즉시 교체 장착) ----
-      var part = sheetState.part;
-      var back = document.createElement('button');
-      back.className = 'sheet-back';
-      back.textContent = '← 슬롯으로';
-      back.onclick = function () { sheetState.part = null; renderSlotSheet(); };
-      body.appendChild(back);
-
+    if (pickerState.mode === 'companion') {
       var title = document.createElement('div');
       title.className = 'sheet-title';
-      title.textContent = (occupant.NAME || JOB_KR[occupant.CLASS]) + ' · ' + PART_KR[part];
+      title.textContent = '파티 ' + pickerState.slot + '번에 배치할 동료';
       body.appendChild(title);
-
-      var mine = byCompanion[occupant.COMPANION_ID] || [];
-      var cur = mine.filter(function (e) { return e.PART === part; })[0];
-      if (cur) {
-        var curRow = document.createElement('div');
-        curRow.className = 'sheet-row current readonly';
-        curRow.innerHTML = '<span class="sr-main">' + PART_EMOJI[part] + ' ★' + cur.GRADE + ' 장착중</span>';
-        var unwearBtn = document.createElement('button');
-        unwearBtn.type = 'button';
-        unwearBtn.className = 'mini-btn';
-        unwearBtn.textContent = '해제';
-        unwearBtn.onclick = function () { action('EQUIP_UNWEAR_ONE', String(cur.EQUIP_ID)); };
-        curRow.appendChild(unwearBtn);
-        body.appendChild(curRow);
-      }
-
-      var label = document.createElement('div');
-      label.className = 'equip-group-title';
-      label.textContent = '장착 가능한 미착용 장비';
-      body.appendChild(label);
-
-      var candidates = unequipped.filter(function (e) { return e.PART === part && e.CLASS === occupant.CLASS; })
-          .sort(function (a, b) { return b.GRADE - a.GRADE; });
-      if (candidates.length === 0) {
-        var noEquip = document.createElement('div');
-        noEquip.className = 'sheet-empty';
-        noEquip.textContent = '후보 장비가 없습니다.';
-        body.appendChild(noEquip);
-      } else {
-        candidates.forEach(function (e) {
-          var row = document.createElement('div');
-          row.className = 'sheet-row';
-          row.innerHTML = '<span class="sr-main">' + PART_EMOJI[part] + ' ★' + e.GRADE + '</span><span class="sr-sub">탭해서 장착</span>';
-          row.onclick = function () { action('EQUIP_WEAR', String(e.__idx), String(sheetState.slot)); };
-          body.appendChild(row);
-        });
-      }
+      var candidates = companions.map(function (c, i) { return { c: c, idx: i + 1 }; })
+          .filter(function (entry) { return !entry.c.PARTY_SLOT; });
+      renderCandidateCompanions(body, candidates, function (idx) {
+        action('PARTY_SWAP', String(idx), String(pickerState.slot));
+        closePicker();
+      });
       return;
     }
 
-    // ---- 슬롯 메인 화면 ----
+    // mode === 'equip' -- 부위+그 동료 직업에 맞는 장비만 고를 수 있다(요청대로 서로 다른
+    // 직업 장비는 애초에 후보에 나오지 않음, equipWear의 직업 제약과 동일 조건).
+    var occupant = companions.filter(function (c) { return c.PARTY_SLOT === pickerState.slot; })[0];
+    if (!occupant) { closePicker(); return; }
+    var part = pickerState.part;
     var title2 = document.createElement('div');
     title2.className = 'sheet-title';
-    title2.textContent = '파티 ' + sheetState.slot + '번 슬롯';
+    title2.textContent = (occupant.NAME || JOB_KR[occupant.CLASS]) + ' · ' + PART_KR[part];
     body.appendChild(title2);
 
-    if (occupant) {
-      var mine2 = byCompanion[occupant.COMPANION_ID] || [];
-      // "보유동료처럼 이미지도 띄워달라" 요청 -- 초상화(탭하면 상세 카드) + 이름/등급.
-      var head = document.createElement('div');
-      head.className = 'sheet-head';
-      head.appendChild(buildAvatarEl(occupant, 'sheet-avatar', true));
-      var headInfo = document.createElement('div');
-      headInfo.className = 'sh-info';
-      headInfo.innerHTML = '<div class="sh-name">' + (occupant.NAME || JOB_KR[occupant.CLASS]) + '</div>'
-          + '<div class="sh-role">' + (JOB_KR[occupant.CLASS] || occupant.CLASS) + ' ★' + occupant.GRADE + '</div>';
-      head.appendChild(headInfo);
-      body.appendChild(head);
+    var mine = byCompanion[occupant.COMPANION_ID] || [];
+    var cur = mine.filter(function (e) { return e.PART === part; })[0];
+    if (cur) {
+      var curRow = document.createElement('div');
+      curRow.className = 'sheet-row current readonly';
+      curRow.innerHTML = '<span class="sr-main">' + PART_EMOJI[part] + ' ★' + cur.GRADE + ' 장착중</span>';
+      var unwearBtn = document.createElement('button');
+      unwearBtn.type = 'button';
+      unwearBtn.className = 'mini-btn';
+      unwearBtn.textContent = '해제';
+      unwearBtn.onclick = function () { action('EQUIP_UNWEAR_ONE', String(cur.EQUIP_ID)); closePicker(); };
+      curRow.appendChild(unwearBtn);
+      body.appendChild(curRow);
+    }
 
-      var partsLabel = document.createElement('div');
-      partsLabel.className = 'equip-group-title';
-      partsLabel.textContent = '장비 (탭해서 관리)';
-      body.appendChild(partsLabel);
-      PART_ORDER.forEach(function (part) {
-        var found = mine2.filter(function (e) { return e.PART === part; })[0];
-        var row = document.createElement('div');
-        row.className = 'sheet-row' + (found ? ' current' : '');
-        row.innerHTML = '<span class="sr-main">' + PART_EMOJI[part] + ' ' + PART_KR[part] + '</span>'
-            + '<span class="sr-sub">' + (found ? '★' + found.GRADE : '비어있음') + '</span>';
-        row.onclick = function () { sheetState.part = part; renderSlotSheet(); };
-        body.appendChild(row);
-      });
+    var label = document.createElement('div');
+    label.className = 'equip-group-title';
+    label.textContent = '장착 가능한 미착용 장비';
+    body.appendChild(label);
 
-      var unassignRow = document.createElement('div');
-      unassignRow.className = 'sheet-row danger';
-      unassignRow.innerHTML = '<span class="sr-main">↩ 파티에서 빼기</span><span class="sr-sub">장비도 함께 해제</span>';
-      var occIdx = companions.indexOf(occupant) + 1; // PARTY_TOGGLE이 참조하는 "N번째 동료" 번호
-      unassignRow.onclick = function () { action('PARTY_TOGGLE', String(occIdx)); };
-      body.appendChild(unassignRow);
-
-      var swapLabel = document.createElement('div');
-      swapLabel.className = 'equip-group-title';
-      swapLabel.textContent = '다른 동료로 교체';
-      body.appendChild(swapLabel);
-      renderCandidateCompanions(body, unpartiedCandidates, function (idx) {
-        action('PARTY_SWAP', String(idx), String(sheetState.slot));
-      });
+    var candidates2 = unequipped.filter(function (e) { return e.PART === part && e.CLASS === occupant.CLASS; })
+        .sort(function (a, b) { return b.GRADE - a.GRADE; });
+    if (candidates2.length === 0) {
+      var noEquip = document.createElement('div');
+      noEquip.className = 'sheet-empty';
+      noEquip.textContent = '후보 장비가 없습니다.';
+      body.appendChild(noEquip);
     } else {
-      var placeLabel = document.createElement('div');
-      placeLabel.className = 'equip-group-title';
-      placeLabel.style.marginTop = '0';
-      placeLabel.textContent = '배치할 동료 선택';
-      body.appendChild(placeLabel);
-      renderCandidateCompanions(body, unpartiedCandidates, function (idx) {
-        action('PARTY_SWAP', String(idx), String(sheetState.slot));
+      candidates2.forEach(function (e) {
+        var row = document.createElement('div');
+        row.className = 'sheet-row';
+        row.innerHTML = '<span class="sr-main">' + PART_EMOJI[part] + ' ★' + e.GRADE + '</span><span class="sr-sub">탭해서 장착</span>';
+        row.onclick = function () { action('EQUIP_WEAR', String(e.__idx), String(pickerState.slot)); closePicker(); };
+        body.appendChild(row);
       });
     }
   }
 
+  // "보유동료/파티장비현황/미착용장비는 없애고 전체동료보기/전체아이템보기 버튼으로 이관"
+  // 요청 -- 내용(renderPartyGrid/renderPartyEquipSummary/renderEquipList)은 loadPartyAndEquip()
+  // 이 매번 백그라운드로 계속 그려두고, 이 열기/닫기 함수는 그 결과가 담긴 팝업을 보이기만 한다.
+  function openAllCompanions() {
+    document.getElementById('allCompanionsOverlay').classList.add('open');
+  }
+  function closeAllCompanions() {
+    document.getElementById('allCompanionsOverlay').classList.remove('open');
+  }
+  function openAllEquip() {
+    document.getElementById('allEquipOverlay').classList.add('open');
+  }
+  function closeAllEquip() {
+    document.getElementById('allEquipOverlay').classList.remove('open');
+  }
+
   // 캐릭터 확대/상세 카드에서 쓰려고 마지막으로 불러온 파티·장비 데이터를 기억해둔다
-  // (모달을 열 때마다 다시 fetch하지 않고, 스탯만 별도로 조회). 슬롯 시트(renderSlotSheet)도
+  // (모달을 열 때마다 다시 fetch하지 않고, 스탯만 별도로 조회). 선택 팝업(renderPicker)도
   // 같은 캐시를 공유한다.
   var lastParty = { companions: [], byCompanion: {}, unequipped: [] };
 
@@ -1156,36 +1184,84 @@ var TW = (function () {
   // "장비도 필터링(직업탭 + 그 안에서 부위탭)" 요청 -- equipListBox 전용 필터 상태.
   var equipFilter = { job: null, part: null };
 
-  // 파티 슬롯(최대 3) 표시 -- 탭하면 슬롯 시트가 열려 배치/교체/장비 관리를 전부 그 안에서
-  // 처리한다(openSlotSheet, 2026-09-06 드래그 폐지). "파티 탭에도 이미지 나오게" 요청으로
-  // buildAvatarEl로 초상화도 같이 넣는다.
+  // [2026-09-06] "파티 영역을 더 크게, 동료 한 명씩 영역도 크게, 동료변경/해제 버튼과 부위별
+  // 장비변경 버튼을 직관적으로" 요청으로 슬롯을 3열 그리드가 아니라 1열로 크게 펼친 카드로
+  // 다시 그린다. 카드 자체에 모든 정보(초상화/이름/등급/HP/장비 3부위)와 버튼(동료변경/해제,
+  // 부위별 OO변경)이 다 보여서 더 이상 "탭해서 열기"가 필요 없다 -- 각 버튼이 바로 해당
+  // 동작(즉시 실행 또는 선택 팝업)을 한다.
   function renderPartySlots() {
     var companions = lastParty.companions || [];
     var byCompanion = lastParty.byCompanion || {};
-    var slotsBox = document.getElementById('partySlots');
-    slotsBox.innerHTML = '';
+    var box = document.getElementById('partySlots');
+    box.innerHTML = '';
     var bySlot = {};
     companions.forEach(function (c) { if (c.PARTY_SLOT) bySlot[c.PARTY_SLOT] = c; });
     for (var s = 1; s <= 3; s++) {
-      var slotEl = document.createElement('div');
       var occ = bySlot[s];
-      slotEl.className = 'party-slot-box' + (occ ? ' filled' : '');
-      (function (slotNo) { slotEl.onclick = function () { openSlotSheet(slotNo); }; })(s);
-      if (occ) {
-        var occMine = byCompanion[occ.COMPANION_ID] || [];
-        var gearText = PART_ORDER.map(function (part) {
-          var found = occMine.filter(function (e) { return e.PART === part; })[0];
-          return (PART_EMOJI[part] || '') + (found ? '★' + found.GRADE : '-');
-        }).join(' ');
-        slotEl.innerHTML = '<div class="slot-label">파티 ' + s + '</div>'
-            + '<div class="cname">' + (occ.NAME || JOB_KR[occ.CLASS] || occ.CLASS) + '</div>'
-            + '<div class="role">' + (JOB_KR[occ.CLASS] || occ.CLASS) + ' ★' + occ.GRADE + '</div>'
-            + '<div class="slot-equip">' + gearText + '</div>';
-        slotEl.insertBefore(buildAvatarEl(occ, 'slot-avatar', true), slotEl.firstChild);
-      } else {
-        slotEl.innerHTML = '<div class="slot-label">파티 ' + s + '</div><div>빈 슬롯 (탭해서 배치)</div>';
+      var card = document.createElement('div');
+      card.className = 'party-slot-card' + (occ ? ' filled' : ' empty');
+
+      if (!occ) {
+        card.innerHTML = '<div class="ps-slot-label">파티 ' + s + '번</div><div class="ps-empty-msg">빈 슬롯</div>';
+        var placeBtn = document.createElement('button');
+        placeBtn.type = 'button';
+        placeBtn.className = 'ps-btn';
+        placeBtn.textContent = '동료 배치';
+        (function (slotNo) { placeBtn.onclick = function () { openCompanionPicker(slotNo); }; })(s);
+        card.appendChild(placeBtn);
+        box.appendChild(card);
+        continue;
       }
-      slotsBox.appendChild(slotEl);
+
+      var mine = byCompanion[occ.COMPANION_ID] || [];
+      var occIdx = companions.indexOf(occ) + 1; // PARTY_TOGGLE(해제)이 참조하는 "N번째 동료" 번호
+
+      var header = document.createElement('div');
+      header.className = 'ps-header';
+      header.appendChild(buildAvatarEl(occ, 'ps-avatar', true));
+      var info = document.createElement('div');
+      info.className = 'ps-info';
+      info.innerHTML = '<div class="ps-slot-label">파티 ' + s + '번</div>'
+          + '<div class="ps-name">' + (occ.NAME || JOB_KR[occ.CLASS] || occ.CLASS) + '</div>'
+          + '<div class="ps-role">' + (JOB_KR[occ.CLASS] || occ.CLASS) + ' ★' + occ.GRADE + '</div>'
+          + '<div class="ps-hp">HP ' + fmtPP(occ.CUR_HP_VALUE, occ.CUR_HP_EXT) + '</div>';
+      header.appendChild(info);
+      card.appendChild(header);
+
+      var actions = document.createElement('div');
+      actions.className = 'ps-actions';
+      var changeBtn = document.createElement('button');
+      changeBtn.type = 'button';
+      changeBtn.className = 'ps-btn';
+      changeBtn.textContent = '동료변경';
+      (function (slotNo) { changeBtn.onclick = function () { openCompanionPicker(slotNo); }; })(s);
+      var unassignBtn = document.createElement('button');
+      unassignBtn.type = 'button';
+      unassignBtn.className = 'ps-btn danger';
+      unassignBtn.textContent = '해제';
+      unassignBtn.onclick = function () { action('PARTY_TOGGLE', String(occIdx)); };
+      actions.appendChild(changeBtn);
+      actions.appendChild(unassignBtn);
+      card.appendChild(actions);
+
+      var equipRow = document.createElement('div');
+      equipRow.className = 'ps-equip-row';
+      PART_ORDER.forEach(function (part) {
+        var found = mine.filter(function (e) { return e.PART === part; })[0];
+        var equipSlotEl = document.createElement('div');
+        equipSlotEl.className = 'ps-equip-slot';
+        equipSlotEl.innerHTML = '<div class="ps-equip-icon">' + (PART_EMOJI[part] || '🎽') + '</div>'
+            + '<div class="ps-equip-grade">' + (found ? '★' + found.GRADE : '비어있음') + '</div>';
+        var changeEqBtn = document.createElement('button');
+        changeEqBtn.type = 'button';
+        changeEqBtn.className = 'ps-btn small';
+        changeEqBtn.textContent = PART_KR[part] + '변경';
+        (function (slotNo, p) { changeEqBtn.onclick = function () { openEquipPicker(slotNo, p); }; })(s, part);
+        equipSlotEl.appendChild(changeEqBtn);
+        equipRow.appendChild(equipSlotEl);
+      });
+      card.appendChild(equipRow);
+      box.appendChild(card);
     }
   }
 
@@ -1344,7 +1420,7 @@ var TW = (function () {
       });
       // idx(N번)는 필터링 전 원본 순서 기준으로 딱 한 번만 매긴다(renderEquipList 참고).
       unequipped.forEach(function (e, i) { e.__idx = i + 1; });
-      // 캐릭터 상세 카드(showCompanionDetail)와 슬롯 시트(renderSlotSheet) 공용 캐시.
+      // 캐릭터 상세 카드(showCompanionDetail)와 선택 팝업(renderPicker) 공용 캐시.
       lastParty = { companions: companions, byCompanion: byCompanion, unequipped: unequipped };
 
       renderPartySlots();
@@ -1352,8 +1428,9 @@ var TW = (function () {
       renderPartyEquipSummary();
       renderEquipList();
 
-      // 슬롯 시트가 열려있으면 방금 받은 최신 데이터로 다시 그려준다(닫지 않고 이어서 관리 가능).
-      if (sheetState.slot) renderSlotSheet();
+      // 선택 팝업이 열려있으면(드물게 액션 응답 전에 다시 열렸을 경우 대비) 최신 데이터로
+      // 다시 그려준다. 보통은 고르자마자 닫히므로(closePicker) 실행되지 않는다.
+      if (pickerState) renderPicker();
     });
   }
 
@@ -1556,7 +1633,9 @@ var TW = (function () {
   });
 
   return { load: loadStatus, action: action, switchTab: switchTab, closeDetail: closeDetail, closeConfirm: closeConfirm,
-           openSlotSheet: openSlotSheet, closeSlotSheet: closeSlotSheet };
+           closePicker: closePicker,
+           openAllCompanions: openAllCompanions, closeAllCompanions: closeAllCompanions,
+           openAllEquip: openAllEquip, closeAllEquip: closeAllEquip };
 })();
 </script>
 </body>
