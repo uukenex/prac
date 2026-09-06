@@ -34,8 +34,14 @@ public interface BotS5Service {
     /** /이미지갱신 — IMAGE_URL 없는 동료(전체 유저 공통)를 찾아 nekos.best에서 이미지를 받아와 채워넣음(최대 20마리씩) */
     String refreshCompanionImages();
 
-    /** /주사위, /ㅈㅅㅇ — 상태에 따라 이동 또는 전투 1턴 처리 */
-    String rollDice(String userName);
+    /**
+     * /주사위, /ㅈㅅㅇ — 상태에 따라 이동 또는 전투 1턴 처리.
+     * channel은 "WEB" 또는 "CHAT"(카카오톡) — 하루 굴림 횟수 한도가 채널별로 다르다
+     * ("웹/카톡 같이 쓰게 해달라, 카톡은 200회 더 주자" 요청): 총 굴림 수(채널 무관 공유
+     * 카운터)가 DAILY_DICE_LIMIT(기본 1000) 미만이면 웹/카톡 둘 다 가능, 그 이상이면 웹은
+     * 막히고 카톡만 DAILY_DICE_LIMIT+KAKAO_BONUS_DICE(기본 1200)까지 계속 가능하다.
+     */
+    String rollDice(String userName, String channel);
 
     /** /층변경 N — 같은 10층 구간 내에서 N번째 층으로 이동 */
     String changeFloor(String userName, int n);

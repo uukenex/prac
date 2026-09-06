@@ -213,6 +213,14 @@ public class BotS5ServiceImpl implements BotS5Service {
     // config화 -- 재배포 없이 /갱신으로 값만 바꿀 수 있게.
     private static volatile int DAILY_DICE_LIMIT = 750;
 
+    // [2026-09-07] "웹/카톡 같이 쓰게 해달라, 카톡은 200회 더 주자" 요청 -- 채널(WEB/CHAT)
+    // 무관하게 공유하는 총 굴림 카운터(DICE_ROLL_COUNT_TODAY) 기준으로, 웹은 DAILY_DICE_LIMIT
+    // 까지만, 카카오톡(CHAT)은 거기에 이 보너스를 더한 값까지 계속 가능하다. 예) 기본 1000 +
+    // 200 = 카톡 1200. 채널을 섞어 쓰든(웹 600+카톡 400) 한쪽만 쓰든(웹만 1000, 또는 카톡만
+    // 1200) 결과는 항상 "총합이 웹 한도를 넘으면 웹 차단, 카톡 한도를 넘으면 둘 다 차단"으로
+    // 동일하다 -- checkAndBumpDailyDiceLimit 참고.
+    private static volatile int KAKAO_BONUS_DICE = 200;
+
     // 자동사냥(미접속 정산) 속도/상한. "재배포 없이 밸런스 조절하게 해달라" 요청으로 config화.
     //   - AUTO_HUNT_KILLS_PER_HOUR : 미접속 시간당 처치 수(분당 환산해 10분당 1마리처럼 사용)
     //   - AUTO_HUNT_MAX_HOURS      : 정산에 반영하는 미접속 시간 상한(그 이상 방치해도 더 안 늘어남)
@@ -245,6 +253,8 @@ public class BotS5ServiceImpl implements BotS5Service {
                         COMBAT_END_COOLDOWN_SEC = Long.parseLong(val);
                     } else if ("DAILY_DICE_LIMIT".equals(key)) {
                         DAILY_DICE_LIMIT = Integer.parseInt(val);
+                    } else if ("KAKAO_BONUS_DICE".equals(key)) {
+                        KAKAO_BONUS_DICE = Integer.parseInt(val);
                     } else if ("AUTO_HUNT_KILLS_PER_HOUR".equals(key)) {
                         AUTO_HUNT_KILLS_PER_HOUR = Integer.parseInt(val);
                     } else if ("AUTO_HUNT_MAX_HOURS".equals(key)) {
@@ -273,8 +283,9 @@ public class BotS5ServiceImpl implements BotS5Service {
     public String refreshConfig() {
         loadConfig();
         return "🗼 시즌5 설정 갱신 완료 (칸이동 " + MOVE_COOLDOWN_SEC + "초 / 전투중 " + COMBAT_COOLDOWN_SEC
-                + "초 / 전투종료 " + COMBAT_END_COOLDOWN_SEC + "초 / 하루 주사위 한도 " + DAILY_DICE_LIMIT
-                + "회 / 자동사냥 시간당 " + AUTO_HUNT_KILLS_PER_HOUR + "마리, 최대 " + AUTO_HUNT_MAX_HOURS + "시간)";
+                + "초 / 전투종료 " + COMBAT_END_COOLDOWN_SEC + "초 / 하루 주사위 한도 웹 " + DAILY_DICE_LIMIT
+                + "회·카톡 " + (DAILY_DICE_LIMIT + KAKAO_BONUS_DICE) + "회 / 자동사냥 시간당 "
+                + AUTO_HUNT_KILLS_PER_HOUR + "마리, 최대 " + AUTO_HUNT_MAX_HOURS + "시간)";
     }
 
     @Override
@@ -889,7 +900,7 @@ public class BotS5ServiceImpl implements BotS5Service {
     // ================================================================
     @Override
     @Transactional
-    public String rollDice(String userName) {
+    public String rollDice(String userName, String channel) {
         boolean brandNew = dao.selectUserProgress(userName) == null;
         HashMap<String, Object> p = dao.selectUserProgress(userName);
         if (p == null) {
@@ -925,11 +936,12 @@ public class BotS5ServiceImpl implements BotS5Service {
         String cooldownMsg = checkDiceCooldown(userName, p);
         if (cooldownMsg != null) return prependAutoHunt(autoHuntMsg, cooldownMsg);
 
-        // 하루 500회 주사위 굴림 제한("하루 500번까지만" 요청) -- 쿨타임 통과 후, 실제로 이번
-        // 액션이 "굴림 1회"로 카운트되기 직전에 확인한다(쿨타임에 막힌 시도는 카운트 안 함).
-        // 관리자 테스트 계정(NO_COOLDOWN_YN)은 쿨타임과 동일한 이유로 이 제한도 면제.
+        // 하루 굴림 횟수 제한("하루 N번까지만" 요청, 2026-09-07에 채널별 한도로 확장) -- 쿨타임
+        // 통과 후, 실제로 이번 액션이 "굴림 1회"로 카운트되기 직전에 확인한다(쿨타임에 막힌
+        // 시도는 카운트 안 함). 관리자 테스트 계정(NO_COOLDOWN_YN)은 쿨타임과 동일한 이유로
+        // 이 제한도 면제.
         if (!"Y".equals(strVal(p.get("NO_COOLDOWN_YN"), "N"))) {
-            String limitMsg = checkAndBumpDailyDiceLimit(userName, p);
+            String limitMsg = checkAndBumpDailyDiceLimit(userName, p, channel);
             if (limitMsg != null) return prependAutoHunt(autoHuntMsg, limitMsg);
         }
 
@@ -976,21 +988,37 @@ public class BotS5ServiceImpl implements BotS5Service {
     }
 
     /**
-     * 하루 주사위 굴림 횟수(DICE_ROLL_COUNT_TODAY)를 확인하고, 한도 안이면 카운트를 올린 뒤 null을
-     * 반환한다(통과). DICE_ROLL_DATE가 오늘이 아니면(=날짜가 바뀌었거나 최초 굴림) 카운트를 1로
-     * 리셋 -- 별도 배치/스케줄러 없이 "확인하는 시점에 날짜만 비교"하는 방식이라 자정에 뭔가
-     * 돌려줄 필요가 없다. 한도를 넘으면 카운트는 그대로 두고 안내 메시지만 반환.
+     * 하루 주사위 굴림 횟수(DICE_ROLL_COUNT_TODAY, 채널 무관 공유 카운터)를 확인하고, 한도
+     * 안이면 카운트를 올린 뒤 null을 반환한다(통과). DICE_ROLL_DATE가 오늘이 아니면(=날짜가
+     * 바뀌었거나 최초 굴림) 카운트를 1로 리셋 -- 별도 배치/스케줄러 없이 "확인하는 시점에
+     * 날짜만 비교"하는 방식이라 자정에 뭔가 돌려줄 필요가 없다. 한도를 넘으면 카운트는 그대로
+     * 두고 안내 메시지만 반환.
+     * [2026-09-07] "웹/카톡 같이 쓰게, 카톡은 200회 더" 요청으로 channel별 한도 분리 --
+     * WEB은 DAILY_DICE_LIMIT까지, CHAT(카카오톡)은 거기에 KAKAO_BONUS_DICE를 더한 값까지.
+     * 카운터 자체는 채널 구분 없이 하나 그대로 써서, 어느 채널로 얼마씩 섞어 쓰든 "총합이
+     * 웹 한도를 넘으면 웹만 차단, 카톡 한도까지 넘으면 전부 차단"이 자연스럽게 성립한다.
      * (SimpleDateFormat은 스레드 안전하지 않아 static 캐시로 못 쓰므로 java.time으로 비교한다.)
      */
-    private String checkAndBumpDailyDiceLimit(String userName, HashMap<String, Object> p) {
+    private String checkAndBumpDailyDiceLimit(String userName, HashMap<String, Object> p, String channel) {
         java.util.Date rollDate = (java.util.Date) p.get("DICE_ROLL_DATE");
         int rollCountToday = intVal(p.get("DICE_ROLL_COUNT_TODAY"), 0);
         boolean sameDay = rollDate != null
                 && new java.sql.Date(rollDate.getTime()).toLocalDate().equals(java.time.LocalDate.now());
-        if (sameDay && rollCountToday >= DAILY_DICE_LIMIT) {
-            return "🎲 오늘 주사위를 " + DAILY_DICE_LIMIT + "번 모두 굴렸습니다. 내일 다시 시도해주세요.";
+        int curCount = sameDay ? rollCountToday : 0;
+        boolean isWeb = "WEB".equals(channel);
+        int channelLimit = isWeb ? DAILY_DICE_LIMIT : (DAILY_DICE_LIMIT + KAKAO_BONUS_DICE);
+        if (curCount >= channelLimit) {
+            if (isWeb) {
+                // 웹은 막혔지만 카톡 쪽 보너스가 아직 안 찼으면 그쪽으로 안내.
+                if (curCount < DAILY_DICE_LIMIT + KAKAO_BONUS_DICE) {
+                    return "🎲 오늘 웹에서 주사위를 " + DAILY_DICE_LIMIT + "번 모두 굴렸습니다. "
+                            + "카카오톡에서는 " + (DAILY_DICE_LIMIT + KAKAO_BONUS_DICE - curCount) + "번 더 진행할 수 있어요!";
+                }
+                return "🎲 오늘 주사위를 " + (DAILY_DICE_LIMIT + KAKAO_BONUS_DICE) + "번 모두 굴렸습니다. 내일 다시 시도해주세요.";
+            }
+            return "🎲 오늘 카카오톡 한도(" + (DAILY_DICE_LIMIT + KAKAO_BONUS_DICE) + "번)까지 모두 굴렸습니다. 내일 다시 시도해주세요.";
         }
-        int newCount = sameDay ? rollCountToday + 1 : 1;
+        int newCount = curCount + 1;
         HashMap<String, Object> up = new HashMap<>();
         up.put("userName", userName);
         up.put("diceRollCountToday", newCount);
@@ -3265,6 +3293,14 @@ public class BotS5ServiceImpl implements BotS5Service {
     private static final int STARTER_GACHA_ID = 1;
     private static final int STARTER_FREE_PULLS = 2;
 
+    // [2026-09-07] "중급/상급 등에서 낮은 성급 동료가 나오면 PP를 너무 많이 환급해준다" 신고 --
+    // 기존엔 중복 보상이 "그 뽑기권 비용 * 20%"라서, 같은 ★3이라도 상급(12000P) 계약서에서
+    // 나오면 중급(1500P)에서 나온 것보다 8배 많이 환급받는 등 뽑기권 종류에 따라 같은 성급의
+    // 환급액이 들쭉날쭉했다(상급/최상급은 저성급도 자주 뽑히는데 비용만 비싸서 특히 심함).
+    // 이제 뽑기권 비용이 아니라 "뽑힌 동료의 성급" 하나로만 환급액을 고정 -- 어느 계약서에서
+    // 나왔든 같은 성급이면 같은 PP를 돌려받고, 성급이 높을수록 더 많이 받는다.
+    private static final int[] COMPANION_DUPE_REFUND = { 20, 80, 400, 2000, 8000, 30000 }; // index = grade-1
+
     /** 동료 뽑기 1회의 핵심 로직(무료판정/비용차감/추첨/insert)만 수행. 실패 시 result에 error만 채워 반환. */
     private HashMap<String, Object> pullCompanionCore(String userName, HashMap<String, Object> gacha,
             HashMap<String, Object> p, int ownedSoFar) {
@@ -3302,7 +3338,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         // NAME_POOL_BY_JOB_GRADE 참고) 같은 이름은 항상 같은 등급에서만 나온다 -- 즉 "직업+이름"이
         // 같으면 등급도 항상 같다는 뜻이라, [예전 버그였던] "다른 등급인데 이름이 겹쳐서 증발" 같은
         // 상황 자체가 이제 구조적으로 발생하지 않는다. 그래서 등급 비교 없이 단순하게 직업+이름만
-        // 같으면 진짜 중복으로 보고 뽑기 비용의 20%를 PP로 환급한다("중복 정산").
+        // 같으면 진짜 중복으로 보고 PP를 환급한다("중복 정산") -- 환급액은 뽑힌 성급 기준
+        // COMPANION_DUPE_REFUND 고정표(위 참고, 어느 계약서에서 나왔든 동일).
         boolean dupe = false;
         for (HashMap<String, Object> owned : dao.selectUserCompanions(userName)) {
             if (job.equals(strVal(owned.get("CLASS"), "")) && name.equals(strVal(owned.get("NAME"), ""))) {
@@ -3311,8 +3348,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             }
         }
         if (dupe) {
-            PP cost = PP.of(((Number) gacha.get("COST_VALUE")).doubleValue(), strVal(gacha.get("COST_EXT"), ""));
-            PP dupeBonus = cost.multiply(0.2);
+            PP dupeBonus = PP.fromPP(COMPANION_DUPE_REFUND[grade - 1]);
             addPp(userName, p, dupeBonus);
             result.put("ok", true);
             result.put("dupe", true);

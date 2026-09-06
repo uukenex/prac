@@ -291,7 +291,7 @@ public class Season5ViewController {
         try {
             switch (type) {
                 case "DICE":
-                    message = s5Service.rollDice(userName);
+                    message = s5Service.rollDice(userName, "WEB");
                     break;
                 case "CHANGE_FLOOR":
                     message = s5Service.changeFloor(userName, Integer.parseInt(param1));

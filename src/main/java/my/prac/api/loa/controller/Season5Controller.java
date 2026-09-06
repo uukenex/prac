@@ -54,7 +54,7 @@ public class Season5Controller {
 
     public String rollDice(HashMap<String, Object> map) {
         String userName = userNameOf(map);
-        String result = s5Service.rollDice(userName);
+        String result = s5Service.rollDice(userName, "CHAT");
         // /탑통계용 활동 카운터(웹 쪽은 Season5ViewController.apiTowerAction에서 동일하게 적재)
         s5Service.bumpActivityStat(userName, "DICE_CHAT");
         if (result != null && result.contains("파티 전멸")) {
