@@ -643,6 +643,45 @@ var TW = (function () {
     'M50,15 C65,15 68,30 60,38 C52,45 68,48 70,60 C72,72 60,85 50,85 C40,85 28,72 30,60 C32,48 48,45 40,38 C32,30 35,15 50,15 Z'
   ];
 
+  // [2026-09-06] "51층 200칸 보드가 11층이랑 트랙 모양이 똑같고 너무 촘촘하다, Z자로 퍼트려
+  // 달라" 신고 -- 위 블롭 곡선 4종은 floor%4로 고정 배정되다 보니 11층(11%4=3)과 51층
+  // (51%4=3)이 우연히 같은 모양을 뽑았고, 애초에 칸 수(n)와 무관하게 항상 같은 길이의
+  // 곡선 위에 n개를 욱여넣는 구조라 n이 커질수록(51층+ 하드코어 보드는 190~210칸) 무조건
+  // 촘촘해질 수밖에 없었다(칸 크기도 900/n으로만 정해져 큰 n에서 최소치 16px에 바로 붙음).
+  // LARGE_BOARD_TILE_THRESHOLD 이상인 보드는 지그재그(뱀 모양, 문자 그대로 "Z"자에 가까움)
+  // 그리드로 새로 그린다 -- 행(rows)이 칸 수에 비례해 늘어나 총 경로 길이도 같이 늘어나므로,
+  // 원의 둘레 위에 점을 찍는 기존 방식과 달리 칸이 많아져도 칸 사이 간격이 좁아지지 않는다.
+  var LARGE_BOARD_TILE_THRESHOLD = 60;
+
+  /** 지그재그(뱀) 경로 생성 -- cols×rows 격자를 한 줄씩 좌우로 왕복하며 직선으로 잇고,
+   * 마지막 칸에서 시작점으로 곧장 되돌아가 닫는다(항상 닫힌 루프 유지). vertical이면 방향을
+   * 90도 돌려서(세로로 왕복) 큰 보드끼리도 층마다 다른 모양이 나오게 한다. */
+  function buildSerpentinePath(cols, rows, vertical) {
+    var margin = 12, span = 100 - margin * 2;
+    var pts = [];
+    if (!vertical) {
+      var colGap = cols > 1 ? span / (cols - 1) : 0;
+      var rowGap = rows > 1 ? span / (rows - 1) : 0;
+      for (var r = 0; r < rows; r++) {
+        var y = margin + rowGap * r;
+        if (r % 2 === 0) { for (var c = 0; c < cols; c++) pts.push([margin + colGap * c, y]); }
+        else { for (var c = cols - 1; c >= 0; c--) pts.push([margin + colGap * c, y]); }
+      }
+    } else {
+      var rowGap2 = rows > 1 ? span / (rows - 1) : 0;
+      var colGap2 = cols > 1 ? span / (cols - 1) : 0;
+      for (var c2 = 0; c2 < cols; c2++) {
+        var x = margin + colGap2 * c2;
+        if (c2 % 2 === 0) { for (var r2 = 0; r2 < rows; r2++) pts.push([x, margin + rowGap2 * r2]); }
+        else { for (var r2 = rows - 1; r2 >= 0; r2--) pts.push([x, margin + rowGap2 * r2]); }
+      }
+    }
+    var d = 'M' + pts[0][0].toFixed(2) + ',' + pts[0][1].toFixed(2);
+    for (var i = 1; i < pts.length; i++) d += ' L' + pts[i][0].toFixed(2) + ',' + pts[i][1].toFixed(2);
+    d += ' Z'; // 마지막 점 -> 시작점 직선 복귀(대각선 한 줄, 큰 보드 배경선이라 장식일 뿐 -- 기능엔 무관)
+    return d;
+  }
+
   // 실제로 sampling(getTotalLength/getPointAtLength)에 쓸 <path>. 일부 브라우저(사파리 계열)는
   // 문서에 붙어있지 않은 path에서 geometry 메서드가 제대로 안 되는 경우가 있어, 화면엔 안
   // 보이지만 문서에는 붙어있는 숨은 SVG 안에 넣어서 재사용한다.
@@ -672,10 +711,25 @@ var TW = (function () {
     // 버리고 뷰포트를 고정 크기(overflow:hidden)로 두는 대신 칸 크기(cell)를 칸 수에 맞춰
     // 줄인다 -- 좌표도 px가 아니라 %(뷰포트 기준 퍼센트)로 둬서 어떤 화면 크기/칸 수에서도
     // 뷰포트를 벗어나지 않는다(스크롤바가 원천적으로 생길 수 없음).
-    var cell = Math.max(16, Math.min(40, 900 / n));
+    // [2026-09-06] "51층 200칸 보드가 너무 촘촘하고 11층이랑 트랙이 똑같다" 신고로, 칸 수가
+    // 많은 보드는 기존 900/n 공식(칸이 늘수록 무조건 16px로 수렴) 대신 실제 뷰포트 픽셀
+    // 크기를 재서 격자(cols×rows)로 칸 크기를 역산한다 -- 칸이 많아도 뷰포트를 최대한
+    // 넓게 쓰는 셈이라 16px보다 여유 있게 나온다.
+    var cell, d;
+    if (n > LARGE_BOARD_TILE_THRESHOLD) {
+      var vw = Math.max(200, track.clientWidth - 8);
+      var vh = Math.max(160, track.clientHeight - 8);
+      var idealCell = 26;
+      var cols = Math.max(6, Math.floor(vw / idealCell));
+      var rows = Math.max(3, Math.ceil(n / cols));
+      cell = Math.max(14, Math.min(30, Math.min(vw / cols, vh / rows)));
+      d = buildSerpentinePath(cols, rows, floor % 2 === 0);
+    } else {
+      cell = Math.max(16, Math.min(40, 900 / n));
+      d = pickTrackPath(floor);
+    }
 
     // 트랙 모양(0~100 정규화 좌표계, 항상 닫힌 루프)의 <path> 하나를 길이 측정용으로 세팅
-    var d = pickTrackPath(floor);
     trackSamplePath.setAttribute('d', d);
     var normLen = trackSamplePath.getTotalLength();
 
@@ -695,6 +749,11 @@ var TW = (function () {
     svg.appendChild(lineEl);
     track.appendChild(svg);
 
+    // [2026-09-06] "안에 글씨가 보였으면 좋겠다" 요청 -- 기존엔 cell/4.5라 칸이 커져도
+    // 글씨가 거의 안 자랐다(칸 30px에서도 7px 근처). 본문 글씨는 cell/3로, 칸번호(.tno)도
+    // CSS 고정 7px 대신 칸 크기에 비례하도록 인라인으로 덮어쓴다.
+    var fontSize = Math.max(8, Math.min(13, Math.round(cell / 3)));
+    var tnoSize = Math.max(6, Math.round(cell / 5));
     tiles.forEach(function (t, idx) {
       // 닫힌 루프라 처음과 끝이 자연스럽게 이어진다(요청대로 항상 순환).
       var pt = trackSamplePath.getPointAtLength((normLen * idx) / n);
@@ -704,14 +763,15 @@ var TW = (function () {
       div.style.top = 'calc(' + pt.y + '% - ' + (cell / 2) + 'px)';
       div.style.width = cell + 'px';
       div.style.height = cell + 'px';
-      div.style.fontSize = Math.max(7, cell / 4.5) + 'px';
+      div.style.fontSize = fontSize + 'px';
+      var tnoHtml = '<span class="tno" style="font-size:' + tnoSize + 'px">' + t.TILE_NO + '</span>';
       if (t.DISCOVERED) {
         div.className = 'tile ' + tileClass(t.TILE_TYPE) + (isHere ? ' here' : ' done');
-        div.innerHTML = '<span class="tno">' + t.TILE_NO + '</span>' + (TILE_KR[t.TILE_TYPE] || t.TILE_TYPE);
+        div.innerHTML = tnoHtml + (TILE_KR[t.TILE_TYPE] || t.TILE_TYPE);
       } else {
         // 방문한 적 없는 칸은 종류를 감추고 물음표만 표시(fog of war)
         div.className = 'tile hidden' + (isHere ? ' here' : '');
-        div.innerHTML = '<span class="tno">' + t.TILE_NO + '</span>?';
+        div.innerHTML = tnoHtml + '?';
       }
       track.appendChild(div);
     });
