@@ -250,7 +250,7 @@ public class Season5ViewController {
      * 통합 액션 엔드포인트. 채팅 명령어(/주사위 등)와 동일한 BotS5Service 로직을 그대로 호출한다.
      * GET /loa/api/tower-action?userName=..&type=DICE|CHANGE_FLOOR|PARTY_TOGGLE|PARTY_SWAP|
      *     PARTY_UNASSIGN_ALL|GACHA_COMPANION|GACHA_EQUIP|DICE_BUY|STAT_BUY|EQUIP_WEAR|EQUIP_SYNTH|
-     *     EQUIP_UNWEAR_ALL|REDEEM_COMPANION_TICKET|REDEEM_WEAPON_TICKET&param1=&param2=
+     *     EQUIP_UNWEAR_ALL|EQUIP_UNWEAR_ONE|REDEEM_COMPANION_TICKET|REDEEM_WEAPON_TICKET&param1=&param2=
      * PARTY_SWAP(param1=/파티편성 목록 번호, param2=배치할 파티 슬롯 1~3)는 슬롯 탭 시트에서
      * 쓰는 파티 배치 통합 기능(웹 UI 전용) -- 이미 편성된 동료면 자리 이동/맞교환, 미편성
      * 동료면 그 자리에 배치(다른 동료가 있으면 축출 + 장비 자동 해제). PARTY_UNASSIGN_ALL
@@ -320,6 +320,9 @@ public class Season5ViewController {
                     break;
                 case "EQUIP_UNWEAR_ALL":
                     message = s5Service.equipUnwearAll(userName, Integer.parseInt(param1));
+                    break;
+                case "EQUIP_UNWEAR_ONE":
+                    message = s5Service.equipUnwearOne(userName, Integer.parseInt(param1));
                     break;
                 case "REDEEM_COMPANION_TICKET":
                     message = s5Service.redeemCompanionChoiceTicket(userName, param1, Integer.parseInt(param2));

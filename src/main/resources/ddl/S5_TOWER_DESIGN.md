@@ -1408,6 +1408,32 @@ S4의 `TBOT_S4_ACHIEVEMENT`/`TBOT_S4_USER_ACH` 패턴을 확장 계승. S5에서
   - 서버 API 변경은 JAR 재배포 필요(`BotS5ServiceImpl`/`BotS5Service`/
     `Season5ViewController`), `tower_view.jsp`는 정적 리소스라 별도 배포 방식에 따라
     다를 수 있음 -- 배포 시 확인.
+- **[2026-09-06] 동료 편성 웹 UI 2차 개선 -- 이미지/필터/개별 해제**: 위 슬롯 탭 시트를 실제
+  써본 뒤 받은 스크린샷 피드백 4가지를 반영.
+  - **파티 슬롯에 초상화 추가**: `buildAvatarEl(c, sizeClass, clickable)` 공용 헬퍼를
+    신설(이미지 로드 실패 시 직업 이모지 폴백 로직을 한 곳에 모음) -- 기존 보유동료 카드
+    (`.avatar`), 새로 만든 파티 슬롯(`.slot-avatar`, 48px)과 슬롯 시트 헤더
+    (`.sheet-avatar`, 52px)가 전부 이 함수 하나를 공유. 탭하면 캐릭터 상세 카드가 뜬다.
+  - **보유 동료 목록에 직업/성급 필터 추가**: `renderPartyGrid()`로 분리하고
+    `gridFilter{job,grade}` 상태 + `buildJobFilterRow`/`buildGradeFilterRow`(전체/직업
+    5종, 전체/★1~6) 필터 칩을 얹음. 필터는 캐시(`lastParty`)만 다시 그리므로 재조회 없이
+    즉시 반응.
+  - **슬롯 시트 -- 현재 동료도 초상화로, "다른 동료로 교체" 후보도 필터링**: 시트 메인
+    화면의 현재 동료 헤더를 텍스트 한 줄(`.sheet-row`)에서 초상화+이름/등급
+    (`.sheet-head`)으로 바꿈. "배치할 동료 선택"/"다른 동료로 교체" 후보 목록
+    (`renderCandidateCompanions`)에도 같은 직업/성급 필터 칩을 얹어(`sheetState.candJob`/
+    `candGrade`, 시트를 열 때마다 초기화) 보유동료 목록과 동일한 방식으로 좁혀볼 수 있게 함.
+  - **장비 개별 해제 + 2단 필터**: 슬롯 시트의 부위별 화면(WEAPON/HELMET/ARMOR)에서 현재
+    장착 중인 장비 옆에 "해제" 버튼을 추가 -- 새 서버 액션 `EQUIP_UNWEAR_ONE`
+    (`equipUnwearOne(userName, equipId)`, 웹 전용)이 그 장비 하나만 해제한다(companion
+    전체를 해제하는 기존 `equipUnwearAll`과 별개). 다른 웹 전용 액션들과 달리 매번
+    재계산되는 "N번째" 인덱스 대신 화면에 이미 내려온 `EQUIP_ID`(DB 고유값)를 그대로
+    써서 구현을 단순화. 미착용 장비 목록(`equipListBox`)은 `renderEquipList()`로 분리해
+    직업 탭(전체/전사/마법사/도적/궁수/도사) + 그 안에서 부위 탭(전체/무기/투구/갑옷)
+    2단 필터(`equipFilter{job,part}`)를 추가 -- 필터링 후에도 기존 직업별 그룹 헤더는
+    유지, `__idx`(서버가 기대하는 "미착용 장비 번호")는 필터 적용 전 원본 순서로 한 번만
+    매겨서 필터와 무관하게 항상 정확하게 유지.
+  - 새 서버 액션(`EQUIP_UNWEAR_ONE`) 추가로 JAR 재배포 필요.
 
 ### 남은 TODO
 

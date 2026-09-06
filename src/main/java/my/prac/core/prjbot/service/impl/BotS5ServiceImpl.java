@@ -3932,6 +3932,35 @@ public class BotS5ServiceImpl implements BotS5Service {
         return "🧺 " + job + "(" + name + ")의 장비 " + unequipped + "개를 전부 해제했습니다. (/장비목록의 [미착용]으로 이동)";
     }
 
+    /**
+     * 웹 SPA 전용: 파티 슬롯 시트에서 장비 부위 하나만 콕 집어 해제("장비도 해제하는 기능 넣어줘"
+     * 요청, 2026-09-06) -- equipUnwearAll처럼 그 동료 전체가 아니라 이 장비 하나만. 다른 웹
+     * 전용 액션들과 달리 별도 "번호" 재계산 없이 화면에 이미 내려간 EQUIP_ID를 그대로 쓴다
+     * (미착용 장비의 idx처럼 매번 재계산되는 번호가 아니라 DB 고유값이라 그대로 써도 안전).
+     */
+    @Override
+    @Transactional
+    public String equipUnwearOne(String userName, int equipId) {
+        HashMap<String, Object> progress = getOrInitProgress(userName);
+        if ("IN_COMBAT".equals(strVal(progress.get("STATUS"), "NORMAL"))) {
+            return "전투 중에는 장비를 변경할 수 없습니다.";
+        }
+        HashMap<String, Object> found = null;
+        for (HashMap<String, Object> e : dao.selectUserEquip(userName)) {
+            if (intVal(e.get("EQUIP_ID"), -1) == equipId) { found = e; break; }
+        }
+        if (found == null || found.get("EQUIPPED_COMPANION_ID") == null) {
+            return "이미 해제되었거나 존재하지 않는 장비입니다.";
+        }
+        HashMap<String, Object> unwear = new HashMap<>();
+        unwear.put("equipId", equipId);
+        unwear.put("equippedCompanionId", null);
+        dao.updateEquipEquippedCompanion(unwear);
+        String part = strVal(found.get("PART"), "");
+        int grade = intVal(found.get("GRADE"), 1);
+        return "🧺 " + partNameOf(part) + " ★" + grade + " 을(를) 해제했습니다. (미착용 목록으로 이동)";
+    }
+
     /** 선택권 등급(3/4/5)에 대응하는 진행상태 컬럼/필드 접미사("" 또는 "G4"/"G5"). */
     private String ticketSuffix(int grade) {
         return grade == 3 ? "" : "G" + grade;

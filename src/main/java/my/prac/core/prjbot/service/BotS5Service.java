@@ -120,6 +120,9 @@ public interface BotS5Service {
     /** /장비해제 M — M번째 파티원이 착용 중인 장비(투구/무기/갑옷) 전부를 한 번에 해제 */
     String equipUnwearAll(String userName, int companionIdx);
 
+    /** 웹 SPA 전용: 파티 슬롯 시트에서 장비 하나만 콕 집어 해제(채팅 명령어 없음). */
+    String equipUnwearOne(String userName, int equipId);
+
     /**
      * ★N(grade=3/4/5) 동료 선택권 사용 — 10층 구간 앞4층(X1~X4) 완전탐사 보상으로 받은
      * 선택권을 소비해 직업(job)을 골라 그 등급/직업의 동료를 확정 생성한다. 등급은 그
