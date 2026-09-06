@@ -97,6 +97,10 @@ public interface BotS5DAO {
     // ── 서버 설정값(config) ──
     List<HashMap<String, Object>> selectAllConfig();
 
+    // ── 웹 SPA 업데이트 공지/새로고침 유도 ──
+    HashMap<String, Object> selectNotice();
+    void updateNotice(HashMap<String, Object> map);
+
     // ── /이벤트지급(관리자 전용): 전체 유저에게 등급별 동료뽑기권 일괄 지급, 영향받은 행 수 반환 ──
     int bulkGrantTierCompanionVoucher(@Param("tier") int tier, @Param("qty") int qty);
 

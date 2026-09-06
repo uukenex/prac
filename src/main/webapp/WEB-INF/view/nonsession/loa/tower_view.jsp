@@ -34,6 +34,10 @@
     .top-controls{ display:flex; gap:8px; margin-bottom:2px; }
     .top-controls input{ padding:9px 14px; border:1.5px solid var(--line); border-radius:22px; background:#fff; font-size:13px; width:150px; }
     .btn-query{ background:var(--gold); color:#fff; border:none; padding:9px 18px; border-radius:22px; font-size:13px; font-weight:700; cursor:pointer; }
+    /* [2026-09-07] "공지 다시 보기" 버튼 -- 항상 보이는 top-controls에 둬서 탭과 무관하게 접근 가능. */
+    .btn-notice{ background:#fff; border:1.5px solid var(--line); border-radius:22px; padding:9px 12px;
+                 font-size:14px; cursor:pointer; flex-shrink:0; }
+    .btn-notice:active{ transform:scale(.95); }
 
     .card{ background:linear-gradient(180deg,#FFFCF3,var(--parchment-deep)); border:2px solid var(--line);
            border-radius:20px; padding:16px; box-shadow:var(--shadow); }
@@ -318,6 +322,8 @@
   <div class="top-controls">
     <input type="text" id="userNameInput" placeholder="유저명 입력">
     <button class="btn-query" onclick="TW.load()">조회</button>
+    <!-- [2026-09-07] "공지를 다시 볼 수 있는 버튼" 요청 -- 언제든 눌러서 최신 공지를 다시 볼 수 있음. -->
+    <button class="btn-notice" onclick="TW.reopenNotice()" title="공지 다시 보기">📢</button>
   </div>
 
   <div class="card statusbar" id="statusCard">
@@ -453,6 +459,19 @@
     <div class="confirm-btns">
       <button type="button" class="btn-no" onclick="TW.closeConfirm()">취소</button>
       <button type="button" class="btn-yes" id="confirmYesBtn">이동</button>
+    </div>
+  </div>
+</div>
+
+<!-- [2026-09-07] 업데이트 공지/새로고침 유도 팝업 -- 새 버전 감지 시 자동으로 뜨거나,
+     top-controls의 "📢" 버튼으로 언제든 다시 볼 수 있다. checkAppVersion/reopenNotice 참고. -->
+<div class="detail-overlay" id="noticeOverlay" onclick="if(event.target===this) TW.closeNotice();">
+  <div class="detail-card confirm-card">
+    <div class="sheet-title" id="noticeTitle">📢 공지</div>
+    <div class="confirm-msg" id="noticeBody" style="text-align:left; white-space:pre-line;">-</div>
+    <div class="confirm-btns">
+      <button type="button" class="btn-no" onclick="TW.closeNotice()">닫기</button>
+      <button type="button" class="btn-yes" onclick="TW.refreshForUpdate()">🔄 새로고침</button>
     </div>
   </div>
 </div>
@@ -1591,6 +1610,57 @@ var TW = (function () {
     }).catch(function () { toast('요청 실패'); });
   }
 
+  // [2026-09-07] 업데이트 공지/새로고침 유도 -- "새로고침 잘 안 하는 유저가 있다, 업데이트
+  // 시 강제로 새로고침 유도하고 공지도 보여주고 싶다, 다시 볼 수 있는 버튼도" 요청. 서버
+  // (APP_VERSION, /공지등록으로 관리자가 갱신)와 이 브라우저가 localStorage에 저장해둔
+  // 마지막 확인 버전을 비교 -- 다르면(신규 배포 감지) 새로고침 안내 팝업을 띄운다. "닫기"만
+  // 눌러선 localStorage가 갱신되지 않으므로 일정 시간 뒤 다시 뜬다(noticeSnoozeUntil) --
+  // 계속 미룰 순 있어도 완전히 사라지진 않게 해서 "강제" 취지를 살렸다. 실제로 새로고침하면
+  // (refreshForUpdate) 그때 저장하고 새 페이지가 다시 최신 버전으로 맞춰 시작한다.
+  var lastNotice = { version: '', notice: '' };
+  var noticeSnoozeUntil = 0;
+  var NOTICE_STORAGE_KEY = 'loaAppVersionSeen';
+
+  function checkAppVersion() {
+    fetch(base + '/api/tower-notice').then(function (r) { return r.json(); }).then(function (data) {
+      lastNotice = { version: String(data.version || ''), notice: data.notice || '' };
+      var seen = null;
+      try { seen = localStorage.getItem(NOTICE_STORAGE_KEY); } catch (e) {}
+      if (seen === null) {
+        // 이 브라우저에서 첫 방문 -- "업데이트됐다"고 놀라게 할 필요 없이 기준점만 조용히 저장.
+        try { localStorage.setItem(NOTICE_STORAGE_KEY, lastNotice.version); } catch (e) {}
+        return;
+      }
+      if (seen !== lastNotice.version && Date.now() > noticeSnoozeUntil) {
+        showNoticeModal();
+      }
+    }).catch(function () {});
+  }
+
+  function showNoticeModal() {
+    document.getElementById('noticeBody').textContent = lastNotice.notice || '새 업데이트가 있습니다. 새로고침해주세요.';
+    document.getElementById('noticeOverlay').classList.add('open');
+  }
+
+  // "공지를 다시 볼 수 있는 버튼" 요청 -- 버전 비교 없이 최신 공지를 다시 조회해서 그냥 보여줌.
+  function reopenNotice() {
+    fetch(base + '/api/tower-notice').then(function (r) { return r.json(); }).then(function (data) {
+      lastNotice = { version: String(data.version || ''), notice: data.notice || '' };
+      document.getElementById('noticeBody').textContent = lastNotice.notice || '등록된 공지가 없습니다.';
+      document.getElementById('noticeOverlay').classList.add('open');
+    }).catch(function () { toast('공지 조회 실패'); });
+  }
+
+  function closeNotice() {
+    document.getElementById('noticeOverlay').classList.remove('open');
+    noticeSnoozeUntil = Date.now() + 10 * 60 * 1000; // 10분 동안은 다시 안 뜸(그 뒤엔 재확인)
+  }
+
+  function refreshForUpdate() {
+    try { localStorage.setItem(NOTICE_STORAGE_KEY, lastNotice.version); } catch (e) {}
+    location.reload();
+  }
+
   document.addEventListener('DOMContentLoaded', function () {
     // 채팅에서 "/탑현황"·"/탑도움말"이 붙여주는 링크(?userName=닉네임)로 들어오면 그 유저로
     // 바로 조회되게 한다. 파라미터 이름이 userName이 아니어도(user_name, username 등) 웬만하면
@@ -1600,12 +1670,16 @@ var TW = (function () {
     var saved = fromUrl || sessionStorage.getItem('loaUserName');
     if (saved) document.getElementById('userNameInput').value = saved;
     if (saved) loadStatus();
+
+    checkAppVersion();
+    setInterval(checkAppVersion, 3 * 60 * 1000); // 페이지를 오래 켜두는 유저도 놓치지 않게 3분마다 재확인
   });
 
   return { load: loadStatus, action: action, switchTab: switchTab, closeDetail: closeDetail, closeConfirm: closeConfirm,
            closePicker: closePicker,
            openAllCompanions: openAllCompanions, closeAllCompanions: closeAllCompanions,
-           openAllEquip: openAllEquip, closeAllEquip: closeAllEquip };
+           openAllEquip: openAllEquip, closeAllEquip: closeAllEquip,
+           reopenNotice: reopenNotice, closeNotice: closeNotice, refreshForUpdate: refreshForUpdate };
 })();
 </script>
 </body>

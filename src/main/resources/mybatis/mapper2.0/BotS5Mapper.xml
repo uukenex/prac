@@ -438,6 +438,20 @@
         SELECT CONFIG_KEY, CONFIG_VALUE FROM TBOT_S5_CONFIG
     </select>
 
+    <!-- 웹 SPA 업데이트 공지/새로고침 유도(2026-09-07). TO_NCHAR 없으면 조회 시점에 다시
+         깨진다(지난 메시지 이모지 4차 수정과 같은 원인). 반드시 TO_NCHAR로 조회할 것. -->
+    <select id="selectNotice" resultType="hashmap">
+        SELECT APP_VERSION, TO_NCHAR(NOTICE_TEXT) AS NOTICE_TEXT FROM TBOT_S5_NOTICE WHERE NOTICE_ID = 1
+    </select>
+
+    <update id="updateNotice" parameterType="hashmap">
+        UPDATE TBOT_S5_NOTICE
+        SET APP_VERSION = #{version},
+            NOTICE_TEXT = #{text, jdbcType=NCLOB, typeHandler=my.prac.core.util.NCharClobTypeHandler},
+            UPDATE_DATE = SYSDATE
+        WHERE NOTICE_ID = 1
+    </update>
+
     <!-- /이벤트지급(관리자 전용): 전체 유저에게 범용 장비뽑기권 일괄 지급(레거시 폴백용, 지금은
          /이벤트지급이 항상 등급을 지정하므로 bulkGrantTierEquipVoucher가 대신 쓰인다) -->
     <update id="bulkGrantEquipVoucher">

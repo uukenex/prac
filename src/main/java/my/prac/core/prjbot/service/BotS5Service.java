@@ -167,6 +167,20 @@ public interface BotS5Service {
     String grantEventVouchers(String userName, int tier, int companionQty, int equipQty);
 
     /**
+     * 웹 SPA 전용: 현재 등록된 공지 버전/내용 조회 -- 로그인/권한 무관, 항상 공개 정보.
+     * {"APP_VERSION": "...", "NOTICE_TEXT": "..."} 형태.
+     */
+    HashMap<String, Object> getNotice();
+
+    /**
+     * /공지등록(관리자 전용) -- 새 공지 내용을 등록하고 버전(타임스탬프)을 새로 발급한다.
+     * 웹 화면이 주기적으로 버전을 확인하다가 바뀐 걸 감지하면 새로고침 안내 팝업을 띄운다
+     * ("새로고침 잘 안 하는 유저가 있다, 업데이트 시 강제로 새로고침 유도하고 공지도
+     * 보여주고 싶다" 요청). EVENT_ADMIN_USERS 등록자만 실행 가능.
+     */
+    String setNotice(String userName, String text);
+
+    /**
      * /탑통계, /ㅌㅌㄱ(관리자 전용) — 시즌5 유저가 웹(SPA)과 카톡(채팅) 중 어느 채널을 얼마나
      * 쓰는지, 주사위/가챠/전멸 활동량, 주사위 눈(1~20) 전역 분포까지 보여준다.
      * EVENT_ADMIN_USERS에 없으면 /이벤트지급과 동일하게 조용히 "권한이 없습니다"만 반환.

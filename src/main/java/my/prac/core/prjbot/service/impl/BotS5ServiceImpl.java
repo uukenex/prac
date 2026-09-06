@@ -2943,6 +2943,43 @@ public class BotS5ServiceImpl implements BotS5Service {
         return sb.toString();
     }
 
+    /** 웹 SPA 전용: 현재 등록된 공지 버전/내용. 로그인/권한 무관, 항상 공개(비어있으면 폴백값). */
+    @Override
+    public HashMap<String, Object> getNotice() {
+        HashMap<String, Object> row = dao.selectNotice();
+        if (row == null) {
+            HashMap<String, Object> fallback = new HashMap<>();
+            fallback.put("APP_VERSION", "0");
+            fallback.put("NOTICE_TEXT", "");
+            return fallback;
+        }
+        return row;
+    }
+
+    /**
+     * /공지등록(관리자 전용) — "새로고침 잘 안 하는 유저가 있다, 업데이트 시 강제로
+     * 새로고침 유도하고 공지도 보여주고 싶다" 요청. 새 공지 내용을 등록하고 버전(현재
+     * 시각 타임스탬프 문자열, 매번 반드시 달라짐)을 새로 발급 -- 웹 화면이 주기적으로
+     * /api/tower-notice를 조회하다가 버전이 바뀐 걸 감지하면 새로고침 안내 팝업을 띄운다.
+     * /이벤트지급과 같은 EVENT_ADMIN_USERS 권한 체크를 그대로 재사용.
+     */
+    @Override
+    @Transactional
+    public String setNotice(String userName, String text) {
+        if (!isEventAdmin(userName)) {
+            return "권한이 없습니다.";
+        }
+        if (text == null || text.trim().isEmpty()) {
+            return "사용법: /공지등록 [공지 내용] (등록하면 웹 화면 접속자에게 새로고침 안내와 함께 표시됩니다)";
+        }
+        String version = new java.text.SimpleDateFormat("yyyyMMddHHmmss").format(new java.util.Date());
+        HashMap<String, Object> up = new HashMap<>();
+        up.put("version", version);
+        up.put("text", text.trim());
+        dao.updateNotice(up);
+        return "📢 공지 등록 완료! (버전 " + version + ") 웹 화면을 켜둔 접속자들에게 새로고침 안내 팝업이 순서대로 뜹니다.";
+    }
+
     /**
      * /탑통계(관리자 전용) — /이벤트지급과 같은 EVENT_ADMIN_USERS 권한 체크를 그대로 재사용.
      * "어느 채널이 몇 명인지" 별도 컬럼으로 안 남기고 있어서, 웹 액션마다 TBOT_WORD_HIS.

@@ -144,6 +144,21 @@ public class Season5ViewController {
         return ResponseEntity.ok(result);
     }
 
+    /**
+     * 웹 SPA 업데이트 공지/새로고침 유도(2026-09-07) -- userName 불필요, 로그인 여부와
+     * 무관하게 항상 공개. 페이지가 주기적으로 이 값을 조회하다가 version이 바뀐 걸 감지하면
+     * 새로고침 안내 팝업을 띄운다. 관리자가 /공지등록으로 값을 갱신한다.
+     */
+    @GetMapping("/api/tower-notice")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerNotice() {
+        HashMap<String, Object> notice = s5Service.getNotice();
+        HashMap<String, Object> result = new HashMap<>();
+        result.put("version", notice.get("APP_VERSION"));
+        result.put("notice", notice.get("NOTICE_TEXT"));
+        return ResponseEntity.ok(result);
+    }
+
     /** 캐릭터 클릭(확대) 상세 카드용 — 장비/스탯구매 보너스까지 반영한 유효 스탯. 장비 목록은
      *  이미 /api/tower-equip으로 받아둔 데이터를 화면에서 COMPANION_ID로 필터링해서 재사용한다. */
     @GetMapping("/api/tower-companion-stat")

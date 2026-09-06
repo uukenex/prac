@@ -1544,6 +1544,30 @@ S4의 `TBOT_S4_ACHIEVEMENT`/`TBOT_S4_USER_ACH` 패턴을 확장 계승. S5에서
   스탯상한 공식/보스 스킬 전부 확인 완료, 위 "51층+" 항목들 참고)한 뒤 상수를 61로 올려
   51~59층(블록6) 진입 + 60층(블록7 마을) 도착까지 오픈, 61층(블록7 사냥터)부터는 계속
   잠금. 배포는 요청에 따라 사용자가 직접 진행.
+- **[2026-09-07] 웹 SPA 업데이트 공지 + 강제 새로고침 유도**: "새로고침 잘 안 하는 유저가
+  있다, 업데이트되면 공지도 보여주고 새로고침을 유도하고 싶다, 공지를 다시 볼 수 있는
+  버튼도" 요청.
+  - **DB**: `TBOT_S5_NOTICE`(싱글턴 1행, `S5_NOTICE.sql`, 실 DB 적용 완료) --
+    `APP_VERSION`(ASCII 타임스탬프, 등록할 때마다 새로 발급)과 `NOTICE_TEXT`. 지난메시지
+    이모지 사고와 같은 이유로 `NOTICE_TEXT`는 NCLOB, `INSERT/UPDATE`는 기존 emoji 수정 때
+    만든 커스텀 `NCharClobTypeHandler`로, `SELECT`는 `TO_NCHAR`로 -- 둘 다 이미 검증된
+    패턴 재사용. `APP_VERSION`은 순수 ASCII라 인코딩 위험 자체가 없음.
+  - **등록**: 새 채팅 명령어 `/공지등록 [내용]`(관리자 전용, `EVENT_ADMIN_USERS` 재사용,
+    `/이벤트지급`과 동일한 권한 체크) -- `Season5Controller.setNotice`가 `fulltxt`에서
+    명령어 부분만 잘라 나머지 전체를 공지 내용으로 그대로 씀(공백 토큰화 안 함, 문장이니까).
+    호출할 때마다 `BotS5ServiceImpl.setNotice`가 버전을 새로 발급해서, 배포할 때마다 이
+    명령어 한 번으로 "새 버전 알림 + 공지 내용"을 동시에 처리.
+  - **조회**: 새 공개 API `GET /api/tower-notice`(userName 불필요) -- `{version, notice}`.
+  - **클라이언트**: `checkAppVersion()`이 페이지 로드 시 + 3분마다 이 API를 조회해서
+    localStorage(`loaAppVersionSeen`)에 저장된 마지막 확인 버전과 비교. 다르면 새로고침
+    안내 팝업(`#noticeOverlay`)을 띄움 -- "닫기"만 눌러선 localStorage가 갱신되지 않아서
+    10분 뒤(`noticeSnoozeUntil`) 다시 뜬다(완전히 안 사라지게 해서 "강제" 취지를 살림).
+    "🔄 새로고침" 버튼(`refreshForUpdate`)을 눌러야 그 버전을 저장하고 실제로 새로고침됨.
+    이 브라우저에서 첫 방문(localStorage에 아무 값도 없음)이면 "업데이트됐다"고 놀라게
+    하지 않고 조용히 기준점만 저장. top-controls에 항상 보이는 "📢" 버튼(`reopenNotice`)은
+    버전 비교 없이 최신 공지를 그냥 다시 보여줌("공지 다시 보기" 요청).
+  - 서버 API(`BotS5Service`/`BotS5ServiceImpl`/`Season5Controller`/`LoaChatController`/
+    `Season5ViewController`) 추가로 JAR 재배포 필요, DB는 이미 적용 완료.
 
 ### 남은 TODO
 

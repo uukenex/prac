@@ -274,6 +274,18 @@ public class Season5Controller {
         }
     }
 
+    /**
+     * /공지등록 [내용] (관리자 전용) -- fulltxt에서 명령어 부분("/공지등록 ")만 잘라내고
+     * 뒤 전체를 그대로 공지 내용으로 쓴다(grantEventVouchers처럼 공백으로 토큰화하면 안 됨 --
+     * 공지문에는 당연히 띄어쓰기가 들어감).
+     */
+    public String setNotice(HashMap<String, Object> map) {
+        String fulltxt = Objects.toString(map.get("fulltxt"), "");
+        int sp = fulltxt.indexOf(' ');
+        String text = sp >= 0 ? fulltxt.substring(sp + 1).trim() : "";
+        return s5Service.setNotice(userNameOf(map), text);
+    }
+
     public String equipUnwearAll(HashMap<String, Object> map) {
         String param1 = param1Of(map);
         if (param1.isEmpty()) return "사용법: /장비해제 M (M=파티원 번호, /파티편성에서 확인)";
