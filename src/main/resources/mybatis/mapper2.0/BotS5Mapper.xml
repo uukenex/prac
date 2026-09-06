@@ -21,7 +21,8 @@
                DICE_ROLL_COUNT_TODAY, DICE_ROLL_DATE,
                PENDING_RESTORE_FLOOR, PENDING_RESTORE_MAX_FLOOR, PENDING_RESTORE_UNLOCKED_BLOCK,
                PENDING_RESTORE_AUTOHUNT_FLOOR,
-               LAST_REQUEST_DATE, LAST_REQUEST_INTERVAL_SEC, MACRO_STREAK, SUSPEND_YN, BAN_YN
+               LAST_REQUEST_DATE, LAST_REQUEST_INTERVAL_SEC, MACRO_STREAK, SUSPEND_YN, BAN_YN,
+               CUR_MONSTER_MIDBOSS_YN, MONSTER_DEF_BUFF_PCT, MONSTER_SHIELD_VALUE
         FROM TBOT_S5_USER_PROGRESS
         WHERE USER_NAME = #{userName}
     </select>
@@ -91,12 +92,16 @@
             <if test="clearMonster != null">
                 CUR_MONSTER_ID = NULL, CUR_MONSTER_HP_VALUE = NULL, CUR_MONSTER_HP_EXT = NULL,
                 BOSS_IMMUNE_CID = NULL, BOSS_STUN_CID = NULL, CUR_MONSTER_ELITE_YN = 'N',
-                MONSTER_STUNNED_YN = 'N',
+                MONSTER_STUNNED_YN = 'N', CUR_MONSTER_MIDBOSS_YN = 'N',
+                MONSTER_DEF_BUFF_PCT = 0, MONSTER_SHIELD_VALUE = 0,
             </if>
             <if test="curMonsterId != null">CUR_MONSTER_ID = #{curMonsterId},</if>
             <if test="curMonsterHpValue != null">CUR_MONSTER_HP_VALUE = #{curMonsterHpValue},</if>
             <if test="curMonsterHpExt != null">CUR_MONSTER_HP_EXT = #{curMonsterHpExt},</if>
             <if test="curMonsterEliteYn != null">CUR_MONSTER_ELITE_YN = #{curMonsterEliteYn},</if>
+            <if test="curMonsterMidbossYn != null">CUR_MONSTER_MIDBOSS_YN = #{curMonsterMidbossYn},</if>
+            <if test="monsterDefBuffPct != null">MONSTER_DEF_BUFF_PCT = #{monsterDefBuffPct},</if>
+            <if test="monsterShieldValue != null">MONSTER_SHIELD_VALUE = #{monsterShieldValue},</if>
             <if test="bossImmuneCid != null">BOSS_IMMUNE_CID = #{bossImmuneCid},</if>
             <if test="bossStunCid != null">BOSS_STUN_CID = #{bossStunCid},</if>
             <if test="clearBossStun != null">BOSS_STUN_CID = NULL,</if>
@@ -142,18 +147,22 @@
     </delete>
 
     <select id="selectUserFloorProgress" resultType="hashmap">
-        SELECT USER_NAME, FLOOR, CUR_TILE FROM TBOT_S5_USER_FLOOR_PROGRESS
+        SELECT USER_NAME, FLOOR, CUR_TILE, ENTRY_TILE FROM TBOT_S5_USER_FLOOR_PROGRESS
         WHERE USER_NAME = #{userName} AND FLOOR = #{floor}
     </select>
 
+    <!-- entryTile은 층 도착(changeFloor) 시에만 넘어옴. 그 외 일반 이동 업데이트는 CUR_TILE만
+         바뀌고 ENTRY_TILE(이 원정에서 처음 밟은 계단 칸)은 그대로 유지된다. -->
     <insert id="upsertUserFloorProgress" parameterType="hashmap">
         MERGE INTO TBOT_S5_USER_FLOOR_PROGRESS T
         USING (SELECT #{userName} AS U, #{floor} AS F FROM DUAL) S
         ON (T.USER_NAME = S.U AND T.FLOOR = S.F)
         WHEN MATCHED THEN
             UPDATE SET CUR_TILE = #{curTile}
+                <if test="entryTile != null">, ENTRY_TILE = #{entryTile}</if>
         WHEN NOT MATCHED THEN
-            INSERT (USER_NAME, FLOOR, CUR_TILE) VALUES (#{userName}, #{floor}, #{curTile})
+            INSERT (USER_NAME, FLOOR, CUR_TILE, ENTRY_TILE)
+            VALUES (#{userName}, #{floor}, #{curTile}, <if test="entryTile != null">#{entryTile}</if><if test="entryTile == null">#{curTile}</if>)
     </insert>
 
     <delete id="deleteUserFloorProgress">

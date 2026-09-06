@@ -375,6 +375,10 @@ public class BotS5ServiceImpl implements BotS5Service {
     // [2026-09-06, 당분간] 51층(블록6 사냥터) 이후 콘텐츠 아직 미공개 -- 진입 자체를 막는다.
     private static final int CONTENT_LOCKED_FLOOR = 51;
 
+    // [2026-09-06] 51층 이후(블록6+) 전투칸에서 중간보스와 마주칠 확률(%). 밸런스 튜닝값이라
+    // 필요하면 조정. 잠긴 콘텐츠라 실사용자 영향 없이 먼저 만들어두고 51층 오픈 시 재검토.
+    private static final int MIDBOSS_CHANCE_PCT = 20;
+
     /**
      * "N층 완전탐사" 업적(ACH_ID 100+floor) 보상 — 3개 블록(=30층)마다 동료뽑기 티어가 한 단계
      * 오르고, 그 안에서 지급 수량이 1→3→5로 늘어난다: 블록1~3(1~30층)=하급×1/3/5,
@@ -1022,7 +1026,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             return userName + "님," + NL + "🏘️ 여기는 마을입니다. 웹 상점(" + TOWER_VIEW_URL + ")을 이용하거나 /층변경 N 으로 사냥터에 진입하세요. (전체 명령어는 /탑도움말)";
         }
         if (m == 9) {
-            return startCombat(userName, p, floor, true, false);
+            return startCombat(userName, p, floor, true, false, false);
         }
 
         // ── 사냥터 보드: 끝 없이 순환하는 루프. 계단(STAIRS) 칸을 밟으면 다음 층 이동
@@ -1102,10 +1106,15 @@ public class BotS5ServiceImpl implements BotS5Service {
         String effectiveType = revisitOverride ? "COMBAT" : tileType;
 
         switch (effectiveType) {
-            case "COMBAT":
+            case "COMBAT": {
+                // [2026-09-06] 51층 이후(블록6+) 전투칸은 일정 확률로 "중간보스"와 마주친다 --
+                // 등장 메시지/맵 표기는 평범한 몬스터와 완전히 동일해서(startCombat 참고) 실제로
+                // 붙어보기 전엔 알 수 없다.
+                boolean midBossEncounter = blockNo(floor) >= 6 && RND.nextInt(100) < MIDBOSS_CHANCE_PCT;
                 // [세 구간 분리 요청] 탐사 현황과 몬스터 등장 사이에 빈 줄
-                sb.append(NL).append(startCombat(userName, p, floor, false, false));
+                sb.append(NL).append(startCombat(userName, p, floor, false, false, midBossEncounter));
                 break;
+            }
             case "PP": {
                 // 럭키칸(칸 유형 값은 하위호환을 위해 기존 "PP" 그대로 두고 표시만 "🍀 럭키"로 바꿈,
                 // 함정칸처럼 이로운 효과 4종 중 무작위 -- PP 보너스/회복은 즉시 발동, 공격력/방어력
@@ -1116,8 +1125,13 @@ public class BotS5ServiceImpl implements BotS5Service {
                 // ATK_UP_10/ATK_UP_30/DEF_UP_10/DEF_UP_30: 접두어로 종류, 끝 숫자로 세기를 구분
                 // (luckyEffectPct 참고) -- 강한 버프(30%)와 약한 버프(10%)를 같이 두어 매번 같은
                 // 세기만 나오지 않도록 함. CLEANSE는 함정 디버프를 즉시 해제하는 효과(신규).
-                String[] luckyEffects = { "PP_BONUS", "ATK_UP_30", "DEF_UP_30", "ATK_UP_10", "DEF_UP_10", "HEAL_ALL", "CLEANSE" };
-                String luckyEffect = luckyEffects[RND.nextInt(luckyEffects.length)];
+                List<String> luckyEffectList = new ArrayList<>();
+                luckyEffectList.add("PP_BONUS"); luckyEffectList.add("ATK_UP_30"); luckyEffectList.add("DEF_UP_30");
+                luckyEffectList.add("ATK_UP_10"); luckyEffectList.add("DEF_UP_10");
+                luckyEffectList.add("HEAL_ALL"); luckyEffectList.add("CLEANSE");
+                // [2026-09-06, 51층+ 전용] 체력 두배(3턴) / 매턴 공격력만큼 방어막 생성(3턴)
+                if (blockNo(floor) >= 6) { luckyEffectList.add("HP_DOUBLE"); luckyEffectList.add("SHIELD_ON_ATK"); }
+                String luckyEffect = luckyEffectList.get(RND.nextInt(luckyEffectList.size()));
                 if (luckyEffect.startsWith("ATK_UP") || luckyEffect.startsWith("DEF_UP")) {
                     // [버그 수정] 이미 럭키 버프가 남아있는 상태에서 새 버프를 뽑으면 컬럼이 하나뿐이라
                     // 무조건 새 걸로 덮어써지는데(연장이 아니라 3턴으로 리셋), 예전엔 이걸 아무 안내 없이
@@ -1166,6 +1180,25 @@ public class BotS5ServiceImpl implements BotS5Service {
                         healPartyAll(healParty, dao.selectUserStat(userName));
                         sb.append("🍀 럭키 칸! 파티 전원의 체력이 완전히 회복되었습니다! (전투불가 상태였던 동료도 부활)");
                     }
+                } else if ("HP_DOUBLE".equals(luckyEffect) || "SHIELD_ON_ATK".equals(luckyEffect)) {
+                    // [2026-09-06, 51층+ 전용] ATK_UP/DEF_UP과 같은 컬럼(LUCKY_TURN_LEFT/EFFECT)을
+                    // 재사용해 3턴 지속시킨다(덮어쓰기 안내 로직도 동일하게 적용).
+                    int prevLuckyTurnLeft2 = intVal(p.get("LUCKY_TURN_LEFT"), 0);
+                    String prevLuckyEffect2 = strVal(p.get("LUCKY_EFFECT"), "");
+                    boolean overwrote2 = prevLuckyTurnLeft2 > 0 && !prevLuckyEffect2.isEmpty() && !prevLuckyEffect2.equals(luckyEffect);
+                    HashMap<String, Object> up2 = new HashMap<>();
+                    up2.put("userName", userName);
+                    up2.put("luckyTurnLeft", 3);
+                    up2.put("luckyEffect", luckyEffect);
+                    dao.updateUserProgress(up2);
+                    if ("HP_DOUBLE".equals(luckyEffect)) {
+                        sb.append("🍀 심상치 않은 럭키 칸! 앞으로 3번 이동하는 동안 체력이 두 배로 버팁니다. (받는 피해 절반)");
+                    } else {
+                        sb.append("🍀 심상치 않은 럭키 칸! 앞으로 3번 이동하는 동안 매 턴 파티 전원의 공격력만큼 방어막이 추가로 생성됩니다.");
+                    }
+                    if (overwrote2) {
+                        sb.append(NL).append("(기존 럭키 효과는 새 효과로 갱신되어 사라졌습니다)");
+                    }
                 } else { // PP_BONUS -- 기존 PP칸 보상의 3배
                     PP reward = basePp.multiply(3);
                     addPp(userName, p, reward);
@@ -1179,8 +1212,12 @@ public class BotS5ServiceImpl implements BotS5Service {
                 // 감소 로직 기준) 동안 지속되는 파티 전체 디버프, PP 손실은 즉시 발동하는 1회성 효과.
                 // 실제 적용은 resolveCombatTurn의 파티 공격 루프(ATK_DOWN)와 몬스터 반격 대상
                 // 방어력 계산(DEF_DOWN)에서 이뤄진다.
-                String[] effects = { "ATK_DOWN", "DEF_DOWN", "PP_LOSS" };
-                String effect = effects[RND.nextInt(effects.length)];
+                // [2026-09-06, 51층+ 전용] RESET_TILE(처음 계단칸으로 돌아가기)/SKILL_LOCK(스킬
+                // 사용금지 1턴) 2종 추가 -- 51층 미만에서는 나오지 않는다.
+                List<String> effectList = new ArrayList<>();
+                effectList.add("ATK_DOWN"); effectList.add("DEF_DOWN"); effectList.add("PP_LOSS");
+                if (blockNo(floor) >= 6) { effectList.add("RESET_TILE"); effectList.add("SKILL_LOCK"); }
+                String effect = effectList.get(RND.nextInt(effectList.size()));
                 HashMap<String, Object> up = new HashMap<>();
                 up.put("userName", userName);
                 if ("PP_LOSS".equals(effect)) {
@@ -1196,6 +1233,27 @@ public class BotS5ServiceImpl implements BotS5Service {
                     // "엔터값 넣어달라" 요청 -- 손실 문구와 남은 PP를 줄바꿈으로 분리
                     sb.append("💸 함정에 걸려 소매치기를 당했다! PP ").append(loss.format())
                       .append(" 손실 ").append(NL).append("💰 PP ").append(after.format());
+                } else if ("RESET_TILE".equals(effect)) {
+                    // 즉시 발동형 1회성 효과(PP_LOSS와 동일 성격) -- TRAP_TURN_LEFT는 건드리지
+                    // 않는다. entryTile은 이 층에 도착했을 때 밟은 첫 계단 칸(changeFloor 참고).
+                    int entryTile = ufp == null ? 0 : intVal(ufp.get("ENTRY_TILE"), 0);
+                    if (entryTile > 0) {
+                        HashMap<String, Object> resetUp = new HashMap<>();
+                        resetUp.put("userName", userName);
+                        resetUp.put("floor", floor);
+                        resetUp.put("curTile", entryTile);
+                        dao.upsertUserFloorProgress(resetUp);
+                        sb.append("🕳️ 함정에 걸렸다! 알 수 없는 힘에 이끌려 처음 계단(").append(entryTile).append("번 칸)으로 돌아갔다!");
+                    } else {
+                        sb.append("🕳️ 함정에 걸렸다! 무언가 되돌리려 했지만... 아무 일도 일어나지 않았다.");
+                    }
+                } else if ("SKILL_LOCK".equals(effect)) {
+                    // "1턴"은 이동 횟수가 아니라 다음 전투 1회(resolveCombatTurn 참고에서
+                    // 즉시 소모) -- 여기서는 플래그만 걸어둔다.
+                    up.put("trapTurnLeft", 1);
+                    up.put("trapEffect", effect);
+                    dao.updateUserProgress(up);
+                    sb.append("🕳️ 함정에 걸렸다! 다음 전투 1턴 동안 파티의 직업별 특수 스킬을 쓸 수 없습니다.");
                 } else {
                     // [버그 수정] 럭키 버프와 동일한 문제 -- 이미 함정 디버프가 남아있는데 새 함정을
                     // 밟으면 조용히 덮어써졌다. 동일하게 "새 효과로 갱신" + 명시적 안내로 통일.
@@ -1262,7 +1320,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                 sb.append(handleSpecialTile(userName));
                 break;
             case "ELITE":
-                sb.append(NL).append(startCombat(userName, p, floor, false, true)); // 강화몹: 보스 아님, 강화만
+                sb.append(NL).append(startCombat(userName, p, floor, false, true, false)); // 강화몹: 보스 아님, 강화만
                 break;
             case "STAIRS_UP": {
                 // floor%10 in 1..8 이므로 다음 칸은 항상 같은 구간 내(최대 9층 보스).
@@ -1410,7 +1468,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         return gachaId >= 1 && gachaId <= 4 && intVal(p.get("EQUIP_VOUCHER_T" + gachaId), 0) > 0;
     }
 
-    private String startCombat(String userName, HashMap<String, Object> p, int floor, boolean boss, boolean elite) {
+    private String startCombat(String userName, HashMap<String, Object> p, int floor, boolean boss, boolean elite, boolean midBoss) {
         HashMap<String, Object> mon = dao.selectMonster(blockNo(floor), boss ? "Y" : "N");
         if (mon == null) {
             // TBOT_S5_MONSTER_INFO에 이 BLOCK_NO×BOSS_YN 조합 데이터가 없는 경우.
@@ -1420,8 +1478,9 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 강화몹(ELITE 칸, 20층대+ 전용): 같은 층 몬스터를 그대로 쓰되 HP/ATK/DEF/PP보상 전부 2배.
         // HP는 여기서 CUR_MONSTER_HP_VALUE에 곱한 값을 바로 저장해두면 끝이지만, ATK/DEF/보상은
         // 매 턴 mon에서 새로 읽어오므로(resolveCombatTurn) CUR_MONSTER_ELITE_YN 플래그를 남겨서
-        // 거기서도 계속 2배를 적용하게 한다.
-        double eliteMult = elite ? 2.0 : 1.0;
+        // 거기서도 계속 2배를 적용하게 한다. [2026-09-06] 중간보스(51층+ 전용, midBoss)는
+        // ELITE와 배타적으로 3배 -- eliteMult 변수를 그대로 재사용.
+        double eliteMult = elite ? 2.0 : (midBoss ? 3.0 : 1.0);
         HashMap<String, Object> up = new HashMap<>();
         up.put("userName", userName);
         up.put("status", "IN_COMBAT");
@@ -1429,6 +1488,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         up.put("curMonsterHpValue", ((Number) mon.get("HP_VALUE")).doubleValue() * eliteMult);
         up.put("curMonsterHpExt", strVal(mon.get("HP_EXT"), ""));
         up.put("curMonsterEliteYn", elite ? "Y" : "N");
+        up.put("curMonsterMidbossYn", midBoss ? "Y" : "N");
 
         // [정책 변경, 2026-09-05] "29층 보스가 너무 세다"는 신고로, 블록3+ 보스의 "무시"
         // 스킬(파티원 1명 지목, 그 동료는 전투 내내 보스에게 공격 불가)을 완전히 제거했다.
@@ -1440,7 +1500,10 @@ public class BotS5ServiceImpl implements BotS5Service {
         PP fullHp = PP.of(((Number) mon.get("HP_VALUE")).doubleValue() * eliteMult, strVal(mon.get("HP_EXT"), "")).normalize();
         StringBuilder sb = new StringBuilder();
         // [형식 정리 요청] "OO 등장!"을 한 줄에 다 몰아넣지 않고 "등장!" 알림 / 몬스터 이름 /
-        // 능력치를 각각 줄로 나눔("능력치" 라벨·콜론도 빼서 더 짧게).
+        // 능력치를 각각 줄로 나눔("능력치" 라벨·콜론도 빼서 더 짧게). [2026-09-06] 중간보스는
+        // "맵에는 일반적인 몬스터로 표시되는데" 요청대로 평범한 등장 메시지("👾 등장!")를 그대로
+        // 쓰고 강화몹처럼 정체를 미리 알려주는 문구도 없다 -- 실제 스탯(3배)은 아래에 그대로
+        // 노출되지만, 정체는 전투 중 스킬 훔치기가 나와야 드러난다.
         sb.append(boss ? "👹 보스 등장!" : elite ? "💪 강화 등장!" : "👾 등장!").append(NL);
         sb.append(floorMonsterName(floor, mon)).append(NL);
         sb.append("⚔️ ").append((int) Math.round(intVal(mon.get("ATK_VALUE"), 0) * eliteMult))
@@ -1511,10 +1574,18 @@ public class BotS5ServiceImpl implements BotS5Service {
         // CUR_MONSTER_HP_VALUE에 저장해뒀지만, ATK/DEF/보상은 mon에서 매 턴 새로 읽으므로 여기서도
         // 계속 곱해줘야 한다(안 그러면 시작할 땐 강화였는데 실제 전투 계산은 평소대로 되는 불일치 발생).
         boolean elite = "Y".equals(strVal(p.get("CUR_MONSTER_ELITE_YN"), "N"));
-        double eliteMult = elite ? 2.0 : 1.0;
+        // [2026-09-06] 51층 이후(블록6+) 중간보스(맵에는 평범한 몬스터로 보이지만 COMBAT
+        // 칸에서 확률로 등장, startCombat 참고) -- 강화몹(2배)보다 센 3배 배율. elite와
+        // midBoss는 서로 배타적(전자는 ELITE 칸, 후자는 COMBAT 칸 전용)이라 eliteMult
+        // 변수 하나를 그대로 공유해 쓴다.
+        boolean midBoss = "Y".equals(strVal(p.get("CUR_MONSTER_MIDBOSS_YN"), "N"));
+        double eliteMult = elite ? 2.0 : (midBoss ? 3.0 : 1.0);
         PP monsterHp = PP.of(((Number) p.get("CUR_MONSTER_HP_VALUE")).doubleValue(), strVal(p.get("CUR_MONSTER_HP_EXT"), ""));
         PP monsterMaxHp = PP.of(((Number) mon.get("HP_VALUE")).doubleValue() * eliteMult, strVal(mon.get("HP_EXT"), "")).normalize();
-        int monsterDef = (int) Math.round(intVal(mon.get("DEF_VALUE"), 0) * eliteMult);
+        // 중간보스가 지난 턴에 전사 스킬을 훔쳐 자기 방어력을 올려뒀으면(아래 미드보스 파트
+        // 참고) 이번 파티 공격 턴 1회에만 반영하고 소모한다(1회성 -- 아래 up에서 0으로 정리).
+        int monsterDefBuffPct = intVal(p.get("MONSTER_DEF_BUFF_PCT"), 0);
+        int monsterDef = (int) Math.round(intVal(mon.get("DEF_VALUE"), 0) * eliteMult * (1 + monsterDefBuffPct / 100.0));
         int diceMax = diceMax(strVal(p.get("DICE_GRADE"), "DICE_6"));
 
         // 함정칸 디버프 / 럭키칸 버프: 남은 이동횟수가 있는 동안 파티 전체에 적용. 럭키칸은
@@ -1522,9 +1593,29 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 종류를, 끝의 숫자로 퍼센트를 판단한다(luckyEffectPct 참고). 함정은 항상 고정 30%.
         boolean trapAtkDown = intVal(p.get("TRAP_TURN_LEFT"), 0) > 0 && "ATK_DOWN".equals(strVal(p.get("TRAP_EFFECT"), ""));
         boolean trapDefDown = intVal(p.get("TRAP_TURN_LEFT"), 0) > 0 && "DEF_DOWN".equals(strVal(p.get("TRAP_EFFECT"), ""));
+        // [2026-09-06, 51층+ 전용 함정] 스킬사용금지 -- 기존 ATK_DOWN/DEF_DOWN과 같은
+        // TRAP_EFFECT/TRAP_TURN_LEFT 컬럼을 그대로 재사용하되, "1턴"은 이동 횟수가 아니라
+        // 실제 전투 1회(resolveCombatTurn 1회 호출)를 의미하므로 여기서 소모 여부를 판단하고
+        // 아래 up에서 즉시 TRAP_TURN_LEFT=0으로 꺼버린다(이동 기반 자동 감소를 기다리지 않음).
+        boolean skillLocked = intVal(p.get("TRAP_TURN_LEFT"), 0) > 0 && "SKILL_LOCK".equals(strVal(p.get("TRAP_EFFECT"), ""));
+        if (skillLocked) {
+            // 이번 전투 1회로 소모 -- 이 전투가 승리/전멸/지속 중 무엇으로 끝나든 상관없이
+            // 항상 정확히 한 번만 적용되도록, 아래 분기별 up과 별개로 여기서 바로 꺼버린다.
+            HashMap<String, Object> skillLockUp = new HashMap<>();
+            skillLockUp.put("userName", userName);
+            skillLockUp.put("trapTurnLeft", 0);
+            dao.updateUserProgress(skillLockUp);
+        }
         String luckyEffectNow = strVal(p.get("LUCKY_EFFECT"), "");
         boolean luckyAtkUp = intVal(p.get("LUCKY_TURN_LEFT"), 0) > 0 && luckyEffectNow.startsWith("ATK_UP");
         boolean luckyDefUp = intVal(p.get("LUCKY_TURN_LEFT"), 0) > 0 && luckyEffectNow.startsWith("DEF_UP");
+        // [2026-09-06, 51층+ 전용 럭키] 체력 두배(3턴) -- 실제로 CUR_HP_VALUE를 다시 계산해
+        // 저장하기보다, 기존 ATK_UP/DEF_UP과 같은 구조로 "받는 피해 절반"으로 구현해 체력을
+        // 두 배로 버티는 것과 같은 효과를 낸다(아래 반격 피해 계산에서 사용).
+        boolean luckyHpDouble = intVal(p.get("LUCKY_TURN_LEFT"), 0) > 0 && "HP_DOUBLE".equals(luckyEffectNow);
+        // [2026-09-06, 51층+ 전용 럭키] 매턴 공격력만큼 방어막 생성(3턴) -- 파티 공격 루프에서
+        // 생존한 동료 각자의 공격력만큼 shieldPool에 추가로 쌓아준다(도사 실드와 별개로 가산).
+        boolean luckyShieldOnAtk = intVal(p.get("LUCKY_TURN_LEFT"), 0) > 0 && "SHIELD_ON_ATK".equals(luckyEffectNow);
         double luckyMult = 1.0 + luckyEffectPct(luckyEffectNow) / 100.0;
 
         // [2026-09-05] 20층 이후(블록3+) 보스 전용 스킬: 기절(아래 반격 턴에서 20% 확률 발동)
@@ -1562,6 +1653,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 배너를 걸었는지" -- 아래에서 이번 턴 결과를 반영해 배너를 다시 쓰거나 지운다.
         boolean incomingBankedStun = "Y".equals(strVal(p.get("MONSTER_STUNNED_YN"), "N"));
         boolean mageBankNextTurn = false;
+        if (skillLocked) sb.append("🔒 스킬 봉인 상태! 이번 턴은 파티 특수 스킬(직업별 효과)을 쓸 수 없다.").append(NL);
 
         for (HashMap<String, Object> c : party) {
             PP hp = PP.of(((Number) c.get("CUR_HP_VALUE")).doubleValue(), strVal(c.get("CUR_HP_EXT"), ""));
@@ -1584,6 +1676,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             if ("RAINBOW".equals(synergy)) eff[1] = (int) Math.round(eff[1] * 1.1); // 시너지: 균형3인조 공격 +10%
             if (trapAtkDown) eff[1] = (int) Math.round(eff[1] * 0.7); // 함정: 공격력 30% 약화
             if (luckyAtkUp) eff[1] = (int) Math.round(eff[1] * luckyMult); // 럭키: 공격력 강화
+            if (luckyShieldOnAtk) shieldPool += eff[1]; // 럭키: 매턴 공격력만큼 방어막 추가 생성(도사 실드와 별개로 가산)
 
             // [정책 변경, 2026-09-05] "무시 대상" 스킬 자체를 제거했다("29층 보스가 너무 세다"는
             // 신고 -- bossImmuneCid는 더 이상 세팅되지 않으므로 이 분기는 이제 죽은 코드다).
@@ -1611,7 +1704,10 @@ public class BotS5ServiceImpl implements BotS5Service {
 
             // [2026-09-05 신설] ★5/★6 동료 성급 특수효과 -- 시너지와 별개로 "이 동료 개인"의
             // 등급이 높을수록 그 직업 고유 효과가 강해진다. 시너지가 함께 켜져 있으면 둘 다
-            // 적용(스택)된다.
+            // 적용(스택)된다. [2026-09-06] 함정 "스킬사용금지"에 걸려있으면(skillLocked)
+            // 이 switch 전체(직업별 특수효과)를 건너뛴다 -- 기본 공격 데미지(위에서 이미 계산)는
+            // 그대로 들어간다.
+            if (!skillLocked)
             switch (job) {
                 case "MAGE": {
                     int stunChance = 20;
@@ -1671,6 +1767,16 @@ public class BotS5ServiceImpl implements BotS5Service {
         // "파티 합공 총 데미지도 보여달라" 요청 -- 개별 줄만으로는 한 번에 얼마나 몰아쳤는지
         // 암산해야 해서, 공격 줄들 바로 아래에 합계를 한 줄 더 보여준다.
         if (totalDamage > 0) sb.append("총 ").append(totalDamage).append("dmg로 공격!").append(NL);
+
+        // 중간보스가 지난 턴에 도사 스킬을 훔쳐 자신에게 보호막을 둘렀으면(아래 미드보스
+        // 파트 참고), 이번 파티 공격에서 그만큼 먼저 흡수하고 소모한다(1회성).
+        int monsterShieldValue = intVal(p.get("MONSTER_SHIELD_VALUE"), 0);
+        if (monsterShieldValue > 0 && totalDamage > 0) {
+            long absorbedByMonster = Math.min(monsterShieldValue, totalDamage);
+            totalDamage -= absorbedByMonster;
+            sb.append("🛡️ ").append(eliteMonsterName(floor, mon, elite)).append("의 보호막이 ")
+              .append(absorbedByMonster).append(" 피해를 흡수했다! (이후 ").append(totalDamage).append("dmg)").append(NL);
+        }
 
         // 지난 턴에 걸린 "2턴 스턴" 배너가 있으면 이번 턴도 반격을 못 하게 한다(이번 턴에 새
         // 마법사가 또 성공시켰는지와 무관하게 항상 적용).
@@ -1800,6 +1906,10 @@ public class BotS5ServiceImpl implements BotS5Service {
         // ★5/★6 마법사 2턴 스턴 배너 갱신 -- 이번 턴에 새로 걸렸으면 다음 턴을 위해 Y로,
         // 아니면(지난 배너를 방금 소모했든 애초에 없었든) N으로 정리한다.
         up.put("monsterStunnedYn", mageBankNextTurn ? "Y" : "N");
+        // 중간보스의 1회성 방어버프/보호막은 위에서 이미 소모했으므로 일단 0으로 정리 --
+        // 아래 미드보스 파트에서 이번 턴에 새로 훔쳤으면 별도 update로 다시 채워 넣는다.
+        up.put("monsterDefBuffPct", 0);
+        up.put("monsterShieldValue", 0);
         dao.updateUserProgress(up);
         // [세 구간 분리 요청] 파티 공격 결과(1구간)와 몬스터 상태·반격(2구간) 사이에 빈 줄을 넣는다.
         sb.append(NL);
@@ -1856,6 +1966,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 풀어준다 -- 그 외엔 예전처럼 첫 전사만 판정(다수 판정으로 인한 밸런스 변화 방지).
         boolean warriorSynergy = "WARRIOR".equals(synergy);
         int warriorGuardMitigationPct = 0;
+        if (!skillLocked) // [2026-09-06] 함정 "스킬사용금지" 중엔 전사 도발도 발동하지 않는다.
         for (HashMap<String, Object> c : alive) {
             if (!"WARRIOR".equals(strVal(c.get("CLASS"), ""))) continue;
             int wGrade = intVal(c.get("GRADE"), 1);
@@ -1873,6 +1984,65 @@ public class BotS5ServiceImpl implements BotS5Service {
                 warriorGuardMitigationPct = wGrade >= 6 ? 20 : 0; // ★6: 도발 성공 시 받는 피해 추가 20%↓
             }
             if (!warriorSynergy) break; // 시너지 아니면 예전처럼 첫 전사만 판정
+        }
+
+        // [2026-09-06 신설] 51층 이후(블록6+) 중간보스 -- 맵/등장 메시지는 평범한 몬스터와
+        // 똑같이 보이지만(startCombat 참고), 매 턴 지금 파티에 있는 직업 중 하나의 "기본 스킬"을
+        // 하나 훔쳐서 자신이 사용한다(여러 직업이 섞여 있으면 매 턴 그 중 하나를 무작위로).
+        // 전사는 도발(타겟팅) 자체가 자신에게 의미가 없으니 대신 방어력을 올리고, 도사는
+        // 스스로에게 보호막을, 도적은 PP를 훔치고, 궁수는(즉사는 제외) 이번 반격 피해를
+        // 늘리고, 마법사는 동료 한 명을 기절시킨다(기존 20층+ 보스 기절과 동일한 방식 재사용,
+        // 반격 턴을 통째로 소모).
+        boolean midBossArcherDmgUp = false;
+        if (midBoss) {
+            List<String> stealable = new ArrayList<>();
+            for (HashMap<String, Object> c : alive) {
+                String j = strVal(c.get("CLASS"), "");
+                if (JOB_NAME.containsKey(j) && !stealable.contains(j)) stealable.add(j);
+            }
+            if (!stealable.isEmpty()) {
+                String stolenJob = stealable.get(RND.nextInt(stealable.size()));
+                if ("MAGE".equals(stolenJob)) {
+                    HashMap<String, Object> stealStunUp = new HashMap<>();
+                    stealStunUp.put("userName", userName);
+                    stealStunUp.put("bossStunCid", intVal(target.get("COMPANION_ID"), 0));
+                    dao.updateUserProgress(stealStunUp);
+                    String stealStunName = strVal(target.get("NAME"), JOB_NAME.getOrDefault(strVal(target.get("CLASS"), ""), "동료"));
+                    sb.append("🥷 ").append(eliteMonsterName(floor, mon, elite)).append("이(가) 마법사의 기술을 흉내내 ")
+                      .append(stealStunName).append(" 기절! 다음턴 공격불가");
+                    sb.append(NL).append(NL).append(partyHpSummary(party, userStat));
+                    return sb.toString();
+                } else if ("WARRIOR".equals(stolenJob)) {
+                    HashMap<String, Object> stealDefUp = new HashMap<>();
+                    stealDefUp.put("userName", userName);
+                    stealDefUp.put("monsterDefBuffPct", 30);
+                    dao.updateUserProgress(stealDefUp);
+                    sb.append("🥷 ").append(eliteMonsterName(floor, mon, elite)).append("이(가) 전사의 기술을 흉내내 방어 태세를 갖췄다! (다음 파티 공격 시 방어력 +30%)").append(NL);
+                } else if ("PRIEST".equals(stolenJob)) {
+                    int stealShieldAmt = (int) Math.round(intVal(mon.get("ATK_VALUE"), 0) * eliteMult * 2);
+                    HashMap<String, Object> stealShUp = new HashMap<>();
+                    stealShUp.put("userName", userName);
+                    stealShUp.put("monsterShieldValue", stealShieldAmt);
+                    dao.updateUserProgress(stealShUp);
+                    sb.append("🥷 ").append(eliteMonsterName(floor, mon, elite)).append("이(가) 도사의 기술을 흉내내 스스로에게 보호막(").append(stealShieldAmt).append(")을 둘렀다!").append(NL);
+                } else if ("ROGUE".equals(stolenJob)) {
+                    PP curPpNow = PP.of(((Number) p.get("PP_VALUE")).doubleValue(), strVal(p.get("PP_EXT"), ""));
+                    PP stolenPp = curPpNow.multiplyRate(0.05);
+                    PP afterPp = curPpNow.subtract(stolenPp);
+                    if (PP.toBaseValue(afterPp) < 0) afterPp = PP.fromPP(0);
+                    HashMap<String, Object> stealPpUp = new HashMap<>();
+                    stealPpUp.put("userName", userName);
+                    stealPpUp.put("ppValue", afterPp.getValue());
+                    stealPpUp.put("ppExt", afterPp.getUnit());
+                    dao.updateUserProgress(stealPpUp);
+                    p.put("PP_VALUE", afterPp.getValue());
+                    p.put("PP_EXT", afterPp.getUnit());
+                    sb.append("🥷 ").append(eliteMonsterName(floor, mon, elite)).append("이(가) 도적의 기술을 흉내내 PP를 훔쳐갔다! -").append(stolenPp.format()).append("PP").append(NL);
+                } else if ("ARCHER".equals(stolenJob)) {
+                    midBossArcherDmgUp = true;
+                    sb.append("🥷 ").append(eliteMonsterName(floor, mon, elite)).append("이(가) 궁수의 기술을 흉내내 이번 공격의 피해가 늘어난다!").append(NL);
+                }
+            }
         }
 
         // 20층 이후 보스의 기절 스킬: [2026-09-05] 30%->20%(무시 스킬 삭제와 함께 완화) ->
@@ -1928,6 +2098,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         int monsterAtk = (int) Math.round(intVal(mon.get("ATK_VALUE"), 0) * eliteMult);
         int roll = rollFace(diceMax);
         int rawDmgToParty = Math.max(1, monsterAtk * roll - tEff[2]);
+        // 중간보스가 이번 턴 궁수 기술을 훔쳤으면(위 미드보스 파트) 이 반격 피해를 즉시 증폭.
+        if (midBossArcherDmgUp) rawDmgToParty = (int) Math.round(rawDmgToParty * 1.3);
         int dmgToParty = rawDmgToParty;
 
         String tName = strVal(curTarget.get("NAME"), JOB_NAME.getOrDefault(tJob, "동료"));
@@ -1983,6 +2155,9 @@ public class BotS5ServiceImpl implements BotS5Service {
             // ★6 전사가 이번에 도발로 대신 맞았으면 그 몫만 추가로 20% 더 감소.
             if (warriorSynergy) dmgToParty = (int) Math.round(dmgToParty * 0.9);
             if (warriorGuardMitigationPct > 0) dmgToParty = (int) Math.round(dmgToParty * (1 - warriorGuardMitigationPct / 100.0));
+            // [2026-09-06, 51층+ 전용 럭키] "체력 두배(3턴)" -- 실제 HP를 다시 계산하지 않고
+            // 받는 피해를 절반으로 깎아 체력 두 배로 버티는 것과 동일한 효과를 낸다.
+            if (luckyHpDouble) dmgToParty = (int) Math.round(dmgToParty * 0.5);
         }
 
         // 흡혈은 두 번째 대상(ti==1)에게 실제로 박힌 최종 피해(보호막 흡수분 제외, 회피 시 0)만
@@ -2306,6 +2481,9 @@ public class BotS5ServiceImpl implements BotS5Service {
                 ufpSave.put("userName", userName);
                 ufpSave.put("floor", target);
                 ufpSave.put("curTile", landTileNo);
+                // [2026-09-06] 이 원정에서 처음 밟은 계단 칸 -- 51층+ "처음 계단칸으로 돌아가기"
+                // 함정(RESET_TILE)이 복귀 지점으로 쓴다.
+                ufpSave.put("entryTile", landTileNo);
                 dao.upsertUserFloorProgress(ufpSave);
                 dao.insertTileVisit(userName, target, landTileNo);
             }
