@@ -126,7 +126,9 @@
     .browse-btn{ flex:1; background:var(--parchment); border:1.5px solid var(--line); border-radius:12px;
                  font-size:13px; font-weight:700; padding:12px; cursor:pointer; color:var(--ink); }
     .browse-btn:active{ transform:scale(.98); }
-    .wide-card{ max-width:520px; }
+    /* [2026-09-07] "필터링에 따라 창 크기가 바뀐다, 고정 크기로" 요청 -- 높이를 고정해서
+       필터를 눌러 목록이 줄어들거나 늘어나도 팝업 자체는 안 흔들리고 카드 내부만 스크롤됨. */
+    .wide-card{ max-width:520px; height:640px; max-height:85vh; }
 
     .card-title-row{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:10px; }
     .card-title-row .card-title{ margin-bottom:0; }
@@ -205,8 +207,10 @@
 
     /* [2026-09-06] 동료변경/장비변경 선택 팝업(#pickerOverlay), "전체 동료보기"/"전체
        아이템보기" 팝업 공용 -- detail-overlay/detail-card를 그대로 재사용하고 내부 콘텐츠만
-       아래 클래스로 새로 구성. */
-    .sheet-card{ max-width:340px; }
+       아래 클래스로 새로 구성. [2026-09-07] "필터링에 따라 창 크기가 바뀐다, 고정 크기로
+       해달라" 요청으로 내용 양과 무관하게 항상 같은 높이(넘치면 카드 안에서만 스크롤, 이미
+       있던 detail-card의 overflow:auto가 그대로 처리)로 고정. */
+    .sheet-card{ max-width:340px; height:480px; max-height:85vh; }
     .sheet-title{ font-size:15px; font-weight:800; margin:2px 0 12px; padding-right:22px; }
     .sheet-row{ display:flex; align-items:center; justify-content:space-between; gap:8px; background:#fff;
                 border:1.5px solid var(--line); border-radius:12px; padding:10px 12px; margin-bottom:6px;
@@ -293,6 +297,10 @@
     @media (min-width:700px){
       .board-row{ flex-direction:row; align-items:flex-start; }
       .tower-nav-card{ width:260px; flex:0 0 260px; }
+      /* [2026-09-07] "PC 버전에선 가로 사이즈를 좀 많이 늘려줘" 요청 -- 편성 탭 팝업들이
+         모바일 폭(340/520px)에 맞춰져 있어 PC에서는 유독 좁아 보였다. */
+      .sheet-card{ max-width:460px; }
+      .wide-card{ max-width:820px; }
     }
 
     @media (max-width:600px){
@@ -368,8 +376,9 @@
       <div id="ticketBox"></div>
     </div>
     <!-- [2026-09-06] "보유동료/파티장비현황/미착용장비는 없애고 버튼으로 이관" 요청 -- 안의
-         기능(renderPartyGrid/renderPartyEquipSummary/renderEquipList)은 그대로 두고, 항상
-         보이던 카드 3개를 이 버튼 2개 뒤 팝업(#allCompanionsOverlay/#allEquipOverlay)으로 옮김. -->
+         기능(renderPartyGrid/renderEquipList)은 그대로 두고, 항상 보이던 카드들을 이 버튼
+         2개 뒤 팝업(#allCompanionsOverlay/#allEquipOverlay)으로 옮김. 파티 장비 현황은
+         슬롯 카드에 이미 다 보이는 중복 정보라 [2026-09-07]에 완전히 제거. -->
     <div class="card" style="margin-top:10px; display:flex; gap:8px;">
       <button type="button" class="browse-btn" onclick="TW.openAllCompanions()">👥 전체 동료보기</button>
       <button type="button" class="browse-btn" onclick="TW.openAllEquip()">🎒 전체 아이템보기</button>
@@ -454,8 +463,9 @@
 </div>
 
 <!-- "보유동료/파티장비현황/미착용장비 카드는 없애고 버튼으로 이관" 요청 -- 내용물
-     (partyGridFilters/partyGrid/partyEquipBox/equipListFilters/equipListBox)은 그대로,
-     항상 보이던 인라인 카드 대신 이 팝업 2개 뒤로 옮겼다. -->
+     (partyGridFilters/partyGrid/equipListFilters/equipListBox)은 그대로, 항상 보이던
+     인라인 카드 대신 이 팝업 2개 뒤로 옮겼다. [2026-09-07] "파티 장비 현황"은 파티 슬롯
+     카드 자체에 이미 부위별로 다 보이는 중복 정보라는 요청으로 이 팝업에서 완전히 제거. -->
 <div class="detail-overlay" id="allCompanionsOverlay" onclick="if(event.target===this) TW.closeAllCompanions();">
   <div class="detail-card sheet-card wide-card">
     <button class="detail-close" onclick="TW.closeAllCompanions()">✕</button>
@@ -468,9 +478,7 @@
 <div class="detail-overlay" id="allEquipOverlay" onclick="if(event.target===this) TW.closeAllEquip();">
   <div class="detail-card sheet-card wide-card">
     <button class="detail-close" onclick="TW.closeAllEquip()">✕</button>
-    <div class="sheet-title">파티 장비 현황</div>
-    <div id="partyEquipBox"></div>
-    <div class="sheet-title" style="margin-top:16px;">미착용 장비</div>
+    <div class="sheet-title">미착용 장비</div>
     <div id="equipListFilters"></div>
     <div id="equipListBox"></div>
   </div>
@@ -1076,8 +1084,8 @@ var TW = (function () {
   }
 
   // "보유동료/파티장비현황/미착용장비는 없애고 전체동료보기/전체아이템보기 버튼으로 이관"
-  // 요청 -- 내용(renderPartyGrid/renderPartyEquipSummary/renderEquipList)은 loadPartyAndEquip()
-  // 이 매번 백그라운드로 계속 그려두고, 이 열기/닫기 함수는 그 결과가 담긴 팝업을 보이기만 한다.
+  // 요청 -- 내용(renderPartyGrid/renderEquipList)은 loadPartyAndEquip()이 매번 백그라운드로
+  // 계속 그려두고, 이 열기/닫기 함수는 그 결과가 담긴 팝업을 보이기만 한다.
   function openAllCompanions() {
     document.getElementById('allCompanionsOverlay').classList.add('open');
   }
@@ -1315,36 +1323,7 @@ var TW = (function () {
     });
   }
 
-  // 파티 슬롯별 장비 현황(요약 카드) -- 필터와 무관, 항상 편성된 3명 전체를 보여준다.
-  function renderPartyEquipSummary() {
-    var companions = lastParty.companions || [];
-    var byCompanion = lastParty.byCompanion || {};
-    var partyBox = document.getElementById('partyEquipBox');
-    partyBox.innerHTML = '';
-    var partied = companions.filter(function (c) { return c.PARTY_SLOT; })
-                             .sort(function (a, b) { return a.PARTY_SLOT - b.PARTY_SLOT; });
-    if (partied.length === 0) {
-      partyBox.innerHTML = '<div style="color:var(--ink-soft);font-size:12px;">파티에 편성된 동료가 없습니다.</div>';
-    }
-    partied.forEach(function (c) {
-      var row = document.createElement('div');
-      row.className = 'shop-row';
-      var mine = byCompanion[c.COMPANION_ID] || [];
-      var parts = PART_ORDER.map(function (part) {
-        var found = mine.filter(function (e) { return e.PART === part; })[0];
-        return PART_KR[part] + (found ? ' ★' + found.GRADE : ' 미착용');
-      }).join(' / ');
-      var name = c.NAME || (JOB_KR[c.CLASS] || c.CLASS);
-      var hasAnyEquip = mine.length > 0;
-      row.innerHTML = '<span>[파티' + c.PARTY_SLOT + '] ' + name + ' (' + (JOB_KR[c.CLASS] || c.CLASS) + ' ★' + c.GRADE + ') — ' + parts + '</span>'
-          + (hasAnyEquip
-              ? '<span class="btn-group"><button class="ten" onclick="TW.action(\'EQUIP_UNWEAR_ALL\',\'' + c.PARTY_SLOT + '\')">전체해제</button></span>'
-              : '');
-      partyBox.appendChild(row);
-    });
-  }
-
-  // 미착용 장비 목록 -- 정밀한 부위별 장착은 파티 슬롯 탭 시트에서, 여기 버튼(장착/합성)은
+  // 미착용 장비 목록 -- 정밀한 부위별 장착은 파티 슬롯 카드의 "OO변경" 버튼에서, 여기 버튼(장착/합성)은
   // 자동배정 장착과 합성 전용. "필터링 넣어줘(전체/전사/도적..., 그 안에서 또 전체/무기/투구/
   // 갑옷)" 요청으로 직업 탭 + 부위 탭 2단 필터를 얹는다(그룹 헤더는 필터링 후에도 유지).
   function renderEquipList() {
@@ -1425,7 +1404,6 @@ var TW = (function () {
 
       renderPartySlots();
       renderPartyGrid();
-      renderPartyEquipSummary();
       renderEquipList();
 
       // 선택 팝업이 열려있으면(드물게 액션 응답 전에 다시 열렸을 경우 대비) 최신 데이터로

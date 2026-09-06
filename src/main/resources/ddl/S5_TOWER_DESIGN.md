@@ -1492,6 +1492,18 @@ S4의 `TBOT_S4_ACHIEVEMENT`/`TBOT_S4_USER_ACH` 패턴을 확장 계승. S5에서
     버튼을 누르면 그 결과가 담긴 팝업(`#allCompanionsOverlay`/`#allEquipOverlay`)만 보여준다.
   - 정적 리소스만 변경, 서버/DB 무관(이전 세션에서 추가한 `EQUIP_UNWEAR_ONE`/`PARTY_SWAP`
     확장은 재사용만 함).
+- **[2026-09-07] 편성 탭 팝업 다듬기 -- 파티 장비 현황 제거 + PC 폭 확대 + 고정 크기**:
+  - "파티 장비 현황"은 파티 슬롯 카드에 이미 부위별로 다 보이는 중복 정보라는 지적으로
+    `#allEquipOverlay`(전체 아이템보기 팝업)에서 완전히 제거, `renderPartyEquipSummary()`
+    함수와 `#partyEquipBox`도 같이 삭제(더 이상 어디서도 안 씀).
+  - "PC에서는 가로 폭을 많이 늘려달라" 요청으로, 기존 `@media (min-width:700px)` 블록
+    (보드+층이동 탑 가로 배치 전환에 쓰던 것과 동일 breakpoint)에 `.sheet-card`(선택
+    팝업, 340→460px)/`.wide-card`(전체보기 팝업, 520→820px) 폭 확대를 추가.
+  - "필터링에 따라 창 크기가 바뀐다, 고정 크기로" 요청으로 `.sheet-card`/`.wide-card`에
+    고정 `height`(480px/640px, `max-height:85vh`로 짧은 화면 보호)를 줘서 필터로 목록이
+    늘거나 줄어도 팝업 자체는 안 흔들리고 기존 `.detail-card`의 `overflow:auto`가 내부
+    스크롤만 처리하게 함.
+  - 정적 리소스(`tower_view.jsp`)만 변경, 서버/DB 무관.
 
 ### 남은 TODO
 
