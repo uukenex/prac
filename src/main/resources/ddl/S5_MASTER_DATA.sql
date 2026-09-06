@@ -75,11 +75,14 @@ INSERT INTO TBOT_S5_MONSTER_INFO VALUES (104, 4, '용암 가고일',        2400
 -- max party DPS), so HP/ATK/DEF were recomputed to keep TTK in a sane range
 -- while staying monotonically >= the block4 monster.
 INSERT INTO TBOT_S5_MONSTER_INFO VALUES (105, 5, '설원 요새 설귀',     2600,    '', 20,    '', 5,    '', 30,   '', 'N');
-INSERT INTO TBOT_S5_MONSTER_INFO VALUES (106, 6, '심연 기사단 망령병', 5000,    '', 34,    '', 10,   '', 70,   '', 'N');
-INSERT INTO TBOT_S5_MONSTER_INFO VALUES (107, 7, '뒤틀린 차원 촉수괴', 5500,    '', 29,    '', 10,   '', 150,  '', 'N');
-INSERT INTO TBOT_S5_MONSTER_INFO VALUES (108, 8, '천공성 수호 골렘',   15000,   '', 37,    '', 15,   '', 300,  '', 'N');
-INSERT INTO TBOT_S5_MONSTER_INFO VALUES (109, 9, '용의 둥지 새끼비룡', 450000,  '', 2400,  '', 2200, '', 600,  '', 'N');
-INSERT INTO TBOT_S5_MONSTER_INFO VALUES (110,10, '파멸의 균열 마수',   1200000, '', 5000,  '', 5000, '', 1200, '', 'N');
+-- MONSTER_ID 106~110 (51층 이후 전 구간): "51층부터 데미지 3배로 늘려줘" 요청으로
+-- ATK_VALUE만 원래 값의 3배로 상향(HP/DEF/PP는 그대로). 원래 값은 각각
+-- 34/29/37/2400/5000 이었음.
+INSERT INTO TBOT_S5_MONSTER_INFO VALUES (106, 6, '심연 기사단 망령병', 5000,    '', 102,   '', 10,   '', 70,   '', 'N');
+INSERT INTO TBOT_S5_MONSTER_INFO VALUES (107, 7, '뒤틀린 차원 촉수괴', 5500,    '', 87,    '', 10,   '', 150,  '', 'N');
+INSERT INTO TBOT_S5_MONSTER_INFO VALUES (108, 8, '천공성 수호 골렘',   15000,   '', 111,   '', 15,   '', 300,  '', 'N');
+INSERT INTO TBOT_S5_MONSTER_INFO VALUES (109, 9, '용의 둥지 새끼비룡', 450000,  '', 7200,  '', 2200, '', 600,  '', 'N');
+INSERT INTO TBOT_S5_MONSTER_INFO VALUES (110,10, '파멸의 균열 마수',   1200000, '', 15000, '', 5000, '', 1200, '', 'N');
 
 -- 보스 (잠정치)
 INSERT INTO TBOT_S5_MONSTER_INFO VALUES (201, 1, '하수구의 지배자 라텔',     720,     '', 26,    '', 5,    '', 0, '', 'Y');
@@ -88,11 +91,13 @@ INSERT INTO TBOT_S5_MONSTER_INFO VALUES (203, 3, '늪지 여왕 히드라',     
 INSERT INTO TBOT_S5_MONSTER_INFO VALUES (204, 4, '화산의 심장 이프리트',     14400,   '', 57,    '', 23,   '', 0, '', 'Y');
 -- MONSTER_ID 205~208: rebalanced together with 105~108 above (same HP*6/ATK*2.2/DEF*1.5 ratio)
 INSERT INTO TBOT_S5_MONSTER_INFO VALUES (205, 5, '빙하의 폭군 프로스트자이언트', 15600,   '', 44,    '', 8,   '', 0, '', 'Y');
-INSERT INTO TBOT_S5_MONSTER_INFO VALUES (206, 6, '심연의 대공 모르드레드',   30000,   '', 75,    '', 15,  '', 0, '', 'Y');
-INSERT INTO TBOT_S5_MONSTER_INFO VALUES (207, 7, '차원의 파괴자 아자토스',   33000,   '', 64,    '', 15,  '', 0, '', 'Y');
-INSERT INTO TBOT_S5_MONSTER_INFO VALUES (208, 8, '천공의 대천사 세라핌',     90000,   '', 81,    '', 23,  '', 0, '', 'Y');
-INSERT INTO TBOT_S5_MONSTER_INFO VALUES (209, 9, '고룡 바하무트',            2700000, '', 5280,  '', 3300, '', 0, '', 'Y');
-INSERT INTO TBOT_S5_MONSTER_INFO VALUES (210,10, '종말의 마룡왕 니드호그',   7200000, '', 11000, '', 7500, '', 0, '', 'Y');
+-- MONSTER_ID 206~210 (59층 이후 보스 전 구간): 106~110과 동일하게 ATK_VALUE 3배 상향.
+-- 원래 값은 각각 75/64/81/5280/11000 이었음.
+INSERT INTO TBOT_S5_MONSTER_INFO VALUES (206, 6, '심연의 대공 모르드레드',   30000,   '', 225,   '', 15,  '', 0, '', 'Y');
+INSERT INTO TBOT_S5_MONSTER_INFO VALUES (207, 7, '차원의 파괴자 아자토스',   33000,   '', 192,   '', 15,  '', 0, '', 'Y');
+INSERT INTO TBOT_S5_MONSTER_INFO VALUES (208, 8, '천공의 대천사 세라핌',     90000,   '', 243,   '', 23,  '', 0, '', 'Y');
+INSERT INTO TBOT_S5_MONSTER_INFO VALUES (209, 9, '고룡 바하무트',            2700000, '', 15840, '', 3300, '', 0, '', 'Y');
+INSERT INTO TBOT_S5_MONSTER_INFO VALUES (210,10, '종말의 마룡왕 니드호그',   7200000, '', 33000, '', 7500, '', 0, '', 'Y');
 
 COMMIT;
 
