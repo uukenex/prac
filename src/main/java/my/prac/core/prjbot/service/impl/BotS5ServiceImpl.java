@@ -372,6 +372,9 @@ public class BotS5ServiceImpl implements BotS5Service {
         return (floorBlockBase(floor) / 10) + 1;
     }
 
+    // [2026-09-06, 당분간] 51층(블록6 사냥터) 이후 콘텐츠 아직 미공개 -- 진입 자체를 막는다.
+    private static final int CONTENT_LOCKED_FLOOR = 51;
+
     /**
      * "N층 완전탐사" 업적(ACH_ID 100+floor) 보상 — 3개 블록(=30층)마다 동료뽑기 티어가 한 단계
      * 오르고, 그 안에서 지급 수량이 1→3→5로 늘어난다: 블록1~3(1~30층)=하급×1/3/5,
@@ -1902,6 +1905,13 @@ public class BotS5ServiceImpl implements BotS5Service {
             if (!remaining.isEmpty()) targets.add(remaining.get(RND.nextInt(remaining.size())));
         }
 
+        // [2026-09-06 신설] 49층 이후(블록5+) 보스는 흡혈 능력 추가 -- 2명을 공격할 때 그 중
+        // 두 번째 대상에게 실제로 들어간 피해(보호막으로 막힌 만큼은 제외한 값)만큼 자신의
+        // 체력을 회복한다. 첫 번째 대상(전사 도발 대상이 될 수 있는 쪽)은 그대로 두고 흡혈은
+        // 오직 한 명분만 적용(요청: "2명공격하니까 1명은 흡혈되도록").
+        boolean vampiricBoss = "Y".equals(strVal(mon.get("BOSS_YN"), "N")) && blockNo(floor) >= 5;
+        long lifestealHeal = 0;
+
         for (int ti = 0; ti < targets.size(); ti++) {
             HashMap<String, Object> curTarget = targets.get(ti);
             boolean curGuarded = ti == 0 && guarded;
@@ -1975,6 +1985,10 @@ public class BotS5ServiceImpl implements BotS5Service {
             if (warriorGuardMitigationPct > 0) dmgToParty = (int) Math.round(dmgToParty * (1 - warriorGuardMitigationPct / 100.0));
         }
 
+        // 흡혈은 두 번째 대상(ti==1)에게 실제로 박힌 최종 피해(보호막 흡수분 제외, 회피 시 0)만
+        // 집계 -- 이번 for문이 끝난 뒤 한꺼번에 보스 HP에 반영한다.
+        if (vampiricBoss && ti == 1) lifestealHeal += dmgToParty;
+
         PP targetHpAfter = targetHp.subtract(PP.fromPP(dmgToParty));
         if (PP.toBaseValue(targetHpAfter) < 0) targetHpAfter = PP.fromPP(0);
 
@@ -2020,6 +2034,21 @@ public class BotS5ServiceImpl implements BotS5Service {
             sb.append(jobTag(origGrade, origJob, origName)).append(" 대신 🛡️ 전사가 공격을 받아냅니다!").append(NL);
         }
         } // for (targets)
+
+        // 흡혈 반영 -- 위 for문에서 집계한 만큼 보스 체력을 회복시키고(최대체력 초과 불가),
+        // 이미 저장해둔 curMonsterHpValue를 갱신값으로 한 번 더 덮어쓴다.
+        if (lifestealHeal > 0) {
+            PP healedHp = monsterHpAfter.add(PP.fromPP(lifestealHeal));
+            if (PP.toBaseValue(healedHp) > PP.toBaseValue(monsterMaxHp)) healedHp = monsterMaxHp;
+            monsterHpAfter = healedHp;
+            HashMap<String, Object> healUp = new HashMap<>();
+            healUp.put("userName", userName);
+            healUp.put("curMonsterHpValue", monsterHpAfter.getValue());
+            healUp.put("curMonsterHpExt", monsterHpAfter.getUnit());
+            dao.updateUserProgress(healUp);
+            sb.append(NL).append("🩸 ").append(eliteMonsterName(floor, mon, elite)).append("이(가) 흡혈로 ")
+              .append(lifestealHeal).append(" 회복! 💛").append(monsterHpAfter.format()).append("/").append(monsterMaxHp.format());
+        }
 
         // "몬스터 반격 이후 파티 체력을 보여달라" 요청
         sb.append(NL).append(partyHpSummary(party, userStat));
@@ -2189,6 +2218,11 @@ public class BotS5ServiceImpl implements BotS5Service {
         int target = floorBlockBase(floor) + n;
         if (target == floor) {
             return "이미 " + floor + "층에 있습니다."; // "같은 층으로 이동은 막아달라" 요청
+        }
+        // [2026-09-06, 당분간] 51층 이상은 콘텐츠 준비 전이라 진입 자체를 차단(마을 접근 등
+        // 다른 제약보다 우선 확인). maxReached로 이미 자격이 있어도 예외 없이 막는다.
+        if (target >= CONTENT_LOCKED_FLOOR) {
+            return "🌑 어둠이 득실거려 현재는 갈 수 없습니다. (51층 이상, 추후 오픈 예정)";
         }
         int villageFloor = floorBlockBase(floor);
         boolean alwaysFree = (target == villageFloor) || (target == villageFloor + 1); // 마을↔첫 사냥터층은 항상 자유 이동
