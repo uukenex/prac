@@ -787,7 +787,12 @@ var TW = (function () {
     var track = document.getElementById('towerTrack');
     track.innerHTML = '';
     if (!tiles || !tiles.length) {
-      track.innerHTML = '<div style="color:var(--ink-soft);font-size:12px;">이 층은 보드가 없습니다 (마을/보스층)</div>';
+      // "보스룸은 지도가 없는데 영역만 있어서 뭔지 모르겠다" 요청 -- 마을/보스층을 뭉뚱그리지
+      // 않고, 보스층이면 전용 표시를 보여준다.
+      var fm = floor % 10;
+      track.innerHTML = fm === 9
+          ? '<div style="text-align:center;padding:20px 0;color:var(--ink-soft);font-size:13px;">👑 보스룸<br><span style="font-size:11px;">지도 없이 곧바로 전투가 진행됩니다. /주사위로 도전하세요!</span></div>'
+          : '<div style="color:var(--ink-soft);font-size:12px;">이 층은 보드가 없습니다 (마을층)</div>';
       return;
     }
     var n = tiles.length;
