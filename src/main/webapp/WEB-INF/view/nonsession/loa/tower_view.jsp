@@ -671,6 +671,21 @@ var TW = (function () {
       }
       nav.appendChild(row);
     }
+
+    // "웹에서도 탑내려가기(탑다운) 되게 해달라, 층이동 그림 맨 아래에 두자" 요청 -- 0층
+    // 마을보다 한 줄 더 아래, 목록 맨 끝에 전용 행 추가. 0블록(1~9층)엔 더 내려갈 구간이
+    // 없으므로 표시하지 않는다. 서버와 동일하게 "지금 이 구간 마을에 있을 때만" 가능.
+    if (blockBase > 0) {
+      var canTowerDown = (curFloor % 10 === 0);
+      var downRow = document.createElement('div');
+      downRow.className = 'tower-floor village' + (canTowerDown ? '' : ' locked');
+      downRow.innerHTML = '<span class="tf-left"><span class="tf-num">⬇️</span>'
+          + '<span>' + (blockBase - 10) + '층 마을</span><span class="tf-kind">탑다운</span></span>';
+      downRow.onclick = canTowerDown
+          ? function () { confirmTowerDown(blockBase - 10); }
+          : function () { toast('탑다운은 지금 있는 구간의 마을에서만 사용할 수 있습니다.'); };
+      nav.appendChild(downRow);
+    }
   }
 
   function confirmMove(floor, n, kind) {
@@ -678,6 +693,15 @@ var TW = (function () {
     document.getElementById('confirmYesBtn').onclick = function () {
       closeConfirm();
       action('CHANGE_FLOOR', String(n));
+    };
+    document.getElementById('confirmOverlay').classList.add('open');
+  }
+
+  function confirmTowerDown(targetFloor) {
+    document.getElementById('confirmMsg').textContent = '탑다운: ' + targetFloor + '층 마을로 내려가시겠습니까?';
+    document.getElementById('confirmYesBtn').onclick = function () {
+      closeConfirm();
+      action('TOWER_DOWN', '');
     };
     document.getElementById('confirmOverlay').classList.add('open');
   }

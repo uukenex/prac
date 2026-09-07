@@ -3231,18 +3231,33 @@ public class BotS5ServiceImpl implements BotS5Service {
         for (HashMap<String, Object> a : all) {
             nameById.put(intVal(a.get("ACH_ID"), -1), strVal(a.get("ACH_NAME"), ""));
         }
-        List<Integer> clearedIds = new ArrayList<>();
-        for (HashMap<String, Object> m : mine) clearedIds.add(intVal(m.get("ACH_ID"), -1));
-        Collections.sort(clearedIds);
 
         StringBuilder sb = new StringBuilder(target).append("님의 업적 (")
                 .append(mine.size()).append("/").append(all.size()).append(")," + NL);
-        if (clearedIds.isEmpty()) {
+        if (mine.isEmpty()) {
             sb.append("(아직 달성한 업적이 없습니다)");
             return sb.toString();
         }
-        for (Integer id : clearedIds) {
+
+        // "업적이 125개나 돼서 카톡 텍스트로 조회하면 너무 길다" 요청 -- 전체를 다 나열하지
+        // 않고, 가장 최근에 달성한 것부터 최대 CHAT_ACH_SHOW개만 보여주고 나머지는 개수와
+        // 웹 링크로 안내한다(전체 목록은 웹 UI '업적' 탭에서 스크롤해서 볼 수 있음).
+        mine.sort((a, b) -> {
+            java.util.Date da = (java.util.Date) a.get("CLEAR_DATE");
+            java.util.Date db = (java.util.Date) b.get("CLEAR_DATE");
+            if (da == null || db == null) return 0;
+            return db.compareTo(da); // 최신순
+        });
+        final int CHAT_ACH_SHOW = 15;
+        int shown = Math.min(CHAT_ACH_SHOW, mine.size());
+        for (int i = 0; i < shown; i++) {
+            int id = intVal(mine.get(i).get("ACH_ID"), -1);
             sb.append("✅ ").append(nameById.getOrDefault(id, "?")).append(NL);
+        }
+        int remaining = mine.size() - shown;
+        if (remaining > 0) {
+            sb.append("... 외 ").append(remaining).append("개 더 (최근 순, 전체 목록은 웹에서 확인: ")
+              .append(towerViewLink(target)).append(")");
         }
         return sb.toString();
     }
