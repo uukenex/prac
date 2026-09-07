@@ -644,6 +644,20 @@ var TW = (function () {
     var bestByFloor = {};
     (floorBest || []).forEach(function (b) { bestByFloor[b.FLOOR] = b; });
 
+    // "보스를 처치한 구간은 위 마을로 바로 이동하게 해달라(탑올라가기)" 요청 -- 탑다운과
+    // 대칭으로 목록 맨 위에 전용 행. 이 구간 보스를 이미 처치해서(UNLOCKED_BLOCK) 위 구간이
+    // 열려있고 지금 이 구간 마을에 있을 때만(서버와 동일 조건) 이동 가능, 아니면 잠금 표시.
+    var unlockedBlock = p.UNLOCKED_BLOCK || 0;
+    var canTowerUp = (curFloor % 10 === 0) && (unlockedBlock >= blockBase + 10);
+    var upRow = document.createElement('div');
+    upRow.className = 'tower-floor boss' + (canTowerUp ? '' : ' locked');
+    upRow.innerHTML = '<span class="tf-left"><span class="tf-num">⬆️</span>'
+        + '<span>' + (blockBase + 10) + '층 마을</span><span class="tf-kind">탑올라가기</span></span>';
+    upRow.onclick = canTowerUp
+        ? function () { confirmTowerUp(blockBase + 10); }
+        : function () { toast('탑올라가기는 이 구간 보스를 처치한 뒤, 이 구간 마을에서만 사용할 수 있습니다.'); };
+    nav.appendChild(upRow);
+
     for (var n = 9; n >= 0; n--) {
       var floor = blockBase + n;
       var isHere = (floor === curFloor);
@@ -702,6 +716,15 @@ var TW = (function () {
     document.getElementById('confirmYesBtn').onclick = function () {
       closeConfirm();
       action('TOWER_DOWN', '');
+    };
+    document.getElementById('confirmOverlay').classList.add('open');
+  }
+
+  function confirmTowerUp(targetFloor) {
+    document.getElementById('confirmMsg').textContent = '탑올라가기: ' + targetFloor + '층 마을로 올라가시겠습니까?';
+    document.getElementById('confirmYesBtn').onclick = function () {
+      closeConfirm();
+      action('TOWER_UP', '');
     };
     document.getElementById('confirmOverlay').classList.add('open');
   }

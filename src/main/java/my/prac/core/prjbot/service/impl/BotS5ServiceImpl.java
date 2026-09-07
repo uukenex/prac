@@ -723,6 +723,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         sb.append("/층변경 N (/층이동 N)").append(NL);
         sb.append("/층내려가기 (/층다운)").append(NL);
         sb.append("/탑내려가기 (/탑다운)").append(NL);
+        sb.append("/탑올라가기 (/탑업)").append(NL);
         sb.append("/탑현황 [닉네임]").append(NL);
         sb.append("/파티편성 [N]").append(NL);
         sb.append("/동료가리기 N").append(NL);
@@ -748,6 +749,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         sb.append("/층내려가기 (별칭: /층다운) : 지금 있는 구간 안에서 바로 아래 한 층으로 이동(예: 28층 → 27층). 이미 그 구간 마을이면 실패(대신 /탑내려가기 사용). 전투 중이면 도망 처리(/층변경과 동일)").append(NL);
         sb.append("/탑내려가기 (별칭: /탑다운) : 마을에서만 사용 가능, 바로 아래 10층 구간의 마을로 이동(예: 20층 마을 → 10층 마을). 사냥터층은 거치지 않고 마을끼리만 이동하며, 몇 번이든 반복 가능").append(NL);
         sb.append("  💡 구간 앞부분(1~4층 위치)에서 파티가 여러 번 전멸하면, 스탯/장비를 더 준비하고 오라고 /탑내려가기를 자동으로 안내해줍니다.").append(NL);
+        sb.append("/탑올라가기 (별칭: /탑업) : 마을에서만 사용 가능, 이 구간 보스를 이미 처치했으면 바로 위 10층 구간의 마을로 이동(예: 10층 마을 → 20층 마을). /탑내려가기의 대칭 기능").append(NL);
         sb.append("/탑현황 [닉네임] (별칭: /탑정보, /ㅌㅎㅎ, /ㅌㅈㅂ) : 현재 층/보드 위치/PP/상태/자동사냥 조회. 닉네임을 붙이면 다른 유저 조회(앞부분만 입력해도 검색됨)").append(NL);
         sb.append(NL);
 
@@ -2672,6 +2674,44 @@ public class BotS5ServiceImpl implements BotS5Service {
         return sb.toString();
     }
 
+    /**
+     * /탑올라가기(/탑업) — "보스를 처치한 구간은 위 마을로 바로 이동하게 해달라" 요청.
+     * descendVillage()와 대칭인 상승 버전: 마을에서만 사용 가능, 이 구간 보스를 이미
+     * 처치해서(UNLOCKED_BLOCK이 목표 층 이상) 위 구간이 열려있어야만 이동할 수 있다
+     * (아직 안 열린 구간은 그 구간 보스를 실제로 밟고 넘어야 함 -- 편도 진행 규칙 유지).
+     */
+    @Override
+    public String ascendVillage(String userName) {
+        HashMap<String, Object> p = getOrInitProgress(userName);
+        int floor = intVal(p.get("CUR_FLOOR"), 0);
+        if (floor % 10 != 0) {
+            return "🏘️ 마을에서만 사용할 수 있습니다. (/층변경 0 으로 먼저 마을로 이동하세요)";
+        }
+        int target = floor + 10;
+        int unlocked = intVal(p.get("UNLOCKED_BLOCK"), 0);
+        if (unlocked < target) {
+            return "🔒 아직 해금되지 않은 구간입니다. 이 구간 보스를 처치해야 " + target + "층 마을이 열립니다.";
+        }
+
+        HashMap<String, Object> up = new HashMap<>();
+        up.put("userName", userName);
+        up.put("curFloor", target);
+        dao.updateUserProgress(up);
+
+        List<HashMap<String, Object>> villageParty = new ArrayList<>();
+        for (HashMap<String, Object> c : dao.selectUserCompanions(userName)) {
+            if (c.get("PARTY_SLOT") != null) villageParty.add(c);
+        }
+        int revivedCount = revivePartyDead(userName, villageParty, dao.selectUserStat(userName));
+
+        StringBuilder sb = new StringBuilder(userName).append("님," + NL);
+        sb.append("🪜 ").append(floor).append("층 마을 → ").append(target).append("층 마을로 올라갔습니다.");
+        if (revivedCount > 0) {
+            sb.append(NL).append("✨ 전투불가 상태였던 동료 ").append(revivedCount).append("명이 마을에서 부활했습니다!");
+        }
+        return sb.toString();
+    }
+
     private void grantFloorAchievements(String userName, int floor) {
         if (floor == 1) grantAchievement(userName, 1);
         if (floor == 10) grantAchievement(userName, 2);
@@ -3226,10 +3266,10 @@ public class BotS5ServiceImpl implements BotS5Service {
         List<HashMap<String, Object>> all = dao.selectAchievementList();
         List<HashMap<String, Object>> mine = dao.selectUserAchievements(target);
 
-        // 이름(ACH_NAME) → 달성일(ACH_ID)로 매핑해두면 이름만 나열할 때도 ACH_ID 순서를 유지할 수 있음
-        HashMap<Integer, String> nameById = new HashMap<>();
+        // ACH_ID -> 업적 정보 전체(이름/타입/파라미터) 매핑
+        HashMap<Integer, HashMap<String, Object>> achById = new HashMap<>();
         for (HashMap<String, Object> a : all) {
-            nameById.put(intVal(a.get("ACH_ID"), -1), strVal(a.get("ACH_NAME"), ""));
+            achById.put(intVal(a.get("ACH_ID"), -1), a);
         }
 
         StringBuilder sb = new StringBuilder(target).append("님의 업적 (")
@@ -3239,22 +3279,50 @@ public class BotS5ServiceImpl implements BotS5Service {
             return sb.toString();
         }
 
-        // "업적이 125개나 돼서 카톡 텍스트로 조회하면 너무 길다" 요청 -- 전체를 다 나열하지
-        // 않고, 가장 최근에 달성한 것부터 최대 CHAT_ACH_SHOW개만 보여주고 나머지는 개수와
-        // 웹 링크로 안내한다(전체 목록은 웹 UI '업적' 탭에서 스크롤해서 볼 수 있음).
-        mine.sort((a, b) -> {
+        // "업적이 125개나 돼서 카톡 텍스트로 조회하면 너무 길다" 요청. 그중 "N층 완전탐사"
+        // (ACH_TYPE=FLOOR_EXPLORE)가 블록당 최대 8개씩, 총 80개까지 나올 수 있어 가장 큰
+        // 비중을 차지하므로, 블록 단위로 묶어서 "탑 완전정복{로마숫자} 1,2,3..." 한 줄로
+        // 압축한다(요청 예시 그대로). 나머지 업적은 기존처럼 최신순 최대 CHAT_ACH_SHOW개만.
+        java.util.TreeMap<Integer, List<Integer>> floorsByBlock = new java.util.TreeMap<>();
+        List<HashMap<String, Object>> others = new ArrayList<>();
+        for (HashMap<String, Object> m : mine) {
+            int id = intVal(m.get("ACH_ID"), -1);
+            HashMap<String, Object> a = achById.get(id);
+            if (a != null && "FLOOR_EXPLORE".equals(strVal(a.get("ACH_TYPE"), ""))) {
+                int floor = intVal(a.get("ACH_PARAM"), 0);
+                floorsByBlock.computeIfAbsent(blockNo(floor), k -> new ArrayList<>()).add(floor);
+            } else {
+                others.add(m);
+            }
+        }
+        String[] roman = { "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X" };
+        for (Map.Entry<Integer, List<Integer>> e : floorsByBlock.entrySet()) {
+            int block = e.getKey();
+            List<Integer> floors = e.getValue();
+            Collections.sort(floors);
+            StringBuilder floorList = new StringBuilder();
+            for (int i = 0; i < floors.size(); i++) {
+                if (i > 0) floorList.append(",");
+                floorList.append(floors.get(i));
+            }
+            sb.append("✅ 탑 완전정복").append(block >= 1 && block <= roman.length ? roman[block - 1] : String.valueOf(block))
+              .append(" ").append(floorList).append(NL);
+        }
+
+        others.sort((a, b) -> {
             java.util.Date da = (java.util.Date) a.get("CLEAR_DATE");
             java.util.Date db = (java.util.Date) b.get("CLEAR_DATE");
             if (da == null || db == null) return 0;
             return db.compareTo(da); // 최신순
         });
         final int CHAT_ACH_SHOW = 15;
-        int shown = Math.min(CHAT_ACH_SHOW, mine.size());
+        int shown = Math.min(CHAT_ACH_SHOW, others.size());
         for (int i = 0; i < shown; i++) {
-            int id = intVal(mine.get(i).get("ACH_ID"), -1);
-            sb.append("✅ ").append(nameById.getOrDefault(id, "?")).append(NL);
+            int id = intVal(others.get(i).get("ACH_ID"), -1);
+            HashMap<String, Object> a = achById.get(id);
+            sb.append("✅ ").append(a != null ? strVal(a.get("ACH_NAME"), "?") : "?").append(NL);
         }
-        int remaining = mine.size() - shown;
+        int remaining = others.size() - shown;
         if (remaining > 0) {
             sb.append("... 외 ").append(remaining).append("개 더 (최근 순, 전체 목록은 웹에서 확인: ")
               .append(towerViewLink(target)).append(")");

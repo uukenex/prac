@@ -60,6 +60,13 @@ public interface BotS5Service {
      */
     String descendVillage(String userName);
 
+    /**
+     * /탑올라가기(별칭 /탑업) — descendVillage()와 대칭인 상승 버전. 마을에서만 사용 가능,
+     * 이 구간 보스를 이미 처치해서(UNLOCKED_BLOCK) 위 구간이 열려있어야만 바로 위 10층
+     * 구간의 마을로 이동한다. 아직 안 열린 구간은 실패 메시지 반환(편도 진행 규칙 유지).
+     */
+    String ascendVillage(String userName);
+
     /** /파티편성 — 인자 없으면 보유 동료 + 파티 슬롯 현황 표시 */
     String partyList(String userName);
 
