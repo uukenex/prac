@@ -91,12 +91,15 @@ CREATE TABLE TBOT_S5_USER_TILE_MASTER (
 -- upgraded (GREATEST) -- so "fully explored this floor once" stays true forever and
 -- players can see their best-ever discovery % even after a reset.
 CREATE TABLE TBOT_S5_USER_FLOOR_BEST (
-    USER_NAME            VARCHAR2(100) NOT NULL,
-    FLOOR                NUMBER        NOT NULL,
-    BEST_VISITED_COUNT   NUMBER        DEFAULT 0 NOT NULL,
-    TILE_COUNT            NUMBER        DEFAULT 0 NOT NULL,
-    FULLY_EXPLORED_YN     VARCHAR2(1)   DEFAULT 'N' NOT NULL,
-    UPDATE_DATE           DATE DEFAULT SYSDATE,
+    USER_NAME               VARCHAR2(100) NOT NULL,
+    FLOOR                   NUMBER        NOT NULL,
+    BEST_VISITED_COUNT      NUMBER        DEFAULT 0 NOT NULL,
+    TILE_COUNT              NUMBER        DEFAULT 0 NOT NULL,
+    FULLY_EXPLORED_YN       VARCHAR2(1)   DEFAULT 'N' NOT NULL,
+    -- 51층부터의 "워프포인트(특수칸)" 체크포인트 -- 마을 복귀로 보드가 리셋돼도 이 칸수만큼은
+    -- 이미 발견한 것으로 되살아남(ensureUserBoard 참고). 최고치만 갱신(GREATEST).
+    CHECKPOINT_VISITED_COUNT NUMBER       DEFAULT 0 NOT NULL,
+    UPDATE_DATE             DATE DEFAULT SYSDATE,
     PRIMARY KEY (USER_NAME, FLOOR)
 );
 

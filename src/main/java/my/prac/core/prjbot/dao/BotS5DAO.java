@@ -36,6 +36,9 @@ public interface BotS5DAO {
     List<HashMap<String, Object>> selectVisitedTileNos(@Param("userName") String userName, @Param("floor") int floor);
     int upsertUserFloorBest(HashMap<String, Object> map);
     HashMap<String, Object> selectUserFloorBest(@Param("userName") String userName, @Param("floor") int floor);
+    // "51층부터 워프포인트(특수칸)" 요청 -- 마을 복귀로 보드가 리셋돼도 이 값만큼은 탐사 칸수를
+    // 되살려준다(TBOT_S5_USER_FLOOR_BEST에 컬럼 추가, 최고치만 갱신되도록 GREATEST).
+    int upsertFloorCheckpoint(HashMap<String, Object> map);
     // 웹 SPA 층이동 탑 그림에서 "탐사완료" 표시용 -- 한 구간(10개 층) 전체를 한 번에 조회
     List<HashMap<String, Object>> selectUserFloorBestRange(@Param("userName") String userName,
             @Param("floorFrom") int floorFrom, @Param("floorTo") int floorTo);

@@ -185,9 +185,22 @@
     </insert>
 
     <select id="selectUserFloorBest" resultType="hashmap">
-        SELECT USER_NAME, FLOOR, BEST_VISITED_COUNT, TILE_COUNT, FULLY_EXPLORED_YN
+        SELECT USER_NAME, FLOOR, BEST_VISITED_COUNT, TILE_COUNT, FULLY_EXPLORED_YN, CHECKPOINT_VISITED_COUNT
         FROM TBOT_S5_USER_FLOOR_BEST WHERE USER_NAME = #{userName} AND FLOOR = #{floor}
     </select>
+
+    <!-- "51층부터 워프포인트(특수칸)" 요청. 특수칸 방문 시점 탐사 칸수를 체크포인트로 저장,
+         최고치만 갱신(GREATEST)되도록 해서 이후 마을 복귀로 보드가 리셋돼도 유지된다. -->
+    <insert id="upsertFloorCheckpoint" parameterType="hashmap">
+        MERGE INTO TBOT_S5_USER_FLOOR_BEST T
+        USING (SELECT #{userName} AS U, #{floor} AS F FROM DUAL) S
+        ON (T.USER_NAME = S.U AND T.FLOOR = S.F)
+        WHEN MATCHED THEN
+            UPDATE SET CHECKPOINT_VISITED_COUNT = GREATEST(NVL(T.CHECKPOINT_VISITED_COUNT, 0), #{checkpoint})
+        WHEN NOT MATCHED THEN
+            INSERT (USER_NAME, FLOOR, BEST_VISITED_COUNT, TILE_COUNT, FULLY_EXPLORED_YN, CHECKPOINT_VISITED_COUNT)
+            VALUES (#{userName}, #{floor}, 0, 0, 'N', #{checkpoint})
+    </insert>
 
     <!-- 웹 SPA 층이동 탑 그림용: 한 구간(예: 21~28층)의 탐사완료 여부를 한 번에 조회 -->
     <select id="selectUserFloorBestRange" resultType="hashmap">

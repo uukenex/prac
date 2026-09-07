@@ -431,7 +431,9 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 계단을 위/아래 방향으로 분리(요청) -- 항상 층마다 딱 2칸(각 방향 1개씩) 고정
         types.add("STAIRS_UP");
         types.add("STAIRS_DOWN");
-        int specialCount = tileCount >= 20 ? 2 : 1;
+        // "51층부터 워프포인트(특수칸) 기믹" 요청 -- 특수칸이 체크포인트 역할을 하므로 51층부턴
+        // 넉넉하게 4개(기존 1~2개보다 늘림)를 배치.
+        int specialCount = floor >= 51 ? 4 : (tileCount >= 20 ? 2 : 1);
         for (int i = 0; i < specialCount; i++) types.add("SPECIAL");
         types.add("TREASURE");
         if (blockNo(floor) >= 3) types.add("ELITE"); // 20층대(블록3)부터만 강화몹방 등장
@@ -462,7 +464,37 @@ public class BotS5ServiceImpl implements BotS5Service {
         params.put("floor", floor);
         params.put("tiles", batch);
         dao.insertUserTileMasterBatch(params);
+
+        // "51층부터 마을 가도 탐사율이 초기화 안 되게(워프포인트/체크포인트 개념)" 요청 -- 51층
+        // 이상에서 특수칸(워프포인트)을 밟으면 그 시점 탐사 칸수를 체크포인트로 저장해두고
+        // (markSpecialTileCheckpoint 참고), 마을 복귀 등으로 보드가 새로 생성될 때 그 체크포인트
+        // 만큼을 "이미 발견한 칸"으로 미리 채워 넣어서 탐사율이 체크포인트 지점까지는 유지되게
+        // 한다(그 이후 발견분만 사라짐). 방금 막 생성된 프레시 보드이므로 어떤 특정 칸을 발견한
+        // 것으로 칠지는 의미가 없어 그냥 1번~N번을 채운다.
+        if (floor >= 51) {
+            HashMap<String, Object> best = dao.selectUserFloorBest(userName, floor);
+            int checkpoint = best == null ? 0 : intVal(best.get("CHECKPOINT_VISITED_COUNT"), 0);
+            if (checkpoint > 0) {
+                int n = Math.min(checkpoint, tiles.size());
+                for (int tileNo = 1; tileNo <= n; tileNo++) {
+                    dao.insertTileVisit(userName, floor, tileNo);
+                }
+            }
+        }
         return tiles;
+    }
+
+    /**
+     * "특수칸을 워프포인트로" 요청 -- 51층 이상에서 특수칸을 밟은 시점의 탐사 칸수를 체크포인트로
+     * 저장(최고치만 갱신, GREATEST). 이후 마을 복귀 등으로 보드가 리셋돼도 ensureUserBoard()가
+     * 이 값만큼은 "이미 발견한 칸"으로 되살려준다.
+     */
+    private void markSpecialTileCheckpoint(String userName, int floor, int visited) {
+        HashMap<String, Object> cp = new HashMap<>();
+        cp.put("userName", userName);
+        cp.put("floor", floor);
+        cp.put("checkpoint", visited);
+        dao.upsertFloorCheckpoint(cp);
     }
 
     /**
@@ -1347,7 +1379,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                 break;
             }
             case "SPECIAL":
-                sb.append(handleSpecialTile(userName));
+                sb.append(handleSpecialTile(userName, floor, visited));
                 break;
             case "ELITE":
                 sb.append(NL).append(startCombat(userName, p, floor, false, true, false)); // 강화몹: 보스 아님, 강화만
@@ -1387,7 +1419,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         return cnt;
     }
 
-    private String handleSpecialTile(String userName) {
+    private String handleSpecialTile(String userName, int floor, int visited) {
         dao.upsertSpecialVisitIncrement(userName);
         HashMap<String, Object> v = dao.selectUserSpecialVisit(userName);
         int cnt = v == null ? 1 : intVal(v.get("VISIT_COUNT"), 1);
@@ -1399,6 +1431,11 @@ public class BotS5ServiceImpl implements BotS5Service {
                 grantAchievement(userName, achIds[i]);
                 sb.append(NL).append("🏆 히든 업적 달성!");
             }
+        }
+        // "51층부터 특수칸이 워프포인트" 요청 -- 이 시점 탐사 칸수를 체크포인트로 저장.
+        if (floor >= 51) {
+            markSpecialTileCheckpoint(userName, floor, visited);
+            sb.append(NL).append("🌀 워프포인트를 발견했다! 지금까지의 탐사 기록(").append(visited).append("칸)이 저장되었다.");
         }
         return sb.toString();
     }
@@ -2639,7 +2676,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (floor == 1) grantAchievement(userName, 1);
         if (floor == 10) grantAchievement(userName, 2);
         if (floor == 30) grantAchievement(userName, 3);
-        if (floor == 50) grantAchievement(userName, 4);
+        if (floor == 60) grantAchievement(userName, 4); // [수정] 상급 동료 계약서 실제 해금층(60)에 맞춰 50→60
         if (floor == 70) grantAchievement(userName, 5);
         if (floor == 100) grantAchievement(userName, 6);
     }

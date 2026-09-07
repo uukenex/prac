@@ -381,10 +381,6 @@
       </div>
       <div class="party-slots" id="partySlots"></div>
     </div>
-    <div class="card" id="ticketCard" style="margin-top:10px; display:none;">
-      <div class="card-title">🎁 완전탐사 선택권 (10층 구간 앞/뒤 4개층 전부 완전탐사 시 지급, 직업을 골라 확정 획득)</div>
-      <div id="ticketBox"></div>
-    </div>
     <!-- [2026-09-06] "보유동료/파티장비현황/미착용장비는 없애고 버튼으로 이관" 요청 -- 안의
          기능(renderPartyGrid/renderEquipList)은 그대로 두고, 항상 보이던 카드들을 이 버튼
          2개 뒤 팝업(#allCompanionsOverlay/#allEquipOverlay)으로 옮김. 파티 장비 현황은
@@ -409,6 +405,11 @@
     <div class="card" style="margin-top:10px;">
       <div class="card-title">장비 보물상자</div>
       <div id="equipGachaList"></div>
+    </div>
+    <!-- "편성 탭에 있던 완전탐사 선택권을 상점에서 쓸 수 있게 해달라" 요청으로 이동. -->
+    <div class="card" id="ticketCard" style="margin-top:10px; display:none;">
+      <div class="card-title">🎁 완전탐사 선택권 (10층 구간 앞/뒤 4개층 전부 완전탐사 시 지급, 직업을 골라 확정 획득)</div>
+      <div id="ticketBox"></div>
     </div>
     <!-- [2026-09-05] 주사위 교체는 여기(상점탭)가 아니라 '탑' 탭 보드 칸그리드 위 오버레이로
          옮겼다(더 유동적으로 바로 굴릴 수 있게 해달라는 요청) -- diceListBox/renderDiceShop은
