@@ -576,6 +576,18 @@ public class LoaChatController {
 				reqMap.put("param1", param1);
 			}
 
+			// [2026-09-08] "/주사위구매2 처럼 붙여쓰기도 되게 해달라" 요청 -- 위 동료뽑기/장비뽑기와
+			// 같은 이유(카톡에서 번호를 띄어쓰면 param0/param1이 이미 정상적으로 나뉘어 들어오므로
+			// "/주사위구매 2"는 원래도 동작함, 안 되는 건 붙여쓴 "/주사위구매2" 하나뿐)로 별도 처리.
+			// 주사위구매는 동료뽑기와 달리 "10연차" 개념이 없어서 그 로직과 섞지 않고 단순하게 분리.
+			Matcher diceBuyM = Pattern.compile("^/주사위구매(\\d+)$").matcher(param0);
+			if (diceBuyM.matches()) {
+				param0 = "/주사위구매";
+				param1 = diceBuyM.group(1);
+				reqMap.put("param0", param0);
+				reqMap.put("param1", param1);
+			}
+
 			switch (param0) {
 			case "/낚시":
 				val = s4.fishing(reqMap);

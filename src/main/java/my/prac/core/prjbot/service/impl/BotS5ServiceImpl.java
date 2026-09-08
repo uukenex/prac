@@ -3888,6 +3888,11 @@ public class BotS5ServiceImpl implements BotS5Service {
 
         if (n < 1 || n > DICE_NAMES.length) return "잘못된 번호입니다.";
         if (unlocked < DICE_UNLOCK[n - 1]) return "아직 해금되지 않은 주사위입니다.";
+        // [2026-09-08] "전투중엔 주사위변경도 안 되게 막아달라" 요청 -- 전투 중 유리한 면수로
+        // 갈아끼우는 걸 막는다. 목록 조회(n==null)는 그대로 허용, 실제 교체(n!=null)만 차단.
+        if ("IN_COMBAT".equals(strVal(p.get("STATUS"), "NORMAL"))) {
+            return "전투 중에는 주사위를 교체할 수 없습니다.";
+        }
 
         HashMap<String, Object> up = new HashMap<>();
         up.put("userName", userName);
@@ -3995,6 +4000,11 @@ public class BotS5ServiceImpl implements BotS5Service {
 
     private String buyDiceEnhance(String userName, boolean isBonus) {
         HashMap<String, Object> p = getOrInitProgress(userName);
+        // [2026-09-08] "전투중엔 주사위변경도 안 되게 막아달라(최대/최소 둘 다)" 요청 --
+        // 위 diceShop()의 최대치(등급) 교체 차단과 짝을 이루는, 최소치(강화/마이너스) 구매 차단.
+        if ("IN_COMBAT".equals(strVal(p.get("STATUS"), "NORMAL"))) {
+            return "전투 중에는 주사위 강화/마이너스 주사위를 구매할 수 없습니다.";
+        }
         int unlocked = intVal(p.get("UNLOCKED_BLOCK"), 0);
         int cur = intVal(p.get(isBonus ? "DICE_MIN_BONUS" : "DICE_MIN_MALUS"), 0);
         String label = isBonus ? "주사위 강화" : "마이너스 주사위";

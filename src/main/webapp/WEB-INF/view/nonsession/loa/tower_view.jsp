@@ -93,15 +93,30 @@
        각각 금색/청색으로 진하게, 다음 한 단계만 클릭 가능(테두리로 표시), 그 이상은 흐리게
        + 해금층 안내. */
     .dice-enhance-overlay{ position:absolute; top:76px; left:22px; z-index:5;
-                   display:flex; gap:3px; flex-wrap:nowrap; max-width:calc(100% - 32px);
-                   overflow-x:auto; background:var(--parchment); border:1px solid var(--line);
-                   border-radius:999px; padding:4px 6px; box-shadow:var(--shadow); }
+                   display:flex; align-items:center; gap:3px; flex-wrap:nowrap;
+                   max-width:calc(100% - 32px); overflow-x:auto; background:var(--parchment);
+                   border:1px solid var(--line); border-radius:999px; padding:4px 6px;
+                   box-shadow:var(--shadow); }
     .dice-enhance-overlay button, .dice-enhance-overlay span{ flex:0 0 auto; border:none;
                    border-radius:999px; padding:2px 7px; font-size:10px; font-weight:700;
                    background:#fff; color:var(--ink-soft); }
-    .dice-enhance-overlay .dice-enhance-zero{ background:transparent; opacity:.6; }
-    .dice-enhance-overlay button.dice-enhance-owned.plus{ background:var(--gold); color:#fff; }
-    .dice-enhance-overlay button.dice-enhance-owned.minus{ background:var(--village); color:#fff; }
+    /* [2026-09-08] "이게 최소값에 영향 주는 거라고 보이게 해달라" 요청 -- 스트립 맨 앞에
+       고정 안내 라벨을 붙이고, 전체 박스에도 title(호버 툴팁)로 풀어서 설명. */
+    .dice-enhance-overlay .dice-enhance-label{ background:transparent; opacity:.6;
+                   font-weight:600; padding-right:1px; }
+    .dice-enhance-overlay .dice-enhance-zero{ background:transparent; opacity:.5; }
+    /* [2026-09-08] "선택한 게(현재 적용 중인 단계가) 더 잘 보이게 해달라, 초기값은 0"
+       요청 -- 현재 유효 단계 하나만 더 크고 진하게(외곽선까지) 강조. +0/-0(아무것도 안
+       샀을 때의 기본값)도 이 스타일을 그대로 받아서 "지금은 0이 적용 중"임이 보인다. */
+    .dice-enhance-overlay .dice-enhance-zero.current{ background:var(--ink); color:#fff;
+                   opacity:1; font-size:12px; padding:4px 10px; box-shadow:0 2px 0 rgba(0,0,0,.18);
+                   transform:scale(1.1); }
+    .dice-enhance-overlay button.current{ font-size:12px; padding:4px 10px;
+                   box-shadow:0 2px 0 rgba(0,0,0,.18); transform:scale(1.15);
+                   outline:2px solid #fff; outline-offset:-3px; }
+    .dice-enhance-overlay button.dice-enhance-owned.plus{ background:var(--gold); color:#fff; opacity:.75; }
+    .dice-enhance-overlay button.dice-enhance-owned.minus{ background:var(--village); color:#fff; opacity:.75; }
+    .dice-enhance-overlay button.dice-enhance-owned.current{ opacity:1; }
     .dice-enhance-overlay button.dice-enhance-buyable{ background:#fff; color:var(--ink);
                    border:1.5px dashed var(--gold); cursor:pointer; }
     .dice-enhance-overlay button.dice-enhance-buyable.minus{ border-color:var(--village); }
@@ -368,7 +383,8 @@
              숫자 스트립(-6..0..+6)으로 표시. 0이 고정 기준점, 오른쪽은 강화(+)/왼쪽은
              마이너스(-) 단계, 각각 "다음 한 단계"만 눌러서 PP로 구매(순차 구매, 건너뛰기
              불가). renderDiceEnhanceRow 참고. -->
-        <div class="dice-enhance-overlay" id="diceEnhanceOverlay"></div>
+        <div class="dice-enhance-overlay" id="diceEnhanceOverlay"
+             title="주사위 눈금의 '최소값'을 조정합니다 (최대값은 그대로) -- 오른쪽(+)은 낮은 눈을 걸러내는 강화, 왼쪽(-)은 반대로 더 낮은 눈까지 나오게 하는 마이너스 주사위. 기본값은 +0."></div>
         <div class="tower-viewport" id="towerViewport">
           <div class="tower-track" id="towerTrack">
             <div style="color:var(--ink-soft);font-size:12px;">데이터를 불러오는 중...</div>
@@ -1082,37 +1098,51 @@ var TW = (function () {
   }
 
   // [2026-09-08] 주사위 강화(+)/마이너스 주사위(-) 스트립 -- dice-overlay 바로 아래.
-  // 0(고정 기준점)을 가운데 두고 오른쪽에 강화(+1..+6), 왼쪽에 마이너스(-1..-6)를 나열.
-  // "다음 한 단계"만 클릭 가능(순차 구매, 건너뛰기 불가) -- 그 이상은 흐리게 표시하고
-  // 눌러도 해금층 안내 토스트만 띄운다(diceListInfo의 locked 버튼과 동일한 UX).
+  // 0(고정 기준점, 초기값)을 가운데 두고 오른쪽에 강화(+1..+6), 왼쪽에 마이너스(-1)를
+  // 나열. "다음 한 단계"만 클릭 가능(순차 구매, 건너뛰기 불가) -- 그 이상은 흐리게
+  // 표시하고 눌러도 해금층 안내 토스트만 띄운다(diceListInfo의 locked 버튼과 동일한 UX).
+  // 맨 앞엔 "이게 뭘 조정하는 건지" 짧은 라벨을 고정으로 붙이고, 지금 실제로 적용 중인
+  // 단계(구매 안 했으면 +0 자체)만 더 크고 진하게 강조해서 "선택한 게 잘 안 보인다"는
+  // 지적을 해결한다.
   function renderDiceEnhanceRow(de) {
     var box = document.getElementById('diceEnhanceOverlay');
     box.innerHTML = '';
     if (!de) return;
+    var bonus = de.bonusLevel || 0;
+    var malus = de.malusLevel || 0;
+    var label = document.createElement('span');
+    label.className = 'dice-enhance-label';
+    label.textContent = '🎲최소값';
+    box.appendChild(label);
     var malusTiers = de.malusTiers || [];
     var bonusTiers = de.bonusTiers || [];
     for (var i = malusTiers.length - 1; i >= 0; i--) {
-      box.appendChild(buildDiceEnhancePip(-(i + 1), malusTiers[i], false));
+      box.appendChild(buildDiceEnhancePip(-(i + 1), malusTiers[i], false, malus));
     }
     var zero = document.createElement('span');
-    zero.className = 'dice-enhance-zero';
+    var atZero = (bonus === 0 && malus === 0);
+    zero.className = 'dice-enhance-zero' + (atZero ? ' current' : '');
     zero.textContent = '+0';
+    zero.title = atZero ? '✅ 현재 적용 중 (기본값, 최소 눈금 조정 없음)' : '기준점(0)';
     box.appendChild(zero);
     for (var j = 0; j < bonusTiers.length; j++) {
-      box.appendChild(buildDiceEnhancePip(j + 1, bonusTiers[j], true));
+      box.appendChild(buildDiceEnhancePip(j + 1, bonusTiers[j], true, bonus));
     }
   }
 
-  function buildDiceEnhancePip(labelNum, tier, isBonus) {
+  function buildDiceEnhancePip(labelNum, tier, isBonus, curLevel) {
     var btn = document.createElement('button');
     btn.textContent = (labelNum > 0 ? '+' : '') + labelNum;
     var dir = isBonus ? 'plus' : 'minus';
+    var isCurrent = tier.owned && tier.tier === curLevel;
     if (tier.owned) {
-      btn.className = 'dice-enhance-owned ' + dir;
-      btn.title = (isBonus ? '주사위 강화 ' : '마이너스 주사위 ') + tier.tier + '단계 적용중';
+      btn.className = 'dice-enhance-owned ' + dir + (isCurrent ? ' current' : '');
+      btn.title = isCurrent
+        ? '✅ 현재 적용 중 -- 주사위 최소 눈금 ' + (labelNum > 0 ? '+' : '') + labelNum
+        : (isBonus ? '주사위 강화 ' : '마이너스 주사위 ') + tier.tier + '단계(구매완료)';
     } else if (tier.buyable) {
       btn.className = 'dice-enhance-buyable ' + dir;
-      btn.title = '눌러서 구매 (' + tier.cost + ' PP)';
+      btn.title = '눌러서 구매 (' + tier.cost + ' PP, 최소 눈금 ' + (labelNum > 0 ? '+' : '') + labelNum + '로 변경)';
       btn.onclick = function () { TW.action(isBonus ? 'DICE_BONUS_BUY' : 'DICE_MALUS_BUY', ''); };
     } else {
       btn.className = 'dice-enhance-locked';

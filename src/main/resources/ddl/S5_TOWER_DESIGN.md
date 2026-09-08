@@ -1845,6 +1845,20 @@ S4의 `TBOT_S4_ACHIEVEMENT`/`TBOT_S4_USER_ACH` 패턴을 확장 계승. S5에서
     다음 단계 구매 시도) -- `Season5Controller.diceBonusShop/diceMalusShop`,
     `LoaChatController` 디스패치. 웹 액션: `DICE_BONUS_BUY`/`DICE_MALUS_BUY`.
   - DB 마이그레이션 필요(`S5_DICE_ENHANCE.sql`), 정적 리소스도 변경되어 재배포 필요.
+  - **[2026-09-08 후속 3건]**
+    - "카톡명령어로도 /주사위구매2 처럼 붙여쓰기 되게 해달라" -- 띄어쓴 "/주사위구매 2"는
+      카톡이 param0/param1을 이미 나눠서 보내줘서 원래도 됐지만, 붙여쓴 "/주사위구매2"는
+      param0 전체가 그 한 덩어리라 매칭이 안 됐음. 기존 "/동료뽑기N" 처리와 같은 방식
+      (`Pattern.compile("^/주사위구매(\\d+)$")`로 번호를 떼어 param0/param1 재작성)으로
+      해결, `LoaChatController`.
+    - "전투중엔 주사위변경도 안 되게 막아달라(최대/최소 둘 다)" -- `diceShop()`(등급=최대치
+      교체)과 `buyDiceEnhance()`(강화/마이너스=최소치 구매) 둘 다 `STATUS=IN_COMBAT`이면
+      차단(기존 파티편성/장비변경 차단과 동일 패턴). 목록 조회는 그대로 허용, 실제
+      교체/구매만 막음.
+    - "웹 UI에서 선택한 게 더 잘 안 보인다, 초기값 0이고 최소값에 영향 준다는 설명도
+      보이게 해달라" -- `#diceEnhanceOverlay` 맨 앞에 "🎲최소값" 고정 라벨 추가(+박스
+      전체에 풀문장 title 툴팁), 현재 실제로 적용 중인 단계(아무것도 안 샀으면 `+0` 자체)만
+      더 크고 진하게(외곽선 포함) 강조 -- 지나온 낮은 단계는 옅게, 현재 단계만 또렷하게.
 
 ### 남은 TODO
 
