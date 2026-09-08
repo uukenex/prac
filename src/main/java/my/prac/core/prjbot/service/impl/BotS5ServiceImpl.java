@@ -181,13 +181,18 @@ public class BotS5ServiceImpl implements BotS5Service {
     private static final String[] COMPANION_TIER_NAME = { "하급", "중급", "상급", "최상급" };
     private static final int[]    DICE_UNLOCK = { 0, 0, 10, 30, 50, 70 };
 
-    // [2026-09-08] 30/50/60/70/80/90층 마을 도착 보상 -- 주사위 강화(+, 최소치 상승)/
-    // 마이너스 주사위(-, 최소치 하강) 상점, 각각 최대 6단계까지 순차 구매(이전 단계 보유 +
-    // 그 층 도달 필요). 둘 다 계정 전체 공통 적용(장착 중인 주사위 등급 무관), 최대치는
-    // 항상 그대로 -- diceMinFor()/rollFace() 참고. 가격은 잠정치, 실측 후 조정 가능.
-    private static final int[]  DICE_ENHANCE_UNLOCK = { 30, 50, 60, 70, 80, 90 };
-    private static final long[] DICE_BONUS_COST     = { 3000, 6000, 12000, 24000, 48000, 96000 };
-    private static final long[] DICE_MALUS_COST     = { 1000, 2000, 4000, 8000, 16000, 32000 };
+    // [2026-09-08] 30/50/60/70/80/90층 마을 도착 보상 -- 주사위 강화(+, 최소치 상승) 상점,
+    // 최대 6단계까지 순차 구매(이전 단계 보유 + 그 층 도달 필요). 계정 전체 공통 적용(장착
+    // 중인 주사위 등급 무관), 최대치는 항상 그대로 -- diceMinFor()/rollFace() 참고. 가격은
+    // 잠정치, 실측 후 조정 가능.
+    private static final int[]  DICE_BONUS_UNLOCK = { 30, 50, 60, 70, 80, 90 };
+    private static final long[] DICE_BONUS_COST   = { 3000, 6000, 12000, 24000, 48000, 96000 };
+
+    // [2026-09-08 후속] 마이너스 주사위(-, 최소치 하강)는 강화(+)와 달리 "탐사 정밀 이동"용
+    // 유틸리티 성격이라 여러 단계로 안 키우고 -1 딱 한 단계만("마이너스는 -1 하나만 있길
+    // 바란다" 확인) -- 30층 도착 시 구매 가능, 1회 구매하면 끝.
+    private static final int[]  DICE_MALUS_UNLOCK = { 30 };
+    private static final long[] DICE_MALUS_COST   = { 1000 };
 
     // /스탯구매 레벨당 실제 증가량 -- computeEffectiveStat()과 상점 표시(statShop/statShopInfo)가
     // 이 값을 공유해서 "레벨당 얼마나 느는지" 표시가 실제 전투 계산과 어긋나지 않게 한다.
@@ -3912,7 +3917,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         return list;
     }
 
-    /** [2026-09-08] 웹 SPA 주사위 UI용 — 주사위 강화(+)/마이너스 주사위(-) 6단계 현황·비용 구조화 데이터. */
+    /** [2026-09-08] 웹 SPA 주사위 UI용 — 주사위 강화(+, 6단계)/마이너스 주사위(-, 1단계뿐)
+     *  현황·비용 구조화 데이터. */
     @Override
     public HashMap<String, Object> diceEnhanceInfo(String userName) {
         HashMap<String, Object> p = getOrInitProgress(userName);
@@ -3923,23 +3929,25 @@ public class BotS5ServiceImpl implements BotS5Service {
         result.put("bonusLevel", bonus);
         result.put("malusLevel", malus);
         List<HashMap<String, Object>> bonusTiers = new ArrayList<>();
-        List<HashMap<String, Object>> malusTiers = new ArrayList<>();
-        for (int i = 0; i < DICE_ENHANCE_UNLOCK.length; i++) {
+        for (int i = 0; i < DICE_BONUS_UNLOCK.length; i++) {
             int tier = i + 1;
             HashMap<String, Object> b = new HashMap<>();
             b.put("tier", tier);
-            b.put("unlockFloor", DICE_ENHANCE_UNLOCK[i]);
+            b.put("unlockFloor", DICE_BONUS_UNLOCK[i]);
             b.put("cost", DICE_BONUS_COST[i]);
             b.put("owned", bonus >= tier);
-            b.put("buyable", bonus == tier - 1 && unlocked >= DICE_ENHANCE_UNLOCK[i]);
+            b.put("buyable", bonus == tier - 1 && unlocked >= DICE_BONUS_UNLOCK[i]);
             bonusTiers.add(b);
-
+        }
+        List<HashMap<String, Object>> malusTiers = new ArrayList<>();
+        for (int i = 0; i < DICE_MALUS_UNLOCK.length; i++) {
+            int tier = i + 1;
             HashMap<String, Object> m = new HashMap<>();
             m.put("tier", tier);
-            m.put("unlockFloor", DICE_ENHANCE_UNLOCK[i]);
+            m.put("unlockFloor", DICE_MALUS_UNLOCK[i]);
             m.put("cost", DICE_MALUS_COST[i]);
             m.put("owned", malus >= tier);
-            m.put("buyable", malus == tier - 1 && unlocked >= DICE_ENHANCE_UNLOCK[i]);
+            m.put("buyable", malus == tier - 1 && unlocked >= DICE_MALUS_UNLOCK[i]);
             malusTiers.add(m);
         }
         result.put("bonusTiers", bonusTiers);
@@ -3955,16 +3963,16 @@ public class BotS5ServiceImpl implements BotS5Service {
         int bonus = intVal(p.get("DICE_MIN_BONUS"), 0);
         int malus = intVal(p.get("DICE_MIN_MALUS"), 0);
         StringBuilder sb = new StringBuilder(userName).append("님의 주사위 강화 현황," + NL);
-        sb.append("🎲 주사위 강화(최소 눈금 +): ").append(bonus).append("/").append(DICE_ENHANCE_UNLOCK.length).append("단계").append(NL);
-        if (bonus < DICE_ENHANCE_UNLOCK.length) {
-            int nf = DICE_ENHANCE_UNLOCK[bonus];
+        sb.append("🎲 주사위 강화(최소 눈금 +): ").append(bonus).append("/").append(DICE_BONUS_UNLOCK.length).append("단계").append(NL);
+        if (bonus < DICE_BONUS_UNLOCK.length) {
+            int nf = DICE_BONUS_UNLOCK[bonus];
             sb.append("  다음 단계(+").append(bonus + 1).append("): ")
               .append(unlocked >= nf ? "구매 가능, " : nf + "층 마을 도착 필요, ")
               .append(PP.of(DICE_BONUS_COST[bonus], "").format()).append(" PP").append(NL);
         }
-        sb.append("🎲 마이너스 주사위(최소 눈금 -): ").append(malus).append("/").append(DICE_ENHANCE_UNLOCK.length).append("단계").append(NL);
-        if (malus < DICE_ENHANCE_UNLOCK.length) {
-            int nf = DICE_ENHANCE_UNLOCK[malus];
+        sb.append("🎲 마이너스 주사위(최소 눈금 -): ").append(malus).append("/").append(DICE_MALUS_UNLOCK.length).append("단계").append(NL);
+        if (malus < DICE_MALUS_UNLOCK.length) {
+            int nf = DICE_MALUS_UNLOCK[malus];
             sb.append("  다음 단계(-").append(malus + 1).append("): ")
               .append(unlocked >= nf ? "구매 가능, " : nf + "층 마을 도착 필요, ")
               .append(PP.of(DICE_MALUS_COST[malus], "").format()).append(" PP").append(NL);
@@ -3990,11 +3998,12 @@ public class BotS5ServiceImpl implements BotS5Service {
         int unlocked = intVal(p.get("UNLOCKED_BLOCK"), 0);
         int cur = intVal(p.get(isBonus ? "DICE_MIN_BONUS" : "DICE_MIN_MALUS"), 0);
         String label = isBonus ? "주사위 강화" : "마이너스 주사위";
-        if (cur >= DICE_ENHANCE_UNLOCK.length) {
-            return "🎲 " + label + "는 이미 최대 단계(" + DICE_ENHANCE_UNLOCK.length + "단계)입니다.";
+        int[] unlockArr = isBonus ? DICE_BONUS_UNLOCK : DICE_MALUS_UNLOCK;
+        if (cur >= unlockArr.length) {
+            return "🎲 " + label + "는 이미 최대 단계(" + unlockArr.length + "단계)입니다.";
         }
         int nextTier = cur + 1;
-        int needFloor = DICE_ENHANCE_UNLOCK[nextTier - 1];
+        int needFloor = unlockArr[nextTier - 1];
         if (unlocked < needFloor) {
             return "🔒 " + needFloor + "층 마을에 도착해야 " + label + " " + nextTier + "단계를 구매할 수 있습니다. (현재 " + cur + "단계)";
         }
