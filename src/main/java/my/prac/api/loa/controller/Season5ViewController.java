@@ -157,17 +157,37 @@ public class Season5ViewController {
     }
 
     /**
-     * 웹 SPA 업데이트 공지/새로고침 유도(2026-09-07) -- userName 불필요, 로그인 여부와
-     * 무관하게 항상 공개. 페이지가 주기적으로 이 값을 조회하다가 version이 바뀐 걸 감지하면
-     * 새로고침 안내 팝업을 띄운다. 관리자가 /공지등록으로 값을 갱신한다.
+     * 웹 SPA 업데이트 공지/새로고침 유도(2026-09-07) -- userName은 선택(로그인 여부와 무관하게
+     * 공지 자체는 항상 공개). userName이 있으면 그 유저가 이미 "다시 보지 않기"로 닫은 버전인지
+     * dismissed에 담아준다(2026-09-08, "공지가 매번 뜬다" 신고 -- 웹뷰가 localStorage를 못
+     * 지키는 환경이 있어서 서버에 유저별로 남기도록 변경). 페이지가 주기적으로 이 값을
+     * 조회하다가 version이 바뀐 걸 감지하면 새로고침 안내 팝업을 띄운다. 관리자가 /공지등록으로
+     * 값을 갱신한다.
      */
     @GetMapping("/api/tower-notice")
     @ResponseBody
-    public ResponseEntity<?> apiTowerNotice() {
-        HashMap<String, Object> notice = s5Service.getNotice();
+    public ResponseEntity<?> apiTowerNotice(
+            @RequestParam(value = "userName", defaultValue = "") String userName) {
+        HashMap<String, Object> notice = s5Service.getNotice(userName);
         HashMap<String, Object> result = new HashMap<>();
         result.put("version", notice.get("APP_VERSION"));
         result.put("notice", notice.get("NOTICE_TEXT"));
+        result.put("dismissed", notice.get("DISMISSED"));
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * 웹 SPA 전용: 공지 모달의 "다시 보지 않기" 버튼 -- 현재 공지 버전을 이 유저가 봤다고
+     * 서버에 남긴다(2026-09-08). 관리자가 새 공지를 등록하기 전까지는 같은 유저에게 다시
+     * 뜨지 않는다.
+     */
+    @GetMapping("/api/tower-notice-dismiss")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerNoticeDismiss(
+            @RequestParam(value = "userName", defaultValue = "") String userName) {
+        s5Service.dismissNotice(userName);
+        HashMap<String, Object> result = new HashMap<>();
+        result.put("ok", true);
         return ResponseEntity.ok(result);
     }
 

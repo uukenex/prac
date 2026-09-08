@@ -470,6 +470,9 @@
   <div class="detail-card confirm-card">
     <div class="sheet-title" id="noticeTitle">📢 공지</div>
     <div class="confirm-msg" id="noticeBody" style="text-align:left; white-space:pre-line;">-</div>
+    <div class="confirm-btns" style="margin-bottom:8px;">
+      <button type="button" class="btn-no" onclick="TW.dismissNotice()" style="font-size:12px; padding:8px;">🙈 이 공지 다시 보지 않기</button>
+    </div>
     <div class="confirm-btns">
       <button type="button" class="btn-no" onclick="TW.closeNotice()">닫기</button>
       <button type="button" class="btn-yes" onclick="TW.refreshForUpdate()">🔄 새로고침</button>
@@ -582,6 +585,7 @@ var TW = (function () {
       .then(function (r) { return r.json(); })
       .then(function (data) {
         if (data.error) { toast(data.error); return; }
+        checkAppVersionIfNewUser(); // 유저명이 방금 확정됐으면(로그인 직후 등) 그 유저 기준으로 공지 재확인
         var p = data.progress;
         // [버그 수정] 부분 입력("타락고냥이")이 서버에서 다른 실제 계정("타락고냥이/바드")으로
         // 해석됐을 수 있으니, 화면 표시와 입력창·세션 저장값을 전부 실제로 조회된 이름으로
@@ -1769,29 +1773,52 @@ var TW = (function () {
 
   // [2026-09-07] 업데이트 공지/새로고침 유도 -- "새로고침 잘 안 하는 유저가 있다, 업데이트
   // 시 강제로 새로고침 유도하고 공지도 보여주고 싶다, 다시 볼 수 있는 버튼도" 요청. 서버
-  // (APP_VERSION, /공지등록으로 관리자가 갱신)와 이 브라우저가 localStorage에 저장해둔
-  // 마지막 확인 버전을 비교 -- 다르면(신규 배포 감지) 새로고침 안내 팝업을 띄운다. "닫기"만
-  // 눌러선 localStorage가 갱신되지 않으므로 일정 시간 뒤 다시 뜬다(noticeSnoozeUntil) --
-  // 계속 미룰 순 있어도 완전히 사라지진 않게 해서 "강제" 취지를 살렸다. 실제로 새로고침하면
-  // (refreshForUpdate) 그때 저장하고 새 페이지가 다시 최신 버전으로 맞춰 시작한다.
-  var lastNotice = { version: '', notice: '' };
+  // (APP_VERSION, /공지등록으로 관리자가 갱신)와 비교해서 다르면(신규 배포 감지) 새로고침
+  // 안내 팝업을 띄운다. "닫기"만 눌러선 완전히 사라지진 않고 일정 시간 뒤 다시 뜬다
+  // (noticeSnoozeUntil) -- 계속 미룰 순 있어도 완전히 사라지진 않게 해서 "강제" 취지를 살렸다.
+  //
+  // [2026-09-08] "공지가 페이지 들어갈 때마다 나온다, 유저별로 한 번씩 다시 보지 않기를
+  // 누르면 이전 공지는 안 나오게 해달라" 요청 -- 기존엔 "마지막으로 본 버전"을 이 브라우저의
+  // localStorage에만 저장했는데, 카톡봇 링크로 열리는 웹뷰 등 방문마다 저장소가 초기화되는
+  // 환경에서는 그 기록이 전혀 남지 않아 매번 떴다. 그래서 서버(TBOT_S5_USER_PROGRESS.
+  // NOTICE_SEEN_VERSION, /api/tower-notice-dismiss)에 유저명 기준으로 "다시 보지 않기"
+  // 상태를 남기도록 변경 -- 이러면 기기/브라우저를 바꿔도 유지된다. 유저명을 아직 모르는
+  // 시점(페이지를 막 열어서 로그인 전)에는 서버에 물어볼 기준이 없으니 기존 localStorage
+  // 방식으로 폴백한다. "닫기"는 여전히 임시로만 미루고(dismiss와 다름), "다시 보지 않기"만
+  // 서버에 영구 기록한다.
+  var lastNotice = { version: '', notice: '', dismissed: false };
   var noticeSnoozeUntil = 0;
+  var noticeCheckedUser = null; // 이 유저명으로는 이미 서버에 확인했음(loadStatus마다 재조회하지 않기 위한 가드)
   var NOTICE_STORAGE_KEY = 'loaAppVersionSeen';
 
   function checkAppVersion() {
-    fetch(base + '/api/tower-notice').then(function (r) { return r.json(); }).then(function (data) {
-      lastNotice = { version: String(data.version || ''), notice: data.notice || '' };
-      var seen = null;
-      try { seen = localStorage.getItem(NOTICE_STORAGE_KEY); } catch (e) {}
-      if (seen === null) {
-        // 이 브라우저에서 첫 방문 -- "업데이트됐다"고 놀라게 할 필요 없이 기준점만 조용히 저장.
-        try { localStorage.setItem(NOTICE_STORAGE_KEY, lastNotice.version); } catch (e) {}
-        return;
-      }
-      if (seen !== lastNotice.version && Date.now() > noticeSnoozeUntil) {
-        showNoticeModal();
-      }
-    }).catch(function () {});
+    var u = userName();
+    noticeCheckedUser = u;
+    fetch(base + '/api/tower-notice' + (u ? '?userName=' + encodeURIComponent(u) : ''))
+      .then(function (r) { return r.json(); }).then(function (data) {
+        lastNotice = { version: String(data.version || ''), notice: data.notice || '', dismissed: !!data.dismissed };
+        if (lastNotice.dismissed) return; // 이 유저가 이 버전은 이미 "다시 보지 않기"로 닫음
+
+        if (!u) {
+          // 유저명을 아직 몰라 서버 판단 근거가 없을 때만 기존 localStorage 방식으로 폴백.
+          var seen = null;
+          try { seen = localStorage.getItem(NOTICE_STORAGE_KEY); } catch (e) {}
+          if (seen === null) {
+            // 이 브라우저에서 첫 방문 -- "업데이트됐다"고 놀라게 할 필요 없이 기준점만 조용히 저장.
+            try { localStorage.setItem(NOTICE_STORAGE_KEY, lastNotice.version); } catch (e) {}
+            return;
+          }
+          if (seen === lastNotice.version) return;
+        }
+        if (Date.now() > noticeSnoozeUntil) showNoticeModal();
+      }).catch(function () {});
+  }
+
+  // loadStatus()는 액션마다 자주 불리므로, 유저명이 바뀌었을 때만(로그인 직후 등) 공지를
+  // 다시 확인 -- 매 액션마다 /api/tower-notice를 부르지 않기 위한 가드.
+  function checkAppVersionIfNewUser() {
+    var u = userName();
+    if (u && u !== noticeCheckedUser) checkAppVersion();
   }
 
   function showNoticeModal() {
@@ -1799,18 +1826,32 @@ var TW = (function () {
     document.getElementById('noticeOverlay').classList.add('open');
   }
 
-  // "공지를 다시 볼 수 있는 버튼" 요청 -- 버전 비교 없이 최신 공지를 다시 조회해서 그냥 보여줌.
+  // "공지를 다시 볼 수 있는 버튼" 요청 -- 다시 보지 않기 여부와 무관하게 최신 공지를 그냥 보여줌.
   function reopenNotice() {
-    fetch(base + '/api/tower-notice').then(function (r) { return r.json(); }).then(function (data) {
-      lastNotice = { version: String(data.version || ''), notice: data.notice || '' };
-      document.getElementById('noticeBody').textContent = lastNotice.notice || '등록된 공지가 없습니다.';
-      document.getElementById('noticeOverlay').classList.add('open');
-    }).catch(function () { toast('공지 조회 실패'); });
+    var u = userName();
+    fetch(base + '/api/tower-notice' + (u ? '?userName=' + encodeURIComponent(u) : ''))
+      .then(function (r) { return r.json(); }).then(function (data) {
+        lastNotice = { version: String(data.version || ''), notice: data.notice || '', dismissed: !!data.dismissed };
+        document.getElementById('noticeBody').textContent = lastNotice.notice || '등록된 공지가 없습니다.';
+        document.getElementById('noticeOverlay').classList.add('open');
+      }).catch(function () { toast('공지 조회 실패'); });
   }
 
   function closeNotice() {
     document.getElementById('noticeOverlay').classList.remove('open');
-    noticeSnoozeUntil = Date.now() + 10 * 60 * 1000; // 10분 동안은 다시 안 뜸(그 뒤엔 재확인)
+    noticeSnoozeUntil = Date.now() + 10 * 60 * 1000; // 10분 동안은 다시 안 뜸(그 뒤엔 재확인) -- "다시 보지 않기"와 달리 임시 미루기일 뿐
+  }
+
+  // "다시 보지 않기" 버튼(2026-09-08) -- 서버에 유저별로 영구 기록, 관리자가 새 공지를
+  // 등록(APP_VERSION 갱신)하기 전까지는 이 유저에게 다시 뜨지 않는다.
+  function dismissNotice() {
+    var u = userName();
+    document.getElementById('noticeOverlay').classList.remove('open');
+    noticeSnoozeUntil = Date.now() + 10 * 60 * 1000;
+    try { localStorage.setItem(NOTICE_STORAGE_KEY, lastNotice.version); } catch (e) {}
+    if (!u) { toast('유저명을 입력한 상태여야 "다시 보지 않기"가 저장됩니다'); return; }
+    lastNotice.dismissed = true;
+    fetch(base + '/api/tower-notice-dismiss?userName=' + encodeURIComponent(u)).catch(function () {});
   }
 
   function refreshForUpdate() {
@@ -1836,7 +1877,7 @@ var TW = (function () {
            closePicker: closePicker,
            openAllCompanions: openAllCompanions, closeAllCompanions: closeAllCompanions,
            openAllEquip: openAllEquip, closeAllEquip: closeAllEquip,
-           reopenNotice: reopenNotice, closeNotice: closeNotice, refreshForUpdate: refreshForUpdate };
+           reopenNotice: reopenNotice, closeNotice: closeNotice, dismissNotice: dismissNotice, refreshForUpdate: refreshForUpdate };
 })();
 </script>
 </body>

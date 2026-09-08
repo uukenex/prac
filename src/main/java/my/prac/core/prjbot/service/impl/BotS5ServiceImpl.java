@@ -3064,17 +3064,43 @@ public class BotS5ServiceImpl implements BotS5Service {
         return sb.toString();
     }
 
-    /** 웹 SPA 전용: 현재 등록된 공지 버전/내용. 로그인/권한 무관, 항상 공개(비어있으면 폴백값). */
+    /** 웹 SPA 전용: 현재 등록된 공지 버전/내용. 로그인/권한 무관, 항상 공개(비어있으면 폴백값).
+     *  userName이 있으면 그 유저가 이 버전을 이미 "다시 보지 않기"로 닫았는지 DISMISSED에 담는다
+     *  (진행 기록이 없는 유저면 항상 false). */
     @Override
-    public HashMap<String, Object> getNotice() {
+    public HashMap<String, Object> getNotice(String userName) {
         HashMap<String, Object> row = dao.selectNotice();
+        HashMap<String, Object> result = new HashMap<>();
         if (row == null) {
-            HashMap<String, Object> fallback = new HashMap<>();
-            fallback.put("APP_VERSION", "0");
-            fallback.put("NOTICE_TEXT", "");
-            return fallback;
+            result.put("APP_VERSION", "0");
+            result.put("NOTICE_TEXT", "");
+            result.put("DISMISSED", false);
+            return result;
         }
-        return row;
+        result.putAll(row);
+        boolean dismissed = false;
+        if (userName != null && !userName.trim().isEmpty()) {
+            String seen = dao.selectNoticeSeenVersion(userName.trim());
+            String version = String.valueOf(row.get("APP_VERSION"));
+            dismissed = version.equals(seen);
+        }
+        result.put("DISMISSED", dismissed);
+        return result;
+    }
+
+    /** 웹 SPA 전용: "다시 보지 않기" -- 현재 공지 버전을 그 유저의 NOTICE_SEEN_VERSION으로
+     *  저장. 진행 기록이 없는 유저(TBOT_S5_USER_PROGRESS 행 미존재)면 0건 갱신, 조용히 무시
+     *  (그런 유저는 애초에 볼 진행 데이터가 없어 이 페이지를 실제로 쓸 일이 없음). */
+    @Override
+    @Transactional
+    public void dismissNotice(String userName) {
+        if (userName == null || userName.trim().isEmpty()) return;
+        HashMap<String, Object> row = dao.selectNotice();
+        String version = (row == null) ? "0" : String.valueOf(row.get("APP_VERSION"));
+        HashMap<String, Object> up = new HashMap<>();
+        up.put("userName", userName.trim());
+        up.put("version", version);
+        dao.updateNoticeSeenVersion(up);
     }
 
     /**

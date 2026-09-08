@@ -190,9 +190,19 @@ public interface BotS5Service {
 
     /**
      * 웹 SPA 전용: 현재 등록된 공지 버전/내용 조회 -- 로그인/권한 무관, 항상 공개 정보.
-     * {"APP_VERSION": "...", "NOTICE_TEXT": "..."} 형태.
+     * {"APP_VERSION": "...", "NOTICE_TEXT": "...", "DISMISSED": true/false} 형태.
+     * userName이 주어지면 그 유저가 이 버전을 이미 "다시 보지 않기"로 닫았는지까지 DISMISSED에
+     * 담아 돌려준다(유저 미지정/미등록이면 항상 false).
      */
-    HashMap<String, Object> getNotice();
+    HashMap<String, Object> getNotice(String userName);
+
+    /**
+     * 웹 SPA 전용: 유저가 공지 모달에서 "다시 보지 않기"를 누르면 호출 -- 현재 등록된 공지
+     * 버전을 그 유저의 NOTICE_SEEN_VERSION으로 저장해, 다음에 같은 버전이 다시 뜨지 않게 한다
+     * ("공지가 페이지 들어갈 때마다 나온다, 유저별로 한 번씩 다시 보지 않게 해달라" 요청,
+     * 2026-09-08). 관리자가 새 공지를 등록(APP_VERSION 갱신)하면 다시 보인다.
+     */
+    void dismissNotice(String userName);
 
     /**
      * /공지등록(관리자 전용) -- 새 공지 내용을 등록하고 버전(타임스탬프)을 새로 발급한다.

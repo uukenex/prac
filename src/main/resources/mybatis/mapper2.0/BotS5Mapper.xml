@@ -465,6 +465,19 @@
         WHERE NOTICE_ID = 1
     </update>
 
+    <!-- 유저별 "다시 보지 않기"(2026-09-08). 웹뷰가 localStorage를 유지 못 해 매번 공지가
+         뜨는 문제 때문에, 이 유저가 마지막으로 닫은 버전을 서버(USER_PROGRESS)에 남겨둔다.
+         아직 진행 기록이 없는 유저(TBOT_S5_USER_PROGRESS 행 미존재)면 0건 갱신, 조용히 무시. -->
+    <select id="selectNoticeSeenVersion" parameterType="string" resultType="string">
+        SELECT NOTICE_SEEN_VERSION FROM TBOT_S5_USER_PROGRESS WHERE USER_NAME = #{userName}
+    </select>
+
+    <update id="updateNoticeSeenVersion" parameterType="hashmap">
+        UPDATE TBOT_S5_USER_PROGRESS
+        SET NOTICE_SEEN_VERSION = #{version}
+        WHERE USER_NAME = #{userName}
+    </update>
+
     <!-- /이벤트지급(관리자 전용): 전체 유저에게 범용 장비뽑기권 일괄 지급(레거시 폴백용, 지금은
          /이벤트지급이 항상 등급을 지정하므로 bulkGrantTierEquipVoucher가 대신 쓰인다) -->
     <update id="bulkGrantEquipVoucher">
