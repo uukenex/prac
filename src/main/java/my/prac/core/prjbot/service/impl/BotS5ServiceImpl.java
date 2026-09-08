@@ -3368,23 +3368,17 @@ public class BotS5ServiceImpl implements BotS5Service {
                 sb.append("✅ 무기 선택권 ").append(String.join(",", weapVoucherFloors)).append(NL);
             }
 
-            others.sort((a, b) -> {
-                Object da = a.get("CLEAR_DATE");
-                Object db = b.get("CLEAR_DATE");
-                if (!(da instanceof java.util.Date) || !(db instanceof java.util.Date)) return 0;
-                return ((java.util.Date) db).compareTo((java.util.Date) da); // 최신순
-            });
-            final int CHAT_ACH_SHOW = 15;
-            int shown = Math.min(CHAT_ACH_SHOW, others.size());
-            for (int i = 0; i < shown; i++) {
-                int id = intVal(others.get(i).get("ACH_ID"), -1);
+            // [2026-09-08] "외 N개 더로 자르지 말고 전체 다 노출, 대신 정렬을 비슷한 것끼리
+            // 묶이게 조정해달라" 요청 -- 15개 캡/최신순 정렬 제거. TBOT_S5_ACHIEVEMENT 마스터
+            // 데이터(S5_MASTER_DATA.sql)는 같은 ACH_TYPE끼리 ACH_ID를 연달아 붙여서 등록해뒀으므로
+            // (예: 1~6=FLOOR_REACHED, 8~9=MONSTER_KILL_TOTAL, 10~11=GACHA_PULL_COUNT,
+            // 12~13=EQUIP_SYNTHESIS, 17~24=히든 ??? 계열...) ACH_ID 오름차순으로만 정렬해도
+            // 같은 유형끼리 자연히 묶여서 나온다.
+            others.sort((a, b) -> Integer.compare(intVal(a.get("ACH_ID"), 0), intVal(b.get("ACH_ID"), 0)));
+            for (HashMap<String, Object> m : others) {
+                int id = intVal(m.get("ACH_ID"), -1);
                 HashMap<String, Object> a = achById.get(id);
                 sb.append("✅ ").append(a != null ? strVal(a.get("ACH_NAME"), "?") : "?").append(NL);
-            }
-            int remaining = others.size() - shown;
-            if (remaining > 0) {
-                sb.append("... 외 ").append(remaining).append("개 더 (최근 순, 전체 목록은 웹에서 확인: ")
-                  .append(towerViewLink(target)).append(")");
             }
         } catch (Exception e) {
             e.printStackTrace();
