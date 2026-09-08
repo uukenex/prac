@@ -3288,64 +3288,87 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 반복되는 게 원인이라("N층 완전탐사" 블록당 최대 8개·전체 80개, "N~N층 동료/무기
         // 선택권" 각 10개씩) 이 셋을 유형별로 한 줄씩 묶어서 압축한다("최신순 15개 자르기
         // 말고 이런 식으로 묶어달라"는 후속 요청 -- 캡은 안전망으로만 남겨둠).
-        java.util.TreeMap<Integer, List<Integer>> floorsByBlock = new java.util.TreeMap<>();
-        List<String> compVoucherFloors = new ArrayList<>(); // "1~4층 동료 선택권" -> "1~4층"만
-        List<String> weapVoucherFloors = new ArrayList<>();
-        List<HashMap<String, Object>> others = new ArrayList<>();
-        for (HashMap<String, Object> m : mine) {
-            int id = intVal(m.get("ACH_ID"), -1);
-            HashMap<String, Object> a = achById.get(id);
-            String type = a == null ? "" : strVal(a.get("ACH_TYPE"), "");
-            if ("FLOOR_EXPLORE".equals(type)) {
-                int floor = intVal(a.get("ACH_PARAM"), 0);
-                floorsByBlock.computeIfAbsent(blockNo(floor), k -> new ArrayList<>()).add(floor);
-            } else if ("BLOCK_EXPLORE_LOW".equals(type)) {
-                compVoucherFloors.add(strVal(a.get("ACH_NAME"), "").replace(" 동료 선택권", ""));
-            } else if ("BLOCK_EXPLORE_HIGH".equals(type)) {
-                weapVoucherFloors.add(strVal(a.get("ACH_NAME"), "").replace(" 무기 선택권", ""));
-            } else {
-                others.add(m);
+        // [버그 수정] 이 그룹화 로직 도입 이후 "층 완전탐사류 업적을 보유한 유저는 /탑업적
+        // 조회 자체가 빈 응답으로 실패한다"는 신고 -- 라이브에서 직접 재현은 했으나 원인을
+        // 코드 리뷰만으로는 특정하지 못해서, 우선 이 구간 전체를 try/catch로 감싸 예외가 나도
+        // 최소한 응답은 나가도록(그룹화 없이 원래 방식대로 개별 나열) 방어적으로 처리한다.
+        try {
+            java.util.TreeMap<Integer, List<Integer>> floorsByBlock = new java.util.TreeMap<>();
+            List<String> compVoucherFloors = new ArrayList<>(); // "1~4층 동료 선택권" -> "1~4층"만
+            List<String> weapVoucherFloors = new ArrayList<>();
+            List<HashMap<String, Object>> others = new ArrayList<>();
+            for (HashMap<String, Object> m : mine) {
+                int id = intVal(m.get("ACH_ID"), -1);
+                HashMap<String, Object> a = achById.get(id);
+                String type = a == null ? "" : strVal(a.get("ACH_TYPE"), "");
+                if ("FLOOR_EXPLORE".equals(type)) {
+                    int floor = intVal(a.get("ACH_PARAM"), 0);
+                    List<Integer> bucket = floorsByBlock.get(blockNo(floor));
+                    if (bucket == null) {
+                        bucket = new ArrayList<>();
+                        floorsByBlock.put(blockNo(floor), bucket);
+                    }
+                    bucket.add(floor);
+                } else if ("BLOCK_EXPLORE_LOW".equals(type)) {
+                    compVoucherFloors.add(strVal(a.get("ACH_NAME"), "").replace(" 동료 선택권", ""));
+                } else if ("BLOCK_EXPLORE_HIGH".equals(type)) {
+                    weapVoucherFloors.add(strVal(a.get("ACH_NAME"), "").replace(" 무기 선택권", ""));
+                } else {
+                    others.add(m);
+                }
             }
-        }
-        String[] roman = { "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X" };
-        for (Map.Entry<Integer, List<Integer>> e : floorsByBlock.entrySet()) {
-            int block = e.getKey();
-            List<Integer> floors = e.getValue();
-            Collections.sort(floors);
-            StringBuilder floorList = new StringBuilder();
-            for (int i = 0; i < floors.size(); i++) {
-                if (i > 0) floorList.append(",");
-                floorList.append(floors.get(i));
+            String[] roman = { "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X" };
+            for (Integer block : floorsByBlock.keySet()) {
+                List<Integer> floors = floorsByBlock.get(block);
+                Collections.sort(floors);
+                StringBuilder floorList = new StringBuilder();
+                for (int i = 0; i < floors.size(); i++) {
+                    if (i > 0) floorList.append(",");
+                    floorList.append(floors.get(i));
+                }
+                sb.append("✅ 탑 완전정복").append(block >= 1 && block <= roman.length ? roman[block - 1] : String.valueOf(block))
+                  .append(" ").append(floorList).append(NL);
             }
-            sb.append("✅ 탑 완전정복").append(block >= 1 && block <= roman.length ? roman[block - 1] : String.valueOf(block))
-              .append(" ").append(floorList).append(NL);
-        }
-        if (!compVoucherFloors.isEmpty()) {
-            sb.append("✅ 동료 선택권 ").append(String.join(",", compVoucherFloors)).append(NL);
-        }
-        if (!weapVoucherFloors.isEmpty()) {
-            sb.append("✅ 무기 선택권 ").append(String.join(",", weapVoucherFloors)).append(NL);
-        }
+            if (!compVoucherFloors.isEmpty()) {
+                sb.append("✅ 동료 선택권 ").append(String.join(",", compVoucherFloors)).append(NL);
+            }
+            if (!weapVoucherFloors.isEmpty()) {
+                sb.append("✅ 무기 선택권 ").append(String.join(",", weapVoucherFloors)).append(NL);
+            }
 
-        others.sort((a, b) -> {
-            java.util.Date da = (java.util.Date) a.get("CLEAR_DATE");
-            java.util.Date db = (java.util.Date) b.get("CLEAR_DATE");
-            if (da == null || db == null) return 0;
-            return db.compareTo(da); // 최신순
-        });
-        final int CHAT_ACH_SHOW = 15;
-        int shown = Math.min(CHAT_ACH_SHOW, others.size());
-        for (int i = 0; i < shown; i++) {
-            int id = intVal(others.get(i).get("ACH_ID"), -1);
-            HashMap<String, Object> a = achById.get(id);
-            sb.append("✅ ").append(a != null ? strVal(a.get("ACH_NAME"), "?") : "?").append(NL);
-        }
-        int remaining = others.size() - shown;
-        if (remaining > 0) {
-            sb.append("... 외 ").append(remaining).append("개 더 (최근 순, 전체 목록은 웹에서 확인: ")
-              .append(towerViewLink(target)).append(")");
+            others.sort((a, b) -> {
+                Object da = a.get("CLEAR_DATE");
+                Object db = b.get("CLEAR_DATE");
+                if (!(da instanceof java.util.Date) || !(db instanceof java.util.Date)) return 0;
+                return ((java.util.Date) db).compareTo((java.util.Date) da); // 최신순
+            });
+            final int CHAT_ACH_SHOW = 15;
+            int shown = Math.min(CHAT_ACH_SHOW, others.size());
+            for (int i = 0; i < shown; i++) {
+                int id = intVal(others.get(i).get("ACH_ID"), -1);
+                HashMap<String, Object> a = achById.get(id);
+                sb.append("✅ ").append(a != null ? strVal(a.get("ACH_NAME"), "?") : "?").append(NL);
+            }
+            int remaining = others.size() - shown;
+            if (remaining > 0) {
+                sb.append("... 외 ").append(remaining).append("개 더 (최근 순, 전체 목록은 웹에서 확인: ")
+                  .append(towerViewLink(target)).append(")");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            sb.setLength(0);
+            sb.append(target).append("님의 업적 (").append(mine.size()).append("/").append(all.size()).append(")," + NL);
+            for (HashMap<String, Object> m : mine) {
+                int id = intVal(m.get("ACH_ID"), -1);
+                sb.append("✅ ").append(nameByIdSafe(achById, id)).append(NL);
+            }
         }
         return sb.toString();
+    }
+
+    private String nameByIdSafe(HashMap<Integer, HashMap<String, Object>> achById, int id) {
+        HashMap<String, Object> a = achById.get(id);
+        return a == null ? "?" : strVal(a.get("ACH_NAME"), "?");
     }
 
     // ================================================================
