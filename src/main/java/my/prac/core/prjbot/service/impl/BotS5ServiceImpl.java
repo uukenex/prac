@@ -528,9 +528,12 @@ public class BotS5ServiceImpl implements BotS5Service {
      * 서버 전체에서 각 항목별 최고 수치만 익명으로 보여준다(1위 목록이 아니라 "기록판"에 가까움).
      * PP는 값+단위(EXT)가 섞여있어 SQL MAX로 못 비교하므로(예: 9999 vs 1a는 1a가 더 큼)
      * 전체를 가져와 PP.compare()로 비교 -- 유저 수가 많지 않아 성능 문제 없음.
+     * [2026-09-08] "누가 세운 기록인지 모르지만, 본인인 경우는 (me)라고 표기해달라" 요청 --
+     * 다른 사람 기록은 여전히 완전 비공개(유저명 조회 자체를 안 함), 딱 이 요청을 보낸 본인의
+     * 수치만 서버 최고기록과 같은지(동타 포함, >=) 비교해서 같으면 그 줄에만 "(me)"를 붙인다.
      */
     @Override
-    public String ranking() {
+    public String ranking(String userName) {
         int maxFloor = dao.selectMaxFloorReached();
         int maxKill = dao.selectMaxTotalKillCount();
         int maxAch = dao.selectMaxAchievementCount();
@@ -546,21 +549,49 @@ public class BotS5ServiceImpl implements BotS5Service {
             if (v.compare(maxPp) > 0) maxPp = v;
         }
 
+        // 본인 수치 -- 미등록/조회 실패 시 전부 0/빈 값으로 둬서 (me) 표시가 안 붙게만 하고
+        // 그 외엔 정상 진행(랭킹판 자체는 로그인 여부와 무관하게 항상 보여준다).
+        HashMap<String, Object> mineP = userName == null || userName.trim().isEmpty() ? null : dao.selectUserProgress(userName);
+        int mineFloor = 0, mineKill = 0, mineAch = 0, mineExplored = 0;
+        int mineCompanion = 0, mineCompanionGrade = 0, mineEquip = 0, mineEquipGrade = 0;
+        PP minePp = PP.fromPP(0);
+        if (mineP != null) {
+            mineFloor = intVal(mineP.get("MAX_FLOOR_REACHED"), 0);
+            mineKill = intVal(mineP.get("TOTAL_KILL_COUNT"), 0);
+            mineAch = dao.selectUserAchievements(userName).size();
+            mineExplored = dao.countFullyExploredFloors(userName);
+            mineCompanion = dao.countUserCompanions(userName);
+            for (HashMap<String, Object> c : dao.selectUserCompanions(userName)) {
+                mineCompanionGrade = Math.max(mineCompanionGrade, intVal(c.get("GRADE"), 0));
+            }
+            mineEquip = dao.countUserEquip(userName);
+            for (HashMap<String, Object> e : dao.selectUserEquip(userName)) {
+                mineEquipGrade = Math.max(mineEquipGrade, intVal(e.get("GRADE"), 0));
+            }
+            minePp = PP.of(numVal(mineP.get("TOTAL_PP_EARNED_VALUE"), 0), strVal(mineP.get("TOTAL_PP_EARNED_EXT"), ""));
+        }
+
         StringBuilder sb = new StringBuilder();
         sb.append("┌────────────────┐").append(NL);
         sb.append(" 🏆 시즌5 서버 전체 기록").append(NL);
         sb.append("└────────────────┘").append(NL);
-        sb.append("(누가 세운 기록인지는 비공개입니다)").append(NL).append(NL);
-        sb.append("🪜 최고 도달 층: ").append(maxFloor).append("층").append(NL);
-        sb.append("⚔️ 최다 누적 처치: ").append(maxKill).append("마리").append(NL);
-        sb.append("🏅 최다 업적 보유: ").append(maxAch).append("개").append(NL);
-        sb.append("🗺️ 최다 완전탐사: ").append(maxExplored).append("개 층").append(NL);
-        sb.append("👥 최다 동료 보유: ").append(maxCompanion).append("명").append(NL);
-        sb.append("✨ 최고 동료 등급: ★").append(maxCompanionGrade).append(NL);
-        sb.append("🎽 최다 장비 보유: ").append(maxEquip).append("개").append(NL);
-        sb.append("💎 최고 장비 등급: ★").append(maxEquipGrade).append(NL);
-        sb.append("💰 최다 누적 PP: ").append(maxPp.format());
+        sb.append("(누가 세운 기록인지는 비공개입니다 -- 본인 기록만 (me)로 표시)").append(NL).append(NL);
+        sb.append("🪜 최고 도달 층: ").append(maxFloor).append("층").append(meTag(mineFloor, maxFloor)).append(NL);
+        sb.append("⚔️ 최다 누적 처치: ").append(maxKill).append("마리").append(meTag(mineKill, maxKill)).append(NL);
+        sb.append("🏅 최다 업적 보유: ").append(maxAch).append("개").append(meTag(mineAch, maxAch)).append(NL);
+        sb.append("🗺️ 최다 완전탐사: ").append(maxExplored).append("개 층").append(meTag(mineExplored, maxExplored)).append(NL);
+        sb.append("👥 최다 동료 보유: ").append(maxCompanion).append("명").append(meTag(mineCompanion, maxCompanion)).append(NL);
+        sb.append("✨ 최고 동료 등급: ★").append(maxCompanionGrade).append(meTag(mineCompanionGrade, maxCompanionGrade)).append(NL);
+        sb.append("🎽 최다 장비 보유: ").append(maxEquip).append("개").append(meTag(mineEquip, maxEquip)).append(NL);
+        sb.append("💎 최고 장비 등급: ★").append(maxEquipGrade).append(meTag(mineEquipGrade, maxEquipGrade)).append(NL);
+        sb.append("💰 최다 누적 PP: ").append(maxPp.format())
+          .append((PP.toBaseValue(maxPp) > 0 && minePp.compare(maxPp) >= 0) ? " (me)" : "");
         return sb.toString();
+    }
+
+    /** ranking() 전용 -- max가 0(아직 아무도 없음)이 아니고 mine이 max 이상(동타 포함)이면 " (me)". */
+    private String meTag(int mine, int max) {
+        return (max > 0 && mine >= max) ? " (me)" : "";
     }
 
     /** 사냥터층(구간 내 1~8번째) PP 보상 배율: 1층 1.0배, 2층 1.1배 ... 8층 1.7배로 층마다 조금씩 차이. 보스/마을층은 1.0배. */

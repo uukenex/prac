@@ -253,9 +253,9 @@ public class Season5Controller {
         }
     }
 
-    /** /탑랭킹 — 인자/유저 구분 없이 서버 전체 익명 기록판을 그대로 보여줌 */
-    public String ranking() {
-        return s5Service.ranking();
+    /** /탑랭킹 — 서버 전체 익명 기록판을 보여주되, 요청한 본인 기록엔 (me)를 붙여준다. */
+    public String ranking(HashMap<String, Object> map) {
+        return s5Service.ranking(userNameOf(map));
     }
 
     // /이벤트지급 인자 3개(등급/동료권수량/장비권수량)를 담기엔 param1·param2 2칸으로 부족해서

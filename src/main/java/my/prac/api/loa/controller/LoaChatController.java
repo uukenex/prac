@@ -653,7 +653,7 @@ public class LoaChatController {
 				break;
 			case "/탑랭킹":
 			case "/ㅌㄹㅋ":
-				val = s5.ranking();
+				val = s5.ranking(reqMap);
 				break;
 			case "/이벤트지급": // 관리자 전용(비공개) -- TBOT_S5_CONFIG.EVENT_ADMIN_USERS 등록자만 실제 동작
 				val = s5.grantEventVouchers(reqMap);
