@@ -3314,10 +3314,14 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 반복되는 게 원인이라("N층 완전탐사" 블록당 최대 8개·전체 80개, "N~N층 동료/무기
         // 선택권" 각 10개씩) 이 셋을 유형별로 한 줄씩 묶어서 압축한다("최신순 15개 자르기
         // 말고 이런 식으로 묶어달라"는 후속 요청 -- 캡은 안전망으로만 남겨둠).
-        // [버그 수정] 이 그룹화 로직 도입 이후 "층 완전탐사류 업적을 보유한 유저는 /탑업적
-        // 조회 자체가 빈 응답으로 실패한다"는 신고 -- 라이브에서 직접 재현은 했으나 원인을
-        // 코드 리뷰만으로는 특정하지 못해서, 우선 이 구간 전체를 try/catch로 감싸 예외가 나도
-        // 최소한 응답은 나가도록(그룹화 없이 원래 방식대로 개별 나열) 방어적으로 처리한다.
+        // [2026-09-08 버그 근본 수정] "층 완전탐사류 업적을 보유한 유저는 /탑업적 조회가
+        // 그룹화 없이 개별 나열로 나온다"는 신고 재확인 결과 원인 확정: TBOT_S5_ACHIEVEMENT.
+        // ACH_PARAM은 VARCHAR2(50) 컬럼이라 JDBC가 String으로 돌려주는데, 바로 아래서
+        // intVal()(내부에서 (Number) o로 강제 캐스팅)에 넘겨서 FLOOR_EXPLORE 업적을 하나라도
+        // 보유한 유저는 전부 ClassCastException이 터졌다 -- 아래 try/catch(직전 세션이 원인을
+        // 못 찾고 임시로 감싸둔 안전망)가 그 예외를 삼키고 그룹화 없는 원래 방식으로 조용히
+        // 폴백했던 것. ACH_PARAM은 Integer.parseInt로 파싱하도록 고쳐서 근본 수정, try/catch는
+        // 다른 이유로도 실패하지 않도록 안전망으로 그대로 남겨둠.
         try {
             java.util.TreeMap<Integer, List<Integer>> floorsByBlock = new java.util.TreeMap<>();
             List<String> compVoucherFloors = new ArrayList<>(); // "1~4층 동료 선택권" -> "1~4층"만
@@ -3328,7 +3332,9 @@ public class BotS5ServiceImpl implements BotS5Service {
                 HashMap<String, Object> a = achById.get(id);
                 String type = a == null ? "" : strVal(a.get("ACH_TYPE"), "");
                 if ("FLOOR_EXPLORE".equals(type)) {
-                    int floor = intVal(a.get("ACH_PARAM"), 0);
+                    int floor;
+                    try { floor = Integer.parseInt(strVal(a.get("ACH_PARAM"), "0").trim()); }
+                    catch (NumberFormatException nfe) { floor = 0; }
                     List<Integer> bucket = floorsByBlock.get(blockNo(floor));
                     if (bucket == null) {
                         bucket = new ArrayList<>();

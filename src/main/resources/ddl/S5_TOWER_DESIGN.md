@@ -1745,6 +1745,19 @@ S4의 `TBOT_S4_ACHIEVEMENT`/`TBOT_S4_USER_ACH` 패턴을 확장 계승. S5에서
   서버에 물어볼 기준이 없어 기존 localStorage 방식으로 폴백. DB 마이그레이션 적용 필요
   (`S5_NOTICE_DISMISS.sql`), 정적 리소스도 변경되어 재배포 필요.
 
+- **[2026-09-08] /탑업적 그룹화 미적용 버그 근본 수정**: "탑업적 완전탐사 그룹화가 정상
+  작동 안 하는 것 같다"(개별 "N층 완전탐사"가 그대로 쭉 나열됨) 신고로 재확인, 원인 확정.
+  이전 세션(8d7a6c1f)이 같은 증상을 신고받고 원인은 못 찾은 채 그룹화 구간 전체를
+  try/catch로만 감싸 "빈 응답"은 막아뒀는데, 그 안에서 매번 예외가 터져 그룹화 없는
+  원래 개별 나열 방식으로 계속 조용히 폴백되고 있었음. 실제 원인:
+  `TBOT_S5_ACHIEVEMENT.ACH_PARAM`은 `VARCHAR2(50)` 컬럼이라 JDBC가 String으로 돌려주는데,
+  `achievements()`에서 이걸 `intVal()`(내부에서 `(Number) o`로 강제 캐스팅)에 그대로
+  넘겨서 FLOOR_EXPLORE(완전탐사) 업적을 하나라도 보유한 유저는 전부
+  `ClassCastException`이 발생했음(시즌4 쪽 동급 로직은 이미 `Integer.parseInt(...toString())`
+  로 올바르게 처리하고 있어서 비교해 확정). `Integer.parseInt`로 파싱하도록 수정, try/catch는
+  다른 이유의 실패에 대비한 안전망으로 그대로 유지. 정적 리소스(자바 코드) 변경뿐이라 DB
+  마이그레이션 없음, 재배포만 필요.
+
 ### 남은 TODO
 
 - 실제 서버 기동 후 채팅 명령어 + SPA E2E 테스트 (이번 세션은 `mvn compile`까지만 검증)
