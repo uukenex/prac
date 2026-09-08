@@ -572,6 +572,11 @@ public class BotS5ServiceImpl implements BotS5Service {
         return matches.isEmpty() ? null : matches.get(0);
     }
 
+    @Override
+    public String resolveUserName(String targetQuery) {
+        return resolveTargetUser(targetQuery);
+    }
+
     // ================================================================
     // /탑현황
     // ================================================================

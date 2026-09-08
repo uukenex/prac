@@ -25,6 +25,15 @@ public interface BotS5Service {
     /** /탑현황 닉네임 — 다른 유저 조회(정확 일치 우선, 없으면 앞부분 일치 LIKE 검색) */
     String towerStatus(String userName, String targetQuery);
 
+    /**
+     * 닉네임(부분 입력 가능)으로 실제 유저명을 찾는다(정확 일치 우선, 없으면 앞부분 일치 LIKE
+     * 검색 중 사전순 첫 번째). 아무도 없으면 null. 웹 SPA의 닉네임 검색창이 "정확히 일치하는
+     * 계정이 없으면 바로 새 계정을 만들어버리는" 문제(예: "타락고냥이/바드"를 찾으려다 "타락고냥이"
+     * 로 입력해서 엉뚱한 빈 계정이 새로 생김)를 막기 위해 조회 전 먼저 이걸로 실제 존재하는
+     * 계정인지 확인하는 용도.
+     */
+    String resolveUserName(String targetQuery);
+
     /** /탑도움말, /탑명령어 — 웹(SPA) 탭 기능을 포함한 전체 명령어 텍스트 안내 */
     String help(String userName);
 

@@ -65,8 +65,20 @@ public class Season5ViewController {
         }
         HashMap<String, Object> progress = s5Service.selectUserProgress(userName);
         if (progress == null) {
-            s5Service.initUser(userName);
-            progress = s5Service.selectUserProgress(userName);
+            // [버그 수정] 정확히 일치하는 계정이 없다고 바로 새 계정을 만들면, "타락고냥이/바드"를
+            // 찾으려다 "타락고냥이"만 입력해도 그 이름 그대로 엉뚱한 빈 계정이 새로 생겨버렸다
+            // (신고로 확인, DB에서 여러 번 수동 삭제했다고 함). /탑현황 채팅 명령어와 동일하게
+            // 먼저 부분 일치(앞부분 LIKE) 검색으로 실제 존재하는 계정인지 확인하고, 그것도 없을
+            // 때만 진짜 신규 유저로 보고 생성한다.
+            String resolved = s5Service.resolveUserName(userName);
+            if (resolved != null) {
+                userName = resolved;
+                progress = s5Service.selectUserProgress(userName);
+            }
+            if (progress == null) {
+                s5Service.initUser(userName);
+                progress = s5Service.selectUserProgress(userName);
+            }
         }
         result.put("progress", progress);
 

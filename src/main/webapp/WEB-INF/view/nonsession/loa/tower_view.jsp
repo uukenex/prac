@@ -583,6 +583,12 @@ var TW = (function () {
       .then(function (data) {
         if (data.error) { toast(data.error); return; }
         var p = data.progress;
+        // [버그 수정] 부분 입력("타락고냥이")이 서버에서 다른 실제 계정("타락고냥이/바드")으로
+        // 해석됐을 수 있으니, 화면 표시와 입력창·세션 저장값을 전부 실제로 조회된 이름으로
+        // 맞춰서 이후 다른 탭 호출도 같은(맞는) 계정을 보게 한다.
+        u = p.USER_NAME || u;
+        document.getElementById('userNameInput').value = u;
+        sessionStorage.setItem('loaUserName', u);
         document.getElementById('whoName').textContent = u;
         document.getElementById('whoFloor').textContent = p.CUR_FLOOR + '층 · 상태 ' + p.STATUS
             + (p.AUTO_HUNT_YN === 'Y' ? ' · 자동사냥ON' : '');
