@@ -830,16 +830,114 @@ var TW = (function () {
   trackSampleSvg.appendChild(trackSamplePath);
   document.body.appendChild(trackSampleSvg);
 
+  // "보스 이미지를 이름에 맞게 그려달라" 요청 -- 10블록 보스마다 크레용 낙서 느낌의 SVG
+  // 일러스트(굵은 검은 선, 흰 배경, 단순한 표정). 블록 번호(1~10)로 찾는다.
+  var BOSS_ART = {
+    1: { name: '하수구의 지배자 라텔', svg:
+      '<path d="M60,120 C55,80 75,45 100,45 C125,45 145,80 140,120" fill="none" stroke="#000" stroke-width="6" stroke-linecap="round"/>'
+      + '<path d="M70,60 C60,40 55,15 65,10 C72,25 75,45 78,58" fill="#fff" stroke="#000" stroke-width="6" stroke-linejoin="round"/>'
+      + '<path d="M130,60 C140,40 145,15 135,10 C128,25 125,45 122,58" fill="#fff" stroke="#000" stroke-width="6" stroke-linejoin="round"/>'
+      + '<ellipse cx="100" cy="150" rx="55" ry="45" fill="#fff" stroke="#000" stroke-width="6"/>'
+      + '<circle cx="80" cy="90" r="6"/><circle cx="120" cy="90" r="6"/>'
+      + '<path d="M85,110 Q100,118 115,110" fill="none" stroke="#000" stroke-width="4" stroke-linecap="round"/>'
+      + '<path d="M88,113 L84,122 M112,113 L116,122" stroke="#000" stroke-width="4" stroke-linecap="round"/>'
+      + '<circle cx="65" cy="150" r="18" fill="#fff" stroke="#000" stroke-width="5"/>'
+      + '<circle cx="135" cy="150" r="18" fill="#fff" stroke="#000" stroke-width="5"/>' },
+    2: { name: '폐광의 검은 갱도왕', svg:
+      '<rect x="55" y="55" width="90" height="95" rx="18" fill="#fff" stroke="#000" stroke-width="6"/>'
+      + '<path d="M60,55 L100,25 L140,55" fill="#fff" stroke="#000" stroke-width="6" stroke-linejoin="round"/>'
+      + '<rect x="90" y="15" width="20" height="18" fill="#fff" stroke="#000" stroke-width="5"/>'
+      + '<circle cx="82" cy="95" r="7"/><circle cx="118" cy="95" r="7"/>'
+      + '<path d="M78,120 L122,120" stroke="#000" stroke-width="5" stroke-linecap="round"/>'
+      + '<rect x="30" y="150" width="22" height="45" rx="8" fill="#fff" stroke="#000" stroke-width="5"/>'
+      + '<rect x="148" y="150" width="22" height="45" rx="8" fill="#fff" stroke="#000" stroke-width="5"/>'
+      + '<path d="M20,190 L60,150 M150,150 L190,190" stroke="#000" stroke-width="6" stroke-linecap="round"/>' },
+    3: { name: '늪지 여왕 히드라', svg:
+      '<path d="M100,180 C60,180 40,140 55,110 C65,90 90,90 95,110" fill="#fff" stroke="#000" stroke-width="6" stroke-linecap="round"/>'
+      + '<path d="M100,180 C140,180 160,140 145,110 C135,90 110,90 105,110" fill="#fff" stroke="#000" stroke-width="6" stroke-linecap="round"/>'
+      + '<path d="M100,180 C100,150 100,120 100,95" fill="#fff" stroke="#000" stroke-width="6" stroke-linecap="round"/>'
+      + '<ellipse cx="55" cy="100" rx="20" ry="16" fill="#fff" stroke="#000" stroke-width="5"/>'
+      + '<ellipse cx="145" cy="100" rx="20" ry="16" fill="#fff" stroke="#000" stroke-width="5"/>'
+      + '<ellipse cx="100" cy="85" rx="20" ry="16" fill="#fff" stroke="#000" stroke-width="5"/>'
+      + '<circle cx="50" cy="98" r="4"/><circle cx="60" cy="98" r="4"/>'
+      + '<circle cx="140" cy="98" r="4"/><circle cx="150" cy="98" r="4"/>'
+      + '<circle cx="95" cy="82" r="4"/><circle cx="105" cy="82" r="4"/>'
+      + '<ellipse cx="100" cy="160" rx="55" ry="30" fill="#fff" stroke="#000" stroke-width="6"/>' },
+    4: { name: '화산의 심장 이프리트', svg:
+      '<path d="M100,20 C90,45 70,55 75,75 C80,60 95,55 100,65 C105,55 120,60 125,75 C130,55 110,45 100,20Z" fill="#fff" stroke="#000" stroke-width="6" stroke-linejoin="round"/>'
+      + '<path d="M55,80 C45,60 55,40 65,45 C60,60 65,75 70,85" fill="#fff" stroke="#000" stroke-width="6" stroke-linejoin="round"/>'
+      + '<path d="M145,80 C155,60 145,40 135,45 C140,60 135,75 130,85" fill="#fff" stroke="#000" stroke-width="6" stroke-linejoin="round"/>'
+      + '<ellipse cx="100" cy="130" rx="58" ry="55" fill="#fff" stroke="#000" stroke-width="6"/>'
+      + '<circle cx="80" cy="115" r="6"/><circle cx="120" cy="115" r="6"/>'
+      + '<path d="M82,145 Q100,155 118,145" fill="none" stroke="#000" stroke-width="4" stroke-linecap="round"/>'
+      + '<path d="M86,148 L82,157 M114,148 L118,157" stroke="#000" stroke-width="4" stroke-linecap="round"/>' },
+    5: { name: '빙하의 폭군 프로스트자이언트', svg:
+      '<ellipse cx="100" cy="130" rx="65" ry="58" fill="#fff" stroke="#000" stroke-width="6"/>'
+      + '<path d="M55,40 L65,75 M70,25 L75,70 M90,15 L90,68 M110,15 L110,68 M130,25 L125,70 M145,40 L135,75" stroke="#000" stroke-width="5" stroke-linecap="round"/>'
+      + '<circle cx="78" cy="120" r="7"/><circle cx="122" cy="120" r="7"/>'
+      + '<path d="M82,150 Q100,160 118,150" fill="none" stroke="#000" stroke-width="4" stroke-linecap="round"/>'
+      + '<path d="M40,150 C25,145 20,120 30,105" fill="none" stroke="#000" stroke-width="6" stroke-linecap="round"/>'
+      + '<path d="M160,150 C175,145 180,120 170,105" fill="none" stroke="#000" stroke-width="6" stroke-linecap="round"/>' },
+    6: { name: '심연의 대공 모르드레드', svg:
+      '<path d="M60,65 C40,35 48,5 68,12 C70,32 75,52 80,66" fill="#fff" stroke="#000" stroke-width="6" stroke-linejoin="round"/>'
+      + '<path d="M140,65 C160,35 152,5 132,12 C130,32 125,52 120,66" fill="#fff" stroke="#000" stroke-width="6" stroke-linejoin="round"/>'
+      + '<ellipse cx="100" cy="100" rx="45" ry="42" fill="#fff" stroke="#000" stroke-width="6"/>'
+      + '<path d="M40,135 L60,120 M160,135 L140,120" stroke="#000" stroke-width="5" stroke-linecap="round"/>'
+      + '<path d="M50,135 C30,150 25,175 45,192 L155,192 C175,175 170,150 150,135" fill="#fff" stroke="#000" stroke-width="6" stroke-linejoin="round"/>'
+      + '<circle cx="82" cy="95" r="6"/><circle cx="118" cy="95" r="6"/>'
+      + '<path d="M85,118 Q100,124 115,118" fill="none" stroke="#000" stroke-width="4" stroke-linecap="round"/>'
+      + '<path d="M88,120 L84,130 M112,120 L116,130" stroke="#000" stroke-width="4" stroke-linecap="round"/>' },
+    7: { name: '차원의 파괴자 아자토스', svg:
+      '<path d="M100,30 C60,30 30,65 35,105 C40,150 65,180 100,180 C135,180 160,150 165,105 C170,65 140,30 100,30Z" fill="#fff" stroke="#000" stroke-width="6" stroke-linejoin="round"/>'
+      + '<circle cx="70" cy="80" r="10" fill="#fff" stroke="#000" stroke-width="5"/><circle cx="70" cy="80" r="4"/>'
+      + '<circle cx="130" cy="80" r="10" fill="#fff" stroke="#000" stroke-width="5"/><circle cx="130" cy="80" r="4"/>'
+      + '<circle cx="55" cy="120" r="8" fill="#fff" stroke="#000" stroke-width="5"/><circle cx="55" cy="120" r="3"/>'
+      + '<circle cx="145" cy="120" r="8" fill="#fff" stroke="#000" stroke-width="5"/><circle cx="145" cy="120" r="3"/>'
+      + '<circle cx="100" cy="60" r="7" fill="#fff" stroke="#000" stroke-width="5"/><circle cx="100" cy="60" r="3"/>'
+      + '<path d="M75,140 Q100,155 125,140" fill="none" stroke="#000" stroke-width="4" stroke-linecap="round"/>' },
+    8: { name: '천공의 대천사 세라핌', svg:
+      '<circle cx="100" cy="45" r="18" fill="none" stroke="#000" stroke-width="4"/>'
+      + '<path d="M30,120 C10,100 15,60 45,55 C55,75 55,100 60,120" fill="#fff" stroke="#000" stroke-width="6" stroke-linejoin="round"/>'
+      + '<path d="M170,120 C190,100 185,60 155,55 C145,75 145,100 140,120" fill="#fff" stroke="#000" stroke-width="6" stroke-linejoin="round"/>'
+      + '<ellipse cx="100" cy="105" rx="35" ry="38" fill="#fff" stroke="#000" stroke-width="6"/>'
+      + '<path d="M65,140 C60,165 70,190 100,190 C130,190 140,165 135,140" fill="#fff" stroke="#000" stroke-width="6" stroke-linejoin="round"/>'
+      + '<circle cx="88" cy="98" r="5"/><circle cx="112" cy="98" r="5"/>'
+      + '<path d="M90,118 Q100,123 110,118" fill="none" stroke="#000" stroke-width="4" stroke-linecap="round"/>' },
+    9: { name: '고룡 바하무트', svg:
+      '<path d="M100,15 C85,30 80,45 90,55 C95,45 105,45 110,55 C120,45 115,30 100,15Z" fill="#fff" stroke="#000" stroke-width="5" stroke-linejoin="round"/>'
+      + '<path d="M40,90 C15,75 15,45 35,40 C40,60 50,75 65,88" fill="#fff" stroke="#000" stroke-width="6" stroke-linejoin="round"/>'
+      + '<path d="M160,90 C185,75 185,45 165,40 C160,60 150,75 135,88" fill="#fff" stroke="#000" stroke-width="6" stroke-linejoin="round"/>'
+      + '<ellipse cx="100" cy="110" rx="42" ry="40" fill="#fff" stroke="#000" stroke-width="6"/>'
+      + '<path d="M100,148 C95,165 100,185 100,195" stroke="#000" stroke-width="6" stroke-linecap="round" fill="none"/>'
+      + '<circle cx="82" cy="102" r="6"/><circle cx="118" cy="102" r="6"/>'
+      + '<path d="M78,128 L122,128" stroke="#000" stroke-width="5" stroke-linecap="round"/>'
+      + '<path d="M82,131 L78,140 M92,131 L90,141 M108,131 L110,141 M118,131 L122,140" stroke="#000" stroke-width="3" stroke-linecap="round"/>' },
+    10: { name: '종말의 마룡왕 니드호그', svg:
+      '<path d="M100,190 C70,190 50,170 55,150 C40,145 35,120 50,110 C40,95 50,75 65,78 C60,60 75,45 90,50 C90,35 105,25 120,35 C135,30 150,45 140,60" fill="none" stroke="#000" stroke-width="6" stroke-linecap="round"/>'
+      + '<ellipse cx="145" cy="65" rx="30" ry="26" fill="#fff" stroke="#000" stroke-width="6"/>'
+      + '<path d="M120,45 C110,30 115,15 125,18 C122,28 125,38 130,48" fill="#fff" stroke="#000" stroke-width="5" stroke-linejoin="round"/>'
+      + '<path d="M160,45 C170,30 165,15 155,18 C158,28 155,38 150,48" fill="#fff" stroke="#000" stroke-width="5" stroke-linejoin="round"/>'
+      + '<circle cx="135" cy="62" r="5"/><circle cx="158" cy="62" r="5"/>'
+      + '<path d="M130,78 Q145,85 165,78" fill="none" stroke="#000" stroke-width="4" stroke-linecap="round"/>'
+      + '<path d="M135,80 L131,88 M155,80 L159,88" stroke="#000" stroke-width="3" stroke-linecap="round"/>' }
+  };
+
   function renderBoard(tiles, curTile, floor) {
     var track = document.getElementById('towerTrack');
     track.innerHTML = '';
     if (!tiles || !tiles.length) {
       // "보스룸은 지도가 없는데 영역만 있어서 뭔지 모르겠다" 요청 -- 마을/보스층을 뭉뚱그리지
-      // 않고, 보스층이면 전용 표시를 보여준다.
+      // 않고, 보스층이면 전용 표시(+보스 일러스트)를 보여준다.
       var fm = floor % 10;
-      track.innerHTML = fm === 9
-          ? '<div style="text-align:center;padding:20px 0;color:var(--ink-soft);font-size:13px;">👑 보스룸<br><span style="font-size:11px;">지도 없이 곧바로 전투가 진행됩니다. /주사위로 도전하세요!</span></div>'
-          : '<div style="color:var(--ink-soft);font-size:12px;">이 층은 보드가 없습니다 (마을층)</div>';
+      if (fm === 9) {
+        var art = BOSS_ART[Math.floor(floor / 10) + 1];
+        track.innerHTML = '<div style="text-align:center;padding:14px 0;color:var(--ink-soft);font-size:13px;">'
+            + (art ? '<svg viewBox="0 0 200 200" style="width:110px;height:110px;">' + art.svg + '</svg><br>' : '')
+            + '👑 보스룸' + (art ? ' — ' + art.name : '') + '<br>'
+            + '<span style="font-size:11px;">지도 없이 곧바로 전투가 진행됩니다. /주사위로 도전하세요!</span></div>';
+      } else {
+        track.innerHTML = '<div style="color:var(--ink-soft);font-size:12px;">이 층은 보드가 없습니다 (마을층)</div>';
+      }
       return;
     }
     var n = tiles.length;

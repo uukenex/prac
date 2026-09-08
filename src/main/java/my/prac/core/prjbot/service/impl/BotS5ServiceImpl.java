@@ -3279,18 +3279,25 @@ public class BotS5ServiceImpl implements BotS5Service {
             return sb.toString();
         }
 
-        // "업적이 125개나 돼서 카톡 텍스트로 조회하면 너무 길다" 요청. 그중 "N층 완전탐사"
-        // (ACH_TYPE=FLOOR_EXPLORE)가 블록당 최대 8개씩, 총 80개까지 나올 수 있어 가장 큰
-        // 비중을 차지하므로, 블록 단위로 묶어서 "탑 완전정복{로마숫자} 1,2,3..." 한 줄로
-        // 압축한다(요청 예시 그대로). 나머지 업적은 기존처럼 최신순 최대 CHAT_ACH_SHOW개만.
+        // "업적이 125개나 돼서 카톡 텍스트로 조회하면 너무 길다" 요청. 세 종류가 대량으로
+        // 반복되는 게 원인이라("N층 완전탐사" 블록당 최대 8개·전체 80개, "N~N층 동료/무기
+        // 선택권" 각 10개씩) 이 셋을 유형별로 한 줄씩 묶어서 압축한다("최신순 15개 자르기
+        // 말고 이런 식으로 묶어달라"는 후속 요청 -- 캡은 안전망으로만 남겨둠).
         java.util.TreeMap<Integer, List<Integer>> floorsByBlock = new java.util.TreeMap<>();
+        List<String> compVoucherFloors = new ArrayList<>(); // "1~4층 동료 선택권" -> "1~4층"만
+        List<String> weapVoucherFloors = new ArrayList<>();
         List<HashMap<String, Object>> others = new ArrayList<>();
         for (HashMap<String, Object> m : mine) {
             int id = intVal(m.get("ACH_ID"), -1);
             HashMap<String, Object> a = achById.get(id);
-            if (a != null && "FLOOR_EXPLORE".equals(strVal(a.get("ACH_TYPE"), ""))) {
+            String type = a == null ? "" : strVal(a.get("ACH_TYPE"), "");
+            if ("FLOOR_EXPLORE".equals(type)) {
                 int floor = intVal(a.get("ACH_PARAM"), 0);
                 floorsByBlock.computeIfAbsent(blockNo(floor), k -> new ArrayList<>()).add(floor);
+            } else if ("BLOCK_EXPLORE_LOW".equals(type)) {
+                compVoucherFloors.add(strVal(a.get("ACH_NAME"), "").replace(" 동료 선택권", ""));
+            } else if ("BLOCK_EXPLORE_HIGH".equals(type)) {
+                weapVoucherFloors.add(strVal(a.get("ACH_NAME"), "").replace(" 무기 선택권", ""));
             } else {
                 others.add(m);
             }
@@ -3307,6 +3314,12 @@ public class BotS5ServiceImpl implements BotS5Service {
             }
             sb.append("✅ 탑 완전정복").append(block >= 1 && block <= roman.length ? roman[block - 1] : String.valueOf(block))
               .append(" ").append(floorList).append(NL);
+        }
+        if (!compVoucherFloors.isEmpty()) {
+            sb.append("✅ 동료 선택권 ").append(String.join(",", compVoucherFloors)).append(NL);
+        }
+        if (!weapVoucherFloors.isEmpty()) {
+            sb.append("✅ 무기 선택권 ").append(String.join(",", weapVoucherFloors)).append(NL);
         }
 
         others.sort((a, b) -> {
