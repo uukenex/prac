@@ -181,6 +181,14 @@ public class BotS5ServiceImpl implements BotS5Service {
     private static final String[] COMPANION_TIER_NAME = { "하급", "중급", "상급", "최상급" };
     private static final int[]    DICE_UNLOCK = { 0, 0, 10, 30, 50, 70 };
 
+    // [2026-09-08] 30/50/60/70/80/90층 마을 도착 보상 -- 주사위 강화(+, 최소치 상승)/
+    // 마이너스 주사위(-, 최소치 하강) 상점, 각각 최대 6단계까지 순차 구매(이전 단계 보유 +
+    // 그 층 도달 필요). 둘 다 계정 전체 공통 적용(장착 중인 주사위 등급 무관), 최대치는
+    // 항상 그대로 -- diceMinFor()/rollFace() 참고. 가격은 잠정치, 실측 후 조정 가능.
+    private static final int[]  DICE_ENHANCE_UNLOCK = { 30, 50, 60, 70, 80, 90 };
+    private static final long[] DICE_BONUS_COST     = { 3000, 6000, 12000, 24000, 48000, 96000 };
+    private static final long[] DICE_MALUS_COST     = { 1000, 2000, 4000, 8000, 16000, 32000 };
+
     // /스탯구매 레벨당 실제 증가량 -- computeEffectiveStat()과 상점 표시(statShop/statShopInfo)가
     // 이 값을 공유해서 "레벨당 얼마나 느는지" 표시가 실제 전투 계산과 어긋나지 않게 한다.
     private static final double ATK_PCT_PER_LV = 0.03;   // 공격력(최대) 레벨당 +3%(곱연산)
@@ -364,15 +372,28 @@ public class BotS5ServiceImpl implements BotS5Service {
     }
 
     /**
-     * 주사위를 굴리고(1~diceMax) 나온 눈을 전역 통계(TBOT_S5_DICE_STATS)에 1 증가시킨다.
-     * 이동/전투공격/보호막/몬스터반격 등 RND.nextInt(diceMax)를 쓰는 모든 지점에서 이걸로
-     * 대체 -- "/탑통계"의 "주사위 눈 나온 횟수" 항목용. 통계 적재 실패가 게임 진행을
-     * 막으면 안 되므로 실패는 조용히 무시한다.
+     * 주사위를 굴리고(diceMin~diceMax) 나온 눈을 전역 통계(TBOT_S5_DICE_STATS)에 1 증가시킨다.
+     * 이동/전투공격/보호막/몬스터반격 등 RND.nextInt(...)를 쓰는 모든 지점에서 이걸로 대체 --
+     * "/탑통계"의 "주사위 눈 나온 횟수" 항목용(범위 밖 눈금은 그 통계 테이블에 매칭되는 행이
+     * 없어 조용히 무시됨, TBOT_S5_DICE_STATS는 1~20만 미리 시딩돼 있음). 통계 적재 실패가
+     * 게임 진행을 막으면 안 되므로 실패는 조용히 무시한다.
+     * [2026-09-08] "30/50/60/70/80/90층 마을 도착 보상으로 주사위 강화(+최소치)/마이너스
+     * 주사위(-최소치) 상점" 신설 -- diceMin이 diceMax를 넘는 극단적 경우(작은 주사위+큰
+     * 강화)는 max 고정으로 방어(Math.min).
      */
-    private int rollFace(int diceMax) {
-        int face = RND.nextInt(diceMax) + 1;
+    private int rollFace(int diceMin, int diceMax) {
+        int lo = Math.min(diceMin, diceMax);
+        int face = RND.nextInt(diceMax - lo + 1) + lo;
         try { dao.bumpDiceFaceStat(face); } catch (Exception ignore) { }
         return face;
+    }
+
+    /** 위 rollFace()의 diceMin 인자용 -- 유저의 주사위 강화(+)/마이너스 주사위(-) 단계를
+     *  합산해 이번 굴림의 최소 눈금을 계산한다(계정 전체 공통 적용, 장착 주사위 등급 무관,
+     *  둘 다 "최소치만" 조정하고 최대치는 항상 diceMax 그대로). 몬스터 자신의 반격 굴림
+     *  (rollFace(1, monsterDiceMax))에는 적용하지 않음 -- 플레이어 강화와 무관해야 함. */
+    private int diceMinFor(HashMap<String, Object> p) {
+        return 1 + intVal(p.get("DICE_MIN_BONUS"), 0) - intVal(p.get("DICE_MIN_MALUS"), 0);
     }
 
     private int floorBlockBase(int floor) {
@@ -1106,8 +1127,12 @@ public class BotS5ServiceImpl implements BotS5Service {
         int curTile = ufp == null ? 0 : intVal(ufp.get("CUR_TILE"), 0);
 
         int diceMax = diceMax(strVal(p.get("DICE_GRADE"), "DICE_6"));
-        int roll = rollFace(diceMax);
-        int newTile = ((curTile + roll - 1) % tileCount) + 1;
+        int roll = rollFace(diceMinFor(p), diceMax);
+        // [2026-09-08] 마이너스 주사위로 roll이 0/음수까지 나올 수 있게 되면서(탐사 정밀 이동
+        // 목적), 원래의 "(curTile+roll-1) % tileCount" 계산은 피제수가 음수일 때 Java의 %가
+        // 음수를 그대로 돌려줘서 깨진다 -- +tileCount 보정 후 다시 한 번 %로 항상 [0,tileCount)
+        // 범위로 정규화. roll=0이면 제자리, roll<0이면 뒤로 이동.
+        int newTile = (((curTile + roll - 1) % tileCount) + tileCount) % tileCount + 1;
 
         HashMap<String, Object> ufpSave = new HashMap<>();
         ufpSave.put("userName", userName);
@@ -1762,7 +1787,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                 else if (grade >= 5) effMonsterDef = (int) Math.round(monsterDef * 0.5); // ★5: 방어 50% 무시
             }
 
-            int roll = rollFace(diceMax);
+            int roll = rollFace(diceMinFor(p), diceMax);
             int dmg = Math.max(1, eff[1] * roll - effMonsterDef);
             dmg = Math.max(dmg, eff[3]); // 스탯구매 최소공격력 보정
             totalDamage += dmg;
@@ -1825,7 +1850,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                     // [명확화 요청] "실드를 누구한테 주는지 안 보인다"는 지적으로, 도사 자신의
                     // 줄에는 더 이상 🛡️+N을 안 찍는다 -- 실제로 이번 반격을 막아준 대상이
                     // 정해진 뒤(아래 resolveCombatTurn의 반격 파트) 그 동료 자신의 줄에 붙여준다.
-                    int shieldRoll = rollFace(diceMax);
+                    int shieldRoll = rollFace(diceMinFor(p), diceMax);
                     int shieldAmt = Math.max(0, eff[1] * shieldRoll);
                     if ("PRIEST".equals(synergy)) shieldAmt = (int) Math.round(shieldAmt * 2.0); // 시너지: 도사3인조 2배
                     shieldPool += shieldAmt;
@@ -2181,7 +2206,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (trapDefDown) tEff[2] = (int) Math.round(tEff[2] * 0.7); // 함정: 방어력 30% 약화(반격 피해 증가)
         if (luckyDefUp) tEff[2] = (int) Math.round(tEff[2] * luckyMult); // 럭키: 방어력 강화(반격 피해 감소)
         int monsterAtk = (int) Math.round(intVal(mon.get("ATK_VALUE"), 0) * eliteMult);
-        int roll = rollFace(monsterDiceMax);
+        int roll = rollFace(1, monsterDiceMax); // 몬스터 자신의 반격 굴림 -- 플레이어 강화/마이너스 주사위와 무관하게 항상 1부터
         int rawDmgToParty = Math.max(1, monsterAtk * roll - tEff[2]);
         // 중간보스가 이번 턴 궁수 기술을 훔쳤으면(위 미드보스 파트) 이 반격 피해를 즉시 증폭.
         if (midBossArcherDmgUp) rawDmgToParty = (int) Math.round(rawDmgToParty * 1.3);
@@ -3885,6 +3910,106 @@ public class BotS5ServiceImpl implements BotS5Service {
             list.add(row);
         }
         return list;
+    }
+
+    /** [2026-09-08] 웹 SPA 주사위 UI용 — 주사위 강화(+)/마이너스 주사위(-) 6단계 현황·비용 구조화 데이터. */
+    @Override
+    public HashMap<String, Object> diceEnhanceInfo(String userName) {
+        HashMap<String, Object> p = getOrInitProgress(userName);
+        int unlocked = intVal(p.get("UNLOCKED_BLOCK"), 0);
+        int bonus = intVal(p.get("DICE_MIN_BONUS"), 0);
+        int malus = intVal(p.get("DICE_MIN_MALUS"), 0);
+        HashMap<String, Object> result = new HashMap<>();
+        result.put("bonusLevel", bonus);
+        result.put("malusLevel", malus);
+        List<HashMap<String, Object>> bonusTiers = new ArrayList<>();
+        List<HashMap<String, Object>> malusTiers = new ArrayList<>();
+        for (int i = 0; i < DICE_ENHANCE_UNLOCK.length; i++) {
+            int tier = i + 1;
+            HashMap<String, Object> b = new HashMap<>();
+            b.put("tier", tier);
+            b.put("unlockFloor", DICE_ENHANCE_UNLOCK[i]);
+            b.put("cost", DICE_BONUS_COST[i]);
+            b.put("owned", bonus >= tier);
+            b.put("buyable", bonus == tier - 1 && unlocked >= DICE_ENHANCE_UNLOCK[i]);
+            bonusTiers.add(b);
+
+            HashMap<String, Object> m = new HashMap<>();
+            m.put("tier", tier);
+            m.put("unlockFloor", DICE_ENHANCE_UNLOCK[i]);
+            m.put("cost", DICE_MALUS_COST[i]);
+            m.put("owned", malus >= tier);
+            m.put("buyable", malus == tier - 1 && unlocked >= DICE_ENHANCE_UNLOCK[i]);
+            malusTiers.add(m);
+        }
+        result.put("bonusTiers", bonusTiers);
+        result.put("malusTiers", malusTiers);
+        return result;
+    }
+
+    /** /주사위강화, /마이너스주사위 (인자 없이) — 현재 단계/다음 단계 비용·해금 조건 안내. */
+    @Override
+    public String diceEnhanceStatus(String userName) {
+        HashMap<String, Object> p = getOrInitProgress(userName);
+        int unlocked = intVal(p.get("UNLOCKED_BLOCK"), 0);
+        int bonus = intVal(p.get("DICE_MIN_BONUS"), 0);
+        int malus = intVal(p.get("DICE_MIN_MALUS"), 0);
+        StringBuilder sb = new StringBuilder(userName).append("님의 주사위 강화 현황," + NL);
+        sb.append("🎲 주사위 강화(최소 눈금 +): ").append(bonus).append("/").append(DICE_ENHANCE_UNLOCK.length).append("단계").append(NL);
+        if (bonus < DICE_ENHANCE_UNLOCK.length) {
+            int nf = DICE_ENHANCE_UNLOCK[bonus];
+            sb.append("  다음 단계(+").append(bonus + 1).append("): ")
+              .append(unlocked >= nf ? "구매 가능, " : nf + "층 마을 도착 필요, ")
+              .append(PP.of(DICE_BONUS_COST[bonus], "").format()).append(" PP").append(NL);
+        }
+        sb.append("🎲 마이너스 주사위(최소 눈금 -): ").append(malus).append("/").append(DICE_ENHANCE_UNLOCK.length).append("단계").append(NL);
+        if (malus < DICE_ENHANCE_UNLOCK.length) {
+            int nf = DICE_ENHANCE_UNLOCK[malus];
+            sb.append("  다음 단계(-").append(malus + 1).append("): ")
+              .append(unlocked >= nf ? "구매 가능, " : nf + "층 마을 도착 필요, ")
+              .append(PP.of(DICE_MALUS_COST[malus], "").format()).append(" PP").append(NL);
+        }
+        sb.append("/주사위강화 구매 로 강화 다음 단계, /마이너스주사위 구매 로 마이너스 다음 단계 구매 (둘 다 계정 전체 공통 적용, 최대 눈금은 그대로)");
+        return sb.toString();
+    }
+
+    @Override
+    @Transactional
+    public String buyDiceBonus(String userName) {
+        return buyDiceEnhance(userName, true);
+    }
+
+    @Override
+    @Transactional
+    public String buyDiceMalus(String userName) {
+        return buyDiceEnhance(userName, false);
+    }
+
+    private String buyDiceEnhance(String userName, boolean isBonus) {
+        HashMap<String, Object> p = getOrInitProgress(userName);
+        int unlocked = intVal(p.get("UNLOCKED_BLOCK"), 0);
+        int cur = intVal(p.get(isBonus ? "DICE_MIN_BONUS" : "DICE_MIN_MALUS"), 0);
+        String label = isBonus ? "주사위 강화" : "마이너스 주사위";
+        if (cur >= DICE_ENHANCE_UNLOCK.length) {
+            return "🎲 " + label + "는 이미 최대 단계(" + DICE_ENHANCE_UNLOCK.length + "단계)입니다.";
+        }
+        int nextTier = cur + 1;
+        int needFloor = DICE_ENHANCE_UNLOCK[nextTier - 1];
+        if (unlocked < needFloor) {
+            return "🔒 " + needFloor + "층 마을에 도착해야 " + label + " " + nextTier + "단계를 구매할 수 있습니다. (현재 " + cur + "단계)";
+        }
+        long costRaw = (isBonus ? DICE_BONUS_COST : DICE_MALUS_COST)[nextTier - 1];
+        PP price = PP.of(costRaw, "");
+        if (!deductPp(userName, p, price)) {
+            return "PP가 부족합니다. (" + price.format() + " 필요)";
+        }
+        HashMap<String, Object> up = new HashMap<>();
+        up.put("userName", userName);
+        up.put(isBonus ? "diceMinBonus" : "diceMinMalus", nextTier);
+        dao.updateUserProgress(up);
+        return isBonus
+                ? "🎲 주사위 강화 " + nextTier + "단계 적용! (모든 주사위 최소 눈금 +" + nextTier + ", 최대 눈금은 그대로)"
+                : "🎲 마이너스 주사위 " + nextTier + "단계 적용! (모든 주사위 최소 눈금 -" + nextTier + ", 최대 눈금은 그대로)";
     }
 
     @Override

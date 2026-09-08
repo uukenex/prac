@@ -115,6 +115,23 @@ public interface BotS5Service {
     /** 웹 SPA 주사위 UI용 — 등급별 {name, unlockFloor, unlocked, current} 구조화 목록 */
     List<HashMap<String, Object>> diceListInfo(String userName);
 
+    /**
+     * [2026-09-08] 30/50/60/70/80/90층 마을 도착 보상 — 주사위 강화(+, 최소 눈금 상승)/
+     * 마이너스 주사위(-, 최소 눈금 하강) 상점. 둘 다 계정 전체 공통 적용(장착 중인 주사위
+     * 등급 무관), 각 최대 6단계, 최대 눈금은 항상 그대로. 웹 SPA 주사위 UI에 +0~+6 강화 줄과
+     * 그 아래 마이너스 구매 줄을 추가하기 위한 구조화 데이터.
+     */
+    HashMap<String, Object> diceEnhanceInfo(String userName);
+
+    /** /주사위강화, /마이너스주사위 (인자 없이) — 현재 단계/다음 단계 비용·해금 조건 안내(채팅용 텍스트). */
+    String diceEnhanceStatus(String userName);
+
+    /** /주사위강화 구매 — 주사위 강화(+) 다음 단계를 PP로 구매. */
+    String buyDiceBonus(String userName);
+
+    /** /마이너스주사위 구매 — 마이너스 주사위(-) 다음 단계를 PP로 구매. */
+    String buyDiceMalus(String userName);
+
     /** 자동사냥 시간당 처치 수(config, /갱신으로 조절됨) — Season5ViewController의 PP/시간 추정치가 참조 */
     int autoHuntKillsPerHour();
 

@@ -25,6 +25,8 @@ import my.prac.core.prjbot.service.BotS5Service;
  *   /동료뽑기N [10]   — N번 계약서로 동료 뽑기(뒤에 10을 붙이면 10연속), 번호는 SPA 상점 탭에서 확인. /동료뽑기(번호 생략)는 1번
  *   /장비뽑기N [10]   — N번 보물상자로 장비 뽑기(뒤에 10을 붙이면 10연속). /장비뽑기(번호 생략)는 1번
  *   /주사위구매 [N]   — 주사위 등급 확인 / 장착
+ *   /주사위강화 [구매] — 30/50/60/70/80/90층 마을 도착 보상(최소 눈금 +N, 최대 6단계) 현황/구매
+ *   /마이너스주사위 [구매] — 위와 동일 상점, 반대 방향(최소 눈금 -N, 탐사 정밀 이동용) 현황/구매
  *   /스탯구매 [종류]  — 스탯 구매 현황 / 강화(공격력 | 최소공격력 | 체력)
  *   /장비목록         — 보유 장비 조회
  *   /장비장착 N [M]   — N번째 미착용 장비를 M번째(생략 시 자동) 파티원에 장착
@@ -203,6 +205,20 @@ public class Season5Controller {
         } catch (NumberFormatException e) {
             return "번호는 숫자로 입력해주세요.";
         }
+    }
+
+    /** /주사위강화 [구매] — 인자 없으면 현재 단계/다음 비용 안내, 아무 인자나 있으면 다음 단계 구매 시도. */
+    public String diceBonusShop(HashMap<String, Object> map) {
+        String param1 = param1Of(map);
+        String userName = userNameOf(map);
+        return param1.isEmpty() ? s5Service.diceEnhanceStatus(userName) : s5Service.buyDiceBonus(userName);
+    }
+
+    /** /마이너스주사위 [구매] — diceBonusShop과 동일 패턴, 반대 방향(최소치 하강) 단계 구매. */
+    public String diceMalusShop(HashMap<String, Object> map) {
+        String param1 = param1Of(map);
+        String userName = userNameOf(map);
+        return param1.isEmpty() ? s5Service.diceEnhanceStatus(userName) : s5Service.buyDiceMalus(userName);
     }
 
     public String statShop(HashMap<String, Object> map) {

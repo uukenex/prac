@@ -87,6 +87,25 @@
     .dice-overlay button.current{ background:var(--gold); color:#fff; font-size:13px;
                    padding:5px 12px; box-shadow:0 2px 0 rgba(0,0,0,.18); transform:scale(1.08); }
     .dice-overlay button.locked{ background:transparent; color:var(--ink-soft); opacity:.5; cursor:default; }
+    /* [2026-09-08] 주사위 강화(+)/마이너스 주사위(-) 스트립 -- dice-overlay 바로 아래, 같은
+       스타일의 pill로 -6..0..+6을 한 줄에 나열(넘치면 가로 스크롤). 0은 고정 기준점(항상
+       회색 텍스트, 클릭 불가), 오른쪽(+)은 강화, 왼쪽(-)은 마이너스 -- 이미 산 단계는
+       각각 금색/청색으로 진하게, 다음 한 단계만 클릭 가능(테두리로 표시), 그 이상은 흐리게
+       + 해금층 안내. */
+    .dice-enhance-overlay{ position:absolute; top:76px; left:22px; z-index:5;
+                   display:flex; gap:3px; flex-wrap:nowrap; max-width:calc(100% - 32px);
+                   overflow-x:auto; background:var(--parchment); border:1px solid var(--line);
+                   border-radius:999px; padding:4px 6px; box-shadow:var(--shadow); }
+    .dice-enhance-overlay button, .dice-enhance-overlay span{ flex:0 0 auto; border:none;
+                   border-radius:999px; padding:2px 7px; font-size:10px; font-weight:700;
+                   background:#fff; color:var(--ink-soft); }
+    .dice-enhance-overlay .dice-enhance-zero{ background:transparent; opacity:.6; }
+    .dice-enhance-overlay button.dice-enhance-owned.plus{ background:var(--gold); color:#fff; }
+    .dice-enhance-overlay button.dice-enhance-owned.minus{ background:var(--village); color:#fff; }
+    .dice-enhance-overlay button.dice-enhance-buyable{ background:#fff; color:var(--ink);
+                   border:1.5px dashed var(--gold); cursor:pointer; }
+    .dice-enhance-overlay button.dice-enhance-buyable.minus{ border-color:var(--village); }
+    .dice-enhance-overlay button.dice-enhance-locked{ background:transparent; opacity:.4; cursor:default; }
     .legend{ display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
     .legend-chip{ display:flex; align-items:center; gap:4px; font-size:10px; color:var(--ink-soft); background:#fff;
                   border:1px solid var(--line); border-radius:999px; padding:3px 9px; }
@@ -344,6 +363,12 @@
              커도 스크롤 영역의 가로/세로 크기에 영향을 안 준다(전에 안에 넣었더니 작은 보드에서
              스크롤바가 생기던 문제 수정) -- 시각적으로는 여전히 칸그리드 좌상단 위에 겹쳐 보임. -->
         <div class="dice-overlay" id="diceOverlay"></div>
+        <!-- [2026-09-08] 30/50/60/70/80/90층 마을 도착 보상: 주사위 강화(+, 최소눈금 상승)/
+             마이너스 주사위(-, 최소눈금 하강) 상점 -- 위 dice-overlay 바로 아래, 한 줄짜리
+             숫자 스트립(-6..0..+6)으로 표시. 0이 고정 기준점, 오른쪽은 강화(+)/왼쪽은
+             마이너스(-) 단계, 각각 "다음 한 단계"만 눌러서 PP로 구매(순차 구매, 건너뛰기
+             불가). renderDiceEnhanceRow 참고. -->
+        <div class="dice-enhance-overlay" id="diceEnhanceOverlay"></div>
         <div class="tower-viewport" id="towerViewport">
           <div class="tower-track" id="towerTrack">
             <div style="color:var(--ink-soft);font-size:12px;">데이터를 불러오는 중...</div>
@@ -621,6 +646,7 @@ var TW = (function () {
 
         renderBoard(data.tiles, data.myTile ? data.myTile.CUR_TILE : 0, p.CUR_FLOOR);
         renderDiceOverlay(data.dice || []);
+        renderDiceEnhanceRow(data.diceEnhance);
         renderTowerNav(p, data.floorBest);
         // [버그 수정] "조회"는 상단 상태/보드만 다시 불러오고 파티·상점·업적 탭은 그대로 둬서,
         // 파티 탭 등을 보고 있는 채로 다른 닉네임을 검색하면 방금 조회한 유저 이름이 위에는
@@ -1053,6 +1079,47 @@ var TW = (function () {
       }
       box.appendChild(btn);
     });
+  }
+
+  // [2026-09-08] 주사위 강화(+)/마이너스 주사위(-) 스트립 -- dice-overlay 바로 아래.
+  // 0(고정 기준점)을 가운데 두고 오른쪽에 강화(+1..+6), 왼쪽에 마이너스(-1..-6)를 나열.
+  // "다음 한 단계"만 클릭 가능(순차 구매, 건너뛰기 불가) -- 그 이상은 흐리게 표시하고
+  // 눌러도 해금층 안내 토스트만 띄운다(diceListInfo의 locked 버튼과 동일한 UX).
+  function renderDiceEnhanceRow(de) {
+    var box = document.getElementById('diceEnhanceOverlay');
+    box.innerHTML = '';
+    if (!de) return;
+    var malusTiers = de.malusTiers || [];
+    var bonusTiers = de.bonusTiers || [];
+    for (var i = malusTiers.length - 1; i >= 0; i--) {
+      box.appendChild(buildDiceEnhancePip(-(i + 1), malusTiers[i], false));
+    }
+    var zero = document.createElement('span');
+    zero.className = 'dice-enhance-zero';
+    zero.textContent = '+0';
+    box.appendChild(zero);
+    for (var j = 0; j < bonusTiers.length; j++) {
+      box.appendChild(buildDiceEnhancePip(j + 1, bonusTiers[j], true));
+    }
+  }
+
+  function buildDiceEnhancePip(labelNum, tier, isBonus) {
+    var btn = document.createElement('button');
+    btn.textContent = (labelNum > 0 ? '+' : '') + labelNum;
+    var dir = isBonus ? 'plus' : 'minus';
+    if (tier.owned) {
+      btn.className = 'dice-enhance-owned ' + dir;
+      btn.title = (isBonus ? '주사위 강화 ' : '마이너스 주사위 ') + tier.tier + '단계 적용중';
+    } else if (tier.buyable) {
+      btn.className = 'dice-enhance-buyable ' + dir;
+      btn.title = '눌러서 구매 (' + tier.cost + ' PP)';
+      btn.onclick = function () { TW.action(isBonus ? 'DICE_BONUS_BUY' : 'DICE_MALUS_BUY', ''); };
+    } else {
+      btn.className = 'dice-enhance-locked';
+      btn.title = tier.unlockFloor + '층 마을 도착 후 구매 가능';
+      btn.onclick = function () { toast('🔒 ' + tier.unlockFloor + '층 마을 도착 후 구매 가능'); };
+    }
+    return btn;
   }
 
   var PART_KR   = { HELMET: '투구', WEAPON: '무기', ARMOR: '갑옷' };

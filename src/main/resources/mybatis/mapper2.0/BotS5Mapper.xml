@@ -23,7 +23,8 @@
                PENDING_RESTORE_AUTOHUNT_FLOOR,
                LAST_REQUEST_DATE, LAST_REQUEST_INTERVAL_SEC, MACRO_STREAK, SUSPEND_YN, BAN_YN,
                CUR_MONSTER_MIDBOSS_YN, MONSTER_DEF_BUFF_PCT, MONSTER_SHIELD_VALUE,
-               AUTO_HUNT_KILL_TOTAL, AUTO_HUNT_PP_TOTAL_VALUE, AUTO_HUNT_PP_TOTAL_EXT, FLEE_COUNT_TOTAL
+               AUTO_HUNT_KILL_TOTAL, AUTO_HUNT_PP_TOTAL_VALUE, AUTO_HUNT_PP_TOTAL_EXT, FLEE_COUNT_TOTAL,
+               DICE_MIN_BONUS, DICE_MIN_MALUS
         FROM TBOT_S5_USER_PROGRESS
         WHERE USER_NAME = #{userName}
     </select>
@@ -73,6 +74,8 @@
             <if test="autoHuntPpTotalValue != null">AUTO_HUNT_PP_TOTAL_VALUE = #{autoHuntPpTotalValue},</if>
             <if test="autoHuntPpTotalExt != null">AUTO_HUNT_PP_TOTAL_EXT = #{autoHuntPpTotalExt},</if>
             <if test="fleeCountTotal != null">FLEE_COUNT_TOTAL = #{fleeCountTotal},</if>
+            <if test="diceMinBonus != null">DICE_MIN_BONUS = #{diceMinBonus},</if>
+            <if test="diceMinMalus != null">DICE_MIN_MALUS = #{diceMinMalus},</if>
             <if test="monsterStunnedYn != null">MONSTER_STUNNED_YN = #{monsterStunnedYn},</if>
             <if test="shieldValue != null">SHIELD_VALUE = #{shieldValue},</if>
             <if test="shieldExt != null">SHIELD_EXT = #{shieldExt},</if>

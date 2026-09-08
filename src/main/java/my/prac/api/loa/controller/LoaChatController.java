@@ -668,6 +668,12 @@ public class LoaChatController {
 			case "/주사위구매":
 				val = s5.diceShop(reqMap);
 				break;
+			case "/주사위강화":
+				val = s5.diceBonusShop(reqMap);
+				break;
+			case "/마이너스주사위":
+				val = s5.diceMalusShop(reqMap);
+				break;
 			case "/스탯구매":
 				val = s5.statShop(reqMap);
 				break;

@@ -97,6 +97,7 @@ public class Season5ViewController {
         // [2026-09-05] 주사위 교체 위젯을 상점탭에서 '탑' 탭 보드 칸그리드 위 오버레이로
         // 옮기면서, 상태 조회(가장 자주 도는 호출)에 얹어 매번 최신 해금/사용중 정보를 준다.
         result.put("dice", s5Service.diceListInfo(userName));
+        result.put("diceEnhance", s5Service.diceEnhanceInfo(userName));
         return ResponseEntity.ok(result);
     }
 
@@ -251,6 +252,7 @@ public class Season5ViewController {
         if (!userName.trim().isEmpty()) {
             result.put("stat", s5Service.statShopInfo(userName));
             result.put("dice", s5Service.diceListInfo(userName));
+            result.put("diceEnhance", s5Service.diceEnhanceInfo(userName));
         }
         return ResponseEntity.ok(result);
     }
@@ -296,7 +298,8 @@ public class Season5ViewController {
     /**
      * 통합 액션 엔드포인트. 채팅 명령어(/주사위 등)와 동일한 BotS5Service 로직을 그대로 호출한다.
      * GET /loa/api/tower-action?userName=..&type=DICE|CHANGE_FLOOR|TOWER_DOWN|TOWER_UP|PARTY_TOGGLE|
-     *     PARTY_SWAP|PARTY_UNASSIGN_ALL|GACHA_COMPANION|GACHA_EQUIP|DICE_BUY|STAT_BUY|EQUIP_WEAR|
+     *     PARTY_SWAP|PARTY_UNASSIGN_ALL|GACHA_COMPANION|GACHA_EQUIP|DICE_BUY|DICE_BONUS_BUY|
+     *     DICE_MALUS_BUY|STAT_BUY|EQUIP_WEAR|
      *     EQUIP_SYNTH|EQUIP_UNWEAR_ALL|EQUIP_UNWEAR_ONE|REDEEM_COMPANION_TICKET|REDEEM_WEAPON_TICKET
      *     &param1=&param2=
      * TOWER_DOWN(파라미터 없음)은 채팅 /탑내려가기(/탑다운)와 동일 -- 마을에서만 바로 아래
@@ -365,6 +368,12 @@ public class Season5ViewController {
                     break;
                 case "DICE_BUY":
                     message = s5Service.diceShop(userName, param1.isEmpty() ? null : Integer.parseInt(param1));
+                    break;
+                case "DICE_BONUS_BUY":
+                    message = s5Service.buyDiceBonus(userName);
+                    break;
+                case "DICE_MALUS_BUY":
+                    message = s5Service.buyDiceMalus(userName);
                     break;
                 case "STAT_BUY":
                     message = s5Service.statShop(userName, param1.isEmpty() ? null : param1);
