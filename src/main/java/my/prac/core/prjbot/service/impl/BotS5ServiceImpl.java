@@ -1955,7 +1955,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             }
             dao.updateUserProgress(up);
             addPp(userName, p, reward);
-            checkKillAchievements(userName, totalKill);
+            checkKillAchievements(userName, totalKill - 1, totalKill);
             // "PP 획득 시 현재 보유 PP도 같이 보여달라, 보스전처럼 0PP면 아예 표시하지 말아달라"
             // 요청 -- 보스 몬스터는 PP_PER_KILL_VALUE가 0으로 설정돼 있어 처치해도 파밍 보상이
             // 없는데(업적/해금 보상만 있음), 그동안 "0 PP 획득!"이 그대로 찍혀서 어색했다.
@@ -2396,9 +2396,37 @@ public class BotS5ServiceImpl implements BotS5Service {
         return null;
     }
 
-    private void checkKillAchievements(String userName, int totalKill) {
-        if (totalKill == 100) grantAchievement(userName, 8);
-        if (totalKill == 1000) grantAchievement(userName, 9);
+    // [2026-09-08] 자동사냥 정산(settleAutoHunt)은 kills를 한 번에 여러 마리씩(예: +6, +12)
+    // 더하므로, 원래의 "totalKill == 100" 같은 정확히-일치 체크는 그 순간을 건너뛰어버릴 수
+    // 있었다(수동 전투 킬은 항상 +1씩이라 문제 없었음). prevTotal/newTotal 사이에 임계값이
+    // 있었는지로 바꿔서 두 호출 경로 모두 안전하게 만듦.
+    private void checkKillAchievements(String userName, int prevTotal, int newTotal) {
+        if (prevTotal < 100 && newTotal >= 100) grantAchievement(userName, 8);
+        if (prevTotal < 1000 && newTotal >= 1000) grantAchievement(userName, 9);
+    }
+
+    /** [2026-09-08] "자동사냥으로 몇 회 처치, 관련 업적에 추가해달라" 요청 -- 자동사냥으로만
+     *  처치한 누적 마리수(AUTO_HUNT_KILL_TOTAL, 수동 전투 킬과 별개) 임계값 판정. */
+    private void checkAutoHuntKillAchievements(String userName, int prevTotal, int newTotal) {
+        if (prevTotal < 500 && newTotal >= 500) grantAchievement(userName, 26);
+        if (prevTotal < 5000 && newTotal >= 5000) grantAchievement(userName, 27);
+    }
+
+    /** [2026-09-08] ACH_ID=14(자동사냥 입문, "자동사냥으로 PP 1000 모았다")는 마스터
+     *  데이터엔 있었지만 전용 누적 컬럼이 없어 한 번도 체크되지 않고 있었다 -- 자동사냥
+     *  전용 누적 PP(AUTO_HUNT_PP_TOTAL_*) 신설하며 드디어 연동. */
+    private void checkAutoHuntPpAchievement(String userName, PP prevTotal, PP newTotal) {
+        PP threshold = PP.of(1000, "");
+        if (prevTotal.compare(threshold) < 0 && newTotal.compare(threshold) >= 0) {
+            grantAchievement(userName, 14);
+        }
+    }
+
+    /** [2026-09-08] "몬스터 전투중 도망치다 업적도 있으면 좋겠다" 요청 -- 전투 중 /층변경(도망)
+     *  누적 횟수(FLEE_COUNT_TOTAL, changeFloor에서 1씩만 증가하므로 exact == 체크로 충분). */
+    private void checkFleeAchievements(String userName, int newTotal) {
+        if (newTotal == 10) grantAchievement(userName, 28);
+        if (newTotal == 100) grantAchievement(userName, 29);
     }
 
     /** @return 이번에 새로 달성되었으면 true, 이미 달성된 상태였으면 false */
@@ -2442,19 +2470,37 @@ public class BotS5ServiceImpl implements BotS5Service {
         PP reward = perKill.multiply(kills * floorPpMultiplier(floor));
         addPp(userName, p, reward);
 
+        // [2026-09-08] "자동사냥으로 몇 회 처치, 관련 업적에 추가해달라" 요청 -- 자동사냥으로만
+        // 처치한 누적치(AUTO_HUNT_KILL_TOTAL)를 TOTAL_KILL_COUNT와 별도로 함께 쌓는다. 자동사냥
+        // 전용 누적 PP(AUTO_HUNT_PP_TOTAL_*)도 신설해서 그동안 미체크였던 ACH_ID=14(자동사냥
+        // 입문) 업적을 드디어 연동. 크로싱 판정을 위해 갱신 전(prev) 값을 먼저 담아둔다.
+        int prevTotalKill = intVal(p.get("TOTAL_KILL_COUNT"), 0);
+        int newTotalKill = prevTotalKill + (int) kills;
+        int prevAutoHuntKill = intVal(p.get("AUTO_HUNT_KILL_TOTAL"), 0);
+        int newAutoHuntKill = prevAutoHuntKill + (int) kills;
+        PP prevAutoHuntPp = PP.of(numVal(p.get("AUTO_HUNT_PP_TOTAL_VALUE"), 0), strVal(p.get("AUTO_HUNT_PP_TOTAL_EXT"), ""));
+        PP newAutoHuntPp = PP.of(numVal(p.get("AUTO_HUNT_PP_TOTAL_VALUE"), 0), strVal(p.get("AUTO_HUNT_PP_TOTAL_EXT"), "")).add(reward);
+
         HashMap<String, Object> up = new HashMap<>();
         up.put("userName", userName);
-        up.put("totalKillCount", intVal(p.get("TOTAL_KILL_COUNT"), 0) + (int) kills);
+        up.put("totalKillCount", newTotalKill);
+        up.put("autoHuntKillTotal", newAutoHuntKill);
+        up.put("autoHuntPpTotalValue", newAutoHuntPp.getValue());
+        up.put("autoHuntPpTotalExt", newAutoHuntPp.getUnit());
         dao.updateUserProgress(up);
-        p.put("TOTAL_KILL_COUNT", intVal(p.get("TOTAL_KILL_COUNT"), 0) + (int) kills);
+        p.put("TOTAL_KILL_COUNT", newTotalKill);
+        p.put("AUTO_HUNT_KILL_TOTAL", newAutoHuntKill);
+        p.put("AUTO_HUNT_PP_TOTAL_VALUE", newAutoHuntPp.getValue());
+        p.put("AUTO_HUNT_PP_TOTAL_EXT", newAutoHuntPp.getUnit());
 
         HashMap<String, Object> logUp = new HashMap<>();
         logUp.put("userName", userName);
         logUp.put("floor", floor);
         dao.upsertAutoHuntLog(logUp); // LAST_SETTLE_DATE = SYSDATE 로 갱신
 
-        checkKillAchievements(userName, intVal(p.get("TOTAL_KILL_COUNT"), 0));
-        // TODO: AUTO_HUNT_PP_TOTAL 누적치 업적(14번)은 별도 누적 컬럼이 없어 아직 미체크
+        checkKillAchievements(userName, prevTotalKill, newTotalKill);
+        checkAutoHuntKillAchievements(userName, prevAutoHuntKill, newAutoHuntKill);
+        checkAutoHuntPpAchievement(userName, prevAutoHuntPp, newAutoHuntPp);
 
         // "PP 획득 시 현재 보유 PP도 보여달라" 요청 -- 자동사냥은 사냥터 몬스터만 farm하므로
         // reward가 0일 일은 없어 보스전 같은 0PP 생략 케이스는 여기 해당 없음.
@@ -2495,10 +2541,14 @@ public class BotS5ServiceImpl implements BotS5Service {
         HashMap<String, Object> up = new HashMap<>();
         up.put("userName", userName);
         up.put("curFloor", target);
+        int newFleeCount = -1;
         if (wasInCombat) {
             // 전투 중 층 이동 = 도망. 진행 중이던 전투를 포기하고 상태를 되돌린다.
             up.put("status", "NORMAL");
             up.put("clearMonster", true);
+            // [2026-09-08] "몬스터 전투중 도망치다 업적도 있으면 좋겠다" 요청 -- 도망 누적 횟수.
+            newFleeCount = intVal(p.get("FLEE_COUNT_TOTAL"), 0) + 1;
+            up.put("fleeCountTotal", newFleeCount);
         }
         // [버그 수정] KILL_COUNT_CUR("이 층에서 몇 마리 잡았는지")가 층이 바뀌어도 초기화되지
         // 않아서, 예전 층에서 쌓인 처치수가 다음 층까지 이어져 엉뚱하게 10마리를 채우고
@@ -2508,6 +2558,9 @@ public class BotS5ServiceImpl implements BotS5Service {
             up.put("killCountCur", 0);
         }
         dao.updateUserProgress(up);
+        if (newFleeCount >= 0) {
+            checkFleeAchievements(userName, newFleeCount);
+        }
 
         // [설계 변경] 자동사냥이 이미 켜져 있으면(AUTO_HUNT_YN='Y') 정산 기준 층도 "지금 있는 층"으로
         // 바로 맞춰준다. 예전엔 그 층에서 10마리를 다시 채워야만(killCountCur 10 도달 시점에만)
