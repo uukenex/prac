@@ -119,9 +119,15 @@
     .dice-enhance-overlay button.current{ font-size:12px; padding:4px 10px;
                    box-shadow:0 2px 0 rgba(0,0,0,.18); transform:scale(1.15);
                    outline:2px solid #fff; outline-offset:-3px; }
-    .dice-enhance-overlay button.dice-enhance-owned.plus{ background:var(--gold); color:#fff; opacity:.75; }
-    .dice-enhance-overlay button.dice-enhance-owned.minus{ background:var(--village); color:#fff; opacity:.75; }
-    .dice-enhance-overlay button.dice-enhance-owned.current{ opacity:1; }
+    /* [2026-09-09] "여러 개가 동시에 선택된 것처럼 보인다, 토글버튼 아니고 최대/최소 각각
+       1개만 선택되게 해달라" 요청 -- 예전엔 "구매 완료한 단계 전부"(지나온 낮은 단계까지)를
+       색칠해서, 여러 단계가 한꺼번에 "선택됨"처럼 보였다. 지금은 이미 지나온(구매했지만
+       현재 적용 중은 아닌) 단계는 무채색으로 눌러서 "지나온 흔적"만 남기고, 실제로 지금
+       적용 중인 단 하나(.current)만 색을 채워 강조 -- 라디오버튼처럼 항상 정확히 1개만
+       도드라져 보인다(기본값은 +0). */
+    .dice-enhance-overlay button.dice-enhance-owned{ background:transparent; color:var(--ink-soft); opacity:.55; }
+    .dice-enhance-overlay button.dice-enhance-owned.current.plus{ background:var(--gold); color:#fff; opacity:1; }
+    .dice-enhance-overlay button.dice-enhance-owned.current.minus{ background:var(--village); color:#fff; opacity:1; }
     .dice-enhance-overlay button.dice-enhance-buyable{ background:#fff; color:var(--ink);
                    border:1.5px dashed var(--gold); cursor:pointer; }
     .dice-enhance-overlay button.dice-enhance-buyable.minus{ border-color:var(--village); }
