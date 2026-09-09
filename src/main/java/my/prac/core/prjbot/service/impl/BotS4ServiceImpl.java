@@ -14,12 +14,19 @@ import org.springframework.transaction.annotation.Transactional;
 
 import my.prac.core.prjbot.dao.BotS4DAO;
 import my.prac.core.prjbot.service.BotS4Service;
+import my.prac.core.prjbot.service.BotS5Service;
+import my.prac.core.util.PP;
 
 @Service("core.prjbot.BotS4Service")
 public class BotS4ServiceImpl implements BotS4Service {
 
     @Resource(name = "core.prjbot.BotS4DAO")
     BotS4DAO botS4DAO;
+
+    // [2026-09-10] "낚시 성공시 PP를 S5 유저만 받게" 요청 -- S5(탑) PP 지급/자격 판정은
+    // BotS5Service.grantFishingBonus에 전부 위임(S4는 등급만 넘겨줌).
+    @Resource(name = "core.prjbot.BotS5Service")
+    BotS5Service s5Service;
 
     private static final String NL  = "♬";
     private static final Random RND = new Random();
@@ -121,6 +128,14 @@ public class BotS4ServiceImpl implements BotS4Service {
         }
         if (!achMsg.isEmpty()) {
             sb.append(NL).append(achMsg);
+        }
+        // [2026-09-10] "낚시로 인한 PP 획득은 S5 유저만, 아니면 멘트도 안 나오게, 9/11부터"
+        // 요청 -- s5Service.grantFishingBonus가 S5 진행기록 없는 유저/날짜 전이면 null을
+        // 돌려주므로, null이면 보상은 물론 이 문구 자체를 통째로 생략한다(S4만 하는 유저는
+        // 이 기능이 생겼다는 걸 알 필요조차 없게).
+        PP fishingPp = s5Service.grantFishingBonus(userName, fishGrade);
+        if (fishingPp != null) {
+            sb.append(NL).append("🪙 탑 PP 보너스 +").append(fishingPp.format()).append(" (오늘의 낚시 보상)");
         }
         return sb.toString();
     }

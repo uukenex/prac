@@ -2031,6 +2031,15 @@ S4의 `TBOT_S4_ACHIEVEMENT`/`TBOT_S4_USER_ACH` 패턴을 확장 계승. S5에서
     필요, 하수인으로서 파티를 공격하던 효과만 사라짐).
   - DB 마이그레이션 필요(`S5_BOSS69_MINION.sql`), 정적 리소스도 변경되어 재배포 필요.
 
+- **[2026-09-10] S4 낚시 -> S5 PP 보너스 연동**: "낚시로 인한 PP 획득은 S5 유저만, 아니면
+  멘트도 안 나오게, 9/11부터 적용" 요청. `BotS5Service.grantFishingBonus(userName,
+  fishGrade)` 신설 -- S4 쪽(`BotS4ServiceImpl.fishing()`)이 매 낚시 성공 시 호출, S5
+  진행기록이 없는 유저거나 아직 2026-09-11 전이면 `null` 반환(S4는 null이면 보상/문구를
+  통째로 생략). 있으면 그 유저의 현재 최고 도달층 기준 처치 PP(`PP_PER_KILL_VALUE ×
+  floorPpMultiplier`, 기존 처치 보상과 동일 산식)에 낚은 물고기 등급별 배율(★1~★8 =
+  1/1.5/2/3/4/6/8배/12배)을 곱해 `addPp()`로 지급. 상세 설계/데이터 근거는
+  `S4_FISHING_DESIGN.md`의 "S5(탑) PP 연동" 항목 참고. DB 마이그레이션 없음, 재배포 필요.
+
 ### 남은 TODO
 
 - 실제 서버 기동 후 채팅 명령어 + SPA E2E 테스트 (이번 세션은 `mvn compile`까지만 검증)

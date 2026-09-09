@@ -472,6 +472,15 @@ public class BotS5ServiceImpl implements BotS5Service {
     }};
     private static final double BOSS_ENRAGE_ATK_MULT = 5.0;
 
+    // [2026-09-10] "S4 낚시 성공시 PP 획득, S5 유저만, 1~8성 등급/현재 탑등반 고려해서
+    // 수치 설계, 매일1회 보너스 개념, 9/11부터 적용" 요청. 라이브 데이터 확인(23명 S5 유저,
+    // 평균 25.6층/중앙값 23층, 대부분 21명이 S4도 같이 함; 실제 낚시 등급 분포는 ★1이
+    // 59%로 압도적, ★6까지는 종종 나옴) 기준으로 설계 -- 그날 낚은 물고기 등급만큼 그
+    // 유저의 "현재 층 기준 몬스터 1마리 처치 PP"를 배율로 곱해서 지급(1층 유저는 소액,
+    // 58층 유저는 그만큼 큰 액수 -- 항상 그 유저 경제 규모에 비례). grantFishingBonus() 참고.
+    private static final String FISHING_PP_START_DATE = "2026-09-11";
+    private static final double[] FISH_GRADE_PP_MULT = { 0, 1, 1.5, 2, 3, 4, 6, 8, 12 }; // index=fishGrade(1~8)
+
     /**
      * "N층 완전탐사" 업적(ACH_ID 100+floor) 보상 — 3개 블록(=30층)마다 동료뽑기 티어가 한 단계
      * 오르고, 그 안에서 지급 수량이 1→3→5로 늘어난다: 블록1~3(1~30층)=하급×1/3/5,
@@ -1676,6 +1685,23 @@ public class BotS5ServiceImpl implements BotS5Service {
         p.put("PP_EXT", result.getUnit());
         p.put("TOTAL_PP_EARNED_VALUE", earnedResult.getValue());
         p.put("TOTAL_PP_EARNED_EXT", earnedResult.getUnit());
+    }
+
+    /** [2026-09-10] S4 낚시 연동 -- BotS4Service.grantFishingBonus 인터페이스 문서 참고. */
+    @Override
+    @Transactional
+    public PP grantFishingBonus(String userName, int fishGrade) {
+        if (java.time.LocalDate.now().isBefore(java.time.LocalDate.parse(FISHING_PP_START_DATE))) return null;
+        HashMap<String, Object> p = dao.selectUserProgress(userName);
+        if (p == null) return null; // S5(탑) 진행기록이 없는 유저 -- 호출부(S4)가 멘트 자체를 생략
+        int floor = intVal(p.get("MAX_FLOOR_REACHED"), 0);
+        HashMap<String, Object> mon = dao.selectMonster(blockNo(floor), "N");
+        if (mon == null) return null;
+        int g = Math.max(1, Math.min(8, fishGrade));
+        PP perKill = PP.of(((Number) mon.get("PP_PER_KILL_VALUE")).doubleValue(), strVal(mon.get("PP_PER_KILL_EXT"), ""));
+        PP reward = perKill.multiply(floorPpMultiplier(floor) * FISH_GRADE_PP_MULT[g]);
+        addPp(userName, p, reward);
+        return reward;
     }
 
     private boolean deductPp(String userName, HashMap<String, Object> p, PP cost) {

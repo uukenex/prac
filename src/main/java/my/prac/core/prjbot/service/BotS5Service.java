@@ -3,6 +3,8 @@ package my.prac.core.prjbot.service;
 import java.util.HashMap;
 import java.util.List;
 
+import my.prac.core.util.PP;
+
 /**
  * [시즌5] 탑 등반 시스템
  * 설계서: src/main/resources/ddl/S5_TOWER_DESIGN.md
@@ -190,6 +192,18 @@ public interface BotS5Service {
      * ("본인인 경우는 (me)라고 표기해달라" 요청, 2026-09-08) -- 다른 사람 기록은 여전히 비공개.
      */
     String ranking(String userName);
+
+    /**
+     * [2026-09-10] S4 낚시 연동 -- "낚시로 인한 PP 획득은 S5 유저만 받도록, 아니면 멘트도
+     * 안 나오게" 요청. 그날 낚시로 잡은 물고기 등급(1~8)을 알려주면, 이 유저가 S5(탑) 진행
+     * 기록이 있는 유저일 때만 현재 최고 도달층 기준으로 PP를 계산해서 지급하고 그 PP를
+     * 반환한다. S5 진행기록이 없는 유저(탑을 아예 시작 안 한 유저)면 아무것도 안 하고
+     * null을 반환하므로, 호출부(S4)는 null이면 보상/멘트 자체를 완전히 생략해야 한다.
+     * 2026-09-11부터 적용(그 전엔 날짜 게이트로 항상 null) -- FISHING_PP_START_DATE 참고.
+     * `/낚시`는 이미 하루 1회로 컨트롤러에서 막혀 있어(TBOT_S4_FISHING_LOG PK), 별도의
+     * "하루 1회" 제한 로직 없이도 자연히 일일 보너스가 된다.
+     */
+    PP grantFishingBonus(String userName, int fishGrade);
 
     /**
      * 웹 SPA 파티 슬롯 배치 통합 액션(채팅 명령어 없음) — idx(=/파티편성 목록 번호)의 동료를
