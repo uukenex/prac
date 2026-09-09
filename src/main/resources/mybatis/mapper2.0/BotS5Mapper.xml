@@ -24,7 +24,7 @@
                LAST_REQUEST_DATE, LAST_REQUEST_INTERVAL_SEC, MACRO_STREAK, SUSPEND_YN, BAN_YN,
                CUR_MONSTER_MIDBOSS_YN, MONSTER_DEF_BUFF_PCT, MONSTER_SHIELD_VALUE,
                AUTO_HUNT_KILL_TOTAL, AUTO_HUNT_PP_TOTAL_VALUE, AUTO_HUNT_PP_TOTAL_EXT, FLEE_COUNT_TOTAL,
-               DICE_MIN_BONUS, DICE_MIN_MALUS, DOUBLE_DICE_YN,
+               DICE_MIN_BONUS, DICE_MIN_MALUS, DICE_MIN_ADJUST, DOUBLE_DICE_YN,
                SUSPEND_RETRY_COUNT, BAN_DATE
         FROM TBOT_S5_USER_PROGRESS
         WHERE USER_NAME = #{userName}
@@ -77,6 +77,7 @@
             <if test="fleeCountTotal != null">FLEE_COUNT_TOTAL = #{fleeCountTotal},</if>
             <if test="diceMinBonus != null">DICE_MIN_BONUS = #{diceMinBonus},</if>
             <if test="diceMinMalus != null">DICE_MIN_MALUS = #{diceMinMalus},</if>
+            <if test="diceMinAdjust != null">DICE_MIN_ADJUST = #{diceMinAdjust},</if>
             <if test="doubleDiceYn != null">DOUBLE_DICE_YN = #{doubleDiceYn},</if>
             <if test="suspendRetryCount != null">SUSPEND_RETRY_COUNT = #{suspendRetryCount},</if>
             <if test="touchBanDate != null">BAN_DATE = SYSDATE,</if>

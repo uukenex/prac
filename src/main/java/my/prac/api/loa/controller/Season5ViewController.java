@@ -299,7 +299,7 @@ public class Season5ViewController {
      * 통합 액션 엔드포인트. 채팅 명령어(/주사위 등)와 동일한 BotS5Service 로직을 그대로 호출한다.
      * GET /loa/api/tower-action?userName=..&type=DICE|CHANGE_FLOOR|TOWER_DOWN|TOWER_UP|PARTY_TOGGLE|
      *     PARTY_SWAP|PARTY_UNASSIGN_ALL|GACHA_COMPANION|GACHA_EQUIP|DICE_BUY|DICE_BONUS_BUY|
-     *     DICE_MALUS_BUY|STAT_BUY|EQUIP_WEAR|
+     *     DICE_MALUS_BUY|DICE_MIN_SELECT|STAT_BUY|EQUIP_WEAR|
      *     EQUIP_SYNTH|EQUIP_UNWEAR_ALL|EQUIP_UNWEAR_ONE|REDEEM_COMPANION_TICKET|REDEEM_WEAPON_TICKET
      *     &param1=&param2=
      * TOWER_DOWN(파라미터 없음)은 채팅 /탑내려가기(/탑다운)와 동일 -- 마을에서만 바로 아래
@@ -374,6 +374,9 @@ public class Season5ViewController {
                     break;
                 case "DICE_MALUS_BUY":
                     message = s5Service.buyDiceMalus(userName);
+                    break;
+                case "DICE_MIN_SELECT":
+                    message = s5Service.selectDiceMinAdjust(userName, Integer.parseInt(param1));
                     break;
                 case "STAT_BUY":
                     message = s5Service.statShop(userName, param1.isEmpty() ? null : param1);

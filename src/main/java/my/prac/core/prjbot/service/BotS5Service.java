@@ -132,6 +132,10 @@ public interface BotS5Service {
     /** /마이너스주사위 구매 — 마이너스 주사위(-) 다음 단계를 PP로 구매. */
     String buyDiceMalus(String userName);
 
+    /** [2026-09-09] 이미 구매(해금)해둔 강화/마이너스 단계 중 하나를 무료로 선택 적용(단일선택,
+     *  0은 항상 허용) — 웹 SPA 최소 눈금 줄에서 "이미 산 단계 중 뭘 켤지" 전환용. */
+    String selectDiceMinAdjust(String userName, int value);
+
     /** 자동사냥 시간당 처치 수(config, /갱신으로 조절됨) — Season5ViewController의 PP/시간 추정치가 참조 */
     int autoHuntKillsPerHour();
 

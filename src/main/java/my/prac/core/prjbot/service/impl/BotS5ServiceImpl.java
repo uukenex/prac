@@ -406,12 +406,19 @@ public class BotS5ServiceImpl implements BotS5Service {
         return face;
     }
 
-    /** 위 rollFace()의 diceMin 인자용 -- 유저의 주사위 강화(+)/마이너스 주사위(-) 단계를
-     *  합산해 이번 굴림의 최소 눈금을 계산한다(계정 전체 공통 적용, 장착 주사위 등급 무관,
-     *  둘 다 "최소치만" 조정하고 최대치는 항상 diceMax 그대로). 몬스터 자신의 반격 굴림
-     *  (rollFace(1, monsterDiceMax))에는 적용하지 않음 -- 플레이어 강화와 무관해야 함. */
+    /** 위 rollFace()의 diceMin 인자용 -- 유저가 지금 "선택"해둔 최소 눈금 조정치
+     *  (DICE_MIN_ADJUST, -1..+6)를 반영한다(계정 전체 공통 적용, 장착 주사위 등급 무관,
+     *  최대치는 항상 diceMax 그대로). 몬스터 자신의 반격 굴림(rollFace(1, monsterDiceMax))
+     *  에는 적용하지 않음 -- 플레이어 강화와 무관해야 함.
+     *  [2026-09-09 재설계] 원래는 DICE_MIN_BONUS(+구매단계)와 DICE_MIN_MALUS(-구매단계)를
+     *  "1+bonus-malus"로 더해서 둘 다 동시에 누적 적용했는데, 웹 UI에서 두 트랙이 각자
+     *  "현재 적용중"으로 동시에 하이라이트돼서 "여러 개가 동시에 선택된 버그처럼 보인다"는
+     *  신고가 들어왔다 -- 실제로 봐도 "-1과 +2 중 어느 쪽이 지금 적용 중인지" 알 수 없는
+     *  설계였음. DICE_MIN_BONUS/DICE_MIN_MALUS는 이제 "각 방향으로 얼마나 구매(해금)해뒀는지"
+     *  진행도로만 쓰고, 실제로 지금 굴림에 적용되는 값은 DICE_MIN_ADJUST 하나(단일 선택,
+     *  기본값 0)로 분리했다. selectDiceMinAdjust()/buyDiceEnhance() 참고. */
     private int diceMinFor(HashMap<String, Object> p) {
-        return 1 + intVal(p.get("DICE_MIN_BONUS"), 0) - intVal(p.get("DICE_MIN_MALUS"), 0);
+        return 1 + intVal(p.get("DICE_MIN_ADJUST"), 0);
     }
 
     private int floorBlockBase(int floor) {
@@ -4038,16 +4045,22 @@ public class BotS5ServiceImpl implements BotS5Service {
     }
 
     /** [2026-09-08] 웹 SPA 주사위 UI용 — 주사위 강화(+, 6단계)/마이너스 주사위(-, 1단계뿐)
-     *  현황·비용 구조화 데이터. */
+     *  현황·비용 구조화 데이터.
+     *  [2026-09-09 재설계] "adjust"가 지금 실제로 굴림에 적용되는 단일 값(-1..+6, 기본 0) --
+     *  bonusLevel/malusLevel은 이제 "각 방향으로 얼마나 사뒀는지"(구매 진행도)만 의미하고,
+     *  화면에서 "현재 선택됨" 강조는 반드시 이 adjust 값 하나와만 비교해서 표시해야 한다
+     *  (예전엔 owned 단계 전부를 강조해서 두 트랙이 동시에 "선택된 것처럼" 보이는 문제가 있었음). */
     @Override
     public HashMap<String, Object> diceEnhanceInfo(String userName) {
         HashMap<String, Object> p = getOrInitProgress(userName);
         int unlocked = intVal(p.get("UNLOCKED_BLOCK"), 0);
         int bonus = intVal(p.get("DICE_MIN_BONUS"), 0);
         int malus = intVal(p.get("DICE_MIN_MALUS"), 0);
+        int adjust = intVal(p.get("DICE_MIN_ADJUST"), 0);
         HashMap<String, Object> result = new HashMap<>();
         result.put("bonusLevel", bonus);
         result.put("malusLevel", malus);
+        result.put("adjust", adjust);
         List<HashMap<String, Object>> bonusTiers = new ArrayList<>();
         for (int i = 0; i < DICE_BONUS_UNLOCK.length; i++) {
             int tier = i + 1;
@@ -4057,6 +4070,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             b.put("cost", DICE_BONUS_COST[i]);
             b.put("owned", bonus >= tier);
             b.put("buyable", bonus == tier - 1 && unlocked >= DICE_BONUS_UNLOCK[i]);
+            b.put("selected", adjust == tier);
             bonusTiers.add(b);
         }
         List<HashMap<String, Object>> malusTiers = new ArrayList<>();
@@ -4068,6 +4082,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             m.put("cost", DICE_MALUS_COST[i]);
             m.put("owned", malus >= tier);
             m.put("buyable", malus == tier - 1 && unlocked >= DICE_MALUS_UNLOCK[i]);
+            m.put("selected", adjust == -tier);
             malusTiers.add(m);
         }
         result.put("bonusTiers", bonusTiers);
@@ -4082,22 +4097,24 @@ public class BotS5ServiceImpl implements BotS5Service {
         int unlocked = intVal(p.get("UNLOCKED_BLOCK"), 0);
         int bonus = intVal(p.get("DICE_MIN_BONUS"), 0);
         int malus = intVal(p.get("DICE_MIN_MALUS"), 0);
+        int adjust = intVal(p.get("DICE_MIN_ADJUST"), 0);
         StringBuilder sb = new StringBuilder(userName).append("님의 주사위 강화 현황," + NL);
-        sb.append("🎲 주사위 강화(최소 눈금 +): ").append(bonus).append("/").append(DICE_BONUS_UNLOCK.length).append("단계").append(NL);
+        sb.append("🎲 지금 적용 중인 최소 눈금 조정: ").append(adjust > 0 ? "+" + adjust : String.valueOf(adjust)).append(NL);
+        sb.append("🎲 주사위 강화(구매 진행도, 최소 눈금 +): ").append(bonus).append("/").append(DICE_BONUS_UNLOCK.length).append("단계").append(NL);
         if (bonus < DICE_BONUS_UNLOCK.length) {
             int nf = DICE_BONUS_UNLOCK[bonus];
             sb.append("  다음 단계(+").append(bonus + 1).append("): ")
               .append(unlocked >= nf ? "구매 가능, " : nf + "층 마을 도착 필요, ")
               .append(PP.of(DICE_BONUS_COST[bonus], "").format()).append(" PP").append(NL);
         }
-        sb.append("🎲 마이너스 주사위(최소 눈금 -): ").append(malus).append("/").append(DICE_MALUS_UNLOCK.length).append("단계").append(NL);
+        sb.append("🎲 마이너스 주사위(구매 진행도, 최소 눈금 -): ").append(malus).append("/").append(DICE_MALUS_UNLOCK.length).append("단계").append(NL);
         if (malus < DICE_MALUS_UNLOCK.length) {
             int nf = DICE_MALUS_UNLOCK[malus];
             sb.append("  다음 단계(-").append(malus + 1).append("): ")
               .append(unlocked >= nf ? "구매 가능, " : nf + "층 마을 도착 필요, ")
               .append(PP.of(DICE_MALUS_COST[malus], "").format()).append(" PP").append(NL);
         }
-        sb.append("/주사위강화 구매 로 강화 다음 단계, /마이너스주사위 구매 로 마이너스 다음 단계 구매 (둘 다 계정 전체 공통 적용, 최대 눈금은 그대로)");
+        sb.append("/주사위강화 구매 로 강화 다음 단계, /마이너스주사위 구매 로 마이너스 다음 단계 구매 -- 둘 다 사둔 단계 중 딱 하나만 골라 적용됨(구매 즉시 그 단계로 전환, 최대 눈금은 그대로)");
         return sb.toString();
     }
 
@@ -4135,13 +4152,37 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (!deductPp(userName, p, price)) {
             return "PP가 부족합니다. (" + price.format() + " 필요)";
         }
+        // [2026-09-09] 구매한 단계를 즉시 "적용 중"으로 선택(DICE_MIN_ADJUST) -- 방금 산 걸
+        // 바로 켜주는 게 자연스럽고, 다른 방향에 이미 선택돼 있던 값은 여기서 밀려난다(단일선택).
+        int newAdjust = isBonus ? nextTier : -nextTier;
         HashMap<String, Object> up = new HashMap<>();
         up.put("userName", userName);
         up.put(isBonus ? "diceMinBonus" : "diceMinMalus", nextTier);
+        up.put("diceMinAdjust", newAdjust);
         dao.updateUserProgress(up);
         return isBonus
-                ? "🎲 주사위 강화 " + nextTier + "단계 적용! (모든 주사위 최소 눈금 +" + nextTier + ", 최대 눈금은 그대로)"
-                : "🎲 마이너스 주사위 " + nextTier + "단계 적용! (모든 주사위 최소 눈금 -" + nextTier + ", 최대 눈금은 그대로)";
+                ? "🎲 주사위 강화 " + nextTier + "단계 구매 + 적용! (최소 눈금 +" + nextTier + ", 최대 눈금은 그대로)"
+                : "🎲 마이너스 주사위 " + nextTier + "단계 구매 + 적용! (최소 눈금 -" + nextTier + ", 최대 눈금은 그대로)";
+    }
+
+    /** [2026-09-09] "최소 눈금 조정은 최대주사위처럼 딱 1개만 선택되게 해달라, 0은 구매 없이도
+     *  항상 고를 수 있어야 한다" 요청 -- 이미 구매(해금)해둔 단계들 중 하나로 무료로 전환한다
+     *  (신규 구매가 아니라 "이미 산 것들 중 지금 뭘 켤지" 선택). 0은 항상 허용(기본값, 아무
+     *  조정 없음). value>0은 DICE_MIN_BONUS까지, value<0은 -DICE_MIN_MALUS까지만 허용. */
+    @Override
+    @Transactional
+    public String selectDiceMinAdjust(String userName, int value) {
+        HashMap<String, Object> p = getOrInitProgress(userName);
+        int bonus = intVal(p.get("DICE_MIN_BONUS"), 0);
+        int malus = intVal(p.get("DICE_MIN_MALUS"), 0);
+        if (value != 0 && (value > bonus || value < -malus)) {
+            return "🔒 아직 구매하지 않은 단계입니다. (강화 " + bonus + "단계, 마이너스 " + malus + "단계 보유 중)";
+        }
+        HashMap<String, Object> up = new HashMap<>();
+        up.put("userName", userName);
+        up.put("diceMinAdjust", value);
+        dao.updateUserProgress(up);
+        return "🎲 최소 눈금 조정을 " + (value > 0 ? "+" + value : String.valueOf(value)) + "로 변경했습니다. (최대 눈금은 그대로)";
     }
 
     @Override

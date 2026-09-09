@@ -1137,17 +1137,18 @@ var TW = (function () {
 
   // [2026-09-08] 주사위 강화(+)/마이너스 주사위(-) 스트립 -- dice-overlay 바로 아래.
   // 0(고정 기준점, 초기값)을 가운데 두고 오른쪽에 강화(+1..+6), 왼쪽에 마이너스(-1)를
-  // 나열. "다음 한 단계"만 클릭 가능(순차 구매, 건너뛰기 불가) -- 그 이상은 흐리게
+  // 나열. "다음 한 단계"만 구매 가능(순차 구매, 건너뛰기 불가) -- 그 이상은 흐리게
   // 표시하고 눌러도 해금층 안내 토스트만 띄운다(diceListInfo의 locked 버튼과 동일한 UX).
-  // 맨 앞엔 "이게 뭘 조정하는 건지" 짧은 라벨을 고정으로 붙이고, 지금 실제로 적용 중인
-  // 단계(구매 안 했으면 +0 자체)만 더 크고 진하게 강조해서 "선택한 게 잘 안 보인다"는
-  // 지적을 해결한다.
+  // [2026-09-09 재설계] "최대주사위 줄처럼 딱 1개만 선택되게 해달라(토글 아님), 0은 구매
+  // 없이도 항상 누를 수 있어야 한다" 요청 -- 서버가 내려주는 단일 값 de.adjust(현재 실제
+  // 적용 중인 값, -1..+6)를 유일한 기준으로 "선택됨" 표시를 하고, 이미 구매(owned)해뒀지만
+  // 지금 선택은 아닌 단계 + 0(항상 무료)은 눌러서 DICE_MIN_SELECT로 즉시 무료 전환한다
+  // (신규 구매가 아니라 "이미 산 것들 중 뭘 켤지" 전환).
   function renderDiceEnhanceRow(de) {
     var box = document.getElementById('diceEnhanceOverlay');
     box.innerHTML = '';
     if (!de) return;
-    var bonus = de.bonusLevel || 0;
-    var malus = de.malusLevel || 0;
+    var adjust = de.adjust || 0;
     var label = document.createElement('span');
     label.className = 'dice-enhance-label';
     label.textContent = '🎲최소';
@@ -1155,29 +1156,39 @@ var TW = (function () {
     var malusTiers = de.malusTiers || [];
     var bonusTiers = de.bonusTiers || [];
     for (var i = malusTiers.length - 1; i >= 0; i--) {
-      box.appendChild(buildDiceEnhancePip(-(i + 1), malusTiers[i], false, malus));
+      box.appendChild(buildDiceEnhancePip(-(i + 1), malusTiers[i], false, adjust));
     }
     var zero = document.createElement('span');
-    var atZero = (bonus === 0 && malus === 0);
+    var atZero = (adjust === 0);
     zero.className = 'dice-enhance-zero' + (atZero ? ' current' : '');
     zero.textContent = '+0';
-    zero.title = atZero ? '✅ 현재 적용 중 (기본값, 최소 눈금 조정 없음)' : '기준점(0)';
+    if (atZero) {
+      zero.title = '✅ 현재 적용 중 (기본값, 최소 눈금 조정 없음)';
+    } else {
+      zero.title = '눌러서 기본값(+0)으로 전환 (항상 무료)';
+      zero.style.cursor = 'pointer';
+      zero.onclick = function () { TW.action('DICE_MIN_SELECT', '0'); };
+    }
     box.appendChild(zero);
     for (var j = 0; j < bonusTiers.length; j++) {
-      box.appendChild(buildDiceEnhancePip(j + 1, bonusTiers[j], true, bonus));
+      box.appendChild(buildDiceEnhancePip(j + 1, bonusTiers[j], true, adjust));
     }
   }
 
-  function buildDiceEnhancePip(labelNum, tier, isBonus, curLevel) {
+  function buildDiceEnhancePip(labelNum, tier, isBonus, adjust) {
     var btn = document.createElement('button');
     btn.textContent = (labelNum > 0 ? '+' : '') + labelNum;
     var dir = isBonus ? 'plus' : 'minus';
-    var isCurrent = tier.owned && tier.tier === curLevel;
+    var isSelected = tier.owned && labelNum === adjust;
     if (tier.owned) {
-      btn.className = 'dice-enhance-owned ' + dir + (isCurrent ? ' current' : '');
-      btn.title = isCurrent
-        ? '✅ 현재 적용 중 -- 주사위 최소 눈금 ' + (labelNum > 0 ? '+' : '') + labelNum
-        : (isBonus ? '주사위 강화 ' : '마이너스 주사위 ') + tier.tier + '단계(구매완료)';
+      btn.className = 'dice-enhance-owned ' + dir + (isSelected ? ' current' : '');
+      if (isSelected) {
+        btn.title = '✅ 현재 적용 중 -- 주사위 최소 눈금 ' + (labelNum > 0 ? '+' : '') + labelNum;
+      } else {
+        // 이미 구매해뒀지만 지금 선택은 아닌 단계 -- 눌러서 무료로 전환.
+        btn.title = '눌러서 이 단계로 전환 (구매완료, 무료)';
+        btn.onclick = function () { TW.action('DICE_MIN_SELECT', String(labelNum)); };
+      }
     } else if (tier.buyable) {
       btn.className = 'dice-enhance-buyable ' + dir;
       btn.title = '눌러서 구매 (' + tier.cost + ' PP, 최소 눈금 ' + (labelNum > 0 ? '+' : '') + labelNum + '로 변경)';
