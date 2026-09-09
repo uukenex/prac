@@ -10,17 +10,29 @@
         </encoder>
     </appender>
 
-    <!-- appender :: info -->
+    <!-- appender :: info
+         [2026-09-10] "info.YYYY-MM-DD.log가 로테이션/보관기간 없이 매일 쌓여서 디스크를
+         계속 잡아먹는다, info를 저장 안 하게 해달라" 요청.
+         1) ThresholdFilter로 이 파일엔 WARN 이상만 쓰도록 함(INFO는 더 이상 파일로 저장
+            안 됨. console 쪽엔 그대로 INFO가 나가므로 콘솔/catalina.out으로 실시간
+            확인하는 용도는 안 바뀜, 이 appender만 조용해짐).
+         2) 그래도 WARN/ERROR가 무한정 쌓이는 걸 막기 위해 maxHistory(30일)/totalSizeCap
+            (500MB) 보관기간·용량 상한도 같이 추가(기존엔 둘 다 없었음, 그게 근본 원인). -->
     <appender name="info-appender" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${catalina.base}/logs/console_logs/info.log</file>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>WARN</level>
+        </filter>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>${catalina.base}/logs/console_logs/info.%d{yyyy-MM-dd}.log</fileNamePattern>            
+            <fileNamePattern>${catalina.base}/logs/console_logs/info.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>500MB</totalSizeCap>
         </rollingPolicy>
         <encoder>
             <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{35} - %msg%n
             </pattern>
         </encoder>
-    </appender>  
+    </appender>
     
     <!-- 로컬서버 기동시 각 인포정보를 나오지 않도록 처리 .... resultsettable,sqlonly 만 나오도록 처리함       https://nakanara.tistory.com/79 -->
     <logger name="jdbc.audit" additivity="false">
