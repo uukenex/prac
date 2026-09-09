@@ -77,8 +77,14 @@
        크기(scrollWidth/Height)에 전혀 영향을 안 줘서 스크롤바가 새로 생기지 않는다.
        한 줄로만 나열(줄바꿈 없음, 넘치면 가로 스크롤)하고, 사용중인 주사위는 더 크게/
        진하게 돋보이도록 표시. */
+    /* [2026-09-10] "메인 주사위 굴리기 버튼(#boardRollBtn, 우측 상단)이 최대/최소 주사위
+       선택 줄을 가리고 있다" 신고 -- 이 줄들이 max-width:calc(100% - 32px)라 보드 폭이
+       좁으면 우측 끝까지 늘어나 버튼(우측 14px부터 52px 폭 = 우측에서 66px까지 차지)과
+       겹쳤다. 두 줄(dice-overlay/dice-enhance-overlay) 모두 버튼 영역만큼 폭을 줄여서
+       애초에 그 자리를 침범 못 하게 분리(버튼은 그대로 우측 상단에 둠, 넘치는 내용은
+       기존처럼 가로 스크롤로 처리). */
     .dice-overlay{ position:absolute; top:38px; left:22px; z-index:5;
-                   display:flex; gap:4px; flex-wrap:nowrap; max-width:calc(100% - 32px);
+                   display:flex; gap:4px; flex-wrap:nowrap; max-width:calc(100% - 96px);
                    overflow-x:auto; background:var(--parchment); border:1px solid var(--line);
                    border-radius:999px; padding:4px 6px; box-shadow:var(--shadow); }
     .dice-overlay button{ flex:0 0 auto; border:none; border-radius:999px; padding:3px 9px;
@@ -99,7 +105,7 @@
        + 해금층 안내. */
     .dice-enhance-overlay{ position:absolute; top:76px; left:22px; z-index:5;
                    display:flex; align-items:center; gap:3px; flex-wrap:nowrap;
-                   max-width:calc(100% - 32px); overflow-x:auto; background:var(--parchment);
+                   max-width:calc(100% - 96px); overflow-x:auto; background:var(--parchment);
                    border:1px solid var(--line); border-radius:999px; padding:4px 6px;
                    box-shadow:var(--shadow); }
     .dice-enhance-overlay button, .dice-enhance-overlay span{ flex:0 0 auto; border:none;
