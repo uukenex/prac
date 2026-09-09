@@ -86,7 +86,9 @@ INSERT INTO TBOT_S5_MONSTER_INFO VALUES (105, 5, '설원 요새 설귀',     260
 -- 조합은 없음 -- "강화몹은 거의 못 넘어갈 정도"를 우선해 일반 승률이 50%에 가깝게
 -- 맞춰지는 조합 선택, 이때 강화 승률은 1% 미만).
 INSERT INTO TBOT_S5_MONSTER_INFO VALUES (106, 6, '심연 기사단 망령병', 13000,   '', 188,   '', 28,   '', 70,   '', 'N');
-INSERT INTO TBOT_S5_MONSTER_INFO VALUES (107, 7, '뒤틀린 차원 촉수괴', 5500,    '', 87,    '', 10,   '', 150,  '', 'N');
+-- MONSTER_ID 107(2026-09-09): 106(블록6, 13000/188/28)의 정확히 2배로 재조정
+-- ("61층부터는 블록6보다 더 세야 한다" 요청) -- 원래 값은 5500/87/10 이었음.
+INSERT INTO TBOT_S5_MONSTER_INFO VALUES (107, 7, '뒤틀린 차원 촉수괴', 26000,   '', 376,   '', 56,   '', 150,  '', 'N');
 INSERT INTO TBOT_S5_MONSTER_INFO VALUES (108, 8, '천공성 수호 골렘',   15000,   '', 111,   '', 15,   '', 300,  '', 'N');
 INSERT INTO TBOT_S5_MONSTER_INFO VALUES (109, 9, '용의 둥지 새끼비룡', 450000,  '', 7200,  '', 2200, '', 600,  '', 'N');
 INSERT INTO TBOT_S5_MONSTER_INFO VALUES (110,10, '파멸의 균열 마수',   1200000, '', 15000, '', 5000, '', 1200, '', 'N');
@@ -101,7 +103,10 @@ INSERT INTO TBOT_S5_MONSTER_INFO VALUES (205, 5, '빙하의 폭군 프로스트�
 -- MONSTER_ID 206~210 (59층 이후 보스 전 구간): 106~110과 동일하게 ATK_VALUE 3배 상향.
 -- 원래 값은 각각 75/64/81/5280/11000 이었음.
 INSERT INTO TBOT_S5_MONSTER_INFO VALUES (206, 6, '심연의 대공 모르드레드',   30000,   '', 225,   '', 15,  '', 0, '', 'Y');
-INSERT INTO TBOT_S5_MONSTER_INFO VALUES (207, 7, '차원의 파괴자 아자토스',   33000,   '', 192,   '', 15,  '', 0, '', 'Y');
+-- MONSTER_ID 207(2026-09-09): 206(블록6 보스, 30000/225/15)보다 명확히 강하게 재조정 --
+-- 원래 값 33000/192/15는 오히려 206보다 ATK가 낮았음(신고로 확인). 69층 보스, 10턴 폭주
+-- 타이머 대상(BotS5ServiceImpl.BOSS_ENRAGE_TURN_LIMIT).
+INSERT INTO TBOT_S5_MONSTER_INFO VALUES (207, 7, '차원의 파괴자 아자토스',   60000,   '', 400,   '', 40,  '', 0, '', 'Y');
 INSERT INTO TBOT_S5_MONSTER_INFO VALUES (208, 8, '천공의 대천사 세라핌',     90000,   '', 243,   '', 23,  '', 0, '', 'Y');
 INSERT INTO TBOT_S5_MONSTER_INFO VALUES (209, 9, '고룡 바하무트',            2700000, '', 15840, '', 3300, '', 0, '', 'Y');
 INSERT INTO TBOT_S5_MONSTER_INFO VALUES (210,10, '종말의 마룡왕 니드호그',   7200000, '', 33000, '', 7500, '', 0, '', 'Y');

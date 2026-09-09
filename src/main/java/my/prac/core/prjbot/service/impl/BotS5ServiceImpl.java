@@ -463,6 +463,15 @@ public class BotS5ServiceImpl implements BotS5Service {
     // 필요하면 조정. 잠긴 콘텐츠라 실사용자 영향 없이 먼저 만들어두고 51층 오픈 시 재검토.
     private static final int MIDBOSS_CHANCE_PCT = 20;
 
+    // [2026-09-09] "69층 보스는 10턴내 처치 옵션(폭주 타이머)을 추가해달라" 요청 -- 보스가
+    // 있는 층(X9) -> 그 보스를 몇 턴 안에 처치해야 하는지. 넘기면 BOSS_ENRAGE_ATK_MULT배로
+    // 폭주(공격력만 급상승, HP/DEF는 그대로). 나중에 다른 보스에도 쉽게 추가할 수 있게 맵으로
+    // 둠(현재는 69층 하나뿐). 잠긴 콘텐츠(CONTENT_LOCKED_FLOOR=61)라 실사용자 영향 없음.
+    private static final HashMap<Integer, Integer> BOSS_ENRAGE_TURN_LIMIT = new HashMap<Integer, Integer>() {{
+        put(69, 10);
+    }};
+    private static final double BOSS_ENRAGE_ATK_MULT = 5.0;
+
     /**
      * "N층 완전탐사" 업적(ACH_ID 100+floor) 보상 — 3개 블록(=30층)마다 동료뽑기 티어가 한 단계
      * 오르고, 그 안에서 지급 수량이 1→3→5로 늘어난다: 블록1~3(1~30층)=하급×1/3/5,
@@ -1734,14 +1743,23 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 거기서도 계속 2배를 적용하게 한다. [2026-09-06] 중간보스(51층+ 전용, midBoss)는
         // ELITE와 배타적으로 3배 -- eliteMult 변수를 그대로 재사용.
         double eliteMult = elite ? 2.0 : (midBoss ? 3.0 : 1.0);
+        // [2026-09-09] "61층부터는 일반 몬스터가 두 마리 나오게 해달라" 요청 -- 보스/강화몹/
+        // 중간보스가 아닌 평범한 COMBAT 조우가 블록7(61~70층)부터 "2마리"(합산 HP, PP보상도
+        // 2배)로 취급된다. HP만 배로 늘리고 ATK/DEF는 그대로 둬서 "강화몹처럼 개별로 세진
+        // 게" 아니라 "숫자가 늘어서 반격도 두 번 들어오는" 결과가 되게 한다(resolveCombatTurn
+        // 의 doubleTarget 다중타겟 로직을 그대로 재사용).
+        boolean dualMonster = !boss && !elite && !midBoss && blockNo(floor) >= 7;
+        double dualHpMult = dualMonster ? 2.0 : 1.0;
         HashMap<String, Object> up = new HashMap<>();
         up.put("userName", userName);
         up.put("status", "IN_COMBAT");
         up.put("curMonsterId", intVal(mon.get("MONSTER_ID"), 0));
-        up.put("curMonsterHpValue", ((Number) mon.get("HP_VALUE")).doubleValue() * eliteMult);
+        up.put("curMonsterHpValue", ((Number) mon.get("HP_VALUE")).doubleValue() * eliteMult * dualHpMult);
         up.put("curMonsterHpExt", strVal(mon.get("HP_EXT"), ""));
         up.put("curMonsterEliteYn", elite ? "Y" : "N");
         up.put("curMonsterMidbossYn", midBoss ? "Y" : "N");
+        up.put("curMonsterDualYn", dualMonster ? "Y" : "N");
+        up.put("curCombatTurn", 0); // 새 전투 시작 -- 69층 보스 등 턴제한 타이머를 0부터 다시 셈
 
         // [정책 변경, 2026-09-05] "29층 보스가 너무 세다"는 신고로, 블록3+ 보스의 "무시"
         // 스킬(파티원 1명 지목, 그 동료는 전투 내내 보스에게 공격 불가)을 완전히 제거했다.
@@ -1750,19 +1768,22 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 세팅하지 않지만 컬럼/조회/초기화 로직은 과거 진행 중이던 값 정리를 위해 남겨둔다.
         dao.updateUserProgress(up);
 
-        PP fullHp = PP.of(((Number) mon.get("HP_VALUE")).doubleValue() * eliteMult, strVal(mon.get("HP_EXT"), "")).normalize();
+        PP fullHp = PP.of(((Number) mon.get("HP_VALUE")).doubleValue() * eliteMult * dualHpMult, strVal(mon.get("HP_EXT"), "")).normalize();
         StringBuilder sb = new StringBuilder();
         // [형식 정리 요청] "OO 등장!"을 한 줄에 다 몰아넣지 않고 "등장!" 알림 / 몬스터 이름 /
         // 능력치를 각각 줄로 나눔("능력치" 라벨·콜론도 빼서 더 짧게). [2026-09-06] 중간보스는
         // "맵에는 일반적인 몬스터로 표시되는데" 요청대로 평범한 등장 메시지("👾 등장!")를 그대로
         // 쓰고 강화몹처럼 정체를 미리 알려주는 문구도 없다 -- 실제 스탯(3배)은 아래에 그대로
         // 노출되지만, 정체는 전투 중 스킬 훔치기가 나와야 드러난다.
-        sb.append(boss ? "👹 보스 등장!" : elite ? "💪 강화 등장!" : "👾 등장!").append(NL);
+        sb.append(boss ? "👹 보스 등장!" : elite ? "💪 강화 등장!" : dualMonster ? "👾👾 몬스터 두 마리 등장!" : "👾 등장!").append(NL);
         sb.append(floorMonsterName(floor, mon)).append(NL);
         sb.append("⚔️ ").append((int) Math.round(intVal(mon.get("ATK_VALUE"), 0) * eliteMult))
           .append(" 🛡️ ").append((int) Math.round(intVal(mon.get("DEF_VALUE"), 0) * eliteMult))
           .append(" ❤️ ").append(fullHp.format()).append(NL);
         if (elite) sb.append("💪 강화몹 -- 스탯/보상 전부 평소의 2배입니다.").append(NL);
+        if (dualMonster) sb.append("👾👾 몬스터 두 마리 -- 체력/처치보상 2배, 매 턴 파티원 2명을 공격합니다.").append(NL);
+        Integer enrageLimit = boss ? BOSS_ENRAGE_TURN_LIMIT.get(floor) : null;
+        if (enrageLimit != null) sb.append("⏳ ").append(enrageLimit).append("턴 안에 처치하지 못하면 폭주(공격력 급상승)합니다!").append(NL);
         sb.append(NL);
         String buffNote = currentPartyBuffDebuffNote(p);
         if (buffNote != null) sb.append(buffNote).append(NL);
@@ -1823,6 +1844,17 @@ public class BotS5ServiceImpl implements BotS5Service {
             return "전투 정보를 찾을 수 없어 전투를 종료합니다.";
         }
 
+        // [2026-09-09] "61층부터는 일반 몬스터가 두 마리 나오고, 69층 보스는 10턴내
+        // 처치하지 못하면 폭주하게 해달라" 요청 -- 이번 전투(resolveCombatTurn 1회 호출 =
+        // 1턴)가 몇 턴째인지 먼저 세어둔다. MAGE 스킬도용/lateBoss 기절처럼 턴 중간에
+        // return하는 분기가 여러 곳이라, 각 분기에 따로 끼워넣는 대신 여기서 한 번에
+        // 갱신해서 어느 경로로 끝나든 항상 정확히 반영되게 한다.
+        int curCombatTurn = intVal(p.get("CUR_COMBAT_TURN"), 0) + 1;
+        HashMap<String, Object> turnUp = new HashMap<>();
+        turnUp.put("userName", userName);
+        turnUp.put("curCombatTurn", curCombatTurn);
+        dao.updateUserProgress(turnUp);
+
         // 강화몹(ELITE 칸) 전투면 HP/ATK/DEF/PP보상 전부 2배 -- HP는 startCombat에서 이미 곱해서
         // CUR_MONSTER_HP_VALUE에 저장해뒀지만, ATK/DEF/보상은 mon에서 매 턴 새로 읽으므로 여기서도
         // 계속 곱해줘야 한다(안 그러면 시작할 땐 강화였는데 실제 전투 계산은 평소대로 되는 불일치 발생).
@@ -1833,8 +1865,13 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 변수 하나를 그대로 공유해 쓴다.
         boolean midBoss = "Y".equals(strVal(p.get("CUR_MONSTER_MIDBOSS_YN"), "N"));
         double eliteMult = elite ? 2.0 : (midBoss ? 3.0 : 1.0);
+        // [2026-09-09] 61층+(블록7) 일반 몬스터 "2마리" 조우 -- 별도 몬스터 슬롯 없이 체력만
+        // 2배로 취급(합산 HP), 반격은 아래에서 기존 보스 다중타겟 인프라를 같이 써서 매 턴
+        // 파티 2명을 공격하게 만든다(=2마리가 각자 공격하는 것과 동일한 결과).
+        boolean dualMonster = "Y".equals(strVal(p.get("CUR_MONSTER_DUAL_YN"), "N"));
+        double dualHpMult = dualMonster ? 2.0 : 1.0;
         PP monsterHp = PP.of(((Number) p.get("CUR_MONSTER_HP_VALUE")).doubleValue(), strVal(p.get("CUR_MONSTER_HP_EXT"), ""));
-        PP monsterMaxHp = PP.of(((Number) mon.get("HP_VALUE")).doubleValue() * eliteMult, strVal(mon.get("HP_EXT"), "")).normalize();
+        PP monsterMaxHp = PP.of(((Number) mon.get("HP_VALUE")).doubleValue() * eliteMult * dualHpMult, strVal(mon.get("HP_EXT"), "")).normalize();
         // 중간보스가 지난 턴에 전사 스킬을 훔쳐 자기 방어력을 올려뒀으면(아래 미드보스 파트
         // 참고) 이번 파티 공격 턴 1회에만 반영하고 소모한다(1회성 -- 아래 up에서 0으로 정리).
         int monsterDefBuffPct = intVal(p.get("MONSTER_DEF_BUFF_PCT"), 0);
@@ -2042,7 +2079,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         boolean monsterDead = executeKill || PP.toBaseValue(monsterHpAfter) <= 0;
 
         if (monsterDead) {
-            PP reward = PP.of(((Number) mon.get("PP_PER_KILL_VALUE")).doubleValue(), strVal(mon.get("PP_PER_KILL_EXT"), "")).multiply(floorPpMultiplier(floor) * eliteMult);
+            // [2026-09-09] "두 마리"라 실제로 2마리분 처치 보상을 준다(dualHpMult가 그대로 배율).
+            PP reward = PP.of(((Number) mon.get("PP_PER_KILL_VALUE")).doubleValue(), strVal(mon.get("PP_PER_KILL_EXT"), "")).multiply(floorPpMultiplier(floor) * eliteMult * dualHpMult);
             boolean isBoss = "Y".equals(strVal(mon.get("BOSS_YN"), "N"));
             int killCountCur = intVal(p.get("KILL_COUNT_CUR"), 0) + 1;
             int totalKill = intVal(p.get("TOTAL_KILL_COUNT"), 0) + 1;
@@ -2327,10 +2365,11 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 개별 위협도는 낮췄고, 이건 블록4+ 보스만의 새 특성으로 얹은 것). 보호막은 두 대상
         // 모두에게 각자 독립적으로 100% 적용된다(shieldPool을 나눠 쓰지 않음 -- 도사의 가치가
         // 유지되도록). 첫 번째 대상만 위 전사 도발의 대상이 될 수 있고, 두 번째는 순수 랜덤.
-        boolean doubleTarget = "Y".equals(strVal(mon.get("BOSS_YN"), "N")) && blockNo(floor) >= 4;
+        boolean isBossRow = "Y".equals(strVal(mon.get("BOSS_YN"), "N"));
+        boolean doubleTarget = isBossRow && blockNo(floor) >= 4;
         List<HashMap<String, Object>> targets = new ArrayList<>();
         targets.add(target);
-        if (doubleTarget) {
+        if (doubleTarget || dualMonster) {
             List<HashMap<String, Object>> remaining = new ArrayList<>(alive);
             remaining.remove(target);
             if (!remaining.isEmpty()) targets.add(remaining.get(RND.nextInt(remaining.size())));
@@ -2340,7 +2379,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 두 번째 대상에게 실제로 들어간 피해(보호막으로 막힌 만큼은 제외한 값)만큼 자신의
         // 체력을 회복한다. 첫 번째 대상(전사 도발 대상이 될 수 있는 쪽)은 그대로 두고 흡혈은
         // 오직 한 명분만 적용(요청: "2명공격하니까 1명은 흡혈되도록").
-        boolean vampiricBoss = "Y".equals(strVal(mon.get("BOSS_YN"), "N")) && blockNo(floor) >= 5;
+        boolean vampiricBoss = isBossRow && blockNo(floor) >= 5;
         long lifestealHeal = 0;
 
         // [2026-09-07] "몬스터도 주사위를 굴리는데 51~70층은 6~12, 71층부터는 8~20을 굴리게
@@ -2352,6 +2391,22 @@ public class BotS5ServiceImpl implements BotS5Service {
         int monsterDiceMax = diceMax;
         if (floor >= 51) {
             monsterDiceMax = (floor <= 70) ? (6 + RND.nextInt(7)) : (8 + RND.nextInt(13));
+        }
+
+        // [2026-09-09] 69층 보스 10턴 폭주 타이머 -- 넘긴 턴부터는 공격력만 대폭 상승(HP/DEF는
+        // 그대로 -- "빨리 정리 못 하면 위험해진다"는 취지라 방어/체력까지 건드릴 필요는 없음).
+        // 넘기기 전엔 마지막 몇 턴에 경고 문구를 붙여서 타이머가 다가온다는 걸 알려준다.
+        Integer enrageLimit = isBossRow ? BOSS_ENRAGE_TURN_LIMIT.get(floor) : null;
+        boolean enraged = enrageLimit != null && curCombatTurn > enrageLimit;
+        if (enrageLimit != null) {
+            if (enraged) {
+                sb.append("🔥 ").append(eliteMonsterName(floor, mon, elite)).append("이(가) 폭주했다! 공격력이 크게 치솟는다!").append(NL);
+            } else {
+                int remain = enrageLimit - curCombatTurn;
+                if (remain <= 2) {
+                    sb.append("⏳ 폭주까지 ").append(remain).append("턴 남음! (").append(curCombatTurn).append("/").append(enrageLimit).append("턴)").append(NL);
+                }
+            }
         }
 
         for (int ti = 0; ti < targets.size(); ti++) {
@@ -2367,7 +2422,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         if ("RAINBOW".equals(synergy)) tEff[2] = (int) Math.round(tEff[2] * 1.1); // 시너지: 균형3인조 방어 +10%
         if (trapDefDown) tEff[2] = (int) Math.round(tEff[2] * 0.7); // 함정: 방어력 30% 약화(반격 피해 증가)
         if (luckyDefUp) tEff[2] = (int) Math.round(tEff[2] * luckyMult); // 럭키: 방어력 강화(반격 피해 감소)
-        int monsterAtk = (int) Math.round(intVal(mon.get("ATK_VALUE"), 0) * eliteMult);
+        int monsterAtk = (int) Math.round(intVal(mon.get("ATK_VALUE"), 0) * eliteMult * (enraged ? BOSS_ENRAGE_ATK_MULT : 1.0));
         int roll = rollFace(1, monsterDiceMax); // 몬스터 자신의 반격 굴림 -- 플레이어 강화/마이너스 주사위와 무관하게 항상 1부터
         int rawDmgToParty = Math.max(1, monsterAtk * roll - tEff[2]);
         // 중간보스가 이번 턴 궁수 기술을 훔쳤으면(위 미드보스 파트) 이 반격 피해를 즉시 증폭.
