@@ -87,6 +87,11 @@
     .dice-overlay button.current{ background:var(--gold); color:#fff; font-size:13px;
                    padding:5px 12px; box-shadow:0 2px 0 rgba(0,0,0,.18); transform:scale(1.08); }
     .dice-overlay button.locked{ background:transparent; color:var(--ink-soft); opacity:.5; cursor:default; }
+    /* [2026-09-09] 아래 dice-enhance-overlay의 "🎲최소" 라벨과 짝 -- 이 줄이 "최대치(주사위
+       등급)"를 고르는 줄이라는 걸 맨 앞에 명시. .dice-enhance-label과 같은 톤이지만 부모가
+       달라(.dice-overlay) 그쪽 스코프 규칙을 그대로 못 받아서 여기 따로 정의. */
+    .dice-overlay .dice-enhance-label{ flex:0 0 auto; background:transparent; opacity:.6;
+                   font-weight:600; font-size:11px; padding-right:1px; }
     /* [2026-09-08] 주사위 강화(+)/마이너스 주사위(-) 스트립 -- dice-overlay 바로 아래, 같은
        스타일의 pill로 -6..0..+6을 한 줄에 나열(넘치면 가로 스크롤). 0은 고정 기준점(항상
        회색 텍스트, 클릭 불가), 오른쪽(+)은 강화, 왼쪽(-)은 마이너스 -- 이미 산 단계는
@@ -121,6 +126,19 @@
                    border:1.5px dashed var(--gold); cursor:pointer; }
     .dice-enhance-overlay button.dice-enhance-buyable.minus{ border-color:var(--village); }
     .dice-enhance-overlay button.dice-enhance-locked{ background:transparent; opacity:.4; cursor:default; }
+    /* [2026-09-09] "주사위를 보드 안쪽으로 옮기고, 하단 주사위굴리기 탭은 없애자" 요청 --
+       기존 하단 도크의 별도 "주사위" 버튼(dbtnDice)을 없애고, 그 자리에 있던 굴리기 동작을
+       보드 카드 우측(최대/최소 줄 옆)의 이 버튼 하나로 옮긴다. dice-overlay/dice-enhance-overlay
+       와 같은 절대좌표 오버레이 방식이라 보드 크기에 영향을 안 준다. */
+    .board-roll-btn{ position:absolute; top:38px; right:14px; z-index:6;
+                   display:flex; flex-direction:column; align-items:center; justify-content:center;
+                   gap:2px; width:52px; height:74px; border-radius:14px; border:none; cursor:pointer;
+                   background:linear-gradient(180deg,#E4633F,var(--combat)); color:#fff; font-weight:800;
+                   font-size:11px; box-shadow:0 3px 0 #A93A28; }
+    .board-roll-btn:active{ transform:scale(.96); }
+    .board-roll-btn:disabled{ background:var(--parchment-deep); color:var(--ink-soft); opacity:.6;
+                   box-shadow:none; cursor:not-allowed; }
+    .board-roll-btn .broll-icn{ font-size:24px; }
     .legend{ display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
     .legend-chip{ display:flex; align-items:center; gap:4px; font-size:10px; color:var(--ink-soft); background:#fff;
                   border:1px solid var(--line); border-radius:999px; padding:3px 9px; }
@@ -385,6 +403,11 @@
              불가). renderDiceEnhanceRow 참고. -->
         <div class="dice-enhance-overlay" id="diceEnhanceOverlay"
              title="주사위 눈금의 '최소값'을 조정합니다 (최대값은 그대로) -- 오른쪽(+)은 낮은 눈을 걸러내는 강화, 왼쪽(-)은 반대로 더 낮은 눈까지 나오게 하는 마이너스 주사위. 기본값은 +0."></div>
+        <!-- [2026-09-09] 하단 도크의 "주사위" 버튼을 없애고 굴리기 동작을 보드 안쪽(최대/최소
+             줄 옆)으로 옮김 -- updateDiceButtonState() 참고. -->
+        <button type="button" class="board-roll-btn" id="boardRollBtn" onclick="TW.action('DICE','')">
+          <span class="broll-icn">🎲</span>주사위
+        </button>
         <div class="tower-viewport" id="towerViewport">
           <div class="tower-track" id="towerTrack">
             <div style="color:var(--ink-soft);font-size:12px;">데이터를 불러오는 중...</div>
@@ -556,7 +579,8 @@
   <div class="dock-inner">
     <button class="dbtn active" data-tab="board" onclick="TW.switchTab('board')"><span class="d-icn">🗼</span>탑</button>
     <button class="dbtn" data-tab="party" id="dbtnParty" onclick="TW.switchTab('party')"><span class="d-icn">🎒</span>편성</button>
-    <button class="dbtn primary" id="dbtnDice" onclick="TW.action('DICE','')"><span class="d-icn">🎲</span>주사위</button>
+    <!-- [2026-09-09] "주사위를 보드 안쪽으로 옮겼으니 하단 탭은 없애자" 요청 -- 여기 있던
+         굴리기 버튼(dbtnDice)은 보드 카드 안의 #boardRollBtn으로 이동(updateDiceButtonState 참고). -->
     <button class="dbtn" data-tab="shop" id="dbtnShop" onclick="TW.switchTab('shop')"><span class="d-icn">🛍️</span>상점</button>
     <button class="dbtn" data-tab="ach" onclick="TW.switchTab('ach')"><span class="d-icn">🏆</span>업적</button>
     <button class="dbtn" data-tab="msg" onclick="TW.switchTab('msg')"><span class="d-icn">💬</span>메시지</button>
@@ -598,9 +622,10 @@ var TW = (function () {
   var state = { inVillage: false };
 
   // 주사위는 마을이 아니면서, 동시에 '탑' 화면을 보고 있을 때만 누를 수 있다.
+  // [2026-09-09] 하단 도크 버튼(dbtnDice)을 없애고 보드 카드 안의 #boardRollBtn으로 옮김.
   function updateDiceButtonState() {
     var onBoardTab = document.getElementById('panel-board').classList.contains('active');
-    document.getElementById('dbtnDice').disabled = state.inVillage || !onBoardTab;
+    document.getElementById('boardRollBtn').disabled = state.inVillage || !onBoardTab;
   }
 
   function switchTab(name) {
@@ -1076,6 +1101,13 @@ var TW = (function () {
   function renderDiceOverlay(dice) {
     var box = document.getElementById('diceOverlay');
     box.innerHTML = '';
+    // [2026-09-09] "최대주사위(DICE_6/8/12...)와 최소치보정주사위(강화/마이너스)가 구분이
+    // 안 된다" 요청 -- 이 줄은 "최대치(주사위 등급)"를 고르는 줄이라는 걸 맨 앞 라벨로 명시.
+    // 아래 dice-enhance-overlay 줄의 "🎲최소" 라벨과 짝을 이룬다.
+    var maxLabel = document.createElement('span');
+    maxLabel.className = 'dice-enhance-label';
+    maxLabel.textContent = '🎲최대';
+    box.appendChild(maxLabel);
     dice.forEach(function (d) {
       var btn = document.createElement('button');
       var label = d.name.replace('DICE_', '');
@@ -1112,7 +1144,7 @@ var TW = (function () {
     var malus = de.malusLevel || 0;
     var label = document.createElement('span');
     label.className = 'dice-enhance-label';
-    label.textContent = '🎲최소값';
+    label.textContent = '🎲최소';
     box.appendChild(label);
     var malusTiers = de.malusTiers || [];
     var bonusTiers = de.bonusTiers || [];
