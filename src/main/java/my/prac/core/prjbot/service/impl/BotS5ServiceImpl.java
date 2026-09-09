@@ -385,10 +385,23 @@ public class BotS5ServiceImpl implements BotS5Service {
      * [2026-09-08] "30/50/60/70/80/90층 마을 도착 보상으로 주사위 강화(+최소치)/마이너스
      * 주사위(-최소치) 상점" 신설 -- diceMin이 diceMax를 넘는 극단적 경우(작은 주사위+큰
      * 강화)는 max 고정으로 방어(Math.min).
+     * [2026-09-09] "마이너스 주사위 쓸 때 0이 나오면 제자리걸음이라 허무하다, 0 자체가 안
+     * 나오게 해달라(맵이동/전투 둘 다)" 요청 -- diceMin이 0 이하로 내려가 0이 굴림 범위에
+     * 포함되는 경우([lo,-1]∪[1,hi] 두 구간을 합쳐서 그 안에서만 뽑아 0을 완전히 배제한다.
+     * diceMax(hi)는 항상 4 이상이라 posCount(1..hi)는 절대 0이 되지 않음 -- 안전.
      */
     private int rollFace(int diceMin, int diceMax) {
         int lo = Math.min(diceMin, diceMax);
-        int face = RND.nextInt(diceMax - lo + 1) + lo;
+        int hi = diceMax;
+        int face;
+        if (lo <= 0 && hi >= 1) {
+            int negCount = lo < 0 ? -lo : 0;   // [lo..-1] 개수
+            int posCount = hi;                 // [1..hi] 개수
+            int idx = RND.nextInt(negCount + posCount);
+            face = idx < negCount ? lo + idx : (idx - negCount) + 1;
+        } else {
+            face = RND.nextInt(hi - lo + 1) + lo;
+        }
         try { dao.bumpDiceFaceStat(face); } catch (Exception ignore) { }
         return face;
     }
@@ -938,25 +951,60 @@ public class BotS5ServiceImpl implements BotS5Service {
     private static final long MACRO_TOLERANCE_SEC = 1;
     // 이 횟수 연속으로 "같은 타이머"가 감지되면 일시정지
     private static final int MACRO_STREAK_THRESHOLD = 25;
+    // [2026-09-09] "일시정지->영구정지 텀이 너무 짧아서 일반유저가 억울하게 영구정지되는
+    // 케이스가 많다, 지금 대비 3배 정도 늘려달라" 요청 -- 원래는 일시정지 상태에서 딱 1번만
+    // 더 시도해도(유예 0회) 곧바로 영구정지였다. 유예를 3회로 늘려서, 일시정지 후에도 2번은
+    // "아직 일시정지 상태" 안내만 받고, 3번째에 가서야 영구정지로 격상되도록 완화.
+    private static final int SUSPEND_BAN_GRACE = 3;
+    // [2026-09-09] "영구정지도 1시간 지나면 자동으로 풀리면 좋겠다" 요청 -- 이름은 "영구정지"로
+    // 그대로 두되(관리자 안내 문구 등 기존 의미 유지), 실제로는 BAN_DATE 기준 1시간짜리 강한
+    // 락으로 완화. 자동 해제 시 일시정지/스트릭/유예 카운트도 함께 초기화된다.
+    private static final long BAN_AUTO_UNLOCK_HOURS = 1;
 
     /**
      * 매크로(자동화 클라이언트) 탐지 + 잠금 처리. 쿨타임 통과 여부와 무관하게 "요청이 들어온
      * 간격" 자체가 여러 번 연속으로 거의 똑같으면(사람은 이렇게 못 침) 일시정지시키고, 이미
-     * 일시정지된 계정이 그래도 계속 시도하면 영구정지로 격상한다. 잠기지 않았으면 null 반환.
+     * 일시정지된 계정이 그래도 SUSPEND_BAN_GRACE회 넘게 계속 시도하면 영구정지로 격상한다.
+     * 영구정지는 BAN_DATE 기준 BAN_AUTO_UNLOCK_HOURS시간이 지나면 자동으로 풀린다. 잠기지
+     * 않았으면(혹은 방금 자동 해제됐으면) null 반환.
      */
     private String checkMacroLock(String userName, HashMap<String, Object> p) {
         if ("Y".equals(strVal(p.get("BAN_YN"), "N"))) {
-            return "🚫 매크로(자동화) 사용이 확인되어 영구정지된 계정입니다.";
+            java.util.Date banDate = (java.util.Date) p.get("BAN_DATE");
+            if (banDate != null && (System.currentTimeMillis() - banDate.getTime()) >= BAN_AUTO_UNLOCK_HOURS * 3600_000L) {
+                // 1시간 경과 -- 영구정지/일시정지/스트릭/유예 카운트 전부 초기화하고 자동 해제,
+                // 이번 요청은 정상 통과시킨다(막 해제된 참이라 계속 막을 이유가 없음).
+                HashMap<String, Object> up = new HashMap<>();
+                up.put("userName", userName);
+                up.put("banYn", "N");
+                up.put("suspendYn", "N");
+                up.put("macroStreak", 0);
+                up.put("suspendRetryCount", 0);
+                up.put("clearBanDate", true);
+                dao.updateUserProgress(up);
+                p.put("BAN_YN", "N");
+                p.put("SUSPEND_YN", "N");
+                return null;
+            }
+            return "🚫 매크로(자동화) 사용이 확인되어 영구정지된 계정입니다. (정지 후 " + BAN_AUTO_UNLOCK_HOURS + "시간 뒤 자동 해제됩니다)";
         }
 
         if ("Y".equals(strVal(p.get("SUSPEND_YN"), "N"))) {
-            // 이미 매크로 의심으로 일시정지된 계정이 그래도 계속 시도 -- 영구정지로 격상.
+            // 이미 매크로 의심으로 일시정지된 계정이 그래도 계속 시도 -- SUSPEND_BAN_GRACE회를
+            // 넘기면 영구정지로 격상, 그 전까지는 안내만 반복한다.
+            int retry = intVal(p.get("SUSPEND_RETRY_COUNT"), 0) + 1;
             HashMap<String, Object> up = new HashMap<>();
             up.put("userName", userName);
-            up.put("banYn", "Y");
             up.put("touchLastRequestDate", true);
+            up.put("suspendRetryCount", retry);
+            if (retry >= SUSPEND_BAN_GRACE) {
+                up.put("banYn", "Y");
+                up.put("touchBanDate", true);
+                dao.updateUserProgress(up);
+                return "🚫 일시정지 상태에서 계속 시도하여 영구정지 처리되었습니다. (관리자 문의, " + BAN_AUTO_UNLOCK_HOURS + "시간 뒤 자동 해제)";
+            }
             dao.updateUserProgress(up);
-            return "🚫 일시정지 상태에서 계속 시도하여 영구정지 처리되었습니다. (관리자 문의)";
+            return "🚫 매크로(자동화) 의심으로 일시정지된 계정입니다. (관리자 문의 필요, 계속 시도하면 영구정지될 수 있습니다)";
         }
 
         java.util.Date lastReq = (java.util.Date) p.get("LAST_REQUEST_DATE");
@@ -1163,7 +1211,26 @@ public class BotS5ServiceImpl implements BotS5Service {
         int curTile = ufp == null ? 0 : intVal(ufp.get("CUR_TILE"), 0);
 
         int diceMax = diceMax(strVal(p.get("DICE_GRADE"), "DICE_6"));
-        int roll = rollFace(diceMinFor(p), diceMax);
+        // [2026-09-09] 특수칸에서 건 "다음 이동 1회, 주사위 2개" 플래그(handleSpecialTile 참고)
+        // 소모 -- 소모는 여기 이동 굴림에서만 하고(전투 공격 굴림엔 관여 안 함), 결과는 두 눈을
+        // 더한 값. rollLabel은 화면에 "3+5=8"처럼 두 눈을 그대로 보여주기 위한 표시용 문자열.
+        boolean doubleDice = "Y".equals(strVal(p.get("DOUBLE_DICE_YN"), "N"));
+        int roll;
+        String rollLabel;
+        if (doubleDice) {
+            int roll1 = rollFace(diceMinFor(p), diceMax);
+            int roll2 = rollFace(diceMinFor(p), diceMax);
+            roll = roll1 + roll2;
+            rollLabel = roll1 + "+" + roll2 + "=" + roll;
+            HashMap<String, Object> clearUp = new HashMap<>();
+            clearUp.put("userName", userName);
+            clearUp.put("doubleDiceYn", "N");
+            dao.updateUserProgress(clearUp);
+            p.put("DOUBLE_DICE_YN", "N");
+        } else {
+            roll = rollFace(diceMinFor(p), diceMax);
+            rollLabel = String.valueOf(roll);
+        }
         // [2026-09-08] 마이너스 주사위로 roll이 0/음수까지 나올 수 있게 되면서(탐사 정밀 이동
         // 목적), 원래의 "(curTile+roll-1) % tileCount" 계산은 피제수가 음수일 때 Java의 %가
         // 음수를 그대로 돌려줘서 깨진다 -- +tileCount 보정 후 다시 한 번 %로 항상 [0,tileCount)
@@ -1182,7 +1249,7 @@ public class BotS5ServiceImpl implements BotS5Service {
 
         StringBuilder sb = new StringBuilder();
         sb.append(userName).append("님," + NL);
-        sb.append("🎲 주사위 ").append(roll).append("! ").append(curTile).append(" → ").append(newTile).append("번 칸")
+        sb.append(doubleDice ? "🎲🎲 주사위 " : "🎲 주사위 ").append(rollLabel).append("! ").append(curTile).append(" → ").append(newTile).append("번 칸")
           .append(NL).append("🗺️ 탐사 현황: ").append(floor).append("층 .. ");
         // "25/25 완전탐사면 그냥 탐사완료라고만 띄워달라" 요청
         if (visited >= tileCount) {
@@ -1505,6 +1572,16 @@ public class BotS5ServiceImpl implements BotS5Service {
             markSpecialTileCheckpoint(userName, floor, visited);
             sb.append(NL).append("🌀 워프포인트를 발견했다! 지금까지의 탐사 기록(").append(visited).append("칸)이 저장되었다.");
         }
+        // [2026-09-09] "특수칸에서 다음 한 턴은 주사위를 두 개 굴리게 해달라(좋을 수도 나쁠
+        // 수도 있는 느낌으로)" 요청 -- 다음 이동 굴림 1회에 한해 rollDiceInternal()의 이동
+        // 계산부에서 소모되는 1회성 플래그. 두 배로 더 멀리 갈 수도 있지만, 그만큼 원치 않는
+        // 칸(전투/함정)을 지나쳐버리거나 노리던 칸을 훌쩍 넘길 수도 있다는 뜻이라 "좋을 수도
+        // 안 좋을 수도 있다"는 문구로 안내한다.
+        HashMap<String, Object> up = new HashMap<>();
+        up.put("userName", userName);
+        up.put("doubleDiceYn", "Y");
+        dao.updateUserProgress(up);
+        sb.append(NL).append("🎲🎲 기이한 기운이 주사위에 스며들었다! 다음 이동에서 주사위를 두 번 굴립니다. (좋을 수도, 안 좋을 수도 있습니다)");
         return sb.toString();
     }
 
@@ -3919,11 +3996,9 @@ public class BotS5ServiceImpl implements BotS5Service {
 
         if (n < 1 || n > DICE_NAMES.length) return "잘못된 번호입니다.";
         if (unlocked < DICE_UNLOCK[n - 1]) return "아직 해금되지 않은 주사위입니다.";
-        // [2026-09-08] "전투중엔 주사위변경도 안 되게 막아달라" 요청 -- 전투 중 유리한 면수로
-        // 갈아끼우는 걸 막는다. 목록 조회(n==null)는 그대로 허용, 실제 교체(n!=null)만 차단.
-        if ("IN_COMBAT".equals(strVal(p.get("STATUS"), "NORMAL"))) {
-            return "전투 중에는 주사위를 교체할 수 없습니다.";
-        }
+        // [2026-09-08] "전투중엔 주사위변경도 안 되게 막아달라" 요청으로 한때 여기서 IN_COMBAT
+        // 차단을 걸었었는데, [2026-09-09] "전투중에도 주사위변경 가능하게 해달라"는 후속
+        // 요청으로 다시 허용(차단 제거).
 
         HashMap<String, Object> up = new HashMap<>();
         up.put("userName", userName);
@@ -4031,11 +4106,9 @@ public class BotS5ServiceImpl implements BotS5Service {
 
     private String buyDiceEnhance(String userName, boolean isBonus) {
         HashMap<String, Object> p = getOrInitProgress(userName);
-        // [2026-09-08] "전투중엔 주사위변경도 안 되게 막아달라(최대/최소 둘 다)" 요청 --
-        // 위 diceShop()의 최대치(등급) 교체 차단과 짝을 이루는, 최소치(강화/마이너스) 구매 차단.
-        if ("IN_COMBAT".equals(strVal(p.get("STATUS"), "NORMAL"))) {
-            return "전투 중에는 주사위 강화/마이너스 주사위를 구매할 수 없습니다.";
-        }
+        // [2026-09-08] "전투중엔 주사위변경도 안 되게 막아달라(최대/최소 둘 다)" 요청으로 걸었던
+        // IN_COMBAT 차단 -- [2026-09-09] "전투중에도 주사위변경 가능하게 해달라"는 후속 요청으로
+        // diceShop()과 마찬가지로 다시 허용(차단 제거).
         int unlocked = intVal(p.get("UNLOCKED_BLOCK"), 0);
         int cur = intVal(p.get(isBonus ? "DICE_MIN_BONUS" : "DICE_MIN_MALUS"), 0);
         String label = isBonus ? "주사위 강화" : "마이너스 주사위";
