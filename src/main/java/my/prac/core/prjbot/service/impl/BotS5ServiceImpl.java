@@ -1630,7 +1630,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         dao.upsertSpecialVisitIncrement(userName);
         HashMap<String, Object> v = dao.selectUserSpecialVisit(userName);
         int cnt = v == null ? 1 : intVal(v.get("VISIT_COUNT"), 1);
-        StringBuilder sb = new StringBuilder("✨ 수상한 기운이 감돌았지만... 이번엔 별다른 일이 일어나지 않았다. (특수칸 누적 방문 ").append(cnt).append("회)");
+        StringBuilder sb = new StringBuilder("✨ 수상한 기운이 감돌았다... (특수칸 누적 방문 ").append(cnt).append("회)");
         int[] thresholds = { 10, 50, 100 };
         int[] achIds = { 17, 18, 19 };
         for (int i = 0; i < thresholds.length; i++) {
@@ -1639,26 +1639,36 @@ public class BotS5ServiceImpl implements BotS5Service {
                 sb.append(NL).append("🏆 히든 업적 달성!");
             }
         }
-        // "51층부터 특수칸이 워프포인트" 요청 -- 이 시점 탐사 칸수를 체크포인트로 저장.
+        // [2026-09-10 버그 수정] "워프발견/더블주사위/아무일도 3개 멘트가 동시에 나온다"
+        // 신고 -- 원래는 floor>=51이면 워프+더블주사위가 항상 둘 다 붙어서, "이번엔 별다른
+        // 일이 없었다"는 기본 문구까지 늘 셋이 함께 나왔다(자기모순적이기도 했음: "아무 일도
+        // 없었다" 바로 밑에 "워프포인트 발견!"이 붙는 식). 이제 floor>=51에서만 셋 중
+        // 정확히 하나를 가중치 랜덤으로 골라서 그것만 보여준다 -- 워프포인트가 이 칸의
+        // 원래 취지(체크포인트)라 가장 비중 높게(50%) 두고, 더블주사위(25%)/아무일도
+        // 없음(25%)을 섞어서 매번 같지 않게 함("몇몇개 넣어달라" 요청). floor<51은 애초에
+        // ensureUserBoard()가 SPECIAL 칸을 안 놓아서 이 분기에 거의 안 들어오지만, 혹시
+        // 남아있는 옛 보드 대비 그냥 "아무 일도 없었다"만 보여줌. 비중은 잠정치, 조정 가능.
         if (floor >= 51) {
-            markSpecialTileCheckpoint(userName, floor, visited);
-            sb.append(NL).append("🌀 워프포인트를 발견했다! 지금까지의 탐사 기록(").append(visited).append("칸)이 저장되었다.");
-        }
-        // [2026-09-09] "특수칸에서 다음 한 턴은 주사위를 두 개 굴리게 해달라(좋을 수도 나쁠
-        // 수도 있는 느낌으로)" 요청 -- 다음 이동 굴림 1회에 한해 rollDiceInternal()의 이동
-        // 계산부에서 소모되는 1회성 플래그. 두 배로 더 멀리 갈 수도 있지만, 그만큼 원치 않는
-        // 칸(전투/함정)을 지나쳐버리거나 노리던 칸을 훌쩍 넘길 수도 있다는 뜻이라 "좋을 수도
-        // 안 좋을 수도 있다"는 문구로 안내한다.
-        // [2026-09-09 후속] "51층부터 더블주사위가 되도록, 50층 이하는 특수칸 자체가 없어도
-        // 된다" 요청 -- ensureUserBoard()가 이제 50층 이하엔 SPECIAL 칸을 아예 안 놓아서 이
-        // 분기 자체에 거의 안 들어오겠지만, 이미 생성돼 남아있는 옛 보드(마을 복귀 전까진
-        // 안 바뀜)에서도 50층 이하는 더블주사위를 지급하지 않도록 명시적으로 가드.
-        if (floor >= 51) {
-            HashMap<String, Object> up = new HashMap<>();
-            up.put("userName", userName);
-            up.put("doubleDiceYn", "Y");
-            dao.updateUserProgress(up);
-            sb.append(NL).append("🎲🎲 기이한 기운이 주사위에 스며들었다! 다음 이동에서 주사위를 두 번 굴립니다. (좋을 수도, 안 좋을 수도 있습니다)");
+            int roll = RND.nextInt(100);
+            if (roll < 50) {
+                markSpecialTileCheckpoint(userName, floor, visited);
+                sb.append(NL).append("🌀 워프포인트를 발견했다! 지금까지의 탐사 기록(").append(visited).append("칸)이 저장되었다.");
+            } else if (roll < 75) {
+                // [2026-09-09] "특수칸에서 다음 한 턴은 주사위를 두 개 굴리게 해달라(좋을 수도
+                // 나쁠 수도 있는 느낌으로)" 요청 -- DOUBLE_DICE_YN 1회성 플래그.
+                // [2026-09-10] "1턴간 이동만 아니라 공격에도 적용된다고 표시해달라" 요청 --
+                // 실제로도 이동 굴림뿐 아니라 전투 공격 턴에서도 소모되도록 확장됨
+                // (rollDiceInternal/resolveCombatTurn 둘 다 참고), 문구도 그에 맞게 수정.
+                HashMap<String, Object> up = new HashMap<>();
+                up.put("userName", userName);
+                up.put("doubleDiceYn", "Y");
+                dao.updateUserProgress(up);
+                sb.append(NL).append("🎲🎲 기이한 기운이 주사위에 스며들었다! 다음 행동(이동 또는 전투 공격) 1회 동안 주사위를 두 번 굴립니다. (좋을 수도, 안 좋을 수도 있습니다)");
+            } else {
+                sb.append(NL).append("...이번엔 별다른 일이 일어나지 않았다.");
+            }
+        } else {
+            sb.append(NL).append("...이번엔 별다른 일이 일어나지 않았다.");
         }
         return sb.toString();
     }
@@ -1990,6 +2000,23 @@ public class BotS5ServiceImpl implements BotS5Service {
         boolean mageBankNextTurn = false;
         if (skillLocked) sb.append("🔒 스킬 봉인 상태! 이번 턴은 파티 특수 스킬(직업별 효과)을 쓸 수 없다.").append(NL);
 
+        // [2026-09-10] "더블주사위가 이동에만 적용되는 걸로 보인다, 1턴간 이동/공격 둘 다
+        // 적용된다고 표시해달라" 요청 -- 원래는 이동 굴림(rollDiceInternal)에서만 소모돼서,
+        // 특수칸을 밟은 직후 다음 행동이 마침 "전투 공격"이면 그 턴엔 아무 효과가 없다가
+        // 나중에 엉뚱한 이동 굴림에서 소모되는 게 문제였다. 이제 전투 공격 턴에서도
+        // 똑같이 "다음 행동 1회"로 소모되게 해서, 특수칸 이후 정말로 맨 처음 굴리는
+        // 주사위(이동이든 전투 공격이든)에 적용된다. 파티원 전원이 이번 턴에 함께 덕을
+        // 본다(한 턴 = 한 번의 더블 적용이라는 취지 유지, 인원수만큼 소모되는 게 아님).
+        boolean doubleDice = "Y".equals(strVal(p.get("DOUBLE_DICE_YN"), "N"));
+        if (doubleDice) {
+            HashMap<String, Object> clearDoubleDiceUp = new HashMap<>();
+            clearDoubleDiceUp.put("userName", userName);
+            clearDoubleDiceUp.put("doubleDiceYn", "N");
+            dao.updateUserProgress(clearDoubleDiceUp);
+            p.put("DOUBLE_DICE_YN", "N");
+            sb.append("🎲🎲 더블주사위 효과! 이번 턴 파티 전원의 공격 눈금을 두 번씩 굴려 합산합니다.").append(NL);
+        }
+
         for (HashMap<String, Object> c : party) {
             PP hp = PP.of(((Number) c.get("CUR_HP_VALUE")).doubleValue(), strVal(c.get("CUR_HP_EXT"), ""));
             if (PP.toBaseValue(hp) <= 0) continue; // 전투불가
@@ -2023,7 +2050,17 @@ public class BotS5ServiceImpl implements BotS5Service {
                 else if (grade >= 5) effMonsterDef = (int) Math.round(monsterDef * 0.5); // ★5: 방어 50% 무시
             }
 
-            int roll = rollFace(diceMinFor(p), diceMax);
+            int roll;
+            String rollLabel;
+            if (doubleDice) {
+                int atkRoll1 = rollFace(diceMinFor(p), diceMax);
+                int atkRoll2 = rollFace(diceMinFor(p), diceMax);
+                roll = atkRoll1 + atkRoll2;
+                rollLabel = atkRoll1 + "+" + atkRoll2;
+            } else {
+                roll = rollFace(diceMinFor(p), diceMax);
+                rollLabel = String.valueOf(roll);
+            }
             int dmg = Math.max(1, eff[1] * roll - effMonsterDef);
             dmg = Math.max(dmg, eff[3]); // 스탯구매 최소공격력 보정
             totalDamage += dmg;
@@ -2035,7 +2072,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             // [2026-09-05 멘트 개편] "이름+HP"와 "주사위/데미지"를 한 줄에 몰아넣지 말고 줄을
             // 나눠달라는 요청 -- 이름+HP 줄, 그 아래 굴림 결과 줄로 분리.
             sb.append(jobTag(grade, job, cName)).append(" 💗").append(hp.format()).append("/").append(eff[0]).append(NL)
-              .append("🎲").append(roll).append("→").append(dmg).append("dmg");
+              .append("🎲").append(rollLabel).append("→").append(dmg).append("dmg");
 
             // [2026-09-05 신설] ★5/★6 동료 성급 특수효과 -- 시너지와 별개로 "이 동료 개인"의
             // 등급이 높을수록 그 직업 고유 효과가 강해진다. 시너지가 함께 켜져 있으면 둘 다
@@ -2086,7 +2123,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                     // [명확화 요청] "실드를 누구한테 주는지 안 보인다"는 지적으로, 도사 자신의
                     // 줄에는 더 이상 🛡️+N을 안 찍는다 -- 실제로 이번 반격을 막아준 대상이
                     // 정해진 뒤(아래 resolveCombatTurn의 반격 파트) 그 동료 자신의 줄에 붙여준다.
-                    int shieldRoll = rollFace(diceMinFor(p), diceMax);
+                    int shieldRoll = doubleDice ? rollFace(diceMinFor(p), diceMax) + rollFace(diceMinFor(p), diceMax) : rollFace(diceMinFor(p), diceMax);
                     int shieldAmt = Math.max(0, eff[1] * shieldRoll);
                     if ("PRIEST".equals(synergy)) shieldAmt = (int) Math.round(shieldAmt * 2.0); // 시너지: 도사3인조 2배
                     shieldPool += shieldAmt;
@@ -2144,6 +2181,30 @@ public class BotS5ServiceImpl implements BotS5Service {
             // "사라진다"(clearMonster가 CUR_BOSS_MINION_CIDS를 자동 초기화). 있었을 때만 안내.
             if (floor == 69 && !parseMinionCids(strVal(p.get("CUR_BOSS_MINION_CIDS"), "")).isEmpty()) {
                 sb.append("✨ 보스의 힘에 사로잡혔던 동료들이 원래대로 돌아왔다(전투불가 상태는 여전히 마을에서 부활 필요).").append(NL);
+            }
+
+            // [2026-09-10] "중간보스 처치보상으로 중급동료뽑기 or 중급장비뽑기를 확률적으로
+            // 지급해달라" 요청 -- 중간보스(51층+ COMBAT 칸 20% 확률 조우, 3배 스탯) 처치 시
+            // 40% 확률로 중급(티어2) 동료뽑기권 또는 장비뽑기권 중 하나를 1장 지급(50/50).
+            // PP/경험치는 이미 eliteMult(3배)로 반영되고 있어 이건 별개의 "깜짝 보상".
+            if (midBoss) {
+                if (RND.nextInt(100) < 40) {
+                    boolean companionTicket = RND.nextBoolean();
+                    HashMap<String, Object> ticketUp = new HashMap<>();
+                    ticketUp.put("userName", userName);
+                    if (companionTicket) {
+                        int newCnt = intVal(p.get("COMPANION_VOUCHER_T2"), 0) + 1;
+                        ticketUp.put("companionVoucherT2", newCnt);
+                        p.put("COMPANION_VOUCHER_T2", newCnt);
+                        sb.append("🎁 중간보스가 중급 동료뽑기권 1장을 떨어뜨렸다!").append(NL);
+                    } else {
+                        int newCnt = intVal(p.get("EQUIP_VOUCHER_T2"), 0) + 1;
+                        ticketUp.put("equipVoucherT2", newCnt);
+                        p.put("EQUIP_VOUCHER_T2", newCnt);
+                        sb.append("🎁 중간보스가 중급 장비뽑기권 1장을 떨어뜨렸다!").append(NL);
+                    }
+                    dao.updateUserProgress(ticketUp);
+                }
             }
 
             if (isBoss) {
