@@ -672,6 +672,25 @@ public class BotS5ServiceImpl implements BotS5Service {
         return o == null ? def : o.toString();
     }
 
+    // [2026-09-10] 69층 보스 "하수인" 명단(CUR_BOSS_MINION_CIDS) 콤마구분 문자열 <-> 목록 변환.
+    private List<Integer> parseMinionCids(String csv) {
+        List<Integer> list = new ArrayList<>();
+        if (csv == null || csv.trim().isEmpty()) return list;
+        for (String s : csv.split(",")) {
+            try { list.add(Integer.parseInt(s.trim())); } catch (NumberFormatException ignore) { }
+        }
+        return list;
+    }
+
+    private String joinMinionCids(List<Integer> ids) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < ids.size(); i++) {
+            if (i > 0) sb.append(",");
+            sb.append(ids.get(i));
+        }
+        return sb.toString();
+    }
+
     /**
      * 닉네임(부분 입력 가능)으로 실제 유저명을 찾는다("/탑현황 닉네임"과 동일 패턴, /탑업적
      * 닉네임 조회에도 재사용). 정확히 일치하는 유저가 있으면 그대로, 없으면 앞부분이 일치하는
@@ -2095,6 +2114,11 @@ public class BotS5ServiceImpl implements BotS5Service {
 
             // [세 구간 분리 요청] 공격 결과 / 처치·보상 안내를 빈 줄로 나눠서 구분되게 함.
             sb.append(NL).append(eliteMonsterName(floor, mon, elite)).append(" 처치! 🎉").append(NL);
+            // [2026-09-10] 69층 보스에게 죽어 하수인이 됐던 동료들 -- 보스가 죽었으니
+            // "사라진다"(clearMonster가 CUR_BOSS_MINION_CIDS를 자동 초기화). 있었을 때만 안내.
+            if (floor == 69 && !parseMinionCids(strVal(p.get("CUR_BOSS_MINION_CIDS"), "")).isEmpty()) {
+                sb.append("✨ 보스의 힘에 사로잡혔던 동료들이 원래대로 돌아왔다(전투불가 상태는 여전히 마을에서 부활 필요).").append(NL);
+            }
 
             if (isBoss) {
                 int prevBlockBase = floorBlockBase(floor);
@@ -2529,6 +2553,26 @@ public class BotS5ServiceImpl implements BotS5Service {
         curTarget.put("CUR_HP_VALUE", targetHpAfter.getValue());
         curTarget.put("CUR_HP_EXT", targetHpAfter.getUnit());
 
+        // [2026-09-10] "69층 보스는 동료를 죽이면 보스 하수인으로 살려서 공격하게, 보스
+        // 처치시 사라지게 해달라" 요청 -- 이 턴 반격으로 방금 죽은(도사 부활도 실패한) 동료를
+        // 69층 보스 한정으로 하수인 명단에 추가한다. 이미 HP0이라 파티 공격에서는 자동으로
+        // 빠지고(기존 alive 필터, "공격불가"), 아래 반격 파트 끝에서 매 턴 파티를 역공격하는
+        // 쪽으로만 쓰인다. 전투 종료(승리/전멸/도망 전부 clearMonster를 거침) 시 자동 초기화.
+        if (isBossRow && floor == 69 && PP.toBaseValue(targetHpAfter) <= 0) {
+            List<Integer> minionIds = parseMinionCids(strVal(p.get("CUR_BOSS_MINION_CIDS"), ""));
+            int diedCid = intVal(curTarget.get("COMPANION_ID"), 0);
+            if (diedCid > 0 && !minionIds.contains(diedCid)) {
+                minionIds.add(diedCid);
+                String joinedCids = joinMinionCids(minionIds);
+                HashMap<String, Object> minionUp = new HashMap<>();
+                minionUp.put("userName", userName);
+                minionUp.put("curBossMinionCids", joinedCids);
+                dao.updateUserProgress(minionUp);
+                p.put("CUR_BOSS_MINION_CIDS", joinedCids);
+                sb.append("💀🥀 ").append(jobTag(tGrade, tJob, tName)).append("이(가) 쓰러져 보스의 하수인이 되었다! (보스를 처치하면 원래대로 돌아옵니다)").append(NL);
+            }
+        }
+
         if (curGuarded) {
             // 도발로 실제 맞은 건 다른 동료라서, 원래 대상이 누구였는지 반격 결과 다음 줄에 설명.
             String origJob = strVal(curOriginalTarget.get("CLASS"), "WARRIOR");
@@ -2551,6 +2595,65 @@ public class BotS5ServiceImpl implements BotS5Service {
             dao.updateUserProgress(healUp);
             sb.append(NL).append("🩸 ").append(eliteMonsterName(floor, mon, elite)).append("이(가) 흡혈로 ")
               .append(lifestealHeal).append(" 회복! 💛").append(monsterHpAfter.format()).append("/").append(monsterMaxHp.format());
+        }
+
+        // [2026-09-10] 69층 보스 하수인 반격 -- 위(또는 이전 턴)에 죽어서 하수인이 된 동료들이
+        // 매 턴 파티를 추가로 공격한다. 자기 자신의 유효 스탯(장비/스탯구매 반영)을 그대로
+        // 몬스터처럼 사용("동료였던 힘이 그대로 나를 공격한다"). 같은 턴 안에서 방금 새로
+        // 죽은 동료는 이번 하수인 공격엔 아직 안 낀다(그 자리에서 바로 연쇄되면 한 턴에
+        // 무한정 불어날 수 있어서, 다음 턴부터 반영되게 함). 보호막/전사 도발 등 이번 턴
+        // 보스 반격에 쓰인 파티 버프는 재사용하지 않는 단순한 추가 공격으로 둠.
+        List<Integer> curMinionIds = parseMinionCids(strVal(p.get("CUR_BOSS_MINION_CIDS"), ""));
+        if (!curMinionIds.isEmpty()) {
+            List<HashMap<String, Object>> stillAlive = new ArrayList<>();
+            for (HashMap<String, Object> c : party) {
+                PP hp = PP.of(((Number) c.get("CUR_HP_VALUE")).doubleValue(), strVal(c.get("CUR_HP_EXT"), ""));
+                if (PP.toBaseValue(hp) > 0) stillAlive.add(c);
+            }
+            if (!stillAlive.isEmpty()) {
+                HashMap<Integer, HashMap<String, Object>> partyById = new HashMap<>();
+                for (HashMap<String, Object> c : party) partyById.put(intVal(c.get("COMPANION_ID"), -1), c);
+                sb.append(NL);
+                for (Integer minionCid : curMinionIds) {
+                    HashMap<String, Object> minionC = partyById.get(minionCid);
+                    if (minionC == null) continue; // 방어(파티에서 이미 빠진 경우 등)
+                    String mJob = strVal(minionC.get("CLASS"), "WARRIOR");
+                    int mGrade = intVal(minionC.get("GRADE"), 1);
+                    String mName = strVal(minionC.get("NAME"), JOB_NAME.getOrDefault(mJob, "동료"));
+                    List<HashMap<String, Object>> mEquips = dao.selectEquipByCompanion(minionCid);
+                    int[] mEff = computeEffectiveStat(mJob, mGrade, mEquips, userStat);
+
+                    HashMap<String, Object> victim = stillAlive.get(RND.nextInt(stillAlive.size()));
+                    String vJob = strVal(victim.get("CLASS"), "WARRIOR");
+                    int vGrade = intVal(victim.get("GRADE"), 1);
+                    List<HashMap<String, Object>> vEquips = dao.selectEquipByCompanion(intVal(victim.get("COMPANION_ID"), 0));
+                    int[] vEff = computeEffectiveStat(vJob, vGrade, vEquips, userStat);
+                    PP victimHp = PP.of(((Number) victim.get("CUR_HP_VALUE")).doubleValue(), strVal(victim.get("CUR_HP_EXT"), ""));
+
+                    int mRoll = rollFace(1, monsterDiceMax);
+                    int mDmg = Math.max(1, mEff[1] * mRoll - vEff[2]);
+                    PP victimHpAfter = victimHp.subtract(PP.fromPP(mDmg));
+                    if (PP.toBaseValue(victimHpAfter) < 0) victimHpAfter = PP.fromPP(0);
+
+                    HashMap<String, Object> vUp = new HashMap<>();
+                    vUp.put("companionId", intVal(victim.get("COMPANION_ID"), 0));
+                    vUp.put("curHpValue", victimHpAfter.getValue());
+                    vUp.put("curHpExt", victimHpAfter.getUnit());
+                    dao.updateCompanionHp(vUp);
+                    victim.put("CUR_HP_VALUE", victimHpAfter.getValue());
+                    victim.put("CUR_HP_EXT", victimHpAfter.getUnit());
+
+                    boolean victimDied = PP.toBaseValue(victimHpAfter) <= 0;
+                    sb.append("👹 하수인이 된 ").append(jobTag(mGrade, mJob, mName)).append("이(가) ")
+                      .append(jobTag(vGrade, vJob, strVal(victim.get("NAME"), JOB_NAME.getOrDefault(vJob, "동료"))))
+                      .append("을(를) 공격! 🎲").append(mRoll).append("→").append(mDmg).append("dmg")
+                      .append(victimDied ? " 💀" : "").append(NL);
+                    if (victimDied) {
+                        stillAlive.remove(victim);
+                        if (stillAlive.isEmpty()) break; // 더 공격할 대상 없음(다음 /주사위 때 전멸 처리됨)
+                    }
+                }
+            }
         }
 
         // "몬스터 반격 이후 파티 체력을 보여달라" 요청

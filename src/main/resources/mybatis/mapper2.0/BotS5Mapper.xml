@@ -25,7 +25,8 @@
                CUR_MONSTER_MIDBOSS_YN, MONSTER_DEF_BUFF_PCT, MONSTER_SHIELD_VALUE,
                AUTO_HUNT_KILL_TOTAL, AUTO_HUNT_PP_TOTAL_VALUE, AUTO_HUNT_PP_TOTAL_EXT, FLEE_COUNT_TOTAL,
                DICE_MIN_BONUS, DICE_MIN_MALUS, DICE_MIN_ADJUST, DOUBLE_DICE_YN,
-               SUSPEND_RETRY_COUNT, BAN_DATE, CUR_MONSTER_DUAL_YN, CUR_COMBAT_TURN
+               SUSPEND_RETRY_COUNT, BAN_DATE, CUR_MONSTER_DUAL_YN, CUR_COMBAT_TURN,
+               CUR_BOSS_MINION_CIDS
         FROM TBOT_S5_USER_PROGRESS
         WHERE USER_NAME = #{userName}
     </select>
@@ -108,7 +109,7 @@
                 BOSS_IMMUNE_CID = NULL, BOSS_STUN_CID = NULL, CUR_MONSTER_ELITE_YN = 'N',
                 MONSTER_STUNNED_YN = 'N', CUR_MONSTER_MIDBOSS_YN = 'N',
                 MONSTER_DEF_BUFF_PCT = 0, MONSTER_SHIELD_VALUE = 0,
-                CUR_MONSTER_DUAL_YN = 'N', CUR_COMBAT_TURN = 0,
+                CUR_MONSTER_DUAL_YN = 'N', CUR_COMBAT_TURN = 0, CUR_BOSS_MINION_CIDS = NULL,
             </if>
             <if test="curMonsterId != null">CUR_MONSTER_ID = #{curMonsterId},</if>
             <if test="curMonsterHpValue != null">CUR_MONSTER_HP_VALUE = #{curMonsterHpValue},</if>
@@ -117,6 +118,7 @@
             <if test="curMonsterMidbossYn != null">CUR_MONSTER_MIDBOSS_YN = #{curMonsterMidbossYn},</if>
             <if test="curMonsterDualYn != null">CUR_MONSTER_DUAL_YN = #{curMonsterDualYn},</if>
             <if test="curCombatTurn != null">CUR_COMBAT_TURN = #{curCombatTurn},</if>
+            <if test="curBossMinionCids != null">CUR_BOSS_MINION_CIDS = #{curBossMinionCids},</if>
             <if test="monsterDefBuffPct != null">MONSTER_DEF_BUFF_PCT = #{monsterDefBuffPct},</if>
             <if test="monsterShieldValue != null">MONSTER_SHIELD_VALUE = #{monsterShieldValue},</if>
             <if test="bossImmuneCid != null">BOSS_IMMUNE_CID = #{bossImmuneCid},</if>
