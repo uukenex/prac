@@ -429,6 +429,31 @@ public class BotS5ServiceImpl implements BotS5Service {
         return (floorBlockBase(floor) / 10) + 1;
     }
 
+    // [2026-09-09] "58층이 현재 난이도이고, 51층까지 점차적으로 스탯을 낮추어달라" 요청 --
+    // 9/7 S5_BLOCK6_SPECUP.sql로 6블록(51~60층) 일반 몬스터가 소울주춤 유저 스펙 기준
+    // "일반 몬스터 승률 50%" 목표로 재조정됐는데, 51층(그 구간 첫 사냥터층)부터 이미 이
+    // 난이도라 진입 직후 체감 난이도가 너무 높다는 신고. 그 스탯(HP_VALUE/ATK_VALUE/
+    // DEF_VALUE)을 "58층(그 구간 마지막 사냥터층)=100%(현재값 그대로)"로 두고
+    // "51층(첫 사냥터층)=50%"에서 시작해 8개 사냥터층에 걸쳐 선형으로 올라가게 한다.
+    // 보스(BOSS_YN='Y')는 위치 개념이 없어(구간마다 X9 하나) 대상 아님, 5블록 이하(아직
+    // 이 요청 대상이 아닌 층)도 대상 아님 -- 나중에 7블록 이상이 열려도 같은 원리로 자동
+    // 적용되도록 blockNo>=6 전체에 일반화해둠(요청은 6블록 한정이었지만 동일 설계 원칙).
+    private static final double HARDCORE_FLOOR_SCALE_MIN = 0.5;
+
+    private HashMap<String, Object> applyHardcoreFloorScale(HashMap<String, Object> mon, int floor) {
+        if (mon == null) return null;
+        if ("Y".equals(strVal(mon.get("BOSS_YN"), "N"))) return mon; // 보스는 스케일 대상 아님
+        if (blockNo(floor) < 6) return mon;
+        int pos = floor % 10; // 1~8=사냥터층(이 스케일 대상), 0=마을/9=보스는 몬스터 조회 자체를 안 함
+        if (pos < 1 || pos > 8) return mon;
+        double mult = HARDCORE_FLOOR_SCALE_MIN + (1.0 - HARDCORE_FLOOR_SCALE_MIN) * (pos - 1) / 7.0;
+        HashMap<String, Object> scaled = new HashMap<>(mon);
+        scaled.put("HP_VALUE", ((Number) mon.get("HP_VALUE")).doubleValue() * mult);
+        scaled.put("ATK_VALUE", ((Number) mon.get("ATK_VALUE")).doubleValue() * mult);
+        scaled.put("DEF_VALUE", ((Number) mon.get("DEF_VALUE")).doubleValue() * mult);
+        return scaled;
+    }
+
     // [2026-09-07, 당분간] 블록6(51~60층) 오픈 확정, 61층(블록7 사냥터) 이후는 아직 콘텐츠
     // 미공개라 진입 자체를 막는다. (49층/59층 보스 스킬, 51층+ 중간보스·신규 함정/럭키·
     // 지그재그 큰 보드·보상 인상 전부 51~60 범위에서 실측 검증 완료 후 이 값만 올렸음.)
@@ -1697,7 +1722,7 @@ public class BotS5ServiceImpl implements BotS5Service {
     }
 
     private String startCombat(String userName, HashMap<String, Object> p, int floor, boolean boss, boolean elite, boolean midBoss) {
-        HashMap<String, Object> mon = dao.selectMonster(blockNo(floor), boss ? "Y" : "N");
+        HashMap<String, Object> mon = applyHardcoreFloorScale(dao.selectMonster(blockNo(floor), boss ? "Y" : "N"), floor);
         if (mon == null) {
             // TBOT_S5_MONSTER_INFO에 이 BLOCK_NO×BOSS_YN 조합 데이터가 없는 경우.
             // 원인 확인용: S5_CHECK_MONSTER_DATA.sql
@@ -2230,24 +2255,32 @@ public class BotS5ServiceImpl implements BotS5Service {
             }
             if (!stealable.isEmpty()) {
                 String stolenJob = stealable.get(RND.nextInt(stealable.size()));
+                // [2026-09-09] "스킬 뺏어쓰는 것도 계수를 50%로 해달라" 요청 -- WARRIOR/PRIEST/
+                // ROGUE/ARCHER는 수치 계수를 그대로 절반으로(30%->15%, x2->x1, 5%->2.5%,
+                // x1.3->x1.15). MAGE 기절만 수치가 아니라 "훔치면 무조건 발동"하는 이진 효과라
+                // 절반화할 수치가 없어서, 대신 발동 확률 자체를 50%로 둬서 같은 취지를 맞춤
+                // (실패하면 아래 평범한 반격으로 자연스럽게 이어짐).
                 if ("MAGE".equals(stolenJob)) {
-                    HashMap<String, Object> stealStunUp = new HashMap<>();
-                    stealStunUp.put("userName", userName);
-                    stealStunUp.put("bossStunCid", intVal(target.get("COMPANION_ID"), 0));
-                    dao.updateUserProgress(stealStunUp);
-                    String stealStunName = strVal(target.get("NAME"), JOB_NAME.getOrDefault(strVal(target.get("CLASS"), ""), "동료"));
-                    sb.append("🥷 ").append(eliteMonsterName(floor, mon, elite)).append("이(가) 마법사의 기술을 흉내내 ")
-                      .append(stealStunName).append(" 기절! 다음턴 공격불가");
-                    sb.append(NL).append(NL).append(partyHpSummary(party, userStat));
-                    return sb.toString();
+                    if (RND.nextInt(100) < 50) {
+                        HashMap<String, Object> stealStunUp = new HashMap<>();
+                        stealStunUp.put("userName", userName);
+                        stealStunUp.put("bossStunCid", intVal(target.get("COMPANION_ID"), 0));
+                        dao.updateUserProgress(stealStunUp);
+                        String stealStunName = strVal(target.get("NAME"), JOB_NAME.getOrDefault(strVal(target.get("CLASS"), ""), "동료"));
+                        sb.append("🥷 ").append(eliteMonsterName(floor, mon, elite)).append("이(가) 마법사의 기술을 흉내내 ")
+                          .append(stealStunName).append(" 기절! 다음턴 공격불가");
+                        sb.append(NL).append(NL).append(partyHpSummary(party, userStat));
+                        return sb.toString();
+                    }
+                    // 확률 실패 -- 도용 자체가 안 통한 것으로 보고 아래 평범한 반격으로 계속 진행.
                 } else if ("WARRIOR".equals(stolenJob)) {
                     HashMap<String, Object> stealDefUp = new HashMap<>();
                     stealDefUp.put("userName", userName);
-                    stealDefUp.put("monsterDefBuffPct", 30);
+                    stealDefUp.put("monsterDefBuffPct", 15);
                     dao.updateUserProgress(stealDefUp);
-                    sb.append("🥷 ").append(eliteMonsterName(floor, mon, elite)).append("이(가) 전사의 기술을 흉내내 방어 태세를 갖췄다! (다음 파티 공격 시 방어력 +30%)").append(NL);
+                    sb.append("🥷 ").append(eliteMonsterName(floor, mon, elite)).append("이(가) 전사의 기술을 흉내내 방어 태세를 갖췄다! (다음 파티 공격 시 방어력 +15%)").append(NL);
                 } else if ("PRIEST".equals(stolenJob)) {
-                    int stealShieldAmt = (int) Math.round(intVal(mon.get("ATK_VALUE"), 0) * eliteMult * 2);
+                    int stealShieldAmt = (int) Math.round(intVal(mon.get("ATK_VALUE"), 0) * eliteMult);
                     HashMap<String, Object> stealShUp = new HashMap<>();
                     stealShUp.put("userName", userName);
                     stealShUp.put("monsterShieldValue", stealShieldAmt);
@@ -2255,7 +2288,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                     sb.append("🥷 ").append(eliteMonsterName(floor, mon, elite)).append("이(가) 도사의 기술을 흉내내 스스로에게 보호막(").append(stealShieldAmt).append(")을 둘렀다!").append(NL);
                 } else if ("ROGUE".equals(stolenJob)) {
                     PP curPpNow = PP.of(((Number) p.get("PP_VALUE")).doubleValue(), strVal(p.get("PP_EXT"), ""));
-                    PP stolenPp = curPpNow.multiplyRate(0.05);
+                    PP stolenPp = curPpNow.multiplyRate(0.025);
                     PP afterPp = curPpNow.subtract(stolenPp);
                     if (PP.toBaseValue(afterPp) < 0) afterPp = PP.fromPP(0);
                     HashMap<String, Object> stealPpUp = new HashMap<>();
@@ -2338,7 +2371,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         int roll = rollFace(1, monsterDiceMax); // 몬스터 자신의 반격 굴림 -- 플레이어 강화/마이너스 주사위와 무관하게 항상 1부터
         int rawDmgToParty = Math.max(1, monsterAtk * roll - tEff[2]);
         // 중간보스가 이번 턴 궁수 기술을 훔쳤으면(위 미드보스 파트) 이 반격 피해를 즉시 증폭.
-        if (midBossArcherDmgUp) rawDmgToParty = (int) Math.round(rawDmgToParty * 1.3);
+        // [2026-09-09] "계수 50%로" 요청 -- 원래 +30%(x1.3)였던 증폭폭을 +15%(x1.15)로 절반화.
+        if (midBossArcherDmgUp) rawDmgToParty = (int) Math.round(rawDmgToParty * 1.15);
         int dmgToParty = rawDmgToParty;
 
         String tName = strVal(curTarget.get("NAME"), JOB_NAME.getOrDefault(tJob, "동료"));
@@ -2543,7 +2577,7 @@ public class BotS5ServiceImpl implements BotS5Service {
     }
 
     private HashMap<String, Object> findMonsterById(int floor, int monsterId) {
-        HashMap<String, Object> normal = dao.selectMonster(blockNo(floor), "N");
+        HashMap<String, Object> normal = applyHardcoreFloorScale(dao.selectMonster(blockNo(floor), "N"), floor);
         if (normal != null && intVal(normal.get("MONSTER_ID"), -1) == monsterId) return normal;
         HashMap<String, Object> boss = dao.selectMonster(blockNo(floor), "Y");
         if (boss != null && intVal(boss.get("MONSTER_ID"), -1) == monsterId) return boss;
