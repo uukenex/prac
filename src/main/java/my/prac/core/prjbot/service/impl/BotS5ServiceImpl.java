@@ -471,8 +471,11 @@ public class BotS5ServiceImpl implements BotS5Service {
         types.add("STAIRS_UP");
         types.add("STAIRS_DOWN");
         // "51층부터 워프포인트(특수칸) 기믹" 요청 -- 특수칸이 체크포인트 역할을 하므로 51층부턴
-        // 넉넉하게 4개(기존 1~2개보다 늘림)를 배치.
-        int specialCount = floor >= 51 ? 4 : (tileCount >= 20 ? 2 : 1);
+        // 넉넉하게 배치(2026-09-08엔 4개, 2026-09-09에 6개로 증량). [2026-09-09 후속] "더블주사위
+        // 기믹은 51층부터만 되면 되고, 50층 이하는 특수칸 자체가 없어도 된다" 요청으로 50층
+        // 이하는 특수칸을 아예 안 놓는다(0개) -- handleSpecialTile()의 더블주사위 지급도 별도로
+        // floor>=51로 가드해뒀지만, 애초에 특수칸이 안 나오면 그 코드에 도달할 일도 없다.
+        int specialCount = floor >= 51 ? 6 : 0;
         for (int i = 0; i < specialCount; i++) types.add("SPECIAL");
         types.add("TREASURE");
         if (blockNo(floor) >= 3) types.add("ELITE"); // 20층대(블록3)부터만 강화몹방 등장
@@ -1577,11 +1580,17 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 계산부에서 소모되는 1회성 플래그. 두 배로 더 멀리 갈 수도 있지만, 그만큼 원치 않는
         // 칸(전투/함정)을 지나쳐버리거나 노리던 칸을 훌쩍 넘길 수도 있다는 뜻이라 "좋을 수도
         // 안 좋을 수도 있다"는 문구로 안내한다.
-        HashMap<String, Object> up = new HashMap<>();
-        up.put("userName", userName);
-        up.put("doubleDiceYn", "Y");
-        dao.updateUserProgress(up);
-        sb.append(NL).append("🎲🎲 기이한 기운이 주사위에 스며들었다! 다음 이동에서 주사위를 두 번 굴립니다. (좋을 수도, 안 좋을 수도 있습니다)");
+        // [2026-09-09 후속] "51층부터 더블주사위가 되도록, 50층 이하는 특수칸 자체가 없어도
+        // 된다" 요청 -- ensureUserBoard()가 이제 50층 이하엔 SPECIAL 칸을 아예 안 놓아서 이
+        // 분기 자체에 거의 안 들어오겠지만, 이미 생성돼 남아있는 옛 보드(마을 복귀 전까진
+        // 안 바뀜)에서도 50층 이하는 더블주사위를 지급하지 않도록 명시적으로 가드.
+        if (floor >= 51) {
+            HashMap<String, Object> up = new HashMap<>();
+            up.put("userName", userName);
+            up.put("doubleDiceYn", "Y");
+            dao.updateUserProgress(up);
+            sb.append(NL).append("🎲🎲 기이한 기운이 주사위에 스며들었다! 다음 이동에서 주사위를 두 번 굴립니다. (좋을 수도, 안 좋을 수도 있습니다)");
+        }
         return sb.toString();
     }
 
