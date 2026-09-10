@@ -871,7 +871,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             case "MAGE":    return "🔮 마법사 3인조 시너지! 스턴 확률 상승, 스턴 시 피해 +20%" + NL;
             case "ROGUE":   return "🗡️ 도적 3인조 시너지! PP 훔치기 확률 상승, 훔친 PP량 2배" + NL;
             case "ARCHER":  return "🏹 궁수 3인조 시너지! 파티 전체 공격력 +30%" + NL;
-            case "PRIEST":  return "✨ 도사 3인조 시너지! 보호막량 2배" + NL;
+            case "PRIEST":  return "✨ 도사 3인조 시너지! 보호막량 2배 + 보호막이 흡수한 피해의 절반을 반사" + NL;
             case "RAINBOW": return ""; // 균형 파티 시너지 멘트 제거 요청(효과 자체는 유지)
             default:        return "";
         }
@@ -2506,6 +2506,12 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 오직 한 명분만 적용(요청: "2명공격하니까 1명은 흡혈되도록").
         boolean vampiricBoss = isBossRow && blockNo(floor) >= 5;
         long lifestealHeal = 0;
+        // [2026-09-10] "도사3인조는 보호막만 있고 데미지가 없다" 요청 -- 보호막이 실제로 흡수한
+        // 피해의 절반을 몬스터에게 반사 데미지로 돌려준다(순수 방어에서 절반은 공격으로 전환).
+        // 아래 shieldPool 처리부에서 매 대상마다 흡수분을 누적했다가, 반격 루프가 끝난 뒤
+        // lifestealHeal과 같은 자리에서 한 번에 몬스터 HP에 반영한다.
+        boolean priestReflect = "PRIEST".equals(synergy);
+        long shieldReflectDamage = 0;
 
         // [2026-09-07] "몬스터도 주사위를 굴리는데 51~70층은 6~12, 71층부터는 8~20을 굴리게
         // 해달라" 요청 -- 원래 몬스터 반격은 플레이어가 낀 주사위(diceMax)를 그대로 같이
@@ -2585,6 +2591,10 @@ public class BotS5ServiceImpl implements BotS5Service {
                 // [2026-09-05 멘트 개편] "N보호 후 Mdmg" 대신 잔여/총 보호막을 게이지처럼 보여줌.
                 sb.append("🛡️ ").append(shieldPool - absorbed).append("/").append(shieldPool)
                   .append(" ").append(dmgToParty).append("dmg").append(NL);
+                // [2026-09-10] 도사3인조: 이번에 실제로 흡수한 만큼의 절반을 반사 데미지로 누적
+                // (다중 타겟 보스면 대상마다 각자 흡수분의 절반씩 쌓임 -- shieldPool 자체가
+                // 대상마다 독립 적용되는 기존 설계와 동일한 결).
+                if (priestReflect && absorbed > 0) shieldReflectDamage += absorbed / 2;
                 // "도사가 누구를 실드해줬는지 명확히" 요청 -- 위 파티 공격 파트에서 도사 자신에게
                 // 붙던 🛡️+N 표시를, 실제로 이 실드를 받은(이번 반격의) 대상 본인의 "굴림 결과"
                 // 줄로 옮겨서 붙인다(이름+HP 줄 / 굴림 결과 줄이 분리된 뒤로는 후자에 붙임).
@@ -2696,6 +2706,23 @@ public class BotS5ServiceImpl implements BotS5Service {
             dao.updateUserProgress(healUp);
             sb.append(NL).append("🩸 ").append(eliteMonsterName(floor, mon, elite)).append("이(가) 흡혈로 ")
               .append(lifestealHeal).append(" 회복! 💛").append(monsterHpAfter.format()).append("/").append(monsterMaxHp.format());
+        }
+
+        // [2026-09-10] 도사3인조 보호막 반사 데미지 반영 -- 위 반격 루프에서 누적한 만큼
+        // 몬스터 체력을 추가로 깎는다(흡혈과 같은 방식으로 루프 종료 후 한 번에 처리, 0 밑으로는
+        // 안 내려가게 방어). 이미 처치 판정(executeKill 등)이 난 경우 monsterHpAfter가 이미
+        // 0이라 더 깎을 것도 없어 자연히 무해함.
+        if (shieldReflectDamage > 0) {
+            PP reflectedHp = monsterHpAfter.subtract(PP.fromPP(shieldReflectDamage));
+            if (PP.toBaseValue(reflectedHp) < 0) reflectedHp = PP.fromPP(0);
+            monsterHpAfter = reflectedHp;
+            HashMap<String, Object> reflectUp = new HashMap<>();
+            reflectUp.put("userName", userName);
+            reflectUp.put("curMonsterHpValue", monsterHpAfter.getValue());
+            reflectUp.put("curMonsterHpExt", monsterHpAfter.getUnit());
+            dao.updateUserProgress(reflectUp);
+            sb.append(NL).append("✨ 보호막이 흡수한 피해의 절반을 반사! ").append(shieldReflectDamage)
+              .append("dmg 추가 피해! 💛").append(monsterHpAfter.format()).append("/").append(monsterMaxHp.format());
         }
 
         // [2026-09-10] 69층 보스 하수인 반격 -- 위(또는 이전 턴)에 죽어서 하수인이 된 동료들이
