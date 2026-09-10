@@ -913,69 +913,40 @@ public class BotS5ServiceImpl implements BotS5Service {
         sb.append("/탑랭킹").append(NL);
         sb.append(NL);
 
-        sb.append("[상세 설명]").append(NL);
-        sb.append(NL);
-        sb.append("[이동/전투] (웹 '보드' 탭)").append(NL);
-        sb.append("/주사위 (/ㅈㅅㅇ, /ㅈ) : 보드 이동(평소) 또는 몬스터 공격(전투 중)").append(NL);
-        sb.append("/층변경 N (/층이동 N) : 현재 구간 내 N번째 층으로 이동. N=0(마을)~9(보스), 전투 중이면 도망 처리").append(NL);
-        sb.append("  ※ 계단(STAIRS) 칸을 밟으면 다음 층으로 갈 '자격'만 생기고, 실제 이동은 이 명령어를 입력해야 합니다.").append(NL);
-        sb.append("  ⚠️ 사냥터층에서 0층(마을, /층변경 0)으로 가면 방금 있던 층의 탐사맵(보드 위치+발견기록)이 초기화됩니다. 원정 중엔 끝까지 밀고 올라가세요!").append(NL);
-        sb.append("  ⚠️ 보스를 처치해 다음 10층 구간으로 넘어가면 그 구간 사냥터층(전투/탐사)으로는 다시 못 돌아갑니다(편도 진행, 마을은 예외 — 아래 /탑내려가기 참고).").append(NL);
-        sb.append("/층내려가기 (별칭: /층다운) : 지금 있는 구간 안에서 바로 아래 한 층으로 이동(예: 28층 → 27층). 이미 그 구간 마을이면 실패(대신 /탑내려가기 사용). 전투 중이면 도망 처리(/층변경과 동일)").append(NL);
-        sb.append("/탑내려가기 (별칭: /탑다운) : 마을에서만 사용 가능, 바로 아래 10층 구간의 마을로 이동(예: 20층 마을 → 10층 마을). 사냥터층은 거치지 않고 마을끼리만 이동하며, 몇 번이든 반복 가능").append(NL);
-        sb.append("  💡 구간 앞부분(1~4층 위치)에서 파티가 여러 번 전멸하면, 스탯/장비를 더 준비하고 오라고 /탑내려가기를 자동으로 안내해줍니다.").append(NL);
-        sb.append("/탑올라가기 (별칭: /탑업) : 마을에서만 사용 가능, 이 구간 보스를 이미 처치했으면 바로 위 10층 구간의 마을로 이동(예: 10층 마을 → 20층 마을). /탑내려가기의 대칭 기능").append(NL);
-        sb.append("/탑현황 [닉네임] (별칭: /탑정보, /ㅌㅎㅎ, /ㅌㅈㅂ) : 현재 층/보드 위치·탐사율/PP/최고티어 동료 3명/자동사냥/누적 처치를 묶어서 조회. 닉네임을 붙이면 다른 유저 조회(앞부분만 입력해도 검색됨)").append(NL);
-        sb.append("  ✨ 51층부터는 특수칸(워프포인트)을 밟으면 그 시점 탐사 기록이 저장(마을 복귀해도 유지)되고, 가끔 다음 이동에서 주사위를 두 번 굴리는 기믹도 걸립니다(더 멀리 갈 수도, 원치 않는 칸으로 넘어갈 수도).").append(NL);
+        sb.append("[간략 설명]").append(NL);
+        sb.append("🗼 이동/전투").append(NL);
+        sb.append("/주사위 : 이동 또는 공격").append(NL);
+        sb.append("/층변경 N : 구간 내 N번째 층 이동(0=마을~9=보스)").append(NL);
+        sb.append("/층내려가기 : 구간 내 한 층 아래로").append(NL);
+        sb.append("/탑내려가기 · /탑올라가기 : 마을끼리 위/아래 구간 이동(올라가기는 보스 처치 후만)").append(NL);
+        sb.append("/탑현황 [닉네임] : 현황 조회").append(NL);
         sb.append(NL);
 
-        sb.append("[동료] (웹 '파티' 탭) — 파티 편성/해제는 전투 중이 아니면 어디서든 가능").append(NL);
-        sb.append("/파티편성 (별칭: /탑편성, /탑동료, /탑파티, /ㅌㅍㅅ, /ㅌㄷㄹ, /ㅌㅍㅌ) : 보유 동료 목록 + 파티 편성 현황 조회").append(NL);
-        sb.append("/파티편성 N : 목록 N번째 동료를 파티에 편성/해제 (전투 중이 아니면 어디서든)").append(NL);
-        sb.append("/동료가리기 N : 목록 N번째 동료를 /파티편성 텍스트 목록에서 숨김/숨김해제(웹 화면엔 항상 표시)").append(NL);
+        sb.append("👥 동료").append(NL);
+        sb.append("/파티편성 [N] : 목록 조회 / N번 편성·해제").append(NL);
+        sb.append("/동료가리기 N : 목록에서 숨김 토글").append(NL);
         sb.append(NL);
 
-        sb.append("[파티 시너지] 전투마다 자동 판정, 파티가 정확히 3명이고 아래 조건을 만족해야 발동(2명만 겹치면 발동 안 함)").append(NL);
-        sb.append("전사★★★ : 도발 확률 상승, 파티 전체 반격 피해 10%↓").append(NL);
-        sb.append("마법사★★★ : 스턴 확률 상승, 스턴 시 피해 +20%").append(NL);
-        sb.append("도적★★★ : PP훔치기 확률 상승, 훔친 PP량 2배").append(NL);
-        sb.append("궁수★★★ : 파티 전체 공격력 +30%").append(NL);
-        sb.append("도사★★★ : 보호막량 2배").append(NL);
-        sb.append(NL);
-
-        sb.append("[동료 성급 특수효과] ★5/★6 동료는 그 직업에 완전히 새로운 개인 효과가 생김(시너지와 별개, 중복 적용)").append(NL);
-        sb.append("전사 : ★5 도발 확률 +10%p, ★6 +20%p(도발 성공 시 받는 피해도 20%↓)").append(NL);
-        sb.append("마법사 : ★5/★6 스턴 2턴 지속(다음 턴 반격까지 막음), ★6은 발동 확률도 +15%p").append(NL);
-        sb.append("도적 : ★5 반격 대상이 되면 30% 확률로 회피(피해 0), ★6 45%").append(NL);
-        sb.append("궁수 : ★5 몬스터 방어력 50% 무시(관통), ★6 100% 무시(완전 관통)").append(NL);
-        sb.append("도사 : ★5 동료가 쓰러지면 25% 확률로 즉시 부활(HP30%), ★6 40% 확률(HP50%)").append(NL);
-        sb.append(NL);
-
-        sb.append("[상점] (웹 '상점' 탭) — 뽑기는 마을이 아니어도 아무 층에서나 가능").append(NL);
-        sb.append("/동료뽑기N [10] : 아래 번호의 계약서로 동료 뽑기(뒤에 10을 붙이면 10연속), 스탯도 함께 표시. 번호는 반드시 붙여써야 함(예: /동료뽑기1) — 번호 없이 /동료뽑기만 치면 안 뽑히고 등급별 안내만 나옴").append(NL);
+        sb.append("🛍️ 상점").append(NL);
+        sb.append("/동료뽑기N [10] : N번 계약서로 뽑기(10연속 가능)").append(NL);
         sb.append(gachaCatalogText(dao.selectGachaList("COMPANION", 999), unlocked));
-        sb.append("/장비뽑기N [10] : 아래 번호의 보물상자로 장비 뽑기(뒤에 10을 붙이면 10연속), 스탯 보너스도 함께 표시. 번호는 반드시 붙여써야 함(예: /장비뽑기1) — 번호 없이 /장비뽑기만 치면 안 뽑히고 등급별 안내만 나옴").append(NL);
+        sb.append("/장비뽑기N [10] : N번 상자로 뽑기(10연속 가능)").append(NL);
         sb.append(gachaCatalogText(dao.selectGachaList("EQUIP", 999), unlocked));
-        sb.append("/주사위구매 [N] : 해금된 주사위 목록(최대 눈금 등급 DICE_4~20) 확인 / N번 장착 — 전투 중에도 가능, 무료로 몇 번이든 교체").append(NL);
-        sb.append("/주사위강화 [구매] (30/50/60/70/80/90층 마을 도착 시 순차 해금) : 최소 눈금을 +1~+6까지 올리는 강화 현황 확인 / 다음 단계 PP 구매").append(NL);
-        sb.append("/마이너스주사위 [구매] (30층 마을 도착 시 해금, -1 한 단계뿐) : 최소 눈금을 -1까지 내리는 마이너스 주사위 현황 확인 / 구매 — 탐사 중 정밀하게 조금만 이동하고 싶을 때 유용").append(NL);
-        sb.append("  ※ 강화/마이너스는 사둔 단계 중 딱 하나만 적용됩니다(합산 아님, 기본값 +0) — 웹 '탑' 탭 보드 위 최소값 줄에서 이미 산 단계끼리는 무료로 전환 가능, 0도 항상 무료").append(NL);
-        sb.append("/스탯구매 [공격력|최소공격력|체력] : 스탯 강화 현황 확인 / 구매").append(NL);
+        sb.append("/주사위구매 [N] : 주사위 등급 확인/교체").append(NL);
+        sb.append("/주사위강화 [구매] · /마이너스주사위 [구매] : 최소 눈금 조정 확인/구매(둘 중 하나만 적용, 기본 +0)").append(NL);
+        sb.append("/스탯구매 [공격력|최소공격력|체력] : 스탯 강화 확인/구매").append(NL);
         sb.append(NL);
 
-        sb.append("[장비] (웹 '장비' 탭)").append(NL);
-        sb.append("/장비목록 : 보유 장비 조회 (미착용은 번호 + 스탯 보너스, 착용중인 건 누가 끼고 있는지 표시)").append(NL);
-        sb.append("/장비장착 [N] [M] : 인자 없이 입력하면 미착용 장비 번호·파티원 번호를 먼저 안내. N=미착용 장비 번호, M=파티원 번호(생략 시 같은 직업 자동탐색)").append(NL);
-        sb.append("/장비합성 N : N번째 장비 포함 동일 직업/부위/등급 미착용 장비 3개를 상위 등급 1개로 합성 (★6 불가, /장비목록의 [미착용] 번호 기준)").append(NL);
-        sb.append("/장비해제 M (별칭: /탑해제, /ㅈㅂㅎㅈ, /ㅌㅎㅈ) : M번째 파티원이 착용 중인 장비(투구/무기/갑옷) 전부를 한 번에 해제").append(NL);
+        sb.append("🎒 장비").append(NL);
+        sb.append("/장비목록 : 보유 장비 조회").append(NL);
+        sb.append("/장비장착 [N] [M] : 장착").append(NL);
+        sb.append("/장비합성 N : 상위 등급으로 합성").append(NL);
+        sb.append("/장비해제 M : 파티원 장비 전부 해제").append(NL);
         sb.append(NL);
 
-        sb.append("[업적] (웹 '업적' 탭)").append(NL);
-        sb.append("/탑업적 [닉네임] (별칭: /ㅌㅇㅂ, /ㅌㅇㅈ) : 달성한 업적 이름만 조회 (닉네임 붙이면 다른 유저도)").append(NL);
-        sb.append(NL);
-
-        sb.append("[랭킹]").append(NL);
-        sb.append("/탑랭킹 (별칭: /ㅌㄹㅋ) : 서버 전체 최고기록 조회 (최고층/누적처치/업적수 등, 누가 세운 기록인지는 비공개)").append(NL);
+        sb.append("🏆 업적/랭킹").append(NL);
+        sb.append("/탑업적 [닉네임] : 달성 업적 조회").append(NL);
+        sb.append("/탑랭킹 : 서버 최고기록 조회").append(NL);
         return sb.toString();
     }
 
