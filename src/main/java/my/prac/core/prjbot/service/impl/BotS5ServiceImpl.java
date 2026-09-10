@@ -758,19 +758,19 @@ public class BotS5ServiceImpl implements BotS5Service {
         String status = strVal(p.get("STATUS"), "NORMAL");
         PP pp = PP.of(((Number) p.get("PP_VALUE")).doubleValue(), strVal(p.get("PP_EXT"), ""));
 
+        // [2026-09-10] "비슷한 항목끼리 붙이고 이모지도 넣어달라" 요청 -- 예전엔 라벨:값 줄이
+        // 항목마다 하나씩 쭉 나열돼서 한눈에 구획이 안 보였다. 위치/보드, PP, 전투 준비(주사위+
+        // 동료), 자동사냥/처치, 누적 네 묶음으로 나누고 각 묶음 첫 줄에 이모지를 붙였다.
         StringBuilder sb = new StringBuilder();
         sb.append(target).append(isOther ? "님의 탑 현황" : "님").append("," + NL);
-        sb.append("현재 층: ").append(floor);
-        sb.append(" (").append(floorKindLabel(floor)).append(")").append(NL);
-        sb.append("보유 PP: ").append(pp.format()).append(NL);
-        sb.append("상태: ").append(status).append(NL);
 
+        // ── 위치 ──
+        sb.append("🗼 ").append(floor).append("층 (").append(floorKindLabel(floor)).append(") · 상태 ").append(status).append(NL);
         if (floor % 10 >= 1 && floor % 10 <= 8) {
             HashMap<String, Object> fi = dao.selectFloorInfo(floor);
             HashMap<String, Object> ufp = dao.selectUserFloorProgress(target, floor);
             int tileCount = fi == null ? 0 : intVal(fi.get("TILE_COUNT"), 0);
             int curTile = ufp == null ? 0 : intVal(ufp.get("CUR_TILE"), 0);
-            sb.append("보드 위치: ").append(curTile).append(" / ").append(tileCount).append(NL);
             // "보드위치에 현재탐사율/최고탐사율도 보여달라" 요청으로 추가 -- 이번 원정에서 실제로
             // 발견(방문)한 칸 수 기준 현재탐사율과, 마을 복귀로 리셋되어도 남아있는 역대 최고기록을
             // 같이 보여준다(둘 다 %, 분모가 0이면 0%로 방어).
@@ -781,12 +781,35 @@ public class BotS5ServiceImpl implements BotS5Service {
             int bestTileCount = best == null ? 0 : intVal(best.get("TILE_COUNT"), 0);
             int bestPct = bestTileCount > 0 ? (bestVisited * 100 / bestTileCount) : Math.max(curPct, 0);
             boolean fullyExplored = best != null && "Y".equals(strVal(best.get("FULLY_EXPLORED_YN"), "N"));
-            sb.append("탐사율: 현재 ").append(curPct).append("% / 최고 ").append(bestPct).append("%")
+            sb.append("　🗺️ 보드 ").append(curTile).append("/").append(tileCount)
+              .append(" · 탐사율 현재 ").append(curPct).append("% / 최고 ").append(bestPct).append("%")
               .append(fullyExplored ? " ✅완전탐사" : "").append(NL);
         }
-        sb.append("사용 주사위: ").append(strVal(p.get("DICE_GRADE"), "DICE_6")).append(NL);
+
+        // ── PP ──
+        PP totalEarned = PP.of(numVal(p.get("TOTAL_PP_EARNED_VALUE"), 0), strVal(p.get("TOTAL_PP_EARNED_EXT"), ""));
+        sb.append("💰 보유 ").append(pp.format()).append(" PP · 누적획득 ").append(totalEarned.format()).append(" PP").append(NL);
+
+        // ── 전투 준비(주사위 + 최고티어 동료 3명) ──
+        sb.append("🎲 사용 주사위: ").append(strVal(p.get("DICE_GRADE"), "DICE_6")).append(NL);
+        // [2026-09-10] "최고티어 동료 3명의 등급/직업도 표기해달라" 요청 -- 파티 편성 여부와
+        // 무관하게 "보유한 동료 중" 등급이 가장 높은 3명을 뽑아서 "★등급직업(이름)" 형태로
+        // 보여준다(전투 로그의 jobTag()와 동일 표기, 익숙하게).
+        List<HashMap<String, Object>> allCompanions = dao.selectUserCompanions(target);
+        if (!allCompanions.isEmpty()) {
+            List<HashMap<String, Object>> topThree = new ArrayList<>(allCompanions);
+            topThree.sort((a, b) -> intVal(b.get("GRADE"), 1) - intVal(a.get("GRADE"), 1));
+            if (topThree.size() > 3) topThree = topThree.subList(0, 3);
+            List<String> tags = new ArrayList<>();
+            for (HashMap<String, Object> c : topThree) {
+                tags.add(jobTag(intVal(c.get("GRADE"), 1), strVal(c.get("CLASS"), "WARRIOR"), strVal(c.get("NAME"), "?")));
+            }
+            sb.append("🏆 최고티어 동료: ").append(String.join(", ", tags)).append(NL);
+        }
+
+        // ── 자동사냥 / 처치 ──
         boolean autoHuntOn = "Y".equals(strVal(p.get("AUTO_HUNT_YN"), "N"));
-        sb.append("자동사냥: ").append(autoHuntOn ? "ON" : "OFF");
+        sb.append("🔥 자동사냥: ").append(autoHuntOn ? "ON" : "OFF");
         if (autoHuntOn) {
             HashMap<String, Object> log = dao.selectAutoHuntLog(target);
             int huntFloor = log == null ? floor : intVal(log.get("FLOOR"), floor);
@@ -803,11 +826,10 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 더 이상 안 오르고(위 resolveCombatTurn 참고) 의미도 없으므로 표시 자체를 생략한다
         // (계속 표시하면 "숫자가 이상하게 안 늘어난다"는 오해를 삼).
         if (!autoHuntOn && floor % 10 >= 1 && floor % 10 <= 8) {
-            sb.append("이 층 처치: ").append(intVal(p.get("KILL_COUNT_CUR"), 0)).append("/10 (자동사냥 적용까지)").append(NL);
+            sb.append("　⚔️ 이 층 처치: ").append(intVal(p.get("KILL_COUNT_CUR"), 0)).append("/10 (자동사냥 적용까지)").append(NL);
         }
-        sb.append("누적 처치: ").append(intVal(p.get("TOTAL_KILL_COUNT"), 0)).append("마리").append(NL);
-        PP totalEarned = PP.of(numVal(p.get("TOTAL_PP_EARNED_VALUE"), 0), strVal(p.get("TOTAL_PP_EARNED_EXT"), ""));
-        sb.append("누적 획득 PP: ").append(totalEarned.format()).append(NL);
+        sb.append("📊 누적 처치: ").append(intVal(p.get("TOTAL_KILL_COUNT"), 0)).append("마리").append(NL);
+
         sb.append(NL).append("🖥️ 웹으로 보기: ").append(towerViewLink(target)).append(NL);
         sb.append("👉 전체 명령어는 /탑도움말 을 입력해 확인하세요.");
         return sb.toString();
@@ -880,10 +902,13 @@ public class BotS5ServiceImpl implements BotS5Service {
         sb.append("/동료뽑기N [10]").append(NL);
         sb.append("/장비뽑기N [10]").append(NL);
         sb.append("/주사위구매 [N]").append(NL);
+        sb.append("/주사위강화 [구매]").append(NL);
+        sb.append("/마이너스주사위 [구매]").append(NL);
         sb.append("/스탯구매 [공격력|최소공격력|체력]").append(NL);
         sb.append("/장비목록").append(NL);
         sb.append("/장비장착 [N] [M]").append(NL);
         sb.append("/장비합성 N").append(NL);
+        sb.append("/장비해제 M").append(NL);
         sb.append("/탑업적").append(NL);
         sb.append("/탑랭킹").append(NL);
         sb.append(NL);
@@ -900,7 +925,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         sb.append("/탑내려가기 (별칭: /탑다운) : 마을에서만 사용 가능, 바로 아래 10층 구간의 마을로 이동(예: 20층 마을 → 10층 마을). 사냥터층은 거치지 않고 마을끼리만 이동하며, 몇 번이든 반복 가능").append(NL);
         sb.append("  💡 구간 앞부분(1~4층 위치)에서 파티가 여러 번 전멸하면, 스탯/장비를 더 준비하고 오라고 /탑내려가기를 자동으로 안내해줍니다.").append(NL);
         sb.append("/탑올라가기 (별칭: /탑업) : 마을에서만 사용 가능, 이 구간 보스를 이미 처치했으면 바로 위 10층 구간의 마을로 이동(예: 10층 마을 → 20층 마을). /탑내려가기의 대칭 기능").append(NL);
-        sb.append("/탑현황 [닉네임] (별칭: /탑정보, /ㅌㅎㅎ, /ㅌㅈㅂ) : 현재 층/보드 위치/PP/상태/자동사냥 조회. 닉네임을 붙이면 다른 유저 조회(앞부분만 입력해도 검색됨)").append(NL);
+        sb.append("/탑현황 [닉네임] (별칭: /탑정보, /ㅌㅎㅎ, /ㅌㅈㅂ) : 현재 층/보드 위치·탐사율/PP/최고티어 동료 3명/자동사냥/누적 처치를 묶어서 조회. 닉네임을 붙이면 다른 유저 조회(앞부분만 입력해도 검색됨)").append(NL);
+        sb.append("  ✨ 51층부터는 특수칸(워프포인트)을 밟으면 그 시점 탐사 기록이 저장(마을 복귀해도 유지)되고, 가끔 다음 이동에서 주사위를 두 번 굴리는 기믹도 걸립니다(더 멀리 갈 수도, 원치 않는 칸으로 넘어갈 수도).").append(NL);
         sb.append(NL);
 
         sb.append("[동료] (웹 '파티' 탭) — 파티 편성/해제는 전투 중이 아니면 어디서든 가능").append(NL);
@@ -930,7 +956,10 @@ public class BotS5ServiceImpl implements BotS5Service {
         sb.append(gachaCatalogText(dao.selectGachaList("COMPANION", 999), unlocked));
         sb.append("/장비뽑기N [10] : 아래 번호의 보물상자로 장비 뽑기(뒤에 10을 붙이면 10연속), 스탯 보너스도 함께 표시. 번호는 반드시 붙여써야 함(예: /장비뽑기1) — 번호 없이 /장비뽑기만 치면 안 뽑히고 등급별 안내만 나옴").append(NL);
         sb.append(gachaCatalogText(dao.selectGachaList("EQUIP", 999), unlocked));
-        sb.append("/주사위구매 [N] : 해금된 주사위 목록 확인 / N번 장착").append(NL);
+        sb.append("/주사위구매 [N] : 해금된 주사위 목록(최대 눈금 등급 DICE_4~20) 확인 / N번 장착 — 전투 중에도 가능, 무료로 몇 번이든 교체").append(NL);
+        sb.append("/주사위강화 [구매] (30/50/60/70/80/90층 마을 도착 시 순차 해금) : 최소 눈금을 +1~+6까지 올리는 강화 현황 확인 / 다음 단계 PP 구매").append(NL);
+        sb.append("/마이너스주사위 [구매] (30층 마을 도착 시 해금, -1 한 단계뿐) : 최소 눈금을 -1까지 내리는 마이너스 주사위 현황 확인 / 구매 — 탐사 중 정밀하게 조금만 이동하고 싶을 때 유용").append(NL);
+        sb.append("  ※ 강화/마이너스는 사둔 단계 중 딱 하나만 적용됩니다(합산 아님, 기본값 +0) — 웹 '탑' 탭 보드 위 최소값 줄에서 이미 산 단계끼리는 무료로 전환 가능, 0도 항상 무료").append(NL);
         sb.append("/스탯구매 [공격력|최소공격력|체력] : 스탯 강화 현황 확인 / 구매").append(NL);
         sb.append(NL);
 
@@ -2263,12 +2292,23 @@ public class BotS5ServiceImpl implements BotS5Service {
                 // [버그 수정] 자동사냥이 이미 켜져 있을 때도 KILL_COUNT_CUR가 계속 0~9로
                 // 순환(리셋)해서 "이 층 처치 N/10" 수치가 계속 오르내리는 것처럼 보이고,
                 // 10마리째마다 "자동사냥 모드 ON" 안내가 쓸데없이 반복 출력되는 문제가
-                // 있었다(문의로 확인). 자동사냥은 한 번 켜지면 층 이동 시 자동으로 그 층
-                // 기준으로 따라오므로(changeFloor의 동기화 로직 참고), 이미 켜진 뒤에는
-                // 이 카운터를 더 건드리지 않는다 -- "이 층 처치 N/10"은 순수하게 "아직
-                // 자동사냥이 꺼져 있고, 이 층에서 처음 켜기까지 몇 마리 남았는지"만 의미.
+                // 있었다(문의로 확인). 이미 켜진 뒤에는 이 카운터를 더 건드리지 않는다 --
+                // "이 층 처치 N/10"은 순수하게 "아직 자동사냥이 꺼져 있고, 이 층에서 처음
+                // 켜기까지 몇 마리 남았는지"만 의미.
+                // [2026-09-10] "자동사냥이 실제 사냥터가 아니라 그냥 멈춰있는 층 기준으로
+                // 도는 것 같다, 최근 10마리를 잡은 곳을 기준으로 해달라" 요청 -- 예전엔
+                // changeFloor()에서 "자동사냥 ON이면 층 이동할 때마다 그 층으로 정산기준을
+                // 맞춘다"는 규칙이었는데, 이러면 실제로 싸운 적 없는 층(그냥 지나가거나
+                // 도망친 층)도 정산 기준이 돼버리는 문제가 있었다. changeFloor의 동기화는
+                // 제거하고, 대신 "실제로 몬스터를 잡을 때마다" 그 층으로 갱신하도록 옮겼다 --
+                // 이러면 정산 기준이 항상 "가장 최근에 실제로 전투해 이긴 층"이 된다.
                 boolean alreadyAutoHunt = "Y".equals(strVal(p.get("AUTO_HUNT_YN"), "N"));
-                if (!alreadyAutoHunt) {
+                if (alreadyAutoHunt) {
+                    HashMap<String, Object> huntFloorUp = new HashMap<>();
+                    huntFloorUp.put("userName", userName);
+                    huntFloorUp.put("floor", floor);
+                    dao.upsertAutoHuntLog(huntFloorUp);
+                } else {
                     up.put("killCountCur", killCountCur >= 10 ? 0 : killCountCur);
                     if (killCountCur >= 10) {
                         up.put("autoHuntYn", "Y");
@@ -2998,18 +3038,13 @@ public class BotS5ServiceImpl implements BotS5Service {
             checkFleeAchievements(userName, newFleeCount);
         }
 
-        // [설계 변경] 자동사냥이 이미 켜져 있으면(AUTO_HUNT_YN='Y') 정산 기준 층도 "지금 있는 층"으로
-        // 바로 맞춰준다. 예전엔 그 층에서 10마리를 다시 채워야만(killCountCur 10 도달 시점에만)
-        // AUTO_HUNT_LOG.FLOOR가 갱신돼서, 새 층으로 올라가 놀기만 해도(재도전 없이는) 자동사냥이
-        // 계속 예전 층 기준으로 도는 것처럼 보이는 혼란이 있었다(신고로 확인). 사냥터층으로 실제
-        // 이동할 때마다 즉시 동기화해서 "자동사냥 = 지금 층 기준"을 항상 유지한다.
+        // [2026-09-10] "자동사냥이 실제 사냥터가 아니라 그냥 멈춰있는 층 기준으로 도는 것
+        // 같다, 최근 10마리를 잡은 곳을 기준으로 해달라" 요청으로 이 동기화(층 이동만 해도
+        // 정산 기준을 그 층으로 옮기던 로직)는 제거했다 -- 실제로 싸운 적 없는 층(그냥
+        // 지나가거나 전투 중 도망친 층)까지 정산 기준이 돼버리는 문제가 있었음. 대신
+        // resolveCombatTurn()에서 "실제로 몬스터를 잡을 때마다" AUTO_HUNT_LOG.FLOOR를
+        // 갱신하도록 옮겨서, 정산 기준이 항상 "가장 최근에 실제로 이긴 전투의 층"이 되게 함.
         int targetFm = target % 10;
-        if (target != floor && targetFm >= 1 && targetFm <= 8 && "Y".equals(strVal(p.get("AUTO_HUNT_YN"), "N"))) {
-            HashMap<String, Object> logUp = new HashMap<>();
-            logUp.put("userName", userName);
-            logUp.put("floor", target);
-            dao.upsertAutoHuntLog(logUp);
-        }
 
         if (target != floor) {
             grantFloorAchievements(userName, target);
