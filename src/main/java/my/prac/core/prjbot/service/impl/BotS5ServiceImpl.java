@@ -163,6 +163,14 @@ public class BotS5ServiceImpl implements BotS5Service {
         return elite ? "💪 강화 " + base : base;
     }
 
+    /** [2026-09-11] "61층+ 두 마리 몬스터는 이름이 같아서 반격 로그에서 헷갈린다" 요청 --
+     *  진짜로 두 마리인(dualMonster) 경우에 한해 몬스터 이름 뒤에 "I"/"II"를 붙여 구분한다.
+     *  보스의 "1마리가 2명을 때리는" 다중타겟(doubleTarget)은 애초에 같은 개체라 헷갈릴 일이
+     *  없으므로 호출하는 쪽에서 dualMonster일 때만 이 오버로드를 쓴다(그 외엔 일반 버전 사용). */
+    private String eliteMonsterName(int floor, HashMap<String, Object> mon, boolean elite, int ti) {
+        return eliteMonsterName(floor, mon, elite) + " " + (ti == 0 ? "I" : "II");
+    }
+
     // 장비 등급별 보너스 [투구고정,투구%, 무기고정,무기%, 갑옷고정,갑옷%], index0=★1
     private static final double[][] EQUIP_BONUS = {
         { 30, 0.05,   5, 0.05,   3, 0.05 },
@@ -2570,8 +2578,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         // [2026-09-05 멘트 개편] 파티 공격 줄과 형식을 맞춰서(이름+HP 줄 / 굴림 결과 줄 분리),
         // 몬스터 HP 줄 바로 다음에 굴림 결과를 붙이고, "~에게 반격!" 문구는 숫자 없이 별도 줄로.
         sb.append("🎲").append(roll).append("→ ").append(rawDmgToParty).append("dmg").append(NL);
-        sb.append(eliteMonsterName(floor, mon, elite)).append("의 ").append(jobTag(tGrade, tJob, tName))
-          .append("에게 반격! ").append(NL);
+        sb.append(dualMonster ? eliteMonsterName(floor, mon, elite, ti) : eliteMonsterName(floor, mon, elite))
+          .append("의 ").append(jobTag(tGrade, tJob, tName)).append("에게 반격! ").append(NL);
 
         // [2026-09-05 신설] ★5/★6 도적 "회피" -- 자신이 반격 대상이 되면 일정 확률로 피해를
         // 통째로 무효화한다(실드/전사 감소보다 우선 -- 아예 안 맞은 셈이라 뒤 계산 자체를 건너뜀).
