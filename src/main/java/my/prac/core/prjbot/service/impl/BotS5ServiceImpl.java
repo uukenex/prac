@@ -1035,13 +1035,25 @@ public class BotS5ServiceImpl implements BotS5Service {
     // 겹침이 아니므로 최소 간격 하한(MACRO_MIN_INTERVAL_SEC)을 둬서 그런 경우는 아예
     // "판정 대상에서 제외"(스트릭을 올리지도, 끊지도 않음)하도록 수정. 안전 마진으로 스트릭
     // 기준치도 15->25로 올림.
-    private static final long MACRO_MIN_INTERVAL_SEC = 2;
+    // [2026-09-11 오탐 재수정] "키리레이나" 계정이 다시 정지된 사고로 재조사 -- 실제로는
+    // 진짜 활발히 플레이 중인 유저(같은 시간대에 뽑기/합성/장비장착 등 정상 조작 다수)였는데,
+    // "쿨타임 안내를 받고도 조급하게 몇 초 간격으로 계속 재시도"한 게 원인으로 확인됨(쿨타임이
+    // 3초로 짧은 구간이라 특히 재현이 쉬움). checkMacroLock()이 쿨타임 통과 여부와 "무관하게"
+    // 모든 요청 간격을 스트릭에 반영하다 보니, 쿨타임 벽에 막힌 조급한 재시도들까지 전부
+    // 표본으로 잡혀서 실제 액션 간격보다 훨씬 촘촘하고 일정한 패턴이 만들어졌다 -- 정작
+    // 진짜 매크로는 쿨타임 벽에 헛되이 부딪히지 않고 정확히 쿨타임만큼 기다렸다 쏘는 게
+    // 보통이라, 이 신호 자체가 사람/매크로 구분에 오히려 역효과였음. 대응 두 가지:
+    //   1) 패턴 추적을 rollDice()의 쿨타임 통과 "이후"로 옮김(checkMacroPattern 참고) --
+    //      쿨타임에 막혀 거절된 요청은 더 이상 스트릭에 전혀 반영되지 않는다.
+    //   2) 최소 간격 하한을 2->5초로, 스트릭 기준치를 25->40으로 각각 올려 안전 마진 확대
+    //      (짧은 쿨타임 직후 즉시 재시도하는 정상적으로 빠른 유저도 자연스럽게 걸러지게).
+    private static final long MACRO_MIN_INTERVAL_SEC = 5;
     // 이 이상 촘촘하지 않으면 애초에 "빠르게 연타"일 뿐 자동화로 보기 어려움
     private static final long MACRO_MAX_INTERVAL_SEC = 20;
     // 이전 간격과 이만큼(초) 이내로 차이나면 "같은 타이머"로 본다
     private static final long MACRO_TOLERANCE_SEC = 1;
     // 이 횟수 연속으로 "같은 타이머"가 감지되면 일시정지
-    private static final int MACRO_STREAK_THRESHOLD = 25;
+    private static final int MACRO_STREAK_THRESHOLD = 40;
     // [2026-09-09] "일시정지->영구정지 텀이 너무 짧아서 일반유저가 억울하게 영구정지되는
     // 케이스가 많다, 지금 대비 3배 정도 늘려달라" 요청 -- 원래는 일시정지 상태에서 딱 1번만
     // 더 시도해도(유예 0회) 곧바로 영구정지였다. 유예를 3회로 늘려서, 일시정지 후에도 2번은
@@ -1053,13 +1065,15 @@ public class BotS5ServiceImpl implements BotS5Service {
     private static final long BAN_AUTO_UNLOCK_HOURS = 1;
 
     /**
-     * 매크로(자동화 클라이언트) 탐지 + 잠금 처리. 쿨타임 통과 여부와 무관하게 "요청이 들어온
-     * 간격" 자체가 여러 번 연속으로 거의 똑같으면(사람은 이렇게 못 침) 일시정지시키고, 이미
-     * 일시정지된 계정이 그래도 SUSPEND_BAN_GRACE회 넘게 계속 시도하면 영구정지로 격상한다.
-     * 영구정지는 BAN_DATE 기준 BAN_AUTO_UNLOCK_HOURS시간이 지나면 자동으로 풀린다. 잠기지
-     * 않았으면(혹은 방금 자동 해제됐으면) null 반환.
+     * 매크로(자동화 클라이언트) 밴/정지 상태 확인 -- 쿨타임 통과 여부와 무관하게(쿨타임에
+     * 막힌 요청이라도) 항상 먼저 확인해야 하는 부분만 담당: 이미 영구정지/일시정지된 계정을
+     * 계속 차단하고, 일시정지 후에도 SUSPEND_BAN_GRACE회 넘게 계속 시도하면 영구정지로
+     * 격상한다. 영구정지는 BAN_DATE 기준 BAN_AUTO_UNLOCK_HOURS시간이 지나면 자동으로 풀린다.
+     * 실제로 "새로 정지시킬지" 판단하는 간격 패턴 추적은 checkMacroPattern() 참고(쿨타임을
+     * 통과한 요청에만 적용, 아래 rollDice() 호출 순서 참고). 막혀있지 않으면(혹은 방금 자동
+     * 해제됐으면) null 반환.
      */
-    private String checkMacroLock(String userName, HashMap<String, Object> p) {
+    private String checkMacroBanState(String userName, HashMap<String, Object> p) {
         if ("Y".equals(strVal(p.get("BAN_YN"), "N"))) {
             java.util.Date banDate = (java.util.Date) p.get("BAN_DATE");
             if (banDate != null && (System.currentTimeMillis() - banDate.getTime()) >= BAN_AUTO_UNLOCK_HOURS * 3600_000L) {
@@ -1097,7 +1111,21 @@ public class BotS5ServiceImpl implements BotS5Service {
             dao.updateUserProgress(up);
             return "🚫 매크로(자동화) 의심으로 일시정지된 계정입니다. (관리자 문의 필요, 계속 시도하면 영구정지될 수 있습니다)";
         }
+        return null;
+    }
 
+    /**
+     * 매크로(자동화 클라이언트) 의심 패턴 추적 -- "요청이 들어온 간격" 자체가 여러 번 연속으로
+     * 거의 똑같으면(사람은 이렇게 못 침) 일시정지시킨다.
+     * [2026-09-11] 예전엔 이 판정을 쿨타임 통과 여부와 "무관하게" 모든 요청에 적용했는데,
+     * "키리레이나" 계정이 실제로는 정상적으로 활발히 플레이하면서 쿨타임 안내를 받고도
+     * 조급하게 몇 초 간격으로 재시도한 게 그대로 스트릭에 잡혀 오탐 정지된 사고로 확인됨
+     * (쿨타임이 3초로 짧은 구간이라 특히 쉽게 재현됨). 진짜 매크로는 오히려 쿨타임 벽에
+     * 헛되이 부딪히지 않고 정확히 쿨타임만큼 기다렸다 쏘는 게 보통이라, 쿨타임에 막힌
+     * 요청까지 반영하는 게 사람/매크로 구분에 역효과였다 -- 이제 이 함수는 rollDice()가
+     * 쿨타임을 통과시킨 뒤(=실제로 처리될 요청)에만 호출된다.
+     */
+    private String checkMacroPattern(String userName, HashMap<String, Object> p) {
         java.util.Date lastReq = (java.util.Date) p.get("LAST_REQUEST_DATE");
         long nowMs = System.currentTimeMillis();
         long curIntervalSec = lastReq == null ? -1 : (nowMs - lastReq.getTime()) / 1000L;
@@ -1154,10 +1182,10 @@ public class BotS5ServiceImpl implements BotS5Service {
 
         // [2026-09-05 신설] 매크로(자동화 클라이언트) 탐지 -- "팔세쪽있음" 계정이 웹 DICE
         // 액션을 20분 넘게 거의 완벽하게 균일한 4초 간격으로 반복하는 걸 실 로그로 확인
-        // (사람이 낼 수 없는 규칙성). 쿨타임 통과 여부와 무관하게 "요청이 들어온 간격" 자체를
-        // 본다(매크로는 쿨타임 안내를 받아도 그냥 같은 타이머로 계속 찌르기 때문).
-        String macroLockMsg = checkMacroLock(userName, p);
-        if (macroLockMsg != null) return macroLockMsg;
+        // (사람이 낼 수 없는 규칙성). 이미 정지/영구정지된 상태인지는 쿨타임 통과 여부와
+        // 무관하게 항상 먼저 확인한다(정지된 계정은 쿨타임과 무관하게 계속 차단).
+        String macroBanMsg = checkMacroBanState(userName, p);
+        if (macroBanMsg != null) return macroBanMsg;
 
         java.util.Date lastAction = (java.util.Date) p.get("LAST_DICE_ACTION_DATE");
         String autoHuntMsg = settleAutoHunt(userName, p);
@@ -1170,6 +1198,12 @@ public class BotS5ServiceImpl implements BotS5Service {
         String status = strVal(p.get("STATUS"), "NORMAL");
         String cooldownMsg = checkDiceCooldown(userName, p);
         if (cooldownMsg != null) return prependAutoHunt(autoHuntMsg, cooldownMsg);
+
+        // [2026-09-11] 새로 정지시킬지 판단하는 간격 패턴 추적은 쿨타임을 통과한(=실제로
+        // 처리되는) 요청에만 적용한다 -- checkMacroPattern() 주석 참고("키리레이나" 오탐 재발
+        // 방지, 쿨타임 벽에 막힌 조급한 재시도가 스트릭에 잡히던 문제 제거).
+        String macroPatternMsg = checkMacroPattern(userName, p);
+        if (macroPatternMsg != null) return prependAutoHunt(autoHuntMsg, macroPatternMsg);
 
         // 하루 굴림 횟수 제한("하루 N번까지만" 요청, 2026-09-07에 채널별 한도로 확장) -- 쿨타임
         // 통과 후, 실제로 이번 액션이 "굴림 1회"로 카운트되기 직전에 확인한다(쿨타임에 막힌
