@@ -50,7 +50,13 @@
                     <if test="maxFloorReached != null">, #{maxFloorReached}</if>
                 ),
             </if>
-            <if test="unlockedBlock != null">UNLOCKED_BLOCK = #{unlockedBlock},</if>
+            <!-- [2026-09-11 버그 수정] 예전엔 그냥 SET이라, 이미 UNLOCKED_BLOCK이 더 높은
+                 상태(예: 관리자가 되돌려준 복구값)에서 그보다 낮은 구간의 보스를 다시
+                 처치하면(정상적으로 이전 구간을 재차 클리어하며 올라오는 중이었을 뿐인데도)
+                 UNLOCKED_BLOCK이 그 낮은 값으로 덮어써져서 조용히 퇴행했다("키리레이나"
+                 30->20 재발 사고로 확인). MAX_FLOOR_REACHED와 동일하게 GREATEST로 바꿔서
+                 절대 낮아지지 않게(항상 최고 기록만 유지) 방어. -->
+            <if test="unlockedBlock != null">UNLOCKED_BLOCK = GREATEST(UNLOCKED_BLOCK, #{unlockedBlock}),</if>
             <if test="ppValue != null">PP_VALUE = #{ppValue},</if>
             <if test="ppExt != null">PP_EXT = #{ppExt},</if>
             <if test="status != null">STATUS = #{status},</if>
