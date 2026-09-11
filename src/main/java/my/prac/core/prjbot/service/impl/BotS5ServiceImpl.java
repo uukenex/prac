@@ -424,9 +424,17 @@ public class BotS5ServiceImpl implements BotS5Service {
      *  신고가 들어왔다 -- 실제로 봐도 "-1과 +2 중 어느 쪽이 지금 적용 중인지" 알 수 없는
      *  설계였음. DICE_MIN_BONUS/DICE_MIN_MALUS는 이제 "각 방향으로 얼마나 구매(해금)해뒀는지"
      *  진행도로만 쓰고, 실제로 지금 굴림에 적용되는 값은 DICE_MIN_ADJUST 하나(단일 선택,
-     *  기본값 0)로 분리했다. selectDiceMinAdjust()/buyDiceEnhance() 참고. */
+     *  기본값 0)로 분리했다. selectDiceMinAdjust()/buyDiceEnhance() 참고.
+     *  [2026-09-11 버그 수정] "마이너스 주사위(-1)를 눌러도 실제로 -1이 안 나온다"는 신고로
+     *  확인 -- 강화(+)는 "1+adjust"라 +1 사면 최소눈금 2, +6이면 7로 라벨과 정확히 맞물리는데,
+     *  마이너스(adjust=-1)도 같은 식을 쓰면 "1+(-1)=0"이 되어 최소가 0에서 멈추고 절대
+     *  -1까지 못 내려갔다(거기다 rollFace()의 "0은 안 나오게" 처리까지 겹치면 사실상 마이너스
+     *  주사위가 최소치를 전혀 안 낮추는 것과 똑같아지는 이중 버그). 마이너스는 양수처럼
+     *  "1을 기준으로 뺀 값"이 아니라 "그 값 자체가 최소치"가 되도록 분기해서, -1을 선택하면
+     *  실제로 diceMin=-1이 되어 라벨과 일치하게 고쳤다(강화(+) 쪽 계산식은 그대로 유지). */
     private int diceMinFor(HashMap<String, Object> p) {
-        return 1 + intVal(p.get("DICE_MIN_ADJUST"), 0);
+        int adjust = intVal(p.get("DICE_MIN_ADJUST"), 0);
+        return adjust >= 0 ? 1 + adjust : adjust;
     }
 
     private int floorBlockBase(int floor) {
