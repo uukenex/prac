@@ -1993,9 +1993,11 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 다중타겟 인프라를 같이 써서 매 턴 파티 2명을 공격하게 만든다(=2마리가 각자
         // 공격하는 것과 동일한 결과). [2026-09-12] "I번부터 죽여야 II번이 나온다" 요청으로
         // HP는 더 이상 합쳐서(2배) 취급하지 않고, 각자 자기 체력(base)만큼만 가진 별도
-        // 풀(I=CUR_MONSTER_HP_VALUE, II=CUR_MONSTER2_HP_VALUE)로 순차 처치된다(아래
-        // monster1Dead/monster2Pending 분기 참고). dualHpMult는 이제 "총 처치보상 2배"에만
-        // 쓰인다(HP 계산에서는 제외).
+        // 풀(I=CUR_MONSTER_HP_VALUE, II=CUR_MONSTER2_HP_VALUE)로 순차 처치된다.
+        // [2026-09-13] "오버킬 없이 동료별로 나눠서 데미지 적용" 요청으로, 파티 전체
+        // 데미지를 한 번에 모아 빼는 대신 아래 파티 공격 루프 안에서 동료 한 명씩 "현재
+        // 타겟"에 즉시 적용한다(dualTarget1Remain/dualTarget2Remain 등 참고). dualHpMult는
+        // "총 처치보상 2배"에만 쓰인다(HP 계산에서는 제외).
         boolean dualMonster = "Y".equals(strVal(p.get("CUR_MONSTER_DUAL_YN"), "N"));
         double dualHpMult = dualMonster ? 2.0 : 1.0;
         PP monsterHp = PP.of(((Number) p.get("CUR_MONSTER_HP_VALUE")).doubleValue(), strVal(p.get("CUR_MONSTER_HP_EXT"), ""));
@@ -2089,6 +2091,26 @@ public class BotS5ServiceImpl implements BotS5Service {
             p.put("DOUBLE_DICE_YN", "N");
             sb.append("🎲🎲 더블주사위 효과! 이번 턴 파티 전원의 공격 눈금을 두 번씩 굴려 합산합니다.").append(NL);
         }
+
+        // [2026-09-13] "I번과 II번이 같이 있어도 우리는 I번부터 우선타격, 오버킬 없이 동료별로
+        // 나눠서 데미지 적용" 요청 -- dualMonster면 아래 루프에서 동료 한 명이 공격할 때마다
+        // "현재 타겟"(처음엔 I번)의 체력을 그 자리에서 즉시 깎는다(파티 전체 데미지를 한 번에
+        // 모아 한 번에 빼는 기존 방식 대신). 그 공격으로 현재 타겟이 죽으면 남은 피해는
+        // 버리고(오버킬 없음) 다음 동료부터 II번을 타격한다. 예: I번 체력 400, 동료1이
+        // 300dmg(400→100, 생존)/동료2가 600dmg(오버킬 500 버리고 I번 사망, 이후 동료는
+        // II번 타격)/동료3이 II번에게 자기 dmg 그대로(예: 400) 적용.
+        long dualTarget1Remain = PP.toBaseValue(monsterHp);
+        Long dualTarget2Remain = null;
+        if (dualMonster) {
+            Object m2 = p.get("CUR_MONSTER2_HP_VALUE");
+            if (m2 != null && ((Number) m2).doubleValue() > 0) {
+                dualTarget2Remain = PP.toBaseValue(PP.of(((Number) m2).doubleValue(), strVal(mon.get("HP_EXT"), "")));
+            }
+        }
+        boolean dualOnTarget2 = false;
+        boolean dualMonster1KilledInLoop = false;
+        boolean dualMonster2KilledInLoop = false;
+        boolean dualExecuteKillConsumed = false;
 
         for (HashMap<String, Object> c : party) {
             PP hp = PP.of(((Number) c.get("CUR_HP_VALUE")).doubleValue(), strVal(c.get("CUR_HP_EXT"), ""));
@@ -2186,7 +2208,10 @@ public class BotS5ServiceImpl implements BotS5Service {
                 }
                 case "ARCHER": {
                     // ★5/★6 특수효과(관통, 몬스터 방어 무시)는 위 dmg 계산에서 이미 처리했다.
-                    if (PP.toBaseValue(monsterHp) <= PP.toBaseValue(monsterMaxHp) * 0.1 && RND.nextInt(100) < 40) {
+                    // [2026-09-13] dual일 땐 "현재 타겟"의 실시간 잔여 체력(앞선 동료들이 이미
+                    // 깎아둔 값)을 기준으로 판정 -- 고정된 turn-start 값(monsterHp)이 아니다.
+                    long checkHp = dualMonster ? (dualOnTarget2 ? dualTarget2Remain : dualTarget1Remain) : PP.toBaseValue(monsterHp);
+                    if (checkHp <= PP.toBaseValue(monsterMaxHp) * 0.1 && RND.nextInt(100) < 40) {
                         executeKill = true;
                         sb.append(" 🏹즉사!");
                     }
@@ -2206,6 +2231,28 @@ public class BotS5ServiceImpl implements BotS5Service {
                 }
                 default:
                     break;
+            }
+
+            // [2026-09-13] dual 몬스터: 이 동료의 공격을 "현재 타겟"에 그 자리에서 적용.
+            // ARCHER 즉사가 방금 이 동료 턴에 새로 발동됐으면(dualExecuteKillConsumed로 한
+            // 번만 소모) 다이스 데미지 대신 현재 타겟을 그 자리에서 확실히 처치한다(오버킬은
+            // 여전히 없음 -- 다음 타겟으로 안 넘어가고 그냥 버려짐).
+            if (dualMonster) {
+                boolean thisArcherExecuteKill = executeKill && !dualExecuteKillConsumed;
+                if (thisArcherExecuteKill) dualExecuteKillConsumed = true;
+                long applyDmg = thisArcherExecuteKill ? Long.MAX_VALUE / 2 : dmg;
+                if (!dualOnTarget2) {
+                    sb.append(" (I번)");
+                    dualTarget1Remain -= applyDmg;
+                    if (dualTarget1Remain <= 0) {
+                        dualMonster1KilledInLoop = true;
+                        if (dualTarget2Remain != null) dualOnTarget2 = true;
+                    }
+                } else {
+                    sb.append(" (II번)");
+                    dualTarget2Remain -= applyDmg;
+                    if (dualTarget2Remain <= 0) dualMonster2KilledInLoop = true;
+                }
             }
             sb.append(NL);
         }
@@ -2230,37 +2277,39 @@ public class BotS5ServiceImpl implements BotS5Service {
             sb.append("💫 지난 턴 스턴이 아직 이어지고 있다!").append(NL);
         }
 
-        PP monsterHpAfter = executeKill ? PP.fromPP(0) : monsterHp.subtract(PP.fromPP(totalDamage));
-        boolean monster1Dead = executeKill || PP.toBaseValue(monsterHpAfter) <= 0;
-
-        // [2026-09-12] "두 마리 중 I번부터 죽여야 II번이 나온다" 요청 -- 그동안은 체력을 미리
-        // 합쳐서(2배) 하나의 풀로 취급해 사실상 "몬스터가 한 마리처럼" 느껴졌다. 이제 I번의
-        // 체력(CUR_MONSTER_HP_VALUE)이 이번 턴에 0 이하가 되고 II번(CUR_MONSTER2_HP_VALUE)이
-        // 아직 대기 중이면, 전체 전투를 끝내는 대신 오버킬 피해를 그대로 II번에게 넘기고
-        // II번을 "활성" 몬스터로 승격시켜 같은 턴 안에서 이어서 싸운다(허탕 턴 없음). 두
-        // 마리 다 죽어야만(오버킬로 한 턴에 같이 죽는 경우 포함) 진짜 전투 종료(monsterDead).
-        Object monster2Raw = p.get("CUR_MONSTER2_HP_VALUE");
-        boolean monster2Pending = dualMonster && monster2Raw != null && ((Number) monster2Raw).doubleValue() > 0;
+        // [2026-09-13] "I번을 우선타격, 오버킬 없이 동료별로 나눠서 데미지 적용" 요청으로
+        // 09-12의 "총 데미지를 한 번에 모아 빼고 오버킬을 이월"하는 방식을 대체했다. 위 파티
+        // 공격 루프 안에서 이미 동료 한 명씩 "현재 타겟"의 체력을 깎아뒀으므로(dualTarget1
+        // Remain/dualTarget2Remain/dualMonster1KilledInLoop/dualMonster2KilledInLoop 참고),
+        // 여기서는 그 결과를 최종 monsterHpAfter/monsterDead로 정리하기만 한다.
+        PP monsterHpAfter;
         boolean monsterDead;
-        if (monster1Dead && monster2Pending) {
-            long overflowDmg = executeKill ? 0 : -PP.toBaseValue(monsterHpAfter);
-            PP monster2Full = PP.of(((Number) monster2Raw).doubleValue(), strVal(mon.get("HP_EXT"), ""));
-            PP monster2After = overflowDmg > 0 ? monster2Full.subtract(PP.fromPP(overflowDmg)) : monster2Full;
-            sb.append(NL).append("💀 ").append(eliteMonsterName(floor, mon, elite, 0)).append(" 처치!");
-            monsterDead = PP.toBaseValue(monster2After) <= 0;
-            if (monsterDead) {
-                sb.append(" 오버킬 피해가 II번까지 휩쓸었다!").append(NL);
+        if (dualMonster) {
+            if (!dualMonster1KilledInLoop) {
+                monsterHpAfter = PP.fromPP(Math.max(0, dualTarget1Remain));
+                monsterDead = false;
+            } else if (dualTarget2Remain == null) {
+                // I번은 죽었는데 II번이 애초에 없었던 경우 -- 정상 케이스라면 이미
+                // CUR_MONSTER_DUAL_YN='N'이어야 하므로 방어적 처리일 뿐.
+                monsterHpAfter = PP.fromPP(0);
+                monsterDead = true;
+            } else if (dualMonster2KilledInLoop) {
+                monsterHpAfter = PP.fromPP(Math.max(0, dualTarget2Remain));
+                monsterDead = true;
+                sb.append(NL).append("💀 ").append(eliteMonsterName(floor, mon, elite, 0)).append(" 처치! II번도 이어서 쓰러뜨렸다!").append(NL);
             } else {
-                sb.append(" II번 몬스터가 이어서 나타난다.").append(NL);
+                monsterHpAfter = PP.fromPP(dualTarget2Remain);
+                monsterDead = false;
+                sb.append(NL).append("💀 ").append(eliteMonsterName(floor, mon, elite, 0)).append(" 처치! II번 몬스터가 이어서 나타난다.").append(NL);
                 HashMap<String, Object> promoteUp = new HashMap<>();
                 promoteUp.put("userName", userName);
                 promoteUp.put("clearMonster2", true); // II번은 이제 활성화됐으니 "대기 중" 슬롯 비움
                 dao.updateUserProgress(promoteUp);
                 p.put("CUR_MONSTER2_HP_VALUE", null);
             }
-            monsterHpAfter = monster2After;
         } else {
-            monsterDead = monster1Dead;
+            monsterHpAfter = executeKill ? PP.fromPP(0) : monsterHp.subtract(PP.fromPP(totalDamage));
+            monsterDead = executeKill || PP.toBaseValue(monsterHpAfter) <= 0;
         }
 
         if (monsterDead) {
