@@ -72,19 +72,21 @@
     .tile.stairs-up{ background:var(--gold); } .tile.stairs-down{ background:var(--village); } .tile.elite{ background:var(--elite); }
     .tile.hidden{ background:#D8CDB4; color:#8a7f68; }
     .tile.done{ opacity:.55; } .tile.here{ outline:2px solid var(--ink); transform:scale(1.15); opacity:1; z-index:2; }
-    /* [2026-09-05] 주사위 교체 오버레이 -- board-card 기준 절대좌표로 칸그리드
-       (.tower-viewport) 좌상단 위에 떠있다. board-card 밖(스크롤 영역 밖)이라 보드
-       크기(scrollWidth/Height)에 전혀 영향을 안 줘서 스크롤바가 새로 생기지 않는다.
-       한 줄로만 나열(줄바꿈 없음, 넘치면 가로 스크롤)하고, 사용중인 주사위는 더 크게/
-       진하게 돋보이도록 표시. */
-    /* [2026-09-10] "메인 주사위 굴리기 버튼(#boardRollBtn, 우측 상단)이 최대/최소 주사위
-       선택 줄을 가리고 있다" 신고 -- 이 줄들이 max-width:calc(100% - 32px)라 보드 폭이
-       좁으면 우측 끝까지 늘어나 버튼(우측 14px부터 52px 폭 = 우측에서 66px까지 차지)과
-       겹쳤다. 두 줄(dice-overlay/dice-enhance-overlay) 모두 버튼 영역만큼 폭을 줄여서
-       애초에 그 자리를 침범 못 하게 분리(버튼은 그대로 우측 상단에 둠, 넘치는 내용은
-       기존처럼 가로 스크롤로 처리). */
-    .dice-overlay{ position:absolute; top:38px; left:22px; z-index:5;
-                   display:flex; gap:4px; flex-wrap:nowrap; max-width:calc(100% - 96px);
+    /* [2026-09-12] "최소주사위 줄에 가려서 보드 위쪽 칸이 안 보인다" 신고 -- 그동안
+       dice-overlay/dice-enhance-overlay/board-roll-btn을 전부 board-card 기준 절대좌표로
+       띄워서 칸그리드(.tower-viewport) 좌상단 위에 겹쳐 보이게 했는데(2026-09-05~10),
+       보드 폭/칸 수에 따라 겹치는 범위가 달라져 위쪽 1~2줄이 통째로 안 보이는 경우가
+       생겼다. 절대좌표 오버레이를 버리고 .dice-controls라는 별도 박스로 분리해서
+       card-title 아래 "정상적인 문서 흐름"에 놓는다 -- 이러면 이 박스가 차지하는 높이만큼
+       .tower-viewport가 항상 그 아래로 밀려나서, 화면 크기가 어떻든 칸그리드를 절대
+       가리지 않는다(스크롤 영역 크기에도 영향 없음 -- .tower-viewport는 여전히 자기
+       height:min(440px,55vh)를 그대로 유지, 그 위에 컨트롤 박스 높이가 "추가"될 뿐). */
+    .dice-controls{ display:flex; flex-direction:column; gap:6px; margin:8px 0 10px; }
+    .dice-controls-row1{ display:flex; align-items:stretch; gap:8px; }
+    /* [2026-09-05] 사용중인 주사위는 더 크게/진하게 돋보이도록 표시, 한 줄로만 나열
+       (줄바꿈 없음, 넘치면 가로 스크롤). */
+    .dice-overlay{ flex:1 1 auto; min-width:0;
+                   display:flex; gap:4px; flex-wrap:nowrap;
                    overflow-x:auto; background:var(--parchment); border:1px solid var(--line);
                    border-radius:999px; padding:4px 6px; box-shadow:var(--shadow); }
     .dice-overlay button{ flex:0 0 auto; border:none; border-radius:999px; padding:3px 9px;
@@ -103,9 +105,8 @@
        회색 텍스트, 클릭 불가), 오른쪽(+)은 강화, 왼쪽(-)은 마이너스 -- 이미 산 단계는
        각각 금색/청색으로 진하게, 다음 한 단계만 클릭 가능(테두리로 표시), 그 이상은 흐리게
        + 해금층 안내. */
-    .dice-enhance-overlay{ position:absolute; top:76px; left:22px; z-index:5;
-                   display:flex; align-items:center; gap:3px; flex-wrap:nowrap;
-                   max-width:calc(100% - 96px); overflow-x:auto; background:var(--parchment);
+    .dice-enhance-overlay{ display:flex; align-items:center; gap:3px; flex-wrap:nowrap;
+                   width:100%; overflow-x:auto; background:var(--parchment);
                    border:1px solid var(--line); border-radius:999px; padding:4px 6px;
                    box-shadow:var(--shadow); }
     .dice-enhance-overlay button, .dice-enhance-overlay span{ flex:0 0 auto; border:none;
@@ -140,9 +141,11 @@
     .dice-enhance-overlay button.dice-enhance-locked{ background:transparent; opacity:.4; cursor:default; }
     /* [2026-09-09] "주사위를 보드 안쪽으로 옮기고, 하단 주사위굴리기 탭은 없애자" 요청 --
        기존 하단 도크의 별도 "주사위" 버튼(dbtnDice)을 없애고, 그 자리에 있던 굴리기 동작을
-       보드 카드 우측(최대/최소 줄 옆)의 이 버튼 하나로 옮긴다. dice-overlay/dice-enhance-overlay
-       와 같은 절대좌표 오버레이 방식이라 보드 크기에 영향을 안 준다. */
-    .board-roll-btn{ position:absolute; top:38px; right:14px; z-index:6;
+       보드 카드 안(최대 줄 옆)의 이 버튼 하나로 옮긴다.
+       [2026-09-12] 절대좌표 오버레이에서 .dice-controls-row1의 일반 flex 아이템으로 전환
+       (위 .dice-controls 주석 참고) -- 위치는 그대로 "최대 줄 옆"이지만 이제 칸그리드를
+       가리지 않는다. */
+    .board-roll-btn{ flex:0 0 auto;
                    display:flex; flex-direction:column; align-items:center; justify-content:center;
                    gap:2px; width:52px; height:74px; border-radius:14px; border:none; cursor:pointer;
                    background:linear-gradient(180deg,#E4633F,var(--combat)); color:#fff; font-weight:800;
@@ -402,24 +405,30 @@
     <div class="board-row">
       <div class="card board-card">
         <div class="card-title">보드</div>
-        <!-- [2026-09-05] 주사위 교체를 상점탭에서 여기(칸그리드 위 오버레이)로 옮김 -- 해금된
-             것만 버튼으로 눌러 즉시 교체(자동구매형태, 별도 확인 없음). renderDiceOverlay 참고.
-             #towerViewport(스크롤 영역) 밖, board-card 기준 절대좌표로 띄워서 보드가 아무리
-             커도 스크롤 영역의 가로/세로 크기에 영향을 안 준다(전에 안에 넣었더니 작은 보드에서
-             스크롤바가 생기던 문제 수정) -- 시각적으로는 여전히 칸그리드 좌상단 위에 겹쳐 보임. -->
-        <div class="dice-overlay" id="diceOverlay"></div>
-        <!-- [2026-09-08] 30/50/60/70/80/90층 마을 도착 보상: 주사위 강화(+, 최소눈금 상승)/
-             마이너스 주사위(-, 최소눈금 하강) 상점 -- 위 dice-overlay 바로 아래, 한 줄짜리
-             숫자 스트립(-6..0..+6)으로 표시. 0이 고정 기준점, 오른쪽은 강화(+)/왼쪽은
-             마이너스(-) 단계, 각각 "다음 한 단계"만 눌러서 PP로 구매(순차 구매, 건너뛰기
-             불가). renderDiceEnhanceRow 참고. -->
-        <div class="dice-enhance-overlay" id="diceEnhanceOverlay"
-             title="주사위 눈금의 '최소값'을 조정합니다 (최대값은 그대로) -- 오른쪽(+)은 낮은 눈을 걸러내는 강화, 왼쪽(-)은 반대로 더 낮은 눈까지 나오게 하는 마이너스 주사위. 기본값은 +0."></div>
-        <!-- [2026-09-09] 하단 도크의 "주사위" 버튼을 없애고 굴리기 동작을 보드 안쪽(최대/최소
-             줄 옆)으로 옮김 -- updateDiceButtonState() 참고. -->
-        <button type="button" class="board-roll-btn" id="boardRollBtn" onclick="TW.action('DICE','')">
-          <span class="broll-icn">🎲</span>주사위
-        </button>
+        <!-- [2026-09-12] "최소주사위 줄에 칸그리드 위쪽이 가려서 안 보인다" 신고로,
+             기존 절대좌표 오버레이 3개(dice-overlay/dice-enhance-overlay/board-roll-btn)를
+             칸그리드 위에 겹쳐 띄우던 방식을 버리고, 이 .dice-controls 박스 하나로 묶어서
+             card-title 아래 정상 흐름에 둔다(위 .dice-controls CSS 주석 참고) --
+             .tower-viewport가 항상 이 박스 아래로 밀려나서 칸그리드를 절대 가리지 않는다. -->
+        <div class="dice-controls">
+          <div class="dice-controls-row1">
+            <!-- [2026-09-05] 주사위 교체를 상점탭에서 여기로 옮김 -- 해금된 것만 버튼으로
+                 눌러 즉시 교체(자동구매형태, 별도 확인 없음). renderDiceOverlay 참고. -->
+            <div class="dice-overlay" id="diceOverlay"></div>
+            <!-- [2026-09-09] 하단 도크의 "주사위" 버튼을 없애고 굴리기 동작을 여기(최대
+                 줄 옆)로 옮김 -- updateDiceButtonState() 참고. -->
+            <button type="button" class="board-roll-btn" id="boardRollBtn" onclick="TW.action('DICE','')">
+              <span class="broll-icn">🎲</span>주사위
+            </button>
+          </div>
+          <!-- [2026-09-08] 30/50/60/70/80/90층 마을 도착 보상: 주사위 강화(+, 최소눈금 상승)/
+               마이너스 주사위(-, 최소눈금 하강) 상점 -- 한 줄짜리 숫자 스트립(-6..0..+6)으로
+               표시. 0이 고정 기준점, 오른쪽은 강화(+)/왼쪽은 마이너스(-) 단계, 각각
+               "다음 한 단계"만 눌러서 PP로 구매(순차 구매, 건너뛰기 불가).
+               renderDiceEnhanceRow 참고. -->
+          <div class="dice-enhance-overlay" id="diceEnhanceOverlay"
+               title="주사위 눈금의 '최소값'을 조정합니다 (최대값은 그대로) -- 오른쪽(+)은 낮은 눈을 걸러내는 강화, 왼쪽(-)은 반대로 더 낮은 눈까지 나오게 하는 마이너스 주사위. 기본값은 +0."></div>
+        </div>
         <div class="tower-viewport" id="towerViewport">
           <div class="tower-track" id="towerTrack">
             <div style="color:var(--ink-soft);font-size:12px;">데이터를 불러오는 중...</div>
