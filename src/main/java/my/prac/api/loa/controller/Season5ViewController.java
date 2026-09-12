@@ -300,7 +300,7 @@ public class Season5ViewController {
      * GET /loa/api/tower-action?userName=..&type=DICE|CHANGE_FLOOR|TOWER_DOWN|TOWER_UP|PARTY_TOGGLE|
      *     PARTY_SWAP|PARTY_UNASSIGN_ALL|GACHA_COMPANION|GACHA_EQUIP|DICE_BUY|DICE_BONUS_BUY|
      *     DICE_MALUS_BUY|DICE_MIN_SELECT|STAT_BUY|EQUIP_WEAR|
-     *     EQUIP_SYNTH|EQUIP_UNWEAR_ALL|EQUIP_UNWEAR_ONE|REDEEM_COMPANION_TICKET|REDEEM_WEAPON_TICKET
+     *     EQUIP_SYNTH|EQUIP_SYNTH_ALL|EQUIP_UNWEAR_ALL|EQUIP_UNWEAR_ONE|REDEEM_COMPANION_TICKET|REDEEM_WEAPON_TICKET
      *     &param1=&param2=
      * TOWER_DOWN(파라미터 없음)은 채팅 /탑내려가기(/탑다운)와 동일 -- 마을에서만 바로 아래
      * 10층 구간 마을로 이동(웹 '탑' 탭 층이동 그림 맨 아래 버튼용). TOWER_UP(파라미터 없음)은
@@ -387,6 +387,9 @@ public class Season5ViewController {
                     break;
                 case "EQUIP_SYNTH":
                     message = s5Service.equipSynthesis(userName, Integer.parseInt(param1));
+                    break;
+                case "EQUIP_SYNTH_ALL":
+                    message = s5Service.equipSynthesisAll(userName);
                     break;
                 case "EQUIP_UNWEAR_ALL":
                     message = s5Service.equipUnwearAll(userName, Integer.parseInt(param1));

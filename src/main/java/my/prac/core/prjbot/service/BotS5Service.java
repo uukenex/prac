@@ -162,6 +162,11 @@ public interface BotS5Service {
     /** /장비합성 N — N번째 장비와 동일(클래스/부위/등급) 미착용 장비 3개를 상위 등급 1개로 합성 */
     String equipSynthesis(String userName, int equipIdx);
 
+    /** /장비일괄합성 — 미착용 장비 전체를 대상으로, 합성 가능한(동일 클래스/부위/등급 3개 이상,
+     *  ★6 미만) 조합을 전부 반복 합성한다. 합성으로 새로 만들어진 장비가 또 3개가 되면
+     *  연쇄적으로 계속 상위 등급까지 합성됨(예: ★1 9개 → ★2 3개 → ★3 1개). */
+    String equipSynthesisAll(String userName);
+
     /** /장비해제 M — M번째 파티원이 착용 중인 장비(투구/무기/갑옷) 전부를 한 번에 해제 */
     String equipUnwearAll(String userName, int companionIdx);
 

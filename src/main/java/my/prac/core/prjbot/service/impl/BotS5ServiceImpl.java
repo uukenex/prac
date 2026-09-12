@@ -7,9 +7,12 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
@@ -924,6 +927,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         sb.append("/장비목록").append(NL);
         sb.append("/장비장착 [N] [M]").append(NL);
         sb.append("/장비합성 N").append(NL);
+        sb.append("/장비일괄합성").append(NL);
         sb.append("/장비해제 M").append(NL);
         sb.append("/탑업적").append(NL);
         sb.append("/탑랭킹").append(NL);
@@ -957,6 +961,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         sb.append("/장비목록 : 보유 장비 조회").append(NL);
         sb.append("/장비장착 [N] [M] : 장착").append(NL);
         sb.append("/장비합성 N : 상위 등급으로 합성").append(NL);
+        sb.append("/장비일괄합성 : 합성 가능한 조합을 전부 한 번에 합성").append(NL);
         sb.append("/장비해제 M : 파티원 장비 전부 해제").append(NL);
         sb.append(NL);
 
@@ -4798,7 +4803,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                   .append(NL);
             }
         }
-        sb.append("/장비장착 N [M], /장비합성 N (둘 다 위 [미착용] 번호 기준)");
+        sb.append("/장비장착 N [M], /장비합성 N (둘 다 위 [미착용] 번호 기준), /장비일괄합성 (합성 가능한 조합 전부 한번에)");
         return sb.toString();
     }
 
@@ -5060,5 +5065,98 @@ public class BotS5ServiceImpl implements BotS5Service {
         // TODO: EQUIP_SYNTHESIS 누적 횟수 카운터가 없어 13번(30회) 업적은 아직 체크 불가
         return "✨ 합성 성공! " + JOB_NAME.get(clazz) + " " + partNameOf(part) + " ★" + (grade + 1)
                 + " (" + equipBonusText(part, grade + 1) + ") 획득!";
+    }
+
+    /** [2026-09-12] "장비 일괄합성 기능을 만들고 싶다" 요청 -- 미착용 장비 전체를 훑어서
+     *  합성 가능한(동일 클래스/부위/등급 3개 이상, ★6 미만) 조합을 전부 반복 합성한다.
+     *  등급별로 낮은 등급부터 순서대로 처리하면서, 합성으로 새로 생긴 장비를 그 다음(더 높은
+     *  등급) 처리 시점에 이미 보유 중이던 것과 합쳐서 다시 검사하는 방식으로 한 번의 순회
+     *  안에서 연쇄 합성(예: ★1 9개 → ★2 3개 → ★3 1개)까지 자연스럽게 처리된다.
+     *  실제 DB DELETE/INSERT는 등급 1~5(각 3개 소모, 1개 생성)까지만 발생하고, ★6은 상한이라
+     *  받기만 하고 더 소모되지 않는다. */
+    @Override
+    @Transactional
+    public String equipSynthesisAll(String userName) {
+        HashMap<String, Object> progress = getOrInitProgress(userName);
+        if ("IN_COMBAT".equals(strVal(progress.get("STATUS"), "NORMAL"))) {
+            return "전투 중에는 장비를 합성할 수 없습니다.";
+        }
+        List<HashMap<String, Object>> unequipped = new ArrayList<>();
+        for (HashMap<String, Object> e : dao.selectUserEquip(userName)) {
+            if (e.get("EQUIPPED_COMPANION_ID") == null) unequipped.add(e);
+        }
+
+        // 실제 보유 중인 장비의 EQUIP_ID를 (클래스|부위|등급) 키로 모아둔다 -- 소모(삭제) 대상은
+        // 여기서만 꺼내 쓰고, 합성으로 "새로 생기는" 수량은 아래 virtualCredit으로 별도 관리한다.
+        Map<String, List<Integer>> realIdsByKey = new LinkedHashMap<>();
+        Set<String> classPartCombos = new LinkedHashSet<>();
+        for (HashMap<String, Object> e : unequipped) {
+            String clazz = strVal(e.get("CLASS"), "");
+            String part = strVal(e.get("PART"), "");
+            int grade = intVal(e.get("GRADE"), 1);
+            realIdsByKey.computeIfAbsent(clazz + "|" + part + "|" + grade, k -> new ArrayList<>())
+                    .add(intVal(e.get("EQUIP_ID"), 0));
+            classPartCombos.add(clazz + "|" + part);
+        }
+
+        List<Integer> toDelete = new ArrayList<>();
+        Map<String, Integer> virtualCredit = new LinkedHashMap<>(); // key -> 합성으로 생겼지만 아직 미확정인 수량
+        int totalSynthCount = 0;
+
+        for (String cp : classPartCombos) {
+            String[] cpArr = cp.split("\\|", 2);
+            String clazz = cpArr[0], part = cpArr[1];
+            for (int grade = 1; grade <= 5; grade++) {
+                String key = clazz + "|" + part + "|" + grade;
+                List<Integer> realIds = realIdsByKey.getOrDefault(key, Collections.emptyList());
+                int realPos = 0; // realIds 중 아직 소모(삭제 예약)하지 않은 다음 인덱스
+                int available = realIds.size() + virtualCredit.getOrDefault(key, 0);
+                while (available >= 3) {
+                    int fromReal = Math.min(3, realIds.size() - realPos);
+                    for (int i = 0; i < fromReal; i++) toDelete.add(realIds.get(realPos++));
+                    int fromVirtual = 3 - fromReal;
+                    if (fromVirtual > 0) virtualCredit.merge(key, -fromVirtual, Integer::sum);
+
+                    String nextKey = clazz + "|" + part + "|" + (grade + 1);
+                    virtualCredit.merge(nextKey, 1, Integer::sum);
+                    available -= 3;
+                    totalSynthCount++;
+                }
+            }
+        }
+
+        if (totalSynthCount == 0) {
+            return "합성 가능한 조합이 없습니다. (동일 등급/부위/직업 미착용 장비가 3개 이상 있어야 합성됩니다)";
+        }
+
+        for (Integer equipId : toDelete) {
+            dao.deleteEquip(equipId);
+        }
+        // 합성으로 순생성된(더 이상 소모되지 않고 남은) 장비만 실제로 DB에 새로 넣는다.
+        List<String> resultLines = new ArrayList<>();
+        for (Map.Entry<String, Integer> entry : virtualCredit.entrySet()) {
+            int qty = entry.getValue();
+            if (qty <= 0) continue;
+            String[] parts = entry.getKey().split("\\|", 3);
+            String clazz = parts[0], part = parts[1];
+            int grade = Integer.parseInt(parts[2]);
+            for (int i = 0; i < qty; i++) {
+                HashMap<String, Object> e = new HashMap<>();
+                e.put("userName", userName);
+                e.put("class", clazz);
+                e.put("part", part);
+                e.put("grade", grade);
+                e.put("equippedCompanionId", null);
+                dao.insertEquip(e);
+            }
+            resultLines.add(JOB_NAME.get(clazz) + " " + partNameOf(part) + " ★" + grade
+                    + " (" + equipBonusText(part, grade) + ") x" + qty);
+        }
+
+        grantAchievement(userName, 12);
+        StringBuilder sb = new StringBuilder("✨ 일괄합성 완료! 총 ").append(totalSynthCount).append("회 합성.").append(NL);
+        sb.append("[획득]").append(NL);
+        for (String line : resultLines) sb.append("- ").append(line).append(NL);
+        return sb.toString().trim();
     }
 }

@@ -287,6 +287,15 @@
        있던 detail-card의 overflow:auto가 그대로 처리)로 고정. */
     .sheet-card{ max-width:340px; height:480px; max-height:85vh; }
     .sheet-title{ font-size:15px; font-weight:800; margin:2px 0 12px; padding-right:22px; }
+    /* [2026-09-12] 일괄합성 버튼 -- 시트 타이틀과 한 줄에 나란히(타이틀 자체 마진은 없애고
+       이 줄에 몰아줌), ✕ 닫기 버튼과는 안 겹치게 우측 여백 확보. */
+    .sheet-title-row{ display:flex; align-items:center; justify-content:space-between; gap:8px;
+                       margin:2px 22px 12px 0; }
+    .sheet-title-row .sheet-title{ margin:0; padding-right:0; }
+    .synth-all-btn{ flex:0 0 auto; border:none; border-radius:999px; padding:6px 12px;
+                     font-size:11px; font-weight:800; cursor:pointer; color:#fff;
+                     background:linear-gradient(180deg,#8E6FE0,#6B4FC4); box-shadow:0 2px 0 #503A9B; }
+    .synth-all-btn:active{ transform:scale(.96); }
     .sheet-row{ display:flex; align-items:center; justify-content:space-between; gap:8px; background:#fff;
                 border:1.5px solid var(--line); border-radius:12px; padding:10px 12px; margin-bottom:6px;
                 font-size:12px; cursor:pointer; text-align:left; }
@@ -590,7 +599,13 @@
 <div class="detail-overlay" id="allEquipOverlay" onclick="if(event.target===this) TW.closeAllEquip();">
   <div class="detail-card sheet-card wide-card">
     <button class="detail-close" onclick="TW.closeAllEquip()">✕</button>
-    <div class="sheet-title">미착용 장비</div>
+    <!-- [2026-09-12] "장비 일괄합성 기능을 만들고 싶다" 요청 -- 미착용 장비 시트 상단에
+         버튼 하나만 두면 합성 가능한 조합(동일 클래스/부위/등급 3개 이상, ★6 미만)을 전부
+         한 번에 처리(EQUIP_SYNTH_ALL, 서버에서 연쇄 합성까지 계산). -->
+    <div class="sheet-title-row">
+      <div class="sheet-title">미착용 장비</div>
+      <button class="synth-all-btn" onclick="TW.action('EQUIP_SYNTH_ALL','')">⚗️ 일괄합성</button>
+    </div>
     <div id="equipListFilters"></div>
     <div id="equipListBox"></div>
   </div>
@@ -1664,6 +1679,17 @@ var TW = (function () {
       if (equipFilter.part && e.PART !== equipFilter.part) return false;
       return true;
     });
+    // [2026-09-12] "합성 가능한 장비만 합성 버튼을 띄우도록" 요청 -- 동일 클래스/부위/등급
+    // 미착용 장비가 3개 이상(서버 equipSynthesis와 동일 조건) 있어야 합성이 되므로, 현재
+    // 필터와 무관하게 unequipped 전체를 기준으로 (클래스|부위|등급) 조합별 개수를 세어둔다.
+    var synthCountByKey = {};
+    unequipped.forEach(function (e) {
+      var key = e.CLASS + '|' + e.PART + '|' + e.GRADE;
+      synthCountByKey[key] = (synthCountByKey[key] || 0) + 1;
+    });
+    function canSynth(e) {
+      return e.GRADE < 6 && synthCountByKey[e.CLASS + '|' + e.PART + '|' + e.GRADE] >= 3;
+    }
     // idx(N번)는 서버(BotS5Service.equipWear/equipSynthesis)가 계산하는 "미착용 장비 번호"와
     // 반드시 같은 순서여야 하므로, 필터링/그룹핑은 화면 표시용일 뿐 idx 자체(e.__idx, 이미
     // loadPartyAndEquip에서 필터 전 원본 순서로 매겨둠)는 그대로 쓴다.
@@ -1697,11 +1723,16 @@ var TW = (function () {
         var idx = e.__idx;
         var card = document.createElement('div');
         card.className = 'equip-card';
+        // [2026-09-12] 합성 재료(동일 클래스/부위/등급 3개 이상)가 안 되는 장비는 눌러도 항상
+        // 실패 응답만 오던 "합성" 버튼 자체를 아예 숨긴다.
+        var synthBtn = canSynth(e)
+            ? '<button class="ten" onclick="TW.action(\'EQUIP_SYNTH\',\'' + idx + '\')">합성</button>'
+            : '';
         card.innerHTML = '<div class="eq-part">' + (PART_EMOJI[e.PART] || '🎽') + '</div>'
             + '<div class="eq-grade">' + (PART_KR[e.PART] || e.PART) + ' ★' + e.GRADE + '</div>'
             + '<div class="btn-group">'
             + '<button onclick="TW.action(\'EQUIP_WEAR\',\'' + idx + '\')">장착</button>'
-            + '<button class="ten" onclick="TW.action(\'EQUIP_SYNTH\',\'' + idx + '\')">합성</button>'
+            + synthBtn
             + '</div>';
         grid.appendChild(card);
       });
