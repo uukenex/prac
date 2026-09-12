@@ -40,6 +40,17 @@ public class Comments extends AbstractModel {
 
 	private String shareYn;
 
+	/** 비밀글 여부(Y/N) -- 자유게시판 전용, Y면 로그인한 유저만 상세 내용을 볼 수 있다. */
+	private String secretYn;
+
+	public String getSecretYn() {
+		return secretYn;
+	}
+
+	public void setSecretYn(String secretYn) {
+		this.secretYn = secretYn;
+	}
+
 	public String getShareYn() {
 		return shareYn;
 	}

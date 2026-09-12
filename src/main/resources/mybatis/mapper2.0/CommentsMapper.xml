@@ -19,19 +19,22 @@
 	</select>
 
 	<!-- 게시글 쓰기(공지사항:관리자) 분류별 필요 -->
+	<!-- [2026-09-12] 비밀글(secret_yn) 추가. 공지사항 쓰기(writeNoticeComment)는 map에
+	     secretYn을 안 넣으므로 그 경우 NVL로 'N' 기본값 처리. -->
 	<insert id="insertComment" parameterType="Map">
-		
+
 		insert into TCOMMENT (comment_no,comment_category,comment_name,
-		comment_content,comment_date,comment_count,user_id) values
+		comment_content,comment_date,comment_count,user_id,secret_yn) values
 		((select max(comment_No)+1 from TCOMMENT),#{commentCategory}
-		,#{commentName},#{commentContent},sysdate,0,UPPER(#{userId}))
+		,#{commentName},#{commentContent},sysdate,0,UPPER(#{userId}),NVL(#{secretYn,jdbcType=VARCHAR},'N'))
 	</insert>
 
 	<!-- 게시글 수정 -->
 	<update id="updateComment" parameterType="Map">
 		update TCOMMENT set
 		comment_name=#{commentName},
-		comment_content=#{commentContent}
+		comment_content=#{commentContent},
+		secret_yn=NVL(#{secretYn,jdbcType=VARCHAR},'N')
 		where
 		comment_no=#{commentNo}
 	</update>

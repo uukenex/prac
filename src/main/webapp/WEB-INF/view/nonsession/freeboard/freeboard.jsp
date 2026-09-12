@@ -88,7 +88,7 @@
 									<c:forEach var="comment" items="${comments }">
 										<tr style="border:1px solid #FFA2A2;">
 											<td>${comment.commentNo }</td>
-											<td id="boardTitle"><a href="freeView?commentNo=${comment.commentNo} ">${comment.commentName }(${comment.replyCnt })</a></td>
+											<td id="boardTitle"><a href="freeView?commentNo=${comment.commentNo} "><c:if test="${comment.secretYn == 'Y'}">🔒 </c:if>${comment.commentName }(${comment.replyCnt })</a></td>
 											<td>${comment.userNick}</td>
 											<td><fmt:formatDate value="${comment.commentDate }"
 													pattern="yy-MM-dd" var="fmtDate" /> ${fmtDate }</td>
@@ -162,7 +162,7 @@
 				$("tbody")[0].innerHTML+=
 		"<tr style=\"border:1px solid #FFA2A2;\">"
 		+"<td>"+item.commentNo+"</td>"
-		+"<td id='boardTitle'><a href='freeView?commentNo="+item.commentNo+"' >"+item.commentName +"("+item.replyCnt+") </a></td>"
+		+"<td id='boardTitle'><a href='freeView?commentNo="+item.commentNo+"' >"+(item.secretYn=='Y' ? '🔒 ' : '')+item.commentName +"("+item.replyCnt+") </a></td>"
 		+"<td>"+item.userNick+"</td>"
 		+"<td>"+newDate+"</td>"
 		+"<td>"+item.commentCount +"</td>"

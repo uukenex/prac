@@ -44,11 +44,18 @@ public class CommentServiceImpl implements CommentService {
 	// 게시글 쓰기(자유게시판)
 	@Override
 	public int writeFreeComment(String commentName, String commentContent, String userId) {
+		return writeFreeComment(commentName, commentContent, userId, "N");
+	}
+
+	// 게시글 쓰기(자유게시판) - 비밀글 여부 포함
+	@Override
+	public int writeFreeComment(String commentName, String commentContent, String userId, String secretYn) {
 		HashMap<String, Object> map = new HashMap<>();
 		map.put("commentCategory", "자유게시판");
 		map.put("commentName", commentName);
 		map.put("commentContent", commentContent);
 		map.put("userId", userId);
+		map.put("secretYn", "Y".equals(secretYn) ? "Y" : "N");
 
 		return crepo.insertComment(map);
 	}
@@ -56,10 +63,17 @@ public class CommentServiceImpl implements CommentService {
 	// 게시글 수정
 	@Override
 	public int updateComment(int commentNo, String commentName, String commentContent) {
+		return updateComment(commentNo, commentName, commentContent, "N");
+	}
+
+	// 게시글 수정 - 비밀글 여부 포함
+	@Override
+	public int updateComment(int commentNo, String commentName, String commentContent, String secretYn) {
 		HashMap<String, Object> map = new HashMap<>();
 		map.put("commentName", commentName);
 		map.put("commentContent", commentContent);
 		map.put("commentNo", commentNo);
+		map.put("secretYn", "Y".equals(secretYn) ? "Y" : "N");
 
 		return crepo.updateComment(map);
 	}

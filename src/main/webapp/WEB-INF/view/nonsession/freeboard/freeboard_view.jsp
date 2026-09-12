@@ -84,7 +84,16 @@
 												</td>
 											</tr>
 												<tr style="border:1px solid #1DDB16;" >
-													<td colspan="4" class="boardTitleSort"  style="padding-bottom: 50px; height: 150px;">${comment.commentContent}</td>
+													<!-- [2026-09-12] 비밀글인데 비로그인 상태면 controller(FreeController.noticeView)가
+														 secretLocked=true + commentContent="" 로 넘겨준다. 원문 대신 잠금 안내만 표시. -->
+													<c:choose>
+														<c:when test="${secretLocked}">
+															<td colspan="4" class="boardTitleSort" style="padding-bottom: 50px; height: 150px;">🔒 비밀글입니다. 로그인 후 확인할 수 있습니다.</td>
+														</c:when>
+														<c:otherwise>
+															<td colspan="4" class="boardTitleSort" style="padding-bottom: 50px; height: 150px;">${comment.commentContent}</td>
+														</c:otherwise>
+													</c:choose>
 												</tr>
 											<tr>
 												<td colspan="4">
@@ -127,6 +136,9 @@
 										</table>
 									</div>
 									
+									<!-- [2026-09-12] 잠긴 비밀글이면 댓글 목록/작성란도 함께 숨긴다(원문이 이미 안 보이는데
+										 댓글만 보이는 건 의미가 없음). -->
+									<c:if test="${!secretLocked}">
 									<hr id="boardTitleHrStyle2">
 									<div>
 										<table class="board_view" border="1">
@@ -203,6 +215,7 @@
 											</tr>
 										</table>
 									</div>
+									</c:if>
 								</form>
 							</section>
 						</div>

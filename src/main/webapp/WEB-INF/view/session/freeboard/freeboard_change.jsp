@@ -59,6 +59,10 @@
 											<input type="hidden" name="commentNo" value="${comment.commentNo }" />
 											<td class="inputTitle"><input type="text" name="title" id="editorTitleWritter"
 														value="${comment.commentName}">
+<!-- [2026-09-12] 비밀글 체크 -- 기존 상태를 그대로 보여주고 토글 가능. -->
+<label style="margin-left:12px; font-weight:normal;">
+<input type="checkbox" name="secretYn" id="secretYn" value="Y" <c:if test="${comment.secretYn == 'Y'}">checked="checked"</c:if>> 비밀글(로그인한 유저만 열람)
+</label>
 											</td>
 										</tr>
 										<tr>

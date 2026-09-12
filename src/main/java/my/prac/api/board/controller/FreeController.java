@@ -65,15 +65,26 @@ public class FreeController {
 	}
 
 	// 자유 -단일게시물 보기
+	// [2026-09-12] "자유게시판에 비밀글 체크를 하도록 해서, 비밀글인 경우 로그인한 유저만
+	// 보도록" 요청 -- 비밀글(SECRET_YN='Y')인데 세션에 로그인 정보(Users)가 없으면 내용/댓글은
+	// 아예 담지 않고 secretLocked 플래그만 넘긴다(JSP가 원문 대신 잠금 안내를 보여줌).
 	@RequestMapping(value = "/freeView", method = RequestMethod.GET)
-	public String noticeView(Model model, @RequestParam int commentNo) {
+	public String noticeView(Model model, @RequestParam int commentNo, HttpSession session) {
 		List<CommentReply> reply = null;
 		Comments comment = null;
+		boolean secretLocked = false;
 		try {
 			commentService.count(commentNo);
-			reply = commentService.selectReplyList(commentNo);
 			comment = commentService.selectComment(commentNo);
-			comment.setCommentContent(comment.getCommentContent().replaceAll("？", ""));
+			boolean isSecret = "Y".equals(comment.getSecretYn());
+			boolean loggedIn = session.getAttribute("Users") != null;
+			if (isSecret && !loggedIn) {
+				secretLocked = true;
+				comment.setCommentContent("");
+			} else {
+				reply = commentService.selectReplyList(commentNo);
+				comment.setCommentContent(comment.getCommentContent().replaceAll("？", ""));
+			}
 		} catch (Exception e) {
 			log.info("commentService.selectReplyList DB none Connect");
 			log.info("commentService.selectComment DB none Connect");
@@ -81,6 +92,7 @@ public class FreeController {
 
 		model.addAttribute("comment", comment);
 		model.addAttribute("replys", reply);
+		model.addAttribute("secretLocked", secretLocked);
 		return "nonsession/freeboard/freeboard_view";
 	}
 
@@ -96,10 +108,11 @@ public class FreeController {
 
 		String commentName = request.getParameter("title");
 		String commentContent = request.getParameter("content");
+		String secretYn = "Y".equals(request.getParameter("secretYn")) ? "Y" : "N";
 		Users u = (Users) session.getAttribute("Users");
 		String userId = u.getUserId();
 		try {
-			commentService.writeFreeComment(commentName, commentContent, userId);
+			commentService.writeFreeComment(commentName, commentContent, userId, secretYn);
 		} catch (Exception e) {
 			log.info("commentService.writeFreeComment DB none Connect");
 		}
@@ -129,9 +142,10 @@ public class FreeController {
 		String commentNo = request.getParameter("commentNo");
 		String commentName = request.getParameter("title");
 		String commentContent = request.getParameter("content");
+		String secretYn = "Y".equals(request.getParameter("secretYn")) ? "Y" : "N";
 
 		try {
-			commentService.updateComment(Integer.parseInt(commentNo), commentName, commentContent);
+			commentService.updateComment(Integer.parseInt(commentNo), commentName, commentContent, secretYn);
 		} catch (Exception e) {
 			log.info("commentService.updateComment DB none Connect");
 		}

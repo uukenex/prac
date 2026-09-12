@@ -42,7 +42,13 @@
 										<tr>
 											<td></td>
 											<td class="inputTitle"><input type="text"  name="title" id="editorTitleWritter" 
-															placeholder="제목을 입력해주세요"></td>
+															placeholder="제목을 입력해주세요">
+													<!-- [2026-09-12] "자유게시판에 비밀글 체크를 하도록" 요청. 체크 시
+														 로그인한 유저만 상세 내용을 볼 수 있음(FreeController.noticeView 참고). -->
+													<label style="margin-left:12px; font-weight:normal;">
+														<input type="checkbox" name="secretYn" id="secretYn" value="Y"> 비밀글(로그인한 유저만 열람)
+													</label>
+												</td>
 										</tr>
 										<tr>
 											<td colspan="2">

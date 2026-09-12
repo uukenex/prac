@@ -24,8 +24,14 @@ public interface CommentService {
 	// 게시글 쓰기(자유게시판)
 	public int writeFreeComment(String commentName, String commentContent, String userId);
 
+	// 게시글 쓰기(자유게시판) - 비밀글 여부 포함
+	public int writeFreeComment(String commentName, String commentContent, String userId, String secretYn);
+
 	// 게시글 수정
 	public int updateComment(int commentNo, String commentName, String commentContent);
+
+	// 게시글 수정 - 비밀글 여부 포함
+	public int updateComment(int commentNo, String commentName, String commentContent, String secretYn);
 
 	// 게시글 삭제 --댓글까지 지워야함
 	public int deleteComment(int commentNo);
