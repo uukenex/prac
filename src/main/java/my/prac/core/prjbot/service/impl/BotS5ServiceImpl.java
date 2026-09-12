@@ -1857,22 +1857,31 @@ public class BotS5ServiceImpl implements BotS5Service {
         // ELITE와 배타적으로 3배 -- eliteMult 변수를 그대로 재사용.
         double eliteMult = elite ? 2.0 : (midBoss ? 3.0 : 1.0);
         // [2026-09-09] "61층부터는 일반 몬스터가 두 마리 나오게 해달라" 요청 -- 보스/강화몹/
-        // 중간보스가 아닌 평범한 COMBAT 조우가 블록7(61~70층)부터 "2마리"(합산 HP, PP보상도
-        // 2배)로 취급된다. HP만 배로 늘리고 ATK/DEF는 그대로 둬서 "강화몹처럼 개별로 세진
-        // 게" 아니라 "숫자가 늘어서 반격도 두 번 들어오는" 결과가 되게 한다(resolveCombatTurn
-        // 의 doubleTarget 다중타겟 로직을 그대로 재사용).
+        // 중간보스가 아닌 평범한 COMBAT 조우가 블록7(61~70층)부터 "2마리"(PP보상 2배)로
+        // 취급된다. ATK/DEF는 그대로 둬서 "강화몹처럼 개별로 세진 게" 아니라 "매 턴 파티
+        // 2명을 공격하는" 결과가 되게 한다(resolveCombatTurn의 doubleTarget 다중타겟 로직을
+        // 그대로 재사용). [2026-09-12] "I번부터 죽여야 II번이 나온다" 요청으로, HP는 더는
+        // 미리 합쳐서(2배) 하나의 풀로 만들지 않고 각자 base HP만큼의 별도 풀 2개
+        // (I=curMonsterHpValue, II=curMonster2HpValue, II는 "대기" 상태로 시작)로 둔다 --
+        // I번이 죽어야 resolveCombatTurn에서 II번이 활성화된다.
         boolean dualMonster = !boss && !elite && !midBoss && blockNo(floor) >= 7;
-        double dualHpMult = dualMonster ? 2.0 : 1.0;
+        double dualHpMult = dualMonster ? 2.0 : 1.0; // 처치보상(2마리분) 계산에만 사용, HP엔 미적용
+        double perMonsterHp = ((Number) mon.get("HP_VALUE")).doubleValue() * eliteMult;
         HashMap<String, Object> up = new HashMap<>();
         up.put("userName", userName);
         up.put("status", "IN_COMBAT");
         up.put("curMonsterId", intVal(mon.get("MONSTER_ID"), 0));
-        up.put("curMonsterHpValue", ((Number) mon.get("HP_VALUE")).doubleValue() * eliteMult * dualHpMult);
+        up.put("curMonsterHpValue", perMonsterHp);
         up.put("curMonsterHpExt", strVal(mon.get("HP_EXT"), ""));
         up.put("curMonsterEliteYn", elite ? "Y" : "N");
         up.put("curMonsterMidbossYn", midBoss ? "Y" : "N");
         up.put("curMonsterDualYn", dualMonster ? "Y" : "N");
         up.put("curCombatTurn", 0); // 새 전투 시작 -- 69층 보스 등 턴제한 타이머를 0부터 다시 셈
+        if (dualMonster) {
+            up.put("curMonster2HpValue", perMonsterHp); // II번은 대기 -- I번이 죽어야 활성화(resolveCombatTurn 참고)
+        } else {
+            up.put("clearMonster2", true); // 방어적 정리(직전 전투가 dual이었을 잔여값 대비)
+        }
 
         // [정책 변경, 2026-09-05] "29층 보스가 너무 세다"는 신고로, 블록3+ 보스의 "무시"
         // 스킬(파티원 1명 지목, 그 동료는 전투 내내 보스에게 공격 불가)을 완전히 제거했다.
@@ -1881,7 +1890,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 세팅하지 않지만 컬럼/조회/초기화 로직은 과거 진행 중이던 값 정리를 위해 남겨둔다.
         dao.updateUserProgress(up);
 
-        PP fullHp = PP.of(((Number) mon.get("HP_VALUE")).doubleValue() * eliteMult * dualHpMult, strVal(mon.get("HP_EXT"), "")).normalize();
+        PP fullHp = PP.of(perMonsterHp, strVal(mon.get("HP_EXT"), "")).normalize();
         StringBuilder sb = new StringBuilder();
         // [형식 정리 요청] "OO 등장!"을 한 줄에 다 몰아넣지 않고 "등장!" 알림 / 몬스터 이름 /
         // 능력치를 각각 줄로 나눔("능력치" 라벨·콜론도 빼서 더 짧게). [2026-09-06] 중간보스는
@@ -1892,9 +1901,11 @@ public class BotS5ServiceImpl implements BotS5Service {
         sb.append(floorMonsterName(floor, mon)).append(NL);
         sb.append("⚔️ ").append((int) Math.round(intVal(mon.get("ATK_VALUE"), 0) * eliteMult))
           .append(" 🛡️ ").append((int) Math.round(intVal(mon.get("DEF_VALUE"), 0) * eliteMult))
-          .append(" ❤️ ").append(fullHp.format()).append(NL);
+          .append(" ❤️ ").append(fullHp.format()).append(dualMonster ? " x2" : "").append(NL);
         if (elite) sb.append("💪 강화몹 -- 스탯/보상 전부 평소의 2배입니다.").append(NL);
-        if (dualMonster) sb.append("👾👾 몬스터 두 마리 -- 체력/처치보상 2배, 매 턴 파티원 2명을 공격합니다.").append(NL);
+        // [2026-09-12] "I번부터 죽여야 II번이 나온다" 요청으로 문구 갱신 -- 예전엔 체력을
+        // 미리 합쳐서 하나처럼 보였는데, 이제 I번을 완전히 처치해야 II번이 등장한다.
+        if (dualMonster) sb.append("👾👾 몬스터 두 마리 -- I번을 처치해야 II번이 등장합니다(총 처치보상 2배). 매 턴 파티원 2명을 공격합니다.").append(NL);
         Integer enrageLimit = boss ? BOSS_ENRAGE_TURN_LIMIT.get(floor) : null;
         if (enrageLimit != null) sb.append("⏳ ").append(enrageLimit).append("턴 안에 처치하지 못하면 폭주(공격력 급상승)합니다!").append(NL);
         sb.append(NL);
@@ -1978,13 +1989,17 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 변수 하나를 그대로 공유해 쓴다.
         boolean midBoss = "Y".equals(strVal(p.get("CUR_MONSTER_MIDBOSS_YN"), "N"));
         double eliteMult = elite ? 2.0 : (midBoss ? 3.0 : 1.0);
-        // [2026-09-09] 61층+(블록7) 일반 몬스터 "2마리" 조우 -- 별도 몬스터 슬롯 없이 체력만
-        // 2배로 취급(합산 HP), 반격은 아래에서 기존 보스 다중타겟 인프라를 같이 써서 매 턴
-        // 파티 2명을 공격하게 만든다(=2마리가 각자 공격하는 것과 동일한 결과).
+        // [2026-09-09] 61층+(블록7) 일반 몬스터 "2마리" 조우 -- 반격은 아래에서 기존 보스
+        // 다중타겟 인프라를 같이 써서 매 턴 파티 2명을 공격하게 만든다(=2마리가 각자
+        // 공격하는 것과 동일한 결과). [2026-09-12] "I번부터 죽여야 II번이 나온다" 요청으로
+        // HP는 더 이상 합쳐서(2배) 취급하지 않고, 각자 자기 체력(base)만큼만 가진 별도
+        // 풀(I=CUR_MONSTER_HP_VALUE, II=CUR_MONSTER2_HP_VALUE)로 순차 처치된다(아래
+        // monster1Dead/monster2Pending 분기 참고). dualHpMult는 이제 "총 처치보상 2배"에만
+        // 쓰인다(HP 계산에서는 제외).
         boolean dualMonster = "Y".equals(strVal(p.get("CUR_MONSTER_DUAL_YN"), "N"));
         double dualHpMult = dualMonster ? 2.0 : 1.0;
         PP monsterHp = PP.of(((Number) p.get("CUR_MONSTER_HP_VALUE")).doubleValue(), strVal(p.get("CUR_MONSTER_HP_EXT"), ""));
-        PP monsterMaxHp = PP.of(((Number) mon.get("HP_VALUE")).doubleValue() * eliteMult * dualHpMult, strVal(mon.get("HP_EXT"), "")).normalize();
+        PP monsterMaxHp = PP.of(((Number) mon.get("HP_VALUE")).doubleValue() * eliteMult, strVal(mon.get("HP_EXT"), "")).normalize();
         // 중간보스가 지난 턴에 전사 스킬을 훔쳐 자기 방어력을 올려뒀으면(아래 미드보스 파트
         // 참고) 이번 파티 공격 턴 1회에만 반영하고 소모한다(1회성 -- 아래 up에서 0으로 정리).
         int monsterDefBuffPct = intVal(p.get("MONSTER_DEF_BUFF_PCT"), 0);
@@ -2216,7 +2231,37 @@ public class BotS5ServiceImpl implements BotS5Service {
         }
 
         PP monsterHpAfter = executeKill ? PP.fromPP(0) : monsterHp.subtract(PP.fromPP(totalDamage));
-        boolean monsterDead = executeKill || PP.toBaseValue(monsterHpAfter) <= 0;
+        boolean monster1Dead = executeKill || PP.toBaseValue(monsterHpAfter) <= 0;
+
+        // [2026-09-12] "두 마리 중 I번부터 죽여야 II번이 나온다" 요청 -- 그동안은 체력을 미리
+        // 합쳐서(2배) 하나의 풀로 취급해 사실상 "몬스터가 한 마리처럼" 느껴졌다. 이제 I번의
+        // 체력(CUR_MONSTER_HP_VALUE)이 이번 턴에 0 이하가 되고 II번(CUR_MONSTER2_HP_VALUE)이
+        // 아직 대기 중이면, 전체 전투를 끝내는 대신 오버킬 피해를 그대로 II번에게 넘기고
+        // II번을 "활성" 몬스터로 승격시켜 같은 턴 안에서 이어서 싸운다(허탕 턴 없음). 두
+        // 마리 다 죽어야만(오버킬로 한 턴에 같이 죽는 경우 포함) 진짜 전투 종료(monsterDead).
+        Object monster2Raw = p.get("CUR_MONSTER2_HP_VALUE");
+        boolean monster2Pending = dualMonster && monster2Raw != null && ((Number) monster2Raw).doubleValue() > 0;
+        boolean monsterDead;
+        if (monster1Dead && monster2Pending) {
+            long overflowDmg = executeKill ? 0 : -PP.toBaseValue(monsterHpAfter);
+            PP monster2Full = PP.of(((Number) monster2Raw).doubleValue(), strVal(mon.get("HP_EXT"), ""));
+            PP monster2After = overflowDmg > 0 ? monster2Full.subtract(PP.fromPP(overflowDmg)) : monster2Full;
+            sb.append(NL).append("💀 ").append(eliteMonsterName(floor, mon, elite, 0)).append(" 처치!");
+            monsterDead = PP.toBaseValue(monster2After) <= 0;
+            if (monsterDead) {
+                sb.append(" 오버킬 피해가 II번까지 휩쓸었다!").append(NL);
+            } else {
+                sb.append(" II번 몬스터가 이어서 나타난다.").append(NL);
+                HashMap<String, Object> promoteUp = new HashMap<>();
+                promoteUp.put("userName", userName);
+                promoteUp.put("clearMonster2", true); // II번은 이제 활성화됐으니 "대기 중" 슬롯 비움
+                dao.updateUserProgress(promoteUp);
+                p.put("CUR_MONSTER2_HP_VALUE", null);
+            }
+            monsterHpAfter = monster2After;
+        } else {
+            monsterDead = monster1Dead;
+        }
 
         if (monsterDead) {
             // [2026-09-09] "두 마리"라 실제로 2마리분 처치 보상을 준다(dualHpMult가 그대로 배율).
