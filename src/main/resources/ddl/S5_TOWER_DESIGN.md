@@ -2297,6 +2297,20 @@ S4의 `TBOT_S4_ACHIEVEMENT`/`TBOT_S4_USER_ACH` 패턴을 확장 계승. S5에서
     FLOOR_EXPLORE 업적 8개(71~78) 존재, GACHA_MASTER UNLOCK_FLOOR(0/30/60/80)에 80이 이미
     있어 블록8 신규 티어 불필요 -- 전부 통과 확인.
 
+- **[2026-09-13][UI 신규] 보드 미니맵 + 탭 확대 + 내 위치 이동**: 09-13에 세로 스크롤을
+  허용하는 방향으로 칸을 키웠는데, "스크롤이 있으니 오히려 잘리는 느낌이다, 미니맵으로
+  보여주고 탭하면 확대되는 형태가 어떨까"라는 제안 후 "미니맵+확대 중에 내 위치 이동까지"
+  요청으로 확정. 기본 화면은 작은 미니맵(`renderMinimap`, 색상 점만, 글씨 없음 --
+  buildSerpentinePath/buildLoopPath로 모양은 확대판과 동일하게 생성하고 `.tile`의 기존
+  색상 클래스를 그대로 재사용)만 보여주고, 탭하면 `#boardZoomOverlay` 모달이 열리면서
+  기존 확대 보드(`renderBoard`, 09-13 세로 스크롤 버전 그대로)가 그 안에서 렌더링된다.
+  `#towerViewport`/`#towerTrack` id를 모달 안으로 그대로 옮겨서 `renderBoard()` 자체는
+  전혀 수정하지 않음(오버레이가 닫혀 있으면 clientWidth/Height가 0이라 열린 뒤에만
+  렌더링 -- `lastBoardData`에 최근 tiles/curTile/floor를 캐시해뒀다가 그때 사용).
+  모달을 열 때, 그리고 모달 안의 "📍 내 위치" 버튼을 누를 때마다 현재 칸(`.tile.here`)이
+  뷰포트 세로 중앙 근처에 오도록 자동 스크롤(`scrollToHere`, `offsetTop` 기반).
+  `tower_view.jsp`만 수정, DB 마이그레이션 없음.
+
 ### 남은 TODO
 
 - 실제 서버 기동 후 채팅 명령어 + SPA E2E 테스트 (이번 세션은 `mvn compile`까지만 검증)

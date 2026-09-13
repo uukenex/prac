@@ -77,6 +77,16 @@
     .tile.stairs-up{ background:var(--gold); } .tile.stairs-down{ background:var(--village); } .tile.elite{ background:var(--elite); }
     .tile.hidden{ background:#D8CDB4; color:#8a7f68; }
     .tile.done{ opacity:.55; } .tile.here{ outline:2px solid var(--ink); transform:scale(1.15); opacity:1; z-index:2; }
+    /* [2026-09-13] 미니맵 점 -- .tile의 색상 클래스(combat/treasure/pp/trap/special/elite/
+       stairs-up/stairs-down/hidden)와 .here 강조는 그대로 재사용하고, 모양만 작은 원으로
+       덮어쓴다(글씨/번호 없이 색만). */
+    .tile.mini-tile{ border-radius:50%; padding:0; box-shadow:none; }
+    .board-minimap{ position:relative; height:150px; border-radius:14px; background:var(--parchment-deep);
+                     border:1.5px dashed var(--line); padding:8px; cursor:pointer; overflow:hidden; }
+    .board-minimap-track{ position:relative; width:100%; height:100%; }
+    .board-minimap-hint{ position:absolute; right:8px; bottom:6px; font-size:10px; color:var(--ink-soft);
+                           background:rgba(255,255,255,.8); padding:2px 8px; border-radius:999px; pointer-events:none; }
+    .board-zoom-card{ height:640px; max-height:88vh; }
     /* [2026-09-12] "최소주사위 줄에 가려서 보드 위쪽 칸이 안 보인다" 신고 -- 그동안
        dice-overlay/dice-enhance-overlay/board-roll-btn을 전부 board-card 기준 절대좌표로
        띄워서 칸그리드(.tower-viewport) 좌상단 위에 겹쳐 보이게 했는데(2026-09-05~10),
@@ -448,10 +458,15 @@
             <span class="broll-icn">🎲</span>주사위
           </button>
         </div>
-        <div class="tower-viewport" id="towerViewport">
-          <div class="tower-track" id="towerTrack">
+        <!-- [2026-09-13] "칸이 커지니 스크롤이 생겨서 오히려 잘리는 느낌, 미니맵으로 보여주고
+             탭하면 확대되는 형태는 어떨까" 요청 -- 기본으로는 이 작은 미니맵(전체 모양만 보임,
+             renderMinimap 참고)을 보여주고, 탭하면 아래 #boardZoomOverlay가 열리면서 기존
+             칸그리드(큰 칸 + 세로 스크롤, renderBoard 그대로 재사용)를 보여준다. -->
+        <div class="board-minimap" id="boardMinimap" onclick="TW.openBoardZoom()">
+          <div class="board-minimap-track" id="boardMinimapTrack">
             <div style="color:var(--ink-soft);font-size:12px;">데이터를 불러오는 중...</div>
           </div>
+          <div class="board-minimap-hint">🔍 탭해서 확대</div>
         </div>
         <div class="legend">
           <span class="legend-chip"><span class="legend-dot" style="background:var(--combat)"></span>전투</span>
@@ -621,6 +636,22 @@
   </div>
 </div>
 
+<!-- [2026-09-13] 미니맵 탭 시 열리는 확대 보드 -- towerViewport/towerTrack id를 그대로 써서
+     renderBoard()를 전혀 안 고치고 여기로 렌더링만 넘긴다(TW.openBoardZoom 참고). 오버레이가
+     열려있을 때만 렌더링(닫혀있으면 clientWidth/Height가 0이라 칸 크기 계산이 틀어짐). -->
+<div class="detail-overlay" id="boardZoomOverlay" onclick="if(event.target===this) TW.closeBoardZoom();">
+  <div class="detail-card wide-card board-zoom-card">
+    <button class="detail-close" onclick="TW.closeBoardZoom()">✕</button>
+    <div class="sheet-title-row">
+      <div class="sheet-title">보드</div>
+      <button class="synth-all-btn" onclick="TW.scrollToHere()">📍 내 위치</button>
+    </div>
+    <div class="tower-viewport" id="towerViewport">
+      <div class="tower-track" id="towerTrack"></div>
+    </div>
+  </div>
+</div>
+
 <nav class="dock">
   <div class="dock-inner">
     <button class="dbtn active" data-tab="board" onclick="TW.switchTab('board')"><span class="d-icn">🗼</span>탑</button>
@@ -731,7 +762,14 @@ var TW = (function () {
           huntCard.style.display = 'none';
         }
 
-        renderBoard(data.tiles, data.myTile ? data.myTile.CUR_TILE : 0, p.CUR_FLOOR);
+        // [2026-09-13] 기본 화면은 미니맵만 그리고(가벼움), 확대 보드(renderBoard, 큰 칸 +
+        // 세로 스크롤)는 사용자가 탭해서 열 때(TW.openBoardZoom)만 그린다 -- 그때까지 필요한
+        // tiles/curTile/floor는 여기서 캐시해둔다.
+        lastBoardData = { tiles: data.tiles, curTile: data.myTile ? data.myTile.CUR_TILE : 0, floor: p.CUR_FLOOR };
+        renderMinimap(lastBoardData.tiles, lastBoardData.curTile, lastBoardData.floor);
+        if (document.getElementById('boardZoomOverlay').classList.contains('open')) {
+          renderBoard(lastBoardData.tiles, lastBoardData.curTile, lastBoardData.floor);
+        }
         renderDiceOverlay(data.dice || []);
         renderDiceEnhanceRow(data.diceEnhance);
         renderTowerNav(p, data.floorBest);
@@ -864,6 +902,9 @@ var TW = (function () {
   // 꼭짓점 개수/각도 흔들림/반지름/가로세로 비율/각진 정도(각진 Z·S 느낌 vs 부드러운 블롭)를
   // 전부 시드로 결정해서 같은 층은 항상 같은 모양, 다른 층은 웬만하면 다른 모양이 나온다.
   var LARGE_BOARD_TILE_THRESHOLD = 60;
+  // [2026-09-13] 미니맵/확대보드 공용 -- 최근 조회 결과를 캐시해뒀다가 확대(TW.openBoardZoom)
+  // 시점에 다시 그린다(오버레이가 닫혀있을 땐 clientWidth/Height가 0이라 그때는 못 그림).
+  var lastBoardData = { tiles: null, curTile: 0, floor: 0 };
 
   /** 시드 기반 의사난수(선형합동법) -- 같은 시드면 항상 같은 순서의 숫자를 뽑는다. */
   function seededRandom(seed) {
@@ -1044,6 +1085,72 @@ var TW = (function () {
       + '<path d="M130,78 Q145,85 165,78" fill="none" stroke="#000" stroke-width="4" stroke-linecap="round"/>'
       + '<path d="M135,80 L131,88 M155,80 L159,88" stroke="#000" stroke-width="3" stroke-linecap="round"/>' }
   };
+
+  /** [2026-09-13] "미니맵 개념으로 탭하면 확대되는 형태" 요청 -- 항상 보이는 작은 개요판.
+   * 큰 보드와 같은 경로 생성 함수(buildSerpentinePath/buildLoopPath)를 그대로 써서 모양은
+   * 확대판과 동일하고, 점 크기만 아주 작게(글씨/번호 없이 색상 점만) 찍는다. 칸 색상은
+   * .tile 클래스(combat/treasure/pp/trap/special/elite/stairs-up/stairs-down/hidden)를
+   * 그대로 재사용해서 새 색상표를 따로 관리할 필요가 없다. */
+  function renderMinimap(tiles, curTile, floor) {
+    var track = document.getElementById('boardMinimapTrack');
+    track.innerHTML = '';
+    if (!tiles || !tiles.length) {
+      var fm0 = floor % 10;
+      track.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;'
+          + 'color:var(--ink-soft);font-size:11px;">' + (fm0 === 9 ? '👑 보스룸' : '이 층은 보드가 없습니다') + '</div>';
+      return;
+    }
+    var n = tiles.length;
+    var d;
+    if (n > LARGE_BOARD_TILE_THRESHOLD) {
+      // 미니맵은 실제 컨테이너 크기가 아니라 고정된 가상 캔버스 기준으로 모양만 뽑는다
+      // (점 크기가 워낙 작아서 실제 폭에 맞춰 cols를 다시 계산할 필요가 없음).
+      var marginFracM = (100 - 12 * 2) / 100;
+      var colsM = Math.max(5, Math.round(1 + (marginFracM * 260) / 34));
+      var rowsM = Math.max(3, Math.ceil(n / colsM));
+      var rndOrientM = seededRandom(floor || 0);
+      d = buildSerpentinePath(colsM, rowsM, rndOrientM() < 0.5);
+    } else {
+      d = buildLoopPath(floor, n);
+    }
+    trackSamplePath.setAttribute('d', d);
+    var normLen = trackSamplePath.getTotalLength();
+    var frag = document.createDocumentFragment();
+    tiles.forEach(function (t, idx) {
+      var pt = trackSamplePath.getPointAtLength((normLen * idx) / n);
+      var isHere = (t.TILE_NO === curTile);
+      var dot = document.createElement('div');
+      dot.className = 'tile mini-tile ' + (t.DISCOVERED ? tileClass(t.TILE_TYPE) : 'hidden') + (isHere ? ' here' : '');
+      var size = isHere ? 7 : 4;
+      dot.style.left = 'calc(' + pt.x + '% - ' + (size / 2) + 'px)';
+      dot.style.top = 'calc(' + pt.y + '% - ' + (size / 2) + 'px)';
+      dot.style.width = size + 'px';
+      dot.style.height = size + 'px';
+      frag.appendChild(dot);
+    });
+    track.appendChild(frag);
+  }
+
+  /** 미니맵 탭 -> 확대 보드 열기. 오버레이를 먼저 열어야(open) towerTrack의 clientWidth/Height가
+   * 0이 아니게 되므로, 그 다음에 기존 renderBoard(칸 크기 계산이 컨테이너 실제 크기 기준)를
+   * 호출한다. 연 직후 자동으로 "내 위치"가 보이는 위치까지 스크롤한다. */
+  function openBoardZoom() {
+    document.getElementById('boardZoomOverlay').classList.add('open');
+    if (lastBoardData.tiles) renderBoard(lastBoardData.tiles, lastBoardData.curTile, lastBoardData.floor);
+    scrollToHere();
+  }
+  function closeBoardZoom() {
+    document.getElementById('boardZoomOverlay').classList.remove('open');
+  }
+  /** "내 위치" 버튼 -- 확대 보드가 세로로 길어진 뒤에도(overflow-y:auto) 항상 현재 칸(.here)
+   * 이 뷰포트 세로 중앙 근처에 오도록 스크롤한다. */
+  function scrollToHere() {
+    var vp = document.getElementById('towerViewport');
+    var here = document.getElementById('towerTrack').querySelector('.tile.here');
+    if (vp && here) {
+      vp.scrollTop = Math.max(0, here.offsetTop - vp.clientHeight / 2 + here.offsetHeight / 2);
+    }
+  }
 
   function renderBoard(tiles, curTile, floor) {
     var track = document.getElementById('towerTrack');
@@ -2082,6 +2189,7 @@ var TW = (function () {
            closePicker: closePicker,
            openAllCompanions: openAllCompanions, closeAllCompanions: closeAllCompanions,
            openAllEquip: openAllEquip, closeAllEquip: closeAllEquip,
+           openBoardZoom: openBoardZoom, closeBoardZoom: closeBoardZoom, scrollToHere: scrollToHere,
            reopenNotice: reopenNotice, closeNotice: closeNotice, dismissNotice: dismissNotice, refreshForUpdate: refreshForUpdate };
 })();
 </script>
