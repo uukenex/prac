@@ -473,13 +473,16 @@ public class BotS5ServiceImpl implements BotS5Service {
         return scaled;
     }
 
-    // [2026-09-10, 당분간] 블록7(61~70층) 오픈 확정, 71층(블록8 사냥터) 이후는 아직 콘텐츠
-    // 미공개라 진입 자체를 막는다. 오픈 전 확인: FLOOR_INFO(61~68 타일수), MONSTER_INFO
-    // (107/207, 블록6보다 명확히 강함), FLOOR_EXPLORE 업적(161~168) 8개, BLOCK_EXPLORE
-    // 선택권(307/407) 존재 확인 완료. 통계 상한(statCapFor)/뽑기 등급(GACHA_MASTER
-    // UNLOCK_FLOOR 0/30/60/80, 블록7 신규 티어 없음)은 이미 완전히 일반화돼 있어 그대로
-    // 통과. (이전엔 51~60만 검증 후 61로 올렸었음.)
-    private static final int CONTENT_LOCKED_FLOOR = 71;
+    // [2026-09-13] 블록8(71~80층) 오픈 확정, 81층(블록9 사냥터) 이후는 아직 콘텐츠 미공개라
+    // 진입 자체를 막는다. 오픈 전 확인: FLOOR_INFO(71~78 TILE_COUNT 196~199, 블록7의
+    // 190~210대와 동급 -- 처음엔 "SELECT COUNT(*)"로 잘못 재서 1건씩만 나와 놀랐지만
+    // TBOT_S5_FLOOR_INFO는 층당 1행에 TILE_COUNT 컬럼을 갖는 구조라 정상), MONSTER_INFO
+    // (108/208, 블록7보다 명확히 강하게 재조정 -- S5_BLOCK8_BALANCE.sql), FLOOR_EXPLORE
+    // 업적 8개(71~78) 존재 확인 완료. 79층 보스는 첫타 은신 회피+동료 처치 기믹(1턴째/
+    // 6턴마다 반복) 추가. 통계 상한/뽑기 등급(GACHA_MASTER UNLOCK_FLOOR 0/30/60/80, 80이
+    // 이미 있어 블록8 신규 티어 없음)은 이미 일반화돼 있어 그대로 통과.
+    // (이전엔 61~70만 검증 후 71로 올렸었음.)
+    private static final int CONTENT_LOCKED_FLOOR = 81;
 
     // [2026-09-06] 51층 이후(블록6+) 전투칸에서 중간보스와 마주칠 확률(%). 밸런스 튜닝값이라
     // 필요하면 조정. 잠긴 콘텐츠라 실사용자 영향 없이 먼저 만들어두고 51층 오픈 시 재검토.
@@ -2059,6 +2062,43 @@ public class BotS5ServiceImpl implements BotS5Service {
         String synergy = detectPartySynergy(party);
         sb.append(synergyAnnounce(synergy));
 
+        // [2026-09-13] "71층부터는 플레이어 선공이 아니라 몬스터 선공(첫타 은신처리)" 요청 --
+        // 71층 이상(블록8)의 일반 몬스터(보스 제외 -- 79층 보스는 아래 boss79Ambush로 별도
+        // 처리)는 전투 1턴째에 한해 파티가 공격하기 전에 몬스터가 은신에서 튀어나와 먼저
+        // 한 대 때린다. 이 공격은 반격 인프라(개인 방어력만 반영)를 그대로 재사용하되,
+        // 아직 파티가 행동하기 전이라 보호막/도발 등은 적용되지 않는다(말 그대로 기습).
+        if (floor >= 71 && curCombatTurn == 1 && !"Y".equals(strVal(mon.get("BOSS_YN"), "N"))) {
+            List<HashMap<String, Object>> ambushAlive = new ArrayList<>();
+            for (HashMap<String, Object> c : party) {
+                PP ahp = PP.of(((Number) c.get("CUR_HP_VALUE")).doubleValue(), strVal(c.get("CUR_HP_EXT"), ""));
+                if (PP.toBaseValue(ahp) > 0) ambushAlive.add(c);
+            }
+            if (!ambushAlive.isEmpty()) {
+                HashMap<String, Object> amTarget = ambushAlive.get(RND.nextInt(ambushAlive.size()));
+                String amJob = strVal(amTarget.get("CLASS"), "WARRIOR");
+                int amGrade = intVal(amTarget.get("GRADE"), 1);
+                String amName = strVal(amTarget.get("NAME"), JOB_NAME.getOrDefault(amJob, "동료"));
+                List<HashMap<String, Object>> amEquips = dao.selectEquipByCompanion(intVal(amTarget.get("COMPANION_ID"), 0));
+                int[] amEff = computeEffectiveStat(amJob, amGrade, amEquips, userStat);
+                int amMonsterAtk = (int) Math.round(intVal(mon.get("ATK_VALUE"), 0) * eliteMult);
+                int amRoll = rollFace(1, diceMax);
+                int amDmg = Math.max(1, amMonsterAtk * amRoll - amEff[2]);
+                PP amHp = PP.of(((Number) amTarget.get("CUR_HP_VALUE")).doubleValue(), strVal(amTarget.get("CUR_HP_EXT"), ""));
+                PP amHpAfter = amHp.subtract(PP.fromPP(amDmg));
+                if (PP.toBaseValue(amHpAfter) < 0) amHpAfter = PP.fromPP(0);
+                sb.append("🌑 은신 기습! ").append(eliteMonsterName(floor, mon, elite)).append("이(가) 먼저 공격한다!").append(NL);
+                sb.append(jobTag(amGrade, amJob, amName)).append("에게 ").append(amDmg).append("dmg (💗")
+                  .append(amHpAfter.format()).append("/").append(amEff[0]).append(")").append(NL).append(NL);
+                HashMap<String, Object> amUp = new HashMap<>();
+                amUp.put("companionId", intVal(amTarget.get("COMPANION_ID"), 0));
+                amUp.put("curHpValue", amHpAfter.getValue());
+                amUp.put("curHpExt", amHpAfter.getUnit());
+                dao.updateCompanionHp(amUp);
+                amTarget.put("CUR_HP_VALUE", amHpAfter.getValue());
+                amTarget.put("CUR_HP_EXT", amHpAfter.getUnit());
+            }
+        }
+
         // 보스 기절 스킬(반격 턴에 걸림, 아래 참고)로 지정된 동료는 이번 공격 턴만 건너뛰고 소모된다.
         int bossStunCid = intVal(p.get("BOSS_STUN_CID"), 0);
         boolean stunConsumed = false;
@@ -2259,6 +2299,18 @@ public class BotS5ServiceImpl implements BotS5Service {
         // "파티 합공 총 데미지도 보여달라" 요청 -- 개별 줄만으로는 한 번에 얼마나 몰아쳤는지
         // 암산해야 해서, 공격 줄들 바로 아래에 합계를 한 줄 더 보여준다.
         if (totalDamage > 0) sb.append("총 ").append(totalDamage).append("dmg로 공격!").append(NL);
+
+        // [2026-09-13] "79층 보스는 첫타 은신으로 회피 후 동료 한 명을 처치하고 시작, 이후
+        // 6턴마다 반복" 요청 -- 1턴째와 6의 배수 턴엔 이번 턴 파티 공격 전체가 회피되어(피해
+        // 0) 무효화된다. 실제 "동료 처치"는 아래 반격 파트(alive 목록이 준비된 뒤)에서
+        // 처리한다.
+        boolean isBoss79 = floor == 79 && "Y".equals(strVal(mon.get("BOSS_YN"), "N"));
+        boolean boss79Ambush = isBoss79 && (curCombatTurn == 1 || curCombatTurn % 6 == 0);
+        if (boss79Ambush) {
+            totalDamage = 0;
+            executeKill = false;
+            sb.append("🌑 보스가 은신 상태로 이번 턴 파티의 공격을 전부 회피했다!").append(NL);
+        }
 
         // 중간보스가 지난 턴에 도사 스킬을 훔쳐 자신에게 보호막을 둘렀으면(아래 미드보스
         // 파트 참고), 이번 파티 공격에서 그만큼 먼저 흡수하고 소모한다(1회성).
@@ -2515,6 +2567,53 @@ public class BotS5ServiceImpl implements BotS5Service {
                   .append("💡 이 구간에서 ").append(wipeStreak).append("연속으로 전멸했어요. 아직 버거우면 ")
                   .append("/탑내려가기(/탑다운)로 10층 아래 마을로 내려가서 스탯/장비를 더 준비한 뒤 다시 도전해보세요.");
             }
+            return sb.toString();
+        }
+
+        // [2026-09-13] 79층 보스 은신 처치 -- 정상 반격(도발/보호막/도적 회피 등) 대신, 파티
+        // 중 무작위 생존자 1명을 그 자리에서 처치한다. ★5/★6 도사 부활은 일반 반격 사망과
+        // 동일 확률로 동작(전멸 방지 여지를 남김). 이 턴은 이 처치 하나로 끝나고 정상
+        // 반격은 하지 않는다.
+        if (boss79Ambush) {
+            HashMap<String, Object> victim = alive.get(RND.nextInt(alive.size()));
+            String vJob = strVal(victim.get("CLASS"), "WARRIOR");
+            int vGrade = intVal(victim.get("GRADE"), 1);
+            String vName = strVal(victim.get("NAME"), JOB_NAME.getOrDefault(vJob, "동료"));
+            sb.append("😈 ").append(eliteMonsterName(floor, mon, elite)).append("이(가) 은신에서 나타나 ")
+              .append(jobTag(vGrade, vJob, vName)).append("을(를) 급습했다!").append(NL);
+
+            PP vHpAfter = PP.fromPP(0);
+            HashMap<String, Object> reviver79 = null;
+            for (HashMap<String, Object> c : party) {
+                PP rHp = PP.of(((Number) c.get("CUR_HP_VALUE")).doubleValue(), strVal(c.get("CUR_HP_EXT"), ""));
+                if ("PRIEST".equals(strVal(c.get("CLASS"), "")) && intVal(c.get("GRADE"), 1) >= 5 && PP.toBaseValue(rHp) > 0) {
+                    reviver79 = c;
+                    break;
+                }
+            }
+            if (reviver79 != null) {
+                int reviverGrade = intVal(reviver79.get("GRADE"), 1);
+                int reviveChance = reviverGrade >= 6 ? 40 : 25;
+                double revivePct = reviverGrade >= 6 ? 0.5 : 0.3;
+                if (RND.nextInt(100) < reviveChance) {
+                    List<HashMap<String, Object>> vEquips = dao.selectEquipByCompanion(intVal(victim.get("COMPANION_ID"), 0));
+                    int[] vEff = computeEffectiveStat(vJob, vGrade, vEquips, userStat);
+                    vHpAfter = PP.fromPP(Math.max(1, (int) Math.round(vEff[0] * revivePct)));
+                    sb.append("✨ 도사의 기적! ").append(jobTag(vGrade, vJob, vName))
+                      .append(" 부활(HP ").append(vHpAfter.format()).append("/").append(vEff[0]).append(")").append(NL);
+                }
+            }
+            if (PP.toBaseValue(vHpAfter) <= 0) {
+                sb.append("💀 ").append(jobTag(vGrade, vJob, vName)).append("이(가) 쓰러졌다!").append(NL);
+            }
+            HashMap<String, Object> vUp = new HashMap<>();
+            vUp.put("companionId", intVal(victim.get("COMPANION_ID"), 0));
+            vUp.put("curHpValue", vHpAfter.getValue());
+            vUp.put("curHpExt", vHpAfter.getUnit());
+            dao.updateCompanionHp(vUp);
+            victim.put("CUR_HP_VALUE", vHpAfter.getValue());
+            victim.put("CUR_HP_EXT", vHpAfter.getUnit());
+            sb.append(NL).append(partyHpSummary(party, userStat));
             return sb.toString();
         }
 

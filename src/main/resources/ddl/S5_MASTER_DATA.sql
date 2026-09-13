@@ -89,7 +89,11 @@ INSERT INTO TBOT_S5_MONSTER_INFO VALUES (106, 6, '심연 기사단 망령병', 1
 -- MONSTER_ID 107(2026-09-09): 106(블록6, 13000/188/28)의 정확히 2배로 재조정
 -- ("61층부터는 블록6보다 더 세야 한다" 요청) -- 원래 값은 5500/87/10 이었음.
 INSERT INTO TBOT_S5_MONSTER_INFO VALUES (107, 7, '뒤틀린 차원 촉수괴', 26000,   '', 376,   '', 56,   '', 150,  '', 'N');
-INSERT INTO TBOT_S5_MONSTER_INFO VALUES (108, 8, '천공성 수호 골렘',   15000,   '', 111,   '', 15,   '', 300,  '', 'N');
+-- MONSTER_ID 108(2026-09-13): 107(블록7, 26000/376/56)의 정확히 2배로 재조정
+-- ("71층부터 밸런스를 맞춰달라" 요청) -- 원래 값 15000/111/15는 오히려 107보다 약했음
+-- (신고로 확인, S5_BLOCK8_BALANCE.sql 참고). PP_PER_KILL_VALUE는 이미 라이브에서
+-- 450으로 올라가 있던 값(225->450, 정상적인 블록당 2배 진행)에 맞춤(기존 300은 stale).
+INSERT INTO TBOT_S5_MONSTER_INFO VALUES (108, 8, '천공성 수호 골렘',   52000,   '', 752,   '', 112,  '', 450,  '', 'N');
 INSERT INTO TBOT_S5_MONSTER_INFO VALUES (109, 9, '용의 둥지 새끼비룡', 450000,  '', 7200,  '', 2200, '', 600,  '', 'N');
 INSERT INTO TBOT_S5_MONSTER_INFO VALUES (110,10, '파멸의 균열 마수',   1200000, '', 15000, '', 5000, '', 1200, '', 'N');
 
@@ -107,7 +111,11 @@ INSERT INTO TBOT_S5_MONSTER_INFO VALUES (206, 6, '심연의 대공 모르드레�
 -- 원래 값 33000/192/15는 오히려 206보다 ATK가 낮았음(신고로 확인). 69층 보스, 10턴 폭주
 -- 타이머 대상(BotS5ServiceImpl.BOSS_ENRAGE_TURN_LIMIT).
 INSERT INTO TBOT_S5_MONSTER_INFO VALUES (207, 7, '차원의 파괴자 아자토스',   60000,   '', 400,   '', 40,  '', 0, '', 'Y');
-INSERT INTO TBOT_S5_MONSTER_INFO VALUES (208, 8, '천공의 대천사 세라핌',     90000,   '', 243,   '', 23,  '', 0, '', 'Y');
+-- MONSTER_ID 208(2026-09-13): 207(블록7 보스, 60000/400/40)의 정확히 2배로 재조정 --
+-- 원래 값 90000/243/23은 ATK/DEF가 오히려 207보다 낮았음(신고로 확인). 79층 보스,
+-- 첫타 은신 회피+동료 처치(1턴째/6턴마다 반복, BotS5ServiceImpl.resolveCombatTurn의
+-- boss79Ambush) 대상.
+INSERT INTO TBOT_S5_MONSTER_INFO VALUES (208, 8, '천공의 대천사 세라핌',     120000,  '', 800,   '', 80,  '', 0, '', 'Y');
 INSERT INTO TBOT_S5_MONSTER_INFO VALUES (209, 9, '고룡 바하무트',            2700000, '', 15840, '', 3300, '', 0, '', 'Y');
 INSERT INTO TBOT_S5_MONSTER_INFO VALUES (210,10, '종말의 마룡왕 니드호그',   7200000, '', 33000, '', 7500, '', 0, '', 'Y');
 
