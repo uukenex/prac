@@ -81,7 +81,7 @@
        stairs-up/stairs-down/hidden)와 .here 강조는 그대로 재사용하고, 모양만 작은 원으로
        덮어쓴다(글씨/번호 없이 색만). */
     .tile.mini-tile{ border-radius:50%; padding:0; box-shadow:none; }
-    .board-minimap{ position:relative; height:150px; border-radius:14px; background:var(--parchment-deep);
+    .board-minimap{ position:relative; height:180px; border-radius:14px; background:var(--parchment-deep);
                      border:1.5px dashed var(--line); padding:8px; cursor:pointer; overflow:hidden; }
     .board-minimap-track{ position:relative; width:100%; height:100%; }
     .board-minimap-hint{ position:absolute; right:8px; bottom:6px; font-size:10px; color:var(--ink-soft);
@@ -983,6 +983,30 @@ var TW = (function () {
     return d;
   }
 
+  /** [2026-09-14] "확대 보드 위쪽에 칸들이 몰려서 겹친다" 신고로 확인된 원인 수정 --
+   * buildSerpentinePath가 만드는 경로는 격자 칸 사이 짧은 구간(rowGap/colGap)과 열이
+   * 바뀔 때의 긴 구간, 그리고 맨 끝에 시작점으로 돌아가는 대각선(길이가 훨씬 김)이 전부
+   * 섞여있어서, getPointAtLength로 "호 길이 기준 균등 샘플링"을 하면 실제 격자 위치와
+   * 어긋나 일부 구간(특히 마지막 대각선 근처로 밀리는 앞쪽 칸들)이 뭉쳐 보였다. 칸 위치는
+   * buildSerpentinePath와 완전히 같은 규칙으로 격자 인덱스에서 직접 계산해서 이 문제를
+   * 원천 차단한다(배경 선은 여전히 buildSerpentinePath로 그림 -- 장식이라 무관). */
+  function serpentineGridPoint(idx, cols, rows, vertical) {
+    var margin = 12, span = 100 - margin * 2;
+    var colGap = cols > 1 ? span / (cols - 1) : 0;
+    var rowGap = rows > 1 ? span / (rows - 1) : 0;
+    var row, col;
+    if (!vertical) {
+      row = Math.floor(idx / cols);
+      var colInRow = idx % cols;
+      col = (row % 2 === 0) ? colInRow : (cols - 1 - colInRow);
+    } else {
+      col = Math.floor(idx / rows);
+      var rowInCol = idx % rows;
+      row = (col % 2 === 0) ? rowInCol : (rows - 1 - rowInCol);
+    }
+    return { x: margin + colGap * col, y: margin + rowGap * row };
+  }
+
   // 실제로 sampling(getTotalLength/getPointAtLength)에 쓸 <path>. 일부 브라우저(사파리 계열)는
   // 문서에 붙어있지 않은 path에서 geometry 메서드가 제대로 안 되는 경우가 있어, 화면엔 안
   // 보이지만 문서에는 붙어있는 숨은 SVG 안에 넣어서 재사용한다.
@@ -1101,15 +1125,16 @@ var TW = (function () {
       return;
     }
     var n = tiles.length;
-    var d;
-    if (n > LARGE_BOARD_TILE_THRESHOLD) {
+    var d, isLargeM = n > LARGE_BOARD_TILE_THRESHOLD, colsM = 0, rowsM = 0, verticalM = false;
+    if (isLargeM) {
       // 미니맵은 실제 컨테이너 크기가 아니라 고정된 가상 캔버스 기준으로 모양만 뽑는다
       // (점 크기가 워낙 작아서 실제 폭에 맞춰 cols를 다시 계산할 필요가 없음).
       var marginFracM = (100 - 12 * 2) / 100;
-      var colsM = Math.max(5, Math.round(1 + (marginFracM * 260) / 34));
-      var rowsM = Math.max(3, Math.ceil(n / colsM));
+      colsM = Math.max(5, Math.round(1 + (marginFracM * 260) / 34));
+      rowsM = Math.max(3, Math.ceil(n / colsM));
       var rndOrientM = seededRandom(floor || 0);
-      d = buildSerpentinePath(colsM, rowsM, rndOrientM() < 0.5);
+      verticalM = rndOrientM() < 0.5;
+      d = buildSerpentinePath(colsM, rowsM, verticalM);
     } else {
       d = buildLoopPath(floor, n);
     }
@@ -1117,11 +1142,15 @@ var TW = (function () {
     var normLen = trackSamplePath.getTotalLength();
     var frag = document.createDocumentFragment();
     tiles.forEach(function (t, idx) {
-      var pt = trackSamplePath.getPointAtLength((normLen * idx) / n);
+      // [2026-09-14] renderBoard와 동일하게, 큰 보드는 격자 인덱스로 직접 위치 계산해서
+      // 위쪽 칸이 뭉치는 문제를 막는다(serpentineGridPoint 참고).
+      var pt = isLargeM ? serpentineGridPoint(idx, colsM, rowsM, verticalM)
+                        : trackSamplePath.getPointAtLength((normLen * idx) / n);
       var isHere = (t.TILE_NO === curTile);
       var dot = document.createElement('div');
       dot.className = 'tile mini-tile ' + (t.DISCOVERED ? tileClass(t.TILE_TYPE) : 'hidden') + (isHere ? ' here' : '');
-      var size = isHere ? 7 : 4;
+      // [2026-09-14] "미니맵 색깔 원을 더 크게" 요청으로 6/10px -> 이전 대비 확대.
+      var size = isHere ? 11 : 7;
       dot.style.left = 'calc(' + pt.x + '% - ' + (size / 2) + 'px)';
       dot.style.top = 'calc(' + pt.y + '% - ' + (size / 2) + 'px)';
       dot.style.width = size + 'px';
@@ -1184,7 +1213,8 @@ var TW = (function () {
     // overflow-y:auto라 늘어난 만큼 세로 스크롤로 보여준다(카트라이더 트랙 모양의 serpentine
     // 경로는 그대로, 세로로만 길어짐). idealSpacing/칸 크기 상하한도 같이 키웠다.
     var cell, d;
-    if (n > LARGE_BOARD_TILE_THRESHOLD) {
+    var gridCols = 0, gridRows = 0, gridVertical = false, isLarge = n > LARGE_BOARD_TILE_THRESHOLD;
+    if (isLarge) {
       var vw = Math.max(200, track.clientWidth - 8);
       var marginFrac = (100 - 12 * 2) / 100; // buildSerpentinePath의 margin=12와 맞춤(0.76)
       var idealSpacing = 34; // 칸 "중심 간" 목표 거리 -- 예전(26)보다 키워서 칸 자체를 더 크게
@@ -1196,7 +1226,9 @@ var TW = (function () {
       var trackHeightPx = rows > 1 ? Math.round((spacingY * (rows - 1)) / marginFrac) : track.clientHeight;
       track.style.height = trackHeightPx + 'px';
       var rndOrient = seededRandom(floor || 0);
-      d = buildSerpentinePath(cols, rows, rndOrient() < 0.5);
+      gridVertical = rndOrient() < 0.5;
+      gridCols = cols; gridRows = rows;
+      d = buildSerpentinePath(cols, rows, gridVertical);
     } else {
       cell = Math.max(16, Math.min(40, 900 / n));
       d = buildLoopPath(floor, n);
@@ -1229,8 +1261,11 @@ var TW = (function () {
     var fontSize = Math.max(8, Math.min(13, Math.round(cell / 3)));
     var tnoSize = Math.max(6, Math.round(cell / 5));
     tiles.forEach(function (t, idx) {
-      // 닫힌 루프라 처음과 끝이 자연스럽게 이어진다(요청대로 항상 순환).
-      var pt = trackSamplePath.getPointAtLength((normLen * idx) / n);
+      // [2026-09-14] 큰 보드(격자)는 getPointAtLength 대신 격자 인덱스로 직접 위치 계산
+      // (serpentineGridPoint 주석 참고) -- 작은 보드(닫힌 루프, buildLoopPath)는 기존처럼
+      // 호 길이 균등 샘플링 그대로 사용(문제 없었음).
+      var pt = isLarge ? serpentineGridPoint(idx, gridCols, gridRows, gridVertical)
+                       : trackSamplePath.getPointAtLength((normLen * idx) / n);
       var div = document.createElement('div');
       var isHere = (t.TILE_NO === curTile);
       div.style.left = 'calc(' + pt.x + '% - ' + (cell / 2) + 'px)';

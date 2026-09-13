@@ -2311,6 +2311,18 @@ S4의 `TBOT_S4_ACHIEVEMENT`/`TBOT_S4_USER_ACH` 패턴을 확장 계승. S5에서
   뷰포트 세로 중앙 근처에 오도록 자동 스크롤(`scrollToHere`, `offsetTop` 기반).
   `tower_view.jsp`만 수정, DB 마이그레이션 없음.
 
+- **[2026-09-14][버그 수정] 확대 보드 위쪽 칸 뭉침/겹침 + 미니맵 점 크기 확대**: 확대 보드
+  스크린샷으로 "윗부분에 칸들이 몰려서 겹친다" 신고 확인. 원인은 `buildSerpentinePath`가
+  만드는 경로(격자 칸 사이 짧은 구간 + 열이 바뀔 때의 구간 + 맨 끝에 시작점으로 돌아가는
+  훨씬 긴 대각선이 한 경로 안에 섞여있음)를 `getPointAtLength`로 "호 길이 기준 균등
+  샘플링"해서 칸 위치를 구했던 것 -- 구간 길이가 서로 크게 달라서 실제 격자 위치와
+  어긋나며 일부 칸(특히 앞쪽)이 한쪽으로 쏠려 겹쳐 보였다. `serpentineGridPoint()`를
+  새로 만들어 `buildSerpentinePath`와 완전히 같은 규칙으로 격자 인덱스(row/col)에서
+  칸 위치를 직접 계산하도록 바꿔서 원천 차단(배경 선은 그대로 `buildSerpentinePath`로
+  그림, 장식이라 무관). `renderBoard`(확대)/`renderMinimap`(미니맵) 둘 다 동일하게 적용.
+  겸사겸사 미니맵 점 크기도 확대(4~7px -> 7~11px) + 미니맵 박스 높이 150px -> 180px.
+  `tower_view.jsp`만 수정, DB 마이그레이션 없음.
+
 ### 남은 TODO
 
 - 실제 서버 기동 후 채팅 명령어 + SPA E2E 테스트 (이번 세션은 `mvn compile`까지만 검증)
