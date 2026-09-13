@@ -57,9 +57,14 @@
        칸 수(15~150)에 따라 정사각형 한 변의 칸수(S)가 달라지므로, 컨테이너 크기와 각 칸의
        left/top은 JS에서 %(퍼센트) 인라인 스타일로 계산해서 넣는다. [2026-09-05] "좌우/상하
        스크롤바가 보인다" 신고로, 칸 수(최대 150)에 따라 트랙 자체가 커지던 방식을 버리고
-       뷰포트 크기를 고정(overflow:hidden)한 뒤 칸 크기만 칸 수에 맞춰 줄어들게 바꿨다 --
-       이제 어떤 화면 크기/칸 수에서도 스크롤바가 생길 수 없다. */
-    .tower-viewport{ position:relative; overflow:hidden; width:100%; height:min(440px, 55vh);
+       뷰포트 크기를 고정(overflow:hidden)한 뒤 칸 크기만 칸 수에 맞춰 줄어들게 했었다.
+       [2026-09-13] "칸(200개)이 너무 작아서 글씨가 안 보인다, 세로로 스크롤해도 되니까
+       칸 크기를 키우고 안 겹치게 해달라" 요청으로 그 결정을 뒤집는다 -- 가로 스크롤은
+       여전히 없지만(가로는 항상 뷰포트 폭에 맞춤), 세로는 이제 overflow-y:auto로 스크롤
+       가능. 큰 보드(51층+ 하드코어)는 renderBoard()가 칸 크기를 유지한 채 필요한 만큼
+       .tower-track의 실제 높이(px)를 늘려서 스크롤 영역을 만든다(카트라이더 트랙 모양의
+       serpentine 경로는 그대로 유지, 세로로만 길어짐). */
+    .tower-viewport{ position:relative; overflow-y:auto; overflow-x:hidden; width:100%; height:min(480px, 60vh);
                       border-radius:14px; background:var(--parchment-deep);
                       border:1.5px dashed var(--line); padding:10px; }
     .tower-track{ position:relative; width:100%; height:100%; }
@@ -1059,33 +1064,36 @@ var TW = (function () {
       return;
     }
     var n = tiles.length;
-    // [2026-09-05] "좌우/상하 스크롤바가 나온다" 신고로, 칸 수에 맞춰 트랙을 키우던 방식을
-    // 버리고 뷰포트를 고정 크기(overflow:hidden)로 두는 대신 칸 크기(cell)를 칸 수에 맞춰
-    // 줄인다 -- 좌표도 px가 아니라 %(뷰포트 기준 퍼센트)로 둬서 어떤 화면 크기/칸 수에서도
-    // 뷰포트를 벗어나지 않는다(스크롤바가 원천적으로 생길 수 없음).
-    // [2026-09-06] "51층 200칸 보드가 너무 촘촘하고 11층이랑 트랙이 똑같다, 겹치는 게 더
-    // 줄었으면 좋겠다" 신고로 두 번 손봄. 칸 수가 많은 보드는 기존 900/n 공식(칸이 늘수록
-    // 무조건 16px로 수렴) 대신 실제 뷰포트 픽셀 크기를 재서 격자(cols×rows)로 칸 크기를
-    // 역산한다. [수정] 처음 버전은 "칸 크기 ≈ 칸 사이 간격"으로 맞춰서 여전히 서로 닿을
-    // 만큼 겹쳐 보였다 -- 격자 계산에 여백 비율(marginFrac, 12~88 범위라 실제 폭의 76%만
-    // 씀)을 반영하지 않은 채 칸 크기를 잡았던 게 원인. 이제 실제 칸 사이 간격(spacingX/Y)을
-    // 먼저 구하고, 칸 크기는 그 간격의 72%만 써서 항상 눈에 보이는 틈을 남긴다.
+    // [2026-09-05] 칸 수(최대 150~200)에 맞춰 트랙을 키우던 방식을 버리고 뷰포트를 고정
+    // 크기(overflow:hidden)로 두는 대신 칸 크기(cell)를 칸 수에 맞춰 줄이게 했었다 -- 좌표는
+    // %(트랙 기준 퍼센트)로 둬서 어떤 칸 수에서도 트랙을 벗어나지 않는다.
+    // [2026-09-06] 칸 수가 많은 보드는 실제 뷰포트 픽셀 크기를 재서 격자(cols×rows)로 칸
+    // 크기를 역산(칸 사이 간격의 72%만 써서 눈에 보이는 틈을 남김)하게 두 번 손봤었다.
+    // [2026-09-13] "칸(200개)이 너무 작아서 글씨가 안 보인다, 세로 스크롤은 괜찮으니 칸을
+    // 키우고 안 겹치게 해달라" 요청으로 세로 방향의 "뷰포트 높이에 맞춰 칸을 눌러 압축"하는
+    // 부분을 제거했다. 가로(cols)는 그대로 뷰포트 폭 기준으로 정하지만(가로 스크롤은 여전히
+    // 없음), 세로 칸 간격(spacingY)은 이제 spacingX와 동일하게(정사각형에 가깝게) 두고,
+    // 그만큼 필요한 트랙 전체 높이(px)를 역산해서 .tower-track 자체를 늘린다 -- 뷰포트는
+    // overflow-y:auto라 늘어난 만큼 세로 스크롤로 보여준다(카트라이더 트랙 모양의 serpentine
+    // 경로는 그대로, 세로로만 길어짐). idealSpacing/칸 크기 상하한도 같이 키웠다.
     var cell, d;
     if (n > LARGE_BOARD_TILE_THRESHOLD) {
       var vw = Math.max(200, track.clientWidth - 8);
-      var vh = Math.max(160, track.clientHeight - 8);
       var marginFrac = (100 - 12 * 2) / 100; // buildSerpentinePath의 margin=12와 맞춤(0.76)
-      var idealSpacing = 26; // 칸 "중심 간" 목표 거리(칸 자체 크기가 아니라 간격 기준)
-      var cols = Math.max(6, Math.round(1 + (marginFrac * vw) / idealSpacing));
+      var idealSpacing = 34; // 칸 "중심 간" 목표 거리 -- 예전(26)보다 키워서 칸 자체를 더 크게
+      var cols = Math.max(5, Math.round(1 + (marginFrac * vw) / idealSpacing));
       var rows = Math.max(3, Math.ceil(n / cols));
       var spacingX = cols > 1 ? (marginFrac * vw) / (cols - 1) : vw;
-      var spacingY = rows > 1 ? (marginFrac * vh) / (rows - 1) : vh;
-      cell = Math.max(12, Math.min(28, Math.min(spacingX, spacingY) * 0.72));
+      var spacingY = spacingX; // 세로도 가로와 같은 간격 유지(더는 뷰포트 높이로 안 눌림)
+      cell = Math.max(20, Math.min(36, spacingX * 0.72));
+      var trackHeightPx = rows > 1 ? Math.round((spacingY * (rows - 1)) / marginFrac) : track.clientHeight;
+      track.style.height = trackHeightPx + 'px';
       var rndOrient = seededRandom(floor || 0);
       d = buildSerpentinePath(cols, rows, rndOrient() < 0.5);
     } else {
       cell = Math.max(16, Math.min(40, 900 / n));
       d = buildLoopPath(floor, n);
+      track.style.height = ''; // 작은 보드는 예전처럼 뷰포트에 꽉 채움(CSS height:100%로 복귀)
     }
 
     // 트랙 모양(0~100 정규화 좌표계, 항상 닫힌 루프)의 <path> 하나를 길이 측정용으로 세팅
