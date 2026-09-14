@@ -64,17 +64,25 @@
        가능. 큰 보드(51층+ 하드코어)는 renderBoard()가 칸 크기를 유지한 채 필요한 만큼
        .tower-track의 실제 높이(px)를 늘려서 스크롤 영역을 만든다(카트라이더 트랙 모양의
        serpentine 경로는 그대로 유지, 세로로만 길어짐). */
+    /* [2026-09-14 3차 수정] "스크롤을 조금만 내려도 내 위치/아래로 버튼을 못 누른다"
+       신고 -- sticky를 towerTrack 자식으로 넣는 방식은(바로 아래 옛 주석) 실기기에서
+       안정적으로 안 붙어있는 문제가 있었다. 대신 .tower-viewport-wrap이라는 새 래퍼로
+       #towerViewport(스크롤되는 상자)를 감싸고, 버튼 박스는 그 래퍼의 "형제"로 둬서
+       애초에 스크롤 컨텍스트 밖에 있게 한다 -- position:absolute로 래퍼 기준 우측 하단에
+       고정되면 #towerViewport 내부를 아무리 스크롤해도(내부 콘텐츠만 움직임) 버튼은 항상
+       화면상 같은 자리에 떠 있는다(진짜 "플로팅"). */
+    .tower-viewport-wrap{ position:relative; }
     .tower-viewport{ position:relative; overflow-y:auto; overflow-x:hidden; width:100%; height:min(480px, 60vh);
                       border-radius:14px; background:var(--parchment-deep);
-                      border:1.5px dashed var(--line); padding:10px; }
+                      border:1.5px dashed var(--line); padding:10px; box-sizing:border-box; }
     .tower-track{ position:relative; width:100%; height:100%; }
-    /* [2026-09-14] "내 위치/스크롤 버튼을 맵뷰(towerTrack) 안에 넣어달라, 마우스휠 스크롤은
-       막고 대신 버튼으로 내리게 해달라" 요청 -- renderBoard()가 매번 towerTrack 안에 이
-       박스를 다시 그려 넣는다(DOM상 진짜로 towerTrack의 자식). sticky를 스크롤 컨테이너인
-       #towerViewport 기준으로 오른쪽 아래에 고정해서, 트랙이 아무리 길어도 화면에 보이는
-       위치에 항상 떠 있는다(그러면서도 요청대로 towerTrack 자식이라는 조건도 만족). */
-    .board-track-controls{ position:sticky; bottom:8px; display:flex; justify-content:flex-end;
-                   gap:6px; pointer-events:none; z-index:5; }
+    /* [2026-09-14] "내 위치/스크롤 버튼을 맵뷰 안에 넣어달라, 마우스휠 스크롤은 막고 대신
+       버튼으로 내리게 해달라" 요청으로 처음엔 towerTrack 자식 + position:sticky로 구현했었음
+       (매 렌더마다 다시 그려 넣는 방식). [2026-09-14 3차 수정] 위 .tower-viewport-wrap 주석
+       참고 -- 이제 정적 마크업 한 번만 만들고(renderBoard가 다시 그릴 필요 없음)
+       position:absolute로 래퍼 우측 하단에 항상 떠 있는다. "맨 위로" 버튼도 추가. */
+    .board-track-controls{ position:absolute; right:10px; bottom:10px; display:flex;
+                   flex-direction:column; align-items:flex-end; gap:6px; pointer-events:none; z-index:5; }
     .board-track-btn{ pointer-events:auto; white-space:nowrap; border-radius:999px;
                    padding:6px 10px; font-size:11px; font-weight:700; cursor:pointer;
                    background:var(--parchment); border:1.5px solid var(--line); color:var(--ink);
@@ -442,10 +450,9 @@
         <!-- [2026-09-14] "미니맵+탭 확대가 마음에 안 든다, 미니맵 생기기 전으로 롤백" 요청 --
              09-13에 넣었던 미니맵/확대모달을 걷어내고 다시 칸그리드를 카드 안에 직접
              보여준다(PC 폭에서는 board-card가 차지하는 실제 너비만큼 자연스럽게 넓어짐 --
-             모달의 wide-card 최대폭 제한이 없어짐). [2026-09-14 후속] "내 위치/스크롤 버튼을
-             맵뷰(towerTrack) 안에 넣어달라" 요청으로 여기 있던 "내 위치" 버튼은 빼고
-             renderBoard()가 towerTrack 안에 직접 그려 넣는다(아래 .board-track-controls
-             참고) -- 매번 다시 그려지므로 정적 마크업으로는 여기 둘 수 없음. -->
+             모달의 wide-card 최대폭 제한이 없어짐). [2026-09-14 3차 수정] 맵뷰 스크롤/이동
+             버튼(맨 위로/내 위치/맨 아래로)은 아래 .tower-viewport-wrap 안에 정적 마크업으로
+             둔다(위 CSS .board-track-controls 주석 참고 -- 스크롤해도 항상 같은 자리에 뜸). -->
         <div class="card-title-row">
           <div class="card-title">보드</div>
         </div>
@@ -474,9 +481,19 @@
             <span class="broll-icn">🎲</span>주사위
           </button>
         </div>
-        <div class="tower-viewport" id="towerViewport">
-          <div class="tower-track" id="towerTrack">
-            <div style="color:var(--ink-soft);font-size:12px;">데이터를 불러오는 중...</div>
+        <div class="tower-viewport-wrap">
+          <div class="tower-viewport" id="towerViewport">
+            <div class="tower-track" id="towerTrack">
+              <div style="color:var(--ink-soft);font-size:12px;">데이터를 불러오는 중...</div>
+            </div>
+          </div>
+          <!-- [2026-09-14 3차 수정] "스크롤을 조금만 내려도 버튼을 못 누른다, 플로팅시켜서
+               항상 누를 수 있게 해달라, 맨 위로도 추가해달라" 요청 -- #towerViewport의
+               "형제"로 둬서(내부 스크롤과 무관) position:absolute로 항상 같은 자리에 뜸. -->
+          <div class="board-track-controls">
+            <button type="button" class="board-track-btn" onclick="TW.scrollToTop()">⬆️ 맨 위로</button>
+            <button type="button" class="board-track-btn" onclick="TW.scrollToHere()">📍 내 위치</button>
+            <button type="button" class="board-track-btn" onclick="TW.scrollToBottom()">⬇️ 맨 아래로</button>
           </div>
         </div>
         <div class="legend">
@@ -953,11 +970,15 @@ var TW = (function () {
    * 진폭 상한도 같이 키운다(아래 ampMin/ampMax 파라미터, renderBoard에서 실측 간격 기준으로
    * 동적 계산). 세로 왕복(줄=열) 보드는 가로 스크롤이 없어 간격을 못 늘리므로 예전 7~13%
    * 그대로 유지(안전함이 이미 검증됨) -- 대신 방향 선택 확률 자체를 낮춰서(gridVertical
-   * 30%만) 더 곡선이 두드러지는 가로 왕복 쪽이 더 자주 나오게 했다. */
+   * 30%만) 더 곡선이 두드러지는 가로 왕복 쪽이 더 자주 나오게 했다.
+   * [2026-09-14 3차 수정] "한 개의 길도 구불구불했으면 좋겠다"는 요청 -- 줄 하나에 봉우리가
+   * 1~2개(freq 1~2)뿐이면 완만한 "C"자 하나로만 보인다. freq를 2~4로 올려서 줄 하나 안에서도
+   * 최소 2번, 많으면 4번 방향을 바꾸며 꿈틀거리게 했다(진폭 상한은 그대로라 안전함엔 영향
+   * 없음 -- waveOffset의 진폭 상한은 주파수와 무관하게 항상 ampFrac*gap로 고정). */
   function buildRowWaves(rnd, bandCount, ampMin, ampMax) {
     var waves = [];
     for (var i = 0; i < bandCount; i++) {
-      waves.push({ ampFrac: ampMin + rnd() * (ampMax - ampMin), phase: rnd() * Math.PI * 2, freq: 1 + Math.floor(rnd() * 2) });
+      waves.push({ ampFrac: ampMin + rnd() * (ampMax - ampMin), phase: rnd() * Math.PI * 2, freq: 2 + Math.floor(rnd() * 3) });
     }
     return waves;
   }
@@ -1011,7 +1032,10 @@ var TW = (function () {
   function buildSerpentinePath(cols, rows, vertical, waves) {
     var margin = 12, span = 100 - margin * 2;
     var pts = [];
-    var SAMPLES = 16; // 줄 하나를 몇 개의 짧은 직선으로 근사할지(많을수록 곡선이 매끄러움)
+    // [2026-09-14 3차 수정] freq를 2~4로 올린 만큼(구불구불 요청) 표본도 24로 늘려서
+    // Catmull-Rom이 봉우리/골짜기를 놓치지 않고 매끄럽게 따라가게 한다(16으로는 freq=4일 때
+    // 한 주기당 표본이 4개뿐이라 곡선이 각져 보일 수 있음).
+    var SAMPLES = 24;
     if (!vertical) {
       var colGap = cols > 1 ? span / (cols - 1) : 0;
       var rowGap = rows > 1 ? span / (rows - 1) : 0;
@@ -1196,12 +1220,17 @@ var TW = (function () {
     }
   }
 
-  /** [2026-09-14] "마우스휠 스크롤은 막고 대신 아래로 내리는 버튼을 만들어달라" 요청 --
-   *  버튼 한 번에 뷰포트 높이의 85%만큼 부드럽게 내려간다(끝까지 여러 번 누르면 도착).
+  /** [2026-09-14] "마우스휠 스크롤은 막고 대신 버튼을 만들어달라" 요청으로 처음엔 뷰포트
+   *  높이의 85%만큼만 내려가는 scrollDown()이었는데, [2026-09-14 3차 수정] "맨아래로/맨위로
+   *  버튼을 플로팅시켜달라"는 요청에 맞춰 이름 그대로 맨 끝까지 한 번에 이동하도록 바꿨다.
    *  스크롤 자체(스크롤바 드래그/터치 스와이프)는 여전히 가능, 아래 wheel 리스너로 휠만 막음. */
-  function scrollDown() {
+  function scrollToTop() {
     var vp = document.getElementById('towerViewport');
-    if (vp) vp.scrollBy({ top: vp.clientHeight * 0.85, behavior: 'smooth' });
+    if (vp) vp.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+  function scrollToBottom() {
+    var vp = document.getElementById('towerViewport');
+    if (vp) vp.scrollTo({ top: vp.scrollHeight, behavior: 'smooth' });
   }
 
   function renderBoard(tiles, curTile, floor) {
@@ -1342,21 +1371,9 @@ var TW = (function () {
       }
       track.appendChild(div);
     });
-
-    // [2026-09-14] "내 위치/스크롤 내리는 버튼을 맵뷰(towerTrack) 안에 넣어달라" 요청 --
-    // 매 렌더마다 다시 그려 넣는다(track.innerHTML=''로 지워지므로 정적 마크업으로는 못 둠).
-    // CSS의 position:sticky(#towerViewport 기준)가 실제로 화면에 보이는 위치에 붙어있게 해준다.
-    var controls = document.createElement('div');
-    controls.className = 'board-track-controls';
-    var hereBtn = document.createElement('button');
-    hereBtn.type = 'button'; hereBtn.className = 'board-track-btn';
-    hereBtn.textContent = '📍 내 위치'; hereBtn.onclick = scrollToHere;
-    var downBtn = document.createElement('button');
-    downBtn.type = 'button'; downBtn.className = 'board-track-btn';
-    downBtn.textContent = '⬇️ 아래로'; downBtn.onclick = scrollDown;
-    controls.appendChild(hereBtn);
-    controls.appendChild(downBtn);
-    track.appendChild(controls);
+    // [2026-09-14 3차 수정] 맨 위로/내 위치/맨 아래로 버튼은 이제 .tower-viewport-wrap에
+    // 정적 마크업으로 한 번만 있고(HTML 참고) track.innerHTML=''로도 안 지워지므로, 여기서
+    // 매 렌더마다 다시 그려 넣던 코드는 삭제(위 CSS .board-track-controls 주석 참고).
   }
 
   // [2026-09-05] 주사위 교체 오버레이 -- 상점탭에 있던 걸 보드 칸그리드 위로 옮겨서, 해금된
@@ -2293,7 +2310,7 @@ var TW = (function () {
     setInterval(checkAppVersion, 3 * 60 * 1000); // 페이지를 오래 켜두는 유저도 놓치지 않게 3분마다 재확인
 
     // [2026-09-14] "마우스휠로 스크롤 못하게 하자" 요청 -- 스크롤바 드래그/터치 스와이프/
-    // 아래 scrollDown() 버튼은 그대로 되지만, 휠 이벤트만 막는다. { passive:false }라야
+    // 맨 위로/맨 아래로 버튼은 그대로 되지만, 휠 이벤트만 막는다. { passive:false }라야
     // preventDefault()가 실제로 스크롤을 취소한다.
     var twViewport = document.getElementById('towerViewport');
     if (twViewport) twViewport.addEventListener('wheel', function (e) { e.preventDefault(); }, { passive: false });
@@ -2303,7 +2320,7 @@ var TW = (function () {
            closePicker: closePicker,
            openAllCompanions: openAllCompanions, closeAllCompanions: closeAllCompanions,
            openAllEquip: openAllEquip, closeAllEquip: closeAllEquip,
-           scrollToHere: scrollToHere, scrollDown: scrollDown,
+           scrollToHere: scrollToHere, scrollToTop: scrollToTop, scrollToBottom: scrollToBottom,
            reopenNotice: reopenNotice, closeNotice: closeNotice, dismissNotice: dismissNotice, refreshForUpdate: refreshForUpdate };
 })();
 </script>
