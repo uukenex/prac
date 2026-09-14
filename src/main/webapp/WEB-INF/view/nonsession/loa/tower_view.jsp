@@ -282,6 +282,9 @@
     .hpbar-track{ height:6px; border-radius:4px; background:#EFE7D2; overflow:hidden; margin-top:4px; }
     .hpbar-fill{ height:100%; background:linear-gradient(90deg,#5FBE85,#2F8F5C); }
     .hp-num{ font-size:9px; color:var(--ink-soft); margin-top:2px; }
+    /* [2026-09-14] "전체보기 카드에도 공격력/방어력을 HP처럼 표기해달라" 요청 -- hp-num과
+       동일한 스타일 공유. */
+    .atk-num, .def-num{ font-size:9px; color:var(--ink-soft); margin-top:1px; }
 
     .shop-header{ display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; }
     .shop-header .pp-badge{ margin:0; }
@@ -1487,6 +1490,17 @@ var TW = (function () {
   // [2026-09-06] 동료 초상화 엘리먼트 -- party-card/party-slot-card 헤더 공용.
   // 이미지 로드 실패(외부 API 차단 등) 시 직업 이모지로 폴백하는 로직을 한 곳에 모음.
   // clickable이면 탭 시 상세(showCompanionDetail) 카드가 뜬다(그 외 클릭은 부모에게 위임).
+  // [2026-09-14] "핸드폰으로 접속시 이미지가 잘 노출 안된다" 신고 조사 -- 실브라우저(모바일
+  // 뷰포트/UA 에뮬레이션)로 직접 확인한 결과 이미지 자체는 로드는 되지만(65/65 성공), 원본
+  // nekos.best 초상화 하나가 실측 1.7~3.2MB(가로 1000~2900px)인데 48~64px 썸네일로 그냥
+  // 줄여서만 쓰고 있었다 -- 동료 60마리 전체보기 한 번에 열면 합쳐서 100MB+를 한꺼번에
+  // 받으려 시도하는 셈이라, 데스크톱/이 테스트 환경(빠른 연결)에선 버티지만 실제 모바일
+  // 데이터망(느리고 불안정, 화면 밖 이미지까지 전부 즉시 요청)에서는 타임아웃/메모리
+  // 압박으로 일부가 못 뜨는 게 유력한 원인으로 보인다. 서버에서 축소판을 만들어 캐싱하는
+  // 근본 대응은 별도 작업이 필요해서(이미지 리사이즈 파이프라인 신설), 우선 브라우저 네이티브
+  // 지연로딩(loading="lazy")을 켜서 화면에 실제로 보이는 이미지만 요청하게 한다 -- 화면 밖
+  // 카드(스크롤해야 보이는 나머지 수십 장)는 스크롤해서 실제로 가까워지기 전까진 요청 자체를
+  // 안 하므로, 초기 노출/네트워크 부담이 크게 줄어든다.
   function buildAvatarEl(c, sizeClass, clickable) {
     var img = c.IMAGE_URL ? c.IMAGE_URL : '';
     var emoji = JOB_EMOJI[c.CLASS] || '👤';
@@ -1495,6 +1509,8 @@ var TW = (function () {
     el.className = sizeClass + (img ? '' : ' avatar-emoji');
     if (onClick) el.onclick = onClick;
     if (img) {
+      el.loading = 'lazy';
+      el.decoding = 'async';
       el.src = img;
       el.alt = '';
       el.onerror = function () {
@@ -1907,11 +1923,19 @@ var TW = (function () {
       var name = c.NAME || (JOB_KR[c.CLASS] || c.CLASS);
       // [2026-09-14] 동료 전체 목록/선택 카드에도 한계돌파 단계 표기.
       var cLb = c.LIMIT_BREAK ? parseInt(c.LIMIT_BREAK, 10) : 0;
+      // [2026-09-14] "밑에 HP 바에도 한계돌파 수치를 (+몇)으로, 공격력/방어력도 비슷한
+      // 방식으로 표기해주자" 요청 -- 현재 HP(CUR_HP_VALUE) 대신 유효 최대치(EFF_HP, 장비/
+      // 스탯구매/한계돌파 전부 반영)를 base(+한계돌파 보너스) 형태로 보여주고, 같은 방식으로
+      // 공격력/방어력 줄을 새로 추가한다(companionsWithEffectiveStats()가 내려주는 EFF_*
+      // 필드, apiTowerParty 참고). fmtStatWithBonus는 위 showCompanionDetail 쪽에서 이미
+      // 정의된 공용 헬퍼.
       div.innerHTML = '<div class="cname">' + name + '</div>'
           + '<div class="role">' + (JOB_KR[c.CLASS] || c.CLASS) + ' ★' + c.GRADE
           + (cLb > 0 ? ' (+' + cLb + ')' : '') + '</div>'
           + '<div class="hpbar-track"><div class="hpbar-fill" style="width:100%"></div></div>'
-          + '<div class="hp-num">HP ' + fmtPP(c.CUR_HP_VALUE, c.CUR_HP_EXT) + (c.PARTY_SLOT ? ' [파티' + c.PARTY_SLOT + ']' : '') + '</div>';
+          + '<div class="hp-num">💗' + fmtStatWithBonus(c.EFF_HP, c.EFF_HP_BASE) + (c.PARTY_SLOT ? ' [파티' + c.PARTY_SLOT + ']' : '') + '</div>'
+          + '<div class="atk-num">⚔️' + fmtStatWithBonus(c.EFF_ATK, c.EFF_ATK_BASE) + '</div>'
+          + '<div class="def-num">🛡️' + fmtStatWithBonus(c.EFF_DEF, c.EFF_DEF_BASE) + '</div>';
       div.insertBefore(buildAvatarEl(c, 'avatar', true), div.firstChild);
       if (picking) {
         // 배치 모드 -- 카드를 탭하면 바로 배치(아바타는 buildAvatarEl이 이미 stopPropagation

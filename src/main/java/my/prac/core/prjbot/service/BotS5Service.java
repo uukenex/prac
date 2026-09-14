@@ -150,8 +150,16 @@ public interface BotS5Service {
     /** /장비목록 */
     String equipList(String userName);
 
-    /** 웹 SPA 캐릭터 상세(클릭 확대) 카드용 — 장비/스탯구매 보너스가 반영된 유효 스탯 [hp, atk, def] */
+    /** 웹 SPA 캐릭터 상세(클릭 확대) 카드용 — 장비/스탯구매 보너스가 반영된 유효 스탯
+     *  [hp, atk, def, hpBase, atkBase, defBase] (base는 한계돌파만 뺀 값) */
     int[] companionEffectiveStat(String userName, int companionId);
+
+    /** [2026-09-14] "전체보기 카드마다 공/방/체 + 한계돌파 보너스를 다 보여달라" 요청 --
+     *  companionEffectiveStat()을 동료마다 따로 호출하면 N+1 조회가 되므로, 유저 스탯/장비를
+     *  한 번씩만 조회해 전체 동료 목록에 EFF_HP/EFF_ATK/EFF_DEF/EFF_HP_BASE/EFF_ATK_BASE/
+     *  EFF_DEF_BASE 필드를 얹어서 한 번에 돌려준다(selectUserCompanions와 같은 원본 키 그대로
+     *  + 이 6개 필드 추가). */
+    List<HashMap<String, Object>> companionsWithEffectiveStats(String userName);
 
     /** /장비장착 (인자 없이) — 미착용 장비 번호 + 파티원 번호를 함께 안내 */
     String equipWearUsage(String userName);

@@ -140,8 +140,11 @@ public class Season5ViewController {
     @GetMapping("/api/tower-party")
     @ResponseBody
     public ResponseEntity<?> apiTowerParty(@RequestParam(value = "userName", defaultValue = "") String userName) {
+        // [2026-09-14] "전체보기 카드마다 공/방/체 + 한계돌파 보너스를 다 보여달라" 요청 --
+        // selectUserCompanions 직접 호출 대신 EFF_HP/EFF_ATK/EFF_DEF(+ _BASE) 필드까지 얹어
+        // 돌려주는 companionsWithEffectiveStats()로 교체(N+1 없이 한 번에 계산).
         List<HashMap<String, Object>> companions = userName.trim().isEmpty()
-                ? new ArrayList<>() : s5Dao.selectUserCompanions(userName);
+                ? new ArrayList<>() : s5Service.companionsWithEffectiveStats(userName);
         HashMap<String, Object> result = new HashMap<>();
         result.put("companions", companions);
         return ResponseEntity.ok(result);

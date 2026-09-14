@@ -5249,6 +5249,37 @@ public class BotS5ServiceImpl implements BotS5Service {
         return new int[]{ eff[0], eff[1], eff[2], effBase[0], effBase[1], effBase[2] };
     }
 
+    /** [2026-09-14] "동료편성 전체보기 카드마다 공/방/체 + 한계돌파 보너스를 다 보여달라"
+     *  요청 -- companionEffectiveStat()을 동료마다 따로 부르면 N+1 조회(동료 수만큼 장비/
+     *  유저스탯 재조회)가 되므로, 유저 스탯과 전체 장비 목록을 한 번씩만 조회해 동료
+     *  COMPANION_ID별로 묶어둔 뒤 한 바퀴만 돈다. 반환하는 각 동료 맵은 selectUserCompanions
+     *  원본 키(CLASS/GRADE/LIMIT_BREAK/...)에 EFF_HP/EFF_ATK/EFF_DEF/EFF_HP_BASE/EFF_ATK_BASE/
+     *  EFF_DEF_BASE 6개 필드를 더해서 그대로 돌려준다(원본 객체를 그대로 mutate). */
+    @Override
+    public List<HashMap<String, Object>> companionsWithEffectiveStats(String userName) {
+        List<HashMap<String, Object>> companions = dao.selectUserCompanions(userName);
+        HashMap<String, Object> userStat = dao.selectUserStat(userName);
+        HashMap<Integer, List<HashMap<String, Object>>> equipsByCompanion = new HashMap<>();
+        for (HashMap<String, Object> e : dao.selectUserEquip(userName)) {
+            Object cidObj = e.get("EQUIPPED_COMPANION_ID");
+            if (cidObj == null) continue;
+            int cid = intVal(cidObj, -1);
+            equipsByCompanion.computeIfAbsent(cid, k -> new ArrayList<>()).add(e);
+        }
+        for (HashMap<String, Object> c : companions) {
+            String job = strVal(c.get("CLASS"), "WARRIOR");
+            int grade = intVal(c.get("GRADE"), 1);
+            int limitBreak = intVal(c.get("LIMIT_BREAK"), 0);
+            int cid = intVal(c.get("COMPANION_ID"), 0);
+            List<HashMap<String, Object>> equips = equipsByCompanion.getOrDefault(cid, Collections.emptyList());
+            int[] eff = computeEffectiveStat(job, grade, equips, userStat, limitBreak);
+            int[] effBase = computeEffectiveStat(job, grade, equips, userStat, 0);
+            c.put("EFF_HP", eff[0]); c.put("EFF_ATK", eff[1]); c.put("EFF_DEF", eff[2]);
+            c.put("EFF_HP_BASE", effBase[0]); c.put("EFF_ATK_BASE", effBase[1]); c.put("EFF_DEF_BASE", effBase[2]);
+        }
+        return companions;
+    }
+
     /** 장비 목록 - 미착용은 /장비장착·/장비합성에 그대로 쓸 수 있는 번호를 붙이고, 착용중인 건 누가 끼고 있는지 표시. */
     @Override
     public String equipList(String userName) {
