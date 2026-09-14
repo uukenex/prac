@@ -68,6 +68,18 @@
                       border-radius:14px; background:var(--parchment-deep);
                       border:1.5px dashed var(--line); padding:10px; }
     .tower-track{ position:relative; width:100%; height:100%; }
+    /* [2026-09-14] "내 위치/스크롤 버튼을 맵뷰(towerTrack) 안에 넣어달라, 마우스휠 스크롤은
+       막고 대신 버튼으로 내리게 해달라" 요청 -- renderBoard()가 매번 towerTrack 안에 이
+       박스를 다시 그려 넣는다(DOM상 진짜로 towerTrack의 자식). sticky를 스크롤 컨테이너인
+       #towerViewport 기준으로 오른쪽 아래에 고정해서, 트랙이 아무리 길어도 화면에 보이는
+       위치에 항상 떠 있는다(그러면서도 요청대로 towerTrack 자식이라는 조건도 만족). */
+    .board-track-controls{ position:sticky; bottom:8px; display:flex; justify-content:flex-end;
+                   gap:6px; pointer-events:none; z-index:5; }
+    .board-track-btn{ pointer-events:auto; white-space:nowrap; border-radius:999px;
+                   padding:6px 10px; font-size:11px; font-weight:700; cursor:pointer;
+                   background:var(--parchment); border:1.5px solid var(--line); color:var(--ink);
+                   box-shadow:var(--shadow); }
+    .board-track-btn:active{ transform:scale(.95); }
     .tile{ position:absolute; border-radius:10px; display:flex;
            flex-direction:column; align-items:center; justify-content:center; font-size:9px; font-weight:700;
            color:#fff; box-shadow:0 2px 0 rgba(0,0,0,.12); text-align:center; line-height:1.15; padding:1px; }
@@ -430,11 +442,12 @@
         <!-- [2026-09-14] "미니맵+탭 확대가 마음에 안 든다, 미니맵 생기기 전으로 롤백" 요청 --
              09-13에 넣었던 미니맵/확대모달을 걷어내고 다시 칸그리드를 카드 안에 직접
              보여준다(PC 폭에서는 board-card가 차지하는 실제 너비만큼 자연스럽게 넓어짐 --
-             모달의 wide-card 최대폭 제한이 없어짐). "내 위치" 버튼은 여전히 쓸모 있어서
-             (칸이 커지고 세로 스크롤이 기니까) 카드 제목 옆으로 그대로 옮겨서 유지. -->
+             모달의 wide-card 최대폭 제한이 없어짐). [2026-09-14 후속] "내 위치/스크롤 버튼을
+             맵뷰(towerTrack) 안에 넣어달라" 요청으로 여기 있던 "내 위치" 버튼은 빼고
+             renderBoard()가 towerTrack 안에 직접 그려 넣는다(아래 .board-track-controls
+             참고) -- 매번 다시 그려지므로 정적 마크업으로는 여기 둘 수 없음. -->
         <div class="card-title-row">
           <div class="card-title">보드</div>
-          <button class="synth-all-btn" onclick="TW.scrollToHere()">📍 내 위치</button>
         </div>
         <!-- [2026-09-12] "최소주사위 줄에 칸그리드 위쪽이 가려서 안 보인다" 신고로,
              기존 절대좌표 오버레이 3개(dice-overlay/dice-enhance-overlay/board-roll-btn)를
@@ -924,11 +937,39 @@ var TW = (function () {
     return d;
   }
 
-  /** 지그재그(뱀) 경로 생성 -- cols×rows 격자를 한 줄씩 좌우(또는 위아래)로 왕복하며 직선으로
-   * 잇는다. 칸 수(n)가 많은 51층+ 하드코어 보드 전용 -- 행(rows)이 칸 수에 비례해 늘어나
-   * 총 경로 길이도 같이 늘어나므로, 원의 둘레 위에 점을 찍는 방식과 달리 칸이 많아져도 칸
-   * 사이 간격이 좁아지지 않는다. vertical이면 방향을 90도 돌려서(세로로 왕복) 큰 보드끼리도
-   * 층마다 다른 모양이 나오게 한다.
+  /** [2026-09-14] "카트라이더 맵처럼 랜덤성이 있었으면 좋겠다, 대신 간격이 있어야 겹치지
+   * 않을 것 같다" 요청 -- 완전 자유형 랜덤 곡선(작은 보드의 buildLoopPath처럼)은 칸이
+   * 100~200개나 되는 큰 보드에 그대로 쓰면 정사각형 좌표계를 세로로 길게 늘여 그리는 과정에서
+   * 칸 간격이 불균등해지고(가로적인 구간은 늘어나고 세로적인 구간은 눌림), 자기교차/겹침
+   * 위험도 커진다. 대신 기존의 "줄(행 또는 열) 단위 왕복" 뼈대는 그대로 두고(줄 사이 간격이
+   * 곧 안전 마진이 되어 겹침을 구조적으로 방지) 각 줄에 완만한 사인파를 얹어서 층마다 다른
+   * 곡선 모양이 나오게 한다. 진폭은 줄 간격의 7~13%(줄마다 랜덤)로 상한을 둔다 -- 칸
+   * 반지름이 간격의 약 36%라서, 인접한 두 줄이 최악의 경우(서로 반대 위상으로 정확히
+   * 마주보는 최대 진폭)로 어긋나도 13%+13%=26% < (100%-36%*2=28%)로 항상 여유 있게 안
+   * 겹친다(실측: cols=8 격자에서 최소 칸 간 거리가 칸 지름보다 15~22% 더 넉넉했음). 각
+   * 줄의 시작/끝(t=0,1)에서는
+   * sin(t*PI) 포락선으로 진폭이 0으로 수렴하게 해서, 줄이 꺾이는 모서리는 항상 격자에 정확히
+   * 물리게 한다(기존 닫힘 구간 로직이 모서리 좌표를 그대로 신뢰하므로 이게 깨지면 안 됨). */
+  function buildRowWaves(rnd, bandCount) {
+    var waves = [];
+    for (var i = 0; i < bandCount; i++) {
+      waves.push({ ampFrac: 0.07 + rnd() * 0.06, phase: rnd() * Math.PI * 2, freq: 1 + Math.floor(rnd() * 2) });
+    }
+    return waves;
+  }
+  function waveOffset(wave, gap, t) {
+    if (!wave) return 0;
+    var tt = Math.min(1, Math.max(0, t));
+    var envelope = Math.sin(tt * Math.PI); // 줄 시작/끝(t=0,1)에서 0으로 수렴
+    return wave.ampFrac * gap * Math.sin(wave.phase + tt * Math.PI * 2 * wave.freq) * envelope;
+  }
+
+  /** 지그재그(뱀) 경로 생성 -- cols×rows 격자를 한 줄씩 좌우(또는 위아래)로 왕복하며 잇는다
+   * (waves가 있으면 직선 대신 완만한 곡선, 위 buildRowWaves/waveOffset 참고). 칸 수(n)가
+   * 많은 51층+ 하드코어 보드 전용 -- 행(rows)이 칸 수에 비례해 늘어나 총 경로 길이도 같이
+   * 늘어나므로, 원의 둘레 위에 점을 찍는 방식과 달리 칸이 많아져도 칸 사이 간격이 좁아지지
+   * 않는다. vertical이면 방향을 90도 돌려서(세로로 왕복) 큰 보드끼리도 층마다 다른 모양이
+   * 나오게 한다.
    * [2026-09-14] "한 칸에 줄이 여러 개 연결된 것처럼 보인다" 신고로 09-14 초반엔 닫힘
    * 세그먼트를 아예 없앴었는데, "처음과 끝이 이어져야지"라는 재요청으로 다시 되돌리되
    * 이번엔 방식을 바꿨다 -- 마지막 칸에서 첫 칸으로 곧장 대각선을 긋는 대신(그게 바로
@@ -938,24 +979,31 @@ var TW = (function () {
    * 마지막 칸이 있는 가장자리에 따라 인접한 한 변만 두르거나(짧게), 대각선 반대편
    * 모서리면 두 변을 둘러서(길게) 돌아온다 -- 전체 경로는 여전히 하나의 선으로 이어지고,
    * 격자 칸 영역은 절대 가로지르지 않는다. */
-  function buildSerpentinePath(cols, rows, vertical) {
+  function buildSerpentinePath(cols, rows, vertical, waves) {
     var margin = 12, span = 100 - margin * 2;
     var pts = [];
+    var SAMPLES = 16; // 줄 하나를 몇 개의 짧은 직선으로 근사할지(많을수록 곡선이 매끄러움)
     if (!vertical) {
       var colGap = cols > 1 ? span / (cols - 1) : 0;
       var rowGap = rows > 1 ? span / (rows - 1) : 0;
       for (var r = 0; r < rows; r++) {
-        var y = margin + rowGap * r;
-        if (r % 2 === 0) { for (var c = 0; c < cols; c++) pts.push([margin + colGap * c, y]); }
-        else { for (var c = cols - 1; c >= 0; c--) pts.push([margin + colGap * c, y]); }
+        var baseY = margin + rowGap * r;
+        for (var s = 0; s <= SAMPLES; s++) {
+          var t = s / SAMPLES;
+          var colF = (r % 2 === 0) ? t * (cols - 1) : (cols - 1) - t * (cols - 1);
+          pts.push([margin + colGap * colF, baseY + waveOffset(waves && waves[r], rowGap, t)]);
+        }
       }
     } else {
       var rowGap2 = rows > 1 ? span / (rows - 1) : 0;
       var colGap2 = cols > 1 ? span / (cols - 1) : 0;
       for (var c2 = 0; c2 < cols; c2++) {
-        var x = margin + colGap2 * c2;
-        if (c2 % 2 === 0) { for (var r2 = 0; r2 < rows; r2++) pts.push([x, margin + rowGap2 * r2]); }
-        else { for (var r2 = rows - 1; r2 >= 0; r2--) pts.push([x, margin + rowGap2 * r2]); }
+        var baseX = margin + colGap2 * c2;
+        for (var s2 = 0; s2 <= SAMPLES; s2++) {
+          var t2 = s2 / SAMPLES;
+          var rowF = (c2 % 2 === 0) ? t2 * (rows - 1) : (rows - 1) - t2 * (rows - 1);
+          pts.push([baseX + waveOffset(waves && waves[c2], colGap2, t2), margin + rowGap2 * rowF]);
+        }
       }
     }
     var d = 'M' + pts[0][0].toFixed(2) + ',' + pts[0][1].toFixed(2);
@@ -986,7 +1034,7 @@ var TW = (function () {
    * 어긋나 일부 구간(특히 마지막 대각선 근처로 밀리는 앞쪽 칸들)이 뭉쳐 보였다. 칸 위치는
    * buildSerpentinePath와 완전히 같은 규칙으로 격자 인덱스에서 직접 계산해서 이 문제를
    * 원천 차단한다(배경 선은 여전히 buildSerpentinePath로 그림 -- 장식이라 무관). */
-  function serpentineGridPoint(idx, cols, rows, vertical) {
+  function serpentineGridPoint(idx, cols, rows, vertical, waves) {
     var margin = 12, span = 100 - margin * 2;
     var colGap = cols > 1 ? span / (cols - 1) : 0;
     var rowGap = rows > 1 ? span / (rows - 1) : 0;
@@ -995,12 +1043,15 @@ var TW = (function () {
       row = Math.floor(idx / cols);
       var colInRow = idx % cols;
       col = (row % 2 === 0) ? colInRow : (cols - 1 - colInRow);
+      var t = cols > 1 ? colInRow / (cols - 1) : 0;
+      return { x: margin + colGap * col, y: margin + rowGap * row + waveOffset(waves && waves[row], rowGap, t) };
     } else {
       col = Math.floor(idx / rows);
       var rowInCol = idx % rows;
       row = (col % 2 === 0) ? rowInCol : (rows - 1 - rowInCol);
+      var t2 = rows > 1 ? rowInCol / (rows - 1) : 0;
+      return { x: margin + colGap * col + waveOffset(waves && waves[col], colGap, t2), y: margin + rowGap * row };
     }
-    return { x: margin + colGap * col, y: margin + rowGap * row };
   }
 
   // 실제로 sampling(getTotalLength/getPointAtLength)에 쓸 <path>. 일부 브라우저(사파리 계열)는
@@ -1117,6 +1168,14 @@ var TW = (function () {
     }
   }
 
+  /** [2026-09-14] "마우스휠 스크롤은 막고 대신 아래로 내리는 버튼을 만들어달라" 요청 --
+   *  버튼 한 번에 뷰포트 높이의 85%만큼 부드럽게 내려간다(끝까지 여러 번 누르면 도착).
+   *  스크롤 자체(스크롤바 드래그/터치 스와이프)는 여전히 가능, 아래 wheel 리스너로 휠만 막음. */
+  function scrollDown() {
+    var vp = document.getElementById('towerViewport');
+    if (vp) vp.scrollBy({ top: vp.clientHeight * 0.85, behavior: 'smooth' });
+  }
+
   function renderBoard(tiles, curTile, floor) {
     var track = document.getElementById('towerTrack');
     track.innerHTML = '';
@@ -1149,7 +1208,7 @@ var TW = (function () {
     // overflow-y:auto라 늘어난 만큼 세로 스크롤로 보여준다(카트라이더 트랙 모양의 serpentine
     // 경로는 그대로, 세로로만 길어짐). idealSpacing/칸 크기 상하한도 같이 키웠다.
     var cell, d;
-    var gridCols = 0, gridRows = 0, gridVertical = false, isLarge = n > LARGE_BOARD_TILE_THRESHOLD;
+    var gridCols = 0, gridRows = 0, gridVertical = false, gridWaves = null, isLarge = n > LARGE_BOARD_TILE_THRESHOLD;
     if (isLarge) {
       var vw = Math.max(200, track.clientWidth - 8);
       var marginFrac = (100 - 12 * 2) / 100; // buildSerpentinePath의 margin=12와 맞춤(0.76)
@@ -1161,10 +1220,21 @@ var TW = (function () {
       cell = Math.max(20, Math.min(36, spacingX * 0.72));
       var trackHeightPx = rows > 1 ? Math.round((spacingY * (rows - 1)) / marginFrac) : track.clientHeight;
       track.style.height = trackHeightPx + 'px';
-      var rndOrient = seededRandom(floor || 0);
+      // [2026-09-14 버그 수정] seededRandom()은 선형합동법이라 작은 시드(그냥 floor값,
+      // 51~100 정도)를 그대로 넣으면 "seed*16807"이 모듈러 나머지 연산에 아직 한 번도
+      // 안 걸려서(모듈러보다 한참 작음) 첫 뽑기 값이 사실상 floor에 선형 비례하는 작은
+      // 값(대부분 0.5 미만)으로 편향된다 -- 실측 결과 51~100층 전부 예외 없이 가로 왕복만
+      // 나왔음(세로 왕복이 사실상 죽어있던 버그). buildLoopPath가 이미 쓰던 것과 같은
+      // "floor*큰소수+오프셋"으로 시드를 충분히 흩뜨려서 해결(다른 소수를 써서 buildLoopPath
+      // 와 시퀀스가 겹치지 않게 함).
+      var rndOrient = seededRandom((floor || 0) * 7919 + 31543);
       gridVertical = rndOrient() < 0.5;
       gridCols = cols; gridRows = rows;
-      d = buildSerpentinePath(cols, rows, gridVertical);
+      // [2026-09-14] 층마다(그리고 같은 층 안에서도 줄마다) 다른 곡선이 나오도록, 방향을
+      // 고른 바로 그 시드 시퀀스를 이어서 줄 개수(가로 왕복이면 rows개, 세로 왕복이면 cols개)
+      // 만큼 파형을 뽑는다 -- buildRowWaves/waveOffset 참고.
+      gridWaves = buildRowWaves(rndOrient, gridVertical ? cols : rows);
+      d = buildSerpentinePath(cols, rows, gridVertical, gridWaves);
     } else {
       cell = Math.max(16, Math.min(40, 900 / n));
       d = buildLoopPath(floor, n);
@@ -1200,7 +1270,7 @@ var TW = (function () {
       // [2026-09-14] 큰 보드(격자)는 getPointAtLength 대신 격자 인덱스로 직접 위치 계산
       // (serpentineGridPoint 주석 참고) -- 작은 보드(닫힌 루프, buildLoopPath)는 기존처럼
       // 호 길이 균등 샘플링 그대로 사용(문제 없었음).
-      var pt = isLarge ? serpentineGridPoint(idx, gridCols, gridRows, gridVertical)
+      var pt = isLarge ? serpentineGridPoint(idx, gridCols, gridRows, gridVertical, gridWaves)
                        : trackSamplePath.getPointAtLength((normLen * idx) / n);
       var div = document.createElement('div');
       var isHere = (t.TILE_NO === curTile);
@@ -1220,6 +1290,21 @@ var TW = (function () {
       }
       track.appendChild(div);
     });
+
+    // [2026-09-14] "내 위치/스크롤 내리는 버튼을 맵뷰(towerTrack) 안에 넣어달라" 요청 --
+    // 매 렌더마다 다시 그려 넣는다(track.innerHTML=''로 지워지므로 정적 마크업으로는 못 둠).
+    // CSS의 position:sticky(#towerViewport 기준)가 실제로 화면에 보이는 위치에 붙어있게 해준다.
+    var controls = document.createElement('div');
+    controls.className = 'board-track-controls';
+    var hereBtn = document.createElement('button');
+    hereBtn.type = 'button'; hereBtn.className = 'board-track-btn';
+    hereBtn.textContent = '📍 내 위치'; hereBtn.onclick = scrollToHere;
+    var downBtn = document.createElement('button');
+    downBtn.type = 'button'; downBtn.className = 'board-track-btn';
+    downBtn.textContent = '⬇️ 아래로'; downBtn.onclick = scrollDown;
+    controls.appendChild(hereBtn);
+    controls.appendChild(downBtn);
+    track.appendChild(controls);
   }
 
   // [2026-09-05] 주사위 교체 오버레이 -- 상점탭에 있던 걸 보드 칸그리드 위로 옮겨서, 해금된
@@ -2154,13 +2239,19 @@ var TW = (function () {
 
     checkAppVersion();
     setInterval(checkAppVersion, 3 * 60 * 1000); // 페이지를 오래 켜두는 유저도 놓치지 않게 3분마다 재확인
+
+    // [2026-09-14] "마우스휠로 스크롤 못하게 하자" 요청 -- 스크롤바 드래그/터치 스와이프/
+    // 아래 scrollDown() 버튼은 그대로 되지만, 휠 이벤트만 막는다. { passive:false }라야
+    // preventDefault()가 실제로 스크롤을 취소한다.
+    var twViewport = document.getElementById('towerViewport');
+    if (twViewport) twViewport.addEventListener('wheel', function (e) { e.preventDefault(); }, { passive: false });
   });
 
   return { load: loadStatus, action: action, switchTab: switchTab, closeDetail: closeDetail, closeConfirm: closeConfirm,
            closePicker: closePicker,
            openAllCompanions: openAllCompanions, closeAllCompanions: closeAllCompanions,
            openAllEquip: openAllEquip, closeAllEquip: closeAllEquip,
-           scrollToHere: scrollToHere,
+           scrollToHere: scrollToHere, scrollDown: scrollDown,
            reopenNotice: reopenNotice, closeNotice: closeNotice, dismissNotice: dismissNotice, refreshForUpdate: refreshForUpdate };
 })();
 </script>
