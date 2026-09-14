@@ -349,8 +349,15 @@ public class BotS5ServiceImpl implements BotS5Service {
         return new int[]{ hp, atk, def };
     }
 
-    /** 등급+직업 베이스 스탯에 장비/스탯구매 보너스를 반영한 최종 전투 스탯. [hp, atk, def, minDmgFloor] */
-    private int[] computeEffectiveStat(String job, int grade, List<HashMap<String, Object>> equips, HashMap<String, Object> userStat) {
+    /** [2026-09-14] 한계돌파(★N 동료를 중복으로 또 뽑으면 그 동료 개체에 붙는 강화, 최대
+     *  6단계) 단계당 전체 스탯 +10%(6단계면 +60%) -- 등급/장비/스탯구매 전부 반영한 최종
+     *  수치에 마지막으로 곱해진다("등급 하나를 통째로 올린 것" 같은 효과가 아니라 순수
+     *  배율 보너스). pullCompanionCore()의 중복 처리 참고. */
+    private static final double LIMIT_BREAK_PCT_PER_LV = 0.10;
+    private static final int LIMIT_BREAK_MAX = 6;
+
+    /** 등급+직업 베이스 스탯에 장비/스탯구매/한계돌파 보너스를 반영한 최종 전투 스탯. [hp, atk, def, minDmgFloor] */
+    private int[] computeEffectiveStat(String job, int grade, List<HashMap<String, Object>> equips, HashMap<String, Object> userStat, int limitBreak) {
         int[] base = calcBaseStat(job, grade);
         double hp = base[0], atk = base[1], def = base[2];
 
@@ -370,6 +377,10 @@ public class BotS5ServiceImpl implements BotS5Service {
         int hpLv     = userStat == null ? 0 : intVal(userStat.get("HP_LV"), 0);
         atk *= (1 + ATK_PCT_PER_LV * atkMaxLv);
         hp  *= (1 + HP_PCT_PER_LV * hpLv);
+        if (limitBreak > 0) {
+            double lbMult = 1 + LIMIT_BREAK_PCT_PER_LV * Math.min(limitBreak, LIMIT_BREAK_MAX);
+            hp *= lbMult; atk *= lbMult; def *= lbMult;
+        }
         int minDmgFloor = atkMinLv * MIN_DMG_PER_LV;
 
         return new int[]{ (int) Math.round(hp), (int) Math.round(atk), (int) Math.round(def), minDmgFloor };
@@ -2079,7 +2090,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                 int amGrade = intVal(amTarget.get("GRADE"), 1);
                 String amName = strVal(amTarget.get("NAME"), JOB_NAME.getOrDefault(amJob, "동료"));
                 List<HashMap<String, Object>> amEquips = dao.selectEquipByCompanion(intVal(amTarget.get("COMPANION_ID"), 0));
-                int[] amEff = computeEffectiveStat(amJob, amGrade, amEquips, userStat);
+                int[] amEff = computeEffectiveStat(amJob, amGrade, amEquips, userStat, intVal(amTarget.get("LIMIT_BREAK"), 0));
                 int amMonsterAtk = (int) Math.round(intVal(mon.get("ATK_VALUE"), 0) * eliteMult);
                 int amRoll = rollFace(1, diceMax);
                 int amDmg = Math.max(1, amMonsterAtk * amRoll - amEff[2]);
@@ -2166,7 +2177,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             String cName = strVal(c.get("NAME"), JOB_NAME.getOrDefault(job, "동료"));
             int grade = intVal(c.get("GRADE"), 1);
             List<HashMap<String, Object>> equips = dao.selectEquipByCompanion(intVal(c.get("COMPANION_ID"), 0));
-            int[] eff = computeEffectiveStat(job, grade, equips, userStat);
+            int[] eff = computeEffectiveStat(job, grade, equips, userStat, intVal(c.get("LIMIT_BREAK"), 0));
             if ("ARCHER".equals(synergy)) eff[1] = (int) Math.round(eff[1] * 1.3); // 시너지: 궁수3인조 공격력+30%
             // 균형3인조(RAINBOW)의 방어 +10%는 이 배열이 아니라 반격 파트에서 대상(tEff[2])에
             // 직접 적용한다(여기 eff[2]는 "내가 공격할 때" 값이라 방어 보너스는 안 쓰임).
@@ -2597,7 +2608,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                 double revivePct = reviverGrade >= 6 ? 0.5 : 0.3;
                 if (RND.nextInt(100) < reviveChance) {
                     List<HashMap<String, Object>> vEquips = dao.selectEquipByCompanion(intVal(victim.get("COMPANION_ID"), 0));
-                    int[] vEff = computeEffectiveStat(vJob, vGrade, vEquips, userStat);
+                    int[] vEff = computeEffectiveStat(vJob, vGrade, vEquips, userStat, intVal(victim.get("LIMIT_BREAK"), 0));
                     vHpAfter = PP.fromPP(Math.max(1, (int) Math.round(vEff[0] * revivePct)));
                     sb.append("✨ 도사의 기적! ").append(jobTag(vGrade, vJob, vName))
                       .append(" 부활(HP ").append(vHpAfter.format()).append("/").append(vEff[0]).append(")").append(NL);
@@ -2635,7 +2646,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             if (!"WARRIOR".equals(strVal(c.get("CLASS"), ""))) continue;
             int wGrade = intVal(c.get("GRADE"), 1);
             List<HashMap<String, Object>> wEquips = dao.selectEquipByCompanion(intVal(c.get("COMPANION_ID"), 0));
-            int[] wEff = computeEffectiveStat("WARRIOR", wGrade, wEquips, userStat);
+            int[] wEff = computeEffectiveStat("WARRIOR", wGrade, wEquips, userStat, intVal(c.get("LIMIT_BREAK"), 0));
             PP wHp = PP.of(((Number) c.get("CUR_HP_VALUE")).doubleValue(), strVal(c.get("CUR_HP_EXT"), ""));
             boolean over50 = PP.toBaseValue(wHp) * 2 >= wEff[0];
             int guardChance = 30;
@@ -2797,7 +2808,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         String tJob = strVal(curTarget.get("CLASS"), "WARRIOR");
         int tGrade = intVal(curTarget.get("GRADE"), 1);
         List<HashMap<String, Object>> tEquips = dao.selectEquipByCompanion(intVal(curTarget.get("COMPANION_ID"), 0));
-        int[] tEff = computeEffectiveStat(tJob, tGrade, tEquips, userStat);
+        int[] tEff = computeEffectiveStat(tJob, tGrade, tEquips, userStat, intVal(curTarget.get("LIMIT_BREAK"), 0));
         if ("RAINBOW".equals(synergy)) tEff[2] = (int) Math.round(tEff[2] * 1.1); // 시너지: 균형3인조 방어 +10%
         if (trapDefDown) tEff[2] = (int) Math.round(tEff[2] * 0.7); // 함정: 방어력 30% 약화(반격 피해 증가)
         if (luckyDefUp) tEff[2] = (int) Math.round(tEff[2] * luckyMult); // 럭키: 방어력 강화(반격 피해 감소)
@@ -2997,13 +3008,13 @@ public class BotS5ServiceImpl implements BotS5Service {
                     int mGrade = intVal(minionC.get("GRADE"), 1);
                     String mName = strVal(minionC.get("NAME"), JOB_NAME.getOrDefault(mJob, "동료"));
                     List<HashMap<String, Object>> mEquips = dao.selectEquipByCompanion(minionCid);
-                    int[] mEff = computeEffectiveStat(mJob, mGrade, mEquips, userStat);
+                    int[] mEff = computeEffectiveStat(mJob, mGrade, mEquips, userStat, intVal(minionC.get("LIMIT_BREAK"), 0));
 
                     HashMap<String, Object> victim = stillAlive.get(RND.nextInt(stillAlive.size()));
                     String vJob = strVal(victim.get("CLASS"), "WARRIOR");
                     int vGrade = intVal(victim.get("GRADE"), 1);
                     List<HashMap<String, Object>> vEquips = dao.selectEquipByCompanion(intVal(victim.get("COMPANION_ID"), 0));
-                    int[] vEff = computeEffectiveStat(vJob, vGrade, vEquips, userStat);
+                    int[] vEff = computeEffectiveStat(vJob, vGrade, vEquips, userStat, intVal(victim.get("LIMIT_BREAK"), 0));
                     PP victimHp = PP.of(((Number) victim.get("CUR_HP_VALUE")).doubleValue(), strVal(victim.get("CUR_HP_EXT"), ""));
 
                     int mRoll = rollFace(1, monsterDiceMax);
@@ -3053,7 +3064,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             int grade = intVal(c.get("GRADE"), 1);
             String cName = strVal(c.get("NAME"), JOB_NAME.getOrDefault(job, "동료"));
             List<HashMap<String, Object>> equips = dao.selectEquipByCompanion(intVal(c.get("COMPANION_ID"), 0));
-            int[] eff = computeEffectiveStat(job, grade, equips, userStat);
+            int[] eff = computeEffectiveStat(job, grade, equips, userStat, intVal(c.get("LIMIT_BREAK"), 0));
             PP hp = PP.of(((Number) c.get("CUR_HP_VALUE")).doubleValue(), strVal(c.get("CUR_HP_EXT"), ""));
             boolean dead = PP.toBaseValue(hp) <= 0;
             if (i > 0) sb.append(NL);
@@ -3102,7 +3113,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         String job = strVal(c.get("CLASS"), "WARRIOR");
         int grade = intVal(c.get("GRADE"), 1);
         List<HashMap<String, Object>> equips = dao.selectEquipByCompanion(intVal(c.get("COMPANION_ID"), 0));
-        int[] eff = computeEffectiveStat(job, grade, equips, userStat);
+        int[] eff = computeEffectiveStat(job, grade, equips, userStat, intVal(c.get("LIMIT_BREAK"), 0));
         HashMap<String, Object> up = new HashMap<>();
         up.put("companionId", intVal(c.get("COMPANION_ID"), 0));
         up.put("curHpValue", (double) eff[0]);
@@ -4305,25 +4316,39 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 중복 동료(같은 직업+이름을 이미 보유) 처리: 이름 풀이 직업×등급별로 나뉘어 있어서(위
         // NAME_POOL_BY_JOB_GRADE 참고) 같은 이름은 항상 같은 등급에서만 나온다 -- 즉 "직업+이름"이
         // 같으면 등급도 항상 같다는 뜻이라, [예전 버그였던] "다른 등급인데 이름이 겹쳐서 증발" 같은
-        // 상황 자체가 이제 구조적으로 발생하지 않는다. 그래서 등급 비교 없이 단순하게 직업+이름만
-        // 같으면 진짜 중복으로 보고 PP를 환급한다("중복 정산") -- 환급액은 뽑힌 성급 기준
-        // COMPANION_DUPE_REFUND 고정표(위 참고, 어느 계약서에서 나왔든 동일).
-        boolean dupe = false;
+        // 상황 자체가 이제 구조적으로 발생하지 않는다.
+        // [2026-09-14 재설계] "중복 동료를 얻으면 한계돌파(최대 6단계)가 되게 해달라" 요청 --
+        // 중복이 뜨면 PP 환급 대신 그 보유 동료 개체의 LIMIT_BREAK를 1단계 올린다(단계당
+        // 전체 스탯 +10%, computeEffectiveStat 참고). 이미 6단계(만렙)면 더 올릴 자리가
+        // 없으니 그때만 기존처럼 PP로 환급(COMPANION_DUPE_REFUND 고정표, 성급 기준).
+        HashMap<String, Object> ownedDupe = null;
         for (HashMap<String, Object> owned : dao.selectUserCompanions(userName)) {
             if (job.equals(strVal(owned.get("CLASS"), "")) && name.equals(strVal(owned.get("NAME"), ""))) {
-                dupe = true;
+                ownedDupe = owned;
                 break;
             }
         }
-        if (dupe) {
-            PP dupeBonus = PP.fromPP(COMPANION_DUPE_REFUND[grade - 1]);
-            addPp(userName, p, dupeBonus);
+        if (ownedDupe != null) {
+            int curLimitBreak = intVal(ownedDupe.get("LIMIT_BREAK"), 0);
             result.put("ok", true);
             result.put("dupe", true);
             result.put("job", job);
             result.put("grade", grade);
             result.put("name", name);
-            result.put("dupeBonus", dupeBonus.format());
+            if (curLimitBreak < LIMIT_BREAK_MAX) {
+                int newLimitBreak = curLimitBreak + 1;
+                HashMap<String, Object> lbUp = new HashMap<>();
+                lbUp.put("companionId", intVal(ownedDupe.get("COMPANION_ID"), 0));
+                lbUp.put("limitBreak", newLimitBreak);
+                dao.updateCompanionLimitBreak(lbUp);
+                result.put("limitBreakUp", true);
+                result.put("limitBreak", newLimitBreak);
+            } else {
+                PP dupeBonus = PP.fromPP(COMPANION_DUPE_REFUND[grade - 1]);
+                addPp(userName, p, dupeBonus);
+                result.put("limitBreakUp", false);
+                result.put("dupeBonus", dupeBonus.format());
+            }
             return result;
         }
 
@@ -4370,8 +4395,13 @@ public class BotS5ServiceImpl implements BotS5Service {
         String name = (String) r.get("name");
 
         if (Boolean.TRUE.equals(r.get("dupe"))) {
+            if (Boolean.TRUE.equals(r.get("limitBreakUp"))) {
+                int lb = intVal(r.get("limitBreak"), 0);
+                return "🔺 이미 보유한 " + JOB_NAME.get(job) + "(" + name + ")와 중복! (★" + grade + " 뽑힘)" + NL
+                        + "한계돌파+" + lb + " 달성! (전체 스탯 +" + (lb * 10) + "%)";
+            }
             return "🔁 이미 보유한 " + JOB_NAME.get(job) + "(" + name + ")와 중복! (★" + grade + " 뽑힘)" + NL
-                    + "계약서 대신 " + r.get("dupeBonus") + " PP로 환급되었습니다.";
+                    + "한계돌파가 이미 최대(+" + LIMIT_BREAK_MAX + ")라 계약서 대신 " + r.get("dupeBonus") + " PP로 환급되었습니다.";
         }
 
         int[] stat = (int[]) r.get("stat");
@@ -4399,7 +4429,8 @@ public class BotS5ServiceImpl implements BotS5Service {
 
         int[] gradeCount = new int[7]; // index 1~6
         int success = 0;
-        int dupeCount = 0;
+        int limitBreakCount = 0; // 한계돌파로 이어진 중복 수
+        int dupeCount = 0; // 한계돌파 만렙이라 PP로 환급된 중복 수
         PP dupeTotal = PP.of(0, "");
         String stopReason = null;
         for (int i = 0; i < 10; i++) {
@@ -4411,8 +4442,12 @@ public class BotS5ServiceImpl implements BotS5Service {
             success++;
             gradeCount[intVal(r.get("grade"), 1)]++;
             if (Boolean.TRUE.equals(r.get("dupe"))) {
-                dupeCount++;
-                dupeTotal = dupeTotal.add(PP.parse((String) r.get("dupeBonus")));
+                if (Boolean.TRUE.equals(r.get("limitBreakUp"))) {
+                    limitBreakCount++;
+                } else {
+                    dupeCount++;
+                    dupeTotal = dupeTotal.add(PP.parse((String) r.get("dupeBonus")));
+                }
             } else {
                 owned++; // 중복이 아닌 실제 신규 동료일 때만 보유 수 증가(스타터 무료뽑기/업적 판정에 사용)
             }
@@ -4422,8 +4457,11 @@ public class BotS5ServiceImpl implements BotS5Service {
         for (int g = 1; g <= 6; g++) {
             if (gradeCount[g] > 0) sb.append("★").append(g).append("×").append(gradeCount[g]).append("  ");
         }
+        if (limitBreakCount > 0) {
+            sb.append(NL).append("🔺 한계돌파 ").append(limitBreakCount).append("마리");
+        }
         if (dupeCount > 0) {
-            sb.append(NL).append("🔁 중복 ").append(dupeCount).append("마리 → ").append(dupeTotal.format()).append(" PP 환급");
+            sb.append(NL).append("🔁 중복(한계돌파 만렙) ").append(dupeCount).append("마리 → ").append(dupeTotal.format()).append(" PP 환급");
         }
         if (stopReason != null) sb.append(NL).append("⚠️ ").append(stopReason).append(" (그 이상은 중단됨)");
         sb.append(NL).append("👉 /파티편성 으로 확인하세요");
@@ -4944,7 +4982,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         int grade = intVal(target.get("GRADE"), 1);
         List<HashMap<String, Object>> equips = dao.selectEquipByCompanion(companionId);
         HashMap<String, Object> userStat = dao.selectUserStat(userName);
-        int[] eff = computeEffectiveStat(job, grade, equips, userStat);
+        int[] eff = computeEffectiveStat(job, grade, equips, userStat, intVal(target.get("LIMIT_BREAK"), 0));
         return new int[]{ eff[0], eff[1], eff[2] };
     }
 

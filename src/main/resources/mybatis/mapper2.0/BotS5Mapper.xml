@@ -310,7 +310,7 @@
     <!-- ==================== 동료 ==================== -->
     <select id="selectUserCompanions" resultType="hashmap">
         SELECT COMPANION_ID, USER_NAME, CLASS, GRADE, NAME, IMAGE_URL, CUR_HP_VALUE, CUR_HP_EXT, PARTY_SLOT,
-               NVL(HIDDEN_YN, 'N') AS HIDDEN_YN
+               NVL(HIDDEN_YN, 'N') AS HIDDEN_YN, NVL(LIMIT_BREAK, 0) AS LIMIT_BREAK
         FROM TBOT_S5_USER_COMPANION
         WHERE USER_NAME = #{userName}
         ORDER BY PARTY_SLOT NULLS LAST, COMPANION_ID
@@ -318,6 +318,11 @@
 
     <update id="updateCompanionHidden" parameterType="hashmap">
         UPDATE TBOT_S5_USER_COMPANION SET HIDDEN_YN = #{hiddenYn} WHERE COMPANION_ID = #{companionId}
+    </update>
+
+    <!-- [2026-09-14] 한계돌파 -- 중복 동료를 또 뽑으면 그 동료 개체(COMPANION_ID)의 단계를 올린다. -->
+    <update id="updateCompanionLimitBreak" parameterType="hashmap">
+        UPDATE TBOT_S5_USER_COMPANION SET LIMIT_BREAK = #{limitBreak} WHERE COMPANION_ID = #{companionId}
     </update>
 
     <!-- /이미지갱신: 뽑기 시점 자동 호출 대신, 관리자가 명령어로 직접 실행해서 IMAGE_URL 없는
