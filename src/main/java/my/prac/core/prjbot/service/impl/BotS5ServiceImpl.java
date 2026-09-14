@@ -534,7 +534,9 @@ public class BotS5ServiceImpl implements BotS5Service {
      * 이 (유저,층) 보드가 아직 없으면(마을 갔다온 뒤 첫 진입 등) 새로 만든다. 칸 개수는
      * TBOT_S5_FLOOR_INFO.TILE_COUNT(층별 고정, 기존과 동일)를 그대로 쓰고 칸 "종류"만 매번
      * 새로 무작위 배정한다. 고정 개수 칸을 먼저 넣고(계단 위/아래 각 1개씩 총 2개, 히든 1~2,
-     * 보물상자1, 20층대+엔 강화몹1) 나머지를 전투50%/함정10%/럭키40%로 채운 뒤 위치를 섞는다.
+     * 보물상자1, 20층대+엔 강화몹1) 나머지를 전투65%/함정7%/럭키28%로 채운 뒤 위치를 섞는다.
+     * [2026-09-14] "함정&럭키 비율을 조금 더 줄이고 전투가 많도록 해달라" 요청으로
+     * 기존 50%/10%/40%에서 조정(전투 위주로).
      */
     // [버그 수정] @Transactional이 없어서, 트랜잭션이 안 걸린 컨텍스트(예: Season5ViewController의
     // 읽기 전용 GET들이 이걸 호출하는 buildTilesWithFogOfWar)에서 부르면 새로 만든 보드가
@@ -567,8 +569,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (blockNo(floor) >= 3) types.add("ELITE"); // 20층대(블록3)부터만 강화몹방 등장
         while (types.size() < tileCount) {
             int r = RND.nextInt(100);
-            if (r < 50) types.add("COMBAT");
-            else if (r < 60) types.add("TRAP");
+            if (r < 65) types.add("COMBAT");
+            else if (r < 72) types.add("TRAP");
             else types.add("PP"); // 럭키칸
         }
         if (types.size() > tileCount) types = types.subList(0, tileCount); // 초소형 보드 방어

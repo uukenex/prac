@@ -943,17 +943,21 @@ var TW = (function () {
    * 칸 간격이 불균등해지고(가로적인 구간은 늘어나고 세로적인 구간은 눌림), 자기교차/겹침
    * 위험도 커진다. 대신 기존의 "줄(행 또는 열) 단위 왕복" 뼈대는 그대로 두고(줄 사이 간격이
    * 곧 안전 마진이 되어 겹침을 구조적으로 방지) 각 줄에 완만한 사인파를 얹어서 층마다 다른
-   * 곡선 모양이 나오게 한다. 진폭은 줄 간격의 7~13%(줄마다 랜덤)로 상한을 둔다 -- 칸
-   * 반지름이 간격의 약 36%라서, 인접한 두 줄이 최악의 경우(서로 반대 위상으로 정확히
-   * 마주보는 최대 진폭)로 어긋나도 13%+13%=26% < (100%-36%*2=28%)로 항상 여유 있게 안
-   * 겹친다(실측: cols=8 격자에서 최소 칸 간 거리가 칸 지름보다 15~22% 더 넉넉했음). 각
-   * 줄의 시작/끝(t=0,1)에서는
-   * sin(t*PI) 포락선으로 진폭이 0으로 수렴하게 해서, 줄이 꺾이는 모서리는 항상 격자에 정확히
-   * 물리게 한다(기존 닫힘 구간 로직이 모서리 좌표를 그대로 신뢰하므로 이게 깨지면 안 됨). */
-  function buildRowWaves(rnd, bandCount) {
+   * 곡선 모양이 나오게 한다. 각 줄의 시작/끝(t=0,1)에서는 sin(t*PI) 포락선으로 진폭이 0으로
+   * 수렴하게 해서, 줄이 꺾이는 모서리는 항상 격자에 정확히 물리게 한다(기존 닫힘 구간
+   * 로직이 모서리 좌표를 그대로 신뢰하므로 이게 깨지면 안 됨).
+   * [2026-09-14 재수정] "곡선이 그다지 안 보인다, 곡선이 좀 더 있으면 좋겠다"는 재요청에
+   * "이미 스크롤 만든 김에 아래로 길게 늘리면 되지 않겠냐"는 제안을 받아, 가로 왕복(줄=행)
+   * 보드는 세로 칸 간격(spacingY)을 가로 칸 간격(spacingX)보다 STRETCH_K배 더 크게 벌려서
+   * (renderBoard 참고, 세로 스크롤 길이만 늘어남 -- 이미 지원 중) 줄 사이 여유가 커진 만큼
+   * 진폭 상한도 같이 키운다(아래 ampMin/ampMax 파라미터, renderBoard에서 실측 간격 기준으로
+   * 동적 계산). 세로 왕복(줄=열) 보드는 가로 스크롤이 없어 간격을 못 늘리므로 예전 7~13%
+   * 그대로 유지(안전함이 이미 검증됨) -- 대신 방향 선택 확률 자체를 낮춰서(gridVertical
+   * 30%만) 더 곡선이 두드러지는 가로 왕복 쪽이 더 자주 나오게 했다. */
+  function buildRowWaves(rnd, bandCount, ampMin, ampMax) {
     var waves = [];
     for (var i = 0; i < bandCount; i++) {
-      waves.push({ ampFrac: 0.07 + rnd() * 0.06, phase: rnd() * Math.PI * 2, freq: 1 + Math.floor(rnd() * 2) });
+      waves.push({ ampFrac: ampMin + rnd() * (ampMax - ampMin), phase: rnd() * Math.PI * 2, freq: 1 + Math.floor(rnd() * 2) });
     }
     return waves;
   }
@@ -962,6 +966,31 @@ var TW = (function () {
     var tt = Math.min(1, Math.max(0, t));
     var envelope = Math.sin(tt * Math.PI); // 줄 시작/끝(t=0,1)에서 0으로 수렴
     return wave.ampFrac * gap * Math.sin(wave.phase + tt * Math.PI * 2 * wave.freq) * envelope;
+  }
+
+  /** [2026-09-14] "곡선이 좀 더 있으면 좋겠다" 요청 -- 배경 트랙 선을 짧은 직선(L) 여러 개로
+   * 잇는 대신, Catmull-Rom 스플라인을 3차 베지어로 변환해서 그린다(표준 변환식, tension=0 상당
+   * -- 각 구간 제어점을 이웃 두 점의 차이/6으로 계산). 점 배열(pts)만 그대로 넣으면 되고, 줄이
+   * 바뀌는 모서리(직각으로 꺾이던 지점)도 이웃 점들의 접선 방향을 따라 자동으로 둥글게
+   * 이어진다(꺾이는 지점=격자 진입/이탈 지점이라 실제 칸은 여전히 격자 좌표 그대로 -- 이 선은
+   * 순전히 장식용 배경이라 살짝 둥글게 지나가도 문제 없음). */
+  function catmullRomPath(pts) {
+    if (pts.length < 3) {
+      var s = 'M' + pts[0][0].toFixed(2) + ',' + pts[0][1].toFixed(2);
+      for (var i = 1; i < pts.length; i++) s += ' L' + pts[i][0].toFixed(2) + ',' + pts[i][1].toFixed(2);
+      return s;
+    }
+    var d = 'M' + pts[0][0].toFixed(2) + ',' + pts[0][1].toFixed(2);
+    for (var i = 0; i < pts.length - 1; i++) {
+      var p0 = pts[i - 1] || pts[i];
+      var p1 = pts[i];
+      var p2 = pts[i + 1];
+      var p3 = pts[i + 2] || p2;
+      var c1x = p1[0] + (p2[0] - p0[0]) / 6, c1y = p1[1] + (p2[1] - p0[1]) / 6;
+      var c2x = p2[0] - (p3[0] - p1[0]) / 6, c2y = p2[1] - (p3[1] - p1[1]) / 6;
+      d += ' C' + c1x.toFixed(2) + ',' + c1y.toFixed(2) + ' ' + c2x.toFixed(2) + ',' + c2y.toFixed(2) + ' ' + p2[0].toFixed(2) + ',' + p2[1].toFixed(2);
+    }
+    return d;
   }
 
   /** 지그재그(뱀) 경로 생성 -- cols×rows 격자를 한 줄씩 좌우(또는 위아래)로 왕복하며 잇는다
@@ -1006,8 +1035,7 @@ var TW = (function () {
         }
       }
     }
-    var d = 'M' + pts[0][0].toFixed(2) + ',' + pts[0][1].toFixed(2);
-    for (var i = 1; i < pts.length; i++) d += ' L' + pts[i][0].toFixed(2) + ',' + pts[i][1].toFixed(2);
+    var d = catmullRomPath(pts); // [2026-09-14] 직선 대신 부드러운 곡선으로(위 catmullRomPath 참고)
 
     // 닫힘 구간: 마지막 칸 -> (바깥 여백을 둘러서) -> 첫 칸(margin,margin).
     // 격자 구성상 첫 칸은 항상 좌상단(margin,margin)이고, 마지막 칸은 항상 아래쪽 변
@@ -1216,7 +1244,16 @@ var TW = (function () {
       var cols = Math.max(5, Math.round(1 + (marginFrac * vw) / idealSpacing));
       var rows = Math.max(3, Math.ceil(n / cols));
       var spacingX = cols > 1 ? (marginFrac * vw) / (cols - 1) : vw;
-      var spacingY = spacingX; // 세로도 가로와 같은 간격 유지(더는 뷰포트 높이로 안 눌림)
+      // [2026-09-14 재수정] "곡선이 그다지 안 보인다, 좀 더 있으면 좋겠다, 이미 스크롤
+      // 만든 김에 아래로 길게 늘리면 되지 않겠냐"는 요청 -- 세로 칸 간격을 가로보다
+      // STRETCH_K배 더 넓게 벌려서(트랙이 그만큼 더 세로로 길어짐, 세로 스크롤은 이미
+      // 지원 중이라 문제 없음) 줄 사이 여유를 늘리고, 그만큼 사인파 진폭도 아래에서
+      // 동적으로 키운다(같은 "칸이 안 겹친다"는 안전 조건을 유지한 채로).
+      // [2026-09-14 재재수정] "곡선 기울기를 좀 더 심하게 해달라" 요청으로 1.4 -> 1.9.
+      // ampMin/ampMax는 STRETCH_K에서 자동으로 비례 계산되므로(아래 ampScale 참고) 기존과
+      // 같은 상대 안전 마진(이론상 한계의 약 93%)을 그대로 유지한 채 더 커진다.
+      var STRETCH_K = 1.9;
+      var spacingY = spacingX * STRETCH_K;
       cell = Math.max(20, Math.min(36, spacingX * 0.72));
       var trackHeightPx = rows > 1 ? Math.round((spacingY * (rows - 1)) / marginFrac) : track.clientHeight;
       track.style.height = trackHeightPx + 'px';
@@ -1227,13 +1264,28 @@ var TW = (function () {
       // 나왔음(세로 왕복이 사실상 죽어있던 버그). buildLoopPath가 이미 쓰던 것과 같은
       // "floor*큰소수+오프셋"으로 시드를 충분히 흩뜨려서 해결(다른 소수를 써서 buildLoopPath
       // 와 시퀀스가 겹치지 않게 함).
+      // [2026-09-14 재수정] 가로 왕복(줄=행, gridVertical=false)은 방금 늘린 spacingY
+      // 덕에 곡선을 크게 키울 수 있지만, 세로 왕복(줄=열)은 가로 스크롤이 없어 spacingX를
+      // 못 늘리므로 예전처럼 좁은 진폭에 머문다 -- 그래서 더 화려한 가로 왕복 쪽이 자주
+      // 나오게 확률을 30%로 낮췄다(예전엔 50%).
       var rndOrient = seededRandom((floor || 0) * 7919 + 31543);
-      gridVertical = rndOrient() < 0.5;
+      gridVertical = rndOrient() < 0.3;
       gridCols = cols; gridRows = rows;
-      // [2026-09-14] 층마다(그리고 같은 층 안에서도 줄마다) 다른 곡선이 나오도록, 방향을
-      // 고른 바로 그 시드 시퀀스를 이어서 줄 개수(가로 왕복이면 rows개, 세로 왕복이면 cols개)
-      // 만큼 파형을 뽑는다 -- buildRowWaves/waveOffset 참고.
-      gridWaves = buildRowWaves(rndOrient, gridVertical ? cols : rows);
+      // [2026-09-14] 파동이 실제로 걸리는 축의 실측 간격(px)을 기준으로 안전한 진폭 상한을
+      // 역산한다 -- 칸 반지름은 항상 spacingX 기준(cell=spacingX*0.72 -> 반지름=0.36*spacingX)
+      // 이고, 인접한 두 줄이 최악의 경우(반대 위상 최대 진폭)로 어긋나도 겹치지 않으려면
+      // ampFracMax <= 0.5 - 반지름/줄간격 이어야 한다(증명은 buildRowWaves 주석 참고). 이
+      // 값을 "이전에 검증된 7~13%(줄간격=spacingX일 때 기준)" 대비 배율로 환산해서
+      // 그대로 스케일업하면, 줄간격이 넓어진 만큼(가로 왕복일 땐 spacingY=spacingX*1.4)
+      // 자동으로 더 큰 진폭이 허용되고, 못 늘리는 세로 왕복은 배율이 1.0 그대로 유지된다.
+      var bandGapPx = gridVertical ? spacingX : spacingY;
+      var radiusFrac = (cell / 2) / bandGapPx;
+      var ampScale = (0.5 - radiusFrac) / (0.5 - 0.36); // 0.36 = 기존 spacingX 기준 반지름 비율
+      var ampMin = 0.07 * ampScale, ampMax = 0.13 * ampScale;
+      // 층마다(그리고 같은 층 안에서도 줄마다) 다른 곡선이 나오도록, 방향을 고른 바로 그
+      // 시드 시퀀스를 이어서 줄 개수(가로 왕복이면 rows개, 세로 왕복이면 cols개)만큼
+      // 파형을 뽑는다 -- buildRowWaves/waveOffset 참고.
+      gridWaves = buildRowWaves(rndOrient, gridVertical ? cols : rows, ampMin, ampMax);
       d = buildSerpentinePath(cols, rows, gridVertical, gridWaves);
     } else {
       cell = Math.max(16, Math.min(40, 900 / n));
