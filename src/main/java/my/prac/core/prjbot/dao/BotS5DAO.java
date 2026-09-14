@@ -69,6 +69,9 @@ public interface BotS5DAO {
     int updateCompanionImage(HashMap<String, Object> map);
     int countCompanionsMissingImage();
 
+    /** [2026-09-14] 동료 초상화 축소판 캐싱 프록시(/api/tower-avatar)용. */
+    String selectCompanionImageUrl(@Param("companionId") int companionId);
+
     // ── 업적 ──
     List<HashMap<String, Object>> selectAchievementList();
     List<HashMap<String, Object>> selectUserAchievements(@Param("userName") String userName);

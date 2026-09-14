@@ -1496,13 +1496,14 @@ var TW = (function () {
   // 줄여서만 쓰고 있었다 -- 동료 60마리 전체보기 한 번에 열면 합쳐서 100MB+를 한꺼번에
   // 받으려 시도하는 셈이라, 데스크톱/이 테스트 환경(빠른 연결)에선 버티지만 실제 모바일
   // 데이터망(느리고 불안정, 화면 밖 이미지까지 전부 즉시 요청)에서는 타임아웃/메모리
-  // 압박으로 일부가 못 뜨는 게 유력한 원인으로 보인다. 서버에서 축소판을 만들어 캐싱하는
-  // 근본 대응은 별도 작업이 필요해서(이미지 리사이즈 파이프라인 신설), 우선 브라우저 네이티브
-  // 지연로딩(loading="lazy")을 켜서 화면에 실제로 보이는 이미지만 요청하게 한다 -- 화면 밖
-  // 카드(스크롤해야 보이는 나머지 수십 장)는 스크롤해서 실제로 가까워지기 전까진 요청 자체를
-  // 안 하므로, 초기 노출/네트워크 부담이 크게 줄어든다.
+  // 압박으로 일부가 못 뜨는 게 유력한 원인으로 보인다. 1차로 브라우저 네이티브
+  // 지연로딩(loading="lazy")을 켜서 화면에 실제로 보이는 이미지만 요청하게 했고, [2026-09-14
+  // 근본 대응] "캐싱해줘" 요청으로 원본 URL을 직접 쓰는 대신 서버가 160x160 JPEG로
+  // 축소/캐싱해둔 걸 내려주는 /api/tower-avatar 프록시를 거치게 바꿨다(BotS5ServiceImpl.
+  // getCompanionAvatarThumbnail 참고) -- 원본 대비 수십~수백 배 작은 파일이라 모바일에서도
+  // 훨씬 안정적으로 뜨고, 브라우저 캐시도 7일 걸려있어 재접속 시 재다운로드도 없다.
   function buildAvatarEl(c, sizeClass, clickable) {
-    var img = c.IMAGE_URL ? c.IMAGE_URL : '';
+    var img = c.IMAGE_URL ? (base + '/api/tower-avatar?companionId=' + c.COMPANION_ID) : '';
     var emoji = JOB_EMOJI[c.CLASS] || '👤';
     var onClick = clickable ? function (ev) { ev.stopPropagation(); showCompanionDetail(c.COMPANION_ID); } : null;
     var el = document.createElement(img ? 'img' : 'div');

@@ -1,9 +1,20 @@
 package my.prac.core.prjbot.service.impl;
 
+import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
+import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -16,6 +27,11 @@ import java.util.Set;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
+import javax.imageio.IIOImage;
+import javax.imageio.ImageIO;
+import javax.imageio.ImageWriteParam;
+import javax.imageio.ImageWriter;
+import javax.imageio.stream.ImageOutputStream;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -4502,6 +4518,113 @@ public class BotS5ServiceImpl implements BotS5Service {
             JSONArray results = obj.optJSONArray("results");
             if (results == null || results.length() == 0) return null;
             return results.getJSONObject(0).optString("url", null);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    // ================================================================
+    // 동료 초상화 축소판 캐싱 (2026-09-14, "핸드폰에서 이미지가 잘 안 뜬다" 근본 대응)
+    // ================================================================
+    // 조사 결과: nekos.best 원본 초상화가 장당 1.7~3.2MB(가로 1000~2900px)인데 화면엔
+    // 48~64px로만 쓰고 있어서, 동료 60마리 전체보기를 한 번에 열면 100MB+를 동시에 받으려는
+    // 게 유력한 원인이었다(loading="lazy"로 1차 완화는 이미 적용됨). 여기서는 서버가 작은
+    // 정사각형 축소판(160x160 JPEG)을 만들어 디스크에 캐싱해두고, /api/tower-avatar가 원본
+    // 대신 이 축소판을 서빙한다 -- 캐시 키는 COMPANION_ID가 아니라 IMAGE_URL의 MD5(이미지갱신
+    // 등으로 URL이 바뀌면 자동으로 새 캐시 항목이 되고, 옛 파일은 그냥 안 쓰이게 됨). 캐시
+    // 디렉토리는 OS 임시폴더 하위라 서버 재시작으로 비워져도 다음 요청 때 다시 만들어질
+    // 뿐이라 문제 없다.
+    private static final File AVATAR_CACHE_DIR = new File(System.getProperty("java.io.tmpdir"), "s5_avatar_cache");
+    private static final int AVATAR_THUMB_SIZE = 160; // CSS 표시 크기(48~64px)의 레티나 대비 2~3배
+
+    /** URL 문자열의 MD5 hex -- 캐시 파일명으로 씀(URL 특수문자를 그대로 파일명에 못 쓰므로). */
+    private String md5Hex(String s) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("MD5");
+            byte[] digest = md.digest(s.getBytes("UTF-8"));
+            StringBuilder sb = new StringBuilder();
+            for (byte b : digest) sb.append(String.format("%02x", b));
+            return sb.toString();
+        } catch (Exception e) {
+            return String.valueOf(s.hashCode());
+        }
+    }
+
+    /** 원본 이미지를 정사각형으로 크롭(가로 중앙, 세로는 위쪽 15% 지점 기준 -- CSS의
+     *  object-position:50% 15%와 맞춤)한 뒤 targetSize로 축소. 알파 채널(PNG 투명)은 흰
+     *  배경에 얹어서 JPEG로 안전하게 변환한다. */
+    private BufferedImage cropResizeSquare(BufferedImage src, int targetSize) {
+        int w = src.getWidth(), h = src.getHeight();
+        int side = Math.min(w, h);
+        int x = Math.max(0, (w - side) / 2);
+        int maxY = Math.max(0, h - side);
+        int y = (int) Math.round(maxY * 0.15);
+        BufferedImage cropped = src.getSubimage(x, y, side, side);
+        BufferedImage resized = new BufferedImage(targetSize, targetSize, BufferedImage.TYPE_INT_RGB);
+        Graphics2D g = resized.createGraphics();
+        g.setColor(Color.WHITE);
+        g.fillRect(0, 0, targetSize, targetSize);
+        g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+        g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+        g.drawImage(cropped, 0, 0, targetSize, targetSize, null);
+        g.dispose();
+        return resized;
+    }
+
+    private byte[] encodeJpeg(BufferedImage img, float quality) throws IOException {
+        ImageWriter writer = ImageIO.getImageWritersByFormatName("jpg").next();
+        ImageWriteParam param = writer.getDefaultWriteParam();
+        param.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
+        param.setCompressionQuality(quality);
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try (ImageOutputStream ios = ImageIO.createImageOutputStream(baos)) {
+            writer.setOutput(ios);
+            writer.write(null, new IIOImage(img, null, null), param);
+        } finally {
+            writer.dispose();
+        }
+        return baos.toByteArray();
+    }
+
+    /** 웹 SPA 동료 초상화 축소판 프록시(/api/tower-avatar)용 -- 캐시에 있으면 그대로, 없으면
+     *  원본을 받아 축소/캐싱 후 반환. 실패(원본 없음/외부 API 차단/디코딩 실패 등)하면
+     *  null -- 컨트롤러가 404로 응답하고, 프론트는 기존 onerror 폴백(이모지)으로 자연스럽게
+     *  처리한다. 동시에 같은 캐시 파일을 처음 요청하는 여러 스레드가 겹쳐도(각자 원본을
+     *  중복으로 받아와 낭비는 있을 수 있지만) 임시파일에 먼저 쓰고 원자적으로 rename하므로
+     *  다른 스레드가 쓰다 만 파일을 읽는 깨진 이미지 문제는 없다. */
+    @Override
+    public byte[] getCompanionAvatarThumbnail(int companionId) {
+        String imageUrl = dao.selectCompanionImageUrl(companionId);
+        if (imageUrl == null || imageUrl.trim().isEmpty()) return null;
+        try {
+            File cacheFile = new File(AVATAR_CACHE_DIR, md5Hex(imageUrl) + ".jpg");
+            if (cacheFile.exists() && cacheFile.length() > 0) {
+                return Files.readAllBytes(cacheFile.toPath());
+            }
+            URL url = new URL(imageUrl);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("GET");
+            conn.setConnectTimeout(5000);
+            conn.setReadTimeout(8000);
+            // fetchRandomNekoImage()와 동일 이유(User-Agent 없으면 403).
+            conn.setRequestProperty("User-Agent", "RgbTowerBot/1.0 (https://rgb-tns.dev-apc.com)");
+            if (conn.getResponseCode() != 200) return null;
+            BufferedImage original;
+            try (InputStream is = conn.getInputStream()) {
+                original = ImageIO.read(is);
+            }
+            if (original == null) return null;
+            BufferedImage thumb = cropResizeSquare(original, AVATAR_THUMB_SIZE);
+            byte[] thumbBytes = encodeJpeg(thumb, 0.82f);
+            AVATAR_CACHE_DIR.mkdirs();
+            File tmpFile = new File(AVATAR_CACHE_DIR, cacheFile.getName() + "." + Thread.currentThread().getId() + ".tmp");
+            Files.write(tmpFile.toPath(), thumbBytes);
+            try {
+                Files.move(tmpFile.toPath(), cacheFile.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            } catch (Exception moveEx) {
+                Files.move(tmpFile.toPath(), cacheFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            }
+            return thumbBytes;
         } catch (Exception e) {
             return null;
         }

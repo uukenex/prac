@@ -338,6 +338,12 @@
         UPDATE TBOT_S5_USER_COMPANION SET IMAGE_URL = #{imageUrl} WHERE COMPANION_ID = #{companionId}
     </update>
 
+    <!-- [2026-09-14] 동료 초상화 축소판 캐싱 프록시(/api/tower-avatar)용: USER_NAME 조회 없이
+         COMPANION_ID 하나로 IMAGE_URL만 바로 가져온다(COMPANION_ID가 전역 PK). -->
+    <select id="selectCompanionImageUrl" resultType="String">
+        SELECT IMAGE_URL FROM TBOT_S5_USER_COMPANION WHERE COMPANION_ID = #{companionId}
+    </select>
+
     <select id="countCompanionsMissingImage" resultType="int">
         SELECT COUNT(*) FROM TBOT_S5_USER_COMPANION WHERE IMAGE_URL IS NULL
     </select>

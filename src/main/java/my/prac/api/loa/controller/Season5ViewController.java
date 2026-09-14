@@ -5,9 +5,13 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import javax.annotation.Resource;
 
+import org.springframework.http.CacheControl;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -217,6 +221,22 @@ public class Season5ViewController {
         result.put("atkBase", eff[4]);
         result.put("defBase", eff[5]);
         return ResponseEntity.ok(result);
+    }
+
+    /** [2026-09-14] "핸드폰에서 이미지가 잘 안 뜬다" 근본 대응 -- 동료 초상화를 원본(장당
+     *  1.7~3.2MB) 대신 서버가 160x160로 축소/캐싱해둔 JPEG로 서빙한다
+     *  (BotS5ServiceImpl.getCompanionAvatarThumbnail 참고). 캐시 실패/원본 없음이면 404 --
+     *  프론트(buildAvatarEl의 img.onerror)가 이미 이모지 폴백으로 자연스럽게 처리한다.
+     *  브라우저 캐시도 7일(퍼블릭) 걸어서 같은 유저가 재접속해도 다시 안 받아오게 한다. */
+    @GetMapping("/api/tower-avatar")
+    public ResponseEntity<byte[]> apiTowerAvatar(
+            @RequestParam(value = "companionId", defaultValue = "0") int companionId) {
+        byte[] thumb = companionId > 0 ? s5Service.getCompanionAvatarThumbnail(companionId) : null;
+        if (thumb == null) return new ResponseEntity<byte[]>(HttpStatus.NOT_FOUND);
+        return ResponseEntity.ok()
+                .contentType(MediaType.IMAGE_JPEG)
+                .cacheControl(CacheControl.maxAge(7, TimeUnit.DAYS).cachePublic())
+                .body(thumb);
     }
 
     @GetMapping("/api/tower-shop")

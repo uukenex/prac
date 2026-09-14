@@ -2582,6 +2582,32 @@ S4의 `TBOT_S4_ACHIEVEMENT`/`TBOT_S4_USER_ACH` 패턴을 확장 계승. S5에서
   - DB 마이그레이션 없음. `BotS5ServiceImpl.java` + `BotS5Service.java` +
     `Season5ViewController.java` + `tower_view.jsp` 수정.
 
+- **[2026-09-14][근본 대응] 동료 초상화 서버 축소판 캐싱 -- "캐싱해줘"**: 위 lazy-loading은
+  1차 완화였고, 이번엔 원본(장당 1.7~3.2MB) 대신 서버가 만들어둔 작은 JPEG를 내려주는
+  캐싱 프록시를 신설.
+  - `/api/tower-avatar?companionId=N` 신규 엔드포인트 -- `BotS5ServiceImpl.
+    getCompanionAvatarThumbnail(companionId)`가 캐시(OS 임시폴더 하위
+    `s5_avatar_cache/<IMAGE_URL의 MD5>.jpg`)에 있으면 그대로, 없으면 원본을
+    `fetchRandomNekoImage()`와 동일한 User-Agent로 받아와 160x160(레티나 대비 2~3배,
+    CSS `object-position:50% 15%`와 맞춘 크롭)으로 리사이즈 후 JPEG 품질 0.82로 인코딩,
+    임시파일에 먼저 쓰고 원자적 rename으로 캐시 파일을 만든다(동시 요청이 겹쳐도 깨진
+    파일을 읽는 일은 없음). 실패(원본 없음/외부 차단/디코딩 실패)하면 null → 컨트롤러가
+    404 → 프론트는 기존 `onerror` 폴백(이모지)으로 자연스럽게 처리.
+  - 캐시 키는 COMPANION_ID가 아니라 IMAGE_URL의 MD5라서, `/이미지갱신`으로 URL이 바뀌면
+    자동으로 새 캐시 항목이 생기고 옛 파일은 그냥 안 쓰이게 된다(별도 정리 로직 없음,
+    OS 임시폴더라 서버 재시작 시 비워져도 다음 요청 때 재생성될 뿐 문제 없음).
+    새 DAO 조회 `selectCompanionImageUrl(companionId)`(USER_NAME 없이 전역 PK로 바로 조회).
+  - 컨트롤러는 `Cache-Control: public, max-age=7일`도 같이 걸어서, 같은 유저가 재접속해도
+    브라우저가 재다운로드 없이 캐시를 재사용하게 함.
+  - `tower_view.jsp`의 `buildAvatarEl()`이 `c.IMAGE_URL` 원본 대신 이 프록시 URL을 쓰도록
+    교체(존재 여부 판정은 여전히 `c.IMAGE_URL` 유무로 -- 이미지가 아예 없는 동료는 프록시도
+    안 부르고 바로 이모지). 캐릭터 확대 상세 카드(`showCompanionDetail`의 `detailImg`)는
+    한 번에 하나만 보여주는 화면이라(대량 동시로딩 문제와 무관) 원본 화질을 그대로 유지--
+    의도적으로 안 건드림.
+  - 의존성 추가 없음(JDK 내장 `javax.imageio`/`java.awt` 리사이즈만 사용).
+  - DB 마이그레이션 없음. `BotS5ServiceImpl.java` + `BotS5Service.java` + `BotS5DAO.java`
+    + `BotS5Mapper.xml` + `Season5ViewController.java` + `tower_view.jsp` 수정.
+
 ### 남은 TODO
 
 - 실제 서버 기동 후 채팅 명령어 + SPA E2E 테스트 (이번 세션은 `mvn compile`까지만 검증)

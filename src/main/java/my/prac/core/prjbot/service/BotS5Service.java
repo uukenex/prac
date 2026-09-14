@@ -161,6 +161,11 @@ public interface BotS5Service {
      *  + 이 6개 필드 추가). */
     List<HashMap<String, Object>> companionsWithEffectiveStats(String userName);
 
+    /** [2026-09-14] 동료 초상화 축소판 캐싱 프록시(/api/tower-avatar)용 -- 캐시에 있으면
+     *  그대로, 없으면 원본(nekos.best)을 받아 160x160 JPEG로 축소해 캐싱 후 반환. 실패하면
+     *  null(컨트롤러가 404 처리, 프론트는 기존 onerror 폴백으로 이모지 표시). */
+    byte[] getCompanionAvatarThumbnail(int companionId);
+
     /** /장비장착 (인자 없이) — 미착용 장비 번호 + 파티원 번호를 함께 안내 */
     String equipWearUsage(String userName);
 
