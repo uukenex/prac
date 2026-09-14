@@ -1880,7 +1880,15 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 미리 합쳐서(2배) 하나의 풀로 만들지 않고 각자 base HP만큼의 별도 풀 2개
         // (I=curMonsterHpValue, II=curMonster2HpValue, II는 "대기" 상태로 시작)로 둔다 --
         // I번이 죽어야 resolveCombatTurn에서 II번이 활성화된다.
-        boolean dualMonster = !boss && !elite && !midBoss && blockNo(floor) >= 7;
+        // [2026-09-14] "89층보스는 위 능력을 모두 포함한 보스 2체를 상대하도록 해줘" 요청 --
+        // 61층+ "몬스터 두 마리"와 같은 순차처치(I번 죽어야 II번 등장) 인프라를 그대로
+        // 재사용해서 89층 보스를 "보스 2체"로 만든다. eliteMult가 1.0(보스는 elite/midBoss와
+        // 배타적)이라 perMonsterHp는 그냥 보스 기본 HP 그대로 -- 즉 "체력을 나눈 하나"가
+        // 아니라 "완전한 보스 몸통 2개"가 된다. isBossRow 기준 다른 보스 능력들(2인타격/
+        // 흡혈/스킬도용+반격/공격력1.6배/주사위상향)은 floor만으로 계산되므로 I번이든
+        // II번이든 자동으로 그대로 적용된다.
+        boolean dualBossFloor = boss && floor == 89;
+        boolean dualMonster = (!boss && !elite && !midBoss && blockNo(floor) >= 7) || dualBossFloor;
         double dualHpMult = dualMonster ? 2.0 : 1.0; // 처치보상(2마리분) 계산에만 사용, HP엔 미적용
         double perMonsterHp = ((Number) mon.get("HP_VALUE")).doubleValue() * eliteMult;
         HashMap<String, Object> up = new HashMap<>();
@@ -1893,6 +1901,10 @@ public class BotS5ServiceImpl implements BotS5Service {
         up.put("curMonsterMidbossYn", midBoss ? "Y" : "N");
         up.put("curMonsterDualYn", dualMonster ? "Y" : "N");
         up.put("curCombatTurn", 0); // 새 전투 시작 -- 69층 보스 등 턴제한 타이머를 0부터 다시 셈
+        // [2026-09-14] "99층 보스는 죽으면 200% 체력으로 한 번 부활" 요청 -- 새 전투 시작
+        // 시점엔 항상 아직 부활을 안 쓴 상태로 초기화(clearMonster에서도 'N'으로 정리되지만,
+        // startCombat은 clearMonster 없이 바로 새 몬스터를 채우는 경로라 여기서도 명시).
+        up.put("curMonsterRevivedYn", "N");
         if (dualMonster) {
             up.put("curMonster2HpValue", perMonsterHp); // II번은 대기 -- I번이 죽어야 활성화(resolveCombatTurn 참고)
         } else {
@@ -1913,7 +1925,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         // "맵에는 일반적인 몬스터로 표시되는데" 요청대로 평범한 등장 메시지("👾 등장!")를 그대로
         // 쓰고 강화몹처럼 정체를 미리 알려주는 문구도 없다 -- 실제 스탯(3배)은 아래에 그대로
         // 노출되지만, 정체는 전투 중 스킬 훔치기가 나와야 드러난다.
-        sb.append(boss ? "👹 보스 등장!" : elite ? "💪 강화 등장!" : dualMonster ? "👾👾 몬스터 두 마리 등장!" : "👾 등장!").append(NL);
+        sb.append(dualBossFloor ? "👹👹 보스 두 체 등장!" : boss ? "👹 보스 등장!" : elite ? "💪 강화 등장!" : dualMonster ? "👾👾 몬스터 두 마리 등장!" : "👾 등장!").append(NL);
         sb.append(floorMonsterName(floor, mon)).append(NL);
         sb.append("⚔️ ").append((int) Math.round(intVal(mon.get("ATK_VALUE"), 0) * eliteMult))
           .append(" 🛡️ ").append((int) Math.round(intVal(mon.get("DEF_VALUE"), 0) * eliteMult))
@@ -1921,9 +1933,16 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (elite) sb.append("💪 강화몹 -- 스탯/보상 전부 평소의 2배입니다.").append(NL);
         // [2026-09-12] "I번부터 죽여야 II번이 나온다" 요청으로 문구 갱신 -- 예전엔 체력을
         // 미리 합쳐서 하나처럼 보였는데, 이제 I번을 완전히 처치해야 II번이 등장한다.
-        if (dualMonster) sb.append("👾👾 몬스터 두 마리 -- I번을 처치해야 II번이 등장합니다(총 처치보상 2배). 매 턴 파티원 2명을 공격합니다.").append(NL);
+        // [2026-09-14] 89층은 "보스" 문구로 갈라서 안내(몬스터 두 마리와 동일 인프라지만
+        // 표현만 보스답게).
+        if (dualBossFloor) sb.append("👹👹 보스 두 체 -- I번을 처치해야 II번이 등장합니다(총 처치보상 2배). 이 층의 모든 보스 능력이 둘 다에게 적용됩니다.").append(NL);
+        else if (dualMonster) sb.append("👾👾 몬스터 두 마리 -- I번을 처치해야 II번이 등장합니다(총 처치보상 2배). 매 턴 파티원 2명을 공격합니다.").append(NL);
+        // [2026-09-14] "99층은 즉사능력은 없으나 세 명을 동시공격" 사전 안내.
+        if (floor == 99 && boss) sb.append("👥👥👥 이 보스는 매 턴 동료 3명을 동시에 공격합니다.").append(NL);
         Integer enrageLimit = boss ? BOSS_ENRAGE_TURN_LIMIT.get(floor) : null;
         if (enrageLimit != null) sb.append("⏳ ").append(enrageLimit).append("턴 안에 처치하지 못하면 폭주(공격력 급상승)합니다!").append(NL);
+        // [2026-09-14] "99층 보스는 죽이면 200% 체력으로 한 번 부활" 사전 안내.
+        if (floor == 99 && boss) sb.append("💥 이 보스는 한 번 쓰러뜨려도 200% 체력으로 부활합니다 -- 두 번 처치해야 완전히 끝납니다!").append(NL);
         sb.append(NL);
         String buffNote = currentPartyBuffDebuffNote(p);
         if (buffNote != null) sb.append(buffNote).append(NL);
@@ -2317,7 +2336,10 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 6턴마다 반복" 요청 -- 1턴째와 6의 배수 턴엔 이번 턴 파티 공격 전체가 회피되어(피해
         // 0) 무효화된다. 실제 "동료 처치"는 아래 반격 파트(alive 목록이 준비된 뒤)에서
         // 처리한다.
-        boolean isBoss79 = floor == 79 && "Y".equals(strVal(mon.get("BOSS_YN"), "N"));
+        // [2026-09-14] "89층보스는 위 능력을 모두 포함"(79층 은신처치+하수인 포함) 요청으로
+        // floor==79 전용이던 조건을 89도 함께 타도록 확장(변수명은 기존 코드 흐름을 최소한만
+        // 건드리려 그대로 둠).
+        boolean isBoss79 = (floor == 79 || floor == 89) && "Y".equals(strVal(mon.get("BOSS_YN"), "N"));
         boolean boss79Ambush = isBoss79 && (curCombatTurn == 1 || curCombatTurn % 6 == 0);
         if (boss79Ambush) {
             totalDamage = 0;
@@ -2377,6 +2399,23 @@ public class BotS5ServiceImpl implements BotS5Service {
             monsterDead = executeKill || PP.toBaseValue(monsterHpAfter) <= 0;
         }
 
+        // [2026-09-14] "99층 보스는 즉사능력은 없으나 세 명을 동시공격하고, 죽이면 200%의
+        // 체력으로 한 번 부활하도록(다른 능력은 제거)" 요청 -- HP가 0이 된 게 이번 전투에서
+        // 아직 한 번도 부활을 안 쓴 첫 사망이면, 처치 처리(보상/층이동)로 이어지는 대신
+        // 최대체력의 200%로 그 자리에서 되살아나고 전투가 계속된다. 두 번째로 0이 되면
+        // (CUR_MONSTER_REVIVED_YN이 이미 'Y') 그때는 평소처럼 진짜 처치로 처리된다.
+        if (monsterDead && floor == 99 && "Y".equals(strVal(mon.get("BOSS_YN"), "N"))
+                && !"Y".equals(strVal(p.get("CUR_MONSTER_REVIVED_YN"), "N"))) {
+            monsterDead = false;
+            monsterHpAfter = PP.of(((Number) mon.get("HP_VALUE")).doubleValue() * 2.0, strVal(mon.get("HP_EXT"), "")).normalize();
+            HashMap<String, Object> reviveUp = new HashMap<>();
+            reviveUp.put("userName", userName);
+            reviveUp.put("curMonsterRevivedYn", "Y");
+            dao.updateUserProgress(reviveUp);
+            sb.append(NL).append("💥 ").append(eliteMonsterName(floor, mon, elite))
+              .append("이(가) 쓰러졌지만 곧바로 200% 체력으로 부활한다!").append(NL);
+        }
+
         if (monsterDead) {
             // [2026-09-09] "두 마리"라 실제로 2마리분 처치 보상을 준다(dualHpMult가 그대로 배율).
             PP reward = PP.of(((Number) mon.get("PP_PER_KILL_VALUE")).doubleValue(), strVal(mon.get("PP_PER_KILL_EXT"), "")).multiply(floorPpMultiplier(floor) * eliteMult * dualHpMult);
@@ -2396,7 +2435,8 @@ public class BotS5ServiceImpl implements BotS5Service {
             sb.append(NL).append(eliteMonsterName(floor, mon, elite)).append(" 처치! 🎉").append(NL);
             // [2026-09-10] 69층 보스에게 죽어 하수인이 됐던 동료들 -- 보스가 죽었으니
             // "사라진다"(clearMonster가 CUR_BOSS_MINION_CIDS를 자동 초기화). 있었을 때만 안내.
-            if (floor == 69 && !parseMinionCids(strVal(p.get("CUR_BOSS_MINION_CIDS"), "")).isEmpty()) {
+            // [2026-09-14] 89층도 같은 하수인 인프라를 쓰므로 함께 안내.
+            if ((floor == 69 || floor == 89) && !parseMinionCids(strVal(p.get("CUR_BOSS_MINION_CIDS"), "")).isEmpty()) {
                 sb.append("✨ 보스의 힘에 사로잡혔던 동료들이 원래대로 돌아왔다(전투불가 상태는 여전히 마을에서 부활 필요).").append(NL);
             }
 
@@ -2626,6 +2666,91 @@ public class BotS5ServiceImpl implements BotS5Service {
             dao.updateCompanionHp(vUp);
             victim.put("CUR_HP_VALUE", vHpAfter.getValue());
             victim.put("CUR_HP_EXT", vHpAfter.getUnit());
+
+            // [2026-09-14] "79층 1턴즉사 이후 다음턴에 부활하지 못한 동료를 하수인으로
+            // 생성해서 6턴마다 은신-즉사 하도록" 요청 -- 69층 하수인과 같은 CUR_BOSS_
+            // MINION_CIDS 명단을 재사용하되, 이 명단은 "매 턴 공격"이 아니라 아래처럼 이
+            // 앰부시 턴(6턴마다)에만 각자 무작위 파티원 1명을 은신 즉사시킨다. 방금 등록된
+            // 동료는 이번 턴엔 아직 안 움직이고 다음 앰부시 턴부터 참여(69층과 동일 원칙,
+            // 한 턴에 연쇄적으로 불어나는 것 방지).
+            int diedCidThisTurn = -1;
+            if (PP.toBaseValue(vHpAfter) <= 0) {
+                List<Integer> minionIds79 = parseMinionCids(strVal(p.get("CUR_BOSS_MINION_CIDS"), ""));
+                diedCidThisTurn = intVal(victim.get("COMPANION_ID"), 0);
+                if (diedCidThisTurn > 0 && !minionIds79.contains(diedCidThisTurn)) {
+                    minionIds79.add(diedCidThisTurn);
+                    String joinedCids79 = joinMinionCids(minionIds79);
+                    HashMap<String, Object> minionUp79 = new HashMap<>();
+                    minionUp79.put("userName", userName);
+                    minionUp79.put("curBossMinionCids", joinedCids79);
+                    dao.updateUserProgress(minionUp79);
+                    p.put("CUR_BOSS_MINION_CIDS", joinedCids79);
+                    sb.append("💀🥀 ").append(jobTag(vGrade, vJob, vName)).append("이(가) 쓰러져 보스의 하수인이 되었다! (다음 은신 즉사 때 함께 나타난다)").append(NL);
+                }
+            }
+
+            // 기존(이전 앰부시 턴까지 등록된) 하수인들이 이번 앰부시 턴에 함께 은신 즉사를
+            // 시도한다 -- 방금 죽은 동료는 diedCidThisTurn으로 걸러 이번 턴엔 제외.
+            List<Integer> curMinionIds79 = parseMinionCids(strVal(p.get("CUR_BOSS_MINION_CIDS"), ""));
+            if (!curMinionIds79.isEmpty()) {
+                List<HashMap<String, Object>> stillAlive79 = new ArrayList<>();
+                for (HashMap<String, Object> c : party) {
+                    PP hp79 = PP.of(((Number) c.get("CUR_HP_VALUE")).doubleValue(), strVal(c.get("CUR_HP_EXT"), ""));
+                    if (PP.toBaseValue(hp79) > 0) stillAlive79.add(c);
+                }
+                HashMap<Integer, HashMap<String, Object>> partyById79 = new HashMap<>();
+                for (HashMap<String, Object> c : party) partyById79.put(intVal(c.get("COMPANION_ID"), -1), c);
+                for (Integer minionCid : curMinionIds79) {
+                    if (minionCid == diedCidThisTurn) continue; // 방금 등록된 하수인은 다음 턴부터
+                    if (stillAlive79.isEmpty()) break;
+                    HashMap<String, Object> minionC79 = partyById79.get(minionCid);
+                    if (minionC79 == null) continue;
+                    String mJob79 = strVal(minionC79.get("CLASS"), "WARRIOR");
+                    int mGrade79 = intVal(minionC79.get("GRADE"), 1);
+                    String mName79 = strVal(minionC79.get("NAME"), JOB_NAME.getOrDefault(mJob79, "동료"));
+
+                    HashMap<String, Object> instaVictim = stillAlive79.get(RND.nextInt(stillAlive79.size()));
+                    String ivJob = strVal(instaVictim.get("CLASS"), "WARRIOR");
+                    int ivGrade = intVal(instaVictim.get("GRADE"), 1);
+                    String ivName = strVal(instaVictim.get("NAME"), JOB_NAME.getOrDefault(ivJob, "동료"));
+                    sb.append(NL).append("👹🌑 하수인이 된 ").append(jobTag(mGrade79, mJob79, mName79))
+                      .append("이(가) 은신에서 나타나 ").append(jobTag(ivGrade, ivJob, ivName)).append("을(를) 급습했다!").append(NL);
+
+                    PP ivHpAfter = PP.fromPP(0);
+                    HashMap<String, Object> reviverIv = null;
+                    for (HashMap<String, Object> c : party) {
+                        PP rHp2 = PP.of(((Number) c.get("CUR_HP_VALUE")).doubleValue(), strVal(c.get("CUR_HP_EXT"), ""));
+                        if ("PRIEST".equals(strVal(c.get("CLASS"), "")) && intVal(c.get("GRADE"), 1) >= 5 && PP.toBaseValue(rHp2) > 0) {
+                            reviverIv = c;
+                            break;
+                        }
+                    }
+                    if (reviverIv != null) {
+                        int reviverGrade2 = intVal(reviverIv.get("GRADE"), 1);
+                        int reviveChance2 = reviverGrade2 >= 6 ? 40 : 25;
+                        double revivePct2 = reviverGrade2 >= 6 ? 0.5 : 0.3;
+                        if (RND.nextInt(100) < reviveChance2) {
+                            List<HashMap<String, Object>> ivEquips = dao.selectEquipByCompanion(intVal(instaVictim.get("COMPANION_ID"), 0));
+                            int[] ivEff = computeEffectiveStat(ivJob, ivGrade, ivEquips, userStat, intVal(instaVictim.get("LIMIT_BREAK"), 0));
+                            ivHpAfter = PP.fromPP(Math.max(1, (int) Math.round(ivEff[0] * revivePct2)));
+                            sb.append("✨ 도사의 기적! ").append(jobTag(ivGrade, ivJob, ivName))
+                              .append(" 부활(HP ").append(ivHpAfter.format()).append("/").append(ivEff[0]).append(")").append(NL);
+                        }
+                    }
+                    if (PP.toBaseValue(ivHpAfter) <= 0) {
+                        sb.append("💀 ").append(jobTag(ivGrade, ivJob, ivName)).append("이(가) 쓰러졌다!").append(NL);
+                        stillAlive79.remove(instaVictim);
+                    }
+                    HashMap<String, Object> ivUp = new HashMap<>();
+                    ivUp.put("companionId", intVal(instaVictim.get("COMPANION_ID"), 0));
+                    ivUp.put("curHpValue", ivHpAfter.getValue());
+                    ivUp.put("curHpExt", ivHpAfter.getUnit());
+                    dao.updateCompanionHp(ivUp);
+                    instaVictim.put("CUR_HP_VALUE", ivHpAfter.getValue());
+                    instaVictim.put("CUR_HP_EXT", ivHpAfter.getUnit());
+                }
+            }
+
             sb.append(NL).append(partyHpSummary(party, userStat));
             return sb.toString();
         }
@@ -2744,11 +2869,77 @@ public class BotS5ServiceImpl implements BotS5Service {
             }
         }
 
+        // [2026-09-14] "59층 이후(59,69,79...)는 보스가 스킬을 뺏어쓰는 행동이 추가되, 스킬을
+        // 뺏으면서 반격해(마법사만이 아니라 전체 직업 모두)" 요청 -- 위 미드보스 스킬 도용과
+        // 같은 컨셉이지만 층구간 보스(59층+, blockNo>=6) 전용으로 별도로 둔다. 미드보스는
+        // "계수를 50%로" 요청(2026-09-09)으로 절반화됐지만, 층구간 보스는 그 절반화 이전
+        // 원래 수치를 그대로 쓴다 -- "미드보스는 약하게, 층구간 보스는 강하게"라는 사용자
+        // 의도에 맞춰 의도적으로 미드보스보다 세게 유지. 5개 직업 전부 도용 메시지 뒤
+        // return 없이 아래 평범한 반격 코드로 자연스럽게 이어진다(요청: "스킬을 뺏으면서
+        // 반격해"). 99층은 "다른 능력은 제거"(3인 동시공격+1회 부활만) 요청으로 제외.
+        boolean bossArcherDmgUp = false;
+        boolean isBossSkillStealFloor = "Y".equals(strVal(mon.get("BOSS_YN"), "N")) && blockNo(floor) >= 6 && floor != 99;
+        if (isBossSkillStealFloor) {
+            List<String> bossStealable = new ArrayList<>();
+            for (HashMap<String, Object> c : alive) {
+                String j = strVal(c.get("CLASS"), "");
+                if (JOB_NAME.containsKey(j) && !bossStealable.contains(j)) bossStealable.add(j);
+            }
+            if (!bossStealable.isEmpty()) {
+                String bossStolenJob = bossStealable.get(RND.nextInt(bossStealable.size()));
+                if ("MAGE".equals(bossStolenJob)) {
+                    // 미드보스(50% 확률)와 달리 층구간 보스는 원래 수치대로 항상 발동.
+                    List<HashMap<String, Object>> bStunPool = new ArrayList<>(alive);
+                    bStunPool.remove(target);
+                    HashMap<String, Object> bStunTarget = bStunPool.isEmpty() ? target : bStunPool.get(RND.nextInt(bStunPool.size()));
+                    HashMap<String, Object> bStealStunUp = new HashMap<>();
+                    bStealStunUp.put("userName", userName);
+                    bStealStunUp.put("bossStunCid", intVal(bStunTarget.get("COMPANION_ID"), 0));
+                    dao.updateUserProgress(bStealStunUp);
+                    String bStunName = strVal(bStunTarget.get("NAME"), JOB_NAME.getOrDefault(strVal(bStunTarget.get("CLASS"), ""), "동료"));
+                    sb.append("👑 ").append(eliteMonsterName(floor, mon, elite)).append("이(가) 마법사의 스킬을 빼앗았다! ")
+                      .append(bStunName).append(" 기절! 다음턴 공격불가 (반격은 다른 동료에게)").append(NL);
+                } else if ("WARRIOR".equals(bossStolenJob)) {
+                    HashMap<String, Object> bStealDefUp = new HashMap<>();
+                    bStealDefUp.put("userName", userName);
+                    bStealDefUp.put("monsterDefBuffPct", 30);
+                    dao.updateUserProgress(bStealDefUp);
+                    sb.append("👑 ").append(eliteMonsterName(floor, mon, elite)).append("이(가) 전사의 스킬을 빼앗았다! 방어 태세를 갖췄다! (다음 파티 공격 시 방어력 +30%)").append(NL);
+                } else if ("PRIEST".equals(bossStolenJob)) {
+                    int bStealShieldAmt = (int) Math.round(intVal(mon.get("ATK_VALUE"), 0) * eliteMult * 2.0);
+                    HashMap<String, Object> bStealShUp = new HashMap<>();
+                    bStealShUp.put("userName", userName);
+                    bStealShUp.put("monsterShieldValue", bStealShieldAmt);
+                    dao.updateUserProgress(bStealShUp);
+                    sb.append("👑 ").append(eliteMonsterName(floor, mon, elite)).append("이(가) 도사의 스킬을 빼앗았다! 스스로에게 보호막(").append(bStealShieldAmt).append(")을 둘렀다!").append(NL);
+                } else if ("ROGUE".equals(bossStolenJob)) {
+                    PP bCurPpNow = PP.of(((Number) p.get("PP_VALUE")).doubleValue(), strVal(p.get("PP_EXT"), ""));
+                    PP bStolenPp = bCurPpNow.multiplyRate(0.05);
+                    PP bAfterPp = bCurPpNow.subtract(bStolenPp);
+                    if (PP.toBaseValue(bAfterPp) < 0) bAfterPp = PP.fromPP(0);
+                    HashMap<String, Object> bStealPpUp = new HashMap<>();
+                    bStealPpUp.put("userName", userName);
+                    bStealPpUp.put("ppValue", bAfterPp.getValue());
+                    bStealPpUp.put("ppExt", bAfterPp.getUnit());
+                    dao.updateUserProgress(bStealPpUp);
+                    p.put("PP_VALUE", bAfterPp.getValue());
+                    p.put("PP_EXT", bAfterPp.getUnit());
+                    sb.append("👑 ").append(eliteMonsterName(floor, mon, elite)).append("이(가) 도적의 스킬을 빼앗았다! PP를 훔쳐갔다! -").append(bStolenPp.format()).append("PP").append(NL);
+                } else if ("ARCHER".equals(bossStolenJob)) {
+                    bossArcherDmgUp = true;
+                    sb.append("👑 ").append(eliteMonsterName(floor, mon, elite)).append("이(가) 궁수의 스킬을 빼앗았다! 이번 공격의 피해가 크게 늘어난다!").append(NL);
+                }
+            }
+        }
+
         // 20층 이후 보스의 기절 스킬: [2026-09-05] 30%->20%(무시 스킬 삭제와 함께 완화) ->
         // 50%(무시 삭제로 빠진 위협도를 기절 쪽으로 보충)로 재조정. 이번 반격 턴을 통째로 써서
         // 대상을 기절시킴(피해 없음, 다음 파티 공격 턴 1회를 건너뛰게 됨 -- 위 party 루프의
         // bossStunCid 체크에서 소모됨).
-        if (lateBoss && RND.nextInt(100) < 50) {
+        // [2026-09-14] isBossSkillStealFloor(59층+)는 위 스킬도용이 대신하므로 이 예전 방식과
+        // 안 겹치게 건너뛴다 -- 안 그러면 이 50% 확률이 따로 또 터져서(둘 다 early return 성
+        // 분기가 있는 별개 메커니즘) "스킬을 뺏으면서 반격"이 그 턴엔 무산될 수 있었다.
+        if (lateBoss && !isBossSkillStealFloor && RND.nextInt(100) < 50) {
             HashMap<String, Object> stunUp = new HashMap<>();
             stunUp.put("userName", userName);
             stunUp.put("bossStunCid", intVal(target.get("COMPANION_ID"), 0));
@@ -2766,20 +2957,29 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 모두에게 각자 독립적으로 100% 적용된다(shieldPool을 나눠 쓰지 않음 -- 도사의 가치가
         // 유지되도록). 첫 번째 대상만 위 전사 도발의 대상이 될 수 있고, 두 번째는 순수 랜덤.
         boolean isBossRow = "Y".equals(strVal(mon.get("BOSS_YN"), "N"));
-        boolean doubleTarget = isBossRow && blockNo(floor) >= 4;
+        // [2026-09-14] "99층은 즉사능력은 없으나 세 명을 동시공격하고... (다른 능력은 제거)"
+        // 요청 -- 99층은 기존 2인타격(블록4+)을 대신해 3인타격을 쓴다.
+        boolean tripleTargetFloor = isBossRow && floor == 99;
+        boolean doubleTarget = isBossRow && blockNo(floor) >= 4 && !tripleTargetFloor;
         List<HashMap<String, Object>> targets = new ArrayList<>();
         targets.add(target);
-        if (doubleTarget || dualMonster) {
+        if (doubleTarget || dualMonster || tripleTargetFloor) {
             List<HashMap<String, Object>> remaining = new ArrayList<>(alive);
             remaining.remove(target);
             if (!remaining.isEmpty()) targets.add(remaining.get(RND.nextInt(remaining.size())));
+        }
+        if (tripleTargetFloor) {
+            List<HashMap<String, Object>> remaining2 = new ArrayList<>(alive);
+            for (HashMap<String, Object> t : targets) remaining2.remove(t);
+            if (!remaining2.isEmpty()) targets.add(remaining2.get(RND.nextInt(remaining2.size())));
         }
 
         // [2026-09-06 신설] 49층 이후(블록5+) 보스는 흡혈 능력 추가 -- 2명을 공격할 때 그 중
         // 두 번째 대상에게 실제로 들어간 피해(보호막으로 막힌 만큼은 제외한 값)만큼 자신의
         // 체력을 회복한다. 첫 번째 대상(전사 도발 대상이 될 수 있는 쪽)은 그대로 두고 흡혈은
         // 오직 한 명분만 적용(요청: "2명공격하니까 1명은 흡혈되도록").
-        boolean vampiricBoss = isBossRow && blockNo(floor) >= 5;
+        // [2026-09-14] "99층은... 다른 능력은 제거" 요청으로 99층은 흡혈 제외.
+        boolean vampiricBoss = isBossRow && blockNo(floor) >= 5 && !tripleTargetFloor;
         long lifestealHeal = 0;
         // [2026-09-10] "도사3인조는 보호막만 있고 데미지가 없다" 요청 -- 보호막이 실제로 흡수한
         // 피해의 절반을 몬스터에게 반사 데미지로 돌려준다(순수 방어에서 절반은 공격으로 전환).
@@ -2848,6 +3048,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 중간보스가 이번 턴 궁수 기술을 훔쳤으면(위 미드보스 파트) 이 반격 피해를 즉시 증폭.
         // [2026-09-09] "계수 50%로" 요청 -- 원래 +30%(x1.3)였던 증폭폭을 +15%(x1.15)로 절반화.
         if (midBossArcherDmgUp) rawDmgToParty = (int) Math.round(rawDmgToParty * 1.15);
+        // [2026-09-14] 층구간 보스(59층+)는 절반화 이전 원래 수치(+30%, x1.3) 그대로.
+        if (bossArcherDmgUp) rawDmgToParty = (int) Math.round(rawDmgToParty * 1.3);
         int dmgToParty = rawDmgToParty;
 
         String tName = strVal(curTarget.get("NAME"), JOB_NAME.getOrDefault(tJob, "동료"));
@@ -2921,7 +3123,11 @@ public class BotS5ServiceImpl implements BotS5Service {
 
         // [2026-09-05 신설] ★5/★6 도사 "부활" -- 이번 반격으로 동료가 쓰러지면, 파티 안의
         // ★5 이상 도사가(자기 자신이 쓰러진 경우 포함) 일정 확률로 그 자리에서 되살린다.
-        if (PP.toBaseValue(targetHpAfter) <= 0) {
+        // [2026-09-14] "69층 하수인화 걸리면 부활이 안 되도록 해야해" 요청 -- 69층(과 같은
+        // 하수인 인프라를 쓰는 89층)은 이 일반 반격 사망 경로에서 부활 시도 자체를 건너뛴다
+        // (부활이 성공하면 하수인화가 무의미해지므로 -- 쓰러지면 무조건 아래에서 하수인이 됨).
+        boolean noRevivalMinionFloor = (floor == 69 || floor == 89) && "Y".equals(strVal(mon.get("BOSS_YN"), "N"));
+        if (PP.toBaseValue(targetHpAfter) <= 0 && !noRevivalMinionFloor) {
             HashMap<String, Object> reviver = null;
             for (HashMap<String, Object> c : party) {
                 if ("PRIEST".equals(strVal(c.get("CLASS"), "")) && intVal(c.get("GRADE"), 1) >= 5) {
@@ -2954,11 +3160,12 @@ public class BotS5ServiceImpl implements BotS5Service {
         curTarget.put("CUR_HP_EXT", targetHpAfter.getUnit());
 
         // [2026-09-10] "69층 보스는 동료를 죽이면 보스 하수인으로 살려서 공격하게, 보스
-        // 처치시 사라지게 해달라" 요청 -- 이 턴 반격으로 방금 죽은(도사 부활도 실패한) 동료를
-        // 69층 보스 한정으로 하수인 명단에 추가한다. 이미 HP0이라 파티 공격에서는 자동으로
-        // 빠지고(기존 alive 필터, "공격불가"), 아래 반격 파트 끝에서 매 턴 파티를 역공격하는
-        // 쪽으로만 쓰인다. 전투 종료(승리/전멸/도망 전부 clearMonster를 거침) 시 자동 초기화.
-        if (isBossRow && floor == 69 && PP.toBaseValue(targetHpAfter) <= 0) {
+        // 처치시 사라지게 해달라" 요청 -- 이 턴 반격으로 방금 죽은(위에서 부활 자체를 건너뛴)
+        // 동료를 69층(+89층, 2026-09-14 확장) 보스 한정으로 하수인 명단에 추가한다. 이미
+        // HP0이라 파티 공격에서는 자동으로 빠지고(기존 alive 필터, "공격불가"), 아래 반격
+        // 파트 끝에서 매 턴 파티를 역공격하는 쪽으로만 쓰인다. 전투 종료(승리/전멸/도망
+        // 전부 clearMonster를 거침) 시 자동 초기화.
+        if (noRevivalMinionFloor && PP.toBaseValue(targetHpAfter) <= 0) {
             List<Integer> minionIds = parseMinionCids(strVal(p.get("CUR_BOSS_MINION_CIDS"), ""));
             int diedCid = intVal(curTarget.get("COMPANION_ID"), 0);
             if (diedCid > 0 && !minionIds.contains(diedCid)) {
@@ -3020,7 +3227,12 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 죽은 동료는 이번 하수인 공격엔 아직 안 낀다(그 자리에서 바로 연쇄되면 한 턴에
         // 무한정 불어날 수 있어서, 다음 턴부터 반영되게 함). 보호막/전사 도발 등 이번 턴
         // 보스 반격에 쓰인 파티 버프는 재사용하지 않는 단순한 추가 공격으로 둠.
-        List<Integer> curMinionIds = parseMinionCids(strVal(p.get("CUR_BOSS_MINION_CIDS"), ""));
+        // [2026-09-14] 69/89층으로 제한 -- 79층 하수인은 "매 턴 공격"이 아니라 위
+        // boss79Ambush 블록 안에서 앰부시 턴(6턴마다)에만 은신 즉사를 시도하는 별도 방식이라,
+        // 여기서 또 매 턴 공격까지 겹치면 안 된다(noRevivalMinionFloor는 for(targets) 루프
+        // 안에서 선언돼 여기선 범위 밖이라 같은 조건을 다시 계산).
+        boolean minionAttackEveryTurnFloor = (floor == 69 || floor == 89) && "Y".equals(strVal(mon.get("BOSS_YN"), "N"));
+        List<Integer> curMinionIds = minionAttackEveryTurnFloor ? parseMinionCids(strVal(p.get("CUR_BOSS_MINION_CIDS"), "")) : new ArrayList<>();
         if (!curMinionIds.isEmpty()) {
             List<HashMap<String, Object>> stillAlive = new ArrayList<>();
             for (HashMap<String, Object> c : party) {
