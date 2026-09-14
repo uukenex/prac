@@ -350,11 +350,20 @@ public class BotS5ServiceImpl implements BotS5Service {
     }
 
     /** [2026-09-14] 한계돌파(★N 동료를 중복으로 또 뽑으면 그 동료 개체에 붙는 강화, 최대
-     *  6단계) 단계당 전체 스탯 +10%(6단계면 +60%) -- 등급/장비/스탯구매 전부 반영한 최종
-     *  수치에 마지막으로 곱해진다("등급 하나를 통째로 올린 것" 같은 효과가 아니라 순수
-     *  배율 보너스). pullCompanionCore()의 중복 처리 참고. */
-    private static final double LIMIT_BREAK_PCT_PER_LV = 0.10;
+     *  6단계) -- 등급/장비/스탯구매 전부 반영한 최종 수치에 마지막으로 곱해진다("등급 하나를
+     *  통째로 올린 것" 같은 효과가 아니라 순수 배율 보너스). pullCompanionCore()의 중복 처리
+     *  참고.
+     *  [2026-09-14 재수정] 처음엔 단계당 균일 +10%(6단계 +60%)였는데, "1단계 10%/2단계 15%/
+     *  3단계 20%/4단계 25%/5단계 30%/6단계 35%로 해달라"는 요청으로 단계마다 다른 값을 쓰는
+     *  배열로 교체(인덱스 0=0단계=보너스 없음, 그대로 안 씀). limitBreakPct() 참고. */
+    private static final double[] LIMIT_BREAK_PCT = { 0, 0.10, 0.15, 0.20, 0.25, 0.30, 0.35 };
     private static final int LIMIT_BREAK_MAX = 6;
+
+    /** 한계돌파 N단계의 스탯 배율(%) -- 위 LIMIT_BREAK_PCT 표 참고, 범위 밖이면 클램프. */
+    private double limitBreakPct(int limitBreak) {
+        int lv = Math.max(0, Math.min(limitBreak, LIMIT_BREAK_MAX));
+        return LIMIT_BREAK_PCT[lv];
+    }
 
     /** 등급+직업 베이스 스탯에 장비/스탯구매/한계돌파 보너스를 반영한 최종 전투 스탯. [hp, atk, def, minDmgFloor] */
     private int[] computeEffectiveStat(String job, int grade, List<HashMap<String, Object>> equips, HashMap<String, Object> userStat, int limitBreak) {
@@ -378,7 +387,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         atk *= (1 + ATK_PCT_PER_LV * atkMaxLv);
         hp  *= (1 + HP_PCT_PER_LV * hpLv);
         if (limitBreak > 0) {
-            double lbMult = 1 + LIMIT_BREAK_PCT_PER_LV * Math.min(limitBreak, LIMIT_BREAK_MAX);
+            double lbMult = 1 + limitBreakPct(limitBreak);
             hp *= lbMult; atk *= lbMult; def *= lbMult;
         }
         int minDmgFloor = atkMinLv * MIN_DMG_PER_LV;
@@ -2939,7 +2948,9 @@ public class BotS5ServiceImpl implements BotS5Service {
         // [2026-09-14] isBossSkillStealFloor(59층+)는 위 스킬도용이 대신하므로 이 예전 방식과
         // 안 겹치게 건너뛴다 -- 안 그러면 이 50% 확률이 따로 또 터져서(둘 다 early return 성
         // 분기가 있는 별개 메커니즘) "스킬을 뺏으면서 반격"이 그 턴엔 무산될 수 있었다.
-        if (lateBoss && !isBossSkillStealFloor && RND.nextInt(100) < 50) {
+        // [2026-09-14 재수정] "99층에는 기절도 없애줘" 요청으로 99층은 이 예전 기절까지
+        // 완전히 제외(트리플타격+1회부활만 남기는 "다른 능력은 제거" 취지를 완성).
+        if (lateBoss && !isBossSkillStealFloor && floor != 99 && RND.nextInt(100) < 50) {
             HashMap<String, Object> stunUp = new HashMap<>();
             stunUp.put("userName", userName);
             stunUp.put("bossStunCid", intVal(target.get("COMPANION_ID"), 0));
@@ -3852,9 +3863,13 @@ public class BotS5ServiceImpl implements BotS5Service {
             String job = JOB_NAME.getOrDefault(strVal(c.get("CLASS"), "WARRIOR"), "?");
             String name = strVal(c.get("NAME"), job); // 이름 없는 옛 데이터는 직업명으로 대체 표시
             int grade = intVal(c.get("GRADE"), 1);
+            int limitBreak = intVal(c.get("LIMIT_BREAK"), 0);
             PP hp = PP.of(((Number) c.get("CUR_HP_VALUE")).doubleValue(), strVal(c.get("CUR_HP_EXT"), ""));
             Object slot = c.get("PARTY_SLOT");
-            sb.append(idx++).append(". ").append(name).append(" (").append(job).append(" ★").append(grade).append(")")
+            // [2026-09-14] "동료편성 화면 및 텍스트에 (+3)이런식으로 표기해줘" 요청 -- 한계돌파
+            // 단계가 있을 때만 등급 뒤에 붙인다.
+            sb.append(idx++).append(". ").append(name).append(" (").append(job).append(" ★").append(grade)
+              .append(limitBreak > 0 ? " (+" + limitBreak + ")" : "").append(")")
               .append(" HP ").append(hp.format())
               .append(slot != null ? " [파티 " + slot + "번]" : " [대기]")
               .append(NL);
@@ -4640,7 +4655,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             if (Boolean.TRUE.equals(r.get("limitBreakUp"))) {
                 int lb = intVal(r.get("limitBreak"), 0);
                 return "🔺 이미 보유한 " + JOB_NAME.get(job) + "(" + name + ")와 중복! (★" + grade + " 뽑힘)" + NL
-                        + "한계돌파+" + lb + " 달성! (전체 스탯 +" + (lb * 10) + "%)";
+                        + "한계돌파+" + lb + " 달성! (전체 스탯 +" + Math.round(limitBreakPct(lb) * 100) + "%)";
             }
             return "🔁 이미 보유한 " + JOB_NAME.get(job) + "(" + name + ")와 중복! (★" + grade + " 뽑힘)" + NL
                     + "한계돌파가 이미 최대(+" + LIMIT_BREAK_MAX + ")라 계약서 대신 " + r.get("dupeBonus") + " PP로 환급되었습니다.";
@@ -5212,20 +5227,26 @@ public class BotS5ServiceImpl implements BotS5Service {
         return statName + " +" + (int) b[fixedIdx] + " / +" + Math.round(b[pctIdx] * 100) + "%";
     }
 
-    /** 웹 SPA 캐릭터 상세 카드용 — 장비/스탯구매 보너스까지 반영한 유효 스탯. 대상이 없으면 [0,0,0]. */
+    /** 웹 SPA 캐릭터 상세 카드용 — 장비/스탯구매 보너스까지 반영한 유효 스탯. 대상이 없으면
+     *  전부 0. [hp, atk, def, hpBase, atkBase, defBase] -- base는 한계돌파 배율만 뺀 값(장비/
+     *  스탯구매는 그대로 포함)이라, hp-hpBase가 곧 "한계돌파로 인한 증가분"이다.
+     *  [2026-09-14] "동료편성 화면에 한계돌파0성스탯(+돌파로인한스탯)처럼 표기해달라" 요청으로
+     *  base 3개를 추가 반환 -- 화면(tower_view.jsp)에서 hp-hpBase 형태로 보너스만 따로 계산. */
     @Override
     public int[] companionEffectiveStat(String userName, int companionId) {
         HashMap<String, Object> target = null;
         for (HashMap<String, Object> c : dao.selectUserCompanions(userName)) {
             if (intVal(c.get("COMPANION_ID"), -1) == companionId) { target = c; break; }
         }
-        if (target == null) return new int[]{ 0, 0, 0 };
+        if (target == null) return new int[]{ 0, 0, 0, 0, 0, 0 };
         String job = strVal(target.get("CLASS"), "WARRIOR");
         int grade = intVal(target.get("GRADE"), 1);
         List<HashMap<String, Object>> equips = dao.selectEquipByCompanion(companionId);
         HashMap<String, Object> userStat = dao.selectUserStat(userName);
-        int[] eff = computeEffectiveStat(job, grade, equips, userStat, intVal(target.get("LIMIT_BREAK"), 0));
-        return new int[]{ eff[0], eff[1], eff[2] };
+        int limitBreak = intVal(target.get("LIMIT_BREAK"), 0);
+        int[] eff = computeEffectiveStat(job, grade, equips, userStat, limitBreak);
+        int[] effBase = computeEffectiveStat(job, grade, equips, userStat, 0);
+        return new int[]{ eff[0], eff[1], eff[2], effBase[0], effBase[1], effBase[2] };
     }
 
     /** 장비 목록 - 미착용은 /장비장착·/장비합성에 그대로 쓸 수 있는 번호를 붙이고, 착용중인 건 누가 끼고 있는지 표시. */

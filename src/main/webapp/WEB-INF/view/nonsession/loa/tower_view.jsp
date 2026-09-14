@@ -1674,6 +1674,17 @@ var TW = (function () {
   // 같은 캐시를 공유한다.
   var lastParty = { companions: [], byCompanion: {}, unequipped: [] };
 
+  /** [2026-09-14] "공방체 스탯을 합산치 말고 한계돌파0성스탯(+돌파로인한스탯)처럼 표기해달라"
+   * 요청 -- final(장비/스탯구매/한계돌파 전부 반영)에서 base(한계돌파만 뺀 값)를 빼서 그
+   * 차이를 "+보너스"로 보여준다. 한계돌파 0단계라 차이가 없으면 그냥 숫자만(불필요한 "+0"
+   * 생략). base가 없는(구버전 응답 등) 경우를 대비해 null/undefined 방어. */
+  function fmtStatWithBonus(finalVal, baseVal) {
+    if (finalVal == null) return '-';
+    if (baseVal == null) return String(finalVal);
+    var bonus = finalVal - baseVal;
+    return bonus > 0 ? (baseVal + '(+' + bonus + ')') : String(finalVal);
+  }
+
   function showCompanionDetail(companionId) {
     var c = lastParty.companions.filter(function (x) { return x.COMPANION_ID === companionId; })[0];
     if (!c) return;
@@ -1683,7 +1694,10 @@ var TW = (function () {
     detailImg.src = c.IMAGE_URL || '';
     detailImg.style.display = c.IMAGE_URL ? '' : 'none';
     document.getElementById('detailName').textContent = name;
+    // [2026-09-14] "동료편성 화면에 한계돌파 (+N) 표기해달라" 요청 -- 단계가 있을 때만 붙인다.
+    var lb = c.LIMIT_BREAK ? parseInt(c.LIMIT_BREAK, 10) : 0;
     document.getElementById('detailRole').textContent = (JOB_KR[c.CLASS] || c.CLASS) + ' ★' + c.GRADE
+        + (lb > 0 ? ' (+' + lb + ')' : '')
         + (c.PARTY_SLOT ? ' · 파티 ' + c.PARTY_SLOT + '번' : ' · 대기중');
     document.getElementById('detailHp').textContent = '-';
     document.getElementById('detailAtk').textContent = '-';
@@ -1706,9 +1720,13 @@ var TW = (function () {
     fetch(base + '/api/tower-companion-stat?userName=' + encodeURIComponent(u) + '&companionId=' + companionId)
       .then(function (r) { return r.json(); })
       .then(function (data) {
-        document.getElementById('detailHp').textContent = data.hp != null ? data.hp : '-';
-        document.getElementById('detailAtk').textContent = data.atk != null ? data.atk : '-';
-        document.getElementById('detailDef').textContent = data.def != null ? data.def : '-';
+        // [2026-09-14] "공방체도 합산치 말고 한계돌파0성스탯(+돌파로인한스탯)처럼 표기해달라"
+        // 요청 -- 서버가 최종값(hp/atk/def)과 한계돌파를 뺀 기본값(hpBase/atkBase/defBase)을
+        // 같이 내려주면, 그 차이만큼을 "+보너스"로 붙여서 보여준다(한계돌파 0단계면 차이가
+        // 0이라 "+0"은 굳이 안 붙임).
+        document.getElementById('detailHp').textContent = fmtStatWithBonus(data.hp, data.hpBase);
+        document.getElementById('detailAtk').textContent = fmtStatWithBonus(data.atk, data.atkBase);
+        document.getElementById('detailDef').textContent = fmtStatWithBonus(data.def, data.defBase);
       })
       .catch(function () {});
   }
@@ -1799,9 +1817,13 @@ var TW = (function () {
       header.appendChild(buildAvatarEl(occ, 'ps-avatar', true));
       var info = document.createElement('div');
       info.className = 'ps-info';
+      // [2026-09-14] "동료편성 화면 및 텍스트에 (+3)이런식으로 표기해줘" 요청 -- 파티 슬롯
+      // 카드(항상 보이는 편성 화면 본체)에도 한계돌파 단계를 등급 뒤에 붙인다.
+      var occLb = occ.LIMIT_BREAK ? parseInt(occ.LIMIT_BREAK, 10) : 0;
       info.innerHTML = '<div class="ps-slot-label">파티 ' + s + '번</div>'
           + '<div class="ps-name">' + (occ.NAME || JOB_KR[occ.CLASS] || occ.CLASS) + '</div>'
-          + '<div class="ps-role">' + (JOB_KR[occ.CLASS] || occ.CLASS) + ' ★' + occ.GRADE + '</div>'
+          + '<div class="ps-role">' + (JOB_KR[occ.CLASS] || occ.CLASS) + ' ★' + occ.GRADE
+          + (occLb > 0 ? ' (+' + occLb + ')' : '') + '</div>'
           + '<div class="ps-hp">HP ' + fmtPP(occ.CUR_HP_VALUE, occ.CUR_HP_EXT) + '</div>';
       header.appendChild(info);
       card.appendChild(header);
@@ -1883,8 +1905,11 @@ var TW = (function () {
       var div = document.createElement('div');
       div.className = 'party-card' + (inParty ? ' inparty' : '') + (hidden ? ' hidden' : '') + (picking ? ' pickable' : '');
       var name = c.NAME || (JOB_KR[c.CLASS] || c.CLASS);
+      // [2026-09-14] 동료 전체 목록/선택 카드에도 한계돌파 단계 표기.
+      var cLb = c.LIMIT_BREAK ? parseInt(c.LIMIT_BREAK, 10) : 0;
       div.innerHTML = '<div class="cname">' + name + '</div>'
-          + '<div class="role">' + (JOB_KR[c.CLASS] || c.CLASS) + ' ★' + c.GRADE + '</div>'
+          + '<div class="role">' + (JOB_KR[c.CLASS] || c.CLASS) + ' ★' + c.GRADE
+          + (cLb > 0 ? ' (+' + cLb + ')' : '') + '</div>'
           + '<div class="hpbar-track"><div class="hpbar-fill" style="width:100%"></div></div>'
           + '<div class="hp-num">HP ' + fmtPP(c.CUR_HP_VALUE, c.CUR_HP_EXT) + (c.PARTY_SLOT ? ' [파티' + c.PARTY_SLOT + ']' : '') + '</div>';
       div.insertBefore(buildAvatarEl(c, 'avatar', true), div.firstChild);

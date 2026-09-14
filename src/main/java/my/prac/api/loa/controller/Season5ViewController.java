@@ -208,6 +208,11 @@ public class Season5ViewController {
         result.put("hp", eff[0]);
         result.put("atk", eff[1]);
         result.put("def", eff[2]);
+        // [2026-09-14] "한계돌파0성스탯(+돌파로인한스탯)처럼 표기해달라" 요청 -- 한계돌파 배율만
+        // 뺀 base 값도 같이 내려서, 화면에서 hp-hpBase 형태로 보너스분만 따로 보여줄 수 있게 함.
+        result.put("hpBase", eff[3]);
+        result.put("atkBase", eff[4]);
+        result.put("defBase", eff[5]);
         return ResponseEntity.ok(result);
     }
 
