@@ -2692,13 +2692,22 @@ public class BotS5ServiceImpl implements BotS5Service {
                 // (실패하면 아래 평범한 반격으로 자연스럽게 이어짐).
                 if ("MAGE".equals(stolenJob)) {
                     if (RND.nextInt(100) < 50) {
+                        // [2026-09-14][정정] "기절시킨 동료를 공격하지 말고, 기절 대상/공격
+                        // 대상 각각 룰렛 돌려달라" 요청 -- 기존엔 기절 대상이 곧 이번 턴 공격
+                        // 대상(target, 위 전사 도발 판정까지 거친 값)과 항상 같았다. 이제 기절
+                        // 대상은 alive 중 공격 대상(target)을 제외하고 별도로 무작위 추첨해서,
+                        // 같은 동료가 한 턴에 기절+피격을 동시에 겪지 않게 한다(생존자가
+                        // target 한 명뿐이면 어쩔 수 없이 같은 사람).
+                        List<HashMap<String, Object>> stunPool = new ArrayList<>(alive);
+                        stunPool.remove(target);
+                        HashMap<String, Object> stunTarget = stunPool.isEmpty() ? target : stunPool.get(RND.nextInt(stunPool.size()));
                         HashMap<String, Object> stealStunUp = new HashMap<>();
                         stealStunUp.put("userName", userName);
-                        stealStunUp.put("bossStunCid", intVal(target.get("COMPANION_ID"), 0));
+                        stealStunUp.put("bossStunCid", intVal(stunTarget.get("COMPANION_ID"), 0));
                         dao.updateUserProgress(stealStunUp);
-                        String stealStunName = strVal(target.get("NAME"), JOB_NAME.getOrDefault(strVal(target.get("CLASS"), ""), "동료"));
+                        String stealStunName = strVal(stunTarget.get("NAME"), JOB_NAME.getOrDefault(strVal(stunTarget.get("CLASS"), ""), "동료"));
                         sb.append("🥷 ").append(eliteMonsterName(floor, mon, elite)).append("이(가) 마법사의 기술을 흉내내 ")
-                          .append(stealStunName).append(" 기절! 다음턴 공격불가 (반격까지 이어진다)").append(NL);
+                          .append(stealStunName).append(" 기절! 다음턴 공격불가 (반격은 다른 동료에게)").append(NL);
                         // [2026-09-14] 더 이상 여기서 return하지 않고 아래 평범한 반격으로 이어짐.
                     }
                     // 확률 실패 -- 도용 자체가 안 통한 것으로 보고 아래 평범한 반격으로 계속 진행.
@@ -2789,11 +2798,13 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (floor >= 51) {
             monsterDiceMax = (floor <= 70) ? (6 + RND.nextInt(7)) : (8 + RND.nextInt(13));
         }
-        // [2026-09-14] "미드보스(스킬 뺏는 보스) 주사위 범위를 올려달라(ex 6~20이었다면
-        // 8~20으로)" 요청 -- 일반 51+ 몬스터의 범위는 그대로 두고, 미드보스만 상한은 유지한
-        // 채 하한을 2 높여서(51~70층 6~12 -> 8~12, 71층+ 8~20 -> 10~20) 변동폭을 좁히면서
-        // 최저치를 끌어올린다(=약한 반격이 덜 나옴).
-        if (midBoss && floor >= 51) {
+        // [2026-09-14][정정] "주사위 범위를 올려달라(ex 6~20이었다면 8~20으로)" 요청 --
+        // 처음엔 미드보스(스킬 뺏는 몹, COMBAT칸에 몰래 섞여 나오는 평범한 몬스터 위장)에
+        // 붙였는데, "미드보스 말고 층구간 보스(층 끝의 진짜 보스)가 강해져야 한다"는 재요청으로
+        // isBossRow(BOSS_YN='Y', 예: 69층 아자토스) 기준으로 옮김. 일반 51+ 몬스터/미드보스의
+        // 범위는 그대로 두고, 층구간 보스만 상한은 유지한 채 하한을 2 높여서(51~70층 6~12 ->
+        // 8~12, 71층+ 8~20 -> 10~20) 변동폭을 좁히면서 최저치를 끌어올린다(=약한 반격이 덜 나옴).
+        if (isBossRow && floor >= 51) {
             monsterDiceMax = (floor <= 70) ? (8 + RND.nextInt(5)) : (10 + RND.nextInt(11));
         }
 
@@ -2827,9 +2838,11 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (trapDefDown) tEff[2] = (int) Math.round(tEff[2] * 0.7); // 함정: 방어력 30% 약화(반격 피해 증가)
         if (luckyDefUp) tEff[2] = (int) Math.round(tEff[2] * luckyMult); // 럭키: 방어력 강화(반격 피해 감소)
         int monsterAtk = (int) Math.round(intVal(mon.get("ATK_VALUE"), 0) * eliteMult * (enraged ? BOSS_ENRAGE_ATK_MULT : 1.0));
-        // [2026-09-14] "미드보스 공격력을 1.6배 정도 올려달라" 요청 -- eliteMult(HP/DEF에도
-        // 같이 쓰이는 배율)는 그대로 두고, 공격력에만 추가로 곱한다(요청이 "공격력만" 명시).
-        if (midBoss) monsterAtk = (int) Math.round(monsterAtk * 1.6);
+        // [2026-09-14][정정] "공격력을 1.6배 정도 올려달라" 요청 -- 처음엔 미드보스에 붙였는데,
+        // "미드보스 말고 층구간 보스(층 끝 진짜 보스)가 강해져야 한다"는 재요청으로 isBossRow
+        // 기준으로 옮김. eliteMult(HP/DEF에도 같이 쓰이는 배율)는 그대로 두고 공격력에만
+        // 추가로 곱한다(요청이 "공격력만" 명시).
+        if (isBossRow) monsterAtk = (int) Math.round(monsterAtk * 1.6);
         int roll = rollFace(1, monsterDiceMax); // 몬스터 자신의 반격 굴림 -- 플레이어 강화/마이너스 주사위와 무관하게 항상 1부터
         int rawDmgToParty = Math.max(1, monsterAtk * roll - tEff[2]);
         // 중간보스가 이번 턴 궁수 기술을 훔쳤으면(위 미드보스 파트) 이 반격 피해를 즉시 증폭.
