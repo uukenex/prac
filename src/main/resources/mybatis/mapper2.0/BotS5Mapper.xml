@@ -320,7 +320,7 @@
         UPDATE TBOT_S5_USER_COMPANION SET HIDDEN_YN = #{hiddenYn} WHERE COMPANION_ID = #{companionId}
     </update>
 
-    <!-- [2026-09-14] 한계돌파 -- 중복 동료를 또 뽑으면 그 동료 개체(COMPANION_ID)의 단계를 올린다. -->
+    <!-- [2026-09-14] 한계돌파: 중복 동료를 또 뽑으면 그 동료 개체(COMPANION_ID)의 단계를 올린다. -->
     <update id="updateCompanionLimitBreak" parameterType="hashmap">
         UPDATE TBOT_S5_USER_COMPANION SET LIMIT_BREAK = #{limitBreak} WHERE COMPANION_ID = #{companionId}
     </update>
