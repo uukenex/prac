@@ -2705,6 +2705,40 @@ S4의 `TBOT_S4_ACHIEVEMENT`/`TBOT_S4_USER_ACH` 패턴을 확장 계승. S5에서
     `BotS5Service.java` + `BotS5DAO.java` + `Season5Controller.java` +
     `Season5ViewController.java` + `BotS5Mapper.xml` + `tower_view.jsp` 수정.
 
+- **[2026-09-15][신규 기능 6종] 럭키/함정칸 개편 + 81층+ 계단 게이트 + PP도둑 계수 절반**:
+  "럭키칸에서 파티원한명에게 다음턴 즉사방어(1회)... 또 럭키칸에서 1턴간 체력만 200%로...
+  함정칸에서 pp 뺏기는효과 없애줘, 그리고 몬스터가 도적스킬을 복사해 pp뺏기시 뺏는양을
+  50%줄여줘 81층 이상에서는 계단(위)을 발견해도 해당 층의 중간보스1회 처치하고 계단칸을
+  다시 도착해야 올라갈수있도록... 보스룸(각9층)에 도착하면 모든럭키,함정 효과를 무효로하고
+  시작" 요청.
+  - **즉사방어(DEATH_WARD, 신규 럭키 효과, 51층+ 전용)**: 파티원 1명(랜덤)에게 1회성 방어를
+    건다. `resolveCombatTurn`의 반격 피해 적용부에서 이 동료가 이번 피해로 HP 0이 되는
+    순간(도사 부활/하수인화 분기보다 먼저) HP를 `targetHp`(피해를 받기 전 값)로 완전히
+    되돌리고 방어를 소모 -- "체력이 몇이던간에" 요건대로 실제 최대체력이 아니라 이번 피해
+    직전 HP 그대로 복원. 기존 럭키 버프(LUCKY_TURN_LEFT/EFFECT)와 컬럼을 공유하지 않고
+    `WARD_COMPANION_ID`(신규)를 따로 써서 동시에 걸려있을 수 있다.
+  - **체력 200%(1턴, HP_DOUBLE_1T, 신규 럭키 효과, 51층+ 전용)**: 기존 3턴짜리 HP_DOUBLE과
+    같은 "받는 피해 절반" 구현을 공유하되 `LUCKY_TURN_LEFT=1`만 걸어 지속시간만 다르게 분리.
+  - **함정칸 PP_LOSS 삭제**: `effectList`에서 제거, 남은 종류는 ATK_DOWN/DEF_DOWN(+51층부터
+    RESET_TILE/SKILL_LOCK).
+  - **몬스터 도적스킬 복사 PP도둑 50%↓**: 미드보스(COMBAT칸 위장) 2.5%→1.25%, 구간보스
+    5%→2.5% (둘 다 `multiplyRate` 인자만 수정, 함정칸 PP_LOSS와는 별개 메커니즘).
+  - **81층+ 계단 게이트**: `TBOT_S5_USER_FLOOR_PROGRESS`에 `MIDBOSS_KILLED_YN`(신규,
+    `S5_MIDBOSS_STAIR_GATE.sql`, 실 DB 적용 완료) -- 중간보스(COMBAT칸 위장, 51층+ 전용
+    조우) 처치 시 floor≥81이면 이 (user,floor) 행에 'Y' 마킹(`markFloorMidbossKilled`
+    신규 DAO). `STAIRS_UP` 칸 처리에서 floor≥81인데 이 플래그가 없으면 `MAX_FLOOR_REACHED`
+    갱신을 건너뛰고 "중간보스를 먼저 처치하라"는 안내만 출력 -- 처치 후 이 칸에 다시
+    도착해야 정상 처리된다(매번 이 case를 새로 타므로 재도달 요건이 자연히 성립). 이
+    플래그는 구간 초기화(마을 복귀 시 그 층 행 자체가 삭제)로 자동 리셋되어 원정마다
+    다시 요구됨. 아직 `CONTENT_LOCKED_FLOOR=81`로 막혀있어 실사용자 영향 없음(선반영).
+  - **보스룸 입장 시 럭키/함정 무효화**: `changeFloor()`에서 `target%10==9`(보스층) 도착
+    시 `LUCKY_TURN_LEFT/EFFECT`, `TRAP_TURN_LEFT/EFFECT`, `WARD_COMPANION_ID`(즉사방어도
+    럭키칸 산출물이므로 포함)를 한 번에 0/빈값으로 초기화 -- 사냥터에서 우연히 걸어둔
+    버프/디버프를 보스전까지 그대로 들고 들어가지 못하게 함.
+  - DB 마이그레이션: `S5_LUCKY_WARD.sql`, `S5_MIDBOSS_STAIR_GATE.sql` (둘 다 실 DB 적용
+    완료). `BotS5ServiceImpl.java` + `BotS5DAO.java` + `BotS5Mapper.xml` 수정(웹 SPA/다른
+    컨트롤러 변경 없음 -- 전부 채팅 명령어 흐름 내부 로직).
+
 ### 남은 TODO
 
 - 실제 서버 기동 후 채팅 명령어 + SPA E2E 테스트 (이번 세션은 `mvn compile`까지만 검증)

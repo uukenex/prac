@@ -27,6 +27,8 @@ public interface BotS5DAO {
     HashMap<String, Object> selectUserFloorProgress(@Param("userName") String userName, @Param("floor") int floor);
     int upsertUserFloorProgress(HashMap<String, Object> map);
     int deleteUserFloorProgress(@Param("userName") String userName, @Param("floor") int floor);
+    // [2026-09-15 신설] 81층+ 계단 게이트 -- 이 층의 중간보스를 처치했다는 기록.
+    int markFloorMidbossKilled(@Param("userName") String userName, @Param("floor") int floor);
 
     // ── 칸 발견(방문) 기록 ──
     int insertTileVisit(@Param("userName") String userName, @Param("floor") int floor, @Param("tileNo") int tileNo);

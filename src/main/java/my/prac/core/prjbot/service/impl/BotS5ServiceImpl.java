@@ -1537,7 +1537,12 @@ public class BotS5ServiceImpl implements BotS5Service {
                 luckyEffectList.add("ATK_UP_10"); luckyEffectList.add("DEF_UP_10");
                 luckyEffectList.add("HEAL_ALL"); luckyEffectList.add("CLEANSE");
                 // [2026-09-06, 51층+ 전용] 체력 두배(3턴) / 매턴 공격력만큼 방어막 생성(3턴)
-                if (blockNo(floor) >= 6) { luckyEffectList.add("HP_DOUBLE"); luckyEffectList.add("SHIELD_ON_ATK"); }
+                if (blockNo(floor) >= 6) {
+                    luckyEffectList.add("HP_DOUBLE"); luckyEffectList.add("SHIELD_ON_ATK");
+                    // [2026-09-15 신설] 파티원 1명 대상 다음 즉사방어(1회) / 1턴간 체력 200%
+                    // (기존 3턴짜리 HP_DOUBLE과는 별개 효과 -- 지속시간만 다름).
+                    luckyEffectList.add("DEATH_WARD"); luckyEffectList.add("HP_DOUBLE_1T");
+                }
                 String luckyEffect = luckyEffectList.get(RND.nextInt(luckyEffectList.size()));
                 if (luckyEffect.startsWith("ATK_UP") || luckyEffect.startsWith("DEF_UP")) {
                     // [버그 수정] 이미 럭키 버프가 남아있는 상태에서 새 버프를 뽑으면 컬럼이 하나뿐이라
@@ -1587,24 +1592,52 @@ public class BotS5ServiceImpl implements BotS5Service {
                         healPartyAll(healParty, dao.selectUserStat(userName));
                         sb.append("🍀 럭키 칸! 파티 전원의 체력이 완전히 회복되었습니다! (전투불가 상태였던 동료도 부활)");
                     }
-                } else if ("HP_DOUBLE".equals(luckyEffect) || "SHIELD_ON_ATK".equals(luckyEffect)) {
+                } else if ("HP_DOUBLE".equals(luckyEffect) || "SHIELD_ON_ATK".equals(luckyEffect) || "HP_DOUBLE_1T".equals(luckyEffect)) {
                     // [2026-09-06, 51층+ 전용] ATK_UP/DEF_UP과 같은 컬럼(LUCKY_TURN_LEFT/EFFECT)을
-                    // 재사용해 3턴 지속시킨다(덮어쓰기 안내 로직도 동일하게 적용).
+                    // 재사용해 지속시킨다(덮어쓰기 안내 로직도 동일하게 적용).
+                    // [2026-09-15] HP_DOUBLE_1T만 1턴, 나머지는 기존대로 3턴 지속.
                     int prevLuckyTurnLeft2 = intVal(p.get("LUCKY_TURN_LEFT"), 0);
                     String prevLuckyEffect2 = strVal(p.get("LUCKY_EFFECT"), "");
                     boolean overwrote2 = prevLuckyTurnLeft2 > 0 && !prevLuckyEffect2.isEmpty() && !prevLuckyEffect2.equals(luckyEffect);
+                    int luckyDurationTurns = "HP_DOUBLE_1T".equals(luckyEffect) ? 1 : 3;
                     HashMap<String, Object> up2 = new HashMap<>();
                     up2.put("userName", userName);
-                    up2.put("luckyTurnLeft", 3);
+                    up2.put("luckyTurnLeft", luckyDurationTurns);
                     up2.put("luckyEffect", luckyEffect);
                     dao.updateUserProgress(up2);
                     if ("HP_DOUBLE".equals(luckyEffect)) {
                         sb.append("🍀 심상치 않은 럭키 칸! 앞으로 3번 이동하는 동안 체력이 두 배로 버팁니다. (받는 피해 절반)");
+                    } else if ("HP_DOUBLE_1T".equals(luckyEffect)) {
+                        sb.append("🍀 강렬한 럭키 칸! 다음 1번의 전투 동안 체력이 두 배로 버팁니다. (받는 피해 절반)");
                     } else {
                         sb.append("🍀 심상치 않은 럭키 칸! 앞으로 3번 이동하는 동안 매 턴 파티 전원의 공격력만큼 방어막이 추가로 생성됩니다.");
                     }
                     if (overwrote2) {
                         sb.append(NL).append("(기존 럭키 효과는 새 효과로 갱신되어 사라졌습니다)");
+                    }
+                } else if ("DEATH_WARD".equals(luckyEffect)) {
+                    // [2026-09-15 신설] 파티원 한 명에게 "다음 즉사방어(1회)" -- 체력이 얼마든 이
+                    // 방어가 걸린 동료가 피해로 HP 0이 될 상황이 오면, 그 피해를 받기 전 HP로
+                    // 완전히 되돌리고(실제로 아예 안 맞은 것처럼) 1회 소모된다(resolveCombatTurn의
+                    // 반격 피해 적용부 참고). 기존 럭키 버프(LUCKY_TURN_LEFT/EFFECT)와는 별개의
+                    // 컬럼(WARD_COMPANION_ID)을 쓰므로 서로 덮어쓰지 않고 동시에 걸려있을 수 있다.
+                    List<HashMap<String, Object>> wardParty = new ArrayList<>();
+                    for (HashMap<String, Object> c : dao.selectUserCompanions(userName)) {
+                        if (c.get("PARTY_SLOT") != null) wardParty.add(c);
+                    }
+                    if (wardParty.isEmpty()) {
+                        sb.append("🍀 럭키 칸! 누군가를 지켜주려는 기운을 느꼈지만... 파티가 비어있어 효과가 없었다.");
+                    } else {
+                        HashMap<String, Object> warded = wardParty.get(RND.nextInt(wardParty.size()));
+                        int wardCid = intVal(warded.get("COMPANION_ID"), 0);
+                        String wardedName = strVal(warded.get("NAME"), JOB_NAME.getOrDefault(strVal(warded.get("CLASS"), "WARRIOR"), "동료"));
+                        String wardedTag = jobTag(intVal(warded.get("GRADE"), 1), strVal(warded.get("CLASS"), "WARRIOR"), wardedName);
+                        HashMap<String, Object> wardUp = new HashMap<>();
+                        wardUp.put("userName", userName);
+                        wardUp.put("wardCompanionId", wardCid);
+                        dao.updateUserProgress(wardUp);
+                        p.put("WARD_COMPANION_ID", wardCid);
+                        sb.append("🍀 강력한 가호! ").append(wardedTag).append("에게 즉사방어가 걸렸습니다. (다음 번 죽을 위기에 처하면 그 피해를 받기 전 상태로 완전히 되돌아갑니다, 1회 소모)");
                     }
                 } else { // PP_BONUS -- 기존 PP칸 보상의 3배
                     PP reward = basePp.multiply(3);
@@ -1615,33 +1648,21 @@ public class BotS5ServiceImpl implements BotS5Service {
                 break;
             }
             case "TRAP": {
-                // 함정 효과 3종 중 무작위 -- 공격력/방어력 약화는 이후 3번의 보드 이동(위 trapTurnLeft
-                // 감소 로직 기준) 동안 지속되는 파티 전체 디버프, PP 손실은 즉시 발동하는 1회성 효과.
+                // 함정 효과 종류 중 무작위 -- 공격력/방어력 약화는 이후 3번의 보드 이동(위 trapTurnLeft
+                // 감소 로직 기준) 동안 지속되는 파티 전체 디버프.
                 // 실제 적용은 resolveCombatTurn의 파티 공격 루프(ATK_DOWN)와 몬스터 반격 대상
                 // 방어력 계산(DEF_DOWN)에서 이뤄진다.
                 // [2026-09-06, 51층+ 전용] RESET_TILE(처음 계단칸으로 돌아가기)/SKILL_LOCK(스킬
                 // 사용금지 1턴) 2종 추가 -- 51층 미만에서는 나오지 않는다.
+                // [2026-09-15] PP_LOSS(즉시 5% PP 손실) 효과 삭제 요청으로 제거.
                 List<String> effectList = new ArrayList<>();
-                effectList.add("ATK_DOWN"); effectList.add("DEF_DOWN"); effectList.add("PP_LOSS");
+                effectList.add("ATK_DOWN"); effectList.add("DEF_DOWN");
                 if (blockNo(floor) >= 6) { effectList.add("RESET_TILE"); effectList.add("SKILL_LOCK"); }
                 String effect = effectList.get(RND.nextInt(effectList.size()));
                 HashMap<String, Object> up = new HashMap<>();
                 up.put("userName", userName);
-                if ("PP_LOSS".equals(effect)) {
-                    PP cur = PP.of(((Number) p.get("PP_VALUE")).doubleValue(), strVal(p.get("PP_EXT"), ""));
-                    PP loss = cur.multiplyRate(0.05); // 보유 PP의 5% 손실
-                    PP after = cur.subtract(loss);
-                    if (PP.toBaseValue(after) < 0) after = PP.fromPP(0);
-                    up.put("ppValue", after.getValue());
-                    up.put("ppExt", after.getUnit());
-                    dao.updateUserProgress(up);
-                    p.put("PP_VALUE", after.getValue());
-                    p.put("PP_EXT", after.getUnit());
-                    // "엔터값 넣어달라" 요청 -- 손실 문구와 남은 PP를 줄바꿈으로 분리
-                    sb.append("💸 함정에 걸려 소매치기를 당했다! PP ").append(loss.format())
-                      .append(" 손실 ").append(NL).append("💰 PP ").append(after.format());
-                } else if ("RESET_TILE".equals(effect)) {
-                    // 즉시 발동형 1회성 효과(PP_LOSS와 동일 성격) -- TRAP_TURN_LEFT는 건드리지
+                if ("RESET_TILE".equals(effect)) {
+                    // 즉시 발동형 1회성 효과 -- TRAP_TURN_LEFT는 건드리지
                     // 않는다. entryTile은 이 층에 도착했을 때 밟은 첫 계단 칸(changeFloor 참고).
                     int entryTile = ufp == null ? 0 : intVal(ufp.get("ENTRY_TILE"), 0);
                     if (entryTile > 0) {
@@ -1736,6 +1757,19 @@ public class BotS5ServiceImpl implements BotS5Service {
                 // 유저가 /층변경 N 을 직접 입력해야 이뤄진다(도착 시점의 업적/탐사 표시는
                 // changeFloor 쪽에서 그대로 처리됨).
                 int nextFloor = floor + 1;
+                // [2026-09-15 신설] 81층 이상은 계단을 발견해도 그 층의 중간보스를 1회 처치하기
+                // 전까지는 위층 자격을 안 준다 -- 처치 후 이 계단 칸에 "다시" 도착해야 열린다
+                // (아래에서 매번 이 case를 새로 타므로 자연히 재도달을 요구하게 됨). 처치 여부는
+                // TBOT_S5_USER_FLOOR_PROGRESS.MIDBOSS_KILLED_YN(이 층 전용, midBoss 처치 시
+                // 설정 -- resolveCombatTurn 참고)으로 추적하며, 구간 초기화/마을 복귀 시(그 층
+                // 행 자체가 삭제되므로) 함께 리셋된다.
+                boolean midbossGateFloor = floor >= 81;
+                boolean midbossCleared = ufp != null && "Y".equals(strVal(ufp.get("MIDBOSS_KILLED_YN"), "N"));
+                if (midbossGateFloor && !midbossCleared) {
+                    sb.append("🪜⬆️❓ 위로 향하는 계단을 발견했지만... 무언가 강력한 기운이 막고 있다!").append(NL)
+                      .append("이 층의 중간보스를 먼저 처치해야 계단이 열립니다. (처치 후 이 계단 칸에 다시 도착하세요)");
+                    break;
+                }
                 HashMap<String, Object> up = new HashMap<>();
                 up.put("userName", userName);
                 up.put("maxFloorReached", nextFloor);
@@ -2072,6 +2106,16 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (luckyTurnLeft > 0 && luckyEffect.startsWith("DEF_UP")) {
             notes.add("🍀 럭키 효과로 파티 방어력 " + luckyEffectPct(luckyEffect) + "% 강화 중, 반격 피해 감소 (남은 이동 " + luckyTurnLeft + "회)");
         }
+        // [2026-09-15 신설]
+        if (luckyTurnLeft > 0 && ("HP_DOUBLE".equals(luckyEffect) || "HP_DOUBLE_1T".equals(luckyEffect))) {
+            notes.add("🍀 럭키 효과로 체력이 두 배로 버티는 중 (남은 이동 " + luckyTurnLeft + "회)");
+        }
+        if (luckyTurnLeft > 0 && "SHIELD_ON_ATK".equals(luckyEffect)) {
+            notes.add("🍀 럭키 효과로 매 턴 파티 공격력만큼 방어막 생성 중 (남은 이동 " + luckyTurnLeft + "회)");
+        }
+        if (intVal(p.get("WARD_COMPANION_ID"), 0) > 0) {
+            notes.add("✨ 파티원 한 명에게 즉사방어(1회)가 걸려있습니다.");
+        }
         return notes.isEmpty() ? null : String.join(NL, notes);
     }
 
@@ -2151,7 +2195,9 @@ public class BotS5ServiceImpl implements BotS5Service {
         // [2026-09-06, 51층+ 전용 럭키] 체력 두배(3턴) -- 실제로 CUR_HP_VALUE를 다시 계산해
         // 저장하기보다, 기존 ATK_UP/DEF_UP과 같은 구조로 "받는 피해 절반"으로 구현해 체력을
         // 두 배로 버티는 것과 같은 효과를 낸다(아래 반격 피해 계산에서 사용).
-        boolean luckyHpDouble = intVal(p.get("LUCKY_TURN_LEFT"), 0) > 0 && "HP_DOUBLE".equals(luckyEffectNow);
+        // [2026-09-15] HP_DOUBLE_1T(1턴짜리)도 동일 로직(받는 피해 절반)을 그대로 공유.
+        boolean luckyHpDouble = intVal(p.get("LUCKY_TURN_LEFT"), 0) > 0
+                && ("HP_DOUBLE".equals(luckyEffectNow) || "HP_DOUBLE_1T".equals(luckyEffectNow));
         // [2026-09-06, 51층+ 전용 럭키] 매턴 공격력만큼 방어막 생성(3턴) -- 파티 공격 루프에서
         // 생존한 동료 각자의 공격력만큼 shieldPool에 추가로 쌓아준다(도사 실드와 별개로 가산).
         boolean luckyShieldOnAtk = intVal(p.get("LUCKY_TURN_LEFT"), 0) > 0 && "SHIELD_ON_ATK".equals(luckyEffectNow);
@@ -2547,6 +2593,12 @@ public class BotS5ServiceImpl implements BotS5Service {
                     dao.updateUserProgress(ticketUp);
                 }
             }
+            // [2026-09-15 신설] 81층 이상: 이 중간보스를 처치했다는 기록을 이 층(user,floor)
+            // 전용으로 남긴다 -- 위 STAIRS_UP 칸 처리에서 이 플래그가 있어야만 다음 층으로
+            // 올라갈 자격을 준다("계단 발견 + 중간보스 처치 후 계단 재도착" 요건).
+            if (midBoss && floor >= 81) {
+                dao.markFloorMidbossKilled(userName, floor);
+            }
 
             if (isBoss) {
                 int prevBlockBase = floorBlockBase(floor);
@@ -2935,7 +2987,8 @@ public class BotS5ServiceImpl implements BotS5Service {
                     sb.append("🥷 ").append(eliteMonsterName(floor, mon, elite)).append("이(가) 도사의 기술을 흉내내 스스로에게 보호막(").append(stealShieldAmt).append(")을 둘렀다!").append(NL);
                 } else if ("ROGUE".equals(stolenJob)) {
                     PP curPpNow = PP.of(((Number) p.get("PP_VALUE")).doubleValue(), strVal(p.get("PP_EXT"), ""));
-                    PP stolenPp = curPpNow.multiplyRate(0.025);
+                    // [2026-09-15] "뺏는양을 50%줄여달라" 요청으로 2.5% -> 1.25%.
+                    PP stolenPp = curPpNow.multiplyRate(0.0125);
                     PP afterPp = curPpNow.subtract(stolenPp);
                     if (PP.toBaseValue(afterPp) < 0) afterPp = PP.fromPP(0);
                     HashMap<String, Object> stealPpUp = new HashMap<>();
@@ -2998,7 +3051,8 @@ public class BotS5ServiceImpl implements BotS5Service {
                     sb.append("👑 ").append(eliteMonsterName(floor, mon, elite)).append("이(가) 도사의 스킬을 빼앗았다! 스스로에게 보호막(").append(bStealShieldAmt).append(")을 둘렀다!").append(NL);
                 } else if ("ROGUE".equals(bossStolenJob)) {
                     PP bCurPpNow = PP.of(((Number) p.get("PP_VALUE")).doubleValue(), strVal(p.get("PP_EXT"), ""));
-                    PP bStolenPp = bCurPpNow.multiplyRate(0.05);
+                    // [2026-09-15] "뺏는양을 50%줄여달라" 요청으로 5% -> 2.5%.
+                    PP bStolenPp = bCurPpNow.multiplyRate(0.025);
                     PP bAfterPp = bCurPpNow.subtract(bStolenPp);
                     if (PP.toBaseValue(bAfterPp) < 0) bAfterPp = PP.fromPP(0);
                     HashMap<String, Object> bStealPpUp = new HashMap<>();
@@ -3224,6 +3278,22 @@ public class BotS5ServiceImpl implements BotS5Service {
 
         PP targetHpAfter = targetHp.subtract(PP.fromPP(dmgToParty));
         if (PP.toBaseValue(targetHpAfter) < 0) targetHpAfter = PP.fromPP(0);
+
+        // [2026-09-15 신설] 럭키칸 즉사방어(1회, DEATH_WARD) -- 이 동료에게 방어가 걸려있고
+        // 이번 피해로 HP가 0이 됐으면, 도사 부활/하수인화보다 먼저 개입해서 "피해를 받기 전"
+        // 상태(=targetHp, 이번 피해 자체를 아예 무효화)로 완전히 되돌리고 방어를 소모한다.
+        // 이후의 부활/하수인화 분기는 targetHpAfter가 더 이상 0이 아니므로 자연히 건너뛴다.
+        int wardCompanionId = intVal(p.get("WARD_COMPANION_ID"), 0);
+        if (wardCompanionId > 0 && wardCompanionId == intVal(curTarget.get("COMPANION_ID"), 0)
+                && PP.toBaseValue(targetHpAfter) <= 0) {
+            targetHpAfter = targetHp;
+            HashMap<String, Object> wardClearUp = new HashMap<>();
+            wardClearUp.put("userName", userName);
+            wardClearUp.put("wardCompanionId", 0);
+            dao.updateUserProgress(wardClearUp);
+            p.put("WARD_COMPANION_ID", 0);
+            sb.append("✨💠 즉사방어 발동! ").append(jobTag(tGrade, tJob, tName)).append("이(가) 피해를 받기 전 상태로 완전히 되돌아왔다! (가호 소모)").append(NL);
+        }
 
         // [2026-09-05 신설] ★5/★6 도사 "부활" -- 이번 반격으로 동료가 쓰러지면, 파티 안의
         // ★5 이상 도사가(자기 자신이 쓰러진 경우 포함) 일정 확률로 그 자리에서 되살린다.
@@ -3635,6 +3705,18 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 바뀔 때는 항상 0으로 리셋해서 "이 층 도착 이후 처치수"만 세도록 한다.
         if (target != floor) {
             up.put("killCountCur", 0);
+        }
+        // [2026-09-15 신설] "보스룸(각9층)에 도착하면 모든 럭키/함정 효과를 무효로 하고
+        // 시작" 요청 -- 보스전은 이미 충분히 빡빡하게 설계돼 있어서, 사냥터에서 우연히
+        // 걸어둔 버프/디버프(즉사방어 포함, 이것도 럭키칸 산출물이므로 함께 무효화)를 그대로
+        // 들고 들어가는 게 유불리를 크게 흔드는 걸 막기 위함.
+        boolean enteringBossRoom = target % 10 == 9 && target != floor;
+        if (enteringBossRoom) {
+            up.put("luckyTurnLeft", 0);
+            up.put("luckyEffect", "");
+            up.put("trapTurnLeft", 0);
+            up.put("trapEffect", "");
+            up.put("wardCompanionId", 0);
         }
         dao.updateUserProgress(up);
         if (newFleeCount >= 0) {
