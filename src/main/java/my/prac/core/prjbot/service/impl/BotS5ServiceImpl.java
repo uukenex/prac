@@ -430,6 +430,61 @@ public class BotS5ServiceImpl implements BotS5Service {
         return new int[]{ (int) Math.round(hp), (int) Math.round(atk), (int) Math.round(def), minDmgFloor };
     }
 
+    // ================================================================
+    // 전투력 (Combat Power)
+    // ================================================================
+    // [2026-09-15 신설] "/ㅌㅈㅂ에 전투력을 수치화해서 보여주고, 층별 전투력도 보여주고,
+    // 지금 몇 층이 괜찮은 사냥터인지 추천해달라" 요청.
+    // 실제 전투 공식(파티 공격: ATK*굴림-몬스터DEF, 몬스터 반격: 몬스터ATK*굴림-DEF, 굴림
+    // 자체는 51층+ 기준 대략 6~20 사이라 평균이 10 안팎)에 착안해, "한 방 피해량"에 직결되는
+    // ATK/DEF는 굵직한 가중치를, "몇 대나 버티는지"를 나타내는 HP는 작은 가중치를 줘서 셋을
+    // 하나의 스칼라로 합산한다. 정밀 전투 시뮬레이션이 아니라 상대 비교(내 파티 vs 이 층
+    // 몬스터)용 잠정 지표 -- 가중치는 실측 후 조정 가능.
+    private static final double CP_ATK_WEIGHT = 10.0;
+    private static final double CP_DEF_WEIGHT = 8.0;
+    private static final double CP_HP_WEIGHT = 1.0;
+    // 파티 전투력이 그 층 몬스터 전투력의 이 배수 이상이면 "여유 있게 farming 가능한 층"으로
+    // 본다(추천 사냥터 산정 기준). 낮추면 더 위험한 고층까지 추천, 높이면 더 보수적으로 추천.
+    private static final double SAFE_HUNT_RATIO = 1.3;
+
+    private long combatPower(double hp, double atk, double def) {
+        return Math.round(hp * CP_HP_WEIGHT + atk * CP_ATK_WEIGHT + def * CP_DEF_WEIGHT);
+    }
+
+    /** 파티(편성된 동료, PARTY_SLOT 있는 동료만) 합산 전투력. */
+    private long partyCombatPower(String userName) {
+        long total = 0;
+        for (HashMap<String, Object> c : companionsWithEffectiveStats(userName)) {
+            if (c.get("PARTY_SLOT") == null) continue;
+            total += combatPower(intVal(c.get("EFF_HP"), 0), intVal(c.get("EFF_ATK"), 0), intVal(c.get("EFF_DEF"), 0));
+        }
+        return total;
+    }
+
+    /** 그 층 "일반" 몬스터(BOSS_YN='N')의 전투력 -- applyHardcoreFloorScale로 51층+ 구간 내
+     *  선형 스케일(1번째 사냥터층 50% ~ 8번째 100%)까지 반영한 실제 그 층 기준값. */
+    private long floorMonsterCombatPower(int floor) {
+        HashMap<String, Object> mon = applyHardcoreFloorScale(dao.selectMonster(blockNo(floor), "N"), floor);
+        if (mon == null) return 0;
+        return combatPower(((Number) mon.get("HP_VALUE")).doubleValue(),
+                ((Number) mon.get("ATK_VALUE")).doubleValue(), ((Number) mon.get("DEF_VALUE")).doubleValue());
+    }
+
+    /** 현재 해금 범위(maxFloorReached, CONTENT_LOCKED_FLOOR 이내) 사냥터층 중 파티 전투력이
+     *  SAFE_HUNT_RATIO배 이상 여유 있는 "가장 높은" 층을 추천(같은 조건이면 보상이 더 좋은
+     *  고층 우선). 만족하는 층이 하나도 없으면(1층조차 버거움) 0 반환. */
+    private int recommendHuntFloor(long myPower, int maxFloorReached) {
+        int best = 0;
+        int cap = Math.min(maxFloorReached, CONTENT_LOCKED_FLOOR - 1);
+        for (int f = 1; f <= cap; f++) {
+            int pos = f % 10;
+            if (pos < 1 || pos > 8) continue; // 사냥터층만 대상(마을/보스 제외)
+            long monPower = floorMonsterCombatPower(f);
+            if (monPower > 0 && myPower >= monPower * SAFE_HUNT_RATIO) best = f;
+        }
+        return best;
+    }
+
     private int diceMax(String diceGrade) {
         if (diceGrade == null) return 6;
         switch (diceGrade) {
@@ -911,6 +966,43 @@ public class BotS5ServiceImpl implements BotS5Service {
                 tags.add(jobTag(intVal(c.get("GRADE"), 1), strVal(c.get("CLASS"), "WARRIOR"), strVal(c.get("NAME"), "?")));
             }
             sb.append("🏆 최고티어 동료: ").append(String.join(", ", tags)).append(NL);
+        }
+
+        // ── 전투력 ──
+        // [2026-09-15 신설] "전투력을 수치화 시켜고, 그 수치를 보여주고, 층별 전투력을
+        // 나타내 주고, 현재 몇층이 괜찮은 사냥터인지 추천해달라" 요청.
+        long myPower = partyCombatPower(target);
+        sb.append("⚡ 전투력: ").append(myPower).append(" (파티 편성 동료 기준)").append(NL);
+        if (myPower <= 0) {
+            sb.append("　(파티에 동료를 편성하면 전투력이 계산됩니다)").append(NL);
+        } else {
+            int maxReached = intVal(p.get("MAX_FLOOR_REACHED"), 0);
+            if (maxReached < 1) {
+                sb.append("　(아직 사냥터에 진입하지 않아 층별 비교는 생략합니다)").append(NL);
+            } else {
+                // 구간(10층 단위 블록)별 몬스터 전투력 -- 이미 도달한 블록까지만 표시. 51층+는
+                // 구간 내 선형 스케일(applyHardcoreFloorScale)이 있어 첫/마지막 사냥터층
+                // 전투력을 "저~고"로 같이 보여준다(같으면 그냥 한 값).
+                List<String> blockLines = new ArrayList<>();
+                for (int b = 1; b <= 10; b++) {
+                    int blockBase = (b - 1) * 10;
+                    int firstFloor = blockBase + 1;
+                    if (firstFloor > maxReached) break;
+                    long lo = floorMonsterCombatPower(firstFloor);
+                    long hi = floorMonsterCombatPower(Math.min(blockBase + 8, maxReached));
+                    blockLines.add(b + "구간(" + firstFloor + "~" + (blockBase + 8) + "층) "
+                            + (lo == hi ? String.valueOf(lo) : (lo + "~" + hi)));
+                }
+                if (!blockLines.isEmpty()) {
+                    sb.append("　📊 구간별 몬스터 전투력: ").append(String.join(" · ", blockLines)).append(NL);
+                }
+                int recommended = recommendHuntFloor(myPower, maxReached);
+                if (recommended > 0) {
+                    sb.append("　🎯 추천 사냥터: ").append(recommended).append("층 (전투력 여유 있게 사냥 가능한 가장 높은 층)").append(NL);
+                } else {
+                    sb.append("　⚠️ 지금 전투력으로는 1층 사냥도 버거울 수 있어요 -- 동료 성장/장비 투자를 추천합니다.").append(NL);
+                }
+            }
         }
 
         // ── 자동사냥 / 처치 ──
