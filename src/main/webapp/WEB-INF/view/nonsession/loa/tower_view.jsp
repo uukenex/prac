@@ -259,6 +259,17 @@
     .detail-overlay{ position:fixed; inset:0; background:rgba(20,14,32,.72); z-index:200;
                       display:none; align-items:center; justify-content:center; padding:20px; }
     .detail-overlay.open{ display:flex; }
+    /* [2026-09-15 버그 수정] "전체동료 리스트에서 동료 누르면 상세보기가 뒤로 깔린다"
+       신고 -- 6개 오버레이(detailOverlay/confirmOverlay/noticeOverlay/pickerOverlay/
+       allCompanionsOverlay/allEquipOverlay) 전부 같은 .detail-overlay 클래스를 그대로
+       써서 z-index가 200으로 동일했다. 전체동료보기(allCompanionsOverlay)가 열린 채로
+       그 안의 동료를 눌러 상세보기(detailOverlay)를 "위에" 띄우면, z-index가 같을 땐
+       DOM 순서로 승패가 갈리는데 detailOverlay가 allCompanionsOverlay보다 앞(위)쪽
+       마크업이라 오히려 뒤에 깔려 보였다. 목록류(피커/전체동료/전체장비)는 200 그대로
+       두고, 그 안에서 "더 파고드는" 상세보기는 210으로, 언제 어디서 열려도 항상 최상단
+       이어야 하는 확인/알림 다이얼로그는 220으로 개별 지정해서 항상 올바른 순서로 쌓이게 함. */
+    #detailOverlay{ z-index:210; }
+    #confirmOverlay, #noticeOverlay{ z-index:220; }
     .detail-card{ background:linear-gradient(180deg,#FFFCF3,var(--parchment-deep)); border:2px solid var(--line);
                    border-radius:20px; padding:16px; box-shadow:var(--shadow); max-width:360px; width:100%;
                    max-height:88vh; overflow:auto; position:relative; }
