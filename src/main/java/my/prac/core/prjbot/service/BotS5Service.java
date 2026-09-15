@@ -108,6 +108,12 @@ public interface BotS5Service {
     /** /장비뽑기10 N — N번 가챠로 장비 10연속 뽑기(PP 부족 시 중단) */
     String gachaEquipTen(String userName, int gachaId);
 
+    /** [2026-09-15] /악세뽑기 N — N번 가챠(상자)로 악세서리(목걸이/반지/팔찌) 1개 뽑기 */
+    String gachaAccessory(String userName, int gachaId);
+
+    /** /악세뽑기10 N — N번 가챠로 악세서리 10연속 뽑기(PP 부족 시 중단) */
+    String gachaAccessoryTen(String userName, int gachaId);
+
     /** 하급 동료 계약서(GACHA_ID=1) 무료뽑기 잔여 횟수 */
     int freeCompanionPullsLeft(String userName);
 

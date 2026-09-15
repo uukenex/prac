@@ -196,6 +196,36 @@ public class Season5Controller {
         }
     }
 
+    /** [2026-09-15] /악세뽑기 N — 목걸이/반지/팔찌 전용 뽑기(gachaEquip과 동일 패턴). */
+    public String gachaAccessory(HashMap<String, Object> map) {
+        String param1 = param1Of(map);
+        String userName = userNameOf(map);
+        if (param1.isEmpty()) {
+            return s5Service.gachaTierGuide(userName, "ACCESSORY")
+                    + "👉 번호를 붙여써야 뽑기가 진행됩니다. (예: /악세뽑기1)";
+        }
+        try {
+            String result = s5Service.gachaAccessory(userName, Integer.parseInt(param1));
+            s5Service.bumpActivityStat(userName, "GACHA_CHAT");
+            return result;
+        } catch (NumberFormatException e) {
+            return "번호는 숫자로 입력해주세요.";
+        }
+    }
+
+    public String gachaAccessoryTen(HashMap<String, Object> map) {
+        String param1 = param1Of(map);
+        if (param1.isEmpty()) return "사용법: /악세뽑기N 10 (N은 SPA 상점 탭에서 확인)";
+        try {
+            String userName = userNameOf(map);
+            String result = s5Service.gachaAccessoryTen(userName, Integer.parseInt(param1));
+            s5Service.bumpActivityStat(userName, "GACHA_CHAT");
+            return result;
+        } catch (NumberFormatException e) {
+            return "번호는 숫자로 입력해주세요.";
+        }
+    }
+
     public String diceShop(HashMap<String, Object> map) {
         String param1 = param1Of(map);
         String userName = userNameOf(map);

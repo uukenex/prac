@@ -2652,6 +2652,43 @@ S4의 `TBOT_S4_ACHIEVEMENT`/`TBOT_S4_USER_ACH` 패턴을 확장 계승. S5에서
     조정 그대로) 유지 -- 이 조합이 시뮬레이션상 목표치에 가장 가까웠음.
   - DB 마이그레이션 없음. `BotS5ServiceImpl.java`만 수정(주석 정정 포함).
 
+- **[2026-09-15][신규 기능] 악세서리(목걸이/반지/팔찌) 뽑기 신설 + 탑랭킹 갯수 표기**:
+  "탑랭킹 최고 동료/장비 등급을 갯수까지 포함해서" + "장비뽑기 말고 악세뽑기 추가, 목걸이=
+  (무기+갑옷)/2, 반지=(무기+투구)/2, 팔찌=(갑옷+투구)/2, 기존과 동일하게 초급~최상급 4단계
+  (50/60/70/80층 마을 해금, 가격은 조금 비싸게), 탑랭킹에 최고등급 추가, 장비전체보기에
+  악세서리 3종 필터 추가" 요청.
+  - **스탯 공식**: `computeEffectiveStat()`에 NECKLACE/RING/BRACELET 3개 분기 추가 -- 각각
+    기존 무기(ATK)/갑옷(DEF)/투구(HP) 보너스 공식 중 둘을 절반씩(`/2.0`) 동시에 적용
+    (목걸이=ATK+DEF, 반지=ATK+HP, 팔찌=DEF+HP). `EQUIP_BONUS` 테이블/등급 체계는 기존 장비와
+    완전히 동일하게 재사용, 새 상수 없음.
+  - **DB**: `TBOT_S5_GACHA_MASTER`에 `GACHA_TYPE='ACCESSORY'` 4행 신규 추가(GACHA_ID 9~12,
+    `S5_ACCESSORY_GACHA.sql`, 실 DB 적용 완료) -- 확률표는 기존 장비 4단계(GACHA_ID 5~8)
+    확률을 그대로 복사("기존과 동일하게" 요청), 해금층은 50/60/70/80, 가격은 5000/10000/
+    22000/45000 PP(해당 해금층에 맞는 장비뽑기 가격대를 로그보간 후 약 1.3배 마크업 --
+    "조금 비싸게" 요청). `TBOT_S5_USER_EQUIP.PART`/`TBOT_S5_GACHA_MASTER.GACHA_TYPE` 둘 다
+    기존 `VARCHAR2(10)`에 새 값이 그대로 들어가서 ALTER TABLE 자체가 불필요.
+  - **뽑기 로직**: `pullAccessoryCore()`(신규, `pullEquipCore`와 거의 동일하지만 전용
+    뽑기권 시스템이 없어 PP 차감만 존재) + `gachaAccessory`/`gachaAccessoryTen` 신규 서비스
+    메서드. 놀라운 점: `equipWear`/`equipSynthesis`/`equipSynthesisAll`/`equipList`/
+    `unequipAllForCompanion`은 전부 PART 문자열에 무관한 범용 로직이었어서 **코드 변경 없이
+    그대로** 악세서리 착용/합성/목록조회/일괄해제가 동작함(검증 후 확인).
+  - **명령어**: `/악세뽑기N [10]` 신설(LoaChatController 정규식/스위치, Season5Controller,
+    Season5ViewController `GACHA_ACCESSORY`/`GACHA_ACCESSORY_10` 액션, `/탑도움말`에도 추가).
+  - **탑랭킹**: "최고 동료 등급"/"최고 장비 등급"에 `(N마리/개)` 갯수 추가(서버 전체에서 그
+    최고 등급인 개체가 총 몇 개인지 -- 여전히 "누가"는 비공개). "장비" 통계(최다 보유/최고
+    등급)는 이제 악세서리 3종을 제외(투구/무기/갑옷만) -- `selectMaxEquipCount/Grade`,
+    `countUserEquip`에 `PART NOT IN (...)` 조건 추가. 신규 "최다 악세서리 보유"/"최고
+    악세서리 등급(갯수)" 2줄 추가(`selectMaxAccessory*`, `countUserAccessory` 신규 DAO).
+  - **웹 SPA**: `PART_KR`/`PART_EMOJI`/`PART_ORDER`에 3개 추가만으로 장비전체보기 필터 칩
+    (`renderPicker`)·캐릭터 상세카드 장비요약(`showCompanionDetail`)·파티슬롯 카드 장비요약
+    (`renderPartySlots`)이 전부 자동으로 6부위 대응(하드코딩된 부위 배열이 딱 하나
+    `showCompanionDetail`에만 있어서 그것만 `PART_ORDER` 참조로 교체). 상점탭에 "💍 악세서리
+    상자" 카드 신설(`accessoryGachaList`) -- 장비뽑기권 같은 무료뽑기권 개념이 없어 잠긴
+    등급은 버튼을 숨기지 않고 비활성화(disabled)로만 표시.
+  - DB 마이그레이션: `S5_ACCESSORY_GACHA.sql`(실 DB 적용 완료). Java 6개 파일
+    (`BotS5ServiceImpl`/`BotS5Service`/`BotS5DAO`/`LoaChatController`/`Season5Controller`/
+    `Season5ViewController`) + `BotS5Mapper.xml` + `tower_view.jsp` 수정.
+
 ### 남은 TODO
 
 - 실제 서버 기동 후 채팅 명령어 + SPA E2E 테스트 (이번 세션은 `mvn compile`까지만 검증)

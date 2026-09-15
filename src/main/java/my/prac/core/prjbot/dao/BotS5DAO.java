@@ -130,8 +130,15 @@ public interface BotS5DAO {
     int selectMaxFullyExploredCount();
     int selectMaxCompanionCount();
     int selectMaxCompanionGrade();
+    int selectMaxCompanionGradeCount();
     int selectMaxEquipCount();
     int selectMaxEquipGrade();
+    int selectMaxEquipGradeCount();
+    // [2026-09-15] 악세서리(목걸이/반지/팔찌) 전용 랭킹 통계.
+    int selectMaxAccessoryCount();
+    int selectMaxAccessoryGrade();
+    int selectMaxAccessoryGradeCount();
+    int countUserAccessory(@Param("userName") String userName);
     List<HashMap<String, Object>> selectAllUserPp();
     HashMap<String, Object> selectChannelUsageStats();
 

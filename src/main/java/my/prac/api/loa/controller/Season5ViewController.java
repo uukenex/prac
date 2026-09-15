@@ -277,6 +277,9 @@ public class Season5ViewController {
         // 앞부분만 잘라내면 이 번호 체계가 깨진다 -- 반드시 4개 전체를 순서 그대로 내려야 함.
         result.put("companionGacha", s5Dao.selectGachaList("COMPANION", 999));
         result.put("equipGacha", s5Dao.selectGachaList("EQUIP", 999));
+        // [2026-09-15] 악세서리(목걸이/반지/팔찌) 전용 뽑기 신설 -- 장비뽑기권 같은 별도
+        // 뽑기권 시스템은 없어서(항상 PP로만 구매) voucherByTier류는 필요 없음.
+        result.put("accessoryGacha", s5Dao.selectGachaList("ACCESSORY", 999));
         if (!userName.trim().isEmpty()) {
             result.put("stat", s5Service.statShopInfo(userName));
             result.put("dice", s5Service.diceListInfo(userName));
@@ -326,7 +329,7 @@ public class Season5ViewController {
     /**
      * 통합 액션 엔드포인트. 채팅 명령어(/주사위 등)와 동일한 BotS5Service 로직을 그대로 호출한다.
      * GET /loa/api/tower-action?userName=..&type=DICE|CHANGE_FLOOR|TOWER_DOWN|TOWER_UP|PARTY_TOGGLE|
-     *     PARTY_SWAP|PARTY_UNASSIGN_ALL|GACHA_COMPANION|GACHA_EQUIP|DICE_BUY|DICE_BONUS_BUY|
+     *     PARTY_SWAP|PARTY_UNASSIGN_ALL|GACHA_COMPANION|GACHA_EQUIP|GACHA_ACCESSORY|DICE_BUY|DICE_BONUS_BUY|
      *     DICE_MALUS_BUY|DICE_MIN_SELECT|STAT_BUY|EQUIP_WEAR|
      *     EQUIP_SYNTH|EQUIP_SYNTH_ALL|EQUIP_UNWEAR_ALL|EQUIP_UNWEAR_ONE|REDEEM_COMPANION_TICKET|REDEEM_WEAPON_TICKET
      *     &param1=&param2=
@@ -393,6 +396,12 @@ public class Season5ViewController {
                     break;
                 case "GACHA_EQUIP_10":
                     message = s5Service.gachaEquipTen(userName, Integer.parseInt(param1));
+                    break;
+                case "GACHA_ACCESSORY": // [2026-09-15] 목걸이/반지/팔찌 전용 뽑기
+                    message = s5Service.gachaAccessory(userName, Integer.parseInt(param1));
+                    break;
+                case "GACHA_ACCESSORY_10":
+                    message = s5Service.gachaAccessoryTen(userName, Integer.parseInt(param1));
                     break;
                 case "DICE_BUY":
                     message = s5Service.diceShop(userName, param1.isEmpty() ? null : Integer.parseInt(param1));

@@ -556,6 +556,13 @@
       <div class="card-title">장비 보물상자</div>
       <div id="equipGachaList"></div>
     </div>
+    <!-- [2026-09-15] "장비뽑기 말고 악세뽑기를 추가해서 목걸이/반지/팔찌" 요청 -- 장비 상자와
+         같은 4단계(초급/중급/상급/최상급) 구조지만 해금층(50/60/70/80)과 가격이 달라 별도
+         카드/목록으로 분리(renderShop의 accessoryGachaList 참고). -->
+    <div class="card" style="margin-top:10px;">
+      <div class="card-title">💍 악세서리 상자 (목걸이·반지·팔찌)</div>
+      <div id="accessoryGachaList"></div>
+    </div>
     <!-- "편성 탭에 있던 완전탐사 선택권을 상점에서 쓸 수 있게 해달라" 요청으로 이동. -->
     <div class="card" id="ticketCard" style="margin-top:10px; display:none;">
       <div class="card-title">🎁 완전탐사 선택권 (10층 구간 앞/뒤 4개층 전부 완전탐사 시 지급, 직업을 골라 확정 획득)</div>
@@ -1479,9 +1486,11 @@ var TW = (function () {
     return btn;
   }
 
-  var PART_KR   = { HELMET: '투구', WEAPON: '무기', ARMOR: '갑옷' };
-  var PART_EMOJI = { HELMET: '⛑️', WEAPON: '⚔️', ARMOR: '🛡️' };
-  var PART_ORDER = ['WEAPON', 'HELMET', 'ARMOR']; // 장비 부위 표시 순서(무기→투구→갑옷)
+  // [2026-09-15] 악세서리(목걸이/반지/팔찌) 신설 -- 장비전체보기 필터/상세카드 장비요약/
+  // 목록정렬이 전부 PART_ORDER 하나를 공유해서 여기 3개만 추가하면 자동 반영된다.
+  var PART_KR   = { HELMET: '투구', WEAPON: '무기', ARMOR: '갑옷', NECKLACE: '목걸이', RING: '반지', BRACELET: '팔찌' };
+  var PART_EMOJI = { HELMET: '⛑️', WEAPON: '⚔️', ARMOR: '🛡️', NECKLACE: '📿', RING: '💍', BRACELET: '⛓️' };
+  var PART_ORDER = ['WEAPON', 'HELMET', 'ARMOR', 'NECKLACE', 'RING', 'BRACELET']; // 장비 부위 표시 순서
   var JOB_KR    = { WARRIOR: '전사', MAGE: '마법사', ROGUE: '도적', ARCHER: '궁수', PRIEST: '도사' };
   var JOB_ORDER = ['WARRIOR', 'MAGE', 'ROGUE', 'ARCHER', 'PRIEST']; // 장비 목록 직업별 그룹핑 순서
   // 초상화(IMAGE_URL)는 외부 API(nekos.best) 실패/차단 시 비어있을 수 있어 직업별 이모지로 항상 얼굴이 보이게 폴백
@@ -1723,7 +1732,7 @@ var TW = (function () {
     var mine = lastParty.byCompanion[companionId] || [];
     var eqBox = document.getElementById('detailEquipBox');
     eqBox.innerHTML = '';
-    ['HELMET', 'WEAPON', 'ARMOR'].forEach(function (part) {
+    PART_ORDER.forEach(function (part) {
       var found = mine.filter(function (e) { return e.PART === part; })[0];
       var row = document.createElement('div');
       row.className = 'detail-equip-row';
@@ -2143,6 +2152,25 @@ var TW = (function () {
               + '<button class="ten" onclick="TW.action(\'GACHA_EQUIP_10\',\'' + displayNo + '\')">10연속</button>'
               + '</span>';
           eBox.appendChild(row);
+        });
+
+        // [2026-09-15] 악세서리(목걸이/반지/팔찌) 상자 -- 장비뽑기권 같은 무료뽑기권 시스템이
+        // 없어서(항상 PP로만 구매) isFree/locked-숨김 로직 없이 해금 여부만 안내하고 항상
+        // 목록에 보여준다(잠겨 있으면 버튼 비활성화).
+        var aBox = document.getElementById('accessoryGachaList');
+        aBox.innerHTML = '';
+        (data.accessoryGacha || []).forEach(function (g, gi) {
+          var locked = unlockedBlock < (g.UNLOCK_FLOOR || 0);
+          var row = document.createElement('div');
+          row.className = 'shop-row';
+          var displayNo = gi + 1;
+          row.innerHTML = '<span>' + g.GACHA_NAME + ' (' + fmtPP(g.COST_VALUE, g.COST_EXT) + ' PP)'
+              + (locked ? ' 🔒 ' + g.UNLOCK_FLOOR + '층 마을부터' : '') + '</span>'
+              + '<span class="btn-group">'
+              + '<button' + (locked ? ' disabled' : '') + ' onclick="TW.action(\'GACHA_ACCESSORY\',\'' + displayNo + '\')">뽑기</button>'
+              + '<button class="ten"' + (locked ? ' disabled' : '') + ' onclick="TW.action(\'GACHA_ACCESSORY_10\',\'' + displayNo + '\')">10연속</button>'
+              + '</span>';
+          aBox.appendChild(row);
         });
 
         // [2026-09-05] 주사위 교체는 상점탭에서 뺐다 -- '탑' 탭 보드 위 오버레이(renderDiceOverlay,

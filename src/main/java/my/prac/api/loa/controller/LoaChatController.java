@@ -557,7 +557,7 @@ public class LoaChatController {
 			// 계속 동작하게 남겨뒀는데, "번호는 반드시 붙여쓰기(/동료뽑기2)여야 한다"는 요청으로
 			// 이 하위호환을 완전히 없앴다 -- 번호가 안 붙어있으면(bare) 뒤에 뭐가 딸려오든
 			// (예: 실수로 띄어쓴 "/동료뽑기 2") 전부 무시하고 항상 1번 단발로 고정한다.
-			Matcher s5GachaM = Pattern.compile("^/(동료뽑기|장비뽑기)(\\d+)?$").matcher(param0);
+			Matcher s5GachaM = Pattern.compile("^/(동료뽑기|장비뽑기|악세뽑기)(\\d+)?$").matcher(param0);
 			if (s5GachaM.matches()) {
 				String s5GachaBase = "/" + s5GachaM.group(1);
 				String s5GachaAttached = s5GachaM.group(2);
@@ -676,6 +676,12 @@ public class LoaChatController {
 				break;
 			case "/장비뽑기10":
 				val = s5.gachaEquipTen(reqMap);
+				break;
+			case "/악세뽑기": // [2026-09-15] 목걸이/반지/팔찌 악세서리 전용 뽑기
+				val = s5.gachaAccessory(reqMap);
+				break;
+			case "/악세뽑기10":
+				val = s5.gachaAccessoryTen(reqMap);
 				break;
 			case "/주사위구매":
 				val = s5.diceShop(reqMap);

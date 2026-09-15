@@ -394,6 +394,20 @@ public class BotS5ServiceImpl implements BotS5Service {
                 if ("HELMET".equals(part)) hp += b[0] + base[0] * b[1];
                 else if ("WEAPON".equals(part)) atk += b[2] + base[1] * b[3];
                 else if ("ARMOR".equals(part)) def += b[4] + base[2] * b[5];
+                // [2026-09-15] 악세서리(목걸이/반지/팔찌) 신설 -- 장비뽑기 말고 별도 악세뽑기로
+                // 얻는 3종. 기존 부위 둘의 절반씩을 동시에 준다(목걸이=무기+갑옷, 반지=무기+
+                // 투구, 팔찌=갑옷+투구) -- 무기(ATK)/갑옷(DEF)/투구(HP) 보너스 공식을 그대로
+                // 절반만 적용. pullAccessoryCore() 참고.
+                else if ("NECKLACE".equals(part)) { // 무기(ATK)+갑옷(DEF) 절반씩
+                    atk += (b[2] + base[1] * b[3]) / 2.0;
+                    def += (b[4] + base[2] * b[5]) / 2.0;
+                } else if ("RING".equals(part)) { // 무기(ATK)+투구(HP) 절반씩
+                    atk += (b[2] + base[1] * b[3]) / 2.0;
+                    hp += (b[0] + base[0] * b[1]) / 2.0;
+                } else if ("BRACELET".equals(part)) { // 갑옷(DEF)+투구(HP) 절반씩
+                    def += (b[4] + base[2] * b[5]) / 2.0;
+                    hp += (b[0] + base[0] * b[1]) / 2.0;
+                }
             }
         }
 
@@ -669,8 +683,16 @@ public class BotS5ServiceImpl implements BotS5Service {
         int maxExplored = dao.selectMaxFullyExploredCount();
         int maxCompanion = dao.selectMaxCompanionCount();
         int maxCompanionGrade = dao.selectMaxCompanionGrade();
+        // [2026-09-15] "최고 동료/장비 등급을 갯수까지 포함해서" 요청 -- 서버 전체에서 그
+        // 최고 등급인 동료/장비가 총 몇 개인지(여전히 "누가"는 비공개).
+        int maxCompanionGradeCount = dao.selectMaxCompanionGradeCount();
         int maxEquip = dao.selectMaxEquipCount();
         int maxEquipGrade = dao.selectMaxEquipGrade();
+        int maxEquipGradeCount = dao.selectMaxEquipGradeCount();
+        // [2026-09-15] 악세서리(목걸이/반지/팔찌) 신설로 "장비"와 분리된 전용 랭킹 통계.
+        int maxAccessory = dao.selectMaxAccessoryCount();
+        int maxAccessoryGrade = dao.selectMaxAccessoryGrade();
+        int maxAccessoryGradeCount = dao.selectMaxAccessoryGradeCount();
 
         PP maxPp = PP.fromPP(0);
         for (HashMap<String, Object> row : dao.selectAllUserPp()) {
@@ -683,6 +705,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         HashMap<String, Object> mineP = userName == null || userName.trim().isEmpty() ? null : dao.selectUserProgress(userName);
         int mineFloor = 0, mineKill = 0, mineAch = 0, mineExplored = 0;
         int mineCompanion = 0, mineCompanionGrade = 0, mineEquip = 0, mineEquipGrade = 0;
+        int mineAccessory = 0, mineAccessoryGrade = 0;
         PP minePp = PP.fromPP(0);
         if (mineP != null) {
             mineFloor = intVal(mineP.get("MAX_FLOOR_REACHED"), 0);
@@ -694,8 +717,15 @@ public class BotS5ServiceImpl implements BotS5Service {
                 mineCompanionGrade = Math.max(mineCompanionGrade, intVal(c.get("GRADE"), 0));
             }
             mineEquip = dao.countUserEquip(userName);
+            mineAccessory = dao.countUserAccessory(userName);
             for (HashMap<String, Object> e : dao.selectUserEquip(userName)) {
-                mineEquipGrade = Math.max(mineEquipGrade, intVal(e.get("GRADE"), 0));
+                int eg = intVal(e.get("GRADE"), 0);
+                String part = strVal(e.get("PART"), "");
+                if ("NECKLACE".equals(part) || "RING".equals(part) || "BRACELET".equals(part)) {
+                    mineAccessoryGrade = Math.max(mineAccessoryGrade, eg);
+                } else {
+                    mineEquipGrade = Math.max(mineEquipGrade, eg);
+                }
             }
             minePp = PP.of(numVal(mineP.get("TOTAL_PP_EARNED_VALUE"), 0), strVal(mineP.get("TOTAL_PP_EARNED_EXT"), ""));
         }
@@ -710,9 +740,14 @@ public class BotS5ServiceImpl implements BotS5Service {
         sb.append("🏅 최다 업적 보유: ").append(maxAch).append("개").append(meTag(mineAch, maxAch)).append(NL);
         sb.append("🗺️ 최다 완전탐사: ").append(maxExplored).append("개 층").append(meTag(mineExplored, maxExplored)).append(NL);
         sb.append("👥 최다 동료 보유: ").append(maxCompanion).append("명").append(meTag(mineCompanion, maxCompanion)).append(NL);
-        sb.append("✨ 최고 동료 등급: ★").append(maxCompanionGrade).append(meTag(mineCompanionGrade, maxCompanionGrade)).append(NL);
+        sb.append("✨ 최고 동료 등급: ★").append(maxCompanionGrade).append(" (").append(maxCompanionGradeCount).append("마리)")
+          .append(meTag(mineCompanionGrade, maxCompanionGrade)).append(NL);
         sb.append("🎽 최다 장비 보유: ").append(maxEquip).append("개").append(meTag(mineEquip, maxEquip)).append(NL);
-        sb.append("💎 최고 장비 등급: ★").append(maxEquipGrade).append(meTag(mineEquipGrade, maxEquipGrade)).append(NL);
+        sb.append("💎 최고 장비 등급: ★").append(maxEquipGrade).append(" (").append(maxEquipGradeCount).append("개)")
+          .append(meTag(mineEquipGrade, maxEquipGrade)).append(NL);
+        sb.append("💍 최다 악세서리 보유: ").append(maxAccessory).append("개").append(meTag(mineAccessory, maxAccessory)).append(NL);
+        sb.append("🔮 최고 악세서리 등급: ★").append(maxAccessoryGrade).append(" (").append(maxAccessoryGradeCount).append("개)")
+          .append(meTag(mineAccessoryGrade, maxAccessoryGrade)).append(NL);
         sb.append("💰 최다 누적 PP: ").append(maxPp.format())
           .append((PP.toBaseValue(maxPp) > 0 && minePp.compare(maxPp) >= 0) ? " (me)" : "");
         return sb.toString();
@@ -961,6 +996,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         sb.append("/동료가리기 N").append(NL);
         sb.append("/동료뽑기N [10]").append(NL);
         sb.append("/장비뽑기N [10]").append(NL);
+        sb.append("/악세뽑기N [10]").append(NL);
         sb.append("/주사위구매 [N]").append(NL);
         sb.append("/주사위강화 [구매]").append(NL);
         sb.append("/마이너스주사위 [구매]").append(NL);
@@ -993,6 +1029,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         sb.append(gachaCatalogText(dao.selectGachaList("COMPANION", 999), unlocked));
         sb.append("/장비뽑기N [10] : N번 상자로 뽑기(10연속 가능)").append(NL);
         sb.append(gachaCatalogText(dao.selectGachaList("EQUIP", 999), unlocked));
+        sb.append("/악세뽑기N [10] : N번 상자로 목걸이/반지/팔찌 뽑기(10연속 가능)").append(NL);
+        sb.append(gachaCatalogText(dao.selectGachaList("ACCESSORY", 999), unlocked));
         sb.append("/주사위구매 [N] : 주사위 등급 확인/교체").append(NL);
         sb.append("/주사위강화 [구매] · /마이너스주사위 [구매] : 최소 눈금 조정 확인/구매(둘 중 하나만 적용, 기본 +0)").append(NL);
         sb.append("/스탯구매 [공격력|최소공격력|체력] : 스탯 강화 확인/구매").append(NL);
@@ -1042,7 +1080,8 @@ public class BotS5ServiceImpl implements BotS5Service {
     private String gachaTierGuideText(String userName, String gachaType) {
         HashMap<String, Object> p = getOrInitProgress(userName);
         int unlocked = intVal(p.get("UNLOCKED_BLOCK"), 0);
-        String cmd = "COMPANION".equals(gachaType) ? "/동료뽑기" : "/장비뽑기";
+        // [2026-09-15] 악세서리(목걸이/반지/팔찌) 뽑기 신설 -- /악세뽑기.
+        String cmd = "COMPANION".equals(gachaType) ? "/동료뽑기" : "ACCESSORY".equals(gachaType) ? "/악세뽑기" : "/장비뽑기";
         StringBuilder sb = new StringBuilder("📖 ").append(cmd).append("N 번호 안내").append(NL);
         // "실제 칠 명령어 형태 그대로 보여달라" 요청 -- "N. 이름" 대신 "/동료뽑기N : 이름"
         int displayIdx = 1;
@@ -4986,6 +5025,100 @@ public class BotS5ServiceImpl implements BotS5Service {
         return sb.toString();
     }
 
+    /** [2026-09-15] "장비뽑기 말고 악세뽑기를 추가해서 목걸이/반지/팔찌 3종" 요청 -- 기존
+     *  pullEquipCore와 거의 같은 구조지만 뽑기권(EQUIP_VOUCHER) 소모 경로가 없다(악세서리는
+     *  전용 뽑기권 시스템 자체가 없음, 항상 PP로만 구매) -- 그 점만 다르고 나머지(해금층
+     *  확인, PP 차감, 등급 굴림, 직업 무작위, 부위 무작위, INSERT)는 동일해서 별도 함수로
+     *  둔다. 기존 equipWear/equipSynthesis/장비목록 등은 전부 PART 문자열에 무관한
+     *  범용(generic) 로직이라 NECKLACE/RING/BRACELET도 코드 변경 없이 그대로 착용/합성/
+     *  목록조회가 된다. */
+    private HashMap<String, Object> pullAccessoryCore(String userName, HashMap<String, Object> gacha, HashMap<String, Object> p) {
+        HashMap<String, Object> result = new HashMap<>();
+        int unlocked = intVal(p.get("UNLOCKED_BLOCK"), 0);
+        if (intVal(gacha.get("UNLOCK_FLOOR"), 0) > unlocked) {
+            result.put("error", "아직 해금되지 않은 상자입니다.");
+            return result;
+        }
+        PP cost = PP.of(((Number) gacha.get("COST_VALUE")).doubleValue(), strVal(gacha.get("COST_EXT"), ""));
+        if (!deductPp(userName, p, cost)) {
+            result.put("error", "PP가 부족합니다. (필요 " + cost.format() + " PP)");
+            return result;
+        }
+
+        int grade = rollGrade(gacha);
+        String job = JOB_KEYS[RND.nextInt(JOB_KEYS.length)];
+        String[] parts = { "NECKLACE", "RING", "BRACELET" };
+        String part = parts[RND.nextInt(parts.length)];
+
+        HashMap<String, Object> e = new HashMap<>();
+        e.put("userName", userName);
+        e.put("class", job);
+        e.put("part", part);
+        e.put("grade", grade);
+        e.put("equippedCompanionId", null);
+        dao.insertEquip(e);
+
+        if (grade == 6) grantAchievement(userName, 22); // 기존 ★6 장비 업적(악세서리도 "장비"로 취급)
+
+        result.put("ok", true);
+        result.put("job", job);
+        result.put("part", part);
+        result.put("grade", grade);
+        return result;
+    }
+
+    @Override
+    @Transactional
+    public String gachaAccessory(String userName, int gachaId) {
+        HashMap<String, Object> p = getOrInitProgress(userName);
+        Integer realId = resolveGachaId("ACCESSORY", gachaId);
+        if (realId == null) return "존재하지 않는 번호입니다. /탑도움말에서 번호를 다시 확인하세요.";
+        HashMap<String, Object> gacha = dao.selectGacha(realId);
+        if (gacha == null || !"ACCESSORY".equals(strVal(gacha.get("GACHA_TYPE"), ""))) {
+            return "존재하지 않는 악세서리 상자입니다.";
+        }
+        HashMap<String, Object> r = pullAccessoryCore(userName, gacha, p);
+        if (r.get("error") != null) return (String) r.get("error");
+
+        String job = (String) r.get("job");
+        String part = (String) r.get("part");
+        int grade = intVal(r.get("grade"), 1);
+        return "🎁 " + JOB_NAME.get(job) + "용 " + partNameOf(part) + " ★" + grade + " 획득! (" + equipBonusText(part, grade) + ")";
+    }
+
+    @Override
+    @Transactional
+    public String gachaAccessoryTen(String userName, int gachaId) {
+        HashMap<String, Object> p = getOrInitProgress(userName);
+        Integer realId = resolveGachaId("ACCESSORY", gachaId);
+        if (realId == null) return "존재하지 않는 번호입니다. /탑도움말에서 번호를 다시 확인하세요.";
+        HashMap<String, Object> gacha = dao.selectGacha(realId);
+        if (gacha == null || !"ACCESSORY".equals(strVal(gacha.get("GACHA_TYPE"), ""))) {
+            return "존재하지 않는 악세서리 상자입니다.";
+        }
+
+        int[] gradeCount = new int[7];
+        int success = 0;
+        String stopReason = null;
+        for (int i = 0; i < 10; i++) {
+            HashMap<String, Object> r = pullAccessoryCore(userName, gacha, p);
+            if (r.get("error") != null) {
+                stopReason = (String) r.get("error");
+                break;
+            }
+            success++;
+            gradeCount[intVal(r.get("grade"), 1)]++;
+        }
+
+        StringBuilder sb = new StringBuilder("🎰 10연속 악세뽑기 (").append(success).append("/10)").append(NL);
+        for (int g = 1; g <= 6; g++) {
+            if (gradeCount[g] > 0) sb.append("★").append(g).append("×").append(gradeCount[g]).append("  ");
+        }
+        if (stopReason != null) sb.append(NL).append("⚠️ ").append(stopReason).append(" (그 이상은 중단됨)");
+        sb.append(NL).append("👉 파티/장비 탭에서 확인하세요");
+        return sb.toString();
+    }
+
     // ================================================================
     // /주사위구매 (등급 확인/교체 — 무료 장착, 층 진행으로 자동 해금)
     // ================================================================
@@ -5355,13 +5488,33 @@ public class BotS5ServiceImpl implements BotS5Service {
     // ================================================================
     // 장비
     // ================================================================
+    // [2026-09-15] 악세서리(목걸이/반지/팔찌) 3종 추가 -- computeEffectiveStat()의 NECKLACE/
+    // RING/BRACELET 분기 참고.
     private String partNameOf(String part) {
-        return "HELMET".equals(part) ? "투구" : "WEAPON".equals(part) ? "무기" : "갑옷";
+        switch (part) {
+            case "HELMET": return "투구";
+            case "WEAPON": return "무기";
+            case "NECKLACE": return "목걸이";
+            case "RING": return "반지";
+            case "BRACELET": return "팔찌";
+            default: return "갑옷"; // ARMOR
+        }
     }
 
-    /** 장비 등급/부위별 스탯 보너스 표기 (예: "ATK +13 / +10%") — EQUIP_BONUS[grade-1] 기준. */
+    /** 장비 등급/부위별 스탯 보너스 표기 (예: "ATK +13 / +10%") — EQUIP_BONUS[grade-1] 기준.
+     *  [2026-09-15] 악세서리는 두 부위(무기/갑옷/투구 중 둘)의 절반씩을 동시에 주므로 표기도
+     *  "스탯A +x/+y% · 스탯B +x/+y%" 형태로 두 줄 합쳐서 보여준다. */
     private String equipBonusText(String part, int grade) {
         double[] b = EQUIP_BONUS[grade - 1];
+        if ("NECKLACE".equals(part)) { // 무기(ATK)+갑옷(DEF) 절반씩
+            return "ATK +" + Math.round(b[2] / 2) + "/+" + Math.round(b[3] * 50) + "% · DEF +" + Math.round(b[4] / 2) + "/+" + Math.round(b[5] * 50) + "%";
+        }
+        if ("RING".equals(part)) { // 무기(ATK)+투구(HP) 절반씩
+            return "ATK +" + Math.round(b[2] / 2) + "/+" + Math.round(b[3] * 50) + "% · HP +" + Math.round(b[0] / 2) + "/+" + Math.round(b[1] * 50) + "%";
+        }
+        if ("BRACELET".equals(part)) { // 갑옷(DEF)+투구(HP) 절반씩
+            return "DEF +" + Math.round(b[4] / 2) + "/+" + Math.round(b[5] * 50) + "% · HP +" + Math.round(b[0] / 2) + "/+" + Math.round(b[1] * 50) + "%";
+        }
         int fixedIdx = "HELMET".equals(part) ? 0 : "WEAPON".equals(part) ? 2 : 4;
         int pctIdx = fixedIdx + 1;
         String statName = "HELMET".equals(part) ? "HP" : "WEAPON".equals(part) ? "ATK" : "DEF";
