@@ -2351,16 +2351,24 @@ public class BotS5ServiceImpl implements BotS5Service {
                 PP amHp = PP.of(((Number) amTarget.get("CUR_HP_VALUE")).doubleValue(), strVal(amTarget.get("CUR_HP_EXT"), ""));
                 PP amHpAfter = amHp.subtract(PP.fromPP(amDmg));
                 if (PP.toBaseValue(amHpAfter) < 0) amHpAfter = PP.fromPP(0);
+                // [2026-09-16] 즉사방어(DEATH_WARD)가 이 동료에게 걸려있고 이 기습으로 쓰러지면
+                // 반격 루프와 동일하게 피해를 받기 전 상태로 되돌린다(그동안 이 경로엔 방어가
+                // 안 걸려있었음 -- 즉사방어 추가 시 누락된 경로 중 하나).
+                int amWardCid = intVal(p.get("WARD_COMPANION_ID"), 0);
+                if (amWardCid > 0 && amWardCid == intVal(amTarget.get("COMPANION_ID"), 0)
+                        && PP.toBaseValue(amHpAfter) <= 0) {
+                    amHpAfter = amHp;
+                    HashMap<String, Object> amWardClearUp = new HashMap<>();
+                    amWardClearUp.put("userName", userName);
+                    amWardClearUp.put("wardCompanionId", 0);
+                    dao.updateUserProgress(amWardClearUp);
+                    p.put("WARD_COMPANION_ID", 0);
+                    sb.append("✨💠 즉사방어 발동! 피해를 받기 전 상태로 완전히 되돌아왔다! (가호 소모)").append(NL);
+                }
                 sb.append("🌑 은신 기습! ").append(eliteMonsterName(floor, mon, elite)).append("이(가) 먼저 공격한다!").append(NL);
                 sb.append(jobTag(amGrade, amJob, amName)).append("에게 ").append(amDmg).append("dmg (💗")
                   .append(amHpAfter.format()).append("/").append(amEff[0]).append(")").append(NL).append(NL);
-                HashMap<String, Object> amUp = new HashMap<>();
-                amUp.put("companionId", intVal(amTarget.get("COMPANION_ID"), 0));
-                amUp.put("curHpValue", amHpAfter.getValue());
-                amUp.put("curHpExt", amHpAfter.getUnit());
-                dao.updateCompanionHp(amUp);
-                amTarget.put("CUR_HP_VALUE", amHpAfter.getValue());
-                amTarget.put("CUR_HP_EXT", amHpAfter.getUnit());
+                writeCompanionHp(amTarget, amHpAfter);
             }
         }
 
@@ -2895,16 +2903,26 @@ public class BotS5ServiceImpl implements BotS5Service {
                       .append(" 부활(HP ").append(vHpAfter.format()).append("/").append(vEff[0]).append(")").append(NL);
                 }
             }
+            // [2026-09-16] 즉사방어(DEATH_WARD) -- 이 앰부시 즉사 경로엔 그동안 방어가 전혀
+            // 안 걸려있었다(반격 루프에만 있었음). 도사 부활도 실패했고 이 동료가 방어
+            // 대상이면 피해 이전 상태(=풀피 기준이 아니라 이번 앰부시 직전 HP)로 되돌린다.
+            if (PP.toBaseValue(vHpAfter) <= 0) {
+                int vWardCid = intVal(p.get("WARD_COMPANION_ID"), 0);
+                PP vHpBefore = PP.of(((Number) victim.get("CUR_HP_VALUE")).doubleValue(), strVal(victim.get("CUR_HP_EXT"), ""));
+                if (vWardCid > 0 && vWardCid == intVal(victim.get("COMPANION_ID"), 0)) {
+                    vHpAfter = vHpBefore;
+                    HashMap<String, Object> vWardClearUp = new HashMap<>();
+                    vWardClearUp.put("userName", userName);
+                    vWardClearUp.put("wardCompanionId", 0);
+                    dao.updateUserProgress(vWardClearUp);
+                    p.put("WARD_COMPANION_ID", 0);
+                    sb.append("✨💠 즉사방어 발동! ").append(jobTag(vGrade, vJob, vName)).append("이(가) 피해를 받기 전 상태로 완전히 되돌아왔다! (가호 소모)").append(NL);
+                }
+            }
             if (PP.toBaseValue(vHpAfter) <= 0) {
                 sb.append("💀 ").append(jobTag(vGrade, vJob, vName)).append("이(가) 쓰러졌다!").append(NL);
             }
-            HashMap<String, Object> vUp = new HashMap<>();
-            vUp.put("companionId", intVal(victim.get("COMPANION_ID"), 0));
-            vUp.put("curHpValue", vHpAfter.getValue());
-            vUp.put("curHpExt", vHpAfter.getUnit());
-            dao.updateCompanionHp(vUp);
-            victim.put("CUR_HP_VALUE", vHpAfter.getValue());
-            victim.put("CUR_HP_EXT", vHpAfter.getUnit());
+            writeCompanionHp(victim, vHpAfter);
 
             // [2026-09-14] "79층 1턴즉사 이후 다음턴에 부활하지 못한 동료를 하수인으로
             // 생성해서 6턴마다 은신-즉사 하도록" 요청 -- 69층 하수인과 같은 CUR_BOSS_
@@ -2976,17 +2994,24 @@ public class BotS5ServiceImpl implements BotS5Service {
                               .append(" 부활(HP ").append(ivHpAfter.format()).append("/").append(ivEff[0]).append(")").append(NL);
                         }
                     }
+                    // [2026-09-16] 즉사방어(DEATH_WARD) -- 하수인 은신즉사 경로도 누락돼 있었다.
+                    if (PP.toBaseValue(ivHpAfter) <= 0) {
+                        int ivWardCid = intVal(p.get("WARD_COMPANION_ID"), 0);
+                        if (ivWardCid > 0 && ivWardCid == intVal(instaVictim.get("COMPANION_ID"), 0)) {
+                            ivHpAfter = PP.of(((Number) instaVictim.get("CUR_HP_VALUE")).doubleValue(), strVal(instaVictim.get("CUR_HP_EXT"), ""));
+                            HashMap<String, Object> ivWardClearUp = new HashMap<>();
+                            ivWardClearUp.put("userName", userName);
+                            ivWardClearUp.put("wardCompanionId", 0);
+                            dao.updateUserProgress(ivWardClearUp);
+                            p.put("WARD_COMPANION_ID", 0);
+                            sb.append("✨💠 즉사방어 발동! ").append(jobTag(ivGrade, ivJob, ivName)).append("이(가) 피해를 받기 전 상태로 완전히 되돌아왔다! (가호 소모)").append(NL);
+                        }
+                    }
                     if (PP.toBaseValue(ivHpAfter) <= 0) {
                         sb.append("💀 ").append(jobTag(ivGrade, ivJob, ivName)).append("이(가) 쓰러졌다!").append(NL);
                         stillAlive79.remove(instaVictim);
                     }
-                    HashMap<String, Object> ivUp = new HashMap<>();
-                    ivUp.put("companionId", intVal(instaVictim.get("COMPANION_ID"), 0));
-                    ivUp.put("curHpValue", ivHpAfter.getValue());
-                    ivUp.put("curHpExt", ivHpAfter.getUnit());
-                    dao.updateCompanionHp(ivUp);
-                    instaVictim.put("CUR_HP_VALUE", ivHpAfter.getValue());
-                    instaVictim.put("CUR_HP_EXT", ivHpAfter.getUnit());
+                    writeCompanionHp(instaVictim, ivHpAfter);
                 }
             }
 
@@ -3424,17 +3449,11 @@ public class BotS5ServiceImpl implements BotS5Service {
             }
         }
 
-        HashMap<String, Object> cUp = new HashMap<>();
-        cUp.put("companionId", intVal(curTarget.get("COMPANION_ID"), 0));
-        cUp.put("curHpValue", targetHpAfter.getValue());
-        cUp.put("curHpExt", targetHpAfter.getUnit());
-        dao.updateCompanionHp(cUp);
         // [버그 수정] DB엔 반영됐지만 curTarget(=party 리스트 안의 같은 객체)의 메모리 값은 안
         // 바뀌어서, 바로 아래 partyHpSummary()가 반격 맞기 "전" HP를 그대로 보여주는 문제가
         // 있었다("이번턴 남은" 구간에 맞은 사람 HP가 그대로 풀피로 나옴 -- 신고로 확인).
-        // party 리스트 원본을 직접 갱신.
-        curTarget.put("CUR_HP_VALUE", targetHpAfter.getValue());
-        curTarget.put("CUR_HP_EXT", targetHpAfter.getUnit());
+        // writeCompanionHp가 DB 반영과 party 리스트 원본 갱신을 함께 처리(+ 0 미만 방어).
+        writeCompanionHp(curTarget, targetHpAfter);
 
         // [2026-09-10] "69층 보스는 동료를 죽이면 보스 하수인으로 살려서 공격하게, 보스
         // 처치시 사라지게 해달라" 요청 -- 이 턴 반격으로 방금 죽은(위에서 부활 자체를 건너뛴)
@@ -3541,19 +3560,28 @@ public class BotS5ServiceImpl implements BotS5Service {
                     PP victimHpAfter = victimHp.subtract(PP.fromPP(mDmg));
                     if (PP.toBaseValue(victimHpAfter) < 0) victimHpAfter = PP.fromPP(0);
 
-                    HashMap<String, Object> vUp = new HashMap<>();
-                    vUp.put("companionId", intVal(victim.get("COMPANION_ID"), 0));
-                    vUp.put("curHpValue", victimHpAfter.getValue());
-                    vUp.put("curHpExt", victimHpAfter.getUnit());
-                    dao.updateCompanionHp(vUp);
-                    victim.put("CUR_HP_VALUE", victimHpAfter.getValue());
-                    victim.put("CUR_HP_EXT", victimHpAfter.getUnit());
+                    // [2026-09-16] 즉사방어(DEATH_WARD) -- 69/89층 하수인 매턴공격 경로도 누락.
+                    boolean victimWarded = false;
+                    if (PP.toBaseValue(victimHpAfter) <= 0) {
+                        int vWardCid2 = intVal(p.get("WARD_COMPANION_ID"), 0);
+                        if (vWardCid2 > 0 && vWardCid2 == intVal(victim.get("COMPANION_ID"), 0)) {
+                            victimHpAfter = victimHp;
+                            victimWarded = true;
+                            HashMap<String, Object> vWardClearUp2 = new HashMap<>();
+                            vWardClearUp2.put("userName", userName);
+                            vWardClearUp2.put("wardCompanionId", 0);
+                            dao.updateUserProgress(vWardClearUp2);
+                            p.put("WARD_COMPANION_ID", 0);
+                        }
+                    }
+                    writeCompanionHp(victim, victimHpAfter);
 
                     boolean victimDied = PP.toBaseValue(victimHpAfter) <= 0;
                     sb.append("👹 하수인이 된 ").append(jobTag(mGrade, mJob, mName)).append("이(가) ")
                       .append(jobTag(vGrade, vJob, strVal(victim.get("NAME"), JOB_NAME.getOrDefault(vJob, "동료"))))
                       .append("을(를) 공격! 🎲").append(mRoll).append("→").append(mDmg).append("dmg")
                       .append(victimDied ? " 💀" : "").append(NL);
+                    if (victimWarded) sb.append("✨💠 즉사방어 발동! 피해를 받기 전 상태로 완전히 되돌아왔다! (가호 소모)").append(NL);
                     if (victimDied) {
                         stillAlive.remove(victim);
                         if (stillAlive.isEmpty()) break; // 더 공격할 대상 없음(다음 /주사위 때 전멸 처리됨)
@@ -3626,6 +3654,24 @@ public class BotS5ServiceImpl implements BotS5Service {
         for (HashMap<String, Object> c : party) {
             setCompanionFullHp(c, userStat);
         }
+    }
+
+    /** [2026-09-16] "즉사방어를 추가했는데 HP가 마이너스로 저장되는 버그가 있다"(실사례:
+     *  컴파니언193 CUR_HP_VALUE=-1150) 신고로 추가한 마지막 방어선. 전투 중 companion HP를
+     *  쓰는 경로(반격/기습/하수인 공격 등)가 여러 곳으로 흩어져 있고 각자 0-클램프를 따로
+     *  구현하고 있었는데, 정확히 어느 경로가 원인인지 로그만으로는 특정하지 못했다 -- 이제
+     *  모든 HP 기록을 이 헬퍼 하나로 통일해서, 개별 클램프가 놓치는 경로가 있더라도 여기서
+     *  한 번 더 걸러져 DB엔 절대 음수가 안 들어가게 한다(메시지 문구는 호출부가 이미
+     *  자기 지역변수로 먼저 만들어둔 뒤 호출하므로 영향 없음). */
+    private void writeCompanionHp(HashMap<String, Object> companion, PP hpAfter) {
+        if (PP.toBaseValue(hpAfter) < 0) hpAfter = PP.fromPP(0);
+        HashMap<String, Object> up = new HashMap<>();
+        up.put("companionId", intVal(companion.get("COMPANION_ID"), 0));
+        up.put("curHpValue", hpAfter.getValue());
+        up.put("curHpExt", hpAfter.getUnit());
+        dao.updateCompanionHp(up);
+        companion.put("CUR_HP_VALUE", hpAfter.getValue());
+        companion.put("CUR_HP_EXT", hpAfter.getUnit());
     }
 
     private void setCompanionFullHp(HashMap<String, Object> c, HashMap<String, Object> userStat) {
