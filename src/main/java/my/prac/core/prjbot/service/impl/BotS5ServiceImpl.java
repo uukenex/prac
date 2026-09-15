@@ -470,12 +470,17 @@ public class BotS5ServiceImpl implements BotS5Service {
                 ((Number) mon.get("ATK_VALUE")).doubleValue(), ((Number) mon.get("DEF_VALUE")).doubleValue());
     }
 
-    /** 현재 해금 범위(maxFloorReached, CONTENT_LOCKED_FLOOR 이내) 사냥터층 중 파티 전투력이
+    /** [2026-09-16] "현재 갈 수 있는(이미 밟아본) 층 말고, 진짜 전투력 기준으로 어느 층이
+     *  좋은 사냥터인지 추천해달라" 요청 -- 기존엔 MAX_FLOOR_REACHED(직접 걸어서 밟아본 최고
+     *  층)를 상한으로 써서, 아직 그 블록 안을 다 안 걸어봤으면(예: /탑올라가기로 방금 새
+     *  블록에 도착) 실제로 바로 갈 수 있는 층인데도 추천 대상에서 빠졌다. UNLOCKED_BLOCK
+     *  (보스 처치로 열린 최고 마을층, 그 블록의 1~8층은 /층변경으로 즉시 이동 가능)+9를
+     *  상한으로 바꿔서 "지금 당장 이동 가능한 전체 범위"를 기준으로 추천한다.
      *  SAFE_HUNT_RATIO배 이상 여유 있는 "가장 높은" 층을 추천(같은 조건이면 보상이 더 좋은
      *  고층 우선). 만족하는 층이 하나도 없으면(1층조차 버거움) 0 반환. */
-    private int recommendHuntFloor(long myPower, int maxFloorReached) {
+    private int recommendHuntFloor(long myPower, int unlockedBlock) {
         int best = 0;
-        int cap = Math.min(maxFloorReached, CONTENT_LOCKED_FLOOR - 1);
+        int cap = Math.min(unlockedBlock + 9, CONTENT_LOCKED_FLOOR - 1);
         for (int f = 1; f <= cap; f++) {
             int pos = f % 10;
             if (pos < 1 || pos > 8) continue; // 사냥터층만 대상(마을/보스 제외)
@@ -980,25 +985,20 @@ public class BotS5ServiceImpl implements BotS5Service {
             if (maxReached < 1) {
                 sb.append("　(아직 사냥터에 진입하지 않아 층별 비교는 생략합니다)").append(NL);
             } else {
-                // 구간(10층 단위 블록)별 몬스터 전투력 -- 이미 도달한 블록까지만 표시. 51층+는
-                // 구간 내 선형 스케일(applyHardcoreFloorScale)이 있어 첫/마지막 사냥터층
-                // 전투력을 "저~고"로 같이 보여준다(같으면 그냥 한 값).
-                List<String> blockLines = new ArrayList<>();
-                for (int b = 1; b <= 10; b++) {
-                    int blockBase = (b - 1) * 10;
-                    int firstFloor = blockBase + 1;
-                    if (firstFloor > maxReached) break;
-                    long lo = floorMonsterCombatPower(firstFloor);
-                    long hi = floorMonsterCombatPower(Math.min(blockBase + 8, maxReached));
-                    blockLines.add(b + "구간(" + firstFloor + "~" + (blockBase + 8) + "층) "
-                            + (lo == hi ? String.valueOf(lo) : (lo + "~" + hi)));
+                // [2026-09-16] "너무 길다, 구간별 표를 없애고 지금 있는 층 전투력만 한 줄로
+                // 보여달라" 요청 -- 기존 10구간 표 대신 지금 있는 층(floor) 하나만.
+                int fpos = floor % 10;
+                if (fpos >= 1 && fpos <= 8) {
+                    sb.append("　📊 ").append(floor).append("층 전투력 ").append(floorMonsterCombatPower(floor)).append(NL);
                 }
-                if (!blockLines.isEmpty()) {
-                    sb.append("　📊 구간별 몬스터 전투력: ").append(String.join(" · ", blockLines)).append(NL);
-                }
-                int recommended = recommendHuntFloor(myPower, maxReached);
+                // [2026-09-16] "이미 밟아본 층 말고 진짜 전투력 기준으로 추천, 괄호 설명은
+                // 빼달라" 요청 -- 상한을 MAX_FLOOR_REACHED 대신 UNLOCKED_BLOCK(지금 당장
+                // /탑올라가기+층변경으로 이동 가능한 전체 범위)로 바꿔서 계산(recommendHuntFloor
+                // 주석 참고), 문구도 짧게.
+                int unlockedBlock = intVal(p.get("UNLOCKED_BLOCK"), 0);
+                int recommended = recommendHuntFloor(myPower, unlockedBlock);
                 if (recommended > 0) {
-                    sb.append("　🎯 추천 사냥터: ").append(recommended).append("층 (전투력 여유 있게 사냥 가능한 가장 높은 층)").append(NL);
+                    sb.append("　🎯 추천 사냥터: ").append(recommended).append("층").append(NL);
                 } else {
                     sb.append("　⚠️ 지금 전투력으로는 1층 사냥도 버거울 수 있어요 -- 동료 성장/장비 투자를 추천합니다.").append(NL);
                 }
@@ -1456,12 +1456,28 @@ public class BotS5ServiceImpl implements BotS5Service {
      * 웹 한도를 넘으면 웹만 차단, 카톡 한도까지 넘으면 전부 차단"이 자연스럽게 성립한다.
      * (SimpleDateFormat은 스레드 안전하지 않아 static 캐시로 못 쓰므로 java.time으로 비교한다.)
      */
+    // [2026-09-16] "한도를 다 소진하면 마지막 소진한 시간 이후 시간당 100회씩 회복시켜달라"
+    // 요청 -- 새 컬럼 없이 기존 DICE_ROLL_DATE(성공한 굴림마다 갱신됨)를 그대로 활용한다.
+    // 한도에 걸려 더 못 굴리게 된 시점부터는 이 이상 갱신되지 않으므로, DICE_ROLL_DATE는
+    // 자연히 "마지막으로 성공한(=소진 직전 또는 소진 시점) 굴림 시각"에 멈춰있다. 그 시각
+    // 이후 지난 시간(시)만큼 시간당 100회씩 "회복"으로 쳐서 카운트를 깎아준다(아래 sameDay가
+    // true인 동안, 즉 자정 지나기 전까지만 -- 자정이 지나면 어차피 0으로 리셋되니 무관).
+    private static final int DICE_REGEN_PER_HOUR = 100;
+
     private String checkAndBumpDailyDiceLimit(String userName, HashMap<String, Object> p, String channel) {
         java.util.Date rollDate = (java.util.Date) p.get("DICE_ROLL_DATE");
         int rollCountToday = intVal(p.get("DICE_ROLL_COUNT_TODAY"), 0);
         boolean sameDay = rollDate != null
                 && new java.sql.Date(rollDate.getTime()).toLocalDate().equals(java.time.LocalDate.now());
-        int curCount = sameDay ? rollCountToday : 0;
+        int storedCount = sameDay ? rollCountToday : 0;
+        // 마지막 굴림(=소진 시점) 이후 지난 시간만큼 시간당 100회씩 회복 -- 실제로 한도에
+        // 안 걸려 있었으면(방금 막 굴린 직후) 경과 시간이 거의 0이라 실질적 영향 없음.
+        int regen = 0;
+        if (sameDay && rollDate != null) {
+            long hoursElapsed = java.time.Duration.between(rollDate.toInstant(), java.time.Instant.now()).toHours();
+            regen = (int) Math.min(Integer.MAX_VALUE, hoursElapsed * DICE_REGEN_PER_HOUR);
+        }
+        int curCount = Math.max(0, storedCount - regen);
         boolean isWeb = "WEB".equals(channel);
         int channelLimit = isWeb ? DAILY_DICE_LIMIT : (DAILY_DICE_LIMIT + KAKAO_BONUS_DICE);
         if (curCount >= channelLimit) {
@@ -1469,11 +1485,14 @@ public class BotS5ServiceImpl implements BotS5Service {
                 // 웹은 막혔지만 카톡 쪽 보너스가 아직 안 찼으면 그쪽으로 안내.
                 if (curCount < DAILY_DICE_LIMIT + KAKAO_BONUS_DICE) {
                     return "🎲 오늘 웹에서 주사위를 " + DAILY_DICE_LIMIT + "번 모두 굴렸습니다. "
-                            + "카카오톡에서는 " + (DAILY_DICE_LIMIT + KAKAO_BONUS_DICE - curCount) + "번 더 진행할 수 있어요!";
+                            + "카카오톡에서는 " + (DAILY_DICE_LIMIT + KAKAO_BONUS_DICE - curCount) + "번 더 진행할 수 있어요! "
+                            + "(시간당 " + DICE_REGEN_PER_HOUR + "회씩 회복됩니다)";
                 }
-                return "🎲 오늘 주사위를 " + (DAILY_DICE_LIMIT + KAKAO_BONUS_DICE) + "번 모두 굴렸습니다. 내일 다시 시도해주세요.";
+                return "🎲 오늘 주사위를 " + (DAILY_DICE_LIMIT + KAKAO_BONUS_DICE) + "번 모두 굴렸습니다. "
+                        + "시간당 " + DICE_REGEN_PER_HOUR + "회씩 회복되니 잠시 후 다시 시도하거나, 내일 다시 시도해주세요.";
             }
-            return "🎲 오늘 카카오톡 한도(" + (DAILY_DICE_LIMIT + KAKAO_BONUS_DICE) + "번)까지 모두 굴렸습니다. 내일 다시 시도해주세요.";
+            return "🎲 오늘 카카오톡 한도(" + (DAILY_DICE_LIMIT + KAKAO_BONUS_DICE) + "번)까지 모두 굴렸습니다. "
+                    + "시간당 " + DICE_REGEN_PER_HOUR + "회씩 회복되니 잠시 후 다시 시도하거나, 내일 다시 시도해주세요.";
         }
         int newCount = curCount + 1;
         HashMap<String, Object> up = new HashMap<>();
@@ -2756,7 +2775,10 @@ public class BotS5ServiceImpl implements BotS5Service {
                 resetBlockExploration(userName, prevBlockBase);
                 // 새 구간 마을에 도착하는 셈이므로(changeFloor의 마을 도착 부활과 동일 이유),
                 // 이 보스전에서 전투불가가 된 동료가 있으면 여기서 부활시킨다.
-                int revivedOnBossClear = revivePartyDead(userName, party, userStat);
+                // [2026-09-16] "0층 마을 도착 시 편성된 동료만 부활하는데, 편성 안 된 동료도
+                // 전부 부활시켜달라" 요청 -- 전투에 참여한 party(PARTY_SLOT만)가 아니라 보유한
+                // 전체 동료 목록을 넘긴다(마을 도착 부활의 다른 3곳과 동일하게 맞춤).
+                int revivedOnBossClear = revivePartyDead(userName, dao.selectUserCompanions(userName), userStat);
                 if (revivedOnBossClear > 0) {
                     sb.append("✨ 전투불가 상태였던 동료 ").append(revivedOnBossClear).append("명이 마을에서 부활했습니다!").append(NL);
                 }
@@ -3937,11 +3959,9 @@ public class BotS5ServiceImpl implements BotS5Service {
         boolean arrivedAtVillage = target % 10 == 0 && floor != target;
         int revivedCount = 0;
         if (arrivedAtVillage) {
-            List<HashMap<String, Object>> villageParty = new ArrayList<>();
-            for (HashMap<String, Object> c : dao.selectUserCompanions(userName)) {
-                if (c.get("PARTY_SLOT") != null) villageParty.add(c);
-            }
-            revivedCount = revivePartyDead(userName, villageParty, dao.selectUserStat(userName));
+            // [2026-09-16] "편성 안 된 동료도 마을 도착 시 전부 부활시켜달라" 요청 -- 기존엔
+            // PARTY_SLOT 있는 동료만 넘겨서 후보(대기) 동료는 전투불가 상태가 안 풀렸다.
+            revivedCount = revivePartyDead(userName, dao.selectUserCompanions(userName), dao.selectUserStat(userName));
         }
 
         StringBuilder sb = new StringBuilder(userName).append("님," + NL);
@@ -4023,11 +4043,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         up.put("curFloor", target);
         dao.updateUserProgress(up);
 
-        List<HashMap<String, Object>> villageParty = new ArrayList<>();
-        for (HashMap<String, Object> c : dao.selectUserCompanions(userName)) {
-            if (c.get("PARTY_SLOT") != null) villageParty.add(c);
-        }
-        int revivedCount = revivePartyDead(userName, villageParty, dao.selectUserStat(userName));
+        // [2026-09-16] "편성 안 된 동료도 마을 도착 시 전부 부활시켜달라" 요청.
+        int revivedCount = revivePartyDead(userName, dao.selectUserCompanions(userName), dao.selectUserStat(userName));
 
         StringBuilder sb = new StringBuilder(userName).append("님," + NL);
         sb.append("🪜 ").append(floor).append("층 마을 → ").append(target).append("층 마을로 내려갔습니다.");
@@ -4061,11 +4078,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         up.put("curFloor", target);
         dao.updateUserProgress(up);
 
-        List<HashMap<String, Object>> villageParty = new ArrayList<>();
-        for (HashMap<String, Object> c : dao.selectUserCompanions(userName)) {
-            if (c.get("PARTY_SLOT") != null) villageParty.add(c);
-        }
-        int revivedCount = revivePartyDead(userName, villageParty, dao.selectUserStat(userName));
+        // [2026-09-16] "편성 안 된 동료도 마을 도착 시 전부 부활시켜달라" 요청.
+        int revivedCount = revivePartyDead(userName, dao.selectUserCompanions(userName), dao.selectUserStat(userName));
 
         StringBuilder sb = new StringBuilder(userName).append("님," + NL);
         sb.append("🪜 ").append(floor).append("층 마을 → ").append(target).append("층 마을로 올라갔습니다.");
