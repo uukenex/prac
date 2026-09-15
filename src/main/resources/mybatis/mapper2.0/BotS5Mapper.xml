@@ -608,11 +608,16 @@
         SELECT NVL(MAX(GRADE), 0) FROM TBOT_S5_USER_COMPANION
     </select>
 
-    <!-- [2026-09-15] "최고 동료 등급을 갯수까지 포함해서" 요청: 서버 전체에서 최고 등급인
-         동료가 총 몇 마리인지(누가 갖고 있는지는 여전히 비공개). -->
+    <!-- [2026-09-15] "최고 동료 등급을 갯수까지 포함해서" 요청: 원래는 최고 등급 동료의
+         서버 전체 합산 COUNT(*)였는데, "13명이라 나오는데 실제로 한 사람이 최고로 가진
+         명수를 적어달라"는 신고로 정정. 유저별로 GROUP BY 한 뒤 그 중 MAX(개인별로
+         최고 등급을 가장 많이 보유한 사람의 개수)를 반환(누가 갖고 있는지는 여전히 비공개). -->
     <select id="selectMaxCompanionGradeCount" resultType="int">
-        SELECT COUNT(*) FROM TBOT_S5_USER_COMPANION
-        WHERE GRADE = (SELECT NVL(MAX(GRADE), 0) FROM TBOT_S5_USER_COMPANION)
+        SELECT NVL(MAX(CNT), 0) FROM (
+            SELECT COUNT(*) CNT FROM TBOT_S5_USER_COMPANION
+            WHERE GRADE = (SELECT NVL(MAX(GRADE), 0) FROM TBOT_S5_USER_COMPANION)
+            GROUP BY USER_NAME
+        )
     </select>
 
     <!-- [2026-09-15] 악세서리(목걸이/반지/팔찌) 신설로 "장비" 랭킹 통계는 그 3종을 제외한
@@ -628,10 +633,15 @@
         SELECT NVL(MAX(GRADE), 0) FROM TBOT_S5_USER_EQUIP WHERE PART NOT IN ('NECKLACE','RING','BRACELET')
     </select>
 
+    <!-- [2026-09-15 정정] 동료와 동일한 이유로 서버 합산 COUNT(*)가 아니라 유저별 GROUP BY
+         후 MAX(한 사람이 최고로 보유한 개수)로 변경. -->
     <select id="selectMaxEquipGradeCount" resultType="int">
-        SELECT COUNT(*) FROM TBOT_S5_USER_EQUIP
-        WHERE PART NOT IN ('NECKLACE','RING','BRACELET')
-          AND GRADE = (SELECT NVL(MAX(GRADE), 0) FROM TBOT_S5_USER_EQUIP WHERE PART NOT IN ('NECKLACE','RING','BRACELET'))
+        SELECT NVL(MAX(CNT), 0) FROM (
+            SELECT COUNT(*) CNT FROM TBOT_S5_USER_EQUIP
+            WHERE PART NOT IN ('NECKLACE','RING','BRACELET')
+              AND GRADE = (SELECT NVL(MAX(GRADE), 0) FROM TBOT_S5_USER_EQUIP WHERE PART NOT IN ('NECKLACE','RING','BRACELET'))
+            GROUP BY USER_NAME
+        )
     </select>
 
     <!-- [2026-09-15] 악세서리 전용 랭킹 통계(목걸이/반지/팔찌만). -->
@@ -646,10 +656,15 @@
         SELECT NVL(MAX(GRADE), 0) FROM TBOT_S5_USER_EQUIP WHERE PART IN ('NECKLACE','RING','BRACELET')
     </select>
 
+    <!-- [2026-09-15 정정] 동료/장비와 동일한 이유로 서버 합산이 아니라 유저별 MAX로 변경
+         (질문은 동료/장비만 나왔지만 같은 날 같은 패턴으로 추가된 통계라 함께 정정). -->
     <select id="selectMaxAccessoryGradeCount" resultType="int">
-        SELECT COUNT(*) FROM TBOT_S5_USER_EQUIP
-        WHERE PART IN ('NECKLACE','RING','BRACELET')
-          AND GRADE = (SELECT NVL(MAX(GRADE), 0) FROM TBOT_S5_USER_EQUIP WHERE PART IN ('NECKLACE','RING','BRACELET'))
+        SELECT NVL(MAX(CNT), 0) FROM (
+            SELECT COUNT(*) CNT FROM TBOT_S5_USER_EQUIP
+            WHERE PART IN ('NECKLACE','RING','BRACELET')
+              AND GRADE = (SELECT NVL(MAX(GRADE), 0) FROM TBOT_S5_USER_EQUIP WHERE PART IN ('NECKLACE','RING','BRACELET'))
+            GROUP BY USER_NAME
+        )
     </select>
 
     <select id="countUserAccessory" resultType="int">

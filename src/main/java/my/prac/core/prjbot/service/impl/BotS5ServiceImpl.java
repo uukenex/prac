@@ -688,8 +688,11 @@ public class BotS5ServiceImpl implements BotS5Service {
         int maxExplored = dao.selectMaxFullyExploredCount();
         int maxCompanion = dao.selectMaxCompanionCount();
         int maxCompanionGrade = dao.selectMaxCompanionGrade();
-        // [2026-09-15] "최고 동료/장비 등급을 갯수까지 포함해서" 요청 -- 서버 전체에서 그
-        // 최고 등급인 동료/장비가 총 몇 개인지(여전히 "누가"는 비공개).
+        // [2026-09-15] "최고 동료/장비 등급을 갯수까지 포함해서" 요청 -- 처음엔 서버 전체
+        // 합산치(여러 유저가 나눠 가진 걸 다 더한 값)로 잘못 구현했었는데("13명이라고
+        // 나오는데 실제로 한 사람이 최고로 가진 명수를 적어달라" 신고로 확인), 최고 등급
+        // 컴패니언/장비를 "한 명이 최고 몇 개 보유했는지"(개인별 집계의 MAX)로 정정.
+        // "누가"는 여전히 비공개.
         int maxCompanionGradeCount = dao.selectMaxCompanionGradeCount();
         int maxEquip = dao.selectMaxEquipCount();
         int maxEquipGrade = dao.selectMaxEquipGrade();
@@ -745,14 +748,16 @@ public class BotS5ServiceImpl implements BotS5Service {
         sb.append("🏅 최다 업적 보유: ").append(maxAch).append("개").append(meTag(mineAch, maxAch)).append(NL);
         sb.append("🗺️ 최다 완전탐사: ").append(maxExplored).append("개 층").append(meTag(mineExplored, maxExplored)).append(NL);
         sb.append("👥 최다 동료 보유: ").append(maxCompanion).append("명").append(meTag(mineCompanion, maxCompanion)).append(NL);
-        // [2026-09-15 표현 수정] "13마리 -> 13명" 요청 -- 동료는 몬스터가 아니라 사람이므로 단위 통일.
-        sb.append("✨ 최고 동료 등급: ★").append(maxCompanionGrade).append(" (").append(maxCompanionGradeCount).append("명)")
+        // [2026-09-15 표현 수정] "13마리 -> 13명" + "그 갯수는 서버 합산이 아니라 한 사람이
+        // 최고로 보유한 개수여야 한다" 요청 -- 괄호 안 숫자가 "합산치"가 아니라 "최다 보유자
+        // 1명 기준"임을 문구로도 명확히("최다 보유자 N명/개").
+        sb.append("✨ 최고 동료 등급: ★").append(maxCompanionGrade).append(" (최다 보유자 ").append(maxCompanionGradeCount).append("명)")
           .append(meTag(mineCompanionGrade, maxCompanionGrade)).append(NL);
         sb.append("🎽 최다 장비 보유: ").append(maxEquip).append("개").append(meTag(mineEquip, maxEquip)).append(NL);
-        sb.append("💎 최고 장비 등급: ★").append(maxEquipGrade).append(" (").append(maxEquipGradeCount).append("개)")
+        sb.append("💎 최고 장비 등급: ★").append(maxEquipGrade).append(" (최다 보유자 ").append(maxEquipGradeCount).append("개)")
           .append(meTag(mineEquipGrade, maxEquipGrade)).append(NL);
         sb.append("💍 최다 악세서리 보유: ").append(maxAccessory).append("개").append(meTag(mineAccessory, maxAccessory)).append(NL);
-        sb.append("🔮 최고 악세서리 등급: ★").append(maxAccessoryGrade).append(" (").append(maxAccessoryGradeCount).append("개)")
+        sb.append("🔮 최고 악세서리 등급: ★").append(maxAccessoryGrade).append(" (최다 보유자 ").append(maxAccessoryGradeCount).append("개)")
           .append(meTag(mineAccessoryGrade, maxAccessoryGrade)).append(NL);
         sb.append("💰 최다 누적 PP: ").append(maxPp.format())
           .append((PP.toBaseValue(maxPp) > 0 && minePp.compare(maxPp) >= 0) ? " (me)" : "");
