@@ -745,7 +745,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         sb.append("🏅 최다 업적 보유: ").append(maxAch).append("개").append(meTag(mineAch, maxAch)).append(NL);
         sb.append("🗺️ 최다 완전탐사: ").append(maxExplored).append("개 층").append(meTag(mineExplored, maxExplored)).append(NL);
         sb.append("👥 최다 동료 보유: ").append(maxCompanion).append("명").append(meTag(mineCompanion, maxCompanion)).append(NL);
-        sb.append("✨ 최고 동료 등급: ★").append(maxCompanionGrade).append(" (").append(maxCompanionGradeCount).append("마리)")
+        // [2026-09-15 표현 수정] "13마리 -> 13명" 요청 -- 동료는 몬스터가 아니라 사람이므로 단위 통일.
+        sb.append("✨ 최고 동료 등급: ★").append(maxCompanionGrade).append(" (").append(maxCompanionGradeCount).append("명)")
           .append(meTag(mineCompanionGrade, maxCompanionGrade)).append(NL);
         sb.append("🎽 최다 장비 보유: ").append(maxEquip).append("개").append(meTag(mineEquip, maxEquip)).append(NL);
         sb.append("💎 최고 장비 등급: ★").append(maxEquipGrade).append(" (").append(maxEquipGradeCount).append("개)")
