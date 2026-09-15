@@ -1923,6 +1923,26 @@ public class BotS5ServiceImpl implements BotS5Service {
         return gachaId >= 1 && gachaId <= 4 && intVal(p.get("EQUIP_VOUCHER_T" + gachaId), 0) > 0;
     }
 
+    /** [2026-09-15] hasUsableCompanionVoucher와 완전히 동일한 목적/패턴, 악세서리뽑기용. */
+    private boolean hasUsableAccessoryVoucher(HashMap<String, Object> p, int gachaId) {
+        return gachaId >= 1 && gachaId <= 4 && intVal(p.get("ACCESSORY_VOUCHER_T" + gachaId), 0) > 0;
+    }
+
+    /** [2026-09-15] consumeCompanionVoucher와 완전히 동일한 정책/패턴, 악세서리뽑기용. */
+    private boolean consumeAccessoryVoucher(String userName, HashMap<String, Object> p, int gachaId) {
+        if (gachaId < 1 || gachaId > 4) return false;
+        String field = "accessoryVoucherT" + gachaId;
+        String column = "ACCESSORY_VOUCHER_T" + gachaId;
+        int tierCur = intVal(p.get(column), 0);
+        if (tierCur <= 0) return false;
+        HashMap<String, Object> up = new HashMap<>();
+        up.put("userName", userName);
+        up.put(field, tierCur - 1);
+        dao.updateUserProgress(up);
+        p.put(column, tierCur - 1);
+        return true;
+    }
+
     private String startCombat(String userName, HashMap<String, Object> p, int floor, boolean boss, boolean elite, boolean midBoss) {
         HashMap<String, Object> mon = applyHardcoreFloorScale(dao.selectMonster(blockNo(floor), boss ? "Y" : "N"), floor);
         if (mon == null) {
@@ -4137,27 +4157,30 @@ public class BotS5ServiceImpl implements BotS5Service {
      * 이 명령어가 뭘 하는 건지조차 드러내지 않도록 이유를 자세히 안 붙임). 뽑기권은 실제 경제
      * 가치가 있어 아무나 채팅으로 뿌릴 수 있으면 안 되므로, 이 시스템 안에서 유일하게 존재하는
      * 권한 체크(isEventAdmin)를 반드시 통과해야 한다.
-     * 동료뽑기권/장비뽑기권 둘 다 등급(tier 1~4)을 못박은 티어락 권으로 지급(그 등급
-     * 계약서/상자에만 쓸 수 있고, 아직 그 층에 못 간 유저도 이 권으로는 바로 뽑을 수 있음 --
-     * hasUsableCompanionVoucher/hasUsableEquipVoucher 참고). [버그 수정] 원래 장비는 등급
-     * 구분 없이 범용 EQUIP_VOUCHER로만 지급했는데, "/이벤트지급 중급 1 1 했더니 장비뽑기권은
-     * 초급으로 지급됐다(둘 다 중급이어야 함)"는 신고로 확인 -- 이제 EQUIP_VOUCHER_T{tier}로 지급.
+     * 동료뽑기권/장비뽑기권/악세서리뽑기권 전부 등급(tier 1~4)을 못박은 티어락 권으로
+     * 지급(그 등급 계약서/상자에만 쓸 수 있고, 아직 그 층에 못 간 유저도 이 권으로는 바로
+     * 뽑을 수 있음 -- hasUsableCompanionVoucher/hasUsableEquipVoucher/
+     * hasUsableAccessoryVoucher 참고). [버그 수정] 원래 장비는 등급 구분 없이 범용
+     * EQUIP_VOUCHER로만 지급했는데, "/이벤트지급 중급 1 1 했더니 장비뽑기권은 초급으로
+     * 지급됐다(둘 다 중급이어야 함)"는 신고로 확인 -- 이제 EQUIP_VOUCHER_T{tier}로 지급.
+     * [2026-09-15] "악세뽑기권도 파라미터로 추가해서 지급할 수 있게 해달라, 예: /이벤트지급
+     * 초급 0 0 1 => 악세뽑기권초급 1개" 요청으로 4번째 인자(accessoryQty) 추가.
      */
     @Override
     @Transactional
-    public String grantEventVouchers(String userName, int tier, int companionQty, int equipQty) {
+    public String grantEventVouchers(String userName, int tier, int companionQty, int equipQty, int accessoryQty) {
         if (!isEventAdmin(userName)) {
             return "권한이 없습니다.";
         }
         if (tier < 1 || tier > 4) {
             return "등급은 1(하급)~4(최상급) 사이여야 합니다.";
         }
-        if (companionQty < 0 || equipQty < 0) {
+        if (companionQty < 0 || equipQty < 0 || accessoryQty < 0) {
             return "수량은 0 이상이어야 합니다.";
         }
-        if (companionQty == 0 && equipQty == 0) {
-            return "사용법: /이벤트지급 [등급 초급|중급|상급|최상급] [동료뽑기권수량] [장비뽑기권수량] "
-                    + "(예: /이벤트지급 중급 3 2, 등급 생략 시 초급, 수량 생략 시 0)";
+        if (companionQty == 0 && equipQty == 0 && accessoryQty == 0) {
+            return "사용법: /이벤트지급 [등급 초급|중급|상급|최상급] [동료뽑기권수량] [장비뽑기권수량] [악세뽑기권수량] "
+                    + "(예: /이벤트지급 중급 3 2 1, 등급 생략 시 초급, 수량 생략 시 0)";
         }
         StringBuilder sb = new StringBuilder("🎉 이벤트 지급 완료!");
         if (companionQty > 0) {
@@ -4171,6 +4194,12 @@ public class BotS5ServiceImpl implements BotS5Service {
             sb.append(NL).append("전체 유저 ").append(affected).append("명에게 ")
               .append(COMPANION_TIER_NAME[tier - 1]).append("(").append(tier).append("번) 장비뽑기권 ")
               .append(equipQty).append("장 지급 (해금 여부와 무관하게 바로 사용 가능)");
+        }
+        if (accessoryQty > 0) {
+            int affected = dao.bulkGrantTierAccessoryVoucher(tier, accessoryQty);
+            sb.append(NL).append("전체 유저 ").append(affected).append("명에게 ")
+              .append(COMPANION_TIER_NAME[tier - 1]).append("(").append(tier).append("번) 악세뽑기권 ")
+              .append(accessoryQty).append("장 지급 (해금 여부와 무관하게 바로 사용 가능)");
         }
         return sb.toString();
     }
@@ -5025,24 +5054,27 @@ public class BotS5ServiceImpl implements BotS5Service {
         return sb.toString();
     }
 
-    /** [2026-09-15] "장비뽑기 말고 악세뽑기를 추가해서 목걸이/반지/팔찌 3종" 요청 -- 기존
-     *  pullEquipCore와 거의 같은 구조지만 뽑기권(EQUIP_VOUCHER) 소모 경로가 없다(악세서리는
-     *  전용 뽑기권 시스템 자체가 없음, 항상 PP로만 구매) -- 그 점만 다르고 나머지(해금층
-     *  확인, PP 차감, 등급 굴림, 직업 무작위, 부위 무작위, INSERT)는 동일해서 별도 함수로
-     *  둔다. 기존 equipWear/equipSynthesis/장비목록 등은 전부 PART 문자열에 무관한
-     *  범용(generic) 로직이라 NECKLACE/RING/BRACELET도 코드 변경 없이 그대로 착용/합성/
-     *  목록조회가 된다. */
-    private HashMap<String, Object> pullAccessoryCore(String userName, HashMap<String, Object> gacha, HashMap<String, Object> p) {
+    /** [2026-09-15] "장비뽑기 말고 악세뽑기를 추가해서 목걸이/반지/팔찌 3종" 요청 --
+     *  pullEquipCore와 거의 같은 구조(해금층 확인, 등급 굴림, 직업 무작위, 부위 무작위,
+     *  INSERT). [2026-09-15 후속] "/이벤트지급으로도 지급할 수 있게" 요청으로 뽑기권
+     *  (ACCESSORY_VOUCHER_T{tier}) 소모 경로도 pullEquipCore와 동일하게 추가 -- 쓸 수 있는
+     *  뽑기권이 있으면 해금 여부를 건너뛰고(hasUsableAccessoryVoucher) PP 대신 그 권을
+     *  소모한다(consumeAccessoryVoucher). 기존 equipWear/equipSynthesis/장비목록 등은 전부
+     *  PART 문자열에 무관한 범용(generic) 로직이라 NECKLACE/RING/BRACELET도 코드 변경 없이
+     *  그대로 착용/합성/목록조회가 된다. */
+    private HashMap<String, Object> pullAccessoryCore(String userName, HashMap<String, Object> gacha, HashMap<String, Object> p, int tier) {
         HashMap<String, Object> result = new HashMap<>();
         int unlocked = intVal(p.get("UNLOCKED_BLOCK"), 0);
-        if (intVal(gacha.get("UNLOCK_FLOOR"), 0) > unlocked) {
+        if (!hasUsableAccessoryVoucher(p, tier) && intVal(gacha.get("UNLOCK_FLOOR"), 0) > unlocked) {
             result.put("error", "아직 해금되지 않은 상자입니다.");
             return result;
         }
-        PP cost = PP.of(((Number) gacha.get("COST_VALUE")).doubleValue(), strVal(gacha.get("COST_EXT"), ""));
-        if (!deductPp(userName, p, cost)) {
-            result.put("error", "PP가 부족합니다. (필요 " + cost.format() + " PP)");
-            return result;
+        if (!consumeAccessoryVoucher(userName, p, tier)) {
+            PP cost = PP.of(((Number) gacha.get("COST_VALUE")).doubleValue(), strVal(gacha.get("COST_EXT"), ""));
+            if (!deductPp(userName, p, cost)) {
+                result.put("error", "PP가 부족합니다. (필요 " + cost.format() + " PP)");
+                return result;
+            }
         }
 
         int grade = rollGrade(gacha);
@@ -5077,7 +5109,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (gacha == null || !"ACCESSORY".equals(strVal(gacha.get("GACHA_TYPE"), ""))) {
             return "존재하지 않는 악세서리 상자입니다.";
         }
-        HashMap<String, Object> r = pullAccessoryCore(userName, gacha, p);
+        HashMap<String, Object> r = pullAccessoryCore(userName, gacha, p, gachaId);
         if (r.get("error") != null) return (String) r.get("error");
 
         String job = (String) r.get("job");
@@ -5101,7 +5133,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         int success = 0;
         String stopReason = null;
         for (int i = 0; i < 10; i++) {
-            HashMap<String, Object> r = pullAccessoryCore(userName, gacha, p);
+            HashMap<String, Object> r = pullAccessoryCore(userName, gacha, p, gachaId);
             if (r.get("error") != null) {
                 stopReason = (String) r.get("error");
                 break;

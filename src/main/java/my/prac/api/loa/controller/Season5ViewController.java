@@ -267,6 +267,14 @@ public class Season5ViewController {
                     progress == null ? 0 : toInt(progress.get("EQUIP_VOUCHER_T3")),
                     progress == null ? 0 : toInt(progress.get("EQUIP_VOUCHER_T4")),
             });
+            // [2026-09-15] "/이벤트지급으로 악세뽑기권도 지급할 수 있게" 요청으로 악세서리도
+            // 동료/장비와 동일하게 등급별 티어락 권 노출.
+            result.put("accessoryVoucherByTier", new int[]{
+                    progress == null ? 0 : toInt(progress.get("ACCESSORY_VOUCHER_T1")),
+                    progress == null ? 0 : toInt(progress.get("ACCESSORY_VOUCHER_T2")),
+                    progress == null ? 0 : toInt(progress.get("ACCESSORY_VOUCHER_T3")),
+                    progress == null ? 0 : toInt(progress.get("ACCESSORY_VOUCHER_T4")),
+            });
         }
         result.put("unlockedBlock", unlocked);
         // [UX 개선] 예전엔 해금된 것만 내려줘서 미해금 등급은 무료뽑기권이 있어도 화면에 아예 안
@@ -277,8 +285,7 @@ public class Season5ViewController {
         // 앞부분만 잘라내면 이 번호 체계가 깨진다 -- 반드시 4개 전체를 순서 그대로 내려야 함.
         result.put("companionGacha", s5Dao.selectGachaList("COMPANION", 999));
         result.put("equipGacha", s5Dao.selectGachaList("EQUIP", 999));
-        // [2026-09-15] 악세서리(목걸이/반지/팔찌) 전용 뽑기 신설 -- 장비뽑기권 같은 별도
-        // 뽑기권 시스템은 없어서(항상 PP로만 구매) voucherByTier류는 필요 없음.
+        // [2026-09-15] 악세서리(목걸이/반지/팔찌) 전용 뽑기 신설.
         result.put("accessoryGacha", s5Dao.selectGachaList("ACCESSORY", 999));
         if (!userName.trim().isEmpty()) {
             result.put("stat", s5Service.statShopInfo(userName));

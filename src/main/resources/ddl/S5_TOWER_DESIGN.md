@@ -2689,6 +2689,22 @@ S4의 `TBOT_S4_ACHIEVEMENT`/`TBOT_S4_USER_ACH` 패턴을 확장 계승. S5에서
     (`BotS5ServiceImpl`/`BotS5Service`/`BotS5DAO`/`LoaChatController`/`Season5Controller`/
     `Season5ViewController`) + `BotS5Mapper.xml` + `tower_view.jsp` 수정.
 
+- **[2026-09-15][후속] /이벤트지급에 악세뽑기권 4번째 인자 추가**: "이벤트 지급으로도 지급할
+  수 있게, 예: /이벤트지급 초급 0 0 1 => 악세뽑기권초급 1개" 요청.
+  - `TBOT_S5_USER_PROGRESS`에 `ACCESSORY_VOUCHER_T1~4` 4개 컬럼 신규(`S5_ACCESSORY_VOUCHER.sql`,
+    실 DB 적용 완료) -- 동료/장비와 완전히 동일한 티어락 권 패턴.
+  - `hasUsableAccessoryVoucher`/`consumeAccessoryVoucher`/`bulkGrantTierAccessoryVoucher`
+    신규(기존 동료/장비용과 동일 패턴) -- `pullAccessoryCore()`가 이제 해금 여부보다 먼저
+    쓸 수 있는 권이 있는지 확인하고, 있으면 PP 대신 그 권을 소모(`pullEquipCore`와 동일 로직).
+  - `grantEventVouchers(userName, tier, companionQty, equipQty, accessoryQty)` — 4번째
+    인자 추가(생략하면 0, 기존 3인자 호출과 하위호환). `Season5Controller`의 토큰 파싱도
+    4번째 수량을 읽도록 확장.
+  - 웹 SPA: `accessoryVoucherByTier` 노출, 상점 무료뽑기권 칩에 "N급 전용 악세뽑기권 N장"
+    추가, 악세서리 상자 목록도 장비뽑기와 동일한 무료뽑기/해금전-권한사용 표시로 교체.
+  - DB 마이그레이션: `S5_ACCESSORY_VOUCHER.sql`(실 DB 적용 완료). `BotS5ServiceImpl.java` +
+    `BotS5Service.java` + `BotS5DAO.java` + `Season5Controller.java` +
+    `Season5ViewController.java` + `BotS5Mapper.xml` + `tower_view.jsp` 수정.
+
 ### 남은 TODO
 
 - 실제 서버 기동 후 채팅 명령어 + SPA E2E 테스트 (이번 세션은 `mvn compile`까지만 검증)

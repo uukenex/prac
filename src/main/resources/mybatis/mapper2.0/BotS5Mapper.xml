@@ -17,6 +17,7 @@
                WEAPON_CHOICE_TICKET_G4, WEAPON_CHOICE_TICKET_G5,
                COMPANION_VOUCHER_T1, COMPANION_VOUCHER_T2, COMPANION_VOUCHER_T3, COMPANION_VOUCHER_T4,
                EQUIP_VOUCHER_T1, EQUIP_VOUCHER_T2, EQUIP_VOUCHER_T3, EQUIP_VOUCHER_T4,
+               ACCESSORY_VOUCHER_T1, ACCESSORY_VOUCHER_T2, ACCESSORY_VOUCHER_T3, ACCESSORY_VOUCHER_T4,
                TOTAL_PP_EARNED_VALUE, TOTAL_PP_EARNED_EXT,
                DICE_ROLL_COUNT_TODAY, DICE_ROLL_DATE,
                PENDING_RESTORE_FLOOR, PENDING_RESTORE_MAX_FLOOR, PENDING_RESTORE_UNLOCKED_BLOCK,
@@ -108,6 +109,10 @@
             <if test="equipVoucherT2 != null">EQUIP_VOUCHER_T2 = #{equipVoucherT2},</if>
             <if test="equipVoucherT3 != null">EQUIP_VOUCHER_T3 = #{equipVoucherT3},</if>
             <if test="equipVoucherT4 != null">EQUIP_VOUCHER_T4 = #{equipVoucherT4},</if>
+            <if test="accessoryVoucherT1 != null">ACCESSORY_VOUCHER_T1 = #{accessoryVoucherT1},</if>
+            <if test="accessoryVoucherT2 != null">ACCESSORY_VOUCHER_T2 = #{accessoryVoucherT2},</if>
+            <if test="accessoryVoucherT3 != null">ACCESSORY_VOUCHER_T3 = #{accessoryVoucherT3},</if>
+            <if test="accessoryVoucherT4 != null">ACCESSORY_VOUCHER_T4 = #{accessoryVoucherT4},</if>
             <if test="totalPpEarnedValue != null">TOTAL_PP_EARNED_VALUE = #{totalPpEarnedValue},</if>
             <if test="totalPpEarnedExt != null">TOTAL_PP_EARNED_EXT = #{totalPpEarnedExt},</if>
             <if test="clearMonster != null">
@@ -549,6 +554,16 @@
             COMPANION_VOUCHER_T2 = CASE WHEN #{tier} = 2 THEN NVL(COMPANION_VOUCHER_T2, 0) + #{qty} ELSE COMPANION_VOUCHER_T2 END,
             COMPANION_VOUCHER_T3 = CASE WHEN #{tier} = 3 THEN NVL(COMPANION_VOUCHER_T3, 0) + #{qty} ELSE COMPANION_VOUCHER_T3 END,
             COMPANION_VOUCHER_T4 = CASE WHEN #{tier} = 4 THEN NVL(COMPANION_VOUCHER_T4, 0) + #{qty} ELSE COMPANION_VOUCHER_T4 END
+    </update>
+
+    <!-- [2026-09-15] /이벤트지급(관리자 전용): 전체 유저에게 특정 등급(1~4)의 티어락
+         악세서리뽑기권만 지급. bulkGrantTierEquipVoucher와 완전히 동일 패턴. -->
+    <update id="bulkGrantTierAccessoryVoucher">
+        UPDATE TBOT_S5_USER_PROGRESS
+        SET ACCESSORY_VOUCHER_T1 = CASE WHEN #{tier} = 1 THEN NVL(ACCESSORY_VOUCHER_T1, 0) + #{qty} ELSE ACCESSORY_VOUCHER_T1 END,
+            ACCESSORY_VOUCHER_T2 = CASE WHEN #{tier} = 2 THEN NVL(ACCESSORY_VOUCHER_T2, 0) + #{qty} ELSE ACCESSORY_VOUCHER_T2 END,
+            ACCESSORY_VOUCHER_T3 = CASE WHEN #{tier} = 3 THEN NVL(ACCESSORY_VOUCHER_T3, 0) + #{qty} ELSE ACCESSORY_VOUCHER_T3 END,
+            ACCESSORY_VOUCHER_T4 = CASE WHEN #{tier} = 4 THEN NVL(ACCESSORY_VOUCHER_T4, 0) + #{qty} ELSE ACCESSORY_VOUCHER_T4 END
     </update>
 
     <!-- ==================== /탑랭킹: 서버 전체 최고기록(익명 집계) ====================

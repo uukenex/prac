@@ -248,8 +248,10 @@ public interface BotS5Service {
      * 바로 뽑을 수 있다(hasUsableCompanionVoucher 참고). TBOT_S5_CONFIG.EVENT_ADMIN_USERS
      * ('|' 구분 유저명 목록)에 등록된 유저만 실행 가능, 그 외엔 조용히 "권한이 없습니다"만
      * 반환(누가 관리자인지 자체를 노출하지 않음).
+     * [2026-09-15] accessoryQty(4번째 인자) 추가 -- 악세뽑기권(목걸이/반지/팔찌 상자)도
+     * 같은 방식으로 등급 못박아 지급.
      */
-    String grantEventVouchers(String userName, int tier, int companionQty, int equipQty);
+    String grantEventVouchers(String userName, int tier, int companionQty, int equipQty, int accessoryQty);
 
     /**
      * 웹 SPA 전용: 현재 등록된 공지 버전/내용 조회 -- 로그인/권한 무관, 항상 공개 정보.

@@ -2092,6 +2092,8 @@ var TW = (function () {
         // 뚫리던 문제)은 없앴고 항상 등급별 티어락 권만 존재한다.
         var voucherByTier = data.companionVoucherByTier || [0, 0, 0, 0]; // [티어1(하급)..티어4(최상급)]
         var equipVoucherByTier = data.equipVoucherByTier || [0, 0, 0, 0];
+        // [2026-09-15] 악세서리도 동료/장비와 동일한 등급별 티어락 권.
+        var accessoryVoucherByTier = data.accessoryVoucherByTier || [0, 0, 0, 0];
 
         var chipText = [];
         if (starterFree > 0) chipText.push('튜토리얼 무료 ' + starterFree + '회');
@@ -2101,6 +2103,9 @@ var TW = (function () {
         });
         equipVoucherByTier.forEach(function (n, i) {
           if (n > 0) chipText.push(tierNames[i] + ' 전용 장비뽑기권 ' + n + '장');
+        });
+        accessoryVoucherByTier.forEach(function (n, i) {
+          if (n > 0) chipText.push(tierNames[i] + ' 전용 악세뽑기권 ' + n + '장');
         });
         var freeChip = document.getElementById('shopFreeChip');
         if (chipText.length > 0) {
@@ -2154,21 +2159,31 @@ var TW = (function () {
           eBox.appendChild(row);
         });
 
-        // [2026-09-15] 악세서리(목걸이/반지/팔찌) 상자 -- 장비뽑기권 같은 무료뽑기권 시스템이
-        // 없어서(항상 PP로만 구매) isFree/locked-숨김 로직 없이 해금 여부만 안내하고 항상
-        // 목록에 보여준다(잠겨 있으면 버튼 비활성화).
+        // [2026-09-15][후속] "/이벤트지급으로 악세뽑기권도 지급 가능하게" 요청으로, 장비뽑기와
+        // 동일한 isFree/무료뽑기 표시 패턴으로 교체(더는 그냥 비활성화 버튼만이 아님).
         var aBox = document.getElementById('accessoryGachaList');
         aBox.innerHTML = '';
         (data.accessoryGacha || []).forEach(function (g, gi) {
+          var isFree = (accessoryVoucherByTier[gi] || 0) > 0;
           var locked = unlockedBlock < (g.UNLOCK_FLOOR || 0);
+          if (locked && !isFree) {
+            // 잠겨 있고 쓸 수 있는 무료뽑기권도 없으면, 해금층만 안내하고 버튼은 비활성화.
+            var lockedRow = document.createElement('div');
+            lockedRow.className = 'shop-row';
+            lockedRow.innerHTML = '<span>' + g.GACHA_NAME + ' (' + fmtPP(g.COST_VALUE, g.COST_EXT) + ' PP)'
+                + ' 🔒 ' + g.UNLOCK_FLOOR + '층 마을부터</span>'
+                + '<span class="btn-group"><button disabled>뽑기</button><button class="ten" disabled>10연속</button></span>';
+            aBox.appendChild(lockedRow);
+            return;
+          }
           var row = document.createElement('div');
           row.className = 'shop-row';
           var displayNo = gi + 1;
           row.innerHTML = '<span>' + g.GACHA_NAME + ' (' + fmtPP(g.COST_VALUE, g.COST_EXT) + ' PP)'
-              + (locked ? ' 🔒 ' + g.UNLOCK_FLOOR + '층 마을부터' : '') + '</span>'
+              + (locked ? ' 🎁 해금 전, 무료뽑기권으로만 가능' : '') + '</span>'
               + '<span class="btn-group">'
-              + '<button' + (locked ? ' disabled' : '') + ' onclick="TW.action(\'GACHA_ACCESSORY\',\'' + displayNo + '\')">뽑기</button>'
-              + '<button class="ten"' + (locked ? ' disabled' : '') + ' onclick="TW.action(\'GACHA_ACCESSORY_10\',\'' + displayNo + '\')">10연속</button>'
+              + '<button class="' + (isFree ? 'free' : '') + '" onclick="TW.action(\'GACHA_ACCESSORY\',\'' + displayNo + '\')">' + (isFree ? '무료뽑기' : '뽑기') + '</button>'
+              + '<button class="ten" onclick="TW.action(\'GACHA_ACCESSORY_10\',\'' + displayNo + '\')">10연속</button>'
               + '</span>';
           aBox.appendChild(row);
         });

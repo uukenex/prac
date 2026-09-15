@@ -304,9 +304,11 @@ public class Season5Controller {
     }};
 
     /**
-     * /이벤트지급(관리자 전용, 미공개) — "/이벤트지급 [등급] [동료뽑기권수량] [장비뽑기권수량]".
-     * 등급 토큰(초급/중급/상급/최상급)이 없으면 초급 취급, 뒤 두 수량은 생략하면 각각 0.
-     * 예: "/이벤트지급 중급 3 2" -> 전체 유저에게 중급 동료뽑기권 3장 + 장비뽑기권 2장.
+     * /이벤트지급(관리자 전용, 미공개) — "/이벤트지급 [등급] [동료뽑기권수량] [장비뽑기권수량] [악세뽑기권수량]".
+     * 등급 토큰(초급/중급/상급/최상급)이 없으면 초급 취급, 뒤 세 수량은 생략하면 각각 0.
+     * 예: "/이벤트지급 중급 3 2 1" -> 전체 유저에게 중급 동료뽑기권 3장 + 장비뽑기권 2장 +
+     * 악세뽑기권 1장. [2026-09-15] "/이벤트지급 초급 0 0 1 => 악세뽑기권초급 1개" 요청으로
+     * 4번째 인자(악세뽑기권수량) 추가 -- 생략해도(기존처럼 3개만 입력) 0으로 처리되니 하위호환.
      */
     public String grantEventVouchers(HashMap<String, Object> map) {
         String fulltxt = Objects.toString(map.get("fulltxt"), "").trim();
@@ -324,7 +326,8 @@ public class Season5Controller {
         try {
             int companionQty = args.size() > argIdx ? Integer.parseInt(args.get(argIdx)) : 0;
             int equipQty = args.size() > argIdx + 1 ? Integer.parseInt(args.get(argIdx + 1)) : 0;
-            return s5Service.grantEventVouchers(userNameOf(map), tier, companionQty, equipQty);
+            int accessoryQty = args.size() > argIdx + 2 ? Integer.parseInt(args.get(argIdx + 2)) : 0;
+            return s5Service.grantEventVouchers(userNameOf(map), tier, companionQty, equipQty, accessoryQty);
         } catch (NumberFormatException e) {
             return "수량은 숫자로 입력해주세요.";
         }
