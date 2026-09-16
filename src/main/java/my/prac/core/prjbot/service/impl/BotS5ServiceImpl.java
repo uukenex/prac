@@ -3441,10 +3441,16 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (PP.toBaseValue(targetHpAfter) <= 0 && !noRevivalMinionFloor) {
             HashMap<String, Object> reviver = null;
             for (HashMap<String, Object> c : party) {
-                if ("PRIEST".equals(strVal(c.get("CLASS"), "")) && intVal(c.get("GRADE"), 1) >= 5) {
-                    reviver = c;
-                    break;
-                }
+                if (!"PRIEST".equals(strVal(c.get("CLASS"), "")) || intVal(c.get("GRADE"), 1) < 5) continue;
+                // [2026-09-16] "도사가 죽어있는 상태에서는 부활 스킬이 발동 안 되게 막아야해"
+                // 요청 -- 도사 자신의 HP가 이미 0(전투불가)이면 기적을 못 일으킨다. c가 바로
+                // curTarget(이번 반격으로 지금 막 쓰러지는 대상)인 경우엔 writeCompanionHp가
+                // 아직 호출 전이라 c의 CUR_HP_VALUE가 이번 피해 반영 전(=쓰러지기 직전) 값을
+                // 그대로 갖고 있으므로, "자기 자신이 쓰러진 경우 포함"(자가 부활)은 그대로 허용됨.
+                PP reviverHp = PP.of(((Number) c.get("CUR_HP_VALUE")).doubleValue(), strVal(c.get("CUR_HP_EXT"), ""));
+                if (PP.toBaseValue(reviverHp) <= 0) continue;
+                reviver = c;
+                break;
             }
             if (reviver != null) {
                 int reviverGrade = intVal(reviver.get("GRADE"), 1);
