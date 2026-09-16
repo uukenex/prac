@@ -1738,11 +1738,16 @@ public class BotS5ServiceImpl implements BotS5Service {
                         sb.append(NL).append("(기존 럭키 효과는 새 효과로 갱신되어 사라졌습니다)");
                     }
                 } else if ("DEATH_WARD".equals(luckyEffect)) {
-                    // [2026-09-15 신설] 파티원 한 명에게 "다음 즉사방어(1회)" -- 체력이 얼마든 이
-                    // 방어가 걸린 동료가 피해로 HP 0이 될 상황이 오면, 그 피해를 받기 전 HP로
-                    // 완전히 되돌리고(실제로 아예 안 맞은 것처럼) 1회 소모된다(resolveCombatTurn의
-                    // 반격 피해 적용부 참고). 기존 럭키 버프(LUCKY_TURN_LEFT/EFFECT)와는 별개의
-                    // 컬럼(WARD_COMPANION_ID)을 쓰므로 서로 덮어쓰지 않고 동시에 걸려있을 수 있다.
+                    // [2026-09-15 신설, 2026-09-16 재설계] 파티원 한 명에게 "다음 피해 1회 면역".
+                    // 원래는 "이번 피해로 HP가 정확히 0이 될 때만"(치명타 한정) 발동하는 즉사방어로
+                    // 만들었는데, 실제로는 그 조건을 만족하는 순간이 드물어 "잘 작동 안 하는 것
+                    // 같다"는 신고를 받았다 -- 일반 몬스터/중간보스는 즉사 능력이 따로 없고
+                    // 보스전은 진입 시 이 효과 자체가 초기화(changeFloor)돼 걸려있을 수 없으므로,
+                    // 굳이 치명타로 한정할 이유가 없었다. 그래서 "이 동료가 다음으로 맞는 피해
+                    // 자체를 치명타 여부와 무관하게 무조건 0으로 막는" 것으로 단순화(resolveCombatTurn
+                    // 반격 피해 적용부 참고) -- 다음 피격 즉시 눈에 보이게 발동해 체감이 훨씬 명확함.
+                    // 기존 럭키 버프(LUCKY_TURN_LEFT/EFFECT)와는 별개 컬럼(WARD_COMPANION_ID)을
+                    // 쓰므로 서로 덮어쓰지 않고 동시에 걸려있을 수 있다.
                     List<HashMap<String, Object>> wardParty = new ArrayList<>();
                     for (HashMap<String, Object> c : dao.selectUserCompanions(userName)) {
                         if (c.get("PARTY_SLOT") != null) wardParty.add(c);
@@ -1759,7 +1764,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                         wardUp.put("wardCompanionId", wardCid);
                         dao.updateUserProgress(wardUp);
                         p.put("WARD_COMPANION_ID", wardCid);
-                        sb.append("🍀 강력한 가호! ").append(wardedTag).append("에게 즉사방어가 걸렸습니다. (다음 번 죽을 위기에 처하면 그 피해를 받기 전 상태로 완전히 되돌아갑니다, 1회 소모)");
+                        sb.append("🍀 강력한 가호! ").append(wardedTag).append("에게 다음 피해 1회 면역이 걸렸습니다. (다음 반격을 맞는 순간 그 피해를 완전히 막아냅니다, 1회 소모)");
                     }
                 } else { // PP_BONUS -- 기존 PP칸 보상의 3배
                     PP reward = basePp.multiply(3);
@@ -2236,7 +2241,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             notes.add("🍀 럭키 효과로 매 턴 파티 공격력만큼 방어막 생성 중 (남은 이동 " + luckyTurnLeft + "회)");
         }
         if (intVal(p.get("WARD_COMPANION_ID"), 0) > 0) {
-            notes.add("✨ 파티원 한 명에게 즉사방어(1회)가 걸려있습니다.");
+            notes.add("✨ 파티원 한 명에게 다음 피해 1회 면역이 걸려있습니다.");
         }
         return notes.isEmpty() ? null : String.join(NL, notes);
     }
@@ -2368,23 +2373,25 @@ public class BotS5ServiceImpl implements BotS5Service {
                 int amRoll = rollFace(1, diceMax);
                 int amDmg = Math.max(1, amMonsterAtk * amRoll - amEff[2]);
                 PP amHp = PP.of(((Number) amTarget.get("CUR_HP_VALUE")).doubleValue(), strVal(amTarget.get("CUR_HP_EXT"), ""));
-                PP amHpAfter = amHp.subtract(PP.fromPP(amDmg));
-                if (PP.toBaseValue(amHpAfter) < 0) amHpAfter = PP.fromPP(0);
-                // [2026-09-16] 즉사방어(DEATH_WARD)가 이 동료에게 걸려있고 이 기습으로 쓰러지면
-                // 반격 루프와 동일하게 피해를 받기 전 상태로 되돌린다(그동안 이 경로엔 방어가
-                // 안 걸려있었음 -- 즉사방어 추가 시 누락된 경로 중 하나).
+                // [2026-09-16 재설계] 럭키칸 "피해 1회 면역"(구 즉사방어) -- 이 동료가 방어
+                // 대상이면 이번 기습 피해를 아예 0으로 막는다(치명타 여부 무관, resolveCombatTurn의
+                // 반격 피해 적용부와 동일 정책).
                 int amWardCid = intVal(p.get("WARD_COMPANION_ID"), 0);
-                if (amWardCid > 0 && amWardCid == intVal(amTarget.get("COMPANION_ID"), 0)
-                        && PP.toBaseValue(amHpAfter) <= 0) {
-                    amHpAfter = amHp;
+                boolean amWarded = amWardCid > 0 && amWardCid == intVal(amTarget.get("COMPANION_ID"), 0);
+                if (amWarded) {
+                    amDmg = 0;
                     HashMap<String, Object> amWardClearUp = new HashMap<>();
                     amWardClearUp.put("userName", userName);
                     amWardClearUp.put("wardCompanionId", 0);
                     dao.updateUserProgress(amWardClearUp);
                     p.put("WARD_COMPANION_ID", 0);
-                    sb.append("✨💠 즉사방어 발동! 피해를 받기 전 상태로 완전히 되돌아왔다! (가호 소모)").append(NL);
                 }
+                PP amHpAfter = amHp.subtract(PP.fromPP(amDmg));
+                if (PP.toBaseValue(amHpAfter) < 0) amHpAfter = PP.fromPP(0);
                 sb.append("🌑 은신 기습! ").append(eliteMonsterName(floor, mon, elite)).append("이(가) 먼저 공격한다!").append(NL);
+                if (amWarded) {
+                    sb.append("🛡️✨ 피해 면역 발동! ").append(jobTag(amGrade, amJob, amName)).append("이(가) 이번 피해를 완전히 막아냈다! (가호 소모)").append(NL);
+                }
                 sb.append(jobTag(amGrade, amJob, amName)).append("에게 ").append(amDmg).append("dmg (💗")
                   .append(amHpAfter.format()).append("/").append(amEff[0]).append(")").append(NL).append(NL);
                 writeCompanionHp(amTarget, amHpAfter);
@@ -2925,22 +2932,10 @@ public class BotS5ServiceImpl implements BotS5Service {
                       .append(" 부활(HP ").append(vHpAfter.format()).append("/").append(vEff[0]).append(")").append(NL);
                 }
             }
-            // [2026-09-16] 즉사방어(DEATH_WARD) -- 이 앰부시 즉사 경로엔 그동안 방어가 전혀
-            // 안 걸려있었다(반격 루프에만 있었음). 도사 부활도 실패했고 이 동료가 방어
-            // 대상이면 피해 이전 상태(=풀피 기준이 아니라 이번 앰부시 직전 HP)로 되돌린다.
-            if (PP.toBaseValue(vHpAfter) <= 0) {
-                int vWardCid = intVal(p.get("WARD_COMPANION_ID"), 0);
-                PP vHpBefore = PP.of(((Number) victim.get("CUR_HP_VALUE")).doubleValue(), strVal(victim.get("CUR_HP_EXT"), ""));
-                if (vWardCid > 0 && vWardCid == intVal(victim.get("COMPANION_ID"), 0)) {
-                    vHpAfter = vHpBefore;
-                    HashMap<String, Object> vWardClearUp = new HashMap<>();
-                    vWardClearUp.put("userName", userName);
-                    vWardClearUp.put("wardCompanionId", 0);
-                    dao.updateUserProgress(vWardClearUp);
-                    p.put("WARD_COMPANION_ID", 0);
-                    sb.append("✨💠 즉사방어 발동! ").append(jobTag(vGrade, vJob, vName)).append("이(가) 피해를 받기 전 상태로 완전히 되돌아왔다! (가호 소모)").append(NL);
-                }
-            }
+            // [2026-09-16] 럭키칸 "피해 1회 면역"(구 즉사방어) 관련 방어 체크를 여기 뒀었는데,
+            // 보스전 진입 시(changeFloor) 럭키 효과가 이미 초기화되어 79층 같은 보스 구간에서는
+            // WARD_COMPANION_ID가 항상 0 -- 즉 이 분기는 절대 발동할 수 없는 죽은 코드였다.
+            // "보스구간엔 럭키옵션이 없이 싸우니 문제없다"는 확인에 따라 제거.
             if (PP.toBaseValue(vHpAfter) <= 0) {
                 sb.append("💀 ").append(jobTag(vGrade, vJob, vName)).append("이(가) 쓰러졌다!").append(NL);
             }
@@ -3016,19 +3011,8 @@ public class BotS5ServiceImpl implements BotS5Service {
                               .append(" 부활(HP ").append(ivHpAfter.format()).append("/").append(ivEff[0]).append(")").append(NL);
                         }
                     }
-                    // [2026-09-16] 즉사방어(DEATH_WARD) -- 하수인 은신즉사 경로도 누락돼 있었다.
-                    if (PP.toBaseValue(ivHpAfter) <= 0) {
-                        int ivWardCid = intVal(p.get("WARD_COMPANION_ID"), 0);
-                        if (ivWardCid > 0 && ivWardCid == intVal(instaVictim.get("COMPANION_ID"), 0)) {
-                            ivHpAfter = PP.of(((Number) instaVictim.get("CUR_HP_VALUE")).doubleValue(), strVal(instaVictim.get("CUR_HP_EXT"), ""));
-                            HashMap<String, Object> ivWardClearUp = new HashMap<>();
-                            ivWardClearUp.put("userName", userName);
-                            ivWardClearUp.put("wardCompanionId", 0);
-                            dao.updateUserProgress(ivWardClearUp);
-                            p.put("WARD_COMPANION_ID", 0);
-                            sb.append("✨💠 즉사방어 발동! ").append(jobTag(ivGrade, ivJob, ivName)).append("이(가) 피해를 받기 전 상태로 완전히 되돌아왔다! (가호 소모)").append(NL);
-                        }
-                    }
+                    // [2026-09-16] 이 경로(79/89층 보스 하수인 은신즉사)도 보스전 진입 시 럭키
+                    // 효과가 이미 초기화되어 방어가 걸려 있을 수 없는 죽은 코드라 제거.
                     if (PP.toBaseValue(ivHpAfter) <= 0) {
                         sb.append("💀 ").append(jobTag(ivGrade, ivJob, ivName)).append("이(가) 쓰러졌다!").append(NL);
                         stillAlive79.remove(instaVictim);
@@ -3422,28 +3406,31 @@ public class BotS5ServiceImpl implements BotS5Service {
             if (luckyHpDouble) dmgToParty = (int) Math.round(dmgToParty * 0.5);
         }
 
-        // 흡혈은 두 번째 대상(ti==1)에게 실제로 박힌 최종 피해(보호막 흡수분 제외, 회피 시 0)만
-        // 집계 -- 이번 for문이 끝난 뒤 한꺼번에 보스 HP에 반영한다.
-        if (vampiricBoss && ti == 1) lifestealHeal += dmgToParty;
-
-        PP targetHpAfter = targetHp.subtract(PP.fromPP(dmgToParty));
-        if (PP.toBaseValue(targetHpAfter) < 0) targetHpAfter = PP.fromPP(0);
-
-        // [2026-09-15 신설] 럭키칸 즉사방어(1회, DEATH_WARD) -- 이 동료에게 방어가 걸려있고
-        // 이번 피해로 HP가 0이 됐으면, 도사 부활/하수인화보다 먼저 개입해서 "피해를 받기 전"
-        // 상태(=targetHp, 이번 피해 자체를 아예 무효화)로 완전히 되돌리고 방어를 소모한다.
-        // 이후의 부활/하수인화 분기는 targetHpAfter가 더 이상 0이 아니므로 자연히 건너뛴다.
+        // [2026-09-16 재설계] 럭키칸 "피해 1회 면역"(구 즉사방어/DEATH_WARD) -- "즉사방어가
+        // 잘 작동 안 되는 것 같다" 신고로, "이번 피해로 정확히 HP가 0이 될 때만 발동"(치명타
+        // 한정) 방식을 버리고 "이 동료가 다음으로 맞는 피해 자체를 무조건 0으로 막는다"로
+        // 단순화했다 -- 치명타 여부와 무관하게 훨씬 자주(사실상 다음 피격 즉시) 눈에 보이게
+        // 발동한다. 일반 몬스터/중간보스는 즉사 능력이 따로 없고, 보스전은 진입 시(changeFloor)
+        // 럭키 효과 자체가 이미 초기화돼 이 방어가 걸려 있을 수 없으므로, 이 반격 피해
+        // 적용부 한 곳만 처리하면 충분하다(69/79/89층 보스의 은신즉사·하수인 관련 방어
+        // 코드는 전부 죽은 코드였던 것으로 확인돼 이번에 함께 제거).
         int wardCompanionId = intVal(p.get("WARD_COMPANION_ID"), 0);
-        if (wardCompanionId > 0 && wardCompanionId == intVal(curTarget.get("COMPANION_ID"), 0)
-                && PP.toBaseValue(targetHpAfter) <= 0) {
-            targetHpAfter = targetHp;
+        if (wardCompanionId > 0 && wardCompanionId == intVal(curTarget.get("COMPANION_ID"), 0)) {
+            dmgToParty = 0;
             HashMap<String, Object> wardClearUp = new HashMap<>();
             wardClearUp.put("userName", userName);
             wardClearUp.put("wardCompanionId", 0);
             dao.updateUserProgress(wardClearUp);
             p.put("WARD_COMPANION_ID", 0);
-            sb.append("✨💠 즉사방어 발동! ").append(jobTag(tGrade, tJob, tName)).append("이(가) 피해를 받기 전 상태로 완전히 되돌아왔다! (가호 소모)").append(NL);
+            sb.append("🛡️✨ 피해 면역 발동! ").append(jobTag(tGrade, tJob, tName)).append("이(가) 이번 피해를 완전히 막아냈다! (가호 소모)").append(NL);
         }
+
+        // 흡혈은 두 번째 대상(ti==1)에게 실제로 박힌 최종 피해(보호막 흡수분 제외, 회피/면역
+        // 시 0)만 집계 -- 이번 for문이 끝난 뒤 한꺼번에 보스 HP에 반영한다.
+        if (vampiricBoss && ti == 1) lifestealHeal += dmgToParty;
+
+        PP targetHpAfter = targetHp.subtract(PP.fromPP(dmgToParty));
+        if (PP.toBaseValue(targetHpAfter) < 0) targetHpAfter = PP.fromPP(0);
 
         // [2026-09-05 신설] ★5/★6 도사 "부활" -- 이번 반격으로 동료가 쓰러지면, 파티 안의
         // ★5 이상 도사가(자기 자신이 쓰러진 경우 포함) 일정 확률로 그 자리에서 되살린다.
@@ -3582,20 +3569,8 @@ public class BotS5ServiceImpl implements BotS5Service {
                     PP victimHpAfter = victimHp.subtract(PP.fromPP(mDmg));
                     if (PP.toBaseValue(victimHpAfter) < 0) victimHpAfter = PP.fromPP(0);
 
-                    // [2026-09-16] 즉사방어(DEATH_WARD) -- 69/89층 하수인 매턴공격 경로도 누락.
-                    boolean victimWarded = false;
-                    if (PP.toBaseValue(victimHpAfter) <= 0) {
-                        int vWardCid2 = intVal(p.get("WARD_COMPANION_ID"), 0);
-                        if (vWardCid2 > 0 && vWardCid2 == intVal(victim.get("COMPANION_ID"), 0)) {
-                            victimHpAfter = victimHp;
-                            victimWarded = true;
-                            HashMap<String, Object> vWardClearUp2 = new HashMap<>();
-                            vWardClearUp2.put("userName", userName);
-                            vWardClearUp2.put("wardCompanionId", 0);
-                            dao.updateUserProgress(vWardClearUp2);
-                            p.put("WARD_COMPANION_ID", 0);
-                        }
-                    }
+                    // [2026-09-16] 이 경로(69/89층 보스 하수인 매턴공격)도 보스전 진입 시 럭키
+                    // 효과가 이미 초기화되어 방어가 걸려 있을 수 없는 죽은 코드라 제거.
                     writeCompanionHp(victim, victimHpAfter);
 
                     boolean victimDied = PP.toBaseValue(victimHpAfter) <= 0;
@@ -3603,7 +3578,6 @@ public class BotS5ServiceImpl implements BotS5Service {
                       .append(jobTag(vGrade, vJob, strVal(victim.get("NAME"), JOB_NAME.getOrDefault(vJob, "동료"))))
                       .append("을(를) 공격! 🎲").append(mRoll).append("→").append(mDmg).append("dmg")
                       .append(victimDied ? " 💀" : "").append(NL);
-                    if (victimWarded) sb.append("✨💠 즉사방어 발동! 피해를 받기 전 상태로 완전히 되돌아왔다! (가호 소모)").append(NL);
                     if (victimDied) {
                         stillAlive.remove(victim);
                         if (stillAlive.isEmpty()) break; // 더 공격할 대상 없음(다음 /주사위 때 전멸 처리됨)
