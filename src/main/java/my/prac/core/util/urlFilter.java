@@ -53,6 +53,8 @@ public class urlFilter implements Filter {
 	    			if(httpServletRequest.getServletPath().indexOf("/index") >= 0
 	    			 || httpServletRequest.getServletPath().indexOf("/free") >= 0
 	    			 || httpServletRequest.getServletPath().indexOf("/share") >= 0
+	    			 || httpServletRequest.getServletPath().indexOf("/secret") >= 0
+	    			 || httpServletRequest.getServletPath().indexOf("/newboard") >= 0
 	    			 || httpServletRequest.getServletPath().indexOf("/game") >= 0
 	    			 || httpServletRequest.getServletPath().indexOf("/bom") >= 0
 	    			) {
@@ -75,6 +77,8 @@ public class urlFilter implements Filter {
 	        		if(httpServletRequest.getServletPath().indexOf("/index") >= 0
 	    			 || httpServletRequest.getServletPath().indexOf("/free") >= 0
 	    			 || httpServletRequest.getServletPath().indexOf("/share") >= 0
+	    			 || httpServletRequest.getServletPath().indexOf("/secret") >= 0
+	    			 || httpServletRequest.getServletPath().indexOf("/newboard") >= 0
 	    			 || httpServletRequest.getServletPath().indexOf("/wedding") >= 0
 	    			 || httpServletRequest.getServletPath().indexOf("/bom") >= 0
 	    			) {
