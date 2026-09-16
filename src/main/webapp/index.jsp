@@ -31,7 +31,8 @@
 		$('#load_image').css('width',resizeWindowHeight/3);
 		$('#load_image').css('height',resizeWindowHeight/3);
 		$(document).on("ready", function() {
-			window.location.href = '/free';
+			// [2026-09-16 변경] 뉴게시판을 기본으로 사용, 기존(/free)은 backup으로 이동.
+			window.location.href = '/newboard/free';
 		});
 		</script>
 		<style>

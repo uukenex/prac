@@ -61,10 +61,12 @@
 			<li><a href="<%=request.getContextPath() %>/logout">로그아웃</a></li>
 		</c:if>
 		
-		<c:url value="/free"        var="free" />
-		<c:url value="/share"       var="share" />
+		<%-- [2026-09-16 변경] 뉴게시판을 기본으로, 기존 게시판은 백업 링크로만 유지. --%>
+		<c:url value="/newboard/free"        var="free" />
+		<c:url value="/newboard/share"       var="share" />
 		<c:url value="/rank"   var="rank" />
-		<c:url value="/session/secret" var="secret" />
+		<c:url value="/newboard/secret" var="secret" />
+		<c:url value="/free" var="oldFree" />
 		<li class="dropMenuLi"><a href="${notice }">게시판</a>
 			<ul>
 				<li><a href="<%=request.getContextPath() %>${free }" >자유게시판</a></li>
@@ -73,6 +75,7 @@
 				<li><a href="<%=request.getContextPath() %>${secret }">비밀게시판</a></li>
 				</c:if>
 				<li><a href="<%=request.getContextPath() %>${rank }" >랭크게시판</a></li>
+				<li><a href="<%=request.getContextPath() %>${oldFree }">🗄️ 예전 디자인(백업)</a></li>
 			</ul></li>
 	</ul>
 </nav>

@@ -45,6 +45,10 @@
 					<!-- Board Body part -->
 					<div class="8u 12u(mobile) important(mobile)">
 						<section class="middle-content">
+							<div style="background:#FFF6E5; border:1px solid #E0C48A; border-radius:8px; padding:10px 14px; margin-bottom:14px; font-size:13px;">
+								🗄️ 이 화면은 <b>백업(예전 디자인)</b>입니다. 최신 디자인은
+								<a href="<%=request.getContextPath()%>/newboard/free"><b>새 자유게시판</b></a>에서 이용하세요.
+							</div>
 							<h2 class="board_part_title" onclick="alert( 'Width x Height : '+resizeWindowWidth + ' x '+resizeWindowHeight );">자유게시판</h2>
 							<%-- <h3>현재 접속 Nick : "${Users.userNick }"</h3> --%>
 							

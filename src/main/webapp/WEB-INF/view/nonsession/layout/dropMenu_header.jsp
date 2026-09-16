@@ -34,14 +34,17 @@
 						</a>
 					</li>
 				</c:if>	
-				<c:url value="/free"  var="free"/>
-				<c:url value="/share" var="share"/>
-				<c:url value="/session/secret" var="secret"/>
+				<%-- [2026-09-16 변경] 뉴게시판을 기본으로, 기존 게시판은 백업 링크로만 유지. --%>
+				<c:url value="/newboard/free"  var="free"/>
+				<c:url value="/newboard/share" var="share"/>
+				<c:url value="/newboard/secret" var="secret"/>
+				<c:url value="/free" var="oldFree"/>
 					<li><a href="${free } ">자유게시판</a></li>
 					<li><a href="${share }">공유게시판</a></li>
 					<c:if test="${!empty Users.userId }">
 					<li><a href="${secret }">비밀게시판</a></li>
 					</c:if>
+					<li><a href="${oldFree }">🗄️ 예전 디자인(백업)</a></li>
 			</ul>
 			<a href="#" class="close">Close</a>
 		</div>

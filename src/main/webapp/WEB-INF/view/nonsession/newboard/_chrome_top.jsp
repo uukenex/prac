@@ -28,7 +28,7 @@
           <a href="<%=request.getContextPath()%>/rank"><i class="fa fa-trophy"></i> 랭크게시판</a>
         </div>
       </div>
-      <a class="nb-authlink" href="<%=request.getContextPath()%>/free" title="기존 게시판으로 돌아가기">이전 디자인</a>
+      <a class="nb-authlink" href="<%=request.getContextPath()%>/free" title="기존 게시판(백업)으로 이동">🗄️ 백업</a>
       <c:if test="${empty Users.userId}">
       <a class="nb-authlink" href="<%=request.getContextPath()%>/loginCheck">로그인</a>
       </c:if>

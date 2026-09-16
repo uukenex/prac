@@ -45,6 +45,10 @@
 					<!-- Board Body part -->
 					<div class="8u 12u(mobile) important(mobile)">
 						<section class="middle-content">
+							<div style="background:#FFF6E5; border:1px solid #E0C48A; border-radius:8px; padding:10px 14px; margin-bottom:14px; font-size:13px;">
+								🗄️ 이 화면은 <b>백업(예전 디자인)</b>입니다. 최신 디자인은
+								<a href="<%=request.getContextPath()%>/newboard/secret"><b>새 비밀게시판</b></a>에서 이용하세요.
+							</div>
 							<h2 class="board_part_title">🔒 비밀게시판</h2>
 							<p style="color:#888; font-size:13px;">로그인한 유저만 볼 수 있는 게시판입니다.</p>
 
