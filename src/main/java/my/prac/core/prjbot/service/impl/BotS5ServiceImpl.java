@@ -1456,28 +1456,28 @@ public class BotS5ServiceImpl implements BotS5Service {
      * 웹 한도를 넘으면 웹만 차단, 카톡 한도까지 넘으면 전부 차단"이 자연스럽게 성립한다.
      * (SimpleDateFormat은 스레드 안전하지 않아 static 캐시로 못 쓰므로 java.time으로 비교한다.)
      */
-    // [2026-09-16] "한도를 다 소진하면 마지막 소진한 시간 이후 시간당 100회씩 회복시켜달라"
-    // 요청 -- 새 컬럼 없이 기존 DICE_ROLL_DATE(성공한 굴림마다 갱신됨)를 그대로 활용한다.
-    // 한도에 걸려 더 못 굴리게 된 시점부터는 이 이상 갱신되지 않으므로, DICE_ROLL_DATE는
-    // 자연히 "마지막으로 성공한(=소진 직전 또는 소진 시점) 굴림 시각"에 멈춰있다. 그 시각
-    // 이후 지난 시간(시)만큼 시간당 100회씩 "회복"으로 쳐서 카운트를 깎아준다(아래 sameDay가
-    // true인 동안, 즉 자정 지나기 전까지만 -- 자정이 지나면 어차피 0으로 리셋되니 무관).
+    // [2026-09-16] "한도를 다 소진하면 시간당 100회씩 회복시켜달라" 요청.
+    // [2026-09-16 재수정] "마지막 굴림 이후 경과시간" 방식은 계속 활발히 굴리는 동안엔
+    // DICE_ROLL_DATE가 매번 "방금"으로 갱신돼서 회복이 사실상 적용 안 되는 문제가 있었다
+    // -- "그냥 매시 정각마다 100회씩 채워주자"로 변경. DICE_ROLL_COUNT_TODAY를 더 이상
+    // "회복 반영해서 깎은 값"이 아니라 "오늘 실제 굴린 누적 횟수(순수 raw, 절대 안 깎임)"로
+    // 저장하고, 한도 체크 시점마다 "오늘 자정 이후 지난 정각(1시/2시/.../23시) 개수 * 100"을
+    // 그 raw 값에서 매번 새로 빼서 유효 사용량을 구한다. raw를 절대 안 줄이기 때문에(매번
+    // curCount+1이 아니라 storedRaw+1을 저장) 같은 시간대 안에서 여러 번 굴려도 회복량이
+    // 중복 반영되지 않는다. 한도(1200 등)는 그대로 -- 정각마다 100씩 여유가 생기는 구조라
+    // 하루 총 실제 가능 굴림 수는 자정 이후 지난 시간에 비례해 한도보다 늘어날 수 있다(의도).
     private static final int DICE_REGEN_PER_HOUR = 100;
 
     private String checkAndBumpDailyDiceLimit(String userName, HashMap<String, Object> p, String channel) {
         java.util.Date rollDate = (java.util.Date) p.get("DICE_ROLL_DATE");
-        int rollCountToday = intVal(p.get("DICE_ROLL_COUNT_TODAY"), 0);
+        int rawUsedToday = intVal(p.get("DICE_ROLL_COUNT_TODAY"), 0);
         boolean sameDay = rollDate != null
                 && new java.sql.Date(rollDate.getTime()).toLocalDate().equals(java.time.LocalDate.now());
-        int storedCount = sameDay ? rollCountToday : 0;
-        // 마지막 굴림(=소진 시점) 이후 지난 시간만큼 시간당 100회씩 회복 -- 실제로 한도에
-        // 안 걸려 있었으면(방금 막 굴린 직후) 경과 시간이 거의 0이라 실질적 영향 없음.
-        int regen = 0;
-        if (sameDay && rollDate != null) {
-            long hoursElapsed = java.time.Duration.between(rollDate.toInstant(), java.time.Instant.now()).toHours();
-            regen = (int) Math.min(Integer.MAX_VALUE, hoursElapsed * DICE_REGEN_PER_HOUR);
-        }
-        int curCount = Math.max(0, storedCount - regen);
+        int storedRaw = sameDay ? rawUsedToday : 0;
+        // 자정(00:00) 이후 지난 정각 개수 = 현재 시(0~23) -- 1시/2시/.../23시마다 100씩 회복.
+        int hourOfDay = java.time.LocalTime.now().getHour();
+        int regen = hourOfDay * DICE_REGEN_PER_HOUR;
+        int curCount = Math.max(0, storedRaw - regen);
         boolean isWeb = "WEB".equals(channel);
         int channelLimit = isWeb ? DAILY_DICE_LIMIT : (DAILY_DICE_LIMIT + KAKAO_BONUS_DICE);
         if (curCount >= channelLimit) {
@@ -1486,21 +1486,21 @@ public class BotS5ServiceImpl implements BotS5Service {
                 if (curCount < DAILY_DICE_LIMIT + KAKAO_BONUS_DICE) {
                     return "🎲 오늘 웹에서 주사위를 " + DAILY_DICE_LIMIT + "번 모두 굴렸습니다. "
                             + "카카오톡에서는 " + (DAILY_DICE_LIMIT + KAKAO_BONUS_DICE - curCount) + "번 더 진행할 수 있어요! "
-                            + "(시간당 " + DICE_REGEN_PER_HOUR + "회씩 회복됩니다)";
+                            + "(매시 정각마다 " + DICE_REGEN_PER_HOUR + "회씩 회복됩니다)";
                 }
                 return "🎲 오늘 주사위를 " + (DAILY_DICE_LIMIT + KAKAO_BONUS_DICE) + "번 모두 굴렸습니다. "
-                        + "시간당 " + DICE_REGEN_PER_HOUR + "회씩 회복되니 잠시 후 다시 시도하거나, 내일 다시 시도해주세요.";
+                        + "매시 정각마다 " + DICE_REGEN_PER_HOUR + "회씩 회복되니 잠시 후 다시 시도하거나, 내일 다시 시도해주세요.";
             }
             return "🎲 오늘 카카오톡 한도(" + (DAILY_DICE_LIMIT + KAKAO_BONUS_DICE) + "번)까지 모두 굴렸습니다. "
-                    + "시간당 " + DICE_REGEN_PER_HOUR + "회씩 회복되니 잠시 후 다시 시도하거나, 내일 다시 시도해주세요.";
+                    + "매시 정각마다 " + DICE_REGEN_PER_HOUR + "회씩 회복되니 잠시 후 다시 시도하거나, 내일 다시 시도해주세요.";
         }
-        int newCount = curCount + 1;
+        int newRaw = storedRaw + 1;
         HashMap<String, Object> up = new HashMap<>();
         up.put("userName", userName);
-        up.put("diceRollCountToday", newCount);
+        up.put("diceRollCountToday", newRaw);
         up.put("touchDiceRollDate", true);
         dao.updateUserProgress(up);
-        p.put("DICE_ROLL_COUNT_TODAY", newCount);
+        p.put("DICE_ROLL_COUNT_TODAY", newRaw);
         p.put("DICE_ROLL_DATE", new java.util.Date());
         return null;
     }
