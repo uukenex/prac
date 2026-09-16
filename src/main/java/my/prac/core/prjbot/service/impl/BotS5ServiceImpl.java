@@ -3329,10 +3329,9 @@ public class BotS5ServiceImpl implements BotS5Service {
         int roll = rollFace(1, monsterDiceMax); // 몬스터 자신의 반격 굴림 -- 플레이어 강화/마이너스 주사위와 무관하게 항상 1부터
         int rawDmgToParty = Math.max(1, monsterAtk * roll - tEff[2]);
         // 중간보스가 이번 턴 궁수 기술을 훔쳤으면(위 미드보스 파트) 이 반격 피해를 즉시 증폭.
-        // [2026-09-09] "계수 50%로" 요청 -- 원래 +30%(x1.3)였던 증폭폭을 +15%(x1.15)로 절반화.
-        if (midBossArcherDmgUp) rawDmgToParty = (int) Math.round(rawDmgToParty * 1.15);
-        // [2026-09-14] 층구간 보스(59층+)는 절반화 이전 원래 수치(+30%, x1.3) 그대로.
-        if (bossArcherDmgUp) rawDmgToParty = (int) Math.round(rawDmgToParty * 1.3);
+        // [2026-09-16] "1.1배율로" 요청 -- 미드보스/구간보스 모두 +10%(x1.1)로 통일(과거 x1.15/x1.3 이력 있음).
+        if (midBossArcherDmgUp) rawDmgToParty = (int) Math.round(rawDmgToParty * 1.1);
+        if (bossArcherDmgUp) rawDmgToParty = (int) Math.round(rawDmgToParty * 1.1);
         int dmgToParty = rawDmgToParty;
 
         String tName = strVal(curTarget.get("NAME"), JOB_NAME.getOrDefault(tJob, "동료"));
