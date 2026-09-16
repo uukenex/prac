@@ -4727,6 +4727,10 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 다른 이유로도 실패하지 않도록 안전망으로 그대로 남겨둠.
         try {
             java.util.TreeMap<Integer, List<Integer>> floorsByBlock = new java.util.TreeMap<>();
+            // [2026-09-16] 50층+ 50%탐사 보상(ACH_ID 500+floor, ACH_TYPE=FLOOR_EXPLORE_HALF)도
+            // 층마다 하나씩 쌓이면 FLOOR_EXPLORE와 똑같이 줄이 폭증하므로 같은 방식으로 블록별
+            // 그룹핑.
+            java.util.TreeMap<Integer, List<Integer>> halfFloorsByBlock = new java.util.TreeMap<>();
             List<String> compVoucherFloors = new ArrayList<>(); // "1~4층 동료 선택권" -> "1~4층"만
             List<String> weapVoucherFloors = new ArrayList<>();
             List<HashMap<String, Object>> others = new ArrayList<>();
@@ -4742,6 +4746,16 @@ public class BotS5ServiceImpl implements BotS5Service {
                     if (bucket == null) {
                         bucket = new ArrayList<>();
                         floorsByBlock.put(blockNo(floor), bucket);
+                    }
+                    bucket.add(floor);
+                } else if ("FLOOR_EXPLORE_HALF".equals(type)) {
+                    int floor;
+                    try { floor = Integer.parseInt(strVal(a.get("ACH_PARAM"), "0").trim()); }
+                    catch (NumberFormatException nfe) { floor = 0; }
+                    List<Integer> bucket = halfFloorsByBlock.get(blockNo(floor));
+                    if (bucket == null) {
+                        bucket = new ArrayList<>();
+                        halfFloorsByBlock.put(blockNo(floor), bucket);
                     }
                     bucket.add(floor);
                 } else if ("BLOCK_EXPLORE_LOW".equals(type)) {
@@ -4762,6 +4776,17 @@ public class BotS5ServiceImpl implements BotS5Service {
                     floorList.append(floors.get(i));
                 }
                 sb.append("✅ 탑 완전정복").append(block >= 1 && block <= roman.length ? roman[block - 1] : String.valueOf(block))
+                  .append(" ").append(floorList).append(NL);
+            }
+            for (Integer block : halfFloorsByBlock.keySet()) {
+                List<Integer> floors = halfFloorsByBlock.get(block);
+                Collections.sort(floors);
+                StringBuilder floorList = new StringBuilder();
+                for (int i = 0; i < floors.size(); i++) {
+                    if (i > 0) floorList.append(",");
+                    floorList.append(floors.get(i));
+                }
+                sb.append("✅ 탐사50%").append(block >= 1 && block <= roman.length ? roman[block - 1] : String.valueOf(block))
                   .append(" ").append(floorList).append(NL);
             }
             if (!compVoucherFloors.isEmpty()) {

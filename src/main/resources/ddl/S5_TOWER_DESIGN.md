@@ -2951,3 +2951,14 @@ S4의 `TBOT_S4_ACHIEVEMENT`/`TBOT_S4_USER_ACH` 패턴을 확장 계승. S5에서
     소급 지급(ACH_ID 550~599도 함께 심어서 이후 그 층에서 다시 굴려도 중복 지급 안 됨).
     실행 결과: 6명 유저, 총 17건 지급(하급 8건/5명, 중급 9건/3명 -- 아직 70층+ 진출/50%탐사
     한 유저는 없어서 상급/최상급 지급 없음).
+  - **[후속] 업적 표시명 누락 수정**: "업적명은 뭘로 지급했니" 질문으로 확인해보니, ACH_ID
+    500+floor를 grantAchievement()의 멱등 체크용(순수 중복방지 플래그)으로만 쓰고 정작
+    TBOT_S5_ACHIEVEMENT 마스터 데이터를 안 넣어서, /탑업적에서 이름을 못 찾아 "✅ ?"로
+    뜨는 문제가 있었다(achievements()의 achById 조회가 null이면 "?" 폴백). 기존
+    S5_FLOOR_EXPLORE_ACHIEVEMENTS.sql(100+floor, "N층 완전탐사")과 완전히 동일한 패턴으로
+    `S5_EXPLORE_HALF_ACHIEVEMENTS.sql` 추가(실 DB 적용 완료, 사냥터층 40개: 51~58,61~68,
+    71~78,81~88,91~98 / ACH_NAME="N층 탐사 50% 달성", ACH_TYPE=FLOOR_EXPLORE_HALF,
+    REWARD_TYPE=ACCESSORY_VOUCHER, REWARD_VALUE=그 층 등급 tier). 동시에 achievements()에
+    FLOOR_EXPLORE_HALF 전용 블록 그룹핑(기존 FLOOR_EXPLORE의 "✅ 탑 완전정복II 51,55"
+    방식과 동일)을 추가해서 "✅ 탐사50%II 51,52" 식으로 묶여 나오게 함(안 그러면 50층+
+    최대 40개 층이 개별 줄로 나열되는 문제가 재발했을 것).
