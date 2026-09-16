@@ -11,7 +11,7 @@
 </head>
 <body>
 <div class="nb" data-room="free">
-  <jsp:include page="../nonsession/newboard/_chrome_top.jsp" />
+  <jsp:include page="../../nonsession/newboard/_chrome_top.jsp" />
 
   <div class="nb-board">
     <div class="nb-toolbar"><h1>${comment.commentName} 수정</h1></div>

@@ -17,7 +17,7 @@
 </head>
 <body>
 <div class="nb" data-room="secret">
-  <jsp:include page="../nonsession/newboard/_chrome_top.jsp" />
+  <jsp:include page="../../nonsession/newboard/_chrome_top.jsp" />
 
   <div class="nb-board">
     <div class="nb-post">
