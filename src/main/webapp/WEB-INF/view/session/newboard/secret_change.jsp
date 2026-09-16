@@ -15,7 +15,7 @@
 
   <div class="nb-board">
     <div class="nb-toolbar"><h1>${comment.commentName} 수정</h1></div>
-    <form action="<%=request.getContextPath()%>/newboard/secretUpdate" method="post" id="nbFrm">
+    <form action="<%=request.getContextPath()%>/session/newboard/secretUpdate" method="post" id="nbFrm">
       <input type="hidden" name="commentNo" value="${comment.commentNo}">
       <div class="nb-field">
         <label>제목</label>

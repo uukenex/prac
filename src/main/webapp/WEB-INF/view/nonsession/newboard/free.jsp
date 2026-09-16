@@ -25,7 +25,7 @@
         <h1>자유게시판</h1>
         <div class="nb-sub">누구나 자유롭게 쓰는 잡담 게시판</div>
       </div>
-      <a class="nb-btn primary" href="<%=request.getContextPath()%>/newboard/freeSign">✎ 글쓰기</a>
+      <a class="nb-btn primary" href="<%=request.getContextPath()%>/session/newboard/boardsign">✎ 글쓰기</a>
     </div>
 
     <div class="nb-search">
@@ -67,7 +67,7 @@
   $('#nbSearchBtn').on('click', function(){
     $.ajax({
       type:'post',
-      url:'<%=request.getContextPath()%>/newboard/freeSearch',
+      url:'<%=request.getContextPath()%>/newboard/search',
       data:{ category: $('#nbSearchCategory').val(), keyword: $('#nbSearchInput').val() },
       success:function(res){
         var $list = $('#nbList').empty();

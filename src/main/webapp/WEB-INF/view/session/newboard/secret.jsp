@@ -25,7 +25,7 @@
         <h1>🔒 비밀게시판</h1>
         <div class="nb-sub">로그인한 유저만 볼 수 있습니다</div>
       </div>
-      <a class="nb-btn primary" href="<%=request.getContextPath()%>/newboard/secretSign">✎ 글쓰기</a>
+      <a class="nb-btn primary" href="<%=request.getContextPath()%>/session/newboard/secretsign">✎ 글쓰기</a>
     </div>
 
     <div class="nb-search">
@@ -40,7 +40,7 @@
 
     <ul class="nb-list" id="nbList">
       <c:forEach var="comment" items="${comments}">
-        <li class="nb-row" onclick="location.href='<%=request.getContextPath()%>/newboard/secretView?commentNo=${comment.commentNo}'">
+        <li class="nb-row" onclick="location.href='<%=request.getContextPath()%>/session/newboard/secretView?commentNo=${comment.commentNo}'">
           <span class="nb-no mono">${comment.commentNo}</span>
           <span class="nb-avatar">${fn:length(comment.userNick) > 0 ? fn:substring(comment.userNick,0,1) : '?'}</span>
           <div class="nb-main">
@@ -56,7 +56,7 @@
     <p class="nb-pager" id="nbPager">
       <%!int i;%>
       <% for (int i = 1; i <= Integer.parseInt(String.valueOf(request.getAttribute("totalPage"))); i++) { %>
-      <a href="<%=request.getContextPath()%>/newboard/secret?page=<%=i%>"><%=i%></a>
+      <a href="<%=request.getContextPath()%>/session/newboard/secret?page=<%=i%>"><%=i%></a>
       <% } %>
     </p>
   </div>
@@ -67,7 +67,7 @@
   $('#nbSearchBtn').on('click', function(){
     $.ajax({
       type:'post',
-      url:'<%=request.getContextPath()%>/newboard/secretSearch',
+      url:'<%=request.getContextPath()%>/session/newboard/secretSearch',
       data:{ category: $('#nbSearchCategory').val(), keyword: $('#nbSearchInput').val() },
       success:function(res){
         var $list = $('#nbList').empty();
@@ -77,7 +77,7 @@
           var y = String(d.getFullYear()).substr(2,2), m = ('0'+(d.getMonth()+1)).slice(-2), day = ('0'+d.getDate()).slice(-2);
           var initial = item.userNick ? item.userNick.charAt(0) : '?';
           $list.append(
-            '<li class="nb-row" onclick="location.href=\'<%=request.getContextPath()%>/newboard/secretView?commentNo='+item.commentNo+'\'">'
+            '<li class="nb-row" onclick="location.href=\'<%=request.getContextPath()%>/session/newboard/secretView?commentNo='+item.commentNo+'\'">'
             + '<span class="nb-no mono">'+item.commentNo+'</span>'
             + '<span class="nb-avatar">'+initial+'</span>'
             + '<div class="nb-main"><span class="nb-ttl">'+item.commentName+'<span class="nb-reply">('+item.replyCnt+')</span></span>'

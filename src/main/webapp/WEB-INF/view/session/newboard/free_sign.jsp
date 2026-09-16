@@ -16,7 +16,7 @@
   <div class="nb-board">
     <div class="nb-toolbar"><h1>글쓰기</h1></div>
     <div class="nb-room-note">🌤️ 자유게시판 — 누구나 자유롭게 쓰는 잡담 게시판입니다</div>
-    <form action="<%=request.getContextPath()%>/newboard/freeWrite" method="post" id="nbFrm">
+    <form action="<%=request.getContextPath()%>/newboard/boardWrite" method="post" id="nbFrm">
       <div class="nb-field">
         <label>제목</label>
         <input type="text" name="title" id="nbTitle" placeholder="제목을 입력해주세요">

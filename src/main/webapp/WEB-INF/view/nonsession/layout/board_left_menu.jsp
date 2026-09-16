@@ -23,7 +23,7 @@
 					 "백업" 링크 하나로만 남겨 계속 접근 가능하게 둔다. --%>
 				<c:url value="/newboard/free" var="free"/>
 				<c:url value="/newboard/share" var="share"/>
-				<c:url value="/newboard/secret" var="secret"/>
+				<c:url value="/session/newboard/secret" var="secret"/>
 				<c:url value="/free" var="oldFree"/>
 				<c:url value="/game1" var="game1"/>
 				<c:url value="/game2" var="game2"/>

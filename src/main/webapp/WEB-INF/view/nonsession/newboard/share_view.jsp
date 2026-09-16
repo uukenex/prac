@@ -52,12 +52,12 @@
 
     <div class="nb-actions">
       <a class="nb-btn" href="<%=request.getContextPath()%>/newboard/share">목록</a>
-      <form action="<%=request.getContextPath()%>/newboard/shareUpdateForm" method="post" style="display:inline">
+      <form action="<%=request.getContextPath()%>/newboard/s/shareUpdate" method="post" style="display:inline">
         <input type="hidden" name="shareNo" value="${share.shareNo}">
         <button type="submit" class="nb-btn">수정</button>
       </form>
       <c:if test="${'THJEON'==Users.userId}">
-      <form action="<%=request.getContextPath()%>/newboard/moveShareToSecret" method="post" style="display:inline"
+      <form action="<%=request.getContextPath()%>/session/newboard/moveShareToSecret" method="post" style="display:inline"
             onsubmit="return confirm('이 글을 비밀게시판으로 이동할까요? (공유게시판 원본과 버전 이력은 삭제됩니다)');">
         <input type="hidden" name="shareNo" value="${share.shareNo}">
         <button type="submit" class="nb-btn">🔒 비밀게시판으로 이동</button>

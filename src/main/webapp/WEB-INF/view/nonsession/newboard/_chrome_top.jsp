@@ -31,7 +31,7 @@
           <a href="<%=request.getContextPath()%>/newboard/free"><i class="fa fa-comments-o"></i> 자유게시판</a>
           <a href="<%=request.getContextPath()%>/newboard/share"><i class="fa fa-comments-o"></i> 공유게시판</a>
           <c:if test="${!empty Users.userId}">
-          <a href="<%=request.getContextPath()%>/newboard/secret"><i class="fa fa-lock"></i> 비밀게시판</a>
+          <a href="<%=request.getContextPath()%>/session/newboard/secret"><i class="fa fa-lock"></i> 비밀게시판</a>
           </c:if>
           <a href="<%=request.getContextPath()%>/rank"><i class="fa fa-trophy"></i> 랭크게시판</a>
         </div>
@@ -51,7 +51,7 @@
   <a class="nb-room-tab" data-current="${room=='free'}" href="<%=request.getContextPath()%>/newboard/free">자유게시판</a>
   <a class="nb-room-tab" data-current="${room=='share'}" href="<%=request.getContextPath()%>/newboard/share">공유게시판</a>
   <c:if test="${!empty Users.userId}">
-  <a class="nb-room-tab" data-current="${room=='secret'}" href="<%=request.getContextPath()%>/newboard/secret">🔒 비밀게시판</a>
+  <a class="nb-room-tab" data-current="${room=='secret'}" href="<%=request.getContextPath()%>/session/newboard/secret">🔒 비밀게시판</a>
   </c:if>
 </div>
 

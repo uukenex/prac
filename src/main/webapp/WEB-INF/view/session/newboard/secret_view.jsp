@@ -32,13 +32,13 @@
     <div class="nb-body" id="nbPostBody">${comment.commentContent}</div>
 
     <div class="nb-actions">
-      <a class="nb-btn" href="<%=request.getContextPath()%>/newboard/secret">목록</a>
+      <a class="nb-btn" href="<%=request.getContextPath()%>/session/newboard/secret">목록</a>
       <c:if test="${comment.userId==Users.userId}">
-      <form action="<%=request.getContextPath()%>/newboard/secretUpdateForm" method="post" style="display:inline">
+      <form action="<%=request.getContextPath()%>/session/newboard/secretUpdateForm" method="post" style="display:inline">
         <input type="hidden" name="commentNo" value="${comment.commentNo}">
         <button type="submit" class="nb-btn">수정</button>
       </form>
-      <form action="<%=request.getContextPath()%>/newboard/secretDelete" method="post" style="display:inline"
+      <form action="<%=request.getContextPath()%>/session/newboard/secretDelete" method="post" style="display:inline"
             onsubmit="return confirm('삭제하시겠습니까?');">
         <input type="hidden" name="commentNo" value="${comment.commentNo}">
         <button type="submit" class="nb-btn danger">삭제</button>

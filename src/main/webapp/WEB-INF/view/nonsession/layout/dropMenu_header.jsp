@@ -37,7 +37,7 @@
 				<%-- [2026-09-16 변경] 뉴게시판을 기본으로, 기존 게시판은 백업 링크로만 유지. --%>
 				<c:url value="/newboard/free"  var="free"/>
 				<c:url value="/newboard/share" var="share"/>
-				<c:url value="/newboard/secret" var="secret"/>
+				<c:url value="/session/newboard/secret" var="secret"/>
 				<c:url value="/free" var="oldFree"/>
 					<li><a href="${free } ">자유게시판</a></li>
 					<li><a href="${share }">공유게시판</a></li>

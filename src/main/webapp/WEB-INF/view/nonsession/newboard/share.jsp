@@ -25,7 +25,7 @@
         <h1>공유게시판</h1>
         <div class="nb-sub">문서형 위키 · 수정하면 버전이 쌓입니다</div>
       </div>
-      <a class="nb-btn primary" href="<%=request.getContextPath()%>/newboard/shareSign">✎ 글쓰기</a>
+      <a class="nb-btn primary" href="<%=request.getContextPath()%>/session/newboard/sharesign">✎ 글쓰기</a>
     </div>
 
     <ul class="nb-list">

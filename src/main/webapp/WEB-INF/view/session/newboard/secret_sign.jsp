@@ -16,7 +16,7 @@
   <div class="nb-board">
     <div class="nb-toolbar"><h1>글쓰기</h1></div>
     <div class="nb-room-note">🔒 비밀게시판 — 로그인한 유저만 열람 가능합니다</div>
-    <form action="<%=request.getContextPath()%>/newboard/secretWrite" method="post" id="nbFrm">
+    <form action="<%=request.getContextPath()%>/session/newboard/secretWrite" method="post" id="nbFrm">
       <div class="nb-field">
         <label>제목</label>
         <input type="text" name="title" id="nbTitle" placeholder="제목을 입력해주세요">

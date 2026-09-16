@@ -65,7 +65,7 @@
 		<c:url value="/newboard/free"        var="free" />
 		<c:url value="/newboard/share"       var="share" />
 		<c:url value="/rank"   var="rank" />
-		<c:url value="/newboard/secret" var="secret" />
+		<c:url value="/session/newboard/secret" var="secret" />
 		<c:url value="/free" var="oldFree" />
 		<li class="dropMenuLi"><a href="${notice }">게시판</a>
 			<ul>

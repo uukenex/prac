@@ -27,7 +27,7 @@ import my.prac.core.prjshare.service.ShareService;
 /**
  * [2026-09-16 신설] "게시판 디자인 개편" 요청 -- 기존 자유/공유/비밀게시판(FreeController/
  * ShareController/SecretController, freeboard/share/secretboard JSP)은 손대지 않고,
- * 완전히 새 경로("/newboard/**")와 새 뷰(webapp/WEB-INF/view/{nonsession,session}/newboard/*.jsp)
+ * 완전히 새 뷰(webapp/WEB-INF/view/{nonsession,session}/newboard/*.jsp)
  * + 새 스타일시트(assets/css/newboard.css)로 같은 데이터를 보여주는 병행 게시판을 추가한다.
  * 서비스 레이어(CommentService/ShareService)는 기존 컨트롤러들과 완전히 동일하게 재사용하므로
  * 데이터/DB 변경은 전혀 없다 -- 순수 뷰 레이어만 새로 만든 것.
@@ -35,6 +35,16 @@ import my.prac.core.prjshare.service.ShareService;
  * "톤만 바꾸고 기능/위치는 유지" 요청에 따라 상단 드롭다운 메뉴·(기존 좌측 사이드의) 숨김
  * 게임 링크·Fancybox·네이버 스마트에디터는 모두 그대로 살렸고(_chrome_top.jsp 참고), PC 전용
  * 2단 레이아웃만 제거해 폭 무관 단일 레이아웃으로 통일했다.
+ *
+ * [2026-09-16 재정리] "원래 게시판과 동일한 규격(session 경로 등)을 그대로 이용하도록
+ * 해달라" 요청 -- URL 스킴을 FreeController/ShareController/SecretController와 동일한
+ * 패턴으로 다시 맞췄다: 로그인 필요한 액션(글쓰기폼/수정폼/글쓰기/수정/삭제/검색)은 전부
+ * SessionInterceptor(MvcConfig, "/session/**")가 그대로 먹도록 "/session/newboard/..."
+ * 로 두고, 그 외(목록/조회/글쓰기 제출/수정 제출)는 기존과 동일하게 "/newboard/..." 그대로
+ * 둔다("newboard" 세그먼트만 얹었을 뿐 나머지 이름/메서드/session 유무는 원본 그대로 미러링).
+ * 자유게시판은 원본이 아예 세션 프리픽스가 없는 액션(글쓰기 제출/수정 제출/삭제/검색)이
+ * 많은데, 그 원본 그대로의 비보호 패턴도 동일하게 유지한다(원본을 "고친" 게 아니라 "복제"
+ * 하는 것이 이번 요청의 취지).
  */
 @Controller
 public class NewBoardController {
@@ -55,7 +65,9 @@ public class NewBoardController {
 	}
 
 	// ================================================================
-	// 자유게시판 (New)
+	// 자유게시판 (New) -- FreeController와 동일 규격:
+	// /free,/freeView,/boardWrite,/freeUpdate,/freeDelete,/search 는 세션 프리픽스 없음(원본
+	// 그대로), 글쓰기폼/수정폼만 /session/boardsign,/session/freeUpdate.
 	// ================================================================
 
 	@RequestMapping(value = "/newboard/free", method = RequestMethod.GET)
@@ -106,13 +118,13 @@ public class NewBoardController {
 		return "nonsession/newboard/free_view";
 	}
 
-	@RequestMapping(value = "/newboard/freeSign", method = RequestMethod.GET)
+	@RequestMapping(value = "/session/newboard/boardsign", method = RequestMethod.GET)
 	public String freeSign(Model model) {
 		model.addAttribute("room", "free");
 		return "session/newboard/free_sign";
 	}
 
-	@RequestMapping(value = "/newboard/freeWrite", method = RequestMethod.POST)
+	@RequestMapping(value = "/newboard/boardWrite", method = RequestMethod.POST)
 	public String freeWrite(HttpServletRequest request, HttpSession session) {
 		String commentName = request.getParameter("title");
 		String commentContent = request.getParameter("content");
@@ -127,7 +139,7 @@ public class NewBoardController {
 		return "redirect:/newboard/freeView?commentNo=" + commentService.currentNo();
 	}
 
-	@RequestMapping(value = "/newboard/freeUpdateForm", method = RequestMethod.POST)
+	@RequestMapping(value = "/session/newboard/freeUpdate", method = RequestMethod.POST)
 	public String freeUpdateForm(Model model, HttpServletRequest request) {
 		String commentNo = request.getParameter("commentNo");
 		Comments comment = null;
@@ -167,7 +179,7 @@ public class NewBoardController {
 		return "redirect:/newboard/free?page=1";
 	}
 
-	@RequestMapping(value = "/newboard/freeSearch", method = RequestMethod.POST)
+	@RequestMapping(value = "/newboard/search", method = RequestMethod.POST)
 	public @ResponseBody List<Comments> freeSearch(@RequestParam String category, @RequestParam String keyword) {
 		List<Comments> result = new ArrayList<>();
 		try {
@@ -181,7 +193,8 @@ public class NewBoardController {
 	}
 
 	// ================================================================
-	// 공유게시판 (New)
+	// 공유게시판 (New) -- ShareController와 동일 규격: 전부 세션 프리픽스 없음(원본에 세션
+	// 보호가 걸려있지 않았던 그대로), 글쓰기폼만 /session/sharesign.
 	// ================================================================
 
 	@RequestMapping(value = "/newboard/share", method = RequestMethod.GET)
@@ -230,7 +243,7 @@ public class NewBoardController {
 		return "nonsession/newboard/share_view";
 	}
 
-	@RequestMapping(value = "/newboard/shareSign", method = RequestMethod.GET)
+	@RequestMapping(value = "/session/newboard/sharesign", method = RequestMethod.GET)
 	public String shareSign(Model model) {
 		model.addAttribute("room", "share");
 		return "session/newboard/share_sign";
@@ -258,7 +271,7 @@ public class NewBoardController {
 		return "redirect:/newboard/shareView?shareNo=" + newShareNo;
 	}
 
-	@RequestMapping(value = "/newboard/shareUpdateForm", method = RequestMethod.POST)
+	@RequestMapping(value = "/newboard/s/shareUpdate", method = RequestMethod.POST)
 	public String shareUpdateForm(Model model, HttpServletRequest request) {
 		String shareNo = request.getParameter("shareNo");
 		Shareboard share = null;
@@ -300,10 +313,12 @@ public class NewBoardController {
 	}
 
 	// ================================================================
-	// 비밀게시판 (New) -- 로그인 필수(비로그인 시 /loginCheck)
+	// 비밀게시판 (New) -- SecretController와 동일 규격: 목록/조회/글쓰기/수정/삭제/검색/이동
+	// 전부 "/session/newboard/..."(SessionInterceptor가 자동으로 비로그인 리다이렉트,
+	// 컨트롤러에서도 한 번 더 확인하는 이중 방어까지 원본과 동일).
 	// ================================================================
 
-	@RequestMapping(value = "/newboard/secret", method = RequestMethod.GET)
+	@RequestMapping(value = "/session/newboard/secret", method = RequestMethod.GET)
 	public String secret(Model model, @RequestParam(required = false, defaultValue = "0") int page, HttpSession session) {
 		if (notLoggedIn(session)) return "redirect:/loginCheck";
 
@@ -326,7 +341,7 @@ public class NewBoardController {
 		return "session/newboard/secret";
 	}
 
-	@RequestMapping(value = "/newboard/secretView", method = RequestMethod.GET)
+	@RequestMapping(value = "/session/newboard/secretView", method = RequestMethod.GET)
 	public String secretView(Model model, @RequestParam int commentNo, HttpSession session) {
 		if (notLoggedIn(session)) return "redirect:/loginCheck";
 
@@ -346,14 +361,14 @@ public class NewBoardController {
 		return "session/newboard/secret_view";
 	}
 
-	@RequestMapping(value = "/newboard/secretSign", method = RequestMethod.GET)
+	@RequestMapping(value = "/session/newboard/secretsign", method = RequestMethod.GET)
 	public String secretSign(Model model, HttpSession session) {
 		if (notLoggedIn(session)) return "redirect:/loginCheck";
 		model.addAttribute("room", "secret");
 		return "session/newboard/secret_sign";
 	}
 
-	@RequestMapping(value = "/newboard/secretWrite", method = RequestMethod.POST)
+	@RequestMapping(value = "/session/newboard/secretWrite", method = RequestMethod.POST)
 	public String secretWrite(HttpServletRequest request, HttpSession session) {
 		if (notLoggedIn(session)) return "redirect:/loginCheck";
 		String commentName = request.getParameter("title");
@@ -365,10 +380,10 @@ public class NewBoardController {
 		} catch (Exception e) {
 			log.info("commentService.writeSecretComment DB none Connect");
 		}
-		return "redirect:/newboard/secretView?commentNo=" + commentService.currentNo();
+		return "redirect:/session/newboard/secretView?commentNo=" + commentService.currentNo();
 	}
 
-	@RequestMapping(value = "/newboard/secretUpdateForm", method = RequestMethod.POST)
+	@RequestMapping(value = "/session/newboard/secretUpdateForm", method = RequestMethod.POST)
 	public String secretUpdateForm(Model model, HttpServletRequest request, HttpSession session) {
 		if (notLoggedIn(session)) return "redirect:/loginCheck";
 		String commentNo = request.getParameter("commentNo");
@@ -384,7 +399,7 @@ public class NewBoardController {
 		return "session/newboard/secret_change";
 	}
 
-	@RequestMapping(value = "/newboard/secretUpdate", method = RequestMethod.POST)
+	@RequestMapping(value = "/session/newboard/secretUpdate", method = RequestMethod.POST)
 	public String secretUpdate(HttpServletRequest request, HttpSession session) {
 		if (notLoggedIn(session)) return "redirect:/loginCheck";
 		String commentNo = request.getParameter("commentNo");
@@ -395,10 +410,10 @@ public class NewBoardController {
 		} catch (Exception e) {
 			log.info("commentService.updateComment DB none Connect");
 		}
-		return "redirect:/newboard/secretView?commentNo=" + commentNo;
+		return "redirect:/session/newboard/secretView?commentNo=" + commentNo;
 	}
 
-	@RequestMapping(value = "/newboard/secretDelete", method = RequestMethod.POST)
+	@RequestMapping(value = "/session/newboard/secretDelete", method = RequestMethod.POST)
 	public String secretDelete(HttpServletRequest request, HttpSession session) {
 		if (notLoggedIn(session)) return "redirect:/loginCheck";
 		String commentNo = request.getParameter("commentNo");
@@ -407,10 +422,10 @@ public class NewBoardController {
 		} catch (Exception e) {
 			log.info("commentService.deleteComment DB none Connect");
 		}
-		return "redirect:/newboard/secret?page=1";
+		return "redirect:/session/newboard/secret?page=1";
 	}
 
-	@RequestMapping(value = "/newboard/secretSearch", method = RequestMethod.POST)
+	@RequestMapping(value = "/session/newboard/secretSearch", method = RequestMethod.POST)
 	public @ResponseBody List<Comments> secretSearch(@RequestParam String category, @RequestParam String keyword,
 			HttpSession session) {
 		List<Comments> result = new ArrayList<>();
@@ -426,11 +441,10 @@ public class NewBoardController {
 	}
 
 	// ================================================================
-	// [thjeon 전용] 자유/공유 -> 비밀 이동 (기존 SecretController와 동일 로직,
-	// 뉴게시판 URL로 리다이렉트만 다름)
+	// [thjeon 전용] 자유/공유 -> 비밀 이동 (기존 SecretController와 동일 로직/경로 규격)
 	// ================================================================
 
-	@RequestMapping(value = "/newboard/moveFreeToSecret", method = RequestMethod.POST)
+	@RequestMapping(value = "/session/newboard/moveFreeToSecret", method = RequestMethod.POST)
 	public String moveFreeToSecret(HttpServletRequest request, HttpSession session) {
 		String commentNo = request.getParameter("commentNo");
 		if (!isThjeon(session) || commentNo == null) {
@@ -442,10 +456,10 @@ public class NewBoardController {
 			log.info("commentService.moveCommentToSecret DB none Connect");
 			return "redirect:/newboard/freeView?commentNo=" + commentNo;
 		}
-		return "redirect:/newboard/secretView?commentNo=" + commentNo;
+		return "redirect:/session/newboard/secretView?commentNo=" + commentNo;
 	}
 
-	@RequestMapping(value = "/newboard/moveShareToSecret", method = RequestMethod.POST)
+	@RequestMapping(value = "/session/newboard/moveShareToSecret", method = RequestMethod.POST)
 	public String moveShareToSecret(HttpServletRequest request, HttpSession session) {
 		String shareNoStr = request.getParameter("shareNo");
 		if (!isThjeon(session) || shareNoStr == null) {
@@ -467,7 +481,7 @@ public class NewBoardController {
 			log.info("moveShareToSecret DB none Connect");
 			return "redirect:/newboard/shareView?shareNo=" + shareNo;
 		}
-		return "redirect:/newboard/secretView?commentNo=" + commentService.currentNo();
+		return "redirect:/session/newboard/secretView?commentNo=" + commentService.currentNo();
 	}
 
 }
