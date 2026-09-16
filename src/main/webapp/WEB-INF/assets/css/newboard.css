@@ -11,6 +11,12 @@
    ============================================================ */
 
 :root{
+  /* [2026-09-16 신설] "PC 화면에서 제목이 너무 구석에 박혀있다" 신고 -- 의도된 부분(별도
+     PC 2단 레이아웃 없이 폭과 무관한 단일 읽기폭 컬럼 하나로 통일하기로 한 결정 자체)은
+     맞지만, 720px 고정폭을 큰 모니터에서도 그대로 써서 양옆 여백이 지나치게 넓어 보였다.
+     화면이 넓어질수록 이 폭 자체를 조금씩 키워서("2단 배치"는 여전히 안 만들면서) 여백
+     비율만 줄인다 -- 아래 @media 블록에서 이 변수만 재정의. */
+  --nb-content-w:720px;
   --nb-paper:#ECEEE6;
   --nb-surface:#FAF9F2;
   --nb-surface-2:#FFFFFF;
@@ -31,6 +37,11 @@
   --nb-room-soft:var(--nb-c-free-soft);
 }
 
+/* 화면이 넓어질수록 읽기폭 컬럼을 조금씩 키운다(여전히 단일 컬럼, "2단 PC 레이아웃"은
+   아님) -- 모바일/좁은 화면은 720px 그대로, 큰 모니터에서만 여백 비율을 줄여준다. */
+@media (min-width:900px){ :root{ --nb-content-w:860px; } }
+@media (min-width:1200px){ :root{ --nb-content-w:1000px; } }
+
 /* ---------- reset scoped to new-board pages ---------- */
 .nb *{box-sizing:border-box;}
 .nb{
@@ -42,7 +53,7 @@
 .nb h1,.nb h2,.nb h3{font-family:'Gowun Batang','Noto Serif KR',serif; margin:0;}
 .nb .mono{font-family:'IBM Plex Mono',ui-monospace,monospace;}
 .nb img{max-width:100%;}
-.nb .nb-wrap{max-width:720px; margin:0 auto; padding:0 16px 64px;}
+.nb .nb-wrap{max-width:var(--nb-content-w); margin:0 auto; padding:0 16px 64px;}
 
 /* ---------- top bar ---------- */
 .nb-topbar{
@@ -50,7 +61,7 @@
   border-bottom:1px solid var(--nb-line);
 }
 .nb-topbar-inner{
-  max-width:720px; margin:0 auto; padding:12px 16px;
+  max-width:var(--nb-content-w); margin:0 auto; padding:12px 16px;
   display:flex; align-items:center; justify-content:space-between; gap:10px;
 }
 .nb-brand{font-family:'Gowun Batang',serif; font-size:18px; font-weight:700;}
@@ -79,7 +90,7 @@
 
 /* ---------- room switcher (사이드바를 대체하는 상단 탭 — 폭 무관, 항상 보임) ---------- */
 .nb-rooms{
-  display:flex; gap:6px; overflow-x:auto; padding:12px 16px 0; max-width:720px; margin:0 auto;
+  display:flex; gap:6px; overflow-x:auto; padding:12px 16px 0; max-width:var(--nb-content-w); margin:0 auto;
   -webkit-overflow-scrolling:touch;
 }
 .nb-room-tab{
@@ -94,7 +105,7 @@
 }
 
 /* ---------- hidden extra-links drawer (기존 board_left_menu.jsp의 히든 게임 목록 대응) ---------- */
-.nb-more{max-width:720px; margin:0 auto; padding:10px 16px 0;}
+.nb-more{max-width:var(--nb-content-w); margin:0 auto; padding:10px 16px 0;}
 .nb-more-toggle{
   font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--nb-ink-faint);
   background:none; border:none; cursor:pointer; padding:4px 0; display:flex; align-items:center; gap:5px;
@@ -110,7 +121,7 @@
 .nb-more-list a:hover{color:var(--nb-room);}
 
 /* ---------- board body ---------- */
-.nb-board{max-width:720px; margin:0 auto; padding:14px 16px 0;}
+.nb-board{max-width:var(--nb-content-w); margin:0 auto; padding:14px 16px 0;}
 .nb-toolbar{display:flex; align-items:flex-start; justify-content:space-between; gap:10px; margin-bottom:14px; flex-wrap:wrap;}
 .nb-toolbar h1{font-size:21px;}
 .nb-toolbar .nb-sub{font-size:12.5px; color:var(--nb-ink-faint); font-family:'IBM Plex Mono',monospace; margin-top:4px;}
