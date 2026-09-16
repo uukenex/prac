@@ -3295,11 +3295,22 @@ public class BotS5ServiceImpl implements BotS5Service {
             }
         }
 
+        // [2026-09-16] "즉시처치시 반격하는 문제" 수정 -- 두 마리(dualMonster) 몬스터의 경우
+        // 위 파티 공격 루프에서 이번 턴에 방금 죽인 개체(I번/ti=0 또는 II번/ti=1)는 반격할
+        // 기회 자체가 없어야 하는데, 이 아래 반격 루프는 dualMonster1KilledInLoop/
+        // dualMonster2KilledInLoop를 전혀 보지 않고 항상 두 슬롯 다 반격시켰다(한 방에 I번을
+        // 처치해도 죽은 I번 명의로 반격 로그가 그대로 찍히는 버그). ti별로 "이번 턴에 죽은
+        // 슬롯"이면 통째로 건너뛴다.
+        boolean anyRetaliationPrinted = false;
         for (int ti = 0; ti < targets.size(); ti++) {
+            if (dualMonster && ((ti == 0 && dualMonster1KilledInLoop) || (ti == 1 && dualMonster2KilledInLoop))) {
+                continue;
+            }
             HashMap<String, Object> curTarget = targets.get(ti);
             boolean curGuarded = ti == 0 && guarded;
             HashMap<String, Object> curOriginalTarget = ti == 0 ? originalTarget : curTarget;
-            if (ti > 0) sb.append(NL);
+            if (anyRetaliationPrinted) sb.append(NL);
+            anyRetaliationPrinted = true;
 
         String tJob = strVal(curTarget.get("CLASS"), "WARRIOR");
         int tGrade = intVal(curTarget.get("GRADE"), 1);
