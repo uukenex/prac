@@ -1,10 +1,18 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%-- [2026-09-16 신설] 뉴게시판 공통 상단(헤더+드롭다운+방탭+숨김 더보기 목록).
      기존 dropMenu_header.jsp/menubar_header.jsp/board_left_menu.jsp를 건드리지 않고
      새로 만든 대응 컴포넌트 -- 톤만 바뀌었을 뿐 "드롭다운 메뉴"/"숨겨진 다른 게임 링크"라는
      기능은 그대로 유지한다. PC 전용 좌우 2단 배치 대신 폭과 무관한 단일 세로 배치라
      기존 .boardSection{display:none} 같은 모바일 전용 버그가 구조적으로 없다.
      포함하는 페이지는 반드시 ${room}("free"/"share"/"secret") 모델 속성을 넣어줘야 하고,
-     바깥 div는 <div class="nb" data-room="${room}"> 로 감싸야 한다. --%>
+     바깥 div는 <div class="nb" data-room="${room}"> 로 감싸야 한다.
+     [2026-09-16 버그 수정] "게시판 한글이 다 깨졌어" 신고 -- 이 파일에만 pageEncoding=
+     "UTF-8" 지정이 빠져 있었다. <jsp:include>는 include 대상 페이지를 별도 서블릿
+     요청으로 실행하기 때문에(정적 include와 달리) 이 파일 자신의 pageEncoding이 그대로
+     적용되는데, 지정이 없으면 JSP 기본값(ISO-8859-1)으로 소스를 읽어 컴파일 시점에
+     UTF-8 한글 바이트가 깨진 문자로 굳어버린다 -- 이 파일에서 출력하는 텍스트(상단
+     브랜드/드롭다운/방탭/더보기 목록)만 깨지고 이 파일을 include하는 페이지 자신의
+     텍스트는 멀쩡했던 이유. --%>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
 
 <link rel="stylesheet" href="<%=request.getContextPath()%>/assets/css/font-awesome.min.css">
