@@ -52,6 +52,16 @@
 					</a>
 				</li>
 				</c:if>
+				<%-- [2026-09-16 신설] "게시판 디자인 개편안, 기존 게시판은 유지한 채 새 경로로
+					 연결되게 해달라" 요청 -- 기존 화면/기능은 그대로 두고, 새 톤으로 다시 만든
+					 병행 게시판(NewBoardController, /newboard/**)으로 가는 발견용 링크만 추가. --%>
+				<c:url value="/newboard/free" var="newboard"/>
+				<li>
+					<a href="${newboard }" class="freeBoard" style="color:#C1782E;">
+						<i class="fa fa-magic"></i>
+						✨ 새 디자인 체험하기
+					</a>
+				</li>
 				<li class='hidable hide'>
 					<a href="${game1 }">
 						<i class="fa fa-gamepad"></i>

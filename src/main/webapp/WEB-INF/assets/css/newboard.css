@@ -1,0 +1,230 @@
+/* ============================================================
+   뉴게시판(New Board) 전용 스타일시트 (2026-09-16)
+   - 기존 main.css/fancy.css와 완전히 분리된 새 스타일시트. 기존 자유/공유/비밀
+     게시판(freeboard/share/secretboard JSP)은 이 파일을 전혀 참조하지 않으므로
+     기존 화면은 100% 그대로 유지된다.
+   - "톤만 바꾸고 기능/위치는 유지해달라"는 요청에 따라 상단 드롭다운 메뉴,
+     좌측 사이드(방 전환 + 숨김 게임 링크), Fancybox, 네이버 스마트에디터는 전부
+     그대로 살리되, PC 전용 2단(사이드+본문 좌우배치) 레이아웃은 없애고 폭과
+     무관한 단일 세로 레이아웃 하나로 통일했다(기존 "480px 미만에서 사이드 메뉴가
+     통째로 사라지는" 버그가 이 구조에서는 애초에 발생하지 않는다).
+   ============================================================ */
+
+:root{
+  --nb-paper:#ECEEE6;
+  --nb-surface:#FAF9F2;
+  --nb-surface-2:#FFFFFF;
+  --nb-ink:#22252A;
+  --nb-ink-soft:#5B6067;
+  --nb-ink-faint:#8C9096;
+  --nb-line:#D7D8CB;
+  --nb-line-strong:#C3C5B4;
+  --nb-accent:#C1782E;
+  --nb-accent-ink:#5A3714;
+  --nb-accent-soft:#F3E2CB;
+  --nb-danger:#B2432B;
+  --nb-c-free:#33619A;      --nb-c-free-soft:#DDE7F2;
+  --nb-c-share:#3D7E58;     --nb-c-share-soft:#DEEBE1;
+  --nb-c-secret:#7A4C8F;    --nb-c-secret-soft:#E9DEEE;
+  --nb-shadow:0 1px 2px rgba(30,26,18,.06),0 6px 20px -10px rgba(30,26,18,.22);
+  --nb-room:var(--nb-c-free);
+  --nb-room-soft:var(--nb-c-free-soft);
+}
+
+/* ---------- reset scoped to new-board pages ---------- */
+.nb *{box-sizing:border-box;}
+.nb{
+  background:var(--nb-paper); color:var(--nb-ink); min-height:100vh;
+  font-family:'IBM Plex Sans KR','Noto Sans KR',sans-serif;
+  font-size:15px; line-height:1.6;
+}
+.nb a{color:inherit; text-decoration:none;}
+.nb h1,.nb h2,.nb h3{font-family:'Gowun Batang','Noto Serif KR',serif; margin:0;}
+.nb .mono{font-family:'IBM Plex Mono',ui-monospace,monospace;}
+.nb img{max-width:100%;}
+.nb .nb-wrap{max-width:720px; margin:0 auto; padding:0 16px 64px;}
+
+/* ---------- top bar ---------- */
+.nb-topbar{
+  position:sticky; top:0; z-index:20; background:var(--nb-surface-2);
+  border-bottom:1px solid var(--nb-line);
+}
+.nb-topbar-inner{
+  max-width:720px; margin:0 auto; padding:12px 16px;
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+}
+.nb-brand{font-family:'Gowun Batang',serif; font-size:18px; font-weight:700;}
+.nb-brand .dot{color:var(--nb-accent);}
+.nb-topnav{display:flex; align-items:center; gap:4px;}
+.nb-dd{position:relative;}
+.nb-dd-btn{
+  font-family:'IBM Plex Sans KR',sans-serif; font-size:13px; font-weight:600;
+  background:transparent; border:1px solid transparent; color:var(--nb-ink-soft);
+  padding:8px 10px; border-radius:8px; cursor:pointer; display:flex; align-items:center; gap:5px;
+}
+.nb-dd-btn:hover, .nb-dd-btn[aria-expanded="true"]{background:var(--nb-surface); color:var(--nb-ink); border-color:var(--nb-line);}
+.nb-dd-btn:after{content:"▾"; font-size:9px; margin-top:1px;}
+.nb-dd-menu{
+  position:absolute; right:0; top:calc(100% + 6px); min-width:168px;
+  background:var(--nb-surface-2); border:1px solid var(--nb-line); border-radius:10px;
+  box-shadow:var(--nb-shadow); padding:6px; display:none; z-index:30;
+}
+.nb-dd[data-open="true"] .nb-dd-menu{display:block;}
+.nb-dd-menu a{
+  display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:7px; font-size:13.5px;
+}
+.nb-dd-menu a:hover{background:var(--nb-room-soft); color:var(--nb-room);}
+.nb-authlink{font-size:13px; font-weight:600; color:var(--nb-ink-soft); padding:8px 10px;}
+.nb-authlink:hover{color:var(--nb-ink);}
+
+/* ---------- room switcher (사이드바를 대체하는 상단 탭 — 폭 무관, 항상 보임) ---------- */
+.nb-rooms{
+  display:flex; gap:6px; overflow-x:auto; padding:12px 16px 0; max-width:720px; margin:0 auto;
+  -webkit-overflow-scrolling:touch;
+}
+.nb-room-tab{
+  flex:0 0 auto; display:inline-flex; align-items:center; gap:6px;
+  font-family:'IBM Plex Sans KR',sans-serif; font-size:13.5px; font-weight:600;
+  padding:9px 14px; border-radius:9px 9px 0 0; border:1px solid var(--nb-line); border-bottom:none;
+  color:var(--nb-ink-soft); background:var(--nb-surface);
+}
+.nb-room-tab[data-current="true"]{
+  color:var(--nb-ink); background:var(--nb-surface-2); border-color:var(--nb-line-strong);
+  box-shadow:inset 0 2px 0 var(--nb-room);
+}
+
+/* ---------- hidden extra-links drawer (기존 board_left_menu.jsp의 히든 게임 목록 대응) ---------- */
+.nb-more{max-width:720px; margin:0 auto; padding:10px 16px 0;}
+.nb-more-toggle{
+  font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--nb-ink-faint);
+  background:none; border:none; cursor:pointer; padding:4px 0; display:flex; align-items:center; gap:5px;
+}
+.nb-more-toggle:before{content:"▸"; transition:transform .15s;}
+.nb-more[data-open="true"] .nb-more-toggle:before{transform:rotate(90deg);}
+.nb-more-list{
+  display:none; flex-wrap:wrap; gap:6px 14px; margin-top:8px; padding:10px 12px;
+  background:var(--nb-surface); border:1px solid var(--nb-line); border-radius:9px;
+}
+.nb-more[data-open="true"] .nb-more-list{display:flex;}
+.nb-more-list a{font-size:12.5px; color:var(--nb-ink-soft);}
+.nb-more-list a:hover{color:var(--nb-room);}
+
+/* ---------- board body ---------- */
+.nb-board{max-width:720px; margin:0 auto; padding:14px 16px 0;}
+.nb-toolbar{display:flex; align-items:flex-start; justify-content:space-between; gap:10px; margin-bottom:14px; flex-wrap:wrap;}
+.nb-toolbar h1{font-size:21px;}
+.nb-toolbar .nb-sub{font-size:12.5px; color:var(--nb-ink-faint); font-family:'IBM Plex Mono',monospace; margin-top:4px;}
+
+.nb-btn{
+  font-family:'IBM Plex Sans KR',sans-serif; font-weight:600; font-size:13.5px;
+  border-radius:8px; border:1px solid var(--nb-line-strong); padding:9px 15px; cursor:pointer;
+  background:var(--nb-surface-2); color:var(--nb-ink); display:inline-flex; align-items:center; gap:6px;
+}
+.nb-btn.primary{background:var(--nb-accent); color:var(--nb-accent-ink); border-color:var(--nb-accent);}
+.nb-btn.danger{color:var(--nb-danger); border-color:var(--nb-danger);}
+.nb-btn:hover{filter:brightness(0.97);}
+
+.nb-search{display:flex; gap:8px; margin-bottom:16px;}
+.nb-search select, .nb-search input[type=text], .nb-search input[type=search]{
+  font-family:'IBM Plex Sans KR',sans-serif; font-size:13.5px;
+  border:1px solid var(--nb-line-strong); border-radius:8px; background:var(--nb-surface-2); color:var(--nb-ink);
+  padding:9px 10px;
+}
+.nb-search input{flex:1; min-width:0;}
+
+/* card-row 목록 -- 고정폭 <table> 대신 사용, 400px에서도 제목이 안 잘리고 줄바꿈됨 */
+.nb-list{list-style:none; margin:0 0 20px; padding:0; display:flex; flex-direction:column; gap:8px;}
+.nb-row{
+  display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:12px;
+  background:var(--nb-surface-2); border:1px solid var(--nb-line); border-radius:10px;
+  padding:12px 14px;
+}
+.nb-row:hover{border-color:var(--nb-room);}
+.nb-row .nb-no{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--nb-ink-faint); min-width:30px;}
+.nb-row .nb-avatar{
+  width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  background:var(--nb-room-soft); color:var(--nb-room); font-size:11.5px; font-weight:700; flex-shrink:0;
+}
+.nb-row .nb-main{min-width:0;}
+.nb-row .nb-ttl{font-size:14.5px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block;}
+.nb-row .nb-ttl .nb-reply{color:var(--nb-room); font-family:'IBM Plex Mono',monospace; font-size:12px; font-weight:500; margin-left:4px;}
+.nb-row .nb-ttl .nb-lock{margin-right:2px;}
+.nb-row .nb-metaline{margin-top:3px; font-size:11.5px; color:var(--nb-ink-faint); display:flex; gap:9px; font-family:'IBM Plex Mono',monospace;}
+.nb-row .nb-stat{text-align:right; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--nb-ink-faint); white-space:nowrap;}
+.nb-empty{padding:32px 0; text-align:center; color:var(--nb-ink-faint); font-size:13.5px;}
+
+.nb-pager{display:flex; gap:6px; justify-content:center; flex-wrap:wrap; margin:18px 0 30px;}
+.nb-pager a{
+  font-family:'IBM Plex Mono',monospace; font-size:12.5px; padding:6px 10px; border-radius:7px;
+  border:1px solid var(--nb-line); color:var(--nb-ink-soft);
+}
+.nb-pager a:hover{border-color:var(--nb-room); color:var(--nb-room);}
+
+/* ---------- post detail ---------- */
+.nb-post{padding-bottom:12px; margin-bottom:16px; border-bottom:1px solid var(--nb-line);}
+.nb-crumbs{font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--nb-room); margin-bottom:8px;}
+.nb-post h1{font-size:22px; line-height:1.4;}
+.nb-byline{display:flex; align-items:center; gap:9px; margin-top:12px; font-size:12.5px; color:var(--nb-ink-faint);}
+.nb-byline .nb-avatar{width:26px; height:26px; font-size:11px;}
+.nb-byline b{color:var(--nb-ink); font-weight:600;}
+.nb-body{font-size:15px; line-height:1.85; color:var(--nb-ink); word-break:break-word;}
+.nb-body img{border-radius:10px; margin:10px 0; cursor:zoom-in;}
+.nb-actions{display:flex; gap:8px; margin:18px 0;}
+.nb-locked{
+  padding:40px 20px; text-align:center; background:var(--nb-surface); border:1px solid var(--nb-line);
+  border-radius:12px; color:var(--nb-ink-soft); font-size:14px;
+}
+
+.nb-version-bar{display:flex; align-items:center; gap:8px; margin-bottom:14px; flex-wrap:wrap;}
+.nb-version-bar select{
+  font-family:'IBM Plex Mono',monospace; font-size:12.5px; border:1px solid var(--nb-line-strong);
+  border-radius:7px; padding:6px 8px; background:var(--nb-surface-2); color:var(--nb-ink);
+}
+
+.nb-replies{margin-top:22px; border-top:1px solid var(--nb-line); padding-top:16px;}
+.nb-replies h2{
+  font-family:'IBM Plex Mono',monospace; font-size:11.5px; letter-spacing:.05em; text-transform:uppercase;
+  color:var(--nb-ink-faint); font-weight:500; margin-bottom:10px;
+}
+.nb-reply{display:flex; gap:10px; padding:10px 0; border-top:1px solid var(--nb-line);}
+.nb-reply:first-child{border-top:none;}
+.nb-reply .nb-avatar{width:26px; height:26px; font-size:11px; flex-shrink:0;}
+.nb-reply .nb-who{font-size:12.5px; font-weight:600;}
+.nb-reply .nb-when{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--nb-ink-faint); margin-left:6px; font-weight:400;}
+.nb-reply .nb-txt{font-size:13.5px; color:var(--nb-ink-soft); margin-top:3px; line-height:1.6; word-break:break-word;}
+.nb-reply-box{display:flex; gap:8px; margin-top:14px;}
+.nb-reply-box input{
+  flex:1; min-width:0; font-family:'IBM Plex Sans KR',sans-serif; font-size:13.5px;
+  border:1px solid var(--nb-line-strong); border-radius:8px; padding:10px 12px; background:var(--nb-surface-2); color:var(--nb-ink);
+}
+
+/* ---------- write / edit form (스마트에디터 iframe은 그대로, 주변 껍데기만 새 톤) ---------- */
+.nb-field{margin-bottom:14px;}
+.nb-field label{
+  display:block; font-size:11.5px; font-family:'IBM Plex Mono',monospace; color:var(--nb-ink-faint);
+  margin-bottom:6px; letter-spacing:.03em;
+}
+.nb-field input[type=text]{
+  width:100%; font-family:'IBM Plex Sans KR',sans-serif; font-size:15px; color:var(--nb-ink);
+  border:1px solid var(--nb-line-strong); border-radius:9px; padding:11px 13px; background:var(--nb-surface-2);
+}
+.nb-check{display:flex; align-items:center; gap:7px; font-size:12.5px; color:var(--nb-ink-soft); margin-top:8px;}
+.nb-room-note{
+  display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--nb-room);
+  background:var(--nb-room-soft); padding:9px 12px; border-radius:8px; margin-bottom:16px;
+}
+.nb-form-actions{display:flex; justify-content:flex-end; gap:8px; margin-top:18px;}
+
+/* room color hooks */
+.nb[data-room="free"]  { --nb-room:var(--nb-c-free);   --nb-room-soft:var(--nb-c-free-soft); }
+.nb[data-room="share"] { --nb-room:var(--nb-c-share);  --nb-room-soft:var(--nb-c-share-soft); }
+.nb[data-room="secret"]{ --nb-room:var(--nb-c-secret); --nb-room-soft:var(--nb-c-secret-soft); }
+
+/* focus states */
+.nb input:focus, .nb select:focus, .nb textarea:focus{outline:2px solid var(--nb-room); outline-offset:1px;}
+
+/* small-screen row tweak (레이아웃 자체는 이미 단일 컬럼이라, stat만 아래로) */
+@media (max-width:420px){
+  .nb-row{grid-template-columns:auto 1fr; row-gap:6px;}
+  .nb-row .nb-stat{grid-column:2; text-align:left;}
+}
