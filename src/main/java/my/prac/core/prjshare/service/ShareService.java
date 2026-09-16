@@ -28,4 +28,7 @@ public interface ShareService {
 	public int selectVersionCheck(HashMap<String, Object> paramMap);
 
 	public List<Integer> selectShareHistList(int shareNo);
+
+	// [2026-09-16 신설] 공유게시판 글 삭제(이력 포함) -- 비밀게시판 이동용으로 신설.
+	public int deleteShareTx(int shareNo);
 }

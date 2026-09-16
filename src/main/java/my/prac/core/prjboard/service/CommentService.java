@@ -12,6 +12,9 @@ public interface CommentService {
 	// 분류별 총 게시물 수(자유게시판)
 	public int freePageCount();
 
+	// [2026-09-16 신설] 분류별 총 게시물 수(비밀게시판)
+	public int secretPageCount();
+
 	// 카운트 올리기
 	public int count(int commentNo);
 
@@ -27,6 +30,10 @@ public interface CommentService {
 	// 게시글 쓰기(자유게시판) - 비밀글 여부 포함
 	public int writeFreeComment(String commentName, String commentContent, String userId, String secretYn);
 
+	// [2026-09-16 신설] 게시글 쓰기(비밀게시판) -- 로그인 유저만 접근 가능한 별도 게시판이라
+	// SECRET_YN은 항상 'Y'로 고정(개별 글 단위 토글은 필요 없음).
+	public int writeSecretComment(String commentName, String commentContent, String userId);
+
 	// 게시글 수정
 	public int updateComment(int commentNo, String commentName, String commentContent);
 
@@ -36,11 +43,17 @@ public interface CommentService {
 	// 게시글 삭제 --댓글까지 지워야함
 	public int deleteComment(int commentNo);
 
+	// [2026-09-16 신설] 자유게시판 글을 비밀게시판으로 이동(카테고리만 변경) -- thjeon 유저 전용.
+	public int moveCommentToSecret(int commentNo);
+
 	// 페이지당 리스트를 보여줌(공지사항)
 	public List<Comments> noticeListByPage(int page);
 
 	// 페이지당 리스트를 보여줌(자유게시판)
 	public List<Comments> freeListByPage(int page);
+
+	// [2026-09-16 신설] 페이지당 리스트를 보여줌(비밀게시판)
+	public List<Comments> secretListByPage(int page);
 
 	// 이름검색 리스트를 페이지별로 보여줌(공지사항)
 	public List<Comments> noticeSearchListByPage(String commentName, int page);
@@ -48,17 +61,26 @@ public interface CommentService {
 	// 이름검색 리스트를 페이지별로 보여줌(자유게시판)
 	public List<Comments> freeSearchListByPage(String commentName, int page);
 
+	// [2026-09-16 신설] 이름검색 리스트를 페이지별로 보여줌(비밀게시판)
+	public List<Comments> secretSearchListByPage(String commentName, int page);
+
 	// 내용검색으로 리스트를 페이지별로 보여줌(공지사항)
 	public List<Comments> noticeSearchContentListByPage(String commentContent, int page);
 
 	// 내용검색으로 리스트를 페이지별로 보여줌(자유게시판)
 	public List<Comments> freeSearchContentListByPage(String commentContent, int page);
 
+	// [2026-09-16 신설] 내용검색으로 리스트를 페이지별로 보여줌(비밀게시판)
+	public List<Comments> secretSearchContentListByPage(String commentContent, int page);
+
 	// 닉네임검색으로 리스트를 페이지별로 보여줌(공지사항)
 	public List<Comments> noticeSearchNickListByPage(String userNick, int page);
 
 	// 닉네임검색으로 리스트를 페이지별로 보여줌(자유게시판)
 	public List<Comments> freeSearchNickListByPage(String userNick, int page);
+
+	// [2026-09-16 신설] 닉네임검색으로 리스트를 페이지별로 보여줌(비밀게시판)
+	public List<Comments> secretSearchNickListByPage(String userNick, int page);
 
 	// 가장 최신의 글번호를 가져옴
 	public int currentNo();

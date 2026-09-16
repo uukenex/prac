@@ -64,10 +64,14 @@
 		<c:url value="/free"        var="free" />
 		<c:url value="/share"       var="share" />
 		<c:url value="/rank"   var="rank" />
+		<c:url value="/session/secret" var="secret" />
 		<li class="dropMenuLi"><a href="${notice }">게시판</a>
 			<ul>
 				<li><a href="<%=request.getContextPath() %>${free }" >자유게시판</a></li>
 				<li><a href="<%=request.getContextPath() %>${share }">공유게시판</a></li>
+				<c:if test="${!empty Users.userId }">
+				<li><a href="<%=request.getContextPath() %>${secret }">비밀게시판</a></li>
+				</c:if>
 				<li><a href="<%=request.getContextPath() %>${rank }" >랭크게시판</a></li>
 			</ul></li>
 	</ul>

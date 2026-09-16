@@ -19,6 +19,7 @@
 				
 				<c:url value="/free" var="free"/>
 				<c:url value="/share" var="share"/>
+				<c:url value="/session/secret" var="secret"/>
 				<c:url value="/game1" var="game1"/>
 				<c:url value="/game2" var="game2"/>
 				<c:url value="/game3" var="game3"/>
@@ -41,6 +42,16 @@
 						공유게시판
 					</a>
 				</li>
+				<%-- [2026-09-16 신설] 로그인했을 때만 노출(비로그인 접근은 SecretController가
+					 /loginCheck로 리다이렉트하지만, 메뉴 자체도 비로그인 상태에선 숨긴다). --%>
+				<c:if test="${!empty Users.userId }">
+				<li>
+					<a href="${secret }" class="freeBoard">
+						<i class="fa fa-lock"></i>
+						비밀게시판
+					</a>
+				</li>
+				</c:if>
 				<li class='hidable hide'>
 					<a href="${game1 }">
 						<i class="fa fa-gamepad"></i>

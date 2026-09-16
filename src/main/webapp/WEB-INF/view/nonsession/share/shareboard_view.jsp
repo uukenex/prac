@@ -60,6 +60,12 @@
 										<section>
 											<input type="button" value="목록" id="listview" class="boardButtonStyle2">
 											<input type="submit" value="수정하기" formaction="/s/shareUpdate" formmethod="post">
+											<%-- [2026-09-16 신설] thjeon 전용: 이 글을 비밀게시판으로 복사 이동(공유게시판
+												 원본과 버전 이력은 삭제됨). --%>
+											<c:if test="${'THJEON'==Users.userId }">
+											<input type="submit" value="🔒 비밀게시판으로 이동" formaction="/session/moveShareToSecret" formmethod="post"
+												onclick="return confirm('이 글을 비밀게시판으로 이동할까요? (공유게시판 원본과 버전 이력은 삭제됩니다)');">
+											</c:if>
 										</section>
 										<hr id="boardTitleHrStyle1">
 										<h3 id="boardTitleSytle1">${share.shareName} ver.${share.version}</h3>

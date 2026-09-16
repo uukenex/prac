@@ -61,6 +61,12 @@
 											<c:if test="${comment.shareYn == '1' and (Users.userId == 'SUHWANYUN' or Users.userId == 'THJEON') }">
 											<input type="submit" value="수정하기Master" formaction="/session/freeUpdate" formmethod="post">
 											</c:if>
+											<%-- [2026-09-16 신설] thjeon 전용: 이 글을 비밀게시판으로 이동(같은 COMMENT_NO를
+												 그대로 쓰므로 댓글도 함께 옮겨진다). --%>
+											<c:if test="${'THJEON'==Users.userId }">
+											<input type="submit" value="🔒 비밀게시판으로 이동" formaction="/session/moveFreeToSecret" formmethod="post"
+												onclick="return confirm('이 글을 비밀게시판으로 이동할까요? (자유게시판에서는 사라집니다)');">
+											</c:if>
 										</section>
 										<hr id="boardTitleHrStyle1">
 										<h3 id="boardTitleSytle1">${comment.commentName}</h3>

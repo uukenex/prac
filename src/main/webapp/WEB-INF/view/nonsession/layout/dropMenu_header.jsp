@@ -36,8 +36,12 @@
 				</c:if>	
 				<c:url value="/free"  var="free"/>
 				<c:url value="/share" var="share"/>
+				<c:url value="/session/secret" var="secret"/>
 					<li><a href="${free } ">자유게시판</a></li>
 					<li><a href="${share }">공유게시판</a></li>
+					<c:if test="${!empty Users.userId }">
+					<li><a href="${secret }">비밀게시판</a></li>
+					</c:if>
 			</ul>
 			<a href="#" class="close">Close</a>
 		</div>

@@ -19,6 +19,10 @@ public interface CommentDAO{
 	// 게시글 수정(작성자만 가능)
 	public int updateComment(HashMap<String, Object> hashMap);
 
+	// [2026-09-16 신설] 자유게시판 글을 비밀게시판으로 이동(카테고리만 변경, 댓글은 그대로
+	// COMMENT_NO로 연결돼 있어 같이 따라감) -- thjeon 유저 전용 이동 버튼용.
+	public int updateCommentCategory(HashMap<String, Object> hashMap);
+
 	// 게시글 삭제(작성자만 가능)
 	public int deleteComment(int commentNo);
 

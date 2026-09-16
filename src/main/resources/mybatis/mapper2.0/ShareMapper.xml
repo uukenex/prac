@@ -127,7 +127,7 @@
     </select>
     
     <select id="selectShareHistList" parameterType="HashMap" resultType="int">
-    	SELECT /* ShareMapper.xml : selectShareHist */ 
+    	SELECT /* ShareMapper.xml : selectShareHist */
 		       SBH.VERSION AS HIST_VER
 		  FROM TSHAREBOARD SB,TSHAREBOARD_HIST SBH
 		 WHERE SB.SHARE_NO = SBH.SHARE_NO
@@ -135,5 +135,15 @@
 		   AND ROWNUM &lt; 5
 		 ORDER BY SBH.VERSION DESC
     </select>
-    
+
+    <!-- [2026-09-16 신설] 공유게시판 -> 비밀게시판 이동용 삭제(원본 제거). 이력부터 지워야
+         SHARE_NO FK 순서상 안전. -->
+    <delete id="deleteShareHist" parameterType="int">
+        DELETE FROM TSHAREBOARD_HIST WHERE SHARE_NO = #{shareNo, jdbcType=NUMERIC}
+    </delete>
+
+    <delete id="deleteShare" parameterType="int">
+        DELETE FROM TSHAREBOARD WHERE SHARE_NO = #{shareNo, jdbcType=NUMERIC}
+    </delete>
+
 </mapper>

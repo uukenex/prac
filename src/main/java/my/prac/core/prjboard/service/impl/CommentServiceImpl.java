@@ -60,6 +60,20 @@ public class CommentServiceImpl implements CommentService {
 		return crepo.insertComment(map);
 	}
 
+	// [2026-09-16 신설] 게시글 쓰기(비밀게시판) -- 로그인 유저만 접근 가능한 별도 게시판이라
+	// SECRET_YN은 항상 'Y'로 고정.
+	@Override
+	public int writeSecretComment(String commentName, String commentContent, String userId) {
+		HashMap<String, Object> map = new HashMap<>();
+		map.put("commentCategory", "비밀게시판");
+		map.put("commentName", commentName);
+		map.put("commentContent", commentContent);
+		map.put("userId", userId);
+		map.put("secretYn", "Y");
+
+		return crepo.insertComment(map);
+	}
+
 	// 게시글 수정
 	@Override
 	public int updateComment(int commentNo, String commentName, String commentContent) {
@@ -88,6 +102,16 @@ public class CommentServiceImpl implements CommentService {
 		return result;
 	}
 
+	// [2026-09-16 신설] 자유게시판 글을 비밀게시판으로 이동(카테고리만 변경, 댓글은 COMMENT_NO로
+	// 연결돼 있어 그대로 따라감) -- thjeon 유저 전용 이동 버튼용(권한 체크는 컨트롤러에서).
+	@Override
+	public int moveCommentToSecret(int commentNo) {
+		HashMap<String, Object> map = new HashMap<>();
+		map.put("commentNo", commentNo);
+		map.put("commentCategory", "비밀게시판");
+		return crepo.updateCommentCategory(map);
+	}
+
 	// 페이지당 리스트를 보여줌(공지사항)
 	@Override
 	public List<Comments> noticeListByPage(int page) {
@@ -102,6 +126,15 @@ public class CommentServiceImpl implements CommentService {
 	public List<Comments> freeListByPage(int page) {
 		HashMap<String, Object> map = new HashMap<>();
 		map.put("commentCategory", "자유게시판");
+		map.put("page", page);
+		return crepo.getCommentByPage(map);
+	}
+
+	// [2026-09-16 신설] 페이지당 리스트를 보여줌(비밀게시판)
+	@Override
+	public List<Comments> secretListByPage(int page) {
+		HashMap<String, Object> map = new HashMap<>();
+		map.put("commentCategory", "비밀게시판");
 		map.put("page", page);
 		return crepo.getCommentByPage(map);
 	}
@@ -121,6 +154,16 @@ public class CommentServiceImpl implements CommentService {
 	public List<Comments> freeSearchListByPage(String commentName, int page) {
 		HashMap<String, Object> map = new HashMap<>();
 		map.put("commentCategory", "자유게시판");
+		map.put("page", page);
+		map.put("commentName", commentName);
+		return crepo.searchCommentByNameOfPage(map);
+	}
+
+	// [2026-09-16 신설] 이름검색 리스트를 페이지별로 보여줌(비밀게시판)
+	@Override
+	public List<Comments> secretSearchListByPage(String commentName, int page) {
+		HashMap<String, Object> map = new HashMap<>();
+		map.put("commentCategory", "비밀게시판");
 		map.put("page", page);
 		map.put("commentName", commentName);
 		return crepo.searchCommentByNameOfPage(map);
@@ -146,6 +189,16 @@ public class CommentServiceImpl implements CommentService {
 		return crepo.searchCommentByContentOfPage(map);
 	}
 
+	// [2026-09-16 신설] 내용검색으로 리스트를 페이지별로 보여줌(비밀게시판)
+	@Override
+	public List<Comments> secretSearchContentListByPage(String commentContent, int page) {
+		HashMap<String, Object> map = new HashMap<>();
+		map.put("commentCategory", "비밀게시판");
+		map.put("page", page);
+		map.put("commentContent", commentContent);
+		return crepo.searchCommentByContentOfPage(map);
+	}
+
 	// 닉네임검색으로 리스트를 페이지별로 보여줌(공지)
 	@Override
 	public List<Comments> noticeSearchNickListByPage(String userNick, int page) {
@@ -166,6 +219,16 @@ public class CommentServiceImpl implements CommentService {
 		return crepo.searchCommentByNickOfPage(map);
 	}
 
+	// [2026-09-16 신설] 닉네임검색으로 리스트를 페이지별로 보여줌(비밀게시판)
+	@Override
+	public List<Comments> secretSearchNickListByPage(String userNick, int page) {
+		HashMap<String, Object> map = new HashMap<>();
+		map.put("commentCategory", "비밀게시판");
+		map.put("page", page);
+		map.put("userNick", userNick);
+		return crepo.searchCommentByNickOfPage(map);
+	}
+
 	@Override
 	public int noticePageCount() {
 		return crepo.pageCount("공지사항");
@@ -174,6 +237,12 @@ public class CommentServiceImpl implements CommentService {
 	@Override
 	public int freePageCount() {
 		return crepo.pageCount("자유게시판");
+	}
+
+	// [2026-09-16 신설]
+	@Override
+	public int secretPageCount() {
+		return crepo.pageCount("비밀게시판");
 	}
 
 	@Override

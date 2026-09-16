@@ -6,6 +6,7 @@ import java.util.List;
 import javax.annotation.Resource;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import my.prac.core.dto.Shareboard;
 import my.prac.core.prjshare.dao.ShareDAO;
@@ -70,6 +71,14 @@ public class ShareServiceImpl implements ShareService {
 	@Override
 	public List<Integer> selectShareHistList(int shareNo) {
 		return shareDAO.selectShareHistList(shareNo);
+	}
+
+	// [2026-09-16 신설] 공유게시판 -> 비밀게시판 이동용 삭제(원본 제거, 이력부터 지움).
+	@Override
+	@Transactional
+	public int deleteShareTx(int shareNo) {
+		shareDAO.deleteShareHist(shareNo);
+		return shareDAO.deleteShare(shareNo);
 	}
 
 }
