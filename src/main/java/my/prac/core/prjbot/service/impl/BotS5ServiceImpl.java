@@ -635,6 +635,39 @@ public class BotS5ServiceImpl implements BotS5Service {
     }
 
     /**
+     * [2026-09-16] "50층 이후 50%탐사보상으로 악세뽑기권 지급, 50대=하급/60대=중급/70대=상급/
+     * 80대=최상급" 요청 -- 90대는 악세뽑기권 등급이 4단계(하급~최상급)뿐이라 상한(최상급)으로
+     * 고정. 블록6(50대)~10(90대) 기준 tier=block-5, 4 초과분은 4로 클램프.
+     */
+    private int accessoryVoucherTierForFloor(int floor) {
+        int tier = blockNo(floor) - 5;
+        if (tier < 1) tier = 1;
+        if (tier > 4) tier = 4;
+        return tier;
+    }
+
+    /**
+     * [2026-09-16 신설] 50층 이상 층에서 이번 방문 중 처음으로 탐사율 50%를 넘긴 순간(이
+     * 층의 계단 해금 조건과 동일 시점) 악세뽑기권 1장을 지급한다. ACH_ID 500+floor(550~599,
+     * 기존 achId 대역과 안 겹침)로 층당 1회만 지급되게 멱등 처리(grantAchievement).
+     * @return 지급 안내 문구, 조건 미충족/이미 지급됨이면 null.
+     */
+    private String checkExploreHalfReward(String userName, HashMap<String, Object> p, int floor, int visited, int tileCount) {
+        if (floor < 50 || tileCount <= 0 || visited * 100 / tileCount < 50) return null;
+        if (!grantAchievement(userName, 500 + floor)) return null;
+        int tier = accessoryVoucherTierForFloor(floor);
+        String field = "accessoryVoucherT" + tier;
+        String column = "ACCESSORY_VOUCHER_T" + tier;
+        int newCnt = intVal(p.get(column), 0) + 1;
+        HashMap<String, Object> up = new HashMap<>();
+        up.put("userName", userName);
+        up.put(field, newCnt);
+        dao.updateUserProgress(up);
+        p.put(column, newCnt);
+        return "🎁 [" + floor + "층 탐사율 50%] " + COMPANION_TIER_NAME[tier - 1] + " 악세뽑기권 1장 지급! (/악세뽑기로 사용)";
+    }
+
+    /**
      * 이 (유저,층) 보드가 아직 없으면(마을 갔다온 뒤 첫 진입 등) 새로 만든다. 칸 개수는
      * TBOT_S5_FLOOR_INFO.TILE_COUNT(층별 고정, 기존과 동일)를 그대로 쓰고 칸 "종류"만 매번
      * 새로 무작위 배정한다. 고정 개수 칸을 먼저 넣고(계단 위/아래 각 1개씩 총 2개, 히든 1~2,
@@ -659,9 +692,15 @@ public class BotS5ServiceImpl implements BotS5Service {
         int tileCount = fi == null ? 8 : intVal(fi.get("TILE_COUNT"), 8);
 
         List<String> types = new ArrayList<>();
-        // 계단을 위/아래 방향으로 분리(요청) -- 항상 층마다 딱 2칸(각 방향 1개씩) 고정
-        types.add("STAIRS_UP");
-        types.add("STAIRS_DOWN");
+        // 계단을 위/아래 방향으로 분리(요청) -- 기본은 층마다 딱 2칸(각 방향 1개씩) 고정.
+        // [2026-09-16] "50층 이상은 올라가는 계단 4개, 내려가는 계단 4개로" 요청으로 50층+는
+        // 방향당 4개씩(총 8칸)으로 늘림 -- 아래 STAIRS_UP 해금 조건이 "특정 계단칸 하나"가 아니라
+        // 층 전체 탐사율(50%↑) 기준으로 바뀌어서, 계단이 여러 칸이어도 조건 판정은 모두 동일.
+        int stairsPerDirection = floor >= 50 ? 4 : 1;
+        for (int i = 0; i < stairsPerDirection; i++) {
+            types.add("STAIRS_UP");
+            types.add("STAIRS_DOWN");
+        }
         // "51층부터 워프포인트(특수칸) 기믹" 요청 -- 특수칸이 체크포인트 역할을 하므로 51층부턴
         // 넉넉하게 배치(2026-09-08엔 4개, 2026-09-09에 6개로 증량). [2026-09-09 후속] "더블주사위
         // 기믹은 51층부터만 되면 되고, 50층 이하는 특수칸 자체가 없어도 된다" 요청으로 50층
@@ -1601,6 +1640,8 @@ public class BotS5ServiceImpl implements BotS5Service {
                 if (ticketMsg != null) sb.append(NL).append(ticketMsg);
             }
         }
+        String halfExploreReward = checkExploreHalfReward(userName, p, floor, visited, tileCount);
+        if (halfExploreReward != null) sb.append(NL).append(halfExploreReward);
         sb.append(NL);
 
         int trapTurnLeft = intVal(p.get("TRAP_TURN_LEFT"), 0);
@@ -1884,17 +1925,15 @@ public class BotS5ServiceImpl implements BotS5Service {
                 // 유저가 /층변경 N 을 직접 입력해야 이뤄진다(도착 시점의 업적/탐사 표시는
                 // changeFloor 쪽에서 그대로 처리됨).
                 int nextFloor = floor + 1;
-                // [2026-09-15 신설] 81층 이상은 계단을 발견해도 그 층의 중간보스를 1회 처치하기
-                // 전까지는 위층 자격을 안 준다 -- 처치 후 이 계단 칸에 "다시" 도착해야 열린다
-                // (아래에서 매번 이 case를 새로 타므로 자연히 재도달을 요구하게 됨). 처치 여부는
-                // TBOT_S5_USER_FLOOR_PROGRESS.MIDBOSS_KILLED_YN(이 층 전용, midBoss 처치 시
-                // 설정 -- resolveCombatTurn 참고)으로 추적하며, 구간 초기화/마을 복귀 시(그 층
-                // 행 자체가 삭제되므로) 함께 리셋된다.
-                boolean midbossGateFloor = floor >= 81;
-                boolean midbossCleared = ufp != null && "Y".equals(strVal(ufp.get("MIDBOSS_KILLED_YN"), "N"));
-                if (midbossGateFloor && !midbossCleared) {
+                // [2026-09-16] "50층 이상 올라가는 조건을 탐사율 50%이상으로(기존 중간보스처치)"
+                // 요청 -- 81층+ 전용이던 "중간보스 1회 처치" 게이트(MIDBOSS_KILLED_YN)를 완전히
+                // 대체해서, 50층 이상은 이 층 탐사율(visited/tileCount)이 50%를 넘어야 계단이
+                // 열린다. 계단을 밟아도 즉시 층이동하지 않는 기존 동작은 그대로(자격만 부여).
+                boolean exploreGateFloor = floor >= 50;
+                int explorePct = tileCount > 0 ? (visited * 100 / tileCount) : 0;
+                if (exploreGateFloor && explorePct < 50) {
                     sb.append("🪜⬆️❓ 위로 향하는 계단을 발견했지만... 무언가 강력한 기운이 막고 있다!").append(NL)
-                      .append("이 층의 중간보스를 먼저 처치해야 계단이 열립니다. (처치 후 이 계단 칸에 다시 도착하세요)");
+                      .append("이 층을 50% 이상 탐사해야 계단이 열립니다. (현재 ").append(explorePct).append("%)");
                     break;
                 }
                 HashMap<String, Object> up = new HashMap<>();
@@ -2721,12 +2760,10 @@ public class BotS5ServiceImpl implements BotS5Service {
                     dao.updateUserProgress(ticketUp);
                 }
             }
-            // [2026-09-15 신설] 81층 이상: 이 중간보스를 처치했다는 기록을 이 층(user,floor)
-            // 전용으로 남긴다 -- 위 STAIRS_UP 칸 처리에서 이 플래그가 있어야만 다음 층으로
-            // 올라갈 자격을 준다("계단 발견 + 중간보스 처치 후 계단 재도착" 요건).
-            if (midBoss && floor >= 81) {
-                dao.markFloorMidbossKilled(userName, floor);
-            }
+            // [2026-09-16] 81층+ 계단 게이트가 "중간보스 처치"에서 "탐사율 50%↑"로 대체되면서
+            // (STAIRS_UP 케이스 참고) 이 마킹은 더 이상 어디서도 읽지 않아 제거. MIDBOSS_KILLED_YN
+            // 컬럼/markFloorMidbossKilled DAO 메서드 자체는 남겨두되(과거 데이터, DDL 롤백 부담)
+            // 새로 값을 쓰는 곳은 없음.
 
             if (isBoss) {
                 int prevBlockBase = floorBlockBase(floor);
