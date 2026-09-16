@@ -2405,7 +2405,6 @@ public class BotS5ServiceImpl implements BotS5Service {
         // ── 파티 선공: 생존한 동료 전원이 각자 1회씩 공격 (직업별 특수효과 포함) ──
         long totalDamage = 0;
         boolean stunned = false;
-        boolean executeKill = false;
         int shieldPool = 0;
         // [2026-09-05] ★5/★6 마법사 "2턴 스턴" -- 지난 턴에 걸어둔 배너(MONSTER_STUNNED_YN)가
         // 있으면 이번 턴도 자동으로 스턴 처리하고 소모한다. mageBankNextTurn은 "이번 턴에 새로
@@ -2449,7 +2448,6 @@ public class BotS5ServiceImpl implements BotS5Service {
         boolean dualOnTarget2 = false;
         boolean dualMonster1KilledInLoop = false;
         boolean dualMonster2KilledInLoop = false;
-        boolean dualExecuteKillConsumed = false;
 
         for (HashMap<String, Object> c : party) {
             PP hp = PP.of(((Number) c.get("CUR_HP_VALUE")).doubleValue(), strVal(c.get("CUR_HP_EXT"), ""));
@@ -2484,6 +2482,15 @@ public class BotS5ServiceImpl implements BotS5Service {
                 else if (grade >= 5) effMonsterDef = (int) Math.round(monsterDef * 0.5); // ★5: 방어 50% 무시
             }
 
+            // [2026-09-16] "즉사 옵션을 없애고 크리티컬로 바꿔달라" 요청 -- 잔여체력 10%↓시
+            // 40% 확률 즉사 대신, 매 공격마다 성급별 확률로 1.5배 크리티컬이 터지도록 변경
+            // (1~4성 30%, 5성 40%, 6성 50% -- 배율은 성급 무관 항상 1.5배로 고정).
+            boolean archerCrit = false;
+            if ("ARCHER".equals(job)) {
+                int critChance = grade >= 6 ? 50 : (grade >= 5 ? 40 : 30);
+                archerCrit = RND.nextInt(100) < critChance;
+            }
+
             int roll;
             String rollLabel;
             if (doubleDice) {
@@ -2497,6 +2504,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             }
             int dmg = Math.max(1, eff[1] * roll - effMonsterDef);
             dmg = Math.max(dmg, eff[3]); // 스탯구매 최소공격력 보정
+            if (archerCrit) dmg = (int) Math.round(dmg * 1.5); // 궁수 크리티컬: 최종 데미지 1.5배
             totalDamage += dmg;
             // [간결화] 텍스트가 너무 길다는 요청으로, 공격력/범위(전투 시작 전 "OO 등장!" 메시지에
             // 이미 표시됨)는 매 줄마다 반복하지 않고, 직업별 특수효과도 새 줄 대신 같은 줄 끝에
@@ -2507,6 +2515,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             // 나눠달라는 요청 -- 이름+HP 줄, 그 아래 굴림 결과 줄로 분리.
             sb.append(jobTag(grade, job, cName)).append(" 💗").append(hp.format()).append("/").append(eff[0]).append(NL)
               .append("🎲").append(rollLabel).append("→").append(dmg).append("dmg");
+            if (archerCrit) sb.append(" 💥크리티컬!");
 
             // [2026-09-05 신설] ★5/★6 동료 성급 특수효과 -- 시너지와 별개로 "이 동료 개인"의
             // 등급이 높을수록 그 직업 고유 효과가 강해진다. 시너지가 함께 켜져 있으면 둘 다
@@ -2545,17 +2554,6 @@ public class BotS5ServiceImpl implements BotS5Service {
                     // resolveCombatTurn 반격 파트에서 처리한다(공격 턴인 여기와는 무관).
                     break;
                 }
-                case "ARCHER": {
-                    // ★5/★6 특수효과(관통, 몬스터 방어 무시)는 위 dmg 계산에서 이미 처리했다.
-                    // [2026-09-13] dual일 땐 "현재 타겟"의 실시간 잔여 체력(앞선 동료들이 이미
-                    // 깎아둔 값)을 기준으로 판정 -- 고정된 turn-start 값(monsterHp)이 아니다.
-                    long checkHp = dualMonster ? (dualOnTarget2 ? dualTarget2Remain : dualTarget1Remain) : PP.toBaseValue(monsterHp);
-                    if (checkHp <= PP.toBaseValue(monsterMaxHp) * 0.1 && RND.nextInt(100) < 40) {
-                        executeKill = true;
-                        sb.append(" 🏹즉사!");
-                    }
-                    break;
-                }
                 case "PRIEST": {
                     // [명확화 요청] "실드를 누구한테 주는지 안 보인다"는 지적으로, 도사 자신의
                     // 줄에는 더 이상 🛡️+N을 안 찍는다 -- 실제로 이번 반격을 막아준 대상이
@@ -2573,23 +2571,17 @@ public class BotS5ServiceImpl implements BotS5Service {
             }
 
             // [2026-09-13] dual 몬스터: 이 동료의 공격을 "현재 타겟"에 그 자리에서 적용.
-            // ARCHER 즉사가 방금 이 동료 턴에 새로 발동됐으면(dualExecuteKillConsumed로 한
-            // 번만 소모) 다이스 데미지 대신 현재 타겟을 그 자리에서 확실히 처치한다(오버킬은
-            // 여전히 없음 -- 다음 타겟으로 안 넘어가고 그냥 버려짐).
             if (dualMonster) {
-                boolean thisArcherExecuteKill = executeKill && !dualExecuteKillConsumed;
-                if (thisArcherExecuteKill) dualExecuteKillConsumed = true;
-                long applyDmg = thisArcherExecuteKill ? Long.MAX_VALUE / 2 : dmg;
                 if (!dualOnTarget2) {
                     sb.append(" (I번)");
-                    dualTarget1Remain -= applyDmg;
+                    dualTarget1Remain -= dmg;
                     if (dualTarget1Remain <= 0) {
                         dualMonster1KilledInLoop = true;
                         if (dualTarget2Remain != null) dualOnTarget2 = true;
                     }
                 } else {
                     sb.append(" (II번)");
-                    dualTarget2Remain -= applyDmg;
+                    dualTarget2Remain -= dmg;
                     if (dualTarget2Remain <= 0) dualMonster2KilledInLoop = true;
                 }
             }
@@ -2610,7 +2602,6 @@ public class BotS5ServiceImpl implements BotS5Service {
         boolean boss79Ambush = isBoss79 && (curCombatTurn == 1 || curCombatTurn % 6 == 0);
         if (boss79Ambush) {
             totalDamage = 0;
-            executeKill = false;
             sb.append("🌑 보스가 은신 상태로 이번 턴 파티의 공격을 전부 회피했다!").append(NL);
         }
 
@@ -2662,8 +2653,8 @@ public class BotS5ServiceImpl implements BotS5Service {
                 p.put("CUR_MONSTER2_HP_VALUE", null);
             }
         } else {
-            monsterHpAfter = executeKill ? PP.fromPP(0) : monsterHp.subtract(PP.fromPP(totalDamage));
-            monsterDead = executeKill || PP.toBaseValue(monsterHpAfter) <= 0;
+            monsterHpAfter = monsterHp.subtract(PP.fromPP(totalDamage));
+            monsterDead = PP.toBaseValue(monsterHpAfter) <= 0;
         }
 
         // [2026-09-14] "99층 보스는 즉사능력은 없으나 세 명을 동시공격하고, 죽이면 200%의
@@ -3062,7 +3053,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 똑같이 보이지만(startCombat 참고), 매 턴 지금 파티에 있는 직업 중 하나의 "기본 스킬"을
         // 하나 훔쳐서 자신이 사용한다(여러 직업이 섞여 있으면 매 턴 그 중 하나를 무작위로).
         // 전사는 도발(타겟팅) 자체가 자신에게 의미가 없으니 대신 방어력을 올리고, 도사는
-        // 스스로에게 보호막을, 도적은 PP를 훔치고, 궁수는(즉사는 제외) 이번 반격 피해를
+        // 스스로에게 보호막을, 도적은 PP를 훔치고, 궁수는(크리티컬은 제외) 이번 반격 피해를
         // 늘리고, 마법사는 동료 한 명을 기절시킨다.
         // [2026-09-14 수정] "스킬 뺏을 때 반격도 같이해줘, 지금은 스킬뺏는 액션만 해서 너무
         // 약하다" 요청 -- 원래 마법사 기절만 "반격 턴을 통째로 소모"(return으로 아래 반격
@@ -3517,8 +3508,8 @@ public class BotS5ServiceImpl implements BotS5Service {
 
         // [2026-09-10] 도사3인조 보호막 반사 데미지 반영 -- 위 반격 루프에서 누적한 만큼
         // 몬스터 체력을 추가로 깎는다(흡혈과 같은 방식으로 루프 종료 후 한 번에 처리, 0 밑으로는
-        // 안 내려가게 방어). 이미 처치 판정(executeKill 등)이 난 경우 monsterHpAfter가 이미
-        // 0이라 더 깎을 것도 없어 자연히 무해함.
+        // 안 내려가게 방어). 이미 처치 판정이 난 경우 monsterHpAfter가 이미 0이라 더 깎을 것도
+        // 없어 자연히 무해함.
         if (shieldReflectDamage > 0) {
             PP reflectedHp = monsterHpAfter.subtract(PP.fromPP(shieldReflectDamage));
             if (PP.toBaseValue(reflectedHp) < 0) reflectedHp = PP.fromPP(0);
