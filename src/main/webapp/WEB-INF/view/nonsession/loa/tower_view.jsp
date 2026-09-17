@@ -308,10 +308,30 @@
        와 똑같이 height:min(480px, 60vh)로 고정해서 맵뷰↔전투화면 전환 시 카드 높이가 안 흔들린다.
        내용은 flex column + space-between으로 위(몬스터)/아래(파티) 끝에 붙이고 남는 세로공간은
        가운데 여백으로 자연스럽게 흡수한다. */
-    .battle-screen{ background:linear-gradient(180deg,#E9F1E1,#F8F4E4); border:1.5px solid var(--line);
+    .battle-screen{ border:1.5px solid var(--line);
                      border-radius:14px; padding:16px; margin-top:2px; box-sizing:border-box;
                      height:min(480px, 60vh); display:flex; flex-direction:column; justify-content:space-between;
-                     opacity:1; transition:opacity .28s ease; }
+                     opacity:1; transition:opacity .28s ease, background-position 0s;
+                     position:relative; overflow:hidden; }
+    /* [2026-09-17 2차] "전투시 뒤 배경도 애니메이션 틱한 배경, 랜덤배경 생기면 좋겠어" 요청 --
+       몬스터 이미지 에셋이 없는 것처럼 배경 그림도 없어서(DB에 그런 자원 자체가 없음),
+       천천히 흐르는 그라데이션 6종을 만들어 전투 진입(새 몬스터 조우)마다 하나를 무작위로
+       배정한다(updateBattleScreen의 "새 몬스터 조우" 분기 참고). 텍스트 대비를 해치지
+       않도록 전부 --parchment 톤과 비슷한 밝기의 파스텔로만 구성(색상만 다름).
+       .bs-particle 2개는 배경 위에 천천히 떠다니는 흐릿한 빛망울로 "애니메이션 틱"을 더한다. */
+    @keyframes bsBgShift{ 0%{ background-position:0% 50%; } 50%{ background-position:100% 50%; } 100%{ background-position:0% 50%; } }
+    .bs-bg-0{ background:linear-gradient(135deg,#E9F1E1,#F8F4E4,#E9F1E1); background-size:220% 220%; animation:bsBgShift 12s ease infinite; }
+    .bs-bg-1{ background:linear-gradient(135deg,#F6ECD9,#FBE3C0,#F6ECD9); background-size:220% 220%; animation:bsBgShift 10s ease infinite; }
+    .bs-bg-2{ background:linear-gradient(135deg,#E3EEF6,#D3E6F5,#E3EEF6); background-size:220% 220%; animation:bsBgShift 13s ease infinite; }
+    .bs-bg-3{ background:linear-gradient(135deg,#EDE6F6,#E1D3F0,#EDE6F6); background-size:220% 220%; animation:bsBgShift 11s ease infinite; }
+    .bs-bg-4{ background:linear-gradient(135deg,#F8E5E8,#F5D3DA,#F8E5E8); background-size:220% 220%; animation:bsBgShift 9s ease infinite; }
+    .bs-bg-5{ background:linear-gradient(135deg,#DFF0E9,#C9E8DB,#DFF0E9); background-size:220% 220%; animation:bsBgShift 14s ease infinite; }
+    .bs-particle{ position:absolute; border-radius:50%; filter:blur(10px); opacity:.5; pointer-events:none; z-index:0; }
+    .bs-particle-a{ width:70px; height:70px; background:#fff; top:10%; left:15%; animation:bsFloatA 16s ease-in-out infinite; }
+    .bs-particle-b{ width:50px; height:50px; background:#fff; bottom:12%; right:20%; animation:bsFloatB 19s ease-in-out infinite; }
+    @keyframes bsFloatA{ 0%,100%{ transform:translate(0,0); } 50%{ transform:translate(24px,-16px); } }
+    @keyframes bsFloatB{ 0%,100%{ transform:translate(0,0); } 50%{ transform:translate(-20px,14px); } }
+    .bs-monster-row, .bs-party-row{ position:relative; z-index:1; }
     /* [2026-09-17 2차] "전투진입시 포켓몬처럼 스르르르 페이드아웃/페이드인" 요청 -- 맵뷰<->전투화면
        전환(진입/이탈)에만 opacity 크로스페이드를 건다(crossfadeBoardView 참고). 전투 중 HP
        갱신처럼 화면을 안 바꾸는 경우는 이 transition과 무관. */
@@ -381,6 +401,9 @@
     .equip-card button{ background:var(--gold); color:#fff; border:none; border-radius:8px;
                          padding:4px 6px; font-size:10px; cursor:pointer; }
     .equip-card button.ten{ background:var(--shop); }
+    /* [2026-09-17 2차] 착용중인 장비 카드 -- 미착용과 구분되게 살짝 다른 배경 + 착용자 표시. */
+    .equip-card.worn{ background:var(--gold-soft); border-color:var(--gold); }
+    .equip-card .eq-worn-by{ font-size:9.5px; color:var(--ink-soft); margin-bottom:6px; font-weight:600; }
 
     /* [2026-09-06] 동료변경/장비변경 선택 팝업(#pickerOverlay), "전체 동료보기"/"전체
        아이템보기" 팝업 공용 -- detail-overlay/detail-card를 그대로 재사용하고 내부 콘텐츠만
@@ -551,7 +574,9 @@
         </div>
         <!-- [2026-09-17] 전투 중엔 이 화면이 뜨고 아래 .tower-viewport-wrap(칸그리드)는
              숨겨진다(updateBattleScreen 참고). -->
-        <div id="battleScreen" class="battle-screen" style="display:none;">
+        <div id="battleScreen" class="battle-screen bs-bg-0" style="display:none;">
+          <div class="bs-particle bs-particle-a"></div>
+          <div class="bs-particle bs-particle-b"></div>
           <div class="bs-monster-row">
             <div class="bs-monster-sprite" id="bsMonsterSprite">👹</div>
             <div class="bs-monster-info">
@@ -845,6 +870,13 @@ var TW = (function () {
       document.getElementById('bsMonsterSprite').textContent = monsterEmoji(p.CUR_MONSTER_ID);
       document.getElementById('bsMonsterName').textContent =
           (p.CUR_MONSTER_ELITE_YN === 'Y' ? '💪 ' : '') + (monsterNameCache || '몬스터');
+      // [2026-09-17 2차] "랜덤배경 생기면 좋겠어" -- 새 몬스터를 만날 때마다 6종 중 하나를
+      // 무작위로 배정(직전과 같은 배경이 연달아 나오지 않게 가볍게 피함).
+      var screenEl = document.getElementById('battleScreen');
+      var prevBg = (screenEl.className.match(/bs-bg-\d/) || [])[0];
+      var nextBg;
+      do { nextBg = 'bs-bg-' + Math.floor(Math.random() * 6); } while (nextBg === prevBg);
+      screenEl.className = screenEl.className.replace(/\bbs-bg-\d\b/, '').trim() + ' ' + nextBg;
     }
 
     var pct = battle.monsterBaseHp > 0
@@ -1719,18 +1751,31 @@ var TW = (function () {
   // 초상화(IMAGE_URL)는 외부 API(nekos.best) 실패/차단 시 비어있을 수 있어 직업별 이모지로 항상 얼굴이 보이게 폴백
   var JOB_EMOJI = { WARRIOR: '⚔️', MAGE: '🧙', ROGUE: '🗡️', ARCHER: '🏹', PRIEST: '💫' };
 
-  // [2026-09-17] 무기 통합(BotS5ServiceImpl의 WEAPON_CLASS_JOBS/JOB_TO_WEAPON_CLASS/
-  // WEAPON_CLASS_NAME/weaponAllowedJobs/equipClassLabel과 반드시 동일하게 유지) -- 검(전사/
-  // 도적)/지팡이(도사/마법사)/활(궁수) 3종. 마이그레이션 전 구 데이터(무기 CLASS가 아직
-  // 직업명 그대로인 경우)도 함께 지원해야 해서 weaponAllowedJobs는 신규값이 아니면 그 값
-  // 자신 하나짜리 집합으로 취급한다(서버 로직과 동일).
-  var WEAPON_CLASS_JOBS = { SWORD: ['WARRIOR', 'ROGUE'], STAFF: ['MAGE', 'PRIEST'], BOW: ['ARCHER'] };
-  var WEAPON_CLASS_NAME = { SWORD: '검', STAFF: '지팡이', BOW: '활' };
+  // [2026-09-17] 장비 그룹 통합(BotS5ServiceImpl의 WEAPON_CLASS_JOBS/JOB_TO_WEAPON_CLASS/
+  // JOB_TO_ARMOR_CLASS/JOB_TO_HELMET_CLASS/WEAPON_CLASS_NAME/weaponAllowedJobs/
+  // equipClassLabel과 반드시 동일하게 유지) -- 무기(검/지팡이/활), 갑옷(갑주/로브/재킷),
+  // 투구(투구/머리띠/깃장식) 각 3종(전사+도적/마법사+도사/궁수), 악세서리(목걸이/반지/팔찌)는
+  // 전 직업 공용(COMMON). 마이그레이션 전 구 데이터(CLASS가 아직 직업명 그대로인 경우)도
+  // 함께 지원해야 해서 weaponAllowedJobs는 신규값이 아니면 그 값 자신 하나짜리 집합으로
+  // 취급한다(서버 로직과 동일).
+  var WEAPON_CLASS_JOBS = {
+    SWORD: ['WARRIOR', 'ROGUE'], STAFF: ['MAGE', 'PRIEST'], BOW: ['ARCHER'],
+    PLATE: ['WARRIOR', 'ROGUE'], ROBE: ['MAGE', 'PRIEST'], JACKET: ['ARCHER'],
+    HELM: ['WARRIOR', 'ROGUE'], HEADBAND: ['MAGE', 'PRIEST'], PLUME: ['ARCHER'],
+    COMMON: JOB_ORDER
+  };
+  var WEAPON_CLASS_NAME = {
+    SWORD: '검', STAFF: '지팡이', BOW: '활',
+    PLATE: '갑주', ROBE: '로브', JACKET: '재킷',
+    HELM: '투구', HEADBAND: '머리띠', PLUME: '깃장식'
+    // COMMON은 부위마다 라벨이 다르므로("공용목걸이" 등) equipClassLabel에서 따로 처리.
+  };
   function weaponAllowedJobs(equipClass) {
     return WEAPON_CLASS_JOBS[equipClass] || [equipClass];
   }
   function equipClassLabel(equipClass, part) {
-    if (part === 'WEAPON' && WEAPON_CLASS_NAME[equipClass]) return WEAPON_CLASS_NAME[equipClass];
+    if (equipClass === 'COMMON') return '공용' + (PART_KR[part] || part);
+    if (WEAPON_CLASS_NAME[equipClass]) return WEAPON_CLASS_NAME[equipClass];
     return JOB_KR[equipClass] || equipClass;
   }
 
@@ -2212,15 +2257,34 @@ var TW = (function () {
   // 갑옷)" 요청으로 직업 탭 + 부위 탭 2단 필터를 얹는다(그룹 헤더는 필터링 후에도 유지).
   function renderEquipList() {
     var unequipped = lastParty.unequipped || [];
+    var companions = lastParty.companions || [];
     var filterBox = document.getElementById('equipListFilters');
     filterBox.innerHTML = '';
     filterBox.appendChild(buildJobFilterRow(equipFilter.job, function (job) { equipFilter.job = job; renderEquipList(); }));
     filterBox.appendChild(buildPartFilterRow(equipFilter.part, function (part) { equipFilter.part = part; renderEquipList(); }));
 
+    // [2026-09-17 2차] "장착되어있는장비도 표기해주고 누구 장착중 이렇게 목록에 나왔으면
+    // 좋겠어" 요청 -- 기존엔 미착용(unequipped)만 보여줬는데, byCompanion(동료ID -> 그
+    // 동료가 착용 중인 장비 목록)을 펼쳐서 착용중인 장비도 같이 섞어 보여준다. 각 항목에
+    // __wearerName을 붙여서(없으면 미착용) 카드 렌더링 시 분기한다.
+    var companionById = {};
+    companions.forEach(function (c) { companionById[c.COMPANION_ID] = c; });
+    var equippedFlat = [];
+    Object.keys(lastParty.byCompanion || {}).forEach(function (cid) {
+      var c = companionById[cid];
+      var wearerName = c ? (c.NAME || JOB_KR[c.CLASS] || c.CLASS) : '?';
+      (lastParty.byCompanion[cid] || []).forEach(function (e) {
+        var copy = Object.assign({}, e);
+        copy.__wearerName = wearerName;
+        equippedFlat.push(copy);
+      });
+    });
+    var allItems = unequipped.concat(equippedFlat);
+
     // [2026-09-17] 무기 통합 후 e.CLASS가 SWORD 등 무기군일 수 있어, 필터 칩(전사/도적/...)을
     // 눌렀을 때 그 직업이 쓸 수 있는 무기(예: 전사 -> 검)도 같이 걸리도록 단순 동등비교 대신
     // weaponAllowedJobs로 판정한다(HELMET/ARMOR 등은 CLASS가 그대로 직업명이라 결과 동일).
-    var filtered = unequipped.filter(function (e) {
+    var filtered = allItems.filter(function (e) {
       if (equipFilter.job && weaponAllowedJobs(e.CLASS).indexOf(equipFilter.job) === -1) return false;
       if (equipFilter.part && e.PART !== equipFilter.part) return false;
       return true;
@@ -2244,13 +2308,13 @@ var TW = (function () {
     // 사라지므로, 무기군 3종을 순서 뒤에 이어붙인다.
     var grouped = {};
     filtered.forEach(function (e) { (grouped[e.CLASS] = grouped[e.CLASS] || []).push(e); });
-    var GROUP_ORDER = JOB_ORDER.concat(['SWORD', 'STAFF', 'BOW']);
+    var GROUP_ORDER = JOB_ORDER.concat(['SWORD', 'STAFF', 'BOW', 'PLATE', 'ROBE', 'JACKET', 'HELM', 'HEADBAND', 'PLUME', 'COMMON']);
     var jobsInOrder = GROUP_ORDER.filter(function (job) { return grouped[job]; });
 
     var box = document.getElementById('equipListBox');
     box.innerHTML = '';
     if (filtered.length === 0) {
-      box.innerHTML = '<div class="sheet-empty">' + (unequipped.length === 0 ? '미착용 장비가 없습니다.' : '조건에 맞는 장비가 없습니다.') + '</div>';
+      box.innerHTML = '<div class="sheet-empty">' + (allItems.length === 0 ? '보유한 장비가 없습니다.' : '조건에 맞는 장비가 없습니다.') + '</div>';
       return;
     }
     jobsInOrder.forEach(function (job) {
@@ -2264,7 +2328,8 @@ var TW = (function () {
       });
       var title = document.createElement('div');
       title.className = 'equip-group-title';
-      title.textContent = (WEAPON_CLASS_NAME[job] || JOB_KR[job] || job) + ' (' + list.length + ')';
+      var groupLabel = job === 'COMMON' ? '공용 악세서리' : (WEAPON_CLASS_NAME[job] || JOB_KR[job] || job);
+      title.textContent = groupLabel + ' (' + list.length + ')';
       box.appendChild(title);
 
       var grid = document.createElement('div');
@@ -2273,21 +2338,31 @@ var TW = (function () {
         var idx = e.__idx;
         var card = document.createElement('div');
         card.className = 'equip-card';
-        // [2026-09-12] 합성 재료(동일 클래스/부위/등급 3개 이상)가 안 되는 장비는 눌러도 항상
-        // 실패 응답만 오던 "합성" 버튼 자체를 아예 숨긴다.
-        var synthBtn = canSynth(e)
-            ? '<button class="ten" onclick="TW.action(\'EQUIP_SYNTH\',\'' + idx + '\')">합성</button>'
-            : '';
-        // [2026-09-17] "★6무기 라고만 되어있는데 ★6검/지팡이/활로 각각 표시해달라" 요청 --
-        // 그룹 헤더(검/지팡이/활)는 이미 구분되지만 카드 자체는 부위명(무기)만 찍혀서 어떤
-        // 무기군인지 카드 하나만 보고는 알 수 없었다. 무기일 때만 부위명 대신 무기군 이름으로.
-        var eqLabel = e.PART === 'WEAPON' ? equipClassLabel(e.CLASS, e.PART) : (PART_KR[e.PART] || e.PART);
+        // [2026-09-17] "★6무기 라고만 되어있는데 ★6검/지팡이/활로 각각 표시해달라" 요청(갑옷/
+        // 투구/악세서리 통합까지 확장) -- 그룹 헤더는 이미 구분되지만 카드 자체는 부위명만
+        // 찍혀서 카드 하나만 보고는 어느 그룹인지 알 수 없었다. 그룹 통합된 CLASS(검/갑주/
+        // 공용 등)일 때만 그 이름을, 아직 마이그레이션 전(구 데이터, class=직업명)이면 기존
+        // 처럼 부위명 그대로.
+        var isGroupedClass = !!WEAPON_CLASS_NAME[e.CLASS] || e.CLASS === 'COMMON';
+        var eqLabel = isGroupedClass ? equipClassLabel(e.CLASS, e.PART) : (PART_KR[e.PART] || e.PART);
+        var actionsHtml;
+        if (e.__wearerName) {
+          // [2026-09-17 2차] "장착되어있는장비도 표기해주고 누구 장착중 이렇게 나왔으면
+          // 좋겠어" 요청 -- 착용중인 장비는 장착/합성 버튼 대신 착용자 이름 + 해제 버튼.
+          card.classList.add('worn');
+          actionsHtml = '<div class="eq-worn-by">👤 ' + e.__wearerName + ' 장착중</div>'
+              + '<div class="btn-group"><button onclick="TW.action(\'EQUIP_UNWEAR_ONE\',\'' + e.EQUIP_ID + '\')">해제</button></div>';
+        } else {
+          // [2026-09-12] 합성 재료(동일 클래스/부위/등급 3개 이상)가 안 되는 장비는 눌러도
+          // 항상 실패 응답만 오던 "합성" 버튼 자체를 아예 숨긴다.
+          var synthBtn = canSynth(e)
+              ? '<button class="ten" onclick="TW.action(\'EQUIP_SYNTH\',\'' + idx + '\')">합성</button>'
+              : '';
+          actionsHtml = '<div class="btn-group"><button onclick="TW.action(\'EQUIP_WEAR\',\'' + idx + '\')">장착</button>' + synthBtn + '</div>';
+        }
         card.innerHTML = '<div class="eq-part">' + (PART_EMOJI[e.PART] || '🎽') + '</div>'
             + '<div class="eq-grade">' + eqLabel + ' ★' + e.GRADE + '</div>'
-            + '<div class="btn-group">'
-            + '<button onclick="TW.action(\'EQUIP_WEAR\',\'' + idx + '\')">장착</button>'
-            + synthBtn
-            + '</div>';
+            + actionsHtml;
         grid.appendChild(card);
       });
       box.appendChild(grid);
