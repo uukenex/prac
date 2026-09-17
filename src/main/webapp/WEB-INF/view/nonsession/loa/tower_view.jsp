@@ -847,6 +847,26 @@ var TW = (function () {
   // 전환(진입/이탈) "그 순간"에만 크로스페이드를 건다. 전투 중 매 HP 갱신마다 다시 부르면
   // 화면이 계속 깜빡이므로, updateBattleScreen()이 실제 전환(inCombat 값이 지난번과 달라짐)일
   // 때만 이 함수를 부른다.
+  // [2026-09-17 3차 버그수정] "모바일화면에서 동료3명이 아래에 둥둥떠있어, 캔버스안쪽으로
+  // 나오도록" 신고 -- 실기기 좌표를 직접 재보니 원인이 명확했다: .battle-screen의 높이를
+  // min(480px, 60vh)로만 정해서, "화면 위쪽에 이미 쌓인 헤더/탭 콘텐츠 때문에 이 박스가
+  // 화면 어디서 시작하는지"와 "하단 고정 네비(.dock, ~95px)가 뷰포트 맨 아래를 차지하고
+  // 있다는 것"을 전혀 반영하지 못했다. 그 결과 박스 자체가 뷰포트 아래로 삐져나가고, 맨
+  // 아래에 붙는 파티 줄(justify-content:space-between)이 정확히 dock와 겹치는 위치에
+  // 놓여서 "떠있는" 것처럼 보였다. CSS만으로는 "이 박스가 페이지에서 실제로 어디서
+  // 시작하는지"를 알 방법이 없어서(헤더 길이가 공지 배너 유무 등으로 가변적), 보여줄 때마다
+  // JS로 실측해서 남은 세로공간에 맞춰 높이를 직접 계산한다.
+  function fitBattleScreenHeight() {
+    var el = document.getElementById('battleScreen');
+    var dock = document.querySelector('.dock');
+    if (!el || el.style.display === 'none') return;
+    var top = el.getBoundingClientRect().top;
+    var dockH = dock ? dock.getBoundingClientRect().height : 0;
+    var available = window.innerHeight - top - dockH - 12; // 12px 여유
+    el.style.height = Math.max(260, Math.min(480, available)) + 'px';
+  }
+  window.addEventListener('resize', fitBattleScreenHeight);
+
   function crossfadeBoardView(showBattle) {
     var screen = document.getElementById('battleScreen');
     var boardWrap = document.querySelector('.tower-viewport-wrap');
@@ -858,6 +878,7 @@ var TW = (function () {
       // 이미 숨겨져 있었으면(최초 페이지 로드 등) 페이드 없이 바로 보여준다.
       showEl.style.display = '';
       showEl.style.opacity = '1';
+      if (showBattle) fitBattleScreenHeight();
       return;
     }
     hideEl.style.opacity = '0';
@@ -867,6 +888,7 @@ var TW = (function () {
       showEl.style.opacity = '0';
       void showEl.offsetWidth; // 강제 리플로우 -- 이게 없으면 opacity 0->1 전환이 안 먹힘
       showEl.style.opacity = '1';
+      if (showBattle) fitBattleScreenHeight();
     }, 260);
   }
 
